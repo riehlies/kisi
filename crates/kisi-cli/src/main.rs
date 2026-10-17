@@ -24,6 +24,7 @@ fn main() {
     let mut rf_net: Option<String> = None;
     let mut s2p_out: Option<String> = None;
     let mut eye_gbps: Option<f64> = None;
+    let mut pdn_net: Option<String> = None;
     let mut field_in: Option<String> = None;
     let mut params = Params::default();
     let mut i = 2;
@@ -50,6 +51,10 @@ fn main() {
             "--rails" => list_rails = true,
             "--rf" => {
                 rf_net = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--pdn" => {
+                pdn_net = args.get(i + 1).cloned();
                 i += 1;
             }
             "--eye" => {
@@ -130,6 +135,59 @@ fn main() {
                 p.pads,
                 p.components.iter().take(12).cloned().collect::<Vec<_>>().join(" ")
             );
+        }
+        return;
+    }
+    if let Some(name) = &pdn_net {
+        let setups: Vec<kisi_core::pi::RailSetup> = match &pi_tree {
+            Some(p) => {
+                let spec: kisi_core::tree::TreeSpec = serde_json::from_str(&std::fs::read_to_string(p).expect("read tree")).expect("tree JSON");
+                kisi_core::tree::solve_tree(&spec, Some(&board)).map(|t| t.setups).unwrap_or_default()
+            }
+            None => kisi_core::pi::rails_from_fields(&board).0,
+        };
+        let setup = setups.iter().find(|r| r.net == *name || r.net.rsplit('/').next() == Some(name.as_str())).cloned().unwrap_or_else(|| kisi_core::pi::RailSetup {
+            net: name.clone(),
+            voltage: kisi_core::pi::voltage_from_name(name).unwrap_or(0.0),
+            ..Default::default()
+        });
+        match kisi_core::pdn::pdn(&board, &setup, &kisi_core::pdn::PdnParams::default()) {
+            Ok(r) => {
+                println!("PDN {} {:+.2} V, Last {:.3} A, Ziel {}", r.net, r.voltage, r.load_current,
+                    r.target_ohm.map(|t| format!("{:.1} mΩ", t * 1e3)).unwrap_or("–".into()));
+                for pl in &r.planes {
+                    println!("  Ebene L{}↔L{} {:.0} mm², Abstand {:.3} mm, {:.2} nF", pl.layer, pl.gnd_layer, pl.area_mm2, pl.d_mm, pl.c * 1e9);
+                }
+                if let Some(f) = r.cavity_hz {
+                    println!("  erste Hohlraumresonanz ≈ {:.0} MHz (darüber gilt das konzentrierte Modell nicht)", f / 1e6);
+                }
+                let mut groups: Vec<(String, &str, usize, f64, f64, f64)> = Vec::new();
+                for c in &r.caps {
+                    let key = format!("{:.3e}", c.c);
+                    let lt = c.esl + c.l_mount + c.l_spread;
+                    match groups.iter_mut().find(|g| g.0 == key && g.1 == c.package) {
+                        Some(g) => {
+                            g.2 += 1;
+                            g.3 += lt;
+                            g.5 += c.srf;
+                        }
+                        None => groups.push((key, c.package, 1, lt, c.c, c.srf)),
+                    }
+                }
+                for g in &groups {
+                    println!("  {:>3} × {:>9.3} µF {:<5} L gesamt Ø {:.2} nH, SRF Ø {:.1} MHz", g.2, g.4 * 1e6, g.1, g.3 / g.2 as f64 * 1e9, g.5 / g.2 as f64 / 1e6);
+                }
+                println!("  C gesamt {:.1} µF (Ebene {:.2} nF)", r.c_total * 1e6, r.c_plane * 1e9);
+                let at = |f: f64| r.freq.iter().position(|&x| x >= f).map(|i| r.z[i]).unwrap_or(f64::NAN);
+                println!("  |Z|: {}", [1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9].iter().map(|&f| format!("{} {:.1} mΩ", if f >= 1e6 { format!("{:.0} MHz", f / 1e6) } else { format!("{:.0} kHz", f / 1e3) }, at(f) * 1e3)).collect::<Vec<_>>().join(", "));
+                for (a, b) in &r.above_target {
+                    println!("  über Ziel: {:.2} … {:.2} MHz", a / 1e6, b / 1e6);
+                }
+                for w in &r.warnings {
+                    println!("  Hinweis: {w}");
+                }
+            }
+            Err(e) => eprintln!("PDN: {e}"),
         }
         return;
     }

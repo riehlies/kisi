@@ -51,6 +51,14 @@ Kern in Rust, läuft als WebAssembly im Browser und als native CLI. Lizenz: GPL-
   Augenhöhe/-breite, Skew im Paar und Via-Stub-Resonanz; Ampel nach Richtwerten (keine Spezifikation).
 - Genauigkeit: Leitungs-RLGC gegen HFSS ≤ 2 %; Via-Impedanz ist ein Abschätzungsmodell (etwa ±15 %), kein 3D-Ergebnis.
 
+## Impedanz der Versorgung Z(f) (PI-AC, erste Version)
+- `crates/kisi-core/src/pdn.rs`: konzentriertes Modell je Schiene – Regler (R + L) ∥ Ebenenkapazität (Fläche der
+  Zonen über der nächsten Masselage) ∥ alle Kondensatoren zwischen Schiene und Masse. Wert aus dem Bauteilwert
+  (`100n`, `4u7`, `10µF/6.3V`), Bauform aus dem Padabstand, ESR/ESL geschätzt, Montage-Induktivität über die Vias bis
+  zur Ebene, Ausbreitungsinduktivität bis zum Lastschwerpunkt.
+- Zielimpedanz = 3 % der Spannung / (50 % des Laststroms); bewertet bis 100 MHz bzw. bis zur ersten Hohlraumresonanz.
+- CLI: `kisi board.kicad_pcb --pi-tree web/samples/ts_tree.json --pdn +1V0`; Viewer: Versorgung → Schiene → „Impedanz Z(f)“.
+
 ## Stand: Meilenstein M2 (Feldlöser)
 - Quasi-statischer 2D-Feldlöser: js_2d_fields von Henrik Forstén, unverändert eingebunden (siehe `UPSTREAM.md`)
 - Jeder Querschnitt wird als Geometrie-Text erzeugt (`crates/kisi-core/src/xsgeom.rs`) und vom Backend gerechnet

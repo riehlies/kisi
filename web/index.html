@@ -395,9 +395,10 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
         <label class="opt" for="rf-fmax"><span>Frequenz bis</span><select id="rf-fmax"><option value="10">10 GHz</option><option value="20">20 GHz</option><option value="25" selected>25 GHz</option><option value="40">40 GHz</option></select></label>
         <label class="opt" for="rf-rise"><span>Anstiegszeit (10–90 %)</span><select id="rf-rise"><option value="20">20 ps</option><option value="35" selected>35 ps</option><option value="50">50 ps</option><option value="100">100 ps</option><option value="200">200 ps</option><option value="500">500 ps</option></select></label>
         <label class="opt" for="rf-rough"><span>Kupferrauheit</span><select id="rf-rough"><option value="Smooth">glatt</option><option value="Hvlp">HVLP</option><option value="Standard" selected>Standard-ED</option></select></label>
-        <label class="opt" for="rf-vias"><span>Vias im Kanal (vereinfacht)</span><input type="checkbox" id="rf-vias" checked></label>
+        <label class="opt" for="rf-vias"><span>Vias im Kanal</span><input type="checkbox" id="rf-vias" checked></label>
+        <label class="opt" for="rf-bd"><span>Via-Stubs</span><select id="rf-bd"><option value="">wie im Layout</option><option value="0.2">alle rückgebohrt (Rest 0,2 mm)</option><option value="0">ohne Stubs</option></select></label>
       </div>
-      <p class="note">Verluste: Skin-Effekt nach Wheeler, Rauheit nach Huray (Voreinstellungen geschätzt), Dielektrikum nach Djordjevic-Sarkar aus εr und tanδ des Lagenaufbaus. Ein Netz wählen, um Verluste, TDR und Übersprechen zu sehen.</p>
+      <p class="note">Verluste: Skin-Effekt nach Wheeler, Rauheit nach Huray (Voreinstellungen geschätzt), Dielektrikum nach Djordjevic-Sarkar aus εr und tanδ des Lagenaufbaus. Vias: koaxiale Abschnitte je Lage mit den gemessenen Antipads, Stubs als offene Leitungen, Rückstrompfad bei Ebenenwechsel. Ein Netz wählen, um Verluste, TDR, Vias und Übersprechen zu sehen.</p>
     </section>
 
     <section class="card" aria-labelledby="h-nets" data-view="si">
@@ -780,6 +781,14 @@ function drawNow() {
     ctx.strokeStyle = pieceColor(i); ctx.lineWidth = Math.max(pc.w[i], 1.2 * px);
     ctx.stroke();
   }
+  if (S.mark && S.selNet === S.mark.net) {
+    ctx.strokeStyle = C.halo; ctx.lineWidth = 5 * px; ctx.beginPath(); ctx.arc(S.mark.x, S.mark.y, 9 * px, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim(); ctx.lineWidth = 2 * px; ctx.stroke();
+  }
+}
+function zoomTo(x, y, half) {
+  S.mark = { x, y, net: S.selNet };
+  fitView([x - half, y - half, x + half, y + half]);
 }
 
 function pick(mx, my) {
@@ -920,7 +929,7 @@ function selectNet(net, zoom = true) {
     <div class="dstats"><span>Länge <b>${fmt(st?.length, 1)} mm</b></span><span>Ziel <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
     <span>min/Ø/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b></span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
     <div class="tabs" role="tablist" aria-label="Ansicht des Netzes">
-      ${[["z", "Impedanz"], ["loss", "Verluste"], ["tdr", "TDR"], ["xt", "Übersprechen"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
+      ${[["z", "Impedanz"], ["loss", "Verluste"], ["tdr", "TDR"], ["via", "Vias"], ["xt", "Übersprechen"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
     </div>
     <div id="tab-body"></div>`;
   d.hidden = false;
@@ -944,6 +953,7 @@ function rfParams() {
     fmax: parseFloat($("rf-fmax").value) * 1e9, npts: 500,
     rise: parseFloat($("rf-rise").value) * 1e-12,
     roughness: $("rf-rough").value, sigma: 5.8e7, vias: $("rf-vias").checked,
+    backdrill: $("rf-bd").value === "" ? null : parseFloat($("rf-bd").value),
   };
 }
 function rfFor(net) {
@@ -967,6 +977,7 @@ function renderTab(net, t, rowsXs) {
   }
   const r = rfFor(net), ch = r.channel;
   if (S.detailTab === "xt") return renderXt(body, r, net);
+  if (S.detailTab === "via") return renderVias(body, r);
   if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "kein Kanal")}</p>`; return; }
   const src = ch.field_share > 0 ? `Feldlöser für ${Math.round(ch.field_share * 100)} % der Länge, sonst Formeln` : "Formeln (schnelle Analyse)";
   const head = `<div class="dstats"><span>${ch.diff ? "differentiell, Bezug " + fmt(2 * ch.z_ref, 0) + " Ω" : "Bezug " + fmt(ch.z_ref, 0) + " Ω"}</span><span>Pfad <b>${fmt(ch.length_mm, 1)} mm</b></span><span>Laufzeit <b>${fmt(ch.delay_ps, 0)} ps</b></span><span>Vias <b>${ch.vias}</b></span></div>`;
@@ -1001,6 +1012,25 @@ function renderTab(net, t, rowsXs) {
     drawLines($("ch-tdr"), { x: ch.tdr_x_mm, xUnit: "mm", yUnit: "Ω", series: [{ y: ch.tdr_z.map((z) => z * scale), color: "--pw-use", name: ch.diff ? "Z diff" : "Z" }],
       band: zt ? [zt * scale * 0.95, zt * scale * 1.05] : null, xMax: ch.length_mm * 1.25 });
   }
+}
+function renderVias(body, r) {
+  const ch = r.channel;
+  if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "kein Kanal")}</p>`; return; }
+  const L = (k) => esc(S.scene.stackup.copper[k]?.name ?? k);
+  const ret = { none: "nicht nötig", pair: "über Partner-Via", stitch: "Stitching-Via", decap: "über Kondensatoren", missing: "fehlt" };
+  const fmax = rfParams().fmax / 1e9;
+  const rows = ch.via_info.map((v, i) => {
+    const res = v.stub_f_ghz != null && v.stub_f_ghz < fmax;
+    return `<tr class="click" data-via="${i}"><td>${L(v.layer_in)} → ${L(v.layer_out)}</td><td>${fmt(v.drill_mm * 1000, 0)} / ${fmt(v.pad_mm * 1000, 0)}</td><td>${v.antipad_mm != null ? fmt(v.antipad_mm * 1000, 0) : "–"}</td><td>${fmt(v.z_via, 0)}</td><td>${fmt(v.barrel_mm, 2)}</td><td${res ? ' class="warn"' : ""}>${fmt(v.stub_mm, 2)}${v.stub_f_ghz != null && v.stub_mm > 0.01 ? ` (${fmt(v.stub_f_ghz, v.stub_f_ghz < 100 ? 1 : 0)} GHz)` : ""}${v.backdrilled ? " rb" : ""}</td><td>${ret[v.return_kind] || v.return_kind}${v.return_kind === "stitch" ? ` ${fmt(v.return_mm, 1)} mm` : ""}</td></tr>`;
+  }).join("");
+  body.innerHTML = ch.via_info.length ? `<div class="dstats"><span>${ch.via_info.length} Via${ch.via_info.length > 1 ? "s" : ""} im Pfad</span><span class="muted">Z ${ch.diff ? "differentiell" : "einzeln"}, Ziel ${fmt(ch.diff ? 2 * ch.z_ref : ch.z_ref, 0)} Ω</span></div>
+    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Lagen</th><th>Bohrung/Pad µm</th><th>Antipad µm</th><th>Z Ω</th><th>Hülse mm</th><th>Stub mm</th><th>Rückstrom</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">Antipad = mittlere Freistellung in den Ebenen, die das Via durchquert. Ein Stub (ungenutztes Via-Ende) wirkt als offene Leitung; seine Viertelwellen-Resonanz erzeugt einen Einbruch in S21. „rb“ = rückgebohrt. Klick auf eine Zeile zeigt das Via auf der Platine.</p>`
+    : `<p class="note">Der berechnete Pfad wechselt die Lage nicht.</p>`;
+  body.querySelectorAll("tr[data-via]").forEach((tr) => tr.onclick = () => {
+    const v = ch.via_info[+tr.dataset.via];
+    zoomTo(v.at[0], v.at[1], 3);
+  });
 }
 function renderXt(body, r, net) {
   const x = r.crosstalk, rise = fmt(x.rise_ps, 0);
@@ -1229,7 +1259,7 @@ $("fit").onclick = () => fitView();
 $("search").oninput = () => renderNets();
 $("opt-mask").onchange = (e) => { S.mask = e.target.checked; runAnalysis(); };
 $("opt-step").onchange = (e) => { S.step = parseFloat(e.target.value); runAnalysis(); };
-for (const id of ["rf-fmax", "rf-rise", "rf-rough", "rf-vias"]) $(id).onchange = () => { if (S.selNet >= 0) selectNet(S.selNet, false); };
+for (const id of ["rf-fmax", "rf-rise", "rf-rough", "rf-vias", "rf-bd"]) $(id).onchange = () => { if (S.selNet >= 0) selectNet(S.selNet, false); };
 $("opt-zone").onchange = (e) => { S.zoneLayer = parseInt(e.target.value, 10); draw(); };
 
 const ptrs = new Map(); let pinch = null, dragMoved = false;

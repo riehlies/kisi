@@ -205,13 +205,15 @@ pub struct RfParams {
     pub sigma: f64,
     /// reference impedance; None: target of the net class, else 50 / 100 Ω
     pub z_ref: Option<f64>,
-    /// include the simplified via model
+    /// include the via model
     pub vias: bool,
+    /// assume every via is back-drilled to this residual stub (mm); None: as in the layout
+    pub backdrill: Option<f64>,
 }
 
 impl Default for RfParams {
     fn default() -> Self {
-        RfParams { fmax: 25e9, npts: 500, rise: 35e-12, roughness: Roughness::Standard, sigma: 5.8e7, z_ref: None, vias: true }
+        RfParams { fmax: 25e9, npts: 500, rise: 35e-12, roughness: Roughness::Standard, sigma: 5.8e7, z_ref: None, vias: true, backdrill: None }
     }
 }
 
@@ -426,6 +428,7 @@ pub struct Channel {
     pub tdr_z: Vec<f64>,
     pub tdr_x_mm: Vec<f64>,
     pub loss_db_per_in_at: Vec<(f64, f64, f64)>,
+    pub via_info: Vec<crate::via::ViaInfo>,
     pub field_share: f64,
     pub warnings: Vec<String>,
     #[serde(skip)]
@@ -453,20 +456,24 @@ fn net_path(board: &Board, an: &Analysis, net: u32, warnings: &mut Vec<String>) 
     if tracks.is_empty() {
         return vec![];
     }
-    // nodes = endpoints (5 µm grid, layer-independent: a change of layer at
-    // the same place is a via); pad tracks connect at their centre too
-    let key = |p: P| ((p[0] * 200.0).round() as i64, (p[1] * 200.0).round() as i64);
-    let mut node_id: HashMap<(i64, i64), usize> = HashMap::new();
-    let nid = |p: P, node_id: &mut HashMap<(i64, i64), usize>| -> usize {
-        let k = key(p);
+    // nodes = endpoints per layer (5 µm grid); layers connect only through
+    // vias and plated holes (joined below); pad tracks connect at their centre too
+    let key = |p: P, l: u16| ((p[0] * 200.0).round() as i64, (p[1] * 200.0).round() as i64, l);
+    let mut node_id: HashMap<(i64, i64, u16), usize> = HashMap::new();
+    let nid = |p: P, l: u16, node_id: &mut HashMap<(i64, i64, u16), usize>| -> usize {
+        let k = key(p, l);
         let n = node_id.len();
         *node_id.entry(k).or_insert(n)
     };
     let mut edges: Vec<(usize, usize, usize, f64)> = Vec::new(); // (track, a, b, len)
+    let mut node_layers: Vec<u64> = Vec::new();
     for &ti in &tracks {
         let t = &board.tracks[ti];
-        let a = nid(t.a, &mut node_id);
-        let b = nid(t.b, &mut node_id);
+        let a = nid(t.a, t.layer, &mut node_id);
+        let b = nid(t.b, t.layer, &mut node_id);
+        node_layers.resize(node_id.len(), 0);
+        node_layers[a] |= 1u64 << t.layer.min(63);
+        node_layers[b] |= 1u64 << t.layer.min(63);
         edges.push((ti, a, b, geom::len(geom::sub(t.b, t.a))));
     }
     // join nodes that lie inside a pad track or very close (track ending in a
@@ -494,18 +501,55 @@ fn net_path(board: &Board, an: &Analysis, net: u32, warnings: &mut Vec<String>) 
         let t = &board.tracks[ti];
         let tol = if t.pad { t.width / 2.0 } else { 0.02 };
         for i in 0..n {
+            // only copper on the same layer connects (vias are joined below)
+            if node_layers[i] & (1u64 << t.layer.min(63)) == 0 {
+                continue;
+            }
             // distance of node to the track centre line
             let d = geom::sub(t.b, t.a);
             let l2 = geom::dot(d, d).max(1e-12);
             let u = (geom::dot(geom::sub(pos[i], t.a), d) / l2).clamp(0.0, 1.0);
             let q = geom::add(t.a, geom::scale(d, u));
             if geom::len(geom::sub(pos[i], q)) <= tol {
-                let ea = key(t.a);
-                let a = node_id[&ea];
-                let (ra, rb) = (find(&mut parent, a), find(&mut parent, i));
-                if ra != rb && (t.pad || u <= 1e-6 || u >= 1.0 - 1e-6) {
-                    parent[rb] = ra;
+                // a pad is one node; a trace end joins nodes that touch that end
+                let end = if t.pad || u <= 1e-6 {
+                    Some(t.a)
+                } else if u >= 1.0 - 1e-6 {
+                    Some(t.b)
+                } else {
+                    None
+                };
+                if let Some(e) = end {
+                    let a = node_id[&key(e, t.layer)];
+                    let (ra, rb) = (find(&mut parent, a), find(&mut parent, i));
+                    if ra != rb {
+                        parent[rb] = ra;
+                    }
                 }
+            }
+        }
+    }
+    // vias of the net connect all track ends inside their pad
+    for v in board.vias.iter().filter(|v| v.net == net) {
+        let r = v.size / 2.0 + 0.03;
+        let span: u64 = (v.from..=v.to).fold(0, |m, l| m | 1u64 << l.min(63));
+        let inside: Vec<usize> = (0..n).filter(|&i| node_layers[i] & span != 0 && geom::len(geom::sub(pos[i], v.at)) <= r).collect();
+        for w in inside.windows(2) {
+            let (ra, rb) = (find(&mut parent, w[0]), find(&mut parent, w[1]));
+            if ra != rb {
+                parent[rb] = ra;
+            }
+        }
+    }
+    // plated through-hole pads likewise
+    for p in board.pads.iter().filter(|p| p.net == net && p.drill > 0.0 && p.layers.len() > 1) {
+        let r = p.size[0].min(p.size[1]) / 2.0 + 0.03;
+        let span: u64 = p.layers.iter().fold(0, |m, &l| m | 1u64 << l.min(63));
+        let inside: Vec<usize> = (0..n).filter(|&i| node_layers[i] & span != 0 && geom::len(geom::sub(pos[i], p.at)) <= r).collect();
+        for w in inside.windows(2) {
+            let (ra, rb) = (find(&mut parent, w[0]), find(&mut parent, w[1]));
+            if ra != rb {
+                parent[rb] = ra;
             }
         }
     }
@@ -589,16 +633,6 @@ fn net_path(board: &Board, an: &Analysis, net: u32, warnings: &mut Vec<String>) 
     out
 }
 
-/// Simplified via (Johnson/Graham): (L in H, C in F). Pad / drill / height in mm.
-fn via_lc(pad: f64, drill: f64, height: f64, er: f64) -> (f64, f64) {
-    let inch = 25.4;
-    let antipad = pad + 0.4;
-    let c_pf = 1.41 * er * (height / inch) * (pad / inch) / ((antipad - pad) / inch);
-    let h_in = height / inch;
-    let l_nh = 5.08 * h_in * ((4.0 * height / drill).ln() + 1.0);
-    (l_nh * 1e-9, c_pf * 1e-12)
-}
-
 pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &RfParams) -> Result<Channel, String> {
     let su = board.stackup();
     let mut warnings = Vec::new();
@@ -613,6 +647,16 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
     let mut models: Vec<Option<LineModel>> = Vec::new();
     let mut model_cache: HashMap<u32, Option<LineModel>> = HashMap::new();
     let mut prev_layer: Option<(u16, P)> = None;
+    let mut prev_xs: Option<u32> = None;
+    let mut via_models: Vec<Option<crate::via::ViaModel>> = Vec::new();
+    let mut via_info: Vec<crate::via::ViaInfo> = Vec::new();
+    let refs = |xi: Option<u32>| -> Vec<u16> {
+        xi.map(|i| {
+            let x = &an.cross_sections[i as usize];
+            [x.ref_up, x.ref_dn].into_iter().flatten().collect()
+        })
+        .unwrap_or_default()
+    };
     let mut field_len = 0.0;
     let mut total_len = 0.0;
     for &(pi, rev) in &path {
@@ -627,15 +671,58 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
                 let v = board.vias.iter().filter(|v| v.net == net).min_by(|a, b| {
                     geom::len(geom::sub(a.at, ppos)).partial_cmp(&geom::len(geom::sub(b.at, ppos))).unwrap()
                 });
-                let (pad, drill, from, to) = v.map(|v| (v.size, v.drill, v.from as usize, v.to as usize)).unwrap_or((0.45, 0.2, 0, su.n() - 1));
-                let height = su.gap_between(from, to) + su.copper[from].thickness;
-                let er = su.er_between(from, to);
-                let (l, c) = via_lc(pad, drill, height, er);
-                segs.push(Segment { kind: "via", len_mm: 0.0, layer: tr.layer, xs: None, z: None, via_lc: Some((l * 1e9, c * 1e12)), source: "formula" });
+                let fallback_via;
+                let v = match v {
+                    Some(v) if geom::len(geom::sub(v.at, ppos)) < 1.0 => v,
+                    _ => {
+                        // a plated through-hole pad (connector pin) acts as the via
+                        let th = board.pads.iter().filter(|p| p.net == net && p.drill > 0.0 && p.layers.len() > 1).min_by(|a, b| {
+                            geom::len(geom::sub(a.at, ppos)).partial_cmp(&geom::len(geom::sub(b.at, ppos))).unwrap()
+                        });
+                        let th = th.filter(|p| geom::len(geom::sub(p.at, ppos)) < p.size[0].max(p.size[1]) + 0.5);
+                        fallback_via = match th {
+                            Some(p) => crate::board::Via {
+                                at: p.at,
+                                size: p.size[0].min(p.size[1]),
+                                drill: p.drill,
+                                from: *p.layers.iter().min().unwrap(),
+                                to: *p.layers.iter().max().unwrap(),
+                                net,
+                                backdrill: None,
+                            },
+                            None => crate::board::Via { at: ppos, size: 0.45, drill: 0.2, from: 0, to: (su.n() - 1) as u16, net, backdrill: None },
+                        };
+                        if th.is_none() {
+                            warnings.push(format!("Lagenwechsel bei ({:.2}, {:.2}) mm ohne Via in der Nähe: Standard-Via 0,2/0,45 mm angenommen", ppos[0], ppos[1]));
+                        }
+                        &fallback_via
+                    }
+                };
+                let ctx = crate::via::ViaCtx {
+                    board,
+                    net,
+                    partner: if diff { partner } else { None },
+                    refs_in: refs(prev_xs),
+                    refs_out: refs(Some(xi)),
+                    backdrill: rp.backdrill,
+                };
+                let (vm, info) = crate::via::build(&ctx, v, pl, tr.layer);
+                let (mut lt, mut ct) = (0.0, 0.0);
+                for s in &vm.barrel {
+                    let vv = C0 / s.er.sqrt();
+                    lt += s.z / vv * s.len;
+                    ct += s.len / (s.z * vv);
+                }
+                let zv = if diff { info.z_via / 2.0 } else { info.z_via };
+                segs.push(Segment { kind: "via", len_mm: info.barrel_mm, layer: tr.layer, xs: None, z: Some(zv), via_lc: Some((lt * 1e9, ct * 1e12)), source: "via-model" });
                 models.push(None);
+                via_models.resize(segs.len() - 1, None);
+                via_models.push(Some(vm));
+                via_info.push(info);
             }
         }
         prev_layer = Some((tr.layer, geom::lerp(tr.a, tr.b, if rev { pc[1] } else { pc[2] })));
+        prev_xs = Some(xi);
         let _ = start;
         let xs = &an.cross_sections[xi as usize];
         let model = model_cache
@@ -700,12 +787,12 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
     for &f in &freq {
         let w = 2.0 * PI * f;
         let mut m = Abcd::identity();
-        for (s, md) in segs.iter().zip(&models) {
+        for (i, (s, md)) in segs.iter().zip(&models).enumerate() {
             let e = if s.kind == "via" {
-                let (l, c) = s.via_lc.unwrap();
-                let (l, c) = (l * 1e-9, c * 1e-12);
-                let zl = Cx::new(0.0, w * l / 2.0);
-                Abcd::series(zl).mul(&Abcd::shunt(Cx::new(0.0, w * c))).mul(&Abcd::series(zl))
+                match via_models.get(i).and_then(|v| v.as_ref()) {
+                    Some(vm) => vm.abcd(f, rp.sigma),
+                    None => Abcd::identity(),
+                }
             } else {
                 let lm = md.as_ref().unwrap_or(&fallback);
                 let p = lm.rlgc(f, rp);
@@ -731,10 +818,28 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
 
     // delay (lossless, static)
     let mut delay = 0.0;
-    for (s, md) in segs.iter().zip(&models) {
+    for (i, (s, md)) in segs.iter().zip(&models).enumerate() {
         if s.kind == "line" {
             let lm = md.as_ref().unwrap_or(&fallback);
             delay += s.len_mm * 1e-3 * (lm.l_ext * lm.c0).sqrt();
+        } else if let Some(Some(vm)) = via_models.get(i) {
+            delay += vm.delay();
+        }
+    }
+    let total_len = total_len + via_info.iter().map(|v| v.barrel_mm).sum::<f64>();
+    for v in &via_info {
+        if let Some(fr) = v.stub_f_ghz {
+            if fr * 1e9 < rp.fmax {
+                warnings.push(format!(
+                    "Via bei ({:.2}, {:.2}) mm: Stub {:.2} mm, Viertelwellen-Resonanz {:.1} GHz liegt im betrachteten Band",
+                    v.at[0], v.at[1], v.stub_mm, fr
+                ));
+            }
+        }
+        match v.return_kind {
+            "missing" => warnings.push(format!("Via bei ({:.2}, {:.2}) mm: Bezugsebene wechselt, kein Stitching-Via innerhalb 5 mm", v.at[0], v.at[1])),
+            "decap" => warnings.push(format!("Via bei ({:.2}, {:.2}) mm: Bezug wechselt auf ein anderes Netz, Rückstrom nur über Kondensatoren", v.at[0], v.at[1])),
+            _ => {}
         }
     }
     // loss per inch of the longest segment model at a few frequencies
@@ -779,6 +884,7 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
         tdr_z,
         tdr_x_mm,
         loss_db_per_in_at,
+        via_info,
         field_share: if total_len > 0.0 { field_len / total_len } else { 0.0 },
         warnings,
         s11,

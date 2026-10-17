@@ -10,6 +10,7 @@ pub mod geom;
 pub mod pi;
 pub mod rf;
 pub mod tree;
+pub mod via;
 pub mod sexpr;
 pub mod view;
 pub mod xsgeom;

@@ -304,6 +304,19 @@ fn main() {
                     let (zmin, zmax) = ch.tdr_z.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |a, &z| (a.0.min(z), a.1.max(z)));
                     println!("  TDR ({:.0} ps Anstieg): Z min {:.1} Ω, max {:.1} Ω", rp.rise * 1e12, zmin, zmax);
                     println!("  Abschnitte: {}", ch.segments.iter().map(|s| if s.kind == "via" { "Via".to_string() } else { format!("{:.1}mm@{:.0}Ω", s.len_mm, s.z.unwrap_or(0.0)) }).collect::<Vec<_>>().join(" "));
+                    let ln = |k: u16| board.stackup().copper.get(k as usize).map(|c| c.name.clone()).unwrap_or_default();
+                    for v in &ch.via_info {
+                        println!(
+                            "  Via ({:.2},{:.2}) {}→{}  Bohrung {:.2}/{:.2} mm, Antipad {}  Z {:.1} Ω{}  Hülse {:.2} mm, Stub {:.2} mm{}{}  Rückstrom {}",
+                            v.at[0], v.at[1], ln(v.layer_in), ln(v.layer_out), v.drill_mm, v.pad_mm,
+                            v.antipad_mm.map(|a| format!("{a:.2} mm")).unwrap_or("–".into()),
+                            v.z_via, if ch.diff { " diff" } else { "" },
+                            v.barrel_mm, v.stub_mm,
+                            v.stub_f_ghz.map(|f| format!(" ({f:.1} GHz)")).unwrap_or_default(),
+                            if v.backdrilled { " rückgebohrt" } else { "" },
+                            match v.return_kind { "stitch" => format!("Stitching {:.2} mm, {:.2} nH", v.return_mm.unwrap_or(0.0), v.l_ret_nh), k => k.to_string() }
+                        );
+                    }
                     for w in &ch.warnings {
                         println!("  Hinweis: {w}");
                     }

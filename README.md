@@ -30,6 +30,22 @@ Kern in Rust, läuft als WebAssembly im Browser und als native CLI. Lizenz: GPL-
 - CLI: `kisi board.kicad_pcb --pi-tree web/samples/ts_tree.json`
 - Viewer: Versorgung → Leistungsbilanz, Ströme dort editierbar (im Browser gespeichert).
 
+## HF: Kanal, Verluste, TDR, Übersprechen (M3) und Vias (M4)
+- `crates/kisi-core/src/rf.rs`: frequenzabhängiges RLGC je Querschnitt, aus dem Feldlöser (R, L, G, C bei 1 GHz)
+  oder aus Formeln. Skin-Effekt nach Wheeler (inkrementelle Induktivität), Rauheit nach Huray (glatt / HVLP / Standard-ED,
+  Voreinstellungen geschätzt), Dielektrikum nach Djordjevic-Sarkar aus εr und tanδ des Lagenaufbaus, Microstrip-Dispersion.
+- Kanal eines Netzes: längster Pfad durch den Leiterbahn-Graphen (Lagen nur über Vias / Durchsteck-Pads verbunden),
+  ABCD-Kaskade → S21/S11 (bei Paaren ungerade Mode, Sdd), Touchstone `.s2p`, TDR aus S11 mit Gauß-Flanke.
+- `crates/kisi-core/src/via.rs`: Via als Stapel koaxialer Abschnitte je Lage; Außenleiter = in den Zonenfüllungen
+  gemessene Freistellung (Antipad), bei Paaren Wheeler-Formel für ein geschirmtes symmetrisches Paar. Stubs als offene
+  Leitungen (Viertelwellen-Resonanz), Backdrill aus KiCad 10 (`backdrill`) oder global. Wechsel der Bezugsebene:
+  Induktivität bis zum nächsten Stitching-Via, Warnung wenn keins in 5 mm oder Bezug auf ein anderes Netz.
+- Übersprechen: Nachbarleitungen auf derselben Lage (parallel, bis 5 h Abstand), NEXT/FEXT aus der L/C-Kopplungsmatrix
+  des Feldlösers oder Kirschning-Jansen/Cohn; Feldlöser-Umfang „ausgewähltes Netz“ rechnet die Kopplungsquerschnitte mit.
+- CLI: `kisi board.kicad_pcb board.kicad_pro --rf <Netzende> [--s2p out_{}.s2p]`
+- Viewer: Netz wählen → Tabs Impedanz / Verluste / TDR / Vias / Übersprechen, Karte „HF-Einstellungen“.
+- Genauigkeit: Leitungs-RLGC gegen HFSS ≤ 2 %; Via-Impedanz ist ein Abschätzungsmodell (etwa ±15 %), kein 3D-Ergebnis.
+
 ## Stand: Meilenstein M2 (Feldlöser)
 - Quasi-statischer 2D-Feldlöser: js_2d_fields von Henrik Forstén, unverändert eingebunden (siehe `UPSTREAM.md`)
 - Jeder Querschnitt wird als Geometrie-Text erzeugt (`crates/kisi-core/src/xsgeom.rs`) und vom Backend gerechnet

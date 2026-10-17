@@ -105,6 +105,8 @@ pub struct Via {
     pub from: u16,
     pub to: u16,
     pub net: u32,
+    /// back-drilled copper layer range (KiCad 10 `backdrill`), inclusive
+    pub backdrill: Option<(u16, u16)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -371,7 +373,14 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
                     }
                 }
                 let net = nets.resolve(it.child("net"));
-                b.vias.push(Via { at, size, drill, from, to, net });
+                // KiCad 10: (backdrill (size ..) (layers "B.Cu" "In3.Cu"))
+                let backdrill = it.child("backdrill").and_then(|bd| {
+                    let ls = bd.child("layers")?;
+                    let a = ls.atom(1).and_then(lidx)?;
+                    let c = ls.atom(2).and_then(lidx).unwrap_or(a);
+                    Some((a.min(c), a.max(c)))
+                });
+                b.vias.push(Via { at, size, drill, from, to, net, backdrill });
             }
             Some("zone") => {
                 let net = nets.resolve(it.child("net"));

@@ -20,6 +20,7 @@ fn main() {
     let mut pi_mode = false;
     let mut pi_config: Option<String> = None;
     let mut list_rails = false;
+    let mut pi_tree: Option<String> = None;
     let mut field_in: Option<String> = None;
     let mut params = Params::default();
     let mut i = 2;
@@ -44,6 +45,10 @@ fn main() {
             "--no-mask" => params.solder_mask = false,
             "--pi" => pi_mode = true,
             "--rails" => list_rails = true,
+            "--pi-tree" => {
+                pi_tree = args.get(i + 1).cloned();
+                i += 1;
+            }
             "--pi-config" => {
                 pi_config = args.get(i + 1).cloned();
                 pi_mode = true;
@@ -110,6 +115,86 @@ fn main() {
                 p.pads,
                 p.components.iter().take(12).cloned().collect::<Vec<_>>().join(" ")
             );
+        }
+        return;
+    }
+    if let Some(p) = &pi_tree {
+        let spec: kisi_core::tree::TreeSpec = serde_json::from_str(&std::fs::read_to_string(p).expect("read tree")).expect("tree JSON");
+        let t = match kisi_core::tree::solve_tree(&spec, Some(&board)) {
+            Ok(t) => t,
+            Err(e) => {
+                eprintln!("Versorgungsbaum: {e}");
+                std::process::exit(1);
+            }
+        };
+        let short = |n: &str| n.rsplit('/').next().unwrap_or(n).replace("{slash}", "/");
+        println!("Versorgungsbaum {}", t.name);
+        // tree walk from the inputs
+        fn walk(net: &str, t: &kisi_core::tree::TreeResult, ind: usize, short: &dyn Fn(&str) -> String) {
+            let r = t.rails.iter().find(|r| r.net == net).unwrap();
+            println!("{:ind$}{} {:+.2} V  {:.3} A ({:.3} A Lasten)", "", short(net), r.voltage, r.i_total, r.i_loads, ind = ind);
+            for e in t.elements.iter().filter(|e| e.from.as_deref() == Some(net)) {
+                println!(
+                    "{:ind$}  └ {:<10} {:<8} {:<14} {:.3} A → {:.3} A, Verlust {:.0} mW{}",
+                    "",
+                    e.id,
+                    e.kind,
+                    e.part,
+                    e.i_in,
+                    e.i_out,
+                    e.p_loss * 1e3,
+                    if e.overload { "  ÜBERLAST" } else { "" },
+                    ind = ind
+                );
+                walk(&e.to, t, ind + 6, short);
+            }
+        }
+        for e in t.elements.iter().filter(|e| e.kind == "input") {
+            println!("Eingang {} ({})", e.refdes, e.part);
+            walk(&e.to, &t, 2, &short);
+        }
+        println!("\nBauteile (Verbrauch / Verlust in mW):");
+        for c in &t.components {
+            if c.consumption + c.loss < 0.0005 {
+                continue;
+            }
+            println!("  {:<10} {:<16} {:>7.0} {:>7.0}  {}", c.refdes, c.part, c.consumption * 1e3, c.loss * 1e3, c.role);
+        }
+        println!(
+            "\nEingang {:.2} W = Lasten {:.2} W + Verluste {:.2} W  (Wirkungsgrad {:.0} %)",
+            t.p_input,
+            t.p_loads,
+            t.p_losses,
+            100.0 * t.p_loads / t.p_input.max(1e-9)
+        );
+        for w in &t.warnings {
+            println!("WARNUNG: {w}");
+        }
+        let mut cu = 0.0;
+        let mut worst: Option<(String, f64)> = None;
+        let mut fails = Vec::new();
+        for s in &t.setups {
+            match kisi_core::pi::solve_rail(&board, s, &kisi_core::pi::PiParams::default()) {
+                Ok(r) => {
+                    cu += r.power_loss_w;
+                    if let Some(d) = r.max_drop_mv {
+                        if worst.as_ref().is_none_or(|w| d > w.1) {
+                            worst = Some((r.net.clone(), d));
+                        }
+                    }
+                    for w in &r.warnings {
+                        if w.contains("Pads") || w.contains("keine Verbindung") {
+                            fails.push(format!("{}: {w}", short(&r.net)));
+                        }
+                    }
+                }
+                Err(e) => fails.push(format!("{}: {e}", short(&s.net))),
+            }
+        }
+        println!("Spannungsabfall: {} Schienen, Kupferverluste {:.0} mW, größter Abfall {}", t.setups.len(), cu * 1e3,
+            worst.map(|w| format!("{:.1} mV auf {}", w.1, short(&w.0))).unwrap_or("-".into()));
+        for f in fails {
+            println!("  Hinweis: {f}");
         }
         return;
     }

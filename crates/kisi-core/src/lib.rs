@@ -8,6 +8,7 @@ pub mod board;
 pub mod extract;
 pub mod geom;
 pub mod pi;
+pub mod tree;
 pub mod sexpr;
 pub mod view;
 pub mod xsgeom;

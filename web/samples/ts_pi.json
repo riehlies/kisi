@@ -1,8 +1,0 @@
-[
- {"net":"+1V0","voltage":1.0,"sources":[{"refdes":"R116"}],"loads":[{"refdes":"U18","current":1.0,"origin":"Beispiel"}]},
- {"net":"+1V8","voltage":1.8,"sources":[{"refdes":"R120"}],"loads":[{"refdes":"U18","current":0.15,"origin":"Beispiel"}]},
- {"net":"+3V3","voltage":3.3,"sources":[{"refdes":"R57"}],"loads":[{"refdes":"U18","current":0.1,"origin":"Beispiel"},{"refdes":"U19","current":0.02,"origin":"Beispiel"},{"refdes":"U10","current":0.03,"origin":"Beispiel"}]},
- {"net":"+1V2_MGT","voltage":1.2,"sources":[{"refdes":"U22"}],"loads":[{"refdes":"U18","current":0.15,"origin":"Beispiel"}]},
- {"net":"+3V3_ACQ","voltage":3.3,"sources":[{"refdes":"U9"}],"loads":[{"refdes":"U7","current":0.25,"origin":"Beispiel"},{"refdes":"U12_1","current":0.04,"origin":"Beispiel"},{"refdes":"U12_2","current":0.04,"origin":"Beispiel"},{"refdes":"U12_3","current":0.04,"origin":"Beispiel"},{"refdes":"U12_4","current":0.04,"origin":"Beispiel"}]},
- {"net":"/ADC/+1V8A","voltage":1.8,"sources":[{"refdes":"FB2"}],"loads":[{"refdes":"U6","current":0.3,"origin":"Beispiel"}]}
-]

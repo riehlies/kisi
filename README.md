@@ -21,6 +21,15 @@ Kern in Rust, läuft als WebAssembly im Browser und als native CLI. Lizenz: GPL-
 - CLI: `kisi board.kicad_pcb --pi` (Felder), `--pi-config kipida_config.json` oder eigene JSON-Liste, `--rails` listet Versorgungsnetze
 - Validierung: Kupferstreifen gegen R = ρL/(wt), Abweichung ≤ 2,5 % (Test `strip_resistance`)
 
+## Versorgungsbaum und Leistungsbilanz (Beispielboards)
+- `web/samples/ts_tree.json`, `web/samples/vna_tree.json`: Reglerketten von ThunderScope und LibreVNA, aus der Netzliste
+  rekonstruiert. Elemente: `input`, `buck`, `boost`, `ldo` (Querstrom `iq`), `inverter`, `pass` (Shunt/Ferrit mit `r`);
+  Lasten je Bauteil und Netz mit Strom und Grundlage (`Datenblatt` oder `Schätzung`).
+- `crates/kisi-core/src/tree.rs`: rechnet von den Lasten zu den Eingängen, liefert Ströme, Verluste je Regler,
+  Leistung je Bauteil (Bilanz exakt: Eingang = Verbrauch + Verluste) und die Quellen/Lasten jeder Schiene für den Spannungsabfall.
+- CLI: `kisi board.kicad_pcb --pi-tree web/samples/ts_tree.json`
+- Viewer: Versorgung → Leistungsbilanz, Ströme dort editierbar (im Browser gespeichert).
+
 ## Stand: Meilenstein M2 (Feldlöser)
 - Quasi-statischer 2D-Feldlöser: js_2d_fields von Henrik Forstén, unverändert eingebunden (siehe `UPSTREAM.md`)
 - Jeder Querschnitt wird als Geometrie-Text erzeugt (`crates/kisi-core/src/xsgeom.rs`) und vom Backend gerechnet

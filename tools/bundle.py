@@ -68,9 +68,11 @@ for i in range(0, len(rest), 4):
     gz = lambda p: base64.b64encode(gzip.compress(open(p, "rb").read(), 9)).decode()
     samples[key] = {"name": name, "pcb": gz(pcb), "pro": gz(pro)}
     # optional example supply configuration (loads are assumptions)
-    pi = os.path.join(root, "web/samples", f"{key}_pi.json")
-    if os.path.exists(pi):
-        samples[key]["pi"] = json.load(open(pi, encoding="utf-8"))
+    # optional example power tree (regulator chains and loads, values are
+    # datasheet typicals or estimates, marked per load)
+    tree = os.path.join(root, "web/samples", f"{key}_tree.json")
+    if os.path.exists(tree):
+        samples[key]["pi"] = json.load(open(tree, encoding="utf-8"))
 
 upstream_rev = open(os.path.join(root, "third_party/UPSTREAM_REV")).read().strip() if os.path.exists(os.path.join(root, "third_party/UPSTREAM_REV")) else "unknown"
 

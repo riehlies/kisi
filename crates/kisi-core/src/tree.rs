@@ -1,0 +1,496 @@
+//! Power tree: regulator chains, load currents and the power balance.
+//!
+//! A tree is described by rails (nominal voltages), elements that convert or
+//! pass power from one rail to another (input connector, buck, boost, LDO,
+//! inverter, pass element such as a shunt or ferrite) and loads (component
+//! current on a rail). Solving it from the leaves to the inputs gives the
+//! current of every rail and element, the losses of every regulator, the
+//! power of every component and, as a by-product, the source/load setup of
+//! every rail for the IR-drop solver (`pi::solve_rail`).
+
+use crate::board::Board;
+use crate::pi::{find_net, LoadSpec, RailSetup, SourceSpec};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct TreeSpec {
+    pub name: String,
+    pub note: String,
+    pub rails: Vec<RailV>,
+    pub elements: Vec<ElemSpec>,
+    pub loads: Vec<LoadDef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct RailV {
+    pub net: String,
+    pub voltage: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ElemSpec {
+    /// unique id (defaults to refdes; needed when one IC has several channels)
+    pub id: String,
+    pub refdes: String,
+    /// input | buck | boost | ldo | inverter | pass
+    pub kind: String,
+    pub from: Option<String>,
+    pub to: String,
+    /// efficiency of switching converters (0..1)
+    pub eff: Option<f64>,
+    /// quiescent / ground current drawn from the input (A)
+    pub iq: f64,
+    /// series resistance of pass elements (Ω)
+    pub r: f64,
+    /// rated output current (A)
+    pub imax: Option<f64>,
+    /// component whose pads carry the input / output current, if not `refdes`
+    /// (e.g. the inductor of a buck converter)
+    pub in_ref: Option<String>,
+    pub out_ref: Option<String>,
+    pub part: String,
+    pub note: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct LoadDef {
+    pub refdes: String,
+    pub net: String,
+    pub current: f64,
+    pub part: String,
+    /// "Datenblatt" or "Schätzung"
+    pub basis: String,
+    pub note: String,
+    /// components whose pads are the load point, comma separated (default refdes)
+    pub at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RailFlow {
+    pub net: String,
+    pub voltage: f64,
+    /// current of loads directly on this rail
+    pub i_loads: f64,
+    /// current into elements fed by this rail
+    pub i_children: f64,
+    pub i_total: f64,
+    pub fed_by: Option<String>,
+    pub depth: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ElemFlow {
+    pub id: String,
+    pub refdes: String,
+    pub kind: String,
+    pub part: String,
+    pub from: Option<String>,
+    pub to: String,
+    pub v_in: f64,
+    pub v_out: f64,
+    pub i_in: f64,
+    pub i_out: f64,
+    pub p_in: f64,
+    pub p_out: f64,
+    pub p_loss: f64,
+    pub imax: Option<f64>,
+    pub overload: bool,
+    pub note: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CompPower {
+    pub refdes: String,
+    pub part: String,
+    pub consumption: f64,
+    pub loss: f64,
+    /// (rail, current A, basis) for loads
+    pub rails: Vec<(String, f64, String)>,
+    pub role: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TreeResult {
+    pub name: String,
+    pub note: String,
+    pub rails: Vec<RailFlow>,
+    pub elements: Vec<ElemFlow>,
+    pub components: Vec<CompPower>,
+    pub p_input: f64,
+    pub p_loads: f64,
+    pub p_losses: f64,
+    /// source/load setup per rail for the IR-drop solver
+    pub setups: Vec<RailSetup>,
+    /// board spelling of the net of every spec load (same order as `TreeSpec::loads`)
+    pub load_nets: Vec<String>,
+    pub warnings: Vec<String>,
+}
+
+fn elem_id(e: &ElemSpec) -> String {
+    if e.id.is_empty() { e.refdes.clone() } else { e.id.clone() }
+}
+
+/// Map a net name of the spec to the board's spelling (if a board is given).
+fn canon(board: Option<&Board>, net: &str) -> String {
+    match board.and_then(|b| find_net(b, net).map(|n| b.net_name(n).to_string())) {
+        Some(n) => n,
+        None => net.to_string(),
+    }
+}
+
+pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, String> {
+    let mut warnings = Vec::new();
+    // canonical net names
+    let mut missing = Vec::new();
+    let mut cn = |n: &str| -> String {
+        let c = canon(board, n);
+        if board.is_some() && board.and_then(|b| find_net(b, n)).is_none() && !missing.contains(&n.to_string()) {
+            missing.push(n.to_string());
+        }
+        c
+    };
+    let rails_v: Vec<(String, f64)> = spec.rails.iter().map(|r| (cn(&r.net), r.voltage)).collect();
+    let elems: Vec<(ElemSpec, Option<String>, String)> =
+        spec.elements.iter().map(|e| (e.clone(), e.from.as_deref().map(&mut cn), cn(&e.to))).collect();
+    let loads: Vec<(LoadDef, String)> = spec.loads.iter().map(|l| (l.clone(), cn(&l.net))).collect();
+    for m in &missing {
+        warnings.push(format!("Netz '{m}' nicht im Board"));
+    }
+
+    // voltages: explicit, then inherited through pass elements
+    let mut volt: HashMap<String, f64> = rails_v.iter().cloned().collect();
+    for _ in 0..elems.len() + 1 {
+        let mut changed = false;
+        for (e, from, to) in &elems {
+            if e.kind == "pass" {
+                if let Some(f) = from {
+                    if let (Some(&v), false) = (volt.get(f), volt.contains_key(to)) {
+                        volt.insert(to.clone(), v);
+                        changed = true;
+                    }
+                }
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    let v_of = |n: &str| -> Result<f64, String> { volt.get(n).copied().ok_or_else(|| format!("Spannung von '{n}' fehlt")) };
+
+    // feeding element per rail, children per rail
+    let mut fed: HashMap<String, usize> = HashMap::new();
+    let mut children: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, (e, from, to)) in elems.iter().enumerate() {
+        if let Some(prev) = fed.insert(to.clone(), i) {
+            warnings.push(format!("{} wird von {} und {} gespeist; nur {} wird gerechnet", to, elem_id(&elems[prev].0), elem_id(e), elem_id(e)));
+        }
+        if let Some(f) = from {
+            children.entry(f.clone()).or_default().push(i);
+        } else if e.kind != "input" {
+            return Err(format!("{}: Eingang ('from') fehlt", elem_id(e)));
+        }
+    }
+    let mut direct: HashMap<String, f64> = HashMap::new();
+    for (l, net) in &loads {
+        *direct.entry(net.clone()).or_default() += l.current;
+    }
+
+    // element input current from its output current
+    let i_in_of = |e: &ElemSpec, v_in: f64, v_out: f64, i_out: f64| -> f64 {
+        match e.kind.as_str() {
+            "input" => i_out,
+            // the I²R loss of a pass element shows up as extra input current
+            // at the nominal voltage, so the balance stays exact
+            "pass" => i_out + i_out * i_out * e.r / v_in.abs().max(1e-9),
+            "ldo" => i_out + e.iq,
+            _ => {
+                let eff = e.eff.unwrap_or(0.85).clamp(0.05, 1.0);
+                v_out.abs() * i_out / (eff * v_in.abs().max(1e-9)) + e.iq
+            }
+        }
+    };
+
+    // recursive rail current with cycle detection
+    fn rail_current(
+        net: &str,
+        elems: &[(ElemSpec, Option<String>, String)],
+        children: &HashMap<String, Vec<usize>>,
+        direct: &HashMap<String, f64>,
+        volt: &HashMap<String, f64>,
+        i_in_of: &dyn Fn(&ElemSpec, f64, f64, f64) -> f64,
+        memo: &mut HashMap<String, f64>,
+        stack: &mut Vec<String>,
+        elem_in: &mut HashMap<usize, f64>,
+    ) -> Result<f64, String> {
+        if let Some(&v) = memo.get(net) {
+            return Ok(v);
+        }
+        if stack.iter().any(|s| s == net) {
+            return Err(format!("Schleife im Versorgungsbaum bei {net}"));
+        }
+        stack.push(net.to_string());
+        let mut total = direct.get(net).copied().unwrap_or(0.0);
+        for &ci in children.get(net).map(|v| v.as_slice()).unwrap_or(&[]) {
+            let (e, _, to) = &elems[ci];
+            let i_out = rail_current(to, elems, children, direct, volt, i_in_of, memo, stack, elem_in)?;
+            let v_in = volt.get(net).copied().ok_or_else(|| format!("Spannung von '{net}' fehlt"))?;
+            let v_out = volt.get(to).copied().ok_or_else(|| format!("Spannung von '{to}' fehlt"))?;
+            let i_in = i_in_of(e, v_in, v_out, i_out);
+            elem_in.insert(ci, i_in);
+            total += i_in;
+        }
+        stack.pop();
+        memo.insert(net.to_string(), total);
+        Ok(total)
+    }
+
+    let mut memo = HashMap::new();
+    let mut elem_in: HashMap<usize, f64> = HashMap::new();
+    let mut stack = Vec::new();
+    let mut nets: Vec<String> = Vec::new();
+    for (e, from, to) in &elems {
+        for n in from.iter().chain(std::iter::once(to)) {
+            if !nets.contains(n) {
+                nets.push(n.clone());
+            }
+        }
+        let _ = e;
+    }
+    for (_, n) in &loads {
+        if !nets.contains(n) {
+            nets.push(n.clone());
+            if !fed.contains_key(n) {
+                warnings.push(format!("Last auf {n}, das von keinem Element gespeist wird"));
+            }
+        }
+    }
+    for n in &nets {
+        rail_current(n, &elems, &children, &direct, &volt, &i_in_of, &mut memo, &mut stack, &mut elem_in)?;
+    }
+
+    // element flows
+    let mut eflows = Vec::new();
+    let mut p_input = 0.0;
+    for (i, (e, from, to)) in elems.iter().enumerate() {
+        let v_out = v_of(to)?;
+        let i_out = memo.get(to).copied().unwrap_or(0.0);
+        let (v_in, i_in) = match from {
+            Some(f) => (v_of(f)?, elem_in.get(&i).copied().unwrap_or_else(|| i_in_of(e, v_of(f).unwrap_or(v_out), v_out, i_out))),
+            None => (v_out, i_out),
+        };
+        let p_out = v_out.abs() * i_out;
+        let p_in = if e.kind == "input" { p_out } else { v_in.abs() * i_in };
+        let p_loss = (p_in - p_out).max(0.0);
+        if e.kind == "input" {
+            p_input += p_out;
+        }
+        let overload = e.imax.map(|m| i_out > m).unwrap_or(false);
+        if overload {
+            warnings.push(format!(
+                "{} ({}) liefert {:.2} A, Nennstrom {:.2} A",
+                elem_id(e),
+                e.part,
+                i_out,
+                e.imax.unwrap()
+            ));
+        }
+        eflows.push(ElemFlow {
+            id: elem_id(e),
+            refdes: e.refdes.clone(),
+            kind: e.kind.clone(),
+            part: e.part.clone(),
+            from: from.clone(),
+            to: to.clone(),
+            v_in,
+            v_out,
+            i_in,
+            i_out,
+            p_in,
+            p_out,
+            p_loss,
+            imax: e.imax,
+            overload,
+            note: e.note.clone(),
+        });
+    }
+    // rails with depth from the inputs
+    let mut depth: HashMap<String, usize> = HashMap::new();
+    fn set_depth(net: &str, d: usize, children: &HashMap<String, Vec<usize>>, elems: &[(ElemSpec, Option<String>, String)], depth: &mut HashMap<String, usize>) {
+        if depth.get(net).is_some_and(|&x| x <= d) {
+            return;
+        }
+        depth.insert(net.to_string(), d);
+        for &ci in children.get(net).map(|v| v.as_slice()).unwrap_or(&[]) {
+            set_depth(&elems[ci].2, d + 1, children, elems, depth);
+        }
+    }
+    for (e, from, to) in &elems {
+        if from.is_none() && e.kind == "input" {
+            set_depth(to, 0, &children, &elems, &mut depth);
+        }
+    }
+    let rails: Vec<RailFlow> = nets
+        .iter()
+        .map(|n| {
+            let il = direct.get(n).copied().unwrap_or(0.0);
+            let it = memo.get(n).copied().unwrap_or(0.0);
+            RailFlow {
+                net: n.clone(),
+                voltage: volt.get(n).copied().unwrap_or(0.0),
+                i_loads: il,
+                i_children: it - il,
+                i_total: it,
+                fed_by: fed.get(n).map(|&i| elem_id(&elems[i].0)),
+                depth: depth.get(n).copied().unwrap_or(99),
+            }
+        })
+        .collect();
+
+    // per component
+    let mut comps: Vec<CompPower> = Vec::new();
+    let mut idx: HashMap<String, usize> = HashMap::new();
+    let mut get = |comps: &mut Vec<CompPower>, r: &str, part: &str, role: &str| -> usize {
+        if let Some(&i) = idx.get(r) {
+            return i;
+        }
+        comps.push(CompPower { refdes: r.to_string(), part: part.to_string(), consumption: 0.0, loss: 0.0, rails: vec![], role: role.to_string() });
+        idx.insert(r.to_string(), comps.len() - 1);
+        comps.len() - 1
+    };
+    let mut p_loads = 0.0;
+    for (l, net) in &loads {
+        let p = volt.get(net).copied().unwrap_or(0.0).abs() * l.current;
+        p_loads += p;
+        let i = get(&mut comps, &l.refdes, &l.part, "Last");
+        comps[i].consumption += p;
+        comps[i].rails.push((net.clone(), l.current, l.basis.clone()));
+    }
+    let mut p_losses = 0.0;
+    for ef in &eflows {
+        p_losses += ef.p_loss;
+        let role = match ef.kind.as_str() {
+            "input" => "Eingang",
+            "pass" => "Durchgang",
+            _ => "Regler",
+        };
+        let i = get(&mut comps, &ef.refdes, &ef.part, role);
+        comps[i].loss += ef.p_loss;
+        if comps[i].role == "Last" && role != "Eingang" {
+            comps[i].role = "Last + Regler".into();
+        }
+    }
+    comps.sort_by(|a, b| (b.consumption + b.loss).partial_cmp(&(a.consumption + a.loss)).unwrap());
+
+    // IR-drop setups per rail
+    let mut setups: Vec<RailSetup> = Vec::new();
+    for n in &nets {
+        let Some(&fi) = fed.get(n) else { continue };
+        let fe = &elems[fi].0;
+        let src = fe.out_ref.clone().unwrap_or_else(|| fe.refdes.clone());
+        let mut ls: Vec<LoadSpec> = Vec::new();
+        let add = |ls: &mut Vec<LoadSpec>, r: &str, i: f64, origin: &str| {
+            if let Some(x) = ls.iter_mut().find(|x| x.refdes == r) {
+                x.current += i;
+            } else {
+                ls.push(LoadSpec { refdes: r.to_string(), current: i, pads: vec![], origin: origin.to_string() });
+            }
+        };
+        for (l, net) in loads.iter().filter(|(_, net)| net == n) {
+            let _ = net;
+            let at: Vec<String> = match &l.at {
+                Some(a) => a.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect(),
+                None => vec![l.refdes.clone()],
+            };
+            for r in &at {
+                add(&mut ls, r, l.current / at.len() as f64, if l.basis.is_empty() { "Schätzung" } else { &l.basis });
+            }
+        }
+        for &ci in children.get(n).map(|v| v.as_slice()).unwrap_or(&[]) {
+            let e = &elems[ci].0;
+            let r = e.in_ref.clone().unwrap_or_else(|| e.refdes.clone());
+            add(&mut ls, &r, elem_in.get(&ci).copied().unwrap_or(0.0), if e.kind == "pass" { "Durchgang" } else { "Regler" });
+        }
+        if ls.is_empty() {
+            continue;
+        }
+        setups.push(RailSetup { net: n.clone(), voltage: volt.get(n).copied().unwrap_or(0.0), sources: vec![SourceSpec { refdes: src, pads: vec![] }], loads: ls });
+    }
+
+    Ok(TreeResult {
+        name: spec.name.clone(),
+        note: spec.note.clone(),
+        rails,
+        elements: eflows,
+        components: comps,
+        p_input,
+        p_loads,
+        p_losses,
+        setups,
+        load_nets: loads.iter().map(|(_, n)| n.clone()).collect(),
+        warnings,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn spec() -> TreeSpec {
+        serde_json::from_str(
+            r#"{
+            "rails": [{"net":"VIN","voltage":12},{"net":"5V","voltage":5},{"net":"3V3","voltage":3.3},{"net":"-5V","voltage":-5}],
+            "elements": [
+              {"refdes":"J1","kind":"input","to":"VIN"},
+              {"refdes":"R1","kind":"pass","from":"VIN","to":"VIN_R","r":0.01},
+              {"refdes":"U1","kind":"buck","from":"VIN_R","to":"5V","eff":0.9,"imax":1.0},
+              {"refdes":"U2","kind":"ldo","from":"5V","to":"3V3","iq":0.001},
+              {"refdes":"U3","kind":"inverter","from":"5V","to":"-5V","eff":0.8}
+            ],
+            "loads": [
+              {"refdes":"A","net":"3V3","current":0.5},
+              {"refdes":"B","net":"5V","current":0.2},
+              {"refdes":"C","net":"-5V","current":0.1}
+            ]}"#,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn balance() {
+        let r = solve_tree(&spec(), None).unwrap();
+        // energy conservation: input = loads + losses
+        assert!((r.p_input - r.p_loads - r.p_losses).abs() < 1e-9, "{} vs {} + {}", r.p_input, r.p_loads, r.p_losses);
+        // LDO: input current = output + iq
+        let u2 = r.elements.iter().find(|e| e.id == "U2").unwrap();
+        assert!((u2.i_in - 0.501).abs() < 1e-12);
+        assert!((u2.p_loss - (5.0 * 0.501 - 3.3 * 0.5)).abs() < 1e-12);
+        // inverter: |V| used
+        let u3 = r.elements.iter().find(|e| e.id == "U3").unwrap();
+        assert!((u3.p_in - 0.5 / 0.8).abs() < 1e-12);
+        // 5 V rail: 0.2 + 0.501 + 0.125 A
+        let r5 = r.rails.iter().find(|x| x.net == "5V").unwrap();
+        assert!((r5.i_total - (0.2 + 0.501 + 0.125)).abs() < 1e-12);
+        assert!(!r.elements.iter().find(|e| e.id == "U1").unwrap().overload);
+        // setups: the 5 V rail is fed by U1 and loads B, U2, U3
+        let s5 = r.setups.iter().find(|s| s.net == "5V").unwrap();
+        assert_eq!(s5.sources[0].refdes, "U1");
+        assert_eq!(s5.loads.len(), 3);
+        // pass element inherits the voltage
+        assert_eq!(r.rails.iter().find(|x| x.net == "VIN_R").unwrap().voltage, 12.0);
+    }
+
+    #[test]
+    fn overload_and_cycle() {
+        let mut s = spec();
+        s.loads[1].current = 2.0;
+        let r = solve_tree(&s, None).unwrap();
+        assert!(r.elements.iter().find(|e| e.id == "U1").unwrap().overload);
+        s.elements.push(ElemSpec { refdes: "X".into(), kind: "pass".into(), from: Some("3V3".into()), to: "VIN".into(), ..Default::default() });
+        assert!(solve_tree(&s, None).is_err());
+    }
+}

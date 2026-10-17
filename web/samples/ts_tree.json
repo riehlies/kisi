@@ -1,0 +1,696 @@
+{
+ "name": "ThunderScope Rev5.3",
+ "note": "PCIe-Variante (12 V vom Slot), alle vier Kanäle aktiv. Die Einspeisung über M.2/USB4 (J8, R54) ist nicht gerechnet. Ströme aus Datenblättern (typ.) oder geschätzt, Wirkungsgrade aus typischen Kurven geschätzt.",
+ "rails": [
+  {
+   "net": "+12V_PCIe",
+   "voltage": 12.0
+  },
+  {
+   "net": "+VUSB",
+   "voltage": 5.0
+  },
+  {
+   "net": "+1V0_R",
+   "voltage": 1.0
+  },
+  {
+   "net": "+1V8_R",
+   "voltage": 1.8
+  },
+  {
+   "net": "+2V5_R",
+   "voltage": 2.5
+  },
+  {
+   "net": "+3V3_R",
+   "voltage": 3.3
+  },
+  {
+   "net": "+1V2_MGT",
+   "voltage": 1.2
+  },
+  {
+   "net": "+1V8_ACQ",
+   "voltage": 1.8
+  },
+  {
+   "net": "+3V3_ACQ",
+   "voltage": 3.3
+  },
+  {
+   "net": "+5V3",
+   "voltage": 5.3
+  },
+  {
+   "net": "+5V",
+   "voltage": 5.0
+  },
+  {
+   "net": "-5V_R",
+   "voltage": -5.0
+  },
+  {
+   "net": "+3V3_PGA",
+   "voltage": 3.3
+  }
+ ],
+ "elements": [
+  {
+   "refdes": "P1",
+   "kind": "input",
+   "to": "+12V_PCIe",
+   "part": "PCIe x4 Steckkarte"
+  },
+  {
+   "refdes": "R42",
+   "kind": "pass",
+   "to": "+12V_PCIe_R",
+   "part": "Shunt 10 mΩ",
+   "from": "+12V_PCIe",
+   "r": 0.01
+  },
+  {
+   "refdes": "U11",
+   "kind": "buck",
+   "to": "+VUSB",
+   "part": "TPSM82913",
+   "from": "+12V_PCIe_R",
+   "eff": 0.91,
+   "imax": 3.0,
+   "note": "Buck-Modul 12 V → 5 V"
+  },
+  {
+   "refdes": "U20",
+   "kind": "buck",
+   "to": "+1V0_R",
+   "part": "TPS62A02",
+   "from": "+VUSB",
+   "eff": 0.8,
+   "imax": 2.0,
+   "out_ref": "L2",
+   "note": "FPGA-Kern"
+  },
+  {
+   "refdes": "R116",
+   "kind": "pass",
+   "to": "+1V0",
+   "part": "Shunt 10 mΩ",
+   "from": "+1V0_R",
+   "r": 0.01
+  },
+  {
+   "refdes": "FB13",
+   "kind": "pass",
+   "to": "+1V0_MGT",
+   "part": "Ferrit 120 Ω",
+   "from": "+1V0",
+   "r": 0.05
+  },
+  {
+   "refdes": "U21",
+   "kind": "buck",
+   "to": "+1V8_R",
+   "part": "TPS62A02",
+   "from": "+VUSB",
+   "eff": 0.86,
+   "imax": 2.0,
+   "out_ref": "L3"
+  },
+  {
+   "refdes": "R120",
+   "kind": "pass",
+   "to": "+1V8",
+   "part": "Shunt 10 mΩ",
+   "from": "+1V8_R",
+   "r": 0.01
+  },
+  {
+   "refdes": "R123",
+   "kind": "pass",
+   "to": "+1V8_R_LDO",
+   "part": "Shunt 10 mΩ",
+   "from": "+1V8",
+   "r": 0.01
+  },
+  {
+   "refdes": "U22",
+   "kind": "ldo",
+   "to": "+1V2_MGT",
+   "part": "TPS7A9101",
+   "from": "+1V8_R_LDO",
+   "iq": 0.003,
+   "imax": 1.0,
+   "note": "GTP-Terminierung"
+  },
+  {
+   "refdes": "U23",
+   "kind": "buck",
+   "to": "+2V5_R",
+   "part": "TPS62A02",
+   "from": "+VUSB",
+   "eff": 0.89,
+   "imax": 2.0,
+   "out_ref": "L4"
+  },
+  {
+   "refdes": "R126",
+   "kind": "pass",
+   "to": "+2V5",
+   "part": "Shunt 10 mΩ",
+   "from": "+2V5_R",
+   "r": 0.01
+  },
+  {
+   "refdes": "R97",
+   "kind": "pass",
+   "to": "+2V5_R_ACQ",
+   "part": "Shunt 10 mΩ",
+   "from": "+2V5",
+   "r": 0.01
+  },
+  {
+   "refdes": "U14",
+   "kind": "ldo",
+   "to": "+1V8_ACQ",
+   "part": "TPS7A9101",
+   "from": "+2V5_R_ACQ",
+   "iq": 0.003,
+   "imax": 1.0,
+   "note": "ADC und PLL"
+  },
+  {
+   "refdes": "FB1",
+   "kind": "pass",
+   "to": "+1V8D",
+   "part": "Ferrit 120 Ω",
+   "from": "+1V8_ACQ",
+   "r": 0.05
+  },
+  {
+   "refdes": "FB2",
+   "kind": "pass",
+   "to": "+1V8A",
+   "part": "Ferrit 120 Ω",
+   "from": "+1V8_ACQ",
+   "r": 0.05
+  },
+  {
+   "refdes": "FB3",
+   "kind": "pass",
+   "to": "+1V8APLL",
+   "part": "Ferrit 120 Ω",
+   "from": "+1V8_ACQ",
+   "r": 0.05
+  },
+  {
+   "refdes": "U8",
+   "kind": "buck",
+   "to": "+3V3_R",
+   "part": "TPS62A02",
+   "from": "+VUSB",
+   "eff": 0.85,
+   "imax": 2.0,
+   "out_ref": "L5",
+   "note": "geringe Last, Wirkungsgrad im Teillastbereich"
+  },
+  {
+   "refdes": "R57",
+   "kind": "pass",
+   "to": "+3V3",
+   "part": "Shunt 10 mΩ",
+   "from": "+3V3_R",
+   "r": 0.01
+  },
+  {
+   "refdes": "R89",
+   "kind": "pass",
+   "to": "+VUSB_R_ACQ",
+   "part": "Shunt 10 mΩ",
+   "from": "+VUSB",
+   "r": 0.01
+  },
+  {
+   "refdes": "U9",
+   "kind": "ldo",
+   "to": "+3V3_ACQ",
+   "part": "NCP161 3,3 V",
+   "from": "+VUSB_R_ACQ",
+   "iq": 2e-05,
+   "imax": 0.45
+  },
+  {
+   "refdes": "R14",
+   "kind": "pass",
+   "to": "+VUSB_R",
+   "part": "Shunt 10 mΩ",
+   "from": "+VUSB",
+   "r": 0.01
+  },
+  {
+   "refdes": "U17",
+   "kind": "boost",
+   "to": "+5V3",
+   "part": "TPS61023",
+   "from": "+VUSB_R",
+   "eff": 0.93,
+   "in_ref": "L1",
+   "note": "Boost 5 V → 5,3 V als Vorspannung für die rauscharmen ±5 V"
+  },
+  {
+   "refdes": "R98",
+   "kind": "pass",
+   "to": "+5V3_R_LDO",
+   "part": "Shunt 10 mΩ",
+   "from": "+5V3",
+   "r": 0.01
+  },
+  {
+   "refdes": "U15",
+   "kind": "ldo",
+   "to": "+5V",
+   "part": "TPS7A9101",
+   "from": "+5V3_R_LDO",
+   "iq": 0.003,
+   "imax": 1.0,
+   "note": "Frontend +5 V"
+  },
+  {
+   "refdes": "FB1000_1",
+   "kind": "pass",
+   "to": "/CH1/+VPGA",
+   "part": "Ferrit 120 Ω",
+   "from": "+5V",
+   "r": 0.05
+  },
+  {
+   "refdes": "FB1000_2",
+   "kind": "pass",
+   "to": "/CH2/+VPGA",
+   "part": "Ferrit 120 Ω",
+   "from": "+5V",
+   "r": 0.05
+  },
+  {
+   "refdes": "FB1000_3",
+   "kind": "pass",
+   "to": "/CH3/+VPGA",
+   "part": "Ferrit 120 Ω",
+   "from": "+5V",
+   "r": 0.05
+  },
+  {
+   "refdes": "FB1000_4",
+   "kind": "pass",
+   "to": "/CH4/+VPGA",
+   "part": "Ferrit 120 Ω",
+   "from": "+5V",
+   "r": 0.05
+  },
+  {
+   "refdes": "R106",
+   "kind": "pass",
+   "to": "+5V_R_PGA",
+   "part": "Shunt 0,1 Ω",
+   "from": "+5V",
+   "r": 0.1
+  },
+  {
+   "refdes": "U16",
+   "kind": "ldo",
+   "to": "+3V3_PGA",
+   "part": "NCP161 3,3 V",
+   "from": "+5V_R_PGA",
+   "iq": 2e-05,
+   "imax": 0.45,
+   "note": "Logikversorgung der PGAs"
+  },
+  {
+   "refdes": "R90",
+   "kind": "pass",
+   "to": "+5V3_R_CP",
+   "part": "Shunt 0,1 Ω",
+   "from": "+5V3",
+   "r": 0.1
+  },
+  {
+   "refdes": "U13",
+   "kind": "inverter",
+   "to": "-5V_R",
+   "part": "LM27761",
+   "from": "+5V3_R_CP",
+   "eff": 0.85,
+   "imax": 0.25,
+   "note": "Ladungspumpe mit LDO, −5 V"
+  },
+  {
+   "refdes": "R91",
+   "kind": "pass",
+   "to": "-5V",
+   "part": "Ferrit 120 Ω",
+   "from": "-5V_R",
+   "r": 0.05
+  }
+ ],
+ "loads": [
+  {
+   "refdes": "U18",
+   "net": "+1V0",
+   "current": 0.6,
+   "part": "XC7A50T",
+   "basis": "Schätzung",
+   "note": "VCCINT/VCCBRAM, PCIe-Core und LVDS-Deserialisierung"
+  },
+  {
+   "refdes": "U18",
+   "net": "+1V8",
+   "current": 0.12,
+   "part": "XC7A50T",
+   "basis": "Schätzung",
+   "note": "VCCAUX und 1,8-V-Bänke"
+  },
+  {
+   "refdes": "U18",
+   "net": "+2V5",
+   "current": 0.06,
+   "part": "XC7A50T",
+   "basis": "Schätzung",
+   "note": "VCCO der LVDS-Bänke"
+  },
+  {
+   "refdes": "U18",
+   "net": "+3V3",
+   "current": 0.03,
+   "part": "XC7A50T",
+   "basis": "Schätzung",
+   "note": "VCCO 3,3 V"
+  },
+  {
+   "refdes": "U18",
+   "net": "+1V0_MGT",
+   "current": 0.18,
+   "part": "XC7A50T",
+   "basis": "Schätzung",
+   "note": "MGTAVCC, 4 GTP-Lanes"
+  },
+  {
+   "refdes": "U18",
+   "net": "+1V2_MGT",
+   "current": 0.14,
+   "part": "XC7A50T",
+   "basis": "Schätzung",
+   "note": "MGTAVTT, 4 GTP-Lanes"
+  },
+  {
+   "refdes": "U19",
+   "net": "+3V3",
+   "current": 0.005,
+   "part": "MX25L6433F",
+   "basis": "Schätzung",
+   "note": "Flash, nur beim Konfigurieren aktiv"
+  },
+  {
+   "refdes": "U10",
+   "net": "+3V3",
+   "current": 0.01,
+   "part": "FIN1019",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U6",
+   "net": "+1V8A",
+   "current": 0.27,
+   "part": "HMCAD1520",
+   "basis": "Datenblatt",
+   "note": "AVDD, 1 GS/s (Werte der 8-Bit-Variante HMCAD1511)"
+  },
+  {
+   "refdes": "U6",
+   "net": "+1V8D",
+   "current": 0.125,
+   "part": "HMCAD1520",
+   "basis": "Datenblatt",
+   "note": "DVDD inkl. LVDS-Ausgänge"
+  },
+  {
+   "refdes": "U6",
+   "net": "+3V3_ACQ",
+   "current": 0.002,
+   "part": "HMCAD1520",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U7",
+   "net": "+1V8APLL",
+   "current": 0.15,
+   "part": "ZL30260",
+   "basis": "Schätzung",
+   "note": "Kern"
+  },
+  {
+   "refdes": "U7",
+   "net": "+3V3_ACQ",
+   "current": 0.08,
+   "part": "ZL30260",
+   "basis": "Schätzung",
+   "note": "Ausgangstreiber"
+  },
+  {
+   "refdes": "U12_1",
+   "net": "+3V3_ACQ",
+   "current": 0.035,
+   "part": "ADA4930-1",
+   "basis": "Datenblatt",
+   "note": "ADC-Treiber"
+  },
+  {
+   "refdes": "U12_2",
+   "net": "+3V3_ACQ",
+   "current": 0.035,
+   "part": "ADA4930-1",
+   "basis": "Datenblatt",
+   "note": "ADC-Treiber"
+  },
+  {
+   "refdes": "U12_3",
+   "net": "+3V3_ACQ",
+   "current": 0.035,
+   "part": "ADA4930-1",
+   "basis": "Datenblatt",
+   "note": "ADC-Treiber"
+  },
+  {
+   "refdes": "U12_4",
+   "net": "+3V3_ACQ",
+   "current": 0.035,
+   "part": "ADA4930-1",
+   "basis": "Datenblatt",
+   "note": "ADC-Treiber"
+  },
+  {
+   "refdes": "U1008_1",
+   "net": "/CH1/+VPGA",
+   "current": 0.23,
+   "part": "LMH6518",
+   "basis": "Datenblatt",
+   "note": "PGA, Analogteil 5 V"
+  },
+  {
+   "refdes": "U1008_2",
+   "net": "/CH2/+VPGA",
+   "current": 0.23,
+   "part": "LMH6518",
+   "basis": "Datenblatt",
+   "note": "PGA, Analogteil 5 V"
+  },
+  {
+   "refdes": "U1008_3",
+   "net": "/CH3/+VPGA",
+   "current": 0.23,
+   "part": "LMH6518",
+   "basis": "Datenblatt",
+   "note": "PGA, Analogteil 5 V"
+  },
+  {
+   "refdes": "U1008_4",
+   "net": "/CH4/+VPGA",
+   "current": 0.23,
+   "part": "LMH6518",
+   "basis": "Datenblatt",
+   "note": "PGA, Analogteil 5 V"
+  },
+  {
+   "refdes": "U1008_1",
+   "net": "+3V3_PGA",
+   "current": 0.0004,
+   "part": "LMH6518",
+   "basis": "Datenblatt",
+   "note": "PGA, Logik"
+  },
+  {
+   "refdes": "U1008_2",
+   "net": "+3V3_PGA",
+   "current": 0.0004,
+   "part": "LMH6518",
+   "basis": "Datenblatt",
+   "note": "PGA, Logik"
+  },
+  {
+   "refdes": "U1008_3",
+   "net": "+3V3_PGA",
+   "current": 0.0004,
+   "part": "LMH6518",
+   "basis": "Datenblatt",
+   "note": "PGA, Logik"
+  },
+  {
+   "refdes": "U1008_4",
+   "net": "+3V3_PGA",
+   "current": 0.0004,
+   "part": "LMH6518",
+   "basis": "Datenblatt",
+   "note": "PGA, Logik"
+  },
+  {
+   "refdes": "U1009_1",
+   "net": "+5V",
+   "current": 0.034,
+   "part": "BUF802",
+   "basis": "Datenblatt",
+   "note": "Eingangspuffer, positive Seite"
+  },
+  {
+   "refdes": "U1009_2",
+   "net": "+5V",
+   "current": 0.034,
+   "part": "BUF802",
+   "basis": "Datenblatt",
+   "note": "Eingangspuffer, positive Seite"
+  },
+  {
+   "refdes": "U1009_3",
+   "net": "+5V",
+   "current": 0.034,
+   "part": "BUF802",
+   "basis": "Datenblatt",
+   "note": "Eingangspuffer, positive Seite"
+  },
+  {
+   "refdes": "U1009_4",
+   "net": "+5V",
+   "current": 0.034,
+   "part": "BUF802",
+   "basis": "Datenblatt",
+   "note": "Eingangspuffer, positive Seite"
+  },
+  {
+   "refdes": "U1009_1",
+   "net": "-5V",
+   "current": 0.034,
+   "part": "BUF802",
+   "basis": "Datenblatt",
+   "note": "Eingangspuffer, negative Seite"
+  },
+  {
+   "refdes": "U1009_2",
+   "net": "-5V",
+   "current": 0.034,
+   "part": "BUF802",
+   "basis": "Datenblatt",
+   "note": "Eingangspuffer, negative Seite"
+  },
+  {
+   "refdes": "U1009_3",
+   "net": "-5V",
+   "current": 0.034,
+   "part": "BUF802",
+   "basis": "Datenblatt",
+   "note": "Eingangspuffer, negative Seite"
+  },
+  {
+   "refdes": "U1009_4",
+   "net": "-5V",
+   "current": 0.034,
+   "part": "BUF802",
+   "basis": "Datenblatt",
+   "note": "Eingangspuffer, negative Seite"
+  },
+  {
+   "refdes": "U1011_1",
+   "net": "+5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U1011_2",
+   "net": "+5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U1011_3",
+   "net": "+5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U1011_4",
+   "net": "+5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U5",
+   "net": "+5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U1011_1",
+   "net": "-5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U1011_2",
+   "net": "-5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U1011_3",
+   "net": "-5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U1011_4",
+   "net": "-5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U5",
+   "net": "-5V",
+   "current": 0.0018,
+   "part": "OPA140",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "U4",
+   "net": "+5V",
+   "current": 0.0005,
+   "part": "REF2025",
+   "basis": "Schätzung"
+  }
+ ]
+}

@@ -265,3 +265,15 @@ pub extern "C" fn kisi_pi_j_ptr() -> *const f32 {
 pub extern "C" fn kisi_pi_j_len() -> usize {
     ST.with(|st| st.borrow().pi_j.len())
 }
+
+/// Solve a power tree (regulator chains, loads): TreeResult JSON incl. the
+/// IR-drop rail setups.
+#[no_mangle]
+pub extern "C" fn kisi_pi_tree(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    with_board(|b| {
+        let spec: kisi_core::tree::TreeSpec = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let r = kisi_core::tree::solve_tree(&spec, Some(b))?;
+        Ok(serde_json::to_string(&r).unwrap())
+    })
+}

@@ -1,0 +1,703 @@
+{
+ "name": "LibreVNA",
+ "note": "Versorgung über die DC-Buchse J1 (5 V); USB (Q1/Q2) ist der gleiche Pfad. Ströme aus Datenblättern (typ.) oder geschätzt. Laut Handbuch zieht das Gerät bis 1,2 A an 5 V. LEDs und Kleinteile unter 1 mA sind nicht berücksichtigt.",
+ "rails": [
+  {
+   "net": "+5V",
+   "voltage": 5.0
+  },
+  {
+   "net": "+6V",
+   "voltage": 6.0
+  },
+  {
+   "net": "VCCINT",
+   "voltage": 1.2
+  },
+  {
+   "net": "VREG3V3_SWL",
+   "voltage": 3.3
+  },
+  {
+   "net": "VREG5V{slash}1",
+   "voltage": 5.0
+  },
+  {
+   "net": "VREG5V{slash}2",
+   "voltage": 5.0
+  },
+  {
+   "net": "VREG5V{slash}3",
+   "voltage": 5.0
+  },
+  {
+   "net": "VREG5V{slash}4",
+   "voltage": 5.0
+  },
+  {
+   "net": "Net-(IC25-OUT)",
+   "voltage": 1.8
+  },
+  {
+   "net": "Net-(IC30-OUT)",
+   "voltage": 1.8
+  },
+  {
+   "net": "Net-(IC34-OUT)",
+   "voltage": 1.8
+  },
+  {
+   "net": "3v3_LDO1_SRC",
+   "voltage": 3.3
+  },
+  {
+   "net": "3V3_LDO2_SRC",
+   "voltage": 3.3
+  },
+  {
+   "net": "3V3_LDO1_LO1",
+   "voltage": 3.3
+  },
+  {
+   "net": "3V3_LDO2_LO1",
+   "voltage": 3.3
+  }
+ ],
+ "elements": [
+  {
+   "refdes": "J1",
+   "kind": "input",
+   "to": "+5V",
+   "part": "DC-Buchse 5 V"
+  },
+  {
+   "refdes": "IC1",
+   "kind": "boost",
+   "to": "+6V",
+   "part": "MIC2253",
+   "from": "+5V",
+   "eff": 0.88,
+   "in_ref": "L1",
+   "out_ref": "L5",
+   "note": "Boost 5 V → 6 V für die 5-V-LDOs"
+  },
+  {
+   "id": "IC2 (1,2 V)",
+   "refdes": "IC2",
+   "kind": "buck",
+   "from": "+5V",
+   "to": "VCCINT",
+   "part": "LM3370",
+   "eff": 0.78,
+   "imax": 0.6,
+   "out_ref": "L2",
+   "note": "FPGA-Kern"
+  },
+  {
+   "id": "IC2 (3,3 V)",
+   "refdes": "IC2",
+   "kind": "buck",
+   "from": "+5V",
+   "to": "VREG3V3_SWL",
+   "part": "LM3370",
+   "eff": 0.9,
+   "imax": 0.6,
+   "out_ref": "L3"
+  },
+  {
+   "refdes": "L4",
+   "kind": "pass",
+   "to": "+3V3",
+   "part": "Filterdrossel 2,2 µH",
+   "from": "VREG3V3_SWL",
+   "r": 0.05
+  },
+  {
+   "refdes": "IC3",
+   "kind": "ldo",
+   "to": "VREG5V{slash}1",
+   "part": "LDL212 5 V",
+   "from": "+6V",
+   "iq": 0.0003,
+   "imax": 1.2
+  },
+  {
+   "refdes": "IC4",
+   "kind": "ldo",
+   "to": "VREG5V{slash}2",
+   "part": "LDL212 5 V",
+   "from": "+6V",
+   "iq": 0.0003,
+   "imax": 1.2
+  },
+  {
+   "refdes": "IC5",
+   "kind": "ldo",
+   "to": "VREG5V{slash}3",
+   "part": "LDL212 5 V",
+   "from": "+6V",
+   "iq": 0.0003,
+   "imax": 1.2
+  },
+  {
+   "refdes": "IC6",
+   "kind": "ldo",
+   "to": "VREG5V{slash}4",
+   "part": "LDL212 5 V",
+   "from": "+6V",
+   "iq": 0.0003,
+   "imax": 1.2
+  },
+  {
+   "refdes": "L6",
+   "kind": "pass",
+   "to": "+5V{slash}1",
+   "part": "Ferrit",
+   "from": "VREG5V{slash}1",
+   "r": 0.1
+  },
+  {
+   "refdes": "L7",
+   "kind": "pass",
+   "to": "+5V{slash}2",
+   "part": "Ferrit",
+   "from": "VREG5V{slash}2",
+   "r": 0.1
+  },
+  {
+   "refdes": "L8",
+   "kind": "pass",
+   "to": "+5V{slash}3",
+   "part": "Ferrit",
+   "from": "VREG5V{slash}3",
+   "r": 0.1
+  },
+  {
+   "refdes": "L9",
+   "kind": "pass",
+   "to": "+5V{slash}4",
+   "part": "Ferrit",
+   "from": "VREG5V{slash}4",
+   "r": 0.1
+  },
+  {
+   "refdes": "L12",
+   "kind": "pass",
+   "to": "Net-(IC22-VCC)",
+   "part": "Ferrit",
+   "from": "+5V{slash}1",
+   "r": 0.1
+  },
+  {
+   "refdes": "L15",
+   "kind": "pass",
+   "to": "Net-(IC23-V_{S+})",
+   "part": "Ferrit",
+   "from": "+5V{slash}1",
+   "r": 0.1
+  },
+  {
+   "refdes": "L17",
+   "kind": "pass",
+   "to": "Net-(IC24-VPDT)",
+   "part": "Ferrit",
+   "from": "+5V{slash}1",
+   "r": 0.1
+  },
+  {
+   "refdes": "L16",
+   "kind": "pass",
+   "to": "Net-(C119-Pad1)",
+   "part": "Ferrit",
+   "from": "+5V{slash}1",
+   "r": 0.1
+  },
+  {
+   "refdes": "L13",
+   "kind": "pass",
+   "to": "Net-(IC25-EN)",
+   "part": "Ferrit",
+   "from": "+5V{slash}1",
+   "r": 0.1
+  },
+  {
+   "refdes": "IC25",
+   "kind": "ldo",
+   "to": "Net-(IC25-OUT)",
+   "part": "NCP702 1,8 V",
+   "from": "Net-(IC25-EN)",
+   "iq": 1e-05,
+   "imax": 0.2,
+   "note": "AVDD ADC Port 1"
+  },
+  {
+   "refdes": "L57",
+   "kind": "pass",
+   "to": "Net-(IC27-VCC)",
+   "part": "Ferrit",
+   "from": "+5V{slash}2",
+   "r": 0.1
+  },
+  {
+   "refdes": "L56",
+   "kind": "pass",
+   "to": "Net-(IC28-V_{S+})",
+   "part": "Ferrit",
+   "from": "+5V{slash}2",
+   "r": 0.1
+  },
+  {
+   "refdes": "L54",
+   "kind": "pass",
+   "to": "Net-(IC29-VPDT)",
+   "part": "Ferrit",
+   "from": "+5V{slash}2",
+   "r": 0.1
+  },
+  {
+   "refdes": "L55",
+   "kind": "pass",
+   "to": "Net-(C156-Pad1)",
+   "part": "Ferrit",
+   "from": "+5V{slash}2",
+   "r": 0.1
+  },
+  {
+   "refdes": "L58",
+   "kind": "pass",
+   "to": "Net-(IC30-EN)",
+   "part": "Ferrit",
+   "from": "+5V{slash}2",
+   "r": 0.1
+  },
+  {
+   "refdes": "IC30",
+   "kind": "ldo",
+   "to": "Net-(IC30-OUT)",
+   "part": "NCP702 1,8 V",
+   "from": "Net-(IC30-EN)",
+   "iq": 1e-05,
+   "imax": 0.2,
+   "note": "AVDD ADC Port 2"
+  },
+  {
+   "refdes": "L61",
+   "kind": "pass",
+   "to": "Net-(IC36-VCC)",
+   "part": "Ferrit",
+   "from": "+5V{slash}3",
+   "r": 0.1
+  },
+  {
+   "refdes": "L62",
+   "kind": "pass",
+   "to": "Net-(IC32-V_{S+})",
+   "part": "Ferrit",
+   "from": "+5V{slash}3",
+   "r": 0.1
+  },
+  {
+   "refdes": "L59",
+   "kind": "pass",
+   "to": "Net-(IC33-VPDT)",
+   "part": "Ferrit",
+   "from": "+5V{slash}3",
+   "r": 0.1
+  },
+  {
+   "refdes": "L60",
+   "kind": "pass",
+   "to": "Net-(C190-Pad1)",
+   "part": "Ferrit",
+   "from": "+5V{slash}3",
+   "r": 0.1
+  },
+  {
+   "refdes": "L63",
+   "kind": "pass",
+   "to": "Net-(IC34-EN)",
+   "part": "Ferrit",
+   "from": "+5V{slash}3",
+   "r": 0.1
+  },
+  {
+   "refdes": "IC34",
+   "kind": "ldo",
+   "to": "Net-(IC34-OUT)",
+   "part": "NCP702 1,8 V",
+   "from": "Net-(IC34-EN)",
+   "iq": 1e-05,
+   "imax": 0.2,
+   "note": "AVDD ADC Referenz"
+  },
+  {
+   "refdes": "IC8",
+   "kind": "ldo",
+   "to": "3v3_LDO1_SRC",
+   "part": "AP2114H 3,3 V",
+   "from": "+5V{slash}4",
+   "iq": 6e-05,
+   "imax": 1.0,
+   "note": "Quelle-Synthesizer"
+  },
+  {
+   "refdes": "L19",
+   "kind": "pass",
+   "to": "3V3_SRC_1",
+   "part": "Ferrit",
+   "from": "3v3_LDO1_SRC",
+   "r": 0.1
+  },
+  {
+   "refdes": "IC9",
+   "kind": "ldo",
+   "to": "3V3_LDO2_SRC",
+   "part": "NCP702 3,3 V",
+   "from": "+5V{slash}4",
+   "iq": 1e-05,
+   "imax": 0.2
+  },
+  {
+   "refdes": "L20",
+   "kind": "pass",
+   "to": "3V3_SRC_2",
+   "part": "Ferrit",
+   "from": "3V3_LDO2_SRC",
+   "r": 0.1
+  },
+  {
+   "refdes": "IC19",
+   "kind": "ldo",
+   "to": "3V3_LDO1_LO1",
+   "part": "AP2114H 3,3 V",
+   "from": "+5V{slash}4",
+   "iq": 6e-05,
+   "imax": 1.0,
+   "note": "LO-Synthesizer"
+  },
+  {
+   "refdes": "L28",
+   "kind": "pass",
+   "to": "3V3_LO1_1",
+   "part": "Ferrit",
+   "from": "3V3_LDO1_LO1",
+   "r": 0.1
+  },
+  {
+   "refdes": "IC20",
+   "kind": "ldo",
+   "to": "3V3_LDO2_LO1",
+   "part": "NCP702 3,3 V",
+   "from": "+5V{slash}4",
+   "iq": 1e-05,
+   "imax": 0.2
+  },
+  {
+   "refdes": "L29",
+   "kind": "pass",
+   "to": "3V3_LO1_2",
+   "part": "Ferrit",
+   "from": "3V3_LDO2_LO1",
+   "r": 0.1
+  },
+  {
+   "refdes": "L64",
+   "kind": "pass",
+   "to": "3V3_SRC_3",
+   "part": "Ferrit",
+   "from": "+3V3",
+   "r": 0.1
+  },
+  {
+   "refdes": "L65",
+   "kind": "pass",
+   "to": "3V3_LO1_3",
+   "part": "Ferrit",
+   "from": "+3V3",
+   "r": 0.1
+  },
+  {
+   "refdes": "L10",
+   "kind": "pass",
+   "to": "3V3_CLKGEN",
+   "part": "Ferrit",
+   "from": "+3V3",
+   "r": 0.1
+  },
+  {
+   "refdes": "L23",
+   "kind": "pass",
+   "to": "3V3_HBLB_AMP",
+   "part": "Ferrit",
+   "from": "+3V3",
+   "r": 0.1
+  },
+  {
+   "refdes": "L22",
+   "kind": "pass",
+   "to": "3V3_HBLB_ATT",
+   "part": "Ferrit",
+   "from": "+3V3",
+   "r": 0.1
+  }
+ ],
+ "loads": [
+  {
+   "refdes": "U2",
+   "net": "VCCINT",
+   "current": 0.08,
+   "part": "XC6SLX9",
+   "basis": "Schätzung",
+   "note": "Kern 1,2 V"
+  },
+  {
+   "refdes": "U2",
+   "net": "+3V3",
+   "current": 0.05,
+   "part": "XC6SLX9",
+   "basis": "Schätzung",
+   "note": "VCCAUX und VCCO"
+  },
+  {
+   "refdes": "IC37",
+   "net": "+3V3",
+   "current": 0.03,
+   "part": "STM32G431",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "IC7",
+   "net": "+3V3",
+   "current": 0.02,
+   "part": "Si5351C",
+   "basis": "Schätzung",
+   "note": "Kern"
+  },
+  {
+   "refdes": "IC7",
+   "net": "3V3_CLKGEN",
+   "current": 0.015,
+   "part": "Si5351C",
+   "basis": "Schätzung",
+   "note": "Ausgänge"
+  },
+  {
+   "refdes": "U1",
+   "net": "+3V3",
+   "current": 0.005,
+   "part": "W25Q16",
+   "basis": "Schätzung"
+  },
+  {
+   "refdes": "IC15",
+   "net": "3V3_HBLB_AMP",
+   "current": 0.055,
+   "part": "TRF37A73",
+   "basis": "Datenblatt",
+   "note": "HF-Verstärker"
+  },
+  {
+   "refdes": "IC14",
+   "net": "3V3_HBLB_ATT",
+   "current": 0.001,
+   "part": "RFSA3714",
+   "basis": "Schätzung",
+   "note": "Dämpfungsglied"
+  },
+  {
+   "refdes": "IC24",
+   "net": "Net-(IC24-VPDT)",
+   "current": 0.07,
+   "part": "ADL5801",
+   "basis": "Datenblatt",
+   "note": "Mischer Port 1, Versorgung (130 mA gesamt laut Datenblatt, Aufteilung geschätzt)"
+  },
+  {
+   "refdes": "IC24",
+   "net": "Net-(C119-Pad1)",
+   "current": 0.06,
+   "part": "ADL5801",
+   "basis": "Datenblatt",
+   "note": "Mischer Port 1, Ausgangsstufe über die Drosseln",
+   "at": "L32,L33"
+  },
+  {
+   "refdes": "IC22",
+   "net": "Net-(IC22-VCC)",
+   "current": 0.01,
+   "part": "LT5560",
+   "basis": "Schätzung",
+   "note": "Mischer Port 1, einstellbar 4 bis 13,4 mA"
+  },
+  {
+   "refdes": "IC23",
+   "net": "Net-(IC23-V_{S+})",
+   "current": 0.00114,
+   "part": "THS4521",
+   "basis": "Datenblatt",
+   "note": "ADC-Treiber Port 1"
+  },
+  {
+   "refdes": "IC26",
+   "net": "Net-(IC25-OUT)",
+   "current": 0.0016,
+   "part": "MCP33131D-10",
+   "basis": "Schätzung",
+   "note": "ADC Port 1, AVDD"
+  },
+  {
+   "refdes": "IC26",
+   "net": "+3V3",
+   "current": 0.0005,
+   "part": "MCP33131D-10",
+   "basis": "Schätzung",
+   "note": "ADC Port 1, DVIO"
+  },
+  {
+   "refdes": "IC29",
+   "net": "Net-(IC29-VPDT)",
+   "current": 0.07,
+   "part": "ADL5801",
+   "basis": "Datenblatt",
+   "note": "Mischer Port 2, Versorgung (130 mA gesamt laut Datenblatt, Aufteilung geschätzt)"
+  },
+  {
+   "refdes": "IC29",
+   "net": "Net-(C156-Pad1)",
+   "current": 0.06,
+   "part": "ADL5801",
+   "basis": "Datenblatt",
+   "note": "Mischer Port 2, Ausgangsstufe über die Drosseln",
+   "at": "L40,L41"
+  },
+  {
+   "refdes": "IC27",
+   "net": "Net-(IC27-VCC)",
+   "current": 0.01,
+   "part": "LT5560",
+   "basis": "Schätzung",
+   "note": "Mischer Port 2, einstellbar 4 bis 13,4 mA"
+  },
+  {
+   "refdes": "IC28",
+   "net": "Net-(IC28-V_{S+})",
+   "current": 0.00114,
+   "part": "THS4521",
+   "basis": "Datenblatt",
+   "note": "ADC-Treiber Port 2"
+  },
+  {
+   "refdes": "IC31",
+   "net": "Net-(IC30-OUT)",
+   "current": 0.0016,
+   "part": "MCP33131D-10",
+   "basis": "Schätzung",
+   "note": "ADC Port 2, AVDD"
+  },
+  {
+   "refdes": "IC31",
+   "net": "+3V3",
+   "current": 0.0005,
+   "part": "MCP33131D-10",
+   "basis": "Schätzung",
+   "note": "ADC Port 2, DVIO"
+  },
+  {
+   "refdes": "IC33",
+   "net": "Net-(IC33-VPDT)",
+   "current": 0.07,
+   "part": "ADL5801",
+   "basis": "Datenblatt",
+   "note": "Mischer Referenz, Versorgung (130 mA gesamt laut Datenblatt, Aufteilung geschätzt)"
+  },
+  {
+   "refdes": "IC33",
+   "net": "Net-(C190-Pad1)",
+   "current": 0.06,
+   "part": "ADL5801",
+   "basis": "Datenblatt",
+   "note": "Mischer Referenz, Ausgangsstufe über die Drosseln",
+   "at": "L46,L47"
+  },
+  {
+   "refdes": "IC36",
+   "net": "Net-(IC36-VCC)",
+   "current": 0.01,
+   "part": "LT5560",
+   "basis": "Schätzung",
+   "note": "Mischer Referenz, einstellbar 4 bis 13,4 mA"
+  },
+  {
+   "refdes": "IC32",
+   "net": "Net-(IC32-V_{S+})",
+   "current": 0.00114,
+   "part": "THS4521",
+   "basis": "Datenblatt",
+   "note": "ADC-Treiber Referenz"
+  },
+  {
+   "refdes": "IC35",
+   "net": "Net-(IC34-OUT)",
+   "current": 0.0016,
+   "part": "MCP33131D-10",
+   "basis": "Schätzung",
+   "note": "ADC Referenz, AVDD"
+  },
+  {
+   "refdes": "IC35",
+   "net": "+3V3",
+   "current": 0.0005,
+   "part": "MCP33131D-10",
+   "basis": "Schätzung",
+   "note": "ADC Referenz, DVIO"
+  },
+  {
+   "refdes": "IC10",
+   "net": "3V3_SRC_1",
+   "current": 0.06,
+   "part": "MAX2871",
+   "basis": "Schätzung",
+   "note": "Quelle, VCO (rund 120 mA gesamt laut Datenblatt)"
+  },
+  {
+   "refdes": "IC10",
+   "net": "3V3_SRC_2",
+   "current": 0.04,
+   "part": "MAX2871",
+   "basis": "Schätzung",
+   "note": "Quelle, PLL/RF"
+  },
+  {
+   "refdes": "IC10",
+   "net": "3V3_SRC_3",
+   "current": 0.02,
+   "part": "MAX2871",
+   "basis": "Schätzung",
+   "note": "Quelle, Digital/Ladungspumpe"
+  },
+  {
+   "refdes": "IC21",
+   "net": "3V3_LO1_1",
+   "current": 0.06,
+   "part": "MAX2871",
+   "basis": "Schätzung",
+   "note": "LO, VCO"
+  },
+  {
+   "refdes": "IC21",
+   "net": "3V3_LO1_2",
+   "current": 0.04,
+   "part": "MAX2871",
+   "basis": "Schätzung",
+   "note": "LO, PLL/RF"
+  },
+  {
+   "refdes": "IC21",
+   "net": "3V3_LO1_3",
+   "current": 0.02,
+   "part": "MAX2871",
+   "basis": "Schätzung",
+   "note": "LO, Digital/Ladungspumpe"
+  }
+ ]
+}

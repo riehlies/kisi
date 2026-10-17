@@ -105,6 +105,49 @@ button, input, select { font: inherit; color: inherit; }
 .kpi .v small { font-size: 13px; font-weight: 600; }
 .note { font-size: 12px; color: var(--muted); margin: 0; }
 .acc { font-size: 12px; }
+:root { --pw-use: #2f86c8; --pw-loss: #d07b2f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --pw-use: #3f8fd2; --pw-loss: #c9732a; } }
+:root[data-theme="dark"] { --pw-use: #3f8fd2; --pw-loss: #c9732a; }
+.balance { position: absolute; inset: 0; overflow-y: auto; background: var(--canvas); padding: 14px; display: flex; flex-direction: column; gap: 12px; z-index: 4; }
+.bal-head h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 18px; }
+.bal-head p { margin: 2px 0 0; font-size: 12px; color: var(--muted); max-width: 90ch; }
+.bal-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.bal-kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bal-kpi .v { font-family: var(--font-display); font-weight: 700; font-size: 22px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.bal-kpi .v small { font-size: 13px; font-weight: 600; }
+.bal-kpi .l { font-size: 11px; color: var(--muted); }
+.bal-cols { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.bal-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; min-width: 0; }
+.bal-card h4 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.bal-card h4 em { font-style: normal; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0; text-transform: none; }
+.tree { display: flex; flex-direction: column; font-size: 12.5px; }
+.t-rail { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 3px 0; border-top: 1px solid var(--line); }
+.t-rail button { border: 0; background: none; padding: 0; cursor: pointer; text-align: left; font-weight: 600; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-rail button:hover { color: var(--accent); }
+.t-num { font-family: var(--font-mono); font-size: 11.5px; text-align: right; white-space: nowrap; }
+.t-el { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 2px 0; color: var(--muted); font-size: 12px; }
+.t-el b { color: var(--fg); font-weight: 500; }
+.t-load { display: grid; grid-template-columns: minmax(0, 1fr) 82px; gap: 8px; align-items: center; padding: 1px 0; font-size: 12px; }
+.t-load input { width: 100%; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); padding: 1px 4px; font-family: var(--font-mono); font-size: 11.5px; text-align: right; }
+.t-load .b { font-size: 10.5px; color: var(--muted); }
+.chip-warn { display: inline-block; border-radius: 999px; padding: 0 6px; font-size: 10.5px; color: var(--panel); background: var(--z-high2); margin-left: 4px; }
+.ctab { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ctab th { text-align: left; font-weight: 500; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--line); padding: 3px 4px; }
+.ctab td { padding: 3px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.ctab td.n { text-align: right; font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; }
+.ctab .bar { display: flex; gap: 2px; height: 8px; min-width: 60px; }
+.ctab .bar i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+.ctab .bar i.u { background: var(--pw-use); }
+.ctab .bar i.l { background: var(--pw-loss); }
+.ctab .bar i.u + i.l { border-radius: 0 4px 4px 0; }
+.ctab .bar i.u:has(+ i.l) { border-radius: 0; }
+.bal-comp { position: sticky; top: 0; max-height: calc(100vh - 140px); overflow-y: auto; }
+.bal-legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
+.bal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.bal-legend i { width: 14px; height: 8px; border-radius: 0 3px 3px 0; display: inline-block; }
+.bal-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+@media (max-width: 1100px) { .bal-comp { position: static; max-height: none; } .bal-cols { grid-template-columns: minmax(0, 1fr); } .bal-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .balance { padding: 10px; } .brand { flex: 1 1 100%; } .brand small { overflow: hidden; text-overflow: ellipsis; min-width: 0; } }
 .acc a { color: var(--accent); }
 .fs { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; }
 .fs-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -241,6 +284,7 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
     <div class="seg" role="group" aria-label="Darstellung Versorgung" data-view="pi" hidden>
       <button id="pim-v" aria-pressed="true">Spannungsabfall</button>
       <button id="pim-j" aria-pressed="false">Stromdichte</button>
+      <button id="pim-b" aria-pressed="false">Leistungsbilanz</button>
     </div>
     <div class="seg" role="group" aria-label="Beispielboard">
       <button id="sample-ts" aria-pressed="false">ThunderScope</button>
@@ -347,6 +391,7 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
     <div class="tip" id="tip" hidden></div>
     <section class="detail" id="detail" hidden aria-live="polite"></section>
     <section class="detail" id="pi-detail" hidden aria-live="polite"></section>
+    <section class="balance" id="pi-balance" hidden aria-label="Leistungsbilanz"></section>
     <div class="drop" id="drop" hidden>.kicad_pcb, .kicad_pro oder kipida_config.json hier ablegen</div>
     <div class="busy" id="busy">Lade Rechenkern…</div>
   </main>
@@ -388,6 +433,7 @@ class Engine {
   analyze(params) { this.call(this.k.kisi_analyze, JSON.stringify(params)); return JSON.parse(this.out()); }
   piNets() { if (this.k.kisi_pi_nets() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   piFields() { if (this.k.kisi_pi_fields() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
+  piTree(spec) { this.call(this.k.kisi_pi_tree, JSON.stringify(spec)); return JSON.parse(this.out()); }
   piKipida(text) { this.call(this.k.kisi_pi_kipida, text); return JSON.parse(this.out()); }
   piSolve(setup, params) {
     this.call(this.k.kisi_pi_solve, JSON.stringify({ setup, params }));
@@ -417,7 +463,7 @@ const S = {
   view: { s: 1, x: 0, y: 0 }, paths: null, selPaths: null, colors: {},
   field: new Map(), fieldPending: new Set(), pool: null, gen: 0,
   tab: "si", piMode: "v", piNets: [], piSetups: new Map(), piRes: new Map(), piRail: null, piLayer: -1,
-  piImg: null, piWarn: [], piDefaults: null,
+  piImg: null, piWarn: [], piDefaults: null, piTree: null, treeRes: null,
 };
 const KIND_DE = { Microstrip: "Microstrip", Stripline: "Stripline", EmbeddedMicrostrip: "Microstrip, eingebettet (eine Referenz)", NoReference: "Keine Referenzebene" };
 const FLAGS = [
@@ -1286,11 +1332,42 @@ $("fs-clear").onclick = async () => { await Cache.clear(); runAnalysis(); };
 const PI_PARAMS = { cell: null, plating_um: 25, rho: 1.72e-8, max_cells: 250000 };
 const piKey = () => "kisi.pi.v1." + S.name;
 function piLoadSaved() { try { const t = localStorage.getItem(piKey()); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
-function piSave() { try { localStorage.setItem(piKey(), JSON.stringify([...S.piSetups.values()])); } catch (e) { /* storage blocked */ } }
+function piSave() {
+  try {
+    if (S.piTree) localStorage.setItem(treeKey(), JSON.stringify(S.piTree));
+    else localStorage.setItem(piKey(), JSON.stringify([...S.piSetups.values()]));
+  } catch (e) { /* storage blocked */ }
+}
+const treeKey = () => "kisi.tree.v1." + S.name;
+function treeLoadSaved() { try { const t = localStorage.getItem(treeKey()); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+
+// power tree: solve the chain, derive the IR-drop setups of every rail
+function computeTree() {
+  try {
+    S.treeRes = S.engine.piTree(S.piTree);
+    S.piSetups = new Map(S.treeRes.setups.map((r) => [r.net, r]));
+    S.piWarn = S.treeRes.warnings || [];
+  } catch (e) {
+    S.treeRes = null; S.piSetups = new Map(); S.piWarn = ["Versorgungsbaum: " + e.message];
+  }
+}
 
 function initPi(defaults) {
   S.piRes = new Map(); S.piSetups = new Map(); S.piImg = null; S.piWarn = []; S.piDefaults = defaults;
+  S.piTree = null; S.treeRes = null; $("pi-balance").scrollTop = 0;
   try { S.piNets = S.engine.piNets(); } catch (e) { S.piNets = []; }
+  if (defaults && !Array.isArray(defaults) && defaults.elements) {
+    S.piTree = treeLoadSaved() || JSON.parse(JSON.stringify(defaults));
+    computeTree();
+    const t0 = performance.now();
+    for (const r of S.piSetups.values()) solvePiRail(r.net, false);
+    $("pi-timing").textContent = `${S.piSetups.size} Schienen · ${Math.round(performance.now() - t0)} ms`;
+    let best = null;
+    for (const [net, r] of S.piRes) if (r.res && (!best || (r.res.max_drop_mv || 0) > (S.piRes.get(best).res.max_drop_mv || 0))) best = net;
+    S.piRail = best; S.piLayer = -1;
+    renderPi();
+    return;
+  }
   const saved = piLoadSaved();
   let fromFields = { rails: [], warnings: [] };
   try { fromFields = S.engine.piFields(); } catch (e) { /* no fields */ }
@@ -1335,7 +1412,11 @@ function piSetup(net) {
 
 function renderPi() {
   renderPiSide();
+  const bal = S.tab === "pi" && S.piMode === "b";
+  $("pi-balance").hidden = !bal;
+  $("legend").hidden = bal; $("layers").hidden = bal;
   if (S.tab !== "pi") return;
+  if (bal) { $("pi-detail").hidden = true; renderBalance(); return; }
   renderPiDetail();
   renderLayerChips();
   renderLegend();
@@ -1358,13 +1439,19 @@ function renderPiSide() {
   const origins = {};
   for (const r of S.piSetups.values()) for (const l of r.loads) origins[l.origin || "Benutzer"] = (origins[l.origin || "Benutzer"] || 0) + 1;
   const o = Object.entries(origins).map(([k, v]) => `${v}× ${k === "Beispiel" ? "Beispielwert (Annahme)" : k === "Feld" ? "KiCad-Feld" : k}`).join(", ");
-  $("pi-origin").textContent = worst
+  if (S.treeRes) {
+    const t = S.treeRes, cu = piCopperLoss();
+    $("pi-origin").textContent = `Versorgungsbaum ${t.name}: Eingang ${fmt(t.p_input + cu, 2)} W, davon ${fmt(t.p_losses + cu, 2)} W Verluste.` +
+      (worst ? ` Größter Abfall auf ${netLabel(worst.net)} (${fmt(worst.pct, 2)} %).` : "");
+  } else $("pi-origin").textContent = worst
     ? `Größter Abfall auf ${netLabel(worst.net)} (${fmt(worst.pct, 2)} %). Lasten: ${o}.`
     : (S.piSetups.size ? `Lasten: ${o || "keine"}. Für eine Berechnung braucht jede Schiene eine Quelle und eine Last.` : "Keine Lasten festgelegt. Felder PI_LOAD/PI_SOURCE in KiCad setzen, eine kipida_config.json laden oder unten eintragen.");
   $("pi-warn").innerHTML = S.piWarn.map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
   // rails list
   const rank = (r) => (S.piRes.get(r.name) && S.piRes.get(r.name).res ? 0 : S.piSetups.has(r.name) ? 1 : r.ground ? 3 : 2);
-  const rails = S.piNets.slice().sort((a, b) => rank(a) - rank(b));
+  const known = new Set(S.piNets.map((r) => r.name));
+  const extra = [...S.piSetups.keys()].filter((n) => !known.has(n)).map((n) => ({ name: n, voltage: S.piSetups.get(n).voltage, ground: false, components: [] }));
+  const rails = S.piNets.concat(extra).sort((a, b) => rank(a) - rank(b));
   $("rail-count").textContent = `${rails.filter((r) => !r.ground).length} Schienen`;
   $("rails").innerHTML = rails.map((r) => {
     const res = S.piRes.get(r.name), st = S.piSetups.get(r.name);
@@ -1387,6 +1474,18 @@ function renderRailEditor() {
   const net = S.piRail, box = $("rail-edit");
   $("rail-name").textContent = net ? netLabel(net) : "";
   if (!net) { box.innerHTML = `<p class="note">Schiene in der Liste auswählen.</p>`; return; }
+  if (S.piTree) {
+    const st = S.piSetups.get(net);
+    const rf = S.treeRes && S.treeRes.rails.find((r) => r.net === net);
+    box.innerHTML = `<div class="rail-edit">
+      <p class="note">Quellen und Lasten kommen aus dem Versorgungsbaum. Ströme in der <button class="btn small" id="re-tobal">Leistungsbilanz</button> ändern.</p>
+      ${rf ? `<div class="re-row"><span>Spannung</span><span class="mono">${fmt(rf.voltage, 2)} V · ${fmt(rf.i_total, 3)} A</span></div>` : ""}
+      ${st ? `<div class="re-row"><span>Quelle</span><span class="mono">${esc(st.sources.map((x) => x.refdes).join(", "))}${rf && rf.fed_by ? " (" + esc(rf.fed_by) + ")" : ""}</span></div>
+      <div class="re-list"><span>Lasten am Netz</span>${st.loads.map((l) => `<div class="re-load"><span>${esc(l.refdes)} <span class="o">${esc(l.origin)}</span></span><span class="mono">${fmt(l.current, 3)} A</span><span></span></div>`).join("")}</div>` : `<p class="note">Kein Element speist diese Schiene.</p>`}
+    </div>`;
+    const b = $("re-tobal"); if (b) b.onclick = () => setPiMode("b");
+    return;
+  }
   const info = piRailInfo(net), st = piSetup(net);
   const comps = (info ? info.components : []).slice().sort((a, b) => a.localeCompare(b, "de", { numeric: true }));
   const srcSet = new Set(st.sources.map((x) => x.refdes)), loadSet = new Set(st.loads.map((x) => x.refdes));
@@ -1630,15 +1729,107 @@ function setTab(t) {
   document.querySelectorAll("[data-view]").forEach((el) => { el.hidden = el.dataset.view !== t; });
   $("detail").hidden = t !== "si" || S.selNet < 0;
   $("pi-detail").hidden = true;
+  $("pi-balance").hidden = true; $("legend").hidden = false; $("layers").hidden = false;
   $("tip").hidden = true;
   if (t === "pi") { fitRail(); renderPi(); } else { fitView(); renderLayerChips(); renderLegend(); draw(); }
 }
 $("view-si").onclick = () => setTab("si");
 $("view-pi").onclick = () => setTab("pi");
-function setPiMode(m) { S.piMode = m; S.piImg = null; $("pim-v").setAttribute("aria-pressed", String(m === "v")); $("pim-j").setAttribute("aria-pressed", String(m === "j")); renderPi(); }
+function setPiMode(m) {
+  S.piMode = m; S.piImg = null;
+  for (const k of ["v", "j", "b"]) $("pim-" + k).setAttribute("aria-pressed", String(k === m));
+  renderPi();
+}
+$("pim-b").onclick = () => setPiMode("b");
 $("pim-v").onclick = () => setPiMode("v");
 $("pim-j").onclick = () => setPiMode("j");
 
+
+// ---- power balance view ------------------------------------------------------
+function piCopperLoss() { let w = 0; for (const r of S.piRes.values()) if (r.res) w += r.res.power_loss_w; return w; }
+const KIND_NAME = { input: "Eingang", buck: "Buck", boost: "Boost", ldo: "LDO", inverter: "Inverter", pass: "Durchgang" };
+const mW = (w) => (w >= 1 ? fmt(w, 2) + " W" : fmt(w * 1e3, 0) + " mW");
+
+function renderBalance() {
+  const box = $("pi-balance"), t = S.treeRes;
+  if (!t) {
+    box.innerHTML = `<div class="bal-head"><h3>Leistungsbilanz</h3><p>Für dieses Board ist kein Versorgungsbaum hinterlegt. Die Reglerketten sind für die Beispielboards ThunderScope und LibreVNA modelliert.</p></div>`;
+    return;
+  }
+  const cu = piCopperLoss();
+  const pin = t.p_input + cu, loss = t.p_losses + cu;
+  const regLoss = t.elements.filter((e) => e.kind !== "pass" && e.kind !== "input").reduce((a, e) => a + e.p_loss, 0);
+  const passLoss = t.p_losses - regLoss;
+  const kpi = (v, u, l) => `<div class="bal-kpi"><span class="v">${v}<small> ${u}</small></span><span class="l">${l}</span></div>`;
+  // tree, depth-first from the inputs
+  const kids = (net) => t.elements.filter((e) => e.from === net);
+  const loadsOn = (net) => S.piTree.loads.map((l, i) => ({ l, i })).filter((x) => t.load_nets[x.i] === net);
+  const rows = [];
+  const walk = (net, d) => {
+    const r = t.rails.find((x) => x.net === net);
+    if (!r) return;
+    const pad = `style="padding-left:${d * 16}px"`;
+    rows.push(`<div class="t-rail" ${pad}><button data-rail="${esc(net)}" title="Spannungsabfall dieser Schiene zeigen">${esc(netLabel(net).split("/").pop())}</button><span class="t-num">${fmt(r.voltage, 2)} V · ${fmt(r.i_total, 3)} A · ${mW(Math.abs(r.voltage) * r.i_total)}</span></div>`);
+    for (const { l, i } of loadsOn(net)) {
+      rows.push(`<div class="t-load" style="padding-left:${d * 16 + 12}px"><span>${esc(l.refdes)} <span class="b">${esc(l.part)} · ${esc(l.basis || "")}${l.note ? " · " + esc(l.note) : ""}</span></span>
+        <input type="number" min="0" step="0.001" value="${+l.current.toFixed(4)}" data-load="${i}" aria-label="Strom ${esc(l.refdes)} an ${esc(netLabel(net))} in A"></div>`);
+    }
+    for (const e of kids(net)) {
+      const eff = e.kind === "pass" ? "" : e.p_in > 0 ? ` · η ${fmt(100 * e.p_out / e.p_in, 0)} %` : "";
+      rows.push(`<div class="t-el" style="padding-left:${d * 16 + 12}px"><span>└ <b>${esc(e.id)}</b> ${esc(KIND_NAME[e.kind] || e.kind)} · ${esc(e.part)}${e.overload ? `<span class="chip-warn">${fmt(e.i_out, 2)} A &gt; ${fmt(e.imax, 2)} A</span>` : ""}</span><span class="t-num">Verlust ${mW(e.p_loss)}${eff}</span></div>`);
+      walk(e.to, d + 1);
+    }
+  };
+  for (const e of t.elements.filter((e) => e.kind === "input")) {
+    rows.push(`<div class="t-el"><span><b>${esc(e.refdes)}</b> ${esc(e.part)}</span><span class="t-num">${mW(e.p_out)}</span></div>`);
+    walk(e.to, 0);
+  }
+  // components
+  const comps = t.components.filter((c) => c.consumption + c.loss >= 0.0005);
+  const maxW = Math.max(...comps.map((c) => c.consumption + c.loss), 1e-9);
+  const basis = (c) => { const b = [...new Set(c.rails.map((r) => r[2]))]; return c.rails.length ? (b.length > 1 ? "gemischt" : b[0]) : "berechnet"; };
+  const crow = (c) => {
+    const wu = 100 * c.consumption / maxW, wl = 100 * c.loss / maxW;
+    return `<tr title="${esc(c.refdes)}: Verbrauch ${mW(c.consumption)}, Verlust ${mW(c.loss)}"><td>${esc(c.refdes)}</td><td>${esc(c.part)}</td>
+      <td class="n">${c.consumption ? fmt(c.consumption * 1e3, 0) : "–"}</td><td class="n">${c.loss ? fmt(c.loss * 1e3, 0) : "–"}</td>
+      <td><div class="bar">${wu > 0 ? `<i class="u" style="width:${wu}%"></i>` : ""}${wl > 0 ? `<i class="l" style="width:${wl}%"></i>` : ""}</div></td><td class="b">${esc(basis(c))}</td></tr>`;
+  };
+  const warn = (t.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
+  box.innerHTML = `
+    <div class="bal-head"><h3>Leistungsbilanz · ${esc(t.name)}</h3><p>${esc(t.note)}</p></div>
+    <div class="bal-kpis">
+      ${kpi(fmt(pin, 2), "W", "Eingangsleistung")}
+      ${kpi(fmt(t.p_loads, 2), "W", "Verbrauch der Bauteile")}
+      ${kpi(fmt(regLoss, 2), "W", "Verluste in Reglern")}
+      ${kpi(fmt((passLoss + cu) * 1e3, 0), "mW", "Shunts, Ferrite und Kupfer")}
+      ${kpi(fmt(100 * t.p_loads / pin, 0), "%", "Gesamtwirkungsgrad")}
+    </div>
+    ${warn}
+    <div class="bal-cols">
+      <div class="bal-card"><h4>Versorgungsbaum <em>Ströme in A editierbar</em></h4><div class="tree">${rows.join("")}</div>
+        <div class="bal-actions" style="margin-top:8px"><button class="btn small" id="bal-reset">Werte zurücksetzen</button><span class="note">Änderungen werden in diesem Browser gespeichert.</span></div></div>
+      <div class="bal-card bal-comp"><h4>Bauteile <em>${comps.length} mit ≥ 0,5 mW</em></h4>
+        <div class="bal-legend"><span><i style="background:var(--pw-use)"></i>Verbrauch</span><span><i style="background:var(--pw-loss)"></i>Verlust (Regler, Shunt, Ferrit)</span></div>
+        <div class="tablewrap"><table class="ctab"><thead><tr><th>Bauteil</th><th>Typ</th><th>Verbrauch mW</th><th>Verlust mW</th><th></th><th>Grundlage</th></tr></thead><tbody>${comps.map(crow).join("")}</tbody></table></div>
+        <p class="note">Kupferverluste der Lagen (${fmt(cu * 1e3, 0)} mW) stammen aus dem Spannungsabfall und sind keinem Bauteil zugeordnet.</p></div>
+    </div>`;
+  box.querySelectorAll("[data-load]").forEach((inp) => inp.onchange = () => {
+    const l = S.piTree.loads[+inp.dataset.load];
+    l.current = Math.max(0, parseFloat(inp.value) || 0);
+    l.basis = "Benutzer";
+    piSave(); refreshTree();
+  });
+  box.querySelectorAll("[data-rail]").forEach((b) => b.onclick = () => { S.piRail = b.dataset.rail; S.piLayer = -1; setPiMode("v"); fitRail(); });
+  $("bal-reset").onclick = () => { try { localStorage.removeItem(treeKey()); } catch (e) { /* ignore */ } initPi(S.piDefaults); setPiMode("b"); };
+}
+function refreshTree() {
+  const keep = S.piRail;
+  computeTree();
+  S.piRes = new Map();
+  for (const r of S.piSetups.values()) solvePiRail(r.net, false);
+  S.piRail = keep;
+  renderPi();
+}
 // files
 async function handleFiles(files) {
   files = [...files];

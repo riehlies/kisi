@@ -1,0 +1,163 @@
+// Half-domain ≡ full-domain identity across feature-stacked families (tri backend).
+//
+// The symmetry-plane void bug produced ~23%-wrong C with certificates claiming
+// ~1%: Richardson certifies convergence of the meshing process it is given, not
+// correctness of the limit. The cheap structural guard is identity testing —
+// solve the same geometry on the half domain (default for mirror-symmetric
+// geometries) and the full domain (tri_opts.symmetry: false) and demand the same
+// answer. test_symmetry_plane_mask.js pins the original void-bug geometry; this
+// file extends the identity to the other families and features that exercise the
+// symmetry machinery differently:
+//   - single-ended: the plane cuts the TRACE itself (MQS symmetry-plane
+//     edge/corner exclusion, half-domain integral scaling)
+//   - GCPW: passive pours + via slabs as C = 0 return conductors
+//   - stripline cover, closed enclosure walls, ground cutout centered on the plane
+//
+// Loss methods are matched between the two sides:
+//   - single-ended: half {auto → MQS} vs full {lossMethod 'mqs'} — MQS identity
+//   - differential: half {auto → MQS via mode walls} vs full {auto →
+//     per-conductor-drive MQS, modeCurrents} — MQS identity across the two
+//     entirely different mode-selection mechanisms, plus half vs full
+//     {lossMethod 'perturbation'} — perturbation identity
+// Also pins the full-domain differential MQS drive normalization: forcing
+// 'mqs' on a full-domain pair must take the per-conductor-drive path and match
+// the half-domain MQS answer, not return the silently ~4×-low parallel-drive
+// answer the single shared drive used to produce.
+import { MicrostripSolver } from '../src/microstrip.js';
+import { check, quiet, done } from './helpers.js';
+
+const relDiff = (a, b) => Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b), 1e-30);
+
+const FAMILIES = [
+    {
+        name: 'microstrip + sm + plating', diff: false, cTol: 0.01, rTol: 0.03,
+        geom: {
+            trace_width: 0.35e-3, substrate_height: 0.21e-3, trace_thickness: 35e-6, gnd_thickness: 35e-6,
+            epsilon_r: 4.4, tan_delta: 0.02, sigma_cond: 5.8e7, freq: 1e9, rq: 0,
+            boundaries: ['open', 'open', 'open', 'gnd'],
+            use_sm: true, sm_t_sub: 20e-6, sm_t_trace: 20e-6, sm_t_side: 20e-6, sm_er: 3.5, sm_tand: 0.02,
+            plating: { sigma: 1e7, thickness: 4e-6, rq: 0, top: true, sides: true, bottom: false, thick_corners: true },
+        },
+    },
+    {
+        // Side plating thicker than a quarter of the width: the half-domain rect is
+        // clipped at the plane, and plated-through must still be decided on the whole
+        // trace (layered Zs here, not solid plating metal).
+        name: 'narrow trace + thin side plating', diff: false, cTol: 0.01, rTol: 0.03,
+        geom: {
+            trace_width: 10e-6, substrate_height: 50e-6, trace_thickness: 8e-6, gnd_thickness: 18e-6,
+            epsilon_r: 3.5, tan_delta: 0.002, sigma_cond: 5.8e7, freq: 1e9, rq: 0,
+            boundaries: ['open', 'open', 'open', 'gnd'],
+            plating: { sigma: 1e7, thickness: 3e-6, rq: 0, top: true, sides: true, bottom: false, thick_corners: false },
+        },
+    },
+    {
+        name: 'gcpw + vias + sm', diff: false, cTol: 0.01, rTol: 0.03,
+        geom: {
+            trace_width: 0.3e-3, substrate_height: 0.254e-3, trace_thickness: 35e-6, gnd_thickness: 35e-6,
+            epsilon_r: 3.66, tan_delta: 0.003, sigma_cond: 5.8e7, freq: 1e9, rq: 0,
+            boundaries: ['open', 'open', 'open', 'gnd'],
+            use_coplanar_gnd: true, gap: 0.15e-3, via_gap: 0.3e-3, use_vias: true,
+            use_sm: true, sm_t_sub: 15e-6, sm_t_trace: 15e-6, sm_t_side: 15e-6, sm_er: 3.4, sm_tand: 0.02,
+        },
+    },
+    {
+        name: 'diff stripline', diff: true, cTol: 0.01, rTol: 0.08,
+        geom: {
+            trace_width: 0.15e-3, trace_spacing: 0.15e-3, substrate_height: 0.2e-3, trace_thickness: 17e-6,
+            gnd_thickness: 17e-6, epsilon_r: 4.1, epsilon_r_top: 4.1, tan_delta: 0.02, tan_delta_top: 0.02,
+            enclosure_height: 0.4e-3, sigma_cond: 5.8e7, freq: 2e9, rq: 0,
+            boundaries: ['open', 'open', 'gnd', 'gnd'],
+        },
+    },
+    {
+        name: 'diff microstrip + enclosure', diff: true, cTol: 0.01, rTol: 0.08,
+        geom: {
+            trace_width: 0.2e-3, trace_spacing: 0.2e-3, substrate_height: 0.2e-3, trace_thickness: 35e-6,
+            gnd_thickness: 20e-6, epsilon_r: 4.4, tan_delta: 0.02, sigma_cond: 5.8e7, freq: 1e9, rq: 0,
+            enclosure_width: 2.4e-3, enclosure_height: 0.8e-3,
+            boundaries: ['gnd', 'gnd', 'gnd', 'gnd'],
+        },
+    },
+    {
+        name: 'diff microstrip + gnd cutout', diff: true, cTol: 0.03, rTol: 0.08,
+        geom: {
+            trace_width: 0.2e-3, trace_spacing: 0.15e-3, substrate_height: 0.25e-3, trace_thickness: 35e-6,
+            gnd_thickness: 20e-6, epsilon_r: 4.4, tan_delta: 0.02, sigma_cond: 5.8e7, freq: 1e9, rq: 0,
+            boundaries: ['open', 'open', 'open', 'gnd'],
+            gnd_cut_width: 0.25e-3, gnd_cut_sub_h: 0.1e-3,
+        },
+    },
+];
+
+async function solve(geom, triOpts) {
+    const s = new MicrostripSolver({ ...geom, mesh_backend: 'triangular', nx: 30, ny: 30 });
+    s.tri_opts = triOpts;
+    const r = await quiet(() => s.solve_adaptive({
+        max_iters: 12, energy_tol: 0.01, param_tol: 0.05, max_nodes: 20000, min_converged_passes: 2,
+    }));
+    return { modes: r.modes, warns: (r.warnings || []).map(w => w.type) };
+}
+
+for (const fam of FAMILIES) {
+    if (!fam.diff) {
+        // 2 solves: C/Z0 and MQS-R identities from the same pair
+        const half = await solve(fam.geom, {});                                 // auto → MQS on half domain
+        const full = await solve(fam.geom, { symmetry: false, lossMethod: 'mqs' });
+        const h = half.modes[0], f = full.modes[0];
+        check(`${fam.name}: half C == full C (±${100 * fam.cTol}%)`,
+            relDiff(h.RLGC.C, f.RLGC.C) < fam.cTol,
+            `${(h.RLGC.C * 1e12).toFixed(2)} vs ${(f.RLGC.C * 1e12).toFixed(2)} pF/m`);
+        check(`${fam.name}: half Z0 == full Z0 (±${100 * fam.cTol}%)`,
+            relDiff(h.Z0, f.Z0) < fam.cTol, `${h.Z0.toFixed(2)} vs ${f.Z0.toFixed(2)} Ω`);
+        check(`${fam.name}: half MQS R == full MQS R (±${100 * fam.rTol}%)`,
+            relDiff(h.RLGC.R, f.RLGC.R) < fam.rTol,
+            `${h.RLGC.R.toFixed(2)} vs ${f.RLGC.R.toFixed(2)} Ω/m`);
+        check(`${fam.name}: half MQS L_internal == full MQS L_internal (±${100 * fam.rTol}%)`,
+            relDiff(h.L_internal, f.L_internal) < fam.rTol,
+            `${(h.L_internal * 1e9).toFixed(3)} vs ${(f.L_internal * 1e9).toFixed(3)} nH/m`);
+    } else {
+        // 4 solves: half/full auto (MQS on both sides — mode walls vs
+        // per-conductor drives) for C/Z0 and MQS R; half/full forced
+        // perturbation for the perturbation R identity.
+        const half = await solve(fam.geom, {});
+        const full = await solve(fam.geom, { symmetry: false });                // auto → multi-drive MQS on full
+        const halfP = await solve(fam.geom, { lossMethod: 'perturbation' });
+        const fullP = await solve(fam.geom, { symmetry: false, lossMethod: 'perturbation' });
+        for (let i = 0; i < half.modes.length; i++) {
+            const mode = half.modes[i].mode;
+            check(`${fam.name} ${mode}: half C == full C (±${100 * fam.cTol}%)`,
+                relDiff(half.modes[i].RLGC.C, full.modes[i].RLGC.C) < fam.cTol,
+                `${(half.modes[i].RLGC.C * 1e12).toFixed(2)} vs ${(full.modes[i].RLGC.C * 1e12).toFixed(2)} pF/m`);
+            check(`${fam.name} ${mode}: half MQS R == full MQS R (±${100 * fam.rTol}%)`,
+                relDiff(half.modes[i].RLGC.R, full.modes[i].RLGC.R) < fam.rTol,
+                `${half.modes[i].RLGC.R.toFixed(2)} vs ${full.modes[i].RLGC.R.toFixed(2)} Ω/m`);
+            check(`${fam.name} ${mode}: half MQS L_internal == full MQS L_internal (±${100 * fam.rTol}%)`,
+                relDiff(half.modes[i].L_internal, full.modes[i].L_internal) < fam.rTol,
+                `${(half.modes[i].L_internal * 1e9).toFixed(3)} vs ${(full.modes[i].L_internal * 1e9).toFixed(3)} nH/m`);
+            check(`${fam.name} ${mode}: half pert R == full pert R (±${100 * fam.rTol}%)`,
+                relDiff(halfP.modes[i].RLGC.R, fullP.modes[i].RLGC.R) < fam.rTol,
+                `${halfP.modes[i].RLGC.R.toFixed(2)} vs ${fullP.modes[i].RLGC.R.toFixed(2)} Ω/m`);
+        }
+        const mqsFallbacks = ['mqs-asym-pair', 'mqs-no-interior', 'mqs-solve-failed', 'mqs-shape'];
+        check(`${fam.name}: full-domain auto takes MQS (no fallback warning)`,
+            !full.warns.some(w => mqsFallbacks.includes(w)), full.warns.join(',') || 'none');
+    }
+}
+
+// Forced 'mqs' on a full-domain differential pair: must take the
+// per-conductor-drive path (no refusal warning) and match the half-domain MQS
+// answer (the single shared drive used to return both modes silently ~4× low).
+{
+    const fam = FAMILIES[2];   // diff stripline
+    const half = await solve(fam.geom, {});                                     // half-domain MQS reference
+    const fullM = await solve(fam.geom, { symmetry: false, lossMethod: 'mqs' });
+    check('full-domain diff + forced mqs takes multi-drive MQS (no warnings)',
+        !fullM.warns.includes('mqs-asym-pair') && !fullM.warns.includes('mqs-no-interior')
+        && !fullM.warns.includes('mqs-solve-failed'), fullM.warns.join(',') || 'no warnings');
+    check('full-domain diff + forced mqs R == half-domain MQS R (±3%)',
+        relDiff(fullM.modes[0].RLGC.R, half.modes[0].RLGC.R) < 0.03,
+        `${fullM.modes[0].RLGC.R.toFixed(2)} vs ${half.modes[0].RLGC.R.toFixed(2)} Ω/m`);
+}
+
+done();

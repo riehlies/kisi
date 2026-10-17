@@ -1,0 +1,6 @@
+[
+ {"name":"MS 3,0 mm auf 1,6 mm FR4","type":"microstrip","w":3.0,"h":1.6,"t":0.035,"er":4.5},
+ {"name":"Diff-MS 3,0 mm, Abstand 1,0 mm","type":"diff_microstrip","w":3.0,"s":1.0,"h":1.6,"t":0.035,"er":4.5},
+ {"name":"Stripline 0,15 mm","type":"stripline","w":0.15,"h":0.2,"t":0.035,"er":4.1,"er_top":4.1,"top_h":0.235},
+ {"name":"Diff-Stripline 0,15/0,1 mm","type":"diff_stripline","w":0.15,"s":0.1,"h":0.2,"t":0.035,"er":4.1,"er_top":4.1,"top_h":0.235}
+]

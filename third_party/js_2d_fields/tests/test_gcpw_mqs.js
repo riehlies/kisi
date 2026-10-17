@@ -1,0 +1,144 @@
+// GCPW / differential-GCPW MQS conductor loss (tri backend).
+//
+// Explicit ground rects (coplanar grounds, via slabs) used to force the
+// perturbation path; MQS now treats them as passive C = 0 return conductors
+// with a distance-graded skin band (fine at the slot edge, coarsening with
+// distance from the signal, so the band cost is independent of how far the
+// ground pour extends). These tests pin:
+//   1. The 'auto' loss method takes the MQS path for GCPW (no applicability
+//      warning) and produces R in a sane band around the perturbation estimate.
+//   2. Physical limits: R(f=0) = geometric R_dc; wide-gap GCPW converges to
+//      the microstrip R (the coplanar grounds stop mattering); R(f) increases.
+//   3. The passive grounds actually carry return current: R_gnd > 0 with a
+//      minority share of R_total.
+//   4. The two-pass band respects its budget: trace budget + ground budget.
+//   5. Differential GCPW solves both modes on the MQS path with sane R.
+//   6. The half-domain cut through the trace (symmetry plane) gets no skin band.
+import { MicrostripSolver } from '../src/microstrip.js';
+import { initTriBackend, TriBackend } from '../src/tri_solver/tri_backend.js';
+import { mqsConductorLoss } from '../src/tri_solver/mqs_loss.js';
+import { check, done } from './helpers.js';
+
+const ctx = await initTriBackend();
+const relDiff = (a, b) => Math.abs(a - b) / Math.max(Math.abs(b), 1e-30);
+
+const SIGMA = 5.8e7;
+const base = {
+    trace_width: 0.3e-3, substrate_height: 0.254e-3, trace_thickness: 35e-6,
+    epsilon_r: 3.66, tan_delta: 0.003, sigma_cond: SIGMA, rq: 0,
+    gnd_thickness: 35e-6, freq: 1e9,
+};
+const gcpw = { ...base, use_coplanar_gnd: true, gap: 0.15e-3, via_gap: 0.3e-3, use_vias: true };
+
+// Union area of axis-aligned rects: overlapping metal counts once.
+function unionArea(list) {
+    const xs = [...new Set(list.flatMap(c => [c.x_min, c.x_max]))].sort((a, b) => a - b);
+    const ys = [...new Set(list.flatMap(c => [c.y_min, c.y_max]))].sort((a, b) => a - b);
+    let a = 0;
+    for (let i = 0; i + 1 < xs.length; i++) for (let j = 0; j + 1 < ys.length; j++) {
+        const x = (xs[i] + xs[i + 1]) / 2, y = (ys[j] + ys[j + 1]) / 2;
+        if (list.some(c => x > c.x_min && x < c.x_max && y > c.y_min && y < c.y_max)) a += (xs[i + 1] - xs[i]) * (ys[j + 1] - ys[j]);
+    }
+    return a;
+}
+
+async function tri(opts, triOpts = {}) {
+    const s = new MicrostripSolver(opts);
+    const b = new TriBackend(ctx, s, { maxNodes: 18000, ...triOpts });
+    await b.buildMesh();
+    return b;
+}
+
+// ---- 1+2+3+4: single-ended GCPW ----
+{
+    const b = await tri(gcpw);
+    const bP = await tri(gcpw, { lossMethod: 'perturbation' });
+
+    const r0 = b.solveAt(0).modes[0];
+    const sig = unionArea(b.solver.conductors.filter(c => c.is_signal));
+    const gnd = unionArea(b.solver.conductors.filter(c => !c.is_signal));
+    // The bottom plane is a wall ground, an ideal return: the ground adds no DC resistance.
+    const rdc = 1 / (SIGMA * sig) + (b.solver._wall_grounds().size ? 0 : 1 / (SIGMA * gnd));
+    check('GCPW R(f=0) = geometric R_dc', relDiff(r0.RLGC.R, rdc) < 1e-9,
+        `${r0.RLGC.R.toFixed(4)} vs ${rdc.toFixed(4)} Ω/m`);
+
+    const rLow = b.solveAt(1e5).modes[0].RLGC.R;
+    const r1 = b.solveAt(1e9).modes[0].RLGC.R;
+    const r10 = b.solveAt(10e9).modes[0].RLGC.R;
+    const warns = (b._modeWarnings || []).map(w => w.type);
+    check('GCPW auto path is MQS (no applicability/fallback warning)',
+        !warns.includes('mqs-shape') && !warns.includes('mqs-no-interior'), warns.join(',') || 'no warnings');
+    check('GCPW R(f) increases with f', rLow < r1 && r1 < r10,
+        `${rLow.toFixed(2)} < ${r1.toFixed(2)} < ${r10.toFixed(2)} Ω/m`);
+
+    // MQS resolves the slot-corner current the perturbation SIBC over-counts, so
+    // it should land BELOW the perturbation estimate at skin-regime frequencies,
+    // but not far below (both model the same line). The perturbation value moves
+    // a few percent with the mesh, so this is a sanity bracket, not a reference.
+    const p10 = bP.solveAt(10e9).modes[0].RLGC.R;
+    check('GCPW MQS R within (-25%, +10%) of perturbation at 10 GHz',
+        r10 > 0.75 * p10 && r10 < 1.10 * p10, `mqs ${r10.toFixed(2)} vs pert ${p10.toFixed(2)} Ω/m`);
+
+    // Ground rects carry return current: direct MQS call on the cached skin mesh.
+    const mqs = mqsConductorLoss(b._skinCache.mesh, b.condRect, 10e9, SIGMA,
+        ctx.helpers.solveComplexSymmetric, 0, { cache: {} });
+    const share = mqs.R_gnd / mqs.R_total;
+    check('GCPW ground loss share in (5%, 60%)', share > 0.05 && share < 0.6,
+        `R_trace ${mqs.R_trace.toFixed(2)}, R_gnd ${mqs.R_gnd.toFixed(2)} Ω/m → ${(100 * share).toFixed(1)}%`);
+
+    // Two-pass band budget on top of the base mesh: trace headroom (mqsMaxTris)
+    // + ground budget (default mqsMaxTris/2), with slack for the conformity
+    // closure of the final refinement pass.
+    const budget = b.mesh.nTris + 80000 + 40000;
+    check('GCPW skin mesh respects trace+ground budget', b._skinCache.mesh.nTris <= 1.3 * budget,
+        `${b._skinCache.mesh.nTris} tris vs budget ${budget}`);
+}
+
+// ---- 2b: wide-gap limit → microstrip ----
+{
+    const bM = await tri(base);
+    const rM = bM.solveAt(10e9).modes[0].RLGC.R;
+    const bW = await tri({ ...gcpw, gap: 0.6e-3, domain_width: 8e-3 });
+    const rW = bW.solveAt(10e9).modes[0].RLGC.R;
+    check('wide-gap GCPW R → microstrip R at 10 GHz (±5%)', relDiff(rW, rM) < 0.05,
+        `gcpw ${rW.toFixed(2)} vs microstrip ${rM.toFixed(2)} Ω/m`);
+}
+
+// ---- 6: no skin band on the symmetry plane ----
+{
+    const b = await tri(gcpw);
+    b.solveAt(10e9);
+    const m = b._skinCache.mesh;
+    const x0 = b.condRect.xmin_domain, yTop = base.substrate_height + base.trace_thickness;
+    // Triangles inside the trace's vertical middle third, near the plane vs mid-trace.
+    const inner = (xa, xb) => {
+        let n = 0;
+        for (let t = 0; t < m.nTris; t++) {
+            let cx = 0, cy = 0;
+            for (let k = 0; k < 3; k++) { const v = m.tris[3 * t + k]; cx += m.nodes[2 * v] / 3; cy += m.nodes[2 * v + 1] / 3; }
+            if (cx >= xa && cx < xb && cy > yTop - 0.67 * base.trace_thickness && cy < yTop - 0.33 * base.trace_thickness) n++;
+        }
+        return n;
+    };
+    const dx = 10e-6, plane = inner(x0, x0 + dx), mid = inner(x0 + 60e-6, x0 + 60e-6 + dx);
+    check('half domain: no skin band along the symmetry-plane cut', b.symmetry && plane <= 2 * mid + 4,
+        `${plane} tris within 10 um of the plane vs ${mid} mid-trace`);
+}
+
+// ---- 5: differential GCPW, both modes ----
+{
+    const b = await tri({ ...gcpw, trace_spacing: 0.2e-3 });
+    const bP = await tri({ ...gcpw, trace_spacing: 0.2e-3 }, { lossMethod: 'perturbation' });
+    const rA = b.solveAt(10e9), rP = bP.solveAt(10e9);
+    for (let mi = 0; mi < rA.modes.length; mi++) {
+        const m = rA.modes[mi], p = rP.modes[mi];
+        const name = m.mode ?? `mode${mi}`;
+        check(`diff GCPW ${name} R sane vs perturbation (±30%)`,
+            m.RLGC.R > 0 && relDiff(m.RLGC.R, p.RLGC.R) < 0.30,
+            `mqs ${m.RLGC.R.toFixed(2)} vs pert ${p.RLGC.R.toFixed(2)} Ω/m`);
+        check(`diff GCPW ${name} Z0 matches perturbation backend (±1%)`,
+            relDiff(m.Z0, p.Z0) < 0.01, `${m.Z0.toFixed(2)} vs ${p.Z0.toFixed(2)} Ω`);
+    }
+}
+
+done();

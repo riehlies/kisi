@@ -1,0 +1,1403 @@
+import { MicrostripSolver as _MicrostripSolver } from '../src/microstrip.js';
+import { BroadsideStriplineSolver as _BroadsideStriplineSolver } from '../src/broadside_stripline.js';
+import { CustomGeometrySolver } from '../src/custom_geometry.js';
+
+// Backend selection: `MESH_BACKEND=triangular node tests/test_vs_ref.js` runs the
+// whole suite on the triangular FEM backend; default is the rectilinear FDM solver.
+const MESH_BACKEND = process.env.MESH_BACKEND || 'rectilinear';
+const TRI_LOSS = process.env.TRI_LOSS || null;   // 'auto'|'perturbation'|'static' (triangular only)
+console.log(`\n### Running test_vs_ref.js with mesh_backend = "${MESH_BACKEND}"${TRI_LOSS ? ` lossMethod="${TRI_LOSS}"` : ''} ###`);
+const _triOpts = TRI_LOSS ? { lossMethod: TRI_LOSS } : null;
+class MicrostripSolver extends _MicrostripSolver {
+    constructor(o) { super({ ...o, mesh_backend: o.mesh_backend ?? MESH_BACKEND }); if (_triOpts) this.tri_opts = _triOpts; }
+}
+class BroadsideStriplineSolver extends _BroadsideStriplineSolver {
+    constructor(o) { super({ ...o, mesh_backend: o.mesh_backend ?? MESH_BACKEND }); if (_triOpts) this.tri_opts = _triOpts; }
+}
+import { computeSParamsSingleEnded, computeSParamsDifferential } from '../src/sparameters.js';
+import { Complex } from '../src/complex.js';
+import { readFileSync } from 'fs';
+import { test_s4p_generation_lossless, test_s4p_generation, test_s2p_generation, test_s2p_generation2,
+         parseS4P_MA, complexAbsDiff } from './test_snp_export.js';
+import { fileURLToPath } from 'url';
+import { join, dirname } from 'path';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Test microstrip solver results against reference values.
+ *
+ * @param {Object} solver_results - Object with keys 'Z0', 'eps_eff', 'alpha_diel', 'alpha_cond', 'C', 'R', 'L', 'G'
+ * @param {Object} reference - Object with reference values
+ * @param {string} test_name - Name of the test for printing
+ * @returns {Object} Test results with pass/fail status
+ */
+function test_microstrip_solution(solver_results, reference, test_name = "Microstrip",
+                                  threshold_overrides = {}) {
+    // Global error thresholds (relative error in %). Set from the worst observed error
+    // across every case and both backends, with roughly 1.5x headroom.
+    // Re-derive them after an accuracy change: run this file with and without
+    // MESH_BACKEND=triangular and take the max per parameter.
+    const MAX_Z0_ERROR = 3.0;
+    const MAX_DIEL_LOSS_ERROR = 4.0;
+    const MAX_COND_LOSS_ERROR = 15.0;
+    const MAX_LOSS_ERROR = 10.0;
+    const MAX_C_ERROR = 2.0;
+    const MAX_R_ERROR = 10.0;
+    const MAX_L_ERROR = 2.0;
+    const MAX_G_ERROR = 6.0;
+    const MAX_EPS_EFF_ERROR = 3.0;
+    const MAX_ZC_ERROR = 10.0;
+    const MAX_Z_IMAG_ERROR = 6.0;
+
+    // Error thresholds mapping
+    const error_thresholds = {
+        'Z0': MAX_Z0_ERROR,
+        'Z0_imag': MAX_Z_IMAG_ERROR,
+        'RZc': MAX_ZC_ERROR,
+        'IZc': MAX_ZC_ERROR,
+        'diel_loss': MAX_DIEL_LOSS_ERROR,
+        'cond_loss': MAX_COND_LOSS_ERROR,
+        'loss': MAX_LOSS_ERROR,
+        'C': MAX_C_ERROR,
+        'R': MAX_R_ERROR,
+        'L': MAX_L_ERROR,
+        'G': MAX_G_ERROR,
+        'eps_eff': MAX_EPS_EFF_ERROR,
+        // Per-case overrides. Mostly tightening, for a case that exists to test
+        // one quantity. A few loosen where the reference itself has poor
+        // accuracy.
+        ...threshold_overrides
+    };
+
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`${test_name.toUpperCase()} VALIDATION TEST`);
+    console.log(`${'='.repeat(80)}`);
+    console.log(`${'Parameter'.padEnd(15)} ${'Solved'.padEnd(15)} ${'Reference'.padEnd(15)} ${'Error (%)'.padEnd(12)} ${'Status'.padEnd(10)}`);
+    console.log(`${'-'.repeat(80)}`);
+
+    let all_passed = true;
+    const test_results = {};
+
+    for (const [param, ref_value] of Object.entries(reference)) {
+        if (!(param in solver_results)) {
+            continue;
+        }
+
+        const solved_value = solver_results[param];
+
+        // Calculate relative error
+        let rel_error;
+        if (ref_value !== 0) {
+            rel_error = Math.abs((solved_value - ref_value) / ref_value) * 100;
+        } else {
+            rel_error = Math.abs(solved_value) * 100;
+        }
+
+        // Check against threshold
+        const threshold = error_thresholds[param] || 10.0; // default 10%
+        const passed = rel_error <= threshold;
+        all_passed = all_passed && passed;
+
+        const status = passed ? "✓ PASS" : "✗ FAIL";
+
+        // Format values based on magnitude
+        let solved_str, ref_str;
+        if (param === 'C') {
+            solved_str = `${(solved_value * 1e12).toFixed(2)} pF`;
+            ref_str = `${(ref_value * 1e12).toFixed(2)} pF`;
+        } else if (param === 'L') {
+            solved_str = `${(solved_value * 1e9).toFixed(2)} nH`;
+            ref_str = `${(ref_value * 1e9).toFixed(2)} nH`;
+        } else if (param === 'G') {
+            solved_str = `${(solved_value * 1e3).toFixed(2)} mS`;
+            ref_str = `${(ref_value * 1e3).toFixed(2)} mS`;
+        } else if (param === 'R') {
+            solved_str = `${solved_value.toFixed(2)} Ω`;
+            ref_str = `${ref_value.toFixed(2)} Ω`;
+        } else if (param.includes('loss')) {
+            solved_str = `${solved_value.toFixed(4)} dB/m`;
+            ref_str = `${ref_value.toFixed(4)} dB/m`;
+        } else {
+            solved_str = `${solved_value.toFixed(3)}`;
+            ref_str = `${ref_value.toFixed(3)}`;
+        }
+
+        console.log(`${param.padEnd(15)} ${solved_str.padEnd(15)} ${ref_str.padEnd(15)} ${rel_error.toFixed(2).padEnd(12)} ${status.padEnd(10)}`);
+
+        test_results[param] = {
+            'solved': solved_value,
+            'reference': ref_value,
+            'error': rel_error,
+            'passed': passed
+        };
+    }
+
+    console.log(`${'-'.repeat(80)}`);
+    console.log(`Overall Result: ${all_passed ? '✓ ALL TESTS PASSED' : '✗ SOME TESTS FAILED'}`);
+    console.log(`${'='.repeat(80)}\n`);
+
+    if (!all_passed) {
+        throw new Error(`${test_name} validation failed - see errors above`);
+    }
+
+    return test_results;
+}
+
+function test_differential_solution(solver_results, reference, test_name = "Differential Microstrip",
+                                   threshold_overrides = {}) {
+    const MAX_Z_DIFF_ERROR = 4.0;
+    const MAX_Z_COMMON_ERROR = 4.0;
+    const MAX_Z_ODD_ERROR = 4.0;
+    const MAX_Z_EVEN_ERROR = 2.0;
+    const MAX_EPS_EFF_ERROR = 2.0;
+    const MAX_Z_IMAG_ERROR = 4.0;
+    const MAX_ALPHA_C_ERROR = 12.0;
+    const MAX_ALPHA_D_ERROR = 8.0;
+    const MAX_ALPHA_TOT_ERROR = 9.0;
+    const MAX_C_ERROR = 2.0;
+
+    // Error thresholds mapping
+    const error_thresholds = {
+        'Z_diff': MAX_Z_DIFF_ERROR,
+        'Z_common': MAX_Z_COMMON_ERROR,
+        'Z_odd': MAX_Z_ODD_ERROR,
+        'Z_even': MAX_Z_EVEN_ERROR,
+        'eps_eff_odd': MAX_EPS_EFF_ERROR,
+        'eps_eff_even': MAX_EPS_EFF_ERROR,
+        'Zc_imag_odd': MAX_Z_IMAG_ERROR,
+        'Zc_imag_even': MAX_Z_IMAG_ERROR,
+        'C_odd': MAX_C_ERROR,
+        'C_even': MAX_C_ERROR,
+        'alpha_c_odd': MAX_ALPHA_C_ERROR,
+        'alpha_c_even': MAX_ALPHA_C_ERROR,
+        'alpha_d_odd': MAX_ALPHA_D_ERROR,
+        'alpha_d_even': MAX_ALPHA_D_ERROR,
+        'alpha_total_odd': MAX_ALPHA_TOT_ERROR,
+        'alpha_total_even': MAX_ALPHA_TOT_ERROR,
+        // RLGC matrix thresholds
+        'R': 7.0,
+        // R12 = (R_even - R_odd)/2 amplifies any mode-dependent bias by
+        // R11/(2*R12) ~ 11x.
+        'R_offdiag': 32.0,
+        'L': 2.0,
+        'G': 12.0,
+        'C': 2.0,
+        // See test_microstrip_solution: mostly tightening, a few documented loosenings.
+        ...threshold_overrides
+    };
+
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`${test_name.toUpperCase()} VALIDATION TEST`);
+    console.log(`${'='.repeat(80)}`);
+    console.log(`${'Parameter'.padEnd(20)} ${'Solved'.padEnd(15)} ${'Reference'.padEnd(15)} ${'Error (%)'.padEnd(12)} ${'Status'.padEnd(10)}`);
+    console.log(`${'-'.repeat(80)}`);
+
+    let all_passed = true;
+    const test_results = {};
+
+    for (const [param, ref_value] of Object.entries(reference)) {
+        if (!(param in solver_results)) {
+            continue;
+        }
+
+        const solved_value = solver_results[param];
+
+        // Handle array values (for RLGC matrices)
+        if (Array.isArray(ref_value)) {
+            // Test each element of the array
+            for (let i = 0; i < ref_value.length; i++) {
+                const elem_ref = ref_value[i];
+                const elem_solved = solved_value[i];
+
+                // Calculate relative error
+                let rel_error;
+                if (elem_ref !== 0) {
+                    rel_error = Math.abs((elem_solved - elem_ref) / elem_ref) * 100;
+                } else {
+                    rel_error = Math.abs(elem_solved) * 100;
+                }
+
+                // Check against threshold. Off-diagonal matrix elements (12, 21) can
+                // use a separate, wider threshold (e.g. mutual R) when one is defined.
+                const is_offdiag = (i === 1 || i === 2);
+                const threshold = (is_offdiag && error_thresholds[`${param}_offdiag`] != null)
+                    ? error_thresholds[`${param}_offdiag`]
+                    : (error_thresholds[param] || 10.0);
+                const passed = rel_error <= threshold;
+                all_passed = all_passed && passed;
+
+                const status = passed ? "✓ PASS" : "✗ FAIL";
+
+                // Format values based on parameter type
+                let solved_str, ref_str, param_label;
+                const indices = ['11', '12', '21', '22'];
+                param_label = `${param}[${indices[i]}]`;
+
+                if (param === 'C') {
+                    solved_str = `${(elem_solved * 1e12).toFixed(2)} pF/m`;
+                    ref_str = `${(elem_ref * 1e12).toFixed(2)} pF/m`;
+                } else if (param === 'L') {
+                    solved_str = `${(elem_solved * 1e9).toFixed(2)} nH/m`;
+                    ref_str = `${(elem_ref * 1e9).toFixed(2)} nH/m`;
+                } else if (param === 'G') {
+                    solved_str = `${(elem_solved * 1e3).toFixed(2)} mS/m`;
+                    ref_str = `${(elem_ref * 1e3).toFixed(2)} mS/m`;
+                } else if (param === 'R') {
+                    solved_str = `${elem_solved.toFixed(2)} Ω/m`;
+                    ref_str = `${elem_ref.toFixed(2)} Ω/m`;
+                } else {
+                    solved_str = `${elem_solved.toFixed(3)}`;
+                    ref_str = `${elem_ref.toFixed(3)}`;
+                }
+
+                console.log(`${param_label.padEnd(20)} ${solved_str.padEnd(15)} ${ref_str.padEnd(15)} ${rel_error.toFixed(2).padEnd(12)} ${status.padEnd(10)}`);
+
+                test_results[param_label] = {
+                    'solved': elem_solved,
+                    'reference': elem_ref,
+                    'error': rel_error,
+                    'passed': passed
+                };
+            }
+            continue;
+        }
+
+        // Handle scalar values
+        // Calculate relative error
+        let rel_error;
+        if (ref_value !== 0) {
+            rel_error = Math.abs((solved_value - ref_value) / ref_value) * 100;
+        } else {
+            rel_error = Math.abs(solved_value) * 100;
+        }
+
+        // Check against threshold
+        const threshold = error_thresholds[param] || 10.0;
+        const passed = rel_error <= threshold;
+        all_passed = all_passed && passed;
+
+        const status = passed ? "✓ PASS" : "✗ FAIL";
+
+        // Format values based on parameter type
+        let solved_str, ref_str;
+        if (param.startsWith('C_')) {
+            solved_str = `${(solved_value * 1e12).toFixed(2)} pF`;
+            ref_str = `${(ref_value * 1e12).toFixed(2)} pF`;
+        } else if (param.startsWith('alpha_')) {
+            solved_str = `${solved_value.toFixed(4)} dB/m`;
+            ref_str = `${ref_value.toFixed(4)} dB/m`;
+        } else if (param.startsWith('Z_')) {
+            solved_str = `${solved_value.toFixed(2)} Ω`;
+            ref_str = `${ref_value.toFixed(2)} Ω`;
+        } else {
+            solved_str = `${solved_value.toFixed(3)}`;
+            ref_str = `${ref_value.toFixed(3)}`;
+        }
+
+        console.log(`${param.padEnd(20)} ${solved_str.padEnd(15)} ${ref_str.padEnd(15)} ${rel_error.toFixed(2).padEnd(12)} ${status.padEnd(10)}`);
+
+        test_results[param] = {
+            'solved': solved_value,
+            'reference': ref_value,
+            'error': rel_error,
+            'passed': passed
+        };
+    }
+
+    console.log(`${'-'.repeat(80)}`);
+    console.log(`Overall Result: ${all_passed ? '✓ ALL TESTS PASSED' : '✗ SOME TESTS FAILED'}`);
+    console.log(`${'='.repeat(80)}\n`);
+
+    if (!all_passed) {
+        throw new Error(`${test_name} validation failed - see errors above`);
+    }
+
+    return test_results;
+}
+
+async function solve_microstrip() {
+    const solver = new MicrostripSolver({
+        substrate_height: 1.6e-3,
+        trace_width: 3e-3,
+        trace_thickness: 35e-6,
+        gnd_thickness: 35e-6,
+        epsilon_r: 4.5,
+        tan_delta: 0.02,
+        sigma_cond: 5.8e7,
+        freq: 1e9,
+        nx: 10,
+        ny: 10,
+        use_sm: false,
+        boundaries: ["open", "open", "open", "gnd"]
+    });
+
+    const results = await solver.solve_adaptive();
+    const mode = results.modes[0];
+
+    // Prepare results dictionary matching Python format
+    const solver_results = {
+        'Z0': mode.Z0,
+        'eps_eff': mode.eps_eff,
+        'diel_loss': mode.alpha_d,
+        'cond_loss': mode.alpha_c,
+        'C': mode.RLGC.C,
+        'R': mode.RLGC.R,
+        'L': mode.RLGC.L,
+        'G': mode.RLGC.G
+    };
+
+    // Reference values from HFSS
+    const reference = {
+        "Z0": 49.8,
+        "diel_loss": 2.99,
+        "cond_loss": 0.285,
+        "C": 123e-12,
+        "R": 3.26,
+        "G": 13.86e-3,
+        "L": 307e-9
+    };
+
+    // Test against reference
+    test_microstrip_solution(solver_results, reference, "Microstrip 50Ω");
+
+    return solver_results;
+}
+
+// Microstrip at 1 kHz on a 50 mm ground in open space. The return
+// current spreads over the whole ground width, which raises L well above its
+// high-frequency value: the ground is a conductor of its own here, not a ground plane on
+// a wall. This is required to solve for ground inductance correctly.
+async function solve_microstrip_1khz() {
+    const solver = new CustomGeometrySolver({
+        text: `units mm
+bounds open open open open
+diel x=-25   w=50 y=0      h=1.6 er=4.5
+gnd  x=-25   w=50 y=-0.035 h=0.035
+sig+ x=-1.5  w=3  y=1.6    h=0.035
+`,
+        sigma_cond: 1e7, freq: 1e3, nx: 10, ny: 10, mesh_backend: MESH_BACKEND,
+    });
+    if (_triOpts) solver.tri_opts = _triOpts;
+
+    const results = await solver.solve_adaptive();
+    const mode = results.modes[0];
+
+    // Prepare results dictionary matching Python format
+    const solver_results = {
+        'RZc': mode.Zc.re,
+        'IZc': mode.Zc.im,
+        'eps_eff': mode.eps_eff,
+        'diel_loss': mode.alpha_d,
+        'cond_loss': mode.alpha_c,
+        'C': mode.RLGC.C,
+        'R': mode.RLGC.R,
+        'L': mode.RLGC.L,
+        'G': mode.RLGC.G
+    };
+
+    const reference = {
+        "RZc": 866,
+        "IZc": -864,
+        "cond_loss": 0.0058,
+        "C": 123.25e-12,
+        "R": 1.01,
+        "G": 0,
+        "L": 523e-9,
+    };
+
+    // Zc: with R >> omega L it is sqrt(R / (j omega C)), which the reference's own R and C
+    // put at 808 - 806j, 7% below the reported 866 - 864j. Both backends give about 807.
+    test_microstrip_solution(solver_results, reference, "Microstrip 1 kHz");
+
+    return solver_results;
+}
+
+async function solve_microstrip_embed() {
+    const solver = new MicrostripSolver({
+        substrate_height: 1.6e-3,
+        trace_width: 3e-3,
+        trace_thickness: 35e-6,
+        gnd_thickness: 35e-6,
+        epsilon_r: 4.5,
+        tan_delta: 0.02,
+        sigma_cond: 5.8e7,
+        freq: 1e9,
+        nx: 10,
+        ny: 10,
+        use_sm: false,
+        top_diel_h: 0.2e-3,
+        top_diel_er: 4.5,
+        top_diel_tand: 0.02,
+        boundaries: ["open", "open", "open", "gnd"]
+    });
+
+    const results = await solver.solve_adaptive();
+    const mode = results.modes[0];
+
+    const solver_results = {
+        'Z0': mode.Zc.re,
+        'Z0_imag': mode.Zc.im,
+        'eps_eff': mode.eps_eff,
+        'diel_loss': mode.alpha_d,
+        'cond_loss': mode.alpha_c,
+        'loss': mode.alpha_total,
+        'C': mode.RLGC.C,
+        'R': mode.RLGC.R,
+        'L': mode.RLGC.L,
+        'G': mode.RLGC.G
+    };
+
+    // Reference values from HFSS
+    const reference = {
+        "Z0": 48.154,
+        "Z0_imag": 0.402,
+        "eps_eff": 3.6217,
+        "loss": 3.4801,
+        "C": 131.81e-12,
+        "R": 3.2618,
+        "L": 305.7e-9,
+        "G": 15.233e-3
+    };
+
+    test_microstrip_solution(solver_results, reference, "Embedded microstrip");
+
+    return solver_results;
+}
+
+async function solve_microstrip_cut() {
+    const solver = new MicrostripSolver({
+        substrate_height: 1.6e-3,
+        trace_width: 3e-3,
+        trace_thickness: 35e-6,
+        gnd_thickness: 35e-6,
+        epsilon_r: 4.5,
+        tan_delta: 0.02,
+        sigma_cond: 5.8e7,
+        freq: 1e9,
+        nx: 10,
+        ny: 10,
+        use_sm: false,
+        gnd_cut_width: 3e-3,
+        gnd_cut_sub_h: 1e-3,
+        boundaries: ["open", "open", "open", "gnd"]
+    });
+
+    const results = await solver.solve_adaptive();
+    const mode = results.modes[0];
+
+    const solver_results = {
+        'Z0': mode.Z0,
+        'eps_eff': mode.eps_eff,
+        'diel_loss': mode.alpha_d,
+        'cond_loss': mode.alpha_c,
+        'loss': mode.alpha_total,
+        'C': mode.RLGC.C,
+        'R': mode.RLGC.R,
+        'L': mode.RLGC.L,
+        'G': mode.RLGC.G
+    };
+
+    // Reference values from HFSS
+    const reference = {
+        "Z0": 55.84,
+        "eps_eff": 3.28,
+        "loss": 3.19,
+        "C": 108.25e-12
+    };
+
+    // Test against reference
+    test_microstrip_solution(solver_results, reference, "Microstrip with ground cut");
+
+    return solver_results;
+}
+
+async function solve_microstrip_20ghz() {
+    const solver = new MicrostripSolver({
+        substrate_height: 0.508e-3,
+        trace_width: 1.1e-3,
+        trace_thickness: 35e-6,
+        gnd_thickness: 35e-6,
+        epsilon_r: 3.48,
+        tan_delta: 0.0037,
+        sigma_cond: 5.8e7,
+        freq: 20e9,
+        rq: 0,
+        nx: 10,
+        ny: 10,
+        use_sm: false,
+        boundaries: ["open", "open", "open", "gnd"]
+    });
+
+    const results = await solver.solve_adaptive();
+    const mode = results.modes[0];
+
+    const solver_results = {
+        'Z0': mode.Z0,
+        'eps_eff': mode.eps_eff,
+        'diel_loss': mode.alpha_d,
+        'cond_loss': mode.alpha_c,
+        'loss': mode.alpha_total,
+        'C': mode.RLGC.C,
+        'R': mode.RLGC.R,
+        'L': mode.RLGC.L,
+        'G': mode.RLGC.G
+    };
+
+    const reference = {
+        "Z0": 50.5,
+        "eps_eff": 2.7078,
+        "loss": 12.856
+    };
+
+    // Test against reference
+    // eps_eff is loosened here alone due to dispersion. Reference does not
+    // include it.
+    test_microstrip_solution(solver_results, reference, "Microstrip 50Ω 20 GHz",
+                             { 'eps_eff': 5.0 });
+
+    return solver_results;
+}
+
+async function solve_differential_microstrip() {
+    const solver = new MicrostripSolver({
+        substrate_height: 1.6e-3,
+        trace_width: 3e-3,
+        trace_thickness: 35e-6,
+        gnd_thickness: 16e-6,
+        epsilon_r: 4.5,
+        freq: 1e9,
+        nx: 10,
+        ny: 10,
+        trace_spacing: 1e-3  // This enables differential mode
+    });
+
+    const results = await solver.solve_adaptive({energy_tol: 0.01});
+    const odd = results.modes.find(m => m.mode === 'odd');
+    const even = results.modes.find(m => m.mode === 'even');
+
+    // Map to flat structure for test function
+    const solver_results = {
+        'Z_odd': odd.Z0,
+        'Z_even': even.Z0,
+        'Z_diff': results.Z_diff,
+        'Z_common': results.Z_common,
+        'eps_eff_odd': odd.eps_eff,
+        'eps_eff_even': even.eps_eff,
+        'alpha_c_odd': odd.alpha_c,
+        'alpha_c_even': even.alpha_c,
+        'alpha_d_odd': odd.alpha_d,
+        'alpha_d_even': even.alpha_d,
+        'alpha_total_odd': odd.alpha_total,
+        'alpha_total_even': even.alpha_total
+    };
+
+    const reference = {
+        'Z_odd': 40.23,
+        'Z_even': 57.65,
+        'eps_eff_even': 3.65,
+        'eps_eff_odd': 2.98,
+        'alpha_c_odd': 0.363,
+        'alpha_c_even': 0.269,
+        'alpha_d_odd': 2.67,
+        'alpha_d_even': 3.21
+    };
+
+    // Test against reference
+    test_differential_solution(solver_results, reference, "Differential Microstrip");
+
+    return results;
+}
+
+async function solve_stripline() {
+    const solver = new MicrostripSolver({
+        substrate_height: 0.2e-3,
+        trace_width: 0.15e-3,
+        trace_thickness: 35e-6,
+        gnd_thickness: 16e-6,
+        epsilon_r: 4.1,
+        epsilon_r_top: 4.1,
+        tan_delta: 0.02,
+        tan_delta_top: 0.02,
+        enclosure_height: 0.2e-3 + 35e-6,
+        freq: 1e9,
+        nx: 10,
+        ny: 10,
+        boundaries: ["open", "open", "gnd", "gnd"]
+    });
+
+    const results = await solver.solve_adaptive({energy_tol: 0.01});
+    const mode = results.modes[0];
+
+    const solver_results = {
+        'Z0': mode.Zc.re,
+        'eps_eff': mode.eps_eff,
+        'diel_loss': mode.alpha_d,
+        'cond_loss': mode.alpha_c,
+        'loss': mode.alpha_total,
+        'C': mode.RLGC.C,
+        'R': mode.RLGC.R,
+        'L': mode.RLGC.L,
+        'G': mode.RLGC.G
+    };
+
+    // Reference values from HFSS
+    const reference = {
+        "Z0": 50.611,
+        "eps_eff": 4.1683,
+        "cond_loss": 3.061,
+        "loss": 6.7778
+    };
+
+    // Test against reference
+    test_microstrip_solution(solver_results, reference, "Stripline");
+
+    return results;
+}
+
+async function solve_rough_stripline() {
+    const solver = new MicrostripSolver({
+        substrate_height: 177e-6,
+        trace_width: 160e-6,
+        trace_thickness: -15e-6,
+        gnd_thickness: 15e-6,
+        epsilon_r: 3.48,
+        epsilon_r_top: 3.3,
+        tan_delta: 0.004,
+        tan_delta_top: 0.004,
+        enclosure_height: 177e-6,
+        freq: 40e9,
+        nx: 30,
+        ny: 30,
+        rq: 0.6e-6,
+        boundaries: ["open", "open", "gnd", "gnd"]
+    });
+
+    const results = await solver.solve_adaptive();
+    const mode = results.modes[0];
+
+    const solver_results = {
+        'Z0': mode.Z0,
+        'eps_eff': mode.eps_eff,
+        'diel_loss': mode.alpha_d,
+        'cond_loss': mode.alpha_c,
+        'loss': mode.alpha_total,
+        'C': mode.RLGC.C,
+        'R': mode.RLGC.R,
+        'L': mode.RLGC.L,
+        'G': mode.RLGC.G
+    };
+
+    const phase_delay = 6.3e-9;
+    const eps_eff = Math.pow(3e8 * phase_delay, 2);
+
+    // Reference values from Gradient model paper
+    // G. Gold and K. Helmreich, "A Physical Surface Roughness Model and Its
+    // Applications," in IEEE Transactions on Microwave Theory and Techniques,
+    // vol. 65, no. 10, pp. 3720-3732, Oct. 2017.
+    // Measurement result. This can have larger error than other tests.
+    const reference = {
+        "eps_eff": eps_eff,
+        "loss": 80,
+    };
+
+    // Test against reference
+    test_microstrip_solution(solver_results, reference, "Rough Stripline");
+
+    return results;
+}
+
+async function solve_differential_stripline() {
+    const solver = new MicrostripSolver({
+        substrate_height: 0.2e-3,
+        trace_width: 0.15e-3,
+        trace_thickness: 35e-6,
+        gnd_thickness: 16e-6,
+        epsilon_r: 4.1,
+        epsilon_r_top: 4.1,
+        tan_delta: 0.02,
+        tan_delta_top: 0.02,
+        enclosure_height: 0.2e-3 + 35e-6,
+        freq: 1e9,
+        nx: 10,
+        ny: 10,
+        trace_spacing: 0.1e-3,  // This enables differential mode
+        boundaries: ["open", "open", "gnd", "gnd"]
+    });
+
+    const results = await solver.solve_adaptive();
+    const odd = results.modes.find(m => m.mode === 'odd');
+    const even = results.modes.find(m => m.mode === 'even');
+
+    // Map to flat structure for test function
+    const solver_results = {
+        'Z_odd': odd.Z0,
+        'Z_even': even.Z0,
+        'Z_diff': results.Z_diff,
+        'Z_common': results.Z_common,
+        'eps_eff_odd': odd.eps_eff,
+        'eps_eff_even': even.eps_eff,
+        'alpha_c_odd': odd.alpha_c,
+        'alpha_c_even': even.alpha_c,
+        'alpha_d_odd': odd.alpha_d,
+        'alpha_d_even': even.alpha_d,
+        'alpha_total_odd': odd.alpha_total,
+        'alpha_total_even': even.alpha_total
+    };
+
+    const reference = {
+        'Z_odd': 37.6,
+        'Z_even': 61.36,
+        'eps_eff_even': 4.162,
+        'eps_eff_odd': 4.195,
+        'alpha_total_odd': 7.93,
+        'alpha_total_even': 6.47,
+    };
+
+    // Test against reference
+    test_differential_solution(solver_results, reference, "Differential Stripline");
+
+    return results;
+}
+
+async function solve_differential_stripline_rlgc() {
+    const solver = new MicrostripSolver({
+        substrate_height: 0.2e-3,
+        trace_width: 0.15e-3,
+        trace_thickness: 35e-6,
+        gnd_thickness: 16e-6,
+        epsilon_r: 4.1,
+        epsilon_r_top: 4.1,
+        tan_delta: 0.02,
+        tan_delta_top: 0.02,
+        enclosure_height: 0.2e-3 + 35e-6,
+        enclosure_width: 3e-3,
+        sigma_cond: 5.8e7,
+        freq: 67e9,
+        nx: 10,
+        ny: 10,
+        trace_spacing: 0.1e-3,  // This enables differential mode
+        boundaries: ["gnd", "gnd", "gnd", "gnd"]
+    });
+    solver.use_causal_materials = false;
+
+    const results = await solver.solve_adaptive({energy_tol: 0.001});
+    const odd = results.modes.find(m => m.mode === 'odd');
+    const even = results.modes.find(m => m.mode === 'even');
+
+    // Map to flat structure for test function
+    const solver_results = {
+        'Z_odd': odd.Z0,
+        'Z_even': even.Z0,
+        'Z_diff': results.Z_diff,
+        'Z_common': results.Z_common,
+        'eps_eff_odd': odd.eps_eff,
+        'eps_eff_even': even.eps_eff,
+        'alpha_c_odd': odd.alpha_c,
+        'alpha_c_even': even.alpha_c,
+        'alpha_d_odd': odd.alpha_d,
+        'alpha_d_even': even.alpha_d,
+        'alpha_total_odd': odd.alpha_total,
+        'alpha_total_even': even.alpha_total
+    };
+
+    // Add 2x2 RLGC matrix values (flattened for comparison)
+    if (results.RLGC_matrix) {
+        const m = results.RLGC_matrix;
+        solver_results.R = [m.R[0][0], m.R[0][1], m.R[1][0], m.R[1][1]];
+        solver_results.L = [m.L[0][0], m.L[0][1], m.L[1][0], m.L[1][1]];
+        solver_results.G = [m.G[0][0], m.G[0][1], m.G[1][0], m.G[1][1]];
+        solver_results.C = [m.C[0][0], m.C[0][1], m.C[1][0], m.C[1][1]];
+    }
+
+    const reference = {
+        'Z_odd': 37.235,
+        'Z_even': 60.94,
+        'eps_eff_odd': 4.112,
+        'eps_eff_even': 4.1081,
+        'alpha_total_odd': 280.42,
+        'alpha_total_even': 269.35,
+        // 2x2 RLGC matrix (left and right traces)
+        'R': [297.62, 13.565, 13.565, 297.62],
+        'L': [3.32e-7, 8e-8, 8e-8, 3.32e-7],
+        'C': [1.4626e-10, -3.5347e-11, -3.5347e-11, 1.4626e-10],
+        'G': [1.232, -0.2976, -0.2976, 1.232]
+    };
+
+    // Test against reference
+    test_differential_solution(solver_results, reference, "Differential Stripline");
+
+    return results;
+}
+
+async function solve_broadside_stripline() {
+    const solver = new BroadsideStriplineSolver({
+        trace_width: 0.3e-3,
+        trace_thickness: 35e-6,
+        x_offset: 0,
+        sigma_cond: 5.8e7,
+        h_bottom: 0.2e-3,
+        er_bottom: 4.4,
+        tand_bottom: 0.02,
+        h_middle: 0.235e-3,  // 0.2 mm + 35 µm: bottom-of-lower to top-of-upper
+        er_middle: 4.4,
+        tand_middle: 0.02,
+        h_top: 0.165e-3,     // 0.2 mm - 35 µm: top-of-upper to bottom-of-top-ground
+        er_top: 4.4,
+        tand_top: 0.02,
+        enclosure_width: 3e-3,
+        freq: 1e9,
+        nx: 10,
+        ny: 10,
+        boundaries: ["gnd", "gnd", "gnd", "gnd"],
+    });
+
+    const results = await solver.solve_adaptive();
+    const odd = results.modes.find(m => m.mode === 'odd');
+    const even = results.modes.find(m => m.mode === 'even');
+
+    const solver_results = {
+        'Z_odd': odd.Z0,
+        'Z_even': even.Z0,
+        'eps_eff_odd': odd.eps_eff,
+        'eps_eff_even': even.eps_eff,
+        'alpha_total_odd': odd.alpha_total,
+        'alpha_total_even': even.alpha_total,
+    };
+
+    const reference = {
+        'Z_odd': 23.44,
+        'Z_even': 53.1,
+        'eps_eff_odd': 4.48,
+        'eps_eff_even': 4.46,
+        'alpha_total_odd': 7.16,
+        'alpha_total_even': 6.34,
+    };
+
+    test_differential_solution(solver_results, reference, "Broadside Coupled Stripline");
+
+    return results;
+}
+
+async function solve_broadside_stripline_offset() {
+    const solver = new BroadsideStriplineSolver({
+        trace_width: 0.3e-3,
+        trace_thickness: 35e-6,
+        x_offset: 0.3e-3,
+        sigma_cond: 5.8e7,
+        h_bottom: 0.2e-3,
+        er_bottom: 4.4,
+        tand_bottom: 0.02,
+        h_middle: 0.235e-3,  // 0.2 mm + 35 µm: bottom-of-lower to top-of-upper
+        er_middle: 4.4,
+        tand_middle: 0.02,
+        h_top: 0.165e-3,     // 0.2 mm - 35 µm: top-of-upper to bottom-of-top-ground
+        er_top: 4.4,
+        tand_top: 0.02,
+        enclosure_width: 3e-3,
+        freq: 1e9,
+        nx: 10,
+        ny: 10,
+        boundaries: ["gnd", "gnd", "gnd", "gnd"],
+    });
+
+    const results = await solver.solve_adaptive();
+    const odd = results.modes.find(m => m.mode === 'odd');
+    const even = results.modes.find(m => m.mode === 'even');
+
+    const solver_results = {
+        'Z_odd': odd.Z0,
+        'Z_even': even.Z0,
+        'eps_eff_odd': odd.eps_eff,
+        'eps_eff_even': even.eps_eff,
+        'alpha_total_odd': odd.alpha_total,
+        'alpha_total_even': even.alpha_total,
+    };
+
+    const reference = {
+        'Z_odd': 29.4,
+        'Z_even': 46.9,
+        'eps_eff_odd': 4.47,
+        'eps_eff_even': 4.45,
+        'alpha_total_odd': 6.92,
+        'alpha_total_even': 6.25,
+    };
+
+    test_differential_solution(solver_results, reference, "Broadside Coupled Stripline (0.3 mm offset)");
+
+    return results;
+}
+
+async function solve_gcpw() {
+    const solver = new MicrostripSolver({
+        substrate_height: 0.3e-3,
+        trace_width: 0.3e-3,
+        trace_thickness: 35e-6,
+        gnd_thickness: 35e-6,
+        epsilon_r: 4.5,
+        tan_delta: 0.02,
+        sigma_cond: 5.8e7,
+        freq: 1e9,
+        nx: 10,
+        ny: 10,
+        use_coplanar_gnd: true,
+        gap: 150e-6,
+        via_gap: 500e-6,
+        use_vias: true,
+        boundaries: ["open", "open", "open", "gnd"]
+    });
+
+    const results = await solver.solve_adaptive();
+    const mode = results.modes[0];
+
+    const solver_results = {
+        'Z0': mode.Z0,
+        'eps_eff': mode.eps_eff,
+        'loss': mode.alpha_total,
+        'C': mode.RLGC.C,
+        'R': mode.RLGC.R,
+        'L': mode.RLGC.L,
+        'G': mode.RLGC.G
+    };
+
+    // Reference values from: t_sub=0.3mm, w=0.3mm, t=35µm,
+    // gap=150µm, stitching via 500µm from the gap edge, er=4.5, tand=0.02,
+    // copper 5.8e7 S/m, 1 GHz. Total attenuation 4.5816 dB/m.
+    const reference = {
+        "Z0": 55.465,
+        "eps_eff": 2.7542,
+        "loss": 4.5816,
+        "C": 99.804e-12,
+        "R": 27.297,
+        "L": 307.05e-9,
+        "G": 10.147e-3
+    };
+
+    test_microstrip_solution(solver_results, reference, "GCPW 1 GHz");
+
+    return solver_results;
+}
+
+async function solve_enclosed_air_microstrip() {
+    const solver = new MicrostripSolver({
+        substrate_height: 200e-6,
+        trace_width: 100e-6,
+        trace_thickness: 100e-6,
+        gnd_thickness: 35e-6,
+        epsilon_r: 1.0, // air
+        tan_delta: 0,
+        sigma_cond: 5.8e7,
+        freq: 2e9,
+        nx: 10,
+        ny: 10,
+        enclosure_height: 335e-6,
+        enclosure_width: 400e-6,
+        boundaries: ["gnd", "gnd", "gnd", "gnd"]
+    });
+    solver.use_causal_materials = false;
+
+    const results = await solver.solve_adaptive({ energy_tol: 0.001 });
+    const mode = results.modes[0];
+
+    const solver_results = {
+        'Z0': mode.Zc.re,
+        'Z0_imag': mode.Zc.im,
+        'eps_eff': mode.eps_eff,
+        'loss': mode.alpha_total,
+        'C': mode.RLGC.C,
+        'R': mode.RLGC.R,
+        'L': mode.RLGC.L,
+        'G': mode.RLGC.G
+    };
+
+    const reference = {
+        'Z0': 84.534,
+        'Z0_imag': -0.535,
+        'eps_eff': 1.013,
+        'loss': 2.3193,
+        'C': 39.714e-12,
+        'R': 45.144,
+        'L': 283.78e-9,
+        'G': 0
+    };
+
+    // R tests the accuracy of side wall loss modeling. Set it stricter in this
+    // test only.
+    test_microstrip_solution(solver_results, reference, "Enclosed Air Microstrip 2 GHz",
+                             { 'R': 5.0 });
+
+    return solver_results;
+}
+
+async function solve_differential_gcpw() {
+    const FREQ = 2e9;
+    const solver = new MicrostripSolver({
+        substrate_height: 0.2104e-3,
+        trace_width: 0.35e-3,
+        trace_thickness: 50e-6,
+        gnd_thickness: 35e-6,
+        epsilon_r: 4.4,
+        tan_delta: 0.02,
+        sigma_cond: 5.8e7,
+        freq: FREQ,
+        nx: 10,
+        ny: 10,
+        trace_spacing: 0.2e-3,       // enables differential mode
+        use_coplanar_gnd: true,
+        gap: 0.2e-3,                 // trace-to-coplanar-ground spacing
+        via_gap: 0.1e-3,             // stitching via, measured from the gap edge
+        use_vias: true,
+        enclosure_width: 3e-3,
+        // enclosure_height is measured from the top of the substrate.
+        enclosure_height: 1e-3 + 50e-6,
+        boundaries: ["gnd", "gnd", "gnd", "gnd"]
+    });
+    // Causal (Djordjevic-Sarkar) dispersion left at its default (on).
+
+    const results = await solver.solve_adaptive({ energy_tol: 0.001 });
+    const odd = results.modes.find(m => m.mode === 'odd');
+    const even = results.modes.find(m => m.mode === 'even');
+
+    const solver_results = {
+        'Z_odd': odd.Zc.re,
+        'Z_even': even.Zc.re,
+        'Zc_imag_odd': odd.Zc.im,
+        'Zc_imag_even': even.Zc.im,
+        'eps_eff_odd': odd.eps_eff,
+        'eps_eff_even': even.eps_eff,
+        'alpha_total_odd': odd.alpha_total,
+        'alpha_total_even': even.alpha_total
+    };
+
+    if (results.RLGC_matrix) {
+        const m = results.RLGC_matrix;
+        solver_results.R = [m.R[0][0], m.R[0][1], m.R[1][0], m.R[1][1]];
+        solver_results.L = [m.L[0][0], m.L[0][1], m.L[1][0], m.L[1][1]];
+        solver_results.G = [m.G[0][0], m.G[0][1], m.G[1][0], m.G[1][1]];
+        solver_results.C = [m.C[0][0], m.C[0][1], m.C[1][0], m.C[1][1]];
+    }
+
+    const reference = {
+        'Z_odd': 41.09,
+        'Z_even': 54.38,
+        'Zc_imag_odd': 0.135,
+        'Zc_imag_even': 0.26,
+        'eps_eff_odd': 2.649,
+        'eps_eff_even': 3.121,
+        'alpha_total_odd': 7.565,
+        'alpha_total_even': 8.199,
+        // 2x2 RLGC matrix (left and right traces)
+        'R': [29.319, 2.77, 2.77, 29.319],
+        'L': [271.8e-9, 48.69e-9, 48.69e-9, 271.8e-9],
+        'C': [120.24e-12, -11.88e-12, -11.88e-12, 120.24e-12],
+        'G': [25.26e-3, -1.40e-3, -1.40e-3, 25.26e-3]
+    };
+
+    // Im(Zc) is the small difference of the R/(wL) and G/(wC) terms (0.3% of Re Zc
+    // here), so it amplifies the quasi-static conductor-loss bias (R11 +3.6%, R12 +9%)
+    test_differential_solution(solver_results, reference, "Differential GCPW 2 GHz",
+        { 'Zc_imag_odd': 8.0, 'Zc_imag_even': 8.0 });
+
+    return results;
+}
+
+// 500 mm enclosed differential microstrip. Ports 1,2 are the two traces at one
+// end, 3,4 at the other.
+//
+// The line is long on purpose. The even and odd modes travel at different
+// speeds (eps_eff 3.19 vs 2.92), so a signal launched on one trace beats
+// between the two: over 500 mm the far-end crosstalk S41 climbs to about -2 dB
+// near 3.5 GHz while the through S31 dips to -22 dB, then the pattern repeats
+// (nulls near 7.5 GHz). The complex error below is dominated by eps_eff
+// accuracy: a 0.5% error in eps_eff alone would put |dS| near 0.5. Reference
+// values are S-parameters, so the comparison is the per-frequency max over all
+// 16 entries of |S_ij - S_ij,ref|.
+async function solve_differential_microstrip_500mm_s4p() {
+    console.log(`\n${'='.repeat(80)}`);
+    console.log('DIFFERENTIAL MICROSTRIP 500 MM S4P TEST');
+    console.log(`${'='.repeat(80)}`);
+
+    const reference = parseS4P_MA(join(__dirname, 'data/ms_diff_2d_low_loss_500mm.s4p'));
+    console.log(`Loaded ${reference.length} frequency points from reference`);
+
+    const solver = new MicrostripSolver({
+        substrate_height: 0.2104e-3,
+        trace_width: 0.35e-3,
+        trace_thickness: 50e-6,
+        gnd_thickness: 35e-6,
+        epsilon_r: 4.4,
+        tan_delta: 0.002,
+        sigma_cond: 5.8e7,
+        freq: reference[0].freq,
+        nx: 10,
+        ny: 10,
+        trace_spacing: 0.5e-3,       // enables differential mode
+        enclosure_width: 3e-3,       // x_sub
+        // z_air = 1 mm in the reference is measured from the top of the trace;
+        // enclosure_height is measured from the top of the substrate.
+        enclosure_height: 1e-3 + 50e-6,
+        boundaries: ["gnd", "gnd", "gnd", "gnd"]
+    });
+    solver.use_causal_materials = false;
+
+    // 0.001 rather than the app default: over 500 mm the phase is ~190 rad at 10 GHz, so
+    // the comparison is a test of the S-parameter passes only if the mesh error is well
+    // under 0.1% in eps_eff.
+    const sweepResults = await solver.solve_sweep({
+        frequencies: reference.map(r => r.freq),
+        energy_tol: 0.001
+    });
+    console.log(`Mesh: ${JSON.stringify(sweepResults.mesh)}`);
+
+    const odd = sweepResults.modes.find(m => m.mode === 'odd');
+    const even = sweepResults.modes.find(m => m.mode === 'even');
+    const length = 0.5;
+    const Z_ref = 50;
+
+    // Worst observed (energy_tol 0.001) with ~1.5x headroom: rectilinear 0.044 at 10 GHz.
+    // Triangular 0.39 at 10 GHz, which is dispersion the reference does not model (its
+    // even mode rises to 3.222 at 10 GHz while the reference stays at 3.185); below ~3 GHz
+    // it matches the reference as closely as the rectilinear backend.
+    const tolerance = MESH_BACKEND === 'triangular' ? 0.6 : 0.07;
+
+    let all_passed = true;
+    let worst = { err: 0, freq: 0, param: '' };
+    console.log(`\n${'Freq'.padEnd(8)} ${'eps_odd'.padEnd(9)} ${'eps_even'.padEnd(9)} ${'|S31| dB'.padEnd(16)} ${'|S41| dB'.padEnd(16)} ${'Max|dSij|'.padEnd(11)} ${'Worst'.padEnd(6)} Status`);
+    console.log(`${'-'.repeat(90)}`);
+    for (let i = 0; i < reference.length; i++) {
+        const freq = sweepResults.frequencies[i];
+        const rlgc = m => ({ R: m.RLGC.R[i], L: m.RLGC.L[i], G: m.RLGC.G[i], C: m.RLGC.C[i] });
+        const sp = computeSParamsDifferential(freq, rlgc(odd), rlgc(even), length, Z_ref);
+
+        let maxError = 0, worstParam = '';
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 4; col++) {
+                const error = complexAbsDiff(sp.S[row][col], reference[i].S[row][col]);
+                if (error > maxError) { maxError = error; worstParam = `S${row + 1}${col + 1}`; }
+            }
+        }
+        if (maxError > worst.err) worst = { err: maxError, freq, param: worstParam };
+        const passed = maxError < tolerance;
+        all_passed = all_passed && passed;
+
+        // Every 10th row keeps the log readable and failures always print.
+        if (i % 10 === 0 || i === reference.length - 1 || !passed) {
+            const db = s => (20 * Math.log10(Math.max(s.abs(), 1e-15))).toFixed(1);
+            const pair = (r, c) => `${db(sp.S[r][c]).padStart(6)}/${db(reference[i].S[r][c]).padStart(6)}`;
+            console.log(`${(freq / 1e9).toFixed(2).padEnd(8)} ${odd.eps_eff[i].toFixed(4).padEnd(9)} ${even.eps_eff[i].toFixed(4).padEnd(9)} ` +
+                        `${pair(2, 0).padEnd(16)} ${pair(3, 0).padEnd(16)} ${maxError.toFixed(4).padEnd(11)} ${worstParam.padEnd(6)} ${passed ? '✓' : '✗'}`);
+        }
+    }
+    console.log(`${'-'.repeat(90)}`);
+    console.log(`Worst: |d${worst.param}| = ${worst.err.toFixed(4)} at ${(worst.freq / 1e9).toFixed(2)} GHz (tolerance ${tolerance})`);
+    console.log(`Overall Result: ${all_passed ? '✓ ALL TESTS PASSED' : '✗ SOME TESTS FAILED'}`);
+    console.log(`${'='.repeat(80)}\n`);
+
+    if (!all_passed) {
+        throw new Error(`Differential microstrip 500 mm S4P test failed: worst |d${worst.param}| = ${worst.err.toFixed(4)} at ${(worst.freq / 1e9).toFixed(2)} GHz`);
+    }
+    return sweepResults;
+}
+
+// Run tests. Each case is isolated so the whole suite reports even when some
+// cases fail (useful when comparing the two backends).
+// Coplanar strips on a finite substrate, air and open boundaries on all sides, from
+// Ansys 2D Extractor at 1 GHz: two copper strips 1 mm wide and 50 um thick, 0.3 mm
+// apart, on a 4 mm x 0.2104 mm substrate. One strip is the signal, the other the
+// return, so the return current has no wall to close through.
+function coplanar_strips_solver(er, tand) {
+    const s = new CustomGeometrySolver({
+        text: `units mm
+bounds open open open open
+diel x=-2 w=4 y=-0.2104 h=0.2104 er=${er} tand=${tand}
+sig+ x=-1.15 w=1 y=0 h=0.05
+gnd  x=0.15  w=1 y=0 h=0.05
+`,
+        sigma_cond: 5.8e7, freq: 1e9, nx: 10, ny: 10, mesh_backend: MESH_BACKEND,
+    });
+    if (_triOpts) s.tri_opts = _triOpts;
+    return s;
+}
+
+function coplanar_strips_results(mode) {
+    return { 'Z0': mode.Z0, 'eps_eff': mode.eps_eff, 'diel_loss': mode.alpha_d, 'cond_loss': mode.alpha_c,
+        'C': mode.RLGC.C, 'R': mode.RLGC.R, 'L': mode.RLGC.L, 'G': mode.RLGC.G };
+}
+
+async function solve_coplanar_strips_vacuum() {
+    const results = await coplanar_strips_solver(1, 0).solve_adaptive({ energy_tol: 0.001 });
+    const reference = {
+        "Z0": 157.46,
+        "eps_eff": 1.0036,
+        "cond_loss": 0.52895,
+        "C": 21.223e-12,
+        "R": 19.178,
+        "L": 526.18e-9,
+    };
+    test_microstrip_solution(coplanar_strips_results(results.modes[0]), reference, "Coplanar strips, vacuum substrate");
+}
+
+// Lossy-substrate offset in the reference C. 2D Extractor reports a larger C as soon as
+// the substrate material has a nonzero loss tangent, whatever its permittivity. On the
+// finite-ground microstrip below, with er = 1: vacuum 30.218 pF/m, tand = 0 30.22,
+// tand = 0.002 32.564, tand = 0.02 32.603. On the strips here: vacuum 21.223,
+// er = 1 with tand = 0.02 25.35, and er = 1.2 gives 26.466, above the er * C0 bound.
+// The step does not depend on the loss, a 2% loss tangent can move C by a term of order
+// tand^2 only, and the reference L agrees with the vacuum C0 (L * C0 * c^2 = 1.003).
+// The slopes dC/der and G agree with both backends to 1-3%, so the offset is a constant.
+//
+// The strips take C = C_reported - (C(er = 1, tand = 0.02) - C(vacuum)), with eps_eff
+// and Z0 recomputed from that C and the reported L (as reported: C 41.121 pF/m,
+// eps_eff 1.9442, Z0 113.1). The microstrip takes C from a lossless er = 4.4 run,
+// 103.19 pF/m, which the same subtraction predicts as 103.27 (as reported with
+// tand = 0.02: C 105.65 pF/m, eps_eff 3.5373, Z0 59.377).
+async function solve_coplanar_strips_fr4() {
+    const results = await coplanar_strips_solver(4.4, 0.02).solve_adaptive({ energy_tol: 0.001 });
+    const reference = {
+        "Z0": 119.25,
+        "eps_eff": 1.7491,
+        "C": 36.994e-12,
+        "R": 19.175,
+        "L": 526.06e-9,
+        "G": 2.3234e-3,
+    };
+    test_microstrip_solution(coplanar_strips_results(results.modes[0]), reference, "Coplanar strips, FR4 substrate");
+}
+
+// Microstrip on a finite ground, open on all sides.
+// 0.35 mm x 35 um trace on a 3 mm x 0.2104 mm substrate, 0.5 mm x 35 um ground below
+// it, trace and ground outside the substrate.
+async function solve_finite_ground_microstrip() {
+    const s = new CustomGeometrySolver({
+        text: `units mm
+bounds open open open open
+diel x=-1.5   w=3    y=0      h=0.2104 er=4.4 tand=0.02
+sig+ x=-0.175 w=0.35 y=0.2104 h=0.035
+gnd  x=-0.25  w=0.5  y=-0.035 h=0.035
+`,
+        sigma_cond: 5.8e7, freq: 1e9, nx: 10, ny: 10, mesh_backend: MESH_BACKEND,
+    });
+    if (_triOpts) s.tri_opts = _triOpts;
+    const results = await s.solve_adaptive({ energy_tol: 0.001 });
+    const mode = results.modes[0];
+    // C from the lossless run, eps_eff and Z0 recomputed from it, see above. The total
+    // loss is as reported: the Z0 change moves it by 0.1%.
+    const reference = {
+        "Z0": 60.083,
+        "eps_eff": 3.4548,
+        "loss": 5.0917,
+        "C": 103.19e-12,
+        "R": 28.285,
+        "L": 372.52e-9,
+        "G": 11.722e-3,
+    };
+    test_microstrip_solution({ ...coplanar_strips_results(mode), 'loss': mode.alpha_d + mode.alpha_c },
+        reference, "Finite-ground microstrip");
+}
+
+// CPW on conductive silicon (Ansys 2D Extractor, 1 GHz): a 5 um x 5 um copper signal and
+// two 25 um grounds 10 um away on a 1 mm x 0.3 mm silicon substrate (er 11.9, 2 S/m),
+// air and open boundaries on all sides. G is set by the substrate conductivity.
+async function solve_cpw_silicon() {
+    const s = new CustomGeometrySolver({
+        text: `units um
+w = 5; t = 5; g = 10; wg = 25
+bounds open open open open
+diel x=-500      y=-300 w=1000 h=300 er=11.9 sigma=2
+sig+ x=-w/2      y=0    w=w    h=t
+gnd  x=-w/2-g-wg y=0    w=wg   h=t
+gnd  x=w/2+g     y=0    w=wg   h=t
+`,
+        sigma_cond: 5.8e7, freq: 1e9, nx: 10, ny: 10, mesh_backend: MESH_BACKEND,
+    });
+    if (_triOpts) s.tri_opts = _triOpts;
+    const results = await s.solve_adaptive({ energy_tol: 0.001 });
+    const m = results.modes[0].RLGC;
+    const reference = {
+        "C": 129.54e-12,
+        "R": 940.54,
+        "L": 474.54e-9,
+        "G": 2073.5e-3,
+    };
+    // Observed: triangular within 0.2% on all four, rectilinear R +3.5%.
+    test_microstrip_solution({ 'C': m.C, 'R': m.R, 'L': m.L, 'G': m.G }, reference, "CPW on silicon");
+}
+
+// Differential microstrip with traces of two metals (Ansys 2D Extractor, 2 GHz, causal
+// substrate). Geometry of solve_differential_microstrip_500mm_s4p with tand 0.02, left
+// trace 5.8e7 S/m, right trace 3.8e7 S/m.
+// Ansys reports R11 = 27.429 and R22 = 32.306 ohm/m, which both backends resolve from the
+// loss of current in one trace only (line 1 = the positive trace). The modal references
+// are R_odd = mean - R12 and R_even = mean + R12 with the mean 29.8675. Im(Z0) is left out: the reported -0.49j / -0.50j
+// does not follow from the reported RLGC (+0.20j / +0.25j).
+async function solve_differential_microstrip_unequal_sigma() {
+    const s = new CustomGeometrySolver({
+        text: `units mm
+bounds gnd gnd gnd gnd
+domain -1.5 1.5 0 1.2604
+diel x=-inf w=inf y=0 h=0.2104 er=4.4 tand=0.02
+sig+ x=-0.6  w=0.35 y=0.2104 h=0.05
+sig- x=0.25  w=0.35 y=0.2104 h=0.05 sigma=3.8e7
+`,
+        sigma_cond: 5.8e7, freq: 2e9, nx: 10, ny: 10, mesh_backend: MESH_BACKEND,
+    });
+    if (_triOpts) s.tri_opts = _triOpts;
+    s.use_causal_materials = true;
+    const results = await s.solve_adaptive({ energy_tol: 0.001 });
+    const odd = results.modes.find(m => m.mode === 'odd');
+    const even = results.modes.find(m => m.mode === 'even');
+    const m = results.RLGC_matrix;
+    const flat = a => [a[0][0], a[0][1], a[1][0], a[1][1]];
+    const solver_results = {
+        'Z_odd': odd.Z0, 'Z_even': even.Z0,
+        'eps_eff_odd': odd.eps_eff, 'eps_eff_even': even.eps_eff,
+        'alpha_total_odd': odd.alpha_total, 'alpha_total_even': even.alpha_total,
+        'R_odd': odd.RLGC.R, 'R_even': even.RLGC.R,
+        'R': flat(m.R), 'L': flat(m.L), 'G': flat(m.G), 'C': flat(m.C),
+    };
+    const reference = {
+        'Z_odd': 47.867, 'Z_even': 52.408,
+        'eps_eff_odd': 2.9032, 'eps_eff_even': 3.175,
+        'alpha_total_odd': 7.7975, 'alpha_total_even': 8.2774,
+        'R_odd': 29.8675 - 1.4922, 'R_even': 29.8675 + 1.4922,
+        'R': [27.429, 1.4922, 1.4922, 32.306],
+        'L': [291.58e-9, 19.723e-9, 19.723e-9, 291.96e-9],
+        'G': [25.039e-3, -0.10192e-3, -0.10192e-3, 25.038e-3],
+        'C': [116.07e-12, -2.6636e-12, -2.6636e-12, 116.07e-12],
+    };
+    // Observed R_odd / R_even: rectilinear -3.7% / -2.8% (surface integral converging
+    // from below), triangular +0.1% / +0.1%.
+    test_differential_solution(solver_results, reference, "Differential microstrip, unequal sigma",
+        { 'R_odd': 6.0, 'R_even': 6.0 });
+}
+
+async function runTests() {
+    const cases = [
+        solve_microstrip, solve_microstrip_1khz, solve_microstrip_embed,
+        solve_microstrip_cut, solve_microstrip_20ghz, solve_gcpw,
+        solve_enclosed_air_microstrip, solve_differential_gcpw, solve_stripline,
+        solve_rough_stripline, solve_differential_stripline,
+        solve_differential_stripline_rlgc, solve_differential_microstrip,
+        solve_broadside_stripline, solve_broadside_stripline_offset,
+        solve_coplanar_strips_vacuum, solve_coplanar_strips_fr4, solve_finite_ground_microstrip,
+        solve_cpw_silicon,
+        solve_differential_microstrip_500mm_s4p, solve_differential_microstrip_unequal_sigma,
+        test_s2p_generation2, test_s2p_generation,
+        test_s4p_generation_lossless, test_s4p_generation,
+    ];
+    // ONLY=<substring> runs the cases whose function name contains it.
+    const only = process.env.ONLY;
+    if (only) cases.splice(0, cases.length, ...cases.filter(c => c.name.includes(only)));
+    let passed = 0;
+    const failed = [];
+    for (const c of cases) {
+        try { await c(); passed++; }
+        catch (e) { failed.push(`${c.name}: ${e.message.split('\n')[0]}`); }
+    }
+    console.log(`\n${'#'.repeat(80)}`);
+    console.log(`SUMMARY [${MESH_BACKEND}]: ${passed}/${cases.length} passed, ${failed.length} failed`);
+    failed.forEach(f => console.log(`  ✗ ${f}`));
+    console.log(`${'#'.repeat(80)}`);
+    if (failed.length) process.exitCode = 1;
+}
+
+runTests();

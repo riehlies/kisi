@@ -1,0 +1,17 @@
+{
+ "MS 3,0 mm auf 1,6 mm FR4": 49.49492980148455,
+ "MS über Aussparung (3 mm), Referenz 1 mm tiefer": 55.566593587995705,
+ "MS 1,1 mm auf 0,508 mm (εr 3,48)": 50.23141598641153,
+ "GCPW 0,3 mm, Spalt 0,15 mm": 54.85724759967027,
+ "Diff-MS 3,0 mm, Abstand 1,0 mm": 79.4691537887115,
+ "Diff-MS 0,35/0,5 mm, Deckel 1 mm": 94.89557067427413,
+ "Diff-GCPW 0,35/0,2 mm, Spalt 0,2 mm": 81.11988043825052,
+ "Stripline 0,15 mm, b = 0,435 mm": 50.043991180493926,
+ "Diff-Stripline 0,15/0,1 mm": 73.95686764149922,
+ "SE ms top 0.213 mask": 50.52962202628737,
+ "SE ms top 0.213 nomask": 52.376893165752655,
+ "DIFF ms LVDS 0.127/0.1302 mask": 101.62381266870199,
+ "DIFF ms PCIe 0.1908/0.127 mask": 86.11250882776507,
+ "DIFF sl LVDS 0.127/0.2303 asym": 97.34958605772776,
+ "SE sl 0.127 asym": 54.42488263678496
+}

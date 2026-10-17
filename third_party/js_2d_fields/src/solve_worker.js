@@ -1,0 +1,492 @@
+// Solve worker.
+//
+// Every solve needs multiple synchronous WASM calls, and a single one of them
+// is not interruptible. One call can take tens of seconds freezing the UI.
+// Firefox's "this tab is slowing down the browser" dialog (which fires around
+// 5 s) can be triggered during a solve. The only fix is to run the solve on
+// a different thread, which is this file.
+//
+// The main thread keeps a solver instance too, but purely as a geometry/plot view model
+// (construction is cheap: no meshing, no linear algebra). After a solve the worker ships
+// back the field arrays and app_solver grafts them onto that instance, so plot.js keeps
+// reading `solver.x/y/V/Ex/Ey/triMesh` exactly as before.
+//
+// Protocol
+// main to worker:
+//   { id, type: 'simulate'  , params, frequencies, opts }
+//   { id, type: 'modes'     , params, freq, nev, refineOpts }
+//   { id, type: 'modeField' , idx }          (after a 'modes' job, same worker)
+//   { id, type: 'paramSweep', points, freqHz, opts }
+//   { id, type: 'plotFields', freq }         (after a 'simulate' job, same worker)
+//   { id, type: 'plotRelease', job }          (drops the solve 'plotFields' reads, if
+//                                              it is still the one of simulate job `job`)
+//   {     type: 'stop', job }                (cancels job `job`, running or queued)
+// worker to main:
+//   { id, type: 'log'     , msg }
+//   { id, type: 'progress', frac, text }
+//   { id, type: 'partial' , ... }            (live plot data mid-sweep)
+//   { id, type: 'done'    , ... }
+//   { id, type: 'error'   , message }
+//
+// Cancellation: `stop` marks a job id stopped and sets the flag that the shouldStop
+// callbacks poll when that job is the running one. A job still queued behind another
+// (a plot) starts stopped. The worker only sees the message between WASM calls.
+
+import { buildSolverFromParams } from './solver_factory.js';
+import { InterpolatingSweep } from './interpolating_sweep.js';
+import { hasConductiveDielectric } from './conductive_dielectric.js';
+
+let stopRequested = false;
+let currentId = null;
+const stoppedJobs = new Set();
+let modesSolver = null;   // retained between 'modes' and its follow-up 'modeField' calls
+// The last simulate job's solver and converged solve, retained for 'plotFields', the id
+// of that job and its lowest frequency.
+let simSolver = null, simCached = null, simJob = null, simFMin = 0;
+
+const post = (msg, transfer) => self.postMessage(msg, transfer || []);
+const fmtFreq = f => f >= 1e9 ? `${+(f / 1e9).toPrecision(4)} GHz` : f >= 1e6 ? `${+(f / 1e6).toPrecision(4)} MHz`
+    : f >= 1e3 ? `${+(f / 1e3).toPrecision(4)} kHz` : `${+f.toPrecision(4)} Hz`;
+const log = (msg) => post({ id: currentId, type: 'log', msg });
+const progress = (frac, text) => post({ id: currentId, type: 'progress', frac, text });
+const shouldStop = () => stopRequested;
+
+// Serialization
+
+// Per-mode field arrays are the biggest thing a solve produces (V, Ex, Ey, and
+// the vacuum-drive Ex0/Ey0/V0 the loss integrand caches). They are needed
+// inside the worker, computeAtFrequency reuses them across the sweep, but the
+// main thread only ever plots one solve. Sending them with all ~30 sweep points
+// would move tens of MB per solve for nothing, so every result crossing the
+// boundary is stripped, and the fields travel once, separately, via
+// fieldPayload().
+const HEAVY = ['V', 'Ex', 'Ey', 'V0', 'Ex0', 'Ey0'];
+
+function stripResult(result) {
+    if (!result) return result;
+    const out = { ...result };
+    if (Array.isArray(result.modes)) {
+        out.modes = result.modes.map(m => {
+            const c = { ...m };
+            for (const k of HEAVY) delete c[k];
+            // Zc is a Complex instance. Structured clone drops the prototype, so it
+            // arrives as a bare {re, im}. Send it as such deliberately and let the main
+            // thread revive it.
+            if (c.Zc) c.Zc = { re: c.Zc.re, im: c.Zc.im };
+            return c;
+        });
+    }
+    return out;
+}
+
+const stripSweep = (rows) => rows.map(({ freq, result }) => ({ freq, result: stripResult(result) }));
+
+// Exactly the set of properties both backends graft onto the solver for plotting
+// (FieldSolver2D.solve_adaptive and TriBackend.solveAt agree on this list).
+// getPlotFields mirrors half-domain (sym_half) FDM solves onto the full domain,
+// for everything else it returns the same properties unchanged.
+function fieldPayload(solver) {
+    if (!solver || !solver.solution_valid) return null;
+    if (solver.getPlotFields) return solver.getPlotFields();
+    return {
+        x: solver.x, y: solver.y,
+        V: solver.V, Ex: solver.Ex, Ey: solver.Ey, ExIm: solver.ExIm || null, EyIm: solver.EyIm || null,
+        triMesh: solver.triMesh || null,
+        surfaceK: solver.surfaceK || null, currentJ: solver.currentJ || null,
+        currentMesh: solver.currentMesh || null, fieldMesh: solver.fieldMesh || null,
+        surfaceKSource: solver.surfaceKSource || null, idealGrounds: solver.idealGrounds || null,
+        fieldFreq: solver.fieldFreq ?? null,
+        fieldKind: solver.fieldKind || 'static',
+    };
+}
+
+// Plot fields of `solver` at frequency f, of a solve whose lowest frequency is fMin. A
+// failure keeps the fields it had and returns false.
+async function plotFields(solver, cached, f, fMin) {
+    try {
+        await solver.plotFieldsAt(f, cached);
+        if (solver.plotNote) log(solver.plotNote);
+        // The solve warned about the ground return spreading at its own frequencies; a
+        // plot below them can be below the onset too. The plotted currents keep the ideal
+        // ground returns of the solve.
+        const spread = solver._ground_spreading_note ? solver._ground_spreading_note(f) : null;
+        if (spread && !solver._ground_spreading_note(fMin)) {
+            log(`\u26a0 Plot warning at ${fmtFreq(f)}: ${spread.message}`);
+        }
+        return true;
+    } catch (e) {
+        log(`Plot fields at ${(f / 1e9).toFixed(3)} GHz failed: ${(e && e.message) || e}`);
+        return false;
+    }
+}
+
+// The accuracy notes the main thread cannot derive from its own (never-solved) view
+// model. Reported once, from the 'meshDone' message, at the point in the log where the
+// main-thread version used to print them.
+const solveMeta = (solver) => ({
+    certification: solver.certification || null,
+    meshQuality: solver.meshQuality || null,
+});
+
+function makeSolver(params) {
+    const s = buildSolverFromParams(params, log);
+    if (!s) throw new Error('Solver initialization failed due to invalid parameters.');
+    return s;
+}
+
+// Simulate
+
+// Progress-bar work model, moved here verbatim from runSimulation so the worker can emit
+// a ready-made fraction: mesh refinement is a handful of passes on a coarse mesh and is
+// much cheaper than the sweep that follows, so it owns only the small leading slice.
+const EST_MESH_PASSES = 4;
+const EST_SWEEP_POINTS = 30;
+const MESH_PASS_COST = 0.5;
+const MESH_FRACTION = (EST_MESH_PASSES * MESH_PASS_COST) /
+    (EST_MESH_PASSES * MESH_PASS_COST + EST_SWEEP_POINTS);
+
+async function jobSimulate({ params, frequencies, opts }) {
+    if (stopRequested) return { stopped: true, sweepResults: [], fields: null };
+    simSolver = null; simCached = null; simJob = null;
+    const solver = makeSolver(params);
+    const p = params;
+
+    if (p.sigma < 1e4) throw new Error('Signal line conductivity is too low to be considered a conductor.');
+    if (p.rq < 0) throw new Error('Surface roughness cannot be negative.');
+    if (p.use_plating) {
+        if (p.plating_sigma < 1e4) throw new Error('Plating conductivity is too low to be considered a conductor.');
+        if (p.plating_t < 0) throw new Error('Plating thickness must be non-negative.');
+        if (p.plating_rq < 0) throw new Error('Plating roughness cannot be negative.');
+        if (p.plating_rq_iface < 0) throw new Error('Plating interface roughness cannot be negative.');
+    }
+
+    let sweepResults = [];
+    const maxFreq = Math.max(...frequencies);
+    solver.freq = maxFreq;
+    // The solve at the plot frequency keeps its fields for the plot after the sweep.
+    const plotFreq = opts.plotFreq ?? maxFreq;
+    solver.plot_freq_target = Math.min(plotFreq, solver.plotFreqLimit(maxFreq));
+
+    log('Calculating mesh...');
+    solver.ensure_mesh();
+    log(solver.x ? ('Mesh generated: ' + solver.x.length + 'x' + solver.y.length)
+                 : 'Triangular mesh will be generated by the solver...');
+    log(`Running adaptive analysis (max ${p.max_iters} iterations, max ${p.max_nodes}k nodes, ` +
+        `tolerance ${(100 * p.tolerance).toFixed(2)}%)...`);
+
+    const results = await solver.solve_adaptive({
+        max_iters: p.max_iters,
+        energy_tol: p.tolerance,
+        param_tol: 0.05,
+        max_nodes: p.max_nodes * 1000,
+        min_converged_passes: p.min_converged_passes,
+        certify: !!p.estimate_error,
+        onProgress: (info) => {
+            const frac = Math.min(info.iteration / EST_MESH_PASSES, 1) * MESH_FRACTION;
+            const meshStr = info.n_tris != null ? `Tris=${info.n_tris}` : `Grid=${info.nodes_x}x${info.nodes_y}`;
+            progress(frac, `Pass ${info.iteration}/${p.max_iters} · error ${info.energy_error.toExponential(2)}`);
+            log(`Pass ${info.iteration}: Energy error=${info.energy_error.toExponential(3)}, ` +
+                `Param error=${info.param_error.toExponential(3)}, ${meshStr}`);
+        },
+        shouldStop,
+    });
+
+    post({ id: currentId, type: 'meshDone', meta: solveMeta(solver),
+           warnings: (results && results.warnings) || solver.modeWarnings || null });
+
+    if (stopRequested) return { stopped: true, sweepResults: [], fields: null };
+
+    const cachedResults = results;
+    if (solver.use_causal_materials) {
+        sweepResults.push({ freq: maxFreq, result: await solver.computeAtFrequency(maxFreq, cachedResults) });
+    } else {
+        sweepResults.push({ freq: maxFreq, result: results });
+    }
+
+    // Fields of the converged mesh solve. The sweep points overwrite the solver's fields,
+    // so a run that ends without the plot fields returns these. Quasi-static fields do not
+    // depend on frequency and are shown while the sweep runs; full-wave ones are the
+    // static field, not the field at the plot frequency, so the plot waits for the end.
+    // So do quasi-static ones with a conducting dielectric, whose screening the real
+    // mesh solve leaves out. Fields that belong to no frequency keep it unset: a stopped
+    // sweep or a failed plot below shows them unlabelled, and a later request at f_max
+    // plots again.
+    const atMax = solver.mesh_backend !== 'triangular' && !hasConductiveDielectric(solver.dielectrics);
+    solver.fieldFreq = atMax ? maxFreq : null;
+    const fieldsAtMax = fieldPayload(solver);
+    const liveFields = atMax ? fieldsAtMax : undefined;
+    post({ id: currentId, type: 'partial', fields: liveFields,
+           sweepResults: stripSweep(sweepResults) });
+
+    const fMax = maxFreq;
+    const nonZeroFreqs = frequencies.filter(f => f > 0);
+    const fMinNonZero = nonZeroFreqs.length > 0 ? Math.min(...nonZeroFreqs) : 0;
+    const useInterpolation = opts.useInterpolation
+        && solver.allow_interp_sweep !== false
+        && nonZeroFreqs.length > 1
+        && fMax > fMinNonZero;
+
+    let sweepWarnings = null;
+
+    if (useInterpolation) {
+        const tolerance = opts.interpTolerance;
+        const hasDC = frequencies.includes(0);
+        if (hasDC) {
+            // The DC row is solved on its own, its notes (the ground-spreading one, which
+            // only the lowest frequencies get) reach the log like a discrete sweep's.
+            const dcResult = await solver.computeAtFrequency(0, cachedResults);
+            if (dcResult && dcResult.warnings)
+                post({ id: currentId, type: 'warnings', warnings: dcResult.warnings });
+            sweepResults.push({ freq: 0, result: dcResult });
+        }
+        log(`Interpolating sweep (tolerance ${(tolerance * 100)}%)...`);
+
+        const sweep = new InterpolatingSweep(solver, cachedResults, { tolerance });
+
+        const SWEEP_START = MESH_FRACTION, EST_TOTAL_POINTS = EST_SWEEP_POINTS, POINT_CAP = 0.9;
+        const setSweep = (frac, text) =>
+            progress(SWEEP_START + (1 - SWEEP_START) * Math.max(0, Math.min(1, frac)), text);
+        let refineErr0 = null, lastErrFrac = 0, lastFinalErr = null;
+
+        const nSamples = await sweep.run(fMinNonZero, fMax, {
+            onProgress: (info) => {
+                const pointFloor = Math.min(POINT_CAP, info.totalSamples / EST_TOTAL_POINTS);
+                if (info.phase === 'initial') {
+                    setSweep(pointFloor, `Solving initial points ${info.pointsComputed}/${info.initialPoints}`);
+                } else {
+                    const tol = info.tolerance, err = info.maxError;
+                    if (info.final && isFinite(err)) {
+                        lastFinalErr = err;
+                        if (refineErr0 === null && err > tol) refineErr0 = err;
+                        if (err <= tol) {
+                            lastErrFrac = 1;
+                        } else if (refineErr0 !== null && refineErr0 > tol) {
+                            const num = Math.log10(refineErr0) - Math.log10(err);
+                            const den = Math.log10(refineErr0) - Math.log10(tol);
+                            if (den > 0) lastErrFrac = Math.max(0, Math.min(1, num / den));
+                        }
+                    }
+                    const maxIt = info.maxIterations || 8;
+                    const within = info.midpointsTotal > 0
+                        ? Math.min(1, info.midpointsDone / info.midpointsTotal) : 1;
+                    const bandLo = Math.min(1, (info.iteration - 1) / maxIt);
+                    const bandHi = Math.min(1, info.iteration / maxIt);
+                    const iterFloor = bandLo + (bandHi - bandLo) * within;
+                    const convFrac = Math.max(lastErrFrac, iterFloor * 0.9) * 0.98;
+                    const errPart = lastFinalErr !== null ? ` · error ${(lastFinalErr * 100).toFixed(3)}%` : '';
+                    setSweep(Math.max(pointFloor, convFrac), `${info.totalSamples} points solved${errPart}`);
+                }
+                if (info.iteration > 0) {
+                    const dc = hasDC ? sweepResults.find(r => r.freq === 0) : null;
+                    const live = dc ? [dc, ...sweep.buildResults(nonZeroFreqs)]
+                                    : sweep.buildResults(nonZeroFreqs);
+                    live.sort((a, b) => a.freq - b.freq);
+                    post({ id: currentId, type: 'partial', sweepResults: stripSweep(live) });
+                }
+            },
+            shouldStop,
+        });
+
+        if (!stopRequested) {
+            const interpResults = sweep.buildResults(nonZeroFreqs);
+            const dc = hasDC ? sweepResults.find(r => r.freq === 0) : null;
+            sweepResults = dc ? [dc, ...interpResults] : interpResults;
+            log(`Interpolating sweep: ${nSamples + (hasDC ? 1 : 0)} exact solves for ${frequencies.length} output points`);
+        }
+        sweepWarnings = sweep.warnings || null;
+    } else {
+        log(`Calculating frequency sweep (${frequencies.length} points)...`);
+        for (let i = 0; i < frequencies.length; i++) {
+            const freq = frequencies[i];
+            if (freq === maxFreq) continue;
+            // Hand the worker's event loop a turn so the pending `stop` message
+            // is actually delivered. `stop` arrives as a message and nothing in
+            // this loop yields to the task queue on its own: the FDM backend's
+            // only yield lives inside solve_adaptive, and TriBackend.solveAt is
+            // synchronous.  Without this the flag is not read until the whole
+            // sweep has finished, and Stop silently does nothing. (The
+            // interpolating branch is safe sweep.run yields once per exact
+            // solve.)
+            await new Promise(r => setTimeout(r, 0));
+            // No log line here: the main thread prints "Simulation stopped by
+            // user" for every stopped job, from the `stopped` flag in the
+            // reply.
+            if (stopRequested) break;
+
+            const result = await solver.computeAtFrequency(freq, cachedResults);
+            if (result && result.warnings)
+                post({ id: currentId, type: 'warnings', warnings: result.warnings });
+            sweepResults.push({ freq, result });
+
+            progress(MESH_FRACTION + (i + 1) / frequencies.length * (1 - MESH_FRACTION),
+                     `Frequency sweep: ${i + 1}/${frequencies.length} (${(freq / 1e9).toFixed(2)} GHz)`);
+
+            if (i % 10 === 0) {
+                const live = sweepResults.slice().sort((a, b) => a.freq - b.freq);
+                post({ id: currentId, type: 'partial', sweepResults: stripSweep(live) });
+            }
+        }
+    }
+
+    sweepResults.sort((a, b) => a.freq - b.freq);
+    // A stop that arrives during the plot below comes after the sweep finished, so it
+    // does not discard the sweep.
+    const stopped = stopRequested;
+    let plotted = false;
+    if (!stopped) {
+        simFMin = Math.min(...frequencies);
+        plotted = await plotFields(solver, cachedResults, plotFreq, simFMin);
+        simSolver = solver; simCached = cachedResults; simJob = currentId;
+    }
+    return {
+        stopped,
+        sweepResults: stripSweep(sweepResults),
+        // The converged mesh solve itself: the summary block reports Z_diff / Z_common /
+        // RLGC_matrix from it, and an interpolated sweep row is not a substitute (it is
+        // rebuilt from the interpolant, not from a full solve).
+        meshResult: stripResult(results),
+        fields: plotted ? fieldPayload(solver) : fieldsAtMax,
+        sweepWarnings,
+    };
+}
+
+// ---------------------------------------------------------------- modes
+
+async function jobModes({ params, freq, nev, refineOpts }) {
+    modesSolver = makeSolver(params);
+    const result = await modesSolver.solveModes(freq, nev, (pp) => {
+        const line = `Refinement pass ${pp.iteration}/${pp.max_iterations}: ` +
+            `param err=${(isFinite(pp.param_error) ? pp.param_error : 1).toExponential(2)}, ` +
+            `${pp.n_tris || 0} triangles…`;
+        progress(0, line);
+        log(`Modes pass ${pp.iteration}: param error=` +
+            `${(isFinite(pp.param_error) ? pp.param_error : 1).toExponential(3)}, Tris=${pp.n_tris || 0}`);
+    }, refineOpts);
+    // The per-mode field grids are fetched lazily (jobModeField): with up to 30 modes,
+    // eagerly resampling and shipping every one of them would cost far more than the
+    // handful the user actually clicks on.
+    return { result };
+}
+
+async function jobPlotFields({ freq }) {
+    if (!simSolver) return { fields: null };
+    await plotFields(simSolver, simCached, freq, simFMin);
+    return { fields: fieldPayload(simSolver) };
+}
+
+function jobPlotRelease({ job }) {
+    if (job === simJob) { simSolver = null; simCached = null; simJob = null; }
+    return {};
+}
+
+function jobModeField({ idx }) {
+    if (!modesSolver) return { grid: null };
+    const g = modesSolver.getModeField(idx);
+    if (!g || !g.mesh) return { grid: null };
+    // The plot draws |E| on the triangles, scaled by the maximum on the grid.
+    let zmax = 0;
+    for (const row of g.E) for (const v of row) if (v > zmax) zmax = v;
+    return { grid: { mesh: g.mesh, zmax } };
+}
+
+// Parameter Sweep
+
+// `points` is precomputed on the main thread: one fully-resolved params object per sweep
+// value, because deriving them means reading the sidebar inputs (DOM), which the worker
+// has no access to.
+async function jobParamSweep({ points, freqHz, opts }) {
+    const out = [];
+    for (let i = 0; i < points.length; i++) {
+        if (stopRequested) { log('Sweep stopped.'); break; }
+        const { params, displayVal } = points[i];
+        let solver;
+        try {
+            solver = makeSolver(params);
+        } catch {
+            log(`Point ${i + 1}: solver init failed, skipping.`);
+            continue;
+        }
+        let cached;
+        try {
+            solver.ensure_mesh();
+            cached = await solver.solve_adaptive({
+                max_iters: params.max_iters,
+                energy_tol: params.tolerance,
+                param_tol: 0.05,
+                max_nodes: params.max_nodes * 1000,
+                min_converged_passes: params.min_converged_passes,
+                // Verify the first point only. Adjacent sweep points share the geometry
+                // family and mesh behavior, so one certificate is representative, while
+                // verifying every point would multiply the whole sweep by the overhead.
+                certify: !!opts.estimateError && i === 0,
+                onProgress: () => {},
+                shouldStop,
+            });
+        } catch (err) {
+            // One point the solver rejects (a mesh budget, a geometry it cannot solve)
+            // leaves the rest of the sweep.
+            log(`Point ${i + 1} skipped: ${(err && err.message) || err}`);
+            continue;
+        }
+        if (stopRequested) { log('Sweep stopped.'); break; }
+
+        if (i === 0 && opts.estimateError) {
+            post({ id: currentId, type: 'firstPointCert',
+                   certification: solver.certification || null,
+                   warnings: (cached && cached.warnings) || null });
+        }
+
+        const result = await solver.computeAtFrequency(freqHz, cached);
+        out.push({ paramValue: displayVal, result: stripResult(result) });
+        post({ id: currentId, type: 'partial', sweepResults: out, index: i, total: points.length });
+    }
+    return { stopped: stopRequested, results: out };
+}
+
+// Dispatch
+
+const JOBS = {
+    simulate: jobSimulate,
+    modes: jobModes,
+    modeField: jobModeField,
+    paramSweep: jobParamSweep,
+    plotFields: jobPlotFields,
+    plotRelease: jobPlotRelease,
+};
+
+async function runJob(msg) {
+    const job = JOBS[msg.type];
+    if (!job) { post({ id: msg.id, type: 'error', message: `unknown job "${msg.type}"` }); return; }
+
+    currentId = msg.id;
+    stopRequested = stoppedJobs.has(msg.id);
+    try {
+        const payload = await job(msg);
+        post({ id: msg.id, type: 'done', ...payload });
+    } catch (err) {
+        post({ id: msg.id, type: 'error', message: (err && err.message) || String(err) });
+    } finally {
+        currentId = null;
+        stoppedJobs.delete(msg.id);
+    }
+}
+
+// Jobs run one at a time. The handler is async, so without this chain a message
+// arriving while a job is awaiting would start a second handler concurrently, and since
+// each job begins by setting `stopRequested` and claiming `currentId`, an overlap would
+// silently cancel a pending Stop and misroute the first job's log/progress messages. Now
+// that the UI stays interactive during a solve, overlapping requests are reachable (e.g.
+// clicking a mode row while the main solve runs), so the ordering has to be explicit.
+let jobQueue = Promise.resolve();
+
+self.onmessage = (e) => {
+    const msg = e.data;
+    // Stop is control, not work: it must reach the job that is running now, so it
+    // bypasses the queue entirely.
+    if (msg.type === 'stop') {
+        stoppedJobs.add(msg.job);
+        if (msg.job === currentId) stopRequested = true;
+        return;
+    }
+    jobQueue = jobQueue.then(() => runJob(msg));
+};

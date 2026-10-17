@@ -1,0 +1,478 @@
+// Geometry-construction unit tests — no solver, no mesh, milliseconds.
+//
+// Every downstream result trusts the geometry lists (conductors, dielectrics,
+// domain box) that the solver constructors build. Bugs here are cheap to make and
+// expensive to notice: the has_side_gnd ordering bug (side walls eating 2·t_gnd out
+// of the specified enclosure width) survived until an analytic mode test measured
+// the cavity. These tests pin the documented layout directly:
+//   y: bottom ground −t_gnd..0, substrate 0..h, trace h..h+t
+//   enclosure_width = INNER wall-to-wall width (side slabs added outside it)
+//   differential trace_spacing = edge-to-edge gap, mirror-symmetric about x=0
+// plus the _clipDomain wall-absorption rule that turns full-span boundary slabs
+// into PEC walls (this defines the cavity that box_modes_test computes truth from).
+//
+// Run: node tests/test_geometry.js
+import { MicrostripSolver } from '../src/microstrip.js';
+import { BroadsideStriplineSolver } from '../src/broadside_stripline.js';
+import { CoaxSolver } from '../src/coax.js';
+import { RectWaveguideSolver } from '../src/rect_waveguide.js';
+import { buildSolverFromParams } from '../src/solver_factory.js';
+import { _clipDomain, condRectsOf, groundBodyCount } from '../src/tri_solver/occ_to_mesh.js';
+import { polyRadiusForArea, shapeArea, shapeContains,
+         shapeSegments, shapeSignedDist } from '../src/shapes.js';
+import { isXSymmetric } from '../src/geometry_symmetry.js';
+import { check, done } from './helpers.js';
+
+const near = (x, y, tol = 1e-12) => Math.abs(x - y) < tol;
+const signals = (s) => s.conductors.filter(c => c.is_signal);
+const grounds = (s) => s.conductors.filter(c => !c.is_signal);
+
+// Base parameters shared by the microstrip-family cases
+const BASE = {
+    trace_width: 0.35e-3, substrate_height: 0.21e-3, trace_thickness: 35e-6,
+    gnd_thickness: 35e-6, epsilon_r: 4.4, tan_delta: 0.02, sigma_cond: 5.8e7, freq: 1e9,
+};
+const { trace_width: W, substrate_height: H, trace_thickness: T, gnd_thickness: TG } = BASE;
+
+// ---------- open microstrip ----------
+{
+    const s = new MicrostripSolver({ ...BASE, boundaries: ['open', 'open', 'open', 'gnd'] });
+    const sig = signals(s);
+    check('microstrip: exactly one signal conductor', sig.length === 1);
+    const tr = sig[0];
+    check('microstrip: trace centered, width w', near(tr.x_min, -W / 2) && near(tr.x_max, W / 2));
+    check('microstrip: trace sits on the substrate (y: h..h+t)', near(tr.y_min, H) && near(tr.y_max, H + T));
+    const gnd = grounds(s).find(c => near(c.y_min, -TG) && near(c.y_max, 0));
+    check('microstrip: bottom ground slab spans −t_gnd..0, full width',
+        !!gnd && near(gnd.x_min, -s.domain_width / 2) && near(gnd.x_max, s.domain_width / 2));
+    const sub = s.dielectrics.find(d => d.epsilon_r === BASE.epsilon_r);
+    check('microstrip: substrate dielectric spans 0..h with εr/tanδ',
+        !!sub && near(sub.y_min, 0) && near(sub.y_max, H) && sub.tan_delta === BASE.tan_delta);
+    check('microstrip: open boundaries → no side/lid slabs',
+        !grounds(s).some(c => c !== gnd && (c.x_min <= -s.domain_width / 2 + 1e-12 || c.y_min > H)));
+    const inDomain = s.conductors.every(c =>
+        c.x_min >= -s.domain_width / 2 - 1e-12 && c.x_max <= s.domain_width / 2 + 1e-12 &&
+        c.y_min >= -TG - 1e-12 && c.y_max <= s.domain_height + 1e-12);
+    check('microstrip: all conductors inside the domain box', inDomain);
+}
+
+// ---------- enclosed microstrip (has_side_gnd ordering regression) ----------
+{
+    const ENC_W = 4e-3, ENC_H = 4e-3;
+    const s = new MicrostripSolver({ ...BASE, enclosure_width: ENC_W, enclosure_height: ENC_H,
+        boundaries: ['gnd', 'gnd', 'gnd', 'gnd'] });
+
+    // the fixed bug: side walls are ADDED OUTSIDE the specified inner width
+    check('enclosed: domain_width = enclosure_width + 2·t_gnd (has_side_gnd ordering bug)',
+        near(s.domain_width, ENC_W + 2 * TG), `domain=${(s.domain_width * 1e3).toFixed(3)} mm`);
+
+    const lidY = H + ENC_H;   // lid inner face: substrate top + enclosure height
+    check('enclosed: domain_height = h + enclosure_height + t_gnd', near(s.domain_height, lidY + TG));
+
+    const left = grounds(s).find(c => near(c.x_min, -s.domain_width / 2) && near(c.x_max, -s.domain_width / 2 + TG));
+    const right = grounds(s).find(c => near(c.x_max, s.domain_width / 2) && near(c.x_min, s.domain_width / 2 - TG));
+    check('enclosed: side ground slabs at both edges, t_gnd thick', !!left && !!right);
+    check('enclosed: INNER wall-to-wall width == enclosure_width',
+        left && right && near(right.x_min - left.x_max, ENC_W),
+        left && right ? `inner=${((right.x_min - left.x_max) * 1e3).toFixed(3)} mm` : 'slabs missing');
+    const lid = grounds(s).find(c => near(c.y_min, lidY) && near(c.y_max, lidY + TG));
+    check('enclosed: lid slab at h+enclosure_height, full width',
+        !!lid && near(lid.x_min, -s.domain_width / 2) && near(lid.x_max, s.domain_width / 2));
+
+    // _clipDomain integration: the meshed cavity is exactly the specified enclosure
+    const dom = { x_min: -s.domain_width / 2, x_max: s.domain_width / 2, y_min: -TG, y_max: s.domain_height };
+    const clip = _clipDomain(dom, s.conductors, s.boundaries, 1e-9);
+    check('enclosed: _clipDomain cavity = enclosure_width × (h + enclosure_height)',
+        near(clip.X1 - clip.X0, ENC_W) && near(clip.Y0, 0) && near(clip.Y1, lidY));
+    check('enclosed: _clipDomain marks all four walls PEC',
+        clip.wallPEC.left && clip.wallPEC.right && clip.wallPEC.top && clip.wallPEC.bottom);
+}
+
+// ---------- differential microstrip ----------
+{
+    const SP = 0.2e-3;
+    const s = new MicrostripSolver({ ...BASE, trace_spacing: SP, boundaries: ['open', 'open', 'open', 'gnd'] });
+    const sig = signals(s).sort((a, b) => a.x_min - b.x_min);
+    check('differential: two signal traces', sig.length === 2);
+    check('differential: edge-to-edge gap == trace_spacing',
+        sig.length === 2 && near(sig[1].x_min - sig[0].x_max, SP));
+    check('differential: mirror-symmetric about x=0',
+        sig.length === 2 && near(sig[0].x_min, -sig[1].x_max) && near(sig[0].x_max, -sig[1].x_min));
+    check('differential: both traces at y = h..h+t',
+        sig.every(c => near(c.y_min, H) && near(c.y_max, H + T)));
+    check('differential: opposite polarity', sig.length === 2 && sig[0].polarity * sig[1].polarity === -1);
+}
+
+// ---------- stripline ----------
+{
+    const H_TOP = 0.3e-3;
+    const s = new MicrostripSolver({ ...BASE, epsilon_r_top: BASE.epsilon_r, tan_delta_top: BASE.tan_delta,
+        enclosure_height: H_TOP, boundaries: ['open', 'open', 'gnd', 'gnd'] });
+    const lidY = H + H_TOP;
+    const lid = grounds(s).find(c => near(c.y_min, lidY) && near(c.y_max, lidY + TG));
+    check('stripline: lid slab at h + stripline_top_h', !!lid);
+    const top = s.dielectrics.find(d => near(d.y_min, H) && near(d.y_max, lidY));
+    check('stripline: top dielectric fills trace level to the lid with er_top/tand_top',
+        !!top && top.epsilon_r === BASE.epsilon_r && top.tan_delta === BASE.tan_delta);
+    check('stripline: no side slabs for open side boundaries',
+        !grounds(s).some(c => c.y_max > 0 && c.y_min < lidY && (c.x_max - c.x_min) < 2 * TG + 1e-12));
+}
+
+// ---------- stripline with a top-dielectric layer (app semantics) ----------
+// The app carves the layer out of the bottom of the stripline cover: the lid stays
+// at h + stripline_top_h and the cover shrinks by the layer height. Built through
+// the factory because the subtraction lives there, not in MicrostripSolver.
+{
+    const H_TOP = 0.3e-3, H_LAYER = 0.1e-3, ER_LAYER = 1;
+    const P = { tl_type: 'stripline', w: W, h: H, t: T, er: BASE.epsilon_r, tand: BASE.tan_delta,
+        er_top: BASE.epsilon_r, tand_top: BASE.tan_delta, stripline_top_h: H_TOP, sigma: BASE.sigma_cond,
+        freq: 1e9, nx: 30, ny: 30, rq: 0, mesh_backend: 'rectilinear',
+        use_top_diel: 1, top_diel_h: H_LAYER, top_diel_er: ER_LAYER, top_diel_tand: 0 };
+    const errs = [];
+    const s = buildSolverFromParams(P, e => errs.push(e));
+    check('stripline+layer: factory builds the solver', !!s, errs.join(' '));
+    if (s) {
+        const lidY = H + H_TOP;
+        check('stripline+layer: lid stays at h + stripline_top_h',
+            !!grounds(s).find(c => near(c.y_min, lidY) && near(c.y_max, lidY + TG)));
+        const layer = s.dielectrics.find(d => near(d.y_min, H) && near(d.y_max, H + H_LAYER));
+        check('stripline+layer: layer spans h..h+top_diel_h with its own eps_r',
+            !!layer && layer.epsilon_r === ER_LAYER);
+        const cover = s.dielectrics.find(d => near(d.y_min, H + H_LAYER) && near(d.y_max, lidY));
+        check('stripline+layer: cover fills the rest up to the lid with er_top',
+            !!cover && cover.epsilon_r === BASE.epsilon_r);
+        check('stripline+layer: trace still sits on the substrate (y: h..h+t)',
+            signals(s).every(c => near(c.y_min, H) && near(c.y_max, H + T)));
+    }
+    // A trace taller than the remaining cover but shorter than the full top height fits.
+    const tall = buildSolverFromParams({ ...P, t: 0.25e-3 }, () => {});
+    check('stripline+layer: trace poking through the layer into the cover accepted', !!tall);
+    // The layer may not reach the lid.
+    const bad = [];
+    check('stripline+layer: top_diel_h >= stripline_top_h rejected',
+        buildSolverFromParams({ ...P, top_diel_h: H_TOP }, e => bad.push(e)) === null
+        && /stripline top/i.test(bad.join(' ')));
+    check('stripline+layer: diff_stripline takes the same path',
+        !!buildSolverFromParams({ ...P, tl_type: 'diff_stripline', trace_spacing: 0.2e-3 }, () => {}));
+}
+
+// ---------- ground connectivity (full-wave floating-ground rule) ----------
+// groundBodyCount is what TriBackend._eigenAbc uses to decide whether the grounds of
+// a cross-section float against each other in the eigenproblem. Rebuilt here from the
+// solver geometry the way the mesher does it, without meshing.
+{
+    const bodies = (s, wallOverride = null) => {
+        const dom = { x_min: -s.domain_width / 2, x_max: s.domain_width / 2, y_min: -s.t_gnd, y_max: s.domain_height };
+        const tol = 1e-9 * Math.hypot(dom.x_max - dom.x_min, dom.y_max - dom.y_min);
+        const c = _clipDomain(dom, s.conductors, s.boundaries, tol);
+        const { rects, roles } = condRectsOf(s.conductors, c, tol);
+        return groundBodyCount(rects, roles, { ...c.wallPEC, ...(wallOverride || {}) }, c, tol);
+    };
+    const ms = new MicrostripSolver({ ...BASE, boundaries: ['open', 'open', 'open', 'gnd'] });
+    check('bodies: microstrip has one ground body', bodies(ms) === 1);
+    const sl = new MicrostripSolver({ ...BASE, epsilon_r_top: 1, enclosure_height: 0.3e-3, boundaries: ['open', 'open', 'gnd', 'gnd'] });
+    check('bodies: stripline with open sides has two (floating grounds)', bodies(sl) === 2);
+    check('bodies: a PEC symmetry plane (odd mode) ties the stripline grounds', bodies(sl, { left: true }) === 1);
+    const slBox = new MicrostripSolver({ ...BASE, epsilon_r_top: 1, enclosure_height: 0.3e-3, enclosure_width: 3e-3,
+        boundaries: ['gnd', 'gnd', 'gnd', 'gnd'] });
+    check('bodies: enclosure side walls connect the stripline grounds', bodies(slBox) === 1);
+    const lid = new MicrostripSolver({ ...BASE, enclosure_height: 0.5e-3, boundaries: ['open', 'open', 'gnd', 'gnd'] });
+    check('bodies: microstrip with a lid and open sides floats', bodies(lid) === 2);
+    const gcpw = new MicrostripSolver({ ...BASE, use_coplanar_gnd: true, gap: 0.2e-3, via_gap: 0.3e-3, use_vias: true,
+        boundaries: ['open', 'open', 'open', 'gnd'] });
+    check('bodies: GCPW vias bond the coplanar grounds to the bottom ground', bodies(gcpw) === 1);
+    const gcpwLid = new MicrostripSolver({ ...BASE, use_coplanar_gnd: true, gap: 0.2e-3, via_gap: 0.3e-3, use_vias: true,
+        enclosure_height: 0.5e-3, boundaries: ['open', 'open', 'gnd', 'gnd'] });
+    check('bodies: GCPW with a lid and open sides floats', bodies(gcpwLid) === 2);
+    const bs = new BroadsideStriplineSolver({ trace_width: 0.3e-3, trace_thickness: 35e-6, x_offset: 0, sigma_cond: 5.8e7,
+        h_bottom: 0.2e-3, er_bottom: 4.4, tand_bottom: 0.02, h_middle: 0.3e-3, er_middle: 4.4, tand_middle: 0.02,
+        h_top: 0.2e-3, er_top: 4.4, tand_top: 0.02, freq: 1e9, boundaries: ['open', 'open', 'gnd', 'gnd'] });
+    check('bodies: broadside stripline with open sides floats', bodies(bs) === 2);
+}
+
+// ---------- GCPW ----------
+{
+    const GAP = 0.2e-3, VIA_GAP = 0.3e-3;
+    const s = new MicrostripSolver({ ...BASE, use_coplanar_gnd: true, gap: GAP, via_gap: VIA_GAP,
+        use_vias: true, boundaries: ['open', 'open', 'open', 'gnd'] });
+    const sig = signals(s);
+    check('gcpw: one signal trace', sig.length === 1);
+    // coplanar grounds: on the substrate top, inner edges at trace edge + gap
+    const cop = grounds(s).filter(c => near(c.y_min, H) && near(c.y_max, H + T));
+    const rightCop = cop.find(c => c.x_min > 0), leftCop = cop.find(c => c.x_max < 0);
+    check('gcpw: coplanar grounds at trace level on both sides', !!rightCop && !!leftCop);
+    check('gcpw: signal-to-ground gap == gap',
+        rightCop && leftCop && near(rightCop.x_min, W / 2 + GAP) && near(leftCop.x_max, -W / 2 - GAP));
+    // vias: ground conductors from the bottom-ground face up through the substrate
+    // to the top of the coplanar grounds (y: 0..h+t), one on each side, inner edge
+    // via_gap outside the coplanar-ground inner edge
+    const vias = grounds(s).filter(c => near(c.y_min, 0) && near(c.y_max, H + T));
+    const rightVia = vias.find(c => c.x_min > 0), leftVia = vias.find(c => c.x_max < 0);
+    check('gcpw: vias connect coplanar grounds through the substrate', !!rightVia && !!leftVia);
+    check('gcpw: via inner edge at gap + via_gap from the trace edge',
+        rightVia && near(rightVia.x_min, W / 2 + GAP + VIA_GAP));
+}
+
+// ---------- broadside coupled stripline ----------
+{
+    const opt = { trace_width: 0.2e-3, trace_thickness: 35e-6, x_offset: 0.05e-3, sigma_cond: 5.8e7,
+        h_bottom: 0.2e-3, er_bottom: 4.4, tand_bottom: 0.02,
+        h_middle: 0.25e-3, er_middle: 3.5, tand_middle: 0.01,
+        h_top: 0.2e-3, er_top: 4.4, tand_top: 0.02,
+        freq: 1e9, boundaries: ['open', 'open', 'gnd', 'gnd'] };
+    const s = new BroadsideStriplineSolver(opt);
+    const sig = signals(s).sort((a, b) => a.y_min - b.y_min);
+    check('broadside: two signal traces', sig.length === 2);
+    check('broadside: traces vertically stacked (disjoint y, lower below upper)',
+        sig.length === 2 && sig[0].y_max <= sig[1].y_min + 1e-12);
+    check('broadside: horizontal center offset == x_offset', sig.length === 2 &&
+        near(Math.abs((sig[1].x_min + sig[1].x_max) / 2 - (sig[0].x_min + sig[0].x_max) / 2), opt.x_offset));
+    check('broadside: opposite polarity', sig.length === 2 && sig[0].polarity * sig[1].polarity === -1);
+    // ground-to-ground spacing = h_bottom + h_middle + h_top (trace thickness excluded)
+    const lid = grounds(s).find(c => c.y_min > 0);
+    check('broadside: ground-to-ground spacing = h_bottom + h_middle + h_top',
+        !!lid && near(lid.y_min, opt.h_bottom + opt.h_middle + opt.h_top));
+    const ers = s.dielectrics.map(d => d.epsilon_r);
+    check('broadside: three dielectric layers with the specified εr stack',
+        ers.includes(4.4) && ers.includes(3.5));
+
+    // Auto domain width: x_offset only TRANSLATES the upper trace, so the trace-to-wall
+    // margin must not grow with it (it used to scale 8·(w + |x_offset|), which turned a
+    // 1 mm offset on a 0.2 mm trace into a 19 mm domain). Clearance from the outermost
+    // trace edge to the nearer wall stays exactly what the un-offset pair gets.
+    const clearance = (sol) => {
+        const c = signals(sol), half = sol.domain_width / 2;
+        return Math.min(Math.min(...c.map(k => k.x_min)) + half, half - Math.max(...c.map(k => k.x_max)));
+    };
+    const base = clearance(new BroadsideStriplineSolver({ ...opt, x_offset: 0 }));
+    for (const off of [0.05e-3, 1e-3, -1e-3]) {
+        check(`broadside: auto width keeps the un-offset trace-to-wall margin at x_offset=${off * 1e3} mm`,
+            near(clearance(new BroadsideStriplineSolver({ ...opt, x_offset: off })), base, 1e-15),
+            `${(base * 1e3).toFixed(3)} mm`);
+    }
+}
+
+// ---------- _clipDomain unit cases (synthetic rects) ----------
+{
+    const dom = { x_min: -2, x_max: 2, y_min: -0.1, y_max: 4 };
+    const slab = (x0, y0, x1, y1, is_signal = false) => ({ x_min: x0, y_min: y0, x_max: x1, y_max: y1, is_signal });
+
+    // open boundaries, no slabs → unchanged, no PEC walls
+    let c = _clipDomain(dom, [slab(-0.2, 1, 0.2, 1.1, true)], ['open', 'open', 'open', 'open'], 1e-9);
+    check('_clipDomain: open + no slabs → domain unchanged, no PEC',
+        c.X0 === -2 && c.X1 === 2 && c.Y0 === -0.1 && c.Y1 === 4 &&
+        !c.wallPEC.left && !c.wallPEC.right && !c.wallPEC.top && !c.wallPEC.bottom);
+
+    // full-width bottom slab → absorbed: floor moves to slab top, bottom PEC
+    c = _clipDomain(dom, [slab(-2, -0.1, 2, 0)], ['open', 'open', 'open', 'gnd'], 1e-9);
+    check('_clipDomain: bottom slab absorbed into the floor', c.Y0 === 0 && c.wallPEC.bottom);
+
+    // a SIGNAL conductor spanning the bottom must NOT be absorbed
+    c = _clipDomain(dom, [slab(-2, -0.1, 2, 0, true)], ['open', 'open', 'open', 'open'], 1e-9);
+    check('_clipDomain: signal conductor is never absorbed', c.Y0 === -0.1 && !c.wallPEC.bottom);
+
+    // a slab NOT touching the domain edge is an interior conductor, not a wall
+    c = _clipDomain(dom, [slab(-2, 3.5, 2, 3.6)], ['open', 'open', 'open', 'open'], 1e-9);
+    check('_clipDomain: floating slab (gap above) is not absorbed', c.Y1 === 4 && !c.wallPEC.top);
+
+    // full box: floor + lid at the domain top + side slabs spanning floor..lid
+    // (like microstrip builds them) — needs the iterative pass: the sides only
+    // become full-span after the floor/lid clips. Open boundaries so wallPEC
+    // comes from the absorption itself, not the boundary spec.
+    const box = [
+        slab(-2, -0.1, 2, 0),        // floor
+        slab(-2, 3.5, 2, 4),         // lid (touches domain top)
+        slab(-2, -0.1, -1.9, 3.5),   // left wall
+        slab(1.9, -0.1, 2, 3.5),     // right wall
+    ];
+    c = _clipDomain({ ...dom }, box, ['open', 'open', 'open', 'open'], 1e-9);
+    check('_clipDomain: full box → cavity between all four inner faces',
+        c.X0 === -1.9 && c.X1 === 1.9 && c.Y0 === 0 && c.Y1 === 3.5);
+    check('_clipDomain: full box → absorption marks all four walls PEC',
+        c.wallPEC.left && c.wallPEC.right && c.wallPEC.top && c.wallPEC.bottom);
+
+    // slab NOT reaching a wall (coplanar ground) → not absorbed
+    c = _clipDomain(dom, [slab(-1, -0.1, 2, 0)], ['open', 'open', 'open', 'gnd'], 1e-9);
+    check('_clipDomain: partial-span slab is not absorbed', c.Y0 === -0.1);
+}
+
+// ---------- shape primitives (shapes.js) ----------
+// The polygon is the geometry: the mesher, the material tagging, the freedom map and
+// the loss integrals all test against the same vertices.
+{
+    const r = 1.475e-3;
+    check('shapes: area-matched radius sits between in- and circumradius of the circle',
+        polyRadiusForArea(r, 64) > r && polyRadiusForArea(r, 64) * Math.cos(Math.PI / 64) < r);
+
+    // Boundary ownership: vertices and side midpoints classify as inside. Midpoints are
+    // the load-bearing case, buildTriFreedomMap decides a PEC edge by its midpoint.
+    const n = 64, tol = r * 1e-9, R = polyRadiusForArea(r, n);
+    const poly = new Float64Array(2 * n);
+    for (let k = 0; k < n; k++) { poly[2 * k] = R * Math.cos(2 * Math.PI * k / n); poly[2 * k + 1] = R * Math.sin(2 * Math.PI * k / n); }
+    const disk = { shape: { type: 'polygon', poly } };
+    check('shapes: area-matched n-gon encloses exactly pi*r^2', near(shapeArea(disk) / (Math.PI * r * r), 1, 1e-12));
+    let vertexOk = true, midOk = true;
+    for (let k = 0; k < n; k++) {
+        const j = (k + 1) % n;
+        const vx = poly[2 * k], vy = poly[2 * k + 1];
+        const mx = (vx + poly[2 * j]) / 2, my = (vy + poly[2 * j + 1]) / 2;
+        if (!shapeContains(disk, vx, vy, tol)) vertexOk = false;
+        if (!shapeContains(disk, mx, my, tol)) midOk = false;
+    }
+    check('shapes: a polygon owns its vertices', vertexOk);
+    check('shapes: a polygon owns its side midpoints', midOk);
+    check('shapes: signed distance is negative inside, positive outside',
+        shapeSignedDist(disk.shape, 0, 0) < 0 && shapeSignedDist(disk.shape, 2 * r, 0) > 0);
+    check('shapes: full boundary has n segments, half drops the symmetry-plane cut',
+        shapeSegments(disk).length === n && shapeSegments(disk, { half: true }).length === n / 2);
+
+    // A shapeless object takes the plain bbox path, which keeps every rectangular
+    // medium bit-identical.
+    const rect = { x_min: -1, x_max: 2, y_min: -3, y_max: 4, width: 3, height: 7 };
+    check('shapes: shapeless objects fall back to the bbox test',
+        shapeContains(rect, 0, 0, 0) && shapeContains(rect, 2, 4, 0) &&
+        !shapeContains(rect, 2.1, 0, 0) && shapeArea(rect) === 21 &&
+        shapeSegments(rect).length === 0);
+}
+
+// ---------- coaxial ----------
+{
+    const d = 0.92e-3, D = 2.95e-3, a = d / 2, b = D / 2;
+    const s = new CoaxSolver({ inner_diameter: d, dielectric_diameter: D,
+        epsilon_r: 2.1, tan_delta: 2e-4, sigma_cond: 5.8e7 });
+    const sig = signals(s), gnd = grounds(s);
+    check('coax: one signal conductor and one ground', sig.length === 1 && gnd.length === 1);
+    // Each circle is a regular n-gon of the circle's area, the shield a ring of the
+    // shield thickness around the dielectric disk, in an open domain.
+    check('coax: centre conductor is an n-gon of area pi*a^2',
+        sig[0].shape.type === 'polygon' && near(shapeArea(sig[0]) / (Math.PI * a * a), 1, 1e-5));
+    check('coax: shield is a ring around the dielectric disk',
+        gnd[0].shape.type === 'ring' && gnd[0].shape.hole.every((v, i) => near(v, s.dielectrics[0].shape.poly[i])));
+    check('coax: shield is shield_thickness thick', near((gnd[0].shape.radial.rOut - gnd[0].shape.radial.holeOut)
+        / s.shield_thickness, 1, 1e-3));
+    check('coax: open domain around the shield', s.boundaries.every(v => v === 'open'));
+    check('coax: single-ended', s.is_differential === false);
+    check('coax: mirror symmetric', isXSymmetric(s.conductors, s.dielectrics, s.domain_width));
+    check('coax: domain box strictly encloses the shield',
+        s.domain_width / 2 > b + s.shield_thickness && s.domain_height > b + s.shield_thickness
+            && s.domain_y_min < -b - s.shield_thickness);
+
+    // Plating on a circle has no faces to select between; what it selects is WHICH
+    // CONDUCTOR carries the layer. A block naming neither (the pre-inner/outer shape, or
+    // one filled from a rectangular line's face checkboxes) means the centre conductor.
+    const platingOf = (sel) => new CoaxSolver({ inner_diameter: d, dielectric_diameter: D,
+        epsilon_r: 2.1, plating: { sigma: 6.3e7, thickness: 4e-6, rq: 0, ...sel } })
+        .conductors.map(c => c.plating);
+    const plated = platingOf({ top: true, sides: false, bottom: false });
+    check('coax: plating is normalized to all-around on the centre conductor',
+        plated[0].all === true && plated[0].top && plated[0].sides && plated[0].bottom &&
+        plated[0].thick_corners === false);
+    check('coax: a plating block naming no conductor plates the centre one only',
+        plated[1] === null);
+    const outerOnly = platingOf({ inner: false, outer: true });
+    check('coax: outer-only plating plates the shield and leaves the centre bare',
+        outerOnly[0] === null && outerOnly[1] !== null && outerOnly[1].all === true);
+    const bothPlated = platingOf({ inner: true, outer: true });
+    check('coax: both conductors can be plated at once',
+        bothPlated[0] !== null && bothPlated[1] !== null);
+    check('coax: selecting neither conductor is bare metal',
+        platingOf({ inner: false, outer: false }).every(p => p === null));
+
+    // A shaped ground must never be absorbed into a wall — its bbox spans the domain but
+    // its body does not fill it.
+    const cl = _clipDomain({ x_min: -s.domain_width / 2, x_max: s.domain_width / 2,
+                             y_min: s.domain_y_min, y_max: s.domain_height },
+                           s.conductors, s.boundaries, s.domain_width * 1e-9);
+    check('coax: _clipDomain leaves the domain untouched (no full-span slab)',
+        near(cl.X0, -s.domain_width / 2) && near(cl.X1, s.domain_width / 2) &&
+        near(cl.Y0, s.domain_y_min) && near(cl.Y1, s.domain_height));
+
+    const rejects = (o, label) => {
+        try { new CoaxSolver({ inner_diameter: 1e-3, dielectric_diameter: 3e-3, epsilon_r: 2.1, ...o }); }
+        catch { check(`coax: rejects ${label}`, true); return; }
+        check(`coax: rejects ${label}`, false);
+    };
+    rejects({ dielectric_diameter: 1e-3 }, 'D == d');
+    rejects({ dielectric_diameter: 1.01e-3 }, 'a dielectric annulus too thin to mesh');
+    rejects({ inner_diameter: -1e-3 }, 'a negative diameter');
+    rejects({ epsilon_r: 0.5 }, 'epsilon_r below 1');
+    rejects({ mesh_backend: 'rectilinear' }, 'the quasi-static backend');
+}
+
+// ---------- rectangular waveguide ----------
+// The first SOURCE-FREE medium: the walls are boundary conditions, not meshed bodies, so
+// the conductor list is empty. That is exactly what validateTriMesh's enclosed-domain
+// exemption keys on, so the _clipDomain assertion below is load-bearing.
+{
+    const A = 22.86e-3, B = 10.16e-3;                 // WR-90
+    const s = new RectWaveguideSolver({ width: A, height: B, sigma_cond: 5.8e7 });
+
+    check('waveguide: no conductors — the walls are boundary conditions',
+        s.conductors.length === 0);
+    check('waveguide: one homogeneous dielectric filling the guide',
+        s.dielectrics.length === 1 && near(s.dielectrics[0].x_min, -A / 2) &&
+        near(s.dielectrics[0].x_max, A / 2) && near(s.dielectrics[0].y_min, 0) &&
+        near(s.dielectrics[0].y_max, B));
+    check('waveguide: fully enclosed — every wall is gnd', s.boundaries.every(v => v === 'gnd'));
+    check('waveguide: single-ended', s.is_differential === false);
+    check('waveguide: domain box IS the guide interior',
+        near(s.domain_width, A) && near(s.domain_height, B) && s.t_gnd === 0);
+    check('waveguide: backend dispatch flags',
+        s.mode_type === 'waveguide' && s.tri_symmetry === false &&
+        s.has_potential === false && s.allow_dc === false);
+
+    // kc is purely geometric — no er — which is what lets beta(f) be propagated
+    // analytically from a single eigensolve.
+    check('waveguide: kc = pi/max(a,b)', near(s.kc_analytic, Math.PI / A));
+    check('waveguide: WR-90 cutoff is 6.557 GHz', near(s.fc / 1e9, 6.5571, 1e-3), (s.fc / 1e9).toFixed(4));
+    check('waveguide: WR-90 second cutoff is 13.114 GHz', near(s.fc2 / 1e9, 13.1143, 1e-3),
+        (s.fc2 / 1e9).toFixed(4));
+    check('waveguide: the published 8.2-12.4 GHz band is single-mode',
+        s.fc < 8.2e9 && s.fc2 > 12.4e9);
+
+    // Dielectric fill lowers both cutoffs by sqrt(er) and leaves kc alone.
+    const filled = new RectWaveguideSolver({ width: A, height: B, epsilon_r: 2.1 });
+    check('waveguide: er scales fc by 1/sqrt(er), kc unchanged',
+        near(filled.kc_analytic, s.kc_analytic) &&
+        near(filled.fc * Math.sqrt(2.1), s.fc, 1e-3));
+
+    // b > a: the fundamental is TE01, so max(a,b) must pick the HEIGHT.
+    const tall = new RectWaveguideSolver({ width: B, height: A });
+    check('waveguide: b > a puts the fundamental at pi/b (TE01)',
+        near(tall.kc_analytic, Math.PI / A) && near(tall.fc, s.fc));
+
+    // One continuous wall surface: no faces to select between.
+    const plated = new RectWaveguideSolver({ width: A, height: B,
+        plating: { sigma: 6.3e7, thickness: 4e-6, rq: 0, top: true, sides: false, bottom: false } });
+    check('waveguide: plating is normalized to all-around',
+        plated.plating.all === true && plated.plating.top && plated.plating.sides &&
+        plated.plating.bottom && plated.plating.thick_corners === false);
+    check('waveguide: no plating when none requested', s.plating === null);
+
+    // The enclosed-domain exemption in validateTriMesh requires all four wallPEC true and
+    // an untouched domain — with no conductors there is no full-span slab to absorb.
+    const cl = _clipDomain({ x_min: -A / 2, x_max: A / 2, y_min: 0, y_max: B },
+                           s.conductors, s.boundaries, A * 1e-9);
+    check('waveguide: _clipDomain sets all four wallPEC and leaves the domain untouched',
+        cl.wallPEC.left && cl.wallPEC.right && cl.wallPEC.top && cl.wallPEC.bottom &&
+        near(cl.X0, -A / 2) && near(cl.X1, A / 2) && near(cl.Y0, 0) && near(cl.Y1, B));
+
+    // Warnings, not throws: an out-of-band frequency is legal, just annotated.
+    check('waveguide: no warnings in band', s.waveguideWarnings(10e9).length === 0);
+    check('waveguide: warns below cutoff', s.waveguideWarnings(5e9).length === 1);
+    check('waveguide: warns when over-moded', s.waveguideWarnings(15e9).length === 1);
+
+    const rejects = (o, label) => {
+        try { new RectWaveguideSolver({ width: A, height: B, ...o }); }
+        catch { check(`waveguide: rejects ${label}`, true); return; }
+        check(`waveguide: rejects ${label}`, false);
+    };
+    rejects({ width: -1e-3 }, 'a negative width');
+    rejects({ height: 0 }, 'a zero height');
+    rejects({ epsilon_r: 0.5 }, 'epsilon_r below 1');
+    rejects({ tan_delta: -1e-3 }, 'a negative loss tangent');
+    rejects({ height: A / 200 }, 'an aspect ratio too extreme to mesh');
+    rejects({ mesh_backend: 'rectilinear' }, 'the quasi-static backend');
+}
+
+done();

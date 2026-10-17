@@ -1,0 +1,270 @@
+// Mirror symmetries of a cross-section, read from the geometry: the swap symmetry of a
+// differential pair (when the odd/even decomposition is exact), the x = 0 mirror for
+// half-domain solves, and the modal decomposition of a pair that has neither.
+
+import { eig2x2, mat2Mul, mat2Inv } from './matrix.js';
+import { isMirrorShape, translateShapeX } from './shapes.js';
+
+// Conductors and dielectrics carry their bounding box as x_min/x_max/y_min/y_max, which is
+// the whole body for a rect. A shaped body (polygon, ring) also has `shape`, and the tests
+// below compare those separately, since a bounding box cannot tell a trapezoid from its
+// mirror image.
+
+function rectsBBoxScale(...lists) {
+    let lo = Infinity, hi = -Infinity, blo = Infinity, bhi = -Infinity;
+    for (const list of lists) {
+        for (const r of list) {
+            if (r.x_min < lo) lo = r.x_min;
+            if (r.x_max > hi) hi = r.x_max;
+            if (r.y_min < blo) blo = r.y_min;
+            if (r.y_max > bhi) bhi = r.y_max;
+        }
+    }
+    return Math.max(hi - lo, bhi - blo);
+}
+
+// Every rect must have a mirror partner across the line {axis}={coord}, matching in material
+// (keyOf) and in its span on the preserved (non-mirrored) axis. Generalises the x=0 mirror
+// test used for half-domain meshing to an arbitrary axis-aligned mirror plane.
+function mirrorInvariant(rects, keyOf, axis, coord, tol) {
+    const q = v => Math.round(v / tol);   // tolerance-quantised bucket key
+    const buckets = new Map();
+    for (const r of rects) {
+        const pLo = axis === 'x' ? r.y_min : r.x_min;   // preserved axis (unchanged by the mirror)
+        const pHi = axis === 'x' ? r.y_max : r.x_max;
+        const k = `${keyOf(r)}|${q(pLo)}|${q(pHi)}`;
+        if (!buckets.has(k)) buckets.set(k, []);
+        const mLo = axis === 'x' ? r.x_min : r.y_min;   // mirrored axis
+        const mHi = axis === 'x' ? r.x_max : r.y_max;
+        buckets.get(k).push([mLo, mHi]);
+    }
+    for (const spans of buckets.values()) {
+        for (const [lo, hi] of spans) {
+            const rLo = 2 * coord - hi, rHi = 2 * coord - lo;   // reflected span
+            if (!spans.some(([p, s]) => Math.abs(p - rLo) < tol && Math.abs(s - rHi) < tol)) return false;
+        }
+    }
+    return true;
+}
+
+// Same material of two dielectrics, as the painting compares them.
+export const sameDielectric = (a, c) => a.epsilon_r === c.epsilon_r && a.tan_delta === c.tan_delta
+    && (a.sigma || 0) === (c.sigma || 0);
+
+// The mirror tests compare rectangle sets and cannot see paint order: where two bodies of
+// different material (same(a, c) false) overlap, their mirror images across {axis}={coord}
+// must overlap in the same order, or the painted result is not symmetric. Bodies are
+// compared by their bounding boxes. True when the paint order mirrors.
+export function paintOrderMirrors(list, same, axis, coord, tol) {
+    const lo = axis === 'x' ? 'x_min' : 'y_min', hi = axis === 'x' ? 'x_max' : 'y_max';
+    const plo = axis === 'x' ? 'y_min' : 'x_min', phi = axis === 'x' ? 'y_max' : 'x_max';
+    const partner = list.map(d => list.findIndex(o => same(d, o)
+        && Math.abs(o[lo] + d[hi] - 2 * coord) <= tol && Math.abs(o[hi] + d[lo] - 2 * coord) <= tol
+        && Math.abs(o[plo] - d[plo]) <= tol && Math.abs(o[phi] - d[phi]) <= tol));
+    for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length; j++) {
+            const a = list[i], c = list[j];
+            if (same(a, c)) continue;
+            const w = Math.min(a.x_max, c.x_max) - Math.max(a.x_min, c.x_min);
+            const h = Math.min(a.y_max, c.y_max) - Math.max(a.y_min, c.y_min);
+            if (!(w > tol && h > tol)) continue;
+            if (partner[i] < 0 || partner[j] < 0 || partner[i] > partner[j]) return false;
+        }
+    }
+    return true;
+}
+
+// True when swapping the two signal conductors leaves the conductors and the dielectric
+// stack unchanged, which makes the odd/even decomposition exact (S22 = S11). Read from
+// the geometry, so it is exact where C11 = C22 on a mesh only holds to the mesh noise.
+// null when the geometry cannot decide (not exactly two signals, or missing data).
+export function conductorSwapSymmetric(conductors, dielectrics) {
+    if (!conductors || !dielectrics) return null;
+    const signals = conductors.filter(c => c.is_signal);
+    if (signals.length !== 2) return null;            // not a two-conductor pair → can't define a swap
+    const tol = rectsBBoxScale(conductors, dielectrics) * 1e-6;
+    if (!(tol > 0)) return null;
+
+    const [a, b] = signals;
+    const wa = a.x_max - a.x_min, wb = b.x_max - b.x_min;
+    const ha = a.y_max - a.y_min, hb = b.y_max - b.y_min;
+    if (Math.abs(wa - wb) > tol || Math.abs(ha - hb) > tol) return false;   // unequal traces → asymmetric
+
+    const acx = (a.x_min + a.x_max) / 2, acy = (a.y_min + a.y_max) / 2;
+    const bcx = (b.x_min + b.x_max) / 2, bcy = (b.y_min + b.y_max) / 2;
+    const dx = Math.abs(acx - bcx), dy = Math.abs(acy - bcy);
+
+    // The swap mirror is the perpendicular bisector of the two signal centres. It must be
+    // axis-aligned: the pair is separated along x (edge-coupled → vertical mirror) or along y
+    // (broadside → horizontal mirror). Separation on both axes admits no axis-aligned mirror
+    // that swaps them (a point reflection would, but that does not preserve a layered dielectric
+    // stack) → asymmetric.
+    let axis, coord;
+    if (dx > tol && dy <= tol) { axis = 'x'; coord = (acx + bcx) / 2; }
+    else if (dy > tol && dx <= tol) { axis = 'y'; coord = (acy + bcy) / 2; }
+    else return false;
+
+    const condKey = c => (c.is_signal ? 's' : 'g');   // signals are interchangeable; grounds map to grounds
+    const dielKey = d => `${(d.epsilon_r ?? 0).toFixed(6)}:${(d.tan_delta ?? 0).toFixed(6)}:${d.sigma || 0}`;
+    // Polygon shapes must mirror onto a shape of their kind too (the bounding boxes above
+    // cannot tell a trapezoid from its mirror image). Only a vertical mirror is tested.
+    const shaped = [...conductors, ...dielectrics].filter(o => o.shape);
+    if (shaped.length) {
+        if (axis !== 'x' || shaped.some(o => o.shape.type !== 'polygon' && o.shape.type !== 'ring')) return false;
+        const centred = o => translateShapeX(o.shape, -coord);
+        const ok = (list, key) => list.filter(o => o.shape).every(o => list.some(p => p.shape && key(p) === key(o)
+            && isMirrorShape(centred(o), centred(p), tol)));
+        if (!ok(conductors, condKey) || !ok(dielectrics, dielKey)) return false;
+    }
+    return mirrorInvariant(conductors, condKey, axis, coord, tol)
+        && mirrorInvariant(dielectrics, dielKey, axis, coord, tol)
+        && paintOrderMirrors(dielectrics, sameDielectric, axis, coord, tol);
+}
+
+// Coordinate tolerance for the x=0 mirror tests below (relative to the domain width),
+// the rounding of exactly mirrored input. The FDM mesher uses it too, so a geometry
+// solved as symmetric always gets a symmetric grid.
+export const symTol = (domainW) => domainW * 1e-9;
+
+// Metal and surface finish of a conductor as a comparable string: plating material,
+// interface roughness (left out it is the plating roughness) and faces, own roughness,
+// own conductivity.
+export function conductorFinishKey(c) {
+    const p = c.plating;
+    const plated = p && p.sigma > 0 && (p.top || p.sides || p.bottom || p.all);
+    return (plated ? `${p.sigma}:${p.thickness}:${p.rq ?? 0}:${p.rq_interface ?? p.rq ?? 0}:`
+        + `${!!p.top}${!!p.sides}${!!p.bottom}${!!p.all}${!!p.thick_corners}` : '-')
+        + '|' + (c.rq ?? '') + '|' + (c.sigma ?? '');
+}
+
+// Is the geometry mirror-symmetric about x=0? (Mesh only the right half)
+// finish = false compares the shapes only (what a symmetric mesh needs), the default also
+// requires mirrored conductors to share their surface finish (what a half-domain loss
+// calculation needs).
+export function isXSymmetric(conductors, dielectrics, domainW, { finish: withFinish = true } = {}) {
+    const tol = symTol(domainW);
+    // Shaped geometry can't be compared by rect spans: a polygon or ring shape needs a
+    // mirror partner of the same role and finish, or material, which may be the shape
+    // itself. The rectangular remainder still has to pass the span test below.
+    const shaped = (o) => !!o.shape;
+    const condKey = c => (c.is_signal ? 's' + Math.abs(c.polarity || 0) : 'g') + (withFinish ? '|' + conductorFinishKey(c) : '');
+    const dielKey = d => `${d.epsilon_r.toFixed(6)}:${(d.tan_delta || 0).toFixed(6)}:${d.sigma || 0}`;
+    const partnered = (list, key) => list.filter(shaped).every(o =>
+        list.some(p => p.shape && key(p) === key(o) && isMirrorShape(o.shape, p.shape, tol)));
+    if (!partnered(conductors, condKey) || !partnered(dielectrics, dielKey)) return false;
+    conductors = conductors.filter(o => !shaped(o));
+    dielectrics = dielectrics.filter(o => !shaped(o));
+    const mirrorOf = (list, extra) => {
+        // every rect must have a mirror partner (xmin <=> -xmax) with same y + material
+        const key = (r) => `${extra(r)}|${r.y_min.toFixed(12)}|${r.y_max.toFixed(12)}`;
+        const buckets = new Map();
+        for (const o of list) {
+            const k = key(o);
+            if (!buckets.has(k)) buckets.set(k, []);
+            buckets.get(k).push([o.x_min, o.x_max]);
+        }
+        for (const spans of buckets.values()) {
+            for (const [xmin, xmax] of spans) {
+                const mlo = -xmax, mhi = -xmin;
+                const found = spans.some(([a, b]) => Math.abs(a - mlo) < tol && Math.abs(b - mhi) < tol);
+                if (!found) return false;
+            }
+        }
+        return true;
+    };
+    // The surface finish is part of the conductor: a pair whose traces are plated or
+    // roughened differently has the same fields on both sides but not the same loss, and
+    // the half domain would report the loss of the meshed side for both.
+    const condOk = mirrorOf(conductors, condKey);
+    const dielOk = mirrorOf(dielectrics, dielKey);
+    return condOk && dielOk;
+}
+
+// Half-domain symmetry decision, shared by both backends (MicrostripSolver for the
+// FDM grid, TriBackend.buildMesh for the triangular mesh).
+//   ok        - mirror-symmetric about x=0 and, for a differential pair, no signal
+//               conductor cutting the plane. A broadside pair's traces are stacked at
+//               x=0, so both modes are x-symmetric there and the plane cannot separate
+//               even from odd. Those pairs must solve on the full domain.
+//   straddles - some signal conductor crosses x=0. With ok this is the single-ended
+//               case where the plane cuts the trace itself (the half-domain charge
+//               contour then captures Q/2).
+export function halfDomainSymmetry(conductors, dielectrics, domainW, isDifferential) {
+    const tol = symTol(domainW);
+    const straddles = conductors.some(c => c.is_signal && c.x_min < -tol && c.x_max > tol);
+    return { straddles,
+             ok: !(isDifferential && straddles) && isXSymmetric(conductors, dielectrics, domainW)
+                 && (!isDifferential || signalsMirrorOpposite(conductors, tol)) };
+}
+
+// The odd mode of a pair is antisymmetric about x=0 only when every signal conductor
+// mirrors onto one of the opposite polarity. An interleaved + - - + layout is mirror
+// symmetric too, but each net maps onto itself and its odd mode is x-symmetric.
+function signalsMirrorOpposite(conductors, tol) {
+    const signals = conductors.filter(c => c.is_signal);
+    return signals.every(c => signals.some(p => p.polarity === -c.polarity
+        && Math.abs(p.x_min + c.x_max) < tol && Math.abs(p.x_max + c.x_min) < tol
+        && Math.abs(p.y_min - c.y_min) < tol && Math.abs(p.y_max - c.y_max) < tol));
+}
+
+// Modal decomposition of a differential pair, shared by both backends
+// (FieldSolver2D._solve_modal_differential, TriBackend._prepareStaticModal) so the same
+// geometry gets the same decision and mode order from either.
+//
+// C and C0 are the 2x2 Maxwell capacitance matrices (dielectric, vacuum) in F/m. The
+// eigenpairs of C0^-1 C give eps_eff and the modal voltage vectors. Three outcomes:
+//
+//   symmetric:  the geometry is swap symmetric (or, when that test cannot decide,
+//               |C11 - C22| is below 5e-3, above the mesh noise and below a 5%
+//               broadside height imbalance). The odd/even drives are exact.
+//               Returns { physMatrix: null, modalVecs: null }.
+//   degenerate: asymmetric, but the eigenvalues separate by less than DEGENERATE_SEP,
+//               so the eigenvectors are arbitrary. A homogeneous fill gives exactly 0,
+//               any inhomogeneity a mesh-independent basis down to ~1e-5, so only the
+//               numerical floor counts (a larger cut would switch bases mid-sweep).
+//               Returns physMatrix { C, L } without Tv, modalVecs null; the caller
+//               keeps its odd/even results.
+//   modal:      physMatrix { C, L, Tv } and modalVecs [v_odd, v_even], ordered by
+//               v0*v1/|v|^2 (opposite signs: odd). Uncoupled lines tie on that score,
+//               and the mode on the first conductor comes first.
+//
+// L = C0^-1 / c^2. globalThis.__MODAL_FORCE__ (tests): 'off' forces symmetric, 'on'
+// skips the symmetry and degeneracy checks.
+const DEGENERATE_SEP = 1e-6;
+
+export function classifyModalDecomposition(C, C0, conductors, dielectrics) {
+    const { vals, vecs } = eig2x2(mat2Mul(mat2Inv(C0), C));
+    const sep = Math.abs(vals[0] - vals[1]) / (Math.abs(vals[0]) + Math.abs(vals[1]) + 1e-30);
+    const force = globalThis.__MODAL_FORCE__;
+    const symGeo = conductorSwapSymmetric(conductors, dielectrics);
+    const asym = Math.abs(C[0][0] - C[1][1]) / (Math.abs(C[0][0]) + Math.abs(C[1][1]) + 1e-30);
+    const isSymmetric = force === 'off'
+        || (force !== 'on' && (symGeo === null ? asym < 5e-3 : symGeo));
+    if (isSymmetric) return { physMatrix: null, modalVecs: null };
+    const C_LIGHT = 299792458;
+    const kL = 1 / (C_LIGHT * C_LIGHT);
+    const C0inv = mat2Inv(C0);
+    const physMatrix = { C, L: [[C0inv[0][0] * kL, C0inv[0][1] * kL], [C0inv[1][0] * kL, C0inv[1][1] * kL]] };
+    if (force !== 'on' && sep < DEGENERATE_SEP) return { physMatrix, modalVecs: null };
+    const diffScore = v => { const n = v[0] * v[0] + v[1] * v[1]; return n > 0 ? v[0] * v[1] / n : 0; };
+    // Uncoupled lines (a ground plane between them) give single-line modes whose
+    // scores differ only by round-off. The mode on the first conductor then comes
+    // first, so both backends label the modes alike.
+    const s0 = diffScore(vecs[0]), s1 = diffScore(vecs[1]);
+    const order = Math.abs(s0 - s1) < 1e-9
+        ? (Math.abs(vecs[0][0]) >= Math.abs(vecs[1][0]) ? [0, 1] : [1, 0])
+        : (s0 <= s1 ? [0, 1] : [1, 0]);
+    const modalVecs = [vecs[order[0]], vecs[order[1]]];
+    physMatrix.Tv = modalVecs;
+    return { physMatrix, modalVecs };
+}
+
+// Trace currents of a mode with voltages v on a pair of capacitance matrix C:
+// i = C v / (v^T C v / 2). The mode's Z0 takes C_k = v^T C v / 2, so 1/2 i^T R i is
+// the R of alpha = R / (2 Z0), the modal power loss over twice the transmitted
+// power. i = [1, -+1] on a symmetric pair. Null if v^T C v is not positive.
+export function modalCurrents(C, v) {
+    const i0 = C[0][0] * v[0] + C[0][1] * v[1], i1 = C[1][0] * v[0] + C[1][1] * v[1];
+    const n = 2 / (v[0] * i0 + v[1] * i1);
+    return isFinite(n) && n > 0 ? [i0 * n, i1 * n] : null;
+}

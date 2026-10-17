@@ -1,0 +1,30 @@
+// Node smoke test of the WASM module: node tools/wasm_smoke.mjs <wasm> <pcb> [pro]
+import fs from 'node:fs';
+const [, , wasmPath, pcb, pro] = process.argv;
+const { instance } = await WebAssembly.instantiate(fs.readFileSync(wasmPath), {});
+const k = instance.exports;
+const enc = new TextEncoder(), dec = new TextDecoder();
+const call = (fn, text) => {
+  const b = enc.encode(text ?? '');
+  const p = k.kisi_alloc(b.length);
+  new Uint8Array(k.memory.buffer, p, b.length).set(b);
+  const rc = fn(p, b.length);
+  k.kisi_free(p, b.length);
+  const out = dec.decode(new Uint8Array(k.memory.buffer, k.kisi_out_ptr(), k.kisi_out_len()));
+  return { rc, out };
+};
+let t = performance.now();
+if (pro) console.log('pro', call(k.kisi_load_pro, fs.readFileSync(pro, 'utf8')).rc);
+const r = call(k.kisi_load_pcb, fs.readFileSync(pcb, 'utf8'));
+console.log('load', r.rc, r.out.slice(0, 200), (performance.now() - t).toFixed(0), 'ms');
+t = performance.now();
+k.kisi_scene();
+const scene = JSON.parse(dec.decode(new Uint8Array(k.memory.buffer, k.kisi_out_ptr(), k.kisi_out_len())));
+console.log('scene', (performance.now() - t).toFixed(0), 'ms', 'tracks', scene.tracks.length / 7, 'pads', scene.pads.length / 8);
+t = performance.now();
+const a = call(k.kisi_analyze, '{"step":0.5}');
+const an = JSON.parse(a.out);
+console.log('analyze', a.rc, (performance.now() - t).toFixed(0), 'ms', 'xs', an.cross_sections.length, 'pieces', an.pieces.length / 4, 'json MB', (a.out.length / 1e6).toFixed(2));
+t = performance.now();
+const nz = k.kisi_zones();
+console.log('zones', nz, 'pts', k.kisi_zone_pts_len() / 2, (performance.now() - t).toFixed(0), 'ms');

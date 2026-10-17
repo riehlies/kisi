@@ -1,0 +1,195 @@
+// Test runner: runs every test in a tier (no early stop), prints a one-line status
+// per test, shows the output of failing tests only, and exits nonzero if any failed.
+//
+//   node tests/run.mjs [fast|slow|e2e|fuzz|all] [-j N]
+//
+// Tests run in parallel (default jobs: min(8, cpus - 2), except e2e defaults to
+// 1 because its tests share the dev server on localhost:8731). Each test's
+// output is buffered and only printed on failure, so parallel output stays
+// readable, status lines appear in completion order. `-j 1` restores strictly
+// sequential runs.
+//
+// Scheduling is longest-first using the per-entry `cost` hints (seconds on my
+// PC), with a worker pool the wall time is then bounded by max(longest single
+// test, total/jobs). The hints only order the queue.
+//
+// Tiers:
+//   fast - Quick correctness check.
+//   slow - Full check including some heavy tests.
+//   e2e  - Browser tests. Need the dev server on localhost:8731 and chromium.
+//   fuzz - QS-vs-fullwave fuzzer run.
+import { spawn } from 'child_process';
+import os from 'os';
+
+const TIERS = {
+    fast: [
+        { file: 'tests/test_geometry.js', cost: 1 },
+        { file: 'tests/test_stripline_top_diel.js', cost: 15 },
+        { file: 'tests/test_eigen_pencil.mjs', cost: 1 },
+        { file: 'tests/test_complex_symmetric.mjs', cost: 1 },
+        { file: 'tests/test_gauge.mjs', cost: 19 },
+        { file: 'tests/test_box_modes.mjs', cost: 16 },
+        { file: 'tests/test_parallel_plate.js', cost: 28 },
+        { file: 'tests/test_coax.js', cost: 11 },
+        { file: 'tests/test_plot_fields.js', cost: 60 },
+        { file: 'tests/test_rect_waveguide.js', cost: 7 },
+        { file: 'tests/test_djordjevic_sarkar.js', cost: 1 },
+        { file: 'tests/test_meshability.js', cost: 1 },
+        { file: 'tests/test_causal_effect.js', cost: 2 },
+        { file: 'tests/test_layered_roughness.js', cost: 1 },
+        { file: 'tests/test_plating_interface_roughness.js', cost: 10 },
+        { file: 'tests/test_interpolating_sweep.js', cost: 2 },
+        { file: 'tests/test_mtl_sparams.js', cost: 1 },
+        { file: 'tests/test_open_boundary_warning.js', cost: 25 },
+        { file: 'tests/test_gcpw_qs_continuity.js', cost: 9 },
+        { file: 'tests/test_gcpw_gnd_width.js', cost: 25 },
+        { file: 'tests/test_qs_edge_cases.js', cost: 30 },
+        { file: 'tests/test_shared_edge_cases.js', cost: 25 },
+        { file: 'tests/test_fullwave_edge_cases.js', cost: 13 },
+        { file: 'tests/test_robustness_extremes.js', cost: 30 },
+        { file: 'tests/test_custom_geometry_text.js', cost: 1 },
+        { file: 'tests/test_custom_geometry_equivalence.js', cost: 25 },
+        { file: 'tests/test_dc_inductance.js', cost: 1 },
+    ],
+    slow: [
+        { file: 'tests/test_fullwave_correctness.js', cost: 98 },
+        { file: 'tests/test_mqs_aniso_band.js', cost: 23 },
+        { file: 'tests/test_dielectric_overlap.js', cost: 40 },
+        { file: 'tests/test_custom_geometry_lines.js', cost: 90 },
+        { file: 'tests/test_custom_geometry_materials.js', cost: 100 },
+        { file: 'tests/test_custom_geometry_blocks.js', cost: 35 },
+        { file: 'tests/test_custom_geometry_shapes.js', cost: 30 },
+        { file: 'tests/test_conductive_dielectric.js', cost: 220 },
+        { file: 'tests/test_custom_geometry_asymmetry.js', cost: 60 },
+        { file: 'tests/test_fullwave_mesh_budget.js', cost: 20 },
+        { file: 'tests/test_hollow_conductor.js', cost: 40 },
+        { file: 'tests/test_pair_line_asymmetry.js', cost: 105 },
+        { file: 'tests/test_gcpw_mqs.js', cost: 82 },
+        { file: 'tests/test_symmetry_plane_mask.js', cost: 61 },
+        { file: 'tests/test_symmetry_half_full.js', cost: 177 },
+        { file: 'tests/test_qs_symmetry_half_full.js', cost: 61 },
+        { file: 'tests/test_modes.mjs', cost: 15 },
+        { file: 'tests/test_plating_perside.mjs', cost: 138 },
+        { file: 'tests/test_vs_ref.js', cost: 55 },
+        { file: 'tests/test_vs_ref.js', env: { MESH_BACKEND: 'triangular' }, label: 'tests/test_vs_ref.js [triangular]', cost: 150 },
+        { file: 'tests/test_causal_effect.js', env: { MESH_BACKEND: 'triangular' }, label: 'tests/test_causal_effect.js [triangular]', cost: 6 },
+        { file: 'tests/test_modal_continuity.js', cost: 46 },
+        { file: 'tests/test_modal_continuity.js', env: { MESH_BACKEND: 'triangular' }, label: 'tests/test_modal_continuity.js [triangular]', cost: 226 },
+        { file: 'tests/test_asym_sparam_export.js', cost: 13 },
+        { file: 'tests/test_asym_sparam_export.js', env: { MESH_BACKEND: 'triangular' }, label: 'tests/test_asym_sparam_export.js [triangular]', cost: 52 },
+        { file: 'tests/test_interp_asym_sparams.js', cost: 11 },
+        { file: 'tests/test_interp_asym_sparams.js', env: { MESH_BACKEND: 'triangular' }, label: 'tests/test_interp_asym_sparams.js [triangular]', cost: 36 },
+        { file: 'tests/test_thick_plating.js', cost: 12 },
+        { file: 'tests/test_top_only_plating.js', cost: 27 },
+        { file: 'tests/test_poor_side_plating.js', cost: 27 },
+        { file: 'tests/test_plating_thicker_than_trace.js', cost: 8 },
+        { file: 'tests/test_corner_plating.js', cost: 35 },
+        { file: 'tests/test_corner_roughness.js', cost: 12 },
+        { file: 'tests/test_corner_loss_regularization.js', cost: 43 },
+        { file: 'tests/test_coax_plating.js', cost: 30 },
+        { file: 'tests/test_surface_reactance.js', cost: 75 },
+        { file: 'tests/test_qs_dc_internal_inductance.js', cost: 58 },
+        { file: 'tests/test_thin_plating_low_f.js', cost: 8 },
+        { file: 'tests/test_qs_ground_spreading.js', cost: 22 },
+        { file: 'tests/test_dc_resistance.js', cost: 45 },
+        { file: 'tests/test_fallback_warnings.js', cost: 30 },
+        { file: 'tests/test_dielectric_conformity.js', cost: 20 },
+        { file: 'tests/test_anchor_caches.js', cost: 90 },
+        { file: 'tests/test_certification.js', cost: 39 },
+        { file: 'tests/test_invariants.js', cost: 110 },
+        { file: 'tests/test_sm_certification.js', cost: 21 },
+        { file: 'tests/test_thz_mesh.js', cost: 60 },
+        { file: 'tests/fuzz_qs_vs_fullwave.js', args: ['6', '3', '15'], label: 'tests/fuzz_qs_vs_fullwave.js [smoke N=6 seed=3]', cost: 74 },
+        { file: 'tests/fuzz_fullwave_interp.js', args: ['3', '1'], label: 'tests/fuzz_fullwave_interp.js [smoke N=3 seed=1]', cost: 176 },
+        { file: 'tests/fuzz_fullwave_interp.js', args: ['4', '1'], env: { MESH_BACKEND: 'rectilinear' }, label: 'tests/fuzz_fullwave_interp.js [rectilinear smoke N=4 seed=1]', cost: 30 },
+    ],
+    e2e: [
+        'tests/e2e_responsive.mjs',
+        'tests/e2e.mjs',
+        'tests/e2e_modes.mjs',
+        'tests/e2e_waveguide.mjs',
+        'tests/e2e_custom_geometry.mjs',
+    ],
+    fuzz: [
+        { file: 'tests/fuzz_qs_vs_fullwave.js', args: ['40', '1', '15'], label: 'tests/fuzz_qs_vs_fullwave.js [N=40 seed=1]', cost: 600 },
+        { file: 'tests/fuzz_fullwave_interp.js', args: ['12', '1'], label: 'tests/fuzz_fullwave_interp.js [N=12 seed=1]', cost: 700 },
+        { file: 'tests/fuzz_fullwave_interp.js', args: ['20', '1'], env: { MESH_BACKEND: 'rectilinear' }, label: 'tests/fuzz_fullwave_interp.js [rectilinear N=20 seed=1]', cost: 150 },
+    ],
+};
+
+// ---- CLI ----
+const argv = process.argv.slice(2);
+let tier = 'fast', jobsArg = null;
+// A malformed -j must fail. parseInt(undefined) is NaN and a NaN job count
+// silently produced zero workers.
+const parseJobs = (v, flag) => {
+    const n = parseInt(v, 10);
+    if (!Number.isFinite(n) || n < 1) {
+        console.error(`Invalid ${flag} value "${v ?? ''}" — expected a positive integer.`);
+        process.exit(2);
+    }
+    return n;
+};
+for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '-j' || a === '--jobs') jobsArg = parseJobs(argv[++i], a);
+    else if (/^-j/.test(a)) jobsArg = parseJobs(a.slice(2), '-j');
+    else if (/^-/.test(a)) { console.error(`Unknown option "${a}".`); process.exit(2); }
+    else tier = a;
+}
+const tests = tier === 'all' ? [...TIERS.fast, ...TIERS.slow] : TIERS[tier];
+if (!tests) {
+    console.error(`Unknown tier "${tier}" — use fast, slow, e2e or all.`);
+    process.exit(2);
+}
+// e2e tests share one dev server / browser, so they stay sequential unless forced.
+const defaultJobs = tier === 'e2e' ? 1 : Math.min(8, Math.max(1, os.cpus().length - 2));
+const jobs = Math.max(1, jobsArg ?? defaultJobs);
+
+const norm = t => (typeof t === 'string' ? { file: t } : t);
+// Longest-first minimizes makespan for a worker pool; ties keep list order.
+const queue = tests.map((t, i) => ({ ...norm(t), i }))
+    .sort((a, b) => (b.cost ?? 30) - (a.cost ?? 30) || a.i - b.i);
+
+function runOne(t) {
+    const { file, args = [], env = {}, label = file } = t;
+    return new Promise(resolve => {
+        const t0 = Date.now();
+        const p = spawn('node', [file, ...args], { env: { ...process.env, ...env } });
+        let out = '';
+        // setEncoding, not `out += buffer`: the tests print ✓ ✗ µ Ω δ, and per-chunk
+        // Buffer.toString() mangles any multi-byte character that straddles a chunk
+        // boundary. A decoding stream carries the partial sequence across chunks.
+        p.stdout.setEncoding('utf8');
+        p.stderr.setEncoding('utf8');
+        p.stdout.on('data', d => { out += d; });
+        p.stderr.on('data', d => { out += d; });
+        const killer = setTimeout(() => { p.kill('SIGKILL'); out += '\n[runner] TIMEOUT after 15 min — killed\n'; }, 15 * 60 * 1000);
+        p.on('close', status => {
+            clearTimeout(killer);
+            const dt = ((Date.now() - t0) / 1000).toFixed(1);
+            const ok = status === 0;
+            console.log(`${ok ? '✓' : '✗'} ${label}  (${dt}s)`);
+            if (!ok) console.log(out.split('\n').map(l => '    ' + l).join('\n'));
+            resolve({ t: label, ok });
+        });
+        p.on('error', err => {
+            clearTimeout(killer);
+            console.log(`✗ ${label}  (spawn failed: ${err.message})`);
+            resolve({ t: label, ok: false });
+        });
+    });
+}
+
+const t0 = Date.now();
+if (jobs > 1) console.log(`running ${queue.length} tests with ${jobs} parallel jobs\n`);
+const results = [];
+await Promise.all(Array.from({ length: Math.min(jobs, queue.length) }, async () => {
+    for (let t; (t = queue.shift()) !== undefined;) results.push(await runOne(t));
+}));
+
+const failed = results.filter(r => !r.ok);
+console.log(`\n${results.length - failed.length}/${results.length} test files passed` +
+    ` in ${((Date.now() - t0) / 1000).toFixed(0)}s` +
+    (failed.length ? ` — FAILED: ${failed.map(f => f.t).join(', ')}` : ''));
+process.exit(failed.length ? 1 : 0);

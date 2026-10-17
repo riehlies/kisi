@@ -1,0 +1,135 @@
+[
+ {
+  "name": "MS 3,0 mm auf 1,6 mm FR4",
+  "type": "microstrip",
+  "w": 3.0,
+  "h": 1.6,
+  "t": 0.035,
+  "er": 4.5,
+  "ref": {
+   "z0": 49.8
+  },
+  "source": "HFSS"
+ },
+ {
+  "name": "MS eingebettet, 0,2 mm Deckschicht",
+  "type": "embedded_microstrip",
+  "w": 3.0,
+  "h": 1.6,
+  "t": 0.035,
+  "er": 4.5,
+  "cover": 0.165,
+  "ref": {
+   "z0": 48.154
+  },
+  "source": "HFSS"
+ },
+ {
+  "name": "MS über Aussparung (3 mm), Referenz 1 mm tiefer",
+  "type": "microstrip_cut",
+  "w": 3.0,
+  "h": 1.6,
+  "t": 0.035,
+  "er": 4.5,
+  "cut": 3.0,
+  "cut_sub_h": 1.0,
+  "ref": {
+   "z0": 55.84
+  },
+  "source": "HFSS"
+ },
+ {
+  "name": "MS 1,1 mm auf 0,508 mm (εr 3,48)",
+  "type": "microstrip",
+  "w": 1.1,
+  "h": 0.508,
+  "t": 0.035,
+  "er": 3.48,
+  "ref": {
+   "z0": 50.5
+  },
+  "source": "Testsuite, 20 GHz"
+ },
+ {
+  "name": "GCPW 0,3 mm, Spalt 0,15 mm",
+  "type": "gcpw",
+  "w": 0.3,
+  "h": 0.3,
+  "t": 0.035,
+  "er": 4.5,
+  "gap": 0.15,
+  "ref": {
+   "z0": 55.465
+  },
+  "source": "Testsuite"
+ },
+ {
+  "name": "Diff-MS 3,0 mm, Abstand 1,0 mm",
+  "type": "diff_microstrip",
+  "w": 3.0,
+  "s": 1.0,
+  "h": 1.6,
+  "t": 0.035,
+  "er": 4.5,
+  "ref": {
+   "zdiff": 80.46
+  },
+  "source": "Testsuite"
+ },
+ {
+  "name": "Diff-MS 0,35/0,5 mm, Deckel 1 mm",
+  "type": "diff_microstrip",
+  "w": 0.35,
+  "s": 0.5,
+  "h": 0.2104,
+  "t": 0.05,
+  "er": 4.4,
+  "ref": {
+   "zdiff": 95.734
+  },
+  "source": "Ansys 2D"
+ },
+ {
+  "name": "Diff-GCPW 0,35/0,2 mm, Spalt 0,2 mm",
+  "type": "diff_gcpw",
+  "w": 0.35,
+  "s": 0.2,
+  "h": 0.2104,
+  "t": 0.05,
+  "er": 4.4,
+  "gap": 0.2,
+  "ref": {
+   "zdiff": 82.18
+  },
+  "source": "Testsuite"
+ },
+ {
+  "name": "Stripline 0,15 mm, b = 0,435 mm",
+  "type": "stripline",
+  "w": 0.15,
+  "h": 0.2,
+  "t": 0.035,
+  "er": 4.1,
+  "er_top": 4.1,
+  "top_h": 0.235,
+  "ref": {
+   "z0": 50.611
+  },
+  "source": "HFSS"
+ },
+ {
+  "name": "Diff-Stripline 0,15/0,1 mm",
+  "type": "diff_stripline",
+  "w": 0.15,
+  "s": 0.1,
+  "h": 0.2,
+  "t": 0.035,
+  "er": 4.1,
+  "er_top": 4.1,
+  "top_h": 0.235,
+  "ref": {
+   "zdiff": 75.2
+  },
+  "source": "Testsuite"
+ }
+]

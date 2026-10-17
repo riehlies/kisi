@@ -1,0 +1,8 @@
+[
+ {"name":"SE ms top 0.213 mask", "type":"microstrip", "w":0.213,"h":0.1107,"t":0.0432,"er":3.23,"sm_t":0.0152,"sm_er":3.3},
+ {"name":"SE ms top 0.213 nomask", "type":"microstrip", "w":0.213,"h":0.1107,"t":0.0432,"er":3.23},
+ {"name":"DIFF ms LVDS 0.127/0.1302 mask","type":"diff_microstrip","w":0.127,"s":0.13022,"h":0.1107,"t":0.0432,"er":3.23,"sm_t":0.0152,"sm_er":3.3},
+ {"name":"DIFF ms PCIe 0.1908/0.127 mask","type":"diff_microstrip","w":0.19079,"s":0.127,"h":0.1107,"t":0.0432,"er":3.23,"sm_t":0.0152,"sm_er":3.3},
+ {"name":"DIFF sl LVDS 0.127/0.2303 asym","type":"diff_stripline","w":0.127,"s":0.23035,"h":0.9256,"er":4.5,"t":0.0175,"top_h":0.1282,"er_top":3.66},
+ {"name":"SE sl 0.127 asym","type":"stripline","w":0.127,"h":0.9256,"er":4.5,"t":0.0175,"top_h":0.1282,"er_top":3.66}
+]

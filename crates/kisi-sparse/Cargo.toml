@@ -1,0 +1,12 @@
+[package]
+name = "kisi-sparse"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Sparse direct solver for the quasi-static field solver (drop-in for js_2d_fields' wasm_solver)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+faer = { version = "0.23", default-features = false, features = ["std", "linalg", "sparse", "sparse-linalg"] }

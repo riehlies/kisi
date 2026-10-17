@@ -1,0 +1,139 @@
+/**
+ * Djordjevic-Sarkar (Wideband Debye) causal material model
+ *
+ * Calculates frequency-dependent complex permittivity using the Djordjevic-Sarkar model
+ * to enforce causality in the material parameters. This model adjusts both the real part
+ * of permittivity and the loss tangent based on frequency.
+ *
+ * Reference: Djordjevic, A. R., Bazdar, M. B., Harrington, R. F., & Sarkar, T. K. (1987).
+ * "LINPAR for Windows: Matrix Parameters for Multiconductor Transmission Lines,
+ * Software and User's Manual".
+ */
+
+/**
+ * Calculates the frequency-dependent complex permittivity using the
+ * Djordjevic-Sarkar (Wideband Debye) model.
+ *
+ * @param {number} freq - Simulation frequency (Hz)
+ * @param {number} eps_ref - Nominal relative permittivity (at f_ref)
+ * @param {number} tand_ref - Nominal loss tangent (at f_ref)
+ * @param {number} f_ref - Reference frequency (default 1 GHz)
+ * @returns {{eps_real: number, tand_actual: number}} - Frequency-dependent permittivity and loss tangent
+ */
+export function djordjevic_sarkar(freq, eps_ref, tand_ref, f_ref = 1e9) {
+    // 1. Define Hidden Constants (Ansys/HFSS Defaults)
+    const f_low = 1e3;    // 1 kHz
+    const f_high = 1e12;  // 1 THz
+
+    // Prevent potential divide-by-zero at DC
+    if (freq < f_low) {
+        freq = f_low;
+    }
+
+    // 2. Calculate Slope Constant (K)
+    const K = (eps_ref * tand_ref * 2) / Math.PI;
+
+    // 3. Calculate Optical Permittivity (eps_inf)
+    // We use the reference frequency to anchor the curve to eps_ref
+    const term_num_ref = Math.sqrt(f_high**2 + f_ref**2);
+    const term_den_ref = Math.sqrt(f_low**2 + f_ref**2);
+    const eps_inf = eps_ref - K * Math.log(term_num_ref / term_den_ref);
+    // The wideband Debye fit spans f_low..f_high with a single slope K; a loss
+    // tangent large enough to pull eps_inf below 1 has no physical solution in
+    // this band (eps_r would go negative at high frequency). Report the nominal
+    // constant material and flag it, rather than a negative permittivity.
+    if (!(eps_inf >= 1)) {
+        return { eps_real: eps_ref, tand_actual: tand_ref, valid: false };
+    }
+
+    // 4. Complex log term at the simulation frequency, ln((fh + jf) / (fl + jf)),
+    // as a difference of logs so no squared frequency can overflow.
+    const log_real = Math.log(Math.hypot(f_high, freq) / Math.hypot(f_low, freq));
+    const log_imag = Math.atan2(freq, f_high) - Math.atan2(freq, f_low);
+
+    // 5. Final Complex Permittivity: eps_complex = eps_inf + K * log_term
+    const eps_complex_real = eps_inf + K * log_real;
+    const eps_complex_imag = K * log_imag;
+
+    // Extract results
+    const eps_real = eps_complex_real;
+
+    // Loss tangent is ratio of imaginary to real.
+    // Note: In most physics conventions, lossy part is negative imaginary.
+    // We return positive tand for readability.
+    const tand_actual = -eps_complex_imag / eps_complex_real;
+
+    return { eps_real, tand_actual, valid: true };
+}
+
+/**
+ * Apply Djordjevic-Sarkar model to all dielectric materials in the solver.
+ * Modifies the nodal epsilon_r/tand arrays and, when present, the cell-centred
+ * epsilon_cell/tand_cell arrays in place based on frequency.
+ *
+ * Both sets must be updated together: the FDM operator and the capacitance
+ * contour read the cell permittivity while the dielectric-loss integral reads
+ * the nodal one.
+ *
+ * @param {FieldSolver2D} solver - The field solver instance
+ * @param {number} f_ref - Reference frequency for material parameters (default 1 GHz)
+ */
+export function applyDjordjevicSarkar(solver, f_ref = 1e9) {
+    if (!solver.epsilon_r || !solver.tand) {
+        throw new Error("Solver must have epsilon_r and tand arrays initialized");
+    }
+
+    const freq = solver.freq;
+
+    // Reference (f_ref) values, re-captured whenever the array shape changes
+    // because the mesh was refined.
+    const stale = (orig, arr) =>
+        !orig || orig.length !== arr.length ||
+        (arr.length > 0 && (!orig[0] || orig[0].length !== arr[0].length));
+
+    let invalid = null;
+    const apply = (eps, tand, origEps, origTand) => {
+        for (let i = 0; i < eps.length; i++) {
+            const epsRow = eps[i], tandRow = tand[i];
+            const epsRef = origEps[i], tandRef = origTand[i];
+            for (let j = 0; j < epsRow.length; j++) {
+                const eps_ref = epsRef[j], tand_ref = tandRef[j];
+                // Skip air/vacuum regions and lossless materials, the model is
+                // anchored on a finite loss tangent.
+                if (Math.abs(eps_ref - 1.0) < 1e-6) continue;
+                if (Math.abs(tand_ref) < 1e-10) continue;
+                const { eps_real, tand_actual, valid } = djordjevic_sarkar(freq, eps_ref, tand_ref, f_ref);
+                if (!valid && !invalid) invalid = { eps_ref, tand_ref };
+                epsRow[j] = eps_real;
+                tandRow[j] = tand_actual;
+            }
+        }
+    };
+
+    if (stale(solver._original_epsilon_r, solver.epsilon_r)) {
+        solver._original_epsilon_r = solver.epsilon_r.map(row => new Float64Array(row));
+        solver._original_tand = solver.tand.map(row => new Float64Array(row));
+    }
+    apply(solver.epsilon_r, solver.tand, solver._original_epsilon_r, solver._original_tand);
+
+    if (solver.epsilon_cell) {
+        if (stale(solver._original_epsilon_cell, solver.epsilon_cell)) {
+            solver._original_epsilon_cell = solver.epsilon_cell.map(row => new Float64Array(row));
+            solver._original_tand_cell = solver.tand_cell.map(row => new Float64Array(row));
+        }
+        apply(solver.epsilon_cell, solver.tand_cell,
+              solver._original_epsilon_cell, solver._original_tand_cell);
+    }
+    solver._causalWarn = invalid ? causalModelWarning(invalid.eps_ref, invalid.tand_ref) : null;
+}
+
+// Accuracy note for a material the wideband Debye model cannot represent
+// (djordjevic_sarkar returned valid: false); the solve keeps the nominal
+// constant material for it.
+export function causalModelWarning(eps_ref, tand_ref) {
+    return { type: 'accuracy', reason: 'causal-model', mode: 'all', message:
+        `Causal (Djordjevic-Sarkar) model not applied to the material with epsilon_r ` +
+        `${eps_ref} and tan_delta ${tand_ref}: a loss tangent this large has no wideband ` +
+        `Debye fit between 1 kHz and 1 THz (the fitted permittivity would go negative). ` +
+        `That material is treated as frequency-independent.` };
+}

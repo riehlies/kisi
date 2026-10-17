@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+    <meta name="msapplication-TileColor" content="#da532c">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="canonical" href="https://hforsten.com/field_solver.html">
+    <meta name="author" content="Henrik Forstén" />
+    <meta name="description" content="2D transmission line field solver" />
+    <meta property="og:site_name" content="Henrik's Blog" />
+    <meta property="og:type" content="article"/>
+    <meta property="og:title" content="2D Transmission Line Field Solver"/>
+    <meta property="og:url" content="https://hforsten.com/field_solver.html"/>
+    <meta property="og:description" content="2D transmission line field solver"/>
+    <meta property="article:published_time" content="2026-01-27" />
+    <meta property="article:section" content="Electronics" />
+    <meta property="article:author" content="Henrik Forstén" />
+    <meta property="og:image" content="https://hforsten.com/img/field-solver/header.png"/>
+    <title>2D Transmission Line Field Solver</title>
+    <script>
+        // Load Plotly dynamically after page renders to avoid blocking
+        window.plotlyLoadStart = performance.now();
+
+        // Use requestIdleCallback or setTimeout to load after initial render
+        function loadPlotly() {
+            // Primary source (build.sh will replace this with CDN for production)
+            const PRIMARY_PLOTLY_SRC = 'plotly-3.3.0.min.js';
+            // Fallback is always local
+            const FALLBACK_PLOTLY_SRC = 'plotly-3.3.0.min.js';
+
+            const script = document.createElement('script');
+            script.src = PRIMARY_PLOTLY_SRC;
+            script.charset = 'utf-8';
+
+            script.onload = function() {
+                console.log('Plotly loaded after', performance.now() - window.plotlyLoadStart, 'ms');
+                document.querySelectorAll('.plotly-loading').forEach(el => el.remove());
+                window.dispatchEvent(new Event('plotly-loaded'));
+            };
+
+            // Fallback to local file if CDN fails or is unreachable (e.g. firewall)
+            script.onerror = function() {
+                console.warn('Primary source failed, falling back to local plotly');
+                const fallbackScript = document.createElement('script');
+                fallbackScript.src = FALLBACK_PLOTLY_SRC;
+                fallbackScript.charset = 'utf-8';
+                fallbackScript.onload = function() {
+                    console.log('Plotly loaded from fallback after', performance.now() - window.plotlyLoadStart, 'ms');
+                    document.querySelectorAll('.plotly-loading').forEach(el => el.remove());
+                    window.dispatchEvent(new Event('plotly-loaded'));
+                };
+                fallbackScript.onerror = function() {
+                    console.error('[ERROR] Both primary and fallback plotly failed to load');
+                    // Show error message to user
+                    document.querySelectorAll('.plotly-loading').forEach(el => {
+                        el.innerHTML = '<div style="color: #f59e0b;">Failed to load Plotly library. Plotting unavailable.</div>';
+                    });
+                };
+                document.head.appendChild(fallbackScript);
+            };
+
+            document.head.appendChild(script);
+        }
+
+        // Load after page is visible
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(loadPlotly);
+        } else {
+            setTimeout(loadPlotly, 1);
+        }
+    </script>
+    <link rel="stylesheet" href="solver-style.css">
+</head>
+<body>
+
+<style>
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .plotly-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 400px;
+        color: #888;
+        font-size: 14px;
+    }
+    .plotly-loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #333;
+        border-top: 3px solid #888;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 15px;
+    }
+</style>
+
+<button class="mobile-menu-toggle" id="mobileMenuToggle">☰ Menu</button>
+<div class="mobile-backdrop" id="mobileBackdrop"></div>
+
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <button id="btn_solve">Solve</button>
+        <div class="progress-container" id="progress_container">
+            <div class="progress-bar" id="progress_bar"></div>
+        </div>
+        <div class="progress-text" id="progress_text"></div>
+    </div>
+    <div class="sidebar-scroll">
+    <div class="control-group">
+        <label for="tl_type">Transmission Line Type</label>
+        <select id="tl_type">
+            <option value="microstrip">Microstrip</option>
+            <option value="diff_microstrip">Differential Microstrip</option>
+            <option value="stripline">Stripline</option>
+            <option value="diff_stripline">Differential Stripline</option>
+            <option value="gcpw">GCPW</option>
+            <option value="diff_gcpw">Differential GCPW</option>
+            <option value="broadside_stripline">Broadside Coupled Stripline</option>
+            <option value="coax">Coaxial</option>
+            <option value="rect_waveguide">Rectangular Waveguide</option>
+            <option value="custom">Custom Geometry</option>
+        </select>
+        <button id="btn-convert-custom" class="secondary-btn" style="margin-top: 6px;"
+                title="Copy the current geometry into the custom geometry editor">Convert to custom geometry</button>
+    </div>
+
+    <div class="control-group">
+        <label for="mesh_backend">Solver <span class="help-icon" onclick="showHelpModal('solver', event)">?</span></label>
+        <select id="mesh_backend">
+            <option value="rectilinear">Quasi-static</option>
+            <option value="fullwave_mqs">Full-wave</option>
+        </select>
+    </div>
+
+    <div id="custom-params" style="display: none;">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h3>Custom Geometry <span class="help-icon" onclick="showHelpModal('custom_geometry', event)">?</span></h3>
+        </div>
+        <div class="section-content">
+            <div class="control-group custom-inline-group">
+                <label for="custom-units">Length unit</label>
+                <select id="custom-units"></select>
+            </div>
+            <div class="control-group">
+                <label>Parameters <span class="custom-hint">number or expression</span></label>
+                <div id="custom-param-list"></div>
+                <button id="btn-custom-add-param" class="secondary-btn" type="button">+ Add parameter</button>
+            </div>
+            <div class="control-group">
+                <label>Boundaries</label>
+                <div class="custom-bounds">
+                    <label>Left <select id="custom_bound_left"><option value="open">open</option><option value="gnd">ground</option></select></label>
+                    <label>Right <select id="custom_bound_right"><option value="open">open</option><option value="gnd">ground</option></select></label>
+                    <label>Top <select id="custom_bound_top"><option value="open">open</option><option value="gnd">ground</option></select></label>
+                    <label>Bottom <select id="custom_bound_bottom"><option value="open">open</option><option value="gnd">ground</option></select></label>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Solved region <span class="custom-hint">empty = automatic</span></label>
+                <div class="custom-domain">
+                    <label>x1 <input type="text" id="custom_domain_x1" placeholder="auto" spellcheck="false" autocomplete="off"></label>
+                    <label>x2 <input type="text" id="custom_domain_x2" placeholder="auto" spellcheck="false" autocomplete="off"></label>
+                    <label>y1 <input type="text" id="custom_domain_y1" placeholder="auto" spellcheck="false" autocomplete="off"></label>
+                    <label>y2 <input type="text" id="custom_domain_y2" placeholder="auto" spellcheck="false" autocomplete="off"></label>
+                </div>
+                <div id="custom-domain-resolved" class="custom-hint"></div>
+            </div>
+            <div class="control-group">
+                <label for="inp_custom_sigma">Conductivity (S/m)</label>
+                <input type="number" id="inp_custom_sigma" value="5.8e7" inputmode="decimal">
+            </div>
+        </div>
+    </div>
+
+    <div id="microstrip-params">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h3>Geometry</h3>
+        </div>
+        <div class="section-content">
+            <div class="control-group">
+                <label>Trace Width</label>
+                <input type="text" class="unit-input" id="inp_w" value="0.35 mm">
+            </div>
+            <div class="control-group">
+                <label>Substrate Height</label>
+                <input type="text" class="unit-input" id="inp_h" value="0.21 mm">
+            </div>
+            <div class="control-group">
+                <label>Trace Thickness</label>
+                <input type="text" class="unit-input" id="inp_t" value="35 μm">
+            </div>
+            <div class="control-group">
+                <label>Relative Permittivity (&epsilon;<sub>r</sub>)</label>
+                <input type="number" id="inp_er" value="4.4" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Loss Tangent (tan &delta;)</label>
+                <input type="number" id="inp_tand" value="0.02" inputmode="decimal" placeholder="0">
+            </div>
+            <div class="control-group">
+                <label>Conductivity (S/m) <span class="help-icon" onclick="showHelpModal('conductivity')">?</span></label>
+                <input type="number" id="inp_sigma" value="5.8e7" inputmode="decimal">
+            </div>
+        </div>
+    </div>
+
+    <div id="gcpw-params" style="display: none;">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h3>GCPW Parameters</h3>
+        </div>
+        <div class="section-content">
+            <div class="control-group">
+                <label>Gap</label>
+                <input type="text" class="unit-input" id="inp_gap" value="0.1 mm">
+            </div>
+            <div class="control-group">
+                <label>Via Gap</label>
+                <input type="text" class="unit-input" id="inp_via_gap" value="0.1 mm">
+            </div>
+            <div class="control-group">
+                <label>Ground Width <span class="help-icon" onclick="showHelpModal('gcpw_gnd_width', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_gnd_width" placeholder="full">
+            </div>
+        </div>
+    </div>
+
+    <div id="stripline-params" style="display: none;">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h3>Stripline Parameters</h3>
+        </div>
+        <div class="section-content">
+            <div class="control-group">
+                <label>Top Dielectric Height <span class="help-icon" onclick="showHelpModal('top_diel_height', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_air_top" value="0.4 mm">
+            </div>
+            <div class="control-group">
+                <label>Top Permittivity (&epsilon;<sub>r,top</sub>)</label>
+                <input type="number" id="inp_er_top" value="4.5" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Top Loss Tangent</label>
+                <input type="number" id="inp_tand_top" value="0.02" inputmode="decimal" placeholder="0">
+            </div>
+        </div>
+    </div>
+
+    <div id="diff-params" style="display: none;">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h3>Differential Pair</h3>
+        </div>
+        <div class="section-content">
+            <div class="control-group">
+                <label>Trace Spacing</label>
+                <input type="text" class="unit-input" id="inp_trace_spacing" value="0.2 mm">
+            </div>
+        </div>
+    </div>
+
+    <div id="coax-params" style="display: none;">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h3>Coaxial</h3>
+        </div>
+        <div class="section-content">
+            <div class="control-group">
+                <label>Inner Conductor Diameter <span class="help-icon" onclick="showHelpModal('coax_d', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_coax_d" value="0.92 mm">
+            </div>
+            <div class="control-group">
+                <label>Dielectric Diameter <span class="help-icon" onclick="showHelpModal('coax_D', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_coax_D" value="2.95 mm">
+            </div>
+            <div class="control-group">
+                <label>Relative Permittivity (&epsilon;<sub>r</sub>)</label>
+                <input type="number" id="inp_coax_er" value="2.1" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Loss Tangent (tan &delta;)</label>
+                <input type="number" id="inp_coax_tand" value="0.0002" inputmode="decimal" placeholder="0">
+            </div>
+            <div class="control-group">
+                <label>Conductivity (S/m)</label>
+                <input type="number" id="inp_coax_sigma" value="5.8e7" inputmode="decimal">
+            </div>
+        </div>
+    </div>
+
+    <div id="wg-params" style="display: none;">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h3>Rectangular Waveguide <span class="help-icon" onclick="showHelpModal('waveguide', event)">?</span></h3>
+        </div>
+        <div class="section-content">
+            <div class="control-group">
+                <label>Broad Wall (a) <span class="help-icon" onclick="showHelpModal('wg_a', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_wg_a" value="22.86 mm">
+            </div>
+            <div class="control-group">
+                <label>Narrow Wall (b) <span class="help-icon" onclick="showHelpModal('wg_b', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_wg_b" value="10.16 mm">
+            </div>
+            <div class="control-group">
+                <label>Relative Permittivity (&epsilon;<sub>r</sub>)</label>
+                <input type="number" id="inp_wg_er" value="1.0" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Loss Tangent (tan &delta;)</label>
+                <input type="number" id="inp_wg_tand" value="0" inputmode="decimal" placeholder="0">
+            </div>
+            <div class="control-group">
+                <label>Conductivity (S/m)</label>
+                <input type="number" id="inp_wg_sigma" value="5.8e7" inputmode="decimal">
+            </div>
+        </div>
+    </div>
+
+    <div id="broadside-params" style="display: none;">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h3>Broadside Coupled Stripline</h3>
+        </div>
+        <div class="section-content">
+            <div class="control-group">
+                <label>Trace Width</label>
+                <input type="text" class="unit-input" id="inp_bs_w" value="0.2 mm">
+            </div>
+            <div class="control-group">
+                <label>Trace Thickness</label>
+                <input type="text" class="unit-input" id="inp_bs_t" value="35 μm">
+            </div>
+            <div class="control-group">
+                <label>X Offset (upper trace)</label>
+                <input type="text" class="unit-input" id="inp_bs_x_offset" value="0 mm">
+            </div>
+            <div class="control-group">
+                <label>Conductivity (S/m)</label>
+                <input type="number" id="inp_bs_sigma" value="5.8e7" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Bottom Substrate Height <span class="help-icon" onclick="showHelpModal('bs_h_bottom', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_bs_h_bottom" value="0.2 mm">
+            </div>
+            <div class="control-group">
+                <label>Bottom Permittivity</label>
+                <input type="number" id="inp_bs_er_bottom" value="4.4" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Bottom Loss Tangent</label>
+                <input type="number" id="inp_bs_tand_bottom" value="0.02" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Middle Substrate Height <span class="help-icon" onclick="showHelpModal('bs_h_middle', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_bs_h_middle" value="0.2 mm">
+            </div>
+            <div class="control-group">
+                <label>Middle Permittivity</label>
+                <input type="number" id="inp_bs_er_middle" value="4.4" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Middle Loss Tangent</label>
+                <input type="number" id="inp_bs_tand_middle" value="0.02" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Top Substrate Height <span class="help-icon" onclick="showHelpModal('bs_h_top', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_bs_h_top" value="0.2 mm">
+            </div>
+            <div class="control-group">
+                <label>Top Permittivity</label>
+                <input type="number" id="inp_bs_er_top" value="4.4" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Top Loss Tangent</label>
+                <input type="number" id="inp_bs_tand_top" value="0.02" inputmode="decimal">
+            </div>
+        </div>
+    </div>
+
+    <div id="advanced-params">
+        <div class="section-header collapsed" onclick="toggleSection(this)">
+            <h3>Advanced Options</h3>
+        </div>
+        <div class="section-content collapsed">
+
+        <div class="control-group">
+            <label><input type="checkbox" id="chk_solder_mask"> Enable Solder Mask</label>
+        </div>
+        <div id="solder-mask-params" class="nested-options" style="display: none;">
+            <div class="control-group">
+                <label>Mask over Substrate</label>
+                <input type="text" class="unit-input" id="inp_sm_t_sub" value="20 μm">
+            </div>
+            <div class="control-group">
+                <label>Mask over Trace</label>
+                <input type="text" class="unit-input" id="inp_sm_t_trace" value="20 μm">
+            </div>
+            <div class="control-group">
+                <label>Mask Side Thickness</label>
+                <input type="text" class="unit-input" id="inp_sm_t_side" value="20 μm">
+            </div>
+            <div class="control-group">
+                <label>Mask Permittivity (&epsilon;<sub>r,sm</sub>)</label>
+                <input type="number" id="inp_sm_er" value="3.5" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Mask Loss Tangent</label>
+                <input type="number" id="inp_sm_tand" value="0.02" inputmode="decimal" placeholder="0">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label><input type="checkbox" id="chk_top_diel"> Enable Top Dielectric <span class="help-icon" onclick="showHelpModal('top_diel_layer', event)">?</span></label>
+        </div>
+        <div id="top-diel-params" class="nested-options" style="display: none;">
+            <div class="control-group">
+                <label>Top Dielectric Height</label>
+                <input type="text" class="unit-input" id="inp_top_diel_h" value="0.2 mm">
+            </div>
+            <div class="control-group">
+                <label>Top Dielectric Permittivity</label>
+                <input type="number" id="inp_top_diel_er" value="4.5">
+            </div>
+            <div class="control-group">
+                <label>Top Dielectric Loss Tangent</label>
+                <input type="number" id="inp_top_diel_tand" value="0.02" inputmode="decimal" placeholder="0">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label><input type="checkbox" id="chk_gnd_cut"> Enable Ground Cutout</label>
+        </div>
+        <div id="gnd-cut-params" class="nested-options" style="display: none;">
+            <div class="control-group">
+                <label>Cutout Width</label>
+                <input type="text" class="unit-input" id="inp_gnd_cut_w" value="0.5 mm">
+            </div>
+            <div class="control-group">
+                <label>Substrate Below Cutout</label>
+                <input type="text" class="unit-input" id="inp_gnd_cut_h" value="0.5 mm">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label><input type="checkbox" id="chk_enclosure"> Enable Enclosure</label>
+        </div>
+        <div id="enclosure-params" class="nested-options" style="display: none;">
+            <div class="control-group">
+                <label><input type="checkbox" id="chk_side_gnd"> Side Ground</label>
+            </div>
+            <div class="control-group" id="top-gnd-group">
+                <label><input type="checkbox" id="chk_top_gnd"> Top Ground</label>
+            </div>
+            <div class="control-group">
+                <label>Width</label>
+                <input type="text" class="unit-input" id="inp_enclosure_width" placeholder="auto">
+            </div>
+            <div class="control-group" id="enclosure-height-group">
+                <label>Height</label>
+                <input type="text" class="unit-input" id="inp_enclosure_height" placeholder="auto">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Surface Roughness RMS <span class="help-icon" onclick="showHelpModal('roughness')">?</span></label>
+            <input type="text" class="unit-input" id="inp_rq" value="0 μm">
+        </div>
+
+        <div class="control-group">
+            <label><input type="checkbox" id="chk_plating"> Enable Surface Plating <span class="help-icon" onclick="showHelpModal('plating', event)">?</span></label>
+        </div>
+        <div id="plating-params" class="nested-options" style="display: none;">
+            <div class="control-group">
+                <label>Applied Surfaces</label>
+                <div style="display: flex; gap: 12px; margin-top: 4px;">
+                    <label style="font-weight: normal;"><input type="checkbox" id="chk_plating_top" checked> Top</label>
+                    <label style="font-weight: normal;"><input type="checkbox" id="chk_plating_sides" checked> Sides</label>
+                    <label style="font-weight: normal;"><input type="checkbox" id="chk_plating_bottom"> Bottom</label>
+                </div>
+            </div>
+            <!-- Coax replaces the face selection: each of its conductors is one continuous
+                 circular surface, so the choice is WHICH CONDUCTOR is plated. -->
+            <div class="control-group" id="plating-coax-group" style="display: none;">
+                <label>Applied Conductors</label>
+                <div style="display: flex; gap: 12px; margin-top: 4px;">
+                    <label style="font-weight: normal;"><input type="checkbox" id="chk_plating_inner" checked> Inner</label>
+                    <label style="font-weight: normal;"><input type="checkbox" id="chk_plating_outer"> Outer (shield)</label>
+                </div>
+            </div>
+            <div class="control-group">
+                <label>Plating Conductivity (S/m)</label>
+                <input type="number" id="inp_plating_sigma" value="1e7" inputmode="decimal">
+            </div>
+            <div class="control-group">
+                <label>Plating Thickness</label>
+                <input type="text" class="unit-input" id="inp_plating_t" value="4 μm">
+            </div>
+            <div class="control-group">
+                <label>Plating Roughness RMS</label>
+                <input type="text" class="unit-input" id="inp_plating_rq" value="0 μm">
+            </div>
+            <div class="control-group">
+                <label>Interface Roughness RMS <span class="help-icon" onclick="showHelpModal('plating_rq_iface', event)">?</span></label>
+                <input type="text" class="unit-input" id="inp_plating_rq_iface" placeholder="same">
+            </div>
+            <div class="control-group">
+                <label><input type="checkbox" id="chk_plating_thick_corners" checked> Model Thick Plating <span class="help-icon" onclick="showHelpModal('plating_thick_corners', event)">?</span></label>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label><input type="checkbox" id="chk_causal_materials"> Use Causal Material Parameters <span class="help-icon" onclick="showHelpModal('causal', event)">?</span></label>
+        </div>
+        </div>
+    </div>
+
+    <div id="freq-sweep-params">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h3>Frequency Sweep</h3>
+        </div>
+        <div class="section-content">
+            <div class="control-group">
+                <label>Start Frequency</label>
+                <input type="text" class="unit-input" id="freq-start" value="0.1 GHz" inputmode="decimal" min="0">
+            </div>
+            <div class="control-group">
+                <label>Stop Frequency</label>
+                <input type="text" class="unit-input" id="freq-stop" value="10 GHz" inputmode="decimal" min="0">
+            </div>
+            <div class="control-group">
+                <label>Points</label>
+                <input type="number" id="freq-points" value="200" step="1">
+            </div>
+            <div class="control-group">
+                <label><input type="checkbox" id="chk_interp_sweep" checked> Interpolating sweep <span class="help-icon" onclick="showHelpModal('interp_sweep', event)">?</span></label>
+            </div>
+            <div class="control-group" id="interp-tolerance-group" style="display:none;">
+                <label>Interpolation tolerance (%)</label>
+                <input type="number" id="interp_tolerance" value="0.5" min="0.01" max="5" step="0.1">
+            </div>
+        </div>
+    </div>
+
+
+    <div id="plot-options">
+    <div class="section-header collapsed" onclick="toggleSection(this)">
+        <h3>Plot Options</h3>
+    </div>
+    <div class="section-content collapsed">
+        <!-- Mode selector hidden - now in Plotly menu -->
+        <select id="plot-mode" style="display: none;">
+            <option value="odd">Odd</option>
+            <option value="even">Even</option>
+        </select>
+        <div class="control-group">
+            <label>Streamlines</label>
+            <input type="number" id="plot-streamlines" value="" step="5" min="0" placeholder="None">
+        </div>
+        <div class="control-group">
+            <label>Contours</label>
+            <input type="number" id="plot-contours" value="20" step="5" min="0" placeholder="None">
+        </div>
+        <div class="control-group">
+            <label>Plot Frequency</label>
+            <input type="text" class="unit-input" id="plot-freq" value="" placeholder="Highest" inputmode="decimal">
+        </div>
+    </div>
+    </div>
+
+    <div id="solver-settings">
+    <div class="section-header collapsed" onclick="toggleSection(this)">
+        <h3>Solver Settings</h3>
+    </div>
+    <div class="section-content collapsed">
+    <div class="control-group">
+        <label>Max Iterations</label>
+        <input type="number" id="inp_max_iters" value="10" step="1" min="1">
+    </div>
+    <div class="control-group">
+        <label>Max Nodes (thousands)<span class="help-icon" onclick="showHelpModal('maxnodes')">?</span></label>
+        <input type="number" id="inp_max_nodes" value="20" step="1" min="1" max="200">
+    </div>
+    <div class="control-group">
+        <label>Min Converged Passes</label>
+        <input type="number" id="inp_min_converged_passes" value="2" step="1" min="1">
+    </div>
+    <div class="control-group">
+        <label>Tolerance (%) <span class="help-icon" onclick="showHelpModal('tolerance')">?</span></label>
+        <input type="number" id="inp_tolerance" value="1" inputmode="decimal" min="0" max="100">
+    </div>
+    <div class="control-group">
+        <label><input type="checkbox" id="chk_estimate_error" checked> Estimate solution error <span class="help-icon" onclick="showHelpModal('estimate_error', event)">?</span></label>
+    </div>
+    </div>
+    </div>
+
+    </div><!-- end sidebar-scroll -->
+</div>
+
+<div class="main-content">
+    <div class="tab-bar">
+        <button class="tab-button active" data-tab="geometry">Geometry</button>
+        <button class="tab-button" data-tab="results">Results</button>
+        <button class="tab-button" data-tab="sparams">S-Parameters</button>
+        <button class="tab-button" data-tab="sweep">Parameter Sweep</button>
+        <button class="tab-button" data-tab="modes">Modes</button>
+        <button class="tab-button" data-tab="about">About</button>
+    </div>
+
+    <div id="tab-geometry" class="tab-content active">
+        <div class="canvas-container">
+            <div id="sim_canvas">
+                <div class="plotly-loading">
+                    <div class="plotly-loading-spinner"></div>
+                    <span>Loading Plotly library...</span>
+                </div>
+            </div>
+            <div id="custom-stale-badge">Geometry has errors: showing the last valid one</div>
+        </div>
+        <div id="custom-splitter" class="pane-splitter" style="display: none;" title="Drag to resize"></div>
+        <div id="custom-editor" style="display: none;">
+            <div class="custom-editor-bar">
+                <span class="custom-view-toggle">
+                    <button id="btn-custom-view-form" class="secondary-btn active">Shapes</button>
+                    <button id="btn-custom-view-text" class="secondary-btn">Text</button>
+                </span>
+                <button id="btn-custom-undo" class="secondary-btn custom-row-btn" title="Undo (Ctrl+Z)" disabled>&#8630;</button>
+                <button id="btn-custom-redo" class="secondary-btn custom-row-btn" title="Redo (Ctrl+Shift+Z)" disabled>&#8631;</button>
+                <button id="custom-error-count" class="custom-error-count" title="Show the first error" style="display: none;"></button>
+                <span class="custom-editor-title"></span>
+                <button id="btn-custom-format" class="secondary-btn" style="display: none;" title="Show the text format reference">Format reference</button>
+                <select id="custom-template" title="Replace the geometry with a template"><option value="">Load a template...</option></select>
+                <button id="btn-custom-load" class="secondary-btn">Load file</button>
+                <button id="btn-custom-save" class="secondary-btn">Save file</button>
+                <button id="btn-custom-copy" class="secondary-btn">Copy text</button>
+                <button id="btn-custom-collapse" class="secondary-btn">Hide editor</button>
+                <input type="file" id="custom-file-input" accept=".txt,text/plain" style="display: none;">
+            </div>
+            <div id="custom-form"></div>
+            <div id="custom-text-pane" style="display: none;">
+                <div id="custom-text-wrap">
+                    <div id="custom-line-numbers" aria-hidden="true"></div>
+                    <textarea id="custom_geom_text" spellcheck="false" autocomplete="off" autocapitalize="off"
+                              wrap="off" style="display: none;"></textarea>
+                </div>
+                <div id="custom-format-ref" style="display: none;">
+                    <p>One statement per line, or several separated by <code>;</code>. <code>#</code> starts a comment.</p>
+                    <h4>Setup</h4>
+                    <dl>
+                        <dt><code>units mm</code></dt>
+                        <dd>Length unit: m, cm, mm, um, nm, mil, in. A number may carry its own: <code>35um</code>.</dd>
+                        <dt><code>w = 0.3</code></dt>
+                        <dd>Parameter. Expressions take <code>+ - * / ( )</code>, <code>min max abs sqrt</code> and earlier parameters.</dd>
+                        <dt><code>bounds left right top bottom</code></dt>
+                        <dd>Each <code>open</code> or <code>gnd</code>.</dd>
+                        <dt><code>domain x1 x2 y1 y2</code></dt>
+                        <dd>Solved region, each value may be <code>auto</code>. <code>domain auto</code> sizes all four.</dd>
+                    </dl>
+                    <h4>Shapes</h4>
+                    <dl>
+                        <dt><code>diel</code> <code>gnd</code> <code>sig+</code> <code>sig-</code></dt>
+                        <dd>Rectangle, position and size per axis: <code>x= w=</code> and <code>y= h=</code>. <code>x=-inf w=inf</code> spans the domain, <code>w=inf</code> runs from <code>x</code> to the right boundary and <code>w=-inf</code> from <code>x</code> to the left one (<code>h</code> the same way). A negative size flips the rectangle to the other side of its position: <code>x</code> is then the right edge, <code>y</code> the top face. A pair is one <code>sig+</code> and one <code>sig-</code>. Touching or overlapping rectangles of one kind are one conductor; where two of different metal overlap, the later line's metal fills the overlap (a plated conductor drawn as a core over a shell). The quasi-static solver takes touching blocks of different metal but not overlapping ones.</dd>
+                        <dt><code>sig+ trap x= w= y= h= angle= angle2=</code></dt>
+                        <dd>Trapezoid, a trace with an etch angle: the base <code>x</code> to <code>x+w</code> at <code>y</code>, height <code>h</code>. The sides lean in by <code>angle</code> (left) and <code>angle2</code> (right, default <code>angle</code>) degrees from the vertical, so a positive angle narrows the face at <code>y+h</code> and a negative one widens it. A negative <code>h</code> puts that face below <code>y</code>. Full-wave solver only.</dd>
+                        <dt><code>gnd ngon x= y= r= n= r_in= rot=</code></dt>
+                        <dd>Regular n-gon centred on <code>x, y</code>, vertex radius <code>r</code>, <code>n</code> vertices with one on top, turned by <code>rot</code> degrees. <code>r_in</code> cuts a concentric hole: a ring such as a coax shield. Full-wave solver only.</dd>
+                        <dt><code>gnd ellipse x= y= rx= ry= n= rx_in= ry_in= rot=</code></dt>
+                        <dd>Ellipse centred on <code>x, y</code> with semi-axes <code>rx, ry</code>, <code>n</code> vertices spaced evenly along the outline, one on top. <code>rx_in ry_in</code> cut a concentric elliptical hole (a ring). Full-wave solver only.</dd>
+                        <dt><code>radius= radius_bottom= wall=</code></dt>
+                        <dd>On a rectangle or trapezoid: <code>radius</code> rounds every corner, <code>radius_bottom</code> the two lower ones (<code>0</code> keeps them sharp). A radius of half the height gives a stadium. <code>wall</code> hollows the shape into a shell of that thickness, such as a cable shield. Full-wave solver only.</dd>
+                        <dt><code>mirror=1</code></dt>
+                        <dd>Adds the mirror image about <code>x=0</code>, a <code>sig+</code> imaged as <code>sig-</code>. A rectangle touching or crossing <code>x=0</code> becomes one rectangle symmetric about it: <code>diel x=0 w=inf ... mirror=1</code> is a full-width layer.</dd>
+                        <dt><code>color=#c0c0c0</code></dt>
+                        <dd>Fill color of the rectangle or shape in the plots, <code>#rrggbb</code> or <code>#rgb</code>. Left out: conductors orange, dielectrics shaded by <code>er</code>.</dd>
+                    </dl>
+                    <h4>Materials</h4>
+                    <dl>
+                        <dt><code>diel ... er= tand= sigma= thin=1</code></dt>
+                        <dd>Dielectric. Where dielectrics overlap the later line wins. <code>sigma</code> is a conductivity in S/m (a silicon substrate). <code>thin=1</code> marks a thin sheet for the mesher.</dd>
+                        <dt><code>gnd ... sigma= rq=</code></dt>
+                        <dd>Conductor's own conductivity (S/m) and roughness, on <code>gnd</code>, <code>sig+</code> and <code>sig-</code>. Left out: the sidebar values.</dd>
+                    </dl>
+                    <h4>Plating</h4>
+                    <dl>
+                        <dt><code>sig+ ... plating=top,sides,bottom</code></dt>
+                        <dd>Plated faces of a conductor, any of <code>top sides bottom</code>, or <code>all</code> or <code>none</code>. A ring, an n-gon, an ellipse or a shell has one outside and takes <code>plating=all</code>.</dd>
+                        <dt><code>plating_sigma= plating_t= plating_rq= plating_rq_iface=</code></dt>
+                        <dd>Plating material of that conductor: conductivity (S/m), thickness, surface roughness and the roughness of the plating/bulk interface (left out it is <code>plating_rq</code>).</dd>
+                        <dt><code>plating sigma= t= rq= rq_iface=</code></dt>
+                        <dd>Statement: the default plating material, the same four values. A conductor's own <code>plating_</code> keys override it one value at a time. Plated faces need a material from one or the other.</dd>
+                        <dt>Model Thick Plating</dt>
+                        <dd>In Advanced Options, for every conductor: the plating is a layer of metal inside the outline (meshed on the full-wave solver), or a layered surface impedance.</dd>
+                    </dl>
+                </div>
+            </div>
+            <div id="custom-geom-errors" style="display: none;"></div>
+            <div id="custom-geom-warnings" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div id="tab-results" class="tab-content">
+        <div class="results-controls">
+            <select id="results-plot-selector">
+                <option value="re_z0">Re(Z0)</option>
+                <option value="im_z0">Im(Z0)</option>
+                <option value="eps_eff">Effective permittivity</option>
+                <option value="loss">Loss (dB/m)</option>
+                <option value="R">R (Ohm/m)</option>
+                <option value="L">L (H/m)</option>
+                <option value="C">C (F/m)</option>
+                <option value="G">G (S/m)</option>
+            </select>
+            <!-- Shown only for a medium whose Z0/RLGC are a modal normalization rather than
+                 physical per-unit-length parameters (rectangular waveguide). -->
+            <span class="help-icon" id="results-modal-z0-help" style="display: none;"
+                  onclick="showHelpModal('wg_z0', event)">?</span>
+            <button id="freeze-results-btn" style="width:auto; padding:6px 12px; font-size:0.85em;">Freeze</button>
+            <span class="help-icon" onclick="showHelpModal('freeze')">?</span>
+        </div>
+        <div id="results-plot" class="plot-container">
+            <div class="plotly-loading">
+                <div class="plotly-loading-spinner"></div>
+                <span>Loading Plotly library...</span>
+            </div>
+        </div>
+        <div class="results-controls bottom">
+            <label class="checkbox-label"><input type="checkbox" id="results-log-x"> Log frequency axis</label>
+            <button id="copy-link-btn">Copy link</button><span class="help-icon" onclick="showHelpModal('copylink')">?</span>
+            <button id="export-csv-btn">Export CSV</button>
+            <label class="checkbox-label"><input type="checkbox" id="results-diff"> Differential-mode</label>
+            <div id="results-notice" style="display: none; padding: 6px 10px; background: #3d3520; border-left: 3px solid #f59e0b; font-size: 0.8em; border-radius: 3px; color: #fbbf24;">
+                <strong>⚠</strong> <span id="results-notice-text"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-sparams" class="tab-content">
+        <div class="results-controls">
+            <select id="sparam-plot-mode">
+                <option value="magnitude">Magnitude (dB)</option>
+                <option value="phase">Phase (degrees)</option>
+            </select>
+            <button id="freeze-sparams-btn" style="width:auto; padding:6px 12px; font-size:0.85em;">Freeze</button>
+            <span class="help-icon" onclick="showHelpModal('freeze')">?</span>
+        </div>
+        <div id="sparam-plot" class="plot-container">
+            <div class="plotly-loading">
+                <div class="plotly-loading-spinner"></div>
+                <span>Loading Plotly library...</span>
+            </div>
+        </div>
+        <div class="sparam-controls">
+            <label class="checkbox-label"><input type="checkbox" id="sparam-log-x"> Log frequency axis</label>
+            <label>Line Length: <input type="text" class="unit-input" id="sparam-length" value="10 mm" step="0.001"></label>
+            <label id="sparam-z-ref-label">Reference Impedance: <input type="number" id="sparam-z-ref" value="50" step="1" min="1"> Ohm</label>
+            <!-- Shown instead of the box for a self-referenced (non-TEM) medium, where the
+                 reference is the mode's own frequency-dependent impedance. -->
+            <label id="sparam-z-ref-modal" style="display: none;">Reference Impedance: <b>Z<sub>0</sub></b> (modal)
+                <span class="help-icon" onclick="showHelpModal('wg_sparam', event)">?</span></label>
+            <label class="checkbox-label"><input type="checkbox" id="sparam-diff"> Differential-mode</label>
+            <button id="export-snp">Export SnP file</button>
+            <div id="sparam-notice" style="display: none; padding: 6px 10px; background: #3d3520; border-left: 3px solid #f59e0b; font-size: 0.8em; border-radius: 3px; flex-shrink: 0; color: #fbbf24;">
+                <strong>⚠</strong> <span id="sparam-notice-text"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-sweep" class="tab-content">
+        <div class="results-controls">
+            <label style="color:var(--text-muted); font-size:0.9em;">Output:
+                <select id="sweep-y-selector">
+                    <option value="re_z0">Re(Z0)</option>
+                    <option value="im_z0">Im(Z0)</option>
+                    <option value="eps_eff">Effective permittivity</option>
+                    <option value="loss">Loss (dB/m)</option>
+                    <option value="R">R (Ohm/m)</option>
+                    <option value="L">L (H/m)</option>
+                    <option value="C">C (F/m)</option>
+                    <option value="G">G (S/m)</option>
+                </select>
+            </label>
+            <label style="color:var(--text-muted); font-size:0.9em;">Parameter:
+                <select id="sweep-x-selector"></select>
+            </label>
+        </div>
+        <div class="results-controls">
+            <label style="color:var(--text-muted); font-size:0.9em;">Min: <input type="text" class="unit-input" id="sweep-x-min" style="width:90px;"></label>
+            <label style="color:var(--text-muted); font-size:0.9em;">Max: <input type="text" class="unit-input" id="sweep-x-max" style="width:90px;"></label>
+            <label style="color:var(--text-muted); font-size:0.9em;">Points: <input type="number" id="sweep-points" value="10" min="2" max="200" style="width:60px;"></label>
+            <label style="color:var(--text-muted); font-size:0.9em;">Frequency: <input type="text" class="unit-input" id="sweep-freq" value="1 GHz" style="width:90px;"></label>
+            <label class="checkbox-label"><input type="checkbox" id="sweep-diff" disabled> Differential mode</label>
+            <button id="btn-run-sweep" style="width:auto; padding:8px 18px;">Run Sweep</button>
+            <button id="btn-stop-sweep" style="width:auto; padding:8px 18px; display:none; background:#f44336;">Stop</button>
+            <span id="sweep-progress-text" style="color:var(--text-muted); font-size:0.85em;"></span>
+            <div id="sweep-notice" style="display: none; padding: 6px 10px; background: #3d3520; border-left: 3px solid #f59e0b; font-size: 0.8em; border-radius: 3px; color: #fbbf24;">
+                <strong>⚠</strong> <span id="sweep-notice-text"></span>
+            </div>
+        </div>
+        <div id="sweep-plot" class="plot-container"></div>
+    </div>
+
+    <div id="tab-modes" class="tab-content">
+        <div class="results-controls">
+            <label style="color:var(--text-muted); font-size:0.9em;">Frequency:
+                <input type="text" class="unit-input" id="modes-freq" value="10 GHz" style="width:90px;"></label>
+            <label style="color:var(--text-muted); font-size:0.9em;">Number of modes:
+                <input type="number" id="modes-nev" value="6" min="1" max="30" style="width:60px;"></label>
+            <label style="color:var(--text-muted); font-size:0.9em;">Mesh density (cells/λ):
+                <input type="number" id="modes-mesh-density" value="8" min="3" max="40" style="width:60px;"> <span class="help-icon" onclick="showHelpModal('modes_mesh_density', event)">?</span></label>
+            <label style="color:var(--text-muted); font-size:0.9em;">
+                <input type="checkbox" id="modes-shrink-domain" checked> Shrink open domain <span class="help-icon" onclick="showHelpModal('modes_shrink_domain', event)">?</span></label>
+            <button id="btn-solve-modes" style="width:auto; padding:8px 18px;">Solve Modes</button>
+            <span id="modes-status" style="color:var(--text-muted); font-size:0.85em;"></span>
+            <span class="help-icon" onclick="showHelpModal('modes', event)">?</span>
+        </div>
+        <div id="modes-notice" style="display: none; margin: 0 10px 8px; padding: 6px 10px; background: #3d3520; border-left: 3px solid #f59e0b; font-size: 0.8em; border-radius: 3px; color: #fbbf24;">
+            <strong>⚠</strong> <span id="modes-notice-text"></span>
+        </div>
+        <div id="modes-warning" style="display: none; margin: 0 10px 8px; padding: 6px 10px; background: #3d3520; border-left: 3px solid #f59e0b; font-size: 0.8em; border-radius: 3px; color: #fbbf24;">
+            <strong>⚠</strong> <span id="modes-warning-text"></span>
+        </div>
+        <div class="modes-body">
+            <div id="modes-list" class="modes-list">
+                <p style="color:var(--text-muted); font-size:0.85em; padding:8px;">Click <b>Solve Modes</b> to compute the eigenmodes of the current geometry. Found modes are listed here; click one to plot its field.</p>
+            </div>
+            <div id="modes-plot" class="plot-container">
+                <div class="plotly-loading">
+                    <div class="plotly-loading-spinner"></div>
+                    <span>Loading Plotly library...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-about" class="tab-content">
+        <div class="about-content">
+            <h2>2D Transmission Line Field Solver</h2>
+            <p>by <a href="https://hforsten.com" target="_blank">Henrik Forstén</a> | <a href="https://github.com/Ttl/js_2d_fields" target="_blank">Source code & issues</a></p>
+            <p style="color: #888; font-size: 0.85em;">Version: BUILD_VERSION</p>
+            <p>A quasi-static and full-wave 2D field solver for transmission line analysis with adaptive mesh refinement.</p>
+            <p>Everything runs locally in your browser and nothing is uploaded to a server.</p>
+
+            <h3>Methodology</h3> <p><b>Quasi-static solver</b> is a
+            finite-difference solver on a non-uniform rectilinear grid. It
+            solves Laplace's equation for the electric potential twice, with the
+            dielectrics and in vacuum. The two solutions give the capacitance
+            C and the inductance L = 1/(c<sup>2</sup>C<sub>0</sub>), from which
+            the characteristic impedance and effective permittivity can be calculated.
+            Dielectric loss G is integrated from the field in the lossy materials.
+            Conductor loss is calculated from surface current on each face from the static field
+            and weighted by the surface impedance of the metal. The static
+            fields don't change with frequency, so dispersion is not modeled.
+            That is strictly valid only for lines in a uniform dielectric such
+            as stripline, but it is accurate for many practical structures.</p>
+
+            <p><b>Full-wave solver</b> uses a triangular finite-element mesh.
+            It solves the guided mode of Maxwell's equations as an eigenvalue
+            problem with Nédélec elements. It captures the dispersion the
+            quasi-static solver misses and gives more accurate results, but it's
+            also much slower.</p>
+
+            <p>Full-wave conductor loss uses a magneto-quasi-static (MQS) solve.
+            Instead of treating the metal as a surface impedance, it meshes the
+            conductor interior and solves for the current distribution inside
+            it. This gives accurate resistance for any ratio of skin depth to
+            conductor thickness, including thin films where the current flows
+            through the whole conductor.</p>
+
+            <h3>Rectangular Waveguide</h3> <p>The rectangular waveguide
+            is not TEM or quasi-TEM. It has
+            a single conductor, so there is no static solution. It is solved as
+            a pure eigenmode problem on the full-wave backend, and only the
+            lowest (fundamental) mode is reported, TE<sub>10</sub> when the
+            broad wall is wider than the narrow one. Below the cutoff frequency that
+            mode is evanescent and only its attenuation is meaningful. Above the
+            second cutoff the guide is over-moded and the higher-order modes it also
+            supports are not included in the results. The Modes tab shows all the
+            modes.</p>
+
+            <h3>Adaptive Mesh Refinement and Certification</h3> <p>Both solvers
+            start from a coarse mesh and refine it in passes. Each pass marks the
+            cells with the largest estimated error and splits them.
+            For differential lines, both the odd and even modes drive the
+            refinement.</p>
+
+            <p>A small pass-to-pass change shows that the solution is converging
+            slowly, not that it is close to the converged answer. When
+            <i>Estimate Solution Error</i> is on, the final mesh is certified.
+            The static fields are solved again on a uniformly refined mesh, and
+            the remaining error is estimated by Richardson extrapolation. This
+            extrapolation estimates the error that the current solution would
+            have against infinitely refined mesh.
+            Refinement continues until this estimate is below the tolerance,
+            with a safety margin. The log reports the certified error, and
+            a warning is shown if the node budget runs out first. The
+            certificate covers the static quantities C and C<sub>0</sub>, which
+            set Z<sub>0</sub> and &epsilon;<sub>eff</sub>. Conductor and
+            dielectric loss are not certified. They converge more slowly than
+            the field energy and their error is typically higher.</p>
+
+            <h3>Boundaries and Ground Return</h3> <p>The solved region is a
+            finite box. An open boundary truncates the static field with a
+            zero-normal-flux condition. The automatic domain size is chosen so the
+            truncation is small. After every solve, the field energy reaching the
+            open walls is measured, and a warning is shown when it would shift the
+            impedance by more than about 2%. An enclosure wall is a perfect
+            electric conductor for the field. Its conductor loss is included,
+            computed from the surface current on the wall.</p>
+
+            <p>Grounds that span the domain or reach an open edge stand for
+            planes wider than the domain, such as the ground plane under
+            a microstrip or a GCPW pour. These are treated as ideal returns of
+            unlimited width.  At high frequency this doesn't matter, because the
+            return current crowds under the signal conductor. At DC and low
+            frequency, an ideal return contributes no DC resistance, and its
+            inductance is that of a perfect conductor plus the reactance of its
+            metal thickness.</p>
+
+            <p>Grounds drawn with a finite width that don't reach the domain edge,
+            such as custom geometry ground blocks, are solved as real conductors.
+            Their DC and low-frequency resistance and inductance include the current
+            spreading in them, on both solvers. Draw the ground at the actual board
+            width when the low-frequency inductance or the DC resistance of the
+            return path matters.</p>
+
+            <p>At DC the full-wave solver uses an exact DC current solve, and both
+            solvers approach the exact DC resistance and internal inductance at low
+            frequency.</p>
+        </div>
+    </div>
+
+    <div id="log-panel">
+        <div id="log-splitter" class="pane-splitter" title="Drag to resize"></div>
+        <div id="log-bar">
+            <button id="btn-log-toggle" class="log-toggle" aria-expanded="true" title="Hide the log">Log</button>
+            <span id="log-last"></span>
+        </div>
+        <div class="output-panel" id="console_out"></div>
+    </div>
+</div>
+
+<div id="scaleDialog" style="
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: #222;
+    color: #eee;
+    padding: 12px;
+    border-radius: 6px;
+    display: none;
+    z-index: 1000;
+    width: 180px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    font-size: 13px;
+">
+    <div style="font-weight: bold; margin-bottom: 10px; font-size: 14px">
+        Field Scale
+    </div>
+
+    <label id="efieldDbRow" style="display: block; margin-bottom: 8px; font-size: 12px">
+        <input id="plot-efield-db" type="checkbox"> dB scale
+    </label>
+
+    <label style="display: block; margin-bottom: 6px; font-size: 12px">
+        Min:
+        <input id="zMinInput" type="number" step="any" style="width: 100%; padding: 3px; margin-top: 2px; font-size: 11px">
+    </label>
+
+    <label style="display: block; margin-bottom: 8px; font-size: 11px">
+        <input id="zMinSlider" type="range" style="width: 100%; margin-top: 2px">
+    </label>
+
+    <label style="display: block; margin-bottom: 6px; font-size: 12px">
+        Max:
+        <input id="zMaxInput" type="number" step="any" style="width: 100%; padding: 3px; margin-top: 2px; font-size: 11px">
+    </label>
+
+    <label style="display: block; margin-bottom: 10px; font-size: 11px">
+        <input id="zMaxSlider" type="range" style="width: 100%; margin-top: 2px">
+    </label>
+
+    <div style="margin-top: 8px; text-align: right">
+        <button onclick="closeScaleDialog()" style="padding: 4px 12px; font-size: 12px">Close</button>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div id="helpModal" class="help-modal">
+    <div class="help-modal-content">
+        <span class="help-modal-close" onclick="closeHelpModal()">&times;</span>
+        <h3 id="helpModalTitle"></h3>
+        <div id="helpModalBody"></div>
+    </div>
+</div>
+
+<script>
+    // ========== Unit Parsing System ==========
+
+    /**
+     * Parse a value with optional unit suffix and convert to SI base unit
+     * @param {string|number} input - Value with optional unit (e.g., "1mm", "0.001 mil", "10 GHz")
+     * @param {string} defaultUnit - Default unit if none specified (e.g., "mm", "μm", "GHz", "Hz")
+     * @returns {number} - Value in SI base unit (meters for length, Hz for frequency)
+     */
+    function parseValueWithUnit(input, defaultUnit = '') {
+        if (typeof input === 'number') return input;
+        if (!input || input.trim() === '') return NaN;
+
+        const str = input.toString().trim().toLowerCase();
+
+        // Match number (with optional sign, decimal, scientific notation) followed by optional unit
+        const match = str.match(/^([+-]?(?:\d+\.?\d*|\.\d+)(?:[e][+-]?\d+)?)\s*([a-zμµ]*)$/i);
+        if (!match) return NaN;
+
+        const value = parseFloat(match[1]);
+        let unit = match[2] || defaultUnit.toLowerCase();
+
+        // Normalize unicode variations
+        unit = unit.replace(/µ/g, 'μ');
+
+        // Length units - convert to meters
+        const lengthUnits = {
+            'm': 1,
+            'meter': 1, 'meters': 1,
+            'cm': 1e-2,
+            'mm': 1e-3,
+            'um': 1e-6, 'μm': 1e-6, 'micron': 1e-6, 'microns': 1e-6,
+            'nm': 1e-9,
+            'mil': 25.4e-6,  // 1 mil = 1/1000 inch = 25.4 μm
+            'mils': 25.4e-6,
+            'in': 25.4e-3,   // 1 inch = 25.4 mm
+            'inch': 25.4e-3, 'inches': 25.4e-3,
+            'ft': 0.3048,    // 1 foot = 0.3048 m
+            'foot': 0.3048, 'feet': 0.3048,
+        };
+
+        // Frequency units - convert to Hz
+        // Note: 'm' is MHz (milliHertz not supported), 't' is THz
+        const frequencyUnits = {
+            'hz': 1,
+            'khz': 1e3, 'k': 1e3,
+            'mhz': 1e6, 'm': 1e6,  // 'm' = MHz, not milliHertz
+            'ghz': 1e9, 'g': 1e9,
+            'thz': 1e12, 't': 1e12,
+        };
+
+        // Check length units first
+        if (unit in lengthUnits) {
+            return value * lengthUnits[unit];
+        }
+
+        // Check frequency units
+        if (unit in frequencyUnits) {
+            return value * frequencyUnits[unit];
+        }
+
+        // No unit specified and defaultUnit was provided - use default
+        if (unit === '' && defaultUnit !== '') {
+            // Reparse with default unit
+            return parseValueWithUnit(value, defaultUnit);
+        }
+
+        // No unit specified and no default - return value as-is (assume SI base unit)
+        if (unit === '') {
+            return value;
+        }
+
+        // Unknown unit - return NaN to indicate invalid input
+        return NaN;
+    }
+
+    /**
+     * Format a value with appropriate unit for display
+     * @param {number} valueInSI - Value in SI base unit
+     * @param {string} preferredUnit - Preferred display unit (e.g., "mm", "GHz")
+     * @returns {string} - Formatted string with unit
+     */
+    function formatValueWithUnit(valueInSI, preferredUnit) {
+        if (isNaN(valueInSI) || valueInSI === null || valueInSI === undefined) return '';
+
+        const unitMap = {
+            'mm': { scale: 1e-3, symbol: 'mm' },
+            'μm': { scale: 1e-6, symbol: 'μm' },
+            'um': { scale: 1e-6, symbol: 'μm' },
+            'mil': { scale: 25.4e-6, symbol: 'mil' },
+            'in': { scale: 25.4e-3, symbol: 'in' },
+            'GHz': { scale: 1e9, symbol: 'GHz' },
+            'MHz': { scale: 1e6, symbol: 'MHz' },
+            'kHz': { scale: 1e3, symbol: 'kHz' },
+            'Hz': { scale: 1, symbol: 'Hz' },
+        };
+
+        const unit = unitMap[preferredUnit] || { scale: 1, symbol: '' };
+        const displayValue = valueInSI / unit.scale;
+
+        // Format with appropriate precision
+        let formatted;
+        if (Math.abs(displayValue) >= 1000) {
+            formatted = displayValue.toExponential(3);
+        } else if (Math.abs(displayValue) >= 100) {
+            formatted = displayValue.toFixed(1);
+        } else if (Math.abs(displayValue) >= 10) {
+            formatted = displayValue.toFixed(2);
+        } else if (Math.abs(displayValue) >= 1) {
+            formatted = displayValue.toFixed(3);
+        } else if (Math.abs(displayValue) >= 0.01) {
+            formatted = displayValue.toFixed(4);
+        } else {
+            formatted = displayValue.toExponential(3);
+        }
+
+        // Remove trailing zeros after decimal point
+        formatted = formatted.replace(/\.?0+$/, '').replace(/\.?0+(e)/, '$1');
+
+        return unit.symbol ? formatted + ' ' + unit.symbol : formatted;
+    }
+
+    /**
+     * Get the default/expected unit for an input field based on its ID and label
+     */
+    function getDefaultUnit(inputId) {
+        const unitMap = {
+            // Geometry - mm
+            'inp_w': 'mm',
+            'inp_h': 'mm',
+            'inp_trace_spacing': 'mm',
+            'inp_gap': 'mm',
+            'inp_via_gap': 'mm',
+            'inp_gnd_width': 'mm',
+            'inp_air_top': 'mm',
+            'inp_top_diel_h': 'mm',
+            'inp_gnd_cut_w': 'mm',
+            'inp_gnd_cut_h': 'mm',
+            'inp_enclosure_width': 'mm',
+            'inp_enclosure_height': 'mm',
+
+            // Thickness - μm
+            'inp_t': 'μm',
+            'inp_sm_t_sub': 'μm',
+            'inp_sm_t_trace': 'μm',
+            'inp_sm_t_side': 'μm',
+            'inp_rq': 'μm',
+            'inp_plating_t': 'μm',
+            'inp_plating_rq': 'μm',
+            'inp_plating_rq_iface': 'μm',
+            'inp_coax_d': 'mm',
+            'inp_coax_D': 'mm',
+            'inp_wg_a': 'mm',
+            'inp_wg_b': 'mm',
+            'inp_bs_w': 'mm',
+            'inp_bs_x_offset': 'mm',
+            'inp_bs_h_bottom': 'mm',
+            'inp_bs_h_middle': 'mm',
+            'inp_bs_h_top': 'mm',
+            'inp_bs_t': 'μm',
+
+            // Frequency - GHz
+            'freq-start': 'GHz',
+            'freq-stop': 'GHz',
+
+            // S-param length - mm
+            'sparam-length': 'mm',
+
+            // Parameter sweep frequency - GHz
+            'sweep-freq': 'GHz',
+
+            // Modes tab frequency - GHz
+            'modes-freq': 'GHz',
+
+            // Field plot frequency - GHz
+            'plot-freq': 'GHz',
+        };
+
+        return unitMap[inputId] || '';
+    }
+
+    /**
+     * Validate an input field with units (but don't modify user input)
+     * Provides visual feedback for invalid units
+     */
+    function parseAndNormalizeInput(inputElement) {
+        const inputValue = inputElement.value.trim();
+        if (!inputValue) return;
+
+        const defaultUnit = getDefaultUnit(inputElement.id);
+        const parsedSI = parseValueWithUnit(inputValue, defaultUnit);
+
+        if (isNaN(parsedSI)) {
+            inputElement.classList.add('invalid');
+            inputElement.title = 'Invalid unit';
+        } else {
+            inputElement.classList.remove('invalid');
+            inputElement.title = '';
+        }
+    }
+
+    // Export for use in modules
+    window.parseValueWithUnit = parseValueWithUnit;
+    window.formatValueWithUnit = formatValueWithUnit;
+    window.getDefaultUnit = getDefaultUnit;
+    // restoreSettings (app_solver.js) sets tl_type before the backend dropdown and the
+    // sweep checkboxes, so it must re-run both locks once every input is in place,
+    // otherwise a restored link can leave a full-wave-only type on the quasi-static
+    // backend, or leave "Interpolating sweep" ticked-but-disabled on a waveguide (the
+    // key is excluded from those links, so it restores to the global default of on).
+    // Assign the hoisted declarations directly: wrapping one in an arrow
+    // (`() => enforceBackendForType()`) overwrites the very global the arrow then
+    // resolves, giving infinite recursion.
+    window.enforceBackendForType = enforceBackendForType;
+    window.enforceSweepOptionsForType = enforceSweepOptionsForType;
+
+    // Collapsible Section Toggle
+    function toggleSection(header) {
+        header.classList.toggle('collapsed');
+        const content = header.nextElementSibling;
+        if (content && content.classList.contains('section-content')) {
+            content.classList.toggle('collapsed');
+        }
+    }
+
+    // Help Modal Functions
+    const helpContent = {
+        solver: {
+            title: 'Solver',
+            body: '<p><strong>Quasi-static:</strong> Fast finite-difference solver. Computes RLGC from the static field, so it is quick but does not model dispersion. Good for a fast first estimate.</p><p><strong>Full-wave:</strong> Triangular finite-element eigenmode solver with a magneto-quasi-static conductor-loss solve. Models dielectric dispersion and gives much more accurate impedance and loss across frequency, but is much slower.</p>'
+        },
+        roughness: {
+            title: 'Surface Roughness',
+            body: '<p>Conductor loss is calculated using gradient model (<a href="https://ieeexplore.ieee.org/document/7932148" target="_blank">https://ieeexplore.ieee.org/document/7932148</a>), both loss and inductance caused by the surface roughness is calculated. All conductors use this roughness on all sides. On PCB, typical RMS roughness is about 1 - 2 µm for normal copper foil and about 0.5 µm for special low profile foil.</p>'
+        },
+        coax_d: {
+            title: 'Inner Conductor Diameter',
+            body: '<p>Diameter of the round center conductor.</p>'
+        },
+        coax_D: {
+            title: 'Dielectric Diameter',
+            body: '<p>Outer diameter of the dielectric, which is also the inner diameter of the shield.</p><p>The shield is modelled as a lossy conducting boundary at this diameter with no modelled wall thickness, so it contributes surface loss but no DC resistance. Accurate wherever the skin depth is smaller than the real shield wall.</p>'
+        },
+        waveguide: {
+            title: 'Rectangular Waveguide',
+            body: '<p>A hollow rectangular metal pipe of inner dimensions <i>a</i> &times; <i>b</i>, optionally filled with a dielectric. Unlike every other line type here it is not TEM or quasi-TEM. There is no second conductor, so there is no static solution. It is solved with the full-wave eigenmode solver only.</p><p>Only the lowest (fundamental) mode is solved and swept, TE<sub>10</sub> when a &ge; b, TE<sub>01</sub> otherwise. Its cutoff frequency is f<sub>c</sub> = c / (2 &middot; max(a,b) &middot; &radic;&epsilon;<sub>r</sub>).</p><ul><li><b>Below f<sub>c</sub></b> the mode is evanescent: only the attenuation is reported, and the other results are blank (the trace breaks at cutoff).</li><li><b>Above the second cutoff</b> f<sub>c2</sub> = c &middot; min(2/a, 1/b) / (2&radic;&epsilon;<sub>r</sub>) the guide is over-moded, higher-order modes also propagate and are not included in these results. Use the Modes tab to inspect them.</li></ul><p>Surface roughness and plating apply to the walls.</p>'
+        },
+        wg_a: {
+            title: 'Broad Wall (a)',
+            body: '<p>Inner width of the guide. Together with the narrow wall it sets the cutoff: the fundamental mode has f<sub>c</sub> = c / (2 &middot; max(a,b) &middot; &radic;&epsilon;<sub>r</sub>).</p><p>The walls are modelled as a lossy conducting boundary with no wall thickness, so they contribute surface loss but no DC resistance. Accurate wherever the skin depth is smaller than the real wall, which is the entire useful range.</p><p>Standard WR sizes: WR-90 = 22.86 &times; 10.16 mm (X band, 8.2&ndash;12.4 GHz), WR-42 = 10.668 &times; 4.318 mm, WR-28 = 7.112 &times; 3.556 mm, WR-159 = 40.386 &times; 20.193 mm.</p>'
+        },
+        wg_b: {
+            title: 'Narrow Wall (b)',
+            body: '<p>Inner height of the guide. It does not affect the fundamental cutoff (when b &lt; a) but it does set the second cutoff, and hence the single-mode bandwidth: b = a/2 gives the widest single-mode band, which is why standard guides use that ratio.</p><p>It also scales the reported impedance, which is proportional to b/a.</p>'
+        },
+        wg_z0: {
+            title: 'Waveguide Impedance',
+            body: '<p>A waveguide has no unique characteristic impedance. There is no unique voltage or current. The reported Z<sub>0</sub> is the <b>power-voltage</b> definition Z<sub>pv</sub> = |V|&sup2;/(2P), with V integrated across the centre of the guide. For the fundamental mode that is exactly 2(b/a)&middot;Z<sub>TE</sub>, where Z<sub>TE</sub> = &eta;/&radic;(1&minus;(f<sub>c</sub>/f)&sup2;) is the wave impedance.</p><p>The reported R/L/G/C are the exact per-unit-length equivalent circuit of the mode in that same normalization, not physical metal and dielectric parameters. They reproduce &gamma; and Z<sub>0</sub> exactly, which is what feeds the S-parameters. The R/G split depends on the normalization; &gamma;, &epsilon;<sub>eff</sub> and the attenuations do not. L is constant by construction, and Im(Z<sub>0</sub>) is negligible for a TE mode.</p>'
+        },
+        wg_sparam: {
+            title: 'Waveguide S-Parameters',
+            body: '<p>A waveguide has no external TEM reference to normalize against. Its impedance is frequency-dependent, and a fixed 50 &Omega; reference would not be useful. Each frequency is therefore referenced to its own modal impedance.</p><p>That makes S11 = S22 = 0.</p><p>Touchstone carries only a single real reference impedance, so the exported file states the real reference in comments and leaves the R value on the option line nominal. Frequencies below cutoff are omitted from both the plot and the file. The mode is evanescent there, its modal impedance is imaginary, and a below-cutoff guide reflects rather than absorbs.</p>'
+        },
+        plating: {
+            title: 'Surface Plating',
+            body: '<p>Models a single plating layer on top of the bulk conductor using a <a href="https://ieeexplore.ieee.org/document/9903540" target="_blank">layered gradient model</a>. The plating roughness applies to the outer (air/plating) surface. The plating/bulk interface takes the Interface Roughness, which by default is the plating roughness, since the plating conforms to the bulk surface.</p><p>Applied to signal traces and coplanar ground conductors on the substrate. Select which surfaces of the conductor receive plating: top (facing away from substrate), sides, or bottom (facing substrate).</p><p>Unselected surfaces use the base Surface Roughness RMS setting with the single-layer model.</p>'
+        },
+        plating_rq_iface: {
+            title: 'Interface Roughness RMS',
+            body: '<p>RMS roughness of the interface between the plating and the bulk metal. Empty uses the Plating Roughness.</p><p>It matters only where the current reaches the interface, when the plating is not much thicker than the skin depth. For a plating several skin depths thick it has no effect.</p>'
+        },
+        plating_thick_corners: {
+            title: 'Model Thick Plating',
+            body: '<p>When enabled, the plating is a layer of its thickness inside the conductor outline that covers the corners next to it. The full-wave solver meshes that layer and solves it as metal.</p><p>The outer surface of the meshed layer takes the plating roughness. The mesh has the boundary between the plating and the bulk metal set to smooth, its roughness (Interface Roughness) is added on the plated faces as the difference of the layered surface impedance with that interface rough and smooth. The bulk roughness applies only on faces the plating leaves bare.</p><p>When disabled, each plated face takes a layered plating surface impedance, which assumes a bulk several skin depths thick under the plating.</p><p>The quasi-static solver always uses the surface impedance, with this option side plating extends to the bottom corners when the bottom face is not plated.</p>'
+        },
+        conductivity: {
+            title: 'Conductivity',
+                body: '<p>Electrical conductivity of the conductor material.</p><p><strong>Common materials at room temperature:</strong></p><ul><li>Silver: 6.3×10<sup>7</sup> S/m</li><li>Copper: 5.8×10<sup>7</sup> S/m</li><li>Gold: 4.5×10<sup>7</sup> S/m</li><li>Aluminium: 3.5×10<sup>7</sup> S/m</li><li>Nickel: 1.4×10<sup>7</sup> S/m</li></ul><p>At low frequencies Nickel has high magnetic permeability that increases conductor losses and is not yet supported.</p>'
+        },
+        causal: {
+            title: 'Causal Material Parameters',
+            body: '<p>Applies the Djordjevic-Sarkar (Wideband Debye) model to enforce causality in dielectric materials. This model adjusts both permittivity and loss tangent as a function of frequency to satisfy Kramers-Kronig relations. The model uses a wideband fit from 1 kHz to 1 THz, with the reference frequency set at 1 GHz. This is the same model used by Ansys HFSS and other commercial EM solvers.</p><p><strong>Performance Impact:</strong> Enabling causal materials requires solving the Laplace equation at each frequency point (since field distributions change with frequency-dependent permittivity). This makes frequency sweeps significantly slower</p><p><strong>When to use:</strong> Broadband sweeps (multiple decades) where causality is required such as signal integrity simulation using export S-parameters.'
+        },
+        tolerance: {
+            title: 'Tolerance (%)',
+            body: '<p>Target accuracy of the adaptive mesh refinement in percent. The mesh is refined until the pass-to-pass change in field energy and line parameters drops below this value, and the result is then verified: the static fields are re-solved on a uniformly refined mesh and the true remaining error is estimated by Richardson extrapolation. Refinement continues until this verified remaining error of the static quantities (C and C<sub>0</sub>, which set Z<sub>0</sub> and &epsilon;<sub>eff</sub>) is below the tolerance, with a 1.5&times; safety margin on the estimate.</p><p>On success the log prints the verified remaining error. If Max Nodes or Max Iterations stop refinement before the tolerance is reached, a warning reports the estimated remaining error instead of stopping silently.</p><p>Not covered: conductor and dielectric losses are outside the verification, only the static field solution is certified.</p><p>Cost: the verification re-solves on a mesh with about 4&times; the nodes, so tight tolerances get slow. 1% is a good default; use 0.1&ndash;0.25% for reference-quality results.</p>'
+        },
+        estimate_error: {
+            title: 'Estimate Solution Error',
+            body: '<p>When enabled (default), every converged solve is verified: the static fields are re-solved on uniformly refined mesh, the true remaining error is estimated by Richardson extrapolation, and refinement continues until the estimate is below the Tolerance. The log reports the verified remaining error, and a warning is shown if Max Nodes or Max Iterations stop refinement before the tolerance is reached.</p><p>When disabled, refinement stops when the pass-to-pass change drops below the Tolerance. This is faster (no verification solves on a ~4&times; refined mesh), but the pass-to-pass change measures the rate of convergence rather than the distance to the converged answer, so the true error can be larger.</p><p>Verification runs on the main solve and on the first point of a parameter sweep. The Modes tab never verifies.</p>'
+        },
+        maxnodes: {
+            title: 'Max nodes (thousands)',
+            body: '<p>Maximum node budget for adaptive meshing. About 200k nodes will need 1 GB of memory and will be very slow to solve, avoid going above that unless really needed. 20k nodes is a good default.</p>'
+        },
+        custom_geometry: {
+            title: 'Custom Geometry',
+            body: '<p>A cross-section built from rectangles: dielectrics, grounds and one signal conductor or a <b>+</b> / <b>&minus;</b> pair. Everything not covered by a dielectric is air, and the solved region is drawn white in the preview. Trapezoids (traces with an etch angle), n-gons and ellipses (round conductors, and rings such as a coax shield), rounded corners and hollow shells are available on the full-wave solver.</p>' +
+                '<p>The sidebar holds the length unit, the parameters, the boundaries and the solved region. Parameters take a number or an expression, can be used in every rectangle field (<code>w/2</code>, <code>h1+h2</code>, <code>35um</code>), and those set to a number can be swept in the Parameter Sweep tab. Click a name to rename it.</p>' +
+                '<p>The editor under the preview lists the rectangles, one row each, with the conductor\'s own conductivity, roughness and plating. Its <b>Text</b> view is the whole geometry as links and files carry it, with a format reference. Errors appear on the row they belong to and block Solve; Ctrl+Z undoes any edit.</p>'
+        },
+        copylink: {
+            title: 'Copy link',
+            body: '<p>Copies URL to clip board with all transmission line parameters encoded in it. Opening it will load the same parameters.</p>'
+        },
+        freeze: {
+            title: 'Freeze Trace',
+            body: '<p>Saves the current plot data as a semi-transparent reference trace. The frozen trace persists when you change parameters and re-run the simulation, letting you visually compare results.</p><p>For S-Parameters, the frozen trace also preserves the line length and reference impedance from freeze time.</p><p>Click Unfreeze to remove the reference trace.</p>'
+        },
+        interp_sweep: {
+            title: 'Interpolating Sweep',
+            body: '<p>Computes exact RLGC at a small number of adaptively chosen frequencies, then uses cubic spline interpolation to produce results at all output points. This is much faster than computing at every frequency, especially with causal materials enabled.</p><p>The algorithm adaptively refines until the interpolation error is below the specified tolerance.</p><p>S-parameters are computed analytically from interpolated RLGC, so they remain accurate even for long lines.</p>'
+        },
+        gcpw_gnd_width: {
+            title: 'Ground Width',
+            body: '<p>Width of each coplanar ground, measured outward from the gap. Leave empty for grounds that extend over the full width of the domain.</p><p>Via diameter is the ground width minus 2x via gap. Geometries without via are rejected.</p>'
+        },
+        top_diel_height: {
+            title: 'Top Dielectric Height',
+            body: '<p>Distance from the substrate surface (trace bottom) to the top ground plane. The trace extends upward into this region.</p><p>Total ground-to-ground spacing = substrate height + top dielectric height. Trace thickness does not add to the ground-to-ground spacing.</p><p>With the advanced Top Dielectric option enabled, that layer replaces the lowest part of this region and the ground-to-ground spacing is unchanged.</p>'
+        },
+        top_diel_layer: {
+            title: 'Top Dielectric Layer',
+            body: '<p>Extra dielectric layer on the substrate surface. It starts at the trace bottom and extends upward by its height, so the trace is embedded in it (fully when the layer is thicker than the trace).</p><p>Microstrip and GCPW: the layer is added on top of the substrate, below the air (or enclosure) region.</p><p>Stripline: the layer is carved out of the bottom of the stripline top dielectric, so the ground-to-ground spacing stays substrate height + top dielectric height. Its height must be smaller than the stripline top dielectric height. Set its permittivity to 1 to model air beside the trace.</p>'
+        },
+        bs_h_bottom: {
+            title: 'Bottom Substrate Height',
+            body: '<p>Distance from the top surface of the bottom ground plane to the bottom reference of the lower conductor (i.e. the bottom of the lower conductor when trace thickness is positive).</p>'
+        },
+        bs_h_middle: {
+            title: 'Middle Substrate Height',
+            body: '<p>Distance from the bottom of the lower conductor to the top of the upper conductor. Spans both trace thicknesses plus the dielectric gap between them. For positive trace thickness, the minimum allowed value is 2 × Trace Thickness.</p><p>Dielectric gap between traces = Middle Substrate Height − 2 × Trace Thickness.</p><p>Ground-to-ground spacing = Bottom + Middle + Top substrate heights (trace thickness is not counted separately).</p>'
+        },
+        bs_h_top: {
+            title: 'Top Substrate Height',
+            body: '<p>Distance from the top of the upper conductor to the bottom surface of the top ground plane.</p><p>Ground-to-ground spacing = Bottom + Middle + Top substrate heights (trace thickness is not counted separately).</p>'
+        },
+        plot_geometry: {
+            title: 'Geometry',
+            body: '<p>The cross-section as it is solved: conductors and dielectric layers. After a solve the button at the top left can be used to visualize the field plots, each has its own help on this button.</p>'
+        },
+        plot_potential: {
+            title: 'Potential',
+            body: '<p>Electrostatic potential of the static solve, with the signal conductors at 1 V (odd mode +1 V and &minus;1 V, even mode both +1 V) and the grounds at 0 V.</p><p><i>Quasi-static:</i> this is what is actually solved and the E-field is calculated from it.</p><p><i>Full-wave:</i> the full-wave solver does not solve a potential. Its frequency-dependent solution is an eigenmode field, which has no scalar potential, so this view always shows the static solve whatever the plot frequency.</p>'
+        },
+        plot_efield: {
+            title: '|E| Field',
+            body: '<p>Shown for the selected mode (odd or even for differential lines) at the <b>Plot Frequency</b> of Plot Options.</p><p>Field magnitude with the signal conductors at 1 V (odd mode +1 V and &minus;1 V, even mode both +1 V).</p><p><i>Quasi-static:</i> the static field &minus;&nabla;V, the same at every frequency.</p><p><i>Full-wave:</i> the transverse E-field of the quasi-TEM eigenmode at the plot frequency, scaled to the static field so it stays on the same 1 V scale. At low frequencies static field is used for numerical stability reasons. At high frequencies it differs from the static field where dispersion pulls the field into the dielectric, the title then says &quot;full-wave mode&quot;.</p>'
+        },
+        plot_current: {
+            title: '|K| Surface Current',
+            body: '<p>Shown for the selected mode (odd or even for differential lines) at the <b>Plot Frequency</b> of Plot Options.</p><p>Surface current on the conductors per 1 A of line current, plotted as the tangential magnetic field |H<sub>t</sub>| at the surface.</p><p><i>Quasi-static:</i> the perfect-conductor limit from the static solve. The current is an infinitely thin sheet, so |K| = |H<sub>t</sub>| exactly, and conductor loss is integrated over this distribution.</p><p><i>Full-wave:</i> |H<sub>t</sub>| from the magneto-quasi-static (MQS) conductor solve at the plot frequency with finite conductivity. When the skin depth is much smaller than the conductor thickness it is the surface current. When the skin depth is comparable to or larger than the thickness, the current flows through the metal (see |J| Density) and |H<sub>t</sub>| is only the surface field. Where the MQS solve is not run (DC, or when the title says perfect-conductor limit) the plot is the same perfect-conductor limit as on the quasi-static solver.</p>'
+        },
+        plot_density: {
+            title: '|J| Current Density',
+            body: '<p>Shown for the selected mode (odd or even for differential lines) at the <b>Plot Frequency</b> of Plot Options.</p><p>Full-wave only. Current density inside the conductors per 1 A of line current, from the magneto-quasi-static (MQS) conductor solve at the plot frequency. It shows the skin and proximity effects: uniform at DC, crowding to the surfaces and corners as the frequency rises.</p><p><b>Metal without |J|:</b> conducting boundaries, are not meshed: they are perfect conductors with a surface impedance for the loss. The plot draws their surface current |K| on their faces instead, on its own color bar.</p><p><b>Ideal edge grounds:</b> grounds that reach an open edge of the domain (GCPW pours, wide ground planes) would carry the return current across their whole width towards DC, and a finite domain would cut it off. At low frequencies they are therefore solved the same way, as perfect conductors with a surface impedance, which includes the current spreading sideways, and are drawn with |K| too. The title says &quot;ideal edge grounds&quot; when this model is shown.</p><p>It is drawn on the conductor mesh graded to the skin depth, which the mesh toggle shows.</p><p>The quasi-static solver does not solve the current inside the metal, it models conductor loss with a surface impedance over the surface current |K|.</p>'
+        },
+        modes: {
+            title: 'Modes',
+            body: '<p>Solves the full-wave eigenmodes of the current geometry (uses full-wave solver independent of the Solver dropdown).</p><p>Each mode is classified by its effective permittivity &epsilon;<sub>eff</sub> (derived from the squared propagation constant, &epsilon;<sub>eff</sub> = &minus;&gamma;&sup2;/k&sup2;):</p><ul><li><b>PROP</b>: propagating, with a real &epsilon;<sub>eff</sub> shown. Includes the quasi-TEM mode and propagating higher-order modes.</li><li><b>evan</b>: evanescent / below cutoff (no propagating &epsilon;<sub>eff</sub>).</li><li><b>spurious</b> / <b>null</b>: non-physical eigenvalues (&epsilon;<sub>eff</sub> &gt; &epsilon;<sub>r</sub>, or the discrete null space), and modes with &epsilon;<sub>eff</sub> &lt; 1 whose field lies mostly in the region reaching an open boundary.</li></ul><p><b>overlap</b> measures how closely a mode\'s transverse field matches the static (quasi-TEM) field distribution, normalized from 0 to 1. The fundamental quasi-TEM mode has an overlap near 1 (marked with <b>*</b> when above 0.5). Higher-order, radiation, and spurious modes have overlaps near 0.</p><p>Click any mode to plot its transverse E-field. Increase "Number of modes" to find more higher-order modes.</p>'
+        },
+        modes_mesh_density: {
+            title: 'Mesh Density (cells/λ)',
+            body: '<p>Minimum number of mesh cells per wavelength in the bulk of the domain, evaluated at the Modes frequency in the densest dielectric. The mode solver needs the whole cross-section wavelength-resolved, unlike the main solve, because higher-order and cavity mode fields fill the bulk.</p><p><b>8</b> (default) resolves higher-order modes reliably with the quadratic elements in use. Lower values shrink the mesh quadratically (triangle count &prop; density&sup2;) and solve much faster, but under-resolved higher-order modes can shift in &epsilon;<sub>eff</sub>, be misclassified as spurious, or be missed entirely, results near the bottom of the range (3&ndash;6) are only trustworthy for the fundamental quasi-TEM mode. Higher values cost triangles and rarely help.</p><p>The mesh is still capped by Max Nodes: if the requested density blows the budget, the mesh is coarsened to fit and the density is not honored.</p>'
+        },
+        modes_shrink_domain: {
+            title: 'Shrink open domain',
+            body: '<p>Automatically shrink the open field boundaries to reduce the mesh size, can slightly affect the solved &epsilon;<sub>eff</sub>. The far field of an open line carries no guided mode, it only adds modes of the artificial box and shrinking it keeps the Modes solve within the node budget at high frequencies.</p><p>Not available with an enclosure.</p>'
+        }
+    };
+
+    function showHelpModal(topic, event) {
+
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+
+        const content = helpContent[topic];
+        if (content) {
+            document.getElementById('helpModalTitle').textContent = content.title;
+            document.getElementById('helpModalBody').innerHTML = content.body;
+            document.getElementById('helpModal').style.display = 'block';
+        }
+    }
+
+    function closeHelpModal() {
+        document.getElementById('helpModal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside of it
+    window.onclick = function(event) {
+        const modal = document.getElementById('helpModal');
+        if (event.target === modal) {
+            closeHelpModal();
+        }
+    }
+
+    // Self-bounded media: the metal that encloses them is the domain boundary, so they
+    // replace the microstrip stackup wholesale with their own geometry block and share one
+    // branch in toggleParameterVisibility. tlType -> id of that block.
+    const SELF_BOUNDED_PARAM_DIVS = {
+        coax: 'coax-params',
+        rect_waveguide: 'wg-params',
+    };
+
+    // Board-stackup options of each line type, see toggleParameterVisibility. blocks: the
+    // parameter blocks shown besides the common one ('self' = the SELF_BOUNDED_PARAM_DIVS
+    // block). rows: the advanced-option rows shown. locked: the checkboxes locked off.
+    const ALL_ROWS = ['sm', 'topDiel', 'gndCut', 'enclosure', 'topGnd', 'enclosureHeight'];
+    // Striplines already have a top ground, so the top-ground row and its height go.
+    // The top dielectric applies: a layer carved out of the bottom of the stripline's
+    // top dielectric (air beside the trace with eps_r = 1).
+    const STRIPLINE_ROWS = ['sm', 'topDiel', 'gndCut', 'enclosure'];
+    const TL_TYPE_OPTIONS = {
+        microstrip: { blocks: [], rows: ALL_ROWS, locked: [] },
+        diff_microstrip: { blocks: ['diff-params'], rows: ALL_ROWS, locked: [] },
+        stripline: { blocks: ['stripline-params'], rows: STRIPLINE_ROWS, locked: ['sm', 'gndCut'] },
+        diff_stripline: { blocks: ['diff-params', 'stripline-params'], rows: STRIPLINE_ROWS, locked: ['sm', 'gndCut'] },
+        gcpw: { blocks: ['gcpw-params'], rows: ALL_ROWS, locked: [] },
+        diff_gcpw: { blocks: ['diff-params', 'gcpw-params'], rows: ALL_ROWS, locked: [] },
+        // Only the enclosure and plating apply. Top/bottom grounds are intrinsic, so only
+        // the side ground of the enclosure makes sense.
+        broadside_stripline: { blocks: ['broadside-params'], rows: ['enclosure'], locked: ['sm', 'topDiel', 'gndCut'] },
+        // Self-bounded media (coax, rectangular waveguide): the shield / the walls ARE the
+        // domain boundary, so none of the board-stackup options apply. Plating and surface
+        // roughness do, and stay enabled.
+        self_bounded: { blocks: ['self'], rows: [], locked: ['sm', 'topDiel', 'gndCut', 'enclosure'] },
+        // Custom geometry describes its whole stackup and its boundaries in the text.
+        custom: { blocks: [], rows: [], locked: ['sm', 'topDiel', 'gndCut', 'enclosure'] },
+    };
+
+    function toggleParameterVisibility() {
+        const tlType = document.getElementById('tl_type').value;
+        const isCustom = tlType === 'custom';
+        document.getElementById('custom-params').style.display = isCustom ? 'block' : 'none';
+        document.getElementById('custom-editor').style.display = isCustom ? 'flex' : 'none';
+        document.getElementById('custom-splitter').style.display = isCustom ? 'block' : 'none';
+        // Conversion works from the rectangle lists, which the waveguide does not have.
+        // A coax converts to n-gons.
+        document.getElementById('btn-convert-custom').style.display =
+            (isCustom || (SELF_BOUNDED_PARAM_DIVS[tlType] && tlType !== 'coax')) ? 'none' : 'block';
+        const solveBtn = document.getElementById('btn_solve');
+        if (!isCustom && solveBtn.dataset.customInvalid) {
+            solveBtn.dataset.customInvalid = '';
+            if (!solveBtn.classList.contains('stop-mode')) solveBtn.disabled = false;
+            document.getElementById('btn-run-sweep').disabled = false;
+        }
+        const microstripParams = document.getElementById('microstrip-params');
+        const diffParams = document.getElementById('diff-params');
+        const gcpwParams = document.getElementById('gcpw-params');
+        const striplineParams = document.getElementById('stripline-params');
+        const broadsideParams = document.getElementById('broadside-params');
+        const advancedParams = document.getElementById('advanced-params');
+        // A circle and a waveguide wall each have one continuous surface, so the per-face
+        // plating selection and the corner-wrap model have nothing to act on. Both are
+        // hidden for those types (plating itself still applies, all-around). Coax gets a
+        // selection of its own in their place: it has TWO such surfaces (centre conductor
+        // and shield), each plated all-around or not at all.
+        const platingFacesGroup = document.getElementById('plating-params')
+            ?.querySelector('.control-group:has(#chk_plating_top)');
+        const platingCornersGroup = document.getElementById('plating-params')
+            ?.querySelector('.control-group:has(#chk_plating_thick_corners)');
+        const platingCoaxGroup = document.getElementById('plating-coax-group');
+        const solderMaskGroup = advancedParams.querySelector('.control-group:has(#chk_solder_mask)');
+        const solderMaskParams = document.getElementById('solder-mask-params');
+        const topDielGroup = advancedParams.querySelector('.control-group:has(#chk_top_diel)');
+        const topDielParams = document.getElementById('top-diel-params');
+        const gndCutGroup = advancedParams.querySelector('.control-group:has(#chk_gnd_cut)');
+        const gndCutParams = document.getElementById('gnd-cut-params');
+        const enclosureGroup = advancedParams.querySelector('.control-group:has(#chk_enclosure)');
+        const enclosureParams = document.getElementById('enclosure-params');
+        const topGndGroup = document.getElementById('top-gnd-group');
+        const enclosureHeightGroup = document.getElementById('enclosure-height-group');
+
+        // Hide all type-specific params first
+        diffParams.style.display = 'none';
+        gcpwParams.style.display = 'none';
+        striplineParams.style.display = 'none';
+        broadsideParams.style.display = 'none';
+        for (const id of Object.values(SELF_BOUNDED_PARAM_DIVS)) {
+            document.getElementById(id).style.display = 'none';
+        }
+        const oneSurface = !!SELF_BOUNDED_PARAM_DIVS[tlType];
+        // Custom geometry sets plating per conductor in its editor: the whole block is
+        // hidden by a body class, whatever the checkbox toggles set on it.
+        document.body.classList.toggle('tl-custom', isCustom);
+        if (platingFacesGroup) platingFacesGroup.style.display = oneSurface ? 'none' : 'block';
+        if (platingCornersGroup) platingCornersGroup.style.display = oneSurface ? 'none' : 'block';
+        if (platingCoaxGroup) platingCoaxGroup.style.display = tlType === 'coax' ? 'block' : 'none';
+
+        // Common params visible by default (hidden for broadside/coax/waveguide, which
+        // have their own blocks)
+        microstripParams.style.display =
+            (tlType === 'broadside_stripline' || oneSurface || isCustom) ? 'none' : 'block';
+
+        // Always show advanced params
+        advancedParams.style.display = 'block';
+
+        // Per type: the extra parameter blocks it shows, the advanced-option rows it
+        // shows, and the advanced checkboxes it locks off (disabled and unchecked, with
+        // their option section hidden). The rest of the rows are hidden and the rest of
+        // the checkboxes enabled.
+        const typeOptions = TL_TYPE_OPTIONS[isCustom ? 'custom' : SELF_BOUNDED_PARAM_DIVS[tlType] ? 'self_bounded' : tlType];
+        if (typeOptions) {
+            for (const block of typeOptions.blocks) {
+                document.getElementById(block === 'self' ? SELF_BOUNDED_PARAM_DIVS[tlType] : block).style.display = 'block';
+            }
+            const rows = { sm: solderMaskGroup, topDiel: topDielGroup, gndCut: gndCutGroup, enclosure: enclosureGroup,
+                           topGnd: topGndGroup, enclosureHeight: enclosureHeightGroup };
+            for (const [name, row] of Object.entries(rows)) {
+                if (row) row.style.display = typeOptions.rows.includes(name) ? 'block' : 'none';
+            }
+            const checkboxes = { sm: ['chk_solder_mask', solderMaskParams], topDiel: ['chk_top_diel', topDielParams],
+                                 gndCut: ['chk_gnd_cut', gndCutParams], enclosure: ['chk_enclosure', enclosureParams] };
+            for (const [name, [id, params]] of Object.entries(checkboxes)) {
+                const cb = document.getElementById(id);
+                if (!cb) continue;
+                const locked = typeOptions.locked.includes(name);
+                cb.disabled = locked;
+                if (locked) {
+                    cb.checked = false;
+                    if (params) params.style.display = 'none';
+                }
+            }
+            // An enclosure is a physical boundary the Modes tab cannot shrink, so that
+            // option follows the checkbox, which a lock unticks without a change event.
+            document.getElementById('modes-shrink-domain').disabled = document.getElementById('chk_enclosure').checked;
+        }
+        enforceBackendForType();
+        enforceSweepOptionsForType();
+    }
+
+    // The interpolating sweep assumes a smooth non-vanishing RLGC set. A waveguide's shunt
+    // C crosses zero at cutoff, so the interpolator's relative-error test explodes there
+    // and after its single eigensolve every sweep point is analytic anyway, so there is
+    // nothing to save. Lock it off, swap the S-parameter reference-impedance box for the
+    // "Z0 (modal)" label (that medium ignores the box entirely), and expose the modal-Z0
+    // help next to the results selector. Called from toggleParameterVisibility and, via
+    // window, from the end of restoreSettings, which sets tl_type before the checkboxes,
+    // so a restored link would otherwise leave the sweep box ticked-but-disabled.
+    function enforceSweepOptionsForType() {
+        const isWG = document.getElementById('tl_type').value === 'rect_waveguide';
+        const chk = document.getElementById('chk_interp_sweep');
+        if (chk) {
+            // The user's choice is kept while the waveguide locks the box and put back
+            // when another line type is selected. This runs on every visibility update,
+            // so the choice is only taken when the lock first engages.
+            let want = null;
+            if (isWG) {
+                if (!chk.disabled) chk.dataset.savedChecked = chk.checked ? '1' : '0';
+                want = false;
+            } else if (chk.disabled && chk.dataset.savedChecked !== undefined) {
+                want = chk.dataset.savedChecked === '1';
+                delete chk.dataset.savedChecked;
+            }
+            chk.disabled = isWG;
+            if (want !== null && chk.checked !== want) {
+                chk.checked = want;
+                // Setting .checked in script fires no event, and the tolerance row's
+                // visibility is driven by one — so it would stay open with the box off.
+                chk.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            const row = chk.closest('.control-group') || chk.parentElement;
+            if (row) row.title = isWG
+                ? 'Not applicable to a waveguide — every sweep point is already analytic'
+                : '';
+        }
+        const zBox = document.getElementById('sparam-z-ref-label');
+        const zModal = document.getElementById('sparam-z-ref-modal');
+        if (zBox) zBox.style.display = isWG ? 'none' : '';
+        if (zModal) zModal.style.display = isWG ? '' : 'none';
+        // Z0/RLGC are a modal normalization for this medium, not physical per-unit-length
+        // metal and dielectric parameters, which needs saying where they are read.
+        const z0Help = document.getElementById('results-modal-z0-help');
+        if (z0Help) z0Help.style.display = isWG ? '' : 'none';
+    }
+
+    // Some line types exist only on the full-wave backend. Coax: the quasi-static solver
+    // meshes on a rectilinear grid and cannot represent a circular conductor. Rectangular
+    // waveguide: it has no TEM mode at all, so there is nothing for the Laplace solve to
+    // find. Lock the dropdown rather than letting a solve fail. Called from
+    // toggleParameterVisibility, from the backend dropdown's own change handler, and at
+    // the end of restoreSettings (which sets tl_type before mesh_backend, so a stale or
+    // hand-edited link could otherwise land on one of these + rectilinear).
+    // app_solver.js keeps its own copy of this set (separate script scope).
+    const FULLWAVE_ONLY_TYPES = {
+        coax: 'Coaxial lines require the full-wave solver',
+        rect_waveguide: 'Rectangular waveguides require the full-wave solver',
+    };
+    function enforceBackendForType() {
+        const sel = document.getElementById('mesh_backend');
+        if (!sel) return;
+        const reason = FULLWAVE_ONLY_TYPES[document.getElementById('tl_type').value];
+        const rect = sel.querySelector('option[value="rectilinear"]');
+        if (rect) rect.disabled = !!reason;
+        sel.title = reason || '';
+        if (reason && sel.value === 'rectilinear') {
+            sel.value = 'fullwave_mqs';
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    function toggleCheckboxSection(checkboxId, sectionId) {
+        const checkbox = document.getElementById(checkboxId);
+        const section = document.getElementById(sectionId);
+        section.style.display = checkbox.checked ? 'block' : 'none';
+    }
+
+    // Mobile menu toggle functionality
+    function toggleMobileMenu() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobileBackdrop');
+        const menuBtn = document.getElementById('mobileMenuToggle');
+
+        sidebar.classList.toggle('mobile-open');
+        backdrop.classList.toggle('active');
+
+        // Hide menu button when sidebar is open to prevent overlap with Solve button
+        if (sidebar.classList.contains('mobile-open')) {
+            menuBtn.classList.add('hidden');
+        } else {
+            menuBtn.classList.remove('hidden');
+        }
+    }
+
+    function closeMobileMenu() {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('mobileBackdrop');
+        const menuBtn = document.getElementById('mobileMenuToggle');
+
+        sidebar.classList.remove('mobile-open');
+        backdrop.classList.remove('active');
+        menuBtn.classList.remove('hidden');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('tl_type').addEventListener('change', toggleParameterVisibility);
+        toggleParameterVisibility(); // Set initial visibility
+
+        // Checkbox toggles for advanced options
+        document.getElementById('chk_solder_mask').addEventListener('change', () => {
+            toggleCheckboxSection('chk_solder_mask', 'solder-mask-params');
+        });
+        document.getElementById('chk_top_diel').addEventListener('change', () => {
+            toggleCheckboxSection('chk_top_diel', 'top-diel-params');
+        });
+        document.getElementById('chk_gnd_cut').addEventListener('change', () => {
+            toggleCheckboxSection('chk_gnd_cut', 'gnd-cut-params');
+        });
+        document.getElementById('chk_enclosure').addEventListener('change', () => {
+            toggleCheckboxSection('chk_enclosure', 'enclosure-params');
+            // An enclosure is a physical boundary: the Modes tab cannot shrink it.
+            document.getElementById('modes-shrink-domain').disabled = document.getElementById('chk_enclosure').checked;
+        });
+        document.getElementById('chk_plating').addEventListener('change', () => {
+            toggleCheckboxSection('chk_plating', 'plating-params');
+        });
+
+        document.getElementById('mesh_backend').addEventListener('change', () => {
+            enforceBackendForType();
+        });
+
+        // Initialize checkbox sections based on restored state (for browser auto-restore)
+        toggleCheckboxSection('chk_solder_mask', 'solder-mask-params');
+        toggleCheckboxSection('chk_top_diel', 'top-diel-params');
+        toggleCheckboxSection('chk_gnd_cut', 'gnd-cut-params');
+        toggleCheckboxSection('chk_enclosure', 'enclosure-params');
+        document.getElementById('modes-shrink-domain').disabled = document.getElementById('chk_enclosure').checked;
+        toggleCheckboxSection('chk_plating', 'plating-params');
+
+        // Setup unit parsing for all unit-input fields
+        document.querySelectorAll('.unit-input').forEach(input => {
+            // Parse on blur
+            input.addEventListener('blur', function() {
+                parseAndNormalizeInput(this);
+            });
+
+            // Parse on Enter key
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    parseAndNormalizeInput(this);
+                    this.blur();
+                }
+            });
+        });
+
+        // Mobile menu toggle
+        document.getElementById('mobileMenuToggle').addEventListener('click', toggleMobileMenu);
+        document.getElementById('mobileBackdrop').addEventListener('click', closeMobileMenu);
+
+        // Close mobile menu when clicking a tab (to see the content)
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeMobileMenu();
+                }
+            });
+        });
+    });
+</script>
+<script type="module" src="app_solver.js"></script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+// Quasi-static (rectilinear FDM) edge cases outside the fuzzer's draw ranges.
+// Each case pins one item from docs/untested_edge_cases.md (Q1..Q6):
+//
+//   Q1 uncovered air nodes must be lossless: a ground cutout with gnd_cut_sub_h = 0
+//      leaves a void no dielectric rect covers, and its loss tangent must be 0, not
+//      the array's fill value. Cross-checked against the full-wave alpha_d.
+//   Q2 internal inductance must stay bounded below the skin regime: L_int(f) is
+//      finite, non-increasing from 1 kHz to 10 GHz, and within a factor of two of
+//      the full-wave MQS value at 1 kHz (the FDM has no lateral-crowding model, so
+//      it is not expected to match closely; it must not diverge as 1/sqrt(f)).
+//   Q3 the skin-transition warning fires for embedded (negative-thickness) traces
+//      exactly as it does for surface traces of the same |t|.
+//   Q4 solder-mask bracket lines depend on the mask, not on the trace: R must be
+//      continuous when the trace thickness crosses the mask thickness.
+//   Q5 degenerate geometries are rejected at construction: gap = 0 on a GCPW and
+//      enclosure_height == trace_thickness on a stripline both paint ground over
+//      trace nodes if allowed through.
+//   Q6 the mesher's conductor-dimension helpers use |height| so an embedded trace
+//      gets the same bracket treatment as a surface trace.
+//   Q7 a signal touching the domain walls keeps the charge of its wall nodes: a strip
+//      spanning the domain over a two-layer stack is an exact parallel plate, on the
+//      half and the full domain, and with the strip against the top wall too.
+//   Q8 conductors facing each other across a gap of about ten skin depths get the
+//      narrow-gap note (the surface-impedance loss overstates the facing faces), a
+//      wide gap does not, and the estimate grows with the skin depth.
+//   Q9 the far-field region at the high end of an axis gets its share of grid lines:
+//      a mirror-image pair under dielectric blocks on one side only (the floors of the
+//      many block regions used to leave the last x region two lines) has the same
+//      vacuum L and the same R on both traces, which do not depend on the dielectrics.
+//
+// Run: node tests/test_qs_edge_cases.js
+import { MicrostripSolver } from '../src/microstrip.js';
+import { BroadsideStriplineSolver } from '../src/broadside_stripline.js';
+import { CustomGeometrySolver } from '../src/custom_geometry.js';
+import { check, quiet, rel, APP, done } from './helpers.js';
+
+
+const BASE = {
+    trace_width: 0.2e-3, substrate_height: 0.3e-3, trace_thickness: 35e-6, gnd_thickness: 35e-6,
+    epsilon_r: 4.4, tan_delta: 0.02, sigma_cond: 5.8e7, freq: 1e9, rq: 0, nx: 30, ny: 30,
+    boundaries: ['open', 'open', 'open', 'gnd'],
+};
+function make(opts, backend = 'rectilinear') {
+    const s = new MicrostripSolver({ ...BASE, ...opts, mesh_backend: backend });
+    return s;
+}
+async function solve(opts, backend) {
+    const s = make(opts, backend);
+    const r = await quiet(() => s.solve_adaptive({ ...APP }));
+    return { s, r, m: r.modes[0] };
+}
+
+// Q1: ground cutout with zero substrate extension.
+{
+    console.log('Q1 ground cutout with gnd_cut_sub_h = 0');
+    const cut = { gnd_cut_width: 0.3e-3, gnd_cut_sub_h: 0 };
+    const { s, m } = await solve(cut, 'rectilinear');
+    let maxTand = 0, offenders = 0;
+    const tandMax = Math.max(s.tan_delta ?? 0, ...s.dielectrics.map(d => d.tan_delta));
+    for (let i = 0; i < s.y.length; i++)
+        for (let j = 0; j < s.x.length; j++) {
+            if (s.conductor_mask[i][j]) continue;
+            maxTand = Math.max(maxTand, s.tand[i][j]);
+            if (s.tand[i][j] > tandMax + 1e-12) offenders++;
+        }
+    check('no non-conductor node exceeds the largest dielectric tan_delta', offenders === 0,
+        `${offenders} nodes, max tand ${maxTand}`);
+    const fw = await solve(cut, 'triangular');
+    check('alpha_d agrees with full-wave within 5%', rel(m.alpha_d, fw.m.alpha_d) < 0.05,
+        `fdm ${m.alpha_d.toFixed(3)} vs tri ${fw.m.alpha_d.toFixed(3)} dB/m`);
+    check('Z0 agrees with full-wave within 2%', rel(m.Z0, fw.m.Z0) < 0.02,
+        `fdm ${m.Z0.toFixed(2)} vs tri ${fw.m.Z0.toFixed(2)}`);
+}
+
+// Q2: internal inductance below the skin regime.
+{
+    console.log('Q2 internal inductance from 1 kHz to 10 GHz');
+    const geo = { substrate_height: 0.1e-3, epsilon_r: 4, tan_delta: 0.01, freq: 10e9 };
+    const { s, r } = await solve(geo, 'rectilinear');
+    const freqs = [1e3, 1e4, 1e5, 3e5, 1e6, 3e6, 1e7, 3e7, 1e8, 1e9, 1e10];
+    const lint = [];
+    for (const f of freqs) {
+        const rf = await quiet(() => s.computeAtFrequency(f, r));
+        lint.push(rf.modes[0].L_internal);
+    }
+    check('L_int finite at every frequency', lint.every(v => Number.isFinite(v) && v >= 0),
+        lint.map(v => (v * 1e9).toFixed(1)).join(' '));
+    let monotone = true;
+    for (let k = 1; k < lint.length; k++) if (lint[k] > lint[k - 1] * 1.001) monotone = false;
+    check('L_int non-increasing with frequency', monotone,
+        `nH/m: ${lint.map(v => (v * 1e9).toFixed(1)).join(' ')}`);
+    const fw = await solve(geo, 'triangular');
+    const fw1k = await quiet(() => fw.s.computeAtFrequency(1e3, fw.r));
+    const ratio = lint[0] / fw1k.modes[0].L_internal;
+    check('L_int(1 kHz) within a factor of two of full-wave MQS', ratio > 0.5 && ratio < 2,
+        `fdm ${(lint[0] * 1e9).toFixed(1)} vs tri ${(fw1k.modes[0].L_internal * 1e9).toFixed(1)} nH/m`);
+}
+
+// Q3: embedded trace skin-transition warning.
+{
+    console.log('Q3 skin-transition warning for negative trace thickness');
+    // 10 MHz: skin depth 21 um in copper, t = 20 um, well inside the transition.
+    const hasSkinWarn = r => (r.warnings || []).some(w => w.reason === 'skin-transition');
+    const pos = await solve({ trace_thickness: 20e-6, freq: 1e7 }, 'rectilinear');
+    const neg = await solve({ trace_thickness: -20e-6, freq: 1e7 }, 'rectilinear');
+    check('surface trace at delta ~ t warns', hasSkinWarn(pos.r));
+    check('embedded trace at delta ~ |t| warns', hasSkinWarn(neg.r));
+    const posHi = await solve({ trace_thickness: 20e-6, freq: 20e9 }, 'rectilinear');
+    const negHi = await solve({ trace_thickness: -20e-6, freq: 20e9 }, 'rectilinear');
+    check('neither warns at 20 GHz', !hasSkinWarn(posHi.r) && !hasSkinWarn(negHi.r));
+}
+
+// Q4: R continuity when the trace thickness crosses the solder-mask thickness.
+{
+    console.log('Q4 solder-mask bracket lines across t = sm thickness');
+    const sm = { use_sm: true, sm_t_sub: 20e-6, sm_t_trace: 20e-6, sm_t_side: 20e-6, sm_er: 3.5, sm_tand: 0.02 };
+    const a = await solve({ ...sm, trace_thickness: 20e-6 * (1 + 1e-4) }, 'rectilinear');
+    const b = await solve({ ...sm, trace_thickness: 20e-6 * (1 - 1e-4) }, 'rectilinear');
+    // R at the app budget carries ~2% mesh noise across unrelated thickness changes
+    // (R is not in the convergence gate); the 1% gate catches the bracket-line and
+    // sliver-cell jumps (2-7% before the fix) without tripping on that noise.
+    check('R continuous across the threshold (< 1%)', rel(a.m.RLGC.R, b.m.RLGC.R) < 0.01,
+        `${a.m.RLGC.R.toFixed(3)} vs ${b.m.RLGC.R.toFixed(3)} ohm/m`);
+    // Both C sit 0.25-0.3% above the converged 76.02 pF/m (equal to 2e-5 there), so
+    // the two adaptive grids differ by a few 1e-4 without any jump.
+    check('C continuous across the threshold (< 0.1%)', rel(a.m.RLGC.C, b.m.RLGC.C) < 1e-3,
+        `${(a.m.RLGC.C * 1e12).toFixed(3)} vs ${(b.m.RLGC.C * 1e12).toFixed(3)} pF/m`);
+    const thin = make({ ...sm, trace_thickness: 10e-6 });
+    thin.ensure_mesh();
+    const ySm = thin.y_sub_end + sm.sm_t_sub;
+    const near = thin.y.filter(y => Math.abs(y - ySm) < sm.sm_t_sub / 5 && Math.abs(y - ySm) > 1e-12).length;
+    check('mask thicker than the trace still gets bracket lines', near >= 2, `${near} lines within sm_t/5 of the mask top`);
+}
+
+// Q5: degenerate geometries rejected at construction.
+{
+    console.log('Q5 validation of touching conductors');
+    const throws = (opts) => { try { make(opts); return false; } catch (e) { return /gap|enclosure_height/.test(e.message); } };
+    const gcpw = { use_coplanar_gnd: true, use_vias: true, via_gap: 0.2e-3 };
+    check('GCPW gap = 0 rejected', throws({ ...gcpw, gap: 0 }));
+    check('GCPW gap > 0 accepted', !throws({ ...gcpw, gap: 0.1e-3 }));
+    const sl = { epsilon_r_top: 4.4, tan_delta_top: 0.02, boundaries: ['open', 'open', 'gnd', 'gnd'] };
+    check('stripline enclosure_height == t rejected', throws({ ...sl, enclosure_height: 35e-6 }));
+    check('stripline enclosure_height < t rejected', throws({ ...sl, enclosure_height: 30e-6 }));
+    check('stripline enclosure_height > t accepted', !throws({ ...sl, enclosure_height: 0.1e-3 }));
+    // Broadside: the x_offset trace must stay inside the enclosure side walls.
+    const bs = { trace_width: 0.06e-3, trace_thickness: 10e-6, h_bottom: 0.25e-3, h_middle: 0.1e-3, h_top: 0.25e-3,
+        er_bottom: 4, er_middle: 4, er_top: 4, sigma_cond: 5.8e7, freq: 1e9,
+        boundaries: ['gnd', 'gnd', 'gnd', 'gnd'], enclosure_width: 0.3e-3 };
+    const bsThrows = (x_offset) => { try { new BroadsideStriplineSolver({ ...bs, x_offset }); return false; }
+        catch (e) { return /enclosure inner width/.test(e.message); } };
+    check('broadside x_offset trace inside the side wall rejected', bsThrows(-0.136e-3));
+    check('broadside x_offset trace inside the enclosure accepted', !bsThrows(-0.05e-3));
+}
+
+// Q6: mesher helpers on an embedded trace.
+{
+    console.log('Q6 mesher conductor-dimension helpers with negative height');
+    const s = make({ trace_thickness: -20e-6 });
+    s.ensure_mesh();
+    check('_min_conductor_dimension positive', s.mesher._min_conductor_dimension() > 0,
+        `${s.mesher._min_conductor_dimension()}`);
+    // The trace faces at y_trace_start (top) and y_trace_start - 20 um (bottom) must each
+    // carry an inside and an outside bracket line at |t|/20.
+    const off = 20e-6 / 20;
+    const top = s.y_trace_start, bot = s.y_trace_start - 20e-6;
+    const has = v => s.y.some(y => Math.abs(y - v) < 1e-12);
+    check('bracket lines present around both faces',
+        has(top + off) && has(top - off) && has(bot + off) && has(bot - off));
+}
+
+// Q7: wall-touching signal.
+{
+    const EPS0 = 8.854187817e-12;
+    const Cex = EPS0 * 100e-6 / (5e-6 / 4.1 + 20e-6 / 11.9);
+    const plate = top => `units um\nbounds open open open gnd\ndomain -50 50 0 ${top}\n`
+        + 'diel x=-inf w=inf y=0 h=20 er=11.9\ndiel x=-inf w=inf y=20 h=5 er=4.1\nsig+ x=-50 w=100 y=25 h=2\n';
+    for (const [what, top, extra] of [['half domain', 40, {}], ['full domain', 40, { symmetry: false }],
+        ['strip against the top wall', 27, {}]]) {
+        const s = new CustomGeometrySolver({ text: plate(top), nx: 30, ny: 30, freq: 1e9, ...extra });
+        const m = (await quiet(() => s.solve_adaptive({ ...APP }))).modes[0];
+        check(`Q7: strip spanning the domain (${what}) is an exact parallel plate`, rel(m.C, Cex) < 1e-9,
+            `C ${m.C.toExponential(6)} vs ${Cex.toExponential(6)}`);
+    }
+}
+
+// Q8: narrow-gap note.
+{
+    console.log('Q8 narrow-gap note');
+    const pair = gap => 'units um\nbounds open open open gnd\ndiel x=-inf w=inf y=0 h=100 er=4\n' +
+        `sig- x=${-gap / 2 - 50} w=50 y=100 h=35\nsig+ x=${gap / 2} w=50 y=100 h=35\n`;
+    const reasons = async (gap, f) => {
+        const s = new CustomGeometrySolver({ text: pair(gap), freq: f });
+        const r = await quiet(() => s.solve_adaptive(APP));
+        return (r.warnings || []).filter(w => w.reason === 'narrow-gap');
+    };
+    const close = await reasons(10, 5e9);
+    check('Q8 a 10 um gap at 5 GHz (11 skin depths) gets the narrow-gap note', close.length === 1,
+        close.map(w => w.message).join(' | '));
+    check('Q8 a 100 um gap at 5 GHz does not', (await reasons(100, 5e9)).length === 0);
+}
+
+// Q9: mirror-image traces under a one-sided dielectric layout.
+{
+    console.log('Q9 last-region grid share');
+    const text = 'units um\nbounds open open open open\n' +
+        'diel x=-inf w=inf y=0 h=56.633 er=7.4038 tand=0.078017\n' +
+        'diel x=-inf w=inf y=56.633 h=216.8 er=4.2658 tand=0.0076857\n' +
+        'diel x=-inf w=inf y=273.43 h=288.56 er=1.2717 tand=0.012249\n' +
+        'diel x=-659.04 w=854.29 y=309.52 h=128.15 er=8.5437 tand=0.016105\n' +
+        'diel x=-2221.6 w=1124.4 y=540.29 h=16.875 er=1.4402 tand=0.0057266\n' +
+        'diel x=-1807.6 w=2931.3 y=469.67 h=98.926 er=7.6227 tand=0.015059\n' +
+        'sig- x=-1140.2 w=1109.9 y=562 h=19.85\nsig+ x=30.295 w=1109.9 y=562 h=19.85\n' +
+        'gnd x=-inf w=inf y=263.9 h=9.5361\n';
+    const s = new CustomGeometrySolver({ text, nx: 30, ny: 30, freq: 5.18e9, sigma_cond: 16.2e6 });
+    const r = await quiet(() => s.solve_adaptive(APP));
+    const { R, L } = r.RLGC_matrix;
+    check('Q9 mirror traces have the same L (vacuum) under one-sided dielectrics', rel(L[0][0], L[1][1]) < 5e-3,
+        `L11 ${(L[0][0] * 1e9).toFixed(2)} vs L22 ${(L[1][1] * 1e9).toFixed(2)} nH/m (was 3.7% apart)`);
+    check('Q9 and the same R', rel(R[0][0], R[1][1]) < 2e-2,
+        `R11 ${R[0][0].toFixed(2)} vs R22 ${R[1][1].toFixed(2)} ohm/m (was 26% apart)`);
+}
+
+done();

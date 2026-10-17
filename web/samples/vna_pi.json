@@ -1,0 +1,4 @@
+[
+ {"net":"VCCINT","voltage":1.2,"sources":[{"refdes":"L2"}],"loads":[{"refdes":"U2","current":0.3,"origin":"Beispiel"}]},
+ {"net":"+3V3","voltage":3.3,"sources":[{"refdes":"L4"}],"loads":[{"refdes":"U2","current":0.1,"origin":"Beispiel"},{"refdes":"IC37","current":0.05,"origin":"Beispiel"},{"refdes":"U1","current":0.02,"origin":"Beispiel"}]}
+]

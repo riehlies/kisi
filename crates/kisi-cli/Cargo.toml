@@ -1,0 +1,17 @@
+[package]
+name = "kisi-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "kisi"
+path = "src/main.rs"
+
+[dependencies]
+kisi-core = { path = "../kisi-core" }
+serde_json = "1"
+
+[[bin]]
+name = "kisi-validate"
+path = "src/validate.rs"

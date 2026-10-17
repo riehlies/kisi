@@ -1,0 +1,251 @@
+// Half-domain ≡ full-domain identity for the QS rectilinear FDM backend.
+//
+// Mirror-symmetric geometries auto-solve on the right half (x >= 0) with a
+// magnetic wall (single/even) or electric wall (odd) at x = 0; {symmetry: false}
+// forces the legacy full domain. This file demands the two agree, mirroring
+// tests/test_symmetry_half_full.js (the tri-backend identity suite) with the
+// same five feature-stacked families:
+//   - single-ended: the plane cuts the TRACE itself (straddle x2 charge scaling,
+//     plane-column contour/loss segments, plating conductor_id alignment)
+//   - GCPW: pours + via slabs cut by the plane column
+//   - diff stripline (PEC vs PMC plane walls), enclosure (side wall conductors
+//     clipped), ground cutout centered on the plane
+//
+// The strongest pin is the SAME-GRID identity: the full-domain solve on the
+// exact mirror of a converged half grid must reproduce C, C0, R, G to solver
+// roundoff — the half-domain path is the exact restriction of the calibrated
+// full-domain discretization (PMC row doubling, centered plane quadrature),
+// not merely a converging approximation of it.
+import { MicrostripSolver } from '../src/microstrip.js';
+import { BroadsideStriplineSolver } from '../src/broadside_stripline.js';
+import { CustomGeometrySolver } from '../src/custom_geometry.js';
+import { check, quiet, done } from './helpers.js';
+
+const relDiff = (a, b) => Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b), 1e-30);
+
+const FAMILIES = [
+    {
+        name: 'microstrip + sm + plating', diff: false, cTol: 0.01, rTol: 0.03,
+        geom: {
+            trace_width: 0.35e-3, substrate_height: 0.21e-3, trace_thickness: 35e-6, gnd_thickness: 35e-6,
+            epsilon_r: 4.4, tan_delta: 0.02, sigma_cond: 5.8e7, freq: 1e9, rq: 0,
+            boundaries: ['open', 'open', 'open', 'gnd'],
+            use_sm: true, sm_t_sub: 20e-6, sm_t_trace: 20e-6, sm_t_side: 20e-6, sm_er: 3.5, sm_tand: 0.02,
+            plating: { sigma: 1e7, thickness: 4e-6, rq: 0, top: true, sides: true, bottom: false, thick_corners: true },
+        },
+    },
+    {
+        name: 'gcpw + vias + sm', diff: false, cTol: 0.01, rTol: 0.03,
+        geom: {
+            trace_width: 0.3e-3, substrate_height: 0.254e-3, trace_thickness: 35e-6, gnd_thickness: 35e-6,
+            epsilon_r: 3.66, tan_delta: 0.003, sigma_cond: 5.8e7, freq: 1e9, rq: 0,
+            boundaries: ['open', 'open', 'open', 'gnd'],
+            use_coplanar_gnd: true, gap: 0.15e-3, via_gap: 0.3e-3, use_vias: true,
+            use_sm: true, sm_t_sub: 15e-6, sm_t_trace: 15e-6, sm_t_side: 15e-6, sm_er: 3.4, sm_tand: 0.02,
+        },
+    },
+    {
+        name: 'diff stripline', diff: true, cTol: 0.01, rTol: 0.08,
+        geom: {
+            trace_width: 0.15e-3, trace_spacing: 0.15e-3, substrate_height: 0.2e-3, trace_thickness: 17e-6,
+            gnd_thickness: 17e-6, epsilon_r: 4.1, epsilon_r_top: 4.1, tan_delta: 0.02, tan_delta_top: 0.02,
+            enclosure_height: 0.4e-3, sigma_cond: 5.8e7, freq: 2e9, rq: 0,
+            boundaries: ['open', 'open', 'gnd', 'gnd'],
+        },
+    },
+    {
+        name: 'diff microstrip + enclosure', diff: true, cTol: 0.01, rTol: 0.08,
+        geom: {
+            trace_width: 0.2e-3, trace_spacing: 0.2e-3, substrate_height: 0.2e-3, trace_thickness: 35e-6,
+            gnd_thickness: 20e-6, epsilon_r: 4.4, tan_delta: 0.02, sigma_cond: 5.8e7, freq: 1e9, rq: 0,
+            enclosure_width: 2.4e-3, enclosure_height: 0.8e-3,
+            boundaries: ['gnd', 'gnd', 'gnd', 'gnd'],
+        },
+    },
+    {
+        name: 'diff microstrip + gnd cutout', diff: true, cTol: 0.03, rTol: 0.08,
+        geom: {
+            trace_width: 0.2e-3, trace_spacing: 0.15e-3, substrate_height: 0.25e-3, trace_thickness: 35e-6,
+            gnd_thickness: 20e-6, epsilon_r: 4.4, tan_delta: 0.02, sigma_cond: 5.8e7, freq: 1e9, rq: 0,
+            boundaries: ['open', 'open', 'open', 'gnd'],
+            gnd_cut_width: 0.25e-3, gnd_cut_sub_h: 0.1e-3,
+        },
+    },
+];
+
+const SOLVE_OPTS = { max_iters: 12, energy_tol: 0.01, param_tol: 0.05, max_nodes: 30000, min_converged_passes: 2 };
+
+async function solve(geom, extra = {}) {
+    const s = new MicrostripSolver({ ...geom, nx: 30, ny: 30, ...extra });
+    const r = await quiet(() => s.solve_adaptive({ ...SOLVE_OPTS }));
+    return { s, r };
+}
+
+for (const fam of FAMILIES) {
+    const half = await solve(fam.geom);
+    const full = await solve(fam.geom, { symmetry: false });
+    check(`${fam.name}: half domain auto-detected`, half.s.sym_half === true && full.s.sym_half === false);
+    for (let m = 0; m < half.r.modes.length; m++) {
+        const h = half.r.modes[m], f = full.r.modes[m];
+        const tag = `${fam.name} [${h.mode}]`;
+        check(`${tag}: half C == full C (±${100 * fam.cTol}%)`, relDiff(h.RLGC.C, f.RLGC.C) < fam.cTol,
+            `${(h.RLGC.C * 1e12).toFixed(2)} vs ${(f.RLGC.C * 1e12).toFixed(2)} pF/m`);
+        check(`${tag}: half Z0 == full Z0 (±${100 * fam.cTol}%)`, relDiff(h.Z0, f.Z0) < fam.cTol,
+            `${h.Z0.toFixed(2)} vs ${f.Z0.toFixed(2)} Ω`);
+        check(`${tag}: half R == full R (±${100 * fam.rTol}%)`, relDiff(h.RLGC.R, f.RLGC.R) < fam.rTol,
+            `${h.RLGC.R.toFixed(2)} vs ${f.RLGC.R.toFixed(2)} Ω/m`);
+        check(`${tag}: half alpha_d == full alpha_d (±3%)`, relDiff(h.alpha_d, f.alpha_d) < 0.03,
+            `${h.alpha_d.toFixed(3)} vs ${f.alpha_d.toFixed(3)} dB/m`);
+    }
+    if (fam.diff) {
+        check(`${fam.name}: Z_diff (±${100 * fam.cTol}%)`, relDiff(half.r.Z_diff, full.r.Z_diff) < fam.cTol,
+            `${half.r.Z_diff.toFixed(2)} vs ${full.r.Z_diff.toFixed(2)} Ω`);
+        check(`${fam.name}: Z_common (±${100 * fam.cTol}%)`, relDiff(half.r.Z_common, full.r.Z_common) < fam.cTol,
+            `${half.r.Z_common.toFixed(2)} vs ${full.r.Z_common.toFixed(2)} Ω`);
+    }
+}
+
+// ---- Same-grid exact identity: full solve on the mirror of the half grid ----
+// Different matrices and elimination orders, so "exact" means solver roundoff,
+// far below any physical tolerance. Two families pin the machinery from both
+// sides: the straddling plated microstrip (plane cuts the trace: interior
+// epsilon rule on the plane column, two-segment plating quadrature) and the
+// diff stripline (PEC vs PMC plane walls).
+for (const fam of [FAMILIES[0], FAMILIES[2]]) {
+    const { s: sh, r: rh } = await solve(fam.geom);
+    const sf = new MicrostripSolver({ ...fam.geom, nx: 30, ny: 30, symmetry: false });
+    const xh = sh.x, n = xh.length;
+    const xf = new Float64Array(2 * n - 1);
+    for (let j = 0; j < n - 1; j++) xf[j] = -xh[n - 1 - j];
+    for (let j = 0; j < n; j++) xf[n - 1 + j] = xh[j];
+    sf.x = xf;
+    sf.y = Float64Array.from(sh.y);
+    sf.dx = new Float64Array(xf.length - 1);
+    for (let j = 0; j < xf.length - 1; j++) sf.dx[j] = xf[j + 1] - xf[j];
+    sf.dy = new Float64Array(sf.y.length - 1);
+    for (let i = 0; i < sf.y.length - 1; i++) sf.dy[i] = sf.y[i + 1] - sf.y[i];
+    sf._setup_geometry();
+    sf.mesh_generated = true;
+    const rf = await quiet(() => sf.solve_adaptive({ skip_mesh: true }));
+    for (let m = 0; m < rh.modes.length; m++) {
+        const h = rh.modes[m], f = rf.modes[m];
+        for (const [k, hv, fv] of [['C', h.C, f.C], ['C0', h.C0, f.C0],
+                                   ['R', h.RLGC.R, f.RLGC.R], ['G', h.RLGC.G, f.RLGC.G]]) {
+            check(`${fam.name}: same-grid identity [${h.mode}] ${k} (±0.01%)`, relDiff(hv, fv) < 1e-4,
+                `${hv.toExponential(8)} vs ${fv.toExponential(8)}`);
+        }
+    }
+
+    // Fast sweep path reuses the cached half-domain fields — same scaling.
+    const rh2 = await quiet(() => sh.computeAtFrequency(2 * fam.geom.freq, rh));
+    const rf2 = await quiet(() => sf.computeAtFrequency(2 * fam.geom.freq, rf));
+    check(`${fam.name}: same-grid identity holds at a second sweep frequency (±0.01%)`,
+        rh2.modes.every((m2, k) => relDiff(m2.RLGC.R, rf2.modes[k].RLGC.R) < 1e-4));
+
+    // Plot mirror: full-width grid with the correct per-mode parity.
+    const pf = sh.getPlotFields();
+    const nf = pf.x.length;
+    const iy = Math.floor(pf.V[0].length * 0.5);
+    const jq = Math.floor((nf - 1) / 2 + (nf - 1) / 8), jm = (nf - 1) - jq;
+    check(`${fam.name}: getPlotFields mirrors the grid to the full width`,
+        nf === 2 * n - 1 && pf.x[0] === -xh[n - 1] && pf.x[(nf - 1) / 2] === 0);
+    check(`${fam.name}: solver-internal fields stay half-domain after getPlotFields`,
+        sh.x.length === n);
+    if (fam.diff) {
+        // Odd mode: electric wall — the plane column must be exactly 0.
+        let maxPlane = 0;
+        for (let i = 0; i < sh.V[0].length; i++) maxPlane = Math.max(maxPlane, Math.abs(sh.V[0][i][0]));
+        check('odd-mode V == 0 on the symmetry plane column', maxPlane === 0);
+        check('mirrored odd V is antisymmetric, even V symmetric',
+            pf.V[0][iy][jm] === -pf.V[0][iy][jq] && pf.V[1][iy][jm] === pf.V[1][iy][jq]);
+    } else {
+        check('mirrored single-mode V is symmetric', pf.V[0][iy][jm] === pf.V[0][iy][jq]);
+    }
+}
+
+// ---- Initial grid: the half grid is the exact x >= 0 half of the full grid ----
+// The mesher builds the symmetric full-domain x mesh (same allocation, grading and
+// symmetry enforcement as the full-domain solve) and returns its right half, so
+// the half-domain solve starts from the exact restriction of the full-domain grid
+// (bit-identical lines, centre line at x = 0 first), not from a re-meshed [0, W/2].
+for (const fam of FAMILIES) {
+    for (const nx of [30, 300]) {
+        const h = new MicrostripSolver({ ...fam.geom, nx, ny: 30 });
+        const f = new MicrostripSolver({ ...fam.geom, nx, ny: 30, symmetry: false });
+        h.ensure_mesh(); f.ensure_mesh();
+        const right = Array.from(f.x).filter(v => v >= 0);
+        check(`${fam.name} nx=${nx}: half x grid == right half of the full x grid (bit-identical)`,
+            h.x[0] === 0 && right.length === h.x.length && right.every((v, j) => v === h.x[j]),
+            `${h.x.length} vs ${f.x.length} lines`);
+        check(`${fam.name} nx=${nx}: full grid carries the centre line and is mirror-symmetric`,
+            Array.from(f.x).includes(0) && f.x.length === 2 * h.x.length - 1 &&
+            Array.from(f.x).every((v, j) => v === -f.x[f.x.length - 1 - j]));
+        check(`${fam.name} nx=${nx}: y grid identical`,
+            f.y.length === h.y.length && Array.from(f.y).every((v, i) => v === h.y[i]));
+    }
+}
+
+// ---- Adaptive trajectory: the half-domain refinement IS the full-domain one ----
+// Every refinement ingredient is mirror-exact (flux-jump metric incl. the plane
+// term, two-corner intensity metric, energy change, pass pacing), so the half and
+// full solves select the same lines pass after pass: identical y grids, x grids
+// the right half, identical pass counts. A one-corner sampled metric broke this
+// (the x/y split drifted, costing the app default two extra passes).
+for (const fam of FAMILIES) {
+    const grids = { half: [], full: [] };
+    const run = async (tag, extra) => {
+        const s = new MicrostripSolver({ ...fam.geom, nx: 30, ny: 30, ...extra });
+        await quiet(() => s.solve_adaptive({ max_iters: 5, energy_tol: 1e-12, param_tol: 1e-12,
+            max_nodes: 400000, min_converged_passes: 2, certify: false,
+            onProgress: () => grids[tag].push({ x: Float64Array.from(s.x), y: Float64Array.from(s.y) }) }));
+    };
+    await run('half', {});
+    await run('full', { symmetry: false });
+    const same = grids.half.length === grids.full.length && grids.half.every((h, k) => {
+        const f = grids.full[k];
+        const right = Array.from(f.x).filter(v => v >= 0);
+        return right.length === h.x.length && right.every((v, j) => v === h.x[j]) &&
+               f.y.length === h.y.length && Array.from(f.y).every((v, i) => v === h.y[i]);
+    });
+    check(`${fam.name}: half and full adaptive runs refine identically for ${grids.full.length} passes`, same,
+        grids.half.map(g => `${g.x.length}x${g.y.length}`).join(' ') + ' vs ' +
+        grids.full.map(g => `${g.x.length}x${g.y.length}`).join(' '));
+}
+
+// ---- Detection / veto assertions ----
+{
+    const geom = FAMILIES[0].geom;
+    check('opt-out {symmetry: false} disables the half domain',
+        new MicrostripSolver({ ...geom, nx: 30, ny: 30, symmetry: false }).sym_half === false);
+    check('opt-out {symmetry: false} also vetoes the triangular backend half domain (tri_symmetry)',
+        new MicrostripSolver({ ...geom, nx: 30, ny: 30, symmetry: false }).tri_symmetry === false &&
+        new MicrostripSolver({ ...geom, nx: 30, ny: 30 }).tri_symmetry === undefined);
+    check('sym_half is an FDM-grid property: false with the triangular backend',
+        new MicrostripSolver({ ...geom, nx: 30, ny: 30, mesh_backend: 'triangular' }).sym_half === false);
+    const bs = new BroadsideStriplineSolver({
+        trace_width: 0.2e-3, trace_thickness: 35e-6,
+        h_bottom: 0.2e-3, h_middle: 0.2e-3, h_top: 0.2e-3,
+        er_bottom: 4.4, er_middle: 4.4, er_top: 4.4,
+        sigma_cond: 5.8e7, freq: 1e9,
+    });
+    check('broadside pair never takes the half domain', !bs.sym_half);
+}
+
+// Single-ended line of two mirrored traces (custom geometry): neither straddles the
+// plane, and each meshed trace carries half the line current, not a whole 1/Z0 like
+// a differential pair. The DC internal inductance used to come out 4x on the half domain.
+{
+    const text = 'units mm\nbounds open open open gnd\ndiel x=-inf w=inf y=0 h=0.5 er=4.3\n' +
+        'sig+ x=-0.4 w=0.3 y=0.5 h=0.035\nsig+ x=0.1 w=0.3 y=0.5 h=0.035\n';
+    const L = async (symmetry) => {
+        const s = new CustomGeometrySolver({ text, nx: 30, ny: 30, freq: 1e6, symmetry });
+        const r = await quiet(() => s.solve_adaptive({ max_iters: 10, energy_tol: 0.01, max_nodes: 20000 }));
+        return { L: r.modes[0].RLGC.L, half: s.sym_half };
+    };
+    const h = await L(true), f = await L(false);
+    check('mirrored single-ended traces take the half domain', h.half && !f.half);
+    check('mirrored single-ended traces: half L == full L at 1 MHz (1e-6)',
+        Math.abs(h.L - f.L) / f.L < 1e-6, `${h.L.toExponential(5)} vs ${f.L.toExponential(5)} H/m`);
+}
+
+done();

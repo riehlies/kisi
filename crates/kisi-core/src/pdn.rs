@@ -32,11 +32,13 @@ pub struct PdnParams {
     pub ripple: f64,
     /// load step as a fraction of the total load current
     pub step: f64,
+    /// cells of the plane grid model (0 = off)
+    pub max_cells: usize,
 }
 
 impl Default for PdnParams {
     fn default() -> Self {
-        PdnParams { fmin: 1e3, fmax: 1e9, npts: 241, vrm_r: 2e-3, vrm_l: 20e-9, ripple: 0.03, step: 0.5 }
+        PdnParams { fmin: 1e3, fmax: 1e9, npts: 241, vrm_r: 2e-3, vrm_l: 20e-9, ripple: 0.03, step: 0.5, max_cells: 2500 }
     }
 }
 
@@ -87,6 +89,11 @@ pub struct PdnResult {
     pub above_target: Vec<(f64, f64)>,
     /// upper end of the evaluated range (Hz)
     pub f_eval: f64,
+    /// grid model of the main plane (from 1 MHz): frequencies, |Z|, cells, cell size (mm)
+    pub cav_freq: Vec<f64>,
+    pub cav_z: Vec<f64>,
+    pub cav_cells: usize,
+    pub cav_h_mm: f64,
     pub load_current: f64,
     pub load_at: Option<P>,
     pub warnings: Vec<String>,
@@ -361,6 +368,28 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
         }
         z.push(y.inv().abs());
     }
+    // grid model of the main plane above 1 MHz
+    let (mut cav_freq, mut cav_z, mut cav_cells, mut cav_h) = (Vec::new(), Vec::new(), 0, 0.0);
+    if let (Some(m), Some(lp), true) = (&main, load_at, p.max_cells > 0) {
+        let fq: Vec<f64> = freq.iter().cloned().filter(|&f| f >= 1e6).step_by(2).collect();
+        let mut shunts: Vec<Shunt> = caps.iter().map(|c| Shunt { at: c.at, r: c.esr, l: c.esl + c.l_mount, c: Some(c.c) }).collect();
+        for src in &setup.sources {
+            if let Some(&fi) = fp_by_ref.get(src.refdes.as_str()) {
+                let pads: Vec<P> = fp_pads.get(&fi).map(|v| v.iter().map(|&i| &board.pads[i]).filter(|pd| pd.net == net).map(|pd| pd.at).collect()).unwrap_or_default();
+                if !pads.is_empty() {
+                    let c = [pads.iter().map(|q| q[0]).sum::<f64>() / pads.len() as f64, pads.iter().map(|q| q[1]).sum::<f64>() / pads.len() as f64];
+                    shunts.push(Shunt { at: c, r: p.vrm_r, l: p.vrm_l, c: None });
+                }
+            }
+        }
+        let er = su.er_between(m.layer as usize, m.gnd_layer as usize);
+        if let Some(cr) = cavity(board, net, m.layer, m.d_mm, er, tand.unwrap_or(0.02), &shunts, lp, &fq, p.max_cells) {
+            cav_freq = cr.freq;
+            cav_z = cr.z;
+            cav_cells = cr.cells;
+            cav_h = cr.h_mm;
+        }
+    }
     let target = if load_current > 0.0 && setup.voltage.abs() > 0.0 {
         Some(setup.voltage.abs() * p.ripple / (p.step * load_current))
     } else {
@@ -369,9 +398,26 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
     let mut above = Vec::new();
     if let Some(t) = target {
         let mut start: Option<f64> = None;
-        for (i, &zi) in z.iter().enumerate() {
+        let comb: Vec<f64> = freq
+            .iter()
+            .zip(&z)
+            .map(|(&f, &zl)| {
+                if cav_freq.is_empty() || f < cav_freq[0] {
+                    return zl;
+                }
+                // interpolate the grid curve (log-spaced, every second point)
+                let k = cav_freq.iter().position(|&x| x >= f).unwrap_or(cav_freq.len() - 1);
+                if k == 0 || cav_freq[k] == f {
+                    cav_z[k]
+                } else {
+                    let t = (f / cav_freq[k - 1]).ln() / (cav_freq[k] / cav_freq[k - 1]).ln();
+                    cav_z[k - 1] * (cav_z[k] / cav_z[k - 1]).powf(t)
+                }
+            })
+            .collect();
+        for (i, &zi) in comb.iter().enumerate() {
             // board decoupling matters up to ~100 MHz; above, package and die capacitance take over
-            let fcap = cavity_hz.unwrap_or(f64::INFINITY).min(F_BOARD);
+            let fcap = if cav_freq.is_empty() { cavity_hz.unwrap_or(f64::INFINITY).min(F_BOARD) } else { F_BOARD };
             let bad = zi > t && freq[i] <= fcap;
             match (bad, start) {
                 (true, None) => start = Some(freq[i]),
@@ -383,7 +429,7 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
             }
         }
         if let Some(s0) = start {
-            above.push((s0, freq[n - 1].min(cavity_hz.unwrap_or(f64::INFINITY)).min(F_BOARD)));
+            above.push((s0, freq[n - 1].min(if cav_freq.is_empty() { cavity_hz.unwrap_or(f64::INFINITY) } else { f64::INFINITY }).min(F_BOARD)));
         }
     }
     let c_total = caps.iter().map(|c| c.c).fold(c_plane, |a, b| a + b);
@@ -400,7 +446,11 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
         cavity_hz,
         target_ohm: target,
         above_target: above,
-        f_eval: cavity_hz.unwrap_or(f64::INFINITY).min(F_BOARD),
+        f_eval: if cav_freq.is_empty() { cavity_hz.unwrap_or(f64::INFINITY).min(F_BOARD) } else { F_BOARD },
+        cav_freq,
+        cav_z,
+        cav_cells,
+        cav_h_mm: cav_h,
         load_current,
         load_at,
         warnings,
@@ -427,5 +477,327 @@ mod tests {
         let (esl, esr) = esl_esr("0402", 100e-9);
         assert!((esl - 0.35e-9).abs() < 1e-12);
         assert!(esr > 0.01 && esr < 0.05);
+    }
+}
+
+// --- plane-pair cavity model (grid) -------------------------------------------------------
+//
+// The rail plane over an ideal ground plane is meshed into square cells of
+// size h. Neighbouring cells are joined by the plane-pair inductance μ0·d per
+// square (plus the sheet resistance of both planes); every cell carries its
+// capacitance ε·h²/d with dielectric loss. Decoupling capacitors (without the
+// lumped spreading term – the grid models it) and the regulator are shunt
+// branches at their cells. 1 A is injected at the load cell; |V| = |Z|.
+// The complex banded system is solved per frequency by LU with partial
+// pivoting. Resonances of the real plane shape appear naturally.
+
+/// Complex banded matrix with `kl` sub- and `ku` super-diagonals, stored by
+/// rows over columns [i − kl, i + ku + kl] (room for pivoting fill-in).
+struct Band {
+    n: usize,
+    kl: usize,
+    ku: usize,
+    w: usize,
+    a: Vec<Cx>,
+}
+
+impl Band {
+    fn new(n: usize, kl: usize, ku: usize) -> Self {
+        let w = 2 * kl + ku + 1;
+        Band { n, kl, ku, w, a: vec![Cx::new(0.0, 0.0); n * w] }
+    }
+    #[inline]
+    fn idx(&self, i: usize, j: usize) -> Option<usize> {
+        let off = j as isize - i as isize + self.kl as isize;
+        if off < 0 || off as usize >= self.w {
+            None
+        } else {
+            Some(i * self.w + off as usize)
+        }
+    }
+    fn add(&mut self, i: usize, j: usize, v: Cx) {
+        let k = self.idx(i, j).expect("outside band");
+        self.a[k] = self.a[k] + v;
+    }
+    fn get(&self, i: usize, j: usize) -> Cx {
+        self.idx(i, j).map_or(Cx::new(0.0, 0.0), |k| self.a[k])
+    }
+    fn set(&mut self, i: usize, j: usize, v: Cx) {
+        if let Some(k) = self.idx(i, j) {
+            self.a[k] = v;
+        }
+    }
+    /// Solve A x = b in place (A is destroyed).
+    fn solve(mut self, b: &mut [Cx]) -> Result<(), String> {
+        let n = self.n;
+        let (kl, ku) = (self.kl, self.ku);
+        for k in 0..n {
+            // pivot among rows k..k+kl
+            let last = (k + kl).min(n - 1);
+            let mut p = k;
+            let mut best = self.get(k, k).abs();
+            for i in k + 1..=last {
+                let v = self.get(i, k).abs();
+                if v > best {
+                    best = v;
+                    p = i;
+                }
+            }
+            if best == 0.0 {
+                return Err("singuläre Matrix".into());
+            }
+            let jmax = (k + ku + kl).min(n - 1);
+            if p != k {
+                for j in k..=jmax {
+                    let (x, y) = (self.get(k, j), self.get(p, j));
+                    self.set(k, j, y);
+                    self.set(p, j, x);
+                }
+                b.swap(k, p);
+            }
+            let piv = self.get(k, k).inv();
+            let w = self.w;
+            for i in k + 1..=last {
+                let f = self.get(i, k) * piv;
+                if f.re == 0.0 && f.im == 0.0 {
+                    continue;
+                }
+                self.set(i, k, Cx::new(0.0, 0.0));
+                // row_i[j] -= f · row_k[j] for j in k+1..=jmax (contiguous in both rows)
+                let len = jmax - k;
+                let ko = k * w + kl + 1; // column k+1 in row k
+                let io = i * w + (k + 1 + kl - i); // column k+1 in row i
+                let (head, tail) = self.a.split_at_mut(i * w);
+                let rk = &head[ko..ko + len];
+                let ri = &mut tail[io - i * w..io - i * w + len];
+                for (x, &u) in ri.iter_mut().zip(rk) {
+                    x.re -= f.re * u.re - f.im * u.im;
+                    x.im -= f.re * u.im + f.im * u.re;
+                }
+                b[i] = b[i] - f * b[k];
+            }
+        }
+        for k in (0..n).rev() {
+            let jmax = (k + ku + kl).min(n - 1);
+            let mut s = b[k];
+            for j in k + 1..=jmax {
+                s = s - self.get(k, j) * b[j];
+            }
+            b[k] = s * self.get(k, k).inv();
+        }
+        Ok(())
+    }
+}
+
+/// Shunt element at a point of the plane: (position, branch impedance function input).
+pub struct Shunt {
+    pub at: P,
+    pub r: f64,
+    pub l: f64,
+    /// capacitance (F); infinite for a regulator
+    pub c: Option<f64>,
+}
+
+pub struct CavityResult {
+    pub freq: Vec<f64>,
+    pub z: Vec<f64>,
+    pub cells: usize,
+    pub h_mm: f64,
+}
+
+/// Grid model of the rail plane `layer` of net `net` over ground at distance `d_mm`.
+pub fn cavity(board: &Board, net: u32, layer: u16, d_mm: f64, er: f64, tand: f64, shunts: &[Shunt], port: P, freq: &[f64], max_cells: usize) -> Option<CavityResult> {
+    let polys: Vec<&crate::board::ZoneFill> = board.zones.iter().filter(|z| z.net == net && z.layer == layer).collect();
+    if polys.is_empty() {
+        return None;
+    }
+    let mut lo = [f64::INFINITY; 2];
+    let mut hi = [f64::NEG_INFINITY; 2];
+    let mut area = 0.0;
+    for z in &polys {
+        lo = [lo[0].min(z.bbox.min[0]), lo[1].min(z.bbox.min[1])];
+        hi = [hi[0].max(z.bbox.max[0]), hi[1].max(z.bbox.max[1])];
+        area += polygon_area(&z.pts);
+    }
+    let h = (area / max_cells as f64).sqrt().max(0.2);
+    let nx = ((hi[0] - lo[0]) / h).ceil() as usize + 1;
+    let ny = ((hi[1] - lo[1]) / h).ceil() as usize + 1;
+    // inside test per cell centre (even-odd per polygon, union of polygons)
+    let mut inside = vec![false; nx * ny];
+    for z in &polys {
+        let pts = &z.pts;
+        let m = pts.len();
+        for iy in 0..ny {
+            let y = lo[1] + (iy as f64 + 0.5) * h;
+            if y < z.bbox.min[1] || y > z.bbox.max[1] {
+                continue;
+            }
+            let mut xs: Vec<f64> = Vec::new();
+            for i in 0..m {
+                let (a, b) = (pts[i], pts[(i + 1) % m]);
+                if (a[1] > y) != (b[1] > y) {
+                    xs.push(a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0]));
+                }
+            }
+            xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            for pair in xs.chunks_exact(2) {
+                let i0 = ((pair[0] - lo[0]) / h - 0.5).ceil().max(0.0) as usize;
+                let i1 = ((pair[1] - lo[0]) / h - 0.5).floor();
+                if i1 < 0.0 {
+                    continue;
+                }
+                for ix in i0..=(i1 as usize).min(nx - 1) {
+                    inside[iy * nx + ix] = true;
+                }
+            }
+        }
+    }
+    // numbering along the shorter side for a narrow band
+    let by_rows = nx <= ny;
+    let (na, nb) = if by_rows { (nx, ny) } else { (ny, nx) };
+    let cell = |a: usize, b: usize| if by_rows { b * nx + a } else { a * nx + b };
+    let mut id = vec![usize::MAX; nx * ny];
+    let mut n = 0;
+    for b in 0..nb {
+        for a in 0..na {
+            if inside[cell(a, b)] {
+                id[cell(a, b)] = n;
+                n += 1;
+            }
+        }
+    }
+    if n < 4 {
+        return None;
+    }
+    // branches and bandwidth
+    let mut branches = Vec::new();
+    let mut bw = 1;
+    for iy in 0..ny {
+        for ix in 0..nx {
+            let i = id[iy * nx + ix];
+            if i == usize::MAX {
+                continue;
+            }
+            for (jx, jy) in [(ix + 1, iy), (ix, iy + 1)] {
+                if jx < nx && jy < ny {
+                    let j = id[jy * nx + jx];
+                    if j != usize::MAX {
+                        branches.push((i, j));
+                        bw = bw.max(j.abs_diff(i));
+                    }
+                }
+            }
+        }
+    }
+    let pos_of = |i: usize| -> P {
+        // centre of the cell with number i (linear search is fine for a few lookups)
+        let k = id.iter().position(|&x| x == i).unwrap();
+        [lo[0] + ((k % nx) as f64 + 0.5) * h, lo[1] + ((k / nx) as f64 + 0.5) * h]
+    };
+    let nearest = |p: P| -> usize {
+        let ix = (((p[0] - lo[0]) / h) as isize).clamp(0, nx as isize - 1) as usize;
+        let iy = (((p[1] - lo[1]) / h) as isize).clamp(0, ny as isize - 1) as usize;
+        if id[iy * nx + ix] != usize::MAX {
+            return id[iy * nx + ix];
+        }
+        let mut best = (f64::INFINITY, 0);
+        for (k, &v) in id.iter().enumerate() {
+            if v != usize::MAX {
+                let c = [lo[0] + ((k % nx) as f64 + 0.5) * h, lo[1] + ((k / nx) as f64 + 0.5) * h];
+                let d = geom::len(geom::sub(c, p));
+                if d < best.0 {
+                    best = (d, v);
+                }
+            }
+        }
+        best.1
+    };
+    let _ = pos_of;
+    let port_i = nearest(port);
+    let sh: Vec<(usize, &Shunt)> = shunts.iter().map(|s| (nearest(s.at), s)).collect();
+    let t_cu = board.stackup().copper[layer as usize].thickness * 1e-3;
+    let rho = 1.72e-8;
+    let c_cell = EPS0 * er * (h * 1e-3).powi(2) / (d_mm * 1e-3);
+    let l_sq = MU0 * d_mm * 1e-3;
+    let mut z = Vec::with_capacity(freq.len());
+    for &f in freq {
+        let w = 2.0 * PI * f;
+        let rs = (rho / t_cu).max((PI * f * MU0 * rho).sqrt());
+        let yb = Cx::new(2.0 * rs, w * l_sq).inv();
+        let yc = Cx::new(w * c_cell * tand, w * c_cell);
+        let mut m = Band::new(n, bw, bw);
+        for i in 0..n {
+            m.add(i, i, yc);
+        }
+        for &(i, j) in &branches {
+            m.add(i, i, yb);
+            m.add(j, j, yb);
+            m.add(i, j, Cx::new(-yb.re, -yb.im));
+            m.add(j, i, Cx::new(-yb.re, -yb.im));
+        }
+        for (i, s) in &sh {
+            let x = w * s.l - s.c.map_or(0.0, |c| 1.0 / (w * c));
+            m.add(*i, *i, Cx::new(s.r, x).inv());
+        }
+        let mut b = vec![Cx::new(0.0, 0.0); n];
+        b[port_i] = Cx::new(1.0, 0.0);
+        if m.solve(&mut b).is_err() {
+            return None;
+        }
+        z.push(b[port_i].abs());
+    }
+    Some(CavityResult { freq: freq.to_vec(), z, cells: n, h_mm: h })
+}
+
+#[cfg(test)]
+mod cavity_tests {
+    use super::*;
+    use crate::board::{Board, CopperLayer, Dielectric, Stackup, ZoneFill};
+    use crate::geom::BBox;
+
+    #[test]
+    fn band_solver_matches_dense() {
+        // tridiagonal complex system
+        let n = 6;
+        let mut m = Band::new(n, 1, 1);
+        for i in 0..n {
+            m.add(i, i, Cx::new(2.0, 0.5));
+            if i + 1 < n {
+                m.add(i, i + 1, Cx::new(-1.0, 0.1));
+                m.add(i + 1, i, Cx::new(-1.0, 0.1));
+            }
+        }
+        let a: Vec<Vec<Cx>> = (0..n).map(|i| (0..n).map(|j| m.get(i, j)).collect()).collect();
+        let x_true: Vec<Cx> = (0..n).map(|i| Cx::new(i as f64, 1.0)).collect();
+        let mut b: Vec<Cx> = (0..n).map(|i| (0..n).fold(Cx::new(0.0, 0.0), |s, j| s + a[i][j] * x_true[j])).collect();
+        m.solve(&mut b).unwrap();
+        for i in 0..n {
+            assert!((b[i] - x_true[i]).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn rectangular_plane_first_resonance() {
+        // 50 × 30 mm plane, d = 0.1 mm, εr 4.3, port in a corner: first
+        // resonance (1,0) at c/(2·50 mm·√4.3) ≈ 1.446 GHz
+        let pts = vec![[0.0, 0.0], [50.0, 0.0], [50.0, 30.0], [0.0, 30.0]];
+        let su = Stackup {
+            copper: vec![CopperLayer { name: "F.Cu".into(), thickness: 0.035 }, CopperLayer { name: "B.Cu".into(), thickness: 0.035 }],
+            dielectrics: vec![Dielectric { name: "d".into(), kind: "core".into(), material: "FR4".into(), thickness: 0.1, epsilon_r: 4.3, loss_tangent: 0.02 }],
+            mask_top: None,
+            mask_bottom: None,
+            from_file: true,
+        };
+        let board = Board {
+            stackup: Some(su),
+            nets: vec!["".into(), "VCC".into()],
+            zones: vec![ZoneFill { layer: 0, net: 1, bbox: BBox::of(&pts), pts }],
+            ..Default::default()
+        };
+        let freq: Vec<f64> = (0..121).map(|i| 0.5e9 + i as f64 * 0.01e9).collect();
+        let r = cavity(&board, 1, 0, 0.1, 4.3, 0.02, &[], [1.0, 1.0], &freq, 1500).unwrap();
+        let (k, _) = r.z.iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap();
+        let f_pk = freq[k];
+        assert!((f_pk - 1.446e9).abs() < 0.05e9, "peak at {:.3} GHz", f_pk / 1e9);
     }
 }

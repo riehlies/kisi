@@ -56,6 +56,9 @@ Kern in Rust, läuft als WebAssembly im Browser und als native CLI. Lizenz: GPL-
   Zonen über der nächsten Masselage) ∥ alle Kondensatoren zwischen Schiene und Masse. Wert aus dem Bauteilwert
   (`100n`, `4u7`, `10µF/6.3V`), Bauform aus dem Padabstand, ESR/ESL geschätzt, Montage-Induktivität über die Vias bis
   zur Ebene, Ausbreitungsinduktivität bis zum Lastschwerpunkt.
+- Ebenenmodell ab 1 MHz: die größte Fläche der Schiene als Gitter (bis 2500 Zellen) über idealer Masse, μ0·d je Quadrat,
+  ε·A/d je Zelle, Kondensatoren und Regler an ihren Positionen, gelöst mit einem komplexen Band-LU je Frequenz.
+  Zeigt Form-Einflüsse und Resonanzen (Test: Rechteck 50 × 30 mm, erste Resonanz auf 3 % genau).
 - Zielimpedanz = 3 % der Spannung / (50 % des Laststroms); bewertet bis 100 MHz bzw. bis zur ersten Hohlraumresonanz.
 - CLI: `kisi board.kicad_pcb --pi-tree web/samples/ts_tree.json --pdn +1V0`; Viewer: Versorgung → Schiene → „Impedanz Z(f)“.
 

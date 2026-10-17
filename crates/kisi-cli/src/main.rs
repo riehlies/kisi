@@ -180,6 +180,13 @@ fn main() {
                 println!("  C gesamt {:.1} µF (Ebene {:.2} nF)", r.c_total * 1e6, r.c_plane * 1e9);
                 let at = |f: f64| r.freq.iter().position(|&x| x >= f).map(|i| r.z[i]).unwrap_or(f64::NAN);
                 println!("  |Z|: {}", [1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9].iter().map(|&f| format!("{} {:.1} mΩ", if f >= 1e6 { format!("{:.0} MHz", f / 1e6) } else { format!("{:.0} kHz", f / 1e3) }, at(f) * 1e3)).collect::<Vec<_>>().join(", "));
+                if !r.cav_z.is_empty() {
+                    let at = |f: f64| r.cav_freq.iter().position(|&x| x >= f).map(|i| r.cav_z[i]).unwrap_or(f64::NAN);
+                    let (k, zmax) = r.cav_z.iter().enumerate().fold((0, 0.0), |a, (i, &z)| if z > a.1 { (i, z) } else { a });
+                    println!("  Ebenenmodell ({} Zellen à {:.2} mm): {}; Maximum {:.1} mΩ bei {:.0} MHz", r.cav_cells, r.cav_h_mm,
+                        [1e6, 1e7, 1e8, 1e9].iter().map(|&f| format!("{:.0} MHz {:.1} mΩ", f / 1e6, at(f) * 1e3)).collect::<Vec<_>>().join(", "),
+                        zmax * 1e3, r.cav_freq[k] / 1e6);
+                }
                 for (a, b) in &r.above_target {
                     println!("  über Ziel: {:.2} … {:.2} MHz", a / 1e6, b / 1e6);
                 }

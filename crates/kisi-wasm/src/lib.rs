@@ -16,6 +16,9 @@ struct State {
     zone_idx: Vec<u32>,
     pi_v: Vec<f32>,
     pi_j: Vec<f32>,
+    /// last analysis and its parameters (for the RF functions)
+    an: Option<kisi_core::Analysis>,
+    params: Option<Params>,
 }
 
 thread_local! {
@@ -136,8 +139,12 @@ pub extern "C" fn kisi_analyze(p: *const u8, n: usize) -> i32 {
         }
     };
     let s = ST.with(|st| {
-        let st = st.borrow();
-        st.board.as_ref().map(|b| serde_json::to_string(&analyze(b, &params)).unwrap())
+        let mut st = st.borrow_mut();
+        let an = st.board.as_ref().map(|b| analyze(b, &params))?;
+        let js = serde_json::to_string(&an).unwrap();
+        st.an = Some(an);
+        st.params = Some(params);
+        Some(js)
     });
     match s {
         Some(s) => {
@@ -276,4 +283,44 @@ pub extern "C" fn kisi_pi_tree(p: *const u8, n: usize) -> i32 {
         let r = kisi_core::tree::solve_tree(&spec, Some(b))?;
         Ok(serde_json::to_string(&r).unwrap())
     })
+}
+
+// --- high frequency (M3) -----------------------------------------------------------
+
+/// Channel and crosstalk of one net. Input:
+/// {"net": id, "rf": RfParams, "target": [z, diff] | null}
+/// Output: {"channel": Channel | null, "error": str | null, "crosstalk": Crosstalk, "touchstone": str}
+#[no_mangle]
+pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let an = st.an.as_ref().ok_or("no analysis")?;
+        let params = st.params.as_ref().ok_or("no analysis")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let net = v["net"].as_u64().ok_or("net missing")? as u32;
+        let rp: kisi_core::rf::RfParams = serde_json::from_value(v["rf"].clone()).unwrap_or_default();
+        let target = v["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
+        let ch = kisi_core::rf::channel(b, an, net, &params.field, target, &rp);
+        let xt = kisi_core::rf::crosstalk(b, an, net, &params.field, &rp);
+        let (chv, err, ts) = match ch {
+            Ok(c) => {
+                let ts = kisi_core::rf::touchstone(&c);
+                (serde_json::to_value(&c).unwrap(), serde_json::Value::Null, ts)
+            }
+            Err(e) => (serde_json::Value::Null, serde_json::Value::String(e), String::new()),
+        };
+        Ok(serde_json::json!({"channel": chv, "error": err, "crosstalk": xt, "touchstone": ts}).to_string())
+    });
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
 }

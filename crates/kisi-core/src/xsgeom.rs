@@ -104,7 +104,7 @@ pub fn build(su: &Stackup, d: &XsDesc) -> Option<String> {
     for k in k_top..k_bot {
         let die = &su.dielectrics[k];
         let (y0, y1) = fy(cu[k + 1].y1, cu[k].y0);
-        let _ = writeln!(out, "diel x=-inf w=inf y={} h={} er={}", f(y0), f(y1 - y0), f(die.epsilon_r));
+        let _ = writeln!(out, "diel x=-inf w=inf y={} h={} er={} tand={}", f(y0), f(y1 - y0), f(die.epsilon_r), f(die.loss_tangent));
     }
     // copper bands of all non-plane layers in range: resin fill
     for k in k_top..=k_bot {
@@ -116,9 +116,9 @@ pub fn build(su: &Stackup, d: &XsDesc) -> Option<String> {
         if outer && k == li {
             continue; // surface trace: air beside it (mask added below)
         }
-        let er = fill_er(su, k);
+        let (er, tand) = fill_er(su, k);
         let (y0, y1) = fy(cu[k].y0, cu[k].y1);
-        let _ = writeln!(out, "diel x=-inf w=inf y={} h={} er={}", f(y0), f(y1 - y0), f(er));
+        let _ = writeln!(out, "diel x=-inf w=inf y={} h={} er={} tand={}", f(y0), f(y1 - y0), f(er), f(tand));
     }
 
     // trace placement (x): pair centred on 0
@@ -160,9 +160,9 @@ pub fn build(su: &Stackup, d: &XsDesc) -> Option<String> {
     let surface = li == 0 || li == n - 1;
     if surface {
         if let Some((tm, em)) = d.mask {
-            let _ = writeln!(out, "diel x=-inf w=inf y={} h={} er={} thin=1", f(ty0), f(tm), f(em));
+            let _ = writeln!(out, "diel x=-inf w=inf y={} h={} er={} tand={} thin=1", f(ty0), f(tm), f(em), f(MASK_TAND));
             for &(x, w, _) in &traces {
-                let _ = writeln!(out, "diel x={} w={} y={} h={} er={}", f(x - tm), f(w + 2.0 * tm), f(ty0), f(t + tm), f(em));
+                let _ = writeln!(out, "diel x={} w={} y={} h={} er={} tand={}", f(x - tm), f(w + 2.0 * tm), f(ty0), f(t + tm), f(em), f(MASK_TAND));
             }
         }
     }
@@ -235,18 +235,22 @@ pub fn build(su: &Stackup, d: &XsDesc) -> Option<String> {
 
 /// Permittivity of the resin around copper on layer k: an adjacent prepreg if
 /// there is one (it flows around the copper), else the dielectric above.
-fn fill_er(su: &Stackup, k: usize) -> f64 {
+fn fill_er(su: &Stackup, k: usize) -> (f64, f64) {
     let above = if k > 0 { su.dielectrics.get(k - 1) } else { None };
     let below = su.dielectrics.get(k);
     let is_pp = |d: Option<&crate::board::Dielectric>| d.map(|d| d.kind.eq_ignore_ascii_case("prepreg")).unwrap_or(false);
-    if is_pp(above) {
-        above.unwrap().epsilon_r
+    let d = if is_pp(above) {
+        above
     } else if is_pp(below) {
-        below.unwrap().epsilon_r
+        below
     } else {
-        above.or(below).map(|d| d.epsilon_r).unwrap_or(1.0)
-    }
+        above.or(below)
+    };
+    d.map(|d| (d.epsilon_r, d.loss_tangent)).unwrap_or((1.0, 0.0))
 }
+
+/// Loss tangent assumed for solder mask (KiCad stores none).
+const MASK_TAND: f64 = 0.025;
 
 fn f(v: f64) -> String {
     let s = format!("{:.5}", v);
@@ -293,7 +297,7 @@ mod tests {
         let su = ts();
         let g = build(&su, &XsDesc { layer: 0, w: 0.213, ref_up: None, ref_dn: Some(1), s_left: None, s_right: None, partner: None, mask: Some((0.0152, 3.3)), planes: vec![] }).unwrap();
         // substrate 0.1107 thick directly under the trace, plane below it
-        assert!(g.contains("h=0.1107 er=3.23"), "{g}");
+        assert!(g.contains("h=0.1107 er=3.23 tand=0.02"), "{g}");
         assert!(g.contains("sig+ x=-0.1065 w=0.213"), "{g}");
         assert!(g.contains("thin=1"));
         assert!(!g.contains("sig-"));
@@ -318,7 +322,7 @@ mod tests {
         assert_eq!(g.matches("gnd x=-inf").count(), 2, "{g}");
         assert!(g.contains("sig-") && g.contains("sig+"));
         // In3 copper band filled with the prepreg below (3.66)
-        assert!(g.contains("h=0.0175 er=3.66"), "{g}");
+        assert!(g.contains("h=0.0175 er=3.66 tand=0.02"), "{g}");
     }
 
     #[test]

@@ -49,6 +49,20 @@ pub struct FieldResult {
     pub zeven: Option<f64>,
     pub eeff_odd: Option<f64>,
     pub eeff_even: Option<f64>,
+    /// per-unit-length parameters at `f0` (Ω/m, H/m, S/m, F/m), smooth copper;
+    /// single line, or the odd mode of a pair (per line)
+    pub r: Option<f64>,
+    pub l: Option<f64>,
+    pub g: Option<f64>,
+    pub c: Option<f64>,
+    pub r_odd: Option<f64>,
+    pub l_odd: Option<f64>,
+    pub g_odd: Option<f64>,
+    pub c_odd: Option<f64>,
+    /// 2x2 matrices of a two-conductor geometry, row major (H/m, F/m Maxwell)
+    pub mat_l: Option<[f64; 4]>,
+    pub mat_c: Option<[f64; 4]>,
+    pub f0: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]

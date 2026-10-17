@@ -120,7 +120,7 @@ pub fn ellip_k(k: f64) -> f64 {
 }
 
 /// K(k)/K(k')
-fn k_ratio(k: f64) -> f64 {
+pub fn k_ratio(k: f64) -> f64 {
     let kp = (1.0 - k * k).max(0.0).sqrt();
     ellip_k(k) / ellip_k(kp)
 }
@@ -243,6 +243,62 @@ pub fn diff_microstrip_coplanar(
 /// Edge-coupled (possibly asymmetric) stripline pair: differential impedance.
 pub fn diff_stripline_model(w: f64, s: f64, h1: f64, h2: f64, t: f64, e1: f64, e2: f64) -> f64 {
     diff_stripline(stripline_asym(w, h1, h2, t, e1, e2), s, h1 + h2 + t)
+}
+
+// ---------------------------------------------------------------------------
+// Coupled lines (even / odd modes) – used for crosstalk and odd-mode losses
+// ---------------------------------------------------------------------------
+
+/// Kirschning & Jansen (1984) coupled microstrip, zero thickness (as in Qucs,
+/// GPL-2.0-or-later). Returns (Z_even, Z_odd, eeff_even, eeff_odd).
+pub fn kirschning_jansen(w: f64, s: f64, h: f64, er: f64) -> (f64, f64, f64, f64) {
+    let u = w / h;
+    let g = (s / h).max(1e-4);
+    let ab = |u: f64| -> (f64, f64) {
+        let a = 1.0 + ((u.powi(4) + (u / 52.0).powi(2)) / (u.powi(4) + 0.432)).ln() / 49.0
+            + (1.0 + (u / 18.1).powi(3)).ln() / 18.7;
+        let b = 0.564 * ((er - 0.9) / (er + 3.0)).powf(0.053);
+        (a, b)
+    };
+    let eer = |u: f64| -> f64 {
+        let (a, b) = ab(u);
+        (er + 1.0) / 2.0 + (er - 1.0) / 2.0 * (1.0 + 10.0 / u).powf(-a * b)
+    };
+    let zl = |u: f64| -> f64 {
+        let fu = 6.0 + (2.0 * PI - 6.0) * (-(30.666 / u).powf(0.7528)).exp();
+        ETA0 / 2.0 / PI * (fu / u + (1.0 + (2.0 / u).powi(2)).sqrt()).ln()
+    };
+    let v = u * (20.0 + g * g) / (10.0 + g * g) + g * (-g).exp();
+    let ee = eer(v);
+    let e1 = eer(u);
+    let d = 0.593 + 0.694 * (-0.562 * u).exp();
+    let bo = 0.747 * er / (0.15 + er);
+    let co = bo - (bo - 0.207) * (-0.414 * u).exp();
+    let ao = 0.7287 * (e1 - (er + 1.0) / 2.0) * (1.0 - (-0.179 * u).exp());
+    let eo = ((er + 1.0) / 2.0 + ao - e1) * (-co * g.powf(d)).exp() + e1;
+    let zl1 = zl(u) / e1.sqrt();
+    let q1 = 0.8695 * u.powf(0.194);
+    let q2 = 1.0 + 0.7519 * g + 0.189 * g.powf(2.31);
+    let q3 = 0.1975 + (16.6 + (8.4 / g).powi(6)).powf(-0.387) + (g.powi(10) / (1.0 + (g / 3.4).powi(10))).ln() / 241.0;
+    let q4 = q1 / q2 * 2.0 / ((-g).exp() * u.powf(q3) + (2.0 - (-g).exp()) * u.powf(-q3));
+    let ze = (e1 / ee).sqrt() * zl1 / (1.0 - zl1 * e1.sqrt() * q4 / ETA0);
+    let q5 = 1.794 + 1.14 * (1.0 + 0.638 / (g + 0.517 * g.powf(2.43))).ln();
+    let q6 = 0.2305 + (g.powi(10) / (1.0 + (g / 5.8).powi(10))).ln() / 281.3 + (1.0 + 0.598 * g.powf(1.154)).ln() / 5.1;
+    let q7 = (10.0 + 190.0 * g * g) / (1.0 + 82.3 * g.powi(3));
+    let q8 = (-6.5 - 0.95 * g.ln() - (g / 0.15).powi(5)).exp();
+    let q9 = q7.ln() * (q8 + 1.0 / 16.5);
+    let q10 = (q2 * q4 - q5 * (u.ln() * q6 * u.powf(-q9)).exp()) / q2;
+    let zo = (e1 / eo).sqrt() * zl1 / (1.0 - zl1 * e1.sqrt() * q10 / ETA0);
+    (ze, zo, ee, eo)
+}
+
+/// Edge-coupled centred stripline, Cohn's exact zero-thickness result.
+/// Returns (Z_even, Z_odd) for plane spacing b.
+pub fn cohn_coupled(w: f64, s: f64, b: f64, er: f64) -> (f64, f64) {
+    let a = (PI * w / (2.0 * b)).tanh();
+    let c = (PI * (w + s) / (2.0 * b)).tanh();
+    let z = |k: f64| 30.0 * PI / er.sqrt() / k_ratio(k);
+    (z(a * c), z(a / c))
 }
 
 #[cfg(test)]

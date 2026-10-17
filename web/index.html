@@ -245,6 +245,19 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
 .dstats { display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--font-mono); font-size: 12px; }
 .dstats b { font-weight: 500; }
 #profile { width: 100%; height: 150px; display: block; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); }
+.tabs button { border: 0; background: none; padding: 5px 10px; cursor: pointer; font-family: var(--font-display); font-weight: 600; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.chart { position: relative; }
+.chart canvas { width: 100%; height: 180px; display: block; }
+.ctip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 4px 7px; font-family: var(--font-mono); font-size: 11px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); white-space: nowrap; z-index: 3; }
+.clegend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--muted); }
+.clegend span { display: inline-flex; align-items: center; gap: 6px; }
+.clegend i { width: 16px; height: 2px; display: inline-block; border-radius: 1px; }
+.marks { display: flex; flex-wrap: wrap; gap: 4px 14px; font-family: var(--font-mono); font-size: 11.5px; }
+.marks b { font-weight: 500; }
+.xs-table tr.click { cursor: pointer; }
+.xs-table tr.click:hover td { background: var(--panel-2); }
 .xs-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; }
 .xs-table th { text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--line); padding: 3px 4px; }
 .xs-table td { padding: 3px 4px; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -259,7 +272,7 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
   #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 62vh auto; height: auto; }
   .side { overflow: visible; order: 3; }
   .stage { order: 2; }
-  .detail { position: static; width: auto; max-height: none; margin: 10px; }
+  .detail { position: fixed; left: 0; right: 0; bottom: 0; width: auto; max-height: 62vh; border-radius: var(--radius) var(--radius) 0 0; z-index: 8; box-shadow: 0 -8px 30px rgba(0,0,0,0.22); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
   .legend { flex-direction: row; flex-wrap: wrap; gap: 3px 10px; font-size: 11px; padding: 6px 8px; }
   .legend strong { flex-basis: 100%; }
   .legend .sw { width: 12px; }
@@ -376,6 +389,17 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
       </div>
     </section>
 
+    <section class="card" aria-labelledby="h-rf" data-view="si">
+      <h2 id="h-rf">HF-Einstellungen</h2>
+      <div class="opts">
+        <label class="opt" for="rf-fmax"><span>Frequenz bis</span><select id="rf-fmax"><option value="10">10 GHz</option><option value="20">20 GHz</option><option value="25" selected>25 GHz</option><option value="40">40 GHz</option></select></label>
+        <label class="opt" for="rf-rise"><span>Anstiegszeit (10–90 %)</span><select id="rf-rise"><option value="20">20 ps</option><option value="35" selected>35 ps</option><option value="50">50 ps</option><option value="100">100 ps</option><option value="200">200 ps</option><option value="500">500 ps</option></select></label>
+        <label class="opt" for="rf-rough"><span>Kupferrauheit</span><select id="rf-rough"><option value="Smooth">glatt</option><option value="Hvlp">HVLP</option><option value="Standard" selected>Standard-ED</option></select></label>
+        <label class="opt" for="rf-vias"><span>Vias im Kanal (vereinfacht)</span><input type="checkbox" id="rf-vias" checked></label>
+      </div>
+      <p class="note">Verluste: Skin-Effekt nach Wheeler, Rauheit nach Huray (Voreinstellungen geschätzt), Dielektrikum nach Djordjevic-Sarkar aus εr und tanδ des Lagenaufbaus. Ein Netz wählen, um Verluste, TDR und Übersprechen zu sehen.</p>
+    </section>
+
     <section class="card" aria-labelledby="h-nets" data-view="si">
       <h2 id="h-nets">Netze <em id="netCount"></em></h2>
       <input class="search" id="search" type="search" placeholder="Netz oder Klasse suchen" aria-label="Netz suchen">
@@ -433,6 +457,7 @@ class Engine {
   analyze(params) { this.call(this.k.kisi_analyze, JSON.stringify(params)); return JSON.parse(this.out()); }
   piNets() { if (this.k.kisi_pi_nets() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   piFields() { if (this.k.kisi_pi_fields() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
+  rf(req) { this.call(this.k.kisi_rf, JSON.stringify(req)); return JSON.parse(this.out()); }
   piTree(spec) { this.call(this.k.kisi_pi_tree, JSON.stringify(spec)); return JSON.parse(this.out()); }
   piKipida(text) { this.call(this.k.kisi_pi_kipida, text); return JSON.parse(this.out()); }
   piSolve(setup, params) {
@@ -464,6 +489,7 @@ const S = {
   field: new Map(), fieldPending: new Set(), pool: null, gen: 0,
   tab: "si", piMode: "v", piNets: [], piSetups: new Map(), piRes: new Map(), piRail: null, piLayer: -1,
   piImg: null, piWarn: [], piDefaults: null, piTree: null, treeRes: null,
+  detailTab: "z", rfCache: null, anGen: 0,
 };
 const KIND_DE = { Microstrip: "Microstrip", Stripline: "Stripline", EmbeddedMicrostrip: "Microstrip, eingebettet (eine Referenz)", NoReference: "Keine Referenzebene" };
 const FLAGS = [
@@ -568,6 +594,7 @@ function runAnalysis(tParse) {
   const field = {};
   for (const [id, r] of S.field) if (r.ok) field[id] = r;
   S.an = S.engine.analyze({ step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field });
+  S.anGen++;
   const tAn = performance.now() - t0;
   $("timing").textContent = (tParse != null ? `Lesen ${Math.round(tParse)} ms · ` : "") + `Analyse ${Math.round(tAn)} ms`;
   preparePieces();
@@ -892,15 +919,163 @@ function selectNet(net, zoom = true) {
   d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · Paar mit " + esc(partner) : ""}</div></div><button class="x" id="closeDetail" aria-label="Auswahl aufheben">×</button></header>
     <div class="dstats"><span>Länge <b>${fmt(st?.length, 1)} mm</b></span><span>Ziel <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
     <span>min/Ø/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b></span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
-    <canvas id="profile" aria-label="Impedanzverlauf entlang des Netzes"></canvas>
-    <div class="tablewrap"><table class="xs-table"><thead><tr><th>mm</th><th>Lage</th><th>Typ</th><th>w µm</th><th>Abst. µm</th><th>Z₀</th><th>Z diff</th><th>vergl.</th></tr></thead><tbody>${rowsXs}</tbody></table></div>`;
+    <div class="tabs" role="tablist" aria-label="Ansicht des Netzes">
+      ${[["z", "Impedanz"], ["loss", "Verluste"], ["tdr", "TDR"], ["xt", "Übersprechen"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
+    </div>
+    <div id="tab-body"></div>`;
   d.hidden = false;
   $("closeDetail").onclick = () => selectNet(-1);
-  drawProfile(net, t);
+  d.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => {
+    S.detailTab = b.dataset.tab;
+    d.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    renderTab(net, t, rowsXs);
+  });
+  renderTab(net, t, rowsXs);
   if (zoom && isFinite(bb[0])) {
     const m = 1.5;
     fitView([bb[0] - m, bb[1] - m, bb[2] + m, bb[3] + m]);
   } else draw();
+}
+
+
+// ---- high-frequency views of a net -----------------------------------------------
+function rfParams() {
+  return {
+    fmax: parseFloat($("rf-fmax").value) * 1e9, npts: 500,
+    rise: parseFloat($("rf-rise").value) * 1e-12,
+    roughness: $("rf-rough").value, sigma: 5.8e7, vias: $("rf-vias").checked,
+  };
+}
+function rfFor(net) {
+  const t = classTarget(net), p = rfParams();
+  const key = `${net}|${S.anGen}|${JSON.stringify(p)}`;
+  if (S.rfCache && S.rfCache.key === key) return S.rfCache.res;
+  let res;
+  try { res = S.engine.rf({ net, rf: p, target: t ? [t.z, t.diff] : null }); }
+  catch (e) { res = { channel: null, error: e.message, crosstalk: { aggressors: [], geoms: [] }, touchstone: "" }; }
+  S.rfCache = { key, res, net };
+  return res;
+}
+function renderTab(net, t, rowsXs) {
+  const body = $("tab-body");
+  if (!body) return;
+  if (S.detailTab === "z") {
+    body.innerHTML = `<canvas id="profile" aria-label="Impedanzverlauf entlang des Netzes"></canvas>
+      <div class="tablewrap"><table class="xs-table"><thead><tr><th>mm</th><th>Lage</th><th>Typ</th><th>w µm</th><th>Abst. µm</th><th>Z₀</th><th>Z diff</th><th>vergl.</th></tr></thead><tbody>${rowsXs}</tbody></table></div>`;
+    drawProfile(net, t);
+    return;
+  }
+  const r = rfFor(net), ch = r.channel;
+  if (S.detailTab === "xt") return renderXt(body, r, net);
+  if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "kein Kanal")}</p>`; return; }
+  const src = ch.field_share > 0 ? `Feldlöser für ${Math.round(ch.field_share * 100)} % der Länge, sonst Formeln` : "Formeln (schnelle Analyse)";
+  const head = `<div class="dstats"><span>${ch.diff ? "differentiell, Bezug " + fmt(2 * ch.z_ref, 0) + " Ω" : "Bezug " + fmt(ch.z_ref, 0) + " Ω"}</span><span>Pfad <b>${fmt(ch.length_mm, 1)} mm</b></span><span>Laufzeit <b>${fmt(ch.delay_ps, 0)} ps</b></span><span>Vias <b>${ch.vias}</b></span></div>`;
+  const warn = (ch.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
+  if (S.detailTab === "loss") {
+    const marks = ch.il_marks.map(([f, d]) => `<span>${fmt(f, f < 10 ? 1 : 0)} GHz <b>${fmt(d, 2)} dB</b></span>`).join("");
+    const lpi = ch.loss_db_per_in_at.map(([f, c, d]) => `<tr><td>${fmt(f, 0)} GHz</td><td>${fmt(c, 3)}</td><td>${fmt(d, 3)}</td><td>${fmt(c + d, 3)}</td></tr>`).join("");
+    body.innerHTML = `${head}
+      <div class="clegend"><span><i style="background:var(--pw-use)"></i>${ch.diff ? "Sdd21" : "S21"} Einfügedämpfung</span><span><i style="background:var(--pw-loss)"></i>${ch.diff ? "Sdd11" : "S11"} Reflexion</span></div>
+      <div class="chart"><canvas id="ch-s" aria-label="S-Parameter über der Frequenz"></canvas></div>
+      <div class="marks">${marks}</div>
+      <div class="tablewrap"><table class="xs-table"><thead><tr><th>Leitungsverlust</th><th>Leiter dB/in</th><th>Dielektrikum dB/in</th><th>gesamt</th></tr></thead><tbody>${lpi}</tbody></table></div>
+      <div class="dstats"><span class="muted">${esc(src)}</span><button class="btn small" id="ts-copy">Touchstone kopieren</button></div>${warn}`;
+    const fg = ch.freq.map((f) => f / 1e9);
+    drawLines($("ch-s"), { x: fg, xUnit: "GHz", yUnit: "dB", series: [
+      { y: ch.s21_db, color: "--pw-use", name: ch.diff ? "Sdd21" : "S21" },
+      { y: ch.s11_db, color: "--pw-loss", name: ch.diff ? "Sdd11" : "S11" }], yMin: Math.max(-60, Math.min(...ch.s11_db, ...ch.s21_db) - 2), yMax: 0 });
+    $("ts-copy").onclick = (e) => {
+      navigator.clipboard.writeText(r.touchstone).then(() => { e.target.textContent = "Kopiert (.s2p)"; }).catch(() => { e.target.textContent = "Kopieren nicht erlaubt"; });
+    };
+    return;
+  }
+  if (S.detailTab === "tdr") {
+    const scale = ch.diff ? 2 : 1;
+    const inLine = ch.tdr_z.filter((_, i) => ch.tdr_x_mm[i] <= ch.length_mm);
+    const zmin = Math.min(...inLine) * scale, zmax = Math.max(...inLine) * scale;
+    body.innerHTML = `${head}
+      <div class="clegend"><span><i style="background:var(--pw-use)"></i>Impedanz aus der Sprungantwort (${fmt(rfParams().rise * 1e12, 0)} ps Anstieg)</span>${t ? `<span><i style="background:${S.colors.ok}"></i>Ziel ±5 %</span>` : ""}</div>
+      <div class="chart"><canvas id="ch-tdr" aria-label="TDR-Impedanz über dem Ort"></canvas></div>
+      <div class="marks"><span>${ch.diff ? "Zdiff" : "Z"} min <b>${fmt(zmin, 1)} Ω</b></span><span>${ch.diff ? "Zdiff" : "Z"} max <b>${fmt(zmax, 1)} Ω</b></span><span class="muted">Ort aus der mittleren Laufzeit; nach dem Leitungsende folgt der Abschluss mit dem Bezugswert.</span></div>${warn}`;
+    const zt = t ? (t.diff ? t.z / 2 : t.z) : null;
+    drawLines($("ch-tdr"), { x: ch.tdr_x_mm, xUnit: "mm", yUnit: "Ω", series: [{ y: ch.tdr_z.map((z) => z * scale), color: "--pw-use", name: ch.diff ? "Z diff" : "Z" }],
+      band: zt ? [zt * scale * 0.95, zt * scale * 1.05] : null, xMax: ch.length_mm * 1.25 });
+  }
+}
+function renderXt(body, r, net) {
+  const x = r.crosstalk, rise = fmt(x.rise_ps, 0);
+  const rows = x.aggressors.slice(0, 20).map((a) => `<tr class="click" data-net="${a.net}"><td>${esc(a.name.split("/").pop() || a.name)}</td><td>${esc(S.scene.stackup.copper[a.layer].name)}</td><td>${fmt(a.coupled_mm, 1)}</td><td>${fmt(a.gap_min_mm * 1000, 0)}</td><td>${fmt(a.next * 100, 2)}</td><td>${fmt(a.fext * 100, 2)}</td><td>${a.source === "field" ? "Feld" : "Formel"}</td></tr>`).join("");
+  const open = x.geoms.filter((g) => !S.field.has(g[0])).length;
+  body.innerHTML = `<div class="dstats"><span>NEXT Summe <b>${fmt(x.next_total * 100, 2)} %</b></span><span>FEXT Summe <b>${fmt(x.fext_total * 100, 2)} %</b></span><span class="muted">bei ${rise} ps Anstieg, in % der Aggressor-Amplitude</span></div>
+    ${rows ? `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Aggressor</th><th>Lage</th><th>parallel mm</th><th>Abstand µm</th><th>NEXT %</th><th>FEXT %</th><th>Quelle</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="note">Keine parallelen Signalleitungen in Kopplungsreichweite (bis 5 h neben der Leitung).</p>`}
+    <p class="note">Gerechnet je Leitung gegen den nächsten Nachbarn auf derselben Lage, Versorgungsnetze zählen nicht. NEXT sättigt ab der halben Anstiegslänge, FEXT wächst mit der Länge.${open ? ` ${open} Kopplungsquerschnitte lassen sich mit dem Feldlöser („ausgewähltes Netz“) genauer rechnen.` : ""}</p>`;
+  body.querySelectorAll("tr[data-net]").forEach((tr) => tr.onclick = () => selectNet(+tr.dataset.net));
+}
+
+// line chart with crosshair tooltip
+function drawLines(c, o) {
+  const d = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+  c.width = r.width * d; c.height = r.height * d;
+  const g = c.getContext("2d");
+  const cs = getComputedStyle(document.documentElement);
+  const col = (v) => v.startsWith("--") ? cs.getPropertyValue(v).trim() : v;
+  const muted = cs.getPropertyValue("--muted").trim(), line = cs.getPropertyValue("--line").trim();
+  const xs = o.x, n = xs.length;
+  const xMax = o.xMax ? Math.min(o.xMax, xs[n - 1]) : xs[n - 1], xMin = o.xMin ?? 0;
+  let lo = o.yMin, hi = o.yMax;
+  if (lo == null || hi == null) {
+    let a = Infinity, b = -Infinity;
+    for (const s of o.series) s.y.forEach((v, i) => { if (xs[i] <= xMax) { a = Math.min(a, v); b = Math.max(b, v); } });
+    if (o.band) { a = Math.min(a, o.band[0]); b = Math.max(b, o.band[1]); }
+    const m = (b - a) * 0.1 || 1; lo = lo ?? a - m; hi = hi ?? b + m;
+  }
+  const padL = 42, padR = 10, padT = 8, padB = 20, W = r.width - padL - padR, H = r.height - padT - padB;
+  const X = (v) => padL + (v - xMin) / (xMax - xMin || 1) * W, Y = (v) => padT + (1 - (v - lo) / (hi - lo || 1)) * H;
+  const paint = (hi_i) => {
+    g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, r.width, r.height);
+    g.font = "10.5px " + cs.getPropertyValue("--font-mono"); g.fillStyle = muted; g.strokeStyle = line; g.lineWidth = 1;
+    const ys = niceStep((hi - lo) / 4);
+    for (let v = Math.ceil(lo / ys) * ys; v <= hi + 1e-9; v += ys) {
+      g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(padL + W, Y(v)); g.stroke();
+      g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(fmt(v, ys < 1 ? 1 : 0), padL - 6, Y(v));
+    }
+    const xsS = niceStep((xMax - xMin) / 5);
+    g.textAlign = "center"; g.textBaseline = "top";
+    for (let v = Math.ceil(xMin / xsS) * xsS; v <= xMax + 1e-9; v += xsS) g.fillText(fmt(v, xsS < 1 ? 1 : 0), X(v), padT + H + 5);
+    g.textAlign = "right"; g.fillText(o.xUnit, padL + W, padT + H + 5 - 12);
+    g.textAlign = "left"; g.textBaseline = "top"; g.fillText(o.yUnit, 2, 0);
+    if (o.band) {
+      g.fillStyle = S.colors.ok; g.globalAlpha = 0.14; g.fillRect(padL, Y(o.band[1]), W, Y(o.band[0]) - Y(o.band[1])); g.globalAlpha = 1;
+    }
+    g.save(); g.beginPath(); g.rect(padL, padT, W, H); g.clip();
+    for (const s of o.series) {
+      g.strokeStyle = col(s.color); g.lineWidth = 2; g.lineJoin = "round"; g.beginPath();
+      let started = false;
+      for (let i = 0; i < n; i++) { if (xs[i] > xMax * 1.001) break; const px = X(xs[i]), py = Y(s.y[i]); if (!started) { g.moveTo(px, py); started = true; } else g.lineTo(px, py); }
+      g.stroke();
+    }
+    g.restore();
+    if (hi_i != null) {
+      g.strokeStyle = muted; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(X(xs[hi_i]), padT); g.lineTo(X(xs[hi_i]), padT + H); g.stroke(); g.setLineDash([]);
+      for (const s of o.series) { g.fillStyle = col(s.color); g.strokeStyle = cs.getPropertyValue("--panel").trim(); g.lineWidth = 2; g.beginPath(); g.arc(X(xs[hi_i]), Y(s.y[hi_i]), 4, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    }
+  };
+  paint(null);
+  const host = c.parentElement;
+  let tip = host.querySelector(".ctip");
+  if (!tip) { tip = document.createElement("div"); tip.className = "ctip"; tip.hidden = true; host.appendChild(tip); }
+  c.onpointermove = (e) => {
+    const px = e.offsetX; if (px < padL || px > padL + W) { tip.hidden = true; paint(null); return; }
+    const xv = xMin + (px - padL) / W * (xMax - xMin);
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < n; i++) { const dd = Math.abs(xs[i] - xv); if (dd < bd) { bd = dd; bi = i; } if (xs[i] > xMax) break; }
+    paint(bi);
+    tip.innerHTML = `${fmt(xs[bi], 2)} ${o.xUnit}<br>` + o.series.map((s) => `${esc(s.name)} ${fmt(s.y[bi], 2)} ${o.yUnit}`).join("<br>");
+    tip.hidden = false;
+    const tx = X(xs[bi]) + 10;
+    tip.style.left = Math.min(tx, r.width - tip.offsetWidth - 4) + "px"; tip.style.top = "6px";
+  };
+  c.onpointerleave = () => { tip.hidden = true; paint(null); };
 }
 
 function drawProfile(net, t) {
@@ -1054,6 +1229,7 @@ $("fit").onclick = () => fitView();
 $("search").oninput = () => renderNets();
 $("opt-mask").onchange = (e) => { S.mask = e.target.checked; runAnalysis(); };
 $("opt-step").onchange = (e) => { S.step = parseFloat(e.target.value); runAnalysis(); };
+for (const id of ["rf-fmax", "rf-rise", "rf-rough", "rf-vias"]) $(id).onchange = () => { if (S.selNet >= 0) selectNet(S.selNet, false); };
 $("opt-zone").onchange = (e) => { S.zoneLayer = parseInt(e.target.value, 10); draw(); };
 
 const ptrs = new Map(); let pinch = null, dragMoved = false;
@@ -1130,7 +1306,7 @@ self.onmessage = async (e) => {
 const FIELD_TOL = 0.01;
 const Cache = {
   db: null,
-  key: (id) => `${UPSTREAM_REV}|${FIELD_TOL}|${id}`,
+  key: (id) => `${UPSTREAM_REV}|${FIELD_TOL}|v2|${id}`,
   async open() {
     try {
       this.db = await new Promise((res, rej) => {
@@ -1143,7 +1319,7 @@ const Cache = {
   },
   async loadAll() {
     if (!this.db) return 0;
-    const prefix = `${UPSTREAM_REV}|${FIELD_TOL}|`;
+    const prefix = `${UPSTREAM_REV}|${FIELD_TOL}|v2|`;
     try {
       return await new Promise((res) => {
         let n = 0;
@@ -1220,10 +1396,10 @@ class FieldPool {
   }
   apply() { this.lastApply = performance.now(); this.dirty = false; runAnalysis(); }
   reset() { this.queue = []; this.running = false; this.total = 0; this.done_n = 0; }
-  start(ids) {
-    const want = new Set(ids);
-    const g = S.an.geometries.filter((x) => want.has(x.id) && !S.field.has(x.id) && !S.fieldPending.has(x.id));
-    g.sort((a, b) => b.target_length - a.target_length || b.length - a.length);
+  start(items) {
+    const seen = new Set();
+    const g = items.filter((x) => !S.field.has(x.id) && !S.fieldPending.has(x.id) && !seen.has(x.id) && seen.add(x.id));
+    g.sort((a, b) => (b.prio || 0) - (a.prio || 0));
     this.queue = g.map((x) => ({ id: x.id, text: x.text, gen: S.gen }));
     this.total = this.queue.length; this.done_n = 0;
     this.running = this.queue.length > 0;
@@ -1271,13 +1447,19 @@ function scopeNets(scope) {
   return nets;
 }
 function scopeGeoms(scope) {
-  const nets = scopeNets(scope), ids = new Set(), pc = S.pieces;
+  const nets = scopeNets(scope), idx = new Set(), pc = S.pieces;
   for (let i = 0; i < pc.n; i++) {
     if (!nets.has(pc.net[i])) continue;
     const g = S.an.cross_sections[pc.xs[i]].geom;
-    if (g != null) ids.add(S.an.geometries[g].id);
+    if (g != null) idx.add(g);
   }
-  return [...ids];
+  const items = [...idx].map((g) => { const e = S.an.geometries[g]; return { id: e.id, text: e.text, prio: 1e6 + e.target_length * 10 + e.length }; });
+  // the selected net also gets its coupling cross-sections (crosstalk)
+  if (scope === "sel" && S.selNet >= 0) {
+    const r = rfFor(S.selNet);
+    for (const [id, text] of r.crosstalk.geoms) items.push({ id, text, prio: 1 });
+  }
+  return items;
 }
 
 function renderFieldStatus() {
@@ -1293,7 +1475,7 @@ function renderFieldStatus() {
   if (sel.dataset.html !== html) { sel.innerHTML = html; sel.dataset.html = html; }
   sel.value = opts.some((o) => o[0] === prev) ? prev : (S.selNet >= 0 ? "sel" : "target");
   const ids = scopeGeoms(sel.value);
-  const open = ids.filter((id) => !S.field.has(id)).length;
+  const open = ids.filter((x) => !S.field.has(x.id)).length;
   $("fs-start").textContent = open ? `${open} rechnen` : "gerechnet";
   $("fs-start").disabled = !open || (pool && pool.running) || (pool && pool.failed);
   // coverage

@@ -6,6 +6,7 @@
 pub mod analytic;
 pub mod board;
 pub mod extract;
+pub mod eye;
 pub mod geom;
 pub mod pi;
 pub mod rf;

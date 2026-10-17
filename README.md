@@ -44,6 +44,11 @@ Kern in Rust, läuft als WebAssembly im Browser und als native CLI. Lizenz: GPL-
   des Feldlösers oder Kirschning-Jansen/Cohn; Feldlöser-Umfang „ausgewähltes Netz“ rechnet die Kopplungsquerschnitte mit.
 - CLI: `kisi board.kicad_pcb board.kicad_pro --rf <Netzende> [--s2p out_{}.s2p]`
 - Viewer: Netz wählen → Tabs Impedanz / Verluste / TDR / Vias / Übersprechen, Karte „HF-Einstellungen“.
+- Augendiagramm (M5, `crates/kisi-core/src/eye.rs`): PRBS7 NRZ über die Einzelbit-Antwort aus S21, Sender-Flanke =
+  Anstiegszeit, ohne Entzerrung, Jitter und Rauschen. Datenrate aus der Netzklasse geschätzt oder fest gewählt.
+  CLI: `--rf <Netz> --eye 16` (Gbit/s).
+- Kanalprüfung: alle Netze mit Zielimpedanz (je Paar eine Zeile) mit Dämpfung bei Nyquist, Rückflussdämpfung,
+  Augenhöhe/-breite, Skew im Paar und Via-Stub-Resonanz; Ampel nach Richtwerten (keine Spezifikation).
 - Genauigkeit: Leitungs-RLGC gegen HFSS ≤ 2 %; Via-Impedanz ist ein Abschätzungsmodell (etwa ±15 %), kein 3D-Ergebnis.
 
 ## Stand: Meilenstein M2 (Feldlöser)

@@ -23,6 +23,7 @@ fn main() {
     let mut pi_tree: Option<String> = None;
     let mut rf_net: Option<String> = None;
     let mut s2p_out: Option<String> = None;
+    let mut eye_gbps: Option<f64> = None;
     let mut field_in: Option<String> = None;
     let mut params = Params::default();
     let mut i = 2;
@@ -49,6 +50,10 @@ fn main() {
             "--rails" => list_rails = true,
             "--rf" => {
                 rf_net = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--eye" => {
+                eye_gbps = args.get(i + 1).and_then(|x| x.parse::<f64>().ok());
                 i += 1;
             }
             "--s2p" => {
@@ -305,6 +310,17 @@ fn main() {
                     println!("  TDR ({:.0} ps Anstieg): Z min {:.1} Ω, max {:.1} Ω", rp.rise * 1e12, zmin, zmax);
                     println!("  Abschnitte: {}", ch.segments.iter().map(|s| if s.kind == "via" { "Via".to_string() } else { format!("{:.1}mm@{:.0}Ω", s.len_mm, s.z.unwrap_or(0.0)) }).collect::<Vec<_>>().join(" "));
                     let ln = |k: u16| board.stackup().copper.get(k as usize).map(|c| c.name.clone()).unwrap_or_default();
+                    if let Some(g) = eye_gbps {
+                        let ep = kisi_core::eye::EyeParams { bitrate: g * 1e9, rise: rp.rise, ..Default::default() };
+                        match kisi_core::eye::eye(&ch, &ep) {
+                            Ok(e) => println!(
+                                "  Auge {:.2} Gbit/s PRBS7: Höhe {:.0} % des Hubs, Breite {:.1} ps ({:.0} % UI), Hauptcursor {:.2}, ISI-Summe {:.2}{}",
+                                g, e.height * 100.0, e.width_ps, e.width_ps / e.ui_ps * 100.0, e.main_cursor, e.isi_sum,
+                                e.warnings.iter().map(|w| format!(" – {w}")).collect::<String>()
+                            ),
+                            Err(e) => println!("  Auge: {e}"),
+                        }
+                    }
                     for v in &ch.via_info {
                         println!(
                             "  Via ({:.2},{:.2}) {}→{}  Bohrung {:.2}/{:.2} mm, Antipad {}  Z {:.1} Ω{}  Hülse {:.2} mm, Stub {:.2} mm{}{}  Rückstrom {}",

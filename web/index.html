@@ -257,6 +257,8 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
 .marks { display: flex; flex-wrap: wrap; gap: 4px 14px; font-family: var(--font-mono); font-size: 11.5px; }
 .marks b { font-weight: 500; }
 .xs-table tr.click { cursor: pointer; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+.ck-table td:first-child { max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
 .xs-table tr.click:hover td { background: var(--panel-2); }
 .xs-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 11px; }
 .xs-table th { text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--line); padding: 3px 4px; }
@@ -396,9 +398,16 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
         <label class="opt" for="rf-rise"><span>Anstiegszeit (10–90 %)</span><select id="rf-rise"><option value="20">20 ps</option><option value="35" selected>35 ps</option><option value="50">50 ps</option><option value="100">100 ps</option><option value="200">200 ps</option><option value="500">500 ps</option></select></label>
         <label class="opt" for="rf-rough"><span>Kupferrauheit</span><select id="rf-rough"><option value="Smooth">glatt</option><option value="Hvlp">HVLP</option><option value="Standard" selected>Standard-ED</option></select></label>
         <label class="opt" for="rf-vias"><span>Vias im Kanal</span><input type="checkbox" id="rf-vias" checked></label>
+        <label class="opt" for="rf-rate"><span>Datenrate fürs Auge</span><select id="rf-rate"><option value="auto" selected>aus Netzklasse</option><option value="0.48">0,48 Gbit/s (USB 2)</option><option value="1">1 Gbit/s (LVDS)</option><option value="2.5">2,5 GT/s (PCIe 1)</option><option value="3.2">3,2 GT/s (DDR4-3200)</option><option value="5">5 Gbit/s (USB 3, PCIe 2)</option><option value="6.4">6,4 GT/s (DDR5-6400)</option><option value="8">8 GT/s (PCIe 3)</option><option value="10">10 Gbit/s (USB 3.2)</option><option value="16">16 GT/s (PCIe 4)</option></select></label>
         <label class="opt" for="rf-bd"><span>Via-Stubs</span><select id="rf-bd"><option value="">wie im Layout</option><option value="0.2">alle rückgebohrt (Rest 0,2 mm)</option><option value="0">ohne Stubs</option></select></label>
       </div>
       <p class="note">Verluste: Skin-Effekt nach Wheeler, Rauheit nach Huray (Voreinstellungen geschätzt), Dielektrikum nach Djordjevic-Sarkar aus εr und tanδ des Lagenaufbaus. Vias: koaxiale Abschnitte je Lage mit den gemessenen Antipads, Stubs als offene Leitungen, Rückstrompfad bei Ebenenwechsel. Ein Netz wählen, um Verluste, TDR, Vias und Übersprechen zu sehen.</p>
+    </section>
+
+    <section class="card" aria-labelledby="h-check" data-view="si">
+      <h2 id="h-check">Kanalprüfung</h2>
+      <div class="fs-row"><span class="note" id="ck-text">Alle Netze mit Zielimpedanz: Dämpfung bei Nyquist, Rückflussdämpfung, Auge ohne Entzerrung, Skew im Paar, Via-Stubs.</span><button class="btn small primary" id="ck-start">Prüfen</button></div>
+      <div id="ck-out"></div>
     </section>
 
     <section class="card" aria-labelledby="h-nets" data-view="si">
@@ -551,7 +560,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null) {
     S.zones = S.engine.zones();
     S.name = name;
     S.overrides = {};
-    S.selNet = -1; S.hover = -1;
+    S.selNet = -1; S.hover = -1; S.check = null;
     S.fieldPending = new Set(); S.gen++;
     if (S.pool) S.pool.reset();
     const n = S.scene.stackup.copper.length;
@@ -596,6 +605,7 @@ function runAnalysis(tParse) {
   for (const [id, r] of S.field) if (r.ok) field[id] = r;
   S.an = S.engine.analyze({ step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field });
   S.anGen++;
+  setTimeout(renderCheck, 0);
   const tAn = performance.now() - t0;
   $("timing").textContent = (tParse != null ? `Lesen ${Math.round(tParse)} ms · ` : "") + `Analyse ${Math.round(tAn)} ms`;
   preparePieces();
@@ -929,7 +939,7 @@ function selectNet(net, zoom = true) {
     <div class="dstats"><span>Länge <b>${fmt(st?.length, 1)} mm</b></span><span>Ziel <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
     <span>min/Ø/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b></span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
     <div class="tabs" role="tablist" aria-label="Ansicht des Netzes">
-      ${[["z", "Impedanz"], ["loss", "Verluste"], ["tdr", "TDR"], ["via", "Vias"], ["xt", "Übersprechen"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
+      ${[["z", "Impedanz"], ["loss", "Verluste"], ["tdr", "TDR"], ["eye", "Auge"], ["via", "Vias"], ["xt", "Übersprechen"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
     </div>
     <div id="tab-body"></div>`;
   d.hidden = false;
@@ -956,12 +966,23 @@ function rfParams() {
     backdrill: $("rf-bd").value === "" ? null : parseFloat($("rf-bd").value),
   };
 }
+// data rate for the eye: explicit setting or a guess from class / net name
+function eyeRate(net) {
+  const v = $("rf-rate").value;
+  if (v !== "auto") return { gbps: parseFloat(v), guess: false };
+  // class name plus the net name without its sheet path ("/TS-PCIe Components/SYNC2" → "SYNC2")
+  const ci = S.scene.net_class[net] ?? 0, cls = (S.an.classes[ci]?.name || "") + " " + (S.scene.nets?.[net] || "").split("/").pop();
+  const rules = [[/USB_?D[PM+-]|USB2|D[PM]$/i, 0.48], [/PCIE|PCI_E|PE[TR]\d/i, 16], [/DDR5/i, 6.4], [/DDR4/i, 3.2], [/DDR|DQ|DQS/i, 3.2],
+    [/USB|SS[TR]X/i, 5], [/MGT|GTP|GTX|SERDES|SFP/i, 6.25], [/HDMI|TMDS/i, 3.0], [/SGMII|RGMII|ETH|RJ45/i, 1.25], [/LVDS|ADC|LCLK|FCLK/i, 1.0]];
+  for (const [re, g] of rules) if (re.test(cls)) return { gbps: g, guess: true };
+  return { gbps: 1.0, guess: true };
+}
 function rfFor(net) {
-  const t = classTarget(net), p = rfParams();
-  const key = `${net}|${S.anGen}|${JSON.stringify(p)}`;
+  const t = classTarget(net), p = rfParams(), er = eyeRate(net);
+  const key = `${net}|${S.anGen}|${JSON.stringify(p)}|${er.gbps}`;
   if (S.rfCache && S.rfCache.key === key) return S.rfCache.res;
   let res;
-  try { res = S.engine.rf({ net, rf: p, target: t ? [t.z, t.diff] : null }); }
+  try { res = S.engine.rf({ net, rf: p, target: t ? [t.z, t.diff] : null, bitrate: er.gbps * 1e9 }); res.rate = er; }
   catch (e) { res = { channel: null, error: e.message, crosstalk: { aggressors: [], geoms: [] }, touchstone: "" }; }
   S.rfCache = { key, res, net };
   return res;
@@ -978,6 +999,7 @@ function renderTab(net, t, rowsXs) {
   const r = rfFor(net), ch = r.channel;
   if (S.detailTab === "xt") return renderXt(body, r, net);
   if (S.detailTab === "via") return renderVias(body, r);
+  if (S.detailTab === "eye") return renderEye(body, r);
   if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "kein Kanal")}</p>`; return; }
   const src = ch.field_share > 0 ? `Feldlöser für ${Math.round(ch.field_share * 100)} % der Länge, sonst Formeln` : "Formeln (schnelle Analyse)";
   const head = `<div class="dstats"><span>${ch.diff ? "differentiell, Bezug " + fmt(2 * ch.z_ref, 0) + " Ω" : "Bezug " + fmt(ch.z_ref, 0) + " Ω"}</span><span>Pfad <b>${fmt(ch.length_mm, 1)} mm</b></span><span>Laufzeit <b>${fmt(ch.delay_ps, 0)} ps</b></span><span>Vias <b>${ch.vias}</b></span></div>`;
@@ -1011,6 +1033,129 @@ function renderTab(net, t, rowsXs) {
     const zt = t ? (t.diff ? t.z / 2 : t.z) : null;
     drawLines($("ch-tdr"), { x: ch.tdr_x_mm, xUnit: "mm", yUnit: "Ω", series: [{ y: ch.tdr_z.map((z) => z * scale), color: "--pw-use", name: ch.diff ? "Z diff" : "Z" }],
       band: zt ? [zt * scale * 0.95, zt * scale * 1.05] : null, xMax: ch.length_mm * 1.25 });
+  }
+}
+// ---- board-level channel check ------------------------------------------------------
+function checkItems() {
+  const out = [];
+  for (const st of S.an.nets) {
+    const t = classTarget(st.net);
+    if (!t) continue;
+    if (st.partner != null) {
+      // one line per pair, preferably the positive line
+      const neg = /(_N|N|-|_M)$/i.test(st.name), pneg = /(_N|N|-|_M)$/i.test(S.scene.nets[st.partner] || "");
+      if (neg !== pneg ? neg : st.partner < st.net) continue;
+    }
+    out.push({ net: st.net, gbps: eyeRate(st.net).gbps, target: [t.z, t.diff] });
+  }
+  return out;
+}
+function checkStatus(r) {
+  if (r.error || r.eye_height < 0.4) return ["high2", "rot"];
+  const ui = 1000 / r.gbps;
+  if (r.eye_height < 0.65 || r.rl_db < 10 || (r.skew_ps != null && !r.skew_uncertain && Math.abs(r.skew_ps) > 0.05 * ui) || (r.stub_ghz != null && r.stub_ghz < 2 * r.nyquist_ghz)) return ["high1", "gelb"];
+  return ["ok", "grün"];
+}
+async function runCheck() {
+  const items = checkItems(), rows = [], gen = S.anGen, p = rfParams();
+  const btn = $("ck-start"); btn.disabled = true;
+  for (let i = 0; i < items.length; i += 4) {
+    if (gen !== S.anGen) break;
+    $("ck-text").textContent = `Prüfe ${Math.min(i + 4, items.length)} von ${items.length} Kanälen …`;
+    await new Promise((res) => setTimeout(res, 0));
+    try {
+      S.engine.call(S.engine.k.kisi_check, JSON.stringify({ rf: p, items: items.slice(i, i + 4) }));
+      rows.push(...JSON.parse(S.engine.out()));
+    } catch (e) { console.warn(e); }
+  }
+  btn.disabled = false;
+  S.check = { gen, rows };
+  renderCheck();
+}
+function renderCheck() {
+  const box = $("ck-out");
+  if (!S.check || !S.check.rows.length) {
+    box.innerHTML = "";
+    $("ck-text").textContent = "Alle Netze mit Zielimpedanz: Dämpfung bei Nyquist, Rückflussdämpfung, Auge ohne Entzerrung, Skew im Paar, Via-Stubs.";
+    return;
+  }
+  const rows = S.check.rows.slice().map((r) => ({ r, st: checkStatus(r) }));
+  const rank = { high2: 0, high1: 1, ok: 2 };
+  rows.sort((a, b) => rank[a.st[0]] - rank[b.st[0]] || a.r.eye_height - b.r.eye_height);
+  const n = { high2: 0, high1: 0, ok: 0 }; rows.forEach((x) => n[x.st[0]]++);
+  const stale = S.check.gen !== S.anGen;
+  $("ck-text").textContent = `${rows.length} Kanäle: ${n.ok} grün, ${n.high1} gelb, ${n.high2} rot${stale ? " · veraltet, neu prüfen" : ""}`;
+  const shown = S.checkAll ? rows : rows.slice(0, 15);
+  box.innerHTML = `<div class="tablewrap"><table class="xs-table ck-table"><thead><tr><th></th><th>Netz</th><th>Gbit/s</th><th>IL dB</th><th>Auge %</th><th>Skew ps</th></tr></thead><tbody>${shown.map(({ r, st }) => {
+    const nm = r.name.split("/").pop();
+    const sk = r.skew_ps == null ? "–" : fmt(Math.abs(r.skew_ps), 1) + (r.skew_uncertain ? "?" : "");
+    return `<tr class="click" data-net="${r.net}" title="${esc(r.name)} · ${r.diff ? "Paar" : "einzeln"}, ${fmt(r.length_mm, 1)} mm, ${r.vias} Vias, RL ${fmt(r.rl_db, 1)} dB${r.stub_ghz != null ? ", Stub-Resonanz " + fmt(r.stub_ghz, 1) + " GHz" : ""}${r.error ? " · " + esc(r.error) : ""}"><td><span class="dot" style="background:${S.colors[st[0]]}" aria-label="${st[1]}"></span></td><td>${esc(nm)}</td><td>${fmt(r.gbps, r.gbps < 1 ? 2 : r.gbps % 1 ? 2 : 0)}</td><td>${fmt(r.il_nyq_db, 1)}</td><td>${r.error ? "–" : fmt(r.eye_height * 100, 0)}</td><td>${sk}</td></tr>`;
+  }).join("")}</tbody></table></div>
+  ${rows.length > 15 ? `<button class="btn small" id="ck-all">${S.checkAll ? "Nur die ersten 15" : `Alle ${rows.length} zeigen`}</button>` : ""}
+  <p class="note">Rot: Auge unter 40 % des Hubs. Gelb: Auge unter 65 %, Rückflussdämpfung unter 10 dB bis 1,5 × Nyquist, Skew über 5 % UI oder Via-Stub-Resonanz unter 2 × Nyquist. Grenzen sind Richtwerte für ein Board ohne Entzerrung, keine Spezifikation. „?“ = Pfad verzweigt, Skew unsicher.</p>`;
+  box.querySelectorAll("tr[data-net]").forEach((tr) => tr.onclick = () => { S.detailTab = "eye"; selectNet(+tr.dataset.net); });
+  if ($("ck-all")) $("ck-all").onclick = () => { S.checkAll = !S.checkAll; renderCheck(); };
+}
+
+function renderEye(body, r) {
+  const ch = r.channel, e = r.eye;
+  if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "kein Kanal")}</p>`; return; }
+  if (!e || e.error) { body.innerHTML = `<p class="err">${esc(e?.error || "kein Augendiagramm")}</p>`; return; }
+  const g = r.rate.gbps, uiPct = (x) => fmt(100 * x / e.ui_ps, 0);
+  let skew = "";
+  if (r.skew) {
+    const lim = 0.05 * e.ui_ps, sk = Math.abs(r.skew.skew_ps), ok = sk <= lim;
+    skew = `<span>Skew P/N <b class="${ok ? "" : "warn"}">${fmt(sk, 1)} ps</b> (${fmt(Math.abs(r.skew.skew_mm), 2)} mm) · Richtwert ≤ ${fmt(lim, 1)} ps (5 % UI)${r.skew.uncertain ? " · Pfad verzweigt oder über Bauteile geteilt, Skew daher unsicher" : ""}</span>`;
+  }
+  const warn = (e.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
+  body.innerHTML = `<div class="dstats"><span>${fmt(g, g < 1 ? 2 : g % 1 ? 2 : 0)} Gbit/s NRZ, PRBS7${r.rate.guess ? " (aus Netzklasse geschätzt)" : ""}</span><span>UI ${fmt(e.ui_ps, 1)} ps</span></div>
+    <div class="dstats"><span>Augenhöhe <b>${fmt(e.height * 100, 0)} %</b> des Hubs</span><span>Augenbreite <b>${fmt(e.width_ps, 1)} ps</b> (${uiPct(e.width_ps)} % UI)</span><span>ISI-Summe <b>${fmt(e.isi_sum * 100, 0)} %</b></span></div>
+    ${skew ? `<div class="dstats">${skew}</div>` : ""}
+    <div class="chart"><canvas id="ch-eye" style="height:220px" aria-label="Augendiagramm"></canvas></div>
+    <p class="note">Lineare Überlagerung der Einzelbit-Antwort aus S21 (Sender-Flanke ${fmt(rfParams().rise * 1e12, 0)} ps, angepasste Abschlüsse). Ohne Entzerrung, Jitter und Rauschen – ein optimistischer Wert für das passive Board, kein Compliance-Test.${ch.diff ? " Differentiell: ungerade Mode, Gleichtakt-Umwandlung durch Skew nicht enthalten." : ""}</p>${warn}`;
+  drawEye($("ch-eye"), e);
+}
+function drawEye(c, e) {
+  const d = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+  c.width = r.width * d; c.height = r.height * d;
+  const g = c.getContext("2d"); g.setTransform(d, 0, 0, d, 0, 0);
+  const cs = getComputedStyle(document.documentElement);
+  const muted = cs.getPropertyValue("--muted").trim(), line = cs.getPropertyValue("--line").trim();
+  const padL = 42, padR = 10, padT = 8, padB = 20, W = r.width - padL - padR, H = r.height - padT - padB;
+  // density image
+  const off = document.createElement("canvas"); off.width = e.cols; off.height = e.rows;
+  const og = off.getContext("2d"), img = og.createImageData(e.cols, e.rows);
+  const max = Math.max(1, ...e.hist), lm = Math.log1p(max);
+  const tmp = document.createElement("div"); tmp.style.color = cs.getPropertyValue("--pw-use"); document.body.appendChild(tmp);
+  const rgb = getComputedStyle(tmp).color.match(/\d+/g).map(Number); tmp.remove();
+  for (let i = 0; i < e.hist.length; i++) {
+    const v = e.hist[i]; if (!v) continue;
+    const a = 0.25 + 0.75 * Math.log1p(v) / lm;
+    img.data[i * 4] = rgb[0]; img.data[i * 4 + 1] = rgb[1]; img.data[i * 4 + 2] = rgb[2]; img.data[i * 4 + 3] = Math.round(255 * a);
+  }
+  og.putImageData(img, 0, 0);
+  g.clearRect(0, 0, r.width, r.height);
+  const Y = (v) => padT + (e.v_hi - v) / (e.v_hi - e.v_lo) * H, X = (col) => padL + col / e.cols * W;
+  g.font = "10.5px " + cs.getPropertyValue("--font-mono"); g.fillStyle = muted; g.strokeStyle = line; g.lineWidth = 1;
+  const ys = niceStep((e.v_hi - e.v_lo) * 100 / 4);
+  for (let v = Math.ceil(e.v_lo * 100 / ys) * ys; v <= e.v_hi * 100 + 1e-9; v += ys) {
+    g.beginPath(); g.moveTo(padL, Y(v / 100)); g.lineTo(padL + W, Y(v / 100)); g.stroke();
+    g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(fmt(Math.abs(v) < 1e-9 ? 0 : v, 0), padL - 6, Y(v / 100));
+  }
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (const [col, lab] of [[0, "0"], [e.cols / 4, "½"], [e.cols / 2, "1"], [3 * e.cols / 4, "1½"], [e.cols, "2 UI"]]) g.fillText(lab, Math.min(X(col), padL + W - 14), padT + H + 5);
+  g.textAlign = "left"; g.textBaseline = "top"; g.fillText("%", 2, 0);
+  g.imageSmoothingEnabled = true; g.drawImage(off, padL, padT, W, H);
+  // opening at the sampling phase
+  if (e.height > 0) {
+    const acc = cs.getPropertyValue("--fg").trim();
+    g.strokeStyle = acc; g.setLineDash([4, 3]); g.lineWidth = 1;
+    for (const cc of [e.cols / 4, 3 * e.cols / 4]) {
+      const y0 = Y(e.threshold + e.height / 2), y1 = Y(e.threshold - e.height / 2);
+      const hw = e.width_ps / e.ui_ps * e.cols / 4;
+      g.strokeRect(X(cc - hw), y0, X(cc + hw) - X(cc - hw), y1 - y0);
+    }
+    g.setLineDash([]);
   }
 }
 function renderVias(body, r) {
@@ -1067,7 +1212,7 @@ function drawLines(c, o) {
     const ys = niceStep((hi - lo) / 4);
     for (let v = Math.ceil(lo / ys) * ys; v <= hi + 1e-9; v += ys) {
       g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(padL + W, Y(v)); g.stroke();
-      g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(fmt(v, ys < 1 ? 1 : 0), padL - 6, Y(v));
+      g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(fmt(Math.abs(v) < 1e-9 ? 0 : v, ys < 1 ? 1 : 0), padL - 6, Y(v));
     }
     const xsS = niceStep((xMax - xMin) / 5);
     g.textAlign = "center"; g.textBaseline = "top";
@@ -1259,7 +1404,8 @@ $("fit").onclick = () => fitView();
 $("search").oninput = () => renderNets();
 $("opt-mask").onchange = (e) => { S.mask = e.target.checked; runAnalysis(); };
 $("opt-step").onchange = (e) => { S.step = parseFloat(e.target.value); runAnalysis(); };
-for (const id of ["rf-fmax", "rf-rise", "rf-rough", "rf-vias", "rf-bd"]) $(id).onchange = () => { if (S.selNet >= 0) selectNet(S.selNet, false); };
+$("ck-start").onclick = () => runCheck();
+for (const id of ["rf-fmax", "rf-rise", "rf-rough", "rf-vias", "rf-bd", "rf-rate"]) $(id).onchange = () => { if (S.selNet >= 0) selectNet(S.selNet, false); };
 $("opt-zone").onchange = (e) => { S.zoneLayer = parseInt(e.target.value, 10); draw(); };
 
 const ptrs = new Map(); let pinch = null, dragMoved = false;

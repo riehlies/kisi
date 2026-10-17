@@ -287,9 +287,42 @@ pub extern "C" fn kisi_pi_tree(p: *const u8, n: usize) -> i32 {
 
 // --- high frequency (M3) -----------------------------------------------------------
 
+/// Channel check of many nets (eye, loss at Nyquist, skew). Input:
+/// {"rf": RfParams, "items": [{"net": id, "gbps": f, "target": [z, diff] | null}]} → [CheckRow]
+#[no_mangle]
+pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let an = st.an.as_ref().ok_or("no analysis")?;
+        let params = st.params.as_ref().ok_or("no analysis")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let rp: kisi_core::rf::RfParams = serde_json::from_value(v["rf"].clone()).unwrap_or_default();
+        let mut rows = Vec::new();
+        for item in v["items"].as_array().ok_or("items missing")? {
+            let net = item["net"].as_u64().unwrap_or(0) as u32;
+            let gbps = item["gbps"].as_f64().unwrap_or(1.0);
+            let target = item["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
+            rows.push(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps));
+        }
+        Ok(serde_json::to_string(&rows).unwrap())
+    });
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
 /// Channel and crosstalk of one net. Input:
-/// {"net": id, "rf": RfParams, "target": [z, diff] | null}
-/// Output: {"channel": Channel | null, "error": str | null, "crosstalk": Crosstalk, "touchstone": str}
+/// {"net": id, "rf": RfParams, "target": [z, diff] | null, "bitrate": f | null, "prbs": 7}
+/// Output: {"channel", "error", "crosstalk", "touchstone", "eye": Eye | null, "skew": {...} | null}
 #[no_mangle]
 pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -304,14 +337,31 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
         let target = v["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
         let ch = kisi_core::rf::channel(b, an, net, &params.field, target, &rp);
         let xt = kisi_core::rf::crosstalk(b, an, net, &params.field, &rp);
+        let mut eye = serde_json::Value::Null;
+        let mut skew = serde_json::Value::Null;
         let (chv, err, ts) = match ch {
             Ok(c) => {
                 let ts = kisi_core::rf::touchstone(&c);
+                if let Some(br) = v["bitrate"].as_f64() {
+                    let ep = kisi_core::eye::EyeParams { bitrate: br, rise: rp.rise, prbs: v["prbs"].as_u64().unwrap_or(7) as u32, ..Default::default() };
+                    eye = match kisi_core::eye::eye(&c, &ep) {
+                        Ok(e) => serde_json::to_value(&e).unwrap(),
+                        Err(e) => serde_json::json!({"error": e}),
+                    };
+                }
+                if let (true, Some(pn)) = (c.diff, c.partner) {
+                    let rq = kisi_core::rf::RfParams { npts: 10, ..rp.clone() };
+                    if let Ok(pc) = kisi_core::rf::channel(b, an, pn, &params.field, target, &rq) {
+                        skew = serde_json::json!({"partner": pc.name, "delay_ps": pc.delay_ps, "length_mm": pc.length_mm,
+                            "skew_ps": c.delay_ps - pc.delay_ps, "skew_mm": c.length_mm - pc.length_mm,
+                            "uncertain": c.warnings.iter().chain(&pc.warnings).any(|w| w.contains("verzweigt") || w.contains("zerfallen"))});
+                    }
+                }
                 (serde_json::to_value(&c).unwrap(), serde_json::Value::Null, ts)
             }
             Err(e) => (serde_json::Value::Null, serde_json::Value::String(e), String::new()),
         };
-        Ok(serde_json::json!({"channel": chv, "error": err, "crosstalk": xt, "touchstone": ts}).to_string())
+        Ok(serde_json::json!({"channel": chv, "error": err, "crosstalk": xt, "touchstone": ts, "eye": eye, "skew": skew}).to_string())
     });
     match r {
         Ok(s) => {

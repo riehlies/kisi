@@ -11,7 +11,8 @@
     <div class="brand"><b>kisi</b><span id="boardName">–</span><small id="boardMeta"></small></div>
     <div class="grow"></div>
     <div class="seg" role="group" aria-label="Analyse">
-      <button id="view-si" aria-pressed="true">Signale</button>
+      <button id="view-si" aria-pressed="true">Impedanz</button>
+      <button id="view-ch" aria-pressed="false">Kanal</button>
       <button id="view-pi" aria-pressed="false">Versorgung</button>
     </div>
     <div class="seg" role="group" aria-label="Farbdarstellung" data-view="si">
@@ -121,19 +122,28 @@
         <label class="opt" for="rf-rise"><span>Anstiegszeit (10–90 %)</span><select id="rf-rise"><option value="20">20 ps</option><option value="35" selected>35 ps</option><option value="50">50 ps</option><option value="100">100 ps</option><option value="200">200 ps</option><option value="500">500 ps</option></select></label>
         <label class="opt" for="rf-rough"><span>Kupferrauheit</span><select id="rf-rough"><option value="Smooth">glatt</option><option value="Hvlp">HVLP</option><option value="Standard" selected>Standard-ED</option></select></label>
         <label class="opt" for="rf-vias"><span>Vias im Kanal</span><input type="checkbox" id="rf-vias" checked></label>
-        <label class="opt" for="rf-rate"><span>Datenrate fürs Auge</span><select id="rf-rate"><option value="auto" selected>aus Netzklasse</option><option value="0.48">0,48 Gbit/s (USB 2)</option><option value="1">1 Gbit/s (LVDS)</option><option value="2.5">2,5 GT/s (PCIe 1)</option><option value="3.2">3,2 GT/s (DDR4-3200)</option><option value="5">5 Gbit/s (USB 3, PCIe 2)</option><option value="6.4">6,4 GT/s (DDR5-6400)</option><option value="8">8 GT/s (PCIe 3)</option><option value="10">10 Gbit/s (USB 3.2)</option><option value="16">16 GT/s (PCIe 4)</option></select></label>
         <label class="opt" for="rf-bd"><span>Via-Stubs</span><select id="rf-bd"><option value="">wie im Layout</option><option value="0.2">alle rückgebohrt (Rest 0,2 mm)</option><option value="0">ohne Stubs</option></select></label>
       </div>
-      <p class="note">Verluste: Skin-Effekt nach Wheeler, Rauheit nach Huray (Voreinstellungen geschätzt), Dielektrikum nach Djordjevic-Sarkar aus εr und tanδ des Lagenaufbaus. Vias: koaxiale Abschnitte je Lage mit den gemessenen Antipads, Stubs als offene Leitungen, Rückstrompfad bei Ebenenwechsel. Ein Netz wählen, um Verluste, TDR, Vias und Übersprechen zu sehen.</p>
+      <p class="note">Verluste: Skin-Effekt nach Wheeler, Rauheit nach Huray (Voreinstellungen geschätzt), Dielektrikum nach Djordjevic-Sarkar aus εr und tanδ des Lagenaufbaus. Vias: koaxiale Abschnitte je Lage mit den gemessenen Antipads, Stubs als offene Leitungen, Rückstrompfad bei Ebenenwechsel. Ein Netz wählen, um Verluste, TDR, Vias und Übersprechen zu sehen. Auge und Prüfung mit Sender und Empfänger: Ansicht „Kanal“.</p>
     </section>
 
-    <section class="card" aria-labelledby="h-check" data-view="si">
+    <section class="card" aria-labelledby="h-ifc" data-view="ch" hidden>
+      <h2 id="h-ifc">Schnittstellen je Netzklasse</h2>
+      <div id="ifc-body"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-prof" data-view="ch" hidden>
+      <h2 id="h-prof">Profil: Standard, Sender, Empfänger</h2>
+      <div id="prof-body"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-check" data-view="ch" hidden>
       <h2 id="h-check">Kanalprüfung</h2>
-      <div class="fs-row"><span class="note" id="ck-text">Alle Netze mit Zielimpedanz: Dämpfung bei Nyquist, Rückflussdämpfung, Auge ohne Entzerrung, Skew im Paar, Via-Stubs.</span><button class="btn small primary" id="ck-start">Prüfen</button></div>
+      <div class="fs-row"><span class="note" id="ck-text"></span><button class="btn small primary" id="ck-start">Prüfen</button></div>
       <div id="ck-out"></div>
     </section>
 
-    <section class="card" aria-labelledby="h-nets" data-view="si">
+    <section class="card" aria-labelledby="h-nets" data-view="si ch">
       <h2 id="h-nets">Netze <em id="netCount"></em></h2>
       <input class="search" id="search" type="search" placeholder="Netz oder Klasse suchen" aria-label="Netz suchen">
       <div class="nets" id="nets"></div>
@@ -147,6 +157,7 @@
     <div class="legend" id="legend"></div>
     <div class="tip" id="tip" hidden></div>
     <section class="detail" id="detail" hidden aria-live="polite"></section>
+    <section class="detail" id="ch-detail" hidden aria-live="polite"></section>
     <section class="detail" id="pi-detail" hidden aria-live="polite"></section>
     <section class="balance" id="pi-balance" hidden aria-label="Leistungsbilanz"></section>
     <div class="drop" id="drop" hidden>.kicad_pcb, .kicad_pro oder kipida_config.json hier ablegen</div>

@@ -251,6 +251,12 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
 .marks { display: flex; flex-wrap: wrap; gap: 4px 14px; font-family: var(--font-mono); font-size: 11.5px; }
 .marks b { font-weight: 500; }
 .xs-table tr.click { cursor: pointer; }
+.pf-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px 0; }
+.pf-grid h4 { margin: 8px 0 2px; font-family: var(--font-display); font-weight: 600; font-size: 13px; }
+.pf { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; }
+.pf input { width: 76px; font-family: var(--font-mono); font-size: 12px; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--fg); text-align: right; }
+ul.src { margin: 4px 0 0; padding-left: 16px; font-size: 12px; color: var(--muted); }
+ul.src li { margin: 2px 0; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
 .ck-table td:first-child { max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
 .xs-table tr.click:hover td { background: var(--panel-2); }

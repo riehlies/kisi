@@ -12,7 +12,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null) {
     S.zones = S.engine.zones();
     S.name = name;
     S.overrides = {};
-    S.selNet = -1; S.hover = -1; S.check = null;
+    S.selNet = -1; S.hover = -1; S.check = null; S.chStatus = null; S.chCache = null;
     S.fieldPending = new Set(); S.gen++;
     if (S.pool) S.pool.reset();
     const n = S.scene.stackup.copper.length;
@@ -57,7 +57,7 @@ function runAnalysis(tParse) {
   for (const [id, r] of S.field) if (r.ok) field[id] = r;
   S.an = S.engine.analyze({ step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field });
   S.anGen++;
-  setTimeout(renderCheck, 0);
+  setTimeout(() => { renderCheck(); if (S.tab === "ch") { renderIfcCard(); renderProfCard(); } }, 0);
   const tAn = performance.now() - t0;
   $("timing").textContent = (tParse != null ? `Lesen ${Math.round(tParse)} ms · ` : "") + `Analyse ${Math.round(tAn)} ms`;
   preparePieces();

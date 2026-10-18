@@ -93,7 +93,7 @@ function selectNet(net, zoom = true) {
   S.selNet = net;
   renderFieldStatus();
   document.querySelectorAll(".net").forEach((b) => b.setAttribute("aria-current", String(+b.dataset.net === net)));
-  if (net < 0) { S.selPaths = null; $("detail").hidden = true; draw(); return; }
+  if (net < 0) { S.selPaths = null; $("detail").hidden = true; $("ch-detail").hidden = true; draw(); return; }
   buildPaths(net);
   const st = S.an.nets.find((x) => x.net === net);
   const t = classTarget(net), pc = S.pieces;
@@ -115,7 +115,7 @@ function selectNet(net, zoom = true) {
     <div class="dstats"><span>Länge <b>${fmt(st?.length, 1)} mm</b></span><span>Ziel <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
     <span>min/Ø/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b></span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
     <div class="tabs" role="tablist" aria-label="Ansicht des Netzes">
-      ${[["z", "Impedanz"], ["loss", "Verluste"], ["tdr", "TDR"], ["eye", "Auge"], ["via", "Vias"], ["xt", "Übersprechen"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
+      ${[["z", "Impedanz"], ["loss", "Verluste"], ["tdr", "TDR"], ["via", "Vias"], ["xt", "Übersprechen"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
     </div>
     <div id="tab-body"></div>`;
   d.hidden = false;
@@ -125,7 +125,8 @@ function selectNet(net, zoom = true) {
     d.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
     renderTab(net, t, rowsXs);
   });
-  renderTab(net, t, rowsXs);
+  if (S.detailTab === "eye") S.detailTab = "z";
+  if (S.tab === "ch") { d.hidden = true; renderChDetail(net); } else { $("ch-detail").hidden = true; renderTab(net, t, rowsXs); }
   if (zoom && isFinite(bb[0])) {
     const m = 1.5;
     fitView([bb[0] - m, bb[1] - m, bb[2] + m, bb[3] + m]);

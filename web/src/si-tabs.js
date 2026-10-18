@@ -8,23 +8,12 @@ function rfParams() {
     backdrill: $("rf-bd").value === "" ? null : parseFloat($("rf-bd").value),
   };
 }
-// data rate for the eye: explicit setting or a guess from class / net name
-function eyeRate(net) {
-  const v = $("rf-rate").value;
-  if (v !== "auto") return { gbps: parseFloat(v), guess: false };
-  // class name plus the net name without its sheet path ("/TS-PCIe Components/SYNC2" → "SYNC2")
-  const ci = S.scene.net_class[net] ?? 0, cls = (S.an.classes[ci]?.name || "") + " " + (S.scene.nets?.[net] || "").split("/").pop();
-  const rules = [[/USB_?D[PM+-]|USB2|D[PM]$/i, 0.48], [/PCIE|PCI_E|PE[TR]\d/i, 16], [/DDR5/i, 6.4], [/DDR4/i, 3.2], [/DDR|DQ|DQS/i, 3.2],
-    [/USB|SS[TR]X/i, 5], [/MGT|GTP|GTX|SERDES|SFP/i, 6.25], [/HDMI|TMDS/i, 3.0], [/SGMII|RGMII|ETH|RJ45/i, 1.25], [/LVDS|ADC|LCLK|FCLK/i, 1.0]];
-  for (const [re, g] of rules) if (re.test(cls)) return { gbps: g, guess: true };
-  return { gbps: 1.0, guess: true };
-}
 function rfFor(net) {
-  const t = classTarget(net), p = rfParams(), er = eyeRate(net);
-  const key = `${net}|${S.anGen}|${JSON.stringify(p)}|${er.gbps}`;
+  const t = classTarget(net), p = rfParams();
+  const key = `${net}|${S.anGen}|${JSON.stringify(p)}`;
   if (S.rfCache && S.rfCache.key === key) return S.rfCache.res;
   let res;
-  try { res = S.engine.rf({ net, rf: p, target: t ? [t.z, t.diff] : null, bitrate: er.gbps * 1e9 }); res.rate = er; }
+  try { res = S.engine.rf({ net, rf: p, target: t ? [t.z, t.diff] : null }); }
   catch (e) { res = { channel: null, error: e.message, crosstalk: { aggressors: [], geoms: [] }, touchstone: "" }; }
   S.rfCache = { key, res, net };
   return res;
@@ -41,7 +30,6 @@ function renderTab(net, t, rowsXs) {
   const r = rfFor(net), ch = r.channel;
   if (S.detailTab === "xt") return renderXt(body, r, net);
   if (S.detailTab === "via") return renderVias(body, r);
-  if (S.detailTab === "eye") return renderEye(body, r);
   if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "kein Kanal")}</p>`; return; }
   const src = ch.field_share > 0 ? `Feldlöser für ${Math.round(ch.field_share * 100)} % der Länge, sonst Formeln` : "Formeln (schnelle Analyse)";
   const head = `<div class="dstats"><span>${ch.diff ? "differentiell, Bezug " + fmt(2 * ch.z_ref, 0) + " Ω" : "Bezug " + fmt(ch.z_ref, 0) + " Ω"}</span><span>Pfad <b>${fmt(ch.length_mm, 1)} mm</b></span><span>Laufzeit <b>${fmt(ch.delay_ps, 0)} ps</b></span><span>Vias <b>${ch.vias}</b></span></div>`;

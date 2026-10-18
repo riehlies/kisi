@@ -14,7 +14,7 @@ $("search").oninput = () => renderNets();
 $("opt-mask").onchange = (e) => { S.mask = e.target.checked; runAnalysis(); };
 $("opt-step").onchange = (e) => { S.step = parseFloat(e.target.value); runAnalysis(); };
 $("ck-start").onclick = () => runCheck();
-for (const id of ["rf-fmax", "rf-rise", "rf-rough", "rf-vias", "rf-bd", "rf-rate"]) $(id).onchange = () => { if (S.selNet >= 0) selectNet(S.selNet, false); };
+for (const id of ["rf-fmax", "rf-rise", "rf-rough", "rf-vias", "rf-bd"]) $(id).onchange = () => { markCheckStale(); if (S.selNet >= 0) selectNet(S.selNet, false); };
 $("opt-zone").onchange = (e) => { S.zoneLayer = parseInt(e.target.value, 10); draw(); };
 
 const ptrs = new Map(); let pinch = null, dragMoved = false;

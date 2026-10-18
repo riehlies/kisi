@@ -41,6 +41,11 @@ function preparePieces() {
 
 function pieceColor(i) {
   const xs = S.an.cross_sections[S.pieces.xs[i]], C = S.colors;
+  if (S.tab === "ch") {
+    // channel view: result of the channel check per net, grey if not checked
+    const st = S.chStatus && S.chStatus.get(S.pieces.net[i]);
+    return st ? C[st] : C.none;
+  }
   if (S.mode === "type") {
     return { Microstrip: C.ms, Stripline: C.sl, EmbeddedMicrostrip: C.emb, NoReference: C.noref }[xs.kind];
   }

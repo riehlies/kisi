@@ -83,6 +83,11 @@ function renderNets() {
 function renderLegend() {
   const C = S.colors, L = $("legend");
   if (S.tab === "pi") return renderPiLegend();
+  if (S.tab === "ch") {
+    const it = [[C.ok, "Kanal in Ordnung"], [C.high1, "Grenze überschritten (gelb)"], [C.high2, "rot / Fehler"], [C.none, "nicht geprüft"]];
+    L.innerHTML = `<strong>Kanalprüfung</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
+    return;
+  }
   if (S.mode === "dev") {
     const it = [[C.low2, "< −10 %"], [C.low1, "−10 … −5 %"], [C.ok, "±5 % (im Ziel)"], [C.high1, "+5 … +10 %"], [C.high2, "> +10 %"], [C.none, "kein Ziel"], [C.noref, "keine Referenz"]];
     L.innerHTML = `<strong>Abweichung vom Ziel</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");

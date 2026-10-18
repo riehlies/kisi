@@ -30,3 +30,7 @@ jeweiligen Projekten und werden mit `tools/strip_pcb.py` verkleinert.
 * Veränderliche Werte (Normen, Bauteil-Parasitics) gehören in `data/*.json`, mit Quelle.
 * Forsténs Löser in `third_party/js_2d_fields` nie ändern; nur `web/solver/backend_forsten.js` anpassen.
 * Geschätzte Werte im UI und in MCP-Ausgaben als Schätzung kennzeichnen.
+
+## Commits
+* Autor: `riehlies <118917105+riehlies@users.noreply.github.com>` (in `.git/config` gesetzt).
+* Keine `Co-Authored-By`-, `Claude-Session`- oder ähnlichen Zeilen in Commit-Nachrichten oder PRs.

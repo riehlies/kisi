@@ -3,7 +3,7 @@
 
 use crate::geom::{self, BBox, P};
 use crate::sexpr::{Node, ParseError, Reader};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
@@ -80,6 +80,51 @@ impl Stackup {
             }
         }
         if s > 0.0 { h / s } else { 1.0 }
+    }
+}
+
+/// User changes to the stackup read from the file (viewer: "Lagenaufbau
+/// bearbeiten"). Values that are `None` keep the file value.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct StackupOverride {
+    pub dielectrics: Vec<DielectricOverride>,
+    pub mask_epsilon_r: Option<f64>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DielectricOverride {
+    /// index into `Stackup::dielectrics`
+    pub index: usize,
+    pub epsilon_r: Option<f64>,
+    pub loss_tangent: Option<f64>,
+    /// mm
+    pub thickness: Option<f64>,
+}
+
+impl Stackup {
+    /// Copy of the stackup with the overrides applied (invalid values ignored).
+    pub fn with_overrides(&self, ov: &StackupOverride) -> Stackup {
+        let mut s = self.clone();
+        for o in &ov.dielectrics {
+            let Some(d) = s.dielectrics.get_mut(o.index) else { continue };
+            if let Some(v) = o.epsilon_r.filter(|v| *v >= 1.0 && *v < 20.0) {
+                d.epsilon_r = v;
+            }
+            if let Some(v) = o.loss_tangent.filter(|v| *v >= 0.0 && *v < 0.2) {
+                d.loss_tangent = v;
+            }
+            if let Some(v) = o.thickness.filter(|v| *v > 0.0 && *v < 10.0) {
+                d.thickness = v;
+            }
+        }
+        if let Some(v) = ov.mask_epsilon_r.filter(|v| *v >= 1.0 && *v < 20.0) {
+            for m in [&mut s.mask_top, &mut s.mask_bottom].into_iter().flatten() {
+                m.epsilon_r = v;
+            }
+        }
+        s
     }
 }
 

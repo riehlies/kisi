@@ -9,8 +9,6 @@
 
 const PROF_KEY = "kisi.profiles.v1";
 const ifcKey = () => "kisi.ifc.v1." + S.name;
-const lsGet = (k) => { try { const t = localStorage.getItem(k); return t ? JSON.parse(t) : null; } catch (e) { return null; } };
-const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } };
 const IFC = (typeof DATA !== "undefined" && DATA.interfaces) || { defaults: { limits: {}, sources: [] }, profiles: [] };
 
 // deep merge of plain objects (overrides win)

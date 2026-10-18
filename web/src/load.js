@@ -49,13 +49,27 @@ function guessPlaneLayer() {
   return best;
 }
 
+// stackup changes per board (viewer only; the file is not modified)
+const stackKey = () => "kisi.stack.v1." + S.name;
+function stackOv() {
+  if (!S.stackOv || S.stackOv.board !== S.name) S.stackOv = { board: S.name, dielectrics: {}, ...(lsGet(stackKey()) || {}) };
+  S.stackOv.board = S.name;
+  return S.stackOv;
+}
+function stackEff(i) { return { ...S.scene.stackup.dielectrics[i], ...(stackOv().dielectrics[i] || {}) }; }
+function stackEdited(i) { return !!stackOv().dielectrics[i]; }
+function stackParam() {
+  return { dielectrics: Object.entries(stackOv().dielectrics || {}).map(([i, o]) => ({ index: +i, ...o })) };
+}
+
 function runAnalysis(tParse) {
   const t0 = performance.now();
   const targets = {};
   for (const [k, v] of Object.entries(S.overrides)) targets[k] = v;
   const field = {};
   for (const [id, r] of S.field) if (r.ok) field[id] = r;
-  S.an = S.engine.analyze({ step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field });
+  S.an = S.engine.analyze({ step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field, stackup: stackParam() });
+  S.chCache = null; S.rfCache = null;
   S.anGen++;
   setTimeout(() => { renderCheck(); if (S.tab === "ch") { renderIfcCard(); renderProfCard(); } }, 0);
   const tAn = performance.now() - t0;

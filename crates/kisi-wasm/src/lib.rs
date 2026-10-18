@@ -10,6 +10,8 @@ use std::cell::RefCell;
 #[derive(Default)]
 struct State {
     board: Option<Board>,
+    /// stackup as read from the file (overrides are applied to a copy)
+    stackup_file: Option<kisi_core::board::Stackup>,
     pro: Option<String>,
     out: Vec<u8>,
     zone_pts: Vec<f32>,
@@ -69,7 +71,11 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
                     b.warnings.push(format!("Projektdatei: {e}"));
                 }
             }
-            ST.with(|st| st.borrow_mut().board = Some(b));
+            ST.with(|st| {
+                let mut st = st.borrow_mut();
+                st.stackup_file = b.stackup.clone();
+                st.board = Some(b);
+            });
             set_out(String::new());
             0
         }
@@ -138,8 +144,17 @@ pub extern "C" fn kisi_analyze(p: *const u8, n: usize) -> i32 {
             }
         }
     };
+    // optional stackup overrides: {"stackup": {"dielectrics": [{index, epsilon_r, loss_tangent, thickness}], "mask_epsilon_r"}}
+    let ov: kisi_core::board::StackupOverride = serde_json::from_str::<serde_json::Value>(&txt)
+        .ok()
+        .and_then(|v| serde_json::from_value(v["stackup"].clone()).ok())
+        .unwrap_or_default();
     let s = ST.with(|st| {
         let mut st = st.borrow_mut();
+        let file = st.stackup_file.clone();
+        if let (Some(b), Some(f)) = (st.board.as_mut(), file) {
+            b.stackup = Some(f.with_overrides(&ov));
+        }
         let an = st.board.as_ref().map(|b| analyze(b, &params))?;
         let js = serde_json::to_string(&an).unwrap();
         st.an = Some(an);

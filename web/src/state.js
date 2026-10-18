@@ -56,3 +56,6 @@ function turboRGB(x) {
   return [c(r), c(g), c(b)];
 }
 const ABS_MIN = 25, ABS_MAX = 125;
+// browser storage (per viewer; may be unavailable)
+const lsGet = (k) => { try { const t = localStorage.getItem(k); return t ? JSON.parse(t) : null; } catch (e) { return null; } };
+const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } };

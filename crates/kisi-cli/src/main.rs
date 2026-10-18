@@ -25,6 +25,7 @@ fn main() {
     let mut s2p_out: Option<String> = None;
     let mut eye_gbps: Option<f64> = None;
     let mut pdn_net: Option<String> = None;
+    let mut stackup_ov: Option<String> = None;
     let mut field_in: Option<String> = None;
     let mut params = Params::default();
     let mut i = 2;
@@ -51,6 +52,10 @@ fn main() {
             "--rails" => list_rails = true,
             "--rf" => {
                 rf_net = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--stackup" => {
+                stackup_ov = args.get(i + 1).cloned();
                 i += 1;
             }
             "--pdn" => {
@@ -108,6 +113,12 @@ fn main() {
         if let Err(e) = apply_project(&mut board, &s) {
             eprintln!("warning: project file: {e}");
         }
+    }
+    if let Some(p) = &stackup_ov {
+        // {"dielectrics": [{"index": 0, "epsilon_r": 3.6, "loss_tangent": 0.009, "thickness": 0.11}], "mask_epsilon_r": 3.8}
+        let ov: kisi_core::board::StackupOverride = serde_json::from_str(&std::fs::read_to_string(p).expect("read stackup overrides")).expect("stackup JSON");
+        let su = board.stackup().with_overrides(&ov);
+        board.stackup = Some(su);
     }
     if let Some(p) = &field_in {
         // [{key|id, z0?, zodd?, zeven?, eeff?, ...}] as written by tools/solve_xs.mjs

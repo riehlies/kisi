@@ -14,20 +14,39 @@ function renderSide() {
   $("k-noref").textContent = fmt(noref, 0);
   $("warnings").innerHTML = (sc.warnings || []).map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
   // stackup
-  let total = 0; su.copper.forEach((c) => total += c.thickness); su.dielectrics.forEach((d) => total += d.thickness);
+  let total = 0; su.copper.forEach((c) => total += c.thickness); su.dielectrics.forEach((d, i) => total += stackEff(i).thickness);
   $("stackTotal").textContent = fmt(total, 2) + " mm";
   const rows = [];
   su.copper.forEach((c, i) => {
     rows.push(`<div class="st-row st-cu${S.layerOn[i] ? "" : " off"}"><label for="lay-${i}"><input type="checkbox" id="lay-${i}" data-l="${i}" ${S.layerOn[i] ? "checked" : ""}><span class="st-name">${esc(c.name)}</span></label><div class="st-bar"></div><span class="st-meta">${fmt(c.thickness * 1000, 1)} µm</span></div>`);
-    const d = su.dielectrics[i];
-    if (d) {
+    const d0 = su.dielectrics[i];
+    if (d0) {
+      const d = stackEff(i), ed = stackEdited(i);
       const hpx = Math.max(6, Math.min(40, d.thickness * 60));
-      rows.push(`<div class="st-row st-di"><span class="st-name muted">${esc(d.kind || "")}</span><div class="st-bar" style="height:${hpx}px"></div><span class="st-meta">${esc(d.material)} · ${fmt(d.thickness * 1000, 0)} µm · εr ${fmt(d.epsilon_r, 2)}</span></div>`);
+      const meta = S.stackEdit
+        ? `<span class="st-edit"><input type="number" step="0.01" data-di="${i}" data-k="epsilon_r" value="${d.epsilon_r}" aria-label="εr ${esc(d0.name)}" title="εr"><input type="number" step="0.001" data-di="${i}" data-k="loss_tangent" value="${d.loss_tangent}" aria-label="tanδ ${esc(d0.name)}" title="tanδ"><input type="number" step="1" data-di="${i}" data-k="thickness" value="${Math.round(d.thickness * 1000)}" aria-label="Dicke µm ${esc(d0.name)}" title="Dicke µm"></span>`
+        : `${esc(d0.material)} · ${fmt(d.thickness * 1000, 0)} µm · εr ${fmt(d.epsilon_r, 2)} · tanδ ${fmt(d.loss_tangent, 3)}${ed ? " *" : ""}`;
+      rows.push(`<div class="st-row st-di${ed ? " edited" : ""}"><span class="st-name muted">${esc(d0.kind || "")}</span><div class="st-bar" style="height:${hpx}px"></div><span class="st-meta">${meta}</span></div>`);
     }
   });
   if (!su.from_file) rows.unshift(`<p class="err">Kein Lagenaufbau in der Datei – Annahmen</p>`);
+  const nEd = Object.keys(stackOv().dielectrics || {}).length;
+  rows.push(`<div class="fs-row"><span class="note">${S.stackEdit ? "Spalten: εr · tanδ · Dicke µm. Wirkt auf Impedanz, Verluste, Feldlöser und PDN." : nEd ? `${nEd} Lage(n) geändert (*), gespeichert in diesem Browser.` : "Werte aus der Datei."}</span><span>${nEd && !S.stackEdit ? `<button class="btn small" id="st-reset">Datei-Werte</button> ` : ""}<button class="btn small" id="st-edit">${S.stackEdit ? "Fertig" : "Bearbeiten"}</button></span></div>`);
   $("stack").innerHTML = rows.join("");
   $("stack").querySelectorAll("input[data-l]").forEach((el) => el.onchange = () => { S.layerOn[+el.dataset.l] = el.checked; renderLayerChips(); renderSide(); draw(); });
+  $("st-edit").onclick = () => { S.stackEdit = !S.stackEdit; renderSide(); };
+  if ($("st-reset")) $("st-reset").onclick = () => { lsSet(stackKey(), null); S.stackOv = null; runAnalysis(); };
+  $("stack").querySelectorAll("input[data-di]").forEach((el) => el.onchange = () => {
+    const i = +el.dataset.di, k = el.dataset.k, f = S.scene.stackup.dielectrics[i];
+    let v = parseFloat(el.value);
+    if (!isFinite(v)) return;
+    if (k === "thickness") v /= 1000;
+    const ov = stackOv(), o = ov.dielectrics[i] || (ov.dielectrics[i] = {});
+    if (Math.abs(v - f[k]) < 1e-9) delete o[k]; else o[k] = v;
+    if (!Object.keys(o).length) delete ov.dielectrics[i];
+    lsSet(stackKey(), ov);
+    runAnalysis();
+  });
   renderLayerChips();
   // targets
   const tgRows = [`<span class="h">Klasse</span><span class="h">Ziel Ω</span><span class="h">Art</span>`];

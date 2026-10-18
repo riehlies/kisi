@@ -382,6 +382,7 @@ name = "kisi-si"
 version = "0.1.0"
 dependencies = [
  "kisi-board",
+ "regex-lite",
  "serde",
  "serde_json",
 ]
@@ -601,6 +602,12 @@ name = "reborrow"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03251193000f4bd3b042892be858ee50e8b3719f2b08e5833ac4353724632430"
+
+[[package]]
+name = "regex-lite"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab834c73d247e67f4fae452806d17d3c7501756d98c8808d7c9c7aa7d18f973"
 
 [[package]]
 name = "same-file"

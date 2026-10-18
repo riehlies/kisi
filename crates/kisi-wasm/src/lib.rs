@@ -302,6 +302,44 @@ pub extern "C" fn kisi_pi_tree(p: *const u8, n: usize) -> i32 {
 
 // --- high frequency (M3) -----------------------------------------------------------
 
+/// Verdict of a channel against a profile: {"metrics", "profile", "limits"} → Verdict
+#[no_mangle]
+pub extern "C" fn kisi_judge(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = (|| -> Result<String, String> {
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let m: kisi_core::profile::Metrics = serde_json::from_value(v["metrics"].clone()).map_err(|e| e.to_string())?;
+        let p: kisi_core::profile::Profile = serde_json::from_value(v["profile"].clone()).map_err(|e| e.to_string())?;
+        let l: kisi_core::profile::Limits = serde_json::from_value(v["limits"].clone()).unwrap_or_default();
+        Ok(serde_json::to_string(&kisi_core::profile::judge(&m, &p, &l)).unwrap())
+    })();
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
+/// Automatic profile of a net from the built-in rules: {"net", "class", "diff"} → "id"
+#[no_mangle]
+pub extern "C" fn kisi_profile_auto(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let v: serde_json::Value = serde_json::from_str(&txt).unwrap_or_default();
+    let ps = PROFILES.with(|p| p.clone());
+    let id = ps.auto(v["net"].as_str().unwrap_or(""), v["class"].as_str().unwrap_or(""), v["diff"].as_bool().unwrap_or(false)).to_string();
+    set_out(id);
+    0
+}
+
+thread_local! {
+    static PROFILES: kisi_core::profile::Profiles = kisi_core::profile::Profiles::builtin();
+}
+
 /// Power tree from PI_REG / PI_LOAD fields: {"spec": TreeSpec, "warnings": [..]} or null.
 #[no_mangle]
 pub extern "C" fn kisi_pi_tree_fields() -> i32 {

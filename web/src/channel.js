@@ -44,41 +44,35 @@ function classAssign() {
 }
 function className(net) { const ci = S.scene.net_class[net] ?? 0; return S.an.classes[ci]?.name || "Default"; }
 function autoProfile(net) {
-  const nm = (S.scene.nets[net] || "").split("/").pop(), cls = className(net);
-  const test = (s) => IFC.profiles.find((p) => (p.match || []).some((re) => new RegExp(re, "i").test(s)));
-  const p = test(nm) || test(cls);
-  if (p) return p.id;
   const t = classTarget(net);
-  return t && t.diff ? "diff100" : "se50";
+  return S.engine.profileAuto({ net: S.scene.nets[net] || "", class: className(net), diff: !!(t && t.diff) });
 }
 function profileIdOf(net) { return classAssign()[className(net)] || autoProfile(net); }
 function profileOf(net) { return profile(profileIdOf(net)) || profile("se50"); }
 
-// ---- metrics and judgement (shared by the table and the net detail)
+// ---- metrics and judgement (the verdict comes from kisi-si::profile via WASM,
+// identical for viewer, CLI and MCP; here only the presentation)
+const ST_MAP = { green: "ok", yellow: "high1", red: "high2" };
 function judge(m, p) {
-  const L = p.limits, nyq = p.rate_gbps / 2, ui = 1000 / p.rate_gbps;
-  const skewLim = L.skew_ps != null ? L.skew_ps : 0.05 * ui;
-  const rows = [];
-  const add = (key, name, value, limit, st, note) => rows.push({ key, name, value, limit, st, note });
-  if (m.error) add("err", "Berechnung", m.error, "", "high2");
-  if (m.z_mean != null) {
-    const zl = p.z * (1 - p.z_tol_pct / 100), zh = p.z * (1 + p.z_tol_pct / 100);
-    add("z", "Impedanz Ø (min … max)", `${fmt(m.z_mean, 1)} Ω (${fmt(m.z_min, 0)} … ${fmt(m.z_max, 0)})`, `${fmt(zl, 1)} … ${fmt(zh, 1)} Ω`, m.z_mean < zl || m.z_mean > zh ? "high1" : "ok",
-      "Mittelwert entlang der Leitung aus der Impedanzanalyse; min/max enthalten Pads und kurze Engstellen");
-  }
-  if (m.eye_h != null) {
-    const st = m.eye_h < L.eye_h_red ? "high2" : m.eye_h < L.eye_h_yellow ? "high1" : "ok";
-    add("eye_h", "Augenhöhe", `${fmt(m.eye_h * 100, 0)} % (${fmt(m.eye_h * p.tx.swing_mv, 0)} mV)`, `rot < ${fmt(L.eye_h_red * 100, 0)} %, gelb < ${fmt(L.eye_h_yellow * 100, 0)} %`, st);
-  }
-  if (m.eye_w_ui != null) add("eye_w", "Augenbreite", `${fmt(m.eye_w_ui * 100, 0)} % UI`, `≥ ${fmt(L.eye_w_min_ui * 100, 0)} % UI`, m.eye_w_ui < L.eye_w_min_ui ? "high1" : "ok");
-  if (m.il_nyq_db != null) add("il", `Dämpfung bei ${fmt(nyq, nyq < 1 ? 2 : 1)} GHz`, `${fmt(m.il_nyq_db, 2)} dB`, L.il_board_db != null ? `≥ ${fmt(L.il_board_db, 1)} dB` : "keine Grenze", L.il_board_db != null && m.il_nyq_db < L.il_board_db ? "high1" : "ok");
-  if (m.rl_db != null) add("rl", "Rückflussdämpfung", `${fmt(m.rl_db, 1)} dB`, `≥ ${fmt(L.rl_min_db, 0)} dB bis ${fmt(1.5 * nyq, 1)} GHz`, m.rl_db < L.rl_min_db ? "high1" : "ok");
-  if (m.skew_ps != null) add("skew", "Skew im Paar", `${fmt(Math.abs(m.skew_ps), 1)} ps${m.skew_uncertain ? " (unsicher)" : ""}`, `≤ ${fmt(skewLim, 1)} ps`, !m.skew_uncertain && Math.abs(m.skew_ps) > skewLim ? "high1" : "ok",
-    m.skew_uncertain ? "Pfad verzweigt oder über Bauteile geteilt" : "");
-  if (m.stub_ghz != null) add("stub", "Via-Stub-Resonanz", `${fmt(m.stub_ghz, 1)} GHz`, `> ${fmt(L.stub_factor * nyq, 1)} GHz`, m.stub_ghz < L.stub_factor * nyq ? "high1" : "ok");
-  const rank = { high2: 0, high1: 1, ok: 2 };
-  const worst = rows.reduce((w, r) => (rank[r.st] < rank[w] ? r.st : w), "ok");
-  return { rows, status: worst };
+  let v;
+  try { v = S.engine.judge({ metrics: m, profile: p, limits: p.limits }); }
+  catch (e) { return { rows: [{ key: "err", name: "Bewertung", value: e.message, limit: "", st: "high2" }], status: "high2" }; }
+  const nyq = p.rate_gbps / 2, f1 = (x, d = 1) => fmt(x, d);
+  const rows = v.criteria.map((c) => {
+    const st = ST_MAP[c.status];
+    switch (c.key) {
+      case "error": return { key: c.key, name: "Berechnung", value: m.error || "Fehler", limit: "", st };
+      case "z": return { key: c.key, name: "Impedanz Ø (min … max)", value: `${f1(c.value)} Ω (${fmt(m.z_min, 0)} … ${fmt(m.z_max, 0)})`, limit: `${f1(c.lo)} … ${f1(c.hi)} Ω`, st, note: c.note };
+      case "eye_h": return { key: c.key, name: "Augenhöhe", value: `${fmt(c.value * 100, 0)} % (${fmt(c.value * p.tx.swing_mv, 0)} mV)`, limit: `rot < ${fmt(c.red_below * 100, 0)} %, gelb < ${fmt(c.lo * 100, 0)} %`, st };
+      case "eye_w": return { key: c.key, name: "Augenbreite", value: `${fmt(c.value * 100, 0)} % UI`, limit: `≥ ${fmt(c.lo * 100, 0)} % UI`, st };
+      case "il": return { key: c.key, name: `Dämpfung bei ${fmt(nyq, nyq < 1 ? 2 : 1)} GHz`, value: `${fmt(c.value, 2)} dB`, limit: c.lo != null ? `≥ ${f1(c.lo)} dB` : "keine Grenze", st };
+      case "rl": return { key: c.key, name: "Rückflussdämpfung", value: `${f1(c.value)} dB`, limit: `≥ ${fmt(c.lo, 0)} dB bis ${f1(1.5 * nyq)} GHz`, st };
+      case "skew": return { key: c.key, name: "Skew im Paar", value: `${f1(c.value)} ps${m.skew_uncertain ? " (unsicher)" : ""}`, limit: `≤ ${f1(c.hi)} ps`, st, note: c.note };
+      case "stub": return { key: c.key, name: "Via-Stub-Resonanz", value: `${f1(c.value)} GHz`, limit: `> ${f1(c.lo)} GHz`, st };
+      default: return { key: c.key, name: c.key, value: String(c.value), limit: "", st };
+    }
+  });
+  return { rows, status: ST_MAP[v.status] };
 }
 const ST_NAME = { ok: "grün", high1: "gelb", high2: "rot" };
 

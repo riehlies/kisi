@@ -13,6 +13,7 @@ pub use kisi_board::{board, geom, num};
 pub mod analytic;
 pub mod extract;
 pub mod eye;
+pub mod profile;
 pub mod rf;
 pub mod via;
 pub mod xsgeom;

@@ -28,6 +28,8 @@ class Engine {
   piFields() { if (this.k.kisi_pi_fields() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   rf(req) { this.call(this.k.kisi_rf, JSON.stringify(req)); return JSON.parse(this.out()); }
   pdn(req) { this.call(this.k.kisi_pdn, JSON.stringify(req)); return JSON.parse(this.out()); }
+  judge(req) { this.call(this.k.kisi_judge, JSON.stringify(req)); return JSON.parse(this.out()); }
+  profileAuto(req) { this.call(this.k.kisi_profile_auto, JSON.stringify(req)); return this.out(); }
   piTreeFields() { this.k.kisi_pi_tree_fields(); return JSON.parse(this.out()); }
   piTree(spec) { this.call(this.k.kisi_pi_tree, JSON.stringify(spec)); return JSON.parse(this.out()); }
   piKipida(text) { this.call(this.k.kisi_pi_kipida, text); return JSON.parse(this.out()); }

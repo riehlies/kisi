@@ -3,7 +3,7 @@ python3 shot_m3.py <kisi.html> <outdir>"""
 import sys, time
 from playwright.sync_api import sync_playwright
 src, out = sys.argv[1], sys.argv[2]
-open(out + "/wrapped.html", "w", encoding="utf-8").write("<!doctype html><html><head><meta charset='utf-8'><style>[hidden]{display:none!important}body{margin:0}</style></head><body>" + open(src, encoding="utf-8").read() + "</body></html>")
+open(out + "/wrapped.html", "w", encoding="utf-8").write("<!doctype html><html><head><meta charset='utf-8'><style>body{margin:0}</style></head><body>" + open(src, encoding="utf-8").read() + "</body></html>")
 with sync_playwright() as p:
     b = p.chromium.launch()
     ctx = b.new_context(viewport={"width": 1440, "height": 900})

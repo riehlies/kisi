@@ -4,7 +4,7 @@ import sys, time
 from playwright.sync_api import sync_playwright
 src, outdir = sys.argv[1], sys.argv[2]
 secs = float(sys.argv[3]) if len(sys.argv) > 3 else 40
-page_html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><style>[hidden]{display:none!important}body{margin:0}</style></head><body>" + open(src, encoding="utf-8").read() + "</body></html>"
+page_html = "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{margin:0}</style></head><body>" + open(src, encoding="utf-8").read() + "</body></html>"
 open(outdir + "/wrapped.html", "w", encoding="utf-8").write(page_html)
 with sync_playwright() as p:
     b = p.chromium.launch()

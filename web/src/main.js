@@ -50,8 +50,23 @@ async function loadPreload(pl) {
 $("sample-ts").onclick = () => loadSample("ts");
 $("sample-vna").onclick = () => loadSample("vna");
 
-function showBusy(t) { $("busy").textContent = t; $("busy").hidden = false; }
+let busySince = 0;
+function showBusy(t) { $("busy").textContent = t; $("busy").hidden = false; busySince = performance.now(); }
 function hideBusy() { $("busy").hidden = true; }
+// show uncaught errors on the overlay instead of leaving a stale "busy" message
+function busyError(msg) {
+  console.error(msg);
+  const b = $("busy");
+  if (b.hidden) { $("warnings").innerHTML = `<span class="err">${esc(msg)}</span>`; return; }
+  b.innerHTML = `<div class="busy-err"><b>Error</b><br>${esc(msg)}<br><small>Details in the browser console (F12).</small></div>`;
+}
+window.addEventListener("error", (e) => busyError(e.message || String(e.error)));
+window.addEventListener("unhandledrejection", (e) => busyError(e.reason && e.reason.message ? e.reason.message : String(e.reason)));
+setInterval(() => {
+  const b = $("busy");
+  if (!b.hidden && !b.querySelector(".busy-err, small") && performance.now() - busySince > 30000)
+    b.innerHTML = `<div>${esc(b.textContent)}<br><small>still working after 30 s – if nothing changes, please check the browser console (F12)</small></div>`;
+}, 5000);
 
 // theme changes
 const reTheme = () => { readColors(); if (S.scene) { buildPaths(); if (S.selNet >= 0) selectNet(S.selNet, false); renderLegend(); renderNets(); } draw(); };

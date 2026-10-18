@@ -6,10 +6,10 @@ function setTab(t) {
   document.querySelectorAll("[data-view]").forEach((el) => { el.hidden = !el.dataset.view.split(" ").includes(t); });
   $("detail").hidden = true; $("ch-detail").hidden = true;
   $("pi-detail").hidden = true;
-  $("pi-balance").hidden = true; $("legend").hidden = false; $("layers").hidden = false;
+  $("pi-balance").hidden = true; $("ch-overview").hidden = true; $("legend").hidden = false; $("layers").hidden = false;
   $("tip").hidden = true;
   if (t === "pi") { fitRail(); renderPi(); return; }
-  if (t === "ch") { renderIfcCard(); renderProfCard(); renderCheck(); }
+  if (t === "ch") { renderIfcCard(); renderProfCard(); renderCheck(); setChMode(S.chMode || "o"); if (S.chMode === "o") return; }
   buildPaths(); renderLayerChips(); renderLegend();
   if (S.selNet >= 0) selectNet(S.selNet, false); else fitView();
 }

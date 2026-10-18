@@ -25,7 +25,7 @@ interface; data that changes (standards, component values) lives in files, not i
 | Crate | Contents | depends on |
 |---|---|---|
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, viewer scene, `num` | – |
-| `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,crosstalk}`, `via`, `eye`, `profile` | kisi-board |
+| `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,crosstalk}`, `via`, `eye`, `profile`, `topology` (device-to-device lanes) | kisi-board |
 | `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `pdn` (Z(f), plane model) | kisi-board, kisi-sparse |
 | `kisi-core` | facade with stable paths (`kisi_core::rf`, …) and `service` | the three above |
 | `kisi-wasm` | C ABI for the browser | kisi-core |
@@ -41,7 +41,7 @@ viewer (via WASM), CLI and MCP show the same result.
 * `index.html` – markup only; `css/kisi.css`; scripts in `src/` in the order of
   `src/manifest.json` (shared scope):
   `engine` (WASM) · `state` · `load` · `geometry` · `draw` · `charts` · `net-detail` · `si-tabs`
-  (impedance view) · `channel` (channel view) · `panels` · `interaction` · `field-pool` ·
+  (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `panels` · `interaction` · `field-pool` ·
   `field-cache` · `pi-dc` · `pi-pdn` · `pi-balance` · `views` · `main` (start-up, files, hand-over).
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html` (WASM, field solver modules,
   `data/*.json` and example boards embedded).
@@ -51,6 +51,7 @@ viewer (via WASM), CLI and MCP show the same result.
   net class → profile assignment, power settings.
 
 ## Data (`data/`)
+* `components.json` – parasitics of passives in a channel (per package) and reference-designator roles.
 * `interfaces.json` – interface profiles with sources (standard / guideline / kisi guide value),
   transmitter/receiver, limits, assignment rules. Built into viewer, CLI and MCP; the MCP server
   can load its own file via `KISI_PROFILES`.

@@ -10,6 +10,7 @@ use crate::eye;
 use crate::extract::{analyze, Analysis, Params};
 use crate::profile::{judge, Metrics, Profiles, Status};
 use crate::rf::{self, RfParams};
+use crate::topology;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -126,15 +127,124 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
 
 /// Channel check of all nets with a target (one row per pair) against their profiles.
 /// `assign`: class name → profile id (others automatic).
+fn pin(e: &topology::EndPin) -> String {
+    format!("{}.{}", e.refdes, e.pin)
+}
+
+fn lane_json(p: &Project, l: &topology::Lane) -> Value {
+    let rev = l.rx_end == 0;
+    let (tx, rx) = if l.ends.len() == 2 { (Some(&l.ends[if rev { 1 } else { 0 }]), Some(&l.ends[if rev { 0 } else { 1 }])) } else { (None, None) };
+    json!({
+        "lane": l.name, "kind": l.kind, "diff": l.diff,
+        "from": tx.map(pin), "to": rx.map(pin), "direction": l.direction,
+        "ends": l.ends.iter().map(pin).collect::<Vec<_>>(),
+        "nets": l.nets.iter().map(|&n| p.board.net_name(n)).collect::<Vec<_>>(),
+        "series_parts": l.hops.iter().filter_map(|h| match h { topology::Hop::Series { part } => Some(format!("{} {} ({})", part.refdes, part.value, part.package)), _ => None }).collect::<Vec<_>>(),
+        "terminations": l.shunts.iter().map(|s| format!("{} {} {}", s.part.refdes, s.part.value, if s.across { "across the pair".to_string() } else { format!("to {}", p.board.net_name(s.to)) })).collect::<Vec<_>>(),
+        "branches": l.branches.len(),
+        "not_modelled": l.others,
+    })
+}
+
+/// Device-to-device lanes grouped into buses, with the profile each bus gets.
+pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>) -> Value {
+    let cd = topology::ComponentData::builtin();
+    let buses = topology::buses(&p.board, &p.an, &cd);
+    let list: Vec<Value> = buses
+        .iter()
+        .map(|b| {
+            let l0 = &b.lanes[0];
+            let tnet = l0.nets.iter().copied().find(|&n| p.target(n).is_some()).unwrap_or(l0.nets[0]);
+            let pid = assign.get(&b.class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &b.class, l0.diff).to_string());
+            json!({"bus": b.name, "kind": b.kind, "class": b.class, "profile": pid, "devices": b.devices, "values": b.values,
+                "lanes": b.lanes.iter().map(|l| lane_json(p, l)).collect::<Vec<_>>()})
+        })
+        .collect();
+    json!({
+        "buses": list,
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; DNP parts are skipped. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+    })
+}
+
+/// Channel check of all device-to-device lanes (plus nets with a target that are
+/// not on any lane), judged against the interface profiles.
 pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams) -> Value {
     let field = HashMap::new();
+    let cd = topology::ComponentData::builtin();
+    let buses = topology::buses(&p.board, &p.an, &cd);
+    let wanted = |names: &mut dyn Iterator<Item = &str>| -> bool {
+        match only {
+            None => true,
+            Some(o) => {
+                for nm in names {
+                    if o.iter().any(|n| n == nm || nm.rsplit('/').next() == Some(n.as_str())) {
+                        return true;
+                    }
+                }
+                false
+            }
+        }
+    };
     let mut rows = Vec::new();
-    for st in &p.an.nets {
-        let Some(t) = st.target else { continue };
-        if let Some(o) = only {
-            if !o.iter().any(|n| n == &st.name || st.name.rsplit('/').next() == Some(n.as_str())) {
+    let mut on_lane: std::collections::HashSet<u32> = std::collections::HashSet::new();
+    for b in &buses {
+        for l in &b.lanes {
+            on_lane.extend(l.nets.iter().chain(&l.partner_nets).copied());
+            if !matches!(l.kind.as_str(), "ic-ic" | "ic-connector") {
                 continue;
             }
+            if !wanted(&mut l.nets.iter().map(|&n| p.board.net_name(n))) {
+                continue;
+            }
+            let tnet = l.nets.iter().copied().find(|&n| p.target(n).is_some()).unwrap_or(l.nets[0]);
+            let class = p.class_name(tnet);
+            let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
+            let Some(prof) = profiles.get(&pid) else { continue };
+            let lim = profiles.limits(prof);
+            let row = topology::check_lane(&p.board, &p.an, &field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, &cd);
+            // length-weighted impedance of the lane's nets
+            let (mut len, mut zs, mut lo, mut hi) = (0.0, 0.0, f64::INFINITY, f64::NEG_INFINITY);
+            for st in p.an.nets.iter().filter(|s| l.nets.contains(&s.net)) {
+                if let (Some(z), Some(a), Some(c)) = (st.z_mean, st.z_min, st.z_max) {
+                    len += st.length;
+                    zs += z * st.length;
+                    lo = lo.min(a);
+                    hi = hi.max(c);
+                }
+            }
+            let m = Metrics {
+                z_mean: (len > 0.0).then(|| zs / len),
+                z_min: (len > 0.0).then_some(lo),
+                z_max: (len > 0.0).then_some(hi),
+                il_nyq_db: Some(row.il_nyq_db),
+                rl_db: Some(row.rl_db),
+                eye_h: (row.eye && row.error.is_none()).then_some(row.eye_height),
+                eye_w_ui: (row.eye && row.error.is_none()).then_some(row.eye_width_ui),
+                skew_ps: row.skew_ps,
+                skew_uncertain: row.skew_uncertain,
+                stub_ghz: row.stub_ghz,
+                error: row.error.clone(),
+            };
+            let v = judge(&m, prof, &lim);
+            let mut j = lane_json(p, l);
+            j["bus"] = json!(b.name);
+            j["class"] = json!(class);
+            j["profile"] = json!(prof.id);
+            j["rate_gbps"] = json!(prof.rate_gbps);
+            j["status"] = json!(v.status);
+            j["criteria"] = json!(v.criteria);
+            j["length_mm"] = json!(row.length_mm);
+            j["vias"] = json!(row.vias);
+            j["eye_computed"] = json!(row.eye);
+            j["metrics"] = json!(m);
+            rows.push((v.status, j));
+        }
+    }
+    // nets with a target that are on no lane (no devices found at their ends)
+    for st in &p.an.nets {
+        let Some(t) = st.target else { continue };
+        if on_lane.contains(&st.net) || !wanted(&mut std::iter::once(st.name.as_str())) {
+            continue;
         }
         if let Some(pn) = st.partner {
             let pname = p.board.net_name(pn);
@@ -162,7 +272,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             error: row.error.clone(),
         };
         let v = judge(&m, prof, &lim);
-        rows.push((v.status, json!({"net": st.name, "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
+        rows.push((v.status, json!({"net": st.name, "kind": "net (no devices found)", "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
             "length_mm": row.length_mm, "vias": row.vias, "metrics": m})));
     }
     rows.sort_by(|a, b| a.0.cmp(&b.0));
@@ -170,7 +280,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
     json!({
         "summary": {"green": count(Status::Green), "yellow": count(Status::Yellow), "red": count(Status::Red)},
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
-        "models": format!("{MODELS} Eye: PRBS7, linear transmitter/receiver from the profile, without equalisation, jitter and noise.")
+        "models": format!("{MODELS} Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).")
     })
 }
 
@@ -225,11 +335,13 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
 
 /// Everything in one document, written as `analysis/kisi.json` next to the board
 /// (layout of kicad-happy's analysis folder).
+
 pub fn report(p: &Project, profiles: &Profiles) -> Value {
     let rp = RfParams::default();
     json!({
         "tool": "kisi", "version": env!("CARGO_PKG_VERSION"),
         "overview": overview(p),
+        "interfaces": interfaces(p, profiles, &HashMap::new()),
         "channels": channel_check(p, profiles, &HashMap::new(), None, &rp),
         "power": power(p, None, None).unwrap_or_else(|e| json!({"error": e})),
     })

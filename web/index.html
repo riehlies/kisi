@@ -23,6 +23,10 @@
       <button id="mode-dev" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Deviation from target</button>
       <button id="mode-abs" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Z₀ absolute</button>
     </div>
+    <div class="seg" role="group" aria-label="Channel view" data-view="ch" hidden>
+      <button id="chm-o" aria-pressed="true">Interfaces</button>
+      <button id="chm-m" aria-pressed="false">Board map</button>
+    </div>
     <div class="seg" role="group" aria-label="Power view" data-view="pi" hidden>
       <button id="pim-b" aria-pressed="true">Power tree</button>
       <button id="pim-v" aria-pressed="false" disabled title="after “Compute” in step 2">Voltage drop</button>
@@ -194,6 +198,7 @@
     <section class="detail" id="ch-detail" hidden aria-live="polite"></section>
     <section class="detail" id="pi-detail" hidden aria-live="polite"></section>
     <section class="balance" id="pi-balance" hidden aria-label="Power tree"></section>
+    <section class="balance" id="ch-overview" hidden aria-label="Interfaces"></section>
     <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro or kipida_config.json here</div>
     <div class="busy" id="busy">Loading engine…</div>
   </main>
@@ -218,6 +223,7 @@ const PRELOAD = null; /*KISI_PRELOAD*/
 <script src="src/net-detail.js"></script>
 <script src="src/si-tabs.js"></script>
 <script src="src/channel.js"></script>
+<script src="src/lanes.js"></script>
 <script src="src/panels.js"></script>
 <script src="src/interaction.js"></script>
 <script src="src/field-pool.js"></script>

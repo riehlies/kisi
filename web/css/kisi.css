@@ -146,6 +146,20 @@ button, input, select { font: inherit; color: inherit; }
 .acc a { color: var(--accent); }
 .seg button:disabled { opacity: 0.4; cursor: not-allowed; }
 .seg button:disabled { opacity: 0.4; cursor: not-allowed; }
+.ov-h { margin: 18px 0 8px; font-family: var(--font-display); font-weight: 600; font-size: 15px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.ov-h em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--muted); font-family: var(--font-body, inherit); }
+.ov-actions { display: flex; gap: 10px; align-items: center; margin: 10px 0 4px; }
+.bus-card { margin-bottom: 10px; }
+.bus-card h4 { text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--fg); }
+.bus-card h4 em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--muted); }
+.bus-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 12.5px; margin: 2px 0 8px; }
+.ctab.lanes td.lc { font-family: var(--font-mono); font-size: 11.5px; white-space: normal; }
+.ctab.lanes td.ln { white-space: nowrap; }
+.lc i { font-style: normal; color: var(--muted); margin: 0 3px; }
+.lc-part { padding: 0 4px; border-radius: 3px; background: var(--panel-2); border: 1px solid var(--line); }
+.lc-shunt { margin-left: 6px; color: var(--muted); }
+.lc-branch { margin-left: 6px; color: var(--z-high1); }
+tr.warnrow td { color: var(--z-high1); }
 .steps { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; counter-reset: step; }
 .steps > li { position: relative; padding-left: 28px; display: flex; flex-direction: column; gap: 4px; counter-increment: step; }
 .steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font: 600 11.5px var(--font-mono); border: 1.5px solid var(--line); color: var(--muted); }

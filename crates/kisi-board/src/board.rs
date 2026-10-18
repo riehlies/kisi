@@ -178,6 +178,8 @@ pub struct Footprint {
     pub at: P,
     /// user fields (symbol fields copied to the footprint), e.g. PI_LOAD
     pub props: Vec<(String, String)>,
+    /// marked "Do not populate" (KiCad 8+: `(attr … dnp)`)
+    pub dnp: bool,
 }
 
 impl Footprint {
@@ -781,8 +783,9 @@ fn parse_footprint(fp: &Node, su: &Stackup, nets: &mut NetTable, out: &mut Vec<P
             _ => {}
         }
     }
+    let dnp = fp.child("attr").is_some_and(|a| (1..8).any(|i| a.atom(i) == Some("dnp")));
     let fp_idx = fps.len() as u32;
-    fps.push(Footprint { reference, value, at: o, props });
+    fps.push(Footprint { reference, value, at: o, props, dnp });
     let fa = at.f64(3).unwrap_or(0.0).to_radians();
     let (s, c) = fa.sin_cos();
     for pad in fp.children("pad") {

@@ -20,6 +20,7 @@ fn main() {
     let mut pi_mode = false;
     let mut pi_config: Option<String> = None;
     let mut list_rails = false;
+    let mut list_buses = false;
     let mut pi_tree: Option<String> = None;
     let mut rf_net: Option<String> = None;
     let mut s2p_out: Option<String> = None;
@@ -50,6 +51,7 @@ fn main() {
             "--no-mask" => params.solder_mask = false,
             "--pi" => pi_mode = true,
             "--rails" => list_rails = true,
+            "--buses" => list_buses = true,
             "--rf" => {
                 rf_net = args.get(i + 1).cloned();
                 i += 1;
@@ -358,6 +360,43 @@ fn main() {
     }
     let t1 = Instant::now();
     let an = analyze(&board, &params);
+    if list_buses {
+        let cd = kisi_core::topology::ComponentData::builtin();
+        let short = |n: &str| n.rsplit('/').next().unwrap_or(n).to_string();
+        for b in kisi_core::topology::buses(&board, &an, &cd) {
+            println!("{}  [{}] {} · {} lane(s) · {}", b.name, b.kind, b.class, b.lanes.len(), b.values.join(" / "));
+            for l in &b.lanes {
+                let chain: Vec<String> = l
+                    .hops
+                    .iter()
+                    .map(|h| match h {
+                        kisi_core::topology::Hop::Net { net, from, to } => format!("{} ({:.1} mm)", short(board.net_name(*net)), kisi_core::geom::len(kisi_core::geom::sub(*to, *from))),
+                        kisi_core::topology::Hop::Series { part } => format!("[{} {} {}]", part.refdes, part.value, part.package),
+                    })
+                    .collect();
+                let ends: Vec<String> = l.ends.iter().map(|e| format!("{}.{}", e.refdes, e.pin)).collect();
+                let sh: Vec<String> = l.shunts.iter().map(|s| format!("{} {}{}", s.part.refdes, s.part.value, if s.across { " across" } else { "" })).collect();
+                println!("    {:<3} {:<12} {}  ends {}{}{}", if l.diff { "dp" } else { "se" }, l.kind, chain.join(" → "), ends.join(", "),
+                    if sh.is_empty() { String::new() } else { format!("  shunts {}", sh.join(", ")) },
+                    if l.others.is_empty() { String::new() } else { format!("  others {}", l.others.join(",")) });
+                if matches!(l.kind.as_str(), "ic-ic" | "ic-connector") {
+                    let profiles = kisi_core::profile::Profiles::builtin();
+                    let tnet = l.nets.iter().copied().find(|n| an.nets.iter().any(|s| s.net == *n && s.target.is_some())).unwrap_or(l.nets[0]);
+                    let t = an.nets.iter().find(|s| s.net == tnet).and_then(|s| s.target).map(|t| (t.z, t.diff));
+                    let pid = profiles.auto(board.net_name(tnet), &l.class, l.diff).to_string();
+                    if let Some(prof) = profiles.get(&pid) {
+                        let rp = kisi_core::rf::RfParams::default();
+                        let row = kisi_core::topology::check_lane(&board, &an, &params.field, l, t, &rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, &cd);
+                        println!("        RX {} ({}) · {} {:.2} Gbit/s: {:.1} mm, IL {:.2} dB @ Nyquist, RL {:.1} dB{}{}{}", l.ends[l.rx_end].refdes, l.direction, pid, prof.rate_gbps, row.length_mm, row.il_nyq_db, row.rl_db,
+                            if row.eye { format!(", eye {:.0} % / {:.0} % UI", row.eye_height * 100.0, row.eye_width_ui * 100.0) } else { ", no eye (connector)".into() },
+                            row.skew_ps.map(|k| format!(", skew {:.1} ps", k)).unwrap_or_default(),
+                            row.error.map(|e| format!("  ERROR {e}")).unwrap_or_default());
+                    }
+                }
+            }
+        }
+        return;
+    }
     if let Some(out) = &geoms_out {
         // geometries sorted by routed length of nets with a target, then total length
         let mut g: Vec<_> = an.geometries.iter().collect();

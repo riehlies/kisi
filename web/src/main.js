@@ -46,7 +46,7 @@ async function loadPreload(pl) {
     // a net handed over from KiCad: show its impedances right away (step 2)
     const t0 = performance.now(); S.full = true; S.mode = "dev"; runAnalysis(); S.anMs = Math.round(performance.now() - t0);
     const id = S.scene.nets.indexOf(pl.net);
-    if (id > 0) { if (pl.view === "ch") setTab("ch"); selectNet(id); }
+    if (id > 0) { if (pl.view === "ch") { S.chMode = "m"; setTab("ch"); } selectNet(id); }
   }
 }
 $("sample-ts").onclick = () => loadSample("ts");

@@ -424,21 +424,14 @@ pub struct CheckRow {
     pub stub_ghz: Option<f64>,
     pub warnings: usize,
     pub error: Option<String>,
+    /// false when no eye was computed (lane ends at a connector)
+    pub eye: bool,
 }
 
-pub fn check_net(
-    board: &crate::board::Board,
-    an: &crate::extract::Analysis,
-    field: &std::collections::HashMap<String, crate::extract::FieldResult>,
-    net: u32,
-    target: Option<(f64, bool)>,
-    rp: &crate::rf::RfParams,
-    gbps: f64,
-    ends: (Option<EndModel>, Option<EndModel>, Option<f64>),
-) -> CheckRow {
-    let mut row = CheckRow {
+pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
+    CheckRow {
         net,
-        name: board.net_name(net).to_string(),
+        name,
         diff: false,
         gbps,
         length_mm: 0.0,
@@ -454,16 +447,12 @@ pub fn check_net(
         stub_ghz: None,
         warnings: 0,
         error: None,
-    };
-    // enough bandwidth for the eye, at least 2.5 × Nyquist
-    let rp = crate::rf::RfParams { fmax: rp.fmax.max(gbps * 1e9 * 1.25), ..rp.clone() };
-    let ch = match crate::rf::channel(board, an, net, field, target, &rp) {
-        Ok(c) => c,
-        Err(e) => {
-            row.error = Some(e);
-            return row;
-        }
-    };
+        eye: true,
+    }
+}
+
+/// Fill loss, return loss, stubs and (if `with_eye`) the eye of a row from a channel.
+pub(crate) fn fill_row(row: &mut CheckRow, ch: &crate::rf::Channel, gbps: f64, rise: f64, ends: (Option<EndModel>, Option<EndModel>), with_eye: bool) {
     row.diff = ch.diff;
     row.length_mm = ch.length_mm;
     row.delay_ps = ch.delay_ps;
@@ -476,14 +465,42 @@ pub fn check_net(
     let k2 = ((1.5 * fn_ / df).round() as usize).clamp(1, ch.freq.len());
     row.rl_db = -ch.s11_db[..k2].iter().cloned().fold(f64::NEG_INFINITY, f64::max);
     row.stub_ghz = ch.via_info.iter().filter(|v| v.stub_mm > 0.01).filter_map(|v| v.stub_f_ghz).fold(None, |a: Option<f64>, b| Some(a.map_or(b, |x| x.min(b))));
-    let (tx, rx, rise) = ends;
-    match eye(&ch, &EyeParams { bitrate: gbps * 1e9, rise: rise.unwrap_or(rp.rise), tx, rx, ..Default::default() }) {
+    row.eye = with_eye;
+    if !with_eye {
+        return;
+    }
+    let (tx, rx) = ends;
+    match eye(ch, &EyeParams { bitrate: gbps * 1e9, rise, tx, rx, ..Default::default() }) {
         Ok(e) => {
             row.eye_height = e.height;
             row.eye_width_ui = e.width_ps / e.ui_ps;
         }
         Err(e) => row.error = Some(e),
     }
+}
+
+pub fn check_net(
+    board: &crate::board::Board,
+    an: &crate::extract::Analysis,
+    field: &std::collections::HashMap<String, crate::extract::FieldResult>,
+    net: u32,
+    target: Option<(f64, bool)>,
+    rp: &crate::rf::RfParams,
+    gbps: f64,
+    ends: (Option<EndModel>, Option<EndModel>, Option<f64>),
+) -> CheckRow {
+    let mut row = empty_row(net, board.net_name(net).to_string(), gbps);
+    // enough bandwidth for the eye, at least 2.5 × Nyquist
+    let rp = crate::rf::RfParams { fmax: rp.fmax.max(gbps * 1e9 * 1.25), ..rp.clone() };
+    let ch = match crate::rf::channel(board, an, net, field, target, &rp) {
+        Ok(c) => c,
+        Err(e) => {
+            row.error = Some(e);
+            return row;
+        }
+    };
+    let (tx, rx, rise) = ends;
+    fill_row(&mut row, &ch, gbps, rise.unwrap_or(rp.rise), (tx, rx), true);
     if let (true, Some(pn)) = (ch.diff, ch.partner) {
         let rq = crate::rf::RfParams { npts: 10, ..rp.clone() };
         if let Ok(pc) = crate::rf::channel(board, an, pn, field, target, &rq) {

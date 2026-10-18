@@ -7,7 +7,7 @@
 Other MCP clients: register `kisi-mcp` as a stdio server, e.g.
 `{"mcpServers": {"kisi": {"command": "kisi-mcp"}}}`.
 
-Tools: `kisi_overview`, `kisi_net`, `kisi_channel_check`, `kisi_profiles`, `kisi_power`,
+Tools: `kisi_overview`, `kisi_interfaces`, `kisi_net`, `kisi_channel_check`, `kisi_profiles`, `kisi_power`,
 `kisi_report` (writes `analysis/kisi.json`), `kisi_open_viewer`.
 Environment: `KISI_VIEWER` (path to kisi.html), `KISI_PROFILES` (own interfaces.json),
 `KISI_NO_BROWSER` (only write the viewer file).

@@ -14,8 +14,9 @@ AI agents (`crates/kisi-mcp`, Claude Code plugin in `claude-plugin/`).
 2. The fast analysis runs immediately: impedance by formula, DC IR drop of all configured rails.
 3. Start the field solver for the selected net, one net class, all nets with a target, or everything.
 4. **Impedance** view: line analysis (impedance, loss, TDR, vias, crosstalk) against a reference resistance.
-   **Channel** view: interface profile per net class (PCIe, USB, DDR, … from `data/interfaces.json`),
-   transmitter and receiver, limits – eye and check per net, channel check of all nets.
+   **Channel** view: “Interfaces” overview of all buses and device-to-device lanes (through series resistors
+   and AC-coupling capacitors, with terminations), interface profile per net class (PCIe, USB, DDR, … from
+   `data/interfaces.json`), transmitter and receiver, limits – eye from IC to IC, board share for lanes ending at a connector.
    **Power** view: IR drop, power budget, Z(f).
 5. Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer (stored in the browser; the file is not changed).
    Field solver results are cached in the browser (IndexedDB) across boards; key = solver version + geometry.
@@ -91,6 +92,21 @@ give the same budget with the fields as with the JSON tree).
 - CLI: `kisi board.kicad_pcb board.kicad_pro --rf <net suffix> [--s2p out_{}.s2p]`
 - Accuracy: line RLGC against HFSS ≤ 2 %; via impedance is an estimation model (about ±15 %), not a 3D result.
 
+## Device-to-device lanes (M7)
+- `crates/kisi-si/src/topology.rs`: nets with a target impedance are followed through two-pin passives – series
+  resistors up to 100 Ω, AC-coupling capacitors from 1 nF, small inductors – to the pins of ICs and connectors.
+  Passives to ground/supply or across a pair are terminations; DNP parts are skipped. Lanes with the same end
+  devices and net class form a bus. A line with one IC between two connectors (population options) gives one lane
+  per connector with the other side as an open branch.
+- Lane channel: copper of each net from pin to pad (path between those points), series parts with estimated
+  package parasitics (`data/components.json`: ESL, pad capacitance, capacitor ESR), terminations, open branches.
+  Loss, return loss and TDR describe the interconnect without terminations; the eye uses a termination next to
+  the receiver as the receiver's termination. Direction: receiver = end next to a termination, else the second
+  end (swappable in the viewer).
+- Eye only from IC to IC; lanes ending at a connector get the board share (loss, return loss, skew).
+- CLI: `kisi board.kicad_pcb --buses`; MCP: `kisi_interfaces`, `kisi_channel_check` (lane based).
+- Next (M7b): linear IBIS ends from KiCad's simulation fields (Sim.Device=IBIS, Sim.Library, Sim.Name).
+
 ## Field solver
 - Quasi-static 2D field solver: js_2d_fields by Henrik Forstén, included unmodified (see `UPSTREAM.md`).
 - Every cross-section is written as a geometry text (`crates/kisi-si/src/xsgeom.rs`) and solved by the backend.
@@ -105,7 +121,7 @@ give the same budget with the fields as with the JSON tree).
 - Target impedance from net class names (`50Z`, `100Z_Diff`, …) or interface assumptions, editable in the viewer.
 
 ## MCP server
-`kisi-mcp` speaks MCP over stdio (tools `kisi_overview`, `kisi_net`, `kisi_channel_check`, `kisi_profiles`,
+`kisi-mcp` speaks MCP over stdio (tools `kisi_overview`, `kisi_interfaces`, `kisi_net`, `kisi_channel_check`, `kisi_profiles`,
 `kisi_power`, `kisi_report`, `kisi_open_viewer`) and works next to KiCad's own MCP integrations and kicad-happy.
 See `claude-plugin/README.md`.
 

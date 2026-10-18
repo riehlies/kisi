@@ -15,6 +15,7 @@ pub mod extract;
 pub mod eye;
 pub mod profile;
 pub mod rf;
+pub mod topology;
 pub mod via;
 pub mod xsgeom;
 

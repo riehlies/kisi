@@ -22,9 +22,9 @@ use std::time::SystemTime;
 const PROTOCOLS: &[&str] = &["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 
 const INSTRUCTIONS: &str = "kisi analyses KiCad boards (.kicad_pcb, with the .kicad_pro next to it for net classes). \
-Start with kisi_overview to see stackup and impedance compliance per net class, then kisi_net for single nets \
-(impedance along the path, losses, TDR, vias, crosstalk) or kisi_channel_check for eye/loss/skew checks against \
-interface profiles (PCIe, USB, DDR, LVDS, ... see kisi_profiles). kisi_power covers regulator chains (PI_REG/PI_LOAD \
+Start with kisi_overview to see stackup and impedance compliance per net class, kisi_interfaces for the buses and \
+device-to-device lanes, then kisi_net for single nets (impedance along the path, losses, TDR, vias, crosstalk) or \
+kisi_channel_check for eye/loss/skew checks of the lanes against interface profiles (PCIe, USB, DDR, LVDS, ... see kisi_profiles). kisi_power covers regulator chains (PI_REG/PI_LOAD \
 fields), DC IR drop and PDN impedance. Impedances in these tools come from closed-form formulas; the 2D field solver \
 runs only in the browser viewer (kisi_open_viewer). Values are design-check estimates, not signoff results; always \
 state the models and assumptions reported in the 'models' fields.";
@@ -57,9 +57,19 @@ fn tools() -> Value {
             "annotations": {"readOnlyHint": true}
         },
         {
+            "name": "kisi_interfaces",
+            "title": "Interfaces: buses and device-to-device lanes",
+            "description": "Which signals and buses the board has: every net with a target impedance followed from device pin to device pin through series resistors and AC-coupling capacitors, with terminations, branches and the interface profile each bus gets. kind ic-ic lanes get an eye in kisi_channel_check, ic-connector lanes only the board share (loss, return loss, skew).",
+            "inputSchema": {"type": "object", "properties": {
+                "pcb": pcb,
+                "classes": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Net class → profile id (see kisi_profiles)"},
+                "stackup": stackup}, "required": ["pcb"]},
+            "annotations": {"readOnlyHint": true}
+        },
+        {
             "name": "kisi_channel_check",
             "title": "Channel check against interface profiles",
-            "description": "Eye height/width (PRBS7 with the profile's linear transmitter/receiver, no equalisation), loss at Nyquist, return loss, intra-pair skew and via-stub resonance for every net with a target impedance, judged green/yellow/red against the profile limits. Profiles are assigned automatically from net and class names unless given per class.",
+            "description": "Checks every device-to-device lane (see kisi_interfaces): loss at Nyquist, return loss, intra-pair skew and via-stub resonance; the eye (PRBS7 with the profile's linear transmitter/receiver, no equalisation) only from IC to IC. Judged green/yellow/red against the profile limits. Profiles are assigned automatically from net and class names unless given per class.",
             "inputSchema": {"type": "object", "properties": {
                 "pcb": pcb,
                 "classes": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Net class → profile id (see kisi_profiles), e.g. {\"PCIe\": \"pcie3\"}"},
@@ -135,6 +145,11 @@ impl Server {
                 }
                 let net = args["net"].as_str().ok_or("argument 'net' missing")?.to_string();
                 service::net_detail(self.project(args)?, &net, &rp)
+            }
+            "kisi_interfaces" => {
+                let assign: HashMap<String, String> = args.get("classes").and_then(|v| serde_json::from_value(v.clone()).ok()).unwrap_or_default();
+                let profiles = self.profiles.clone();
+                Ok(service::interfaces(self.project(args)?, &profiles, &assign))
             }
             "kisi_channel_check" => {
                 let assign: HashMap<String, String> = args.get("classes").and_then(|v| serde_json::from_value(v.clone()).ok()).unwrap_or_default();

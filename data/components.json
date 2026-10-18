@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "about": "Parasitics of passive parts in a signal channel (series resistors, AC-coupling capacitors, terminations), per package. The package is derived from the pad pitch. All values are typical estimates for chip parts on a PCB, not from a specific datasheet; replace them with Touchstone data of the actual part when it matters.",
+  "sources": [
+    { "kind": "kisi", "text": "Typical body ESL and pad capacitance of chip resistors and MLCCs by case size, consistent with vendor application notes (Murata, KEMET, Vishay) for 0201–1206; estimated." }
+  ],
+  "packages": {
+    "0201": { "esl_nh": 0.20, "pad_c_pf": 0.05 },
+    "0402": { "esl_nh": 0.35, "pad_c_pf": 0.10 },
+    "0603": { "esl_nh": 0.50, "pad_c_pf": 0.15 },
+    "0805": { "esl_nh": 0.60, "pad_c_pf": 0.20 },
+    "1206": { "esl_nh": 0.80, "pad_c_pf": 0.25 },
+    "large": { "esl_nh": 1.20, "pad_c_pf": 0.30 }
+  },
+  "capacitor": { "esr_ohm": 0.03 },
+  "roles": {
+    "ic": ["U", "IC"],
+    "connector": ["J", "P", "CN", "X", "USB", "CON"],
+    "resistor": ["R", "RN"],
+    "capacitor": ["C"],
+    "inductor": ["L", "FB", "FL"],
+    "test_point": ["TP"]
+  }
+}

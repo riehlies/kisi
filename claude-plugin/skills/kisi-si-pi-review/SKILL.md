@@ -15,9 +15,11 @@ KiCad IPC API), make sure it is **saved** before calling kisi, and call kisi aga
    unrealistic values can be corrected per call with the `stackup` argument.
 2. For classes or nets that look wrong: `kisi_net` – impedance segments along the path (layer,
    length, Z), losses, TDR extremes, vias (antipad, stub resonance, return path), crosstalk.
-3. High-speed interfaces: `kisi_profiles` to see the available standards, then
-   `kisi_channel_check` with a class → profile mapping when the automatic assignment is wrong
-   (e.g. `{"PCIe": "pcie3"}`). Only yellow/red rows are returned by default.
+3. High-speed interfaces: `kisi_interfaces` lists the buses and device-to-device lanes (pins,
+   series parts, terminations, branches, direction guess, profile). Check that the end devices and
+   profiles make sense; `kisi_profiles` shows the available standards. Then `kisi_channel_check`,
+   with a class → profile mapping when the automatic assignment is wrong (e.g. `{"PCIe": "pcie3"}`).
+   Only yellow/red rows are returned by default.
 4. Power: `kisi_power` – regulator chain balance (PI_REG/PI_LOAD fields or a tree JSON), IR drop
    per rail; `pdn_rail` adds the impedance of one rail against its target.
 5. Optionally `kisi_report` writes `analysis/kisi.json` next to the board, so file-based review
@@ -32,6 +34,12 @@ KiCad IPC API), make sure it is **saved** before calling kisi, and call kisi aga
 - Eyes are linear PRBS7 estimates with the profile's transmitter/receiver and no equalisation,
   jitter or noise. Limits marked "kisi" in the profile sources are guide values, not standards.
 - Skew marked uncertain comes from branched paths; do not report it as a violation.
+- Eyes exist only for lanes from IC to IC. Lanes ending at a connector are judged on the board
+  share (loss, return loss, skew); say that the rest of the channel is not included.
+- Lanes with an open branch (one IC feeding two connectors, both populated) show the stub's
+  resonance; suggest marking the unused population option DNP in KiCad.
+- Parasitics of series parts and terminations are estimates per package; the transmit direction
+  is a guess (termination next to the receiver) and can be wrong.
 - Quote numbers with units and name the profile used for each interface.
 
 ## Working with other KiCad tools

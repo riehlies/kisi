@@ -21,6 +21,8 @@ struct State {
     /// last analysis and its parameters (for the RF functions)
     an: Option<kisi_core::Analysis>,
     params: Option<Params>,
+    /// device-to-device lanes of the board (topology), from `kisi_buses`
+    buses: Option<Vec<kisi_core::topology::Bus>>,
 }
 
 thread_local! {
@@ -414,16 +416,109 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
         let params = st.params.as_ref().ok_or("no analysis")?;
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let rp: kisi_core::rf::RfParams = serde_json::from_value(v["rf"].clone()).unwrap_or_default();
-        let mut rows = Vec::new();
+        let mut rows: Vec<serde_json::Value> = Vec::new();
         for item in v["items"].as_array().ok_or("items missing")? {
             let net = item["net"].as_u64().unwrap_or(0) as u32;
             let gbps = item["gbps"].as_f64().unwrap_or(1.0);
             let target = item["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
             let end = |k: &str| item[k].as_object().and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(item[k].clone()).ok());
             let rise = item["rise"].as_f64();
-            rows.push(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise)));
+            if let Some(start) = item["lane"].as_u64() {
+                // device-to-device lane (see kisi_buses), identified by its first net
+                let lane = st.buses.as_ref().and_then(|bs| bs.iter().flat_map(|b| &b.lanes).find(|l| l.nets[0] as u64 == start && item["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t))));
+                let Some(lane) = lane else {
+                    rows.push(serde_json::json!({"net": net, "name": "", "error": "lane not found"}));
+                    continue;
+                };
+                let cd = kisi_core::topology::ComponentData::builtin();
+                let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
+                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, &cd)).unwrap());
+                continue;
+            }
+            rows.push(serde_json::to_value(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise))).unwrap());
         }
         Ok(serde_json::to_string(&rows).unwrap())
+    });
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
+/// Device-to-device lanes grouped into buses (topology through series parts and
+/// terminations). Input: the analysis parameters (targets). Works before the
+/// impedance estimate (uses the board only).
+#[no_mangle]
+pub extern "C" fn kisi_buses(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let params: Params = serde_json::from_str(&txt).unwrap_or_default();
+    let r = ST.with(|st| -> Result<String, String> {
+        let mut st = st.borrow_mut();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let sk = kisi_core::extract::skeleton(b, &params);
+        let cd = kisi_core::topology::ComponentData::builtin();
+        let buses = kisi_core::topology::buses(b, &sk, &cd);
+        let js = serde_json::to_string(&buses).unwrap();
+        st.buses = Some(buses);
+        Ok(js)
+    });
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
+/// Channel of one lane. Input: {"lane": first net id, "to": refdes of the far end,
+/// "reversed": bool | null, "rf", "target", "bitrate", "tx", "rx", "eye_rise", "prbs"}.
+/// Output like kisi_rf plus "rx_note".
+#[no_mangle]
+pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let an = st.an.as_ref().ok_or("no analysis")?;
+        let params = st.params.as_ref().ok_or("no analysis")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let start = v["lane"].as_u64().ok_or("lane missing")?;
+        let lane = st
+            .buses
+            .as_ref()
+            .and_then(|bs| bs.iter().flat_map(|b| &b.lanes).find(|l| l.nets[0] as u64 == start && v["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t))))
+            .ok_or("lane not found")?;
+        let rp: kisi_core::rf::RfParams = serde_json::from_value(v["rf"].clone()).unwrap_or_default();
+        let target = v["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
+        let end = |k: &str| v[k].as_object().and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(v[k].clone()).ok());
+        let rev = v["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
+        let cd = kisi_core::topology::ComponentData::builtin();
+        let ep = v["bitrate"].as_f64().map(|br| (br, v["eye_rise"].as_f64().unwrap_or(rp.rise), v["prbs"].as_u64().unwrap_or(7) as u32, end("tx"), end("rx")));
+        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, &cd) {
+            Ok(ev) => {
+                let eye = match ev.eye {
+                    Some(Ok(e)) => serde_json::to_value(&e).unwrap(),
+                    Some(Err(e)) => serde_json::json!({"error": e}),
+                    None => serde_json::Value::Null,
+                };
+                let skew = ev.skew.map(|(ps, mm, pn, unc)| serde_json::json!({"partner": pn, "skew_ps": ps, "skew_mm": mm, "uncertain": unc}));
+                serde_json::json!({"channel": ev.ch, "error": null, "touchstone": kisi_core::rf::touchstone(&ev.ch), "eye": eye, "skew": skew,
+                    "rx_used": ev.rx_used, "rx_note": ev.rx_note, "reversed": rev,
+                    "crosstalk": kisi_core::rf::crosstalk(b, an, lane.nets[0], &params.field, &rp)})
+            }
+            Err(e) => serde_json::json!({"channel": null, "error": e, "crosstalk": {"aggressors": [], "geoms": []}}),
+        };
+        Ok(out.to_string())
     });
     match r {
         Ok(s) => {

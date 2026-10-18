@@ -1,9 +1,35 @@
 "use strict";
 // ============================================================== loading
+// results of the boards opened in this session, kept in memory: switching to
+// another board and back restores estimate, checks, voltage drop and Z(f)
+const BOARD_CACHE_MAX = 3;
+const BOARD_STATE = ["overrides", "full", "anMs", "mode", "chMode", "check", "laneRes", "chStatus", "selLane",
+  "piRes", "piSolved", "piMs", "pdnRes", "pdnSolved", "pdnMs", "piRail", "piLayer", "piMode", "piTab",
+  "piTree", "treeRes", "piSetups", "piWarn", "layerOn", "zoneLayer", "view"];
+function boardKey(name, text) {
+  // name, size and a sampled FNV hash of the file
+  let h = 2166136261;
+  const step = Math.max(1, Math.floor(text.length / 8192));
+  for (let i = 0; i < text.length; i += step) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return `${name}|${text.length}|${(h >>> 0).toString(16)}`;
+}
+function saveBoardState() {
+  if (!S.scene || !S.boardKey) return;
+  const snap = {};
+  for (const k of BOARD_STATE) snap[k] = S[k];
+  S.boardCache = S.boardCache || new Map();
+  S.boardCache.delete(S.boardKey);
+  S.boardCache.set(S.boardKey, snap);
+  while (S.boardCache.size > BOARD_CACHE_MAX) S.boardCache.delete(S.boardCache.keys().next().value);
+}
+
 async function loadFiles(pcbText, proText, name, piDefaults = null) {
   showBusy("Reading board and computing cross-sections…");
   await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
   try {
+    saveBoardState();
+    const key = boardKey(name, pcbText + "|" + (proText || ""));
+    const snap = S.boardCache && S.boardCache.get(key);
     const t0 = performance.now();
     S.engine.loadPro(proText || '{"net_settings":{}}');
     S.engine.loadPcb(pcbText);
@@ -12,7 +38,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null) {
     S.zones = S.engine.zones();
     S.name = name;
     S.overrides = {};
-    S.selNet = -1; S.hover = -1; S.check = null; S.chStatus = null; S.chCache = null;
+    S.selNet = -1; S.hover = -1; S.check = null; S.chStatus = null; S.chCache = null; S.laneRes = null; S.selLane = null; S.chMode = "o";
     S.full = false; S.mode = "type"; // step 2 (formula impedances) not run yet; line type first
     S.fieldPending = new Set(); S.gen++;
     if (S.pool) S.pool.reset();
@@ -20,11 +46,26 @@ async function loadFiles(pcbText, proText, name, piDefaults = null) {
     S.layerOn = new Array(n).fill(true);
     // default plane layer: first inner layer with most zone area, else none
     S.zoneLayer = guessPlaneLayer();
+    S.boardKey = key;
     const tParse = performance.now() - t0;
+    if (snap) {
+      // back to a board of this session: same inputs, re-run the (fast) analysis for
+      // the engine, keep the slow results
+      S.overrides = snap.overrides; S.full = snap.full; S.mode = snap.mode; S.chMode = snap.chMode; S.anMs = snap.anMs;
+      if (snap.layerOn && snap.layerOn.length === n) S.layerOn = snap.layerOn;
+      S.zoneLayer = snap.zoneLayer;
+    }
     runAnalysis(tParse);
     buildStatic();
     initPi(piDefaults);
-    fitView();
+    if (snap) {
+      for (const k of ["piRes", "piSolved", "piMs", "pdnRes", "pdnSolved", "pdnMs", "piRail", "piLayer", "piMode", "piTab", "piTree", "treeRes", "piSetups", "piWarn", "laneRes", "chStatus", "selLane"]) S[k] = snap[k];
+      if (snap.check) S.check = { ...snap.check, gen: S.anGen, stale: false };
+      syncModeButtons();
+      setTab(S.tab);
+      S.view = { ...snap.view };
+      draw();
+    } else fitView();
     hideBusy();
   } catch (e) {
     hideBusy();
@@ -73,6 +114,12 @@ function runAnalysis(tParse) {
   for (const [id, r] of S.field) if (r.ok) field[id] = r;
   const params = { step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field, stackup: stackParam() };
   S.an = S.full ? S.engine.analyze(params) : S.engine.skeleton(params);
+  // device-to-device lanes (topology): board and targets only, cheap
+  const bkey = JSON.stringify(targets);
+  if (!S.buses || S.busesKey !== bkey || S.busesBoard !== S.name + S.gen) {
+    try { S.buses = S.engine.buses(params); } catch (e) { S.buses = []; console.warn(e); }
+    S.busesKey = bkey; S.busesBoard = S.name + S.gen;
+  }
   S.chCache = null; S.rfCache = null;
   S.anGen++;
   setTimeout(() => { renderCheck(); if (S.tab === "ch") { renderIfcCard(); renderProfCard(); } }, 0);
@@ -99,5 +146,6 @@ function estimateImpedances() {
     setMode("dev"); // deviation from target is now available
     renderFieldStatus();
     hideBusy();
+    if (S.tab === "ch" && S.chMode === "o") renderChOverview();
   }, 0));
 }

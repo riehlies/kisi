@@ -1,5 +1,5 @@
 "use strict";
-// ---- channel view: interface profiles, transmitter/receiver, eye and checks
+// ---- channel view (lanes in lanes.js): interface profiles, transmitter/receiver, eye and checks
 //
 // Data:   DATA.interfaces (data/interfaces.json) = standard profiles with sources;
 //         user overrides per profile in localStorage (PROF_KEY), class → profile
@@ -132,7 +132,7 @@ function renderProfCard() {
   });
 }
 function profChanged() { S.chCache = null; markCheckStale(); renderProfCard(); renderIfcCard(); if (S.selNet >= 0 && S.tab === "ch") selectNet(S.selNet, false); }
-function markCheckStale() { if (S.check) S.check.stale = true; renderCheck(); }
+function markCheckStale() { if (S.check) S.check.stale = true; renderCheck(); if (S.tab === "ch" && S.chMode === "o") renderChOverview(); }
 
 // ---- one net: channel with the profile's ends
 function chFor(net) {
@@ -152,9 +152,10 @@ function zStats(net) {
   const st = S.an.nets.find((x) => x.net === net);
   return st && st.z_mean != null ? { z_mean: st.z_mean, z_min: st.z_min, z_max: st.z_max } : {};
 }
-function metricsOf(r, net) {
+function metricsOf(r, net, lane) {
   const ch = r.channel, p = r.profile;
-  if (!ch) return { error: r.error || "no channel", ...zStats(net) };
+  const zs = lane ? laneZStats(lane) : zStats(net);
+  if (!ch) return { error: r.error || "no channel", ...zs };
   const nyq = p.rate_gbps * 0.5e9, df = ch.freq[0];
   const k = Math.min(ch.freq.length, Math.max(1, Math.round(nyq / df))) - 1;
   const k2 = Math.min(ch.freq.length, Math.max(1, Math.round(1.5 * nyq / df)));
@@ -164,11 +165,13 @@ function metricsOf(r, net) {
     il_nyq_db: ch.s21_db[k], rl_db: -Math.max(...ch.s11_db.slice(0, k2)),
     eye_h: e ? e.height : null, eye_w_ui: e ? e.width_ps / e.ui_ps : null,
     skew_ps: r.skew ? r.skew.skew_ps : null, skew_uncertain: r.skew ? r.skew.uncertain : false,
-    stub_ghz: stubs.length ? Math.min(...stubs) : null, error: r.eye && r.eye.error ? r.eye.error : null, ...zStats(net),
+    stub_ghz: stubs.length ? Math.min(...stubs) : null, error: r.eye && r.eye.error ? r.eye.error : null, ...zs,
   };
 }
 function renderChDetail(net) {
   const d = $("ch-detail"), st = S.an.nets.find((x) => x.net === net);
+  const lane = S.an.skeleton ? null : (S.selLane && allLanes().find((l) => laneKey(l) === S.selLane && (l.nets.includes(net) || l.partner_nets.includes(net)))) || laneOfNet(net);
+  if (lane && CHECKABLE.has(lane.kind)) return renderLaneDetail(lane);
   if (S.an.skeleton) {
     d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header><div id="ch-body"></div>`;
     d.hidden = false; $("closeCh").onclick = () => selectNet(-1); needEstimate($("ch-body")); return;
@@ -200,9 +203,17 @@ function renderChDetail(net) {
 // ---- board-level check
 function checkItems() {
   const out = [];
+  const onLane = new Set();
+  for (const l of allLanes()) {
+    for (const n of [...l.nets, ...l.partner_nets]) onLane.add(n);
+    if (!CHECKABLE.has(l.kind)) continue;
+    const net = laneNet(l), t = classTarget(net), p = laneProfile(l);
+    out.push({ lane: l.nets[0], to: l.ends[l.ends.length - 1].refdes, reversed: laneReversed(l), laneKey: laneKey(l), net, gbps: p.rate_gbps, target: t ? [t.z, t.diff] : null, tx: p.tx, rx: p.rx, rise: p.tx.rise_ps * 1e-12 });
+  }
+  // nets with a target that are not part of a device-to-device lane (no devices found)
   for (const st of S.an.nets) {
     const t = classTarget(st.net);
-    if (!t) continue;
+    if (!t || onLane.has(st.net)) continue;
     if (st.partner != null) {
       // one line per pair, preferably the positive line
       const neg = /(_N|N|-|_M)$/i.test(st.name), pneg = /(_N|N|-|_M)$/i.test(S.scene.nets[st.partner] || "");
@@ -213,29 +224,41 @@ function checkItems() {
   }
   return out;
 }
-const rowMetrics = (r) => ({ ...zStats(r.net), il_nyq_db: r.il_nyq_db, rl_db: r.rl_db, eye_h: r.error ? null : r.eye_height, eye_w_ui: r.error ? null : r.eye_width_ui, skew_ps: r.skew_ps, skew_uncertain: r.skew_uncertain, stub_ghz: r.stub_ghz, error: r.error });
+const rowMetrics = (r, lane) => ({ ...(lane ? laneZStats(lane) : zStats(r.net)), il_nyq_db: r.il_nyq_db, rl_db: r.rl_db, eye_h: r.error || r.eye === false ? null : r.eye_height, eye_w_ui: r.error || r.eye === false ? null : r.eye_width_ui, skew_ps: r.skew_ps, skew_uncertain: r.skew_uncertain, stub_ghz: r.stub_ghz, error: r.error });
 async function runCheck() {
   const items = checkItems(), rows = [], gen = S.anGen, p = rfParams();
   const btn = $("ck-start"); btn.disabled = true; S.checkRunning = true;
+  const lanes = new Map(allLanes().map((l) => [laneKey(l), l]));
+  if ($("ov-check")) $("ov-check").disabled = true;
   for (let i = 0; i < items.length; i += 4) {
     if (gen !== S.anGen) break;
-    $("ck-text").textContent = `Checking ${Math.min(i + 4, items.length)} of ${items.length} channels …`;
-    await new Promise((res) => setTimeout(res, 0));
+    const msg = `Checking ${Math.min(i + 4, items.length)} of ${items.length} channels …`;
+    $("ck-text").textContent = msg; if ($("ov-check-text")) $("ov-check-text").textContent = msg;
+    await new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)));
+    const chunk = items.slice(i, i + 4);
     try {
-      S.engine.call(S.engine.k.kisi_check, JSON.stringify({ rf: p, items: items.slice(i, i + 4) }));
-      rows.push(...JSON.parse(S.engine.out()));
+      S.engine.call(S.engine.k.kisi_check, JSON.stringify({ rf: p, items: chunk }));
+      JSON.parse(S.engine.out()).forEach((r, k) => { r.laneKey = chunk[k].laneKey; r.net = chunk[k].laneKey ? chunk[k].net : r.net; rows.push(r); });
     } catch (e) { console.warn(e); }
   }
   btn.disabled = false; S.checkRunning = false;
   S.check = { gen, rows, stale: false };
   S.chStatus = new Map();
+  S.laneRes = new Map();
   for (const r of rows) {
-    const st = judge(rowMetrics(r), profileOf(r.net)).status;
-    S.chStatus.set(r.net, st);
-    const n = S.an.nets.find((x) => x.net === r.net);
-    if (n && n.partner != null) S.chStatus.set(n.partner, st);
+    const lane = r.laneKey ? lanes.get(r.laneKey) : null;
+    r.lane = lane;
+    const st = judge(rowMetrics(r, lane), lane ? laneProfile(lane) : profileOf(r.net)).status;
+    if (lane) {
+      S.laneRes.set(r.laneKey, r);
+      for (const n of [...lane.nets, ...lane.partner_nets]) if (!S.chStatus.has(n) || st === "high2" || (st === "high1" && S.chStatus.get(n) === "ok")) S.chStatus.set(n, st);
+    } else {
+      S.chStatus.set(r.net, st);
+      const n = S.an.nets.find((x) => x.net === r.net);
+      if (n && n.partner != null) S.chStatus.set(n.partner, st);
+    }
   }
-  if (S.tab === "ch") { buildPaths(); if (S.selNet >= 0) selectNet(S.selNet, false); renderLegend(); draw(); }
+  if (S.tab === "ch") { if (S.chMode === "o") renderChOverview(); else { buildPaths(); if (S.selNet >= 0) selectNet(S.selNet, false); renderLegend(); draw(); } }
   renderCheck();
 }
 function renderCheck() {
@@ -249,10 +272,10 @@ function renderCheck() {
   }
   if (!S.check || !S.check.rows.length) {
     box.innerHTML = "";
-    $("ck-text").textContent = "All nets with target impedance against their class profile: eye with transmitter and receiver, insertion loss, return loss, skew, via stubs.";
+    $("ck-text").textContent = "All device-to-device lanes against the profile of their class: eye (IC to IC) with transmitter and receiver, insertion loss, return loss, skew, via stubs.";
     return;
   }
-  const rows = S.check.rows.map((r) => ({ r, p: profileOf(r.net) })).map((x) => ({ ...x, st: judge(rowMetrics(x.r), x.p).status }));
+  const rows = S.check.rows.map((r) => ({ r, p: r.lane ? laneProfile(r.lane) : profileOf(r.net) })).map((x) => ({ ...x, st: judge(rowMetrics(x.r, x.r.lane), x.p).status }));
   const rank = { high2: 0, high1: 1, ok: 2 };
   rows.sort((a, b) => rank[a.st] - rank[b.st] || (a.r.eye_height ?? 0) - (b.r.eye_height ?? 0));
   const n = { high2: 0, high1: 0, ok: 0 }; rows.forEach((x) => n[x.st]++);
@@ -260,13 +283,13 @@ function renderCheck() {
   $("ck-text").textContent = `${rows.length} channels: ${n.ok} green, ${n.high1} yellow, ${n.high2} red${stale ? " · outdated, check again" : ""}`;
   const shown = S.checkAll ? rows : rows.slice(0, 15);
   box.innerHTML = `<div class="tablewrap"><table class="xs-table ck-table"><thead><tr><th></th><th>Net</th><th>Profile</th><th>IL dB</th><th>Eye %</th><th>Skew ps</th></tr></thead><tbody>${shown.map(({ r, p, st }) => {
-    const nm = r.name.split("/").pop();
+    const nm = netLabel(r.name).split("/").pop() + (r.lane ? ` (${r.lane.ends.map((e) => e.refdes).join("–")})` : "");
     const sk = r.skew_ps == null ? "–" : fmt(Math.abs(r.skew_ps), 1) + (r.skew_uncertain ? "?" : "");
-    return `<tr class="click" data-net="${r.net}" title="${esc(r.name)} · ${r.diff ? "pair" : "single-ended"}, ${fmt(r.length_mm, 1)} mm, ${r.vias} vias, RL ${fmt(r.rl_db, 1)} dB${r.stub_ghz != null ? ", stub resonance " + fmt(r.stub_ghz, 1) + " GHz" : ""}${r.error ? " · " + esc(r.error) : ""}"><td><span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span></td><td>${esc(nm)}</td><td>${esc(p.name.split(" (")[0])}</td><td>${fmt(r.il_nyq_db, 1)}</td><td>${r.error ? "–" : fmt(r.eye_height * 100, 0)}</td><td>${sk}</td></tr>`;
+    return `<tr class="click" data-net="${r.net}" title="${esc(r.name)} · ${r.diff ? "pair" : "single-ended"}, ${fmt(r.length_mm, 1)} mm, ${r.vias} vias, RL ${fmt(r.rl_db, 1)} dB${r.stub_ghz != null ? ", stub resonance " + fmt(r.stub_ghz, 1) + " GHz" : ""}${r.error ? " · " + esc(r.error) : ""}"><td><span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span></td><td>${esc(nm)}</td><td>${esc(p.name.split(" (")[0])}</td><td>${fmt(r.il_nyq_db, 1)}</td><td>${r.error || r.eye === false ? "–" : fmt(r.eye_height * 100, 0)}</td><td>${sk}</td></tr>`;
   }).join("")}</tbody></table></div>
   ${rows.length > 15 ? `<button class="btn small" id="ck-all">${S.checkAll ? "Only the first 15" : `Show all ${rows.length}`}</button>` : ""}
   <p class="note">Limits per profile (“Profile” card). “?” = branched path, skew uncertain.</p>`;
-  box.querySelectorAll("tr[data-net]").forEach((tr) => tr.onclick = () => { S.chTab = "check"; selectNet(+tr.dataset.net); });
+  box.querySelectorAll("tr[data-net]").forEach((tr, i) => tr.onclick = () => { S.chTab = "check"; const r = shown[i].r; S.selLane = r.laneKey || null; if (S.chMode === "o") setChMode("m"); selectNet(+tr.dataset.net); });
   if ($("ck-all")) $("ck-all").onclick = () => { S.checkAll = !S.checkAll; renderCheck(); };
 }
 

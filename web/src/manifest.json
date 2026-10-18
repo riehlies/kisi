@@ -9,6 +9,7 @@
   "net-detail.js",
   "si-tabs.js",
   "channel.js",
+  "lanes.js",
   "panels.js",
   "interaction.js",
   "field-pool.js",

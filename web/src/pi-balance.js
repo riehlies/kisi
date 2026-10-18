@@ -7,7 +7,7 @@ const mW = (w) => (w >= 1 ? fmt(w, 2) + " W" : fmt(w * 1e3, 0) + " mW");
 function renderBalance() {
   const box = $("pi-balance"), t = S.treeRes;
   if (!t) {
-    box.innerHTML = `<div class="bal-head"><h3>Power budget</h3><p>No power tree is defined for this board. Add PI_REG fields to the regulators in KiCad; the regulator chains of the example boards ThunderScope and LibreVNA are modelled.</p></div>`;
+    box.innerHTML = `<div class="bal-head"><h3>Power tree</h3><p>No power tree is defined for this board. Add PI_REG fields to the regulators in KiCad; the regulator chains of the example boards ThunderScope and LibreVNA are modelled.</p></div>`;
     return;
   }
   const cu = piCopperLoss();
@@ -50,7 +50,7 @@ function renderBalance() {
   };
   const warn = (t.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
   box.innerHTML = `
-    <div class="bal-head"><h3>Power budget · ${esc(t.name)}</h3><p>${esc(t.note)}</p></div>
+    <div class="bal-head"><h3>Power tree · ${esc(t.name)}</h3><p>${esc(t.note)}</p></div>
     <div class="bal-kpis">
       ${kpi(fmt(pin, 2), "W", "input power")}
       ${kpi(fmt(t.p_loads, 2), "W", "consumed by components")}

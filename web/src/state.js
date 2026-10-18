@@ -3,11 +3,11 @@
 const $ = (id) => document.getElementById(id);
 const S = {
   engine: null, scene: null, an: null, zones: null, name: "",
-  mode: "dev", layerOn: [], zoneLayer: -1, overrides: {}, mask: true, step: 0.5,
+  mode: "type", layerOn: [], zoneLayer: -1, overrides: {}, mask: true, step: 0.5,
   pieces: null, grid: null, selNet: -1, hover: -1,
   view: { s: 1, x: 0, y: 0 }, paths: null, selPaths: null, colors: {},
   field: new Map(), fieldPending: new Set(), pool: null, gen: 0,
-  tab: "si", piMode: "v", piNets: [], piSetups: new Map(), piRes: new Map(), piRail: null, piLayer: -1,
+  tab: "si", piMode: "b", piNets: [], piSetups: new Map(), piRes: new Map(), piRail: null, piLayer: -1,
   piImg: null, piWarn: [], piDefaults: null, piTree: null, treeRes: null,
   detailTab: "z", rfCache: null, anGen: 0,
 };

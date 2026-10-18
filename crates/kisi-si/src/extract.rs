@@ -835,16 +835,18 @@ fn net_stats(
     (nets, classes)
 }
 
-/// Board summary without impedances: stackup-independent net/class data and one
-/// piece per track, so the viewer can show the board, net classes and targets
-/// before the (slower) cross-section analysis runs. `skeleton` is set.
+/// Board summary without impedances: net/class data, a preliminary line type per
+/// layer (outer = microstrip, inner = stripline) and one piece per track, so the
+/// viewer can show the board, net classes and targets before the (slower)
+/// cross-section analysis runs. `skeleton` is set.
 pub fn skeleton(board: &Board, params: &Params) -> Analysis {
     let class_targets = class_targets(board, params);
     let partners = diff_partners(&board.nets);
     let ncu = board.stackup().n();
     let xss: Vec<CrossSection> = (0..ncu as u16)
         .map(|layer| CrossSection {
-            kind: Kind::Microstrip,
+            // reference planes are only checked by analyze()
+            kind: if layer == 0 || layer as usize + 1 == ncu { Kind::Microstrip } else { Kind::Stripline },
             layer,
             w: 0.0,
             t: 0.0,

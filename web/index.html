@@ -19,14 +19,14 @@
       <button id="view-pi" aria-pressed="false">Power</button>
     </div>
     <div class="seg" role="group" aria-label="Colour mode" data-view="si">
-      <button id="mode-dev" aria-pressed="true">Deviation from target</button>
-      <button id="mode-abs" aria-pressed="false">Z₀ absolute</button>
-      <button id="mode-type" aria-pressed="false">Line type</button>
+      <button id="mode-type" aria-pressed="true">Line type</button>
+      <button id="mode-dev" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Deviation from target</button>
+      <button id="mode-abs" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Z₀ absolute</button>
     </div>
     <div class="seg" role="group" aria-label="Power view" data-view="pi" hidden>
-      <button id="pim-v" aria-pressed="true">Voltage drop</button>
-      <button id="pim-j" aria-pressed="false">Current density</button>
-      <button id="pim-b" aria-pressed="false">Power budget</button>
+      <button id="pim-b" aria-pressed="true">Power tree</button>
+      <button id="pim-v" aria-pressed="false" disabled title="after “Compute” in step 2">Voltage drop</button>
+      <button id="pim-j" aria-pressed="false" disabled title="after “Compute” in step 2">Current density</button>
     </div>
     <div class="seg" role="group" aria-label="Example board">
       <button id="sample-ts" aria-pressed="false">ThunderScope</button>
@@ -94,7 +94,7 @@
         <div class="kpi"><span class="v" id="pk-rails">–</span><span class="l">rails computed</span></div>
         <div class="kpi"><span class="v" id="pk-j">–</span><span class="l">highest current density</span></div>
       </div>
-      <p class="note">Power analysis in three steps. The power budget is available after step 1; steps 2 and 3 compute on the copper of each rail.</p>
+      <p class="note">Power analysis in three steps. The power tree with its budget is shown after step 1; steps 2 and 3 compute on the copper of each rail.</p>
       <ol class="steps">
         <li id="ps1" class="done">
           <div class="step-h"><b>Power tree and loads</b></div>
@@ -104,10 +104,14 @@
         <li id="ps2">
           <div class="step-h"><b>Voltage drop (DC)</b><button class="btn small primary" id="pi-run">Compute</button></div>
           <span class="note" id="pi-step"></span>
+          <div class="fs-bar" id="pi-barbox" hidden aria-hidden="true"><i id="pi-bar"></i></div>
+          <span class="note" id="pi-prog" hidden></span>
         </li>
         <li id="ps3">
           <div class="step-h"><b>Impedance Z(f)</b><button class="btn small primary" id="pdn-run">Compute</button></div>
           <span class="note" id="pdn-step"></span>
+          <div class="fs-bar" id="pdn-barbox" hidden aria-hidden="true"><i id="pdn-bar"></i></div>
+          <span class="note" id="pdn-prog" hidden></span>
         </li>
       </ol>
       <details class="acc">
@@ -189,7 +193,7 @@
     <section class="detail" id="detail" hidden aria-live="polite"></section>
     <section class="detail" id="ch-detail" hidden aria-live="polite"></section>
     <section class="detail" id="pi-detail" hidden aria-live="polite"></section>
-    <section class="balance" id="pi-balance" hidden aria-label="Power budget"></section>
+    <section class="balance" id="pi-balance" hidden aria-label="Power tree"></section>
     <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro or kipida_config.json here</div>
     <div class="busy" id="busy">Loading engine…</div>
   </main>

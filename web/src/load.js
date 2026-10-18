@@ -13,7 +13,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null) {
     S.name = name;
     S.overrides = {};
     S.selNet = -1; S.hover = -1; S.check = null; S.chStatus = null; S.chCache = null;
-    S.full = false; // step 2 (formula impedances) not run yet
+    S.full = false; S.mode = "type"; // step 2 (formula impedances) not run yet; line type first
     S.fieldPending = new Set(); S.gen++;
     if (S.pool) S.pool.reset();
     const n = S.scene.stackup.copper.length;
@@ -79,6 +79,7 @@ function runAnalysis(tParse) {
   const tAn = performance.now() - t0;
   if (tParse != null) S.parseMs = Math.round(tParse);
   $("timing").textContent = S.parseMs != null ? `read ${S.parseMs} ms` : "";
+  syncModeButtons();
   preparePieces();
   buildPaths();
   renderSide();
@@ -94,7 +95,9 @@ function estimateImpedances() {
   requestAnimationFrame(() => setTimeout(() => {
     const t0 = performance.now();
     try { S.full = true; runAnalysis(); } catch (e) { busyError(e.message); return; }
-    S.anMs = Math.round(performance.now() - t0); renderFieldStatus();
+    S.anMs = Math.round(performance.now() - t0);
+    setMode("dev"); // deviation from target is now available
+    renderFieldStatus();
     hideBusy();
   }, 0));
 }

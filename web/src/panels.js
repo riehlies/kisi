@@ -108,7 +108,9 @@ function renderLegend() {
     return;
   }
   if (S.an && S.an.skeleton) {
-    L.innerHTML = `<strong>Impedance not estimated yet</strong><div class="row"><span class="sw" style="background:${C.none}"></span>run step 2 “Impedance estimate”</div>`;
+    const it = [[C.ms, "Microstrip (outer layer)"], [C.sl, "Stripline (inner layer)"]];
+    L.innerHTML = `<strong>Line type (by layer)</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("") +
+      `<div class="row muted">reference planes and impedances: step 2</div>`;
     return;
   }
   if (S.mode === "dev") {

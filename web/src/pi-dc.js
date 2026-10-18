@@ -28,6 +28,7 @@ function initPi(defaults) {
   S.piRes = new Map(); S.piSetups = new Map(); S.piImg = null; S.piWarn = []; S.piDefaults = defaults;
   S.piTree = null; S.treeRes = null; $("pi-balance").scrollTop = 0;
   S.piSolved = false; // IR drop runs on request (button), it is the slowest part of loading
+  S.piMode = "b"; // the power tree is the first view; drop / density after step 2
   S.pdnRes = new Map(); S.pdnSolved = false; // Z(f) per rail, on request
   try { S.piNets = S.engine.piNets(); } catch (e) { S.piNets = []; }
   // regulator chain from PI_REG fields in the board wins over the example tree
@@ -59,17 +60,27 @@ function initPi(defaults) {
 }
 
 // Z(f) of all rails with a source (step 3)
+// inline progress of a power step (bar and "i of n rails" below its Compute button)
+const frame = () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)));
+function stepProgress(key, i, n) {
+  const run = i != null;
+  $(key + "-barbox").hidden = !run; $(key + "-prog").hidden = !run;
+  S[key + "Running"] = run;
+  $(key === "pi" ? "pi-run" : "pdn-run").disabled = run;
+  if (run) { $(key + "-bar").style.width = Math.round(100 * i / n) + "%"; $(key + "-prog").textContent = `${i} of ${n} rails`; }
+}
+
 async function solveAllPdn() {
   const rails = [...S.piSetups.values()].filter((r) => r.sources.length);
   const t0 = performance.now();
   S.pdnRes = new Map();
   for (let i = 0; i < rails.length; i++) {
-    showBusy(`Computing impedance Z(f)… ${i + 1} of ${rails.length} rails`);
-    await new Promise((res) => setTimeout(res, 0));
+    stepProgress("pdn", i, rails.length);
+    await frame();
     try { S.pdnRes.set(rails[i].net, S.engine.pdn({ setup: rails[i], params: {} })); } catch (e) { S.pdnRes.set(rails[i].net, { error: e.message }); }
   }
+  stepProgress("pdn", null);
   S.pdnSolved = true; S.pdnMs = Math.round(performance.now() - t0);
-  hideBusy();
   if (S.piRail && S.pdnRes.has(S.piRail)) S.piTab = "z";
   renderPi();
 }
@@ -80,17 +91,17 @@ async function solveAllRails() {
   const rails = [...S.piSetups.values()];
   const t0 = performance.now();
   for (let i = 0; i < rails.length; i++) {
-    showBusy(`Computing voltage drop… ${i + 1} of ${rails.length} rails`);
-    await new Promise((res) => setTimeout(res, 0));
-    try { solvePiRail(rails[i].net, false, true); } catch (e) { busyError(e.message); return; }
+    stepProgress("pi", i, rails.length);
+    await frame();
+    try { solvePiRail(rails[i].net, false, true); } catch (e) { stepProgress("pi", null); S.piWarn = [e.message]; renderPi(); return; }
   }
+  stepProgress("pi", null);
   S.piSolved = true; S.piMs = Math.round(performance.now() - t0);
   $("pi-timing").textContent = "";
   let best = null;
   for (const [net, r] of S.piRes) if (r.res && (!best || (r.res.max_drop_mv || 0) > (S.piRes.get(best).res.max_drop_mv || 0))) best = net;
   if (best) S.piRail = best;
-  S.piLayer = -1; S.piImg = null;
-  hideBusy();
+  S.piLayer = -1; S.piImg = null; S.piMode = "v"; // show the result
   if (S.tab === "pi") fitRail();
   renderPi();
 }
@@ -119,6 +130,8 @@ function piSetup(net) {
 }
 
 function renderPi() {
+  for (const k of ["v", "j", "b"]) $("pim-" + k).setAttribute("aria-pressed", String(k === S.piMode));
+  for (const k of ["v", "j"]) { $("pim-" + k).disabled = !S.piSolved; $("pim-" + k).title = S.piSolved ? "" : "after “Compute” in step 2"; }
   renderPiSide();
   const bal = S.tab === "pi" && S.piMode === "b";
   $("pi-balance").hidden = !bal;
@@ -144,7 +157,7 @@ function renderPiSide() {
   $("pk-drop").innerHTML = worst ? `${fmt(worst.d, 1)}<small> mV</small>` : "–";
   const nReady = [...S.piSetups.values()].filter((r) => r.sources.length && r.loads.some((l) => l.current)).length;
   $("pi-run").textContent = S.piSolved ? "Recompute" : "Compute";
-  $("pi-run").disabled = !nReady;
+  $("pi-run").disabled = !nReady || !!S.piRunning;
   $("ps2").classList.toggle("done", !!S.piSolved);
   $("pi-step").textContent = S.piSolved
     ? `Done in ${S.piMs} ms for ${n} rail${n === 1 ? "" : "s"}. Voltage and current density per layer, drop at every load.` + (worst ? ` Largest drop: ${fmt(worst.d, 1)} mV on ${netLabel(worst.net)}.` : "")
@@ -152,7 +165,7 @@ function renderPiSide() {
     : "No rail has both a source and a load yet.";
   const nZ = [...S.piSetups.values()].filter((r) => r.sources.length).length;
   $("pdn-run").textContent = S.pdnSolved ? "Recompute" : "Compute";
-  $("pdn-run").disabled = !nZ;
+  $("pdn-run").disabled = !nZ || !!S.pdnRunning;
   $("ps3").classList.toggle("done", !!S.pdnSolved);
   if (S.pdnSolved) {
     const over = [...S.pdnRes.entries()].filter(([, r]) => r && r.above_target && r.above_target.length).map(([net]) => netLabel(net).split("/").pop());
@@ -169,7 +182,7 @@ function renderPiSide() {
   const o = Object.entries(origins).map(([k, v]) => `${v}× ${k === "example" ? "example value (assumption)" : k === "field" ? "KiCad field" : k}`).join(", ");
   if (S.treeRes) {
     const t = S.treeRes, cu = piCopperLoss();
-    $("pi-origin").textContent = `Power tree ${t.name}: ${t.rails.length} rails, input ${fmt(t.p_input + cu, 2)} W, of which ${fmt(t.p_losses + cu, 2)} W losses${S.piSolved ? "" : " (copper losses after step 2)"}. Details under “Power budget”.`;
+    $("pi-origin").textContent = `Power tree ${t.name}: ${t.rails.length} rails, input ${fmt(t.p_input + cu, 2)} W, of which ${fmt(t.p_losses + cu, 2)} W losses${S.piSolved ? "" : " (copper losses after step 2)"}. Details in the “Power tree” view.`;
   } else $("pi-origin").textContent = S.piSetups.size
     ? `${S.piSetups.size} rail${S.piSetups.size === 1 ? "" : "s"} configured. Loads: ${o || "none"}. Each rail needs a source and a load.`
     : "No loads defined. Set PI_LOAD/PI_SOURCE (or PI_REG) fields in KiCad, load a kipida_config.json or enter them in the rail editor.";
@@ -206,7 +219,7 @@ function renderRailEditor() {
     const st = S.piSetups.get(net);
     const rf = S.treeRes && S.treeRes.rails.find((r) => r.net === net);
     box.innerHTML = `<div class="rail-edit">
-      <p class="note">Sources and loads come from the power tree. Change currents in the <button class="btn small" id="re-tobal">power budget</button>.</p>
+      <p class="note">Sources and loads come from the power tree. Change currents in the <button class="btn small" id="re-tobal">power tree</button>.</p>
       ${rf ? `<div class="re-row"><span>Voltage</span><span class="mono">${fmt(rf.voltage, 2)} V · ${fmt(rf.i_total, 3)} A</span></div>` : ""}
       ${st ? `<div class="re-row"><span>Source</span><span class="mono">${esc(st.sources.map((x) => x.refdes).join(", "))}${rf && rf.fed_by ? " (" + esc(rf.fed_by) + ")" : ""}</span></div>
       <div class="re-list"><span>Loads on the net</span>${st.loads.map((l) => `<div class="re-load"><span>${esc(l.refdes)} <span class="o">${esc(l.origin)}</span></span><span class="mono">${fmt(l.current, 3)} A</span><span></span></div>`).join("")}</div>` : `<p class="note">No element feeds this rail.</p>`}

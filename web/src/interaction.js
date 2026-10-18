@@ -1,8 +1,13 @@
 "use strict";
 // ============================================================== interaction
+// colour modes: line type from the start, deviation / Z0 after step 2
+function syncModeButtons() {
+  for (const k of ["dev", "abs", "type"]) $("mode-" + k).setAttribute("aria-pressed", String(k === S.mode));
+  for (const k of ["dev", "abs"]) { $("mode-" + k).disabled = !S.full; $("mode-" + k).title = S.full ? "" : "after step 2 “Impedance estimate”"; }
+}
 function setMode(m) {
   S.mode = m;
-  for (const k of ["dev", "abs", "type"]) $("mode-" + k).setAttribute("aria-pressed", String(k === m));
+  syncModeButtons();
   buildPaths(); if (S.selNet >= 0) selectNet(S.selNet, false);
   renderLegend(); draw();
 }

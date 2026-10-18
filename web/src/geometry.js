@@ -41,7 +41,8 @@ function preparePieces() {
 
 function pieceColor(i) {
   const xs = S.an.cross_sections[S.pieces.xs[i]], C = S.colors;
-  if (S.an.skeleton) return C.none; // impedances not estimated yet
+  // before step 2: line type from the layer position only
+  if (S.an.skeleton && S.tab !== "ch") return xs.kind === "Stripline" ? C.sl : C.ms;
   if (S.tab === "ch") {
     // channel view: result of the channel check per net, grey if not checked
     const st = S.chStatus && S.chStatus.get(S.pieces.net[i]);

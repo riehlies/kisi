@@ -3,10 +3,18 @@
 Extrahiert Leitungsimpedanzen aus KiCad-Layouts (`.kicad_pcb` + `.kicad_pro`) und stellt sie farbig dar.
 Kern in Rust, läuft als WebAssembly im Browser und als native CLI. Lizenz: GPL-3.0-only.
 
+Aufbau und Update-Regeln: `ARCHITECTURE.md`. Integration: KiCad-Plugin (`kicad-plugin/`), MCP-Server für
+KI-Agenten (`crates/kisi-mcp`, Claude-Code-Plugin in `claude-plugin/`).
+
 ## Ablauf im Viewer
 1. Board laden (`.kicad_pcb`, optional `.kicad_pro`, optional `kipida_config.json`)
 2. Schnelle Analyse läuft sofort: Impedanz per Formel, DC-Spannungsabfall aller konfigurierten Schienen
 3. Feldlöser per Button für ausgewähltes Netz, eine Netzklasse, alle Netze mit Ziel oder alles.
+4. Ansicht **Impedanz**: Leitungsanalyse (Impedanz, Verluste, TDR, Vias, Übersprechen) mit Bezugswiderstand.
+   Ansicht **Kanal**: Schnittstellen-Profil je Netzklasse (PCIe, USB, DDR, … aus `data/interfaces.json`),
+   Sender und Empfänger, Grenzen – Auge und Prüfung je Netz, Kanalprüfung aller Netze.
+   Ansicht **Versorgung**: Spannungsabfall, Leistungsbilanz, Z(f).
+5. Lagenaufbau (εr, tanδ, Dicke) und Profile sind im Viewer änderbar (im Browser gespeichert, Datei bleibt unverändert).
    Ergebnisse werden im Browser (IndexedDB) gespeichert, boardübergreifend, Schlüssel = Solver-Version + Geometrie.
 
 ## DC-Spannungsabfall (Versorgung)

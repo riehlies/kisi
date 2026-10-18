@@ -35,7 +35,7 @@ def find_viewer():
     for p in (os.path.join(HERE, "kisi.html"), os.path.join(HERE, "..", "dist", "kisi.html")):
         if os.path.exists(p):
             return p
-    raise FileNotFoundError("kisi.html nicht gefunden (neben kisi_open.py ablegen)")
+    raise FileNotFoundError("kisi.html not found (place it next to kisi_open.py)")
 
 
 def board_files(board, tmp):
@@ -50,7 +50,7 @@ def board_files(board, tmp):
         proj = board.get_project()
         pcb = os.path.join(proj.path, name)
         pro = os.path.join(proj.path, proj.name + ".kicad_pro")
-        return pcb, (pro if os.path.exists(pro) else None), f"Kopie nicht möglich ({e}); verwende die gespeicherte Datei – ungespeicherte Änderungen fehlen."
+        return pcb, (pro if os.path.exists(pro) else None), f"could not save a copy ({e}); using the saved file – unsaved changes are missing."
 
 
 def selected_net(board):
@@ -67,8 +67,8 @@ def selected_net(board):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--view", default="si", choices=["si", "ch", "pi"])
-    ap.add_argument("--pcb", help="ohne KiCad: Board-Datei direkt öffnen")
-    ap.add_argument("--net", help="ohne KiCad: dieses Netz auswählen")
+    ap.add_argument("--pcb", help="without KiCad: open this board file directly")
+    ap.add_argument("--net", help="without KiCad: select this net")
     args, _ = ap.parse_known_args()
 
     tmp = tempfile.mkdtemp(prefix="kisi-")
@@ -90,7 +90,7 @@ def main():
     preload = {"name": os.path.splitext(name)[0], "pcb": b64gz(pcb), "pro": b64gz(pro) if pro else None, "net": net, "view": args.view}
     html = open(find_viewer(), encoding="utf-8").read()
     if MARKER not in html:
-        raise RuntimeError("kisi.html ohne Übergabe-Marker (zu alte Version?)")
+        raise RuntimeError("kisi.html has no hand-over marker (version too old?)")
     html = html.replace(MARKER, json.dumps(preload).replace("</", "<\\/") + ";", 1)
     out = os.path.join(tmp, f"kisi_{preload['name']}.html")
     with open(out, "w", encoding="utf-8") as f:

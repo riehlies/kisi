@@ -1,24 +1,24 @@
-# kisi – KiCad-Plugin
+# kisi – KiCad plugin
 
-Öffnet den eigenständigen kisi-Viewer mit dem Board, das im KiCad-Leiterplatteneditor offen ist
-(KiCad 9/10, IPC-API). Das Board wird dafür mit „Kopie speichern“ in einen temporären Ordner
-kopiert – die eigenen Dateien werden weder gespeichert noch verändert. Ist eine Leiterbahn, ein Via
-oder ein Pad ausgewählt, ist das Netz im Viewer vorausgewählt.
+Opens the standalone kisi viewer with the board that is open in the KiCad PCB editor
+(KiCad 9/10, IPC API). The board is copied to a temporary folder with “save a copy” –
+your own files are neither saved nor changed. If a track, via or pad is selected, its net is
+pre-selected in the viewer.
 
 ## Installation
 1. `python3 tools/package_plugin.py` → `dist/kisi-kicad-plugin.zip`
-2. Den Ordner `kisi` aus dem Zip in den Plugin-Ordner von KiCad entpacken:
+2. Unpack the folder `kisi` from the zip into KiCad's plugin folder:
    - Linux `~/.local/share/KiCad/9.0/plugins/`
    - Windows `%USERPROFILE%\Documents\KiCad\9.0\plugins\`
    - macOS `~/Documents/KiCad/9.0/plugins/`
-3. In KiCad: Einstellungen → Plugins → „API-Server aktivieren“. Beim ersten Start legt KiCad die
-   Python-Umgebung mit `kicad-python` an (requirements.txt).
+3. In KiCad: Preferences → Plugins → “Enable API server”. On first use KiCad creates the
+   Python environment with `kicad-python` (requirements.txt).
 
-Aktionen: „kisi: Viewer öffnen“ (Symbolleiste) und „kisi: Kanal prüfen“ (startet in der Kanal-Ansicht).
+Actions: “kisi: Open viewer” (toolbar) and “kisi: Check channel” (starts in the channel view).
 
-## Ohne KiCad
-`python3 kisi_open.py --pcb board.kicad_pcb [--net NETZ] [--view si|ch|pi]`
+## Without KiCad
+`python3 kisi_open.py --pcb board.kicad_pcb [--net NET] [--view si|ch|pi]`
 
-## Aufbau
-Der Viewer bleibt unabhängig: das Plugin ersetzt in einer Kopie von `kisi.html` nur die Zeile
-`const PRELOAD = null; /*KISI_PRELOAD*/` durch das Board (gzip+base64) und öffnet die Datei im Browser.
+## How it works
+The viewer stays independent: in a copy of `kisi.html` the plugin only replaces the line
+`const PRELOAD = null; /*KISI_PRELOAD*/` with the board (gzip + base64) and opens the file in the browser.

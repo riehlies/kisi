@@ -1,13 +1,13 @@
-# kisi – Claude-Code-Plugin (MCP-Server + Skill)
+# kisi – Claude Code plugin (MCP server + skill)
 
-1. MCP-Server bauen und in den PATH legen: `cargo install --path crates/kisi-mcp`
-   (für `kisi_open_viewer` zusätzlich `dist/kisi.html` neben das Programm legen oder `KISI_VIEWER` setzen)
-2. In Claude Code: `/plugin marketplace add <Pfad oder Repo von kisi>` und `/plugin install kisi@kisi`
+1. Build the MCP server and put it on the PATH: `cargo install --path crates/kisi-mcp`
+   (for `kisi_open_viewer`, also place `dist/kisi.html` next to the binary or set `KISI_VIEWER`)
+2. In Claude Code: `/plugin marketplace add <path or repo of kisi>` and `/plugin install kisi@kisi`
 
-Andere MCP-Clients: `kisi-mcp` als stdio-Server eintragen, z. B.
+Other MCP clients: register `kisi-mcp` as a stdio server, e.g.
 `{"mcpServers": {"kisi": {"command": "kisi-mcp"}}}`.
 
-Werkzeuge: `kisi_overview`, `kisi_net`, `kisi_channel_check`, `kisi_profiles`, `kisi_power`,
-`kisi_report` (schreibt `analysis/kisi.json`), `kisi_open_viewer`.
-Umgebung: `KISI_VIEWER` (Pfad zu kisi.html), `KISI_PROFILES` (eigene interfaces.json),
-`KISI_NO_BROWSER` (Viewer-Datei nur schreiben).
+Tools: `kisi_overview`, `kisi_net`, `kisi_channel_check`, `kisi_profiles`, `kisi_power`,
+`kisi_report` (writes `analysis/kisi.json`), `kisi_open_viewer`.
+Environment: `KISI_VIEWER` (path to kisi.html), `KISI_PROFILES` (own interfaces.json),
+`KISI_NO_BROWSER` (only write the viewer file).

@@ -9,7 +9,7 @@ function piSave() {
     else localStorage.setItem(piKey(), JSON.stringify([...S.piSetups.values()]));
   } catch (e) { /* storage blocked */ }
 }
-const treeKey = () => "kisi.tree.v1." + S.name;
+const treeKey = () => "kisi.tree.v2." + S.name;
 function treeLoadSaved() { try { const t = localStorage.getItem(treeKey()); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
 
 // power tree: solve the chain, derive the IR-drop setups of every rail
@@ -19,7 +19,7 @@ function computeTree() {
     S.piSetups = new Map(S.treeRes.setups.map((r) => [r.net, r]));
     S.piWarn = S.treeRes.warnings || [];
   } catch (e) {
-    S.treeRes = null; S.piSetups = new Map(); S.piWarn = ["Versorgungsbaum: " + e.message];
+    S.treeRes = null; S.piSetups = new Map(); S.piWarn = ["Power tree: " + e.message];
   }
 }
 
@@ -37,7 +37,7 @@ function initPi(defaults) {
     if (tf && tf.warnings) S.piWarn = tf.warnings.concat(S.piWarn);
     const t0 = performance.now();
     for (const r of S.piSetups.values()) solvePiRail(r.net, false);
-    $("pi-timing").textContent = `${S.piSetups.size} Schienen · ${Math.round(performance.now() - t0)} ms`;
+    $("pi-timing").textContent = `${S.piSetups.size} rails · ${Math.round(performance.now() - t0)} ms`;
     let best = null;
     for (const [net, r] of S.piRes) if (r.res && (!best || (r.res.max_drop_mv || 0) > (S.piRes.get(best).res.max_drop_mv || 0))) best = net;
     S.piRail = best; S.piLayer = -1;
@@ -55,7 +55,7 @@ function initPi(defaults) {
   }
   const t0 = performance.now();
   for (const r of S.piSetups.values()) solvePiRail(r.net, false);
-  $("pi-timing").textContent = S.piSetups.size ? `${S.piSetups.size} Schienen · ${Math.round(performance.now() - t0)} ms` : "";
+  $("pi-timing").textContent = S.piSetups.size ? `${S.piSetups.size} rails · ${Math.round(performance.now() - t0)} ms` : "";
   // default rail: worst drop, else largest supply net
   let best = null;
   for (const [net, r] of S.piRes) if (r.res && (!best || (r.res.max_drop_mv || 0) > (S.piRes.get(best).res.max_drop_mv || 0))) best = net;
@@ -113,30 +113,30 @@ function renderPiSide() {
   $("pk-rails").textContent = n;
   $("pk-j").innerHTML = n ? `${fmt(maxJ, 0)}<small> A/mm²</small>` : "–";
   const origins = {};
-  for (const r of S.piSetups.values()) for (const l of r.loads) origins[l.origin || "Benutzer"] = (origins[l.origin || "Benutzer"] || 0) + 1;
-  const o = Object.entries(origins).map(([k, v]) => `${v}× ${k === "Beispiel" ? "Beispielwert (Annahme)" : k === "Feld" ? "KiCad-Feld" : k}`).join(", ");
+  for (const r of S.piSetups.values()) for (const l of r.loads) origins[l.origin || "user"] = (origins[l.origin || "user"] || 0) + 1;
+  const o = Object.entries(origins).map(([k, v]) => `${v}× ${k === "example" ? "example value (assumption)" : k === "field" ? "KiCad field" : k}`).join(", ");
   if (S.treeRes) {
     const t = S.treeRes, cu = piCopperLoss();
-    $("pi-origin").textContent = `Versorgungsbaum ${t.name}: Eingang ${fmt(t.p_input + cu, 2)} W, davon ${fmt(t.p_losses + cu, 2)} W Verluste.` +
-      (worst ? ` Größter Abfall auf ${netLabel(worst.net)} (${fmt(worst.pct, 2)} %).` : "");
+    $("pi-origin").textContent = `Power tree ${t.name}: input ${fmt(t.p_input + cu, 2)} W, of which ${fmt(t.p_losses + cu, 2)} W losses.` +
+      (worst ? ` Largest drop on ${netLabel(worst.net)} (${fmt(worst.pct, 2)} %).` : "");
   } else $("pi-origin").textContent = worst
-    ? `Größter Abfall auf ${netLabel(worst.net)} (${fmt(worst.pct, 2)} %). Lasten: ${o}.`
-    : (S.piSetups.size ? `Lasten: ${o || "keine"}. Für eine Berechnung braucht jede Schiene eine Quelle und eine Last.` : "Keine Lasten festgelegt. Felder PI_LOAD/PI_SOURCE in KiCad setzen, eine kipida_config.json laden oder unten eintragen.");
+    ? `Largest drop on ${netLabel(worst.net)} (${fmt(worst.pct, 2)} %). Loads: ${o}.`
+    : (S.piSetups.size ? `Loads: ${o || "none"}. Each rail needs a source and a load to be computed.` : "No loads defined. Set PI_LOAD/PI_SOURCE fields in KiCad, load a kipida_config.json or enter them below.");
   $("pi-warn").innerHTML = S.piWarn.map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
   // rails list
   const rank = (r) => (S.piRes.get(r.name) && S.piRes.get(r.name).res ? 0 : S.piSetups.has(r.name) ? 1 : r.ground ? 3 : 2);
   const known = new Set(S.piNets.map((r) => r.name));
   const extra = [...S.piSetups.keys()].filter((n) => !known.has(n)).map((n) => ({ name: n, voltage: S.piSetups.get(n).voltage, ground: false, components: [] }));
   const rails = S.piNets.concat(extra).sort((a, b) => rank(a) - rank(b));
-  $("rail-count").textContent = `${rails.filter((r) => !r.ground).length} Schienen`;
+  $("rail-count").textContent = `${rails.filter((r) => !r.ground).length} rails`;
   $("rails").innerHTML = rails.map((r) => {
     const res = S.piRes.get(r.name), st = S.piSetups.get(r.name);
     let status;
-    if (r.ground) status = "Masse";
-    else if (res && res.error) status = "Fehler: " + res.error;
-    else if (res && res.res) status = `Abfall ${fmt(res.res.max_drop_mv, 1)} mV · ${fmt(res.res.total_load, 2)} A`;
-    else if (st && st.loads.length && !st.sources.length) status = "Quelle fehlt";
-    else status = "keine Last";
+    if (r.ground) status = "ground";
+    else if (res && res.error) status = "error: " + res.error;
+    else if (res && res.res) status = `drop ${fmt(res.res.max_drop_mv, 1)} mV · ${fmt(res.res.total_load, 2)} A`;
+    else if (st && st.loads.length && !st.sources.length) status = "source missing";
+    else status = "no load";
     const v = st && st.voltage ? st.voltage : r.voltage;
     return `<button class="rail" data-net="${esc(r.name)}" aria-current="${r.name === S.piRail}">
       <span class="rn">${esc(netLabel(r.name))}</span><span class="rv">${v != null && v !== 0 ? fmt(v, 2) + " V" : "? V"}</span>
@@ -149,47 +149,47 @@ function renderPiSide() {
 function renderRailEditor() {
   const net = S.piRail, box = $("rail-edit");
   $("rail-name").textContent = net ? netLabel(net) : "";
-  if (!net) { box.innerHTML = `<p class="note">Schiene in der Liste auswählen.</p>`; return; }
+  if (!net) { box.innerHTML = `<p class="note">Select a rail in the list.</p>`; return; }
   if (S.piTree) {
     const st = S.piSetups.get(net);
     const rf = S.treeRes && S.treeRes.rails.find((r) => r.net === net);
     box.innerHTML = `<div class="rail-edit">
-      <p class="note">Quellen und Lasten kommen aus dem Versorgungsbaum. Ströme in der <button class="btn small" id="re-tobal">Leistungsbilanz</button> ändern.</p>
-      ${rf ? `<div class="re-row"><span>Spannung</span><span class="mono">${fmt(rf.voltage, 2)} V · ${fmt(rf.i_total, 3)} A</span></div>` : ""}
-      ${st ? `<div class="re-row"><span>Quelle</span><span class="mono">${esc(st.sources.map((x) => x.refdes).join(", "))}${rf && rf.fed_by ? " (" + esc(rf.fed_by) + ")" : ""}</span></div>
-      <div class="re-list"><span>Lasten am Netz</span>${st.loads.map((l) => `<div class="re-load"><span>${esc(l.refdes)} <span class="o">${esc(l.origin)}</span></span><span class="mono">${fmt(l.current, 3)} A</span><span></span></div>`).join("")}</div>` : `<p class="note">Kein Element speist diese Schiene.</p>`}
+      <p class="note">Sources and loads come from the power tree. Change currents in the <button class="btn small" id="re-tobal">power budget</button>.</p>
+      ${rf ? `<div class="re-row"><span>Voltage</span><span class="mono">${fmt(rf.voltage, 2)} V · ${fmt(rf.i_total, 3)} A</span></div>` : ""}
+      ${st ? `<div class="re-row"><span>Source</span><span class="mono">${esc(st.sources.map((x) => x.refdes).join(", "))}${rf && rf.fed_by ? " (" + esc(rf.fed_by) + ")" : ""}</span></div>
+      <div class="re-list"><span>Loads on the net</span>${st.loads.map((l) => `<div class="re-load"><span>${esc(l.refdes)} <span class="o">${esc(l.origin)}</span></span><span class="mono">${fmt(l.current, 3)} A</span><span></span></div>`).join("")}</div>` : `<p class="note">No element feeds this rail.</p>`}
     </div>`;
     const b = $("re-tobal"); if (b) b.onclick = () => setPiMode("b");
     return;
   }
   const info = piRailInfo(net), st = piSetup(net);
-  const comps = (info ? info.components : []).slice().sort((a, b) => a.localeCompare(b, "de", { numeric: true }));
+  const comps = (info ? info.components : []).slice().sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
   const srcSet = new Set(st.sources.map((x) => x.refdes)), loadSet = new Set(st.loads.map((x) => x.refdes));
   const opt = (list) => list.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
   box.innerHTML = `<div class="rail-edit">
-    <div class="re-row"><label for="re-v">Nennspannung</label><input id="re-v" type="number" step="0.01" value="${st.voltage || ""}" placeholder="V"></div>
-    <div class="re-row"><span>Quellen</span><div class="chips">${st.sources.map((x, i) => `<span class="chip">${esc(x.refdes)}<button class="xbtn" data-rs="${i}" aria-label="Quelle ${esc(x.refdes)} entfernen">×</button></span>`).join("")}
-      <select id="re-addsrc" aria-label="Quelle hinzufügen"><option value="">+ Quelle</option>${opt(comps.filter((c) => !srcSet.has(c)))}</select></div></div>
-    <div class="re-list"><span>Lasten (Strom in A)</span>
-      ${st.loads.map((l, i) => `<div class="re-load"><span>${esc(l.refdes)} <span class="o">${esc(l.origin === "Beispiel" ? "Annahme" : l.origin || "")}</span></span>
-        <input type="number" step="0.001" min="0" value="${l.current}" data-li="${i}" aria-label="Strom ${esc(l.refdes)} in A"><button class="xbtn" data-rl="${i}" aria-label="Last ${esc(l.refdes)} entfernen">×</button></div>`).join("")}
-      <select id="re-addload" aria-label="Last hinzufügen"><option value="">+ Last</option>${opt(comps.filter((c) => !loadSet.has(c)))}</select>
+    <div class="re-row"><label for="re-v">Nominal voltage</label><input id="re-v" type="number" step="0.01" value="${st.voltage || ""}" placeholder="V"></div>
+    <div class="re-row"><span>Sources</span><div class="chips">${st.sources.map((x, i) => `<span class="chip">${esc(x.refdes)}<button class="xbtn" data-rs="${i}" aria-label="Remove source ${esc(x.refdes)}">×</button></span>`).join("")}
+      <select id="re-addsrc" aria-label="Add source"><option value="">+ source</option>${opt(comps.filter((c) => !srcSet.has(c)))}</select></div></div>
+    <div class="re-list"><span>Loads (current in A)</span>
+      ${st.loads.map((l, i) => `<div class="re-load"><span>${esc(l.refdes)} <span class="o">${esc(l.origin === "example" ? "assumption" : l.origin || "")}</span></span>
+        <input type="number" step="0.001" min="0" value="${l.current}" data-li="${i}" aria-label="Current ${esc(l.refdes)} in A"><button class="xbtn" data-rl="${i}" aria-label="Remove load ${esc(l.refdes)}">×</button></div>`).join("")}
+      <select id="re-addload" aria-label="Add load"><option value="">+ load</option>${opt(comps.filter((c) => !loadSet.has(c)))}</select>
     </div>
-    <div class="re-actions"><button class="btn small primary" id="re-all">Alle Schienen neu rechnen</button><button class="btn small" id="re-reset">Eingaben zurücksetzen</button></div>
-    <details><summary>Als KiCad-Felder</summary><pre class="fields" id="re-fields">${esc(fieldsText())}</pre><button class="btn small" id="re-copy">Kopieren</button></details>
+    <div class="re-actions"><button class="btn small primary" id="re-all">Recompute all rails</button><button class="btn small" id="re-reset">Reset inputs</button></div>
+    <details><summary>As KiCad fields</summary><pre class="fields" id="re-fields">${esc(fieldsText())}</pre><button class="btn small" id="re-copy">Copy</button></details>
   </div>`;
   const changed = () => { piSave(); solvePiRail(net); };
   $("re-v").onchange = (e) => { st.voltage = parseFloat(e.target.value) || 0; changed(); };
   $("re-addsrc").onchange = (e) => { if (e.target.value) { st.sources.push({ refdes: e.target.value, pads: [] }); changed(); } };
-  $("re-addload").onchange = (e) => { if (e.target.value) { st.loads.push({ refdes: e.target.value, current: 0.1, pads: [], origin: "Benutzer" }); changed(); } };
+  $("re-addload").onchange = (e) => { if (e.target.value) { st.loads.push({ refdes: e.target.value, current: 0.1, pads: [], origin: "user" }); changed(); } };
   box.querySelectorAll("[data-rs]").forEach((b) => b.onclick = () => { st.sources.splice(+b.dataset.rs, 1); changed(); });
   box.querySelectorAll("[data-rl]").forEach((b) => b.onclick = () => { st.loads.splice(+b.dataset.rl, 1); changed(); });
-  box.querySelectorAll("[data-li]").forEach((inp) => inp.onchange = () => { const l = st.loads[+inp.dataset.li]; l.current = Math.max(0, parseFloat(inp.value) || 0); l.origin = "Benutzer"; changed(); });
+  box.querySelectorAll("[data-li]").forEach((inp) => inp.onchange = () => { const l = st.loads[+inp.dataset.li]; l.current = Math.max(0, parseFloat(inp.value) || 0); l.origin = "user"; changed(); });
   $("re-all").onclick = () => { for (const r of S.piSetups.values()) solvePiRail(r.net, false); renderPi(); };
   $("re-reset").onclick = () => { try { localStorage.removeItem(piKey()); } catch (e) { /* ignore */ } initPi(S.piDefaults); };
   $("re-copy").onclick = (e) => {
     const t = $("re-fields").textContent;
-    navigator.clipboard.writeText(t).then(() => { e.target.textContent = "Kopiert"; }).catch(() => {
+    navigator.clipboard.writeText(t).then(() => { e.target.textContent = "Copied"; }).catch(() => {
       const r = document.createRange(); r.selectNodeContents($("re-fields")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
     });
   };
@@ -205,11 +205,11 @@ function fieldsText() {
     for (const l of r.loads) if (l.current) add(l.refdes, "PI_LOAD", `${netLabel(r.net)}=${+l.current.toFixed(4)}A`);
   }
   const lines = [];
-  for (const [ref, f] of [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], "de", { numeric: true }))) {
+  for (const [ref, f] of [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }))) {
     if (f.PI_SOURCE.length) lines.push(`${ref}  PI_SOURCE = ${f.PI_SOURCE.join(", ")}`);
     if (f.PI_LOAD.length) lines.push(`${ref}  PI_LOAD = ${f.PI_LOAD.join(", ")}`);
   }
-  return lines.join("\n") || "Noch keine Quellen oder Lasten.";
+  return lines.join("\n") || "No sources or loads yet.";
 }
 
 // power tree as KiCad fields: PI_REG on regulators / inputs / pass elements, PI_LOAD on loads
@@ -233,7 +233,7 @@ function treeFieldsText(t) {
   }
   for (const l of t.loads) if (l.current) add(l.refdes, "PI_LOAD", `${netLabel(l.net)}=${+l.current.toFixed(4)}A`);
   const lines = [];
-  for (const [ref, f] of [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], "de", { numeric: true }))) {
+  for (const [ref, f] of [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }))) {
     if (f.PI_REG.length) lines.push(`${ref}  PI_REG = ${f.PI_REG.join("; ")}`);
     if (f.PI_LOAD.length) lines.push(`${ref}  PI_LOAD = ${f.PI_LOAD.join(", ")}`);
   }
@@ -251,7 +251,7 @@ function importKipida(text) {
     setTab("pi");
     renderPi();
   } catch (e) {
-    S.piWarn = ["KiPIDA-Datei: " + e.message];
+    S.piWarn = ["KiPIDA file: " + e.message];
     renderPi();
   }
 }
@@ -371,10 +371,10 @@ function showPiTip(mx, my) {
   const L = S.scene.stackup.copper;
   const drop = (Math.abs(r.res.voltage) - Math.abs(r.v[k])) * 1e3;
   tip.innerHTML = `<div class="t1">${esc(netLabel(S.piRail))}</div><div class="kv">
-    <span>Lage</span><span>${esc(L[g.layer].name)}</span>
-    <span>Spannung</span><span>${fmt(r.v[k], 4)} V</span>
-    <span>Abfall</span><span>${fmt(drop, 2)} mV</span>
-    <span>Stromdichte</span><span>${fmt(r.j[k], 1)} A/mm²</span></div>`;
+    <span>Layer</span><span>${esc(L[g.layer].name)}</span>
+    <span>Voltage</span><span>${fmt(r.v[k], 4)} V</span>
+    <span>Drop</span><span>${fmt(drop, 2)} mV</span>
+    <span>Current density</span><span>${fmt(r.j[k], 1)} A/mm²</span></div>`;
   tip.hidden = false;
   const rs = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
   let tx = mx + 16, ty = my + 16;
@@ -393,12 +393,12 @@ function renderPiDetail() {
   const x = r.res, v0 = Math.abs(x.voltage);
   const loads = x.loads.map((l) => {
     const drop = l.v_min != null ? (v0 - Math.abs(l.v_min)) * 1e3 : null;
-    return `<tr><td>${esc(l.refdes)}</td><td>${fmt(l.current, 3)}</td><td>${l.v_min != null ? fmt(l.v_min, 4) : "–"}</td><td>${drop != null ? fmt(drop, 2) : "keine Verbindung"}</td><td>${drop != null ? fmt(drop / 10 / v0, 2) : "–"}</td></tr>`;
+    return `<tr><td>${esc(l.refdes)}</td><td>${fmt(l.current, 3)}</td><td>${l.v_min != null ? fmt(l.v_min, 4) : "–"}</td><td>${drop != null ? fmt(drop, 2) : "not connected"}</td><td>${drop != null ? fmt(drop / 10 / v0, 2) : "–"}</td></tr>`;
   }).join("");
   const srcs = x.sources.map((s) => `${esc(s.refdes)} ${fmt(s.current, 3)} A`).join(" · ");
-  const vias = x.vias.slice(0, 3).map((v) => `${fmt(v.current, 3)} A (Bohrung ${fmt(v.drill, 2)} mm)`).join(" · ");
-  const tabs = `<div class="tabs" role="tablist" aria-label="Ansicht der Schiene">${[["dc", "Gleichstrom"], ["z", "Impedanz Z(f)"]].map(([k, n]) => `<button role="tab" data-pt="${k}" aria-selected="${(S.piTab || "dc") === k}">${n}</button>`).join("")}</div>`;
-  const head = `<header><div><h3>${esc(netLabel(x.net))} · ${fmt(x.voltage, 2)} V</h3><div class="muted">Raster ${fmt(x.cell, 3)} mm · ${x.nodes.toLocaleString("de-DE")} Knoten</div></div><button class="x" id="closePi" aria-label="Schließen">×</button></header>${tabs}`;
+  const vias = x.vias.slice(0, 3).map((v) => `${fmt(v.current, 3)} A (drill ${fmt(v.drill, 2)} mm)`).join(" · ");
+  const tabs = `<div class="tabs" role="tablist" aria-label="Rail view">${[["dc", "DC"], ["z", "Impedance Z(f)"]].map(([k, n]) => `<button role="tab" data-pt="${k}" aria-selected="${(S.piTab || "dc") === k}">${n}</button>`).join("")}</div>`;
+  const head = `<header><div><h3>${esc(netLabel(x.net))} · ${fmt(x.voltage, 2)} V</h3><div class="muted">grid ${fmt(x.cell, 3)} mm · ${x.nodes.toLocaleString("en-US")} nodes</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>${tabs}`;
   const wire = () => {
     box.hidden = false;
     $("closePi").onclick = () => { box.hidden = true; };
@@ -406,10 +406,10 @@ function renderPiDetail() {
   };
   if (S.piTab === "z") { box.innerHTML = head + `<div id="pdn-body"></div>`; wire(); renderPdn($("pdn-body"), S.piSetups.get(S.piRail)); return; }
   box.innerHTML = head + `
-    <div class="dstats"><span>Last <b>${fmt(x.total_load, 3)} A</b></span><span>Verlust <b>${fmt(x.power_loss_w * 1e3, 1)} mW</b></span><span>max. Stromdichte <b>${fmt(x.max_j, 1)} A/mm²</b></span></div>
-    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Last</th><th>A</th><th>V min</th><th>Abfall mV</th><th>%</th></tr></thead><tbody>${loads}</tbody></table></div>
-    <div class="dstats"><span>Quellen: ${srcs || "–"}</span></div>
-    <div class="dstats"><span>Stärkste Vias: ${vias || "–"}</span></div>
+    <div class="dstats"><span>Load <b>${fmt(x.total_load, 3)} A</b></span><span>Loss <b>${fmt(x.power_loss_w * 1e3, 1)} mW</b></span><span>max. current density <b>${fmt(x.max_j, 1)} A/mm²</b></span></div>
+    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Load</th><th>A</th><th>V min</th><th>drop mV</th><th>%</th></tr></thead><tbody>${loads}</tbody></table></div>
+    <div class="dstats"><span>Sources: ${srcs || "–"}</span></div>
+    <div class="dstats"><span>Highest-current vias: ${vias || "–"}</span></div>
     ${x.warnings.length ? `<div>${x.warnings.map((w) => `<div class="warn">${esc(w)}</div>`).join("")}</div>` : ""}`;
   wire();
 }

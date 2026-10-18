@@ -12,12 +12,12 @@ function renderPdn(body, setup) {
   const capVal = (c) => c >= 1e-6 ? fmt(c * 1e6, c < 1e-5 ? 1 : 0) + " µF" : c >= 1e-9 ? fmt(c * 1e9, 0) + " nF" : fmt(c * 1e12, 0) + " pF";
   const rows = [...groups.values()].map((g) => `<tr title="${esc(g.refs.join(", "))}"><td>${g.n} ×</td><td>${capVal(g.c)}</td><td>${g.pkg}</td><td>${fmt(g.l / g.n * 1e9, 2)}</td><td>${fHz(g.srf / g.n)}</td></tr>`).join("");
   const over = r.above_target.map(([a, b]) => `${fHz(a)} … ${fHz(b)}`).join(", ");
-  body.innerHTML = `<div class="dstats"><span>Ziel <b>${r.target_ohm != null ? ohm(r.target_ohm) : "–"}</b>${r.target_ohm != null ? ` (3 % Welligkeit bei ${fmt(r.load_current * 0.5, 2)} A Lastsprung)` : ""}</span><span>C gesamt <b>${capVal(r.c_total)}</b></span><span>Ebene ${fmt(r.c_plane * 1e9, 2)} nF</span>${r.cavity_hz ? `<span>1. Hohlraumresonanz ≈ ${fHz(r.cavity_hz)}</span>` : ""}</div>
-    <div class="clegend"><span><i style="background:var(--pw-use)"></i>|Z| konzentriert</span>${r.cav_z.length ? `<span><i style="background:var(--pw-loss)"></i>Ebenenmodell (${r.cav_cells} Zellen)</span>` : ""}<span><i style="background:var(--muted)"></i>nur Regler und Ebene</span>${r.target_ohm != null ? `<span><i style="background:${S.colors.high2}"></i>Ziel</span>` : ""}</div>
-    <div class="chart"><canvas id="ch-pdn" style="height:200px" aria-label="Impedanz der Schiene über der Frequenz"></canvas></div>
-    ${r.target_ohm != null ? `<div class="dstats"><span>${over ? `<b class="warn">über dem Ziel: ${over}</b>` : `<b>bis ${fHz(r.f_eval)} unter dem Ziel</b>`}</span></div>` : ""}
-    ${rows ? `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Anzahl</th><th>Wert</th><th>Bauform</th><th>L gesamt nH</th><th>Resonanz</th></tr></thead><tbody>${rows}</tbody></table></div>` : ""}
-    <p class="note">Konzentriertes Modell: Regler (2 mΩ + 20 nH) ∥ Ebenenkapazität ∥ Kondensatoren mit ESR/ESL nach Bauform (geschätzt), Montage-Induktivität bis zur Ebene und Ausbreitung bis zum Lastschwerpunkt. ${r.cav_z.length ? ` Ebenenmodell ab 1 MHz: Hauptebene als Gitter (${fmt(r.cav_h_mm, 2)} mm) über idealer Masse, zeigt Form und Resonanzen der Fläche; Kupfer auf anderen Lagen und Leiterbahnen fehlen dort. Die Ampel nutzt oberhalb 1 MHz das Ebenenmodell.` : ""} Bewertet bis ${fHz(r.f_eval)} – darüber übernehmen Gehäuse- und Chip-Kapazität.</p>
+  body.innerHTML = `<div class="dstats"><span>Target <b>${r.target_ohm != null ? ohm(r.target_ohm) : "–"}</b>${r.target_ohm != null ? ` (3 % ripple at ${fmt(r.load_current * 0.5, 2)} A load step)` : ""}</span><span>C total <b>${capVal(r.c_total)}</b></span><span>plane ${fmt(r.c_plane * 1e9, 2)} nF</span>${r.cavity_hz ? `<span>1st cavity resonance ≈ ${fHz(r.cavity_hz)}</span>` : ""}</div>
+    <div class="clegend"><span><i style="background:var(--pw-use)"></i>|Z| lumped</span>${r.cav_z.length ? `<span><i style="background:var(--pw-loss)"></i>plane model (${r.cav_cells} cells)</span>` : ""}<span><i style="background:var(--muted)"></i>regulator and plane only</span>${r.target_ohm != null ? `<span><i style="background:${S.colors.high2}"></i>target</span>` : ""}</div>
+    <div class="chart"><canvas id="ch-pdn" style="height:200px" aria-label="Rail impedance over frequency"></canvas></div>
+    ${r.target_ohm != null ? `<div class="dstats"><span>${over ? `<b class="warn">above target: ${over}</b>` : `<b>below target up to ${fHz(r.f_eval)}</b>`}</span></div>` : ""}
+    ${rows ? `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Count</th><th>Value</th><th>Package</th><th>L total nH</th><th>Resonance</th></tr></thead><tbody>${rows}</tbody></table></div>` : ""}
+    <p class="note">Lumped model: regulator (2 mΩ + 20 nH) ∥ plane capacitance ∥ capacitors with ESR/ESL by package (estimated), mounting inductance to the plane and spreading to the load centroid. ${r.cav_z.length ? ` Plane model from 1 MHz: main plane as a grid (${fmt(r.cav_h_mm, 2)} mm) over ideal ground; shows the shape and resonances of the plane, but copper on other layers and traces are not included. Above 1 MHz the traffic light uses the plane model.` : ""} Evaluated up to ${fHz(r.f_eval)} – above that, package and die capacitance take over.</p>
     ${r.warnings.map((w) => `<div class="warn">${esc(w)}</div>`).join("")}`;
   drawPdn($("ch-pdn"), r);
 }
@@ -31,12 +31,12 @@ function renderPiLayerChips() {
 
 function renderPiLegend() {
   const L = $("legend"), r = piCurrent();
-  if (!r) { L.innerHTML = `<strong>Versorgung</strong><div class="row">Schiene ohne Ergebnis: Quelle und Last festlegen</div>`; return; }
+  if (!r) { L.innerHTML = `<strong>Power</strong><div class="row">Rail without result: define source and load</div>`; return; }
   const li = piLayerIdx(r), im = piImage(r, li), sc = im.scale;
   const stops = Array.from({ length: 11 }, (_, k) => turbo(k / 10 * 0.9 + 0.05)).join(",");
   const d = sc.max < 1 ? 2 : sc.max < 10 ? 1 : 0;
-  L.innerHTML = `<strong>${S.piMode === "v" ? "Spannungsabfall" : "Stromdichte"} · ${esc(S.scene.stackup.copper[S.piLayer].name)}</strong>
+  L.innerHTML = `<strong>${S.piMode === "v" ? "Voltage drop" : "Current density"} · ${esc(S.scene.stackup.copper[S.piLayer].name)}</strong>
     <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
-    <div class="ticks"><span>0</span><span>${fmt(sc.max / 2, d)}</span><span>${fmt(sc.max, d)} ${sc.unit}${S.piMode === "j" ? " (99. Perzentil)" : ""}</span></div>
-    <div class="row"><span class="sw" style="background:${S.colors.ok}"></span>Quelle ▲ · Last ○ · Kreise: Vias mit den höchsten Strömen</div>`;
+    <div class="ticks"><span>0</span><span>${fmt(sc.max / 2, d)}</span><span>${fmt(sc.max, d)} ${sc.unit}${S.piMode === "j" ? " (99th percentile)" : ""}</span></div>
+    <div class="row"><span class="sw" style="background:${S.colors.ok}"></span>source ▲ · load ○ · circles: vias with the highest currents</div>`;
 }

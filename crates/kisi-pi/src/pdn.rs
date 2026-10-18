@@ -139,7 +139,7 @@ fn package_of(pitch: f64) -> &'static str {
         p if p < 2.7 => "0805",
         p if p < 3.8 => "1206",
         p if p < 4.6 => "1210",
-        _ => "groß",
+        _ => "large",
     }
 }
 
@@ -156,7 +156,7 @@ fn esl_esr(pkg: &str, c: f64) -> (f64, f64) {
         _ => 1.5e-9,
     };
     let mut esr = (0.025 * (1e-7 / c).powf(0.4)).clamp(0.002, 0.5);
-    if c >= 47e-6 && pkg == "groß" {
+    if c >= 47e-6 && pkg == "large" {
         esr = esr.max(0.015);
     }
     (esl, esr)
@@ -175,7 +175,7 @@ fn polygon_area(p: &[P]) -> f64 {
 
 pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult, String> {
     let su = board.stackup();
-    let net = find_net(board, &setup.net).ok_or_else(|| format!("Netz {} nicht gefunden", setup.net))?;
+    let net = find_net(board, &setup.net).ok_or_else(|| format!("net {} not found", setup.net))?;
     let mut warnings = Vec::new();
     let is_gnd = |n: u32| n != 0 && is_ground_name(board.net_name(n));
 
@@ -224,7 +224,7 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
         _ => None,
     };
     if planes.is_empty() {
-        warnings.push("Schiene ohne Ebene über Masse: keine Ebenenkapazität, Ausbreitungsinduktivität über Leiterbahnen grob geschätzt".into());
+        warnings.push("rail without a plane over ground: no plane capacitance, spreading inductance over traces roughly estimated".into());
     }
 
     // load centroid (current-weighted pads of the load components)
@@ -252,7 +252,7 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
     }
     let load_at = if wsum > 0.0 { Some([cen[0] / wsum, cen[1] / wsum]) } else { None };
     if load_at.is_none() {
-        warnings.push("Keine Lasten mit Lage auf der Platine: Ausbreitungsinduktivität nicht berücksichtigt".into());
+        warnings.push("no loads with a position on the board: spreading inductance not included".into());
     }
 
     // decoupling capacitors: two-pad parts between the rail and ground
@@ -343,10 +343,10 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
         });
     }
     if unparsed > 0 {
-        warnings.push(format!("{unparsed} Kondensatoren mit unlesbarem Wert übergangen"));
+        warnings.push(format!("{unparsed} capacitors with unreadable value skipped"));
     }
     if caps.is_empty() {
-        warnings.push("Keine Entkoppelkondensatoren zwischen Schiene und Masse gefunden".into());
+        warnings.push("no decoupling capacitors found between rail and ground".into());
     }
     caps.sort_by(|a, b| b.c.partial_cmp(&a.c).unwrap());
 
@@ -543,7 +543,7 @@ impl Band {
                 }
             }
             if best == 0.0 {
-                return Err("singuläre Matrix".into());
+                return Err("singular matrix".into());
             }
             let jmax = (k + ku + kl).min(n - 1);
             if p != k {

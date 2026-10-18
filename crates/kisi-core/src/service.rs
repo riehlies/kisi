@@ -30,7 +30,7 @@ impl Project {
         let pro_path = pro.map(Path::to_path_buf).unwrap_or_else(|| pcb.with_extension("kicad_pro"));
         if let Ok(p) = std::fs::read_to_string(&pro_path) {
             if let Err(e) = crate::apply_project(&mut board, &p) {
-                board.warnings.push(format!("Projektdatei: {e}"));
+                board.warnings.push(format!("project file: {e}"));
             }
         }
         if let Some(ov) = stackup {
@@ -57,7 +57,7 @@ impl Project {
     }
 }
 
-const MODELS: &str = "Impedanz per Formel (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); der 2D-Feldlöser läuft nur im Viewer. Verluste: Wheeler/Huray/Djordjevic-Sarkar.";
+const MODELS: &str = "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); the 2D field solver runs only in the viewer. Losses: Wheeler/Huray/Djordjevic-Sarkar.";
 
 /// Board overview: stackup, classes with targets, impedance compliance per class.
 pub fn overview(p: &Project) -> Value {
@@ -101,7 +101,7 @@ pub fn overview(p: &Project) -> Value {
 
 /// One net: impedance along the path, losses, TDR extremes, vias, crosstalk.
 pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, String> {
-    let net = p.net_id(net_name).ok_or_else(|| format!("Netz '{net_name}' nicht gefunden"))?;
+    let net = p.net_id(net_name).ok_or_else(|| format!("net '{net_name}' not found"))?;
     let st = p.an.nets.iter().find(|n| n.net == net);
     let field = HashMap::new();
     let ch = rf::channel(&p.board, &p.an, net, &field, p.target(net), rp)?;
@@ -116,7 +116,7 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
         "segments": ch.segments.iter().filter(|s| s.kind == "line").map(|s| json!({"layer": su.copper[s.layer as usize].name, "len_mm": s.len_mm, "z_ohm_per_line": s.z})).collect::<Vec<_>>(),
         "insertion_loss_db": ch.il_marks.iter().map(|(f, d)| json!({"ghz": f, "db": d})).collect::<Vec<_>>(),
         "return_loss_worst_db": -ch.s11_db.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
-        "tdr": {"rise_ps": rp.rise * 1e12, "z_min": tdr_in.iter().cloned().fold(f64::INFINITY, f64::min) * k, "z_max": tdr_in.iter().cloned().fold(f64::NEG_INFINITY, f64::max) * k, "mode": if ch.diff { "differentiell" } else { "einzeln" }},
+        "tdr": {"rise_ps": rp.rise * 1e12, "z_min": tdr_in.iter().cloned().fold(f64::INFINITY, f64::min) * k, "z_max": tdr_in.iter().cloned().fold(f64::NEG_INFINITY, f64::max) * k, "mode": if ch.diff { "differential" } else { "single-ended" }},
         "via_details": ch.via_info.iter().map(|v| json!({"from": su.copper[v.layer_in as usize].name, "to": su.copper[v.layer_out as usize].name, "drill_mm": v.drill_mm, "antipad_mm": v.antipad_mm, "z_ohm": v.z_via, "stub_mm": v.stub_mm, "stub_resonance_ghz": v.stub_f_ghz, "return_path": v.return_kind})).collect::<Vec<_>>(),
         "crosstalk": {"next_total": xt.next_total, "fext_total": xt.fext_total, "rise_ps": xt.rise_ps,
             "aggressors": xt.aggressors.iter().take(5).map(|a| json!({"net": a.name, "parallel_mm": a.coupled_mm, "gap_min_mm": a.gap_min_mm, "next": a.next, "fext": a.fext})).collect::<Vec<_>>()},
@@ -170,7 +170,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
     json!({
         "summary": {"green": count(Status::Green), "yellow": count(Status::Yellow), "red": count(Status::Red)},
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
-        "models": format!("{MODELS} Auge: PRBS7, Sender/Empfänger linear aus dem Profil, ohne Entzerrung, Jitter und Rauschen.")
+        "models": format!("{MODELS} Eye: PRBS7, linear transmitter/receiver from the profile, without equalisation, jitter and noise.")
     })
 }
 
@@ -180,8 +180,8 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
     let (spec, mut warnings, source) = match tree {
         Some(t) => (Some(t), vec![], "JSON"),
         None => match crate::tree::tree_from_fields(&p.board) {
-            Some((t, w)) => (Some(t), w, "PI_REG-Felder"),
-            None => (None, vec![], "PI_LOAD/PI_SOURCE-Felder"),
+            Some((t, w)) => (Some(t), w, "PI_REG fields"),
+            None => (None, vec![], "PI_LOAD/PI_SOURCE fields"),
         },
     };
     let (setups, balance) = match &spec {

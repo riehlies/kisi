@@ -160,8 +160,8 @@ function drawPdn(c, r) {
     let bi = 0; for (let i = 0; i < lf.length; i++) if (Math.abs(lf[i] - lv) < Math.abs(lf[bi] - lv)) bi = i;
     paint(bi);
     let ci = -1; for (let i = 0; i < cf.length; i++) if (ci < 0 || Math.abs(cf[i] - lv) < Math.abs(cf[ci] - lv)) ci = i;
-    const cav = ci >= 0 && Math.abs(cf[ci] - lv) < 0.06 ? `<br>Ebenenmodell ${ohm(r.cav_z[ci])}` : "";
-    tip.innerHTML = `${fHz(r.freq[bi])}<br>konzentriert ${ohm(r.z[bi])}${cav}<br>ohne C ${ohm(r.z_bare[bi])}`;
+    const cav = ci >= 0 && Math.abs(cf[ci] - lv) < 0.06 ? `<br>plane model ${ohm(r.cav_z[ci])}` : "";
+    tip.innerHTML = `${fHz(r.freq[bi])}<br>lumped ${ohm(r.z[bi])}${cav}<br>without C ${ohm(r.z_bare[bi])}`;
     tip.hidden = false;
     tip.style.left = Math.min(X(lf[bi]) + 10, rc.width - tip.offsetWidth - 4) + "px"; tip.style.top = "6px";
   };

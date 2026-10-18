@@ -134,11 +134,11 @@ fn main() {
         }
     }
     if list_rails {
-        println!("Versorgungsnetze:");
+        println!("Supply nets:");
         for p in kisi_core::pi::power_nets(&board) {
             let ls: Vec<&str> = p.zone_layers.iter().map(|&l| board.stackup().copper[l as usize].name.as_str()).collect();
             println!(
-                "  {:<28} {:>6} V  {:>6.0} mm² Zonen auf {:<24} {:>4} Pads  {}",
+                "  {:<28} {:>6} V  {:>6.0} mm² zones on {:<24} {:>4} pads  {}",
                 p.name,
                 p.voltage.map(|v| format!("{v}")).unwrap_or("?".into()),
                 p.zone_area,
@@ -164,13 +164,13 @@ fn main() {
         });
         match kisi_core::pdn::pdn(&board, &setup, &kisi_core::pdn::PdnParams::default()) {
             Ok(r) => {
-                println!("PDN {} {:+.2} V, Last {:.3} A, Ziel {}", r.net, r.voltage, r.load_current,
+                println!("PDN {} {:+.2} V, load {:.3} A, target {}", r.net, r.voltage, r.load_current,
                     r.target_ohm.map(|t| format!("{:.1} mΩ", t * 1e3)).unwrap_or("–".into()));
                 for pl in &r.planes {
-                    println!("  Ebene L{}↔L{} {:.0} mm², Abstand {:.3} mm, {:.2} nF", pl.layer, pl.gnd_layer, pl.area_mm2, pl.d_mm, pl.c * 1e9);
+                    println!("  plane L{}↔L{} {:.0} mm², spacing {:.3} mm, {:.2} nF", pl.layer, pl.gnd_layer, pl.area_mm2, pl.d_mm, pl.c * 1e9);
                 }
                 if let Some(f) = r.cavity_hz {
-                    println!("  erste Hohlraumresonanz ≈ {:.0} MHz (darüber gilt das konzentrierte Modell nicht)", f / 1e6);
+                    println!("  first cavity resonance ≈ {:.0} MHz (the lumped model is not valid above)", f / 1e6);
                 }
                 let mut groups: Vec<(String, &str, usize, f64, f64, f64)> = Vec::new();
                 for c in &r.caps {
@@ -186,23 +186,23 @@ fn main() {
                     }
                 }
                 for g in &groups {
-                    println!("  {:>3} × {:>9.3} µF {:<5} L gesamt Ø {:.2} nH, SRF Ø {:.1} MHz", g.2, g.4 * 1e6, g.1, g.3 / g.2 as f64 * 1e9, g.5 / g.2 as f64 / 1e6);
+                    println!("  {:>3} × {:>9.3} µF {:<5} L total mean {:.2} nH, SRF mean {:.1} MHz", g.2, g.4 * 1e6, g.1, g.3 / g.2 as f64 * 1e9, g.5 / g.2 as f64 / 1e6);
                 }
-                println!("  C gesamt {:.1} µF (Ebene {:.2} nF)", r.c_total * 1e6, r.c_plane * 1e9);
+                println!("  C total {:.1} µF (plane {:.2} nF)", r.c_total * 1e6, r.c_plane * 1e9);
                 let at = |f: f64| r.freq.iter().position(|&x| x >= f).map(|i| r.z[i]).unwrap_or(f64::NAN);
                 println!("  |Z|: {}", [1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9].iter().map(|&f| format!("{} {:.1} mΩ", if f >= 1e6 { format!("{:.0} MHz", f / 1e6) } else { format!("{:.0} kHz", f / 1e3) }, at(f) * 1e3)).collect::<Vec<_>>().join(", "));
                 if !r.cav_z.is_empty() {
                     let at = |f: f64| r.cav_freq.iter().position(|&x| x >= f).map(|i| r.cav_z[i]).unwrap_or(f64::NAN);
                     let (k, zmax) = r.cav_z.iter().enumerate().fold((0, 0.0), |a, (i, &z)| if z > a.1 { (i, z) } else { a });
-                    println!("  Ebenenmodell ({} Zellen à {:.2} mm): {}; Maximum {:.1} mΩ bei {:.0} MHz", r.cav_cells, r.cav_h_mm,
+                    println!("  plane model ({} cells of {:.2} mm): {}; maximum {:.1} mΩ at {:.0} MHz", r.cav_cells, r.cav_h_mm,
                         [1e6, 1e7, 1e8, 1e9].iter().map(|&f| format!("{:.0} MHz {:.1} mΩ", f / 1e6, at(f) * 1e3)).collect::<Vec<_>>().join(", "),
                         zmax * 1e3, r.cav_freq[k] / 1e6);
                 }
                 for (a, b) in &r.above_target {
-                    println!("  über Ziel: {:.2} … {:.2} MHz", a / 1e6, b / 1e6);
+                    println!("  above target: {:.2} … {:.2} MHz", a / 1e6, b / 1e6);
                 }
                 for w in &r.warnings {
-                    println!("  Hinweis: {w}");
+                    println!("  note: {w}");
                 }
             }
             Err(e) => eprintln!("PDN: {e}"),
@@ -214,12 +214,12 @@ fn main() {
             match kisi_core::tree::tree_from_fields(&board) {
                 Some((s, w)) => {
                     for x in w {
-                        println!("Hinweis: {x}");
+                        println!("note: {x}");
                     }
                     s
                 }
                 None => {
-                    eprintln!("keine PI_REG-Felder auf der Platine");
+                    eprintln!("no PI_REG fields on the board");
                     std::process::exit(1);
                 }
             }
@@ -229,19 +229,19 @@ fn main() {
         let t = match kisi_core::tree::solve_tree(&spec, Some(&board)) {
             Ok(t) => t,
             Err(e) => {
-                eprintln!("Versorgungsbaum: {e}");
+                eprintln!("power tree: {e}");
                 std::process::exit(1);
             }
         };
         let short = |n: &str| n.rsplit('/').next().unwrap_or(n).replace("{slash}", "/");
-        println!("Versorgungsbaum {}", t.name);
+        println!("Power tree {}", t.name);
         // tree walk from the inputs
         fn walk(net: &str, t: &kisi_core::tree::TreeResult, ind: usize, short: &dyn Fn(&str) -> String) {
             let r = t.rails.iter().find(|r| r.net == net).unwrap();
-            println!("{:ind$}{} {:+.2} V  {:.3} A ({:.3} A Lasten)", "", short(net), r.voltage, r.i_total, r.i_loads, ind = ind);
+            println!("{:ind$}{} {:+.2} V  {:.3} A ({:.3} A loads)", "", short(net), r.voltage, r.i_total, r.i_loads, ind = ind);
             for e in t.elements.iter().filter(|e| e.from.as_deref() == Some(net)) {
                 println!(
-                    "{:ind$}  └ {:<10} {:<8} {:<14} {:.3} A → {:.3} A, Verlust {:.0} mW{}",
+                    "{:ind$}  └ {:<10} {:<8} {:<14} {:.3} A → {:.3} A, loss {:.0} mW{}",
                     "",
                     e.id,
                     e.kind,
@@ -249,17 +249,17 @@ fn main() {
                     e.i_in,
                     e.i_out,
                     e.p_loss * 1e3,
-                    if e.overload { "  ÜBERLAST" } else { "" },
+                    if e.overload { "  OVERLOAD" } else { "" },
                     ind = ind
                 );
                 walk(&e.to, t, ind + 6, short);
             }
         }
         for e in t.elements.iter().filter(|e| e.kind == "input") {
-            println!("Eingang {} ({})", e.refdes, e.part);
+            println!("Input {} ({})", e.refdes, e.part);
             walk(&e.to, &t, 2, &short);
         }
-        println!("\nBauteile (Verbrauch / Verlust in mW):");
+        println!("\nComponents (consumption / loss in mW):");
         for c in &t.components {
             if c.consumption + c.loss < 0.0005 {
                 continue;
@@ -267,14 +267,14 @@ fn main() {
             println!("  {:<10} {:<16} {:>7.0} {:>7.0}  {}", c.refdes, c.part, c.consumption * 1e3, c.loss * 1e3, c.role);
         }
         println!(
-            "\nEingang {:.2} W = Lasten {:.2} W + Verluste {:.2} W  (Wirkungsgrad {:.0} %)",
+            "\nInput {:.2} W = loads {:.2} W + losses {:.2} W  (efficiency {:.0} %)",
             t.p_input,
             t.p_loads,
             t.p_losses,
             100.0 * t.p_loads / t.p_input.max(1e-9)
         );
         for w in &t.warnings {
-            println!("WARNUNG: {w}");
+            println!("WARNING: {w}");
         }
         let mut cu = 0.0;
         let mut worst: Option<(String, f64)> = None;
@@ -289,7 +289,7 @@ fn main() {
                         }
                     }
                     for w in &r.warnings {
-                        if w.contains("Pads") || w.contains("keine Verbindung") {
+                        if w.contains("pads") || w.contains("not connected") {
                             fails.push(format!("{}: {w}", short(&r.net)));
                         }
                     }
@@ -297,10 +297,10 @@ fn main() {
                 Err(e) => fails.push(format!("{}: {e}", short(&s.net))),
             }
         }
-        println!("Spannungsabfall: {} Schienen, Kupferverluste {:.0} mW, größter Abfall {}", t.setups.len(), cu * 1e3,
-            worst.map(|w| format!("{:.1} mV auf {}", w.1, short(&w.0))).unwrap_or("-".into()));
+        println!("IR drop: {} rails, copper losses {:.0} mW, largest drop {}", t.setups.len(), cu * 1e3,
+            worst.map(|w| format!("{:.1} mV on {}", w.1, short(&w.0))).unwrap_or("-".into()));
         for f in fails {
-            println!("  Hinweis: {f}");
+            println!("  note: {f}");
         }
         return;
     }
@@ -318,37 +318,37 @@ fn main() {
             None => kisi_core::pi::rails_from_fields(&board),
         };
         for w in warns {
-            println!("WARNUNG: {w}");
+            println!("WARNING: {w}");
         }
         if rails.is_empty() {
-            println!("Keine Versorgung definiert (Felder PI_SOURCE / PI_LOAD oder --pi-config kipida_config.json).");
+            println!("No supply defined (fields PI_SOURCE / PI_LOAD or --pi-config kipida_config.json).");
         }
         for r in &rails {
             let t = Instant::now();
             match kisi_core::pi::solve_rail(&board, r, &kisi_core::pi::PiParams::default()) {
                 Ok(res) => {
                     println!(
-                        "\n{} {:.3} V: {} Knoten, Raster {} mm, {:.0} ms",
+                        "\n{} {:.3} V: {} nodes, grid {} mm, {:.0} ms",
                         res.net, res.voltage, res.nodes, res.cell, t.elapsed().as_secs_f64() * 1e3
                     );
-                    println!("  Last gesamt {:.3} A, Verlust {:.1} mW, max. Stromdichte {:.1} A/mm²", res.total_load, res.power_loss_w * 1e3, res.max_j);
+                    println!("  total load {:.3} A, loss {:.1} mW, max. current density {:.1} A/mm²", res.total_load, res.power_loss_w * 1e3, res.max_j);
                     for s in &res.sources {
-                        println!("  Quelle {:<8} {:.3} A ({} Pads)", s.refdes, s.current, s.pads);
+                        println!("  source {:<8} {:.3} A ({} pads)", s.refdes, s.current, s.pads);
                     }
                     for l in &res.loads {
                         println!(
-                            "  Last   {:<8} {:.3} A  Vmin {}  Abfall {}",
+                            "  load   {:<8} {:.3} A  Vmin {}  drop {}",
                             l.refdes,
                             l.current,
                             l.v_min.map(|v| format!("{v:.4} V")).unwrap_or("-".into()),
-                            l.v_min.map(|v| format!("{:.1} mV", (res.voltage - v) * 1e3)).unwrap_or("nicht verbunden".into())
+                            l.v_min.map(|v| format!("{:.1} mV", (res.voltage - v) * 1e3)).unwrap_or("not connected".into())
                         );
                     }
                     if let Some(v) = res.vias.first() {
-                        println!("  höchster Via-Strom {:.3} A bei ({:.2}, {:.2})", v.current, v.at[0], v.at[1]);
+                        println!("  highest via current {:.3} A at ({:.2}, {:.2})", v.current, v.at[0], v.at[1]);
                     }
                     for w in &res.warnings {
-                        println!("  Hinweis: {w}");
+                        println!("  note: {w}");
                     }
                 }
                 Err(e) => println!("\n{}: {}", r.net, e),
@@ -374,7 +374,7 @@ fn main() {
         let rp = kisi_core::rf::RfParams::default();
         let nets: Vec<u32> = (0..board.nets.len() as u32).filter(|&n| board.net_name(n).ends_with(pat.as_str()) || board.net_name(n) == pat).collect();
         if nets.is_empty() {
-            eprintln!("kein Netz endet auf '{pat}'");
+            eprintln!("no net ends with '{pat}'");
         }
         for net in nets {
             let cls = board.net_class.get(net as usize).copied().unwrap_or(0) as usize;
@@ -382,50 +382,50 @@ fn main() {
             match kisi_core::rf::channel(&board, &an, net, &params.field, target, &rp) {
                 Ok(ch) => {
                     println!(
-                        "\nKanal {}{}: {:.1} mm, {} Vias, Laufzeit {:.0} ps, Bezug {:.1} Ω, Feldlöser-Anteil {:.0} %",
+                        "\nChannel {}{}: {:.1} mm, {} vias, delay {:.0} ps, reference {:.1} Ω, field solver share {:.0} %",
                         ch.name,
-                        if ch.diff { " (differentiell, ungerade Mode)" } else { "" },
+                        if ch.diff { " (differential, odd mode)" } else { "" },
                         ch.length_mm,
                         ch.vias,
                         ch.delay_ps,
                         ch.z_ref,
                         ch.field_share * 100.0
                     );
-                    println!("  Einfügedämpfung: {}", ch.il_marks.iter().map(|(f, d)| format!("{f} GHz {d:.2} dB")).collect::<Vec<_>>().join(", "));
+                    println!("  insertion loss: {}", ch.il_marks.iter().map(|(f, d)| format!("{f} GHz {d:.2} dB")).collect::<Vec<_>>().join(", "));
                     let rl_max = ch.s11_db.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-                    println!("  Rückflussdämpfung schlechtester Wert: {:.1} dB", -rl_max);
+                    println!("  worst return loss: {:.1} dB", -rl_max);
                     for (f, c, d) in &ch.loss_db_per_in_at {
-                        println!("  Leitungsverlust {f} GHz: Leiter {c:.3} dB/in, Dielektrikum {d:.3} dB/in");
+                        println!("  line loss {f} GHz: conductor {c:.3} dB/in, dielectric {d:.3} dB/in");
                     }
                     let (zmin, zmax) = ch.tdr_z.iter().fold((f64::INFINITY, f64::NEG_INFINITY), |a, &z| (a.0.min(z), a.1.max(z)));
-                    println!("  TDR ({:.0} ps Anstieg): Z min {:.1} Ω, max {:.1} Ω", rp.rise * 1e12, zmin, zmax);
-                    println!("  Abschnitte: {}", ch.segments.iter().map(|s| if s.kind == "via" { "Via".to_string() } else { format!("{:.1}mm@{:.0}Ω", s.len_mm, s.z.unwrap_or(0.0)) }).collect::<Vec<_>>().join(" "));
+                    println!("  TDR ({:.0} ps rise): Z min {:.1} Ω, max {:.1} Ω", rp.rise * 1e12, zmin, zmax);
+                    println!("  segments: {}", ch.segments.iter().map(|s| if s.kind == "via" { "Via".to_string() } else { format!("{:.1}mm@{:.0}Ω", s.len_mm, s.z.unwrap_or(0.0)) }).collect::<Vec<_>>().join(" "));
                     let ln = |k: u16| board.stackup().copper.get(k as usize).map(|c| c.name.clone()).unwrap_or_default();
                     if let Some(g) = eye_gbps {
                         let ep = kisi_core::eye::EyeParams { bitrate: g * 1e9, rise: rp.rise, ..Default::default() };
                         match kisi_core::eye::eye(&ch, &ep) {
                             Ok(e) => println!(
-                                "  Auge {:.2} Gbit/s PRBS7: Höhe {:.0} % des Hubs, Breite {:.1} ps ({:.0} % UI), Hauptcursor {:.2}, ISI-Summe {:.2}{}",
+                                "  eye {:.2} Gbit/s PRBS7: height {:.0} % of swing, width {:.1} ps ({:.0} % UI), main cursor {:.2}, ISI total {:.2}{}",
                                 g, e.height * 100.0, e.width_ps, e.width_ps / e.ui_ps * 100.0, e.main_cursor, e.isi_sum,
                                 e.warnings.iter().map(|w| format!(" – {w}")).collect::<String>()
                             ),
-                            Err(e) => println!("  Auge: {e}"),
+                            Err(e) => println!("  eye: {e}"),
                         }
                     }
                     for v in &ch.via_info {
                         println!(
-                            "  Via ({:.2},{:.2}) {}→{}  Bohrung {:.2}/{:.2} mm, Antipad {}  Z {:.1} Ω{}  Hülse {:.2} mm, Stub {:.2} mm{}{}  Rückstrom {}",
+                            "  via ({:.2},{:.2}) {}→{}  drill {:.2}/{:.2} mm, antipad {}  Z {:.1} Ω{}  barrel {:.2} mm, stub {:.2} mm{}{}  return {}",
                             v.at[0], v.at[1], ln(v.layer_in), ln(v.layer_out), v.drill_mm, v.pad_mm,
                             v.antipad_mm.map(|a| format!("{a:.2} mm")).unwrap_or("–".into()),
                             v.z_via, if ch.diff { " diff" } else { "" },
                             v.barrel_mm, v.stub_mm,
                             v.stub_f_ghz.map(|f| format!(" ({f:.1} GHz)")).unwrap_or_default(),
-                            if v.backdrilled { " rückgebohrt" } else { "" },
-                            match v.return_kind { "stitch" => format!("Stitching {:.2} mm, {:.2} nH", v.return_mm.unwrap_or(0.0), v.l_ret_nh), k => k.to_string() }
+                            if v.backdrilled { " back-drilled" } else { "" },
+                            match v.return_kind { "stitch" => format!("stitching {:.2} mm, {:.2} nH", v.return_mm.unwrap_or(0.0), v.l_ret_nh), k => k.to_string() }
                         );
                     }
                     for w in &ch.warnings {
-                        println!("  Hinweis: {w}");
+                        println!("  note: {w}");
                     }
                     if let Some(out) = &s2p_out {
                         let fname = if out.contains("{}") { out.replace("{}", &ch.name.replace('/', "_")) } else { out.clone() };
@@ -433,10 +433,10 @@ fn main() {
                         println!("  Touchstone: {fname}");
                     }
                     let xt = kisi_core::rf::crosstalk(&board, &an, net, &params.field, &rp);
-                    println!("  Übersprechen ({:.0} ps): NEXT Summe {:.2} %, FEXT Summe {:.2} %", xt.rise_ps, xt.next_total * 100.0, xt.fext_total * 100.0);
+                    println!("  crosstalk ({:.0} ps): NEXT total {:.2} %, FEXT total {:.2} %", xt.rise_ps, xt.next_total * 100.0, xt.fext_total * 100.0);
                     for a in xt.aggressors.iter().take(6) {
                         println!(
-                            "    {:<36} {:>6.1} mm parallel, Abstand min {:.3} mm, NEXT {:.2} %, FEXT {:.2} % ({})",
+                            "    {:<36} {:>6.1} mm parallel, min gap {:.3} mm, NEXT {:.2} %, FEXT {:.2} % ({})",
                             a.name.rsplit('/').next().unwrap_or(&a.name),
                             a.coupled_mm,
                             a.gap_min_mm,

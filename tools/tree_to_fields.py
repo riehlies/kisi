@@ -55,7 +55,7 @@ def main():
     pcb = re.sub(r'\(property "Reference" "([^"]+)"', ins, pcb)
     open(sys.argv[3], "w", encoding="utf-8").write(pcb)
     missing = sorted(set(f) - done)
-    print(f"{len(done)} Bauteile mit Feldern" + (f", nicht gefunden: {' '.join(missing)}" if missing else ""))
+    print(f"{len(done)} components with fields" + (f", not found: {' '.join(missing)}" if missing else ""))
 
 
 if __name__ == "__main__":

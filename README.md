@@ -1,132 +1,139 @@
-# kisi – KiCad Signal-Integrity-Werkzeug
+# kisi – signal and power integrity checks for KiCad
 
-Extrahiert Leitungsimpedanzen aus KiCad-Layouts (`.kicad_pcb` + `.kicad_pro`) und stellt sie farbig dar.
-Kern in Rust, läuft als WebAssembly im Browser und als native CLI. Lizenz: GPL-3.0-only.
+kisi extracts trace impedances from KiCad layouts (`.kicad_pcb` + `.kicad_pro`) and shows them as a colour map,
+together with loss, TDR, vias, crosstalk, an eye diagram per interface profile, DC IR drop and PDN impedance.
+The core is written in Rust and runs as WebAssembly in the browser and as a native CLI. Licence: GPL-3.0-only.
 
-Aufbau und Update-Regeln: `ARCHITECTURE.md`. Integration: KiCad-Plugin (`kicad-plugin/`), MCP-Server für
-KI-Agenten (`crates/kisi-mcp`, Claude-Code-Plugin in `claude-plugin/`).
+kisi is meant as a design check (target ±5 %), not as sign-off.
 
-## Ablauf im Viewer
-1. Board laden (`.kicad_pcb`, optional `.kicad_pro`, optional `kipida_config.json`)
-2. Schnelle Analyse läuft sofort: Impedanz per Formel, DC-Spannungsabfall aller konfigurierten Schienen
-3. Feldlöser per Button für ausgewähltes Netz, eine Netzklasse, alle Netze mit Ziel oder alles.
-4. Ansicht **Impedanz**: Leitungsanalyse (Impedanz, Verluste, TDR, Vias, Übersprechen) mit Bezugswiderstand.
-   Ansicht **Kanal**: Schnittstellen-Profil je Netzklasse (PCIe, USB, DDR, … aus `data/interfaces.json`),
-   Sender und Empfänger, Grenzen – Auge und Prüfung je Netz, Kanalprüfung aller Netze.
-   Ansicht **Versorgung**: Spannungsabfall, Leistungsbilanz, Z(f).
-5. Lagenaufbau (εr, tanδ, Dicke) und Profile sind im Viewer änderbar (im Browser gespeichert, Datei bleibt unverändert).
-   Ergebnisse werden im Browser (IndexedDB) gespeichert, boardübergreifend, Schlüssel = Solver-Version + Geometrie.
+Structure and update rules: `ARCHITECTURE.md`. Integration: KiCad plugin (`kicad-plugin/`), MCP server for
+AI agents (`crates/kisi-mcp`, Claude Code plugin in `claude-plugin/`).
 
-## DC-Spannungsabfall (Versorgung)
-- Kupfer eines Netzes wird je Lage gerastert (Zonen, Leiterbahnen, Pads), Vias und Durchsteck-Pads verbinden die Lagen
-  (Hülsenwiderstand mit 25 µm Kupfer), Quell-Pads liegen auf Nennspannung, Last-Pads ziehen ihren Strom.
-- Ergebnis: Spannung und Stromdichte je Lage, Spannung an jeder Last, Ströme der Quellen und Vias, Verlustleistung.
-- Lasten in KiCad: Feld am Bauteil (im Schaltplan anlegen, wird beim Aktualisieren in die Platine übernommen)
-  - `PI_LOAD` = `+1V0=2.5A, +1V8=300mA` oder `+1V0=2W` (Leistung → Strom über die Nennspannung)
-  - `PI_SOURCE` = `+3V3` oder `+3V3=3.3V` für Regler-Ausgänge und Einspeisungen
-- Nennspannung sonst aus dem Netznamen (`+3V3`, `1V8`, `-5V`, `+1.2V`)
-- KiPIDA: `kipida_config.json` wird gelesen, Regler werden als Last auf ihrer Eingangsschiene übernommen
-- CLI: `kisi board.kicad_pcb --pi` (Felder), `--pi-config kipida_config.json` oder eigene JSON-Liste, `--rails` listet Versorgungsnetze
-- Validierung: Kupferstreifen gegen R = ρL/(wt), Abweichung ≤ 2,5 % (Test `strip_resistance`)
+## Workflow in the viewer
+1. Load a board (`.kicad_pcb`, optionally `.kicad_pro`, optionally `kipida_config.json`).
+2. The fast analysis runs immediately: impedance by formula, DC IR drop of all configured rails.
+3. Start the field solver for the selected net, one net class, all nets with a target, or everything.
+4. **Impedance** view: line analysis (impedance, loss, TDR, vias, crosstalk) against a reference resistance.
+   **Channel** view: interface profile per net class (PCIe, USB, DDR, … from `data/interfaces.json`),
+   transmitter and receiver, limits – eye and check per net, channel check of all nets.
+   **Power** view: IR drop, power budget, Z(f).
+5. Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer (stored in the browser; the file is not changed).
+   Field solver results are cached in the browser (IndexedDB) across boards; key = solver version + geometry.
 
-## Versorgungsbaum und Leistungsbilanz (Beispielboards)
-- `web/samples/ts_tree.json`, `web/samples/vna_tree.json`: Reglerketten von ThunderScope und LibreVNA, aus der Netzliste
-  rekonstruiert. Elemente: `input`, `buck`, `boost`, `ldo` (Querstrom `iq`), `inverter`, `pass` (Shunt/Ferrit mit `r`);
-  Lasten je Bauteil und Netz mit Strom und Grundlage (`Datenblatt` oder `Schätzung`).
-- `crates/kisi-core/src/tree.rs`: rechnet von den Lasten zu den Eingängen, liefert Ströme, Verluste je Regler,
-  Leistung je Bauteil (Bilanz exakt: Eingang = Verbrauch + Verluste) und die Quellen/Lasten jeder Schiene für den Spannungsabfall.
+## DC IR drop (power)
+- The copper of a net is rasterised per layer (zones, tracks, pads); vias and through-hole pads connect the layers
+  (barrel resistance with 25 µm copper). Source pads sit at the nominal voltage, load pads draw their current.
+- Result: voltage and current density per layer, voltage at every load, source and via currents, power loss.
+- Loads in KiCad: a field on the footprint (add it in the schematic; it reaches the board on update)
+  - `PI_LOAD` = `+1V0=2.5A, +1V8=300mA` or `+1V0=2W` (power → current via the nominal voltage)
+  - `PI_SOURCE` = `+3V3` or `+3V3=3.3V` for regulator outputs and supply inputs
+- Otherwise the nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`, `+1.2V`).
+- KiPIDA: `kipida_config.json` is read; regulators become loads on their input rail.
+- CLI: `kisi board.kicad_pcb --pi` (fields), `--pi-config kipida_config.json` or a JSON rail list; `--rails` lists supply nets.
+- Validation: copper strip against R = ρL/(wt), deviation ≤ 2.5 % (test `strip_resistance`).
+
+## Power tree and power budget
+- `web/samples/ts_tree.json`, `web/samples/vna_tree.json`: regulator chains of ThunderScope and LibreVNA, reconstructed
+  from the netlist. Elements: `input`, `buck`, `boost`, `ldo` (quiescent current `iq`), `inverter`, `pass` (shunt/ferrite
+  with `r`); loads per component and net with current and basis (`datasheet` or `estimate`).
+- `crates/kisi-pi/src/tree.rs`: works from the loads back to the inputs and returns currents, losses per regulator,
+  power per component (exact balance: input = consumption + losses) and the sources/loads of every rail for the IR drop.
 - CLI: `kisi board.kicad_pcb --pi-tree web/samples/ts_tree.json`
-- Viewer: Versorgung → Leistungsbilanz, Ströme dort editierbar (im Browser gespeichert).
+- Viewer: Power → Power budget; currents are editable there (stored in the browser).
 
-## HF: Kanal, Verluste, TDR, Übersprechen (M3) und Vias (M4)
-- `crates/kisi-core/src/rf.rs`: frequenzabhängiges RLGC je Querschnitt, aus dem Feldlöser (R, L, G, C bei 1 GHz)
-  oder aus Formeln. Skin-Effekt nach Wheeler (inkrementelle Induktivität), Rauheit nach Huray (glatt / HVLP / Standard-ED,
-  Voreinstellungen geschätzt), Dielektrikum nach Djordjevic-Sarkar aus εr und tanδ des Lagenaufbaus, Microstrip-Dispersion.
-- Kanal eines Netzes: längster Pfad durch den Leiterbahn-Graphen (Lagen nur über Vias / Durchsteck-Pads verbunden),
-  ABCD-Kaskade → S21/S11 (bei Paaren ungerade Mode, Sdd), Touchstone `.s2p`, TDR aus S11 mit Gauß-Flanke.
-- `crates/kisi-core/src/via.rs`: Via als Stapel koaxialer Abschnitte je Lage; Außenleiter = in den Zonenfüllungen
-  gemessene Freistellung (Antipad), bei Paaren Wheeler-Formel für ein geschirmtes symmetrisches Paar. Stubs als offene
-  Leitungen (Viertelwellen-Resonanz), Backdrill aus KiCad 10 (`backdrill`) oder global. Wechsel der Bezugsebene:
-  Induktivität bis zum nächsten Stitching-Via, Warnung wenn keins in 5 mm oder Bezug auf ein anderes Netz.
-- Übersprechen: Nachbarleitungen auf derselben Lage (parallel, bis 5 h Abstand), NEXT/FEXT aus der L/C-Kopplungsmatrix
-  des Feldlösers oder Kirschning-Jansen/Cohn; Feldlöser-Umfang „ausgewähltes Netz“ rechnet die Kopplungsquerschnitte mit.
-- CLI: `kisi board.kicad_pcb board.kicad_pro --rf <Netzende> [--s2p out_{}.s2p]`
-- Viewer: Netz wählen → Tabs Impedanz / Verluste / TDR / Vias / Übersprechen, Karte „HF-Einstellungen“.
-- Augendiagramm (M5, `crates/kisi-core/src/eye.rs`): PRBS7 NRZ über die Einzelbit-Antwort aus S21, Sender-Flanke =
-  Anstiegszeit, ohne Entzerrung, Jitter und Rauschen. Datenrate aus der Netzklasse geschätzt oder fest gewählt.
-  CLI: `--rf <Netz> --eye 16` (Gbit/s).
-- Kanalprüfung: alle Netze mit Zielimpedanz (je Paar eine Zeile) mit Dämpfung bei Nyquist, Rückflussdämpfung,
-  Augenhöhe/-breite, Skew im Paar und Via-Stub-Resonanz; Ampel nach Richtwerten (keine Spezifikation).
-- Genauigkeit: Leitungs-RLGC gegen HFSS ≤ 2 %; Via-Impedanz ist ein Abschätzungsmodell (etwa ±15 %), kein 3D-Ergebnis.
+### Regulator chains directly in KiCad: field `PI_REG`
+Add a field `PI_REG` to the regulator, supply input or pass element (ferrite, shunt) in the schematic; it reaches
+the board on update. Separate several channels of one IC with `;`:
 
-## Reglerketten direkt in KiCad: Feld `PI_REG`
-Am Regler, Eingang oder Durchgangselement (Ferrit, Shunt) ein Feld `PI_REG` anlegen (im Schaltplan,
-wird beim Aktualisieren der Platine übernommen); mehrere Kanäle eines ICs mit `;` trennen:
-
-| Beispiel | Bedeutung |
+| Example | Meaning |
 |---|---|
-| `+12V input` | Einspeisung (Steckverbinder) |
-| `+12V > +5V buck 90% 3A out=L3` | Schaltregler, Wirkungsgrad, Nennstrom, Bauteil mit dem Ausgangsstrom |
-| `+5V > +3V3 ldo iq=2mA 1A` | Linearregler mit Querstrom |
-| `+3V3 > +3V3A pass r=0.05` | Ferrit / Shunt mit Serienwiderstand (Ω) |
-| `+5V > -5V inverter 70%` | invertierender Wandler |
-| `+5V > VCORE@0.9V buck 85% id=U4A` | Schiene ohne Spannung im Namen (`@`), eigene Kennung je Kanal |
+| `+12V input` | supply input (connector) |
+| `+12V > +5V buck 90% 3A out=L3` | switching regulator, efficiency, rated current, part carrying the output current |
+| `+5V > +3V3 ldo iq=2mA 1A` | linear regulator with quiescent current |
+| `+3V3 > +3V3A pass r=0.05` | ferrite / shunt with series resistance (Ω) |
+| `+5V > -5V inverter 70%` | inverting converter |
+| `+5V > VCORE@0.9V buck 85% id=U4A` | rail without a voltage in its name (`@`), own id per channel |
 
-Statt `>` geht auch `->` oder `→`. Lasten kommen aus `PI_LOAD` (`+1V0=2.5A, +1V8=300mA` oder `+1V0=2W`).
-Sind `PI_REG`-Felder vorhanden, ersetzen sie im Viewer den Beispielbaum; „Als KiCad-Felder“ in der
-Versorgungsansicht gibt den aktuellen Baum in dieser Form aus. CLI: `kisi board.kicad_pcb --pi-tree fields`.
-`tools/tree_to_fields.py` schreibt einen JSON-Baum als Felder in eine Kopie der Platine (Migration, Test:
-beide Beispielboards ergeben mit den Feldern dieselbe Bilanz wie mit dem JSON-Baum).
+`->` or `→` work instead of `>`. Loads come from `PI_LOAD` (`+1V0=2.5A, +1V8=300mA` or `+1V0=2W`).
+If `PI_REG` fields exist, they replace the example tree in the viewer; “As KiCad fields” in the power view prints the
+current tree in this form. CLI: `kisi board.kicad_pcb --pi-tree fields`.
+`tools/tree_to_fields.py` writes a JSON tree as fields into a copy of the board (migration; test: both example boards
+give the same budget with the fields as with the JSON tree).
 
-## Impedanz der Versorgung Z(f) (PI-AC, erste Version)
-- `crates/kisi-core/src/pdn.rs`: konzentriertes Modell je Schiene – Regler (R + L) ∥ Ebenenkapazität (Fläche der
-  Zonen über der nächsten Masselage) ∥ alle Kondensatoren zwischen Schiene und Masse. Wert aus dem Bauteilwert
-  (`100n`, `4u7`, `10µF/6.3V`), Bauform aus dem Padabstand, ESR/ESL geschätzt, Montage-Induktivität über die Vias bis
-  zur Ebene, Ausbreitungsinduktivität bis zum Lastschwerpunkt.
-- Ebenenmodell ab 1 MHz: die größte Fläche der Schiene als Gitter (bis 2500 Zellen) über idealer Masse, μ0·d je Quadrat,
-  ε·A/d je Zelle, Kondensatoren und Regler an ihren Positionen, gelöst mit einem komplexen Band-LU je Frequenz.
-  Zeigt Form-Einflüsse und Resonanzen (Test: Rechteck 50 × 30 mm, erste Resonanz auf 3 % genau).
-- Zielimpedanz = 3 % der Spannung / (50 % des Laststroms); bewertet bis 100 MHz bzw. bis zur ersten Hohlraumresonanz.
-- CLI: `kisi board.kicad_pcb --pi-tree web/samples/ts_tree.json --pdn +1V0`; Viewer: Versorgung → Schiene → „Impedanz Z(f)“.
+## PDN impedance Z(f)
+- `crates/kisi-pi/src/pdn.rs`: lumped model per rail – regulator (R + L) ∥ plane capacitance (zone area over the
+  nearest ground layer) ∥ all capacitors between rail and ground. Value from the component value (`100n`, `4u7`,
+  `10µF/6.3V`), package from the pad spacing, ESR/ESL estimated, mounting inductance through the vias to the plane,
+  spreading inductance to the load centroid.
+- Plane model from 1 MHz: the largest area of the rail as a grid (up to 2500 cells) over ideal ground, μ0·d per square,
+  ε·A/d per cell, capacitors and regulator at their positions, solved with a complex band LU per frequency.
+  Shows the influence of the shape and resonances (test: 50 × 30 mm rectangle, first resonance within 3 %).
+- Target impedance = 3 % of the voltage / (50 % of the load current); evaluated up to 100 MHz or the first cavity resonance.
+- CLI: `kisi board.kicad_pcb --pi-tree web/samples/ts_tree.json --pdn +1V0`; viewer: Power → rail → “Impedance Z(f)”.
 
-## Stand: Meilenstein M2 (Feldlöser)
-- Quasi-statischer 2D-Feldlöser: js_2d_fields von Henrik Forstén, unverändert eingebunden (siehe `UPSTREAM.md`)
-- Jeder Querschnitt wird als Geometrie-Text erzeugt (`crates/kisi-core/src/xsgeom.rs`) und vom Backend gerechnet
-- Gleichungslöser in Rust (`crates/kisi-sparse`, faer) ersetzt das nicht veröffentlichte Eigen/emscripten-Modul
-- Viewer rechnet im Hintergrund mit mehreren Threads, wichtigste Querschnitte zuerst; Formelwerte als Startwert
-- Validierung: ≤ 1,5 % gegen HFSS/Ansys-Fälle, ≤ 0,3 % gegen Forsténs Microstrip-/Stripline-Löser an ThunderScope-Querschnitten
+## RF: channel, loss, TDR, crosstalk, vias, eye
+- `crates/kisi-si/src/rf/`: frequency-dependent RLGC per cross-section, from the field solver (R, L, G, C at 1 GHz)
+  or from formulas. Skin effect after Wheeler (incremental inductance), roughness after Huray (smooth / HVLP / standard ED,
+  presets estimated), dielectric after Djordjevic-Sarkar from the stackup εr and tanδ, microstrip dispersion.
+- Channel of a net: longest path through the track graph (layers joined only by vias / through-hole pads),
+  ABCD cascade → S21/S11 (odd mode / Sdd for pairs), Touchstone `.s2p`, TDR from S11 with a Gaussian edge.
+- `crates/kisi-si/src/via.rs`: a via as a stack of coaxial sections per layer; outer conductor = clearance (antipad)
+  measured in the zone fills; for pairs the Wheeler formula for a shielded symmetric pair. Stubs as open lines
+  (quarter-wave resonance), back-drill from KiCad 10 (`backdrill`) or global. Reference plane change: inductance to
+  the nearest stitching via; warning if there is none within 5 mm or the reference changes to another net.
+- Crosstalk: neighbouring lines on the same layer (parallel, up to 5 h away), NEXT/FEXT from the L/C coupling matrix
+  of the field solver or Kirschning-Jansen/Cohn; field solver scope “selected net” includes the coupled cross-sections.
+- Eye diagram (`crates/kisi-si/src/eye.rs`): PRBS7 NRZ from the single-bit response between the profile's linear
+  transmitter and receiver (R, C, package L per line), no equalisation, jitter or noise. CLI: `--rf <net> --eye 16` (Gbit/s).
+- Channel check: all nets with a target impedance (one row per pair) with loss at Nyquist, return loss, eye
+  height/width, intra-pair skew and via stub resonance; traffic light against the profile limits. The verdict logic
+  (`kisi_si::profile::judge`) is shared by viewer, CLI and MCP.
+- CLI: `kisi board.kicad_pcb board.kicad_pro --rf <net suffix> [--s2p out_{}.s2p]`
+- Accuracy: line RLGC against HFSS ≤ 2 %; via impedance is an estimation model (about ±15 %), not a 3D result.
 
-## Meilenstein M1
-- Parser für KiCad 9/10 (Stackup inkl. Teillagen, Leiterbahnen, Bögen, Vias, Pads, Zonenfüllungen, Netzklassen)
-- Querschnitts-Erkennung entlang jeder Leitung: Referenzebenen (auch über Lücken/Freistellungen), koplanare Masse, Diff-Partner
-- Analytische Impedanz: Hammerstad-Jensen, Wheeler, Wadell-CPWG, IPC-2141 (Diff)
-- Zielimpedanz aus Netzklassennamen (`50Z`, `100Z_Diff`, …) bzw. Schnittstellen-Annahmen, im Viewer editierbar
-- Viewer: Abweichung vom Ziel / Z₀ absolut / Leitungstyp, Tooltip, Netzprofil, Lagenaufbau
+## Field solver
+- Quasi-static 2D field solver: js_2d_fields by Henrik Forstén, included unmodified (see `UPSTREAM.md`).
+- Every cross-section is written as a geometry text (`crates/kisi-si/src/xsgeom.rs`) and solved by the backend.
+- Linear solver in Rust (`crates/kisi-sparse`, faer) replaces the unpublished Eigen/emscripten module.
+- The viewer solves in the background on several threads, most important cross-sections first; formula values as start values.
+- Validation: ≤ 1.5 % against HFSS/Ansys cases, ≤ 0.3 % against Forstén's microstrip/stripline solver on ThunderScope cross-sections.
 
-## Bauen
+## Board model
+- Parser for KiCad 9/10 (stackup incl. sub-layers, tracks, arcs, vias, pads, zone fills, net classes).
+- Cross-section detection along every line: reference planes (also across gaps/clearances), coplanar ground, diff partner.
+- Analytic impedance: Hammerstad-Jensen, Wheeler, Wadell CPWG, IPC-2141 (diff).
+- Target impedance from net class names (`50Z`, `100Z_Diff`, …) or interface assumptions, editable in the viewer.
+
+## MCP server
+`kisi-mcp` speaks MCP over stdio (tools `kisi_overview`, `kisi_net`, `kisi_channel_check`, `kisi_profiles`,
+`kisi_power`, `kisi_report`, `kisi_open_viewer`) and works next to KiCad's own MCP integrations and kicad-happy.
+See `claude-plugin/README.md`.
+
+## Building
 ```sh
 git submodule update --init                                              # js_2d_fields
-cargo build --release -p kisi-cli                                        # CLI: target/release/kisi
+cargo build --release                                                    # CLI (target/release/kisi) and kisi-mcp
 cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
 python3 tools/bundle.py web/index.html target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
         target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.html \
         ts "ThunderScope Rev5.3" <ts.kicad_pcb> <ts.kicad_pro> vna LibreVNA <vna.kicad_pcb> <vna.kicad_pro>
+python3 tools/package_plugin.py                                          # dist/kisi-kicad-plugin.zip
 ```
-Beispielboards werden vorher mit `tools/strip_pcb.py` verkleinert.
+Example boards are shrunk beforehand with `tools/strip_pcb.py`.
 
-Feldlöser auf der Kommandozeile (braucht Node.js): `tools/kisi_field.sh board.kicad_pcb`
+Field solver on the command line (needs Node.js): `tools/kisi_field.sh board.kicad_pcb`
 
-Solver-Update: `tools/upstream_update.sh` (Details in `UPSTREAM.md`), Prüfung allein: `tools/validate_field.sh`.
+Solver update: `tools/upstream_update.sh` (details in `UPSTREAM.md`); validation only: `tools/validate_field.sh`.
 
-## Validierung
-`validation/*.json` enthält Querschnitte, `*.ref.json` die Referenz aus Henrik Forsténs 2D-Feldlöser
-(github.com/Ttl/js_2d_fields, GPL-3.0; in Node mit `tools/forsten_sparse_shim.js` als Ersatz für das WASM-Gleichungslöser-Modul).
+## Validation
+`validation/*.json` holds cross-sections, `*.ref.json` the reference from Henrik Forstén's 2D field solver
+(github.com/Ttl/js_2d_fields, GPL-3.0; run in Node with `tools/forsten_sparse_shim.js` replacing the WASM linear solver module).
 ```sh
-target/release/kisi-validate validation/forsten_suite.json        # HFSS/Ansys-Referenzen aus Forsténs Testsuite
+target/release/kisi-validate validation/forsten_suite.json        # HFSS/Ansys references from Forstén's test suite
 target/release/kisi-validate validation/thunderscope_xs.json validation/thunderscope_xs.ref.json
 ```
-`forsten_selfcheck*.json`: Forsténs Löser in dieser Umgebung gegen dieselben HFSS-Fälle (Abweichung ≤ 1,4 %),
-damit ist er als Referenz für die ThunderScope-Querschnitte abgesichert.
+`forsten_selfcheck*.json`: Forstén's solver in this environment against the same HFSS cases (deviation ≤ 1.4 %),
+which qualifies it as the reference for the ThunderScope cross-sections.
 
-## Beispielboards
+## Example boards
 ThunderScope (EEVengers, MIT), LibreVNA (Jan Käberich, GPL-3.0).

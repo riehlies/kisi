@@ -16,7 +16,7 @@ src = os.path.join(root, "kicad-plugin")
 viewer = os.path.join(root, "dist", "kisi.html")
 out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, "dist", "kisi-kicad-plugin.zip")
 if not os.path.exists(viewer):
-    sys.exit("dist/kisi.html fehlt – erst bündeln (tools/bundle.py)")
+    sys.exit("dist/kisi.html missing – bundle it first (tools/bundle.py)")
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
     for dp, _, fs in os.walk(src):
         for f in fs:

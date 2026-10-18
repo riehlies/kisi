@@ -13,10 +13,10 @@ async function handleFiles(files) {
   if (cfg && S.scene) { importKipida(await cfg.text()); return; }
   if (pcb) return;
   if (!pcb && pro && S.scene) {
-    try { S.engine.loadPro(await pro.text()); S.scene = S.engine.scene(); runAnalysis(); } catch (e) { $("warnings").innerHTML = `<span class="err">Projektdatei: ${esc(e.message)}</span>`; }
+    try { S.engine.loadPro(await pro.text()); S.scene = S.engine.scene(); runAnalysis(); } catch (e) { $("warnings").innerHTML = `<span class="err">Project file: ${esc(e.message)}</span>`; }
     return;
   }
-  if (!pcb) { $("warnings").innerHTML = `<span class="err">Bitte eine .kicad_pcb-Datei wählen (optional zusätzlich die .kicad_pro für Netzklassen).</span>`; return; }
+  if (!pcb) { $("warnings").innerHTML = `<span class="err">Please choose a .kicad_pcb file (optionally also the .kicad_pro for net classes).</span>`; return; }
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
   await loadFiles(await pcb.text(), pro ? await pro.text() : null, pcb.name.replace(/\.kicad_pcb$/, ""));
 }
@@ -30,14 +30,14 @@ window.addEventListener("drop", (e) => { e.preventDefault(); dragDepth = 0; $("d
 async function loadSample(key) {
   const s = SAMPLES[key];
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", String(k === key));
-  showBusy("Entpacke Beispielboard…");
+  showBusy("Unpacking example board…");
   const [pcb, pro] = await Promise.all([gunzipB64(s.pcb), gunzipB64(s.pro)]);
   await loadFiles(pcb, pro, s.name, s.pi || null);
 }
 // board handed over by the KiCad plugin (tools/kicad-plugin): {name, pcb, pro (gzip+base64), net?}
 async function loadPreload(pl) {
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
-  showBusy("Entpacke Board aus KiCad…");
+  showBusy("Unpacking board from KiCad…");
   // gzip+base64 from the KiCad plugin, plain text from kisi-mcp
   const pcb = pl.pcb_text != null ? pl.pcb_text : await gunzipB64(pl.pcb);
   const pro = pl.pro_text != null ? pl.pro_text : pl.pro ? await gunzipB64(pl.pro) : null;
@@ -70,6 +70,6 @@ new ResizeObserver(resize).observe(cv);
     if (typeof PRELOAD !== "undefined" && PRELOAD) await loadPreload(PRELOAD);
     else await loadSample("ts");
   } catch (e) {
-    showBusy("Rechenkern konnte nicht starten: " + e.message);
+    showBusy("Engine failed to start: " + e.message);
   }
 })();

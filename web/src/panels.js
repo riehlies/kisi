@@ -3,7 +3,7 @@
 function renderSide() {
   const sc = S.scene, an = S.an, su = sc.stackup;
   $("boardName").textContent = S.name;
-  $("boardMeta").textContent = `${su.copper.length} Lagen · ${sc.tracks.length / 7 - (sc.pad_tracks || []).length} Leiterbahnstücke · ${(sc.pad_tracks || []).length} Signal-Pads · ${sc.vias.length / 7} Vias`;
+  $("boardMeta").textContent = `${su.copper.length} layers · ${sc.tracks.length / 7 - (sc.pad_tracks || []).length} track segments · ${(sc.pad_tracks || []).length} signal pads · ${sc.vias.length / 7} vias`;
   // KPIs
   let lenT = 0, lenOk = 0, nets = 0;
   for (const n of an.nets) if (n.target) { nets++; lenT += n.length; lenOk += (n.within5 || 0) * n.length; }
@@ -24,14 +24,14 @@ function renderSide() {
       const d = stackEff(i), ed = stackEdited(i);
       const hpx = Math.max(6, Math.min(40, d.thickness * 60));
       const meta = S.stackEdit
-        ? `<span class="st-edit"><input type="number" step="0.01" data-di="${i}" data-k="epsilon_r" value="${d.epsilon_r}" aria-label="εr ${esc(d0.name)}" title="εr"><input type="number" step="0.001" data-di="${i}" data-k="loss_tangent" value="${d.loss_tangent}" aria-label="tanδ ${esc(d0.name)}" title="tanδ"><input type="number" step="1" data-di="${i}" data-k="thickness" value="${Math.round(d.thickness * 1000)}" aria-label="Dicke µm ${esc(d0.name)}" title="Dicke µm"></span>`
+        ? `<span class="st-edit"><input type="number" step="0.01" data-di="${i}" data-k="epsilon_r" value="${d.epsilon_r}" aria-label="εr ${esc(d0.name)}" title="εr"><input type="number" step="0.001" data-di="${i}" data-k="loss_tangent" value="${d.loss_tangent}" aria-label="tanδ ${esc(d0.name)}" title="tanδ"><input type="number" step="1" data-di="${i}" data-k="thickness" value="${Math.round(d.thickness * 1000)}" aria-label="Thickness µm ${esc(d0.name)}" title="Thickness µm"></span>`
         : `${esc(d0.material)} · ${fmt(d.thickness * 1000, 0)} µm · εr ${fmt(d.epsilon_r, 2)} · tanδ ${fmt(d.loss_tangent, 3)}${ed ? " *" : ""}`;
       rows.push(`<div class="st-row st-di${ed ? " edited" : ""}"><span class="st-name muted">${esc(d0.kind || "")}</span><div class="st-bar" style="height:${hpx}px"></div><span class="st-meta">${meta}</span></div>`);
     }
   });
-  if (!su.from_file) rows.unshift(`<p class="err">Kein Lagenaufbau in der Datei – Annahmen</p>`);
+  if (!su.from_file) rows.unshift(`<p class="err">No stackup in the file – assumed values</p>`);
   const nEd = Object.keys(stackOv().dielectrics || {}).length;
-  rows.push(`<div class="fs-row"><span class="note">${S.stackEdit ? "Spalten: εr · tanδ · Dicke µm. Wirkt auf Impedanz, Verluste, Feldlöser und PDN." : nEd ? `${nEd} Lage(n) geändert (*), gespeichert in diesem Browser.` : "Werte aus der Datei."}</span><span>${nEd && !S.stackEdit ? `<button class="btn small" id="st-reset">Datei-Werte</button> ` : ""}<button class="btn small" id="st-edit">${S.stackEdit ? "Fertig" : "Bearbeiten"}</button></span></div>`);
+  rows.push(`<div class="fs-row"><span class="note">${S.stackEdit ? "Columns: εr · tanδ · thickness µm. Affects impedance, loss, field solver and PDN." : nEd ? `${nEd} layer(s) changed (*), stored in this browser.` : "Values from the file."}</span><span>${nEd && !S.stackEdit ? `<button class="btn small" id="st-reset">File values</button> ` : ""}<button class="btn small" id="st-edit">${S.stackEdit ? "Done" : "Edit"}</button></span></div>`);
   $("stack").innerHTML = rows.join("");
   $("stack").querySelectorAll("input[data-l]").forEach((el) => el.onchange = () => { S.layerOn[+el.dataset.l] = el.checked; renderLayerChips(); renderSide(); draw(); });
   $("st-edit").onclick = () => { S.stackEdit = !S.stackEdit; renderSide(); };
@@ -49,13 +49,13 @@ function renderSide() {
   });
   renderLayerChips();
   // targets
-  const tgRows = [`<span class="h">Klasse</span><span class="h">Ziel Ω</span><span class="h">Art</span>`];
+  const tgRows = [`<span class="h">Class</span><span class="h">Target Ω</span><span class="h">Type</span>`];
   an.classes.forEach((c, i) => {
     if (!c.nets && !c.target) return;
     const t = c.target;
-    tgRows.push(`<label class="cn" for="tz-${i}">${esc(c.name)}<small>${c.nets} Netze${c.target_source ? " · " + esc(c.target_source) : ""}</small></label>
+    tgRows.push(`<label class="cn" for="tz-${i}">${esc(c.name)}<small>${c.nets} nets${c.target_source ? " · " + esc(c.target_source) : ""}</small></label>
       <input id="tz-${i}" data-c="${esc(c.name)}" type="number" min="10" max="200" step="1" value="${t ? t.z : ""}" placeholder="–" inputmode="decimal">
-      <select id="tk-${i}" data-c="${esc(c.name)}" aria-label="Art der Zielimpedanz für ${esc(c.name)}"><option value="se" ${t && !t.diff ? "selected" : ""}>SE</option><option value="diff" ${t && t.diff ? "selected" : ""}>Diff</option></select>`);
+      <select id="tk-${i}" data-c="${esc(c.name)}" aria-label="Target impedance type for ${esc(c.name)}"><option value="se" ${t && !t.diff ? "selected" : ""}>SE</option><option value="diff" ${t && t.diff ? "selected" : ""}>Diff</option></select>`);
   });
   if (!$("targets").contains(document.activeElement)) $("targets").innerHTML = tgRows.join("");
   const onTarget = (name) => {
@@ -67,7 +67,7 @@ function renderSide() {
   };
   $("targets").querySelectorAll("input,select").forEach((el) => el.onchange = () => onTarget(el.dataset.c));
   // zone layer select
-  $("opt-zone").innerHTML = `<option value="-1">keine</option>` + su.copper.map((c, i) => `<option value="${i}" ${i === S.zoneLayer ? "selected" : ""}>${esc(c.name)}</option>`).join("");
+  $("opt-zone").innerHTML = `<option value="-1">none</option>` + su.copper.map((c, i) => `<option value="${i}" ${i === S.zoneLayer ? "selected" : ""}>${esc(c.name)}</option>`).join("");
   renderNets();
 }
 
@@ -86,7 +86,7 @@ function renderNets() {
   const q = $("search").value.trim().toLowerCase();
   let list = S.an.nets.filter((n) => q ? (n.name.toLowerCase().includes(q) || n.class.toLowerCase().includes(q)) : n.target);
   list.sort((a, b) => (a.within5 ?? 2) - (b.within5 ?? 2) || b.length - a.length);
-  $("netCount").textContent = q ? `${list.length} Treffer` : `${list.length} mit Ziel · schlechteste zuerst`;
+  $("netCount").textContent = q ? `${list.length} matches` : `${list.length} with target · worst first`;
   list = list.slice(0, 300);
   $("nets").innerHTML = list.map((n) => {
     const w5 = n.within5;
@@ -103,18 +103,18 @@ function renderLegend() {
   const C = S.colors, L = $("legend");
   if (S.tab === "pi") return renderPiLegend();
   if (S.tab === "ch") {
-    const it = [[C.ok, "Kanal in Ordnung"], [C.high1, "Grenze überschritten (gelb)"], [C.high2, "rot / Fehler"], [C.none, "nicht geprüft"]];
-    L.innerHTML = `<strong>Kanalprüfung</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
+    const it = [[C.ok, "channel OK"], [C.high1, "limit exceeded (yellow)"], [C.high2, "red / error"], [C.none, "not checked"]];
+    L.innerHTML = `<strong>Channel check</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
     return;
   }
   if (S.mode === "dev") {
-    const it = [[C.low2, "< −10 %"], [C.low1, "−10 … −5 %"], [C.ok, "±5 % (im Ziel)"], [C.high1, "+5 … +10 %"], [C.high2, "> +10 %"], [C.none, "kein Ziel"], [C.noref, "keine Referenz"]];
-    L.innerHTML = `<strong>Abweichung vom Ziel</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
+    const it = [[C.low2, "< −10 %"], [C.low1, "−10 … −5 %"], [C.ok, "±5 % (on target)"], [C.high1, "+5 … +10 %"], [C.high2, "> +10 %"], [C.none, "no target"], [C.noref, "no reference"]];
+    L.innerHTML = `<strong>Deviation from target</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
   } else if (S.mode === "abs") {
     const stops = Array.from({ length: 11 }, (_, k) => turbo(k / 10 * 0.9 + 0.05)).join(",");
     L.innerHTML = `<strong>Z₀ (single-ended)</strong><div class="grad" style="background:linear-gradient(90deg,${stops})"></div><div class="ticks"><span>${ABS_MIN}</span><span>50</span><span>75</span><span>100</span><span>${ABS_MAX} Ω</span></div>`;
   } else {
-    const it = [[C.ms, "Microstrip (Außenlage)"], [C.sl, "Stripline"], [C.emb, "Innen, eine Referenz"], [C.noref, "keine Referenz"]];
-    L.innerHTML = `<strong>Leitungstyp</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
+    const it = [[C.ms, "Microstrip (outer layer)"], [C.sl, "Stripline"], [C.emb, "inner, one reference"], [C.noref, "no reference"]];
+    L.innerHTML = `<strong>Line type</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
   }
 }

@@ -46,7 +46,7 @@ What an update can break, and where to fix it:
 | Upstream change | Fix in |
 |---|---|
 | `CustomGeometrySolver` options, `solve_adaptive` options or result fields | `web/solver/backend_forsten.js` |
-| geometry text syntax | `crates/kisi-core/src/xsgeom.rs` |
+| geometry text syntax | `crates/kisi-si/src/xsgeom.rs` |
 | a new import of a build artifact (like `wasm_solver/solver.js`) | `REDIRECT` in `tools/bundle.py`, `tools/upstream_hooks.mjs` |
 | `solve_sparse_multi` signature | `crates/kisi-sparse`, `web/solver/sparse_module.js` |
 

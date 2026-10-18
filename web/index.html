@@ -1,4 +1,4 @@
-<title>Kisi Impedanzkarte</title>
+<title>Kisi Impedance Map</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10,158 +10,158 @@
   <div class="bar">
     <div class="brand"><b>kisi</b><span id="boardName">–</span><small id="boardMeta"></small></div>
     <div class="grow"></div>
-    <div class="seg" role="group" aria-label="Analyse">
-      <button id="view-si" aria-pressed="true">Impedanz</button>
-      <button id="view-ch" aria-pressed="false">Kanal</button>
-      <button id="view-pi" aria-pressed="false">Versorgung</button>
+    <div class="seg" role="group" aria-label="Analysis">
+      <button id="view-si" aria-pressed="true">Impedance</button>
+      <button id="view-ch" aria-pressed="false">Channel</button>
+      <button id="view-pi" aria-pressed="false">Power</button>
     </div>
-    <div class="seg" role="group" aria-label="Farbdarstellung" data-view="si">
-      <button id="mode-dev" aria-pressed="true">Abweichung vom Ziel</button>
-      <button id="mode-abs" aria-pressed="false">Z₀ absolut</button>
-      <button id="mode-type" aria-pressed="false">Leitungstyp</button>
+    <div class="seg" role="group" aria-label="Colour mode" data-view="si">
+      <button id="mode-dev" aria-pressed="true">Deviation from target</button>
+      <button id="mode-abs" aria-pressed="false">Z₀ absolute</button>
+      <button id="mode-type" aria-pressed="false">Line type</button>
     </div>
-    <div class="seg" role="group" aria-label="Darstellung Versorgung" data-view="pi" hidden>
-      <button id="pim-v" aria-pressed="true">Spannungsabfall</button>
-      <button id="pim-j" aria-pressed="false">Stromdichte</button>
-      <button id="pim-b" aria-pressed="false">Leistungsbilanz</button>
+    <div class="seg" role="group" aria-label="Power view" data-view="pi" hidden>
+      <button id="pim-v" aria-pressed="true">Voltage drop</button>
+      <button id="pim-j" aria-pressed="false">Current density</button>
+      <button id="pim-b" aria-pressed="false">Power budget</button>
     </div>
-    <div class="seg" role="group" aria-label="Beispielboard">
+    <div class="seg" role="group" aria-label="Example board">
       <button id="sample-ts" aria-pressed="false">ThunderScope</button>
       <button id="sample-vna" aria-pressed="false">LibreVNA</button>
     </div>
-    <label class="btn primary" for="file">Dateien laden</label>
+    <label class="btn primary" for="file">Load files</label>
     <input type="file" id="file" accept=".kicad_pcb,.kicad_pro,.json" multiple hidden>
   </div>
 
   <aside class="side">
     <section class="card" aria-labelledby="h-sum" data-view="si">
-      <h2 id="h-sum">Signale <em id="timing"></em></h2>
+      <h2 id="h-sum">Signals <em id="timing"></em></h2>
       <div class="kpis">
-        <div class="kpi"><span class="v" id="k-ok">–</span><span class="l">der Länge mit Ziel innerhalb ±5 %</span></div>
-        <div class="kpi"><span class="v" id="k-nets">–</span><span class="l">Netze mit Zielimpedanz</span></div>
-        <div class="kpi"><span class="v" id="k-noref">–</span><span class="l">mm ohne Referenzebene</span></div>
+        <div class="kpi"><span class="v" id="k-ok">–</span><span class="l">of length with target within ±5 %</span></div>
+        <div class="kpi"><span class="v" id="k-nets">–</span><span class="l">nets with target impedance</span></div>
+        <div class="kpi"><span class="v" id="k-noref">–</span><span class="l">mm without reference plane</span></div>
       </div>
-      <p class="note" id="si-source">Schnelle Analyse mit Formeln.</p>
+      <p class="note" id="si-source">Fast analysis with formulas.</p>
       <div class="fs" id="fs">
         <div class="fs-run">
-          <label for="fs-scope" class="fs-l">Feldlöser für</label>
+          <label for="fs-scope" class="fs-l">Field solver for</label>
           <select id="fs-scope"></select>
-          <button class="btn small primary" id="fs-start">Starten</button>
+          <button class="btn small primary" id="fs-start">Start</button>
         </div>
         <div class="fs-bar" aria-hidden="true"><i id="fs-bar"></i></div>
-        <div class="fs-row"><span id="fs-text"></span><button class="btn small" id="fs-toggle" hidden>Anhalten</button></div>
+        <div class="fs-row"><span id="fs-text"></span><button class="btn small" id="fs-toggle" hidden>Pause</button></div>
         <p class="note" id="fs-note"></p>
-        <div class="fs-row"><span class="note" id="fs-cache"></span><button class="btn small" id="fs-clear">Speicher leeren</button></div>
+        <div class="fs-row"><span class="note" id="fs-cache"></span><button class="btn small" id="fs-clear">Clear cache</button></div>
       </div>
       <p class="note" id="warnings"></p>
       <details class="acc">
-        <summary>Genauigkeit</summary>
-        <p class="note">Feldlöser: <a href="https://github.com/Ttl/js_2d_fields" target="_blank" rel="noopener">js_2d_fields</a> von Henrik Forstén (GPL-3.0), quasi-statisch, unverändert eingebunden (Stand <span class="mono" id="up-rev"></span>). Gegen HFSS/Ansys-Referenzen aus seiner Testsuite: Abweichung ≤ 1,7 %, auch für eine Leitung über einer Aussparung mit tieferer Referenz.</p>
-        <p class="note">Abweichung an ThunderScope-Querschnitten, Referenz ist Forsténs eigener Microstrip/Stripline-Löser:</p>
+        <summary>Accuracy</summary>
+        <p class="note">Field solver: <a href="https://github.com/Ttl/js_2d_fields" target="_blank" rel="noopener">js_2d_fields</a> by Henrik Forstén (GPL-3.0), quasi-static, included unmodified (revision <span class="mono" id="up-rev"></span>). Against the HFSS/Ansys references in his test suite: deviation ≤ 1.7 %, including a line over a cut-out with a deeper reference.</p>
+        <p class="note">Deviation on ThunderScope cross-sections; reference is Forstén's own microstrip/stripline solver:</p>
         <table class="acc-t">
-          <thead><tr><td></td><td class="num">Formel</td><td class="num">Feldlöser</td></tr></thead>
+          <thead><tr><td></td><td class="num">Formula</td><td class="num">Field solver</td></tr></thead>
           <tbody>
-            <tr><td>Microstrip 213 µm, mit Lötstopp</td><td class="num">+1,4 %</td><td class="num">0,0 %</td></tr>
-            <tr><td>Diff-Microstrip LVDS (127/130 µm)</td><td class="num">+7,8 %</td><td class="num">−0,3 %</td></tr>
-            <tr><td>Diff-Microstrip PCIe (191/127 µm)</td><td class="num">+5,6 %</td><td class="num">−0,3 %</td></tr>
-            <tr><td>Stripline In3, Abstände 1:8</td><td class="num">+10,3 %</td><td class="num">0,0 %</td></tr>
-            <tr><td>Microstrip über 3-mm-Aussparung (HFSS)</td><td class="num">+17 %</td><td class="num">−0,5 %</td></tr>
+            <tr><td>Microstrip 213 µm, with solder mask</td><td class="num">+1.4 %</td><td class="num">0.0 %</td></tr>
+            <tr><td>Diff-Microstrip LVDS (127/130 µm)</td><td class="num">+7.8 %</td><td class="num">−0.3 %</td></tr>
+            <tr><td>Diff-Microstrip PCIe (191/127 µm)</td><td class="num">+5.6 %</td><td class="num">−0.3 %</td></tr>
+            <tr><td>Stripline In3, spacings 1:8</td><td class="num">+10.3 %</td><td class="num">0.0 %</td></tr>
+            <tr><td>Microstrip over 3 mm cut-out (HFSS)</td><td class="num">+17 %</td><td class="num">−0.5 %</td></tr>
           </tbody>
         </table>
       </details>
     </section>
 
     <section class="card" aria-labelledby="h-pi" data-view="pi" hidden>
-      <h2 id="h-pi">Versorgung <em id="pi-timing"></em></h2>
+      <h2 id="h-pi">Power <em id="pi-timing"></em></h2>
       <div class="kpis">
-        <div class="kpi"><span class="v" id="pk-drop">–</span><span class="l">größter Spannungsabfall an einer Last</span></div>
-        <div class="kpi"><span class="v" id="pk-rails">–</span><span class="l">Schienen berechnet</span></div>
-        <div class="kpi"><span class="v" id="pk-j">–</span><span class="l">höchste Stromdichte</span></div>
+        <div class="kpi"><span class="v" id="pk-drop">–</span><span class="l">largest voltage drop at a load</span></div>
+        <div class="kpi"><span class="v" id="pk-rails">–</span><span class="l">rails computed</span></div>
+        <div class="kpi"><span class="v" id="pk-j">–</span><span class="l">highest current density</span></div>
       </div>
       <p class="note" id="pi-origin"></p>
       <p class="note" id="pi-warn"></p>
       <details class="acc">
-        <summary>Lasten in KiCad festlegen</summary>
-        <p class="note">Feld am Bauteil (im Schaltplan anlegen, landet beim Aktualisieren in der Platine):</p>
-        <p class="note"><span class="mono">PI_LOAD</span> = <span class="mono">+1V0=2.5A, +1V8=300mA</span> oder <span class="mono">+1V0=2W</span><br>
-        <span class="mono">PI_SOURCE</span> = <span class="mono">+3V3</span> oder <span class="mono">+3V3=3.3V</span> für Regler und Einspeisungen.</p>
-        <p class="note">Eine <span class="mono">kipida_config.json</span> von KiPIDA kann ebenfalls geladen werden.</p>
+        <summary>Defining loads in KiCad</summary>
+        <p class="note">Field on the footprint (add it in the schematic; it reaches the board on update):</p>
+        <p class="note"><span class="mono">PI_LOAD</span> = <span class="mono">+1V0=2.5A, +1V8=300mA</span> or <span class="mono">+1V0=2W</span><br>
+        <span class="mono">PI_SOURCE</span> = <span class="mono">+3V3</span> or <span class="mono">+3V3=3.3V</span> for regulators and supply inputs.</p>
+        <p class="note">A <span class="mono">kipida_config.json</span> from KiPIDA can also be loaded.</p>
       </details>
     </section>
 
     <section class="card" aria-labelledby="h-stack">
-      <h2 id="h-stack">Lagenaufbau <em id="stackTotal"></em></h2>
+      <h2 id="h-stack">Stackup <em id="stackTotal"></em></h2>
       <div class="stack" id="stack"></div>
     </section>
 
     <section class="card" aria-labelledby="h-rails" data-view="pi" hidden>
-      <h2 id="h-rails">Versorgungsschienen <em id="rail-count"></em></h2>
+      <h2 id="h-rails">Supply rails <em id="rail-count"></em></h2>
       <div class="rails" id="rails"></div>
     </section>
 
     <section class="card" aria-labelledby="h-rail" data-view="pi" hidden>
-      <h2 id="h-rail">Schiene <em id="rail-name"></em></h2>
+      <h2 id="h-rail">Rail <em id="rail-name"></em></h2>
       <div id="rail-edit"></div>
     </section>
 
     <section class="card" aria-labelledby="h-tg" data-view="si">
-      <h2 id="h-tg">Zielimpedanz je Netzklasse</h2>
+      <h2 id="h-tg">Target impedance per net class</h2>
       <div class="tg" id="targets"></div>
       <div class="opts">
-        <label class="opt" for="opt-mask"><span>Lötstopplack berücksichtigen</span><input type="checkbox" id="opt-mask" checked></label>
-        <label class="opt" for="opt-step"><span>Abtastschritt entlang der Leitung</span>
-          <select id="opt-step"><option value="0.25">0,25 mm</option><option value="0.5" selected>0,5 mm</option><option value="1">1 mm</option></select></label>
-        <label class="opt" for="opt-zone"><span>Kupferflächen einblenden</span><select id="opt-zone"></select></label>
+        <label class="opt" for="opt-mask"><span>Include solder mask</span><input type="checkbox" id="opt-mask" checked></label>
+        <label class="opt" for="opt-step"><span>Sampling step along the line</span>
+          <select id="opt-step"><option value="0.25">0.25 mm</option><option value="0.5" selected>0.5 mm</option><option value="1">1 mm</option></select></label>
+        <label class="opt" for="opt-zone"><span>Show copper zones</span><select id="opt-zone"></select></label>
       </div>
     </section>
 
     <section class="card" aria-labelledby="h-rf" data-view="si">
-      <h2 id="h-rf">HF-Einstellungen</h2>
+      <h2 id="h-rf">RF settings</h2>
       <div class="opts">
-        <label class="opt" for="rf-fmax"><span>Frequenz bis</span><select id="rf-fmax"><option value="10">10 GHz</option><option value="20">20 GHz</option><option value="25" selected>25 GHz</option><option value="40">40 GHz</option></select></label>
-        <label class="opt" for="rf-rise"><span>Anstiegszeit (10–90 %)</span><select id="rf-rise"><option value="20">20 ps</option><option value="35" selected>35 ps</option><option value="50">50 ps</option><option value="100">100 ps</option><option value="200">200 ps</option><option value="500">500 ps</option></select></label>
-        <label class="opt" for="rf-rough"><span>Kupferrauheit</span><select id="rf-rough"><option value="Smooth">glatt</option><option value="Hvlp">HVLP</option><option value="Standard" selected>Standard-ED</option></select></label>
-        <label class="opt" for="rf-vias"><span>Vias im Kanal</span><input type="checkbox" id="rf-vias" checked></label>
-        <label class="opt" for="rf-bd"><span>Via-Stubs</span><select id="rf-bd"><option value="">wie im Layout</option><option value="0.2">alle rückgebohrt (Rest 0,2 mm)</option><option value="0">ohne Stubs</option></select></label>
+        <label class="opt" for="rf-fmax"><span>Frequency up to</span><select id="rf-fmax"><option value="10">10 GHz</option><option value="20">20 GHz</option><option value="25" selected>25 GHz</option><option value="40">40 GHz</option></select></label>
+        <label class="opt" for="rf-rise"><span>Rise time (10–90 %)</span><select id="rf-rise"><option value="20">20 ps</option><option value="35" selected>35 ps</option><option value="50">50 ps</option><option value="100">100 ps</option><option value="200">200 ps</option><option value="500">500 ps</option></select></label>
+        <label class="opt" for="rf-rough"><span>Copper roughness</span><select id="rf-rough"><option value="Smooth">smooth</option><option value="Hvlp">HVLP</option><option value="Standard" selected>standard ED</option></select></label>
+        <label class="opt" for="rf-vias"><span>Vias in channel</span><input type="checkbox" id="rf-vias" checked></label>
+        <label class="opt" for="rf-bd"><span>Via-Stubs</span><select id="rf-bd"><option value="">as in layout</option><option value="0.2">all back-drilled (0.2 mm remaining)</option><option value="0">no stubs</option></select></label>
       </div>
-      <p class="note">Verluste: Skin-Effekt nach Wheeler, Rauheit nach Huray (Voreinstellungen geschätzt), Dielektrikum nach Djordjevic-Sarkar aus εr und tanδ des Lagenaufbaus. Vias: koaxiale Abschnitte je Lage mit den gemessenen Antipads, Stubs als offene Leitungen, Rückstrompfad bei Ebenenwechsel. Ein Netz wählen, um Verluste, TDR, Vias und Übersprechen zu sehen. Auge und Prüfung mit Sender und Empfänger: Ansicht „Kanal“.</p>
+      <p class="note">Losses: skin effect after Wheeler, roughness after Huray (presets estimated), dielectric after Djordjevic-Sarkar from the stackup εr and tanδ. Vias: coaxial sections per layer with the measured antipads, stubs as open lines, return path on plane changes. Select a net to see loss, TDR, vias and crosstalk. Eye and compliance check with transmitter and receiver: “Channel” view.</p>
     </section>
 
     <section class="card" aria-labelledby="h-ifc" data-view="ch" hidden>
-      <h2 id="h-ifc">Schnittstellen je Netzklasse</h2>
+      <h2 id="h-ifc">Interfaces per net class</h2>
       <div id="ifc-body"></div>
     </section>
 
     <section class="card" aria-labelledby="h-prof" data-view="ch" hidden>
-      <h2 id="h-prof">Profil: Standard, Sender, Empfänger</h2>
+      <h2 id="h-prof">Profile: standard, transmitter, receiver</h2>
       <div id="prof-body"></div>
     </section>
 
     <section class="card" aria-labelledby="h-check" data-view="ch" hidden>
-      <h2 id="h-check">Kanalprüfung</h2>
-      <div class="fs-row"><span class="note" id="ck-text"></span><button class="btn small primary" id="ck-start">Prüfen</button></div>
+      <h2 id="h-check">Channel check</h2>
+      <div class="fs-row"><span class="note" id="ck-text"></span><button class="btn small primary" id="ck-start">Check</button></div>
       <div id="ck-out"></div>
     </section>
 
     <section class="card" aria-labelledby="h-nets" data-view="si ch">
-      <h2 id="h-nets">Netze <em id="netCount"></em></h2>
-      <input class="search" id="search" type="search" placeholder="Netz oder Klasse suchen" aria-label="Netz suchen">
+      <h2 id="h-nets">Nets <em id="netCount"></em></h2>
+      <input class="search" id="search" type="search" placeholder="Search net or class" aria-label="Search net">
       <div class="nets" id="nets"></div>
     </section>
   </aside>
 
   <main class="stage" id="stage">
-    <canvas id="pcb" aria-label="Leiterplatte"></canvas>
+    <canvas id="pcb" aria-label="Circuit board"></canvas>
     <div class="overlay-tl" id="layers"></div>
-    <div class="overlay-tr"><button class="btn" id="fit">Einpassen</button></div>
+    <div class="overlay-tr"><button class="btn" id="fit">Fit</button></div>
     <div class="legend" id="legend"></div>
     <div class="tip" id="tip" hidden></div>
     <section class="detail" id="detail" hidden aria-live="polite"></section>
     <section class="detail" id="ch-detail" hidden aria-live="polite"></section>
     <section class="detail" id="pi-detail" hidden aria-live="polite"></section>
-    <section class="balance" id="pi-balance" hidden aria-label="Leistungsbilanz"></section>
-    <div class="drop" id="drop" hidden>.kicad_pcb, .kicad_pro oder kipida_config.json hier ablegen</div>
-    <div class="busy" id="busy">Lade Rechenkern…</div>
+    <section class="balance" id="pi-balance" hidden aria-label="Power budget"></section>
+    <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro or kipida_config.json here</div>
+    <div class="busy" id="busy">Loading engine…</div>
   </main>
 </div>
 

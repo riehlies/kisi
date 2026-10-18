@@ -1,7 +1,7 @@
 "use strict";
 // ============================================================== loading
 async function loadFiles(pcbText, proText, name, piDefaults = null) {
-  showBusy("Lese Board und berechne Querschnitte…");
+  showBusy("Reading board and computing cross-sections…");
   await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
   try {
     const t0 = performance.now();
@@ -27,7 +27,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null) {
     hideBusy();
   } catch (e) {
     hideBusy();
-    $("warnings").innerHTML = `<span class="err">Datei konnte nicht gelesen werden: ${esc(e.message)}</span>`;
+    $("warnings").innerHTML = `<span class="err">Could not read file: ${esc(e.message)}</span>`;
     console.error(e);
   }
 }
@@ -73,7 +73,7 @@ function runAnalysis(tParse) {
   S.anGen++;
   setTimeout(() => { renderCheck(); if (S.tab === "ch") { renderIfcCard(); renderProfCard(); } }, 0);
   const tAn = performance.now() - t0;
-  $("timing").textContent = (tParse != null ? `Lesen ${Math.round(tParse)} ms · ` : "") + `Analyse ${Math.round(tAn)} ms`;
+  $("timing").textContent = (tParse != null ? `read ${Math.round(tParse)} ms · ` : "") + `analysis ${Math.round(tAn)} ms`;
   preparePieces();
   buildPaths();
   renderSide();

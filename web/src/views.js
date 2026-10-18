@@ -1,5 +1,5 @@
 "use strict";
-// ---- top-level views: Impedanz / Kanal / Versorgung, supply display modes
+// ---- top-level views: impedance / channel / power, power display modes
 function setTab(t) {
   S.tab = t;
   for (const k of ["si", "ch", "pi"]) $("view-" + k).setAttribute("aria-pressed", String(k === t));

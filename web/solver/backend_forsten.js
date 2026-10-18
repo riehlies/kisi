@@ -11,7 +11,7 @@
 // kisi-core generates (crates/kisi-core/src/xsgeom.rs).
 import { CustomGeometrySolver } from "../../third_party/js_2d_fields/src/custom_geometry.js";
 
-export const BACKEND = { id: "forsten-fdm", name: "js_2d_fields (Forstén), FDM quasi-statisch" };
+export const BACKEND = { id: "forsten-fdm", name: "js_2d_fields (Forstén), FDM quasi-static" };
 const F0 = 1e9;
 const rlgc = (m, suffix = "") => {
   const x = (m && m.RLGC) || {};

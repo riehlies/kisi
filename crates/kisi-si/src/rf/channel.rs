@@ -183,7 +183,7 @@ pub(crate) fn net_path(board: &Board, an: &Analysis, net: u32, warnings: &mut Ve
         adj.entry(b).or_default().push((ei, a));
     }
     if adj.values().any(|v| v.len() > 2) {
-        warnings.push("Netz verzweigt (Stichleitungen, Testpunkte): gerechnet wird der längste Pfad, Abzweige fehlen".into());
+        warnings.push("net branches (stubs, test points): the longest path is computed, branches are missing".into());
     }
     // farthest node by path length (Dijkstra on a tree = DFS)
     let farthest = |start: usize| -> (usize, HashMap<usize, (f64, Option<(usize, usize)>)>) {
@@ -232,7 +232,7 @@ pub(crate) fn net_path(board: &Board, an: &Analysis, net: u32, warnings: &mut Ve
         c
     };
     if comps > 1 {
-        warnings.push(format!("Netz in {comps} Teile zerfallen (z. B. über Bauteile verbunden): gerechnet wird das längste Teilstück"));
+        warnings.push(format!("net splits into {comps} parts (e.g. connected through components): the longest part is computed"));
     }
     // walk back from b to a
     let mut order: Vec<(usize, usize)> = Vec::new(); // (edge, from-node)
@@ -265,7 +265,7 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
     let diff = partner.is_some() && target.map(|t| t.1).unwrap_or(true);
     let path = net_path(board, an, net, &mut warnings);
     if path.is_empty() {
-        return Err("Netz hat keine Leiterbahnen".into());
+        return Err("net has no tracks".into());
     }
     // segments, merging equal cross-sections, vias at layer changes
     let mut segs: Vec<Segment> = Vec::new();
@@ -318,7 +318,7 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
                             None => crate::board::Via { at: ppos, size: 0.45, drill: 0.2, from: 0, to: (su.n() - 1) as u16, net, backdrill: None },
                         };
                         if th.is_none() {
-                            warnings.push(format!("Lagenwechsel bei ({:.2}, {:.2}) mm ohne Via in der Nähe: Standard-Via 0,2/0,45 mm angenommen", ppos[0], ppos[1]));
+                            warnings.push(format!("layer change at ({:.2}, {:.2}) mm without a nearby via: standard via 0.2/0.45 mm assumed", ppos[0], ppos[1]));
                         }
                         &fallback_via
                     }
@@ -373,7 +373,7 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
         models.push(model);
     }
     if models.iter().zip(&segs).any(|(m, s)| s.kind == "line" && m.is_none()) {
-        warnings.push("Abschnitte ohne Referenzebene: als 1,5-fache Nennimpedanz angenähert".into());
+        warnings.push("sections without reference plane: approximated as 1.5 × nominal impedance".into());
     }
     // reference impedance
     let z_ref = rp.z_ref.unwrap_or_else(|| match target {
@@ -458,14 +458,14 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
         if let Some(fr) = v.stub_f_ghz {
             if fr * 1e9 < rp.fmax {
                 warnings.push(format!(
-                    "Via bei ({:.2}, {:.2}) mm: Stub {:.2} mm, Viertelwellen-Resonanz {:.1} GHz liegt im betrachteten Band",
+                    "via at ({:.2}, {:.2}) mm: stub {:.2} mm, quarter-wave resonance {:.1} GHz lies inside the analysed band",
                     v.at[0], v.at[1], v.stub_mm, fr
                 ));
             }
         }
         match v.return_kind {
-            "missing" => warnings.push(format!("Via bei ({:.2}, {:.2}) mm: Bezugsebene wechselt, kein Stitching-Via innerhalb 5 mm", v.at[0], v.at[1])),
-            "decap" => warnings.push(format!("Via bei ({:.2}, {:.2}) mm: Bezug wechselt auf ein anderes Netz, Rückstrom nur über Kondensatoren", v.at[0], v.at[1])),
+            "missing" => warnings.push(format!("via at ({:.2}, {:.2}) mm: reference plane changes, no stitching via within 5 mm", v.at[0], v.at[1])),
+            "decap" => warnings.push(format!("via at ({:.2}, {:.2}) mm: reference changes to another net, return current only through capacitors", v.at[0], v.at[1])),
             _ => {}
         }
     }

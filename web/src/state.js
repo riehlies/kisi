@@ -11,19 +11,19 @@ const S = {
   piImg: null, piWarn: [], piDefaults: null, piTree: null, treeRes: null,
   detailTab: "z", rfCache: null, anGen: 0,
 };
-const KIND_DE = { Microstrip: "Microstrip", Stripline: "Stripline", EmbeddedMicrostrip: "Microstrip, eingebettet (eine Referenz)", NoReference: "Keine Referenzebene" };
+const KIND_LABEL = { Microstrip: "Microstrip", Stripline: "Stripline", EmbeddedMicrostrip: "Microstrip, embedded (one reference)", NoReference: "No reference plane" };
 const FLAGS = [
-  [1, "Keine Referenzebene gefunden"],
-  [2, "Referenzebene endet nahe der Leiterbahn"],
-  [4, "Nächste Referenz liegt nicht auf der Nachbarlage"],
-  [8, "Innenlage mit nur einer Referenzebene"],
-  [16, "Koplanare Masse neben Stripline (in M1 nicht modelliert)"],
-  [32, "Diff-Paar hier nicht gekoppelt"],
-  [64, "Referenzebene hier perforiert (z. B. Via-Freistellungen)"],
-  [128, "Aussparung in einer Lage zwischen Leitung und Referenz (z. B. unter einem Pad)"],
+  [1, "No reference plane found"],
+  [2, "Reference plane ends close to the trace"],
+  [4, "Nearest reference is not on the adjacent layer"],
+  [8, "Inner layer with only one reference plane"],
+  [16, "Coplanar ground next to stripline (not modelled)"],
+  [32, "Differential pair not coupled here"],
+  [64, "Reference plane perforated here (e.g. via clearances)"],
+  [128, "Cut-out in a layer between trace and reference (e.g. under a pad)"],
 ];
 const netLabel = (n) => String(n).replace(/\{slash\}/g, "/");
-const fmt = (v, d = 1) => (v == null || !isFinite(v)) ? "–" : v.toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (v, d = 1) => (v == null || !isFinite(v)) ? "–" : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 const pct = (v) => v == null ? "–" : Math.round(v * 100) + " %";
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 

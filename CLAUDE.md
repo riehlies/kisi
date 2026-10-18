@@ -1,14 +1,15 @@
-# kisi – Hinweise für die Arbeit am Repository
+# kisi – notes for working on the repository
 
-* **Gemeinsamer Stand ist dieses GitHub-Repository** (`riehlies/kisi`, Branch `main`).
-  Der Ordner `D:\Git\kisi` auf dem Rechner des Nutzers ist nur ein lokaler Testordner für die
-  Integration mit KiCad (Plugin) und dem MCP-Server – dort nichts als „Quelle“ betrachten.
-* Aufbau und Update-Regeln: `ARCHITECTURE.md`. Feldlöser-Upstream: `UPSTREAM.md`.
-* Texte in der Oberfläche und Antworten an den Nutzer auf Deutsch; Code-Kommentare auf Englisch.
+* **The shared state is this GitHub repository** (`riehlies/kisi`, branch `main`).
+  The folder `D:\Git\kisi` on the user's computer is only a local test folder for the integration
+  with KiCad (plugin) and the MCP server – never treat it as the source.
+* Structure and update rules: `ARCHITECTURE.md`. Field solver upstream: `UPSTREAM.md`.
+* Language: GUI, documentation, code comments and tool output in English.
+  Conversation with the user in German.
 
-## Bauen
+## Building
 ```
-cargo build --release                                   # CLI (kisi, kisi-validate) und kisi-mcp
+cargo build --release                                   # CLI (kisi, kisi-validate) and kisi-mcp
 cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
 python3 tools/bundle.py web/index.html \
   target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
@@ -16,21 +17,22 @@ python3 tools/bundle.py web/index.html \
   [ts "ThunderScope Rev5.3" ts.kicad_pcb ts.kicad_pro vna "LibreVNA" vna.kicad_pcb vna.kicad_pro]
 python3 tools/package_plugin.py                         # dist/kisi-kicad-plugin.zip
 ```
-Die Beispielboards (ThunderScope, LibreVNA) liegen nicht im Repository; sie stammen aus den
-jeweiligen Projekten und werden mit `tools/strip_pcb.py` verkleinert.
+The example boards (ThunderScope, LibreVNA) are not in the repository; they come from their
+projects and are shrunk with `tools/strip_pcb.py`.
 
-## Prüfen vor jedem Commit
+## Checks before every commit
 * `cargo test --release`
-* `sh tools/validate_field.sh` (Feldlöser gegen HFSS/Baseline, braucht node)
-* Viewer: gebündelte Datei headless in Chromium öffnen (Playwright), alle drei Ansichten,
-  hell/dunkel/mobil, keine Konsolenfehler.
+* `sh tools/validate_field.sh` (field solver against HFSS/baseline, needs node)
+* Viewer: open the bundled file headless in Chromium (Playwright), all three views,
+  light/dark/mobile, no console errors.
 
-## Regeln
-* Eine Bewertungslogik (`kisi_si::profile::judge`) für Viewer, CLI und MCP – nicht duplizieren.
-* Veränderliche Werte (Normen, Bauteil-Parasitics) gehören in `data/*.json`, mit Quelle.
-* Forsténs Löser in `third_party/js_2d_fields` nie ändern; nur `web/solver/backend_forsten.js` anpassen.
-* Geschätzte Werte im UI und in MCP-Ausgaben als Schätzung kennzeichnen.
+## Rules
+* One verdict logic (`kisi_si::profile::judge`) for viewer, CLI and MCP – do not duplicate it.
+* Values that change (standards, component parasitics) belong in `data/*.json`, with a source.
+* Never change Forstén's solver in `third_party/js_2d_fields`; only adapt `web/solver/backend_forsten.js`.
+* Mark estimated values as estimates in the UI and in MCP output.
 
 ## Commits
-* Autor: `riehlies <118917105+riehlies@users.noreply.github.com>` (in `.git/config` gesetzt).
-* Keine `Co-Authored-By`-, `Claude-Session`- oder ähnlichen Zeilen in Commit-Nachrichten oder PRs.
+* Author: `riehlies <118917105+riehlies@users.noreply.github.com>` (set in `.git/config`).
+* End commit messages with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`;
+  no `Claude-Session` lines in commits or PRs.

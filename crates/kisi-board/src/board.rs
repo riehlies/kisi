@@ -354,7 +354,7 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
     if b.stackup.is_none() {
         b.stackup = Some(default_stackup(&layer_names_from_header));
         b.warnings.push(
-            "Kein Lagenaufbau in der Datei – Standardwerte (1,6 mm FR4, εr 4,5) verwendet".into(),
+            "no stackup in the file – default values used (1.6 mm FR4, εr 4.5)".into(),
         );
     }
     let su = b.stackup.clone().unwrap();
@@ -747,7 +747,7 @@ fn default_stackup(names: &[String]) -> Stackup {
             .map(|i| Dielectric {
                 name: format!("dielectric {}", i + 1),
                 kind: "default".into(),
-                material: "FR4 (Annahme)".into(),
+                material: "FR4 (assumed)".into(),
                 thickness: h,
                 epsilon_r: 4.5,
                 loss_tangent: 0.02,

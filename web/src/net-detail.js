@@ -7,28 +7,28 @@ function devChip(xs, net) {
   if (!z) return "";
   const d = (z.v - t.z) / t.z;
   const col = Math.abs(d) <= 0.05 ? S.colors.ok : (d < 0 ? (d < -0.1 ? S.colors.low2 : S.colors.low1) : (d > 0.1 ? S.colors.high2 : S.colors.high1));
-  return `<div>Ziel ${fmt(t.z, 0)} Ω ${t.diff ? "diff" : "SE"}${z.diff || !t.diff ? "" : " (ungekoppelt: 2·Z₀)"} <span class="pill" style="background:${col}">${d >= 0 ? "+" : ""}${fmt(d * 100, 1)} %</span></div>`;
+  return `<div>Target ${fmt(t.z, 0)} Ω ${t.diff ? "diff" : "SE"}${z.diff || !t.diff ? "" : " (uncoupled: 2·Z₀)"} <span class="pill" style="background:${col}">${d >= 0 ? "+" : ""}${fmt(d * 100, 1)} %</span></div>`;
 }
 function xsRows(xs) {
   const L = S.scene.stackup.copper;
-  const rows = [["Lage", `${L[xs.layer].name} · ${KIND_DE[xs.kind]}`], [xs.flags & 256 ? "Pad-Breite" : "Breite", `${fmt(xs.w * 1000, 0)} µm · Cu ${fmt(xs.t * 1000, 1)} µm`]];
-  if (xs.ref_up != null) rows.push(["Ref. oben", `${L[xs.ref_up].name} · h ${fmt(xs.h_up * 1000, 0)} µm · εr ${fmt(xs.er_up, 2)}`]);
-  if (xs.ref_dn != null) rows.push(["Ref. unten", `${L[xs.ref_dn].name} · h ${fmt(xs.h_dn * 1000, 0)} µm · εr ${fmt(xs.er_dn, 2)}`]);
-  if (xs.s_left != null || xs.s_right != null) rows.push(["Masse seitl.", `${xs.s_left != null ? fmt(xs.s_left * 1000, 0) + " µm" : "–"} / ${xs.s_right != null ? fmt(xs.s_right * 1000, 0) + " µm" : "–"}`]);
-  if (xs.diff_gap != null) rows.push(["Paarabstand", `${fmt(xs.diff_gap * 1000, 0)} µm`]);
+  const rows = [["Layer", `${L[xs.layer].name} · ${KIND_LABEL[xs.kind]}`], [xs.flags & 256 ? "Pad width" : "Width", `${fmt(xs.w * 1000, 0)} µm · Cu ${fmt(xs.t * 1000, 1)} µm`]];
+  if (xs.ref_up != null) rows.push(["Ref. above", `${L[xs.ref_up].name} · h ${fmt(xs.h_up * 1000, 0)} µm · εr ${fmt(xs.er_up, 2)}`]);
+  if (xs.ref_dn != null) rows.push(["Ref. below", `${L[xs.ref_dn].name} · h ${fmt(xs.h_dn * 1000, 0)} µm · εr ${fmt(xs.er_dn, 2)}`]);
+  if (xs.s_left != null || xs.s_right != null) rows.push(["Side ground", `${xs.s_left != null ? fmt(xs.s_left * 1000, 0) + " µm" : "–"} / ${xs.s_right != null ? fmt(xs.s_right * 1000, 0) + " µm" : "–"}`]);
+  if (xs.diff_gap != null) rows.push(["Pair gap", `${fmt(xs.diff_gap * 1000, 0)} µm`]);
   for (const [k, l, r] of xs.planes || []) {
     const isRef = k === xs.ref_up || k === xs.ref_dn;
     const side = (v) => v == null ? "–" : fmt(v, 2);
-    rows.push([L[k].name, isRef ? `Ebene endet ${side(l)} / ${side(r)} mm ab Mitte` : `Aussparung, Kupfer ${side(l)} / ${side(r)} mm ab Mitte`]);
+    rows.push([L[k].name, isRef ? `plane ends ${side(l)} / ${side(r)} mm from centre` : `cut-out, copper ${side(l)} / ${side(r)} mm from centre`]);
   }
-  if (xs.mask) rows.push(["Lötstopp", "ja"]);
+  if (xs.mask) rows.push(["Solder mask", "yes"]);
   rows.push(["Z₀", xs.z0 != null ? `${fmt(xs.z0, 1)} Ω` + (xs.eeff ? ` · εeff ${fmt(xs.eeff, 2)}` : "") : "–"]);
   if (xs.zdiff != null) rows.push(["Z diff", `${fmt(xs.zdiff, 1)} Ω`]);
   if (xs.solver === "field") {
     const fz = xs.zdiff_formula != null ? xs.zdiff_formula : xs.z0_formula;
-    rows.push(["Quelle", `Feldlöser · Formel ${fmt(fz, 1)} Ω`]);
+    rows.push(["Source", `field solver · formula ${fmt(fz, 1)} Ω`]);
   } else if (xs.kind !== "NoReference") {
-    rows.push(["Quelle", xs.geom != null && S.fieldPending.has(S.an.geometries[xs.geom].id) ? "Formel, Feldlöser rechnet" : "Formel"]);
+    rows.push(["Source", xs.geom != null && S.fieldPending.has(S.an.geometries[xs.geom].id) ? "formula, field solver running" : "formula"]);
   }
   return rows;
 }
@@ -39,7 +39,7 @@ function showTip(i, mx, my) {
   const cls = S.scene.netclasses[S.scene.net_class[net] ?? 0]?.name ?? "";
   const flags = FLAGS.filter(([b]) => xs.flags & b).map(([, t]) => `<div class="warn">${t}</div>`).join("");
   const isPad = S.padSet && S.padSet.has(pc.track[i]);
-  tip.innerHTML = `<div class="t1">${esc(S.scene.nets[net] || "(kein Netz)")}${isPad ? " · Pad" : ""}</div><div class="muted">${esc(cls)}</div>
+  tip.innerHTML = `<div class="t1">${esc(S.scene.nets[net] || "(no net)")}${isPad ? " · Pad" : ""}</div><div class="muted">${esc(cls)}</div>
     <div class="kv">${xsRows(xs).map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>${devChip(xs, net)}${flags}`;
   tip.hidden = false;
   const r = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
@@ -108,14 +108,14 @@ function selectNet(net, zoom = true) {
   const rowsXs = [...xsLen.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([xi, l]) => {
     const xs = S.an.cross_sections[xi], L = S.scene.stackup.copper;
     const z = comparedZ(xs, t);
-    return `<tr><td>${fmt(l, 1)}</td><td>${L[xs.layer].name}</td><td>${KIND_DE[xs.kind].split(",")[0]}</td><td>${fmt(xs.w * 1000, 0)}</td><td>${xs.diff_gap != null ? fmt(xs.diff_gap * 1000, 0) : "–"}</td><td>${fmt(xs.z0, 1)}</td><td>${fmt(xs.zdiff, 1)}</td><td>${z ? fmt(z.v, 1) : "–"}</td></tr>`;
+    return `<tr><td>${fmt(l, 1)}</td><td>${L[xs.layer].name}</td><td>${KIND_LABEL[xs.kind].split(",")[0]}</td><td>${fmt(xs.w * 1000, 0)}</td><td>${xs.diff_gap != null ? fmt(xs.diff_gap * 1000, 0) : "–"}</td><td>${fmt(xs.z0, 1)}</td><td>${fmt(xs.zdiff, 1)}</td><td>${z ? fmt(z.v, 1) : "–"}</td></tr>`;
   }).join("");
   const d = $("detail");
-  d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · Paar mit " + esc(partner) : ""}</div></div><button class="x" id="closeDetail" aria-label="Auswahl aufheben">×</button></header>
-    <div class="dstats"><span>Länge <b>${fmt(st?.length, 1)} mm</b></span><span>Ziel <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
-    <span>min/Ø/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b></span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
-    <div class="tabs" role="tablist" aria-label="Ansicht des Netzes">
-      ${[["z", "Impedanz"], ["loss", "Verluste"], ["tdr", "TDR"], ["via", "Vias"], ["xt", "Übersprechen"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
+  d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · pair with " + esc(partner) : ""}</div></div><button class="x" id="closeDetail" aria-label="Clear selection">×</button></header>
+    <div class="dstats"><span>Length <b>${fmt(st?.length, 1)} mm</b></span><span>Target <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
+    <span>min/mean/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b></span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
+    <div class="tabs" role="tablist" aria-label="Net view">
+      ${[["z", "Impedance"], ["loss", "Loss"], ["tdr", "TDR"], ["via", "Vias"], ["xt", "Crosstalk"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
     </div>
     <div id="tab-body"></div>`;
   d.hidden = false;

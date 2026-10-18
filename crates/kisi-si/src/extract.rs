@@ -422,7 +422,7 @@ pub fn target_from_class_name(name: &str) -> Option<(Target, &'static str)> {
     }
     if let Some(z) = num {
         let diff = is_diff_kw || z >= 80.0 && (up.contains("USB") || up.contains("LVDS") || up.contains("PCI"));
-        return Some((Target { z, diff }, "Klassenname"));
+        return Some((Target { z, diff }, "class name"));
     }
     let kw: &[(&str, f64, bool)] = &[
         ("USB", 90.0, true),
@@ -438,7 +438,7 @@ pub fn target_from_class_name(name: &str) -> Option<(Target, &'static str)> {
     ];
     for &(k, z, diff) in kw {
         if up.split(|c: char| !c.is_ascii_alphanumeric() && c != '_').any(|tok| tok.contains(k)) {
-            return Some((Target { z, diff }, "Schnittstellen-Annahme"));
+            return Some((Target { z, diff }, "interface assumption"));
         }
     }
     None
@@ -503,7 +503,7 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
     let mut class_targets: Vec<(Option<Target>, String)> = Vec::new();
     for c in &board.netclasses {
         if let Some(t) = params.targets.get(&c.name) {
-            class_targets.push((Some(*t), "Benutzer".into()));
+            class_targets.push((Some(*t), "user".into()));
         } else if let Some((t, src)) = target_from_class_name(&c.name) {
             class_targets.push((Some(t), src.into()));
         } else {

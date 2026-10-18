@@ -57,7 +57,7 @@ class FieldPool {
       let w;
       try { w = new Worker(wurl, { type: "module" }); } catch (e) { this.useMainThread(entry, sparse, e); return; }
       w.onmessage = (e) => this.onMessage(w, e.data);
-      w.onerror = (e) => { if (!this.mainThread) this.useMainThread(entry, sparse, e.message || "Worker-Fehler"); };
+      w.onerror = (e) => { if (!this.mainThread) this.useMainThread(entry, sparse, e.message || "worker error"); };
       w.postMessage({ type: "init", sparse, entry });
       this.workers.push(w);
     }
@@ -167,15 +167,15 @@ function renderFieldStatus() {
   // scope selector
   const sel = $("fs-scope"), prev = sel.value;
   const opts = [];
-  if (S.selNet >= 0) opts.push(["sel", "ausgewähltes Netz " + netLabel(S.scene.nets[S.selNet]).split("/").pop()]);
-  S.an.classes.forEach((c, i) => { if (c.target && c.nets) opts.push(["class:" + i, "Klasse " + c.name]); });
-  opts.push(["target", "alle Netze mit Ziel"], ["all", "alle Netze"]);
+  if (S.selNet >= 0) opts.push(["sel", "selected net " + netLabel(S.scene.nets[S.selNet]).split("/").pop()]);
+  S.an.classes.forEach((c, i) => { if (c.target && c.nets) opts.push(["class:" + i, "class " + c.name]); });
+  opts.push(["target", "all nets with target"], ["all", "all nets"]);
   const html = opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("");
   if (sel.dataset.html !== html) { sel.innerHTML = html; sel.dataset.html = html; }
   sel.value = opts.some((o) => o[0] === prev) ? prev : (S.selNet >= 0 ? "sel" : "target");
   const ids = scopeGeoms(sel.value);
   const open = ids.filter((x) => !S.field.has(x.id)).length;
-  $("fs-start").textContent = open ? `${open} rechnen` : "gerechnet";
+  $("fs-start").textContent = open ? `compute ${open}` : "computed";
   $("fs-start").disabled = !open || (pool && pool.running) || (pool && pool.failed);
   // coverage
   const tgt = geos.filter((g) => g.target_length > 0);
@@ -184,21 +184,21 @@ function renderFieldStatus() {
   const doneAll = geos.filter((g) => S.field.has(g.id)).length;
   const share = totalT ? doneT / totalT : 0;
   $("si-source").textContent = doneAll
-    ? `Feldlöser für ${Math.round(share * 100)} % der Länge mit Ziel, sonst Formeln.`
-    : "Schnelle Analyse mit Formeln. Für genauere Werte den Feldlöser starten.";
-  $("fs-cache").textContent = `${S.field.size} Querschnitte im Speicher dieses Browsers`;
+    ? `Field solver for ${Math.round(share * 100)} % of the length with target, formulas elsewhere.`
+    : "Fast analysis with formulas. Start the field solver for more accurate values.";
+  $("fs-cache").textContent = `${S.field.size} cross-sections cached in this browser`;
   if (pool && pool.failed) {
-    $("fs-text").textContent = "Feldlöser nicht verfügbar";
-    $("fs-note").textContent = "Fehler: " + pool.failed + ". Die Karte zeigt Formelwerte.";
+    $("fs-text").textContent = "Field solver unavailable";
+    $("fs-note").textContent = "Error: " + pool.failed + ". The map shows formula values.";
     $("fs-toggle").hidden = true;
     return;
   }
   const busy = pool && (pool.running || S.fieldPending.size > 0);
   $("fs-bar").style.width = busy && pool.total ? Math.round((pool.done_n / pool.total) * 100) + "%" : "0%";
-  $("fs-text").textContent = busy ? `${pool.done_n} von ${pool.total} Querschnitten` : "";
-  $("fs-note").textContent = busy ? `Rechnet mit ${pool.n} ${pool.n === 1 ? "Thread" : "Threads"}, wichtigste Querschnitte zuerst.` : "";
+  $("fs-text").textContent = busy ? `${pool.done_n} of ${pool.total} cross-sections` : "";
+  $("fs-note").textContent = busy ? `Running on ${pool.n} ${pool.n === 1 ? "thread" : "threads"}, most important cross-sections first.` : "";
   $("fs-toggle").hidden = !busy;
-  $("fs-toggle").textContent = "Anhalten";
+  $("fs-toggle").textContent = "Pause";
 }
 $("fs-toggle").onclick = () => S.pool && S.pool.stop();
 $("fs-start").onclick = () => {

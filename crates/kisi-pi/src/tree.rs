@@ -63,7 +63,7 @@ pub struct LoadDef {
     pub net: String,
     pub current: f64,
     pub part: String,
-    /// "Datenblatt" or "Schätzung"
+    /// "datasheet" or "estimate"
     pub basis: String,
     pub note: String,
     /// components whose pads are the load point, comma separated (default refdes)
@@ -159,7 +159,7 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
         spec.elements.iter().map(|e| (e.clone(), e.from.as_deref().map(&mut cn), cn(&e.to))).collect();
     let loads: Vec<(LoadDef, String)> = spec.loads.iter().map(|l| (l.clone(), cn(&l.net))).collect();
     for m in &missing {
-        warnings.push(format!("Netz '{m}' nicht im Board"));
+        warnings.push(format!("net '{m}' not on the board"));
     }
 
     // voltages: explicit, then inherited through pass elements
@@ -180,19 +180,19 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
             break;
         }
     }
-    let v_of = |n: &str| -> Result<f64, String> { volt.get(n).copied().ok_or_else(|| format!("Spannung von '{n}' fehlt")) };
+    let v_of = |n: &str| -> Result<f64, String> { volt.get(n).copied().ok_or_else(|| format!("voltage of '{n}' missing")) };
 
     // feeding element per rail, children per rail
     let mut fed: HashMap<String, usize> = HashMap::new();
     let mut children: HashMap<String, Vec<usize>> = HashMap::new();
     for (i, (e, from, to)) in elems.iter().enumerate() {
         if let Some(prev) = fed.insert(to.clone(), i) {
-            warnings.push(format!("{} wird von {} und {} gespeist; nur {} wird gerechnet", to, elem_id(&elems[prev].0), elem_id(e), elem_id(e)));
+            warnings.push(format!("{} is fed by {} and {}; only {} is computed", to, elem_id(&elems[prev].0), elem_id(e), elem_id(e)));
         }
         if let Some(f) = from {
             children.entry(f.clone()).or_default().push(i);
         } else if e.kind != "input" {
-            return Err(format!("{}: Eingang ('from') fehlt", elem_id(e)));
+            return Err(format!("{}: input ('from') missing", elem_id(e)));
         }
     }
     let mut direct: HashMap<String, f64> = HashMap::new();
@@ -231,15 +231,15 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
             return Ok(v);
         }
         if stack.iter().any(|s| s == net) {
-            return Err(format!("Schleife im Versorgungsbaum bei {net}"));
+            return Err(format!("loop in the power tree at {net}"));
         }
         stack.push(net.to_string());
         let mut total = direct.get(net).copied().unwrap_or(0.0);
         for &ci in children.get(net).map(|v| v.as_slice()).unwrap_or(&[]) {
             let (e, _, to) = &elems[ci];
             let i_out = rail_current(to, elems, children, direct, volt, i_in_of, memo, stack, elem_in)?;
-            let v_in = volt.get(net).copied().ok_or_else(|| format!("Spannung von '{net}' fehlt"))?;
-            let v_out = volt.get(to).copied().ok_or_else(|| format!("Spannung von '{to}' fehlt"))?;
+            let v_in = volt.get(net).copied().ok_or_else(|| format!("voltage of '{net}' missing"))?;
+            let v_out = volt.get(to).copied().ok_or_else(|| format!("voltage of '{to}' missing"))?;
             let i_in = i_in_of(e, v_in, v_out, i_out);
             elem_in.insert(ci, i_in);
             total += i_in;
@@ -265,7 +265,7 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
         if !nets.contains(n) {
             nets.push(n.clone());
             if !fed.contains_key(n) {
-                warnings.push(format!("Last auf {n}, das von keinem Element gespeist wird"));
+                warnings.push(format!("load on {n}, which no element feeds"));
             }
         }
     }
@@ -292,7 +292,7 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
         let overload = e.imax.map(|m| i_out > m).unwrap_or(false);
         if overload {
             warnings.push(format!(
-                "{} ({}) liefert {:.2} A, Nennstrom {:.2} A",
+                "{} ({}) delivers {:.2} A, rated {:.2} A",
                 elem_id(e),
                 e.part,
                 i_out,
@@ -366,7 +366,7 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
     for (l, net) in &loads {
         let p = volt.get(net).copied().unwrap_or(0.0).abs() * l.current;
         p_loads += p;
-        let i = get(&mut comps, &l.refdes, &l.part, "Last");
+        let i = get(&mut comps, &l.refdes, &l.part, "load");
         comps[i].consumption += p;
         comps[i].rails.push((net.clone(), l.current, l.basis.clone()));
     }
@@ -374,14 +374,14 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
     for ef in &eflows {
         p_losses += ef.p_loss;
         let role = match ef.kind.as_str() {
-            "input" => "Eingang",
-            "pass" => "Durchgang",
-            _ => "Regler",
+            "input" => "input",
+            "pass" => "pass-through",
+            _ => "regulator",
         };
         let i = get(&mut comps, &ef.refdes, &ef.part, role);
         comps[i].loss += ef.p_loss;
-        if comps[i].role == "Last" && role != "Eingang" {
-            comps[i].role = "Last + Regler".into();
+        if comps[i].role == "load" && role != "input" {
+            comps[i].role = "load + regulator".into();
         }
     }
     comps.sort_by(|a, b| (b.consumption + b.loss).partial_cmp(&(a.consumption + a.loss)).unwrap());
@@ -407,13 +407,13 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
                 None => vec![l.refdes.clone()],
             };
             for r in &at {
-                add(&mut ls, r, l.current / at.len() as f64, if l.basis.is_empty() { "Schätzung" } else { &l.basis });
+                add(&mut ls, r, l.current / at.len() as f64, if l.basis.is_empty() { "estimate" } else { &l.basis });
             }
         }
         for &ci in children.get(n).map(|v| v.as_slice()).unwrap_or(&[]) {
             let e = &elems[ci].0;
             let r = e.in_ref.clone().unwrap_or_else(|| e.refdes.clone());
-            add(&mut ls, &r, elem_in.get(&ci).copied().unwrap_or(0.0), if e.kind == "pass" { "Durchgang" } else { "Regler" });
+            add(&mut ls, &r, elem_in.get(&ci).copied().unwrap_or(0.0), if e.kind == "pass" { "pass-through" } else { "regulator" });
         }
         if ls.is_empty() {
             continue;
@@ -545,7 +545,7 @@ pub fn parse_reg_entry(refdes: &str, part: &str, entry: &str) -> Result<(ElemSpe
             None => t.to_string(),
         }
     };
-    let to_tok = toks.next().ok_or("Ausgangsschiene fehlt")?;
+    let to_tok = toks.next().ok_or("output rail missing")?;
     let to = rail(to_tok);
     let from = if lhs.is_empty() { None } else { Some(rail(&lhs)) };
     let mut el = ElemSpec { refdes: refdes.to_string(), part: part.to_string(), to, from, ..Default::default() };
@@ -558,25 +558,25 @@ pub fn parse_reg_entry(refdes: &str, part: &str, entry: &str) -> Result<(ElemSpe
             el.eff = v.replace(',', ".").parse::<f64>().ok().map(|x| x / 100.0);
         } else if let Some((k, v)) = t.split_once('=') {
             match k.to_ascii_lowercase().as_str() {
-                "iq" => el.iq = parse_amps(v).ok_or(format!("iq '{v}' nicht lesbar"))?,
-                "r" => el.r = parse_ohms(v).ok_or(format!("r '{v}' nicht lesbar"))?,
+                "iq" => el.iq = parse_amps(v).ok_or(format!("iq '{v}' not readable"))?,
+                "r" => el.r = parse_ohms(v).ok_or(format!("r '{v}' not readable"))?,
                 "imax" => el.imax = parse_amps(v),
                 "eff" => el.eff = v.trim_end_matches('%').replace(',', ".").parse::<f64>().ok().map(|x| if x > 1.0 { x / 100.0 } else { x }),
                 "out" => el.out_ref = Some(v.to_string()),
                 "in" => el.in_ref = Some(v.to_string()),
                 "id" => el.id = v.to_string(),
                 "part" => el.part = v.to_string(),
-                _ => return Err(format!("unbekannter Schlüssel '{k}'")),
+                _ => return Err(format!("unknown key '{k}'")),
             }
         } else if t.ends_with(['A', 'a']) && parse_amps(t).is_some() {
             el.imax = parse_amps(t);
         } else {
-            return Err(format!("'{t}' nicht verstanden"));
+            return Err(format!("'{t}' not understood"));
         }
     }
     el.kind = kind.unwrap_or_else(|| if el.from.is_none() { "input".into() } else { "buck".into() });
     if el.kind != "input" && el.from.is_none() {
-        return Err("Eingangsschiene fehlt (Form EINGANG > AUSGANG typ)".into());
+        return Err("input rail missing (form INPUT > OUTPUT type)".into());
     }
     Ok((el, volts))
 }
@@ -586,7 +586,7 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
     if !board.footprints.iter().any(|f| f.prop("PI_REG").is_some()) {
         return None;
     }
-    let mut spec = TreeSpec { name: "aus KiCad-Feldern (PI_REG, PI_LOAD)".into(), ..Default::default() };
+    let mut spec = TreeSpec { name: "from KiCad fields (PI_REG, PI_LOAD)".into(), ..Default::default() };
     let mut warnings = Vec::new();
     let mut volts: HashMap<String, f64> = HashMap::new();
     for fp in &board.footprints {
@@ -611,7 +611,7 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
         let Some(v) = fp.prop("PI_LOAD") else { continue };
         for item in v.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
             let Some((name, q)) = item.split_once('=') else {
-                warnings.push(format!("{}: PI_LOAD '{}' ohne Wert", fp.reference, item));
+                warnings.push(format!("{}: PI_LOAD '{}' without value", fp.reference, item));
                 continue;
             };
             let name = name.trim();
@@ -621,16 +621,16 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
                 Some((w, 'W')) => match vr {
                     Some(x) if x.abs() > 0.0 => w / x.abs(),
                     _ => {
-                        warnings.push(format!("{}: Leistung für {} ohne bekannte Spannung", fp.reference, name));
+                        warnings.push(format!("{}: power for {} without known voltage", fp.reference, name));
                         continue;
                     }
                 },
                 _ => {
-                    warnings.push(format!("{}: PI_LOAD-Wert '{}' nicht lesbar", fp.reference, q.trim()));
+                    warnings.push(format!("{}: PI_LOAD value '{}' not readable", fp.reference, q.trim()));
                     continue;
                 }
             };
-            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.value.clone(), basis: "Feld".into(), ..Default::default() });
+            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.value.clone(), basis: "field".into(), ..Default::default() });
         }
     }
     // rails: every net named by an element or a load
@@ -663,10 +663,10 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
     for n in names {
         let v = volts.get(&n).copied().or_else(|| crate::pi::voltage_from_name(&n));
         if v.is_none() {
-            warnings.push(format!("Schiene {n}: Spannung unbekannt (im Namen oder als {n}@1.0V angeben)"));
+            warnings.push(format!("rail {n}: voltage unknown (put it in the name or write {n}@1.0V)"));
         }
         if crate::pi::find_net(board, &n).is_none() {
-            warnings.push(format!("Schiene {n}: Netz nicht auf der Platine"));
+            warnings.push(format!("rail {n}: net not on the board"));
         }
         spec.rails.push(RailV { net: n, voltage: v.unwrap_or(0.0) });
     }

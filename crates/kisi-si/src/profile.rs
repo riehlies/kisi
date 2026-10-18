@@ -179,7 +179,7 @@ pub fn judge(m: &Metrics, p: &Profile, l: &Limits) -> Verdict {
     }
     if let Some(z) = m.z_mean {
         let (lo, hi) = (p.z * (1.0 - p.z_tol_pct / 100.0), p.z * (1.0 + p.z_tol_pct / 100.0));
-        add("z", if z < lo || z > hi { Status::Yellow } else { Status::Green }, Some(z), Some(lo), Some(hi), None, Some("Mittelwert entlang der Leitung aus der Impedanzanalyse"));
+        add("z", if z < lo || z > hi { Status::Yellow } else { Status::Green }, Some(z), Some(lo), Some(hi), None, Some("mean along the line from the impedance analysis"));
     }
     if let Some(h) = m.eye_h {
         let (red, yel) = (l.eye_h_red.unwrap_or(0.4), l.eye_h_yellow.unwrap_or(0.65));
@@ -200,7 +200,7 @@ pub fn judge(m: &Metrics, p: &Profile, l: &Limits) -> Verdict {
     if let Some(s) = m.skew_ps {
         let hi = l.skew_ps.unwrap_or(0.05 * ui);
         let bad = !m.skew_uncertain && s.abs() > hi;
-        add("skew", if bad { Status::Yellow } else { Status::Green }, Some(s.abs()), None, Some(hi), None, if m.skew_uncertain { Some("Pfad verzweigt oder über Bauteile geteilt") } else { None });
+        add("skew", if bad { Status::Yellow } else { Status::Green }, Some(s.abs()), None, Some(hi), None, if m.skew_uncertain { Some("path branches or is split by components") } else { None });
     }
     if let Some(f) = m.stub_ghz {
         let lo = l.stub_factor.unwrap_or(2.0) * nyq;

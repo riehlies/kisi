@@ -31,7 +31,7 @@ pub struct LoadSpec {
     /// current drawn from the rail (A)
     pub current: f64,
     pub pads: Vec<String>,
-    /// where the value came from: "Feld", "KiPIDA", "Benutzer", "Regler"
+    /// where the value came from: "field", "KiPIDA", "user", "regulator"
     pub origin: String,
 }
 
@@ -300,7 +300,7 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
                 None => (item, None),
             };
             let Some(net) = find_net(board, name) else {
-                warnings.push(format!("{}: PI_SOURCE nennt unbekanntes Netz '{}'", fp.reference, name));
+                warnings.push(format!("{}: PI_SOURCE names unknown net '{}'", fp.reference, name));
                 continue;
             };
             let net_name = board.net_name(net).to_string();
@@ -315,11 +315,11 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
         let Some(v) = fp.prop("PI_LOAD") else { continue };
         for item in v.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
             let Some((name, q)) = item.split_once('=') else {
-                warnings.push(format!("{}: PI_LOAD '{}' ohne Wert (Form NETZ=2A)", fp.reference, item));
+                warnings.push(format!("{}: PI_LOAD '{}' without value (form NET=2A)", fp.reference, item));
                 continue;
             };
             let Some(net) = find_net(board, name) else {
-                warnings.push(format!("{}: PI_LOAD nennt unbekanntes Netz '{}'", fp.reference, name.trim()));
+                warnings.push(format!("{}: PI_LOAD names unknown net '{}'", fp.reference, name.trim()));
                 continue;
             };
             let net_name = board.net_name(net).to_string();
@@ -330,16 +330,16 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
                     if rails[i].voltage > 0.0 {
                         w / rails[i].voltage
                     } else {
-                        warnings.push(format!("{}: Leistung für {} ohne bekannte Spannung", fp.reference, net_name));
+                        warnings.push(format!("{}: power for {} without known voltage", fp.reference, net_name));
                         continue;
                     }
                 }
                 _ => {
-                    warnings.push(format!("{}: PI_LOAD-Wert '{}' nicht lesbar", fp.reference, q.trim()));
+                    warnings.push(format!("{}: PI_LOAD value '{}' not readable", fp.reference, q.trim()));
                     continue;
                 }
             };
-            rails[i].loads.push(LoadSpec { refdes: fp.reference.clone(), current, pads: vec![], origin: "Feld".into() });
+            rails[i].loads.push(LoadSpec { refdes: fp.reference.clone(), current, pads: vec![], origin: "field".into() });
         }
     }
     (rails, warnings)
@@ -352,14 +352,14 @@ pub fn rails_from_kipida(board: &Board, json: &str) -> Result<(Vec<RailSetup>, V
     let v: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
     let mut warnings = Vec::new();
     let mut rails: Vec<RailSetup> = Vec::new();
-    let arr = v["rails"].as_array().ok_or("keine 'rails' in der KiPIDA-Datei")?;
+    let arr = v["rails"].as_array().ok_or("no 'rails' in the KiPIDA file")?;
     let strs = |x: &serde_json::Value| -> Vec<String> {
         x.as_array().map(|a| a.iter().filter_map(|s| s.as_str().map(String::from)).collect()).unwrap_or_default()
     };
     for r in arr {
         let name = r["net_name"].as_str().unwrap_or("");
         let Some(net) = find_net(board, name) else {
-            warnings.push(format!("KiPIDA: Netz '{name}' nicht im Board"));
+            warnings.push(format!("KiPIDA: net '{name}' not on the board"));
             continue;
         };
         let mut rs = RailSetup {
@@ -402,7 +402,7 @@ pub fn rails_from_kipida(board: &Board, json: &str) -> Result<(Vec<RailSetup>, V
             if !out_ref.is_empty() && !rails[oi].sources.iter().any(|s| s.refdes == out_ref) {
                 rails[oi].sources.push(SourceSpec { refdes: out_ref, pads: strs(&reg["output_pad_names"]) });
             }
-            rails[ii].loads.push(LoadSpec { refdes, current: i_in, pads: strs(&reg["input_pad_names"]), origin: "Regler".into() });
+            rails[ii].loads.push(LoadSpec { refdes, current: i_in, pads: strs(&reg["input_pad_names"]), origin: "regulator".into() });
         }
     }
     Ok((rails, warnings))
@@ -552,9 +552,9 @@ fn pad_cells(g: &Grid, pad: &Pad) -> Vec<usize> {
 pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result<PiResult, String> {
     let su = board.stackup();
     let ncu = su.n();
-    let net = find_net(board, &setup.net).ok_or_else(|| format!("Netz '{}' nicht gefunden", setup.net))?;
+    let net = find_net(board, &setup.net).ok_or_else(|| format!("net '{}' not found", setup.net))?;
     if setup.voltage == 0.0 {
-        return Err(format!("{}: keine Nennspannung angegeben", setup.net));
+        return Err(format!("{}: no nominal voltage given", setup.net));
     }
     // negative rails are solved with the magnitude; the load current then
     // flows the same way relative to |V| and the result is mirrored back
@@ -585,7 +585,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
         }
     }
     if !bb.is_valid() {
-        return Err(format!("{}: kein Kupfer gefunden", setup.net));
+        return Err(format!("{}: no copper found", setup.net));
     }
     let layers: Vec<usize> = (0..ncu).filter(|&l| used[l]).collect();
     let area = (bb.max[0] - bb.min[0]) * (bb.max[1] - bb.min[1]);
@@ -618,7 +618,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
     };
     let per = g.nx * g.ny;
     if per * layers.len() > params.max_cells * 16 {
-        return Err(format!("{}: Raster zu groß ({} Zellen)", setup.net, per * layers.len()));
+        return Err(format!("{}: grid too large ({} cells)", setup.net, per * layers.len()));
     }
 
     // weights per layer
@@ -780,7 +780,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
     for s in &setup.sources {
         let pads = pads_of(&s.refdes, &s.pads);
         if pads.is_empty() {
-            warnings.push(format!("Quelle {}: keine Pads auf {}", s.refdes, setup.net));
+            warnings.push(format!("source {}: no pads on {}", s.refdes, setup.net));
             continue;
         }
         let mut ns = Vec::new();
@@ -793,7 +793,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
         src_nodes.push((s.refdes.clone(), ns, pads.len()));
     }
     if !fixed.iter().any(|&f| f) {
-        return Err(format!("{}: keine Quelle festgelegt (Feld PI_SOURCE oder Auswahl im Viewer)", setup.net));
+        return Err(format!("{}: no source defined (field PI_SOURCE or selection in the viewer)", setup.net));
     }
     let mut inject = vec![0f64; nn];
     let mut load_nodes: Vec<(usize, Vec<u32>, usize)> = Vec::new(); // (load index, nodes, pads)
@@ -801,7 +801,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
     for (li, ld) in setup.loads.iter().enumerate() {
         let pads = pads_of(&ld.refdes, &ld.pads);
         if pads.is_empty() {
-            warnings.push(format!("Last {}: keine Pads auf {}", ld.refdes, setup.net));
+            warnings.push(format!("load {}: no pads on {}", ld.refdes, setup.net));
             load_nodes.push((li, vec![], 0));
             load_pad_nodes.push(vec![]);
             continue;
@@ -859,7 +859,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
     }
     let dropped = reach.iter().filter(|r| !**r).count();
     if dropped > 0 {
-        warnings.push(format!("{} Zellen ohne Verbindung zu einer Quelle (Kupferinseln) ignoriert", dropped));
+        warnings.push(format!("{} cells without connection to a source (copper islands) ignored", dropped));
     }
 
     // unknowns: reachable, not fixed
@@ -903,7 +903,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
             _ => {}
         }
     }
-    let x = if nu > 0 { kisi_sparse::solve_spd_triplets(nu, &trip, &rhs).map_err(|c| format!("Gleichungslöser: Fehler {c}"))? } else { vec![] };
+    let x = if nu > 0 { kisi_sparse::solve_spd_triplets(nu, &trip, &rhs).map_err(|c| format!("linear solver: error {c}"))? } else { vec![] };
     let mut v = vec![f64::NAN; nn];
     for i in 0..nn {
         if fixed[i] {
@@ -972,7 +972,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
         let ld = &setup.loads[*li];
         let open = load_pad_nodes[k].iter().filter(|pn| pn.iter().all(|&n| !reach[n as usize])).count();
         if open > 0 && open < *npads {
-            warnings.push(format!("Last {}: {} von {} Pads ohne Verbindung, ihr Strom fehlt in der Rechnung", ld.refdes, open, npads));
+            warnings.push(format!("load {}: {} of {} pads not connected, their current is missing from the result", ld.refdes, open, npads));
         }
         let vals: Vec<f64> = ns.iter().map(|&n| v[n as usize]).filter(|x| x.is_finite()).collect();
         let connected = !vals.is_empty();
@@ -986,7 +986,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
             pads: *npads,
         });
         if !connected && ld.current != 0.0 {
-            warnings.push(format!("Last {} hat keine Verbindung zu einer Quelle", ld.refdes));
+            warnings.push(format!("load {} is not connected to a source", ld.refdes));
         }
     }
     // source currents and losses

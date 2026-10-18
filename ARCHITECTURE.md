@@ -1,72 +1,72 @@
-# kisi – Aufbau
+# kisi – architecture
 
-Ziel: Teile einzeln aktualisieren können, ohne den Rest anzufassen. Jede Schicht hat eine
-schmale Schnittstelle; Daten, die sich ändern (Normen, Bauteilwerte), liegen in Dateien statt im Code.
+Goal: parts can be updated one at a time without touching the rest. Every layer has a narrow
+interface; data that changes (standards, component values) lives in files, not in code.
 
 ```
-                 ┌─────────────── Front-Ends ────────────────┐
-  KiCad-Plugin ─►│ Viewer (web/, eine HTML-Datei)  CLI  MCP  │◄─ Agenten (Claude Code, Konnect, …)
-  (kicad-plugin) │   └─ WASM: crates/kisi-wasm   kisi-cli  kisi-mcp
-                 └──────────────┬────────────────────────────┘
-                                │  kisi-core (Fassade + service: Projekt laden, JSON-Zusammenfassungen)
+                 ┌──────────────── front ends ────────────────┐
+  KiCad plugin ─►│ viewer (web/, one HTML file)   CLI   MCP    │◄─ agents (Claude Code, Konnect, …)
+  (kicad-plugin) │   └─ WASM: crates/kisi-wasm   kisi-cli kisi-mcp
+                 └──────────────┬─────────────────────────────┘
+                                │  kisi-core (facade + service: load project, JSON summaries)
               ┌─────────────────┼──────────────────┐
            kisi-si           kisi-pi           kisi-board
-  Querschnitte, Formeln,   DC-Spannungsabfall,  Parser .kicad_pcb/.kicad_pro,
-  Feldlöser-Geometrie,     Versorgungsbaum,     Lagenaufbau (+Änderungen),
-  Leitungsmodelle, Kanal,  PDN-Impedanz         Geometrie, Szene, num (Cx, Konstanten)
-  Vias, Auge, Übersprechen,       │
-  Profile/Bewertung          kisi-sparse (faer) ── auch Gleichungslöser des Feldlösers
+  cross-sections, formulas, DC IR drop,        parser .kicad_pcb/.kicad_pro,
+  field solver geometry,    power tree,        stackup (+ overrides),
+  line models, channel,     PDN impedance      geometry, scene, num (Cx, constants)
+  vias, eye, crosstalk,            │
+  profiles/verdict            kisi-sparse (faer) ── also the field solver's linear solver
               │
-  data/interfaces.json (Schnittstellen-Profile)     third_party/js_2d_fields (Forstén, unverändert)
-                                                     └─ web/solver/backend_forsten.js (einziger Adapter)
+  data/interfaces.json (interface profiles)     third_party/js_2d_fields (Forstén, unmodified)
+                                                 └─ web/solver/backend_forsten.js (the only adapter)
 ```
 
 ## Crates (Rust, `crates/`)
-| Crate | Inhalt | hängt ab von |
+| Crate | Contents | depends on |
 |---|---|---|
-| `kisi-board` | Parser, Lagenaufbau, `StackupOverride`, Geometrie, Viewer-Szene, `num` | – |
+| `kisi-board` | parser, stackup, `StackupOverride`, geometry, viewer scene, `num` | – |
 | `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,crosstalk}`, `via`, `eye`, `profile` | kisi-board |
-| `kisi-pi` | `pi` (DC), `tree` (Reglerketten, `PI_REG`), `pdn` (Z(f), Ebenenmodell) | kisi-board, kisi-sparse |
-| `kisi-core` | Fassade mit stabilen Pfaden (`kisi_core::rf`, …) und `service` | die drei oben |
-| `kisi-wasm` | C-ABI für den Browser | kisi-core |
+| `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `pdn` (Z(f), plane model) | kisi-board, kisi-sparse |
+| `kisi-core` | facade with stable paths (`kisi_core::rf`, …) and `service` | the three above |
+| `kisi-wasm` | C ABI for the browser | kisi-core |
 | `kisi-cli` | `kisi`, `kisi-validate` | kisi-core |
-| `kisi-mcp` | MCP-Server (stdio, JSON-RPC) | kisi-core |
-| `kisi-sparse` | dünnbesetzter Löser, auch als WASM-Modul für den Feldlöser | faer |
+| `kisi-mcp` | MCP server (stdio, JSON-RPC) | kisi-core |
+| `kisi-sparse` | sparse solver, also built as a WASM module for the field solver | faer |
 
-Regel: Front-Ends benutzen nur `kisi-core`. Innerhalb von kisi-si/kisi-pi kann umgebaut werden,
-solange die Fassade gleich bleibt. Die Bewertung eines Kanals (`kisi_si::profile::judge`) gibt es nur
-einmal; Viewer (über WASM), CLI und MCP zeigen dasselbe Ergebnis.
+Rule: front ends only use `kisi-core`. Inside kisi-si/kisi-pi things can be restructured as long as
+the facade stays the same. The channel verdict (`kisi_si::profile::judge`) exists exactly once;
+viewer (via WASM), CLI and MCP show the same result.
 
 ## Viewer (`web/`)
-* `index.html` – nur Markup; `css/kisi.css`; Skripte in `src/` in der Reihenfolge von
-  `src/manifest.json` (gemeinsamer Gültigkeitsbereich):
+* `index.html` – markup only; `css/kisi.css`; scripts in `src/` in the order of
+  `src/manifest.json` (shared scope):
   `engine` (WASM) · `state` · `load` · `geometry` · `draw` · `charts` · `net-detail` · `si-tabs`
-  (Impedanz-Ansicht) · `channel` (Kanal-Ansicht) · `panels` · `interaction` · `field-pool` ·
-  `field-cache` · `pi-dc` · `pi-pdn` · `pi-balance` · `views` · `main` (Start, Dateien, Übergabe).
-* `tools/bundle.py` macht daraus eine eigenständige Datei `dist/kisi.html` (WASM, Feldlöser-Module,
-  `data/*.json`, Beispielboards eingebettet).
-* Übergabe von außen: `const PRELOAD = null; /*KISI_PRELOAD*/` wird vom KiCad-Plugin bzw. von
-  `kisi_open_viewer` ersetzt – der Viewer selbst bleibt unabhängig.
-* Im Browser gespeichert (je Betrachter): Feldlöser-Ergebnisse (IndexedDB), Lagenaufbau-Änderungen,
-  Profil-Änderungen, Zuordnung Netzklasse → Profil, Versorgungseinstellungen.
+  (impedance view) · `channel` (channel view) · `panels` · `interaction` · `field-pool` ·
+  `field-cache` · `pi-dc` · `pi-pdn` · `pi-balance` · `views` · `main` (start-up, files, hand-over).
+* `tools/bundle.py` turns this into one standalone file `dist/kisi.html` (WASM, field solver modules,
+  `data/*.json` and example boards embedded).
+* Hand-over from outside: `const PRELOAD = null; /*KISI_PRELOAD*/` is replaced by the KiCad plugin or by
+  `kisi_open_viewer` – the viewer itself stays independent.
+* Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
+  net class → profile assignment, power settings.
 
-## Daten (`data/`)
-* `interfaces.json` – Schnittstellen-Profile mit Quellen (Norm / Richtlinie / kisi-Richtwert),
-  Sender/Empfänger, Grenzen, Zuordnungsregeln. Wird in Viewer, CLI und MCP eingebaut; der MCP-Server
-  kann mit `KISI_PROFILES` eine eigene Datei laden.
-* Beispiel-Versorgungsbäume: `web/samples/*_tree.json`.
+## Data (`data/`)
+* `interfaces.json` – interface profiles with sources (standard / guideline / kisi guide value),
+  transmitter/receiver, limits, assignment rules. Built into viewer, CLI and MCP; the MCP server
+  can load its own file via `KISI_PROFILES`.
+* Example power trees: `web/samples/*_tree.json`.
 
-## Feldlöser
-Siehe `UPSTREAM.md`: Forsténs js_2d_fields unverändert als Submodul, ein Adapter, Update per
-`tools/upstream_update.sh` mit Prüfung gegen die Baseline (`tools/validate_field.sh`).
+## Field solver
+See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a submodule, one adapter, updates via
+`tools/upstream_update.sh` with a check against the baseline (`tools/validate_field.sh`).
 
 ## Integration
-* **KiCad** (`kicad-plugin/`): IPC-API-Aktion, kopiert das offene Board („Kopie speichern“) und öffnet
-  den Viewer; `tools/package_plugin.py` baut das Zip.
-* **Agenten** (`crates/kisi-mcp`, `claude-plugin/`): MCP-Server mit wenigen Werkzeugen, liest Board-
-  Dateien vom Datenträger (Pfad z. B. von Konnect), schreibt auf Wunsch `analysis/kisi.json`
-  (Ablage wie bei kicad-happy). Claude-Code-Plugin mit Skill für den Prüfablauf.
+* **KiCad** (`kicad-plugin/`): IPC API action; saves a copy of the open board and opens the viewer;
+  `tools/package_plugin.py` builds the zip.
+* **Agents** (`crates/kisi-mcp`, `claude-plugin/`): MCP server with a few tools; reads board files from
+  disk (path e.g. from Konnect) and on request writes `analysis/kisi.json` (same location as kicad-happy).
+  Claude Code plugin with a skill for the review workflow.
 
-## Prüfen nach Änderungen
-`cargo test --release` · `tools/validate_field.sh` (Feldlöser gegen HFSS/Baseline) ·
-Headless-Tests der Ansichten mit Playwright (siehe `tools/shot*.py`).
+## Checks after changes
+`cargo test --release` · `tools/validate_field.sh` (field solver against HFSS/baseline) ·
+headless tests of the views with Playwright (see `tools/shot*.py`).

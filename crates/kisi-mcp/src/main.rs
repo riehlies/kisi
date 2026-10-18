@@ -97,7 +97,7 @@ fn tools() -> Value {
             "title": "Open the kisi viewer",
             "description": "Opens the standalone kisi viewer in the browser with this board (field solver, charts, editing of profiles and stackup). Optionally pre-selects a net and a view.",
             "inputSchema": {"type": "object", "properties": {
-                "pcb": pcb, "net": {"type": "string"}, "view": {"type": "string", "enum": ["si", "ch", "pi"], "description": "Impedanz / Kanal / Versorgung"}}, "required": ["pcb"]},
+                "pcb": pcb, "net": {"type": "string"}, "view": {"type": "string", "enum": ["si", "ch", "pi"], "description": "impedance / channel / power view"}}, "required": ["pcb"]},
             "annotations": {"readOnlyHint": true, "openWorldHint": true}
         }
     ])

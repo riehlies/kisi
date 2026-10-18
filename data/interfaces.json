@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Schnittstellen-Profile für die Kanalprüfung. Werte je Leitung (differentielle Kanäle werden in der ungeraden Mode gerechnet: r = halber Differenzwiderstand). 'kind' der Quellen: spec = aus der Norm bzw. normnahe Quelle, guideline = Hersteller-Layoutrichtlinie, kisi = eigener Richtwert ohne Normbezug. Grenzen der Ampel: eye_h_* in Anteilen des Sendehubs, eye_w_min_ui in UI, skew_ps Paar-Skew (null = 5 % UI), rl_min_db bis 1,5 × Nyquist, stub_factor = Via-Stub-Resonanz muss über stub_factor × Nyquist liegen, il_board_db = Dämpfung des Board-Abschnitts bei Nyquist (null = keine Grenze). Diese Datei kann ohne Codeänderung ergänzt werden. Reihenfolge = Priorität der automatischen Zuordnung (Netzname vor Klassenname, erstes passendes Profil). Pin-Kapazitäten und Treiberwiderstände sind typische Schätzwerte; mit IBIS-Daten des Bauteils ersetzen.",
+  "about": "Interface profiles for the channel check. Values per line (differential channels are computed in the odd mode: r = half the differential resistance). Source 'kind': spec = from the standard or a source close to it, guideline = vendor layout guideline, kisi = kisi's own guide value without a standard behind it. Traffic-light limits: eye_h_* as a fraction of the transmit swing, eye_w_min_ui in UI, skew_ps intra-pair skew (null = 5 % UI), rl_min_db up to 1.5 × Nyquist, stub_factor = via stub resonance must lie above stub_factor × Nyquist, il_board_db = loss of the board section at Nyquist (null = no limit). This file can be extended without code changes. Order = priority of the automatic assignment (net name before class name, first matching profile). Pin capacitances and driver resistances are typical estimates; replace them with the part's IBIS data.",
   "defaults": {
     "limits": {
       "eye_h_red": 0.4,
@@ -14,14 +14,14 @@
     "sources": [
       {
         "kind": "kisi",
-        "text": "Ampelgrenzen für Auge, Rückflussdämpfung und Stub-Resonanz sind kisi-Richtwerte für ein Board ohne Entzerrung, keine Normwerte."
+        "text": "Traffic-light limits for eye, return loss and stub resonance are kisi guide values for a board without equalisation, not values from a standard."
       }
     ]
   },
   "profiles": [
     {
       "id": "pcie_refclk",
-      "name": "PCIe-Referenztakt 100 MHz (HCSL)",
+      "name": "PCIe reference clock 100 MHz (HCSL)",
       "family": "PCIe",
       "rate_gbps": 0.2,
       "signal": "diff",
@@ -46,14 +46,14 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "Referenztakt 100 Ω differentiell (TI SNLA426). HCSL: Terminierung 50 Ω nach Masse am Sender, Empfänger hochohmig.",
+          "text": "Reference clock 100 Ω differential (TI SNLA426). HCSL: 50 Ω termination to ground at the transmitter, receiver high impedance.",
           "url": "https://www.ti.com/lit/pdf/snla426"
         }
       ]
     },
     {
       "id": "pcie1",
-      "name": "PCIe 1.x (2,5 GT/s)",
+      "name": "PCIe 1.x (2.5 GT/s)",
       "family": "PCIe",
       "rate_gbps": 2.5,
       "signal": "diff",
@@ -75,7 +75,7 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "PCIe erlaubt 70–100 Ω differentiell; für Gen1/2 sind 100 Ω üblich.",
+          "text": "PCIe allows 70–100 Ω differential; 100 Ω is common for Gen1/2.",
           "url": "https://www.ti.com/lit/pdf/snla426"
         }
       ]
@@ -104,7 +104,7 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "PCIe erlaubt 70–100 Ω differentiell.",
+          "text": "PCIe allows 70–100 Ω differential.",
           "url": "https://www.ti.com/lit/pdf/snla426"
         }
       ]
@@ -132,13 +132,13 @@
       "il_total": {
         "db": -22,
         "f_ghz": 4,
-        "scope": "Ende-zu-Ende inkl. Gehäuse (Literaturwert, Sender-/Empfänger-Entzerrung vorausgesetzt)"
+        "scope": "end to end incl. packages (literature value, assumes transmitter/receiver equalisation)"
       },
       "match": [],
       "sources": [
         {
           "kind": "guideline",
-          "text": "Gesamtkanal etwa −20 bis −22 dB bei 4 GHz; ab Gen3 arbeiten Sender (FFE) und Empfänger (CTLE/DFE) mit Entzerrung, das Auge ohne Entzerrung ist für lange Kanäle pessimistisch.",
+          "text": "Total channel about −20 to −22 dB at 4 GHz; from Gen3 on, transmitter (FFE) and receiver (CTLE/DFE) equalise, so the eye without equalisation is pessimistic for long channels.",
           "url": "https://www.nextpcb.com/blog/pcie-gen5-pcb-design-guidelines-impedance-loss-budget-via"
         }
       ]
@@ -169,7 +169,7 @@
       "il_total": {
         "db": -28,
         "f_ghz": 8,
-        "scope": "Ende-zu-Ende inkl. Sender- und Empfängergehäuse"
+        "scope": "end to end incl. transmitter and receiver packages"
       },
       "match": [
         "PCI_?E",
@@ -180,12 +180,12 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "Altera/Intel Agilex 7 P-tile: Gesamtkanal max. 28 dB bei 8 GHz; Steckkarte (Goldfinger bis Silizium) ≤ 8 dB, davon ca. 5 dB Leiterplatte; 85 Ω; Paar-Skew ±1 mil; Via-Stubs < 30 mil.",
+          "text": "Altera/Intel Agilex 7 P-tile: total channel max. 28 dB at 8 GHz; add-in card (gold finger to silicon) ≤ 8 dB, of which about 5 dB PCB; 85 Ω; intra-pair skew ±1 mil; via stubs < 30 mil.",
           "url": "https://www.intel.com/content/www/us/en/docs/programmable/683864/current/p-tile-pcb-design-guidelines.html"
         },
         {
           "kind": "guideline",
-          "text": "TI SNLA426: PCIe erlaubt 70–100 Ω, Steckkarten verlangen 85 Ω; Vias, Kondensator-Pads und Steckverbinder ausgenommen.",
+          "text": "TI SNLA426: PCIe allows 70–100 Ω, add-in cards require 85 Ω; vias, capacitor pads and connectors excluded.",
           "url": "https://www.ti.com/lit/pdf/snla426"
         }
       ]
@@ -216,13 +216,13 @@
       "il_total": {
         "db": -36,
         "f_ghz": 16,
-        "scope": "Ende-zu-Ende (häufig zitierter Wert; Quellen widersprechen sich, teils −28 dB)"
+        "scope": "end to end (frequently quoted value; sources disagree, some say −28 dB)"
       },
       "match": [],
       "sources": [
         {
           "kind": "guideline",
-          "text": "85 Ω ±10 %, Paar-Skew < 1,5 ps je Abschnitt bzw. < 5 ps im ganzen Kanal (Sekundärquelle, gegen PCI-SIG-Spezifikation prüfen).",
+          "text": "85 Ω ±10 %, intra-pair skew < 1.5 ps per section or < 5 ps over the whole channel (secondary source, check against the PCI-SIG specification).",
           "url": "https://www.nextpcb.com/blog/pcie-gen5-pcb-design-guidelines-impedance-loss-budget-via"
         }
       ]
@@ -256,7 +256,7 @@
       "sources": [
         {
           "kind": "spec",
-          "text": "USB 2.0 HS: 90 Ω ±15 % differentiell, 45 Ω Terminierung je Leitung an beiden Enden, 400 mV Hub."
+          "text": "USB 2.0 HS: 90 Ω ±15 % differential, 45 Ω termination per line at both ends, 400 mV swing."
         }
       ]
     },
@@ -289,7 +289,7 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "Typisch 90 Ω ±10 % differentiell; Koppelkondensatoren im TX-Pfad (75–265 nF Empfänger-Erkennung)."
+          "text": "Typically 90 Ω ±10 % differential; coupling capacitors in the TX path (75–265 nF, receiver detection)."
         }
       ]
     },
@@ -321,14 +321,14 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "congatec AN37: 85 Ω ±10 %, Längenabgleich max. 5 mil, Dämpfung der Trägerplatine max. 3,5 dB bei 5 GHz (nur Leiterbahn), Via-Stub < 10 mil.",
+          "text": "congatec AN37: 85 Ω ±10 %, length matching max. 5 mil, carrier board loss max. 3.5 dB at 5 GHz (trace only), via stub < 10 mil.",
           "url": "https://www.congatec.com/fileadmin/user_upload/Documents/Application_Notes/AN37_USB3_Gen2_Design_Considerations.pdf"
         }
       ]
     },
     {
       "id": "ddr4_dq",
-      "name": "DDR4 Daten/Adresse (3200 MT/s)",
+      "name": "DDR4 data/address (3200 MT/s)",
       "family": "DDR",
       "rate_gbps": 3.2,
       "signal": "se",
@@ -360,7 +360,7 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "JEDEC legt keine Leiterplatten-Impedanz fest; Herstellerrichtlinien nennen 40–50 Ω einzeln. Treiber RON 34 Ω, ODT RTT 48 Ω (POD gegen VDDQ, hier als Wechselstrom-Ersatz)."
+          "text": "JEDEC does not specify a PCB impedance; vendor guidelines give 40–50 Ω single-ended. Driver RON 34 Ω, ODT RTT 48 Ω (POD to VDDQ, modelled here as an AC equivalent)."
         }
       ]
     },
@@ -392,13 +392,13 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "Herstellerrichtlinien: 80–100 Ω differentiell für DQS und CK."
+          "text": "Vendor guidelines: 80–100 Ω differential for DQS and CK."
         }
       ]
     },
     {
       "id": "ddr5_dq",
-      "name": "DDR5 Daten/Adresse (6400 MT/s)",
+      "name": "DDR5 data/address (6400 MT/s)",
       "family": "DDR",
       "rate_gbps": 6.4,
       "signal": "se",
@@ -422,7 +422,7 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "AMD UG863 (Versal): DQ und CAC 40 Ω ±10 %, DQS/CK 75 Ω ±10 %; Daten max. 5000 mil (Bauteil) bzw. 4000 mil (DIMM).",
+          "text": "AMD UG863 (Versal): DQ and CAC 40 Ω ±10 %, DQS/CK 75 Ω ±10 %; data max. 5000 mil (component) or 4000 mil (DIMM).",
           "url": "https://docs.amd.com/r/en-US/ug863-versal-pcb-design/Physical-Design-Rules-for-DDR5-Signals"
         }
       ]
@@ -451,7 +451,7 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "AMD UG863: DQS/CK 75 Ω ±10 % differentiell.",
+          "text": "AMD UG863: DQS/CK 75 Ω ±10 % differential.",
           "url": "https://docs.amd.com/r/en-US/ug863-versal-pcb-design/Physical-Design-Rules-for-DDR5-Signals"
         }
       ]
@@ -487,13 +487,13 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "Einzelleitungen 50 Ω, Empfänger hochohmig; ohne Serienwiderstand am Treiber (typ. 22–33 Ω) entstehen Überschwinger. Treiberwiderstand hier geschätzt."
+          "text": "Single-ended lines 50 Ω, receiver high impedance; without a series resistor at the driver (typ. 22–33 Ω) overshoot occurs. Driver resistance estimated here."
         }
       ]
     },
     {
       "id": "sgmii",
-      "name": "SGMII (1,25 Gbit/s)",
+      "name": "SGMII (1.25 Gbit/s)",
       "family": "Ethernet",
       "rate_gbps": 1.25,
       "signal": "diff",
@@ -518,7 +518,7 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "100 Ω differentiell, CML/LVDS-artig, Wechselstromkopplung üblich."
+          "text": "100 Ω differential, CML/LVDS-like, AC coupling is common."
         }
       ]
     },
@@ -550,7 +550,7 @@
       "sources": [
         {
           "kind": "spec",
-          "text": "MDI 100 Ω differentiell. 1000BASE-T ist PAM5 mit 125 MBd über Übertrager – das NRZ-Auge ist hier nur eine grobe Plausibilitätsprüfung."
+          "text": "MDI 100 Ω differential. 1000BASE-T is PAM5 at 125 MBd through transformers – the NRZ eye is only a rough plausibility check here."
         }
       ]
     },
@@ -581,7 +581,7 @@
       "sources": [
         {
           "kind": "spec",
-          "text": "TMDS 100 Ω ±10 % differentiell; Sender als Stromquelle, Empfänger 50 Ω je Leitung gegen AVcc."
+          "text": "TMDS 100 Ω ±10 % differential; transmitter as a current source, receiver 50 Ω per line to AVcc."
         }
       ]
     },
@@ -615,13 +615,13 @@
       "sources": [
         {
           "kind": "spec",
-          "text": "TIA/EIA-644: 100 Ω differentiell, Stromquellen-Treiber (3,5 mA), 100 Ω Abschluss am Empfänger, 350 mV Hub."
+          "text": "TIA/EIA-644: 100 Ω differential, current-source driver (3.5 mA), 100 Ω termination at the receiver, 350 mV swing."
         }
       ]
     },
     {
       "id": "mipi_dphy",
-      "name": "MIPI D-PHY (2,5 Gbit/s)",
+      "name": "MIPI D-PHY (2.5 Gbit/s)",
       "family": "MIPI",
       "rate_gbps": 2.5,
       "signal": "diff",
@@ -647,13 +647,13 @@
       "sources": [
         {
           "kind": "guideline",
-          "text": "D-PHY HS-Modus: 100 Ω differentiell, 100 Ω Abschluss am Empfänger."
+          "text": "D-PHY HS mode: 100 Ω differential, 100 Ω termination at the receiver."
         }
       ]
     },
     {
       "id": "serdes",
-      "name": "SerDes allgemein (6,25 Gbit/s, CML)",
+      "name": "Generic SerDes (6.25 Gbit/s, CML)",
       "family": "SerDes",
       "rate_gbps": 6.25,
       "signal": "diff",
@@ -681,13 +681,13 @@
       "sources": [
         {
           "kind": "kisi",
-          "text": "Allgemeines CML-Profil (50 Ω je Leitung an beiden Enden); Datenrate an das Bauteil anpassen."
+          "text": "Generic CML profile (50 Ω per line at both ends); adjust the data rate to the part."
         }
       ]
     },
     {
       "id": "se50",
-      "name": "Einzelleitung 50 Ω allgemein",
+      "name": "Generic single-ended 50 Ω",
       "family": "Allgemein",
       "rate_gbps": 1,
       "signal": "se",
@@ -709,13 +709,13 @@
       "sources": [
         {
           "kind": "kisi",
-          "text": "Allgemeines Profil ohne Normbezug."
+          "text": "Generic profile without a standard behind it."
         }
       ]
     },
     {
       "id": "diff100",
-      "name": "Differentiell 100 Ω allgemein",
+      "name": "Generic differential 100 Ω",
       "family": "Allgemein",
       "rate_gbps": 1,
       "signal": "diff",
@@ -737,7 +737,7 @@
       "sources": [
         {
           "kind": "kisi",
-          "text": "Allgemeines Profil ohne Normbezug."
+          "text": "Generic profile without a standard behind it."
         }
       ]
     }

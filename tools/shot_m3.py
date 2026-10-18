@@ -22,19 +22,19 @@ with sync_playwright() as p:
     pg.click("#pim-j"); time.sleep(0.5); pg.screenshot(path=f"{out}/m3_pi_j.png")
     pg.click("#view-si"); time.sleep(0.3)
     # field solver for one class
-    pg.select_option("#fs-scope", label="Klasse LVDS_SYNC")
+    pg.select_option("#fs-scope", label="class LVDS_SYNC")
     print("button:", pg.inner_text("#fs-start"))
     pg.click("#fs-start")
-    pg.wait_for_function("document.getElementById('fs-start').textContent === 'gerechnet'", timeout=240000)
+    pg.wait_for_function("document.getElementById('fs-start').textContent === 'computed'", timeout=240000)
     print("after solve:", pg.inner_text("#si-source"), "|", pg.inner_text("#fs-cache"))
     # switch board and back: results must come from cache
     pg.click("#sample-vna"); pg.wait_for_function("document.getElementById('busy').hidden === true", timeout=90000)
     pg.click("#sample-ts"); pg.wait_for_function("document.getElementById('busy').hidden === true", timeout=90000)
-    pg.select_option("#fs-scope", label="Klasse LVDS_SYNC")
+    pg.select_option("#fs-scope", label="class LVDS_SYNC")
     print("after switch:", pg.inner_text("#fs-start"), "|", pg.inner_text("#si-source"))
     # reload page: IndexedDB cache
     pg.reload(); pg.wait_for_function("document.getElementById('busy').hidden === true", timeout=90000)
-    pg.select_option("#fs-scope", label="Klasse LVDS_SYNC")
+    pg.select_option("#fs-scope", label="class LVDS_SYNC")
     print("after reload:", pg.inner_text("#fs-start"), "|", pg.inner_text("#fs-cache"))
     print("errors:", errs[:6])
     b.close()

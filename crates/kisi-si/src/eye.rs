@@ -153,7 +153,7 @@ fn step_response(freq: &[f64], s21: &[Cx], rise: f64, dt: f64, nt: usize) -> Vec
 
 pub fn eye(ch: &Channel, ep: &EyeParams) -> Result<Eye, String> {
     if ch.freq.len() < 10 || ch.s21.len() != ch.freq.len() {
-        return Err("keine S-Parameter".into());
+        return Err("no S-parameters".into());
     }
     let h: Vec<Cx> = match (&ep.tx, &ep.rx) {
         (None, None) => ch.s21.clone(),
@@ -171,7 +171,7 @@ pub fn eye(ch: &Channel, ep: &EyeParams) -> Result<Eye, String> {
     let fmax = *ch.freq.last().unwrap();
     if ep.bitrate / 2.0 * 2.5 > fmax {
         warnings.push(format!(
-            "Frequenzbereich bis {:.0} GHz ist knapp für {:.1} Gbit/s (Nyquist {:.1} GHz)",
+            "frequency range up to {:.0} GHz is tight for {:.1} Gbit/s (Nyquist {:.1} GHz)",
             fmax / 1e9,
             ep.bitrate / 1e9,
             ep.bitrate / 2e9
@@ -288,7 +288,7 @@ pub fn eye(ch: &Channel, ep: &EyeParams) -> Result<Eye, String> {
         }
     }
     if best.0 <= 0.0 {
-        warnings.push("Auge geschlossen (ohne Entzerrung)".into());
+        warnings.push("eye closed (without equalisation)".into());
     }
     Ok(Eye {
         bitrate: ep.bitrate,
@@ -488,7 +488,7 @@ pub fn check_net(
         let rq = crate::rf::RfParams { npts: 10, ..rp.clone() };
         if let Ok(pc) = crate::rf::channel(board, an, pn, field, target, &rq) {
             row.skew_ps = Some(ch.delay_ps - pc.delay_ps);
-            row.skew_uncertain = ch.warnings.iter().chain(&pc.warnings).any(|w| w.contains("verzweigt") || w.contains("zerfallen"));
+            row.skew_uncertain = ch.warnings.iter().chain(&pc.warnings).any(|w| w.starts_with("net branches") || w.starts_with("net splits"));
         }
     }
     row

@@ -68,7 +68,7 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
             let pro = ST.with(|st| st.borrow().pro.clone());
             if let Some(pro) = pro {
                 if let Err(e) = apply_project(&mut b, &pro) {
-                    b.warnings.push(format!("Projektdatei: {e}"));
+                    b.warnings.push(format!("project file: {e}"));
                 }
             }
             ST.with(|st| {
@@ -456,7 +456,7 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
                     if let Ok(pc) = kisi_core::rf::channel(b, an, pn, &params.field, target, &rq) {
                         skew = serde_json::json!({"partner": pc.name, "delay_ps": pc.delay_ps, "length_mm": pc.length_mm,
                             "skew_ps": c.delay_ps - pc.delay_ps, "skew_mm": c.length_mm - pc.length_mm,
-                            "uncertain": c.warnings.iter().chain(&pc.warnings).any(|w| w.contains("verzweigt") || w.contains("zerfallen"))});
+                            "uncertain": c.warnings.iter().chain(&pc.warnings).any(|w| w.starts_with("net branches") || w.starts_with("net splits"))});
                     }
                 }
                 (serde_json::to_value(&c).unwrap(), serde_json::Value::Null, ts)

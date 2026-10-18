@@ -19,7 +19,11 @@ KiCad IPC API), make sure it is **saved** before calling kisi, and call kisi aga
    series parts, terminations, branches, direction guess, profile). Check that the end devices and
    profiles make sense; `kisi_profiles` shows the available standards. Then `kisi_channel_check`,
    with a class → profile mapping when the automatic assignment is wrong (e.g. `{"PCIe": "pcie3"}`).
-   Only yellow/red rows are returned by default.
+   Only yellow/red rows are returned by default. Devices whose symbols carry an IBIS model (KiCad
+   simulation fields Sim.Device=IBIS, Sim.Library, Sim.Name) get linearised IBIS ends in the eye
+   (`end_models`; `ibis_files` says whether each .ibs file was found). This is experimental and not
+   working yet: report such results as unvalidated;
+   if a file is missing, say so and suggest placing it next to the board.
 4. Power: `kisi_power` – regulator chain balance (PI_REG/PI_LOAD fields or a tree JSON), IR drop
    per rail; `pdn_rail` adds the impedance of one rail against its target.
 5. Optionally `kisi_report` writes `analysis/kisi.json` next to the board, so file-based review

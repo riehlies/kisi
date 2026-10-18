@@ -21,6 +21,46 @@ pub struct Project {
     pub board: Board,
     pub an: Analysis,
     pub params: Params,
+    /// IBIS files named in the footprints' simulation fields, loaded from disk
+    pub ibis: topology::IbisLibs,
+    /// (Sim.Library, reason) of referenced IBIS files that could not be read
+    pub ibis_missing: Vec<(String, String)>,
+}
+
+/// Find an IBIS file named in Sim.Library: `${KIPRJMOD}` and other `${VAR}`s are
+/// expanded; relative paths are taken from the board's folder; if that fails the
+/// file name is searched in the board's folder and up to three levels below.
+pub fn find_library(lib: &str, dir: &Path) -> Option<PathBuf> {
+    let mut s = lib.trim().to_string();
+    for (a, b) in [("${", "}"), ("$(", ")")] {
+        while let Some(i) = s.find(a) {
+            let Some(j) = s[i..].find(b).map(|j| i + j) else { break };
+            let var = &s[i + 2..j];
+            let val = if var == "KIPRJMOD" { dir.to_string_lossy().to_string() } else { std::env::var(var).unwrap_or_default() };
+            s.replace_range(i..=j, &val);
+        }
+    }
+    let p = PathBuf::from(&s);
+    let cands = if p.is_absolute() { vec![p.clone()] } else { vec![dir.join(&p)] };
+    if let Some(c) = cands.into_iter().find(|c| c.is_file()) {
+        return Some(c);
+    }
+    let key = topology::IbisLibs::key(&s);
+    fn walk(d: &Path, key: &str, depth: u32) -> Option<PathBuf> {
+        let rd = std::fs::read_dir(d).ok()?;
+        let mut dirs = vec![];
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_file() && p.file_name().is_some_and(|n| n.to_string_lossy().to_ascii_lowercase() == key) {
+                return Some(p);
+            }
+            if p.is_dir() && depth > 0 && !p.file_name().is_some_and(|n| n.to_string_lossy().starts_with('.')) {
+                dirs.push(p);
+            }
+        }
+        dirs.into_iter().find_map(|p| walk(&p, key, depth - 1))
+    }
+    walk(dir, &key, 3)
 }
 
 impl Project {
@@ -41,7 +81,22 @@ impl Project {
         let params = Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, ..Default::default() };
         let an = analyze(&board, &params);
         let name = pcb.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        Ok(Project { pcb_path: pcb.to_path_buf(), name, board, an, params })
+        let dir = pcb.parent().map(Path::to_path_buf).unwrap_or_default();
+        let mut ibis = topology::IbisLibs::default();
+        let mut ibis_missing = vec![];
+        for (lib, _) in topology::ibis_libraries(&board) {
+            match find_library(&lib, &dir).map(|f| std::fs::read_to_string(&f).map_err(|e| format!("{}: {e}", f.display()))) {
+                Some(Ok(t)) => {
+                    let info = ibis.add(&lib, &t);
+                    if let Some(e) = info.error {
+                        ibis_missing.push((lib, e));
+                    }
+                }
+                Some(Err(e)) => ibis_missing.push((lib, e)),
+                None => ibis_missing.push((lib, "file not found".into())),
+            }
+        }
+        Ok(Project { pcb_path: pcb.to_path_buf(), name, board, an, params, ibis, ibis_missing })
     }
 
     pub fn net_id(&self, name: &str) -> Option<u32> {
@@ -51,6 +106,27 @@ impl Project {
     fn target(&self, net: u32) -> Option<(f64, bool)> {
         let ci = self.board.net_class.get(net as usize).copied().unwrap_or(0) as usize;
         self.an.classes.get(ci).and_then(|c| c.target).map(|t| (t.z, t.diff))
+    }
+
+    /// Lanes grouped into buses; IBIS model types fix the direction where they can.
+    pub fn buses(&self) -> Vec<topology::Bus> {
+        let cd = topology::ComponentData::builtin();
+        let mut b = topology::buses(&self.board, &self.an, &cd);
+        topology::apply_ibis_direction(&mut b, &self.ibis);
+        b
+    }
+
+    /// IBIS files referenced by the board and their state.
+    pub fn ibis_summary(&self) -> Value {
+        let libs: Vec<Value> = topology::ibis_libraries(&self.board)
+            .into_iter()
+            .map(|(lib, devs)| {
+                let err = self.ibis_missing.iter().find(|m| m.0 == lib).map(|m| m.1.clone());
+                let comps = self.ibis.info().into_iter().find(|i| topology::IbisLibs::key(&i.name) == topology::IbisLibs::key(&lib)).map(|i| i.components).unwrap_or_default();
+                json!({"library": lib, "devices": devs, "loaded": err.is_none(), "error": err, "components": comps})
+            })
+            .collect();
+        json!(libs)
     }
 
     fn class_name(&self, net: u32) -> String {
@@ -131,6 +207,16 @@ fn pin(e: &topology::EndPin) -> String {
     format!("{}.{}", e.refdes, e.pin)
 }
 
+fn ibis_json(e: &topology::IbisEnd) -> Value {
+    match &e.linear {
+        Some(l) => json!({"pin": format!("{}.{}", e.refdes, e.pin), "status": e.status, "component": l.component, "model": l.model, "model_type": l.model_type,
+            "transmitter": l.tx.map(|t| json!({"r_ohm": t.r, "c_pf": t.c_pf, "l_nh": t.l_nh, "swing_open_v": l.v_swing, "swing_into_50_ohm_v": l.v_swing.map(|v| v * 50.0 / (t.r + 50.0)), "rise_10_90_ps": l.rise.map(|r| r * 1e12)})),
+            "receiver": {"r_ohm": if l.rx.r > 0.0 { json!(l.rx.r) } else { json!("high impedance") }, "c_pf": l.rx.c_pf, "l_nh": l.rx.l_nh},
+            "notes": l.notes, "estimate": "linearised IBIS (typical corner) – EXPERIMENTAL, not working yet: do not rely on it"}),
+        None => json!({"pin": format!("{}.{}", e.refdes, e.pin), "status": e.status, "library": e.library, "message": e.message}),
+    }
+}
+
 fn lane_json(p: &Project, l: &topology::Lane) -> Value {
     let rev = l.rx_end == 0;
     let (tx, rx) = if l.ends.len() == 2 { (Some(&l.ends[if rev { 1 } else { 0 }]), Some(&l.ends[if rev { 0 } else { 1 }])) } else { (None, None) };
@@ -143,13 +229,13 @@ fn lane_json(p: &Project, l: &topology::Lane) -> Value {
         "terminations": l.shunts.iter().map(|s| format!("{} {} {}", s.part.refdes, s.part.value, if s.across { "across the pair".to_string() } else { format!("to {}", p.board.net_name(s.to)) })).collect::<Vec<_>>(),
         "branches": l.branches.len(),
         "not_modelled": l.others,
+        "ibis": l.ends.iter().filter_map(|e| topology::ibis_end(e, &p.ibis)).map(|e| ibis_json(&e)).collect::<Vec<_>>(),
     })
 }
 
 /// Device-to-device lanes grouped into buses, with the profile each bus gets.
 pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>) -> Value {
-    let cd = topology::ComponentData::builtin();
-    let buses = topology::buses(&p.board, &p.an, &cd);
+    let buses = p.buses();
     let list: Vec<Value> = buses
         .iter()
         .map(|b| {
@@ -162,7 +248,8 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
         .collect();
     json!({
         "buses": list,
-        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; DNP parts are skipped. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+        "ibis_files": p.ibis_summary(),
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; DNP parts are skipped. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction comes from IBIS model types where both ends have models, else it is a guess (termination next to the receiver). IBIS ends (footprint fields Sim.Device=IBIS, Sim.Library, Sim.Name, Sim.Ibis.Model) are EXPERIMENTAL and not working yet (linearised, typical corner): treat results with IBIS ends as unvalidated. Parasitics of passives are estimates from data/components.json."
     })
 }
 
@@ -171,7 +258,7 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
 pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams) -> Value {
     let field = HashMap::new();
     let cd = topology::ComponentData::builtin();
-    let buses = topology::buses(&p.board, &p.an, &cd);
+    let buses = p.buses();
     let wanted = |names: &mut dyn Iterator<Item = &str>| -> bool {
         match only {
             None => true,
@@ -201,7 +288,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
             let Some(prof) = profiles.get(&pid) else { continue };
             let lim = profiles.limits(prof);
-            let row = topology::check_lane(&p.board, &p.an, &field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, &cd);
+            let row = topology::check_lane(&p.board, &p.an, &field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, &cd, &p.ibis);
             // length-weighted impedance of the lane's nets
             let (mut len, mut zs, mut lo, mut hi) = (0.0, 0.0, f64::INFINITY, f64::NEG_INFINITY);
             for st in p.an.nets.iter().filter(|s| l.nets.contains(&s.net)) {
@@ -236,6 +323,9 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             j["length_mm"] = json!(row.length_mm);
             j["vias"] = json!(row.vias);
             j["eye_computed"] = json!(row.eye);
+            if let Some(e) = &row.ends {
+                j["end_models"] = json!(e);
+            }
             j["metrics"] = json!(m);
             rows.push((v.status, j));
         }
@@ -279,8 +369,9 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
     let count = |s: Status| rows.iter().filter(|r| r.0 == s).count();
     json!({
         "summary": {"green": count(Status::Green), "yellow": count(Status::Yellow), "red": count(Status::Red)},
+        "ibis_files": p.ibis_summary(),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
-        "models": format!("{MODELS} Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).")
+        "models": format!("{MODELS} Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from IBIS where the devices have models (EXPERIMENTAL, not working yet; see end_models), otherwise from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).")
     })
 }
 

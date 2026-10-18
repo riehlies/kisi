@@ -41,17 +41,65 @@ const pinLabel = (e) => e ? `${e.refdes}.${e.pin}` : "–";
 function chForLane(l) {
   const net = laneNet(l), t = classTarget(net), p = laneProfile(l), rp = rfParams(), rev = laneReversed(l);
   rp.fmax = Math.max(rp.fmax, p.rate_gbps * 1.25e9);
-  const key = `lane|${laneKey(l)}|${rev}|${S.anGen}|${JSON.stringify(rp)}|${JSON.stringify(p)}`;
+  const key = `lane|${laneKey(l)}|${rev}|${S.anGen}|${JSON.stringify(rp)}|${JSON.stringify(p)}|${useIbis()}|${(S.ibisInfo || []).length}`;
   if (S.chCache && S.chCache.key === key) return S.chCache.res;
   let res;
   try {
     res = S.engine.laneRf({ lane: l.nets[0], to: l.ends.length ? l.ends[l.ends.length - 1].refdes : null, reversed: rev, rf: rp, target: t ? [t.z, t.diff] : null,
-      bitrate: p.rate_gbps * 1e9, tx: p.tx, rx: p.rx, eye_rise: p.tx.rise_ps * 1e-12 });
+      bitrate: p.rate_gbps * 1e9, tx: p.tx, rx: p.rx, eye_rise: p.tx.rise_ps * 1e-12, ibis: useIbis() });
   } catch (e) { res = { channel: null, error: e.message, crosstalk: { aggressors: [], geoms: [] } }; }
   res.profile = p; res.lane = l;
   S.chCache = { key, res };
   return res;
 }
+
+// ---- IBIS ends (M7b)
+function useIbis() { if (S.useIbis == null) S.useIbis = lsGet("kisi.ibis.use.v1") !== false; return S.useIbis; }
+// transmitter/receiver actually used for a lane result: IBIS (linearised) where the
+// engine found models, else the profile; swing in mV for the eye's 100 %
+function endsView(r) {
+  const p = r.profile, e = r.ends;
+  const txI = !!(e && e.tx_ibis), rxI = !!(e && e.rx_ibis);
+  const tx = txI ? { r: e.tx.r, c_pf: e.tx.c_pf, l_nh: e.tx.l_nh, rise_ps: (e.rise ?? p.tx.rise_ps * 1e-12) * 1e12, swing_mv: r.swing_mv ?? p.tx.swing_mv } : { ...p.tx };
+  const rx = r.rx_used || (rxI ? e.rx : p.rx);
+  return { tx, rx, txI, rxI, txSrc: e ? e.tx_source : "profile", rxSrc: e ? e.rx_source : "profile" };
+}
+const ohmEnd = (r) => r >= 1000 ? fmt(r / 1000, 1) + " kΩ" : fmt(r, 0) + " Ω";
+function endText(v, which) {
+  if (which === "tx") { const t = v.tx; return `${ohmEnd(t.r)}${t.c_pf ? ", " + fmt(t.c_pf, 1) + " pF" : ""}${t.l_nh ? ", " + fmt(t.l_nh, 1) + " nH" : ""}, ${fmt(t.rise_ps, 0)} ps, ${fmt(t.swing_mv, 0)} mV`; }
+  const x = v.rx; return `${x.r > 0 ? ohmEnd(x.r) : "high impedance"}${x.c_pf ? ", " + fmt(x.c_pf, 1) + " pF" : ""}${x.l_nh ? ", " + fmt(x.l_nh, 1) + " nH" : ""}`;
+}
+// IBIS state of the lane ends: "ok" if any end has a model in use, "missing"/"error" if referenced but unusable
+function laneIbis(l) {
+  const xs = (l.ibis || []).filter(Boolean);
+  if (!xs.length) return null;
+  if (xs.some((x) => x.status === "ok")) return "ok";
+  return xs.some((x) => x.status === "error") ? "error" : "missing";
+}
+function ibisBox() {
+  let st;
+  try { st = S.engine.ibisStatus(); } catch (e) { return ""; }
+  const refs = st.referenced || [];
+  const chip = (r) => {
+    const cls = r.loaded ? "ok" : r.error ? "err" : "miss";
+    const t = r.loaded ? "loaded" : r.error ? "error: " + r.error : "not loaded";
+    return `<span class="ibis-chip ${cls}" title="${esc(r.library)} · ${esc(t)} · ${esc(r.devices.join(", "))}">${r.loaded ? "✓" : r.error ? "⚠" : "○"} ${esc(r.file)} <span class="muted">${esc(r.devices.join(", "))}</span></span>`;
+  };
+  const extra = (st.loaded || []).filter((x) => !refs.some((r) => r.file === ibisKey(x.name)));
+  const missing = refs.filter((r) => !r.loaded).length;
+  return `<div class="ibis-box"><div class="ibis-h"><b>IBIS models</b> <span class="ibis-tag error" title="model selection and signal standards are not validated yet – do not rely on results with IBIS ends">experimental · not working yet</span>
+      <label class="muted"><input type="checkbox" id="ibis-use" ${useIbis() ? "checked" : ""}> use for the eye</label>
+      <button class="btn small" id="ibis-load">Load .ibs files…</button></div>
+    ${refs.length ? `<div class="ibis-chips">${refs.map(chip).join("")}</div>` : `<p class="note">No device names an IBIS model. In KiCad, assign one in the symbol's simulation model (IBIS: library, component, model); the fields are copied to the footprint.</p>`}
+    ${missing ? `<p class="note">${missing} file${missing === 1 ? "" : "s"} not loaded: drop the .ibs file${missing === 1 ? "" : "s"} here or use “Load .ibs files…” (the KiCad plugin embeds them automatically).</p>` : ""}
+    ${extra.length ? `<p class="note">Loaded but not used by this board: ${extra.map((x) => esc(x.name)).join(", ")}</p>` : ""}
+    ${refs.some((r) => r.loaded) ? `<p class="note">Ends with a model use a linearised IBIS transmitter/receiver (typical corner: estimate); the other ends use the profile. IBIS model types also set the direction.</p>` : ""}</div>`;
+}
+function bindIbisBox() {
+  if ($("ibis-use")) $("ibis-use").onchange = (e) => { S.useIbis = e.target.checked; lsSet("kisi.ibis.use.v1", S.useIbis); S.chCache = null; if (S.laneRes) markCheckStale(); renderChOverview(); };
+  if ($("ibis-load")) $("ibis-load").onclick = () => $("ibis-file").click();
+}
+$("ibis-file").onchange = (e) => { handleFiles(e.target.files); e.target.value = ""; };
 
 // path of a lane as chips: pin – parts – pin, terminations and branches
 function laneChain(l) {
@@ -104,7 +152,7 @@ function renderChOverview() {
       const r = laneRow(l), st = r ? laneStatus(l) : null;
       const cells = r ? `<td class="n">${fmt(r.length_mm, 1)}</td><td class="n">${fmt(r.il_nyq_db, 1)}</td><td class="n">${fmt(r.rl_db, 1)}</td><td class="n">${r.eye && !r.error ? fmt(r.eye_height * 100, 0) : "–"}</td><td class="n">${r.skew_ps == null ? "–" : fmt(Math.abs(r.skew_ps), 1) + (r.skew_uncertain ? "?" : "")}</td>`
         : `<td class="n" colspan="5">${checkable ? '<span class="muted">not checked yet</span>' : `<span class="muted">${esc(l.kind)}</span>`}</td>`;
-      return `<tr class="click" data-lane="${esc(laneKey(l))}"><td>${st ? `<span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span>` : ""}</td><td class="ln">${esc(netLabel(l.name).split("/").pop())}${l.diff ? ' <span class="muted">pair</span>' : ""}</td><td class="lc">${laneChain(l)}</td>${cells}</tr>`;
+      return `<tr class="click" data-lane="${esc(laneKey(l))}"><td>${st ? `<span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span>` : ""}</td><td class="ln">${esc(netLabel(l.name).split("/").pop())}${l.diff ? ' <span class="muted">pair</span>' : ""}${laneIbis(l) ? ` <span class="ibis-tag ${laneIbis(l)}" title="${laneIbis(l) === "ok" ? "IBIS model at " + esc((l.ibis || []).filter((x) => x && x.status === "ok").map((x) => x.refdes).join(", ")) : esc((l.ibis || []).filter(Boolean).map((x) => x.message).join("; "))}">IBIS</span>` : ""}</td><td class="lc">${laneChain(l)}</td>${cells}</tr>`;
     }).join("");
     return `<div class="bal-card bus-card">
       <h4><span>${worst ? `<span class="dot" style="background:${S.colors[worst]}"></span> ` : ""}${esc(b.name)}</span><em>${esc(b.class)} · ${esc(p.name)} · ${b.lanes.length} lane${b.lanes.length === 1 ? "" : "s"}</em></h4>
@@ -123,10 +171,12 @@ function renderChOverview() {
       ${kpi(nl("other"), "not checked")}
       ${kpi(res ? `<span style="color:${S.colors.ok}">${counts.ok}</span> / <span style="color:${S.colors.high1}">${counts.high1}</span> / <span style="color:${S.colors.high2}">${counts.high2}</span>` : "–", res ? `green / yellow / red${stale ? " · outdated" : ""}` : "after “Check”")}
     </div>
+    ${ibisBox()}
     ${S.an.skeleton ? `<div class="ov-actions"><span class="note">Loss, eye and skew need the impedance estimate (step 2 in the impedance view).</span><button class="btn small primary" id="ov-est">Estimate impedances</button></div>` : ""}
     <div class="ov-actions"><button class="btn small primary" id="ov-check" ${S.an.skeleton || S.checkRunning ? "disabled" : ""}>${res ? "Check again" : "Check all lanes"}</button><span class="note" id="ov-check-text"></span></div>
     ${section("ic-ic")}${section("ic-connector")}${section("other")}`;
   $("ov-check").onclick = () => runCheck();
+  bindIbisBox();
   if ($("ov-est")) $("ov-est").onclick = () => estimateImpedances();
   box.querySelectorAll("tr[data-lane]").forEach((tr) => tr.onclick = () => {
     const l = allLanes().find((x) => laneKey(x) === tr.dataset.lane);
@@ -152,8 +202,10 @@ function renderLaneDetail(l) {
   const t = tabs.some((x) => x[0] === tab) ? tab : "check";
   d.innerHTML = `<header><div><h3>${esc(netLabel(l.name).split("/").pop())}${l.diff ? ` <span class="muted">pair</span>` : ""}</h3><div class="muted">${esc(pinLabel(tx))} ${esc(tx?.value || "")} → ${esc(pinLabel(rx))} ${esc(rx?.value || "")} · ${esc(l.class)}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
     <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button></span></div>
-    <div class="dstats muted"><span>Transmitter ${esc(tx?.refdes || "")}: ${fmt(p.tx.r, 0)} Ω${p.tx.c_pf ? ", " + fmt(p.tx.c_pf, 1) + " pF" : ""}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span>
-      <span>Receiver ${esc(rx?.refdes || "")}: ${r.rx_used ? (r.rx_used.r > 0 ? fmt(r.rx_used.r, 0) + " Ω" : "high impedance") : (p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "high impedance")}${p.rx.c_pf ? ", " + fmt(p.rx.c_pf, 1) + " pF" : ""}</span><span>per line</span></div>
+    ${l.kind === "ic-ic" ? (() => { const v = endsView(r); return `<div class="dstats muted ends"><span>Transmitter ${esc(tx?.refdes || "")}: ${endText(v, "tx")} <em class="${v.txI ? "ibis-tag ok" : "src"}" title="${esc(v.txSrc)}">${v.txI ? "IBIS" : "profile"}</em></span>
+      <span>Receiver ${esc(rx?.refdes || "")}: ${endText(v, "rx")} <em class="${v.rxI ? "ibis-tag ok" : "src"}" title="${esc(v.rxSrc)}">${v.rxI ? "IBIS" : "profile"}</em></span><span>per line</span></div>
+      ${(r.ends?.ibis || []).filter((x) => x && x.status !== "ok").map((x) => `<div class="dstats muted"><span>IBIS ${esc(x.refdes)}.${esc(x.pin)}: ${esc(x.message || x.status)}</span></div>`).join("")}
+      ${(v.txI || v.rxI) ? `<div class="dstats muted"><span>${esc([v.txI ? v.txSrc : "", v.rxI ? v.rxSrc : ""].filter(Boolean).join(" · "))}. Linearised from the typical I-V curves and [Ramp]: experimental, not validated yet.${(r.ends.ibis || []).flatMap((x) => x?.linear?.notes || []).length ? " " + esc([...new Set((r.ends.ibis || []).flatMap((x) => x?.linear?.notes || []))].join("; ")) + "." : ""}</span></div>` : ""}`; })() : ""}
     ${r.rx_note ? `<div class="dstats muted"><span>${esc(r.rx_note)}</span></div>` : ""}
     <div class="tabs" role="tablist" aria-label="Lane">${tabs.map(([k, n]) => `<button role="tab" data-ct="${k}" aria-selected="${t === k}">${n}</button>`).join("")}</div>
     <div id="ch-body"></div>`;
@@ -169,13 +221,14 @@ function renderLaneDetail(l) {
   const body = $("ch-body");
   if (t === "eye") return renderEye(body, r);
   if (t === "path") return renderLanePath(body, l, r);
-  const m = metricsOf(r, laneNet(l), l), j = judge(m, p);
+  const v = endsView(r);
+  const m = metricsOf(r, laneNet(l), l), j = judge(m, { ...p, tx: { ...p.tx, swing_mv: v.tx.swing_mv } });
   const xt = r.crosstalk && r.crosstalk.aggressors ? `<tr><td></td><td>Crosstalk (total)</td><td>NEXT ${fmt(r.crosstalk.next_total * 100, 2)} %, FEXT ${fmt(r.crosstalk.fext_total * 100, 2)} %</td><td>information only</td></tr>` : "";
   body.innerHTML = `<div class="dstats"><span>Result <b style="color:${S.colors[j.status]}">${ST_NAME[j.status]}</b></span><span>${fmt(p.rate_gbps, p.rate_gbps < 1 ? 2 : p.rate_gbps % 1 ? 2 : 0)} Gbit/s</span>${r.channel ? `<span>Path ${fmt(r.channel.length_mm, 1)} mm, ${r.channel.vias} vias, ${l.hops.filter((h) => h.type === "series").length} series part(s)</span>` : ""}</div>
     <div class="tablewrap"><table class="xs-table"><thead><tr><th></th><th>Criterion</th><th>Value</th><th>Limit</th></tr></thead><tbody>
     ${j.rows.map((x) => `<tr title="${esc(x.note || "")}"><td><span class="dot" style="background:${S.colors[x.st]}" aria-label="${ST_NAME[x.st]}"></span></td><td>${x.name}</td><td>${esc(String(x.value))}</td><td>${x.limit}</td></tr>`).join("")}${xt}
     </tbody></table></div>
-    <p class="note">${l.kind === "ic-ic" ? "From device pin to device pin, including series parts (package parasitics estimated, data/components.json). Loss, return loss and TDR describe the interconnect without terminations; the eye uses the profile's transmitter and receiver, with a termination next to the receiver as its termination." : "From the device to the connector: the board share of the channel. No eye, because the rest of the channel is off the board."} No equalisation, jitter or noise.</p>
+    <p class="note">${l.kind === "ic-ic" ? "From device pin to device pin, including series parts (package parasitics estimated, data/components.json). Loss, return loss and TDR describe the interconnect without terminations; the eye uses the devices' IBIS models where loaded (linearised) and the profile's transmitter and receiver otherwise, with a termination next to the receiver as its termination." : "From the device to the connector: the board share of the channel. No eye, because the rest of the channel is off the board."} No equalisation, jitter or noise.</p>
     ${(r.channel?.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("")}`;
 }
 

@@ -111,6 +111,9 @@ pub struct EndPin {
     pub role: String,
     pub net: u32,
     pub at: P,
+    /// IBIS model from the footprint's simulation fields (KiCad Sim.Device = IBIS)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ibis: Option<IbisRef>,
 }
 
 /// A two-pin passive in or at the channel.
@@ -306,7 +309,7 @@ pub fn buses(board: &Board, an: &Analysis, cd: &ComponentData) -> Vec<Bus> {
             match pt.role.as_str() {
                 "ic" | "connector" => {
                     let f = &board.footprints[pt.fp as usize];
-                    ends.entry(net).or_default().push(EndPin { refdes: f.reference.clone(), pin: board.pads[pi].number.clone(), value: f.value.clone(), role: pt.role.clone(), net, at: board.pads[pi].at });
+                    ends.entry(net).or_default().push(EndPin { refdes: f.reference.clone(), pin: board.pads[pi].number.clone(), value: f.value.clone(), role: pt.role.clone(), net, at: board.pads[pi].at, ibis: ibis_ref(f) });
                 }
                 _ => others.entry(net).or_default().push(pt.refdes.to_string()),
             }
@@ -774,6 +777,217 @@ pub fn lane_channel(board: &Board, an: &Analysis, lane: &Lane, field: &HashMap<S
     Ok(b.finish(lane.nets[0], lane.name.clone(), partner, target))
 }
 
+// --- IBIS ends (milestone M7b) ------------------------------------------------------------
+
+/// IBIS model named by a footprint's simulation fields (copied from the symbol by
+/// KiCad 8+): `Sim.Device` = IBIS, `Sim.Library` (file), `Sim.Name` (component),
+/// optional `Sim.Ibis.Model` (entry of a model selector) and `Sim.Ibis.Pin`.
+#[derive(Debug, Clone, Serialize)]
+pub struct IbisRef {
+    pub library: String,
+    pub component: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pin_field: Option<String>,
+}
+
+pub fn ibis_ref(fp: &crate::board::Footprint) -> Option<IbisRef> {
+    if !fp.prop("Sim.Device")?.trim().eq_ignore_ascii_case("ibis") {
+        return None;
+    }
+    let nonempty = |k: &str| fp.prop(k).map(str::trim).filter(|v| !v.is_empty()).map(str::to_string);
+    Some(IbisRef { library: nonempty("Sim.Library")?, component: nonempty("Sim.Name").unwrap_or_default(), model: nonempty("Sim.Ibis.Model"), pin_field: nonempty("Sim.Ibis.Pin") })
+}
+
+/// IBIS files referenced by the board: (Sim.Library as written, devices using it).
+pub fn ibis_libraries(board: &Board) -> Vec<(String, Vec<String>)> {
+    let mut m: BTreeMap<String, (String, Vec<String>)> = BTreeMap::new();
+    for f in board.footprints.iter().filter(|f| !f.dnp) {
+        if let Some(r) = ibis_ref(f) {
+            m.entry(IbisLibs::key(&r.library)).or_insert_with(|| (r.library.clone(), vec![])).1.push(f.reference.clone());
+        }
+    }
+    m.into_values()
+        .map(|(l, mut d)| {
+            d.sort_by(|a, b| natural_cmp(a, b));
+            (l, d)
+        })
+        .collect()
+}
+
+/// Loaded IBIS files, found by file name (the path in Sim.Library is matched by its
+/// last component, so `${KIPRJMOD}/ibis/x.ibs` finds a loaded `x.ibs`).
+#[derive(Debug, Default)]
+pub struct IbisLibs {
+    files: Vec<(String, String, Result<crate::ibis::IbisFile, String>)>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct IbisLibInfo {
+    pub name: String,
+    pub ok: bool,
+    pub error: Option<String>,
+    pub version: String,
+    pub components: Vec<String>,
+    pub models: usize,
+}
+
+impl IbisLibs {
+    pub fn key(path: &str) -> String {
+        path.trim().rsplit(['/', '\\']).next().unwrap_or("").to_ascii_lowercase()
+    }
+    /// Add (or replace) a file; returns its summary.
+    pub fn add(&mut self, name: &str, text: &str) -> IbisLibInfo {
+        let k = Self::key(name);
+        self.files.retain(|f| f.0 != k);
+        self.files.push((k, name.to_string(), crate::ibis::parse(text)));
+        self.info().pop().unwrap()
+    }
+    pub fn get(&self, library: &str) -> Option<&Result<crate::ibis::IbisFile, String>> {
+        let k = Self::key(library);
+        self.files.iter().find(|f| f.0 == k).map(|f| &f.2)
+    }
+    pub fn is_empty(&self) -> bool {
+        self.files.is_empty()
+    }
+    pub fn info(&self) -> Vec<IbisLibInfo> {
+        self.files
+            .iter()
+            .map(|(_, n, r)| match r {
+                Ok(f) => IbisLibInfo { name: n.clone(), ok: true, error: None, version: f.version.clone(), components: f.components.iter().map(|c| c.name.clone()).collect(), models: f.models.len() },
+                Err(e) => IbisLibInfo { name: n.clone(), ok: false, error: Some(e.clone()), version: String::new(), components: vec![], models: 0 },
+            })
+            .collect()
+    }
+}
+
+/// IBIS model of one lane end.
+#[derive(Debug, Clone, Serialize)]
+pub struct IbisEnd {
+    pub refdes: String,
+    pub pin: String,
+    pub library: String,
+    pub component: String,
+    /// "ok", "missing" (file not loaded) or "error"
+    pub status: String,
+    pub message: Option<String>,
+    pub linear: Option<crate::ibis::Linear>,
+}
+
+pub fn ibis_end(end: &EndPin, libs: &IbisLibs) -> Option<IbisEnd> {
+    let r = end.ibis.as_ref()?;
+    let mut e = IbisEnd { refdes: end.refdes.clone(), pin: end.pin.clone(), library: r.library.clone(), component: r.component.clone(), status: "ok".into(), message: None, linear: None };
+    match libs.get(&r.library) {
+        None => {
+            e.status = "missing".into();
+            e.message = Some(format!("IBIS file {} not loaded", IbisLibs::key(&r.library)));
+        }
+        Some(Err(err)) => {
+            e.status = "error".into();
+            e.message = Some(err.clone());
+        }
+        Some(Ok(f)) => match f.linear(&r.component, &end.pin, r.model.as_deref()) {
+            Ok(l) => e.linear = Some(l),
+            Err(err) => match r.pin_field.as_deref().map(|p| f.linear(&r.component, p, r.model.as_deref())) {
+                // single-pin simulation symbol: the pin comes from Sim.Ibis.Pin
+                Some(Ok(mut l)) => {
+                    l.notes.push(format!("pad {} not in [Pin]: pin {} from Sim.Ibis.Pin", end.pin, l.pin));
+                    e.linear = Some(l);
+                }
+                _ => {
+                    e.status = "error".into();
+                    e.message = Some(err);
+                }
+            },
+        },
+    }
+    Some(e)
+}
+
+/// Transmitter and receiver models of a lane: IBIS where the end device has a
+/// loaded model, otherwise the profile's.
+#[derive(Debug, Clone, Serialize)]
+pub struct LaneEnds {
+    pub tx: Option<crate::eye::EndModel>,
+    pub rx: Option<crate::eye::EndModel>,
+    /// 10-90 % edge (s)
+    pub rise: Option<f64>,
+    /// open-circuit swing of an IBIS transmitter (V)
+    pub v_swing: Option<f64>,
+    pub tx_ibis: bool,
+    pub rx_ibis: bool,
+    pub tx_source: String,
+    pub rx_source: String,
+    /// per entry of `lane.ends`
+    pub ibis: Vec<Option<IbisEnd>>,
+}
+
+pub fn lane_ends(lane: &Lane, reversed: bool, libs: &IbisLibs, profile: (Option<crate::eye::EndModel>, Option<crate::eye::EndModel>, Option<f64>)) -> LaneEnds {
+    let ibis: Vec<Option<IbisEnd>> = lane.ends.iter().map(|e| ibis_end(e, libs)).collect();
+    let (tx_i, rx_i) = if reversed { (1, 0) } else { (0, 1) };
+    let lin = |i: usize| ibis.get(i).and_then(|e| e.as_ref()).and_then(|e| e.linear.as_ref());
+    let label = |i: usize, l: &crate::ibis::Linear| format!("IBIS {}.{} {} ({}, linearised)", lane.ends[i].refdes, lane.ends[i].pin, l.model, l.model_type);
+    let mut le = LaneEnds { tx: profile.0, rx: profile.1, rise: profile.2, v_swing: None, tx_ibis: false, rx_ibis: false, tx_source: "profile".into(), rx_source: "profile".into(), ibis: vec![] };
+    if lane.ends.len() == 2 {
+        if let Some(l) = lin(tx_i) {
+            match l.tx {
+                Some(t) => {
+                    le.tx = Some(t);
+                    le.v_swing = l.v_swing;
+                    le.rise = l.rise.or(le.rise);
+                    le.tx_ibis = true;
+                    le.tx_source = label(tx_i, l);
+                }
+                None => le.tx_source = format!("profile ({}.{} {} is {} in IBIS)", lane.ends[tx_i].refdes, lane.ends[tx_i].pin, l.model, if l.model_type.is_empty() { "no driver" } else { &l.model_type }),
+            }
+        }
+        if let Some(l) = lin(rx_i) {
+            le.rx = Some(l.rx);
+            le.rx_ibis = true;
+            le.rx_source = label(rx_i, l);
+        }
+    }
+    le.ibis = ibis;
+    le
+}
+
+/// Swing in mV that the eye's 100 % stands for with an IBIS transmitter: open-circuit
+/// swing divided onto the receiver termination actually used; differential lanes
+/// give the differential peak-to-peak value (twice the line swing).
+pub fn ibis_swing_mv(le: &LaneEnds, rx_used: Option<crate::eye::EndModel>, diff: bool) -> Option<f64> {
+    let v = le.v_swing?;
+    let rs = le.tx?.r.max(0.0);
+    let k = match rx_used {
+        Some(r) if r.r > 0.0 => r.r / (rs + r.r),
+        _ => 1.0,
+    };
+    Some(v * k * 1000.0 * if diff { 2.0 } else { 1.0 })
+}
+
+/// Use IBIS model types to set the direction of point-to-point lanes: an end that
+/// can only drive (Output, 3-state, …) transmits to an end that can only receive.
+pub fn apply_ibis_direction(buses: &mut [Bus], libs: &IbisLibs) {
+    if libs.is_empty() {
+        return;
+    }
+    for l in buses.iter_mut().flat_map(|b| b.lanes.iter_mut()) {
+        if l.ends.len() != 2 {
+            continue;
+        }
+        let ty: Vec<Option<String>> = l.ends.iter().map(|e| ibis_end(e, libs).and_then(|x| x.linear).map(|x| x.model_type.to_ascii_lowercase())).collect();
+        let only_out = |t: &Option<String>| t.as_deref().is_some_and(|t| t.starts_with("output") || t.starts_with("3-state") || t.starts_with("open"));
+        let only_in = |t: &Option<String>| t.as_deref().is_some_and(|t| t.starts_with("input"));
+        for (tx, rx) in [(0usize, 1usize), (1, 0)] {
+            if only_out(&ty[tx]) && !only_out(&ty[rx]) || only_in(&ty[rx]) && !only_in(&ty[tx]) {
+                l.rx_end = rx;
+                l.direction = format!("IBIS: {} drives, {} receives", l.ends[tx].refdes, l.ends[rx].refdes);
+                break;
+            }
+        }
+    }
+}
+
 /// Result of evaluating a lane: the interconnect channel (without terminations),
 /// the eye (IC to IC only) and the skew to the partner line.
 pub struct LaneEval {
@@ -786,9 +1000,23 @@ pub struct LaneEval {
     pub skew: Option<(f64, f64, String, bool)>,
 }
 
+/// Eye settings of a lane evaluation.
+#[derive(Debug, Clone)]
+pub struct EyeSpec {
+    pub bitrate: f64,
+    pub rise: f64,
+    pub prbs: u32,
+    pub tx: Option<crate::eye::EndModel>,
+    pub rx: Option<crate::eye::EndModel>,
+    /// the receiver resistance is a real on-die termination (IBIS): it stays in
+    /// parallel with a termination resistor next to the receiver; otherwise
+    /// (profile value) that resistor replaces it
+    pub rx_odt: bool,
+}
+
 /// Evaluate a lane. `reversed`: transmit from `ends[1]` to `ends[0]` (use
-/// `lane.rx_end == 0` for the guessed direction). `eye`: bit rate, rise, PRBS
-/// order, transmitter, receiver of the profile.
+/// `lane.rx_end == 0` for the guessed direction). `eye`: bit rate, edge, PRBS
+/// order and the end models (see `lane_ends`).
 pub fn lane_eval(
     board: &Board,
     an: &Analysis,
@@ -796,13 +1024,13 @@ pub fn lane_eval(
     lane: &Lane,
     target: Option<(f64, bool)>,
     rp: &RfParams,
-    eye: Option<(f64, f64, u32, Option<crate::eye::EndModel>, Option<crate::eye::EndModel>)>,
+    eye: Option<EyeSpec>,
     reversed: bool,
     cd: &ComponentData,
 ) -> Result<LaneEval, String> {
     let ch = lane_channel(board, an, lane, field, target, rp, reversed, false, cd)?;
     let mut out = LaneEval { ch, eye: None, rx_used: None, rx_note: None, skew: None };
-    if let (Some((bitrate, rise, prbs, tx, rx)), true) = (eye, lane.kind == "ic-ic") {
+    if let (Some(EyeSpec { bitrate, rise, prbs, tx, rx, rx_odt }), true) = (eye, lane.kind == "ic-ic") {
         // a termination resistor next to the receiver acts as the receiver's
         // termination (R/2 per line in odd mode when it sits across the pair);
         // terminations elsewhere (source side) stay in the channel
@@ -812,12 +1040,17 @@ pub fn lane_eval(
         let others = terminations(lane).count() > at_rx.len();
         let mut rx_model = rx;
         if !at_rx.is_empty() {
-            let g: f64 = at_rx.iter().map(|t| 1.0 / (t.part.val.unwrap_or(1e9).max(1e-3) * if t.across { 0.5 } else { 1.0 })).sum();
+            let mut g: f64 = at_rx.iter().map(|t| 1.0 / (t.part.val.unwrap_or(1e9).max(1e-3) * if t.across { 0.5 } else { 1.0 })).sum();
+            let odt = rx.filter(|r| rx_odt && r.r > 0.0).map(|r| r.r);
+            if let Some(r) = odt {
+                g += 1.0 / r;
+            }
             rx_model = Some(crate::eye::EndModel { r: 1.0 / g, ..rx.unwrap_or_default() });
             out.rx_note = Some(format!(
-                "termination {} at {} used as the receiver termination ({:.0} Ω per line)",
+                "termination {} at {}{} used as the receiver termination ({:.0} Ω per line)",
                 at_rx.iter().map(|t| t.part.refdes.as_str()).collect::<Vec<_>>().join(", "),
                 lane.ends[rx_end].refdes,
+                odt.map(|r| format!(" ∥ on-die {r:.0} Ω")).unwrap_or_default(),
                 1.0 / g
             ));
         }
@@ -854,16 +1087,22 @@ pub fn check_lane(
     target: Option<(f64, bool)>,
     rp: &RfParams,
     gbps: f64,
-    ends: (Option<crate::eye::EndModel>, Option<crate::eye::EndModel>, Option<f64>),
+    profile_ends: (Option<crate::eye::EndModel>, Option<crate::eye::EndModel>, Option<f64>),
     reversed: bool,
     cd: &ComponentData,
+    libs: &IbisLibs,
 ) -> crate::eye::CheckRow {
     let mut row = crate::eye::empty_row(lane.nets[0], lane.name.clone(), gbps);
     let rp = RfParams { fmax: rp.fmax.max(gbps * 1e9 * 1.25), ..rp.clone() };
-    let (tx, rx, rise) = ends;
-    match lane_eval(board, an, field, lane, target, &rp, Some((gbps * 1e9, rise.unwrap_or(rp.rise), 7, tx, rx)), reversed, cd) {
+    let le = lane_ends(lane, reversed, libs, profile_ends);
+    let (tx, rx, rise) = (le.tx, le.rx, le.rise.unwrap_or(rp.rise));
+    if lane.kind == "ic-ic" && (le.tx_ibis || le.rx_ibis) {
+        row.ends = Some(format!("transmitter: {} · receiver: {}", le.tx_source, le.rx_source));
+    }
+    let spec = EyeSpec { bitrate: gbps * 1e9, rise, prbs: 7, tx, rx, rx_odt: le.rx_ibis };
+    match lane_eval(board, an, field, lane, target, &rp, Some(spec), reversed, cd) {
         Ok(ev) => {
-            crate::eye::fill_row(&mut row, &ev.ch, gbps, rise.unwrap_or(rp.rise), (tx, rx), false);
+            crate::eye::fill_row(&mut row, &ev.ch, gbps, rise, (tx, rx), false);
             match ev.eye {
                 Some(Ok(e)) => {
                     row.eye = true;
@@ -906,5 +1145,26 @@ mod tests {
         assert_eq!(cd.role("P1"), "connector");
         assert_eq!(cd.role("MH1"), "other");
         assert_eq!(natural_cmp("PET2", "PET10"), std::cmp::Ordering::Less);
+    }
+
+    #[test]
+    fn ibis_fields() {
+        let props = |v: &[(&str, &str)]| v.iter().map(|(a, b)| (a.to_string(), b.to_string())).collect();
+        let fp = crate::board::Footprint { reference: "U1".into(), value: "X".into(), at: [0.0, 0.0], dnp: false,
+            props: props(&[("Sim.Device", "IBIS"), ("Sim.Library", "${KIPRJMOD}/models/Chip.IBS"), ("Sim.Name", "CHIP"), ("Sim.Ibis.Model", "")]) };
+        let r = ibis_ref(&fp).unwrap();
+        assert_eq!((r.library.as_str(), r.component.as_str(), r.model.is_none()), ("${KIPRJMOD}/models/Chip.IBS", "CHIP", true));
+        assert_eq!(IbisLibs::key(&r.library), "chip.ibs");
+        assert_eq!(IbisLibs::key(r"C:\lib\x.ibs"), "x.ibs");
+        let spice = crate::board::Footprint { props: props(&[("Sim.Device", "D"), ("Sim.Library", "d.lib")]), ..fp.clone() };
+        assert!(ibis_ref(&spice).is_none());
+        let mut libs = IbisLibs::default();
+        let info = libs.add("chip.ibs", "[IBIS Ver] 3.2\n[Component] CHIP\n[Pin] signal_name model_name\n1 A OUT\n[Model] OUT\nModel_type Input\nC_comp 1p\n[END]\n");
+        assert!(info.ok, "{:?}", info.error);
+        let end = EndPin { refdes: "U1".into(), pin: "1".into(), value: "X".into(), role: "ic".into(), net: 1, at: [0.0, 0.0], ibis: Some(r) };
+        let e = ibis_end(&end, &libs).unwrap();
+        assert_eq!(e.status, "ok");
+        assert!((e.linear.unwrap().rx.c_pf - 1.0).abs() < 1e-9);
+        assert_eq!(ibis_end(&end, &IbisLibs::default()).unwrap().status, "missing");
     }
 }

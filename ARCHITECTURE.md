@@ -25,7 +25,7 @@ interface; data that changes (standards, component values) lives in files, not i
 | Crate | Contents | depends on |
 |---|---|---|
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, viewer scene, `num` | – |
-| `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,crosstalk}`, `via`, `eye`, `profile`, `topology` (device-to-device lanes) | kisi-board |
+| `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,crosstalk}`, `via`, `eye`, `profile`, `topology` (device-to-device lanes), `ibis` (IBIS → linear ends, experimental – not working yet) | kisi-board |
 | `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `pdn` (Z(f), plane model) | kisi-board, kisi-sparse |
 | `kisi-core` | facade with stable paths (`kisi_core::rf`, …) and `service` | the three above |
 | `kisi-wasm` | C ABI for the browser | kisi-core |
@@ -48,7 +48,8 @@ viewer (via WASM), CLI and MCP show the same result.
 * Hand-over from outside: `const PRELOAD = null; /*KISI_PRELOAD*/` is replaced by the KiCad plugin or by
   `kisi_open_viewer` – the viewer itself stays independent.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
-  net class → profile assignment, power settings.
+  net class → profile assignment, power settings, lane directions. Loaded IBIS files and the results of the
+  last three boards stay in memory for the session.
 
 ## Data (`data/`)
 * `components.json` – parasitics of passives in a channel (per package) and reference-designator roles.

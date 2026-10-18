@@ -1,6 +1,7 @@
 //! kisi – command line front end for kisi-core.
 //!
 //! Usage: kisi <board.kicad_pcb> [--pro <file.kicad_pro>] [--json <out.json>] [--step <mm>] [--nets <filter>]
+//!        kisi <file.ibs>            linear transmitter/receiver models of all signal pins
 
 use kisi_core::extract::{compared_z, Kind};
 use kisi_core::{analyze, apply_project, load_pcb, Params};
@@ -13,6 +14,11 @@ fn main() {
         std::process::exit(2);
     }
     let pcb_path = &args[1];
+    if pcb_path.to_ascii_lowercase().ends_with(".ibs") {
+        print_ibis(pcb_path);
+        return;
+    }
+    let mut extra_ibis: Vec<String> = vec![];
     let mut pro_path: Option<String> = None;
     let mut json_out: Option<String> = None;
     let mut filter: Option<String> = None;
@@ -87,6 +93,10 @@ fn main() {
             }
             "--field" => {
                 field_in = args.get(i + 1).cloned();
+                i += 1;
+            }
+            "--ibis" => {
+                extra_ibis.extend(args.get(i + 1).cloned());
                 i += 1;
             }
             _ => {}
@@ -363,7 +373,33 @@ fn main() {
     if list_buses {
         let cd = kisi_core::topology::ComponentData::builtin();
         let short = |n: &str| n.rsplit('/').next().unwrap_or(n).to_string();
-        for b in kisi_core::topology::buses(&board, &an, &cd) {
+        // IBIS files named in Sim.Library (found next to the board) and given with --ibis
+        let mut libs = kisi_core::topology::IbisLibs::default();
+        let dir = std::path::Path::new(pcb_path).parent().map(|d| d.to_path_buf()).unwrap_or_default();
+        for f in &extra_ibis {
+            match std::fs::read_to_string(f) {
+                Ok(t) => {
+                    libs.add(f, &t);
+                }
+                Err(e) => eprintln!("warning: {f}: {e}"),
+            }
+        }
+        for (lib, devs) in kisi_core::topology::ibis_libraries(&board) {
+            if libs.get(&lib).is_none() {
+                if let Some(t) = kisi_core::service::find_library(&lib, &dir).and_then(|f| std::fs::read_to_string(f).ok()) {
+                    libs.add(&lib, &t);
+                }
+            }
+            let st = match libs.get(&lib) {
+                None => "not found".to_string(),
+                Some(Err(e)) => format!("error: {e}"),
+                Some(Ok(f)) => format!("loaded ({} component(s), {} model(s))", f.components.len(), f.models.len()),
+            };
+            println!("IBIS {lib} for {}: {st}", devs.join(", "));
+        }
+        let mut buses = kisi_core::topology::buses(&board, &an, &cd);
+        kisi_core::topology::apply_ibis_direction(&mut buses, &libs);
+        for b in buses {
             println!("{}  [{}] {} · {} lane(s) · {}", b.name, b.kind, b.class, b.lanes.len(), b.values.join(" / "));
             for l in &b.lanes {
                 let chain: Vec<String> = l
@@ -386,7 +422,13 @@ fn main() {
                     let pid = profiles.auto(board.net_name(tnet), &l.class, l.diff).to_string();
                     if let Some(prof) = profiles.get(&pid) {
                         let rp = kisi_core::rf::RfParams::default();
-                        let row = kisi_core::topology::check_lane(&board, &an, &params.field, l, t, &rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, &cd);
+                        let row = kisi_core::topology::check_lane(&board, &an, &params.field, l, t, &rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, &cd, &libs);
+                        if let Some(e) = &row.ends {
+                            println!("        ends: {e}");
+                        }
+                        for e in l.ends.iter().filter_map(|e| kisi_core::topology::ibis_end(e, &libs)).filter(|e| e.status != "ok") {
+                            println!("        IBIS {}.{}: {}", e.refdes, e.pin, e.message.unwrap_or_default());
+                        }
                         println!("        RX {} ({}) · {} {:.2} Gbit/s: {:.1} mm, IL {:.2} dB @ Nyquist, RL {:.1} dB{}{}{}", l.ends[l.rx_end].refdes, l.direction, pid, prof.rate_gbps, row.length_mm, row.il_nyq_db, row.rl_db,
                             if row.eye { format!(", eye {:.0} % / {:.0} % UI", row.eye_height * 100.0, row.eye_width_ui * 100.0) } else { ", no eye (connector)".into() },
                             row.skew_ps.map(|k| format!(", skew {:.1} ps", k)).unwrap_or_default(),
@@ -606,5 +648,40 @@ fn truncate(s: &str, n: usize) -> String {
     } else {
         let k: String = s.chars().rev().take(n - 1).collect::<Vec<_>>().into_iter().rev().collect();
         format!("…{k}")
+    }
+}
+
+/// `kisi file.ibs`: the linear models of every signal pin.
+fn print_ibis(path: &str) {
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| {
+        eprintln!("{path}: {e}");
+        std::process::exit(1)
+    });
+    let f = match kisi_core::ibis::parse(&text) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{path}: {e}");
+            std::process::exit(1)
+        }
+    };
+    println!("IBIS {} · {} component(s), {} model(s), {} selector(s) · typical corner, linearised (EXPERIMENTAL, not working yet)", f.version, f.components.len(), f.models.len(), f.selectors.len());
+    for c in &f.components {
+        println!("\n[Component] {}", c.name);
+        println!("  {:<6} {:<12} {:<14} {:<11} {:>8} {:>8} {:>8} {:>8}   {:>8} {:>7} {:>6}", "pin", "signal", "model", "type", "TX Ω", "V @50Ω", "10-90ps", "", "RX Ω", "C pF", "L nH");
+        for p in &c.pins {
+            match f.linear(&c.name, &p.pin, None) {
+                Ok(l) => {
+                    let (r, sw, tr) = match l.tx {
+                        Some(t) => (format!("{:.1}", t.r), l.v_swing.map(|v| format!("{:.3}", v * 50.0 / (t.r + 50.0))).unwrap_or("-".into()), l.rise.map(|r| format!("{:.0}", r * 1e12)).unwrap_or("-".into())),
+                        None => ("-".into(), "-".into(), "-".into()),
+                    };
+                    let rx = if l.rx.r > 0.0 { format!("{:.0}", l.rx.r) } else { "high-Z".into() };
+                    println!("  {:<6} {:<12} {:<14} {:<11} {:>8} {:>8} {:>8} {:>8}   {:>8} {:>7.2} {:>6.2}{}", p.pin, p.signal, l.model, l.model_type, r, sw, tr, "", rx, l.rx.c_pf, l.rx.l_nh,
+                        if l.notes.is_empty() { String::new() } else { format!("  ({})", l.notes.join("; ")) });
+                }
+                Err(e) if !["POWER", "GND", "NC"].iter().any(|x| p.model.eq_ignore_ascii_case(x)) => println!("  {:<6} {:<12} {}", p.pin, p.signal, e),
+                Err(_) => {}
+            }
+        }
     }
 }

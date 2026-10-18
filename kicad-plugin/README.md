@@ -22,3 +22,5 @@ Actions: “kisi: Open viewer” (toolbar) and “kisi: Check channel” (starts
 ## How it works
 The viewer stays independent: in a copy of `kisi.html` the plugin only replaces the line
 `const PRELOAD = null; /*KISI_PRELOAD*/` with the board (gzip + base64) and opens the file in the browser.
+IBIS files named in the footprints' simulation fields (`Sim.Device` = IBIS, `Sim.Library`) are embedded as well
+(resolved like KiCad: `${KIPRJMOD}`, relative to the project, else by file name in the project folder; up to 64 MB each).

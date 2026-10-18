@@ -3,6 +3,15 @@
 // files
 async function handleFiles(files) {
   files = [...files];
+  const ibs = files.filter((f) => /\.ibs$/i.test(f.name));
+  if (ibs.length) {
+    const list = await Promise.all(ibs.map(async (f) => ({ name: f.name, text: await f.text() })));
+    const res = loadIbisTexts(list);
+    const bad = res.filter((r) => !r.ok);
+    $("warnings").innerHTML = bad.map((r) => `<span class="err">${esc(r.name)}: ${esc(r.error)}</span>`).join("<br>");
+    if (files.length === ibs.length) return;
+    files = files.filter((f) => !ibs.includes(f));
+  }
   const pcb = files.find((f) => f.name.endsWith(".kicad_pcb"));
   const pro = files.find((f) => f.name.endsWith(".kicad_pro"));
   const cfg = files.find((f) => f.name.endsWith(".json"));
@@ -16,7 +25,7 @@ async function handleFiles(files) {
     try { S.engine.loadPro(await pro.text()); S.scene = S.engine.scene(); runAnalysis(); } catch (e) { $("warnings").innerHTML = `<span class="err">Project file: ${esc(e.message)}</span>`; }
     return;
   }
-  if (!pcb) { $("warnings").innerHTML = `<span class="err">Please choose a .kicad_pcb file (optionally also the .kicad_pro for net classes).</span>`; return; }
+  if (!pcb) { $("warnings").innerHTML = `<span class="err">Please choose a .kicad_pcb file (optionally also the .kicad_pro for net classes and .ibs files for IBIS models).</span>`; return; }
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
   await loadFiles(await pcb.text(), pro ? await pro.text() : null, pcb.name.replace(/\.kicad_pcb$/, ""));
 }
@@ -41,6 +50,8 @@ async function loadPreload(pl) {
   // gzip+base64 from the KiCad plugin, plain text from kisi-mcp
   const pcb = pl.pcb_text != null ? pl.pcb_text : await gunzipB64(pl.pcb);
   const pro = pl.pro_text != null ? pl.pro_text : pl.pro ? await gunzipB64(pl.pro) : null;
+  // IBIS files referenced by the footprints (before the board, so the lanes see them)
+  if (pl.ibis && pl.ibis.length) loadIbisTexts(await Promise.all(pl.ibis.map(async (f) => ({ name: f.name, text: f.text != null ? f.text : await gunzipB64(f.data) }))));
   await loadFiles(pcb, pro, pl.name);
   if (pl.net) {
     // a net handed over from KiCad: show its impedances right away (step 2)

@@ -10,13 +10,14 @@ Structure and update rules: `ARCHITECTURE.md`. Integration: KiCad plugin (`kicad
 AI agents (`crates/kisi-mcp`, Claude Code plugin in `claude-plugin/`).
 
 ## Workflow in the viewer
-1. Load a board (`.kicad_pcb`, optionally `.kicad_pro`, optionally `kipida_config.json`).
+1. Load a board (`.kicad_pcb`, optionally `.kicad_pro`, `.ibs` IBIS models, `kipida_config.json`).
 2. The fast analysis runs immediately: impedance by formula, DC IR drop of all configured rails.
 3. Start the field solver for the selected net, one net class, all nets with a target, or everything.
 4. **Impedance** view: line analysis (impedance, loss, TDR, vias, crosstalk) against a reference resistance.
    **Channel** view: “Interfaces” overview of all buses and device-to-device lanes (through series resistors
    and AC-coupling capacitors, with terminations), interface profile per net class (PCIe, USB, DDR, … from
-   `data/interfaces.json`), transmitter and receiver, limits – eye from IC to IC, board share for lanes ending at a connector.
+   `data/interfaces.json`), transmitter and receiver (profile or linearised IBIS model), limits – eye from IC to IC,
+   board share for lanes ending at a connector.
    **Power** view: IR drop, power budget, Z(f).
 5. Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer (stored in the browser; the file is not changed).
    Field solver results are cached in the browser (IndexedDB) across boards; key = solver version + geometry.
@@ -105,7 +106,26 @@ give the same budget with the fields as with the JSON tree).
   end (swappable in the viewer).
 - Eye only from IC to IC; lanes ending at a connector get the board share (loss, return loss, skew).
 - CLI: `kisi board.kicad_pcb --buses`; MCP: `kisi_interfaces`, `kisi_channel_check` (lane based).
-- Next (M7b): linear IBIS ends from KiCad's simulation fields (Sim.Device=IBIS, Sim.Library, Sim.Name).
+
+## IBIS models as channel ends (M7b) – experimental, not working yet
+> **Status: not working yet.** The parser and the linearisation are in place, but neither the selection of the
+> right IBIS model per pin nor the interplay with the signal standards (profiles) is validated. Results with IBIS
+> ends must not be relied on; this milestone is parked and will be reworked.
+
+- Source: KiCad's simulation fields of a symbol, copied to the footprint on “Update PCB”: `Sim.Device` = `IBIS`,
+  `Sim.Library` (the .ibs file), `Sim.Name` (component in the file), optionally `Sim.Ibis.Model` (entry of a
+  [Model Selector], e.g. the ODT variant). The pad number of a lane end is looked up in the component's [Pin] table.
+- `crates/kisi-si/src/ibis.rs` reduces a pin to the linear end model of the eye (typical corner):
+  transmitter = pull-up/pull-down I-V curves linearised at the [Ramp] load (Thevenin resistance and swing),
+  edge from [Ramp] (20–80 % → 10–90 %); receiver = conductance of the clamp curves and [Rgnd]/[Rpower] at mid supply
+  (on-die termination or high impedance); C_comp + C_pin/C_pkg, L_pin/L_pkg. Waveform tables, IBIS-AMI and package
+  models are not evaluated – the result is marked as an estimate.
+- Ends with a model replace the profile's transmitter/receiver; an on-die termination stays in parallel with a
+  termination resistor at the receiver. IBIS model types (Output/Input) also set the lane direction.
+- Files: the KiCad plugin and `kisi_open_viewer` embed the referenced files; in the viewer they can also be dropped
+  or loaded with “Load .ibs files…” (Interfaces overview). CLI and MCP find them like KiCad (`${KIPRJMOD}`,
+  relative to the board, else by file name below the board folder). `kisi file.ibs` lists the linear model of
+  every signal pin; `kisi board.kicad_pcb --buses --ibis extra.ibs` adds files.
 
 ## Field solver
 - Quasi-static 2D field solver: js_2d_fields by Henrik Forstén, included unmodified (see `UPSTREAM.md`).

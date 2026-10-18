@@ -25,7 +25,9 @@ const INSTRUCTIONS: &str = "kisi analyses KiCad boards (.kicad_pcb, with the .ki
 Start with kisi_overview to see stackup and impedance compliance per net class, kisi_interfaces for the buses and \
 device-to-device lanes, then kisi_net for single nets (impedance along the path, losses, TDR, vias, crosstalk) or \
 kisi_channel_check for eye/loss/skew checks of the lanes against interface profiles (PCIe, USB, DDR, LVDS, ... see kisi_profiles). kisi_power covers regulator chains (PI_REG/PI_LOAD \
-fields), DC IR drop and PDN impedance. Impedances in these tools come from closed-form formulas; the 2D field solver \
+fields), DC IR drop and PDN impedance. Devices with IBIS models in their KiCad simulation fields (Sim.Device=IBIS, \
+Sim.Library, Sim.Name, optional Sim.Ibis.Model) get linearised IBIS transmitters/receivers in the eye (EXPERIMENTAL, not working yet – report such results as unvalidated); the .ibs files are \
+looked up next to the board (see ibis_files in kisi_interfaces). Impedances in these tools come from closed-form formulas; the 2D field solver \
 runs only in the browser viewer (kisi_open_viewer). Values are design-check estimates, not signoff results; always \
 state the models and assumptions reported in the 'models' fields.";
 
@@ -59,7 +61,7 @@ fn tools() -> Value {
         {
             "name": "kisi_interfaces",
             "title": "Interfaces: buses and device-to-device lanes",
-            "description": "Which signals and buses the board has: every net with a target impedance followed from device pin to device pin through series resistors and AC-coupling capacitors, with terminations, branches and the interface profile each bus gets. kind ic-ic lanes get an eye in kisi_channel_check, ic-connector lanes only the board share (loss, return loss, skew).",
+            "description": "Which signals and buses the board has: every net with a target impedance followed from device pin to device pin through series resistors and AC-coupling capacitors, with terminations, branches and the interface profile each bus gets, plus the IBIS models found for the end pins (ibis_files: referenced .ibs files and whether they were found). kind ic-ic lanes get an eye in kisi_channel_check, ic-connector lanes only the board share (loss, return loss, skew).",
             "inputSchema": {"type": "object", "properties": {
                 "pcb": pcb,
                 "classes": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Net class → profile id (see kisi_profiles)"},
@@ -69,7 +71,7 @@ fn tools() -> Value {
         {
             "name": "kisi_channel_check",
             "title": "Channel check against interface profiles",
-            "description": "Checks every device-to-device lane (see kisi_interfaces): loss at Nyquist, return loss, intra-pair skew and via-stub resonance; the eye (PRBS7 with the profile's linear transmitter/receiver, no equalisation) only from IC to IC. Judged green/yellow/red against the profile limits. Profiles are assigned automatically from net and class names unless given per class.",
+            "description": "Checks every device-to-device lane (see kisi_interfaces): loss at Nyquist, return loss, intra-pair skew and via-stub resonance; the eye (PRBS7, no equalisation) only from IC to IC, with linearised IBIS transmitters/receivers where the devices have IBIS models (end_models says which), else the profile's linear ends. Judged green/yellow/red against the profile limits. Profiles are assigned automatically from net and class names unless given per class.",
             "inputSchema": {"type": "object", "properties": {
                 "pcb": pcb,
                 "classes": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Net class → profile id (see kisi_profiles), e.g. {\"PCIe\": \"pcie3\"}"},
@@ -222,7 +224,15 @@ fn open_viewer(args: &Value) -> Result<Value, String> {
     let text = std::fs::read_to_string(&pcb).map_err(|e| format!("{}: {e}", pcb.display()))?;
     let pro = std::fs::read_to_string(pcb.with_extension("kicad_pro")).ok();
     let name = pcb.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-    let pl = json!({"name": name, "pcb_text": text, "pro_text": pro, "net": args["net"], "view": args["view"].as_str().unwrap_or("si")});
+    // IBIS files named in the footprints' simulation fields travel with the board
+    let dir = pcb.parent().map(PathBuf::from).unwrap_or_default();
+    let ibis: Vec<Value> = kisi_core::load_pcb(&text)
+        .map(|b| kisi_core::topology::ibis_libraries(&b))
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|(lib, _)| kisi_core::service::find_library(&lib, &dir).and_then(|f| std::fs::read_to_string(f).ok()).map(|t| json!({"name": lib, "text": t})))
+        .collect();
+    let pl = json!({"name": name, "pcb_text": text, "pro_text": pro, "net": args["net"], "view": args["view"].as_str().unwrap_or("si"), "ibis": ibis});
     let out = std::env::temp_dir().join(format!("kisi_{name}.html"));
     let html = html.replacen(marker, &(pl.to_string().replace("</", "<\\/") + ";"), 1);
     std::fs::write(&out, html).map_err(|e| e.to_string())?;

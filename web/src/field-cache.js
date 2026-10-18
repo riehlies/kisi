@@ -45,30 +45,49 @@ const Cache = {
   },
 };
 
+// worker threads: "auto" = one less than the logical cores (max. 6), or a fixed number
+const CORES = navigator.hardwareConcurrency || 2;
+const THREADS_KEY = "kisi.threads.v1";
+const autoThreads = () => Math.max(1, Math.min(6, CORES - 1));
+function threadCount() { const t = lsGet(THREADS_KEY); return t ? Math.max(1, Math.min(CORES, t)) : autoThreads(); }
+function initThreadSelect() {
+  const sel = $("fs-threads"), cur = lsGet(THREADS_KEY);
+  sel.innerHTML = `<option value="">auto (${autoThreads()})</option>` +
+    Array.from({ length: CORES }, (_, i) => `<option value="${i + 1}" ${cur === i + 1 ? "selected" : ""}>${i + 1}</option>`).join("");
+  sel.title = `${CORES} logical cores reported by the browser`;
+  sel.onchange = () => {
+    lsSet(THREADS_KEY, sel.value ? +sel.value : null);
+    // takes effect now if idle, otherwise for the next run
+    if (S.pool && !S.pool.running) { S.pool.terminate(); S.pool = null; }
+    renderFieldStatus();
+  };
+}
+initThreadSelect();
+
 class FieldPool {
   constructor() {
-    this.n = Math.max(1, Math.min(6, (navigator.hardwareConcurrency || 2) - 1));
+    this.n = threadCount();
     this.workers = []; this.idle = []; this.queue = []; this.running = false; this.failed = null;
     this.lastApply = 0; this.dirty = false; this.mainThread = false; this.total = 0; this.done_n = 0;
     const sparse = b64ToBytes(SPARSE_B64);
-    const urls = solverModuleUrls(), entry = urls[urls.length - 1];
-    const wurl = URL.createObjectURL(new Blob([WORKER_SRC], { type: "text/javascript" }));
+    const wurl = URL.createObjectURL(new Blob([WORKER_SRC()], { type: "text/javascript" }));
     for (let i = 0; i < this.n; i++) {
       let w;
-      try { w = new Worker(wurl, { type: "module" }); } catch (e) { this.useMainThread(entry, sparse, e); return; }
+      try { w = new Worker(wurl); } catch (e) { this.useMainThread(sparse, e); return; }
       w.onmessage = (e) => this.onMessage(w, e.data);
-      w.onerror = (e) => { if (!this.mainThread) this.useMainThread(entry, sparse, e.message || "worker error"); };
-      w.postMessage({ type: "init", sparse, entry });
+      w.onerror = (e) => { if (!this.mainThread) this.useMainThread(sparse, e.message || "worker error"); };
+      w.postMessage({ type: "init", sparse });
       this.workers.push(w);
     }
   }
-  async useMainThread(entry, sparse, why) {
+  async useMainThread(sparse, why) {
     if (this.mainThread) return;
     this.mainThread = true;
     this.workers.forEach((w) => w.terminate()); this.workers = []; this.idle = [];
     try {
       globalThis.__KISI_SPARSE_WASM__ = sparse;
-      this.backend = await import(entry);
+      if (why) console.warn("kisi: field solver runs on the page (" + why + ")");
+      this.backend = solverOnPage();
       this.n = 1; this.pump();
     } catch (e) {
       this.failed = String(e && e.message || e) + (why ? " / " + why : "");
@@ -77,7 +96,7 @@ class FieldPool {
   }
   onMessage(w, m) {
     if (m.type === "ready") { this.idle.push(w); this.pump(); }
-    else if (m.type === "fail") { const entry = solverModuleUrls().at(-1); this.useMainThread(entry, b64ToBytes(SPARSE_B64), m.error); }
+    else if (m.type === "fail") { this.useMainThread(b64ToBytes(SPARSE_B64), m.error); }
     else if (m.type === "result") { this.done(m.id, m.gen, m.r); this.idle.push(w); this.pump(); }
   }
   done(id, gen, r) {
@@ -128,6 +147,7 @@ class FieldPool {
     renderFieldStatus();
   }
   stop() { this.queue = []; this.running = false; renderFieldStatus(); }
+  terminate() { this.workers.forEach((w) => w.terminate()); this.workers = []; this.idle = []; }
 }
 
 // nets in a solver scope -> geometry ids used by them
@@ -161,8 +181,29 @@ function scopeGeoms(scope) {
   return items;
 }
 
+function renderSteps() {
+  const an = S.an, cls = an.classes.filter((c) => c.target && c.nets);
+  const nets = an.nets.filter((n) => n.target).length;
+  $("st1-text").textContent = `${S.scene.stackup.copper.length} copper layers${S.scene.stackup.from_file ? "" : " (assumed stackup)"}; ${cls.length} net class${cls.length === 1 ? "" : "es"} with a target impedance, ${nets} nets.`;
+  $("st2").classList.toggle("done", !!S.full);
+  $("an-start").hidden = !!S.full;
+  $("st2-text").textContent = S.full
+    ? `Done in ${S.anMs} ms: ${an.unique_cross_sections} distinct cross-sections. Formula values are typically within 5 % for single lines, 5–15 % off for coupled and coplanar lines.`
+    : "Closed-form formulas (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for every track, about a second. Typically within 5 % for single lines, 5–15 % off for coupled and coplanar lines.";
+  $("st3").classList.toggle("locked", !S.full);
+}
+$("an-start").onclick = () => estimateImpedances();
+
 function renderFieldStatus() {
   if (!S.an) return;
+  renderSteps();
+  if (!S.full) {
+    $("fs-start").textContent = "Start"; $("fs-start").disabled = true;
+    $("si-source").textContent = "Available after step 2. 2D field solver (js_2d_fields) for each distinct cross-section: within 2 % of HFSS, seconds to minutes. Results are kept in this browser.";
+    $("fs-cache").textContent = `${S.field.size} cross-sections cached in this browser`;
+    $("fs-text").textContent = ""; $("fs-note").textContent = ""; $("fs-toggle").hidden = true; $("fs-bar").style.width = "0%";
+    return;
+  }
   const pool = S.pool, geos = S.an.geometries;
   // scope selector
   const sel = $("fs-scope"), prev = sel.value;
@@ -175,7 +216,7 @@ function renderFieldStatus() {
   sel.value = opts.some((o) => o[0] === prev) ? prev : (S.selNet >= 0 ? "sel" : "target");
   const ids = scopeGeoms(sel.value);
   const open = ids.filter((x) => !S.field.has(x.id)).length;
-  $("fs-start").textContent = open ? `compute ${open}` : "computed";
+  $("fs-start").textContent = open ? `Compute ${open}` : "Computed";
   $("fs-start").disabled = !open || (pool && pool.running) || (pool && pool.failed);
   // coverage
   const tgt = geos.filter((g) => g.target_length > 0);
@@ -183,9 +224,10 @@ function renderFieldStatus() {
   const doneT = tgt.filter((g) => S.field.get(g.id)?.ok).reduce((a, g) => a + g.target_length, 0);
   const doneAll = geos.filter((g) => S.field.has(g.id)).length;
   const share = totalT ? doneT / totalT : 0;
+  $("st3").classList.toggle("done", totalT > 0 && share > 0.999);
   $("si-source").textContent = doneAll
-    ? `Field solver for ${Math.round(share * 100)} % of the length with target, formulas elsewhere.`
-    : "Fast analysis with formulas. Start the field solver for more accurate values.";
+    ? `Field solver for ${Math.round(share * 100)} % of the length with target, formulas elsewhere. `
+    : "2D field solver (js_2d_fields) for each distinct cross-section: within 2 % of HFSS, seconds to minutes. Results are kept in this browser.";
   $("fs-cache").textContent = `${S.field.size} cross-sections cached in this browser`;
   if (pool && pool.failed) {
     $("fs-text").textContent = "Field solver unavailable";
@@ -202,6 +244,7 @@ function renderFieldStatus() {
 }
 $("fs-toggle").onclick = () => S.pool && S.pool.stop();
 $("fs-start").onclick = () => {
+  if (S.pool && !S.pool.running && !S.pool.mainThread && S.pool.n !== threadCount()) { S.pool.terminate(); S.pool = null; }
   if (!S.pool) S.pool = new FieldPool();
   S.pool.start(scopeGeoms($("fs-scope").value));
 };

@@ -44,18 +44,31 @@
         <div class="kpi"><span class="v" id="k-nets">–</span><span class="l">nets with target impedance</span></div>
         <div class="kpi"><span class="v" id="k-noref">–</span><span class="l">mm without reference plane</span></div>
       </div>
-      <p class="note" id="si-source">Fast analysis with formulas.</p>
-      <div class="fs" id="fs">
-        <div class="fs-run">
-          <label for="fs-scope" class="fs-l">Field solver for</label>
-          <select id="fs-scope"></select>
-          <button class="btn small primary" id="fs-start">Start</button>
-        </div>
-        <div class="fs-bar" aria-hidden="true"><i id="fs-bar"></i></div>
-        <div class="fs-row"><span id="fs-text"></span><button class="btn small" id="fs-toggle" hidden>Pause</button></div>
-        <p class="note" id="fs-note"></p>
-        <div class="fs-row"><span class="note" id="fs-cache"></span><button class="btn small" id="fs-clear">Clear cache</button></div>
-      </div>
+      <p class="note">Impedance analysis in three steps. Each step refines the one before; the colours on the board show the latest result.</p>
+      <ol class="steps">
+        <li id="st1" class="done">
+          <div class="step-h"><b>Board, stackup and targets</b></div>
+          <span class="note" id="st1-text">Runs on loading: layers and materials, net classes and their target impedances.</span>
+        </li>
+        <li id="st2">
+          <div class="step-h"><b>Impedance estimate</b><button class="btn small primary" id="an-start">Estimate</button></div>
+          <span class="note" id="st2-text">Closed-form formulas (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for every track, about a second. Typically within 5 % for single lines, 5–15 % off for coupled and coplanar lines.</span>
+        </li>
+        <li id="st3">
+          <div class="step-h"><b>Field solver</b><button class="btn small primary" id="fs-start">Start</button></div>
+          <span class="note" id="si-source">2D field solver (js_2d_fields) for each distinct cross-section: within 2 % of HFSS, seconds to minutes. Results are kept in this browser.</span>
+          <div class="fs" id="fs">
+            <div class="fs-bar" aria-hidden="true"><i id="fs-bar"></i></div>
+            <div class="fs-row"><span id="fs-text"></span><button class="btn small" id="fs-toggle" hidden>Pause</button></div>
+            <p class="note" id="fs-note"></p>
+            <div class="fs-settings" id="fs-settings">
+              <label class="opt" for="fs-scope"><span>Solve for</span><select id="fs-scope"></select></label>
+              <label class="opt" for="fs-threads"><span>Threads</span><select id="fs-threads"></select></label>
+              <div class="fs-row"><span class="note" id="fs-cache"></span><button class="btn small" id="fs-clear">Clear cache</button></div>
+            </div>
+          </div>
+        </li>
+      </ol>
       <p class="note" id="warnings"></p>
       <details class="acc">
         <summary>Accuracy</summary>
@@ -81,8 +94,22 @@
         <div class="kpi"><span class="v" id="pk-rails">–</span><span class="l">rails computed</span></div>
         <div class="kpi"><span class="v" id="pk-j">–</span><span class="l">highest current density</span></div>
       </div>
-      <p class="note" id="pi-origin"></p>
-      <p class="note" id="pi-warn"></p>
+      <p class="note">Power analysis in three steps. The power budget is available after step 1; steps 2 and 3 compute on the copper of each rail.</p>
+      <ol class="steps">
+        <li id="ps1" class="done">
+          <div class="step-h"><b>Power tree and loads</b></div>
+          <span class="note" id="pi-origin"></span>
+          <span class="note" id="pi-warn"></span>
+        </li>
+        <li id="ps2">
+          <div class="step-h"><b>Voltage drop (DC)</b><button class="btn small primary" id="pi-run">Compute</button></div>
+          <span class="note" id="pi-step"></span>
+        </li>
+        <li id="ps3">
+          <div class="step-h"><b>Impedance Z(f)</b><button class="btn small primary" id="pdn-run">Compute</button></div>
+          <span class="note" id="pdn-step"></span>
+        </li>
+      </ol>
       <details class="acc">
         <summary>Defining loads in KiCad</summary>
         <p class="note">Field on the footprint (add it in the schematic; it reaches the board on update):</p>
@@ -171,7 +198,7 @@
 <script>
 const WASM_B64 = "__WASM_B64__";
 const SPARSE_B64 = "__SPARSE_B64__";
-const SOLVER_MODULES = __MODULES__;
+const SOLVER_SRC = __SOLVER_SRC__;
 const UPSTREAM_REV = "__UPSTREAM_REV__";
 const SAMPLES = __SAMPLES__;
 const DATA = __DATA__;

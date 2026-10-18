@@ -173,6 +173,29 @@ pub extern "C" fn kisi_analyze(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// Board summary without impedances (net classes, targets, one piece per track):
+/// lets the viewer show the board immediately; `kisi_analyze` adds the impedances.
+#[no_mangle]
+pub extern "C" fn kisi_skeleton(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let params: Params = serde_json::from_str(&txt).unwrap_or_default();
+    let s = ST.with(|st| {
+        let mut st = st.borrow_mut();
+        st.an = None; // channel / RF need the full analysis
+        st.board.as_ref().map(|b| serde_json::to_string(&kisi_core::extract::skeleton(b, &params)).unwrap())
+    });
+    match s {
+        Some(s) => {
+            set_out(s);
+            0
+        }
+        None => {
+            set_out("no board loaded".into());
+            1
+        }
+    }
+}
+
 /// Prepare zone fill buffers; returns number of polygons.
 #[no_mangle]
 pub extern "C" fn kisi_zones() -> u32 {

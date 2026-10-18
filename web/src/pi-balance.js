@@ -65,7 +65,7 @@ function renderBalance() {
       <div class="bal-card bal-comp"><h4>Components <em>${comps.length} with ≥ 0.5 mW</em></h4>
         <div class="bal-legend"><span><i style="background:var(--pw-use)"></i>consumption</span><span><i style="background:var(--pw-loss)"></i>loss (regulator, shunt, ferrite)</span></div>
         <div class="tablewrap"><table class="ctab"><thead><tr><th>Component</th><th>Part</th><th>consumption mW</th><th>loss mW</th><th></th><th>Basis</th></tr></thead><tbody>${comps.map(crow).join("")}</tbody></table></div>
-        <p class="note">Copper losses of the layers (${fmt(cu * 1e3, 0)} mW) come from the voltage-drop solution and are not assigned to any component.</p></div>
+        <p class="note">${S.piSolved ? `Copper losses of the layers (${fmt(cu * 1e3, 0)} mW) come from the voltage-drop solution and are not assigned to any component.` : "Copper losses of the layers are not included yet: they come from the voltage-drop solution (“Compute voltage drop”)."}</p></div>
     </div>`;
   box.querySelectorAll("[data-load]").forEach((inp) => inp.onchange = () => {
     const l = S.piTree.loads[+inp.dataset.load];

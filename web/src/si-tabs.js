@@ -18,9 +18,15 @@ function rfFor(net) {
   S.rfCache = { key, res, net };
   return res;
 }
+// shown instead of results that need step 2
+function needEstimate(body) {
+  body.innerHTML = `<p class="note">This needs the impedance estimate (step 2 in the “Signals” card).</p><button class="btn small primary" id="need-an">Estimate impedances</button>`;
+  $("need-an").onclick = () => estimateImpedances();
+}
 function renderTab(net, t, rowsXs) {
   const body = $("tab-body");
   if (!body) return;
+  if (S.an.skeleton) return needEstimate(body);
   if (S.detailTab === "z") {
     body.innerHTML = `<canvas id="profile" aria-label="Impedance profile along the net"></canvas>
       <div class="tablewrap"><table class="xs-table"><thead><tr><th>mm</th><th>Layer</th><th>Type</th><th>w µm</th><th>gap µm</th><th>Z₀</th><th>Z diff</th><th>compared</th></tr></thead><tbody>${rowsXs}</tbody></table></div>`;

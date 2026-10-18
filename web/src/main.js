@@ -43,6 +43,8 @@ async function loadPreload(pl) {
   const pro = pl.pro_text != null ? pl.pro_text : pl.pro ? await gunzipB64(pl.pro) : null;
   await loadFiles(pcb, pro, pl.name);
   if (pl.net) {
+    // a net handed over from KiCad: show its impedances right away (step 2)
+    const t0 = performance.now(); S.full = true; runAnalysis(); S.anMs = Math.round(performance.now() - t0);
     const id = S.scene.nets.indexOf(pl.net);
     if (id > 0) { if (pl.view === "ch") setTab("ch"); selectNet(id); }
   }

@@ -41,6 +41,7 @@ function preparePieces() {
 
 function pieceColor(i) {
   const xs = S.an.cross_sections[S.pieces.xs[i]], C = S.colors;
+  if (S.an.skeleton) return C.none; // impedances not estimated yet
   if (S.tab === "ch") {
     // channel view: result of the channel check per net, grey if not checked
     const st = S.chStatus && S.chStatus.get(S.pieces.net[i]);

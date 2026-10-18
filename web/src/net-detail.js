@@ -40,7 +40,8 @@ function showTip(i, mx, my) {
   const flags = FLAGS.filter(([b]) => xs.flags & b).map(([, t]) => `<div class="warn">${t}</div>`).join("");
   const isPad = S.padSet && S.padSet.has(pc.track[i]);
   tip.innerHTML = `<div class="t1">${esc(S.scene.nets[net] || "(no net)")}${isPad ? " · Pad" : ""}</div><div class="muted">${esc(cls)}</div>
-    <div class="kv">${xsRows(xs).map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>${devChip(xs, net)}${flags}`;
+    ${S.an.skeleton ? `<div class="kv"><span>Layer</span><span>${esc(S.scene.stackup.copper[pc.layer[i]].name)}</span><span>Width</span><span>${fmt(pc.w[i] * 1000, 0)} µm</span></div><div class="muted">impedance not estimated yet (step 2)</div>`
+      : `<div class="kv">${xsRows(xs).map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>${devChip(xs, net)}${flags}`}`;
   tip.hidden = false;
   const r = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
   let x = mx + 16, y = my + 16;

@@ -9,9 +9,9 @@ function renderSide() {
   for (const n of an.nets) if (n.target) { nets++; lenT += n.length; lenOk += (n.within5 || 0) * n.length; }
   let noref = 0; const pc = S.pieces;
   for (let i = 0; i < pc.n; i++) if (an.cross_sections[pc.xs[i]].kind === "NoReference") noref += Math.hypot(pc.bx[i] - pc.ax[i], pc.by[i] - pc.ay[i]);
-  $("k-ok").textContent = lenT ? Math.round(lenOk / lenT * 100) + " %" : "–";
+  $("k-ok").textContent = lenT && !an.skeleton ? Math.round(lenOk / lenT * 100) + " %" : "–";
   $("k-nets").textContent = nets;
-  $("k-noref").textContent = fmt(noref, 0);
+  $("k-noref").textContent = an.skeleton ? "–" : fmt(noref, 0);
   $("warnings").innerHTML = (sc.warnings || []).map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
   // stackup
   let total = 0; su.copper.forEach((c) => total += c.thickness); su.dielectrics.forEach((d, i) => total += stackEff(i).thickness);
@@ -86,7 +86,7 @@ function renderNets() {
   const q = $("search").value.trim().toLowerCase();
   let list = S.an.nets.filter((n) => q ? (n.name.toLowerCase().includes(q) || n.class.toLowerCase().includes(q)) : n.target);
   list.sort((a, b) => (a.within5 ?? 2) - (b.within5 ?? 2) || b.length - a.length);
-  $("netCount").textContent = q ? `${list.length} matches` : `${list.length} with target · worst first`;
+  $("netCount").textContent = q ? `${list.length} matches` : `${list.length} with target${S.an.skeleton ? "" : " · worst first"}`;
   list = list.slice(0, 300);
   $("nets").innerHTML = list.map((n) => {
     const w5 = n.within5;
@@ -105,6 +105,10 @@ function renderLegend() {
   if (S.tab === "ch") {
     const it = [[C.ok, "channel OK"], [C.high1, "limit exceeded (yellow)"], [C.high2, "red / error"], [C.none, "not checked"]];
     L.innerHTML = `<strong>Channel check</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
+    return;
+  }
+  if (S.an && S.an.skeleton) {
+    L.innerHTML = `<strong>Impedance not estimated yet</strong><div class="row"><span class="sw" style="background:${C.none}"></span>run step 2 “Impedance estimate”</div>`;
     return;
   }
   if (S.mode === "dev") {

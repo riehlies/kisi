@@ -168,6 +168,8 @@ pub struct Analysis {
     pub classes: Vec<ClassInfo>,
     pub samples: usize,
     pub unique_cross_sections: usize,
+    /// true for `skeleton()`: no cross-sections or impedances yet
+    pub skeleton: bool,
 }
 
 // --- spatial index for zone fills ------------------------------------------------
@@ -499,17 +501,7 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
     let tgrid = TrackGrid::build(board);
     let partners = diff_partners(&board.nets);
 
-    // class targets
-    let mut class_targets: Vec<(Option<Target>, String)> = Vec::new();
-    for c in &board.netclasses {
-        if let Some(t) = params.targets.get(&c.name) {
-            class_targets.push((Some(*t), "user".into()));
-        } else if let Some((t, src)) = target_from_class_name(&c.name) {
-            class_targets.push((Some(t), src.into()));
-        } else {
-            class_targets.push((None, String::new()));
-        }
-    }
+    let class_targets = class_targets(board, params);
 
     let mut cache: HashMap<Key, u32> = HashMap::new();
     let mut geoms = GeomReg::default();
@@ -736,7 +728,50 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
         }
     }
 
-    // --- per-net statistics -------------------------------------------------------
+    let (nets, classes) = net_stats(board, &class_targets, &partners, &xss, &pieces);
+
+    // routed length per geometry
+    let mut geometries = geoms.list;
+    for pc in pieces.chunks_exact(4) {
+        let xs = &xss[pc[3] as usize];
+        if let Some(g) = xs.geom {
+            let tr = &board.tracks[pc[0] as usize];
+            let l = geom::len(geom::sub(tr.b, tr.a)) * (pc[2] - pc[1]);
+            geometries[g as usize].length += l;
+            let cls = board.net_class.get(tr.net as usize).copied().unwrap_or(0) as usize;
+            if class_targets.get(cls).and_then(|t| t.0).is_some() {
+                geometries[g as usize].target_length += l;
+            }
+        }
+    }
+
+    Analysis { unique_cross_sections: xss.len(), cross_sections: xss, geometries, pieces, nets, classes, samples, skeleton: false }
+}
+
+fn class_targets(board: &Board, params: &Params) -> Vec<(Option<Target>, String)> {
+    board
+        .netclasses
+        .iter()
+        .map(|c| {
+            if let Some(t) = params.targets.get(&c.name) {
+                (Some(*t), "user".to_string())
+            } else if let Some((t, src)) = target_from_class_name(&c.name) {
+                (Some(t), src.to_string())
+            } else {
+                (None, String::new())
+            }
+        })
+        .collect()
+}
+
+/// Per-net statistics and class summary from the pieces of an analysis.
+fn net_stats(
+    board: &Board,
+    class_targets: &[(Option<Target>, String)],
+    partners: &[Option<u32>],
+    xss: &[CrossSection],
+    pieces: &[f64],
+) -> (Vec<NetStat>, Vec<ClassInfo>) {
     let mut acc: HashMap<u32, Vec<(f64, Option<f64>, u32)>> = HashMap::new();
     for pc in pieces.chunks_exact(4) {
         let tr = &board.tracks[pc[0] as usize];
@@ -786,7 +821,7 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
     }
     nets.sort_by(|a, b| a.name.cmp(&b.name));
 
-    let classes = board
+    let classes: Vec<ClassInfo> = board
         .netclasses
         .iter()
         .enumerate()
@@ -797,23 +832,50 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
             nets: class_counts[i],
         })
         .collect();
+    (nets, classes)
+}
 
-    // routed length per geometry
-    let mut geometries = geoms.list;
-    for pc in pieces.chunks_exact(4) {
-        let xs = &xss[pc[3] as usize];
-        if let Some(g) = xs.geom {
-            let tr = &board.tracks[pc[0] as usize];
-            let l = geom::len(geom::sub(tr.b, tr.a)) * (pc[2] - pc[1]);
-            geometries[g as usize].length += l;
-            let cls = board.net_class.get(tr.net as usize).copied().unwrap_or(0) as usize;
-            if class_targets.get(cls).and_then(|t| t.0).is_some() {
-                geometries[g as usize].target_length += l;
-            }
-        }
+/// Board summary without impedances: stackup-independent net/class data and one
+/// piece per track, so the viewer can show the board, net classes and targets
+/// before the (slower) cross-section analysis runs. `skeleton` is set.
+pub fn skeleton(board: &Board, params: &Params) -> Analysis {
+    let class_targets = class_targets(board, params);
+    let partners = diff_partners(&board.nets);
+    let ncu = board.stackup().n();
+    let xss: Vec<CrossSection> = (0..ncu as u16)
+        .map(|layer| CrossSection {
+            kind: Kind::Microstrip,
+            layer,
+            w: 0.0,
+            t: 0.0,
+            ref_up: None,
+            ref_dn: None,
+            h_up: None,
+            h_dn: None,
+            er_up: None,
+            er_dn: None,
+            s_left: None,
+            s_right: None,
+            diff_gap: None,
+            partner_w: None,
+            mask: false,
+            z0: None,
+            eeff: None,
+            zdiff: None,
+            z0_formula: None,
+            zdiff_formula: None,
+            solver: "none",
+            geom: None,
+            planes: vec![],
+            flags: 0,
+        })
+        .collect();
+    let mut pieces = Vec::with_capacity(board.tracks.len() * 4);
+    for (i, tr) in board.tracks.iter().enumerate() {
+        pieces.extend_from_slice(&[i as f64, 0.0, 1.0, tr.layer.min(ncu.saturating_sub(1) as u16) as f64]);
     }
-
-    Analysis { unique_cross_sections: xss.len(), cross_sections: xss, geometries, pieces, nets, classes, samples }
+    let (nets, classes) = net_stats(board, &class_targets, &partners, &xss, &pieces);
+    Analysis { unique_cross_sections: 0, cross_sections: xss, geometries: vec![], pieces, nets, classes, samples: 0, skeleton: true }
 }
 
 /// The impedance that is compared against a target:

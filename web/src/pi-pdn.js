@@ -2,7 +2,9 @@
 // ---- AC impedance of a rail (PDN) -----------------------------------------------------
 function renderPdn(body, setup) {
   let r;
-  try { r = S.engine.pdn({ setup, params: {} }); } catch (e) { body.innerHTML = `<p class="err">${esc(e.message)}</p>`; return; }
+  r = S.pdnRes && S.pdnRes.get(setup.net);
+  if (!r) { try { r = S.engine.pdn({ setup, params: {} }); S.pdnRes.set(setup.net, r); } catch (e) { r = { error: e.message }; } }
+  if (r.error) { body.innerHTML = `<p class="err">${esc(r.error)}</p>`; return; }
   const groups = new Map();
   for (const c of r.caps) {
     const k = `${c.c.toExponential(3)}|${c.package}`;
@@ -31,7 +33,7 @@ function renderPiLayerChips() {
 
 function renderPiLegend() {
   const L = $("legend"), r = piCurrent();
-  if (!r) { L.innerHTML = `<strong>Power</strong><div class="row">Rail without result: define source and load</div>`; return; }
+  if (!r) { L.innerHTML = `<strong>Power</strong><div class="row">${S.piSolved ? "Rail without result: define source and load" : "Voltage drop not computed yet: “Compute voltage drop” in the Power card"}</div>`; return; }
   const li = piLayerIdx(r), im = piImage(r, li), sc = im.scale;
   const stops = Array.from({ length: 11 }, (_, k) => turbo(k / 10 * 0.9 + 0.05)).join(",");
   const d = sc.max < 1 ? 2 : sc.max < 10 ? 1 : 0;

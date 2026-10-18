@@ -13,6 +13,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null) {
     S.name = name;
     S.overrides = {};
     S.selNet = -1; S.hover = -1; S.check = null; S.chStatus = null; S.chCache = null;
+    S.full = false; // step 2 (formula impedances) not run yet
     S.fieldPending = new Set(); S.gen++;
     if (S.pool) S.pool.reset();
     const n = S.scene.stackup.copper.length;
@@ -62,18 +63,22 @@ function stackParam() {
   return { dielectrics: Object.entries(stackOv().dielectrics || {}).map(([i, o]) => ({ index: +i, ...o })) };
 }
 
+// step 1 (on load): board, net classes, targets – S.an is a skeleton without impedances
+// step 2 (button): cross-sections and formula impedances, field results where available
 function runAnalysis(tParse) {
   const t0 = performance.now();
   const targets = {};
   for (const [k, v] of Object.entries(S.overrides)) targets[k] = v;
   const field = {};
   for (const [id, r] of S.field) if (r.ok) field[id] = r;
-  S.an = S.engine.analyze({ step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field, stackup: stackParam() });
+  const params = { step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field, stackup: stackParam() };
+  S.an = S.full ? S.engine.analyze(params) : S.engine.skeleton(params);
   S.chCache = null; S.rfCache = null;
   S.anGen++;
   setTimeout(() => { renderCheck(); if (S.tab === "ch") { renderIfcCard(); renderProfCard(); } }, 0);
   const tAn = performance.now() - t0;
-  $("timing").textContent = (tParse != null ? `read ${Math.round(tParse)} ms · ` : "") + `analysis ${Math.round(tAn)} ms`;
+  if (tParse != null) S.parseMs = Math.round(tParse);
+  $("timing").textContent = S.parseMs != null ? `read ${S.parseMs} ms` : "";
   preparePieces();
   buildPaths();
   renderSide();
@@ -81,4 +86,15 @@ function runAnalysis(tParse) {
   if (S.selNet >= 0) selectNet(S.selNet, false); else $("detail").hidden = true;
   draw();
   renderFieldStatus();
+}
+
+function estimateImpedances() {
+  if (S.full) return;
+  showBusy("Estimating impedances…");
+  requestAnimationFrame(() => setTimeout(() => {
+    const t0 = performance.now();
+    try { S.full = true; runAnalysis(); } catch (e) { busyError(e.message); return; }
+    S.anMs = Math.round(performance.now() - t0); renderFieldStatus();
+    hideBusy();
+  }, 0));
 }

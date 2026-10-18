@@ -5,15 +5,18 @@ Usage: bundle.py <index.html> <kisi_wasm.wasm> <kisi_sparse.wasm> <out.html> [ke
 
 * kisi_wasm.wasm   extraction core, base64
 * kisi_sparse.wasm sparse solver for the field solver backend, base64
-* ES modules of the solver backend (web/solver/backend_forsten.js and the
-  vendored upstream js_2d_fields modules it imports) are embedded as source
-  text; the page turns them into blob: modules at runtime. Upstream files are
-  embedded unmodified except for their import specifiers.
+* the solver backend (web/solver/backend_forsten.js and the vendored upstream
+  js_2d_fields ES modules it imports) is converted into one classic script
+  (tools/esm_classic.py) so it runs in workers also when the page is opened
+  from disk. Upstream code is unchanged apart from import/export statements.
 * sample boards: gzip + base64
 * viewer: web/index.html (markup), web/css/kisi.css, web/src/*.js in the order
   of web/src/manifest.json (one shared scope, concatenated), data/*.json as DATA
 """
 import base64, gzip, json, os, re, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from esm_classic import classic_bundle  # noqa: E402
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src, wasm, sparse, out = sys.argv[1:5]
@@ -115,8 +118,8 @@ b64 = lambda p: base64.b64encode(open(p, "rb").read()).decode()
 html = html.replace("__WASM_B64__", b64(wasm))
 html = html.replace("__SPARSE_B64__", b64(sparse))
 # </script> inside module sources would end the script tag: escape
-mods_json = json.dumps(modules).replace("</", "<\\/")
-html = html.replace("__MODULES__", mods_json)
+solver_src = classic_bundle(modules)
+html = html.replace("__SOLVER_SRC__", json.dumps(solver_src).replace("</", "<\\/"))
 html = html.replace("__UPSTREAM_REV__", upstream_rev)
 html = html.replace("__SAMPLES__", json.dumps(samples))
 open(out, "w", encoding="utf-8").write(html)

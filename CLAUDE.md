@@ -33,6 +33,8 @@ projects and are shrunk with `tools/strip_pcb.py`.
 * Mark estimated values as estimates in the UI and in MCP output.
 
 ## Commits
+* **Commit and push only after the user has checked and approved the change.** Work in progress
+  stays local (uncommitted); test builds go to `D:\Git\kisi\dist\` and the artifact for review.
 * Author: `riehlies <118917105+riehlies@users.noreply.github.com>` (set in `.git/config`).
 * End commit messages with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`;
   no `Claude-Session` lines in commits or PRs.

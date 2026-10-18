@@ -168,7 +168,12 @@ function metricsOf(r, net) {
   };
 }
 function renderChDetail(net) {
-  const d = $("ch-detail"), st = S.an.nets.find((x) => x.net === net), r = chFor(net), p = r.profile;
+  const d = $("ch-detail"), st = S.an.nets.find((x) => x.net === net);
+  if (S.an.skeleton) {
+    d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header><div id="ch-body"></div>`;
+    d.hidden = false; $("closeCh").onclick = () => selectNet(-1); needEstimate($("ch-body")); return;
+  }
+  const r = chFor(net), p = r.profile;
   const partner = st && st.partner != null ? S.scene.nets[st.partner] : null;
   const tab = S.chTab || "check";
   d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · pair with " + esc(partner) : ""}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
@@ -211,7 +216,7 @@ function checkItems() {
 const rowMetrics = (r) => ({ ...zStats(r.net), il_nyq_db: r.il_nyq_db, rl_db: r.rl_db, eye_h: r.error ? null : r.eye_height, eye_w_ui: r.error ? null : r.eye_width_ui, skew_ps: r.skew_ps, skew_uncertain: r.skew_uncertain, stub_ghz: r.stub_ghz, error: r.error });
 async function runCheck() {
   const items = checkItems(), rows = [], gen = S.anGen, p = rfParams();
-  const btn = $("ck-start"); btn.disabled = true;
+  const btn = $("ck-start"); btn.disabled = true; S.checkRunning = true;
   for (let i = 0; i < items.length; i += 4) {
     if (gen !== S.anGen) break;
     $("ck-text").textContent = `Checking ${Math.min(i + 4, items.length)} of ${items.length} channels …`;
@@ -221,7 +226,7 @@ async function runCheck() {
       rows.push(...JSON.parse(S.engine.out()));
     } catch (e) { console.warn(e); }
   }
-  btn.disabled = false;
+  btn.disabled = false; S.checkRunning = false;
   S.check = { gen, rows, stale: false };
   S.chStatus = new Map();
   for (const r of rows) {
@@ -236,6 +241,12 @@ async function runCheck() {
 function renderCheck() {
   const box = $("ck-out");
   if (!box) return;
+  $("ck-start").disabled = !!S.an?.skeleton || !!S.checkRunning;
+  if (S.an && S.an.skeleton) {
+    box.innerHTML = "";
+    $("ck-text").textContent = "Needs the impedance estimate first (step 2 in the “Signals” card of the impedance view).";
+    return;
+  }
   if (!S.check || !S.check.rows.length) {
     box.innerHTML = "";
     $("ck-text").textContent = "All nets with target impedance against their class profile: eye with transmitter and receiver, insertion loss, return loss, skew, via stubs.";

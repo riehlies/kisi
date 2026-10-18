@@ -4,6 +4,7 @@ const PI_PARAMS = { cell: null, plating_um: 25, rho: 1.72e-8, max_cells: 250000 
 const piKey = () => "kisi.pi.v1." + S.name;
 function piLoadSaved() { try { const t = localStorage.getItem(piKey()); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
 function piSave() {
+  if (S.pdnRes) { S.pdnRes.clear(); S.pdnSolved = false; } // loads changed: Z(f) targets are stale
   try {
     if (S.piTree) localStorage.setItem(treeKey(), JSON.stringify(S.piTree));
     else localStorage.setItem(piKey(), JSON.stringify([...S.piSetups.values()]));
@@ -26,6 +27,8 @@ function computeTree() {
 function initPi(defaults) {
   S.piRes = new Map(); S.piSetups = new Map(); S.piImg = null; S.piWarn = []; S.piDefaults = defaults;
   S.piTree = null; S.treeRes = null; $("pi-balance").scrollTop = 0;
+  S.piSolved = false; // IR drop runs on request (button), it is the slowest part of loading
+  S.pdnRes = new Map(); S.pdnSolved = false; // Z(f) per rail, on request
   try { S.piNets = S.engine.piNets(); } catch (e) { S.piNets = []; }
   // regulator chain from PI_REG fields in the board wins over the example tree
   let tf = null;
@@ -35,12 +38,8 @@ function initPi(defaults) {
     S.piTree = treeLoadSaved() || JSON.parse(JSON.stringify(defaults));
     computeTree();
     if (tf && tf.warnings) S.piWarn = tf.warnings.concat(S.piWarn);
-    const t0 = performance.now();
-    for (const r of S.piSetups.values()) solvePiRail(r.net, false);
-    $("pi-timing").textContent = `${S.piSetups.size} rails · ${Math.round(performance.now() - t0)} ms`;
-    let best = null;
-    for (const [net, r] of S.piRes) if (r.res && (!best || (r.res.max_drop_mv || 0) > (S.piRes.get(best).res.max_drop_mv || 0))) best = net;
-    S.piRail = best; S.piLayer = -1;
+    $("pi-timing").textContent = "";
+    S.piRail = [...S.piSetups.keys()][0] || null; S.piLayer = -1;
     renderPi();
     return;
   }
@@ -53,18 +52,51 @@ function initPi(defaults) {
     for (const r of defaults || []) S.piSetups.set(r.net, r);
     for (const r of fromFields.rails) S.piSetups.set(r.net, r); // fields win over examples
   }
-  const t0 = performance.now();
-  for (const r of S.piSetups.values()) solvePiRail(r.net, false);
-  $("pi-timing").textContent = S.piSetups.size ? `${S.piSetups.size} rails · ${Math.round(performance.now() - t0)} ms` : "";
-  // default rail: worst drop, else largest supply net
-  let best = null;
-  for (const [net, r] of S.piRes) if (r.res && (!best || (r.res.max_drop_mv || 0) > (S.piRes.get(best).res.max_drop_mv || 0))) best = net;
-  S.piRail = best || (S.piNets.find((n) => !n.ground) || {}).name || null;
+  $("pi-timing").textContent = "";
+  S.piRail = [...S.piSetups.keys()][0] || (S.piNets.find((n) => !n.ground) || {}).name || null;
   S.piLayer = -1;
   renderPi();
 }
 
-function solvePiRail(net, redraw = true) {
+// Z(f) of all rails with a source (step 3)
+async function solveAllPdn() {
+  const rails = [...S.piSetups.values()].filter((r) => r.sources.length);
+  const t0 = performance.now();
+  S.pdnRes = new Map();
+  for (let i = 0; i < rails.length; i++) {
+    showBusy(`Computing impedance Z(f)… ${i + 1} of ${rails.length} rails`);
+    await new Promise((res) => setTimeout(res, 0));
+    try { S.pdnRes.set(rails[i].net, S.engine.pdn({ setup: rails[i], params: {} })); } catch (e) { S.pdnRes.set(rails[i].net, { error: e.message }); }
+  }
+  S.pdnSolved = true; S.pdnMs = Math.round(performance.now() - t0);
+  hideBusy();
+  if (S.piRail && S.pdnRes.has(S.piRail)) S.piTab = "z";
+  renderPi();
+}
+$("pdn-run").onclick = () => solveAllPdn();
+
+// IR drop of all configured rails (step 2)
+async function solveAllRails() {
+  const rails = [...S.piSetups.values()];
+  const t0 = performance.now();
+  for (let i = 0; i < rails.length; i++) {
+    showBusy(`Computing voltage drop… ${i + 1} of ${rails.length} rails`);
+    await new Promise((res) => setTimeout(res, 0));
+    try { solvePiRail(rails[i].net, false, true); } catch (e) { busyError(e.message); return; }
+  }
+  S.piSolved = true; S.piMs = Math.round(performance.now() - t0);
+  $("pi-timing").textContent = "";
+  let best = null;
+  for (const [net, r] of S.piRes) if (r.res && (!best || (r.res.max_drop_mv || 0) > (S.piRes.get(best).res.max_drop_mv || 0))) best = net;
+  if (best) S.piRail = best;
+  S.piLayer = -1; S.piImg = null;
+  hideBusy();
+  if (S.tab === "pi") fitRail();
+  renderPi();
+}
+
+function solvePiRail(net, redraw = true, force = false) {
+  if (!force && !S.piSolved) { if (redraw) renderPi(); return; } // before step 2: only re-render
   const setup = S.piSetups.get(net);
   S.piImg = null;
   if (!setup || !setup.sources.length || !setup.loads.some((l) => l.current)) { S.piRes.delete(net); if (redraw) renderPi(); return; }
@@ -110,6 +142,26 @@ function renderPiSide() {
     maxJ = Math.max(maxJ, r.res.max_j);
   }
   $("pk-drop").innerHTML = worst ? `${fmt(worst.d, 1)}<small> mV</small>` : "–";
+  const nReady = [...S.piSetups.values()].filter((r) => r.sources.length && r.loads.some((l) => l.current)).length;
+  $("pi-run").textContent = S.piSolved ? "Recompute" : "Compute";
+  $("pi-run").disabled = !nReady;
+  $("ps2").classList.toggle("done", !!S.piSolved);
+  $("pi-step").textContent = S.piSolved
+    ? `Done in ${S.piMs} ms for ${n} rail${n === 1 ? "" : "s"}. Voltage and current density per layer, drop at every load.` + (worst ? ` Largest drop: ${fmt(worst.d, 1)} mV on ${netLabel(worst.net)}.` : "")
+    : nReady ? `DC voltage drop on the copper of ${nReady} rail${nReady === 1 ? "" : "s"}: zones, tracks and vias between sources and loads; a few seconds.`
+    : "No rail has both a source and a load yet.";
+  const nZ = [...S.piSetups.values()].filter((r) => r.sources.length).length;
+  $("pdn-run").textContent = S.pdnSolved ? "Recompute" : "Compute";
+  $("pdn-run").disabled = !nZ;
+  $("ps3").classList.toggle("done", !!S.pdnSolved);
+  if (S.pdnSolved) {
+    const over = [...S.pdnRes.entries()].filter(([, r]) => r && r.above_target && r.above_target.length).map(([net]) => netLabel(net).split("/").pop());
+    $("pdn-step").textContent = `Done in ${S.pdnMs} ms for ${S.pdnRes.size} rail${S.pdnRes.size === 1 ? "" : "s"}. ` +
+      (over.length ? `${over.length} rail${over.length === 1 ? "" : "s"} above the target impedance: ${over.slice(0, 5).join(", ")}${over.length > 5 ? ` and ${over.length - 5} more` : ""}.` : "All rails stay below their target impedance.") + " Select a rail for the curve.";
+  } else {
+    $("pdn-step").textContent = nZ ? `Impedance of ${nZ} rail${nZ === 1 ? "" : "s"} over frequency: regulator, plane capacitance and decoupling capacitors (ESR/ESL estimated by package), plus a plane model from 1 MHz.`
+      : "No rail has a source yet.";
+  }
   $("pk-rails").textContent = n;
   $("pk-j").innerHTML = n ? `${fmt(maxJ, 0)}<small> A/mm²</small>` : "–";
   const origins = {};
@@ -117,11 +169,10 @@ function renderPiSide() {
   const o = Object.entries(origins).map(([k, v]) => `${v}× ${k === "example" ? "example value (assumption)" : k === "field" ? "KiCad field" : k}`).join(", ");
   if (S.treeRes) {
     const t = S.treeRes, cu = piCopperLoss();
-    $("pi-origin").textContent = `Power tree ${t.name}: input ${fmt(t.p_input + cu, 2)} W, of which ${fmt(t.p_losses + cu, 2)} W losses.` +
-      (worst ? ` Largest drop on ${netLabel(worst.net)} (${fmt(worst.pct, 2)} %).` : "");
-  } else $("pi-origin").textContent = worst
-    ? `Largest drop on ${netLabel(worst.net)} (${fmt(worst.pct, 2)} %). Loads: ${o}.`
-    : (S.piSetups.size ? `Loads: ${o || "none"}. Each rail needs a source and a load to be computed.` : "No loads defined. Set PI_LOAD/PI_SOURCE fields in KiCad, load a kipida_config.json or enter them below.");
+    $("pi-origin").textContent = `Power tree ${t.name}: ${t.rails.length} rails, input ${fmt(t.p_input + cu, 2)} W, of which ${fmt(t.p_losses + cu, 2)} W losses${S.piSolved ? "" : " (copper losses after step 2)"}. Details under “Power budget”.`;
+  } else $("pi-origin").textContent = S.piSetups.size
+    ? `${S.piSetups.size} rail${S.piSetups.size === 1 ? "" : "s"} configured. Loads: ${o || "none"}. Each rail needs a source and a load.`
+    : "No loads defined. Set PI_LOAD/PI_SOURCE (or PI_REG) fields in KiCad, load a kipida_config.json or enter them in the rail editor.";
   $("pi-warn").innerHTML = S.piWarn.map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
   // rails list
   const rank = (r) => (S.piRes.get(r.name) && S.piRes.get(r.name).res ? 0 : S.piSetups.has(r.name) ? 1 : r.ground ? 3 : 2);
@@ -136,6 +187,7 @@ function renderPiSide() {
     else if (res && res.error) status = "error: " + res.error;
     else if (res && res.res) status = `drop ${fmt(res.res.max_drop_mv, 1)} mV · ${fmt(res.res.total_load, 2)} A`;
     else if (st && st.loads.length && !st.sources.length) status = "source missing";
+    else if (st && st.loads.length && !S.piSolved) status = `${fmt(st.loads.reduce((a, l) => a + (l.current || 0), 0), 2)} A · drop not computed yet`;
     else status = "no load";
     const v = st && st.voltage ? st.voltage : r.voltage;
     return `<button class="rail" data-net="${esc(r.name)}" aria-current="${r.name === S.piRail}">
@@ -185,7 +237,7 @@ function renderRailEditor() {
   box.querySelectorAll("[data-rs]").forEach((b) => b.onclick = () => { st.sources.splice(+b.dataset.rs, 1); changed(); });
   box.querySelectorAll("[data-rl]").forEach((b) => b.onclick = () => { st.loads.splice(+b.dataset.rl, 1); changed(); });
   box.querySelectorAll("[data-li]").forEach((inp) => inp.onchange = () => { const l = st.loads[+inp.dataset.li]; l.current = Math.max(0, parseFloat(inp.value) || 0); l.origin = "user"; changed(); });
-  $("re-all").onclick = () => { for (const r of S.piSetups.values()) solvePiRail(r.net, false); renderPi(); };
+  $("re-all").onclick = () => solveAllRails();
   $("re-reset").onclick = () => { try { localStorage.removeItem(piKey()); } catch (e) { /* ignore */ } initPi(S.piDefaults); };
   $("re-copy").onclick = (e) => {
     const t = $("re-fields").textContent;
@@ -386,6 +438,14 @@ function showPiTip(mx, my) {
 function renderPiDetail() {
   const box = $("pi-detail"), r = S.piRes.get(S.piRail);
   if (!r || !r.res) {
+    if (S.pdnRes && S.pdnRes.has(S.piRail)) {
+      // Z(f) computed, DC not (yet): impedance view only
+      const st = S.piSetups.get(S.piRail);
+      box.innerHTML = `<header><div><h3>${esc(netLabel(S.piRail))} · ${fmt(st ? st.voltage : 0, 2)} V</h3><div class="muted">${r && r.error ? esc(r.error) : "DC voltage drop: step 2"}</div></div><button class="x" id="closePi" aria-label="Close">×</button></header><div id="pdn-body"></div>`;
+      box.hidden = false; $("closePi").onclick = () => { box.hidden = true; };
+      renderPdn($("pdn-body"), st);
+      return;
+    }
     box.hidden = !(r && r.error);
     if (r && r.error) box.innerHTML = `<header><h3>${esc(netLabel(S.piRail))}</h3></header><p class="err">${esc(r.error)}</p>`;
     return;
@@ -413,3 +473,5 @@ function renderPiDetail() {
     ${x.warnings.length ? `<div>${x.warnings.map((w) => `<div class="warn">${esc(w)}</div>`).join("")}</div>` : ""}`;
   wire();
 }
+
+$("pi-run").onclick = () => solveAllRails();

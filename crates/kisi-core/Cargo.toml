@@ -9,4 +9,5 @@ license.workspace = true
 kisi-board = { path = "../kisi-board" }
 kisi-si = { path = "../kisi-si" }
 kisi-pi = { path = "../kisi-pi" }
+serde_json = "1"
 

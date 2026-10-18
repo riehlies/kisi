@@ -38,7 +38,9 @@ async function loadSample(key) {
 async function loadPreload(pl) {
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
   showBusy("Entpacke Board aus KiCad…");
-  const [pcb, pro] = await Promise.all([gunzipB64(pl.pcb), pl.pro ? gunzipB64(pl.pro) : Promise.resolve(null)]);
+  // gzip+base64 from the KiCad plugin, plain text from kisi-mcp
+  const pcb = pl.pcb_text != null ? pl.pcb_text : await gunzipB64(pl.pcb);
+  const pro = pl.pro_text != null ? pl.pro_text : pl.pro ? await gunzipB64(pl.pro) : null;
   await loadFiles(pcb, pro, pl.name);
   if (pl.net) {
     const id = S.scene.nets.indexOf(pl.net);

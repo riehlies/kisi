@@ -365,6 +365,15 @@ dependencies = [
  "kisi-board",
  "kisi-pi",
  "kisi-si",
+ "serde_json",
+]
+
+[[package]]
+name = "kisi-mcp"
+version = "0.1.0"
+dependencies = [
+ "kisi-core",
+ "serde_json",
 ]
 
 [[package]]

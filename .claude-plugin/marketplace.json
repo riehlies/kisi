@@ -1,0 +1,11 @@
+{
+  "name": "kisi",
+  "owner": { "name": "kisi contributors" },
+  "plugins": [
+    {
+      "name": "kisi",
+      "source": "./claude-plugin",
+      "description": "SI/PI analysis of KiCad boards (MCP server kisi-mcp + review skill)"
+    }
+  ]
+}

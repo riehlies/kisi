@@ -1,0 +1,8 @@
+{
+  "name": "kisi",
+  "version": "0.1.0",
+  "description": "SI/PI analysis of KiCad boards: trace impedance, channel loss/TDR/eye against interface profiles (PCIe, USB, DDR, ...), vias, crosstalk, regulator chains, DC IR drop and PDN impedance. MCP server kisi-mcp plus a review skill.",
+  "author": { "name": "kisi contributors" },
+  "license": "GPL-3.0-only",
+  "keywords": ["kicad", "signal-integrity", "power-integrity", "pcb", "impedance", "mcp"]
+}

@@ -12,3 +12,5 @@
 pub use kisi_board::{apply_project, board, geom, load_pcb, num, sexpr, view, Board};
 pub use kisi_pi::{pdn, pi, tree};
 pub use kisi_si::{analytic, analyze, extract, eye, profile, rf, via, xsgeom, Analysis, Params};
+
+pub mod service;

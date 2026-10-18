@@ -47,13 +47,13 @@ impl Default for EndModel {
     }
 }
 
-/// Voltage transfer V_rx / V_tx of the channel between the given ends,
-/// normalised so that an ideal matched link (r = z_ref at both ends, no
-/// parasitics) has |H| = 1 at DC: the result is in units of the transmitter
-/// swing into a matched load.
+/// Voltage transfer V_rx / V_tx of the channel between the given ends, in
+/// units of the transmitter swing: the swing is defined into the receiver's
+/// nominal termination (a lossless link without parasitics gives |H| = 1 at
+/// DC), or as the open-circuit swing for a high-impedance receiver (CMOS).
 pub fn transfer(ch: &Channel, tx: &EndModel, rx: &EndModel) -> Vec<Cx> {
     let rs = tx.r.max(0.0);
-    let scale = (rs + ch.z_ref) / ch.z_ref;
+    let scale = if rx.r > 0.0 { (rs + rx.r) / rx.r } else { 1.0 };
     ch.freq
         .iter()
         .zip(&ch.abcd)
@@ -351,7 +351,7 @@ mod tests {
     }
 
     #[test]
-    fn transfer_matched_equals_s21_and_open_end_doubles() {
+    fn transfer_matched_equals_s21_and_open_end() {
         let n = 100;
         let df = 10e9 / n as f64;
         let freq: Vec<f64> = (1..=n).map(|k| k as f64 * df).collect();
@@ -368,7 +368,8 @@ mod tests {
         }
         let open = EndModel { r: 0.0, c_pf: 0.0, l_nh: 0.0 };
         let h2 = transfer(&ch, &m, &open);
-        assert!((h2[0].abs() - 2.0).abs() < 0.01, "{}", h2[0].abs());
+        // high-impedance receiver: open-circuit swing, DC level 1
+        assert!((h2[0].abs() - 1.0).abs() < 0.01, "{}", h2[0].abs());
     }
 
     #[test]

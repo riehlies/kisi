@@ -268,6 +268,6 @@ function renderEye(body, r) {
   body.innerHTML = `<div class="dstats"><span>${fmt(g, g < 1 ? 2 : g % 1 ? 2 : 0)} Gbit/s NRZ, PRBS7</span><span>UI ${fmt(e.ui_ps, 1)} ps</span><span>Gleichanteil ${fmt(e.dc * 100, 0)} % des Hubs</span></div>
     <div class="dstats"><span>Augenhöhe <b>${fmt(e.height * 100, 0)} %</b> = ${fmt(e.height * p.tx.swing_mv, 0)} mV</span><span>Augenbreite <b>${fmt(e.width_ps, 1)} ps</b> (${uiPct(e.width_ps)} % UI)</span><span>ISI-Summe <b>${fmt(e.isi_sum * 100, 0)} %</b></span></div>
     <div class="chart"><canvas id="ch-eye" style="height:220px" aria-label="Augendiagramm"></canvas></div>
-    <p class="note">Einzelbit-Antwort des Kanals zwischen Sender (${fmt(p.tx.r, 0)} Ω, Flanke ${fmt(p.tx.rise_ps, 0)} ps) und Empfänger (${p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "hochohmig"}), PRBS7 linear überlagert. 100 % = Sendehub an angepasster Last. Ohne Entzerrung, Jitter und Rauschen.${ch.diff ? " Differentiell: ungerade Mode." : ""}</p>${warn}`;
+    <p class="note">Einzelbit-Antwort des Kanals zwischen Sender (${fmt(p.tx.r, 0)} Ω, Flanke ${fmt(p.tx.rise_ps, 0)} ps) und Empfänger (${p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "hochohmig"}), PRBS7 linear überlagert. 100 % = Sendehub (am Abschlusswiderstand des Empfängers, bei hochohmigem Empfänger im Leerlauf). Ohne Entzerrung, Jitter und Rauschen.${ch.diff ? " Differentiell: ungerade Mode." : ""}</p>${warn}`;
   drawEye($("ch-eye"), e);
 }

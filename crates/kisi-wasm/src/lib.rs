@@ -329,7 +329,9 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
             let net = item["net"].as_u64().unwrap_or(0) as u32;
             let gbps = item["gbps"].as_f64().unwrap_or(1.0);
             let target = item["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
-            rows.push(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps));
+            let end = |k: &str| item[k].as_object().and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(item[k].clone()).ok());
+            let rise = item["rise"].as_f64();
+            rows.push(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise)));
         }
         Ok(serde_json::to_string(&rows).unwrap())
     });
@@ -368,7 +370,15 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
             Ok(c) => {
                 let ts = kisi_core::rf::touchstone(&c);
                 if let Some(br) = v["bitrate"].as_f64() {
-                    let ep = kisi_core::eye::EyeParams { bitrate: br, rise: rp.rise, prbs: v["prbs"].as_u64().unwrap_or(7) as u32, ..Default::default() };
+                    let end = |k: &str| v[k].as_object().and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(v[k].clone()).ok());
+                    let ep = kisi_core::eye::EyeParams {
+                        bitrate: br,
+                        rise: v["eye_rise"].as_f64().unwrap_or(rp.rise),
+                        prbs: v["prbs"].as_u64().unwrap_or(7) as u32,
+                        tx: end("tx"),
+                        rx: end("rx"),
+                        ..Default::default()
+                    };
                     eye = match kisi_core::eye::eye(&c, &ep) {
                         Ok(e) => serde_json::to_value(&e).unwrap(),
                         Err(e) => serde_json::json!({"error": e}),

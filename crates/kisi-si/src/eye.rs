@@ -5,7 +5,7 @@
 //! superposed on it (linear, time-invariant channel, matched terminations,
 //! no equalisation). Amplitudes are fractions of the transmitter swing.
 
-use crate::rf::{Channel, Cx};
+use crate::rf::{Abcd, Channel, Cx};
 use serde::{Deserialize, Serialize};
 use std::f64::consts::{LN_2, PI};
 
@@ -20,11 +20,64 @@ pub struct EyeParams {
     pub prbs: u32,
     pub samples_per_ui: usize,
     pub rows: usize,
+    /// transmitter / receiver models; None = ideal terminations with the reference impedance
+    pub tx: Option<EndModel>,
+    pub rx: Option<EndModel>,
+}
+
+/// Linear model of a transmitter or receiver pin, per line (a differential
+/// channel is computed in the odd mode, so values are per line, i.e. half the
+/// differential resistance).
+///
+/// * transmitter: source resistance `r` in series, pin capacitance `c_pf` to
+///   ground behind it, package inductance `l_nh` towards the board
+/// * receiver: package inductance `l_nh`, then `c_pf` and the termination `r`
+///   to (AC) ground; `r` ≤ 0 means no termination (high impedance input)
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(default)]
+pub struct EndModel {
+    pub r: f64,
+    pub c_pf: f64,
+    pub l_nh: f64,
+}
+
+impl Default for EndModel {
+    fn default() -> Self {
+        EndModel { r: 50.0, c_pf: 0.0, l_nh: 0.0 }
+    }
+}
+
+/// Voltage transfer V_rx / V_tx of the channel between the given ends,
+/// normalised so that an ideal matched link (r = z_ref at both ends, no
+/// parasitics) has |H| = 1 at DC: the result is in units of the transmitter
+/// swing into a matched load.
+pub fn transfer(ch: &Channel, tx: &EndModel, rx: &EndModel) -> Vec<Cx> {
+    let rs = tx.r.max(0.0);
+    let scale = (rs + ch.z_ref) / ch.z_ref;
+    ch.freq
+        .iter()
+        .zip(&ch.abcd)
+        .map(|(&f, m)| {
+            let w = 2.0 * PI * f;
+            let mut t = Abcd::shunt(Cx::new(0.0, w * tx.c_pf * 1e-12));
+            if tx.l_nh > 0.0 {
+                t = t.mul(&Abcd::series(Cx::new(0.0, w * tx.l_nh * 1e-9)));
+            }
+            t = t.mul(m);
+            if rx.l_nh > 0.0 {
+                t = t.mul(&Abcd::series(Cx::new(0.0, w * rx.l_nh * 1e-9)));
+            }
+            let g = if rx.r > 0.0 { 1.0 / rx.r } else { 0.0 };
+            t = t.mul(&Abcd::shunt(Cx::new(g, w * rx.c_pf * 1e-12)));
+            // V_tx = (A + Rs·C)·V_rx with the load already inside the cascade
+            (t.a + t.c.scale(rs)).inv().scale(scale)
+        })
+        .collect()
 }
 
 impl Default for EyeParams {
     fn default() -> Self {
-        EyeParams { bitrate: 8e9, rise: 35e-12, prbs: 7, samples_per_ui: 32, rows: 96 }
+        EyeParams { bitrate: 8e9, rise: 35e-12, prbs: 7, samples_per_ui: 32, rows: 96, tx: None, rx: None }
     }
 }
 
@@ -102,6 +155,14 @@ pub fn eye(ch: &Channel, ep: &EyeParams) -> Result<Eye, String> {
     if ch.freq.len() < 10 || ch.s21.len() != ch.freq.len() {
         return Err("keine S-Parameter".into());
     }
+    let h: Vec<Cx> = match (&ep.tx, &ep.rx) {
+        (None, None) => ch.s21.clone(),
+        (tx, rx) if ch.abcd.len() == ch.freq.len() => {
+            let d = EndModel { r: ch.z_ref, c_pf: 0.0, l_nh: 0.0 };
+            transfer(ch, tx.as_ref().unwrap_or(&d), rx.as_ref().unwrap_or(&d))
+        }
+        _ => ch.s21.clone(),
+    };
     let mut warnings = Vec::new();
     let ui = 1.0 / ep.bitrate;
     let spu = ep.samples_per_ui.clamp(8, 128);
@@ -120,8 +181,8 @@ pub fn eye(ch: &Channel, ep: &EyeParams) -> Result<Eye, String> {
     let delay = ch.delay_ps * 1e-12;
     let t_win = (3.0 * delay + 6.0 * ep.rise + 48.0 * ui).min(0.7 / df);
     let nt = (t_win / dt).ceil() as usize + spu;
-    let s = step_response(&ch.freq, &ch.s21, ep.rise, dt, nt);
-    let dc = ch.s21[0].abs();
+    let s = step_response(&ch.freq, &h, ep.rise, dt, nt);
+    let dc = h[0].abs();
     // single-bit pulse response
     let p: Vec<f64> = (0..nt).map(|i| s[i] - if i >= spu { s[i - spu] } else { 0.0 }).collect();
     let (imax, &vpk) = p.iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap();
@@ -284,8 +345,30 @@ mod tests {
             warnings: vec![],
             s11: vec![Cx::new(0.0, 0.0); freq.len()],
             s21,
+            abcd: vec![],
             freq,
         }
+    }
+
+    #[test]
+    fn transfer_matched_equals_s21_and_open_end_doubles() {
+        let n = 100;
+        let df = 10e9 / n as f64;
+        let freq: Vec<f64> = (1..=n).map(|k| k as f64 * df).collect();
+        // 50 Ω lossless line, 10 mm, εeff 4
+        let (l, c) = (50.0 * 2.0 / crate::num::C0, 2.0 / (50.0 * crate::num::C0));
+        let abcd: Vec<Abcd> = freq.iter().map(|&f| Abcd::line(0.0, l, 0.0, c, 2.0 * PI * f, 0.01)).collect();
+        let s21: Vec<Cx> = abcd.iter().map(|m| m.s_params(50.0).1).collect();
+        let mut ch = channel_from(freq, s21.clone(), 67.0);
+        ch.abcd = abcd;
+        let m = EndModel { r: 50.0, c_pf: 0.0, l_nh: 0.0 };
+        let h = transfer(&ch, &m, &m);
+        for (a, b) in h.iter().zip(&s21) {
+            assert!((*a - *b).abs() < 1e-9);
+        }
+        let open = EndModel { r: 0.0, c_pf: 0.0, l_nh: 0.0 };
+        let h2 = transfer(&ch, &m, &open);
+        assert!((h2[0].abs() - 2.0).abs() < 0.01, "{}", h2[0].abs());
     }
 
     #[test]
@@ -350,6 +433,7 @@ pub fn check_net(
     target: Option<(f64, bool)>,
     rp: &crate::rf::RfParams,
     gbps: f64,
+    ends: (Option<EndModel>, Option<EndModel>, Option<f64>),
 ) -> CheckRow {
     let mut row = CheckRow {
         net,
@@ -391,7 +475,8 @@ pub fn check_net(
     let k2 = ((1.5 * fn_ / df).round() as usize).clamp(1, ch.freq.len());
     row.rl_db = -ch.s11_db[..k2].iter().cloned().fold(f64::NEG_INFINITY, f64::max);
     row.stub_ghz = ch.via_info.iter().filter(|v| v.stub_mm > 0.01).filter_map(|v| v.stub_f_ghz).fold(None, |a: Option<f64>, b| Some(a.map_or(b, |x| x.min(b))));
-    match eye(&ch, &EyeParams { bitrate: gbps * 1e9, rise: rp.rise, ..Default::default() }) {
+    let (tx, rx, rise) = ends;
+    match eye(&ch, &EyeParams { bitrate: gbps * 1e9, rise: rise.unwrap_or(rp.rise), tx, rx, ..Default::default() }) {
         Ok(e) => {
             row.eye_height = e.height;
             row.eye_width_ui = e.width_ps / e.ui_ps;

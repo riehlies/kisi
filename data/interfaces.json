@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "about": "Schnittstellen-Profile für die Kanalprüfung. Werte je Leitung (differentielle Kanäle werden in der ungeraden Mode gerechnet: r = halber Differenzwiderstand). 'kind' der Quellen: spec = aus der Norm bzw. normnahe Quelle, guideline = Hersteller-Layoutrichtlinie, kisi = eigener Richtwert ohne Normbezug. Grenzen der Ampel: eye_h_* in Anteilen des Sendehubs, eye_w_min_ui in UI, skew_ps Paar-Skew (null = 5 % UI), rl_min_db bis 1,5 × Nyquist, stub_factor = Via-Stub-Resonanz muss über stub_factor × Nyquist liegen, il_board_db = Dämpfung des Board-Abschnitts bei Nyquist (null = keine Grenze). Diese Datei kann ohne Codeänderung ergänzt werden.",
+  "defaults": {
+    "limits": { "eye_h_red": 0.4, "eye_h_yellow": 0.65, "eye_w_min_ui": 0.5, "skew_ps": null, "rl_min_db": 10, "stub_factor": 2, "il_board_db": null },
+    "sources": [{ "kind": "kisi", "text": "Ampelgrenzen für Auge, Rückflussdämpfung und Stub-Resonanz sind kisi-Richtwerte für ein Board ohne Entzerrung, keine Normwerte." }]
+  },
+  "profiles": [
+    {
+      "id": "pcie1", "name": "PCIe 1.x (2,5 GT/s)", "family": "PCIe", "rate_gbps": 2.5, "signal": "diff", "z": 100, "z_tol_pct": 15,
+      "tx": { "swing_mv": 1000, "r": 50, "c_pf": 1.0, "l_nh": 0, "rise_ps": 80 }, "rx": { "r": 50, "c_pf": 1.0, "l_nh": 0 },
+      "match": [],
+      "sources": [{ "kind": "guideline", "text": "PCIe erlaubt 70–100 Ω differentiell; für Gen1/2 sind 100 Ω üblich.", "url": "https://www.ti.com/lit/pdf/snla426" }]
+    },
+    {
+      "id": "pcie2", "name": "PCIe 2.x (5 GT/s)", "family": "PCIe", "rate_gbps": 5, "signal": "diff", "z": 100, "z_tol_pct": 15,
+      "tx": { "swing_mv": 1000, "r": 50, "c_pf": 1.0, "l_nh": 0, "rise_ps": 40 }, "rx": { "r": 50, "c_pf": 1.0, "l_nh": 0 },
+      "match": [],
+      "sources": [{ "kind": "guideline", "text": "PCIe erlaubt 70–100 Ω differentiell.", "url": "https://www.ti.com/lit/pdf/snla426" }]
+    },
+    {
+      "id": "pcie3", "name": "PCIe 3.x (8 GT/s)", "family": "PCIe", "rate_gbps": 8, "signal": "diff", "z": 85, "z_tol_pct": 15,
+      "tx": { "swing_mv": 1000, "r": 50, "c_pf": 1.0, "l_nh": 0, "rise_ps": 30 }, "rx": { "r": 50, "c_pf": 1.0, "l_nh": 0 },
+      "il_total": { "db": -22, "f_ghz": 4, "scope": "Ende-zu-Ende inkl. Gehäuse (Literaturwert, Sender-/Empfänger-Entzerrung vorausgesetzt)" },
+      "match": [],
+      "sources": [{ "kind": "guideline", "text": "Gesamtkanal etwa −20 bis −22 dB bei 4 GHz; ab Gen3 arbeiten Sender (FFE) und Empfänger (CTLE/DFE) mit Entzerrung, das Auge ohne Entzerrung ist für lange Kanäle pessimistisch.", "url": "https://www.nextpcb.com/blog/pcie-gen5-pcb-design-guidelines-impedance-loss-budget-via" }]
+    },
+    {
+      "id": "pcie4", "name": "PCIe 4.0 (16 GT/s)", "family": "PCIe", "rate_gbps": 16, "signal": "diff", "z": 85, "z_tol_pct": 15,
+      "tx": { "swing_mv": 1000, "r": 50, "c_pf": 0.8, "l_nh": 0, "rise_ps": 18 }, "rx": { "r": 50, "c_pf": 0.8, "l_nh": 0 },
+      "limits": { "skew_ps": 5 },
+      "il_total": { "db": -28, "f_ghz": 8, "scope": "Ende-zu-Ende inkl. Sender- und Empfängergehäuse" },
+      "match": ["PCI_?E", "PE[TR][0-9]", "PER[0-9]", "PET[0-9]"],
+      "sources": [
+        { "kind": "guideline", "text": "Altera/Intel Agilex 7 P-tile: Gesamtkanal max. 28 dB bei 8 GHz; Steckkarte (Goldfinger bis Silizium) ≤ 8 dB, davon ca. 5 dB Leiterplatte; 85 Ω; Paar-Skew ±1 mil; Via-Stubs < 30 mil.", "url": "https://www.intel.com/content/www/us/en/docs/programmable/683864/current/p-tile-pcb-design-guidelines.html" },
+        { "kind": "guideline", "text": "TI SNLA426: PCIe erlaubt 70–100 Ω, Steckkarten verlangen 85 Ω; Vias, Kondensator-Pads und Steckverbinder ausgenommen.", "url": "https://www.ti.com/lit/pdf/snla426" }
+      ]
+    },
+    {
+      "id": "pcie5", "name": "PCIe 5.0 (32 GT/s)", "family": "PCIe", "rate_gbps": 32, "signal": "diff", "z": 85, "z_tol_pct": 10,
+      "tx": { "swing_mv": 1000, "r": 50, "c_pf": 0.6, "l_nh": 0, "rise_ps": 10 }, "rx": { "r": 50, "c_pf": 0.6, "l_nh": 0 },
+      "limits": { "skew_ps": 5 },
+      "il_total": { "db": -36, "f_ghz": 16, "scope": "Ende-zu-Ende (häufig zitierter Wert; Quellen widersprechen sich, teils −28 dB)" },
+      "match": [],
+      "sources": [{ "kind": "guideline", "text": "85 Ω ±10 %, Paar-Skew < 1,5 ps je Abschnitt bzw. < 5 ps im ganzen Kanal (Sekundärquelle, gegen PCI-SIG-Spezifikation prüfen).", "url": "https://www.nextpcb.com/blog/pcie-gen5-pcb-design-guidelines-impedance-loss-budget-via" }]
+    },
+    {
+      "id": "pcie_refclk", "name": "PCIe-Referenztakt 100 MHz (HCSL)", "family": "PCIe", "rate_gbps": 0.2, "signal": "diff", "z": 100, "z_tol_pct": 10,
+      "tx": { "swing_mv": 750, "r": 50, "c_pf": 1.0, "l_nh": 0, "rise_ps": 300 }, "rx": { "r": 0, "c_pf": 1.5, "l_nh": 0 },
+      "match": ["REFCLK", "REF_CLK"],
+      "sources": [{ "kind": "guideline", "text": "Referenztakt 100 Ω differentiell (TI SNLA426). HCSL: Terminierung 50 Ω nach Masse am Sender, Empfänger hochohmig.", "url": "https://www.ti.com/lit/pdf/snla426" }]
+    },
+    {
+      "id": "usb2", "name": "USB 2.0 High-Speed (480 Mbit/s)", "family": "USB", "rate_gbps": 0.48, "signal": "diff", "z": 90, "z_tol_pct": 15,
+      "tx": { "swing_mv": 400, "r": 45, "c_pf": 1.5, "l_nh": 0, "rise_ps": 500 }, "rx": { "r": 45, "c_pf": 1.5, "l_nh": 0 },
+      "match": ["USB_?D[PMN+-]", "USB2", "^D[PM]$", "_D[PM]$"],
+      "sources": [{ "kind": "spec", "text": "USB 2.0 HS: 90 Ω ±15 % differentiell, 45 Ω Terminierung je Leitung an beiden Enden, 400 mV Hub." }]
+    },
+    {
+      "id": "usb3g1", "name": "USB 3.2 Gen 1 (5 Gbit/s)", "family": "USB", "rate_gbps": 5, "signal": "diff", "z": 90, "z_tol_pct": 10,
+      "tx": { "swing_mv": 1000, "r": 45, "c_pf": 1.0, "l_nh": 0, "rise_ps": 40 }, "rx": { "r": 45, "c_pf": 1.0, "l_nh": 0 },
+      "match": ["SS_?[TR]X", "USB3", "SSTX", "SSRX"],
+      "sources": [{ "kind": "guideline", "text": "Typisch 90 Ω ±10 % differentiell; Koppelkondensatoren im TX-Pfad (75–265 nF Empfänger-Erkennung)." }]
+    },
+    {
+      "id": "usb3g2", "name": "USB 3.2 Gen 2 (10 Gbit/s)", "family": "USB", "rate_gbps": 10, "signal": "diff", "z": 85, "z_tol_pct": 10,
+      "tx": { "swing_mv": 1000, "r": 45, "c_pf": 0.8, "l_nh": 0, "rise_ps": 25 }, "rx": { "r": 45, "c_pf": 0.8, "l_nh": 0 },
+      "limits": { "skew_ps": 1.0, "il_board_db": -3.5 },
+      "match": [],
+      "sources": [{ "kind": "guideline", "text": "congatec AN37: 85 Ω ±10 %, Längenabgleich max. 5 mil, Dämpfung der Trägerplatine max. 3,5 dB bei 5 GHz (nur Leiterbahn), Via-Stub < 10 mil.", "url": "https://www.congatec.com/fileadmin/user_upload/Documents/Application_Notes/AN37_USB3_Gen2_Design_Considerations.pdf" }]
+    },
+    {
+      "id": "ddr4_dq", "name": "DDR4 Daten/Adresse (3200 MT/s)", "family": "DDR", "rate_gbps": 3.2, "signal": "se", "z": 40, "z_tol_pct": 10,
+      "tx": { "swing_mv": 600, "r": 34, "c_pf": 1.2, "l_nh": 0, "rise_ps": 80 }, "rx": { "r": 48, "c_pf": 1.2, "l_nh": 0 },
+      "match": ["DDR4", "^DQ[0-9]", "_DQ[0-9]", "DQ[0-9]+$", "DM[0-9]", "^A[0-9]+$", "_A[0-9]+$", "BA[0-9]", "BG[0-9]"],
+      "sources": [{ "kind": "guideline", "text": "JEDEC legt keine Leiterplatten-Impedanz fest; Herstellerrichtlinien nennen 40–50 Ω einzeln. Treiber RON 34 Ω, ODT RTT 48 Ω (POD gegen VDDQ, hier als Wechselstrom-Ersatz)." }]
+    },
+    {
+      "id": "ddr4_clk", "name": "DDR4 DQS/CK (3200 MT/s)", "family": "DDR", "rate_gbps": 3.2, "signal": "diff", "z": 80, "z_tol_pct": 10,
+      "tx": { "swing_mv": 600, "r": 34, "c_pf": 1.2, "l_nh": 0, "rise_ps": 80 }, "rx": { "r": 48, "c_pf": 1.2, "l_nh": 0 },
+      "match": ["DQS", "DDR4_CK", "_CK_?[TCPN]$"],
+      "sources": [{ "kind": "guideline", "text": "Herstellerrichtlinien: 80–100 Ω differentiell für DQS und CK." }]
+    },
+    {
+      "id": "ddr5_dq", "name": "DDR5 Daten/Adresse (6400 MT/s)", "family": "DDR", "rate_gbps": 6.4, "signal": "se", "z": 40, "z_tol_pct": 10,
+      "tx": { "swing_mv": 500, "r": 34, "c_pf": 0.8, "l_nh": 0, "rise_ps": 40 }, "rx": { "r": 40, "c_pf": 0.8, "l_nh": 0 },
+      "match": ["DDR5"],
+      "sources": [{ "kind": "guideline", "text": "AMD UG863 (Versal): DQ und CAC 40 Ω ±10 %, DQS/CK 75 Ω ±10 %; Daten max. 5000 mil (Bauteil) bzw. 4000 mil (DIMM).", "url": "https://docs.amd.com/r/en-US/ug863-versal-pcb-design/Physical-Design-Rules-for-DDR5-Signals" }]
+    },
+    {
+      "id": "ddr5_clk", "name": "DDR5 DQS/CK (6400 MT/s)", "family": "DDR", "rate_gbps": 6.4, "signal": "diff", "z": 75, "z_tol_pct": 10,
+      "tx": { "swing_mv": 500, "r": 34, "c_pf": 0.8, "l_nh": 0, "rise_ps": 40 }, "rx": { "r": 40, "c_pf": 0.8, "l_nh": 0 },
+      "match": [],
+      "sources": [{ "kind": "guideline", "text": "AMD UG863: DQS/CK 75 Ω ±10 % differentiell.", "url": "https://docs.amd.com/r/en-US/ug863-versal-pcb-design/Physical-Design-Rules-for-DDR5-Signals" }]
+    },
+    {
+      "id": "rgmii", "name": "RGMII (125 MHz DDR)", "family": "Ethernet", "rate_gbps": 0.25, "signal": "se", "z": 50, "z_tol_pct": 10,
+      "tx": { "swing_mv": 2500, "r": 20, "c_pf": 2.0, "l_nh": 0, "rise_ps": 700 }, "rx": { "r": 0, "c_pf": 3.0, "l_nh": 0 },
+      "match": ["RGMII", "RXD[0-9]", "TXD[0-9]", "RX_?CTL", "TX_?CTL", "GTX_?CLK"],
+      "sources": [{ "kind": "guideline", "text": "Einzelleitungen 50 Ω, Empfänger hochohmig; ohne Serienwiderstand am Treiber (typ. 22–33 Ω) entstehen Überschwinger. Treiberwiderstand hier geschätzt." }]
+    },
+    {
+      "id": "sgmii", "name": "SGMII (1,25 Gbit/s)", "family": "Ethernet", "rate_gbps": 1.25, "signal": "diff", "z": 100, "z_tol_pct": 10,
+      "tx": { "swing_mv": 700, "r": 50, "c_pf": 1.0, "l_nh": 0, "rise_ps": 150 }, "rx": { "r": 50, "c_pf": 1.0, "l_nh": 0 },
+      "match": ["SGMII", "SERDES"],
+      "sources": [{ "kind": "guideline", "text": "100 Ω differentiell, CML/LVDS-artig, Wechselstromkopplung üblich." }]
+    },
+    {
+      "id": "eth_mdi", "name": "Ethernet 1000BASE-T MDI", "family": "Ethernet", "rate_gbps": 0.25, "signal": "diff", "z": 100, "z_tol_pct": 10,
+      "tx": { "swing_mv": 2000, "r": 50, "c_pf": 2.0, "l_nh": 0, "rise_ps": 2000 }, "rx": { "r": 50, "c_pf": 2.0, "l_nh": 0 },
+      "match": ["MDI", "TRD[0-9]", "TRX[0-9]"],
+      "sources": [{ "kind": "spec", "text": "MDI 100 Ω differentiell. 1000BASE-T ist PAM5 mit 125 MBd über Übertrager – das NRZ-Auge ist hier nur eine grobe Plausibilitätsprüfung." }]
+    },
+    {
+      "id": "hdmi20", "name": "HDMI 2.0 TMDS (6 Gbit/s)", "family": "Video", "rate_gbps": 6, "signal": "diff", "z": 100, "z_tol_pct": 10,
+      "tx": { "swing_mv": 800, "r": 5000, "c_pf": 1.0, "l_nh": 0, "rise_ps": 50 }, "rx": { "r": 50, "c_pf": 1.0, "l_nh": 0 },
+      "match": ["HDMI", "TMDS"],
+      "sources": [{ "kind": "spec", "text": "TMDS 100 Ω ±10 % differentiell; Sender als Stromquelle, Empfänger 50 Ω je Leitung gegen AVcc." }]
+    },
+    {
+      "id": "lvds", "name": "LVDS (1 Gbit/s)", "family": "LVDS", "rate_gbps": 1, "signal": "diff", "z": 100, "z_tol_pct": 10,
+      "tx": { "swing_mv": 350, "r": 5000, "c_pf": 2.0, "l_nh": 0, "rise_ps": 300 }, "rx": { "r": 50, "c_pf": 2.0, "l_nh": 0 },
+      "match": ["LVDS", "LCLK", "FCLK", "ADC_?D", "_D[0-9][AB]_?[PN]$"],
+      "sources": [{ "kind": "spec", "text": "TIA/EIA-644: 100 Ω differentiell, Stromquellen-Treiber (3,5 mA), 100 Ω Abschluss am Empfänger, 350 mV Hub." }]
+    },
+    {
+      "id": "mipi_dphy", "name": "MIPI D-PHY (2,5 Gbit/s)", "family": "MIPI", "rate_gbps": 2.5, "signal": "diff", "z": 100, "z_tol_pct": 10,
+      "tx": { "swing_mv": 200, "r": 50, "c_pf": 1.0, "l_nh": 0, "rise_ps": 100 }, "rx": { "r": 50, "c_pf": 1.0, "l_nh": 0 },
+      "match": ["MIPI", "CSI", "DSI"],
+      "sources": [{ "kind": "guideline", "text": "D-PHY HS-Modus: 100 Ω differentiell, 100 Ω Abschluss am Empfänger." }]
+    },
+    {
+      "id": "serdes", "name": "SerDes allgemein (6,25 Gbit/s, CML)", "family": "SerDes", "rate_gbps": 6.25, "signal": "diff", "z": 100, "z_tol_pct": 10,
+      "tx": { "swing_mv": 800, "r": 50, "c_pf": 1.0, "l_nh": 0, "rise_ps": 40 }, "rx": { "r": 50, "c_pf": 1.0, "l_nh": 0 },
+      "match": ["MGT", "GTP", "GTX", "GTH", "JESD"],
+      "sources": [{ "kind": "kisi", "text": "Allgemeines CML-Profil (50 Ω je Leitung an beiden Enden); Datenrate an das Bauteil anpassen." }]
+    },
+    {
+      "id": "se50", "name": "Einzelleitung 50 Ω allgemein", "family": "Allgemein", "rate_gbps": 1, "signal": "se", "z": 50, "z_tol_pct": 10,
+      "tx": { "swing_mv": 1000, "r": 50, "c_pf": 1.0, "l_nh": 0, "rise_ps": 100 }, "rx": { "r": 50, "c_pf": 1.0, "l_nh": 0 },
+      "match": [],
+      "sources": [{ "kind": "kisi", "text": "Allgemeines Profil ohne Normbezug." }]
+    },
+    {
+      "id": "diff100", "name": "Differentiell 100 Ω allgemein", "family": "Allgemein", "rate_gbps": 1, "signal": "diff", "z": 100, "z_tol_pct": 10,
+      "tx": { "swing_mv": 800, "r": 50, "c_pf": 1.0, "l_nh": 0, "rise_ps": 100 }, "rx": { "r": 50, "c_pf": 1.0, "l_nh": 0 },
+      "match": [],
+      "sources": [{ "kind": "kisi", "text": "Allgemeines Profil ohne Normbezug." }]
+    }
+  ]
+}

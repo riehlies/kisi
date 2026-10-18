@@ -52,6 +52,9 @@ pub struct Channel {
     pub s11: Vec<Cx>,
     #[serde(skip)]
     pub s21: Vec<Cx>,
+    /// cascade matrix of the whole channel per frequency (for other terminations)
+    #[serde(skip)]
+    pub abcd: Vec<Abcd>,
 }
 
 /// Ordered path of a net: (piece indices in order, reversed flag per piece,
@@ -406,6 +409,7 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
     let freq: Vec<f64> = (1..=n).map(|k| k as f64 * df).collect();
     let mut s11 = Vec::with_capacity(n);
     let mut s21 = Vec::with_capacity(n);
+    let mut abcd = Vec::with_capacity(n);
     for &f in &freq {
         let w = 2.0 * PI * f;
         let mut m = Abcd::identity();
@@ -425,6 +429,7 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
         let (a, b, _) = m.s_params(z_ref);
         s11.push(a);
         s21.push(b);
+        abcd.push(m);
     }
     let db = |x: Cx| 20.0 * x.abs().max(1e-12).log10();
     let s21_db: Vec<f64> = s21.iter().map(|&x| db(x)).collect();
@@ -511,6 +516,7 @@ pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, F
         warnings,
         s11,
         s21,
+        abcd,
     })
 }
 

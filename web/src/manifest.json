@@ -1,0 +1,19 @@
+{
+ "scripts": [
+  "00-engine.js",
+  "01-state.js",
+  "02-load.js",
+  "03-geometry.js",
+  "04-draw.js",
+  "05-net-detail.js",
+  "06-rf-views.js",
+  "07-channel-check.js",
+  "08-panels.js",
+  "09-interaction.js",
+  "10-field-pool.js",
+  "11-field-cache.js",
+  "12-pi-dc.js",
+  "13-pi-pdn.js",
+  "14-pi-balance.js"
+ ]
+}

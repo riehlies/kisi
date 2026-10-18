@@ -1,3 +1,5 @@
 target/
 *.wasm
 dist/
+__pycache__/
+*.pyc

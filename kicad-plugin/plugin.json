@@ -1,0 +1,30 @@
+{
+  "$schema": "https://go.kicad.org/api/schemas/v1",
+  "identifier": "org.kisi.viewer",
+  "name": "kisi SI/PI",
+  "description": "Öffnet den kisi-Viewer (Impedanz, Kanal, Versorgung) mit dem aktuell geöffneten Board. Das Board wird nicht gespeichert oder verändert.",
+  "runtime": { "type": "python" },
+  "actions": [
+    {
+      "identifier": "open-viewer",
+      "name": "kisi: Viewer öffnen",
+      "description": "Aktuelles Board im kisi-Viewer öffnen (eine ausgewählte Leiterbahn wird dort ausgewählt)",
+      "show-button": true,
+      "scopes": ["pcb"],
+      "entrypoint": "kisi_open.py",
+      "icons-light": ["resources/kisi-24.png", "resources/kisi-48.png"],
+      "icons-dark": ["resources/kisi-24-dark.png", "resources/kisi-48-dark.png"]
+    },
+    {
+      "identifier": "open-channel",
+      "name": "kisi: Kanal prüfen",
+      "description": "Wie „Viewer öffnen“, startet in der Kanal-Ansicht",
+      "show-button": false,
+      "scopes": ["pcb"],
+      "entrypoint": "kisi_open.py",
+      "args": ["--view", "ch"],
+      "icons-light": ["resources/kisi-24.png", "resources/kisi-48.png"],
+      "icons-dark": ["resources/kisi-24-dark.png", "resources/kisi-48-dark.png"]
+    }
+  ]
+}

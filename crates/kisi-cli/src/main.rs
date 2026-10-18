@@ -210,7 +210,22 @@ fn main() {
         return;
     }
     if let Some(p) = &pi_tree {
-        let spec: kisi_core::tree::TreeSpec = serde_json::from_str(&std::fs::read_to_string(p).expect("read tree")).expect("tree JSON");
+        let spec: kisi_core::tree::TreeSpec = if p == "fields" {
+            match kisi_core::tree::tree_from_fields(&board) {
+                Some((s, w)) => {
+                    for x in w {
+                        println!("Hinweis: {x}");
+                    }
+                    s
+                }
+                None => {
+                    eprintln!("keine PI_REG-Felder auf der Platine");
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            serde_json::from_str(&std::fs::read_to_string(p).expect("read tree")).expect("tree JSON")
+        };
         let t = match kisi_core::tree::solve_tree(&spec, Some(&board)) {
             Ok(t) => t,
             Err(e) => {

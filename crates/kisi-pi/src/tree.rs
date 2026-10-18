@@ -494,3 +494,206 @@ mod tests {
         assert!(solve_tree(&s, None).is_err());
     }
 }
+
+// --- power tree from KiCad fields (PI_REG + PI_LOAD) -------------------------------------
+//
+// PI_REG on a regulator / input / pass element, entries separated by ';':
+//
+//   +12V > +5V buck 90% 3A out=L3        switching converter, efficiency, rated current,
+//                                         component that carries the output current
+//   +5V > +3V3 ldo iq=2mA 1A             linear regulator with ground current
+//   +3V3 > +3V3A pass r=0.1              ferrite / shunt (series resistance in Ω)
+//   +5V > -5V inverter 70%
+//   +12V input                            input connector (no source rail)
+//   +5V > VCORE@0.9V buck 85%            rail without a voltage in its name: @<V>V
+//   +5V > +1V8 buck 88% 2A id=U4A        one IC with several channels: unique id
+//
+// '>' may also be written '->' or '→'. Values: 90% / 0.9, 3A / 500mA, iq=1mA,
+// r=10m (Ω), in=/out=<refdes>, part=<text>. Loads come from PI_LOAD
+// (`+1V0=2.5A, +1V8=300mA` or `+1V0=2W`), the rails from all named nets.
+
+const KINDS: &[&str] = &["input", "buck", "boost", "ldo", "inverter", "pass", "buck-boost", "sepic"];
+
+fn parse_amps(s: &str) -> Option<f64> {
+    let t = s.trim().trim_end_matches(['A', 'a']);
+    let (n, m) = if let Some(x) = t.strip_suffix('m') { (x, 1e-3) } else if let Some(x) = t.strip_suffix('u').or_else(|| t.strip_suffix('µ')) { (x, 1e-6) } else { (t, 1.0) };
+    n.replace(',', ".").parse::<f64>().ok().map(|v| v * m)
+}
+fn parse_ohms(s: &str) -> Option<f64> {
+    let t = s.trim().trim_end_matches(['Ω', 'R']).trim_end_matches("Ohm").trim_end_matches("ohm");
+    let (n, m) = if let Some(x) = t.strip_suffix('m') { (x, 1e-3) } else if let Some(x) = t.strip_suffix('k') { (x, 1e3) } else { (t, 1.0) };
+    n.replace(',', ".").parse::<f64>().ok().map(|v| v * m)
+}
+
+/// One PI_REG entry → (element, rail voltages given with '@').
+pub fn parse_reg_entry(refdes: &str, part: &str, entry: &str) -> Result<(ElemSpec, Vec<(String, f64)>), String> {
+    let e = entry.replace("->", ">").replace('→', ">");
+    let (lhs, rhs) = match e.split_once('>') {
+        Some((a, b)) => (a.trim().to_string(), b.trim().to_string()),
+        None => (String::new(), e.trim().to_string()),
+    };
+    let mut toks = rhs.split_whitespace();
+    let mut volts = Vec::new();
+    let mut rail = |t: &str| -> String {
+        match t.split_once('@') {
+            Some((n, v)) => {
+                if let Some(x) = v.trim_end_matches(['V', 'v']).replace(',', ".").parse::<f64>().ok() {
+                    volts.push((n.to_string(), x));
+                }
+                n.to_string()
+            }
+            None => t.to_string(),
+        }
+    };
+    let to_tok = toks.next().ok_or("Ausgangsschiene fehlt")?;
+    let to = rail(to_tok);
+    let from = if lhs.is_empty() { None } else { Some(rail(&lhs)) };
+    let mut el = ElemSpec { refdes: refdes.to_string(), part: part.to_string(), to, from, ..Default::default() };
+    let mut kind = None;
+    for t in toks {
+        let tl = t.to_ascii_lowercase();
+        if KINDS.contains(&tl.as_str()) {
+            kind = Some(tl);
+        } else if let Some(v) = t.strip_suffix('%') {
+            el.eff = v.replace(',', ".").parse::<f64>().ok().map(|x| x / 100.0);
+        } else if let Some((k, v)) = t.split_once('=') {
+            match k.to_ascii_lowercase().as_str() {
+                "iq" => el.iq = parse_amps(v).ok_or(format!("iq '{v}' nicht lesbar"))?,
+                "r" => el.r = parse_ohms(v).ok_or(format!("r '{v}' nicht lesbar"))?,
+                "imax" => el.imax = parse_amps(v),
+                "eff" => el.eff = v.trim_end_matches('%').replace(',', ".").parse::<f64>().ok().map(|x| if x > 1.0 { x / 100.0 } else { x }),
+                "out" => el.out_ref = Some(v.to_string()),
+                "in" => el.in_ref = Some(v.to_string()),
+                "id" => el.id = v.to_string(),
+                "part" => el.part = v.to_string(),
+                _ => return Err(format!("unbekannter Schlüssel '{k}'")),
+            }
+        } else if t.ends_with(['A', 'a']) && parse_amps(t).is_some() {
+            el.imax = parse_amps(t);
+        } else {
+            return Err(format!("'{t}' nicht verstanden"));
+        }
+    }
+    el.kind = kind.unwrap_or_else(|| if el.from.is_none() { "input".into() } else { "buck".into() });
+    if el.kind != "input" && el.from.is_none() {
+        return Err("Eingangsschiene fehlt (Form EINGANG > AUSGANG typ)".into());
+    }
+    Ok((el, volts))
+}
+
+/// Power tree from PI_REG / PI_LOAD fields. Returns None if no PI_REG field exists.
+pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
+    if !board.footprints.iter().any(|f| f.prop("PI_REG").is_some()) {
+        return None;
+    }
+    let mut spec = TreeSpec { name: "aus KiCad-Feldern (PI_REG, PI_LOAD)".into(), ..Default::default() };
+    let mut warnings = Vec::new();
+    let mut volts: HashMap<String, f64> = HashMap::new();
+    for fp in &board.footprints {
+        let Some(v) = fp.prop("PI_REG") else { continue };
+        let entries: Vec<&str> = v.split(';').map(str::trim).filter(|s| !s.is_empty()).collect();
+        for (k, entry) in entries.iter().enumerate() {
+            match parse_reg_entry(&fp.reference, &fp.value, entry) {
+                Ok((mut el, vs)) => {
+                    if el.id.is_empty() && entries.len() > 1 {
+                        el.id = format!("{}.{}", fp.reference, k + 1);
+                    }
+                    for (n, x) in vs {
+                        volts.insert(n, x);
+                    }
+                    spec.elements.push(el);
+                }
+                Err(e) => warnings.push(format!("{}: PI_REG '{}': {}", fp.reference, entry, e)),
+            }
+        }
+    }
+    for fp in &board.footprints {
+        let Some(v) = fp.prop("PI_LOAD") else { continue };
+        for item in v.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
+            let Some((name, q)) = item.split_once('=') else {
+                warnings.push(format!("{}: PI_LOAD '{}' ohne Wert", fp.reference, item));
+                continue;
+            };
+            let name = name.trim();
+            let vr = volts.get(name).copied().or_else(|| crate::pi::voltage_from_name(name));
+            let current = match crate::pi::parse_quantity(q) {
+                Some((a, 'A')) => a,
+                Some((w, 'W')) => match vr {
+                    Some(x) if x.abs() > 0.0 => w / x.abs(),
+                    _ => {
+                        warnings.push(format!("{}: Leistung für {} ohne bekannte Spannung", fp.reference, name));
+                        continue;
+                    }
+                },
+                _ => {
+                    warnings.push(format!("{}: PI_LOAD-Wert '{}' nicht lesbar", fp.reference, q.trim()));
+                    continue;
+                }
+            };
+            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.value.clone(), basis: "Feld".into(), ..Default::default() });
+        }
+    }
+    // rails: every net named by an element or a load
+    let mut names: Vec<String> = Vec::new();
+    for e in &spec.elements {
+        for n in e.from.iter().chain(std::iter::once(&e.to)) {
+            if !names.contains(n) {
+                names.push(n.clone());
+            }
+        }
+    }
+    for l in &spec.loads {
+        if !names.contains(&l.net) {
+            names.push(l.net.clone());
+        }
+    }
+    // pass elements (ferrite, shunt) carry the input voltage to their output rail
+    for _ in 0..4 {
+        for e in &spec.elements {
+            if e.kind != "pass" {
+                continue;
+            }
+            let Some(f) = &e.from else { continue };
+            let vin = volts.get(f).copied().or_else(|| crate::pi::voltage_from_name(f));
+            if let (Some(v), false) = (vin, volts.contains_key(&e.to) || crate::pi::voltage_from_name(&e.to).is_some()) {
+                volts.insert(e.to.clone(), v);
+            }
+        }
+    }
+    for n in names {
+        let v = volts.get(&n).copied().or_else(|| crate::pi::voltage_from_name(&n));
+        if v.is_none() {
+            warnings.push(format!("Schiene {n}: Spannung unbekannt (im Namen oder als {n}@1.0V angeben)"));
+        }
+        if crate::pi::find_net(board, &n).is_none() {
+            warnings.push(format!("Schiene {n}: Netz nicht auf der Platine"));
+        }
+        spec.rails.push(RailV { net: n, voltage: v.unwrap_or(0.0) });
+    }
+    Some((spec, warnings))
+}
+
+#[cfg(test)]
+mod field_tests {
+    use super::*;
+
+    #[test]
+    fn reg_entries() {
+        let (e, _) = parse_reg_entry("U3", "TPS62130", "+12V > +5V buck 90% 3A out=L3").unwrap();
+        assert_eq!((e.from.as_deref(), e.to.as_str(), e.kind.as_str()), (Some("+12V"), "+5V", "buck"));
+        assert!((e.eff.unwrap() - 0.9).abs() < 1e-9 && (e.imax.unwrap() - 3.0).abs() < 1e-9);
+        assert_eq!(e.out_ref.as_deref(), Some("L3"));
+        let (e, _) = parse_reg_entry("U5", "", "+5V -> +3V3 ldo iq=2mA 500mA").unwrap();
+        assert_eq!(e.kind, "ldo");
+        assert!((e.iq - 0.002).abs() < 1e-12 && (e.imax.unwrap() - 0.5).abs() < 1e-12);
+        let (e, _) = parse_reg_entry("FB1", "", "+3V3 → +3V3A pass r=50m").unwrap();
+        assert!((e.r - 0.05).abs() < 1e-12);
+        let (e, _) = parse_reg_entry("J1", "", "+12V input").unwrap();
+        assert!(e.from.is_none() && e.kind == "input");
+        let (e, v) = parse_reg_entry("U7", "", "+5V > VCORE@0.9V buck 85%").unwrap();
+        assert_eq!(e.to, "VCORE");
+        assert_eq!(v, vec![("VCORE".to_string(), 0.9)]);
+        assert!(parse_reg_entry("U8", "", "+5V > +3V3 ldo foo").is_err());
+        assert!(parse_reg_entry("U9", "", "+3V3 ldo").is_err());
+    }
+}

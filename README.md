@@ -51,6 +51,25 @@ Kern in Rust, läuft als WebAssembly im Browser und als native CLI. Lizenz: GPL-
   Augenhöhe/-breite, Skew im Paar und Via-Stub-Resonanz; Ampel nach Richtwerten (keine Spezifikation).
 - Genauigkeit: Leitungs-RLGC gegen HFSS ≤ 2 %; Via-Impedanz ist ein Abschätzungsmodell (etwa ±15 %), kein 3D-Ergebnis.
 
+## Reglerketten direkt in KiCad: Feld `PI_REG`
+Am Regler, Eingang oder Durchgangselement (Ferrit, Shunt) ein Feld `PI_REG` anlegen (im Schaltplan,
+wird beim Aktualisieren der Platine übernommen); mehrere Kanäle eines ICs mit `;` trennen:
+
+| Beispiel | Bedeutung |
+|---|---|
+| `+12V input` | Einspeisung (Steckverbinder) |
+| `+12V > +5V buck 90% 3A out=L3` | Schaltregler, Wirkungsgrad, Nennstrom, Bauteil mit dem Ausgangsstrom |
+| `+5V > +3V3 ldo iq=2mA 1A` | Linearregler mit Querstrom |
+| `+3V3 > +3V3A pass r=0.05` | Ferrit / Shunt mit Serienwiderstand (Ω) |
+| `+5V > -5V inverter 70%` | invertierender Wandler |
+| `+5V > VCORE@0.9V buck 85% id=U4A` | Schiene ohne Spannung im Namen (`@`), eigene Kennung je Kanal |
+
+Statt `>` geht auch `->` oder `→`. Lasten kommen aus `PI_LOAD` (`+1V0=2.5A, +1V8=300mA` oder `+1V0=2W`).
+Sind `PI_REG`-Felder vorhanden, ersetzen sie im Viewer den Beispielbaum; „Als KiCad-Felder“ in der
+Versorgungsansicht gibt den aktuellen Baum in dieser Form aus. CLI: `kisi board.kicad_pcb --pi-tree fields`.
+`tools/tree_to_fields.py` schreibt einen JSON-Baum als Felder in eine Kopie der Platine (Migration, Test:
+beide Beispielboards ergeben mit den Feldern dieselbe Bilanz wie mit dem JSON-Baum).
+
 ## Impedanz der Versorgung Z(f) (PI-AC, erste Version)
 - `crates/kisi-core/src/pdn.rs`: konzentriertes Modell je Schiene – Regler (R + L) ∥ Ebenenkapazität (Fläche der
   Zonen über der nächsten Masselage) ∥ alle Kondensatoren zwischen Schiene und Masse. Wert aus dem Bauteilwert

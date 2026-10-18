@@ -27,9 +27,14 @@ function initPi(defaults) {
   S.piRes = new Map(); S.piSetups = new Map(); S.piImg = null; S.piWarn = []; S.piDefaults = defaults;
   S.piTree = null; S.treeRes = null; $("pi-balance").scrollTop = 0;
   try { S.piNets = S.engine.piNets(); } catch (e) { S.piNets = []; }
+  // regulator chain from PI_REG fields in the board wins over the example tree
+  let tf = null;
+  try { tf = S.engine.piTreeFields(); } catch (e) { tf = null; }
+  if (tf && tf.spec && tf.spec.elements.length) { defaults = tf.spec; S.piDefaults = defaults; }
   if (defaults && !Array.isArray(defaults) && defaults.elements) {
     S.piTree = treeLoadSaved() || JSON.parse(JSON.stringify(defaults));
     computeTree();
+    if (tf && tf.warnings) S.piWarn = tf.warnings.concat(S.piWarn);
     const t0 = performance.now();
     for (const r of S.piSetups.values()) solvePiRail(r.net, false);
     $("pi-timing").textContent = `${S.piSetups.size} Schienen · ${Math.round(performance.now() - t0)} ms`;
@@ -192,6 +197,7 @@ function renderRailEditor() {
 
 // current configuration as KiCad field values, per component
 function fieldsText() {
+  if (S.piTree) return treeFieldsText(S.piTree);
   const by = new Map();
   const add = (ref, key, val) => { if (!by.has(ref)) by.set(ref, { PI_LOAD: [], PI_SOURCE: [] }); by.get(ref)[key].push(val); };
   for (const r of S.piSetups.values()) {
@@ -204,6 +210,34 @@ function fieldsText() {
     if (f.PI_LOAD.length) lines.push(`${ref}  PI_LOAD = ${f.PI_LOAD.join(", ")}`);
   }
   return lines.join("\n") || "Noch keine Quellen oder Lasten.";
+}
+
+// power tree as KiCad fields: PI_REG on regulators / inputs / pass elements, PI_LOAD on loads
+function treeFieldsText(t) {
+  const by = new Map(), add = (ref, key, val) => { if (!by.has(ref)) by.set(ref, { PI_REG: [], PI_LOAD: [] }); by.get(ref)[key].push(val); };
+  const volt = new Map(t.rails.map((r) => [r.net, r.voltage]));
+  const rn = (n) => {
+    const v = volt.get(n), named = /^[+-]?[0-9]+V[0-9]*$/i.test(netLabel(n).split("/").pop());
+    return named || v == null ? netLabel(n) : `${netLabel(n)}@${+v.toFixed(3)}V`;
+  };
+  for (const e of t.elements) {
+    const parts = [e.from ? `${rn(e.from)} > ${rn(e.to)}` : `${rn(e.to)}`, e.kind];
+    if (e.eff != null) parts.push(`${+(e.eff * 100).toFixed(1)}%`);
+    if (e.imax != null) parts.push(`${+e.imax.toFixed(3)}A`);
+    if (e.iq) parts.push(`iq=${+(e.iq * 1e3).toFixed(3)}mA`);
+    if (e.r) parts.push(`r=${+e.r.toFixed(4)}`);
+    if (e.in_ref) parts.push(`in=${e.in_ref}`);
+    if (e.out_ref) parts.push(`out=${e.out_ref}`);
+    if (e.id && e.id !== e.refdes) parts.push(`id=${e.id.replace(/[\s;]+/g, "_")}`);
+    add(e.refdes, "PI_REG", parts.join(" "));
+  }
+  for (const l of t.loads) if (l.current) add(l.refdes, "PI_LOAD", `${netLabel(l.net)}=${+l.current.toFixed(4)}A`);
+  const lines = [];
+  for (const [ref, f] of [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], "de", { numeric: true }))) {
+    if (f.PI_REG.length) lines.push(`${ref}  PI_REG = ${f.PI_REG.join("; ")}`);
+    if (f.PI_LOAD.length) lines.push(`${ref}  PI_LOAD = ${f.PI_LOAD.join(", ")}`);
+  }
+  return lines.join("\n");
 }
 
 function importKipida(text) {

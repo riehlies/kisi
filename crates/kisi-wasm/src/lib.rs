@@ -302,6 +302,20 @@ pub extern "C" fn kisi_pi_tree(p: *const u8, n: usize) -> i32 {
 
 // --- high frequency (M3) -----------------------------------------------------------
 
+/// Power tree from PI_REG / PI_LOAD fields: {"spec": TreeSpec, "warnings": [..]} or null.
+#[no_mangle]
+pub extern "C" fn kisi_pi_tree_fields() -> i32 {
+    let s = ST.with(|st| {
+        let st = st.borrow();
+        match st.board.as_ref().and_then(kisi_core::tree::tree_from_fields) {
+            Some((spec, w)) => serde_json::json!({"spec": spec, "warnings": w}).to_string(),
+            None => "null".to_string(),
+        }
+    });
+    set_out(s);
+    0
+}
+
 /// AC impedance of a rail. Input: {"setup": RailSetup, "params": PdnParams} → PdnResult
 #[no_mangle]
 pub extern "C" fn kisi_pdn(p: *const u8, n: usize) -> i32 {

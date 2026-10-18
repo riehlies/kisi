@@ -1,21 +1,14 @@
-//! kisi-core: KiCad signal-integrity extraction.
+//! kisi-core: facade over the analysis crates.
 //!
-//! Milestone M1: board parser, stackup, cross-section extraction and
-//! closed-form impedance evaluation.
+//! Front ends (CLI, WASM, later the KiCad plugin) depend on this crate only, so
+//! the paths `kisi_core::rf`, `kisi_core::pi`, … stay stable while the
+//! implementation lives in separately versioned crates:
+//!
+//! * `kisi-board` – board model and parser
+//! * `kisi-si`    – signal integrity
+//! * `kisi-pi`    – power integrity
+//! * `kisi-sparse` – sparse solver (shared with the field-solver WASM module)
 
-pub mod analytic;
-pub mod board;
-pub mod extract;
-pub mod eye;
-pub mod geom;
-pub mod pdn;
-pub mod pi;
-pub mod rf;
-pub mod tree;
-pub mod via;
-pub mod sexpr;
-pub mod view;
-pub mod xsgeom;
-
-pub use board::{apply_project, load_pcb, Board};
-pub use extract::{analyze, Analysis, Params};
+pub use kisi_board::{apply_project, board, geom, load_pcb, num, sexpr, view, Board};
+pub use kisi_pi::{pdn, pi, tree};
+pub use kisi_si::{analytic, analyze, extract, eye, rf, via, xsgeom, Analysis, Params};

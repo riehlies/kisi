@@ -1,6 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["crates/kisi-core", "crates/kisi-cli", "crates/kisi-wasm", "crates/kisi-sparse"]
+members = [
+    "crates/kisi-board",
+    "crates/kisi-si",
+    "crates/kisi-pi",
+    "crates/kisi-core",
+    "crates/kisi-cli",
+    "crates/kisi-wasm",
+    "crates/kisi-sparse",
+]
 
 [workspace.package]
 version = "0.1.0"

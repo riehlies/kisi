@@ -1,0 +1,12 @@
+[package]
+name = "kisi-si"
+description = "Signal integrity: cross-section extraction, impedance formulas, RLGC line models, channel S-parameters, TDR, vias, eye, crosstalk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "1"
+kisi-board = { path = "../kisi-board" }
+

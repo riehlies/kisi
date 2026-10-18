@@ -1,10 +1,12 @@
 [package]
 name = "kisi-core"
+description = "Facade over kisi-board, kisi-si and kisi-pi (stable paths for the CLI and WASM front ends)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 
 [dependencies]
-serde = { version = "=1.0.229", features = ["derive"] }
-serde_json = "1"
-kisi-sparse = { path = "../kisi-sparse" }
+kisi-board = { path = "../kisi-board" }
+kisi-si = { path = "../kisi-si" }
+kisi-pi = { path = "../kisi-pi" }
+

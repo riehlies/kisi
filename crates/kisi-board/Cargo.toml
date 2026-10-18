@@ -1,0 +1,11 @@
+[package]
+name = "kisi-board"
+description = "KiCad board model: S-expression parser, stackup, tracks, pads, zones; geometry and numeric helpers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "1"
+

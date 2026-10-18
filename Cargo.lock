@@ -343,6 +343,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
+name = "kisi-board"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "kisi-cli"
 version = "0.1.0"
 dependencies = [
@@ -354,7 +362,26 @@ dependencies = [
 name = "kisi-core"
 version = "0.1.0"
 dependencies = [
+ "kisi-board",
+ "kisi-pi",
+ "kisi-si",
+]
+
+[[package]]
+name = "kisi-pi"
+version = "0.1.0"
+dependencies = [
+ "kisi-board",
  "kisi-sparse",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "kisi-si"
+version = "0.1.0"
+dependencies = [
+ "kisi-board",
  "serde",
  "serde_json",
 ]

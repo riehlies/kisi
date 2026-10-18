@@ -10,12 +10,11 @@
 use crate::board::Board;
 use crate::geom::{self, P};
 use crate::pi::{find_net, is_ground_name, RailSetup};
-use crate::rf::{Cx, MU0};
+use crate::num::{Cx, MU0, EPS0, C0};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
-const EPS0: f64 = 8.854e-12;
 /// upper end of the range the board decoupling is judged in (Hz)
 pub const F_BOARD: f64 = 100e6;
 
@@ -220,7 +219,7 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
         (Some(m), Some((lo, hi))) => {
             let lmax = (hi[0] - lo[0]).max(hi[1] - lo[1]) * 1e-3;
             let er = su.er_between(m.layer as usize, m.gnd_layer as usize);
-            if lmax > 0.0 { Some(crate::rf::C0 / (2.0 * er.sqrt() * lmax)) } else { None }
+            if lmax > 0.0 { Some(C0 / (2.0 * er.sqrt() * lmax)) } else { None }
         }
         _ => None,
     };

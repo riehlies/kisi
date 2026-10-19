@@ -44,8 +44,10 @@ viewer (via WASM) and CLI show the same result.
   `engine` (WASM) · `state` · `load` · `geometry` · `draw` · `charts` · `net-detail` · `si-tabs`
   (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `panels` · `interaction` · `field-pool` ·
   `field-cache` · `pi-dc` · `pi-pdn` · `pi-balance` · `views` · `main` (start-up, files, hand-over).
-* `tools/bundle.py` turns this into one standalone file `dist/kisi.html` (WASM, field solver modules,
-  `data/*.json` and, optionally, example boards embedded).
+* `tools/bundle.py` turns this into one standalone file `dist/kisi.html`: WASM modules and the field solver
+  script (gzip + base64, unpacked at start), fonts (`web/fonts`, OFL), `data/*.json` and, optionally, example
+  boards (`tools/fetch_examples.sh`) with their configuration `web/samples/<key>.kisi.json` → `kisi-examples.html`.
+  The page loads nothing from the web.
 * `web/cli/kisi.mjs` + `tools/bundle_cli.py` → `dist/kisi.mjs`: the same WASM engine and solver bundle
   (`tools/solver_bundle.py`, shared with the viewer) for Node; reads files, runs the field solver in worker
   threads with a disk cache, everything else through `kisi_core::commands`.
@@ -59,7 +61,8 @@ viewer (via WASM) and CLI show the same result.
 * `components.json` – parasitics of passives in a channel (per package) and reference-designator roles.
 * `interfaces.json` – interface profiles with sources (standard / guideline / kisi guide value),
   transmitter/receiver, limits, assignment rules. Built into viewer and CLI.
-* Example power trees: `web/samples/*_tree.json`.
+* Example boards' configuration (power tree as PI_REG / PI_LOAD fields with sources): `web/samples/{ts,vna}.kisi.json`.
+  `tools/tree_to_fields.py` converts a power tree JSON (`kisi power --tree`) into such fields.
 
 ## Field solver
 See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third_party/UPSTREAM_REV`), one adapter, updates via
@@ -75,8 +78,8 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
   An MCP server and a KiCad plugin existed until 2026-10 and were removed (git history) in favour of this.
 
 ## Releases
-`.github/workflows/release.yml`: on a tag `v*` tests, field-solver validation, build of `kisi.html` and
-`kisi.mjs`, both attached to the GitHub release (the skills download `kisi.mjs` from there).
+`.github/workflows/release.yml`: on a tag `v*` tests, field-solver validation, build of `kisi.html`,
+`kisi-examples.html` and `kisi.mjs`, attached to the GitHub release (the skills download `kisi.mjs` from there).
 
 ## Checks after changes
 `cargo test --release` · `tools/validate_field.sh` (field solver against HFSS/baseline) ·

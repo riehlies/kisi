@@ -83,7 +83,8 @@ async function loadSample(key) {
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", String(k === key));
   showBusy("Unpacking example board…");
   const [pcb, pro] = await Promise.all([gunzipB64(s.pcb), gunzipB64(s.pro)]);
-  await loadFiles(pcb, pro, s.name, s.pi || null);
+  // name = file name, so the example's kisi.json matches the board like a dropped one
+  await loadFiles(pcb, pro, s.file || s.name, null, s.config || null);
 }
 $("sample-ts").onclick = () => loadSample("ts");
 $("sample-vna").onclick = () => loadSample("vna");
@@ -106,6 +107,13 @@ setInterval(() => {
     b.innerHTML = `<div>${esc(b.textContent)}<br><small>still working after 30 s – if nothing changes, please check the browser console (F12)</small></div>`;
 }, 5000);
 
+// without a board, controls that work on it do nothing (they are hidden on the start screen as well)
+for (const ev of ["click", "change", "input"]) {
+  document.addEventListener(ev, (e) => {
+    if (!S.scene && e.target.closest && e.target.closest(".side, .bar > .seg:not(.samples), .overlay-tr, .detail")) { e.stopImmediatePropagation(); e.preventDefault(); }
+  }, true);
+}
+
 // theme changes
 const reTheme = () => { readColors(); if (S.scene) { buildPaths(); if (S.selNet >= 0) selectNet(S.selNet, false); renderLegend(); renderNets(); } draw(); };
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", reTheme);
@@ -121,7 +129,10 @@ new ResizeObserver(resize).observe(cv);
     await Cache.open();
     await Cache.loadAll();
     // example boards are only in builds that embed them (they are not in the repository)
-    for (const k of ["ts", "vna"]) $("sample-" + k).hidden = !SAMPLES[k];
+    for (const k of ["ts", "vna"]) {
+      $("sample-" + k).hidden = !SAMPLES[k];
+      if (SAMPLES[k] && SAMPLES[k].notice) $("sample-" + k).title = SAMPLES[k].notice.split("\n")[0]; // credit and licence
+    }
     $("sample-ts").parentElement.hidden = !SAMPLES.ts && !SAMPLES.vna;
     if (SAMPLES.ts) await loadSample("ts");
     else { hideBusy(); $("drop").hidden = false; $("drop").classList.add("start"); }

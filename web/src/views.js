@@ -3,6 +3,7 @@
 function setTab(t) {
   S.tab = t;
   for (const k of ["si", "ch", "pi"]) $("view-" + k).setAttribute("aria-pressed", String(k === t));
+  if (!S.scene) return; // no board yet: the chosen view opens when one is loaded (load.js)
   document.querySelectorAll("[data-view]").forEach((el) => { el.hidden = !el.dataset.view.split(" ").includes(t); });
   $("detail").hidden = true; $("ch-detail").hidden = true;
   $("pi-detail").hidden = true;

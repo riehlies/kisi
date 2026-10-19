@@ -3,13 +3,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Kisi Impedance Map</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<!-- @css web/fonts/fonts.css -->
+<link rel="stylesheet" href="fonts/fonts.css">
 <!-- @css web/css/kisi.css -->
 <link rel="stylesheet" href="css/kisi.css">
 
-<div id="app">
+<div id="app" class="no-board">
   <div class="bar">
     <div class="brand"><b title="kisi __VERSION__">kisi<span class="ver">v__VERSION__</span></b><span id="boardName">–</span><small id="boardMeta"></small></div>
     <div class="grow"></div>
@@ -32,7 +31,7 @@
       <button id="pim-v" aria-pressed="false" disabled title="after “Compute” in step 2">Voltage drop</button>
       <button id="pim-j" aria-pressed="false" disabled title="after “Compute” in step 2">Current density</button>
     </div>
-    <div class="seg" role="group" aria-label="Example board">
+    <div class="seg samples" role="group" aria-label="Example board">
       <button id="sample-ts" aria-pressed="false">ThunderScope</button>
       <button id="sample-vna" aria-pressed="false">LibreVNA</button>
     </div>
@@ -207,9 +206,11 @@
 </div>
 
 <script>
-const WASM_B64 = "__WASM_B64__";
-const SPARSE_B64 = "__SPARSE_B64__";
-const SOLVER_SRC = __SOLVER_SRC__;
+// engine, field solver's sparse module and solver script: gzip + base64, unpacked by Engine.init
+const WASM_GZ = "__WASM_GZ__";
+const SPARSE_GZ = "__SPARSE_GZ__";
+const SOLVER_GZ = "__SOLVER_GZ__";
+let SPARSE_WASM = null, SOLVER_SRC = null;
 const UPSTREAM_REV = "__UPSTREAM_REV__";
 const SAMPLES = __SAMPLES__;
 const DATA = __DATA__;

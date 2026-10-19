@@ -158,9 +158,14 @@ impl BoardConfig {
         }
         for f in &self.fields {
             if let Some(fp) = board.footprints.iter_mut().find(|fp| fp.reference == f.refdes) {
-                match fp.props.iter_mut().find(|(k, _)| k.eq_ignore_ascii_case(&f.name)) {
-                    Some(p) => p.1 = f.value.clone(),
-                    None => fp.props.push((f.name.clone(), f.value.clone())),
+                let mut set = |k: &str, v: String| match fp.props.iter_mut().find(|(n, _)| n.eq_ignore_ascii_case(k)) {
+                    Some(p) => p.1 = v,
+                    None => fp.props.push((k.to_string(), v)),
+                };
+                set(&f.name, f.value.clone());
+                // the source travels with the field, so the power tree can show it per load
+                if let Some(src) = &f.source {
+                    set(&source_key(&f.name), format!("{}\t{}", src.kind, src.note.as_deref().or(src.document.as_deref()).unwrap_or("")));
                 }
                 a.fields += 1;
             }
@@ -175,6 +180,12 @@ impl BoardConfig {
         }
         a
     }
+}
+
+/// Footprint property that carries the kisi.json source of field `name`
+/// ("kind\tnote"); read by the power tree (`kisi_pi::tree::field_source`).
+pub fn source_key(name: &str) -> String {
+    format!("{}#source", name.to_ascii_uppercase())
 }
 
 /// Result of `check`.
@@ -336,6 +347,11 @@ mod tests {
         let mut b = board.clone();
         let a = cfg.apply(&mut b);
         assert_eq!(b.footprints[0].prop("PI_LOAD"), Some("+3V3=150mA"));
+        // the source travels with the field into the power tree
+        b.footprints[0].props.push(("PI_REG".into(), "+3V3 input".into()));
+        let (t, _) = crate::tree::tree_from_fields(&b).unwrap();
+        assert_eq!((t.loads[0].basis.as_str(), t.loads[0].note.as_str()), ("datasheet", "typical"));
+        assert!(t.name.contains("kisi.json"));
         assert!((b.stackup().dielectrics[0].loss_tangent - 0.015).abs() < 1e-12);
         assert_eq!(a.targets["50Z"].z, 50.0);
         assert_eq!(a.profiles["50Z"], "se50");

@@ -1,8 +1,8 @@
-# Release: on a tag v*, run the checks and attach the two standalone files to the
-# GitHub release:
-#   kisi.html – the viewer (open in a browser; without the example boards, which are
-#               not in this repository)
-#   kisi.mjs  – the command line with the field solver (node kisi.mjs help; Node.js >= 18)
+# Release: on a tag v*, run the checks and attach the standalone files to the GitHub release:
+#   kisi.html          – the viewer (open in a browser)
+#   kisi-examples.html – the viewer with the example boards ThunderScope and LibreVNA, fetched
+#                        from their projects at fixed commits (tools/fetch_examples.sh)
+#   kisi.mjs           – the command line with the field solver (node kisi.mjs help; Node.js >= 18)
 # Run it by hand (workflow_dispatch) to get the files as a build artifact without a release.
 name: release
 on:
@@ -29,6 +29,10 @@ jobs:
           cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
           W=target/wasm32-unknown-unknown/release
           python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.html
+          sh tools/fetch_examples.sh examples
+          python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi-examples.html \
+            ts "ThunderScope Rev5.3" examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro \
+            vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
           python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
       - name: Field solver validation (HFSS / baseline, viewer bundle)
         run: sh tools/validate_field.sh
@@ -37,11 +41,16 @@ jobs:
           node dist/kisi.mjs --version
           node dist/kisi.mjs profiles > /dev/null
           node dist/kisi.mjs help > /dev/null
+          for b in ts:Thunderscope_Rev5.3 vna:VNA; do
+            node dist/kisi.mjs config-check examples/${b#*:}.kicad_pcb --config web/samples/${b%%:*}.kisi.json | grep -q '"ok": true'
+            node dist/kisi.mjs power examples/${b#*:}.kicad_pcb --config web/samples/${b%%:*}.kisi.json > /dev/null
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: kisi
           path: |
             dist/kisi.html
+            dist/kisi-examples.html
             dist/kisi.mjs
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -49,4 +58,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/kisi.html dist/kisi.mjs --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/kisi.html dist/kisi-examples.html dist/kisi.mjs --clobber

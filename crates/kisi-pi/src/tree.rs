@@ -581,12 +581,21 @@ pub fn parse_reg_entry(refdes: &str, part: &str, entry: &str) -> Result<(ElemSpe
     Ok((el, volts))
 }
 
+/// Source of a field laid over the footprint from `<board>.kisi.json`
+/// (property `<FIELD>#source` = "kind\tnote"): (kind, note).
+pub fn field_source<'a>(fp: &'a crate::board::Footprint, field: &str) -> Option<(&'a str, &'a str)> {
+    let v = fp.prop(&format!("{}#source", field.to_ascii_uppercase()))?;
+    Some(v.split_once('\t').unwrap_or((v, "")))
+}
+
 /// Power tree from PI_REG / PI_LOAD fields. Returns None if no PI_REG field exists.
 pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
     if !board.footprints.iter().any(|f| f.prop("PI_REG").is_some()) {
         return None;
     }
-    let mut spec = TreeSpec { name: "from KiCad fields (PI_REG, PI_LOAD)".into(), ..Default::default() };
+    let from_cfg = board.footprints.iter().any(|f| field_source(f, "PI_REG").is_some() || field_source(f, "PI_LOAD").is_some());
+    let name = if from_cfg { "from kisi.json / KiCad fields (PI_REG, PI_LOAD)" } else { "from KiCad fields (PI_REG, PI_LOAD)" };
+    let mut spec = TreeSpec { name: name.into(), ..Default::default() };
     let mut warnings = Vec::new();
     let mut volts: HashMap<String, f64> = HashMap::new();
     for fp in &board.footprints {
@@ -595,6 +604,9 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
         for (k, entry) in entries.iter().enumerate() {
             match parse_reg_entry(&fp.reference, &fp.value, entry) {
                 Ok((mut el, vs)) => {
+                    if let Some((_, note)) = field_source(fp, "PI_REG") {
+                        el.note = note.to_string();
+                    }
                     if el.id.is_empty() && entries.len() > 1 {
                         el.id = format!("{}.{}", fp.reference, k + 1);
                     }
@@ -630,7 +642,9 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
                     continue;
                 }
             };
-            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.value.clone(), basis: "field".into(), ..Default::default() });
+            // basis: the kisi.json source kind (datasheet, estimate, …) or "field" for a KiCad field
+            let (basis, note) = field_source(fp, "PI_LOAD").unwrap_or(("field", ""));
+            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.value.clone(), basis: basis.into(), note: note.into(), ..Default::default() });
         }
     }
     // rails: every net named by an element or a load

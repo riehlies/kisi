@@ -11,18 +11,21 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
+import zlib from "node:zlib";
 
 const VERSION = "__VERSION__";
 const UPSTREAM_REV = "__UPSTREAM_REV__";
 const FIELD_TOL = 0.01; // as in the viewer, so cached results are the same
-const WASM_B64 = "__WASM_B64__";
-const SPARSE_B64 = "__SPARSE_B64__";
-const SOLVER_SRC = __SOLVER_SRC__;
+// engine, field solver's sparse module and solver script: gzip + base64 (tools/bundle_cli.py)
+const gunzip = (b64) => zlib.gunzipSync(Buffer.from(b64, "base64"));
+const WASM_GZ = "__WASM_GZ__";
+const SPARSE_GZ = "__SPARSE_GZ__";
+const SOLVER_GZ = "__SOLVER_GZ__";
 
 // ---- engine (WASM, C ABI as in the viewer)
 class Engine {
   constructor() {
-    const mod = new WebAssembly.Module(Buffer.from(WASM_B64, "base64"));
+    const mod = new WebAssembly.Module(gunzip(WASM_GZ));
     this.k = new WebAssembly.Instance(mod, {}).exports;
   }
   out() { return Buffer.from(new Uint8Array(this.k.memory.buffer, this.k.kisi_out_ptr(), this.k.kisi_out_len())).toString("utf8"); }
@@ -63,7 +66,7 @@ function saveCache(f, c) {
 
 const WORKER = `
 const { parentPort, workerData } = require("node:worker_threads");
-globalThis.__KISI_SPARSE_WASM__ = Buffer.from(workerData.sparse, "base64");
+globalThis.__KISI_SPARSE_WASM__ = workerData.sparse;
 const backend = (0, eval)(workerData.src);
 parentPort.on("message", async (m) => {
   let r;
@@ -71,6 +74,9 @@ parentPort.on("message", async (m) => {
   parentPort.postMessage({ id: m.id, r });
 });`;
 
+// solver script and sparse module, unpacked only when the field solver runs
+let solverPayload = null;
+const solverParts = () => solverPayload || (solverPayload = { src: gunzip(SOLVER_GZ).toString("utf8"), sparse: new Uint8Array(gunzip(SPARSE_GZ)) });
 async function solveField(plan, budgetS, quiet) {
   const file = cacheFile(), cache = loadCache(file);
   const field = {}, todo = [];
@@ -83,7 +89,8 @@ async function solveField(plan, budgetS, quiet) {
   let solved = 0, failed = 0;
   if (todo.length && budgetS > 0) {
     const n = Math.max(1, Math.min(todo.length, (os.availableParallelism ? os.availableParallelism() : os.cpus().length) - 1 || 1, 8));
-    const workers = Array.from({ length: n }, () => new Worker(WORKER, { eval: true, workerData: { src: SOLVER_SRC, sparse: SPARSE_B64 } }));
+    const solver = solverParts();
+    const workers = Array.from({ length: n }, () => new Worker(WORKER, { eval: true, workerData: { src: solver.src, sparse: solver.sparse } }));
     let next = 0, lastMsg = 0;
     const totalW = plan.reduce((a, x) => a + x[2], 0) || 1;
     let doneW = plan.filter(([id]) => field[id]).reduce((a, x) => a + x[2], 0);

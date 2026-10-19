@@ -4,8 +4,8 @@ Planned and possible work after 0.1.0, roughly in order of priority. Each item s
 "Decide first" marks items that need a decision before work starts.
 
 ## Next
-- **First release and its workflow.** Tag `v0.1.0`, check that `.github/workflows/release.yml` runs through
-  (tests, field-solver validation, build) and attaches `kisi.html` and `kisi.mjs`.
+- **First release and its workflow.** Check that `.github/workflows/release.yml` runs through (tests, field-solver
+  validation, example boards, build) and attaches `kisi.html`, `kisi-examples.html` and `kisi.mjs`.
 - **Checks on every push.** A CI workflow that runs `cargo test`, `tools/validate_field.sh` and
   `tools/check_viewer.py` on pushes and pull requests, not only on releases.
 - **`kisi gaps`: supply rails without a voltage in the name.** Nets such as `Net-(IC22-VCC)` are not recognised as
@@ -19,8 +19,6 @@ Planned and possible work after 0.1.0, roughly in order of priority. Each item s
   Claude Code plugin installs for everyone.
 - **GitHub Pages** for the viewer (needs a public repository on the free plan): publish `kisi.html` from the
   release workflow, so it opens without downloading.
-- **Example boards in the released viewer.** Fetch ThunderScope (MIT) and LibreVNA (GPL-3.0) from their projects in
-  the workflow, shrink them with `tools/strip_pcb.py` and embed them, with their licence notes.
 
 ## Models and accuracy
 - **IBIS models as channel ends** (removed from 0.1.0; the experimental code is in commit `92b8105`). Open: the right

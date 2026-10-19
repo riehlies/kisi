@@ -329,3 +329,9 @@ ul.src li { margin: 2px 0; }
 
 /* the board name/meta shrinks (ellipsis) before the toolbar wraps */
 @media (min-width: 861px) { .bar > .brand { flex: 1 1 280px; min-width: 0; } .brand small { overflow: hidden; text-overflow: ellipsis; min-width: 0; } }
+
+/* start screen (no board loaded yet): only loading files and the examples */
+#app.no-board .side, #app.no-board .bar > .seg:not(.samples), #app.no-board .overlay-tr, #app.no-board #boardName,
+#app.no-board #legend, #app.no-board #layers { display: none; }
+#app.no-board .drop { padding: 16px; text-align: center; }
+#app.no-board .stage { grid-column: 1 / -1; }

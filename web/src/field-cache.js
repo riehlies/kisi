@@ -69,7 +69,7 @@ class FieldPool {
     this.n = threadCount();
     this.workers = []; this.idle = []; this.queue = []; this.running = false; this.failed = null;
     this.lastApply = 0; this.dirty = false; this.mainThread = false; this.total = 0; this.done_n = 0;
-    const sparse = b64ToBytes(SPARSE_B64);
+    const sparse = SPARSE_WASM;
     const wurl = URL.createObjectURL(new Blob([WORKER_SRC()], { type: "text/javascript" }));
     for (let i = 0; i < this.n; i++) {
       let w;
@@ -96,7 +96,7 @@ class FieldPool {
   }
   onMessage(w, m) {
     if (m.type === "ready") { this.idle.push(w); this.pump(); }
-    else if (m.type === "fail") { this.useMainThread(b64ToBytes(SPARSE_B64), m.error); }
+    else if (m.type === "fail") { this.useMainThread(SPARSE_WASM, m.error); }
     else if (m.type === "result") { this.done(m.id, m.gen, m.r); this.idle.push(w); this.pump(); }
   }
   done(id, gen, r) {

@@ -2,13 +2,14 @@
 // ============================================================== engine (WASM)
 const enc = new TextEncoder(), dec = new TextDecoder();
 const b64ToBytes = (b64) => { const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
-async function gunzipB64(b64) {
-  const stream = new Blob([b64ToBytes(b64)]).stream().pipeThrough(new DecompressionStream("gzip"));
-  return await new Response(stream).text();
-}
+const gunzipResponse = (b64) => new Response(new Blob([b64ToBytes(b64)]).stream().pipeThrough(new DecompressionStream("gzip")));
+async function gunzipB64(b64) { return await gunzipResponse(b64).text(); }
+async function gunzipBytes(b64) { return new Uint8Array(await gunzipResponse(b64).arrayBuffer()); }
 class Engine {
   async init() {
-    const { instance } = await WebAssembly.instantiate(b64ToBytes(WASM_B64), {});
+    const [wasm, sparse, solver] = await Promise.all([gunzipBytes(WASM_GZ), gunzipBytes(SPARSE_GZ), gunzipB64(SOLVER_GZ)]);
+    SPARSE_WASM = sparse; SOLVER_SRC = solver;
+    const { instance } = await WebAssembly.instantiate(wasm, {});
     this.k = instance.exports;
   }
   out() { return dec.decode(new Uint8Array(this.k.memory.buffer, this.k.kisi_out_ptr(), this.k.kisi_out_len())); }

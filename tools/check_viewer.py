@@ -29,12 +29,28 @@ BUSY = "document.getElementById('busy').hidden === true"
 problems, notes = [], []
 
 
+def start_screen(pg):
+    """Trigger every control on the start screen (also hidden ones, as keyboard or scripts
+    could): without a board none of them may fail."""
+    pg.evaluate("""async () => {
+      for (const e of document.querySelectorAll('button, select, input, [data-tab]')) {
+        if (['load-files', 'file'].includes(e.id) || e.closest('.samples')) continue;
+        e.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+        if (e.tagName === 'SELECT' || e.tagName === 'INPUT') ['change', 'input'].forEach((t) => e.dispatchEvent(new Event(t, {bubbles: true})));
+        await new Promise((r) => setTimeout(r, 5));
+      }
+    }""")
+    pg.wait_for_timeout(300)
+
+
 def run(pg, tag, desktop):
     errs = []
     pg.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     pg.on("console", lambda m: errs.append(f"console {m.type}: {m.text}") if m.type == "error" else None)
     pg.goto(url)
     pg.wait_for_function("document.getElementById('busy').hidden === true || document.getElementById('drop').classList.contains('start')", timeout=90000)
+    if not pg.evaluate("!!S.scene"):  # start screen: no control may fail without a board
+        start_screen(pg)
     if a.board:
         pg.set_input_files("#file", [os.path.abspath(f) for f in a.board])
         pg.wait_for_function(f"S.scene && {BUSY}", timeout=90000)

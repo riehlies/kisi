@@ -17,9 +17,10 @@ globalThis.__KISI_SPARSE_WASM__ = fs.readFileSync(sparse);
 let solveGeometry;
 if (opt("--classic")) {
   const html = fs.readFileSync(opt("--classic"), "utf8");
-  const m = html.match(/const SOLVER_SRC = ("(?:[^"\\\n]|\\.)*");/);
-  if (!m) throw new Error("SOLVER_SRC not found in " + opt("--classic"));
-  ({ solveGeometry } = (0, eval)(JSON.parse(m[1])));
+  const m = html.match(/const SOLVER_GZ = "([A-Za-z0-9+\/=]*)";/);
+  if (!m) throw new Error("SOLVER_GZ not found in " + opt("--classic"));
+  const zlib = await import("node:zlib");
+  ({ solveGeometry } = (0, eval)(zlib.gunzipSync(Buffer.from(m[1], "base64")).toString("utf8")));
 } else {
   ({ solveGeometry } = await import("../web/solver/backend_forsten.js"));
 }

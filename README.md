@@ -5,12 +5,14 @@ kisi reads a KiCad layout (`.kicad_pcb` + `.kicad_pro`) and checks trace impedan
 PDN impedance). It is a design check (impedance target ±5 %), not sign-off. Licence: GPL-3.0-only.
 
 ## Quick start
-Each release on GitHub has two files:
+Each release on GitHub has these files:
 
 - **`kisi.html` – the viewer.** Open it in a browser and drop the `.kicad_pcb` (with the `.kicad_pro` for net
-  classes, optionally `<board>.kisi.json`). Nothing is installed; the board is processed in the browser and never
-  uploaded (the page only fetches web fonts). In Chromium-based
-  browsers “Reload” reads the same files again after saving in KiCad.
+  classes, optionally `<board>.kisi.json`). Nothing is installed and nothing is loaded from the web; the board is
+  processed in the browser and never uploaded. In Chromium-based browsers “Reload” reads the same files again after
+  saving in KiCad.
+- **`kisi-examples.html`** – the same viewer with two example boards built in (ThunderScope Rev5.3, LibreVNA), each
+  with its power tree as a `kisi.json` (`web/samples/`).
 - **`kisi.mjs` – the command line** for scripts and agents (Node.js ≥ 18):
   ```sh
   node kisi.mjs help
@@ -112,14 +114,18 @@ KiCad files; CLI and viewer lay this file over the board.
 cargo build --release                                                    # native CLI, kisi-validate
 cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
 W=target/wasm32-unknown-unknown/release
-python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.html \
-        [ts "ThunderScope Rev5.3" <ts.kicad_pcb> <ts.kicad_pro> vna LibreVNA <vna.kicad_pcb> <vna.kicad_pro>]
+python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.html
+sh tools/fetch_examples.sh examples                                     # example boards (optional)
+python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi-examples.html \
+        ts "ThunderScope Rev5.3" examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro \
+        vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
 python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
 ```
 - Checks: `cargo test --release`, `sh tools/validate_field.sh` (field solver against HFSS and the stored baseline),
   `python3 tools/check_viewer.py dist/kisi.html` (all views, light/dark/phone, no console errors).
-- Example boards (optional, not in the repository) are shrunk with `tools/strip_pcb.py`.
-- Releases: a tag `v*` runs `.github/workflows/release.yml` and attaches `kisi.html` and `kisi.mjs`.
+- Example boards (not in the repository): `sh tools/fetch_examples.sh examples` fetches them at fixed commits, shrinks
+  them with `tools/strip_pcb.py` and writes their licence notices; their power trees are `web/samples/{ts,vna}.kisi.json`.
+- Releases: a tag `v*` runs `.github/workflows/release.yml` and attaches `kisi.html`, `kisi-examples.html` and `kisi.mjs`.
 - Solver update: `tools/upstream_update.sh` (see `UPSTREAM.md`). Structure and rules: `ARCHITECTURE.md`.
   Planned work: `ROADMAP.md`.
 - Validation data: `validation/*.json` (cross-sections) and `*.ref.json` (references from Forstén's solver, run in
@@ -128,4 +134,7 @@ python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
 
 ## Credits
 Field solver: [js_2d_fields](https://github.com/Ttl/js_2d_fields) by Henrik Forstén (GPL-3.0).
-Example boards used during development: ThunderScope (EEVengers, MIT), LibreVNA (Jan Käberich, GPL-3.0).
+Example boards in `kisi-examples.html`: [ThunderScope](https://github.com/EEVengers/ThunderScope) Rev5.3 (EEVengers,
+hardware under CERN-OHL-P-2.0) and [LibreVNA](https://github.com/jankae/LibreVNA) (Jan Käberich, GPL-3.0), shrunk to
+what kisi reads; the licence texts are embedded with them.
+Fonts: Barlow, Barlow Semi Condensed and JetBrains Mono (SIL Open Font License 1.1, `web/fonts/`), embedded in the viewer.

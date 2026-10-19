@@ -3,3 +3,4 @@ target/
 dist/
 __pycache__/
 *.pyc
+/examples/

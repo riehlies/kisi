@@ -45,6 +45,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
       catch (e) { S.config = { name: cfg.name, check: { ok: false, errors: [e.message], warnings: [], entries: 0 }, targets: {}, profiles: {} }; }
     }
     S.scene = S.engine.scene();
+    $("app").classList.remove("no-board");
     S.padSet = new Set(S.scene.pad_tracks || []);
     S.zones = S.engine.zones();
     S.name = name;

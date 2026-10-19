@@ -13,14 +13,18 @@ cargo build --release                                   # CLI (kisi, kisi-valida
 cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
 python3 tools/bundle.py web/index.html \
   target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
-  target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.html \
-  [ts "ThunderScope Rev5.3" ts.kicad_pcb ts.kicad_pro vna "LibreVNA" vna.kicad_pcb vna.kicad_pro]
+  target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.html
+sh tools/fetch_examples.sh examples                     # example boards → dist/kisi-examples.html:
+python3 tools/bundle.py web/index.html ... dist/kisi-examples.html \
+  ts "ThunderScope Rev5.3" examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro \
+  vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
 python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
   target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs   # Node CLI with field solver
 ```
-Releases: tag `v*` → `.github/workflows/release.yml` attaches `kisi.html` and `kisi.mjs`.
-The example boards (ThunderScope, LibreVNA) are not in the repository; they come from their
-projects and are shrunk with `tools/strip_pcb.py`.
+Releases: tag `v*` → `.github/workflows/release.yml` attaches `kisi.html`, `kisi-examples.html` and `kisi.mjs`.
+The example boards (ThunderScope CERN-OHL-P-2.0, LibreVNA GPL-3.0) are not in the repository;
+`tools/fetch_examples.sh` fetches them at fixed commits and shrinks them; their power trees are
+`web/samples/{ts,vna}.kisi.json`.
 
 ## Checks before every commit
 * `cargo test --release`

@@ -257,11 +257,25 @@ pub struct ComplexLu {
 impl ComplexLu {
     /// Factor A given as triplets (row, col, re, im; duplicates are summed).
     pub fn new(n: usize, trip: &[(usize, usize, f64, f64)]) -> Result<Self, i32> {
+        Self::with_symbolic(n, trip, None).map(|x| x.0)
+    }
+    /// As `new`, reusing the symbolic analysis of an earlier matrix with the same triplet
+    /// positions (frequency sweeps); returns it for the next call.
+    pub fn with_symbolic(
+        n: usize,
+        trip: &[(usize, usize, f64, f64)],
+        sym: Option<faer::sparse::linalg::solvers::SymbolicLu<usize>>,
+    ) -> Result<(Self, faer::sparse::linalg::solvers::SymbolicLu<usize>), i32> {
         use faer::c64;
+        use faer::sparse::linalg::solvers::{Lu, SymbolicLu};
         let t: Vec<Triplet<usize, usize, c64>> = trip.iter().map(|&(r, c, re, im)| Triplet::new(r, c, c64::new(re, im))).collect();
         let a = SparseColMat::<usize, c64>::try_new_from_triplets(n, n, &t).map_err(|_| 13)?;
-        let lu = a.sp_lu().map_err(|_| 20)?;
-        Ok(ComplexLu { n, lu })
+        let sym = match sym {
+            Some(s) => s,
+            None => SymbolicLu::try_new(a.symbolic()).map_err(|_| 20)?,
+        };
+        let lu = Lu::try_new_with_symbolic(sym.clone(), a.as_ref()).map_err(|_| 20)?;
+        Ok((ComplexLu { n, lu }, sym))
     }
     /// Solve for the right-hand sides `b[k]` (complex as (re, im)).
     pub fn solve(&self, b: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, i32> {

@@ -763,7 +763,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<IcPdnRe
         ports.push(Port { refdes: refdes.clone(), node: id, at, current: *current, pins: pads.len(), target });
     }
     if ports.is_empty() {
-        return Err(format!("{}: no load IC with pads on the rail (PI_LOAD)", setup.net));
+        return Err(format!("{}: no load IC on the rail (its loads are series parts, connectors or missing PI_LOAD): nothing to decouple here", setup.net));
     }
 
     // decoupling capacitors
@@ -904,8 +904,10 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<IcPdnRe
             b
         })
         .collect();
+    let mut sym = None;
     for &f in &freq {
-        let lu = kisi_sparse::ComplexLu::new(n, &model.triplets(f, true, true, &[])).map_err(|e| format!("AC grid: solver error {e}"))?;
+        let (lu, s) = kisi_sparse::ComplexLu::with_symbolic(n, &model.triplets(f, true, true, &[]), sym.take()).map_err(|e| format!("AC grid: solver error {e}"))?;
+        sym = Some(s);
         let x = lu.solve(&rhs).map_err(|e| format!("AC grid: solver error {e}"))?;
         for (k, pt) in ports.iter().enumerate() {
             let v = x[k][pt.node];
@@ -1210,22 +1212,26 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<IcPdnRe
             spread_fit,
         });
     }
-    // capacitor flags: nearest IC, far from every IC, not connected
+    // capacitor flags: nearest IC, far from every IC (high-frequency parts whose path is more than
+    // twice their own ESL + mounting and more than twice the best path on this rail), not connected
+    let best_path: HashMap<String, f64> = out_ports.iter().map(|pt| (pt.refdes.clone(), pt.caps.iter().map(|l| l.l_path).fold(f64::INFINITY, f64::min))).collect();
     for (ci, cap) in caps.iter_mut().enumerate() {
         let best = out_ports.iter().filter_map(|pt| pt.caps.iter().find(|l| l.cap == ci).map(|l| (l.l_path, pt.refdes.clone()))).min_by(|a, b| a.0.total_cmp(&b.0));
         match best {
             Some((l, ic)) => {
-                cap.l_path_min = Some(l);
-                cap.nearest_ic = Some(ic);
                 let own = cap.esl + cap.l_gnd;
-                if l > 2.0 * own && l > 1e-9 {
+                let ref_l = best_path.get(&ic).copied().unwrap_or(0.0);
+                if cap.c_eff < 1e-6 && l > 2.0 * own && l > 2.0 * ref_l && l > 0.5e-9 {
                     cap.flags.push(format!(
-                        "far from every IC: path inductance {:.2} nH is more than twice its own ESL + mounting ({:.2} nH); it acts as bulk capacitance below {:.1} MHz",
+                        "far from every IC: path inductance {:.2} nH to {ic} (best capacitor at that IC {:.2} nH, own ESL + mounting {:.2} nH); its series resonance drops to {:.1} MHz",
                         l * 1e9,
+                        ref_l * 1e9,
                         own * 1e9,
                         1.0 / (2.0 * PI * ((l + own) * cap.c_eff).sqrt()) / 1e6
                     ));
                 }
+                cap.l_path_min = Some(l);
+                cap.nearest_ic = Some(ic);
             }
             None => cap.flags.push("not connected to a load IC through the rail copper".into()),
         }

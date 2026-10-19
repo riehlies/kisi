@@ -173,10 +173,19 @@ function scopeGeoms(scope) {
     if (g != null) idx.add(g);
   }
   const items = [...idx].map((g) => { const e = S.an.geometries[g]; return { id: e.id, text: e.text, prio: 1e6 + e.target_length * 10 + e.length }; });
-  // the selected net also gets its coupling cross-sections (crosstalk)
+  // the selected net also gets its coupling cross-sections (crosstalk); other scopes on request
   if (scope === "sel" && S.selNet >= 0) {
     const r = rfFor(S.selNet);
     for (const [id, text] of r.crosstalk.geoms) items.push({ id, text, prio: 1 });
+  } else if ($("fs-xt").checked) {
+    const key = `${scope}|${S.anGen}|${JSON.stringify(rfParams())}`;
+    if (!S.xtGeoms || S.xtGeoms.key !== key) {
+      let list = [];
+      try { list = S.engine.xtGeoms({ nets: [...nets], rf: rfParams() }); } catch (e) { list = []; }
+      S.xtGeoms = { key, list };
+    }
+    // after the impedance cross-sections, longest coupling first
+    for (const [id, text, w] of S.xtGeoms.list) items.push({ id, text, prio: Math.min(w, 1e5) / 1e5 });
   }
   return items;
 }
@@ -243,6 +252,7 @@ function renderFieldStatus() {
   $("fs-toggle").textContent = "Pause";
 }
 $("fs-toggle").onclick = () => S.pool && S.pool.stop();
+$("fs-xt").onchange = () => renderFieldStatus();
 $("fs-start").onclick = () => {
   if (S.pool && !S.pool.running && !S.pool.mainThread && S.pool.n !== threadCount()) { S.pool.terminate(); S.pool = null; }
   if (!S.pool) S.pool = new FieldPool();

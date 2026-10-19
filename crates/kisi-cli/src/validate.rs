@@ -43,7 +43,7 @@ fn case_geometry(c: &Value) -> Option<String> {
                 from_file: true,
             };
             let gap = f("gap");
-            (su, XsDesc { layer: 0, w, ref_up: None, ref_dn: Some(1), s_left: gap.map(|g| g + partner.map(|p| p.0 + p.1).unwrap_or(0.0)), s_right: gap, partner, mask, planes: vec![] })
+            (su, XsDesc { layer: 0, w, ref_up: None, ref_dn: Some(1), s_left: gap.map(|g| g + partner.map(|p| p.0 + p.1).unwrap_or(0.0)), s_right: gap, partner, mask, planes: vec![], ..Default::default() })
         }
         "microstrip_cut" => {
             // plane directly under the trace has an opening of width `cut`;
@@ -57,7 +57,7 @@ fn case_geometry(c: &Value) -> Option<String> {
                 from_file: true,
             };
             let planes = vec![PlaneCut { layer: 1, left: Some(cut / 2.0), right: Some(cut / 2.0) }];
-            (su, XsDesc { layer: 0, w, ref_up: None, ref_dn: Some(2), s_left: None, s_right: None, partner: None, mask: None, planes })
+            (su, XsDesc { layer: 0, w, ref_up: None, ref_dn: Some(2), s_left: None, s_right: None, partner: None, mask: None, planes, ..Default::default() })
         }
         "stripline" | "diff_stripline" => {
             let h2 = f("top_h")? - t;
@@ -68,7 +68,7 @@ fn case_geometry(c: &Value) -> Option<String> {
                 mask_bottom: None,
                 from_file: true,
             };
-            (su, XsDesc { layer: 1, w, ref_up: Some(0), ref_dn: Some(2), s_left: None, s_right: None, partner, mask: None, planes: vec![] })
+            (su, XsDesc { layer: 1, w, ref_up: Some(0), ref_dn: Some(2), s_left: None, s_right: None, partner, mask: None, planes: vec![], ..Default::default() })
         }
         _ => return None,
     };

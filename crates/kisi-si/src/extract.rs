@@ -1035,6 +1035,7 @@ fn evaluate(
         partner,
         mask: mask.map(|m| (m.thickness, m.epsilon_r)),
         planes: planes.clone(),
+        ..Default::default()
     };
     let (z0_formula, zdiff_formula) = (z0, zdiff);
     // even mode from the formulas: Z0 ≈ √(Zeven·Zodd); modal permittivities of microstrip from

@@ -34,7 +34,8 @@ common options: --pro FILE (default: board.kicad_pro), --config FILE (default: b
 next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer)
 field solver (kisi.mjs only; overview, net, check, report): used by default for the cross-sections
 of nets with a target, results cached on disk; --formula (no field solver), --field-time S
-(time budget for new solves, default 120), --field-all (all cross-sections, not only targets)";
+(time budget for new solves, default 120), --field-all (all cross-sections, not only targets),
+--field-xt (also the coupling cross-sections for crosstalk; net: always)";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -62,6 +63,8 @@ pub struct Opts {
     pub formula: bool,
     pub field_time: Option<f64>,
     pub field_all: bool,
+    /// field solver: also the coupling cross-sections of the crosstalk estimate
+    pub field_xt: bool,
 }
 
 /// Parse `<command> [args…]`.
@@ -104,6 +107,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--formula" => o.formula = true,
             "--field-time" => o.field_time = Some(num(val(&mut i, a)?, a)?),
             "--field-all" => o.field_all = true,
+            "--field-xt" => o.field_xt = true,
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
         }
@@ -156,12 +160,25 @@ pub fn field_plan(p: &Project, o: &Opts) -> Vec<(String, String, f64)> {
                 *w.entry(gi).or_default() += crate::geom::len(crate::geom::sub(tr.b, tr.a)) * (t1 - t0).abs();
             }
         }
-        w.into_iter().filter_map(|(gi, l)| g.get(gi as usize).map(|e| (e.id.clone(), e.text.clone(), l))).collect()
+        let mut v: Vec<(String, String, f64)> = w.into_iter().filter_map(|(gi, l)| g.get(gi as usize).map(|e| (e.id.clone(), e.text.clone(), l))).collect();
+        v.extend(xt_plan(p, &[net]));
+        v
     } else {
-        g.iter().filter(|e| o.field_all || e.target_length > 0.0).map(|e| (e.id.clone(), e.text.clone(), if o.field_all { e.length } else { e.target_length })).collect()
+        let mut v: Vec<(String, String, f64)> = g.iter().filter(|e| o.field_all || e.target_length > 0.0).map(|e| (e.id.clone(), e.text.clone(), if o.field_all { e.length } else { e.target_length })).collect();
+        if o.field_xt {
+            let nets: Vec<u32> = p.an.nets.iter().filter(|s| o.field_all || s.target.is_some()).map(|s| s.net).collect();
+            v.extend(xt_plan(p, &nets));
+        }
+        v
     };
     plan.sort_by(|a, b| b.2.total_cmp(&a.2));
     plan
+}
+
+/// Coupling cross-sections of the crosstalk estimate, after the impedance cross-sections
+/// (weight scaled below any routed length).
+fn xt_plan(p: &Project, nets: &[u32]) -> Vec<(String, String, f64)> {
+    crate::rf::crosstalk_geoms(&p.board, &p.an, nets, &HashMap::new(), &RfParams::default()).into_iter().map(|(id, t, w)| (id, t, 1e-6 * w)).collect()
 }
 
 fn rf_params(o: &Opts) -> Result<RfParams, String> {

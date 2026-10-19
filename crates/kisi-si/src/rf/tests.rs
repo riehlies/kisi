@@ -153,3 +153,48 @@ fn net_path_ends_branches_and_stub() {
     assert!(ch.segments.iter().any(|s| s.kind == "branch"), "stub in the cascade");
     assert!(ch.path.is_some());
 }
+
+#[test]
+fn crosstalk_into_a_pair() {
+    // pair D_P/D_N (0.15 / 0.15 mm, 30 mm) with an aggressor AGG 0.2 mm beside D_P
+    let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew")
+  (general (thickness 1.6))
+  (layers (0 "F.Cu" signal) (1 "In1.Cu" signal) (31 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.1) (material "FR4") (epsilon_r 4.0) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 2" (type "core") (thickness 1.3) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "D_P") (net 2 "D_N") (net 3 "GND") (net 4 "AGG")
+  (segment (start 0 -0.15) (end 30 -0.15) (width 0.15) (layer "F.Cu") (net 1))
+  (segment (start 0 0.15) (end 30 0.15) (width 0.15) (layer "F.Cu") (net 2))
+  (segment (start 0 -0.5) (end 30 -0.5) (width 0.15) (layer "F.Cu") (net 4))
+  (zone (net 3) (net_name "GND") (layer "In1.Cu") (filled_polygon (layer "In1.Cu") (pts (xy -5 -5) (xy 35 -5) (xy 35 5) (xy -5 5)))))
+"#;
+    let board = kisi_board::load_pcb(pcb).unwrap();
+    let an = crate::analyze(&board, &crate::Params::default());
+    let id = |n: &str| board.nets.iter().position(|x| x == n).unwrap() as u32;
+    let rp = RfParams::default();
+    let field = std::collections::HashMap::new();
+    let xp = crosstalk(&board, &an, id("D_P"), &field, &rp);
+    let xn = crosstalk(&board, &an, id("D_N"), &field, &rp);
+    let xa = crosstalk(&board, &an, id("AGG"), &field, &rp);
+    assert!(xp.differential && xn.differential && !xa.differential);
+    let (np, nn) = (xp.aggressors[0].next, xn.aggressors[0].next);
+    eprintln!("diff NEXT into the pair {np:.4} / {nn:.4}, geometries {}", xp.geoms.len());
+    for g in &xp.geoms {
+        eprintln!("--- {}\n{}", g.0, g.1);
+    }
+    // same differential noise seen from either line; the far line cancels part of the near one
+    assert!((np - nn).abs() < 0.05 * np, "{np} {nn}");
+    // AGG as victim of the pair driven differentially: (k_P − k_N)/2
+    let a = &xa.aggressors[0];
+    assert!(a.pair.is_some(), "the pair counts as one differential aggressor");
+    eprintln!("NEXT from the pair into AGG {:.4}", a.next);
+    // single-line coupling D_P ↔ AGG (as a single-ended victim would see it) is larger
+    let (ze, zo, ee, eo) = crate::analytic::kirschning_jansen(0.15, 0.2, 0.1, 4.0);
+    let kb1 = coupling_from_modes(ze, zo, ee, eo).0;
+    assert!(np < kb1 && np > 0.2 * kb1, "{np} vs single {kb1}");
+    assert!(xp.geoms.len() == 2 && xp.geoms.iter().all(|g| g.1.contains("sig+") && g.1.contains("sig-") && g.1.matches("gnd x=").count() >= 2));
+}

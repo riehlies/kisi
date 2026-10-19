@@ -303,8 +303,8 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
         "return_loss_worst_db_b": -ch.s22_db.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
         "tdr": {"rise_ps": rp.rise * 1e12, "z_min": tdr_in.iter().cloned().fold(f64::INFINITY, f64::min) * k, "z_max": tdr_in.iter().cloned().fold(f64::NEG_INFINITY, f64::max) * k, "mode": if ch.diff { "differential" } else { "single-ended" }},
         "via_details": ch.via_info.iter().map(|v| json!({"from": su.copper[v.layer_in as usize].name, "to": su.copper[v.layer_out as usize].name, "drill_mm": v.drill_mm, "antipad_mm": v.antipad_mm, "z_ohm": v.z_via, "stub_mm": v.stub_mm, "stub_resonance_ghz": v.stub_f_ghz, "return_path": v.return_kind})).collect::<Vec<_>>(),
-        "crosstalk": {"next_total": xt.next_total, "fext_total": xt.fext_total, "rise_ps": xt.rise_ps,
-            "aggressors": xt.aggressors.iter().take(5).map(|a| json!({"net": a.name, "parallel_mm": a.coupled_mm, "gap_min_mm": a.gap_min_mm, "next": a.next, "fext": a.fext})).collect::<Vec<_>>()},
+        "crosstalk": {"next_total": xt.next_total, "fext_total": xt.fext_total, "rise_ps": xt.rise_ps, "differential": xt.differential,
+            "aggressors": xt.aggressors.iter().take(5).map(|a| json!({"net": a.name, "pair": a.pair, "parallel_mm": a.coupled_mm, "gap_min_mm": a.gap_min_mm, "next": a.next, "fext": a.fext, "source": a.source})).collect::<Vec<_>>()},
         "mixed_mode": mixed,
         "warnings": ch.warnings, "field_solver": p.field_summary(), "models": p.models()
     }))

@@ -88,6 +88,11 @@ def run(pg, tag, desktop):
                 pg.click(f"#detail [data-tab={t}]"); pg.wait_for_timeout(400)
             step("pair_common")
             pg.click("#detail [data-pm=d]"); pg.wait_for_timeout(300)
+        # field solver scope with the coupling cross-sections (no solve)
+        pg.evaluate("$('fs-scope').value = 'target'; $('fs-xt').checked = true; $('fs-xt').dispatchEvent(new Event('change'))"); pg.wait_for_timeout(300)
+        if not pg.evaluate("S.xtGeoms && S.xtGeoms.list.length >= 0"):
+            problems.append(f"{tag}: coupling cross-sections not planned")
+        pg.evaluate("$('fs-xt').checked = false")
         pg.click("#view-ch"); pg.wait_for_timeout(500)
         pg.click("#ov-check"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(300); step("check")
         if pg.locator("#ch-overview tr[data-lane]").count():

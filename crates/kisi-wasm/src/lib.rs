@@ -693,6 +693,24 @@ pub extern "C" fn kisi_net_path(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// Coupling cross-sections (crosstalk) of several nets that the field solver can refine.
+/// Input: {"nets": [id…], "rf": RfParams}. Output: [[geometry id, text, coupled mm]…], longest first.
+#[no_mangle]
+pub extern "C" fn kisi_xt_geoms(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let an = st.an.as_ref().ok_or("no analysis")?;
+        let params = st.params.as_ref().ok_or("no analysis")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let rp: kisi_core::rf::RfParams = serde_json::from_value(v["rf"].clone()).unwrap_or_default();
+        let nets: Vec<u32> = v["nets"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).map(|x| x as u32).collect()).unwrap_or_default();
+        Ok(serde_json::to_string(&kisi_core::rf::crosstalk_geoms(b, an, &nets, &params.field, &rp)).unwrap())
+    });
+    reply(r)
+}
+
 /// Channel and crosstalk of one net. Input:
 /// {"net": id, "rf": RfParams, "target": [z, diff] | null, "bitrate": f | null, "prbs": 7,
 ///  "flip": bool, "hint": [x, y] | null, "mixed": bool (pairs: also the 4-port model)}

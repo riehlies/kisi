@@ -6,7 +6,8 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 
 * light, dark and phone layout; all three views (impedance, channel, power)
 * impedance estimate, net detail tabs, interfaces overview, channel check, lane eye,
-  voltage drop (desktop layouts; --quick: only load and the three views)
+  voltage drop with ground return, losses map and power flow (desktop layouts; --quick: only
+  load and the three views)
 * uses the embedded example boards if the build has them, else --board
 * --config: drops a <board>.kisi.json and expects "check passed"
 * exit code 1 on page errors or console errors (failed loads of external resources
@@ -75,8 +76,11 @@ def run(pg, tag, desktop):
             step("lane")
         pg.click("#view-pi"); pg.wait_for_timeout(400)
         if not pg.locator("#pi-run").is_disabled():
-            pg.click("#pi-run"); pg.wait_for_function(f"S.piSolved && {BUSY}", timeout=180000); pg.wait_for_timeout(300)
+            pg.click("#pi-run"); pg.wait_for_function(f"S.piSolved && !S.piRunning && {BUSY}", timeout=300000); pg.wait_for_timeout(300)
         step("power")
+        if not pg.locator("#pim-l").is_disabled():
+            pg.click("#pim-l"); pg.wait_for_timeout(500); step("losses")
+            pg.click("#pim-b"); pg.wait_for_timeout(500); step("flow")
         if a.config:
             pg.click("#view-si")
             pg.set_input_files("#file", [os.path.abspath(a.config)]); pg.wait_for_function(f"S.config && {BUSY}", timeout=90000)

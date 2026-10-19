@@ -22,7 +22,8 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
   check            channel check of all lanes against interface profiles
                    [--class CLASS=PROFILE]… [--nets A,B] [--all] [--max 30]
   profiles [ID]    interface profiles (no board needed)
-  power            regulator chain, DC IR drop per rail   [--tree tree.json] [--pdn RAIL]
+  power            regulator chain, DC IR drop per rail and ground return, losses, power flow
+                                                          [--tree tree.json] [--pdn RAIL]
   report           write analysis/kisi.json next to the board   [--out FILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
   config-check     check <board>.kisi.json (format, ranges, references, sources)

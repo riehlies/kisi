@@ -43,7 +43,10 @@ in the output shows the coverage; `--formula` skips the solver.
    Only yellow/red rows are printed by default (`--all` for green too, `--nets A,B` to restrict).
    The first `check` on a board runs the field solver for all nets with a target (see Getting kisi).
 5. Power: `kisi power <board>` – regulator chain balance (PI_REG/PI_LOAD fields or kisi.json, or
-   `--tree tree.json`), IR drop per rail; `--pdn RAIL` adds the impedance of one rail against its target.
+   `--tree tree.json`), IR drop per rail and in the ground return (`ground_return` rows: `max_offset_mv`
+   adds to the drop of the parts' rails), `losses` (heat per part, copper loss per rail and layer) and
+   `flow` (power from the input through the regulators to the loads); `--pdn RAIL` adds the impedance of one
+   rail against its target. Losses are power, not temperature; part heat assumes all drawn power stays in the part.
 6. Optionally `kisi report <board>` writes `analysis/kisi.json` next to the board, so file-based review
    tools (e.g. kicad-happy) and later sessions can reuse the results.
 7. For the interactive view (2D field solver, charts, editable profiles), the user opens `kisi.html`

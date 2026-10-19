@@ -418,7 +418,7 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
         if ls.is_empty() {
             continue;
         }
-        setups.push(RailSetup { net: n.clone(), voltage: volt.get(n).copied().unwrap_or(0.0), sources: vec![SourceSpec { refdes: src, pads: vec![] }], loads: ls });
+        setups.push(RailSetup { net: n.clone(), voltage: volt.get(n).copied().unwrap_or(0.0), sources: vec![SourceSpec { refdes: src, pads: vec![] }], loads: ls, ground: false });
     }
 
     Ok(TreeResult {
@@ -510,7 +510,8 @@ mod tests {
 //
 // '>' may also be written '->' or '→'. Values: 90% / 0.9, 3A / 500mA, iq=1mA,
 // r=10m (Ω), in=/out=<refdes>, part=<text>. Loads come from PI_LOAD
-// (`+1V0=2.5A, +1V8=300mA` or `+1V0=2W`), the rails from all named nets.
+// (`+1V0=2.5A, +1V8=300mA` or `+1V0=2W`; `NET=60mA@L32/L33`: the current enters the board at
+// these parts' pads, e.g. the inductors of an output stage), the rails from all named nets.
 
 const KINDS: &[&str] = &["input", "buck", "boost", "ldo", "inverter", "pass", "buck-boost", "sepic"];
 
@@ -627,6 +628,19 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
                 continue;
             };
             let name = name.trim();
+            // load point on other parts: "NET=60mA@L32/L33" (current split over them)
+            let (q, at) = match q.split_once('@') {
+                Some((q, a)) => {
+                    let refs: Vec<&str> = a.split(['/', '+']).map(str::trim).filter(|s| !s.is_empty()).collect();
+                    for r in &refs {
+                        if !board.footprints.iter().any(|f| f.reference == *r) {
+                            warnings.push(format!("{}: PI_LOAD load point {} not on the board", fp.reference, r));
+                        }
+                    }
+                    (q, Some(refs.join(",")))
+                }
+                None => (q, None),
+            };
             let vr = volts.get(name).copied().or_else(|| crate::pi::voltage_from_name(name));
             let current = match crate::pi::parse_quantity(q) {
                 Some((a, 'A')) => a,
@@ -644,7 +658,7 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
             };
             // basis: the kisi.json source kind (datasheet, estimate, …) or "field" for a KiCad field
             let (basis, note) = field_source(fp, "PI_LOAD").unwrap_or(("field", ""));
-            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.value.clone(), basis: basis.into(), note: note.into(), ..Default::default() });
+            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.value.clone(), basis: basis.into(), note: note.into(), at });
         }
     }
     // rails: every net named by an element or a load

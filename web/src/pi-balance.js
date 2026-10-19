@@ -23,7 +23,7 @@ function renderBalance() {
     const r = t.rails.find((x) => x.net === net);
     if (!r) return;
     const pad = `style="padding-left:${d * 16}px"`;
-    rows.push(`<div class="t-rail" ${pad}><button data-rail="${esc(net)}" title="Show voltage drop of this rail">${esc(netLabel(net).split("/").pop())}</button><span class="t-num">${fmt(r.voltage, 2)} V · ${fmt(r.i_total, 3)} A · ${mW(Math.abs(r.voltage) * r.i_total)}</span></div>`);
+    rows.push(`<div class="t-rail" ${pad}><button data-rail="${esc(net)}" title="Show voltage drop of this rail">${esc(netShort(net))}</button><span class="t-num">${fmt(r.voltage, 2)} V · ${fmt(r.i_total, 3)} A · ${mW(Math.abs(r.voltage) * r.i_total)}</span></div>`);
     for (const { l, i } of loadsOn(net)) {
       rows.push(`<div class="t-load" style="padding-left:${d * 16 + 12}px"><span>${esc(l.refdes)} <span class="b">${esc(l.part)} · ${esc(l.basis || "")}${l.note ? " · " + esc(l.note) : ""}</span></span>
         <input type="number" min="0" step="0.001" value="${+l.current.toFixed(4)}" data-load="${i}" aria-label="Current ${esc(l.refdes)} on ${esc(netLabel(net))} in A"></div>`);
@@ -59,6 +59,10 @@ function renderBalance() {
       ${kpi(fmt(100 * t.p_loads / pin, 0), "%", "overall efficiency")}
     </div>
     ${warn}
+    ${S.loss && S.loss.flow ? `<div class="bal-card" style="margin-bottom:12px"><h4>Power flow <em>band width ∝ power · hover for values</em></h4>
+      <div class="sankey-wrap">${sankeySVG(S.loss.flow)}</div>
+      <div class="bal-legend"><span><i style="background:var(--pw-use)"></i>delivered</span><span><i style="background:var(--pw-loss)"></i>losses</span></div>
+      <p class="note">Rails behind shunts and ferrites are merged into the rail before them. ${S.piSolved ? "Copper losses of the rails and of the ground return come from step 2." : "Copper losses (rails and ground return) join after step 2."}</p></div>` : ""}
     <div class="bal-cols">
       <div class="bal-card"><h4>Power tree <em>currents in A are editable</em></h4><div class="tree">${rows.join("")}</div>
         <div class="bal-actions" style="margin-top:8px"><button class="btn small" id="bal-reset">Reset values</button><span class="note">Changes are stored in this browser.</span></div></div>
@@ -80,7 +84,10 @@ function refreshTree() {
   const keep = S.piRail;
   computeTree();
   S.piRes = new Map();
-  for (const r of S.piSetups.values()) solvePiRail(r.net, false);
+  try { S.engine.piClear(); } catch (e) { /* nothing stored */ }
+  for (const r of S.piSetups.values()) solvePiRail(r.net, false, false, false);
+  if (S.piSolved) solveGround();
+  computeLosses();
   S.piRail = keep;
   renderPi();
 }

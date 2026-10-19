@@ -23,6 +23,8 @@ const FLAGS = [
   [128, "Cut-out in a layer between trace and reference (e.g. under a pad)"],
 ];
 const netLabel = (n) => String(n).replace(/\{slash\}/g, "/");
+// last part of a hierarchical net name ("/FPGA/+1V0" → "+1V0"; an escaped slash stays part of the name)
+const netShort = (n) => netLabel(String(n).split("/").pop());
 const fmt = (v, d = 1) => (v == null || !isFinite(v)) ? "–" : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 const pct = (v) => v == null ? "–" : Math.round(v * 100) + " %";
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));

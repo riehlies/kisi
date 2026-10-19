@@ -54,12 +54,9 @@ def entries(tree):
     for l in tree.get("loads", []):
         if not l.get("current"):
             continue
-        at = [a.strip() for a in l["at"].split(",")] if l.get("at") else [l["refdes"]]
-        for r in at:
-            note = l.get("note", "")
-            if r != l["refdes"]:  # load point on other parts (e.g. the inductors of an output stage)
-                note = f"{l['refdes']} {l.get('part', '')}: {note}, current split over {', '.join(at)}"
-            loads.setdefault(r, []).append((f"{l['net']}={l['current'] / len(at):g}A", l.get("basis") or "estimate", l["net"], note))
+        # load point on other parts (e.g. the inductors of an output stage): NET=I@R1/R2
+        at = "@" + "/".join(a.strip() for a in l["at"].split(",")) if l.get("at") else ""
+        loads.setdefault(l["refdes"], []).append((f"{l['net']}={l['current']:g}A{at}", l.get("basis") or "estimate", l["net"], l.get("note", "")))
     out = []
     for ref, rs in regs.items():
         kinds = {s[0] for _, s in rs}

@@ -208,7 +208,7 @@ function renderFieldStatus() {
   // scope selector
   const sel = $("fs-scope"), prev = sel.value;
   const opts = [];
-  if (S.selNet >= 0) opts.push(["sel", "selected net " + netLabel(S.scene.nets[S.selNet]).split("/").pop()]);
+  if (S.selNet >= 0) opts.push(["sel", "selected net " + netShort(S.scene.nets[S.selNet])]);
   S.an.classes.forEach((c, i) => { if (c.target && c.nets) opts.push(["class:" + i, "class " + c.name]); });
   opts.push(["target", "all nets with target"], ["all", "all nets"]);
   const html = opts.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join("");

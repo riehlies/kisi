@@ -42,6 +42,9 @@ pub struct RailSetup {
     pub voltage: f64,
     pub sources: Vec<SourceSpec>,
     pub loads: Vec<LoadSpec>,
+    /// ground return (`losses::ground_setups`): reference 0 V at the sources (the supply
+    /// input), loads with negative current feed their return current into the net
+    pub ground: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -84,6 +87,7 @@ pub struct LoadResult {
     pub connected: bool,
     pub v_min: Option<f64>,
     pub v_mean: Option<f64>,
+    pub v_max: Option<f64>,
     pub pads: usize,
 }
 
@@ -105,6 +109,8 @@ pub struct ViaResult {
 pub struct PiResult {
     pub net: String,
     pub voltage: f64,
+    /// ground return: `max_drop_mv` is the largest ground offset at a component
+    pub ground: bool,
     pub cell: f64,
     pub layers: Vec<LayerGrid>,
     pub loads: Vec<LoadResult>,
@@ -126,6 +132,9 @@ pub struct PiResult {
     /// current density magnitude (A/mm²)
     #[serde(skip)]
     pub j: Vec<f32>,
+    /// copper loss per cell (W): half of every conductance's I²R to each of its two cells
+    #[serde(skip)]
+    pub loss: Vec<f32>,
 }
 
 // --- fields & helpers -------------------------------------------------------------
@@ -324,6 +333,11 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
             };
             let net_name = board.net_name(net).to_string();
             let i = rail_idx(&mut rails, &net_name);
+            // "NET=60mA@L32/L33": the current enters at these parts' pads (split evenly)
+            let (q, at): (&str, Vec<String>) = match q.split_once('@') {
+                Some((q, a)) => (q, a.split(['/', '+']).map(|r| r.trim().to_string()).filter(|r| !r.is_empty()).collect()),
+                None => (q, vec![fp.reference.clone()]),
+            };
             let current = match parse_quantity(q) {
                 Some((a, 'A')) => a,
                 Some((w, 'W')) => {
@@ -339,7 +353,9 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
                     continue;
                 }
             };
-            rails[i].loads.push(LoadSpec { refdes: fp.reference.clone(), current, pads: vec![], origin: "field".into() });
+            for r in &at {
+                rails[i].loads.push(LoadSpec { refdes: r.clone(), current: current / at.len() as f64, pads: vec![], origin: "field".into() });
+            }
         }
     }
     (rails, warnings)
@@ -553,12 +569,12 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
     let su = board.stackup();
     let ncu = su.n();
     let net = find_net(board, &setup.net).ok_or_else(|| format!("net '{}' not found", setup.net))?;
-    if setup.voltage == 0.0 {
+    if setup.voltage == 0.0 && !setup.ground {
         return Err(format!("{}: no nominal voltage given", setup.net));
     }
     // negative rails are solved with the magnitude; the load current then
     // flows the same way relative to |V| and the result is mirrored back
-    let sign = setup.voltage.signum();
+    let sign = if setup.ground { 1.0 } else { setup.voltage.signum() };
     let mut warnings = Vec::new();
 
     // copper of the net per layer and its bounding box
@@ -793,7 +809,11 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
         src_nodes.push((s.refdes.clone(), ns, pads.len()));
     }
     if !fixed.iter().any(|&f| f) {
-        return Err(format!("{}: no source defined (field PI_SOURCE or selection in the viewer)", setup.net));
+        return Err(if setup.ground {
+            format!("{}: the supply input (PI_REG input) has no pads on this net", setup.net)
+        } else {
+            format!("{}: no source defined (field PI_SOURCE or selection in the viewer)", setup.net)
+        });
     }
     let mut inject = vec![0f64; nn];
     let mut load_nodes: Vec<(usize, Vec<u32>, usize)> = Vec::new(); // (load index, nodes, pads)
@@ -983,6 +1003,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
             connected,
             v_min: vals.iter().cloned().reduce(f64::min),
             v_mean: connected.then(|| vals.iter().sum::<f64>() / vals.len() as f64),
+            v_max: vals.iter().cloned().reduce(f64::max),
             pads: *npads,
         });
         if !connected && ld.current != 0.0 {
@@ -998,12 +1019,26 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
         }
     }
     let mut loss = 0.0;
+    // loss per cell, in the same layout as the voltage buffer
+    let layer_slot: Vec<usize> = {
+        let mut ls = vec![usize::MAX; ncu];
+        for (i, &l) in layers.iter().enumerate() {
+            ls[l] = i;
+        }
+        ls
+    };
+    let mut lb = vec![0f32; per * layers.len()];
     for &(a, b, gv) in &edges {
         let (va, vb2) = (v[a as usize], v[b as usize]);
         if !(va.is_finite() && vb2.is_finite()) {
             continue;
         }
-        loss += gv * (va - vb2) * (va - vb2);
+        let pe = gv * (va - vb2) * (va - vb2);
+        loss += pe;
+        for n in [a, b] {
+            let (l, k) = node_pos[n as usize];
+            lb[layer_slot[l] * per + k] += (pe / 2.0) as f32;
+        }
         // current leaving fixed (source) nodes into the rest of the copper
         if fixed[a as usize] && !fixed[b as usize] {
             if let Some(&s) = owner.get(&a) {
@@ -1026,13 +1061,18 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
     vias.sort_by(|a, b| b.current.partial_cmp(&a.current).unwrap());
     vias.truncate(30);
     let v_min = loads.iter().filter_map(|l| l.v_min).reduce(f64::min);
-    let max_drop_mv = v_min.map(|m| (v_src - m) * 1e3);
+    let max_drop_mv = if setup.ground {
+        // largest ground offset (either sign) at a component
+        loads.iter().flat_map(|l| [l.v_min, l.v_max]).flatten().map(f64::abs).reduce(f64::max).map(|x| x * 1e3)
+    } else {
+        v_min.map(|m| (v_src - m) * 1e3)
+    };
     if sign < 0.0 {
         for x in vb.iter_mut() {
             *x = -*x;
         }
         for l in loads.iter_mut() {
-            l.v_min = l.v_min.map(|v| -v);
+            (l.v_min, l.v_max) = (l.v_max.map(|v| -v), l.v_min.map(|v| -v));
             l.v_mean = l.v_mean.map(|v| -v);
         }
     }
@@ -1040,6 +1080,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
     Ok(PiResult {
         net: setup.net.clone(),
         voltage: setup.voltage,
+        ground: setup.ground,
         cell,
         layers: grids,
         loads,
@@ -1055,6 +1096,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
         warnings,
         v: vb,
         j: jb,
+        loss: lb,
     })
 }
 

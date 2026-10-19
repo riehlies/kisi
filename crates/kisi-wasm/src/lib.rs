@@ -18,6 +18,11 @@ struct State {
     zone_idx: Vec<u32>,
     pi_v: Vec<f32>,
     pi_j: Vec<f32>,
+    /// last solved power tree, and the DC results per rail (loss buffers only) for the losses
+    tree: Option<kisi_core::tree::TreeResult>,
+    pi_store: std::collections::BTreeMap<String, kisi_core::pi::PiResult>,
+    /// loss map: copper planes, then the components plane (W/mm²)
+    loss_map: Vec<f32>,
     /// last analysis and its parameters (for the RF functions)
     an: Option<kisi_core::Analysis>,
     params: Option<Params>,
@@ -77,6 +82,9 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
                 let mut st = st.borrow_mut();
                 st.stackup_file = b.stackup.clone();
                 st.board = Some(b);
+                st.tree = None;
+                st.pi_store.clear();
+                st.loss_map.clear();
             });
             set_out(String::new());
             0
@@ -312,20 +320,23 @@ pub extern "C" fn kisi_pi_kipida(p: *const u8, n: usize) -> i32 {
 #[no_mangle]
 pub extern "C" fn kisi_pi_solve(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
-    let mut bufs: Option<(Vec<f32>, Vec<f32>)> = None;
+    let mut bufs: Option<(Vec<f32>, Vec<f32>, kisi_core::pi::PiResult)> = None;
     let rc = with_board(|b| {
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let setup: kisi_core::pi::RailSetup = serde_json::from_value(v["setup"].clone()).map_err(|e| e.to_string())?;
         let params: kisi_core::pi::PiParams = serde_json::from_value(v["params"].clone()).unwrap_or_default();
         let mut r = kisi_core::pi::solve_rail(b, &setup, &params)?;
-        bufs = Some((std::mem::take(&mut r.v), std::mem::take(&mut r.j)));
-        Ok(serde_json::to_string(&r).unwrap())
+        let out = serde_json::to_string(&r).unwrap();
+        let (vb, jb) = (std::mem::take(&mut r.v), std::mem::take(&mut r.j));
+        bufs = Some((vb, jb, r));
+        Ok(out)
     });
-    if let Some((v, j)) = bufs {
+    if let Some((v, j, r)) = bufs {
         ST.with(|st| {
             let mut st = st.borrow_mut();
             st.pi_v = v;
             st.pi_j = j;
+            st.pi_store.insert(r.net.clone(), r);
         });
     }
     rc
@@ -353,11 +364,94 @@ pub extern "C" fn kisi_pi_j_len() -> usize {
 #[no_mangle]
 pub extern "C" fn kisi_pi_tree(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
-    with_board(|b| {
+    let mut tree = None;
+    let rc = with_board(|b| {
         let spec: kisi_core::tree::TreeSpec = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let r = kisi_core::tree::solve_tree(&spec, Some(b))?;
-        Ok(serde_json::to_string(&r).unwrap())
-    })
+        let out = serde_json::to_string(&r).unwrap();
+        tree = Some(r);
+        Ok(out)
+    });
+    ST.with(|st| st.borrow_mut().tree = tree);
+    rc
+}
+
+/// Forget the stored DC results (before all rails are solved again).
+#[no_mangle]
+pub extern "C" fn kisi_pi_clear() {
+    ST.with(|st| {
+        let mut st = st.borrow_mut();
+        st.pi_store.clear();
+        st.loss_map.clear();
+    });
+}
+
+/// Ground return setups of the last power tree: {setups, warnings}.
+#[no_mangle]
+pub extern "C" fn kisi_pi_ground() -> i32 {
+    let r = ST.with(|st| {
+        let st = st.borrow();
+        match (st.board.as_ref(), st.tree.as_ref()) {
+            (Some(b), Some(t)) => {
+                let (setups, warnings) = kisi_core::losses::ground_setups(b, t);
+                Ok(serde_json::json!({"setups": setups, "warnings": warnings}).to_string())
+            }
+            _ => Err("no power tree".to_string()),
+        }
+    });
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
+/// Losses of the stored DC results and the last power tree. Input {"cell": mm|null}.
+/// Out: {summary, flow, map}; the map planes (W/mm²) via kisi_pi_map_ptr/len:
+/// `map.layers.len()` copper planes, then the components plane, nx*ny cells each.
+#[no_mangle]
+pub extern "C" fn kisi_pi_losses(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let cell = serde_json::from_str::<serde_json::Value>(&txt).ok().and_then(|v| v["cell"].as_f64());
+    let r = ST.with(|st| {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let rails: Vec<&kisi_core::pi::PiResult> = st.pi_store.values().collect();
+        let s = kisi_core::losses::loss_summary(b, st.tree.as_ref(), &rails);
+        let flow = st.tree.as_ref().map(|t| {
+            let copper: Vec<(String, f64)> = s.rails.iter().filter(|r| !r.ground).map(|r| (r.net.clone(), r.w)).collect();
+            kisi_core::losses::power_flow(t, &copper, s.ground_w)
+        });
+        let m = kisi_core::losses::loss_map(b, &rails, &s.components, cell)?;
+        let out = serde_json::json!({"summary": s, "flow": flow, "map": m}).to_string();
+        let mut buf = m.copper;
+        buf.extend_from_slice(&m.components);
+        Ok::<_, String>((out, buf))
+    });
+    match r {
+        Ok((out, buf)) => {
+            ST.with(|st| st.borrow_mut().loss_map = buf);
+            set_out(out);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+#[no_mangle]
+pub extern "C" fn kisi_pi_map_ptr() -> *const f32 {
+    ST.with(|st| st.borrow().loss_map.as_ptr())
+}
+#[no_mangle]
+pub extern "C" fn kisi_pi_map_len() -> usize {
+    ST.with(|st| st.borrow().loss_map.len())
 }
 
 // --- high frequency (M3) -----------------------------------------------------------

@@ -18,10 +18,13 @@ $("view-si").onclick = () => setTab("si");
 $("view-ch").onclick = () => setTab("ch");
 $("view-pi").onclick = () => setTab("pi");
 function setPiMode(m) {
+  const toLoss = m === "l" && S.piMode !== "l";
   S.piMode = m; S.piImg = null;
-  for (const k of ["v", "j", "b"]) $("pim-" + k).setAttribute("aria-pressed", String(k === m));
+  if (toLoss) fitView(); // the loss map covers the whole board
+  for (const k of ["v", "j", "l", "b"]) $("pim-" + k).setAttribute("aria-pressed", String(k === m));
   renderPi();
 }
 $("pim-b").onclick = () => setPiMode("b");
 $("pim-v").onclick = () => setPiMode("v");
 $("pim-j").onclick = () => setPiMode("j");
+$("pim-l").onclick = () => setPiMode("l");

@@ -31,7 +31,9 @@ Planned and possible work after 0.1.0, roughly in order of priority. Each item s
 - **Crosstalk:** broadside coupling between layers, aggressors in the eye.
 - **PDN:** several planes per rail, capacitor ESR/ESL from datasheets (`kisi.json` fields), comparison with a
   measurement or a reference tool.
-- **Power:** IR drop in the ground return, via current capacity, temperature rise.
+- **Power:** via current capacity; a temperature estimate from the losses map (2D heat spreading with
+  conductivity of copper and laminate, convection; clearly an estimate); split of regulator losses between IC and
+  inductor.
 - **Whole-board validation** against a commercial tool (e.g. HyperLynx) on the example boards.
 - **Decide first: equalisation** (CTLE/FFE) for profiles that require it (PCIe Gen3+). So far deliberately left out.
 

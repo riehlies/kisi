@@ -49,6 +49,8 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
    - Target impedance: the interface standard or the device datasheet / layout guide.
    - Load currents (`PI_LOAD`): device datasheet, supply current per rail in the expected operating
      mode. FPGAs and SoCs: the vendor's power estimator; ask the user for its result if needed.
+     Current that enters the board at other parts (e.g. an output stage fed through inductors): keep it on
+     the IC and name the load point, `+5V=60mA@L32/L33` – the IC then also returns it into ground.
    - Regulators (`PI_REG`): topology, efficiency at the expected load, rated output current; input and
      output rails from the schematic. Syntax: `+12V > +3V3 buck 90% 3A` (see the gap's example).
    - Supply inputs: `PI_REG` = `+5V input` on the connector (counts in the power budget and as the

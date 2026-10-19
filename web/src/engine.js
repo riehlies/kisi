@@ -37,6 +37,15 @@ class Engine {
   profileAuto(req) { this.call(this.k.kisi_profile_auto, JSON.stringify(req)); return this.out(); }
   piTreeFields() { this.k.kisi_pi_tree_fields(); return JSON.parse(this.out()); }
   piTree(spec) { this.call(this.k.kisi_pi_tree, JSON.stringify(spec)); return JSON.parse(this.out()); }
+  piClear() { this.k.kisi_pi_clear(); }
+  piGround() { if (this.k.kisi_pi_ground() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
+  // losses of the stored DC results: {summary, flow, map, buf} (buf: copper planes, then components; W/mm²)
+  piLosses(cell) {
+    this.call(this.k.kisi_pi_losses, JSON.stringify({ cell: cell || null }));
+    const r = JSON.parse(this.out()), m = this.k.memory.buffer;
+    r.buf = new Float32Array(m, this.k.kisi_pi_map_ptr(), this.k.kisi_pi_map_len()).slice();
+    return r;
+  }
   piKipida(text) { this.call(this.k.kisi_pi_kipida, text); return JSON.parse(this.out()); }
   piSolve(setup, params) {
     this.call(this.k.kisi_pi_solve, JSON.stringify({ setup, params }));

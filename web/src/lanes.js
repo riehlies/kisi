@@ -35,7 +35,7 @@ function laneZStats(l) {
   }
   return len ? { z_mean: zs / len, z_min: lo, z_max: hi } : {};
 }
-const shortNet = (n) => netLabel(S.scene.nets[n] || "").split("/").pop();
+const shortNet = (n) => netShort(S.scene.nets[n] || "");
 const pinLabel = (e) => e ? `${e.refdes}.${e.pin}` : "–";
 
 function chForLane(l) {
@@ -104,7 +104,7 @@ function renderChOverview() {
       const r = laneRow(l), st = r ? laneStatus(l) : null;
       const cells = r ? `<td class="n">${fmt(r.length_mm, 1)}</td><td class="n">${fmt(r.il_nyq_db, 1)}</td><td class="n">${fmt(r.rl_db, 1)}</td><td class="n">${r.eye && !r.error ? fmt(r.eye_height * 100, 0) : "–"}</td><td class="n">${r.skew_ps == null ? "–" : fmt(Math.abs(r.skew_ps), 1) + (r.skew_uncertain ? "?" : "")}</td>`
         : `<td class="n" colspan="5">${checkable ? '<span class="muted">not checked yet</span>' : `<span class="muted">${esc(l.kind)}</span>`}</td>`;
-      return `<tr class="click" data-lane="${esc(laneKey(l))}"><td>${st ? `<span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span>` : ""}</td><td class="ln">${esc(netLabel(l.name).split("/").pop())}${l.diff ? ' <span class="muted">pair</span>' : ""}</td><td class="lc">${laneChain(l)}</td>${cells}</tr>`;
+      return `<tr class="click" data-lane="${esc(laneKey(l))}"><td>${st ? `<span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span>` : ""}</td><td class="ln">${esc(netShort(l.name))}${l.diff ? ' <span class="muted">pair</span>' : ""}</td><td class="lc">${laneChain(l)}</td>${cells}</tr>`;
     }).join("");
     return `<div class="bal-card bus-card">
       <h4><span>${worst ? `<span class="dot" style="background:${S.colors[worst]}"></span> ` : ""}${esc(b.name)}</span><em>${esc(b.class)} · ${esc(p.name)} · ${b.lanes.length} lane${b.lanes.length === 1 ? "" : "s"}</em></h4>
@@ -150,7 +150,7 @@ function renderLaneDetail(l) {
   const tx = laneTx(l), rx = laneRx(l);
   const tabs = [["check", "Check"], ...(l.kind === "ic-ic" ? [["eye", "Eye"]] : []), ["path", "Path"]];
   const t = tabs.some((x) => x[0] === tab) ? tab : "check";
-  d.innerHTML = `<header><div><h3>${esc(netLabel(l.name).split("/").pop())}${l.diff ? ` <span class="muted">pair</span>` : ""}</h3><div class="muted">${esc(pinLabel(tx))} ${esc(tx?.value || "")} → ${esc(pinLabel(rx))} ${esc(rx?.value || "")} · ${esc(l.class)}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
+  d.innerHTML = `<header><div><h3>${esc(netShort(l.name))}${l.diff ? ` <span class="muted">pair</span>` : ""}</h3><div class="muted">${esc(pinLabel(tx))} ${esc(tx?.value || "")} → ${esc(pinLabel(rx))} ${esc(rx?.value || "")} · ${esc(l.class)}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
     <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button></span></div>
     <div class="dstats muted"><span>Transmitter ${esc(tx?.refdes || "")}: ${fmt(p.tx.r, 0)} Ω${p.tx.c_pf ? ", " + fmt(p.tx.c_pf, 1) + " pF" : ""}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span>
       <span>Receiver ${esc(rx?.refdes || "")}: ${r.rx_used ? (r.rx_used.r > 0 ? fmt(r.rx_used.r, 0) + " Ω" : "high impedance") : (p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "high impedance")}${p.rx.c_pf ? ", " + fmt(p.rx.c_pf, 1) + " pF" : ""}</span><span>per line</span></div>
@@ -198,7 +198,7 @@ function renderLanePath(body, l, r) {
     return `<tr><td>${s.kind === "series" ? "series" : "shunt"}</td><td colspan="3"><b>${esc(s.part || "")}</b></td><td class="muted">estimated parasitics</td></tr>`;
   }).join("");
   const sh = l.shunts.map((s) => `${esc(s.part.refdes)} ${esc(s.part.value)} ${s.across ? "across the pair" : "to " + esc(shortNet(s.to))}`).join(", ");
-  body.innerHTML = `<div class="dstats"><span>${esc(pinLabel(laneTx(l)))} → ${esc(pinLabel(laneRx(l)))}</span><span>${fmt(ch.length_mm, 1)} mm, delay ${fmt(ch.delay_ps, 0)} ps</span>${r.skew ? `<span>skew to ${esc(netLabel(r.skew.partner).split("/").pop())} ${fmt(r.skew.skew_ps, 1)} ps${r.skew.uncertain ? " (uncertain)" : ""}</span>` : ""}</div>
+  body.innerHTML = `<div class="dstats"><span>${esc(pinLabel(laneTx(l)))} → ${esc(pinLabel(laneRx(l)))}</span><span>${fmt(ch.length_mm, 1)} mm, delay ${fmt(ch.delay_ps, 0)} ps</span>${r.skew ? `<span>skew to ${esc(netShort(r.skew.partner))} ${fmt(r.skew.skew_ps, 1)} ps${r.skew.uncertain ? " (uncertain)" : ""}</span>` : ""}</div>
     <div class="tablewrap"><table class="xs-table"><thead><tr><th>Element</th><th>Layer / part</th><th>Length</th><th>Z</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>
     <p class="note">Nets: ${l.nets.map((n) => esc(shortNet(n))).join(" → ")}${l.diff ? ` · partner ${l.partner_nets.map((n) => esc(shortNet(n))).join(" → ")}` : ""}.${sh ? ` Terminations: ${sh}.` : ""}${l.others.length ? ` Also connected (not modelled): ${esc(l.others.join(", "))}.` : ""} Direction: ${esc(laneSwaps()[laneKey(l)] ? "swapped by you" : l.direction)}.</p>`;
 }

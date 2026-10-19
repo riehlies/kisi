@@ -32,7 +32,8 @@ Three views, each starting with what the board file gives and computing more on 
    capacitors, with terminations and branches; per net class an interface profile (PCIe, USB, DDR, LVDS, …
    from `data/interfaces.json`) with transmitter, receiver and limits. Eye only from IC to IC; lanes ending at a
    connector are judged on the board share (loss, return loss, skew).
-3. **Power** – power tree and budget first; then voltage drop and current density per rail, and Z(f).
+3. **Power** – power tree, budget and power flow (Sankey) first; then voltage drop and current density per rail
+   and of the ground return, a losses map (heat per part and copper loss per layer, mW/mm²), and Z(f).
 
 Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer; edits are stored in the browser, the
 files are not changed. Results of the last three boards stay in memory while switching.
@@ -46,7 +47,7 @@ files are not changed. Results of the last three boards stay in memory while swi
 | `interfaces` | buses and device-to-device lanes with their profiles |
 | `net <NET>` | impedance along the path, loss, TDR, vias, crosstalk; `--s2p FILE` writes Touchstone |
 | `check` | channel check against the profiles (`--class CLASS=PROFILE`, `--nets A,B`, `--all`) |
-| `power` | regulator chain, budget, DC IR drop per rail (`--pdn RAIL` adds Z(f)) |
+| `power` | regulator chain, budget, DC IR drop per rail and in the ground return, losses per part / rail / layer, power flow (`--pdn RAIL` adds Z(f)) |
 | `report` | everything into `analysis/kisi.json` next to the board |
 | `gaps` | missing or default data, where to find it, how to write it into `<board>.kisi.json` |
 | `config-check`, `config-template` | check / start a `<board>.kisi.json` |
@@ -71,6 +72,7 @@ commands with formula impedances only.
 | | `+3V3 > +3V3A pass r=0.05` | ferrite or shunt with series resistance (Ω) |
 | | `+5V > VCORE@0.9V buck 85% id=U4A` | rail without a voltage in its name; several channels of one IC with `;` |
 | `PI_LOAD` | `+1V0=2.5A, +1V8=300mA` or `+1V0=2W` | load current per rail |
+| | `+5V=60mA@L32/L33` | current entering at other parts' pads (e.g. the inductors of an output stage) |
 | `PI_SOURCE` | `+3V3` | source pads for the IR drop when there is no regulator chain |
 
   The nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`). A `kipida_config.json` (KiPIDA) can be
@@ -108,6 +110,10 @@ KiCad files; CLI and viewer lay this file over the board.
 - **Eye:** PRBS7 NRZ with the profile's linear transmitter/receiver; no equalisation, jitter or noise.
 - **Power:** copper rasterised per layer, vias as barrels (25 µm); PDN as lumped model plus a grid model of the
   largest plane; capacitor ESR/ESL estimated per package.
+- **Ground return and losses:** every part returns what it draws from the supply rails minus what it feeds into
+  them (a buck converter takes current from ground); ground is solved like a rail with the supply input as 0 V.
+  The power a load draws is counted as heat in the part (estimate), regulator losses on the regulator; copper
+  loss is I²R from the DC solutions. Power, not temperature.
 
 ## Development
 ```sh

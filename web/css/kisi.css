@@ -335,3 +335,12 @@ ul.src li { margin: 2px 0; }
 #app.no-board #legend, #app.no-board #layers { display: none; }
 #app.no-board .drop { padding: 16px; text-align: center; }
 #app.no-board .stage { grid-column: 1 / -1; }
+
+/* losses view and power flow */
+.detail h4.sub { margin: 10px 0 4px; font-family: var(--font-display); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: flex; justify-content: space-between; }
+.detail h4.sub em { font-style: normal; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0; text-transform: none; }
+.linkish { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.sankey-wrap { overflow-x: auto; }
+.sankey { display: block; width: 100%; min-width: 760px; height: auto; }
+.sankey .sk-l { font: 500 11px var(--font-body); fill: var(--fg); paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
+.sankey .sk-loss { fill: var(--pw-loss); font-weight: 600; }

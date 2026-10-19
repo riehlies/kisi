@@ -405,13 +405,16 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
             None => (None, vec![], "PI_LOAD/PI_SOURCE fields"),
         },
     };
+    let mut tree_res = None;
     let (setups, balance) = match &spec {
         Some(s) => {
             let t = crate::tree::solve_tree(s, Some(&p.board))?;
             warnings.extend(t.warnings.iter().cloned());
             let bal = json!({"input_w": t.p_input, "loads_w": t.p_loads, "losses_w": t.p_losses,
                 "elements": t.elements.iter().map(|e| json!({"id": e.id, "kind": e.kind, "part": e.part, "i_in": e.i_in, "i_out": e.i_out, "loss_w": e.p_loss, "overload": e.overload})).collect::<Vec<_>>()});
-            (t.setups, Some(bal))
+            let setups = t.setups.clone();
+            tree_res = Some(t);
+            (setups, Some(bal))
         }
         None => {
             let (s, w) = crate::pi::rails_from_fields(&p.board);
@@ -419,13 +422,52 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
             (s, None)
         }
     };
+    let params = crate::pi::PiParams::default();
     let mut rails = Vec::new();
+    let mut solved = Vec::new();
+    let rail_json = |r: &crate::pi::PiResult| {
+        if r.ground {
+            json!({"rail": r.net, "ground_return": true, "return_a": -r.total_load, "max_offset_mv": r.max_drop_mv, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "warnings": r.warnings})
+        } else {
+            json!({"rail": r.net, "voltage": r.voltage, "load_a": r.total_load, "max_drop_mv": r.max_drop_mv, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "warnings": r.warnings})
+        }
+    };
     for s in &setups {
-        match crate::pi::solve_rail(&p.board, s, &crate::pi::PiParams::default()) {
-            Ok(r) => rails.push(json!({"rail": r.net, "voltage": r.voltage, "load_a": r.total_load, "max_drop_mv": r.max_drop_mv, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "warnings": r.warnings})),
+        match crate::pi::solve_rail(&p.board, s, &params) {
+            Ok(r) => {
+                rails.push(rail_json(&r));
+                solved.push(r);
+            }
             Err(e) => rails.push(json!({"rail": s.net, "error": e})),
         }
     }
+    // ground return (needs the regulator chain: who returns how much current)
+    if let Some(t) = &tree_res {
+        let (gs, gw) = crate::losses::ground_setups(&p.board, t);
+        warnings.extend(gw);
+        for s in &gs {
+            match crate::pi::solve_rail(&p.board, s, &params) {
+                Ok(r) => {
+                    rails.push(rail_json(&r));
+                    solved.push(r);
+                }
+                Err(e) => rails.push(json!({"rail": s.net, "ground_return": true, "error": e})),
+            }
+        }
+    }
+    let refs: Vec<&crate::pi::PiResult> = solved.iter().collect();
+    let ls = crate::losses::loss_summary(&p.board, tree_res.as_ref(), &refs);
+    let losses = json!({
+        "total_w": ls.total_w, "components_w": ls.components_w, "copper_rails_w": ls.copper_w, "copper_ground_w": ls.ground_w,
+        "per_layer": ls.layers.iter().map(|(_, n, w)| json!({"layer": n, "copper_w": w})).collect::<Vec<_>>(),
+        "per_rail": ls.rails.iter().map(|r| json!({"rail": r.net, "ground_return": r.ground, "copper_w": r.w})).collect::<Vec<_>>(),
+        "components": ls.components.iter().take(25).map(|c| json!({"ref": c.refdes, "part": c.part, "heat_w": c.w, "role": c.role})).collect::<Vec<_>>(),
+        "notes": ls.notes,
+    });
+    let flow = tree_res.as_ref().map(|t| {
+        let copper: Vec<(String, f64)> = ls.rails.iter().filter(|r| !r.ground).map(|r| (r.net.clone(), r.w)).collect();
+        crate::losses::power_flow(t, &copper, ls.ground_w)
+    });
     let pdn = match pdn_rail {
         Some(name) => {
             let setup = setups.iter().find(|r| r.net == name || r.net.rsplit('/').next() == Some(name)).cloned().unwrap_or_else(|| crate::pi::RailSetup {
@@ -441,7 +483,7 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
         }
         None => None,
     };
-    Ok(json!({"tree_source": source, "balance": balance, "rails": rails, "pdn": pdn, "warnings": warnings}))
+    Ok(json!({"tree_source": source, "balance": balance, "rails": rails, "losses": losses, "flow": flow, "pdn": pdn, "warnings": warnings}))
 }
 
 /// Everything in one document, written as `analysis/kisi.json` next to the board

@@ -24,6 +24,7 @@ function renderPdn(body, setup) {
   drawPdn($("ch-pdn"), r);
 }
 function renderPiLayerChips() {
+  if (S.piMode === "l") { renderLossChips(); return; }
   const su = S.scene.stackup, r = piCurrent();
   const ls = r ? r.res.layers.map((g) => g.layer) : [];
   if (r) piLayerIdx(r);
@@ -32,12 +33,13 @@ function renderPiLayerChips() {
 }
 
 function renderPiLegend() {
+  if (S.piMode === "l") { renderLossLegend(); return; }
   const L = $("legend"), r = piCurrent();
   if (!r) { L.innerHTML = `<strong>Power</strong><div class="row">${S.piSolved ? "Rail without result: define source and load" : "Voltage drop not computed yet: “Compute voltage drop” in the Power card"}</div>`; return; }
   const li = piLayerIdx(r), im = piImage(r, li), sc = im.scale;
   const stops = Array.from({ length: 11 }, (_, k) => turbo(k / 10 * 0.9 + 0.05)).join(",");
   const d = sc.max < 1 ? 2 : sc.max < 10 ? 1 : 0;
-  L.innerHTML = `<strong>${S.piMode === "v" ? "Voltage drop" : "Current density"} · ${esc(S.scene.stackup.copper[S.piLayer].name)}</strong>
+  L.innerHTML = `<strong>${S.piMode === "v" ? (r.res.ground ? "Ground offset" : "Voltage drop") : "Current density"} · ${esc(S.scene.stackup.copper[S.piLayer].name)}</strong>
     <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
     <div class="ticks"><span>0</span><span>${fmt(sc.max / 2, d)}</span><span>${fmt(sc.max, d)} ${sc.unit}${S.piMode === "j" ? " (99th percentile)" : ""}</span></div>
     <div class="row"><span class="sw" style="background:${S.colors.ok}"></span>source ▲ · load ○ · circles: vias with the highest currents</div>`;

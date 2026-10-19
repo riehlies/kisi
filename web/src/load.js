@@ -4,7 +4,7 @@
 // another board and back restores estimate, checks, voltage drop and Z(f)
 const BOARD_CACHE_MAX = 3;
 const BOARD_STATE = ["overrides", "full", "anMs", "mode", "chMode", "check", "laneRes", "chStatus", "selLane",
-  "piRes", "piSolved", "piMs", "pdnRes", "pdnSolved", "pdnMs", "piRail", "piLayer", "piMode", "piTab",
+  "piRes", "piSolved", "piMs", "pdnRes", "pdnSolved", "pdnMs", "piRail", "piLayer", "piMode", "piTab", "piGround", "groundWarn", "loss", "lossPlane",
   "piTree", "treeRes", "piSetups", "piWarn", "layerOn", "zoneLayer", "view"];
 function boardKey(name, text) {
   // name, size and a sampled FNV hash of the file
@@ -71,7 +71,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     buildStatic();
     initPi(piDefaults);
     if (snap) {
-      for (const k of ["piRes", "piSolved", "piMs", "pdnRes", "pdnSolved", "pdnMs", "piRail", "piLayer", "piMode", "piTab", "piTree", "treeRes", "piSetups", "piWarn", "laneRes", "chStatus", "selLane"]) S[k] = snap[k];
+      for (const k of ["piRes", "piSolved", "piMs", "pdnRes", "pdnSolved", "pdnMs", "piRail", "piLayer", "piMode", "piTab", "piGround", "groundWarn", "loss", "lossPlane", "piTree", "treeRes", "piSetups", "piWarn", "laneRes", "chStatus", "selLane"]) S[k] = snap[k];
       if (snap.check) S.check = { ...snap.check, gen: S.anGen, stale: false };
       syncModeButtons();
       setTab(S.tab);

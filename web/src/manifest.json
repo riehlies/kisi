@@ -17,6 +17,7 @@
   "pi-dc.js",
   "pi-pdn.js",
   "pi-balance.js",
+  "pi-loss.js",
   "views.js",
   "main.js"
  ]

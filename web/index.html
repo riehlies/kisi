@@ -36,7 +36,8 @@
       <button id="sample-ts" aria-pressed="false">ThunderScope</button>
       <button id="sample-vna" aria-pressed="false">LibreVNA</button>
     </div>
-    <label class="btn primary" for="file">Load files</label>
+    <button class="btn" id="reload" hidden title="Read the same files again (after saving in KiCad)">Reload</button>
+    <label class="btn primary" for="file" id="load-files">Load files</label>
     <input type="file" id="ibis-file" accept=".ibs" multiple hidden>
     <input type="file" id="file" accept=".kicad_pcb,.kicad_pro,.json,.ibs" multiple hidden>
   </div>
@@ -75,6 +76,7 @@
         </li>
       </ol>
       <p class="note" id="warnings"></p>
+      <div class="note cfg-status" id="cfg-status" hidden></div>
       <details class="acc">
         <summary>Accuracy</summary>
         <p class="note">Field solver: <a href="https://github.com/Ttl/js_2d_fields" target="_blank" rel="noopener">js_2d_fields</a> by Henrik Forstén (GPL-3.0), quasi-static, included unmodified (revision <span class="mono" id="up-rev"></span>). Against the HFSS/Ansys references in his test suite: deviation ≤ 1.7 %, including a line over a cut-out with a deeper reference.</p>
@@ -200,7 +202,7 @@
     <section class="detail" id="pi-detail" hidden aria-live="polite"></section>
     <section class="balance" id="pi-balance" hidden aria-label="Power tree"></section>
     <section class="balance" id="ch-overview" hidden aria-label="Interfaces"></section>
-    <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro, .ibs or kipida_config.json here</div>
+    <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro, &lt;board&gt;.kisi.json, .ibs or kipida_config.json here</div>
     <div class="busy" id="busy">Loading engine…</div>
   </main>
 </div>
@@ -212,7 +214,6 @@ const SOLVER_SRC = __SOLVER_SRC__;
 const UPSTREAM_REV = "__UPSTREAM_REV__";
 const SAMPLES = __SAMPLES__;
 const DATA = __DATA__;
-const PRELOAD = null; /*KISI_PRELOAD*/
 </script>
 <!-- @scripts web/src/manifest.json -->
 <script src="src/engine.js"></script>

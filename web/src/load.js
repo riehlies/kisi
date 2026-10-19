@@ -23,16 +23,26 @@ function saveBoardState() {
   while (S.boardCache.size > BOARD_CACHE_MAX) S.boardCache.delete(S.boardCache.keys().next().value);
 }
 
-async function loadFiles(pcbText, proText, name, piDefaults = null) {
+// small texts (the board configuration): hash every character
+function textHash(t) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); }
+
+// cfg: {name, text} of a <board>.kisi.json (values with sources), applied over the board
+async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) {
   showBusy("Reading board and computing cross-sections…");
   await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
   try {
     saveBoardState();
-    const key = boardKey(name, pcbText + "|" + (proText || ""));
+    const key = boardKey(name, pcbText + "|" + (proText || "")) + (cfg ? "|" + textHash(cfg.text) : "");
     const snap = S.boardCache && S.boardCache.get(key);
     const t0 = performance.now();
     S.engine.loadPro(proText || '{"net_settings":{}}');
     S.engine.loadPcb(pcbText);
+    S.lastFiles = { pcbText, proText, name, piDefaults, cfg };
+    S.config = null;
+    if (cfg) {
+      try { S.config = { name: cfg.name, ...S.engine.config(cfg.text) }; }
+      catch (e) { S.config = { name: cfg.name, check: { ok: false, errors: [e.message], warnings: [], entries: 0 }, targets: {}, profiles: {} }; }
+    }
     S.scene = S.engine.scene();
     S.padSet = new Set(S.scene.pad_tracks || []);
     S.zones = S.engine.zones();
@@ -107,7 +117,8 @@ function stackParam() {
 // step 1 (on load): board, net classes, targets – S.an is a skeleton without impedances
 // step 2 (button): cross-sections and formula impedances, field results where available
 function anParams() {
-  const targets = {};
+  // class targets: board configuration (kisi.json) first, edits in the viewer on top
+  const targets = { ...((S.config && S.config.targets) || {}) };
   for (const [k, v] of Object.entries(S.overrides)) targets[k] = v;
   const field = {};
   for (const [id, r] of S.field) if (r.ok) field[id] = r;

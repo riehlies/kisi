@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "kisi": {
-      "command": "kisi-mcp",
-      "args": [],
-      "env": {}
-    }
-  }
-}

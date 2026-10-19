@@ -1,7 +1,11 @@
 //! kisi – command line front end for kisi-core.
 //!
-//! Usage: kisi <board.kicad_pcb> [--pro <file.kicad_pro>] [--json <out.json>] [--step <mm>] [--nets <filter>]
-//!        kisi <file.ibs>            linear transmitter/receiver models of all signal pins
+//! Usage: kisi <command> <board.kicad_pcb> [options]   JSON results (see `kisi help`, agent.rs)
+//!        kisi <board.kicad_pcb> [--pro <file.kicad_pro>] [--json <out.json>] [--step <mm>] [--nets <filter>]
+//!                                   text summary for people (older flag interface)
+//!        kisi <file.ibs>            linear transmitter/receiver models of all signal pins (experimental)
+
+mod agent;
 
 use kisi_core::extract::{compared_z, Kind};
 use kisi_core::{analyze, apply_project, load_pcb, Params};
@@ -10,7 +14,15 @@ use std::time::Instant;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        eprintln!("usage: kisi <board.kicad_pcb> [--pro file] [--json out] [--step mm] [--nets filter]");
+        eprintln!("{}", agent::HELP);
+        std::process::exit(2);
+    }
+    if agent::COMMANDS.contains(&args[1].as_str()) || args[1] == "--help" || args[1] == "-h" {
+        let cmd = if args[1].starts_with('-') { "help" } else { args[1].as_str() };
+        std::process::exit(agent::main(cmd, &args[2..]));
+    }
+    if !std::path::Path::new(&args[1]).is_file() {
+        eprintln!("kisi: '{}' is neither a command nor a file\n\n{}", args[1], agent::HELP);
         std::process::exit(2);
     }
     let pcb_path = &args[1];

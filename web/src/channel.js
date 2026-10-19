@@ -47,11 +47,12 @@ function autoProfile(net) {
   const t = classTarget(net);
   return S.engine.profileAuto({ net: S.scene.nets[net] || "", class: className(net), diff: !!(t && t.diff) });
 }
-function profileIdOf(net) { return classAssign()[className(net)] || autoProfile(net); }
+function cfgProfile(cls) { return (S.config && S.config.profiles && S.config.profiles[cls]) || null; }
+function profileIdOf(net) { const c = className(net); return classAssign()[c] || cfgProfile(c) || autoProfile(net); }
 function profileOf(net) { return profile(profileIdOf(net)) || profile("se50"); }
 
 // ---- metrics and judgement (the verdict comes from kisi-si::profile via WASM,
-// identical for viewer, CLI and MCP; here only the presentation)
+// identical for viewer and CLI; here only the presentation)
 const ST_MAP = { green: "ok", yellow: "high1", red: "high2" };
 function judge(m, p) {
   let v;
@@ -82,14 +83,14 @@ function renderIfcCard() {
   if (!box || !S.an) return;
   const map = classAssign();
   const classes = S.an.classes.map((c, i) => ({ c, i })).filter(({ c }) => c.nets > 0 && c.target);
-  const opts = (sel, auto) => `<option value="">automatic (${esc(profile(auto)?.name || auto)})</option>` +
+  const opts = (sel, auto, cfgId) => `<option value="">${cfgId ? `kisi.json (${esc(profile(cfgId)?.name || cfgId)})` : `automatic (${esc(profile(auto)?.name || auto)})`}</option>` +
     IFC.profiles.map((p) => `<option value="${p.id}" ${p.id === sel ? "selected" : ""}>${esc(p.name)}</option>`).join("");
   box.innerHTML = classes.length ? `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Class</th><th>Profile</th></tr></thead><tbody>${classes.map(({ c }) => {
     const anyNet = S.an.nets.find((n) => n.class === c.name);
     const auto = anyNet ? autoProfile(anyNet.net) : "se50";
-    return `<tr><td title="${c.nets} nets, target ${fmt(c.target.z, 0)} Ω ${c.target.diff ? "diff" : "SE"}">${esc(c.name)}</td><td><select data-cls="${esc(c.name)}" aria-label="Profile for ${esc(c.name)}">${opts(map[c.name] || "", auto)}</select></td></tr>`;
+    return `<tr><td title="${c.nets} nets, target ${fmt(c.target.z, 0)} Ω ${c.target.diff ? "diff" : "SE"}">${esc(c.name)}</td><td><select data-cls="${esc(c.name)}" aria-label="Profile for ${esc(c.name)}">${opts(map[c.name] || "", auto, cfgProfile(c.name))}</select></td></tr>`;
   }).join("")}</tbody></table></div>
-    <p class="note">Automatic: by net name first, then by class name (rules in data/interfaces.json). Stored per board.</p>` : `<p class="note">No net classes with target impedance.</p>`;
+    <p class="note">Automatic: by net name first, then by class name (rules in data/interfaces.json)${S.config ? `; “kisi.json”: from ${esc(S.config.name)}` : ""}. Your choice is stored per board.</p>` : `<p class="note">No net classes with target impedance.</p>`;
   box.querySelectorAll("select[data-cls]").forEach((s) => s.onchange = () => {
     const m = classAssign();
     if (s.value) m[s.dataset.cls] = s.value; else delete m[s.dataset.cls];

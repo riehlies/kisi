@@ -14,10 +14,18 @@ async function handleFiles(files) {
   }
   const pcb = files.find((f) => f.name.endsWith(".kicad_pcb"));
   const pro = files.find((f) => f.name.endsWith(".kicad_pro"));
-  const cfg = files.find((f) => f.name.endsWith(".json"));
+  // <board>.kisi.json: board configuration with sources; other .json: KiPIDA configuration
+  const kisiCfg = files.find((f) => /\.kisi\.json$/i.test(f.name));
+  const cfg = files.find((f) => f.name.endsWith(".json") && f !== kisiCfg);
+  const kc = kisiCfg ? { name: kisiCfg.name, text: await kisiCfg.text() } : null;
   if (pcb) {
     for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
-    await loadFiles(await pcb.text(), pro ? await pro.text() : null, pcb.name.replace(/\.kicad_pcb$/, ""));
+    await loadFiles(await pcb.text(), pro ? await pro.text() : null, pcb.name.replace(/\.kicad_pcb$/, ""), null, kc);
+  } else if (kc && S.lastFiles) {
+    // configuration alone: load the current board again with it
+    const l = S.lastFiles;
+    await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, kc);
+    if (!cfg) return;
   }
   if (cfg && S.scene) { importKipida(await cfg.text()); return; }
   if (pcb) return;
@@ -29,36 +37,62 @@ async function handleFiles(files) {
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
   await loadFiles(await pcb.text(), pro ? await pro.text() : null, pcb.name.replace(/\.kicad_pcb$/, ""));
 }
-$("file").onchange = (e) => handleFiles(e.target.files);
+$("file").onchange = (e) => { S.fileHandles = null; $("reload").hidden = true; handleFiles(e.target.files); e.target.value = ""; };
+// File System Access (Chromium): keep the file handles, so “Reload” reads the same
+// files again after saving in KiCad; elsewhere the file input is used
+async function rememberHandles(hs) {
+  hs = (hs || []).filter((h) => h && h.kind === "file");
+  if (!hs.some((h) => /\.kicad_pcb$/i.test(h.name))) return false;
+  S.fileHandles = hs; $("reload").hidden = false;
+  return true;
+}
+async function readHandles() { return Promise.all(S.fileHandles.map((h) => h.getFile())); }
+if (window.showOpenFilePicker) {
+  $("load-files").addEventListener("click", async (e) => {
+    e.preventDefault();
+    try {
+      const hs = await window.showOpenFilePicker({ multiple: true });
+      if (!(await rememberHandles(hs))) { S.fileHandles = null; $("reload").hidden = true; }
+      await handleFiles(await Promise.all(hs.map((h) => h.getFile())));
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+      $("file").click(); // picker not allowed here: plain file input
+    }
+  });
+}
+$("reload").onclick = async () => {
+  if (!S.fileHandles) return;
+  try { await handleFiles(await readHandles()); }
+  catch (e) { $("warnings").innerHTML = `<span class="err">Reload failed: ${esc(e.message)} – load the files again.</span>`; S.fileHandles = null; $("reload").hidden = true; }
+};
 let dragDepth = 0;
 window.addEventListener("dragenter", (e) => { e.preventDefault(); dragDepth++; $("drop").hidden = false; });
 window.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("drop").hidden = true; } });
 window.addEventListener("dragover", (e) => e.preventDefault());
-window.addEventListener("drop", (e) => { e.preventDefault(); dragDepth = 0; $("drop").hidden = true; handleFiles(e.dataTransfer.files); });
+window.addEventListener("drop", (e) => {
+  e.preventDefault(); dragDepth = 0; $("drop").hidden = true;
+  // handles must be requested inside the event, before any await
+  const hp = [...(e.dataTransfer.items || [])].map((it) => it.kind === "file" && it.getAsFileSystemHandle ? it.getAsFileSystemHandle().catch(() => null) : null);
+  const files = [...e.dataTransfer.files];
+  (async () => {
+    if (hp.some(Boolean) && files.some((f) => /\.kicad_pcb$/i.test(f.name))) { if (!(await rememberHandles(await Promise.all(hp)))) { S.fileHandles = null; $("reload").hidden = true; } }
+    else if (files.some((f) => /\.kicad_pcb$/i.test(f.name))) { S.fileHandles = null; $("reload").hidden = true; }
+    else if (S.fileHandles && hp.some(Boolean)) {
+      // a configuration or IBIS file dropped later: reload reads it too
+      const extra = (await Promise.all(hp)).filter((h) => h && h.kind === "file" && /\.(kisi\.json|ibs)$/i.test(h.name));
+      S.fileHandles = S.fileHandles.filter((h) => !extra.some((x) => x.name === h.name)).concat(extra);
+    }
+    await handleFiles(files);
+  })();
+});
 
 async function loadSample(key) {
+  S.fileHandles = null; $("reload").hidden = true;
   const s = SAMPLES[key];
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", String(k === key));
   showBusy("Unpacking example board…");
   const [pcb, pro] = await Promise.all([gunzipB64(s.pcb), gunzipB64(s.pro)]);
   await loadFiles(pcb, pro, s.name, s.pi || null);
-}
-// board handed over by the KiCad plugin (tools/kicad-plugin): {name, pcb, pro (gzip+base64), net?}
-async function loadPreload(pl) {
-  for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
-  showBusy("Unpacking board from KiCad…");
-  // gzip+base64 from the KiCad plugin, plain text from kisi-mcp
-  const pcb = pl.pcb_text != null ? pl.pcb_text : await gunzipB64(pl.pcb);
-  const pro = pl.pro_text != null ? pl.pro_text : pl.pro ? await gunzipB64(pl.pro) : null;
-  // IBIS files referenced by the footprints (before the board, so the lanes see them)
-  if (pl.ibis && pl.ibis.length) loadIbisTexts(await Promise.all(pl.ibis.map(async (f) => ({ name: f.name, text: f.text != null ? f.text : await gunzipB64(f.data) }))));
-  await loadFiles(pcb, pro, pl.name);
-  if (pl.net) {
-    // a net handed over from KiCad: show its impedances right away (step 2)
-    const t0 = performance.now(); S.full = true; S.mode = "dev"; runAnalysis(); S.anMs = Math.round(performance.now() - t0);
-    const id = S.scene.nets.indexOf(pl.net);
-    if (id > 0) { if (pl.view === "ch") { S.chMode = "m"; setTab("ch"); } selectNet(id); }
-  }
 }
 $("sample-ts").onclick = () => loadSample("ts");
 $("sample-vna").onclick = () => loadSample("vna");
@@ -95,8 +129,7 @@ new ResizeObserver(resize).observe(cv);
     $("up-rev").textContent = UPSTREAM_REV.slice(0, 7);
     await Cache.open();
     await Cache.loadAll();
-    if (typeof PRELOAD !== "undefined" && PRELOAD) await loadPreload(PRELOAD);
-    else await loadSample("ts");
+    await loadSample("ts");
   } catch (e) {
     showBusy("Engine failed to start: " + e.message);
   }

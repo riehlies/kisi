@@ -782,7 +782,7 @@ mod cavity_tests {
         let pts = vec![[0.0, 0.0], [50.0, 0.0], [50.0, 30.0], [0.0, 30.0]];
         let su = Stackup {
             copper: vec![CopperLayer { name: "F.Cu".into(), thickness: 0.035 }, CopperLayer { name: "B.Cu".into(), thickness: 0.035 }],
-            dielectrics: vec![Dielectric { name: "d".into(), kind: "core".into(), material: "FR4".into(), thickness: 0.1, epsilon_r: 4.3, loss_tangent: 0.02 }],
+            dielectrics: vec![Dielectric { name: "d".into(), kind: "core".into(), material: "FR4".into(), thickness: 0.1, epsilon_r: 4.3, loss_tangent: 0.02, assumed: vec![] }],
             mask_top: None,
             mask_bottom: None,
             from_file: true,

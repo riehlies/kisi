@@ -90,6 +90,38 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// Apply a `<board>.kisi.json` to the loaded board (call right after kisi_load_pcb).
+/// Output: {"check": {ok, errors, warnings, entries}, "targets": {class: {z, diff}},
+/// "profiles": {class: id}, "fields": n, "dielectrics": n}. The board's fields and
+/// file stackup are replaced by the configured values (viewer edits stay on top).
+#[no_mangle]
+pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        let mut st = st.borrow_mut();
+        let cfg = kisi_core::config::parse(&txt)?;
+        let b = st.board.as_mut().ok_or("no board loaded")?;
+        let an0 = kisi_core::extract::skeleton(b, &Params::default());
+        let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
+        let check = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin());
+        let a = cfg.apply(b);
+        let su = b.stackup.clone();
+        st.stackup_file = su;
+        let targets: serde_json::Map<String, serde_json::Value> = a.targets.iter().map(|(k, t)| (k.clone(), serde_json::json!({"z": t.z, "diff": t.diff}))).collect();
+        Ok(serde_json::json!({"check": check, "targets": targets, "profiles": a.profiles, "fields": a.fields, "dielectrics": a.dielectrics, "notes": cfg.notes}).to_string())
+    });
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
 /// Load a `.kicad_pro` (net classes). May be called before or after the board.
 #[no_mangle]
 pub extern "C" fn kisi_load_pro(p: *const u8, n: usize) -> i32 {

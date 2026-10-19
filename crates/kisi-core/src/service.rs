@@ -1,6 +1,7 @@
 //! Front-end services: load a project from disk and produce compact JSON
-//! summaries of the analyses. Used by the MCP server and the CLI's JSON
-//! report; the viewer calls the analyses directly through WASM.
+//! summaries of the analyses. Used by the CLI's JSON commands (the interface for
+//! agents, see the skills in claude-plugin/); the viewer calls the analyses
+//! directly through WASM.
 //!
 //! Every summary states which models were used (formula vs. field solver,
 //! assumed profiles) so an agent can report it truthfully.
@@ -25,6 +26,19 @@ pub struct Project {
     pub ibis: topology::IbisLibs,
     /// (Sim.Library, reason) of referenced IBIS files that could not be read
     pub ibis_missing: Vec<(String, String)>,
+    /// `<board>.kisi.json` (values with sources), if present
+    pub config_path: Option<PathBuf>,
+    pub config: Option<crate::config::BoardConfig>,
+    /// check of the configuration against the board, or the parse error
+    pub config_check: Option<crate::config::CheckResult>,
+    /// net class → profile id from the configuration
+    pub config_profiles: HashMap<String, String>,
+}
+
+/// `<board>.kisi.json` next to `board.kicad_pcb`.
+pub fn config_path_for(pcb: &Path) -> PathBuf {
+    let stem = pcb.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+    pcb.with_file_name(format!("{stem}.kisi.json"))
 }
 
 /// Find an IBIS file named in Sim.Library: `${KIPRJMOD}` and other `${VAR}`s are
@@ -64,8 +78,15 @@ pub fn find_library(lib: &str, dir: &Path) -> Option<PathBuf> {
 }
 
 impl Project {
-    /// Load `board.kicad_pcb` (and `board.kicad_pro` next to it if `pro` is None).
+    /// Load `board.kicad_pcb` (and `board.kicad_pro` next to it if `pro` is None), with
+    /// `board.kisi.json` next to it if present.
     pub fn load(pcb: &Path, pro: Option<&Path>, stackup: Option<&StackupOverride>) -> Result<Project, String> {
+        let cp = config_path_for(pcb);
+        Self::load_with(pcb, pro, stackup, cp.is_file().then_some(cp.as_path()))
+    }
+
+    /// Like `load`, with an explicit configuration file (None: no configuration).
+    pub fn load_with(pcb: &Path, pro: Option<&Path>, stackup: Option<&StackupOverride>, config: Option<&Path>) -> Result<Project, String> {
         let text = std::fs::read_to_string(pcb).map_err(|e| format!("{}: {e}", pcb.display()))?;
         let mut board = crate::load_pcb(&text).map_err(|e| e.to_string())?;
         let pro_path = pro.map(Path::to_path_buf).unwrap_or_else(|| pcb.with_extension("kicad_pro"));
@@ -74,11 +95,28 @@ impl Project {
                 board.warnings.push(format!("project file: {e}"));
             }
         }
+        // configuration: checked against the board as read, then laid over it
+        let mut cfg = None;
+        let mut cfg_check = None;
+        let mut applied = crate::config::Applied::default();
+        if let Some(cp) = config {
+            let parsed = std::fs::read_to_string(cp).map_err(|e| format!("{}: {e}", cp.display())).and_then(|t| crate::config::parse(&t));
+            match parsed {
+                Ok(c) => {
+                    let an0 = crate::extract::skeleton(&board, &Params::default());
+                    let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
+                    cfg_check = Some(crate::config::check(&c, &board, &classes, &Profiles::builtin()));
+                    applied = c.apply(&mut board);
+                    cfg = Some(c);
+                }
+                Err(e) => cfg_check = Some(crate::config::CheckResult { ok: false, errors: vec![e], ..Default::default() }),
+            }
+        }
         if let Some(ov) = stackup {
             let su = board.stackup().with_overrides(ov);
             board.stackup = Some(su);
         }
-        let params = Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, ..Default::default() };
+        let params = Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, targets: applied.targets.clone(), ..Default::default() };
         let an = analyze(&board, &params);
         let name = pcb.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
         let dir = pcb.parent().map(Path::to_path_buf).unwrap_or_default();
@@ -96,7 +134,7 @@ impl Project {
                 None => ibis_missing.push((lib, "file not found".into())),
             }
         }
-        Ok(Project { pcb_path: pcb.to_path_buf(), name, board, an, params, ibis, ibis_missing })
+        Ok(Project { pcb_path: pcb.to_path_buf(), name, board, an, params, ibis, ibis_missing, config_path: config.map(Path::to_path_buf), config: cfg, config_check: cfg_check, config_profiles: applied.profiles })
     }
 
     pub fn net_id(&self, name: &str) -> Option<u32> {
@@ -106,6 +144,22 @@ impl Project {
     fn target(&self, net: u32) -> Option<(f64, bool)> {
         let ci = self.board.net_class.get(net as usize).copied().unwrap_or(0) as usize;
         self.an.classes.get(ci).and_then(|c| c.target).map(|t| (t.z, t.diff))
+    }
+
+    /// Profile assignment: the configuration's, overridden by `extra`.
+    pub fn assign(&self, extra: &HashMap<String, String>) -> HashMap<String, String> {
+        let mut m = self.config_profiles.clone();
+        m.extend(extra.iter().map(|(k, v)| (k.clone(), v.clone())));
+        m
+    }
+
+    /// Which configuration was used (for every summary).
+    pub fn config_summary(&self) -> Value {
+        match (&self.config_path, &self.config_check) {
+            (None, _) => json!({"file": null, "note": "no <board>.kisi.json next to the board: values from the board file only"}),
+            (Some(p), Some(c)) => json!({"file": p.display().to_string(), "entries": c.entries, "ok": c.ok, "errors": c.errors, "warnings": c.warnings}),
+            (Some(p), None) => json!({"file": p.display().to_string()}),
+        }
     }
 
     /// Lanes grouped into buses; IBIS model types fix the direction where they can.
@@ -146,7 +200,7 @@ pub fn overview(p: &Project) -> Value {
         .map(|(i, c)| {
             let d = su.dielectrics.get(i);
             json!({"layer": c.name, "cu_um": c.thickness * 1e3,
-                   "dielectric_below": d.map(|d| json!({"material": d.material, "thickness_um": d.thickness * 1e3, "er": d.epsilon_r, "tand": d.loss_tangent}))})
+                   "dielectric_below": d.map(|d| json!({"material": d.material, "thickness_um": d.thickness * 1e3, "er": d.epsilon_r, "tand": d.loss_tangent, "assumed": d.assumed}))})
         })
         .collect();
     let mut classes = Vec::new();
@@ -172,7 +226,7 @@ pub fn overview(p: &Project) -> Value {
     }
     json!({
         "board": p.name, "file": p.pcb_path.display().to_string(), "layers": su.n(), "stackup_from_file": su.from_file,
-        "stackup": stack, "classes": classes, "warnings": p.board.warnings, "models": MODELS
+        "stackup": stack, "classes": classes, "warnings": p.board.warnings, "config": p.config_summary(), "models": MODELS
     })
 }
 
@@ -201,8 +255,6 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
     }))
 }
 
-/// Channel check of all nets with a target (one row per pair) against their profiles.
-/// `assign`: class name → profile id (others automatic).
 fn pin(e: &topology::EndPin) -> String {
     format!("{}.{}", e.refdes, e.pin)
 }
@@ -235,6 +287,7 @@ fn lane_json(p: &Project, l: &topology::Lane) -> Value {
 
 /// Device-to-device lanes grouped into buses, with the profile each bus gets.
 pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>) -> Value {
+    let assign = &p.assign(assign);
     let buses = p.buses();
     let list: Vec<Value> = buses
         .iter()
@@ -248,6 +301,7 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
         .collect();
     json!({
         "buses": list,
+        "config": p.config_summary(),
         "ibis_files": p.ibis_summary(),
         "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; DNP parts are skipped. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction comes from IBIS model types where both ends have models, else it is a guess (termination next to the receiver). IBIS ends (footprint fields Sim.Device=IBIS, Sim.Library, Sim.Name, Sim.Ibis.Model) are EXPERIMENTAL and not working yet (linearised, typical corner): treat results with IBIS ends as unvalidated. Parasitics of passives are estimates from data/components.json."
     })
@@ -256,6 +310,7 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
 /// Channel check of all device-to-device lanes (plus nets with a target that are
 /// not on any lane), judged against the interface profiles.
 pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams) -> Value {
+    let assign = &p.assign(assign);
     let field = HashMap::new();
     let cd = topology::ComponentData::builtin();
     let buses = p.buses();
@@ -369,6 +424,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
     let count = |s: Status| rows.iter().filter(|r| r.0 == s).count();
     json!({
         "summary": {"green": count(Status::Green), "yellow": count(Status::Yellow), "red": count(Status::Red)},
+        "config": p.config_summary(),
         "ibis_files": p.ibis_summary(),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
         "models": format!("{MODELS} Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from IBIS where the devices have models (EXPERIMENTAL, not working yet; see end_models), otherwise from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).")
@@ -431,6 +487,7 @@ pub fn report(p: &Project, profiles: &Profiles) -> Value {
     let rp = RfParams::default();
     json!({
         "tool": "kisi", "version": env!("CARGO_PKG_VERSION"),
+        "config": p.config_summary(),
         "overview": overview(p),
         "interfaces": interfaces(p, profiles, &HashMap::new()),
         "channels": channel_check(p, profiles, &HashMap::new(), None, &rp),

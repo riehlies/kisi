@@ -1,6 +1,6 @@
 //! kisi-core: facade over the analysis crates.
 //!
-//! Front ends (CLI, WASM, later the KiCad plugin) depend on this crate only, so
+//! Front ends (CLI, WASM) depend on this crate only, so
 //! the paths `kisi_core::rf`, `kisi_core::pi`, … stay stable while the
 //! implementation lives in separately versioned crates:
 //!
@@ -13,4 +13,6 @@ pub use kisi_board::{apply_project, board, geom, load_pcb, num, sexpr, view, Boa
 pub use kisi_pi::{pdn, pi, tree};
 pub use kisi_si::{analytic, analyze, extract, eye, ibis, profile, rf, topology, via, xsgeom, Analysis, Params};
 
+pub mod config;
+pub mod gaps;
 pub mod service;

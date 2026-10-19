@@ -23,6 +23,9 @@ pub struct Dielectric {
     /// Series-equivalent permittivity of all sublayers (vertical field).
     pub epsilon_r: f64,
     pub loss_tangent: f64,
+    /// properties not given in the file (default values used): "material", "epsilon_r", "loss_tangent"
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub assumed: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -654,6 +657,7 @@ fn parse_stackup(st: &Node) -> Option<Stackup> {
         } else if name.starts_with("dielectric") || ty == "core" || ty == "prepreg" {
             // sublayers: a sequence of (thickness)(material)(epsilon_r)(loss_tangent)
             // groups separated by (addsublayer)
+            let all = || vec!["material".to_string(), "epsilon_r".to_string(), "loss_tangent".to_string()];
             let mut cur = Dielectric {
                 name: name.clone(),
                 kind: ty.clone(),
@@ -661,6 +665,7 @@ fn parse_stackup(st: &Node) -> Option<Stackup> {
                 thickness: 0.0,
                 epsilon_r: 4.5,
                 loss_tangent: 0.02,
+                assumed: all(),
             };
             let mut have = false;
             for c in l.items().iter().skip(2) {
@@ -668,13 +673,23 @@ fn parse_stackup(st: &Node) -> Option<Stackup> {
                     Some("thickness") => {
                         if have {
                             pending.push(cur.clone());
+                            cur.assumed = all();
                         }
                         cur.thickness = c.f64(1).unwrap_or(0.0);
                         have = true;
                     }
-                    Some("material") => cur.material = c.atom(1).unwrap_or("").to_string(),
-                    Some("epsilon_r") => cur.epsilon_r = c.f64(1).unwrap_or(4.5),
-                    Some("loss_tangent") => cur.loss_tangent = c.f64(1).unwrap_or(0.02),
+                    Some("material") => {
+                        cur.material = c.atom(1).unwrap_or("").to_string();
+                        cur.assumed.retain(|a| a != "material" || cur.material.is_empty());
+                    }
+                    Some("epsilon_r") => {
+                        cur.epsilon_r = c.f64(1).unwrap_or(4.5);
+                        cur.assumed.retain(|a| a != "epsilon_r");
+                    }
+                    Some("loss_tangent") => {
+                        cur.loss_tangent = c.f64(1).unwrap_or(0.02);
+                        cur.assumed.retain(|a| a != "loss_tangent");
+                    }
                     _ => {}
                 }
             }
@@ -708,6 +723,7 @@ fn merge_dielectrics(parts: &[Dielectric]) -> Dielectric {
             thickness: 0.2,
             epsilon_r: 4.5,
             loss_tangent: 0.02,
+            assumed: vec!["material".into(), "epsilon_r".into(), "loss_tangent".into(), "thickness".into()],
         };
     }
     let h: f64 = parts.iter().map(|p| p.thickness).sum();
@@ -715,6 +731,9 @@ fn merge_dielectrics(parts: &[Dielectric]) -> Dielectric {
     let tand: f64 = parts.iter().map(|p| p.thickness * p.loss_tangent).sum::<f64>() / h.max(1e-12);
     let mut mats: Vec<String> = parts.iter().map(|p| p.material.clone()).collect();
     mats.dedup();
+    let mut assumed: Vec<String> = parts.iter().flat_map(|p| p.assumed.clone()).collect();
+    assumed.sort();
+    assumed.dedup();
     Dielectric {
         name: parts[0].name.clone(),
         kind: parts[0].kind.clone(),
@@ -722,6 +741,7 @@ fn merge_dielectrics(parts: &[Dielectric]) -> Dielectric {
         thickness: h,
         epsilon_r: if s > 0.0 { h / s } else { 4.5 },
         loss_tangent: tand,
+        assumed,
     }
 }
 
@@ -753,6 +773,7 @@ fn default_stackup(names: &[String]) -> Stackup {
                 thickness: h,
                 epsilon_r: 4.5,
                 loss_tangent: 0.02,
+                assumed: vec!["material".into(), "epsilon_r".into(), "loss_tangent".into(), "thickness".into()],
             })
             .collect(),
         mask_top: Some(SolderMask { thickness: 0.01, epsilon_r: 3.3 }),

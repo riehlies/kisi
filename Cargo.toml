@@ -6,7 +6,6 @@ members = [
     "crates/kisi-pi",
     "crates/kisi-core",
     "crates/kisi-cli",
-    "crates/kisi-mcp",
     "crates/kisi-wasm",
     "crates/kisi-sparse",
 ]

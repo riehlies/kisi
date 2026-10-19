@@ -326,3 +326,10 @@ ul.src li { margin: 2px 0; }
   .legend .grad, .legend .ticks { width: 160px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* board configuration status (kisi.json) */
+.cfg-status { margin: 4px 0 0; overflow-wrap: anywhere; }
+.cfg-status .ok { color: var(--z-ok); }
+.cfg-status .err { color: var(--z-high2); }
+.cfg-status ul { margin: 4px 0 0; padding-left: 18px; }
+.cfg-status li.err { color: var(--z-high2); }

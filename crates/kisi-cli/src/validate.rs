@@ -30,7 +30,7 @@ fn case_geometry(c: &Value) -> Option<String> {
     let (w, h, t, er) = (f("w")?, f("h")?, f("t")?, f("er")?);
     let ty = c["type"].as_str()?;
     let cu = |n: &str, t: f64| CopperLayer { name: n.into(), thickness: t };
-    let di = |k: &str, h: f64, er: f64| Dielectric { name: "d".into(), kind: k.into(), material: "m".into(), thickness: h, epsilon_r: er, loss_tangent: 0.0 };
+    let di = |k: &str, h: f64, er: f64| Dielectric { name: "d".into(), kind: k.into(), material: "m".into(), thickness: h, epsilon_r: er, loss_tangent: 0.0, assumed: vec![] };
     let mask = f("sm_t").map(|tm| (tm, f("sm_er").unwrap_or(3.3)));
     let partner = f("s").map(|s| (s, w, true));
     let (su, desc) = match ty {

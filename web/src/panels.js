@@ -1,5 +1,17 @@
 "use strict";
 // ============================================================== side panels
+// board configuration (<board>.kisi.json): what was applied and the check result
+function renderCfgStatus() {
+  const box = $("cfg-status"), c = S.config;
+  box.hidden = !c;
+  if (!c) return;
+  const ck = c.check || { ok: true, errors: [], warnings: [], entries: 0 };
+  const parts = [c.dielectrics ? `${c.dielectrics} stackup` : "", Object.keys(c.targets || {}).length ? `${Object.keys(c.targets).length} target(s)` : "", Object.keys(c.profiles || {}).length ? `${Object.keys(c.profiles).length} profile(s)` : "", c.fields ? `${c.fields} field(s)` : ""].filter(Boolean);
+  const list = (xs, cls) => xs.map((x) => `<li class="${cls}">${esc(x)}</li>`).join("");
+  box.innerHTML = `<b>${esc(c.name)}</b>: ${parts.join(", ") || "nothing"} applied · ${ck.ok ? `<span class="ok">check passed</span>` : `<span class="err">${ck.errors.length} error(s)</span>`}${ck.warnings.length ? ` · ${ck.warnings.length} warning(s)` : ""}
+    ${ck.errors.length || ck.warnings.length ? `<details><summary>Details</summary><ul>${list(ck.errors, "err")}${list(ck.warnings, "")}</ul></details>` : ""}`;
+}
+
 function renderSide() {
   const sc = S.scene, an = S.an, su = sc.stackup;
   $("boardName").textContent = S.name;
@@ -13,6 +25,7 @@ function renderSide() {
   $("k-nets").textContent = nets;
   $("k-noref").textContent = an.skeleton ? "–" : fmt(noref, 0);
   $("warnings").innerHTML = (sc.warnings || []).map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
+  renderCfgStatus();
   // stackup
   let total = 0; su.copper.forEach((c) => total += c.thickness); su.dielectrics.forEach((d, i) => total += stackEff(i).thickness);
   $("stackTotal").textContent = fmt(total, 2) + " mm";
@@ -31,7 +44,7 @@ function renderSide() {
   });
   if (!su.from_file) rows.unshift(`<p class="err">No stackup in the file – assumed values</p>`);
   const nEd = Object.keys(stackOv().dielectrics || {}).length;
-  rows.push(`<div class="fs-row"><span class="note">${S.stackEdit ? "Columns: εr · tanδ · thickness µm. Affects impedance, loss, field solver and PDN." : nEd ? `${nEd} layer(s) changed (*), stored in this browser.` : "Values from the file."}</span><span>${nEd && !S.stackEdit ? `<button class="btn small" id="st-reset">File values</button> ` : ""}<button class="btn small" id="st-edit">${S.stackEdit ? "Done" : "Edit"}</button></span></div>`);
+  rows.push(`<div class="fs-row"><span class="note">${S.stackEdit ? "Columns: εr · tanδ · thickness µm. Affects impedance, loss, field solver and PDN." : nEd ? `${nEd} layer(s) changed (*), stored in this browser.` : (S.config && S.config.dielectrics ? `Values from the file and ${esc(S.config.name)}.` : "Values from the file.")}</span><span>${nEd && !S.stackEdit ? `<button class="btn small" id="st-reset">File values</button> ` : ""}<button class="btn small" id="st-edit">${S.stackEdit ? "Done" : "Edit"}</button></span></div>`);
   $("stack").innerHTML = rows.join("");
   $("stack").querySelectorAll("input[data-l]").forEach((el) => el.onchange = () => { S.layerOn[+el.dataset.l] = el.checked; renderLayerChips(); renderSide(); draw(); });
   $("st-edit").onclick = () => { S.stackEdit = !S.stackEdit; renderSide(); };

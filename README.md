@@ -6,11 +6,13 @@ The core is written in Rust and runs as WebAssembly in the browser and as a nati
 
 kisi is meant as a design check (target ±5 %), not as sign-off.
 
-Structure and update rules: `ARCHITECTURE.md`. Integration: KiCad plugin (`kicad-plugin/`), MCP server for
-AI agents (`crates/kisi-mcp`, Claude Code plugin in `claude-plugin/`).
+Structure and update rules: `ARCHITECTURE.md`. Three ways in: the viewer (`dist/kisi.html`, one file), the CLI
+with JSON output for scripts and agents, and two agent skills in `claude-plugin/` (prepare a board, review it).
 
 ## Workflow in the viewer
-1. Load a board (`.kicad_pcb`, optionally `.kicad_pro`, `.ibs` IBIS models, `kipida_config.json`).
+1. Load a board: drop or choose `.kicad_pcb`, optionally `.kicad_pro` (net classes), `<board>.kisi.json` (values with
+   sources, see below), `kipida_config.json`. In Chromium-based browsers “Reload” reads the same files again after
+   saving in KiCad.
 2. The fast analysis runs immediately: impedance by formula, DC IR drop of all configured rails.
 3. Start the field solver for the selected net, one net class, all nets with a target, or everything.
 4. **Impedance** view: line analysis (impedance, loss, TDR, vias, crosstalk) against a reference resistance.
@@ -19,7 +21,8 @@ AI agents (`crates/kisi-mcp`, Claude Code plugin in `claude-plugin/`).
    `data/interfaces.json`), transmitter and receiver (profile or linearised IBIS model), limits – eye from IC to IC,
    board share for lanes ending at a connector.
    **Power** view: IR drop, power budget, Z(f).
-5. Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer (stored in the browser; the file is not changed).
+5. Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer (stored in the browser; the file is not changed;
+   viewer edits take precedence over kisi.json).
    Field solver results are cached in the browser (IndexedDB) across boards; key = solver version + geometry.
 
 ## DC IR drop (power)
@@ -89,7 +92,7 @@ give the same budget with the fields as with the JSON tree).
   transmitter and receiver (R, C, package L per line), no equalisation, jitter or noise. CLI: `--rf <net> --eye 16` (Gbit/s).
 - Channel check: all nets with a target impedance (one row per pair) with loss at Nyquist, return loss, eye
   height/width, intra-pair skew and via stub resonance; traffic light against the profile limits. The verdict logic
-  (`kisi_si::profile::judge`) is shared by viewer, CLI and MCP.
+  (`kisi_si::profile::judge`) is shared by viewer and CLI.
 - CLI: `kisi board.kicad_pcb board.kicad_pro --rf <net suffix> [--s2p out_{}.s2p]`
 - Accuracy: line RLGC against HFSS ≤ 2 %; via impedance is an estimation model (about ±15 %), not a 3D result.
 
@@ -105,7 +108,7 @@ give the same budget with the fields as with the JSON tree).
   the receiver as the receiver's termination. Direction: receiver = end next to a termination, else the second
   end (swappable in the viewer).
 - Eye only from IC to IC; lanes ending at a connector get the board share (loss, return loss, skew).
-- CLI: `kisi board.kicad_pcb --buses`; MCP: `kisi_interfaces`, `kisi_channel_check` (lane based).
+- CLI: `kisi interfaces board.kicad_pcb`, `kisi check board.kicad_pcb` (JSON); `kisi board.kicad_pcb --buses` (text).
 
 ## IBIS models as channel ends (M7b) – experimental, not working yet
 > **Status: not working yet.** The parser and the linearisation are in place, but neither the selection of the
@@ -122,9 +125,8 @@ give the same budget with the fields as with the JSON tree).
   models are not evaluated – the result is marked as an estimate.
 - Ends with a model replace the profile's transmitter/receiver; an on-die termination stays in parallel with a
   termination resistor at the receiver. IBIS model types (Output/Input) also set the lane direction.
-- Files: the KiCad plugin and `kisi_open_viewer` embed the referenced files; in the viewer they can also be dropped
-  or loaded with “Load .ibs files…” (Interfaces overview). CLI and MCP find them like KiCad (`${KIPRJMOD}`,
-  relative to the board, else by file name below the board folder). `kisi file.ibs` lists the linear model of
+- Files: in the viewer they are dropped or loaded with “Load .ibs files…” (Interfaces overview). The CLI finds them
+  like KiCad (`${KIPRJMOD}`, relative to the board, else by file name below the board folder). `kisi file.ibs` lists the linear model of
   every signal pin; `kisi board.kicad_pcb --buses --ibis extra.ibs` adds files.
 
 ## Field solver
@@ -140,20 +142,42 @@ give the same budget with the fields as with the JSON tree).
 - Analytic impedance: Hammerstad-Jensen, Wheeler, Wadell CPWG, IPC-2141 (diff).
 - Target impedance from net class names (`50Z`, `100Z_Diff`, …) or interface assumptions, editable in the viewer.
 
-## MCP server
-`kisi-mcp` speaks MCP over stdio (tools `kisi_overview`, `kisi_interfaces`, `kisi_net`, `kisi_channel_check`, `kisi_profiles`,
-`kisi_power`, `kisi_report`, `kisi_open_viewer`) and works next to KiCad's own MCP integrations and kicad-happy.
-See `claude-plugin/README.md`.
+## Board configuration `<board>.kisi.json`
+Values the board file lacks or holds only as KiCad defaults, each with its source; kisi never writes into the
+KiCad files. Read by the CLI (next to the board, or `--config`) and the viewer (drop it with the board).
+```json
+{
+  "kisi_config": 1,
+  "stackup": {"dielectrics": [{"index": 0, "epsilon_r": 3.65, "loss_tangent": 0.0095,
+                               "source": {"kind": "datasheet", "document": "Isola FR408HR", "page": "2", "note": "10 GHz, typical"}}]},
+  "net_classes": {"PCIe": {"target_ohm": 85, "diff": true, "profile": "pcie3", "source": {"kind": "standard", "document": "PCIe CEM 3.0"}}},
+  "fields": [{"ref": "U5", "name": "PI_LOAD", "value": "+1V0=2.5A", "source": {"kind": "datasheet", "url": "…", "note": "maximum"}}]
+}
+```
+- `stackup`: εr, tanδ, thickness, material per dielectric (index 0 = below F.Cu), solder mask εr.
+- `net_classes`: target impedance and interface profile of existing net classes.
+- `fields`: footprint fields laid over the board (`PI_LOAD`, `PI_SOURCE`, `PI_REG`).
+- Source kinds: datasheet, standard, application_note, measurement, simulation, estimate, assumption.
+- `kisi gaps` lists what is missing (with where to find it and an example entry), `kisi config-check` checks the
+  file (format, ranges, references, sources, field syntax), `kisi config-template` prints a skeleton for the board.
+- Precedence: board file < kisi.json < edits in the viewer / `--class` on the command line.
+
+## Command line (JSON) and agent skills
+`kisi <command> <board.kicad_pcb> [options]` prints JSON (`kisi help`):
+`overview`, `interfaces`, `net <NET>`, `check`, `profiles`, `power`, `report` (writes `analysis/kisi.json`, next to
+kicad-happy's outputs), `gaps`, `config-check`, `config-template`. Every result names the models and the kisi.json used.
+`claude-plugin/` holds two skills for Claude Code (or as instructions for other agents): **kisi-prepare** (gaps →
+datasheet research with sources → kisi.json → check) and **kisi-si-pi-review**. The older flag interface
+(`kisi board.kicad_pcb --rf … --pi …`) prints text for people.
 
 ## Building
 ```sh
 git submodule update --init                                              # js_2d_fields
-cargo build --release                                                    # CLI (target/release/kisi) and kisi-mcp
+cargo build --release                                                    # CLI (target/release/kisi)
 cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
 python3 tools/bundle.py web/index.html target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
         target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.html \
         ts "ThunderScope Rev5.3" <ts.kicad_pcb> <ts.kicad_pro> vna LibreVNA <vna.kicad_pcb> <vna.kicad_pro>
-python3 tools/package_plugin.py                                          # dist/kisi-kicad-plugin.zip
 ```
 Example boards are shrunk beforehand with `tools/strip_pcb.py`.
 

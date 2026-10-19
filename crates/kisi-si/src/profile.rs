@@ -1,6 +1,6 @@
 //! Interface profiles (data/interfaces.json) and the judgement of a channel
-//! against a profile's limits. Shared by the viewer (through WASM), the CLI
-//! and the MCP server so every front end shows the same verdict.
+//! against a profile's limits. Shared by the viewer (through WASM) and the CLI
+//! so every front end shows the same verdict.
 
 use crate::eye::EndModel;
 use serde::{Deserialize, Serialize};

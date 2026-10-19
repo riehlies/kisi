@@ -91,7 +91,7 @@ function ibisBox() {
       <label class="muted"><input type="checkbox" id="ibis-use" ${useIbis() ? "checked" : ""}> use for the eye</label>
       <button class="btn small" id="ibis-load">Load .ibs files…</button></div>
     ${refs.length ? `<div class="ibis-chips">${refs.map(chip).join("")}</div>` : `<p class="note">No device names an IBIS model. In KiCad, assign one in the symbol's simulation model (IBIS: library, component, model); the fields are copied to the footprint.</p>`}
-    ${missing ? `<p class="note">${missing} file${missing === 1 ? "" : "s"} not loaded: drop the .ibs file${missing === 1 ? "" : "s"} here or use “Load .ibs files…” (the KiCad plugin embeds them automatically).</p>` : ""}
+    ${missing ? `<p class="note">${missing} file${missing === 1 ? "" : "s"} not loaded: drop the .ibs file${missing === 1 ? "" : "s"} here or use “Load .ibs files…”.</p>` : ""}
     ${extra.length ? `<p class="note">Loaded but not used by this board: ${extra.map((x) => esc(x.name)).join(", ")}</p>` : ""}
     ${refs.some((r) => r.loaded) ? `<p class="note">Ends with a model use a linearised IBIS transmitter/receiver (typical corner: estimate); the other ends use the profile. IBIS model types also set the direction.</p>` : ""}</div>`;
 }

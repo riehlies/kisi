@@ -282,6 +282,7 @@ mod tests {
             thickness: h,
             epsilon_r: er,
             loss_tangent: 0.02,
+            assumed: vec![],
         };
         Stackup {
             copper: vec![cu("F.Cu", 0.0432), cu("In1.Cu", 0.0175), cu("In2.Cu", 0.0175), cu("In3.Cu", 0.0175), cu("In4.Cu", 0.0175), cu("B.Cu", 0.0432)],

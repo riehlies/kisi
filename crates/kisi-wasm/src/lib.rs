@@ -91,6 +91,7 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
 }
 
 /// Apply a `<board>.kisi.json` to the loaded board (call right after kisi_load_pcb).
+/// Input: {"config": file contents, "board": name of the loaded board}.
 /// Output: {"check": {ok, errors, warnings, entries}, "targets": {class: {z, diff}},
 /// "profiles": {class: id}, "fields": n, "dielectrics": n}. The board's fields and
 /// file stackup are replaced by the configured values (viewer edits stay on top).
@@ -99,11 +100,13 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
     let r = ST.with(|st| -> Result<String, String> {
         let mut st = st.borrow_mut();
-        let cfg = kisi_core::config::parse(&txt)?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let cfg = kisi_core::config::parse(v["config"].as_str().ok_or("config missing")?)?;
+        let board_name = v["board"].as_str().map(str::to_string);
         let b = st.board.as_mut().ok_or("no board loaded")?;
         let an0 = kisi_core::extract::skeleton(b, &Params::default());
         let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
-        let check = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin());
+        let check = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin(), board_name.as_deref());
         let a = cfg.apply(b);
         let su = b.stackup.clone();
         st.stackup_file = su;
@@ -697,4 +700,114 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
             1
         }
     }
+}
+
+// --- command line (kisi.mjs) ------------------------------------------------------------
+// The Node CLI reads files and runs the field solver; parsing, analyses and JSON results
+// come from kisi_core::commands, exactly as in the native CLI.
+
+thread_local! {
+    static CLI: RefCell<Option<kisi_core::service::Project>> = const { RefCell::new(None) };
+}
+
+fn reply(r: Result<String, String>) -> i32 {
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
+/// Parse a command line: ["check", "board.kicad_pcb", "--all", …] → Opts.
+#[no_mangle]
+pub extern "C" fn kisi_cli_parse(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply((|| {
+        let args: Vec<String> = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let o = kisi_core::commands::parse_args(&args)?;
+        Ok(serde_json::json!({"opts": o, "needs_board": kisi_core::commands::needs_board(&o.cmd), "uses_field": kisi_core::commands::uses_field(&o.cmd), "help": kisi_core::commands::HELP}).to_string())
+    })())
+}
+
+/// IBIS files named in a board's footprints: [[Sim.Library, [refdes…]], …].
+#[no_mangle]
+pub extern "C" fn kisi_cli_ibis_refs(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(load_pcb(&txt).map_err(|e| e.to_string()).map(|b| serde_json::to_string(&kisi_core::topology::ibis_libraries(&b)).unwrap()))
+}
+
+/// Build the project. Input: {"opts", "pcb_path", "pcb", "pro", "config": {"path", "text"|null, "error"|null} | null,
+/// "stackup", "field": {id: FieldResult}, "ibis": [{"name", "text"|null, "error"|null}]}.
+/// Output: {"plan": [[id, text, weight], …]} – the cross-sections the field solver should solve.
+#[no_mangle]
+pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply((|| {
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let o: kisi_core::commands::Opts = serde_json::from_value(v["opts"].clone()).map_err(|e| e.to_string())?;
+        let s = |k: &str| v[k].as_str().map(str::to_string);
+        let config = v["config"].as_object().map(|c| {
+            let path = std::path::PathBuf::from(c.get("path").and_then(|x| x.as_str()).unwrap_or(""));
+            let r = match (c.get("text").and_then(|x| x.as_str()), c.get("error").and_then(|x| x.as_str())) {
+                (Some(t), _) => Ok(t.to_string()),
+                (None, Some(e)) => Err(e.to_string()),
+                _ => Err("not readable".to_string()),
+            };
+            (path, r)
+        });
+        let ibis = v["ibis"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|e| {
+                        let name = e["name"].as_str().unwrap_or("").to_string();
+                        let r = match e["text"].as_str() {
+                            Some(t) => Ok(t.to_string()),
+                            None => Err(e["error"].as_str().unwrap_or("file not found").to_string()),
+                        };
+                        (name, r)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let inp = kisi_core::service::Inputs {
+            pcb_path: std::path::PathBuf::from(s("pcb_path").unwrap_or_default()),
+            pcb: s("pcb").ok_or("pcb missing")?,
+            pro: s("pro"),
+            config,
+            stackup: serde_json::from_value(v["stackup"].clone()).ok(),
+            field: serde_json::from_value(v["field"].clone()).unwrap_or_default(),
+            ibis,
+        };
+        let proj = kisi_core::service::Project::from_texts(inp)?;
+        let plan = kisi_core::commands::field_plan(&proj, &o);
+        CLI.with(|c| *c.borrow_mut() = Some(proj));
+        Ok(serde_json::json!({"plan": plan}).to_string())
+    })())
+}
+
+/// Run the command on the project. Input: {"opts", "tree": json|null, "report_path": str|null}.
+/// Output: the result; for `report` {"result": summary, "write": {"path", "content"}}.
+#[no_mangle]
+pub extern "C" fn kisi_cli_run(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply((|| {
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let o: kisi_core::commands::Opts = serde_json::from_value(v["opts"].clone()).map_err(|e| e.to_string())?;
+        let tree = if v["tree"].is_null() { None } else { Some(v["tree"].clone()) };
+        CLI.with(|c| {
+            let c = c.borrow();
+            let r = kisi_core::commands::run(&o, c.as_ref(), tree)?;
+            if o.cmd == "report" {
+                let path = v["report_path"].as_str().unwrap_or("analysis/kisi.json");
+                return Ok(serde_json::json!({"result": kisi_core::commands::report_summary(path, &r), "write": {"path": path, "content": serde_json::to_string_pretty(&r).unwrap()}}).to_string());
+            }
+            Ok(r.to_string())
+        })
+    })())
 }

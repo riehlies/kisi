@@ -4,10 +4,11 @@ Goal: parts can be updated one at a time without touching the rest. Every layer 
 interface; data that changes (standards, component values) lives in files, not in code.
 
 ```
-          ┌─────────────── front ends ───────────────┐
-  people ►│ viewer (web/, one HTML file)    CLI (JSON) │◄─ agents via skills (claude-plugin/)
-          │   └─ WASM: crates/kisi-wasm     kisi-cli   │
-          └──────────────┬───────────────────────────┘
+          ┌──────────────────── front ends ────────────────────┐
+  people ►│ viewer kisi.html        CLI kisi.mjs (Node)  kisi  │◄─ agents via skills (claude-plugin/)
+          │  └─ WASM: crates/kisi-wasm ─┘ + field solver  (native,│
+          │     (one engine)                  workers     formula)│
+          └──────────────┬─────────────────────────────────────┘
    <board>.kisi.json ───►│  kisi-core (facade; service: load project, JSON summaries;
    (values + sources)    │             config: board configuration; gaps: what is missing)
               ┌─────────────────┼──────────────────┐
@@ -28,8 +29,8 @@ interface; data that changes (standards, component values) lives in files, not i
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, viewer scene, `num` | – |
 | `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,crosstalk}`, `via`, `eye`, `profile`, `topology` (device-to-device lanes), `ibis` (IBIS → linear ends, experimental – not working yet) | kisi-board |
 | `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `pdn` (Z(f), plane model) | kisi-board, kisi-sparse |
-| `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service`, `config` (`<board>.kisi.json`), `gaps` | the three above |
-| `kisi-wasm` | C ABI for the browser | kisi-core |
+| `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `config` (`<board>.kisi.json`), `gaps` | the three above |
+| `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
 | `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` | kisi-core |
 | `kisi-sparse` | sparse solver, also built as a WASM module for the field solver | faer |
 
@@ -44,7 +45,10 @@ viewer (via WASM) and CLI show the same result.
   (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `panels` · `interaction` · `field-pool` ·
   `field-cache` · `pi-dc` · `pi-pdn` · `pi-balance` · `views` · `main` (start-up, files, hand-over).
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html` (WASM, field solver modules,
-  `data/*.json` and example boards embedded).
+  `data/*.json` and, optionally, example boards embedded).
+* `web/cli/kisi.mjs` + `tools/bundle_cli.py` → `dist/kisi.mjs`: the same WASM engine and solver bundle
+  (`tools/solver_bundle.py`, shared with the viewer) for Node; reads files, runs the field solver in worker
+  threads with a disk cache, everything else through `kisi_core::commands`.
 * Files come in by drag and drop or the file dialog; with the File System Access API (Chromium) the viewer keeps
   the file handles and “Reload” reads them again after saving in KiCad.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
@@ -67,10 +71,14 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a submodule, one adapte
   targets and profiles, footprint fields (PI_LOAD/PI_SOURCE/PI_REG). Laid over the board when loading (CLI and
   viewer); kisi never writes into KiCad files. Precedence: board file < kisi.json < viewer edits / CLI options.
 * `kisi_core::gaps`: deterministic list of missing or default data, with where to find it and the kisi.json entry.
-* Agents use the CLI (`kisi <command> <board>` → JSON) following the skills in `claude-plugin/skills/`:
+* Agents use the CLI (`node kisi.mjs <command> <board>` → JSON) following the skills in `claude-plugin/skills/`:
   `kisi-prepare` (gaps → research with sources → kisi.json → `kisi config-check`) and `kisi-si-pi-review`.
   An MCP server and a KiCad plugin existed until 2026-10 and were removed (git history) in favour of this.
 
+## Releases
+`.github/workflows/release.yml`: on a tag `v*` tests, field-solver validation, build of `kisi.html` and
+`kisi.mjs`, both attached to the GitHub release (the skills download `kisi.mjs` from there).
+
 ## Checks after changes
 `cargo test --release` · `tools/validate_field.sh` (field solver against HFSS/baseline) ·
-headless tests of the views with Playwright (see `tools/shot*.py`).
+headless tests of the views with Playwright (see `tools/shot*.py`) · `node dist/kisi.mjs` on a board.

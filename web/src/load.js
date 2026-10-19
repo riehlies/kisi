@@ -28,6 +28,7 @@ function textHash(t) { let h = 2166136261; for (let i = 0; i < t.length; i++) { 
 
 // cfg: {name, text} of a <board>.kisi.json (values with sources), applied over the board
 async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) {
+  $("drop").hidden = true; $("drop").classList.remove("start");
   showBusy("Reading board and computing cross-sections…");
   await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
   try {
@@ -40,7 +41,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     S.lastFiles = { pcbText, proText, name, piDefaults, cfg };
     S.config = null;
     if (cfg) {
-      try { S.config = { name: cfg.name, ...S.engine.config(cfg.text) }; }
+      try { S.config = { name: cfg.name, ...S.engine.config(cfg.text, name) }; }
       catch (e) { S.config = { name: cfg.name, check: { ok: false, errors: [e.message], warnings: [], entries: 0 }, targets: {}, profiles: {} }; }
     }
     S.scene = S.engine.scene();

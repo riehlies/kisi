@@ -37,7 +37,7 @@ async function handleFiles(files) {
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
   await loadFiles(await pcb.text(), pro ? await pro.text() : null, pcb.name.replace(/\.kicad_pcb$/, ""));
 }
-$("file").onchange = (e) => { S.fileHandles = null; $("reload").hidden = true; handleFiles(e.target.files); e.target.value = ""; };
+$("file").onchange = (e) => { $("drop").hidden = true; $("drop").classList.remove("start"); S.fileHandles = null; $("reload").hidden = true; handleFiles(e.target.files); e.target.value = ""; };
 // File System Access (Chromium): keep the file handles, so “Reload” reads the same
 // files again after saving in KiCad; elsewhere the file input is used
 async function rememberHandles(hs) {
@@ -67,10 +67,10 @@ $("reload").onclick = async () => {
 };
 let dragDepth = 0;
 window.addEventListener("dragenter", (e) => { e.preventDefault(); dragDepth++; $("drop").hidden = false; });
-window.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; $("drop").hidden = true; } });
+window.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; if (!$("drop").classList.contains("start")) $("drop").hidden = true; } });
 window.addEventListener("dragover", (e) => e.preventDefault());
 window.addEventListener("drop", (e) => {
-  e.preventDefault(); dragDepth = 0; $("drop").hidden = true;
+  e.preventDefault(); dragDepth = 0; $("drop").hidden = true; $("drop").classList.remove("start");
   // handles must be requested inside the event, before any await
   const hp = [...(e.dataTransfer.items || [])].map((it) => it.kind === "file" && it.getAsFileSystemHandle ? it.getAsFileSystemHandle().catch(() => null) : null);
   const files = [...e.dataTransfer.files];
@@ -129,7 +129,11 @@ new ResizeObserver(resize).observe(cv);
     $("up-rev").textContent = UPSTREAM_REV.slice(0, 7);
     await Cache.open();
     await Cache.loadAll();
-    await loadSample("ts");
+    // example boards are only in builds that embed them (they are not in the repository)
+    for (const k of ["ts", "vna"]) $("sample-" + k).hidden = !SAMPLES[k];
+    $("sample-ts").parentElement.hidden = !SAMPLES.ts && !SAMPLES.vna;
+    if (SAMPLES.ts) await loadSample("ts");
+    else { hideBusy(); $("drop").hidden = false; $("drop").classList.add("start"); }
   } catch (e) {
     showBusy("Engine failed to start: " + e.message);
   }

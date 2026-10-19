@@ -186,9 +186,16 @@ pub struct CheckResult {
     pub entries: usize,
 }
 
+/// Board names match when their stems (without path and `.kicad_pcb`) are equal, ignoring case.
+pub fn same_board(a: &str, b: &str) -> bool {
+    let stem = |s: &str| s.trim().rsplit(['/', '\\']).next().unwrap_or("").trim_end_matches(".kicad_pcb").to_ascii_lowercase();
+    stem(a) == stem(b)
+}
+
 /// Check a configuration against the board (as loaded from the file, before `apply`):
 /// format, ranges, references, sources, and whether kisi can read the field values.
-pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles: &crate::profile::Profiles) -> CheckResult {
+/// `board_name`: the loaded board (file name or viewer name), compared with `cfg.board`.
+pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles: &crate::profile::Profiles, board_name: Option<&str>) -> CheckResult {
     let mut r = CheckResult::default();
     let src = |what: String, s: &Option<Source>, r: &mut CheckResult| match s {
         None => r.errors.push(format!("{what}: source missing (every value needs a source)")),
@@ -198,6 +205,11 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
     };
     if cfg.kisi_config != VERSION {
         r.errors.push(format!("kisi_config must be {VERSION} (found {})", cfg.kisi_config));
+    }
+    if let (Some(want), Some(have)) = (cfg.board.as_deref(), board_name) {
+        if !same_board(want, have) {
+            r.errors.push(format!("this kisi.json was written for '{want}', but the loaded board is '{have}' – wrong file or wrong board? (the errors below follow from that)"));
+        }
     }
     let su = board.stackup();
     for d in &cfg.stackup.dielectrics {
@@ -318,7 +330,7 @@ mod tests {
             "fields": [{"ref": "U1", "name": "PI_LOAD", "value": "+3V3=150mA", "source": {"kind": "datasheet", "url": "https://example.com/ds.pdf", "page": "12", "note": "typical"}}]}"#,
         )
         .unwrap();
-        let r = check(&cfg, &board, &classes, &profiles);
+        let r = check(&cfg, &board, &classes, &profiles, None);
         assert!(r.ok, "{:?}", r.errors);
         assert_eq!(r.entries, 3);
         let mut b = board.clone();
@@ -336,7 +348,11 @@ mod tests {
                        {"ref": "U1", "name": "PI_LOAD", "value": "+3V3=lots", "source": {"kind": "datasheet", "document": "d"}}]}"#,
         )
         .unwrap();
-        let r = check(&bad, &board, &classes, &profiles);
+        let r = check(&bad, &board, &classes, &profiles, None);
+        let named = BoardConfig { board: Some("mine.kicad_pcb".into()), ..cfg.clone() };
+        assert!(check(&named, &board, &classes, &profiles, Some("other.kicad_pcb")).errors[0].contains("written for"));
+        assert!(check(&named, &board, &classes, &profiles, Some("/x/Mine.kicad_pcb")).ok);
+        assert!(same_board("x/LibreVNA.kicad_pcb", "librevna"));
         assert!(!r.ok);
         let all = r.errors.join("\n");
         for frag in ["1 dielectrics", "epsilon_r outside", "source missing", "no net class 'PCIe'", "unknown profile 'pcie9'", "kind 'guess'", "no footprint U9", "not readable"] {

@@ -22,7 +22,7 @@ class Engine {
   }
   loadPro(text) { this.call(this.k.kisi_load_pro, text); }
   loadPcb(text) { this.call(this.k.kisi_load_pcb, text); }
-  config(text) { this.call(this.k.kisi_config, text); return JSON.parse(this.out()); }
+  config(text, board) { this.call(this.k.kisi_config, JSON.stringify({ config: text, board })); return JSON.parse(this.out()); }
   scene() { if (this.k.kisi_scene() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   analyze(params) { this.call(this.k.kisi_analyze, JSON.stringify(params)); return JSON.parse(this.out()); }
   buses(params) { this.call(this.k.kisi_buses, JSON.stringify(params)); return JSON.parse(this.out()); }

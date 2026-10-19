@@ -8,8 +8,24 @@ description: Review signal and power integrity of a KiCad board with the kisi CL
 kisi reads the saved `.kicad_pcb` (and the `.kicad_pro` next to it for net classes), plus
 `<board>.kisi.json` next to it if present (values with sources, see the skill kisi-prepare). It does
 not talk to a running KiCad: make sure the board is **saved** before running kisi, and run it again
-after changes. Needs `kisi` on the PATH (`cargo install --path crates/kisi-cli`). Every
-`kisi <command> <board>` prints JSON; `kisi help` lists the commands and options.
+after changes. Every `kisi <command> <board>` prints JSON.
+
+### Getting kisi
+kisi is one file, `kisi.mjs` (Node.js ≥ 18; it includes the 2D field solver). Look for it in this order and
+reuse it:
+1. `$KISI_MJS` if set, else `~/.kisi/kisi.mjs`.
+2. Otherwise download the latest release into `~/.kisi/`:
+   - `gh release download --repo riehlies/kisi --pattern kisi.mjs --dir ~/.kisi --clobber`
+     (works while the repository is private, needs `gh auth login` with access to it), or
+   - once the repository is public: `https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs`.
+3. If Node.js is missing, ask the user to install it (nodejs.org, LTS). A native `kisi` binary
+   (`cargo install --path crates/kisi-cli`) accepts the same commands but has no field solver.
+
+Run it as `node ~/.kisi/kisi.mjs <command> <board.kicad_pcb> [options]` (below written as `kisi …`).
+`kisi help` lists the commands. The field solver runs for `overview`, `net`, `check` and `report`:
+the first run on a board can take minutes (it prints progress on stderr and stops new solves after
+`--field-time` seconds, default 120); results are cached, so later runs are fast. `field_solver`
+in the output shows the coverage; `--formula` skips the solver.
 
 ## Order of work
 1. `kisi gaps <board>` – if it reports high-priority gaps (no stackup, interfaces without a target),
@@ -25,6 +41,7 @@ after changes. Needs `kisi` on the PATH (`cargo install --path crates/kisi-cli`)
    profiles make sense; `kisi profiles` shows the available standards. Then `kisi check <board>`,
    with `--class CLASS=PROFILE` when the assignment is wrong (better: put it into kisi.json).
    Only yellow/red rows are printed by default (`--all` for green too, `--nets A,B` to restrict).
+   The first `check` on a board runs the field solver for all nets with a target (see Getting kisi).
 5. Power: `kisi power <board>` – regulator chain balance (PI_REG/PI_LOAD fields or kisi.json, or
    `--tree tree.json`), IR drop per rail; `--pdn RAIL` adds the impedance of one rail against its target.
 6. Optionally `kisi report <board>` writes `analysis/kisi.json` next to the board, so file-based review
@@ -33,9 +50,9 @@ after changes. Needs `kisi` on the PATH (`cargo install --path crates/kisi-cli`)
    and drops the board files (and kisi.json) into it.
 
 ## Reporting
-- Impedances from the CLI are closed-form formulas (field solver only in the viewer): differential
-  pairs and coplanar lines can be off by 5–15 %. Say so, and suggest the viewer's field solver for
-  nets close to a limit.
+- Impedances come from the 2D field solver where `field_solver.target_length_coverage_pct` says so,
+  formulas elsewhere (differential pairs and coplanar lines can be off by 5–15 % there). If the
+  coverage is low, say so and run the command again (cached results accumulate) or raise `--field-time`.
 - Eyes are linear PRBS7 estimates with the profile's transmitter/receiver and no equalisation, jitter
   or noise. Limits marked "kisi" in the profile sources are guide values, not standards.
 - Skew marked uncertain comes from branched paths; do not report it as a violation.

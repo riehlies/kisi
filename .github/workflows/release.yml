@@ -1,0 +1,54 @@
+# Release: on a tag v*, run the checks and attach the two standalone files to the
+# GitHub release:
+#   kisi.html – the viewer (open in a browser; without the example boards, which are
+#               not in this repository)
+#   kisi.mjs  – the command line with the field solver (node kisi.mjs help; Node.js >= 18)
+# Run it by hand (workflow_dispatch) to get the files as a build artifact without a release.
+name: release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Rust toolchain
+        run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown && rustup default stable
+      - name: Tests
+        run: cargo test --release
+      - name: Build
+        run: |
+          cargo build --release
+          cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
+          W=target/wasm32-unknown-unknown/release
+          python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.html
+          python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
+      - name: Field solver validation (HFSS / baseline, viewer bundle)
+        run: sh tools/validate_field.sh
+      - name: Smoke test of kisi.mjs
+        run: |
+          node dist/kisi.mjs --version
+          node dist/kisi.mjs profiles > /dev/null
+          node dist/kisi.mjs help > /dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kisi
+          path: |
+            dist/kisi.html
+            dist/kisi.mjs
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/kisi.html dist/kisi.mjs --clobber

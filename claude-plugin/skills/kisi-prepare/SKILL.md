@@ -1,6 +1,6 @@
 ---
 name: kisi-prepare
-description: Prepare a KiCad board for kisi's SI/PI analysis - find missing or default data (laminate εr/tanδ, impedance targets, interface standards, regulator chain, load currents), research it from datasheets with sources and write it to <board>.kisi.json. Use when the user wants a board "ready for simulation", asks what kisi is missing, or wants datasheet values filled in.
+description: Prepare a KiCad board for kisi's SI/PI analysis - find missing or default data (laminate εr/tanδ, impedance targets, interface standards, regulator chain, load currents), research it from datasheets with sources and write it to a board.kisi.json file next to the board. Use when the user wants a board "ready for simulation", asks what kisi is missing, or wants datasheet values filled in.
 ---
 
 # Prepare a KiCad board for kisi
@@ -10,8 +10,25 @@ good analysis needs are not in those files, or only as KiCad defaults. This skil
 them up, and writes them **with their source** to `<board>.kisi.json` next to the board. kisi (CLI and
 viewer) lays that file over the board when it loads it. **Never edit the KiCad files themselves.**
 
-Needs the `kisi` command on the PATH (`cargo install --path crates/kisi-cli` in the kisi repository).
-Every `kisi <command>` prints JSON; `kisi help` lists the commands.
+### Getting kisi
+kisi is one file, `kisi.mjs` (Node.js ≥ 18; it includes the 2D field solver). Look for it in this order and
+reuse it:
+1. `$KISI_MJS` if set, else `~/.kisi/kisi.mjs`.
+2. Otherwise download the latest release into `~/.kisi/`:
+   - `gh release download --repo riehlies/kisi --pattern kisi.mjs --dir ~/.kisi --clobber`
+     (works while the repository is private, needs `gh auth login` with access to it), or
+   - once the repository is public: `https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs`.
+3. If Node.js is missing, ask the user to install it (nodejs.org, LTS). A native `kisi` binary
+   (`cargo install --path crates/kisi-cli`) accepts the same commands but has no field solver.
+
+Run it as `node ~/.kisi/kisi.mjs <command> <board.kicad_pcb> [options]` (below written as `kisi …`).
+`kisi help` lists the commands. The field solver runs for `overview`, `net`, `check` and `report`:
+the first run on a board can take minutes (it prints progress on stderr and stops new solves after
+`--field-time` seconds, default 120); results are cached, so later runs are fast. `field_solver`
+in the output shows the coverage; `--formula` skips the solver.
+
+Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `config-check`,
+`config-template`, `interfaces` and `profiles` are fast.
 
 ## Steps
 
@@ -34,7 +51,11 @@ Every `kisi <command>` prints JSON; `kisi help` lists the commands.
      mode. FPGAs and SoCs: the vendor's power estimator; ask the user for its result if needed.
    - Regulators (`PI_REG`): topology, efficiency at the expected load, rated output current; input and
      output rails from the schematic. Syntax: `+12V > +3V3 buck 90% 3A` (see the gap's example).
-   - Supply sources (`PI_SOURCE`): which connector or regulator feeds a rail.
+   - Supply inputs: `PI_REG` = `+5V input` on the connector (counts in the power budget and as the
+     IR-drop source; `PI_SOURCE` only marks source pads when there is no regulator chain).
+     Regulator outputs that leave through an inductor or diode: add `out=<part>` (e.g. `out=L5`).
+     Ferrites/chokes between two rails: `PI_REG` = `+3V3 > 3V3_RF pass r=0.05` (state the assumed
+     resistance). Rails without a voltage in their name: `NAME@1.2V`.
    Use the user's own documents first (datasheet folder, BOM, fabricator files), then web search.
 4. **Rules for values:**
    - Every value needs a `source`: `kind` (datasheet, standard, application_note, measurement,

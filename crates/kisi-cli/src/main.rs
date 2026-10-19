@@ -18,8 +18,7 @@ fn main() {
         std::process::exit(2);
     }
     if agent::COMMANDS.contains(&args[1].as_str()) || args[1] == "--help" || args[1] == "-h" {
-        let cmd = if args[1].starts_with('-') { "help" } else { args[1].as_str() };
-        std::process::exit(agent::main(cmd, &args[2..]));
+        std::process::exit(agent::main(&args[1..]));
     }
     if !std::path::Path::new(&args[1]).is_file() {
         eprintln!("kisi: '{}' is neither a command nor a file\n\n{}", args[1], agent::HELP);

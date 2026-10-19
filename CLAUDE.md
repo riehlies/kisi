@@ -15,7 +15,10 @@ python3 tools/bundle.py web/index.html \
   target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
   target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.html \
   [ts "ThunderScope Rev5.3" ts.kicad_pcb ts.kicad_pro vna "LibreVNA" vna.kicad_pcb vna.kicad_pro]
+python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
+  target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs   # Node CLI with field solver
 ```
+Releases: tag `v*` → `.github/workflows/release.yml` attaches `kisi.html` and `kisi.mjs`.
 The example boards (ThunderScope, LibreVNA) are not in the repository; they come from their
 projects and are shrunk with `tools/strip_pcb.py`.
 
@@ -24,9 +27,12 @@ projects and are shrunk with `tools/strip_pcb.py`.
 * `sh tools/validate_field.sh` (field solver against HFSS/baseline, needs node)
 * Viewer: open the bundled file headless in Chromium (Playwright), all three views,
   light/dark/mobile, no console errors.
+* CLI: `node dist/kisi.mjs` (e.g. `gaps`, `check`) on an example board; results match the native `kisi`
+  with `--formula`.
 
 ## Rules
-* One verdict logic (`kisi_si::profile::judge`) for viewer and CLI – do not duplicate it.
+* One verdict logic (`kisi_si::profile::judge`) for viewer and CLI – do not duplicate it; CLI commands live
+  once in `kisi_core::commands` (native and Node CLI).
 * Values that change (standards, component parasitics) belong in `data/*.json`, with a source.
 * Never change Forstén's solver in `third_party/js_2d_fields`; only adapt `web/solver/backend_forsten.js`.
 * Mark estimated values as estimates in the UI and in CLI output.

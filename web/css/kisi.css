@@ -333,3 +333,6 @@ ul.src li { margin: 2px 0; }
 .cfg-status .err { color: var(--z-high2); }
 .cfg-status ul { margin: 4px 0 0; padding-left: 18px; }
 .cfg-status li.err { color: var(--z-high2); }
+
+/* start screen without example boards: the drop hint stays until a board is loaded */
+.drop.start { pointer-events: none; }

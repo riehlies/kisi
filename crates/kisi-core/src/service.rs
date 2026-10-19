@@ -35,6 +35,21 @@ pub struct Project {
     pub config_profiles: HashMap<String, String>,
 }
 
+/// File contents a project is built from (see `Project::from_texts`).
+pub struct Inputs {
+    /// path of the board (name, location of analysis/ and kisi.json; not read here)
+    pub pcb_path: PathBuf,
+    pub pcb: String,
+    pub pro: Option<String>,
+    /// (path, contents or read error) of `<board>.kisi.json`
+    pub config: Option<(PathBuf, Result<String, String>)>,
+    pub stackup: Option<StackupOverride>,
+    /// field-solver results by geometry id (`Analysis::geometries`)
+    pub field: HashMap<String, crate::extract::FieldResult>,
+    /// (Sim.Library, contents or error) of referenced IBIS files
+    pub ibis: Vec<(String, Result<String, String>)>,
+}
+
 /// `<board>.kisi.json` next to `board.kicad_pcb`.
 pub fn config_path_for(pcb: &Path) -> PathBuf {
     let stem = pcb.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
@@ -88,10 +103,33 @@ impl Project {
     /// Like `load`, with an explicit configuration file (None: no configuration).
     pub fn load_with(pcb: &Path, pro: Option<&Path>, stackup: Option<&StackupOverride>, config: Option<&Path>) -> Result<Project, String> {
         let text = std::fs::read_to_string(pcb).map_err(|e| format!("{}: {e}", pcb.display()))?;
-        let mut board = crate::load_pcb(&text).map_err(|e| e.to_string())?;
         let pro_path = pro.map(Path::to_path_buf).unwrap_or_else(|| pcb.with_extension("kicad_pro"));
-        if let Ok(p) = std::fs::read_to_string(&pro_path) {
-            if let Err(e) = crate::apply_project(&mut board, &p) {
+        let pro_text = std::fs::read_to_string(&pro_path).ok();
+        let config = match config {
+            Some(cp) => Some((cp.to_path_buf(), std::fs::read_to_string(cp).map_err(|e| format!("{}: {e}", cp.display())))),
+            None => None,
+        };
+        // IBIS files named in the footprints, found like KiCad does
+        let dir = pcb.parent().map(Path::to_path_buf).unwrap_or_default();
+        let libs = crate::load_pcb(&text).map(|b| topology::ibis_libraries(&b)).unwrap_or_default();
+        let ibis: Vec<(String, Result<String, String>)> = libs
+            .into_iter()
+            .map(|(lib, _)| {
+                let r = match find_library(&lib, &dir) {
+                    Some(f) => std::fs::read_to_string(&f).map_err(|e| format!("{}: {e}", f.display())),
+                    None => Err("file not found".into()),
+                };
+                (lib, r)
+            })
+            .collect();
+        Self::from_texts(Inputs { pcb_path: pcb.to_path_buf(), pcb: text, pro: pro_text, config, stackup: stackup.cloned(), field: HashMap::new(), ibis })
+    }
+
+    /// Build a project from file contents (no file system access: also used in WASM).
+    pub fn from_texts(inp: Inputs) -> Result<Project, String> {
+        let mut board = crate::load_pcb(&inp.pcb).map_err(|e| e.to_string())?;
+        if let Some(p) = &inp.pro {
+            if let Err(e) = crate::apply_project(&mut board, p) {
                 board.warnings.push(format!("project file: {e}"));
             }
         }
@@ -99,42 +137,60 @@ impl Project {
         let mut cfg = None;
         let mut cfg_check = None;
         let mut applied = crate::config::Applied::default();
-        if let Some(cp) = config {
-            let parsed = std::fs::read_to_string(cp).map_err(|e| format!("{}: {e}", cp.display())).and_then(|t| crate::config::parse(&t));
-            match parsed {
+        if let Some((_, text)) = &inp.config {
+            match text.clone().and_then(|t| crate::config::parse(&t)) {
                 Ok(c) => {
                     let an0 = crate::extract::skeleton(&board, &Params::default());
                     let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
-                    cfg_check = Some(crate::config::check(&c, &board, &classes, &Profiles::builtin()));
+                    let bn = inp.pcb_path.file_name().map(|f| f.to_string_lossy().to_string());
+                    cfg_check = Some(crate::config::check(&c, &board, &classes, &Profiles::builtin(), bn.as_deref()));
                     applied = c.apply(&mut board);
                     cfg = Some(c);
                 }
                 Err(e) => cfg_check = Some(crate::config::CheckResult { ok: false, errors: vec![e], ..Default::default() }),
             }
         }
-        if let Some(ov) = stackup {
+        if let Some(ov) = &inp.stackup {
             let su = board.stackup().with_overrides(ov);
             board.stackup = Some(su);
         }
-        let params = Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, targets: applied.targets.clone(), ..Default::default() };
+        let params = Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, targets: applied.targets.clone(), field: inp.field, ..Default::default() };
         let an = analyze(&board, &params);
-        let name = pcb.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        let dir = pcb.parent().map(Path::to_path_buf).unwrap_or_default();
+        let name = inp.pcb_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
         let mut ibis = topology::IbisLibs::default();
         let mut ibis_missing = vec![];
-        for (lib, _) in topology::ibis_libraries(&board) {
-            match find_library(&lib, &dir).map(|f| std::fs::read_to_string(&f).map_err(|e| format!("{}: {e}", f.display()))) {
-                Some(Ok(t)) => {
-                    let info = ibis.add(&lib, &t);
-                    if let Some(e) = info.error {
+        for (lib, r) in inp.ibis {
+            match r {
+                Ok(t) => {
+                    if let Some(e) = ibis.add(&lib, &t).error {
                         ibis_missing.push((lib, e));
                     }
                 }
-                Some(Err(e)) => ibis_missing.push((lib, e)),
-                None => ibis_missing.push((lib, "file not found".into())),
+                Err(e) => ibis_missing.push((lib, e)),
             }
         }
-        Ok(Project { pcb_path: pcb.to_path_buf(), name, board, an, params, ibis, ibis_missing, config_path: config.map(Path::to_path_buf), config: cfg, config_check: cfg_check, config_profiles: applied.profiles })
+        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, ibis, ibis_missing, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles })
+    }
+
+    /// Field-solver coverage of the analysis (share of the routed length with a target).
+    pub fn field_summary(&self) -> Value {
+        let g = &self.an.geometries;
+        let total: f64 = g.iter().map(|e| e.target_length).sum();
+        let solved: Vec<&crate::extract::GeomEntry> = g.iter().filter(|e| self.params.field.contains_key(&e.id)).collect();
+        let cov: f64 = solved.iter().map(|e| e.target_length).sum();
+        json!({"cross_sections_field": solved.len(), "cross_sections": g.len(),
+            "target_length_coverage_pct": if total > 0.0 { (1000.0 * cov / total).round() / 10.0 + 0.0 } else { 0.0 }})
+    }
+
+    /// Model description for the summaries, depending on field-solver coverage.
+    pub fn models(&self) -> String {
+        let n = self.params.field.len();
+        let imp = if n == 0 {
+            "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5–15 %.".to_string()
+        } else {
+            format!("Impedance from Forstén's 2D field solver for {n} cross-sections (see field_solver: coverage), formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for the rest.")
+        };
+        format!("{imp} Losses: Wheeler/Huray/Djordjevic-Sarkar.")
     }
 
     pub fn net_id(&self, name: &str) -> Option<u32> {
@@ -188,7 +244,6 @@ impl Project {
     }
 }
 
-const MODELS: &str = "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); the 2D field solver runs only in the viewer. Losses: Wheeler/Huray/Djordjevic-Sarkar.";
 
 /// Board overview: stackup, classes with targets, impedance compliance per class.
 pub fn overview(p: &Project) -> Value {
@@ -226,7 +281,7 @@ pub fn overview(p: &Project) -> Value {
     }
     json!({
         "board": p.name, "file": p.pcb_path.display().to_string(), "layers": su.n(), "stackup_from_file": su.from_file,
-        "stackup": stack, "classes": classes, "warnings": p.board.warnings, "config": p.config_summary(), "models": MODELS
+        "stackup": stack, "classes": classes, "warnings": p.board.warnings, "config": p.config_summary(), "field_solver": p.field_summary(), "models": p.models()
     })
 }
 
@@ -234,9 +289,9 @@ pub fn overview(p: &Project) -> Value {
 pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, String> {
     let net = p.net_id(net_name).ok_or_else(|| format!("net '{net_name}' not found"))?;
     let st = p.an.nets.iter().find(|n| n.net == net);
-    let field = HashMap::new();
-    let ch = rf::channel(&p.board, &p.an, net, &field, p.target(net), rp)?;
-    let xt = rf::crosstalk(&p.board, &p.an, net, &field, rp);
+    let field = &p.params.field;
+    let ch = rf::channel(&p.board, &p.an, net, field, p.target(net), rp)?;
+    let xt = rf::crosstalk(&p.board, &p.an, net, field, rp);
     let su = p.board.stackup();
     let tdr_in: Vec<f64> = ch.tdr_z.iter().zip(&ch.tdr_x_mm).filter(|(_, x)| **x <= ch.length_mm).map(|(z, _)| *z).collect();
     let k = if ch.diff { 2.0 } else { 1.0 };
@@ -251,7 +306,7 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
         "via_details": ch.via_info.iter().map(|v| json!({"from": su.copper[v.layer_in as usize].name, "to": su.copper[v.layer_out as usize].name, "drill_mm": v.drill_mm, "antipad_mm": v.antipad_mm, "z_ohm": v.z_via, "stub_mm": v.stub_mm, "stub_resonance_ghz": v.stub_f_ghz, "return_path": v.return_kind})).collect::<Vec<_>>(),
         "crosstalk": {"next_total": xt.next_total, "fext_total": xt.fext_total, "rise_ps": xt.rise_ps,
             "aggressors": xt.aggressors.iter().take(5).map(|a| json!({"net": a.name, "parallel_mm": a.coupled_mm, "gap_min_mm": a.gap_min_mm, "next": a.next, "fext": a.fext})).collect::<Vec<_>>()},
-        "warnings": ch.warnings, "models": MODELS
+        "warnings": ch.warnings, "field_solver": p.field_summary(), "models": p.models()
     }))
 }
 
@@ -311,7 +366,7 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
 /// not on any lane), judged against the interface profiles.
 pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams) -> Value {
     let assign = &p.assign(assign);
-    let field = HashMap::new();
+    let field = &p.params.field;
     let cd = topology::ComponentData::builtin();
     let buses = p.buses();
     let wanted = |names: &mut dyn Iterator<Item = &str>| -> bool {
@@ -343,7 +398,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
             let Some(prof) = profiles.get(&pid) else { continue };
             let lim = profiles.limits(prof);
-            let row = topology::check_lane(&p.board, &p.an, &field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, &cd, &p.ibis);
+            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, &cd, &p.ibis);
             // length-weighted impedance of the lane's nets
             let (mut len, mut zs, mut lo, mut hi) = (0.0, 0.0, f64::INFINITY, f64::NEG_INFINITY);
             for st in p.an.nets.iter().filter(|s| l.nets.contains(&s.net)) {
@@ -402,7 +457,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
         let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(&st.name, &class, t.diff).to_string());
         let Some(prof) = profiles.get(&pid) else { continue };
         let lim = profiles.limits(prof);
-        let row = eye::check_net(&p.board, &p.an, &field, st.net, Some((t.z, t.diff)), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)));
+        let row = eye::check_net(&p.board, &p.an, field, st.net, Some((t.z, t.diff)), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)));
         let m = Metrics {
             z_mean: st.z_mean,
             z_min: st.z_min,
@@ -427,7 +482,8 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
         "config": p.config_summary(),
         "ibis_files": p.ibis_summary(),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
-        "models": format!("{MODELS} Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from IBIS where the devices have models (EXPERIMENTAL, not working yet; see end_models), otherwise from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).")
+        "field_solver": p.field_summary(),
+        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from IBIS where the devices have models (EXPERIMENTAL, not working yet; see end_models), otherwise from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).", p.models())
     })
 }
 

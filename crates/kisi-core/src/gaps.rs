@@ -195,8 +195,9 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "power",
             format!("{} supply rail(s) have no source (PI_SOURCE on a connector/regulator output, or PI_REG): no IR drop for them.", no_source.len()),
             &["DC IR drop", "power budget"],
-            "Schematic: which connector or regulator feeds the rail.",
-            json!({"to": "fields[]", "example": {"ref": "J1", "name": "PI_SOURCE", "value": "+5V", "source": {"kind": "assumption", "note": "USB connector feeds +5V (schematic)"}}}),
+            "Schematic / netlist: which connector or regulator feeds the rail (the pad nets of the regulator show input and output).",
+            json!({"to": "fields[]", "example": {"ref": "J1", "name": "PI_REG", "value": "+5V input", "source": {"kind": "assumption", "note": "barrel jack J1 feeds +5V (schematic / netlist)"}},
+                "note": "supply inputs: PI_REG '<rail> input' (counts in the power budget and as IR-drop source); regulator outputs: PI_REG on the regulator (add out=<part> when the output current leaves through an inductor or diode); PI_SOURCE only marks IR-drop source pads without a power tree"}),
             no_source,
         ));
     }

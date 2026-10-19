@@ -6,8 +6,9 @@ The core is written in Rust and runs as WebAssembly in the browser and as a nati
 
 kisi is meant as a design check (target ±5 %), not as sign-off.
 
-Structure and update rules: `ARCHITECTURE.md`. Three ways in: the viewer (`dist/kisi.html`, one file), the CLI
-with JSON output for scripts and agents, and two agent skills in `claude-plugin/` (prepare a board, review it).
+Structure and update rules: `ARCHITECTURE.md`. Three ways in, each one file from the GitHub release: the viewer
+`kisi.html` (open in a browser), the command line `kisi.mjs` (Node.js ≥ 18, JSON output for scripts and agents,
+with the 2D field solver), and two agent skills in `claude-plugin/` (prepare a board, review it).
 
 ## Workflow in the viewer
 1. Load a board: drop or choose `.kicad_pcb`, optionally `.kicad_pro` (net classes), `<board>.kisi.json` (values with
@@ -163,9 +164,15 @@ KiCad files. Read by the CLI (next to the board, or `--config`) and the viewer (
 - Precedence: board file < kisi.json < edits in the viewer / `--class` on the command line.
 
 ## Command line (JSON) and agent skills
-`kisi <command> <board.kicad_pcb> [options]` prints JSON (`kisi help`):
+`node kisi.mjs <command> <board.kicad_pcb> [options]` prints JSON (`node kisi.mjs help`):
 `overview`, `interfaces`, `net <NET>`, `check`, `profiles`, `power`, `report` (writes `analysis/kisi.json`, next to
 kicad-happy's outputs), `gaps`, `config-check`, `config-template`. Every result names the models and the kisi.json used.
+- `kisi.mjs` is the viewer's engine (WASM) plus Forstén's field solver in worker threads: `overview`, `net`, `check`
+  and `report` solve the cross-sections of nets with a target (most routed length first) within `--field-time`
+  seconds (default 120), cache the results (`~/.cache/kisi`, Windows `%LOCALAPPDATA%\kisi`, same key as the
+  viewer's cache) and report the coverage (`field_solver`); `--formula` skips the solver.
+- The native `kisi` (Rust, `cargo install --path crates/kisi-cli`) accepts the same commands (shared code in
+  `kisi_core::commands`) with formula impedances only; useful for CI and development.
 `claude-plugin/` holds two skills for Claude Code (or as instructions for other agents): **kisi-prepare** (gaps →
 datasheet research with sources → kisi.json → check) and **kisi-si-pi-review**. The older flag interface
 (`kisi board.kicad_pcb --rf … --pi …`) prints text for people.
@@ -177,11 +184,13 @@ cargo build --release                                                    # CLI (
 cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
 python3 tools/bundle.py web/index.html target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
         target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.html \
-        ts "ThunderScope Rev5.3" <ts.kicad_pcb> <ts.kicad_pro> vna LibreVNA <vna.kicad_pcb> <vna.kicad_pro>
+        [ts "ThunderScope Rev5.3" <ts.kicad_pcb> <ts.kicad_pro> vna LibreVNA <vna.kicad_pcb> <vna.kicad_pro>]
+python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
+        target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs
 ```
-Example boards are shrunk beforehand with `tools/strip_pcb.py`.
-
-Field solver on the command line (needs Node.js): `tools/kisi_field.sh board.kicad_pcb`
+Example boards (optional, not in the repository) are shrunk beforehand with `tools/strip_pcb.py`.
+Releases: a tag `v*` runs `.github/workflows/release.yml` (tests, field-solver validation, build) and attaches
+`kisi.html` (without example boards) and `kisi.mjs` to the GitHub release.
 
 Solver update: `tools/upstream_update.sh` (details in `UPSTREAM.md`); validation only: `tools/validate_field.sh`.
 

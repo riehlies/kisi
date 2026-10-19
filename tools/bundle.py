@@ -16,55 +16,14 @@ Usage: bundle.py <index.html> <kisi_wasm.wasm> <kisi_sparse.wasm> <out.html> [ke
 import base64, gzip, json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from esm_classic import classic_bundle  # noqa: E402
+from solver_bundle import solver_bundle, upstream_rev as read_upstream_rev  # noqa: E402
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src, wasm, sparse, out = sys.argv[1:5]
 rest = sys.argv[5:]
 
-# --- module graph -------------------------------------------------------------
-ENTRY = os.path.join(root, "web/solver/backend_forsten.js")
-REDIRECT = {  # upstream build artifact -> kisi replacement
-    "wasm_solver/solver.js": os.path.join(root, "web/solver/sparse_module.js"),
-}
-IMPORT_RE = re.compile(r"""((?:^|\n)\s*(?:import|export)\s[^'";]*?from\s*)(['"])(\.{1,2}/[^'"]+)\2""")
-mods, order = {}, []
-
-
-def resolve(base, spec):
-    for k, v in REDIRECT.items():
-        if spec.endswith(k):
-            return v
-    return os.path.normpath(os.path.join(os.path.dirname(base), spec))
-
-
-def visit(path):
-    if path in mods:
-        return
-    text = open(path, encoding="utf-8").read()
-    mods[path] = None  # mark (cycle guard)
-    deps = []
-
-    def sub(m):
-        dep = resolve(path, m.group(3))
-        visit(dep)
-        deps.append(dep)
-        return f"{m.group(1)}{m.group(2)}__KISI_MOD_{order_index(dep)}__{m.group(2)}"
-
-    # visit deps first so indices exist
-    for m in IMPORT_RE.finditer(text):
-        visit(resolve(path, m.group(3)))
-    text = IMPORT_RE.sub(sub, text)
-    mods[path] = {"src": text, "deps": sorted(set(order_index(d) for d in deps))}
-    order.append(path)
-
-
-def order_index(p):
-    return order.index(p)
-
-
-visit(ENTRY)
-modules = [{"name": os.path.relpath(p, root), "src": mods[p]["src"], "deps": mods[p]["deps"]} for p in order]
+# --- solver backend as one classic script (tools/solver_bundle.py) -------------------
+solver_src, n_modules = solver_bundle(root)
 
 # --- samples ----------------------------------------------------------------------
 samples = {}
@@ -79,7 +38,7 @@ for i in range(0, len(rest), 4):
     if os.path.exists(tree):
         samples[key]["pi"] = json.load(open(tree, encoding="utf-8"))
 
-upstream_rev = open(os.path.join(root, "third_party/UPSTREAM_REV")).read().strip() if os.path.exists(os.path.join(root, "third_party/UPSTREAM_REV")) else "unknown"
+upstream_rev = read_upstream_rev(root)
 
 html = open(src, encoding="utf-8").read()
 web = os.path.dirname(os.path.abspath(src))
@@ -118,9 +77,8 @@ b64 = lambda p: base64.b64encode(open(p, "rb").read()).decode()
 html = html.replace("__WASM_B64__", b64(wasm))
 html = html.replace("__SPARSE_B64__", b64(sparse))
 # </script> inside module sources would end the script tag: escape
-solver_src = classic_bundle(modules)
 html = html.replace("__SOLVER_SRC__", json.dumps(solver_src).replace("</", "<\\/"))
 html = html.replace("__UPSTREAM_REV__", upstream_rev)
 html = html.replace("__SAMPLES__", json.dumps(samples))
 open(out, "w", encoding="utf-8").write(html)
-print(f"{out}: {len(html) / 1e6:.2f} MB, {len(modules)} solver modules")
+print(f"{out}: {len(html) / 1e6:.2f} MB, {n_modules} solver modules")

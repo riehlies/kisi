@@ -661,8 +661,41 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// Path options of a request: {"flip": bool, "hint": [x, y] | null} (start end near `hint`).
+fn path_opts(v: &serde_json::Value) -> (bool, Option<kisi_core::geom::P>) {
+    let flip = v["flip"].as_bool().unwrap_or(false);
+    let hint = v["hint"].as_array().and_then(|a| Some([a.first()?.as_f64()?, a.get(1)?.as_f64()?]));
+    (flip, hint)
+}
+
+/// Main path of a net with ends and branches: {"net": id, "flip", "hint"} → NetPath | null
+#[no_mangle]
+pub extern "C" fn kisi_net_path(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let an = st.an.as_ref().ok_or("no analysis")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let net = v["net"].as_u64().ok_or("net missing")? as u32;
+        let (flip, hint) = path_opts(&v);
+        Ok(serde_json::to_string(&kisi_core::rf::net_path_info(b, an, net, flip, hint)).unwrap())
+    });
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
 /// Channel and crosstalk of one net. Input:
-/// {"net": id, "rf": RfParams, "target": [z, diff] | null, "bitrate": f | null, "prbs": 7}
+/// {"net": id, "rf": RfParams, "target": [z, diff] | null, "bitrate": f | null, "prbs": 7,
+///  "flip": bool, "hint": [x, y] | null}
 /// Output: {"channel", "error", "crosstalk", "touchstone", "eye": Eye | null, "skew": {...} | null}
 #[no_mangle]
 pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
@@ -676,7 +709,8 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
         let net = v["net"].as_u64().ok_or("net missing")? as u32;
         let rp: kisi_core::rf::RfParams = serde_json::from_value(v["rf"].clone()).unwrap_or_default();
         let target = v["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
-        let ch = kisi_core::rf::channel(b, an, net, &params.field, target, &rp);
+        let (flip, hint) = path_opts(&v);
+        let ch = kisi_core::rf::channel_dir(b, an, net, &params.field, target, &rp, flip, hint);
         let xt = kisi_core::rf::crosstalk(b, an, net, &params.field, &rp);
         let mut eye = serde_json::Value::Null;
         let mut skew = serde_json::Value::Null;
@@ -700,10 +734,11 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
                 }
                 if let (true, Some(pn)) = (c.diff, c.partner) {
                     let rq = kisi_core::rf::RfParams { npts: 10, ..rp.clone() };
-                    if let Ok(pc) = kisi_core::rf::channel(b, an, pn, &params.field, target, &rq) {
+                    if let Ok(pc) = kisi_core::rf::channel_dir(b, an, pn, &params.field, target, &rq, flip, hint) {
+                        let branched = |c: &kisi_core::rf::Channel| c.path.as_ref().is_some_and(|p| !p.branches.is_empty() || p.parts > 1);
                         skew = serde_json::json!({"partner": pc.name, "delay_ps": pc.delay_ps, "length_mm": pc.length_mm,
                             "skew_ps": c.delay_ps - pc.delay_ps, "skew_mm": c.length_mm - pc.length_mm,
-                            "uncertain": c.warnings.iter().chain(&pc.warnings).any(|w| w.starts_with("net branches") || w.starts_with("net splits"))});
+                            "uncertain": branched(&c) || branched(&pc)});
                     }
                 }
                 (serde_json::to_value(&c).unwrap(), serde_json::Value::Null, ts)

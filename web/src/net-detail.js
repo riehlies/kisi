@@ -50,48 +50,89 @@ function showTip(i, mx, my) {
   tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
 }
 
-function netOrder(net) {
-  // order pieces of a net along its path (DFS over endpoint graph)
-  const tr = S.scene.tracks, pc = S.pieces;
-  const tracks = new Map();
-  for (let i = 0; i < pc.n; i++) if (pc.net[i] === net) { const t = pc.track[i]; if (!tracks.has(t)) tracks.set(t, []); tracks.get(t).push(i); }
-  const key = (x, y) => Math.round(x * 200) + "," + Math.round(y * 200);
-  const adj = new Map(), ends = new Map();
-  for (const t of tracks.keys()) {
-    const o = t * 7, a = key(tr[o], tr[o + 1]), b = key(tr[o + 2], tr[o + 3]);
-    ends.set(t, [a, b]);
-    for (const k of [a, b]) { if (!adj.has(k)) adj.set(k, []); adj.get(k).push(t); }
+// ---- path of a net: one direction for the impedance profile, the TDR and the board marks
+// (kisi_core::rf::net_path_info): start at the lane's transmitter side or the IC, the user can
+// swap it per net (stored per board)
+const flipKey = () => "kisi.pathflip.v1." + S.name;
+function pathFlips() { try { return JSON.parse(localStorage.getItem(flipKey()) || "{}"); } catch (e) { return {}; } }
+function pathFlipped(net) { return !!pathFlips()[S.scene.nets[net]]; }
+function setPathFlip(net, v) {
+  const f = pathFlips();
+  if (v) f[S.scene.nets[net]] = true; else delete f[S.scene.nets[net]];
+  try { localStorage.setItem(flipKey(), JSON.stringify(f)); } catch (e) { /* storage blocked */ }
+}
+// transmitter side of the lane the net belongs to (a point near the start)
+function pathHint(net) {
+  const l = typeof laneOfNet === "function" ? laneOfNet(net) : null;
+  if (!l) return null;
+  const rev = laneReversed(l);
+  const h = l.hops.concat(l.partner_hops || []).find((x) => x.type === "net" && x.net === net);
+  return h ? (rev ? h.to : h.from) : null;
+}
+function pathReq(net) { return { net, flip: pathFlipped(net), hint: pathHint(net) }; }
+function netPath(net) {
+  const q = pathReq(net), key = `${S.boardKey}|${S.anGen}|${JSON.stringify(q)}`;
+  if (!S.pathCache || S.pathCache.board !== S.boardKey) S.pathCache = { board: S.boardKey, m: new Map() };
+  if (S.pathCache.m.has(key)) return S.pathCache.m.get(key);
+  let p = null;
+  try { p = S.engine.netPath(q); } catch (e) { p = null; }
+  S.pathCache.m.set(key, p);
+  return p;
+}
+// board position at `s` mm along the path (or a branch: list of pieces with s0/s1)
+function pathPoint(pieces, s) {
+  if (!pieces || !pieces.length) return null;
+  const pc = S.pieces;
+  let q = pieces.find((x) => s >= x.s0 && s <= x.s1);
+  if (!q) q = s < pieces[0].s0 ? pieces[0] : pieces[pieces.length - 1];
+  const f = q.s1 > q.s0 ? Math.min(1, Math.max(0, (s - q.s0) / (q.s1 - q.s0))) : 0, i = q.piece;
+  const [x0, y0, x1, y1] = q.rev ? [pc.bx[i], pc.by[i], pc.ax[i], pc.ay[i]] : [pc.ax[i], pc.ay[i], pc.bx[i], pc.by[i]];
+  return { x: x0 + (x1 - x0) * f, y: y0 + (y1 - y0) * f };
+}
+function setPathCursor(net, s) {
+  const p = s == null ? null : netPath(net);
+  S.pathCursor = p ? pathPoint(p.pieces, Math.min(s, p.length_mm)) : null;
+  draw();
+}
+const branchLabel = (b) => `⑂ ${fmt(b.len_mm, 1)} mm → ${b.end.label}`;
+function pathMarks(p) { return (p ? p.branches : []).map((b) => ({ x: b.at_s, label: branchLabel(b) })); }
+// start A, end B and branch junctions on the board, the chart cursor as a dot
+function drawPathMarks(px) {
+  if (S.tab !== "si" || S.selNet < 0 || $("detail").hidden) return;
+  const p = netPath(S.selNet);
+  if (!p) return;
+  const cs = getComputedStyle(document.documentElement), acc = cs.getPropertyValue("--accent").trim(), panel = cs.getPropertyValue("--panel").trim();
+  ctx.save();
+  for (const b of p.branches) {
+    const s = 4 * px;
+    ctx.fillStyle = acc; ctx.strokeStyle = panel; ctx.lineWidth = 1.5 * px;
+    ctx.beginPath(); ctx.moveTo(b.at[0], b.at[1] - s); ctx.lineTo(b.at[0] + s, b.at[1]); ctx.lineTo(b.at[0], b.at[1] + s); ctx.lineTo(b.at[0] - s, b.at[1]); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
-  const seen = new Set(), order = [];
-  const starts = [...adj.entries()].filter(([, v]) => v.length === 1).map(([k]) => k);
-  const allKeys = starts.concat([...adj.keys()]);
-  for (const s of allKeys) {
-    const stack = [s];
-    while (stack.length) {
-      const k = stack.pop();
-      for (const t of adj.get(k) || []) {
-        if (seen.has(t)) continue;
-        seen.add(t);
-        const [a, b] = ends.get(t), fwd = a === k;
-        order.push([t, fwd]);
-        stack.push(fwd ? b : a);
-      }
-    }
+  for (const [e, letter] of [[p.start, "A"], [p.end, "B"]]) {
+    const r = 7 * px;
+    ctx.fillStyle = acc; ctx.strokeStyle = panel; ctx.lineWidth = 2 * px;
+    ctx.beginPath(); ctx.arc(e.at[0], e.at[1], r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = panel; ctx.font = `600 ${9 * px}px ${cs.getPropertyValue("--font-mono")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(letter, e.at[0], e.at[1] + 0.5 * px);
   }
-  const out = []; let s = 0;
-  for (const [t, fwd] of order) {
-    const ps = tracks.get(t).slice().sort((p, q) => pc.t0[p] - pc.t0[q]);
-    if (!fwd) ps.reverse();
-    for (const i of ps) {
-      const L = Math.hypot(pc.bx[i] - pc.ax[i], pc.by[i] - pc.ay[i]);
-      out.push({ i, s0: s, s1: s + L }); s += L;
-    }
+  if (S.pathCursor) {
+    ctx.fillStyle = cs.getPropertyValue("--fg").trim(); ctx.strokeStyle = panel; ctx.lineWidth = 2 * px;
+    ctx.beginPath(); ctx.arc(S.pathCursor.x, S.pathCursor.y, 4.5 * px, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
-  return out;
+  ctx.restore();
+}
+
+function pathLine(net) {
+  const p = netPath(net);
+  if (!p) return "";
+  const nb = p.branches.length;
+  return `<div class="pathline"><span class="pend">A</span><b>${esc(p.start.label)}</b><span class="muted">→</span><span class="pend">B</span><b>${esc(p.end.label)}</b>
+    <span class="muted">${esc(p.flipped ? "swapped by you" : p.direction)}${nb ? ` · ${nb} branch${nb > 1 ? "es" : ""}` : ""}${p.parts > 1 ? ` · ${p.parts} copper parts, the longest path is shown` : ""}</span>
+    <button class="btn small" id="path-flip" title="Swap start and end">⇄</button></div>`;
 }
 
 function selectNet(net, zoom = true) {
-  S.selNet = net;
+  S.selNet = net; S.pathCursor = null;
   renderFieldStatus();
   document.querySelectorAll(".net").forEach((b) => b.setAttribute("aria-current", String(+b.dataset.net === net)));
   if (net < 0) { S.selPaths = null; $("detail").hidden = true; $("ch-detail").hidden = true; draw(); return; }
@@ -115,12 +156,15 @@ function selectNet(net, zoom = true) {
   d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · pair with " + esc(partner) : ""}</div></div><button class="x" id="closeDetail" aria-label="Clear selection">×</button></header>
     <div class="dstats"><span>Length <b>${fmt(st?.length, 1)} mm</b></span><span>Target <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
     <span>min/mean/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b></span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
+    ${pathLine(net)}
     <div class="tabs" role="tablist" aria-label="Net view">
       ${[["z", "Impedance"], ["loss", "Loss"], ["tdr", "TDR"], ["via", "Vias"], ["xt", "Crosstalk"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
     </div>
     <div id="tab-body"></div>`;
   d.hidden = false;
   $("closeDetail").onclick = () => selectNet(-1);
+  const pf = $("path-flip");
+  if (pf) pf.onclick = () => { setPathFlip(net, !pathFlipped(net)); S.rfCache = null; S.pathCursor = null; selectNet(net, false); };
   d.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => {
     S.detailTab = b.dataset.tab;
     d.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));

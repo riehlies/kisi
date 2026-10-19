@@ -107,3 +107,49 @@ fn coupling_symmetric() {
     assert!(kb > 0.0 && kf.abs() > 0.0);
 }
 
+
+#[test]
+fn net_path_ends_branches_and_stub() {
+    // U1 ── 20 mm ── junction ── 10 mm ── J1, branch 3 mm to TP1, over a ground plane
+    let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew")
+  (general (thickness 1.6))
+  (layers (0 "F.Cu" signal) (1 "In1.Cu" signal) (31 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.2) (material "FR4") (epsilon_r 4.3) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 2" (type "core") (thickness 1.2) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "SIG") (net 2 "GND")
+  (footprint "U" (layer "F.Cu") (at 0 0) (property "Reference" "U1") (property "Value" "IC")
+    (pad "3" smd rect (at 0 0) (size 0.6 0.6) (layers "F.Cu") (net 1 "SIG")))
+  (footprint "J" (layer "F.Cu") (at 30 0) (property "Reference" "J1") (property "Value" "conn")
+    (pad "1" smd rect (at 0 0) (size 0.6 0.6) (layers "F.Cu") (net 1 "SIG")))
+  (footprint "TP" (layer "F.Cu") (at 20 3) (property "Reference" "TP1") (property "Value" "tp")
+    (pad "1" smd rect (at 0 0) (size 0.6 0.6) (layers "F.Cu") (net 1 "SIG")))
+  (segment (start 0 0) (end 20 0) (width 0.35) (layer "F.Cu") (net 1))
+  (segment (start 20 0) (end 30 0) (width 0.35) (layer "F.Cu") (net 1))
+  (segment (start 20 0) (end 20 3) (width 0.35) (layer "F.Cu") (net 1))
+  (zone (net 2) (net_name "GND") (layer "In1.Cu") (filled_polygon (layer "In1.Cu") (pts (xy -5 -5) (xy 35 -5) (xy 35 8) (xy -5 8)))))
+"#;
+    let board = kisi_board::load_pcb(pcb).unwrap();
+    let an = crate::analyze(&board, &crate::Params::default());
+    let net = board.nets.iter().position(|n| n == "SIG").unwrap() as u32;
+    let p = net_path_info(&board, &an, net, false, None).unwrap();
+    assert_eq!((p.start.label.as_str(), p.end.label.as_str()), ("U1.3", "J1.1"), "{:?}", (&p.start, &p.end));
+    assert!((p.length_mm - 30.0).abs() < 0.8, "{}", p.length_mm);
+    assert_eq!(p.branches.len(), 1);
+    let b = &p.branches[0];
+    assert_eq!(b.end.label, "TP1.1");
+    assert!((b.at_s - 20.0).abs() < 0.8 && (b.len_mm - 3.0).abs() < 0.8 && b.modelled, "{} {}", b.at_s, b.len_mm);
+    // positions run monotonically from the start
+    assert!(p.pieces.windows(2).all(|w| (w[0].s1 - w[1].s0).abs() < 1e-9));
+    let f = net_path_info(&board, &an, net, true, None).unwrap();
+    assert_eq!((f.start.label.as_str(), f.end.label.as_str()), ("J1.1", "U1.3"));
+    assert!((f.branches[0].at_s - 10.0).abs() < 0.8);
+    // a hint near J1 starts there
+    assert_eq!(net_path_info(&board, &an, net, false, Some([29.0, 0.0])).unwrap().start.label, "J1.1");
+    let ch = channel_dir(&board, &an, net, &std::collections::HashMap::new(), Some((50.0, false)), &RfParams::default(), false, None).unwrap();
+    assert!(ch.segments.iter().any(|s| s.kind == "branch"), "stub in the cascade");
+    assert!(ch.path.is_some());
+}

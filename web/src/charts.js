@@ -63,7 +63,7 @@ function drawLines(c, o) {
     if (o.band) { a = Math.min(a, o.band[0]); b = Math.max(b, o.band[1]); }
     const m = (b - a) * 0.1 || 1; lo = lo ?? a - m; hi = hi ?? b + m;
   }
-  const padL = 42, padR = 10, padT = 8, padB = 20, W = r.width - padL - padR, H = r.height - padT - padB;
+  const padL = 42, padR = 10, padT = 8, padB = o.ends ? 34 : 20, W = r.width - padL - padR, H = r.height - padT - padB;
   const X = (v) => padL + (v - xMin) / (xMax - xMin || 1) * W, Y = (v) => padT + (1 - (v - lo) / (hi - lo || 1)) * H;
   const paint = (hi_i) => {
     g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, r.width, r.height);
@@ -82,13 +82,25 @@ function drawLines(c, o) {
       g.fillStyle = S.colors.ok; g.globalAlpha = 0.14; g.fillRect(padL, Y(o.band[1]), W, Y(o.band[0]) - Y(o.band[1])); g.globalAlpha = 1;
     }
     g.save(); g.beginPath(); g.rect(padL, padT, W, H); g.clip();
+    if (o.shadeFrom != null && o.shadeFrom.x < xMax) {
+      const x0 = X(Math.max(o.shadeFrom.x, xMin));
+      g.fillStyle = muted; g.globalAlpha = 0.1; g.fillRect(x0, padT, padL + W - x0, H); g.globalAlpha = 1;
+    }
     for (const s of o.series) {
+      g.setLineDash(s.dash || []);
       g.strokeStyle = col(s.color); g.lineWidth = 2; g.lineJoin = "round"; g.beginPath();
       let started = false;
       for (let i = 0; i < n; i++) { if (xs[i] > xMax * 1.001) break; const px = X(xs[i]), py = Y(s.y[i]); if (!started) { g.moveTo(px, py); started = true; } else g.lineTo(px, py); }
       g.stroke();
     }
+    g.setLineDash([]);
+    if (o.shadeFrom != null && o.shadeFrom.x < xMax && o.shadeFrom.label) {
+      const x0 = X(Math.max(o.shadeFrom.x, xMin));
+      g.fillStyle = muted; g.textAlign = "center"; g.textBaseline = "bottom";
+      g.fillText(o.shadeFrom.label, (x0 + padL + W) / 2, padT + H - 4);
+    }
     g.restore();
+    pathDecor(g, o, { X, padL, padT, W, H, muted, xMin, xMax });
     if (hi_i != null) {
       g.strokeStyle = muted; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(X(xs[hi_i]), padT); g.lineTo(X(xs[hi_i]), padT + H); g.stroke(); g.setLineDash([]);
       for (const s of o.series) { g.fillStyle = col(s.color); g.strokeStyle = cs.getPropertyValue("--panel").trim(); g.lineWidth = 2; g.beginPath(); g.arc(X(xs[hi_i]), Y(s.y[hi_i]), 4, 0, Math.PI * 2); g.fill(); g.stroke(); }
@@ -104,12 +116,60 @@ function drawLines(c, o) {
     let bi = 0, bd = Infinity;
     for (let i = 0; i < n; i++) { const dd = Math.abs(xs[i] - xv); if (dd < bd) { bd = dd; bi = i; } if (xs[i] > xMax) break; }
     paint(bi);
-    tip.innerHTML = `${fmt(xs[bi], 2)} ${o.xUnit}<br>` + o.series.map((s) => `${esc(s.name)} ${fmt(s.y[bi], 2)} ${o.yUnit}`).join("<br>");
+    if (o.onHover) o.onHover(xs[bi]);
+    tip.innerHTML = `${fmt(xs[bi], 2)} ${o.xUnit}<br>` + o.series.map((s) => `${esc(s.name)} ${fmt(s.y[bi], 2)} ${o.yUnit}`).join("<br>") + (o.tipExtra ? o.tipExtra(xs[bi]) : "");
     tip.hidden = false;
     const tx = X(xs[bi]) + 10;
     tip.style.left = Math.min(tx, r.width - tip.offsetWidth - 4) + "px"; tip.style.top = "6px";
   };
-  c.onpointerleave = () => { tip.hidden = true; paint(null); };
+  c.onpointerleave = () => { tip.hidden = true; paint(null); if (o.onHover) o.onHover(null); };
+}
+
+// start / end of a path under the x axis, branch marks and the end of the line (impedance
+// profile and TDR): o.ends = {a, b, at}, o.marks = [{x, label}], o.vline = {x, label}
+function pathDecor(g, o, k) {
+  const cs = getComputedStyle(document.documentElement);
+  const acc = cs.getPropertyValue("--accent").trim(), fg = cs.getPropertyValue("--fg").trim();
+  g.save();
+  g.font = "10.5px " + cs.getPropertyValue("--font-mono");
+  if (o.vline && o.vline.x >= k.xMin && o.vline.x <= k.xMax) {
+    const x = k.X(o.vline.x);
+    g.strokeStyle = fg; g.globalAlpha = 0.6; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x, k.padT); g.lineTo(x, k.padT + k.H); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+    g.fillStyle = fg; g.textBaseline = "top"; g.textAlign = x > k.padL + k.W - 90 ? "right" : "left";
+    g.fillText(o.vline.label, x + (g.textAlign === "right" ? -4 : 4), k.padT + 2);
+  }
+  const vx = o.vline ? k.X(o.vline.x) : null;
+  let prevX = -1e9, row = 0;
+  for (const m of (o.marks || []).filter((m) => m.kind === "via")) {
+    if (m.x < k.xMin || m.x > k.xMax) continue;
+    const x = k.X(m.x);
+    g.fillStyle = k.muted; g.beginPath(); g.moveTo(x - 3, k.padT + k.H); g.lineTo(x + 3, k.padT + k.H); g.lineTo(x, k.padT + k.H - 5); g.closePath(); g.fill();
+  }
+  for (const m of (o.marks || []).filter((m) => m.kind !== "via").sort((a, b) => a.x - b.x)) {
+    if (m.x < k.xMin || m.x > k.xMax) continue;
+    const x = k.X(m.x);
+    // keep labels apart: next row when close to the previous mark or the end line
+    row = x - prevX < 120 ? row + 1 : (vx != null && Math.abs(x - vx) < 110 ? 1 : 0);
+    prevX = x;
+    g.fillStyle = acc; g.beginPath(); g.moveTo(x - 4, k.padT); g.lineTo(x + 4, k.padT); g.lineTo(x, k.padT + 6); g.closePath(); g.fill();
+    g.strokeStyle = acc; g.globalAlpha = 0.35; g.beginPath(); g.moveTo(x, k.padT + 6); g.lineTo(x, k.padT + k.H); g.stroke(); g.globalAlpha = 1;
+    g.fillStyle = acc; g.textBaseline = "top"; g.textAlign = x > k.padL + k.W - 110 ? "right" : "left";
+    g.fillText(m.label, x + (g.textAlign === "right" ? -6 : 6), k.padT + 8 + 13 * (row % 4));
+  }
+  if (o.ends) {
+    const y = k.padT + k.H + 19;
+    // A: dot at the start, name to its right; B: dot at the end, name to its left
+    const dot = (cx, letter) => {
+      g.fillStyle = acc; g.beginPath(); g.arc(cx, y + 6, 6, 0, Math.PI * 2); g.fill();
+      g.fillStyle = cs.getPropertyValue("--panel").trim(); g.textAlign = "center"; g.textBaseline = "top"; g.font = "600 9px " + cs.getPropertyValue("--font-mono"); g.fillText(letter, cx, y + 1.5);
+      g.font = "10.5px " + cs.getPropertyValue("--font-mono"); g.fillStyle = fg;
+    };
+    const xa = k.padL + 6;
+    dot(xa, "A"); g.textAlign = "left"; g.fillText(o.ends.a, xa + 9, y + 1);
+    const xb = Math.max(o.ends.at != null ? Math.min(k.X(o.ends.at), k.padL + k.W - 6) : k.padL + k.W - 6, xa + 20);
+    dot(xb, "B"); g.textAlign = "right"; g.fillText(o.ends.b, xb - 9, y + 1);
+  }
+  g.restore();
 }
 
 function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x || 1))); const m = x / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }

@@ -27,7 +27,9 @@ Each release on GitHub has these files:
 Three views, each starting with what the board file gives and computing more on demand:
 1. **Impedance** – stackup and target impedances first; “Estimate impedances” (formulas), then the 2D field solver
    (selected net, a class, all nets with a target, or everything; results cached in the browser). Per net:
-   impedance along the path, loss, TDR, vias, crosstalk.
+   impedance along the path, loss, TDR, vias, crosstalk. The path runs from A to B (marked on the board and under
+   the charts; A is the transmitter side of the lane or the IC, ⇄ swaps it); branches are marked where they leave
+   the path and included in loss and TDR as open stubs; hovering a chart shows the position on the board.
 2. **Channel** – interfaces overview: buses and device-to-device lanes through series resistors and AC-coupling
    capacitors, with terminations and branches; per net class an interface profile (PCIe, USB, DDR, LVDS, …
    from `data/interfaces.json`) with transmitter, receiver and limits. Eye only from IC to IC; lanes ending at a
@@ -45,7 +47,7 @@ files are not changed. Results of the last three boards stay in memory while swi
 |---|---|
 | `overview` | stackup, impedance per net class (share within ±5 %, worst nets) |
 | `interfaces` | buses and device-to-device lanes with their profiles |
-| `net <NET>` | impedance along the path, loss, TDR, vias, crosstalk; `--s2p FILE` writes Touchstone |
+| `net <NET>` | path (start, end, branches), impedance along it, loss, TDR, vias, crosstalk; `--s2p FILE` writes Touchstone |
 | `check` | channel check against the profiles (`--class CLASS=PROFILE`, `--nets A,B`, `--all`) |
 | `power` | regulator chain, budget, DC IR drop per rail and in the ground return, losses per part / rail / layer, power flow (`--pdn RAIL` adds Z(f)) |
 | `report` | everything into `analysis/kisi.json` next to the board |

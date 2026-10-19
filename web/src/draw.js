@@ -65,6 +65,7 @@ function drawNow() {
     ctx.strokeStyle = C.halo; ctx.lineWidth = 5 * px; ctx.beginPath(); ctx.arc(S.mark.x, S.mark.y, 9 * px, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim(); ctx.lineWidth = 2 * px; ctx.stroke();
   }
+  drawPathMarks(px);
 }
 function zoomTo(x, y, half) {
   S.mark = { x, y, net: S.selNet };

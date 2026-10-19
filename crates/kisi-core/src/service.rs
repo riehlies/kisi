@@ -205,8 +205,33 @@ pub fn overview(p: &Project) -> Value {
 /// S-parameters of one net's channel as Touchstone (.s2p) text.
 pub fn net_touchstone(p: &Project, net_name: &str, rp: &RfParams) -> Result<String, String> {
     let net = p.net_id(net_name).ok_or_else(|| format!("net '{net_name}' not found"))?;
-    let ch = rf::channel(&p.board, &p.an, net, &p.params.field, p.target(net), rp)?;
+    let ch = rf::channel_dir(&p.board, &p.an, net, &p.params.field, p.target(net), rp, false, lane_hint(p, net))?;
     Ok(rf::touchstone(&ch))
+}
+
+/// Start hint of a net's path: the transmitter side of the lane the net belongs to.
+fn lane_hint(p: &Project, net: u32) -> Option<crate::geom::P> {
+    for b in p.buses() {
+        for l in &b.lanes {
+            let rev = l.rx_end == 0;
+            for h in l.hops.iter().chain(&l.partner_hops) {
+                if let topology::Hop::Net { net: n, from, to } = h {
+                    if *n == net {
+                        return Some(if rev { *to } else { *from });
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn path_json(ch: &rf::Channel) -> Value {
+    match &ch.path {
+        Some(pa) => json!({"start": pa.start.label, "end": pa.end.label, "direction": pa.direction, "length_mm": pa.length_mm,
+            "branches": pa.branches.iter().map(|b| json!({"at_mm": b.at_s, "len_mm": b.len_mm, "to": b.end.label, "modelled": b.modelled})).collect::<Vec<_>>()}),
+        None => Value::Null,
+    }
 }
 
 /// One net: impedance along the path, losses, TDR extremes, vias, crosstalk.
@@ -214,18 +239,19 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
     let net = p.net_id(net_name).ok_or_else(|| format!("net '{net_name}' not found"))?;
     let st = p.an.nets.iter().find(|n| n.net == net);
     let field = &p.params.field;
-    let ch = rf::channel(&p.board, &p.an, net, field, p.target(net), rp)?;
+    let ch = rf::channel_dir(&p.board, &p.an, net, field, p.target(net), rp, false, lane_hint(p, net))?;
     let xt = rf::crosstalk(&p.board, &p.an, net, field, rp);
     let su = p.board.stackup();
     let tdr_in: Vec<f64> = ch.tdr_z.iter().zip(&ch.tdr_x_mm).filter(|(_, x)| **x <= ch.length_mm).map(|(z, _)| *z).collect();
     let k = if ch.diff { 2.0 } else { 1.0 };
     Ok(json!({
         "net": ch.name, "class": st.map(|s| s.class.clone()), "target": st.and_then(|s| s.target).map(|t| json!({"ohm": t.z, "diff": t.diff})),
-        "differential": ch.diff, "length_mm": ch.length_mm, "delay_ps": ch.delay_ps, "vias": ch.vias,
+        "differential": ch.diff, "length_mm": ch.length_mm, "delay_ps": ch.delay_ps, "vias": ch.vias, "path": path_json(&ch),
         "impedance": st.map(|s| json!({"mean": s.z_mean, "min": s.z_min, "max": s.z_max, "within_5pct": s.within5})),
         "segments": ch.segments.iter().filter(|s| s.kind == "line").map(|s| json!({"layer": su.copper[s.layer as usize].name, "len_mm": s.len_mm, "z_ohm_per_line": s.z})).collect::<Vec<_>>(),
         "insertion_loss_db": ch.il_marks.iter().map(|(f, d)| json!({"ghz": f, "db": d})).collect::<Vec<_>>(),
         "return_loss_worst_db": -ch.s11_db.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+        "return_loss_worst_db_b": -ch.s22_db.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
         "tdr": {"rise_ps": rp.rise * 1e12, "z_min": tdr_in.iter().cloned().fold(f64::INFINITY, f64::min) * k, "z_max": tdr_in.iter().cloned().fold(f64::NEG_INFINITY, f64::max) * k, "mode": if ch.diff { "differential" } else { "single-ended" }},
         "via_details": ch.via_info.iter().map(|v| json!({"from": su.copper[v.layer_in as usize].name, "to": su.copper[v.layer_out as usize].name, "drill_mm": v.drill_mm, "antipad_mm": v.antipad_mm, "z_ohm": v.z_via, "stub_mm": v.stub_mm, "stub_resonance_ghz": v.stub_f_ghz, "return_path": v.return_kind})).collect::<Vec<_>>(),
         "crosstalk": {"next_total": xt.next_total, "fext_total": xt.fext_total, "rise_ps": xt.rise_ps,

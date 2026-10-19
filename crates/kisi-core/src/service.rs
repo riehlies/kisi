@@ -598,13 +598,42 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
             });
             let r = crate::pdn::pdn(&p.board, &setup, &crate::pdn::PdnParams::default())?;
             let at = |f: f64| r.freq.iter().position(|&x| x >= f).map(|i| r.z[i]);
+            let per_ic = match crate::pdn_ic::pdn_ic(&p.board, &setup, &crate::pdn::PdnParams::default()) {
+                Ok(ic) => pdn_ic_json(&ic),
+                Err(e) => json!({"error": e}),
+            };
             Some(json!({"rail": r.net, "target_ohm": r.target_ohm, "above_target_hz": r.above_target, "c_total_f": r.c_total, "c_plane_f": r.c_plane,
                 "cavity_first_resonance_hz": r.cavity_hz, "z_ohm": {"1k": at(1e3), "100k": at(1e5), "1M": at(1e6), "10M": at(1e7), "100M": at(1e8)},
-                "caps": r.caps.len(), "warnings": r.warnings}))
+                "caps": r.caps.len(), "warnings": r.warnings, "per_ic": per_ic}))
         }
         None => None,
     };
     Ok(json!({"tree_source": source, "balance": balance, "rails": rails, "losses": losses, "flow": flow, "pdn": pdn, "warnings": warnings}))
+}
+
+/// Summary of the PDN seen from every IC (`pdn_ic`): Z at decades, target, bands above it,
+/// anti-resonances, the most effective capacitors, recommendations, capacitor flags.
+pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
+    let nh = |l: f64| (l * 1e12).round() / 1e3;
+    let ports: Vec<Value> = r.ports.iter().map(|pt| {
+        let at = |f: f64| r.freq.iter().position(|&x| x >= f * 0.999).map(|i| pt.z[i]);
+        json!({
+            "ic": pt.refdes, "current_a": pt.current, "pins": pt.pins,
+            "target_ohm": pt.target, "target_source": pt.target_source, "target_fmax_hz": pt.f_max,
+            "z_ohm": {"10k": at(1e4), "100k": at(1e5), "1M": at(1e6), "10M": at(1e7), "100M": at(1e8), "1G": at(1e9)},
+            "above_target_hz": pt.above,
+            "anti_resonances": pt.peaks.iter().map(|k| json!({"hz": k.f, "z_ohm": k.z, "above_target": k.above_target, "between": k.note})).collect::<Vec<_>>(),
+            "capacitors_most_effective": pt.caps.iter().take(8).map(|l| json!({"ref": l.refdes, "l_total_nh": nh(l.l_total), "l_path_nh": nh(l.l_path), "srf_mhz": (l.srf_hz / 1e4).round() / 100.0, "dist_mm": (l.dist_mm * 10.0).round() / 10.0})).collect::<Vec<_>>(),
+            "recommendations": pt.recommendations.iter().map(|x| json!({"hz": [x.f_lo, x.f_hi], "value": x.value, "package": x.package, "count": x.count, "within_mm": (x.radius_mm * 10.0).round() / 10.0, "note": x.note})).collect::<Vec<_>>(),
+        })
+    }).collect();
+    let flagged: Vec<Value> = r.caps.iter().filter(|c| !c.flags.is_empty()).map(|c| json!({"ref": c.refdes, "value": c.value, "flags": c.flags})).collect();
+    json!({
+        "ics": ports, "capacitors": r.caps.len(), "capacitor_flags": flagged, "regulators": r.regulators,
+        "grid": {"cell_mm": r.cell_mm, "nodes": r.nodes, "layers": r.layers.len()},
+        "note": "AC grid of the rail copper over all layers against ground (ideal reference); capacitors with ESR, ESL, mounting and DC-bias-derated capacitance (estimates unless PI_CAP); targets from each IC's current step unless PI_TARGET. Design check, not a signoff PDN simulation.",
+        "warnings": r.warnings
+    })
 }
 
 /// Everything in one document, written as `analysis/kisi.json` next to the board

@@ -105,7 +105,7 @@ pub struct BoardConfig {
 }
 
 /// Fields kisi evaluates (others are laid over too, but have no effect).
-pub const KNOWN_FIELDS: &[&str] = &["PI_LOAD", "PI_SOURCE", "PI_REG"];
+pub const KNOWN_FIELDS: &[&str] = &["PI_LOAD", "PI_SOURCE", "PI_REG", "PI_CAP", "PI_TARGET"];
 
 pub fn parse(text: &str) -> Result<BoardConfig, String> {
     serde_json::from_str(text).map_err(|e| format!("kisi.json: {e}"))
@@ -294,6 +294,19 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
         }
         if !KNOWN_FIELDS.iter().any(|k| k.eq_ignore_ascii_case(&f.name)) {
             r.warnings.push(format!("{what}: kisi does not evaluate this field (known: {})", KNOWN_FIELDS.join(", ")));
+        }
+        // PDN fields: readable values
+        if f.name.eq_ignore_ascii_case("PI_CAP") {
+            if let Err(e) = crate::pdn_ic::parse_pi_cap(&f.value) {
+                r.errors.push(format!("{what}: {e}"));
+            }
+        } else if f.name.eq_ignore_ascii_case("PI_TARGET") {
+            // any rail name: parse with an impossible net so that only the syntax is checked
+            for part in f.value.split([';', ',']).map(str::trim).filter(|p| !p.is_empty()) {
+                if let Err(e) = crate::pdn_ic::parse_pi_target(part, part.split_whitespace().next().and_then(|t| t.rsplit_once('=').map(|x| x.0)).unwrap_or("")) {
+                    r.errors.push(format!("{what}: {e}"));
+                }
+            }
         }
         src(what, &f.source, &mut r);
     }

@@ -246,3 +246,48 @@ pub fn solve_spd_triplets(n: usize, trip: &[(usize, usize, f64)], rhs: &[f64]) -
     }
     Ok(out)
 }
+
+/// LU factorisation of a complex sparse matrix, for several solves with the same matrix.
+/// Used by the AC power-integrity grid.
+pub struct ComplexLu {
+    n: usize,
+    lu: faer::sparse::linalg::solvers::Lu<usize, faer::c64>,
+}
+
+impl ComplexLu {
+    /// Factor A given as triplets (row, col, re, im; duplicates are summed).
+    pub fn new(n: usize, trip: &[(usize, usize, f64, f64)]) -> Result<Self, i32> {
+        use faer::c64;
+        let t: Vec<Triplet<usize, usize, c64>> = trip.iter().map(|&(r, c, re, im)| Triplet::new(r, c, c64::new(re, im))).collect();
+        let a = SparseColMat::<usize, c64>::try_new_from_triplets(n, n, &t).map_err(|_| 13)?;
+        let lu = a.sp_lu().map_err(|_| 20)?;
+        Ok(ComplexLu { n, lu })
+    }
+    /// Solve for the right-hand sides `b[k]` (complex as (re, im)).
+    pub fn solve(&self, b: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, i32> {
+        use faer::c64;
+        let n = self.n;
+        let mut rhs = Mat::<c64>::zeros(n, b.len());
+        for (k, v) in b.iter().enumerate() {
+            for i in 0..n {
+                rhs[(i, k)] = c64::new(v[i].0, v[i].1);
+            }
+        }
+        let x = self.lu.solve(&rhs);
+        let mut out = Vec::with_capacity(b.len());
+        for k in 0..b.len() {
+            let col: Vec<(f64, f64)> = (0..n).map(|i| (x[(i, k)].re, x[(i, k)].im)).collect();
+            if col.iter().any(|v| !v.0.is_finite() || !v.1.is_finite()) {
+                return Err(21);
+            }
+            out.push(col);
+        }
+        Ok(out)
+    }
+}
+
+/// Solve a complex sparse system A X = B (LU) given as triplets (row, col, re, im;
+/// duplicates are summed) for several right-hand sides.
+pub fn solve_complex_multi(n: usize, trip: &[(usize, usize, f64, f64)], b: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, i32> {
+    ComplexLu::new(n, trip)?.solve(b)
+}

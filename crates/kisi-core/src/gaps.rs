@@ -234,15 +234,33 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         ));
     }
     let mut caps = Vec::new();
+    let mut unrated = Vec::new();
     let mut seen = HashSet::new();
     for pad in &b.pads {
         let Some(f) = b.footprints.get(pad.fp as usize) else { continue };
         if f.dnp || cd.role(&f.reference) != "capacitor" || !rail_names.contains(b.net_name(pad.net)) || !seen.insert(f.reference.clone()) {
             continue;
         }
-        if crate::pdn::parse_cap(&f.value).is_none() {
-            caps.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}));
+        match crate::pdn::parse_cap(&f.value) {
+            None => caps.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))})),
+            // class II range without a rated voltage in the value or a PI_CAP field: DC-bias derating guessed
+            Some(c) if c >= 1e-7 && f.prop("PI_CAP").is_none() && crate::pdn_ic::value_details(&f.value).0.is_none() => {
+                unrated.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}));
+            }
+            _ => {}
         }
+    }
+    if !unrated.is_empty() {
+        out.push(gap(
+            "cap-ratings",
+            "low",
+            "power",
+            format!("{} decoupling capacitor(s) of 100 nF and more have no rated voltage or dielectric: the DC-bias derating in Z(f) uses an assumed rating.", unrated.len()),
+            &["PDN impedance", "decoupling recommendations"],
+            "BOM / capacitor datasheet: rated voltage, dielectric (X5R/X7R/C0G), ideally the capacitance at the rail voltage from the vendor's DC-bias curve, ESR and ESL.",
+            json!({"to": "fields[] (name PI_CAP) or the KiCad Value field (e.g. 10u 6.3V X5R)", "example": {"ref": unrated[0]["ref"], "name": "PI_CAP", "value": "rated=6.3V X5R c@3.3V=4.1u esl=0.45n", "source": {"kind": "datasheet", "document": "capacitor datasheet / vendor DC-bias curve", "note": "capacitance at 3.3 V, 25 °C"}}}),
+            unrated,
+        ));
     }
     if !caps.is_empty() {
         out.push(gap(

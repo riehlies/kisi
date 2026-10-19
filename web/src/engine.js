@@ -36,6 +36,7 @@ class Engine {
   // main path of a net with ends and branches (kisi_core::rf::net_path_info) or null
   netPath(req) { this.call(this.k.kisi_net_path, JSON.stringify(req)); return JSON.parse(this.out()); }
   pdn(req) { this.call(this.k.kisi_pdn, JSON.stringify(req)); return JSON.parse(this.out()); }
+  pdnIc(req) { this.call(this.k.kisi_pdn_ic, JSON.stringify(req)); return JSON.parse(this.out()); }
   judge(req) { this.call(this.k.kisi_judge, JSON.stringify(req)); return JSON.parse(this.out()); }
   profileAuto(req) { this.call(this.k.kisi_profile_auto, JSON.stringify(req)); return this.out(); }
   piTreeFields() { this.k.kisi_pi_tree_fields(); return JSON.parse(this.out()); }

@@ -533,6 +533,21 @@ pub extern "C" fn kisi_pdn(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// PDN seen from every IC of a rail. Input: {"setup": RailSetup, "params": PdnParams} → IcPdnResult
+#[no_mangle]
+pub extern "C" fn kisi_pdn_ic(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let setup: kisi_core::pi::RailSetup = serde_json::from_value(v["setup"].clone()).map_err(|e| e.to_string())?;
+        let pp: kisi_core::pdn::PdnParams = serde_json::from_value(v["params"].clone()).unwrap_or_default();
+        Ok(serde_json::to_string(&kisi_core::pdn_ic::pdn_ic(b, &setup, &pp)?).unwrap())
+    });
+    reply(r)
+}
+
 /// Channel check of many nets (eye, loss at Nyquist, skew). Input:
 /// {"rf": RfParams, "items": [{"net": id, "gbps": f, "target": [z, diff] | null}]} → [CheckRow]
 #[no_mangle]

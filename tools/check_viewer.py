@@ -6,7 +6,7 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 
 * light, dark and phone layout; all three views (impedance, channel, power)
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview, channel check, lane eye,
-  voltage drop with ground return, losses map and power flow (desktop layouts; --quick: only
+  voltage drop with ground return, impedance seen from the ICs, losses map and power flow (desktop layouts; --quick: only
   load and the three views)
 * uses the embedded example boards if the build has them, else --board
 * --config: drops a <board>.kisi.json and expects "check passed"
@@ -140,6 +140,12 @@ def run(pg, tag, desktop):
         if not pg.locator("#pi-run").is_disabled():
             pg.click("#pi-run"); pg.wait_for_function(f"S.piSolved && !S.piRunning && {BUSY}", timeout=300000); pg.wait_for_timeout(300)
         step("power")
+        # impedance of the selected rail seen from its ICs
+        pg.evaluate("if (S.piRail) { S.piTab = 'z'; renderPiDetail(); }"); pg.wait_for_timeout(500)
+        if pg.locator("#pdn-ic-run").count():
+            pg.click("#pdn-ic-run"); pg.wait_for_function("document.getElementById('ch-pdn-ic') || document.querySelector('#pdn-ic .err')", timeout=300000)
+            pg.wait_for_timeout(300); step("pdn_ic")
+            pg.evaluate("S.piTab = 'dc'; renderPiDetail()")
         if not pg.locator("#pim-l").is_disabled():
             pg.click("#pim-l"); pg.wait_for_timeout(500); step("losses")
             pg.click("#pim-b"); pg.wait_for_timeout(500); step("flow")

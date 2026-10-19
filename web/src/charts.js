@@ -174,6 +174,66 @@ function pathDecor(g, o, k) {
 
 function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(x || 1))); const m = x / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
 
+// |Z| over frequency, log-log: series [{f?, z, color, dash?, name}], target, fEval, marks [{f, label}]
+function drawZf(c, o) {
+  const d = window.devicePixelRatio || 1, rc = c.getBoundingClientRect();
+  c.width = rc.width * d; c.height = rc.height * d;
+  const g = c.getContext("2d");
+  const cs = getComputedStyle(document.documentElement);
+  const col = (v) => v.startsWith("--") ? cs.getPropertyValue(v).trim() : v;
+  const muted = cs.getPropertyValue("--muted").trim(), line = cs.getPropertyValue("--line").trim();
+  const ser = o.series.map((s) => ({ ...s, lf: (s.f || o.freq).map(Math.log10), lz: s.z.map((z) => Math.log10(Math.max(z, 1e-6))) }));
+  const fmin = Math.log10(o.freq[0]), fmax = Math.log10(o.freq[o.freq.length - 1]);
+  const inBand = (s) => s.lz.filter((_, i) => s.lf[i] <= Math.log10((o.fEval || 1e12) * 3) && s.lf[i] >= fmin);
+  let lo = Math.min(...ser.flatMap(inBand)), hi = Math.max(...ser.flatMap(inBand));
+  if (o.target) { lo = Math.min(lo, Math.log10(o.target)); hi = Math.max(hi, Math.log10(o.target)); }
+  lo = Math.floor(lo - 0.2); hi = Math.ceil(hi + 0.2);
+  const padL = 50, padR = 10, padT = 8, padB = 20, W = rc.width - padL - padR, H = rc.height - padT - padB;
+  const X = (v) => padL + (v - fmin) / (fmax - fmin) * W, Y = (v) => padT + (1 - (v - lo) / (hi - lo)) * H;
+  const main = ser[0];
+  const paint = (hi_i) => {
+    g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, rc.width, rc.height);
+    g.font = "10.5px " + cs.getPropertyValue("--font-mono"); g.fillStyle = muted; g.strokeStyle = line; g.lineWidth = 1;
+    for (let v = lo; v <= hi; v++) { g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(padL + W, Y(v)); g.stroke(); g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(ohm(10 ** v), padL - 6, Y(v)); }
+    g.textAlign = "center"; g.textBaseline = "top";
+    for (let v = Math.ceil(fmin); v <= fmax; v++) { g.beginPath(); g.moveTo(X(v), padT); g.lineTo(X(v), padT + H); g.stroke(); g.fillText(fHz(10 ** v), Math.min(Math.max(X(v), padL + 18), padL + W - 22), padT + H + 5); }
+    if (o.fEval) { const xe = X(Math.log10(o.fEval)); if (xe < padL + W) { g.fillStyle = muted; g.globalAlpha = 0.1; g.fillRect(xe, padT, padL + W - xe, H); g.globalAlpha = 1; } }
+    g.save(); g.beginPath(); g.rect(padL, padT, W, H); g.clip();
+    if (o.target) { g.strokeStyle = S.colors.high2; g.setLineDash([5, 4]); g.lineWidth = 1.5; g.beginPath(); g.moveTo(padL, Y(Math.log10(o.target))); g.lineTo(padL + W, Y(Math.log10(o.target))); g.stroke(); g.setLineDash([]); }
+    for (const s of ser.slice().reverse()) {
+      g.strokeStyle = col(s.color); g.lineWidth = s === main ? 2 : 1.5; g.setLineDash(s.dash || []); g.beginPath();
+      s.lz.forEach((v, i) => { const px = X(s.lf[i]), py = Y(v); if (i) g.lineTo(px, py); else g.moveTo(px, py); });
+      g.stroke(); g.setLineDash([]);
+    }
+    g.restore();
+    g.fillStyle = col(main.color);
+    for (const m of o.marks || []) {
+      const lfm = Math.log10(m.f); let k = 0; for (let i = 0; i < main.lf.length; i++) if (Math.abs(main.lf[i] - lfm) < Math.abs(main.lf[k] - lfm)) k = i;
+      const x = X(main.lf[k]), y = Y(main.lz[k]) - 6;
+      g.beginPath(); g.moveTo(x - 4, y - 6); g.lineTo(x + 4, y - 6); g.lineTo(x, y); g.closePath(); g.fill();
+    }
+    if (hi_i != null) {
+      g.strokeStyle = muted; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(X(main.lf[hi_i]), padT); g.lineTo(X(main.lf[hi_i]), padT + H); g.stroke(); g.setLineDash([]);
+      g.fillStyle = col(main.color); g.strokeStyle = cs.getPropertyValue("--panel").trim(); g.lineWidth = 2; g.beginPath(); g.arc(X(main.lf[hi_i]), Y(main.lz[hi_i]), 4, 0, Math.PI * 2); g.fill(); g.stroke();
+    }
+  };
+  paint(null);
+  const host = c.parentElement;
+  let tip = host.querySelector(".ctip");
+  if (!tip) { tip = document.createElement("div"); tip.className = "ctip"; tip.hidden = true; host.appendChild(tip); }
+  c.onpointermove = (e) => {
+    const px = e.offsetX; if (px < padL || px > padL + W) { tip.hidden = true; paint(null); return; }
+    const lv = fmin + (px - padL) / W * (fmax - fmin);
+    let bi = 0; for (let i = 0; i < main.lf.length; i++) if (Math.abs(main.lf[i] - lv) < Math.abs(main.lf[bi] - lv)) bi = i;
+    paint(bi);
+    const others = ser.slice(1).map((s) => { let k = 0; for (let i = 0; i < s.lf.length; i++) if (Math.abs(s.lf[i] - lv) < Math.abs(s.lf[k] - lv)) k = i; return `<br>${esc(s.name)} ${ohm(s.z[k])}`; }).join("");
+    tip.innerHTML = `${fHz(10 ** main.lf[bi])}<br>${esc(main.name)} ${ohm(main.z[bi])}${others}`;
+    tip.hidden = false;
+    tip.style.left = Math.min(X(main.lf[bi]) + 10, rc.width - tip.offsetWidth - 4) + "px"; tip.style.top = "6px";
+  };
+  c.onpointerleave = () => { tip.hidden = true; paint(null); };
+}
+
 function drawPdn(c, r) {
   const d = window.devicePixelRatio || 1, rc = c.getBoundingClientRect();
   c.width = rc.width * d; c.height = rc.height * d;

@@ -33,11 +33,14 @@ pub struct PdnParams {
     pub step: f64,
     /// cells of the plane grid model (0 = off)
     pub max_cells: usize,
+    /// PDN per IC (`pdn_ic`): cells of the AC grid over all layers, frequency points
+    pub ic_cells: usize,
+    pub ic_npts: usize,
 }
 
 impl Default for PdnParams {
     fn default() -> Self {
-        PdnParams { fmin: 1e3, fmax: 1e9, npts: 241, vrm_r: 2e-3, vrm_l: 20e-9, ripple: 0.03, step: 0.5, max_cells: 2500 }
+        PdnParams { fmin: 1e3, fmax: 1e9, npts: 241, vrm_r: 2e-3, vrm_l: 20e-9, ripple: 0.03, step: 0.5, max_cells: 2500, ic_cells: 6000, ic_npts: 61 }
     }
 }
 

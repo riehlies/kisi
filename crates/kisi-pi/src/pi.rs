@@ -426,16 +426,16 @@ pub fn rails_from_kipida(board: &Board, json: &str) -> Result<(Vec<RailSetup>, V
 
 // --- rasterisation ------------------------------------------------------------------
 
-struct Grid {
-    x0: f64,
-    y0: f64,
-    cell: f64,
-    nx: usize,
-    ny: usize,
+pub(crate) struct Grid {
+    pub(crate) x0: f64,
+    pub(crate) y0: f64,
+    pub(crate) cell: f64,
+    pub(crate) nx: usize,
+    pub(crate) ny: usize,
 }
 
 impl Grid {
-    fn cell_of(&self, p: P) -> Option<(usize, usize)> {
+    pub(crate) fn cell_of(&self, p: P) -> Option<(usize, usize)> {
         let i = ((p[0] - self.x0) / self.cell).floor();
         let j = ((p[1] - self.y0) / self.cell).floor();
         if i < 0.0 || j < 0.0 || i as usize >= self.nx || j as usize >= self.ny {
@@ -443,13 +443,13 @@ impl Grid {
         }
         Some((i as usize, j as usize))
     }
-    fn center(&self, i: usize, j: usize) -> P {
+    pub(crate) fn center(&self, i: usize, j: usize) -> P {
         [self.x0 + (i as f64 + 0.5) * self.cell, self.y0 + (j as f64 + 0.5) * self.cell]
     }
 }
 
 /// Fill a polygon (even-odd) into `w` with weight 1 at cell centres.
-fn fill_polygon(g: &Grid, pts: &[P], w: &mut [f32]) -> usize {
+pub(crate) fn fill_polygon(g: &Grid, pts: &[P], w: &mut [f32]) -> usize {
     let n = pts.len();
     if n < 3 {
         return 0;
@@ -504,7 +504,7 @@ fn fill_polygon(g: &Grid, pts: &[P], w: &mut [f32]) -> usize {
 
 /// Rasterise a track (capsule). Tracks narrower than a cell keep their
 /// conductance through a fractional weight width/cell on the centre-line cells.
-fn fill_track(g: &Grid, a: P, b: P, width: f64, w: &mut [f32]) {
+pub(crate) fn fill_track(g: &Grid, a: P, b: P, width: f64, w: &mut [f32]) {
     let r = width / 2.0;
     let thin = width < g.cell;
     // thin tracks: half the cell diagonal keeps the chain of cells
@@ -537,7 +537,7 @@ fn fill_track(g: &Grid, a: P, b: P, width: f64, w: &mut [f32]) {
 }
 
 /// Cells (layer-local indices) covered by a pad; at least the cell at its centre.
-fn pad_cells(g: &Grid, pad: &Pad) -> Vec<usize> {
+pub(crate) fn pad_cells(g: &Grid, pad: &Pad) -> Vec<usize> {
     let mut tmp = vec![0f32; 0];
     let poly = pad_polygon(pad);
     let bb = BBox::of(&poly);

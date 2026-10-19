@@ -20,5 +20,65 @@
     "capacitor": ["C"],
     "inductor": ["L", "FB", "FL"],
     "test_point": ["TP"]
+  },
+  "decoupling": {
+    "about": "Decoupling capacitors in the PDN model: body ESL and ESR per package, DC-bias derating of class II MLCCs, assumed rated voltage when the value text has none, and the parts the recommendations choose from. Typical values; a PI_CAP field in <board>.kisi.json (ESR, ESL, rated voltage, dielectric, capacitance at bias from the datasheet) replaces them per part.",
+    "sources": [
+      {
+        "kind": "measurement",
+        "text": "I. Novak et al., DesignCon East 2011, as quoted by EPCI (passive-components.eu, 'High CV MLCC DC Bias and Ageing Capacitance Loss Explained'): 10 µF 0805 6.3 V MLCCs of three vendors lose 12–32 % at 3.3 V and 35–65 % at rated voltage; X5R at 5 V about −60 %.",
+        "url": "https://passive-components.eu/high-cv-mlcc-dc-bias-and-ageing-capacitance-loss-explained-2/"
+      },
+      {
+        "kind": "measurement",
+        "text": "F. Janssen, Maxim Integrated application note 6014 'How to Measure Capacity Versus Bias Voltage on MLCCs' (2014): a 10 µF MLCC keeps 66–67 % at 5 V.",
+        "url": "https://www.analog.com/media/en/technical-documentation/tech-articles/how-to-measure-capacity-versus-bias-voltage-on-mlccs.pdf"
+      },
+      {
+        "kind": "kisi",
+        "text": "Body ESL by case size and ESR(C) trend: typical MLCC values consistent with vendor application notes (Murata, KEMET, TDK); the 'standard' derating curve (low capacitance for the case size) is a kisi estimate between class I (no loss) and the high-CV data above."
+      }
+    ],
+    "esl_nh": {"0201": 0.2, "0402": 0.35, "0603": 0.5, "0805": 0.6, "1206": 0.8, "1210": 0.9, "large": 1.5},
+    "esr": {
+      "note": "ESR = k·(c_ref/C)^exp, clamped; polymer/tantalum ≥ min_bulk",
+      "k_ohm": 0.025,
+      "c_ref_f": 1e-07,
+      "exp": 0.4,
+      "min_ohm": 0.002,
+      "max_ohm": 0.5,
+      "min_bulk_ohm": 0.015
+    },
+    "mount_nh": {"note": "mounting inductance assumed for recommended parts: vias at the pads to the planes", "value": 0.4},
+    "dc_bias": {
+      "note": "capacitance retention C(V)/C(0) over V / rated voltage for class II dielectrics (X5R, X7R, X6S, X7S, Y5V); class I (C0G/NP0), polymer, tantalum and electrolytic keep their value",
+      "high_cv": [[0.0, 1.0], [0.25, 0.85], [0.5, 0.7], [0.8, 0.42], [1.0, 0.38]],
+      "standard": [[0.0, 1.0], [0.25, 0.96], [0.5, 0.9], [0.75, 0.83], [1.0, 0.76]],
+      "high_cv_from_f": {
+        "0201": 1e-07,
+        "0402": 1e-06,
+        "0603": 2.2e-06,
+        "0805": 4.7e-06,
+        "1206": 1e-05,
+        "1210": 2.2e-05,
+        "large": 4.7e-05
+      }
+    },
+    "rated_v": {
+      "note": "rated voltage assumed when neither the value text nor PI_CAP gives one: the smallest standard rating ≥ margin × rail voltage",
+      "series": [4, 6.3, 10, 16, 25, 35, 50, 100],
+      "margin": 1.8
+    },
+    "candidates": [
+      {"value": "47u", "package": "1206"},
+      {"value": "22u", "package": "0805"},
+      {"value": "10u", "package": "0603"},
+      {"value": "4.7u", "package": "0402"},
+      {"value": "1u", "package": "0402"},
+      {"value": "220n", "package": "0201"},
+      {"value": "100n", "package": "0402"},
+      {"value": "100n", "package": "0201"},
+      {"value": "10n", "package": "0201"}
+    ]
   }
 }

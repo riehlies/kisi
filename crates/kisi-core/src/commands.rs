@@ -17,8 +17,9 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
 
   overview         stackup, impedance per net class (share within ±5 %, worst nets)
   interfaces       buses and device-to-device lanes with profiles   [--class CLASS=PROFILE]…
-  net <NET>        one net: impedance along the path, loss, TDR, vias, crosstalk
-                   [--rise-ps 35] [--roughness smooth|hvlp|standard] [--s2p FILE (Touchstone)]
+  net <NET>        one net: impedance along the path, loss, TDR, vias, crosstalk;
+                   differential pairs also as 4-port (mixed mode, skew)
+                   [--rise-ps 35] [--roughness smooth|hvlp|standard] [--s2p FILE | --s4p FILE (Touchstone)]
   check            channel check of all lanes against interface profiles
                    [--class CLASS=PROFILE]… [--nets A,B] [--all] [--max 30]
   profiles [ID]    interface profiles (no board needed)
@@ -56,6 +57,8 @@ pub struct Opts {
     pub out: Option<String>,
     /// `net`: write the channel's S-parameters as Touchstone .s2p
     pub s2p: Option<String>,
+    /// `net`: write the pair's single-ended 4-port as Touchstone .s4p
+    pub s4p: Option<String>,
     pub formula: bool,
     pub field_time: Option<f64>,
     pub field_all: bool,
@@ -97,6 +100,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--pdn" => o.pdn = Some(val(&mut i, a)?),
             "--out" => o.out = Some(val(&mut i, a)?),
             "--s2p" => o.s2p = Some(val(&mut i, a)?),
+            "--s4p" => o.s4p = Some(val(&mut i, a)?),
             "--formula" => o.formula = true,
             "--field-time" => o.field_time = Some(num(val(&mut i, a)?, a)?),
             "--field-all" => o.field_all = true,
@@ -199,9 +203,12 @@ pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, 
         "net" => {
             let (pr, rp) = (proj()?, rf_params(o)?);
             let mut v = service::net_detail(pr, &o.pos[1], &rp)?;
-            if let Some(path) = &o.s2p {
-                // the front end writes the file and replaces "_write" by "written"
-                v["_write"] = json!({"path": path, "content": service::net_touchstone(pr, &o.pos[1], &rp)?});
+            // the front end writes the file and replaces "_write" by "written"
+            match (&o.s2p, &o.s4p) {
+                (Some(_), Some(_)) => return Err("--s2p and --s4p: give one of them".into()),
+                (Some(path), None) => v["_write"] = json!({"path": path, "content": service::net_touchstone(pr, &o.pos[1], &rp)?}),
+                (None, Some(path)) => v["_write"] = json!({"path": path, "content": service::net_touchstone4(pr, &o.pos[1], &rp)?}),
+                _ => {}
             }
             Ok(v)
         }

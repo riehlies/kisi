@@ -59,6 +59,11 @@ pub struct FieldResult {
     pub l_odd: Option<f64>,
     pub g_odd: Option<f64>,
     pub c_odd: Option<f64>,
+    /// even mode of a pair (per line)
+    pub r_even: Option<f64>,
+    pub l_even: Option<f64>,
+    pub g_even: Option<f64>,
+    pub c_even: Option<f64>,
     /// 2x2 matrices of a two-conductor geometry, row major (H/m, F/m Maxwell)
     pub mat_l: Option<[f64; 4]>,
     pub mat_c: Option<[f64; 4]>,
@@ -120,6 +125,11 @@ pub struct CrossSection {
     pub z0: Option<f64>,
     pub eeff: Option<f64>,
     pub zdiff: Option<f64>,
+    /// even-mode impedance of one line of the pair (Zcommon = Zeven / 2) and the modal
+    /// effective permittivities (field solver, or estimated from the formulas)
+    pub zeven: Option<f64>,
+    pub eeff_odd: Option<f64>,
+    pub eeff_even: Option<f64>,
     /// closed-form values (kept for comparison when a field result is used)
     pub z0_formula: Option<f64>,
     pub zdiff_formula: Option<f64>,
@@ -864,6 +874,9 @@ pub fn skeleton(board: &Board, params: &Params) -> Analysis {
             z0: None,
             eeff: None,
             zdiff: None,
+            zeven: None,
+            eeff_odd: None,
+            eeff_even: None,
             z0_formula: None,
             zdiff_formula: None,
             solver: "none",
@@ -1024,6 +1037,25 @@ fn evaluate(
         planes: planes.clone(),
     };
     let (z0_formula, zdiff_formula) = (z0, zdiff);
+    // even mode from the formulas: Z0 ≈ √(Zeven·Zodd); modal permittivities of microstrip from
+    // Kirschning-Jansen (the ratio around the single-line value), stripline: homogeneous
+    let mut zeven = match (z0, zdiff) {
+        (Some(z), Some(zd)) if zd > 0.0 => Some(z * z / (zd / 2.0)),
+        _ => None,
+    };
+    let (mut eeff_odd, mut eeff_even) = (eeff, eeff);
+    if let (Some(g), Some(e)) = (diff_gap, eeff) {
+        if matches!(kind, Kind::Microstrip | Kind::EmbeddedMicrostrip) {
+            if let Some((h, er)) = (if outer_top { dn } else { up }).or(up).or(dn).map(|r| r.1).zip(er_dn.or(er_up)) {
+                let (_, _, ee, eo) = analytic::kirschning_jansen(w, g, h, er);
+                let em = 0.5 * (ee + eo);
+                if em > 0.0 {
+                    eeff_odd = Some(e * eo / em);
+                    eeff_even = Some(e * ee / em);
+                }
+            }
+        }
+    }
     let mut solver = "formula";
     let geom_idx = xsgeom::build(su, &desc).map(|text| geoms.add(text));
     if let Some(gi) = geom_idx {
@@ -1031,11 +1063,14 @@ fn evaluate(
         if let Some(fr) = params.field.get(id) {
             if let (Some(zo), Some(ze)) = (fr.zodd, fr.zeven) {
                 zdiff = Some(2.0 * zo);
+                zeven = Some(ze);
                 // single-ended impedance of one trace of the pair (uncoupled
                 // estimate): geometric mean of the modal impedances
                 z0 = Some((zo * ze).sqrt());
                 if let (Some(a), Some(b)) = (fr.eeff_odd, fr.eeff_even) {
                     eeff = Some(0.5 * (a + b));
+                    eeff_odd = Some(a);
+                    eeff_even = Some(b);
                 }
                 solver = "field";
             } else if let Some(z) = fr.z0 {
@@ -1068,6 +1103,9 @@ fn evaluate(
         z0,
         eeff,
         zdiff,
+        zeven,
+        eeff_odd,
+        eeff_even,
         z0_formula,
         zdiff_formula,
         solver,

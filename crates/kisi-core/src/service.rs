@@ -209,6 +209,36 @@ pub fn net_touchstone(p: &Project, net_name: &str, rp: &RfParams) -> Result<Stri
     Ok(rf::touchstone(&ch))
 }
 
+/// Single-ended 4-port of a differential pair as Touchstone (.s4p) text.
+pub fn net_touchstone4(p: &Project, net_name: &str, rp: &RfParams) -> Result<String, String> {
+    let net = p.net_id(net_name).ok_or_else(|| format!("net '{net_name}' not found"))?;
+    let m = rf::mixed_mode(&p.board, &p.an, net, &p.params.field, p.target(net), rp, false, lane_hint(p, net))?;
+    Ok(rf::touchstone4(&m))
+}
+
+/// Summary of a pair's 4-port model (mixed-mode S-parameters, modal TDR, skew).
+pub fn mixed_json(m: &rf::MixedMode, rise: f64) -> Value {
+    let at = |v: &[f64], g: f64| -> Option<f64> { m.freq.iter().position(|&f| f >= g * 1e9 - 1.0).map(|k| v[k]) };
+    let marks = |v: &[f64]| [1.0, 2.5, 5.0, 8.0, 12.5, 16.0, 25.0].iter().filter_map(|&g| at(v, g).map(|d| json!({"ghz": g, "db": d}))).collect::<Vec<_>>();
+    let inside = |z: &[f64], x: &[f64]| -> (f64, f64) {
+        z.iter().zip(x).filter(|(_, x)| **x <= m.tdr_end_mm).fold((f64::INFINITY, f64::NEG_INFINITY), |a, (z, _)| (a.0.min(*z), a.1.max(*z)))
+    };
+    let (dmin, dmax) = inside(&m.tdr_zdiff, &m.tdr_x_diff_mm);
+    let (cmin, cmax) = inside(&m.tdr_zcomm, &m.tdr_x_comm_mm);
+    json!({
+        "p": m.p_net, "n": m.n_net, "z_ref_diff": 2.0 * m.z_ref, "z_ref_common": m.z_ref / 2.0,
+        "length_mm": {"p": m.length_mm.0, "n": m.length_mm.1}, "delay_ps": {"p": m.delay_ps.0, "n": m.delay_ps.1},
+        "skew_ps": m.skew_ps, "skew_mm": m.skew_mm, "coupled_mm": m.coupled_mm, "coupled_share": m.coupled_share,
+        "delay_ps_diff": m.delay_diff_ps, "delay_ps_common": m.delay_comm_ps,
+        "sdd21_db": marks(&m.sdd21_db), "scd21_db": marks(&m.scd21_db),
+        "scd21_worst": {"db": m.scd21_worst.0, "ghz": m.scd21_worst.1 / 1e9},
+        "return_loss_diff_worst_db": -m.sdd11_db.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+        "return_loss_common_worst_db": -m.scc11_db.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+        "tdr": {"rise_ps": rise * 1e12, "zdiff_min": dmin, "zdiff_max": dmax, "zcommon_min": cmin, "zcommon_max": cmax},
+        "source": m.source, "warnings": m.warnings
+    })
+}
+
 /// Start hint of a net's path: the transmitter side of the lane the net belongs to.
 fn lane_hint(p: &Project, net: u32) -> Option<crate::geom::P> {
     for b in p.buses() {
@@ -244,6 +274,14 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
     let su = p.board.stackup();
     let tdr_in: Vec<f64> = ch.tdr_z.iter().zip(&ch.tdr_x_mm).filter(|(_, x)| **x <= ch.length_mm).map(|(z, _)| *z).collect();
     let k = if ch.diff { 2.0 } else { 1.0 };
+    let mixed = if ch.diff {
+        match rf::mixed_mode(&p.board, &p.an, net, field, p.target(net), rp, false, lane_hint(p, net)) {
+            Ok(m) => mixed_json(&m, rp.rise),
+            Err(e) => json!({"error": e}),
+        }
+    } else {
+        Value::Null
+    };
     Ok(json!({
         "net": ch.name, "class": st.map(|s| s.class.clone()), "target": st.and_then(|s| s.target).map(|t| json!({"ohm": t.z, "diff": t.diff})),
         "differential": ch.diff, "length_mm": ch.length_mm, "delay_ps": ch.delay_ps, "vias": ch.vias, "path": path_json(&ch),
@@ -256,6 +294,7 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
         "via_details": ch.via_info.iter().map(|v| json!({"from": su.copper[v.layer_in as usize].name, "to": su.copper[v.layer_out as usize].name, "drill_mm": v.drill_mm, "antipad_mm": v.antipad_mm, "z_ohm": v.z_via, "stub_mm": v.stub_mm, "stub_resonance_ghz": v.stub_f_ghz, "return_path": v.return_kind})).collect::<Vec<_>>(),
         "crosstalk": {"next_total": xt.next_total, "fext_total": xt.fext_total, "rise_ps": xt.rise_ps,
             "aggressors": xt.aggressors.iter().take(5).map(|a| json!({"net": a.name, "parallel_mm": a.coupled_mm, "gap_min_mm": a.gap_min_mm, "next": a.next, "fext": a.fext})).collect::<Vec<_>>()},
+        "mixed_mode": mixed,
         "warnings": ch.warnings, "field_solver": p.field_summary(), "models": p.models()
     }))
 }

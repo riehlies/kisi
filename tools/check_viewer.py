@@ -5,7 +5,7 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
                        [--out DIR] [--quick]
 
 * light, dark and phone layout; all three views (impedance, channel, power)
-* impedance estimate, net detail tabs, interfaces overview, channel check, lane eye,
+* impedance estimate, net detail tabs (a differential pair: 4-port loss, common-mode TDR), interfaces overview, channel check, lane eye,
   voltage drop with ground return, losses map and power flow (desktop layouts; --quick: only
   load and the three views)
 * uses the embedded example boards if the build has them, else --board
@@ -67,6 +67,19 @@ def run(pg, tag, desktop):
         for t in ["loss", "tdr", "via", "xt"]:
             pg.click(f"#detail [data-tab={t}]"); pg.wait_for_timeout(300)
         step("net")
+        # a differential pair: 4-port loss view, differential and common-mode TDR
+        dn = pg.evaluate("(() => { for (const n of S.an.nets) { const t = classTarget(n.net); if (t && t.diff) return n.net; } return -1; })()")
+        if dn >= 0:
+            pg.evaluate(f"selectNet({dn})"); pg.wait_for_timeout(400)
+            pg.click("#detail [data-tab=loss]"); pg.wait_for_timeout(500)
+            if pg.locator("#loss-cm").count():
+                pg.click("#loss-cm"); pg.wait_for_timeout(300)
+            else:
+                problems.append(f"{tag}: differential net without the 4-port loss view")
+            step("pair_loss")
+            pg.click("#detail [data-tab=tdr]"); pg.wait_for_timeout(400)
+            if pg.locator("#tdr-c").count():
+                pg.click("#tdr-c"); pg.wait_for_timeout(300); step("pair_tdr_common"); pg.click("#tdr-d"); pg.wait_for_timeout(200)
         pg.click("#view-ch"); pg.wait_for_timeout(500)
         pg.click("#ov-check"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(300); step("check")
         if pg.locator("#ch-overview tr[data-lane]").count():

@@ -13,7 +13,7 @@ function rfFor(net) {
   const key = `${net}|${S.anGen}|${JSON.stringify(p)}|${JSON.stringify(q)}`;
   if (S.rfCache && S.rfCache.key === key) return S.rfCache.res;
   let res;
-  try { res = S.engine.rf({ net, rf: p, target: t ? [t.z, t.diff] : null, flip: q.flip, hint: q.hint }); }
+  try { res = S.engine.rf({ net, rf: p, target: t ? [t.z, t.diff] : null, flip: q.flip, hint: q.hint, mixed: true }); }
   catch (e) { res = { channel: null, error: e.message, crosstalk: { aggressors: [], geoms: [] }, touchstone: "" }; }
   S.rfCache = { key, res, net };
   return res;
@@ -38,8 +38,12 @@ function renderTab(net, t, rowsXs) {
   if (S.detailTab === "via") return renderVias(body, r);
   if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "no channel")}</p>`; return; }
   const src = ch.field_share > 0 ? `Field solver for ${Math.round(ch.field_share * 100)} % of the length, formulas elsewhere` : "Formulas (fast analysis)";
-  const head = `<div class="dstats"><span>${ch.diff ? "differential, reference " + fmt(2 * ch.z_ref, 0) + " Ω" : "reference " + fmt(ch.z_ref, 0) + " Ω"}</span><span>Path <b>${fmt(ch.length_mm, 1)} mm</b> incl. vias</span><span>Delay <b>${fmt(ch.delay_ps, 0)} ps</b></span><span>Vias <b>${ch.vias}</b></span></div>`;
+  // differential pair: 4-port model (both lines on their own paths, odd and even mode)
+  const mx = ch.diff && r.mixed && !r.mixed.error ? r.mixed : null;
+  const skew = mx ? `<span title="P − N: ${esc(netShort(mx.p_net))} ${fmt(mx.length_mm[0], 2)} mm / ${fmt(mx.delay_ps[0], 1)} ps, ${esc(netShort(mx.n_net))} ${fmt(mx.length_mm[1], 2)} mm / ${fmt(mx.delay_ps[1], 1)} ps">Skew <b>${fmt(mx.skew_ps, 1)} ps</b> (${fmt(mx.skew_mm, 2)} mm)</span><span>Coupled <b>${fmt(mx.coupled_share * 100, 0)} %</b></span>` : "";
+  const head = `<div class="dstats"><span>${ch.diff ? "differential, reference " + fmt(2 * ch.z_ref, 0) + " Ω" : "reference " + fmt(ch.z_ref, 0) + " Ω"}</span><span>Path <b>${fmt(ch.length_mm, 1)} mm</b> incl. vias</span><span>Delay <b>${fmt(ch.delay_ps, 0)} ps</b></span><span>Vias <b>${ch.vias}</b></span>${skew}</div>`;
   const warn = (ch.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
+  if (S.detailTab === "loss" && mx) return renderLoss4(body, r, net, head, warn, src);
   if (S.detailTab === "loss") {
     const marks = ch.il_marks.map(([f, d]) => `<span>${fmt(f, f < 10 ? 1 : 0)} GHz <b>${fmt(d, 2)} dB</b></span>`).join("");
     const lpi = ch.loss_db_per_in_at.map(([f, c, d]) => `<tr><td>${fmt(f, 0)} GHz</td><td>${fmt(c, 3)}</td><td>${fmt(d, 3)}</td><td>${fmt(c + d, 3)}</td></tr>`).join("");
@@ -60,23 +64,66 @@ function renderTab(net, t, rowsXs) {
     return;
   }
   if (S.detailTab === "tdr") {
-    const scale = ch.diff ? 2 : 1, end = ch.tdr_end_mm ?? ch.length_mm;
-    const inLine = ch.tdr_z.filter((_, i) => ch.tdr_x_mm[i] <= end);
+    // pairs: differential trace from the 4-port model (or the odd-mode channel), or the common-mode trace
+    const comm = !!(mx && S.tdrMode === "c");
+    const scale = ch.diff && !mx ? 2 : 1;
+    const tx = mx ? (comm ? mx.tdr_x_comm_mm : mx.tdr_x_diff_mm) : ch.tdr_x_mm;
+    const tz = mx ? (comm ? mx.tdr_zcomm : mx.tdr_zdiff) : ch.tdr_z;
+    const end = mx ? mx.tdr_end_mm : (ch.tdr_end_mm ?? ch.length_mm);
+    const inLine = tz.filter((_, i) => tx[i] <= end);
     const zmin = Math.min(...inLine) * scale, zmax = Math.max(...inLine) * scale;
-    const zr = ch.z_ref * scale;
+    const zr = comm ? ch.z_ref / 2 : ch.z_ref * (ch.diff ? 2 : 1);
+    const zn = comm ? "Zcommon" : ch.diff ? "Zdiff" : "Z";
+    const modeBtns = mx ? `<span class="seg"><button class="btn small" id="tdr-d" aria-pressed="${!comm}">Differential</button><button class="btn small" id="tdr-c" aria-pressed="${comm}">Common mode</button></span>` : "";
     body.innerHTML = `${head}
-      <div class="clegend"><span><i style="background:var(--pw-use)"></i>Impedance from the step response (${fmt(rfParams().rise * 1e12, 0)} ps rise), seen from A</span>${t ? `<span><i style="background:${S.colors.ok}"></i>target ±5 %</span>` : ""}<span><i style="background:var(--muted);opacity:.35"></i>after B: termination ${fmt(zr, 0)} Ω</span></div>
+      <div class="clegend">${modeBtns}<span><i style="background:${comm ? "var(--pw-conv)" : "var(--pw-use)"}"></i>${zn} from the step response (${fmt(rfParams().rise * 1e12, 0)} ps rise), seen from A</span>${t && !comm ? `<span><i style="background:${S.colors.ok}"></i>target ±5 %</span>` : ""}<span><i style="background:var(--muted);opacity:.35"></i>after B: termination ${fmt(zr, 0)} Ω</span></div>
       <div class="chart"><canvas id="ch-tdr" aria-label="TDR impedance over position, from A to B"></canvas></div>
-      <div class="marks"><span>${ch.diff ? "Zdiff" : "Z"} min <b>${fmt(zmin, 1)} Ω</b></span><span>${ch.diff ? "Zdiff" : "Z"} max <b>${fmt(zmax, 1)} Ω</b></span><span class="muted">Position from the delay of every section (lines and vias), so it matches the board; the rise time blurs edges over about ${fmt(rfParams().rise * 1e12 * 0.075, 1)} mm. ▲ at the bottom: vias.</span></div>${warn}`;
-    const zt = t ? (t.diff ? t.z / 2 : t.z) : null;
+      <div class="marks"><span>${zn} min <b>${fmt(zmin, 1)} Ω</b></span><span>${zn} max <b>${fmt(zmax, 1)} Ω</b></span><span class="muted">${mx ? "4-port model of the pair (P and N on their own paths, odd and even mode per coupled section). " : ""}Position from the delay of every section (lines and vias), so it matches the board; the rise time blurs edges over about ${fmt(rfParams().rise * 1e12 * 0.075, 1)} mm. ▲ at the bottom: vias.${comm ? " Common mode: both lines driven in phase (Zcommon = Zeven/2), reference " + fmt(zr, 1) + " Ω." : ""}</span></div>${warn}`;
+    if (mx) {
+      $("tdr-d").onclick = () => { S.tdrMode = "d"; renderTab(net, t, rowsXs); };
+      $("tdr-c").onclick = () => { S.tdrMode = "c"; renderTab(net, t, rowsXs); };
+    }
+    const zt = t && !comm ? (t.diff ? t.z / 2 : t.z) : null;
+    const zs = ch.diff ? 2 : 1;
     const pa = ch.path;
     const vias = ch.segments.filter((x) => x.kind === "via").map((x) => ({ x: x.s_mm, kind: "via" }));
-    drawLines($("ch-tdr"), { x: ch.tdr_x_mm, xUnit: "mm", yUnit: "Ω", series: [{ y: ch.tdr_z.map((z) => z * scale), color: "--pw-use", name: ch.diff ? "Z diff" : "Z" }],
-      band: zt ? [zt * scale * 0.95, zt * scale * 1.05] : null, xMax: end * 1.25,
+    drawLines($("ch-tdr"), { x: tx, xUnit: "mm", yUnit: "Ω", series: [{ y: tz.map((z) => z * scale), color: comm ? "--pw-conv" : "--pw-use", name: zn }],
+      band: zt ? [zt * zs * 0.95, zt * zs * 1.05] : null, xMax: end * 1.25,
       ends: pa ? { a: pa.start.label, b: pa.end.label, at: end } : null, marks: pathMarks(pa).concat(vias),
       vline: { x: end, label: "end" + (pa ? " · " + pa.end.label : "") }, shadeFrom: { x: end, label: `${fmt(zr, 0)} Ω` },
       tipExtra: (x) => segmentAt(ch, x, end), onHover: (x) => setPathCursor(net, x) });
   }
+}
+
+// insertion and return loss of a differential pair from its 4-port model (mixed mode)
+function renderLoss4(body, r, net, head, warn, src) {
+  const ch = r.channel, mx = r.mixed, pa = ch.path;
+  const fg = mx.freq.map((f) => f / 1e9);
+  const at = (arr, g) => { const k = mx.freq.findIndex((f) => f >= g * 1e9 - 1); return k < 0 ? null : arr[k]; };
+  const marks = ch.il_marks.map(([f]) => [f, at(mx.sdd21_db, f)]).filter((x) => x[1] != null).map(([f, d]) => `<span>${fmt(f, f < 10 ? 1 : 0)} GHz <b>${fmt(d, 2)} dB</b></span>`).join("");
+  const lpi = ch.loss_db_per_in_at.map(([f, c, d]) => `<tr><td>${fmt(f, 0)} GHz</td><td>${fmt(c, 3)}</td><td>${fmt(d, 3)}</td><td>${fmt(c + d, 3)}</td></tr>`).join("");
+  const a = pa ? ` from A (${esc(pa.start.label)})` : "", bEnd = pa ? ` from B (${esc(pa.end.label)})` : "";
+  const cm = !!S.lossCommon;
+  const series = [
+    { y: mx.sdd21_db, color: "--pw-use", name: "Sdd21" },
+    { y: mx.sdd11_db, color: "--pw-loss", name: "Sdd11 (A)" },
+    { y: mx.sdd22_db, color: "--pw-loss", name: "Sdd22 (B)", dash: [5, 3] },
+    { y: mx.scd21_db, color: "--pw-conv", name: "Scd21" }];
+  if (cm) series.push({ y: mx.scc21_db, color: "--muted", name: "Scc21" }, { y: mx.scc11_db, color: "--muted", name: "Scc11 (A)", dash: [2, 3] });
+  const all = series.flatMap((s) => s.y);
+  const w = mx.scd21_worst;
+  body.innerHTML = `${head}
+    <div class="clegend"><span><i style="background:var(--pw-use)"></i>Sdd21 = Sdd12 insertion loss</span><span><i style="background:var(--pw-loss)"></i>Sdd11 return loss${a}</span><span><i class="dash" style="border-color:var(--pw-loss)"></i>Sdd22${bEnd}</span><span><i style="background:var(--pw-conv)"></i>Scd21 mode conversion (differential in, common out)</span><label class="chk"><input type="checkbox" id="loss-cm"${cm ? " checked" : ""}> common mode</label></div>
+    <div class="chart"><canvas id="ch-s" aria-label="Mixed-mode S-parameters over frequency"></canvas></div>
+    <div class="marks">${marks}<span>Scd21 max <b>${fmt(w[0], 1)} dB</b> at ${fmt(w[1] / 1e9, 1)} GHz</span></div>
+    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Line loss</th><th>conductor dB/in</th><th>dielectric dB/in</th><th>total</th></tr></thead><tbody>${lpi}</tbody></table></div>
+    <p class="note">4-port model: ${esc(netShort(mx.p_net))} and ${esc(netShort(mx.n_net))} on their own paths, coupled sections from odd and even mode (${fmt(mx.coupled_mm, 1)} mm coupled), via pairs with the partner via. Length or via differences convert differential into common mode (Scd21). Eye and channel check still use the differential 2-port (odd mode). ${esc(mx.source)}.</p>
+    <div class="dstats"><span class="muted">${esc(src)}</span><button class="btn small" id="ts-save" title="Differential 2-port (odd-mode model): Sdd11, Sdd21, Sdd12, Sdd22, port 1 = A">Save .s2p</button><button class="btn small" id="ts4-save" title="Single-ended 4-port: 1 = P at A, 2 = N at A, 3 = P at B, 4 = N at B">Save .s4p</button></div>${warn}${(mx.warnings || []).filter((x) => !(ch.warnings || []).includes(x)).map((x) => `<div class="warn">${esc(x)}</div>`).join("")}`;
+  drawLines($("ch-s"), { x: fg, xUnit: "GHz", yUnit: "dB", series, yMin: Math.max(-80, Math.min(...all) - 2), yMax: 0 });
+  const base = S.scene.nets[net].split("/").pop().replace(/[^\w.+-]+/g, "_") || "net";
+  $("ts-save").onclick = () => saveText(`${base}.s2p`, r.touchstone);
+  $("ts4-save").onclick = () => saveText(`${base}.s4p`, r.touchstone4);
+  $("loss-cm").onchange = (e) => { S.lossCommon = e.target.checked; renderLoss4(body, r, net, head, warn, src); };
 }
 
 // what lies at position x (mm along the path) of a channel: via, branch, line section

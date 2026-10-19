@@ -4,9 +4,10 @@
 // Contract of every kisi solver backend:
 //   solveGeometry(text, {tol}) -> {ok, z0?, eeff?, zodd?, zeven?, eeff_odd?, eeff_even?,
 //                                  r?, l?, g?, c?, r_odd?, l_odd?, g_odd?, c_odd?,
+//                                  r_even?, l_even?, g_even?, c_even?,
 //                                  mat_l?, mat_c?, f0, ms, error?}
 // Per-unit-length values at f0 = 1 GHz, smooth copper (σ = 5.8e7 S/m);
-// odd-mode values per line; mat_* = 2x2 matrices (row major) of a pair.
+// odd- and even-mode values per line; mat_* = 2x2 matrices (row major) of a pair.
 // `text` is the cross-section in js_2d_fields custom geometry syntax, which
 // kisi-core generates (crates/kisi-core/src/xsgeom.rs).
 import { CustomGeometrySolver } from "../../third_party/js_2d_fields/src/custom_geometry.js";
@@ -32,7 +33,7 @@ export async function solveGeometry(text, { tol = 0.005, maxNodes = 60000 } = {}
     if (r.modes.length >= 2) {
       const odd = r.modes.find((m) => m.mode === "odd"), even = r.modes.find((m) => m.mode === "even");
       const mat = r.RLGC_matrix || {};
-      return { ok: true, zodd: odd.Z0, zeven: even.Z0, eeff_odd: odd.eps_eff, eeff_even: even.eps_eff, ...rlgc(odd, "_odd"),
+      return { ok: true, zodd: odd.Z0, zeven: even.Z0, eeff_odd: odd.eps_eff, eeff_even: even.eps_eff, ...rlgc(odd, "_odd"), ...rlgc(even, "_even"),
         mat_l: flat(mat.L), mat_c: flat(mat.C), f0: F0, ms };
     }
     return { ok: true, z0: r.modes[0].Z0, eeff: r.modes[0].eps_eff, ...rlgc(r.modes[0]), f0: F0, ms };

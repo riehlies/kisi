@@ -695,8 +695,9 @@ pub extern "C" fn kisi_net_path(p: *const u8, n: usize) -> i32 {
 
 /// Channel and crosstalk of one net. Input:
 /// {"net": id, "rf": RfParams, "target": [z, diff] | null, "bitrate": f | null, "prbs": 7,
-///  "flip": bool, "hint": [x, y] | null}
-/// Output: {"channel", "error", "crosstalk", "touchstone", "eye": Eye | null, "skew": {...} | null}
+///  "flip": bool, "hint": [x, y] | null, "mixed": bool (pairs: also the 4-port model)}
+/// Output: {"channel", "error", "crosstalk", "touchstone", "eye": Eye | null, "skew": {...} | null,
+///          "mixed": MixedMode | null (pairs: 4-port model), "touchstone4": ".s4p text" | ""}
 #[no_mangle]
 pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -714,6 +715,8 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
         let xt = kisi_core::rf::crosstalk(b, an, net, &params.field, &rp);
         let mut eye = serde_json::Value::Null;
         let mut skew = serde_json::Value::Null;
+        let mut mixed = serde_json::Value::Null;
+        let mut ts4 = String::new();
         let (chv, err, ts) = match ch {
             Ok(c) => {
                 let ts = kisi_core::rf::touchstone(&c);
@@ -732,6 +735,15 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
                         Err(e) => serde_json::json!({"error": e}),
                     };
                 }
+                if c.diff && v["mixed"].as_bool().unwrap_or(false) {
+                    mixed = match kisi_core::rf::mixed_mode(b, an, net, &params.field, target, &rp, flip, hint) {
+                        Ok(m) => {
+                            ts4 = kisi_core::rf::touchstone4(&m);
+                            serde_json::to_value(&m).unwrap()
+                        }
+                        Err(e) => serde_json::json!({"error": e}),
+                    };
+                }
                 if let (true, Some(pn)) = (c.diff, c.partner) {
                     let rq = kisi_core::rf::RfParams { npts: 10, ..rp.clone() };
                     if let Ok(pc) = kisi_core::rf::channel_dir(b, an, pn, &params.field, target, &rq, flip, hint) {
@@ -745,7 +757,7 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
             }
             Err(e) => (serde_json::Value::Null, serde_json::Value::String(e), String::new()),
         };
-        Ok(serde_json::json!({"channel": chv, "error": err, "crosstalk": xt, "touchstone": ts, "eye": eye, "skew": skew}).to_string())
+        Ok(serde_json::json!({"channel": chv, "error": err, "crosstalk": xt, "touchstone": ts, "eye": eye, "skew": skew, "mixed": mixed, "touchstone4": ts4}).to_string())
     });
     match r {
         Ok(s) => {

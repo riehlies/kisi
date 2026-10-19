@@ -575,21 +575,25 @@ impl LumpedPart {
 
 /// Builds the section list of a channel (lines, vias, lumped parts).
 pub(crate) struct Build<'a> {
-    board: &'a Board,
-    an: &'a Analysis,
-    field: &'a HashMap<String, FieldResult>,
-    rp: &'a RfParams,
+    pub(crate) board: &'a Board,
+    pub(crate) an: &'a Analysis,
+    pub(crate) field: &'a HashMap<String, FieldResult>,
+    pub(crate) rp: &'a RfParams,
     diff: bool,
+    /// also build the odd-mode model of every via with the partner net (4-port pair model)
+    pub(crate) pair: bool,
     partner_of: Vec<Option<u32>>,
     pub segs: Vec<Segment>,
-    models: Vec<Option<LineModel>>,
-    via_models: Vec<Option<crate::via::ViaModel>>,
-    lumped: Vec<Option<LumpedPart>>,
+    pub(crate) models: Vec<Option<LineModel>>,
+    pub(crate) via_models: Vec<Option<crate::via::ViaModel>>,
+    /// odd-mode via model with the partner via (only with `pair`)
+    pub(crate) via_pair: Vec<Option<crate::via::ViaModel>>,
+    pub(crate) lumped: Vec<Option<LumpedPart>>,
     /// open stubs (other branches of a multi-drop line): cascade per frequency
-    branch: Vec<Option<Vec<Abcd>>>,
+    pub(crate) branch: Vec<Option<Vec<Abcd>>>,
     pub via_info: Vec<crate::via::ViaInfo>,
     field_len: f64,
-    total_len: f64,
+    pub(crate) total_len: f64,
     model_cache: HashMap<(u32, bool), Option<LineModel>>,
     pub warnings: Vec<String>,
 }
@@ -602,10 +606,12 @@ impl<'a> Build<'a> {
             field,
             rp,
             diff,
+            pair: false,
             partner_of: crate::extract::diff_partners(&board.nets),
             segs: vec![],
             models: vec![],
             via_models: vec![],
+            via_pair: vec![],
             lumped: vec![],
             branch: vec![],
             via_info: vec![],
@@ -620,6 +626,7 @@ impl<'a> Build<'a> {
         self.segs.push(seg);
         self.models.push(model);
         self.via_models.push(via);
+        self.via_pair.push(None);
         self.lumped.push(part);
         self.branch.push(None);
     }
@@ -695,6 +702,8 @@ impl<'a> Build<'a> {
                     };
                     let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(prev_xs), refs_out: refs(Some(xi)), backdrill: rp.backdrill };
                     let (vm, info) = crate::via::build(&ctx, v, pl, tr.layer);
+                    let pair_partner = self.partner_of.get(net as usize).copied().flatten().filter(|_| self.pair);
+                    let vm_pair = pair_partner.map(|pn| crate::via::build(&crate::via::ViaCtx { partner: Some(pn), ..ctx }, v, pl, tr.layer).0);
                     let (mut lt, mut ct) = (0.0, 0.0);
                     for s in &vm.barrel {
                         let vv = C0 / s.er.sqrt();
@@ -708,6 +717,7 @@ impl<'a> Build<'a> {
                         Some(vm),
                         None,
                     );
+                    *self.via_pair.last_mut().unwrap() = vm_pair;
                     self.via_info.push(info);
                 }
             }
@@ -741,6 +751,58 @@ impl<'a> Build<'a> {
         }
     }
 
+    /// Crude high-Z line for sections without a reference plane.
+    pub(crate) fn fallback(z_ref: f64) -> LineModel {
+        LineModel {
+            z0: z_ref * 1.5,
+            eeff0: 2.5,
+            l_ext: z_ref * 1.5 * 2.5f64.sqrt() / C0,
+            c0: 2.5f64.sqrt() / (z_ref * 1.5 * C0),
+            r_dc: 0.0,
+            k_ac: 0.0,
+            er: 4.0,
+            tand: 0.02,
+            q_fill: 0.5,
+            tand_eff0: None,
+            ms_h: None,
+            source: "none",
+        }
+    }
+
+    /// Cascade matrix of section `i` at frequency index `k` (frequency `f`); `len_mm`
+    /// overrides the length of a line section.
+    pub(crate) fn seg_abcd(&self, i: usize, k: usize, f: f64, fallback: &LineModel, len_mm: Option<f64>) -> Abcd {
+        let rp = self.rp;
+        let w = 2.0 * PI * f;
+        let s = &self.segs[i];
+        match s.kind {
+            // open stub: input admittance C/A of its cascade
+            "branch" => match self.branch[i].as_ref().and_then(|b| b.get(k)) {
+                Some(b) => Abcd::shunt(b.c / b.a),
+                None => Abcd::identity(),
+            },
+            "via" => self.via_models[i].as_ref().map(|vm| vm.abcd(f, rp.sigma)).unwrap_or_else(Abcd::identity),
+            "series" | "shunt" => self.lumped[i].as_ref().map(|p| p.abcd(w)).unwrap_or_else(Abcd::identity),
+            _ => {
+                let lm = self.models[i].as_ref().unwrap_or(fallback);
+                let p = lm.rlgc(f, rp);
+                Abcd::line(p.r, p.l, p.g, p.c, w, len_mm.unwrap_or(s.len_mm) * 1e-3)
+            }
+        }
+    }
+
+    /// One-way static delay of section `i` (s).
+    pub(crate) fn seg_delay(&self, i: usize, fallback: &LineModel) -> f64 {
+        match self.segs[i].kind {
+            "line" => {
+                let lm = self.models[i].as_ref().unwrap_or(fallback);
+                self.segs[i].len_mm * 1e-3 * (lm.l_ext * lm.c0).sqrt()
+            }
+            "via" => self.via_models[i].as_ref().map(|v| v.delay()).unwrap_or(0.0),
+            _ => 0.0,
+        }
+    }
+
     pub(crate) fn finish(mut self, net: u32, name: String, partner: Option<u32>, target: Option<(f64, bool)>) -> Channel {
         let rp = self.rp;
         let diff = self.diff;
@@ -754,20 +816,7 @@ impl<'a> Build<'a> {
             _ => 50.0,
         });
         // fallback model for sections without reference: crude high-Z line
-        let fallback = LineModel {
-            z0: z_ref * 1.5,
-            eeff0: 2.5,
-            l_ext: z_ref * 1.5 * 2.5f64.sqrt() / C0,
-            c0: 2.5f64.sqrt() / (z_ref * 1.5 * C0),
-            r_dc: 0.0,
-            k_ac: 0.0,
-            er: 4.0,
-            tand: 0.02,
-            q_fill: 0.5,
-            tand_eff0: None,
-            ms_h: None,
-            source: "none",
-        };
+        let fallback = Self::fallback(z_ref);
         // frequency sweep
         let n = rp.npts.max(10);
         let df = rp.fmax / n as f64;
@@ -777,25 +826,9 @@ impl<'a> Build<'a> {
         let mut s22 = Vec::with_capacity(n);
         let mut abcd = Vec::with_capacity(n);
         for (k, &f) in freq.iter().enumerate() {
-            let w = 2.0 * PI * f;
             let mut m = Abcd::identity();
             for i in 0..self.segs.len() {
-                let s = &self.segs[i];
-                let e = match s.kind {
-                    // open stub: input admittance C/A of its cascade
-                    "branch" => match self.branch[i].as_ref().and_then(|b| b.get(k)) {
-                        Some(b) => Abcd::shunt(b.c / b.a),
-                        None => Abcd::identity(),
-                    },
-                    "via" => self.via_models[i].as_ref().map(|vm| vm.abcd(f, rp.sigma)).unwrap_or_else(Abcd::identity),
-                    "series" | "shunt" => self.lumped[i].as_ref().map(|p| p.abcd(w)).unwrap_or_else(Abcd::identity),
-                    _ => {
-                        let lm = self.models[i].as_ref().unwrap_or(&fallback);
-                        let p = lm.rlgc(f, rp);
-                        Abcd::line(p.r, p.l, p.g, p.c, w, s.len_mm * 1e-3)
-                    }
-                };
-                m = m.mul(&e);
+                m = m.mul(&self.seg_abcd(i, k, f, &fallback, None));
             }
             let (a, b, c) = m.s_params(z_ref);
             s11.push(a);
@@ -822,19 +855,13 @@ impl<'a> Build<'a> {
         let mut pos_table: Vec<(f64, f64)> = vec![(0.0, 0.0)];
         for i in 0..self.segs.len() {
             self.segs[i].s_mm = s_pos;
+            delay += self.seg_delay(i, &fallback);
             match self.segs[i].kind {
                 "line" => {
-                    let lm = self.models[i].as_ref().unwrap_or(&fallback);
-                    delay += self.segs[i].len_mm * 1e-3 * (lm.l_ext * lm.c0).sqrt();
                     s_pos += self.segs[i].len_mm;
                     pos_table.push((delay, s_pos));
                 }
-                "via" => {
-                    if let Some(vm) = &self.via_models[i] {
-                        delay += vm.delay();
-                        pos_table.push((delay, s_pos));
-                    }
-                }
+                "via" if self.via_models[i].is_some() => pos_table.push((delay, s_pos)),
                 _ => {}
             }
         }
@@ -929,6 +956,15 @@ pub fn channel_dir(board: &Board, an: &Analysis, net: u32, field: &HashMap<Strin
     let partner = crate::extract::diff_partners(&board.nets).get(net as usize).copied().flatten();
     let diff = partner.is_some() && target.map(|t| t.1).unwrap_or(true);
     let info = net_path_info(board, an, net, flip, hint).ok_or("net has no tracks")?;
+    let b = net_build(board, an, net, field, target, rp, &info, diff, false);
+    let mut ch = b.finish(net, board.net_name(net).to_string(), partner, target);
+    ch.path = Some(info);
+    Ok(ch)
+}
+
+/// Sections of a net along `info` (main path with its modelled branches as open stubs).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn net_build<'a>(board: &'a Board, an: &'a Analysis, net: u32, field: &'a HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &'a RfParams, info: &NetPath, diff: bool, pair: bool) -> Build<'a> {
     let mut warnings = Vec::new();
     if info.parts > 1 {
         warnings.push(format!("net splits into {} parts (e.g. connected through components): the part with the longest path is computed", info.parts));
@@ -954,6 +990,7 @@ pub fn channel_dir(board: &Board, an: &Analysis, net: u32, field: &HashMap<Strin
     }
     let path: Vec<(usize, bool)> = info.pieces.iter().map(|p| (p.piece, p.rev)).collect();
     let mut b = Build::new(board, an, field, rp, diff);
+    b.pair = pair;
     b.warnings = warnings;
     let mut k = 0usize;
     b.add_path(net, &path, |bld, _| {
@@ -962,9 +999,7 @@ pub fn channel_dir(board: &Board, an: &Analysis, net: u32, field: &HashMap<Strin
             bld.add_branch(label.clone(), ch);
         }
     });
-    let mut ch = b.finish(net, board.net_name(net).to_string(), partner, target);
-    ch.path = Some(info);
-    Ok(ch)
+    b
 }
 
 /// Step response of S11 on a uniform grid f_k = k·df (k ≥ 1), with a Gaussian

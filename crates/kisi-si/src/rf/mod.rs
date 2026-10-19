@@ -9,6 +9,7 @@
 mod channel;
 mod crosstalk;
 mod line;
+mod mixed;
 #[cfg(test)]
 mod tests;
 
@@ -16,3 +17,4 @@ pub use crate::num::{Cx, C0, MU0};
 pub use channel::*;
 pub use crosstalk::*;
 pub use line::*;
+pub use mixed::*;

@@ -264,17 +264,29 @@ pub(crate) fn xs_material(su: &Stackup, xs: &CrossSection) -> (f64, f64) {
 }
 
 /// Line model of a cross-section. `odd`: odd mode of the diff pair.
+/// Propagation mode of a line model: a single line, or one line of a coupled pair driven
+/// differentially (odd) or in common (even).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Mode {
+    Single,
+    Odd,
+    Even,
+}
+
 pub fn line_model(su: &Stackup, xs: &CrossSection, field: Option<&FieldResult>, odd: bool, rp: &RfParams) -> Option<LineModel> {
+    line_model_mode(su, xs, field, if odd { Mode::Odd } else { Mode::Single }, rp)
+}
+
+/// Line model per mode. Odd and even values are per line of the pair (Zdiff = 2·Zodd,
+/// Zcommon = Zeven/2). Without a field solve the even mode comes from the formulas
+/// (Zeven ≈ Z0²/Zodd, Kirschning-Jansen permittivities): an estimate.
+pub fn line_model_mode(su: &Stackup, xs: &CrossSection, field: Option<&FieldResult>, mode: Mode, rp: &RfParams) -> Option<LineModel> {
     let (er, tand) = xs_material(su, xs);
-    let (z, eeff) = if odd {
-        let zd = xs.zdiff?;
-        let ee = field.and_then(|f| match (f.eeff_odd, f.eeff_even) {
-            (Some(o), _) => Some(o),
-            _ => None,
-        });
-        (zd / 2.0, ee.or(xs.eeff)?)
-    } else {
-        (xs.z0?, xs.eeff?)
+    let odd = mode == Mode::Odd;
+    let (z, eeff) = match mode {
+        Mode::Odd => (xs.zdiff? / 2.0, field.and_then(|f| f.eeff_odd).or(xs.eeff_odd).or(xs.eeff)?),
+        Mode::Even => (xs.zeven?, field.and_then(|f| f.eeff_even).or(xs.eeff_even).or(xs.eeff)?),
+        Mode::Single => (xs.z0?, xs.eeff?),
     };
     let w_mm = xs.w;
     let t_mm = xs.t;
@@ -289,10 +301,10 @@ pub fn line_model(su: &Stackup, xs: &CrossSection, field: Option<&FieldResult>, 
     // field solve at f0 if available (smooth copper)
     let fr = field.and_then(|f| {
         let f0 = f.f0.unwrap_or(F_REF);
-        if odd {
-            Some((f.r_odd?, f.l_odd?, f.g_odd, f.c_odd?, f0))
-        } else {
-            Some((f.r?, f.l?, f.g, f.c?, f0))
+        match mode {
+            Mode::Odd => Some((f.r_odd?, f.l_odd?, f.g_odd, f.c_odd?, f0)),
+            Mode::Even => Some((f.r_even?, f.l_even?, f.g_even, f.c_even?, f0)),
+            Mode::Single => Some((f.r?, f.l?, f.g, f.c?, f0)),
         }
     });
     if let Some((r0, l0, g0, c0f, f0)) = fr {
@@ -315,7 +327,8 @@ pub fn line_model(su: &Stackup, xs: &CrossSection, field: Option<&FieldResult>, 
         });
     }
 
-    // formula path: Wheeler's incremental inductance for the AC resistance
+    // formula path: Wheeler's incremental inductance for the AC resistance (even mode:
+    // the single-line value, the currents of an even pair crowd less than odd ones)
     let dn = 1e-3; // mm (1 µm recession)
     let gap = if odd { xs.diff_gap } else { None };
     let la = l_air(xs.kind, w_mm, t_mm, h1, h2, gap);

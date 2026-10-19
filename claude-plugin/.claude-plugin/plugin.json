@@ -1,6 +1,6 @@
 {
   "name": "kisi",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SI/PI analysis of KiCad boards with the kisi CLI: prepare a board (missing laminate data, impedance targets, interface standards, load currents \u2013 researched with sources into <board>.kisi.json) and review it (impedance, channel loss/TDR/eye against PCIe/USB/DDR/... profiles, vias, crosstalk, regulator chains, DC IR drop, PDN impedance).",
   "author": {
     "name": "kisi contributors"

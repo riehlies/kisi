@@ -6,15 +6,12 @@
 //! * `rf`       – RLGC line models, channel S-parameters/TDR, Touchstone, crosstalk
 //! * `via`      – via model (antipads, stubs, back-drill, return path)
 //! * `eye`      – eye diagram and board-level channel check
-//! * `topology` – device-to-device lanes and buses
-//! * `ibis`     – IBIS files reduced to linear transmitter/receiver models
 
 // shared board model, re-exported so modules can use `crate::board` etc.
 pub use kisi_board::{board, geom, num};
 
 pub mod analytic;
 pub mod extract;
-pub mod ibis;
 pub mod eye;
 pub mod profile;
 pub mod rf;

@@ -45,23 +45,6 @@ const read = (p) => { try { return fs.readFileSync(p, "utf8"); } catch (e) { thr
 const readJson = (p) => { const t = read(p); try { return JSON.parse(t); } catch (e) { throw new Error(`${p}: ${e.message}`); } };
 const stem = (p) => path.basename(p).replace(/\.kicad_pcb$/i, "");
 
-// IBIS file named in Sim.Library, found like KiCad (and like the native CLI): ${KIPRJMOD}
-// and other variables expanded, relative to the board; else by file name below the board folder
-function findLibrary(lib, dir) {
-  let s = lib.trim().replace(/\$\{(\w+)\}|\$\((\w+)\)/g, (_, a, b) => ((a || b) === "KIPRJMOD" ? dir : process.env[a || b] || ""));
-  const p = path.isAbsolute(s) ? s : path.join(dir, s);
-  if (isFile(p)) return p;
-  const key = s.split(/[\\/]/).pop().toLowerCase();
-  const walk = (d, depth) => {
-    let ents;
-    try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return null; }
-    for (const e of ents) if (e.isFile() && e.name.toLowerCase() === key) return path.join(d, e.name);
-    if (depth > 0) for (const e of ents) if (e.isDirectory() && !e.name.startsWith(".")) { const r = walk(path.join(d, e.name), depth - 1); if (r) return r; }
-    return null;
-  };
-  return walk(dir, 3);
-}
-
 // ---- field solver: worker threads running the classic-script solver, results cached on disk
 const cacheFile = () => {
   const base = process.env.KISI_CACHE || (process.platform === "win32" ? path.join(process.env.LOCALAPPDATA || os.homedir(), "kisi") : path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache"), "kisi"));
@@ -158,12 +141,7 @@ async function main(argv) {
         if (isFile(cp)) { try { config = { path: cp, text: fs.readFileSync(cp, "utf8") }; } catch (e) { config = { path: cp, error: e.message }; } }
       }
       const stackup = o.stackup ? readJson(o.stackup) : null;
-      const ibis = eng.json("kisi_cli_ibis_refs", pcb).map(([lib]) => {
-        const f = findLibrary(lib, dir);
-        if (!f) return { name: lib, error: "file not found" };
-        try { return { name: lib, text: fs.readFileSync(f, "utf8") }; } catch (e) { return { name: lib, error: e.message }; }
-      });
-      const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {}, ibis };
+      const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {} };
       const { plan } = eng.json("kisi_cli_project", inputs);
       var fieldInfo = null;
       if (plan.length) {
@@ -180,6 +158,7 @@ async function main(argv) {
       fs.writeFileSync(res.write.path, res.write.content);
       res = res.result;
     }
+    if (res && res._write) { fs.writeFileSync(path.resolve(res._write.path), res._write.content); res.written = res._write.path; delete res._write; }
     if (fieldInfo && res && typeof res === "object" && !Array.isArray(res)) res.field_solver_run = fieldInfo;
     console.log(JSON.stringify(res, null, 2));
     return 0;

@@ -25,5 +25,6 @@ for k, v in [("__VERSION__", version), ("__UPSTREAM_REV__", upstream_rev(root)),
     src = src.replace(k, v)
 assert "__SOLVER_SRC__" in src
 src = src.replace("__SOLVER_SRC__", json.dumps(solver_src))
+os.makedirs(os.path.dirname(out) or ".", exist_ok=True)  # dist/ is not in the repository
 open(out, "w", encoding="utf-8", newline="\n").write(src)
 print(f"{out}: {len(src) / 1e6:.2f} MB, {n} solver modules, version {version}")

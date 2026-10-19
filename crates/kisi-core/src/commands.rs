@@ -18,7 +18,7 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
   overview         stackup, impedance per net class (share within ±5 %, worst nets)
   interfaces       buses and device-to-device lanes with profiles   [--class CLASS=PROFILE]…
   net <NET>        one net: impedance along the path, loss, TDR, vias, crosstalk
-                   [--rise-ps 35] [--roughness smooth|hvlp|standard]
+                   [--rise-ps 35] [--roughness smooth|hvlp|standard] [--s2p FILE (Touchstone)]
   check            channel check of all lanes against interface profiles
                    [--class CLASS=PROFILE]… [--nets A,B] [--all] [--max 30]
   profiles [ID]    interface profiles (no board needed)
@@ -53,6 +53,8 @@ pub struct Opts {
     pub tree: Option<String>,
     pub pdn: Option<String>,
     pub out: Option<String>,
+    /// `net`: write the channel's S-parameters as Touchstone .s2p
+    pub s2p: Option<String>,
     pub formula: bool,
     pub field_time: Option<f64>,
     pub field_all: bool,
@@ -93,6 +95,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--tree" => o.tree = Some(val(&mut i, a)?),
             "--pdn" => o.pdn = Some(val(&mut i, a)?),
             "--out" => o.out = Some(val(&mut i, a)?),
+            "--s2p" => o.s2p = Some(val(&mut i, a)?),
             "--formula" => o.formula = true,
             "--field-time" => o.field_time = Some(num(val(&mut i, a)?, a)?),
             "--field-all" => o.field_all = true,
@@ -192,7 +195,15 @@ pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, 
         }
         "overview" => Ok(service::overview(proj()?)),
         "interfaces" => Ok(service::interfaces(proj()?, &profiles, &o.classes)),
-        "net" => service::net_detail(proj()?, &o.pos[1], &rf_params(o)?),
+        "net" => {
+            let (pr, rp) = (proj()?, rf_params(o)?);
+            let mut v = service::net_detail(pr, &o.pos[1], &rp)?;
+            if let Some(path) = &o.s2p {
+                // the front end writes the file and replaces "_write" by "written"
+                v["_write"] = json!({"path": path, "content": service::net_touchstone(pr, &o.pos[1], &rp)?});
+            }
+            Ok(v)
+        }
         "check" => {
             let mut v = service::channel_check(proj()?, &profiles, &o.classes, o.nets.as_deref(), &rf_params(o)?);
             let max = o.max.unwrap_or(30);

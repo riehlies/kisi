@@ -2,8 +2,8 @@
 
 kisi uses the quasi-static 2D field solver of **Henrik Forstén**,
 [github.com/Ttl/js_2d_fields](https://github.com/Ttl/js_2d_fields) (GPL-3.0),
-**unmodified**. It is vendored as a git submodule in `third_party/js_2d_fields`;
-the commit in use is the submodule pointer and is mirrored in `third_party/UPSTREAM_REV`.
+**unmodified**. A copy of its files is vendored in `third_party/js_2d_fields` (no git submodule);
+the upstream commit it was taken from is recorded in `third_party/UPSTREAM_REV`.
 
 ## How kisi talks to it
 
@@ -20,11 +20,11 @@ extract.rs: Params.field <── results ◄── {z0, eeff, zodd, zeven, …} 
   code. Every backend implements the same contract:
   `solveGeometry(text, {tol}) -> {ok, z0?, eeff?, zodd?, zeven?, eeff_odd?, eeff_even?, ms, error?}`.
   Another solver (a Rust port, a BEM solver, …) is added as `web/solver/backend_<name>.js`
-  and selected as `ENTRY` in `tools/bundle.py` / imported in `tools/solve_xs.mjs`.
+  and selected as `ENTRY` in `tools/solver_bundle.py` / imported in `tools/solve_xs.mjs`.
 * **One replaced build artifact.** Upstream imports `src/wasm_solver/solver.js`, an emscripten
   build of Eigen that is not in its repository. kisi provides the same module shape in
   `web/solver/sparse_module.js`, backed by `crates/kisi-sparse` (Rust, faer). The import is
-  redirected at bundle time (`tools/bundle.py`) and in node (`tools/upstream_hooks.mjs`);
+  redirected at bundle time (`tools/solver_bundle.py`) and in node (`tools/upstream_hooks.mjs`);
   no upstream file is changed.
 * Only the rectilinear (quasi-static) backend is used. The triangular full-wave backend needs
   Gmsh/OpenCascade/Spectra builds and is not bundled.
@@ -36,10 +36,11 @@ tools/upstream_update.sh            # latest upstream main
 tools/upstream_update.sh <commit>   # a specific commit
 ```
 
-The script checks out the revision, rebuilds, runs the field-solver validation
+The script copies the files of that upstream revision (`git archive`, unchanged) into
+`third_party/js_2d_fields`, rebuilds, runs the field-solver validation
 (HFSS/Ansys cases from upstream's own test suite and the ThunderScope cross-sections) and
-compares against `validation/field_baseline.json`. It stops on any failure; commit the
-submodule pointer and `third_party/UPSTREAM_REV` only when it passes.
+compares against `validation/field_baseline.json`. It stops on any failure; commit
+`third_party/js_2d_fields` and `third_party/UPSTREAM_REV` only when it passes.
 
 What an update can break, and where to fix it:
 
@@ -47,7 +48,7 @@ What an update can break, and where to fix it:
 |---|---|
 | `CustomGeometrySolver` options, `solve_adaptive` options or result fields | `web/solver/backend_forsten.js` |
 | geometry text syntax | `crates/kisi-si/src/xsgeom.rs` |
-| a new import of a build artifact (like `wasm_solver/solver.js`) | `REDIRECT` in `tools/bundle.py`, `tools/upstream_hooks.mjs` |
+| a new import of a build artifact (like `wasm_solver/solver.js`) | `REDIRECT` in `tools/solver_bundle.py`, `tools/upstream_hooks.mjs` |
 | `solve_sparse_multi` signature | `crates/kisi-sparse`, `web/solver/sparse_module.js` |
 
 ## License

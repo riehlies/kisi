@@ -426,9 +426,6 @@ pub struct CheckRow {
     pub error: Option<String>,
     /// false when no eye was computed (lane ends at a connector)
     pub eye: bool,
-    /// where the end models came from when not (only) from the profile (IBIS)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ends: Option<String>,
 }
 
 pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
@@ -451,7 +448,6 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
         warnings: 0,
         error: None,
         eye: true,
-        ends: None,
     }
 }
 

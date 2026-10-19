@@ -151,25 +151,6 @@ function runAnalysis(tParse) {
   renderFieldStatus();
 }
 
-// IBIS models (milestone M7b): files are kept by the engine across boards and matched
-// to the footprints' Sim.Library by file name; lanes are rebuilt because IBIS model
-// types can fix the direction
-function loadIbisTexts(list) {
-  const res = [];
-  for (const f of list) {
-    try { res.push(S.engine.ibisLoad(f.name, f.text)); } catch (e) { res.push({ name: f.name, ok: false, error: e.message }); }
-  }
-  S.ibisInfo = res.concat((S.ibisInfo || []).filter((x) => !res.some((y) => ibisKey(y.name) === ibisKey(x.name))));
-  if (S.scene && S.an) {
-    try { S.buses = S.engine.buses(anParams()); } catch (e) { console.warn(e); }
-    S.chCache = null;
-    if (S.laneRes) markCheckStale();
-    if (S.tab === "ch") { if (S.chMode === "o") renderChOverview(); else if (S.selNet >= 0) selectNet(S.selNet, false); }
-  }
-  return res;
-}
-const ibisKey = (n) => String(n).split(/[\\/]/).pop().toLowerCase();
-
 function estimateImpedances() {
   if (S.full) return;
   showBusy("Estimating impedances…");

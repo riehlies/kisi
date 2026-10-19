@@ -79,6 +79,9 @@ html = html.replace("__SPARSE_B64__", b64(sparse))
 # </script> inside module sources would end the script tag: escape
 html = html.replace("__SOLVER_SRC__", json.dumps(solver_src).replace("</", "<\\/"))
 html = html.replace("__UPSTREAM_REV__", upstream_rev)
+cargo = open(os.path.join(root, "Cargo.toml"), encoding="utf-8").read()
+html = html.replace("__VERSION__", re.search(r'^version\s*=\s*"([^"]+)"', cargo, re.M).group(1))
 html = html.replace("__SAMPLES__", json.dumps(samples))
+os.makedirs(os.path.dirname(out) or ".", exist_ok=True)  # dist/ is not in the repository
 open(out, "w", encoding="utf-8").write(html)
 print(f"{out}: {len(html) / 1e6:.2f} MB, {n_modules} solver modules")

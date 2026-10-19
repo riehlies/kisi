@@ -27,7 +27,7 @@ interface; data that changes (standards, component values) lives in files, not i
 | Crate | Contents | depends on |
 |---|---|---|
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, viewer scene, `num` | – |
-| `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,crosstalk}`, `via`, `eye`, `profile`, `topology` (device-to-device lanes), `ibis` (IBIS → linear ends, experimental – not working yet) | kisi-board |
+| `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,crosstalk}`, `via`, `eye`, `profile`, `topology` (device-to-device lanes) | kisi-board |
 | `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `pdn` (Z(f), plane model) | kisi-board, kisi-sparse |
 | `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `config` (`<board>.kisi.json`), `gaps` | the three above |
 | `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
@@ -52,8 +52,7 @@ viewer (via WASM) and CLI show the same result.
 * Files come in by drag and drop or the file dialog; with the File System Access API (Chromium) the viewer keeps
   the file handles and “Reload” reads them again after saving in KiCad.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
-  net class → profile assignment, power settings, lane directions. Loaded IBIS files and the results of the
-  last three boards stay in memory for the session.
+  net class → profile assignment, power settings, lane directions. The results of the last three boards stay in memory for the session.
 
 ## Data (`data/`)
 * `<board>.kisi.json` (next to the board, not in this repository) – per-board values with sources, see above.
@@ -63,7 +62,7 @@ viewer (via WASM) and CLI show the same result.
 * Example power trees: `web/samples/*_tree.json`.
 
 ## Field solver
-See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a submodule, one adapter, updates via
+See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third_party/UPSTREAM_REV`), one adapter, updates via
 `tools/upstream_update.sh` with a check against the baseline (`tools/validate_field.sh`).
 
 ## Board configuration and agents
@@ -81,4 +80,4 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a submodule, one adapte
 
 ## Checks after changes
 `cargo test --release` · `tools/validate_field.sh` (field solver against HFSS/baseline) ·
-headless tests of the views with Playwright (see `tools/shot*.py`) · `node dist/kisi.mjs` on a board.
+`python3 tools/check_viewer.py dist/kisi.html` (all views, light/dark/phone, no console errors) · `node dist/kisi.mjs` on a board.

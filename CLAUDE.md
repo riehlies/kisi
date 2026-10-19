@@ -25,8 +25,8 @@ projects and are shrunk with `tools/strip_pcb.py`.
 ## Checks before every commit
 * `cargo test --release`
 * `sh tools/validate_field.sh` (field solver against HFSS/baseline, needs node)
-* Viewer: open the bundled file headless in Chromium (Playwright), all three views,
-  light/dark/mobile, no console errors.
+* Viewer: `python3 tools/check_viewer.py dist/kisi.html` (headless Chromium: all three views,
+  light/dark/mobile, no console errors; `--board`/`--config` for builds without example boards).
 * CLI: `node dist/kisi.mjs` (e.g. `gaps`, `check`) on an example board; results match the native `kisi`
   with `--formula`.
 

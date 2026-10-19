@@ -11,7 +11,7 @@
 
 <div id="app">
   <div class="bar">
-    <div class="brand"><b>kisi</b><span id="boardName">–</span><small id="boardMeta"></small></div>
+    <div class="brand"><b title="kisi __VERSION__">kisi<span class="ver">v__VERSION__</span></b><span id="boardName">–</span><small id="boardMeta"></small></div>
     <div class="grow"></div>
     <div class="seg" role="group" aria-label="Analysis">
       <button id="view-si" aria-pressed="true">Impedance</button>
@@ -38,8 +38,7 @@
     </div>
     <button class="btn" id="reload" hidden title="Read the same files again (after saving in KiCad)">Reload</button>
     <label class="btn primary" for="file" id="load-files">Load files</label>
-    <input type="file" id="ibis-file" accept=".ibs" multiple hidden>
-    <input type="file" id="file" accept=".kicad_pcb,.kicad_pro,.json,.ibs" multiple hidden>
+    <input type="file" id="file" accept=".kicad_pcb,.kicad_pro,.json" multiple hidden>
   </div>
 
   <aside class="side">
@@ -202,7 +201,7 @@
     <section class="detail" id="pi-detail" hidden aria-live="polite"></section>
     <section class="balance" id="pi-balance" hidden aria-label="Power tree"></section>
     <section class="balance" id="ch-overview" hidden aria-label="Interfaces"></section>
-    <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro, &lt;board&gt;.kisi.json, .ibs or kipida_config.json here</div>
+    <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro, &lt;board&gt;.kisi.json or kipida_config.json here</div>
     <div class="busy" id="busy">Loading engine…</div>
   </main>
 </div>

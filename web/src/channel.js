@@ -209,7 +209,7 @@ function checkItems() {
     for (const n of [...l.nets, ...l.partner_nets]) onLane.add(n);
     if (!CHECKABLE.has(l.kind)) continue;
     const net = laneNet(l), t = classTarget(net), p = laneProfile(l);
-    out.push({ lane: l.nets[0], to: l.ends[l.ends.length - 1].refdes, reversed: laneReversed(l), laneKey: laneKey(l), net, gbps: p.rate_gbps, target: t ? [t.z, t.diff] : null, tx: p.tx, rx: p.rx, rise: p.tx.rise_ps * 1e-12, ibis: useIbis() });
+    out.push({ lane: l.nets[0], to: l.ends[l.ends.length - 1].refdes, reversed: laneReversed(l), laneKey: laneKey(l), net, gbps: p.rate_gbps, target: t ? [t.z, t.diff] : null, tx: p.tx, rx: p.rx, rise: p.tx.rise_ps * 1e-12 });
   }
   // nets with a target that are not part of a device-to-device lane (no devices found)
   for (const st of S.an.nets) {
@@ -295,14 +295,14 @@ function renderCheck() {
 }
 
 function renderEye(body, r) {
-  const ch = r.channel, e = r.eye, p = r.profile, v = endsView(r);
+  const ch = r.channel, e = r.eye, p = r.profile;
   if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "no channel")}</p>`; return; }
   if (!e || e.error) { body.innerHTML = `<p class="err">${esc(e?.error || "no eye diagram")}</p>`; return; }
   const g = p.rate_gbps, uiPct = (x) => fmt(100 * x / e.ui_ps, 0);
   const warn = (e.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
   body.innerHTML = `<div class="dstats"><span>${fmt(g, g < 1 ? 2 : g % 1 ? 2 : 0)} Gbit/s NRZ, PRBS7</span><span>UI ${fmt(e.ui_ps, 1)} ps</span><span>DC level ${fmt(e.dc * 100, 0)} % of swing</span></div>
-    <div class="dstats"><span>Eye height <b>${fmt(e.height * 100, 0)} %</b> = ${fmt(e.height * v.tx.swing_mv, 0)} mV${ch.diff ? " differential" : ""}</span><span>Eye width <b>${fmt(e.width_ps, 1)} ps</b> (${uiPct(e.width_ps)} % UI)</span><span>ISI total <b>${fmt(e.isi_sum * 100, 0)} %</b></span></div>
+    <div class="dstats"><span>Eye height <b>${fmt(e.height * 100, 0)} %</b> = ${fmt(e.height * p.tx.swing_mv, 0)} mV</span><span>Eye width <b>${fmt(e.width_ps, 1)} ps</b> (${uiPct(e.width_ps)} % UI)</span><span>ISI total <b>${fmt(e.isi_sum * 100, 0)} %</b></span></div>
     <div class="chart"><canvas id="ch-eye" style="height:220px" aria-label="Eye diagram"></canvas></div>
-    <p class="note">Single-bit response of the channel between transmitter (${ohmEnd(v.tx.r)}, edge ${fmt(v.tx.rise_ps, 0)} ps${v.txI ? ", IBIS linearised" : ""}) and receiver (${v.rx.r > 0 ? ohmEnd(v.rx.r) : "high impedance"}${v.rxI ? ", IBIS linearised" : ""}), PRBS7 superposed linearly. 100 % = transmit swing (at the receiver termination; open circuit for a high-impedance receiver). No equalisation, jitter or noise.${ch.diff ? " Differential: odd mode." : ""}</p>${warn}`;
+    <p class="note">Single-bit response of the channel between transmitter (${fmt(p.tx.r, 0)} Ω, edge ${fmt(p.tx.rise_ps, 0)} ps) and receiver (${p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "high impedance"}), PRBS7 superposed linearly. 100 % = transmit swing (at the receiver termination; open circuit for a high-impedance receiver). No equalisation, jitter or noise.${ch.diff ? " Differential: odd mode." : ""}</p>${warn}`;
   drawEye($("ch-eye"), e);
 }

@@ -63,8 +63,6 @@ in the output shows the coverage; `--formula` skips the solver.
 - Parasitics of series parts and terminations are estimates per package; the transmit direction is a
   guess (termination next to the receiver) and can be wrong.
 - Values from kisi.json carry sources; when a result depends on an `estimate` or `assumption`, say so.
-- IBIS ends (`end_models`, `ibis_files`) are experimental and not working yet: report such results as
-  unvalidated.
 - Quote numbers with units and name the profile used for each interface.
 
 ## Working with other KiCad tools

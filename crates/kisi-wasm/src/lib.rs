@@ -23,8 +23,6 @@ struct State {
     params: Option<Params>,
     /// device-to-device lanes of the board (topology), from `kisi_buses`
     buses: Option<Vec<kisi_core::topology::Bus>>,
-    /// IBIS files loaded in this session (kept across boards), see `kisi_ibis_load`
-    ibis: kisi_core::topology::IbisLibs,
 }
 
 thread_local! {
@@ -469,70 +467,12 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
                 };
                 let cd = kisi_core::topology::ComponentData::builtin();
                 let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
-                let none = kisi_core::topology::IbisLibs::default();
-                let libs = if item["ibis"].as_bool() == Some(false) { &none } else { &st.ibis };
-                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, &cd, libs)).unwrap());
+                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, &cd)).unwrap());
                 continue;
             }
             rows.push(serde_json::to_value(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise))).unwrap());
         }
         Ok(serde_json::to_string(&rows).unwrap())
-    });
-    match r {
-        Ok(s) => {
-            set_out(s);
-            0
-        }
-        Err(e) => {
-            set_out(e);
-            1
-        }
-    }
-}
-
-/// Load an IBIS file. Input: {"name": file name, "text": contents}. Output: summary
-/// {name, ok, error, version, components, models}. Files are kept across boards and
-/// matched to Sim.Library by file name; call kisi_buses again afterwards.
-#[no_mangle]
-pub extern "C" fn kisi_ibis_load(p: *const u8, n: usize) -> i32 {
-    let txt = input(p, n);
-    let r = ST.with(|st| -> Result<String, String> {
-        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
-        let name = v["name"].as_str().ok_or("name missing")?;
-        let text = v["text"].as_str().ok_or("text missing")?;
-        let info = st.borrow_mut().ibis.add(name, text);
-        Ok(serde_json::to_string(&info).unwrap())
-    });
-    match r {
-        Ok(s) => {
-            set_out(s);
-            0
-        }
-        Err(e) => {
-            set_out(e);
-            1
-        }
-    }
-}
-
-/// IBIS files: referenced by the board ({library, devices, loaded, error}) and loaded.
-#[no_mangle]
-pub extern "C" fn kisi_ibis_status() -> i32 {
-    let r = ST.with(|st| -> Result<String, String> {
-        let st = st.borrow();
-        let b = st.board.as_ref().ok_or("no board loaded")?;
-        let refs: Vec<serde_json::Value> = kisi_core::topology::ibis_libraries(b)
-            .into_iter()
-            .map(|(lib, devs)| {
-                let (loaded, error) = match st.ibis.get(&lib) {
-                    None => (false, None),
-                    Some(Ok(_)) => (true, None),
-                    Some(Err(e)) => (false, Some(e.clone())),
-                };
-                serde_json::json!({"library": lib, "file": kisi_core::topology::IbisLibs::key(&lib), "devices": devs, "loaded": loaded, "error": error})
-            })
-            .collect();
-        Ok(serde_json::json!({"referenced": refs, "loaded": st.ibis.info()}).to_string())
     });
     match r {
         Ok(s) => {
@@ -558,17 +498,10 @@ pub extern "C" fn kisi_buses(p: *const u8, n: usize) -> i32 {
         let b = st.board.as_ref().ok_or("no board loaded")?;
         let sk = kisi_core::extract::skeleton(b, &params);
         let cd = kisi_core::topology::ComponentData::builtin();
-        let mut buses = kisi_core::topology::buses(b, &sk, &cd);
-        kisi_core::topology::apply_ibis_direction(&mut buses, &st.ibis);
-        // per lane: IBIS state of each end (null: the device has no IBIS fields)
-        let mut js = serde_json::to_value(&buses).unwrap();
-        for (bj, bus) in js.as_array_mut().unwrap().iter_mut().zip(&buses) {
-            for (lj, lane) in bj["lanes"].as_array_mut().unwrap().iter_mut().zip(&bus.lanes) {
-                lj["ibis"] = serde_json::to_value(lane.ends.iter().map(|e| kisi_core::topology::ibis_end(e, &st.ibis)).collect::<Vec<_>>()).unwrap();
-            }
-        }
+        let buses = kisi_core::topology::buses(b, &sk, &cd);
+        let js = serde_json::to_string(&buses).unwrap();
         st.buses = Some(buses);
-        Ok(js.to_string())
+        Ok(js)
     });
     match r {
         Ok(s) => {
@@ -605,11 +538,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
         let end = |k: &str| v[k].as_object().and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(v[k].clone()).ok());
         let rev = v["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
         let cd = kisi_core::topology::ComponentData::builtin();
-        // end models: IBIS where loaded (unless "ibis": false), else the profile's
-        let none = kisi_core::topology::IbisLibs::default();
-        let libs = if v["ibis"].as_bool() == Some(false) { &none } else { &st.ibis };
-        let le = kisi_core::topology::lane_ends(lane, rev, libs, (end("tx"), end("rx"), v["eye_rise"].as_f64()));
-        let ep = v["bitrate"].as_f64().map(|br| kisi_core::topology::EyeSpec { bitrate: br, rise: le.rise.unwrap_or(rp.rise), prbs: v["prbs"].as_u64().unwrap_or(7) as u32, tx: le.tx, rx: le.rx, rx_odt: le.rx_ibis });
+        let ep = v["bitrate"].as_f64().map(|br| (br, v["eye_rise"].as_f64().unwrap_or(rp.rise), v["prbs"].as_u64().unwrap_or(7) as u32, end("tx"), end("rx")));
         let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, &cd) {
             Ok(ev) => {
                 let eye = match ev.eye {
@@ -618,12 +547,11 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
                     None => serde_json::Value::Null,
                 };
                 let skew = ev.skew.map(|(ps, mm, pn, unc)| serde_json::json!({"partner": pn, "skew_ps": ps, "skew_mm": mm, "uncertain": unc}));
-                let swing = kisi_core::topology::ibis_swing_mv(&le, ev.rx_used, ev.ch.diff);
                 serde_json::json!({"channel": ev.ch, "error": null, "touchstone": kisi_core::rf::touchstone(&ev.ch), "eye": eye, "skew": skew,
-                    "rx_used": ev.rx_used, "rx_note": ev.rx_note, "reversed": rev, "ends": le, "swing_mv": swing,
+                    "rx_used": ev.rx_used, "rx_note": ev.rx_note, "reversed": rev,
                     "crosstalk": kisi_core::rf::crosstalk(b, an, lane.nets[0], &params.field, &rp)})
             }
-            Err(e) => serde_json::json!({"channel": null, "error": e, "ends": le, "crosstalk": {"aggressors": [], "geoms": []}}),
+            Err(e) => serde_json::json!({"channel": null, "error": e, "crosstalk": {"aggressors": [], "geoms": []}}),
         };
         Ok(out.to_string())
     });
@@ -734,15 +662,8 @@ pub extern "C" fn kisi_cli_parse(p: *const u8, n: usize) -> i32 {
     })())
 }
 
-/// IBIS files named in a board's footprints: [[Sim.Library, [refdes…]], …].
-#[no_mangle]
-pub extern "C" fn kisi_cli_ibis_refs(p: *const u8, n: usize) -> i32 {
-    let txt = input(p, n);
-    reply(load_pcb(&txt).map_err(|e| e.to_string()).map(|b| serde_json::to_string(&kisi_core::topology::ibis_libraries(&b)).unwrap()))
-}
-
 /// Build the project. Input: {"opts", "pcb_path", "pcb", "pro", "config": {"path", "text"|null, "error"|null} | null,
-/// "stackup", "field": {id: FieldResult}, "ibis": [{"name", "text"|null, "error"|null}]}.
+/// "stackup", "field": {id: FieldResult}}.
 /// Output: {"plan": [[id, text, weight], …]} – the cross-sections the field solver should solve.
 #[no_mangle]
 pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
@@ -760,21 +681,6 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
             };
             (path, r)
         });
-        let ibis = v["ibis"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .map(|e| {
-                        let name = e["name"].as_str().unwrap_or("").to_string();
-                        let r = match e["text"].as_str() {
-                            Some(t) => Ok(t.to_string()),
-                            None => Err(e["error"].as_str().unwrap_or("file not found").to_string()),
-                        };
-                        (name, r)
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
         let inp = kisi_core::service::Inputs {
             pcb_path: std::path::PathBuf::from(s("pcb_path").unwrap_or_default()),
             pcb: s("pcb").ok_or("pcb missing")?,
@@ -782,7 +688,6 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
             config,
             stackup: serde_json::from_value(v["stackup"].clone()).ok(),
             field: serde_json::from_value(v["field"].clone()).unwrap_or_default(),
-            ibis,
         };
         let proj = kisi_core::service::Project::from_texts(inp)?;
         let plan = kisi_core::commands::field_plan(&proj, &o);

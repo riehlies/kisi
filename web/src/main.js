@@ -3,15 +3,6 @@
 // files
 async function handleFiles(files) {
   files = [...files];
-  const ibs = files.filter((f) => /\.ibs$/i.test(f.name));
-  if (ibs.length) {
-    const list = await Promise.all(ibs.map(async (f) => ({ name: f.name, text: await f.text() })));
-    const res = loadIbisTexts(list);
-    const bad = res.filter((r) => !r.ok);
-    $("warnings").innerHTML = bad.map((r) => `<span class="err">${esc(r.name)}: ${esc(r.error)}</span>`).join("<br>");
-    if (files.length === ibs.length) return;
-    files = files.filter((f) => !ibs.includes(f));
-  }
   const pcb = files.find((f) => f.name.endsWith(".kicad_pcb"));
   const pro = files.find((f) => f.name.endsWith(".kicad_pro"));
   // <board>.kisi.json: board configuration with sources; other .json: KiPIDA configuration
@@ -33,7 +24,7 @@ async function handleFiles(files) {
     try { S.engine.loadPro(await pro.text()); S.scene = S.engine.scene(); runAnalysis(); } catch (e) { $("warnings").innerHTML = `<span class="err">Project file: ${esc(e.message)}</span>`; }
     return;
   }
-  if (!pcb) { $("warnings").innerHTML = `<span class="err">Please choose a .kicad_pcb file (optionally also the .kicad_pro for net classes and .ibs files for IBIS models).</span>`; return; }
+  if (!pcb) { $("warnings").innerHTML = `<span class="err">Please choose a .kicad_pcb file (optionally also the .kicad_pro for net classes and the board's .kisi.json).</span>`; return; }
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
   await loadFiles(await pcb.text(), pro ? await pro.text() : null, pcb.name.replace(/\.kicad_pcb$/, ""));
 }
@@ -78,8 +69,8 @@ window.addEventListener("drop", (e) => {
     if (hp.some(Boolean) && files.some((f) => /\.kicad_pcb$/i.test(f.name))) { if (!(await rememberHandles(await Promise.all(hp)))) { S.fileHandles = null; $("reload").hidden = true; } }
     else if (files.some((f) => /\.kicad_pcb$/i.test(f.name))) { S.fileHandles = null; $("reload").hidden = true; }
     else if (S.fileHandles && hp.some(Boolean)) {
-      // a configuration or IBIS file dropped later: reload reads it too
-      const extra = (await Promise.all(hp)).filter((h) => h && h.kind === "file" && /\.(kisi\.json|ibs)$/i.test(h.name));
+      // a configuration file dropped later: reload reads it too
+      const extra = (await Promise.all(hp)).filter((h) => h && h.kind === "file" && /\.kisi\.json$/i.test(h.name));
       S.fileHandles = S.fileHandles.filter((h) => !extra.some((x) => x.name === h.name)).concat(extra);
     }
     await handleFiles(files);

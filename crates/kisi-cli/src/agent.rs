@@ -8,7 +8,7 @@ use kisi_core::service::{self, Project};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
-pub use commands::{COMMANDS, HELP};
+pub use commands::HELP;
 
 fn read(p: &str) -> Result<String, String> {
     std::fs::read_to_string(p).map_err(|e| format!("{p}: {e}"))
@@ -47,6 +47,12 @@ fn run(o: &Opts) -> Result<Value, String> {
         }
         std::fs::write(&path, serde_json::to_string_pretty(&v).unwrap()).map_err(|e| format!("{}: {e}", path.display()))?;
         v = commands::report_summary(&path.display().to_string(), &v);
+    }
+    // files a command asks to write (e.g. `net --s2p`)
+    if let Some(w) = v.as_object_mut().and_then(|m| m.remove("_write")) {
+        let (path, content) = (w["path"].as_str().unwrap_or(""), w["content"].as_str().unwrap_or(""));
+        std::fs::write(path, content).map_err(|e| format!("{path}: {e}"))?;
+        v["written"] = json!(path);
     }
     if commands::uses_field(&o.cmd) && !o.formula {
         v["field_solver_note"] = json!("native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver");

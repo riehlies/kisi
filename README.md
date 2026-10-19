@@ -1,154 +1,86 @@
 # kisi – signal and power integrity checks for KiCad
 
-kisi extracts trace impedances from KiCad layouts (`.kicad_pcb` + `.kicad_pro`) and shows them as a colour map,
-together with loss, TDR, vias, crosstalk, an eye diagram per interface profile, DC IR drop and PDN impedance.
-The core is written in Rust and runs as WebAssembly in the browser and as a native CLI. Licence: GPL-3.0-only.
+kisi reads a KiCad layout (`.kicad_pcb` + `.kicad_pro`) and checks trace impedance, high-speed channels
+(loss, return loss, TDR, vias, crosstalk, skew, eye) and power delivery (regulator chain, DC IR drop,
+PDN impedance). It is a design check (impedance target ±5 %), not sign-off. Licence: GPL-3.0-only.
 
-kisi is meant as a design check (target ±5 %), not as sign-off.
+## Quick start
+Each release on GitHub has two files:
 
-Structure and update rules: `ARCHITECTURE.md`. Three ways in, each one file from the GitHub release: the viewer
-`kisi.html` (open in a browser), the command line `kisi.mjs` (Node.js ≥ 18, JSON output for scripts and agents,
-with the 2D field solver), and two agent skills in `claude-plugin/` (prepare a board, review it).
+- **`kisi.html` – the viewer.** Open it in a browser and drop the `.kicad_pcb` (with the `.kicad_pro` for net
+  classes, optionally `<board>.kisi.json`). Nothing is installed; the board is processed in the browser and never
+  uploaded (the page only fetches web fonts). In Chromium-based
+  browsers “Reload” reads the same files again after saving in KiCad.
+- **`kisi.mjs` – the command line** for scripts and agents (Node.js ≥ 18):
+  ```sh
+  node kisi.mjs help
+  node kisi.mjs gaps   board.kicad_pcb     # what the analyses miss
+  node kisi.mjs check  board.kicad_pcb     # channel check of all interfaces
+  ```
+  Every command prints JSON and states the models and assumptions it used.
+- **Agent skills** (`claude-plugin/`, Claude Code: `/plugin marketplace add riehlies/kisi`): *kisi-prepare*
+  finds missing data and researches it from datasheets into `<board>.kisi.json`; *kisi-si-pi-review* runs the checks.
 
-## Workflow in the viewer
-1. Load a board: drop or choose `.kicad_pcb`, optionally `.kicad_pro` (net classes), `<board>.kisi.json` (values with
-   sources, see below), `kipida_config.json`. In Chromium-based browsers “Reload” reads the same files again after
-   saving in KiCad.
-2. The fast analysis runs immediately: impedance by formula, DC IR drop of all configured rails.
-3. Start the field solver for the selected net, one net class, all nets with a target, or everything.
-4. **Impedance** view: line analysis (impedance, loss, TDR, vias, crosstalk) against a reference resistance.
-   **Channel** view: “Interfaces” overview of all buses and device-to-device lanes (through series resistors
-   and AC-coupling capacitors, with terminations), interface profile per net class (PCIe, USB, DDR, … from
-   `data/interfaces.json`), transmitter and receiver (profile or linearised IBIS model), limits – eye from IC to IC,
-   board share for lanes ending at a connector.
-   **Power** view: IR drop, power budget, Z(f).
-5. Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer (stored in the browser; the file is not changed;
-   viewer edits take precedence over kisi.json).
-   Field solver results are cached in the browser (IndexedDB) across boards; key = solver version + geometry.
+## Viewer
+Three views, each starting with what the board file gives and computing more on demand:
+1. **Impedance** – stackup and target impedances first; “Estimate impedances” (formulas), then the 2D field solver
+   (selected net, a class, all nets with a target, or everything; results cached in the browser). Per net:
+   impedance along the path, loss, TDR, vias, crosstalk.
+2. **Channel** – interfaces overview: buses and device-to-device lanes through series resistors and AC-coupling
+   capacitors, with terminations and branches; per net class an interface profile (PCIe, USB, DDR, LVDS, …
+   from `data/interfaces.json`) with transmitter, receiver and limits. Eye only from IC to IC; lanes ending at a
+   connector are judged on the board share (loss, return loss, skew).
+3. **Power** – power tree and budget first; then voltage drop and current density per rail, and Z(f).
 
-## DC IR drop (power)
-- The copper of a net is rasterised per layer (zones, tracks, pads); vias and through-hole pads connect the layers
-  (barrel resistance with 25 µm copper). Source pads sit at the nominal voltage, load pads draw their current.
-- Result: voltage and current density per layer, voltage at every load, source and via currents, power loss.
-- Loads in KiCad: a field on the footprint (add it in the schematic; it reaches the board on update)
-  - `PI_LOAD` = `+1V0=2.5A, +1V8=300mA` or `+1V0=2W` (power → current via the nominal voltage)
-  - `PI_SOURCE` = `+3V3` or `+3V3=3.3V` for regulator outputs and supply inputs
-- Otherwise the nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`, `+1.2V`).
-- KiPIDA: `kipida_config.json` is read; regulators become loads on their input rail.
-- CLI: `kisi board.kicad_pcb --pi` (fields), `--pi-config kipida_config.json` or a JSON rail list; `--rails` lists supply nets.
-- Validation: copper strip against R = ρL/(wt), deviation ≤ 2.5 % (test `strip_resistance`).
+Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer; edits are stored in the browser, the
+files are not changed. Results of the last three boards stay in memory while switching.
 
-## Power tree and power budget
-- `web/samples/ts_tree.json`, `web/samples/vna_tree.json`: regulator chains of ThunderScope and LibreVNA, reconstructed
-  from the netlist. Elements: `input`, `buck`, `boost`, `ldo` (quiescent current `iq`), `inverter`, `pass` (shunt/ferrite
-  with `r`); loads per component and net with current and basis (`datasheet` or `estimate`).
-- `crates/kisi-pi/src/tree.rs`: works from the loads back to the inputs and returns currents, losses per regulator,
-  power per component (exact balance: input = consumption + losses) and the sources/loads of every rail for the IR drop.
-- CLI: `kisi board.kicad_pcb --pi-tree web/samples/ts_tree.json`
-- Viewer: Power → Power budget; currents are editable there (stored in the browser).
+## Command line
+`node kisi.mjs <command> <board.kicad_pcb> [options]`
 
-### Regulator chains directly in KiCad: field `PI_REG`
-Add a field `PI_REG` to the regulator, supply input or pass element (ferrite, shunt) in the schematic; it reaches
-the board on update. Separate several channels of one IC with `;`:
-
-| Example | Meaning |
+| Command | Result |
 |---|---|
-| `+12V input` | supply input (connector) |
-| `+12V > +5V buck 90% 3A out=L3` | switching regulator, efficiency, rated current, part carrying the output current |
-| `+5V > +3V3 ldo iq=2mA 1A` | linear regulator with quiescent current |
-| `+3V3 > +3V3A pass r=0.05` | ferrite / shunt with series resistance (Ω) |
-| `+5V > -5V inverter 70%` | inverting converter |
-| `+5V > VCORE@0.9V buck 85% id=U4A` | rail without a voltage in its name (`@`), own id per channel |
+| `overview` | stackup, impedance per net class (share within ±5 %, worst nets) |
+| `interfaces` | buses and device-to-device lanes with their profiles |
+| `net <NET>` | impedance along the path, loss, TDR, vias, crosstalk; `--s2p FILE` writes Touchstone |
+| `check` | channel check against the profiles (`--class CLASS=PROFILE`, `--nets A,B`, `--all`) |
+| `power` | regulator chain, budget, DC IR drop per rail (`--pdn RAIL` adds Z(f)) |
+| `report` | everything into `analysis/kisi.json` next to the board |
+| `gaps` | missing or default data, where to find it, how to write it into `<board>.kisi.json` |
+| `config-check`, `config-template` | check / start a `<board>.kisi.json` |
+| `profiles [ID]` | the interface profiles |
 
-`->` or `→` work instead of `>`. Loads come from `PI_LOAD` (`+1V0=2.5A, +1V8=300mA` or `+1V0=2W`).
-If `PI_REG` fields exist, they replace the example tree in the viewer; “As KiCad fields” in the power view prints the
-current tree in this form. CLI: `kisi board.kicad_pcb --pi-tree fields`.
-`tools/tree_to_fields.py` writes a JSON tree as fields into a copy of the board (migration; test: both example boards
-give the same budget with the fields as with the JSON tree).
+`overview`, `net`, `check` and `report` run the field solver for the cross-sections of nets with a target, the most
+routed length first, within `--field-time` seconds (default 120). Results are cached
+(`~/.cache/kisi`, Windows `%LOCALAPPDATA%\kisi`), so later runs are fast; `field_solver` in the output shows the
+coverage, `--formula` skips the solver. A native build (`cargo install --path crates/kisi-cli`) accepts the same
+commands with formula impedances only.
 
-## PDN impedance Z(f)
-- `crates/kisi-pi/src/pdn.rs`: lumped model per rail – regulator (R + L) ∥ plane capacitance (zone area over the
-  nearest ground layer) ∥ all capacitors between rail and ground. Value from the component value (`100n`, `4u7`,
-  `10µF/6.3V`), package from the pad spacing, ESR/ESL estimated, mounting inductance through the vias to the plane,
-  spreading inductance to the load centroid.
-- Plane model from 1 MHz: the largest area of the rail as a grid (up to 2500 cells) over ideal ground, μ0·d per square,
-  ε·A/d per cell, capacitors and regulator at their positions, solved with a complex band LU per frequency.
-  Shows the influence of the shape and resonances (test: 50 × 30 mm rectangle, first resonance within 3 %).
-- Target impedance = 3 % of the voltage / (50 % of the load current); evaluated up to 100 MHz or the first cavity resonance.
-- CLI: `kisi board.kicad_pcb --pi-tree web/samples/ts_tree.json --pdn +1V0`; viewer: Power → rail → “Impedance Z(f)”.
+## Information kisi takes from KiCad
+- **Target impedance** from net class names: `50Z`, `90Z_Diff`, `100Z_Diff`, … (or `<board>.kisi.json`).
+- **Interface profile** automatically from net and class names (rules in `data/interfaces.json`), or per class.
+- **Power** – fields on the symbol, copied to the footprint on “Update PCB from schematic”:
 
-## RF: channel, loss, TDR, crosstalk, vias, eye
-- `crates/kisi-si/src/rf/`: frequency-dependent RLGC per cross-section, from the field solver (R, L, G, C at 1 GHz)
-  or from formulas. Skin effect after Wheeler (incremental inductance), roughness after Huray (smooth / HVLP / standard ED,
-  presets estimated), dielectric after Djordjevic-Sarkar from the stackup εr and tanδ, microstrip dispersion.
-- Channel of a net: longest path through the track graph (layers joined only by vias / through-hole pads),
-  ABCD cascade → S21/S11 (odd mode / Sdd for pairs), Touchstone `.s2p`, TDR from S11 with a Gaussian edge.
-- `crates/kisi-si/src/via.rs`: a via as a stack of coaxial sections per layer; outer conductor = clearance (antipad)
-  measured in the zone fills; for pairs the Wheeler formula for a shielded symmetric pair. Stubs as open lines
-  (quarter-wave resonance), back-drill from KiCad 10 (`backdrill`) or global. Reference plane change: inductance to
-  the nearest stitching via; warning if there is none within 5 mm or the reference changes to another net.
-- Crosstalk: neighbouring lines on the same layer (parallel, up to 5 h away), NEXT/FEXT from the L/C coupling matrix
-  of the field solver or Kirschning-Jansen/Cohn; field solver scope “selected net” includes the coupled cross-sections.
-- Eye diagram (`crates/kisi-si/src/eye.rs`): PRBS7 NRZ from the single-bit response between the profile's linear
-  transmitter and receiver (R, C, package L per line), no equalisation, jitter or noise. CLI: `--rf <net> --eye 16` (Gbit/s).
-- Channel check: all nets with a target impedance (one row per pair) with loss at Nyquist, return loss, eye
-  height/width, intra-pair skew and via stub resonance; traffic light against the profile limits. The verdict logic
-  (`kisi_si::profile::judge`) is shared by viewer and CLI.
-- CLI: `kisi board.kicad_pcb board.kicad_pro --rf <net suffix> [--s2p out_{}.s2p]`
-- Accuracy: line RLGC against HFSS ≤ 2 %; via impedance is an estimation model (about ±15 %), not a 3D result.
+| Field | Example | Meaning |
+|---|---|---|
+| `PI_REG` | `+12V input` | supply input (connector) |
+| | `+12V > +5V buck 90% 3A out=L3` | switching regulator: efficiency, rated current, part carrying the output |
+| | `+5V > +3V3 ldo iq=2mA 1A` | linear regulator with quiescent current |
+| | `+3V3 > +3V3A pass r=0.05` | ferrite or shunt with series resistance (Ω) |
+| | `+5V > VCORE@0.9V buck 85% id=U4A` | rail without a voltage in its name; several channels of one IC with `;` |
+| `PI_LOAD` | `+1V0=2.5A, +1V8=300mA` or `+1V0=2W` | load current per rail |
+| `PI_SOURCE` | `+3V3` | source pads for the IR drop when there is no regulator chain |
 
-## Device-to-device lanes (M7)
-- `crates/kisi-si/src/topology.rs`: nets with a target impedance are followed through two-pin passives – series
-  resistors up to 100 Ω, AC-coupling capacitors from 1 nF, small inductors – to the pins of ICs and connectors.
-  Passives to ground/supply or across a pair are terminations; DNP parts are skipped. Lanes with the same end
-  devices and net class form a bus. A line with one IC between two connectors (population options) gives one lane
-  per connector with the other side as an open branch.
-- Lane channel: copper of each net from pin to pad (path between those points), series parts with estimated
-  package parasitics (`data/components.json`: ESL, pad capacitance, capacitor ESR), terminations, open branches.
-  Loss, return loss and TDR describe the interconnect without terminations; the eye uses a termination next to
-  the receiver as the receiver's termination. Direction: receiver = end next to a termination, else the second
-  end (swappable in the viewer).
-- Eye only from IC to IC; lanes ending at a connector get the board share (loss, return loss, skew).
-- CLI: `kisi interfaces board.kicad_pcb`, `kisi check board.kicad_pcb` (JSON); `kisi board.kicad_pcb --buses` (text).
-
-## IBIS models as channel ends (M7b) – experimental, not working yet
-> **Status: not working yet.** The parser and the linearisation are in place, but neither the selection of the
-> right IBIS model per pin nor the interplay with the signal standards (profiles) is validated. Results with IBIS
-> ends must not be relied on; this milestone is parked and will be reworked.
-
-- Source: KiCad's simulation fields of a symbol, copied to the footprint on “Update PCB”: `Sim.Device` = `IBIS`,
-  `Sim.Library` (the .ibs file), `Sim.Name` (component in the file), optionally `Sim.Ibis.Model` (entry of a
-  [Model Selector], e.g. the ODT variant). The pad number of a lane end is looked up in the component's [Pin] table.
-- `crates/kisi-si/src/ibis.rs` reduces a pin to the linear end model of the eye (typical corner):
-  transmitter = pull-up/pull-down I-V curves linearised at the [Ramp] load (Thevenin resistance and swing),
-  edge from [Ramp] (20–80 % → 10–90 %); receiver = conductance of the clamp curves and [Rgnd]/[Rpower] at mid supply
-  (on-die termination or high impedance); C_comp + C_pin/C_pkg, L_pin/L_pkg. Waveform tables, IBIS-AMI and package
-  models are not evaluated – the result is marked as an estimate.
-- Ends with a model replace the profile's transmitter/receiver; an on-die termination stays in parallel with a
-  termination resistor at the receiver. IBIS model types (Output/Input) also set the lane direction.
-- Files: in the viewer they are dropped or loaded with “Load .ibs files…” (Interfaces overview). The CLI finds them
-  like KiCad (`${KIPRJMOD}`, relative to the board, else by file name below the board folder). `kisi file.ibs` lists the linear model of
-  every signal pin; `kisi board.kicad_pcb --buses --ibis extra.ibs` adds files.
-
-## Field solver
-- Quasi-static 2D field solver: js_2d_fields by Henrik Forstén, included unmodified (see `UPSTREAM.md`).
-- Every cross-section is written as a geometry text (`crates/kisi-si/src/xsgeom.rs`) and solved by the backend.
-- Linear solver in Rust (`crates/kisi-sparse`, faer) replaces the unpublished Eigen/emscripten module.
-- The viewer solves in the background on several threads, most important cross-sections first; formula values as start values.
-- Validation: ≤ 1.5 % against HFSS/Ansys cases, ≤ 0.3 % against Forstén's microstrip/stripline solver on ThunderScope cross-sections.
-
-## Board model
-- Parser for KiCad 9/10 (stackup incl. sub-layers, tracks, arcs, vias, pads, zone fills, net classes).
-- Cross-section detection along every line: reference planes (also across gaps/clearances), coplanar ground, diff partner.
-- Analytic impedance: Hammerstad-Jensen, Wheeler, Wadell CPWG, IPC-2141 (diff).
-- Target impedance from net class names (`50Z`, `100Z_Diff`, …) or interface assumptions, editable in the viewer.
+  The nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`). A `kipida_config.json` (KiPIDA) can be
+  dropped into the viewer as well.
 
 ## Board configuration `<board>.kisi.json`
-Values the board file lacks or holds only as KiCad defaults, each with its source; kisi never writes into the
-KiCad files. Read by the CLI (next to the board, or `--config`) and the viewer (drop it with the board).
+Values the board file lacks or holds only as KiCad defaults, each with its source. kisi never writes into the
+KiCad files; CLI and viewer lay this file over the board.
 ```json
 {
   "kisi_config": 1,
+  "board": "board.kicad_pcb",
   "stackup": {"dielectrics": [{"index": 0, "epsilon_r": 3.65, "loss_tangent": 0.0095,
                                "source": {"kind": "datasheet", "document": "Isola FR408HR", "page": "2", "note": "10 GHz, typical"}}]},
   "net_classes": {"PCIe": {"target_ohm": 85, "diff": true, "profile": "pcie3", "source": {"kind": "standard", "document": "PCIe CEM 3.0"}}},
@@ -156,53 +88,44 @@ KiCad files. Read by the CLI (next to the board, or `--config`) and the viewer (
 }
 ```
 - `stackup`: εr, tanδ, thickness, material per dielectric (index 0 = below F.Cu), solder mask εr.
-- `net_classes`: target impedance and interface profile of existing net classes.
-- `fields`: footprint fields laid over the board (`PI_LOAD`, `PI_SOURCE`, `PI_REG`).
+- `net_classes`: target impedance and profile of existing net classes. `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`).
 - Source kinds: datasheet, standard, application_note, measurement, simulation, estimate, assumption.
-- `kisi gaps` lists what is missing (with where to find it and an example entry), `kisi config-check` checks the
-  file (format, ranges, references, sources, field syntax), `kisi config-template` prints a skeleton for the board.
 - Precedence: board file < kisi.json < edits in the viewer / `--class` on the command line.
 
-## Command line (JSON) and agent skills
-`node kisi.mjs <command> <board.kicad_pcb> [options]` prints JSON (`node kisi.mjs help`):
-`overview`, `interfaces`, `net <NET>`, `check`, `profiles`, `power`, `report` (writes `analysis/kisi.json`, next to
-kicad-happy's outputs), `gaps`, `config-check`, `config-template`. Every result names the models and the kisi.json used.
-- `kisi.mjs` is the viewer's engine (WASM) plus Forstén's field solver in worker threads: `overview`, `net`, `check`
-  and `report` solve the cross-sections of nets with a target (most routed length first) within `--field-time`
-  seconds (default 120), cache the results (`~/.cache/kisi`, Windows `%LOCALAPPDATA%\kisi`, same key as the
-  viewer's cache) and report the coverage (`field_solver`); `--formula` skips the solver.
-- The native `kisi` (Rust, `cargo install --path crates/kisi-cli`) accepts the same commands (shared code in
-  `kisi_core::commands`) with formula impedances only; useful for CI and development.
-`claude-plugin/` holds two skills for Claude Code (or as instructions for other agents): **kisi-prepare** (gaps →
-datasheet research with sources → kisi.json → check) and **kisi-si-pi-review**. The older flag interface
-(`kisi board.kicad_pcb --rf … --pi …`) prints text for people.
+## Models and accuracy
+- **Impedance:** formulas (Hammerstad-Jensen, Wheeler, Wadell CPWG, IPC-2141) and the quasi-static 2D field solver
+  js_2d_fields by Henrik Forstén (unmodified, see `UPSTREAM.md`; linear solver in Rust, `crates/kisi-sparse`).
+  Cross-sections along every line with reference planes (also across gaps), coplanar ground and diff partner.
+  Field solver against HFSS/Ansys: ≤ 1.7 %.
+- **Lines:** RLGC per cross-section; skin effect (Wheeler), roughness (Huray, presets estimated), dielectric loss
+  (Djordjevic-Sarkar); RLGC against HFSS ≤ 2 %. Channel as ABCD cascade (odd mode for pairs), TDR from S11.
+- **Vias:** stack of coaxial sections (antipads from the zone fills), stubs, back-drill, return path; an estimate
+  (about ±15 %), not a 3D result.
+- **Lanes:** series parts and terminations with package parasitics from `data/components.json` (estimates); the
+  transmit direction is a guess (termination next to the receiver) and can be swapped.
+- **Eye:** PRBS7 NRZ with the profile's linear transmitter/receiver; no equalisation, jitter or noise.
+- **Power:** copper rasterised per layer, vias as barrels (25 µm); PDN as lumped model plus a grid model of the
+  largest plane; capacitor ESR/ESL estimated per package.
 
-## Building
+## Development
 ```sh
-git submodule update --init                                              # js_2d_fields
-cargo build --release                                                    # CLI (target/release/kisi)
+cargo build --release                                                    # native CLI, kisi-validate
 cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
-python3 tools/bundle.py web/index.html target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
-        target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.html \
+W=target/wasm32-unknown-unknown/release
+python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.html \
         [ts "ThunderScope Rev5.3" <ts.kicad_pcb> <ts.kicad_pro> vna LibreVNA <vna.kicad_pcb> <vna.kicad_pro>]
-python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
-        target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs
+python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
 ```
-Example boards (optional, not in the repository) are shrunk beforehand with `tools/strip_pcb.py`.
-Releases: a tag `v*` runs `.github/workflows/release.yml` (tests, field-solver validation, build) and attaches
-`kisi.html` (without example boards) and `kisi.mjs` to the GitHub release.
+- Checks: `cargo test --release`, `sh tools/validate_field.sh` (field solver against HFSS and the stored baseline),
+  `python3 tools/check_viewer.py dist/kisi.html` (all views, light/dark/phone, no console errors).
+- Example boards (optional, not in the repository) are shrunk with `tools/strip_pcb.py`.
+- Releases: a tag `v*` runs `.github/workflows/release.yml` and attaches `kisi.html` and `kisi.mjs`.
+- Solver update: `tools/upstream_update.sh` (see `UPSTREAM.md`). Structure and rules: `ARCHITECTURE.md`.
+  Planned work: `ROADMAP.md`.
+- Validation data: `validation/*.json` (cross-sections) and `*.ref.json` (references from Forstén's solver, run in
+  Node with `tools/forsten_sparse_shim.js`); `kisi-validate validation/forsten_suite.json` compares against the
+  HFSS/Ansys cases of Forstén's test suite.
 
-Solver update: `tools/upstream_update.sh` (details in `UPSTREAM.md`); validation only: `tools/validate_field.sh`.
-
-## Validation
-`validation/*.json` holds cross-sections, `*.ref.json` the reference from Henrik Forstén's 2D field solver
-(github.com/Ttl/js_2d_fields, GPL-3.0; run in Node with `tools/forsten_sparse_shim.js` replacing the WASM linear solver module).
-```sh
-target/release/kisi-validate validation/forsten_suite.json        # HFSS/Ansys references from Forstén's test suite
-target/release/kisi-validate validation/thunderscope_xs.json validation/thunderscope_xs.ref.json
-```
-`forsten_selfcheck*.json`: Forstén's solver in this environment against the same HFSS cases (deviation ≤ 1.4 %),
-which qualifies it as the reference for the ThunderScope cross-sections.
-
-## Example boards
-ThunderScope (EEVengers, MIT), LibreVNA (Jan Käberich, GPL-3.0).
+## Credits
+Field solver: [js_2d_fields](https://github.com/Ttl/js_2d_fields) by Henrik Forstén (GPL-3.0).
+Example boards used during development: ThunderScope (EEVengers, MIT), LibreVNA (Jan Käberich, GPL-3.0).

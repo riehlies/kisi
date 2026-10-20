@@ -1,0 +1,125 @@
+# Via and plane references (openEMS / CST) – plan
+
+Status: plan for review, nothing implemented. It covers the reference data kisi needs to validate
+
+* the current via model (`kisi_si::via`: coaxial sections per dielectric with the measured antipads, open stubs,
+  return-path inductance, odd mode with the partner via) and the planned solvers of SI part B
+  (an axisymmetric r–z solver per via and an in-plane 2D solver for real antipad shapes, pairs and stitching vias),
+* the plane model of the PDN per IC (`kisi_pi::pdn_ic`, branch `feat/pdn-per-ic`: an AC grid against an ideal
+  ground, capacitor loop inductance, cavity resonances).
+
+There is no public 3D reference dataset for vias that kisi could use directly, so the references are produced
+here: openEMS (FDTD, free, scriptable) for every case, and CST for a subset as an independent cross-check
+(a different method, FIT/FEM, catches meshing and port errors of either tool).
+
+## 1. Case definition (one format for kisi, openEMS and CST)
+
+Each case is a JSON file in `validation/via_cases/<id>.json`:
+
+| Key | Content |
+|---|---|
+| `stackup` | copper layers (thickness), dielectrics (thickness, εr, tanδ at a stated frequency, Djordjevic-Sarkar on/off) |
+| `planes` | per copper layer: net (`GND`, `PWR`, none) and extent (whole board or a rectangle) |
+| `vias` | position, drill, pad per layer (or "no non-functional pads"), from/to layer, back-drill depth, net |
+| `antipads` | per via and layer: circle radius, or an oval/rectangle for a pair (one shared antipad) |
+| `stitching` | ground vias: position, drill, layers |
+| `traces` | per port: layer, width, length from the via to the port, direction |
+| `ports` | type (`msl`, `stripline`, `lumped`), reference impedance, which trace; pairs as two single-ended ports |
+| `sweep` | f_min, f_max (default 0–40 GHz), points |
+| `mesh` | optional hints (finest cell, cells across drill and annular gap) |
+| `parts` | PDN cases: capacitors as R-L-C shunts between two pads, IC pin field (pins shorted per net) |
+
+A generator `tools/via_cases.py` writes the cases of the test matrix below (parameters as lists, the cartesian
+product filtered to sensible combinations). The same file feeds:
+
+* **kisi**: a test harness builds the matching mini board (as the Rust tests do) and runs the channel / via model
+  or the PDN grid; no hand-made geometry.
+* **openEMS**: `tools/openems_via.py <case.json>` writes a self-contained Python script (openEMS + CSXCAD API),
+  ports, mesh and post-processing included. Output: Touchstone and a `meta.json`.
+* **CST**: `tools/cst_via.py <case.json>` writes a VBA history macro (`.bas`) that builds the geometry,
+  ports and the solver settings in CST Studio Suite; the user runs it and exports Touchstone. Only for the
+  cross-check subset (marked `"cst": true` in the case).
+
+## 2. Test matrix
+
+Stackups: (a) the ThunderScope 6-layer stack (FR408HR, 1.51 mm, values from the board file), (b) a generic
+8-layer 1.6 mm FR-4 stack, (c) a 2-layer 1.6 mm board for the coax sanity check.
+
+| Group | What it checks | Cases (parameters) | CST subset |
+|---|---|---|---|
+| **A** Coax sanity | via between two full planes, no stubs: Z of the coaxial section, delay | drill 0.2 / 0.3 mm, antipad Ø 0.6 / 0.8 / 1.0 mm, stack (c) – 6 cases | 2 |
+| **B** Stubs | L1→L3 (long stub), L1→L6 / L1→L8 (no stub), back-drilled to 0.2 mm residual; stub resonance frequency and depth | stacks (a), (b); drill 0.2 / 0.3; 8 cases | 3 |
+| **C** Antipads and pads | antipad size per layer, non-functional pads kept / removed, antipad offset from the via | stack (b), L1→L8; 8 cases | 2 |
+| **D** Return path | reference GND L2 → GND L(n-1): stitching via at 0.5 / 1 / 2 / 5 mm, none; reference GND → PWR with a capacitor at 2 / 10 mm | stack (b); 7 cases | 2 |
+| **E** Differential pairs | pitch 0.8 / 1.0 / 1.2 mm; two round vs one oval antipad; 0 / 2 / 4 ground vias around the pair; Sdd, Scc, Scd | stack (b), L1→L8 and L1→L3; 12 cases | 3 |
+| **F** Real breakouts | geometry taken from the example boards (ThunderScope ADC_SCLK via with test-point stub, one LibreVNA RF via, one ADC LVDS pair) | 3 cases | 1 |
+| **G** Plane cavity | rectangular plane pair 50 × 30 mm, d = 0.1 / 0.2 mm; ports at corner and centre; Z11, Z21, resonances; then the irregular +1V0 plane of the ThunderScope | 4 cases | 2 |
+| **H** PDN loop inductance | IC pin field (BGA 0.8 mm, 4 × 4 power / ground pins) and one capacitor (0402, vias at the pads) at 2 / 5 / 10 / 20 mm; loop L from Im(Z)/ω at 50–200 MHz | stack (b); 4 cases | 2 |
+
+About 52 openEMS runs and 17 CST runs. Order: A, B, D first (they calibrate the current model), then E and C,
+then G and H for the PDN.
+
+## 3. Ports and de-embedding
+
+* openEMS: `MSLPort` / stripline ports at the end of 3–5 mm feed traces; port reference planes shifted to the via
+  pad edge. For each via case a second run with the same feeds but a straight line (2× thru) gives the feed
+  contribution for de-embedding (IEEE P370-style 2×thru; first-order: subtract the feed delay and loss).
+* Pairs: two single-ended ports per side; mixed-mode conversion in post-processing (same port order as kisi's
+  `.s4p`: 1 = P near, 2 = N near, 3 = P far, 4 = N far).
+* PDN cases: lumped ports (1 Ω reference) at the pin field (pins shorted per net by a thin copper sheet in the
+  pin plane) and at the capacitor pads; capacitors as lumped RLC elements.
+* CST: waveguide ports on the feed traces (or discrete ports for PDN), de-embedded to the same reference planes.
+
+## 4. Mesh and convergence
+
+* openEMS: maximum cell λ/20 at f_max in the densest dielectric (40 GHz, εr 3.7: ≈ 0.19 mm); at least 3 cells
+  across the drill and across the annular gap pad–antipad; 2–3 cells per dielectric layer in z; thirds rule at
+  metal edges; grading ≤ 1.4; PML 8 cells, ≥ λ/4 at f_min of interest to the structure; end criterion −50 dB
+  energy.
+* Each openEMS case is run at two mesh densities (factor 1.5); accepted when |S21| differs by < 0.1 dB and
+  |S11| by < 2 dB at the −20 dB level up to f_max. Otherwise refine and repeat.
+* CST: time-domain solver with adaptive mesh refinement until ΔS < 0.01 (or the frequency-domain solver with
+  tetrahedral adaptive mesh, broadband).
+
+## 5. Outputs per case
+
+`validation/via_ref/<case>/`: `openems.sNp`, `cst.sNp` (if run), `meta.json` (tool and version, mesh cells,
+run time, convergence result, date), and derived values computed by a common script:
+
+* TDR (Gaussian edge 25 and 35 ps): via impedance minimum / maximum, position;
+* stub resonance: frequency and depth of the S21 dip;
+* pairs: Sdd21, Sdd11, Scd21 (mode conversion), Zdiff and Zcomm from the TDR;
+* PDN: Z11(f), loop inductance at 100 MHz, first cavity resonances.
+
+The Touchstone files are small (≤ 1 MB per case) and are committed, with provenance, so that the comparison
+runs in CI without the 3D tools.
+
+## 6. Metrics and acceptance (kisi vs. reference)
+
+| Quantity | Target for the current model | Target for the part-B solvers |
+|---|---|---|
+| \|S21\| up to the first stub resonance (or 20 GHz) | ±0.5 dB | ±0.3 dB |
+| Stub resonance frequency | ±10 % | ±5 % |
+| Via impedance from the TDR (min/max) | ±15 % | ±7 % |
+| Return-path cases: S21 dip / resonance frequency | ±15 % | ±7 % |
+| Sdd21 / Scd21 | ±1 dB / ±6 dB | ±0.5 dB / ±3 dB |
+| PDN loop inductance | ±25 % | ±15 % |
+| Cavity resonance frequencies | ±10 % | ±5 % |
+
+`tools/validate_via.sh` (like `validate_field.sh`) runs kisi on every case and prints the table; CI fails if a
+part-B value leaves its band once those solvers exist. openEMS vs. CST disagreement larger than the kisi target
+marks the case as "reference uncertain" and it is excluded until resolved.
+
+## 7. What I need from you
+
+* openEMS version and OS (the generated scripts use the openEMS / CSXCAD Python interface), and whether runs may
+  go on your computer through the linked-computer tools or you start them yourself.
+* CST version and licensed solvers (time domain / frequency domain), and any mesh-cell limits of the licence.
+* Whether the example-board geometries (group F, G) may be used for the reference files in this repository
+  (the boards themselves stay outside it; only extracted parameters would be committed).
+
+## 8. Effort
+
+Generator, case set and kisi harness: about one day. openEMS runs: a few minutes to an hour per case on a
+desktop (pairs and PDN cases are the long ones), about one to two days of machine time in total. CST subset:
+about a day including setup checks.

@@ -69,21 +69,18 @@ function renderTab(net, t, rowsXs) {
       <div class="marks">${marks}</div>
       <div class="tablewrap"><table class="xs-table"><thead><tr><th>Line loss${ch.diff ? " (differential)" : ""}</th><th>conductor dB/in</th><th>dielectric dB/in</th><th>total</th></tr></thead><tbody>${lpi}</tbody></table></div>
       ${note4}
-      <div class="dstats"><span class="muted">${esc(src)}</span><button class="btn small" id="ts-save" aria-expanded="false">Export .s2p …</button>${mx ? `<button class="btn small" id="ts4-save" aria-expanded="false">Export .s4p …</button>` : ""}</div>
+      <div class="dstats"><span class="muted">${esc(src)}</span><select id="ts-kind" class="ts-kind" aria-label="Export S-parameters"><option value="">Export …</option><option value="s2p">.s2p – ${mx ? "differential (Sdd)" : "2-port"}</option>${mx ? `<option value="s4p">.s4p – single-ended 4-port</option>` : ""}</select></div>
       <div id="ts-panel" class="ts-panel" hidden></div>${warn}`;
     drawLines($("ch-s"), { x: fr.map((f) => f / 1e9), xUnit: "GHz", yUnit: "dB", series: [
       { y: sx[0], color: "--pw-use", name: `S${m}21 = S${m}12` },
       { y: sx[1], color: "--pw-loss", name: `S${m}11 (A)` },
       { y: sx[2], color: "--pw-loss", name: `S${m}22 (B)`, dash: [5, 3] }], yMin: Math.max(-60, Math.min(...sx[0], ...sx[1], ...sx[2]) - 2), yMax: 0 });
-    const toggle = (kind) => {
-      const pnl = $("ts-panel"), open = !pnl.hidden && pnl.dataset.kind === kind;
-      pnl.hidden = open; pnl.dataset.kind = kind;
-      $("ts-save").setAttribute("aria-expanded", String(!open && kind === "s2p"));
-      if (mx) $("ts4-save").setAttribute("aria-expanded", String(!open && kind === "s4p"));
-      if (!open) exportPanel(pnl, kind, r, base);
+    // export: choose the file in the drop-down, the panel shows its ports and the download
+    $("ts-kind").onchange = (e) => {
+      const pnl = $("ts-panel"), kind = e.target.value;
+      pnl.hidden = !kind;
+      if (kind) exportPanel(pnl, kind, r, base);
     };
-    $("ts-save").onclick = () => toggle("s2p");
-    if (mx) $("ts4-save").onclick = () => toggle("s4p");
     return;
   }
   if (S.detailTab === "tdr") {

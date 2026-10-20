@@ -262,6 +262,7 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
 .detail header .pmode { margin-left: auto; align-self: center; }
 .ts-panel { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; margin: 6px 0; background: var(--panel); }
 .ts-panel .ts-title { font-size: 12px; margin-bottom: 4px; }
+.ts-kind { font: inherit; font-size: 12px; padding: 3px 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--fg); }
 .detail header .pmode button { padding: 3px 10px; font-size: 12px; }
 .detail h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 17px; overflow-wrap: anywhere; }
 .detail .x { border: 0; background: none; cursor: pointer; font-size: 18px; color: var(--muted); line-height: 1; padding: 2px 6px; }

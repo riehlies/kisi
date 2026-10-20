@@ -533,7 +533,8 @@ pub extern "C" fn kisi_pdn(p: *const u8, n: usize) -> i32 {
     }
 }
 
-/// PDN seen from every IC of a rail. Input: {"setup": RailSetup, "params": PdnParams} → IcPdnResult
+/// PDN seen from every IC of a rail domain. Input: {"setup": RailSetup, "setups": [RailSetup] (all
+/// rails, for the nets behind series parts), "params": PdnParams} → IcPdnResult
 #[no_mangle]
 pub extern "C" fn kisi_pdn_ic(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -543,7 +544,8 @@ pub extern "C" fn kisi_pdn_ic(p: *const u8, n: usize) -> i32 {
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let setup: kisi_core::pi::RailSetup = serde_json::from_value(v["setup"].clone()).map_err(|e| e.to_string())?;
         let pp: kisi_core::pdn::PdnParams = serde_json::from_value(v["params"].clone()).unwrap_or_default();
-        Ok(serde_json::to_string(&kisi_core::pdn_ic::pdn_ic(b, &setup, &pp)?).unwrap())
+        let all: Vec<kisi_core::pi::RailSetup> = serde_json::from_value(v["setups"].clone()).unwrap_or_default();
+        Ok(serde_json::to_string(&kisi_core::pdn_ic::pdn_ic(b, &setup, &all, &pp)?).unwrap())
     });
     reply(r)
 }

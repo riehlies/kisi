@@ -58,6 +58,9 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
      Regulator outputs that leave through an inductor or diode: add `out=<part>` (e.g. `out=L5`).
      Ferrites/chokes between two rails: `PI_REG` = `+3V3 > 3V3_RF pass r=0.05` (state the assumed
      resistance). Rails without a voltage in their name: `NAME@1.2V`.
+   - Ferrite beads and inductors in supply paths (`PI_SERIES`, for the PDN per IC): impedance at
+     100 MHz and DC resistance of a bead (`z100=600 rdc=0.15`), inductance and DC resistance of an
+     inductor (`l=2.2u dcr=50m`), from the part's datasheet (`kisi gaps`: bead-ratings).
    Use the user's own documents first (datasheet folder, BOM, fabricator files), then web search.
 4. **Rules for values:**
    - Every value needs a `source`: `kind` (datasheet, standard, application_note, measurement,

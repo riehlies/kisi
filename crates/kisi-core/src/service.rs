@@ -598,7 +598,7 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
             });
             let r = crate::pdn::pdn(&p.board, &setup, &crate::pdn::PdnParams::default())?;
             let at = |f: f64| r.freq.iter().position(|&x| x >= f).map(|i| r.z[i]);
-            let per_ic = match crate::pdn_ic::pdn_ic(&p.board, &setup, &crate::pdn::PdnParams::default()) {
+            let per_ic = match crate::pdn_ic::pdn_ic(&p.board, &setup, &setups, &crate::pdn::PdnParams::default()) {
                 Ok(ic) => pdn_ic_json(&ic),
                 Err(e) => json!({"error": e}),
             };
@@ -618,7 +618,7 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
     let ports: Vec<Value> = r.ports.iter().map(|pt| {
         let at = |f: f64| r.freq.iter().position(|&x| x >= f * 0.999).map(|i| pt.z[i]);
         json!({
-            "ic": pt.refdes, "current_a": pt.current, "pins": pt.pins,
+            "ic": pt.refdes, "net": pt.net, "current_a": pt.current, "pins": pt.pins,
             "target_ohm": pt.target, "target_source": pt.target_source, "target_fmax_hz": pt.f_max,
             "z_ohm": {"10k": at(1e4), "100k": at(1e5), "1M": at(1e6), "10M": at(1e7), "100M": at(1e8), "1G": at(1e9)},
             "above_target_hz": pt.above,
@@ -630,8 +630,11 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
     let flagged: Vec<Value> = r.caps.iter().filter(|c| !c.flags.is_empty()).map(|c| json!({"ref": c.refdes, "value": c.value, "flags": c.flags})).collect();
     json!({
         "ics": ports, "capacitors": r.caps.len(), "capacitor_flags": flagged, "regulators": r.regulators,
+        "domain": r.domain.iter().map(|d| json!({"net": d.net, "voltage": d.voltage, "capacitors": d.caps, "c_total_uf": (d.c_total * 1e8).round() / 100.0, "ics": d.ics, "regulators": d.regulators})).collect::<Vec<_>>(),
+        "series_parts": r.series.iter().map(|x| json!({"ref": x.refdes, "value": x.value, "kind": x.kind, "from": x.from, "to": x.to, "r_ohm": x.r, "l_nh": nh(x.l), "lp_nh": x.lp.map(nh), "rp_ohm": x.rp, "z_100mhz_ohm": (x.z100 * 10.0).round() / 10.0, "source": x.source})).collect::<Vec<_>>(),
+        "domain_ends": r.boundary,
         "grid": {"cell_mm": r.cell_mm, "nodes": r.nodes, "layers": r.layers.len()},
-        "note": "AC grid of the rail copper over all layers against ground (ideal reference); capacitors with ESR, ESL, mounting and DC-bias-derated capacitance (estimates unless PI_CAP); targets from each IC's current step unless PI_TARGET. Design check, not a signoff PDN simulation.",
+        "note": "AC grid of the rail domain (the rail and the nets behind series resistors, inductors and ferrite beads, up to the regulators) over all layers against ground (ideal reference); series parts with R, L and the bead's lossy part (estimates unless PI_SERIES or the value gives them); capacitors with ESR, ESL, mounting and DC-bias-derated capacitance (estimates unless PI_CAP); targets from each IC's current step unless PI_TARGET. Design check, not a signoff PDN simulation.",
         "warnings": r.warnings
     })
 }

@@ -28,7 +28,7 @@ interface; data that changes (standards, component values) lives in files, not i
 |---|---|---|
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, viewer scene, `num` | – |
 | `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,mixed,crosstalk}` (`mixed`: 4-port pair model), `via`, `eye`, `profile`, `topology` (device-to-device lanes) | kisi-board |
-| `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `losses` (ground return, losses, loss map, power flow), `pdn` (Z(f), plane model), `pdn_ic` (AC grid over all layers, PDN seen from every IC, recommendations) | kisi-board, kisi-sparse |
+| `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `losses` (ground return, losses, loss map, power flow), `pdn` (Z(f), plane model), `pdn_ic` (AC grid over all layers of the rail domain – the rail and the nets behind series resistors, inductors and ferrites up to the regulators –, PDN seen from every IC, filter resonances, recommendations) | kisi-board, kisi-sparse |
 | `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `config` (`<board>.kisi.json`), `gaps` | the three above |
 | `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
 | `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` | kisi-core |

@@ -262,6 +262,31 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             unrated,
         ));
     }
+    // ferrite beads on supply rails without an impedance rating: typical 220 Ω at 100 MHz assumed
+    let mut beads = Vec::new();
+    let mut seen_b = HashSet::new();
+    for pad in &b.pads {
+        let Some(f) = b.footprints.get(pad.fp as usize) else { continue };
+        let pre: String = f.reference.chars().take_while(|c| c.is_ascii_alphabetic()).collect::<String>().to_ascii_uppercase();
+        let up = f.value.to_ascii_uppercase();
+        let bead = pre == "FB" || (pre == "L" && (up.contains("FERRITE") || up.contains("BEAD")));
+        if f.dnp || !bead || !rail_names.contains(b.net_name(pad.net)) || f.prop("PI_SERIES").is_some() || crate::pdn_ic::bead_z100(&f.value).is_some() || !seen_b.insert(f.reference.clone()) {
+            continue;
+        }
+        beads.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}));
+    }
+    if !beads.is_empty() {
+        out.push(gap(
+            "bead-ratings",
+            "low",
+            "power",
+            format!("{} ferrite bead(s) on supply rails have no impedance rating: the PDN per IC assumes a typical 220 Ω at 100 MHz and 0.1 Ω DC resistance.", beads.len()),
+            &["PDN impedance per IC", "filter resonances"],
+            "Bead datasheet: impedance at 100 MHz and DC resistance (or the part number in the Value field, e.g. 600R@100MHz or BLM18PG221SN1).",
+            json!({"to": "fields[] (name PI_SERIES) or the KiCad Value field", "example": {"ref": beads[0]["ref"], "name": "PI_SERIES", "value": "z100=600 rdc=0.15", "source": {"kind": "datasheet", "document": "ferrite bead datasheet", "note": "impedance at 100 MHz, DC resistance"}}}),
+            beads,
+        ));
+    }
     if !caps.is_empty() {
         out.push(gap(
             "cap-values",

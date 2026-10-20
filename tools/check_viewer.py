@@ -145,6 +145,9 @@ def run(pg, tag, desktop):
         if pg.locator("#pdn-ic-run").count():
             pg.click("#pdn-ic-run"); pg.wait_for_function("document.getElementById('ch-pdn-ic') || document.querySelector('#pdn-ic .err')", timeout=300000)
             pg.wait_for_timeout(300); step("pdn_ic")
+            if pg.locator("#pdn-ic details.acc").count():
+                pg.evaluate("document.querySelector('#pdn-ic details.acc').open = true"); pg.wait_for_timeout(200)
+                pg.evaluate("document.querySelector('#pdn-ic details.acc').scrollIntoView()"); pg.wait_for_timeout(200); step("pdn_domain")
             pg.evaluate("S.piTab = 'dc'; renderPiDetail()")
         if not pg.locator("#pim-l").is_disabled():
             pg.click("#pim-l"); pg.wait_for_timeout(500); step("losses")

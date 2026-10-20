@@ -81,6 +81,7 @@ commands with formula impedances only.
 | | `+5V=60mA@L32/L33` | current entering at other parts' pads (e.g. the inductors of an output stage) |
 | `PI_SOURCE` | `+3V3` | source pads for the IR drop when there is no regulator chain |
 | `PI_CAP` | `esr=5m esl=0.45n rated=6.3V X5R c@3.3V=2.1u` | decoupling capacitor data for the PDN (datasheet values; replaces the package estimates and the DC-bias curve) |
+| `PI_SERIES` | `z100=600 rdc=0.15` · `l=2.2u dcr=50m` · `r=10m` | ferrite bead, inductor or resistor in a supply path: the PDN per IC models the rail with the nets behind them, up to the regulators (replaces the typical values) |
 | `PI_TARGET` | `VCCINT=10m fmax=50M` or `15mOhm` | target impedance of an IC for a rail (default: from its own current step), band it applies to |
 
   The nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`). A `kipida_config.json` (KiPIDA) can be
@@ -100,7 +101,7 @@ KiCad files; CLI and viewer lay this file over the board.
 }
 ```
 - `stackup`: εr, tanδ, thickness, material per dielectric (index 0 = below F.Cu), solder mask εr.
-- `net_classes`: target impedance and profile of existing net classes. `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`, `PI_CAP`, `PI_TARGET`).
+- `net_classes`: target impedance and profile of existing net classes. `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`, `PI_CAP`, `PI_TARGET`, `PI_SERIES`).
 - Source kinds: datasheet, standard, application_note, measurement, simulation, estimate, assumption.
 - Precedence: board file < kisi.json < edits in the viewer / `--class` on the command line.
 

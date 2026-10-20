@@ -33,23 +33,32 @@ function renderPdnIc(host, setup, lumped) {
   if (!S.pdnIc) S.pdnIc = new Map();
   const r = pdnIcOf(setup.net);
   if (!r) {
-    host.innerHTML = `<h4 class="sub">Seen from the ICs</h4><p class="note">AC grid of the rail copper on all layers with vias, every load IC as a port: Z(f) at each IC, the loop inductance of every capacitor to it, a target from the IC's own current step and recommendations. Takes a few seconds.</p><button class="btn small primary" id="pdn-ic-run">Compute per IC</button>`;
+    host.innerHTML = `<h4 class="sub">Seen from the ICs</h4><p class="note">AC grid of the rail copper on all layers with vias, together with the nets behind series resistors, inductors and ferrite beads up to the regulators; every load IC as a port: Z(f) at each IC, the loop inductance of every capacitor to it, a target from the IC's own current step and recommendations. Takes a few seconds.</p><button class="btn small primary" id="pdn-ic-run">Compute per IC</button>`;
     $("pdn-ic-run").onclick = () => {
       $("pdn-ic-run").disabled = true; $("pdn-ic-run").textContent = "Computing …";
       setTimeout(() => {
         let res;
-        try { res = S.engine.pdnIc({ setup, params: {} }); } catch (e) { res = { error: e.message }; }
+        const setups = S.piSetups ? [...S.piSetups.values()] : [];
+        try { res = S.engine.pdnIc({ setup, setups, params: {} }); } catch (e) { res = { error: e.message }; }
         S.pdnIc.set(setup.net, res);
-        S.pdnIcSel = res.ports && res.ports.length ? res.ports[0].refdes : null;
+        S.pdnIcSel = res.ports && res.ports.length ? res.ports[0].label : null;
         renderPdnIc(host, setup, lumped); draw();
       }, 30);
     };
     return;
   }
   if (r.error) { host.innerHTML = `<h4 class="sub">Seen from the ICs</h4><p class="err">${esc(r.error)}</p>`; return; }
-  let pt = r.ports.find((x) => x.refdes === S.pdnIcSel) || r.ports[0];
-  S.pdnIcSel = pt.refdes;
-  const chips = r.ports.map((x) => `<button class="chip" data-ic="${esc(x.refdes)}" aria-pressed="${x.refdes === pt.refdes}"><i style="background:${x.above.length ? S.colors.high2 : S.colors.ok}"></i>${esc(x.refdes)}</button>`).join("");
+  let pt = r.ports.find((x) => x.label === S.pdnIcSel) || r.ports[0];
+  S.pdnIcSel = pt.label;
+  const own = pt.net === r.net, dn = (n) => r.domain.find((d) => d.net === n) || { voltage: r.voltage };
+  const chips = r.ports.map((x) => `<button class="chip" data-ic="${esc(x.label)}" aria-pressed="${x.label === pt.label}" title="${esc(x.net)}"><i style="background:${x.above.length ? S.colors.high2 : S.colors.ok}"></i>${esc(x.label)}${x.net === r.net ? "" : ` <span class="muted">· ${esc(netShort(x.net))}</span>`}</button>`).join("");
+  // the rail domain: nets behind series parts, up to the regulators
+  const ser = r.series.map((x) => `<tr title="${esc(x.from)} → ${esc(x.to)}"><td>${esc(x.refdes)}</td><td>${esc(x.kind)}${x.value && x.value.toUpperCase() !== "FERRITE" ? ` <span class="muted">${esc(x.value)}</span>` : ""}</td><td>${esc(netShort(x.from))} → ${esc(netShort(x.to))}</td><td>${x.kind === "bead" ? `${fmt(x.rp, 0)} Ω ∥ ${fmt(x.lp * 1e9, 0)} nH` : x.kind === "inductor" ? `${fmt(x.l * 1e6, x.l < 1e-6 ? 2 : 1)} µH` : ohm(x.r)}</td><td>${ohm(x.r)}</td><td>${fmt(x.z100, 0)} Ω</td><td>${x.source === "estimate" ? "estimate" : esc(x.source)}</td></tr>`).join("");
+  const domain = r.domain.length > 1 || r.boundary.length ? `<details class="acc"><summary>Rail domain: ${r.domain.length} net${r.domain.length === 1 ? "" : "s"}, ${r.series.length} series part${r.series.length === 1 ? "" : "s"}, regulator ${esc(r.regulators.join(", ") || "none")}</summary>
+      <div class="tablewrap"><table class="xs-table"><thead><tr><th>Net</th><th>V</th><th>C</th><th>ICs</th><th>Regulator</th></tr></thead><tbody>${r.domain.map((d) => `<tr title="${esc(d.net)}"><td>${esc(netShort(d.net))}</td><td>${fmt(d.voltage, 2)}</td><td>${d.caps ? `${d.caps} · ${capVal(d.c_total)}` : "–"}</td><td>${esc(d.ics.join(", ") || "–")}</td><td>${esc(d.regulators.join(", ") || "")}</td></tr>`).join("")}</tbody></table></div>
+      ${ser ? `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Part</th><th>Kind</th><th>Between</th><th>Model</th><th>R dc</th><th>|Z| 100 MHz</th><th>Source</th></tr></thead><tbody>${ser}</tbody></table></div>` : ""}
+      ${r.boundary.map((b) => `<p class="note">Ends: ${esc(b)}</p>`).join("")}
+      <p class="note">The domain follows resistors up to 10 Ω, inductors and ferrite beads from this rail and stops at the regulators (their output modelled as 2 mΩ + 20 nH, estimate). Ferrites without an impedance rating in the value (e.g. 600R@100MHz) use a typical 220 Ω at 100 MHz (estimate): add a PI_SERIES field (z100, rdc) from the datasheet.</p></details>` : "";
   const over = pt.above.map(([a, b]) => `${fHz(a)} … ${fHz(b)}`).join(", ");
   const rows = pt.caps.slice(0, 30).map((l) => {
     const c = r.caps[l.cap];
@@ -63,19 +72,22 @@ function renderPdnIc(host, setup, lumped) {
   const flagged = r.caps.filter((c) => c.flags.length).map((c) => `<li class="click" data-cap="${r.caps.indexOf(c)}"><b>${esc(c.refdes)}</b> ${esc(c.value)}: ${esc(c.flags.join("; "))}</li>`).join("");
   host.innerHTML = `<h4 class="sub">Seen from the ICs</h4>
     <div class="chips">${chips}</div>
-    <div class="dstats"><span>${esc(pt.refdes)} · ${fmt(pt.current, 3)} A · ${pt.pins} pin${pt.pins === 1 ? "" : "s"}</span><span>Target <b>${pt.target != null ? ohm(pt.target) : "–"}</b> <span class="muted">${esc(pt.target_source)}</span></span></div>
-    <div class="clegend"><span><i style="background:var(--pw-use)"></i>|Z| at ${esc(pt.refdes)} (grid)</span><span><i class="dash" style="border-color:var(--muted)"></i>lumped (rail)</span>${pt.target != null ? `<span><i style="background:${S.colors.high2}"></i>target</span>` : ""}<span>▼ anti-resonance</span></div>
+    ${domain}
+    <div class="dstats"><span>${esc(pt.refdes)} · ${fmt(pt.current, 3)} A · ${pt.pins} pin${pt.pins === 1 ? "" : "s"}${own ? "" : ` on ${esc(netShort(pt.net))}`}</span><span>Target <b>${pt.target != null ? ohm(pt.target) : "–"}</b> <span class="muted">${esc(pt.target_source)}</span></span></div>
+    <div class="clegend"><span><i style="background:var(--pw-use)"></i>|Z| at ${esc(pt.refdes)} (grid)</span>${own ? `<span><i class="dash" style="border-color:var(--muted)"></i>lumped (rail)</span>` : ""}${pt.target != null ? `<span><i style="background:${S.colors.high2}"></i>target</span>` : ""}<span>▼ anti-resonance</span></div>
     <div class="chart"><canvas id="ch-pdn-ic" style="height:200px" aria-label="Impedance at the IC over frequency"></canvas></div>
     ${pt.target != null ? `<div class="dstats"><span>${over ? `<b class="warn">above target: ${over}</b>` : `<b>below target up to ${fHz(pt.f_max)}</b>`}</span></div>` : ""}
     ${recs ? `<p class="note"><b>Recommendations</b> (dashed circles on the board):</p><ul class="plain">${recs}</ul>` : ""}
     ${peaks ? `<p class="note"><b>Anti-resonances</b></p><ul class="plain">${peaks}</ul>` : ""}
-    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Capacitor</th><th>C at ${fmt(Math.abs(r.voltage), 2)} V</th><th>Package</th><th title="loop inductance from the IC through the planes and vias to the capacitor pad">L path nH</th><th title="L path + ground-side mounting + ESL">L total nH</th><th>Resonance</th><th>mm</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Capacitor</th><th>C at ${fmt(Math.abs(dn(pt.net).voltage), 2)} V</th><th>Package</th><th title="loop inductance from the IC through the planes and vias to the capacitor pad">L path nH</th><th title="L path + ground-side mounting + ESL">L total nH</th><th>Resonance</th><th>mm</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${flagged ? `<p class="note"><b>Flags</b></p><ul class="plain">${flagged}</ul>` : ""}
-    <p class="note">AC grid (${fmt(r.cell_mm, 2)} mm, ${r.nodes.toLocaleString("en-US")} nodes, ${r.layers.length} layers) of the rail copper against ground as ideal reference: plane capacitance and μ0·d per square, vias with their barrel inductance, the IC's rail pins shorted as one port. Capacitors with ESR, ESL and ground-side mounting by package and DC-bias derating (estimates unless a PI_CAP field gives them); regulator ${esc(r.regulators.join(", ") || "none")} as 2 mΩ + 20 nH (estimate). Targets from the IC's current step unless PI_TARGET. Recommendations add parts next to the IC until the target holds, then widen the radius as far as the result allows (estimate).</p>
+    <p class="note">AC grid (${fmt(r.cell_mm, 2)} mm, ${r.nodes.toLocaleString("en-US")} nodes, ${r.layers.length} layers) of the rail domain copper against ground as ideal reference: plane capacitance and μ0·d per square, vias with their barrel inductance, the IC's rail pins shorted as one port. Capacitors with ESR, ESL and ground-side mounting by package and DC-bias derating (estimates unless a PI_CAP field gives them); regulator ${esc(r.regulators.join(", ") || "none")} as 2 mΩ + 20 nH (estimate). Targets from the IC's current step unless PI_TARGET. Recommendations add parts next to the IC until the target holds, then widen the radius as far as the result allows (estimate).</p>
     ${r.warnings.map((w) => `<div class="warn">${esc(w)}</div>`).join("")}`;
   host.querySelectorAll("[data-ic]").forEach((b) => b.onclick = () => { S.pdnIcSel = b.dataset.ic; renderPdnIc(host, setup, lumped); draw(); });
+  const keepOpen = host.querySelector("details.acc");
+  if (keepOpen) { keepOpen.open = !!S.pdnDomOpen; keepOpen.ontoggle = () => { S.pdnDomOpen = keepOpen.open; }; }
   host.querySelectorAll("[data-cap]").forEach((tr) => tr.onclick = () => { const c = r.caps[+tr.dataset.cap]; S.pdnIcCap = +tr.dataset.cap; zoomTo(c.at[0], c.at[1], 6); });
-  drawZf($("ch-pdn-ic"), { freq: r.freq, series: [{ z: pt.z, color: "--pw-use", name: pt.refdes }, { f: lumped.freq, z: lumped.z, color: "--muted", dash: [4, 3], name: "lumped" }],
+  drawZf($("ch-pdn-ic"), { freq: r.freq, series: [{ z: pt.z, color: "--pw-use", name: pt.label }].concat(own ? [{ f: lumped.freq, z: lumped.z, color: "--muted", dash: [4, 3], name: "lumped" }] : []),
     target: pt.target, fEval: pt.f_max, marks: pt.peaks.map((k) => ({ f: k.f, label: "anti-resonance" })) });
 }
 // recommendation circles and capacitor ranking on the board (rail detail, impedance tab)
@@ -83,9 +95,15 @@ function drawPdnOverlay(px) {
   if (!S.piRail || $("pi-detail").hidden || !$("ch-pdn-ic")) return; // only while the per-IC view is open
   const r = pdnIcOf(S.piRail);
   if (!r || r.error) return;
-  const pt = r.ports.find((x) => x.refdes === S.pdnIcSel);
+  const pt = r.ports.find((x) => x.label === S.pdnIcSel);
   if (!pt) return;
   const C = S.colors;
+  // series parts of the domain: small squares
+  for (const x of r.series) {
+    const h = 3.5 * px;
+    ctx.fillStyle = C.halo; ctx.fillRect(x.at[0] - h - px, x.at[1] - h - px, 2 * h + 2 * px, 2 * h + 2 * px);
+    ctx.fillStyle = x.kind === "resistor" ? C.none : C.high1; ctx.fillRect(x.at[0] - h, x.at[1] - h, 2 * h, 2 * h);
+  }
   // capacitors: colour by loop inductance to this IC (green best … red worst)
   const ls = pt.caps.map((l) => l.l_total), lo = Math.min(...ls), hi = Math.max(...ls);
   for (const l of pt.caps) {

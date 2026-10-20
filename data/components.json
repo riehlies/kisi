@@ -80,5 +80,17 @@
       {"value": "100n", "package": "0201"},
       {"value": "10n", "package": "0201"}
     ]
+  },
+  "series": {
+    "about": "Series parts in a supply path (resistors up to r_max_ohm, inductors, ferrite beads) in the PDN model: the rail domain runs through them up to the regulators. Typical values; a PI_SERIES field (r, dcr, l, z100, rp, lp, cp) or the r of a PI_REG pass stage replaces them per part.",
+    "sources": [
+      { "kind": "kisi", "text": "Ferrite bead as Rdc + (Lp ∥ Rp ∥ Cp), fitted to the impedance at 100 MHz given in the value (\"600R@100MHz\", Murata BLM part numbers) or z100_ohm: Lp so that ωLp = Z100 at 100 MHz, Rp = rp_factor·Z100, Cp from cp_pf; shape consistent with the impedance curves in vendor data (Murata BLM18 series, Würth WE-CBF). Without a rating, z100_ohm and rdc_ohm are estimates for a typical 0603 supply bead." },
+      { "kind": "kisi", "text": "Chip inductor DC resistance by case size: typical for about 1–4.7 µH power inductors in vendor tables (Murata LQM, TDK MLP), estimate; parasitic capacitance not modelled. Resistor and jumper inductance: the capacitor ESL by case size." }
+    ],
+    "r_max_ohm": 10.0,
+    "zero_ohm": 0.002,
+    "max_nets": 40,
+    "bead": {"z100_ohm": 220.0, "rdc_ohm": 0.1, "rp_factor": 1.5, "cp_pf": 0.5},
+    "inductor_dcr_ohm": {"0201": 0.5, "0402": 0.3, "0603": 0.15, "0805": 0.1, "1206": 0.06, "1210": 0.04, "large": 0.03}
   }
 }

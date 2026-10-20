@@ -506,11 +506,12 @@ pub(crate) fn fill_polygon(g: &Grid, pts: &[P], w: &mut [f32]) -> usize {
 /// conductance through a fractional weight width/cell on the centre-line cells.
 pub(crate) fn fill_track(g: &Grid, a: P, b: P, width: f64, w: &mut [f32]) {
     let r = width / 2.0;
-    let thin = width < g.cell;
-    // thin tracks: half the cell diagonal keeps the chain of cells
+    // thin tracks (up to about one cell wide: a track as wide as the cell along a cell boundary
+    // would otherwise lose cells to rounding): half the cell diagonal keeps the chain of cells
     // 4-connected for any direction
+    let thin = width < g.cell * 1.05;
     let reach = if thin { g.cell * std::f64::consts::FRAC_1_SQRT_2 } else { r };
-    let frac = if thin { (width / g.cell) as f32 } else { 1.0 };
+    let frac = if thin { (width / g.cell).min(1.0) as f32 } else { 1.0 };
     let bb_min = [a[0].min(b[0]) - reach, a[1].min(b[1]) - reach];
     let bb_max = [a[0].max(b[0]) + reach, a[1].max(b[1]) + reach];
     let (Some((i0, j0)), Some((i1, j1))) = (

@@ -185,16 +185,6 @@ pub struct Imbalance {
     pub at: P,
 }
 
-#[derive(Default)]
-struct Region {
-    sp0: f64,
-    sn0: f64,
-    lp: f64,
-    ln: f64,
-    dp: f64,
-    dn: f64,
-    vias: bool,
-}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct MixedMode {
@@ -235,6 +225,8 @@ pub struct MixedMode {
     pub tdr_zn: Vec<f64>,
     pub tdr_xn_mm: Vec<f64>,
     pub imbalance: Vec<Imbalance>,
+    /// length difference P − N up to matching points, along P (mm from A, mm)
+    pub skew_profile: Vec<(f64, f64)>,
     /// track length and static delay of each line (P, N)
     pub length_mm: (f64, f64),
     pub delay_ps: (f64, f64),
@@ -432,67 +424,41 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     let mut pos_d: Vec<(f64, f64)> = vec![(0.0, 0.0)];
     let mut pos_c: Vec<(f64, f64)> = vec![(0.0, 0.0)];
     let (mut td, mut tc, mut s) = (0.0, 0.0, 0.0);
-    // where P and N differ: the stretches between coupled runs, with their length and delay balance
-    let mut imbalance: Vec<Imbalance> = Vec::new();
-    let (mut sp, mut sn) = (0.0, 0.0); // own track position of P and N
-    let mut reg = Region::default();
-    let close = |reg: &mut Region, sp: f64, sn: f64, out: &mut Vec<Imbalance>| {
-        let (dl, dt) = (reg.lp - reg.ln, reg.dp - reg.dn);
-        if dl.abs() >= 0.05 || dt.abs() >= 0.2e-12 || reg.vias {
-            let at = if dl >= 0.0 { path_point(board, an, &path_p, 0.5 * (reg.sp0 + sp)) } else { path_point(board, an, &path_n, 0.5 * (reg.sn0 + sn)) };
-            out.push(Imbalance { s_from_mm: reg.sp0, s_to_mm: sp, dl_mm: dl, dt_ps: dt * 1e12, vias_differ: reg.vias, at });
-        }
-        *reg = Region { sp0: sp, sn0: sn, ..Default::default() };
-    };
-    for e in &els {
-        match e {
-            El::Single { line, seg, len } => {
-                let b = if *line == 0 { &bp } else { &bn };
-                let frac = match (len, b.segs[*seg].kind) {
-                    (Some(l), "line") if b.segs[*seg].len_mm > 0.0 => l / b.segs[*seg].len_mm,
-                    _ => 1.0,
-                };
-                let dl = if b.segs[*seg].kind == "line" { len.unwrap_or(b.segs[*seg].len_mm) } else { 0.0 };
-                let dd = b.seg_delay(*seg, &fallback) * frac;
-                if *line == 0 {
-                    reg.lp += dl;
-                    reg.dp += dd;
-                    sp += dl;
-                } else {
-                    reg.ln += dl;
-                    reg.dn += dd;
-                    sn += dl;
+    // where P and N differ: geometric, independent of the direction (see `imbalance_geo`), plus
+    // via pairs whose two vias differ
+    let (dp_all, dn_all) = ((0..bp.segs.len()).map(|k| bp.seg_delay(k, &fallback)).sum::<f64>(), (0..bn.segs.len()).map(|k| bn.seg_delay(k, &fallback)).sum::<f64>());
+    let lp_all = bp.segs.iter().filter(|x| x.kind == "line").map(|x| x.len_mm).sum::<f64>();
+    let ps_per_mm = if lp_all > 0.0 { dp_all / lp_all * 1e12 } else { 6.0 };
+    let _ = dn_all;
+    let (mut imbalance, skew_profile) = imbalance_geo(board, an, &path_p, &path_n, ps_per_mm);
+    {
+        let (mut sp, mut vp, mut vn) = (0.0, 0usize, 0usize);
+        let mut pending: Option<(f64, usize)> = None; // P via without partner yet: (s, via_info index)
+        for e in &els {
+            match e {
+                El::Single { line: 0, seg, len } if bp.segs[*seg].kind == "line" => sp += len.unwrap_or(bp.segs[*seg].len_mm),
+                El::Coupled { len, .. } => sp += len,
+                El::Single { line: 0, seg, .. } if bp.segs[*seg].kind == "via" => {
+                    pending = Some((sp, vp));
+                    vp += 1;
                 }
-                reg.vias |= b.segs[*seg].kind == "via";
+                El::Single { line: 1, seg, .. } if bn.segs[*seg].kind == "via" => {
+                    if let Some((s_at, ip)) = pending.take() {
+                        let d = bp.via_models[bp_via_seg(&bp, ip)].as_ref().map(|v| v.delay()).unwrap_or(0.0) - bn.via_models[bp_via_seg(&bn, vn)].as_ref().map(|v| v.delay()).unwrap_or(0.0);
+                        let at = bp.via_info.get(ip).map(|v| v.at).unwrap_or(path_p.start.at);
+                        imbalance.push(Imbalance { s_from_mm: s_at, s_to_mm: s_at, dl_mm: 0.0, dt_ps: d * 1e12, vias_differ: true, at });
+                    }
+                    vn += 1;
+                }
+                El::ViaPair { .. } => {
+                    vp += 1;
+                    vn += 1;
+                }
+                _ => {}
             }
-            El::Coupled { len, .. } => {
-                close(&mut reg, sp, sn, &mut imbalance);
-                sp += len;
-                sn += len;
-                reg.sp0 = sp;
-                reg.sn0 = sn;
-            }
-            El::ViaPair { .. } => {}
         }
     }
-    close(&mut reg, sp, sn, &mut imbalance);
-    // stretches less than 1 mm apart count as one (a fan-out that is longer on P here and on N there)
-    let mut merged: Vec<Imbalance> = Vec::new();
-    for x in imbalance {
-        match merged.last_mut() {
-            Some(m) if x.s_from_mm - m.s_to_mm < 1.0 => {
-                if x.dl_mm.abs() > m.dl_mm.abs() {
-                    m.at = x.at;
-                }
-                m.s_to_mm = x.s_to_mm;
-                m.dl_mm += x.dl_mm;
-                m.dt_ps += x.dt_ps;
-                m.vias_differ |= x.vias_differ;
-            }
-            _ => merged.push(x),
-        }
-    }
-    let imbalance: Vec<Imbalance> = merged.into_iter().filter(|x| x.dl_mm.abs() >= 0.05 || x.dt_ps.abs() >= 0.2 || x.vias_differ).collect();
+    imbalance.sort_by(|a, b| a.s_from_mm.total_cmp(&b.s_from_mm));
     for e in &els {
         let (d_d, d_c, ds) = match e {
             El::Single { line, seg, len } => {
@@ -603,6 +569,7 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
         tdr_zn,
         tdr_xn_mm,
         imbalance,
+        skew_profile,
         length_mm: (lp, ln),
         delay_ps: (dp * 1e12, dn * 1e12),
         skew_ps: (dp - dn) * 1e12,
@@ -617,6 +584,104 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
         s: s_all,
     })
 }
+
+/// Index of the `k`-th via section of a build.
+fn bp_via_seg(b: &Build, k: usize) -> usize {
+    b.segs.iter().enumerate().filter(|(_, x)| x.kind == "via").nth(k).map(|(i, _)| i).unwrap_or(0)
+}
+
+/// Where P and N differ, from the geometry: every point of P (0.2 mm steps) is matched to the
+/// nearest point of N going forward; the length difference up to matching points stays constant
+/// where the lines run in parallel and changes at jogs, fan-outs and offset ends. Stretches where
+/// it changes (merged when less than MERGE_MM apart) are listed with their share of the skew; together
+/// they add up to L(P) − L(N). Independent of the direction of the path.
+fn imbalance_geo(board: &Board, an: &Analysis, pp: &NetPath, pn: &NetPath, ps_per_mm: f64) -> (Vec<Imbalance>, Vec<(f64, f64)>) {
+    let (lp, ln) = (pp.length_mm, pn.length_mm);
+    if lp <= 0.0 || ln <= 0.0 {
+        return (vec![], vec![]);
+    }
+    let n_pts = |l: f64, step: f64| ((l / step).ceil() as usize).max(1);
+    let nq = n_pts(ln, 0.1);
+    let qn: Vec<(f64, P)> = (0..=nq).map(|k| {
+        let t = ln * k as f64 / nq as f64;
+        (t, path_point(board, an, pn, t))
+    }).collect();
+    let np = n_pts(lp, 0.2);
+    let mut j = 0usize;
+    // start: nearest N point to P's start anywhere
+    let p0 = path_point(board, an, pp, 0.0);
+    let d2 = |a: P, b: P| (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2);
+    if let Some((k, _)) = qn.iter().enumerate().min_by(|a, b| d2(a.1 .1, p0).total_cmp(&d2(b.1 .1, p0))) {
+        j = k;
+    }
+    // length difference P − N up to matching points, per P sample
+    let mut delta: Vec<(f64, f64, P)> = Vec::with_capacity(np + 1); // (s on P, Δ, point)
+    let start_extra = qn[j].0; // N length before the point matching P's start
+    for k in 0..=np {
+        let s = lp * k as f64 / np as f64;
+        let pt = path_point(board, an, pp, s);
+        // forward window of 10 mm on N
+        let hi = qn.iter().position(|q| q.0 > qn[j].0 + 10.0).unwrap_or(qn.len());
+        let best = (j..hi).min_by(|&a, &b| d2(qn[a].1, pt).total_cmp(&d2(qn[b].1, pt))).unwrap_or(j);
+        j = best;
+        delta.push((s, s - (qn[j].0 - start_extra), pt));
+    }
+    let end_extra = ln - qn[j].0; // N length after the point matching P's end
+    let mut out: Vec<Imbalance> = Vec::new();
+    let push = |out: &mut Vec<Imbalance>, s0: f64, s1: f64, dl: f64, at: P| {
+        match out.last_mut() {
+            Some(m) if s0 - m.s_to_mm < MERGE_MM => {
+                if dl.abs() > m.dl_mm.abs() {
+                    m.at = at;
+                }
+                m.s_to_mm = s1;
+                m.dl_mm += dl;
+                m.dt_ps += dl * ps_per_mm;
+            }
+            _ => out.push(Imbalance { s_from_mm: s0, s_to_mm: s1, dl_mm: dl, dt_ps: dl * ps_per_mm, vias_differ: false, at }),
+        }
+    };
+    if start_extra > 0.02 {
+        push(&mut out, 0.0, 0.0, -start_extra, qn[qn.iter().position(|q| q.0 >= start_extra / 2.0).unwrap_or(0)].1);
+    }
+    // stretches where Δ changes by more than 0.02 mm per step
+    let mut k = 1;
+    while k < delta.len() {
+        if (delta[k].1 - delta[k - 1].1).abs() > 0.02 {
+            let k0 = k - 1;
+            while k < delta.len() && (delta[k].1 - delta[k - 1].1).abs() > 0.02 {
+                k += 1;
+            }
+            let k1 = k - 1;
+            let mid = delta[(k0 + k1) / 2].2;
+            push(&mut out, delta[k0].0, delta[k1].0, delta[k1].1 - delta[k0].1, mid);
+        } else {
+            k += 1;
+        }
+    }
+    if end_extra > 0.02 {
+        let at = qn[qn.iter().position(|q| q.0 >= ln - end_extra / 2.0).unwrap_or(qn.len() - 1)].1;
+        push(&mut out, lp, lp, -end_extra, at);
+    }
+    // the small changes below the step threshold add up as well: put the rest on the largest entry
+    let listed: f64 = out.iter().map(|x| x.dl_mm).sum();
+    let rest = (lp - ln) - listed;
+    if let Some(m) = out.iter_mut().max_by(|a, b| a.dl_mm.abs().total_cmp(&b.dl_mm.abs())) {
+        m.dl_mm += rest;
+        m.dt_ps += rest * ps_per_mm;
+    } else if rest.abs() >= 0.05 {
+        out.push(Imbalance { s_from_mm: 0.0, s_to_mm: lp, dl_mm: rest, dt_ps: rest * ps_per_mm, vias_differ: false, at: pp.start.at });
+    }
+    out.retain(|x| x.dl_mm.abs() >= 0.05);
+    // profile of the length difference along P for the chart (start offset included, ≤ 400 points)
+    let stride = (delta.len() / 400).max(1);
+    let mut prof: Vec<(f64, f64)> = delta.iter().step_by(stride).map(|d| (d.0, d.1 - start_extra)).collect();
+    prof.push((lp, lp - ln));
+    (out, prof)
+}
+
+/// Stretches closer than this count as one (skew compensated nearby, e.g. the bends of a pair).
+const MERGE_MM: f64 = 2.5;
 
 /// Touchstone (.s2p, RI) of the differential mode: Sdd of the 4-port, reference 2·z_ref.
 pub fn touchstone_dd(m: &MixedMode) -> String {

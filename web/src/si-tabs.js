@@ -137,10 +137,12 @@ function renderSkew(body, r, net) {
   const ch = r.channel, mx = r.mixed, pa = ch.path;
   const P = netShort(mx.p_net), N = netShort(mx.n_net);
   const w = mx.scd21_worst;
-  const rows = mx.imbalance.map((x, i) => `<tr class="click" data-im="${i}"><td>${x.s_to_mm - x.s_from_mm < 0.05 ? "at " + fmt(x.s_from_mm, 1) : fmt(x.s_from_mm, 1) + " … " + fmt(x.s_to_mm, 1)}</td><td>${x.dl_mm >= 0 ? esc(P) : esc(N)} <b>+${fmt(Math.abs(x.dl_mm), 2)} mm</b></td><td>${x.dt_ps >= 0 ? "+" : "−"}${fmt(Math.abs(x.dt_ps), 2)} ps</td><td>${x.vias_differ ? "vias differ" : ""}</td></tr>`).join("");
+  const rows = mx.imbalance.map((x, i) => `<tr class="click" data-im="${i}"><td>${x.s_to_mm - x.s_from_mm < 0.05 ? "at " + fmt(x.s_from_mm, 1) : fmt(x.s_from_mm, 1) + " … " + fmt(x.s_to_mm, 1)}</td><td>${x.vias_differ && Math.abs(x.dl_mm) < 0.01 ? "via pair" : `${x.dl_mm >= 0 ? esc(P) : esc(N)} <b>+${fmt(Math.abs(x.dl_mm), 2)} mm</b>`}</td><td>${x.dt_ps >= 0 ? "+" : "−"}${fmt(Math.abs(x.dt_ps), 2)} ps</td><td>${x.vias_differ ? "vias differ" : ""}</td></tr>`).join("");
   body.innerHTML = `<div class="dstats"><span>Skew <b>${fmt(mx.skew_ps, 1)} ps</b> (${fmt(mx.skew_mm, 2)} mm, ${esc(P)} − ${esc(N)})</span><span>${esc(P)} ${fmt(mx.length_mm[0], 2)} mm / ${fmt(mx.delay_ps[0], 1)} ps</span><span>${esc(N)} ${fmt(mx.length_mm[1], 2)} mm / ${fmt(mx.delay_ps[1], 1)} ps</span><span>Coupled <b>${fmt(mx.coupled_share * 100, 0)} %</b></span></div>
     <h4 class="sub">Where ${esc(P)} and ${esc(N)} differ</h4>
-    ${rows ? `<div class="tablewrap"><table class="xs-table"><thead><tr><th>mm from A (along ${esc(P)})</th><th>longer</th><th>delay ${esc(P)} − ${esc(N)}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><p class="note">Stretches between the coupled runs where the lines are not equal; click to show the place on the board. Together they make up the skew.</p>` : `<p class="note">No stretch where the lines differ by more than 0.05 mm.</p>`}
+    <div class="clegend"><span><i style="background:var(--pw-use)"></i>length difference ${esc(P)} − ${esc(N)} up to each point (mm); steps are bends, jogs and offset ends</span></div>
+    <div class="chart"><canvas id="ch-skew" aria-label="Length difference P minus N along the path"></canvas></div>
+    ${rows ? `<div class="tablewrap"><table class="xs-table"><thead><tr><th>mm from A (along ${esc(P)})</th><th>longer</th><th>delay ${esc(P)} − ${esc(N)}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><p class="note">Stretches where the difference changes, from the geometry (each point of ${esc(P)} matched to the nearest point of ${esc(N)}); stretches less than 2.5 mm apart count as one, as skew compensated nearby. Together they make up the skew. Click to show the place on the board.</p>` : `<p class="note">No stretch where the lines differ by more than 0.05 mm.</p>`}
     <h4 class="sub">Mode conversion</h4>
     <div class="clegend"><span><i style="background:var(--pw-conv)"></i>Scd21: differential in at A, common mode out at B</span><span><i class="dash" style="border-color:var(--pw-conv)"></i>Scd11: common mode back at A</span></div>
     <div class="chart"><canvas id="ch-scd" aria-label="Mode conversion over frequency"></canvas></div>
@@ -148,6 +150,10 @@ function renderSkew(body, r, net) {
     <h4 class="sub">TDR of each line alone</h4>
     <div class="clegend"><span><i style="background:var(--pw-use)"></i>${esc(P)}</span><span><i class="dash" style="border-color:var(--pw-loss)"></i>${esc(N)}</span><span class="muted">one line driven, the other terminated in ${fmt(mx.z_ref, 0)} Ω</span></div>
     <div class="chart"><canvas id="ch-tdr-pn" aria-label="TDR of P and N over position"></canvas></div>`;
+  const pa_ = ch.path;
+  drawLines($("ch-skew"), { x: mx.skew_profile.map((x) => x[0]), xUnit: "mm", yUnit: "mm", series: [{ y: mx.skew_profile.map((x) => x[1]), color: "--pw-use", name: `${P} − ${N}` }],
+    ends: pa_ ? { a: pa_.start.label, b: pa_.end.label, at: mx.length_mm[0] } : null,
+    marks: mx.imbalance.map((x) => ({ x: 0.5 * (x.s_from_mm + x.s_to_mm), label: `${x.dl_mm >= 0 ? "+" : "−"}${fmt(Math.abs(x.dl_mm), 2)} mm` })) });
   drawLines($("ch-scd"), { x: mx.freq.map((f) => f / 1e9), xUnit: "GHz", yUnit: "dB", series: [
     { y: mx.scd21_db, color: "--pw-conv", name: "Scd21" }, { y: mx.scd11_db, color: "--pw-conv", name: "Scd11", dash: [5, 3] }],
     yMin: Math.max(-80, Math.min(...mx.scd21_db, ...mx.scd11_db) - 2), yMax: Math.min(0, Math.max(...mx.scd21_db, ...mx.scd11_db) + 6) });

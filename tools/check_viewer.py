@@ -103,6 +103,9 @@ def run(pg, tag, desktop):
         problems.append(f"{tag}: coupling refinement not on by default")
     if pg.evaluate("S.xtScan.critical_geoms.length > 0 && !scopeGeoms('target').some((x) => x.xt)"):
         problems.append(f"{tag}: critical couplings not planned for the field solver")
+    # follow-up round: couplings that turn critical after a run are queued without a click
+    if pg.evaluate("S.xtScan.critical_geoms.length > 0") and not pg.evaluate("(() => { const p = new FieldPool(); S.pool = p; p.scope = 'target'; p.round = 1; p.followUp(); const ok = p.round === 2 && p.total > 0; p.stop(); return ok; })()"):
+        problems.append(f"{tag}: no follow-up round for new critical couplings")
     if desktop and not a.quick and pg.locator("#xt-rows tr[data-net]").count():
         pg.click("#xt-rows tr[data-net] >> nth=0"); pg.wait_for_timeout(600)
         if pg.evaluate("S.detailTab") != "xt" or not pg.locator("#ch-xt").count():

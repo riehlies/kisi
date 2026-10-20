@@ -3,6 +3,7 @@
 // Key: upstream revision + geometry id. Geometry ids are content hashes, so
 // results are shared between boards and survive reloads.
 const FIELD_TOL = 0.01;
+const XT_ROUNDS = 3; // rounds of coupling refinement after new nets turn critical
 const Cache = {
   db: null,
   key: (id) => `${UPSTREAM_REV}|${FIELD_TOL}|v2|${id}`,
@@ -68,6 +69,7 @@ class FieldPool {
   constructor() {
     this.n = threadCount();
     this.workers = []; this.idle = []; this.queue = []; this.running = false; this.failed = null;
+    this.scope = null; this.round = 1; // scope of the run (follow-up rounds of the coupling refinement)
     this.lastApply = 0; this.dirty = false; this.mainThread = false; this.total = 0; this.done_n = 0;
     const sparse = SPARSE_WASM;
     const wurl = URL.createObjectURL(new Blob([WORKER_SRC()], { type: "text/javascript" }));
@@ -110,6 +112,7 @@ class FieldPool {
     const finished = this.queue.length === 0 && S.fieldPending.size === 0;
     if (finished) this.running = false;
     if (now - this.lastApply > 2000 || finished) this.apply();
+    if (finished) this.followUp();
     else renderFieldStatus();
   }
   apply() { this.lastApply = performance.now(); this.dirty = false; runAnalysis(); }
@@ -146,7 +149,18 @@ class FieldPool {
     }
     renderFieldStatus();
   }
-  stop() { this.queue = []; this.running = false; renderFieldStatus(); }
+  stop() { this.queue = []; this.running = false; this.scope = null; renderFieldStatus(); }
+  // field results can lift further nets over the crosstalk threshold (the formulas tend to
+  // underestimate close coupling): solve their coupling cross-sections too, up to 3 rounds
+  followUp() {
+    if (!this.scope || !$("fs-xt").checked || this.round >= XT_ROUNDS) return;
+    const items = scopeGeoms(this.scope).filter((x) => x.xt && !S.field.has(x.id) && !S.fieldPending.has(x.id));
+    if (!items.length) return;
+    const round = this.round + 1;
+    this.start(items);
+    this.round = round;
+    renderFieldStatus();
+  }
   terminate() { this.workers.forEach((w) => w.terminate()); this.workers = []; this.idle = []; }
 }
 
@@ -246,8 +260,9 @@ function renderFieldStatus() {
   }
   const busy = pool && (pool.running || S.fieldPending.size > 0);
   $("fs-bar").style.width = busy && pool.total ? Math.round((pool.done_n / pool.total) * 100) + "%" : "0%";
-  $("fs-text").textContent = busy ? `${pool.done_n} of ${pool.total} cross-sections` : "";
-  $("fs-note").textContent = busy ? `Running on ${pool.n} ${pool.n === 1 ? "thread" : "threads"}, most important cross-sections first.` : "";
+  const more = busy && pool.round > 1;
+  $("fs-text").textContent = busy ? (more ? `round ${pool.round}: ${pool.done_n} of ${pool.total} more coupling cross-sections` : `${pool.done_n} of ${pool.total} cross-sections`) : "";
+  $("fs-note").textContent = busy ? (more ? "The field results lifted further nets over 1 % crosstalk; their couplings follow. " : "") + `Running on ${pool.n} ${pool.n === 1 ? "thread" : "threads"}, most important cross-sections first.` : "";
   $("fs-toggle").hidden = !busy;
   $("fs-toggle").textContent = "Pause";
 }
@@ -255,7 +270,8 @@ $("fs-toggle").onclick = () => S.pool && S.pool.stop();
 $("fs-start").onclick = () => {
   if (S.pool && !S.pool.running && !S.pool.mainThread && S.pool.n !== threadCount()) { S.pool.terminate(); S.pool = null; }
   if (!S.pool) S.pool = new FieldPool();
-  S.pool.start(scopeGeoms($("fs-scope").value));
+  S.pool.scope = $("fs-scope").value; S.pool.round = 1;
+  S.pool.start(scopeGeoms(S.pool.scope));
 };
 $("fs-scope").onchange = () => renderFieldStatus();
 // coupling refinement on by default; the choice is kept per viewer

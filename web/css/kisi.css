@@ -260,9 +260,11 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
 .detail { position: absolute; right: 10px; bottom: 10px; width: min(560px, calc(100% - 20px)); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.16); max-height: calc(100% - 60px); overflow-y: auto; }
 .detail header { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
 .detail header .pmode { margin-left: auto; align-self: center; }
-.ts-panel { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; margin: 6px 0; background: var(--panel); }
-.ts-panel .ts-title { font-size: 12px; margin-bottom: 4px; }
-.ts-kind { font: inherit; font-size: 12px; padding: 3px 6px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--fg); }
+.ts-export { border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; margin: 6px 0; background: var(--panel); }
+.ts-export summary { cursor: pointer; font-size: 12px; font-weight: 600; }
+.ts-export .ts-block { margin-top: 8px; }
+.ts-export .ts-block + .ts-block { border-top: 1px solid var(--line); padding-top: 8px; }
+.ts-export .ts-title { font-size: 12px; margin-bottom: 4px; }
 .detail header .pmode button { padding: 3px 10px; font-size: 12px; }
 .detail h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 17px; overflow-wrap: anywhere; }
 .detail .x { border: 0; background: none; cursor: pointer; font-size: 18px; color: var(--muted); line-height: 1; padding: 2px 6px; }

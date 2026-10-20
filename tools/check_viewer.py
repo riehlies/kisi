@@ -72,12 +72,10 @@ def run(pg, tag, desktop):
         if dn >= 0:
             pg.evaluate(f"selectNet({dn})"); pg.wait_for_timeout(400)
             pg.click("#detail [data-tab=loss]"); pg.wait_for_timeout(500)
-            if not pg.locator("#ts-kind option[value=s4p]").count():
-                problems.append(f"{tag}: differential net without the 4-port model")
+            if not pg.locator("#ts-export [data-dl=s4p]").count():
+                problems.append(f"{tag}: differential net without the 4-port export")
             else:
-                pg.select_option("#ts-kind", "s4p"); pg.wait_for_timeout(300)
-                if not pg.locator("#ts-dl").count():
-                    problems.append(f"{tag}: export panel missing")
+                pg.click("#ts-export summary"); pg.wait_for_timeout(300)
             step("pair_loss")
             pg.click("#detail [data-tab=skew]"); pg.wait_for_timeout(500); step("pair_skew")
             # common mode for every tab

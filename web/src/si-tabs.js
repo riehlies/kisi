@@ -69,18 +69,15 @@ function renderTab(net, t, rowsXs) {
       <div class="marks">${marks}</div>
       <div class="tablewrap"><table class="xs-table"><thead><tr><th>Line loss${ch.diff ? " (differential)" : ""}</th><th>conductor dB/in</th><th>dielectric dB/in</th><th>total</th></tr></thead><tbody>${lpi}</tbody></table></div>
       ${note4}
-      <div class="dstats"><span class="muted">${esc(src)}</span><select id="ts-kind" class="ts-kind" aria-label="Export S-parameters"><option value="">Export …</option><option value="s2p">.s2p – ${mx ? "differential (Sdd)" : "2-port"}</option>${mx ? `<option value="s4p">.s4p – single-ended 4-port</option>` : ""}</select></div>
-      <div id="ts-panel" class="ts-panel" hidden></div>${warn}`;
+      <div class="dstats"><span class="muted">${esc(src)}</span></div>
+      <details class="ts-export" id="ts-export"${S.tsOpen ? " open" : ""}><summary>Export S-parameters (Touchstone)</summary>${exportBlock("s2p", r, base)}${mx ? exportBlock("s4p", r, base) : ""}</details>${warn}`;
     drawLines($("ch-s"), { x: fr.map((f) => f / 1e9), xUnit: "GHz", yUnit: "dB", series: [
       { y: sx[0], color: "--pw-use", name: `S${m}21 = S${m}12` },
       { y: sx[1], color: "--pw-loss", name: `S${m}11 (A)` },
       { y: sx[2], color: "--pw-loss", name: `S${m}22 (B)`, dash: [5, 3] }], yMin: Math.max(-60, Math.min(...sx[0], ...sx[1], ...sx[2]) - 2), yMax: 0 });
-    // export: choose the file in the drop-down, the panel shows its ports and the download
-    $("ts-kind").onchange = (e) => {
-      const pnl = $("ts-panel"), kind = e.target.value;
-      pnl.hidden = !kind;
-      if (kind) exportPanel(pnl, kind, r, base);
-    };
+    // export: a folding section with one block per file (ports, data order, download)
+    $("ts-export").ontoggle = (e) => { S.tsOpen = e.target.open; };
+    body.querySelectorAll("[data-dl]").forEach((b) => b.onclick = () => saveText(`${base}.${b.dataset.dl}`, b.dataset.dl === "s4p" ? r.touchstone4 : r.touchstone));
     return;
   }
   if (S.detailTab === "tdr") {
@@ -109,17 +106,17 @@ function renderTab(net, t, rowsXs) {
   }
 }
 
-// what the Touchstone file contains: ports, reference, data order; then the download
-function exportPanel(pnl, kind, r, base) {
+// what a Touchstone file contains: ports, reference, data order, and its download button
+function exportBlock(kind, r, base) {
   const ch = r.channel, mx = ch.diff && r.mixed && !r.mixed.error ? r.mixed : null, pa = ch.path;
   const nm = (n) => esc(netShort(n));
   let title, rows, order;
   if (kind === "s4p") {
-    title = `Single-ended 4-port of the pair, reference ${fmt(mx.z_ref, 0)} Ω at every port`;
+    title = `single-ended 4-port of the pair, reference ${fmt(mx.z_ref, 0)} Ω at every port`;
     rows = [[1, "P at A", nm(mx.p_net), mx.p_a], [2, "N at A", nm(mx.n_net), mx.n_a], [3, "P at B", nm(mx.p_net), mx.p_b], [4, "N at B", nm(mx.n_net), mx.n_b]];
     order = "Four lines per frequency, line i = Si1 Si2 Si3 Si4 (real, imaginary). Mixed mode with this order: Sdd21 = (S31 − S32 − S41 + S42)/2.";
   } else if (mx) {
-    title = `Differential 2-port (Sdd of the 4-port), reference ${fmt(2 * mx.z_ref, 0)} Ω differential`;
+    title = `differential 2-port (Sdd of the 4-port), reference ${fmt(2 * mx.z_ref, 0)} Ω differential`;
     rows = [[1, "A", `${nm(mx.p_net)} / ${nm(mx.n_net)}`, `${mx.p_a} / ${mx.n_a}`], [2, "B", `${nm(mx.p_net)} / ${nm(mx.n_net)}`, `${mx.p_b} / ${mx.n_b}`]];
     order = "Sdd11 Sdd21 Sdd12 Sdd22 per frequency (real, imaginary). Common mode and mode conversion: the .s4p.";
   } else {
@@ -128,11 +125,10 @@ function exportPanel(pnl, kind, r, base) {
     order = "S11 S21 S12 S22 per frequency (real, imaginary); S12 = S21.";
   }
   const file = `${base}.${kind}`;
-  pnl.innerHTML = `<div class="ts-title"><b>${file}</b> · ${title}</div>
+  return `<div class="ts-block"><div class="ts-title"><b>${esc(file)}</b> · ${title}</div>
     <table class="xs-table"><thead><tr><th>Port</th><th>Where</th><th>Net</th><th>Pad</th></tr></thead><tbody>${rows.map(([n, w, net, pad]) => `<tr><td><b>${n}</b></td><td>${w}</td><td>${net}</td><td>${esc(pad)}</td></tr>`).join("")}</tbody></table>
-    <p class="note">${order} A = start of the path (${esc(pa ? pa.start.label : "port 1")}), B = end. The same port list is written as comments at the top of the file.</p>
-    <button class="btn small primary" id="ts-dl">Download ${esc(file)}</button>`;
-  $("ts-dl").onclick = () => saveText(file, kind === "s4p" ? r.touchstone4 : r.touchstone);
+    <p class="note">${order} The port list is also written as comments at the top of the file.</p>
+    <button class="btn small" data-dl="${kind}">Download ${esc(file)}</button></div>`;
 }
 
 // skew and mode conversion of a pair: where P and N differ, conversion into common mode,

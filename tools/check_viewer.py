@@ -74,6 +74,10 @@ def run(pg, tag, desktop):
             pg.click("#detail [data-tab=loss]"); pg.wait_for_timeout(500)
             if not pg.locator("#ts4-save").count():
                 problems.append(f"{tag}: differential net without the 4-port model")
+            else:
+                pg.click("#ts4-save"); pg.wait_for_timeout(300)
+                if not pg.locator("#ts-dl").count():
+                    problems.append(f"{tag}: export panel missing")
             step("pair_loss")
             pg.click("#detail [data-tab=skew]"); pg.wait_for_timeout(500); step("pair_skew")
             # common mode for every tab

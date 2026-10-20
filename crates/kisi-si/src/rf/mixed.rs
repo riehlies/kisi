@@ -200,6 +200,11 @@ struct Region {
 pub struct MixedMode {
     pub p_id: u32,
     pub n_id: u32,
+    /// ends of each line (pad labels): A = start (next to the start of the asked net), B = end
+    pub p_a: String,
+    pub p_b: String,
+    pub n_a: String,
+    pub n_b: String,
     pub p_net: String,
     pub n_net: String,
     /// single-ended reference of each port (Zdiff,ref = 2·z_ref, Zcomm,ref = z_ref/2)
@@ -570,6 +575,10 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     Ok(MixedMode {
         p_id: pnet,
         n_id: nnet,
+        p_a: path_p.start.label.clone(),
+        p_b: path_p.end.label.clone(),
+        n_a: path_n.start.label.clone(),
+        n_b: path_n.end.label.clone(),
         p_net: board.net_name(pnet).to_string(),
         n_net: board.net_name(nnet).to_string(),
         z_ref,
@@ -612,12 +621,13 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
 /// Touchstone (.s2p, RI) of the differential mode: Sdd of the 4-port, reference 2·z_ref.
 pub fn touchstone_dd(m: &MixedMode) -> String {
     let mut s = String::new();
-    s.push_str(&format!("! kisi differential pair {} / {}: mixed-mode Sdd of the 4-port model
-", m.p_net, m.n_net));
-    s.push_str(&format!("! port 1 = A (start of {}), port 2 = B; differential reference {:.1} ohm
-", m.p_net, 2.0 * m.z_ref));
-    s.push_str(&format!("# HZ S RI R {:.3}
-", 2.0 * m.z_ref));
+    s.push_str(&format!("! kisi {}: differential S-parameters (Sdd) of the pair P = {}, N = {}\n", env!("CARGO_PKG_VERSION"), m.p_net, m.n_net));
+    s.push_str(&format!("! 2-port, differential mode (mixed-mode Sdd of the 4-port model), reference {:.1} ohm differential at both ports\n", 2.0 * m.z_ref));
+    s.push_str(&format!("! Port 1 = A: the pair driven differentially at {} (P) and {} (N)\n", m.p_a, m.n_a));
+    s.push_str(&format!("! Port 2 = B: the pair at {} (P) and {} (N)\n", m.p_b, m.n_b));
+    s.push_str("! Data per frequency: Sdd11 Sdd21 Sdd12 Sdd22, each as real and imaginary part\n");
+    s.push_str("! Common mode and mode conversion: the .s4p of this pair\n");
+    s.push_str(&format!("# HZ S RI R {:.3}\n", 2.0 * m.z_ref));
     for (k, &f) in m.freq.iter().enumerate() {
         let mm = mixed_of(&m.s[k]);
         let (a, b, c, d) = (mm[0][0], mm[1][0], mm[0][1], mm[1][1]);
@@ -630,9 +640,16 @@ pub fn touchstone_dd(m: &MixedMode) -> String {
 /// Touchstone (.s4p, RI) of a pair: single-ended 4-port, port order in the header.
 pub fn touchstone4(m: &MixedMode) -> String {
     let mut s = String::new();
-    s.push_str(&format!("! kisi differential pair {} / {}\n", m.p_net, m.n_net));
-    s.push_str(&format!("! ports: 1 = {p} near, 2 = {n} near, 3 = {p} far, 4 = {n} far\n", p = m.p_net, n = m.n_net));
-    s.push_str(&format!("! P {:.2} mm, N {:.2} mm, coupled {:.2} mm, skew {:.2} ps; {}\n", m.length_mm.0, m.length_mm.1, m.coupled_mm, m.skew_ps, m.source));
+    s.push_str(&format!("! kisi {}: single-ended 4-port of the pair P = {}, N = {}\n", env!("CARGO_PKG_VERSION"), m.p_net, m.n_net));
+    s.push_str(&format!("! reference {:.1} ohm at every port\n", m.z_ref));
+    s.push_str(&format!("! Port 1 = P at A: {} at {}\n", m.p_net, m.p_a));
+    s.push_str(&format!("! Port 2 = N at A: {} at {}\n", m.n_net, m.n_a));
+    s.push_str(&format!("! Port 3 = P at B: {} at {}\n", m.p_net, m.p_b));
+    s.push_str(&format!("! Port 4 = N at B: {} at {}\n", m.n_net, m.n_b));
+    s.push_str("! Mixed mode with this order: differential port 1 = (port 1 - port 2)/sqrt(2), common port 1 = (port 1 + port 2)/sqrt(2),\n");
+    s.push_str("!   ports 3 and 4 likewise for port 2; e.g. Sdd21 = (S31 - S32 - S41 + S42)/2, Scd21 = (S31 - S32 + S41 - S42)/2\n");
+    s.push_str("! Data per frequency: 4 lines, line i = Si1 Si2 Si3 Si4, each as real and imaginary part\n");
+    s.push_str(&format!("! P {:.2} mm, N {:.2} mm, coupled {:.2} mm, skew {:.2} ps; {}\n", m.length_mm.0, m.length_mm.1, m.coupled_mm, m.skew_ps, m.source.replace('≈', "~").replace('²', "^2")));
     s.push_str(&format!("# HZ S RI R {:.3}\n", m.z_ref));
     for (k, &f) in m.freq.iter().enumerate() {
         let sm = &m.s[k];

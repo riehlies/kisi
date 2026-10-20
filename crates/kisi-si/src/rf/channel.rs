@@ -1070,8 +1070,19 @@ pub fn tdr_map(freq: &[f64], s11: &[Cx], z_ref: f64, rise: f64, t_max: f64, xmap
 /// Touchstone (.s2p, RI) of a channel.
 pub fn touchstone(ch: &Channel) -> String {
     let mut s = String::new();
-    s.push_str(&format!("! kisi channel {}{}\n", ch.name, if ch.diff { " (differential mode, per-line odd-mode model)" } else { "" }));
-    s.push_str(&format!("! length {:.2} mm, {} vias, reference {:.1} ohm\n", ch.length_mm, ch.vias, ch.z_ref));
+    let (a, b) = match &ch.path {
+        Some(p) => (format!("{} at {} (start of the path)", ch.name, p.start.label), format!("{} at {} (end of the path)", ch.name, p.end.label)),
+        None => (format!("{} at the start of the channel", ch.name), format!("{} at the end of the channel", ch.name)),
+    };
+    s.push_str(&format!("! kisi {}: S-parameters of {}\n", env!("CARGO_PKG_VERSION"), ch.name));
+    if ch.diff {
+        s.push_str(&format!("! 2-port, differential mode (odd-mode model per line), reference {:.1} ohm per line = {:.1} ohm differential\n", ch.z_ref, 2.0 * ch.z_ref));
+    } else {
+        s.push_str(&format!("! 2-port, single-ended, reference {:.1} ohm at both ports\n", ch.z_ref));
+    }
+    s.push_str(&format!("! Port 1 = A: {a}\n! Port 2 = B: {b}\n"));
+    s.push_str("! Data per frequency: S11 S21 S12 S22, each as real and imaginary part; S12 = S21 (passive, reciprocal)\n");
+    s.push_str(&format!("! Path {:.2} mm incl. {} vias\n", ch.length_mm, ch.vias));
     s.push_str(&format!("# HZ S RI R {:.3}\n", ch.z_ref));
     for (k, &f) in ch.freq.iter().enumerate() {
         // S11 S21 S12 S22; S12 = S21 (passive, reciprocal)

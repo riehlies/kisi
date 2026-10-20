@@ -50,7 +50,9 @@ function renderTab(net, t, rowsXs) {
   const head = `<div class="dstats"><span>${ref}</span><span>Path <b>${fmt(ch.length_mm, 1)} mm</b> incl. vias</span><span>Delay <b>${fmt(delay, 0)} ps</b></span><span>Vias <b>${ch.vias}</b></span></div>`;
   const warn = (ch.warnings || []).concat(mx ? (mx.warnings || []).filter((x) => !(ch.warnings || []).includes(x)) : []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
   const note4 = mx ? `<p class="note">4-port model: ${esc(netShort(mx.p_net))} and ${esc(netShort(mx.n_net))} on their own paths, coupled sections from odd and even mode, via pairs with the partner via. ${esc(mx.source)}. Eye and channel check use the differential odd-mode model.</p>` : "";
-  const base = S.scene.nets[net].split("/").pop().replace(/[^\w.+-]+/g, "_") || "net";
+  // file name: the net, for a pair both nets (P first)
+  const fname = (n) => n.split("/").pop().replace(/[^\w.+-]+/g, "_") || "net";
+  const base = mx ? `${fname(mx.p_net)}_${fname(mx.n_net)}` : fname(S.scene.nets[net]);
   if (S.detailTab === "loss") {
     // the same view for single lines and pairs: S21 = S12, S11 from A, S22 from B
     const m = comm ? "cc" : ch.diff ? "dd" : "";
@@ -67,13 +69,21 @@ function renderTab(net, t, rowsXs) {
       <div class="marks">${marks}</div>
       <div class="tablewrap"><table class="xs-table"><thead><tr><th>Line loss${ch.diff ? " (differential)" : ""}</th><th>conductor dB/in</th><th>dielectric dB/in</th><th>total</th></tr></thead><tbody>${lpi}</tbody></table></div>
       ${note4}
-      <div class="dstats"><span class="muted">${esc(src)}</span><button class="btn small" id="ts-save" title="${mx ? "Differential 2-port (Sdd of the 4-port), port 1 = A" : "Touchstone file with S11, S21, S12 and S22 (port 1 = A)"}">Save .s2p</button>${mx ? `<button class="btn small" id="ts4-save" title="Single-ended 4-port: 1 = P at A, 2 = N at A, 3 = P at B, 4 = N at B">Save .s4p</button>` : ""}</div>${warn}`;
+      <div class="dstats"><span class="muted">${esc(src)}</span><button class="btn small" id="ts-save" aria-expanded="false">Export .s2p …</button>${mx ? `<button class="btn small" id="ts4-save" aria-expanded="false">Export .s4p …</button>` : ""}</div>
+      <div id="ts-panel" class="ts-panel" hidden></div>${warn}`;
     drawLines($("ch-s"), { x: fr.map((f) => f / 1e9), xUnit: "GHz", yUnit: "dB", series: [
       { y: sx[0], color: "--pw-use", name: `S${m}21 = S${m}12` },
       { y: sx[1], color: "--pw-loss", name: `S${m}11 (A)` },
       { y: sx[2], color: "--pw-loss", name: `S${m}22 (B)`, dash: [5, 3] }], yMin: Math.max(-60, Math.min(...sx[0], ...sx[1], ...sx[2]) - 2), yMax: 0 });
-    $("ts-save").onclick = () => saveText(`${base}.s2p`, r.touchstone);
-    if (mx) $("ts4-save").onclick = () => saveText(`${base}.s4p`, r.touchstone4);
+    const toggle = (kind) => {
+      const pnl = $("ts-panel"), open = !pnl.hidden && pnl.dataset.kind === kind;
+      pnl.hidden = open; pnl.dataset.kind = kind;
+      $("ts-save").setAttribute("aria-expanded", String(!open && kind === "s2p"));
+      if (mx) $("ts4-save").setAttribute("aria-expanded", String(!open && kind === "s4p"));
+      if (!open) exportPanel(pnl, kind, r, base);
+    };
+    $("ts-save").onclick = () => toggle("s2p");
+    if (mx) $("ts4-save").onclick = () => toggle("s4p");
     return;
   }
   if (S.detailTab === "tdr") {
@@ -89,7 +99,7 @@ function renderTab(net, t, rowsXs) {
     body.innerHTML = `${head}
       <div class="clegend"><span><i style="background:var(--pw-use)"></i>${zn} from the step response (${fmt(rfParams().rise * 1e12, 0)} ps rise), seen from A</span>${t && !comm ? `<span><i style="background:${S.colors.ok}"></i>target ±5 %</span>` : ""}<span><i style="background:var(--muted);opacity:.35"></i>after B: termination ${fmt(zr, comm ? 1 : 0)} Ω</span></div>
       <div class="chart"><canvas id="ch-tdr" aria-label="TDR impedance over position, from A to B"></canvas></div>
-      <div class="marks"><span>${zn} min <b>${fmt(zmin, 1)} Ω</b></span><span>${zn} max <b>${fmt(zmax, 1)} Ω</b></span><span class="muted">Position from the delay of every section (lines and vias), so it matches the board; the rise time blurs edges over about ${fmt(rfParams().rise * 1e12 * 0.075, 1)} mm. ▲ at the bottom: vias.${comm ? " Common mode: both lines driven in phase (Zcommon = Zeven/2)." : ""}</span></div>${note4}${warn}`;
+      <div class="marks"><span>${zn} min <b>${fmt(zmin, 1)} Ω</b></span><span>${zn} max <b>${fmt(zmax, 1)} Ω</b></span><span class="muted">Position from the delay of every section (lines and vias), so it matches the board; the rise time (${fmt(rfParams().rise * 1e12, 0)} ps) blurs edges over about ${fmt(rfParams().rise * 1e12 * 0.075, 1)} mm. ▲ at the bottom: vias.${comm ? " Common mode: both lines driven in phase (Zcommon = Zeven/2)." : ""}</span></div>${note4}${warn}`;
     const zt = t && !comm ? (t.diff ? t.z / 2 : t.z) : null;
     const zs = ch.diff ? 2 : 1;
     const pa = ch.path;
@@ -100,6 +110,32 @@ function renderTab(net, t, rowsXs) {
       vline: { x: end, label: "end" + (pa ? " · " + pa.end.label : "") }, shadeFrom: { x: end, label: `${fmt(zr, comm ? 1 : 0)} Ω` },
       tipExtra: (x) => segmentAt(ch, x, end), onHover: (x) => setPathCursor(net, x) });
   }
+}
+
+// what the Touchstone file contains: ports, reference, data order; then the download
+function exportPanel(pnl, kind, r, base) {
+  const ch = r.channel, mx = ch.diff && r.mixed && !r.mixed.error ? r.mixed : null, pa = ch.path;
+  const nm = (n) => esc(netShort(n));
+  let title, rows, order;
+  if (kind === "s4p") {
+    title = `Single-ended 4-port of the pair, reference ${fmt(mx.z_ref, 0)} Ω at every port`;
+    rows = [[1, "P at A", nm(mx.p_net), mx.p_a], [2, "N at A", nm(mx.n_net), mx.n_a], [3, "P at B", nm(mx.p_net), mx.p_b], [4, "N at B", nm(mx.n_net), mx.n_b]];
+    order = "Four lines per frequency, line i = Si1 Si2 Si3 Si4 (real, imaginary). Mixed mode with this order: Sdd21 = (S31 − S32 − S41 + S42)/2.";
+  } else if (mx) {
+    title = `Differential 2-port (Sdd of the 4-port), reference ${fmt(2 * mx.z_ref, 0)} Ω differential`;
+    rows = [[1, "A", `${nm(mx.p_net)} / ${nm(mx.n_net)}`, `${mx.p_a} / ${mx.n_a}`], [2, "B", `${nm(mx.p_net)} / ${nm(mx.n_net)}`, `${mx.p_b} / ${mx.n_b}`]];
+    order = "Sdd11 Sdd21 Sdd12 Sdd22 per frequency (real, imaginary). Common mode and mode conversion: the .s4p.";
+  } else {
+    title = `2-port, single-ended, reference ${fmt(ch.z_ref, 0)} Ω`;
+    rows = [[1, "A", nm(ch.name), pa ? pa.start.label : "start"], [2, "B", nm(ch.name), pa ? pa.end.label : "end"]];
+    order = "S11 S21 S12 S22 per frequency (real, imaginary); S12 = S21.";
+  }
+  const file = `${base}.${kind}`;
+  pnl.innerHTML = `<div class="ts-title"><b>${file}</b> · ${title}</div>
+    <table class="xs-table"><thead><tr><th>Port</th><th>Where</th><th>Net</th><th>Pad</th></tr></thead><tbody>${rows.map(([n, w, net, pad]) => `<tr><td><b>${n}</b></td><td>${w}</td><td>${net}</td><td>${esc(pad)}</td></tr>`).join("")}</tbody></table>
+    <p class="note">${order} A = start of the path (${esc(pa ? pa.start.label : "port 1")}), B = end. The same port list is written as comments at the top of the file.</p>
+    <button class="btn small primary" id="ts-dl">Download ${esc(file)}</button>`;
+  $("ts-dl").onclick = () => saveText(file, kind === "s4p" ? r.touchstone4 : r.touchstone);
 }
 
 // skew and mode conversion of a pair: where P and N differ, conversion into common mode,

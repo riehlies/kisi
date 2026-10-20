@@ -106,6 +106,15 @@ def run(pg, tag, desktop):
     # follow-up round: couplings that turn critical after a run are queued without a click
     if pg.evaluate("S.xtScan.critical_geoms.length > 0") and not pg.evaluate("(() => { const p = new FieldPool(); S.pool = p; p.scope = 'target'; p.round = 1; p.followUp(); const ok = p.round === 2 && p.total > 0; p.stop(); return ok; })()"):
         problems.append(f"{tag}: no follow-up round for new critical couplings")
+    # a short real run (3 cross-sections): results applied, then the idle threads are ended
+    # (here after 0.5 s instead of a minute)
+    if tag == "light":
+        pg.evaluate("(() => { S.poolIdleMs = 500; S.pool = new FieldPool(); S.pool.start(scopeGeoms('target').filter((x) => !S.field.has(x.id)).slice(0, 3)); })()")
+        pg.wait_for_function("S.pool === null || (!S.pool.running && S.fieldPending.size === 0)", timeout=300000)
+        pg.wait_for_timeout(1500)
+        if pg.evaluate("S.field.size") < 3 or not pg.evaluate("S.pool === null"):
+            problems.append(f"{tag}: short field solver run: {pg.evaluate('S.field.size')} results, threads ended: {pg.evaluate('S.pool === null')}")
+        pg.evaluate("delete S.poolIdleMs")
     if desktop and not a.quick and pg.locator("#xt-rows tr[data-net]").count():
         pg.click("#xt-rows tr[data-net] >> nth=0"); pg.wait_for_timeout(600)
         if pg.evaluate("S.detailTab") != "xt" or not pg.locator("#ch-xt").count():

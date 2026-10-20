@@ -4,6 +4,9 @@
 // results are shared between boards and survive reloads.
 const FIELD_TOL = 0.01;
 const XT_ROUNDS = 3; // rounds of coupling refinement after new nets turn critical
+// idle worker threads hold ~120 MB each (solver module, mesh, matrix): ended after a minute
+// without work, started again (about a second) with the next run
+const POOL_IDLE_MS = 60000;
 const Cache = {
   db: null,
   key: (id) => `${UPSTREAM_REV}|${FIELD_TOL}|v2|${id}`,
@@ -106,14 +109,15 @@ class FieldPool {
     S.field.set(id, r);
     Cache.put(id, r);
     this.done_n++;
-    if (gen !== S.gen) return;
+    if (gen !== S.gen) { this.idleCheck(); return; }
     this.dirty = true;
     const now = performance.now();
     const finished = this.queue.length === 0 && S.fieldPending.size === 0;
     if (finished) this.running = false;
     if (now - this.lastApply > 2000 || finished) this.apply();
-    if (finished) this.followUp();
     else renderFieldStatus();
+    if (finished) this.followUp();
+    this.idleCheck();
   }
   apply() { this.lastApply = performance.now(); this.dirty = false; runAnalysis(); }
   reset() { this.queue = []; this.running = false; this.total = 0; this.done_n = 0; }
@@ -124,6 +128,8 @@ class FieldPool {
     this.queue = g.map((x) => ({ id: x.id, text: x.text, gen: S.gen }));
     this.total = this.queue.length; this.done_n = 0;
     this.running = this.queue.length > 0;
+    clearTimeout(this.idleTimer);
+    if (!this.running) this.idleCheck();
     renderFieldStatus();
     this.pump();
   }
@@ -149,7 +155,17 @@ class FieldPool {
     }
     renderFieldStatus();
   }
-  stop() { this.queue = []; this.running = false; this.scope = null; renderFieldStatus(); }
+  stop() { this.queue = []; this.running = false; this.scope = null; this.idleCheck(); renderFieldStatus(); }
+  // end the threads when nothing is queued or running for POOL_IDLE_MS
+  idleCheck() {
+    clearTimeout(this.idleTimer);
+    if (this.running || S.fieldPending.size > 0) return;
+    this.idleTimer = setTimeout(() => {
+      if (this.running || (S.pool === this && S.fieldPending.size > 0)) return;
+      this.terminate();
+      if (S.pool === this) { S.pool = null; renderFieldStatus(); }
+    }, S.poolIdleMs ?? POOL_IDLE_MS);
+  }
   // field results can lift further nets over the crosstalk threshold (the formulas tend to
   // underestimate close coupling): solve their coupling cross-sections too, up to 3 rounds
   followUp() {
@@ -161,7 +177,7 @@ class FieldPool {
     this.round = round;
     renderFieldStatus();
   }
-  terminate() { this.workers.forEach((w) => w.terminate()); this.workers = []; this.idle = []; }
+  terminate() { clearTimeout(this.idleTimer); this.workers.forEach((w) => w.terminate()); this.workers = []; this.idle = []; this.backend = null; }
 }
 
 // nets in a solver scope -> geometry ids used by them

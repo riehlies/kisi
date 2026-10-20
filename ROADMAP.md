@@ -1,6 +1,6 @@
 # kisi – roadmap
 
-Planned and possible work after 0.1.0, roughly in order of priority. Each item says why it matters;
+Planned and possible work after 0.2.0, roughly in order of priority. Each item says why it matters;
 "Decide first" marks items that need a decision before work starts.
 
 ## Next

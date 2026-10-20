@@ -626,7 +626,7 @@ pub fn touchstone_dd(m: &MixedMode) -> String {
     s.push_str(&format!("! Port 1 = A: the pair driven differentially at {} (P) and {} (N)\n", m.p_a, m.n_a));
     s.push_str(&format!("! Port 2 = B: the pair at {} (P) and {} (N)\n", m.p_b, m.n_b));
     s.push_str("! Data per frequency: Sdd11 Sdd21 Sdd12 Sdd22, each as real and imaginary part\n");
-    s.push_str("! Common mode and mode conversion: the .s4p of this pair\n");
+    s.push_str("! Contains the differential mode only\n");
     s.push_str(&format!("# HZ S RI R {:.3}\n", 2.0 * m.z_ref));
     for (k, &f) in m.freq.iter().enumerate() {
         let mm = mixed_of(&m.s[k]);
@@ -642,6 +642,7 @@ pub fn touchstone4(m: &MixedMode) -> String {
     let mut s = String::new();
     s.push_str(&format!("! kisi {}: single-ended 4-port of the pair P = {}, N = {}\n", env!("CARGO_PKG_VERSION"), m.p_net, m.n_net));
     s.push_str(&format!("! reference {:.1} ohm at every port\n", m.z_ref));
+    s.push_str("! Contains both lines with their coupling: differential and common mode, mode conversion (Scd, Sdc), skew between P and N\n");
     s.push_str(&format!("! Port 1 = P at A: {} at {}\n", m.p_net, m.p_a));
     s.push_str(&format!("! Port 2 = N at A: {} at {}\n", m.n_net, m.n_a));
     s.push_str(&format!("! Port 3 = P at B: {} at {}\n", m.p_net, m.p_b));

@@ -114,11 +114,11 @@ function exportBlock(kind, r, base) {
   if (kind === "s4p") {
     title = `single-ended 4-port of the pair, reference ${fmt(mx.z_ref, 0)} Ω at every port`;
     rows = [[1, "P at A", nm(mx.p_net), mx.p_a], [2, "N at A", nm(mx.n_net), mx.n_a], [3, "P at B", nm(mx.p_net), mx.p_b], [4, "N at B", nm(mx.n_net), mx.n_b]];
-    order = "Four lines per frequency, line i = Si1 Si2 Si3 Si4 (real, imaginary). Mixed mode with this order: Sdd21 = (S31 − S32 − S41 + S42)/2.";
+    order = `Contains both lines with their coupling: differential and common mode, mode conversion (Scd, Sdc) and the skew between P and N (${fmt(mx.skew_ps, 1)} ps). Four lines per frequency, line i = Si1 Si2 Si3 Si4 (real, imaginary); mixed mode with this order: Sdd21 = (S31 − S32 − S41 + S42)/2.`;
   } else if (mx) {
     title = `differential 2-port (Sdd of the 4-port), reference ${fmt(2 * mx.z_ref, 0)} Ω differential`;
     rows = [[1, "A", `${nm(mx.p_net)} / ${nm(mx.n_net)}`, `${mx.p_a} / ${mx.n_a}`], [2, "B", `${nm(mx.p_net)} / ${nm(mx.n_net)}`, `${mx.p_b} / ${mx.n_b}`]];
-    order = "Sdd11 Sdd21 Sdd12 Sdd22 per frequency (real, imaginary). Common mode and mode conversion: the .s4p.";
+    order = "Contains the differential mode only: Sdd11 Sdd21 Sdd12 Sdd22 per frequency (real, imaginary).";
   } else {
     title = `2-port, single-ended, reference ${fmt(ch.z_ref, 0)} Ω`;
     rows = [[1, "A", nm(ch.name), pa ? pa.start.label : "start"], [2, "B", nm(ch.name), pa ? pa.end.label : "end"]];

@@ -5,7 +5,7 @@
 const BOARD_CACHE_MAX = 3;
 const BOARD_STATE = ["overrides", "full", "anMs", "mode", "chMode", "check", "laneRes", "chStatus", "selLane",
   "piRes", "piSolved", "piMs", "pdnRes", "pdnSolved", "pdnMs", "piRail", "piLayer", "piMode", "piTab", "piGround", "groundWarn", "loss", "lossPlane",
-  "piTree", "treeRes", "piSetups", "piWarn", "layerOn", "zoneLayer", "view"];
+  "piTree", "treeRes", "piSetups", "piWarn", "layerOn", "zoneLayer", "view", "xtOn", "xtMs"];
 function boardKey(name, text) {
   // name, size and a sampled FNV hash of the file
   let h = 2166136261;
@@ -52,6 +52,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     S.overrides = {};
     S.selNet = -1; S.hover = -1; S.check = null; S.chStatus = null; S.chCache = null; S.laneRes = null; S.selLane = null; S.chMode = "o";
     S.full = false; S.mode = "type"; // step 2 (formula impedances) not run yet; line type first
+    S.xtOn = false; S.xtScan = null; S.xtMs = null; S.xtHover = -1;
     S.fieldPending = new Set(); S.gen++;
     if (S.pool) S.pool.reset();
     const n = S.scene.stackup.copper.length;
@@ -64,6 +65,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
       // back to a board of this session: same inputs, re-run the (fast) analysis for
       // the engine, keep the slow results
       S.overrides = snap.overrides; S.full = snap.full; S.mode = snap.mode; S.chMode = snap.chMode; S.anMs = snap.anMs;
+      S.xtOn = !!snap.xtOn; S.xtMs = snap.xtMs;
       if (snap.layerOn && snap.layerOn.length === n) S.layerOn = snap.layerOn;
       S.zoneLayer = snap.zoneLayer;
     }
@@ -142,6 +144,7 @@ function runAnalysis(tParse) {
   const tAn = performance.now() - t0;
   if (tParse != null) S.parseMs = Math.round(tParse);
   $("timing").textContent = S.parseMs != null ? `read ${S.parseMs} ms` : "";
+  xtUpdate();
   syncModeButtons();
   preparePieces();
   buildPaths();

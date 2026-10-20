@@ -126,7 +126,11 @@ function renderLegend() {
       `<div class="row muted">reference planes and impedances: step 2</div>`;
     return;
   }
-  if (S.mode === "dev") {
+  if (S.mode === "xt") {
+    const it = [[C.ok, "< 1 %"], [C.high1, "1 … 3 %"], [C.high2, "> 3 %"], [C.none, "no target"]];
+    L.innerHTML = `<strong>Crosstalk (worst of NEXT, FEXT)</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("") +
+      `<div class="row muted">${S.xtScan && S.xtScan.rows.some((r) => r.source === "formula") ? "formula estimate, " : ""}% of the aggressor swing</div>`;
+  } else if (S.mode === "dev") {
     const it = [[C.low2, "< −10 %"], [C.low1, "−10 … −5 %"], [C.ok, "±5 % (on target)"], [C.high1, "+5 … +10 %"], [C.high2, "> +10 %"], [C.none, "no target"], [C.noref, "no reference"]];
     L.innerHTML = `<strong>Deviation from target</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
   } else if (S.mode === "abs") {

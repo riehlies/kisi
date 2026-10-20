@@ -176,6 +176,7 @@ function selectNet(net, zoom = true) {
     S.detailTab = b.dataset.tab;
     d.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
     renderTab(net, t, rowsXs);
+    draw();
   });
   if (S.detailTab === "eye") S.detailTab = "z";
   if (S.tab === "ch") { d.hidden = true; renderChDetail(net); } else { $("ch-detail").hidden = true; renderTab(net, t, rowsXs); }

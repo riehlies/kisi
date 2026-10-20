@@ -22,7 +22,7 @@ reuse it:
    (`cargo install --path crates/kisi-cli`) accepts the same commands but has no field solver.
 
 Run it as `node ~/.kisi/kisi.mjs <command> <board.kicad_pcb> [options]` (below written as `kisi …`).
-`kisi help` lists the commands. The field solver runs for `overview`, `net`, `check` and `report`:
+`kisi help` lists the commands. The field solver runs for `overview`, `net`, `check`, `crosstalk` and `report`:
 the first run on a board can take minutes (it prints progress on stderr and stops new solves after
 `--field-time` seconds, default 120); results are cached, so later runs are fast. `field_solver`
 in the output shows the coverage; `--formula` skips the solver.
@@ -41,6 +41,10 @@ in the output shows the coverage; `--formula` skips the solver.
    profiles make sense; `kisi profiles` shows the available standards. Then `kisi check <board>`,
    with `--class CLASS=PROFILE` when the assignment is wrong (better: put it into kisi.json).
    Only yellow/red rows are printed by default (`--all` for green too, `--nets A,B` to restrict).
+   Crosstalk: `kisi crosstalk <board>` lists the critical victims (NEXT or FEXT from 1 % of the aggressor
+   swing, pairs as differential noise with the common-mode noise beside it) and their worst aggressor;
+   `kisi net` then shows the aggressors of one net. `source: formula` values are estimates; broadside
+   overlaps are counted but not computed.
    The first `check` on a board runs the field solver for all nets with a target (see Getting kisi).
 5. Power: `kisi power <board>` – regulator chain balance (PI_REG/PI_LOAD fields or kisi.json, or
    `--tree tree.json`), IR drop per rail and in the ground return (`ground_return` rows: `max_offset_mv`

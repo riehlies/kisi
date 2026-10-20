@@ -29,7 +29,8 @@ Planned and possible work after 0.1.0, roughly in order of priority. Each item s
   eye and check still use the odd-mode 2-port).
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
 - **Via model against 3D results** (HFSS/openEMS cases) to tighten the ±15 % estimate.
-- **Crosstalk:** broadside coupling between layers, aggressors in the eye.
+- **Crosstalk:** compute broadside coupling between layers (detected and listed so far), aggressors in the eye;
+  crossings of plane splits and edges (return path), then via-to-via coupling through the cavity.
 - **PDN:** several planes per rail, capacitor ESR/ESL from datasheets (`kisi.json` fields), comparison with a
   measurement or a reference tool.
 - **Power:** via current capacity; a temperature estimate from the losses map (2D heat spreading with

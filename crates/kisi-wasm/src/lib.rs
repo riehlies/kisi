@@ -693,10 +693,11 @@ pub extern "C" fn kisi_net_path(p: *const u8, n: usize) -> i32 {
     }
 }
 
-/// Coupling cross-sections (crosstalk) of several nets that the field solver can refine.
-/// Input: {"nets": [id…], "rf": RfParams}. Output: [[geometry id, text, coupled mm]…], longest first.
+/// Stage 1 of the coupling analysis for several nets (formula estimate, or the field solver where
+/// it has already solved). Input: {"nets": [id…], "rf": RfParams, "threshold": 0.01}.
+/// Output: XtScan {rows, threshold, critical_geoms}.
 #[no_mangle]
-pub extern "C" fn kisi_xt_geoms(p: *const u8, n: usize) -> i32 {
+pub extern "C" fn kisi_xt_scan(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
     let r = ST.with(|st| -> Result<String, String> {
         let st = st.borrow();
@@ -706,7 +707,8 @@ pub extern "C" fn kisi_xt_geoms(p: *const u8, n: usize) -> i32 {
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let rp: kisi_core::rf::RfParams = serde_json::from_value(v["rf"].clone()).unwrap_or_default();
         let nets: Vec<u32> = v["nets"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).map(|x| x as u32).collect()).unwrap_or_default();
-        Ok(serde_json::to_string(&kisi_core::rf::crosstalk_geoms(b, an, &nets, &params.field, &rp)).unwrap())
+        let th = v["threshold"].as_f64().unwrap_or(kisi_core::rf::XT_CRITICAL);
+        Ok(serde_json::to_string(&kisi_core::rf::crosstalk_scan(b, an, &nets, &params.field, &rp, th)).unwrap())
     });
     reply(r)
 }
@@ -730,7 +732,7 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
         let target = v["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
         let (flip, hint) = path_opts(&v);
         let ch = kisi_core::rf::channel_dir(b, an, net, &params.field, target, &rp, flip, hint);
-        let xt = kisi_core::rf::crosstalk(b, an, net, &params.field, &rp);
+        let xt = kisi_core::rf::crosstalk_dir(b, an, net, &params.field, &rp, flip, hint);
         let mut eye = serde_json::Value::Null;
         let mut skew = serde_json::Value::Null;
         let mut mixed = serde_json::Value::Null;

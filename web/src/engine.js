@@ -32,7 +32,7 @@ class Engine {
   piNets() { if (this.k.kisi_pi_nets() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   piFields() { if (this.k.kisi_pi_fields() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   rf(req) { this.call(this.k.kisi_rf, JSON.stringify(req)); return JSON.parse(this.out()); }
-  xtGeoms(req) { this.call(this.k.kisi_xt_geoms, JSON.stringify(req)); return JSON.parse(this.out()); }
+  xtScan(req) { this.call(this.k.kisi_xt_scan, JSON.stringify(req)); return JSON.parse(this.out()); }
   // main path of a net with ends and branches (kisi_core::rf::net_path_info) or null
   netPath(req) { this.call(this.k.kisi_net_path, JSON.stringify(req)); return JSON.parse(this.out()); }
   pdn(req) { this.call(this.k.kisi_pdn, JSON.stringify(req)); return JSON.parse(this.out()); }

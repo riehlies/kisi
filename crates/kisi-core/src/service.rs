@@ -304,9 +304,54 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
         "tdr": {"rise_ps": rp.rise * 1e12, "z_min": tdr_in.iter().cloned().fold(f64::INFINITY, f64::min) * k, "z_max": tdr_in.iter().cloned().fold(f64::NEG_INFINITY, f64::max) * k, "mode": if ch.diff { "differential" } else { "single-ended" }},
         "via_details": ch.via_info.iter().map(|v| json!({"from": su.copper[v.layer_in as usize].name, "to": su.copper[v.layer_out as usize].name, "drill_mm": v.drill_mm, "antipad_mm": v.antipad_mm, "z_ohm": v.z_via, "stub_mm": v.stub_mm, "stub_resonance_ghz": v.stub_f_ghz, "return_path": v.return_kind})).collect::<Vec<_>>(),
         "crosstalk": {"next_total": xt.next_total, "fext_total": xt.fext_total, "rise_ps": xt.rise_ps, "differential": xt.differential,
-            "aggressors": xt.aggressors.iter().take(5).map(|a| json!({"net": a.name, "pair": a.pair, "parallel_mm": a.coupled_mm, "gap_min_mm": a.gap_min_mm, "next": a.next, "fext": a.fext, "source": a.source})).collect::<Vec<_>>()},
+            "next_total_common": if xt.differential { json!(xt.next_total_c) } else { Value::Null },
+            "fext_total_common": if xt.differential { json!(xt.fext_total_c) } else { Value::Null },
+            "aggressors": xt.aggressors.iter().take(5).map(|a| {
+                let mut v = json!({"net": a.name, "pair": a.pair, "parallel_mm": a.coupled_mm, "gap_min_mm": a.gap_min_mm, "next": a.next, "fext": a.fext, "source": a.source});
+                if xt.differential {
+                    v["next_common"] = json!(a.next_c);
+                    v["fext_common"] = json!(a.fext_c);
+                }
+                v
+            }).collect::<Vec<_>>(),
+            "broadside": xt.broadside.iter().map(|b| json!({"net": b.name, "layer": su.copper[b.layer as usize].name, "overlap_mm": b.overlap_mm, "dz_mm": b.dz_mm, "lateral_offset_mm": b.offset_mm, "computed": false})).collect::<Vec<_>>(),
+            "note": "fractions of the aggressor swing; source 'formula' is an estimate. Differential victims: differential noise, common-mode noise in *_common. Broadside overlaps (tracks on the adjacent layer) are listed but not computed yet."},
         "mixed_mode": mixed,
         "warnings": ch.warnings, "field_solver": p.field_summary(), "models": p.models()
+    }))
+}
+
+/// Victims of the coupling scan: the named nets, else all nets with a target.
+pub fn xt_nets(p: &Project, names: Option<&[String]>) -> Result<Vec<u32>, String> {
+    match names {
+        Some(ns) => ns.iter().map(|n| p.net_id(n).ok_or_else(|| format!("net '{n}' not found"))).collect(),
+        None => Ok(p.an.nets.iter().filter(|s| s.target.is_some()).map(|s| s.net).collect()),
+    }
+}
+
+/// Coupling scan (stage 1 of the viewer's step 4; with field-solver results the critical
+/// couplings are refined): one row per victim, a pair once.
+pub fn crosstalk_scan(p: &Project, names: Option<&[String]>, rp: &RfParams) -> Result<Value, String> {
+    let nets = xt_nets(p, names)?;
+    let sc = rf::crosstalk_scan(&p.board, &p.an, &nets, &p.params.field, rp, rf::XT_CRITICAL);
+    let rows: Vec<Value> = sc
+        .rows
+        .iter()
+        .map(|r| {
+            json!({"net": r.name, "partner": r.partner.map(|n| p.board.net_name(n).to_string()), "differential": r.differential,
+                "next": r.next, "fext": r.fext,
+                "next_common": if r.differential { json!(r.next_c) } else { Value::Null },
+                "fext_common": if r.differential { json!(r.fext_c) } else { Value::Null },
+                "worst_aggressor": r.worst, "worst_aggressor_pair": r.worst_pair, "source": r.source,
+                "unsolved_cross_sections": r.open, "broadside_overlaps": r.broadside, "critical": r.critical})
+        })
+        .collect();
+    Ok(json!({
+        "victims": rows.len(), "critical": sc.rows.iter().filter(|r| r.critical).count(), "threshold": sc.threshold,
+        "rise_ps": rp.rise * 1e12, "unsolved_critical_cross_sections": sc.critical_geoms.len(),
+        "rows": rows,
+        "note": "NEXT (backward, seen at the near end) and FEXT (forward, at the far end) as fractions of the aggressor swing, all aggressors summed; critical from 1 % (kisi guide value). Source 'formula' is an estimate; kisi.mjs solves the critical coupling cross-sections with the field solver. Broadside overlaps (tracks on the adjacent layer) are counted but not computed yet. Details per net: `kisi net`.",
+        "field_solver": p.field_summary()
     }))
 }
 

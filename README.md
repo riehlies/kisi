@@ -27,7 +27,9 @@ Each release on GitHub has these files:
 Three views, each starting with what the board file gives and computing more on demand:
 1. **Impedance** – stackup and target impedances first; “Estimate impedances” (formulas), then the 2D field solver
    (selected net, a class, all nets with a target, or everything; results cached in the browser). Per net:
-   impedance along the path, loss, TDR, vias, crosstalk. The path runs from A to B (marked on the board and under
+   impedance along the path, loss, TDR, vias, crosstalk. “Calculate couplings” estimates NEXT/FEXT for every net
+   with a target (map mode “Crosstalk”, list of critical nets from 1 %) and sends only the critical couplings to the
+   field solver; per net a chart shows where along the path the crosstalk comes from. The path runs from A to B (marked on the board and under
    the charts; A is the transmitter side of the lane or the IC, ⇄ swaps it); branches are marked where they leave
    the path and included in loss and TDR as open stubs; hovering a chart shows the position on the board.
 2. **Channel** – interfaces overview: buses and device-to-device lanes through series resistors and AC-coupling
@@ -49,13 +51,14 @@ files are not changed. Results of the last three boards stay in memory while swi
 | `interfaces` | buses and device-to-device lanes with their profiles |
 | `net <NET>` | path (start, end, branches), impedance along it, loss, TDR, vias, crosstalk; `--s2p FILE` writes Touchstone |
 | `check` | channel check against the profiles (`--class CLASS=PROFILE`, `--nets A,B`, `--all`) |
+| `crosstalk` | coupling scan of all nets with a target, critical from 1 % (`--nets A,B`, `--all` for every row); the field solver refines the critical couplings |
 | `power` | regulator chain, budget, DC IR drop per rail and in the ground return, losses per part / rail / layer, power flow (`--pdn RAIL` adds Z(f)) |
 | `report` | everything into `analysis/kisi.json` next to the board |
 | `gaps` | missing or default data, where to find it, how to write it into `<board>.kisi.json` |
 | `config-check`, `config-template` | check / start a `<board>.kisi.json` |
 | `profiles [ID]` | the interface profiles |
 
-`overview`, `net`, `check` and `report` run the field solver for the cross-sections of nets with a target, the most
+`overview`, `net`, `check`, `crosstalk` and `report` run the field solver for the cross-sections of nets with a target, the most
 routed length first, within `--field-time` seconds (default 120). Results are cached
 (`~/.cache/kisi`, Windows `%LOCALAPPDATA%\kisi`), so later runs are fast; `field_solver` in the output shows the
 coverage, `--formula` skips the solver. A native build (`cargo install --path crates/kisi-cli`) accepts the same

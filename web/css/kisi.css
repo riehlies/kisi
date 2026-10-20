@@ -361,3 +361,8 @@ ul.src li { margin: 2px 0; }
 .pathline b { font-family: var(--font-mono); font-weight: 500; }
 .pathline .pend { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); color: var(--panel); font: 600 9px var(--font-mono); }
 .pathline .btn { margin-left: auto; padding: 2px 8px; }
+/* couplings (step 4) and the Crosstalk tab */
+.xs-table .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.xs-table th.num, .xs-table td.num { text-align: right; }
+.xt-res { display: flex; flex-direction: column; gap: 6px; }
+.xt-list td:first-child, .xt-list td:last-child { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }

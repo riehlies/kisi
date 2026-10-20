@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
-pub const COMMANDS: &[&str] = &["overview", "interfaces", "net", "check", "profiles", "power", "report", "gaps", "config-check", "config-template", "help"];
+pub const COMMANDS: &[&str] = &["overview", "interfaces", "net", "check", "crosstalk", "profiles", "power", "report", "gaps", "config-check", "config-template", "help"];
 
 pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on stdout
 
@@ -22,6 +22,9 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    [--rise-ps 35] [--roughness smooth|hvlp|standard] [--s2p FILE | --s4p FILE (Touchstone)]
   check            channel check of all lanes against interface profiles
                    [--class CLASS=PROFILE]… [--nets A,B] [--all] [--max 30]
+  crosstalk        coupling scan (NEXT/FEXT from neighbouring tracks) of all nets with a target,
+                   critical from 1 %; kisi.mjs refines the critical couplings with the field solver
+                   [--nets A,B] [--all (all rows, not only critical)] [--max 30] [--rise-ps 35]
   profiles [ID]    interface profiles (no board needed)
   power            regulator chain, DC IR drop per rail and ground return, losses, power flow
                                                           [--tree tree.json] [--pdn RAIL]
@@ -35,7 +38,8 @@ next to the board), --no-config, --stackup FILE (stackup changes, as in the view
 field solver (kisi.mjs only; overview, net, check, report): used by default for the cross-sections
 of nets with a target, results cached on disk; --formula (no field solver), --field-time S
 (time budget for new solves, default 120), --field-all (all cross-sections, not only targets),
---field-xt (also the coupling cross-sections for crosstalk; net: always)";
+--field-xt (also the coupling cross-sections of critical crosstalk victims, NEXT or FEXT from 1 %;
+net: always all of the net's)";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -134,7 +138,7 @@ pub fn needs_board(cmd: &str) -> bool {
 
 /// Whether the command benefits from field-solver impedances.
 pub fn uses_field(cmd: &str) -> bool {
-    matches!(cmd, "overview" | "net" | "check" | "report")
+    matches!(cmd, "overview" | "net" | "check" | "crosstalk" | "report")
 }
 
 /// Cross-sections the field solver should solve for this command, most important first:
@@ -144,7 +148,11 @@ pub fn field_plan(p: &Project, o: &Opts) -> Vec<(String, String, f64)> {
         return vec![];
     }
     let g = &p.an.geometries;
-    let mut plan: Vec<(String, String, f64)> = if o.cmd == "net" {
+    let mut plan: Vec<(String, String, f64)> = if o.cmd == "crosstalk" {
+        // stage 2: only the coupling cross-sections of the critical victims
+        let Ok(nets) = service::xt_nets(p, o.nets.as_deref()) else { return vec![] };
+        xt_plan(p, &nets, false)
+    } else if o.cmd == "net" {
         // only the geometries along this net (and its partner)
         let Some(net) = o.pos.get(1).and_then(|n| p.net_id(n)) else { return vec![] };
         let partner = p.an.nets.iter().find(|s| s.net == net).and_then(|s| s.partner);
@@ -161,13 +169,13 @@ pub fn field_plan(p: &Project, o: &Opts) -> Vec<(String, String, f64)> {
             }
         }
         let mut v: Vec<(String, String, f64)> = w.into_iter().filter_map(|(gi, l)| g.get(gi as usize).map(|e| (e.id.clone(), e.text.clone(), l))).collect();
-        v.extend(xt_plan(p, &[net]));
+        v.extend(xt_plan(p, &[net], true));
         v
     } else {
         let mut v: Vec<(String, String, f64)> = g.iter().filter(|e| o.field_all || e.target_length > 0.0).map(|e| (e.id.clone(), e.text.clone(), if o.field_all { e.length } else { e.target_length })).collect();
         if o.field_xt {
             let nets: Vec<u32> = p.an.nets.iter().filter(|s| o.field_all || s.target.is_some()).map(|s| s.net).collect();
-            v.extend(xt_plan(p, &nets));
+            v.extend(xt_plan(p, &nets, false));
         }
         v
     };
@@ -176,9 +184,15 @@ pub fn field_plan(p: &Project, o: &Opts) -> Vec<(String, String, f64)> {
 }
 
 /// Coupling cross-sections of the crosstalk estimate, after the impedance cross-sections
-/// (weight scaled below any routed length).
-fn xt_plan(p: &Project, nets: &[u32]) -> Vec<(String, String, f64)> {
-    crate::rf::crosstalk_geoms(&p.board, &p.an, nets, &HashMap::new(), &RfParams::default()).into_iter().map(|(id, t, w)| (id, t, 1e-6 * w)).collect()
+/// (weight scaled below any routed length): all of one net's (`all`), else only those of the
+/// critical victims (stage 2 of the coupling analysis).
+fn xt_plan(p: &Project, nets: &[u32], all: bool) -> Vec<(String, String, f64)> {
+    let (f, rp) = (HashMap::new(), RfParams::default());
+    if all {
+        nets.iter().flat_map(|&n| crate::rf::crosstalk(&p.board, &p.an, n, &f, &rp).geoms).map(|(id, t)| (id, t, 1e-3)).collect()
+    } else {
+        crate::rf::crosstalk_geoms(&p.board, &p.an, nets, &f, &rp).into_iter().map(|(id, t, w)| (id, t, 1e-3 * w)).collect()
+    }
 }
 
 fn rf_params(o: &Opts) -> Result<RfParams, String> {
@@ -240,6 +254,20 @@ pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, 
                 rows.truncate(max);
                 v["rows_omitted"] = json!(n.saturating_sub(max));
                 v["rows_shown"] = json!(if o.all { "all" } else { "yellow and red (use --all for green too)" });
+            }
+            Ok(v)
+        }
+        "crosstalk" => {
+            let mut v = service::crosstalk_scan(proj()?, o.nets.as_deref(), &rf_params(o)?)?;
+            let max = o.max.unwrap_or(30);
+            if let Some(rows) = v["rows"].as_array_mut() {
+                if !o.all {
+                    rows.retain(|r| r["critical"] == true);
+                }
+                let n = rows.len();
+                rows.truncate(max);
+                v["rows_omitted"] = json!(n.saturating_sub(max));
+                v["rows_shown"] = json!(if o.all { "all" } else { "critical (use --all for all)" });
             }
             Ok(v)
         }

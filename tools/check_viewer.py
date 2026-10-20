@@ -88,11 +88,29 @@ def run(pg, tag, desktop):
                 pg.click(f"#detail [data-tab={t}]"); pg.wait_for_timeout(400)
             step("pair_common")
             pg.click("#detail [data-pm=d]"); pg.wait_for_timeout(300)
-        # field solver scope with the coupling cross-sections (no solve)
-        pg.evaluate("$('fs-scope').value = 'target'; $('fs-xt').checked = true; $('fs-xt').dispatchEvent(new Event('change'))"); pg.wait_for_timeout(300)
-        if not pg.evaluate("S.xtGeoms && S.xtGeoms.list.length >= 0"):
-            problems.append(f"{tag}: coupling cross-sections not planned")
-        pg.evaluate("$('fs-xt').checked = false")
+    # step 4: coupling scan, crosstalk map, critical list, the net's Crosstalk tab (no field solve)
+    pg.evaluate("$('xt-start').click()"); pg.wait_for_function(f"S.xtScan && {BUSY}", timeout=180000); pg.wait_for_timeout(300)
+    if pg.evaluate("S.mode") != "xt" or pg.get_attribute("#mode-xt", "aria-pressed") != "true":
+        problems.append(f"{tag}: crosstalk map mode not active after step 4")
+    if pg.evaluate("S.xtScan.error || !S.xtScan.rows.length"):
+        problems.append(f"{tag}: coupling scan empty or failed: {pg.evaluate('S.xtScan.error')}")
+    step("couplings")
+    if desktop and not a.quick and pg.locator("#xt-rows tr[data-net]").count():
+        if pg.evaluate("$('xt-refine').disabled && S.xtScan.critical_geoms.length > 0"):
+            problems.append(f"{tag}: refine button disabled with open critical couplings")
+        pg.click("#xt-rows tr[data-net] >> nth=0"); pg.wait_for_timeout(600)
+        if pg.evaluate("S.detailTab") != "xt" or not pg.locator("#ch-xt").count():
+            problems.append(f"{tag}: critical net without the crosstalk chart")
+        if pg.locator("#tab-body tr[data-net]").count():
+            pg.hover("#tab-body tr[data-net] >> nth=0"); pg.wait_for_timeout(300)
+        step("net_xt")
+        if pg.locator("#detail [data-pm=c]").count():
+            if pg.evaluate("document.querySelector('#detail [data-pm=c]').disabled"):
+                problems.append(f"{tag}: mode switch greyed out in the Crosstalk tab")
+            pg.click("#detail [data-pm=c]"); pg.wait_for_timeout(500); step("net_xt_common")
+            pg.click("#detail [data-pm=d]"); pg.wait_for_timeout(300)
+    pg.evaluate("setMode('dev')"); pg.wait_for_timeout(200)
+    if desktop and not a.quick:
         pg.click("#view-ch"); pg.wait_for_timeout(500)
         pg.click("#ov-check"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(300); step("check")
         if pg.locator("#ch-overview tr[data-lane]").count():

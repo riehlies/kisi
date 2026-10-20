@@ -26,8 +26,8 @@ function needEstimate(body) {
 function renderTab(net, t, rowsXs) {
   const body = $("tab-body");
   if (!body) return;
-  // the pair's mode switch applies to Impedance, Loss and TDR only
-  const modal = ["z", "loss", "tdr"].includes(S.detailTab);
+  // the pair's mode switch applies to Impedance, Loss, TDR and Crosstalk
+  const modal = ["z", "loss", "tdr", "xt"].includes(S.detailTab);
   document.querySelectorAll("#detail [data-pm]").forEach((b) => { b.disabled = !modal; b.title = modal ? "" : "Not used in this tab"; });
   if (S.an.skeleton) return needEstimate(body);
   if (S.detailTab === "z") {
@@ -221,13 +221,42 @@ function renderVias(body, r) {
 }
 
 function renderXt(body, r, net) {
-  const x = r.crosstalk, rise = fmt(x.rise_ps, 0);
-  const rows = x.aggressors.slice(0, 20).map((a) => `<tr class="click" data-net="${a.net}"><td>${esc(netShort(a.name))}${a.pair ? ` / ${esc(netShort(a.pair))} <span class="muted">(pair)</span>` : ""}</td><td>${esc(S.scene.stackup.copper[a.layer].name)}</td><td>${fmt(a.coupled_mm, 1)}</td><td>${fmt(a.gap_min_mm * 1000, 0)}</td><td>${fmt(a.next * 100, 2)}</td><td>${fmt(a.fext * 100, 2)}</td><td>${a.source === "field" ? "field" : "formula"}</td></tr>`).join("");
+  const x = r.crosstalk, rise = fmt(x.rise_ps, 0), L = S.scene.stackup.copper;
+  // pairs: differential noise (P − N) or, with the mode switch, common-mode noise ((P + N)/2)
+  const comm = !!(x.differential && S.pairMode === "c");
+  const nx = (a) => comm ? a.next_c : a.next, fx = (a) => comm ? a.fext_c : a.fext;
+  const tot = comm ? [x.next_total_c, x.fext_total_c] : [x.next_total, x.fext_total];
+  const rows = x.aggressors.slice(0, 20).map((a) => `<tr class="click" data-net="${a.net}"><td><span class="sw" style="background:${xtColor(Math.max(nx(a), fx(a)))}"></span>${esc(netShort(a.name))}${a.pair ? ` / ${esc(netShort(a.pair))} <span class="muted">(pair)</span>` : ""}</td><td>${esc(L[a.layer].name)}</td><td>${fmt(a.coupled_mm, 1)}</td><td>${fmt(a.gap_min_mm * 1000, 0)}</td><td>${fmt(nx(a) * 100, 2)}</td><td>${fmt(fx(a) * 100, 2)}</td><td>${a.source === "formula" ? "estimate" : a.source}</td></tr>`).join("");
   const open = x.geoms.filter((g) => !S.field.has(g[0])).length;
-  body.innerHTML = `<div class="dstats"><span>NEXT total <b>${fmt(x.next_total * 100, 2)} %</b></span><span>FEXT total <b>${fmt(x.fext_total * 100, 2)} %</b></span><span class="muted">at ${rise} ps rise, ${x.differential ? "differential noise (P − N) " : ""}in % of the aggressor amplitude</span></div>
+  const pr = x.profile && x.profile.items.length ? x.profile : null;
+  const bs = (x.broadside || []).map((b) => `<tr><td>${esc(netShort(b.name))}</td><td>${esc(L[b.layer].name)}</td><td>${fmt(b.overlap_mm, 1)}</td><td>${fmt(b.dz_mm * 1000, 0)}</td><td>${fmt(b.offset_mm * 1000, 0)}</td><td class="muted">not computed yet</td></tr>`).join("");
+  const what = x.differential ? (comm ? "common-mode noise (P + N)/2 " : "differential noise (P − N) ") : "";
+  body.innerHTML = `<div class="dstats"><span>NEXT total <b>${fmt(tot[0] * 100, 2)} %</b></span><span>FEXT total <b>${fmt(tot[1] * 100, 2)} %</b></span><span class="muted">at ${rise} ps rise, ${what}in % of the aggressor swing</span></div>
+    ${pr ? `<div class="clegend"><span><i style="background:var(--pw-use)"></i>NEXT reaching A from the coupling around each point</span><span><i class="dash" style="border-color:var(--pw-loss)"></i>FEXT reaching B, summed from A up to each point</span><span class="muted" id="xt-which">${pr.items.length > 1 ? `the ${pr.items.length} strongest aggressors; point at a row for one` : esc(netShort(pr.items[0].name))}</span></div>
+    <div class="chart"><canvas id="ch-xt" aria-label="Crosstalk along the path from A to B"></canvas></div>` : ""}
     ${rows ? `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Aggressor</th><th>Layer</th><th>parallel mm</th><th>gap µm</th><th>NEXT %</th><th>FEXT %</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="note">No parallel signal lines within coupling range (up to 5 h beside the line).</p>`}
-    <p class="note">Neighbours on the same layer; power nets are ignored. ${x.differential ? "The victim is a pair: where its partner runs alongside, the noise is the difference of both lines, so much of it cancels. " : ""}A neighbouring pair counts as one aggressor driven differentially (amplitude = differential swing). Every line pair is coupled with the other lines held quiet (field solver) or with a shielding estimate (formulas). NEXT saturates beyond half the rise length, FEXT grows with length.${open ? ` ${open} coupling cross-sections can be computed more accurately with the field solver (“selected net”, or “Coupling to neighbours” for other scopes).` : ""}</p>`;
-  body.querySelectorAll("tr[data-net]").forEach((tr) => tr.onclick = () => selectNet(+tr.dataset.net));
+    ${bs ? `<h4 class="sub">Broadside: tracks over or under on the adjacent layer</h4><div class="tablewrap"><table class="xs-table"><thead><tr><th>Net</th><th>Layer</th><th>overlap mm</th><th>layer distance µm</th><th>lateral offset µm</th><th></th></tr></thead><tbody>${bs}</tbody></table></div>` : ""}
+    <p class="note">Neighbours on the same layer; power nets are ignored. On the board: the coupled stretches of the aggressors (thick, coloured by the coupling) and of this net. ${x.differential ? (comm ? "Common mode: both lines of the pair pick up noise of the same sign, so it adds instead of cancelling. " : "The victim is a pair: where its partner runs alongside, the noise is the difference of both lines, so much of it cancels. ") : ""}A neighbouring pair counts as one aggressor driven differentially (amplitude = differential swing). Every line pair is coupled with the other lines held quiet (field solver) or with a shielding estimate (formulas). NEXT saturates beyond half the rise length (${pr ? fmt(pr.window_mm, 1) + " mm" : "–"}), FEXT grows with length.${open ? ` ${open} coupling cross-sections are estimates: the field solver computes them for the selected net (step 3) or for all critical nets (step 4).` : ""}</p>`;
+  const p = netPath(net);
+  const chart = (hov) => {
+    if (!pr) return;
+    const items = hov >= 0 ? pr.items.filter((it) => it.net === hov) : pr.items;
+    if (!items.length) return;
+    const sum = (k) => pr.s_mm.map((_, i) => items.reduce((a, it) => a + it[k][i], 0) * 100);
+    const [kn, kf] = comm ? ["next_c", "fext_c"] : ["next", "fext"];
+    drawLines($("ch-xt"), { x: pr.s_mm, xUnit: "mm", yUnit: "%", yMin: 0, series: [{ y: sum(kn), color: "--pw-use", name: "NEXT" }, { y: sum(kf), color: "--pw-loss", name: "FEXT", dash: [5, 3] }],
+      ends: p ? { a: p.start.label, b: p.end.label, at: p.length_mm } : null, marks: pathMarks(p), onHover: (s) => setPathCursor(net, s) });
+    const w = $("xt-which");
+    if (w) w.textContent = hov >= 0 ? netShort(items[0].name) + (items[0].pair ? " / " + netShort(items[0].pair) : "") : pr.items.length > 1 ? `the ${pr.items.length} strongest aggressors; point at a row for one` : netShort(pr.items[0].name);
+  };
+  chart(-1);
+  body.querySelectorAll("tr[data-net]").forEach((tr) => {
+    tr.onclick = () => { S.xtHover = -1; selectNet(+tr.dataset.net); };
+    tr.onpointerenter = () => { S.xtHover = +tr.dataset.net; chart(S.xtHover); draw(); };
+    tr.onpointerleave = () => { S.xtHover = -1; chart(-1); draw(); };
+  });
+  S.xtHover = -1;
+  draw();
 }
 
 // line chart with crosshair tooltip

@@ -197,4 +197,55 @@ fn crosstalk_into_a_pair() {
     let kb1 = coupling_from_modes(ze, zo, ee, eo).0;
     assert!(np < kb1 && np > 0.2 * kb1, "{np} vs single {kb1}");
     assert!(xp.geoms.len() == 2 && xp.geoms.iter().all(|g| g.1.contains("sig+") && g.1.contains("sig-") && g.1.matches("gnd x=").count() >= 2));
+    // common mode: the far line adds instead of cancelling, (k_P + k_N)/2 lies between
+    // the differential noise and the single-line coupling
+    let c = xp.aggressors[0].next_c;
+    assert!(c > 0.5 * np && c < kb1, "common {c} differential {np} single {kb1}");
+    // profile along the path: FEXT grows to the total at the far end, NEXT is flat where the
+    // coupled length exceeds half the rise length; stretches for the board on both lines
+    let xd = crosstalk_dir(&board, &an, id("D_P"), &field, &rp, false, None);
+    let pr = xd.profile.as_ref().unwrap();
+    let it = &pr.items[0];
+    assert!((pr.length_mm - 30.0).abs() < 0.5 && it.fext.len() == pr.s_mm.len());
+    let fe = *it.fext.last().unwrap();
+    assert!((fe - xd.aggressors[0].fext).abs() < 0.02 * xd.aggressors[0].fext + 1e-6, "{fe} {}", xd.aggressors[0].fext);
+    assert!(it.fext.windows(2).all(|w| w[1] >= w[0] - 1e-12));
+    let mid = it.next[it.next.len() / 2];
+    assert!((mid - np).abs() < 0.05 * np, "NEXT density {mid} vs {np}");
+    assert!(!xd.segments.is_empty() && xd.segments.iter().all(|s| (s.aa[1] + 0.5).abs() < 1e-6 && (s.va[1] + 0.15).abs() < 1e-6));
+    assert!(xd.broadside.is_empty());
+    // scan: the pair once, critical from 1 %, its coupling cross-sections for stage 2
+    let sc = crosstalk_scan(&board, &an, &[id("D_P"), id("D_N"), id("AGG")], &field, &rp, XT_CRITICAL);
+    assert_eq!(sc.rows.len(), 2);
+    assert!(sc.rows.iter().all(|r| r.critical) && !sc.critical_geoms.is_empty());
+}
+
+#[test]
+fn crosstalk_broadside_detected() {
+    // two tracks on adjacent signal layers (no plane between), one over the other for 20 mm
+    let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew")
+  (general (thickness 1.6))
+  (layers (0 "F.Cu" signal) (1 "In1.Cu" signal) (2 "In2.Cu" signal) (31 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.1) (material "FR4") (epsilon_r 4.0) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 2" (type "core") (thickness 0.2) (material "FR4") (epsilon_r 4.0) (loss_tangent 0.02))
+    (layer "In2.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 3" (type "prepreg") (thickness 0.1) (material "FR4") (epsilon_r 4.0) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "A") (net 2 "B") (net 3 "GND")
+  (segment (start 0 0) (end 30 0) (width 0.15) (layer "In1.Cu") (net 1))
+  (segment (start 5 0.05) (end 25 0.05) (width 0.15) (layer "In2.Cu") (net 2))
+  (zone (net 3) (net_name "GND") (layer "F.Cu") (filled_polygon (layer "F.Cu") (pts (xy -5 -5) (xy 35 -5) (xy 35 5) (xy -5 5))))
+  (zone (net 3) (net_name "GND") (layer "B.Cu") (filled_polygon (layer "B.Cu") (pts (xy -5 -5) (xy 35 -5) (xy 35 5) (xy -5 5)))))
+"#;
+    let board = kisi_board::load_pcb(pcb).unwrap();
+    let an = crate::analyze(&board, &crate::Params::default());
+    let id = |n: &str| board.nets.iter().position(|x| x == n).unwrap() as u32;
+    let x = crosstalk(&board, &an, id("A"), &std::collections::HashMap::new(), &RfParams::default());
+    assert_eq!(x.broadside.len(), 1, "{:?}", x.broadside);
+    let b = &x.broadside[0];
+    assert!(b.net == id("B") && (b.overlap_mm - 20.0).abs() < 0.6 && (b.offset_mm - 0.05).abs() < 0.01, "{b:?}");
+    assert!(x.aggressors.is_empty(), "broadside is not computed yet");
 }

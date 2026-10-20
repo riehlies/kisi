@@ -25,7 +25,8 @@ Planned and possible work after 0.1.0, roughly in order of priority. Each item s
   model per pin with real vendor files ([Model Selector], [Diff Pin], package models, pin names vs. pads), how
   IBIS ends and interface profiles fit together (swing, terminations, current-mode drivers), validation with real
   files and a reference simulator.
-- **Differential channels as 4-port** (mixed-mode, mode conversion, common mode) instead of the odd-mode model.
+- **Eye and channel check on the 4-port pair model** (the 4-port with mode conversion is shown in the net detail;
+  eye and check still use the odd-mode 2-port).
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
 - **Via model against 3D results** (HFSS/openEMS cases) to tighten the ±15 % estimate.
 - **Crosstalk:** broadside coupling between layers, aggressors in the eye.

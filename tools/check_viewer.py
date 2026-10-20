@@ -5,9 +5,9 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
                        [--out DIR] [--quick]
 
 * light, dark and phone layout; all three views (impedance, channel, power)
-* impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview, channel check, lane eye,
-  voltage drop with ground return, impedance seen from the ICs, losses map and power flow (desktop layouts; --quick: only
-  load and the three views)
+* impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
+  channel check, lane eye, voltage drop with ground return, impedance seen from the ICs, losses map and power flow
+  (desktop layouts; --quick: only load and the three views)
 * uses the embedded example boards if the build has them, else --board
 * --config: drops a <board>.kisi.json and expects "check passed"
 * exit code 1 on page errors or console errors (failed loads of external resources

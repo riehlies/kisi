@@ -28,11 +28,11 @@ interface; data that changes (standards, component values) lives in files, not i
 |---|---|---|
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, viewer scene, `num` | – |
 | `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,mixed,crosstalk}` (`mixed`: 4-port pair model), `via`, `eye`, `profile`, `topology` (device-to-device lanes) | kisi-board |
-| `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `losses` (ground return, losses, loss map, power flow), `pdn` (Z(f), plane model) | kisi-board, kisi-sparse |
+| `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `losses` (ground return, losses, loss map, power flow), `pdn` (Z(f), plane model), `pdn_ic` (AC grid over all layers, PDN seen from every IC, recommendations) | kisi-board, kisi-sparse |
 | `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `config` (`<board>.kisi.json`), `gaps` | the three above |
 | `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
 | `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` | kisi-core |
-| `kisi-sparse` | sparse solver, also built as a WASM module for the field solver | faer |
+| `kisi-sparse` | sparse solver (real Cholesky/LU, complex LU for the AC grid), also built as a WASM module for the field solver | faer |
 
 Rule: front ends only use `kisi-core`. Inside kisi-si/kisi-pi things can be restructured as long as
 the facade stays the same. The channel verdict (`kisi_si::profile::judge`) exists exactly once;
@@ -58,7 +58,8 @@ viewer (via WASM) and CLI show the same result.
 
 ## Data (`data/`)
 * `<board>.kisi.json` (next to the board, not in this repository) – per-board values with sources, see above.
-* `components.json` – parasitics of passives in a channel (per package) and reference-designator roles.
+* `components.json` – parasitics of passives in a channel (per package), reference-designator roles, and decoupling
+  data for the PDN (ESL/ESR by package, DC-bias derating, assumed ratings, candidate parts), with sources.
 * `interfaces.json` – interface profiles with sources (standard / guideline / kisi guide value),
   transmitter/receiver, limits, assignment rules. Built into viewer and CLI.
 * Example boards' configuration (power tree as PI_REG / PI_LOAD fields with sources): `web/samples/{ts,vna}.kisi.json`.

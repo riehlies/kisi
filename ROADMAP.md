@@ -31,8 +31,8 @@ Planned and possible work after 0.2.0, roughly in order of priority. Each item s
 - **Via model against 3D results** (HFSS/openEMS cases) to tighten the ±15 % estimate.
 - **Crosstalk:** compute broadside coupling between layers (detected and listed so far), aggressors in the eye;
   crossings of plane splits and edges (return path), then via-to-via coupling through the cavity.
-- **PDN:** several planes per rail, capacitor ESR/ESL from datasheets (`kisi.json` fields), comparison with a
-  measurement or a reference tool.
+- **PDN:** per-IC grid for all rails at once, regulator models beyond R + L (control-loop output impedance),
+  comparison with a measurement or a reference tool.
 - **Power:** via current capacity; a temperature estimate from the losses map (2D heat spreading with
   conductivity of copper and laminate, convection; clearly an estimate); split of regulator losses between IC and
   inductor.

@@ -147,22 +147,29 @@ function selectNet(net, zoom = true) {
     xsLen.set(pc.xs[i], (xsLen.get(pc.xs[i]) || 0) + Math.hypot(pc.bx[i] - pc.ax[i], pc.by[i] - pc.ay[i]));
   }
   const partner = st && st.partner != null ? S.scene.nets[st.partner] : null;
+  // a differential pair: one mode switch for all tabs (differential first, common mode on request)
+  const pair = !!(partner && t && t.diff);
+  const comm = pair && S.pairMode === "c";
   const rowsXs = [...xsLen.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([xi, l]) => {
     const xs = S.an.cross_sections[xi], L = S.scene.stackup.copper;
-    const z = comparedZ(xs, t);
-    return `<tr><td>${fmt(l, 1)}</td><td>${L[xs.layer].name}</td><td>${KIND_LABEL[xs.kind].split(",")[0]}</td><td>${fmt(xs.w * 1000, 0)}</td><td>${xs.diff_gap != null ? fmt(xs.diff_gap * 1000, 0) : "–"}</td><td>${fmt(xs.z0, 1)}</td><td>${fmt(xs.zdiff, 1)}</td><td>${z ? fmt(z.v, 1) : "–"}</td></tr>`;
+    const z = comm ? (xs.zeven != null ? { v: xs.zeven / 2 } : null) : comparedZ(xs, t);
+    return `<tr><td>${fmt(l, 1)}</td><td>${L[xs.layer].name}</td><td>${KIND_LABEL[xs.kind].split(",")[0]}</td><td>${fmt(xs.w * 1000, 0)}</td><td>${xs.diff_gap != null ? fmt(xs.diff_gap * 1000, 0) : "–"}</td><td>${fmt(xs.z0, 1)}</td><td>${fmt(comm ? (xs.zeven != null ? xs.zeven / 2 : null) : xs.zdiff, 1)}</td><td>${z ? fmt(z.v, 1) : "–"}</td></tr>`;
   }).join("");
+  const tabs = [["z", "Impedance"], ["loss", "Loss"], ["tdr", "TDR"]].concat(pair ? [["skew", "Skew"]] : [], [["via", "Vias"], ["xt", "Crosstalk"]]);
+  if (!pair && S.detailTab === "skew") S.detailTab = "z";
   const d = $("detail");
-  d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · pair with " + esc(partner) : ""}</div></div><button class="x" id="closeDetail" aria-label="Clear selection">×</button></header>
+  const modeSw = pair ? `<div class="seg pmode" role="group" aria-label="Mode of the pair"><button data-pm="d" aria-pressed="${!comm}">Differential</button><button data-pm="c" aria-pressed="${comm}">Common mode</button></div>` : "";
+  d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · pair with " + esc(partner) : ""}</div></div>${modeSw}<button class="x" id="closeDetail" aria-label="Clear selection">×</button></header>
     <div class="dstats"><span>Length <b>${fmt(st?.length, 1)} mm</b></span><span>Target <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
     <span>min/mean/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b></span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
     ${pathLine(net)}
     <div class="tabs" role="tablist" aria-label="Net view">
-      ${[["z", "Impedance"], ["loss", "Loss"], ["tdr", "TDR"], ["via", "Vias"], ["xt", "Crosstalk"]].map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
+      ${tabs.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
     </div>
     <div id="tab-body"></div>`;
   d.hidden = false;
   $("closeDetail").onclick = () => selectNet(-1);
+  d.querySelectorAll("[data-pm]").forEach((b) => b.onclick = () => { S.pairMode = b.dataset.pm; selectNet(net, false); });
   const pf = $("path-flip");
   if (pf) pf.onclick = () => { setPathFlip(net, !pathFlipped(net)); S.rfCache = null; S.pathCursor = null; selectNet(net, false); };
   d.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => {

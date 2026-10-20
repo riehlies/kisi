@@ -422,6 +422,21 @@ pub struct NetPath {
     pub parts: usize,
 }
 
+/// Point on the board at position `s` (mm) along the main path.
+pub fn path_point(board: &Board, an: &Analysis, path: &NetPath, s: f64) -> P {
+    let pc = path.pieces.iter().find(|p| s <= p.s1).or(path.pieces.last());
+    match pc {
+        Some(p) => {
+            let q = &an.pieces[p.piece * 4..p.piece * 4 + 4];
+            let tr = &board.tracks[q[0] as usize];
+            let f = if p.s1 > p.s0 { ((s - p.s0) / (p.s1 - p.s0)).clamp(0.0, 1.0) } else { 0.0 };
+            let (t0, t1) = if p.rev { (q[2], q[1]) } else { (q[1], q[2]) };
+            geom::lerp(tr.a, tr.b, t0 + (t1 - t0) * f)
+        }
+        None => path.start.at,
+    }
+}
+
 /// Branches shorter than this are marked but not modelled.
 pub const BRANCH_MIN_MM: f64 = 0.5;
 

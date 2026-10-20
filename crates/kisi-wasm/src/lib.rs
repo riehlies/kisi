@@ -719,7 +719,7 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
         let mut ts4 = String::new();
         let (chv, err, ts) = match ch {
             Ok(c) => {
-                let ts = kisi_core::rf::touchstone(&c);
+                let mut ts = kisi_core::rf::touchstone(&c);
                 if let Some(br) = v["bitrate"].as_f64() {
                     let end = |k: &str| v[k].as_object().and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(v[k].clone()).ok());
                     let ep = kisi_core::eye::EyeParams {
@@ -739,6 +739,8 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
                     mixed = match kisi_core::rf::mixed_mode(b, an, net, &params.field, target, &rp, flip, hint) {
                         Ok(m) => {
                             ts4 = kisi_core::rf::touchstone4(&m);
+                            // the .s2p of a pair is Sdd of the 4-port (matches the plotted curves)
+                            ts = kisi_core::rf::touchstone_dd(&m);
                             serde_json::to_value(&m).unwrap()
                         }
                         Err(e) => serde_json::json!({"error": e}),

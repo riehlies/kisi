@@ -170,8 +170,36 @@ enum Tok {
     U,
 }
 
+/// A stretch of the pair where P and N differ (between two coupled runs).
+#[derive(Debug, Clone, Serialize)]
+pub struct Imbalance {
+    /// along P's own path (mm from A)
+    pub s_from_mm: f64,
+    pub s_to_mm: f64,
+    /// P − N: extra length (mm) and delay (ps)
+    pub dl_mm: f64,
+    pub dt_ps: f64,
+    /// the vias of P and N differ here (each modelled on its own line)
+    pub vias_differ: bool,
+    /// on the board: middle of the stretch on the longer line
+    pub at: P,
+}
+
+#[derive(Default)]
+struct Region {
+    sp0: f64,
+    sn0: f64,
+    lp: f64,
+    ln: f64,
+    dp: f64,
+    dn: f64,
+    vias: bool,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct MixedMode {
+    pub p_id: u32,
+    pub n_id: u32,
     pub p_net: String,
     pub n_net: String,
     /// single-ended reference of each port (Zdiff,ref = 2·z_ref, Zcomm,ref = z_ref/2)
@@ -195,6 +223,13 @@ pub struct MixedMode {
     pub tdr_x_diff_mm: Vec<f64>,
     pub tdr_x_comm_mm: Vec<f64>,
     pub tdr_end_mm: f64,
+    /// each line alone with the other terminated (S11 / S22 of the 4-port, reference z_ref),
+    /// positions along its own path
+    pub tdr_zp: Vec<f64>,
+    pub tdr_xp_mm: Vec<f64>,
+    pub tdr_zn: Vec<f64>,
+    pub tdr_xn_mm: Vec<f64>,
+    pub imbalance: Vec<Imbalance>,
     /// track length and static delay of each line (P, N)
     pub length_mm: (f64, f64),
     pub delay_ps: (f64, f64),
@@ -225,9 +260,11 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     let mut bn = net_build(board, an, partner, field, target, rp, &inn, false, true);
     // line 1 is the positive net of the pair (name ending in +, P or p), whichever was asked for
     let (mut pnet, mut nnet) = (net, partner);
+    let (mut path_p, mut path_n) = (ip, inn);
     if !board.net_name(net).ends_with(['+', 'P', 'p']) {
         std::mem::swap(&mut bp, &mut bn);
         std::mem::swap(&mut pnet, &mut nnet);
+        std::mem::swap(&mut path_p, &mut path_n);
     }
     let mut warnings: Vec<String> = Vec::new();
     for w in bp.warnings.iter().chain(&bn.warnings) {
@@ -390,6 +427,67 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     let mut pos_d: Vec<(f64, f64)> = vec![(0.0, 0.0)];
     let mut pos_c: Vec<(f64, f64)> = vec![(0.0, 0.0)];
     let (mut td, mut tc, mut s) = (0.0, 0.0, 0.0);
+    // where P and N differ: the stretches between coupled runs, with their length and delay balance
+    let mut imbalance: Vec<Imbalance> = Vec::new();
+    let (mut sp, mut sn) = (0.0, 0.0); // own track position of P and N
+    let mut reg = Region::default();
+    let close = |reg: &mut Region, sp: f64, sn: f64, out: &mut Vec<Imbalance>| {
+        let (dl, dt) = (reg.lp - reg.ln, reg.dp - reg.dn);
+        if dl.abs() >= 0.05 || dt.abs() >= 0.2e-12 || reg.vias {
+            let at = if dl >= 0.0 { path_point(board, an, &path_p, 0.5 * (reg.sp0 + sp)) } else { path_point(board, an, &path_n, 0.5 * (reg.sn0 + sn)) };
+            out.push(Imbalance { s_from_mm: reg.sp0, s_to_mm: sp, dl_mm: dl, dt_ps: dt * 1e12, vias_differ: reg.vias, at });
+        }
+        *reg = Region { sp0: sp, sn0: sn, ..Default::default() };
+    };
+    for e in &els {
+        match e {
+            El::Single { line, seg, len } => {
+                let b = if *line == 0 { &bp } else { &bn };
+                let frac = match (len, b.segs[*seg].kind) {
+                    (Some(l), "line") if b.segs[*seg].len_mm > 0.0 => l / b.segs[*seg].len_mm,
+                    _ => 1.0,
+                };
+                let dl = if b.segs[*seg].kind == "line" { len.unwrap_or(b.segs[*seg].len_mm) } else { 0.0 };
+                let dd = b.seg_delay(*seg, &fallback) * frac;
+                if *line == 0 {
+                    reg.lp += dl;
+                    reg.dp += dd;
+                    sp += dl;
+                } else {
+                    reg.ln += dl;
+                    reg.dn += dd;
+                    sn += dl;
+                }
+                reg.vias |= b.segs[*seg].kind == "via";
+            }
+            El::Coupled { len, .. } => {
+                close(&mut reg, sp, sn, &mut imbalance);
+                sp += len;
+                sn += len;
+                reg.sp0 = sp;
+                reg.sn0 = sn;
+            }
+            El::ViaPair { .. } => {}
+        }
+    }
+    close(&mut reg, sp, sn, &mut imbalance);
+    // stretches less than 1 mm apart count as one (a fan-out that is longer on P here and on N there)
+    let mut merged: Vec<Imbalance> = Vec::new();
+    for x in imbalance {
+        match merged.last_mut() {
+            Some(m) if x.s_from_mm - m.s_to_mm < 1.0 => {
+                if x.dl_mm.abs() > m.dl_mm.abs() {
+                    m.at = x.at;
+                }
+                m.s_to_mm = x.s_to_mm;
+                m.dl_mm += x.dl_mm;
+                m.dt_ps += x.dt_ps;
+                m.vias_differ |= x.vias_differ;
+            }
+            _ => merged.push(x),
+        }
+    }
+    let imbalance: Vec<Imbalance> = merged.into_iter().filter(|x| x.dl_mm.abs() >= 0.05 || x.dt_ps.abs() >= 0.2 || x.vias_differ).collect();
     for e in &els {
         let (d_d, d_c, ds) = match e {
             El::Single { line, seg, len } => {
@@ -437,8 +535,41 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     let scc11: Vec<Cx> = mm_all.iter().map(|m| m[2][2]).collect();
     let (tdr_t_ps, tdr_zdiff, tdr_x_diff_mm) = tdr_map(&freq, &sdd11, 2.0 * z_ref, rp.rise, t_max, &xmap_of(&pos_d, td));
     let (_, tdr_zcomm, tdr_x_comm_mm) = tdr_map(&freq, &scc11, z_ref / 2.0, rp.rise, t_max, &xmap_of(&pos_c, tc));
+    // each line alone (the other one terminated): S11 and S22 of the 4-port, positions along its own path
+    let own_map = |b: &Build| {
+        let mut tab = vec![(0.0, 0.0)];
+        let (mut d, mut x) = (0.0, 0.0);
+        for k in 0..b.segs.len() {
+            d += b.seg_delay(k, &fallback);
+            if b.segs[k].kind == "line" {
+                x += b.segs[k].len_mm;
+            }
+            tab.push((d, x));
+        }
+        (tab, d)
+    };
+    let (tab_p, d_p) = own_map(&bp);
+    let (tab_n, d_n) = own_map(&bn);
+    let s_line = |i: usize| -> Vec<Cx> { s_all.iter().map(|m| m[i][i]).collect() };
+    let line_x = |tab: Vec<(f64, f64)>, total: f64, len: f64| {
+        move |t: f64| -> f64 {
+            let h = t / 2.0;
+            match tab.iter().position(|&(d, _)| d >= h) {
+                Some(0) => 0.0,
+                Some(k) => {
+                    let ((d0, s0), (d1, s1)) = (tab[k - 1], tab[k]);
+                    if d1 > d0 { s0 + (s1 - s0) * (h - d0) / (d1 - d0) } else { s1 }
+                }
+                None => len + (h - total) * if total > 0.0 { len / total } else { 0.0 },
+            }
+        }
+    };
+    let (_, tdr_zp, tdr_xp_mm) = tdr_map(&freq, &s_line(0), z_ref, rp.rise, t_max, &line_x(tab_p, d_p, lp));
+    let (_, tdr_zn, tdr_xn_mm) = tdr_map(&freq, &s_line(1), z_ref, rp.rise, t_max, &line_x(tab_n, d_n, ln));
     let nvia = |b: &Build| b.segs.iter().filter(|s| s.kind == "via").count();
     Ok(MixedMode {
+        p_id: pnet,
+        n_id: nnet,
         p_net: board.net_name(pnet).to_string(),
         n_net: board.net_name(nnet).to_string(),
         z_ref,
@@ -458,6 +589,11 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
         tdr_x_diff_mm,
         tdr_x_comm_mm,
         tdr_end_mm: s,
+        tdr_zp,
+        tdr_xp_mm,
+        tdr_zn,
+        tdr_xn_mm,
+        imbalance,
         length_mm: (lp, ln),
         delay_ps: (dp * 1e12, dn * 1e12),
         skew_ps: (dp - dn) * 1e12,
@@ -471,6 +607,24 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
         warnings,
         s: s_all,
     })
+}
+
+/// Touchstone (.s2p, RI) of the differential mode: Sdd of the 4-port, reference 2·z_ref.
+pub fn touchstone_dd(m: &MixedMode) -> String {
+    let mut s = String::new();
+    s.push_str(&format!("! kisi differential pair {} / {}: mixed-mode Sdd of the 4-port model
+", m.p_net, m.n_net));
+    s.push_str(&format!("! port 1 = A (start of {}), port 2 = B; differential reference {:.1} ohm
+", m.p_net, 2.0 * m.z_ref));
+    s.push_str(&format!("# HZ S RI R {:.3}
+", 2.0 * m.z_ref));
+    for (k, &f) in m.freq.iter().enumerate() {
+        let mm = mixed_of(&m.s[k]);
+        let (a, b, c, d) = (mm[0][0], mm[1][0], mm[0][1], mm[1][1]);
+        // Touchstone 2-port order: S11 S21 S12 S22
+        s.push_str(&format!("{:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e}\n", f, a.re, a.im, b.re, b.im, c.re, c.im, d.re, d.im));
+    }
+    s
 }
 
 /// Touchstone (.s4p, RI) of a pair: single-ended 4-port, port order in the header.
@@ -622,6 +776,7 @@ mod tests {
             assert!(zdiff > 60.0 && zdiff < 130.0, "{zdiff}");
             if jog == 0.0 {
                 assert!(m.skew_ps.abs() < 0.5, "{}", m.skew_ps);
+                assert!(m.imbalance.is_empty(), "{:?}", m.imbalance);
                 assert!(m.scd21_worst.0 < -60.0, "{:?}", m.scd21_worst);
                 // symmetric pair: Sdd21 = S21 of the odd-mode channel
                 let ch = channel_dir(&board, &an, net, &HashMap::new(), Some((100.0, true)), &rp, false, None).unwrap();
@@ -631,6 +786,14 @@ mod tests {
                 assert!((m.skew_mm - 2.0).abs() < 0.3, "{}", m.skew_mm);
                 assert!(m.skew_ps > 8.0 && m.skew_ps < 20.0, "{}", m.skew_ps);
                 assert!(m.scd21_worst.0 > -25.0, "{:?}", m.scd21_worst);
+                // the jog is the one place where P and N differ
+                assert_eq!(m.imbalance.len(), 1, "{:?}", m.imbalance);
+                let im = &m.imbalance[0];
+                assert!((im.dl_mm - 2.0).abs() < 0.3 && im.dt_ps > 8.0, "{im:?}");
+                assert!(im.s_from_mm > 13.0 && im.s_to_mm < 18.0 && (im.at[0] - 14.5).abs() < 1.0 && im.at[1] < -0.5, "{im:?}");
+                // single lines: P alone sees the jog, N does not
+                assert_eq!(m.tdr_zp.len(), m.tdr_zn.len());
+                assert!(touchstone_dd(&m).lines().filter(|l| !l.starts_with('!') && !l.starts_with('#')).count() == m.freq.len());
                 // asked from the N side: same pair, P first
                 let nn = board.nets.iter().position(|n| n == "D_N").unwrap() as u32;
                 let m2 = mixed_mode(&board, &an, nn, &HashMap::new(), Some((100.0, true)), &rp, false, None).unwrap();

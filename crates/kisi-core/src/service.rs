@@ -206,7 +206,7 @@ pub fn overview(p: &Project) -> Value {
 pub fn net_touchstone(p: &Project, net_name: &str, rp: &RfParams) -> Result<String, String> {
     let net = p.net_id(net_name).ok_or_else(|| format!("net '{net_name}' not found"))?;
     let ch = rf::channel_dir(&p.board, &p.an, net, &p.params.field, p.target(net), rp, false, lane_hint(p, net))?;
-    Ok(rf::touchstone(&ch))
+    net_touchstone2(p, net, rp, &ch)
 }
 
 /// Single-ended 4-port of a differential pair as Touchstone (.s4p) text.
@@ -214,6 +214,16 @@ pub fn net_touchstone4(p: &Project, net_name: &str, rp: &RfParams) -> Result<Str
     let net = p.net_id(net_name).ok_or_else(|| format!("net '{net_name}' not found"))?;
     let m = rf::mixed_mode(&p.board, &p.an, net, &p.params.field, p.target(net), rp, false, lane_hint(p, net))?;
     Ok(rf::touchstone4(&m))
+}
+
+/// Touchstone (.s2p) of a net: the channel, for a differential pair Sdd of its 4-port model.
+fn net_touchstone2(p: &Project, net: u32, rp: &RfParams, ch: &rf::Channel) -> Result<String, String> {
+    if ch.diff {
+        if let Ok(m) = rf::mixed_mode(&p.board, &p.an, net, &p.params.field, p.target(net), rp, false, lane_hint(p, net)) {
+            return Ok(rf::touchstone_dd(&m));
+        }
+    }
+    Ok(rf::touchstone(ch))
 }
 
 /// Summary of a pair's 4-port model (mixed-mode S-parameters, modal TDR, skew).
@@ -229,6 +239,7 @@ pub fn mixed_json(m: &rf::MixedMode, rise: f64) -> Value {
         "p": m.p_net, "n": m.n_net, "z_ref_diff": 2.0 * m.z_ref, "z_ref_common": m.z_ref / 2.0,
         "length_mm": {"p": m.length_mm.0, "n": m.length_mm.1}, "delay_ps": {"p": m.delay_ps.0, "n": m.delay_ps.1},
         "skew_ps": m.skew_ps, "skew_mm": m.skew_mm, "coupled_mm": m.coupled_mm, "coupled_share": m.coupled_share,
+        "where_p_and_n_differ": m.imbalance.iter().map(|x| json!({"from_mm": x.s_from_mm, "to_mm": x.s_to_mm, "p_minus_n_mm": x.dl_mm, "p_minus_n_ps": x.dt_ps, "vias_differ": x.vias_differ, "at": x.at})).collect::<Vec<_>>(),
         "delay_ps_diff": m.delay_diff_ps, "delay_ps_common": m.delay_comm_ps,
         "sdd21_db": marks(&m.sdd21_db), "scd21_db": marks(&m.scd21_db),
         "scd21_worst": {"db": m.scd21_worst.0, "ghz": m.scd21_worst.1 / 1e9},

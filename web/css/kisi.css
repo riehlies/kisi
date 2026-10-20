@@ -259,6 +259,8 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
 
 .detail { position: absolute; right: 10px; bottom: 10px; width: min(560px, calc(100% - 20px)); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.16); max-height: calc(100% - 60px); overflow-y: auto; }
 .detail header { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.detail header .pmode { margin-left: auto; align-self: center; }
+.detail header .pmode button { padding: 3px 10px; font-size: 12px; }
 .detail h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 17px; overflow-wrap: anywhere; }
 .detail .x { border: 0; background: none; cursor: pointer; font-size: 18px; color: var(--muted); line-height: 1; padding: 2px 6px; }
 .dstats { display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--font-mono); font-size: 12px; }
@@ -274,8 +276,6 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
 .clegend span { display: inline-flex; align-items: center; gap: 6px; }
 .clegend i { width: 16px; height: 2px; display: inline-block; border-radius: 1px; }
 .clegend i.dash { height: 0; border-top: 2px dashed; border-radius: 0; background: none; }
-.clegend .chk { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-.clegend .seg button { padding: 2px 9px; font-size: 12px; }
 .marks { display: flex; flex-wrap: wrap; gap: 4px 14px; font-family: var(--font-mono); font-size: 11.5px; }
 .marks b { font-weight: 500; }
 .xs-table tr.click { cursor: pointer; }

@@ -5,7 +5,7 @@
 const BOARD_CACHE_MAX = 3;
 const BOARD_STATE = ["overrides", "full", "anMs", "mode", "chMode", "check", "laneRes", "chStatus", "selLane",
   "piRes", "piSolved", "piMs", "pdnRes", "pdnSolved", "pdnMs", "piRail", "piLayer", "piMode", "piTab", "piGround", "groundWarn", "loss", "lossPlane",
-  "piTree", "treeRes", "piSetups", "piWarn", "layerOn", "zoneLayer", "view", "xtOn", "xtMs"];
+  "piTree", "treeRes", "piSetups", "piWarn", "layerOn", "zoneLayer", "view"];
 function boardKey(name, text) {
   // name, size and a sampled FNV hash of the file
   let h = 2166136261;
@@ -52,7 +52,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     S.overrides = {};
     S.selNet = -1; S.hover = -1; S.check = null; S.chStatus = null; S.chCache = null; S.laneRes = null; S.selLane = null; S.chMode = "o";
     S.full = false; S.mode = "type"; // step 2 (formula impedances) not run yet; line type first
-    S.xtOn = false; S.xtScan = null; S.xtMs = null; S.xtHover = -1;
+    S.xtScan = null; S.xtMs = null; S.xtHover = -1;
     S.fieldPending = new Set(); S.gen++;
     if (S.pool) S.pool.reset();
     const n = S.scene.stackup.copper.length;
@@ -65,7 +65,6 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
       // back to a board of this session: same inputs, re-run the (fast) analysis for
       // the engine, keep the slow results
       S.overrides = snap.overrides; S.full = snap.full; S.mode = snap.mode; S.chMode = snap.chMode; S.anMs = snap.anMs;
-      S.xtOn = !!snap.xtOn; S.xtMs = snap.xtMs;
       if (snap.layerOn && snap.layerOn.length === n) S.layerOn = snap.layerOn;
       S.zoneLayer = snap.zoneLayer;
     }
@@ -157,7 +156,7 @@ function runAnalysis(tParse) {
 
 function estimateImpedances() {
   if (S.full) return;
-  showBusy("Estimating impedances…");
+  showBusy("Estimating impedances and couplings…");
   requestAnimationFrame(() => setTimeout(() => {
     const t0 = performance.now();
     try { S.full = true; runAnalysis(); } catch (e) { busyError(e.message); return; }

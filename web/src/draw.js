@@ -61,6 +61,7 @@ function drawNow() {
     ctx.strokeStyle = pieceColor(i); ctx.lineWidth = Math.max(pc.w[i], 1.2 * px);
     ctx.stroke();
   }
+  drawXtMap(px);
   if (S.mark && S.selNet === S.mark.net) {
     ctx.strokeStyle = C.halo; ctx.lineWidth = 5 * px; ctx.beginPath(); ctx.arc(S.mark.x, S.mark.y, 9 * px, 0, Math.PI * 2); ctx.stroke();
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim(); ctx.lineWidth = 2 * px; ctx.stroke();

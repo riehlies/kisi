@@ -9,7 +9,7 @@ const S = {
   field: new Map(), fieldPending: new Set(), pool: null, gen: 0,
   tab: "si", piMode: "b", piNets: [], piSetups: new Map(), piRes: new Map(), piRail: null, piLayer: -1,
   piImg: null, piWarn: [], piDefaults: null, piTree: null, treeRes: null,
-  detailTab: "z", rfCache: null, anGen: 0, xtOn: false, xtScan: null, xtMs: null, xtHover: -1,
+  detailTab: "z", rfCache: null, anGen: 0, xtScan: null, xtMs: null, xtHover: -1,
 };
 const KIND_LABEL = { Microstrip: "Microstrip", Stripline: "Stripline", EmbeddedMicrostrip: "Microstrip, embedded (one reference)", NoReference: "No reference plane" };
 const FLAGS = [

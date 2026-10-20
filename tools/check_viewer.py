@@ -88,16 +88,22 @@ def run(pg, tag, desktop):
                 pg.click(f"#detail [data-tab={t}]"); pg.wait_for_timeout(400)
             step("pair_common")
             pg.click("#detail [data-pm=d]"); pg.wait_for_timeout(300)
-    # step 4: coupling scan, crosstalk map, critical list, the net's Crosstalk tab (no field solve)
-    pg.evaluate("$('xt-start').click()"); pg.wait_for_function(f"S.xtScan && {BUSY}", timeout=180000); pg.wait_for_timeout(300)
-    if pg.evaluate("S.mode") != "xt" or pg.get_attribute("#mode-xt", "aria-pressed") != "true":
-        problems.append(f"{tag}: crosstalk map mode not active after step 4")
+    # couplings: scan with step 2, Couplings card, crosstalk map of the critical stretches,
+    # the net's Crosstalk tab; refinement of the critical couplings planned in step 3 (no solve)
+    pg.wait_for_function("S.xtScan", timeout=60000)
     if pg.evaluate("S.xtScan.error || !S.xtScan.rows.length"):
         problems.append(f"{tag}: coupling scan empty or failed: {pg.evaluate('S.xtScan.error')}")
+    if pg.evaluate("S.xtScan.rows.some((r) => r.critical) && (!S.xtScan.map.length || !document.querySelector('#xt-rows tr[data-net]'))"):
+        problems.append(f"{tag}: critical nets without stretches on the map or rows in the Couplings card")
+    pg.evaluate("setMode('xt')"); pg.wait_for_timeout(300)
+    if pg.get_attribute("#mode-xt", "aria-pressed") != "true":
+        problems.append(f"{tag}: crosstalk map mode not active")
     step("couplings")
+    if not pg.evaluate("$('fs-xt').checked"):
+        problems.append(f"{tag}: coupling refinement not on by default")
+    if pg.evaluate("S.xtScan.critical_geoms.length > 0 && !scopeGeoms('target').some((x) => x.xt)"):
+        problems.append(f"{tag}: critical couplings not planned for the field solver")
     if desktop and not a.quick and pg.locator("#xt-rows tr[data-net]").count():
-        if pg.evaluate("$('xt-refine').disabled && S.xtScan.critical_geoms.length > 0"):
-            problems.append(f"{tag}: refine button disabled with open critical couplings")
         pg.click("#xt-rows tr[data-net] >> nth=0"); pg.wait_for_timeout(600)
         if pg.evaluate("S.detailTab") != "xt" or not pg.locator("#ch-xt").count():
             problems.append(f"{tag}: critical net without the crosstalk chart")

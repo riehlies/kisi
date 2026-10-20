@@ -27,9 +27,10 @@ Each release on GitHub has these files:
 Three views, each starting with what the board file gives and computing more on demand:
 1. **Impedance** – stackup and target impedances first; “Estimate impedances” (formulas), then the 2D field solver
    (selected net, a class, all nets with a target, or everything; results cached in the browser). Per net:
-   impedance along the path, loss, TDR, vias, crosstalk. “Calculate couplings” estimates NEXT/FEXT for every net
-   with a target (map mode “Crosstalk”, list of critical nets from 1 %) and sends only the critical couplings to the
-   field solver; per net a chart shows where along the path the crosstalk comes from. The path runs from A to B (marked on the board and under
+   impedance along the path, loss, TDR, vias, crosstalk. The estimate also gives NEXT/FEXT for every net with a target
+   (Couplings card with the critical nets from 1 %, map mode “Crosstalk” marks the critical stretches); the field
+   solver refines only the critical couplings (on by default); per net a chart shows where along the path the
+   crosstalk comes from. The path runs from A to B (marked on the board and under
    the charts; A is the transmitter side of the lane or the IC, ⇄ swaps it); branches are marked where they leave
    the path and included in loss and TDR as open stubs; hovering a chart shows the position on the board.
 2. **Channel** – interfaces overview: buses and device-to-device lanes through series resistors and AC-coupling

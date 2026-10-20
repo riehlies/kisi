@@ -173,11 +173,16 @@ function scopeGeoms(scope) {
     if (g != null) idx.add(g);
   }
   const items = [...idx].map((g) => { const e = S.an.geometries[g]; return { id: e.id, text: e.text, prio: 1e6 + e.target_length * 10 + e.length }; });
-  // the selected net also gets its coupling cross-sections (crosstalk); for other nets step 4
-  // refines the critical couplings
-  if (scope === "sel" && S.selNet >= 0) {
-    const r = rfFor(S.selNet);
-    for (const [id, text] of r.crosstalk.geoms) items.push({ id, text, prio: 1 });
+  // coupling cross-sections (crosstalk), after the impedance ones: all of the selected net's,
+  // for the other scopes those of the critical nets in it (most important first)
+  if ($("fs-xt").checked) {
+    if (scope === "sel" && S.selNet >= 0) {
+      const r = rfFor(S.selNet);
+      for (const [id, text] of r.crosstalk.geoms) items.push({ id, text, prio: 1 });
+    } else if (S.xtScan) {
+      const cg = S.xtScan.critical_geoms, wmax = Math.max(1e-9, ...cg.map((g) => g[2]));
+      for (const [id, text, w, vic] of cg) if (scope === "all" || vic.some((v) => nets.has(v))) items.push({ id, text, prio: w / wmax, xt: true });
+    }
   }
   return items;
 }
@@ -192,7 +197,7 @@ function renderSteps() {
     ? `Done in ${S.anMs} ms: ${an.unique_cross_sections} distinct cross-sections. Formula values are typically within 5 % for single lines, 5–15 % off for coupled and coplanar lines.`
     : "Closed-form formulas (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for every track, about a second. Typically within 5 % for single lines, 5–15 % off for coupled and coplanar lines.";
   $("st3").classList.toggle("locked", !S.full);
-  renderXtStep();
+  renderXtCard();
 }
 $("an-start").onclick = () => estimateImpedances();
 
@@ -218,6 +223,8 @@ function renderFieldStatus() {
   sel.value = opts.some((o) => o[0] === prev) ? prev : (S.selNet >= 0 ? "sel" : "target");
   const ids = scopeGeoms(sel.value);
   const open = ids.filter((x) => !S.field.has(x.id)).length;
+  const openXt = ids.filter((x) => x.xt && !S.field.has(x.id)).length;
+  $("fs-xt-label").textContent = `Refine critical couplings (crosstalk)${openXt ? ` · ${openXt}` : ""}`;
   $("fs-start").textContent = open ? `Compute ${open}` : "Computed";
   $("fs-start").disabled = !open || (pool && pool.running) || (pool && pool.failed);
   // coverage
@@ -251,4 +258,8 @@ $("fs-start").onclick = () => {
   S.pool.start(scopeGeoms($("fs-scope").value));
 };
 $("fs-scope").onchange = () => renderFieldStatus();
+// coupling refinement on by default; the choice is kept per viewer
+const FSXT_KEY = "kisi.fsxt.v1";
+$("fs-xt").checked = lsGet(FSXT_KEY) !== false;
+$("fs-xt").onchange = () => { lsSet(FSXT_KEY, $("fs-xt").checked ? null : false); renderFieldStatus(); };
 $("fs-clear").onclick = async () => { await Cache.clear(); runAnalysis(); };

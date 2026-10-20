@@ -21,7 +21,7 @@
       <button id="mode-type" aria-pressed="true">Line type</button>
       <button id="mode-dev" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Deviation from target</button>
       <button id="mode-abs" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Z₀ absolute</button>
-      <button id="mode-xt" aria-pressed="false" disabled title="after step 4 “Couplings”">Crosstalk</button>
+      <button id="mode-xt" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Crosstalk</button>
     </div>
     <div class="seg" role="group" aria-label="Channel view" data-view="ch" hidden>
       <button id="chm-o" aria-pressed="true">Interfaces</button>
@@ -50,7 +50,7 @@
         <div class="kpi"><span class="v" id="k-nets">–</span><span class="l">nets with target impedance</span></div>
         <div class="kpi"><span class="v" id="k-noref">–</span><span class="l">mm without reference plane</span></div>
       </div>
-      <p class="note">Signal analysis in four steps. Each step refines the one before; the colours on the board show the latest result.</p>
+      <p class="note">Impedance analysis in three steps. Each step refines the one before; the colours on the board show the latest result.</p>
       <ol class="steps">
         <li id="st1" class="done">
           <div class="step-h"><b>Board, stackup and targets</b></div>
@@ -69,18 +69,10 @@
             <p class="note" id="fs-note"></p>
             <div class="fs-settings" id="fs-settings">
               <label class="opt" for="fs-scope"><span>Solve for</span><select id="fs-scope"></select></label>
+              <label class="opt" for="fs-xt"><span id="fs-xt-label">Refine critical couplings (crosstalk)</span><input type="checkbox" id="fs-xt" checked></label>
               <label class="opt" for="fs-threads"><span>Threads</span><select id="fs-threads"></select></label>
               <div class="fs-row"><span class="note" id="fs-cache"></span><button class="btn small" id="fs-clear">Clear cache</button></div>
             </div>
-          </div>
-        </li>
-        <li id="st4">
-          <div class="step-h"><b>Couplings</b><button class="btn small primary" id="xt-start">Calculate couplings</button></div>
-          <span class="note" id="st4-text"></span>
-          <div class="xt-res" id="xt-res" hidden>
-            <div class="fs-row"><span class="note" id="xt-sum"></span><button class="btn small" id="xt-refine">Refine</button></div>
-            <div class="tablewrap"><table class="xs-table xt-list"><thead><tr><th>Critical net</th><th class="num">NEXT %</th><th class="num">FEXT %</th><th>worst aggressor</th></tr></thead><tbody id="xt-rows"></tbody></table></div>
-            <p class="note" id="xt-note"></p>
           </div>
         </li>
       </ol>
@@ -197,6 +189,13 @@
       <h2 id="h-nets">Nets <em id="netCount"></em></h2>
       <input class="search" id="search" type="search" placeholder="Search net or class" aria-label="Search net">
       <div class="nets" id="nets"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-xt" data-view="si">
+      <h2 id="h-xt">Couplings <em id="xt-count"></em></h2>
+      <p class="note" id="xt-text"></p>
+      <div class="tablewrap" id="xt-wrap" hidden><table class="xs-table xt-list"><thead><tr><th>Critical net</th><th class="num">NEXT %</th><th class="num">FEXT %</th><th>worst aggressor</th></tr></thead><tbody id="xt-rows"></tbody></table></div>
+      <p class="note" id="xt-note"></p>
     </section>
   </aside>
 

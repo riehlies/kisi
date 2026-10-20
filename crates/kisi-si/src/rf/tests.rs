@@ -154,6 +154,10 @@ fn net_path_ends_branches_and_stub() {
     assert!(ch.path.is_some());
 }
 
+fn geom_len(a: [f64; 2], b: [f64; 2]) -> f64 {
+    (a[0] - b[0]).hypot(a[1] - b[1])
+}
+
 #[test]
 fn crosstalk_into_a_pair() {
     // pair D_P/D_N (0.15 / 0.15 mm, 30 mm) with an aggressor AGG 0.2 mm beside D_P
@@ -218,6 +222,12 @@ fn crosstalk_into_a_pair() {
     let sc = crosstalk_scan(&board, &an, &[id("D_P"), id("D_N"), id("AGG")], &field, &rp, XT_CRITICAL);
     assert_eq!(sc.rows.len(), 2);
     assert!(sc.rows.iter().all(|r| r.critical) && !sc.critical_geoms.is_empty());
+    // board map: the critical stretches on both lines of the pair (and on AGG)
+    assert!(sc.map.iter().all(|h| h.next.max(h.fext) >= XT_CRITICAL));
+    for n in ["D_P", "D_N", "AGG"] {
+        let len: f64 = sc.map.iter().filter(|h| h.net == id(n)).map(|h| geom_len(h.a, h.b)).sum();
+        assert!(len > 25.0, "{n}: {len} mm marked");
+    }
 }
 
 #[test]

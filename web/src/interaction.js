@@ -1,12 +1,11 @@
 "use strict";
 // ============================================================== interaction
-// colour modes: line type from the start, deviation / Z0 after step 2, crosstalk after step 4
+// colour modes: line type from the start, deviation / Z0 / crosstalk after step 2
 function syncModeButtons() {
-  if (S.mode === "xt" && !(S.xtOn && S.full)) S.mode = S.full ? "dev" : "type";
+  if (S.mode === "xt" && !S.full) S.mode = "type";
   for (const k of ["dev", "abs", "type", "xt"]) $("mode-" + k).setAttribute("aria-pressed", String(k === S.mode));
   for (const k of ["dev", "abs"]) { $("mode-" + k).disabled = !S.full; $("mode-" + k).title = S.full ? "" : "after step 2 “Impedance estimate”"; }
-  const xt = !!(S.xtOn && S.full);
-  $("mode-xt").disabled = !xt; $("mode-xt").title = xt ? "" : "after step 4 “Couplings”";
+  $("mode-xt").disabled = !S.full; $("mode-xt").title = S.full ? "" : "after step 2 “Impedance estimate”";
 }
 function setMode(m) {
   S.mode = m;
@@ -24,7 +23,7 @@ $("opt-step").onchange = (e) => { S.step = parseFloat(e.target.value); runAnalys
 $("ck-start").onclick = () => runCheck();
 for (const id of ["rf-fmax", "rf-rise", "rf-rough", "rf-vias", "rf-bd"]) $(id).onchange = () => {
   markCheckStale();
-  if (S.xtOn) { xtUpdate(); buildPaths(); renderLegend(); renderFieldStatus(); draw(); }
+  if (S.full) { xtUpdate(); renderFieldStatus(); draw(); }
   if (S.selNet >= 0) selectNet(S.selNet, false);
 };
 $("opt-zone").onchange = (e) => { S.zoneLayer = parseInt(e.target.value, 10); draw(); };

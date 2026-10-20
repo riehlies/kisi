@@ -1,24 +1,27 @@
 "use strict";
-// ============================================================== couplings (step 4)
-// Stage 1: formula estimate of NEXT/FEXT for every net with a target (kisi_core::rf::crosstalk_scan),
-// map mode "Crosstalk" and the critical list. Stage 2: the field solver for the coupling
+// ============================================================== couplings (crosstalk)
+// Stage 1, with step 2: formula estimate of NEXT/FEXT for every net with a target
+// (kisi_core::rf::crosstalk_scan), map mode "Crosstalk" and the critical list in the Couplings
+// card. Stage 2, with step 3 ("Refine critical couplings"): the field solver for the coupling
 // cross-sections of the critical nets only.
 const XT_CRIT = 0.01, XT_HIGH = 0.03;
 
 function xtKey() { return `${S.anGen}|${JSON.stringify(rfParams())}`; }
-// (re)compute the scan when the analysis changed; while the field solver runs at most every 8 s
+// (re)compute the scan with every analysis after step 2; while the field solver runs at most every 8 s
 function xtUpdate(force) {
-  if (!S.xtOn || !S.full) return;
+  if (!S.full || !S.an || S.an.skeleton) { S.xtScan = null; return; }
   const key = xtKey();
   if (!force && S.xtScan && S.xtScan.key === key) return;
   const busy = S.pool && S.pool.running;
   if (!force && busy && S.xtScan && performance.now() - S.xtScan.t < 8000) { S.xtScan.stale = true; return; }
   const nets = S.an.nets.filter((n) => n.target).map((n) => n.net);
+  const t0 = performance.now();
   let r;
-  try { r = S.engine.xtScan({ nets, rf: rfParams(), threshold: XT_CRIT }); } catch (e) { r = { rows: [], critical_geoms: [], threshold: XT_CRIT, error: e.message }; }
-  const map = new Map();
-  for (const row of r.rows) { map.set(row.net, row); if (row.partner != null) map.set(row.partner, row); }
-  S.xtScan = { ...r, key, t: performance.now(), map, stale: false };
+  try { r = S.engine.xtScan({ nets, rf: rfParams(), threshold: XT_CRIT }); } catch (e) { r = { rows: [], critical_geoms: [], map: [], threshold: XT_CRIT, error: e.message }; }
+  const byNet = new Map();
+  for (const row of r.rows) { byNet.set(row.net, row); if (row.partner != null) byNet.set(row.partner, row); }
+  S.xtMs = Math.round(performance.now() - t0);
+  S.xtScan = { ...r, key, t: performance.now(), byNet, stale: false, paths: null };
 }
 const xtWorst = (row) => Math.max(row.next, row.fext);
 // both nets of a pair in one short name: "USRIO_4_N" + "USRIO_4_P" → "USRIO_4_P/N"
@@ -33,67 +36,65 @@ function pairName(a, b) {
 }
 function xtColor(v) { const C = S.colors; return v == null ? C.none : v < XT_CRIT ? C.ok : v < XT_HIGH ? C.high1 : C.high2; }
 
-function xtStart() {
-  showBusy("Calculating couplings…");
-  requestAnimationFrame(() => setTimeout(() => {
-    const t0 = performance.now();
-    S.xtOn = true;
-    try { xtUpdate(true); } catch (e) { busyError(e.message); return; }
-    S.xtMs = Math.round(performance.now() - t0);
-    hideBusy();
-    setMode("xt");
-    renderFieldStatus();
-  }, 0));
-}
-
-function renderXtStep() {
-  const li = $("st4");
-  if (!li) return;
-  li.classList.toggle("locked", !S.full);
-  const sc = S.xtOn && S.full ? S.xtScan : null;
-  $("xt-start").hidden = !!sc;
-  $("xt-start").disabled = !S.full;
-  $("xt-res").hidden = !sc;
-  li.classList.toggle("done", !!sc && sc.critical_geoms.length === 0);
+// the Couplings card under the nets: summary and the critical list
+function renderXtCard() {
+  const sc = S.full ? S.xtScan : null;
+  $("xt-wrap").hidden = !sc;
   if (!sc) {
-    $("st4-text").textContent = S.full
-      ? "Crosstalk from neighbouring tracks for every net with a target: formula estimate in a few seconds, then the field solver for the critical couplings only."
-      : "Available after step 2. Crosstalk from neighbouring tracks for every net with a target: formula estimate first, then the field solver for the critical couplings only.";
+    $("xt-count").textContent = "";
+    $("xt-text").textContent = "Crosstalk from neighbouring tracks, estimated with step 2 for every net with a target.";
+    $("xt-note").textContent = "";
     return;
   }
   const crit = sc.rows.filter((r) => r.critical), field = sc.rows.filter((r) => r.source !== "formula").length;
   const bs = sc.rows.reduce((a, r) => a + (r.broadside > 0 ? 1 : 0), 0);
-  $("st4-text").textContent = `${sc.rows.length} victims${S.xtMs != null ? ` in ${S.xtMs} ms` : ""}: ${crit.length} critical (NEXT or FEXT from 1 % of the aggressor swing, at ${fmt(rfParams().rise * 1e12, 0)} ps rise)` +
-    (field ? `, ${field} with field-solver couplings.` : ", formula estimate.") + (sc.stale ? " Updating when the field solver pauses." : "");
-  const open = sc.critical_geoms.length, pool = S.pool, busy = pool && (pool.running || S.fieldPending.size > 0);
-  const rb = $("xt-refine");
-  rb.textContent = open ? `Refine ${crit.length} critical coupling${crit.length === 1 ? "" : "s"}` : crit.length ? "Critical couplings refined" : "Nothing critical";
-  rb.title = open ? `${open} coupling cross-sections for the field solver (those carrying at least 0.1 %), most important first` : "";
-  rb.disabled = !open || busy || !!(pool && pool.failed);
-  $("xt-sum").textContent = open ? `${open} cross-sections` : "";
-  const rows = crit.slice(0, 12).map((r) => {
+  $("xt-count").textContent = `${crit.length} critical`;
+  $("xt-text").textContent = `${sc.rows.length} nets with a target${S.xtMs != null ? ` in ${S.xtMs} ms` : ""}; critical: NEXT or FEXT from 1 % of the aggressor swing at ${fmt(rfParams().rise * 1e12, 0)} ps rise. ` +
+    (field ? `${field} with field-solver couplings` : "Formula estimate") + (sc.critical_geoms.length ? `; ${sc.critical_geoms.length} coupling cross-sections left for the field solver (step 3, “Refine critical couplings”).` : ".") +
+    (sc.stale ? " Updating when the field solver pauses." : "");
+  const rows = crit.slice(0, 15).map((r) => {
     const nm = r.partner != null ? pairName(r.name, S.scene.nets[r.partner]) : netShort(r.name);
     const w = r.worst ? (r.worst_pair ? pairName(r.worst, r.worst_pair) : netShort(r.worst)) : "–";
     const tip = `${r.name}${r.partner != null ? " / " + S.scene.nets[r.partner] : ""} · worst aggressor ${r.worst || "–"}${r.worst_pair ? " / " + r.worst_pair : ""} · ${r.source === "formula" ? "formula estimate" : r.source}`;
-    return `<tr class="click" data-net="${r.net}" title="${esc(tip)}"><td><span class="sw" style="background:${xtColor(xtWorst(r))}"></span>${esc(nm)}</td><td class="num">${fmt(r.next * 100, 1)}</td><td class="num">${fmt(r.fext * 100, 1)}</td><td>${esc(w)}</td></tr>`;
+    return `<tr class="click" data-net="${r.net}" aria-current="${r.net === S.selNet || r.partner === S.selNet}" title="${esc(tip)}"><td><span class="sw" style="background:${xtColor(xtWorst(r))}"></span>${esc(nm)}</td><td class="num">${fmt(r.next * 100, 1)}</td><td class="num">${fmt(r.fext * 100, 1)}</td><td>${esc(w)}</td></tr>`;
   }).join("");
   $("xt-rows").innerHTML = rows || `<tr><td colspan="4" class="muted">No net above 1 %.</td></tr>`;
   $("xt-rows").querySelectorAll("tr[data-net]").forEach((tr) => tr.onclick = () => { S.detailTab = "xt"; selectNet(+tr.dataset.net); });
-  $("xt-note").textContent = (crit.length > 12 ? `${crit.length - 12} more critical nets: Crosstalk colours on the board. ` : "") +
-    "NEXT reaches the near end, FEXT the far end; pairs: differential noise, common mode in the net's Crosstalk tab. Neighbours on the same layer" +
-    (bs ? `; ${bs} net${bs === 1 ? "" : "s"} also run over or under a track on the adjacent layer (broadside coupling, listed in the net's tab, not computed yet).` : "; broadside coupling (adjacent layers) is detected but not computed yet.");
+  $("xt-note").textContent = (crit.length > 15 ? `${crit.length - 15} more: map mode “Crosstalk”. ` : "") +
+    "NEXT reaches the near end, FEXT the far end; pairs: differential noise (common mode in the net's Crosstalk tab). Neighbours on the same layer" +
+    (bs ? `; ${bs} net${bs === 1 ? "" : "s"} also run over or under a track on the adjacent layer (broadside, listed in the net's tab, not computed yet).` : "; broadside coupling (adjacent layers) is detected but not computed yet.");
 }
-
-$("xt-start").onclick = () => xtStart();
-$("xt-refine").onclick = () => {
-  const sc = S.xtScan;
-  if (!sc || !sc.critical_geoms.length) return;
-  if (S.pool && !S.pool.running && !S.pool.mainThread && S.pool.n !== threadCount()) { S.pool.terminate(); S.pool = null; }
-  if (!S.pool) S.pool = new FieldPool();
-  const wmax = Math.max(...sc.critical_geoms.map((g) => g[2]), 1e-9);
-  S.pool.start(sc.critical_geoms.map(([id, text, w]) => ({ id, text, prio: w / wmax })));
-};
 $("mode-xt").onclick = () => setMode("xt");
+
+// map mode "Crosstalk": only the stretches whose own crosstalk (within half the rise length
+// around them) reaches 1 %, coloured 1–3 % / > 3 %, over the neutral board
+function drawXtMap(px) {
+  const sc = S.xtScan;
+  if (S.tab !== "si" || S.mode !== "xt" || !sc || !sc.map.length) return;
+  if (!sc.paths) {
+    const n = S.scene.stackup.copper.length;
+    sc.paths = Array.from({ length: n }, () => [[], []]);
+    for (const h of sc.map) (sc.paths[h.layer] || sc.paths[0])[Math.max(h.next, h.fext) >= XT_HIGH ? 1 : 0].push(h);
+  }
+  const sel = S.selNet, partner = sel >= 0 ? (S.an.nets.find((x) => x.net === sel) || {}).partner : null;
+  ctx.save();
+  ctx.lineCap = "round";
+  for (let l = sc.paths.length - 1; l >= 0; l--) {
+    if (!S.layerOn[l]) continue;
+    for (const k of [0, 1]) {
+      const col = k ? S.colors.high2 : S.colors.high1;
+      for (const pass of [0, 1]) {
+        ctx.strokeStyle = pass ? col : S.colors.halo;
+        for (const h of sc.paths[l][k]) {
+          ctx.globalAlpha = sel >= 0 && h.net !== sel && h.net !== partner ? 0.35 : 1;
+          ctx.lineWidth = Math.max(h.w, 2 * px) + (pass ? 0 : 2.5 * px);
+          ctx.beginPath(); ctx.moveTo(h.a[0], h.a[1]); ctx.lineTo(h.b[0], h.b[1]); ctx.stroke();
+        }
+      }
+    }
+  }
+  ctx.restore();
+}
 
 // coupled stretches of the selected net on the board while its Crosstalk tab is open: the
 // victim's stretch and the aggressor's, coloured by the backward coupling; a hovered row

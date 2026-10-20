@@ -366,3 +366,4 @@ ul.src li { margin: 2px 0; }
 .xs-table th.num, .xs-table td.num { text-align: right; }
 .xt-res { display: flex; flex-direction: column; gap: 6px; }
 .xt-list td:first-child, .xt-list td:last-child { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.xt-list tr[aria-current="true"] td { background: var(--panel-2); }

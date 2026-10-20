@@ -48,11 +48,8 @@ function pieceColor(i) {
     const st = S.chStatus && S.chStatus.get(S.pieces.net[i]);
     return st ? C[st] : C.none;
   }
-  if (S.mode === "xt") {
-    // couplings (step 4): worst of NEXT and FEXT of the net, grey without a target
-    const row = S.xtScan && S.xtScan.map.get(S.pieces.net[i]);
-    return row ? xtColor(xtWorst(row)) : C.none;
-  }
+  // crosstalk: neutral board, the critical stretches are drawn over it (drawXtMap)
+  if (S.mode === "xt") return C.none;
   if (S.mode === "type") {
     return { Microstrip: C.ms, Stripline: C.sl, EmbeddedMicrostrip: C.emb, NoReference: C.noref }[xs.kind];
   }

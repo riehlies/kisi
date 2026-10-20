@@ -78,7 +78,11 @@ def run(pg, tag, desktop):
                 pg.click("#ts-export summary"); pg.wait_for_timeout(300)
             step("pair_loss")
             pg.click("#detail [data-tab=skew]"); pg.wait_for_timeout(500); step("pair_skew")
-            # common mode for every tab
+            pg.click("#detail [data-sv=tdr]"); pg.wait_for_timeout(400); step("pair_skew_tdr"); pg.click("#detail [data-sv=scd]"); pg.wait_for_timeout(200)
+            # common mode for Impedance, Loss and TDR (the switch is greyed out in the other tabs)
+            if not pg.evaluate("document.querySelector('#detail [data-pm=c]').disabled"):
+                problems.append(f"{tag}: mode switch active in the Skew tab")
+            pg.click("#detail [data-tab=z]"); pg.wait_for_timeout(300)
             pg.click("#detail [data-pm=c]"); pg.wait_for_timeout(400)
             for t in ["z", "loss", "tdr"]:
                 pg.click(f"#detail [data-tab={t}]"); pg.wait_for_timeout(400)

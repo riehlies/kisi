@@ -26,6 +26,9 @@ function needEstimate(body) {
 function renderTab(net, t, rowsXs) {
   const body = $("tab-body");
   if (!body) return;
+  // the pair's mode switch applies to Impedance, Loss and TDR only
+  const modal = ["z", "loss", "tdr"].includes(S.detailTab);
+  document.querySelectorAll("#detail [data-pm]").forEach((b) => { b.disabled = !modal; b.title = modal ? "" : "Not used in this tab"; });
   if (S.an.skeleton) return needEstimate(body);
   if (S.detailTab === "z") {
     const pc = !!(t && t.diff && S.pairMode === "c");
@@ -136,33 +139,38 @@ function exportBlock(kind, r, base) {
 function renderSkew(body, r, net) {
   const ch = r.channel, mx = r.mixed, pa = ch.path;
   const P = netShort(mx.p_net), N = netShort(mx.n_net);
-  const w = mx.scd21_worst;
+  const w = mx.scd21_worst, tdrView = S.skewView === "tdr";
   const rows = mx.imbalance.map((x, i) => `<tr class="click" data-im="${i}"><td>${x.s_to_mm - x.s_from_mm < 0.05 ? "at " + fmt(x.s_from_mm, 1) : fmt(x.s_from_mm, 1) + " … " + fmt(x.s_to_mm, 1)}</td><td>${x.vias_differ && Math.abs(x.dl_mm) < 0.01 ? "via pair" : `${x.dl_mm >= 0 ? esc(P) : esc(N)} <b>+${fmt(Math.abs(x.dl_mm), 2)} mm</b>`}</td><td>${x.dt_ps >= 0 ? "+" : "−"}${fmt(Math.abs(x.dt_ps), 2)} ps</td><td>${x.vias_differ ? "vias differ" : ""}</td></tr>`).join("");
   body.innerHTML = `<div class="dstats"><span>Skew <b>${fmt(mx.skew_ps, 1)} ps</b> (${fmt(mx.skew_mm, 2)} mm, ${esc(P)} − ${esc(N)})</span><span>${esc(P)} ${fmt(mx.length_mm[0], 2)} mm / ${fmt(mx.delay_ps[0], 1)} ps</span><span>${esc(N)} ${fmt(mx.length_mm[1], 2)} mm / ${fmt(mx.delay_ps[1], 1)} ps</span><span>Coupled <b>${fmt(mx.coupled_share * 100, 0)} %</b></span></div>
     <h4 class="sub">Where ${esc(P)} and ${esc(N)} differ</h4>
     <div class="clegend"><span><i style="background:var(--pw-use)"></i>length difference ${esc(P)} − ${esc(N)} up to each point (mm); steps are bends, jogs and offset ends</span></div>
     <div class="chart"><canvas id="ch-skew" aria-label="Length difference P minus N along the path"></canvas></div>
     ${rows ? `<div class="tablewrap"><table class="xs-table"><thead><tr><th>mm from A (along ${esc(P)})</th><th>longer</th><th>delay ${esc(P)} − ${esc(N)}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div><p class="note">Stretches where the difference changes, from the geometry (each point of ${esc(P)} matched to the nearest point of ${esc(N)}); stretches less than 2.5 mm apart count as one, as skew compensated nearby. Together they make up the skew. Click to show the place on the board.</p>` : `<p class="note">No stretch where the lines differ by more than 0.05 mm.</p>`}
-    <h4 class="sub">Mode conversion</h4>
-    <div class="clegend"><span><i style="background:var(--pw-conv)"></i>Scd21: differential in at A, common mode out at B</span><span><i class="dash" style="border-color:var(--pw-conv)"></i>Scd11: common mode back at A</span></div>
+    <div class="seg sview" role="group" aria-label="Second chart"><button data-sv="scd" aria-pressed="${!tdrView}">Mode conversion</button><button data-sv="tdr" aria-pressed="${tdrView}">TDR of each line</button></div>
+    ${tdrView ? `<div class="clegend"><span><i style="background:var(--pw-use)"></i>${esc(P)}</span><span><i class="dash" style="border-color:var(--pw-loss)"></i>${esc(N)}</span><span class="muted">one line driven (${fmt(rfParams().rise * 1e12, 0)} ps rise), the other terminated in ${fmt(mx.z_ref, 0)} Ω</span><span><i style="background:var(--muted);opacity:.35"></i>after B: termination ${fmt(mx.z_ref, 0)} Ω</span></div>
+    <div class="chart"><canvas id="ch-tdr-pn" aria-label="TDR of P and N over position"></canvas></div>`
+    : `<div class="clegend"><span><i style="background:var(--pw-conv)"></i>Scd21: differential in at A, common mode out at B</span><span><i class="dash" style="border-color:var(--pw-conv)"></i>Scd11: common mode back at A</span></div>
     <div class="chart"><canvas id="ch-scd" aria-label="Mode conversion over frequency"></canvas></div>
-    <div class="marks"><span>Scd21 max <b>${fmt(w[0], 1)} dB</b> at ${fmt(w[1] / 1e9, 1)} GHz</span><span class="muted">The share of the differential signal turned into common mode by unequal lengths, vias or coupling: it is lost to the receiver and radiates.</span></div>
-    <h4 class="sub">TDR of each line alone</h4>
-    <div class="clegend"><span><i style="background:var(--pw-use)"></i>${esc(P)}</span><span><i class="dash" style="border-color:var(--pw-loss)"></i>${esc(N)}</span><span class="muted">one line driven, the other terminated in ${fmt(mx.z_ref, 0)} Ω</span></div>
-    <div class="chart"><canvas id="ch-tdr-pn" aria-label="TDR of P and N over position"></canvas></div>`;
+    <div class="marks"><span>Scd21 max <b>${fmt(w[0], 1)} dB</b> at ${fmt(w[1] / 1e9, 1)} GHz</span><span class="muted">The share of the differential signal turned into common mode by unequal lengths, vias or coupling: it is lost to the receiver and radiates.</span></div>`}`;
   const pa_ = ch.path;
   drawLines($("ch-skew"), { x: mx.skew_profile.map((x) => x[0]), xUnit: "mm", yUnit: "mm", series: [{ y: mx.skew_profile.map((x) => x[1]), color: "--pw-use", name: `${P} − ${N}` }],
     ends: pa_ ? { a: pa_.start.label, b: pa_.end.label, at: mx.length_mm[0] } : null,
     marks: mx.imbalance.map((x) => ({ x: 0.5 * (x.s_from_mm + x.s_to_mm), label: `${x.dl_mm >= 0 ? "+" : "−"}${fmt(Math.abs(x.dl_mm), 2)} mm` })) });
-  drawLines($("ch-scd"), { x: mx.freq.map((f) => f / 1e9), xUnit: "GHz", yUnit: "dB", series: [
-    { y: mx.scd21_db, color: "--pw-conv", name: "Scd21" }, { y: mx.scd11_db, color: "--pw-conv", name: "Scd11", dash: [5, 3] }],
-    yMin: Math.max(-80, Math.min(...mx.scd21_db, ...mx.scd11_db) - 2), yMax: Math.min(0, Math.max(...mx.scd21_db, ...mx.scd11_db) + 6) });
-  // both lines on one position axis: N resampled onto P's TDR positions
-  const end = Math.max(mx.length_mm[0], mx.length_mm[1]);
-  const zn = mx.tdr_xp_mm.map((x) => { const k = mx.tdr_xn_mm.findIndex((v) => v >= x); return k < 0 ? mx.tdr_zn[mx.tdr_zn.length - 1] : mx.tdr_zn[k]; });
-  drawLines($("ch-tdr-pn"), { x: mx.tdr_xp_mm, xUnit: "mm", yUnit: "Ω", series: [{ y: mx.tdr_zp, color: "--pw-use", name: P }, { y: zn, color: "--pw-loss", name: N, dash: [5, 3] }],
-    xMax: end * 1.2, ends: pa ? { a: pa.start.label, b: pa.end.label, at: mx.length_mm[0] } : null,
-    marks: mx.imbalance.map((x) => ({ x: 0.5 * (x.s_from_mm + x.s_to_mm), label: `${x.dl_mm >= 0 ? P : N} +${fmt(Math.abs(x.dl_mm), 2)} mm` })) });
+  if (!tdrView) {
+    drawLines($("ch-scd"), { x: mx.freq.map((f) => f / 1e9), xUnit: "GHz", yUnit: "dB", series: [
+      { y: mx.scd21_db, color: "--pw-conv", name: "Scd21" }, { y: mx.scd11_db, color: "--pw-conv", name: "Scd11", dash: [5, 3] }],
+      yMin: Math.max(-80, Math.min(...mx.scd21_db, ...mx.scd11_db) - 2), yMax: Math.min(0, Math.max(...mx.scd21_db, ...mx.scd11_db) + 6) });
+  } else {
+    // both lines on one position axis (N resampled onto P's positions); ends and termination as in the TDR tab
+    const [lp, ln] = mx.length_mm, end = Math.max(lp, ln);
+    const zn = mx.tdr_xp_mm.map((x) => { const k = mx.tdr_xn_mm.findIndex((v) => v >= x); return k < 0 ? mx.tdr_zn[mx.tdr_zn.length - 1] : mx.tdr_zn[k]; });
+    const marks = mx.imbalance.map((x) => ({ x: 0.5 * (x.s_from_mm + x.s_to_mm), label: `${x.dl_mm >= 0 ? P : N} +${fmt(Math.abs(x.dl_mm), 2)} mm` }));
+    if (Math.abs(ln - lp) > 0.05) marks.push({ x: Math.min(lp, ln), label: `end of ${lp < ln ? P : N} · ${lp < ln ? mx.p_b : mx.n_b}` });
+    drawLines($("ch-tdr-pn"), { x: mx.tdr_xp_mm, xUnit: "mm", yUnit: "Ω", series: [{ y: mx.tdr_zp, color: "--pw-use", name: P }, { y: zn, color: "--pw-loss", name: N, dash: [5, 3] }],
+      xMax: end * 1.25, ends: { a: `${mx.p_a} / ${mx.n_a}`, b: `${mx.p_b} / ${mx.n_b}`, at: end }, marks,
+      vline: { x: end, label: "end" }, shadeFrom: { x: end, label: `${fmt(mx.z_ref, 0)} Ω` } });
+  }
+  body.querySelectorAll("[data-sv]").forEach((x) => x.onclick = () => { S.skewView = x.dataset.sv; renderSkew(body, r, net); });
   body.querySelectorAll("[data-im]").forEach((tr) => tr.onclick = () => { const x = mx.imbalance[+tr.dataset.im]; S.pathCursor = { x: x.at[0], y: x.at[1] }; zoomTo(x.at[0], x.at[1], 3); });
 }
 

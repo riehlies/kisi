@@ -242,7 +242,49 @@ Other changes in the output:
 
 `practice.py` → `results/practice.json`.
 
-<!--PRACTICE-->
+Measured in this workspace (2 cores, Xeon 2.8 GHz); best of 2 runs.
+
+| | ThunderScope Rev5.3 | LibreVNA |
+|---|---|---|
+| board file / vias / filled zones | 10.2 MB / 3741 / 824 | 4.6 MB / 2932 / 157 |
+| `overview` (native) | 0.63 s, 63 MB | 0.25 s, 39 MB |
+| `check --all` native, coax → ladder | 2.86 → 4.15 s | 1.07 → 1.28 s |
+| ladder vias / Laplace solves (shared per via type) | 126 / 43, 0.70 s in total (15 ms each, ~10 000 unknowns) | 21 / 8, 0.11 s |
+| `net` with vias (native) | 0.88 → 0.91 s | 0.27 → 0.27 s |
+| `check --all` Node (WASM, formulas), coax → ladder | 5.8 → 7.5 s, 231 MB | 2.4 → 2.9 s, 173 MB |
+| `check --all` with field solver, empty cache (120 s budget) | 130 s: 38 of 923 new cross-sections, 89 % of the target length; all of them ≈ 49 min | 125 s: 142 of 836, 85 %; all ≈ 12 min |
+| the same from the cache | 8.5 s (cache 20 kB) | 3.6 s (cache 37 kB) |
+| channel verdicts changed by the ladder | none of 21 lanes | none of 30 lanes |
+
+- **Spread of the metrics** over the lanes that do not reflect almost everything:
+  - ThunderScope: RL −0.7 … 0 dB, IL at Nyquist within 0.01 dB.
+  - LibreVNA: RL −0.03 … +5.6 dB, eye height ±0.006.
+- **Reflective lanes left out:** 8 ThunderScope lanes have RL < 3 dB in both models. These are the M.2/PCIe lanes
+  through 0 Ω links. There IL moves by several dB with any small change, because the standing waves shift.
+- **ThunderScope M.2 vias:** on a via type with GND pour on the signal layers and the partner at 0.53 mm, the
+  ladder shows a dip near 16 GHz; that needs a 3D check (ROADMAP).
+- **Bundles:**
+  - `kisi.html` 2275 → 2317 kB, `kisi.mjs` 1726 → 1767 kB (+41 kB for the ladder and the cavity model).
+  - The WASM module is 3.4 MB before compression. The sparse solver was already in it for the PDN.
+- **WebAssembly speed:** `hypot` and its fused multiply-adds run in software there, so the first build spent 70 %
+  of its time in them. The inner loops avoid them now.
+- **3D FDTD (one thread per run):**
+
+  | Group | Cells (median) | Time per case (median / max) |
+  |---|---|---|
+  | via transition, A–E | 0.5–0.9 M | 2.6–4.5 min, at most 10 min |
+  | lines T | 0.66 M | 3.9 min |
+  | 2×thru | 0.37 M | 40 s |
+  | plane cavity G | 0.32 M | 23 min (long ringing) |
+  | PDN loop H | 0.59 M | 27 min |
+
+  - Throughput is 25–45 M cell updates/s; memory 77 bytes per cell (thru: 27 MB).
+  - All 68 references took 5.8 CPU hours. Stored data: 21 MB in `validation/via_ref`, of which 9 MB are field
+    planes.
+  - **Estimate for a whole channel:** a 30 mm lane with two vias at the same mesh is ≈ 3–5 M cells, ½–1 h.
+  - **Estimate for a whole board:** the mesh lines of every trace give ~10⁹–10¹⁰ cells (≈ 0.1–1 TB). That is out
+    of reach.
+
 
 ### Which solver where
 

@@ -1,0 +1,235 @@
+{
+ "machine": {
+  "cpus": 2,
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz"
+ },
+ "boards": {
+  "ts": {
+   "board": {
+    "file_mb": 10.16,
+    "vias": 3741,
+    "segments": 7960,
+    "zones_filled": 824,
+    "footprints": 1022
+   },
+   "native_overview": {
+    "s": 0.63,
+    "rss_mb": 63
+   },
+   "native_check_all": {
+    "ladder_s": 4.15,
+    "coax_s": 2.86,
+    "rss_mb": [
+     64,
+     64
+    ],
+    "ladder_vias": 126,
+    "laplace_solves": 43,
+    "laplace_ms_total": 696.9,
+    "laplace_ms_median": 15.4,
+    "laplace_unknowns_median": 10325
+   },
+   "verdicts": {
+    "lanes": 21,
+    "status_changed": {},
+    "lanes_reflective": 8,
+    "d_rl_db": [
+     -0.74,
+     0.0
+    ],
+    "d_il_nyq_db": [
+     -0.01,
+     0.0
+    ],
+    "d_eye_h": [
+     0.0,
+     0.0
+    ]
+   },
+   "native_net": {
+    "net": "/ADC/D1A_P",
+    "ladder_s": 0.912,
+    "coax_s": 0.879
+   },
+   "node_check_all_formula": {
+    "s": 7.53,
+    "rss_mb": 231
+   },
+   "node_check_all_formula_old": {
+    "s": 5.83,
+    "rss_mb": 223
+   },
+   "node_check_all_field": {
+    "cold_s": 130.0,
+    "cached_s": 8.5,
+    "rss_mb": 556,
+    "planned_new": 923,
+    "solved_in_budget": 38,
+    "target_length_covered_pct": 89,
+    "cross_sections_field": 38,
+    "cross_sections": 2088,
+    "coverage_cached_pct": 88.5,
+    "solves_per_min": 18.8,
+    "all_planned_min_estimate": 49.0,
+    "cache_file_kb": 19.9
+   }
+  },
+  "vna": {
+   "board": {
+    "file_mb": 4.58,
+    "vias": 2932,
+    "segments": 3586,
+    "zones_filled": 157,
+    "footprints": 592
+   },
+   "native_overview": {
+    "s": 0.25,
+    "rss_mb": 39
+   },
+   "native_check_all": {
+    "ladder_s": 1.28,
+    "coax_s": 1.07,
+    "rss_mb": [
+     39,
+     39
+    ],
+    "ladder_vias": 21,
+    "laplace_solves": 8,
+    "laplace_ms_total": 109.2,
+    "laplace_ms_median": 13.1,
+    "laplace_unknowns_median": 9546
+   },
+   "verdicts": {
+    "lanes": 30,
+    "status_changed": {},
+    "lanes_reflective": 1,
+    "d_rl_db": [
+     -0.03,
+     5.55
+    ],
+    "d_il_nyq_db": [
+     -0.036,
+     0.0
+    ],
+    "d_eye_h": [
+     -0.001,
+     0.006
+    ]
+   },
+   "native_net": {
+    "net": "Net-(IC33-OUT+)",
+    "ladder_s": 0.271,
+    "coax_s": 0.271
+   },
+   "node_check_all_formula": {
+    "s": 2.89,
+    "rss_mb": 173
+   },
+   "node_check_all_formula_old": {
+    "s": 2.38,
+    "rss_mb": 168
+   },
+   "node_check_all_field": {
+    "cold_s": 125.0,
+    "cached_s": 3.6,
+    "rss_mb": 337,
+    "planned_new": 836,
+    "solved_in_budget": 142,
+    "target_length_covered_pct": 85,
+    "cross_sections_field": 142,
+    "cross_sections": 3364,
+    "coverage_cached_pct": 85.2,
+    "solves_per_min": 70.4,
+    "all_planned_min_estimate": 11.9,
+    "cache_file_kb": 36.7
+   }
+  }
+ },
+ "bundle_kb": {
+  "kisi.html": 2317,
+  "kisi.html_old": 2275,
+  "kisi.mjs": 1767,
+  "kisi.mjs_old": 1726,
+  "kisi_wasm.wasm": 3375,
+  "kisi_sparse.wasm": 358
+ },
+ "fdtd": {
+  "groups": {
+   "A": {
+    "cases": 6,
+    "cells_median": 519453,
+    "s_median": 156,
+    "s_max": 179,
+    "mcells_per_s_median": 25.3
+   },
+   "B": {
+    "cases": 8,
+    "cells_median": 603330,
+    "s_median": 170,
+    "s_max": 258,
+    "mcells_per_s_median": 34.7
+   },
+   "C": {
+    "cases": 8,
+    "cells_median": 637065,
+    "s_median": 191,
+    "s_max": 232,
+    "mcells_per_s_median": 26.5
+   },
+   "D": {
+    "cases": 8,
+    "cells_median": 893587,
+    "s_median": 270,
+    "s_max": 580,
+    "mcells_per_s_median": 28.2
+   },
+   "E": {
+    "cases": 12,
+    "cells_median": 768105,
+    "s_median": 262,
+    "s_max": 336,
+    "mcells_per_s_median": 26.7
+   },
+   "G": {
+    "cases": 2,
+    "cells_median": 318780,
+    "s_median": 1372,
+    "s_max": 1693,
+    "mcells_per_s_median": 45.1
+   },
+   "H": {
+    "cases": 4,
+    "cells_median": 591138,
+    "s_median": 1603,
+    "s_max": 1807,
+    "mcells_per_s_median": 45.3
+   },
+   "T": {
+    "cases": 12,
+    "cells_median": 656656,
+    "s_median": 232,
+    "s_max": 397,
+    "mcells_per_s_median": 30.4
+   },
+   "thru": {
+    "cases": 8,
+    "cells_median": 365568,
+    "s_median": 40,
+    "s_max": 58,
+    "mcells_per_s_median": 30.7
+   }
+  },
+  "total_cpu_h": 5.83,
+  "measured": {
+   "case": "thru_s4_L1",
+   "s": 38.7,
+   "rss_mb": 26,
+   "cells": 345984,
+   "bytes_per_cell": 76
+  }
+ },
+ "reference_data_mb": {
+  "via_ref_total": 20.9,
+  "fields_json": 9.0
+ }
+}

@@ -72,6 +72,7 @@ def main():
     ap.add_argument("--examples", default=os.path.join(ROOT, "examples"))
     ap.add_argument("--fdtd", default=os.path.join(ROOT, "target", "release", "kisi-fdtd"))
     ap.add_argument("--runs", type=int, default=3)
+    ap.add_argument("--wasm-dir", default=os.path.join(ROOT, "target", "wasm32-unknown-unknown", "release"))
     a = ap.parse_args()
     out = {"machine": {"cpus": os.cpu_count(), "cpu": next((l.split(":", 1)[1].strip() for l in open("/proc/cpuinfo") if l.startswith("model name")), "?")}, "boards": {}}
     for key, name in BOARDS:
@@ -120,17 +121,20 @@ def main():
             # gives the time for all planned cross-sections
             tmp = tempfile.mkdtemp()
             env = {"KISI_CACHE": tmp}
-            t, rss, o, _ = run(["node", a.mjs, "check", pcb, "--all"] + common, env=env)
+            t, rss, o, err = run(["node", a.mjs, "check", pcb, "--all"] + common, env=env)
             fs = json.loads(o).get("field_solver") or {}
+            prog = re.findall(r"field solver (\d+)/(\d+) new cross-sections, (\d+) % of the length covered, (\d+) s", err)
             t2, _, o2, _ = run(["node", a.mjs, "check", pcb, "--all", "--field-time", "0"] + common, env=env)
             fs2 = json.loads(o2).get("field_solver") or {}
             cf = os.path.join(tmp, "field-cache.json")
-            rate = fs.get("solved_now", 0) / fs["seconds"] if fs.get("seconds") else None
+            solved, planned, cov, secs = (int(x) for x in prog[-1]) if prog else (0, 0, 0, 0)
+            rate = solved / secs if secs else None
             b["node_check_all_field"] = {"cold_s": round(t, 1), "cached_s": round(t2, 1), "rss_mb": round(rss),
-                                         "field_solver": {k: fs.get(k) for k in ("planned", "solved_now", "failed_now", "not_solved", "seconds")},
+                                         "planned_new": planned, "solved_in_budget": solved, "target_length_covered_pct": cov,
+                                         "cross_sections_field": fs.get("cross_sections_field"), "cross_sections": fs.get("cross_sections"),
+                                         "coverage_cached_pct": fs2.get("target_length_coverage_pct"),
                                          "solves_per_min": round(rate * 60, 1) if rate else None,
-                                         "all_planned_min_estimate": round(fs.get("planned", 0) / rate / 60, 1) if rate else None,
-                                         "from_cache_2nd": fs2.get("from_cache"),
+                                         "all_planned_min_estimate": round(planned / rate / 60, 1) if rate else None,
                                          "cache_file_kb": round(os.path.getsize(cf) / 1e3, 1) if os.path.exists(cf) else None}
             shutil.rmtree(tmp)
         out["boards"][key] = b
@@ -139,7 +143,7 @@ def main():
     sz = lambda p: round(os.path.getsize(p) / 1e3) if p and os.path.exists(p) else None
     out["bundle_kb"] = {"kisi.html": sz(a.html), "kisi.html_old": sz(a.html_old), "kisi.mjs": sz(a.mjs), "kisi.mjs_old": sz(a.mjs_old)}
     for w in ("kisi_wasm", "kisi_sparse"):
-        p = os.path.join(ROOT, "target", "wasm32-unknown-unknown", "release", w + ".wasm")
+        p = os.path.join(a.wasm_dir, w + ".wasm")
         out["bundle_kb"][w + ".wasm"] = sz(p)
     # 3D FDTD: reference runs (one thread each, two runs in parallel on the machine above)
     rows = []

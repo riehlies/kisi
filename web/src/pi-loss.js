@@ -206,7 +206,8 @@ function sankeySVG(flow, opts = {}) {
     const full = netLabel(n.label);
     const text = ci === last ? `${full.length > 26 ? full.slice(0, 25) + "…" : full} · ${val(n.v)}` : shortLabel(n);
     const tip = `${n.label}: ${val(n.v)}${n.members && n.members.length > 1 ? "\n" + n.members.map((m) => netShort(m)).join(", ") : ""}`;
-    return `<g><title>${esc(tip)}</title><rect x="${n.x}" y="${n.y}" width="${nodeW}" height="${n.h}" fill="${kindCol[n.kind] || "var(--muted)"}" rx="1"></rect><text x="${n.x + nodeW + 4}" y="${n.y + Math.max(n.h, 1) / 2}" dy="0.32em" class="sk-l${n.kind === "loss" ? " sk-loss" : ""}">${esc(text)}</text></g>`;
+    const jump = n.kind === "rail" || ((n.kind === "load" || n.kind === "regulator" || n.kind === "input") && n.id !== "load:other");
+    return `<g${jump ? ` data-node="${esc(n.id)}" tabindex="0"` : ""}><title>${esc(tip)}${jump ? `\n(click: show ${n.kind === "rail" ? "the rail" : "the part"} on the board)` : ""}</title><rect x="${n.x}" y="${n.y}" width="${nodeW}" height="${n.h}" fill="${kindCol[n.kind] || "var(--muted)"}" rx="1"></rect><text x="${n.x + nodeW + 4}" y="${n.y + Math.max(n.h, 1) / 2}" dy="0.32em" class="sk-l${n.kind === "loss" ? " sk-loss" : ""}">${esc(text)}</text></g>`;
   }).join("");
   return `<svg class="sankey" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Power flow from the input through regulators and rails to the loads and losses">${paths}${rects}</svg>`;
 }

@@ -369,3 +369,7 @@ ul.src li { margin: 2px 0; }
 .xt-res { display: flex; flex-direction: column; gap: 6px; }
 .xt-list td:first-child, .xt-list td:last-child { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
 .xt-list tr[aria-current="true"] td { background: var(--panel-2); }
+/* power flow: rails and parts jump to the board */
+.sankey g[data-node] { cursor: pointer; }
+.sankey g[data-node]:hover rect, .sankey g[data-node]:focus-visible rect { stroke: var(--fg); stroke-width: 1.5; }
+.sankey g[data-node]:hover text { text-decoration: underline; }

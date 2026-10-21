@@ -152,6 +152,13 @@ def run(pg, tag, desktop):
         if not pg.locator("#pim-l").is_disabled():
             pg.click("#pim-l"); pg.wait_for_timeout(500); step("losses")
             pg.click("#pim-b"); pg.wait_for_timeout(500); step("flow")
+            # power flow: a load jumps to its part on the board
+            lid = pg.evaluate("(() => { const g = [...document.querySelectorAll('.sankey [data-node]')].find((x) => x.dataset.node.startsWith('load:')); return g ? g.dataset.node : null; })()")
+            if lid:
+                pg.click(f".sankey [data-node='{lid}']"); pg.wait_for_timeout(500)
+                if not pg.evaluate("S.piMode === 'v' && !!S.piMark"):
+                    problems.append(f"{tag}: click on a load in the power flow did not show the part")
+                step("flow_jump"); pg.click("#pim-b"); pg.wait_for_timeout(300)
         if a.config:
             pg.click("#view-si")
             pg.set_input_files("#file", [os.path.abspath(a.config)]); pg.wait_for_function(f"S.config && {BUSY}", timeout=90000)

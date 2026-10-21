@@ -367,6 +367,8 @@ pub struct CapResult {
     pub value: String,
     pub package: String,
     pub at: P,
+    /// footprint outline from its pads: [x0, y0, x1, y1] (mm)
+    pub bbox: [f64; 4],
     pub layer: u16,
     /// nominal and effective (DC-bias derated) capacitance (F)
     pub c_nom: f64,
@@ -432,6 +434,8 @@ pub struct PortResult {
     /// refdes, with the net when the IC draws from several nets of the domain
     pub label: String,
     pub at: P,
+    /// footprint outline from its pads: [x0, y0, x1, y1] (mm)
+    pub bbox: [f64; 4],
     pub current: f64,
     pub pins: usize,
     pub z: Vec<f64>,
@@ -486,6 +490,8 @@ pub struct SeriesResult {
     pub kind: &'static str,
     pub package: String,
     pub at: P,
+    /// footprint outline from its pads: [x0, y0, x1, y1] (mm)
+    pub bbox: [f64; 4],
     pub from: String,
     pub to: String,
     /// series resistance (Ω) and inductance (H)
@@ -651,6 +657,20 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     for pd in board.pads.iter().filter(|q| !q.layers.is_empty()) {
         fp_all.entry(pd.fp).or_default().push(pd);
     }
+    // outline of a footprint from all its pads (for the board highlight)
+    let fp_bbox = |fi: u32| -> [f64; 4] {
+        let mut b = [f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY];
+        for q in board.pads.iter().filter(|q| q.fp == fi) {
+            let h = 0.5 * q.size[0].max(q.size[1]);
+            b = [b[0].min(q.at[0] - h), b[1].min(q.at[1] - h), b[2].max(q.at[0] + h), b[3].max(q.at[1] + h)];
+        }
+        if b[0].is_finite() {
+            b
+        } else {
+            let a = board.footprints[fi as usize].at;
+            [a[0] - 0.5, a[1] - 0.5, a[0] + 0.5, a[1] + 0.5]
+        }
+    };
     let prefix = |r: &str| r.chars().take_while(|c| c.is_ascii_alphabetic()).collect::<String>().to_ascii_uppercase();
     // candidates: (footprint, net a, net b, kind)
     let mut cands: Vec<(u32, u32, u32, &'static str)> = Vec::new();
@@ -1052,6 +1072,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             kind,
             package: pkg.into(),
             at: [(pads[0].at[0] + pads[1].at[0]) / 2.0, (pads[0].at[1] + pads[1].at[1]) / 2.0],
+            bbox: fp_bbox(fi),
             from: board.net_name(dom[ia]).to_string(),
             to: board.net_name(dom[ib]).to_string(),
             r,
@@ -1120,6 +1141,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     }
     struct Port {
         refdes: String,
+        fi: u32,
         ni: usize,
         node: usize,
         at: P,
@@ -1150,7 +1172,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             _ => None,
         };
         let id = add_group(&mut model, &nodes);
-        ports.push(Port { refdes: refdes.clone(), ni: *ni, node: id, at, current: *current, pins: pads.len(), target });
+        ports.push(Port { refdes: refdes.clone(), fi, ni: *ni, node: id, at, current: *current, pins: pads.len(), target });
     }
     if ports.is_empty() {
         return Err(format!("{}: no load IC in the rail domain (its loads are series parts, connectors or missing PI_LOAD): nothing to decouple here", setup.net));
@@ -1260,6 +1282,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             value: f.value.clone(),
             package: pkg.into(),
             at: [(pr.at[0] + pg.at[0]) / 2.0, (pr.at[1] + pg.at[1]) / 2.0],
+            bbox: fp_bbox(fi as u32),
             layer: pr.layers[0],
             c_nom,
             c_eff,
@@ -1630,6 +1653,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             net: board.net_name(dom[pt.ni]).to_string(),
             label: pt.refdes.clone(),
             at: pt.at,
+            bbox: fp_bbox(pt.fi),
             current: pt.current,
             pins: pt.pins,
             z: zs[pi_].clone(),

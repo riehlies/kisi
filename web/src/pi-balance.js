@@ -78,7 +78,37 @@ function renderBalance() {
     piSave(); refreshTree();
   });
   box.querySelectorAll("[data-rail]").forEach((b) => b.onclick = () => { S.piRail = b.dataset.rail; S.piLayer = -1; setPiMode("v"); fitRail(); });
+  // power flow: a rail opens the rail on the board, a regulator, input or load shows the part
+  box.querySelectorAll(".sankey [data-node]").forEach((g) => {
+    const go = () => sankeyJump(g.dataset.node);
+    g.onclick = go;
+    g.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  });
   $("bal-reset").onclick = () => { try { localStorage.removeItem(treeKey()); } catch (e) { /* ignore */ } initPi(S.piDefaults); setPiMode("b"); };
+}
+function sankeyJump(id) {
+  const flow = S.loss && S.loss.flow;
+  if (!flow) return;
+  const node = flow.nodes.find((n) => n.id === id);
+  if (!node) return;
+  const railOf = (rid) => rid && rid.startsWith("rail:") ? rid.slice(5) : null;
+  const known = (net) => net && S.piSetups.has(net) ? net : null;
+  if (node.kind === "rail") {
+    S.piMark = null;
+    S.piRail = known(railOf(id)) || S.piRail; S.piLayer = -1;
+    setPiMode("v"); fitRail();
+    return;
+  }
+  // a part: its reference is the load id or the first word of the label; show it with the rail it
+  // feeds (regulator, input) or draws from (load)
+  const refdes = node.kind === "load" ? id.slice(5) : node.label.split(" ")[0];
+  const link = node.kind === "load" ? flow.links.find((l) => l.to === id) : flow.links.find((l) => l.from === id && l.to.startsWith("rail:"));
+  const rail = known(railOf(link && (node.kind === "load" ? link.from : link.to)));
+  if (rail) { S.piRail = rail; S.piLayer = -1; }
+  const bbox = fpBBox(refdes);
+  S.piMark = bbox ? { refdes, bbox, rail: S.piRail } : null;
+  setPiMode("v");
+  if (bbox) { const c = [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], h = Math.max(6, (bbox[2] - bbox[0]), (bbox[3] - bbox[1])); fitView([c[0] - h, c[1] - h, c[0] + h, c[1] + h]); }
 }
 function refreshTree() {
   const keep = S.piRail;

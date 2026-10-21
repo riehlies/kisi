@@ -462,6 +462,7 @@ function drawPi() {
     ctx.fill("evenodd");
   }
   drawPdnOverlay(px);
+  drawPiMark(px);
 }
 function marker(x, y, px, kind) {
   const C = S.colors, s = 5 * px;

@@ -86,42 +86,114 @@ function renderPdnIc(host, setup, lumped) {
   host.querySelectorAll("[data-ic]").forEach((b) => b.onclick = () => { S.pdnIcSel = b.dataset.ic; renderPdnIc(host, setup, lumped); draw(); });
   const keepOpen = host.querySelector("details.acc");
   if (keepOpen) { keepOpen.open = !!S.pdnDomOpen; keepOpen.ontoggle = () => { S.pdnDomOpen = keepOpen.open; }; }
-  host.querySelectorAll("[data-cap]").forEach((tr) => tr.onclick = () => { const c = r.caps[+tr.dataset.cap]; S.pdnIcCap = +tr.dataset.cap; zoomTo(c.at[0], c.at[1], 6); });
+  host.querySelectorAll("[data-cap]").forEach((tr) => {
+    tr.onclick = () => { const c = r.caps[+tr.dataset.cap]; S.pdnIcCap = +tr.dataset.cap; zoomTo(c.at[0], c.at[1], 6); };
+    tr.onpointerenter = () => { S.pdnIcHover = +tr.dataset.cap; draw(); };
+    tr.onpointerleave = () => { S.pdnIcHover = null; draw(); };
+  });
   drawZf($("ch-pdn-ic"), { freq: r.freq, series: [{ z: pt.z, color: "--pw-use", name: pt.label }].concat(own ? [{ f: lumped.freq, z: lumped.z, color: "--muted", dash: [4, 3], name: "lumped" }] : []),
     target: pt.target, fEval: pt.f_max, marks: pt.peaks.map((k) => ({ f: k.f, label: "anti-resonance" })) });
 }
-// recommendation circles and capacitor ranking on the board (rail detail, impedance tab)
+// ---- outlined parts on the board (PDN per IC, jumps from the power flow) ------------------
+// footprint outline from the scene's pads: [x0, y0, x1, y1]
+function fpBBox(refdes) {
+  const sc = S.scene, pads = sc.pads;
+  let b = [Infinity, Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < pads.length / 8; i++) {
+    if (sc.fp_refs[sc.pad_fp[i]] !== refdes) continue;
+    const x = pads[i * 8], y = pads[i * 8 + 1], h = Math.max(pads[i * 8 + 2], pads[i * 8 + 3]) / 2;
+    b = [Math.min(b[0], x - h), Math.min(b[1], y - h), Math.max(b[2], x + h), Math.max(b[3], y + h)];
+  }
+  return isFinite(b[0]) ? b : null;
+}
+// outline: at least 16 px on screen, halo, colour, light fill; the label is queued in `labels`
+function partBox(b, col, lw, label, opt, labels, px) {
+  if (!b) return;
+  const m = Math.max(0.25, 4 * px), min = 16 * px;
+  let [x0, y0, x1, y1] = [b[0] - m, b[1] - m, b[2] + m, b[3] + m];
+  if (x1 - x0 < min) { const c = (x0 + x1) / 2; x0 = c - min / 2; x1 = c + min / 2; }
+  if (y1 - y0 < min) { const c = (y0 + y1) / 2; y0 = c - min / 2; y1 = c + min / 2; }
+  ctx.beginPath(); ctx.roundRect(x0, y0, x1 - x0, y1 - y0, Math.min(3 * px, (x1 - x0) / 4));
+  if (opt.fill) { ctx.globalAlpha = opt.fill; ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1; }
+  ctx.lineWidth = lw + 3 * px; ctx.strokeStyle = S.colors.halo; ctx.stroke();
+  ctx.lineWidth = lw; ctx.strokeStyle = col; ctx.stroke();
+  if (opt.ring) {
+    const g = 5 * px;
+    ctx.beginPath(); ctx.roundRect(x0 - g, y0 - g, x1 - x0 + 2 * g, y1 - y0 + 2 * g, 4 * px);
+    ctx.setLineDash([4 * px, 3 * px]); ctx.lineWidth = 1.5 * px; ctx.strokeStyle = col; ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (label) labels.push({ x0, x1, y: y0 - (opt.ring ? 6 : 3) * px, text: label, col, bold: !!opt.bold });
+}
+// labels on a panel-coloured pill with the part's colour as border, above everything; centred
+// over small parts, at the left edge of large ones (an IC's centre may be under the detail panel)
+function drawPartLabels(labels, px) {
+  const cs = getComputedStyle(document.documentElement);
+  const mono = cs.getPropertyValue("--font-mono"), fg = cs.getPropertyValue("--fg").trim(), panel = cs.getPropertyValue("--panel").trim();
+  for (const L of labels) {
+    ctx.font = `${L.bold ? 700 : 600} ${(L.bold ? 12.5 : 11) * px}px ${mono}`;
+    const w = ctx.measureText(L.text).width, h = (L.bold ? 16 : 14) * px;
+    const cx = L.x1 - L.x0 > w + 24 * px ? L.x0 + w / 2 + 4 * px : (L.x0 + L.x1) / 2;
+    ctx.fillStyle = panel; ctx.globalAlpha = 0.95;
+    ctx.beginPath(); ctx.roundRect(cx - w / 2 - 4 * px, L.y - h, w + 8 * px, h, 3 * px); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.lineWidth = (L.bold ? 2 : 1.5) * px; ctx.strokeStyle = L.col; ctx.stroke();
+    ctx.fillStyle = fg; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(L.text, cx, L.y - h / 2 + 0.5 * px);
+  }
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+}
+// a part picked in the power flow
+function drawPiMark(px) {
+  const m = S.piMark;
+  if (!m || (m.rail && m.rail !== S.piRail)) return;
+  const labels = [], acc = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  partBox(m.bbox, acc, 3 * px, m.refdes, { fill: 0.15, bold: true, ring: true }, labels, px);
+  drawPartLabels(labels, px);
+}
+
+// recommendation circles, the IC, its capacitors (ranked) and the series parts on the board
+// (rail detail, impedance tab): outlined footprints with their reference
 function drawPdnOverlay(px) {
   if (!S.piRail || $("pi-detail").hidden || !$("ch-pdn-ic")) return; // only while the per-IC view is open
   const r = pdnIcOf(S.piRail);
   if (!r || r.error) return;
   const pt = r.ports.find((x) => x.label === S.pdnIcSel);
   if (!pt) return;
-  const C = S.colors;
-  // series parts of the domain: small squares
-  for (const x of r.series) {
-    const h = 3.5 * px;
-    ctx.fillStyle = C.halo; ctx.fillRect(x.at[0] - h - px, x.at[1] - h - px, 2 * h + 2 * px, 2 * h + 2 * px);
-    ctx.fillStyle = x.kind === "resistor" ? C.none : C.high1; ctx.fillRect(x.at[0] - h, x.at[1] - h, 2 * h, 2 * h);
-  }
-  // capacitors: colour by loop inductance to this IC (green best … red worst)
+  const C = S.colors, acc = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  const labels = [];
+  // series parts of the domain
+  for (const x of r.series) partBox(x.bbox, x.kind === "resistor" ? C.none : C.high1, 2 * px, x.refdes, {}, labels, px);
+  // capacitors: colour by loop inductance to this IC (green best … red worst); the best five,
+  // the selected and the hovered one labelled, all labelled when zoomed in
   const ls = pt.caps.map((l) => l.l_total), lo = Math.min(...ls), hi = Math.max(...ls);
-  for (const l of pt.caps) {
+  const zoomed = S.view.s > 14;
+  let selCap = null;
+  pt.caps.forEach((l, k) => {
     const c = r.caps[l.cap], t = hi > lo ? (l.l_total - lo) / (hi - lo) : 0;
-    ctx.fillStyle = t < 0.33 ? C.ok : t < 0.66 ? C.high1 || C.high2 : C.high2;
-    ctx.strokeStyle = C.halo; ctx.lineWidth = 1.5 * px;
-    ctx.beginPath(); ctx.arc(c.at[0], c.at[1], 3.5 * px, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    if (S.pdnIcCap === l.cap) { ctx.beginPath(); ctx.arc(c.at[0], c.at[1], 8 * px, 0, Math.PI * 2); ctx.stroke(); }
+    const col = t < 0.33 ? C.ok : t < 0.66 ? C.high1 : C.high2;
+    const sel = S.pdnIcCap === l.cap || S.pdnIcHover === l.cap;
+    if (sel) selCap = { c, col };
+    else partBox(c.bbox, col, 2.5 * px, zoomed || k < 5 ? c.refdes : null, { fill: 0.22 }, labels, px);
+  });
+  // the IC
+  partBox(pt.bbox, acc, 3 * px, pt.label, { fill: 0.12, bold: true }, labels, px);
+  // the selected / hovered capacitor last, with a dashed line to the IC (the loop its inductance
+  // belongs to)
+  if (selCap) {
+    const { c, col } = selCap;
+    ctx.setLineDash([5 * px, 4 * px]); ctx.lineWidth = 4 * px; ctx.strokeStyle = C.halo;
+    ctx.beginPath(); ctx.moveTo(pt.at[0], pt.at[1]); ctx.lineTo(c.at[0], c.at[1]); ctx.stroke();
+    ctx.lineWidth = 2 * px; ctx.strokeStyle = col; ctx.stroke(); ctx.setLineDash([]);
+    partBox(c.bbox, col, 3.5 * px, c.refdes, { fill: 0.35, bold: true, ring: true }, labels, px);
   }
   // recommendation radii
-  ctx.setLineDash([6 * px, 4 * px]); ctx.lineWidth = 1.5 * px; ctx.strokeStyle = C.halo;
-  ctx.font = `${11 * px}px ${getComputedStyle(document.documentElement).getPropertyValue("--font-mono")}`; ctx.fillStyle = C.halo; ctx.textAlign = "left";
+  ctx.setLineDash([6 * px, 4 * px]); ctx.lineWidth = 1.5 * px; ctx.strokeStyle = acc;
   for (const x of pt.recommendations.filter((x) => x.count && x.radius_mm > 0 && x.radius_mm < 49.9)) {
     ctx.beginPath(); ctx.arc(pt.at[0], pt.at[1], x.radius_mm, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillText(`${x.count}× ${x.value}`, pt.at[0] + x.radius_mm * 0.71 + 2 * px, pt.at[1] - x.radius_mm * 0.71);
+    const lx = pt.at[0] + x.radius_mm * 0.71, ly = pt.at[1] - x.radius_mm * 0.71;
+    labels.push({ x0: lx, x1: lx, y: ly, text: `${x.count}× ${x.value}`, col: acc, bold: false });
   }
   ctx.setLineDash([]);
-  marker(pt.at[0], pt.at[1], px, "load");
+  drawPartLabels(labels, px);
 }
 function renderPiLayerChips() {
   if (S.piMode === "l") { renderLossChips(); return; }

@@ -677,7 +677,11 @@ impl<'a> Build<'a> {
         };
         let mut prev_layer: Option<(u16, P)> = None;
         let mut prev_xs: Option<u32> = None;
-        for &(pi, rev) in path {
+        // reference planes next to a via: the trace right at the via often runs over the antipad
+        // (no reference there), so take the last referenced piece before it and the next after it
+        let path_xs: Vec<u32> = path.iter().map(|&(pi, _)| an.pieces[pi * 4 + 3] as u32).collect();
+        let mut last_ref_xs: Option<u32> = None;
+        for (step, &(pi, rev)) in path.iter().enumerate() {
             let pc = &an.pieces[pi * 4..pi * 4 + 4];
             let tr = &board.tracks[pc[0] as usize];
             let xi = pc[3] as u32;
@@ -715,7 +719,8 @@ impl<'a> Build<'a> {
                             &fallback_via
                         }
                     };
-                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(prev_xs), refs_out: refs(Some(xi)), backdrill: rp.backdrill };
+                    let next_ref = path_xs[step..].iter().copied().find(|&x| !refs(Some(x)).is_empty()).unwrap_or(xi);
+                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill };
                     let (vm, info) = crate::via::build(&ctx, v, pl, tr.layer);
                     let pair_partner = self.partner_of.get(net as usize).copied().flatten().filter(|_| self.pair);
                     let vm_pair = pair_partner.map(|pn| crate::via::build(&crate::via::ViaCtx { partner: Some(pn), ..ctx }, v, pl, tr.layer).0);
@@ -739,6 +744,9 @@ impl<'a> Build<'a> {
             let end = geom::lerp(tr.a, tr.b, if rev { pc[1] } else { pc[2] });
             prev_layer = Some((tr.layer, end));
             prev_xs = Some(xi);
+            if !refs(Some(xi)).is_empty() {
+                last_ref_xs = Some(xi);
+            }
             let xs = &an.cross_sections[xi as usize];
             let diff = self.diff;
             let field = self.field;

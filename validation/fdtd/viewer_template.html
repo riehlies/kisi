@@ -75,6 +75,13 @@ th { font: 600 12px var(--font-display); letter-spacing: .04em; text-transform: 
 .checks { display: grid; gap: 16px; max-width: 1100px }
 .checks p { max-width: 75ch; margin: 0 0 10px }
 .pending { color: var(--muted); font-style: italic }
+.field { margin-top: 14px }
+.field .ctl { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 4px 0 8px }
+.field canvas { display: block; width: 100%; height: auto; border-radius: 4px; background: var(--panel-2) }
+.field .scale { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px }
+.field .scale canvas { width: 160px; height: 10px; border-radius: 2px }
+.btn { border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: var(--radius); padding: 5px 12px; cursor: pointer; font: 600 13px var(--font-display) }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
 @media (max-width: 760px) {
   .cases { grid-template-columns: minmax(0, 1fr) }
   nav.case-list { display: none }
@@ -117,7 +124,9 @@ const GROUPS = {
   H: ["PDN loop inductance", "BGA pin field to one capacitor at a distance: loop inductance from Im(Z)/ω (1 Ω port)."],
   thru: ["2×thru", "Feed lines alone (twice the feed length): the fixtures for de-embedding."],
 };
-const TOOLS = { kisi: ["kisi-fdtd", "var(--s1)", ""], kisi_fine: ["kisi-fdtd, finer mesh", "var(--s1)", "dash"], openems: ["openEMS (staircase)", "var(--s2)", ""], deembedded: ["de-embedded", "var(--s4)", ""] };
+const TOOLS = { kisi: ["kisi-fdtd", "var(--s1)", ""], kisi_fine: ["kisi-fdtd, finer mesh", "var(--s1)", "dash"], openems: ["openEMS (staircase)", "var(--s2)", ""],
+  kisi_model: ["kisi channel model (fast)", "var(--s3)", "dash"], deembedded: ["kisi-fdtd, de-embedded", "var(--s4)", ""], pbm: ["reduced via model", "var(--s2)", "dash"],
+  model: ["cavity model", "var(--s2)", "dash"] };
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v.replace(/^var\((.*)\)$/, "$1")).trim();
 const cases = DATA.cases;
 const byId = new Map(cases.map((c) => [c.id, c]));
@@ -265,6 +274,128 @@ function detailExtent(c) {
   return [-m * 1.6, -m, m * 1.6, m];
 }
 
+// ------------------------------------------------------------------ field view
+const rgb = (v) => { const h = css(v).replace("#", ""); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
+const b64i8 = (s) => { const b = atob(s); const a = new Int8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = (b.charCodeAt(i) << 24) >> 24; return a; };
+let fieldAnim = null;
+// signed: background → copper (+) or blue (−); magnitude: background → copper (to 0.8) → text colour
+function ramp(signed, v, a, bg, pos, neg, fg) {
+  const mix = (p, q, t) => [0, 1, 2].map((k) => p[k] + (q[k] - p[k]) * t);
+  if (signed) return mix(bg, v >= 0 ? pos : neg, a);
+  return a < 0.8 ? mix(bg, pos, a / 0.8) : mix(pos, fg, (a - 0.8) / 0.2 * 0.6);
+}
+function fieldPanel(c, pw) {
+  const planes = c.fields;
+  const box = document.createElement("div");
+  box.className = "panel field";
+  const kinds = [...new Set(planes.map((p) => p.axis))];
+  const freqs = [...new Set(planes.map((p) => p.freq))].sort((a, b) => a - b);
+  const st = { axis: kinds[0], freq: freqs[Math.min(1, freqs.length - 1)], phase: 0, play: false };
+  const label = (ax) => ax === "z" ? `Top view: Ez at z = ${planes.find((p) => p.axis === "z").pos.toFixed(2)} mm` : `Section: |E| at y = ${planes.find((p) => p.axis === ax).pos.toFixed(2)} mm`;
+  box.innerHTML = `<div class="hd"><h2>Electric field, port 1 driven</h2></div>
+    <div class="ctl"><div class="seg" role="group" aria-label="Plane">${kinds.map((k) => `<button data-ax="${k}">${k === "z" ? "Top view" : "Section"}</button>`).join("")}</div>
+    <div class="seg" role="group" aria-label="Frequency">${freqs.map((f) => `<button data-f="${f}">${f >= 1e9 ? +(f / 1e9).toFixed(2) + " GHz" : f / 1e6 + " MHz"}</button>`).join("")}</div>
+    <button class="btn" data-play>Animate</button></div>
+    <div class="readout fl"></div><canvas></canvas>
+    <div class="scale"><canvas width="160" height="10"></canvas><span class="sl"></span></div>
+    <p class="note">Phasor of the field per volt of the incident wave, shown at one instant (Animate runs the phase). Top view: the vertical field in the middle of the thickest dielectric the via crosses – where it spreads in rings, the return current has no nearby path and the plane pair carries a radial wave. Section: field strength through the via, time average on a 40 dB scale (height ×2.5).</p>`;
+  const cv = box.querySelector("canvas"), ctx2 = cv.getContext("2d");
+  const off = document.createElement("canvas"), octx = off.getContext("2d");
+  const cache = new Map();
+  const getPlane = () => planes.find((p) => p.axis === st.axis && p.freq === st.freq);
+  function decode(p) {
+    if (cache.has(p)) return cache.get(p);
+    const d = {}; for (const [k, v] of Object.entries(p.comps)) d[k] = { re: b64i8(v.re), im: b64i8(v.im) };
+    cache.set(p, d); return d;
+  }
+  function draw() {
+    const p = getPlane(); if (!p) return;
+    const d = decode(p);
+    const W = p.w, H = p.h;
+    off.width = W; off.height = H;
+    const img = octx.createImageData(W, H);
+    const bg = rgb("--panel-2"), pos = rgb("--s1"), neg = rgb("--s2"), fg = rgb("--fg");
+    const co = Math.cos(st.phase), si = Math.sin(st.phase);
+    const signed = p.axis === "z";
+    const keys = Object.keys(d);
+    for (let r = 0; r < H; r++) for (let q = 0; q < W; q++) {
+      const i = r * W + q;
+      let val;
+      if (signed) val = (d[keys[0]].re[i] * co - d[keys[0]].im[i] * si) / 127;
+      else { let m2 = 0; for (const k of keys) { const re = d[k].re[i] / 127, im = d[k].im[i] / 127; m2 += re * re + im * im; } val = Math.max(0, 1 + 10 * Math.log10(Math.max(m2, 1e-12)) / 40); }
+      const a = signed ? Math.min(1, Math.sqrt(Math.abs(val))) : Math.min(1, val);
+      const col = ramp(signed, val, a, bg, pos, neg, fg);
+      const o = (H - 1 - r) * W + q;  // rows stored bottom to top
+      img.data[o * 4] = col[0]; img.data[o * 4 + 1] = col[1]; img.data[o * 4 + 2] = col[2]; img.data[o * 4 + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    const CW = Math.round(Math.min(pw, 520 * W / H)), CH = Math.round(CW * H / W);
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (cv.width !== CW * dpr) { cv.width = CW * dpr; cv.height = CH * dpr; }
+    ctx2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx2.imageSmoothingEnabled = true;
+    ctx2.drawImage(off, 0, 0, CW, CH);
+    overlay(ctx2, c, p, CW, CH);
+    box.querySelector(".fl").textContent = `${label(p.axis)} · ${(p.freq / 1e9).toFixed(2)} GHz · full scale ${p.scale.toFixed(0)} V/m per V`;
+  }
+  function scaleBar() {
+    const sc = box.querySelector(".scale canvas"), x = sc.getContext("2d");
+    const signed = st.axis === "z";
+    const bg = rgb("--panel-2"), pos = rgb("--s1"), neg = rgb("--s2"), fg = rgb("--fg");
+    for (let i = 0; i < 160; i++) {
+      const v = signed ? (i / 159) * 2 - 1 : i / 159; const a = signed ? Math.sqrt(Math.abs(v)) : v;
+      x.fillStyle = `rgb(${ramp(signed, v, a, bg, pos, neg, fg).map(Math.round).join(",")})`; x.fillRect(i, 0, 1, 10);
+    }
+    box.querySelector(".sl").textContent = signed ? "−  0  +  (Ez at this instant, √ scale)" : "−40 dB → full scale (|E|, time average)";
+  }
+  const sync = () => {
+    box.querySelectorAll("button[data-ax]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.ax === st.axis));
+    box.querySelectorAll("button[data-f]").forEach((b) => b.setAttribute("aria-pressed", +b.dataset.f === st.freq));
+    box.querySelector("[data-play]").textContent = st.play ? "Pause" : "Animate";
+    scaleBar(); draw();
+  };
+  box.querySelectorAll("button[data-ax]").forEach((b) => b.onclick = () => { st.axis = b.dataset.ax; sync(); });
+  box.querySelectorAll("button[data-f]").forEach((b) => b.onclick = () => { st.freq = +b.dataset.f; sync(); });
+  box.querySelector("[data-play]").onclick = () => {
+    st.play = !st.play; sync();
+    if (fieldAnim) cancelAnimationFrame(fieldAnim);
+    let last = performance.now();
+    const tick = (t) => { if (!st.play || !box.isConnected) return; st.phase = (st.phase + (t - last) / 1000 * Math.PI) % (2 * Math.PI); last = t; draw(); fieldAnim = requestAnimationFrame(tick); };
+    if (st.play) fieldAnim = requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(sync);
+  return box;
+}
+// geometry outlines over a field plane
+function overlay(x, c, p, CW, CH) {
+  const [e0, e1, f0, f1] = p.extent;
+  const sx = (v) => (v - e0) / (e1 - e0) * CW, sy = (v) => CH - (v - f0) / (f1 - f0) * CH;
+  const cs = c.case;
+  x.save();
+  x.lineWidth = 1; x.strokeStyle = css("--fg"); x.globalAlpha = 0.55;
+  if (p.axis === "z") {
+    for (const sh of cs.sheets) {
+      if (sh.net === "GND" || sh.net === "PWR") {
+        x.setLineDash([3, 2]);
+        for (const h of sh.holes || []) { x.beginPath(); if (h.length < 5) x.arc(sx(h[0]), sy(h[1]), h[2] / (e1 - e0) * CW, 0, 7); else { x.lineWidth = 1; x.moveTo(sx(h[0]), sy(h[1])); x.lineTo(sx(h[2]), sy(h[3])); } x.stroke(); }
+        x.setLineDash([]);
+      } else { const r = sh.rect; x.strokeRect(sx(r[0]), sy(r[3]), sx(r[2]) - sx(r[0]), sy(r[1]) - sy(r[3])); }
+    }
+    for (const v of cs.vias) { if (v.outer) continue; x.beginPath(); x.arc(sx(v.x), sy(v.y), Math.max(1.5, v.r / (e1 - e0) * CW), 0, 7); x.stroke(); }
+  } else {
+    const yc = p.pos;
+    for (const sh of cs.sheets) {
+      const r = sh.rect; if (yc < r[1] - 1e-9 || yc > r[3] + 1e-9) continue;
+      let segs = [[r[0], r[2]]];
+      for (const h of sh.holes || []) { if (h.length >= 5) continue; const d = h[2] ** 2 - (yc - h[1]) ** 2; if (d <= 0) continue; const a = h[0] - Math.sqrt(d), b = h[0] + Math.sqrt(d); segs = segs.flatMap(([u, w]) => (b <= u || a >= w) ? [[u, w]] : [[u, a], [b, w]].filter(([m, n]) => n > m)); }
+      x.lineWidth = 1.5;
+      for (const [u, w] of segs) { x.beginPath(); x.moveTo(sx(Math.max(u, e0)), sy(sh.z)); x.lineTo(sx(Math.min(w, e1)), sy(sh.z)); x.stroke(); }
+    }
+    for (const v of cs.vias) { const d = v.r ** 2 - (yc - v.y) ** 2; if (d <= 0 || v.outer) continue; const hw = Math.sqrt(d); x.strokeRect(sx(v.x - hw), sy(v.z1), sx(v.x + hw) - sx(v.x - hw), sy(v.z0) - sy(v.z1)); }
+  }
+  x.restore();
+}
+
 // ------------------------------------------------------------------ case sheet
 function chipList(c) {
   const out = [], m = c.meta, run = c.run;
@@ -289,6 +420,7 @@ function renderCase(c) {
   const lgGeo = document.createElement("div"); lgGeo.className = "legend";
   lgGeo.innerHTML = lg([["outer-layer trace", "var(--k-ms)", ""], ["inner-layer trace", "var(--k-sl)", ""], ["signal via, pads", "var(--cu)", ""], ["GND via, planes", "var(--gnd)", ""], ["antipad", "var(--gnd)", "dash"]]);
   box.appendChild(lgGeo);
+  if (c.fields && c.fields.length) box.appendChild(fieldPanel(c, Math.min(bw - 26, 900)));
   if (!c.res) { const p = document.createElement("p"); p.className = "pending"; p.textContent = "Not computed yet."; box.appendChild(p); return; }
   const bar = document.createElement("div"); bar.className = "bar";
   const hasDe = !!c.res.deembedded;
@@ -296,8 +428,8 @@ function renderCase(c) {
   bar.querySelectorAll("button[data-m]").forEach((b) => b.onclick = () => { mode = b.dataset.m; renderCase(c); });
   box.appendChild(bar);
   const f = c.f, grid = document.createElement("div"); grid.className = "grid";
-  const tools = mode === "de" && hasDe ? ["deembedded"] : ["kisi", "kisi_fine", "openems"].filter((t) => c.res[t]);
-  const ser = (key, extra = {}) => tools.map((t) => ({ name: TOOLS[t][0], y: c.res[t][key], color: TOOLS[t][1], dash: TOOLS[t][2] === "dash", ...extra }));
+  const tools = mode === "de" && hasDe ? ["deembedded", "pbm"].filter((t) => c.res[t]) : ["kisi", "kisi_fine", "openems", "kisi_model", "model"].filter((t) => c.res[t]);
+  const ser = (key, extra = {}) => tools.filter((t) => c.res[t][key]).map((t) => ({ name: TOOLS[t][0], y: c.res[t][key], color: TOOLS[t][1], dash: TOOLS[t][2] === "dash", ...extra }));
   const legend = lg(tools.map((t) => TOOLS[t]));
   if (c.res.kisi.Z11) {
     const zs = (key, nm, col) => tools.map((t) => ({ name: TOOLS[t][0] + (nm ? " " + nm : ""), y: c.res[t][key], color: col || TOOLS[t][1], dash: TOOLS[t][2] === "dash" }));
@@ -319,13 +451,21 @@ function renderCase(c) {
     const thr = ser("S21");
     const lo = Math.min(-3, ...thr.flatMap((s) => s.y.filter((v) => v != null))) ;
     grid.appendChild(panel("Insertion loss |S21|", chart({ x: f, series: thr, xlabel: "frequency GHz", ylabel: "dB", ymax: 0.2, ymin: Math.max(Math.floor(lo), -40), w: pw }), legend));
-    const refl = [...ser("S11"), ...tools.map((t) => ({ name: TOOLS[t][0] + " S22", y: c.res[t].S22, color: t === "openems" ? "var(--s2)" : "var(--s3)", dash: TOOLS[t][2] === "dash", w: 1.2 }))];
+    const refl = [...ser("S11"), ...tools.filter((t) => c.res[t].S22).map((t) => ({ name: TOOLS[t][0] + " S22", y: c.res[t].S22, color: t === "openems" ? "var(--s2)" : "var(--s3)", dash: TOOLS[t][2] === "dash", w: 1.2 }))];
     grid.appendChild(panel("Return loss |S11|, |S22|", chart({ x: f, series: refl, xlabel: "frequency GHz", ylabel: "dB", ymin: -50, ymax: 0, w: pw }), legend + lg([["S22", "var(--s3)", ""]])));
   } else {
-    grid.appendChild(panel("Differential insertion loss |Sdd21|, |Scc21|", chart({ x: f, series: [...ser("Sdd21"), ...tools.map((t) => ({ name: TOOLS[t][0] + " Scc21", y: c.res[t].Scc21, color: "var(--s3)", dash: TOOLS[t][2] === "dash", w: 1.2 }))], xlabel: "frequency GHz", ylabel: "dB", ymax: 0.2, ymin: -10, w: pw }), legend + lg([["Scc21 (common mode)", "var(--s3)", ""]])));
+    grid.appendChild(panel("Differential insertion loss |Sdd21|, |Scc21|", chart({ x: f, series: [...ser("Sdd21"), ...tools.filter((t) => c.res[t].Scc21).map((t) => ({ name: TOOLS[t][0] + " Scc21", y: c.res[t].Scc21, color: "var(--s3)", dash: TOOLS[t][2] === "dash", w: 1.2 }))], xlabel: "frequency GHz", ylabel: "dB", ymax: 0.2, ymin: -10, w: pw }), legend + lg([["Scc21 (common mode)", "var(--s3)", ""]])));
     grid.appendChild(panel("Differential return loss |Sdd11|", chart({ x: f, series: ser("Sdd11"), xlabel: "frequency GHz", ylabel: "dB", ymin: -50, ymax: 0, w: pw }), legend));
     grid.appendChild(panel("Mode conversion |Scd21|", chart({ x: f, series: ser("Scd21"), xlabel: "frequency GHz", ylabel: "dB", ymin: -80, ymax: 0, w: pw }), legend, "Differential in, common mode out at the far end. A symmetric pair converts nothing; offsets of GND vias or antipads show here."));
-    grid.appendChild(panel("Single-ended coupling |S21| (NEXT), |S41| (FEXT)", chart({ x: f, series: [...ser("S21"), ...tools.map((t) => ({ name: TOOLS[t][0] + " S41", y: c.res[t].S41, color: "var(--s3)", dash: TOOLS[t][2] === "dash", w: 1.2 }))], xlabel: "frequency GHz", ylabel: "dB", ymin: -80, ymax: 0, w: pw }), legend + lg([["S41 (FEXT)", "var(--s3)", ""]])));
+    grid.appendChild(panel("Single-ended coupling |S21| (NEXT), |S41| (FEXT)", chart({ x: f, series: [...ser("S21"), ...tools.filter((t) => c.res[t].S41).map((t) => ({ name: TOOLS[t][0] + " S41", y: c.res[t].S41, color: "var(--s3)", dash: TOOLS[t][2] === "dash", w: 1.2 }))], xlabel: "frequency GHz", ylabel: "dB", ymin: -80, ymax: 0, w: pw }), legend + lg([["S41 (FEXT)", "var(--s3)", ""]])));
+  }
+  if (c.tl) {
+    grid.appendChild(panel("Line impedance Zc", chart({ x: f, series: [{ name: "Zc (ABCD of the 20 mm line)", y: c.tl.zc, color: "var(--s1)" }], xlabel: "frequency GHz", ylabel: "Ω", w: pw }),
+      lg([["Zc", "var(--s1)", ""]]), "From the ABCD matrix of the 20 mm line between 50 Ω lumped ports (the port parasitics show as ripple at high frequency)."));
+    grid.appendChild(panel("Effective permittivity εeff", chart({ x: f, series: [{ name: "εeff", y: c.tl.eeff, color: "var(--s2)" }], xlabel: "frequency GHz", ylabel: "εeff", w: pw }),
+      lg([["εeff, " + c.tl.source, "var(--s2)", ""]]), "Propagation constant from " + esc(c.tl.source) + "; loss (dB/mm) in the readout of the next chart."));
+    grid.appendChild(panel("Attenuation", chart({ x: f, series: [{ name: "α", y: c.tl.loss_db_per_mm, color: "var(--s3)" }], xlabel: "frequency GHz", ylabel: "dB/mm", w: pw }),
+      lg([["α (dielectric loss as σ fixed at f_loss: constant over frequency)", "var(--s3)", ""]])));
   }
   const td = c.tdr;
   const tdSer = [{ name: two ? "Z" : "Z single-ended", y: td.z, color: "var(--s1)" }];
@@ -378,7 +518,7 @@ function renderChecks() {
   const cw = Math.min(1100, box.clientWidth || 900) - 26;
   const ch = DATA.checks;
   let n = 0;
-  for (const key of ["cavity", "pml_thru", "via_convergence", "openems_compare"]) {
+  for (const key of ["cavity", "via_convergence", "pml_thru", "openems_compare", "via_pbm", "cavity_model", "kisi_models"]) {
     const c = ch[key]; if (!c) continue; n++;
     const p = document.createElement("div"); p.className = "panel";
     p.innerHTML = `<h2>${esc(c.title)}</h2>${(c.text || []).map((t) => `<p>${t}</p>`).join("")}` + (c.cols ? `<div class="wide"><table><thead><tr>${c.cols.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${c.rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "");

@@ -1,0 +1,74 @@
+{
+ "case": "G_pp200",
+ "meta": {
+  "group": "G",
+  "title": "Plane pair 50 \u00d7 30 mm, d = 0.2 mm, ports at a corner and the centre",
+  "params": {
+   "size_mm": "50 \u00d7 30",
+   "d_mm": 0.2,
+   "port_ohm": 1.0,
+   "modes_GHz": [
+    1.446,
+    2.41,
+    2.81,
+    2.891,
+    3.764,
+    4.337,
+    4.819,
+    4.962
+   ],
+   "modes_mn": [
+    "10",
+    "01",
+    "11",
+    "20",
+    "21",
+    "30",
+    "02",
+    "31"
+   ]
+  },
+  "stackup": "pp200",
+  "stackup_title": "plane pair, 0.2 mm FR-4",
+  "copper_z": [
+   0.2,
+   0.0
+  ],
+  "planes": [
+   "L1",
+   "L2"
+  ],
+  "pwr_planes": [
+   "L1"
+  ],
+  "ports": [
+   {
+    "name": "1 corner",
+    "layer": "PWR",
+    "ref": "GND"
+   },
+   {
+    "name": "2 centre",
+    "layer": "PWR",
+    "ref": "GND"
+   }
+  ],
+  "lumped": []
+ },
+ "date": "2026-10-21",
+ "fmax": 6000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 323400,
+   "steps": [
+    113601,
+    91001
+   ],
+   "dt": 1.59577505009821e-13,
+   "seconds": 1693.0,
+   "dfine": 0.1,
+   "dmax": null
+  }
+ }
+}

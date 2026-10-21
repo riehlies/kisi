@@ -21,6 +21,8 @@ STACKUPS = {
            "planes": [1, 3, 4, 6]},
     "pp100": {"title": "plane pair, 0.1 mm FR-4", "diel": [(0.1, 4.3, 0.02)], "planes": [0, 1]},
     "pp200": {"title": "plane pair, 0.2 mm FR-4", "diel": [(0.2, 4.3, 0.02)], "planes": [0, 1]},
+    "vna6": {"title": "LibreVNA 6-layer (7628 / FR-4, from the board file)",
+             "diel": [(0.2104, 4.4, 0.02), (0.4, 4.6, 0.02), (0.2028, 4.4, 0.02), (0.4, 4.5, 0.02), (0.2104, 4.6, 0.02)], "planes": [1, 4]},
     "ts6": {"title": "ThunderScope Rev5.3 6-layer (FR408HR / FR-4, from the board file)",
             "diel": [(0.1107, 3.23, 0.02), (0.1016, 3.66, 0.02), (0.9256, 4.5, 0.02), (0.1107, 3.66, 0.02), (0.1, 3.23, 0.02)],
             "planes": [1, 4]},
@@ -28,6 +30,7 @@ STACKUPS = {
 C0 = 299792458.0
 AIR = 1.0      # air above and below the board (mm), PML outside
 FEED = 4.0     # trace length from the via to the port (mm)
+GND_VIA_CELL = 0.1  # local cell at GND stitching vias (mm)
 
 
 def copper_z(st):
@@ -114,8 +117,11 @@ class Builder:
 
     def via(self, x, y, r, pad_r, l0, l1, pads, z_bottom=None, net="SIG"):
         z0 = self.zc[l1] if z_bottom is None else z_bottom
-        self.case["vias"].append({"x": x, "y": y, "r": r, "z0": round(min(z0, self.zc[l0]), 6), "z1": round(max(z0, self.zc[l0]), 6),
-                                  "pad_r": pad_r, "pads": [self.zc[l] for l in pads], "net": net})
+        v = {"x": x, "y": y, "r": r, "z0": round(min(z0, self.zc[l0]), 6), "z1": round(max(z0, self.zc[l0]), 6),
+             "pad_r": pad_r, "pads": [self.zc[l] for l in pads], "net": net}
+        if net == "GND":  # stitching vias: conformal metal on a coarser local mesh
+            v["dmesh"] = GND_VIA_CELL
+        self.case["vias"].append(v)
 
     def sheet(self, z, rect, holes=(), net="SIG"):
         self.case["sheets"].append({"z": round(z, 6), "rect": rect, "holes": list(holes), "net": net})
@@ -146,10 +152,35 @@ class Builder:
         self.port(xp, y, w, layer, ref, name)
         return w
 
+    def default_monitors(self, group):
+        """xy plane in the middle of the thickest dielectric the signal via crosses, xz plane
+        through port 1; three frequencies"""
+        if group == "H":
+            return []
+        if group == "G":
+            fs = self.case["meta_modes"][:3]
+        else:
+            fs = [10e9, 20e9, 30e9]
+        sig = [v for v in self.case["vias"] if v.get("net") == "SIG"]
+        lay = self.case["layers"]
+        if sig:
+            z0, z1 = min(v["z0"] for v in sig), max(v["z1"] for v in sig)
+            inside = [l for l in lay if l["z0"] >= z0 - 1e-9 and l["z1"] <= z1 + 1e-9] or lay
+        else:
+            inside = lay
+        thick = max(inside, key=lambda l: l["z1"] - l["z0"])
+        mons = [{"axis": "z", "pos": round((thick["z0"] + thick["z1"]) / 2, 6), "freqs": fs, "comps": [2]}]
+        if self.case["ports"]:
+            p = self.case["ports"][0]
+            mons.append({"axis": "y", "pos": round((p["y0"] + p["y1"]) / 2, 6), "freqs": fs, "comps": [0, 2]})
+        return mons
+
     def finish(self, cid, group, title, params):
         for p in self.st["planes"]:
             self.case["sheets"].append({"z": self.zc[p], "rect": self.case["board"], "holes": self.holes[p], "net": "PWR" if p in self.pwr else "GND"})
         self.case["name"] = cid
+        self.case["monitors"] = self.default_monitors(group)
+        self.case.pop("meta_modes", None)
         self.case["meta"] = {"group": group, "title": title, "params": params, "stackup": self.sk, "stackup_title": self.st["title"],
                              "copper_z": self.zc, "planes": [f"L{p + 1}" for p in self.st["planes"]], "pwr_planes": [f"L{p + 1}" for p in sorted(self.pwr)],
                              "ports": self.ports, "lumped": self.lumped_meta}
@@ -234,6 +265,7 @@ def plane_cavity(cid, stackup, fmax, dfine):
     d = zc[0] - zc[1]
     er = STACKUPS[stackup]["diel"][0][1]
     modes = sorted((C0 / (2 * math.sqrt(er)) * math.hypot(m / a, n / bb) * 1e3, m, n) for m in range(5) for n in range(4) if (m, n) != (0, 0))
+    b.case["meta_modes"] = [round(f, -6) for f, m, n in modes]
     return b.finish(cid, "G", f"Plane pair 50 × 30 mm, d = {d:g} mm, ports at a corner and the centre",
                     {"size_mm": "50 × 30", "d_mm": d, "port_ohm": 1.0, "modes_GHz": [round(f / 1e9, 3) for f, m, n in modes if f < fmax][:8],
                      "modes_mn": [f"{m}{n}" for f, m, n in modes if f < fmax][:8]})
@@ -281,6 +313,41 @@ def pdn_loop(cid, dist, fmax, dfine):
     b.lumped(xg, 0.0, top, top + 0.5, r=0.005, name="capacitor as a short, 5 mΩ")
     b.case.update(nf=200, f_loss=1e9, end_db=-60, max_steps=300000)
     return b.finish(cid, "H", f"PDN loop: BGA pin field to a 0402 capacitor {dist:g} mm away", {"distance_mm": dist, "pins": "4 × 4, 0.8 mm", "port_ohm": 1.0})
+
+
+def tline(cid, title, params, stackup, traces, length, fmax, dfine, cpw=None, mirror="x", half_y=3.0):
+    """T: straight lines of `length` along x; traces = [(layer, y, w)], ports at both ends
+    (port i at the near end of trace i, port n + i at its far end). cpw = (gap, pour, via_pitch):
+    coplanar ground pours next to trace 0 with stitching vias to the nearest plane."""
+    b = Builder(stackup, length / 2 + 1.5, half_y, fmax, dfine)
+    n = len(traces)
+    for (layer, y, w) in traces:
+        b.trace(layer, -length / 2, length / 2, y, w)
+    if cpw:
+        gap, pour, pitch = cpw
+        layer, y, w = traces[0]
+        ref = feed(b.st, layer)[1]
+        for sgn in (1, -1):
+            y0 = y + sgn * (w / 2 + gap)
+            y1 = y0 + sgn * pour
+            b.sheet(b.zc[layer], [-length / 2, min(y0, y1), length / 2, max(y0, y1)], net="GND")
+            yv = y0 + sgn * 0.4
+            for k in range(int(length / pitch) + 1):
+                xv = -length / 2 + 0.5 + k * pitch
+                if xv <= length / 2 - 0.4:
+                    b.via(round(xv, 4), round(yv, 4), 0.15, 0.0, min(layer, ref), max(layer, ref), [], net="GND")
+    for side, base in ((-1, 0), (1, n)):
+        for i, (layer, y, w) in enumerate(traces):
+            ref = feed(b.st, layer)[1]
+            b.port(side * length / 2, y, w, layer, ref, f"{base + i + 1} {'near' if side < 0 else 'far'} {chr(65 + i)}")
+    c = b.finish(cid, "T", title, params)
+    if n == 1:
+        c["meta"].update(excite=[0], mirror=[1, 0])
+    elif mirror == "y":
+        c["meta"].update(excite=[0, 2], mirror=[1, 0, 3, 2])
+    else:  # symmetric in x only: near ↔ far
+        c["meta"].update(excite=[0, 1], mirror=[2, 3, 0, 1])
+    return c
 
 
 def ring(n, r):
@@ -350,9 +417,33 @@ def cases(groups, fmax, dfine):
     if "H" in groups:
         for d in (2.0, 5.0, 10.0, 20.0):
             out.append(pdn_loop(f"H_s8_cap_{int(d)}", d, 2e9, max(dfine, 0.07)))
+    if "T" in groups:  # transmission lines and coupling
+        for L in (10.0, 20.0):
+            w, _ = feed(STACKUPS["ts6"], 0)
+            out.append(tline(f"T_ts6_ms_{int(L)}", f"Microstrip L1, ThunderScope stack, w {w:g} mm, {L:g} mm", {"w_mm": w, "length_mm": L}, "ts6", [(0, 0.0, w)], L, fmax, dfine))
+            out.append(tline(f"T_vna6_cpwg_{int(L)}", f"Coplanar waveguide with ground, LibreVNA RF class (w 0.35, gap 0.18 mm), {L:g} mm",
+                             {"w_mm": 0.35, "gap_mm": 0.18, "length_mm": L, "vias": "1 mm pitch"}, "vna6", [(0, 0.0, 0.35)], L, fmax, dfine, cpw=(0.18, 1.2, 1.0)))
+            ws, _ = feed(STACKUPS["ts6"], 2)
+            out.append(tline(f"T_ts6_sl_{int(L)}", f"Stripline In2, ThunderScope stack, w {ws:g} mm, {L:g} mm", {"w_mm": ws, "length_mm": L}, "ts6", [(2, 0.0, ws)], L, fmax, dfine))
+        L = 20.0
+        out.append(tline("T_ts6_diff_ms", "Edge-coupled microstrip pair L1, w 0.127 / s 0.127 mm (ThunderScope default), 20 mm",
+                         {"w_mm": 0.127, "s_mm": 0.127, "length_mm": L}, "ts6", [(0, 0.127, 0.127), (0, -0.127, 0.127)], L, fmax, dfine, mirror="y"))
+        out.append(tline("T_ts6_diff_sl", "Edge-coupled stripline pair In2, w 0.1 / s 0.15 mm, 20 mm",
+                         {"w_mm": 0.1, "s_mm": 0.15, "length_mm": L}, "ts6", [(2, 0.125, 0.1), (2, -0.125, 0.1)], L, fmax, dfine, mirror="y"))
+        w, _ = feed(STACKUPS["ts6"], 0)
+        for sp in (1.0, 2.0):
+            out.append(tline(f"T_ts6_xt_ms_s{int(sp * 10)}", f"Microstrip aggressor and victim on L1, w {w:g} mm, edge gap {sp:g}·w = {sp * w:.2f} mm, 20 mm",
+                             {"w_mm": w, "gap_mm": round(sp * w, 3), "length_mm": L}, "ts6", [(0, (w + sp * w) / 2, w), (0, -(w + sp * w) / 2, w)], L, fmax, dfine, mirror="y"))
+        ws2, _ = feed(STACKUPS["ts6"], 2)
+        ws3, _ = feed(STACKUPS["ts6"], 3)
+        for off in (0.0, 0.5):
+            out.append(tline(f"T_ts6_broadside_o{int(off * 10)}", f"Broadside: In2 over In3 across the 0.93 mm core, lateral offset {off:g} mm, 20 mm",
+                             {"w_In2_mm": ws2, "w_In3_mm": ws3, "offset_mm": off, "length_mm": L}, "ts6", [(2, 0.0, ws2), (3, off, ws3)], L, fmax, dfine))
     # 2×thru companions of every feed layer used
     feeds = {}
     for c in out:
+        if c["meta"]["group"] == "T":
+            continue
         for p in c["meta"]["ports"]:
             if not p["layer"].startswith("L"):
                 continue
@@ -365,9 +456,9 @@ def cases(groups, fmax, dfine):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out")
-    ap.add_argument("--groups", default="A,B,C,D,Dcap,E,G,H")
+    ap.add_argument("--groups", default="A,B,C,D,Dcap,E,G,H,T")
     ap.add_argument("--fmax", type=float, default=40e9)
-    ap.add_argument("--dfine", type=float, default=0.05)
+    ap.add_argument("--dfine", type=float, default=0.035)
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     cs = cases(set(a.groups.split(",")), a.fmax, a.dfine)

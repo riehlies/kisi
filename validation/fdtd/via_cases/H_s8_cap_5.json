@@ -508,6 +508,7 @@
  ],
  "f_loss": 1000000000.0,
  "name": "H_s8_cap_5",
+ "monitors": [],
  "meta": {
   "group": "H",
   "title": "PDN loop: BGA pin field to a 0402 capacitor 5 mm away",

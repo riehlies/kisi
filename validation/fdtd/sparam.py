@@ -193,25 +193,25 @@ def mixed_mode(S):
     return {"dd": Smm[:, :2, :2], "dc": Smm[:, :2, 2:], "cd": Smm[:, 2:, :2], "cc": Smm[:, 2:, 2:]}
 
 
-def tdr(f, s11, rise=25e-12, z0=50.0, tmax=None):
-    """Step-response TDR from S11 on a uniform grid f_k = k·Δf: Gaussian edge with 10–90 % rise
-    `rise`. Returns t, Z(t)."""
+def step_response(f, s, rise=25e-12, tmax=None):
+    """response to a unit step with a Gaussian edge (10–90 % = `rise`) of a transfer function
+    sampled on a uniform grid f_k = k·Δf (DC from the real part of the first point)"""
     nf = len(f)
     df = f[1] - f[0]
-    sig = rise / 2.563  # 10–90 % of a Gaussian step
+    sig = rise / 2.563
     g = np.exp(-0.5 * (2 * np.pi * f * sig) ** 2)
-    dc = s11[0].real
-    spec = np.concatenate([[dc], s11 * g])
+    spec = np.concatenate([[s[0].real], s * g])
     n = 8 * nf
-    h = np.fft.irfft(spec, n) * (n / (2 * nf))
-    step = np.cumsum(h) / (n / (2 * nf)) * (1.0)
-    t = np.arange(n) * 1 / (n * df)
-    rho = step
-    z = z0 * (1 + rho) / (1 - rho)
-    if tmax:
-        k = t <= tmax
-        return t[k], z[k]
-    return t[: n // 2], z[: n // 2]
+    v = np.cumsum(np.fft.irfft(spec, n))
+    t = np.arange(n) / (n * df)
+    k = t <= tmax if tmax else slice(0, n // 2)
+    return t[k], v[k]
+
+
+def tdr(f, s11, rise=25e-12, z0=50.0, tmax=None):
+    """step-response TDR from S11: t, Z(t)"""
+    t, rho = step_response(f, s11, rise, tmax)
+    return t, z0 * (1 + rho) / (1 - rho)
 
 
 def db(x):

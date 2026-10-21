@@ -251,7 +251,7 @@
  ],
  "fmax": 40000000000.0,
  "mesh": {
-  "dfine": 0.05,
+  "dfine": 0.035,
   "ratio": 1.4
  },
  "boundary": "pml",
@@ -261,6 +261,33 @@
  "max_steps": 150000,
  "nf": 400,
  "name": "E_s8_L1L8_p1000_round_g0",
+ "monitors": [
+  {
+   "axis": "z",
+   "pos": 0.8,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    2
+   ]
+  },
+  {
+   "axis": "y",
+   "pos": 0.5,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    0,
+    2
+   ]
+  }
+ ],
  "meta": {
   "group": "E",
   "title": "pair L1\u2192L8, pitch 1 mm, two round antipads, 0 GND vias",

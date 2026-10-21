@@ -78,6 +78,9 @@ pub struct Via {
     pub pads: Vec<f64>,
     #[serde(default)]
     pub outer: bool,
+    /// cell size near this via (mm); default the case's `dfine` (stitching vias can be coarser)
+    #[serde(default)]
+    pub dmesh: f64,
 }
 
 /// Lumped port along z at x, over y0..y1, from z0 (reference) to z1 (signal).
@@ -112,6 +115,34 @@ pub struct Lumped {
     pub c: f64,
 }
 
+/// Field monitor: the plane normal to `axis` ("x", "y" or "z") nearest to `pos` (mm); the DFT of
+/// the E components `comps` (0 = x, 1 = y, 2 = z) at `freqs`.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Monitor {
+    pub axis: String,
+    pub pos: f64,
+    pub freqs: Vec<f64>,
+    #[serde(default = "all_comps")]
+    pub comps: Vec<usize>,
+}
+fn all_comps() -> Vec<usize> {
+    vec![0, 1, 2]
+}
+
+/// DFT of one E component in a monitor plane, per volt of the incident wave at the excited port
+/// (V/m per V): values on the mesh nodes u × v (row-major, v fastest), u, v the in-plane axes.
+#[derive(Debug, Clone, Serialize)]
+pub struct FieldPlane {
+    pub axis: String,
+    pub pos: f64,
+    pub freq: f64,
+    pub comp: usize,
+    pub u: Vec<f64>,
+    pub v: Vec<f64>,
+    pub re: Vec<f32>,
+    pub im: Vec<f32>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MeshSpec {
     /// largest cell (mm); default λ/20 in the densest dielectric at fmax
@@ -141,6 +172,9 @@ pub struct Case {
     pub ports: Vec<Port>,
     #[serde(default)]
     pub lumped: Vec<Lumped>,
+    /// field monitors, recorded during the first excitation only
+    #[serde(default)]
+    pub monitors: Vec<Monitor>,
     pub fmax: f64,
     /// frequency where tanδ gives the conductivity (Hz); default fmax/2
     #[serde(default)]
@@ -202,29 +236,44 @@ pub struct Mesh {
     pub z: Vec<f64>,
 }
 
-/// Lines between fixed lines: spacing `fine` at fine lines (`dmax` at the others), growing by
-/// `ratio` towards the middle of each gap, at most `dmax`. Fixed lines closer than 0.6·fine merge.
-fn grade(fixed: &mut Vec<(f64, bool)>, fine: f64, dmax: f64, ratio: f64) -> Vec<f64> {
+/// Lines between fixed lines (position, cell size there, soft), growing by `ratio` towards the
+/// middle of each gap, at most `dmax`. Hard lines closer than 0.6 × their smaller cell size merge
+/// (to their mean; equal values keep the exact value). Soft lines (circle extremes with conformal
+/// metal: they only ask for fine cells there) go into any line within 0.9 cells and take its
+/// position. A remainder of at least half a cell becomes a cell of its own and the gap is
+/// rescaled, so no sliver cell sets the time step.
+fn grade(fixed: &mut Vec<(f64, f64, bool)>, dmax: f64, ratio: f64) -> Vec<f64> {
     fixed.sort_by(|a, b| a.0.total_cmp(&b.0));
-    // clusters of lines closer than 0.6·fine become one line at their mean (keeps symmetry);
-    // the domain bounds (first and last) stay where they are
     let (lo, hi) = (fixed[0].0, fixed[fixed.len() - 1].0);
-    // (first, last, sum, count, fine); a cluster of equal values keeps the exact value (a sheet
-    // must lie exactly on its line, the mean of 1.4 three times is not 1.4)
-    let mut groups: Vec<(f64, f64, f64, usize, bool)> = Vec::new();
-    for &(x, is_fine) in fixed.iter() {
-        match groups.last_mut() {
-            Some(g) if x - g.0 < 0.6 * fine => {
-                g.1 = x;
+    // group: (first, last, sum of hard, count of hard, sum of soft, count of soft, cell)
+    let mut groups: Vec<(f64, f64, f64, usize, f64, usize, f64)> = Vec::new();
+    for &(x, cell, soft) in fixed.iter() {
+        let join = match groups.last() {
+            Some(g) => {
+                let thr = if soft || g.3 == 0 { 0.9 } else { 0.6 } * g.6.min(cell);
+                x - g.0 < thr
+            }
+            None => false,
+        };
+        if join {
+            let g = groups.last_mut().unwrap();
+            g.1 = x;
+            if soft {
+                g.4 += x;
+                g.5 += 1;
+            } else {
                 g.2 += x;
                 g.3 += 1;
-                g.4 |= is_fine;
             }
-            _ => groups.push((x, x, x, 1, is_fine)),
+            g.6 = g.6.min(cell);
+        } else if soft {
+            groups.push((x, x, 0.0, 0, x, 1, cell));
+        } else {
+            groups.push((x, x, x, 1, 0.0, 0, cell));
         }
     }
     let n = groups.len();
-    let f: Vec<(f64, bool)> = groups
+    let f: Vec<(f64, f64)> = groups
         .iter()
         .enumerate()
         .map(|(i, g)| {
@@ -232,19 +281,29 @@ fn grade(fixed: &mut Vec<(f64, bool)>, fine: f64, dmax: f64, ratio: f64) -> Vec<
                 lo
             } else if i == n - 1 {
                 hi
-            } else if g.1 - g.0 < 1e-9 {
-                g.0
+            } else if g.3 > 0 {
+                // hard lines decide; a cluster of equal values keeps the exact value
+                let m = g.2 / g.3 as f64;
+                let first_hard = fixed.iter().find(|x| !x.2 && x.0 >= g.0 - 1e-12 && x.0 <= g.1 + 1e-12).map(|x| x.0).unwrap_or(m);
+                if (m - first_hard).abs() < 1e-9 {
+                    first_hard
+                } else {
+                    m
+                }
             } else {
-                g.2 / g.3 as f64
+                g.4 / g.5 as f64
             };
-            (v, g.4)
+            (v, g.6)
         })
         .collect();
     let mut out = vec![f[0].0];
     for w in f.windows(2) {
         let (a, b) = (w[0].0, w[1].0);
         let len = b - a;
-        let (mut sl, mut sr) = (if w[0].1 { fine } else { dmax }, if w[1].1 { fine } else { dmax });
+        if len <= 1e-12 {
+            continue;
+        }
+        let (mut sl, mut sr) = (w[0].1.min(dmax), w[1].1.min(dmax));
         let (mut left, mut right) = (Vec::new(), Vec::new());
         let mut covered = 0.0;
         while covered + sl.min(sr) < len {
@@ -261,7 +320,8 @@ fn grade(fixed: &mut Vec<(f64, bool)>, fine: f64, dmax: f64, ratio: f64) -> Vec<
         let rem = len - covered;
         let mut cells: Vec<f64> = left;
         if rem > 0.5 * sl.min(sr) || cells.len() + right.len() == 0 {
-            cells.push(rem);
+            // a full cell instead of the sliver; the rescaling below shrinks all cells evenly
+            cells.push(if cells.len() + right.len() == 0 { rem } else { sl.min(sr) });
         }
         cells.extend(right.iter().rev());
         let sum: f64 = cells.iter().sum();
@@ -280,51 +340,61 @@ pub fn make_mesh(c: &Case) -> Mesh {
     let er_max = c.layers.iter().map(|l| l.er).fold(1.0, f64::max);
     let dmax = if c.mesh.dmax > 0.0 { c.mesh.dmax } else { C0 / c.fmax / er_max.sqrt() / 20.0 * 1e3 };
     let fine = c.mesh.dfine;
-    let mut fx: Vec<(f64, bool)> = vec![(d[0], false), (d[3], false), (c.board[0], true), (c.board[2], true)];
-    let mut fy: Vec<(f64, bool)> = vec![(d[1], false), (d[4], false), (c.board[1], true), (c.board[3], true)];
-    let mut fz: Vec<(f64, bool)> = vec![(d[2], false), (d[5], false)];
+    let mut fx: Vec<(f64, f64, bool)> = vec![(d[0], dmax, false), (d[3], dmax, false), (c.board[0], fine, false), (c.board[2], fine, false)];
+    let mut fy: Vec<(f64, f64, bool)> = vec![(d[1], dmax, false), (d[4], dmax, false), (c.board[1], fine, false), (c.board[3], fine, false)];
+    let mut fz: Vec<(f64, f64, bool)> = vec![(d[2], dmax, false), (d[5], dmax, false)];
     for l in &c.layers {
-        fz.push((l.z0, true));
-        fz.push((l.z1, true));
+        fz.push((l.z0, fine, false));
+        fz.push((l.z1, fine, false));
     }
     for s in &c.sheets {
-        fz.push((s.z, true));
-        fx.push((s.rect[0], true));
-        fx.push((s.rect[2], true));
-        fy.push((s.rect[1], true));
-        fy.push((s.rect[3], true));
+        fz.push((s.z, fine, false));
+        fx.push((s.rect[0], fine, false));
+        fx.push((s.rect[2], fine, false));
+        fy.push((s.rect[1], fine, false));
+        fy.push((s.rect[3], fine, false));
         for h in &s.holes {
             let (x0, y0, x1, y1, r) = hole_seg(h);
             for dd in [-r, 0.0, r] {
-                fx.push((x0 + dd, true));
-                fy.push((y0 + dd, true));
-                fx.push((x1 + dd, true));
-                fy.push((y1 + dd, true));
+                let soft = c.conformal && dd != 0.0;
+                fx.push((x0 + dd, fine, soft));
+                fy.push((y0 + dd, fine, soft));
+                fx.push((x1 + dd, fine, soft));
+                fy.push((y1 + dd, fine, soft));
             }
         }
     }
     for v in &c.vias {
-        for dd in [-v.pad_r, -v.r, 0.0, v.r, v.pad_r] {
-            if dd.abs() > 0.0 || dd == 0.0 {
-                fx.push((v.x + dd, true));
-                fy.push((v.y + dd, true));
-            }
+        let cell = if v.dmesh > 0.0 { v.dmesh } else { fine };
+        // conformal: the circle needs no lines of its own, only its centre
+        let offs: &[f64] = if c.conformal && v.dmesh > 0.0 { &[0.0] } else { &[0.0, -1.0, 1.0, -2.0, 2.0] };
+        for &k in offs {
+            let dd = match k as i32 {
+                -1 => -v.r,
+                1 => v.r,
+                -2 => -v.pad_r,
+                2 => v.pad_r,
+                _ => 0.0,
+            };
+            let soft = c.conformal && dd != 0.0;
+            fx.push((v.x + dd, cell, soft));
+            fy.push((v.y + dd, cell, soft));
         }
-        fz.push((v.z0, true));
-        fz.push((v.z1, true));
+        fz.push((v.z0, fine, false));
+        fz.push((v.z1, fine, false));
     }
     for p in &c.ports {
-        fx.push((p.x, true));
-        fy.push((p.y0, true));
-        fy.push((p.y1, true));
-        fz.push((p.z0, true));
-        fz.push((p.z1, true));
+        fx.push((p.x, fine, false));
+        fy.push((p.y0, fine, false));
+        fy.push((p.y1, fine, false));
+        fz.push((p.z0, fine, false));
+        fz.push((p.z1, fine, false));
     }
-    let clip = |v: &mut Vec<(f64, bool)>, lo: f64, hi: f64| v.retain(|x| x.0 >= lo - 1e-9 && x.0 <= hi + 1e-9);
+    let clip = |v: &mut Vec<(f64, f64, bool)>, lo: f64, hi: f64| v.retain(|x| x.0 >= lo - 1e-9 && x.0 <= hi + 1e-9);
     clip(&mut fx, d[0], d[3]);
     clip(&mut fy, d[1], d[4]);
     clip(&mut fz, d[2], d[5]);
-    let mut m = Mesh { x: grade(&mut fx, fine, dmax, c.mesh.ratio), y: grade(&mut fy, fine, dmax, c.mesh.ratio), z: grade(&mut fz, fine, dmax, c.mesh.ratio) };
+    let mut m = Mesh { x: grade(&mut fx, dmax, c.mesh.ratio), y: grade(&mut fy, dmax, c.mesh.ratio), z: grade(&mut fz, dmax, c.mesh.ratio) };
     if c.boundary == "pml" {
         // PML cells outside the domain, as wide as the outermost cell
         for v in [&mut m.x, &mut m.y, &mut m.z] {
@@ -385,6 +455,8 @@ pub struct RunResult {
     pub seconds: f64,
     /// S[i] = b_i / a_excited over `freq`, as (re, im)
     pub s: Vec<Vec<(f64, f64)>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fields: Vec<FieldPlane>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -676,7 +748,8 @@ fn cpml_pass(g: &Grid, comp: usize, a: usize, sign: f32, is_e: bool, list: &[(us
 }
 
 /// One run with port `ex` excited; returns V(t), I(t) for all ports.
-fn run(c: &Case, m: &Mesh, ex: usize, on_progress: &mut dyn FnMut(usize, f64)) -> (f64, usize, Vec<Vec<f64>>, Vec<Vec<f64>>, Vec<f64>) {
+#[allow(clippy::type_complexity)]
+fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(usize, f64)) -> (f64, usize, Vec<Vec<f64>>, Vec<Vec<f64>>, Vec<f64>, Vec<FieldPlane>) {
     let g = Grid::new(m);
     let (nx, ny, nz) = (g.nx, g.ny, g.nz);
     let n = nx * ny * nz;
@@ -982,6 +1055,31 @@ fn run(c: &Case, m: &Mesh, ex: usize, on_progress: &mut dyn FnMut(usize, f64)) -
     let mut prev: Vec<f32> = Vec::new();
     let threads = if cfg!(target_arch = "wasm32") { 1 } else { c.threads.max(1) };
     let mur = c.boundary == "mur";
+    // field monitors: (plane index along the axis, axis, accumulators per (comp, freq))
+    let mut mons: Vec<(usize, usize, Vec<FieldPlane>)> = Vec::new();
+    if record {
+        for mo in &c.monitors {
+            let a = match mo.axis.as_str() {
+                "x" => 0,
+                "y" => 1,
+                _ => 2,
+            };
+            let idx = near(lines[a], mo.pos);
+            let (u, v) = match a {
+                0 => (1, 2),
+                1 => (0, 2),
+                _ => (0, 1),
+            };
+            let mut planes = Vec::new();
+            for &f in &mo.freqs {
+                for &comp in &mo.comps {
+                    let nn = lines[u].len() * lines[v].len();
+                    planes.push(FieldPlane { axis: mo.axis.clone(), pos: lines[a][idx], freq: f, comp, u: lines[u].clone(), v: lines[v].clone(), re: vec![0.0; nn], im: vec![0.0; nn] });
+                }
+            }
+            mons.push((idx, a, planes));
+        }
+    }
     for step in 0..c.max_steps {
         let t = step as f64 * dt;
         // --- H update
@@ -1061,6 +1159,30 @@ fn run(c: &Case, m: &Mesh, ex: usize, on_progress: &mut dyn FnMut(usize, f64)) -
             mur_apply(&g, &mut e, &prev, &epsr, dt);
         }
         steps = step + 1;
+        // --- field monitors (E at t = (step + 1)·Δt)
+        for (idx, a, planes) in mons.iter_mut() {
+            let tt = (step as f64 + 1.0) * dt;
+            for fp in planes.iter_mut() {
+                let w = 2.0 * std::f64::consts::PI * fp.freq * tt;
+                let (cr, ci) = (w.cos() as f32, -w.sin() as f32);
+                let ec = &e[fp.comp];
+                let nv = fp.v.len();
+                let nu = fp.u.len();
+                for iu in 0..nu {
+                    for iv in 0..nv {
+                        let id = match *a {
+                            0 => g.id(*idx, iu, iv),
+                            1 => g.id(iu, *idx, iv),
+                            _ => g.id(iu, iv, *idx),
+                        };
+                        let x = ec[id];
+                        let q = iu * nv + iv;
+                        fp.re[q] += x * cr;
+                        fp.im[q] += x * ci;
+                    }
+                }
+            }
+        }
         // --- energy check
         if step % 200 == 0 {
             // field energy ~ Σ ε E² + μ0 H² (without the cell volumes; only the decay matters)
@@ -1079,7 +1201,8 @@ fn run(c: &Case, m: &Mesh, ex: usize, on_progress: &mut dyn FnMut(usize, f64)) -
             }
         }
     }
-    (dt, steps, vs, is, exc)
+    let fields: Vec<FieldPlane> = mons.into_iter().flat_map(|m| m.2).collect();
+    (dt, steps, vs, is, exc, fields)
 }
 
 /// Split the three field arrays into slabs of whole i-planes and update them on `threads`
@@ -1304,7 +1427,8 @@ pub fn simulate(c: &Case, mesh: Option<Mesh>, on_progress: &mut dyn FnMut(usize,
     let mut runs = Vec::new();
     for &ex in &exc_list {
         let t0 = now();
-        let (dt, steps, vs, is, _) = run(c, &m, ex, &mut |s, db| on_progress(ex, s, db));
+        let record = !c.monitors.is_empty() && ex == exc_list[0];
+        let (dt, steps, vs, is, _, mut fields) = run(c, &m, ex, record, &mut |s, db| on_progress(ex, s, db));
         let secs = now() - t0;
         let mut s = Vec::new();
         let z = c.ports[ex].r;
@@ -1327,7 +1451,19 @@ pub fn simulate(c: &Case, mesh: Option<Mesh>, on_progress: &mut dyn FnMut(usize,
                 .collect();
             s.push(row);
         }
-        runs.push(RunResult { excited: ex, steps, dt, seconds: secs, s });
+        // fields per volt of the incident wave: DFT·Δt / (a·√Z)
+        for fp in fields.iter_mut() {
+            let (a, _) = wave(ex, fp.freq);
+            let zr = c.ports[ex].r.sqrt();
+            let (ar, ai) = (a.0 * zr, a.1 * zr);
+            let den = ar * ar + ai * ai;
+            for q in 0..fp.re.len() {
+                let (xr, xi) = (fp.re[q] as f64 * dt, fp.im[q] as f64 * dt);
+                fp.re[q] = ((xr * ar + xi * ai) / den) as f32;
+                fp.im[q] = ((xi * ar - xr * ai) / den) as f32;
+            }
+        }
+        runs.push(RunResult { excited: ex, steps, dt, seconds: secs, s, fields });
     }
     Result { name: c.name.clone(), cells: m.x.len() * m.y.len() * m.z.len(), mesh: m, freq, runs }
 }

@@ -259,3 +259,55 @@ fn crosstalk_broadside_detected() {
     assert!(b.net == id("B") && (b.overlap_mm - 20.0).abs() < 0.6 && (b.offset_mm - 0.05).abs() < 0.01, "{b:?}");
     assert!(x.aggressors.is_empty(), "broadside is not computed yet");
 }
+
+/// L1 → L4 through a via whose traces run over the antipads right at the via (no reference
+/// there): the return path must still be found from the referenced trace before and after it
+/// (GND In1 → GND In2 with a stitching via at 1 mm).
+#[test]
+fn via_return_path_across_antipad() {
+    // plane with a round antipad at (10, 0), joined to the bottom edge by a cut (fractured polygon)
+    let plane = |layer: &str| -> String {
+        let mut pts = vec![(-5.0, 5.0), (10.0, 5.0)];
+        for k in 0..=48 {
+            let a = std::f64::consts::FRAC_PI_2 - 2.0 * PI * k as f64 / 48.0;
+            pts.push((10.0 + 0.4 * a.cos(), 0.4 * a.sin()));
+        }
+        pts.extend([(10.0, 5.0), (25.0, 5.0), (25.0, -5.0), (-5.0, -5.0)]);
+        let p: Vec<String> = pts.iter().map(|(x, y)| format!("(xy {x:.4} {y:.4})")).collect();
+        format!("(zone (net 2) (net_name \"GND\") (layer \"{layer}\") (filled_polygon (layer \"{layer}\") (pts {})))", p.join(" "))
+    };
+    let pcb = format!(
+        r#"(kicad_pcb (version 20240108) (generator "pcbnew")
+  (general (thickness 1.6))
+  (layers (0 "F.Cu" signal) (1 "In1.Cu" signal) (2 "In2.Cu" signal) (31 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.2) (material "FR4") (epsilon_r 4.3) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 2" (type "core") (thickness 1.2) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "In2.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 3" (type "prepreg") (thickness 0.2) (material "FR4") (epsilon_r 4.3) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "SIG") (net 2 "GND")
+  (footprint "U" (layer "F.Cu") (at 0 0) (property "Reference" "U1") (property "Value" "IC")
+    (pad "1" smd rect (at 0 0) (size 0.4 0.4) (layers "F.Cu") (net 1 "SIG")))
+  (footprint "J" (layer "B.Cu") (at 20 0) (property "Reference" "J1") (property "Value" "conn")
+    (pad "1" smd rect (at 0 0) (size 0.4 0.4) (layers "B.Cu") (net 1 "SIG")))
+  (segment (start 0 0) (end 10 0) (width 0.35) (layer "F.Cu") (net 1))
+  (segment (start 10 0) (end 20 0) (width 0.35) (layer "B.Cu") (net 1))
+  (via (at 10 0) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))
+  (via (at 10 1) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 2))
+  {}
+  {})
+"#,
+        plane("In1.Cu"),
+        plane("In2.Cu")
+    );
+    let board = kisi_board::load_pcb(&pcb).unwrap();
+    let an = crate::analyze(&board, &crate::Params::default());
+    let net = board.nets.iter().position(|n| n == "SIG").unwrap() as u32;
+    let ch = channel(&board, &an, net, &std::collections::HashMap::new(), None, &RfParams::default()).unwrap();
+    let v = &ch.via_info[0];
+    assert_eq!(v.return_kind, "stitch", "{v:?}");
+    assert!((v.return_mm.unwrap() - 1.0).abs() < 0.05, "{v:?}");
+}

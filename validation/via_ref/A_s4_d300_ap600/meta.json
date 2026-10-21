@@ -20,6 +20,7 @@
    "L2",
    "L3"
   ],
+  "pwr_planes": [],
   "ports": [
    {
     "name": "1",
@@ -31,21 +32,22 @@
     "layer": "L4",
     "ref": "L3"
    }
-  ]
+  ],
+  "lumped": []
  },
  "date": "2026-10-21",
  "fmax": 40000000000.0,
  "tool": "kisi-fdtd (conformal metal, CPML)",
  "runs": {
   "kisi": {
-   "cells": 535050,
+   "cells": 457125,
    "steps": [
-    3001,
-    3001
+    4001,
+    4001
    ],
-   "dt": 8.809774061244205e-14,
-   "seconds": 72.9,
-   "dfine": 0.05,
+   "dt": 6.006839555645883e-14,
+   "seconds": 121.9,
+   "dfine": 0.035,
    "dmax": null
   }
  }

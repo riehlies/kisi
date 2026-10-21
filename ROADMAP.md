@@ -28,8 +28,13 @@ Planned and possible work after 0.2.0, roughly in order of priority. Each item s
 - **Eye and channel check on the 4-port pair model** (the 4-port with mode conversion is shown in the net detail;
   eye and check still use the odd-mode 2-port).
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
-- **Via model against 3D results** (openEMS / CST cases, plan in `validation/via_references.md`) to tighten the
-  ±15 % estimate; then the r–z and in-plane via solvers and a shared plane-cavity model (via resonances and PDN).
+- **Via model against 3D results**: 68 kisi-fdtd reference cases in `validation/via_ref` (viewer
+  `validation/fdtd/references.html`, test log `validation/fdtd/TESTS.md`). Next: port the reduced via ladder
+  (r–z capacitances + parallel-plate impedance, prototype `validation/fdtd/via_pbm.py`) and the plane-cavity model
+  into kisi, replacing the coax-section via model.
+- **Measured test board** (ToDo): coupons from the reference cases on JLCPCB / Aisler standard stackups with
+  screw-on end-launch connectors, simulated in kisi-fdtd and CST, measured on Keysight ENA / PNA-X / PNA; plan in
+  `validation/test_board.md`.
 - **Crosstalk:** compute broadside coupling between layers (detected and listed so far), aggressors in the eye;
   crossings of plane splits and edges (return path), then via-to-via coupling through the cavity.
 - **PDN:** per-IC grid for all rails at once, regulator models beyond R + L (control-loop output impedance),

@@ -222,7 +222,8 @@
    "z1": 1.6,
    "pad_r": 0.3,
    "pads": [],
-   "net": "GND"
+   "net": "GND",
+   "dmesh": 0.1
   },
   {
    "x": 0,
@@ -232,7 +233,8 @@
    "z1": 1.6,
    "pad_r": 0.3,
    "pads": [],
-   "net": "GND"
+   "net": "GND",
+   "dmesh": 0.1
   }
  ],
  "ports": [
@@ -271,7 +273,7 @@
  ],
  "fmax": 40000000000.0,
  "mesh": {
-  "dfine": 0.05,
+  "dfine": 0.035,
   "ratio": 1.4
  },
  "boundary": "pml",
@@ -281,6 +283,33 @@
  "max_steps": 150000,
  "nf": 400,
  "name": "E_s8_L1L3_p800_round_g2",
+ "monitors": [
+  {
+   "axis": "z",
+   "pos": 0.8,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    2
+   ]
+  },
+  {
+   "axis": "y",
+   "pos": 0.4,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    0,
+    2
+   ]
+  }
+ ],
  "meta": {
   "group": "E",
   "title": "pair L1\u2192L3, pitch 0.8 mm, two round antipads, 2 GND vias",

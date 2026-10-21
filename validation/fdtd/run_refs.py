@@ -23,6 +23,8 @@ C0 = 299792458.0
 
 def excitation(case):
     g = case["meta"]["group"]
+    if "excite" in case["meta"]:
+        return case["meta"]["excite"], case["meta"].get("mirror")
     n = len(case["ports"])
     if g == "thru":
         return [0], [1, 0]
@@ -42,6 +44,51 @@ def refined(case, factor):
     return c
 
 
+def field_raster(case, res, width=110):
+    """fields of the first excitation on a uniform raster without the PML, int8 per component
+    (re, im) with one scale per plane (99.5th percentile of |E|), base64"""
+    import base64
+    runs = [r for r in res["runs"] if r.get("fields")]
+    if not runs:
+        return None
+    dom = case["domain"]
+    zb = [min(l["z0"] for l in case["layers"]), max(l["z1"] for l in case["layers"])]
+    groups = {}
+    for fp in runs[0]["fields"]:
+        groups.setdefault((fp["axis"], fp["pos"], fp["freq"]), []).append(fp)
+    out = []
+    for (axis, pos, freq), fps in groups.items():
+        u, v = np.array(fps[0]["u"]), np.array(fps[0]["v"])
+        if axis == "z":
+            ext = [dom[0], dom[3], dom[1], dom[4]]
+        elif axis == "y":
+            ext = [dom[0], dom[3], zb[0] - 0.3, zb[1] + 0.3]
+        else:
+            ext = [dom[1], dom[4], zb[0] - 0.3, zb[1] + 0.3]
+        W = width
+        H = max(8, int(round(W * (ext[3] - ext[2]) / (ext[1] - ext[0]))))
+        if axis != "z":  # sections: height exaggerated 2.5× like the cross-section drawing
+            H = max(24, int(round(W * (ext[3] - ext[2]) / (ext[1] - ext[0]) * 2.5)))
+        xs = ext[0] + (np.arange(W) + 0.5) * (ext[1] - ext[0]) / W
+        ys = ext[2] + (np.arange(H) + 0.5) * (ext[3] - ext[2]) / H
+        iu = np.clip(np.searchsorted(u, xs) - 1, 0, len(u) - 1)
+        iv = np.clip(np.searchsorted(v, ys) - 1, 0, len(v) - 1)
+        comps = {}
+        mags = []
+        for fp in fps:
+            re = np.array(fp["re"], dtype=np.float32).reshape(len(u), len(v))[np.ix_(iu, iv)].T  # rows = v (y or z)
+            im = np.array(fp["im"], dtype=np.float32).reshape(len(u), len(v))[np.ix_(iu, iv)].T
+            comps[fp["comp"]] = (re, im)
+            mags.append(re ** 2 + im ** 2)
+        scale = float(np.percentile(np.sqrt(sum(mags)), 99.5)) or 1.0
+        enc = {}
+        for k, (re, im) in comps.items():
+            q = lambda a: base64.b64encode(np.clip(np.round(a / scale * 127), -127, 127).astype(np.int8).tobytes()).decode()
+            enc[str(k)] = {"re": q(re), "im": q(im)}
+        out.append({"axis": axis, "pos": pos, "freq": freq, "extent": [round(x, 4) for x in ext], "w": W, "h": H, "scale": round(scale, 3), "comps": enc})
+    return {"note": "E per volt of the incident wave at port 1 (V/m per V); int8 = value / scale · 127, rows bottom to top", "planes": out}
+
+
 def run_kisi(exe, case, tmp, tag):
     ex, mirror = excitation(case)
     c = dict(case, excite=ex)
@@ -50,6 +97,7 @@ def run_kisi(exe, case, tmp, tag):
     t0 = time.time()
     r = json.loads(subprocess.run([exe, p], capture_output=True, text=True, check=True).stdout)
     f, S = sparam.from_kisi(r, len(case["ports"]), mirror)
+    run_kisi.fields = field_raster(case, r) if tag == "base" else None
     info = {"cells": r["cells"], "steps": [x["steps"] for x in r["runs"]], "dt": r["runs"][0]["dt"], "seconds": round(time.time() - t0, 1),
             "dfine": case["mesh"]["dfine"], "dmax": case["mesh"].get("dmax")}
     return f, S, info
@@ -105,6 +153,8 @@ def one(path, out, a):
     f, S, info = run_kisi(a.exe, case, tmp, "base")
     sparam.write_touchstone(os.path.join(d, f"kisi.s{n}p"), f, S, hdr + [f"kisi-fdtd, conformal, dfine {info['dfine']} mm, {info['cells']} cells"], z0)
     meta["runs"]["kisi"] = info
+    if run_kisi.fields:
+        json.dump(run_kisi.fields, open(os.path.join(d, "fields.json"), "w"), separators=(",", ":"))
     if a.fine and case["meta"]["group"] != "thru":
         cf_ = refined(case, a.fine)
         f2, S2, info2 = run_kisi(a.exe, cf_, tmp, "fine")

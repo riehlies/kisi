@@ -373,3 +373,6 @@ ul.src li { margin: 2px 0; }
 .sankey g[data-node] { cursor: pointer; }
 .sankey g[data-node]:hover rect, .sankey g[data-node]:focus-visible rect { stroke: var(--fg); stroke-width: 1.5; }
 .sankey g[data-node]:hover text { text-decoration: underline; }
+.t-part { border: 0; background: none; padding: 0; font: inherit; color: var(--fg); cursor: pointer; text-decoration: underline dotted var(--muted); text-underline-offset: 2px; }
+.t-part.b { font-weight: 500; }
+.t-part:hover, .t-part:focus-visible { color: var(--accent); text-decoration-color: var(--accent); }

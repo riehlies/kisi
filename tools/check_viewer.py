@@ -159,6 +159,13 @@ def run(pg, tag, desktop):
                 if not pg.evaluate("S.piMode === 'v' && !!S.piMark"):
                     problems.append(f"{tag}: click on a load in the power flow did not show the part")
                 step("flow_jump"); pg.click("#pim-b"); pg.wait_for_timeout(300)
+            # power tree and component list: part references jump to the board as well
+            for sel in [".tree [data-part]", ".ctab [data-part]"]:
+                if pg.locator(sel).count():
+                    pg.click(f"{sel} >> nth=0"); pg.wait_for_timeout(400)
+                    if not pg.evaluate("S.piMode === 'v' && !!S.piMark"):
+                        problems.append(f"{tag}: click on a part in {sel} did not show it")
+                    pg.click("#pim-b"); pg.wait_for_timeout(300)
         if a.config:
             pg.click("#view-si")
             pg.set_input_files("#file", [os.path.abspath(a.config)]); pg.wait_for_function(f"S.config && {BUSY}", timeout=90000)

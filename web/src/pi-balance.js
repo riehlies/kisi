@@ -19,23 +19,25 @@ function renderBalance() {
   const kids = (net) => t.elements.filter((e) => e.from === net);
   const loadsOn = (net) => S.piTree.loads.map((l, i) => ({ l, i })).filter((x) => t.load_nets[x.i] === net);
   const rows = [];
+  // a part reference that shows the part on the board (with the rail it feeds / draws from)
+  const part = (refdes, rail, bold) => `<button class="t-part${bold ? " b" : ""}" data-part="${esc(refdes)}" data-prail="${esc(rail || "")}" title="Show ${esc(refdes)} on the board">${esc(refdes)}</button>`;
   const walk = (net, d) => {
     const r = t.rails.find((x) => x.net === net);
     if (!r) return;
     const pad = `style="padding-left:${d * 16}px"`;
     rows.push(`<div class="t-rail" ${pad}><button data-rail="${esc(net)}" title="Show voltage drop of this rail">${esc(netShort(net))}</button><span class="t-num">${fmt(r.voltage, 2)} V · ${fmt(r.i_total, 3)} A · ${mW(Math.abs(r.voltage) * r.i_total)}</span></div>`);
     for (const { l, i } of loadsOn(net)) {
-      rows.push(`<div class="t-load" style="padding-left:${d * 16 + 12}px"><span>${esc(l.refdes)} <span class="b">${esc(l.part)} · ${esc(l.basis || "")}${l.note ? " · " + esc(l.note) : ""}</span></span>
+      rows.push(`<div class="t-load" style="padding-left:${d * 16 + 12}px"><span>${part(l.refdes, net)} <span class="b">${esc(l.part)} · ${esc(l.basis || "")}${l.note ? " · " + esc(l.note) : ""}</span></span>
         <input type="number" min="0" step="0.001" value="${+l.current.toFixed(4)}" data-load="${i}" aria-label="Current ${esc(l.refdes)} on ${esc(netLabel(net))} in A"></div>`);
     }
     for (const e of kids(net)) {
       const eff = e.kind === "pass" ? "" : e.p_in > 0 ? ` · η ${fmt(100 * e.p_out / e.p_in, 0)} %` : "";
-      rows.push(`<div class="t-el" style="padding-left:${d * 16 + 12}px"><span>└ <b>${esc(e.id)}</b> ${esc(KIND_NAME[e.kind] || e.kind)} · ${esc(e.part)}${e.overload ? `<span class="chip-warn">${fmt(e.i_out, 2)} A &gt; ${fmt(e.imax, 2)} A</span>` : ""}</span><span class="t-num">loss ${mW(e.p_loss)}${eff}</span></div>`);
+      rows.push(`<div class="t-el" style="padding-left:${d * 16 + 12}px"><span>└ ${part(e.refdes, e.to, true)}${e.id !== e.refdes ? ` <span class="b">${esc(e.id)}</span>` : ""} ${esc(KIND_NAME[e.kind] || e.kind)} · ${esc(e.part)}${e.overload ? `<span class="chip-warn">${fmt(e.i_out, 2)} A &gt; ${fmt(e.imax, 2)} A</span>` : ""}</span><span class="t-num">loss ${mW(e.p_loss)}${eff}</span></div>`);
       walk(e.to, d + 1);
     }
   };
   for (const e of t.elements.filter((e) => e.kind === "input")) {
-    rows.push(`<div class="t-el"><span><b>${esc(e.refdes)}</b> ${esc(e.part)}</span><span class="t-num">${mW(e.p_out)}</span></div>`);
+    rows.push(`<div class="t-el"><span>${part(e.refdes, e.to, true)} ${esc(e.part)}</span><span class="t-num">${mW(e.p_out)}</span></div>`);
     walk(e.to, 0);
   }
   // components
@@ -44,7 +46,9 @@ function renderBalance() {
   const basis = (c) => { const b = [...new Set(c.rails.map((r) => r[2]))]; return c.rails.length ? (b.length > 1 ? "mixed" : b[0]) : "computed"; };
   const crow = (c) => {
     const wu = 100 * c.consumption / maxW, wl = 100 * c.loss / maxW;
-    return `<tr title="${esc(c.refdes)}: consumption ${mW(c.consumption)}, loss ${mW(c.loss)}"><td>${esc(c.refdes)}</td><td>${esc(c.part)}</td>
+    const el = t.elements.find((e) => e.refdes === c.refdes);
+    const rail = c.rails.length ? c.rails[0][0] : el ? el.to : "";
+    return `<tr title="${esc(c.refdes)}: consumption ${mW(c.consumption)}, loss ${mW(c.loss)}"><td>${part(c.refdes, rail)}</td><td>${esc(c.part)}</td>
       <td class="n">${c.consumption ? fmt(c.consumption * 1e3, 0) : "–"}</td><td class="n">${c.loss ? fmt(c.loss * 1e3, 0) : "–"}</td>
       <td><div class="bar">${wu > 0 ? `<i class="u" style="width:${wu}%"></i>` : ""}${wl > 0 ? `<i class="l" style="width:${wl}%"></i>` : ""}</div></td><td class="b">${esc(basis(c))}</td></tr>`;
   };
@@ -78,6 +82,7 @@ function renderBalance() {
     piSave(); refreshTree();
   });
   box.querySelectorAll("[data-rail]").forEach((b) => b.onclick = () => { S.piRail = b.dataset.rail; S.piLayer = -1; setPiMode("v"); fitRail(); });
+  box.querySelectorAll("[data-part]").forEach((b) => b.onclick = () => showPart(b.dataset.part, b.dataset.prail));
   // power flow: a rail opens the rail on the board, a regulator, input or load shows the part
   box.querySelectorAll(".sankey [data-node]").forEach((g) => {
     const go = () => sankeyJump(g.dataset.node);
@@ -103,8 +108,12 @@ function sankeyJump(id) {
   // feeds (regulator, input) or draws from (load)
   const refdes = node.kind === "load" ? id.slice(5) : node.label.split(" ")[0];
   const link = node.kind === "load" ? flow.links.find((l) => l.to === id) : flow.links.find((l) => l.from === id && l.to.startsWith("rail:"));
-  const rail = known(railOf(link && (node.kind === "load" ? link.from : link.to)));
-  if (rail) { S.piRail = rail; S.piLayer = -1; }
+  showPart(refdes, railOf(link && (node.kind === "load" ? link.from : link.to)));
+}
+// show a part outlined on the board, with a rail (the one it feeds or draws from) in the voltage
+// drop view; from the power flow, the power tree and the component list
+function showPart(refdes, rail) {
+  if (rail && S.piSetups.has(rail)) { S.piRail = rail; S.piLayer = -1; }
   const bbox = fpBBox(refdes);
   S.piMark = bbox ? { refdes, bbox, rail: S.piRail } : null;
   setPiMode("v");

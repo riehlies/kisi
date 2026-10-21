@@ -8,6 +8,7 @@
 
 pub use kisi_board::{board, geom, load_pcb, num};
 
+pub mod cavity_modal;
 pub mod pdn;
 pub mod pdn_ic;
 pub mod losses;

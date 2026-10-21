@@ -1,4 +1,5 @@
-"""Build validation/fdtd/references.html: a self-contained page with the geometry and the results
+"""Build dist/kisi-references.html (not in the repository; built locally and by the release workflow):
+a self-contained page with the geometry and the results
 of every via reference case (validation/via_ref) and the solver checks (results/*.json).
 
 usage: python3 make_viewer.py [via_ref_dir] [out.html] [--fragment]
@@ -13,7 +14,7 @@ import sparam  # noqa: E402
 
 ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 REF = ARGS[0] if len(ARGS) > 0 else os.path.join(ROOT, "validation", "via_ref")
-OUT = ARGS[1] if len(ARGS) > 1 else os.path.join(HERE, "references.html")
+OUT = ARGS[1] if len(ARGS) > 1 else os.path.join(ROOT, "dist", "kisi-references.html")
 CASES = os.path.join(HERE, "via_cases")
 STEP = 2  # every 2nd frequency point
 
@@ -67,8 +68,8 @@ def model_check(nm, d):
                          "plane pairs split into ≤ 0.2 mm sections, the barrel above the outermost planes as a short coax to the antipad, stubs as "
                          "the open rest of the ladder. Ports at the via; the 3D result is de-embedded with the 2×thru of each feed layer. "
                          "TDR with a 25 ps edge. Script: via_pbm.py.",
-                         "kisi's present via model (coax sections with the antipad as outer conductor) gives the via 15 % too low and the "
-                         "stub notch 17 % too high (table below); this model is the candidate to replace it."],
+                         "kisi now uses this ladder (Rust port kisi_si::via_pbm, see the tables “Rust port” and “kisi's fast channel model”); "
+                         "the former coax-section model is the fallback for vias without a plane."],
                 "cols": ["case", "max Δ|S21| to 20 GHz (dB)", "max |ΔS11| to 20 GHz", "TDR Z min 3D / model (Ω)", "TDR Z max 3D / model (Ω)", "stub notch 3D / model (GHz)"],
                 "rows": rows}
     if nm == "pdn_loop":
@@ -92,6 +93,44 @@ def model_check(nm, d):
                          "loss as in 3D (σ at f_loss). Resonances of |Z11| at the corner port. The frequency grid is 10 MHz (0.7 % at 1.45 GHz). "
                          "Script: cavity_model.py."],
                 "cols": ["case", "resonance 3D (GHz)", "model (GHz)", "error"], "rows": rows}
+    if nm == "rust_models":
+        sm = d["summary"]
+        t = sm["via_time_ms_median"]
+        rows = [["Python prototype", sm["python"]["single_tdr_err_pct_median"], sm["python"]["single_tdr_err_pct_p90"], sm["python"]["single_dS21_max_db_median"], sm["python"]["pairs_dS21_max_db_median"], "–", f"{t['python']} ms" if t.get("python") else "–"],
+                ["Rust, uniform grid (as the prototype)", sm["rust"]["single_tdr_err_pct_median"], sm["rust"]["single_tdr_err_pct_p90"], sm["rust"]["single_dS21_max_db_median"], sm["rust"]["pairs_dS21_max_db_median"], sm["parity_rust"]["dS21_lin_max_max"], f"{t['rust_build']} + {t['rust_eval']} ms"],
+                ["Rust, graded grid (kisi's default)", sm["rust_graded"]["single_tdr_err_pct_median"], sm["rust_graded"]["single_tdr_err_pct_p90"], sm["rust_graded"]["single_dS21_max_db_median"], sm["rust_graded"]["pairs_dS21_max_db_median"], sm["parity_rust_graded"]["dS21_lin_max_max"], f"{t['rust_graded_build']} + {t['rust_eval']} ms"]]
+        cv = sm.get("cavity", {})
+        text = ["The reduced models in Rust: the via ladder (kisi_si::via_pbm), the plane cavity and the PDN loop (kisi_pi::cavity_modal). "
+                "Same metrics as the prototype: TDR minimum and maximum (25 ps, 80 ps window) against the de-embedded 3D result, both values "
+                "of every single-via case pooled; |S21| up to 20 GHz. Parity: largest |ΔS21| (linear) against the Python result over all via cases. "
+                "Time per via for 400 frequencies: build (r–z Laplace solve) + evaluation; the Laplace result is cached per via geometry, so a board "
+                "solves it once per via type. Script: rust_models.py."]
+        if cv:
+            text.append(f"Cavity model: Rust within {cv['dZ_rel_max']:.1e} of Python; {cv['nf']} frequencies × {cv['modes']} modes in "
+                        f"{' / '.join(str(x) for x in cv['rust_eval_ms'])} ms (Python {' / '.join(str(x) for x in cv['python_ms'])} ms). "
+                        "PDN loop inductance: identical to 0.001 nH, about 1 ms per configuration.")
+        return {"title": "Rust port of the reduced models", "text": text,
+                "cols": ["model", "TDR error median (%)", "TDR error p90 (%)", "max Δ|S21| median, single (dB)", "max Δ|S21| median, pairs (dB)", "parity |ΔS21| max", "time per via"],
+                "rows": rows}
+    if nm == "practice":
+        rows = []
+        for key, b in d["boards"].items():
+            bd, nc = b["board"], b["native_check_all"]
+            nd = b.get("node_check_all_field", {})
+            rows.append([key, f"{bd['file_mb']} MB", bd["vias"], f"{b['native_overview']['s']} s", f"{nc['coax_s']} → {nc['ladder_s']} s",
+                         f"{nc['ladder_vias']} / {nc['laplace_solves']}", f"{b.get('node_check_all_formula_old', {}).get('s', '–')} → {b.get('node_check_all_formula', {}).get('s', '–')} s",
+                         f"{nd.get('cold_s', '–')} / {nd.get('cached_s', '–')} s", len(b["verdicts"]["status_changed"])])
+        bk = d["bundle_kb"]
+        fd = d["fdtd"]
+        text = [f"Example boards on {d['machine']['cpus']} cores ({d['machine']['cpu']}). check --all: every lane of the board with eye, coax via model → "
+                "via ladder. Ladder vias / Laplace solves: vias of one type share the solve. The Node CLI runs the same Rust code as WebAssembly; "
+                "with the field solver cold (no cache) and cached. Script: practice.py.",
+                f"Bundles: kisi.html {bk.get('kisi.html_old')} → {bk.get('kisi.html')} kB, kisi.mjs {bk.get('kisi.mjs_old')} → {bk.get('kisi.mjs')} kB.",
+                "3D FDTD (kisi-fdtd, one thread per run): " + ", ".join(f"{g} {v['s_median']} s for {v['cells_median'] / 1e6:.2f} M cells" for g, v in fd["groups"].items()) +
+                (f"; memory {fd['measured']['bytes_per_cell']} bytes per cell." if fd.get("measured") else ".")]
+        return {"title": "Practical cost on the example boards", "text": text,
+                "cols": ["board", "file", "vias", "overview", "check --all (native)", "ladder vias / Laplace solves", "check --all (Node, formula)", "check --all with field solver: 120 s budget / from the cache", "verdicts changed"],
+                "rows": rows}
     rows = []
     for v in d.get("rows", []):
         if "next_3d_pct" in v:
@@ -101,13 +140,23 @@ def model_check(nm, d):
         elif "dSdd21_max_db" in v:
             rows.append([v["case"], "max ΔSdd21 to 20 GHz", v["dSdd21_max_db"], "Zdiff min 3D / kisi", f"{v['zdiff_min_3d']} / {v['zdiff_min_kisi']}", f"Scd21 {v['Scd21_max_3d_db']} / {v['Scd21_max_kisi_db']} dB"])
         else:
+            via = f"via alone: TDR error {v['via_tdr_err_pct'][0]} / {v['via_tdr_err_pct'][1]} %, max Δ|S21| {v['via_dS21_max_db']} dB" if v.get("via_tdr_err_pct") else ""
             rows.append([v["case"], f"max Δ|S21| to {v['f_limit_ghz']} GHz", v["dS21_max_db"], "TDR Z min/max 3D | kisi", f"{v['z_min_3d']}/{v['z_max_3d']} | {v['z_min_kisi']}/{v['z_max_kisi']}",
-                         f"stub notch 3D {v['stub_3d_ghz']} GHz, kisi λ/4 {v.get('kisi_stub_quarter_wave_ghz') or '–'} GHz" if v.get("stub_3d_ghz") else (v.get("kisi_return") or "")])
+                         "; ".join(x for x in (via, f"stub notch 3D {v['stub_3d_ghz']} GHz, kisi {v.get('stub_kisi_ghz') or '–'} GHz" if v.get("stub_3d_ghz") else "", v.get("kisi_return") or "") if x)])
     title = "kisi's fast channel model against the 3D result" + (" (Node CLI, 2D field solver)" if nm == "kisi_models_field" else " (formula impedances)")
+    text = ["Each case as a mini KiCad board (kisi_board.py), computed by `kisi net … --s2p/--s4p` (formula impedances, kisi's via "
+            "model), ports at the ends of the feed lines as in 3D. TDR with a 35 ps edge; coupling as the peak of the step response "
+            "(35 ps) at the victim's near and far end. kisi exports S-parameters up to 25 GHz; the comparison stops there. Script: compare_kisi.py.",
+            "The full-channel TDR minimum also holds the low-frequency offset of the 3D lumped ports (a 49 Ω line shows 43–45 Ω after 100 ps), "
+            "so the via itself is compared de-embedded: kisi's channel with kisi's own 2×thru, 3D with the 3D 2×thru (TDR 25 ps, 80 ps window, up to 25 GHz)."]
+    sm = d.get("summary") or {}
+    if sm.get("via_cases"):
+        old = d.get("_coax") or {}
+        text.append(f"Via alone, {sm['via_cases']} single vias: TDR error median {sm['via_tdr_err_pct_median']} %, 90th percentile {sm['via_tdr_err_pct_p90']} %, "
+                    f"max Δ|S21| median {sm['via_dS21_max_db_median']} dB" + (f" (former coax model: {old['via_tdr_err_pct_median']} / {old['via_tdr_err_pct_p90']} %, {old['via_dS21_max_db_median']} dB)" if old else "") +
+                    ". Stub notch: " + ", ".join(f"{k} {v:+.1f} %" for k, v in (sm.get("stub_err_pct") or {}).items()) + ".")
     return {"title": title,
-            "text": ["Each case as a mini KiCad board (kisi_board.py), computed by `kisi net … --s2p/--s4p` (formula impedances, kisi's via "
-                     "model), ports at the ends of the feed lines as in 3D. TDR with a 35 ps edge; coupling as the peak of the step response "
-                     "(35 ps) at the victim's near and far end. kisi exports S-parameters up to 25 GHz; the comparison stops there. Script: compare_kisi.py."],
+            "text": text,
             "cols": ["case", "metric", "value", "metric", "3D / kisi", "note"], "rows": rows}
 
 
@@ -216,10 +265,14 @@ def main():
         p = os.path.join(HERE, "results", f"{nm}.json")
         if os.path.exists(p):
             checks[nm] = json.load(open(p))
-    for nm in ("via_pbm", "cavity_model", "kisi_models", "kisi_models_field", "pdn_loop"):
+    for nm in ("via_pbm", "cavity_model", "rust_models", "kisi_models", "kisi_models_field", "pdn_loop", "practice"):
         p = os.path.join(HERE, "results", f"{nm}.json")
         if os.path.exists(p):
-            checks[nm] = model_check(nm, json.load(open(p)))
+            d = json.load(open(p))
+            pc = os.path.join(HERE, "results", "kisi_models_coax.json")
+            if nm == "kisi_models" and os.path.exists(pc):
+                d["_coax"] = json.load(open(pc)).get("summary") or {}
+            checks[nm] = model_check(nm, d)
     if "cavity" in checks and "rows" in checks["cavity"] and "cols" not in checks["cavity"]:
         checks["cavity"] = cavity_check(checks["cavity"])
     data = json.dumps({"cases": cases, "checks": checks}, separators=(",", ":"))
@@ -235,6 +288,7 @@ def main():
     if "--fragment" not in sys.argv:  # standalone file; the artifact host adds this skeleton itself
         html = ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
                 "</head><body>\n" + html + "\n</body></html>\n")
+    os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)
     open(OUT, "w").write(html)
     print(f"{OUT}: {len(cases)} cases, {sum(1 for c in cases if 'res' in c)} with results, {len(html) // 1024} KB")
 

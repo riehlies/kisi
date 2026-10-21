@@ -20,8 +20,10 @@ python3 tools/bundle.py web/index.html ... dist/kisi-examples.html \
   vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
 python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
   target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs   # Node CLI with field solver
+python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html  # 3D reference cases page
 ```
-Releases: tag `v*` → `.github/workflows/release.yml` attaches `kisi.html`, `kisi-examples.html` and `kisi.mjs`.
+Releases: tag `v*` → `.github/workflows/release.yml` attaches `kisi.html`, `kisi-examples.html`, `kisi.mjs` and
+`kisi-references.html` (built, not kept in the repository).
 The example boards (ThunderScope CERN-OHL-P-2.0, LibreVNA GPL-3.0) are not in the repository;
 `tools/fetch_examples.sh` fetches them at fixed commits and shrinks them; their power trees are
 `web/samples/{ts,vna}.kisi.json`.

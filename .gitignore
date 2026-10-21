@@ -4,3 +4,4 @@ dist/
 __pycache__/
 *.pyc
 /examples/
+validation/fdtd/references.html

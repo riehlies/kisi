@@ -3,7 +3,7 @@ models, through the normal board pipeline) can be compared with the 3D result.
 
 Same stackup (copper 5 µm, the 3D model has zero thickness), planes as filled zones with the
 antipads cut in (fractured polygons, the cut runs radially from each hole to the board edge),
-signal vias with pads only where the 3D model has them, back-drilling as a KiCad 10 `backdrill`,
+signal vias with pads only where the 3D model has them (remove_unused_layers, no end layers), back-drilling as a KiCad 10 `backdrill`,
 GND vias, traces and one pad at every port: U1 at port 1 (start), J1 at port 2. Pairs: nets D0_P /
 D0_N, U1 / J1 carry both. Capacitors (group D) are not modelled by kisi's via model and are left
 out.
@@ -143,7 +143,7 @@ def main():
             bd = f' (backdrill (size {2 * v["r"] + 0.2:.3f}) (layers "{names[n - 1]}" "{names[lb_keep]}"))'
             lb = n - 1
         size = 2 * max(v.get("pad_r", 0), v["r"] + 0.05)
-        out.append(f'  (via (at {v["x"]:.4f} {-v["y"]:.4f}) (size {size:.4f}) (drill {2 * v["r"]:.4f}) (layers "{names[la]}" "{names[lb]}") (net {nid[net]}){bd})')
+        out.append(f'  (via (at {v["x"]:.4f} {-v["y"]:.4f}) (size {size:.4f}) (drill {2 * v["r"]:.4f}) (layers "{names[la]}" "{names[lb]}") (remove_unused_layers yes) (keep_end_layers no) (net {nid[net]}){bd})')
     out.append(")")
     open(sys.argv[2], "w").write("\n".join(out) + "\n")
 

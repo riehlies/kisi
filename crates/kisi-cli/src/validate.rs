@@ -1,6 +1,8 @@
 //! Compare kisi's impedance models against reference results.
 //!
 //! Usage: kisi-validate <cases.json> [reference.out.json]
+//!        kisi-validate models <via_cases dir> <out dir> [--grid uniform|graded] [--only k]
+//!        (reduced via / cavity models on the 3D reference cases, see models.rs)
 //!
 //! Case format (lengths in mm):
 //!   {name, type, w, h, t, er, s?, gap?, cover?, er_top?, top_h?, sm_t?, sm_er?,
@@ -22,6 +24,8 @@ use kisi_core::analytic as a;
 use kisi_core::board::{CopperLayer, Dielectric, SolderMask, Stackup};
 use kisi_core::xsgeom::{self, PlaneCut, XsDesc};
 use serde_json::Value;
+
+mod models;
 
 /// Synthetic stackup + description for a validation case (None if the case
 /// type has no board equivalent, e.g. a dielectric cover on a surface trace).
@@ -77,6 +81,28 @@ fn case_geometry(c: &Value) -> Option<String> {
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.len() > 2 && args[1] == "via-geom" {
+        // diagnostics: a ViaGeom JSON line (KISI_DEBUG_VIA output) → nodes, capacitances, row charges
+        use kisi_core::via_pbm::{charge_rows, Grid, Mode, PbmVia, ViaGeom};
+        let g: ViaGeom = serde_json::from_str(std::fs::read_to_string(&args[2]).unwrap().trim()).unwrap();
+        let grid = if args.iter().any(|a| a == "--uniform") { Grid::Uniform { dr: 0.01, rmax: 3.0 } } else { Grid::default() };
+        let m = PbmVia::build(&g, if g.partner.is_some() { Mode::Odd } else { Mode::Single }, grid);
+        println!("nodes {:?}\nC fF {:?}", m.nodes, m.cap.iter().map(|c| (c * 1e16).round() / 10.0).collect::<Vec<_>>());
+        for f in [1e9, 4e9, 8e9, 12e9, 16e9, 20e9] {
+            let (s11, s21, _) = m.abcd(f).s_params(50.0);
+            println!("{:5.1} GHz  |S21| {:7.2} dB  |S11| {:7.2} dB", f / 1e9, 20.0 * s21.abs().log10(), 20.0 * s11.abs().log10());
+        }
+        for (z, q) in charge_rows(&g, grid) {
+            if q.abs() > 2e-15 {
+                println!("row z {z:.4}  {:.1} fF", q * 1e15);
+            }
+        }
+        return;
+    }
+    if args.len() > 3 && args[1] == "models" {
+        models::run(&args[2..]);
+        return;
+    }
     if args.len() < 2 {
         eprintln!("usage: kisi-validate <cases.json> [reference.out.json]");
         std::process::exit(2);

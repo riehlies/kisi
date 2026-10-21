@@ -76,6 +76,14 @@ th { font: 600 12px var(--font-display); letter-spacing: .04em; text-transform: 
 .checks p { max-width: 75ch; margin: 0 0 10px }
 .pending { color: var(--muted); font-style: italic }
 .field { margin-top: 14px }
+.field > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap }
+.field > summary::-webkit-details-marker { display: none }
+.field > summary h2 { margin: 0 }
+.field > summary::before { content: "▸"; color: var(--muted); font-size: 13px; transition: transform .15s }
+.field[open] > summary::before { transform: rotate(90deg) }
+.field > summary .note { margin: 0 }
+.field > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px }
+.field[open] > summary { margin-bottom: 4px }
 .field .ctl { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 4px 0 8px }
 .field canvas { display: block; width: 100%; height: auto; border-radius: 4px; background: var(--panel-2) }
 .field .scale { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-top: 6px }
@@ -279,6 +287,7 @@ function detailExtent(c) {
 const rgb = (v) => { const h = css(v).replace("#", ""); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
 const b64i8 = (s) => { const b = atob(s); const a = new Int8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = (b.charCodeAt(i) << 24) >> 24; return a; };
 let fieldAnim = null;
+let fieldOpen = false;  // the field panel stays as the reader left it when switching cases
 function fieldNote(c) {
   const g = c.meta.group;
   if (g === "G") return "Top view: the vertical field between the planes; at a resonance the plane pair shows its standing mode (m, n half waves along 50 and 30 mm).";
@@ -294,13 +303,15 @@ function ramp(signed, v, a, bg, pos, neg, fg) {
 }
 function fieldPanel(c, pw) {
   const planes = c.fields;
-  const box = document.createElement("div");
+  // collapsed by default; the planes are decoded and drawn on the first opening
+  const box = document.createElement("details");
   box.className = "panel field";
+  box.open = fieldOpen;
   const kinds = [...new Set(planes.map((p) => p.axis))];
   const freqs = [...new Set(planes.map((p) => p.freq))].sort((a, b) => a - b);
   const st = { axis: kinds[0], freq: freqs[Math.min(1, freqs.length - 1)], phase: 0, play: false };
   const label = (ax) => ax === "z" ? `Top view: Ez at z = ${planes.find((p) => p.axis === "z").pos.toFixed(2)} mm` : `Section: |E| at y = ${planes.find((p) => p.axis === ax).pos.toFixed(2)} mm`;
-  box.innerHTML = `<div class="hd"><h2>Electric field, port 1 driven</h2></div>
+  box.innerHTML = `<summary><h2>Electric field, port 1 driven</h2><span class="note">${planes.length} field planes · top view and section</span></summary>
     <div class="ctl"><div class="seg" role="group" aria-label="Plane">${kinds.map((k) => `<button data-ax="${k}">${k === "z" ? "Top view" : "Section"}</button>`).join("")}</div>
     <div class="seg" role="group" aria-label="Frequency">${freqs.map((f) => `<button data-f="${f}">${f >= 1e9 ? +(f / 1e9).toFixed(2) + " GHz" : f / 1e6 + " MHz"}</button>`).join("")}</div>
     <button class="btn" data-play>Animate</button></div>
@@ -371,7 +382,14 @@ function fieldPanel(c, pw) {
     const tick = (t) => { if (!st.play || !box.isConnected) return; st.phase = (st.phase + (t - last) / 1000 * Math.PI) % (2 * Math.PI); last = t; draw(); fieldAnim = requestAnimationFrame(tick); };
     if (st.play) fieldAnim = requestAnimationFrame(tick);
   };
-  requestAnimationFrame(sync);
+  let shown = false;
+  const show = () => { if (box.open && !shown) { shown = true; requestAnimationFrame(sync); } };
+  box.addEventListener("toggle", () => {
+    fieldOpen = box.open;
+    if (!box.open && st.play) { st.play = false; box.querySelector("[data-play]").textContent = "Animate"; }
+    show();
+  });
+  show();
   return box;
 }
 // geometry outlines over a field plane
@@ -527,7 +545,7 @@ function renderChecks() {
   const cw = Math.min(1100, box.clientWidth || 900) - 26;
   const ch = DATA.checks;
   let n = 0;
-  for (const key of ["cavity", "via_convergence", "pml_thru", "openems_compare", "via_pbm", "cavity_model", "kisi_models", "kisi_models_field", "pdn_loop"]) {
+  for (const key of ["cavity", "via_convergence", "pml_thru", "openems_compare", "via_pbm", "rust_models", "cavity_model", "kisi_models", "kisi_models_field", "pdn_loop", "practice"]) {
     const c = ch[key]; if (!c) continue; n++;
     const p = document.createElement("div"); p.className = "panel";
     p.innerHTML = `<h2>${esc(c.title)}</h2>${(c.text || []).map((t) => `<p>${t}</p>`).join("")}` + (c.cols ? `<div class="wide"><table><thead><tr>${c.cols.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${c.rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "");

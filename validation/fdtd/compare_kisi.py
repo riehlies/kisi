@@ -42,6 +42,32 @@ def notch(f, s21):
     return (f[k], d[k]) if d[k] < -10 and 0 < k < len(f) - 1 else (None, None)
 
 
+_thru = {}
+
+
+def kisi_thru(key):
+    """kisi's own 2×thru of a feed layer (thru_<stackup>_<layer> case), on kisi's grid"""
+    if key not in _thru:
+        cp = os.path.join(HERE, "via_cases", key + ".json")
+        _thru[key] = None
+        if os.path.exists(cp):
+            pcb = os.path.join(tmp, key + ".kicad_pcb")
+            subprocess.run([sys.executable, os.path.join(HERE, "kisi_board.py"), cp, pcb], check=True)
+            ts = os.path.join(tmp, key + ".s2p")
+            r = subprocess.run(CMD + ["net", pcb, "SIG", "--no-config", "--s2p", ts], capture_output=True, text=True, timeout=1800)
+            if r.returncode == 0:
+                _thru[key] = sparam.read_touchstone(ts)
+    return _thru[key]
+
+
+def tdr_errs(f, s3, sk):
+    """relative errors of the TDR minimum and maximum (25 ps, 80 ps window), % – as the reduced
+    via model in via_pbm / rust_models"""
+    _, z3 = sparam.tdr(f, s3, rise=25e-12, tmax=80e-12)
+    _, zk = sparam.tdr(f, sk, rise=25e-12, tmax=80e-12)
+    return [round(abs(zk.min() / z3.min() - 1) * 100, 2), round(abs(zk.max() / z3.max() - 1) * 100, 2)]
+
+
 rows, summary = [], {}
 cases = sorted(p for p in os.listdir(os.path.join(HERE, "via_cases")) if p.endswith(".json"))
 for name in cases:
@@ -126,6 +152,23 @@ for name in cases:
         v["kisi_stub_quarter_wave_ghz"] = round(vd["stub_resonance_ghz"], 2) if vd and vd.get("stub_resonance_ghz") else None
         v["f_max_kisi_ghz"] = round(fk.max() / 1e9, 1)
         v["kisi_return"] = vd.get("return_path") if vd else None
+        v["kisi_via_model"] = vd.get("model") if vd else None
+        # the via alone: kisi's channel de-embedded with kisi's own 2×thru against the 3D result
+        # de-embedded with the 3D 2×thru (the full-channel TDR also holds the low-frequency offset
+        # of the 3D lumped ports), both up to kisi's 25 GHz
+        dp = os.path.join(REF, cid, "kisi_deembedded.s2p")
+        th = [kisi_thru(f"thru_{c['meta']['stackup']}_{q['layer']}") for q in c["meta"].get("ports", [])]
+        if g in "ABCD" and os.path.exists(dp) and len(th) == 2 and all(th):
+            fk0, Sk0 = sparam.read_touchstone(ts)
+            FL, _ = sparam.fixture_2xthru(fk0, th[0][1])
+            FR, _ = sparam.fixture_2xthru(fk0, th[1][1])
+            Dk = interp(fk0, sparam.deembed2(Sk0, FL, FR), f)
+            fd, D3 = sparam.read_touchstone(dp)
+            D3 = D3[: len(f)]
+            v["via_tdr_err_pct"] = tdr_errs(f, D3[:, 0, 0], Dk[:, 0, 0])
+            m2 = f <= 20e9
+            v["via_dS21_max_db"] = round(float(np.max(np.abs(sparam.db(D3[m2, 1, 0]) - sparam.db(Dk[m2, 1, 0])))), 3)
+            v["via_dS21_mean_db"] = round(float(np.mean(np.abs(sparam.db(D3[m2, 1, 0]) - sparam.db(Dk[m2, 1, 0])))), 3)
     else:
         mm3, mmk = sparam.mixed_mode(S3), sparam.mixed_mode(Sk)
         m = f <= 20e9
@@ -140,5 +183,16 @@ for name in cases:
     rows.append(v)
     print(cid, v, flush=True)
 
-json.dump({"tool": " ".join(CMD), "rows": rows}, open(OUT, "w"), indent=1)
+vias = [r for r in rows if r.get("via_tdr_err_pct")]
+if vias:
+    e = [x for r in vias for x in r["via_tdr_err_pct"]]
+    summ = {"via_cases": len(vias), "via_tdr_err_pct_median": round(float(np.median(e)), 2), "via_tdr_err_pct_p90": round(float(np.percentile(e, 90)), 2),
+            "via_dS21_mean_db_median": round(float(np.median([r["via_dS21_mean_db"] for r in vias])), 3),
+            "via_dS21_max_db_median": round(float(np.median([r["via_dS21_max_db"] for r in vias])), 3)}
+    stubs = [r for r in rows if r.get("stub_3d_ghz") and r.get("stub_kisi_ghz")]
+    summ["stub_err_pct"] = {r["case"]: round((r["stub_kisi_ghz"] / r["stub_3d_ghz"] - 1) * 100, 1) for r in stubs}
+    print(json.dumps(summ, indent=1))
+else:
+    summ = {}
+json.dump({"tool": " ".join(CMD), "summary": summ, "rows": rows}, open(OUT, "w"), indent=1)
 print(OUT)

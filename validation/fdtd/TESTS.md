@@ -1,8 +1,9 @@
 # kisi-fdtd and reduced models: test log
 
 What was tested, how, and the result. Numbers come from the JSON files in `results/` and from
-`validation/via_ref/*/meta.json`. `references.html` shows the same tables (tab "Solver checks") and every
-case with its curves. The scripts named here reproduce each result.
+`validation/via_ref/*/meta.json`. The reference page (`python3 make_viewer.py` → `dist/kisi-references.html`,
+also attached to every release) shows the same tables (tab "Solver checks") and every case with its curves.
+The scripts named here reproduce each result.
 
 ## 1. Solver (kisi-fdtd)
 
@@ -59,16 +60,21 @@ Every case becomes a mini KiCad board; kisi computes it through its normal pipel
     - 54.8 against 54.5 Ω at 2 mm;
     - 62.1 against 56.8 Ω beyond 5 mm (kisi caps the return distance at 5 mm and models it as an inductance).
   - Regression test: `via_return_path_across_antipad`.
-- **Via impedance:** kisi's coax-section model, with the antipad as outer conductor, puts the via too low. The TDR
-  extremes (35 ps, with the feeds) deviate by a median of 4.4 %, at most 20 %. In thick plane pairs the field ends
-  on the return vias and the planes, not on the antipad.
-- **Stub resonance:** kisi's quarter-wave estimate is 28.0 GHz against the 3D notch at 21.4–21.7 GHz (+30 %) for
-  the 8-layer stack, and 31.4 against 26.3 GHz (+19 %) for the ThunderScope stack; target ±10 %. Below 25 GHz,
-  where kisi's S-parameters end, its S21 shows no notch at all, while 3D has −25 dB. Pads and antipads load the
-  stub capacitively.
-- **Return-path loss:** without a stitching via, 3D loses energy into the plane pairs (S21 −2.9 dB at 10 GHz).
-  kisi's series inductance cannot represent that radiation, so it stays 2 dB too optimistic up to 20 GHz.
-- **Differential vias (E):**
+The via findings below describe kisi's former coax-section via model; kisi now uses the ladder of section 5.
+- **Via impedance (former coax model):** with the antipad as outer conductor, it puts the via too low. In thick
+  plane pairs the field ends on the return vias and the planes, not on the antipad. Via alone (de-embedded, see
+  section 5): TDR error median 8.5 %, 90th percentile 26 %.
+- **Stub resonance (former coax model):** the quarter-wave estimate is 28.0 GHz against the 3D notch at
+  21.4–21.7 GHz (+30 %) for the 8-layer stack, and 31.4 against 26.3 GHz (+19 %) for the ThunderScope stack; target
+  ±10 %. Below 25 GHz, where kisi's S-parameters end, its S21 shows no notch at all, while 3D has −25 dB. Pads and
+  antipads load the stub capacitively.
+- **Return-path loss (former coax model):** without a stitching via, 3D loses energy into the plane pairs (S21
+  −2.9 dB at 10 GHz). A series inductance cannot represent that radiation, so it stays 2 dB too optimistic up to
+  20 GHz.
+- **Full-channel TDR includes the ports:** the 3D lumped ports add a low-frequency offset, so a 49 Ω line reads
+  43–45 Ω after 100 ps (T cases). The full-channel TDR minimum is therefore no via metric; vias are compared
+  de-embedded (section 5).
+- **Differential vias (E, former coax model):**
   - kisi puts the pair via too high: TDR minimum Zdiff 87.9–94.6 against 79.8–88.8 Ω for L1→L8 (+4 … +11 %).
   - With the stub (L1→L3) it gives 73–77 against 63–67 Ω (+15 … +18 %), because the pair model has no stub.
   - It does not distinguish round from oval antipads or 0 / 2 / 4 GND vias (3D: 82.6 Ω with 4 GND vias, 86.5 Ω
@@ -94,7 +100,7 @@ Every case becomes a mini KiCad board; kisi computes it through its normal pipel
   against 103.6 Ω in kisi; for the stripline pair (88.4 against 101 Ω) the port dip dominates, so it needs a
   plateau value (open).
 
-## 4. Reduced models (prototypes)
+## 4. Reduced models (Python prototypes)
 
 ### Via model (`via_pbm.py`)
 A physics-based ladder along the barrel:
@@ -114,12 +120,11 @@ It is compared with the 3D result de-embedded by the 2×thru of each feed layer 
 
 Results up to 20 GHz (`results/via_pbm.json`):
 - **Single vias (A–D, 27 cases):** |S21| median deviation 0.14 dB. TDR via impedance (25 ps) median 1.4 %,
-  90th percentile 7.5 %; the return-path peak in D is within 1 %. kisi's present model (35 ps, with the feeds):
-  median 4.0 %, 90th percentile 16 %.
+  90th percentile 7.5 %; the return-path peak in D is within 1 %.
 - **Return-path loss:** the loss into the plane pairs is reproduced (D without a stitching via: S21 −2.43 against
   −2.25 dB at 10 GHz).
-- **Stub notch:** +0.5 / −0.9 % for the 8-layer stack, −5.7 % for the ThunderScope stack. kisi's present model:
-  +19 … +30 %.
+- **Stub notch:** +0.5 / −0.9 % for the 8-layer stack, −5.7 % for the ThunderScope stack (former coax model:
+  +19 … +30 %).
 - **Pairs L1→L8 (8 cases):** Sdd21 within 0.12–0.16 dB, phase within 3.9–5.9°.
 
 **Open points**
@@ -153,3 +158,98 @@ Every case has the electric field of port 1 (`fields.json`).
   - D without a stitching via: the radial wave in the plane pair, at 20 GHz rings with λ/2 ≈ 3.6 mm.
   - G: the standing cavity modes, e.g. TM01 at 2.41 GHz, positive in one half of the board and negative in the
     other.
+
+## 5. Rust port of the reduced models, and the ladder in kisi
+
+Rust modules:
+- **`kisi_si::via_pbm`:** the via ladder.
+- **`kisi_pi::cavity_modal`:** the plane cavity and the PDN loop inductance.
+- **`kisi-validate models`:** runs them on the reference cases, with the same geometry reading as the prototype.
+  `rust_models.py` compares them with Python and with 3D (`results/rust_models.json`).
+
+### What changed against the prototype
+- **r–z Laplace solve:**
+  - **Sparse Cholesky** (`kisi-sparse`, faer) instead of scipy.
+  - **Graded grid** as the default: 5 µm at the conductor edges, growing by 1.3 up to 0.1 mm radially and 0.05 mm
+    axially. That is about 10 000 unknowns instead of 76 000.
+  - **Charge assignment:** a grid row whose cell straddles the border between two ladder nodes is split by overlap.
+  - **Cache:** the result is cached per via geometry, with antipads rounded to 0.01 mm, so a board solves once per
+    via type.
+- **Plane-pair impedance:**
+  - Computed on a 0.25 GHz grid and interpolated linearly in Z/f.
+  - The Hankel matrices are symmetric.
+  - No `hypot` in the inner loops: in WebAssembly, `hypot` and its fused multiply-adds run in software, and the
+    first build was 8× slower than native.
+- **Bug fixed – odd-mode capacitance scaling of pairs:**
+  - The prototype divided the barrel charge by the spread of the rows near a node. Around a plane node the rows
+    fall into two groups, so it overstated the length.
+  - With thin dielectrics (ThunderScope, 0.12–0.14 mm) the node capacitances grew up to ×10, and S21 of a pair via
+    dropped by 15 dB at 12 GHz.
+  - The port sums the rows' own cell heights instead. The reference cases do not change (their dielectrics are
+    thicker).
+- **Feed-line interface:** the feed is given as Zc and εeff with the length to remove, plus a switch for the
+  trace-over-antipad line. That way kisi passes its own line models.
+
+### Parity, accuracy and run time (`results/rust_models.json`)
+
+| | TDR error median / p90 (single vias) | max Δ\|S21\| median single / pairs (dB) | parity: max \|ΔS21\| against Python | time per via (400 frequencies) |
+|---|---|---|---|---|
+| Python prototype | 1.46 / 7.6 % | 0.144 / 0.156 | – | 2.6 s |
+| Rust, uniform grid (as the prototype) | 1.46 / 7.6 % | 0.144 / 0.157 | 0.005 (linear), 0.005 dB | 240 ms + 1 ms |
+| Rust, graded grid (kisi) | 1.47 / 7.4 % | 0.142 / 0.154 | 0.018 (linear), 0.2 dB | 17 ms + 1 ms |
+
+- **Evaluation:** about 2.4 µs per frequency after the build.
+- **Stub notch:** identical to Python in all 11 cases with a notch.
+- **Uniform-grid residual:** it comes from the Z/f interpolation.
+- **Cavity model:** Rust within 2·10⁻⁶ of Python; 600 frequencies × 9 600 modes in 52–69 ms (Python 200–244 ms).
+- **PDN loop inductance:** identical to 0.001 nH, about 1 ms per configuration.
+
+### kisi's channel with the ladder (`compare_kisi.py`, `results/kisi_models*.json`)
+
+`kisi_si::via` builds the ladder geometry from the board:
+- **Planes:** zone fills of plane nets with the hole around the via; the antipad is the distance to the nearest fill
+  edge.
+- **Annular rings:** on every layer of the barrel (KiCad default), or only on the connected layers with
+  `remove_unused_layers` (now parsed, with `keep_end_layers`).
+- **Return vias:** plane-net vias within 3 mm, the nearest 8.
+- **Partner via:** for pairs.
+- **Back-drilling** and the residual stub option.
+- **Feeds:** the line models of the referenced traces on both sides. The unreferenced pieces over the antipad
+  (≤ 1.5 mm) leave the cascade; the ladder models them.
+- **Fallback:** without a plane, or with `KISI_VIA_MODEL=coax` (validation only), the coax-section model.
+
+The via alone, de-embedded (kisi with kisi's own 2×thru, 3D with the 3D 2×thru, TDR 25 ps, up to 25 GHz):
+
+| kisi via model | TDR error median / p90 | max Δ\|S21\| median | stub notch (8-layer, 2 cases) |
+|---|---|---|---|
+| former coax sections | 8.5 / 26 % | 0.28 dB | no notch below 25 GHz (λ/4 estimate +30 %) |
+| ladder (native, formula impedances) | 2.4 / 10 % | 0.17 dB | −0.9 / −2.3 % |
+| ladder (kisi.mjs, field solver) | 2.4 / 10 % | 0.17 dB | −0.9 / −2.3 % |
+
+Pairs (E, full channel with the ports):
+- **L1→L3:** max ΔSdd21 0.7–1.4 dB, against 1.7–4.9 dB with the coax model. Zdiff minimum within 1.2–3.8 %
+  (coax 5–11 %).
+- **L1→L8:** Sdd21 unchanged at 0.56 dB, dominated by the feeds. Zdiff minimum within 1.5–5.8 % (coax 0.2–4.1 %).
+  The full-channel minimum includes the port offset.
+
+Other changes in the output:
+- **Via impedance:** √(ΣL/ΣC) of the ladder between entry and exit.
+- **Stub resonance:** the first transmission dip of the ladder, searched up to 1.2 × the quarter-wave estimate.
+- **Model per via:** `"model": "ladder" | "coax"`.
+- **Warning:** "sections without reference plane" no longer appears for the pieces the ladder covers.
+
+## 6. Practical cost on the example boards, and which solver where
+
+`practice.py` → `results/practice.json`.
+
+<!--PRACTICE-->
+
+### Which solver where
+
+| Solver | Cost | Accuracy (against 3D / HFSS) | Use it for |
+|---|---|---|---|
+| Formulas (native and WASM, always on) | µs per cross-section, a whole board in seconds | microstrip within 1–2 %; asymmetric stripline +11 %, CPWG εeff +5 % (marked as estimates) | screening every net, power and DC, quick what-ifs |
+| 2D field solver (kisi.mjs, viewer) | about 1–2 s per new cross-section; cached on disk / in IndexedDB | Zc within 1.6 %, εeff within 1 % | sign-off of impedance-controlled nets, striplines, CPWG, coupled pairs |
+| Via ladder (`via_pbm`, default for every via that crosses a plane) | ≈ 16 ms per via type (Laplace, cached), µs per frequency | via alone: TDR median 2.4 %, p90 10 %; stub notch within 3 % | every channel with vias: return vias, antipads, stubs, back-drilling, pairs |
+| Cavity model (`cavity_modal`) | ms for a whole sweep | resonances within 0.8 %, transfer impedance within 0.7 % | rectangular plane pairs: resonances, spreading and loop inductance; kisi's PDN grid model stays the tool for real plane shapes |
+| 3D FDTD (`kisi-fdtd`) | minutes per via transition (0.3–0.9 M cells), half an hour for a plane cavity; a whole board is out of reach | reference (CPML, conformal metal, checked against analytic cavities and openEMS) | checking the reduced models, structures they do not cover (connector launches, non-round antipads, via fences, plane gaps, via-to-via coupling), frequencies above 25–40 GHz |

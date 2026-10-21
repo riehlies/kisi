@@ -9,5 +9,6 @@ license.workspace = true
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "1"
 kisi-board = { path = "../kisi-board" }
+kisi-sparse = { path = "../kisi-sparse" }
 regex-lite = "0.1"
 

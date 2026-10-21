@@ -9,6 +9,11 @@
 //! reference planes adds the inductance of the return path to the nearest
 //! stitching via. All of this is a design-check model (±10 … 20 % on the via
 //! impedance), not a 3D solution.
+//!
+//! When the channel passes the feed traces (`ViaCtx::feeds`) and the via crosses at least
+//! one plane, the physics-based ladder of `via_pbm` replaces the coax stack in the cascade
+//! (checked against kisi-fdtd: TDR median 1.5 %, |S21| median 0.14 dB up to 20 GHz); the
+//! coax sections stay for the L/C summary and as the fallback.
 
 use crate::board::{Board, Via};
 use crate::geom::{self, P};
@@ -51,6 +56,9 @@ pub struct ViaModel {
     pub stub_out: Vec<Sec>,
     /// return-path inductance (H), in series at the middle of the barrel
     pub l_ret: f64,
+    /// physics-based ladder; replaces the coax sections in `abcd` when present
+    #[serde(skip)]
+    pub pbm: Option<Box<crate::via_pbm::PbmVia>>,
 }
 
 fn open_stub_y(secs: &[Sec], f: f64, sigma: f64) -> Cx {
@@ -67,6 +75,9 @@ fn open_stub_y(secs: &[Sec], f: f64, sigma: f64) -> Cx {
 
 impl ViaModel {
     pub fn abcd(&self, f: f64, sigma: f64) -> Abcd {
+        if let Some(p) = &self.pbm {
+            return p.abcd(f);
+        }
         let w = 2.0 * PI * f;
         let mut m = Abcd::shunt(open_stub_y(&self.stub_in, f, sigma));
         let half = self.barrel.len() / 2;
@@ -83,6 +94,9 @@ impl ViaModel {
     }
     /// time delay through the barrel (s)
     pub fn delay(&self) -> f64 {
+        if let Some(p) = &self.pbm {
+            return p.delay();
+        }
         self.barrel.iter().map(|s| s.len * s.er.sqrt() / C0).sum()
     }
 }
@@ -111,6 +125,8 @@ pub struct ViaInfo {
     /// "none" | "pair" | "stitch" | "decap" | "missing"
     pub return_kind: &'static str,
     pub l_ret_nh: f64,
+    /// "ladder" (physics-based, `via_pbm`) or "coax" (section stack)
+    pub model: &'static str,
 }
 
 /// Opening around `at` in the plane copper of `layer`: (radius mm, net) of the
@@ -187,6 +203,131 @@ pub struct ViaCtx<'a> {
     pub refs_out: Vec<u16>,
     /// residual stub after back-drilling for every via (mm); None: as in the layout
     pub backdrill: Option<f64>,
+    /// entry and exit trace (enables the ladder model)
+    pub feeds: Option<[FeedSpec; 2]>,
+}
+
+/// Trace joining a via, as the channel models it.
+#[derive(Debug, Clone, Copy)]
+pub struct FeedSpec {
+    /// trace width (mm)
+    pub w: f64,
+    /// line model of the referenced trace next to the via
+    pub zc: f64,
+    pub eeff: f64,
+    /// length of unreferenced trace (over the antipad) next to the via that the channel left
+    /// out because the ladder models it (mm)
+    pub dropped: f64,
+}
+
+/// z of every copper layer (mm, bottom copper at 0): dielectrics plus half the copper
+/// thickness on both sides, as the coax sections
+fn copper_z(su: &crate::board::Stackup) -> Vec<f64> {
+    let n = su.n();
+    let mut z = vec![0.0; n];
+    for k in (0..n.saturating_sub(1)).rev() {
+        z[k] = z[k + 1] + su.dielectrics[k].thickness + 0.5 * (su.copper[k].thickness + su.copper[k + 1].thickness);
+    }
+    z
+}
+
+/// Ladder model of the via, None without a plane or without feed information.
+#[allow(clippy::too_many_arguments)]
+fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u32)>], partner_via: Option<&Via>) -> Option<crate::via_pbm::PbmVia> {
+    use crate::via_pbm::{Feed, Grid, Mode, PbmVia, Plane, Post, Slab, ViaGeom};
+    let feeds = ctx.feeds?;
+    // validation switch: the section-stack model only (compare_kisi.py, old against new)
+    if std::env::var("KISI_VIA_MODEL").is_ok_and(|m| m == "coax") || clear.iter().all(|c| c.is_none()) {
+        return None;
+    }
+    let board = ctx.board;
+    let su = board.stackup();
+    let z = copper_z(su);
+    let slabs: Vec<Slab> = (0..su.n() - 1).map(|k| Slab { z0: z[k + 1], z1: z[k], er: su.dielectrics[k].epsilon_r, tand: su.dielectrics[k].loss_tangent }).collect();
+    // antipad radii to 0.01 mm: vias of one type then share the Laplace solve
+    let planes: Vec<Plane> = (0..su.n()).filter_map(|k| clear[k].map(|c| Plane { z: z[k], antipad: Some((c.0 * 100.0).round() / 100.0) })).collect();
+    // barrel: layout range minus a back-drilled end; a residual stub length shortens it further
+    let (mut top, mut bot) = (v.from as usize, v.to as usize);
+    if let Some((b0, b1)) = v.backdrill {
+        let (b0, b1) = (b0 as usize, b1 as usize);
+        if b1 >= bot && b0 > top {
+            bot = b0 - 1;
+        } else if b0 <= top && b1 < bot {
+            top = b1 + 1;
+        }
+    }
+    let (lo, hi) = (l_in.min(l_out) as usize, l_in.max(l_out) as usize);
+    if lo < top || hi > bot {
+        return None;
+    }
+    let (mut z1, mut z0) = (z[top], z[bot]);
+    if let Some(res) = ctx.backdrill {
+        z1 = z1.min(z[lo] + res);
+        z0 = z0.max(z[hi] - res);
+    }
+    // annular rings: on every layer of the barrel (KiCad default), or only on the connected
+    // layers (and the ends with keep_end_layers)
+    let mut pads = vec![z[l_in as usize], z[l_out as usize]];
+    match v.remove_unused {
+        None => pads.extend((top..=bot).map(|k| z[k]).filter(|&zk| zk <= z1 + 1e-9 && zk >= z0 - 1e-9)),
+        Some(keep_ends) => {
+            if keep_ends && (z1 - z[top]).abs() < 1e-9 {
+                pads.push(z1);
+            }
+            if keep_ends && (z0 - z[bot]).abs() < 1e-9 {
+                pads.push(z0);
+            }
+        }
+    }
+    let mut rets: Vec<(f64, Post)> = board
+        .vias
+        .iter()
+        .filter(|w| w.net != ctx.net && Some(w.net) != ctx.partner && w.net != 0)
+        .filter(|w| board.plane_net.get(w.net as usize).copied().unwrap_or(false))
+        .map(|w| (geom::len(geom::sub(w.at, v.at)), w))
+        .filter(|&(d, _)| d > 0.01 && d < 3.0)
+        .map(|(d, w)| (d, Post { dx: w.at[0] - v.at[0], dy: w.at[1] - v.at[1], r: (w.drill / 2.0).max(0.025), z0: z[w.to as usize], z1: z[w.from as usize] }))
+        .collect();
+    rets.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    rets.truncate(8);
+    let feed = |side: usize, l: u16, refs: &[u16]| -> Option<Feed> {
+        let fs = feeds[side];
+        // reference plane: the listed reference nearest in height (a stripline lists both), else
+        // the nearest plane layer
+        let dz = |k: &u16| (z[*k as usize] - z[l as usize]).abs();
+        let nearest = |it: &mut dyn Iterator<Item = u16>| it.min_by(|a, b| dz(a).partial_cmp(&dz(b)).unwrap());
+        let rl = nearest(&mut refs.iter().copied()).or_else(|| nearest(&mut (0..su.n() as u16).filter(|&k| clear[k as usize].is_some() && k != l)))?;
+        let hb = clear[rl as usize].map(|c| c.0).unwrap_or(0.0);
+        Some(Feed { z: z[l as usize], z_ref: z[rl as usize], w: fs.w, zc: fs.zc, eeff: fs.eeff, cut: Some((v.size / 2.0).max(hb) - fs.dropped), antipad_line: true })
+    };
+    let geom = ViaGeom {
+        slabs,
+        planes,
+        r: (v.drill / 2.0).max(0.025),
+        z0,
+        z1,
+        pads,
+        pad_r: v.size / 2.0,
+        returns: rets.into_iter().map(|r| r.1).collect(),
+        partner: partner_via.map(|p| Post { dx: p.at[0] - v.at[0], dy: p.at[1] - v.at[1], r: (p.drill / 2.0).max(0.025), z0: z[p.to as usize], z1: z[p.from as usize] }),
+        feeds: [feed(0, l_in, &ctx.refs_in)?, feed(1, l_out, &ctx.refs_out)?],
+        f_loss: None,
+    };
+    let mode = if partner_via.is_some() { Mode::Odd } else { Mode::Single };
+    let debug = std::env::var("KISI_DEBUG_VIA").is_ok();
+    if debug {
+        eprintln!("{}", serde_json::to_string(&geom).unwrap_or_default());
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    let t0 = std::time::Instant::now();
+    let m = PbmVia::build(&geom, mode, Grid::default());
+    #[cfg(not(target_arch = "wasm32"))]
+    if debug {
+        let s21: Vec<String> = [2e9, 4e9, 8e9, 12e9, 16e9].iter().map(|&f| format!("{:.2}", 20.0 * m.abcd(f).s_params(50.0).1.abs().log10())).collect();
+        eprintln!("# ladder build {:.2} ms, {} Laplace unknowns, nodes {:?}, C fF {:?}, |S21| dB at 2/4/8/12/16 GHz {}", t0.elapsed().as_secs_f64() * 1e3, m.laplace_n,
+            m.nodes, m.cap.iter().map(|c| (c * 1e16).round() / 10.0).collect::<Vec<_>>(), s21.join(" "));
+    }
+    Some(m)
 }
 
 /// Build the via model for a transition from `l_in` to `l_out` through `v`.
@@ -200,15 +341,16 @@ pub fn build(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16) -> (ViaModel, ViaInfo
     let nl = su.n();
     let clear: Vec<Option<(f64, u32)>> = (0..nl as u16).map(|k| plane_clearance(board, v.at, k, ctx.net, ctx.partner)).collect();
     // partner via
-    let pitch = ctx.partner.and_then(|pn| {
+    let partner_via = ctx.partner.and_then(|pn| {
         board
             .vias
             .iter()
             .filter(|w| w.net == pn)
-            .map(|w| geom::len(geom::sub(w.at, v.at)))
-            .filter(|&d| d < 2.0 && d > v.drill)
-            .min_by(|x, y| x.partial_cmp(y).unwrap())
+            .map(|w| (geom::len(geom::sub(w.at, v.at)), w))
+            .filter(|&(d, _)| d < 2.0 && d > v.drill)
+            .min_by(|x, y| x.0.partial_cmp(&y.0).unwrap())
     });
+    let pitch = partner_via.map(|p| p.0);
     // nearest stitching via of a plane net reaching the given layers
     let stitch = |la: u16, lb: u16, net: Option<u32>| -> Option<f64> {
         board
@@ -354,8 +496,23 @@ pub fn build(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16) -> (ViaModel, ViaInfo
         return_mm,
         return_kind,
         l_ret_nh: l_ret * 1e9,
+        model: "coax",
     };
-    (ViaModel { barrel, stub_in, stub_out, l_ret }, info)
+    let mut info = info;
+    let pbm = ladder(ctx, v, l_in, l_out, &clear, partner_via.map(|p| p.1)).map(Box::new);
+    if let Some(p) = &pbm {
+        info.model = "ladder";
+        if let Some(zb) = p.z_barrel() {
+            info.z_via = if diff { 2.0 * zb } else { zb };
+        }
+        if p.has_stub() {
+            // first transmission dip of the ladder (searched up to 1.2 × the quarter-wave estimate,
+            // which the plate capacitances only lower); the estimate itself if none is found
+            let fmax = info.stub_f_ghz.map_or(80e9, |q| (1.2 * q * 1e9).min(80e9));
+            info.stub_f_ghz = p.notch(fmax).map(|f| f / 1e9).or(info.stub_f_ghz);
+        }
+    }
+    (ViaModel { barrel, stub_in, stub_out, l_ret, pbm }, info)
 }
 
 #[cfg(test)]
@@ -376,7 +533,7 @@ mod tests {
     fn stub_resonance_notch() {
         // 50 Ω through path, 1.5 mm open stub at εr 4 → notch near 25 GHz
         let s = Sec { z: 50.0, er: 4.0, tand: 0.0, len: 1.5e-3, a: 1e-4 };
-        let m = ViaModel { barrel: vec![], stub_in: vec![], stub_out: vec![s], l_ret: 0.0 };
+        let m = ViaModel { barrel: vec![], stub_in: vec![], stub_out: vec![s], l_ret: 0.0, pbm: None };
         let f_res = C0 / (4.0 * 1.5e-3 * 2.0);
         let s21 = |f: f64| m.abcd(f, 5.8e7).s_params(50.0).1.abs();
         assert!(s21(f_res) < 0.1, "{}", s21(f_res));

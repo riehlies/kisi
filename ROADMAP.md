@@ -28,10 +28,16 @@ Planned and possible work after 0.2.0, roughly in order of priority. Each item s
 - **Eye and channel check on the 4-port pair model** (the 4-port with mode conversion is shown in the net detail;
   eye and check still use the odd-mode 2-port).
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
-- **Via model against 3D results**: 68 kisi-fdtd reference cases in `validation/via_ref` (viewer
-  `validation/fdtd/references.html`, test log `validation/fdtd/TESTS.md`). Next: port the reduced via ladder
-  (r–z capacitances + parallel-plate impedance, prototype `validation/fdtd/via_pbm.py`) and the plane-cavity model
-  into kisi, replacing the coax-section via model.
+- **Via model against 3D results**: 68 kisi-fdtd reference cases in `validation/via_ref` (page
+  `dist/kisi-references.html` from `validation/fdtd/make_viewer.py`, test log `validation/fdtd/TESTS.md`). The
+  physics-based via ladder (`kisi_si::via_pbm`) replaced the coax-section model in the channel; the plane-cavity
+  model is in `kisi_pi::cavity_modal`. Next:
+  - exits on inner layers (about 3 ps of delay missing), conductor loss of the barrel, non-round antipads beyond
+    the nearest-edge circle;
+  - a 3D check of board vias with GND pour on the signal layers and a partner at < 0.6 mm (ThunderScope M.2 lanes:
+    the ladder shows a dip near 16 GHz there);
+  - the cavity model in the PDN (rectangular planes) and the vertical parts of the PDN loop;
+  - the ladder in WebAssembly is about 5 × slower than native (Laplace solve per via type).
 - **Measured test board** (ToDo): coupons from the reference cases on JLCPCB / Aisler standard stackups with
   screw-on end-launch connectors, simulated in kisi-fdtd and CST, measured on Keysight ENA / PNA-X / PNA; plan in
   `validation/test_board.md`.

@@ -681,6 +681,9 @@ impl<'a> Build<'a> {
         // (no reference there), so take the last referenced piece before it and the next after it
         let path_xs: Vec<u32> = path.iter().map(|&(pi, _)| an.pieces[pi * 4 + 3] as u32).collect();
         let mut last_ref_xs: Option<u32> = None;
+        let mut prev_width = 0.1;
+        // pieces after a via that the ladder model covers (left out of the cascade)
+        let mut skip_until = 0usize;
         for (step, &(pi, rev)) in path.iter().enumerate() {
             let pc = &an.pieces[pi * 4..pi * 4 + 4];
             let tr = &board.tracks[pc[0] as usize];
@@ -710,8 +713,9 @@ impl<'a> Build<'a> {
                                     to: *p.layers.iter().max().unwrap(),
                                     net,
                                     backdrill: None,
+                                    remove_unused: None,
                                 },
-                                None => crate::board::Via { at: ppos, size: 0.45, drill: 0.2, from: 0, to: (su.n() - 1) as u16, net, backdrill: None },
+                                None => crate::board::Via { at: ppos, size: 0.45, drill: 0.2, from: 0, to: (su.n() - 1) as u16, net, backdrill: None, remove_unused: None },
                             };
                             if th.is_none() {
                                 self.warnings.push(format!("layer change at ({:.2}, {:.2}) mm without a nearby via: standard via 0.2/0.45 mm assumed", ppos[0], ppos[1]));
@@ -720,7 +724,60 @@ impl<'a> Build<'a> {
                         }
                     };
                     let next_ref = path_xs[step..].iter().copied().find(|&x| !refs(Some(x)).is_empty()).unwrap_or(xi);
-                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill };
+                    // feed traces for the ladder model: the referenced trace on each side; the
+                    // unreferenced pieces between it and the via (over the antipad) are left out
+                    // of the cascade, the ladder models them (up to 1.5 mm per side)
+                    let feeds = {
+                        let mut drop_in = vec![];
+                        let mut len_in = 0.0;
+                        let mut feed_in = None;
+                        for i in (0..self.segs.len()).rev() {
+                            let sg = &self.segs[i];
+                            if sg.kind != "line" {
+                                break;
+                            }
+                            if refs(sg.xs).is_empty() {
+                                drop_in.push(i);
+                                len_in += sg.len_mm;
+                                continue;
+                            }
+                            feed_in = self.models[i].clone().map(|m| (m, sg.xs));
+                            break;
+                        }
+                        let mut len_out = 0.0;
+                        let mut n_out = 0;
+                        let mut feed_out = None;
+                        for (j, &(pj, _)) in path.iter().enumerate().skip(step) {
+                            let x = path_xs[j];
+                            let pcj = &an.pieces[pj * 4..pj * 4 + 4];
+                            let trj = &board.tracks[pcj[0] as usize];
+                            if trj.layer != tr.layer {
+                                break;
+                            }
+                            if refs(Some(x)).is_empty() {
+                                len_out += geom::len(geom::sub(trj.b, trj.a)) * (pcj[2] - pcj[1]);
+                                n_out += 1;
+                                continue;
+                            }
+                            feed_out = self.line_model_for(x).map(|m| (m, trj.width));
+                            break;
+                        }
+                        let w_in = prev_width;
+                        match (feed_in, feed_out) {
+                            (Some((mi, _)), Some((mo, w_out))) if len_in <= 1.5 && len_out <= 1.5 => {
+                                for i in drop_in {
+                                    self.segs[i].len_mm = 0.0;
+                                }
+                                skip_until = step + n_out;
+                                Some([
+                                    crate::via::FeedSpec { w: w_in, zc: mi.z0, eeff: mi.eeff0, dropped: len_in },
+                                    crate::via::FeedSpec { w: w_out, zc: mo.z0, eeff: mo.eeff0, dropped: len_out },
+                                ])
+                            }
+                            _ => None,
+                        }
+                    };
+                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill, feeds };
                     let (vm, info) = crate::via::build(&ctx, v, pl, tr.layer);
                     let pair_partner = self.partner_of.get(net as usize).copied().flatten().filter(|_| self.pair);
                     let vm_pair = pair_partner.map(|pn| crate::via::build(&crate::via::ViaCtx { partner: Some(pn), ..ctx }, v, pl, tr.layer).0);
@@ -743,27 +800,21 @@ impl<'a> Build<'a> {
             }
             let end = geom::lerp(tr.a, tr.b, if rev { pc[1] } else { pc[2] });
             prev_layer = Some((tr.layer, end));
+            if !refs(Some(xi)).is_empty() {
+                prev_width = tr.width;
+            }
             prev_xs = Some(xi);
             if !refs(Some(xi)).is_empty() {
                 last_ref_xs = Some(xi);
             }
-            let xs = &an.cross_sections[xi as usize];
-            let diff = self.diff;
-            let field = self.field;
-            let model = self
-                .model_cache
-                .entry((xi, diff))
-                .or_insert_with(|| {
-                    let fr = xs.geom.and_then(|g| field.get(&an.geometries[g as usize].id));
-                    let odd = diff && xs.zdiff.is_some();
-                    line_model(su, xs, fr, odd, rp).or_else(|| line_model(su, xs, fr, false, rp))
-                })
-                .clone();
+            let model = self.line_model_for(xi);
             self.total_len += len;
             if model.as_ref().is_some_and(|m| m.source == "field") {
                 self.field_len += len;
             }
             let z = model.as_ref().map(|m| m.z0);
+            // pieces over the antipad that the via's ladder model covers
+            let len = if step < skip_until { 0.0 } else { len };
             let merge = matches!(self.segs.last(), Some(last) if last.kind == "line" && last.xs == Some(xi));
             if merge {
                 self.segs.last_mut().unwrap().len_mm += len;
@@ -772,6 +823,21 @@ impl<'a> Build<'a> {
             }
             on_piece(self, end);
         }
+    }
+
+    /// Line model of cross-section `xi` in the channel's mode (cached).
+    fn line_model_for(&mut self, xi: u32) -> Option<LineModel> {
+        let (an, rp, diff, field) = (self.an, self.rp, self.diff, self.field);
+        let su = self.board.stackup();
+        self.model_cache
+            .entry((xi, diff))
+            .or_insert_with(|| {
+                let xs = &an.cross_sections[xi as usize];
+                let fr = xs.geom.and_then(|g| field.get(&an.geometries[g as usize].id));
+                let odd = diff && xs.zdiff.is_some();
+                line_model(su, xs, fr, odd, rp).or_else(|| line_model(su, xs, fr, false, rp))
+            })
+            .clone()
     }
 
     /// Crude high-Z line for sections without a reference plane.
@@ -829,7 +895,7 @@ impl<'a> Build<'a> {
     pub(crate) fn finish(mut self, net: u32, name: String, partner: Option<u32>, target: Option<(f64, bool)>) -> Channel {
         let rp = self.rp;
         let diff = self.diff;
-        if self.models.iter().zip(&self.segs).any(|(m, s)| s.kind == "line" && m.is_none()) {
+        if self.models.iter().zip(&self.segs).any(|(m, s)| s.kind == "line" && m.is_none() && s.len_mm > 0.0) {
             self.warnings.push("sections without reference plane: approximated as 1.5 × nominal impedance".into());
         }
         // reference impedance

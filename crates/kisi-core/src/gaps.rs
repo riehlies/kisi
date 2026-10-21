@@ -171,11 +171,10 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let regs: HashSet<String> = tree.as_ref().map(|t| t.0.elements.iter().map(|e| e.refdes.clone()).collect()).unwrap_or_default();
     let short = |s: &str| s.rsplit('/').next().unwrap_or(s).to_string();
     let sourced: HashSet<String> = rails.iter().filter(|r| !r.sources.is_empty()).map(|r| short(&r.net)).chain(reg_out.iter().map(|n| short(n))).collect();
-    let no_source: Vec<Value> = pnets
-        .iter()
-        .filter(|n| !sourced.contains(&short(&n.name)) && n.components.len() > 1)
-        .map(|n| json!({"rail": n.name, "voltage": n.voltage, "components": n.components.len()}))
-        .collect();
+    let mut no_source_nets: Vec<&crate::pi::PowerNet> = pnets.iter().filter(|n| !sourced.contains(&short(&n.name)) && n.components.len() > 1).collect();
+    // stable order (power_nets comes from a hash map: native runs differed from run to run)
+    no_source_nets.sort_by(|a, b| a.name.cmp(&b.name));
+    let no_source: Vec<Value> = no_source_nets.iter().map(|n| json!({"rail": n.name, "voltage": n.voltage, "components": n.components.len()})).collect();
     if tree.is_none() {
         out.push(gap(
             "power-tree",

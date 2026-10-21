@@ -155,6 +155,9 @@ pub struct Via {
     pub net: u32,
     /// back-drilled copper layer range (KiCad 10 `backdrill`), inclusive
     pub backdrill: Option<(u16, u16)>,
+    /// `remove_unused_layers`: None = annular ring on every layer (KiCad default),
+    /// Some(keep_end_layers) = only on connected layers (and the two end layers if true)
+    pub remove_unused: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -430,7 +433,10 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
                     let c = ls.atom(2).and_then(lidx).unwrap_or(a);
                     Some((a.min(c), a.max(c)))
                 });
-                b.vias.push(Via { at, size, drill, from, to, net, backdrill });
+                // `(remove_unused_layers)` (KiCad 7 flag) or `(remove_unused_layers yes|no)`
+                let flag = |name: &str| it.child(name).map(|n| n.atom(1) != Some("no"));
+                let remove_unused = if flag("remove_unused_layers") == Some(true) { Some(flag("keep_end_layers").unwrap_or(false)) } else { None };
+                b.vias.push(Via { at, size, drill, from, to, net, backdrill, remove_unused });
             }
             Some("zone") => {
                 let net = nets.resolve(it.child("net"));

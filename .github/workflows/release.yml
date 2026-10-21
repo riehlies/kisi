@@ -3,6 +3,8 @@
 #   kisi-examples.html – the viewer with the example boards ThunderScope and LibreVNA, fetched
 #                        from their projects at fixed commits (tools/fetch_examples.sh)
 #   kisi.mjs           – the command line with the field solver (node kisi.mjs help; Node.js >= 18)
+#   kisi-references.html – the 3D reference cases (kisi-fdtd) with kisi's models against them
+#                        (validation/fdtd/make_viewer.py; built here, not kept in the repository)
 # Run it by hand (workflow_dispatch) to get the files as a build artifact without a release.
 name: release
 on:
@@ -34,6 +36,10 @@ jobs:
             ts "ThunderScope Rev5.3" examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro \
             vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
           python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
+      - name: Reference cases page
+        run: |
+          python3 -c "import numpy" 2>/dev/null || sudo apt-get install -y python3-numpy
+          python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
       - name: Field solver validation (HFSS / baseline, viewer bundle)
         run: sh tools/validate_field.sh
       - name: Smoke test of kisi.mjs
@@ -52,10 +58,11 @@ jobs:
             dist/kisi.html
             dist/kisi-examples.html
             dist/kisi.mjs
+            dist/kisi-references.html
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/kisi.html dist/kisi-examples.html dist/kisi.mjs --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/kisi.html dist/kisi-examples.html dist/kisi.mjs dist/kisi-references.html --clobber

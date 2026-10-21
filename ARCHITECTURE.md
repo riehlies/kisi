@@ -33,6 +33,7 @@ interface; data that changes (standards, component values) lives in files, not i
 | `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
 | `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` | kisi-core |
 | `kisi-sparse` | sparse solver (real Cholesky/LU, complex LU for the AC grid), also built as a WASM module for the field solver | faer |
+| `kisi-fdtd` | 3D FDTD (Yee, non-uniform mesh, lumped ports, S-parameters) for via transitions; feasibility stage, compared with openEMS in `validation/fdtd`; native binary and WASM (`fd_run`) | serde |
 
 Rule: front ends only use `kisi-core`. Inside kisi-si/kisi-pi things can be restructured as long as
 the facade stays the same. The channel verdict (`kisi_si::profile::judge`) exists exactly once;

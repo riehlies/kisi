@@ -1,0 +1,17 @@
+[package]
+name = "kisi-fdtd"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "3D FDTD (Yee) for via transitions and small PCB cut-outs: non-uniform mesh, lumped ports, S-parameters"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "kisi-fdtd"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "1"

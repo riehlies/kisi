@@ -1,0 +1,44 @@
+{
+ "case": "via_l1_l4_stitched",
+ "cells": 426405,
+ "rust_s": 55.783937215805054,
+ "rust_steps": 9401,
+ "openems_s": 299.3266975879669,
+ "openems_threads": 1,
+ "S11": {
+  "max_diff_db": 4.64,
+  "mean_diff_db": 1.132,
+  "rust_at": {
+   "1GHz": -24.36,
+   "5GHz": -25.58,
+   "10GHz": -33.16,
+   "15GHz": -21.21,
+   "20GHz": -32.69
+  },
+  "openems_at": {
+   "1GHz": -24.13,
+   "5GHz": -25.42,
+   "10GHz": -32.71,
+   "15GHz": -23.26,
+   "20GHz": -28.4
+  }
+ },
+ "S21": {
+  "max_diff_db": 0.27,
+  "mean_diff_db": 0.02,
+  "rust_at": {
+   "1GHz": -0.61,
+   "5GHz": -0.65,
+   "10GHz": -0.7,
+   "15GHz": -0.81,
+   "20GHz": -0.8
+  },
+  "openems_at": {
+   "1GHz": -0.6,
+   "5GHz": -0.65,
+   "10GHz": -0.71,
+   "15GHz": -0.8,
+   "20GHz": -0.83
+  }
+ }
+}

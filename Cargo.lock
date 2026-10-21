@@ -370,6 +370,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "kisi-fdtd"
+version = "0.2.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "kisi-pi"
 version = "0.2.0"
 dependencies = [

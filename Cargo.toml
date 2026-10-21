@@ -8,6 +8,7 @@ members = [
     "crates/kisi-cli",
     "crates/kisi-wasm",
     "crates/kisi-sparse",
+    "crates/kisi-fdtd",
 ]
 
 [workspace.package]

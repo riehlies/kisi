@@ -1,10 +1,10 @@
 {
  "A_s4_d200_ap1000": {
-  "dS21_max_db_20GHz": 0.1,
-  "dS11_max_20GHz": 0.086,
-  "z_min_3d": 43.3,
+  "dS21_max_db_20GHz": 0.11,
+  "dS11_max_20GHz": 0.052,
+  "z_min_3d": 44.2,
   "z_min_pbm": 42.0,
-  "z_max_3d": 53.4,
+  "z_max_3d": 53.0,
   "z_max_pbm": 52.5,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -32,11 +32,11 @@
   ]
  },
  "A_s4_d200_ap600": {
-  "dS21_max_db_20GHz": 0.05,
-  "dS11_max_20GHz": 0.056,
-  "z_min_3d": 48.4,
+  "dS21_max_db_20GHz": 0.09,
+  "dS11_max_20GHz": 0.058,
+  "z_min_3d": 48.9,
   "z_min_pbm": 47.8,
-  "z_max_3d": 55.0,
+  "z_max_3d": 54.4,
   "z_max_pbm": 54.2,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -64,11 +64,11 @@
   ]
  },
  "A_s4_d200_ap800": {
-  "dS21_max_db_20GHz": 0.05,
-  "dS11_max_20GHz": 0.036,
-  "z_min_3d": 45.8,
+  "dS21_max_db_20GHz": 0.06,
+  "dS11_max_20GHz": 0.02,
+  "z_min_3d": 46.9,
   "z_min_pbm": 45.5,
-  "z_max_3d": 54.2,
+  "z_max_3d": 53.6,
   "z_max_pbm": 53.3,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -96,11 +96,11 @@
   ]
  },
  "A_s4_d300_ap1000": {
-  "dS21_max_db_20GHz": 0.06,
-  "dS11_max_20GHz": 0.044,
-  "z_min_3d": 48.4,
+  "dS21_max_db_20GHz": 0.07,
+  "dS11_max_20GHz": 0.035,
+  "z_min_3d": 49.3,
   "z_min_pbm": 47.5,
-  "z_max_3d": 50.4,
+  "z_max_3d": 50.0,
   "z_max_pbm": 49.9,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -128,11 +128,11 @@
   ]
  },
  "A_s4_d300_ap600": {
-  "dS21_max_db_20GHz": 0.18,
-  "dS11_max_20GHz": 0.098,
-  "z_min_3d": 49.7,
+  "dS21_max_db_20GHz": 0.14,
+  "dS11_max_20GHz": 0.127,
+  "z_min_3d": 49.5,
   "z_min_pbm": 49.9,
-  "z_max_3d": 56.1,
+  "z_max_3d": 57.1,
   "z_max_pbm": 59.8,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -160,11 +160,11 @@
   ]
  },
  "A_s4_d300_ap800": {
-  "dS21_max_db_20GHz": 0.08,
-  "dS11_max_20GHz": 0.04,
-  "z_min_3d": 50.0,
+  "dS21_max_db_20GHz": 0.07,
+  "dS11_max_20GHz": 0.068,
+  "z_min_3d": 49.8,
   "z_min_pbm": 49.1,
-  "z_max_3d": 52.0,
+  "z_max_3d": 52.9,
   "z_max_pbm": 52.9,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -192,11 +192,11 @@
   ]
  },
  "B_s8_L1L3_bd_d200": {
-  "dS21_max_db_20GHz": 0.22,
-  "dS11_max_20GHz": 0.136,
-  "z_min_3d": 48.1,
+  "dS21_max_db_20GHz": 0.19,
+  "dS11_max_20GHz": 0.212,
+  "z_min_3d": 47.0,
   "z_min_pbm": 48.9,
-  "z_max_3d": 52.4,
+  "z_max_3d": 54.0,
   "z_max_pbm": 57.4,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -214,11 +214,11 @@
   ]
  },
  "B_s8_L1L3_bd_d300": {
-  "dS21_max_db_20GHz": 0.43,
-  "dS11_max_20GHz": 0.158,
-  "z_min_3d": 47.7,
+  "dS21_max_db_20GHz": 0.38,
+  "dS11_max_20GHz": 0.226,
+  "z_min_3d": 47.2,
   "z_min_pbm": 48.6,
-  "z_max_3d": 55.1,
+  "z_max_3d": 57.0,
   "z_max_pbm": 61.6,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -236,13 +236,13 @@
   ]
  },
  "B_s8_L1L3_stub_d200": {
-  "dS21_max_db_20GHz": 0.75,
-  "dS11_max_20GHz": 0.383,
-  "z_min_3d": 38.0,
+  "dS21_max_db_20GHz": 0.94,
+  "dS11_max_20GHz": 0.862,
+  "z_min_3d": 35.7,
   "z_min_pbm": 41.2,
-  "z_max_3d": 62.3,
+  "z_max_3d": 58.2,
   "z_max_pbm": 69.8,
-  "notch_3d_ghz": 21.7,
+  "notch_3d_ghz": 21.8,
   "notch_pbm_ghz": 21.9,
   "nodes_z": [
    1.6,
@@ -270,13 +270,13 @@
   ]
  },
  "B_s8_L1L3_stub_d300": {
-  "dS21_max_db_20GHz": 0.93,
-  "dS11_max_20GHz": 0.37,
-  "z_min_3d": 36.9,
+  "dS21_max_db_20GHz": 0.81,
+  "dS11_max_20GHz": 0.646,
+  "z_min_3d": 35.7,
   "z_min_pbm": 40.6,
-  "z_max_3d": 65.2,
+  "z_max_3d": 64.0,
   "z_max_pbm": 74.5,
-  "notch_3d_ghz": 21.4,
+  "notch_3d_ghz": 21.5,
   "notch_pbm_ghz": 21.3,
   "nodes_z": [
    1.6,
@@ -304,11 +304,11 @@
   ]
  },
  "B_s8_L1L8_d200": {
-  "dS21_max_db_20GHz": 0.08,
-  "dS11_max_20GHz": 0.066,
-  "z_min_3d": 46.1,
+  "dS21_max_db_20GHz": 0.16,
+  "dS11_max_20GHz": 0.087,
+  "z_min_3d": 47.9,
   "z_min_pbm": 47.2,
-  "z_max_3d": 54.0,
+  "z_max_3d": 52.7,
   "z_max_pbm": 53.4,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -340,11 +340,11 @@
   ]
  },
  "B_s8_L1L8_d300": {
-  "dS21_max_db_20GHz": 0.11,
-  "dS11_max_20GHz": 0.081,
-  "z_min_3d": 49.6,
+  "dS21_max_db_20GHz": 0.07,
+  "dS11_max_20GHz": 0.125,
+  "z_min_3d": 48.7,
   "z_min_pbm": 49.0,
-  "z_max_3d": 50.5,
+  "z_max_3d": 52.4,
   "z_max_pbm": 53.4,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -376,11 +376,11 @@
   ]
  },
  "B_ts6_L1L3_stub": {
-  "dS21_max_db_20GHz": 2.2,
-  "dS11_max_20GHz": 0.23,
-  "z_min_3d": 41.4,
+  "dS21_max_db_20GHz": 1.82,
+  "dS11_max_20GHz": 0.2,
+  "z_min_3d": 41.2,
   "z_min_pbm": 43.4,
-  "z_max_3d": 58.8,
+  "z_max_3d": 60.4,
   "z_max_pbm": 70.7,
   "notch_3d_ghz": 26.3,
   "notch_pbm_ghz": 24.8,
@@ -408,11 +408,11 @@
   ]
  },
  "B_ts6_L1L6": {
-  "dS21_max_db_20GHz": 0.08,
-  "dS11_max_20GHz": 0.05,
-  "z_min_3d": 48.4,
+  "dS21_max_db_20GHz": 0.03,
+  "dS11_max_20GHz": 0.081,
+  "z_min_3d": 50.1,
   "z_min_pbm": 49.0,
-  "z_max_3d": 50.8,
+  "z_max_3d": 51.2,
   "z_max_pbm": 50.5,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -440,11 +440,11 @@
   ]
  },
  "C_s8_ap1000": {
-  "dS21_max_db_20GHz": 0.08,
-  "dS11_max_20GHz": 0.08,
-  "z_min_3d": 45.9,
+  "dS21_max_db_20GHz": 0.06,
+  "dS11_max_20GHz": 0.101,
+  "z_min_3d": 47.8,
   "z_min_pbm": 48.3,
-  "z_max_3d": 50.0,
+  "z_max_3d": 49.8,
   "z_max_pbm": 49.9,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -476,11 +476,11 @@
   ]
  },
  "C_s8_ap1200": {
-  "dS21_max_db_20GHz": 0.08,
-  "dS11_max_20GHz": 0.084,
-  "z_min_3d": 42.6,
+  "dS21_max_db_20GHz": 0.11,
+  "dS11_max_20GHz": 0.081,
+  "z_min_3d": 44.3,
   "z_min_pbm": 44.8,
-  "z_max_3d": 50.0,
+  "z_max_3d": 49.6,
   "z_max_pbm": 50.0,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -512,11 +512,11 @@
   ]
  },
  "C_s8_ap600": {
-  "dS21_max_db_20GHz": 0.21,
-  "dS11_max_20GHz": 0.126,
-  "z_min_3d": 49.1,
+  "dS21_max_db_20GHz": 0.14,
+  "dS11_max_20GHz": 0.17,
+  "z_min_3d": 48.2,
   "z_min_pbm": 49.2,
-  "z_max_3d": 56.3,
+  "z_max_3d": 58.4,
   "z_max_pbm": 61.0,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -548,11 +548,11 @@
   ]
  },
  "C_s8_ap800": {
-  "dS21_max_db_20GHz": 0.11,
-  "dS11_max_20GHz": 0.081,
-  "z_min_3d": 49.6,
+  "dS21_max_db_20GHz": 0.07,
+  "dS11_max_20GHz": 0.125,
+  "z_min_3d": 48.7,
   "z_min_pbm": 49.0,
-  "z_max_3d": 50.5,
+  "z_max_3d": 52.4,
   "z_max_pbm": 53.4,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -584,11 +584,11 @@
   ]
  },
  "C_s8_mixed": {
-  "dS21_max_db_20GHz": 0.08,
-  "dS11_max_20GHz": 0.07,
-  "z_min_3d": 44.5,
+  "dS21_max_db_20GHz": 0.19,
+  "dS11_max_20GHz": 0.11,
+  "z_min_3d": 45.9,
   "z_min_pbm": 46.4,
-  "z_max_3d": 49.5,
+  "z_max_3d": 50.1,
   "z_max_pbm": 49.4,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -620,11 +620,11 @@
   ]
  },
  "C_s8_nfp": {
-  "dS21_max_db_20GHz": 0.14,
-  "dS11_max_20GHz": 0.112,
-  "z_min_3d": 46.8,
+  "dS21_max_db_20GHz": 0.2,
+  "dS11_max_20GHz": 0.154,
+  "z_min_3d": 45.6,
   "z_min_pbm": 47.7,
-  "z_max_3d": 52.2,
+  "z_max_3d": 54.0,
   "z_max_pbm": 54.8,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -656,11 +656,11 @@
   ]
  },
  "C_s8_nonfp": {
-  "dS21_max_db_20GHz": 0.08,
-  "dS11_max_20GHz": 0.081,
-  "z_min_3d": 47.8,
+  "dS21_max_db_20GHz": 0.06,
+  "dS11_max_20GHz": 0.111,
+  "z_min_3d": 48.6,
   "z_min_pbm": 48.8,
-  "z_max_3d": 49.9,
+  "z_max_3d": 50.5,
   "z_max_pbm": 50.7,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -692,11 +692,11 @@
   ]
  },
  "C_s8_offset": {
-  "dS21_max_db_20GHz": 0.19,
-  "dS11_max_20GHz": 0.189,
-  "z_min_3d": 49.5,
+  "dS21_max_db_20GHz": 0.17,
+  "dS11_max_20GHz": 0.203,
+  "z_min_3d": 49.4,
   "z_min_pbm": 49.2,
-  "z_max_3d": 52.2,
+  "z_max_3d": 53.4,
   "z_max_pbm": 56.7,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -728,11 +728,11 @@
   ]
  },
  "D_s8_stitch_0p5": {
-  "dS21_max_db_20GHz": 0.2,
-  "dS11_max_20GHz": 0.097,
-  "z_min_3d": 48.9,
+  "dS21_max_db_20GHz": 0.08,
+  "dS11_max_20GHz": 0.147,
+  "z_min_3d": 47.9,
   "z_min_pbm": 49.6,
-  "z_max_3d": 53.2,
+  "z_max_3d": 54.7,
   "z_max_pbm": 54.5,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
@@ -764,11 +764,11 @@
   ]
  },
  "D_s8_stitch_1p0": {
-  "dS21_max_db_20GHz": 0.89,
-  "dS11_max_20GHz": 0.073,
-  "z_min_3d": 49.6,
+  "dS21_max_db_20GHz": 0.83,
+  "dS11_max_20GHz": 0.112,
+  "z_min_3d": 50.1,
   "z_min_pbm": 50.6,
-  "z_max_3d": 57.6,
+  "z_max_3d": 56.6,
   "z_max_pbm": 57.7,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": 40.0,
@@ -800,11 +800,11 @@
   ]
  },
  "D_s8_stitch_2p0": {
-  "dS21_max_db_20GHz": 1.31,
-  "dS11_max_20GHz": 0.072,
-  "z_min_3d": 50.0,
+  "dS21_max_db_20GHz": 1.21,
+  "dS11_max_20GHz": 0.105,
+  "z_min_3d": 50.5,
   "z_min_pbm": 51.0,
-  "z_max_3d": 62.9,
+  "z_max_3d": 61.8,
   "z_max_pbm": 62.9,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": 40.0,
@@ -836,11 +836,11 @@
   ]
  },
  "D_s8_stitch_5p0": {
-  "dS21_max_db_20GHz": 1.09,
-  "dS11_max_20GHz": 0.069,
-  "z_min_3d": 50.9,
+  "dS21_max_db_20GHz": 1.01,
+  "dS11_max_20GHz": 0.105,
+  "z_min_3d": 50.5,
   "z_min_pbm": 51.0,
-  "z_max_3d": 64.9,
+  "z_max_3d": 64.1,
   "z_max_pbm": 64.7,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": 40.0,
@@ -872,11 +872,11 @@
   ]
  },
  "D_s8_stitch_none": {
-  "dS21_max_db_20GHz": 1.08,
-  "dS11_max_20GHz": 0.068,
-  "z_min_3d": 50.9,
+  "dS21_max_db_20GHz": 0.98,
+  "dS11_max_20GHz": 0.103,
+  "z_min_3d": 50.5,
   "z_min_pbm": 51.0,
-  "z_max_3d": 64.9,
+  "z_max_3d": 64.1,
   "z_max_pbm": 64.7,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": 40.0,
@@ -909,62 +909,62 @@
  },
  "E_s8_L1L3_p1000_oval_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 1.1,
-  "dphase_max_deg_20GHz": 28.5
+  "dSdd21_max_db_20GHz": 1.26,
+  "dphase_max_deg_20GHz": 23.0
  },
  "E_s8_L1L3_p1000_round_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.75,
-  "dphase_max_deg_20GHz": 27.2
+  "dSdd21_max_db_20GHz": 0.9,
+  "dphase_max_deg_20GHz": 21.8
  },
  "E_s8_L1L3_p1200_round_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.79,
-  "dphase_max_deg_20GHz": 27.2
+  "dSdd21_max_db_20GHz": 0.93,
+  "dphase_max_deg_20GHz": 22.1
  },
  "E_s8_L1L3_p800_round_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.58,
-  "dphase_max_deg_20GHz": 26.9
+  "dSdd21_max_db_20GHz": 0.73,
+  "dphase_max_deg_20GHz": 21.5
  },
  "E_s8_L1L8_p1000_oval_g0": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.19,
-  "dphase_max_deg_20GHz": 3.7
+  "dSdd21_max_db_20GHz": 0.14,
+  "dphase_max_deg_20GHz": 3.9
  },
  "E_s8_L1L8_p1000_oval_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.22,
-  "dphase_max_deg_20GHz": 5.0
+  "dSdd21_max_db_20GHz": 0.15,
+  "dphase_max_deg_20GHz": 4.8
  },
  "E_s8_L1L8_p1000_oval_g4": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.23,
-  "dphase_max_deg_20GHz": 5.0
+  "dSdd21_max_db_20GHz": 0.16,
+  "dphase_max_deg_20GHz": 4.7
  },
  "E_s8_L1L8_p1000_round_g0": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.2,
+  "dSdd21_max_db_20GHz": 0.15,
   "dphase_max_deg_20GHz": 4.4
  },
  "E_s8_L1L8_p1000_round_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.22,
-  "dphase_max_deg_20GHz": 5.6
+  "dSdd21_max_db_20GHz": 0.13,
+  "dphase_max_deg_20GHz": 5.3
  },
  "E_s8_L1L8_p1000_round_g4": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.23,
-  "dphase_max_deg_20GHz": 5.7
+  "dSdd21_max_db_20GHz": 0.14,
+  "dphase_max_deg_20GHz": 5.2
  },
  "E_s8_L1L8_p1200_round_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.18,
-  "dphase_max_deg_20GHz": 5.2
+  "dSdd21_max_db_20GHz": 0.12,
+  "dphase_max_deg_20GHz": 5.0
  },
  "E_s8_L1L8_p800_round_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.29,
-  "dphase_max_deg_20GHz": 6.6
+  "dSdd21_max_db_20GHz": 0.16,
+  "dphase_max_deg_20GHz": 5.9
  }
 }

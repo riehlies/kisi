@@ -1,0 +1,77 @@
+{
+ "case": "T_ts6_broadside_o0",
+ "meta": {
+  "group": "T",
+  "title": "Broadside: In2 over In3 across the 0.93 mm core, lateral offset 0 mm, 20 mm",
+  "params": {
+   "w_In2_mm": 0.183,
+   "w_In3_mm": 0.197,
+   "offset_mm": 0.0,
+   "length_mm": 20.0
+  },
+  "stackup": "ts6",
+  "stackup_title": "ThunderScope Rev5.3 6-layer (FR408HR / FR-4, from the board file)",
+  "copper_z": [
+   1.3486,
+   1.2379,
+   1.1363,
+   0.2107,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1 near A",
+    "layer": "L3",
+    "ref": "L2"
+   },
+   {
+    "name": "2 near B",
+    "layer": "L4",
+    "ref": "L5"
+   },
+   {
+    "name": "3 far A",
+    "layer": "L3",
+    "ref": "L2"
+   },
+   {
+    "name": "4 far B",
+    "layer": "L4",
+    "ref": "L5"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0,
+   1
+  ],
+  "mirror": [
+   2,
+   3,
+   0,
+   1
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 615328,
+   "steps": [
+    7801,
+    6601
+   ],
+   "dt": 5.98481509038738e-14,
+   "seconds": 257.2,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

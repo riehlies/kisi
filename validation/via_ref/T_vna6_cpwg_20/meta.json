@@ -1,0 +1,63 @@
+{
+ "case": "T_vna6_cpwg_20",
+ "meta": {
+  "group": "T",
+  "title": "Coplanar waveguide with ground, LibreVNA RF class (w 0.35, gap 0.18 mm), 20 mm",
+  "params": {
+   "w_mm": 0.35,
+   "gap_mm": 0.18,
+   "length_mm": 20.0,
+   "vias": "1 mm pitch"
+  },
+  "stackup": "vna6",
+  "stackup_title": "LibreVNA 6-layer (7628 / FR-4, from the board file)",
+  "copper_z": [
+   1.4236,
+   1.2132,
+   0.8132,
+   0.6104,
+   0.2104,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1 near A",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2 far A",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0
+  ],
+  "mirror": [
+   1,
+   0
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 1082240,
+   "steps": [
+    8601
+   ],
+   "dt": 6.035285575093087e-14,
+   "seconds": 207.7,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

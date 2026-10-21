@@ -23,7 +23,7 @@ def r2(a, d=2):
 
 
 def load(name, tool):
-    for n in (2, 4):
+    for n in (1, 2, 4):
         p = os.path.join(REF, name, f"{tool}.s{n}p")
         if os.path.exists(p):
             return sparam.read_touchstone(p)

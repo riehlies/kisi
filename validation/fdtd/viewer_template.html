@@ -205,7 +205,8 @@ function topView(c, ext, title, W = 560) {
   const sx = (x) => ((x - x0) * s).toFixed(2), sy = (y) => ((y1 - y) * s).toFixed(2), sr = (r) => (r * s).toFixed(2);
   let g = `<rect x="0" y="0" width="${W}" height="${H}" fill="var(--diel)" opacity=".55"/>`;
   // plane metal with the union of all antipads (outlines per plane)
-  const planes = cs.sheets.filter((sh) => sh.net === "GND");
+  const isPlane = (sh) => (sh.net === "GND" || sh.net === "PWR") && Math.abs(sh.rect[0] - cs.board[0]) < 1e-6 && Math.abs(sh.rect[2] - cs.board[2]) < 1e-6;
+  const planes = cs.sheets.filter(isPlane);
   if (planes.length) {
     g += `<rect x="0" y="0" width="${W}" height="${H}" fill="var(--gnd)" opacity=".28"/>`;
     const seen = new Set();
@@ -216,8 +217,8 @@ function topView(c, ext, title, W = 560) {
     }));
   }
   // traces, bottom layers first
-  const tr = cs.sheets.filter((sh) => sh.net !== "GND").sort((a, b) => a.z - b.z);
-  for (const t of tr) { const r = t.rect; g += `<rect x="${sx(r[0])}" y="${sy(r[3])}" width="${((r[2] - r[0]) * s).toFixed(2)}" height="${((r[3] - r[1]) * s).toFixed(2)}" fill="${layerColor(c, t.z)}" opacity=".85"/>`; }
+  const tr = cs.sheets.filter((sh) => !isPlane(sh)).sort((a, b) => a.z - b.z);
+  for (const t of tr) { const r = t.rect; const sig = t.net === "SIG"; g += `<rect x="${sx(r[0])}" y="${sy(r[3])}" width="${((r[2] - r[0]) * s).toFixed(2)}" height="${((r[3] - r[1]) * s).toFixed(2)}" fill="${sig ? layerColor(c, t.z) : "var(--cu)"}" opacity="${sig ? 0.85 : 0.45}"/>`; }
   for (const v of cs.vias) {
     if (v.pads && v.pads.length) g += `<circle cx="${sx(v.x)}" cy="${sy(v.y)}" r="${sr(v.pad_r)}" fill="var(--cu)" opacity=".55"/>`;
     g += `<circle cx="${sx(v.x)}" cy="${sy(v.y)}" r="${sr(v.r)}" fill="${v.net === "GND" ? "var(--gnd)" : "var(--cu)"}" stroke="var(--panel)" stroke-width=".8"/>`;
@@ -447,7 +448,8 @@ function renderCase(c) {
     } else {
       const fx = f.map((v) => v * 1000);
       grid.appendChild(panel("|Z11| at the IC pins", chart({ x: fx, series: zs("Z11"), xlabel: "frequency MHz", ylabel: "Ω", logx: true, logy: true, w: pw }), legend));
-      grid.appendChild(panel("Loop inductance Im(Z11)/ω", chart({ x: fx, series: zs("L11"), xlabel: "frequency MHz", ylabel: "nH", logx: true, ymin: 0, w: pw }), legend,
+      const l0 = (c.res.kisi.L11 || []).find((v) => v != null) || 1;
+      grid.appendChild(panel("Loop inductance Im(Z11)/ω", chart({ x: fx, series: zs("L11"), xlabel: "frequency MHz", ylabel: "nH", logx: true, ymin: 0, ymax: Math.ceil(l0 * 3), w: pw }), legend,
         "Pin field, vias, planes and the capacitor mounting; the capacitor is a short (5 mΩ) on a 0.5 mm high body loop."));
     }
     box.appendChild(grid);

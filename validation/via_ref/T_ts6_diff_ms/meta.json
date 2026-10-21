@@ -1,0 +1,76 @@
+{
+ "case": "T_ts6_diff_ms",
+ "meta": {
+  "group": "T",
+  "title": "Edge-coupled microstrip pair L1, w 0.127 / s 0.127 mm (ThunderScope default), 20 mm",
+  "params": {
+   "w_mm": 0.127,
+   "s_mm": 0.127,
+   "length_mm": 20.0
+  },
+  "stackup": "ts6",
+  "stackup_title": "ThunderScope Rev5.3 6-layer (FR408HR / FR-4, from the board file)",
+  "copper_z": [
+   1.3486,
+   1.2379,
+   1.1363,
+   0.2107,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1 near A",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2 near B",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "3 far A",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "4 far B",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0,
+   2
+  ],
+  "mirror": [
+   1,
+   0,
+   3,
+   2
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 652064,
+   "steps": [
+    9201,
+    9201
+   ],
+   "dt": 5.738130004598329e-14,
+   "seconds": 397.2,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

@@ -14,6 +14,18 @@
    "dL_model_nH": 0.0
   },
   {
+   "case": "H_s8_cap_5",
+   "dist_mm": 5.0,
+   "D_mm": 7.1,
+   "L50_nH": 1.456,
+   "L100_nH": 1.475,
+   "R50_mOhm": 3.7,
+   "L_plane_model_nH": 0.415,
+   "dL_3d_nH": 0.128,
+   "dL_formula_nH": 0.051,
+   "dL_model_nH": 0.128
+  },
+  {
    "case": "H_s8_cap_10",
    "dist_mm": 10.0,
    "D_mm": 12.1,
@@ -24,6 +36,18 @@
    "dL_3d_nH": 0.335,
    "dL_formula_nH": 0.101,
    "dL_model_nH": 0.339
+  },
+  {
+   "case": "H_s8_cap_20",
+   "dist_mm": 20.0,
+   "D_mm": 22.1,
+   "L50_nH": 2.071,
+   "L100_nH": 2.101,
+   "R50_mOhm": 1.9,
+   "L_plane_model_nH": 1.045,
+   "dL_3d_nH": 0.743,
+   "dL_formula_nH": 0.157,
+   "dL_model_nH": 0.758
   }
  ]
 }

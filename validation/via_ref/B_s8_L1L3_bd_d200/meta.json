@@ -47,13 +47,13 @@
  "tool": "kisi-fdtd (conformal metal, CPML)",
  "runs": {
   "kisi": {
-   "cells": 611065,
+   "cells": 595595,
    "steps": [
-    4401,
+    4201,
     4201
    ],
-   "dt": 5.31114439868725e-14,
-   "seconds": 141.4,
+   "dt": 5.381004533732778e-14,
+   "seconds": 190.0,
    "dfine": 0.035,
    "dmax": null
   }

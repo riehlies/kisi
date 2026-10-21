@@ -1,0 +1,61 @@
+{
+ "case": "T_ts6_ms_20",
+ "meta": {
+  "group": "T",
+  "title": "Microstrip L1, ThunderScope stack, w 0.265 mm, 20 mm",
+  "params": {
+   "w_mm": 0.265,
+   "length_mm": 20.0
+  },
+  "stackup": "ts6",
+  "stackup_title": "ThunderScope Rev5.3 6-layer (FR408HR / FR-4, from the board file)",
+  "copper_z": [
+   1.3486,
+   1.2379,
+   1.1363,
+   0.2107,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1 near A",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2 far A",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0
+  ],
+  "mirror": [
+   1,
+   0
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 624512,
+   "steps": [
+    5401
+   ],
+   "dt": 5.972999070605654e-14,
+   "seconds": 115.7,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

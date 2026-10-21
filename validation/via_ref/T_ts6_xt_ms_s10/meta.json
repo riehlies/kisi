@@ -1,0 +1,76 @@
+{
+ "case": "T_ts6_xt_ms_s10",
+ "meta": {
+  "group": "T",
+  "title": "Microstrip aggressor and victim on L1, w 0.265 mm, edge gap 1\u00b7w = 0.27 mm, 20 mm",
+  "params": {
+   "w_mm": 0.265,
+   "gap_mm": 0.265,
+   "length_mm": 20.0
+  },
+  "stackup": "ts6",
+  "stackup_title": "ThunderScope Rev5.3 6-layer (FR408HR / FR-4, from the board file)",
+  "copper_z": [
+   1.3486,
+   1.2379,
+   1.1363,
+   0.2107,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1 near A",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2 near B",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "3 far A",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "4 far B",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0,
+   2
+  ],
+  "mirror": [
+   1,
+   0,
+   3,
+   2
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 697984,
+   "steps": [
+    5401,
+    5401
+   ],
+   "dt": 5.851505901692873e-14,
+   "seconds": 288.5,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

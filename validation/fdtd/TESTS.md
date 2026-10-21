@@ -55,8 +55,9 @@ Every case becomes a mini KiCad board; kisi computes it through its normal pipel
   piece right at the via. That piece runs over the antipad and has no reference, so the return path of every via
   whose traces end over an antipad was reported as "none".
   - It now uses the last referenced piece before the via and the next one after it.
-  - In D (L1 ref L2 → L8 ref L7) kisi now reports "stitch" or "missing" and matches the TDR peak: 55.2 against
-    55.0 Ω at 2 mm, 62.8 against 57.0 Ω without a stitching via.
+  - In D (L1 ref L2 → L8 ref L7) kisi now reports "stitch" or "missing" and follows the TDR peak:
+    - 54.8 against 54.5 Ω at 2 mm;
+    - 62.1 against 56.8 Ω beyond 5 mm (kisi caps the return distance at 5 mm and models it as an inductance).
   - Regression test: `via_return_path_across_antipad`.
 - **Via impedance:** kisi's coax-section model, with the antipad as outer conductor, puts the via too low. The TDR
   extremes (35 ps, with the feeds) deviate by a median of 4.4 %, at most 20 %. In thick plane pairs the field ends
@@ -68,16 +69,30 @@ Every case becomes a mini KiCad board; kisi computes it through its normal pipel
 - **Return-path loss:** without a stitching via, 3D loses energy into the plane pairs (S21 −2.9 dB at 10 GHz).
   kisi's series inductance cannot represent that radiation, so it stays 2 dB too optimistic up to 20 GHz.
 - **Differential vias (E):**
-  - kisi puts the pair via too high: TDR minimum Zdiff 91.9 against 83.5–86.6 Ω for L1→L8.
-  - With the stub (L1→L3) it gives 75.6 against 63.7 Ω, because the pair model has no stub.
-  - It does not distinguish round from oval antipads or 0 / 2 / 4 GND vias.
-- **Lines and coupling (T):**
-  - FEXT of a microstrip aggressor/victim (35 ps): kisi's formula 7.01 % against 7.03 % in 3D (7.28 % with the
-    field solver).
-  - NEXT is overestimated by about 50 % (2.4–2.6 % against 1.6 %; 0.9–1.1 against 0.6 % at twice the gap).
-  - CPWG (LibreVNA RF class): kisi's field solver gives εeff within 1 % (3.08 against 3.11) and Zc 3.5 % high
-    (50.3 against 48.6 Ω; formula 51.1 Ω).
-  - Further line cases: table "kisi's fast channel model" in `references.html`.
+  - kisi puts the pair via too high: TDR minimum Zdiff 87.9–94.6 against 79.8–88.8 Ω for L1→L8 (+4 … +11 %).
+  - With the stub (L1→L3) it gives 73–77 against 63–67 Ω (+15 … +18 %), because the pair model has no stub.
+  - It does not distinguish round from oval antipads or 0 / 2 / 4 GND vias (3D: 82.6 Ω with 4 GND vias, 86.5 Ω
+    with none).
+- **Lines (T, 20 mm, 3D with the thirds rule, Zc from the ABCD matrix, εeff from 10 / 20 mm, 5 GHz):**
+
+  | Line | 3D | kisi field solver (kisi.mjs) | kisi formula (native) |
+  |---|---|---|---|
+  | microstrip L1 (ThunderScope) | 48.6 Ω, εeff 2.580 | 49.1 Ω, 2.568 | 49.2 Ω, 2.554 |
+  | stripline In2 (ThunderScope) | 46.5 Ω, 3.920 | 46.1 Ω, 3.904 | 51.6 Ω (+11 %), 3.725 (−5 %) |
+  | CPWG (LibreVNA RF class) | 51.1 Ω, 3.116 | 50.3 Ω, 3.084 | 51.1 Ω, 3.264 (+5 %) |
+
+  - The field solver is within 1.6 % in Zc and 1 % in εeff.
+  - The formulas miss the asymmetric stripline by 11 % and the CPWG εeff by 5 %. The formula fallback is marked
+    as an estimate in kisi.
+- **Coupling (T, microstrip aggressor/victim, 20 mm, 35 ps):**
+  - FEXT: 3D 6.64 / 3.26 %, kisi formula 7.01 / 3.48 % (+6 %), field solver 7.28 / 3.61 % (+10 %).
+  - NEXT: 3D 1.41 / 0.58 %, kisi 2.36–2.59 / 0.86–1.06 %, i.e. 70–80 % high.
+  - Next step: the saturated-NEXT definition against the 3D near-end peak.
+- **Broadside In2/In3** (0.93 mm core): 3D NEXT 1.1 / 0.7 %, FEXT 1.3 / 0.9 % (0 / 0.5 mm offset). kisi detects
+  it but does not compute it yet; these are the references for that.
+- **Differential lines:** the TDR minimum includes the lumped-port transition. The ms pair is 100.7 Ω in 3D
+  against 103.6 Ω in kisi; for the stripline pair (88.4 against 101 Ω) the port dip dominates, so it needs a
+  plateau value (open).
 
 ## 4. Reduced models (prototypes)
 
@@ -98,17 +113,18 @@ A physics-based ladder along the barrel:
 It is compared with the 3D result de-embedded by the 2×thru of each feed layer (pairs: first-order shift).
 
 Results up to 20 GHz (`results/via_pbm.json`):
-- **Single vias (A–D, 27 cases):** |S21| median deviation 0.14 dB. TDR via impedance (25 ps) median 1.8 %,
-  90th percentile 9 %; the return-path peak in D is within 1 %.
+- **Single vias (A–D, 27 cases):** |S21| median deviation 0.14 dB. TDR via impedance (25 ps) median 1.4 %,
+  90th percentile 7.5 %; the return-path peak in D is within 1 %. kisi's present model (35 ps, with the feeds):
+  median 4.0 %, 90th percentile 16 %.
 - **Return-path loss:** the loss into the plane pairs is reproduced (D without a stitching via: S21 −2.43 against
   −2.25 dB at 10 GHz).
-- **Stub notch:** +0.9 / −0.5 % for the 8-layer stack, −5.7 % for the ThunderScope stack. kisi's present model:
+- **Stub notch:** +0.5 / −0.9 % for the 8-layer stack, −5.7 % for the ThunderScope stack. kisi's present model:
   +19 … +30 %.
-- **Pairs L1→L8 (8 cases):** Sdd21 within 0.18–0.29 dB, phase within 3.7–6.6°.
+- **Pairs L1→L8 (8 cases):** Sdd21 within 0.12–0.16 dB, phase within 3.9–5.9°.
 
 **Open points**
-- **Exits on inner layers** (stripline inside a plane pair: B L1→L3, E L1→L3): the magnitude is good (|ΔS21|
-  0.2–0.4 dB for single vias), but about 3 ps of delay are missing (20–28° at 20 GHz).
+- **Exits on inner layers** (stripline inside a plane pair: B L1→L3, E L1→L3): the magnitude is good for single
+  vias (|ΔS21| 0.2–0.4 dB), pairs 0.7–1.3 dB. About 3 ps of delay are missing (20–23° at 20 GHz).
 - **Pairs:** the mutual capacitance of the two barrels is included only where the pitch is below the field radius
   (not the case in these stacks).
 
@@ -118,9 +134,11 @@ Results up to 20 GHz (`results/via_pbm.json`):
   7 % low (the effective size of the one-cell port).
 - **H (`pdn_loop.py`):** the change of the loop inductance with the capacitor distance, from the same series with
   a port at the pin field and the capacitor vias shorted:
-  - 0.339 against 0.335 nH (2 → 10 mm); the radial formula μ0·d_eff/π·ln(D2/D1) gives only 0.10 nH, because the
-    7 mm wide board makes the current run as in a strip.
-  - The total loop inductance in 3D is 1.33 nH at 2 mm and 1.66 nH at 10 mm.
+  - Model against 3D, from 2 mm to 5 / 10 / 20 mm: 0.128 against 0.128 nH, 0.339 against 0.335 nH, 0.758 against
+    0.743 nH.
+  - The radial formula μ0·d_eff/π·ln(D2/D1) gives only 0.05 / 0.10 / 0.16 nH, because the 7 mm wide board makes the
+    current run as in a strip.
+  - The total loop inductance in 3D at 50 MHz: 1.33 / 1.46 / 1.66 / 2.07 nH at 2 / 5 / 10 / 20 mm.
   - The vertical parts (pins, vias, capacitor body) are equal for every distance and are not modelled yet.
 - **H setup error, found and fixed:** the first H runs had the planes reaching into the PML. The infinite PWR/GND
   plane pair was itself a ~0.2 Ω path at 100 MHz and bypassed the capacitor (same impedance with and without it).

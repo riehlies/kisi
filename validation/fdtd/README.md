@@ -27,17 +27,22 @@ mixed mode, Z) and the solver checks. It is a self-contained page; open it in a 
 - **Excitation:** Gaussian pulse, one run per excited port. The run stops when the field energy has fallen
   `end_db` below its maximum.
 
-## Checks (`results/`, tab "Solver checks" in `references.html`)
+## Checks and models
+The full test log, with the numbers, is in **`TESTS.md`**. In brief:
+
 | Check | Script | Result |
 |---|---|---|
-| Metal model against the analytic resonance of a cylindrical cavity (empty and with a centre post) | `cavity.py` | see `results/cavity.json` |
-| Mesh convergence of a via with antipads, staircase and conformal | `via_convergence.py` | see `results/via_convergence.json` |
-| CPML on a matched microstrip (8 / 16 cells, larger box, openEMS PML_8) | `check_pml.py` | converged at 8 cells; openEMS reflects 8–14 dB more above 10 GHz |
-| Implementation: kisi-fdtd (staircase) against openEMS on the same mesh with PML | `openems_compare.py` | see `results/openems_compare.json` |
-| Lumped R–L–C against a circuit model (series RLC at the end of a 1 mm microstrip) | unit test `lumped_rlc` | series resonance 4.35 GHz against 4.33 GHz, Re Z 9.6 Ω against 10 Ω |
+| Metal model against the analytic resonance of a cylindrical cavity (empty, with centre post) | `cavity.py` | conformal 7–13× closer than staircase (0.05 mm: −0.04 % vs −0.47 %) |
+| Mesh convergence of a via with antipads | `via_convergence.py` | conformal at h ≈ staircase at 0.7·h; 0.035 mm: \|S21\| within 0.07 dB to 30 GHz |
+| CPML on a matched microstrip | `check_pml.py` | converged at 8 cells; openEMS PML_8 reflects 8–14 dB more above 10 GHz |
+| kisi-fdtd (staircase) against openEMS on the same mesh | `openems_compare.py` | Δ\|S21\| mean 0.02–0.22 dB |
+| Lumped R–L–C | unit test `lumped_rlc` | series resonance within 2 % of the circuit |
+| kisi's fast channel model on every case (mini KiCad boards) | `kisi_board.py`, `compare_kisi.py` | via ~15 % low, stub notch +17 %; a return-path bug found and fixed |
+| Reduced via model (prototype) | `via_pbm.py` | phase ±5°, \|S21\| ±0.15 dB, TDR ±2–5 %, stub notch ±1–6 % up to 20 GHz |
+| Plane-cavity model | `cavity_model.py` | resonances ±0.8 %, Z21 ±0.7 % |
 
-Unit tests (`cargo test -p kisi-fdtd`) cover a microstrip (S11, S21), the stability of a conformal pad, the cavity
-resonance at 0.1 mm cells (within 0.2 %) and the lumped R–L–C.
+Unit tests (`cargo test -p kisi-fdtd`) cover a microstrip, the stability of a conformal pad, the cavity resonance
+and the lumped R–L–C.
 
 ## Reference cases
 - `via_cases.py` writes the cases to `via_cases/` (kisi-fdtd case JSON plus a `meta` block). openEMS reads the
@@ -60,7 +65,10 @@ resonance at 0.1 mm cells (within 0.2 %) and the lumped R–L–C.
 - `sparam.py` provides Touchstone I/O, the full matrix from symmetric half-excitations, IEEE P370-style 2×thru
   de-embedding (NZC: fixture S11 from the gated 2×thru reflection, then S22 and S21 from the cascade), a
   first-order plane shift, mixed mode and TDR.
-- `make_viewer.py` builds `references.html`.
+- `make_viewer.py` builds `references.html`: geometry, S-parameters (at the ports and de-embedded, with kisi's
+  fast model and the reduced via model), TDR, mixed mode, line parameters (T), Z (G, H), and the electric field of
+  port 1 (top view in the thickest dielectric, animated; section through the via).
+- The planned measured test board is in `../test_board.md`.
 
 ```
 cargo build --release -p kisi-fdtd

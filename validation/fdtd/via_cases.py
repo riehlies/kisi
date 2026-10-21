@@ -106,7 +106,7 @@ class Builder:
             layers.append({"z0": round(z - d[0], 6), "z1": round(z, 6), "er": d[1], "tand": d[2]})
             z -= d[0]
         self.case = {"domain": self.dom, "board": board or [self.dom[0], -half_y, half_x, half_y], "layers": layers[::-1],
-                     "sheets": [], "vias": [], "ports": [], "fmax": fmax, "mesh": {"dfine": dfine, "ratio": 1.4},
+                     "sheets": [], "vias": [], "ports": [], "fmax": fmax, "mesh": {"dfine": dfine, "ratio": 1.4, "thirds": True},
                      "boundary": "pml", "pml_cells": 8, "conformal": True, "end_db": -50, "max_steps": 150000, "nf": 400}
         self.holes = {p: [] for p in self.st["planes"]}
         self.ports = []
@@ -169,7 +169,11 @@ class Builder:
         else:
             inside = lay
         thick = max(inside, key=lambda l: l["z1"] - l["z0"])
-        mons = [{"axis": "z", "pos": round((thick["z0"] + thick["z1"]) / 2, 6), "freqs": fs, "comps": [2]}]
+        zmon = (thick["z0"] + thick["z1"]) / 2
+        if group == "T" and self.case["ports"]:  # lines: between the trace of port 1 and its reference
+            p = self.case["ports"][0]
+            zmon = (p["z0"] + p["z1"]) / 2
+        mons = [{"axis": "z", "pos": round(zmon, 6), "freqs": fs, "comps": [2]}]
         if self.case["ports"]:
             p = self.case["ports"][0]
             mons.append({"axis": "y", "pos": round((p["y0"] + p["y1"]) / 2, 6), "freqs": fs, "comps": [0, 2]})
@@ -262,6 +266,7 @@ def plane_cavity(cid, stackup, fmax, dfine):
     b.port_raw(-22.0, -12.0, zc[1], zc[0], 1.0, "1 corner", "PWR", "GND")
     b.port_raw(0.0, 0.0, zc[1], zc[0], 1.0, "2 centre", "PWR", "GND")
     b.case.update(nf=600, f_loss=2.5e9, end_db=-50, max_steps=400000)
+    b.case["mesh"]["thirds"] = False  # no traces
     d = zc[0] - zc[1]
     er = STACKUPS[stackup]["diel"][0][1]
     modes = sorted((C0 / (2 * math.sqrt(er)) * math.hypot(m / a, n / bb) * 1e3, m, n) for m in range(5) for n in range(4) if (m, n) != (0, 0))
@@ -277,7 +282,9 @@ def pdn_loop(cid, dist, fmax, dfine):
     GND L2/L5/L7, PWR L4 (s8). The capacitor is a short with 5 mΩ on a 0.5 mm high body loop, so
     Im(Z11)/ω is the loop inductance of the mounting and the planes."""
     xc = 1.2 + 0.4 + dist + 0.5
-    b = Builder("s8", xc + 3.5, 4.0, fmax, dfine, x0=-4.0, air=1.5)
+    # a finite board (planes end 2 mm before the PML): an infinite plane pair would be a
+    # low-impedance path of its own at low frequency and bypass the capacitor
+    b = Builder("s8", xc + 5.0, 5.5, fmax, dfine, board=[-3.5, -3.5, xc + 3.0, 3.5], x0=-5.5, air=1.5)
     b.pwr = {3}
     zc, top = b.zc, b.zc[0]
     gnd_planes = [p for p in b.st["planes"] if p not in b.pwr]
@@ -312,6 +319,7 @@ def pdn_loop(cid, dist, fmax, dfine):
     b.sheet(top + 0.5, [xg - 0.15, -0.25, xp + 0.15, 0.25], net="PWR")
     b.lumped(xg, 0.0, top, top + 0.5, r=0.005, name="capacitor as a short, 5 mΩ")
     b.case.update(nf=200, f_loss=1e9, end_db=-60, max_steps=300000)
+    b.case["mesh"]["thirds"] = False  # pads and die sheets only
     return b.finish(cid, "H", f"PDN loop: BGA pin field to a 0402 capacitor {dist:g} mm away", {"distance_mm": dist, "pins": "4 × 4, 0.8 mm", "port_ohm": 1.0})
 
 

@@ -1,0 +1,29 @@
+{
+ "d_eff_mm": 0.2333,
+ "rows": [
+  {
+   "case": "H_s8_cap_2",
+   "dist_mm": 2.0,
+   "D_mm": 4.1,
+   "L50_nH": 1.328,
+   "L100_nH": 1.344,
+   "R50_mOhm": 4.0,
+   "L_plane_model_nH": 0.287,
+   "dL_3d_nH": 0.0,
+   "dL_formula_nH": 0.0,
+   "dL_model_nH": 0.0
+  },
+  {
+   "case": "H_s8_cap_10",
+   "dist_mm": 10.0,
+   "D_mm": 12.1,
+   "L50_nH": 1.663,
+   "L100_nH": 1.685,
+   "R50_mOhm": 3.2,
+   "L_plane_model_nH": 0.626,
+   "dL_3d_nH": 0.335,
+   "dL_formula_nH": 0.101,
+   "dL_model_nH": 0.339
+  }
+ ]
+}

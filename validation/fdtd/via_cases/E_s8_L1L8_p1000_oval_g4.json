@@ -284,7 +284,8 @@
  "fmax": 40000000000.0,
  "mesh": {
   "dfine": 0.035,
-  "ratio": 1.4
+  "ratio": 1.4,
+  "thirds": true
  },
  "boundary": "pml",
  "pml_cells": 8,

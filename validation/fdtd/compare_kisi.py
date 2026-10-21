@@ -5,7 +5,8 @@ with kisi-fdtd (validation/via_ref/<case>/kisi.sNp).
 Writes validation/via_ref/<case>/kisi_model.sNp and results/kisi_models.json (table for the
 viewer, metrics of validation/via_references.md section 6).
 
-usage: python3 compare_kisi.py kisi-binary [--only SUBSTR,...]
+usage: python3 compare_kisi.py kisi-binary|kisi.mjs [--only SUBSTR,...] [--out results/kisi_models.json]
+(kisi.mjs: the Node CLI with the 2D field solver; the native binary uses formula impedances)
 """
 import json, os, subprocess, sys, tempfile
 import numpy as np
@@ -16,6 +17,8 @@ sys.path.insert(0, HERE)
 import sparam  # noqa: E402
 
 exe = sys.argv[1]
+CMD = ["node", exe] if exe.endswith(".mjs") else [exe]
+OUT = sys.argv[sys.argv.index("--out") + 1] if "--out" in sys.argv else os.path.join(HERE, "results", "kisi_models.json")
 only = [k for k in (sys.argv[sys.argv.index("--only") + 1].split(",") if "--only" in sys.argv else []) if k]
 tmp = tempfile.mkdtemp()
 
@@ -24,7 +27,8 @@ def interp(f_from, S, f_to):
     out = np.empty((len(f_to),) + S.shape[1:], complex)
     for i in range(S.shape[1]):
         for j in range(S.shape[2]):
-            out[:, i, j] = np.interp(f_to, f_from, S[:, i, j].real) + 1j * np.interp(f_to, f_from, S[:, i, j].imag)
+            # beyond kisi's own range (25 GHz) no values
+            out[:, i, j] = np.interp(f_to, f_from, S[:, i, j].real, right=np.nan) + 1j * np.interp(f_to, f_from, S[:, i, j].imag, right=np.nan)
     return out
 
 
@@ -59,8 +63,8 @@ for name in cases:
     pair = g == "E" or "diff" in cid
     net = "D0_P" if pair else ("V1" if four else "SIG")
     ts = os.path.join(tmp, cid + (".s4p" if pair else ".s2p"))
-    args = [exe, "net", pcb, net, "--no-config", "--s4p" if pair else "--s2p", ts]
-    r = subprocess.run(args, capture_output=True, text=True)
+    args = CMD + ["net", pcb, net, "--no-config", "--s4p" if pair else "--s2p", ts]
+    r = subprocess.run(args, capture_output=True, text=True, timeout=1800)
     if r.returncode != 0:
         print(cid, "kisi failed:", r.stderr.strip()[:200], flush=True)
         continue
@@ -86,8 +90,22 @@ for name in cases:
         sparam.write_touchstone(os.path.join(REF, cid, "kisi_model.s2p"), f, Sk2, [f"kisi {cid}: victim path V1 (formula impedances)"])
         continue
     Sk = interp(fk, Sk, f)
-    sparam.write_touchstone(os.path.join(REF, cid, f"kisi_model.s{n}p"), f, Sk, [f"kisi {cid}: fast channel model (formula impedances, via model)"])
+    ok = f <= fk.max() + 1
+    sparam.write_touchstone(os.path.join(REF, cid, f"kisi_model.s{n}p"), f[ok], Sk[ok], [f"kisi {cid}: fast channel model (formula impedances, via model), up to {fk.max() / 1e9:g} GHz"])
+    f, S3, Sk = f[ok], S3[ok], Sk[ok]
     v = {"case": cid, "group": g}
+    if g == "T" and cid.endswith("_20") and not four:
+        # line parameters: 3D (ABCD of the 20 mm line, γ from 10 / 20 mm) against kisi's segment impedance and delay
+        p10 = os.path.join(REF, cid[:-3] + "_10", "kisi.s2p")
+        S10 = sparam.read_touchstone(p10)[1] if os.path.exists(p10) else None
+        f_full, S3_full = sparam.read_touchstone(ref)
+        tl = sparam.line_params(f_full, S3_full, S10)
+        k5 = int(np.argmin(np.abs(f_full - 5e9)))
+        segs = [x for x in kj.get("segments", []) if x.get("z_ohm_per_line")]
+        zk = float(np.mean([x["z_ohm_per_line"] for x in segs])) if segs else None
+        ek = (kj["delay_ps"] * 1e-12 * 299792458.0 / (kj["length_mm"] * 1e-3)) ** 2 if kj.get("length_mm") else None
+        v.update(zc_3d_5ghz=round(float(tl["zc"][k5]), 2), eeff_3d_5ghz=round(float(tl["eeff"][k5]), 3), zc_kisi=round(zk, 2) if zk else None,
+                 eeff_kisi=round(ek, 3) if ek else None, kisi_source=(kj.get("field_solver") or {}).get("cross_sections_field", 0) and "field solver" or "formula")
     if not pair:
         t3, z3 = sparam.tdr(f, S3[:, 0, 0], rise=35e-12, tmax=150e-12)
         tk, zk = sparam.tdr(f, Sk[:, 0, 0], rise=35e-12, tmax=150e-12)
@@ -105,6 +123,8 @@ for name in cases:
         v["stub_depth_kisi_db"] = round(float(dkn), 1) if fkn else None
         vd = (kj.get("via_details") or [{}])[0] if kj.get("via_details") else {}
         v["kisi_via_z"] = round(vd.get("z_ohm", 0) or 0, 1) if vd else None
+        v["kisi_stub_quarter_wave_ghz"] = round(vd["stub_resonance_ghz"], 2) if vd and vd.get("stub_resonance_ghz") else None
+        v["f_max_kisi_ghz"] = round(fk.max() / 1e9, 1)
         v["kisi_return"] = vd.get("return_path") if vd else None
     else:
         mm3, mmk = sparam.mixed_mode(S3), sparam.mixed_mode(Sk)
@@ -120,5 +140,5 @@ for name in cases:
     rows.append(v)
     print(cid, v, flush=True)
 
-json.dump({"rows": rows}, open(os.path.join(HERE, "results", "kisi_models.json"), "w"), indent=1)
-print("results/kisi_models.json")
+json.dump({"tool": " ".join(CMD), "rows": rows}, open(OUT, "w"), indent=1)
+print(OUT)

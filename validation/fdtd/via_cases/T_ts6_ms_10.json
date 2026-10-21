@@ -101,7 +101,8 @@
  "fmax": 40000000000.0,
  "mesh": {
   "dfine": 0.035,
-  "ratio": 1.4
+  "ratio": 1.4,
+  "thirds": true
  },
  "boundary": "pml",
  "pml_cells": 8,
@@ -113,7 +114,7 @@
  "monitors": [
   {
    "axis": "z",
-   "pos": 0.6735,
+   "pos": 1.29325,
    "freqs": [
     10000000000.0,
     20000000000.0,

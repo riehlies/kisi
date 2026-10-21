@@ -278,6 +278,13 @@ function detailExtent(c) {
 const rgb = (v) => { const h = css(v).replace("#", ""); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
 const b64i8 = (s) => { const b = atob(s); const a = new Int8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = (b.charCodeAt(i) << 24) >> 24; return a; };
 let fieldAnim = null;
+function fieldNote(c) {
+  const g = c.meta.group;
+  if (g === "G") return "Top view: the vertical field between the planes; at a resonance the plane pair shows its standing mode (m, n half waves along 50 and 30 mm).";
+  if (g === "T") return "Top view: the vertical field between the trace of port 1 and its reference; on coupled lines the victim's field shows how much reaches it.";
+  if (g === "E") return "Top view: the vertical field in the middle of the thickest dielectric, with port 1 (the P line) driven alone, so it shows the single-ended drive (half differential, half common mode); the common-mode part spreads into the plane pair.";
+  return "Top view: the vertical field in the middle of the thickest dielectric the via crosses. Where it spreads in rings, the return current has no nearby path and the plane pair carries a radial wave; GND vias close to the signal via keep it local.";
+}
 // signed: background → copper (+) or blue (−); magnitude: background → copper (to 0.8) → text colour
 function ramp(signed, v, a, bg, pos, neg, fg) {
   const mix = (p, q, t) => [0, 1, 2].map((k) => p[k] + (q[k] - p[k]) * t);
@@ -298,7 +305,7 @@ function fieldPanel(c, pw) {
     <button class="btn" data-play>Animate</button></div>
     <div class="readout fl"></div><canvas></canvas>
     <div class="scale"><canvas width="160" height="10"></canvas><span class="sl"></span></div>
-    <p class="note">Phasor of the field per volt of the incident wave, shown at one instant (Animate runs the phase). Top view: the vertical field in the middle of the thickest dielectric the via crosses – where it spreads in rings, the return current has no nearby path and the plane pair carries a radial wave. Section: field strength through the via, time average on a 40 dB scale (height ×2.5).</p>`;
+    <p class="note">Phasor of the field per volt of the incident wave, shown at one instant (Animate runs the phase). ${fieldNote(c)} Section: field strength through port 1, time average on a 40 dB scale (height ×2.5).</p>`;
   const cv = box.querySelector("canvas"), ctx2 = cv.getContext("2d");
   const off = document.createElement("canvas"), octx = off.getContext("2d");
   const cache = new Map();
@@ -518,7 +525,7 @@ function renderChecks() {
   const cw = Math.min(1100, box.clientWidth || 900) - 26;
   const ch = DATA.checks;
   let n = 0;
-  for (const key of ["cavity", "via_convergence", "pml_thru", "openems_compare", "via_pbm", "cavity_model", "kisi_models"]) {
+  for (const key of ["cavity", "via_convergence", "pml_thru", "openems_compare", "via_pbm", "cavity_model", "kisi_models", "kisi_models_field", "pdn_loop"]) {
     const c = ch[key]; if (!c) continue; n++;
     const p = document.createElement("div"); p.className = "panel";
     p.innerHTML = `<h2>${esc(c.title)}</h2>${(c.text || []).map((t) => `<p>${t}</p>`).join("")}` + (c.cols ? `<div class="wide"><table><thead><tr>${c.cols.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${c.rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "");
@@ -535,4 +542,5 @@ const done = cases.filter((c) => c.res).length;
 $("summary").textContent = `${cases.length} cases, ${done} computed with kisi-fdtd (3D FDTD, conformal metal, CPML). Zero-thickness copper, planes continue into the PML.`;
 buildList();
 go((location.hash || "").slice(1));
+window.addEventListener("hashchange", () => { const h = (location.hash || "").slice(1); if (h !== (cur && cur.id) && !(h === "checks" && !$("view-checks").hidden)) go(h); });
 </script>

@@ -9,17 +9,20 @@ case with its curves. The scripts named here reproduce each result.
 | # | Test | Script | Result | Status |
 |---|---|---|---|---|
 | S1 | Metal model: TM010-type resonance of a cylindrical cavity, empty and with a centre post, analytic | `cavity.py` | staircase −1.75 / −0.91 / −0.47 / −0.27 % (empty, 0.2–0.025 mm), conformal −0.21 / −0.09 / −0.04 / −0.02 %; post: staircase −3.26 … −0.89 %, conformal −1.53 … −0.13 % | conformal 7–13× closer |
-| S2 | Mesh convergence of a via with antipads (A_s4_d300_ap800), staircase and conformal, 0.1–0.025 mm | `via_convergence.py` | conformal at h ≈ staircase at 0.7·h; at 0.035 mm \|S21\| within 0.07 dB of the finest run up to 30 GHz | references use 0.035 mm |
+| S2 | Mesh convergence of a via with antipads (A_s4_d300_ap800), staircase and conformal, 0.1–0.025 mm | `via_convergence.py` | conformal at h ≈ staircase at 0.7·h; at 0.035 mm \|S21\| within 0.07 dB of the finest run up to 30 GHz (run with the mesh rules before soft circle lines and coarse GND-via cells) | references use 0.035 mm |
 | S3 | CPML on a matched microstrip: 8 / 16 cells, larger box, openEMS PML_8 | `check_pml.py` | S11 identical for 8 and 16 cells (converged), openEMS 8–14 dB more reflection above 10 GHz, S21 within 0.01 dB | pass |
 | S4 | Implementation against openEMS on the same mesh (staircase, PML), one case each of A, B, D, E | `openems_compare.py` | Δ\|S21\| mean 0.02–0.22 dB; larger maxima (up to 2.5 dB) only in deep nulls (stub notch at −25 dB) | pass |
 | S5 | Lumped series R–L–C at the end of a 1 mm microstrip | unit test `lumped_rlc` | series resonance 4.35–4.40 GHz against 4.33 GHz from the circuit with the line's 0.35 nH, Re Z 9.6 Ω against 10 Ω | pass |
 | S6 | Stability: lone conformal pad in a PEC box, 12 000 steps | unit test `conformal_pad_stable` | energy decays (found and fixed: every face touching a partially free edge must use its free length, otherwise the operator is not symmetric and the energy grows) | pass |
+| S8 | Line impedance and the edge effect of zero-thickness strips: Zc and εeff of 20 mm microstrip / stripline (ThunderScope stack; γ from 10 / 20 mm) against kisi's 2D field solver (≤ 1.7 % from HFSS) | `compare_kisi.py … kisi.mjs` | mesh lines on the strip edges: Zc 6 % low (46.1 / 43.3 Ω against 49.1 / 46.1 Ω), εeff within 1 %; thirds rule (lines Δ/3 inside, 2Δ/3 outside the long edges): Zc 48.6 / 46.5 Ω (−1.0 / +0.8 %), εeff 2.580 / 3.920 (+0.5 / +0.4 %) | thirds rule on for all cases with traces; references recomputed |
 | S7 | Earlier feasibility: kisi-fdtd against openEMS with Mur, staircase | `compare.py` | thru 0.005 / 0.02 dB, via 0.10 / 0.67 dB (mean / max ΔS21) | pass |
 
 Unit tests: `cargo test -p kisi-fdtd` (microstrip, conformal pad stability, cavity resonance within 0.2 %, lumped
 R–L–C).
 
 ### Mesh rules found on the way
+- Thirds rule at the long edges of traces (`"thirds": true`): with the mesh line on the edge, the staircased
+  zero-thickness strip acts wider and Zc comes out 6 % low.
 - With conformal metal, circle extremes are soft mesh lines: they merge into a neighbour within 0.9 cells, so trace
   edges and via circles no longer create sliver cells (one 0.019 mm cell had halved the time step).
 - A gap remainder of at least half a cell becomes a full cell and the gap is rescaled, so no sliver cell remains.
@@ -55,44 +58,80 @@ Every case becomes a mini KiCad board; kisi computes it through its normal pipel
   - In D (L1 ref L2 → L8 ref L7) kisi now reports "stitch" or "missing" and matches the TDR peak: 55.2 against
     55.0 Ω at 2 mm, 62.8 against 57.0 Ω without a stitching via.
   - Regression test: `via_return_path_across_antipad`.
-- **Via impedance:** kisi's coax-section model, with the antipad as outer conductor, puts the via too low. In A
-  (0.8 mm antipad) the TDR minimum is 37.9 Ω against 43.8 Ω. In thick plane pairs the field ends on the return
-  vias and the planes, not on the antipad.
-- **Stub resonance:** kisi gives 25 GHz against 21.4 GHz in 3D (+17 %, target ±10 %) and the notch is too shallow
-  (−13 against −25 dB). Pads and antipads load the stub capacitively.
+- **Via impedance:** kisi's coax-section model, with the antipad as outer conductor, puts the via too low. The TDR
+  extremes (35 ps, with the feeds) deviate by a median of 4.4 %, at most 20 %. In thick plane pairs the field ends
+  on the return vias and the planes, not on the antipad.
+- **Stub resonance:** kisi's quarter-wave estimate is 28.0 GHz against the 3D notch at 21.4–21.7 GHz (+30 %) for
+  the 8-layer stack, and 31.4 against 26.3 GHz (+19 %) for the ThunderScope stack; target ±10 %. Below 25 GHz,
+  where kisi's S-parameters end, its S21 shows no notch at all, while 3D has −25 dB. Pads and antipads load the
+  stub capacitively.
 - **Return-path loss:** without a stitching via, 3D loses energy into the plane pairs (S21 −2.9 dB at 10 GHz).
   kisi's series inductance cannot represent that radiation, so it stays 2 dB too optimistic up to 20 GHz.
+- **Differential vias (E):**
+  - kisi puts the pair via too high: TDR minimum Zdiff 91.9 against 83.5–86.6 Ω for L1→L8.
+  - With the stub (L1→L3) it gives 75.6 against 63.7 Ω, because the pair model has no stub.
+  - It does not distinguish round from oval antipads or 0 / 2 / 4 GND vias.
+- **Lines and coupling (T):**
+  - FEXT of a microstrip aggressor/victim (35 ps): kisi's formula 7.01 % against 7.03 % in 3D (7.28 % with the
+    field solver).
+  - NEXT is overestimated by about 50 % (2.4–2.6 % against 1.6 %; 0.9–1.1 against 0.6 % at twice the gap).
+  - CPWG (LibreVNA RF class): kisi's field solver gives εeff within 1 % (3.08 against 3.11) and Zc 3.5 % high
+    (50.3 against 48.6 Ω; formula 51.1 Ω).
+  - Further line cases: table "kisi's fast channel model" in `references.html`.
 
 ## 4. Reduced models (prototypes)
 
 ### Via model (`via_pbm.py`)
 A physics-based ladder along the barrel:
 - **Nodes:** at the planes and at the signal layers; thick plane pairs are split into sections of ≤ 0.2 mm.
-- **Shunt elements:** via–plate capacitances from an axisymmetric r–z Laplace solve (checked against the disc
-  capacitor: 367 fF against 358 fF analytic).
+- **Shunt elements:** via–plate capacitances from an axisymmetric r–z Laplace solve (checked against a disc over a
+  plane: 367 fF against 358 fF analytic).
 - **Series elements:** between the planes, the parallel-plate impedance ωμd/4 · H0⁽²⁾(ka) with the GND vias as
   shorted ports. Above the outermost planes, a short coax to the antipad.
+- **Trace joining inside a plane pair:** the two parts of that cavity are weighted by their height,
+  Z(d)·(d_g/d)².
 - **Stubs:** the open rest of the ladder.
+- **Pairs:** the 2 × 2 cavity matrix (returns shorted), odd mode Z_PP − Z_PN.
+- **Feed line removal:** the de-embedding fixture runs to the via centre, so the model subtracts the feed over the
+  pad or the antipad opening (stripline feeds with the offset-stripline formula).
 
-It is compared with the 3D result de-embedded by the 2×thru of each feed layer.
+It is compared with the 3D result de-embedded by the 2×thru of each feed layer (pairs: first-order shift).
 
-Over the single-via cases (A–D), up to 20 GHz:
-- median phase error 5.6°, |S21| within 0.15 dB, |ΔS11| 0.08;
-- TDR via impedance within 2–5 %;
-- return-path peak in D within 1 %, and the loss into the plane pairs reproduced (S21 −2.43 against −2.25 dB at
-  10 GHz without a stitching via);
-- stub notch −5 … −9 % (kisi's present model: +17 %).
+Results up to 20 GHz (`results/via_pbm.json`):
+- **Single vias (A–D, 27 cases):** |S21| median deviation 0.14 dB. TDR via impedance (25 ps) median 1.8 %,
+  90th percentile 9 %; the return-path peak in D is within 1 %.
+- **Return-path loss:** the loss into the plane pairs is reproduced (D without a stitching via: S21 −2.43 against
+  −2.25 dB at 10 GHz).
+- **Stub notch:** +0.9 / −0.5 % for the 8-layer stack, −5.7 % for the ThunderScope stack. kisi's present model:
+  +19 … +30 %.
+- **Pairs L1→L8 (8 cases):** Sdd21 within 0.18–0.29 dB, phase within 3.7–6.6°.
 
 **Open points**
-- Exits on inner layers (stripline inside a plane pair) are the weak point: phase 17–19° too large.
-- Next step: a single plane pair with weighted segment currents instead of independent sub-cavities.
-- Pairs (E) still need the two-via cavity matrix and the mutual capacitance.
+- **Exits on inner layers** (stripline inside a plane pair: B L1→L3, E L1→L3): the magnitude is good (|ΔS21|
+  0.2–0.4 dB for single vias), but about 3 ps of delay are missing (20–28° at 20 GHz).
+- **Pairs:** the mutual capacitance of the two barrels is included only where the pitch is below the field radius
+  (not the case in these stacks).
 
 ### Plane-cavity model (`cavity_model.py`)
 - Rectangular plane pair with magnetic walls (double cosine series), same dielectric loss as in 3D.
-- The resonances of G match within 0.8 % (one step of the 10 MHz frequency grid).
-- |Z21| below 1 GHz agrees within 0.7 %; |Z11| is 7 % low (the effective size of the one-cell port).
+- **G:** resonances within 0.8 % (one step of the 10 MHz frequency grid). |Z21| below 1 GHz within 0.7 %, |Z11|
+  7 % low (the effective size of the one-cell port).
+- **H (`pdn_loop.py`):** the change of the loop inductance with the capacitor distance, from the same series with
+  a port at the pin field and the capacitor vias shorted:
+  - 0.339 against 0.335 nH (2 → 10 mm); the radial formula μ0·d_eff/π·ln(D2/D1) gives only 0.10 nH, because the
+    7 mm wide board makes the current run as in a strip.
+  - The total loop inductance in 3D is 1.33 nH at 2 mm and 1.66 nH at 10 mm.
+  - The vertical parts (pins, vias, capacitor body) are equal for every distance and are not modelled yet.
+- **H setup error, found and fixed:** the first H runs had the planes reaching into the PML. The infinite PWR/GND
+  plane pair was itself a ~0.2 Ω path at 100 MHz and bypassed the capacitor (same impedance with and without it).
+  H now uses a finite board.
 
-### Not yet modelled
-- H (PDN loop): the plane-pair loop model with all PWR and GND vias as ports.
-- T: the coupling against kisi's crosstalk estimate; done by `compare_kisi.py` once the T results are in.
+### Field view
+Every case has the electric field of port 1 (`fields.json`).
+- **Top view:** in the thickest dielectric the via crosses (lines: between the trace and its reference).
+  Animated, so the phase runs.
+- **Section:** through port 1.
+- **What it shows:**
+  - D without a stitching via: the radial wave in the plane pair, at 20 GHz rings with λ/2 ≈ 3.6 mm.
+  - G: the standing cavity modes, e.g. TM01 at 2.41 GHz, positive in one half of the board and negative in the
+    other.

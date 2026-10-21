@@ -27,7 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REF = os.path.join(os.path.dirname(HERE), "via_ref")
 sys.path.insert(0, HERE)
 import sparam  # noqa: E402
-from via_cases import z_microstrip  # noqa: E402
+from via_cases import z_microstrip, z_stripline_sym  # noqa: E402
 
 EPS0, MU0, C0 = 8.8541878128e-12, 4e-7 * math.pi, 299792458.0
 SHARED = True  # trace joining inside a plane pair: weighted cavity groups
@@ -147,6 +147,27 @@ def rz_charges(case, via, dr=0.01, rmax=3.0):
     return np.array([z[k // nr] for k in on]), q[on]
 
 
+def feed_line(case, planes, w, zt, zref):
+    """impedance and εeff of the feed trace: offset stripline (IPC-2141 style, as the case
+    generator) between the nearest planes above and below, else microstrip over the reference"""
+    pz = [p[0] for p in planes]
+    up = [z for z in pz if z > zt + 1e-9]
+    dn = [z for z in pz if z < zt - 1e-9]
+    num = den = 0.0
+    if up and dn:
+        za, zb = min(up), max(dn)
+        for l in case["layers"]:
+            o = max(0.0, min(l["z1"], za) - max(l["z0"], zb))
+            num += o * l["er"]; den += o
+        er = num / den
+        h1, h2 = za - zt, zt - zb
+        z1, z2 = z_stripline_sym(w, 2 * h1, er), z_stripline_sym(w, 2 * h2, er)
+        return 2 * z1 * z2 / (z1 + z2), er
+    h = abs(zt - zref)
+    er, _ = er_at(case, (zt + zref) / 2)
+    return z_microstrip(w, h, er), feed_eeff(w, h, er, case, zt, zref)
+
+
 def feed_eeff(w, h, er, case, zt, zref):
     """effective εr of the feed: microstrip (Hammerstad) when nothing is above the trace, else
     the εr of the dielectric (stripline)"""
@@ -216,6 +237,31 @@ def ladder(case, f, via_index=0, loss_as_3d=True, mode=None):
     for zz, q in zip(zq, qq):
         k = int(np.argmin([abs(zz - n) for n in nodes]))
         C[k] += q
+    if partner and mode == "odd":
+        # odd mode: the partner barrel at the opposite potential adds capacitance. Two wires with a
+        # far return: C_self' = 2πε/ln(R/a), C_odd' = 2πε/ln(p/a), so inside the plane pairs the
+        # barrel charge is scaled by ln(R/a)/ln(p/a), R from the solved charge per length there
+        pitch = math.hypot(partner["x"] - via["x"], partner["y"] - via["y"])
+        rows = {}
+        for zz, q in zip(zq, qq):
+            rows[round(zz, 5)] = rows.get(round(zz, 5), 0.0) + q
+        zr = sorted(rows)
+        a_m = via["r"]
+        for k in range(len(nodes)):
+            zk = nodes[k]
+            inside = any(p_[0] > zk + 1e-9 for p_ in crossed) and any(p_[0] < zk - 1e-9 for p_ in crossed)
+            if not inside:
+                continue
+            # charge per length on the barrel around this node, away from pads and planes
+            near = [z for z in zr if abs(z - zk) < SUB and all(abs(z - p_[0]) > 0.05 for p_ in planes)]
+            if len(near) < 3:
+                continue
+            dz = (max(near) - min(near)) / (len(near) - 1) * 1e-3
+            cpl = np.mean([rows[z] for z in near]) / dz
+            er_, _ = er_at(case, zk)
+            reff = a_m * math.exp(2 * math.pi * EPS0 * er_ / cpl)
+            if pitch < reff:
+                C[k] *= math.log(reff / a_m) / math.log(pitch / a_m)
     # return vias (GND) with coordinates in m
     rets = [(0.0, v["r"] * 1e-3, (v["x"] - via["x"]) * 1e-3, (v["y"] - via["y"]) * 1e-3) for v in case["vias"] if v.get("net") == "GND"]
     sig = (0.0, via["r"] * 1e-3, 0.0, 0.0)
@@ -337,8 +383,7 @@ def ladder(case, f, via_index=0, loss_as_3d=True, mode=None):
             zt = p["z1"]
             h = abs(zt - p["z0"])
             er_, _ = er_at(case, (zt + p["z0"]) / 2)
-            zf = z_microstrip(wt, h, er_)
-            ee = feed_eeff(wt, h, er_, case, zt, p["z0"])
+            zf, ee = feed_line(case, planes, wt, zt, p["z0"])
             beta = w * math.sqrt(ee) / C0
             # the fixture is a full trace up to the via centre: over the pad and over the antipad
             # opening of the reference plane, both of which the model has in its own elements

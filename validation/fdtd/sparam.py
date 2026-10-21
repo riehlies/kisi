@@ -214,5 +214,39 @@ def tdr(f, s11, rise=25e-12, z0=50.0, tmax=None):
     return t, z0 * (1 + rho) / (1 - rho)
 
 
+def line_params(f, S20, S10=None, l20=20.0, l10=10.0):
+    """Zc and εeff of a uniform line from its 2-port (50 Ω ports, ABCD of the 20 mm line); γ also
+    from the line–line method (T20 · T10⁻¹ is a line of l20 − l10, port effects cancel)"""
+    s11, s12, s21, s22 = S20[:, 0, 0], S20[:, 0, 1], S20[:, 1, 0], S20[:, 1, 1]
+    A = ((1 + s11) * (1 - s22) + s12 * s21) / (2 * s21)
+    B = 50 * ((1 + s11) * (1 + s22) - s12 * s21) / (2 * s21)
+    C = ((1 - s11) * (1 - s22) - s12 * s21) / (2 * 50 * s21)
+    zc = np.sqrt(B / C)
+    zc = np.where(zc.real < 0, -zc, zc)
+    w = 2 * np.pi * f
+    out = {"zc": zc.real}
+
+    def beta_unwrap(ph, length):
+        return np.unwrap(ph) / (length * 1e-3)
+    if S10 is not None:
+        T20, T10 = _s2t(S20), _s2t(S10)
+        M = T20 @ np.linalg.inv(T10)
+        ev = np.linalg.eigvals(M)
+        # e^{−γΔl}: the eigenvalue with |λ| < 1 (or the one with negative phase slope)
+        lam = np.where(np.abs(ev[:, 0]) < np.abs(ev[:, 1]), ev[:, 0], ev[:, 1])
+        dl = l20 - l10
+        beta = -beta_unwrap(np.angle(lam), dl)
+        alpha = -np.log(np.abs(lam)) / (dl * 1e-3)
+        out["source"] = "line–line (10 / 20 mm)"
+    else:
+        beta = -beta_unwrap(np.angle(s21), l20)
+        alpha = -np.log(np.abs(s21)) / (l20 * 1e-3)
+        out["source"] = "S21 of the 20 mm line"
+    eeff = (beta * 299792458.0 / w) ** 2
+    out["eeff"] = eeff
+    out["loss_db_per_mm"] = alpha * 8.686e-3
+    return out
+
+
 def db(x):
     return 20 * np.log10(np.maximum(np.abs(x), 1e-12))

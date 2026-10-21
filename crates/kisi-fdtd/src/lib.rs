@@ -152,6 +152,9 @@ pub struct MeshSpec {
     pub dfine: f64,
     #[serde(default = "ratio")]
     pub ratio: f64,
+    /// thirds rule at the long edges of traces (lines Δ/3 inside, 2Δ/3 outside)
+    #[serde(default)]
+    pub thirds: bool,
 }
 fn ratio() -> f64 {
     1.4
@@ -347,12 +350,22 @@ pub fn make_mesh(c: &Case) -> Mesh {
         fz.push((l.z0, fine, false));
         fz.push((l.z1, fine, false));
     }
+    let on_board_edge = |v: f64, lo: f64, hi: f64| (v - lo).abs() < 1e-9 || (v - hi).abs() < 1e-9;
     for s in &c.sheets {
         fz.push((s.z, fine, false));
         fx.push((s.rect[0], fine, false));
         fx.push((s.rect[2], fine, false));
-        fy.push((s.rect[1], fine, false));
-        fy.push((s.rect[3], fine, false));
+        if c.mesh.thirds && !on_board_edge(s.rect[1], c.board[1], c.board[3]) && !on_board_edge(s.rect[3], c.board[1], c.board[3]) {
+            // thirds rule on the long edges (the traces run along x): a line Δ/3 inside and 2Δ/3
+            // outside the edge, so the staircased strip has its true electrical width
+            fy.push((s.rect[1] + fine / 3.0, fine, false));
+            fy.push((s.rect[1] - 2.0 * fine / 3.0, fine, false));
+            fy.push((s.rect[3] - fine / 3.0, fine, false));
+            fy.push((s.rect[3] + 2.0 * fine / 3.0, fine, false));
+        } else {
+            fy.push((s.rect[1], fine, false));
+            fy.push((s.rect[3], fine, false));
+        }
         for h in &s.holes {
             let (x0, y0, x1, y1, r) = hole_seg(h);
             for dd in [-r, 0.0, r] {
@@ -385,8 +398,10 @@ pub fn make_mesh(c: &Case) -> Mesh {
     }
     for p in &c.ports {
         fx.push((p.x, fine, false));
-        fy.push((p.y0, fine, false));
-        fy.push((p.y1, fine, false));
+        if !c.mesh.thirds {
+            fy.push((p.y0, fine, false));
+            fy.push((p.y1, fine, false));
+        }
         fz.push((p.z0, fine, false));
         fz.push((p.z1, fine, false));
     }

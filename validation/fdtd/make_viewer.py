@@ -51,40 +51,6 @@ def curves(S, group="", f=None, z0=50.0):
             "Sdd21": r2(dm["dd"][:, 1, 0]), "Sdd11": r2(dm["dd"][:, 0, 0]), "Scd21": r2(dm["cd"][:, 1, 0]), "Scc21": r2(dm["cc"][:, 1, 0])}
 
 
-def line_params(f, S20, S10=None, l20=20.0, l10=10.0):
-    """Zc and εeff of a uniform line from its 2-port (50 Ω ports, ABCD of the 20 mm line); γ also
-    from the line–line method (T20 · T10⁻¹ is a line of l20 − l10, port effects cancel)"""
-    s11, s12, s21, s22 = S20[:, 0, 0], S20[:, 0, 1], S20[:, 1, 0], S20[:, 1, 1]
-    A = ((1 + s11) * (1 - s22) + s12 * s21) / (2 * s21)
-    B = 50 * ((1 + s11) * (1 + s22) - s12 * s21) / (2 * s21)
-    C = ((1 - s11) * (1 - s22) - s12 * s21) / (2 * 50 * s21)
-    zc = np.sqrt(B / C)
-    zc = np.where(zc.real < 0, -zc, zc)
-    w = 2 * np.pi * f
-    out = {"zc": r2(zc.real[::STEP], 2)}
-
-    def beta_unwrap(ph, length):
-        return np.unwrap(ph) / (length * 1e-3)
-    if S10 is not None:
-        T20, T10 = sparam._s2t(S20), sparam._s2t(S10)
-        M = T20 @ np.linalg.inv(T10)
-        ev = np.linalg.eigvals(M)
-        # e^{−γΔl}: the eigenvalue with |λ| < 1 (or the one with negative phase slope)
-        lam = np.where(np.abs(ev[:, 0]) < np.abs(ev[:, 1]), ev[:, 0], ev[:, 1])
-        dl = l20 - l10
-        beta = -beta_unwrap(np.angle(lam), dl)
-        alpha = -np.log(np.abs(lam)) / (dl * 1e-3)
-        out["source"] = "line–line (10 / 20 mm)"
-    else:
-        beta = -beta_unwrap(np.angle(s21), l20)
-        alpha = -np.log(np.abs(s21)) / (l20 * 1e-3)
-        out["source"] = "S21 of the 20 mm line"
-    eeff = (beta * 299792458.0 / w) ** 2
-    out["eeff"] = r2(eeff[::STEP], 3)
-    out["loss_db_per_mm"] = r2((alpha * 8.686e-3)[::STEP], 4)
-    return out
-
-
 def model_check(nm, d):
     """tables of the reduced-model comparisons"""
     if nm == "via_pbm":
@@ -105,6 +71,16 @@ def model_check(nm, d):
                          "stub notch 17 % too high (table below); this model is the candidate to replace it."],
                 "cols": ["case", "max Δ|S21| to 20 GHz (dB)", "max |ΔS11| to 20 GHz", "TDR Z min 3D / model (Ω)", "TDR Z max 3D / model (Ω)", "stub notch 3D / model (GHz)"],
                 "rows": rows}
+    if nm == "pdn_loop":
+        rows = [[r["case"], r["dist_mm"], r["D_mm"], r["L50_nH"], r["R50_mOhm"], r["dL_3d_nH"], r.get("dL_model_nH", "–"), r["dL_formula_nH"]] for r in d["rows"]]
+        return {"title": "PDN loop (group H): loop inductance against the plane-spreading formula",
+                "text": [f"BGA pin field (4 × 4, 0.8 mm, pins shorted per net by two sheets above the board) to one 0402 capacitor (a short with 5 mΩ "
+                         f"on a 0.5 mm body loop), finite 8-layer board, 1 Ω port. Loop inductance Im(Z11)/ω at 50 MHz. The change with the distance "
+                         f"is compared with the finite-board plane-cavity model (double cosine series, height d_eff, 2.4 mm port at the pin field, the capacitor vias as a "
+                         f"shorted 0.2 mm port) and with the radial formula ΔL = μ0·d_eff/π·ln(D2/D1), d_eff = {d['d_eff_mm']} mm (PWR plane between two GND planes). "
+                         "The board is 7 mm wide, so beyond a few mm the current runs as in a strip and the radial formula underestimates ΔL. "
+                         "An earlier run with the planes reaching into the PML was wrong: the infinite plane pair bypassed the capacitor. Script: pdn_loop.py."],
+                "cols": ["case", "distance (mm)", "D centre (mm)", "L at 50 MHz (nH)", "R at 50 MHz (mΩ)", "ΔL 3D (nH)", "ΔL plane-cavity model (nH)", "ΔL radial formula (nH)"], "rows": rows}
     if nm == "cavity_model":
         rows = []
         for cid, v in d.items():
@@ -120,15 +96,18 @@ def model_check(nm, d):
     for v in d.get("rows", []):
         if "next_3d_pct" in v:
             rows.append([v["case"], "NEXT / FEXT 3D (%)", f"{v['next_3d_pct']} / {v['fext_3d_pct']}", "kisi (%)", f"{v['next_kisi_pct']} / {v['fext_kisi_pct']}", ""])
+        elif "zc_3d_5ghz" in v:
+            rows.append([v["case"], "Zc at 5 GHz 3D / kisi (Ω)", f"{v['zc_3d_5ghz']} / {v['zc_kisi']}", "εeff 3D / kisi", f"{v['eeff_3d_5ghz']} / {v['eeff_kisi']}", f"kisi: {v.get('kisi_source', '')}"])
         elif "dSdd21_max_db" in v:
             rows.append([v["case"], "max ΔSdd21 to 20 GHz", v["dSdd21_max_db"], "Zdiff min 3D / kisi", f"{v['zdiff_min_3d']} / {v['zdiff_min_kisi']}", f"Scd21 {v['Scd21_max_3d_db']} / {v['Scd21_max_kisi_db']} dB"])
         else:
             rows.append([v["case"], f"max Δ|S21| to {v['f_limit_ghz']} GHz", v["dS21_max_db"], "TDR Z min/max 3D | kisi", f"{v['z_min_3d']}/{v['z_max_3d']} | {v['z_min_kisi']}/{v['z_max_kisi']}",
-                         f"stub {v['stub_3d_ghz'] or '–'} / {v['stub_kisi_ghz'] or '–'} GHz" if v.get("stub_3d_ghz") else (v.get("kisi_return") or "")])
-    return {"title": "kisi's fast channel model against the 3D result",
+                         f"stub notch 3D {v['stub_3d_ghz']} GHz, kisi λ/4 {v.get('kisi_stub_quarter_wave_ghz') or '–'} GHz" if v.get("stub_3d_ghz") else (v.get("kisi_return") or "")])
+    title = "kisi's fast channel model against the 3D result" + (" (Node CLI, 2D field solver)" if nm == "kisi_models_field" else " (formula impedances)")
+    return {"title": title,
             "text": ["Each case as a mini KiCad board (kisi_board.py), computed by `kisi net … --s2p/--s4p` (formula impedances, kisi's via "
                      "model), ports at the ends of the feed lines as in 3D. TDR with a 35 ps edge; coupling as the peak of the step response "
-                     "(35 ps) at the victim's near and far end. Script: compare_kisi.py."],
+                     "(35 ps) at the victim's near and far end. kisi exports S-parameters up to 25 GHz; the comparison stops there. Script: compare_kisi.py."],
             "cols": ["case", "metric", "value", "metric", "3D / kisi", "note"], "rows": rows}
 
 
@@ -216,7 +195,8 @@ def main():
                         entry["deembed"] = "2×thru, first order (feed delay and loss per port)"
             if grp == "T" and nm.endswith("_20") and S.shape[1] == 2:
                 f10, S10 = load(nm[:-3] + "_10", "kisi")
-                entry["tl"] = line_params(f, S, S10 if S10 is not None and len(f10) == len(f) else None)
+                tl = sparam.line_params(f, S, S10 if S10 is not None and len(f10) == len(f) else None)
+                entry["tl"] = {"source": tl["source"], "zc": r2(tl["zc"][::STEP], 2), "eeff": r2(tl["eeff"][::STEP], 3), "loss_db_per_mm": r2(tl["loss_db_per_mm"][::STEP], 4)}
             if grp in ("G", "H"):
                 entry["res"] = res
                 cases.append(entry)
@@ -236,7 +216,7 @@ def main():
         p = os.path.join(HERE, "results", f"{nm}.json")
         if os.path.exists(p):
             checks[nm] = json.load(open(p))
-    for nm in ("via_pbm", "cavity_model", "kisi_models"):
+    for nm in ("via_pbm", "cavity_model", "kisi_models", "kisi_models_field", "pdn_loop"):
         p = os.path.join(HERE, "results", f"{nm}.json")
         if os.path.exists(p):
             checks[nm] = model_check(nm, json.load(open(p)))

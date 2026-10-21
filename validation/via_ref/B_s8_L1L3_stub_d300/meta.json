@@ -1,0 +1,59 @@
+{
+ "case": "B_s8_L1L3_stub_d300",
+ "meta": {
+  "group": "B",
+  "title": "L1\u2192L3, through via (stub to L8), drill \u00d80.3",
+  "params": {
+   "drill_mm": 0.3,
+   "antipad_mm": 0.8,
+   "stitch": "4 \u00d7 1 mm",
+   "stub": "L3\u2192L8"
+  },
+  "stackup": "s8",
+  "stackup_title": "8-layer 1.6 mm FR-4 (generic)",
+  "copper_z": [
+   1.6,
+   1.5,
+   1.3,
+   1.15,
+   0.45,
+   0.3,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L4",
+   "L5",
+   "L7"
+  ],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L3",
+    "ref": "L4"
+   }
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 600039,
+   "steps": [
+    3601,
+    3601
+   ],
+   "dt": 8.900816689547277e-14,
+   "seconds": 91.1,
+   "dfine": 0.05,
+   "dmax": null
+  }
+ }
+}

@@ -1,0 +1,55 @@
+{
+ "case": "B_ts6_L1L6",
+ "meta": {
+  "group": "B",
+  "title": "ThunderScope stack: L1\u2192B.Cu, no stub",
+  "params": {
+   "drill_mm": 0.3,
+   "antipad_mm": 0.8,
+   "stitch": "4 \u00d7 1 mm",
+   "stub": "none"
+  },
+  "stackup": "ts6",
+  "stackup_title": "ThunderScope Rev5.3 6-layer (FR408HR / FR-4, from the board file)",
+  "copper_z": [
+   1.3486,
+   1.2379,
+   1.1363,
+   0.2107,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5"
+  ],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L6",
+    "ref": "L5"
+   }
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 535050,
+   "steps": [
+    4201,
+    4201
+   ],
+   "dt": 5.267310588753981e-14,
+   "seconds": 96.0,
+   "dfine": 0.05,
+   "dmax": null
+  }
+ }
+}

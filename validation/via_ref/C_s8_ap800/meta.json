@@ -1,0 +1,58 @@
+{
+ "case": "C_s8_ap800",
+ "meta": {
+  "group": "C",
+  "title": "L1\u2192L8, antipad \u00d80.8 on every plane",
+  "params": {
+   "drill_mm": 0.3,
+   "stitch": "4 \u00d7 1 mm",
+   "antipad_mm": 0.8
+  },
+  "stackup": "s8",
+  "stackup_title": "8-layer 1.6 mm FR-4 (generic)",
+  "copper_z": [
+   1.6,
+   1.5,
+   1.3,
+   1.15,
+   0.45,
+   0.3,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L4",
+   "L5",
+   "L7"
+  ],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L8",
+    "ref": "L7"
+   }
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 600039,
+   "steps": [
+    2801,
+    2801
+   ],
+   "dt": 8.694143385181171e-14,
+   "seconds": 75.7,
+   "dfine": 0.05,
+   "dmax": null
+  }
+ }
+}

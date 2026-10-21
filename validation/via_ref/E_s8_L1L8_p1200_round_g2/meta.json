@@ -1,0 +1,69 @@
+{
+ "case": "E_s8_L1L8_p1200_round_g2",
+ "meta": {
+  "group": "E",
+  "title": "pair L1\u2192L8, pitch 1.2 mm, two round antipads, 2 GND vias",
+  "params": {
+   "pitch_mm": 1.2,
+   "antipad": "round",
+   "gnd_vias": 2,
+   "to": "L8"
+  },
+  "stackup": "s8",
+  "stackup_title": "8-layer 1.6 mm FR-4 (generic)",
+  "copper_z": [
+   1.6,
+   1.5,
+   1.3,
+   1.15,
+   0.45,
+   0.3,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L4",
+   "L5",
+   "L7"
+  ],
+  "ports": [
+   {
+    "name": "1 P near",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2 N near",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "3 P far",
+    "layer": "L8",
+    "ref": "L7"
+   },
+   {
+    "name": "4 N far",
+    "layer": "L8",
+    "ref": "L7"
+   }
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 640395,
+   "steps": [
+    2801,
+    2801
+   ],
+   "dt": 8.694143385181165e-14,
+   "seconds": 84.6,
+   "dfine": 0.05,
+   "dmax": null
+  }
+ }
+}

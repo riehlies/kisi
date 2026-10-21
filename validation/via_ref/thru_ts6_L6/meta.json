@@ -1,0 +1,53 @@
+{
+ "case": "thru_ts6_L6",
+ "meta": {
+  "group": "thru",
+  "title": "2\u00d7thru, L6, 8 mm",
+  "params": {
+   "layer": "L6",
+   "width_mm": 0.239,
+   "length_mm": 8.0
+  },
+  "stackup": "ts6",
+  "stackup_title": "ThunderScope Rev5.3 6-layer (FR408HR / FR-4, from the board file)",
+  "copper_z": [
+   1.3486,
+   1.2379,
+   1.1363,
+   0.2107,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5"
+  ],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L6",
+    "ref": "L5"
+   },
+   {
+    "name": "2",
+    "layer": "L6",
+    "ref": "L5"
+   }
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 274500,
+   "steps": [
+    2201
+   ],
+   "dt": 9.165534014417337e-14,
+   "seconds": 10.8,
+   "dfine": 0.05,
+   "dmax": null
+  }
+ }
+}

@@ -1,0 +1,135 @@
+{
+ "domain": [
+  -28.0,
+  -18.0,
+  -3.0,
+  28.0,
+  18.0,
+  3.2
+ ],
+ "board": [
+  -25.0,
+  -15.0,
+  25.0,
+  15.0
+ ],
+ "layers": [
+  {
+   "z0": 0.0,
+   "z1": 0.2,
+   "er": 4.3,
+   "tand": 0.02
+  }
+ ],
+ "sheets": [
+  {
+   "z": 0.2,
+   "rect": [
+    -25.0,
+    -15.0,
+    25.0,
+    15.0
+   ],
+   "holes": [],
+   "net": "PWR"
+  },
+  {
+   "z": 0.0,
+   "rect": [
+    -25.0,
+    -15.0,
+    25.0,
+    15.0
+   ],
+   "holes": [],
+   "net": "GND"
+  }
+ ],
+ "vias": [],
+ "ports": [
+  {
+   "x": -22.0,
+   "y0": -12.0,
+   "y1": -12.0,
+   "z0": 0.0,
+   "z1": 0.2,
+   "r": 1.0
+  },
+  {
+   "x": 0.0,
+   "y0": 0.0,
+   "y1": 0.0,
+   "z0": 0.0,
+   "z1": 0.2,
+   "r": 1.0
+  }
+ ],
+ "fmax": 6000000000.0,
+ "mesh": {
+  "dfine": 0.1,
+  "ratio": 1.4
+ },
+ "boundary": "pml",
+ "pml_cells": 8,
+ "conformal": true,
+ "end_db": -50,
+ "max_steps": 400000,
+ "nf": 600,
+ "f_loss": 2500000000.0,
+ "name": "G_pp200",
+ "meta": {
+  "group": "G",
+  "title": "Plane pair 50 \u00d7 30 mm, d = 0.2 mm, ports at a corner and the centre",
+  "params": {
+   "size_mm": "50 \u00d7 30",
+   "d_mm": 0.2,
+   "port_ohm": 1.0,
+   "modes_GHz": [
+    1.446,
+    2.41,
+    2.81,
+    2.891,
+    3.764,
+    4.337,
+    4.819,
+    4.962
+   ],
+   "modes_mn": [
+    "10",
+    "01",
+    "11",
+    "20",
+    "21",
+    "30",
+    "02",
+    "31"
+   ]
+  },
+  "stackup": "pp200",
+  "stackup_title": "plane pair, 0.2 mm FR-4",
+  "copper_z": [
+   0.2,
+   0.0
+  ],
+  "planes": [
+   "L1",
+   "L2"
+  ],
+  "pwr_planes": [
+   "L1"
+  ],
+  "ports": [
+   {
+    "name": "1 corner",
+    "layer": "PWR",
+    "ref": "GND"
+   },
+   {
+    "name": "2 centre",
+    "layer": "PWR",
+    "ref": "GND"
+   }
+  ],
+  "lumped": []
+ }
+}

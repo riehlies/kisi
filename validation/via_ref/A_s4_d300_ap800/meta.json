@@ -1,0 +1,52 @@
+{
+ "case": "A_s4_d300_ap800",
+ "meta": {
+  "group": "A",
+  "title": "L1\u2192L4 through L2/L3, drill \u00d80.3, antipad \u00d80.8, 4 GND vias at 1 mm",
+  "params": {
+   "drill_mm": 0.3,
+   "antipad_mm": 0.8,
+   "stitch": "4 \u00d7 1 mm"
+  },
+  "stackup": "s4",
+  "stackup_title": "4-layer 1.6 mm FR-4",
+  "copper_z": [
+   1.6,
+   1.4,
+   0.2,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L3"
+  ],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L4",
+    "ref": "L3"
+   }
+  ]
+ },
+ "date": "2026-10-21",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 535050,
+   "steps": [
+    2801,
+    2801
+   ],
+   "dt": 8.809774061244205e-14,
+   "seconds": 66.8,
+   "dfine": 0.05,
+   "dmax": null
+  }
+ }
+}

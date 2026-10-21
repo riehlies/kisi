@@ -1,0 +1,398 @@
+<title>kisi 3D References</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/*FONTS*/
+/* Layout: kisi viewer look (sage neutrals, copper accent); header with two views, case list beside the case sheet */
+:root {
+  --bg: #e9ede9; --panel: #f7f9f7; --panel-2: #eef2ef; --fg: #17201b; --muted: #59665f; --line: #d2d9d4;
+  --accent: #a9561f; --accent-soft: #f1e2d6; --diel: #c9d6c2; --cu: #b0672b; --gnd: #6d7a72;
+  --s1: #a9561f; --s2: #2f6fb0; --s3: #7a52c4; --s4: #23905a; --ok: #23a05a; --warn: #c98612; --bad: #d63c3c;
+  --k-ms: #d07b2f; --k-sl: #2f86c8; --k-emb: #8a5bd6;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1412; --panel: #151b18; --panel-2: #1b2320; --fg: #e2e9e4; --muted: #8e9b94; --line: #27312c;
+  --accent: #e08f52; --accent-soft: #3a2a1e; --diel: #2c3a30; --cu: #d98a4a; --gnd: #8fa097;
+  --s1: #e08f52; --s2: #5fa6e8; --s3: #a682ef; --s4: #3cc477; --ok: #3cc477; --warn: #f0ae35; --bad: #f25d5d;
+  --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1412; --panel: #151b18; --panel-2: #1b2320; --fg: #e2e9e4; --muted: #8e9b94; --line: #27312c;
+  --accent: #e08f52; --accent-soft: #3a2a1e; --diel: #2c3a30; --cu: #d98a4a; --gnd: #8fa097;
+  --s1: #e08f52; --s2: #5fa6e8; --s3: #a682ef; --s4: #3cc477; --ok: #3cc477; --warn: #f0ae35; --bad: #f25d5d;
+  --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef; color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.45; margin: 0 }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel) }
+.brand { display: flex; align-items: baseline; gap: 8px }
+.brand b { font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--accent); letter-spacing: .02em }
+.brand span { font-family: var(--font-display); font-weight: 600; font-size: 18px }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden }
+.seg button { border: 0; background: none; padding: 6px 12px; cursor: pointer; font: 600 14px var(--font-display); color: var(--muted) }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg) }
+.seg button:focus-visible, .case-list button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px }
+.sub { color: var(--muted); font-size: 13px; flex: 1 1 260px; min-width: 0 }
+main { padding-block: 16px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+.cases { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 18px; align-items: start }
+nav.case-list { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 64px); max-height: calc(100vh - 90px); overflow: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 0 }
+.case-list h3 { font: 700 13px var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 10px 12px 4px }
+.case-list p.gd { margin: 0 12px 4px; font-size: 12px; color: var(--muted) }
+.case-list button { display: flex; width: 100%; gap: 8px; align-items: baseline; text-align: left; border: 0; background: none; padding: 4px 12px; cursor: pointer; color: var(--fg); font: 13px var(--font-body) }
+.case-list button:hover { background: var(--panel-2) }
+.case-list button[aria-current="true"] { background: var(--accent-soft) }
+.case-list button .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--line); transform: translateY(-1px) }
+.case-list button .dot.done { background: var(--ok) }
+#case-select { display: none; width: 100%; padding: 8px; font: 14px var(--font-body); background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: var(--radius) }
+h1 { font: 700 26px/1.15 var(--font-display); margin: 0 0 6px; text-wrap: balance }
+h2 { font: 600 17px var(--font-display); margin: 0 0 8px; letter-spacing: .01em }
+.id { font-family: var(--font-mono); font-size: 12px; color: var(--muted) }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px }
+.chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; font-variant-numeric: tabular-nums }
+.chip b { font-weight: 600 }
+.chip.ok { border-color: var(--ok) } .chip.warn { border-color: var(--warn) }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; min-width: 0 }
+.panel .hd { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap }
+.readout { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.4em }
+svg { display: block; width: 100%; height: auto; max-width: 100% }
+svg text { fill: var(--muted); font: 11px var(--font-body) }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-top: 6px }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px }
+.legend i.dash { border-top-style: dashed }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 18px 0 10px }
+.note { color: var(--muted); font-size: 12.5px; max-width: 70ch }
+.wide { overflow-x: auto }
+table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; width: 100% }
+th, td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap }
+th:first-child, td:first-child { text-align: left }
+th { font: 600 12px var(--font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--muted) }
+.checks { display: grid; gap: 16px; max-width: 1100px }
+.checks p { max-width: 75ch; margin: 0 0 10px }
+.pending { color: var(--muted); font-style: italic }
+@media (max-width: 760px) {
+  .cases { grid-template-columns: minmax(0, 1fr) }
+  nav.case-list { display: none }
+  #case-select { display: block; margin-bottom: 12px }
+  .grid { grid-template-columns: minmax(0, 1fr) }
+}
+</style>
+
+<header>
+  <div class="brand"><b>kisi</b><span>3D references</span></div>
+  <div class="seg" role="group" aria-label="View">
+    <button id="tab-cases" aria-pressed="true">Reference cases</button>
+    <button id="tab-checks" aria-pressed="false">Solver checks</button>
+  </div>
+  <div class="sub" id="summary"></div>
+</header>
+<main>
+  <section id="view-cases" class="cases">
+    <nav class="case-list" id="case-list" aria-label="Cases"></nav>
+    <div style="min-width:0">
+      <select id="case-select" aria-label="Case"></select>
+      <div id="case"></div>
+    </div>
+  </section>
+  <section id="view-checks" class="checks" hidden></section>
+</main>
+
+<script>
+"use strict";
+const DATA = __DATA__;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const GROUPS = {
+  A: ["Coax section", "Via through a plane pair with a clean return path: impedance and delay of the coaxial section."],
+  B: ["Stubs", "Through vias with an open stub, without a stub and back-drilled: stub resonance and its depth."],
+  C: ["Antipads and pads", "Antipad size per plane, non-functional pads, an offset antipad."],
+  D: ["Return path", "One GND stitching via at a distance, or none: the return current crosses the plane pairs."],
+  E: ["Differential pairs", "Via pairs: pitch, round or oval antipads, GND vias. Mixed mode with kisi's port order."],
+  G: ["Plane cavity", "Rectangular plane pair: impedance and resonances seen from a corner and the centre (1 Ω ports)."],
+  H: ["PDN loop inductance", "BGA pin field to one capacitor at a distance: loop inductance from Im(Z)/ω (1 Ω port)."],
+  thru: ["2×thru", "Feed lines alone (twice the feed length): the fixtures for de-embedding."],
+};
+const TOOLS = { kisi: ["kisi-fdtd", "var(--s1)", ""], kisi_fine: ["kisi-fdtd, finer mesh", "var(--s1)", "dash"], openems: ["openEMS (staircase)", "var(--s2)", ""], deembedded: ["de-embedded", "var(--s4)", ""] };
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v.replace(/^var\((.*)\)$/, "$1")).trim();
+const cases = DATA.cases;
+const byId = new Map(cases.map((c) => [c.id, c]));
+let cur = null, mode = "raw";
+
+// ------------------------------------------------------------------ chart
+function chart({ x, series, xlabel, ylabel, ymin, ymax, logx, logy, w = 560, h, vlines = [] }) {
+  const W = w, H = h || Math.round(Math.min(300, Math.max(210, w * 0.58))), L = 46, R = 10, T = 10, B = 34;
+  const xs = logx ? x.map(Math.log10) : x;
+  const all = series.flatMap((s) => s.y.filter((v) => v != null && isFinite(v)));
+  let y0 = ymin ?? Math.min(...all), y1 = ymax ?? Math.max(...all);
+  if (logy) { y0 = Math.log10(y0); y1 = Math.log10(y1); }
+  if (y1 - y0 < 1e-9) { y1 += 1; y0 -= 1; }
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const nice = (lo, hi, n) => { const st = Math.pow(10, Math.floor(Math.log10((hi - lo) / n))); const m = [1, 2, 2.5, 5, 10].find((k) => (hi - lo) / (k * st) <= n) * st; const out = []; for (let v = Math.ceil(lo / m - 1e-9) * m; v <= hi + 1e-9; v += m) out.push(+v.toFixed(10)); return out; };
+  // log axes: 1-2-5 ticks per decade (in log10 units)
+  const logt = (lo, hi) => { const out = []; for (let d = Math.floor(lo); d <= Math.ceil(hi); d++) for (const m of [1, 2, 5]) { const v = d + Math.log10(m); if (v >= lo - 1e-9 && v <= hi + 1e-9) out.push(v); } return out.length > 7 ? out.filter((v) => Math.abs(v - Math.round(v)) < 1e-9) : out; };
+  const fmtl = (v) => { const x = Math.pow(10, v); return x >= 1000 ? (x / 1000) + "k" : +x.toPrecision(2); };
+  const yt = logy ? logt(y0, y1) : nice(y0, y1, 5);
+  if (!ymin && !logy) y0 = Math.min(y0, yt[0]);
+  if (!ymax && !logy) y1 = Math.max(y1, yt[yt.length - 1]);
+  const px = (v) => L + (v - x0) / (x1 - x0) * (W - L - R);
+  const py = (v) => T + (1 - ((logy ? Math.log10(v) : v) - y0) / (y1 - y0)) * (H - T - B);
+  const xt = logx ? logt(x0, x1) : nice(x0, x1, 6);
+  let g = "";
+  for (const v of yt) { const yy = T + (1 - (v - y0) / (y1 - y0)) * (H - T - B); g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end">${logy ? fmtl(v) : v}</text>`; }
+  for (const v of xt) { const xx = px(v); g += `<line x1="${xx}" x2="${xx}" y1="${T}" y2="${H - B}" stroke="var(--line)" stroke-width="1" opacity=".6"/><text x="${xx}" y="${H - B + 15}" text-anchor="middle">${logx ? fmtl(v) : v}</text>`; }
+  g += `<text x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">${esc(xlabel)}</text><text transform="translate(11 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle">${esc(ylabel)}</text>`;
+  let p = "";
+  for (const v of vlines) { const xv = logx ? Math.log10(v.x) : v.x; if (xv < x0 || xv > x1) continue; p += `<line x1="${px(xv)}" x2="${px(xv)}" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-dasharray="2 3" stroke-width="1"/><text x="${px(xv) + 3}" y="${T + 11}">${esc(v.label)}</text>`; }
+  for (const s of series) {
+    let d = "", pen = false;
+    s.y.forEach((v, i) => {
+      if (v == null || !isFinite(v) || (logy && v <= 0)) { pen = false; return; }
+      const yy = Math.max(T - 2, Math.min(H - B + 2, py(v)));
+      d += `${pen ? "L" : "M"}${px(xs[i]).toFixed(1)} ${yy.toFixed(1)}`; pen = true;
+    });
+    if (s.marks) p += s.y.map((v, i) => v == null ? "" : `<circle cx="${px(xs[i]).toFixed(1)}" cy="${py(v).toFixed(1)}" r="3.2" fill="${s.color}"/>`).join("");
+    p += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w || 1.6}" ${s.dash ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`;
+  }
+  const id = "c" + Math.random().toString(36).slice(2, 8);
+  const svg = `<svg viewBox="0 0 ${W} ${H}" id="${id}" role="img" aria-label="${esc(ylabel)} over ${esc(xlabel)}"><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="none"/>${g}<g>${p}</g><line class="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/></svg>`;
+  const hook = (box, out) => {
+    const el = box.querySelector("#" + id);
+    el.addEventListener("pointermove", (ev) => {
+      const r = el.getBoundingClientRect(); const vx = (ev.clientX - r.left) / r.width * W;
+      if (vx < L || vx > W - R) return;
+      const xv = x0 + (vx - L) / (W - L - R) * (x1 - x0);
+      let k = 0; for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i] - xv) < Math.abs(xs[k] - xv)) k = i;
+      const ln = el.querySelector(".cross"); ln.setAttribute("x1", px(xs[k])); ln.setAttribute("x2", px(xs[k])); ln.setAttribute("visibility", "visible");
+      out.textContent = `${x[k]} ${xlabel.split(" ").pop()}: ` + series.map((s) => `${s.name} ${s.y[k] == null ? "–" : s.y[k]}`).join(" · ");
+    });
+    el.addEventListener("pointerleave", () => { el.querySelector(".cross").setAttribute("visibility", "hidden"); out.textContent = ""; });
+  };
+  return { svg, hook };
+}
+function panel(title, ch, legend, note) {
+  const box = document.createElement("div");
+  box.className = "panel";
+  box.innerHTML = `<div class="hd"><h2>${esc(title)}</h2></div><div class="readout"></div>${ch.svg}` + (legend ? `<div class="legend">${legend}</div>` : "") + (note ? `<p class="note">${note}</p>` : "");
+  ch.hook(box, box.querySelector(".readout"));
+  return box;
+}
+const lg = (items) => items.map(([n, c, d]) => `<span><i class="${d}" style="border-color:${c}"></i>${esc(n)}</span>`).join("");
+
+// ------------------------------------------------------------------ geometry
+function layerColor(c, z) {
+  const zc = c.meta.copper_z, i = zc.findIndex((v) => Math.abs(v - z) < 1e-6);
+  return i === 0 || i === zc.length - 1 ? "var(--k-ms)" : "var(--k-sl)";
+}
+function topView(c, ext, title, W = 560) {
+  const cs = c.case;
+  const [x0, y0, x1, y1] = ext;
+  W = Math.round(W);
+  const s = W / (x1 - x0), H = Math.max(120, Math.round((y1 - y0) * s));
+  const sx = (x) => ((x - x0) * s).toFixed(2), sy = (y) => ((y1 - y) * s).toFixed(2), sr = (r) => (r * s).toFixed(2);
+  let g = `<rect x="0" y="0" width="${W}" height="${H}" fill="var(--diel)" opacity=".55"/>`;
+  // plane metal with the union of all antipads (outlines per plane)
+  const planes = cs.sheets.filter((sh) => sh.net === "GND");
+  if (planes.length) {
+    g += `<rect x="0" y="0" width="${W}" height="${H}" fill="var(--gnd)" opacity=".28"/>`;
+    const seen = new Set();
+    planes.forEach((pl) => pl.holes.forEach((h) => {
+      const key = h.join(","); const dup = seen.has(key); seen.add(key);
+      if (h.length < 5) g += `<circle cx="${sx(h[0])}" cy="${sy(h[1])}" r="${sr(h[2])}" fill="var(--diel)" stroke="var(--gnd)" stroke-width="1" ${dup ? 'fill-opacity="0"' : ""} stroke-dasharray="3 2"/>`;
+      else { const [ax, ay, bx, by, r] = h; g += `<line x1="${sx(ax)}" y1="${sy(ay)}" x2="${sx(bx)}" y2="${sy(by)}" stroke="var(--diel)" stroke-width="${2 * r * s}" stroke-linecap="round"/><line x1="${sx(ax)}" y1="${sy(ay)}" x2="${sx(bx)}" y2="${sy(by)}" stroke="var(--gnd)" stroke-width="1" stroke-dasharray="3 2"/>`; }
+    }));
+  }
+  // traces, bottom layers first
+  const tr = cs.sheets.filter((sh) => sh.net !== "GND").sort((a, b) => a.z - b.z);
+  for (const t of tr) { const r = t.rect; g += `<rect x="${sx(r[0])}" y="${sy(r[3])}" width="${((r[2] - r[0]) * s).toFixed(2)}" height="${((r[3] - r[1]) * s).toFixed(2)}" fill="${layerColor(c, t.z)}" opacity=".85"/>`; }
+  for (const v of cs.vias) {
+    if (v.pads && v.pads.length) g += `<circle cx="${sx(v.x)}" cy="${sy(v.y)}" r="${sr(v.pad_r)}" fill="var(--cu)" opacity=".55"/>`;
+    g += `<circle cx="${sx(v.x)}" cy="${sy(v.y)}" r="${sr(v.r)}" fill="${v.net === "GND" ? "var(--gnd)" : "var(--cu)"}" stroke="var(--panel)" stroke-width=".8"/>`;
+  }
+  cs.ports.forEach((p, i) => {
+    if (p.x < x0 || p.x > x1) return;
+    const yc = (p.y0 + p.y1) / 2;
+    g += `<g><circle cx="${sx(p.x)}" cy="${sy(yc)}" r="7" fill="var(--panel)" stroke="var(--fg)" stroke-width="1"/><text x="${sx(p.x)}" y="${+sy(yc) + 3.5}" text-anchor="middle" style="fill:var(--fg);font-weight:600;font-size:10px">${i + 1}</text></g>`;
+  });
+  // scale bar 1 mm
+  const sb = Math.pow(10, Math.floor(Math.log10((x1 - x0) / 4)));
+  g += `<line x1="10" x2="${10 + sb * s}" y1="${H - 10}" y2="${H - 10}" stroke="var(--fg)" stroke-width="2"/><text x="${10 + sb * s + 5}" y="${H - 6}">${sb} mm</text>`;
+  return `<div class="panel"><h2>${esc(title)}</h2><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">${g}</svg></div>`;
+}
+function section(c, W = 560) {
+  const cs = c.case, zc = c.meta.copper_z;
+  const yc = cs.ports.length ? (cs.ports[0].y0 + cs.ports[0].y1) / 2 : 0;
+  const [x0, , z0, x1, , z1] = cs.domain;
+  const zt = zc[0], zb = zc[zc.length - 1];
+  const zlo = zb - 0.35, zhi = zt + 0.35;
+  W = Math.round(W);
+  const sxk = W / (x1 - x0), H = Math.round(Math.max(170, Math.min(240, W * 0.5))), szk = (H - 30) / (zhi - zlo);
+  const sx = (x) => ((x - x0) * sxk).toFixed(2), sz = (z) => (10 + (zhi - z) * szk).toFixed(2);
+  let g = "";
+  for (const l of cs.layers) g += `<rect x="0" y="${sz(l.z1)}" width="${W}" height="${((l.z1 - l.z0) * szk).toFixed(2)}" fill="var(--diel)" opacity="${(0.25 + (l.er - 3) * 0.3).toFixed(2)}"/><text x="${W - 4}" y="${(+sz(l.z1) + +sz(l.z0)) / 2 + 4}" text-anchor="end">εr ${l.er}</text>`;
+  // copper at y = yc: planes minus holes, traces
+  for (const sh of cs.sheets) {
+    const r = sh.rect; if (yc < r[1] - 1e-9 || yc > r[3] + 1e-9) continue;
+    let segs = [[Math.max(r[0], x0), Math.min(r[2], x1)]];
+    for (const h of sh.holes || []) {
+      let a, b;
+      if (h.length < 5) { const d = h[2] ** 2 - (yc - h[1]) ** 2; if (d <= 0) continue; a = h[0] - Math.sqrt(d); b = h[0] + Math.sqrt(d); }
+      else { const [ax, ay, bx, by, rr] = h; const lo = Math.min(ay, by) - rr, hi = Math.max(ay, by) + rr; if (yc < lo || yc > hi) continue; const d = rr ** 2 - Math.max(0, Math.max(Math.min(ay, by) - yc, yc - Math.max(ay, by))) ** 2; a = ax - Math.sqrt(Math.max(d, 0)); b = ax + Math.sqrt(Math.max(d, 0)); }
+      segs = segs.flatMap(([p, q]) => (b <= p || a >= q) ? [[p, q]] : [[p, a], [b, q]].filter(([u, v]) => v > u));
+    }
+    const col = sh.net === "GND" ? "var(--gnd)" : layerColor(c, sh.z);
+    for (const [p, q] of segs) g += `<line x1="${sx(p)}" x2="${sx(q)}" y1="${sz(sh.z)}" y2="${sz(sh.z)}" stroke="${col}" stroke-width="${sh.net === "GND" ? 2 : 3}"/>`;
+  }
+  for (const v of cs.vias) {
+    const d = v.r ** 2 - (yc - v.y) ** 2; if (d <= 0) continue;
+    const hw = Math.max(Math.sqrt(d), 0.04);
+    g += `<rect x="${sx(v.x - hw)}" y="${sz(v.z1)}" width="${(2 * hw * sxk).toFixed(2)}" height="${((v.z1 - v.z0) * szk).toFixed(2)}" fill="${v.net === "GND" ? "var(--gnd)" : "var(--cu)"}"/>`;
+    for (const pz of v.pads || []) { const dp = v.pad_r ** 2 - (yc - v.y) ** 2; if (dp > 0) g += `<line x1="${sx(v.x - Math.sqrt(dp))}" x2="${sx(v.x + Math.sqrt(dp))}" y1="${sz(pz)}" y2="${sz(pz)}" stroke="var(--cu)" stroke-width="3"/>`; }
+  }
+  cs.ports.forEach((p, i) => { if (Math.abs((p.y0 + p.y1) / 2 - yc) > 1e-6) return; g += `<line x1="${sx(p.x)}" x2="${sx(p.x)}" y1="${sz(p.z0)}" y2="${sz(p.z1)}" stroke="var(--fg)" stroke-width="1.2" stroke-dasharray="2 2"/><text x="${sx(p.x)}" y="${+sz(Math.max(p.z0, p.z1)) - 4}" text-anchor="middle" style="fill:var(--fg)">${i + 1}</text>`; });
+  zc.forEach((z, i) => g += `<text x="4" y="${+sz(z) - 2}">L${i + 1}</text>`);
+  const ex = (szk / sxk);
+  return `<div class="panel"><h2>Cross-section at y = ${yc.toFixed(2)} mm</h2><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="cross-section">${g}<text x="${W / 2}" y="${H - 4}" text-anchor="middle">x ${x0} … ${x1} mm, height ×${ex.toFixed(1)}</text></svg></div>`;
+}
+function detailExtent(c) {
+  let m = 0.8;
+  for (const v of c.case.vias) if (Math.hypot(v.x, v.y) < 3) m = Math.max(m, Math.hypot(v.x, v.y) + Math.max(v.r, v.pad_r || 0) + 0.25);
+  for (const sh of c.case.sheets) for (const h of sh.holes || []) { const r = h.length < 5 ? h[2] : h[4]; m = Math.max(m, Math.hypot(h[0], h[1]) + r + 0.25, h.length >= 5 ? Math.hypot(h[2], h[3]) + r + 0.25 : 0); }
+  return [-m * 1.6, -m, m * 1.6, m];
+}
+
+// ------------------------------------------------------------------ case sheet
+function chipList(c) {
+  const out = [], m = c.meta, run = c.run;
+  out.push(`<span class="chip">${esc(m.stackup_title)}</span>`);
+  for (const [k, v] of Object.entries(m.params || {})) out.push(`<span class="chip">${esc(k.replace(/_mm$/, " (mm)").replace(/_/g, " "))} <b>${esc(v ?? "none")}</b></span>`);
+  if (run && run.runs && run.runs.kisi) { const k = run.runs.kisi; out.push(`<span class="chip">${Math.round(k.cells / 1000)} k cells · ${k.steps.join(" / ")} steps · ${k.seconds} s</span>`); }
+  if (run && run.convergence) { const cv = run.convergence, ok = cv.max_dS_through_db < 0.1 && cv["max_dS_refl_db_above_-20"] < 2; out.push(`<span class="chip ${ok ? "ok" : "warn"}">finer mesh: ΔS through ${cv.max_dS_through_db} dB, ΔS refl. ${cv["max_dS_refl_db_above_-20"]} dB</span>`); }
+  return out.join("");
+}
+function renderCase(c) {
+  cur = c;
+  const box = $("case");
+  const m = c.meta;
+  const ports = m.ports.map((p, i) => `${i + 1}: ${p.name.replace(/^\d+ ?/, "") || "port"} ${p.layer} (ref ${p.ref})`).join(" · ");
+  box.innerHTML = `<h1>${esc(m.title)}</h1><div class="id">${esc(c.id)} · group ${esc(m.group)} · ports ${esc(ports)}</div><div class="chips">${chipList(c)}</div>`;
+  const geo = document.createElement("div"); geo.className = "grid";
+  const d = c.case.domain;
+  const bw = box.clientWidth || 900, cols = Math.max(1, Math.min(3, Math.floor((bw + 14) / (320 + 14))));
+  const pw = Math.floor((bw - 14 * (cols - 1)) / cols) - 26;
+  geo.innerHTML = topView(c, [d[0], d[1], d[3], d[4]], "Board (top view)", pw) + topView(c, detailExtent(c), "Via detail", pw) + section(c, pw);
+  box.appendChild(geo);
+  const lgGeo = document.createElement("div"); lgGeo.className = "legend";
+  lgGeo.innerHTML = lg([["outer-layer trace", "var(--k-ms)", ""], ["inner-layer trace", "var(--k-sl)", ""], ["signal via, pads", "var(--cu)", ""], ["GND via, planes", "var(--gnd)", ""], ["antipad", "var(--gnd)", "dash"]]);
+  box.appendChild(lgGeo);
+  if (!c.res) { const p = document.createElement("p"); p.className = "pending"; p.textContent = "Not computed yet."; box.appendChild(p); return; }
+  const bar = document.createElement("div"); bar.className = "bar";
+  const hasDe = !!c.res.deembedded;
+  bar.innerHTML = `<div class="seg" role="group" aria-label="Reference planes"><button data-m="raw" aria-pressed="${mode === "raw"}">At the ports</button><button data-m="de" aria-pressed="${mode === "de"}" ${hasDe ? "" : "disabled"}>De-embedded</button></div><span class="note">${hasDe ? (mode === "de" ? "Feed lines removed: " + esc(c.deembed) + "." : "50 Ω lumped ports at the ends of the feed lines.") : "Fixture of this case: no de-embedding."}</span>`;
+  bar.querySelectorAll("button[data-m]").forEach((b) => b.onclick = () => { mode = b.dataset.m; renderCase(c); });
+  box.appendChild(bar);
+  const f = c.f, grid = document.createElement("div"); grid.className = "grid";
+  const tools = mode === "de" && hasDe ? ["deembedded"] : ["kisi", "kisi_fine", "openems"].filter((t) => c.res[t]);
+  const ser = (key, extra = {}) => tools.map((t) => ({ name: TOOLS[t][0], y: c.res[t][key], color: TOOLS[t][1], dash: TOOLS[t][2] === "dash", ...extra }));
+  const legend = lg(tools.map((t) => TOOLS[t]));
+  if (c.res.kisi.Z11) {
+    const zs = (key, nm, col) => tools.map((t) => ({ name: TOOLS[t][0] + (nm ? " " + nm : ""), y: c.res[t][key], color: col || TOOLS[t][1], dash: TOOLS[t][2] === "dash" }));
+    if (m.group === "G") {
+      const vl = (m.params.modes_GHz || []).map((v, i) => ({ x: v, label: m.params.modes_mn[i] }));
+      grid.appendChild(panel("|Z11| at the corner, |Z21| corner → centre", chart({ x: f, series: [...zs("Z11", "Z11"), ...zs("Z21", "Z21", "var(--s3)")], xlabel: "frequency GHz", ylabel: "Ω", logy: true, w: pw, vlines: vl }),
+        legend + lg([["Z21", "var(--s3)", ""]]), "Dashed lines: analytic TM<sub>mn</sub> modes of a closed 50 × 30 mm cavity, c / (2√εr) · √((m/a)² + (n/b)²); the open edges add fringing, so the board resonates slightly lower."));
+    } else {
+      const fx = f.map((v) => v * 1000);
+      grid.appendChild(panel("|Z11| at the IC pins", chart({ x: fx, series: zs("Z11"), xlabel: "frequency MHz", ylabel: "Ω", logx: true, logy: true, w: pw }), legend));
+      grid.appendChild(panel("Loop inductance Im(Z11)/ω", chart({ x: fx, series: zs("L11"), xlabel: "frequency MHz", ylabel: "nH", logx: true, ymin: 0, w: pw }), legend,
+        "Pin field, vias, planes and the capacitor mounting; the capacitor is a short (5 mΩ) on a 0.5 mm high body loop."));
+    }
+    box.appendChild(grid);
+    return;
+  }
+  const two = !c.res.kisi.Sdd21;
+  if (two) {
+    const thr = ser("S21");
+    const lo = Math.min(-3, ...thr.flatMap((s) => s.y.filter((v) => v != null))) ;
+    grid.appendChild(panel("Insertion loss |S21|", chart({ x: f, series: thr, xlabel: "frequency GHz", ylabel: "dB", ymax: 0.2, ymin: Math.max(Math.floor(lo), -40), w: pw }), legend));
+    const refl = [...ser("S11"), ...tools.map((t) => ({ name: TOOLS[t][0] + " S22", y: c.res[t].S22, color: t === "openems" ? "var(--s2)" : "var(--s3)", dash: TOOLS[t][2] === "dash", w: 1.2 }))];
+    grid.appendChild(panel("Return loss |S11|, |S22|", chart({ x: f, series: refl, xlabel: "frequency GHz", ylabel: "dB", ymin: -50, ymax: 0, w: pw }), legend + lg([["S22", "var(--s3)", ""]])));
+  } else {
+    grid.appendChild(panel("Differential insertion loss |Sdd21|, |Scc21|", chart({ x: f, series: [...ser("Sdd21"), ...tools.map((t) => ({ name: TOOLS[t][0] + " Scc21", y: c.res[t].Scc21, color: "var(--s3)", dash: TOOLS[t][2] === "dash", w: 1.2 }))], xlabel: "frequency GHz", ylabel: "dB", ymax: 0.2, ymin: -10, w: pw }), legend + lg([["Scc21 (common mode)", "var(--s3)", ""]])));
+    grid.appendChild(panel("Differential return loss |Sdd11|", chart({ x: f, series: ser("Sdd11"), xlabel: "frequency GHz", ylabel: "dB", ymin: -50, ymax: 0, w: pw }), legend));
+    grid.appendChild(panel("Mode conversion |Scd21|", chart({ x: f, series: ser("Scd21"), xlabel: "frequency GHz", ylabel: "dB", ymin: -80, ymax: 0, w: pw }), legend, "Differential in, common mode out at the far end. A symmetric pair converts nothing; offsets of GND vias or antipads show here."));
+    grid.appendChild(panel("Single-ended coupling |S21| (NEXT), |S41| (FEXT)", chart({ x: f, series: [...ser("S21"), ...tools.map((t) => ({ name: TOOLS[t][0] + " S41", y: c.res[t].S41, color: "var(--s3)", dash: TOOLS[t][2] === "dash", w: 1.2 }))], xlabel: "frequency GHz", ylabel: "dB", ymin: -80, ymax: 0, w: pw }), legend + lg([["S41 (FEXT)", "var(--s3)", ""]])));
+  }
+  const td = c.tdr;
+  const tdSer = [{ name: two ? "Z" : "Z single-ended", y: td.z, color: "var(--s1)" }];
+  if (td.zdd) tdSer.push({ name: "Zdiff", y: td.zdd, color: "var(--s3)" });
+  grid.appendChild(panel("TDR at port 1 (25 ps edge)", chart({ x: td.t, series: tdSer, xlabel: "time ps", ylabel: "Ω", w: pw }), lg(tdSer.map((s) => [s.name, s.color, ""])), "From the raw S11 (feed line, via, feed line): the via sits in the middle of the trace. Edge 10–90 %, Gaussian."));
+  box.appendChild(grid);
+}
+
+// ------------------------------------------------------------------ list, routing
+function buildList() {
+  const nav = $("case-list"), sel = $("case-select");
+  let html = "", opts = "";
+  for (const [g, [name, txt]] of Object.entries(GROUPS)) {
+    const cs = cases.filter((c) => c.meta.group === g); if (!cs.length) continue;
+    html += `<h3>${g === "thru" ? "" : g + " · "}${esc(name)}</h3><p class="gd">${esc(txt)}</p>`;
+    opts += `<optgroup label="${esc((g === "thru" ? "" : g + " · ") + name)}">`;
+    for (const c of cs) {
+      const t = c.meta.title.replace(/^(L\d.*?|pair )/, "$1");
+      html += `<button data-id="${c.id}"><span class="dot ${c.res ? "done" : ""}"></span><span>${esc(t)}</span></button>`;
+      opts += `<option value="${c.id}">${esc(t)}</option>`;
+    }
+    opts += "</optgroup>";
+  }
+  nav.innerHTML = html; sel.innerHTML = opts;
+  nav.querySelectorAll("button[data-id]").forEach((b) => b.onclick = () => go(b.dataset.id));
+  sel.onchange = () => go(sel.value);
+}
+function go(id) {
+  if (id === "checks") { show("checks"); renderChecks(); try { history.replaceState(null, "", "#checks"); } catch (e) {} return; }
+  const c = byId.get(id) || cases.find((x) => x.res) || cases[0];
+  show("cases");
+  renderCase(c);
+  $("case-list").querySelectorAll("button").forEach((b) => b.setAttribute("aria-current", b.dataset.id === c.id));
+  $("case-select").value = c.id;
+  try { history.replaceState(null, "", "#" + c.id); } catch (e) {}
+}
+function show(v) {
+  $("view-cases").hidden = v !== "cases"; $("view-checks").hidden = v !== "checks";
+  $("tab-cases").setAttribute("aria-pressed", v === "cases"); $("tab-checks").setAttribute("aria-pressed", v === "checks");
+}
+$("tab-cases").onclick = () => go(cur ? cur.id : "");
+$("tab-checks").onclick = () => go("checks");
+
+// ------------------------------------------------------------------ solver checks
+let checksDone = false;
+function renderChecks() {
+  const box = $("view-checks");
+  if (checksDone) return;
+  checksDone = true;
+  const cw = Math.min(1100, box.clientWidth || 900) - 26;
+  const ch = DATA.checks;
+  let n = 0;
+  for (const key of ["cavity", "pml_thru", "via_convergence", "openems_compare"]) {
+    const c = ch[key]; if (!c) continue; n++;
+    const p = document.createElement("div"); p.className = "panel";
+    p.innerHTML = `<h2>${esc(c.title)}</h2>${(c.text || []).map((t) => `<p>${t}</p>`).join("")}` + (c.cols ? `<div class="wide"><table><thead><tr>${c.cols.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${c.rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "");
+    box.appendChild(p);
+    for (const cc of c.charts || []) {
+      const series = cc.series.map((s, i) => ({ ...s, color: s.color || ["var(--s1)", "var(--s2)", "var(--s3)", "var(--s4)"][i % 4] }));
+      box.appendChild(panel(cc.title, chart({ ...cc, series, w: cw, h: Math.round(Math.min(320, Math.max(220, cw * 0.4))) }), lg(series.map((s) => [s.name, s.color, s.dash ? "dash" : ""])), cc.note));
+    }
+  }
+  if (!n) box.innerHTML = `<p class="pending">No solver checks in this build.</p>`;
+}
+
+const done = cases.filter((c) => c.res).length;
+$("summary").textContent = `${cases.length} cases, ${done} computed with kisi-fdtd (3D FDTD, conformal metal, CPML). Zero-thickness copper, planes continue into the PML.`;
+buildList();
+go((location.hash || "").slice(1));
+</script>

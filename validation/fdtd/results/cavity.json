@@ -1,0 +1,185 @@
+{
+ "R_mm": 3.0,
+ "h_mm": 0.5,
+ "er": 4.0,
+ "tand": 0.03,
+ "post_mm": 0.3,
+ "rows": [
+  {
+   "case": "empty",
+   "cell": 0.2,
+   "metal": "staircase",
+   "f_analytic_GHz": 19.123754639201675,
+   "f_fdtd_GHz": 18.788509539382076,
+   "error_pct": -1.753029706480247,
+   "cells": 3780,
+   "steps": 4801,
+   "seconds": 0.46526384353637695
+  },
+  {
+   "case": "empty",
+   "cell": 0.2,
+   "metal": "conformal",
+   "f_analytic_GHz": 19.123754639201675,
+   "f_fdtd_GHz": 19.084411765178515,
+   "error_pct": -0.20572777033287526,
+   "cells": 3780,
+   "steps": 5001,
+   "seconds": 0.5753881931304932
+  },
+  {
+   "case": "empty",
+   "cell": 0.1,
+   "metal": "staircase",
+   "f_analytic_GHz": 19.123754639201675,
+   "f_fdtd_GHz": 18.948908854243673,
+   "error_pct": -0.9142858620429517,
+   "cells": 28566,
+   "steps": 7801,
+   "seconds": 3.548823595046997
+  },
+  {
+   "case": "empty",
+   "cell": 0.1,
+   "metal": "conformal",
+   "f_analytic_GHz": 19.123754639201675,
+   "f_fdtd_GHz": 19.10735663190203,
+   "error_pct": -0.0857467982047555,
+   "cells": 28566,
+   "steps": 8001,
+   "seconds": 3.6757376194000244
+  },
+  {
+   "case": "empty",
+   "cell": 0.05,
+   "metal": "staircase",
+   "f_analytic_GHz": 19.123754639201675,
+   "f_fdtd_GHz": 19.033982314004913,
+   "error_pct": -0.46942834652740073,
+   "cells": 206459,
+   "steps": 17201,
+   "seconds": 35.69901967048645
+  },
+  {
+   "case": "empty",
+   "cell": 0.05,
+   "metal": "conformal",
+   "f_analytic_GHz": 19.123754639201675,
+   "f_fdtd_GHz": 19.115785415436036,
+   "error_pct": -0.04167185741499324,
+   "cells": 206459,
+   "steps": 17601,
+   "seconds": 41.94689726829529
+  },
+  {
+   "case": "empty",
+   "cell": 0.025,
+   "metal": "staircase",
+   "f_analytic_GHz": 19.123754639201675,
+   "f_fdtd_GHz": 19.071918167666293,
+   "error_pct": -0.27105802450070327,
+   "cells": 1565109,
+   "steps": 36401,
+   "seconds": 528.0146543979645
+  },
+  {
+   "case": "empty",
+   "cell": 0.025,
+   "metal": "conformal",
+   "f_analytic_GHz": 19.123754639201675,
+   "f_fdtd_GHz": 19.119246548720053,
+   "error_pct": -0.023573249953645625,
+   "cells": 1565109,
+   "steps": 38001,
+   "seconds": 601.7470676898956
+  },
+  {
+   "case": "post",
+   "cell": 0.2,
+   "metal": "staircase",
+   "f_analytic_GHz": 26.35324241012852,
+   "f_fdtd_GHz": 25.49463364622767,
+   "error_pct": -3.258076370787899,
+   "cells": 3675,
+   "steps": 7801,
+   "seconds": 1.1572387218475342
+  },
+  {
+   "case": "post",
+   "cell": 0.2,
+   "metal": "conformal",
+   "f_analytic_GHz": 26.35324241012852,
+   "f_fdtd_GHz": 25.949314445854558,
+   "error_pct": -1.5327448440223823,
+   "cells": 3675,
+   "steps": 7801,
+   "seconds": 0.8046247959136963
+  },
+  {
+   "case": "post",
+   "cell": 0.1,
+   "metal": "staircase",
+   "f_analytic_GHz": 26.35324241012852,
+   "f_fdtd_GHz": 25.767038515031985,
+   "error_pct": -2.2244089967131897,
+   "cells": 28566,
+   "steps": 9201,
+   "seconds": 3.671686887741089
+  },
+  {
+   "case": "post",
+   "cell": 0.1,
+   "metal": "conformal",
+   "f_analytic_GHz": 26.35324241012852,
+   "f_fdtd_GHz": 26.248146797571163,
+   "error_pct": -0.39879575697663316,
+   "cells": 28566,
+   "steps": 9201,
+   "seconds": 4.178858041763306
+  },
+  {
+   "case": "post",
+   "cell": 0.05,
+   "metal": "staircase",
+   "f_analytic_GHz": 26.35324241012852,
+   "f_fdtd_GHz": 26.010195117881924,
+   "error_pct": -1.3017270774800416,
+   "cells": 206459,
+   "steps": 19401,
+   "seconds": 47.10800814628601
+  },
+  {
+   "case": "post",
+   "cell": 0.05,
+   "metal": "conformal",
+   "f_analytic_GHz": 26.35324241012852,
+   "f_fdtd_GHz": 26.30825570515431,
+   "error_pct": -0.170706527394604,
+   "cells": 206459,
+   "steps": 19601,
+   "seconds": 47.73582601547241
+  },
+  {
+   "case": "post",
+   "cell": 0.025,
+   "metal": "staircase",
+   "f_analytic_GHz": 26.35324241012852,
+   "f_fdtd_GHz": 26.119746428320166,
+   "error_pct": -0.8860237316324016,
+   "cells": 1565109,
+   "steps": 39001,
+   "seconds": 545.0416328907013
+  },
+  {
+   "case": "post",
+   "cell": 0.025,
+   "metal": "conformal",
+   "f_analytic_GHz": 26.35324241012852,
+   "f_fdtd_GHz": 26.319277936665486,
+   "error_pct": -0.128881573411177,
+   "cells": 1565109,
+   "steps": 41001,
+   "seconds": 678.6456129550934
+  }
+ ]
+}

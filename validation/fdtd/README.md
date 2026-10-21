@@ -1,67 +1,88 @@
-# 3D FDTD feasibility: kisi-fdtd against openEMS
+# 3D FDTD: kisi-fdtd and the via references
 
-Status: feasibility test (21.10.2026) for the branch `feat/3d-vias-resonances`. Question: can an own
-Rust FDTD (`crates/kisi-fdtd`) reproduce openEMS on via transitions, and how fast is it natively and
-as WebAssembly (the viewer)?
+`crates/kisi-fdtd` is a 3D FDTD solver (Yee scheme) for via transitions, plane cavities and PDN loops.
+This folder holds its validation and the generator of the reference cases from `validation/via_references.md`.
+The results are in `validation/via_ref/`. `references.html` shows every case (geometry, S-parameters, TDR,
+mixed mode, Z) and the solver checks. It is a self-contained page; open it in a browser.
 
-## Method
-- **Cases** (`cases/*.json`, 20 × 10 mm board, 4 layers FR-4, 0.2 / 1.2 / 0.2 mm, εr 4.3 / 4.5,
-  tanδ 0.02, 0.35 mm microstrips, 50 Ω lumped ports at both ends, 0–20 GHz):
-  - `thru_ms`: microstrip on L1 over the GND plane L2, 19 mm.
-  - `via_l1_l4`: microstrip L1 → via (Ø 0.3 mm, pads Ø 0.6 mm, antipads Ø 0.9 mm in L2 and L3) →
-    microstrip L4 over L3; no stitching via, so the return current crosses the L2–L3 cavity.
-  - `via_l1_l4_stitched`: the same with four GND vias at 1 mm from the signal via.
-- **Same model in both tools:** the mesh comes from `kisi-fdtd --mesh-only` and is passed to
-  openEMS; zero-thickness copper, staircased vias, solid cylinders, dielectric loss as a
-  conductivity at fmax/2, openEMS' Gaussian excitation, Mur boundaries on all six faces, one
-  excitation (port 1). openEMS 0.0.36 (SSE engine), built from source in the cloud workspace;
-  S-parameters of both from the port voltages and currents, a = (U + Z·I)/2, b = (U − Z·I)/2.
-- `openems_case.py` runs a case in openEMS, `compare.py` compares and plots, `wasm_speed.mjs` runs
-  the WebAssembly build in Node (V8, the engine of Chrome).
+## Solver
+- **Mesh:** rectilinear, non-uniform. Fixed lines at layer boundaries, sheet edges, vias, holes and ports, with
+  spacing `dfine` there, growing by 1.4 up to λ/20 at fmax.
+- **Metal:** zero-thickness sheets (traces, planes with round or slot-shaped antipads, pads) and solid cylinders
+  (via barrels), treated **conformally** (Dey–Mittra).
+  - On every face that touches a partially free edge, the H update uses the free edge lengths. On faces cut by a
+    round boundary it uses the free area.
+  - The effective area A_eff = max(A_free, A · weighted free fraction of the edges). It keeps each face's local
+    frequency at or below that of a full cell.
+  - With every face treated this way, the update operator is similar to a symmetric positive semidefinite one, so
+    it has real eigenvalues and runs stably at 0.95 of the Courant limit.
+  - `"conformal": false` gives staircase metal, the same as openEMS.
+- **Boundary:** convolutional PML (Roden & Gedney, CFS), 8 cells outside the domain, polynomial grading m = 3.
+  Whatever touches the domain boundary (planes, dielectric) continues through the PML, so the planes are infinite
+  and the board edges add no resonances. Mur and PEC are options.
+- **Ports and parts:** resistive lumped ports along z. Lumped series R–L–C elements, trapezoidal and implicit in
+  E, I and q, so they are unconditionally stable.
+- **Loss:** dielectric loss is a conductivity fixed at `f_loss`, so tanδ is exact there and falls as 1/f away
+  from it (no Djordjevic–Sarkar model yet).
+- **Excitation:** Gaussian pulse, one run per excited port. The run stops when the field energy has fallen
+  `end_db` below its maximum.
 
-## Results
+## Checks (`results/`, tab "Solver checks" in `references.html`)
+| Check | Script | Result |
+|---|---|---|
+| Metal model against the analytic resonance of a cylindrical cavity (empty and with a centre post) | `cavity.py` | see `results/cavity.json` |
+| Mesh convergence of a via with antipads, staircase and conformal | `via_convergence.py` | see `results/via_convergence.json` |
+| CPML on a matched microstrip (8 / 16 cells, larger box, openEMS PML_8) | `check_pml.py` | converged at 8 cells; openEMS reflects 8–14 dB more above 10 GHz |
+| Implementation: kisi-fdtd (staircase) against openEMS on the same mesh with PML | `openems_compare.py` | see `results/openems_compare.json` |
+| Lumped R–L–C against a circuit model (series RLC at the end of a 1 mm microstrip) | unit test `lumped_rlc` | series resonance 4.35 GHz against 4.33 GHz, Re Z 9.6 Ω against 10 Ω |
 
-| Case | Cells | kisi-fdtd | openEMS (1 thread) | ΔS21 mean / max | ΔS11 mean / max (where > −30 dB) |
-|---|---|---|---|---|---|
-| thru_ms | 191 k | 4 201 steps, 11.7 s | 30 000 steps, 64 s | 0.005 / 0.02 dB | 0.12 / 0.3 dB |
-| via_l1_l4 | 276 k | 14 401 steps, 50 s | 60 000 steps, 176 s | 0.10 / 0.67 dB | 0.59 / 3.4 dB |
-| via_l1_l4_stitched | 426 k | 9 401 steps, 56 s | 60 000 steps, 299 s | 0.02 / 0.27 dB | 1.1 / 4.6 dB |
+Unit tests (`cargo test -p kisi-fdtd`) cover a microstrip (S11, S21), the stability of a conformal pad, the cavity
+resonance at 0.1 mm cells (within 0.2 %) and the lumped R–L–C.
 
-Plots: `results/*.png`. Both tools show the same cavity resonances of the unstitched via
-(S21 dips at 7.2, 14.5 and 16 GHz); with four stitching vias S21 stays flat (−0.6 … −0.8 dB) and
-S11 below −21 dB. The larger S11 differences are at deep nulls and around −25 dB, where the
-staircased geometry near the via and the different stop criteria matter.
+## Reference cases
+- `via_cases.py` writes the cases to `via_cases/` (kisi-fdtd case JSON plus a `meta` block). openEMS reads the
+  same files.
+  - **A** coax section: L1→L4 through a plane pair, 4 GND vias.
+  - **B** stubs: through via, no stub, back-drilled; generic 8-layer and the ThunderScope stack.
+  - **C** antipads, non-functional pads, an offset antipad.
+  - **D** return path: one GND via at 0.5–5 mm or none; GND→PWR through a capacitor at 2 / 10 mm or none.
+  - **E** differential pairs: pitch, round or oval antipads, 0 / 2 / 4 GND vias.
+  - **G** plane cavity 50 × 30 mm.
+  - **H** PDN loop: BGA pin field to a 0402 capacitor at 2–20 mm.
+  - Plus a 2×thru per feed layer.
+- `run_refs.py` runs them and writes `via_ref/<case>/`:
+  - `kisi.sNp`: conformal, base mesh.
+  - `kisi_fine.sNp` with `--fine`: refined mesh for the convergence check.
+  - `openems.sNp` with `--openems`.
+  - `meta.json`: cells, steps, run time and convergence.
+- Ports are 50 Ω lumped ports at the ends of 4 mm feed traces (G and H use 1 Ω). Pairs use kisi's port order:
+  1 = P near, 2 = N near, 3 = P far, 4 = N far.
+- `sparam.py` provides Touchstone I/O, the full matrix from symmetric half-excitations, IEEE P370-style 2×thru
+  de-embedding (NZC: fixture S11 from the gated 2×thru reflection, then S22 and S21 from the cascade), a
+  first-order plane shift, mixed mode and TDR.
+- `make_viewer.py` builds `references.html`.
 
-**Speed per time step** (cell updates per second, this workspace: Xeon 2.8 GHz, 2 vCPUs):
+```
+cargo build --release -p kisi-fdtd
+python3 validation/fdtd/via_cases.py validation/fdtd/via_cases
+python3 validation/fdtd/run_refs.py validation/fdtd/via_cases validation/via_ref --exe target/release/kisi-fdtd --jobs 2
+python3 validation/fdtd/make_viewer.py
+```
 
-| | Mcells/s |
+## Earlier feasibility test (Mur boundary, staircase, same mesh as openEMS)
+Run on 21.10.2026, in `cases/` and `compare.py`:
+
+| Case | ΔS21 mean / max | ΔS11 mean / max (where above −30 dB) |
+|---|---|---|
+| `thru_ms` | 0.005 / 0.02 dB | 0.12 / 0.3 dB |
+| `via_l1_l4` | 0.10 / 0.67 dB | 0.59 / 3.4 dB |
+| `via_l1_l4_stitched` | 0.02 / 0.27 dB | 1.1 / 4.6 dB |
+
+Speed per time step in this workspace (Xeon 2.8 GHz, 2 vCPUs):
+
+| Solver | Mcells/s |
 |---|---|
-| openEMS, SSE engine, 1 thread | 94–101 |
-| kisi-fdtd native, 1 thread | 80 |
-| kisi-fdtd WebAssembly with SIMD128 (Node / V8) | 42 |
+| openEMS SSE, 1 thread | 94–101 |
+| kisi-fdtd native | 80 |
+| kisi-fdtd WebAssembly with SIMD128 | 42 |
 | kisi-fdtd WebAssembly without SIMD | 18 |
-
-Two threads gave no gain for either tool here (openEMS 94 → 94, kisi-fdtd 82 → 80): the two vCPUs
-of this workspace share the memory bandwidth. Scaling has to be measured on a desktop.
-
-**Stop criterion:** kisi-fdtd stops when its field energy (Σ εE² + μH²) is 40 dB below the
-maximum; openEMS' energy measure stayed at about −35 dB in all cases and ran to the step limit. The
-agreement above holds for both; the step counts are therefore not comparable, the speed per step is.
-
-## Conclusions
-- The Rust FDTD reproduces openEMS on the same mesh within a few hundredths of a dB in S21 and
-  within about 1 dB in S11 above −30 dB, including the cavity resonances.
-- Per step it is about 20 % slower than openEMS' hand-vectorised SSE engine natively; as
-  WebAssembly with SIMD it reaches half the native speed. A via case of about 300 k cells
-  (10–15 k steps) takes 1.5–2 minutes per excitation in one browser worker; the excitations of a
-  2- or 4-port run in parallel workers.
-
-## Next steps
-1. CPML instead of Mur (fewer reflections, smaller air box), port de-embedding (2×thru).
-2. Conformal metal for round vias and antipads (Dey–Mittra or CST-like PBA): coarser cells near
-   the via, larger time step – the main lever on run time.
-3. Several workers per excitation in the browser (slabs along x, halo exchange by messages).
-4. "3D check of this via" in the viewer: geometry from the board (stackup, via, pads, antipads,
-   nearby GND vias and planes), 2- and 4-port, results next to the fast model.
-5. The reference cases of `validation/via_references.md` with openEMS on finer meshes; the fast
-   hybrid model (r–z via solver, cavity model) is calibrated against them.

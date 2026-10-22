@@ -1,6 +1,13 @@
 "use strict";
 // ---- files, samples, theme and start-up
 // files
+// a file's bytes as base64 (IBIS models: the engine hashes the bytes as sha256sum does)
+async function fileB64(f) {
+  const u = new Uint8Array(await f.arrayBuffer());
+  let s = "";
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
+}
 async function handleFiles(files) {
   files = [...files];
   const pcb = files.find((f) => f.name.endsWith(".kicad_pcb"));
@@ -14,12 +21,20 @@ async function handleFiles(files) {
   // Touchstone files (.s2p, .s4p) for the channel behind connectors: kept in memory
   const tsDropped = files.filter((f) => /\.s\d+p$/i.test(f.name));
   for (const f of tsDropped) loadTouchstone(f.name, await f.text());
-  if (tsDropped.length && !pcb && !kisiCfg && !Object.keys(csv).length) {
+  // IBIS models that its "ibis" section names: read into memory only (never stored, never uploaded)
+  const ibis = {};
+  for (const f of files.filter((f) => /\.ibs$/i.test(f.name))) ibis[f.name] = await fileB64(f);
+  const extra = Object.keys(csv).length || Object.keys(ibis).length;
+  if (tsDropped.length && !pcb && !kisiCfg && !extra) {
     if (S.tab === "ch" && S.scene) { S.chCache = null; markCheckStale(); renderChOverview(); }
     return;
   }
-  let kc = kisiCfg ? { name: kisiCfg.name, text: await kisiCfg.text(), csv } : null;
-  if (!kc && Object.keys(csv).length && S.lastFiles && S.lastFiles.cfg) kc = { ...S.lastFiles.cfg, csv: { ...(S.lastFiles.cfg.csv || {}), ...csv } };
+  let kc = kisiCfg ? { name: kisiCfg.name, text: await kisiCfg.text(), csv, ibis } : null;
+  if (!kc && extra && S.lastFiles && S.lastFiles.cfg) kc = { ...S.lastFiles.cfg, csv: { ...(S.lastFiles.cfg.csv || {}), ...csv }, ibis: { ...(S.lastFiles.cfg.ibis || {}), ...ibis } };
+  if (!pcb && !kisiCfg && !kc && Object.keys(ibis).length) {
+    $("warnings").innerHTML = `<span class="err">${esc(Object.keys(ibis).join(", "))}: IBIS models are read through the "ibis" section of &lt;board&gt;.kisi.json – drop them together with it (they stay in memory only).</span>`;
+    return;
+  }
   if (!pcb && !kisiCfg && kc) {
     const l = S.lastFiles;
     await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, kc);
@@ -93,7 +108,7 @@ window.addEventListener("drop", (e) => {
     else if (files.some((f) => /\.kicad_pcb$/i.test(f.name))) { S.fileHandles = null; $("reload").hidden = true; }
     else if (S.fileHandles && hp.some(Boolean)) {
       // a configuration file dropped later: reload reads it too
-      const extra = (await Promise.all(hp)).filter((h) => h && h.kind === "file" && /\.kisi\.json$|\.csv$|\.s\d+p$/i.test(h.name));
+      const extra = (await Promise.all(hp)).filter((h) => h && h.kind === "file" && /\.kisi\.json$|\.csv$|\.s\d+p$|\.ibs$/i.test(h.name));
       S.fileHandles = S.fileHandles.filter((h) => !extra.some((x) => x.name === h.name)).concat(extra);
     }
     await handleFiles(files);

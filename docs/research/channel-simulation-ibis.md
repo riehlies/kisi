@@ -428,6 +428,12 @@ source, below kisi.json.
 | M5 DDR3/DDR4 flow | detection, byte lanes, fly-by, settings, `data/ddr.json`, report | 12–20 |
 | M6 Long patterns | edge-response superposition, PDA worst-case eye; optional aggressors from the crosstalk scan | 6–10 |
 
+**Update (M1 implemented, branch `feat/ibis-parser`):** crate `kisi-ibis`, `kisi ibis <file.ibs>`, the `ibis`
+mapping in kisi.json (adapted from 7.3: `selectors` – `selector` is accepted too –, `pin_map`, `pins` for
+exceptions; the `models` section with search folders is not implemented, paths are relative to the kisi.json),
+`config-check` with the model files, a low-priority `gaps` entry, the viewer check with dropped files (memory only).
+See README and ROADMAP.
+
 About 55–85 focused days in total. M0 and M1 are useful alone (correct ThunderScope lanes; `kisi ibis` as a model
 inspector). A DDR test board is needed from M5 on: Antmicro's open KiCad boards (Apache-2.0) with a Kintex-7 and a
 DDR4 RDIMM slot or LPDDR4 are candidates [S42][S43]; a board with discrete DDR3/DDR4 chips would be better *(none

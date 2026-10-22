@@ -1,0 +1,11 @@
+[package]
+name = "kisi-ibis"
+description = "IBIS (I/O Buffer Information Specification) parser and checks: components, pins, model selectors, buffer models with corners; no file system access (also for WebAssembly)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }

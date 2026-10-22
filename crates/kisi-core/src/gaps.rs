@@ -198,6 +198,37 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         ));
     }
 
+    // --- IBIS models at the lane ends (low priority: the profiles are the end models) -----
+    let mut ends: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for l in buses.iter().flat_map(|b| &b.lanes).filter(|l| matches!(l.kind.as_str(), "ic-ic" | "ic-connector")) {
+        for e in &l.ends {
+            let fitted = b.footprints.iter().any(|f| f.reference == e.refdes && !f.dnp);
+            if fitted && cd.role(&e.refdes) == "ic" && !cfg.ibis.contains_key(&e.refdes) {
+                ends.entry(e.refdes.clone()).or_default().insert(l.name.clone());
+            }
+        }
+    }
+    if !ends.is_empty() {
+        let items: Vec<Value> = ends
+            .iter()
+            .map(|(r, lanes)| {
+                let v = b.footprints.iter().find(|f| &f.reference == r).map(|f| f.value.clone());
+                json!({"ref": r, "value": v, "lanes": lanes.len(), "examples": lanes.iter().take(4).collect::<Vec<_>>()})
+            })
+            .collect();
+        out.push(gap(
+            "ibis-models",
+            "low",
+            "interfaces",
+            format!("{} IC(s) at the ends of lanes have no IBIS model in <board>.kisi.json. This version checks channels with the interface profiles' transmitter and receiver; the mapping prepares IBIS-based checks and is validated by config-check.", items.len()),
+            &["channel ends (later versions: simulation with IBIS buffers)"],
+            "The IC vendor's IBIS model (product page, or the design tool's export, e.g. Vivado \"Export IBIS Model\" for the pins of the design). Keep vendor files outside the repository unless their licence allows sharing: kisi.json stores the path and sha256 only. Inspect a file with `kisi ibis <file.ibs>`.",
+            json!({"to": "ibis.<ref>", "example": {"file": "ibis/part.ibs", "component": "<[Component] of the file>", "sha256": "<sha256sum of the file>", "pin_map": "by-number", "selectors": {"<[Model Selector]>": "<model>"}, "source": {"kind": "datasheet", "url": "…", "note": "vendor IBIS model, file revision …"}},
+                "note": "pin_map by-number: pad number = IBIS pin name; by-name: the pad's symbol pin name = IBIS signal_name; \"pins\": {\"<pad>\": \"<IBIS pin>\"} for exceptions"}),
+            items,
+        ));
+    }
+
     // --- power ---------------------------------------------------------------------------
     let pnets: Vec<crate::pi::PowerNet> = crate::pi::power_nets(b).into_iter().filter(|n| !n.ground && n.voltage.is_some()).collect();
     let (rails, _) = crate::pi::rails_from_fields(b);

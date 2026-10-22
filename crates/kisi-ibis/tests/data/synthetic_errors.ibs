@@ -1,0 +1,94 @@
+stray text before the first keyword (stray-data)
+[IBIS Ver]      9.9                     | not a released version (version)
+[File Name]     wrong_name.ibs          | differs from the file's name (file-name)
+| [File Rev] is missing (missing-keyword)
+[Comment Char]  A_char                  | not an allowed comment character (comment-char)
+[Bogus Keyword] something               | unknown-keyword
+[Component]     BROKEN
+| [Manufacturer] is missing (missing-keyword)
+[Package]
+R_pkg           50              NA      NA      | out-of-range
+L_pkg           NA              1n      2n      | na-typ
+| C_pkg is missing (missing-keyword)
+[Pin]   signal_name     model_name      R_pin   L_pin   C_pin
+1       A               OUT1            10m     1n      1p
+1       A_DUP           OUT1            10m     1n      1p      | duplicate-pin
+2       B               NOSUCH                                  | unknown-model
+3       C               OUT1            10m     1n              | columns
+4       D                                                       | columns (error)
+5       P               SEL1
+6       N               SEL1
+[Diff Pin]      inv_pin vdiff   tdelay_typ  tdelay_min  tdelay_max
+5               7       0.1     0           NA          NA      | unknown-pin
+[Model Selector] SEL1
+OUT1            exists
+GHOST           not defined                                     | unknown-model
+|
+[Model]         OUT1
+Model_type      Output
+C_comp          1.0     NA      NA                              | out-of-range (1 F)
+Bogus_param = 3                                                 | unknown-parameter
+[Voltage Range] 3.3     3.0                                     | columns
+stray data line                                                 | stray-data
+[Rgnd]          50      NA      NA                              | model-type
+[Pulldown]
+  -3.3      -0.1        NA      NA
+   0         0          NA      NA
+   1.0       0.05       NA      NA
+   0.5       0.04       NA      NA                              | non-monotonic (voltage)
+   3.3       0.03       NA      NA                              | non-monotonic (current)
+   6.6       0.2                                                | columns
+   x         1          NA      NA                              | bad-row
+| [Pullup] is missing (missing-keyword)
+[GND Clamp]
+   0         0          NA      NA
+   3.3       0          NA      NA                              | coverage
+[Ramp]
+R_load = 50
+dV/dt_r   -1.0/1n     NA          NA                            | ramp-sign
+dV/dt_f   1.0/0.5n    1.2/0.6n    4.7K/1n                       | scale-suffix, ramp (dV above the supply)
+[Rising Waveform]
+R_fixture = 50
+V_fixture = 0
+   0         1.0        NA      NA
+   1n        0.0        NA      NA                              | waveform-direction
+[Falling Waveform]
+V_fixture = 3.3                                                 | missing-parameter (R_fixture)
+   0         3.3        NA      NA
+   1n        0.0        NA      NA
+[Algorithmic Model]
+Executable Windows_VisualStudio_32 tx.dll tx.ami
+[End Algorithmic Model]                                         | unsupported-keyword
+|
+[Model]         IN1
+Model_type      Inputx                                          | model-type
+C_comp          1p      1p      1p
+[Voltage Range] 3.3     3.0     3.6
+|
+[Model]         IN2
+Model_type      Input
+Vinl = 2.0
+Vinh = 0.8                                                      | threshold
+C_comp          1p      1p      1p
+  [Temperature Range] 25    85      -40                         | keyword-column
+[Voltage Range] 3.3     3.0     3.6
+[Pullup                                                         | bad-keyword
+|
+[Model]         OUT1                                            | duplicate-name
+Model_type      Input
+C_comp          1p      1p      1p
+[Voltage Range] 3.3     3.0     3.6
+|
+[Test Data]     t1                                              | unsupported-keyword (skipped)
+[Rising Waveform Near]
+   0    0    0    0
+|
+[Model]         TERM1
+Model_type      Terminator
+C_comp          1p      NA      NA
+[Voltage Range] 3.3     3.0     3.6
+[Pin]                                                           | misplaced-keyword
+[External Model]
+Language SPICE
+[End External Model]                                            | unsupported-keyword
+| no [END]: missing-end

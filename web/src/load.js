@@ -26,7 +26,8 @@ function saveBoardState() {
 // small texts (the board configuration): hash every character
 function textHash(t) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); }
 
-// cfg: {name, text} of a <board>.kisi.json (values with sources), applied over the board
+// cfg: {name, text, csv, ibis} of a <board>.kisi.json (values with sources), applied over the board, with the
+// BOMs ({name: text}) and IBIS models ({name: base64}, memory only) dropped with it
 async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) {
   $("drop").hidden = true; $("drop").classList.remove("start");
   showBusy("Reading board and computing cross-sections…");
@@ -35,7 +36,8 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     saveBoardState();
     // assembly variant chosen in this browser (wins over the configuration's)
     let vchoice = lsGet(variantKey(name));
-    const key = boardKey(name, pcbText + "|" + (proText || "")) + (cfg ? "|" + textHash(cfg.text + JSON.stringify(cfg.csv || {})) : "") + "|v=" + (vchoice || "");
+    const ibisKey = cfg && cfg.ibis ? Object.entries(cfg.ibis).map(([k, v]) => `${k}:${v.length}:${textHash(v.slice(0, 4096))}`).join(",") : "";
+    const key = boardKey(name, pcbText + "|" + (proText || "")) + (cfg ? "|" + textHash(cfg.text + JSON.stringify(cfg.csv || {}) + ibisKey) : "") + "|v=" + (vchoice || "");
     const snap = S.boardCache && S.boardCache.get(key);
     const t0 = performance.now();
     S.engine.loadPro(proText || '{"net_settings":{}}');
@@ -44,7 +46,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     S.config = null;
     S.variant = null;
     if (cfg) {
-      try { S.config = { name: cfg.name, ...S.engine.config(cfg.text, name, cfgFiles(cfg), vchoice) }; S.variant = S.config.variant; }
+      try { S.config = { name: cfg.name, ...S.engine.config(cfg.text, name, cfgFiles(cfg), vchoice, cfgIbis(cfg)), ibisUnused: cfgIbisUnused(cfg) }; S.variant = S.config.variant; }
       catch (e) { S.config = { name: cfg.name, check: { ok: false, errors: [e.message], warnings: [], entries: 0 }, targets: {}, profiles: {} }; }
     }
     try {

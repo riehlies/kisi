@@ -50,6 +50,26 @@ function variantUnused() {
   return v._unused;
 }
 function netUnused(n) { const u = variantUnused(); return !!u && u.has(n); }
+// IBIS models that the configuration's "ibis" section names, from .ibs files dropped with it (matched by
+// name). Private model files stay in memory: they are never written to localStorage or IndexedDB.
+function cfgIbis(cfg) {
+  const out = {};
+  if (!cfg || !cfg.ibis) return out;
+  let c = null;
+  try { c = JSON.parse(cfg.text); } catch (e) { return out; }
+  for (const e of Object.values((c && c.ibis) || {})) {
+    if (!e || typeof e.file !== "string" || !e.file.trim()) continue;
+    const f = cfg.ibis[e.file.split(/[\\/]/).pop()] ?? cfg.ibis[e.file];
+    if (f != null) out[e.file] = f;
+  }
+  return out;
+}
+// dropped .ibs files that the configuration does not name (ignored; shown in the status)
+function cfgIbisUnused(cfg) {
+  if (!cfg || !cfg.ibis) return [];
+  const used = new Set(Object.keys(cfgIbis(cfg)).map((p) => p.split(/[\\/]/).pop()));
+  return Object.keys(cfg.ibis).filter((n) => !used.has(n));
+}
 const forkText = (f) => `${f.parts.join("/")} on ${netShort(f.net_name)} (→ ${f.towards.map((t) => t.join(", ")).join(" / ")})`;
 function variantShown() {
   const v = S.variant;

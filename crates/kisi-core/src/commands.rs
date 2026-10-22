@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
-pub const COMMANDS: &[&str] = &["overview", "interfaces", "net", "check", "crosstalk", "profiles", "power", "report", "gaps", "config-check", "config-template", "help"];
+pub const COMMANDS: &[&str] = &["overview", "interfaces", "net", "check", "crosstalk", "profiles", "power", "report", "gaps", "config-check", "config-template", "ibis", "help"];
 
 pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on stdout
 
@@ -30,9 +30,15 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                                                           [--tree tree.json] [--pdn RAIL]
   report           write analysis/kisi.json next to the board   [--out FILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
-  config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
+  config-check     check <board>.kisi.json (format, ranges, references, sources, variants; IBIS
+                   mapping: files present, sha256, component, selectors, a model for every pad on
+                   a net with a target or a lane)
   config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
                    assembly variants
+  ibis <file.ibs>  IBIS model summary (no board needed): components, pins with models and package
+                   R/L/C, model selectors, diff pins, models (type, C_comp, thresholds, voltage range,
+                   table sizes; Ron/Roff and slew rate derived from the tables), checks like IBISCHK
+                   with line numbers; tables are not printed   [--component NAME] [--model NAME]
 
 common options: --pro FILE (default: board.kicad_pro), --config FILE (default: board.kisi.json
 next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer),
@@ -48,7 +54,9 @@ net: always all of the net's)
 
 kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design
 at TU Darmstadt. GPL-3.0-only, https://github.com/riehlies/kisi
-A quick design check: results are estimates, without any warranty of correctness.";
+A quick design check: results are estimates, without any warranty of correctness.
+IBIS parser structure ported from KiCad's KIBIS (Copyright (C) 2022 Fabien Corona, The KiCad
+Developers; BSD-3-Clause).";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -80,6 +88,9 @@ pub struct Opts {
     pub field_xt: bool,
     /// assembly variant (wins over the configuration's `variant`)
     pub variant: Option<String>,
+    /// `ibis`: show only this [Component] / [Model]
+    pub component: Option<String>,
+    pub model: Option<String>,
 }
 
 /// Parse `<command> [args…]`.
@@ -124,6 +135,8 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--field-all" => o.field_all = true,
             "--field-xt" => o.field_xt = true,
             "--variant" => o.variant = Some(val(&mut i, a)?),
+            "--component" => o.component = Some(val(&mut i, a)?),
+            "--model" => o.model = Some(val(&mut i, a)?),
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
         }
@@ -135,6 +148,12 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             return Err(format!("unknown profile '{id}' for class '{c}' (see `kisi profiles`)"));
         }
     }
+    if needs_file(&o.cmd) && o.pos.is_empty() {
+        return Err(format!("file missing (kisi {} <file.ibs>)", o.cmd));
+    }
+    if (o.component.is_some() || o.model.is_some()) && o.cmd != "ibis" {
+        return Err("--component and --model belong to `kisi ibis`".into());
+    }
     if needs_board(&o.cmd) && o.pos.is_empty() {
         return Err(format!("board file missing (kisi {} <board.kicad_pcb>)", o.cmd));
     }
@@ -145,7 +164,32 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
 }
 
 pub fn needs_board(cmd: &str) -> bool {
-    !matches!(cmd, "help" | "profiles")
+    !matches!(cmd, "help" | "profiles" | "ibis")
+}
+
+/// Commands that read one file instead of a board (`kisi ibis <file.ibs>`): the front end reads
+/// it and calls `run_file`.
+pub fn needs_file(cmd: &str) -> bool {
+    cmd == "ibis"
+}
+
+/// Commands that check the IBIS mapping with the model files: the front end reads the files the
+/// configuration names (`service::ibis_files`) into `Inputs::ibis_files`.
+pub fn uses_ibis_files(cmd: &str) -> bool {
+    cmd == "config-check"
+}
+
+/// Run a command that reads one file (`needs_file`): `name` is the file's name, `bytes` its
+/// contents.
+pub fn run_file(o: &Opts, name: &str, bytes: &[u8]) -> Result<Value, String> {
+    match o.cmd.as_str() {
+        "ibis" => {
+            let base = name.rsplit(['/', '\\']).next().unwrap_or(name);
+            let f = crate::ibis_parser::read(bytes, Some(base));
+            crate::ibis::summary(&f, base, bytes, o.component.as_deref(), o.model.as_deref())
+        }
+        c => Err(format!("{c} does not read a file")),
+    }
 }
 
 /// Whether the command benefits from field-solver impedances.
@@ -320,11 +364,19 @@ pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, 
             let pr = proj()?;
             match (&pr.config_path, &pr.config_check) {
                 (None, _) => Err(format!("no configuration: {} does not exist (create it, see `kisi config-template`)", service::config_path_for(&pr.pcb_path).display())),
-                (Some(f), Some(c)) => Ok(json!({"file": f.display().to_string(), "ok": c.ok, "entries": c.entries, "errors": c.errors, "warnings": c.warnings, "variant": pr.variant.summary()})),
+                (Some(f), Some(c)) => {
+                    let mut v = json!({"file": f.display().to_string(), "ok": c.ok, "entries": c.entries, "errors": c.errors, "warnings": c.warnings, "variant": pr.variant.summary()});
+                    if let Some(parts) = &pr.ibis {
+                        v["ibis"] = json!(parts);
+                        v["ibis_note"] = json!("IBIS models are checked and summarised only; the channel check still uses the interface profiles as end models. Model files are read from disk and never copied into kisi.json (name and sha256 only).");
+                    }
+                    Ok(v)
+                }
                 (Some(f), None) => Ok(json!({"file": f.display().to_string(), "ok": true})),
             }
         }
         "config-template" => Ok(config_template(proj()?)),
+        "ibis" => Err("kisi ibis reads a file: the front end calls run_file".into()),
         c => Err(format!("unknown command {c}")),
     }
 }
@@ -415,5 +467,9 @@ mod tests {
         assert_eq!(parse_args(&a("--help")).unwrap().cmd, "help");
         assert_eq!(parse_args(&a("check b.kicad_pcb --variant TS-PCIe")).unwrap().variant.as_deref(), Some("TS-PCIe"));
         assert!(parse_args(&a("check b.kicad_pcb --variant")).is_err());
+        let o = parse_args(&a("ibis x.ibs --component C1 --model M")).unwrap();
+        assert_eq!((o.cmd.as_str(), o.component.as_deref(), o.model.as_deref(), needs_board(&o.cmd), needs_file(&o.cmd)), ("ibis", Some("C1"), Some("M"), false, true));
+        assert!(parse_args(&a("ibis")).is_err());
+        assert!(parse_args(&a("check b.kicad_pcb --model M")).is_err());
     }
 }

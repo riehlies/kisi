@@ -8,13 +8,18 @@
 //! * `kisi-si`    – signal integrity
 //! * `kisi-pi`    – power integrity
 //! * `kisi-sparse` – sparse solver (shared with the field-solver WASM module)
+//! * `kisi-ibis`  – IBIS parser and checks (`kisi_core::ibis_parser`; mapping and summaries in
+//!   `kisi_core::ibis`)
 
 pub use kisi_board::{apply_project, board, geom, load_pcb, num, sexpr, view, Board};
 pub use kisi_pi::{cavity_modal, losses, pdn, pdn_ic, pi, tree};
 pub use kisi_si::{analytic, analyze, extract, eye, profile, rf, topology, via, via_pbm, xsgeom, Analysis, Params};
+/// IBIS parser and checks (the crate `kisi-ibis`)
+pub use kisi_ibis as ibis_parser;
 
 pub mod commands;
 pub mod config;
 pub mod gaps;
+pub mod ibis;
 pub mod service;
 pub mod variant;

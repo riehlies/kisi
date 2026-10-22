@@ -363,6 +363,7 @@ name = "kisi-core"
 version = "0.2.3"
 dependencies = [
  "kisi-board",
+ "kisi-ibis",
  "kisi-pi",
  "kisi-si",
  "serde",
@@ -375,6 +376,13 @@ version = "0.2.3"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "kisi-ibis"
+version = "0.2.3"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

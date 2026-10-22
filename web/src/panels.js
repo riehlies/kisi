@@ -6,10 +6,16 @@ function renderCfgStatus() {
   box.hidden = !c;
   if (!c) return;
   const ck = c.check || { ok: true, errors: [], warnings: [], entries: 0 };
-  const parts = [c.dielectrics ? `${c.dielectrics} stackup` : "", Object.keys(c.targets || {}).length ? `${Object.keys(c.targets).length} target(s)` : "", Object.keys(c.profiles || {}).length ? `${Object.keys(c.profiles).length} profile(s)` : "", c.fields ? `${c.fields} field(s)` : ""].filter(Boolean);
+  const parts = [c.dielectrics ? `${c.dielectrics} stackup` : "", (c.ibis || []).length ? `${c.ibis.length} IBIS mapping(s)` : "", Object.keys(c.targets || {}).length ? `${Object.keys(c.targets).length} target(s)` : "", Object.keys(c.profiles || {}).length ? `${Object.keys(c.profiles).length} profile(s)` : "", c.fields ? `${c.fields} field(s)` : ""].filter(Boolean);
   const list = (xs, cls) => xs.map((x) => `<li class="${cls}">${esc(x)}</li>`).join("");
+  // IBIS models of parts (kisi.json "ibis"): files dropped with the board, kept in memory only
+  const ib = (c.ibis || []).map((p) => !p.loaded ? `${esc(p.ref)} (${esc(p.file.split(/[\\/]/).pop())} not loaded)`
+    : `${esc(p.ref)} (${esc(p.component || "?")}${p.pads_checked != null ? `, ${p.pads_with_model}/${p.pads_checked} pads` : ""}${p.sha256_ok === false ? ", file changed" : ""})`);
+  const unused = c.ibisUnused || [];
+  const ibLine = (ib.length ? `<div>IBIS: ${ib.join(" · ")} <span class="muted">– model files stay in this page's memory; the channel check still uses the profiles</span></div>` : "")
+    + (unused.length ? `<div class="muted">${esc(unused.join(", "))}: not named in the "ibis" section of ${esc(c.name)} – ignored</div>` : "");
   box.innerHTML = `<b>${esc(c.name)}</b>: ${parts.join(", ") || "nothing"} applied · ${ck.ok ? `<span class="ok">check passed</span>` : `<span class="err">${ck.errors.length} error(s)</span>`}${ck.warnings.length ? ` · ${ck.warnings.length} warning(s)` : ""}
-    ${ck.errors.length || ck.warnings.length ? `<details><summary>Details</summary><ul>${list(ck.errors, "err")}${list(ck.warnings, "")}</ul></details>` : ""}`;
+    ${ibLine}${ck.errors.length || ck.warnings.length ? `<details><summary>Details</summary><ul>${list(ck.errors, "err")}${list(ck.warnings, "")}</ul></details>` : ""}`;
 }
 
 function renderSide() {

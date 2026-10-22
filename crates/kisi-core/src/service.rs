@@ -31,6 +31,8 @@ pub struct Project {
     pub config_profiles: HashMap<String, String>,
     /// the assembly variant in use (`crate::variant`)
     pub variant: crate::variant::VariantState,
+    /// IBIS model mapping per part, when the model files were loaded (`config-check`)
+    pub ibis: Option<Vec<Value>>,
     /// Touchstone files of the configuration's connector ends, by the path written in it
     pub touchstones: HashMap<String, Result<crate::rf::Touchstone, String>>,
 }
@@ -69,6 +71,8 @@ pub struct Inputs {
     pub variant: Option<String>,
     /// files the configuration refers to (BOMs of variants), by the path written in it
     pub files: crate::variant::Files,
+    /// IBIS model files the configuration names (None: not loaded, the file checks are skipped)
+    pub ibis_files: Option<crate::ibis::IbisFiles>,
 }
 
 /// Read the files a configuration refers to (BOMs of its variants, Touchstone files of its
@@ -93,6 +97,20 @@ pub fn config_files(config_path: &Path, text: &str) -> crate::variant::Files {
     files
 }
 
+/// Read the IBIS model files a configuration names (paths relative to the configuration file).
+pub fn ibis_files(config_path: &Path, text: &str) -> crate::ibis::IbisFiles {
+    let mut files = crate::ibis::IbisFiles::new();
+    let Ok(c) = crate::config::parse(text) else { return files };
+    let dir = config_path.parent().unwrap_or(Path::new("."));
+    for e in c.ibis.values().filter(|e| !e.file.trim().is_empty()) {
+        let p = dir.join(&e.file);
+        files.entry(e.file.clone()).or_insert_with(|| {
+            std::fs::read(&p).map_err(|err| format!("{}: {}", p.display(), if err.kind() == std::io::ErrorKind::NotFound { "not found".to_string() } else { err.to_string() }))
+        });
+    }
+    files
+}
+
 /// `<board>.kisi.json` next to `board.kicad_pcb`.
 pub fn config_path_for(pcb: &Path) -> PathBuf {
     let stem = pcb.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
@@ -110,6 +128,12 @@ impl Project {
     /// Like `load`, with an explicit configuration file (None: no configuration) and an
     /// assembly variant chosen on the command line.
     pub fn load_with(pcb: &Path, pro: Option<&Path>, stackup: Option<&StackupOverride>, config: Option<&Path>, variant: Option<&str>) -> Result<Project, String> {
+        Self::load_opts(pcb, pro, stackup, config, variant, false)
+    }
+
+    /// Like `load_with`; `ibis`: also read the IBIS model files the configuration names and
+    /// check the mapping with them (`config-check`).
+    pub fn load_opts(pcb: &Path, pro: Option<&Path>, stackup: Option<&StackupOverride>, config: Option<&Path>, variant: Option<&str>, ibis: bool) -> Result<Project, String> {
         let text = std::fs::read_to_string(pcb).map_err(|e| format!("{}: {e}", pcb.display()))?;
         let pro_path = pro.map(Path::to_path_buf).unwrap_or_else(|| pcb.with_extension("kicad_pro"));
         let pro_text = std::fs::read_to_string(&pro_path).ok();
@@ -121,7 +145,11 @@ impl Project {
             Some((cp, Ok(t))) => config_files(cp, t),
             _ => Default::default(),
         };
-        Self::from_texts(Inputs { pcb_path: pcb.to_path_buf(), pcb: text, pro: pro_text, config, stackup: stackup.cloned(), field: HashMap::new(), variant: variant.map(str::to_string), files })
+        let ibis_files = match (&config, ibis) {
+            (Some((cp, Ok(t))), true) => Some(ibis_files(cp, t)),
+            _ => None,
+        };
+        Self::from_texts(Inputs { pcb_path: pcb.to_path_buf(), pcb: text, pro: pro_text, config, stackup: stackup.cloned(), field: HashMap::new(), variant: variant.map(str::to_string), files, ibis_files })
     }
 
     /// Build a project from file contents (no file system access: also used in WASM).
@@ -157,9 +185,23 @@ impl Project {
         }
         let params = Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, targets: applied.targets.clone(), field: inp.field, ..Default::default() };
         let an = analyze(&board, &params);
+        // IBIS mapping with the model files: pads on nets with a target or a lane need a model
+        let mut ibis = None;
+        if let (Some(files), Some(c)) = (&inp.ibis_files, &cfg) {
+            if !c.ibis.is_empty() {
+                let buses = topology::buses(&board, &an, &topology::ComponentData::builtin());
+                let fc = crate::ibis::check_files(c, &board, &crate::ibis::signal_nets(&board, &an, &buses), files);
+                if let Some(ck) = cfg_check.as_mut() {
+                    ck.errors.extend(fc.errors);
+                    ck.warnings.extend(fc.warnings);
+                    ck.ok = ck.errors.is_empty();
+                }
+                ibis = Some(fc.parts);
+            }
+        }
         let name = inp.pcb_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
         let touchstones = touchstones_of(cfg.as_ref(), &inp.files);
-        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, touchstones })
+        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, ibis, touchstones })
     }
 
     /// Commands that compute lanes call this first: an error with the list of variants when
@@ -809,7 +851,7 @@ mod tests {
     const PRO: &str = r#"{"net_settings": {"classes": [{"name": "Default"}, {"name": "50Z"}], "netclass_assignments": {"SE_CAPZ_0805": "50Z"}}}"#;
 
     fn project() -> Project {
-        Project::from_texts(Inputs { pcb_path: "capz.kicad_pcb".into(), pcb: PCB.into(), pro: Some(PRO.into()), config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap()
+        Project::from_texts(Inputs { pcb_path: "capz.kicad_pcb".into(), pcb: PCB.into(), pro: Some(PRO.into()), config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default(), ibis_files: None }).unwrap()
     }
 
     /// `check --all` judges the connector–connector lane (board share: impedance, loss, return

@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/kisi-board",
+    "crates/kisi-ibis",
     "crates/kisi-si",
     "crates/kisi-pi",
     "crates/kisi-core",

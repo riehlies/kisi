@@ -93,7 +93,9 @@ Three views, each starting with what the board file gives and computing more on 
    anti-resonances, a target from the IC's current step and recommendations (value, package, count, distance).
 
 Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer; edits are stored in the browser, the
-files are not changed. Results of the last three boards stay in memory while switching.
+files are not changed. Results of the last three boards stay in memory while switching. IBIS files named in the
+`ibis` section of `kisi.json` can be dropped together with the board: the viewer checks the mapping (shown under
+the configuration status) and keeps the files in memory only – they are never stored in the browser or uploaded.
 
 ## Command line
 `node kisi.mjs <command> <board.kicad_pcb> [options]`
@@ -108,8 +110,9 @@ files are not changed. Results of the last three boards stay in memory while swi
 | `power` | regulator chain, budget, DC IR drop per rail and in the ground return, losses per part / rail / layer, power flow (`--pdn RAIL` adds Z(f)) |
 | `report` | everything into `analysis/kisi.json` next to the board |
 | `gaps` | missing or default data, where to find it, how to write it into `<board>.kisi.json` |
-| `config-check`, `config-template` | check / start a `<board>.kisi.json` (the template suggests variants from forks) |
+| `config-check`, `config-template` | check / start a `<board>.kisi.json` (the template suggests variants from forks; `config-check` also checks the IBIS mapping with the model files) |
 | `profiles [ID]` | the interface profiles |
+| `ibis <file.ibs>` | IBIS model summary, no board needed (`--component NAME`, `--model NAME`): components, pins with models and package R/L/C, model selectors, diff pins, models (type, C_comp, thresholds, voltage range, table sizes, Ron/Roff and slew rate derived from the tables), checks like IBISCHK with line numbers |
 
 `--variant NAME` chooses the assembly variant (a KiCad 10 variant of the board or one of the `kisi.json` variants;
 `default` = the board file as it is), over `"variant"` in `<board>.kisi.json`. When a board has variants – or forks
@@ -161,6 +164,11 @@ KiCad files; CLI and viewer lay this file over the board.
     "TS-PCIe": {"description": "PCIe card", "not_fitted_sheets": ["/TS-USB4 Components/"], "fitted": ["C101", "C102", "C128"],
                 "source": {"kind": "design", "document": "TS-PCIe_MP_BOM.csv"}},
     "TS-USB4": {"bom": "TS-USB4_MP_BOM.csv", "bom_exceptions": ["TP*"], "source": {"kind": "design", "document": "TS-USB4_MP_BOM.csv"}}
+  },
+  "ibis": {
+    "U18": {"file": "../ibis-private/xc7a50t.ibs", "component": "xc7a50t_csg325", "sha256": "3f2a…(64 hex digits)",
+            "pin_map": "by-number", "selectors": {"IO_SEL": "LVDS_25"}, "pins": {"A1": "A1_ALT"},
+            "source": {"kind": "simulation", "note": "Vivado Export IBIS Model, private"}}
   }
 }
 ```
@@ -182,6 +190,18 @@ KiCad files; CLI and viewer lay this file over the board.
   not fitted connects nothing; its pads stay as copper and become stubs on the lanes, and nets that only connect
   parts not fitted are not checked (`check` names how many). In the viewer, drop the BOMs
   together with the board and the kisi.json.
+- `ibis`: the IBIS model of a part, by reference designator – `file` (relative to the kisi.json), `component` (may
+  be left out when the file has one), `sha256` (as `sha256sum` prints it; `kisi config-check` prints the value to
+  add), `pin_map` (`by-number`: pad number = IBIS pin name, the default; `by-name`: the pad's symbol pin name = IBIS
+  signal name), `pins` (exceptions, pad → IBIS pin), `selectors` ([Model Selector] → model: drive strength, ODT, I/O
+  standard), `corner` (typ, min, max; for later versions). `config-check` reads the files and checks the hash, the
+  component, the selector choices and that every pad of the part on a net with a target or a lane has an IBIS pin
+  with a model (warning with the uncovered pads); `gaps` lists ICs at lane ends without a model (low priority). In
+  this version the mapping is checked and summarised only: the channel check still uses the interface profiles.
+- **Private models:** vendor IBIS files are rarely redistributable. kisi never copies them: kisi.json holds the path
+  and the hash, the CLI reads the file from disk, the viewer keeps dropped files in memory only, and outputs name
+  file, hash, component and model – `kisi ibis` prints table sizes and derived values, never the tables. Keep such
+  files outside a public repository (e.g. a folder next to it, as above).
 - Source kinds: datasheet, standard, application_note, measurement, simulation, design (the project's own BOM,
   position or schematic files), estimate, assumption.
 - Precedence: board file < kisi.json < edits in the viewer / `--class` and `--variant` on the command line.
@@ -203,6 +223,11 @@ KiCad files; CLI and viewer lay this file over the board.
   (with their pad capacitance, an estimate), and – when all alternatives of a fork are fitted – through the other
   part to the other device. A stub hangs on the side of a via that matches its layer.
 - **Eye:** PRBS7 NRZ with the profile's linear transmitter/receiver; no equalisation, jitter or noise.
+- **IBIS:** `crates/kisi-ibis` reads IBIS 1.1–7.2 files (the keywords that matter for a physical channel; IBIS-AMI,
+  external and interconnect models, EBD and power-aware data are reported, not used) and checks them in the spirit
+  of IBISCHK (required keywords, references, monotonic tables, [Ramp] against the waveforms, waveform end points
+  against the DC solution of the I-V tables, coverage of −Vcc … 2·Vcc). Not used for results yet – plan:
+  `docs/research/channel-simulation-ibis.md`.
 - **Power:** copper rasterised per layer, vias as barrels (25 µm); DC IR drop per rail. PDN per IC: the rail's
   copper on all layers as an AC grid with plane capacitance, capacitors with ESR/ESL and DC-bias derating
   (estimated per package unless given), series parts up to the regulators.
@@ -267,6 +292,9 @@ Example boards in `kisi-examples.html`: [ThunderScope](https://github.com/EEVeng
 hardware under CERN-OHL-P-2.0) and [LibreVNA](https://github.com/jankae/LibreVNA) (Jan Käberich, GPL-3.0), shrunk to
 what kisi reads; the licence texts are embedded with them.
 Fonts: Barlow, Barlow Semi Condensed and JetBrains Mono (SIL Open Font License 1.1, `web/fonts/`), embedded in the viewer.
+IBIS parser: its structure follows KiCad's KIBIS parser (Copyright (C) 2022 Fabien Corona, Copyright The KiCad
+Developers; BSD-3-Clause, notice in `crates/kisi-ibis/NOTICE`). Test fixtures include KiCad's artificial QA models
+(GPL-3.0-or-later, `crates/kisi-ibis/tests/data/README.md`).
 
 ## About
 kisi is a side project by David Riehl. It started as a visualisation tool for the course *Advanced PCB Design* at

@@ -29,10 +29,16 @@ fn load(o: &Opts, with_config: bool) -> Result<Project, String> {
             None => Some(service::config_path_for(&pcb)).filter(|c| c.is_file()),
         }
     };
-    Project::load_with(&pcb, o.pro.as_deref().map(Path::new), ov.as_ref(), cfg.as_deref(), o.variant.as_deref())
+    Project::load_opts(&pcb, o.pro.as_deref().map(Path::new), ov.as_ref(), cfg.as_deref(), o.variant.as_deref(), commands::uses_ibis_files(&o.cmd))
 }
 
 fn run(o: &Opts) -> Result<Value, String> {
+    if commands::needs_file(&o.cmd) {
+        let path = &o.pos[0];
+        let bytes = std::fs::read(path).map_err(|e| format!("{path}: {}", if e.kind() == std::io::ErrorKind::NotFound { "not found".to_string() } else { e.to_string() }))?;
+        let name = Path::new(path).file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_else(|| path.clone());
+        return commands::run_file(o, &name, &bytes);
+    }
     let p = if commands::needs_board(&o.cmd) { Some(load(o, o.cmd != "config-template")?) } else { None };
     let tree = match &o.tree {
         Some(t) => Some(serde_json::from_str::<Value>(&read(t)?).map_err(|e| format!("{t}: {e}"))?),

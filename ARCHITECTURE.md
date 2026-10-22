@@ -11,10 +11,11 @@ interface; data that changes (standards, component values) lives in files, not i
           └──────────────┬─────────────────────────────────────┘
    <board>.kisi.json ───►│  kisi-core (facade; service: load project, JSON summaries;
    (values + sources)    │             config: board configuration; gaps: what is missing)
-              ┌─────────────────┼──────────────────┐
-           kisi-si           kisi-pi           kisi-board
-  cross-sections, formulas, DC IR drop,        parser .kicad_pcb/.kicad_pro,
-  field solver geometry,    power tree,        stackup (+ overrides),
+              ┌─────────────────┼──────────────────┬──────────────┐
+           kisi-si           kisi-pi           kisi-board      kisi-ibis
+  cross-sections, formulas, DC IR drop,        parser .kicad_pcb/.kicad_pro,  IBIS parser,
+  field solver geometry,    power tree,        stackup (+ overrides),        checks, values
+                                                                              derived from tables
   line models, channel,     PDN impedance      geometry, scene, num (Cx, constants)
   vias, eye, crosstalk,            │
   profiles/verdict            kisi-sparse (faer) ── also the field solver's linear solver
@@ -29,7 +30,8 @@ interface; data that changes (standards, component values) lives in files, not i
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, `package` (case size of chip parts: footprint name, else pad geometry), viewer scene, `num` | – |
 | `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,mixed,crosstalk}` (`mixed`: 4-port pair model), `via` (board → via geometry, coax-section fallback), `via_pbm` (physics-based via ladder: r–z Laplace capacitances, parallel-plate impedance with return vias, stubs, pairs; checked against kisi-fdtd), `eye`, `profile`, `topology` (device-to-device lanes) | kisi-board, kisi-sparse |
 | `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `losses` (ground return, losses, loss map, power flow), `pdn` (Z(f), plane model), `cavity_modal` (rectangular plane pair, double cosine series; loop inductance), `pdn_ic` (AC grid over all layers of the rail domain – the rail and the nets behind series resistors, inductors and ferrites up to the regulators –, PDN seen from every IC, filter resonances, recommendations) | kisi-board, kisi-sparse |
-| `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `config` (`<board>.kisi.json`), `variant` (assembly variants: KiCad 10 overrides, kisi.json rules by sheet/references/BOM, the “must choose” state), `gaps` | the three above |
+| `kisi-ibis` | IBIS parser (`parse`/`read`: bytes in, data plus findings with line numbers; structure after KiCad's KIBIS, BSD-3-Clause, `NOTICE`), `check` (IBISCHK-like checks), `derive` (Ron/Roff at Vcc/2, DC levels into fixtures, edge times), `sha256`; no file system access (also WASM) | serde |
+| `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `config` (`<board>.kisi.json`), `variant` (assembly variants: KiCad 10 overrides, kisi.json rules by sheet/references/BOM, the “must choose” state), `gaps`, `ibis` (`kisi ibis` summary, kisi.json IBIS mapping check with the model files) | the four above |
 | `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
 | `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` (impedance cases; `models`: the reduced models on the 3D reference cases; `via-geom`: diagnostics of one via) | kisi-core |
 | `kisi-sparse` | sparse solver (real Cholesky/LU, complex LU for the AC grid), also built as a WASM module for the field solver | faer |
@@ -59,6 +61,7 @@ viewer (via WASM) and CLI show the same result.
   the file handles and “Reload” reads them again after saving in KiCad.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
   net class → profile assignment, power settings, lane directions, the chosen assembly variant. The results of the last three boards stay in memory for the session.
+  IBIS model files dropped with a board are never stored: they live in the page's memory (and the WASM state) only.
 
 ## Data (`data/`)
 * `<board>.kisi.json` (next to the board, not in this repository) – per-board values with sources, see above.
@@ -75,9 +78,14 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
 
 ## Board configuration and agents
 * `<board>.kisi.json` (`kisi_core::config`): values with sources that the board file lacks – stackup, net class
-  targets and profiles, footprint fields (PI_LOAD/PI_SOURCE/PI_REG), assembly variants. Laid over the board when
-  loading (CLI and viewer); kisi never writes into KiCad files. Precedence: board file < kisi.json < viewer edits /
-  CLI options.
+  targets and profiles, footprint fields (PI_LOAD/PI_SOURCE/PI_REG), assembly variants, IBIS model mapping. Laid over
+  the board when loading (CLI and viewer); kisi never writes into KiCad files. Precedence: board file < kisi.json <
+  viewer edits / CLI options.
+* IBIS mapping (`ibis` in kisi.json, `kisi_core::ibis`): file path and sha256 only, never the content. `config::check`
+  validates what needs no file; `ibis::check_files` runs with the files (`config-check` in the CLIs – the front ends
+  read them, `commands::uses_ibis_files` – and the viewer with dropped files) on the analysed board: hash, component,
+  selectors, an IBIS pin with a model for every pad on a net with a target or a lane. `kisi ibis <file>` goes through
+  `commands::run_file` (the front ends read the file, `commands::needs_file`). Not used by the channel models yet.
 * Assembly variants (`kisi_core::variant`): order when loading – board file → variant (KiCad 10 overrides, then the
   kisi.json rules of that name) → kisi.json fields. `kisi_si::topology::forks` finds forks where all alternative
   series parts are fitted. With variants or such forks and no choice, `Project::require_variant` stops the lane

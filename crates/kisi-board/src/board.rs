@@ -181,6 +181,10 @@ pub struct Pad {
     pub drill: f64,
     /// pad number / name, e.g. "1", "A3"
     pub number: String,
+    /// name of the symbol pin on this pad (`pinfunction`, e.g. "IO_L1P_T0_D00_MOSI_14"); empty
+    /// if the board file has none
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub pinfunction: String,
     /// index into `Board::footprints`
     pub fp: u32,
 }
@@ -1097,7 +1101,8 @@ fn parse_footprint(fp: &Node, su: &Stackup, nets: &mut NetTable, out: &mut Vec<P
         let number = pad.atom(1).unwrap_or("").to_string();
         let rratio = if shape == "roundrect" { pad.child_f64("roundrect_rratio").unwrap_or(0.25).clamp(0.0, 0.5) } else { 0.0 };
         let custom = if shape == "custom" { custom_outline(pad, size) } else { vec![] };
-        out.push(Pad { at: p, size, angle, shape, rratio, custom, layers, net, drill: drill.unwrap_or(0.0), number, fp: fp_idx });
+        let pinfunction = pad.child_str("pinfunction").unwrap_or("").to_string();
+        out.push(Pad { at: p, size, angle, shape, rratio, custom, layers, net, drill: drill.unwrap_or(0.0), number, pinfunction, fp: fp_idx });
     }
 }
 

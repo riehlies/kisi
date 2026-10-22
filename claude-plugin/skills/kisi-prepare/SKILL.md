@@ -65,6 +65,13 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
      sheets that hold each option, KiCad 10 variants in the board file. Define `variants` (by sheet,
      references or BOM, `source` kind `design`) and ask the user which one to analyse – write it as
      `"variant"`; never pick one silently. `"default"` = the board file as it is.
+   - IBIS models (gap `ibis-models`, low priority – the channel check still uses the profiles): only when
+     the user has the vendor's file. Look at it with `kisi ibis <file.ibs>` (components, pins, model
+     selectors, findings), then write `ibis.<ref>`: `file` relative to the kisi.json, `component`,
+     `sha256` (printed by `kisi ibis` and by `config-check`), `pin_map` (`by-number`, or `by-name` when
+     the IBIS pin names are not the pad numbers), `selectors` for every [Model Selector] the pins use –
+     ask the user which drive strength / ODT / I/O standard the design uses, never pick the first entry
+     silently. Never copy a vendor file into the project or into kisi.json.
    Use the user's own documents first (datasheet folder, BOM, fabricator files), then web search.
 4. **Rules for values:**
    - Every value needs a `source`: `kind` (datasheet, standard, application_note, measurement,

@@ -17,6 +17,8 @@ struct State {
     /// choice of assembly variant (wins over the configuration's)
     cfg: Option<kisi_core::config::BoardConfig>,
     files: kisi_core::variant::Files,
+    /// IBIS model files dropped with the configuration: in memory only, never stored
+    ibis_files: kisi_core::ibis::IbisFiles,
     variant_choice: Option<String>,
     variant: Option<kisi_core::variant::VariantState>,
     /// stackup as read from the file (overrides are applied to a copy)
@@ -142,6 +144,7 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
                 st.board_base = Some(b);
                 st.cfg = None;
                 st.files.clear();
+                st.ibis_files.clear();
                 st.variant_choice = None;
                 let _ = rebuild(&mut st);
             });
@@ -155,13 +158,64 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// Base64 (standard alphabet, padding optional) → bytes: how the front ends hand over binary
+/// files (IBIS models) inside JSON.
+fn b64_decode(s: &str) -> Result<Vec<u8>, String> {
+    let val = |c: u8| -> Option<u32> {
+        Some(match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' | b'-' => 62,
+            b'/' | b'_' => 63,
+            _ => return None,
+        } as u32)
+    };
+    let mut out = Vec::with_capacity(s.len() / 4 * 3);
+    let (mut acc, mut n) = (0u32, 0);
+    for &c in s.as_bytes().iter().filter(|c| !c.is_ascii_whitespace() && **c != b'=') {
+        acc = (acc << 6) | val(c).ok_or("invalid base64")?;
+        n += 1;
+        if n == 4 {
+            out.extend_from_slice(&[(acc >> 16) as u8, (acc >> 8) as u8, acc as u8]);
+            acc = 0;
+            n = 0;
+        }
+    }
+    match n {
+        0 => {}
+        2 => out.push((acc >> 4) as u8),
+        3 => out.extend_from_slice(&[(acc >> 10) as u8, (acc >> 2) as u8]),
+        _ => return Err("invalid base64 length".into()),
+    }
+    Ok(out)
+}
+
+/// IBIS files in a JSON object: {path: base64} or {path: {"b64": …} | {"error": …}}.
+fn ibis_files_json(v: &serde_json::Value) -> Option<kisi_core::ibis::IbisFiles> {
+    let m = v.as_object()?;
+    Some(
+        m.iter()
+            .map(|(k, f)| {
+                let r = match (f.as_str(), f["b64"].as_str(), f["error"].as_str()) {
+                    (Some(b), _, _) | (None, Some(b), _) => b64_decode(b).map_err(|e| format!("{k}: {e}")),
+                    (None, None, Some(e)) => Err(e.to_string()),
+                    _ => Err(format!("{k}: not readable")),
+                };
+                (k.clone(), r)
+            })
+            .collect(),
+    )
+}
+
 /// Apply a `<board>.kisi.json` to the loaded board (call right after kisi_load_pcb).
 /// Input: {"config": file contents, "board": name of the loaded board, "files": {path: text}
-/// (BOMs the variants refer to), "variant": the viewer's choice | null}.
+/// (BOMs the variants refer to), "ibis": {path: base64} (IBIS models the "ibis" section names,
+/// kept in memory only), "variant": the viewer's choice | null}.
 /// Output: {"check": {ok, errors, warnings, entries}, "targets": {class: {z, diff}},
 /// "profiles": {class: id}, "connector_ends": {connector: ConnEnd}, "fields": n, "dielectrics": n,
-/// "variant": VariantState}. The board's
-/// fields and file stackup are replaced by the configured values (viewer edits stay on top).
+/// "variant": VariantState, "ibis": [per mapped part] | null}. The board's fields and file stackup are
+/// replaced by the configured values (viewer edits stay on top).
 #[no_mangle]
 pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -174,7 +228,7 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
         let b = st.board_base.as_ref().ok_or("no board loaded")?;
         let an0 = kisi_core::extract::skeleton(b, &Params::default());
         let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
-        let check = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin(), board_name.as_deref(), &files);
+        let mut check = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin(), board_name.as_deref(), &files);
         let notes = cfg.notes.clone();
         let conn_ends: serde_json::Map<String, serde_json::Value> = cfg.connector_ends.iter().filter_map(|(k, c)| Some((k.clone(), serde_json::to_value(&c.end).ok()?))).collect();
         for (path, ts) in kisi_core::service::touchstones_of(Some(&cfg), &files) {
@@ -184,10 +238,25 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
         }
         st.cfg = Some(cfg);
         st.files = files;
+        st.ibis_files = ibis_files_json(&v["ibis"]).unwrap_or_default();
         st.variant_choice = v["variant"].as_str().map(str::to_string);
         let a = rebuild(&mut st)?.unwrap_or_default();
         let targets: serde_json::Map<String, serde_json::Value> = a.targets.iter().map(|(k, t)| (k.clone(), serde_json::json!({"z": t.z, "diff": t.diff}))).collect();
-        Ok(serde_json::json!({"check": check, "targets": targets, "profiles": a.profiles, "connector_ends": conn_ends, "fields": a.fields, "dielectrics": a.dielectrics, "notes": notes, "variant": variant_json(&st)}).to_string())
+        // IBIS mapping with the dropped model files, on the board as analysed (variant applied)
+        let mut ibis = serde_json::Value::Null;
+        if let (Some(c), Some(b)) = (st.cfg.as_ref(), st.board.as_ref()) {
+            if !c.ibis.is_empty() {
+                let params = Params { targets: a.targets.clone(), ..Default::default() };
+                let sk = kisi_core::extract::skeleton(b, &params);
+                let buses = kisi_core::topology::buses(b, &sk, &kisi_core::topology::ComponentData::builtin());
+                let fc = kisi_core::ibis::check_files(c, b, &kisi_core::ibis::signal_nets(b, &sk, &buses), &st.ibis_files);
+                check.errors.extend(fc.errors);
+                check.warnings.extend(fc.warnings);
+                check.ok = check.errors.is_empty();
+                ibis = serde_json::json!(fc.parts);
+            }
+        }
+        Ok(serde_json::json!({"check": check, "targets": targets, "profiles": a.profiles, "connector_ends": conn_ends, "fields": a.fields, "dielectrics": a.dielectrics, "notes": notes, "variant": variant_json(&st), "ibis": ibis}).to_string())
     });
     match r {
         Ok(s) => {
@@ -927,12 +996,26 @@ pub extern "C" fn kisi_cli_parse(p: *const u8, n: usize) -> i32 {
     reply((|| {
         let args: Vec<String> = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let o = kisi_core::commands::parse_args(&args)?;
-        Ok(serde_json::json!({"opts": o, "needs_board": kisi_core::commands::needs_board(&o.cmd), "uses_field": kisi_core::commands::uses_field(&o.cmd), "help": kisi_core::commands::HELP}).to_string())
+        Ok(serde_json::json!({"opts": o, "needs_board": kisi_core::commands::needs_board(&o.cmd), "needs_file": kisi_core::commands::needs_file(&o.cmd), "uses_field": kisi_core::commands::uses_field(&o.cmd), "uses_ibis": kisi_core::commands::uses_ibis_files(&o.cmd), "help": kisi_core::commands::HELP}).to_string())
+    })())
+}
+
+/// Run a command that reads one file (`kisi ibis`). Input: {"opts", "name", "b64": the file's bytes}.
+#[no_mangle]
+pub extern "C" fn kisi_cli_file(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply((|| {
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let o: kisi_core::commands::Opts = serde_json::from_value(v["opts"].clone()).map_err(|e| e.to_string())?;
+        let bytes = b64_decode(v["b64"].as_str().ok_or("file missing")?)?;
+        let r = kisi_core::commands::run_file(&o, v["name"].as_str().unwrap_or(""), &bytes)?;
+        Ok(r.to_string())
     })())
 }
 
 /// Build the project. Input: {"opts", "pcb_path", "pcb", "pro", "config": {"path", "text"|null, "error"|null} | null,
-/// "stackup", "field": {id: FieldResult}}.
+/// "stackup", "field": {id: FieldResult}, "files": {path: {"text"}|{"error"}} (BOMs),
+/// "ibis_files": {path: {"b64"}|{"error"}} (IBIS models, only for `config-check`)}.
 /// Output: {"plan": [[id, text, weight], …]} – the cross-sections the field solver should solve.
 #[no_mangle]
 pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
@@ -964,6 +1047,7 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
             field: serde_json::from_value(v["field"].clone()).unwrap_or_default(),
             variant: o.variant.clone(),
             files,
+            ibis_files: ibis_files_json(&v["ibis_files"]),
         };
         let proj = kisi_core::service::Project::from_texts(inp)?;
         let plan = kisi_core::commands::field_plan(&proj, &o);
@@ -991,4 +1075,18 @@ pub extern "C" fn kisi_cli_run(p: *const u8, n: usize) -> i32 {
             Ok(r.to_string())
         })
     })())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn base64() {
+        assert_eq!(super::b64_decode("").unwrap(), b"");
+        assert_eq!(super::b64_decode("Zg==").unwrap(), b"f");
+        assert_eq!(super::b64_decode("Zm8=").unwrap(), b"fo");
+        assert_eq!(super::b64_decode("Zm9v").unwrap(), b"foo");
+        assert_eq!(super::b64_decode("Zm9vYmFy\n").unwrap(), b"foobar");
+        assert_eq!(super::b64_decode("qQ==").unwrap(), [0xa9]);
+        assert!(super::b64_decode("Zm9v!").is_err() && super::b64_decode("Z").is_err());
+    }
 }

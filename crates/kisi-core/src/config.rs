@@ -16,6 +16,8 @@
 //!   },
 //!   "net_classes": {"PCIe": {"target_ohm": 85, "diff": true, "profile": "pcie3", "source": {…}}},
 //!   "fields": [{"ref": "U5", "name": "PI_LOAD", "value": "+1V0=2.5A, +1V8=300mA", "source": {…}}],
+//!   "ibis": {"U18": {"file": "ibis/fpga.ibs", "component": "XC7A50T", "sha256": "…", "pin_map": "by-number",
+//!                    "selectors": {"IO_SEL": "LVCMOS33_8MA"}, "source": {"kind": "simulation", "note": "Vivado export"}}},
 //!   "variant": "TS-PCIe",
 //!   "variants": {"TS-PCIe": {"not_fitted_sheets": ["/TS-USB4 Components/"], "fitted": ["C101"], "source": {…}},
 //!                "TS-USB4": {"bom": "TS-USB4_BOM.csv", "bom_exceptions": ["P1"], "source": {…}}},
@@ -137,6 +139,34 @@ impl VariantEntry {
     }
 }
 
+/// IBIS model of a part (`"ibis": {"U18": {…}}`): which file and component apply to the
+/// footprint, how its pads map to IBIS pins and which model each [Model Selector] uses. The
+/// model file is never embedded (vendor models are usually not redistributable): only its path
+/// relative to the kisi.json and its SHA-256.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct IbisEntry {
+    /// path of the .ibs file, relative to the kisi.json
+    pub file: String,
+    /// [Component] of the file (may be left out when the file has one component)
+    pub component: Option<String>,
+    /// SHA-256 of the file (as `sha256sum` prints it): kisi notices when the file changes
+    pub sha256: Option<String>,
+    /// "by-number" (default: pad number = IBIS pin name) or "by-name" (the pad's symbol pin
+    /// name = IBIS signal_name)
+    pub pin_map: Option<String>,
+    /// pad number → IBIS pin name, for pads that differ from the rule
+    pub pins: BTreeMap<String, String>,
+    /// [Model Selector] name → the model to use (drive strength, ODT, I/O standard)
+    #[serde(alias = "selector")]
+    pub selectors: BTreeMap<String, String>,
+    /// corner for the simulations of later versions: typ (default), min or max
+    pub corner: Option<String>,
+    pub source: Option<Source>,
+}
+
+pub const PIN_MAPS: &[&str] = &["by-number", "by-name"];
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BoardConfig {
@@ -152,6 +182,8 @@ pub struct BoardConfig {
     /// or "default" for the board file as it is)
     pub variant: Option<String>,
     pub variants: BTreeMap<String, VariantEntry>,
+    /// IBIS models of parts, by reference designator (see `IbisEntry`)
+    pub ibis: BTreeMap<String, IbisEntry>,
     pub notes: Vec<String>,
 }
 
@@ -413,6 +445,7 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
         src(what, &f.source, &mut r);
     }
     check_variants(cfg, board, files, &mut r);
+    check_ibis(cfg, board, &mut r);
     // can kisi read the power fields? apply to a copy and parse them like the analyses do
     if cfg.fields.iter().any(|f| KNOWN_FIELDS.iter().any(|k| k.eq_ignore_ascii_case(&f.name))) {
         let mut b = board.clone();
@@ -429,6 +462,52 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
     }
     r.ok = r.errors.is_empty();
     r
+}
+
+/// The `ibis` section, as far as it can be checked without the model files (those checks:
+/// `crate::ibis::check_files`).
+fn check_ibis(cfg: &BoardConfig, board: &Board, r: &mut CheckResult) {
+    for (refdes, e) in &cfg.ibis {
+        r.entries += 1;
+        let what = format!("ibis.{refdes}");
+        let fi = board.footprints.iter().position(|f| &f.reference == refdes);
+        if fi.is_none() {
+            r.errors.push(format!("{what}: no footprint {refdes} on the board"));
+        }
+        if e.file.trim().is_empty() {
+            r.errors.push(format!("{what}: \"file\" missing (path of the .ibs file, relative to the kisi.json)"));
+        } else if e.file.starts_with('/') || e.file.starts_with('~') || e.file.get(1..3) == Some(":\\") {
+            r.warnings.push(format!("{what}: file '{}' is an absolute path – the kisi.json only works on this computer (use a path relative to it)", e.file));
+        }
+        if let Some(m) = &e.pin_map {
+            if !PIN_MAPS.contains(&m.as_str()) {
+                r.errors.push(format!("{what}: pin_map '{m}' unknown (use {})", PIN_MAPS.join(" or ")));
+            }
+        }
+        if let Some(c) = &e.corner {
+            if crate::ibis_parser::Corner::parse(c).is_none() {
+                r.errors.push(format!("{what}: corner '{c}' unknown (typ, min or max)"));
+            }
+        }
+        if let Some(h) = &e.sha256 {
+            if h.len() != 64 || !h.chars().all(|c| c.is_ascii_hexdigit()) {
+                r.errors.push(format!("{what}: sha256 must be 64 hex digits (as sha256sum prints it)"));
+            }
+        }
+        if let Some(fi) = fi {
+            let pads: std::collections::HashSet<&str> = board.pads.iter().filter(|p| p.fp as usize == fi).map(|p| p.number.as_str()).collect();
+            for pad in e.pins.keys() {
+                if !pads.contains(pad.as_str()) {
+                    r.errors.push(format!("{what}: pins: {refdes} has no pad '{pad}'"));
+                }
+            }
+        }
+        match &e.source {
+            None => r.warnings.push(format!("{what}: source missing (where the model comes from: vendor page, design tool export …)")),
+            Some(s) if !SOURCE_KINDS.contains(&s.kind.as_str()) => r.errors.push(format!("{what}: source kind '{}' unknown (use {})", s.kind, SOURCE_KINDS.join(", "))),
+            _ => {}
+        }
+    }
 }
 
 /// The `variants` section and the `variant` choice.

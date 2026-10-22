@@ -441,6 +441,7 @@ mod tests {
             field: HashMap::new(),
             variant: variant.map(str::to_string),
             files,
+            ibis_files: None,
         })
         .unwrap()
     }

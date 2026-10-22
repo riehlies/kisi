@@ -7,6 +7,7 @@
 //
 // Built into one file by tools/bundle_cli.py (dist/kisi.mjs):
 //   node kisi.mjs <command> <board.kicad_pcb> [options]      (node kisi.mjs help)
+//   node kisi.mjs ibis <file.ibs> [--component C] [--model M]
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -133,6 +134,14 @@ async function main(argv) {
   const o = parsed.opts;
   if (o.cmd === "help") { console.log(parsed.help); return 0; }
   try {
+    if (parsed.needs_file) {
+      // one file instead of a board (kisi ibis <file.ibs>): bytes as base64, so the hash is the file's
+      const fp = path.resolve(o.pos[0]);
+      let bytes;
+      try { bytes = fs.readFileSync(fp); } catch (e) { throw new Error(`${o.pos[0]}: ${e.code === "ENOENT" ? "not found" : e.message}`); }
+      console.log(JSON.stringify(eng.json("kisi_cli_file", { opts: o, name: path.basename(fp), b64: bytes.toString("base64") }), null, 2));
+      return 0;
+    }
     let tree = null;
     if (o.tree) tree = readJson(o.tree);
     if (parsed.needs_board) {
@@ -164,7 +173,19 @@ async function main(argv) {
           try { files[f] = { text: fs.readFileSync(bp, "utf8") }; } catch (e) { files[f] = { error: `${bp}: ${e.code === "ENOENT" ? "not found" : e.message}` }; }
         }
       }
-      const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {}, files };
+      // IBIS model files the configuration names (config-check only): read here, never copied anywhere
+      let ibisFiles = null;
+      if (parsed.uses_ibis && config && config.text) {
+        ibisFiles = {};
+        let c = null;
+        try { c = JSON.parse(config.text); } catch { /* reported by the engine */ }
+        for (const e of Object.values((c && c.ibis) || {})) {
+          if (!e || typeof e.file !== "string" || !e.file.trim() || ibisFiles[e.file]) continue;
+          const ip = path.resolve(path.dirname(config.path), e.file);
+          try { ibisFiles[e.file] = { b64: fs.readFileSync(ip).toString("base64") }; } catch (err) { ibisFiles[e.file] = { error: `${ip}: ${err.code === "ENOENT" ? "not found" : err.message}` }; }
+        }
+      }
+      const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {}, files, ibis_files: ibisFiles };
       const { plan } = eng.json("kisi_cli_project", inputs);
       var fieldInfo = null;
       if (plan.length) {

@@ -1,0 +1,33 @@
+name: Problem or wrong result
+description: kisi crashes, misreads a board, or a result looks wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. kisi is a quick check without warranty; reports with a comparison help most.
+        Attaching a board to an issue makes it public – share only what you are allowed to share.
+  - type: input
+    id: version
+    attributes:
+      label: kisi version and where you ran it
+      placeholder: "0.2.2, viewer in Firefox 131 / node kisi.mjs on Windows"
+    validations:
+      required: true
+  - type: input
+    id: kicad
+    attributes:
+      label: KiCad version that saved the board
+      placeholder: "9.0.4"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: For results that look wrong, say what you compare against (fabricator stackup report, field solver, measurement, datasheet).
+    validations:
+      required: true
+  - type: textarea
+    id: board
+    attributes:
+      label: Board, net or command
+      description: The net name or the command line, and if possible the board (or a cut-down copy with the nets in question).

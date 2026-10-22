@@ -37,7 +37,7 @@ product filtered to sensible combinations). The same file feeds:
 * **openEMS**: `tools/openems_via.py <case.json>` writes a self-contained Python script (openEMS + CSXCAD API),
   ports, mesh and post-processing included. Output: Touchstone and a `meta.json`.
 * **CST**: `tools/cst_via.py <case.json>` writes a VBA history macro (`.bas`) that builds the geometry,
-  ports and the solver settings in CST Studio Suite; the user runs it and exports Touchstone. Only for the
+  ports and the solver settings in CST Studio Suite; run it there and export Touchstone. Only for the
   cross-check subset (marked `"cst": true` in the case).
 
 ## 2. Test matrix

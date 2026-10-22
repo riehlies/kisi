@@ -1,6 +1,6 @@
 //! kisi-pi: power integrity.
 //!
-//! * `pi`   – DC IR drop on a rasterised multi-layer copper network, rails from fields / KiPIDA
+//! * `pi`   – DC IR drop on a rasterised multi-layer copper network, rails from fields
 //! * `tree` – regulator chains and power balance
 //! * `pdn`  – AC impedance of a rail (lumped model and plane grid model)
 //! * `pdn_ic` – PDN seen from every IC: AC grid over all layers, capacitor loop inductances, targets, recommendations

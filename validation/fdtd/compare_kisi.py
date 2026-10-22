@@ -216,5 +216,5 @@ if vias:
     print(json.dumps(summ, indent=1))
 else:
     summ = {}
-json.dump({"tool": " ".join(CMD), "summary": summ, "rows": rows}, open(OUT, "w"), indent=1)
+json.dump({"tool": " ".join(os.path.basename(c) if os.path.isabs(c) else c for c in CMD), "summary": summ, "rows": rows}, open(OUT, "w"), indent=1)
 print(OUT)

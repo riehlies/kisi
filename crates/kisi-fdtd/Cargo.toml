@@ -3,6 +3,8 @@ name = "kisi-fdtd"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 description = "3D FDTD (Yee) for via transitions and small PCB cut-outs: non-uniform mesh, lumped ports, S-parameters"
 
 [lib]

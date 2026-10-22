@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Screenshots for the README and the GitHub Pages landing page (docs/img/*.png).
+
+Usage: screenshots.py <kisi-examples.html> [--out docs/img] [--theme light|dark] [--net NAME] [--rail NAME]
+
+Opens the viewer with the built-in ThunderScope board (Playwright + Chromium, 1440×900 saved as 1600×1000) and saves
+impedance.png (whole board coloured by deviation from the target), net.png (TDR of a net with vias),
+channel.png (interfaces after the check), flow.png (power flow) and power.png (voltage drop of the FPGA core rail,
+its impedance seen from the ICs).
+"""
+import argparse, os
+from playwright.sync_api import sync_playwright
+
+ap = argparse.ArgumentParser()
+ap.add_argument("html")
+ap.add_argument("--out", default="docs/img")
+ap.add_argument("--theme", default="light", choices=["light", "dark"])
+ap.add_argument("--rail", default="+1V0", help="rail for the power screenshot")
+ap.add_argument("--net", default="/TS-USB4 Components/M2_PER0_P", help="net for the TDR screenshot")
+a = ap.parse_args()
+os.makedirs(a.out, exist_ok=True)
+BUSY = "document.getElementById('busy').hidden === true"
+
+with sync_playwright() as p:
+    b = p.chromium.launch()
+    pg = b.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1600 / 1440, color_scheme=a.theme)
+    pg.goto("file://" + os.path.abspath(a.html))
+    pg.wait_for_function(f"!!S.scene && {BUSY}", timeout=90000)
+    if pg.get_attribute("#sample-ts", "aria-pressed") != "true":
+        pg.click("#sample-ts"); pg.wait_for_function(f"!!S.scene && {BUSY}", timeout=90000)
+    shot = lambda name: pg.screenshot(path=os.path.join(a.out, name + ".png"))
+
+    pg.click("#view-si")
+    pg.click("#an-start"); pg.wait_for_function(f"S.full && {BUSY}", timeout=90000)
+    pg.evaluate("setMode('dev')"); pg.wait_for_timeout(300)
+    shot("impedance")
+    # one net with vias: TDR in the detail panel (the view zooms to the net)
+    net = pg.evaluate(f"(() => {{ const n = S.an.nets.find((x) => x.name === {a.net!r}); return n ? n.net : -1; }})()")
+    if net >= 0:
+        pg.evaluate(f"selectNet({net})"); pg.wait_for_timeout(500)
+        pg.click("#detail [data-tab=tdr]"); pg.wait_for_timeout(600)
+        shot("net")
+
+    pg.click("#view-ch"); pg.wait_for_timeout(500)
+    pg.click("#ov-check"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(400)
+    shot("channel")
+
+    pg.click("#view-pi"); pg.wait_for_timeout(400)
+    if not pg.locator("#pi-run").is_disabled():
+        pg.click("#pi-run"); pg.wait_for_function(f"S.piSolved && !S.piRunning && {BUSY}", timeout=300000)
+    pg.click("#pim-b"); pg.wait_for_timeout(600)
+    shot("flow")
+    # voltage drop of the FPGA core rail and its impedance seen from the ICs
+    pg.evaluate("(() => { const RAIL = '" + a.rail + "'; const r = [...S.piSetups.keys()].find((n) => n === RAIL) || S.piRail; S.piRail = r; S.piLayer = -1; S.piImg = null;"
+                " setPiMode('v'); fitRail(); S.piTab = 'z'; renderPi(); renderPiDetail(); })()")
+    pg.wait_for_timeout(500)
+    if pg.locator("#pdn-ic-run").count():
+        pg.click("#pdn-ic-run")
+        pg.wait_for_function("document.getElementById('ch-pdn-ic') || document.querySelector('#pdn-ic .err')", timeout=300000)
+        pg.wait_for_timeout(600)
+        # the whole rail on the map, the chart seen from the IC in the panel
+        pg.evaluate("""(() => { fitRail(); const c = document.getElementById('ch-pdn-ic'), p = document.getElementById('pi-detail');
+          if (c && p) p.scrollTop += c.getBoundingClientRect().top - p.getBoundingClientRect().top - 160; })()""")
+        pg.wait_for_timeout(600)
+    shot("power")
+    b.close()
+print("screenshots in", a.out)

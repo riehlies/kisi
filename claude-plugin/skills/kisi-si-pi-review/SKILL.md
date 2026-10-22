@@ -15,9 +15,9 @@ kisi is one file, `kisi.mjs` (Node.js ≥ 18; it includes the 2D field solver). 
 reuse it:
 1. `$KISI_MJS` if set, else `~/.kisi/kisi.mjs`.
 2. Otherwise download the latest release into `~/.kisi/`:
-   - `gh release download --repo riehlies/kisi --pattern kisi.mjs --dir ~/.kisi --clobber`
-     (works while the repository is private, needs `gh auth login` with access to it), or
-   - once the repository is public: `https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs`.
+   - `curl -fsSL --create-dirs -o ~/.kisi/kisi.mjs https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs`
+     (PowerShell: `Invoke-WebRequest <same URL> -OutFile $HOME\.kisi\kisi.mjs`), or
+   - `gh release download --repo riehlies/kisi --pattern kisi.mjs --dir ~/.kisi --clobber`.
 3. If Node.js is missing, ask the user to install it (nodejs.org, LTS). A native `kisi` binary
    (`cargo install --path crates/kisi-cli`) accepts the same commands but has no field solver.
 

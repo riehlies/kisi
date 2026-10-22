@@ -4,6 +4,8 @@ description = "KiCad board model: S-expression parser, stackup, tracks, pads, zo
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 
 [dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }

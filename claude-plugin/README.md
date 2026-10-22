@@ -1,4 +1,4 @@
-# kisi – Claude Code plugin (skills)
+# kisi – agent skills (Claude Code plugin)
 
 Two skills that use the kisi command line:
 
@@ -12,8 +12,7 @@ Setup:
 2. In Claude Code: `/plugin marketplace add riehlies/kisi` and `/plugin install kisi@kisi`.
 
 The command line itself is one file, `kisi.mjs`, attached to every GitHub release (with `kisi.html`,
-the viewer). The skills download it on first use into `~/.kisi/` (while the repository is private
-with `gh release download`, which needs `gh auth login`). It includes the engine of the viewer and
+the viewer). The skills download it on first use into `~/.kisi/`. It includes the engine of the viewer and
 the 2D field solver; results of the field solver are cached in `~/.cache/kisi` (Windows:
 `%LOCALAPPDATA%\kisi`). Every `node kisi.mjs <command> <board.kicad_pcb>` prints JSON;
 `node kisi.mjs help` lists the commands. Other agents can use the same commands and the SKILL.md

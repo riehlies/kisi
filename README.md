@@ -1,20 +1,55 @@
-# kisi – signal and power integrity checks for KiCad
+# kisi – quick signal and power integrity checks for KiCad
 
 kisi reads a KiCad layout (`.kicad_pcb` + `.kicad_pro`) and checks trace impedance, high-speed channels
 (loss, return loss, TDR, vias, crosstalk, skew, eye) and power delivery (regulator chain, DC IR drop,
-PDN impedance). It is a design check (impedance target ±5 %), not sign-off. Licence: GPL-3.0-only.
+PDN impedance) – in the browser, with no installation and no setup beyond the board file.
+
+**[Try it in your browser](https://riehlies.github.io/kisi/)** with two example boards, or open your own board
+(it is processed locally and never uploaded).
+
+![kisi on the ThunderScope board: every track coloured by its deviation from the target impedance](docs/img/impedance.png)
+
+> **Status.** kisi is a quick project, meant to be helpful: a fast check of a board without long setup times.
+> Results are estimates for design checks, without any warranty of correctness – not a replacement for
+> sign-off simulation or measurement. For a real validation of a board, the channel simulation still needs IBIS
+> models and more complex tests (see [Limits](#limits)). The individual tools – impedance map with a 2D field
+> solver, TDR and loss per net, via model, crosstalk scan, power tree, IR drop, PDN per IC – are useful on their own.
+
+## What you get
+- **Impedance:** every track against its target (from net class names such as `50Z`, `90Z_Diff`), with formulas
+  in a second and the 2D field solver on demand; impedance along the path, loss, TDR, vias and crosstalk per net.
+- **Channel:** buses and device-to-device lanes through series resistors and AC-coupling capacitors, checked
+  against interface profiles (PCIe, USB, DDR, LVDS, Ethernet, …).
+- **Power:**
+  - the regulator chain and power budget from fields on the parts (`PI_REG`, `PI_LOAD`), with the power flow from
+    the inputs through the regulators to the loads and where the losses go;
+  - DC voltage drop and current density on the copper of every rail and of the ground return, layer by layer, with
+    the drop at each load and the vias that carry the most current;
+  - a losses map (heat per part, copper loss per layer);
+  - PDN impedance Z(f) per rail, and seen from every IC: the rail copper on all layers with ferrites and series
+    parts up to the regulator, the loop inductance of each decoupling capacitor to that IC, anti-resonances, a target
+    from the IC's current step and recommendations.
+
+| | |
+|---|---|
+| ![Net detail with the TDR of a differential pair](docs/img/net.png) | ![Channel view: interfaces and lanes with their verdicts](docs/img/channel.png) |
+| **Net detail:** impedance along the path, loss, TDR with the vias as physics-based models, skew of pairs and crosstalk from the neighbouring tracks – for every net with a target | **Channel check:** buses and lanes from IC to IC through series resistors and AC-coupling capacitors, judged against interface profiles on loss, return loss, skew and a simple eye |
+| ![Power flow from the inputs through the regulators to the loads](docs/img/flow.png) | ![Voltage drop of a rail and its impedance seen from an IC](docs/img/power.png) |
+| **Power flow:** from the supply inputs through every regulator to the loads, with regulator, shunt and copper losses | **Voltage drop and PDN:** DC drop and current density on every layer of a rail, and its impedance seen from an IC with the decoupling capacitors ranked by loop inductance |
 
 ## Quick start
-Each release on GitHub has these files:
-
-- **`kisi.html` – the viewer.** Open it in a browser and drop the `.kicad_pcb` (with the `.kicad_pro` for net
-  classes, optionally `<board>.kisi.json`). Nothing is installed and nothing is loaded from the web; the board is
-  processed in the browser and never uploaded. In Chromium-based browsers “Reload” reads the same files again after
-  saving in KiCad.
+- **In the browser:** the [live version](https://riehlies.github.io/kisi/), or download `kisi.html` from the
+  [latest release](https://github.com/riehlies/kisi/releases/latest) and open it offline. Drop the `.kicad_pcb`
+  (with the `.kicad_pro` for net classes, optionally `<board>.kisi.json`). Nothing is installed, the page loads
+  nothing else from the web and the board never leaves your computer. In Chromium-based browsers “Reload” reads the same
+  files again after saving in KiCad. KiCad 8, 9 and 10 boards are supported.
 - **`kisi-examples.html`** – the same viewer with two example boards built in (ThunderScope Rev5.3, LibreVNA), each
   with its power tree as a `kisi.json` (`web/samples/`).
-- **`kisi.mjs` – the command line** for scripts and agents (Node.js ≥ 18):
+- **`kisi-references.html`** – 3D reference cases for vias, stubs, pairs, lines and plane cavities with field plots,
+  and kisi's fast models against them. Useful for teaching as well: it shows why vias and planes behave as they do.
+- **`kisi.mjs` – the command line** for scripts, CI and agents (Node.js ≥ 18):
   ```sh
+  curl -fsSLO https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs
   node kisi.mjs help
   node kisi.mjs gaps   board.kicad_pcb     # what the analyses miss
   node kisi.mjs check  board.kicad_pcb     # channel check of all interfaces
@@ -22,6 +57,7 @@ Each release on GitHub has these files:
   Every command prints JSON and states the models and assumptions it used.
 - **Agent skills** (`claude-plugin/`, Claude Code: `/plugin marketplace add riehlies/kisi`): *kisi-prepare*
   finds missing data and researches it from datasheets into `<board>.kisi.json`; *kisi-si-pi-review* runs the checks.
+  Other agents can follow the same `SKILL.md` files.
 
 ## Viewer
 Three views, each starting with what the board file gives and computing more on demand:
@@ -37,8 +73,13 @@ Three views, each starting with what the board file gives and computing more on 
    capacitors, with terminations and branches; per net class an interface profile (PCIe, USB, DDR, LVDS, …
    from `data/interfaces.json`) with transmitter, receiver and limits. Eye only from IC to IC; lanes ending at a
    connector are judged on the board share (loss, return loss, skew).
-3. **Power** – power tree, budget and power flow (Sankey) first; then voltage drop and current density per rail
-   and of the ground return, a losses map (heat per part and copper loss per layer, mW/mm²), and Z(f).
+3. **Power** – power tree, budget and power flow (Sankey) first, from `PI_REG` / `PI_LOAD` fields or the board's
+   `kisi.json`; part references jump to the board. Then, per rail and for the ground return, voltage drop and
+   current density on every layer (drop at each load, vias with the highest currents), a losses map (heat per part
+   and copper loss per layer, mW/mm²) and Z(f): a lumped model of regulator, plane and capacitors with a plane
+   model above 1 MHz, and the impedance seen from each IC – the rail domain with ferrites and series parts up to
+   the regulator, the capacitors ranked by their loop inductance to the IC (outlined on the board),
+   anti-resonances, a target from the IC's current step and recommendations (value, package, count, distance).
 
 Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer; edits are stored in the browser, the
 files are not changed. Results of the last three boards stay in memory while switching.
@@ -84,8 +125,7 @@ commands with formula impedances only.
 | `PI_SERIES` | `z100=600 rdc=0.15` · `l=2.2u dcr=50m` · `r=10m` | ferrite bead, inductor or resistor in a supply path: the PDN per IC models the rail with the nets behind them, up to the regulators (replaces the typical values) |
 | `PI_TARGET` | `VCCINT=10m fmax=50M` or `15mOhm` | target impedance of an IC for a rail (default: from its own current step), band it applies to |
 
-  The nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`). A `kipida_config.json` (KiPIDA) can be
-  dropped into the viewer as well.
+  The nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`).
 
 ## Board configuration `<board>.kisi.json`
 Values the board file lacks or holds only as KiCad defaults, each with its source. kisi never writes into the
@@ -112,17 +152,37 @@ KiCad files; CLI and viewer lay this file over the board.
   Field solver against HFSS/Ansys: ≤ 1.7 %.
 - **Lines:** RLGC per cross-section; skin effect (Wheeler), roughness (Huray, presets estimated), dielectric loss
   (Djordjevic-Sarkar); RLGC against HFSS ≤ 2 %. Channel as ABCD cascade (odd mode for pairs), TDR from S11.
-- **Vias:** stack of coaxial sections (antipads from the zone fills), stubs, back-drill, return path; an estimate
-  (about ±15 %), not a 3D result.
+- **Vias:** a physics-based ladder per via: capacitances from an axisymmetric Laplace solve, the plane pairs as
+  radial lines with the nearby return vias, pads and annular rings, antipads from the zone fills (non-round ones as
+  an equivalent circle), stubs and back-drill, the junction to the traces; pairs with their partner. Vias that do
+  not cross a plane are coaxial sections. An estimate, not a 3D result.
 - **Lanes:** series parts and terminations with package parasitics from `data/components.json` (estimates); the
   transmit direction is a guess (termination next to the receiver) and can be swapped.
 - **Eye:** PRBS7 NRZ with the profile's linear transmitter/receiver; no equalisation, jitter or noise.
-- **Power:** copper rasterised per layer, vias as barrels (25 µm); PDN as lumped model plus a grid model of the
-  largest plane; capacitor ESR/ESL estimated per package.
+- **Power:** copper rasterised per layer, vias as barrels (25 µm); DC IR drop per rail. PDN per IC: the rail's
+  copper on all layers as an AC grid with plane capacitance, capacitors with ESR/ESL and DC-bias derating
+  (estimated per package unless given), series parts up to the regulators.
 - **Ground return and losses:** every part returns what it draws from the supply rails minus what it feeds into
   them (a buck converter takes current from ground); ground is solved like a rail with the supply input as 0 V.
   The power a load draws is counted as heat in the part (estimate), regulator losses on the regulator; copper
   loss is I²R from the DC solutions. Power, not temperature.
+
+### Validation
+- The 2D field solver and the line models were compared with the HFSS/Ansys cases of Forstén's test suite
+  (impedance within 1.7 %, RLGC within 2 %; `tools/validate_field.sh`).
+- The via and plane models were compared with 3D results of kisi's own FDTD solver (`crates/kisi-fdtd`, checked
+  against openEMS and analytic cavities); see `kisi-references.html` and `validation/fdtd/TESTS.md`.
+- **Still open:** validation against other solvers and against measurements (a test board is planned,
+  `validation/test_board.md`). Until then, treat the numbers as plausible estimates, not as verified results.
+
+### Limits
+- The channel check is a first look: linear transmitter and receiver from the interface profile, no IBIS models,
+  no equalisation, jitter or noise, no simulation of several aggressors at once. A real channel validation needs
+  IBIS (or AMI) models and more complex tests.
+- 2D cross-sections and reduced via/plane models instead of a full-board 3D solution; board edges, via-to-via
+  coupling and resonances of the whole board are not included.
+- Data the board file does not hold (laminate εr/tanδ, load currents, capacitor data) defaults to estimates;
+  `kisi gaps` lists what is missing and `<board>.kisi.json` fills it in with sources.
 
 ## Development
 ```sh
@@ -140,12 +200,20 @@ python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
   `python3 tools/check_viewer.py dist/kisi.html` (all views, light/dark/phone, no console errors).
 - Example boards (not in the repository): `sh tools/fetch_examples.sh examples` fetches them at fixed commits, shrinks
   them with `tools/strip_pcb.py` and writes their licence notices; their power trees are `web/samples/{ts,vna}.kisi.json`.
-- Releases: a tag `v*` runs `.github/workflows/release.yml` and attaches `kisi.html`, `kisi-examples.html` and `kisi.mjs`.
+- Releases: a tag `v*` runs `.github/workflows/release.yml`; it attaches `kisi.html`, `kisi-examples.html`, `kisi.mjs`
+  and `kisi-references.html` and publishes the live version on GitHub Pages.
+- Contributing: `CONTRIBUTING.md`; notes for coding agents: `AGENTS.md`.
 - Solver update: `tools/upstream_update.sh` (see `UPSTREAM.md`). Structure and rules: `ARCHITECTURE.md`.
   Planned work: `ROADMAP.md`.
 - Validation data: `validation/*.json` (cross-sections) and `*.ref.json` (references from Forstén's solver, run in
   Node with `tools/forsten_sparse_shim.js`); `kisi-validate validation/forsten_suite.json` compares against the
   HFSS/Ansys cases of Forstén's test suite.
+
+## Related tools
+- [js_2d_fields](https://github.com/Ttl/js_2d_fields) – Henrik Forstén's 2D field solver in the browser, used by kisi.
+- [KiPI](https://github.com/drewsum/KiPI) – power integrity for KiCad (DC drop, PDN impedance, coupled noise).
+- [padne](https://github.com/atx/padne) – DC voltage drop of KiCad boards with the finite element method.
+- [openEMS](https://www.openems.de) – open 3D FDTD solver, for the cases where a reduced model is not enough.
 
 ## Credits
 Field solver: [js_2d_fields](https://github.com/Ttl/js_2d_fields) by Henrik Forstén (GPL-3.0).
@@ -153,3 +221,11 @@ Example boards in `kisi-examples.html`: [ThunderScope](https://github.com/EEVeng
 hardware under CERN-OHL-P-2.0) and [LibreVNA](https://github.com/jankae/LibreVNA) (Jan Käberich, GPL-3.0), shrunk to
 what kisi reads; the licence texts are embedded with them.
 Fonts: Barlow, Barlow Semi Condensed and JetBrains Mono (SIL Open Font License 1.1, `web/fonts/`), embedded in the viewer.
+
+## About
+kisi is a side project by David Riehl. It started as a visualisation tool for the course *Advanced PCB Design* at
+TU Darmstadt and grew into a general check for KiCad boards. It was also an experiment in what current AI models
+make possible: kisi was written with an AI coding assistant (Claude, Anthropic) – without it, a tool of this scope
+would not have been possible as a side project. Commits made with AI help say so in their `Co-Authored-By` line.
+
+Copyright © 2026 David Riehl and kisi contributors. Licence: GPL-3.0-only (`LICENSE`).

@@ -1,8 +1,7 @@
 # Measured test board – plan (ToDo)
 
-Status: plan, nothing built. Suggested by the user on 21.10.2026: select reference cases that can be made with
-the standard stackups of JLCPCB and Aisler, order them, simulate the same PCB files in CST and kisi-fdtd, and
-measure them on the Keysight VNAs of the microwave group.
+Status: plan, nothing built. Idea: select reference cases that can be made with the standard stackups of
+JLCPCB and Aisler, order them, simulate the same PCB files in CST and kisi-fdtd, and measure them on a VNA.
 
 ## Goal
 Close the loop simulation → measurement for the 3D references (`validation/via_ref`) and kisi's fast models:
@@ -10,7 +9,7 @@ Close the loop simulation → measurement for the 3D references (`validation/via
 - known stackups (or stackups extracted from structures on the board);
 - de-embedding with the same IEEE P370 2×thru method that `validation/fdtd/sparam.py` already implements.
 
-## Instruments (microwave group)
+## Instruments (example lab setup)
 | VNA | Ports | Range | Use |
 |---|---|---|---|
 | Keysight ENA | 4 | 20 GHz | pairs (Sdd, Scd), coupled lines, everything up to 20 GHz |

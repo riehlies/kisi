@@ -305,16 +305,6 @@ pub extern "C" fn kisi_pi_fields() -> i32 {
     })
 }
 
-/// Rail setups from a KiPIDA kipida_config.json: {rails, warnings}.
-#[no_mangle]
-pub extern "C" fn kisi_pi_kipida(p: *const u8, n: usize) -> i32 {
-    let txt = input(p, n);
-    with_board(|b| {
-        let (rails, warnings) = kisi_core::pi::rails_from_kipida(b, &txt)?;
-        Ok(serde_json::json!({"rails": rails, "warnings": warnings}).to_string())
-    })
-}
-
 /// Solve one rail: input {"setup": RailSetup, "params": PiParams}. Summary JSON
 /// in the out buffer; voltage / current density grids via kisi_pi_v_* / kisi_pi_j_*.
 #[no_mangle]

@@ -4,8 +4,6 @@ Planned and possible work after 0.2.2, roughly in order of priority. Each item s
 "Decide first" marks items that need a decision before work starts.
 
 ## Next
-- **First release and its workflow.** Check that `.github/workflows/release.yml` runs through (tests, field-solver
-  validation, example boards, build) and attaches `kisi.html`, `kisi-examples.html` and `kisi.mjs`.
 - **Checks on every push.** A CI workflow that runs `cargo test`, `tools/validate_field.sh` and
   `tools/check_viewer.py` on pushes and pull requests, not only on releases.
 - **`kisi gaps`: supply rails without a voltage in the name.** Nets such as `Net-(IC22-VCC)` are not recognised as
@@ -15,10 +13,9 @@ Planned and possible work after 0.2.2, roughly in order of priority. Each item s
   guidance (datasheet sections, typical vs. maximum) and add a worked example `<board>.kisi.json`.
 
 ## Publishing
-- **Decide first: make the repository public.** Then `kisi.mjs` downloads without a GitHub login and the
-  Claude Code plugin installs for everyone.
-- **GitHub Pages** for the viewer (needs a public repository on the free plan): publish `kisi.html` from the
-  release workflow, so it opens without downloading.
+- **Make the repository public** and switch GitHub Pages to "GitHub Actions"; the release workflow then
+  publishes the live version (landing page, viewer with and without the example boards) with every tag.
+- **Measured validation:** the test board (`validation/test_board.md`) and comparisons with other solvers.
 
 ## Models and accuracy
 - **IBIS models as channel ends** (removed from 0.1.0; the experimental code is in commit `92b8105`). Open: the right

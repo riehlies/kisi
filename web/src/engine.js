@@ -50,7 +50,6 @@ class Engine {
     r.buf = new Float32Array(m, this.k.kisi_pi_map_ptr(), this.k.kisi_pi_map_len()).slice();
     return r;
   }
-  piKipida(text) { this.call(this.k.kisi_pi_kipida, text); return JSON.parse(this.out()); }
   piSolve(setup, params) {
     this.call(this.k.kisi_pi_solve, JSON.stringify({ setup, params }));
     const res = JSON.parse(this.out()), m = this.k.memory.buffer;

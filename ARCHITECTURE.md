@@ -52,6 +52,8 @@ viewer (via WASM) and CLI show the same result.
 * `web/cli/kisi.mjs` + `tools/bundle_cli.py` → `dist/kisi.mjs`: the same WASM engine and solver bundle
   (`tools/solver_bundle.py`, shared with the viewer) for Node; reads files, runs the field solver in worker
   threads with a disk cache, everything else through `kisi_core::commands`.
+* GitHub Pages (release workflow): `web/pages/index.html` (landing page) with `kisi.html` and `kisi-examples.html`;
+  the screenshots in `docs/img/` come from `tools/screenshots.py`.
 * Files come in by drag and drop or the file dialog; with the File System Access API (Chromium) the viewer keeps
   the file handles and “Reload” reads them again after saving in KiCad.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,

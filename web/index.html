@@ -1,8 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kisi Impedance Map</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<title>kisi – SI/PI checks for KiCad</title>
 <!-- @css web/fonts/fonts.css -->
 <link rel="stylesheet" href="fonts/fonts.css">
 <!-- @css web/css/kisi.css -->
@@ -127,7 +126,6 @@
         <p class="note">Field on the footprint (add it in the schematic; it reaches the board on update):</p>
         <p class="note"><span class="mono">PI_LOAD</span> = <span class="mono">+1V0=2.5A, +1V8=300mA</span> or <span class="mono">+1V0=2W</span><br>
         <span class="mono">PI_SOURCE</span> = <span class="mono">+3V3</span> or <span class="mono">+3V3=3.3V</span> for regulators and supply inputs.</p>
-        <p class="note">A <span class="mono">kipida_config.json</span> from KiPIDA can also be loaded.</p>
       </details>
     </section>
 
@@ -197,6 +195,9 @@
       <div class="tablewrap" id="xt-wrap" hidden><table class="xs-table xt-list"><thead><tr><th>Critical net</th><th class="num">NEXT %</th><th class="num">FEXT %</th><th>worst aggressor</th></tr></thead><tbody id="xt-rows"></tbody></table></div>
       <p class="note" id="xt-note"></p>
     </section>
+    <footer class="note about">kisi v__VERSION__ – a side project by David Riehl, started as a visualisation tool for the
+      course Advanced PCB Design at TU Darmstadt. Meant to help: results are estimates for design checks, without any
+      warranty of correctness. GPL-3.0 · <a href="https://github.com/riehlies/kisi" target="_blank" rel="noopener">source and documentation</a></footer>
   </aside>
 
   <main class="stage" id="stage">
@@ -210,7 +211,7 @@
     <section class="detail" id="pi-detail" hidden aria-live="polite"></section>
     <section class="balance" id="pi-balance" hidden aria-label="Power tree"></section>
     <section class="balance" id="ch-overview" hidden aria-label="Interfaces"></section>
-    <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro, &lt;board&gt;.kisi.json or kipida_config.json here</div>
+    <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro or &lt;board&gt;.kisi.json here</div>
     <div class="busy" id="busy">Loading engine…</div>
   </main>
 </div>

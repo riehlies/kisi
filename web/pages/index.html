@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>kisi – SI/PI checks for KiCad</title>
+<meta name="description" content="Quick signal and power integrity checks for KiCad boards in the browser: impedance with a 2D field solver, channels, vias, crosstalk, IR drop and PDN impedance. No installation, nothing uploaded.">
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* Landing page of the GitHub Pages site (copied there by .github/workflows/release.yml). Same palette as the viewer. */
+:root {
+  --bg: #e9ede9; --panel: #f7f9f7; --panel-2: #eef2ef; --fg: #17201b; --muted: #59665f; --line: #d2d9d4;
+  --accent: #a9561f; --accent-fg: #ffffff; --accent-soft: #f1e2d6;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1412; --panel: #151b18; --panel-2: #1b2320; --fg: #e2e9e4; --muted: #8e9b94; --line: #27312c;
+    --accent: #e08f52; --accent-fg: #17110c; --accent-soft: #3a2a1e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1412; --panel: #151b18; --panel-2: #1b2320; --fg: #e2e9e4; --muted: #8e9b94; --line: #27312c;
+  --accent: #e08f52; --accent-fg: #17110c; --accent-soft: #3a2a1e; color-scheme: dark;
+}
+* { box-sizing: border-box }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--font-body) }
+a { color: var(--accent) }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+header { background: var(--panel); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px) }
+header .wrap { display: flex; align-items: center; gap: 16px; padding-block: 12px }
+.brand { font: 700 22px/1 var(--font-display); letter-spacing: .01em }
+.brand span { color: var(--muted); font-weight: 500; font-size: 16px; margin-left: 10px }
+header nav { margin-left: auto; display: flex; gap: 16px; font-size: 15px }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0 }
+h1 { font-size: clamp(28px, 4.2vw, 44px); line-height: 1.1; font-weight: 700; max-width: 22ch }
+h2 { font-size: 24px; font-weight: 600 }
+h3 { font-size: 18px; font-weight: 600 }
+.hero { padding-block: 40px 24px; display: grid; gap: 18px }
+.hero p { margin: 0; max-width: 64ch; color: var(--muted); font-size: 18px }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px }
+.btn { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 18px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--fg); text-decoration: none; font: 600 16px/1.2 var(--font-display) }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg) }
+.btn:hover { border-color: var(--accent) }
+.shot { margin: 8px 0 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel) }
+.shot img { display: block; width: 100%; height: auto }
+section { padding-block: 28px }
+.cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 16px }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0 }
+.card p, .card ul { margin: 8px 0 0; color: var(--muted); font-size: 15px }
+.card ul { padding-left: 18px }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px }
+.pair figure { margin: 0; min-width: 0 }
+.pair img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px }
+.pair figcaption { font-size: 14px; color: var(--muted); margin-top: 6px }
+pre { margin: 12px 0 0; padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  overflow-x: auto; font: 14px/1.5 var(--font-mono) }
+.status { background: var(--accent-soft); border-radius: 8px; padding: 16px 18px; margin-top: 16px }
+.status p { margin: 0; max-width: 72ch }
+.status p + p { margin-top: 8px }
+footer { border-top: 1px solid var(--line); margin-top: 24px; padding-bottom: env(safe-area-inset-bottom, 0px) }
+footer .wrap { padding-block: 20px 28px; font-size: 14px; color: var(--muted); display: grid; gap: 6px }
+footer p { margin: 0; max-width: 90ch }
+@media (max-width: 760px) {
+  .cols, .pair { grid-template-columns: minmax(0, 1fr) }
+  header nav { gap: 12px; font-size: 14px }
+  .brand span { display: none }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">kisi<span>SI/PI checks for KiCad</span></div>
+    <nav aria-label="Links">
+      <a href="https://github.com/riehlies/kisi">GitHub</a>
+      <a href="https://github.com/riehlies/kisi/releases/latest">Download</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <h1>Check impedance, channels and power of a KiCad board – in the browser</h1>
+    <p>Drop a <code>.kicad_pcb</code> and get target impedance per track, loss, TDR, vias, crosstalk and interface
+      checks, the power tree, voltage drop and PDN impedance. Nothing to install, no setup; the board is processed
+      on your computer and never uploaded.</p>
+    <div class="actions">
+      <a class="btn primary" href="kisi-examples.html">Open with example boards</a>
+      <a class="btn" href="kisi.html">Open your own board</a>
+    </div>
+    <figure class="shot"><img src="img/impedance.png" width="1600" height="1000" alt="kisi viewer: the ThunderScope board with every track coloured by its deviation from the target impedance, the analysis steps in the side panel"></figure>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <h2>What it checks</h2>
+      <div class="cols">
+        <div class="card"><h3>Impedance</h3>
+          <ul><li>Targets from net class names (<code>50Z</code>, <code>90Z_Diff</code>)</li><li>Formulas in a second, the 2D field solver on demand</li><li>Impedance along the path, loss, TDR, vias, crosstalk</li></ul></div>
+        <div class="card"><h3>Channel</h3>
+          <ul><li>Buses and lanes through series parts and AC caps</li><li>Profiles: PCIe, USB, DDR, LVDS, Ethernet, HDMI, MIPI …</li><li>Loss, return loss, skew and a simple eye</li></ul></div>
+        <div class="card"><h3>Power</h3>
+          <ul><li>Regulator chain, budget and power flow with losses</li><li>DC voltage drop and current density per rail and layer, also in the ground return</li><li>PDN impedance seen from every IC: capacitors ranked by loop inductance, anti-resonances, target and recommendations</li></ul></div>
+      </div>
+      <div class="pair">
+        <figure><img src="img/net.png" width="1600" height="1000" alt="Net detail with the TDR of a differential pair"><figcaption><b>Net detail:</b> impedance along the path, loss, TDR with physics-based via models, skew and crosstalk for every net with a target</figcaption></figure>
+        <figure><img src="img/channel.png" width="1600" height="1000" alt="Channel view: interfaces of the board with their verdicts"><figcaption><b>Channel check:</b> lanes from IC to IC through series parts, judged against interface profiles on loss, return loss, skew and a simple eye</figcaption></figure>
+        <figure><img src="img/flow.png" width="1600" height="1000" alt="Power flow from the inputs through the regulators to the loads"><figcaption><b>Power flow:</b> from the supply inputs through every regulator to the loads, with regulator, shunt and copper losses</figcaption></figure>
+        <figure><img src="img/power.png" width="1600" height="1000" alt="Voltage drop of a rail and its impedance seen from an IC"><figcaption><b>Voltage drop and PDN:</b> DC drop on every layer of a rail, and its impedance seen from an IC with the decoupling capacitors ranked by loop inductance</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Command line</h2>
+      <p style="margin:8px 0 0;color:var(--muted);max-width:68ch">The same engine and field solver as one file for scripts, CI and agents (Node.js ≥ 18). Every command prints JSON.</p>
+      <pre>curl -fsSLO https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs
+node kisi.mjs check board.kicad_pcb</pre>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Status</h2>
+      <div class="status">
+        <p><b>A quick project, meant to be helpful.</b> kisi is a fast check of a board without long setup times.
+          Its results are estimates for design checks, without any warranty of correctness – not a replacement for
+          sign-off simulation or measurement.</p>
+        <p>The field solver was compared with HFSS cases and the via and plane models with 3D FDTD results;
+          validation against other solvers and against measurements is still open. A real channel validation also
+          needs IBIS models and more complex tests. The single tools are useful on their own already.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>kisi is a side project by David Riehl. It started as a visualisation tool for the course <i>Advanced PCB Design</i>
+      at TU Darmstadt and was written with an AI coding assistant. GPL-3.0 · <a href="https://github.com/riehlies/kisi">source</a></p>
+    <p>2D field solver: <a href="https://github.com/Ttl/js_2d_fields">js_2d_fields</a> by Henrik Forstén. Example boards:
+      <a href="https://github.com/EEVengers/ThunderScope">ThunderScope</a> (CERN-OHL-P-2.0) and
+      <a href="https://github.com/jankae/LibreVNA">LibreVNA</a> (GPL-3.0).</p>
+  </div>
+</footer>
+</body>
+</html>

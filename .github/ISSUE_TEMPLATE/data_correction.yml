@@ -1,0 +1,18 @@
+name: Data correction (profiles, components)
+description: A value in data/interfaces.json or data/components.json is wrong or missing
+labels: [data]
+body:
+  - type: input
+    id: entry
+    attributes:
+      label: Entry
+      placeholder: "interfaces.json, profile pcie4: loss budget at Nyquist"
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: Correct value and its source
+      description: Standard, datasheet or application note with section or page.
+    validations:
+      required: true

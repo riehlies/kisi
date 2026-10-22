@@ -291,7 +291,9 @@ def main():
         fonts.append(f'@font-face{{font-family:"{fam}";font-weight:{w};font-display:swap;src:url(data:font/woff2;base64,{b}) format("woff2")}}')
     tpl = open(os.path.join(HERE, "viewer_template.html")).read()
     html = tpl.replace("/*FONTS*/", "\n".join(fonts)).replace("__DATA__", data)
-    if "--fragment" not in sys.argv:  # standalone file; the artifact host adds this skeleton itself
+    if "--fragment" in sys.argv:  # page fragment for a host that adds the skeleton (side gutter uses safe-area insets)
+        html = '<meta name="claude:viewport-fit-sides" content="cover">\n' + html
+    else:  # standalone file
         html = ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
                 "</head><body>\n" + html + "\n</body></html>\n")
     os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)

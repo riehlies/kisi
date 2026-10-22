@@ -5,6 +5,8 @@
 #   kisi.mjs           – the command line with the field solver (node kisi.mjs help; Node.js >= 18)
 #   kisi-references.html – the 3D reference cases (kisi-fdtd) with kisi's models against them
 #                        (validation/fdtd/make_viewer.py; built here, not kept in the repository)
+# and publish the viewers (not the reference page) with the landing page (web/pages/index.html) on GitHub Pages
+# (repository settings: Pages → Source "GitHub Actions"; needs a public repository on the free plan).
 # Run it by hand (workflow_dispatch) to get the files as a build artifact without a release.
 name: release
 on:
@@ -66,3 +68,35 @@ jobs:
         run: |
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes
           gh release upload "$GITHUB_REF_NAME" dist/kisi.html dist/kisi-examples.html dist/kisi.mjs dist/kisi-references.html --clobber
+
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: kisi
+          path: site
+      - name: Site
+        run: |
+          cp web/pages/index.html site/
+          rm -f site/kisi-references.html   # the reference page stays a release file
+          mkdir -p site/fonts site/img
+          cp web/fonts/fonts.css web/fonts/*.woff2 web/fonts/OFL-*.txt site/fonts/
+          cp docs/img/*.png site/img/
+          touch site/.nojekyll
+          ls -la site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

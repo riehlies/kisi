@@ -39,7 +39,11 @@ field solver (kisi.mjs only; overview, net, check, report): used by default for 
 of nets with a target, results cached on disk; --formula (no field solver), --field-time S
 (time budget for new solves, default 120), --field-all (all cross-sections, not only targets),
 --field-xt (also the coupling cross-sections of critical crosstalk victims, NEXT or FEXT from 1 %;
-net: always all of the net's)";
+net: always all of the net's)
+
+kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design
+at TU Darmstadt. GPL-3.0-only, https://github.com/riehlies/kisi
+A quick design check: results are estimates, without any warranty of correctness.";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]

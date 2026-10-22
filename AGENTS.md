@@ -1,0 +1,46 @@
+# kisi – notes for coding agents and contributors
+
+* Structure, data flow and update rules: `ARCHITECTURE.md`. Field solver upstream: `UPSTREAM.md`.
+  Planned work: `ROADMAP.md`. How to contribute: `CONTRIBUTING.md`.
+* Language: GUI, documentation, code comments and tool output in English.
+
+## Building
+```
+cargo build --release                                   # CLI (kisi, kisi-validate)
+cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
+python3 tools/bundle.py web/index.html \
+  target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
+  target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.html
+sh tools/fetch_examples.sh examples                     # example boards → dist/kisi-examples.html:
+python3 tools/bundle.py web/index.html ... dist/kisi-examples.html \
+  ts "ThunderScope Rev5.3" examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro \
+  vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
+python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
+  target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs   # Node CLI with field solver
+python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html  # 3D reference cases page
+```
+Releases: a tag `v*` runs `.github/workflows/release.yml`; it attaches `kisi.html`, `kisi-examples.html`,
+`kisi.mjs` and `kisi-references.html` (built, not kept in the repository) and publishes the live demo on
+GitHub Pages. The example boards (ThunderScope CERN-OHL-P-2.0, LibreVNA GPL-3.0) are not in the repository;
+`tools/fetch_examples.sh` fetches them at fixed commits and shrinks them; their power trees are
+`web/samples/{ts,vna}.kisi.json`.
+
+## Checks before every commit
+* `cargo test --release`
+* `sh tools/validate_field.sh` (field solver against HFSS/baseline, needs node)
+* Viewer: `python3 tools/check_viewer.py dist/kisi-examples.html` (headless Chromium: all three views,
+  light/dark/mobile, no console errors; `--board`/`--config` for builds without example boards).
+* CLI: `node dist/kisi.mjs` (e.g. `gaps`, `check`) on an example board; results match the native `kisi`
+  with `--formula`.
+
+## Rules
+* One verdict logic (`kisi_si::profile::judge`) for viewer and CLI – do not duplicate it; CLI commands live
+  once in `kisi_core::commands` (native and Node CLI).
+* Values that change (standards, component parasitics) belong in `data/*.json`, with a source.
+* Never change Forstén's solver in `third_party/js_2d_fields`; only adapt `web/solver/backend_forsten.js`.
+* Mark estimated values as estimates in the UI and in CLI output.
+* Model changes need a comparison against the references (`validation/`, `validation/fdtd/TESTS.md`).
+
+## Commits
+* Work on a branch and open a pull request; `main` is changed only through reviewed merges.
+* Mark AI-assisted commits with a `Co-Authored-By:` trailer.

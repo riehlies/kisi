@@ -214,7 +214,7 @@ function renderPiSide() {
     $("pi-origin").textContent = `Power tree ${t.name}: ${t.rails.length} rails, input ${fmt(t.p_input + cu, 2)} W, of which ${fmt(t.p_losses + cu, 2)} W losses${S.piSolved ? "" : " (copper losses after step 2)"}. Details in the “Power tree” view.`;
   } else $("pi-origin").textContent = S.piSetups.size
     ? `${S.piSetups.size} rail${S.piSetups.size === 1 ? "" : "s"} configured. Loads: ${o || "none"}. Each rail needs a source and a load.`
-    : "No loads defined. Set PI_LOAD/PI_SOURCE (or PI_REG) fields in KiCad, load a kipida_config.json or enter them in the rail editor.";
+    : "No loads defined. Set PI_LOAD/PI_SOURCE (or PI_REG) fields in KiCad, add them to the board's .kisi.json or enter them in the rail editor.";
   $("pi-warn").innerHTML = S.piWarn.concat(S.groundWarn || []).map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
   // rails list
   const rank = (r) => (S.piRes.get(r.name) && S.piRes.get(r.name).res ? 0 : S.piSetups.has(r.name) ? 1 : r.ground ? 3 : 2);
@@ -344,22 +344,6 @@ function treeFieldsText(t) {
     if (f.PI_LOAD.length) lines.push(`${ref}  PI_LOAD = ${f.PI_LOAD.join(", ")}`);
   }
   return lines.join("\n");
-}
-
-function importKipida(text) {
-  try {
-    const r = S.engine.piKipida(text);
-    for (const rail of r.rails) S.piSetups.set(rail.net, rail);
-    S.piWarn = r.warnings || [];
-    piSave();
-    for (const rail of r.rails) solvePiRail(rail.net, false);
-    if (r.rails.length) S.piRail = r.rails[0].net;
-    setTab("pi");
-    renderPi();
-  } catch (e) {
-    S.piWarn = ["KiPIDA file: " + e.message];
-    renderPi();
-  }
 }
 
 function fitRail() {

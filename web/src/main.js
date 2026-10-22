@@ -5,9 +5,9 @@ async function handleFiles(files) {
   files = [...files];
   const pcb = files.find((f) => f.name.endsWith(".kicad_pcb"));
   const pro = files.find((f) => f.name.endsWith(".kicad_pro"));
-  // <board>.kisi.json: board configuration with sources; other .json: KiPIDA configuration
+  // <board>.kisi.json: board configuration with sources; other .json files are not read
   const kisiCfg = files.find((f) => /\.kisi\.json$/i.test(f.name));
-  const cfg = files.find((f) => f.name.endsWith(".json") && f !== kisiCfg);
+  const other = files.find((f) => f.name.endsWith(".json") && f !== kisiCfg);
   const kc = kisiCfg ? { name: kisiCfg.name, text: await kisiCfg.text() } : null;
   if (pcb) {
     for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
@@ -16,10 +16,10 @@ async function handleFiles(files) {
     // configuration alone: load the current board again with it
     const l = S.lastFiles;
     await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, kc);
-    if (!cfg) return;
+    return;
   }
-  if (cfg && S.scene) { importKipida(await cfg.text()); return; }
   if (pcb) return;
+  if (other) { $("warnings").innerHTML = `<span class="err">${esc(other.name)}: only a board configuration named &lt;board&gt;.kisi.json is read.</span>`; return; }
   if (!pcb && pro && S.scene) {
     try { S.engine.loadPro(await pro.text()); S.scene = S.engine.scene(); runAnalysis(); } catch (e) { $("warnings").innerHTML = `<span class="err">Project file: ${esc(e.message)}</span>`; }
     return;

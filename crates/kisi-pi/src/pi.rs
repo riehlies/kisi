@@ -7,7 +7,7 @@
 //! with a sparse Cholesky factorisation (kisi-sparse / faer).
 //!
 //! Configuration comes from footprint fields in the board (PI_SOURCE,
-//! PI_LOAD), a KiPIDA `kipida_config.json`, or the viewer.
+//! PI_LOAD), the board configuration, or the viewer.
 
 use crate::board::{pad_polygon, Board, Pad};
 use crate::geom::{self, BBox, P};
@@ -31,7 +31,7 @@ pub struct LoadSpec {
     /// current drawn from the rail (A)
     pub current: f64,
     pub pads: Vec<String>,
-    /// where the value came from: "field", "KiPIDA", "user", "regulator"
+    /// where the value came from: "field", "user", "regulator"
     pub origin: String,
 }
 
@@ -359,69 +359,6 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
         }
     }
     (rails, warnings)
-}
-
-/// Rail setups from a KiPIDA `kipida_config.json` (version 1.0).
-/// Regulators become loads on their input rail: LINEAR passes the output
-/// current, SWITCHING scales by Vout/(Vin·efficiency).
-pub fn rails_from_kipida(board: &Board, json: &str) -> Result<(Vec<RailSetup>, Vec<String>), String> {
-    let v: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
-    let mut warnings = Vec::new();
-    let mut rails: Vec<RailSetup> = Vec::new();
-    let arr = v["rails"].as_array().ok_or("no 'rails' in the KiPIDA file")?;
-    let strs = |x: &serde_json::Value| -> Vec<String> {
-        x.as_array().map(|a| a.iter().filter_map(|s| s.as_str().map(String::from)).collect()).unwrap_or_default()
-    };
-    for r in arr {
-        let name = r["net_name"].as_str().unwrap_or("");
-        let Some(net) = find_net(board, name) else {
-            warnings.push(format!("KiPIDA: net '{name}' not on the board"));
-            continue;
-        };
-        let mut rs = RailSetup {
-            net: board.net_name(net).to_string(),
-            voltage: r["nominal_voltage"].as_f64().filter(|v| *v > 0.0).or_else(|| voltage_from_name(name)).unwrap_or(0.0),
-            ..Default::default()
-        };
-        for s in r["sources"].as_array().into_iter().flatten() {
-            rs.sources.push(SourceSpec { refdes: s["ref_des"].as_str().unwrap_or("").into(), pads: strs(&s["pad_names"]) });
-        }
-        for l in r["loads"].as_array().into_iter().flatten() {
-            rs.loads.push(LoadSpec {
-                refdes: l["ref_des"].as_str().unwrap_or("").into(),
-                current: l["total_current"].as_f64().unwrap_or(0.0),
-                pads: strs(&l["pad_names"]),
-                origin: "KiPIDA".into(),
-            });
-        }
-        rails.push(rs);
-    }
-    // regulators: the output rail's total load appears on the input rail
-    for r in arr {
-        for reg in r["child_regulators"].as_array().into_iter().flatten() {
-            let out_name = reg["output_rail_name"].as_str().unwrap_or("");
-            let in_name = reg["input_rail_name"].as_str().unwrap_or("");
-            let (Some(oi), Some(ii)) = (
-                rails.iter().position(|x| find_net(board, out_name).map(|n| board.net_name(n)) == Some(x.net.as_str())),
-                rails.iter().position(|x| find_net(board, in_name).map(|n| board.net_name(n)) == Some(x.net.as_str())),
-            ) else {
-                continue;
-            };
-            let i_out: f64 = rails[oi].loads.iter().map(|l| l.current).sum();
-            let (v_out, v_in) = (rails[oi].voltage, rails[ii].voltage);
-            let switching = reg["reg_type"].as_str() == Some("SWITCHING");
-            let eff = reg["efficiency"].as_f64().unwrap_or(0.85).clamp(0.05, 1.0);
-            let i_in = if switching && v_in > 0.0 { i_out * v_out / (v_in * eff) } else { i_out };
-            let refdes = reg["input_ref_des"].as_str().unwrap_or("").to_string();
-            // the regulator output is a source of the output rail
-            let out_ref = reg["output_ref_des"].as_str().unwrap_or("").to_string();
-            if !out_ref.is_empty() && !rails[oi].sources.iter().any(|s| s.refdes == out_ref) {
-                rails[oi].sources.push(SourceSpec { refdes: out_ref, pads: strs(&reg["output_pad_names"]) });
-            }
-            rails[ii].loads.push(LoadSpec { refdes, current: i_in, pads: strs(&reg["input_pad_names"]), origin: "regulator".into() });
-        }
-    }
-    Ok((rails, warnings))
 }
 
 // --- rasterisation ------------------------------------------------------------------

@@ -1,5 +1,5 @@
 {
- "tool": "/home/claude/kisi/target/release/kisi",
+ "tool": "kisi",
  "summary": {
   "via_cases": 29,
   "via_tdr_err_pct_median": 1.44,

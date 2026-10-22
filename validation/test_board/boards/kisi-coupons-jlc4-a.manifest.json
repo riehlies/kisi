@@ -1,0 +1,624 @@
+{
+ "board": "kisi-coupons-jlc4-a",
+ "file": "kisi-coupons-jlc4-a.kicad_pcb",
+ "stackup": "jlc4_7628",
+ "stackup_title": "JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template)",
+ "date": "2026-10-22",
+ "size_mm": [
+  100.0,
+  223.9
+ ],
+ "thickness_mm": 1.5862,
+ "coupons": [
+  {
+   "id": "THRU_L1",
+   "group": "thru",
+   "title": "2\u00d7thru on F.Cu (top connectors), 25 mm edge to edge",
+   "length_mm": 25.0,
+   "height_mm": 12.7,
+   "validates": "fixture for the P370 2\u00d7thru de-embedding of every coupon fed on this layer; multiline TRL 'thru'",
+   "references": [
+    "thru_s4_L1"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.345,
+    "length_mm": 25.0
+   },
+   "nets": [
+    "SE_THRU_L1"
+   ],
+   "connectors": [
+    {
+     "ref": "J1",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_THRU_L1"
+    },
+    {
+     "ref": "J2",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_THRU_L1"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__THRU_L1__w10",
+    "kisi-coupons-jlc4-a__THRU_L1__w18"
+   ]
+  },
+  {
+   "id": "THRU_L4",
+   "group": "thru",
+   "title": "2\u00d7thru on B.Cu (bottom connectors), 25 mm edge to edge",
+   "length_mm": 25.0,
+   "height_mm": 12.7,
+   "validates": "fixture for the P370 2\u00d7thru de-embedding of every coupon fed on this layer; multiline TRL 'thru'",
+   "references": [
+    "thru_s4_L4"
+   ],
+   "params": {
+    "layer": "B.Cu",
+    "w_mm": 0.345,
+    "length_mm": 25.0
+   },
+   "nets": [
+    "SE_THRU_L4"
+   ],
+   "connectors": [
+    {
+     "ref": "J3",
+     "port": "1",
+     "side": "left",
+     "layer": "B.Cu",
+     "net": "SE_THRU_L4"
+    },
+    {
+     "ref": "J4",
+     "port": "2",
+     "side": "right",
+     "layer": "B.Cu",
+     "net": "SE_THRU_L4"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__THRU_L4__w10",
+    "kisi-coupons-jlc4-a__THRU_L4__w18"
+   ]
+  },
+  {
+   "id": "A0800",
+   "group": "A",
+   "title": "via L1\u2192L4 through the L2/L3 plane pair, drill 0.3, antipad \u00d80.8, 4 GND vias at 1 mm",
+   "length_mm": 25.0,
+   "height_mm": 12.7,
+   "validates": "via ladder / coax section: antipad dependence of Z and delay (A group)",
+   "references": [
+    "A_s4_d300_ap800"
+   ],
+   "params": {
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stitch": "4 \u00d7 1 mm"
+   },
+   "nets": [
+    "SE_A0800"
+   ],
+   "connectors": [
+    {
+     "ref": "J5",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_A0800"
+    },
+    {
+     "ref": "J6",
+     "port": "2",
+     "side": "right",
+     "layer": "B.Cu",
+     "net": "SE_A0800"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__A0800__w10"
+   ]
+  },
+  {
+   "id": "A1000",
+   "group": "A",
+   "title": "via L1\u2192L4 through the L2/L3 plane pair, drill 0.3, antipad \u00d81.0, 4 GND vias at 1 mm",
+   "length_mm": 25.0,
+   "height_mm": 12.7,
+   "validates": "via ladder / coax section: antipad dependence of Z and delay (A group)",
+   "references": [
+    "A_s4_d300_ap1000"
+   ],
+   "params": {
+    "drill_mm": 0.3,
+    "antipad_mm": 1.0,
+    "stitch": "4 \u00d7 1 mm"
+   },
+   "nets": [
+    "SE_A1000"
+   ],
+   "connectors": [
+    {
+     "ref": "J7",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_A1000"
+    },
+    {
+     "ref": "J8",
+     "port": "2",
+     "side": "right",
+     "layer": "B.Cu",
+     "net": "SE_A1000"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__A1000__w10"
+   ]
+  },
+  {
+   "id": "A1200",
+   "group": "A",
+   "title": "via L1\u2192L4 through the L2/L3 plane pair, drill 0.3, antipad \u00d81.2, 4 GND vias at 1 mm",
+   "length_mm": 25.0,
+   "height_mm": 12.7,
+   "validates": "via ladder / coax section: antipad dependence of Z and delay (A group)",
+   "references": [],
+   "params": {
+    "drill_mm": 0.3,
+    "antipad_mm": 1.2,
+    "stitch": "4 \u00d7 1 mm"
+   },
+   "nets": [
+    "SE_A1200"
+   ],
+   "connectors": [
+    {
+     "ref": "J9",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_A1200"
+    },
+    {
+     "ref": "J10",
+     "port": "2",
+     "side": "right",
+     "layer": "B.Cu",
+     "net": "SE_A1200"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__A1200__w10"
+   ]
+  },
+  {
+   "id": "D_S1p0",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L4 (ref L3), one GND via at 1 mm, antipad \u00d80.8",
+   "length_mm": 25.0,
+   "height_mm": 12.7,
+   "validates": "return path of a reference change L2 \u2192 L3 (kisi: return via within 3 mm, else inductance up to 5 mm)",
+   "references": [
+    "D_s8_stitch_1p0"
+   ],
+   "params": {
+    "stitch_mm": 1.0
+   },
+   "nets": [
+    "SE_D_S1p0"
+   ],
+   "connectors": [
+    {
+     "ref": "J11",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_S1p0"
+    },
+    {
+     "ref": "J12",
+     "port": "2",
+     "side": "right",
+     "layer": "B.Cu",
+     "net": "SE_D_S1p0"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__D_S1p0__w10"
+   ]
+  },
+  {
+   "id": "D_S2p0",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L4 (ref L3), one GND via at 2 mm, antipad \u00d80.8",
+   "length_mm": 25.0,
+   "height_mm": 12.7,
+   "validates": "return path of a reference change L2 \u2192 L3 (kisi: return via within 3 mm, else inductance up to 5 mm)",
+   "references": [
+    "D_s8_stitch_2p0"
+   ],
+   "params": {
+    "stitch_mm": 2.0
+   },
+   "nets": [
+    "SE_D_S2p0"
+   ],
+   "connectors": [
+    {
+     "ref": "J13",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_S2p0"
+    },
+    {
+     "ref": "J14",
+     "port": "2",
+     "side": "right",
+     "layer": "B.Cu",
+     "net": "SE_D_S2p0"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__D_S2p0__w10"
+   ]
+  },
+  {
+   "id": "D_S3p5",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L4 (ref L3), one GND via at 3.5 mm, antipad \u00d80.8",
+   "length_mm": 25.0,
+   "height_mm": 12.7,
+   "validates": "return path of a reference change L2 \u2192 L3 (kisi: return via within 3 mm, else inductance up to 5 mm)",
+   "references": [],
+   "params": {
+    "stitch_mm": 3.5
+   },
+   "nets": [
+    "SE_D_S3p5"
+   ],
+   "connectors": [
+    {
+     "ref": "J15",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_S3p5"
+    },
+    {
+     "ref": "J16",
+     "port": "2",
+     "side": "right",
+     "layer": "B.Cu",
+     "net": "SE_D_S3p5"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__D_S3p5__w10"
+   ]
+  },
+  {
+   "id": "D_NONE",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L4 (ref L3), no return via near the via (the row walls at \u00b16.35 mm only)",
+   "length_mm": 25.0,
+   "height_mm": 12.7,
+   "validates": "return path without a nearby GND via: the plane-pair cavity between the row walls",
+   "references": [
+    "D_s8_stitch_none"
+   ],
+   "params": {
+    "stitch_mm": null
+   },
+   "nets": [
+    "SE_D_NONE"
+   ],
+   "connectors": [
+    {
+     "ref": "J17",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_NONE"
+    },
+    {
+     "ref": "J18",
+     "port": "2",
+     "side": "right",
+     "layer": "B.Cu",
+     "net": "SE_D_NONE"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__D_NONE__w10",
+    "kisi-coupons-jlc4-a__D_NONE__w18"
+   ]
+  },
+  {
+   "id": "LINE_27",
+   "group": "T",
+   "title": "Line on F.Cu, 27 mm edge to edge (\u0394L = 2 mm against the 2\u00d7thru)",
+   "length_mm": 27.0,
+   "height_mm": 12.7,
+   "validates": "multiline TRL line / line\u2013line method: \u03b5eff, loss per mm and Zc of the 50 \u03a9 microstrip",
+   "references": [
+    "T_ts6_ms_10",
+    "T_ts6_ms_20"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.345,
+    "length_mm": 27.0
+   },
+   "nets": [
+    "SE_LINE_27"
+   ],
+   "connectors": [
+    {
+     "ref": "J19",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_LINE_27"
+    },
+    {
+     "ref": "J20",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_LINE_27"
+    }
+   ],
+   "fdtd": []
+  },
+  {
+   "id": "REFLECT",
+   "group": "reflect",
+   "title": "TRL reflect: two open line ends at the reference planes (12.5 mm from each edge), 5 mm apart",
+   "length_mm": 30.0,
+   "height_mm": 12.7,
+   "validates": "reflect standard of an on-board multiline TRL calibration (with THRU_L1 and LINE_*)",
+   "references": [],
+   "params": {
+    "open_ends": true
+   },
+   "nets": [
+    "SE_REFLECT_L",
+    "SE_REFLECT_R"
+   ],
+   "connectors": [
+    {
+     "ref": "J21",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_REFLECT_L"
+    },
+    {
+     "ref": "J22",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_REFLECT_R"
+    }
+   ],
+   "fdtd": []
+  },
+  {
+   "id": "LINE_30",
+   "group": "T",
+   "title": "Line on F.Cu, 30 mm edge to edge (\u0394L = 5 mm against the 2\u00d7thru)",
+   "length_mm": 30.0,
+   "height_mm": 12.7,
+   "validates": "multiline TRL line / line\u2013line method: \u03b5eff, loss per mm and Zc of the 50 \u03a9 microstrip",
+   "references": [
+    "T_ts6_ms_10",
+    "T_ts6_ms_20"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.345,
+    "length_mm": 30.0
+   },
+   "nets": [
+    "SE_LINE_30"
+   ],
+   "connectors": [
+    {
+     "ref": "J23",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_LINE_30"
+    },
+    {
+     "ref": "J24",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_LINE_30"
+    }
+   ],
+   "fdtd": []
+  },
+  {
+   "id": "LINE_50",
+   "group": "T",
+   "title": "Line on F.Cu, 50 mm edge to edge (\u0394L = 25 mm against the 2\u00d7thru)",
+   "length_mm": 50.0,
+   "height_mm": 12.7,
+   "validates": "multiline TRL line / line\u2013line method: \u03b5eff, loss per mm and Zc of the 50 \u03a9 microstrip",
+   "references": [
+    "T_ts6_ms_10",
+    "T_ts6_ms_20"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.345,
+    "length_mm": 50.0
+   },
+   "nets": [
+    "SE_LINE_50"
+   ],
+   "connectors": [
+    {
+     "ref": "J25",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_LINE_50"
+    },
+    {
+     "ref": "J26",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_LINE_50"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__LINE_50__w10",
+    "kisi-coupons-jlc4-a__LINE_50__w20"
+   ]
+  },
+  {
+   "id": "LINE_100",
+   "group": "T",
+   "title": "Line on F.Cu, 100 mm edge to edge (\u0394L = 75 mm against the 2\u00d7thru)",
+   "length_mm": 100.0,
+   "height_mm": 12.7,
+   "validates": "multiline TRL line / line\u2013line method: \u03b5eff, loss per mm and Zc of the 50 \u03a9 microstrip",
+   "references": [
+    "T_ts6_ms_10",
+    "T_ts6_ms_20"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.345,
+    "length_mm": 100.0
+   },
+   "nets": [
+    "SE_LINE_100"
+   ],
+   "connectors": [
+    {
+     "ref": "J27",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_LINE_100"
+    },
+    {
+     "ref": "J28",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_LINE_100"
+    }
+   ],
+   "fdtd": []
+  },
+  {
+   "id": "G_CAV",
+   "group": "G",
+   "title": "Plane cavity 50 \u00d7 30 mm on In1.Cu over In2.Cu (d = 1.065 mm), ports at a corner and the centre",
+   "length_mm": 100.0,
+   "height_mm": 38.099999999999994,
+   "validates": "cavity resonances (kisi_pi::cavity_modal: \u00b10.8 % against 3D) and the \u03b5r of the core between the planes",
+   "references": [
+    "G_pp100",
+    "G_pp200"
+   ],
+   "params": {
+    "size_mm": "50 \u00d7 30",
+    "d_mm": 1.065,
+    "modes_GHz": [
+     1.398,
+     2.33,
+     2.717,
+     2.796,
+     3.639,
+     4.193,
+     4.659,
+     4.797
+    ],
+    "modes_mn": [
+     "10",
+     "01",
+     "11",
+     "20",
+     "21",
+     "30",
+     "02",
+     "31"
+    ],
+    "modes_note": "magnetic-wall estimate with the nominal er of the core; fringing lowers them"
+   },
+   "nets": [
+    "CAV"
+   ],
+   "connectors": [
+    {
+     "ref": "J29",
+     "port": "1",
+     "side": "left",
+     "layer": "B.Cu",
+     "net": "CAV"
+    },
+    {
+     "ref": "J30",
+     "port": "2",
+     "side": "right",
+     "layer": "B.Cu",
+     "net": "CAV"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-a__G_CAV__w60"
+   ]
+  }
+ ],
+ "fdtd_cases": [
+  "kisi-coupons-jlc4-a__THRU_L1__w10",
+  "kisi-coupons-jlc4-a__THRU_L1__w18",
+  "kisi-coupons-jlc4-a__THRU_L4__w10",
+  "kisi-coupons-jlc4-a__THRU_L4__w18",
+  "kisi-coupons-jlc4-a__A0800__w10",
+  "kisi-coupons-jlc4-a__A1000__w10",
+  "kisi-coupons-jlc4-a__A1200__w10",
+  "kisi-coupons-jlc4-a__D_S1p0__w10",
+  "kisi-coupons-jlc4-a__D_S2p0__w10",
+  "kisi-coupons-jlc4-a__D_S3p5__w10",
+  "kisi-coupons-jlc4-a__D_NONE__w10",
+  "kisi-coupons-jlc4-a__D_NONE__w18",
+  "kisi-coupons-jlc4-a__LINE_50__w10",
+  "kisi-coupons-jlc4-a__LINE_50__w20",
+  "kisi-coupons-jlc4-a__G_CAV__w60"
+ ],
+ "fdtd_cells": {
+  "kisi-coupons-jlc4-a__THRU_L1__w10": 753597,
+  "kisi-coupons-jlc4-a__THRU_L1__w18": 1073709,
+  "kisi-coupons-jlc4-a__THRU_L4__w10": 760038,
+  "kisi-coupons-jlc4-a__THRU_L4__w18": 1082886,
+  "kisi-coupons-jlc4-a__A0800__w10": 1007361,
+  "kisi-coupons-jlc4-a__A1000__w10": 1007361,
+  "kisi-coupons-jlc4-a__A1200__w10": 1007361,
+  "kisi-coupons-jlc4-a__D_S1p0__w10": 977265,
+  "kisi-coupons-jlc4-a__D_S2p0__w10": 977265,
+  "kisi-coupons-jlc4-a__D_S3p5__w10": 977265,
+  "kisi-coupons-jlc4-a__D_NONE__w10": 961875,
+  "kisi-coupons-jlc4-a__D_NONE__w18": 1303875,
+  "kisi-coupons-jlc4-a__LINE_50__w10": 800394,
+  "kisi-coupons-jlc4-a__LINE_50__w20": 1284666,
+  "kisi-coupons-jlc4-a__G_CAV__w60": 1602118
+ }
+}

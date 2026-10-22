@@ -1,0 +1,74 @@
+{
+ "case": "kisi-coupons-jlc4-a__THRU_L1__w10",
+ "meta": {
+  "group": "thru",
+  "title": "2\u00d7thru on F.Cu (top connectors), 25 mm edge to edge [w10: 10 mm of the feed line: 3D 2\u00d7thru of the via coupons (window w10)]",
+  "params": {
+   "layer": "F.Cu",
+   "w_mm": 0.345,
+   "length_mm": 25.0,
+   "window_mm": [
+    -5.0,
+    5.0
+   ]
+  },
+  "stackup": "tb_jlc4_7628",
+  "stackup_title": "JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template)",
+  "copper_z": [
+   1.4858,
+   1.2754,
+   0.2104,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L3"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0
+  ],
+  "mirror": [
+   1,
+   0
+  ],
+  "board": "kisi-coupons-jlc4-a",
+  "coupon": "THRU_L1",
+  "window": "w10",
+  "stackup_source": "JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template)",
+  "validates": "fixture for the P370 2\u00d7thru de-embedding of every coupon fed on this layer; multiline TRL 'thru'",
+  "references": [
+   "thru_s4_L1"
+  ],
+  "trace_width_note": "zero-thickness strips widened by Wheeler's \u0394w for the copper thickness",
+  "mask": true
+ },
+ "date": "2026-10-22",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 753597,
+   "steps": [
+    4201
+   ],
+   "dt": 5.852926789202558e-14,
+   "seconds": 84.5,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

@@ -1,0 +1,193 @@
+{
+ "case": "BV_ts_m2_per0_q050f25s",
+ "meta": {
+  "approximations": [
+   "copper has zero thickness; layer heights are kisi's (dielectric plus half the copper on each side)",
+   "fills, pads and tracks outside the window are left out; copper that reaches the window edge continues through the PML",
+   "on the feed layers only the keep box is taken from the board: outside it the own trace(s) run straight along the nearest axis to the port, without pour or other copper",
+   "traces of other nets are cut at the keep box on the feed layers (floating ends)",
+   "other vias and traces of the own net (and of the partner net) are left out",
+   "solder mask, plating thickness and the barrel's hole wall are not modelled; the barrel is a solid cylinder of the drill radius",
+   "dielectric loss: a conductivity fixed at fmax/2 (tan\u03b4 exact there); lossless copper"
+  ],
+  "coplanar": [],
+  "copper_z": [
+   1.4618,
+   1.32075,
+   1.20165,
+   0.25855,
+   0.13035,
+   0.0
+  ],
+  "excite": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "extensions": [
+   {
+    "axis": "x",
+    "layer": "F.Cu",
+    "side": "in",
+    "sign": -1.0,
+    "u": -0.158887,
+    "w": 0.19079
+   },
+   {
+    "axis": "x",
+    "layer": "F.Cu",
+    "side": "in",
+    "sign": -1.0,
+    "u": 0.158887,
+    "w": 0.19079
+   },
+   {
+    "axis": "x",
+    "layer": "In3.Cu",
+    "side": "out",
+    "sign": 1.0,
+    "u": -0.137462,
+    "w": 0.14789
+   },
+   {
+    "axis": "x",
+    "layer": "In3.Cu",
+    "side": "out",
+    "sign": 1.0,
+    "u": 0.137462,
+    "w": 0.14789
+   }
+  ],
+  "group": "board",
+  "kisi_returns": [
+   [
+    -0.1714,
+    0.5276
+   ],
+   [
+    0.5486,
+    -0.9048
+   ],
+   [
+    -1.4514,
+    -0.9048
+   ],
+   [
+    1.8286,
+    0.5276
+   ],
+   [
+    -0.3319,
+    2.0569
+   ],
+   [
+    -2.0114,
+    0.5614
+   ],
+   [
+    -2.0614,
+    1.6114
+   ],
+   [
+    2.5486,
+    -0.9048
+   ]
+  ],
+  "lumped": [],
+  "params": {
+   "backdrill": null,
+   "board": "Thunderscope_Rev5.3.kicad_pcb",
+   "drill_mm": 0.2032,
+   "feed_mm": 3.0,
+   "fill_vertices": 3617,
+   "keep_mm": 1.2,
+   "l_in": "F.Cu",
+   "l_out": "In3.Cu",
+   "layers": [
+    "F.Cu",
+    "B.Cu"
+   ],
+   "net": "/TS-USB4 Components/M2_PER0_P",
+   "origin": [
+    161.4761,
+    130.55360000000002
+   ],
+   "pad_mm": 0.4064,
+   "partner": "/TS-USB4 Components/M2_PER0_N",
+   "partner_at": [
+    161.6647,
+    130.365
+   ],
+   "pitch_mm": 0.533441,
+   "remove_unused_layers": false,
+   "return_vias_in_window": 16,
+   "rotation_deg": 45.0,
+   "via_at": [
+    161.2875,
+    130.7422
+   ],
+   "window": [
+    -4.5,
+    -3.0,
+    4.5,
+    3.0
+   ],
+   "y": "up (board y flipped)"
+  },
+  "planes": [
+   "B.Cu",
+   "In1.Cu",
+   "In2.Cu",
+   "In4.Cu"
+  ],
+  "ports": [
+   {
+    "layer": "F.Cu",
+    "name": "1 P in",
+    "ref": "In1.Cu"
+   },
+   {
+    "layer": "F.Cu",
+    "name": "2 N in",
+    "ref": "In1.Cu"
+   },
+   {
+    "layer": "In3.Cu",
+    "name": "3 P out",
+    "ref": "In4.Cu"
+   },
+   {
+    "layer": "In3.Cu",
+    "name": "4 N out",
+    "ref": "In4.Cu"
+   }
+  ],
+  "pwr_planes": [],
+  "stackup": "Thunderscope_Rev5.3",
+  "stackup_title": "Thunderscope_Rev5.3 from the board file and its kisi.json",
+  "thru": [
+   "thru_BV_ts_m2_per0_q050f25s_in",
+   "thru_BV_ts_m2_per0_q050f25s_out"
+  ],
+  "title": "/TS-USB4 Components/M2_PER0_P via F.Cu\u2192In3.Cu at (161.287, 130.742) with its partner"
+ },
+ "date": "2026-10-22",
+ "fmax": 25000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 520478,
+   "steps": [
+    36001,
+    36201,
+    33001,
+    39801
+   ],
+   "dt": 7.033530446888377e-14,
+   "seconds": 780.6,
+   "dfine": 0.05,
+   "dmax": null
+  }
+ }
+}

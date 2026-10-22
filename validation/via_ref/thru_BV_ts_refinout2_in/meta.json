@@ -1,0 +1,73 @@
+{
+ "case": "thru_BV_ts_refinout2_in",
+ "meta": {
+  "copper_z": [
+   1.4618,
+   1.32075,
+   1.20165,
+   0.25855,
+   0.13035,
+   0.0
+  ],
+  "excite": [
+   0
+  ],
+  "group": "thru",
+  "lumped": [],
+  "mirror": [
+   1,
+   0
+  ],
+  "params": {
+   "layer": "F.Cu",
+   "length_mm": 8.0,
+   "offsets_mm": [
+    0.0
+   ],
+   "width_mm": 0.213
+  },
+  "plane_nets": [
+   "GND",
+   "+VUSB",
+   "GND",
+   "GND"
+  ],
+  "planes": [
+   "In1.Cu",
+   "In2.Cu",
+   "In3.Cu",
+   "In4.Cu"
+  ],
+  "ports": [
+   {
+    "layer": "F.Cu",
+    "name": "1 near",
+    "ref": "In1.Cu"
+   },
+   {
+    "layer": "F.Cu",
+    "name": "2 far",
+    "ref": "In1.Cu"
+   }
+  ],
+  "pwr_planes": [],
+  "stackup": "board",
+  "stackup_title": "as the board case",
+  "title": "2\u00d7thru F.Cu, 8 mm"
+ },
+ "date": "2026-10-22",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 978096,
+   "steps": [
+    3801
+   ],
+   "dt": 6.115757756759157e-14,
+   "seconds": 38.9,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

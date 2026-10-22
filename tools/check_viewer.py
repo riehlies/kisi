@@ -139,7 +139,7 @@ def run(pg, tag, desktop):
                 step("variant_prompt")
                 pg.click("#ch-overview [data-variant] >> nth=0"); pg.wait_for_function(f"!variantNeeded() && {BUSY}", timeout=90000)
                 pg.wait_for_timeout(300)
-        pg.click("#ov-check"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(300); step("check")
+        pg.click("#ck-start"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(300); step("check")
         if pg.locator("#ch-overview tr[data-lane]").count():
             pg.click("#ch-overview tr[data-lane] >> nth=0"); pg.wait_for_timeout(600)
             if pg.locator("#ch-detail [data-ct=eye]").count():

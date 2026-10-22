@@ -171,9 +171,21 @@ tr.warnrow td { color: var(--z-high1); }
 .steps > li.locked { opacity: 0.55; }
 .step-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; min-height: 22px; }
 .fs-settings { display: flex; flex-direction: column; gap: 6px; }
+.fs-opts summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); }
+.fs-opts[open] summary { margin-bottom: 6px; }
 .fs-settings select { border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); padding: 3px 5px; font-size: 12.5px; max-width: 60%; }
 .fs { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; }
 .fs-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.fs-row > .btn { flex: none; white-space: nowrap; }
+.step-h > .btn { flex: none; white-space: nowrap; }
+.ce-list { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 6px; }
+.ce-box { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12px; padding: 5px 8px; background: var(--panel-2); border-radius: 4px; }
+.ce-box .ce-h { color: var(--muted); }
+.ce-box label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.ce-box input[type=number] { width: 4.2em; }
+.ce-box select { max-width: 16em; }
+.ck-scroll { max-height: 360px; overflow: auto; margin-top: 8px; border-top: 1px solid var(--line); }
+.ck-scroll thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
 .fs-bar { height: 4px; border-radius: 2px; background: var(--panel-2); overflow: hidden; }
 .fs-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
 .btn.small { padding: 2px 8px; font-size: 12.5px; }

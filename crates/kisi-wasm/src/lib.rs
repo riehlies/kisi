@@ -130,7 +130,8 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
 /// Input: {"config": file contents, "board": name of the loaded board, "files": {path: text}
 /// (BOMs the variants refer to), "variant": the viewer's choice | null}.
 /// Output: {"check": {ok, errors, warnings, entries}, "targets": {class: {z, diff}},
-/// "profiles": {class: id}, "fields": n, "dielectrics": n, "variant": VariantState}. The board's
+/// "profiles": {class: id}, "connector_ends": {connector: ConnEnd}, "fields": n, "dielectrics": n,
+/// "variant": VariantState}. The board's
 /// fields and file stackup are replaced by the configured values (viewer edits stay on top).
 #[no_mangle]
 pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
@@ -146,12 +147,13 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
         let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
         let check = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin(), board_name.as_deref(), &files);
         let notes = cfg.notes.clone();
+        let conn_ends: serde_json::Map<String, serde_json::Value> = cfg.connector_ends.iter().filter_map(|(k, c)| Some((k.clone(), serde_json::to_value(&c.end).ok()?))).collect();
         st.cfg = Some(cfg);
         st.files = files;
         st.variant_choice = v["variant"].as_str().map(str::to_string);
         let a = rebuild(&mut st)?.unwrap_or_default();
         let targets: serde_json::Map<String, serde_json::Value> = a.targets.iter().map(|(k, t)| (k.clone(), serde_json::json!({"z": t.z, "diff": t.diff}))).collect();
-        Ok(serde_json::json!({"check": check, "targets": targets, "profiles": a.profiles, "fields": a.fields, "dielectrics": a.dielectrics, "notes": notes, "variant": variant_json(&st)}).to_string())
+        Ok(serde_json::json!({"check": check, "targets": targets, "profiles": a.profiles, "connector_ends": conn_ends, "fields": a.fields, "dielectrics": a.dielectrics, "notes": notes, "variant": variant_json(&st)}).to_string())
     });
     match r {
         Ok(s) => {
@@ -627,7 +629,8 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
                 };
                 let cd = kisi_core::topology::ComponentData::builtin();
                 let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
-                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, &cd)).unwrap());
+                let cend: Option<kisi_core::eye::ConnEnd> = item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
+                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), &cd)).unwrap());
                 continue;
             }
             rows.push(serde_json::to_value(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise))).unwrap());
@@ -699,7 +702,8 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
         let rev = v["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
         let cd = kisi_core::topology::ComponentData::builtin();
         let ep = v["bitrate"].as_f64().map(|br| (br, v["eye_rise"].as_f64().unwrap_or(rp.rise), v["prbs"].as_u64().unwrap_or(7) as u32, end("tx"), end("rx")));
-        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, &cd) {
+        let cend: Option<kisi_core::eye::ConnEnd> = v["conn_end"].as_object().and_then(|_| serde_json::from_value(v["conn_end"].clone()).ok());
+        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, cend.as_ref(), &cd) {
             Ok(ev) => {
                 let eye = match ev.eye {
                     Some(Ok(e)) => serde_json::to_value(&e).unwrap(),
@@ -708,7 +712,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
                 };
                 let skew = ev.skew.map(|(ps, mm, pn, unc)| serde_json::json!({"partner": pn, "skew_ps": ps, "skew_mm": mm, "uncertain": unc}));
                 serde_json::json!({"channel": ev.ch, "error": null, "touchstone": kisi_core::rf::touchstone(&ev.ch), "eye": eye, "skew": skew,
-                    "rx_used": ev.rx_used, "rx_note": ev.rx_note, "reversed": rev,
+                    "rx_used": ev.rx_used, "rx_note": ev.rx_note, "tx_used": ev.tx_used, "end_note": ev.end_note, "reversed": rev,
                     "crosstalk": kisi_core::rf::crosstalk(b, an, lane.nets[0], &params.field, &rp)})
             }
             Err(e) => serde_json::json!({"channel": null, "error": e, "crosstalk": {"aggressors": [], "geoms": []}}),

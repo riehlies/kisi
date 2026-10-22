@@ -47,6 +47,28 @@
       <div id="variant-body"></div>
     </section>
 
+    <section class="card" aria-labelledby="h-check" data-view="ch" hidden>
+      <h2 id="h-check">Channel check <em id="ck-count"></em></h2>
+      <p class="note">Channel check in four steps (the field solver is optional). The board map and the interfaces overview show the latest result.</p>
+      <ol class="steps">
+        <li id="cs1">
+          <div class="step-h"><b>Lanes and profiles</b></div>
+          <span class="note" id="cs1-text"></span>
+        </li>
+        <li id="cs2">
+          <div class="step-h"><b>Impedance estimate</b><button class="btn small primary" id="ck-est">Estimate</button></div>
+          <span class="note" id="cs2-text"></span>
+        </li>
+        <!-- step 3, the field solver, is the impedance card's step: views.js moves it here -->
+        <li id="cs3">
+          <div class="step-h"><b>Check of all channels</b><button class="btn small primary" id="ck-start">Compute</button></div>
+          <span class="note" id="ck-text"></span>
+          <div class="fs-bar" id="ck-barbox" hidden aria-hidden="true"><i id="ck-bar"></i></div>
+        </li>
+      </ol>
+      <div id="ck-out"></div>
+    </section>
+
     <section class="card" aria-labelledby="h-sum" data-view="si">
       <h2 id="h-sum">Signals <em id="timing"></em></h2>
       <div class="kpis">
@@ -71,20 +93,23 @@
             <div class="fs-bar" aria-hidden="true"><i id="fs-bar"></i></div>
             <div class="fs-row"><span id="fs-text"></span><button class="btn small" id="fs-toggle" hidden>Pause</button></div>
             <p class="note" id="fs-note"></p>
-            <div class="fs-settings" id="fs-settings">
-              <label class="opt" for="fs-scope"><span>Solve for</span><select id="fs-scope"></select></label>
-              <label class="opt" for="fs-xt"><span id="fs-xt-label">Refine critical couplings (crosstalk)</span><input type="checkbox" id="fs-xt" checked></label>
-              <label class="opt" for="fs-threads"><span>Threads</span><select id="fs-threads"></select></label>
-              <div class="fs-row"><span class="note" id="fs-cache"></span><button class="btn small" id="fs-clear">Clear cache</button></div>
-            </div>
+            <details class="fs-opts" id="fs-opts">
+              <summary>Solver options</summary>
+              <div class="fs-settings" id="fs-settings">
+                <label class="opt" for="fs-scope"><span>Solve for</span><select id="fs-scope"></select></label>
+                <label class="opt" for="fs-xt"><span id="fs-xt-label">Refine critical couplings (crosstalk)</span><input type="checkbox" id="fs-xt" checked></label>
+                <label class="opt" for="fs-threads"><span>Threads</span><select id="fs-threads"></select></label>
+                <div class="fs-row"><span class="note" id="fs-cache"></span><button class="btn small" id="fs-clear">Clear cache</button></div>
+              </div>
+            </details>
           </div>
         </li>
       </ol>
       <p class="note" id="warnings"></p>
       <div class="note cfg-status" id="cfg-status" hidden></div>
-      <details class="acc">
+      <details class="acc" id="acc">
         <summary>Accuracy</summary>
-        <p class="note">Field solver: <a href="https://github.com/Ttl/js_2d_fields" target="_blank" rel="noopener">js_2d_fields</a> by Henrik Forstén (GPL-3.0), quasi-static, included unmodified (revision <span class="mono" id="up-rev"></span>). Against the HFSS/Ansys references in his test suite: deviation ≤ 1.7 %, including a line over a cut-out with a deeper reference.</p>
+        <p class="note"><b>Impedance.</b> Formulas (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141): microstrip within 1–2 %, coupled and coplanar lines 5–15 % off (asymmetric stripline +11 %). Field solver: <a href="https://github.com/Ttl/js_2d_fields" target="_blank" rel="noopener">js_2d_fields</a> by Henrik Forstén (GPL-3.0), quasi-static, included unmodified (revision <span class="mono" id="up-rev"></span>): within 1.7 % of the HFSS/Ansys references in his test suite, εeff within 1 %.</p>
         <p class="note">Deviation on ThunderScope cross-sections; reference is Forstén's own microstrip/stripline solver:</p>
         <table class="acc-t">
           <thead><tr><td></td><td class="num">Formula</td><td class="num">Field solver</td></tr></thead>
@@ -96,6 +121,9 @@
             <tr><td>Microstrip over 3 mm cut-out (HFSS)</td><td class="num">+17 %</td><td class="num">−0.5 %</td></tr>
           </tbody>
         </table>
+        <p class="note"><b>Lines and vias.</b> RLGC within 2 % of HFSS; copper roughness presets are estimates. Vias as a physics-based ladder (return vias, antipads, stubs, back-drilling, pairs), compared with 3D results of kisi's FDTD solver: via impedance in the TDR median 1.4 %, 90th percentile 7.4 %; pairs within 3.5° phase; stub notch within 3 %.</p>
+        <p class="note"><b>Channel.</b> Parasitics of series parts and packages are estimates (data/components.json). The eye uses the profile's linear transmitter and receiver: no IBIS models, equalisation, jitter or noise. The channel behind a connector is a simple lossy line.</p>
+        <p class="note"><b>Still open:</b> validation against other solvers and against measurements (a test board is planned). Treat the numbers as plausible estimates, not as verified results.</p>
       </details>
     </section>
 
@@ -180,12 +208,6 @@
     <section class="card" aria-labelledby="h-prof" data-view="ch" hidden>
       <h2 id="h-prof">Profile: standard, transmitter, receiver</h2>
       <div id="prof-body"></div>
-    </section>
-
-    <section class="card" aria-labelledby="h-check" data-view="ch" hidden>
-      <h2 id="h-check">Channel check</h2>
-      <div class="fs-row"><span class="note" id="ck-text"></span><button class="btn small primary" id="ck-start">Check</button></div>
-      <div id="ck-out"></div>
     </section>
 
     <section class="card" aria-labelledby="h-nets" data-view="si ch">

@@ -87,6 +87,18 @@ pub struct ClassEntry {
     pub source: Option<Source>,
 }
 
+/// `connector_ends.<connector reference>`: what sits at a connector where lanes leave the
+/// board – the termination when it receives, the driver when it sends – and the channel
+/// behind it: {"model": "profile" | "matched" | "high_impedance" | "custom", "r_ohm", "c_pf",
+/// "l_nh", "rest_loss_db", "rest_delay_ps", "source"}.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ConnectorEndEntry {
+    #[serde(flatten)]
+    pub end: kisi_si::eye::ConnEnd,
+    pub source: Option<Source>,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct FieldEntry {
@@ -132,6 +144,9 @@ pub struct BoardConfig {
     pub board: Option<String>,
     pub stackup: StackupEntry,
     pub net_classes: BTreeMap<String, ClassEntry>,
+    /// lanes ending at a connector: the end model there and the channel behind it, per
+    /// connector reference ("P1", "J8")
+    pub connector_ends: BTreeMap<String, ConnectorEndEntry>,
     pub fields: Vec<FieldEntry>,
     /// the assembly variant to analyse (a KiCad 10 variant of the board, one of `variants`,
     /// or "default" for the board file as it is)
@@ -315,6 +330,30 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
             r.warnings.push(format!("{what}: neither target_ohm nor profile given"));
         }
         src(what, &c.source, &mut r);
+    }
+    for (refdes, e) in &cfg.connector_ends {
+        r.entries += 1;
+        let w = format!("connector_ends.{refdes}");
+        if !board.footprints.iter().any(|f| &f.reference == refdes) {
+            r.errors.push(format!("{w}: no part '{refdes}' on the board"));
+        }
+        let m = e.end.model.as_str();
+        if !m.is_empty() && !kisi_si::eye::ConnEnd::MODELS.contains(&m) {
+            r.errors.push(format!("{w}: unknown model '{m}' ({})", kisi_si::eye::ConnEnd::MODELS.join(", ")));
+        }
+        if m == "custom" && e.end.r_ohm.is_none() {
+            r.errors.push(format!("{w}: model 'custom' needs r_ohm (Ω per line; 0 = high impedance)"));
+        }
+        if e.end.r_ohm.is_some_and(|v| !(0.0..=10000.0).contains(&v)) || e.end.c_pf.is_some_and(|v| !(0.0..=100.0).contains(&v)) || e.end.l_nh.is_some_and(|v| !(0.0..=100.0).contains(&v)) {
+            r.errors.push(format!("{w}: r_ohm 0 … 10000, c_pf and l_nh 0 … 100"));
+        }
+        if e.end.rest_loss_db.is_some_and(|v| !(0.0..=100.0).contains(&v)) || e.end.rest_delay_ps.is_some_and(|v| !(0.0..=100000.0).contains(&v)) {
+            r.errors.push(format!("{w}: rest_loss_db 0 … 100 dB, rest_delay_ps 0 … 100000"));
+        }
+        if (e.end.r_ohm.is_some() || e.end.c_pf.is_some()) && !matches!(m, "custom" | "high_impedance") {
+            r.warnings.push(format!("{w}: r_ohm / c_pf are only used with model 'custom' (or c_pf with 'high_impedance')"));
+        }
+        src(w, &e.source, &mut r);
     }
     let mut seen = std::collections::HashSet::new();
     for f in &cfg.fields {
@@ -500,6 +539,23 @@ mod tests {
         assert!(!r.ok);
         let all = r.errors.join("\n");
         for frag in ["1 dielectrics", "epsilon_r outside", "source missing", "no net class 'PCIe'", "unknown profile 'pcie9'", "kind 'guess'", "no footprint U9", "not readable"] {
+            assert!(all.contains(frag), "missing '{frag}' in\n{all}");
+        }
+    }
+
+    #[test]
+    fn connector_ends() {
+        let board = crate::load_pcb(PCB).unwrap();
+        let profiles = crate::profile::Profiles::builtin();
+        let classes = vec!["Default".to_string()];
+        let ok = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"model": "matched", "rest_loss_db": 3, "source": {"kind": "assumption", "note": "slot"}}}}"#).unwrap();
+        let r = check(&ok, &board, &classes, &profiles, None, &Default::default());
+        assert!(r.ok, "{:?}", r.errors);
+        let e = &ok.connector_ends["U1"].end;
+        assert!(e.model == "matched" && e.has_rest());
+        let bad = parse(r#"{"kisi_config": 1, "connector_ends": {"J9": {"model": "custom"}, "U1": {"model": "lossy", "rest_loss_db": 300}}}"#).unwrap();
+        let all = check(&bad, &board, &classes, &profiles, None, &Default::default()).errors.join("\n");
+        for frag in ["no part 'J9'", "needs r_ohm", "unknown model 'lossy'", "rest_loss_db 0 … 100", "source missing"] {
             assert!(all.contains(frag), "missing '{frag}' in\n{all}");
         }
     }

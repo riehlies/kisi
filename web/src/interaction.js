@@ -21,6 +21,7 @@ $("search").oninput = () => renderNets();
 $("opt-mask").onchange = (e) => { S.mask = e.target.checked; runAnalysis(); };
 $("opt-step").onchange = (e) => { S.step = parseFloat(e.target.value); runAnalysis(); };
 $("ck-start").onclick = () => runCheck();
+$("ck-est").onclick = () => estimateImpedances();
 for (const id of ["rf-fmax", "rf-rise", "rf-rough", "rf-vias", "rf-bd"]) $(id).onchange = () => {
   markCheckStale();
   if (S.full) { xtUpdate(); renderFieldStatus(); draw(); }

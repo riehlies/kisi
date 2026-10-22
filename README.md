@@ -71,8 +71,12 @@ Three views, each starting with what the board file gives and computing more on 
    the path and included in loss and TDR as open stubs; hovering a chart shows the position on the board.
 2. **Channel** – interfaces overview: buses and device-to-device lanes through series resistors and AC-coupling
    capacitors, with terminations, branches and side stubs; per net class an interface profile (PCIe, USB, DDR,
-   LVDS, … from `data/interfaces.json`) with transmitter, receiver and limits. Eye only from IC to IC; lanes ending
-   at a connector are judged on the board share (loss, return loss, skew). Boards with assembly variants (KiCad 10
+   LVDS, … from `data/interfaces.json`) with transmitter, receiver and limits. Lanes ending at a connector are
+   judged on the board share (loss, return loss, skew); their eye uses the end set per connector in the interface's
+   card – termination when the connector receives, driver when it sends (the profile's, matched, high impedance or
+   custom R/C) – and, if
+   given, the channel behind the connector as a lossy line (loss at Nyquist); without that line the eye covers the
+   board share only and is information, with it the eye is judged. Boards with assembly variants (KiCad 10
    variants or `variants` in `kisi.json`) – or with forks where all alternative parts are fitted – ask “Which
    assembly variant?” before lanes are computed; the card “Assembly variant” switches later (stored in the
    browser, over the `kisi.json` choice) and the lane results name the variant. A lane is named after and made of
@@ -161,7 +165,11 @@ KiCad files; CLI and viewer lay this file over the board.
 }
 ```
 - `stackup`: εr, tanδ, thickness, material per dielectric (index 0 = below F.Cu), solder mask εr.
-- `net_classes`: target impedance and profile of existing net classes. `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`, `PI_CAP`, `PI_TARGET`, `PI_SERIES`).
+- `net_classes`: target impedance and profile of existing net classes. `connector_ends`: per connector where lanes
+  leave the board (`"P1": {"model": "profile" | "matched" | "high_impedance" | "custom", "r_ohm", "c_pf",
+  "rest_loss_db", "rest_delay_ps", "source"}`) – the termination (connector receives) or driver (connector sends)
+  there, and the channel behind it as a lossy line (loss in dB at the profile's Nyquist frequency; the eye is then
+  judged). In the viewer: the interface's card in the channel overview. `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`, `PI_CAP`, `PI_TARGET`, `PI_SERIES`).
 - `variant`: the assembly variant to analyse – a KiCad 10 variant of the board, one of `variants`, or `default`
   (the board file as it is). `variants`: which parts are fitted, for boards without KiCad 10 variants (or on top of
   one of the same name). Rules in this order, later ones win: the board file (DNP, KiCad 10 overrides), `bom` (a CSV

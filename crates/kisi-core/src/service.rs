@@ -443,7 +443,7 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
         "buses": list,
         "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
     })
 }
 
@@ -483,7 +483,9 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
             let Some(prof) = profiles.get(&pid) else { continue };
             let lim = profiles.limits(prof);
-            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, &cd);
+            // a lane ending at a connector: the end model there (kisi.json connector_ends)
+            let cend = l.ends.iter().find(|e| e.role == "connector").and_then(|e| p.config.as_ref()?.connector_ends.get(&e.refdes)).map(|e| &e.end);
+            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, cend, &cd);
             // length-weighted impedance of the lane's nets
             let (mut len, mut zs, mut lo, mut hi) = (0.0, 0.0, f64::INFINITY, f64::NEG_INFINITY);
             for st in p.an.nets.iter().filter(|s| l.nets.contains(&s.net)) {
@@ -500,8 +502,9 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
                 z_max: (len > 0.0).then_some(hi),
                 il_nyq_db: Some(row.il_nyq_db),
                 rl_db: Some(row.rl_db),
-                eye_h: (row.eye && row.error.is_none()).then_some(row.eye_height),
-                eye_w_ui: (row.eye && row.error.is_none()).then_some(row.eye_width_ui),
+                // the eye of a lane ending at a connector covers the board share only: shown, not judged
+                eye_h: (row.eye && !row.eye_board_share && row.error.is_none()).then_some(row.eye_height),
+                eye_w_ui: (row.eye && !row.eye_board_share && row.error.is_none()).then_some(row.eye_width_ui),
                 skew_ps: row.skew_ps,
                 skew_uncertain: row.skew_uncertain,
                 stub_ghz: row.stub_ghz,
@@ -518,6 +521,10 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             j["length_mm"] = json!(row.length_mm);
             j["vias"] = json!(row.vias);
             j["eye_computed"] = json!(row.eye);
+            if row.eye_board_share && row.eye && row.error.is_none() {
+                j["eye_board_share"] = json!({"height": row.eye_height, "width_ui": row.eye_width_ui, "connector_end": cend.map(|e| e.model.as_str()).filter(|m| !m.is_empty()).unwrap_or("profile"),
+                    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged"});
+            }
             j["stubs"] = json!(row.stubs);
             j["metrics"] = json!(m);
             rows.push((v.status, j));
@@ -574,7 +581,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
         "not_checked_unused": (skipped_unused > 0).then(|| format!("{skipped_unused} net(s) with a target only connect parts not fitted in this assembly (variant or DNP): not checked")),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
         "field_solver": p.field_summary(),
-        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).", p.models())
+        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.", p.models())
     })
 }
 

@@ -4,13 +4,13 @@
   "variant": "TS-PCIe",
   "variants": {
     "TS-PCIe": {
-      "description": "PCIe x4 add-in card",
+      "description": "PCIe mode: x4 edge fingers P1 to the FPGA",
       "not_fitted_sheets": ["/TS-USB4 Components/"],
       "fitted": ["C101", "C102", "C128"],
       "source": {"kind": "design", "document": "Thunderscope_Rev5.3_TS-PCIe_MP_BOM.csv and _Positions.txt (Hardware/Thunderscope_Rev5.3/Outputs/TS-PCIe Assembly/)", "url": "https://github.com/EEVengers/ThunderScope", "note": "commit df2b845: the BOM has no part of the sheet /TS-USB4 Components/ except C101, C102, C128; every part outside the two variant sheets is in both BOMs"}
     },
     "TS-USB4": {
-      "description": "M.2 module for the Thunderbolt adapter",
+      "description": "M.2 mode: PCIe x4 through the M.2 Key M socket J8 (USB4 adapter) to the FPGA",
       "not_fitted_sheets": ["/TS-PCIe Components/"],
       "fitted": ["C22", "C83", "C84"],
       "source": {"kind": "design", "document": "Thunderscope_Rev5.3_TS-USB4_MP_BOM.csv and _Positions.txt (Hardware/Thunderscope_Rev5.3/Outputs/TS-USB4 Assembly/)", "url": "https://github.com/EEVengers/ThunderScope", "note": "commit df2b845: the BOM has no part of the sheet /TS-PCIe Components/ except C22, C83, C84; the PCIe edge fingers P1 stay as copper"}

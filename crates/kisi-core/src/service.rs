@@ -523,10 +523,17 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             rows.push((v.status, j));
         }
     }
-    // nets with a target that are on no lane (no devices found at their ends)
+    // nets with a target that are on no lane (no devices found at their ends); nets that only
+    // connect parts not fitted have no function in this assembly and are left out
+    let unused: std::collections::HashSet<u32> = p.variant.unused_nets.iter().copied().collect();
+    let mut skipped_unused = 0usize;
     for st in &p.an.nets {
         let Some(t) = st.target else { continue };
         if on_lane.contains(&st.net) || !wanted(&mut std::iter::once(st.name.as_str())) {
+            continue;
+        }
+        if unused.contains(&st.net) {
+            skipped_unused += 1;
             continue;
         }
         if let Some(pn) = st.partner {
@@ -564,6 +571,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
         "summary": {"green": count(Status::Green), "yellow": count(Status::Yellow), "red": count(Status::Red)},
         "variant": p.variant.summary(),
         "config": p.config_summary(),
+        "not_checked_unused": (skipped_unused > 0).then(|| format!("{skipped_unused} net(s) with a target only connect parts not fitted in this assembly (variant or DNP): not checked")),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
         "field_solver": p.field_summary(),
         "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).", p.models())

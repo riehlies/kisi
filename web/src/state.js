@@ -36,7 +36,7 @@ function readColors() {
     canvas: g("--canvas"), edge: g("--canvas-edge"), pad: g("--canvas-pad"), via: g("--canvas-via"),
     zone: g("--canvas-zone"), zoneEdge: g("--canvas-zone-edge"), halo: g("--halo"),
     low2: g("--z-low2"), low1: g("--z-low1"), ok: g("--z-ok"), high1: g("--z-high1"), high2: g("--z-high2"),
-    none: g("--z-none"), noref: g("--z-noref"), ms: g("--k-ms"), sl: g("--k-sl"), emb: g("--k-emb"),
+    none: g("--z-none"), noref: g("--z-noref"), lane: g("--z-lane"), unused: g("--z-unused"), ms: g("--k-ms"), sl: g("--k-sl"), emb: g("--k-emb"),
   };
 }
 

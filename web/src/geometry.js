@@ -44,9 +44,13 @@ function pieceColor(i) {
   // before step 2: line type from the layer position only
   if (S.an.skeleton && S.tab !== "ch") return xs.kind === "Stripline" ? C.sl : C.ms;
   if (S.tab === "ch") {
-    // channel view: result of the channel check per net, grey if not checked
-    const st = S.chStatus && S.chStatus.get(S.pieces.net[i]);
-    return st ? C[st] : C.none;
+    // channel view: result of the channel check per net; before the check the nets of the
+    // channels to check; nets without a function in this assembly variant faint
+    const net = S.pieces.net[i];
+    const st = S.chStatus && S.chStatus.get(net);
+    if (st) return C[st];
+    if (netUnused(net)) return C.unused;
+    return chActiveNets().has(net) ? C.lane : C.none;
   }
   // crosstalk: neutral board, the critical stretches are drawn over it (drawXtMap)
   if (S.mode === "xt") return C.none;

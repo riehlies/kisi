@@ -1,8 +1,9 @@
 //! Assembly variants: which parts are fitted.
 //!
-//! A board can be built in several ways (ThunderScope Rev5.3: as a PCIe card or for the M.2 to
-//! Thunderbolt adapter). Lanes depend on it: a part that is not fitted connects nothing, and the
-//! copper up to its pads becomes a stub. Sources of variants:
+//! A board can be built in several ways (ThunderScope Rev5.3: PCIe mode with the FPGA on the edge
+//! fingers P1, or M.2 mode with the FPGA on the M.2 socket J8 for the USB4 adapter). Lanes depend
+//! on it: a part that is not fitted connects nothing, the copper up to its pads becomes a stub,
+//! and nets that only connect parts not fitted are not used at all. Sources of variants:
 //! * KiCad 10 board files: `(variants …)` and per-footprint overrides (`kisi_board::board`);
 //! * `<board>.kisi.json` → `variants`: by sheet, by reference lists or from a BOM (boards from
 //!   KiCad 8/9, or on top of a KiCad 10 variant of the same name).
@@ -51,6 +52,9 @@ pub struct VariantState {
     pub fields: Vec<String>,
     /// forks with all alternative parts fitted (in the board as analysed)
     pub forks: Vec<Fork>,
+    /// nets that only connect parts not fitted (board file DNP and variant): copper without a
+    /// function in this assembly – no lane, not checked, drawn faint in the viewer
+    pub unused_nets: Vec<u32>,
     /// a variant must be chosen before lanes are computed
     pub needs_choice: bool,
     pub message: Option<String>,
@@ -72,7 +76,7 @@ impl VariantState {
             "name": self.chosen, "chosen_by": self.chosen_by, "description": self.description,
             "available": self.variants.iter().map(|v| &v.name).collect::<Vec<_>>(),
             "not_fitted_by_variant": cap(&self.not_fitted), "fitted_by_variant": cap(&self.fitted),
-            "not_fitted_total": self.not_fitted_total, "field_overrides": self.fields,
+            "not_fitted_total": self.not_fitted_total, "unused_nets": self.unused_nets.len(), "field_overrides": self.fields,
             "forks_all_fitted": self.forks.len(), "needs_choice": self.needs_choice,
             "errors": self.errors, "warnings": self.warnings,
         })
@@ -336,12 +340,31 @@ pub fn apply(board: &mut Board, cfg: Option<&BoardConfig>, choice: Option<(&str,
     st.not_fitted.sort_by(natural);
     st.fitted.sort_by(natural);
     st.not_fitted_total = board.footprints.iter().filter(|f| f.dnp).count();
+    st.unused_nets = unused_nets(board);
     st.forks = topology::forks(board, &ComponentData::builtin());
     st.needs_choice = st.chosen.is_none() && (!st.variants.is_empty() || !st.forks.is_empty());
     if st.needs_choice {
         st.message = Some(message(&st));
     }
     st
+}
+
+/// Nets whose pads all belong to parts that are not fitted (net 0 = no net is left out): in
+/// ThunderScope's PCIe variant the M.2 nets between socket J8 and the capacitors C43… .
+pub fn unused_nets(board: &Board) -> Vec<u32> {
+    let mut any = vec![false; board.nets.len()];
+    let mut fitted = vec![false; board.nets.len()];
+    for pad in &board.pads {
+        let n = pad.net as usize;
+        if n == 0 || n >= any.len() {
+            continue;
+        }
+        any[n] = true;
+        if board.footprints.get(pad.fp as usize).map_or(true, |f| !f.dnp) {
+            fitted[n] = true;
+        }
+    }
+    (1..any.len()).filter(|&n| any[n] && !fitted[n]).map(|n| n as u32).collect()
 }
 
 /// Forks in a few words: "C41/C43 on /FPGA/MGT_TX3_P (→ P1 / J8)".
@@ -440,10 +463,13 @@ mod tests {
         assert_eq!(p.variant.not_fitted, vec!["R2"]);
         assert!(p.config_check.as_ref().unwrap().ok, "{:?}", p.config_check);
         assert!(p.require_variant().is_ok() && p.variant.forks.is_empty());
+        // net C only reaches R2 (not fitted): no function in this variant
+        assert_eq!(p.variant.unused_nets, vec![3]);
         // the command line wins: references with a wildcard
         let p = project(Some(cfg), Some("usb"), files.clone());
         assert_eq!(p.variant.chosen.as_deref(), Some("USB"));
         assert!(dnp(&p, "R1") && !dnp(&p, "R2") && dnp(&p, "P1"));
+        assert!(p.variant.unused_nets.is_empty(), "net B still reaches C9");
         // a BOM: parts not in it are not fitted, parts excluded from BOMs stay as in the board
         let p = project(Some(cfg), Some("USB-BOM"), files.clone());
         assert!(dnp(&p, "R1") && !dnp(&p, "R2") && dnp(&p, "C9") && !dnp(&p, "P1") && !dnp(&p, "U1"));

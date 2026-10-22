@@ -58,8 +58,10 @@ cv.addEventListener("pointermove", (e) => {
 const endPtr = (e) => {
   const wasDrag = dragMoved;
   ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
-  if (e.type === "pointerup" && !wasDrag && ptrs.size === 0 && S.tab === "si") {
+  // click on a track: the net (impedance view) or its channel (channel view, board map)
+  if (e.type === "pointerup" && !wasDrag && ptrs.size === 0 && (S.tab === "si" || (S.tab === "ch" && S.chMode === "m"))) {
     const i = pick(e.offsetX, e.offsetY);
+    if (S.tab === "ch") S.selLane = null;
     if (i >= 0) selectNet(S.pieces.net[i], false); else if (S.selNet >= 0) selectNet(-1);
   }
 };

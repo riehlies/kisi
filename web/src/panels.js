@@ -117,8 +117,10 @@ function renderLegend() {
   const C = S.colors, L = $("legend");
   if (S.tab === "pi") return renderPiLegend();
   if (S.tab === "ch") {
-    const it = [[C.ok, "channel OK"], [C.high1, "limit exceeded (yellow)"], [C.high2, "red / error"], [C.none, "not checked"]];
-    L.innerHTML = `<strong>Channel check</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
+    const it = [[C.ok, "channel OK"], [C.high1, "limit exceeded (yellow)"], [C.high2, "red / error"], [C.lane, "channel, not checked yet"], [C.none, "other nets"],
+      ...(variantUnused() ? [[C.unused, "not used in this variant"]] : [])];
+    L.innerHTML = `<strong>Channel check</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("") +
+      `<div class="row muted">click a channel to open it</div>`;
     return;
   }
   if (S.an && S.an.skeleton) {

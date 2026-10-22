@@ -34,6 +34,15 @@ function cfgFiles(cfg) {
   }
   return out;
 }
+// nets that only connect parts not fitted (board DNP and the variant): no function in this
+// assembly – no lane, not checked, drawn faint in the channel view
+function variantUnused() {
+  const v = S.variant;
+  if (!v || !v.unused_nets || !v.unused_nets.length) return null;
+  if (!v._unused) v._unused = new Set(v.unused_nets);
+  return v._unused;
+}
+function netUnused(n) { const u = variantUnused(); return !!u && u.has(n); }
 const forkText = (f) => `${f.parts.join("/")} on ${netShort(f.net_name)} (→ ${f.towards.map((t) => t.join(", ")).join(" / ")})`;
 function variantShown() {
   const v = S.variant;

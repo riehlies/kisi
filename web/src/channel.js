@@ -173,6 +173,14 @@ function renderChDetail(net) {
   const d = $("ch-detail"), st = S.an.nets.find((x) => x.net === net);
   const lane = S.an.skeleton ? null : (S.selLane && allLanes().find((l) => laneKey(l) === S.selLane && (l.nets.includes(net) || l.partner_nets.includes(net)))) || laneOfNet(net);
   if (lane && CHECKABLE.has(lane.kind)) return renderLaneDetail(lane);
+  // a net on the board map that is no channel: not used in this variant, or no target
+  const why = netUnused(net) ? `Not used in this assembly variant${variantShown() ? ` (${esc(variantShown())})` : ""}: the net only connects parts that are not fitted. It has no lane and is not checked; the other variant uses it.`
+    : !variantNeeded() && !chActiveNets().has(net) ? (lane ? `Part of a ${esc(lane.kind === "ic-ic" || lane.kind === "ic-connector" ? lane.kind : "multi-drop or open")} line (${esc(lane.ends.map((e) => e.refdes).join(", ") || "no devices")}): listed in the overview, not checked.` : "No channel: the net has no target impedance (net class) and is on no lane.") : null;
+  if (why) {
+    d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header><div id="ch-body"><p class="note">${why}</p></div>`;
+    d.hidden = false; $("closeCh").onclick = () => selectNet(-1);
+    return;
+  }
   if (S.an.skeleton) {
     d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header><div id="ch-body"></div>`;
     d.hidden = false; $("closeCh").onclick = () => selectNet(-1); needEstimate($("ch-body"));
@@ -204,6 +212,26 @@ function renderChDetail(net) {
     ${(r.channel?.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("")}`;
 }
 
+// nets of the channels the check covers in this assembly variant: the lanes from device to
+// device or connector, and nets with a target on no lane (board map before the check)
+function chActiveNets() {
+  const c = S.chActive;
+  if (c && c.buses === S.buses && c.gen === S.anGen && c.variant === S.variant) return c.set;
+  const set = new Set(), onLane = new Set();
+  if (S.buses && S.an && !variantNeeded()) {
+    for (const l of allLanes()) {
+      for (const n of [...l.nets, ...l.partner_nets]) { onLane.add(n); if (CHECKABLE.has(l.kind)) set.add(n); }
+    }
+    for (const st of S.an.nets) {
+      if (onLane.has(st.net) || netUnused(st.net) || !classTarget(st.net)) continue;
+      set.add(st.net);
+      if (st.partner != null) set.add(st.partner);
+    }
+  }
+  S.chActive = { buses: S.buses, gen: S.anGen, variant: S.variant, set };
+  return set;
+}
+
 // ---- board-level check
 function checkItems() {
   const out = [];
@@ -214,10 +242,11 @@ function checkItems() {
     const net = laneNet(l), t = classTarget(net), p = laneProfile(l);
     out.push({ lane: l.nets[0], to: l.ends[l.ends.length - 1].refdes, reversed: laneReversed(l), laneKey: laneKey(l), net, gbps: p.rate_gbps, target: t ? [t.z, t.diff] : null, tx: p.tx, rx: p.rx, rise: p.tx.rise_ps * 1e-12 });
   }
-  // nets with a target that are not part of a device-to-device lane (no devices found)
+  // nets with a target that are not part of a device-to-device lane (no devices found); nets
+  // that only connect parts not fitted have no function in this assembly
   for (const st of S.an.nets) {
     const t = classTarget(st.net);
-    if (!t || onLane.has(st.net)) continue;
+    if (!t || onLane.has(st.net) || netUnused(st.net)) continue;
     if (st.partner != null) {
       // one line per pair, preferably the positive line
       const neg = /(_N|N|-|_M)$/i.test(st.name), pneg = /(_N|N|-|_M)$/i.test(S.scene.nets[st.partner] || "");

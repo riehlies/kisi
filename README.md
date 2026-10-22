@@ -77,7 +77,9 @@ Three views, each starting with what the board file gives and computing more on 
    assembly variant?” before lanes are computed; the card “Assembly variant” switches later (stored in the
    browser, over the `kisi.json` choice) and the lane results name the variant. A lane is named after and made of
    its own path; where a line forks with all alternatives fitted, each lane leaves the IC on its own branch and
-   carries the other path as an open branch (dashed on the board).
+   carries the other path as an open branch (dashed on the board). The board map shows the channels of the chosen
+   variant (before the check in one colour, after it by result); nets that only connect parts not fitted are drawn
+   faint and not checked. A click on a channel in the map opens it.
 3. **Power** – power tree, budget and power flow (Sankey) first, from `PI_REG` / `PI_LOAD` fields or the board's
    `kisi.json`; part references jump to the board. Then, per rail and for the ground return, voltage drop and
    current density on every layer (drop at each load, vias with the highest currents), a losses map (heat per part
@@ -166,7 +168,8 @@ KiCad files; CLI and viewer lay this file over the board.
   next to the kisi.json with a “Reference”/“Designator” column: parts not in it are not fitted, except parts marked
   “exclude from BOM” in KiCad and `bom_exceptions`), `fitted_sheets` / `not_fitted_sheets` (a sheet covers its
   sub-sheets, the most specific one wins), `fitted` / `not_fitted` (references, `*` and `?` allowed). A part that is
-  not fitted connects nothing; its pads stay as copper and become stubs on the lanes. In the viewer, drop the BOMs
+  not fitted connects nothing; its pads stay as copper and become stubs on the lanes, and nets that only connect
+  parts not fitted are not checked (`check` names how many). In the viewer, drop the BOMs
   together with the board and the kisi.json.
 - Source kinds: datasheet, standard, application_note, measurement, simulation, design (the project's own BOM,
   position or schematic files), estimate, assumption.

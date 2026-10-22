@@ -23,6 +23,8 @@
   --z-high2: #d63c3c;
   --z-none: #9aa39e;
   --z-noref: #b345cf;
+  --z-lane: #3f7f88;
+  --z-unused: rgba(154, 163, 158, 0.3);
   --k-ms: #d07b2f;
   --k-sl: #2f86c8;
   --k-emb: #8a5bd6;
@@ -39,7 +41,7 @@
     --canvas-pad: rgba(190, 205, 197, 0.16); --canvas-via: rgba(190, 205, 197, 0.45);
     --canvas-zone: rgba(90, 150, 210, 0.14); --canvas-zone-edge: rgba(90, 150, 210, 0.42);
     --z-low2: #4b84f0; --z-low1: #5fb6f0; --z-ok: #3cc477; --z-high1: #f0ae35; --z-high2: #f25d5d;
-    --z-none: #59625d; --z-noref: #cc66ea; --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef;
+    --z-none: #59625d; --z-noref: #cc66ea; --z-lane: #6cb2bb; --z-unused: rgba(120, 132, 125, 0.28); --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef;
     --halo: rgba(255, 255, 255, 0.9);
     color-scheme: dark;
   }
@@ -50,7 +52,7 @@
   --canvas-pad: rgba(190, 205, 197, 0.16); --canvas-via: rgba(190, 205, 197, 0.45);
   --canvas-zone: rgba(90, 150, 210, 0.14); --canvas-zone-edge: rgba(90, 150, 210, 0.42);
   --z-low2: #4b84f0; --z-low1: #5fb6f0; --z-ok: #3cc477; --z-high1: #f0ae35; --z-high2: #f25d5d;
-  --z-none: #59625d; --z-noref: #cc66ea; --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef;
+  --z-none: #59625d; --z-noref: #cc66ea; --z-lane: #6cb2bb; --z-unused: rgba(120, 132, 125, 0.28); --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef;
   --halo: rgba(255, 255, 255, 0.9);
   color-scheme: dark;
 }

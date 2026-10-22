@@ -17,8 +17,9 @@ struct State {
     /// choice of assembly variant (wins over the configuration's)
     cfg: Option<kisi_core::config::BoardConfig>,
     files: kisi_core::variant::Files,
-    /// IBIS model files dropped with the configuration: in memory only, never stored
-    ibis_files: kisi_core::ibis::IbisFiles,
+    /// IBIS model files (dropped with the configuration, or loaded in an interface card),
+    /// parsed, by path / file name: in memory only, never stored
+    ibis: kisi_core::ibis::ParsedSet,
     variant_choice: Option<String>,
     variant: Option<kisi_core::variant::VariantState>,
     /// stackup as read from the file (overrides are applied to a copy)
@@ -67,6 +68,63 @@ pub extern "C" fn kisi_touchstone(p: *const u8, n: usize) -> i32 {
         let s = ts.summary().to_string();
         st.touchstones.insert(name, ts);
         Ok(s)
+    }))
+}
+
+/// Load (or with "remove": true drop) an IBIS model file for the lane ends: {"name": file name,
+/// "b64": the file's bytes}. Output: components, selectors, models with types, sha256, findings
+/// (`kisi_core::ibis::file_info`). Files stay in memory only.
+#[no_mangle]
+pub extern "C" fn kisi_ibis_load(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(ST.with(|st| -> Result<String, String> {
+        let mut st = st.borrow_mut();
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let name = v["name"].as_str().ok_or("name missing")?.to_string();
+        if v["remove"].as_bool() == Some(true) {
+            st.ibis.remove(&name);
+            return Ok("{}".into());
+        }
+        let bytes = b64_decode(v["b64"].as_str().ok_or("b64 missing")?)?;
+        let parsed = kisi_core::ibis::parse_one(&name, &bytes);
+        let info = kisi_core::ibis::file_info(&name, &parsed);
+        st.ibis.insert(name, Ok(parsed));
+        Ok(info.to_string())
+    }))
+}
+
+/// The IBIS mapping of an end set from a request: {"ibis": {refdes: IbisEntry}} (the viewer's
+/// choice over kisi.json, per part); an entry that does not read is left out (that part keeps the
+/// profile's ends), the others still apply.
+fn ibis_map(v: &serde_json::Value) -> std::collections::BTreeMap<String, kisi_core::config::IbisEntry> {
+    v["ibis"].as_object().map(|m| m.iter().filter_map(|(k, e)| Some((k.clone(), serde_json::from_value(e.clone()).ok()?))).collect()).unwrap_or_default()
+}
+
+/// The lane of a request: {"lane": first net id, "to": refdes of the far end}.
+fn find_lane<'a>(st: &'a State, v: &serde_json::Value) -> Option<&'a kisi_core::topology::Lane> {
+    let start = v["lane"].as_u64()?;
+    st.buses.as_ref()?.iter().flat_map(|b| &b.lanes).find(|l| l.nets[0] as u64 == start && v["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t)))
+}
+
+/// The IBIS ends of lanes for the interfaces overview (no channel computed). Input:
+/// {"ibis": {refdes: IbisEntry}, "lanes": [{"key", "lane", "to", "reversed"}]}.
+/// Output: {key: {"tx": IbisEnd | null, "rx": IbisEnd | null}}.
+#[no_mangle]
+pub extern "C" fn kisi_ibis_ends(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let map = ibis_map(&v);
+        let mut out = serde_json::Map::new();
+        for item in v["lanes"].as_array().ok_or("lanes missing")? {
+            let Some(lane) = find_lane(&st, item) else { continue };
+            let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
+            let [tx, rx] = kisi_core::ibis::lane_ends(&map, &st.ibis, b, lane, rev);
+            out.insert(item["key"].as_str().unwrap_or("").to_string(), serde_json::json!({"tx": tx, "rx": rx}));
+        }
+        Ok(serde_json::Value::Object(out).to_string())
     }))
 }
 
@@ -144,7 +202,6 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
                 st.board_base = Some(b);
                 st.cfg = None;
                 st.files.clear();
-                st.ibis_files.clear();
                 st.variant_choice = None;
                 let _ = rebuild(&mut st);
             });
@@ -238,7 +295,11 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
         }
         st.cfg = Some(cfg);
         st.files = files;
-        st.ibis_files = ibis_files_json(&v["ibis"]).unwrap_or_default();
+        // model files dropped with it: parsed once, kept like the files loaded in the cards
+        for (k, r) in ibis_files_json(&v["ibis"]).unwrap_or_default() {
+            let parsed = r.map(|b| kisi_core::ibis::parse_one(&k, &b));
+            st.ibis.insert(k, parsed);
+        }
         st.variant_choice = v["variant"].as_str().map(str::to_string);
         let a = rebuild(&mut st)?.unwrap_or_default();
         let targets: serde_json::Map<String, serde_json::Value> = a.targets.iter().map(|(k, t)| (k.clone(), serde_json::json!({"z": t.z, "diff": t.diff}))).collect();
@@ -249,7 +310,7 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
                 let params = Params { targets: a.targets.clone(), ..Default::default() };
                 let sk = kisi_core::extract::skeleton(b, &params);
                 let buses = kisi_core::topology::buses(b, &sk, &kisi_core::topology::ComponentData::builtin());
-                let fc = kisi_core::ibis::check_files(c, b, &kisi_core::ibis::signal_nets(b, &sk, &buses), &st.ibis_files);
+                let fc = kisi_core::ibis::check_files(c, b, &kisi_core::ibis::signal_nets(b, &sk, &buses), &st.ibis);
                 check.errors.extend(fc.errors);
                 check.warnings.extend(fc.warnings);
                 check.ok = check.errors.is_empty();
@@ -734,7 +795,15 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
                 let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
                 let cend: Option<kisi_core::eye::ConnEnd> = item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
                 let cts = ts_for(&st, cend.as_ref());
-                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), cts, &cd)).unwrap());
+                // IC ends with an IBIS model (the viewer's choice over kisi.json), linearised
+                let ends = kisi_core::ibis::lane_ends(&ibis_map(item), &st.ibis, b, lane, rev);
+                let ap = kisi_core::ibis::apply_ends(&ends, end("tx").unwrap_or_default(), end("rx").unwrap_or_default(), rise.unwrap_or(rp.rise));
+                let (tx, rx, rise) = if ap.ibis_used { (Some(ap.tx), Some(ap.rx), Some(ap.rise_s)) } else { (end("tx"), end("rx"), rise) };
+                let mut row = serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (tx, rx, rise), rev, cend.as_ref(), cts, &cd)).unwrap();
+                if ap.mapped {
+                    row["ends"] = serde_json::json!({"tx": ap.tx_info, "rx": ap.rx_info});
+                }
+                rows.push(row);
                 continue;
             }
             rows.push(serde_json::to_value(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise))).unwrap());
@@ -805,7 +874,11 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
         let end = |k: &str| v[k].as_object().and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(v[k].clone()).ok());
         let rev = v["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
         let cd = kisi_core::topology::ComponentData::builtin();
-        let ep = v["bitrate"].as_f64().map(|br| (br, v["eye_rise"].as_f64().unwrap_or(rp.rise), v["prbs"].as_u64().unwrap_or(7) as u32, end("tx"), end("rx")));
+        // IC ends with an IBIS model (the viewer's choice over kisi.json), linearised
+        let ends = kisi_core::ibis::lane_ends(&ibis_map(&v), &st.ibis, b, lane, rev);
+        let ap = kisi_core::ibis::apply_ends(&ends, end("tx").unwrap_or_default(), end("rx").unwrap_or_default(), v["eye_rise"].as_f64().unwrap_or(rp.rise));
+        let (etx, erx, erise) = if ap.ibis_used { (Some(ap.tx), Some(ap.rx), ap.rise_s) } else { (end("tx"), end("rx"), v["eye_rise"].as_f64().unwrap_or(rp.rise)) };
+        let ep = v["bitrate"].as_f64().map(|br| (br, erise, v["prbs"].as_u64().unwrap_or(7) as u32, etx, erx));
         let cend: Option<kisi_core::eye::ConnEnd> = v["conn_end"].as_object().and_then(|_| serde_json::from_value(v["conn_end"].clone()).ok());
         let cts = ts_for(&st, cend.as_ref());
         let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, cend.as_ref(), cts, &cd) {
@@ -816,8 +889,11 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
                     None => serde_json::Value::Null,
                 };
                 let skew = ev.skew.map(|(ps, mm, pn, unc)| serde_json::json!({"partner": pn, "skew_ps": ps, "skew_mm": mm, "uncertain": unc}));
+                // the eye's 100 % in mV for an IBIS driver: its swing at the receiver
+                let swing = ap.tx_vcc_v.map(|vcc| kisi_core::ibis::eye_swing_mv(vcc, &ev.tx_used.unwrap_or(ap.tx), &ev.rx_used.unwrap_or(ap.rx), lane.diff));
                 serde_json::json!({"channel": ev.ch, "error": null, "touchstone": kisi_core::rf::touchstone(&ev.ch), "eye": eye, "skew": skew,
                     "rx_used": ev.rx_used, "rx_note": ev.rx_note, "tx_used": ev.tx_used, "end_note": ev.end_note, "rest_applied": ev.rest_applied, "reversed": rev,
+                    "ibis": if ap.mapped { serde_json::json!({"tx": ap.tx_info, "rx": ap.rx_info, "used": ap.ibis_used, "eye_rise_ps": erise * 1e12, "swing_mv": swing, "note": kisi_core::ibis::LINEAR_NOTE}) } else { serde_json::Value::Null },
                     "crosstalk": kisi_core::rf::crosstalk(b, an, lane.nets[0], &params.field, &rp)})
             }
             Err(e) => serde_json::json!({"channel": null, "error": e, "crosstalk": {"aggressors": [], "geoms": []}}),
@@ -1015,7 +1091,8 @@ pub extern "C" fn kisi_cli_file(p: *const u8, n: usize) -> i32 {
 
 /// Build the project. Input: {"opts", "pcb_path", "pcb", "pro", "config": {"path", "text"|null, "error"|null} | null,
 /// "stackup", "field": {id: FieldResult}, "files": {path: {"text"}|{"error"}} (BOMs),
-/// "ibis_files": {path: {"b64"}|{"error"}} (IBIS models, only for `config-check`)}.
+/// "ibis_files": {path: {"b64"}|{"error"}} (IBIS models, for the commands that use them:
+/// `config-check`, `check`, `interfaces`, `report`)}.
 /// Output: {"plan": [[id, text, weight], …]} – the cross-sections the field solver should solve.
 #[no_mangle]
 pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {

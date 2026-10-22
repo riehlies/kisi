@@ -33,6 +33,9 @@ pub struct Project {
     pub variant: crate::variant::VariantState,
     /// IBIS model mapping per part, when the model files were loaded (`config-check`)
     pub ibis: Option<Vec<Value>>,
+    /// the IBIS files the mapping names, parsed (empty when the front end did not read them):
+    /// the lane ends of `check`, `interfaces` and `report`
+    pub ibis_parsed: crate::ibis::ParsedSet,
     /// Touchstone files of the configuration's connector ends, by the path written in it
     pub touchstones: HashMap<String, Result<crate::rf::Touchstone, String>>,
 }
@@ -187,10 +190,11 @@ impl Project {
         let an = analyze(&board, &params);
         // IBIS mapping with the model files: pads on nets with a target or a lane need a model
         let mut ibis = None;
-        if let (Some(files), Some(c)) = (&inp.ibis_files, &cfg) {
+        let ibis_parsed = inp.ibis_files.as_ref().map(crate::ibis::parse_set).unwrap_or_default();
+        if let (Some(_), Some(c)) = (&inp.ibis_files, &cfg) {
             if !c.ibis.is_empty() {
                 let buses = topology::buses(&board, &an, &topology::ComponentData::builtin());
-                let fc = crate::ibis::check_files(c, &board, &crate::ibis::signal_nets(&board, &an, &buses), files);
+                let fc = crate::ibis::check_files(c, &board, &crate::ibis::signal_nets(&board, &an, &buses), &ibis_parsed);
                 if let Some(ck) = cfg_check.as_mut() {
                     ck.errors.extend(fc.errors);
                     ck.warnings.extend(fc.warnings);
@@ -201,7 +205,15 @@ impl Project {
         }
         let name = inp.pcb_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
         let touchstones = touchstones_of(cfg.as_ref(), &inp.files);
-        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, ibis, touchstones })
+        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, ibis, ibis_parsed, touchstones })
+    }
+
+    /// The IBIS ends of a lane from the kisi.json mapping: [transmitting end, receiving end].
+    pub fn ibis_ends(&self, l: &topology::Lane, reversed: bool) -> [Option<crate::ibis::IbisEnd>; 2] {
+        match &self.config {
+            Some(c) if !c.ibis.is_empty() => crate::ibis::lane_ends(&c.ibis, &self.ibis_parsed, &self.board, l, reversed),
+            _ => [None, None],
+        }
     }
 
     /// Commands that compute lanes call this first: an error with the list of variants when
@@ -534,14 +546,22 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
             let tnet = lane_net(p, l0);
             let pid = assign.get(&b.class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &b.class, l0.diff).to_string());
             json!({"bus": b.name, "kind": b.kind, "class": b.class, "profile": pid, "devices": b.devices, "values": b.values,
-                "lanes": b.lanes.iter().map(|l| lane_json(p, l)).collect::<Vec<_>>()})
+                "lanes": b.lanes.iter().map(|l| {
+                    let mut j = lane_json(p, l);
+                    let ends = p.ibis_ends(l, l.rx_end == 0);
+                    if ends.iter().any(|e| e.is_some()) {
+                        let info = |e: &Option<crate::ibis::IbisEnd>| e.as_ref().map(|x| serde_json::to_value(x).unwrap_or(Value::Null)).unwrap_or(json!({"model": "profile"}));
+                        j["ibis_ends"] = json!({"tx": info(&ends[0]), "rx": info(&ends[1]), "note": crate::ibis::LINEAR_NOTE});
+                    }
+                    j
+                }).collect::<Vec<_>>()})
         })
         .collect();
     json!({
         "buses": list,
         "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json. ibis_ends: the IC ends with an IBIS model (kisi.json \"ibis\"), linearised for the check – estimates; an end with \"error\" uses the profile's transmitter or receiver."
     })
 }
 
@@ -584,7 +604,10 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             // a lane ending at a connector: the end model there (kisi.json connector_ends)
             let cend = l.ends.iter().find(|e| e.role == "connector").and_then(|e| p.config.as_ref()?.connector_ends.get(&e.refdes)).map(|e| &e.end);
             let cts = cend.and_then(|c| c.touchstone.as_ref()).and_then(|tr| p.touchstones.get(&tr.file)?.as_ref().ok());
-            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, cend, cts, &cd);
+            // the IC ends with an IBIS model (kisi.json "ibis"), linearised; else the profile's
+            let ends = p.ibis_ends(l, l.rx_end == 0);
+            let ap = crate::ibis::apply_ends(&ends, prof.tx_model(), prof.rx, prof.tx.rise_ps * 1e-12);
+            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(ap.tx), Some(ap.rx), Some(ap.rise_s)), l.rx_end == 0, cend, cts, &cd);
             // length-weighted impedance of the lane's nets
             let (mut len, mut zs, mut lo, mut hi) = (0.0, 0.0, f64::INFINITY, f64::NEG_INFINITY);
             for st in p.an.nets.iter().filter(|s| l.nets.contains(&s.net)) {
@@ -626,6 +649,9 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             }
             j["stubs"] = json!(row.stubs);
             j["metrics"] = json!(m);
+            if ap.mapped {
+                j["ends"] = json!({"tx": ap.tx_info, "rx": ap.rx_info, "note": format!("{} for the IC ends with an IBIS mapping; the limits are the profile's", crate::ibis::LINEAR_NOTE)});
+            }
             rows.push((v.status, j));
         }
     }

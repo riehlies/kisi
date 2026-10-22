@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id);
 const S = {
   engine: null, scene: null, an: null, zones: null, name: "",
   // Touchstone files (channel behind connectors) by file name: {text, info | error}; memory only
-  tsFiles: {},
+  tsFiles: {}, ibisFiles: {},
   mode: "type", layerOn: [], zoneLayer: -1, overrides: {}, mask: true, step: 0.5,
   pieces: null, grid: null, selNet: -1, hover: -1,
   view: { s: 1, x: 0, y: 0 }, paths: null, selPaths: null, colors: {},

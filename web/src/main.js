@@ -21,20 +21,23 @@ async function handleFiles(files) {
   // Touchstone files (.s2p, .s4p) for the channel behind connectors: kept in memory
   const tsDropped = files.filter((f) => /\.s\d+p$/i.test(f.name));
   for (const f of tsDropped) loadTouchstone(f.name, await f.text());
-  // IBIS models that its "ibis" section names: read into memory only (never stored, never uploaded)
+  // IBIS models: registered in the engine by file name, in memory only (never stored, never uploaded);
+  // the "ibis" section of <board>.kisi.json or a bus card of the interfaces overview chooses them per IC.
+  // The configuration keeps name → sha256 (to notice a changed file), not the content.
   const ibis = {};
-  for (const f of files.filter((f) => /\.ibs$/i.test(f.name))) ibis[f.name] = await fileB64(f);
-  const extra = Object.keys(csv).length || Object.keys(ibis).length;
-  if (tsDropped.length && !pcb && !kisiCfg && !extra) {
-    if (S.tab === "ch" && S.scene) { S.chCache = null; markCheckStale(); renderChOverview(); }
+  for (const f of files.filter((f) => /\.ibs$/i.test(f.name))) { const r = await loadIbisFile(f); ibis[f.name] = r.info ? r.info.sha256 : "unreadable"; }
+  // a model file the loaded configuration names: apply the configuration again (its check, the mapping)
+  const lc = S.lastFiles && S.lastFiles.cfg;
+  const ibisWithCfg = !!lc && Object.keys(ibis).some((n) => cfgIbisNames(lc).has(n));
+  const extra = Object.keys(csv).length || ibisWithCfg;
+  if ((tsDropped.length || Object.keys(ibis).length) && !pcb && !kisiCfg && !extra) {
+    if (!S.scene) { $("warnings").innerHTML = `<span class="muted">${esc(Object.keys(ibis).join(", "))}: kept in memory – load a board, then choose the model per IC in the interfaces overview (or name it in the "ibis" section of &lt;board&gt;.kisi.json).</span>`; return; }
+    if (lc && Object.keys(ibis).length && S.config) { lc.ibis = { ...(lc.ibis || {}), ...ibis }; S.config.ibisUnused = cfgIbisUnused(lc); renderCfgStatus(); }
+    if (S.tab === "ch") { S.chCache = null; markCheckStale(); renderChOverview(); }
     return;
   }
   let kc = kisiCfg ? { name: kisiCfg.name, text: await kisiCfg.text(), csv, ibis } : null;
   if (!kc && extra && S.lastFiles && S.lastFiles.cfg) kc = { ...S.lastFiles.cfg, csv: { ...(S.lastFiles.cfg.csv || {}), ...csv }, ibis: { ...(S.lastFiles.cfg.ibis || {}), ...ibis } };
-  if (!pcb && !kisiCfg && !kc && Object.keys(ibis).length) {
-    $("warnings").innerHTML = `<span class="err">${esc(Object.keys(ibis).join(", "))}: IBIS models are read through the "ibis" section of &lt;board&gt;.kisi.json – drop them together with it (they stay in memory only).</span>`;
-    return;
-  }
   if (!pcb && !kisiCfg && kc) {
     const l = S.lastFiles;
     await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, kc);

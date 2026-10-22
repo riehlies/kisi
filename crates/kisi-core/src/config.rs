@@ -160,7 +160,10 @@ pub struct IbisEntry {
     /// [Model Selector] name → the model to use (drive strength, ODT, I/O standard)
     #[serde(alias = "selector")]
     pub selectors: BTreeMap<String, String>,
-    /// corner for the simulations of later versions: typ (default), min or max
+    /// pad number → the [Model] to use for that pad, over the pin's model or selector choice
+    /// (e.g. one lane in another I/O standard)
+    pub models: BTreeMap<String, String>,
+    /// corner of the linearised end model (C_comp, Ron, edge, pin RLC): typ (default), min or max
     pub corner: Option<String>,
     pub source: Option<Source>,
 }
@@ -499,6 +502,11 @@ fn check_ibis(cfg: &BoardConfig, board: &Board, r: &mut CheckResult) {
             for pad in e.pins.keys() {
                 if !pads.contains(pad.as_str()) {
                     r.errors.push(format!("{what}: pins: {refdes} has no pad '{pad}'"));
+                }
+            }
+            for pad in e.models.keys() {
+                if !pads.contains(pad.as_str()) {
+                    r.errors.push(format!("{what}: models: {refdes} has no pad '{pad}'"));
                 }
             }
         }

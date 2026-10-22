@@ -51,7 +51,8 @@ function variantUnused() {
 }
 function netUnused(n) { const u = variantUnused(); return !!u && u.has(n); }
 // IBIS models that the configuration's "ibis" section names, from .ibs files dropped with it (matched by
-// name). Private model files stay in memory: they are never written to localStorage or IndexedDB.
+// name; {path: sha256}). Private model files stay in the engine's memory: they are never written to
+// localStorage or IndexedDB.
 function cfgIbis(cfg) {
   const out = {};
   if (!cfg || !cfg.ibis) return out;
@@ -64,7 +65,12 @@ function cfgIbis(cfg) {
   }
   return out;
 }
-// dropped .ibs files that the configuration does not name (ignored; shown in the status)
+// file names of the models the configuration's "ibis" section names
+function cfgIbisNames(cfg) {
+  try { return new Set(Object.values(JSON.parse(cfg.text).ibis || {}).filter((e) => e && typeof e.file === "string").map((e) => e.file.split(/[\\/]/).pop())); }
+  catch (e) { return new Set(); }
+}
+// dropped .ibs files that the configuration does not name (shown in the status; usable in the bus cards)
 function cfgIbisUnused(cfg) {
   if (!cfg || !cfg.ibis) return [];
   const used = new Set(Object.keys(cfgIbis(cfg)).map((p) => p.split(/[\\/]/).pop()));

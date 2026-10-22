@@ -93,9 +93,21 @@ Three views, each starting with what the board file gives and computing more on 
    anti-resonances, a target from the IC's current step and recommendations (value, package, count, distance).
 
 Stackup (εr, tanδ, thickness) and profiles can be edited in the viewer; edits are stored in the browser, the
-files are not changed. Results of the last three boards stay in memory while switching. IBIS files named in the
-`ibis` section of `kisi.json` can be dropped together with the board: the viewer checks the mapping (shown under
-the configuration status) and keeps the files in memory only – they are never stored in the browser or uploaded.
+files are not changed. Results of the last three boards stay in memory while switching.
+
+**IBIS models at the lane ends.** In the Interfaces overview, each bus card lists the ICs at its lane ends with an
+IBIS control: choose a model file (“Load .ibs…”, or one dropped with the board / kisi.json), the component if the
+file has several, the pin mapping (by number or by pin name), the corner and the [Model Selector] choices. The
+“Ends” column shows per lane the driver at the transmitting end and the receiver at the receiving end that kisi
+resolved from the pin (pad number or pin name), and offers a per-lane override from the component's models that fit
+the role (output, I/O, 3-state, open drain/source for a driver; input, I/O, terminator for a receiver). Ends
+without a model – or whose model cannot be used, with the reason – keep the profile's transmitter and receiver;
+connectors keep their connector-end controls. The channel check and the eye use the chosen models as linearised
+ends (see `check` below); the lane detail names file, component, model and the derived R, C, L and edge. Files stay
+in the page's memory only – never stored in the browser or uploaded; the choices (names and options) are stored per
+board, and “kisi.json entry” gives the matching `ibis` entry with the file's sha256 to copy. IBIS files named in
+the `ibis` section of `kisi.json` can be dropped together with the board: the viewer checks the mapping (shown under
+the configuration status) and uses it unless you choose otherwise in the card.
 
 ## Command line
 `node kisi.mjs <command> <board.kicad_pcb> [options]`
@@ -194,10 +206,18 @@ KiCad files; CLI and viewer lay this file over the board.
   be left out when the file has one), `sha256` (as `sha256sum` prints it; `kisi config-check` prints the value to
   add), `pin_map` (`by-number`: pad number = IBIS pin name, the default; `by-name`: the pad's symbol pin name = IBIS
   signal name), `pins` (exceptions, pad → IBIS pin), `selectors` ([Model Selector] → model: drive strength, ODT, I/O
-  standard), `corner` (typ, min, max; for later versions). `config-check` reads the files and checks the hash, the
-  component, the selector choices and that every pad of the part on a net with a target or a lane has an IBIS pin
-  with a model (warning with the uncovered pads); `gaps` lists ICs at lane ends without a model (low priority). In
-  this version the mapping is checked and summarised only: the channel check still uses the interface profiles.
+  standard), `models` (pad → [Model], over the pin's model or selector choice, e.g. `"B2": "LVDS_25"` for one lane),
+  `corner` (typ, min, max). `config-check` reads the files and checks the hash, the component, the selector choices,
+  the `models` pads and models, and that every pad of the part on a net with a target or a lane has an IBIS pin with
+  a model (warning with the uncovered pads); `gaps` lists ICs at lane ends without a model (low priority).
+  `check` and `interfaces` (and `report`) read the files too: an IC end with a usable model replaces the profile's
+  transmitter or receiver by a **linearised IBIS model (estimate)**, per line – driver: R = Ron (mean of [Pullup] and
+  [Pulldown] at Vcc/2) + R_pin, C = C_comp + C_pin, L = L_pin, edge = mean 20–80 % time of the corner's waveforms
+  (else [Ramp]) × 1.52 for 10–90 %, swing from the voltage range; receiver: C_comp + C_pin, L_pin and its
+  termination ([Rgnd] ∥ [Rpower] ∥ [Rac] of a terminator, or an on-die termination ≤ 2 kΩ from the clamp tables),
+  else high impedance. Pairs use the same buffer on each line (odd mode; the [Diff Pin] partner is reported). The
+  limits stay the profile's, and so does the verdict. Rows carry `ends` (`tx`, `rx`: the resolved model, its source
+  and the derived values, or `{"model": "profile"}` with the reason the mapping could not be used).
 - **Private models:** vendor IBIS files are rarely redistributable. kisi never copies them: kisi.json holds the path
   and the hash, the CLI reads the file from disk, the viewer keeps dropped files in memory only, and outputs name
   file, hash, component and model – `kisi ibis` prints table sizes and derived values, never the tables. Keep such
@@ -245,9 +265,10 @@ KiCad files; CLI and viewer lay this file over the board.
   `validation/test_board.md`). Until then, treat the numbers as plausible estimates, not as verified results.
 
 ### Limits
-- The channel check is a first look: linear transmitter and receiver from the interface profile, no IBIS models,
-  no equalisation, jitter or noise, no simulation of several aggressors at once. A real channel validation needs
-  IBIS (or AMI) models and more complex tests.
+- The channel check is a first look: linear transmitter and receiver from the interface profile or a linearised
+  IBIS model (Ron, C_comp, package R/L/C, edge – no non-linear buffer simulation), no equalisation, jitter or noise,
+  no simulation of several aggressors at once. A real channel validation needs IBIS (or AMI) simulations and more
+  complex tests.
 - 2D cross-sections and reduced via/plane models instead of a full-board 3D solution; board edges, via-to-via
   coupling and resonances of the whole board are not included.
 - Data the board file does not hold (laminate εr/tanδ, load currents, capacitor data) defaults to estimates;
@@ -293,7 +314,8 @@ hardware under CERN-OHL-P-2.0) and [LibreVNA](https://github.com/jankae/LibreVNA
 what kisi reads; the licence texts are embedded with them.
 Fonts: Barlow, Barlow Semi Condensed and JetBrains Mono (SIL Open Font License 1.1, `web/fonts/`), embedded in the viewer.
 IBIS parser: its structure follows KiCad's KIBIS parser (Copyright (C) 2022 Fabien Corona, Copyright The KiCad
-Developers; BSD-3-Clause, notice in `crates/kisi-ibis/NOTICE`). Test fixtures include KiCad's artificial QA models
+Developers; BSD-3-Clause, full notice in `crates/kisi-ibis/NOTICE`, carried as a comment in the built `kisi.html`,
+`kisi-examples.html` and `kisi.mjs`). Test fixtures include KiCad's artificial QA models
 (GPL-3.0-or-later, `crates/kisi-ibis/tests/data/README.md`).
 
 ## About

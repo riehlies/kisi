@@ -24,8 +24,10 @@ pub mod types;
 pub use num::{Corner, Tmm};
 pub use types::*;
 
-/// Credit line for the ported parser logic (shown by the front ends).
-pub const NOTICE: &str = "IBIS parser structure ported from KiCad's KIBIS – Copyright (C) 2022 Fabien Corona, Copyright The KiCad Developers – BSD-3-Clause";
+/// Licence notice of the ported parser logic (KIBIS, BSD-3-Clause), the full text of `NOTICE`. The front
+/// ends do not show it; the bundlers carry it as a comment (tools/bundle.py, tools/bundle_cli.py) and the
+/// README credits it.
+pub const NOTICE: &str = include_str!("../NOTICE");
 
 /// Findings of one code at one place that are listed before the rest is summarised.
 pub const KEEP_PER_CODE: usize = 5;

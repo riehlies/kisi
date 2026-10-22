@@ -17,7 +17,7 @@ Usage: bundle.py <index.html> <kisi_wasm.wasm> <kisi_sparse.wasm> <out.html> [ke
 import base64, gzip, json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from solver_bundle import solver_bundle, upstream_rev as read_upstream_rev  # noqa: E402
+from solver_bundle import engine_notices, solver_bundle, upstream_rev as read_upstream_rev  # noqa: E402
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src, wasm, sparse, out = sys.argv[1:5]
@@ -95,5 +95,8 @@ os.makedirs(os.path.dirname(out) or ".", exist_ok=True)  # dist/ is not in the r
 credits = [s["notice"].split("\n", 1)[0] for s in samples.values() if s.get("notice")]
 if credits:
     html = html.replace("<!doctype html>\n", "<!doctype html>\n<!-- " + "\n     ".join(c.replace("--", "-") for c in credits) + " -->\n", 1)
+# third-party code in the engine whose licence asks binary redistributions to carry its notice (the IBIS
+# parser after KiCad's KIBIS, BSD-3-Clause): the full notice as a comment, not shown on the page
+html = html.replace("<!doctype html>\n", "<!doctype html>\n<!--\n" + engine_notices(root).replace("--", "-") + "-->\n", 1)
 open(out, "w", encoding="utf-8").write(html)
 print(f"{out}: {len(html) / 1e6:.2f} MB, {n_modules} solver modules")

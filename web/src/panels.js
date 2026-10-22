@@ -12,8 +12,8 @@ function renderCfgStatus() {
   const ib = (c.ibis || []).map((p) => !p.loaded ? `${esc(p.ref)} (${esc(p.file.split(/[\\/]/).pop())} not loaded)`
     : `${esc(p.ref)} (${esc(p.component || "?")}${p.pads_checked != null ? `, ${p.pads_with_model}/${p.pads_checked} pads` : ""}${p.sha256_ok === false ? ", file changed" : ""})`);
   const unused = c.ibisUnused || [];
-  const ibLine = (ib.length ? `<div>IBIS: ${ib.join(" · ")} <span class="muted">– model files stay in this page's memory; the channel check still uses the profiles</span></div>` : "")
-    + (unused.length ? `<div class="muted">${esc(unused.join(", "))}: not named in the "ibis" section of ${esc(c.name)} – ignored</div>` : "");
+  const ibLine = (ib.length ? `<div>IBIS: ${ib.join(" · ")} <span class="muted">– model files stay in this page's memory; the channel check and the eye use them at the lane ends, linearised (estimate); per IC choices in the interfaces overview</span></div>` : "")
+    + (unused.length ? `<div class="muted">${esc(unused.join(", "))}: not named in the "ibis" section of ${esc(c.name)} – choose them per IC in the interfaces overview</div>` : "");
   box.innerHTML = `<b>${esc(c.name)}</b>: ${parts.join(", ") || "nothing"} applied · ${ck.ok ? `<span class="ok">check passed</span>` : `<span class="err">${ck.errors.length} error(s)</span>`}${ck.warnings.length ? ` · ${ck.warnings.length} warning(s)` : ""}
     ${ibLine}${ck.errors.length || ck.warnings.length ? `<details><summary>Details</summary><ul>${list(ck.errors, "err")}${list(ck.warnings, "")}</ul></details>` : ""}`;
 }

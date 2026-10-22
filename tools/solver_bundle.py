@@ -9,6 +9,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from esm_classic import classic_bundle  # noqa: E402
 
 
+def engine_notices(root):
+    """Licence notices of third-party code compiled into the engine (kisi_wasm.wasm) that its licence asks
+    binary redistributions to carry: the IBIS parser after KiCad's KIBIS (BSD-3-Clause,
+    crates/kisi-ibis/NOTICE). The bundlers write it as a comment; the page and the CLI do not show it."""
+    return open(os.path.join(root, "crates/kisi-ibis/NOTICE"), encoding="utf-8").read()
+
+
 def upstream_rev(root):
     p = os.path.join(root, "third_party/UPSTREAM_REV")
     return open(p).read().strip() if os.path.exists(p) else "unknown"

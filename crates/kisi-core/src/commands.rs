@@ -20,7 +20,8 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
   net <NET>        one net: impedance along the path, loss, TDR, vias, crosstalk;
                    differential pairs also as 4-port (mixed mode, skew)
                    [--rise-ps 35] [--roughness smooth|hvlp|standard] [--s2p FILE | --s4p FILE (Touchstone)]
-  check            channel check of all lanes against interface profiles
+  check            channel check of all lanes against interface profiles; IC ends with an IBIS
+                   model in <board>.kisi.json (\"ibis\") use it, linearised (estimate)
                    [--class CLASS=PROFILE]… [--nets A,B] [--all] [--max 30]
   crosstalk        coupling scan (NEXT/FEXT from neighbouring tracks) of all nets with a target,
                    critical from 1 %; kisi.mjs refines the critical couplings with the field solver
@@ -54,9 +55,7 @@ net: always all of the net's)
 
 kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design
 at TU Darmstadt. GPL-3.0-only, https://github.com/riehlies/kisi
-A quick design check: results are estimates, without any warranty of correctness.
-IBIS parser structure ported from KiCad's KIBIS (Copyright (C) 2022 Fabien Corona, The KiCad
-Developers; BSD-3-Clause).";
+A quick design check: results are estimates, without any warranty of correctness.";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -173,10 +172,11 @@ pub fn needs_file(cmd: &str) -> bool {
     cmd == "ibis"
 }
 
-/// Commands that check the IBIS mapping with the model files: the front end reads the files the
-/// configuration names (`service::ibis_files`) into `Inputs::ibis_files`.
+/// Commands that use the IBIS models with the model files – the mapping check and the lane
+/// ends of the channel check: the front end reads the files the configuration names
+/// (`service::ibis_files`) into `Inputs::ibis_files`.
 pub fn uses_ibis_files(cmd: &str) -> bool {
-    cmd == "config-check"
+    matches!(cmd, "config-check" | "check" | "interfaces" | "report")
 }
 
 /// Run a command that reads one file (`needs_file`): `name` is the file's name, `bytes` its

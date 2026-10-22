@@ -27,7 +27,8 @@ function saveBoardState() {
 function textHash(t) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); }
 
 // cfg: {name, text, csv, ibis} of a <board>.kisi.json (values with sources), applied over the board, with the
-// BOMs ({name: text}) and IBIS models ({name: base64}, memory only) dropped with it
+// BOMs ({name: text}) and the names of IBIS models dropped with it ({name: sha256}; the files themselves are in
+// the engine's memory, registered by loadIbisFile, and found there by file name)
 async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) {
   $("drop").hidden = true; $("drop").classList.remove("start");
   showBusy("Reading board and computing cross-sections…");
@@ -46,7 +47,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     S.config = null;
     S.variant = null;
     if (cfg) {
-      try { S.config = { name: cfg.name, ...S.engine.config(cfg.text, name, cfgFiles(cfg), vchoice, cfgIbis(cfg)), ibisUnused: cfgIbisUnused(cfg) }; S.variant = S.config.variant; }
+      try { S.config = { name: cfg.name, ...S.engine.config(cfg.text, name, cfgFiles(cfg), vchoice), ibisUnused: cfgIbisUnused(cfg) }; S.variant = S.config.variant; }
       catch (e) { S.config = { name: cfg.name, check: { ok: false, errors: [e.message], warnings: [], entries: 0 }, targets: {}, profiles: {} }; }
     }
     try {
@@ -70,7 +71,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     const n = S.scene.stackup.copper.length;
     S.layerOn = new Array(n).fill(true);
     // default plane layer: first inner layer with most zone area, else none
-    S.zoneLayer = guessPlaneLayer();
+    S.zoneLayer = -1; // copper zones hidden at the start ("Show copper zones: none"); the choice is kept per board
     S.boardKey = key.replace(/\|v=.*$/, "") + "|v=" + (vchoice || "");
     const tParse = performance.now() - t0;
     if (snap) {

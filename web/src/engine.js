@@ -24,7 +24,8 @@ class Engine {
   loadPro(text) { this.call(this.k.kisi_load_pro, text); }
   loadPcb(text) { this.call(this.k.kisi_load_pcb, text); }
   // board configuration; files: BOMs its variants name ({path: text}); variant: the viewer's choice or null;
-  // ibis: IBIS models its "ibis" section names ({path: base64}) – handed to the engine, kept in memory only
+  // ibis (optional): IBIS models {path: base64} – parsed into the engine's memory; the viewer registers dropped
+  // and card-loaded files with ibisLoad instead, and the configuration finds them by file name
   config(text, board, files, variant, ibis) { this.call(this.k.kisi_config, JSON.stringify({ config: text, board, files: files || {}, variant: variant || null, ibis: ibis || {} })); return JSON.parse(this.out()); }
   // assembly variant: the state, or choose one (null: the configuration's) – the board is rebuilt
   variants() { if (this.k.kisi_variants() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
@@ -33,6 +34,11 @@ class Engine {
   analyze(params) { this.call(this.k.kisi_analyze, JSON.stringify(params)); return JSON.parse(this.out()); }
   buses(params) { this.call(this.k.kisi_buses, JSON.stringify(params)); return JSON.parse(this.out()); }
   laneRf(req) { this.call(this.k.kisi_lane_rf, JSON.stringify(req)); return JSON.parse(this.out()); }
+  // IBIS model file for the lane ends (kept in the engine's memory only): summary of components, selectors, models
+  ibisLoad(name, b64) { this.call(this.k.kisi_ibis_load, JSON.stringify({ name, b64 })); return JSON.parse(this.out()); }
+  ibisRemove(name) { this.call(this.k.kisi_ibis_load, JSON.stringify({ name, remove: true })); }
+  // the IBIS ends of lanes for a mapping {refdes: entry}: {laneKey: {tx, rx}} (kisi_core::ibis::lane_ends)
+  ibisEnds(req) { this.call(this.k.kisi_ibis_ends, JSON.stringify(req)); return JSON.parse(this.out()); }
   // Touchstone file for the channel behind a connector (kept in the engine's memory)
   touchstone(name, text) { this.call(this.k.kisi_touchstone, JSON.stringify({ name, text })); return JSON.parse(this.out()); }
   skeleton(params) { this.call(this.k.kisi_skeleton, JSON.stringify(params)); return JSON.parse(this.out()); }

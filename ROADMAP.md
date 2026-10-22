@@ -21,8 +21,12 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   (native and Node). `ibis` mapping in `<board>.kisi.json` (file + sha256, component, `pin_map` by number or pin
   name, pad exceptions, selector choices), checked by `config-check` with the files; `gaps` lists lane-end ICs
   without a model (low priority). The viewer checks the mapping with `.ibs` files dropped with the board, kept in
-  memory only. Fixtures: synthetic files from analytic buffers and KiCad's QA models. The profiles remain the
-  channel end models.
+  memory only. Fixtures: synthetic files from analytic buffers and KiCad's QA models.
+- **IBIS models at the lane ends (linearised):** bus cards of the Interfaces overview choose per IC the model file
+  (loaded in the card or dropped), component, pin map, corner and selector choices, with a per-lane model override and
+  a “kisi.json entry” (with sha256); `check`/`interfaces` use the kisi.json mapping (`models`: pad → model) the same
+  way in both CLIs. Driver and receiver become linear ends (Ron, C_comp + package R/L/C, edge from the waveforms or
+  [Ramp], terminator / ODT), marked as estimates; limits and verdict stay the profile's.
 
 ## Next
 - **`kisi gaps`: supply rails without a voltage in the name.** Nets such as `Net-(IC22-VCC)` are not recognised as
@@ -42,7 +46,11 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   variants, staged plan): `docs/research/channel-simulation-ibis.md`; M0 (assembly variants) and M1 (IBIS parser,
   `kisi ibis`, mapping in kisi.json) are done, M2 (N-port network) is next. Open from M1: KiCad's `Sim.*` fields as
   a second mapping source; IBIS 8.0 keywords; package-model sections ([Pin Numbers] with Len/L/C); a check of the
-  parser against IBISCHK on real vendor files; checks of the combined (pullup + clamp) I-V curves.
+  parser against IBISCHK on real vendor files; checks of the combined (pullup + clamp) I-V curves. Open from the
+  linear IBIS ends: an on-die termination and a termination resistor next to the receiver are not combined (the
+  resistor replaces the receiver's R); the edge from the waveforms already contains the C_comp load (counted twice
+  with the C in the end model); open-drain/source drivers are linearised with their one transistor (the pull
+  resistor is not modelled); the receiver's R_pin is left out; validation against an IBIS simulator.
 - **Assembly variants, follow-ups:** variant-dependent `fields` in kisi.json (e.g. the TS-USB4 power tree from
   the M.2 connector); a via whose barrel continues into a stub beyond the path's layers is counted twice (its own
   stub and the side stub's via, ~0.3 mm on ThunderScope); side stubs in the net channel (`kisi net`) do not add

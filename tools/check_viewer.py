@@ -7,7 +7,7 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 * light, dark and phone layout; all three views (impedance, channel, power)
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
-  lane eye, voltage drop with ground return, impedance seen from the ICs, losses map and power flow
+  lane eye, an IBIS model at a lane end (the synthetic file of crates/kisi-ibis/tests), voltage drop with ground return, impedance seen from the ICs, losses map and power flow
   (desktop layouts; --quick: only load and the three views)
 * uses the embedded example boards if the build has them, else --board
 * --config: drops a <board>.kisi.json and expects "check passed"
@@ -145,6 +145,26 @@ def run(pg, tag, desktop):
             if pg.locator("#ch-detail [data-ct=eye]").count():
                 pg.click("#ch-detail [data-ct=eye]"); pg.wait_for_timeout(600)
             step("lane")
+        # IBIS model at a lane end (synthetic file of the tests): loaded in a bus card, resolved per lane, shown in
+        # the lane detail as a linearised model; the choice is stored, the file's content never
+        ibs = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "crates", "kisi-ibis", "tests", "data", "synthetic_full.ibs")
+        pg.click("#chm-o"); pg.wait_for_timeout(300)
+        if pg.locator("#ch-overview input[data-ib-load]").count():
+            ref = pg.get_attribute("#ch-overview input[data-ib-load] >> nth=0", "data-ib-load")
+            pg.set_input_files("#ch-overview input[data-ib-load] >> nth=0", ibs)
+            pg.wait_for_function(f"document.querySelector('select[data-ib-file={json.dumps(ref)}]') && document.querySelector('select[data-ib-file={json.dumps(ref)}]').value === 'synthetic_full.ibs'", timeout=30000)
+            k = pg.evaluate("Object.keys(ibisEndsAll())[0] || null")
+            if not k or not pg.locator("#ch-overview td.ie").count():
+                problems.append(f"{tag}: IBIS model loaded for {ref}, but no lane end resolved")
+            else:
+                pg.click(f"#ch-overview tr[data-lane='{k}'] td.ln"); pg.wait_for_timeout(600)
+                if "IBIS" not in pg.inner_text("#ch-detail"):
+                    problems.append(f"{tag}: lane detail without the IBIS end")
+                step("lane_ibis")
+                pg.click("#chm-o"); pg.wait_for_timeout(300)
+            if pg.evaluate("(() => { let s = ''; for (let i = 0; i < localStorage.length; i++) s += localStorage.getItem(localStorage.key(i)); return s.includes('KISI_SYNTH') || s.includes('[Pullup]'); })()"):
+                problems.append(f"{tag}: IBIS file content in localStorage")
+            pg.select_option(f"select[data-ib-file={json.dumps(ref)}]", ""); pg.wait_for_timeout(300)
         # switch to another variant in the side card (lanes computed again) and back
         if pg.evaluate("!!S.variant && S.variant.variants.length > 1"):
             pg.click("#chm-o"); pg.wait_for_timeout(300)

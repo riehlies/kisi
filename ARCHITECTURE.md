@@ -45,13 +45,16 @@ viewer (via WASM) and CLI show the same result.
 * `index.html` – markup only; `css/kisi.css`; scripts in `src/` in the order of
   `src/manifest.json` (shared scope):
   `engine` (WASM) · `state` · `load` · `geometry` · `draw` · `charts` · `net-detail` · `si-tabs`
-  (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `variants` (assembly variant card and
+  (impedance view) · `channel` + `ibis-ends` (IBIS models at the lane ends: bus card controls, per-lane override)
+  + `lanes` (channel view, interfaces overview) · `variants` (assembly variant card and
   prompt) · `panels` · `interaction` · `field-pool` ·
   `field-cache` · `crosstalk` (coupling scan with step 2, Couplings card, critical stretches on the map) · `pi-dc` · `pi-pdn` · `pi-balance` · `pi-loss` (losses map, power flow) · `views` · `main` (start-up, files, hand-over).
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html`: WASM modules and the field solver
   script (gzip + base64, unpacked at start), fonts (`web/fonts`, OFL), `data/*.json` and, optionally, example
   boards (`tools/fetch_examples.sh`) with their configuration `web/samples/<key>.kisi.json` → `kisi-examples.html`.
-  The page loads nothing from the web.
+  The page loads nothing from the web. Licence notices that third-party code compiled into the engine asks binary
+  redistributions to carry (the IBIS parser after KiCad's KIBIS, BSD-3-Clause: `crates/kisi-ibis/NOTICE`) are
+  written as a comment at the top of the bundles (`solver_bundle.engine_notices`, also in `dist/kisi.mjs`).
 * `web/cli/kisi.mjs` + `tools/bundle_cli.py` → `dist/kisi.mjs`: the same WASM engine and solver bundle
   (`tools/solver_bundle.py`, shared with the viewer) for Node; reads files, runs the field solver in worker
   threads with a disk cache, everything else through `kisi_core::commands`.
@@ -61,7 +64,9 @@ viewer (via WASM) and CLI show the same result.
   the file handles and “Reload” reads them again after saving in KiCad.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
   net class → profile assignment, power settings, lane directions, the chosen assembly variant. The results of the last three boards stay in memory for the session.
-  IBIS model files dropped with a board are never stored: they live in the page's memory (and the WASM state) only.
+  IBIS model files (dropped with a board or loaded in a bus card) are never stored: they live in the page's memory (and
+  the WASM state, `kisi_ibis_load`) only; per board only the choices are stored (`kisi.ibis.v1.<board>`: file name,
+  component, pin map, corner, selector and per-pad model choices – `web/src/ibis-ends.js`).
 
 ## Data (`data/`)
 * `<board>.kisi.json` (next to the board, not in this repository) – per-board values with sources, see above.
@@ -83,9 +88,17 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
   viewer edits / CLI options.
 * IBIS mapping (`ibis` in kisi.json, `kisi_core::ibis`): file path and sha256 only, never the content. `config::check`
   validates what needs no file; `ibis::check_files` runs with the files (`config-check` in the CLIs – the front ends
-  read them, `commands::uses_ibis_files` – and the viewer with dropped files) on the analysed board: hash, component,
+  read them for the commands that use them, `commands::uses_ibis_files`: `config-check`, `check`, `interfaces`,
+  `report` – and the viewer with dropped files) on the analysed board: hash, component,
   selectors, an IBIS pin with a model for every pad on a net with a target or a lane. `kisi ibis <file>` goes through
-  `commands::run_file` (the front ends read the file, `commands::needs_file`). Not used by the channel models yet.
+  `commands::run_file` (the front ends read the file, `commands::needs_file`).
+* IBIS ends in the channel (`kisi_core::ibis`, one place for both CLIs and the viewer): `resolve_end` finds the model of
+  one pad in its role (per-pad `models` override → pin model → selector choice / first entry; pin by `pins`, by name or
+  by number) and linearises it (Ron + R_pin, C_comp + C_pin, L_pin, edge 20–80 % × 1.5228, terminator / ODT);
+  `lane_ends` gives [driver, receiver] of a lane (IC ends only), `apply_ends` replaces the profile's tx/rx/edge where
+  a model is usable. `service::channel_check` and `interfaces` use the kisi.json mapping; the WASM calls `kisi_check`,
+  `kisi_lane_rf` and `kisi_ibis_ends` take the viewer's mapping (`"ibis"`: its choice over kisi.json, per IC) and the
+  files loaded with `kisi_ibis_load`. The verdict stays `kisi_si::profile::judge` with the profile's limits.
 * Assembly variants (`kisi_core::variant`): order when loading – board file → variant (KiCad 10 overrides, then the
   kisi.json rules of that name) → kisi.json fields. `kisi_si::topology::forks` finds forks where all alternative
   series parts are fitted. With variants or such forks and no choice, `Project::require_variant` stops the lane

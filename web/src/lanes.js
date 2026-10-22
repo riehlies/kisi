@@ -67,13 +67,13 @@ const pinLabel = (e) => e ? `${e.refdes}.${e.pin}` : "–";
 function chForLane(l) {
   const net = laneNet(l), t = classTarget(net), p = laneProfile(l), rp = rfParams(), rev = laneReversed(l);
   rp.fmax = Math.max(rp.fmax, p.rate_gbps * 1.25e9);
-  const ce = laneConnEnd(l);
-  const key = `lane|${laneKey(l)}|${rev}|${S.anGen}|${JSON.stringify(rp)}|${JSON.stringify(p)}|${JSON.stringify(ce)}`;
+  const ce = laneConnEnd(l), ib = ibisMapFor(l);
+  const key = `lane|${laneKey(l)}|${rev}|${S.anGen}|${JSON.stringify(rp)}|${JSON.stringify(p)}|${JSON.stringify(ce)}|${JSON.stringify(ib)}|${Object.keys(S.ibisFiles).join(",")}`;
   if (S.chCache && S.chCache.key === key) return S.chCache.res;
   let res;
   try {
     res = S.engine.laneRf({ lane: l.nets[0], to: l.ends.length ? l.ends[l.ends.length - 1].refdes : null, reversed: rev, rf: rp, target: t ? [t.z, t.diff] : null, conn_end: ce,
-      bitrate: p.rate_gbps * 1e9, tx: p.tx, rx: p.rx, eye_rise: p.tx.rise_ps * 1e-12 });
+      bitrate: p.rate_gbps * 1e9, tx: p.tx, rx: p.rx, eye_rise: p.tx.rise_ps * 1e-12, ibis: ib });
   } catch (e) { res = { channel: null, error: e.message, crosstalk: { aggressors: [], geoms: [] } }; }
   res.profile = p; res.lane = l;
   S.chCache = { key, res };
@@ -119,6 +119,8 @@ function renderChOverview() {
   if (res) for (const l of allLanes()) { const st = laneStatus(l); if (st) counts[st]++; }
   const stale = S.check && (S.check.gen !== S.anGen || S.check.stale);
   const kpi = (v, l) => `<div class="bal-kpi"><span class="v">${v}</span><span class="l">${l}</span></div>`;
+  // IBIS models at the IC ends (ibis-ends.js): resolved per lane by the engine
+  const ibEnds = ibisEndsAll();
   const busCard = (b) => {
     const l0 = b.lanes[0], p = laneProfile(l0);
     const sts = b.lanes.map(laneStatus).filter(Boolean);
@@ -138,17 +140,18 @@ function renderChOverview() {
     }
     const tg = classTarget(laneNet(l0));
     const conn = refs.size ? `<div class="ce-list">${[...refs].map(([ref, roles]) => connEndControls(ref, roles, tg ? [tg.z, tg.diff] : null, !!l0.diff)).join("")}</div>` : "";
+    const ib = busHasIbis(b, ibEnds);
     const rows = b.lanes.map((l) => {
       const r = laneRow(l), st = r ? laneStatus(l) : null;
       const cells = r ? `<td class="n">${fmt(r.length_mm, 1)}</td><td class="n">${fmt(r.il_nyq_db, 1)}</td><td class="n">${fmt(r.rl_db, 1)}</td><td class="n">${r.eye && !r.error ? (r.eye_board_share ? `<span class="muted" title="board share with the end set for the connector (below): information, not judged – give the channel behind the connector to judge it">${fmt(r.eye_height * 100, 0)}</span>` : fmt(r.eye_height * 100, 0)) : "–"}</td><td class="n">${r.skew_ps == null ? "–" : fmt(Math.abs(r.skew_ps), 1) + (r.skew_uncertain ? "?" : "")}</td>`
         : `<td class="n" colspan="5">${checkable ? '<span class="muted">not checked yet</span>' : `<span class="muted">${esc(l.kind)}</span>`}</td>`;
-      return `<tr class="click" data-lane="${esc(laneKey(l))}"><td>${st ? `<span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span>` : ""}</td><td class="ln">${esc(netShort(l.name))}${l.diff ? ' <span class="muted">pair</span>' : ""}</td><td class="lc">${laneChain(l)}</td>${cells}</tr>`;
+      return `<tr class="click" data-lane="${esc(laneKey(l))}"><td>${st ? `<span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span>` : ""}</td><td class="ln">${esc(netShort(l.name))}${l.diff ? ' <span class="muted">pair</span>' : ""}</td><td class="lc">${laneChain(l)}</td>${ib ? ibisLaneCell(l, ibEnds) : ""}${cells}</tr>`;
     }).join("");
     return `<div class="bal-card bus-card">
       <h4><span>${worst ? `<span class="dot" style="background:${S.colors[worst]}"></span> ` : ""}${esc(b.name)}</span><em>${esc(b.class)} · ${esc(p.name)} · ${b.lanes.length} lane${b.lanes.length === 1 ? "" : "s"}</em></h4>
       <div class="bus-meta"><span>${dir}</span>${checkable && l0.ends.length === 2 ? `<span class="muted">${esc(laneSwaps()[laneKey(l0)] ? "direction swapped by you" : oneDir ? l0.direction : "")}</span><button class="btn small" data-swap="${esc(b.name)}|${esc(b.class)}">Swap direction</button>` : ""}</div>
-      ${conn}
-      <div class="tablewrap"><table class="ctab lanes"><thead><tr><th></th><th>Lane</th><th>Path</th><th>mm</th><th>IL dB</th><th>RL dB</th><th>Eye %</th><th>Skew ps</th></tr></thead><tbody>${rows}</tbody></table></div>
+      ${conn}${ibisControls(b, ibEnds)}
+      <div class="tablewrap"><table class="ctab lanes"><thead><tr><th></th><th>Lane</th><th>Path</th>${ib ? '<th title="driver at the transmitting end, receiver at the receiving end: IBIS model (linearised, estimate), connector end or the profile\'s">Ends</th>' : ""}<th>mm</th><th>IL dB</th><th>RL dB</th><th>Eye %</th><th>Skew ps</th></tr></thead><tbody>${rows}</tbody></table></div>
     </div>`;
   };
   const section = (k) => groups[k].length ? `<h3 class="ov-h">${KIND_TITLE[k][0]} <em>${groups[k].length} bus${groups[k].length === 1 ? "" : "es"}, ${nl(k)} lane${nl(k) === 1 ? "" : "s"} · ${KIND_TITLE[k][1]}</em></h3>${groups[k].map(busCard).join("")}` : "";
@@ -171,6 +174,7 @@ function renderChOverview() {
     setChMode("m"); selectNet(l.nets[0], false); fitLane(l);
   });
   bindConnEnd(box, () => renderChOverview());
+  bindIbis(box, () => renderChOverview());
   box.querySelectorAll("[data-swap]").forEach((bt) => bt.onclick = () => {
     const [name, cls] = bt.dataset.swap.split("|");
     const b = S.buses.find((x) => x.name === name && x.class === cls);
@@ -188,7 +192,7 @@ function renderLaneDetail(l) {
     d.hidden = false; $("closeCh").onclick = () => { S.selLane = null; selectNet(-1); }; bindVariantButtons(d);
     return;
   }
-  const d = $("ch-detail"), r = chForLane(l), p = r.profile;
+  const d = $("ch-detail"), r = chForLane(l), p = ibisView(r.profile, r);
   const tab = S.chTab || "check";
   const tx = laneTx(l), rx = laneRx(l);
   const tabs = [["check", "Check"], ...(l.kind !== "connector-connector" ? [["eye", "Eye"]] : []), ["path", "Path"]];
@@ -197,6 +201,7 @@ function renderLaneDetail(l) {
     <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}${variantShown() ? ` · variant ${esc(variantShown())}` : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button></span></div>
     <div class="dstats muted"><span>Transmitter ${esc(tx?.refdes || "")}: ${(() => { const m = r.tx_used || p.tx; return `${m.r > 0 ? fmt(m.r, 0) + " Ω" : "ideal source"}${m.c_pf ? ", " + fmt(m.c_pf, 1) + " pF" : ""}`; })()}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span>
       <span>Receiver ${esc(rx?.refdes || "")}: ${(() => { const m = r.rx_used || p.rx; return `${m.r > 0 ? fmt(m.r, 0) + " Ω" : "high impedance"}${m.c_pf ? ", " + fmt(m.c_pf, 1) + " pF" : ""}`; })()}</span><span>per line</span></div>
+    ${r.ibis ? `<div class="dstats muted ib-lines">${ibisEndLine(r.ibis.tx, "Transmitter")}${ibisEndLine(r.ibis.rx, "Receiver")}${r.ibis.used ? `<span>${esc(r.ibis.note)}${(() => { const e = ibisInfoEnd(r.ibis.tx); return e && !e.error ? ": edge and swing from the driver model" : ""; })()}; the limits are the profile's</span>` : ""}</div>` : ""}
     ${r.rx_note || r.end_note ? `<div class="dstats muted">${r.end_note ? `<span>${esc(r.end_note)} – set in the interface's card of the overview</span>` : ""}${r.rx_note ? `<span>${esc(r.rx_note)}</span>` : ""}</div>` : ""}
     <div class="tabs" role="tablist" aria-label="Lane">${tabs.map(([k, n]) => `<button role="tab" data-ct="${k}" aria-selected="${t === k}">${n}</button>`).join("")}</div>
     <div id="ch-body"></div>`;
@@ -211,7 +216,7 @@ function renderLaneDetail(l) {
   };
   d.querySelectorAll("[data-ct]").forEach((b) => b.onclick = () => { S.chTab = b.dataset.ct; renderLaneDetail(l); });
   const body = $("ch-body");
-  if (t === "eye") return renderEye(body, r);
+  if (t === "eye") return renderEye(body, { ...r, profile: p });
   if (t === "path") return renderLanePath(body, l, r);
   const m = metricsOf(r, laneNet(l), l), j = judge(m, p);
   const xt = r.crosstalk && r.crosstalk.aggressors ? `<tr><td></td><td>Crosstalk (total)</td><td>NEXT ${fmt(r.crosstalk.next_total * 100, 2)} %, FEXT ${fmt(r.crosstalk.fext_total * 100, 2)} %</td><td>information only</td></tr>` : "";
@@ -221,7 +226,7 @@ function renderLaneDetail(l) {
     <div class="tablewrap"><table class="xs-table"><thead><tr><th></th><th>Criterion</th><th>Value</th><th>Limit</th></tr></thead><tbody>
     ${j.rows.map((x) => `<tr title="${esc(x.note || "")}"><td><span class="dot" style="background:${S.colors[x.st]}" aria-label="${ST_NAME[x.st]}"></span></td><td>${x.name}</td><td>${esc(String(x.value))}</td><td>${x.limit}</td></tr>`).join("")}${eb}${xt}
     </tbody></table></div>
-    <p class="note">${l.kind === "ic-ic" ? "From device pin to device pin, including series parts (package parasitics estimated, data/components.json). Loss, return loss and TDR describe the interconnect without terminations; the eye uses the profile's transmitter and receiver, with a termination next to the receiver as its termination." : l.kind === "connector-connector" ? "From connector to connector: the board share of the channel. No eye, because transmitter and receiver are off the board." : (restSet ? "From the device to the connector, judged on loss, return loss and skew of the board share; the eye includes the channel behind the connector as a lossy line and the termination or driver there (set in the interface's card of the overview) and is judged." : "From the device to the connector: the board share of the channel, judged on loss, return loss and skew. The eye uses the termination or driver set for the connector (the interface's card in the overview; default the profile's receiver or transmitter right at the connector); without a channel model behind the connector it covers the board share only and is information.")} No equalisation, jitter or noise.</p>
+    <p class="note">${l.kind === "ic-ic" ? "From device pin to device pin, including series parts (package parasitics estimated, data/components.json). Loss, return loss and TDR describe the interconnect without terminations; the eye uses the profile's transmitter and receiver (or the IBIS models chosen for the IC ends, linearised – an estimate), with a termination next to the receiver as its termination." : l.kind === "connector-connector" ? "From connector to connector: the board share of the channel. No eye, because transmitter and receiver are off the board." : (restSet ? "From the device to the connector, judged on loss, return loss and skew of the board share; the eye includes the channel behind the connector as a lossy line and the termination or driver there (set in the interface's card of the overview) and is judged." : "From the device to the connector: the board share of the channel, judged on loss, return loss and skew. The eye uses the termination or driver set for the connector (the interface's card in the overview; default the profile's receiver or transmitter right at the connector); without a channel model behind the connector it covers the board share only and is information.")} No equalisation, jitter or noise.</p>
     ${(r.channel?.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("")}`;
 }
 

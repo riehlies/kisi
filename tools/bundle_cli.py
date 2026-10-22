@@ -11,7 +11,7 @@ Usage: bundle_cli.py <kisi_wasm.wasm> <kisi_sparse.wasm> <out.mjs>
 import base64, gzip, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from solver_bundle import solver_bundle, upstream_rev  # noqa: E402
+from solver_bundle import engine_notices, solver_bundle, upstream_rev  # noqa: E402
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 wasm, sparse, out = sys.argv[1:4]
@@ -25,6 +25,10 @@ for k, v in [("__VERSION__", version), ("__UPSTREAM_REV__", upstream_rev(root)),
              ("__SPARSE_GZ__", gzb64(open(sparse, "rb").read())), ("__SOLVER_GZ__", gzb64(solver_src.encode("utf-8")))]:
     assert k in src, k
     src = src.replace(k, v)
+# third-party code in the engine whose licence asks binary redistributions to carry its notice (the IBIS
+# parser after KiCad's KIBIS, BSD-3-Clause): the full notice as a comment after the SPDX line
+head, rest = src.split("\n", 2)[:2], src.split("\n", 2)[2]
+src = "\n".join(head) + "\n/*\n" + engine_notices(root).replace("*/", "* /") + "*/\n" + rest
 os.makedirs(os.path.dirname(out) or ".", exist_ok=True)  # dist/ is not in the repository
 open(out, "w", encoding="utf-8", newline="\n").write(src)
 print(f"{out}: {len(src) / 1e6:.2f} MB, {n} solver modules, version {version}")

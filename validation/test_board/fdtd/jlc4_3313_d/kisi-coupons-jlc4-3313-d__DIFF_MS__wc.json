@@ -1,0 +1,256 @@
+{
+ "domain": [
+  -13.71,
+  -4.0,
+  -1.0,
+  13.71,
+  4.0,
+  2.4638
+ ],
+ "board": [
+  -13.71,
+  -4.0,
+  13.71,
+  4.0
+ ],
+ "layers": [
+  {
+   "z0": -0.0305,
+   "z1": 0.0,
+   "er": 3.8,
+   "tand": 0.025
+  },
+  {
+   "z0": 0.0,
+   "z1": 0.0994,
+   "er": 4.1,
+   "tand": 0.02
+  },
+  {
+   "z0": 0.0994,
+   "z1": 1.3644,
+   "er": 4.6,
+   "tand": 0.02
+  },
+  {
+   "z0": 1.3644,
+   "z1": 1.4638,
+   "er": 4.1,
+   "tand": 0.02
+  },
+  {
+   "z0": 1.4638,
+   "z1": 1.4943,
+   "er": 3.8,
+   "tand": 0.025
+  }
+ ],
+ "sheets": [
+  {
+   "z": 1.4638,
+   "rect": [
+    -12.21,
+    0.08475,
+    0.0,
+    0.23025
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.4638,
+   "rect": [
+    0.0,
+    0.08475,
+    12.21,
+    0.23025
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.4638,
+   "rect": [
+    -12.21,
+    -0.23025,
+    0.0,
+    -0.08475
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.4638,
+   "rect": [
+    0.0,
+    -0.23025,
+    12.21,
+    -0.08475
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.3644,
+   "rect": [
+    -13.71,
+    -4.0,
+    13.71,
+    4.0
+   ],
+   "holes": [],
+   "net": "GND"
+  },
+  {
+   "z": 0.0994,
+   "rect": [
+    -13.71,
+    -4.0,
+    13.71,
+    4.0
+   ],
+   "holes": [],
+   "net": "GND"
+  }
+ ],
+ "vias": [],
+ "ports": [
+  {
+   "x": -12.21,
+   "y0": 0.08475,
+   "y1": 0.23025,
+   "z0": 1.3644,
+   "z1": 1.4638,
+   "r": 50.0
+  },
+  {
+   "x": -12.21,
+   "y0": -0.23025,
+   "y1": -0.08475,
+   "z0": 1.3644,
+   "z1": 1.4638,
+   "r": 50.0
+  },
+  {
+   "x": 12.21,
+   "y0": 0.08475,
+   "y1": 0.23025,
+   "z0": 1.3644,
+   "z1": 1.4638,
+   "r": 50.0
+  },
+  {
+   "x": 12.21,
+   "y0": -0.23025,
+   "y1": -0.08475,
+   "z0": 1.3644,
+   "z1": 1.4638,
+   "r": 50.0
+  }
+ ],
+ "fmax": 40000000000.0,
+ "mesh": {
+  "dfine": 0.035,
+  "ratio": 1.4,
+  "thirds": true
+ },
+ "boundary": "pml",
+ "pml_cells": 8,
+ "conformal": true,
+ "end_db": -50,
+ "max_steps": 150000,
+ "nf": 400,
+ "name": "kisi-coupons-jlc4-3313-d__DIFF_MS__wc",
+ "monitors": [
+  {
+   "axis": "z",
+   "pos": 1.4141,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    2
+   ]
+  },
+  {
+   "axis": "y",
+   "pos": 0.1575,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    0,
+    2
+   ]
+  }
+ ],
+ "meta": {
+  "group": "T",
+  "title": "Edge-coupled 100 \u03a9 microstrip pair on L1, coupled 25.0 mm [wc: the straight coupled section (24.42 mm); ports 1 A/P near, 2 V/N near, 3 A/P far, 4 V/N far]",
+  "params": {
+   "w_mm": 0.115,
+   "s_mm": 0.2,
+   "coupled_mm": 25.02,
+   "window_mm": [
+    -12.21,
+    12.21
+   ]
+  },
+  "stackup": "tb_jlc4_3313",
+  "stackup_title": "JLCPCB JLC04161H-3313, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (second order with thin prepreg)",
+  "copper_z": [
+   1.4638,
+   1.3644,
+   0.0994,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L3"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "3",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "4",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0,
+   2
+  ],
+  "mirror": [
+   1,
+   0,
+   3,
+   2
+  ],
+  "board": "kisi-coupons-jlc4-3313-d",
+  "coupon": "DIFF_MS",
+  "window": "wc",
+  "stackup_source": "JLCPCB JLC04161H-3313, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (second order with thin prepreg)",
+  "validates": "Zdiff (TDR plateau), odd-mode \u03b5eff, Sdd21 per mm",
+  "references": [
+   "T_ts6_diff_ms"
+  ],
+  "trace_width_note": "zero-thickness strips widened by Wheeler's \u0394w for the copper thickness",
+  "mask": true
+ }
+}

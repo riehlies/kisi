@@ -1,8 +1,11 @@
 # Measured test board – plan
 
-Status: **coupons prepared, not ordered** – boards, 3D cases, kisi check, measurement plan and ordering
-checklist in [`test_board/README.md`](test_board/README.md) (DRC not run; connector footprint still a placeholder). Idea: select reference cases that can be made with the standard stackups of
-JLCPCB and Aisler, order them, simulate the same PCB files in CST and kisi-fdtd, and measure them on a VNA.
+Status: **coupons prepared (design v2), not ordered** – 23 boards (first order: JLC 4 / 6 / 8 layers with 7628
+prepreg and one Aisler board; second order: JLC 4 / 6 layers with 3313 prepreg), PDN and capacitor coupons with a
+component list, 3D cases (written, not run), kisi check, measurement plan and ordering checklist in
+[`test_board/README.md`](test_board/README.md) (DRC not run; the SMA end-launch footprint is still a placeholder).
+Idea: select reference cases that can be made with the standard stackups of JLCPCB and Aisler, order them,
+simulate the same PCB files in CST and kisi-fdtd, and measure them on a VNA.
 
 ## Goal
 Close the loop simulation → measurement for the 3D references (`validation/via_ref`) and kisi's fast models:
@@ -25,9 +28,11 @@ Screw-on, solderless end-launch connectors at the board edge, reusable across al
 - **Launch:** the launch footprint (a grounded coplanar launch on the top layer with a via fence) must be tuned
   to the stackup. Southwest Microwave publishes launch guidelines. kisi-fdtd can optimise the launch before
   ordering (a 3D case like group T).
-- **Decision:** SMA (27 GHz, enough for the ENA and for most cases) or 2.92 mm (40 GHz, for the PNA-X).
+- **Decision (maintainer, v2):** SMA, Southwest Microwave narrow block `292-04A-14` (27 GHz; planned to
+  26.5 GHz). Coupons whose stub notch would lie above the band are moved to a 2.0 mm 8-layer board (notch near
+  20 GHz).
   - These connectors are expensive but reusable: 2 per 2-port coupon, 4 for pairs, moved between coupons.
-  - All coupons should have the same edge-to-edge launch spacing.
+  - All coupons have the same feed length per side (12.5 mm, 4-port 15 mm), so one 2×thru per board de-embeds them.
 
 ## Stackups
 - **JLCPCB:** published impedance stackups.
@@ -44,9 +49,9 @@ Screw-on, solderless end-launch connectors at the board edge, reusable across al
 - **Both boards:** every board carries the stackup on the panel and its own line structures, from which εr and
   tanδ are extracted. The 3D runs then use the extracted values.
 
-## Coupons (first selection)
-All 2-port coupons use the same launch and feed length (e.g. 10 mm per side), so one 2×thru per layer
-de-embeds them.
+## Coupons (first selection; the made set is in `test_board/README.md`)
+All 2-port coupons use the same launch and feed length (12.5 mm per side, all connectors on the top side), so one
+2×thru per board de-embeds them.
 
 | Coupon | From | 4-layer (JLC / Aisler) | 6-layer (JLC) |
 |---|---|---|---|
@@ -58,10 +63,13 @@ de-embeds them.
 | pair L1→L4 / L1→L6, pitch 1.0, round / oval, 0 / 2 GND vias (4-port) | E | yes | yes |
 | edge-coupled microstrip, aggressor / victim (4-port) | T | yes | yes |
 | broadside on the two inner layers (4-port) | T | – | yes |
-| plane cavity with two ports (Z11, Z21) | G | optional, needs a low-impedance (shunt-through) setup | optional |
+| plane cavity with two ports (Z11, Z21) | G | yes (2-port shunt-thru) | – |
+| PDN loop: pin field, one capacitor at 2 / 5 / 10 / 20 mm, populate options (assembled) | H | yes (JLC 4L) | 8 layers |
+| mounted capacitor 0402 / 0603 / 0805 in shunt on a 50 Ω line (assembled) | – | yes | – |
+| via with a long stub (L1 → L3, 1.4 mm stub on a 2.0 mm board) | B | – | 8 layers |
 
-**Size:** about 15 coupons of 20 × 40 mm. On one 100 × 100 mm panel per stack: about 3 panels (JLC 4L, JLC 6L,
-Aisler 4L).
+**Size (v2):** boards split for cost: 4 layers ≤ 100 × 100 mm, 6 and 8 layers ≤ 50 × 50 mm (JLC price brackets);
+Aisler (priced by area) one dense 35 × 144 mm board.
 
 ## Data flow
 1. **Coupon generator:** `test_board/make_coupons.py` (reuses `via_cases.py` for the 3D cases): launches, feed
@@ -79,12 +87,12 @@ Aisler 4L).
 6. **Comparison:** the metrics of `via_references.md` section 6, in `references.html` as a third source
    (measurement).
 
-## Open decisions
-- Connector: SMA (27 GHz) or 2.92 mm (40 GHz), and how many (e.g. 4 for pairs). Proposal in `test_board/README.md`:
-  4 × 2.92 mm narrow block (`1092-01A-14`).
-- Stackups: JLC 4L + 6L (JLC04161H-7628 primary, JLC06161H-7628), Aisler 4L. Is a second order with a thinner prepreg
-  (JLC 2116 / 3313) wanted? (`jlc4_3313`, `jlc6_3313` are in `test_board/stackups.json`.)
-- Who runs CST, which version, which solver.
+## Decisions (v2) and open points
+- Connector: SMA `292-04A-14` (decided); 4 needed (pairs), footprint drawing still to be supplied.
+- Stackups: JLC 4L / 6L / 8L with 7628 prepreg (JLC04161H-7628, JLC06161H-7628, JLC08201H-7628) and Aisler 4L
+  first; a second order with thin prepreg (JLC04161H-3313, JLC06161H-3313) is generated as well (decided).
+- PDN coupons with assembly (decided); exact capacitors from stock, their datasheet values go into PI_CAP fields.
+- Open: who runs CST and the 3D cases, which version, which solver.
 - Budget and time slot at the VNAs.
 
 ## Effort (estimate)

@@ -1,0 +1,267 @@
+{
+ "domain": [
+  -4.5,
+  -4.0,
+  -1.0,
+  4.5,
+  4.0,
+  2.4312
+ ],
+ "board": [
+  -4.5,
+  -4.0,
+  4.5,
+  4.0
+ ],
+ "layers": [
+  {
+   "z0": -0.0305,
+   "z1": 0.0,
+   "er": 3.8,
+   "tand": 0.025
+  },
+  {
+   "z0": 0.0,
+   "z1": 0.2104,
+   "er": 4.4,
+   "tand": 0.02
+  },
+  {
+   "z0": 0.2104,
+   "z1": 0.6104,
+   "er": 4.6,
+   "tand": 0.02
+  },
+  {
+   "z0": 0.6104,
+   "z1": 0.8208,
+   "er": 4.4,
+   "tand": 0.02
+  },
+  {
+   "z0": 0.8208,
+   "z1": 1.2208,
+   "er": 4.6,
+   "tand": 0.02
+  },
+  {
+   "z0": 1.2208,
+   "z1": 1.4312,
+   "er": 4.4,
+   "tand": 0.02
+  },
+  {
+   "z0": 1.4312,
+   "z1": 1.4617,
+   "er": 3.8,
+   "tand": 0.025
+  }
+ ],
+ "sheets": [
+  {
+   "z": 1.4312,
+   "rect": [
+    -3.0,
+    0.3231,
+    0.0,
+    0.6769000000000001
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.4312,
+   "rect": [
+    0.0,
+    0.3231,
+    3.0,
+    0.6769000000000001
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.4312,
+   "rect": [
+    -3.0,
+    -0.6769000000000001,
+    0.0,
+    -0.3231
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.4312,
+   "rect": [
+    0.0,
+    -0.6769000000000001,
+    3.0,
+    -0.3231
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.2208,
+   "rect": [
+    -4.5,
+    -4.0,
+    4.5,
+    4.0
+   ],
+   "holes": [],
+   "net": "GND"
+  },
+  {
+   "z": 0.2104,
+   "rect": [
+    -4.5,
+    -4.0,
+    4.5,
+    4.0
+   ],
+   "holes": [],
+   "net": "GND"
+  }
+ ],
+ "vias": [],
+ "ports": [
+  {
+   "x": -3.0,
+   "y0": 0.3231,
+   "y1": 0.6769,
+   "z0": 1.2208,
+   "z1": 1.4312,
+   "r": 50.0
+  },
+  {
+   "x": -3.0,
+   "y0": -0.6769,
+   "y1": -0.3231,
+   "z0": 1.2208,
+   "z1": 1.4312,
+   "r": 50.0
+  },
+  {
+   "x": 3.0,
+   "y0": 0.3231,
+   "y1": 0.6769,
+   "z0": 1.2208,
+   "z1": 1.4312,
+   "r": 50.0
+  },
+  {
+   "x": 3.0,
+   "y0": -0.6769,
+   "y1": -0.3231,
+   "z0": 1.2208,
+   "z1": 1.4312,
+   "r": 50.0
+  }
+ ],
+ "fmax": 40000000000.0,
+ "mesh": {
+  "dfine": 0.035,
+  "ratio": 1.4,
+  "thirds": true
+ },
+ "boundary": "pml",
+ "pml_cells": 8,
+ "conformal": true,
+ "end_db": -50,
+ "max_steps": 150000,
+ "nf": 400,
+ "name": "kisi-coupons-jlc6-7628-c__PAIR__w6",
+ "monitors": [
+  {
+   "axis": "z",
+   "pos": 1.0208,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    2
+   ]
+  },
+  {
+   "axis": "y",
+   "pos": 0.5,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    0,
+    2
+   ]
+  }
+ ],
+ "meta": {
+  "group": "thru",
+  "title": "pair 2\u00d7thru on L1 at the 1.0 mm via pitch (100 \u03a9 differential), 30 mm edge to edge [w6: pair at the 1.0 mm via pitch, 3 mm on each side; ports 1 P near, 2 N near, 3 P far, 4 N far]",
+  "params": {
+   "w_pair_mm": 0.315,
+   "pitch_mm": 1.0,
+   "window_mm": [
+    -3.0,
+    3.0
+   ]
+  },
+  "stackup": "tb_jlc6_7628",
+  "stackup_title": "JLCPCB JLC06161H-7628, 6 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (same top prepreg as JLC04161H-7628; the LibreVNA stack)",
+  "copper_z": [
+   1.4312,
+   1.2208,
+   0.8208,
+   0.6104,
+   0.2104,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "3",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "4",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0,
+   2
+  ],
+  "mirror": [
+   1,
+   0,
+   3,
+   2
+  ],
+  "board": "kisi-coupons-jlc6-7628-c",
+  "coupon": "PAIR",
+  "window": "w6",
+  "stackup_source": "JLCPCB JLC06161H-7628, 6 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (same top prepreg as JLC04161H-7628; the LibreVNA stack)",
+  "validates": "fixture of the pair coupons on this board",
+  "references": [],
+  "trace_width_note": "zero-thickness strips widened by Wheeler's \u0394w for the copper thickness",
+  "mask": true
+ }
+}

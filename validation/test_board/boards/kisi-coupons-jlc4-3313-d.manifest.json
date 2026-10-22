@@ -1,0 +1,326 @@
+{
+ "board": "kisi-coupons-jlc4-3313-d",
+ "key": "jlc4_3313_d",
+ "part": "coupling / capacitors",
+ "file": "kisi-coupons-jlc4-3313-d.kicad_pcb",
+ "stackup": "jlc4_3313",
+ "stackup_title": "JLCPCB JLC04161H-3313, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (second order with thin prepreg)",
+ "layers": 4,
+ "manufacturer": "JLCPCB",
+ "template": "JLC04161H-3313",
+ "date": "2026-10-22",
+ "size_mm": [
+  50.0,
+  96.0
+ ],
+ "thickness_mm": 1.5642,
+ "coupons": [
+  {
+   "id": "THRU",
+   "group": "thru",
+   "title": "2\u00d7thru on L1, 25 mm edge to edge",
+   "length_mm": 25.0,
+   "height_mm": 12.0,
+   "validates": "fixture of every coupon on this board (P370 2\u00d7thru); multiline TRL thru",
+   "references": [
+    "thru_s4_L1"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.15,
+    "length_mm": 25.0
+   },
+   "nets": [
+    "SE_THRU"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J1",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    },
+    {
+     "ref": "J2",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-d__THRU__w10"
+   ]
+  },
+  {
+   "id": "CAPZ_0402",
+   "group": "CAP",
+   "title": "Shunt 0402 capacitor on the 50 \u03a9 line (2-port shunt-thru), 25 mm",
+   "length_mm": 25.0,
+   "height_mm": 12.0,
+   "validates": "impedance of a mounted 0402 capacitor: C, ESR, ESL and mounting inductance (data/components.json esl_nh by package, ESR model, mount_nh)",
+   "references": [],
+   "params": {
+    "package": "0402",
+    "pitch_mm": 0.96,
+    "kicad_footprint": "Capacitor_SMD:C_0402_1005Metric"
+   },
+   "nets": [
+    "SE_CAPZ_0402",
+    "GND"
+   ],
+   "measure": "VNA 2-port shunt-thru: Z = 25\u00b7S21/(1 \u2212 S21)",
+   "connectors": [
+    {
+     "ref": "J3",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_CAPZ_0402"
+    },
+    {
+     "ref": "J4",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_CAPZ_0402"
+    }
+   ],
+   "parts": [
+    {
+     "ref": "C1",
+     "role": "shunt",
+     "value": "100nF 16V X7R",
+     "package": "0402",
+     "populate": "empty / 0 \u03a9 / 100 nF X7R / others (component list)"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-d__CAPZ_0402__w10"
+   ]
+  },
+  {
+   "id": "CAPZ_0603",
+   "group": "CAP",
+   "title": "Shunt 0603 capacitor on the 50 \u03a9 line (2-port shunt-thru), 25 mm",
+   "length_mm": 25.0,
+   "height_mm": 12.0,
+   "validates": "impedance of a mounted 0603 capacitor: C, ESR, ESL and mounting inductance (data/components.json esl_nh by package, ESR model, mount_nh)",
+   "references": [],
+   "params": {
+    "package": "0603",
+    "pitch_mm": 1.55,
+    "kicad_footprint": "Capacitor_SMD:C_0603_1608Metric"
+   },
+   "nets": [
+    "SE_CAPZ_0603",
+    "GND"
+   ],
+   "measure": "VNA 2-port shunt-thru: Z = 25\u00b7S21/(1 \u2212 S21)",
+   "connectors": [
+    {
+     "ref": "J5",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_CAPZ_0603"
+    },
+    {
+     "ref": "J6",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_CAPZ_0603"
+    }
+   ],
+   "parts": [
+    {
+     "ref": "C2",
+     "role": "shunt",
+     "value": "100nF 16V X7R",
+     "package": "0603",
+     "populate": "empty / 0 \u03a9 / 100 nF X7R / others (component list)"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-d__CAPZ_0603__w10"
+   ]
+  },
+  {
+   "id": "CAPZ_0805",
+   "group": "CAP",
+   "title": "Shunt 0805 capacitor on the 50 \u03a9 line (2-port shunt-thru), 25 mm",
+   "length_mm": 25.0,
+   "height_mm": 12.0,
+   "validates": "impedance of a mounted 0805 capacitor: C, ESR, ESL and mounting inductance (data/components.json esl_nh by package, ESR model, mount_nh)",
+   "references": [],
+   "params": {
+    "package": "0805",
+    "pitch_mm": 1.9,
+    "kicad_footprint": "Capacitor_SMD:C_0805_2012Metric"
+   },
+   "nets": [
+    "SE_CAPZ_0805",
+    "GND"
+   ],
+   "measure": "VNA 2-port shunt-thru: Z = 25\u00b7S21/(1 \u2212 S21)",
+   "connectors": [
+    {
+     "ref": "J7",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_CAPZ_0805"
+    },
+    {
+     "ref": "J8",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_CAPZ_0805"
+    }
+   ],
+   "parts": [
+    {
+     "ref": "C3",
+     "role": "shunt",
+     "value": "100nF 16V X7R",
+     "package": "0805",
+     "populate": "empty / 0 \u03a9 / 100 nF X7R / others (component list)"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-d__CAPZ_0805__w10"
+   ]
+  },
+  {
+   "id": "XT_MS",
+   "group": "T",
+   "title": "Microstrip aggressor and victim on L1, edge gap = w, coupled 25.6 mm",
+   "length_mm": 50.0,
+   "height_mm": 24.0,
+   "validates": "NEXT / FEXT (kisi's NEXT is 70\u201380 % high against 3D)",
+   "references": [
+    "T_ts6_xt_ms_s10"
+   ],
+   "params": {
+    "w_mm": 0.15,
+    "gap_mm": 0.15,
+    "coupled_mm": 25.6
+   },
+   "nets": [
+    "SE_XT_A",
+    "SE_XT_V"
+   ],
+   "measure": "VNA 4-port; scope TDR/TDT",
+   "connectors": [
+    {
+     "ref": "J9",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_XT_A"
+    },
+    {
+     "ref": "J10",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_XT_V"
+    },
+    {
+     "ref": "J11",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_XT_A"
+    },
+    {
+     "ref": "J12",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_XT_V"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-d__XT_MS__wc"
+   ]
+  },
+  {
+   "id": "DIFF_MS",
+   "group": "T",
+   "title": "Edge-coupled 100 \u03a9 microstrip pair on L1, coupled 25.0 mm",
+   "length_mm": 50.0,
+   "height_mm": 24.0,
+   "validates": "Zdiff (TDR plateau), odd-mode \u03b5eff, Sdd21 per mm",
+   "references": [
+    "T_ts6_diff_ms"
+   ],
+   "params": {
+    "w_mm": 0.115,
+    "s_mm": 0.2,
+    "coupled_mm": 25.02
+   },
+   "nets": [
+    "DP_DIFF_MS_P",
+    "DP_DIFF_MS_N"
+   ],
+   "measure": "VNA 4-port; scope TDR/TDT",
+   "connectors": [
+    {
+     "ref": "J13",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_DIFF_MS_P"
+    },
+    {
+     "ref": "J14",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_DIFF_MS_N"
+    },
+    {
+     "ref": "J15",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_DIFF_MS_P"
+    },
+    {
+     "ref": "J16",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_DIFF_MS_N"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-d__DIFF_MS__wc"
+   ]
+  }
+ ],
+ "fdtd_cases": [
+  "kisi-coupons-jlc4-3313-d__THRU__w10",
+  "kisi-coupons-jlc4-3313-d__CAPZ_0402__w10",
+  "kisi-coupons-jlc4-3313-d__CAPZ_0603__w10",
+  "kisi-coupons-jlc4-3313-d__CAPZ_0805__w10",
+  "kisi-coupons-jlc4-3313-d__XT_MS__wc",
+  "kisi-coupons-jlc4-3313-d__DIFF_MS__wc"
+ ],
+ "fdtd_cells": {
+  "kisi-coupons-jlc4-3313-d__THRU__w10": 677322,
+  "kisi-coupons-jlc4-3313-d__CAPZ_0402__w10": 747040,
+  "kisi-coupons-jlc4-3313-d__CAPZ_0603__w10": 835142,
+  "kisi-coupons-jlc4-3313-d__CAPZ_0805__w10": 856196,
+  "kisi-coupons-jlc4-3313-d__XT_MS__wc": 913410,
+  "kisi-coupons-jlc4-3313-d__DIFF_MS__wc": 884520
+ }
+}

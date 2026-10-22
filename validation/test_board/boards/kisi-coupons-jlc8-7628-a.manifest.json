@@ -1,0 +1,202 @@
+{
+ "board": "kisi-coupons-jlc8-7628-a",
+ "key": "jlc8_7628_a",
+ "part": "lines / vias",
+ "file": "kisi-coupons-jlc8-7628-a.kicad_pcb",
+ "stackup": "jlc8_7628",
+ "stackup_title": "JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards)",
+ "layers": 8,
+ "manufacturer": "JLCPCB",
+ "template": "JLC08201H-7628",
+ "date": "2026-10-22",
+ "size_mm": [
+  50.0,
+  48.0
+ ],
+ "thickness_mm": 2.0528,
+ "coupons": [
+  {
+   "id": "THRU",
+   "group": "thru",
+   "title": "2\u00d7thru on L1, 25 mm edge to edge",
+   "length_mm": 25.0,
+   "height_mm": 12.0,
+   "validates": "fixture of every coupon on this board (P370 2\u00d7thru); multiline TRL thru",
+   "references": [
+    "thru_s4_L1"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.345,
+    "length_mm": 25.0
+   },
+   "nets": [
+    "SE_THRU"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J1",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    },
+    {
+     "ref": "J2",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc8-7628-a__THRU__w10"
+   ]
+  },
+  {
+   "id": "VLV_L3",
+   "group": "B",
+   "title": "via\u2013line\u2013via L1\u2192In2.Cu\u2192L1 (through vias, 1.4 mm stubs to L8), 5 mm stripline",
+   "length_mm": 30.0,
+   "height_mm": 12.0,
+   "validates": "long open stub: notch near 20 GHz, inside the SMA band (B group)",
+   "references": [
+    "B_s8_L1L3_stub_d300",
+    "X_s8x2_L1L3_bd_d200"
+   ],
+   "params": {
+    "mid_layer": "In2.Cu",
+    "line_mm": 5.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "In2.Cu\u2192B.Cu"
+   },
+   "nets": [
+    "SE_VLV_L3"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J3",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_VLV_L3"
+    },
+    {
+     "ref": "J4",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_VLV_L3"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc8-7628-a__VLV_L3__wv"
+   ]
+  },
+  {
+   "id": "B_L1L8",
+   "group": "B",
+   "title": "via\u2013line\u2013via L1\u2192L8\u2192L1 (through vias, no stub), 4 GND vias at 1 mm",
+   "length_mm": 30.0,
+   "height_mm": 12.0,
+   "validates": "through via without stub",
+   "references": [
+    "B_s8_L1L8_d300"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 5.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "none"
+   },
+   "nets": [
+    "SE_B_L1L8"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J5",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_B_L1L8"
+    },
+    {
+     "ref": "J6",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_B_L1L8"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc8-7628-a__B_L1L8__wv"
+   ]
+  },
+  {
+   "id": "SL_L3",
+   "group": "T",
+   "title": "via\u2013line\u2013via with 25 mm stripline on In2.Cu",
+   "length_mm": 50.0,
+   "height_mm": 12.0,
+   "validates": "stripline \u03b3 (line\u2013line with VLV_L3), Zc from the TDR plateau",
+   "references": [
+    "T_ts6_sl_10",
+    "T_ts6_sl_20"
+   ],
+   "params": {
+    "mid_layer": "In2.Cu",
+    "line_mm": 25.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "In2.Cu\u2192B.Cu"
+   },
+   "nets": [
+    "SE_SL_L3"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J7",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_SL_L3"
+    },
+    {
+     "ref": "J8",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_SL_L3"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc8-7628-a__SL_L3__w10",
+    "kisi-coupons-jlc8-7628-a__SL_L3__w20"
+   ]
+  }
+ ],
+ "fdtd_cases": [
+  "kisi-coupons-jlc8-7628-a__THRU__w10",
+  "kisi-coupons-jlc8-7628-a__VLV_L3__wv",
+  "kisi-coupons-jlc8-7628-a__B_L1L8__wv",
+  "kisi-coupons-jlc8-7628-a__SL_L3__w10",
+  "kisi-coupons-jlc8-7628-a__SL_L3__w20"
+ ],
+ "fdtd_cells": {
+  "kisi-coupons-jlc8-7628-a__THRU__w10": 932137,
+  "kisi-coupons-jlc8-7628-a__VLV_L3__wv": 1789303,
+  "kisi-coupons-jlc8-7628-a__B_L1L8__wv": 1761125,
+  "kisi-coupons-jlc8-7628-a__SL_L3__w10": 972944,
+  "kisi-coupons-jlc8-7628-a__SL_L3__w20": 1561616
+ }
+}

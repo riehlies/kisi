@@ -1,0 +1,216 @@
+{
+ "solver": "field",
+ "kisi": "kisi.mjs",
+ "w50": {
+  "0": 0.15,
+  "2": 0.515,
+  "3": 0.515,
+  "5": 0.15
+ },
+ "diff": {
+  "0": {
+   "w": 0.115,
+   "s": 0.2
+  },
+  "2": {
+   "w": 0.21,
+   "s": 0.2
+  }
+ },
+ "pair_via": {
+  "0": {
+   "w": 0.15,
+   "s": 0.85,
+   "pitch": 1.0
+  },
+  "2": {
+   "w": 0.415,
+   "s": 0.585,
+   "pitch": 1.0
+  },
+  "3": {
+   "w": 0.415,
+   "s": 0.585,
+   "pitch": 1.0
+  },
+  "5": {
+   "w": 0.15,
+   "s": 0.85,
+   "pitch": 1.0
+  }
+ },
+ "notes": [],
+ "launch": {
+  "w": 0.255,
+  "gap": 0.105,
+  "cut": 0.465,
+  "cut_layer": 1,
+  "note": "pin-wide launch with an opening in the first plane under it (thin top dielectric); PLACEHOLDER like the footprint"
+ },
+ "cpwg": {
+  "w": 0.14,
+  "gap": 0.18,
+  "note": "gap of the LibreVNA RF class (T_vna6_cpwg), width for 50 \u03a9"
+ },
+ "pair_pitch": 12.7,
+ "z_table": [
+  {
+   "what": "50 \u03a9 line (microstrip)",
+   "layer": "F.Cu",
+   "w_mm": 0.15,
+   "s_mm": null,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 50.0,
+   "z_formula": 51.39,
+   "z_field": 50.2,
+   "dev_formula_pct": 2.8,
+   "dev_field_pct": 0.4
+  },
+  {
+   "what": "50 \u03a9 line (stripline)",
+   "layer": "In2.Cu",
+   "w_mm": 0.515,
+   "s_mm": null,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 50.0,
+   "z_formula": 49.91,
+   "z_field": 50.08,
+   "dev_formula_pct": -0.2,
+   "dev_field_pct": 0.2
+  },
+  {
+   "what": "50 \u03a9 line (stripline)",
+   "layer": "In3.Cu",
+   "w_mm": 0.515,
+   "s_mm": null,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 50.0,
+   "z_formula": 49.94,
+   "z_field": 50.07,
+   "dev_formula_pct": -0.1,
+   "dev_field_pct": 0.1
+  },
+  {
+   "what": "50 \u03a9 line (microstrip)",
+   "layer": "B.Cu",
+   "w_mm": 0.15,
+   "s_mm": null,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 50.0,
+   "z_formula": 51.39,
+   "z_field": 50.2,
+   "dev_formula_pct": 2.8,
+   "dev_field_pct": 0.4
+  },
+  {
+   "what": "launch (grounded coplanar, In1.Cu cut out 0.465 mm)",
+   "layer": "F.Cu",
+   "w_mm": 0.255,
+   "s_mm": null,
+   "gap_mm": 0.105,
+   "cut_mm": 0.465,
+   "target_ohm": 50.0,
+   "z_formula": 62.84,
+   "z_field": 50.04,
+   "dev_formula_pct": 25.7,
+   "dev_field_pct": 0.1
+  },
+  {
+   "what": "CPWG coupon (LibreVNA gap 0.18 mm)",
+   "layer": "F.Cu",
+   "w_mm": 0.14,
+   "s_mm": null,
+   "gap_mm": 0.18,
+   "cut_mm": null,
+   "target_ohm": 50.0,
+   "z_formula": 52.98,
+   "z_field": 50.19,
+   "dev_formula_pct": 6.0,
+   "dev_field_pct": 0.4
+  },
+  {
+   "what": "100 \u03a9 coupled pair",
+   "layer": "F.Cu",
+   "w_mm": 0.115,
+   "s_mm": 0.2,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 106.84,
+   "z_field": 99.85,
+   "dev_formula_pct": 6.8,
+   "dev_field_pct": -0.1
+  },
+  {
+   "what": "100 \u03a9 coupled pair",
+   "layer": "In2.Cu",
+   "w_mm": 0.21,
+   "s_mm": 0.2,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 113.13,
+   "z_field": 99.88,
+   "dev_formula_pct": 13.1,
+   "dev_field_pct": -0.1
+  },
+  {
+   "what": "pair at the 1.0 mm via pitch",
+   "layer": "F.Cu",
+   "w_mm": 0.15,
+   "s_mm": 0.85,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 102.78,
+   "z_field": 100.41,
+   "dev_formula_pct": 2.8,
+   "dev_field_pct": 0.4
+  },
+  {
+   "what": "pair at the 1.0 mm via pitch",
+   "layer": "In2.Cu",
+   "w_mm": 0.415,
+   "s_mm": 0.585,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 100.75,
+   "z_field": 100.31,
+   "dev_formula_pct": 0.7,
+   "dev_field_pct": 0.3
+  },
+  {
+   "what": "pair at the 1.0 mm via pitch",
+   "layer": "In3.Cu",
+   "w_mm": 0.415,
+   "s_mm": 0.585,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 100.8,
+   "z_field": 100.29,
+   "dev_formula_pct": 0.8,
+   "dev_field_pct": 0.3
+  },
+  {
+   "what": "pair at the 1.0 mm via pitch",
+   "layer": "B.Cu",
+   "w_mm": 0.15,
+   "s_mm": 0.85,
+   "gap_mm": null,
+   "cut_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 102.78,
+   "z_field": 100.41,
+   "dev_formula_pct": 2.8,
+   "dev_field_pct": 0.4
+  }
+ ],
+ "stackup": "jlc6_3313",
+ "date": "2026-10-22"
+}

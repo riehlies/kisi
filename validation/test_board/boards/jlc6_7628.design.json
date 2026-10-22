@@ -17,15 +17,20 @@
    "s": 0.2
   }
  },
- "notes": [],
- "launch": {
-  "w": 0.315,
-  "gap": 0.3
- },
  "pair_via": {
   "0": {
    "w": 0.315,
    "s": 0.685,
+   "pitch": 1.0
+  },
+  "2": {
+   "w": 0.355,
+   "s": 0.645,
+   "pitch": 1.0
+  },
+  "3": {
+   "w": 0.355,
+   "s": 0.645,
    "pitch": 1.0
   },
   "5": {
@@ -33,6 +38,11 @@
    "s": 0.685,
    "pitch": 1.0
   }
+ },
+ "notes": [],
+ "launch": {
+  "w": 0.315,
+  "gap": 0.3
  },
  "cpwg": {
   "w": 0.28,
@@ -102,7 +112,7 @@
    "dev_field_pct": 0.0
   },
   {
-   "what": "CPWG coupon (LibreVNA class)",
+   "what": "CPWG coupon (LibreVNA gap 0.18 mm)",
    "layer": "F.Cu",
    "w_mm": 0.28,
    "s_mm": null,
@@ -148,6 +158,30 @@
    "z_field": 99.82,
    "dev_formula_pct": 4.3,
    "dev_field_pct": -0.2
+  },
+  {
+   "what": "pair at the 1.0 mm via pitch",
+   "layer": "In2.Cu",
+   "w_mm": 0.355,
+   "s_mm": 0.645,
+   "gap_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 100.57,
+   "z_field": 100.17,
+   "dev_formula_pct": 0.6,
+   "dev_field_pct": 0.2
+  },
+  {
+   "what": "pair at the 1.0 mm via pitch",
+   "layer": "In3.Cu",
+   "w_mm": 0.355,
+   "s_mm": 0.645,
+   "gap_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 100.6,
+   "z_field": 100.11,
+   "dev_formula_pct": 0.6,
+   "dev_field_pct": 0.1
   },
   {
    "what": "pair at the 1.0 mm via pitch",

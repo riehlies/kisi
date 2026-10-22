@@ -1,0 +1,256 @@
+{
+ "domain": [
+  -14.2,
+  -4.0,
+  -1.0,
+  14.2,
+  4.0,
+  2.4858000000000002
+ ],
+ "board": [
+  -14.2,
+  -4.0,
+  14.2,
+  4.0
+ ],
+ "layers": [
+  {
+   "z0": -0.0305,
+   "z1": 0.0,
+   "er": 3.8,
+   "tand": 0.025
+  },
+  {
+   "z0": 0.0,
+   "z1": 0.2104,
+   "er": 4.4,
+   "tand": 0.02
+  },
+  {
+   "z0": 0.2104,
+   "z1": 1.2754,
+   "er": 4.6,
+   "tand": 0.02
+  },
+  {
+   "z0": 1.2754,
+   "z1": 1.4858,
+   "er": 4.4,
+   "tand": 0.02
+  },
+  {
+   "z0": 1.4858,
+   "z1": 1.5163,
+   "er": 3.8,
+   "tand": 0.025
+  }
+ ],
+ "sheets": [
+  {
+   "z": 1.4858,
+   "rect": [
+    -12.7,
+    0.15309999999999999,
+    0.0,
+    0.5368999999999999
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.4858,
+   "rect": [
+    0.0,
+    0.15309999999999999,
+    12.7,
+    0.5368999999999999
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.4858,
+   "rect": [
+    -12.7,
+    -0.5368999999999999,
+    0.0,
+    -0.15309999999999999
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.4858,
+   "rect": [
+    0.0,
+    -0.5368999999999999,
+    12.7,
+    -0.15309999999999999
+   ],
+   "net": "SIG"
+  },
+  {
+   "z": 1.2754,
+   "rect": [
+    -14.2,
+    -4.0,
+    14.2,
+    4.0
+   ],
+   "holes": [],
+   "net": "GND"
+  },
+  {
+   "z": 0.2104,
+   "rect": [
+    -14.2,
+    -4.0,
+    14.2,
+    4.0
+   ],
+   "holes": [],
+   "net": "GND"
+  }
+ ],
+ "vias": [],
+ "ports": [
+  {
+   "x": -12.7,
+   "y0": 0.1531,
+   "y1": 0.5369,
+   "z0": 1.2754,
+   "z1": 1.4858,
+   "r": 50.0
+  },
+  {
+   "x": -12.7,
+   "y0": -0.5369,
+   "y1": -0.1531,
+   "z0": 1.2754,
+   "z1": 1.4858,
+   "r": 50.0
+  },
+  {
+   "x": 12.7,
+   "y0": 0.1531,
+   "y1": 0.5369,
+   "z0": 1.2754,
+   "z1": 1.4858,
+   "r": 50.0
+  },
+  {
+   "x": 12.7,
+   "y0": -0.5369,
+   "y1": -0.1531,
+   "z0": 1.2754,
+   "z1": 1.4858,
+   "r": 50.0
+  }
+ ],
+ "fmax": 40000000000.0,
+ "mesh": {
+  "dfine": 0.035,
+  "ratio": 1.4,
+  "thirds": true
+ },
+ "boundary": "pml",
+ "pml_cells": 8,
+ "conformal": true,
+ "end_db": -50,
+ "max_steps": 150000,
+ "nf": 400,
+ "name": "kisi-coupons-jlc4-7628-d__XT_MS__wc",
+ "monitors": [
+  {
+   "axis": "z",
+   "pos": 1.3806,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    2
+   ]
+  },
+  {
+   "axis": "y",
+   "pos": 0.345,
+   "freqs": [
+    10000000000.0,
+    20000000000.0,
+    30000000000.0
+   ],
+   "comps": [
+    0,
+    2
+   ]
+  }
+ ],
+ "meta": {
+  "group": "T",
+  "title": "Microstrip aggressor and victim on L1, edge gap = w, coupled 26.0 mm [wc: the straight coupled section (25.4 mm); ports 1 A/P near, 2 V/N near, 3 A/P far, 4 V/N far]",
+  "params": {
+   "w_mm": 0.345,
+   "gap_mm": 0.345,
+   "coupled_mm": 25.99,
+   "window_mm": [
+    -12.7,
+    12.7
+   ]
+  },
+  "stackup": "tb_jlc4_7628",
+  "stackup_title": "JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template)",
+  "copper_z": [
+   1.4858,
+   1.2754,
+   0.2104,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L3"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "3",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "4",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0,
+   2
+  ],
+  "mirror": [
+   1,
+   0,
+   3,
+   2
+  ],
+  "board": "kisi-coupons-jlc4-7628-d",
+  "coupon": "XT_MS",
+  "window": "wc",
+  "stackup_source": "JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template)",
+  "validates": "NEXT / FEXT (kisi's NEXT is 70\u201380 % high against 3D)",
+  "references": [
+   "T_ts6_xt_ms_s10"
+  ],
+  "trace_width_note": "zero-thickness strips widened by Wheeler's \u0394w for the copper thickness",
+  "mask": true
+ }
+}

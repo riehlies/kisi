@@ -441,16 +441,23 @@ selected yet)*.
 | Licences of models and standards | local folders, hashes only, shippable fixtures in CI |
 | Scope creep for a side project | milestones that stand alone; stop after M4 if DDR is not needed |
 
-## 8. Open decisions for the maintainer
-1. **Variants:** KiCad 10 variants plus kisi.json (sheets, references, BOM import) as proposed? Which variant
-   when none is chosen – the board as is, with a warning?
-2. **Crates:** a separate `kisi-ibis` crate for parser and buffers, solver and network inside `kisi-si`?
-3. **First flow:** generic single-ended before DDR3/DDR4, as proposed?
-4. **DDR board:** which open KiCad board with DDR3/DDR4 becomes the development case?
-5. **Standards:** buy JESD79-3F/-4D/-5D, or take limits from vendor datasheets with sources?
-6. **Private models in the browser:** memory only, or IndexedDB on request?
-7. **ngspice deck export:** worth adding as a user-facing feature, or only as a validation script in `tools/`?
-8. **BER contours:** out of scope (no jitter models), or a simple jitter/noise model later?
+## 8. Decisions (maintainer, 22 Oct 2026)
+1. **Variants:** the variant must be chosen in `<board>.kisi.json` (KiCad 10 variants from the board file, for older
+   boards a `variants` section by sheet, references or BOM). If a board has variants – or forks in which all
+   alternative parts are fitted – and none is chosen, kisi asks the user: the viewer shows a selector before it
+   computes lanes, the CLI stops with the list of variants and asks for `--variant` or a kisi.json entry.
+2. **Crates:** a separate `kisi-ibis` crate for the parser and buffer models; solver and network in `kisi-si`.
+3. **First flow:** a generic single-ended flow (clocks, GPIO, RGMII) before DDR3/DDR4.
+4. **DDR board:** Antmicro's open boards are fine. The DDR4 RDIMM tester has a DIMM socket, so a connector model and
+   a module model (DIMM routing, EBD) would be needed as well; a board with discrete DRAM chips avoids that and is
+   preferred as the first case.
+5. **Standards:** limits from application notes, datasheets and other public sources with references. JEDEC
+   documents the maintainer can download may be used locally for checking, never published.
+6. **Private models in the browser:** kept in memory only.
+7. **ngspice export:** first only as a validation script in `tools/`; a user-facing export (e.g. to debug a channel
+   by adding a termination in SPICE) stays in mind for later.
+8. **BER:** possibly for the simpler protocols without equalisation, with jitter as a user setting (it depends on
+   the ICs); not for DDR5 or SerDes with equalisation.
 
 ## Sources
 - [S1] IBIS Open Forum, specifications: IBIS 8.0 (ratified 5 Dec 2025), Touchstone 2.1, IBIS-ISS 1.0 –

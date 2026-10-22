@@ -15,7 +15,7 @@ function renderCfgStatus() {
 function renderSide() {
   const sc = S.scene, an = S.an, su = sc.stackup;
   $("boardName").textContent = S.name;
-  $("boardMeta").textContent = `${su.copper.length} layers · ${sc.tracks.length / 7 - (sc.pad_tracks || []).length} track segments · ${(sc.pad_tracks || []).length} signal pads · ${sc.vias.length / 7} vias`;
+  $("boardMeta").textContent = `${su.copper.length} layers · ${sc.tracks.length / 7 - (sc.pad_tracks || []).length} track segments · ${new Set(sc.pad_track_pad || []).size} signal pads · ${sc.vias.length / 7} vias`;
   // KPIs
   let lenT = 0, lenOk = 0, nets = 0;
   for (const n of an.nets) if (n.target) { nets++; lenT += n.length; lenOk += (n.within5 || 0) * n.length; }
@@ -26,6 +26,7 @@ function renderSide() {
   $("k-noref").textContent = an.skeleton ? "–" : fmt(noref, 0);
   $("warnings").innerHTML = (sc.warnings || []).map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
   renderCfgStatus();
+  renderVariantCard();
   // stackup
   let total = 0; su.copper.forEach((c) => total += c.thickness); su.dielectrics.forEach((d, i) => total += stackEff(i).thickness);
   $("stackTotal").textContent = fmt(total, 2) + " mm";
@@ -116,8 +117,10 @@ function renderLegend() {
   const C = S.colors, L = $("legend");
   if (S.tab === "pi") return renderPiLegend();
   if (S.tab === "ch") {
-    const it = [[C.ok, "channel OK"], [C.high1, "limit exceeded (yellow)"], [C.high2, "red / error"], [C.none, "not checked"]];
-    L.innerHTML = `<strong>Channel check</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
+    const it = [[C.ok, "channel OK"], [C.high1, "limit exceeded (yellow)"], [C.high2, "red / error"], [C.lane, "channel, not checked yet"], [C.none, "other nets"],
+      ...(variantUnused() ? [[C.unused, "not used in this variant"]] : [])];
+    L.innerHTML = `<strong>Channel check</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("") +
+      `<div class="row muted">click a channel to open it</div>`;
     return;
   }
   if (S.an && S.an.skeleton) {

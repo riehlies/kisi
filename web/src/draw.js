@@ -41,25 +41,37 @@ function drawNow() {
     if (!S.layerOn[l]) continue;
     ctx.fillStyle = C.pad; ctx.fill(S.static.pads[l]);
     ctx.globalAlpha = dim ? 0.18 : 1;
-    for (const g of S.paths[l]) {
-      ctx.strokeStyle = g.col; ctx.lineWidth = Math.max(g.w, 1.2 * px); ctx.stroke(g.path);
-    }
+    for (const g of S.paths[l]) drawGroup(g, px);
     ctx.globalAlpha = 1;
   }
   ctx.fillStyle = C.via; ctx.fill(S.static.vias);
+  // branches of a selected lane (the other path of a fork): dashed, under the lane itself
+  if (dim && S.stubPaths) {
+    ctx.setLineDash([3 * px, 3 * px]);
+    for (let l = n - 1; l >= 0; l--) {
+      if (!S.layerOn[l]) continue;
+      for (const g of S.stubPaths[l]) drawGroup(g, px);
+    }
+    ctx.setLineDash([]);
+  }
   if (dim && S.selPaths) {
     for (let l = n - 1; l >= 0; l--) {
       if (!S.layerOn[l]) continue;
-      for (const g of S.selPaths[l]) { ctx.strokeStyle = C.halo; ctx.lineWidth = Math.max(g.w, 1.2 * px) + 3 * px; ctx.stroke(g.path); }
-      for (const g of S.selPaths[l]) { ctx.strokeStyle = g.col; ctx.lineWidth = Math.max(g.w, 1.2 * px); ctx.stroke(g.path); }
+      for (const g of S.selPaths[l]) drawGroup(g, px, 3);
+      for (const g of S.selPaths[l]) drawGroup(g, px);
     }
   }
   if (S.hover >= 0) {
-    const i = S.hover, pc = S.pieces;
-    ctx.strokeStyle = C.halo; ctx.lineWidth = Math.max(pc.w[i], 1.2 * px) + 4 * px;
-    ctx.beginPath(); ctx.moveTo(pc.ax[i], pc.ay[i]); ctx.lineTo(pc.bx[i], pc.by[i]); ctx.stroke();
-    ctx.strokeStyle = pieceColor(i); ctx.lineWidth = Math.max(pc.w[i], 1.2 * px);
-    ctx.stroke();
+    const i = S.hover, pc = S.pieces, pad = padPieceShape(i, true);
+    if (pad) {
+      ctx.strokeStyle = C.halo; ctx.lineWidth = 4 * px; ctx.stroke(pad);
+      ctx.fillStyle = pieceColor(i); ctx.fill(pad);
+    } else {
+      ctx.strokeStyle = C.halo; ctx.lineWidth = Math.max(pc.w[i], 1.2 * px) + 4 * px;
+      ctx.beginPath(); ctx.moveTo(pc.ax[i], pc.ay[i]); ctx.lineTo(pc.bx[i], pc.by[i]); ctx.stroke();
+      ctx.strokeStyle = pieceColor(i); ctx.lineWidth = Math.max(pc.w[i], 1.2 * px);
+      ctx.stroke();
+    }
   }
   drawXtMap(px);
   if (S.mark && S.selNet === S.mark.net) {
@@ -68,6 +80,14 @@ function drawNow() {
   }
   drawXtMarks(px);
   drawPathMarks(px);
+}
+// one colour group of netPaths: tracks stroked, pads filled with their outline; `halo` (css px):
+// the outline drawn wider in the halo colour instead
+function drawGroup(g, px, halo = 0) {
+  const C = S.colors;
+  ctx.strokeStyle = halo ? C.halo : g.col; ctx.lineWidth = Math.max(g.w, 1.2 * px) + halo * px; ctx.stroke(g.path);
+  if (!g.fill) return;
+  if (halo) { ctx.lineWidth = halo * px; ctx.stroke(g.fill); } else { ctx.fillStyle = g.col; ctx.fill(g.fill); }
 }
 function zoomTo(x, y, half) {
   S.mark = { x, y, net: S.selNet };

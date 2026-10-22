@@ -9,7 +9,16 @@ use std::cell::RefCell;
 
 #[derive(Default)]
 struct State {
+    /// board as analysed: `board_base` with the assembly variant and the configuration
     board: Option<Board>,
+    /// board as read (with the project file): variants and configuration are applied to a copy
+    board_base: Option<Board>,
+    /// configuration (`<board>.kisi.json`), the files it refers to (BOMs) and the viewer's
+    /// choice of assembly variant (wins over the configuration's)
+    cfg: Option<kisi_core::config::BoardConfig>,
+    files: kisi_core::variant::Files,
+    variant_choice: Option<String>,
+    variant: Option<kisi_core::variant::VariantState>,
     /// stackup as read from the file (overrides are applied to a copy)
     stackup_file: Option<kisi_core::board::Stackup>,
     pro: Option<String>,
@@ -28,6 +37,35 @@ struct State {
     params: Option<Params>,
     /// device-to-device lanes of the board (topology), from `kisi_buses`
     buses: Option<Vec<kisi_core::topology::Bus>>,
+    /// Touchstone files for the channel behind connectors (in memory, by file name)
+    touchstones: std::collections::HashMap<String, kisi_core::rf::Touchstone>,
+}
+
+/// The Touchstone file a connector end names: by the path written, else by its file name.
+fn ts_for<'a>(st: &'a State, ce: Option<&kisi_core::eye::ConnEnd>) -> Option<&'a kisi_core::rf::Touchstone> {
+    let f = &ce?.touchstone.as_ref()?.file;
+    st.touchstones.get(f).or_else(|| st.touchstones.get(f.rsplit(['/', '\\']).next()?))
+}
+
+/// Load (or with "remove": true drop) a Touchstone file for the channel behind connectors:
+/// {"name": file name, "text": contents}. Output: {nports, points, f_min_ghz, f_max_ghz, z0,
+/// warnings}. Files stay in memory only.
+#[no_mangle]
+pub extern "C" fn kisi_touchstone(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(ST.with(|st| -> Result<String, String> {
+        let mut st = st.borrow_mut();
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let name = v["name"].as_str().ok_or("name missing")?.to_string();
+        if v["remove"].as_bool() == Some(true) {
+            st.touchstones.remove(&name);
+            return Ok("{}".into());
+        }
+        let ts = kisi_core::rf::parse_touchstone(v["text"].as_str().ok_or("text missing")?, &name)?;
+        let s = ts.summary().to_string();
+        st.touchstones.insert(name, ts);
+        Ok(s)
+    }))
 }
 
 thread_local! {
@@ -41,6 +79,27 @@ fn input(p: *const u8, n: usize) -> String {
 
 fn set_out(s: String) {
     ST.with(|st| st.borrow_mut().out = s.into_bytes());
+}
+
+/// Rebuild the analysed board from the board as read: assembly variant, then the configuration
+/// (fields, stackup). Results that depend on the parts (lanes, power) are dropped.
+fn rebuild(st: &mut State) -> Result<Option<kisi_core::config::Applied>, String> {
+    let mut b = st.board_base.clone().ok_or("no board loaded")?;
+    let choice = st.variant_choice.as_deref().map(|v| (v, "viewer"));
+    let vs = kisi_core::variant::apply(&mut b, st.cfg.as_ref(), choice, &st.files);
+    let applied = st.cfg.as_ref().map(|c| c.apply(&mut b));
+    st.stackup_file = b.stackup.clone();
+    st.board = Some(b);
+    st.variant = Some(vs);
+    st.buses = None;
+    st.tree = None;
+    st.pi_store.clear();
+    st.loss_map.clear();
+    Ok(applied)
+}
+
+fn variant_json(st: &State) -> serde_json::Value {
+    serde_json::to_value(&st.variant).unwrap_or(serde_json::Value::Null)
 }
 
 #[no_mangle]
@@ -80,11 +139,11 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
             }
             ST.with(|st| {
                 let mut st = st.borrow_mut();
-                st.stackup_file = b.stackup.clone();
-                st.board = Some(b);
-                st.tree = None;
-                st.pi_store.clear();
-                st.loss_map.clear();
+                st.board_base = Some(b);
+                st.cfg = None;
+                st.files.clear();
+                st.variant_choice = None;
+                let _ = rebuild(&mut st);
             });
             set_out(String::new());
             0
@@ -97,10 +156,12 @@ pub extern "C" fn kisi_load_pcb(p: *const u8, n: usize) -> i32 {
 }
 
 /// Apply a `<board>.kisi.json` to the loaded board (call right after kisi_load_pcb).
-/// Input: {"config": file contents, "board": name of the loaded board}.
+/// Input: {"config": file contents, "board": name of the loaded board, "files": {path: text}
+/// (BOMs the variants refer to), "variant": the viewer's choice | null}.
 /// Output: {"check": {ok, errors, warnings, entries}, "targets": {class: {z, diff}},
-/// "profiles": {class: id}, "fields": n, "dielectrics": n}. The board's fields and
-/// file stackup are replaced by the configured values (viewer edits stay on top).
+/// "profiles": {class: id}, "connector_ends": {connector: ConnEnd}, "fields": n, "dielectrics": n,
+/// "variant": VariantState}. The board's
+/// fields and file stackup are replaced by the configured values (viewer edits stay on top).
 #[no_mangle]
 pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -109,15 +170,24 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let cfg = kisi_core::config::parse(v["config"].as_str().ok_or("config missing")?)?;
         let board_name = v["board"].as_str().map(str::to_string);
-        let b = st.board.as_mut().ok_or("no board loaded")?;
+        let files: kisi_core::variant::Files = v["files"].as_object().map(|m| m.iter().filter_map(|(k, t)| Some((k.clone(), Ok(t.as_str()?.to_string())))).collect()).unwrap_or_default();
+        let b = st.board_base.as_ref().ok_or("no board loaded")?;
         let an0 = kisi_core::extract::skeleton(b, &Params::default());
         let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
-        let check = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin(), board_name.as_deref());
-        let a = cfg.apply(b);
-        let su = b.stackup.clone();
-        st.stackup_file = su;
+        let check = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin(), board_name.as_deref(), &files);
+        let notes = cfg.notes.clone();
+        let conn_ends: serde_json::Map<String, serde_json::Value> = cfg.connector_ends.iter().filter_map(|(k, c)| Some((k.clone(), serde_json::to_value(&c.end).ok()?))).collect();
+        for (path, ts) in kisi_core::service::touchstones_of(Some(&cfg), &files) {
+            if let Ok(ts) = ts {
+                st.touchstones.insert(path, ts);
+            }
+        }
+        st.cfg = Some(cfg);
+        st.files = files;
+        st.variant_choice = v["variant"].as_str().map(str::to_string);
+        let a = rebuild(&mut st)?.unwrap_or_default();
         let targets: serde_json::Map<String, serde_json::Value> = a.targets.iter().map(|(k, t)| (k.clone(), serde_json::json!({"z": t.z, "diff": t.diff}))).collect();
-        Ok(serde_json::json!({"check": check, "targets": targets, "profiles": a.profiles, "fields": a.fields, "dielectrics": a.dielectrics, "notes": cfg.notes}).to_string())
+        Ok(serde_json::json!({"check": check, "targets": targets, "profiles": a.profiles, "connector_ends": conn_ends, "fields": a.fields, "dielectrics": a.dielectrics, "notes": notes, "variant": variant_json(&st)}).to_string())
     });
     match r {
         Ok(s) => {
@@ -131,12 +201,37 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// The assembly variant in use: VariantState {variants, chosen, chosen_by, needs_choice,
+/// message, forks, not_fitted, …}.
+#[no_mangle]
+pub extern "C" fn kisi_variants() -> i32 {
+    reply(ST.with(|st| Ok(variant_json(&st.borrow()).to_string())))
+}
+
+/// Choose the assembly variant in the viewer: {"variant": name | null (the configuration's)}.
+/// Rebuilds the board (parts, fields); lanes and power results must be computed again.
+/// Output: VariantState.
+#[no_mangle]
+pub extern "C" fn kisi_variant(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(ST.with(|st| -> Result<String, String> {
+        let mut st = st.borrow_mut();
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        st.variant_choice = v["variant"].as_str().map(str::to_string);
+        rebuild(&mut st)?;
+        Ok(variant_json(&st).to_string())
+    }))
+}
+
 /// Load a `.kicad_pro` (net classes). May be called before or after the board.
 #[no_mangle]
 pub extern "C" fn kisi_load_pro(p: *const u8, n: usize) -> i32 {
     let text = input(p, n);
     let r = ST.with(|st| {
         let mut st = st.borrow_mut();
+        if let Some(b) = st.board_base.as_mut() {
+            let _ = apply_project(b, &text);
+        }
         let res = match st.board.as_mut() {
             Some(b) => apply_project(b, &text),
             None => serde_json::from_str::<serde_json::Value>(&text).map(|_| ()).map_err(|e| e.to_string()),
@@ -568,7 +663,9 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
                 };
                 let cd = kisi_core::topology::ComponentData::builtin();
                 let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
-                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, &cd)).unwrap());
+                let cend: Option<kisi_core::eye::ConnEnd> = item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
+                let cts = ts_for(&st, cend.as_ref());
+                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), cts, &cd)).unwrap());
                 continue;
             }
             rows.push(serde_json::to_value(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise))).unwrap());
@@ -640,7 +737,9 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
         let rev = v["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
         let cd = kisi_core::topology::ComponentData::builtin();
         let ep = v["bitrate"].as_f64().map(|br| (br, v["eye_rise"].as_f64().unwrap_or(rp.rise), v["prbs"].as_u64().unwrap_or(7) as u32, end("tx"), end("rx")));
-        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, &cd) {
+        let cend: Option<kisi_core::eye::ConnEnd> = v["conn_end"].as_object().and_then(|_| serde_json::from_value(v["conn_end"].clone()).ok());
+        let cts = ts_for(&st, cend.as_ref());
+        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, cend.as_ref(), cts, &cd) {
             Ok(ev) => {
                 let eye = match ev.eye {
                     Some(Ok(e)) => serde_json::to_value(&e).unwrap(),
@@ -649,7 +748,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
                 };
                 let skew = ev.skew.map(|(ps, mm, pn, unc)| serde_json::json!({"partner": pn, "skew_ps": ps, "skew_mm": mm, "uncertain": unc}));
                 serde_json::json!({"channel": ev.ch, "error": null, "touchstone": kisi_core::rf::touchstone(&ev.ch), "eye": eye, "skew": skew,
-                    "rx_used": ev.rx_used, "rx_note": ev.rx_note, "reversed": rev,
+                    "rx_used": ev.rx_used, "rx_note": ev.rx_note, "tx_used": ev.tx_used, "end_note": ev.end_note, "rest_applied": ev.rest_applied, "reversed": rev,
                     "crosstalk": kisi_core::rf::crosstalk(b, an, lane.nets[0], &params.field, &rp)})
             }
             Err(e) => serde_json::json!({"channel": null, "error": e, "crosstalk": {"aggressors": [], "geoms": []}}),
@@ -851,6 +950,11 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
             };
             (path, r)
         });
+        // files the configuration refers to (BOMs): {path: {"text"} | {"error"}}
+        let files: kisi_core::variant::Files = v["files"]
+            .as_object()
+            .map(|m| m.iter().map(|(k, f)| (k.clone(), f["text"].as_str().map(str::to_string).ok_or_else(|| f["error"].as_str().unwrap_or("not readable").to_string()))).collect())
+            .unwrap_or_default();
         let inp = kisi_core::service::Inputs {
             pcb_path: std::path::PathBuf::from(s("pcb_path").unwrap_or_default()),
             pcb: s("pcb").ok_or("pcb missing")?,
@@ -858,6 +962,8 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
             config,
             stackup: serde_json::from_value(v["stackup"].clone()).ok(),
             field: serde_json::from_value(v["field"].clone()).unwrap_or_default(),
+            variant: o.variant.clone(),
+            files,
         };
         let proj = kisi_core::service::Project::from_texts(inp)?;
         let plan = kisi_core::commands::field_plan(&proj, &o);

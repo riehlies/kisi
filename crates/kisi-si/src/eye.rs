@@ -47,6 +47,90 @@ impl Default for EndModel {
     }
 }
 
+/// The end of a lane at a connector (the rest of the channel is off the board): the
+/// termination there when the connector is the receiving end, the driver when it sends.
+/// `model`: "profile" (the profile's receiver / transmitter, as if the device sat at the
+/// connector), "matched" (the target impedance per line, no capacitance), "high_impedance"
+/// (no termination; as a driver an ideal source) or "custom" (`r_ohm`, `c_pf`, `l_nh`).
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct ConnEnd {
+    pub model: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r_ohm: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub c_pf: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub l_nh: Option<f64>,
+    /// the channel behind the connector as a simple lossy line (target impedance per line):
+    /// loss at the profile's Nyquist frequency in dB (positive; half skin effect ∝ √f, half
+    /// dielectric ∝ f) – with it the eye covers the whole channel and is judged
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rest_loss_db: Option<f64>,
+    /// its delay (ps), default 500
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rest_delay_ps: Option<f64>,
+    /// the channel behind the connector from a Touchstone file (in place of the lossy line)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub touchstone: Option<TsRef>,
+}
+
+/// A Touchstone file for the channel behind a connector: `.s2p` (single-ended lanes, or the
+/// same 2-port on every line of a pair) or `.s4p` (a pair; `port_order` "1-3,2-4" or
+/// "1-2,3-4"); port 1 at the connector unless `flip`.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct TsRef {
+    /// path relative to the kisi.json (CLI) or the file name (viewer)
+    pub file: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port_order: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub flip: bool,
+}
+
+impl ConnEnd {
+    pub const MODELS: &'static [&'static str] = &["profile", "matched", "high_impedance", "custom"];
+
+    /// A channel model behind the connector is set (the eye then covers the whole channel).
+    pub fn has_rest(&self) -> bool {
+        self.touchstone.as_ref().is_some_and(|t| !t.file.is_empty()) || self.rest_loss_db.is_some_and(|v| v.is_finite())
+    }
+
+    /// ABCD of the channel behind the connector at frequency `f` (Hz): a line with
+    /// characteristic impedance `z0` (per line), delay `rest_delay_ps` and the loss
+    /// `rest_loss_db` at `f_nyq`, split evenly into a √f and an f term.
+    pub fn rest_abcd(&self, f: f64, f_nyq: f64, z0: f64) -> Option<crate::rf::Abcd> {
+        let loss = self.rest_loss_db.filter(|v| v.is_finite())?.abs();
+        let x = (f / f_nyq.max(1.0)).max(0.0);
+        let alpha = loss / (20.0 / std::f64::consts::LN_10) * (0.5 * x.sqrt() + 0.5 * x);
+        let beta = 2.0 * PI * f * self.rest_delay_ps.unwrap_or(500.0).max(0.0) * 1e-12;
+        let gl = Cx::new(alpha, beta);
+        let (e, ei) = (gl.exp(), Cx::new(-alpha, -beta).exp());
+        let ch = (e + ei).scale(0.5);
+        let sh = (e - ei).scale(0.5);
+        Some(crate::rf::Abcd { a: ch, b: sh.scale(z0), c: sh.scale(1.0 / z0), d: ch })
+    }
+
+    /// The end model at the connector; `profile_end` is the profile's receiver or transmitter
+    /// for that end, `target` the lane's target impedance (single-ended, or differential).
+    pub fn resolve(&self, profile_end: Option<EndModel>, target: Option<(f64, bool)>) -> Result<Option<EndModel>, String> {
+        match self.model.as_str() {
+            "" | "profile" => Ok(profile_end),
+            "matched" => {
+                let (z, diff) = target.ok_or("connector end 'matched' needs a target impedance")?;
+                Ok(Some(EndModel { r: if diff { z / 2.0 } else { z }, c_pf: 0.0, l_nh: 0.0 }))
+            }
+            "high_impedance" => Ok(Some(EndModel { r: 0.0, c_pf: self.c_pf.unwrap_or(0.0), l_nh: self.l_nh.unwrap_or(0.0) })),
+            "custom" => {
+                let r = self.r_ohm.ok_or("connector end 'custom' needs r_ohm")?;
+                Ok(Some(EndModel { r, c_pf: self.c_pf.unwrap_or(0.0), l_nh: self.l_nh.unwrap_or(0.0) }))
+            }
+            m => Err(format!("unknown connector end model '{m}' ({})", Self::MODELS.join(", "))),
+        }
+    }
+}
+
 /// Voltage transfer V_rx / V_tx of the channel between the given ends, in
 /// units of the transmitter swing: the swing is defined into the receiver's
 /// nominal termination (a lossless link without parasitics gives |H| = 1 at
@@ -316,6 +400,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn connector_end_models_and_rest_line() {
+        let prof = Some(EndModel { r: 42.5, c_pf: 0.5, l_nh: 0.0 });
+        let ce = |m: &str| ConnEnd { model: m.into(), ..Default::default() };
+        assert_eq!(ce("profile").resolve(prof, Some((85.0, true))).unwrap().unwrap().r, 42.5);
+        assert_eq!(ce("matched").resolve(prof, Some((85.0, true))).unwrap().unwrap().r, 42.5);
+        assert_eq!(ce("matched").resolve(prof, Some((50.0, false))).unwrap().unwrap().r, 50.0);
+        assert!(ce("matched").resolve(prof, None).is_err());
+        assert_eq!(ce("high_impedance").resolve(prof, None).unwrap().unwrap().r, 0.0);
+        assert!(ce("custom").resolve(prof, None).is_err());
+        let c = ConnEnd { model: "custom".into(), r_ohm: Some(60.0), c_pf: Some(0.3), ..Default::default() };
+        assert_eq!(c.resolve(prof, None).unwrap().unwrap().c_pf, 0.3);
+        assert!(ce("bogus").resolve(prof, None).is_err());
+        // the rest line: matched, its |S21| at Nyquist is the given loss, √f + f below it
+        let r = ConnEnd { rest_loss_db: Some(6.0), ..ce("profile") };
+        assert!(r.has_rest() && !ce("profile").has_rest());
+        let s21 = |f: f64| 20.0 * r.rest_abcd(f, 4e9, 50.0).unwrap().s_params(50.0).1.abs().log10();
+        assert!((s21(4e9) + 6.0).abs() < 1e-9, "{}", s21(4e9));
+        assert!((s21(1e9) + 6.0 * (0.5 * 0.5 + 0.5 * 0.25)).abs() < 1e-9);
+    }
+
+    #[test]
     fn prbs7_period_and_balance() {
         let b = prbs(7);
         assert_eq!(b.len(), 127);
@@ -428,8 +533,14 @@ pub struct CheckRow {
     pub stub_ghz: Option<f64>,
     pub warnings: usize,
     pub error: Option<String>,
-    /// false when no eye was computed (lane ends at a connector)
+    /// false when no eye was computed
     pub eye: bool,
+    /// the lane ends at a connector: the eye covers the board share only, with the connector
+    /// end model (termination or driver) – information, not judged
+    pub eye_board_share: bool,
+    /// side stubs and branches in the channel (open stubs: unused pads, parts not fitted,
+    /// the other path of a fork)
+    pub stubs: Vec<String>,
 }
 
 pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
@@ -452,6 +563,8 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
         warnings: 0,
         error: None,
         eye: true,
+        eye_board_share: false,
+        stubs: vec![],
     }
 }
 
@@ -462,6 +575,7 @@ pub(crate) fn fill_row(row: &mut CheckRow, ch: &crate::rf::Channel, gbps: f64, r
     row.delay_ps = ch.delay_ps;
     row.vias = ch.vias;
     row.warnings = ch.warnings.len();
+    row.stubs = ch.segments.iter().filter(|s| s.kind == "branch").filter_map(|s| s.part.clone()).collect();
     let fn_ = gbps * 0.5e9;
     let df = ch.freq[0];
     let k = ((fn_ / df).round() as usize).clamp(1, ch.freq.len()) - 1;

@@ -148,7 +148,23 @@ async function main(argv) {
         if (isFile(cp)) { try { config = { path: cp, text: fs.readFileSync(cp, "utf8") }; } catch (e) { config = { path: cp, error: e.message }; } }
       }
       const stackup = o.stackup ? readJson(o.stackup) : null;
-      const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {} };
+      // files the configuration refers to (paths relative to it): BOMs of assembly variants,
+      // Touchstone files of connector ends
+      const files = {};
+      if (config && config.text) {
+        let c = null;
+        try { c = JSON.parse(config.text); } catch { /* reported by the engine */ }
+        const want = [
+          ...Object.values((c && c.variants) || {}).map((v) => v && v.bom),
+          ...Object.values((c && c.connector_ends) || {}).map((e) => e && e.touchstone && e.touchstone.file),
+        ];
+        for (const f of want) {
+          if (typeof f !== "string" || !f || files[f]) continue;
+          const bp = path.resolve(path.dirname(config.path), f);
+          try { files[f] = { text: fs.readFileSync(bp, "utf8") }; } catch (e) { files[f] = { error: `${bp}: ${e.code === "ENOENT" ? "not found" : e.message}` }; }
+        }
+      }
+      const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {}, files };
       const { plan } = eng.json("kisi_cli_project", inputs);
       var fieldInfo = null;
       if (plan.length) {

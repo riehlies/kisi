@@ -42,7 +42,7 @@ with sync_playwright() as p:
         shot("net")
 
     pg.click("#view-ch"); pg.wait_for_timeout(500)
-    pg.click("#ov-check"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(400)
+    pg.click("#ck-start"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(400)
     shot("channel")
 
     pg.click("#view-pi"); pg.wait_for_timeout(400)

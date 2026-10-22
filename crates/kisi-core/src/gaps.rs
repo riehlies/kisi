@@ -136,6 +136,41 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         ));
     }
 
+    // --- assembly variant ----------------------------------------------------------------
+    let vs = &p.variant;
+    if vs.needs_choice || !vs.errors.is_empty() {
+        let mut items: Vec<Value> = vs.variants.iter().map(|v| json!({"variant": v.name, "description": v.description, "defined_in": v.defined_in})).collect();
+        items.extend(vs.forks.iter().map(|f| json!({"fork": crate::variant::fork_text(f), "net": f.net_name, "partner": f.partner, "parts": f.parts, "value": f.value, "towards": f.towards})));
+        let issue = if !vs.variants.is_empty() {
+            format!("The board has {} assembly variant(s) and none is chosen: interfaces, check and report stop until one is.", vs.variants.len())
+        } else {
+            format!("{} fork(s) where all alternative series parts are fitted – possibly assembly variants; none is chosen: interfaces, check and report stop until one is (\"default\" computes the board as it is, with the other paths as open branches).", vs.forks.len())
+        };
+        let issue = if vs.errors.is_empty() { issue } else { format!("{} {issue}", vs.errors.join(" ")) };
+        out.push(gap(
+            "assembly-variant",
+            "high",
+            "interfaces",
+            issue,
+            &["lanes", "channel check", "eye", "PDN (fitted capacitors)"],
+            "The project's assembly outputs: BOM and position files per variant, the schematic's variant or DNP marks, the sheets that hold the parts of each option. KiCad 10: variants in the board file. Alternatively mark the unused parts DNP in KiCad.",
+            json!({"to": "variant (and variants.<name> for boards without KiCad 10 variants)", "example": {"variant": "TS-PCIe", "variants": {"TS-PCIe": {"not_fitted_sheets": ["/TS-USB4 Components/"], "fitted": ["C101"], "source": {"kind": "design", "document": "board_TS-PCIe_BOM.csv"}}, "TS-USB4": {"bom": "board_TS-USB4_BOM.csv", "bom_exceptions": ["P1"], "source": {"kind": "design", "document": "board_TS-USB4_BOM.csv"}}}},
+                "note": "--variant NAME on the command line chooses for one run; \"default\" = the board file as it is"}),
+            items,
+        ));
+    } else if !vs.forks.is_empty() {
+        out.push(gap(
+            "assembly-variant-forks",
+            "medium",
+            "interfaces",
+            format!("Variant '{}' still has {} fork(s) where all alternative series parts are fitted: the other paths stay in the lanes as open branches.", vs.chosen.clone().unwrap_or_default(), vs.forks.len()),
+            &["lanes", "channel check", "eye"],
+            "BOM / position files of the variant: which of the alternatives is fitted.",
+            json!({"to": "variants.<name>.not_fitted (or not_fitted_sheets, bom)"}),
+            vs.forks.iter().map(|f| json!({"fork": crate::variant::fork_text(f), "parts": f.parts, "towards": f.towards})).collect(),
+        ));
+    }
+
     // --- channel parts with unreadable values ------------------------------------------
     let buses = p.buses();
     let mut bad_parts: BTreeMap<String, Value> = BTreeMap::new();
@@ -308,6 +343,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let count = |pr: &str| out.iter().filter(|g| g["priority"] == pr).count();
     json!({
         "board": p.name,
+        "variant": p.variant.summary(),
         "config": p.config_summary(),
         "summary": {"high": count("high"), "medium": count("medium"), "low": count("low")},
         "gaps": out,

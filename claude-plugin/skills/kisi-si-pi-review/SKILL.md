@@ -37,7 +37,10 @@ in the output shows the coverage; `--formula` skips the solver.
    (layer, length, Z), losses, TDR extremes, vias (antipad, stub resonance, return path), crosstalk.
    Options `--rise-ps`, `--roughness smooth|hvlp|standard`.
 4. High-speed interfaces: `kisi interfaces <board>` lists the buses and device-to-device lanes (pins,
-   series parts, terminations, branches, direction guess, profile). Check that the end devices and
+   series parts, terminations, branches, direction guess, profile). Boards with assembly variants (or
+   forks where all alternative parts are fitted) need a variant: `interfaces`, `check` and `report`
+   stop with the list – ask the user which one, then use `--variant NAME` (or `"variant"` in kisi.json);
+   `variant` in the output says which one was analysed, and `stubs` per lane names unused pads. Check that the end devices and
    profiles make sense; `kisi profiles` shows the available standards. Then `kisi check <board>`,
    with `--class CLASS=PROFILE` when the assignment is wrong (better: put it into kisi.json).
    Only yellow/red rows are printed by default (`--all` for green too, `--nets A,B` to restrict).
@@ -63,8 +66,11 @@ in the output shows the coverage; `--formula` skips the solver.
 - Eyes are linear PRBS7 estimates with the profile's transmitter/receiver and no equalisation, jitter
   or noise. Limits marked "kisi" in the profile sources are guide values, not standards.
 - Skew marked uncertain comes from branched paths; do not report it as a violation.
-- Eyes exist only for lanes from IC to IC. Lanes ending at a connector are judged on the board share
-  (loss, return loss, skew); say that the rest of the channel is not included.
+- Eyes exist only for lanes from IC to IC. Lanes ending at a connector (also connector to connector,
+  e.g. test coupons) are judged on the board share (loss, return loss, skew); say that the rest of the
+  channel is not included.
+- Formula impedances flagged "rough" (a launch or pad over a cut-out in a layer between trace and
+  reference) can be 25 % off; prefer `kisi.mjs` (field solver) there.
 - Lanes with an open branch (one IC feeding two connectors, both populated) show the stub's resonance;
   suggest marking the unused population option DNP in KiCad.
 - Parasitics of series parts and terminations are estimates per package; the transmit direction is a

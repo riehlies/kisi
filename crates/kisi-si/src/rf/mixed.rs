@@ -253,8 +253,14 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     let partner = crate::extract::diff_partners(&board.nets).get(net as usize).copied().flatten().ok_or("net is not part of a differential pair")?;
     let ip = net_path_info(board, an, net, flip, hint).ok_or("net has no tracks")?;
     let inn = net_path_info(board, an, partner, false, Some(ip.start.at)).ok_or("partner net has no tracks")?;
-    let mut bp = net_build(board, an, net, field, target, rp, &ip, false, true);
-    let mut bn = net_build(board, an, partner, field, target, rp, &inn, false, true);
+    // parts to ground on each line (single-ended shunts); a part across the pair is not part of
+    // the two-line cascade (noted)
+    let (parts_p, notes_p) = crate::topology::net_parts(board, net, crate::topology::PartMode::PairLine);
+    let (parts_n, notes_n) = crate::topology::net_parts(board, partner, crate::topology::PartMode::PairLine);
+    let mut bp = net_build(board, an, net, field, target, rp, &ip, false, true, &parts_p);
+    let mut bn = net_build(board, an, partner, field, target, rp, &inn, false, true, &parts_n);
+    bp.warnings.extend(notes_p);
+    bn.warnings.extend(notes_n);
     // line 1 is the positive net of the pair (name ending in +, P or p), whichever was asked for
     let (mut pnet, mut nnet) = (net, partner);
     let (mut path_p, mut path_n) = (ip, inn);

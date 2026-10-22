@@ -85,6 +85,8 @@ pub(crate) struct NetGraph {
     #[allow(dead_code)]
     root: Vec<usize>,
     pieces_of: HashMap<usize, Vec<usize>>,
+    /// copper layers of every node (bit per layer; a via node has all layers it joins)
+    mask: Vec<u64>,
 }
 
 impl NetGraph {
@@ -148,10 +150,23 @@ impl NetGraph {
         }
         for &ti in &tracks {
             let t = &board.tracks[ti];
-            let tol = if t.pad { t.width / 2.0 } else { 0.02 };
+            let tol = 0.02;
+            // a synthetic pad track stands for its pad: what lies on the pad's copper joins its
+            // centre (not a capsule around the track, which would reach beyond the pad's ends)
+            let pad = if t.pad { board.pads.get(t.item as usize) } else { None };
             for i in 0..n {
                 // only copper on the same layer connects (vias are joined below)
                 if node_layers[i] & (1u64 << t.layer.min(63)) == 0 {
+                    continue;
+                }
+                if let Some(pd) = pad {
+                    if crate::board::pad_contains(pd, pos[i], 0.02) {
+                        let a = node_id[&key(t.a, t.layer)];
+                        let (ra, rb) = (find(&mut parent, a), find(&mut parent, i));
+                        if ra != rb {
+                            parent[rb] = ra;
+                        }
+                    }
                     continue;
                 }
                 // distance of node to the track centre line
@@ -203,6 +218,10 @@ impl NetGraph {
             }
         }
         let root: Vec<usize> = (0..n).map(|i| find(&mut parent, i)).collect();
+        let mut mask = vec![0u64; n];
+        for i in 0..n {
+            mask[root[i]] |= node_layers[i];
+        }
         let edges: Vec<(usize, usize, usize, f64)> = edges.into_iter().map(|(t, a, b, l)| (t, root[a], root[b], l)).collect();
         let mut adj: HashMap<usize, Vec<(usize, usize)>> = HashMap::new(); // node -> (edge idx, other node)
         for (ei, &(_, a, b, _)) in edges.iter().enumerate() {
@@ -212,15 +231,7 @@ impl NetGraph {
             adj.entry(a).or_default().push((ei, b));
             adj.entry(b).or_default().push((ei, a));
         }
-        Some(NetGraph { edges, adj, pos, root, pieces_of })
-    }
-
-    pub(crate) fn has_branches(&self) -> bool {
-        self.branches()
-    }
-
-    fn branches(&self) -> bool {
-        self.adj.values().any(|v| v.len() > 2)
+        Some(NetGraph { edges, adj, pos, root, pieces_of, mask })
     }
 
     fn components(&self) -> usize {
@@ -261,38 +272,18 @@ impl NetGraph {
         dist
     }
 
-    /// Node of the graph closest to a point (any layer).
-    pub(crate) fn nearest(&self, p: P) -> Option<usize> {
-        self.adj
-            .keys()
-            .copied()
-            .min_by(|&a, &b| geom::len(geom::sub(self.pos[a], p)).partial_cmp(&geom::len(geom::sub(self.pos[b], p))).unwrap().then(a.cmp(&b)))
-    }
-
-    /// Pieces from node `a` to node `b`: (piece index, reversed).
-    pub(crate) fn path(&self, an: &Analysis, a: usize, b: usize) -> Vec<(usize, bool)> {
-        let dist = self.reach(a);
-        let mut order: Vec<(usize, usize)> = Vec::new(); // (edge, from-node)
-        let mut cur = b;
-        while let Some((_, Some((ei, prev)))) = dist.get(&cur).copied() {
-            order.push((ei, prev));
-            cur = prev;
-        }
-        order.reverse();
-        let mut out = Vec::new();
-        for (ei, from) in order {
-            let (ti, ea, _, _) = self.edges[ei];
-            let fwd = ea == from;
-            let mut ps = self.pieces_of[&ti].clone();
-            ps.sort_by(|x, y| an.pieces[x * 4 + 1].partial_cmp(&an.pieces[y * 4 + 1]).unwrap());
-            if !fwd {
-                ps.reverse();
-            }
-            for p in ps {
-                out.push((p, !fwd));
-            }
-        }
-        out
+    /// Node closest to a point among the nodes on the copper layers in `layers` (bit per
+    /// layer, 0 = any layer; falls back to any layer). Parts placed back to back on F.Cu and
+    /// B.Cu have their pads at the same position: the layer tells them apart.
+    pub(crate) fn nearest_on(&self, p: P, layers: u64) -> Option<usize> {
+        let best = |want: u64| {
+            self.adj
+                .keys()
+                .copied()
+                .filter(|&n| want == 0 || self.mask.get(n).is_some_and(|m| m & want != 0))
+                .min_by(|&a, &b| geom::len(geom::sub(self.pos[a], p)).partial_cmp(&geom::len(geom::sub(self.pos[b], p))).unwrap().then(a.cmp(&b)))
+        };
+        best(layers).or_else(|| best(0))
     }
 
     /// The two nodes farthest apart (deterministic).
@@ -402,7 +393,7 @@ pub struct PathBranch {
     /// the branch branches again (only its longest way is followed)
     pub sub_branches: bool,
     #[serde(skip)]
-    after_piece: usize,
+    pub(crate) after_piece: usize,
 }
 
 /// Main path of a net from `start` to `end`, with its branches.
@@ -441,11 +432,10 @@ pub fn path_point(board: &Board, an: &Analysis, path: &NetPath, s: f64) -> P {
 pub const BRANCH_MIN_MM: f64 = 0.5;
 
 fn path_end(board: &Board, net: u32, at: P, layer: u16) -> PathEnd {
-    let pad = board
-        .pads
-        .iter()
-        .filter(|p| p.net == net && geom::len(geom::sub(p.at, at)) <= p.size[0].max(p.size[1]) / 2.0 + 0.05)
-        .min_by(|a, b| geom::len(geom::sub(a.at, at)).partial_cmp(&geom::len(geom::sub(b.at, at))).unwrap());
+    // pads on the node's layer first (parts back to back on F.Cu and B.Cu share positions)
+    let near = |p: &&crate::board::Pad| p.net == net && geom::len(geom::sub(p.at, at)) <= p.size[0].max(p.size[1]) / 2.0 + 0.05;
+    let closest = |a: &&crate::board::Pad, b: &&crate::board::Pad| geom::len(geom::sub(a.at, at)).partial_cmp(&geom::len(geom::sub(b.at, at))).unwrap();
+    let pad = board.pads.iter().filter(near).filter(|p| p.layers.contains(&layer)).min_by(closest).or_else(|| board.pads.iter().filter(near).min_by(closest));
     if let Some(p) = pad {
         let r = board.footprints[p.fp as usize].reference.clone();
         return PathEnd { at: p.at, layer, kind: "pad", label: format!("{}.{}", r, p.number), refdes: Some(r), pad: Some(p.number.clone()) };
@@ -520,12 +510,19 @@ pub fn net_path_info(board: &Board, an: &Analysis, net: u32, flip: bool, hint: O
     let (pieces, length) = g.pieces_along(board, an, &main, 0.0, |n, s, k| {
         node_at.insert(n, (s, k));
     });
+    let branches = collect_branches(&g, board, an, net, s_node, &main, &node_at, [&s_end.label, &e_end.label]);
+    Some(NetPath { net, length_mm: length, start: s_end, end: e_end, pieces, branches, direction, flipped: flip, parts })
+}
+
+/// Branches leaving the main path `main` (edges from `s_node`; `node_at`: position along the
+/// path and pieces so far per main node). A branch follows its longest way to an end.
+#[allow(clippy::too_many_arguments)]
+fn collect_branches(g: &NetGraph, board: &Board, an: &Analysis, net: u32, s_node: usize, main: &[(usize, usize, usize)], node_at: &HashMap<usize, (f64, usize)>, own_ends: [&str; 2]) -> Vec<PathBranch> {
+    let end_of = |n: usize| path_end(board, net, g.pos[n], g.layer_at(board, n));
     let main_nodes: std::collections::HashSet<usize> = node_at.keys().copied().collect();
     let main_edges: std::collections::HashSet<usize> = main.iter().map(|x| x.0).collect();
     let mut branches = Vec::new();
-    for &(ei0, from, to) in std::iter::once(&(usize::MAX, usize::MAX, s_node)).chain(main.iter()) {
-        let _ = (ei0, from);
-        let n = to;
+    for &(_, _, n) in std::iter::once(&(usize::MAX, usize::MAX, s_node)).chain(main.iter()) {
         let (s_at, after) = node_at[&n];
         for &(ei, v) in g.adj.get(&n).map(|x| x.as_slice()).unwrap_or(&[]) {
             if main_edges.contains(&ei) || main_nodes.contains(&v) {
@@ -538,8 +535,10 @@ pub fn net_path_info(board: &Board, an: &Analysis, net: u32, flip: bool, hint: O
             let (bp, len) = g.pieces_along(board, an, &ch, 0.0, |_, _, _| {});
             let sub_branches = dist.keys().any(|k| g.adj.get(k).map(|x| x.len()).unwrap_or(0) > 2);
             let bend = end_of(far);
-            // copper inside the pad of the path's own start or end (pad outline, rounding)
-            if bend.kind == "pad" && (bend.label == s_end.label || bend.label == e_end.label) && len < 1.0 {
+            // copper inside the pad of the path's own start or end (pad outline, rounding, the
+            // pad's own synthetic track)
+            let only_pad = bp.iter().all(|p| board.tracks[an.pieces[p.piece * 4] as usize].pad);
+            if bend.kind == "pad" && own_ends.contains(&bend.label.as_str()) && (len < 1.0 || only_pad) {
                 continue;
             }
             branches.push(PathBranch {
@@ -555,7 +554,26 @@ pub fn net_path_info(board: &Board, an: &Analysis, net: u32, flip: bool, hint: O
         }
     }
     branches.sort_by(|x, y| x.at_s.partial_cmp(&y.at_s).unwrap());
-    Some(NetPath { net, length_mm: length, start: s_end, end: e_end, pieces, branches, direction, flipped: flip, parts })
+    branches
+}
+
+/// Path of one net between two points – a hop of a lane, from pad to pad – with the branches
+/// that leave it (open stubs: unused pads, test points, the copper to parts that are not
+/// fitted). `from_layers`/`to_layers`: copper layers of the pads at the ends (bit per layer,
+/// 0 = any). None if the net has no copper.
+pub(crate) fn hop_path(board: &Board, an: &Analysis, net: u32, from: (P, u64), to: (P, u64)) -> Option<NetPath> {
+    let g = NetGraph::build(board, an, net)?;
+    let (s_node, e_node) = (g.nearest_on(from.0, from.1)?, g.nearest_on(to.0, to.1)?);
+    let end_of = |n: usize| path_end(board, net, g.pos[n], g.layer_at(board, n));
+    let main = if s_node == e_node { vec![] } else { NetGraph::chain(&g.reach_from(s_node, &std::collections::HashSet::new()), e_node) };
+    let mut node_at: HashMap<usize, (f64, usize)> = HashMap::new();
+    node_at.insert(s_node, (0.0, 0));
+    let (pieces, length) = g.pieces_along(board, an, &main, 0.0, |n, s, k| {
+        node_at.insert(n, (s, k));
+    });
+    let (s_end, e_end) = (end_of(s_node), end_of(e_node));
+    let branches = collect_branches(&g, board, an, net, s_node, &main, &node_at, [&s_end.label, &e_end.label]);
+    Some(NetPath { net, length_mm: length, start: s_end, end: e_end, pieces, branches, direction: "lane hop".into(), flipped: false, parts: g.components() })
 }
 
 
@@ -586,6 +604,52 @@ impl LumpedPart {
             Abcd::shunt(Cx::new(1.0, 0.0) / z)
         }
     }
+}
+
+/// A lumped part inside a path: in piece `step` (index along the path), at fraction `frac` of
+/// that piece's length in the path's direction.
+#[derive(Debug, Clone)]
+pub(crate) struct Cut {
+    pub step: usize,
+    pub frac: f64,
+    pub part: LumpedPart,
+}
+
+/// A part from a net to AC ground (a shunt capacitor, a pull resistor, an inductor) or across
+/// a pair, at its pad: placed where that pad lies on the net's path (`kisi_si::topology::net_parts`).
+#[derive(Debug, Clone)]
+pub struct NetPart {
+    pub refdes: String,
+    /// how it is named in the channel's notes, e.g. "C3 100nF (0805)"
+    pub note: String,
+    /// pad position and its copper layers (bit per layer, 0 = through-hole)
+    pub at: P,
+    pub layers: u64,
+    pub part: LumpedPart,
+}
+
+/// Where a point lies on a path of pieces: (piece index along the path, fraction of that piece
+/// in the path's direction, distance mm). Pieces on the copper layers `layers` (bit mask, 0 =
+/// any) are preferred: a piece on another layer counts 100 mm farther.
+pub(crate) fn locate_on_path(board: &Board, an: &Analysis, path: &[(usize, bool)], at: P, layers: u64) -> Option<(usize, f64, f64)> {
+    let mut best: Option<(usize, f64, f64, f64)> = None;
+    for (step, &(pi, rev)) in path.iter().enumerate() {
+        let pc = &an.pieces[pi * 4..pi * 4 + 4];
+        let tr = &board.tracks[pc[0] as usize];
+        let (t0, t1) = (pc[1], pc[2]);
+        let d = geom::sub(tr.b, tr.a);
+        let l2 = geom::dot(d, d).max(1e-12);
+        let t = (geom::dot(geom::sub(at, tr.a), d) / l2).clamp(t0, t1);
+        let dist = geom::len(geom::sub(at, geom::lerp(tr.a, tr.b, t)));
+        let frac = if t1 > t0 { (t - t0) / (t1 - t0) } else { 0.0 };
+        let frac = if rev { 1.0 - frac } else { frac };
+        // another copper layer counts as far away (a through-hole pad reaches every layer)
+        let score = dist + if layers != 0 && layers & (1u64 << tr.layer.min(63)) == 0 { 100.0 } else { 0.0 };
+        if best.is_none_or(|b| score < b.3 - 1e-12) {
+            best = Some((step, frac, dist, score));
+        }
+    }
+    best.map(|b| (b.0, b.1, b.3))
 }
 
 /// Builds the section list of a channel (lines, vias, lumped parts).
@@ -662,9 +726,23 @@ impl<'a> Build<'a> {
         self.push(seg, None, None, Some(part));
     }
 
-    /// Line sections and vias along `path` (pieces of one net). Returns the end
-    /// position of every piece (for placing shunts).
-    pub(crate) fn add_path(&mut self, net: u32, path: &[(usize, bool)], mut on_piece: impl FnMut(&mut Self, P)) {
+    /// A new, empty build with the same board, models and mode (for stubs).
+    pub(crate) fn sub(&self) -> Build<'a> {
+        Build::new(self.board, self.an, self.field, self.rp, self.diff)
+    }
+
+    /// Line sections and vias along `path` (pieces of one net), for a path that may start on
+    /// another path at a junction: `start` = (layer,
+    /// position, cross-section) of the other path there. A layer change at the start (a stub
+    /// that leaves through a via) adds that via. `before(build, k)` runs before the line of
+    /// piece `k` (after the via in front of it, if any), `on_piece` after it.
+    pub(crate) fn add_path_with(&mut self, net: u32, path: &[(usize, bool)], start: Option<(u16, P, u32)>, before: impl FnMut(&mut Self, usize), on_piece: impl FnMut(&mut Self, P)) {
+        self.add_path_cuts(net, path, start, &[], before, on_piece)
+    }
+
+    /// As `add_path_with`, with lumped parts inside the pieces (`cuts`: piece index along
+    /// `path`, fraction of its length in the path's direction).
+    pub(crate) fn add_path_cuts(&mut self, net: u32, path: &[(usize, bool)], start: Option<(u16, P, u32)>, cuts: &[Cut], mut before: impl FnMut(&mut Self, usize), mut on_piece: impl FnMut(&mut Self, P)) {
         let (board, an, rp) = (self.board, self.an, self.rp);
         let su = board.stackup();
         let partner = if self.diff { self.partner_of.get(net as usize).copied().flatten() } else { None };
@@ -675,8 +753,8 @@ impl<'a> Build<'a> {
             })
             .unwrap_or_default()
         };
-        let mut prev_layer: Option<(u16, P)> = None;
-        let mut prev_xs: Option<u32> = None;
+        let mut prev_layer: Option<(u16, P)> = start.map(|s| (s.0, s.1));
+        let mut prev_xs: Option<u32> = start.map(|s| s.2);
         // reference planes next to a via: the trace right at the via often runs over the antipad
         // (no reference there), so take the last referenced piece before it and the next after it
         let path_xs: Vec<u32> = path.iter().map(|&(pi, _)| an.pieces[pi * 4 + 3] as u32).collect();
@@ -807,6 +885,7 @@ impl<'a> Build<'a> {
             if !refs(Some(xi)).is_empty() {
                 last_ref_xs = Some(xi);
             }
+            before(self, step);
             let model = self.line_model_for(xi);
             self.total_len += len;
             if model.as_ref().is_some_and(|m| m.source == "field") {
@@ -815,12 +894,27 @@ impl<'a> Build<'a> {
             let z = model.as_ref().map(|m| m.z0);
             // pieces over the antipad that the via's ladder model covers
             let len = if step < skip_until { 0.0 } else { len };
-            let merge = matches!(self.segs.last(), Some(last) if last.kind == "line" && last.xs == Some(xi));
-            if merge {
-                self.segs.last_mut().unwrap().len_mm += len;
-            } else {
-                self.push(Segment { kind: "line", len_mm: len, layer: tr.layer, xs: Some(xi), z, via_lc: None, source: model.as_ref().map(|m| m.source).unwrap_or("none"), part: None, s_mm: 0.0 }, model, None, None);
+            let push_line = |b: &mut Self, l: f64| {
+                let merge = matches!(b.segs.last(), Some(last) if last.kind == "line" && last.xs == Some(xi));
+                if merge {
+                    b.segs.last_mut().unwrap().len_mm += l;
+                } else {
+                    b.push(Segment { kind: "line", len_mm: l, layer: tr.layer, xs: Some(xi), z, via_lc: None, source: model.as_ref().map(|m| m.source).unwrap_or("none"), part: None, s_mm: 0.0 }, model.clone(), None, None);
+                }
+            };
+            // parts inside this piece, in the path's direction
+            let mut mine: Vec<&Cut> = cuts.iter().filter(|c| c.step == step).collect();
+            mine.sort_by(|a, b| a.frac.total_cmp(&b.frac));
+            let mut done = 0.0;
+            for c in mine {
+                let f = c.frac.clamp(done, 1.0);
+                if f > done {
+                    push_line(self, len * (f - done));
+                }
+                self.add_part(c.part.clone());
+                done = f;
             }
+            push_line(self, len * (1.0 - done));
             on_piece(self, end);
         }
     }
@@ -1045,25 +1139,66 @@ pub fn channel_dir(board: &Board, an: &Analysis, net: u32, field: &HashMap<Strin
     let partner = crate::extract::diff_partners(&board.nets).get(net as usize).copied().flatten();
     let diff = partner.is_some() && target.map(|t| t.1).unwrap_or(true);
     let info = net_path_info(board, an, net, flip, hint).ok_or("net has no tracks")?;
-    let b = net_build(board, an, net, field, target, rp, &info, diff, false);
+    let (parts, notes) = crate::topology::net_parts(board, net, if diff { crate::topology::PartMode::Odd } else { crate::topology::PartMode::Single });
+    let mut b = net_build(board, an, net, field, target, rp, &info, diff, false, &parts);
+    b.warnings.extend(notes);
     let mut ch = b.finish(net, board.net_name(net).to_string(), partner, target);
     ch.path = Some(info);
     Ok(ch)
 }
 
-/// Sections of a net along `info` (main path with its modelled branches as open stubs).
+/// Sections of a net along `info` (main path with its modelled branches as open stubs), with
+/// `parts` (shunt parts of the net) at their pads: on the main path or on a modelled branch,
+/// wherever the pad lies closest.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn net_build<'a>(board: &'a Board, an: &'a Analysis, net: u32, field: &'a HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &'a RfParams, info: &NetPath, diff: bool, pair: bool) -> Build<'a> {
+pub(crate) fn net_build<'a>(board: &'a Board, an: &'a Analysis, net: u32, field: &'a HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &'a RfParams, info: &NetPath, diff: bool, pair: bool, parts: &[NetPart]) -> Build<'a> {
     let mut warnings = Vec::new();
     if info.parts > 1 {
         warnings.push(format!("net splits into {} parts (e.g. connected through components): the part with the longest path is computed", info.parts));
     }
+    let path: Vec<(usize, bool)> = info.pieces.iter().map(|p| (p.piece, p.rev)).collect();
+    let modelled: Vec<&PathBranch> = info.branches.iter().filter(|b| b.modelled).collect();
+    let bpaths: Vec<Vec<(usize, bool)>> = modelled.iter().map(|br| br.pieces.iter().map(|p| (p.piece, p.rev)).collect()).collect();
+    // parts: (0 = main path, k + 1 = branch k) → cuts
+    let mut cuts: Vec<Vec<Cut>> = vec![vec![]; bpaths.len() + 1];
+    let (mut placed, mut end_loads): (Vec<&str>, Vec<&str>) = (Vec::new(), Vec::new());
+    for np in parts {
+        // a part whose pad is an end of the computed path loads that port (an AC termination,
+        // the grounded leg of a balun): like a termination resistor it is not in the channel
+        if [&info.start, &info.end].iter().any(|e| e.refdes.as_deref() == Some(np.refdes.as_str())) {
+            end_loads.push(&np.note);
+            continue;
+        }
+        let mut best: Option<(usize, usize, f64, f64)> = None;
+        for (k, p) in std::iter::once(&path).chain(bpaths.iter()).enumerate() {
+            if let Some((step, frac, d)) = locate_on_path(board, an, p, np.at, np.layers) {
+                if best.is_none_or(|b| d < b.3) {
+                    best = Some((k, step, frac, d));
+                }
+            }
+        }
+        match best {
+            Some((k, step, frac, d)) => {
+                if d > 1.0 {
+                    warnings.push(format!("{}: pad {:.1} mm from the computed path (another part of the net or another layer), placed at the nearest point", np.refdes, d.min(99.9)));
+                }
+                cuts[k].push(Cut { step, frac, part: np.part.clone() });
+                placed.push(&np.note);
+            }
+            None => warnings.push(format!("{}: no copper of the path to attach it to, not modelled", np.refdes)),
+        }
+    }
+    if !placed.is_empty() {
+        warnings.push(format!("shunt part(s) modelled at their pads: {} – package parasitics are estimates (data/components.json)", placed.join(", ")));
+    }
+    if !end_loads.is_empty() {
+        warnings.push(format!("{} at an end of the computed path: a load of that port, not in the channel (loss, return loss and TDR describe the interconnect)", end_loads.join(", ")));
+    }
     // branch channels (from the junction), inserted after the piece before the junction
     let mut stubs: Vec<(usize, String, Channel)> = Vec::new();
-    for br in info.branches.iter().filter(|b| b.modelled) {
+    for (k, br) in modelled.iter().enumerate() {
         let mut bb = Build::new(board, an, field, rp, diff);
-        let bpath: Vec<(usize, bool)> = br.pieces.iter().map(|p| (p.piece, p.rev)).collect();
-        bb.add_path(net, &bpath, |_, _| {});
+        bb.add_path_cuts(net, &bpaths[k], None, &cuts[k + 1], |_, _| {}, |_, _| {});
         let ch = bb.finish(net, "branch".into(), None, target);
         stubs.push((br.after_piece, format!("branch {:.1} mm to {}", br.len_mm, br.end.label), ch));
     }
@@ -1077,12 +1212,11 @@ pub(crate) fn net_build<'a>(board: &'a Board, an: &'a Analysis, net: u32, field:
     if info.branches.iter().any(|b| b.sub_branches) {
         warnings.push("a branch branches again: only its longest way is included".into());
     }
-    let path: Vec<(usize, bool)> = info.pieces.iter().map(|p| (p.piece, p.rev)).collect();
     let mut b = Build::new(board, an, field, rp, diff);
     b.pair = pair;
     b.warnings = warnings;
     let mut k = 0usize;
-    b.add_path(net, &path, |bld, _| {
+    b.add_path_cuts(net, &path, None, &cuts[0], |_, _| {}, |bld, _| {
         k += 1;
         for (_, label, ch) in stubs.iter().filter(|s| s.0 == k) {
             bld.add_branch(label.clone(), ch);

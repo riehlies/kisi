@@ -6,7 +6,7 @@
 //! * `pdn_ic` – PDN seen from every IC: AC grid over all layers, capacitor loop inductances, targets, recommendations
 //! * `losses` – ground return, losses per part / rail / layer, loss map, power flow
 
-pub use kisi_board::{board, geom, load_pcb, num};
+pub use kisi_board::{board, geom, load_pcb, num, package};
 
 pub mod cavity_modal;
 pub mod pdn;

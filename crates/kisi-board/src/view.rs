@@ -17,11 +17,17 @@ pub struct Scene<'a> {
     pub tracks: Vec<f32>,
     /// 7 per via: x, y, size, drill, from, to, net
     pub vias: Vec<f32>,
-    /// 8 per pad: x, y, sx, sy, angle, shape(0 rect,1 round,2 oval,3 roundrect), layer mask, net
+    /// 8 per pad: x, y, sx, sy, angle, shape(0 rect,1 round,2 oval,3 roundrect,4 custom), layer mask, net
     pub pads: Vec<f32>,
+    /// corner radius per pad (mm): roundrect from its ratio, oval and circle half the smaller side
+    pub pad_radius: Vec<f32>,
+    /// custom pads: (pad index, outline polygons in the pad's own frame, like `pads` x/y/angle)
+    pub pad_custom: Vec<(u32, Vec<Vec<[f32; 2]>>)>,
     pub outline: Vec<Vec<[f32; 2]>>,
     /// indices of synthetic tracks through SMD pads
     pub pad_tracks: Vec<u32>,
+    /// pad index of every synthetic pad track (same order as `pad_tracks`): drawn as the pad
+    pub pad_track_pad: Vec<u32>,
     /// footprint index per pad, and footprint reference designators
     pub pad_fp: Vec<u32>,
     pub fp_refs: Vec<String>,
@@ -48,6 +54,7 @@ pub fn scene(b: &Board) -> Scene<'_> {
             "circle" => 1.0,
             "oval" => 2.0,
             "roundrect" => 3.0,
+            "custom" if !p.custom.is_empty() => 4.0,
             _ => 0.0,
         };
         let mask: u32 = p.layers.iter().fold(0, |m, &l| if l < 24 { m | (1 << l) } else { m });
@@ -66,8 +73,11 @@ pub fn scene(b: &Board) -> Scene<'_> {
         tracks,
         vias,
         pads,
+        pad_radius: b.pads.iter().map(|p| crate::board::pad_corner_radius(p) as f32).collect(),
+        pad_custom: b.pads.iter().enumerate().filter(|(_, p)| !p.custom.is_empty()).map(|(i, p)| (i as u32, p.custom.iter().map(|c| c.iter().map(|q| [q[0] as f32, q[1] as f32]).collect()).collect())).collect(),
         outline: b.outline.iter().map(|p| p.iter().map(|q| [q[0] as f32, q[1] as f32]).collect()).collect(),
         pad_tracks: b.tracks.iter().enumerate().filter(|(_, t)| t.pad).map(|(i, _)| i as u32).collect(),
+        pad_track_pad: b.tracks.iter().filter(|t| t.pad).map(|t| t.item).collect(),
         pad_fp: b.pads.iter().map(|p| p.fp).collect(),
         fp_refs: b.footprints.iter().map(|f| f.reference.clone()).collect(),
         warnings: &b.warnings,

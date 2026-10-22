@@ -620,18 +620,6 @@ fn polygon_area(p: &[P]) -> f64 {
     (a / 2.0).abs()
 }
 
-fn package_of(pitch: f64) -> &'static str {
-    match pitch {
-        p if p < 0.65 => "0201",
-        p if p < 1.25 => "0402",
-        p if p < 1.95 => "0603",
-        p if p < 2.7 => "0805",
-        p if p < 3.8 => "1206",
-        p if p < 4.6 => "1210",
-        _ => "large",
-    }
-}
-
 fn fmt_c(c: f64) -> String {
     let (v, u) = if c >= 1e-6 { (c * 1e6, "µF") } else if c >= 1e-9 { (c * 1e9, "nF") } else { (c * 1e12, "pF") };
     format!("{}{}", if v >= 10.0 { format!("{v:.0}") } else { format!("{v:.2}").trim_end_matches('0').trim_end_matches('.').to_string() }, u)
@@ -1030,7 +1018,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     for &(fi, a, b, kind) in &parts {
         let f = &board.footprints[fi as usize];
         let pads = &fp_all[&fi];
-        let pkg = package_of(geom::len(geom::sub(pads[0].at, pads[1].at)));
+        let pkg = crate::package::chip_package(&f.lib, pads[0], pads[1]);
         let field = match f.prop("PI_SERIES").map(parse_pi_series) {
             Some(Ok(x)) => Some(x),
             Some(Err(e)) => {
@@ -1217,7 +1205,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             continue;
         };
         let pitch = geom::len(geom::sub(pr.at, pg.at));
-        let pkg = package_of(pitch);
+        let pkg = crate::package::chip_package(&f.lib, pr, pg);
         let (vr_text, diel_text) = value_details(&f.value);
         let dielectric = field.as_ref().and_then(|x| x.dielectric.clone()).unwrap_or(diel_text);
         let rated = field.as_ref().and_then(|x| x.rated).or(vr_text);

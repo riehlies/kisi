@@ -30,11 +30,16 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                                                           [--tree tree.json] [--pdn RAIL]
   report           write analysis/kisi.json next to the board   [--out FILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
-  config-check     check <board>.kisi.json (format, ranges, references, sources)
-  config-template  a <board>.kisi.json skeleton with this board's dielectrics and net classes
+  config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
+  config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
+                   assembly variants
 
 common options: --pro FILE (default: board.kicad_pro), --config FILE (default: board.kisi.json
-next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer)
+next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer),
+--variant NAME (assembly variant: a KiCad 10 variant of the board or one of the kisi.json
+\"variants\"; \"default\" = the board file as it is). Boards with variants – or with forks where
+all alternative parts are fitted – need one for interfaces, check and report (else they stop and
+list the variants); \"variant\" in <board>.kisi.json chooses one for every run.
 field solver (kisi.mjs only; overview, net, check, report): used by default for the cross-sections
 of nets with a target, results cached on disk; --formula (no field solver), --field-time S
 (time budget for new solves, default 120), --field-all (all cross-sections, not only targets),
@@ -73,6 +78,8 @@ pub struct Opts {
     pub field_all: bool,
     /// field solver: also the coupling cross-sections of the crosstalk estimate
     pub field_xt: bool,
+    /// assembly variant (wins over the configuration's `variant`)
+    pub variant: Option<String>,
 }
 
 /// Parse `<command> [args…]`.
@@ -116,6 +123,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--field-time" => o.field_time = Some(num(val(&mut i, a)?, a)?),
             "--field-all" => o.field_all = true,
             "--field-xt" => o.field_xt = true,
+            "--variant" => o.variant = Some(val(&mut i, a)?),
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
         }
@@ -218,9 +226,24 @@ fn rf_params(o: &Opts) -> Result<RfParams, String> {
 /// Run a command. `p` is the project (None for `help`/`profiles`; for `config-template`
 /// load it without configuration), `tree` the parsed `--tree` file. `report` returns the
 /// full report; the caller writes it and prints `report_summary`.
+/// Commands whose results depend on which parts are fitted (lanes): they need an assembly
+/// variant when the board has variants or forks with all alternatives fitted.
+pub fn needs_variant(cmd: &str) -> bool {
+    matches!(cmd, "interfaces" | "check" | "report")
+}
+
 pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, String> {
     let profiles = Profiles::builtin();
     let proj = || p.ok_or_else(|| "no board loaded".to_string());
+    if let Some(pr) = p {
+        // a variant given on the command line must exist (also for commands without lanes)
+        if o.variant.is_some() && !pr.variant.errors.is_empty() && pr.variant.chosen.is_none() {
+            return Err(pr.variant.errors.join(" "));
+        }
+        if needs_variant(&o.cmd) {
+            pr.require_variant()?;
+        }
+    }
     match o.cmd.as_str() {
         "help" => Ok(json!({"help": HELP})),
         "profiles" => {
@@ -283,6 +306,12 @@ pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, 
             let pr = proj()?;
             let mut v = service::power(pr, tree, o.pdn.as_deref())?;
             v["config"] = pr.config_summary();
+            v["variant"] = pr.variant.summary();
+            if pr.variant.needs_choice {
+                if let Some(w) = v["warnings"].as_array_mut() {
+                    w.push(json!("no assembly variant chosen: parts as in the board file (decoupling capacitors and series parts of every variant counted); choose one with --variant or \"variant\" in <board>.kisi.json"));
+                }
+            }
             Ok(v)
         }
         "report" => Ok(service::report(proj()?, &profiles)),
@@ -291,7 +320,7 @@ pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, 
             let pr = proj()?;
             match (&pr.config_path, &pr.config_check) {
                 (None, _) => Err(format!("no configuration: {} does not exist (create it, see `kisi config-template`)", service::config_path_for(&pr.pcb_path).display())),
-                (Some(f), Some(c)) => Ok(json!({"file": f.display().to_string(), "ok": c.ok, "entries": c.entries, "errors": c.errors, "warnings": c.warnings})),
+                (Some(f), Some(c)) => Ok(json!({"file": f.display().to_string(), "ok": c.ok, "entries": c.entries, "errors": c.errors, "warnings": c.warnings, "variant": pr.variant.summary()})),
                 (Some(f), None) => Ok(json!({"file": f.display().to_string(), "ok": true})),
             }
         }
@@ -322,14 +351,50 @@ pub fn config_template(p: &Project) -> Value {
         .filter(|c| c.nets > 0)
         .map(|c| (c.name.clone(), json!({"target_ohm": c.target.map(|t| t.z), "diff": c.target.map(|t| t.diff), "profile": null, "source": {"kind": "datasheet", "document": null, "note": null}})))
         .collect();
-    json!({
+    let mut v = json!({
         "kisi_config": crate::config::VERSION,
         "board": p.pcb_path.file_name().map(|f| f.to_string_lossy().to_string()),
         "stackup": {"dielectrics": diel, "solder_mask": {"epsilon_r": null, "source": {"kind": "datasheet", "document": null}}},
         "net_classes": classes,
         "fields": [{"ref": "U1", "name": "PI_LOAD", "value": "+3V3=100mA", "source": {"kind": "datasheet", "url": null, "page": null, "note": "typical"}}],
-        "notes": ["Template: keep only entries you fill in; keys starting with '_' are information and ignored. Every value needs a source (kind: datasheet, standard, application_note, measurement, simulation, estimate, assumption). Save as <board>.kisi.json next to the board and run `kisi config-check`."]
-    })
+        "notes": ["Template: keep only entries you fill in; keys starting with '_' are information and ignored. Every value needs a source (kind: datasheet, standard, application_note, measurement, simulation, design, estimate, assumption). Save as <board>.kisi.json next to the board and run `kisi config-check`."]
+    });
+    // assembly variants: the board's own (KiCad 10), else a starting point from forks with all
+    // alternatives fitted (one variant per destination, the other alternatives not fitted)
+    let mut sheets: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for f in &p.board.footprints {
+        let sh = crate::variant::norm_sheet(&f.sheet);
+        if !sh.is_empty() {
+            *sheets.entry(sh).or_default() += 1;
+        }
+    }
+    let forks = &p.variant.forks;
+    if !p.board.variants.is_empty() || !forks.is_empty() {
+        v["variant"] = Value::Null;
+        v["_sheets"] = json!(sheets);
+        let mut variants = serde_json::Map::new();
+        if !p.board.variants.is_empty() {
+            v["_board_variants"] = json!(p.board.variants.iter().map(|b| json!({"name": b.name, "description": b.description})).collect::<Vec<_>>());
+            v["_variant_note"] = json!("The board file defines these variants (KiCad 10): choose one with \"variant\"; \"variants\" entries of the same name add rules on top.");
+        } else {
+            let mut keys: Vec<String> = forks.iter().flat_map(|f| f.towards.iter().map(|t| t.join(" + "))).collect();
+            keys.sort();
+            keys.dedup();
+            for k in &keys {
+                // in the forks that lead to `k`: the other alternatives are not fitted
+                let other: Vec<String> = forks
+                    .iter()
+                    .filter(|f| f.towards.iter().any(|t| &t.join(" + ") == k))
+                    .flat_map(|f| f.parts.iter().zip(&f.towards).filter(|(_, t)| &t.join(" + ") != k).map(|(p, _)| p.clone()).collect::<Vec<_>>())
+                    .collect();
+                variants.insert(format!("towards {k}"), json!({"description": null, "not_fitted_sheets": [], "not_fitted": other, "fitted": [], "source": {"kind": "design", "document": null, "note": null}}));
+            }
+            v["_forks"] = json!(forks.iter().map(crate::variant::fork_text).collect::<Vec<_>>());
+            v["_variant_note"] = json!("kisi found forks where all alternative parts are fitted: possibly assembly variants. Define each variant by sheet (not_fitted_sheets / fitted_sheets), by references (not_fitted / fitted) or by a BOM (bom, bom_exceptions), rename them and choose one with \"variant\" (\"default\" = the board file as it is).");
+        }
+        v["variants"] = Value::Object(variants);
+    }
+    v
 }
 
 #[cfg(test)]
@@ -348,5 +413,7 @@ mod tests {
         assert!(parse_args(&a("bogus x")).is_err());
         assert_eq!(parse_args(&a("profiles")).unwrap().cmd, "profiles");
         assert_eq!(parse_args(&a("--help")).unwrap().cmd, "help");
+        assert_eq!(parse_args(&a("check b.kicad_pcb --variant TS-PCIe")).unwrap().variant.as_deref(), Some("TS-PCIe"));
+        assert!(parse_args(&a("check b.kicad_pcb --variant")).is_err());
     }
 }

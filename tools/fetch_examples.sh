@@ -23,7 +23,8 @@ fetch() {
   {
     echo "Example board $stem: $author, https://github.com/$repo (commit $rev), licence $licname."
     echo "Modified by kisi (tools/strip_pcb.py, $(date -u +%Y-%m-%d)): reduced to stackup, nets, copper (tracks, vias, pads,"
-    echo "zone fills), footprint fields and board outline; other graphics, texts and 3D models removed. The .kicad_pro is unmodified."
+    echo "zone fills), footprint fields, sheet names, assembly attributes (DNP, BOM) and board outline; other graphics, texts"
+    echo "and 3D models removed. The .kicad_pro is unmodified."
     echo
     curl -fsSL "$base/$lic"
   } > "$out/$stem.notice.txt"

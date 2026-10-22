@@ -1,9 +1,24 @@
 {
   "kisi_config": 1,
   "board": "Thunderscope_Rev5.3.kicad_pcb",
+  "variant": "TS-PCIe",
+  "variants": {
+    "TS-PCIe": {
+      "description": "PCIe mode: x4 edge fingers P1 to the FPGA",
+      "not_fitted_sheets": ["/TS-USB4 Components/"],
+      "fitted": ["C101", "C102", "C128"],
+      "source": {"kind": "design", "document": "Thunderscope_Rev5.3_TS-PCIe_MP_BOM.csv and _Positions.txt (Hardware/Thunderscope_Rev5.3/Outputs/TS-PCIe Assembly/)", "url": "https://github.com/EEVengers/ThunderScope", "note": "commit df2b845: the BOM has no part of the sheet /TS-USB4 Components/ except C101, C102, C128; every part outside the two variant sheets is in both BOMs"}
+    },
+    "TS-USB4": {
+      "description": "M.2 mode: PCIe x4 through the M.2 Key M socket J8 (USB4 adapter) to the FPGA",
+      "not_fitted_sheets": ["/TS-PCIe Components/"],
+      "fitted": ["C22", "C83", "C84"],
+      "source": {"kind": "design", "document": "Thunderscope_Rev5.3_TS-USB4_MP_BOM.csv and _Positions.txt (Hardware/Thunderscope_Rev5.3/Outputs/TS-USB4 Assembly/)", "url": "https://github.com/EEVengers/ThunderScope", "note": "commit df2b845: the BOM has no part of the sheet /TS-PCIe Components/ except C22, C83, C84; the PCIe edge fingers P1 stay as copper"}
+    }
+  },
   "notes": [
     "ThunderScope Rev5.3",
-    "PCIe variant (12 V from the slot), all four channels active. The M.2/USB4 supply path (J8, R54) is not computed. Currents from datasheets (typ.) or estimated; efficiencies estimated from typical curves.",
+    "Assembly variants TS-PCIe and TS-USB4 (separate BOMs and position files, parts on the sheets /TS-PCIe Components/ and /TS-USB4 Components/); TS-PCIe is analysed. The power tree is that of TS-PCIe (12 V from the slot), all four channels active; the M.2/USB4 supply path (J8, R54) is not computed. Currents from datasheets (typ.) or estimated; efficiencies estimated from typical curves.",
     "Converted from a kisi power tree with tools/tree_to_fields.py."
   ],
   "fields": [

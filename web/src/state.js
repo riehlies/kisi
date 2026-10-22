@@ -3,6 +3,8 @@
 const $ = (id) => document.getElementById(id);
 const S = {
   engine: null, scene: null, an: null, zones: null, name: "",
+  // Touchstone files (channel behind connectors) by file name: {text, info | error}; memory only
+  tsFiles: {},
   mode: "type", layerOn: [], zoneLayer: -1, overrides: {}, mask: true, step: 0.5,
   pieces: null, grid: null, selNet: -1, hover: -1,
   view: { s: 1, x: 0, y: 0 }, paths: null, selPaths: null, colors: {},
@@ -21,6 +23,7 @@ const FLAGS = [
   [32, "Differential pair not coupled here"],
   [64, "Reference plane perforated here (e.g. via clearances)"],
   [128, "Cut-out in a layer between trace and reference (e.g. under a pad)"],
+  [512, "Formula over that cut-out: rough estimate (ignores the cut-out's edges, can read 25 % high) – the field solver models it"],
 ];
 const netLabel = (n) => String(n).replace(/\{slash\}/g, "/");
 // last part of a hierarchical net name ("/FPGA/+1V0" → "+1V0"; an escaped slash stays part of the name)
@@ -36,7 +39,7 @@ function readColors() {
     canvas: g("--canvas"), edge: g("--canvas-edge"), pad: g("--canvas-pad"), via: g("--canvas-via"),
     zone: g("--canvas-zone"), zoneEdge: g("--canvas-zone-edge"), halo: g("--halo"),
     low2: g("--z-low2"), low1: g("--z-low1"), ok: g("--z-ok"), high1: g("--z-high1"), high2: g("--z-high2"),
-    none: g("--z-none"), noref: g("--z-noref"), ms: g("--k-ms"), sl: g("--k-sl"), emb: g("--k-emb"),
+    none: g("--z-none"), noref: g("--z-noref"), lane: g("--z-lane"), unused: g("--z-unused"), ms: g("--k-ms"), sl: g("--k-sl"), emb: g("--k-emb"),
   };
 }
 

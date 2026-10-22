@@ -37,6 +37,35 @@ struct State {
     params: Option<Params>,
     /// device-to-device lanes of the board (topology), from `kisi_buses`
     buses: Option<Vec<kisi_core::topology::Bus>>,
+    /// Touchstone files for the channel behind connectors (in memory, by file name)
+    touchstones: std::collections::HashMap<String, kisi_core::rf::Touchstone>,
+}
+
+/// The Touchstone file a connector end names: by the path written, else by its file name.
+fn ts_for<'a>(st: &'a State, ce: Option<&kisi_core::eye::ConnEnd>) -> Option<&'a kisi_core::rf::Touchstone> {
+    let f = &ce?.touchstone.as_ref()?.file;
+    st.touchstones.get(f).or_else(|| st.touchstones.get(f.rsplit(['/', '\\']).next()?))
+}
+
+/// Load (or with "remove": true drop) a Touchstone file for the channel behind connectors:
+/// {"name": file name, "text": contents}. Output: {nports, points, f_min_ghz, f_max_ghz, z0,
+/// warnings}. Files stay in memory only.
+#[no_mangle]
+pub extern "C" fn kisi_touchstone(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(ST.with(|st| -> Result<String, String> {
+        let mut st = st.borrow_mut();
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let name = v["name"].as_str().ok_or("name missing")?.to_string();
+        if v["remove"].as_bool() == Some(true) {
+            st.touchstones.remove(&name);
+            return Ok("{}".into());
+        }
+        let ts = kisi_core::rf::parse_touchstone(v["text"].as_str().ok_or("text missing")?, &name)?;
+        let s = ts.summary().to_string();
+        st.touchstones.insert(name, ts);
+        Ok(s)
+    }))
 }
 
 thread_local! {
@@ -148,6 +177,11 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
         let check = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin(), board_name.as_deref(), &files);
         let notes = cfg.notes.clone();
         let conn_ends: serde_json::Map<String, serde_json::Value> = cfg.connector_ends.iter().filter_map(|(k, c)| Some((k.clone(), serde_json::to_value(&c.end).ok()?))).collect();
+        for (path, ts) in kisi_core::service::touchstones_of(Some(&cfg), &files) {
+            if let Ok(ts) = ts {
+                st.touchstones.insert(path, ts);
+            }
+        }
         st.cfg = Some(cfg);
         st.files = files;
         st.variant_choice = v["variant"].as_str().map(str::to_string);
@@ -630,7 +664,8 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
                 let cd = kisi_core::topology::ComponentData::builtin();
                 let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
                 let cend: Option<kisi_core::eye::ConnEnd> = item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
-                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), &cd)).unwrap());
+                let cts = ts_for(&st, cend.as_ref());
+                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), cts, &cd)).unwrap());
                 continue;
             }
             rows.push(serde_json::to_value(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise))).unwrap());
@@ -703,7 +738,8 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
         let cd = kisi_core::topology::ComponentData::builtin();
         let ep = v["bitrate"].as_f64().map(|br| (br, v["eye_rise"].as_f64().unwrap_or(rp.rise), v["prbs"].as_u64().unwrap_or(7) as u32, end("tx"), end("rx")));
         let cend: Option<kisi_core::eye::ConnEnd> = v["conn_end"].as_object().and_then(|_| serde_json::from_value(v["conn_end"].clone()).ok());
-        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, cend.as_ref(), &cd) {
+        let cts = ts_for(&st, cend.as_ref());
+        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, cend.as_ref(), cts, &cd) {
             Ok(ev) => {
                 let eye = match ev.eye {
                     Some(Ok(e)) => serde_json::to_value(&e).unwrap(),
@@ -712,7 +748,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
                 };
                 let skew = ev.skew.map(|(ps, mm, pn, unc)| serde_json::json!({"partner": pn, "skew_ps": ps, "skew_mm": mm, "uncertain": unc}));
                 serde_json::json!({"channel": ev.ch, "error": null, "touchstone": kisi_core::rf::touchstone(&ev.ch), "eye": eye, "skew": skew,
-                    "rx_used": ev.rx_used, "rx_note": ev.rx_note, "tx_used": ev.tx_used, "end_note": ev.end_note, "reversed": rev,
+                    "rx_used": ev.rx_used, "rx_note": ev.rx_note, "tx_used": ev.tx_used, "end_note": ev.end_note, "rest_applied": ev.rest_applied, "reversed": rev,
                     "crosstalk": kisi_core::rf::crosstalk(b, an, lane.nets[0], &params.field, &rp)})
             }
             Err(e) => serde_json::json!({"channel": null, "error": e, "crosstalk": {"aggressors": [], "geoms": []}}),

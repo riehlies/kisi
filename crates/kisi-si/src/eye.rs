@@ -70,6 +70,23 @@ pub struct ConnEnd {
     /// its delay (ps), default 500
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rest_delay_ps: Option<f64>,
+    /// the channel behind the connector from a Touchstone file (in place of the lossy line)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub touchstone: Option<TsRef>,
+}
+
+/// A Touchstone file for the channel behind a connector: `.s2p` (single-ended lanes, or the
+/// same 2-port on every line of a pair) or `.s4p` (a pair; `port_order` "1-3,2-4" or
+/// "1-2,3-4"); port 1 at the connector unless `flip`.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+#[serde(default)]
+pub struct TsRef {
+    /// path relative to the kisi.json (CLI) or the file name (viewer)
+    pub file: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port_order: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub flip: bool,
 }
 
 impl ConnEnd {
@@ -77,7 +94,7 @@ impl ConnEnd {
 
     /// A channel model behind the connector is set (the eye then covers the whole channel).
     pub fn has_rest(&self) -> bool {
-        self.rest_loss_db.is_some_and(|v| v.is_finite())
+        self.touchstone.as_ref().is_some_and(|t| !t.file.is_empty()) || self.rest_loss_db.is_some_and(|v| v.is_finite())
     }
 
     /// ABCD of the channel behind the connector at frequency `f` (Hz): a line with

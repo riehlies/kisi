@@ -24,13 +24,20 @@ function cfgVariant() {
 // BOMs that the configuration's variants name, from CSV files dropped with it (matched by name)
 function cfgFiles(cfg) {
   const out = {};
-  if (!cfg || !cfg.csv) return out;
+  if (!cfg) return out;
   let c = null;
   try { c = JSON.parse(cfg.text); } catch (e) { return out; }
   for (const v of Object.values((c && c.variants) || {})) {
-    if (!v || typeof v.bom !== "string") continue;
+    if (!v || typeof v.bom !== "string" || !cfg.csv) continue;
     const f = cfg.csv[v.bom.split(/[\\/]/).pop()] ?? cfg.csv[v.bom];
     if (f != null) out[v.bom] = f;
+  }
+  // Touchstone files of the connector ends: dropped with it or loaded in a bus card
+  for (const e of Object.values((c && c.connector_ends) || {})) {
+    const p = e && e.touchstone && e.touchstone.file;
+    if (typeof p !== "string" || !p) continue;
+    const f = S.tsFiles[p.split(/[\\/]/).pop()];
+    if (f) out[p] = f.text;
   }
   return out;
 }

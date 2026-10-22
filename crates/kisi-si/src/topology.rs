@@ -1160,6 +1160,8 @@ pub struct LaneEval {
     pub tx_used: Option<crate::eye::EndModel>,
     /// the lane ends at a connector: what sits there in the eye (termination or driver)
     pub end_note: Option<String>,
+    /// a channel behind the connector (lossy line or Touchstone file) is in the eye
+    pub rest_applied: bool,
     /// (skew ps, skew mm, partner name, uncertain)
     pub skew: Option<(f64, f64, String, bool)>,
 }
@@ -1168,7 +1170,8 @@ pub struct LaneEval {
 /// `lane.rx_end == 0` for the guessed direction). `eye`: bit rate, rise, PRBS
 /// order, transmitter, receiver of the profile. `conn_end`: for a lane ending at a
 /// connector, the model there (termination when the connector receives, driver when it
-/// sends); `None` = the profile's receiver / transmitter.
+/// sends; `None` = the profile's receiver / transmitter) and the channel behind it (a lossy
+/// line, or the Touchstone file `rest_ts` that `conn_end.touchstone` names).
 #[allow(clippy::too_many_arguments)]
 pub fn lane_eval(
     board: &Board,
@@ -1180,10 +1183,11 @@ pub fn lane_eval(
     eye: Option<(f64, f64, u32, Option<crate::eye::EndModel>, Option<crate::eye::EndModel>)>,
     reversed: bool,
     conn_end: Option<&crate::eye::ConnEnd>,
+    rest_ts: Option<&crate::rf::Touchstone>,
     cd: &ComponentData,
 ) -> Result<LaneEval, String> {
     let ch = lane_channel(board, an, lane, field, target, rp, reversed, false, cd)?;
-    let mut out = LaneEval { ch, eye: None, rx_used: None, rx_note: None, tx_used: None, end_note: None, skew: None };
+    let mut out = LaneEval { ch, eye: None, rx_used: None, rx_note: None, tx_used: None, end_note: None, rest_applied: false, skew: None };
     if let (Some((bitrate, rise, prbs, mut tx, mut rx)), true) = (eye, matches!(lane.kind.as_str(), "ic-ic" | "ic-connector")) {
         let rx_end = if reversed { 0 } else { 1 };
         // a lane ending at a connector: the rest of the channel is off the board; the eye
@@ -1253,21 +1257,43 @@ pub fn lane_eval(
             Ok(out.ch.clone())
         };
         out.rx_used = rx_model;
-        // the channel behind the connector (simple lossy line), on the connector's side
+        // the channel behind the connector (a Touchstone file or a simple lossy line), on the
+        // connector's side: after the board when the connector receives, before it when it sends
         let rest = conn_end.filter(|c| c.has_rest()).zip(conn_side);
+        let mut rest_note = String::new();
         let eye_ch = eye_ch.map(|mut c| {
-            if let Some((ce, receives)) = rest {
-                let z0 = target.map_or(50.0, |(z, d)| if d { z / 2.0 } else { z });
-                for (k, f) in c.freq.clone().into_iter().enumerate() {
-                    if let Some(r) = ce.rest_abcd(f, bitrate / 2.0, z0) {
-                        c.abcd[k] = if receives { c.abcd[k].mul(&r) } else { r.mul(&c.abcd[k]) };
+            let Some((ce, receives)) = rest else { return c };
+            let z0 = target.map_or(50.0, |(z, d)| if d { z / 2.0 } else { z });
+            let mats: Option<Vec<crate::rf::Abcd>> = match (&ce.touchstone, rest_ts) {
+                (Some(tr), Some(ts)) => match ts.per_line_abcd(&c.freq, c.diff, tr.port_order.as_deref(), tr.flip) {
+                    Ok((m, notes)) => {
+                        rest_note = format!("; behind the connector {} ({}-port{})", ts.name, ts.nports, if notes.is_empty() { String::new() } else { format!("; {}", notes.join("; ")) });
+                        Some(m)
                     }
+                    Err(e) => {
+                        rest_note = format!("; behind the connector: {e} – not used, the eye covers the board share");
+                        None
+                    }
+                },
+                (Some(tr), None) => {
+                    rest_note = format!("; behind the connector: Touchstone file {} not loaded – the eye covers the board share", tr.file);
+                    None
                 }
+                (None, _) => {
+                    rest_note = format!("; behind the connector a lossy line of {:.1} dB at {:.2} GHz, {:.0} ps", ce.rest_loss_db.unwrap_or(0.0).abs(), bitrate / 2e9, ce.rest_delay_ps.unwrap_or(500.0));
+                    Some(c.freq.iter().map(|&f| ce.rest_abcd(f, bitrate / 2.0, z0).unwrap_or_else(crate::rf::Abcd::identity)).collect())
+                }
+            };
+            if let Some(m) = mats {
+                for (k, r) in m.iter().enumerate() {
+                    c.abcd[k] = if receives { c.abcd[k].mul(r) } else { crate::rf::reversed(r).mul(&c.abcd[k]) };
+                }
+                out.rest_applied = true;
             }
             c
         });
-        if let (Some((ce, _)), Some(n)) = (rest, out.end_note.as_mut()) {
-            n.push_str(&format!("; behind the connector a lossy line of {:.1} dB at {:.2} GHz, {:.0} ps", ce.rest_loss_db.unwrap_or(0.0).abs(), bitrate / 2e9, ce.rest_delay_ps.unwrap_or(500.0)));
+        if let Some(n) = out.end_note.as_mut() {
+            n.push_str(&rest_note);
         }
         out.eye = Some(eye_ch.and_then(|c| crate::eye::eye(&c, &crate::eye::EyeParams { bitrate, rise, prbs, tx, rx: rx_model, ..Default::default() })));
     }
@@ -1299,15 +1325,17 @@ pub fn check_lane(
     ends: (Option<crate::eye::EndModel>, Option<crate::eye::EndModel>, Option<f64>),
     reversed: bool,
     conn_end: Option<&crate::eye::ConnEnd>,
+    rest_ts: Option<&crate::rf::Touchstone>,
     cd: &ComponentData,
 ) -> crate::eye::CheckRow {
     let mut row = crate::eye::empty_row(lane.nets[0], lane.name.clone(), gbps);
-    // without a channel model behind the connector the eye covers the board share only
-    row.eye_board_share = lane.kind == "ic-connector" && !conn_end.is_some_and(|c| c.has_rest());
+    row.eye_board_share = lane.kind == "ic-connector";
     let rp = RfParams { fmax: rp.fmax.max(gbps * 1e9 * 1.25), ..rp.clone() };
     let (tx, rx, rise) = ends;
-    match lane_eval(board, an, field, lane, target, &rp, Some((gbps * 1e9, rise.unwrap_or(rp.rise), 7, tx, rx)), reversed, conn_end, cd) {
+    match lane_eval(board, an, field, lane, target, &rp, Some((gbps * 1e9, rise.unwrap_or(rp.rise), 7, tx, rx)), reversed, conn_end, rest_ts, cd) {
         Ok(ev) => {
+            // without a channel model behind the connector the eye covers the board share only
+            row.eye_board_share = lane.kind == "ic-connector" && !ev.rest_applied;
             crate::eye::fill_row(&mut row, &ev.ch, gbps, rise.unwrap_or(rp.rise), (ev.tx_used.or(tx), ev.rx_used.or(rx)), false);
             match ev.eye {
                 Some(Ok(e)) => {

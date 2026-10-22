@@ -10,6 +10,7 @@ mod channel;
 mod crosstalk;
 mod line;
 mod mixed;
+mod touchstone_in;
 #[cfg(test)]
 mod tests;
 
@@ -18,3 +19,4 @@ pub use channel::*;
 pub use crosstalk::*;
 pub use line::*;
 pub use mixed::*;
+pub use touchstone_in::*;

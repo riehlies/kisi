@@ -134,7 +134,7 @@ function renderChOverview() {
       refs.get(ref).add(laneTx(l).refdes === ref ? "tx" : "rx");
     }
     const tg = classTarget(laneNet(l0));
-    const conn = refs.size ? `<div class="ce-list">${[...refs].map(([ref, roles]) => connEndControls(ref, roles, tg ? [tg.z, tg.diff] : null)).join("")}</div>` : "";
+    const conn = refs.size ? `<div class="ce-list">${[...refs].map(([ref, roles]) => connEndControls(ref, roles, tg ? [tg.z, tg.diff] : null, !!l0.diff)).join("")}</div>` : "";
     const rows = b.lanes.map((l) => {
       const r = laneRow(l), st = r ? laneStatus(l) : null;
       const cells = r ? `<td class="n">${fmt(r.length_mm, 1)}</td><td class="n">${fmt(r.il_nyq_db, 1)}</td><td class="n">${fmt(r.rl_db, 1)}</td><td class="n">${r.eye && !r.error ? (r.eye_board_share ? `<span class="muted" title="board share with the end set for the connector (below): information, not judged – give the channel behind the connector to judge it">${fmt(r.eye_height * 100, 0)}</span>` : fmt(r.eye_height * 100, 0)) : "–"}</td><td class="n">${r.skew_ps == null ? "–" : fmt(Math.abs(r.skew_ps), 1) + (r.skew_uncertain ? "?" : "")}</td>`
@@ -211,7 +211,7 @@ function renderLaneDetail(l) {
   if (t === "path") return renderLanePath(body, l, r);
   const m = metricsOf(r, laneNet(l), l), j = judge(m, p);
   const xt = r.crosstalk && r.crosstalk.aggressors ? `<tr><td></td><td>Crosstalk (total)</td><td>NEXT ${fmt(r.crosstalk.next_total * 100, 2)} %, FEXT ${fmt(r.crosstalk.fext_total * 100, 2)} %</td><td>information only</td></tr>` : "";
-  const ceL = laneConnEnd(l), restSet = !!(ceL && ceL.rest_loss_db != null);
+  const restSet = !!r.rest_applied;
   const eb = l.kind === "ic-connector" && !restSet && r.eye ? `<tr><td></td><td>Eye (board share)</td><td>${r.eye.error ? esc(r.eye.error) : `${fmt(r.eye.height * 100, 0)} %, ${fmt(100 * r.eye.width_ps / r.eye.ui_ps, 0)} % UI`}</td><td>information only: the channel behind the connector is missing</td></tr>` : "";
   body.innerHTML = `<div class="dstats"><span>Result <b style="color:${S.colors[j.status]}">${ST_NAME[j.status]}</b></span><span>${fmt(p.rate_gbps, p.rate_gbps < 1 ? 2 : p.rate_gbps % 1 ? 2 : 0)} Gbit/s</span>${r.channel ? `<span>Path ${fmt(r.channel.length_mm, 1)} mm, ${r.channel.vias} vias, ${l.hops.filter((h) => h.type === "series").length} series part(s)</span>` : ""}</div>
     <div class="tablewrap"><table class="xs-table"><thead><tr><th></th><th>Criterion</th><th>Value</th><th>Limit</th></tr></thead><tbody>

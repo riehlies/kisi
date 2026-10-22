@@ -113,28 +113,57 @@ function renderIfcCard() {
 }
 
 // connector end controls for one connector in a bus card of the interfaces overview:
-// termination or driver there and the channel behind it
-function connEndControls(ref, roles, target) {
+// termination or driver there and the channel behind it (none, a lossy line or a Touchstone file)
+function connEndControls(ref, roles, target, diff) {
   const own = connEnds()[ref], cfg = cfgConnEnd(ref), cur = own || cfg || { model: "profile" };
   const what = roles.has("rx") && roles.has("tx") ? "termination / driver" : roles.has("rx") ? "termination" : "driver";
   const o = `<option value="">${cfg ? `kisi.json (${esc(CONN_END_NAME[cfg.model || "profile"] || cfg.model)})` : "as the profile"}</option>` +
     ["matched", "high_impedance", "custom"].map((m) => `<option value="${m}" ${own && own.model === m ? "selected" : ""}>${CONN_END_NAME[m]}</option>`).join("");
   const custom = cur.model === "custom" ? `<label>R <input type="number" min="0" step="any" data-ce-r="${esc(ref)}" value="${cur.r_ohm ?? ""}"> Ω</label><label>C <input type="number" min="0" step="any" data-ce-c="${esc(ref)}" value="${cur.c_pf ?? ""}"> pF</label>` : "";
+  const mode = cur.touchstone ? "ts" : cur.rest_loss_db != null ? "line" : "";
+  const rm = `<label><select data-ce-rest="${esc(ref)}" aria-label="Channel behind connector ${esc(ref)}"><option value="" ${mode === "" ? "selected" : ""}>none</option><option value="line" ${mode === "line" ? "selected" : ""}>lossy line</option><option value="ts" ${mode === "ts" ? "selected" : ""}>Touchstone file</option></select></label>`;
+  let rest = "";
+  if (mode === "line") rest = `<label><input type="number" min="0" step="any" data-ce-loss="${esc(ref)}" value="${cur.rest_loss_db ?? ""}" aria-label="Loss behind connector ${esc(ref)}"> dB at Nyquist</label><label><input type="number" min="0" step="any" data-ce-delay="${esc(ref)}" value="${cur.rest_delay_ps ?? ""}" placeholder="500" aria-label="Delay behind connector ${esc(ref)}"> ps</label>`;
+  if (mode === "ts") {
+    const tr = cur.touchstone, name = (tr.file || "").split(/[\\/]/).pop();
+    const names = [...new Set([...Object.keys(S.tsFiles), ...(name ? [name] : [])])];
+    const f = S.tsFiles[name];
+    const info = !name ? "" : !f ? `<span class="err">not loaded</span>` : f.error ? `<span class="err">${esc(f.error)}</span>` : `<span class="muted">${f.info.nports}-port, ${fmt(f.info.f_min_ghz, 2)}–${fmt(f.info.f_max_ghz, 1)} GHz${f.info.nports === 2 && diff ? ", the same on each line" : ""}</span>`;
+    rest = `<label><select data-ce-ts="${esc(ref)}" aria-label="Touchstone file behind connector ${esc(ref)}">${names.length ? "" : '<option value="">– load a file –</option>'}${names.map((n) => `<option value="${esc(n)}" ${n === name ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
+      <label class="btn small ce-load">Load…<input type="file" accept=".s2p,.s4p" data-ce-file="${esc(ref)}" hidden></label>${info}
+      ${f && f.info && f.info.nports === 4 ? `<label>ports <select data-ce-po="${esc(ref)}">${["1-3,2-4", "1-2,3-4"].map((p) => `<option value="${p}" ${(tr.port_order || "1-3,2-4") === p ? "selected" : ""}>${p === "1-3,2-4" ? "P 1→3, N 2→4" : "P 1→2, N 3→4"}</option>`).join("")}</select></label>` : ""}
+      <label title="port 2 of the file at the connector (else port 1)"><input type="checkbox" data-ce-flip="${esc(ref)}" ${tr.flip ? "checked" : ""}> port 2 at the connector</label>`;
+  }
   return `<div class="ce-box" data-ce-target="${esc(JSON.stringify(target || null))}">
     <span class="ce-h">Connector <b>${esc(ref)}</b> · ${what}</span>
     <label><select data-ce="${esc(ref)}" aria-label="End at connector ${esc(ref)}">${o}</select></label>${custom}
-    <span class="ce-h" title="The channel behind the connector (cable, mating board) as a lossy line at the target impedance: loss at the profile's Nyquist frequency, half √f, half f. Empty: none – the eye then covers the board share only and is information.">behind</span>
-    <label><input type="number" min="0" step="any" data-ce-loss="${esc(ref)}" value="${cur.rest_loss_db ?? ""}" placeholder="–" aria-label="Loss behind connector ${esc(ref)}"> dB at Nyquist</label>
-    <label><input type="number" min="0" step="any" data-ce-delay="${esc(ref)}" value="${cur.rest_delay_ps ?? ""}" placeholder="500" aria-label="Delay behind connector ${esc(ref)}"> ps</label>
+    <span class="ce-h" title="The channel behind the connector (cable, mating board): a lossy line at the target impedance (loss at the profile's Nyquist frequency, half √f, half f) or a Touchstone file (.s2p, also on each line of a pair; .s4p of a pair). None: the eye covers the board share only and is information.">behind</span>${rm}${rest}
   </div>`;
 }
 function bindConnEnd(box, after) {
   const save = () => { lsSet(connEndKey(), connEnds()); S.chCache = null; markCheckStale(); after(); };
+  const entry = (ref) => { const m = connEnds(); if (!m[ref]) m[ref] = JSON.parse(JSON.stringify(cfgConnEnd(ref) || { model: "profile" })); return m[ref]; };
+  box.querySelectorAll("select[data-ce-rest]").forEach((s) => s.onchange = () => {
+    const e = entry(s.dataset.ceRest);
+    if (s.value !== "line") { delete e.rest_loss_db; delete e.rest_delay_ps; }
+    if (s.value !== "ts") delete e.touchstone;
+    if (s.value === "line") e.rest_loss_db = e.rest_loss_db ?? 0;
+    if (s.value === "ts") e.touchstone = { file: Object.keys(S.tsFiles)[0] || "" };
+    save();
+  });
+  box.querySelectorAll("select[data-ce-ts]").forEach((s) => s.onchange = () => { const e = entry(s.dataset.ceTs); e.touchstone = { ...(e.touchstone || {}), file: s.value }; save(); });
+  box.querySelectorAll("input[data-ce-file]").forEach((inp) => inp.onchange = async () => {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    loadTouchstone(f.name, await f.text());
+    const e = entry(inp.dataset.ceFile); e.touchstone = { ...(e.touchstone || {}), file: f.name }; save();
+  });
+  box.querySelectorAll("select[data-ce-po]").forEach((s) => s.onchange = () => { const e = entry(s.dataset.cePo); e.touchstone.port_order = s.value; save(); });
+  box.querySelectorAll("input[data-ce-flip]").forEach((c) => c.onchange = () => { const e = entry(c.dataset.ceFlip); e.touchstone.flip = c.checked; if (!c.checked) delete e.touchstone.flip; save(); });
   box.querySelectorAll("select[data-ce]").forEach((s) => s.onchange = () => {
     const m = connEnds(), ref = s.dataset.ce, keep = m[ref] || cfgConnEnd(ref) || {};
     const t = JSON.parse(s.closest(".ce-box").dataset.ceTarget || "null");
-    const rest = keep.rest_loss_db != null ? { rest_loss_db: keep.rest_loss_db, rest_delay_ps: keep.rest_delay_ps } : {};
-    if (!s.value && !rest.rest_loss_db) delete m[ref];
+    const rest = { ...(keep.rest_loss_db != null ? { rest_loss_db: keep.rest_loss_db, rest_delay_ps: keep.rest_delay_ps } : {}), ...(keep.touchstone ? { touchstone: keep.touchstone } : {}) };
+    if (!s.value && !Object.keys(rest).length) delete m[ref];
     else m[ref] = { ...(s.value === "custom" ? { model: "custom", r_ohm: keep.r_ohm ?? (t ? (t[1] ? t[0] / 2 : t[0]) : 50), c_pf: keep.c_pf ?? 0 } : { model: s.value || "profile" }), ...rest };
     save();
   });
@@ -217,8 +246,7 @@ function metricsOf(r, net, lane) {
   const k2 = Math.min(ch.freq.length, Math.max(1, Math.round(1.5 * nyq / df)));
   const stubs = ch.via_info.filter((v) => v.stub_mm > 0.01 && v.stub_f_ghz != null).map((v) => v.stub_f_ghz);
   // the eye of a lane ending at a connector without a channel model behind it: information only
-  const ce = lane ? laneConnEnd(lane) : null;
-  const share = !!lane && lane.kind === "ic-connector" && !(ce && ce.rest_loss_db != null);
+  const share = !!lane && lane.kind === "ic-connector" && !r.rest_applied;
   const e = r.eye && !r.eye.error && !share ? r.eye : null;
   return {
     il_nyq_db: ch.s21_db[k], rl_db: -Math.max(...ch.s11_db.slice(0, k2)),

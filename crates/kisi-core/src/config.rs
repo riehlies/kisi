@@ -353,6 +353,28 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
         if (e.end.r_ohm.is_some() || e.end.c_pf.is_some()) && !matches!(m, "custom" | "high_impedance") {
             r.warnings.push(format!("{w}: r_ohm / c_pf are only used with model 'custom' (or c_pf with 'high_impedance')"));
         }
+        if let Some(tr) = &e.end.touchstone {
+            if tr.port_order.as_deref().is_some_and(|o| !kisi_si::rf::PORT_ORDERS.contains(&o)) {
+                r.errors.push(format!("{w}.touchstone: unknown port_order ({})", kisi_si::rf::PORT_ORDERS.join(", ")));
+            }
+            if e.end.rest_loss_db.is_some() {
+                r.warnings.push(format!("{w}: touchstone and rest_loss_db given – the Touchstone file is used"));
+            }
+            let name = tr.file.rsplit(['/', '\\']).next().unwrap_or(&tr.file);
+            match files.get(&tr.file) {
+                None => r.errors.push(format!("{w}.touchstone: {} not loaded", tr.file)),
+                Some(Err(err)) => r.errors.push(format!("{w}.touchstone: {err}")),
+                Some(Ok(text)) => match kisi_si::rf::parse_touchstone(text, name) {
+                    Err(err) => r.errors.push(format!("{w}.touchstone: {err}")),
+                    Ok(ts) => {
+                        if ts.nports == 4 && tr.port_order.is_none() {
+                            r.warnings.push(format!("{w}.touchstone: 4-port without port_order – \"1-3,2-4\" (P 1→3, N 2→4) assumed"));
+                        }
+                        r.warnings.extend(ts.warnings.iter().map(|x| format!("{w}.touchstone: {x}")));
+                    }
+                },
+            }
+        }
         src(w, &e.source, &mut r);
     }
     let mut seen = std::collections::HashSet::new();
@@ -558,5 +580,14 @@ mod tests {
         for frag in ["no part 'J9'", "needs r_ohm", "unknown model 'lossy'", "rest_loss_db 0 … 100", "source missing"] {
             assert!(all.contains(frag), "missing '{frag}' in\n{all}");
         }
+        // a Touchstone file behind the connector: checked when loaded, an error when not
+        let ts = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "cab/c.s2p"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
+        assert!(check(&ts, &board, &classes, &profiles, None, &Default::default()).errors[0].contains("cab/c.s2p not loaded"));
+        let files: crate::variant::Files = HashMap::from([("cab/c.s2p".to_string(), Ok("# GHz S MA R 50\n1 0 0 0.9 -10 0.9 -10 0 0\n2 0 0 0.8 -20 0.8 -20 0 0\n".to_string()))]);
+        let r = check(&ts, &board, &classes, &profiles, None, &files);
+        assert!(r.ok, "{:?}", r.errors);
+        let po = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "cab/c.s2p", "port_order": "2-4"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
+        assert!(check(&po, &board, &classes, &profiles, None, &files).errors.iter().any(|e| e.contains("unknown port_order")));
+        assert!(crate::service::touchstones_of(Some(&ts), &files)["cab/c.s2p"].as_ref().is_ok_and(|t| t.nports == 2 && t.name == "c.s2p"));
     }
 }

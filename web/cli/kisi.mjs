@@ -148,15 +148,20 @@ async function main(argv) {
         if (isFile(cp)) { try { config = { path: cp, text: fs.readFileSync(cp, "utf8") }; } catch (e) { config = { path: cp, error: e.message }; } }
       }
       const stackup = o.stackup ? readJson(o.stackup) : null;
-      // files the configuration refers to: BOMs of assembly variants (paths relative to it)
+      // files the configuration refers to (paths relative to it): BOMs of assembly variants,
+      // Touchstone files of connector ends
       const files = {};
       if (config && config.text) {
         let c = null;
         try { c = JSON.parse(config.text); } catch { /* reported by the engine */ }
-        for (const v of Object.values((c && c.variants) || {})) {
-          if (!v || typeof v.bom !== "string" || files[v.bom]) continue;
-          const bp = path.resolve(path.dirname(config.path), v.bom);
-          try { files[v.bom] = { text: fs.readFileSync(bp, "utf8") }; } catch (e) { files[v.bom] = { error: `${bp}: ${e.code === "ENOENT" ? "not found" : e.message}` }; }
+        const want = [
+          ...Object.values((c && c.variants) || {}).map((v) => v && v.bom),
+          ...Object.values((c && c.connector_ends) || {}).map((e) => e && e.touchstone && e.touchstone.file),
+        ];
+        for (const f of want) {
+          if (typeof f !== "string" || !f || files[f]) continue;
+          const bp = path.resolve(path.dirname(config.path), f);
+          try { files[f] = { text: fs.readFileSync(bp, "utf8") }; } catch (e) { files[f] = { error: `${bp}: ${e.code === "ENOENT" ? "not found" : e.message}` }; }
         }
       }
       const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {}, files };

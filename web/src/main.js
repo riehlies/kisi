@@ -11,6 +11,13 @@ async function handleFiles(files) {
   // BOMs (CSV) that the configuration's variants name
   const csv = {};
   for (const f of files.filter((f) => /\.csv$/i.test(f.name))) csv[f.name] = await f.text();
+  // Touchstone files (.s2p, .s4p) for the channel behind connectors: kept in memory
+  const tsDropped = files.filter((f) => /\.s\d+p$/i.test(f.name));
+  for (const f of tsDropped) loadTouchstone(f.name, await f.text());
+  if (tsDropped.length && !pcb && !kisiCfg && !Object.keys(csv).length) {
+    if (S.tab === "ch" && S.scene) { S.chCache = null; markCheckStale(); renderChOverview(); }
+    return;
+  }
   let kc = kisiCfg ? { name: kisiCfg.name, text: await kisiCfg.text(), csv } : null;
   if (!kc && Object.keys(csv).length && S.lastFiles && S.lastFiles.cfg) kc = { ...S.lastFiles.cfg, csv: { ...(S.lastFiles.cfg.csv || {}), ...csv } };
   if (!pcb && !kisiCfg && kc) {
@@ -36,6 +43,13 @@ async function handleFiles(files) {
   if (!pcb) { $("warnings").innerHTML = `<span class="err">Please choose a .kicad_pcb file (optionally also the .kicad_pro for net classes and the board's .kisi.json).</span>`; return; }
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
   await loadFiles(await pcb.text(), pro ? await pro.text() : null, pcb.name.replace(/\.kicad_pcb$/, ""));
+}
+// register a Touchstone file in the engine (memory only); the result or the error is kept
+function loadTouchstone(name, text) {
+  let r;
+  try { r = { text, info: S.engine.touchstone(name, text) }; } catch (e) { r = { text, error: e.message }; }
+  S.tsFiles[name] = r;
+  return r;
 }
 $("file").onchange = (e) => { $("drop").hidden = true; $("drop").classList.remove("start"); S.fileHandles = null; $("reload").hidden = true; handleFiles(e.target.files); e.target.value = ""; };
 // File System Access (Chromium): keep the file handles, so “Reload” reads the same
@@ -79,7 +93,7 @@ window.addEventListener("drop", (e) => {
     else if (files.some((f) => /\.kicad_pcb$/i.test(f.name))) { S.fileHandles = null; $("reload").hidden = true; }
     else if (S.fileHandles && hp.some(Boolean)) {
       // a configuration file dropped later: reload reads it too
-      const extra = (await Promise.all(hp)).filter((h) => h && h.kind === "file" && /\.kisi\.json$|\.csv$/i.test(h.name));
+      const extra = (await Promise.all(hp)).filter((h) => h && h.kind === "file" && /\.kisi\.json$|\.csv$|\.s\d+p$/i.test(h.name));
       S.fileHandles = S.fileHandles.filter((h) => !extra.some((x) => x.name === h.name)).concat(extra);
     }
     await handleFiles(files);

@@ -31,6 +31,27 @@ pub struct Project {
     pub config_profiles: HashMap<String, String>,
     /// the assembly variant in use (`crate::variant`)
     pub variant: crate::variant::VariantState,
+    /// Touchstone files of the configuration's connector ends, by the path written in it
+    pub touchstones: HashMap<String, Result<crate::rf::Touchstone, String>>,
+}
+
+/// Parse the Touchstone files the configuration's connector ends name (from `files`).
+pub fn touchstones_of(cfg: Option<&crate::config::BoardConfig>, files: &crate::variant::Files) -> HashMap<String, Result<crate::rf::Touchstone, String>> {
+    let mut out = HashMap::new();
+    for e in cfg.map(|c| c.connector_ends.values().collect::<Vec<_>>()).unwrap_or_default() {
+        let Some(tr) = &e.end.touchstone else { continue };
+        if tr.file.is_empty() || out.contains_key(&tr.file) {
+            continue;
+        }
+        let name = tr.file.rsplit(['/', '\\']).next().unwrap_or(&tr.file).to_string();
+        let r = match files.get(&tr.file) {
+            Some(Ok(text)) => crate::rf::parse_touchstone(text, &name),
+            Some(Err(e)) => Err(e.clone()),
+            None => Err(format!("{} not loaded", tr.file)),
+        };
+        out.insert(tr.file.clone(), r);
+    }
+    out
 }
 
 /// File contents a project is built from (see `Project::from_texts`).
@@ -50,8 +71,8 @@ pub struct Inputs {
     pub files: crate::variant::Files,
 }
 
-/// Read the files a configuration refers to (BOMs of its variants, relative to the
-/// configuration file).
+/// Read the files a configuration refers to (BOMs of its variants, Touchstone files of its
+/// connector ends; relative to the configuration file).
 pub fn config_files(config_path: &Path, text: &str) -> crate::variant::Files {
     let mut files = crate::variant::Files::new();
     let Ok(c) = crate::config::parse(text) else { return files };
@@ -60,6 +81,13 @@ pub fn config_files(config_path: &Path, text: &str) -> crate::variant::Files {
         if let Some(b) = &v.bom {
             let p = dir.join(b);
             files.insert(b.clone(), std::fs::read_to_string(&p).map_err(|e| format!("{}: {e}", p.display())));
+        }
+    }
+    // Touchstone files of the connector ends (channel behind a connector)
+    for e in c.connector_ends.values() {
+        if let Some(tr) = e.end.touchstone.as_ref().filter(|t| !t.file.is_empty()) {
+            let p = dir.join(&tr.file);
+            files.insert(tr.file.clone(), std::fs::read_to_string(&p).map_err(|e| format!("{}: {e}", p.display())));
         }
     }
     files
@@ -130,7 +158,8 @@ impl Project {
         let params = Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, targets: applied.targets.clone(), field: inp.field, ..Default::default() };
         let an = analyze(&board, &params);
         let name = inp.pcb_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant })
+        let touchstones = touchstones_of(cfg.as_ref(), &inp.files);
+        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, touchstones })
     }
 
     /// Commands that compute lanes call this first: an error with the list of variants when
@@ -485,7 +514,8 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             let lim = profiles.limits(prof);
             // a lane ending at a connector: the end model there (kisi.json connector_ends)
             let cend = l.ends.iter().find(|e| e.role == "connector").and_then(|e| p.config.as_ref()?.connector_ends.get(&e.refdes)).map(|e| &e.end);
-            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, cend, &cd);
+            let cts = cend.and_then(|c| c.touchstone.as_ref()).and_then(|tr| p.touchstones.get(&tr.file)?.as_ref().ok());
+            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, cend, cts, &cd);
             // length-weighted impedance of the lane's nets
             let (mut len, mut zs, mut lo, mut hi) = (0.0, 0.0, f64::INFINITY, f64::NEG_INFINITY);
             for st in p.an.nets.iter().filter(|s| l.nets.contains(&s.net)) {

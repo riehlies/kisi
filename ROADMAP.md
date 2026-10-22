@@ -9,6 +9,11 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   references or BOM), `--variant` and a selector in the viewer; parts that are not fitted leave their pads as stubs,
   side stubs and the other path of a fork in the lane cascade; `gaps` and the lane commands ask for a variant when
   a board has variants or forks with all alternatives fitted. ThunderScope's example config has TS-PCIe and TS-USB4.
+- **Channel view and connector ends:** one "Channel check" card in steps (with the impedance view's field solver),
+  the board map per variant (unused nets faint, click opens a channel), a Path tab for nets without devices, and an
+  eye for every lane: at a connector with the end set per connector (termination or driver) and the channel behind
+  it – a lossy line or a Touchstone file (`.s2p`, also on each line of a pair; `.s4p` of a pair) – judged when a
+  channel behind it is given (`connector_ends` in kisi.json).
 
 ## Next
 - **Checks on every push.** A CI workflow that runs `cargo test`, `tools/validate_field.sh` and
@@ -37,6 +42,9 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   the via they leave through yet; the transmit direction of lanes from an IC to a connector is a guess.
 - **Eye and channel check on the 4-port pair model** (the 4-port with mode conversion is shown in the net detail;
   eye and check still use the odd-mode 2-port).
+- **N-port files behind a connector with crosstalk between lanes** (one file for all lanes of a connector or cable):
+  belongs to the multi-lane network (M2 of the channel-simulation concept); today a connector takes a 2-port or a
+  pair's 4-port, without coupling to the other lanes.
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
 - **Via model against 3D results**: 74 kisi-fdtd reference cases in `validation/via_ref` (page
   `dist/kisi-references.html` from `validation/fdtd/make_viewer.py`, test log `validation/fdtd/TESTS.md`). The

@@ -1,0 +1,47 @@
+{
+ "BV_ts_m2_per0": {
+  "native_1": 6.14,
+  "cells": 1029952,
+  "native_max_rss_mb": 82,
+  "wasm_1": 13.3,
+  "wasm_memory_mb": 79,
+  "native_4001": 57.64,
+  "wasm_4001": 74.5,
+  "native_setup_s": 6.14,
+  "native_mcells_s": 80.0,
+  "wasm_setup_s": 13.3,
+  "wasm_mcells_s": 67.3,
+  "bytes_per_cell": 83.5,
+  "native_2threads_mcells_s": 86.4
+ },
+ "BV_ts_refinout2": {
+  "native_1": 4.73,
+  "cells": 1189888,
+  "native_max_rss_mb": 88,
+  "wasm_1": 10.0,
+  "wasm_memory_mb": 85,
+  "native_4001": 64.1,
+  "wasm_4001": 79.4,
+  "native_setup_s": 4.73,
+  "native_mcells_s": 80.2,
+  "wasm_setup_s": 10.0,
+  "wasm_mcells_s": 68.6,
+  "bytes_per_cell": 77.5,
+  "native_2threads_mcells_s": 68.1
+ },
+ "BV_vna_rf_hblb1": {
+  "native_1": 11.02,
+  "cells": 1529280,
+  "native_max_rss_mb": 113,
+  "wasm_1": 23.8,
+  "wasm_memory_mb": 110,
+  "native_4001": 92.68,
+  "wasm_4001": 116.4,
+  "native_setup_s": 11.02,
+  "native_mcells_s": 74.9,
+  "wasm_setup_s": 23.8,
+  "wasm_mcells_s": 66.1,
+  "bytes_per_cell": 77.5,
+  "native_2threads_mcells_s": 56.2
+ }
+}

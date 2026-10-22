@@ -374,3 +374,38 @@ Remaining:
 - **The ThunderScope through via** (L1→L6, thick core) misses ~50 fF.
 - **The fit was made on the same single vias it is scored on.** The pairs and the board pipeline (kisi channel)
   were not used for the fit and improved as well.
+
+## 8. Board vias in 3D (Block 2)
+
+Full report: **`BOARD_VIAS.md`**; `board_vias.py` reproduces everything (cases `board_cases/`, results
+`../via_ref/BV_*`, `results/board_vias*.json`).
+
+### Solver
+| # | Test | Where | Result |
+|---|---|---|---|
+| S9 | Polygon copper and ports across y-directed traces: the microstrip of `short_microstrip` turned by 90° with a polygon plane | unit test `polygon_plane_and_y_ports` | same mesh, S within 2·10⁻³ |
+| S10 | No sliver cells: three soft refinement lines of the M.2 cut-out gave a 0.018 mm cell (0.005 mm in the whole case, time step 7× too small) | unit test `no_sliver_cells` | fails without the rule, passes with it; 74 reference meshes unchanged |
+| S11 | Conformal edges only strictly inside the domain (the M.2 case and a coarse REFINOUT2 mesh grew without bound with partial edges in the PML and on its faces) | board cases, smoke test `trace_into_pml_stable` | stable; a reference via case (C_s8_offset) and the board 2×thru fixtures rerun bit-identical, the board cases within 0.07 dB |
+| S12 | Time-step guard: Gershgorin bound of the operator next to conformal faces against the regular cells | `KISI_FDTD_DEBUG=1` | never triggered (74 references, 3 board cases) |
+
+### De-embedding
+| # | Test | Where | Result |
+|---|---|---|---|
+| S13 | 2×thru de-embedding with lines of Zc ≠ z0: a known π-section via between 30 pH ports and 4 mm lossy lines of 64/62, 53/51.5, 50/50 and 114/94 Ω | `board_vias.py deembed-check` | z0-referred NZC: C up to +82 fF, L up to −200 pH; `sparam.deembed_matched` (fixtures referred to their own line first): C within 5 fF, L within 4 pH, \|S21\| within 0.2 dB to 20 GHz |
+| S14 | Block 1 single vias de-embedded both ways | `board_vias.py block1` | fixtures 49.4–50.7 Ω: C −1…−5 fF, L 0…+11 pH (B_s8 L1L3 stub / back-drill: C −8…−20 fF); 44–47 Ω fixtures change more (X_s8x2_L1L3_bd_d200: C 22 → 62 fF) |
+
+### Board vias against kisi's ladder (matched de-embedding, ladder with the 3D loss model)
+| | M.2 PCIe pair (Sdd) | ThunderScope through via | LibreVNA via with stub |
+|---|---|---|---|
+| max Δ\|S21\| to 16 / 20 GHz | 0.29 / 0.30 dB | 0.21 / 0.38 dB | 0.42 / 1.85 dB (notch shift; 0.06 dB to 6 GHz) |
+| dip / notch, 3D / ladder | 16 / 17 GHz, −0.71 / −1.00 dB | 30.4 GHz notch in 3D only | 24.0 / 22.8 GHz (−5.0 %) |
+| TDR min | −8.4 % | −0.6 % | −2.1 % |
+| delay, 3D / ladder | 10.1 / 13.5 ps | 14.1 / 15.2 ps | 13.5 / 18.1 ps |
+| C, L 3D / ladder | 158 / 217 fF, 673 / 855 pH (diff.) | 278 / 269 fF, 686 / 791 pH | 391 / 478 fF, 262 / 503 pH |
+| ladder without the signal-layer pours: phase error at 20 GHz | 25° → 3.4° | 8° → 2.3° | 34° → 9° (notch > 25 GHz) |
+
+- The M.2 16 GHz dip is real: the broad reflection maximum of the low-impedance pair via, not a resonance; the
+  ladder makes it 0.29 dB too deep.
+- Ladder findings for follow-up work: GND pours on the via's signal layers taken as planes (too slow by 1.1–4.6 ps,
+  too capacitive on M.2 and LibreVNA); series inductance 105–241 pH too high (26–127 pH without the signal-layer
+  pours); the REFINOUT2 notch at 30 GHz (likely its return-via cage) is missing.

@@ -1,0 +1,101 @@
+{
+ "note": "known \u03c0-section via between 30 pH ports and 4 mm lossy lines of Zc \u2260 z0: the plain z0-referred NZC against the matched de-embedding",
+ "cases": {
+  "lines 64/62 ohm, ref 50 ohm": {
+   "nzc_z0": {
+    "max_dS_lin_25": 0.2387,
+    "dS21_max_db_20": 0.921,
+    "C_fF": 352.0,
+    "L_pH": 649.2,
+    "tdr_min": 49.3,
+    "S11_0.1GHz": -0.0388
+   },
+   "matched": {
+    "max_dS_lin_25": 0.0267,
+    "dS21_max_db_20": 0.157,
+    "C_fF": 268.0,
+    "L_pH": 852.2,
+    "tdr_min": 47.1,
+    "S11_0.1GHz": -0.0173
+   },
+   "truth": {
+    "C_fF": 270.0,
+    "L_pH": 849.0,
+    "tdr_min": 47.6,
+    "S11_0.1GHz": -0.0167
+   }
+  },
+  "lines 53/51.5 ohm, ref 50 ohm": {
+   "nzc_z0": {
+    "max_dS_lin_25": 0.0875,
+    "dS21_max_db_20": 0.191,
+    "C_fF": 519.9,
+    "L_pH": 499.3,
+    "tdr_min": 47.9,
+    "S11_0.1GHz": -0.0446
+   },
+   "matched": {
+    "max_dS_lin_25": 0.0376,
+    "dS21_max_db_20": 0.159,
+    "C_fF": 475.5,
+    "L_pH": 545.0,
+    "tdr_min": 48.8,
+    "S11_0.1GHz": -0.03
+   },
+   "truth": {
+    "C_fF": 480.0,
+    "L_pH": 542.5,
+    "tdr_min": 48.8,
+    "S11_0.1GHz": -0.0293
+   }
+  },
+  "lines 50/50 ohm, ref 50 ohm": {
+   "nzc_z0": {
+    "max_dS_lin_25": 0.0573,
+    "dS21_max_db_20": 0.11,
+    "C_fF": 280.1,
+    "L_pH": 816.4,
+    "tdr_min": 48.6,
+    "S11_0.1GHz": -0.0157
+   },
+   "matched": {
+    "max_dS_lin_25": 0.032,
+    "dS21_max_db_20": 0.196,
+    "C_fF": 267.4,
+    "L_pH": 853.0,
+    "tdr_min": 47.0,
+    "S11_0.1GHz": -0.0172
+   },
+   "truth": {
+    "C_fF": 270.0,
+    "L_pH": 849.0,
+    "tdr_min": 47.6,
+    "S11_0.1GHz": -0.0167
+   }
+  },
+  "lines 114/94 ohm, ref 100 ohm": {
+   "nzc_z0": {
+    "max_dS_lin_25": 0.1126,
+    "dS21_max_db_20": 0.133,
+    "C_fF": 221.2,
+    "L_pH": 812.3,
+    "tdr_min": 90.4,
+    "S11_0.1GHz": -0.1226
+   },
+   "matched": {
+    "max_dS_lin_25": 0.0198,
+    "dS21_max_db_20": 0.036,
+    "C_fF": 216.1,
+    "L_pH": 911.8,
+    "tdr_min": 97.1,
+    "S11_0.1GHz": -0.0279
+   },
+   "truth": {
+    "C_fF": 217.0,
+    "L_pH": 909.9,
+    "tdr_min": 97.1,
+    "S11_0.1GHz": -0.0266
+   }
+  }
+ }
+}

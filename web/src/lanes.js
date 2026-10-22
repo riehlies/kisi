@@ -156,7 +156,7 @@ function renderChOverview() {
   };
   const section = (k) => groups[k].length ? `<h3 class="ov-h">${KIND_TITLE[k][0]} <em>${groups[k].length} bus${groups[k].length === 1 ? "" : "es"}, ${nl(k)} lane${nl(k) === 1 ? "" : "s"} · ${KIND_TITLE[k][1]}</em></h3>${groups[k].map(busCard).join("")}` : "";
   box.innerHTML = `
-    <div class="bal-head"><h3>Interfaces · ${esc(S.name)}</h3>
+    <div class="bal-head"><div class="bal-row"><h3>Interfaces · ${esc(S.name)}</h3><span class="ov-tools">${ibisHeaderTools()}</span></div>
       <p>Signals with a target impedance, followed from device to device through series resistors and AC-coupling capacitors. Terminations (∥), branches (⑂) and side stubs (unused pads, parts not fitted) are part of the channel. Profiles come from the net class (“Interfaces per net class” card); for lanes that leave the board at a connector, the card of the interface sets what sits there and the channel behind it.${variantShown() ? ` Assembly variant: <b>${esc(variantShown())}</b>.` : ""}${variantUnused() ? ` ${variantUnused().size} net${variantUnused().size === 1 ? "" : "s"} only connect parts not fitted: not used in this variant, faint on the board map.` : ""} On the board map, a click on a channel opens it.</p></div>
     <div class="bal-kpis">
       ${kpi(S.buses.length, "buses")}

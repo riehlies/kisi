@@ -23,17 +23,34 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   without a model (low priority). The viewer checks the mapping with `.ibs` files dropped with the board, kept in
   memory only. Fixtures: synthetic files from analytic buffers and KiCad's QA models.
 - **IBIS models at the lane ends (linearised):** bus cards of the Interfaces overview choose per IC the model file
-  (loaded in the card or dropped), component, pin map, corner and selector choices, with a per-lane model override and
-  a “kisi.json entry” (with sha256); `check`/`interfaces` use the kisi.json mapping (`models`: pad → model) the same
+  (“Load IBIS…” in the overview's header, or dropped), component, pin map (by number, by name or manual: pad → IBIS
+  pin per lane-end pad, `"pin_map": "manual"` with `pins`), corner and selector choices, with a per-lane model override
+  and a “kisi.json entry” (with sha256); `check`/`interfaces` use the kisi.json mapping (`models`: pad → model) the same
   way in both CLIs. Driver and receiver become linear ends (Ron, C_comp + package R/L/C, edge from the waveforms or
   [Ramp], terminator / ODT), marked as estimates; limits and verdict stay the profile's.
 
 ## Next
+Several items below come from running the kisi-prepare skill on the Seeed XIAO nRF54LM20A board (power tree only).
 - **`kisi gaps`: supply rails without a voltage in the name.** Nets such as `Net-(IC22-VCC)` are not recognised as
   rails, so the ICs on them are missing from the load list. Use regulator outputs (`PI_REG … @V`) and the parts on
-  the net to detect them.
+  the net to detect them. XIAO: VSYS, VBUS and VBAT of the nPM1300 PMIC are not found; `VSYS@5V` in the field works
+  as a workaround.
+- **PI_REG output rails with spaces in the net name.** Hierarchical names such as `/06 Peripherals/IMU_VDD` cannot be
+  written, because the field parser splits at whitespace; allow quoting (`"/06 Peripherals/IMU_VDD"`). Workaround on
+  the XIAO: a load point at the ferrite (`IMU&MIC_3V3=0.9mA@FB3`).
+- **Default efficiency of switching regulators as an estimate.** Without a value kisi assumes 85 %; the viewer's power
+  tree shows it as “η 85 %” without an estimate mark and the CLI output has no flag for it. Mark it as an estimate in
+  both (AGENTS.md rule), so that a missing datasheet value is visible.
+- **MPN in `kisi gaps` and part lists.** Footprints often carry a Manufacturer / MPN field while the Value field is not
+  a part number; show the MPN when the value is not one, so that the user (and the skill) can look up the right
+  datasheet. XIAO: U4 has the value “英联” (the manufacturer), the MPN is UM3204H.
+- **`kisi config-template`: a load as the PI_LOAD example.** The example takes the first U part, which can be a
+  regulator (XIAO: U1 TPS628438); pick a part that is a load (not a PI_REG part, not on a regulator's output only).
 - **Skills on real boards.** Run kisi-prepare and kisi-si-pi-review on a few real projects; sharpen the research
   guidance (datasheet sections, typical vs. maximum) and add a worked example `<board>.kisi.json`.
+- **kisi-prepare guidance from the XIAO test:** explain `NAME@<V>V` for rails without a voltage in the name, `id=` for
+  PMICs with several channels and `NET=I@REF` load points; ask early for the user's datasheets – several manufacturer
+  PDFs could not be read through web fetch, and efficiency is often only given as a curve.
 
 ## Publishing
 - **Measured validation:** the test board (`validation/test_board.md`) and comparisons with other solvers.
@@ -83,6 +100,9 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
 - **Power:** via current capacity; a temperature estimate from the losses map (2D heat spreading with
   conductivity of copper and laminate, convection; clearly an estimate); split of regulator losses between IC and
   inductor.
+- **Power tree per supply case.** Boards that run from USB or a battery (a PMIC power path) have one tree per case:
+  on the XIAO, VSYS is VBUS on USB and VBAT on battery, and the debugger is supplied only on USB; while charging, the
+  battery charge current is a load on VSYS. Today one tree has to stand for all cases.
 - **Whole-board validation** against a commercial tool (e.g. HyperLynx) on the example boards.
 - **Decide first: equalisation** (CTLE/FFE) for profiles that require it (PCIe Gen3+). So far deliberately left out.
 
@@ -95,4 +115,6 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
 
 ## Maintenance
 - Solver updates with `tools/upstream_update.sh` when js_2d_fields changes (validation decides).
+- `tools/check_viewer.py --board`: a board without impedance targets (no `.net` rows) stops the run at the net
+  detail; skip that step when there are no nets (found with the XIAO board).
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.

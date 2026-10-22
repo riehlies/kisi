@@ -224,7 +224,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             &["channel ends (later versions: simulation with IBIS buffers)"],
             "The IC vendor's IBIS model (product page, or the design tool's export, e.g. Vivado \"Export IBIS Model\" for the pins of the design). Keep vendor files outside the repository unless their licence allows sharing: kisi.json stores the path and sha256 only. Inspect a file with `kisi ibis <file.ibs>`.",
             json!({"to": "ibis.<ref>", "example": {"file": "ibis/part.ibs", "component": "<[Component] of the file>", "sha256": "<sha256sum of the file>", "pin_map": "by-number", "selectors": {"<[Model Selector]>": "<model>"}, "source": {"kind": "datasheet", "url": "…", "note": "vendor IBIS model, file revision …"}},
-                "note": "pin_map by-number: pad number = IBIS pin name; by-name: the pad's symbol pin name = IBIS signal_name; \"pins\": {\"<pad>\": \"<IBIS pin>\"} for exceptions"}),
+                "note": "pin_map by-number: pad number = IBIS pin name; by-name: the pad's symbol pin name = IBIS signal_name; \"pins\": {\"<pad>\": \"<IBIS pin>\"} for exceptions; manual: only \"pins\" maps"}),
             items,
         ));
     }

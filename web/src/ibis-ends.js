@@ -1,10 +1,11 @@
 "use strict";
 // ---- IBIS models at the lane ends (interfaces overview, lane detail, channel check)
 //
-// Files:   .ibs files loaded in a bus card ("Load .ibs…") or dropped with the board / kisi.json; the
+// Files:   .ibs files loaded with "Load IBIS…" (header of the overview) or dropped with the board; the
 //          engine keeps them in memory (S.ibisFiles: name → {info} | {error}); never stored in the
 //          browser, never uploaded.
-// Choice:  per IC (refdes) {file, component, pin_map, corner, selectors, models (pad → model)}, stored
+// Choice:  per IC (refdes) {file, component, pin_map, pins (pad → IBIS pin), corner, selectors, models
+//          (pad → model)}, stored
 //          per board in localStorage – names and options only – over kisi.json "ibis".<ref>;
 //          {off: true} = the profile's transmitter / receiver although kisi.json names a model.
 // Engine:  kisi_ibis_ends resolves the ends for the overview; laneRf and the kisi_check items carry
@@ -85,13 +86,13 @@ function ibisLaneCell(l, ends) {
   const r = ends[laneKey(l)] || {};
   const one = (e, role, pin) => {
     const lab = role === "tx" ? "Tx" : "Rx";
-    if (!e) return `<div class="ie-row"><span class="muted">${lab} ${esc(pin ? pin.refdes : "")} ${pin && pin.role === "connector" ? "connector end" : "profile"}</span></div>`;
+    if (!e) return `<div class="ie-row"><span class="muted">${lab} ${esc(pin ? pin.refdes : "")} ${pin && pin.role === "connector" ? "connector end" : "as the profile"}</span></div>`;
     const pads = [e.pad, ...(l.partner_ends || []).filter((p) => p.refdes === e.refdes).map((p) => p.pin)];
     const ovr = e.model_from === "override";
     const cands = e.candidates || [];
-    const first = e.error && !ovr ? "profile" : ovr ? "from the pin" : `${e.model} (${e.selector ? "selector" : "pin"})`;
+    const first = e.error && !ovr ? "as the profile" : ovr ? "from the pin" : `${e.model} (${e.selector ? "selector" : "pin"})`;
     const sel = cands.length ? `<select data-ib-ov="${esc(e.refdes)}" data-pads="${esc(pads.join(","))}" aria-label="${lab} model at ${esc(e.refdes)}" title="${esc(ibisTitle(e))}"><option value="">${esc(first)}</option>${cands.map((m) => `<option value="${esc(m)}" ${ovr && e.model === m ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>`
-      : `<span title="${esc(ibisTitle(e))}">${esc(e.error ? "profile" : e.model)}</span>`;
+      : `<span title="${esc(ibisTitle(e))}">${esc(e.error ? "as the profile" : e.model)}</span>`;
     return `<div class="ie-row"><span class="${e.error ? "err" : "muted"}" title="${esc(ibisTitle(e))}">${lab} ${esc(e.refdes)}</span> ${sel}</div>`;
   };
   return `<td class="ie">${one(r.tx, "tx", laneTx(l))}${one(r.rx, "rx", laneRx(l))}</td>`;
@@ -104,21 +105,27 @@ function ibisControls(b, ends) {
   const ics = new Map();
   for (const l of b.lanes) for (const e of l.ends) if (e.role === "ic" && !ics.has(e.refdes)) ics.set(e.refdes, e.value);
   if (!ics.size) return "";
-  const loadBtn = (ref) => `<label class="btn small ce-load">Load .ibs…<input type="file" accept=".ibs" data-ib-load="${esc(ref)}" hidden></label>`;
   const fileSel = (ref, cur, cfg, own) => {
     const name = cur ? ibisBase(cur.file) : "", usingCfg = !(own && (own.off || own.file)) && cfg && cfg.file;
     const names = [...new Set([...Object.keys(S.ibisFiles), ...(name && !usingCfg ? [name] : [])])];
-    return `<select data-ib-file="${esc(ref)}" aria-label="IBIS model of ${esc(ref)}"><option value="" ${!cur ? "selected" : ""}>none – profile</option>${cfg && cfg.file ? `<option value="@cfg" ${usingCfg ? "selected" : ""}>kisi.json (${esc(ibisBase(cfg.file))})</option>` : ""}${names.map((n) => `<option value="${esc(n)}" ${cur && !usingCfg && n === name ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>`;
+    return `<select data-ib-file="${esc(ref)}" aria-label="IBIS model of ${esc(ref)}"><option value="" ${!cur ? "selected" : ""}>as the profile</option>${cfg && cfg.file ? `<option value="@cfg" ${usingCfg ? "selected" : ""}>kisi.json (${esc(ibisBase(cfg.file))})</option>` : ""}${names.map((n) => `<option value="${esc(n)}" ${cur && !usingCfg && n === name ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>`;
   };
-  const plain = [], boxes = [];
+  const plain = [], boxes = [], loaded = Object.keys(S.ibisFiles).length > 0;
   for (const [ref, val] of ics) {
     const own = ibisChoices()[ref], cfg = cfgIbisMap()[ref], cur = ibisEntryOf(ref);
-    if (!cur) { plain.push(`<span class="ib-ic">${esc(ref)} <span class="muted">${esc(val || "")}</span> ${fileSel(ref, cur, cfg, own)} ${loadBtn(ref)}</span>`); continue; }
+    if (!cur) { plain.push(loaded || cfg ? `<span class="ib-ic">${esc(ref)} <span class="muted">${esc(val || "")}</span> ${fileSel(ref, cur, cfg, own)}</span>` : esc(ref)); continue; }
     const name = ibisBase(cur.file), f = S.ibisFiles[name];
-    const info = f && f.info, err = !f ? `${name} not loaded – load it here or drop it with the board` : f.error;
+    const info = f && f.info, err = !f ? `${name} not loaded – load it with “Load IBIS…” (top right) or drop it with the board` : f.error;
     const comps = info ? info.components : [];
     const compSel = comps.length > 1 ? `<label>component <select data-ib-comp="${esc(ref)}">${comps.map((c) => `<option value="${esc(c.name)}" ${c.name === (cur.component || "") ? "selected" : ""}>${esc(c.name)}</option>`).join("")}${!cur.component ? '<option value="" selected>– choose –</option>' : ""}</select></label>` : "";
-    const pm = `<label>pins <select data-ib-pm="${esc(ref)}" title="by number: pad number = IBIS pin name; by name: the pad's symbol pin name = IBIS signal name"><option value="by-number">by number</option><option value="by-name" ${cur.pin_map === "by-name" ? "selected" : ""}>by name</option></select></label>`;
+    const pm = `<label>pins <select data-ib-pm="${esc(ref)}" title="by number: pad number = IBIS pin name; by name: the pad's symbol pin name = IBIS signal name; manual: choose the IBIS pin of each pad at a lane end"><option value="by-number">by number</option><option value="by-name" ${cur.pin_map === "by-name" ? "selected" : ""}>by name</option><option value="manual" ${cur.pin_map === "manual" ? "selected" : ""}>manual</option></select></label>`;
+    // manual: pad → IBIS pin for the IC's pads at the lane ends of this bus (both lines of a pair)
+    const comp = comps.find((c) => c.name === cur.component) || (comps.length === 1 ? comps[0] : null);
+    const manual = cur.pin_map === "manual" && comp ? `<div class="ib-pins"><span class="ce-h">pad → IBIS pin</span>${ibisLanePads(ref, b.lanes).map((pad) => {
+      const v = (cur.pins || {})[pad] || "";
+      const known = (comp.pin_list || []).some((x) => x[0] === v);
+      return `<label>${esc(pad)} <select data-ib-pin="${esc(ref)}" data-pad="${esc(pad)}" aria-label="IBIS pin of pad ${esc(pad)} of ${esc(ref)}"><option value="">– not mapped –</option>${v && !known ? `<option value="${esc(v)}" selected>${esc(v)} (not in ${esc(comp.name)})</option>` : ""}${(comp.pin_list || []).map(([pn, sig, mod]) => `<option value="${esc(pn)}" ${pn === v ? "selected" : ""}>${esc(pn)} ${esc(sig)} (${esc(mod)})</option>`).join("")}</select></label>`;
+    }).join("")}</div>` : cur.pin_map === "manual" ? `<span class="muted">choose the component to map the pins</span>` : "";
     const cn = `<label>corner <select data-ib-corner="${esc(ref)}">${["typ", "min", "max"].map((c) => `<option ${(cur.corner || "typ") === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>`;
     // [Model Selector]s the IC's lane ends in this bus use
     const sels = new Map();
@@ -132,12 +139,26 @@ function ibisControls(b, ends) {
       }
     }
     const selCtl = [...sels].map(([s, ms]) => `<label title="[Model Selector] ${esc(s)}: drive strength, ODT or I/O standard">${esc(s)} <select data-ib-sel="${esc(ref)}" data-sel="${esc(s)}"><option value="">first entry (${esc(ms[0] || "")})</option>${ms.map((m) => `<option value="${esc(m)}" ${(cur.selectors || {})[s] === m ? "selected" : ""}>${esc(m)}</option>`).join("")}</select></label>`).join("");
-    const st = info ? `<span class="${bad && !ok ? "err" : "muted"}">${ok} lane end${ok === 1 ? "" : "s"} with IBIS${bad ? `, ${bad} on the profile (${esc(why)})` : ""}</span>` : "";
+    const st = info ? `<span class="${bad && !ok ? "err" : "muted"}">${ok} lane end${ok === 1 ? "" : "s"} with IBIS${bad ? `, ${bad} as the profile (${esc(why)})` : ""}</span>` : "";
     const entry = info ? `<details class="ib-entry"><summary>kisi.json entry</summary><pre>${esc(ibisEntryJson(ref))}</pre><button class="btn small" data-ib-copy="${esc(ref)}">Copy</button> <span class="muted">for the "ibis" section; "file" is a path relative to the kisi.json</span></details>` : "";
-    boxes.push(`<div class="ce-box ib-box"><span class="ce-h">IC <b>${esc(ref)}</b> ${esc(val || "")} · IBIS</span>${fileSel(ref, cur, cfg, own)}${loadBtn(ref)}${err ? `<span class="err">${esc(err)}</span>` : ""}${info ? compSel + pm + cn + selCtl : ""}${st}${entry}</div>`);
+    boxes.push(`<div class="ce-box ib-box"><span class="ce-h">IC <b>${esc(ref)}</b> ${esc(val || "")} · IBIS</span>${fileSel(ref, cur, cfg, own)}${err ? `<span class="err">${esc(err)}</span>` : ""}${info ? compSel + pm + cn + selCtl : ""}${st}${info ? manual : ""}${entry}</div>`);
   }
-  const p = plain.length ? `<div class="ce-box ib-box"><span class="ce-h" title="IBIS models at the IC ends: used in the check and the eye as linearised ends (estimate); the files stay in this page's memory">IBIS</span>${plain.join("")}</div>` : "";
+  const tip = "IBIS models at the IC ends: used in the check and the eye as linearised ends (estimate); the files stay in this page's memory";
+  const p = !plain.length ? "" : loaded || plain.some((x) => x.startsWith("<")) ? `<div class="ce-box ib-box"><span class="ce-h" title="${tip}">IBIS</span>${plain.join("")}</div>`
+    : `<div class="ce-box ib-box"><span class="ce-h" title="${tip}">IBIS</span><span class="muted">${plain.join(", ")}: as the profile – load models with “Load IBIS…” (top right) to use them at these ends</span></div>`;
   return `<div class="ce-list">${boxes.join("")}${p}</div>`;
+}
+
+// the IC's pads at the ends of these lanes (both lines of a pair), sorted
+function ibisLanePads(ref, lanes) {
+  const out = [];
+  for (const l of lanes) for (const e of [...l.ends, ...(l.partner_ends || [])]) if (e.refdes === ref && e.role === "ic" && !out.includes(e.pin)) out.push(e.pin);
+  return out.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+// header of the interfaces overview: load model files (memory only) and how many are loaded
+function ibisHeaderTools() {
+  const names = Object.keys(S.ibisFiles);
+  return `${names.length ? `<span class="muted" title="${esc(names.join(", "))}">${names.length} IBIS file${names.length === 1 ? "" : "s"} in memory</span>` : ""}<label class="btn small" title="IBIS models (.ibs) for the IC ends of the lanes: kept in this page's memory only, never stored or uploaded; choose them per IC in the bus cards">Load IBIS…<input type="file" accept=".ibs" multiple id="ib-load" hidden></label>`;
 }
 
 // the kisi.json "ibis" entry of the current choice (names, options and the file's sha256)
@@ -167,21 +188,39 @@ function bindIbis(box, after) {
     }
     done();
   });
-  box.querySelectorAll("input[data-ib-load]").forEach((inp) => inp.onchange = async () => {
-    const f = inp.files && inp.files[0];
-    if (!f) return;
-    const r = await loadIbisFile(f);
-    const e = ibisEntryEdit(inp.dataset.ibLoad);
-    e.file = f.name; delete e.sha256;
-    if (r.info && e.component && !r.info.components.some((c) => c.name === e.component)) delete e.component;
-    done();
-  });
+  // "Load IBIS…": the same path as dropped files (memory only; a file the kisi.json names applies it again)
+  const ld = box.querySelector("#ib-load");
+  if (ld) ld.onchange = () => { const fs = [...(ld.files || [])]; ld.value = ""; if (fs.length) handleFiles(fs); };
   const set = (attr, key) => box.querySelectorAll(`select[data-${attr}]`).forEach((s) => s.onchange = () => {
     const e = ibisEntryEdit(s.getAttribute(`data-${attr}`));
     if (s.value) e[key] = s.value; else delete e[key];
     done();
   });
-  set("ib-comp", "component"); set("ib-pm", "pin_map"); set("ib-corner", "corner");
+  set("ib-comp", "component"); set("ib-corner", "corner");
+  box.querySelectorAll("select[data-ib-pm]").forEach((s) => s.onchange = () => {
+    const ref = s.dataset.ibPm, ends = ibisEndsAll(), e = ibisEntryEdit(ref);
+    if (s.value === "manual") {
+      // start from the mapping so far: the IBIS pins the lane ends resolved to, else the pin of the same name
+      const info = (S.ibisFiles[ibisBase(e.file)] || {}).info, comps = info ? info.components : [];
+      const comp = comps.find((c) => c.name === e.component) || (comps.length === 1 ? comps[0] : null);
+      const names = new Set(comp ? (comp.pin_list || []).map((x) => x[0]) : []);
+      const resolved = Object.values(ends).flatMap((r) => [r.tx, r.rx]).filter((x) => x && x.refdes === ref && x.ibis_pin && !x.error);
+      e.pins = { ...(e.pins || {}) };
+      for (const pad of ibisLanePads(ref, allLanes().filter((l) => CHECKABLE.has(l.kind)))) {
+        if (e.pins[pad]) continue;
+        const hit = resolved.find((x) => x.pad === pad);
+        if (hit) e.pins[pad] = hit.ibis_pin; else if (e.pin_map !== "by-name" && names.has(pad)) e.pins[pad] = pad;
+      }
+    }
+    if (s.value) e.pin_map = s.value; else delete e.pin_map;
+    done();
+  });
+  box.querySelectorAll("select[data-ib-pin]").forEach((s) => s.onchange = () => {
+    const e = ibisEntryEdit(s.dataset.ibPin);
+    e.pins = { ...(e.pins || {}) };
+    if (s.value) e.pins[s.dataset.pad] = s.value; else delete e.pins[s.dataset.pad];
+    done();
+  });
   box.querySelectorAll("select[data-ib-sel]").forEach((s) => s.onchange = () => {
     const e = ibisEntryEdit(s.dataset.ibSel);
     e.selectors = { ...(e.selectors || {}) };

@@ -152,10 +152,10 @@ pub struct IbisEntry {
     pub component: Option<String>,
     /// SHA-256 of the file (as `sha256sum` prints it): kisi notices when the file changes
     pub sha256: Option<String>,
-    /// "by-number" (default: pad number = IBIS pin name) or "by-name" (the pad's symbol pin
-    /// name = IBIS signal_name)
+    /// "by-number" (default: pad number = IBIS pin name), "by-name" (the pad's symbol pin
+    /// name = IBIS signal_name) or "manual" (only `pins` maps: a pad not in it has no IBIS pin)
     pub pin_map: Option<String>,
-    /// pad number → IBIS pin name, for pads that differ from the rule
+    /// pad number → IBIS pin name: exceptions from the rule, or with "manual" the whole mapping
     pub pins: BTreeMap<String, String>,
     /// [Model Selector] name → the model to use (drive strength, ODT, I/O standard)
     #[serde(alias = "selector")]
@@ -168,7 +168,7 @@ pub struct IbisEntry {
     pub source: Option<Source>,
 }
 
-pub const PIN_MAPS: &[&str] = &["by-number", "by-name"];
+pub const PIN_MAPS: &[&str] = &["by-number", "by-name", "manual"];
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -484,7 +484,9 @@ fn check_ibis(cfg: &BoardConfig, board: &Board, r: &mut CheckResult) {
         }
         if let Some(m) = &e.pin_map {
             if !PIN_MAPS.contains(&m.as_str()) {
-                r.errors.push(format!("{what}: pin_map '{m}' unknown (use {})", PIN_MAPS.join(" or ")));
+                r.errors.push(format!("{what}: pin_map '{m}' unknown (use {})", PIN_MAPS.join(", ")));
+            } else if m == "manual" && e.pins.is_empty() {
+                r.warnings.push(format!("{what}: pin_map manual without \"pins\": no pad of {refdes} has an IBIS pin (map pad → IBIS pin in \"pins\")"));
             }
         }
         if let Some(c) = &e.corner {

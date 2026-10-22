@@ -543,8 +543,10 @@ pub fn check_files(cfg: &BoardConfig, board: &Board, signal: &HashMap<u32, Strin
             }
         }
         let by_name = e.pin_map.as_deref() == Some("by-name");
+        let manual = e.pin_map.as_deref() == Some("manual");
         let choice = |s: &str| e.selectors.iter().find(|(k, _)| k.eq_ignore_ascii_case(s)).map(|(_, v)| v.clone());
         let (mut checked, mut covered) = (0usize, 0usize);
+        let mut unmapped: Vec<String> = Vec::new();
         let mut uncovered: Vec<Value> = Vec::new();
         let mut unchosen: BTreeMap<String, Vec<String>> = BTreeMap::new();
         let mut models: BTreeSet<String> = BTreeSet::new();
@@ -553,6 +555,8 @@ pub fn check_files(cfg: &BoardConfig, board: &Board, signal: &HashMap<u32, Strin
             checked += 1;
             let ibis_pin = if let Some(p) = e.pins.get(*number) {
                 comp.pin(p)
+            } else if manual {
+                None
             } else if by_name {
                 comp.pins.iter().find(|p| p.signal == *pinfn).or_else(|| comp.pins.iter().find(|p| !pinfn.is_empty() && p.signal.eq_ignore_ascii_case(pinfn)))
             } else {
@@ -564,6 +568,10 @@ pub fn check_files(cfg: &BoardConfig, board: &Board, signal: &HashMap<u32, Strin
                 continue;
             }
             let reason = match ibis_pin {
+                None if manual && !e.pins.contains_key(*number) => {
+                    unmapped.push(number.to_string());
+                    Some("not mapped (pin_map manual: add it to \"pins\")".to_string())
+                }
                 None if by_name && pinfn.is_empty() => Some("the pad has no pin name (pinfunction) in the board file".to_string()),
                 None if by_name => Some(format!("no IBIS pin with signal name '{pinfn}'")),
                 None => Some("no such pin in the IBIS file".to_string()),
@@ -596,14 +604,24 @@ pub fn check_files(cfg: &BoardConfig, board: &Board, signal: &HashMap<u32, Strin
                 Some(r) => uncovered.push(json!({"pad": number, "net": board.net_name(net), "needed_for": why, "reason": r})),
             }
         }
-        if !uncovered.is_empty() {
-            let list: Vec<String> = uncovered.iter().take(10).map(|u| format!("{} ({}: {})", u["pad"].as_str().unwrap_or(""), u["net"].as_str().unwrap_or(""), u["reason"].as_str().unwrap_or(""))).collect();
-            let hint = if !by_name && covered == 0 && pads.iter().any(|p| !p.2.is_empty()) { " – none matches by number: try \"pin_map\": \"by-name\"" } else { "" };
+        // pads left unmapped in a manual mapping get their own warning below
+        let other: Vec<&Value> = uncovered.iter().filter(|u| !unmapped.iter().any(|p| u["pad"].as_str() == Some(p.as_str()))).collect();
+        if !other.is_empty() {
+            let list: Vec<String> = other.iter().take(10).map(|u| format!("{} ({}: {})", u["pad"].as_str().unwrap_or(""), u["net"].as_str().unwrap_or(""), u["reason"].as_str().unwrap_or(""))).collect();
+            let hint = if !by_name && !manual && covered == 0 && pads.iter().any(|p| !p.2.is_empty()) { " – none matches by number: try \"pin_map\": \"by-name\"" } else { "" };
             out.warnings.push(format!(
                 "{what}: {} of {checked} pad(s) on nets with a target or a lane have no IBIS pin with a model: {}{}{hint}",
-                uncovered.len(),
+                other.len(),
                 list.join(", "),
-                if uncovered.len() > 10 { ", …" } else { "" }
+                if other.len() > 10 { ", …" } else { "" }
+            ));
+        }
+        if !unmapped.is_empty() {
+            out.warnings.push(format!(
+                "{what}: pin_map manual: {} of {checked} pad(s) on nets with a target or a lane left unmapped: {}{} – add them to \"pins\" (pad → IBIS pin)",
+                unmapped.len(),
+                unmapped.iter().take(20).cloned().collect::<Vec<_>>().join(", "),
+                if unmapped.len() > 20 { ", …" } else { "" }
             ));
         }
         for (sel, pads) in &unchosen {
@@ -617,6 +635,9 @@ pub fn check_files(cfg: &BoardConfig, board: &Board, signal: &HashMap<u32, Strin
         }
         part["pads_checked"] = json!(checked);
         part["pads_with_model"] = json!(covered);
+        if manual {
+            part["pads_unmapped"] = json!(unmapped);
+        }
         part["uncovered"] = json!(uncovered);
         part["selectors"] = json!(e.selectors);
         part["selectors_without_choice"] = json!(unchosen.keys().collect::<Vec<_>>());
@@ -778,15 +799,22 @@ pub fn resolve_end(map: &BTreeMap<String, crate::config::IbisEntry>, set: &Parse
     // the IBIS pin of the pad: an exception in `pins`, by pin name, or by number
     let pinfn = board.footprints.iter().position(|x| x.reference == refdes).and_then(|fi| board.pads.iter().find(|p| p.fp as usize == fi && p.number == pad)).map(|p| p.pinfunction.as_str()).unwrap_or("");
     let by_name = e.pin_map.as_deref() == Some("by-name");
+    let manual = e.pin_map.as_deref() == Some("manual");
     let pin = if let Some(pn) = e.pins.get(pad) {
         comp.pin(pn)
+    } else if manual {
+        return Some(out.fail(format!("pad {pad} is not mapped (pin_map manual: add it to \"pins\")")));
     } else if by_name {
         comp.pins.iter().find(|p| !pinfn.is_empty() && p.signal == pinfn).or_else(|| comp.pins.iter().find(|p| !pinfn.is_empty() && p.signal.eq_ignore_ascii_case(pinfn)))
     } else {
         comp.pin(pad)
     };
     let Some(pin) = pin else {
-        let why = if by_name { format!("no IBIS pin with signal name '{pinfn}' (pad {pad})") } else { format!("pad {pad} is not a pin of {}", comp.name) };
+        let why = match e.pins.get(pad) {
+            Some(pn) => format!("pins.{pad}: no pin '{pn}' in {}", comp.name),
+            None if by_name => format!("no IBIS pin with signal name '{pinfn}' (pad {pad})"),
+            None => format!("pad {pad} is not a pin of {}", comp.name),
+        };
         return Some(out.fail(why));
     };
     out.ibis_pin = Some(pin.name.clone());
@@ -962,7 +990,8 @@ pub fn file_info(name: &str, p: &Parsed) -> Value {
         "name": name, "sha256": p.sha256, "bytes": p.bytes,
         "components": f.components.iter().map(|c| {
             let sels: BTreeSet<&str> = c.pins.iter().filter_map(|x| f.selector(&x.model)).map(|s| s.name.as_str()).collect();
-            json!({"name": c.name, "pins": c.pins.len(), "selectors": sels})
+            // [IBIS pin, signal name, model or selector] for a manual mapping in the viewer
+            json!({"name": c.name, "pins": c.pins.len(), "selectors": sels, "pin_list": c.pins.iter().map(|x| [x.name.as_str(), x.signal.as_str(), x.model.as_str()]).collect::<Vec<_>>()})
         }).collect::<Vec<_>>(),
         "selectors": f.model_selectors.iter().map(|s| json!({"name": s.name, "models": s.entries.iter().map(|e| e.model.clone()).collect::<Vec<_>>()})).collect::<Vec<_>>(),
         "models": f.models.iter().map(|m| json!({"name": m.name, "type": m.model_type})).collect::<Vec<_>>(),
@@ -1216,6 +1245,39 @@ mod tests {
         let lanes: Vec<&Value> = v["buses"].as_array().unwrap().iter().flat_map(|b| b["lanes"].as_array().unwrap()).collect();
         let l = lanes.iter().find(|l| l["lane"] == "SIG4").unwrap();
         assert_eq!(l["ibis_ends"]["tx"]["model"], "IO_50");
+    }
+
+    #[test]
+    fn manual_pin_mapping() {
+        // config-check: only the pads in "pins" are mapped; the others on signal nets are reported
+        let p = project(r#"{"U1": {"file": "m/synth.ibs", "pin_map": "manual", "pins": {"4": "4", "99": "16", "12": "77"}, "selectors": {"IO_SEL": "IO_50"}, "source": {"kind": "simulation", "note": "x"}}}"#, Some(files()));
+        let ck = p.config_check.as_ref().unwrap();
+        assert!(ck.errors.iter().any(|e| e.contains("pins.12: no pin '77'")), "{:?}", ck.errors);
+        let w = ck.warnings.join("\n");
+        assert!(w.contains("pin_map manual: 4 of 7 pad(s) on nets with a target or a lane left unmapped: 3, 5, 6, 11"), "{w}");
+        // the mapped pad 12 → '77' is not in the component: listed apart from the unmapped ones
+        assert!(w.contains("1 of 7 pad(s) on nets with a target or a lane have no IBIS pin with a model: 12 (SIG12: no such pin in the IBIS file)"), "{w}");
+        assert!(!w.contains("try \"pin_map\": \"by-name\""), "{w}");
+        let part = &p.ibis.as_ref().unwrap()[0];
+        assert_eq!((part["pin_map"].as_str(), part["pads_with_model"].as_u64()), (Some("manual"), Some(2)));
+        assert_eq!(part["pads_unmapped"], json!(["3", "5", "6", "11"]));
+        // manual without any pin: a warning without the files as well
+        let p = project(r#"{"U1": {"file": "m/synth.ibs", "pin_map": "manual", "source": {"kind": "simulation", "note": "x"}}}"#, None);
+        assert!(p.config_check.as_ref().unwrap().warnings.iter().any(|w| w.contains("pin_map manual without \"pins\"")));
+        // the lane ends: a mapped pad resolves, an unmapped one keeps the profile's end with the reason
+        let set: ParsedSet = HashMap::from([("m/synth.ibs".to_string(), Ok(parse_one("synth.ibs", &synth())))]);
+        let board = crate::load_pcb(PCB).unwrap();
+        let entry: crate::config::IbisEntry = serde_json::from_str(r#"{"file": "m/synth.ibs", "pin_map": "manual", "pins": {"99": "16", "12": "77"}}"#).unwrap();
+        let map = BTreeMap::from([("U1".to_string(), entry)]);
+        let d = resolve_end(&map, &set, &board, "U1", "99", Role::Driver, false).unwrap();
+        assert_eq!((d.ibis_pin.as_deref(), d.model.as_deref(), d.error.as_deref()), (Some("16"), Some("IO_50"), None));
+        let u = resolve_end(&map, &set, &board, "U1", "4", Role::Driver, false).unwrap();
+        assert!(u.error.as_deref().unwrap().contains("pad 4 is not mapped (pin_map manual"), "{:?}", u.error);
+        let x = resolve_end(&map, &set, &board, "U1", "12", Role::Driver, false).unwrap();
+        assert!(x.error.as_deref().unwrap().contains("pins.12: no pin '77'"), "{:?}", x.error);
+        // the viewer gets the component's pins for the manual mapping
+        let info = file_info("synth.ibs", set["m/synth.ibs"].as_ref().unwrap());
+        assert_eq!(info["components"][0]["pin_list"][3], json!(["4", "IO0", "IO_SEL"]));
     }
 
     #[test]

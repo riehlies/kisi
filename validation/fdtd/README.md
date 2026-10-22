@@ -9,8 +9,8 @@ mixed mode, Z, field) and the solver checks. It is built, not kept in the reposi
 ## Solver
 - **Mesh:** rectilinear, non-uniform. Fixed lines at layer boundaries, sheet edges, vias, holes and ports, with
   spacing `dfine` there, growing by 1.4 up to λ/20 at fmax.
-- **Metal:** zero-thickness sheets (traces, planes with round or slot-shaped antipads, pads) and solid cylinders
-  (via barrels), treated **conformally** (Dey–Mittra).
+- **Metal:** zero-thickness sheets (traces, planes with round or slot-shaped antipads, pads, and polygon copper
+  such as zone fills cut out of a board) and solid cylinders (via barrels), treated **conformally** (Dey–Mittra).
   - On every face that touches a partially free edge, the H update uses the free edge lengths. On faces cut by a
     round boundary it uses the free area.
   - The effective area A_eff = max(A_free, A · weighted free fraction of the edges). It keeps each face's local
@@ -18,6 +18,12 @@ mixed mode, Z, field) and the solver checks. It is built, not kept in the reposi
   - With every face treated this way, the update operator is similar to a symmetric positive semidefinite one, so
     it has real eigenvalues and runs stably at 0.95 of the Courant limit.
   - `"conformal": false` gives staircase metal, the same as openEMS.
+  - Conformal metal only strictly inside the domain: in the PML and on its faces the geometry is the domain face
+    extruded and stays staircased (the CPML terms use full-cell spacings; partial edges there made board cut-outs
+    grow without bound). A Gershgorin bound of the operator guards the time step (never triggered so far).
+- **Board cut-outs** (`BOARD_VIAS.md`): sheets with polygon rings (`polys`, even-odd, edges treated conformally),
+  ports across traces that run along y (`x1`), mesh refinement boxes (`mesh.refine`), and no cell below
+  0.7 · dfine (lines of nearby features merge; one sliver set the time step 7× too small).
 - **Boundary:** convolutional PML (Roden & Gedney, CFS), 8 cells outside the domain, polynomial grading m = 3.
   Whatever touches the domain boundary (planes, dielectric) continues through the PML, so the planes are infinite
   and the board edges add no resonances. Mur and PEC are options.
@@ -77,6 +83,12 @@ and the lumped R–L–C.
   compares the via alone de-embedded → `results/kisi_models.json`.
 - `practice.py` measures run time, memory and bundle size on the example boards → `results/practice.json`.
 - The planned measured test board is in `../test_board.md`.
+- **Board vias** (`BOARD_VIAS.md`): `kisi-validate via-case` cuts a via (or the via pair of a differential pair)
+  out of a KiCad board as a case with its 2×thru fixtures; `board_vias.py` exports, runs and compares three
+  critical vias of the example boards with kisi's ladder (`board_cases/`, results in `via_ref/BV_*`,
+  `results/board_vias*.json`, plots in `results/board_vias/`). Their lines are not 50 Ω in 3D, so the 2×thru
+  de-embedding first refers each fixture to its own line impedance (`sparam.deembed_matched`; checked on a known
+  network with `board_vias.py deembed-check`).
 
 ```
 cargo build --release -p kisi-fdtd

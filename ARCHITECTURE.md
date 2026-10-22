@@ -31,9 +31,9 @@ interface; data that changes (standards, component values) lives in files, not i
 | `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `losses` (ground return, losses, loss map, power flow), `pdn` (Z(f), plane model), `cavity_modal` (rectangular plane pair, double cosine series; loop inductance), `pdn_ic` (AC grid over all layers of the rail domain – the rail and the nets behind series resistors, inductors and ferrites up to the regulators –, PDN seen from every IC, filter resonances, recommendations) | kisi-board, kisi-sparse |
 | `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `config` (`<board>.kisi.json`), `gaps` | the three above |
 | `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
-| `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` (impedance cases; `models`: the reduced models on the 3D reference cases; `via-geom`: diagnostics of one via) | kisi-core |
+| `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` (impedance cases; `models`: the reduced models on the 3D reference cases; `via-geom`: diagnostics of one via; `via-case`: a board via as a kisi-fdtd case with its 2×thru fixtures, `validation/fdtd/BOARD_VIAS.md`) | kisi-core |
 | `kisi-sparse` | sparse solver (real Cholesky/LU, complex LU for the AC grid), also built as a WASM module for the field solver | faer |
-| `kisi-fdtd` | 3D FDTD (Yee, non-uniform mesh, conformal metal, CPML, lumped ports, S-parameters) for via transitions; generates the via references (`validation/fdtd`, results in `validation/via_ref`); native binary and WASM (`fd_run`) | serde |
+| `kisi-fdtd` | 3D FDTD (Yee, non-uniform mesh, conformal metal incl. polygon copper, CPML, lumped ports, S-parameters) for via transitions and board cut-outs; generates the via references (`validation/fdtd`, results in `validation/via_ref`); native binary and WASM (`fd_run`) | serde |
 
 Rule: front ends only use `kisi-core`. Inside kisi-si/kisi-pi things can be restructured as long as
 the facade stays the same. The channel verdict (`kisi_si::profile::judge`) exists exactly once;

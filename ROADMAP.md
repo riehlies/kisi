@@ -30,10 +30,18 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   physics-based via ladder (`kisi_si::via_pbm`) replaced the coax-section model in the channel, with a junction
   model fitted to the 3D references, equivalent radii for non-round antipads and conductor loss; the plane-cavity
   model is in `kisi_pi::cavity_modal`. Next:
-  - a 3D check of board vias from the layout (exporter board → kisi-fdtd case), first the ThunderScope M.2 vias
-    (GND pour on the signal layers, partner at 0.53 mm: the ladder shows a dip near 16 GHz there);
-  - remaining ladder errors: TDR maxima of long stubs, wide traces at the via, the ThunderScope through via (thick
-    core, ~50 fF missing);
+  - done: a 3D check of board vias from the layout (`kisi-validate via-case`, `validation/fdtd/BOARD_VIAS.md`).
+    The ThunderScope M.2 dip near 16 GHz is real (a broad reflection maximum of the pair via, not a resonance;
+    the ladder makes it 0.3 dB too deep);
+  - ladder errors found on the board vias: GND pours on the via's own signal layers enter as planes (1.1–4.6 ps too
+    slow, too capacitive on the M.2 pair and the LibreVNA via; dropping them fixes the delay but loses the stub
+    notch, so they need a coplanar-ground treatment); series inductance 105–241 pH too high; a 30 GHz notch of the
+    ThunderScope through via (likely its return-via cage) is missing; remaining from Block 1: TDR maxima of long
+    stubs, wide traces at the via, the thick-core through via of the references (~50 fF missing);
+  - re-score the Block 1 cases with 44–47 Ω stripline fixtures with the matched de-embedding
+    (`sparam.deembed_matched`) when the ladder is next fitted;
+  - "3D check" of a via or a track point in the viewer (exporter in WebAssembly, one worker per excitation,
+    fixture cache, plots against the ladder; estimate 8 days, minimal version 4; `BOARD_VIAS.md` section 4);
   - plane resonances of finite boards in the ladder (cavity model instead of infinite plates), via-to-via coupling
     through the cavity, the cavity model in the PDN and the vertical parts of the PDN loop;
   - the ladder in WebAssembly is about 2 × slower than native (Laplace solve and equivalent radius per via type).

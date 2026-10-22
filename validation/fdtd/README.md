@@ -70,7 +70,9 @@ and the lumped R–L–C.
   kisi's fast model and the reduced via model), TDR, mixed mode, line parameters (T), Z (G, H), and the electric
   field of port 1 (top view in the thickest dielectric, animated; section through the via; collapsed by default).
 - `rust_models.py` runs the Rust port of the reduced models (`kisi-validate models`) against the Python prototypes
-  and the 3D results, with run times → `results/rust_models.json`.
+  and the 3D results, with run times → `results/rust_models.json`; kisi's ladder per case → `via_ref/<case>/ladder.s2p`.
+  `kisi-validate via-geom geom.json [--s2p f.s2p]` evaluates one via geometry (the JSON that `KISI_DEBUG_VIA=1`
+  prints from `kisi` or `kisi-validate models`).
 - `compare_kisi.py` runs kisi's channel model on every case (`KISI_VIA_MODEL=coax` for the former via model) and
   compares the via alone de-embedded → `results/kisi_models.json`.
 - `practice.py` measures run time, memory and bundle size on the example boards → `results/practice.json`.

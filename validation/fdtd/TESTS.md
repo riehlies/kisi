@@ -32,7 +32,7 @@ R–L–C).
 
 ## 2. Reference cases (`via_cases.py`, `run_refs.py`)
 
-68 cases on a 0.035 mm mesh (G: 0.1 mm, H: 0.07 mm), λ/20 at 40 GHz elsewhere, CPML, planes into the PML,
+74 cases on a 0.035 mm mesh (G: 0.1 mm, H: 0.07 mm), λ/20 at 40 GHz elsewhere, CPML, planes into the PML,
 field monitors on port 1:
 
 | Group | Cases | What they check |
@@ -45,7 +45,8 @@ field monitors on port 1:
 | G | 2 | plane pair 50 × 30 mm, d = 0.1 / 0.2 mm, 1 Ω ports at a corner and the centre |
 | H | 4 | BGA pin field to a 0402 capacitor at 2 / 5 / 10 / 20 mm, loop inductance |
 | T | 12 | lines and coupling: microstrip, CPWG (LibreVNA RF class), stripline (10 / 20 mm), edge-coupled microstrip and stripline pairs, single-ended aggressor/victim, broadside In2/In3 |
-| thru | 8 | 2×thru per feed layer, for de-embedding |
+| X | 2 | L1→L3 as in B without the L2 or the L4 plane (junction diagnosis, section 7) |
+| thru | 12 | 2×thru per feed layer, for de-embedding |
 
 ## 3. kisi's fast models against the 3D references (`kisi_board.py`, `compare_kisi.py`)
 
@@ -192,6 +193,10 @@ Rust modules:
 
 ### Parity, accuracy and run time (`results/rust_models.json`)
 
+Section 7 updates the "kisi" row: kisi's ladder now has the junction model and the equivalent antipad radius,
+so the Rust graded-grid model no longer equals the prototype; parity is checked on the prototype model.
+
+
 | | TDR error median / p90 (single vias) | max Δ\|S21\| median single / pairs (dB) | parity: max \|ΔS21\| against Python | time per via (400 frequencies) |
 |---|---|---|---|---|
 | Python prototype | 1.46 / 7.6 % | 0.144 / 0.156 | – | 2.6 s |
@@ -242,29 +247,30 @@ Other changes in the output:
 
 `practice.py` → `results/practice.json`.
 
-Measured in this workspace (2 cores, Xeon 2.8 GHz); best of 2 runs.
+Measured in this workspace (2 cores, Xeon 2.8 GHz), best of 2 runs, with the ladder of section 7 (junction model
+and equivalent antipad radii); an earlier run on a busier machine gave about 1.5 × these times.
 
 | | ThunderScope Rev5.3 | LibreVNA |
 |---|---|---|
 | board file / vias / filled zones | 10.2 MB / 3741 / 824 | 4.6 MB / 2932 / 157 |
-| `overview` (native) | 0.63 s, 63 MB | 0.25 s, 39 MB |
-| `check --all` native, coax → ladder | 2.86 → 4.15 s | 1.07 → 1.28 s |
-| ladder vias / Laplace solves (shared per via type) | 126 / 43, 0.70 s in total (15 ms each, ~10 000 unknowns) | 21 / 8, 0.11 s |
-| `net` with vias (native) | 0.88 → 0.91 s | 0.27 → 0.27 s |
-| `check --all` Node (WASM, formulas), coax → ladder | 5.8 → 7.5 s, 231 MB | 2.4 → 2.9 s, 173 MB |
-| `check --all` with field solver, empty cache (120 s budget) | 130 s: 38 of 923 new cross-sections, 89 % of the target length; all of them ≈ 49 min | 125 s: 142 of 836, 85 %; all ≈ 12 min |
-| the same from the cache | 8.5 s (cache 20 kB) | 3.6 s (cache 37 kB) |
+| `overview` (native) | 0.46 s, 63 MB | 0.18 s, 39 MB |
+| `check --all` native, coax → ladder | 1.85 → 3.45 s | 0.68 → 0.97 s |
+| ladder vias / Laplace solves (shared per via type) | 126 / 61, 0.71 s in total (12 ms each, ~11 000 unknowns); antipad equivalent radii 0.7 s | 21 / 18, 0.18 s |
+| `net` with vias (native) | 0.54 → 0.53 s | 0.21 → 0.20 s |
+| `check --all` Node (WASM, formulas), coax → ladder | 3.5 → 5.3 s, 229 MB | 1.4 → 2.0 s, 175 MB |
+| `check --all` with field solver, empty cache (120 s budget) | 127 s: 62 of 923 new cross-sections, 91 % of the target length; all of them ≈ 30 min | 123 s: 209 of 836, 89 %; all ≈ 8 min |
+| the same from the cache | 6.1 s (cache 33 kB) | 2.4 s (cache 54 kB) |
 | channel verdicts changed by the ladder | none of 21 lanes | none of 30 lanes |
 
 - **Spread of the metrics** over the lanes that do not reflect almost everything:
-  - ThunderScope: RL −0.7 … 0 dB, IL at Nyquist within 0.01 dB.
-  - LibreVNA: RL −0.03 … +5.6 dB, eye height ±0.006.
+  - ThunderScope: RL −0.8 … 0 dB, IL at Nyquist within 0.01 dB.
+  - LibreVNA: RL −0.2 … +5.1 dB, eye height ±0.004.
 - **Reflective lanes left out:** 8 ThunderScope lanes have RL < 3 dB in both models. These are the M.2/PCIe lanes
   through 0 Ω links. There IL moves by several dB with any small change, because the standing waves shift.
 - **ThunderScope M.2 vias:** on a via type with GND pour on the signal layers and the partner at 0.53 mm, the
   ladder shows a dip near 16 GHz; that needs a 3D check (ROADMAP).
 - **Bundles:**
-  - `kisi.html` 2275 → 2317 kB, `kisi.mjs` 1726 → 1767 kB (+41 kB for the ladder and the cavity model).
+  - `kisi.html` 2275 → 2325 kB, `kisi.mjs` 1726 → 1775 kB (+50 kB for the ladder and the cavity model).
   - The WASM module is 3.4 MB before compression. The sparse solver was already in it for the PDN.
 - **WebAssembly speed:** `hypot` and its fused multiply-adds run in software there, so the first build spent 70 %
   of its time in them. The inner loops avoid them now.
@@ -292,6 +298,79 @@ Measured in this workspace (2 cores, Xeon 2.8 GHz); best of 2 runs.
 |---|---|---|---|
 | Formulas (native and WASM, always on) | µs per cross-section, a whole board in seconds | microstrip within 1–2 %; asymmetric stripline +11 %, CPWG εeff +5 % (marked as estimates) | screening every net, power and DC, quick what-ifs |
 | 2D field solver (kisi.mjs, viewer) | about 1–2 s per new cross-section; cached on disk / in IndexedDB | Zc within 1.6 %, εeff within 1 % | sign-off of impedance-controlled nets, striplines, CPWG, coupled pairs |
-| Via ladder (`via_pbm`, default for every via that crosses a plane) | ≈ 16 ms per via type (Laplace, cached), µs per frequency | via alone: TDR median 2.4 %, p90 10 %; stub notch within 3 % | every channel with vias: return vias, antipads, stubs, back-drilling, pairs |
+| Via ladder (`via_pbm`, default for every via that crosses a plane) | ≈ 12 ms per via type (Laplace and equivalent antipad radius, cached), µs per frequency | via alone in kisi's channel: TDR median 1.4 %, p90 7.4 %; pairs: phase 3.5°; stub notch within 3 % | every channel with vias: return vias, antipads (also offset and oval), stubs, back-drilling, pairs, inner-layer exits |
 | Cavity model (`cavity_modal`) | ms for a whole sweep | resonances within 0.8 %, transfer impedance within 0.7 % | rectangular plane pairs: resonances, spreading and loop inductance; kisi's PDN grid model stays the tool for real plane shapes |
 | 3D FDTD (`kisi-fdtd`) | minutes per via transition (0.3–0.9 M cells), half an hour for a plane cavity; a whole board is out of reach | reference (CPML, conformal metal, checked against analytic cavities and openEMS) | checking the reduced models, structures they do not cover (connector launches, non-round antipads, via fences, plane gaps, via-to-via coupling), frequencies above 25–40 GHz |
+
+## 7. Via ladder: junction, non-round antipads, conductor loss (Block 1)
+
+### Diagnosis of the inner-layer exits
+- **Symptom:** the ladder was 2–3.5 ps too fast on L1→L3 (B s8, 20–27° at 20 GHz) and reflected 2–3× too
+  much at 10–20 GHz.
+- **Where it comes from:** comparing lumped L and C of model and 3D (de-embedded, 3–10 GHz) shows the model
+  missing series inductance on *every* via:
+  - about 50–100 pH on through vias;
+  - 120–220 pH on inner exits;
+  - while its capacitance agreed outside the inner exits.
+- **Two extra 3D cases (group X)** separate the junction from the shared-cavity effect: L1→L3 without the L2
+  plane (the exit above the top plane, no cavity) and without the L4 plane (the exit inside the thick L2–L5
+  pair). Both still missed ~110–130 pH, so the cavity treatment was not the cause.
+- **Variants tried** against all single vias (`kisi-validate via-geom`, experimental fields since removed):
+  - The partial-height evanescent modes of the barrel add only ~6 pH.
+  - Feeding the trace over the antipad from the barrel instead of the pad overshoots.
+  - A series inductance at each port of ≈ μ0/(2π)·pad radius (50–60 pH) brought the through vias and both X
+    cases to within ±0.4 ps.
+  - What was left on inner exits came from the feed removal: a stripline between two planes is barely changed by
+    the openings, and removing it up to the antipad edge cost 0.35 mm of line.
+
+### The junction model (kisi's default; `ViaGeom::junction`)
+- **Junction inductance:** μ0/(2π)·pad radius in series where a trace enters the via. This value is *fitted*
+  to the 3D references; physically it is where the trace current turns into the pad and the barrel.
+- **Trace over the antipad:** the feed's impedance, scaled by the microstrip ratio to the height
+  h_ref + (antipad − pad) (the return runs around the edge of the opening), εeff of the feed. Before, it was a
+  microstrip over the next plane beyond the reference, which was far too inductive (A, antipad Ø1.0: +170 pH).
+- **Striplines (planes above and below):** the line is kept up to the via centre; nothing is removed.
+- **The Python prototype stays available** (`junction: false`). `kisi-validate models` runs it on the uniform
+  grid for the parity check.
+
+### Non-round antipads
+- **Equivalent radius:** the round opening with the same in-plane capacitance
+  (`via_pbm::equivalent_radius`):
+  - a 2D Laplace solve between the barrel and the opening in log-polar coordinates (Shortley–Weller at the edge);
+  - the opening is taken from 96 rays: case geometry, or the fill edges of the plane on the board;
+  - within 1 % of the eccentric coax;
+  - cached; nearly round polygons use the log mean.
+- **Results:**
+  - C_s8_offset: phase 11° → 2°, max Δ|S21| 0.14 → 0.06 dB.
+  - Oval antipads of the L1→L8 pairs: max ΔSdd21 0.11–0.13 → 0.06–0.07 dB.
+  - L1→L3 oval pair: 1.22 → 0.73 dB.
+
+### Conductor loss
+- Skin-effect resistance and internal inductance of the barrel, and plates with surface impedance in the
+  radial line (k² (1 + 2Rs/(ωμd) − j·2Rs/(ωμd))).
+- kisi passes the copper conductivity; the 3D references use lossless metal, so their comparisons leave it off.
+- The effect is negligible: 0.002 dB at 10 GHz, notch depth 0.2 dB.
+
+### Results (`results/rust_models.json`, `results/kisi_models*.json`)
+
+| Ladder against the de-embedded 3D result | before Block 1 | now |
+|---|---|---|
+| single vias (29 incl. X): TDR error median / p90 | 1.5 / 11.3 % (prototype) | 1.3 / 9.3 % |
+| single vias: max Δ\|S21\| median | 0.16 dB | 0.09 dB |
+| inner exits B L1→L3 s8: phase at 20 GHz | 16–27° | 3–13° |
+| pairs (12, not used for the fit): max ΔSdd21 median | 0.16 dB | 0.11 dB |
+| pairs L1→L3: phase | 22–23° | 3–6° |
+| pairs L1→L8: phase | 4–6° | 1–3° |
+
+| kisi channel, via alone (kisi's own 2×thru vs 3D 2×thru) | coax (former) | ladder before Block 1 | ladder now |
+|---|---|---|---|
+| single vias: TDR error median / p90 | 8.0 / 25.5 % | 2.4 / 10.1 % (27 cases) | 1.4 / 7.4 % (field solver: 1.3 / 5.6 %) |
+| pairs: Zdiff error median / p90 | 17.8 / 29.1 % | – | 5.9 / 17.9 % |
+| pairs: max ΔSdd21 median / phase | 0.39 dB / 53° | – | 0.16 dB / 3.5° |
+
+Remaining:
+- **TDR maxima of long stubs** (B L1→L3 stub: 11–16 %) and of the X cases with the 0.93 mm wide microstrip
+  (10 %).
+- **The ThunderScope through via** (L1→L6, thick core) misses ~50 fF.
+- **The fit was made on the same single vias it is scored on.** The pairs and the board pipeline (kisi channel)
+  were not used for the fit and improved as well.

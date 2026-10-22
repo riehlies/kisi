@@ -205,6 +205,8 @@ pub struct ViaCtx<'a> {
     pub backdrill: Option<f64>,
     /// entry and exit trace (enables the ladder model)
     pub feeds: Option<[FeedSpec; 2]>,
+    /// copper conductivity for the ladder's conductor loss (S/m)
+    pub sigma: Option<f64>,
 }
 
 /// Trace joining a via, as the channel models it.
@@ -218,6 +220,62 @@ pub struct FeedSpec {
     /// length of unreferenced trace (over the antipad) next to the via that the channel left
     /// out because the ladder models it (mm)
     pub dropped: f64,
+}
+
+/// Distance from `at` to the edge of the plane opening it lies in, along 96 rays (mm, at most
+/// 1.5 mm): the nearest crossing with an edge of a plane fill on `layer` (`plane`: the net found
+/// by `plane_clearance`).
+fn hole_profile(board: &Board, at: P, layer: u16, own: u32, partner: Option<u32>, plane: u32) -> Vec<f64> {
+    const NT: usize = 96;
+    const RMAX: f64 = 1.5;
+    let mut edges: Vec<(P, P)> = vec![];
+    for zf in &board.zones {
+        // every plane fill on the layer (a split plane can bound the opening with two nets)
+        if zf.layer != layer || zf.net == 0 || zf.net == own || Some(zf.net) == partner {
+            continue;
+        }
+        if zf.net != plane && !board.plane_net.get(zf.net as usize).copied().unwrap_or(false) {
+            continue;
+        }
+        let bb = &zf.bbox;
+        if at[0] < bb.min[0] - RMAX || at[0] > bb.max[0] + RMAX || at[1] < bb.min[1] - RMAX || at[1] > bb.max[1] + RMAX {
+            continue;
+        }
+        let n = zf.pts.len();
+        for i in 0..n {
+            let (p, q) = (zf.pts[i], zf.pts[(i + 1) % n]);
+            // edges that can come within RMAX of the via
+            if p[0].min(q[0]) > at[0] + RMAX || p[0].max(q[0]) < at[0] - RMAX || p[1].min(q[1]) > at[1] + RMAX || p[1].max(q[1]) < at[1] - RMAX {
+                continue;
+            }
+            edges.push((p, q));
+        }
+    }
+    if edges.is_empty() {
+        return vec![];
+    }
+    (0..NT)
+        .map(|j| {
+            let th = 2.0 * PI * j as f64 / NT as f64;
+            let e = [th.cos(), th.sin()];
+            let mut t_min = RMAX;
+            for &(p, q) in &edges {
+                // at + t e = p + u (q − p)
+                let d = geom::sub(q, p);
+                let den = e[0] * d[1] - e[1] * d[0];
+                if den.abs() < 1e-14 {
+                    continue;
+                }
+                let w = geom::sub(p, at);
+                let t = (w[0] * d[1] - w[1] * d[0]) / den;
+                let u = (w[0] * e[1] - w[1] * e[0]) / den;
+                if t > 1e-6 && (0.0..=1.0).contains(&u) && t < t_min {
+                    t_min = t;
+                }
+            }
+            t_min
+        })
+        .collect()
 }
 
 /// z of every copper layer (mm, bottom copper at 0): dielectrics plus half the copper
@@ -244,8 +302,20 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
     let su = board.stackup();
     let z = copper_z(su);
     let slabs: Vec<Slab> = (0..su.n() - 1).map(|k| Slab { z0: z[k + 1], z1: z[k], er: su.dielectrics[k].epsilon_r, tand: su.dielectrics[k].loss_tangent }).collect();
-    // antipad radii to 0.01 mm: vias of one type then share the Laplace solve
-    let planes: Vec<Plane> = (0..su.n()).filter_map(|k| clear[k].map(|c| Plane { z: z[k], antipad: Some((c.0 * 100.0).round() / 100.0) })).collect();
+    // antipads as the round opening of the same in-plane capacitance (offset, oval and shared
+    // openings), to 0.01 mm: vias of one type then share the Laplace solve
+    let a = (v.drill / 2.0).max(0.025);
+    #[cfg(not(target_arch = "wasm32"))]
+    let tp = std::time::Instant::now();
+    let planes: Vec<Plane> = (0..su.n())
+        .filter_map(|k| {
+            clear[k].map(|c| {
+                let rb = hole_profile(board, v.at, k as u16, ctx.net, ctx.partner, c.1);
+                let b = if rb.is_empty() { c.0 } else { crate::via_pbm::equivalent_radius_cached(a, &rb) };
+                Plane { z: z[k], antipad: Some((b * 100.0).round() / 100.0) }
+            })
+        })
+        .collect();
     // barrel: layout range minus a back-drilled end; a residual stub length shortens it further
     let (mut top, mut bot) = (v.from as usize, v.to as usize);
     if let Some((b0, b1)) = v.backdrill {
@@ -297,8 +367,7 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
         let dz = |k: &u16| (z[*k as usize] - z[l as usize]).abs();
         let nearest = |it: &mut dyn Iterator<Item = u16>| it.min_by(|a, b| dz(a).partial_cmp(&dz(b)).unwrap());
         let rl = nearest(&mut refs.iter().copied()).or_else(|| nearest(&mut (0..su.n() as u16).filter(|&k| clear[k as usize].is_some() && k != l)))?;
-        let hb = clear[rl as usize].map(|c| c.0).unwrap_or(0.0);
-        Some(Feed { z: z[l as usize], z_ref: z[rl as usize], w: fs.w, zc: fs.zc, eeff: fs.eeff, cut: Some((v.size / 2.0).max(hb) - fs.dropped), antipad_line: true })
+        Some(Feed { z: z[l as usize], z_ref: z[rl as usize], w: fs.w, zc: fs.zc, eeff: fs.eeff, dropped: fs.dropped, antipad_line: true })
     };
     let geom = ViaGeom {
         slabs,
@@ -312,9 +381,15 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
         partner: partner_via.map(|p| Post { dx: p.at[0] - v.at[0], dy: p.at[1] - v.at[1], r: (p.drill / 2.0).max(0.025), z0: z[p.to as usize], z1: z[p.from as usize] }),
         feeds: [feed(0, l_in, &ctx.refs_in)?, feed(1, l_out, &ctx.refs_out)?],
         f_loss: None,
+        junction: true,
+        sigma: ctx.sigma,
     };
     let mode = if partner_via.is_some() { Mode::Odd } else { Mode::Single };
     let debug = std::env::var("KISI_DEBUG_VIA").is_ok();
+    #[cfg(not(target_arch = "wasm32"))]
+    if debug {
+        eprintln!("# planes {:.2} ms", tp.elapsed().as_secs_f64() * 1e3);
+    }
     if debug {
         eprintln!("{}", serde_json::to_string(&geom).unwrap_or_default());
     }

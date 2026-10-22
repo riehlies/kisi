@@ -777,7 +777,7 @@ impl<'a> Build<'a> {
                             _ => None,
                         }
                     };
-                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill, feeds };
+                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill, feeds, sigma: Some(rp.sigma) };
                     let (vm, info) = crate::via::build(&ctx, v, pl, tr.layer);
                     let pair_partner = self.partner_of.get(net as usize).copied().flatten().filter(|_| self.pair);
                     let vm_pair = pair_partner.map(|pn| crate::via::build(&crate::via::ViaCtx { partner: Some(pn), ..ctx }, v, pl, tr.layer).0);

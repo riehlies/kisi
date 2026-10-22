@@ -68,11 +68,11 @@ pub struct Feed {
     pub w: f64,
     pub zc: f64,
     pub eeff: f64,
-    /// length of the feed (zc, eeff) to remove at the via (mm); None: max(pad radius, antipad
-    /// radius of the reference plane), i.e. a feed that runs to the via centre
-    pub cut: Option<f64>,
-    /// model the trace over the antipad opening (pad edge → antipad edge) as a microstrip
-    /// over the next plane
+    /// length of this trace next to the via that the caller has already left out (mm): kisi's
+    /// channel leaves the unreferenced pieces over the antipad to the ladder
+    #[serde(default)]
+    pub dropped: f64,
+    /// model the trace over the antipad opening (pad edge → antipad edge)
     pub antipad_line: bool,
 }
 
@@ -95,6 +95,19 @@ pub struct ViaGeom {
     /// loss frequency: with Some(f_l) the loss tangent is scaled by f_l/f (the 3D
     /// references fix σ at f_l); None: constant tanδ
     pub f_loss: Option<f64>,
+    /// junction model fitted to the 3D references (default): series inductance μ0/(2π)·pad
+    /// radius where each trace enters the via, the trace over the antipad scaled from its own
+    /// line, striplines kept up to the via centre. false: the Python prototype (via_pbm.py).
+    #[serde(default = "yes")]
+    pub junction: bool,
+    /// conductivity of barrel and planes (S/m) for their skin-effect loss; None: lossless metal
+    /// (as the 3D references)
+    #[serde(default)]
+    pub sigma: Option<f64>,
+}
+
+fn yes() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -136,6 +149,8 @@ struct Group {
     /// points: signal, optional partner, returns: (x m, y m, radius m)
     pts: Vec<(f64, f64, f64)>,
     partner: bool,
+    /// height of the plane pair (m), for the conductor loss of the plates
+    d: f64,
     /// radius on the diagonal, distances off it (m), row-major
     rr: Vec<f64>,
 }
@@ -157,6 +172,12 @@ pub struct PbmVia {
     ap_line: [Option<(f64, f64, f64)>; 2],
     /// feed removal per side: (Z, εeff, length m, negative)
     feed_cut: [(f64, f64, f64); 2],
+    /// junction inductance per side (H)
+    l_port: [f64; 2],
+    /// conductor loss: conductivity (S/m), barrel radius (m) and the barrel length of every span (m)
+    sigma: Option<f64>,
+    a_m: f64,
+    span_len: Vec<f64>,
     /// unknowns of the Laplace solve
     pub laplace_n: usize,
     /// plane-pair impedances per metre divided by f on the grid k·`DF_GRID` (filled on demand)
@@ -533,6 +554,168 @@ fn rz_solve(g: &ViaGeom, grid: Grid) -> (Vec<f64>, Vec<f64>, usize, Vec<(f64, f6
     (zq, qq, nf, ext)
 }
 
+/// Radius of the round antipad with the same in-plane capacitance as a non-round opening.
+///
+/// 2D Laplace between the barrel (circle of radius `a`, mm) and the opening, given as its
+/// distance from the via centre `rb[j]` (mm) at `rb.len()` equally spaced angles (star-shaped
+/// around the via). Solved in log-polar coordinates u = ln ρ, θ, where the Laplace equation
+/// keeps its form; the irregular outer boundary uses Shortley–Weller differences. For a round
+/// concentric opening the result is its radius; for an eccentric one it matches the eccentric
+/// coax, b_eq = a·exp(acosh((a² + R² − d²)/(2aR))).
+pub fn equivalent_radius(a: f64, rb: &[f64]) -> f64 {
+    let nt = rb.len();
+    let (rmin, rmax) = rb.iter().fold((f64::MAX, f64::MIN), |(lo, hi), &r| (lo.min(r), hi.max(r)));
+    if nt < 8 || rmin <= a * 1.0001 {
+        return rmin.max(a * 1.05);
+    }
+    if rmax / rmin < 1.002 {
+        return rb.iter().map(|r| r.ln()).sum::<f64>().exp().powf(1.0 / nt as f64);
+    }
+    let h = 2.0 * std::f64::consts::PI / nt as f64;
+    let u0 = a.ln();
+    let ub: Vec<f64> = rb.iter().map(|r| r.ln()).collect();
+    let nu = ((rmax.ln() - u0) / h).ceil() as usize + 1;
+    let inside = |i: usize, j: usize| (u0 + i as f64 * h) < ub[j] - 1e-12;
+    let mut phi = vec![0.0f64; (nu + 1) * nt];
+    for j in 0..nt {
+        phi[j] = 1.0;
+    }
+    // neighbour weights: (coefficient towards each neighbour, the neighbour index or None for the
+    // outer boundary where φ = 0), Shortley–Weller in both directions
+    let mut nodes: Vec<(usize, [(f64, Option<usize>); 4], f64)> = vec![];
+    for i in 1..=nu {
+        for j in 0..nt {
+            if !inside(i, j) {
+                continue;
+            }
+            let ui = u0 + i as f64 * h;
+            // u direction
+            let su = if inside(i + 1, j) { 1.0 } else { ((ub[j] - ui) / h).clamp(1e-3, 1.0) };
+            let up = if inside(i + 1, j) { Some((i + 1) * nt + j) } else { None };
+            let dn = Some((i - 1) * nt + j);
+            // θ directions: the boundary between θ_j and θ_j±1 where ub crosses u_i (linear)
+            let side = |jn: usize| -> (f64, Option<usize>) {
+                if inside(i, jn) {
+                    (1.0, Some(i * nt + jn))
+                } else {
+                    let t = ((ub[j] - ui) / (ub[j] - ub[jn]).max(1e-12)).clamp(1e-3, 1.0);
+                    (t, None)
+                }
+            };
+            let (sl, l) = side((j + nt - 1) % nt);
+            let (sr, r) = side((j + 1) % nt);
+            // second differences with unequal arms: 2/(s1 s2 (s1+s2)) weights
+            let wu = [2.0 / (su * (1.0 + su)), 2.0 / (1.0 + su)];
+            let wt = [2.0 / (sl * (sl + sr)), 2.0 / (sr * (sl + sr))];
+            let diag = 2.0 / su + 2.0 / (sl * sr);
+            nodes.push((i * nt + j, [(wu[0], up), (wu[1], dn), (wt[0], l), (wt[1], r)], diag));
+        }
+    }
+    // direct sparse solve (Shortley–Weller rows are not symmetric: LU)
+    let mut id = vec![usize::MAX; phi.len()];
+    for (q, (k, _, _)) in nodes.iter().enumerate() {
+        id[*k] = q;
+    }
+    let n = nodes.len();
+    let (mut rp, mut ci, mut vals) = (vec![0i32], vec![], vec![]);
+    let mut rhs = vec![0.0; n];
+    for (q, (_, nb, diag)) in nodes.iter().enumerate() {
+        ci.push(q as i32);
+        vals.push(*diag);
+        for (w, nq) in nb {
+            match nq {
+                Some(nq) if id[*nq] != usize::MAX => {
+                    ci.push(id[*nq] as i32);
+                    vals.push(-w);
+                }
+                Some(nq) => rhs[q] += w * phi[*nq], // the barrel (φ = 1)
+                None => {}                          // the outer boundary (φ = 0)
+            }
+        }
+        rp.push(ci.len() as i32);
+    }
+    match kisi_sparse::solve_csr_multi(n, &rp, &ci, &vals, 1, &rhs, true) {
+        Ok(x) => {
+            for (q, (k, _, _)) in nodes.iter().enumerate() {
+                phi[*k] = x[q];
+            }
+        }
+        Err(_) => return rmin.max(a * 1.05),
+    }
+    // flux through the barrel: Σ −∂φ/∂u Δθ (second order where three nodes exist)
+    let mut flux = 0.0;
+    for j in 0..nt {
+        let g = if inside(2, j) {
+            (3.0 * phi[j] - 4.0 * phi[nt + j] + phi[2 * nt + j]) / (2.0 * h)
+        } else if inside(1, j) {
+            (phi[j] - phi[nt + j]) / h
+        } else {
+            1.0 / (ub[j] - u0)
+        };
+        flux += g * h;
+    }
+    a * (2.0 * std::f64::consts::PI / flux).exp()
+}
+
+thread_local! {
+    static EQ_CACHE: std::cell::RefCell<std::collections::HashMap<Vec<i32>, f64>> = Default::default();
+}
+
+/// [`equivalent_radius`] with a per-thread cache (profiles to 10 µm) and a short cut for nearly
+/// round openings (max/min < 1.03: the log mean of the profile, as polygonised circles are).
+pub fn equivalent_radius_cached(a: f64, rb: &[f64]) -> f64 {
+    let (lo, hi) = rb.iter().fold((f64::MAX, f64::MIN), |(l, h), &r| (l.min(r), h.max(r)));
+    if hi / lo < 1.03 {
+        return (rb.iter().map(|r| r.ln()).sum::<f64>() / rb.len() as f64).exp();
+    }
+    // 48 angles are enough for the solve (eccentric coax within 1.5 %)
+    let step = (rb.len() / 48).max(1);
+    let rb: Vec<f64> = rb.iter().step_by(step).copied().collect();
+    let rb = &rb[..];
+    let mut key: Vec<i32> = rb.iter().map(|r| (r / 0.01).round() as i32).collect();
+    key.push((a / 0.001).round() as i32);
+    if let Some(b) = EQ_CACHE.with(|c| c.borrow().get(&key).copied()) {
+        return b;
+    }
+    let b = equivalent_radius(a, rb);
+    EQ_CACHE.with(|c| {
+        let mut c = c.borrow_mut();
+        if c.len() > 4096 {
+            c.clear();
+        }
+        c.insert(key, b);
+    });
+    b
+}
+
+/// Distance from `p` to the edge of an opening along `nt` rays, the opening being the union of
+/// `inside(x, y)` regions (mm), up to `rmax`: marched in `step` and refined by bisection.
+pub fn ray_profile(p: [f64; 2], nt: usize, rmax: f64, step: f64, inside: &dyn Fn(f64, f64) -> bool) -> Vec<f64> {
+    (0..nt)
+        .map(|j| {
+            let th = 2.0 * std::f64::consts::PI * j as f64 / nt as f64;
+            let (c, s) = (th.cos(), th.sin());
+            let mut t = 0.0;
+            while t < rmax && inside(p[0] + t * c, p[1] + t * s) {
+                t += step;
+            }
+            if t >= rmax {
+                return rmax;
+            }
+            let (mut lo, mut hi) = ((t - step).max(0.0), t);
+            for _ in 0..30 {
+                let m = 0.5 * (lo + hi);
+                if inside(p[0] + m * c, p[1] + m * s) {
+                    lo = m;
+                } else {
+                    hi = m;
+                }
+            }
+            0.5 * (lo + hi)
+        })
+        .collect()
+}
+
 /// zero-thickness Hammerstad–Jensen microstrip impedance (as the case generator)
 fn z_ms(w: f64, h: f64, er: f64) -> f64 {
     let u = w / h;
@@ -675,12 +858,13 @@ impl PbmVia {
                 let dg = if za <= pa + 1e-9 && zb >= zj - 1e-9 { pa - zj } else { zj - pb };
                 scale *= dg / (pa - pb);
             }
-            let gi = match groups.iter().position(|q| q.er == er && q.tand == tand && q.pts == pts && q.partner == use_partner) {
+            let d_pair = (pa - pb) * 1e-3;
+            let gi = match groups.iter().position(|q| q.er == er && q.tand == tand && q.pts == pts && q.partner == use_partner && q.d == d_pair) {
                 Some(i) => i,
                 None => {
                     let n = pts.len();
                     let rr = (0..n * n).map(|q| if q / n == q % n { pts[q / n].2 } else { (pts[q / n].0 - pts[q % n].0).hypot(pts[q / n].1 - pts[q % n].1) }).collect();
-                    groups.push(Group { er, tand, pts, partner: use_partner, rr });
+                    groups.push(Group { er, tand, pts, partner: use_partner, d: d_pair, rr });
                     groups.len() - 1
                 }
             };
@@ -688,33 +872,53 @@ impl PbmVia {
         }
         let idx = |z: f64| nodes.iter().position(|&x| (x - round6(z)).abs() < 1e-9).unwrap();
         let (i_in, i_out) = (idx(z_in), idx(z_out));
-        // traces over the antipads and the feed removal
+        // where the traces join: the trace over the antipad, the removal of the feed that the
+        // fixture (or the channel) runs to the via centre, and the junction inductance
         let mut ap_line = [None, None];
         let mut feed_cut = [(50.0, 1.0, 0.0); 2];
+        let mut l_port = [0.0; 2];
         for side in 0..2 {
             let fd = g.feeds[side];
             let (zt, ref_z) = (fd.z, fd.z_ref);
-            let hole = g.planes.iter().find(|p| p.antipad.is_some() && (p.z - ref_z).abs() < 1e-6);
-            if let Some(h) = hole.filter(|_| fd.antipad_line) {
-                let b = h.antipad.unwrap();
-                if b > g.pad_r {
-                    let ln = (b - g.pad_r) * 1e-3;
+            let h_ref = (zt - ref_z).abs();
+            let hb = g.planes.iter().find(|p| (p.z - ref_z).abs() < 1e-6 && p.antipad.map_or(false, |b| b > 0.0)).and_then(|p| p.antipad).unwrap_or(0.0);
+            let strip = plane_z.iter().any(|&pz| pz > zt + 1e-9) && plane_z.iter().any(|&pz| pz < zt - 1e-9);
+            if g.junction {
+                // fitted to the 3D references (TESTS.md section 7): where the trace current turns
+                // into the pad and the barrel, μ0/(2π)·pad radius (≈ 50–60 pH)
+                l_port[side] = MU0 / (2.0 * PI) * g.pad_r * 1e-3;
+            }
+            if g.junction && strip {
+                // a stripline keeps its line up to the via centre: between two planes the
+                // openings change it little (3D: removing it misses ~3 ps on L1→L3)
+                feed_cut[side] = (fd.zc, fd.eeff, fd.dropped * 1e-3);
+                continue;
+            }
+            if fd.antipad_line && hb > g.pad_r {
+                let ln = (hb - g.pad_r) * 1e-3;
+                ap_line[side] = Some(if g.junction {
+                    // its return runs around the edge of the opening: the feed scaled to the height
+                    // plus the mean lateral way to the edge
+                    let he = h_ref + (hb - g.pad_r);
+                    (fd.zc * z_ms(fd.w, he, 4.0) / z_ms(fd.w, h_ref, 4.0), fd.eeff, ln)
+                } else {
+                    // prototype: a microstrip over the next plane beyond the reference
                     let nxt: Vec<f64> = plane_z.iter().copied().filter(|&pz| if ref_z < zt { pz < ref_z - 1e-6 } else { pz > ref_z + 1e-6 }).collect();
                     let h2 = if nxt.is_empty() {
-                        (zt - ref_z).abs() * 3.0
+                        h_ref * 3.0
                     } else if ref_z < zt {
                         (zt - nxt.iter().copied().fold(f64::MIN, f64::max)).abs()
                     } else {
                         (zt - nxt.iter().copied().fold(f64::MAX, f64::min)).abs()
                     };
                     let er = er_at(&g.slabs, 0.5 * (zt + ref_z)).0;
-                    ap_line[side] = Some((z_ms(fd.w, h2, er), er, ln));
-                }
+                    (z_ms(fd.w, h2, er), er, ln)
+                });
             }
-            let hb = g.planes.iter().find(|p| (p.z - ref_z).abs() < 1e-6 && p.antipad.map_or(false, |b| b > 0.0)).and_then(|p| p.antipad).unwrap_or(0.0);
-            feed_cut[side] = (fd.zc, fd.eeff, -fd.cut.unwrap_or(g.pad_r.max(hb)) * 1e-3);
+            feed_cut[side] = (fd.zc, fd.eeff, -(g.pad_r.max(hb) - fd.dropped) * 1e-3);
         }
-        PbmVia { nodes, cap, node_tand, spans, groups, i_in, i_out, mode, f_loss: g.f_loss, ap_line, feed_cut, laplace_n, zgrid: Default::default() }
+        let span_len: Vec<f64> = nodes.windows(2).map(|w| (w[0] - w[1]) * 1e-3).collect();
+        PbmVia { nodes, cap, node_tand, spans, groups, i_in, i_out, mode, f_loss: g.f_loss, ap_line, feed_cut, l_port, sigma: g.sigma, a_m: g.r * 1e-3, span_len, laplace_n, zgrid: Default::default() }
     }
 
     fn tan_eff(&self, tand: f64, f: f64) -> f64 {
@@ -761,7 +965,12 @@ impl PbmVia {
         self.groups
             .iter()
             .map(|g| {
-                let k = Cx::new(1.0, -self.tan_eff(g.tand, f)).sqrt().scale(w * (MU0 * EPS0 * g.er).sqrt());
+                let mut k = Cx::new(1.0, -self.tan_eff(g.tand, f)).sqrt().scale(w * (MU0 * EPS0 * g.er).sqrt());
+                if let Some(sig) = self.sigma {
+                    // plates with surface impedance (1+j)Rs: k² (1 + 2Rs/(ωμd) − j 2Rs/(ωμd))
+                    let x = 2.0 * (PI * f * MU0 / sig).sqrt() / (w * MU0 * g.d);
+                    k = k * Cx::new(1.0 + x, -x).sqrt();
+                }
                 let pre = w * MU0 / 4.0;
                 let n = g.pts.len();
                 let mut z = vec![Cx::new(0.0, 0.0); n * n];
@@ -803,10 +1012,19 @@ impl PbmVia {
     pub fn abcd(&self, f: f64) -> Abcd {
         let w = 2.0 * PI * f;
         let gz = self.group_z(f);
+        // skin-effect resistance and internal inductance of the barrel per metre
+        let zb = self.sigma.map(|sig| {
+            let rs = (PI * f * MU0 / sig).sqrt();
+            Cx::new(rs, rs).scale(1.0 / (2.0 * PI * self.a_m))
+        });
         let zs = |k: usize| -> Cx {
-            match self.spans[k] {
+            let z = match self.spans[k] {
                 SpanKind::Outer(l) => Cx::new(0.0, w * l),
                 SpanKind::Pair { group, scale } => gz[group].scale(scale),
+            };
+            match zb {
+                Some(zb) => z + zb.scale(self.span_len[k]),
+                None => z,
             }
         };
         let yc = |k: usize| -> Cx { Cx::new(0.0, w * self.cap[k]) * Cx::new(1.0, -self.tan_eff(self.node_tand[k], f)) };
@@ -851,6 +1069,12 @@ impl PbmVia {
         } else {
             Abcd::shunt(y_bot).mul(&m).mul(&Abcd::shunt(y_top))
         };
+        for side in 0..2 {
+            if self.l_port[side] != 0.0 {
+                let t = Abcd::series(Cx::new(0.0, w * self.l_port[side]));
+                m = if side == 0 { t.mul(&m) } else { m.mul(&t) };
+            }
+        }
         for side in 0..2 {
             if let Some((z, er, ln)) = self.ap_line[side] {
                 let t = tline(z, w * er.sqrt() / C0 * ln);
@@ -987,7 +1211,9 @@ mod tests {
             pad_r: 0.25,
             returns: vec![Post { dx: 1.0, dy: 0.0, r: 0.15, z0: 0.0, z1: 1.6 }],
             partner: None,
-            feeds: [Feed { z: 1.6, z_ref: 1.4, w: 0.35, zc: 50.0, eeff: 3.3, cut: None, antipad_line: true }, Feed { z: 0.0, z_ref: 0.2, w: 0.35, zc: 50.0, eeff: 3.3, cut: None, antipad_line: true }],
+            junction: true,
+            sigma: None,
+            feeds: [Feed { z: 1.6, z_ref: 1.4, w: 0.35, zc: 50.0, eeff: 3.3, dropped: 0.0, antipad_line: true }, Feed { z: 0.0, z_ref: 0.2, w: 0.35, zc: 50.0, eeff: 3.3, dropped: 0.0, antipad_line: true }],
             f_loss: None,
         }
     }
@@ -1007,13 +1233,40 @@ mod tests {
         // exit on an inner layer just below the top plane: long stub to the bottom
         let mut g = sample();
         g.planes.push(Plane { z: 1.0, antipad: Some(0.4) });
-        g.feeds[1] = Feed { z: 1.2, z_ref: 1.0, w: 0.15, zc: 50.0, eeff: 4.2, cut: None, antipad_line: true };
+        g.feeds[1] = Feed { z: 1.2, z_ref: 1.0, w: 0.15, zc: 50.0, eeff: 4.2, dropped: 0.0, antipad_line: true };
         let m = PbmVia::build(&g, Mode::Single, Grid::default());
         assert!(m.has_stub());
         let f = m.notch(80e9).expect("notch");
         // quarter wave of ≈ 1.0 mm at εr 4.2 → ≈ 37 GHz; the plate capacitances lower it
         assert!(f > 15e9 && f < 30e9, "{f}");
         assert!(m.abcd(f).s_params(50.0).1.abs() < 0.5);
+    }
+
+    #[test]
+    fn equivalent_radius_round_and_eccentric() {
+        let nt = 128;
+        let a = 0.1;
+        // concentric: the radius itself
+        let b = equivalent_radius(a, &vec![0.4; nt]);
+        assert!((b - 0.4).abs() < 1e-9, "{b}");
+        // eccentric circle R = 0.4 with the via 0.15 off centre
+        let (r, d) = (0.4f64, 0.15f64);
+        let rb: Vec<f64> = (0..nt)
+            .map(|j| {
+                let th = 2.0 * PI * j as f64 / nt as f64;
+                // ray from the via (at x = d) to the circle centred at the origin
+                let bx = d * th.cos();
+                -bx + (bx * bx - d * d + r * r).sqrt()
+            })
+            .collect();
+        let exact = a * ((a * a + r * r - d * d) / (2.0 * a * r)).acosh().exp();
+        let b = equivalent_radius(a, &rb);
+        assert!((b / exact - 1.0).abs() < 0.01, "{b} vs {exact}");
+        // and the nearest-edge circle is pessimistic
+        assert!(b > r - d);
+        // the cached variant solves on 48 of the angles
+        let bc = equivalent_radius_cached(a, &rb);
+        assert!((bc / exact - 1.0).abs() < 0.015, "{bc} vs {exact}");
     }
 
     #[test]

@@ -2,8 +2,10 @@
 
 Runs `kisi-validate models` (crates/kisi-cli/src/models.rs) on all via, cavity and PDN-loop
 cases, then compares
-* parity: Rust (uniform r–z grid, as the prototype) against Python (via_pbm.py, cavity_model.py,
-  pdn_loop.py), and Rust on the graded grid (the default in kisi) against both;
+* parity: Rust with the prototype's model (uniform r–z grid, no junction model) against Python
+  (via_pbm.py, cavity_model.py, pdn_loop.py);
+* kisi's ladder (graded grid, equivalent antipad radius, junction model) against Python and 3D,
+  written to validation/via_ref/<case>/ladder.s2p for the reference page;
 * accuracy against the de-embedded 3D result with the same metrics for Python and Rust;
 * run time: Python prototype (in-process, without start-up) against Rust.
 
@@ -59,6 +61,9 @@ def main():
             f, Sp = sparam.read_touchstone(pp)
             _, Su = sparam.read_touchstone(os.path.join(a.out, cid, "rust_pbm.s2p"))
             _, Sg = sparam.read_touchstone(os.path.join(a.out, cid, "rust_pbm_graded.s2p"))
+            # kisi's ladder (graded grid, junction model) next to the case, for the reference page
+            sparam.write_touchstone(os.path.join(REF, cid, "ladder.s2p"), f, Sg, [f"{cid}: via ladder as kisi uses it (kisi_si::via_pbm, graded grid, junction model)" +
+                                                                                  (", differential mode (per line 50 ohm)" if g == "E" else ", ports at the via")])
             # 3D, de-embedded as in via_pbm.py
             if g == "E":
                 f3, S3 = sparam.read_touchstone(os.path.join(REF, cid, "kisi.s4p"))
@@ -111,7 +116,7 @@ def main():
             rows[cid] = {"group": g, "L_rust_nH": round(r["pdn_loop"]["L_plane_model_nH"], 4), "L_python_nH": pl[cid]["L_plane_model_nH"],
                          "time_ms": {"rust": round(r["pdn_loop"]["ms"], 3)}}
     # summary
-    single = [v for v in rows.values() if v["group"] in "ABCD" and "python" in v]
+    single = [v for v in rows.values() if v["group"] in "ABCDX" and "python" in v]
     pairs = [v for v in rows.values() if v["group"] == "E"]
     vias = single + pairs
     summ = {"rust_total_s": round(t_rust_total, 2), "cases": len(rows)}

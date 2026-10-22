@@ -130,10 +130,12 @@ const GROUPS = {
   E: ["Differential pairs", "Via pairs: pitch, round or oval antipads, GND vias. Mixed mode with kisi's port order."],
   G: ["Plane cavity", "Rectangular plane pair: impedance and resonances seen from a corner and the centre (1 Ω ports)."],
   H: ["PDN loop inductance", "BGA pin field to one capacitor at a distance: loop inductance from Im(Z)/ω (1 Ω port)."],
+  T: ["Lines and coupling", "Transmission lines (microstrip, stripline, CPWG; 10 and 20 mm for Zc and εeff), coupled pairs, single-ended aggressor and victim, broadside: kisi's line and crosstalk models against 3D."],
+  X: ["Inner exit, one plane removed", "L1→L3 as in B, without the L2 or the L4 plane: separates the junction of trace and via from the shared-cavity effect (calibration of the junction model)."],
   thru: ["2×thru", "Feed lines alone (twice the feed length): the fixtures for de-embedding."],
 };
 const TOOLS = { kisi: ["kisi-fdtd", "var(--s1)", ""], kisi_fine: ["kisi-fdtd, finer mesh", "var(--s1)", "dash"], openems: ["openEMS (staircase)", "var(--s2)", ""],
-  kisi_model: ["kisi channel model (fast)", "var(--s3)", "dash"], deembedded: ["kisi-fdtd, de-embedded", "var(--s4)", ""], pbm: ["reduced via model", "var(--s2)", "dash"],
+  kisi_model: ["kisi channel model (fast)", "var(--s3)", "dash"], deembedded: ["kisi-fdtd, de-embedded", "var(--s4)", ""], pbm: ["via ladder, Python prototype", "var(--s2)", "dash"], ladder: ["via ladder in kisi (Rust)", "var(--s3)", ""],
   model: ["cavity model", "var(--s2)", "dash"] };
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v.replace(/^var\((.*)\)$/, "$1")).trim();
 const cases = DATA.cases;
@@ -454,7 +456,7 @@ function renderCase(c) {
   bar.querySelectorAll("button[data-m]").forEach((b) => b.onclick = () => { mode = b.dataset.m; renderCase(c); });
   box.appendChild(bar);
   const f = c.f, grid = document.createElement("div"); grid.className = "grid";
-  const tools = mode === "de" && hasDe ? ["deembedded", "pbm"].filter((t) => c.res[t]) : ["kisi", "kisi_fine", "openems", "kisi_model", "model"].filter((t) => c.res[t]);
+  const tools = mode === "de" && hasDe ? ["deembedded", "ladder", "pbm"].filter((t) => c.res[t]) : ["kisi", "kisi_fine", "openems", "kisi_model", "model"].filter((t) => c.res[t]);
   const ser = (key, extra = {}) => tools.filter((t) => c.res[t][key]).map((t) => ({ name: TOOLS[t][0], y: c.res[t][key], color: TOOLS[t][1], dash: TOOLS[t][2] === "dash", ...extra }));
   const legend = lg(tools.map((t) => TOOLS[t]));
   if (c.res.kisi.Z11) {

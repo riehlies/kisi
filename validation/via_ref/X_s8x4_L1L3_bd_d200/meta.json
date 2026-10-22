@@ -1,0 +1,60 @@
+{
+ "case": "X_s8x4_L1L3_bd_d200",
+ "meta": {
+  "group": "X",
+  "title": "L1\u2192L3 back-drilled, drill \u00d80.2, L4 plane removed: L3 exits inside the thick L2\u2013L5 pair",
+  "params": {
+   "drill_mm": 0.2,
+   "antipad_mm": 0.7,
+   "stitch": "4 \u00d7 1 mm",
+   "stub": "0.2 mm residual"
+  },
+  "stackup": "s8x4",
+  "stackup_title": "8-layer 1.6 mm FR-4 without the L4 plane",
+  "copper_z": [
+   1.6,
+   1.5,
+   1.3,
+   1.15,
+   0.45,
+   0.3,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5",
+   "L7"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L3",
+    "ref": "L2"
+   }
+  ],
+  "lumped": []
+ },
+ "date": "2026-10-22",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 611065,
+   "steps": [
+    4001,
+    3801
+   ],
+   "dt": 5.283345144028763e-14,
+   "seconds": 60.9,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

@@ -13,7 +13,7 @@
 use kisi_core::cavity_modal::{loop_inductance, Cavity};
 use kisi_core::num::Cx;
 use kisi_core::rf::Abcd;
-use kisi_core::via_pbm::{clear_cache, Feed, Grid, Mode, PbmVia, Plane, Post, Slab, ViaGeom};
+use kisi_core::via_pbm::{clear_cache, equivalent_radius, ray_profile, Feed, Grid, Mode, PbmVia, Plane, Post, Slab, ViaGeom};
 use serde_json::{json, Value};
 use std::f64::consts::PI;
 use std::time::Instant;
@@ -79,7 +79,10 @@ fn feed_line(layers: &[Value], planes: &[Plane], w: f64, zt: f64, zref: f64) -> 
 }
 
 /// via_pbm.py geometry(): planes (GND/PWR sheets) with the antipad radius around the via
-fn planes_at(case: &Value, vx: f64, vy: f64) -> Vec<Plane> {
+/// `equivalent`: the antipad as the round opening with the same in-plane capacitance
+/// (`via_pbm::equivalent_radius` around a barrel of radius `a`); else the prototype's rule (the
+/// hole centred on the via or the slot it lies on, else the nearest edge).
+fn planes_at(case: &Value, vx: f64, vy: f64, equivalent: Option<f64>) -> Vec<Plane> {
     let mut planes = vec![];
     for s in case["sheets"].as_array().unwrap() {
         let net = s["net"].as_str().unwrap_or("");
@@ -111,26 +114,42 @@ fn planes_at(case: &Value, vx: f64, vy: f64) -> Vec<Plane> {
                 }
             }
         }
+        if let (Some(a), Some(_)) = (equivalent, b) {
+            let inside = |x: f64, y: f64| {
+                holes.iter().any(|h| {
+                    if h.len() < 5 {
+                        (x - h[0]).hypot(y - h[1]) < h[2]
+                    } else {
+                        let (dx, dy) = (h[2] - h[0], h[3] - h[1]);
+                        let l2 = dx * dx + dy * dy;
+                        let t = if l2 > 0.0 { (((x - h[0]) * dx + (y - h[1]) * dy) / l2).clamp(0.0, 1.0) } else { 0.0 };
+                        (x - h[0] - t * dx).hypot(y - h[1] - t * dy) < h[4]
+                    }
+                })
+            };
+            let rb = ray_profile([vx, vy], 96, 3.0, 0.005, &inside);
+            b = Some(equivalent_radius(a, &rb));
+        }
         planes.push(Plane { z: s["z"].as_f64().unwrap(), antipad: b });
     }
     planes.sort_by(|a, b| b.z.partial_cmp(&a.z).unwrap());
     planes
 }
 
-fn via_geom(case: &Value, mode: Mode) -> ViaGeom {
+fn via_geom(case: &Value, mode: Mode, equivalent: bool) -> ViaGeom {
     let vias = case["vias"].as_array().unwrap();
     let sigs: Vec<&Value> = vias.iter().filter(|v| v["net"].as_str().unwrap_or("SIG") == "SIG").collect();
     let v = sigs[0];
     let g = |v: &Value, k: &str| v[k].as_f64().unwrap();
     let (vx, vy) = (g(v, "x"), g(v, "y"));
-    let planes = planes_at(case, vx, vy);
+    let planes = planes_at(case, vx, vy, if equivalent { Some(g(v, "r")) } else { None });
     let layers = case["layers"].as_array().unwrap();
     let ports = case["ports"].as_array().unwrap();
     let ports: Vec<&Value> = if ports.len() == 4 { vec![&ports[0], &ports[2]] } else { ports.iter().collect() };
     let feed = |p: &Value| {
         let (w, z, zr) = (g(p, "y1") - g(p, "y0"), g(p, "z1"), g(p, "z0"));
         let (zc, eeff) = feed_line(layers, &planes, w, z, zr);
-        Feed { z, z_ref: zr, w, zc, eeff, cut: None, antipad_line: true }
+        Feed { z, z_ref: zr, w, zc, eeff, dropped: 0.0, antipad_line: true }
     };
     let post = |w: &Value| Post { dx: g(w, "x") - vx, dy: g(w, "y") - vy, r: g(w, "r"), z0: g(w, "z0"), z1: g(w, "z1") };
     ViaGeom {
@@ -145,6 +164,8 @@ fn via_geom(case: &Value, mode: Mode) -> ViaGeom {
         partner: if mode != Mode::Single && sigs.len() > 1 { Some(post(sigs[1])) } else { None },
         feeds: [feed(ports[0]), feed(ports[1])],
         f_loss: Some(case["f_loss"].as_f64().unwrap_or(case["fmax"].as_f64().unwrap() / 2.0)),
+        junction: true,
+        sigma: None,
     }
 }
 
@@ -199,17 +220,22 @@ pub fn run(args: &[String]) {
         let np = case["ports"].as_array().map_or(0, |a| a.len());
         let f = freqs(&case);
         match group {
-            "A" | "B" | "C" | "D" | "E" => {
+            "A" | "B" | "C" | "D" | "E" | "X" => {
                 if group != "E" && (np != 2 || cid.contains("cap")) {
                     continue;
                 }
                 let mode = if group == "E" { Mode::Odd } else { Mode::Single };
-                let geom = via_geom(&case, mode);
+                let geom0 = via_geom(&case, mode, false);
+                let geom_kisi = via_geom(&case, mode, true);
                 if std::env::var("KISI_DEBUG_VIA").is_ok() {
-                    eprintln!("{}", serde_json::to_string(&geom).unwrap());
+                    eprintln!("{}", serde_json::to_string(&geom_kisi).unwrap());
                 }
                 let mut r = serde_json::Map::new();
                 for (tag, grid) in &grids {
+                    // the uniform grid runs the prototype's model (parity with via_pbm.py), the
+                    // graded grid kisi's (with the junction model)
+                    let mut geom = if matches!(grid, Grid::Uniform { .. }) { geom0.clone() } else { geom_kisi.clone() };
+                    geom.junction = !matches!(grid, Grid::Uniform { .. });
                     clear_cache();
                     let t0 = Instant::now();
                     let m = PbmVia::build(&geom, mode, *grid);

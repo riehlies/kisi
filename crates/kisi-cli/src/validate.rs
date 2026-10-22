@@ -92,9 +92,22 @@ fn main() {
             let (s11, s21, _) = m.abcd(f).s_params(50.0);
             println!("{:5.1} GHz  |S21| {:7.2} dB  |S11| {:7.2} dB", f / 1e9, 20.0 * s21.abs().log10(), 20.0 * s11.abs().log10());
         }
-        for (z, q) in charge_rows(&g, grid) {
-            if q.abs() > 2e-15 {
-                println!("row z {z:.4}  {:.1} fF", q * 1e15);
+        if let Some(i) = args.iter().position(|a| a == "--s2p") {
+            // S-parameters 0.1 … 40 GHz in 0.1 GHz steps (as the reference cases), 50 Ω
+            let mut t = String::from("# Hz S RI R 50\n");
+            for k in 1..=400 {
+                let f = k as f64 * 1e8;
+                let m2 = m.abcd(f);
+                let (s11, s21, s22) = m2.s_params(50.0);
+                t += &format!("{f:.6e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e}\n", s11.re, s11.im, s21.re, s21.im, s21.re, s21.im, s22.re, s22.im);
+            }
+            std::fs::write(&args[i + 1], t).unwrap();
+        }
+        if args.iter().any(|a| a == "--rows") {
+            for (z, q) in charge_rows(&g, grid) {
+                if q.abs() > 2e-15 {
+                    println!("row z {z:.4}  {:.1} fF", q * 1e15);
+                }
             }
         }
         return;

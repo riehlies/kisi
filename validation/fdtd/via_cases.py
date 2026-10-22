@@ -23,6 +23,14 @@ STACKUPS = {
     "pp200": {"title": "plane pair, 0.2 mm FR-4", "diel": [(0.2, 4.3, 0.02)], "planes": [0, 1]},
     "vna6": {"title": "LibreVNA 6-layer (7628 / FR-4, from the board file)",
              "diel": [(0.2104, 4.4, 0.02), (0.4, 4.6, 0.02), (0.2028, 4.4, 0.02), (0.4, 4.5, 0.02), (0.2104, 4.6, 0.02)], "planes": [1, 4]},
+    # the 8-layer stack without one plane: the exit on L3 above the top plane (x2) or inside a
+    # thick pair (x4) - to separate the junction from the shared-cavity effect of inner exits
+    "s8x2": {"title": "8-layer 1.6 mm FR-4 without the L2 plane",
+             "diel": [(0.1, 3.8, 0.02), (0.2, 4.2, 0.02), (0.15, 3.8, 0.02), (0.7, 4.2, 0.02), (0.15, 3.8, 0.02), (0.2, 4.2, 0.02), (0.1, 3.8, 0.02)],
+             "planes": [3, 4, 6]},
+    "s8x4": {"title": "8-layer 1.6 mm FR-4 without the L4 plane",
+             "diel": [(0.1, 3.8, 0.02), (0.2, 4.2, 0.02), (0.15, 3.8, 0.02), (0.7, 4.2, 0.02), (0.15, 3.8, 0.02), (0.2, 4.2, 0.02), (0.1, 3.8, 0.02)],
+             "planes": [1, 4, 6]},
     "ts6": {"title": "ThunderScope Rev5.3 6-layer (FR408HR / FR-4, from the board file)",
             "diel": [(0.1107, 3.23, 0.02), (0.1016, 3.66, 0.02), (0.9256, 4.5, 0.02), (0.1107, 3.66, 0.02), (0.1, 3.23, 0.02)],
             "planes": [1, 4]},
@@ -386,6 +394,10 @@ def cases(groups, fmax, dfine):
                               "ts6", 0, 2, 0.15, 0.4, fmax, dfine, stub_to=5, stitch=ring(4, 1.0)))
         out.append(single_via("B_ts6_L1L6", "B", "ThunderScope stack: L1→B.Cu, no stub", {**g, "stub": "none"},
                               "ts6", 0, 5, 0.15, 0.4, fmax, dfine, stitch=ring(4, 1.0)))
+    if "X" in groups:  # inner exit without one of its planes (junction diagnosis, TESTS.md section 7)
+        for sk, what in (("s8x2", "L2 plane removed: L3 exits above the top plane"), ("s8x4", "L4 plane removed: L3 exits inside the thick L2–L5 pair")):
+            out.append(single_via(f"X_{sk}_L1L3_bd_d200", "X", f"L1→L3 back-drilled, drill Ø0.2, {what}", {"drill_mm": 0.2, "antipad_mm": 0.7, "stitch": "4 × 1 mm", "stub": "0.2 mm residual"},
+                                  sk, 0, 2, 0.1, 0.35, fmax, dfine, backdrill=0.2, stitch=ring(4, 1.0)))
     if "C" in groups:  # antipads and pads, s8 L1→L8, drill Ø0.3
         g = {"drill_mm": 0.3, "stitch": "4 × 1 mm"}
         for ap in (0.3, 0.4, 0.5, 0.6):
@@ -464,7 +476,7 @@ def cases(groups, fmax, dfine):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out")
-    ap.add_argument("--groups", default="A,B,C,D,Dcap,E,G,H,T")
+    ap.add_argument("--groups", default="A,B,C,D,Dcap,E,G,H,T,X")
     ap.add_argument("--fmax", type=float, default=40e9)
     ap.add_argument("--dfine", type=float, default=0.035)
     a = ap.parse_args()

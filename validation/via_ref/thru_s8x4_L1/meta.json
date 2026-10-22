@@ -1,0 +1,58 @@
+{
+ "case": "thru_s8x4_L1",
+ "meta": {
+  "group": "thru",
+  "title": "2\u00d7thru, L1, 8 mm",
+  "params": {
+   "layer": "L1",
+   "width_mm": 0.213,
+   "length_mm": 8.0
+  },
+  "stackup": "s8x4",
+  "stackup_title": "8-layer 1.6 mm FR-4 without the L4 plane",
+  "copper_z": [
+   1.6,
+   1.5,
+   1.3,
+   1.15,
+   0.45,
+   0.3,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L5",
+   "L7"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": []
+ },
+ "date": "2026-10-22",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 413725,
+   "steps": [
+    3201
+   ],
+   "dt": 5.928226699938377e-14,
+   "seconds": 12.2,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

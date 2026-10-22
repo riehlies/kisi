@@ -96,21 +96,23 @@ def model_check(nm, d):
     if nm == "rust_models":
         sm = d["summary"]
         t = sm["via_time_ms_median"]
-        rows = [["Python prototype", sm["python"]["single_tdr_err_pct_median"], sm["python"]["single_tdr_err_pct_p90"], sm["python"]["single_dS21_max_db_median"], sm["python"]["pairs_dS21_max_db_median"], "–", f"{t['python']} ms" if t.get("python") else "–"],
-                ["Rust, uniform grid (as the prototype)", sm["rust"]["single_tdr_err_pct_median"], sm["rust"]["single_tdr_err_pct_p90"], sm["rust"]["single_dS21_max_db_median"], sm["rust"]["pairs_dS21_max_db_median"], sm["parity_rust"]["dS21_lin_max_max"], f"{t['rust_build']} + {t['rust_eval']} ms"],
-                ["Rust, graded grid (kisi's default)", sm["rust_graded"]["single_tdr_err_pct_median"], sm["rust_graded"]["single_tdr_err_pct_p90"], sm["rust_graded"]["single_dS21_max_db_median"], sm["rust_graded"]["pairs_dS21_max_db_median"], sm["parity_rust_graded"]["dS21_lin_max_max"], f"{t['rust_graded_build']} + {t['rust_eval']} ms"]]
+        rows = [["Python prototype (via_pbm.py)", sm["python"]["single_tdr_err_pct_median"], sm["python"]["single_tdr_err_pct_p90"], sm["python"]["single_dS21_max_db_median"], sm["python"]["pairs_dS21_max_db_median"], "–", f"{t['python']} ms" if t.get("python") else "–"],
+                ["Rust, prototype model (uniform grid)", sm["rust"]["single_tdr_err_pct_median"], sm["rust"]["single_tdr_err_pct_p90"], sm["rust"]["single_dS21_max_db_median"], sm["rust"]["pairs_dS21_max_db_median"], f"parity {sm['parity_rust']['dS21_lin_max_max']}", f"{t['rust_build']} + {t['rust_eval']} ms"],
+                ["Rust, kisi's ladder (graded grid, equivalent antipad, junction)", sm["rust_graded"]["single_tdr_err_pct_median"], sm["rust_graded"]["single_tdr_err_pct_p90"], sm["rust_graded"]["single_dS21_max_db_median"], sm["rust_graded"]["pairs_dS21_max_db_median"], "model differs", f"{t['rust_graded_build']} + {t['rust_eval']} ms"]]
         cv = sm.get("cavity", {})
         text = ["The reduced models in Rust: the via ladder (kisi_si::via_pbm), the plane cavity and the PDN loop (kisi_pi::cavity_modal). "
                 "Same metrics as the prototype: TDR minimum and maximum (25 ps, 80 ps window) against the de-embedded 3D result, both values "
                 "of every single-via case pooled; |S21| up to 20 GHz. Parity: largest |ΔS21| (linear) against the Python result over all via cases. "
-                "Time per via for 400 frequencies: build (r–z Laplace solve) + evaluation; the Laplace result is cached per via geometry, so a board "
-                "solves it once per via type. Script: rust_models.py."]
+                "kisi's ladder adds to the prototype the junction model fitted to the 3D references (series inductance μ0/(2π)·pad radius where a trace "
+                "enters the via, the trace over the antipad scaled from its own line, striplines kept up to the via centre) and the equivalent radius of "
+                "non-round antipads. Time per via for 400 frequencies: build (r–z Laplace solve) + evaluation; the Laplace result is cached per via "
+                "geometry, so a board solves it once per via type. Script: rust_models.py."]
         if cv:
             text.append(f"Cavity model: Rust within {cv['dZ_rel_max']:.1e} of Python; {cv['nf']} frequencies × {cv['modes']} modes in "
                         f"{' / '.join(str(x) for x in cv['rust_eval_ms'])} ms (Python {' / '.join(str(x) for x in cv['python_ms'])} ms). "
                         "PDN loop inductance: identical to 0.001 nH, about 1 ms per configuration.")
         return {"title": "Rust port of the reduced models", "text": text,
-                "cols": ["model", "TDR error median (%)", "TDR error p90 (%)", "max Δ|S21| median, single (dB)", "max Δ|S21| median, pairs (dB)", "parity |ΔS21| max", "time per via"],
+                "cols": ["model", "TDR error median (%)", "TDR error p90 (%)", "max Δ|S21| median, single (dB)", "max Δ|S21| median, pairs (dB)", "against Python", "time per via"],
                 "rows": rows}
     if nm == "practice":
         rows = []
@@ -155,6 +157,10 @@ def model_check(nm, d):
         text.append(f"Via alone, {sm['via_cases']} single vias: TDR error median {sm['via_tdr_err_pct_median']} %, 90th percentile {sm['via_tdr_err_pct_p90']} %, "
                     f"max Δ|S21| median {sm['via_dS21_max_db_median']} dB" + (f" (former coax model: {old['via_tdr_err_pct_median']} / {old['via_tdr_err_pct_p90']} %, {old['via_dS21_max_db_median']} dB)" if old else "") +
                     ". Stub notch: " + ", ".join(f"{k} {v:+.1f} %" for k, v in (sm.get("stub_err_pct") or {}).items()) + ".")
+        if sm.get("pair_cases"):
+            text.append(f"Via pairs alone (differential mode, {sm['pair_cases']} cases): Zdiff TDR error median {sm['pair_zdiff_err_pct_median']} %, 90th percentile {sm['pair_zdiff_err_pct_p90']} %, "
+                        f"max ΔSdd21 median {sm['pair_dSdd21_max_db_median']} dB, phase {sm['pair_dphase_max_deg_median']}°" +
+                        (f" (former coax model: {old.get('pair_zdiff_err_pct_median')} / {old.get('pair_zdiff_err_pct_p90')} %, {old.get('pair_dSdd21_max_db_median')} dB, {old.get('pair_dphase_max_deg_median')}°)" if old.get("pair_cases") else "") + ".")
     return {"title": title,
             "text": text,
             "cols": ["case", "metric", "value", "metric", "3D / kisi", "note"], "rows": rows}
@@ -217,11 +223,11 @@ def main():
             grp = c["meta"]["group"]
             z0 = c["ports"][0].get("r", 50.0)
             res = {"kisi": curves(S, grp, f, z0)}
-            for tool in ("kisi_fine", "openems", "kisi_model", "pbm", "model"):
+            for tool in ("kisi_fine", "openems", "kisi_model", "pbm", "ladder", "model"):
                 f2, S2 = load(nm, tool)
-                if S2 is None or (S2.shape[1] != S.shape[1] and tool != "pbm"):
+                if S2 is None or (S2.shape[1] != S.shape[1] and tool not in ("pbm", "ladder")):
                     continue
-                if tool == "pbm" and S.shape[1] == 4:  # differential-mode model of a pair
+                if tool in ("pbm", "ladder") and S.shape[1] == 4:  # differential-mode model of a pair
                     res[tool] = {"Sdd21": r2(sparam.db(S2[::STEP, 1, 0])), "Sdd11": r2(sparam.db(S2[::STEP, 0, 0]))}
                     continue
                 res[tool] = curves(S2, grp, f2, z0)

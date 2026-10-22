@@ -966,5 +966,45 @@
   "mode": "odd",
   "dSdd21_max_db_20GHz": 0.16,
   "dphase_max_deg_20GHz": 5.9
+ },
+ "X_s8x2_L1L3_bd_d200": {
+  "dS21_max_db_20GHz": 0.22,
+  "dS11_max_20GHz": 0.184,
+  "z_min_3d": 47.5,
+  "z_min_pbm": 49.5,
+  "z_max_3d": 49.4,
+  "z_max_pbm": 56.1,
+  "notch_3d_ghz": null,
+  "notch_pbm_ghz": null,
+  "nodes_z": [
+   1.6,
+   1.3,
+   1.15
+  ],
+  "C_fF": [
+   34.8,
+   68.6,
+   31.2
+  ]
+ },
+ "X_s8x4_L1L3_bd_d200": {
+  "dS21_max_db_20GHz": 0.31,
+  "dS11_max_20GHz": 0.189,
+  "z_min_3d": 49.0,
+  "z_min_pbm": 48.8,
+  "z_max_3d": 52.0,
+  "z_max_pbm": 57.4,
+  "notch_3d_ghz": null,
+  "notch_pbm_ghz": null,
+  "nodes_z": [
+   1.6,
+   1.5,
+   1.3
+  ],
+  "C_fF": [
+   47.3,
+   10.5,
+   94.0
+  ]
  }
 }

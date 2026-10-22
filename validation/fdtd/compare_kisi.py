@@ -158,7 +158,7 @@ for name in cases:
         # of the 3D lumped ports), both up to kisi's 25 GHz
         dp = os.path.join(REF, cid, "kisi_deembedded.s2p")
         th = [kisi_thru(f"thru_{c['meta']['stackup']}_{q['layer']}") for q in c["meta"].get("ports", [])]
-        if g in "ABCD" and os.path.exists(dp) and len(th) == 2 and all(th):
+        if g in "ABCDX" and os.path.exists(dp) and len(th) == 2 and all(th):
             fk0, Sk0 = sparam.read_touchstone(ts)
             FL, _ = sparam.fixture_2xthru(fk0, th[0][1])
             FR, _ = sparam.fixture_2xthru(fk0, th[1][1])
@@ -179,6 +179,22 @@ for name in cases:
         tk, zk = sparam.tdr(f, mmk["dd"][:, 0, 0], rise=35e-12, tmax=150e-12, z0=100.0)
         v["zdiff_min_3d"], v["zdiff_min_kisi"] = round(float(z3.min()), 1), round(float(zk.min()), 1)
         v["zdiff_max_3d"], v["zdiff_max_kisi"] = round(float(z3.max()), 1), round(float(zk.max()), 1)
+        # the via pair alone: first-order de-embedding of every port with its 2×thru (kisi's own
+        # thru for kisi, the 3D thru for 3D), differential mode, 25 ps, up to 25 GHz
+        th = [kisi_thru(f"thru_{c['meta']['stackup']}_{q['layer']}") for q in c["meta"].get("ports", [])]
+        th3 = [os.path.join(REF, f"thru_{c['meta']['stackup']}_{q['layer']}", "kisi.s2p") for q in c["meta"].get("ports", [])]
+        if g == "E" and len(th) == 4 and all(th) and all(os.path.exists(t) for t in th3):
+            fk0, Sk0 = sparam.read_touchstone(ts)
+            Dk = sparam.deembed_shift(Sk0, [sparam.fixture_shift(fk0, t[1]) for t in th])
+            ddk = interp(fk0, sparam.mixed_mode(Dk)["dd"], f)
+            D3 = sparam.deembed_shift(S3, [sparam.fixture_shift(f, sparam.read_touchstone(t)[1][: len(f)]) for t in th3])
+            dd3 = sparam.mixed_mode(D3)["dd"]
+            _, z3v = sparam.tdr(f, dd3[:, 0, 0], rise=25e-12, tmax=80e-12, z0=100.0)
+            _, zkv = sparam.tdr(f, ddk[:, 0, 0], rise=25e-12, tmax=80e-12, z0=100.0)
+            v["via_zdiff_err_pct"] = [round(abs(zkv.min() / z3v.min() - 1) * 100, 2), round(abs(zkv.max() / z3v.max() - 1) * 100, 2)]
+            m2 = f <= 20e9
+            v["via_dSdd21_max_db"] = round(float(np.max(np.abs(sparam.db(dd3[m2, 1, 0]) - sparam.db(ddk[m2, 1, 0])))), 3)
+            v["via_dphase_max_deg"] = round(float(np.max(np.abs(np.degrees(np.angle(dd3[m2, 1, 0] * np.conj(ddk[m2, 1, 0])))))), 1)
     summary[cid] = v
     rows.append(v)
     print(cid, v, flush=True)
@@ -189,6 +205,12 @@ if vias:
     summ = {"via_cases": len(vias), "via_tdr_err_pct_median": round(float(np.median(e)), 2), "via_tdr_err_pct_p90": round(float(np.percentile(e, 90)), 2),
             "via_dS21_mean_db_median": round(float(np.median([r["via_dS21_mean_db"] for r in vias])), 3),
             "via_dS21_max_db_median": round(float(np.median([r["via_dS21_max_db"] for r in vias])), 3)}
+    pv = [r for r in rows if r.get("via_zdiff_err_pct")]
+    if pv:
+        e = [x for r in pv for x in r["via_zdiff_err_pct"]]
+        summ.update({"pair_cases": len(pv), "pair_zdiff_err_pct_median": round(float(np.median(e)), 2), "pair_zdiff_err_pct_p90": round(float(np.percentile(e, 90)), 2),
+                     "pair_dSdd21_max_db_median": round(float(np.median([r["via_dSdd21_max_db"] for r in pv])), 3),
+                     "pair_dphase_max_deg_median": round(float(np.median([r["via_dphase_max_deg"] for r in pv])), 1)})
     stubs = [r for r in rows if r.get("stub_3d_ghz") and r.get("stub_kisi_ghz")]
     summ["stub_err_pct"] = {r["case"]: round((r["stub_kisi_ghz"] / r["stub_3d_ghz"] - 1) * 100, 1) for r in stubs}
     print(json.dumps(summ, indent=1))

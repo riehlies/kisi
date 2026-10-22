@@ -431,7 +431,7 @@ def main():
         if c["meta"]["group"] == "E":
             out.update(pair_case(cid, c) or {})
             continue
-        if c["meta"]["group"] not in ("A", "B", "C", "D") or len(c["ports"]) != 2 or "cap" in cid:
+        if c["meta"]["group"] not in ("A", "B", "C", "D", "X") or len(c["ports"]) != 2 or "cap" in cid:
             continue
         p = os.path.join(REF, cid, "kisi.s2p")
         if not os.path.exists(p):

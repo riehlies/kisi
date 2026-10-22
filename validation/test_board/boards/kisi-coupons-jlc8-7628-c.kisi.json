@@ -1,0 +1,133 @@
+{
+ "kisi_config": 1,
+ "board": "kisi-coupons-jlc8-7628-c.kicad_pcb",
+ "stackup": {
+  "dielectrics": [
+   {
+    "index": 0,
+    "material": "7628x1 (NP-155F)",
+    "epsilon_r": 4.4,
+    "loss_tangent": 0.02,
+    "thickness": 0.2104,
+    "source": {
+     "kind": "datasheet",
+     "document": "JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards): thickness jlc_api, er jlc_capabilities, tan d assumption",
+     "url": "https://jlcpcb.com/capabilities/pcb-capabilities",
+     "note": "loss tangent assumed (not published by the manufacturer)"
+    }
+   },
+   {
+    "index": 1,
+    "material": "core 0.35 mm H/HOZ (NP-155F)",
+    "epsilon_r": 4.6,
+    "loss_tangent": 0.02,
+    "thickness": 0.35,
+    "source": {
+     "kind": "datasheet",
+     "document": "JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards): thickness jlc_api, er jitx_jlc_materials (alternative 4.36: np155f_by_core), tan d assumption",
+     "url": "https://docs.jitx.com/en/latest/_modules/jitxlib/jlcpcb/materials.html",
+     "note": "loss tangent assumed (not published by the manufacturer)"
+    }
+   },
+   {
+    "index": 2,
+    "material": "7628x1 (NP-155F)",
+    "epsilon_r": 4.4,
+    "loss_tangent": 0.02,
+    "thickness": 0.2104,
+    "source": {
+     "kind": "datasheet",
+     "document": "JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards): thickness jlc_api, er jlc_capabilities, tan d assumption",
+     "url": "https://jlcpcb.com/capabilities/pcb-capabilities",
+     "note": "loss tangent assumed (not published by the manufacturer)"
+    }
+   },
+   {
+    "index": 3,
+    "material": "core 0.35 mm H/HOZ (NP-155F)",
+    "epsilon_r": 4.6,
+    "loss_tangent": 0.02,
+    "thickness": 0.35,
+    "source": {
+     "kind": "datasheet",
+     "document": "JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards): thickness jlc_api, er jitx_jlc_materials (alternative 4.36: np155f_by_core), tan d assumption",
+     "url": "https://docs.jitx.com/en/latest/_modules/jitxlib/jlcpcb/materials.html",
+     "note": "loss tangent assumed (not published by the manufacturer)"
+    }
+   },
+   {
+    "index": 4,
+    "material": "7628x1 (NP-155F)",
+    "epsilon_r": 4.4,
+    "loss_tangent": 0.02,
+    "thickness": 0.2104,
+    "source": {
+     "kind": "datasheet",
+     "document": "JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards): thickness jlc_api, er jlc_capabilities, tan d assumption",
+     "url": "https://jlcpcb.com/capabilities/pcb-capabilities",
+     "note": "loss tangent assumed (not published by the manufacturer)"
+    }
+   },
+   {
+    "index": 5,
+    "material": "core 0.35 mm H/HOZ (NP-155F)",
+    "epsilon_r": 4.6,
+    "loss_tangent": 0.02,
+    "thickness": 0.35,
+    "source": {
+     "kind": "datasheet",
+     "document": "JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards): thickness jlc_api, er jitx_jlc_materials (alternative 4.36: np155f_by_core), tan d assumption",
+     "url": "https://docs.jitx.com/en/latest/_modules/jitxlib/jlcpcb/materials.html",
+     "note": "loss tangent assumed (not published by the manufacturer)"
+    }
+   },
+   {
+    "index": 6,
+    "material": "7628x1 (NP-155F)",
+    "epsilon_r": 4.4,
+    "loss_tangent": 0.02,
+    "thickness": 0.2104,
+    "source": {
+     "kind": "datasheet",
+     "document": "JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards): thickness jlc_api, er jlc_capabilities, tan d assumption",
+     "url": "https://jlcpcb.com/capabilities/pcb-capabilities",
+     "note": "loss tangent assumed (not published by the manufacturer)"
+    }
+   }
+  ],
+  "solder_mask": {
+   "epsilon_r": 3.8,
+   "source": {
+    "kind": "datasheet",
+    "document": "solder mask: jlc_impedance_guide",
+    "url": "https://jlcpcb.com/help/article/user-guide-to-the-jlcpcb-impedance-calculator"
+   }
+  }
+ },
+ "net_classes": {
+  "50Z": {
+   "target_ohm": 50,
+   "diff": false,
+   "profile": "se50",
+   "source": {
+    "kind": "standard",
+    "note": "coupon design target (50 \u03a9 VNA ports)"
+   }
+  },
+  "100Z_Diff": {
+   "target_ohm": 100,
+   "diff": true,
+   "profile": "diff100",
+   "source": {
+    "kind": "standard",
+    "note": "coupon design target (2 \u00d7 50 \u03a9 VNA ports)"
+   }
+  }
+ },
+ "fields": [],
+ "notes": [
+  "kisi measurement coupons, generated by validation/test_board/make_coupons.py on 2026-10-22",
+  "stackup: JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards)",
+  "capacitors: replace the generic values by PI_CAP fields from the datasheets of the parts actually populated (README, component list)"
+ ]
+}

@@ -1,0 +1,448 @@
+{
+ "board": "kisi-coupons-jlc8-7628-p",
+ "date": "2026-10-22",
+ "native": {
+  "overview": {
+   "board": "kisi-coupons-jlc8-7628-p",
+   "classes": [],
+   "config": {
+    "entries": 10,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc8-7628-p.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "field_solver": {
+    "cross_sections": 5,
+    "cross_sections_field": 0,
+    "target_length_coverage_pct": 0.0
+   },
+   "field_solver_note": "native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver",
+   "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc8-7628-p.kicad_pcb",
+   "layers": 8,
+   "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5\u201315 %. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
+   "stackup": [
+    {
+     "cu_um": 35.0,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "F.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.6,
+      "material": "core 0.35 mm H/HOZ (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 350.0
+     },
+     "layer": "In1.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "In2.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.6,
+      "material": "core 0.35 mm H/HOZ (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 350.0
+     },
+     "layer": "In3.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "In4.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.6,
+      "material": "core 0.35 mm H/HOZ (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 350.0
+     },
+     "layer": "In5.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "In6.Cu"
+    },
+    {
+     "cu_um": 35.0,
+     "dielectric_below": null,
+     "layer": "B.Cu"
+    }
+   ],
+   "stackup_from_file": true,
+   "warnings": []
+  },
+  "check_all": {
+   "config": {
+    "entries": 10,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc8-7628-p.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "field_solver": {
+    "cross_sections": 5,
+    "cross_sections_field": 0,
+    "target_length_coverage_pct": 0.0
+   },
+   "field_solver_note": "native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver",
+   "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5\u201315 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).",
+   "rows": [],
+   "rows_omitted": 0,
+   "rows_shown": "all",
+   "summary": {
+    "green": 0,
+    "red": 0,
+    "yellow": 0
+   }
+  },
+  "interfaces": {
+   "buses": [],
+   "config": {
+    "entries": 10,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc8-7628-p.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "notes": "Lanes follow nets through series resistors (\u2264 100 \u03a9), AC-coupling capacitors (\u2265 1 nF) and small inductors; DNP parts are skipped. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+  },
+  "gaps": {
+   "board": "kisi-coupons-jlc8-7628-p",
+   "config": {
+    "entries": 10,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc8-7628-p.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "gaps": [
+    {
+     "affects": [
+      "power budget",
+      "regulator loading"
+     ],
+     "area": "power",
+     "id": "power-tree",
+     "issue": "No regulator chain (field PI_REG): no power budget, no regulator load check.",
+     "items": [],
+     "priority": "medium",
+     "where_to_find": "Regulator datasheets: topology (buck/LDO/\u2026), efficiency at the expected load, rated output current; input and output rails from the schematic.",
+     "write": {
+      "example": {
+       "name": "PI_REG",
+       "ref": "U3",
+       "source": {
+        "document": "regulator datasheet",
+        "kind": "datasheet",
+        "note": "efficiency at 1 A, typical",
+        "page": "\u2026"
+       },
+       "value": "+12V > +3V3 buck 90% 3A"
+      },
+      "to": "fields[] (name PI_REG on the regulator)"
+     }
+    }
+   ],
+   "how": "Fill the gaps in <board>.kisi.json next to the board (format: see `kisi config-template`), every value with a source; then run `kisi config-check <board>` and `kisi gaps <board>` again. Gaps marked 'not kisi.json' are fixes in KiCad.",
+   "summary": {
+    "high": 0,
+    "low": 0,
+    "medium": 1
+   }
+  },
+  "config_check": {
+   "entries": 10,
+   "errors": [],
+   "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc8-7628-p.kisi.json",
+   "ok": true,
+   "warnings": []
+  }
+ },
+ "field": {
+  "overview": {
+   "board": "kisi-coupons-jlc8-7628-p",
+   "classes": [],
+   "config": {
+    "entries": 10,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc8-7628-p.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "field_solver": {
+    "cross_sections": 5,
+    "cross_sections_field": 0,
+    "target_length_coverage_pct": 0
+   },
+   "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc8-7628-p.kicad_pcb",
+   "layers": 8,
+   "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5\u201315 %. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
+   "stackup": [
+    {
+     "cu_um": 35,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "F.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.6,
+      "material": "core 0.35 mm H/HOZ (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 350
+     },
+     "layer": "In1.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "In2.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.6,
+      "material": "core 0.35 mm H/HOZ (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 350
+     },
+     "layer": "In3.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "In4.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.6,
+      "material": "core 0.35 mm H/HOZ (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 350
+     },
+     "layer": "In5.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "In6.Cu"
+    },
+    {
+     "cu_um": 35,
+     "dielectric_below": null,
+     "layer": "B.Cu"
+    }
+   ],
+   "stackup_from_file": true,
+   "warnings": []
+  }
+ },
+ "nets": {},
+ "pdn": {
+  "VDD_H_D2": {
+   "coupon": "H_D2",
+   "native": {
+    "ic": "U1",
+    "pins": 8,
+    "z_ohm": {
+     "100M": 1.0335,
+     "100k": 15.9031,
+     "10M": 0.065,
+     "10k": 159.0403,
+     "1G": 1.6942,
+     "1M": 1.5806
+    },
+    "caps": [
+     {
+      "ref": "C1",
+      "dist_mm": 4.1,
+      "l_path_nh": 0.969,
+      "l_total_nh": 1.609,
+      "srf_mhz": 12.55
+     }
+    ],
+    "anti_resonances": [
+     {
+      "mhz": 501.2,
+      "z_ohm": 79.831
+     }
+    ],
+    "cavity_first_resonance_mhz": 3235.6,
+    "capacitor_flags": [],
+    "warnings": [
+     "no regulator / source in the rail domain: the low-frequency end is open (capacitors only)"
+    ]
+   }
+  },
+  "VDD_H_D5": {
+   "coupon": "H_D5",
+   "native": {
+    "ic": "U2",
+    "pins": 8,
+    "z_ohm": {
+     "100M": 1.0662,
+     "100k": 15.903,
+     "10M": 0.0624,
+     "10k": 159.04,
+     "1G": 1.8457,
+     "1M": 1.5802
+    },
+    "caps": [
+     {
+      "ref": "C2",
+      "dist_mm": 7.1,
+      "l_path_nh": 1.018,
+      "l_total_nh": 1.659,
+      "srf_mhz": 12.36
+     }
+    ],
+    "anti_resonances": [
+     {
+      "mhz": 501.2,
+      "z_ohm": 81.81
+     }
+    ],
+    "cavity_first_resonance_mhz": 3235.6,
+    "capacitor_flags": [],
+    "warnings": [
+     "no regulator / source in the rail domain: the low-frequency end is open (capacitors only)"
+    ]
+   }
+  },
+  "VDD_H_D10": {
+   "coupon": "H_D10",
+   "native": {
+    "ic": "U3",
+    "pins": 8,
+    "z_ohm": {
+     "100M": 1.1299,
+     "100k": 15.903,
+     "10M": 0.0576,
+     "10k": 159.0404,
+     "1G": 1.9036,
+     "1M": 1.5797
+    },
+    "caps": [
+     {
+      "ref": "C3",
+      "dist_mm": 12.1,
+      "l_path_nh": 1.114,
+      "l_total_nh": 1.754,
+      "srf_mhz": 12.02
+     }
+    ],
+    "anti_resonances": [
+     {
+      "mhz": 501.2,
+      "z_ohm": 59.286
+     }
+    ],
+    "cavity_first_resonance_mhz": 3235.6,
+    "capacitor_flags": [],
+    "warnings": [
+     "no regulator / source in the rail domain: the low-frequency end is open (capacitors only)"
+    ]
+   }
+  },
+  "VDD_H_D2_0603": {
+   "coupon": "H_D2_0603",
+   "native": {
+    "ic": "U4",
+    "pins": 8,
+    "z_ohm": {
+     "100M": 1.344,
+     "100k": 15.9027,
+     "10M": 0.0425,
+     "10k": 159.0398,
+     "1G": 1.5679,
+     "1M": 1.5777
+    },
+    "caps": [
+     {
+      "ref": "C4",
+      "dist_mm": 4.4,
+      "l_path_nh": 1.18,
+      "l_total_nh": 2.058,
+      "srf_mhz": 11.09
+     }
+    ],
+    "anti_resonances": [
+     {
+      "mhz": 398.1,
+      "z_ohm": 32.91
+     }
+    ],
+    "cavity_first_resonance_mhz": 3235.6,
+    "capacitor_flags": [],
+    "warnings": [
+     "no regulator / source in the rail domain: the low-frequency end is open (capacitors only)"
+    ]
+   }
+  }
+ }
+}

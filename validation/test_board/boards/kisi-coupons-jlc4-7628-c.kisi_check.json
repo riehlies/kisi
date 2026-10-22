@@ -1,0 +1,1362 @@
+{
+ "board": "kisi-coupons-jlc4-7628-c",
+ "date": "2026-10-22",
+ "native": {
+  "overview": {
+   "board": "kisi-coupons-jlc4-7628-c",
+   "classes": [
+    {
+     "class": "100Z_Diff",
+     "diff": true,
+     "length_mm": 325.244352544595,
+     "nets": 8,
+     "target_ohm": 100.0,
+     "target_source": "user",
+     "within_5pct": 0.7681215914523765,
+     "worst": [
+      {
+       "net": "DP_E_O_G2_N",
+       "within_5pct": 0.7634475971304897,
+       "z_max": 105.68236370933036,
+       "z_mean": 103.2020192283552,
+       "z_min": 101.82534745061089
+      },
+      {
+       "net": "DP_E_O_G2_P",
+       "within_5pct": 0.7634475971304897,
+       "z_max": 105.68236370933036,
+       "z_mean": 103.2020192283552,
+       "z_min": 101.82534745061089
+      },
+      {
+       "net": "DP_E_R_G0_N",
+       "within_5pct": 0.7634475971304897,
+       "z_max": 105.68236370933036,
+       "z_mean": 103.2020192283552,
+       "z_min": 101.82534745061089
+      },
+      {
+       "net": "DP_E_R_G0_P",
+       "within_5pct": 0.7634475971304897,
+       "z_max": 105.68236370933036,
+       "z_mean": 103.2020192283552,
+       "z_min": 101.82534745061089
+      },
+      {
+       "net": "DP_E_R_G2_N",
+       "within_5pct": 0.7634475971304897,
+       "z_max": 105.68236370933036,
+       "z_mean": 103.2020192283552,
+       "z_min": 101.82534745061089
+      }
+     ]
+    }
+   ],
+   "config": {
+    "entries": 6,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-7628-c.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "field_solver": {
+    "cross_sections": 3,
+    "cross_sections_field": 0,
+    "target_length_coverage_pct": 0.0
+   },
+   "field_solver_note": "native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver",
+   "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-7628-c.kicad_pcb",
+   "layers": 4,
+   "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5\u201315 %. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
+   "stackup": [
+    {
+     "cu_um": 35.0,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "F.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.6,
+      "material": "core 1.1 mm H/HOZ (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 1065.0
+     },
+     "layer": "In1.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "In2.Cu"
+    },
+    {
+     "cu_um": 35.0,
+     "dielectric_below": null,
+     "layer": "B.Cu"
+    }
+   ],
+   "stackup_from_file": true,
+   "warnings": []
+  },
+  "check_all": {
+   "config": {
+    "entries": 6,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-7628-c.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "field_solver": {
+    "cross_sections": 3,
+    "cross_sections_field": 0,
+    "target_length_coverage_pct": 0.0
+   },
+   "field_solver_note": "native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver",
+   "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5\u201315 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).",
+   "rows": [],
+   "rows_omitted": 0,
+   "rows_shown": "all",
+   "summary": {
+    "green": 0,
+    "red": 0,
+    "yellow": 0
+   }
+  },
+  "interfaces": {
+   "buses": [
+    {
+     "bus": "J1 \u2194 J3",
+     "class": "100Z_Diff",
+     "devices": [
+      "J1",
+      "J3"
+     ],
+     "kind": "connector-connector",
+     "lanes": [
+      {
+       "branches": 0,
+       "diff": true,
+       "direction": "default order",
+       "ends": [
+        "J1.1",
+        "J3.1"
+       ],
+       "from": "J1.1",
+       "kind": "connector-connector",
+       "lane": "DP_PAIR_P",
+       "nets": [
+        "DP_PAIR_P"
+       ],
+       "not_modelled": [],
+       "series_parts": [],
+       "terminations": [],
+       "to": "J3.1"
+      }
+     ],
+     "profile": "diff100",
+     "values": [
+      "292-04A-14",
+      "292-04A-14"
+     ]
+    },
+    {
+     "bus": "J11 \u2194 J9",
+     "class": "100Z_Diff",
+     "devices": [
+      "J11",
+      "J9"
+     ],
+     "kind": "connector-connector",
+     "lanes": [
+      {
+       "branches": 0,
+       "diff": true,
+       "direction": "default order",
+       "ends": [
+        "J11.1",
+        "J9.1"
+       ],
+       "from": "J11.1",
+       "kind": "connector-connector",
+       "lane": "DP_E_O_G2_P",
+       "nets": [
+        "DP_E_O_G2_P"
+       ],
+       "not_modelled": [],
+       "series_parts": [],
+       "terminations": [],
+       "to": "J9.1"
+      }
+     ],
+     "profile": "diff100",
+     "values": [
+      "292-04A-14",
+      "292-04A-14"
+     ]
+    },
+    {
+     "bus": "J13 \u2194 J15",
+     "class": "100Z_Diff",
+     "devices": [
+      "J13",
+      "J15"
+     ],
+     "kind": "connector-connector",
+     "lanes": [
+      {
+       "branches": 0,
+       "diff": true,
+       "direction": "default order",
+       "ends": [
+        "J13.1",
+        "J15.1"
+       ],
+       "from": "J13.1",
+       "kind": "connector-connector",
+       "lane": "DP_E_R_G0_P",
+       "nets": [
+        "DP_E_R_G0_P"
+       ],
+       "not_modelled": [],
+       "series_parts": [],
+       "terminations": [],
+       "to": "J15.1"
+      }
+     ],
+     "profile": "diff100",
+     "values": [
+      "292-04A-14",
+      "292-04A-14"
+     ]
+    },
+    {
+     "bus": "J5 \u2194 J7",
+     "class": "100Z_Diff",
+     "devices": [
+      "J5",
+      "J7"
+     ],
+     "kind": "connector-connector",
+     "lanes": [
+      {
+       "branches": 0,
+       "diff": true,
+       "direction": "default order",
+       "ends": [
+        "J5.1",
+        "J7.1"
+       ],
+       "from": "J5.1",
+       "kind": "connector-connector",
+       "lane": "DP_E_R_G2_P",
+       "nets": [
+        "DP_E_R_G2_P"
+       ],
+       "not_modelled": [],
+       "series_parts": [],
+       "terminations": [],
+       "to": "J7.1"
+      }
+     ],
+     "profile": "diff100",
+     "values": [
+      "292-04A-14",
+      "292-04A-14"
+     ]
+    }
+   ],
+   "config": {
+    "entries": 6,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-7628-c.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "notes": "Lanes follow nets through series resistors (\u2264 100 \u03a9), AC-coupling capacitors (\u2265 1 nF) and small inductors; DNP parts are skipped. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+  },
+  "gaps": {
+   "board": "kisi-coupons-jlc4-7628-c",
+   "config": {
+    "entries": 6,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-7628-c.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "gaps": [
+    {
+     "affects": [
+      "power budget",
+      "regulator loading"
+     ],
+     "area": "power",
+     "id": "power-tree",
+     "issue": "No regulator chain (field PI_REG): no power budget, no regulator load check.",
+     "items": [],
+     "priority": "medium",
+     "where_to_find": "Regulator datasheets: topology (buck/LDO/\u2026), efficiency at the expected load, rated output current; input and output rails from the schematic.",
+     "write": {
+      "example": {
+       "name": "PI_REG",
+       "ref": "U3",
+       "source": {
+        "document": "regulator datasheet",
+        "kind": "datasheet",
+        "note": "efficiency at 1 A, typical",
+        "page": "\u2026"
+       },
+       "value": "+12V > +3V3 buck 90% 3A"
+      },
+      "to": "fields[] (name PI_REG on the regulator)"
+     }
+    }
+   ],
+   "how": "Fill the gaps in <board>.kisi.json next to the board (format: see `kisi config-template`), every value with a source; then run `kisi config-check <board>` and `kisi gaps <board>` again. Gaps marked 'not kisi.json' are fixes in KiCad.",
+   "summary": {
+    "high": 0,
+    "low": 0,
+    "medium": 1
+   }
+  },
+  "config_check": {
+   "entries": 6,
+   "errors": [],
+   "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-7628-c.kisi.json",
+   "ok": true,
+   "warnings": []
+  }
+ },
+ "field": {
+  "overview": {
+   "board": "kisi-coupons-jlc4-7628-c",
+   "classes": [
+    {
+     "class": "100Z_Diff",
+     "diff": true,
+     "length_mm": 325.244352544595,
+     "nets": 8,
+     "target_ohm": 100,
+     "target_source": "user",
+     "within_5pct": 0.9641588154692263,
+     "worst": [
+      {
+       "net": "DP_PAIR_N",
+       "within_5pct": 1,
+       "z_max": 100.03097960858163,
+       "z_mean": 99.77434608743903,
+       "z_min": 99.6698796364567
+      },
+      {
+       "net": "DP_PAIR_P",
+       "within_5pct": 1,
+       "z_max": 100.03097960858163,
+       "z_mean": 99.77434608743903,
+       "z_min": 99.6698796364567
+      },
+      {
+       "net": "DP_E_R_G2_P",
+       "within_5pct": 0.9536372290095788,
+       "z_max": 100.03097960858163,
+       "z_mean": 99.77768363873994,
+       "z_min": 99.6698796364567
+      },
+      {
+       "net": "DP_E_O_G2_N",
+       "within_5pct": 0.9536372290095788,
+       "z_max": 100.03097960858163,
+       "z_mean": 99.77768363873996,
+       "z_min": 99.6698796364567
+      },
+      {
+       "net": "DP_E_O_G2_P",
+       "within_5pct": 0.9536372290095788,
+       "z_max": 100.03097960858163,
+       "z_mean": 99.77768363873996,
+       "z_min": 99.6698796364567
+      }
+     ]
+    }
+   ],
+   "config": {
+    "entries": 6,
+    "errors": [],
+    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-7628-c.kisi.json",
+    "ok": true,
+    "warnings": []
+   },
+   "field_solver": {
+    "cross_sections": 3,
+    "cross_sections_field": 3,
+    "target_length_coverage_pct": 100
+   },
+   "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-7628-c.kicad_pcb",
+   "layers": 4,
+   "models": "Impedance from Forst\u00e9n's 2D field solver for 3 cross-sections (see field_solver: coverage), formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for the rest. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
+   "stackup": [
+    {
+     "cu_um": 35,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "F.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.6,
+      "material": "core 1.1 mm H/HOZ (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 1065
+     },
+     "layer": "In1.Cu"
+    },
+    {
+     "cu_um": 15.2,
+     "dielectric_below": {
+      "assumed": [],
+      "er": 4.4,
+      "material": "7628x1 (NP-155F)",
+      "tand": 0.02,
+      "thickness_um": 210.4
+     },
+     "layer": "In2.Cu"
+    },
+    {
+     "cu_um": 35,
+     "dielectric_below": null,
+     "layer": "B.Cu"
+    }
+   ],
+   "stackup_from_file": true,
+   "warnings": [],
+   "field_solver_run": {
+    "planned": 3,
+    "from_cache": 3,
+    "solved_now": 0,
+    "failed_now": 0,
+    "not_solved": 0,
+    "seconds": 0,
+    "cache": "/root/.cache/kisi/field-cache.json"
+   }
+  }
+ },
+ "nets": {
+  "DP_PAIR_P": {
+   "coupon": "PAIR",
+   "native": {
+    "length_mm": 34.54,
+    "delay_ps": 208.7,
+    "z": {
+     "max": 105.68,
+     "mean": 103.11,
+     "min": 101.83,
+     "within_5pct": 0.78
+    },
+    "segments": [
+     [
+      "F.Cu",
+      2.8,
+      52.84
+     ],
+     [
+      "F.Cu",
+      11.17,
+      50.91
+     ],
+     [
+      "F.Cu",
+      6.6,
+      52.17
+     ],
+     [
+      "F.Cu",
+      11.17,
+      50.91
+     ],
+     [
+      "F.Cu",
+      2.8,
+      52.84
+     ]
+    ],
+    "il_db": {
+     "5.0": -0.77,
+     "12.5": -1.72,
+     "25.0": -3.19
+    },
+    "rl_worst_db": 20.5,
+    "tdr": {
+     "mode": "differential",
+     "rise_ps": 35.0,
+     "z_max": 105.7,
+     "z_min": 102.4
+    },
+    "vias": [],
+    "warnings": [],
+    "mixed": {
+     "sdd21_db": {
+      "5.0": -0.77,
+      "12.5": -1.72,
+      "25.0": -3.19
+     },
+     "scd21_worst": {
+      "db": -240.0,
+      "ghz": 0.05
+     },
+     "tdr": {
+      "rise_ps": 35.0,
+      "zcommon_max": 27.3,
+      "zcommon_min": 25.6,
+      "zdiff_max": 105.7,
+      "zdiff_min": 102.4
+     },
+     "skew_ps": 0,
+     "rl_diff_worst_db": 20.5
+    }
+   },
+   "field": {
+    "length_mm": 34.54,
+    "delay_ps": 212.4,
+    "z": {
+     "max": 100.03,
+     "mean": 99.77,
+     "min": 99.67,
+     "within_5pct": 1
+    },
+    "segments": [
+     [
+      "F.Cu",
+      2.8,
+      50.01
+     ],
+     [
+      "F.Cu",
+      11.17,
+      49.83
+     ],
+     [
+      "F.Cu",
+      6.6,
+      49.91
+     ],
+     [
+      "F.Cu",
+      11.17,
+      49.83
+     ],
+     [
+      "F.Cu",
+      2.8,
+      50.01
+     ]
+    ],
+    "il_db": {
+     "5.0": -0.76,
+     "12.5": -1.72,
+     "25.0": -3.23
+    },
+    "rl_worst_db": 36.6,
+    "tdr": {
+     "mode": "differential",
+     "rise_ps": 35,
+     "z_max": 101.0,
+     "z_min": 99.9
+    },
+    "vias": [],
+    "warnings": [],
+    "mixed": {
+     "sdd21_db": {
+      "5.0": -0.76,
+      "12.5": -1.72,
+      "25.0": -3.23
+     },
+     "scd21_worst": {
+      "db": -240,
+      "ghz": 0.05
+     },
+     "tdr": {
+      "rise_ps": 35,
+      "zcommon_max": 27.1,
+      "zcommon_min": 25.0,
+      "zdiff_max": 101.0,
+      "zdiff_min": 99.9
+     },
+     "skew_ps": 0,
+     "rl_diff_worst_db": 36.6
+    }
+   }
+  },
+  "DP_E_R_G2_P": {
+   "coupon": "E_R_G2",
+   "native": {
+    "length_mm": 42.64,
+    "delay_ps": 260.3,
+    "z": {
+     "max": 105.68,
+     "mean": 103.2,
+     "min": 101.83,
+     "within_5pct": 0.76
+    },
+    "segments": [
+     [
+      "F.Cu",
+      2.8,
+      52.84
+     ],
+     [
+      "F.Cu",
+      11.17,
+      50.91
+     ],
+     [
+      "F.Cu",
+      2.83,
+      52.17
+     ],
+     [
+      "F.Cu",
+      0.0,
+      null
+     ],
+     [
+      "B.Cu",
+      0.0,
+      null
+     ],
+     [
+      "B.Cu",
+      4.0,
+      52.17
+     ],
+     [
+      "B.Cu",
+      0.0,
+      null
+     ],
+     [
+      "F.Cu",
+      0.0,
+      null
+     ],
+     [
+      "F.Cu",
+      2.83,
+      52.17
+     ],
+     [
+      "F.Cu",
+      11.17,
+      50.91
+     ],
+     [
+      "F.Cu",
+      2.8,
+      52.84
+     ]
+    ],
+    "il_db": {
+     "5.0": -0.91,
+     "12.5": -3.26,
+     "25.0": -4.19
+    },
+    "rl_worst_db": 7.8,
+    "tdr": {
+     "mode": "differential",
+     "rise_ps": 35.0,
+     "z_max": 105.8,
+     "z_min": 90.4
+    },
+    "vias": [
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "F.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0.0,
+      "stub_resonance_ghz": null,
+      "to": "B.Cu",
+      "z_ohm": 72.0
+     },
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "B.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0.0,
+      "stub_resonance_ghz": null,
+      "to": "F.Cu",
+      "z_ohm": 72.0
+     }
+    ],
+    "warnings": [],
+    "mixed": {
+     "sdd21_db": {
+      "5.0": -0.91,
+      "12.5": -3.25,
+      "25.0": -4.2
+     },
+     "scd21_worst": {
+      "db": -240.0,
+      "ghz": 0.05
+     },
+     "tdr": {
+      "rise_ps": 35.0,
+      "zcommon_max": 26.7,
+      "zcommon_min": 24.9,
+      "zdiff_max": 105.8,
+      "zdiff_min": 90.5
+     },
+     "skew_ps": 0.0,
+     "rl_diff_worst_db": 7.8
+    }
+   },
+   "field": {
+    "length_mm": 42.64,
+    "delay_ps": 264.3,
+    "z": {
+     "max": 100.03,
+     "mean": 99.78,
+     "min": 99.67,
+     "within_5pct": 0.95
+    },
+    "segments": [
+     [
+      "F.Cu",
+      2.8,
+      50.01
+     ],
+     [
+      "F.Cu",
+      11.17,
+      49.83
+     ],
+     [
+      "F.Cu",
+      2.83,
+      49.91
+     ],
+     [
+      "F.Cu",
+      0,
+      null
+     ],
+     [
+      "B.Cu",
+      0,
+      null
+     ],
+     [
+      "B.Cu",
+      4,
+      49.91
+     ],
+     [
+      "B.Cu",
+      0,
+      null
+     ],
+     [
+      "F.Cu",
+      0,
+      null
+     ],
+     [
+      "F.Cu",
+      2.83,
+      49.91
+     ],
+     [
+      "F.Cu",
+      11.17,
+      49.83
+     ],
+     [
+      "F.Cu",
+      2.8,
+      50.01
+     ]
+    ],
+    "il_db": {
+     "5.0": -0.92,
+     "12.5": -2.67,
+     "25.0": -4.22
+    },
+    "rl_worst_db": 10.9,
+    "tdr": {
+     "mode": "differential",
+     "rise_ps": 35,
+     "z_max": 101.1,
+     "z_min": 88.9
+    },
+    "vias": [
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "F.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0,
+      "stub_resonance_ghz": null,
+      "to": "B.Cu",
+      "z_ohm": 72.0
+     },
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "B.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0,
+      "stub_resonance_ghz": null,
+      "to": "F.Cu",
+      "z_ohm": 72.0
+     }
+    ],
+    "warnings": [],
+    "mixed": {
+     "sdd21_db": {
+      "5.0": -0.92,
+      "12.5": -2.65,
+      "25.0": -4.24
+     },
+     "scd21_worst": {
+      "db": -240,
+      "ghz": 0.05
+     },
+     "tdr": {
+      "rise_ps": 35,
+      "zcommon_max": 26.5,
+      "zcommon_min": 24.7,
+      "zdiff_max": 101.1,
+      "zdiff_min": 89.2
+     },
+     "skew_ps": 0.0,
+     "rl_diff_worst_db": 11.0
+    }
+   }
+  },
+  "DP_E_O_G2_P": {
+   "coupon": "E_O_G2",
+   "native": {
+    "length_mm": 42.64,
+    "delay_ps": 259.6,
+    "z": {
+     "max": 105.68,
+     "mean": 103.2,
+     "min": 101.83,
+     "within_5pct": 0.76
+    },
+    "segments": [
+     [
+      "F.Cu",
+      2.8,
+      52.84
+     ],
+     [
+      "F.Cu",
+      11.17,
+      50.91
+     ],
+     [
+      "F.Cu",
+      2.83,
+      52.17
+     ],
+     [
+      "F.Cu",
+      0.0,
+      null
+     ],
+     [
+      "B.Cu",
+      0.0,
+      null
+     ],
+     [
+      "B.Cu",
+      4.0,
+      52.17
+     ],
+     [
+      "B.Cu",
+      0.0,
+      null
+     ],
+     [
+      "F.Cu",
+      0.0,
+      null
+     ],
+     [
+      "F.Cu",
+      2.83,
+      52.17
+     ],
+     [
+      "F.Cu",
+      11.17,
+      50.91
+     ],
+     [
+      "F.Cu",
+      2.8,
+      52.84
+     ]
+    ],
+    "il_db": {
+     "5.0": -0.91,
+     "12.5": -2.97,
+     "25.0": -4.2
+    },
+    "rl_worst_db": 8.8,
+    "tdr": {
+     "mode": "differential",
+     "rise_ps": 35.0,
+     "z_max": 105.8,
+     "z_min": 92.9
+    },
+    "vias": [
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "F.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0.0,
+      "stub_resonance_ghz": null,
+      "to": "B.Cu",
+      "z_ohm": 74.64
+     },
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "B.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0.0,
+      "stub_resonance_ghz": null,
+      "to": "F.Cu",
+      "z_ohm": 74.64
+     }
+    ],
+    "warnings": [],
+    "mixed": {
+     "sdd21_db": {
+      "5.0": -0.91,
+      "12.5": -2.96,
+      "25.0": -4.21
+     },
+     "scd21_worst": {
+      "db": -240.0,
+      "ghz": 0.05
+     },
+     "tdr": {
+      "rise_ps": 35.0,
+      "zcommon_max": 26.8,
+      "zcommon_min": 25.5,
+      "zdiff_max": 105.8,
+      "zdiff_min": 93.1
+     },
+     "skew_ps": 0,
+     "rl_diff_worst_db": 8.9
+    }
+   },
+   "field": {
+    "length_mm": 42.64,
+    "delay_ps": 263.7,
+    "z": {
+     "max": 100.03,
+     "mean": 99.78,
+     "min": 99.67,
+     "within_5pct": 0.95
+    },
+    "segments": [
+     [
+      "F.Cu",
+      2.8,
+      50.01
+     ],
+     [
+      "F.Cu",
+      11.17,
+      49.83
+     ],
+     [
+      "F.Cu",
+      2.83,
+      49.91
+     ],
+     [
+      "F.Cu",
+      0,
+      null
+     ],
+     [
+      "B.Cu",
+      0,
+      null
+     ],
+     [
+      "B.Cu",
+      4,
+      49.91
+     ],
+     [
+      "B.Cu",
+      0,
+      null
+     ],
+     [
+      "F.Cu",
+      0,
+      null
+     ],
+     [
+      "F.Cu",
+      2.83,
+      49.91
+     ],
+     [
+      "F.Cu",
+      11.17,
+      49.83
+     ],
+     [
+      "F.Cu",
+      2.8,
+      50.01
+     ]
+    ],
+    "il_db": {
+     "5.0": -0.92,
+     "12.5": -2.47,
+     "25.0": -4.23
+    },
+    "rl_worst_db": 12.6,
+    "tdr": {
+     "mode": "differential",
+     "rise_ps": 35,
+     "z_max": 101.1,
+     "z_min": 91.3
+    },
+    "vias": [
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "F.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0,
+      "stub_resonance_ghz": null,
+      "to": "B.Cu",
+      "z_ohm": 74.64
+     },
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "B.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0,
+      "stub_resonance_ghz": null,
+      "to": "F.Cu",
+      "z_ohm": 74.64
+     }
+    ],
+    "warnings": [],
+    "mixed": {
+     "sdd21_db": {
+      "5.0": -0.92,
+      "12.5": -2.46,
+      "25.0": -4.25
+     },
+     "scd21_worst": {
+      "db": -240,
+      "ghz": 0.05
+     },
+     "tdr": {
+      "rise_ps": 35,
+      "zcommon_max": 26.7,
+      "zcommon_min": 25.0,
+      "zdiff_max": 101.1,
+      "zdiff_min": 91.6
+     },
+     "skew_ps": 0,
+     "rl_diff_worst_db": 12.8
+    }
+   }
+  },
+  "DP_E_R_G0_P": {
+   "coupon": "E_R_G0",
+   "native": {
+    "length_mm": 42.64,
+    "delay_ps": 261.3,
+    "z": {
+     "max": 105.68,
+     "mean": 103.2,
+     "min": 101.83,
+     "within_5pct": 0.76
+    },
+    "segments": [
+     [
+      "F.Cu",
+      2.8,
+      52.84
+     ],
+     [
+      "F.Cu",
+      11.17,
+      50.91
+     ],
+     [
+      "F.Cu",
+      2.83,
+      52.17
+     ],
+     [
+      "F.Cu",
+      0.0,
+      null
+     ],
+     [
+      "B.Cu",
+      0.0,
+      null
+     ],
+     [
+      "B.Cu",
+      4.0,
+      52.17
+     ],
+     [
+      "B.Cu",
+      0.0,
+      null
+     ],
+     [
+      "F.Cu",
+      0.0,
+      null
+     ],
+     [
+      "F.Cu",
+      2.83,
+      52.17
+     ],
+     [
+      "F.Cu",
+      11.17,
+      50.91
+     ],
+     [
+      "F.Cu",
+      2.8,
+      52.84
+     ]
+    ],
+    "il_db": {
+     "5.0": -0.93,
+     "12.5": -3.22,
+     "25.0": -6.96
+    },
+    "rl_worst_db": 9.6,
+    "tdr": {
+     "mode": "differential",
+     "rise_ps": 35.0,
+     "z_max": 105.8,
+     "z_min": 93.0
+    },
+    "vias": [
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "F.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0.0,
+      "stub_resonance_ghz": null,
+      "to": "B.Cu",
+      "z_ohm": 75.86
+     },
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "B.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0.0,
+      "stub_resonance_ghz": null,
+      "to": "F.Cu",
+      "z_ohm": 75.86
+     }
+    ],
+    "warnings": [],
+    "mixed": {
+     "sdd21_db": {
+      "5.0": -0.93,
+      "12.5": -3.22,
+      "25.0": -6.95
+     },
+     "scd21_worst": {
+      "db": -240.0,
+      "ghz": 0.05
+     },
+     "tdr": {
+      "rise_ps": 35.0,
+      "zcommon_max": 30.4,
+      "zcommon_min": 25.6,
+      "zdiff_max": 105.8,
+      "zdiff_min": 93.1
+     },
+     "skew_ps": 0,
+     "rl_diff_worst_db": 9.6
+    }
+   },
+   "field": {
+    "length_mm": 42.64,
+    "delay_ps": 265.4,
+    "z": {
+     "max": 100.03,
+     "mean": 99.78,
+     "min": 99.67,
+     "within_5pct": 0.95
+    },
+    "segments": [
+     [
+      "F.Cu",
+      2.8,
+      50.01
+     ],
+     [
+      "F.Cu",
+      11.17,
+      49.83
+     ],
+     [
+      "F.Cu",
+      2.83,
+      49.91
+     ],
+     [
+      "F.Cu",
+      0,
+      null
+     ],
+     [
+      "B.Cu",
+      0,
+      null
+     ],
+     [
+      "B.Cu",
+      4,
+      49.91
+     ],
+     [
+      "B.Cu",
+      0,
+      null
+     ],
+     [
+      "F.Cu",
+      0,
+      null
+     ],
+     [
+      "F.Cu",
+      2.83,
+      49.91
+     ],
+     [
+      "F.Cu",
+      11.17,
+      49.83
+     ],
+     [
+      "F.Cu",
+      2.8,
+      50.01
+     ]
+    ],
+    "il_db": {
+     "5.0": -0.94,
+     "12.5": -2.77,
+     "25.0": -6.98
+    },
+    "rl_worst_db": 13.8,
+    "tdr": {
+     "mode": "differential",
+     "rise_ps": 35,
+     "z_max": 101.1,
+     "z_min": 91.4
+    },
+    "vias": [
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "F.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0,
+      "stub_resonance_ghz": null,
+      "to": "B.Cu",
+      "z_ohm": 75.86
+     },
+     {
+      "antipad_mm": 0.8,
+      "drill_mm": 0.3,
+      "from": "B.Cu",
+      "model": "ladder",
+      "return_path": "pair",
+      "stub_mm": 0,
+      "stub_resonance_ghz": null,
+      "to": "F.Cu",
+      "z_ohm": 75.86
+     }
+    ],
+    "warnings": [],
+    "mixed": {
+     "sdd21_db": {
+      "5.0": -0.94,
+      "12.5": -2.76,
+      "25.0": -6.97
+     },
+     "scd21_worst": {
+      "db": -240,
+      "ghz": 0.05
+     },
+     "tdr": {
+      "rise_ps": 35,
+      "zcommon_max": 30.2,
+      "zcommon_min": 25.1,
+      "zdiff_max": 101.1,
+      "zdiff_min": 91.7
+     },
+     "skew_ps": 0,
+     "rl_diff_worst_db": 13.9
+    }
+   }
+  }
+ },
+ "pdn": {}
+}

@@ -1,26 +1,30 @@
 #!/usr/bin/env python3
-"""Measurement coupons for kisi (validation/test_board/README.md).
+"""Measurement coupons for kisi, design v2 (validation/test_board/README.md).
 
 Per board: a KiCad 8 board (boards/<board>.kicad_pcb) with its project (.kicad_pro, net classes 50Z
-and 100Z_Diff) and kisi configuration (.kisi.json, stackup values with sources); per coupon one or
-more kisi-fdtd cases (fdtd/<board>/<case>.json, the format of validation/fdtd/via_cases.py, run with
-validation/fdtd/run_refs.py).
+and 100Z_Diff), a kisi configuration (.kisi.json, stackup values with sources) and a manifest; per
+coupon one or more kisi-fdtd cases (fdtd/<board>/<case>.json, the format of
+validation/fdtd/via_cases.py, run with validation/fdtd/run_refs.py).
 
 * Trace widths come from kisi itself: a small probe board per cross-section (the same writer as the
   coupons), solved with the 2D field solver of the Node CLI (kisi.mjs) when it is available, else
-  with kisi's formulas (--solver formula). The result is stored in boards/<board>.design.json.
-* Every coupon is described once (traces, vias, antipads, pours, ports in coupon coordinates); the
-  KiCad board and the kisi-fdtd cases are written from that one description.
-* Stackups (stackups.json) and connector data (connectors.json) carry their sources. The end-launch
-  footprint is a PLACEHOLDER until checked against the vendor drawing (connectors.json).
+  with kisi's formulas (--solver formula); stored in boards/<stackup>.design.json.
+* Every coupon is described once (traces, vias, antipads, pours, islands, parts, ports in coupon
+  coordinates); the KiCad board and the kisi-fdtd cases are written from that one description.
+* All connectors are SMA end launches on the top side; every board carries its own 2×thru (and a
+  pair 2×thru when it has 4-port coupons), and the via coupons are via–line–via structures fed
+  from L1 at both ends, so one fixture per board de-embeds them.
+* Board sizes stay within the limits in connectors.json (4 layers 100 × 100 mm, 6 and 8 layers
+  50 × 50 mm). Stackups (stackups.json) and connector data (connectors.json) carry their sources;
+  the end-launch footprint is a PLACEHOLDER until the vendor drawing is supplied.
 
-Coordinates: mm, x along the coupons, y up (KiCad's y points down: converted on output). Coupons are
-rows that run from the left to the right board edge; a board is a stack of rows, centred on x = 0,
-with a stepped outline where rows of different length meet.
+Coordinates: mm, x along the coupons, y up (KiCad's y points down: converted on output). A board is
+a stack of rows; a row is one coupon from the left to the right board edge, or two coupons side by
+side that have their ports on the outer edges only. Rows are centred on x = 0 and sorted by length.
 
-usage: python3 make_coupons.py [--boards jlc4_a,jlc4_b,jlc6_a,jlc6_b,aisler4_a]
-                               [--kisi KISI] [--kisi-mjs KISI.MJS] [--solver auto|field|formula]
-                               [--pair-pitch 12.7] [--check] [--fdtd-exe KISI_FDTD]
+usage: python3 make_coupons.py [--boards jlc4_7628_a,...] [--kisi KISI] [--kisi-mjs KISI.MJS]
+                               [--solver auto|field|formula] [--pair-pitch 12.7] [--reuse-design]
+                               [--fdtd-exe KISI_FDTD]
 """
 import argparse, datetime, json, math, os, shutil, subprocess, sys, tempfile, uuid
 
@@ -32,11 +36,14 @@ import kisi_board as kb  # noqa: E402  (layer names, circle and stadium outlines
 
 STK = json.load(open(os.path.join(HERE, "stackups.json")))
 CON = json.load(open(os.path.join(HERE, "connectors.json")))
-LAUNCH = CON["swm_narrow"]
-FP = LAUNCH["footprint"]
+CONN = CON["connector"]
+FP = CONN["footprint"]
 LAY = CON["layout"]
-FEED = LAY["feed"]              # board edge to the reference plane of a coupon
+PKG = CON["parts"]
+FEED = LAY["feed"]              # board edge to the reference plane of a 2-port coupon
 FEED4 = LAY["feed_4port"]       # the same for the 4-port pair coupons
+ROW, ROW4 = LAY["row_pitch"], LAY["pair_row"]
+LS_VIA, LS_RET = LAY["via_line"], LAY["return_line"]
 # traces leave the launch straight until they are clear of the connector's mounting holes
 X_CLEAR = max(FP["launch_length"] + 0.3, max(h["x"] + h["d"] / 2 for h in FP["mount_holes"]) + 0.5)
 ZONE_INSET = 0.25               # zone outlines stay this far inside the board edge
@@ -57,6 +64,7 @@ class Stack:
         self.planes = d["planes"]
         self.signal = d["signal"]
         self.mask = d["mask"]
+        self.pwr = (d.get("pdn") or {}).get("pwr")
         self.names = kb.layer_names(self.n)
         self.vc_key = "tb_" + key
         vc.STACKUPS[self.vc_key] = {"title": d["title"], "diel": [(x["thickness"], x["er"], x["tand"]) for x in self.diel], "planes": list(self.planes)}
@@ -79,8 +87,7 @@ class Stack:
         return a if self.z[a] - self.z[layer] <= self.z[layer] - self.z[b] else b
 
     def h_ref(self, layer):
-        r = self.port_ref(layer)
-        return abs(self.z[layer] - self.z[r])
+        return abs(self.z[layer] - self.z[self.port_ref(layer)])
 
     def dw_thick(self, layer):
         """Wheeler's width increase that represents the copper thickness on a zero-thickness strip"""
@@ -90,38 +97,39 @@ class Stack:
 
 # --- coupon description ----------------------------------------------------------------------
 class Coupon:
-    """One row of the board, from the left (x = -X/2) to the right board edge (x = +X/2),
-    height H. Geometry in local coordinates; ports are end-launch connectors at the edges."""
+    """A coupon of length X (edge to edge) and height H. Geometry in local coordinates (x = 0 at the
+    coupon centre); ports are end-launch connectors at the left (-X/2) or right (+X/2) edge."""
 
     def __init__(self, cid, group, title, X, H, validates, refs=(), params=None):
         self.cid, self.group, self.title, self.X, self.H = cid, group, title, X, H
         self.validates, self.refs, self.params = validates, list(refs), dict(params or {})
         self.traces, self.vias, self.holes, self.pours, self.islands, self.ports = [], [], [], [], [], []
-        self.windows = []
+        self.zones, self.parts, self.windows, self.nets, self.notches = [], [], [], [], []
         self.cx = self.cy = 0.0
-        self.nets = []
+        self.measure = ""
 
-    # primitives
+    def net(self, n):
+        if n not in self.nets:
+            self.nets.append(n)
+
     def trace(self, layer, pts, w, net):
         self.traces.append({"layer": layer, "pts": [tuple(p) for p in pts], "w": w, "net": net})
-        if net not in self.nets:
-            self.nets.append(net)
+        self.net(net)
 
-    def via(self, x, y, l0, l1, net, pads=None, role="sig", drill=None, pad=None):
+    def via(self, x, y, net, pads=None, role="sig", fence=False):
         v = LAY["signal_via"] if role == "sig" else LAY["gnd_via"]
-        self.vias.append({"x": x, "y": y, "l0": l0, "l1": l1, "net": net, "pads": pads, "role": role,
-                          "drill": drill or v["drill"], "pad": pad or v["pad"]})
+        self.vias.append({"x": round(x, 4), "y": round(y, 4), "net": net, "pads": pads, "role": role,
+                          "drill": v["drill"], "pad": v["pad"], "fence": fence})
 
     def hole(self, layers, shape, name=""):
         self.holes.append({"layers": list(layers), "shape": tuple(shape), "name": name})
 
     def pour(self, layer, rect, net="GND"):
         x0, y0, x1, y1 = rect
-        if x1 - x0 > 0.05 and y1 - y0 > 0.05:
+        if abs(x1 - x0) > 0.05 and abs(y1 - y0) > 0.05:
             self.pours.append({"layer": layer, "rect": (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)), "net": net})
 
     def port(self, side, y, layer, net, w, gap, name):
-        """end-launch connector at the left (side -1) or right (+1) edge"""
         self.ports.append({"side": side, "y": y, "layer": layer, "net": net, "w": w, "gap": gap, "name": name})
 
     def window(self, name, x0, x1, half_y=None, excite=None, mirror=None, dfine=0.035, fmax=40e9, note="", group=None, extra=None):
@@ -148,9 +156,10 @@ class Kisi:
             raise RuntimeError(f"kisi failed: {' '.join(cmd)}\n{r.stderr[:500]}")
         return json.loads(r.stdout)
 
-    def z(self, stk, layer, w, s=None, gap=None, field=None):
-        """impedance kisi reports for a 20 mm probe line: Z0 (50Z class) or Zdiff (pair, 100Z_Diff)"""
-        b = Board("probe", stk, [], probe=True)
+    def z(self, stk, layer, w, s=None, gap=None, field=None, cut=None):
+        """impedance kisi reports for a 20 mm probe line: Z0 (50Z class) or Zdiff (pair, 100Z_Diff);
+        cut: width of an opening in the first plane under the trace (the launch on a thin top
+        dielectric), over the middle 19 mm of the line - the value of that section is returned"""
         c = Coupon("P", "probe", "probe", 20.0, 10.0, "")
         nets = ["SE_PROBE"] if s is None else ["DP_PROBE_P", "DP_PROBE_N"]
         ys = [0.0] if s is None else [(w + s) / 2, -(w + s) / 2]
@@ -159,10 +168,13 @@ class Kisi:
         if gap is not None:
             c.pour(layer, (-10.0, w / 2 + gap, 10.0, 4.7))
             c.pour(layer, (-10.0, -4.7, 10.0, -w / 2 - gap))
-        b.add(c)
+        if cut is not None:
+            c.hole([stk.planes[0]], ("rect", -9.5, -cut / 2, 9.5, cut / 2), "launch cutout")
         for k, (net, y) in enumerate(zip(nets, ys)):
-            b.simple_fp(f"U{k + 1}", -10.0, y, layer, net, w)
-            b.simple_fp(f"J{k + 1}", 10.0, y, layer, net, w)
+            for ref, x in ((f"U{k + 1}", -10.0), (f"J{k + 1}", 10.0)):
+                c.parts.append({"prefix": ref, "x": x, "y": y, "value": "IC" if ref[0] == "U" else "conn", "props": {},
+                                "pads": [{"num": "1", "x": 0, "y": 0, "sx": w, "sy": w, "shape": "rect", "net": net, "layer": layer}]})
+        b = Board("probe", stk, [[c]], probe=True)
         b.design = {"w50": {str(layer): w}, "diff": {str(layer): {"w": w, "s": s or 0.2}}}
         path = os.path.join(self.tmp, "probe.kicad_pcb")
         b.write_kicad(path)
@@ -170,7 +182,7 @@ class Kisi:
         if field or (field is None and self.solver == "field"):
             if not (d.get("field_solver") or {}).get("cross_sections_field"):
                 raise RuntimeError("field solver not used on the probe")
-        return float(d["impedance"]["mean"])
+        return float(d["impedance"]["max" if cut is not None else "mean"])
 
     def solve(self, f, target, lo, hi, increasing=False, tol=0.002, field=None):
         """x with f(x) = target, f monotone; geometric bisection on the formula, then secant
@@ -202,39 +214,42 @@ class Kisi:
 def design(stk, ks, pair_pitch):
     """trace widths and gaps for this stackup; rounded to 5 µm (what the CAM data resolve)"""
     r5 = lambda v: round(round(v / 0.005) * 0.005, 3)
-    out = {"solver": ks.solver, "kisi": os.path.basename(ks.mjs if ks.solver == "field" else ks.exe), "w50": {}, "diff": {}, "notes": []}
+    sym = stk.d["dielectrics"] == stk.d["dielectrics"][::-1] and stk.cu == stk.cu[::-1]
+    out = {"solver": ks.solver, "kisi": os.path.basename(ks.mjs if ks.solver == "field" else ks.exe), "w50": {}, "diff": {}, "pair_via": {}, "notes": []}
     for layer in stk.signal:
-        mirror = stk.n - 1 - layer
-        if str(mirror) in out["w50"] and stk.d["dielectrics"] == stk.d["dielectrics"][::-1]:
-            out["w50"][str(layer)] = out["w50"][str(mirror)]
+        mirror = str(stk.n - 1 - layer)
+        if sym and mirror in out["w50"]:
+            out["w50"][str(layer)] = out["w50"][mirror]
             continue
-        w = ks.solve(lambda x, fld: ks.z(stk, layer, x, field=fld), 50.0, 0.04, 2.0)
-        out["w50"][str(layer)] = r5(w)
+        out["w50"][str(layer)] = r5(ks.solve(lambda x, fld: ks.z(stk, layer, x, field=fld), 50.0, 0.04, 2.0))
     # launch: grounded coplanar section at the connector (the connector ground contacts the top
-    # copper): gap 0.3 mm, width for 50 Ω; if that width is below the pin diameter, the pin
-    # diameter and the gap for 50 Ω
+    # copper): gap 0.3 mm, width for 50 Ω; if below the pin diameter, the pin diameter and its gap
     g0 = 0.3
     wl = ks.solve(lambda x, fld: ks.z(stk, 0, x, gap=g0, field=fld), 50.0, 0.04, 2.0)
-    if wl < LAUNCH["pin_diameter"]:
-        wl = LAUNCH["pin_diameter"]
-        g0 = ks.solve(lambda x, fld: ks.z(stk, 0, wl, gap=x, field=fld), 50.0, 0.06, 1.5, increasing=True)
     out["launch"] = {"w": r5(wl), "gap": r5(g0)}
-    # tightly coupled 100 Ω pair (outer layer, and the first inner signal layer), spacing fixed
-    for layer, s in [(0, 0.2)] + [(L, 0.2) for L in stk.signal if 0 < L < stk.n - 1][:1]:
-        w = ks.solve(lambda x, fld: ks.z(stk, layer, x, s=s, field=fld), 100.0, 0.04, 1.5)
-        out["diff"][str(layer)] = {"w": r5(w), "s": s}
-    # pair at the via pitch (1.0 mm): width for 100 Ω differential with the edge gap 1.0 - w
-    for layer in (0, stk.n - 1):
-        if str(stk.n - 1 - layer) in out.get("pair_via", {}) and layer == stk.n - 1:
-            out.setdefault("pair_via", {})[str(layer)] = out["pair_via"][str(stk.n - 1 - layer)]
+    if wl < CONN["pin_diameter"]:
+        # thin top dielectric: the pad must carry the connector pin, so it is pin-wide; 50 Ω comes
+        # from an opening in the first plane under the launch (the same width as the coplanar
+        # opening on top, reference = the next plane) and the top gap is solved; JLC's minimum
+        # spacing (0.1 mm) bounds the gap from below
+        wl = CONN["pin_diameter"]
+        g0 = max(0.1, ks.solve(lambda x, fld: ks.z(stk, 0, wl, gap=x, cut=wl + 2 * x, field=fld), 50.0, 0.06, 0.4, increasing=True))
+        out["launch"] = {"w": r5(wl), "gap": r5(g0), "cut": r5(wl + 2 * r5(g0)), "cut_layer": stk.planes[0],
+                         "note": "pin-wide launch with an opening in the first plane under it (thin top dielectric); PLACEHOLDER like the footprint"}
+    # tightly coupled 100 Ω pair (outer layer and the first inner signal layer), spacing 0.2 mm
+    for layer in [0] + [L for L in stk.signal if 0 < L < stk.n - 1][:1]:
+        out["diff"][str(layer)] = {"w": r5(ks.solve(lambda x, fld: ks.z(stk, layer, x, s=0.2, field=fld), 100.0, 0.04, 1.5)), "s": 0.2}
+    # pair at the via pitch (1.0 mm): width for 100 Ω differential, edge gap 1.0 - w, every signal layer
+    for layer in stk.signal:
+        mirror = str(stk.n - 1 - layer)
+        if sym and mirror in out["pair_via"]:
+            out["pair_via"][str(layer)] = out["pair_via"][mirror]
             continue
-        w = ks.solve(lambda x, fld: ks.z(stk, layer, x, s=1.0 - x, field=fld), 100.0, 0.08, 0.7)
-        out.setdefault("pair_via", {})[str(layer)] = {"w": r5(w), "s": round(1.0 - r5(w), 3), "pitch": 1.0}
-    # CPWG coupon: the gap of the LibreVNA RF class (0.18 mm, 3D reference T_vna6_cpwg on the same
-    # 7628 top prepreg), width for 50 Ω (0.35 mm, the LibreVNA width, gives 45-48 Ω here with
-    # mask and 35 µm copper)
-    w = ks.solve(lambda x, fld: ks.z(stk, 0, x, gap=0.18, field=fld), 50.0, 0.04, 1.0)
-    out["cpwg"] = {"w": r5(w), "gap": 0.18, "note": "gap of the LibreVNA RF class (T_vna6_cpwg), width for 50 Ω"}
+        w = r5(ks.solve(lambda x, fld: ks.z(stk, layer, x, s=1.0 - x, field=fld), 100.0, 0.08, 0.7))
+        out["pair_via"][str(layer)] = {"w": w, "s": round(1.0 - w, 3), "pitch": 1.0}
+    # CPWG coupon: the gap of the LibreVNA RF class (0.18 mm, 3D reference T_vna6_cpwg), width for 50 Ω
+    out["cpwg"] = {"w": r5(ks.solve(lambda x, fld: ks.z(stk, 0, x, gap=0.18, field=fld), 50.0, 0.04, 1.0)), "gap": 0.18,
+                   "note": "gap of the LibreVNA RF class (T_vna6_cpwg), width for 50 Ω"}
     out["pair_pitch"] = pair_pitch
     return out
 
@@ -244,15 +259,16 @@ def report_z(stk, ks, des):
     rows = []
     have_field = ks.mjs and os.path.exists(ks.mjs) and shutil.which("node")
 
-    def both(label, layer, w, s=None, gap=None, target=50.0):
-        zf = ks.z(stk, layer, w, s=s, gap=gap, field=False)
-        zd = ks.z(stk, layer, w, s=s, gap=gap, field=True) if have_field else None
-        rows.append({"what": label, "layer": stk.names[layer], "w_mm": w, "s_mm": s, "gap_mm": gap, "target_ohm": target,
+    def both(label, layer, w, s=None, gap=None, target=50.0, cut=None):
+        zf = ks.z(stk, layer, w, s=s, gap=gap, field=False, cut=cut)
+        zd = ks.z(stk, layer, w, s=s, gap=gap, field=True, cut=cut) if have_field else None
+        rows.append({"what": label, "layer": stk.names[layer], "w_mm": w, "s_mm": s, "gap_mm": gap, "cut_mm": cut, "target_ohm": target,
                      "z_formula": round(zf, 2), "z_field": round(zd, 2) if zd else None,
                      "dev_formula_pct": round((zf / target - 1) * 100, 1), "dev_field_pct": round((zd / target - 1) * 100, 1) if zd else None})
     for L, w in des["w50"].items():
         both("50 Ω line" + (" (microstrip)" if int(L) in (0, stk.n - 1) else " (stripline)"), int(L), w)
-    both("launch (grounded coplanar)", 0, des["launch"]["w"], gap=des["launch"]["gap"])
+    lc = des["launch"]
+    both("launch (grounded coplanar" + (f", {stk.names[lc['cut_layer']]} cut out {lc['cut']:g} mm)" if lc.get("cut") else ")"), 0, lc["w"], gap=lc["gap"], cut=lc.get("cut"))
     both("CPWG coupon (LibreVNA gap 0.18 mm)", 0, des["cpwg"]["w"], gap=des["cpwg"]["gap"])
     for L, p in des["diff"].items():
         both("100 Ω coupled pair", int(L), p["w"], s=p["s"], target=100.0)
@@ -290,6 +306,14 @@ def shape_bbox(shape):
     return tuple(shape[1:])
 
 
+def shift_shape(s, dx, dy):
+    if s[0] == "circle":
+        return (s[0], s[1] + dx, s[2] + dy, s[3])
+    if s[0] == "slot":
+        return (s[0], s[1] + dx, s[2] + dy, s[3] + dx, s[4] + dy, s[5])
+    return (s[0], s[1] + dx, s[2] + dy, s[3] + dx, s[4] + dy)
+
+
 def inset_rectilinear(poly, d):
     """inset a counter-clockwise rectilinear polygon by d (every edge moves inwards)"""
     n = len(poly)
@@ -303,15 +327,38 @@ def inset_rectilinear(poly, d):
     out = []
     for i in range(n):
         a, b = lines[i - 1], lines[i]
-        x = a[1] if a[0] == "v" else b[1]
-        y = a[1] if a[0] == "h" else b[1]
-        out.append((x, y))
+        out.append((a[1] if a[0] == "v" else b[1], a[1] if a[0] == "h" else b[1]))
     return out
 
 
-def fractured(outline, holes):
+def notch_outline(poly, notches, x_edge_tol=0.6):
+    """cut rectangular notches into the left / right edges of a counter-clockwise rectilinear
+    polygon (an opening in a plane under an end launch): notch = {side, y0, y1, x} with x the
+    inner end of the notch; the edge is the vertical edge on that side that spans y0 … y1"""
+    pts = list(poly)
+    for nt in notches:
+        for i in range(len(pts)):
+            p, q = pts[i], pts[(i + 1) % len(pts)]
+            if abs(p[0] - q[0]) > 1e-9:
+                continue
+            down = q[1] < p[1]
+            if down != (nt["side"] < 0) or abs(abs(p[0]) - abs(nt["x_edge"])) > x_edge_tol:
+                continue
+            lo, hi = min(p[1], q[1]), max(p[1], q[1])
+            if not (lo + 1e-6 < nt["y0"] and nt["y1"] < hi - 1e-6):
+                continue
+            x, xn = p[0], nt["x"]
+            ins = [(x, nt["y1"]), (xn, nt["y1"]), (xn, nt["y0"]), (x, nt["y0"])] if down else [(x, nt["y0"]), (xn, nt["y0"]), (xn, nt["y1"]), (x, nt["y1"])]
+            pts[i + 1:i + 1] = ins
+            break
+        else:
+            raise ValueError(f"notch at y {nt['y0']:.2f} … {nt['y1']:.2f}: no board edge found")
+    return pts
+
+
+def fractured(outline, holes, xsplit=0.0):
     """polygon with holes as one outline (KiCad's fractured fill): each hole is joined by a
-    horizontal cut to the left edge (hole centre x < 0) or the right edge. `outline`:
+    horizontal cut to the left edge (hole centre x < xsplit) or the right edge. `outline`:
     counter-clockwise rectilinear polygon (down the left side, up the right side)."""
     out = []
     n = len(outline)
@@ -326,7 +373,7 @@ def fractured(outline, holes):
         for h in holes:
             bb = shape_bbox(h)
             xc, yc = (bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2
-            if ((xc < 0) == down) and lo + 1e-6 < yc < hi - 1e-6:
+            if ((xc < xsplit) == down) and lo + 1e-6 < yc < hi - 1e-6:
                 sel.append((yc, shape_ring(h)[:-1]))
         sel.sort(key=lambda t: -t[0] if down else t[0])
         for yc, ring in sel:
@@ -337,63 +384,79 @@ def fractured(outline, holes):
     return out
 
 
+def seg_dist(px, py, a, b):
+    (x0, y0), (x1, y1) = a, b
+    dx, dy = x1 - x0, y1 - y0
+    l2 = dx * dx + dy * dy
+    t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / l2))
+    return math.hypot(px - x0 - t * dx, py - y0 - t * dy)
+
+
+def clear_of_traces(x, y, r, segs):
+    for (L, pts, w) in segs:
+        for a, b in zip(pts[:-1], pts[1:]):
+            if seg_dist(x, y, a, b) < r + w / 2:
+                return False
+    return True
+
+
 # --- board ---------------------------------------------------------------------------------------
 class Board:
-    def __init__(self, name, stk, coupons, title="", probe=False):
-        self.name, self.stk, self.title, self.probe = name, stk, title, probe
-        self.coupons = []
-        self.fps = []        # simple footprints (probe)
+    def __init__(self, name, stk, rows, probe=False):
+        self.name, self.stk, self.probe = name, stk, probe
+        self.rows = [list(r) for r in rows]
+        self.coupons = [c for r in self.rows for c in r]
         self.design = {}
         self.texts = []
-        for c in coupons:
-            self.add(c)
 
-    def add(self, c):
-        self.coupons.append(c)
-
-    def simple_fp(self, ref, x, y, layer, net, w):
-        self.fps.append({"ref": ref, "x": x, "y": y, "layer": layer, "net": net, "w": w})
-
-    # layout
-    def place(self, info_row=True):
+    def place(self):
         y = 0.0
-        for c in self.coupons:
-            c.cx, c.cy = 0.0, y - c.H / 2
-            y -= c.H
-        self.bottom = y
-        self.top = 0.0
+        for row in self.rows:
+            W = sum(c.X for c in row)
+            H = max(c.H for c in row)
+            x = -W / 2
+            for c in row:
+                c.cx, c.cy = x + c.X / 2, y - H / 2
+                x += c.X
+                if len(row) > 1:  # side by side: ports on the outer edges only
+                    outer = -1 if c is row[0] else 1
+                    assert all(p["side"] == outer for p in c.ports), f"{c.cid}: port on an inner edge"
+            y -= H
+        self.bottom, self.top = y, 0.0
+
+    def row_extents(self):
+        out, y = [], 0.0
+        for row in self.rows:
+            H = max(c.H for c in row)
+            out.append((y, y - H, sum(c.X for c in row) / 2))
+            y -= H
+        return out
 
     def outline(self):
         """counter-clockwise stepped outline from the rows"""
-        rows = [(c.cy + c.H / 2, c.cy - c.H / 2, c.X / 2) for c in self.coupons]
-        left, right = [], []
+        rows = self.row_extents()
+        pts = []
         for (yt, yb, hx) in rows:  # down the left side
-            left += [(-hx, yt), (-hx, yb)]
+            pts += [(-hx, yt), (-hx, yb)]
         for (yt, yb, hx) in reversed(rows):  # up the right side
-            right += [(hx, yb), (hx, yt)]
-        pts = left + right
-        # merge collinear points
+            pts += [(hx, yb), (hx, yt)]
         out = []
         for p in pts:
-            if out and abs(out[-1][0] - p[0]) < 1e-9 and abs(out[-1][1] - p[1]) < 1e-9:
-                continue
-            out.append(p)
-        clean = []
+            if not (out and abs(out[-1][0] - p[0]) < 1e-9 and abs(out[-1][1] - p[1]) < 1e-9):
+                out.append(p)
         m = len(out)
-        for i in range(m):
-            a, b, c = out[i - 1], out[i], out[(i + 1) % m]
-            if (abs(a[0] - b[0]) < 1e-9 and abs(b[0] - c[0]) < 1e-9) or (abs(a[1] - b[1]) < 1e-9 and abs(b[1] - c[1]) < 1e-9):
-                continue
-            clean.append(b)
-        return clean
+        return [out[i] for i in range(m) if not ((abs(out[i - 1][0] - out[i][0]) < 1e-9 and abs(out[i][0] - out[(i + 1) % m][0]) < 1e-9) or
+                                                 (abs(out[i - 1][1] - out[i][1]) < 1e-9 and abs(out[i][1] - out[(i + 1) % m][1]) < 1e-9))]
 
     def width(self):
-        return max(c.X for c in self.coupons)
+        return max(sum(c.X for c in r) for r in self.rows)
 
-    # global geometry
+    def height(self):
+        return -self.bottom
+
     def gather(self):
-        """all primitives in board coordinates, walls and launches included"""
-        G = {"traces": [], "vias": [], "holes": [], "pours": [], "islands": [], "ports": []}
+        """all primitives in board coordinates, walls included"""
+        G = {k: [] for k in ("traces", "vias", "holes", "pours", "islands", "ports", "zones", "parts", "notches")}
         for c in self.coupons:
             dx, dy = c.cx, c.cy
             for t in c.traces:
@@ -401,22 +464,21 @@ class Board:
             for v in c.vias:
                 G["vias"].append(dict(v, x=v["x"] + dx, y=v["y"] + dy, cid=c.cid))
             for h in c.holes:
-                s = h["shape"]
-                if s[0] == "circle":
-                    s2 = (s[0], s[1] + dx, s[2] + dy, s[3])
-                elif s[0] == "slot":
-                    s2 = (s[0], s[1] + dx, s[2] + dy, s[3] + dx, s[4] + dy, s[5])
-                else:
-                    s2 = (s[0], s[1] + dx, s[2] + dy, s[3] + dx, s[4] + dy)
-                G["holes"].append(dict(h, shape=s2, cid=c.cid))
+                G["holes"].append(dict(h, shape=shift_shape(h["shape"], dx, dy), cid=c.cid))
             for p in c.pours:
                 x0, y0, x1, y1 = p["rect"]
                 G["pours"].append(dict(p, rect=(x0 + dx, y0 + dy, x1 + dx, y1 + dy), cid=c.cid))
-            for p in c.islands:
+            for p in c.islands + c.zones:
                 x0, y0, x1, y1 = p["rect"]
-                G["islands"].append(dict(p, rect=(x0 + dx, y0 + dy, x1 + dx, y1 + dy), cid=c.cid))
+                key = "islands" if p in c.islands else "zones"
+                G[key].append(dict(p, rect=(x0 + dx, y0 + dy, x1 + dx, y1 + dy), holes=[shift_shape(s, dx, dy) for s in p.get("holes", [])], cid=c.cid))
             for p in c.ports:
                 G["ports"].append(dict(p, x=dx + p["side"] * c.X / 2, y=p["y"] + dy, cid=c.cid))
+            for nt in c.notches:
+                xe = dx + nt["side"] * c.X / 2
+                G["notches"].append(dict(nt, x_edge=xe, x=xe - nt["side"] * nt["depth"], y0=nt["y0"] + dy, y1=nt["y1"] + dy, cid=c.cid))
+            for p in c.parts:
+                G["parts"].append(dict(p, x=p["x"] + dx, y=p["y"] + dy, cid=c.cid))
         if not self.probe:
             G["vias"] += self.walls(G)
         return G
@@ -426,27 +488,26 @@ class Board:
         wall_pitch, through all layers; they also stitch the launch pours"""
         out = []
         p = LAY["wall_pitch"]
-        bounds = []
-        cs = self.coupons
-        for i in range(len(cs) + 1):
-            if i == 0:
-                y, hx, inset = cs[0].cy + cs[0].H / 2, cs[0].X / 2, -0.75
-            elif i == len(cs):
-                y, hx, inset = cs[-1].cy - cs[-1].H / 2, cs[-1].X / 2, 0.75
-            else:
-                y, hx, inset = cs[i].cy + cs[i].H / 2, min(cs[i].X, cs[i - 1].X) / 2, 0.0
-            bounds.append((y + inset, hx))
+        ext = self.row_extents()
+        bounds = [(ext[0][0] - 0.75, ext[0][2])] + [(ext[i][0], min(ext[i][2], ext[i - 1][2])) for i in range(1, len(ext))] + [(ext[-1][1] + 0.75, ext[-1][2])]
         segs = [(t["layer"], t["pts"], t["w"]) for t in G["traces"]]
+        isl = [i["rect"] for i in G["islands"]]
+        pos = []
         for (y, hx) in bounds:
             n = int((2 * (hx - WALL_EDGE)) / p)
-            x0 = -n * p / 2
-            for k in range(n + 1):
-                x = x0 + k * p
-                if abs(x) > hx - WALL_EDGE + 1e-9:
-                    continue
-                if clear_of_traces(x, y, LAY["gnd_via"]["pad"] / 2 + 0.15, segs):
-                    out.append({"x": x, "y": y, "l0": 0, "l1": self.stk.n - 1, "net": "GND", "pads": None, "role": "gnd",
-                                "drill": LAY["gnd_via"]["drill"], "pad": LAY["gnd_via"]["pad"], "cid": "wall"})
+            pos += [(-n * p / 2 + k * p, y, hx) for k in range(n + 1)]
+        for i in range(1, len(ext)):  # the exposed top edge of a row that is longer than the row above it
+            if ext[i][2] > ext[i - 1][2] + 1.0:
+                y, x0, x1 = ext[i][0] - 0.75, ext[i - 1][2] + 0.75, ext[i][2] - WALL_EDGE
+                n = int((x1 - x0) / p)
+                pos += [(sg * (x0 + k * p), y, ext[i][2]) for k in range(n + 1) for sg in (1, -1)]
+        for (x, y, hx) in pos:
+            if abs(x) > hx - WALL_EDGE + 1e-9 or not clear_of_traces(x, y, LAY["gnd_via"]["pad"] / 2 + 0.15, segs):
+                continue
+            if any(r[0] - 1.0 < x < r[2] + 1.0 and r[1] - 1.0 < y < r[3] + 1.0 for r in isl):
+                continue
+            out.append({"x": x, "y": y, "net": "GND", "pads": None, "role": "gnd", "fence": False,
+                        "drill": LAY["gnd_via"]["drill"], "pad": LAY["gnd_via"]["pad"], "cid": "wall"})
         return out
 
     # --- KiCad output ------------------------------------------------------------------------
@@ -458,44 +519,45 @@ class Board:
         outline = self.outline()
         hx = self.width() / 2
         W.ox, W.oy = 30.0 + hx, 30.0
-        thick = stk.thickness()
-        W.head(stk, thick)
+        W.head(stk, stk.thickness())
         nets = ["", "GND"]
         for c in self.coupons:
             for n_ in c.nets:
                 if n_ not in nets:
                     nets.append(n_)
-        for f in self.fps:
-            if f["net"] not in nets:
-                nets.append(f["net"])
-        for isl in G["islands"]:
-            if isl["net"] not in nets:
-                nets.append(isl["net"])
+        for p in G["parts"]:
+            for pd in p["pads"]:
+                if pd["net"] not in nets:
+                    nets.append(pd["net"])
         W.nets(nets)
-        # connectors
-        jn = 0
-        self.jmap = {}
+        # connectors and parts
+        self.jmap, self.refmap = {}, {}
+        count = {}
         for p in G["ports"]:
-            jn += 1
-            ref = f"J{jn}"
+            count["J"] = count.get("J", 0) + 1
+            ref = f"J{count['J']}"
             self.jmap.setdefault(p["cid"], []).append({"ref": ref, "port": p["name"], "side": "left" if p["side"] < 0 else "right",
                                                        "layer": stk.names[p["layer"]], "net": p["net"]})
-            W.endlaunch(ref, p, stk)
-        for f in self.fps:
-            W.simple_pad(f, stk)
-        # outline and texts
+            W.endlaunch(ref, p)
+        for p in G["parts"]:
+            pre = p["prefix"]
+            if pre in ("C", "U", "R"):
+                count[pre] = count.get(pre, 0) + 1
+                ref = f"{pre}{count[pre]}"
+            else:
+                ref = pre
+            self.refmap.setdefault(p["cid"], []).append({"ref": ref, "role": p.get("role", ""), "value": p["value"], "package": p.get("package"),
+                                                         "populate": p.get("populate")})
+            W.part(ref, p, stk)
         W.gr_poly(outline, "Edge.Cuts", 0.1)
         for c in self.coupons:
-            if c.group == "info":
-                continue
-            W.text(c.cid, -c.X / 2 + FP["launch_length"] + 0.8, c.cy + c.H / 2 - 1.2, "F.SilkS", 0.9, justify="left")
+            lx = c.cx - c.X / 2 + X_CLEAR + 0.3 if not any(pp["side"] > 0 for pp in c.ports) or any(pp["side"] < 0 for pp in c.ports) else c.cx + c.X / 2 - X_CLEAR - 4.0
+            W.text(c.cid, lx, c.cy + c.H / 2 - 1.2, "F.SilkS", 0.8, justify="left")
         for t in self.texts:
             W.text(*t)
-        # tracks
         for t in G["traces"]:
             for a, b in zip(t["pts"][:-1], t["pts"][1:]):
                 W.segment(a, b, t["w"], stk.names[t["layer"]], t["net"])
-        # vias
         for v in G["vias"]:
             W.via(v, stk)
         # planes: one zone per plane layer, fractured fill with every hole of that layer
@@ -507,20 +569,26 @@ class Board:
                     x0, y0, x1, y1 = isl["rect"]
                     g = isl.get("clearance", 0.5)
                     holes.append(("rect", x0 - g, y0 - g, x1 + g, y1 + g))
-            fill = fractured(inset, holes)
-            W.zone("GND", stk.names[L], inset, [fill], name=f"GND plane {stk.names[L]}", clearance=0.2)
-        for isl in G["islands"]:
-            W.zone(isl["net"], stk.names[isl["layer"]], rect_pts(isl["rect"]), [rect_pts(isl["rect"])], name=f"{isl['net']} island", clearance=0.2, priority=1)
-        # keepouts that reproduce the antipads when KiCad refills the zones
+            nts = [nt for nt in G["notches"] if nt["layer"] == L]
+            fill = notch_outline(inset, nts) if nts else inset
+            W.zone("GND", stk.names[L], inset, [fractured(fill, holes)], name=f"GND plane {stk.names[L]}", clearance=0.2)
+        for isl in G["islands"] + G["zones"]:
+            r = isl["rect"]
+            W.zone(isl["net"], stk.names[isl["layer"]], rect_pts(r), [fractured(rect_pts(r), isl["holes"], (r[0] + r[2]) / 2)],
+                   name=f"{isl['net']} {'island' if isl in G['islands'] else 'patch'}", clearance=0.1 if isl in G["zones"] else 0.2, priority=1)
+        # keepouts that reproduce the antipads and island clearances when KiCad refills the zones
         for h in G["holes"]:
-            if h["shape"][0] == "rect":
-                continue
-            W.keepout([stk.names[L] for L in h["layers"]], shape_ring(h["shape"], 32)[:-1], h.get("name") or "antipad")
+            if h["shape"][0] != "rect":
+                W.keepout([stk.names[L] for L in h["layers"]], shape_ring(h["shape"], 32)[:-1], h.get("name") or "antipad")
+        for nt in G["notches"]:  # the launch openings, extending past the board edge
+            xo = nt["x_edge"] + (0.5 if nt["side"] > 0 else -0.5)
+            W.keepout([stk.names[nt["layer"]]], rect_pts((min(xo, nt["x"]), nt["y0"], max(xo, nt["x"]), nt["y1"])), "launch opening")
         for isl in G["islands"]:
             x0, y0, x1, y1 = isl["rect"]
             g = isl.get("clearance", 0.5)
             W.keepout_frame(stk.names[isl["layer"]], (x0 - g, y0 - g, x1 + g, y1 + g), isl["rect"], f"{isl['net']} clearance")
-        # outer-layer pours (launches, coplanar grounds)
+            for s in isl["holes"]:
+                W.keepout([stk.names[isl["layer"]]], shape_ring(s, 24)[:-1], f"{isl['net']} via clearance")
         for p in G["pours"]:
             W.zone(p["net"], stk.names[p["layer"]], rect_pts(p["rect"]), [rect_pts(p["rect"])], name=f"GND {p['cid']}", clearance=0.1)
         W.notes(self, -hx, self.bottom - 5.0)
@@ -533,12 +601,11 @@ class Board:
         d = self.design
         w50 = d.get("w50", {}).get("0", 0.2)
         dp = d.get("diff", {}).get("0", {"w": 0.2, "s": 0.2})
-        cls = lambda name, tw, dw, dg: {"name": name, "bus_width": 12, "clearance": 0.1, "diff_pair_gap": dg, "diff_pair_via_gap": 0.25,
-                                        "diff_pair_width": dw, "line_style": 0, "microvia_diameter": 0.3, "microvia_drill": 0.1,
-                                        "pcb_color": "rgba(0, 0, 0, 0.000)", "priority": 2147483647 if name == "Default" else 0,
-                                        "schematic_color": "rgba(0, 0, 0, 0.000)", "track_width": tw, "via_diameter": 0.6, "via_drill": 0.3, "wire_width": 6}
-        classes = [cls("Default", 0.2, 0.2, 0.2), cls("50Z", w50, w50, w50), cls("100Z_Diff", dp["w"], dp["w"], dp["s"])]
-        classes[2]["priority"] = 1
+        cls = lambda name, tw, dw, dg, pr: {"name": name, "bus_width": 12, "clearance": 0.1, "diff_pair_gap": dg, "diff_pair_via_gap": 0.25,
+                                            "diff_pair_width": dw, "line_style": 0, "microvia_diameter": 0.3, "microvia_drill": 0.1,
+                                            "pcb_color": "rgba(0, 0, 0, 0.000)", "priority": pr, "schematic_color": "rgba(0, 0, 0, 0.000)",
+                                            "track_width": tw, "via_diameter": 0.6, "via_drill": 0.3, "wire_width": 6}
+        classes = [cls("Default", 0.2, 0.2, 0.2, 2147483647), cls("50Z", w50, w50, w50, 0), cls("100Z_Diff", dp["w"], dp["w"], dp["s"], 1)]
         pro = {
             "board": {"3dviewports": [], "design_settings": {
                 "defaults": {"board_outline_line_width": 0.1, "copper_line_width": 0.2, "copper_text_size_h": 1.5, "copper_text_size_v": 1.5,
@@ -566,11 +633,11 @@ class Board:
         for i, d in enumerate(stk.diel):
             src = d["src"]
             kind = "assumption" if "assumption" in str(src.get("er", "")) else "datasheet"
-            sid = str(src.get("er", "")).split(" ")[0]
-            url = (STK["sources"].get(sid) or {}).get("url")
+            url = (STK["sources"].get(str(src.get("er", "")).split(" ")[0]) or {}).get("url")
             diel.append({"index": i, "material": d["material"], "epsilon_r": d["er"], "loss_tangent": d["tand"], "thickness": d["thickness"],
                          "source": {"kind": kind, "document": f"{stk.d['title']}: thickness {src.get('thickness')}, er {src.get('er')}, tan d {src.get('tand')}",
                                     "url": url, "note": "loss tangent assumed (not published by the manufacturer)"}})
+        fields = []  # datasheet values of the populated capacitors go into PI_CAP fields (README, component list)
         cfg = {"kisi_config": 1, "board": os.path.basename(path).replace(".kisi.json", ".kicad_pcb"),
                "stackup": {"dielectrics": diel, "solder_mask": {"epsilon_r": stk.mask["er"], "source": {
                    "kind": "assumption" if "assumption" in stk.mask["src"]["er"] else "datasheet",
@@ -578,28 +645,10 @@ class Board:
                "net_classes": {
                    "50Z": {"target_ohm": 50, "diff": False, "profile": "se50", "source": {"kind": "standard", "note": "coupon design target (50 Ω VNA ports)"}},
                    "100Z_Diff": {"target_ohm": 100, "diff": True, "profile": "diff100", "source": {"kind": "standard", "note": "coupon design target (2 × 50 Ω VNA ports)"}}},
-               "fields": [],
-               "notes": [f"kisi measurement coupons, generated by validation/test_board/make_coupons.py on {TODAY}",
-                         f"stackup: {stk.d['title']}"]}
+               "fields": fields,
+               "notes": [f"kisi measurement coupons, generated by validation/test_board/make_coupons.py on {TODAY}", f"stackup: {stk.d['title']}",
+                         "capacitors: replace the generic values by PI_CAP fields from the datasheets of the parts actually populated (README, component list)"]}
         json.dump(cfg, open(path, "w"), indent=1)
-
-
-def seg_dist(px, py, a, b):
-    (x0, y0), (x1, y1) = a, b
-    dx, dy = x1 - x0, y1 - y0
-    l2 = dx * dx + dy * dy
-    t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / l2))
-    return math.hypot(px - x0 - t * dx, py - y0 - t * dy)
-
-
-def clear_of_traces(x, y, r, segs, layers=None):
-    for (L, pts, w) in segs:
-        if layers is not None and L not in layers:
-            continue
-        for a, b in zip(pts[:-1], pts[1:]):
-            if seg_dist(x, y, a, b) < r + w / 2:
-                return False
-    return True
 
 
 # --- KiCad text -----------------------------------------------------------------------------------
@@ -625,10 +674,10 @@ class KicadText:
 
     def head(self, stk, thick):
         L = self.lines
-        L.append(f'(kicad_pcb (version 20240108) (generator "kisi_make_coupons") (generator_version "8.0")')
+        L.append('(kicad_pcb (version 20240108) (generator "kisi_make_coupons") (generator_version "8.0")')
         L.append(f"  (general (thickness {thick:.4f}) (legacy_teardrops no))")
-        L.append('  (paper "A3")')
-        L.append(f'  (title_block (title "{self.board}") (date "{TODAY}") (rev "1") (company "kisi measurement coupons") '
+        L.append('  (paper "A4")')
+        L.append(f'  (title_block (title "{self.board}") (date "{TODAY}") (rev "2") (company "kisi measurement coupons") '
                  f'(comment 1 "{stk.d["title"]}") (comment 2 "generated by validation/test_board/make_coupons.py - DRC not run"))')
         ids = kb.kicad_ids(stk.n)
         cu = " ".join(f'({i} "{nm}" signal)' for i, nm in zip(ids, stk.names))
@@ -658,26 +707,24 @@ class KicadText:
     def n(self, net):
         return f'(net {self.netid[net]} "{net}")'
 
-    def endlaunch(self, ref, p, stk):
-        """end-launch connector footprint at the board edge: signal pad, mask opening of the ground
-        contact, mounting holes (PLACEHOLDER positions, connectors.json), block outline"""
+    def endlaunch(self, ref, p):
+        """SMA end-launch footprint at the board edge: signal pad, mask opening of the ground
+        contact, mounting holes and block outline (PLACEHOLDER values from connectors.json)"""
         top = p["layer"] == 0
         cu, mk, fab, crt, silk = (("F.Cu", "F.Mask", "F.Fab", "F.CrtYd", "F.SilkS") if top else ("B.Cu", "B.Mask", "B.Fab", "B.CrtYd", "B.SilkS"))
         rot = 0 if p["side"] < 0 else 180
-        x, y = p["x"], p["y"]
         L = self.lines
         mir = "" if top else " (justify mirror)"
-        L.append(f'  (footprint "kisi_coupons:SWM_EndLaunch_Narrow_PLACEHOLDER" (layer "{cu}") (uuid "{self.uid()}") (at {self.X(x)} {self.Y(y)} {rot})')
-        L.append(f'    (descr "Southwest Microwave end launch, narrow block (.350): 292-04A-14 (SMA, 27 GHz) or 1092-01A-14 (2.92 mm, 40 GHz). '
-                 f'Footprint PLACEHOLDER - check mounting holes and ground contact against the vendor drawing")')
+        L.append(f'  (footprint "kisi_coupons:SWM_292-04A-14_EndLaunch_PLACEHOLDER" (layer "{cu}") (uuid "{self.uid()}") (at {self.X(p["x"])} {self.Y(p["y"])} {rot})')
+        L.append(f'    (descr "Southwest Microwave {CONN["pn"]} SMA end launch, narrow block (.350 in), PCB .040-.090 in. '
+                 f'Footprint PLACEHOLDER - mounting holes and ground contact from connectors.json until the vendor drawing is supplied")')
         L.append(f'    (property "Reference" "{ref}" (at 2.0 {-(4.445 + 0.9)} {rot}) (layer "{silk}") (uuid "{self.uid()}") (effects (font (size 0.8 0.8) (thickness 0.12)){mir}))')
-        L.append(f'    (property "Value" "292-04A-14 / 1092-01A-14" (at 2.0 {4.445 + 0.9} {rot}) (layer "{fab}") (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1)){mir}))')
+        L.append(f'    (property "Value" "{CONN["pn"]}" (at 2.0 {4.445 + 0.9} {rot}) (layer "{fab}") (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1)){mir}))')
         L.append(f'    (property "Port" "{p["cid"]} port {p["name"]}" (at 0 0 {rot}) (layer "{fab}") (hide yes) (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1))))')
         L.append("    (attr smd exclude_from_pos_files exclude_from_bom)")
-        bw = LAUNCH["block_width"] / 2
+        bw = CONN["block_width"] / 2
         L.append(f'    (fp_rect (start {-FP["body_outside_board"]} {-bw}) (end {FP["block_depth_on_board"]} {bw}) (stroke (width 0.05) (type default)) (fill none) (layer "{crt}") (uuid "{self.uid()}"))')
         L.append(f'    (fp_rect (start {-FP["body_outside_board"] + 0.2} {-bw + 0.2}) (end {FP["block_depth_on_board"] - 0.2} {bw - 0.2}) (stroke (width 0.1) (type default)) (fill none) (layer "{fab}") (uuid "{self.uid()}"))')
-        # mask opening over the ground contact and the signal pad
         g0 = p["w"] / 2 + p["gap"]
         for s in (1, -1):
             L.append(f'    (fp_rect (start {FP["edge_pullback"]} {s * g0}) (end {FP["launch_length"] - 0.3} {s * FP["gnd_contact_half_width"]}) '
@@ -688,13 +735,21 @@ class KicadText:
             L.append(f'    (pad "" np_thru_hole circle (at {h["x"]} {h["y"]} {rot}) (size {h["d"]} {h["d"]}) (drill {h["d"]}) (layers "*.Cu" "*.Mask") (uuid "{self.uid()}"))')
         L.append("  )")
 
-    def simple_pad(self, f, stk):
-        nm = stk.names[f["layer"]]
+    def part(self, ref, p, stk):
+        """SMD part (capacitor, IC pin field, probe pad): pads in board orientation (no rotation)"""
         L = self.lines
-        L.append(f'  (footprint "probe:pad" (layer "F.Cu") (uuid "{self.uid()}") (at {self.X(f["x"])} {self.Y(f["y"])})')
-        L.append(f'    (property "Reference" "{f["ref"]}" (at 0 -1 0) (layer "F.Fab") (uuid "{self.uid()}") (effects (font (size 0.5 0.5) (thickness 0.08))))')
-        L.append(f'    (property "Value" "{"IC" if f["ref"].startswith("U") else "conn"}" (at 0 1 0) (layer "F.Fab") (uuid "{self.uid()}") (effects (font (size 0.5 0.5) (thickness 0.08))))')
-        L.append(f'    (pad "1" smd rect (at 0 0) (size {f["w"]:.4f} {f["w"]:.4f}) (layers "{nm}") {self.n(f["net"])} (uuid "{self.uid()}"))')
+        lib = p.get("lib", f"kisi_coupons:{p['prefix']}")
+        L.append(f'  (footprint "{lib}" (layer "F.Cu") (uuid "{self.uid()}") (at {self.X(p["x"])} {self.Y(p["y"])})')
+        L.append(f'    (property "Reference" "{ref}" (at 0 -1.2 0) (layer "F.Fab") (uuid "{self.uid()}") (effects (font (size 0.5 0.5) (thickness 0.08))))')
+        L.append(f'    (property "Value" "{p["value"]}" (at 0 1.2 0) (layer "F.Fab") (uuid "{self.uid()}") (effects (font (size 0.5 0.5) (thickness 0.08))))')
+        for k, v in p.get("props", {}).items():
+            L.append(f'    (property "{k}" "{v}" (at 0 0 0) (layer "F.Fab") (hide yes) (uuid "{self.uid()}") (effects (font (size 0.5 0.5) (thickness 0.08))))')
+        L.append("    (attr smd" + (" exclude_from_pos_files exclude_from_bom" if p.get("dnp_bom") else "") + ")")
+        for pd in p["pads"]:
+            lay = stk.names[pd.get("layer", 0)]
+            extra = ' "F.Paste" "F.Mask"' if (lay == "F.Cu" and p["prefix"] in ("C", "R")) else (' "F.Mask"' if lay == "F.Cu" else "")
+            L.append(f'    (pad "{pd["num"]}" smd {pd.get("shape", "rect")} (at {pd["x"]:.4f} {-pd["y"]:.4f}) (size {pd["sx"]:.4f} {pd["sy"]:.4f}) '
+                     f'(layers "{lay}"{extra}) {self.n(pd["net"])} (uuid "{self.uid()}"))')
         L.append("  )")
 
     def gr_poly(self, pts, layer, w):
@@ -712,8 +767,7 @@ class KicadText:
         self.lines.append(f'  (segment (start {self.X(a[0])} {self.Y(a[1])}) (end {self.X(b[0])} {self.Y(b[1])}) (width {w}) (layer "{layer}") (net {self.netid[net]}) (uuid "{self.uid()}"))')
 
     def via(self, v, stk):
-        la, lb = stk.names[v["l0"]], stk.names[v["l1"]]
-        self.lines.append(f'  (via (at {self.X(v["x"])} {self.Y(v["y"])}) (size {v["pad"]}) (drill {v["drill"]}) (layers "{la}" "{lb}") '
+        self.lines.append(f'  (via (at {self.X(v["x"])} {self.Y(v["y"])}) (size {v["pad"]}) (drill {v["drill"]}) (layers "{stk.names[0]}" "{stk.names[-1]}") '
                           f'(remove_unused_layers yes) (keep_end_layers no) (net {self.netid[v["net"]]}) (uuid "{self.uid()}"))')
 
     def zone(self, net, layer, outline, fills, name, clearance=0.2, priority=0):
@@ -743,16 +797,14 @@ class KicadText:
     def notes(self, board, x, y):
         stk = board.stk
         d = board.design
-        lines = [f"{board.name}: kisi measurement coupons ({TODAY})", f"Stackup: {stk.d['title']}",
-                 f"Impedance control: 50 ohm single-ended (class 50Z) on outer layers w = {d.get('w50', {}).get('0')} mm; "
-                 f"100 ohm differential (class 100Z_Diff); +/-10 % (JLC standard).",
-                 "Finish ENIG (gold only on the launch openings); green LPI mask on both sides over all lines.",
-                 "Via drill 0.3 mm / pad 0.6 mm, through vias only, inner non-functional pads removed (remove_unused_layers).",
-                 "Copper may come to 0.2 mm from the left and right board edges at the launches (end-launch connectors).",
-                 "Connector footprint (Southwest Microwave narrow block) is a PLACEHOLDER: check mounting holes before ordering.",
+        lines = [f"{board.name}: kisi measurement coupons v2 ({TODAY})", f"Stackup: {stk.d['title']}",
+                 f"Impedance control: 50 ohm single-ended (class 50Z) on L1, w = {d.get('w50', {}).get('0')} mm; 100 ohm differential (class 100Z_Diff).",
+                 "Finish ENIG; green LPI mask both sides over all lines; through vias 0.3/0.6 mm, inner non-functional pads removed.",
+                 "Copper comes to 0.2 mm from the left/right edges at the SMA end launches (Southwest Microwave 292-04A-14).",
+                 "Connector footprint is a PLACEHOLDER (connectors.json) until the vendor drawing is supplied.",
                  "Zones are pre-filled by the generator: refill in KiCad (B) and run DRC before plotting. DRC has NOT been run."]
         for i, s in enumerate(lines):
-            self.text(s, x, y - 2.0 * i, "Cmts.User", 1.2, justify="left")
+            self.text(s, x, y - 1.6 * i, "Cmts.User", 1.0, justify="left")
 
     def close(self):
         self.lines.append(")")
@@ -765,9 +817,7 @@ class KicadText:
 class Ctx:
     def __init__(self, stk, des, pair_pitch):
         self.stk, self.des, self.pp = stk, des, pair_pitch
-        self.rp = LAY["row_pitch"]
-        n = stk.n
-        self.bot = n - 1
+        self.bot = stk.n - 1
         self.w = {int(k): v for k, v in des["w50"].items()}
         self.wlaunch, self.glaunch = des["launch"]["w"], des["launch"]["gap"]
 
@@ -775,16 +825,22 @@ class Ctx:
         return self.w[layer]
 
 
+def edge_x(c, side):
+    return side * (c.X / 2 - FP["edge_pullback"])
+
+
 def launch(c, ctx, side, y, layer, net, name, w=None, gap=None, pour_lo=None, pour_hi=None):
     """end-launch port at the edge `side` (-1 left, +1 right): the launch trace (grounded coplanar,
-    launch width) from the edge to `launch_length`, the ground pours on both sides of it with two
-    rows of fence vias. Returns the x where the coupon's own trace starts."""
+    launch width) from the edge to `launch_length`, ground pours on both sides of it with two rows
+    of fence vias. Returns the x where the coupon's own trace starts."""
     w = ctx.wlaunch if w is None else w
     gap = ctx.glaunch if gap is None else gap
     c.port(side, y, layer, net, w, gap, name)
-    xe = edge_x(c, side)
     x_in = side * (c.X / 2 - FP["launch_length"])
-    c.trace(layer, [(xe, y), (x_in, y)], w, net)
+    c.trace(layer, [(edge_x(c, side), y), (x_in, y)], w, net)
+    lc = ctx.des["launch"]
+    if lc.get("cut") and layer == 0 and w == ctx.wlaunch:  # opening in the first plane under the launch
+        c.notches.append({"layer": lc["cut_layer"], "side": side, "y0": y - lc["cut"] / 2, "y1": y + lc["cut"] / 2, "depth": FP["launch_length"]})
     xa = side * (c.X / 2 - ZONE_INSET)
     lo = -c.H / 2 + 0.3 if pour_lo is None else pour_lo
     hi = c.H / 2 - 0.3 if pour_hi is None else pour_hi
@@ -801,8 +857,7 @@ def launch(c, ctx, side, y, layer, net, name, w=None, gap=None, pour_lo=None, po
             yy = (y0 + FENCE_OFF + row * 0.8) if s > 0 else (y1 - FENCE_OFF - row * 0.8)
             if y0 + 0.3 <= yy <= y1 - 0.3:
                 for xx in cols:
-                    c.via(round(xx, 4), round(yy, 4), 0, ctx.stk.n - 1, "GND", role="gnd")
-                    c.vias[-1]["fence"] = True
+                    c.via(xx, yy, "GND", role="gnd", fence=True)
     return x_in
 
 
@@ -810,24 +865,18 @@ def straight(c, ctx, layer, y, net, x0, x1, w=None):
     c.trace(layer, [(x0, y), (x1, y)], w or ctx.wl(layer), net)
 
 
-def edge_x(c, side):
-    return side * (c.X / 2 - FP["edge_pullback"])
-
-
 def ring_clear(c, xc, yc, n, r):
     """GND vias on a ring that keep clear of every trace of the coupon (through vias)"""
     segs = [(t["layer"], t["pts"], t["w"]) for t in c.traces]
-    return [(round(xc + dx, 4), round(yc + dy, 4)) for (dx, dy) in vc.ring(n, r)
-            if clear_of_traces(xc + dx, yc + dy, LAY["gnd_via"]["pad"] / 2 + 0.12, segs)]
+    return [(xc + dx, yc + dy) for (dx, dy) in vc.ring(n, r) if clear_of_traces(xc + dx, yc + dy, LAY["gnd_via"]["pad"] / 2 + 0.12, segs)]
 
 
 def fan(c, x_in, side, y_out, y_in, x_end, layer, net, w_out, w_in, x_min=0.3):
-    """from the launch end (x_in, y_out): a short straight piece, a 45° diagonal (steeper if there
-    is no room) to y_in, then straight to x_end; width w_out up to the end of the diagonal, then
-    w_in. Returns the x where the diagonal ends."""
+    """from the launch end (x_in, y_out): straight until clear of the connector, a 45° diagonal
+    (steeper if there is no room) to y_in, then straight to x_end; width w_out up to the end of
+    the diagonal, then w_in. Returns the x where the diagonal ends."""
     xs = side * (abs(x_in) + FP["launch_length"] - X_CLEAR)
-    dy = abs(y_out - y_in)
-    xd = xs - side * dy
+    xd = xs - side * abs(y_out - y_in)
     if side * (xd - x_end) < x_min:
         xd = x_end + side * x_min
     c.trace(layer, [(x_in, y_out), (xs, y_out), (xd, y_in)], w_out, net)
@@ -836,24 +885,39 @@ def fan(c, x_in, side, y_out, y_in, x_end, layer, net, w_out, w_in, x_min=0.3):
     return xd
 
 
-def c_thru(ctx, cid, layer, X=25.0, lines=False):
+def four_port_launches(c, ctx, nets, sides=(-1, 1)):
+    """two connectors per edge at ±pair_pitch/2 on L1; returns {(side, k): x_in}"""
+    hp = ctx.pp / 2
+    out = {}
+    for side in sides:
+        for k, y in enumerate((hp, -hp)):
+            nm = str(k + 1) if side < 0 else str(k + 3)
+            lo, hi = (0.0, None) if y > 0 else (None, 0.0)
+            out[(side, k)] = launch(c, ctx, side, y, 0, nets[k], nm, pour_lo=lo, pour_hi=hi)
+    return out
+
+
+def antipads(c, ctx, x, y, r, name, skip=()):
+    for L in ctx.stk.planes:
+        if L not in skip:
+            c.hole([L], ("circle", x, y, r), name)
+
+
+def c_thru(ctx, cid, X=25.0, lines=False):
     stk = ctx.stk
-    side_name = "top" if layer == 0 else "bottom"
     if X == 25.0:
-        title = f"2×thru on {stk.names[layer]} ({side_name} connectors), {X:g} mm edge to edge"
-        val = "fixture for the P370 2×thru de-embedding of every coupon fed on this layer; multiline TRL 'thru'"
+        title, val = "2×thru on L1, 25 mm edge to edge", "fixture of every coupon on this board (P370 2×thru); multiline TRL thru"
     else:
-        title = f"Line on {stk.names[layer]}, {X:g} mm edge to edge (ΔL = {X - 2 * FEED:g} mm against the 2×thru)"
-        val = "multiline TRL line / line–line method: εeff, loss per mm and Zc of the 50 Ω microstrip"
-    c = Coupon(cid, "thru" if X == 25.0 else "T", title, X, ctx.rp, val, [f"thru_s4_L{1 if layer == 0 else 4}"] if X == 25.0 else ["T_ts6_ms_10", "T_ts6_ms_20"],
-               {"layer": stk.names[layer], "w_mm": ctx.wl(layer), "length_mm": X})
+        title, val = f"Line on L1, {X:g} mm edge to edge (ΔL = {X - 2 * FEED:g} mm against the 2×thru)", "multiline TRL line / line–line: εeff, loss per mm, Zc of the 50 Ω microstrip"
+    c = Coupon(cid, "thru" if X == 25.0 else "T", title, X, ROW, val, ["thru_s4_L1"] if X == 25.0 else ["T_ts6_ms_10", "T_ts6_ms_20"],
+               {"layer": stk.names[0], "w_mm": ctx.wl(0), "length_mm": X})
     net = f"SE_{cid}"
-    xl = launch(c, ctx, -1, 0.0, layer, net, "1")
-    xr = launch(c, ctx, 1, 0.0, layer, net, "2")
-    straight(c, ctx, layer, 0.0, net, xl, xr)
+    xl = launch(c, ctx, -1, 0.0, 0, net, "1")
+    xr = launch(c, ctx, 1, 0.0, 0, net, "2")
+    straight(c, ctx, 0, 0.0, net, xl, xr)
+    c.measure = "VNA 2-port"
     if X == 25.0:
-        c.window("w10", -5.0, 5.0, excite=[0], mirror=[1, 0], group="thru", note="10 mm of the feed line: 3D 2×thru of the via coupons (window w10)")
-        c.window("w18", -9.0, 9.0, excite=[0], mirror=[1, 0], group="thru", note="18 mm: 3D 2×thru of the wide D_NONE window (w18)")
+        c.window("w10", -5.0, 5.0, excite=[0], mirror=[1, 0], group="thru", note="10 mm of the feed line: the 3D 2×thru of this board")
     elif lines:
         c.window("w10", -5.0, 5.0, excite=[0], mirror=[1, 0], group="T", note="line, 10 mm (line–line pair with w20)")
         c.window("w20", -10.0, 10.0, excite=[0], mirror=[1, 0], group="T", note="line, 20 mm")
@@ -861,91 +925,81 @@ def c_thru(ctx, cid, layer, X=25.0, lines=False):
 
 
 def c_reflect(ctx, cid, gap=5.0):
-    X = 2 * FEED + gap
     c = Coupon(cid, "reflect", f"TRL reflect: two open line ends at the reference planes ({FEED:g} mm from each edge), {gap:g} mm apart",
-               X, ctx.rp, "reflect standard of an on-board multiline TRL calibration (with THRU_L1 and LINE_*)", [], {"open_ends": True})
+               2 * FEED + gap, ROW, "reflect standard of the on-board multiline TRL calibration (with THRU and LINE_*)", [], {"open_ends": True})
     for side, nm in ((-1, "L"), (1, "R")):
         net = f"SE_{cid}_{nm}"
         x_in = launch(c, ctx, side, 0.0, 0, net, "1" if side < 0 else "2")
         straight(c, ctx, 0, 0.0, net, x_in, side * gap / 2)
+    c.measure = "VNA 2-port"
     return c
 
 
-def c_via(ctx, cid, group, title, refs, antipad, stitch, l_out=None, validates="", params=None, wide=False):
-    """single via L1 -> l_out at x = 0: L1 feed from the left (top connector), l_out feed to the
-    right (bottom connector)"""
+def c_vlv(ctx, cid, group, title, refs, mid, validates, Ls=LS_VIA, antipad=0.8, gnd="ring", stitch=None, params=None, lines=False):
+    """via–line–via: L1 feed (12.5 mm) -> via -> line on layer `mid` (length Ls) -> via -> L1 feed.
+    gnd: "ring" (4 GND vias at 1 mm around each via), "one" (one GND via `stitch` mm away on +y
+    from each via) or None (the row walls only)"""
     stk = ctx.stk
-    l_out = ctx.bot if l_out is None else l_out
-    c = Coupon(cid, group, title, 2 * FEED, ctx.rp, validates, refs, params)
-    net = f"SE_{cid}"
-    xl = launch(c, ctx, -1, 0.0, 0, net, "1")
-    xr = launch(c, ctx, 1, 0.0, l_out, net, "2")
-    straight(c, ctx, 0, 0.0, net, xl, 0.0)
-    straight(c, ctx, l_out, 0.0, net, 0.0, xr)
-    c.via(0.0, 0.0, 0, stk.n - 1, net, pads=[0, l_out])
-    for L in stk.planes:
-        c.hole([L], ("circle", 0.0, 0.0, antipad / 2), f"antipad {cid}")
-    for (x, y) in stitch:
-        c.via(round(x, 4), round(y, 4), 0, stk.n - 1, "GND", role="gnd")
-    c.window("w10", -5.0, 5.0, note="via with 5 mm feeds on both sides; de-embed with the THRU w10 cases of both feed layers")
-    if wide:
-        c.window("w18", -9.0, 9.0, note="via with 9 mm feeds; the row walls at ±6.35 mm are the nearest return path (de-embed with THRU w18)")
-    return c
-
-
-def c_vlv(ctx, cid, Ls, inner, title, validates, refs=(), lines=False):
-    """L1 -> inner stripline (length Ls) -> L1; through vias, so both have stubs to the bottom"""
-    stk = ctx.stk
-    X = 2 * FEED + Ls
-    c = Coupon(cid, "B" if Ls <= 5 else "T", title, X, ctx.rp, validates, refs,
-               {"inner": stk.names[inner], "stripline_mm": Ls, "w_stripline_mm": ctx.wl(inner), "stub": f"{stk.names[inner]}→{stk.names[-1]}"})
+    c = Coupon(cid, group, title, 2 * FEED + Ls, ROW, validates, refs,
+               dict({"mid_layer": stk.names[mid], "line_mm": Ls, "drill_mm": 0.3, "antipad_mm": antipad,
+                     "stub": (f"{stk.names[mid]}→{stk.names[-1]}" if mid < stk.n - 1 else "none")}, **(params or {})))
     net = f"SE_{cid}"
     xa, xb = -Ls / 2, Ls / 2
     xl = launch(c, ctx, -1, 0.0, 0, net, "1")
     xr = launch(c, ctx, 1, 0.0, 0, net, "2")
     straight(c, ctx, 0, 0.0, net, xl, xa)
-    straight(c, ctx, inner, 0.0, net, xa, xb)
+    straight(c, ctx, mid, 0.0, net, xa, xb)
     straight(c, ctx, 0, 0.0, net, xb, xr)
     for x in (xa, xb):
-        c.via(x, 0.0, 0, stk.n - 1, net, pads=[0, inner])
-        for L in stk.planes:
-            c.hole([L], ("circle", x, 0.0, 0.4), f"antipad {cid}")
+        c.via(x, 0.0, net, pads=[0, mid])
+        antipads(c, ctx, x, 0.0, antipad / 2, f"antipad {cid}")
     for x in (xa, xb):
-        for (gx, gy) in ring_clear(c, x, 0.0, 4, 1.0):
-            c.via(gx, gy, 0, stk.n - 1, "GND", role="gnd")
-    if Ls <= 5:
-        c.window("w15", xa - 5.0, xb + 5.0, excite=[0], mirror=[1, 0], note="via - stripline - via with 5 mm L1 feeds; de-embed with THRU_L1 w10")
-    elif lines:
-        c.window("w10", -5.0, 5.0, excite=[0], mirror=[1, 0], group="T", note="stripline, 10 mm (line–line pair with w20)")
-        c.window("w20", -10.0, 10.0, excite=[0], mirror=[1, 0], group="T", note="stripline, 20 mm")
+        if gnd == "ring":
+            for (gx, gy) in ring_clear(c, x, 0.0, 4, 1.0):
+                c.via(gx, gy, "GND", role="gnd")
+        elif gnd == "one":
+            c.via(x, stitch, "GND", role="gnd")
+    c.measure = "VNA 2-port"
+    if lines:
+        c.window("w10", -5.0, 5.0, excite=[0], mirror=[1, 0], group="T", note=f"line on {stk.names[mid]}, 10 mm (line–line pair with w20)")
+        c.window("w20", -10.0, 10.0, excite=[0], mirror=[1, 0], group="T", note=f"line on {stk.names[mid]}, 20 mm")
+    else:
+        c.window("wv", xa - 5.0, xb + 5.0, excite=[0], mirror=[1, 0], note="via - line - via with 5 mm L1 feeds; de-embed with THRU w10")
     return c
 
 
 def c_cpwg(ctx, cid, X):
     cp = ctx.des["cpwg"]
     w, g = cp["w"], cp["gap"]
-    c = Coupon(cid, "T", f"Grounded coplanar waveguide on L1, w {w:g} / gap {g:g} mm, via fence 1.0 mm, {X:g} mm edge to edge", X, ctx.rp,
+    c = Coupon(cid, "T", f"Grounded coplanar waveguide on L1, w {w:g} / gap {g:g} mm, via fence 1.0 mm, {X:g} mm edge to edge", X, ROW,
                "CPWG Zc and εeff (kisi's CPWG formula: εeff +5 % against 3D); CPWG_25 is the CPWG 2×thru", ["T_vna6_cpwg_10", "T_vna6_cpwg_20"],
                {"w_mm": w, "gap_mm": g, "length_mm": X, "fence_pitch_mm": 1.0})
     net = f"SE_{cid}"
-    c.trace(0, [(edge_x(c, -1), 0.0), (edge_x(c, 1), 0.0)], w, net)
-    c.port(-1, 0.0, 0, net, w, g, "1")
-    c.port(1, 0.0, 0, net, w, g, "2")
-    xa = c.X / 2 - ZONE_INSET
-    # the pour stays clear of the connector's mounting holes: a strip next to the gap over the whole
-    # length, the full height only between the connector footprints
-    yh = min(abs(h["y"]) - h["d"] / 2 for h in FP["mount_holes"]) - 0.3
+    if ctx.des["launch"].get("cut"):
+        # thin top dielectric: the CPWG is narrower than the connector pin, so the standard
+        # (pin-wide) launch comes first; CPWG_50 against CPWG_25 (line–line) still cancels it
+        xl = launch(c, ctx, -1, 0.0, 0, net, "1")
+        xr = launch(c, ctx, 1, 0.0, 0, net, "2")
+        c.trace(0, [(xl, 0.0), (xr, 0.0)], w, net)
+        xa = abs(xl)
+        c.params["launch"] = "pin-wide launch with the plane opening, then the CPWG"
+    else:
+        c.trace(0, [(edge_x(c, -1), 0.0), (edge_x(c, 1), 0.0)], w, net)
+        c.port(-1, 0.0, 0, net, w, g, "1")
+        c.port(1, 0.0, 0, net, w, g, "2")
+        xa = c.X / 2 - ZONE_INSET
+    yh = min(abs(h["y"]) - h["d"] / 2 for h in FP["mount_holes"]) - 0.3   # clear of the connector's holes
     xh = c.X / 2 - X_CLEAR + 0.2
     for s in (1, -1):
         y0, y1 = w / 2 + g, c.H / 2 - 0.3
-        c.pour(0, (-xa, min(s * y0, s * yh), xa, max(s * y0, s * yh)))
-        c.pour(0, (-xh, min(s * yh, s * y1), xh, max(s * yh, s * y1)))
-        yv = s * (y0 + FENCE_OFF)
-        n = int((c.X - 1.6) / 1.0)
+        c.pour(0, (-xa, s * y0, xa, s * yh))
+        c.pour(0, (-xh, s * yh, xh, s * y1))
+        n = int((2 * xa - 1.6) / 1.0)
         for k in range(n + 1):
-            x = -c.X / 2 + 0.8 + k * 1.0
-            if x <= c.X / 2 - 0.8 + 1e-9:
-                c.via(round(x, 4), round(yv, 4), 0, ctx.stk.n - 1, "GND", role="gnd")
+            x = -xa + 0.8 + k * 1.0
+            if x <= xa - 0.8 + 1e-9:
+                c.via(x, s * (y0 + FENCE_OFF), "GND", role="gnd")
+    c.measure = "VNA 2-port"
     if X == 25.0:
         c.window("w10", -5.0, 5.0, excite=[0], mirror=[1, 0], group="T", note="CPWG, 10 mm (line–line pair with CPWG_50 w20)")
     else:
@@ -953,82 +1007,87 @@ def c_cpwg(ctx, cid, X):
     return c
 
 
-def four_port_launches(c, ctx, layer_l, layer_r, nets):
-    """two connectors per edge at ±pair_pitch/2; returns {(side, k): x_in}"""
-    hp = ctx.pp / 2
-    out = {}
-    for side, layer in ((-1, layer_l), (1, layer_r)):
-        for k, y in enumerate((hp, -hp)):
-            nm = str(k + 1) if side < 0 else str(k + 3)
-            lo, hi = (0.0, None) if y > 0 else (None, 0.0)
-            out[(side, k)] = launch(c, ctx, side, y, layer, nets[k], nm, pour_lo=lo, pour_hi=hi)
-    return out
-
-
-def c_pair(ctx, cid, group, title, refs, l_out, vias, oval=False, ngnd=2, validates="", params=None):
-    """differential pair at the 1.0 mm via pitch (100 Ω differential); with vias: L1 -> l_out at x = 0"""
-    stk = ctx.stk
-    c = Coupon(cid, group, title, 2 * FEED4, 2 * ctx.pp, validates, refs, params)
+def c_pair_thru(ctx, cid):
+    pv = ctx.des["pair_via"]["0"]
+    c = Coupon(cid, "thru", "pair 2×thru on L1 at the 1.0 mm via pitch (100 Ω differential), 30 mm edge to edge", 2 * FEED4, ROW4,
+               "fixture of the pair coupons on this board", [], {"w_pair_mm": pv["w"], "pitch_mm": 1.0})
     P, N = f"DP_{cid}_P", f"DP_{cid}_N"
-    pv = ctx.des["pair_via"]
-    ys = (0.5, -0.5)
     hp = ctx.pp / 2
-    l_l = 0 if vias else l_out      # 2×thru: both halves on l_out
-    l_r = l_out
-    xin = four_port_launches(c, ctx, l_l, l_r, (P, N))
-    for k, (net, yo, yi) in enumerate(((P, hp, ys[0]), (N, -hp, ys[1]))):
-        fan(c, xin[(-1, k)], -1, yo, yi, 0.0, l_l, net, ctx.wl(l_l), pv[str(l_l)]["w"], x_min=3.3)
-        fan(c, xin[(1, k)], 1, yo, yi, 0.0, l_r, net, ctx.wl(l_r), pv[str(l_r)]["w"], x_min=3.3)
-    c.params.update(w_pair_mm=pv[str(l_l)]["w"], pitch_mm=1.0)
-    if vias:
-        for net, y in ((P, ys[0]), (N, ys[1])):
-            c.via(0.0, y, 0, stk.n - 1, net, pads=[0, l_out])
-        for L in stk.planes:
-            if oval:
-                c.hole([L], ("slot", 0.0, ys[0], 0.0, ys[1], 0.4), f"antipad {cid}")
-            else:
-                for y in ys:
-                    c.hole([L], ("circle", 0.0, y, 0.4), f"antipad {cid}")
-        gy = 0.5 + 0.8
-        for (x, y) in {0: [], 2: [(0, gy), (0, -gy)], 4: [(0.6, gy - 0.1), (-0.6, gy - 0.1), (0.6, -gy + 0.1), (-0.6, -gy + 0.1)]}[ngnd]:
-            c.via(x, y, 0, stk.n - 1, "GND", role="gnd")
-    c.window("w6", -3.0, 3.0, half_y=4.0, excite=[0, 2], mirror=[1, 0, 3, 2], group="E" if vias else "thru",
+    xin = four_port_launches(c, ctx, (P, N))
+    for k, (net, yo, yi) in enumerate(((P, hp, 0.5), (N, -hp, -0.5))):
+        for side in (-1, 1):
+            fan(c, xin[(side, k)], side, yo, yi, 0.0, 0, net, ctx.wl(0), pv["w"], x_min=3.3)
+    c.measure = "VNA 4-port"
+    c.window("w6", -3.0, 3.0, half_y=4.0, excite=[0, 2], mirror=[1, 0, 3, 2], group="thru",
              note="pair at the 1.0 mm via pitch, 3 mm on each side; ports 1 P near, 2 N near, 3 P far, 4 N far")
     return c
 
 
-def c_coupled(ctx, cid, kind, title, refs, validates, X=50.0, layer=0):
+def c_pair_vlv(ctx, cid, title, refs, mid, oval, ngnd, validates, Ls=LS_VIA):
+    """pair via–line–via: L1 pair -> pair vias -> pair on `mid` (Ls) -> pair vias -> L1 pair"""
+    stk = ctx.stk
+    pv = ctx.des["pair_via"]
+    c = Coupon(cid, "E", title, 2 * FEED4 + Ls, ROW4, validates, refs,
+               {"mid_layer": stk.names[mid], "line_mm": Ls, "pitch_mm": 1.0, "antipad": "oval" if oval else "round", "gnd_vias": ngnd,
+                "w_pair_mm": pv["0"]["w"], "stub": (f"{stk.names[mid]}→{stk.names[-1]}" if mid < stk.n - 1 else "none")})
+    P, N = f"DP_{cid}_P", f"DP_{cid}_N"
+    hp = ctx.pp / 2
+    vx = Ls / 2
+    xin = four_port_launches(c, ctx, (P, N))
+    for k, (net, yo, yi) in enumerate(((P, hp, 0.5), (N, -hp, -0.5))):
+        for side in (-1, 1):
+            fan(c, xin[(side, k)], side, yo, yi, side * vx, 0, net, ctx.wl(0), pv["0"]["w"], x_min=3.3)
+        c.trace(mid, [(-vx, yi), (vx, yi)], pv[str(mid)]["w"], net)
+    for x in (-vx, vx):
+        for net, y in ((P, 0.5), (N, -0.5)):
+            c.via(x, y, net, pads=[0, mid])
+        for L in stk.planes:
+            if oval:
+                c.hole([L], ("slot", x, 0.5, x, -0.5, 0.4), f"antipad {cid}")
+            else:
+                for y in (0.5, -0.5):
+                    c.hole([L], ("circle", x, y, 0.4), f"antipad {cid}")
+        if ngnd == 2:
+            for y in (1.3, -1.3):
+                c.via(x, y, "GND", role="gnd")
+    c.measure = "VNA 4-port"
+    c.window("wv", -vx - 3.0, vx + 3.0, half_y=4.0, excite=[0, 2], mirror=[1, 0, 3, 2],
+             note="pair via - line - via with 3 mm L1 feeds; ports 1 P near, 2 N near, 3 P far, 4 N far; de-embed with PAIR w6")
+    return c
+
+
+def c_coupled(ctx, cid, kind, title, refs, validates, X=50.0):
     """XT: 50 Ω aggressor (A) and victim (V) with edge gap = w; DIFF: tightly coupled 100 Ω pair,
     reached by 50 Ω lines down to a 1.2 mm pitch and a short taper of the spacing"""
-    c = Coupon(cid, "T", title, X, 2 * ctx.pp, validates, refs)
+    c = Coupon(cid, "T", title, X, ROW4, validates, refs)
     hp = ctx.pp / 2
     if kind == "xt":
-        w = ctx.wl(layer)
+        w = ctx.wl(0)
         nets, yi, wi = ("SE_XT_A", "SE_XT_V"), w, w
         c.params.update(w_mm=w, gap_mm=w)
     else:
-        p = ctx.des["diff"][str(layer)]
+        p = ctx.des["diff"]["0"]
         nets, yi, wi = (f"DP_{cid}_P", f"DP_{cid}_N"), (p["w"] + p["s"]) / 2, p["w"]
         c.params.update(w_mm=p["w"], s_mm=p["s"])
-    xin = four_port_launches(c, ctx, layer, layer, nets)
+    xin = four_port_launches(c, ctx, nets)
     xds = []
     for k, (net, sg) in enumerate(((nets[0], 1), (nets[1], -1))):
         for side in (-1, 1):
             if kind == "xt":
-                xds.append(fan(c, xin[(side, k)], side, sg * hp, sg * yi, 0.0, layer, net, ctx.wl(layer), wi))
+                xds.append(fan(c, xin[(side, k)], side, sg * hp, sg * yi, 0.0, 0, net, ctx.wl(0), wi))
             else:
-                xm = fan(c, xin[(side, k)], side, sg * hp, sg * 0.6, side * 12.0, layer, net, ctx.wl(layer), wi)
+                xm = fan(c, xin[(side, k)], side, sg * hp, sg * 0.6, side * 12.0, 0, net, ctx.wl(0), wi)
                 xq = xm - side * (0.3 + 0.6 - yi)
-                c.traces.pop()  # the straight part after the diagonal is replaced by the taper
-                c.trace(layer, [(xm, sg * 0.6), (xm - side * 0.3, sg * 0.6), (xq, sg * yi), (0.0, sg * yi)], wi, net)
+                c.traces.pop()  # the straight part after the diagonal becomes the spacing taper
+                c.trace(0, [(xm, sg * 0.6), (xm - side * 0.3, sg * 0.6), (xq, sg * yi), (0.0, sg * yi)], wi, net)
                 xds.append(xq)
     half = min(abs(x) for x in xds)
     c.params["coupled_mm"] = round(2 * half, 2)
     c.title += f", coupled {2 * half:.1f} mm"
-    if layer == 0:
-        h = round(half - 0.3, 2)
-        c.window("wc", -h, h, half_y=4.0, excite=[0, 2], mirror=[1, 0, 3, 2], group="T",
-                 note=f"the straight coupled section ({2 * h:g} mm); ports 1 A/P near, 2 V/N near, 3 A/P far, 4 V/N far")
+    c.measure = "VNA 4-port; scope TDR/TDT"
+    h = round(half - 0.3, 2)
+    c.window("wc", -h, h, half_y=4.0, excite=[0, 2], mirror=[1, 0, 3, 2], group="T",
+             note=f"the straight coupled section ({2 * h:g} mm); ports 1 A/P near, 2 V/N near, 3 A/P far, 4 V/N far")
     return c
 
 
@@ -1037,9 +1096,8 @@ def c_coupled_inner(ctx, cid, kind, title, refs, validates, X=50.0):
     layers (bs); fed from L1 through vias at both ends"""
     stk = ctx.stk
     inner = [L for L in stk.signal if 0 < L < stk.n - 1]
-    c = Coupon(cid, "T", title, X, 2 * ctx.pp, validates, refs)
+    c = Coupon(cid, "T", title, X, ROW4, validates, refs)
     hp = ctx.pp / 2
-    xv = None
     if kind == "diff":
         p = ctx.des["diff"][str(inner[0])]
         nets, layers = (f"DP_{cid}_P", f"DP_{cid}_N"), (inner[0], inner[0])
@@ -1050,21 +1108,21 @@ def c_coupled_inner(ctx, cid, kind, title, refs, validates, X=50.0):
         yv, yc, wi = (0.6, -0.6), (0.0, 0.0), (ctx.wl(inner[0]), ctx.wl(inner[1]))
         c.params.update(layers=f"{stk.names[inner[0]]} / {stk.names[inner[1]]}", w_mm=list(wi), offset_mm=0.0)
     xv = c.X / 2 - X_CLEAR - (hp - max(abs(y) for y in yv)) - 0.5   # via x: the L1 fan-in at 45°
-    xin = four_port_launches(c, ctx, 0, 0, nets)
+    xin = four_port_launches(c, ctx, nets)
     for k, (net, sg) in enumerate(((nets[0], 1), (nets[1], -1))):
         for side in (-1, 1):
             fan(c, xin[(side, k)], side, sg * hp, yv[k], side * xv, 0, net, ctx.wl(0), ctx.wl(0))
             xj = side * (xv - 0.9)
             c.trace(layers[k], [(side * xv, yv[k]), (xj, yv[k]), (side * (xv - 0.9 - abs(yv[k] - yc[k])), yc[k]), (0.0, yc[k])], wi[k], net)
-            c.via(side * xv, yv[k], 0, stk.n - 1, net, pads=[0, layers[k]])
-            for L in stk.planes:
-                c.hole([L], ("circle", side * xv, yv[k], 0.4), f"antipad {cid}")
+            c.via(side * xv, yv[k], net, pads=[0, layers[k]])
+            antipads(c, ctx, side * xv, yv[k], 0.4, f"antipad {cid}")
     for side in (-1, 1):
         for (gx, gy) in ring_clear(c, side * xv, 0.0, 8, 1.6):
-            c.via(gx, gy, 0, stk.n - 1, "GND", role="gnd")
+            c.via(gx, gy, "GND", role="gnd")
     half = xv - 0.9 - max(abs(yv[k] - yc[k]) for k in (0, 1))
     c.params["coupled_mm"] = round(2 * half, 2)
     c.title += f", coupled {2 * half:.1f} mm"
+    c.measure = "VNA 4-port; scope TDR/TDT"
     h = round(half - 0.3, 2)
     if kind == "diff":
         c.window("wc", -h, h, half_y=4.0, excite=[0, 2], mirror=[1, 0, 3, 2], group="T", note=f"the straight coupled stripline section ({2 * h:g} mm)")
@@ -1074,108 +1132,245 @@ def c_coupled_inner(ctx, cid, kind, title, refs, validates, X=50.0):
     return c
 
 
-def c_cavity(ctx, cid):
-    """G: plane island 50 × 30 mm on the first plane layer over the second (GND); two ports
-    through vias from bottom-layer microstrips, at a corner (-22, -12) and the centre"""
+def c_cavity(ctx, cid, a, b, X, H, p1, p2):
+    """G: PWR island a × b on the PDN layer under the first GND plane; two ports through vias from L1
+    microstrips: p1 = (x, y) from the left edge, p2 from the right edge"""
     stk = ctx.stk
-    a, b = 50.0, 30.0
-    top_p, bot_p = stk.planes[0], stk.planes[1]
-    d = stk.z[top_p] - stk.z[bot_p]
-    c = Coupon(cid, "G", f"Plane cavity {a:g} × {b:g} mm on {stk.names[top_p]} over {stk.names[bot_p]} (d = {d:.3f} mm), ports at a corner and the centre",
-               100.0, 3 * ctx.rp, "cavity resonances (kisi_pi::cavity_modal: ±0.8 % against 3D) and the εr of the core between the planes",
+    pw = stk.pwr
+    gref = max(p for p in stk.planes if p < pw)
+    d = stk.z[gref] - stk.z[pw]
+    c = Coupon(cid, "G", f"Plane cavity {a:g} × {b:g} mm on {stk.names[pw]} under {stk.names[gref]} (d = {d:.3f} mm), ports at a corner and the centre",
+               X, H, "cavity resonances (kisi `power --pdn`, cavity model ±0.8 % against 3D) and the εr of the dielectric between the planes",
                ["G_pp100", "G_pp200"], {"size_mm": f"{a:g} × {b:g}", "d_mm": round(d, 4)})
-    c.islands.append({"layer": top_p, "rect": (-a / 2, -b / 2, a / 2, b / 2), "net": "CAV", "clearance": 0.5})
-    c.nets.append("CAV")
-    bl = ctx.bot
-    p1, p2 = (-22.0, -12.0), (0.0, 0.0)
-    xl = launch(c, ctx, -1, p1[1], bl, "CAV", "1")
-    xr = launch(c, ctx, 1, p2[1], bl, "CAV", "2")
-    straight(c, ctx, bl, p1[1], "CAV", xl, p1[0])
-    straight(c, ctx, bl, p2[1], "CAV", p2[0], xr)
+    rail = f"CAV_{cid}"
+    holes = []
+    xl = launch(c, ctx, -1, p1[1], 0, rail, "1")
+    xr = launch(c, ctx, 1, p2[1], 0, rail, "2")
+    straight(c, ctx, 0, p1[1], rail, xl, p1[0])
+    straight(c, ctx, 0, p2[1], rail, p2[0], xr)
     for (x, y) in (p1, p2):
-        c.via(x, y, 0, stk.n - 1, "CAV", pads=[top_p, bl])
-        c.hole([bot_p], ("circle", x, y, 0.4), f"antipad {cid}")
-    er = stk.diel[top_p]["er"]
+        c.via(x, y, rail, pads=[0, pw])
+        antipads(c, ctx, x, y, 0.4, f"antipad {cid}", skip=(pw,))
+    c.islands.append({"layer": pw, "rect": (-a / 2, -b / 2, a / 2, b / 2), "net": rail, "clearance": 0.5, "holes": holes})
+    er = stk.diel[gref]["er"] if pw - gref == 1 else sum(stk.diel[i]["thickness"] for i in range(gref, pw)) / sum(stk.diel[i]["thickness"] / stk.diel[i]["er"] for i in range(gref, pw))
     modes = sorted((vc.C0 / (2 * math.sqrt(er)) * math.hypot(m / a, n / b) * 1e3, m, n) for m in range(5) for n in range(4) if (m, n) != (0, 0))
-    c.params.update(modes_GHz=[round(f / 1e9, 3) for f, m, n in modes if f < 6e9][:8], modes_mn=[f"{m}{n}" for f, m, n in modes if f < 6e9][:8],
-                    modes_note="magnetic-wall estimate with the nominal er of the core; fringing lowers them")
-    c.window("w60", -30.0, 30.0, half_y=c.H / 2 + 0.6, dfine=0.1, fmax=6e9, note="whole island with 8 mm (port 1) and 30 mm (port 2) of the bottom feeds",
+    c.params.update(modes_GHz=[round(f / 1e9, 3) for f, m, n in modes if f < 8e9][:8], modes_mn=[f"{m}{n}" for f, m, n in modes if f < 8e9][:8],
+                    modes_note="magnetic-wall estimate with the nominal er; fringing lowers them")
+    c.measure = "VNA 2-port (S21 peaks; Z21 by shunt-thru)"
+    xw = min(max(a / 2, abs(p1[0]), abs(p2[0])) + 5.0, X / 2 - FP["launch_length"] - 0.2)  # ports on the feed lines
+    c.window("wg", -xw, xw, half_y=H / 2 + 0.6, dfine=0.1, fmax=8e9, note="the whole island with the L1 feeds up to the window",
              extra={"nf": 600, "f_loss": 2.5e9, "max_steps": 400000, "meta_modes": [round(f, -6) for f, m, n in modes]})
     return c
 
 
-def c_info(ctx, X, text):
-    c = Coupon("INFO", "info", text, X, 8.0, "")
+def cap_part(c, pkg, x, y, axis, nets, value, role, populate):
+    """capacitor land pattern (KiCad standard geometry) at (x, y); axis 'x' or 'y'; nets = (pad 1, pad 2)"""
+    p = PKG[pkg]
+    along, across = p["pad"]
+    pads = []
+    for k, sgn in ((0, -1), (1, 1)):
+        if axis == "x":
+            pads.append({"num": str(k + 1), "x": sgn * p["pitch"] / 2, "y": 0.0, "sx": along, "sy": across, "net": nets[k]})
+        else:
+            pads.append({"num": str(k + 1), "x": 0.0, "y": -sgn * p["pitch"] / 2, "sx": across, "sy": along, "net": nets[k]})
+    c.parts.append({"prefix": "C", "lib": p["kicad"], "x": x, "y": y, "value": value, "pads": pads, "role": role, "package": pkg, "populate": populate})
+    for n_ in nets:
+        c.net(n_)
+
+
+def c_capz(ctx, cid, pkg):
+    """capacitor shunt-thru: a 50 Ω L1 line with a capacitor footprint from the line to GND at x = 0"""
+    p = PKG[pkg]
+    c = Coupon(cid, "CAP", f"Shunt {pkg} capacitor on the 50 Ω line (2-port shunt-thru), 25 mm", 2 * FEED, ROW,
+               f"impedance of a mounted {pkg} capacitor: C, ESR, ESL and mounting inductance (data/components.json esl_nh by package, ESR model, mount_nh)",
+               [], {"package": pkg, "pitch_mm": p["pitch"], "kicad_footprint": p["kicad"]})
+    net = f"SE_{cid}"
+    xl = launch(c, ctx, -1, 0.0, 0, net, "1")
+    xr = launch(c, ctx, 1, 0.0, 0, net, "2")
+    straight(c, ctx, 0, 0.0, net, xl, xr)
+    # pad 1 on the line, pad 2 below it to GND with two vias
+    cap_part(c, pkg, 0.0, -p["pitch"] / 2, "y", (net, "GND"), "100nF 16V X7R", "shunt", "empty / 0 Ω / 100 nF X7R / others (component list)")
+    yv = -p["pitch"] - p["pad"][0] / 2 - 0.25
+    for xv in (-0.35, 0.35):
+        c.via(xv, yv, "GND", role="gnd")
+        c.trace(0, [(0.0, -p["pitch"]), (xv, yv)], 0.3, "GND")  # pad to via (KiCad and kisi connectivity)
+    c.measure = "VNA 2-port shunt-thru: Z = 25·S21/(1 − S21)"
+    c.window("w10", -5.0, 5.0, excite=[0, 1], dfine=0.035, fmax=20e9, note="the capacitor with 5 mm of line on both sides; modelled as populated with 0 Ω (5 mΩ)",
+             extra={"capz": True})
+    return c
+
+
+def c_hpdn(ctx, cid, d, side, X, island_len, pkg="0402"):
+    """PDN loop: two shunt-thru ports at the `side` edge (connectors at ±pair_pitch/2), traces to an IC
+    pin field (4 × 4, 0.8 mm, checkerboard PWR/GND; PWR pins tied by a copper patch on L1), one
+    capacitor footprint whose GND pad is d mm from the pin field's edge; PWR island on the PDN layer"""
+    stk = ctx.stk
+    pw = stk.pwr
+    p = PKG[pkg]
+    rail = f"VDD_{cid}"
+    c = Coupon(cid, "H", f"PDN loop: IC pin field to a {pkg} capacitor {d:g} mm away, PWR island on {stk.names[pw]}, shunt-thru ports at the {'left' if side < 0 else 'right'} edge",
+               X, ROW4, "capacitor loop inductance and Z(f) at the IC (kisi `power --pdn`: pdn_ic, cavity_modal loop inductance; package ESL and mount_nh of data/components.json)",
+               [f"H_s8_cap_{int(d)}"] if (d in (2, 5, 10, 20) and pkg == "0402") else [], {"distance_mm": d, "package": pkg, "pins": "4 × 4, 0.8 mm", "pwr_layer": stk.names[pw]})
+    hp = ctx.pp / 2
+    # pin-field centre: each feed (launch, along x, then along y to the patch edge at ±1.6 mm) is
+    # FEED long, as one half of the board's 2×thru, so the THRU de-embeds it
+    ye = 1.65                                            # feed end, 0.05 mm over the patch edge
+    xe = FEED - (hp - ye)
+    assert xe >= X_CLEAR + 0.5, "H coupon: the feed corner is too close to the connector"
+    xf = side * (X / 2 - xe)
+    for k, y in enumerate((hp, -hp)):
+        lo, hi = (0.0, None) if y > 0 else (None, 0.0)
+        x_in = launch(c, ctx, side, y, 0, rail, str(k + 1), pour_lo=lo, pour_hi=hi)
+        c.trace(0, [(x_in, y), (xf, y), (xf, math.copysign(ye, y))], ctx.wl(0), rail)
+    pins = [(xf - 1.2 + 0.8 * i, -1.2 + 0.8 * j, (i + j) % 2 == 0) for i in range(4) for j in range(4)]
+    island_holes = []
+    pads = []
+    for k, (x, y, is_pwr) in enumerate(pins):
+        net = rail if is_pwr else "GND"
+        pads.append({"num": f"{'ABCD'[k // 4]}{k % 4 + 1}", "x": x - xf, "y": y, "sx": 0.6, "sy": 0.6, "shape": "circle", "net": net})
+        if is_pwr:
+            c.via(x, y, rail, pads=[0, pw])
+            antipads(c, ctx, x, y, 0.35, f"antipad {cid}", skip=(pw,))
+        else:
+            c.via(x, y, "GND", pads=None, role="gnd")
+            island_holes.append(("circle", x, y, 0.35))
+    c.parts.append({"prefix": "U", "x": xf, "y": 0.0, "value": "pin field (no part)", "pads": pads, "role": "ic", "dnp_bom": True,
+                    "props": {"PI_LOAD": f"{rail}=0.5A", "PI_TARGET": f"{rail}=10m fmax=1G"}})
+    c.zones.append({"layer": 0, "rect": (xf - 1.6, -1.6, xf + 1.6, 1.6), "net": rail, "holes": [("circle", x, y, 0.4) for (x, y, q) in pins if not q]})
+    # capacitor: pads along x, GND pad nearer the pin field, a via just outside each pad
+    s = -side
+    xg = xf + s * (1.6 + d)
+    xc = xg + s * p["pitch"] / 2
+    nets = ("GND", rail) if s > 0 else (rail, "GND")
+    cap_part(c, pkg, xc, 0.0, "x", nets, "100nF 16V X7R", "decap", "empty / 0 Ω / 100 nF X7R / others (component list)")
+    off = p["pad"][0] / 2 + 0.25
+    c.via(xg - s * off, 0.0, "GND", role="gnd")
+    island_holes.append(("circle", xg - s * off, 0.0, 0.35))
+    xpv = xg + s * (p["pitch"] + off)
+    c.via(xpv, 0.0, rail, pads=[0, pw])
+    c.trace(0, [(xg, 0.0), (xg - s * off, 0.0)], 0.3, "GND")  # pads to their vias (KiCad and kisi connectivity)
+    c.trace(0, [(xg + s * p["pitch"], 0.0), (xpv, 0.0)], 0.3, rail)
+    antipads(c, ctx, xpv, 0.0, 0.35, f"antipad {cid}", skip=(pw,))
+    # PWR island (the same length for every coupon of a board) with clearance around the GND vias
+    xi0, xi1 = xf - s * 1.7, xf + s * island_len
+    assert max(h["x"] + h["d"] / 2 for h in FP["mount_holes"]) + 0.3 <= xe - 1.7, "H coupon: PWR island too close to the mounting holes"
+    c.islands.append({"layer": pw, "rect": (min(xi0, xi1), -(ROW4 / 2 - 1.2), max(xi0, xi1), ROW4 / 2 - 1.2), "net": rail, "clearance": 0.5, "holes": island_holes})
+    c.params.update(island_mm=[round(abs(xi1 - xi0), 2), round(ROW4 - 2.4, 2)], gnd_pad_centre_from_field_edge_mm=d)
+    c.measure = "VNA 2-port shunt-thru: Z = 25·S21/(1 − S21), 100 kHz – 1 GHz; unpopulated, 0 Ω, capacitor"
+    w0, w1 = sorted((side * (X / 2 - X_CLEAR), xf + s * (island_len + 1.0)))
+    c.window("wh", w0, w1, half_y=ROW4 / 2 + 0.6, excite=[0, 1], dfine=0.07, fmax=2e9, group="H",
+             note="ports, pin field, capacitor (modelled as populated with 0 Ω: 5 mΩ) and the PWR island",
+             extra={"nf": 200, "f_loss": 1e9, "end_db": -60, "max_steps": 300000, "hpdn": True})
     return c
 
 
 # --- boards -------------------------------------------------------------------------------------
-def board_specs(ctx, stk_key):
+def board_specs(ctx):
+    """rows per board part; every row list is sorted by length later"""
     stk = ctx.stk
-    bot = ctx.bot
     sn = stk.names
-    ap = lambda d: int(round(d * 1000))
-    single = lambda: [
-        c_thru(ctx, "THRU_L1", 0),
-        c_thru(ctx, "LINE_27", 0, 27.0), c_reflect(ctx, "REFLECT"), c_thru(ctx, "LINE_30", 0, 30.0),
-        c_thru(ctx, "LINE_50", 0, 50.0, lines=True), c_thru(ctx, "LINE_100", 0, 100.0),
-    ]
-    if stk.n == 4:
-        a_cases = [c_via(ctx, f"A{ap(d):04d}", "A", f"via L1→L4 through the L2/L3 plane pair, drill 0.3, antipad Ø{d:.1f}, 4 GND vias at 1 mm",
-                         [f"A_s4_d300_ap{ap(d)}"] if d <= 1.0 else [], d, vc.ring(4, 1.0),
-                         validates="via ladder / coax section: antipad dependence of Z and delay (A group)", params={"drill_mm": 0.3, "antipad_mm": d, "stitch": "4 × 1 mm"})
-                   for d in (0.8, 1.0, 1.2)]
-        d_cases = [c_via(ctx, f"D_S{str(s).replace('.', 'p')}", "D", f"L1 (ref L2) → L4 (ref L3), one GND via at {s:g} mm, antipad Ø0.8",
-                         [f"D_s8_stitch_{str(s).replace('.', 'p')}"] if s in (1.0, 2.0) else [], 0.8, [(0.0, s)],
-                         validates="return path of a reference change L2 → L3 (kisi: return via within 3 mm, else inductance up to 5 mm)", params={"stitch_mm": s})
-                   for s in (1.0, 2.0, 3.5)]
-        d_cases.append(c_via(ctx, "D_NONE", "D", "L1 (ref L2) → L4 (ref L3), no return via near the via (the row walls at ±6.35 mm only)",
-                             ["D_s8_stitch_none"], 0.8, [], validates="return path without a nearby GND via: the plane-pair cavity between the row walls",
-                             params={"stitch_mm": None}, wide=True))
-        a = [*single(), c_thru(ctx, "THRU_L4", bot), *a_cases, *d_cases, c_cavity(ctx, "G_CAV")]
-        b = [c_cpwg(ctx, "CPWG_25", 25.0), c_cpwg(ctx, "CPWG_50", 50.0),
-             c_pair(ctx, "PAIR_L1", "thru", "pair 2×thru on L1 at the 1.0 mm via pitch (top connectors)", [], 0, False, validates="fixture of the pair via coupons (L1 side)"),
-             c_pair(ctx, "PAIR_L4", "thru", "pair 2×thru on L4 at the 1.0 mm via pitch (bottom connectors)", [], bot, False, validates="fixture of the pair via coupons (L4 side)"),
-             c_pair(ctx, "E_R_G2", "E", "pair vias L1→L4, pitch 1.0, round antipads Ø0.8, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, True, False, 2,
-                    validates="differential via ladder: Sdd21, Zdiff, Scd21", params={"pitch_mm": 1.0, "antipad": "round", "gnd_vias": 2}),
-             c_pair(ctx, "E_O_G2", "E", "pair vias L1→L4, pitch 1.0, one oval antipad, 2 GND vias", ["E_s8_L1L8_p1000_oval_g2"], bot, True, True, 2,
-                    validates="oval (non-round) antipad: kisi's equivalent radius", params={"pitch_mm": 1.0, "antipad": "oval", "gnd_vias": 2}),
-             c_pair(ctx, "E_R_G0", "E", "pair vias L1→L4, pitch 1.0, round antipads, no GND vias", ["E_s8_L1L8_p1000_round_g0"], bot, True, False, 0,
-                    validates="pair via without return vias", params={"pitch_mm": 1.0, "antipad": "round", "gnd_vias": 0}),
-             c_coupled(ctx, "XT_MS", "xt", "Microstrip aggressor and victim on L1, edge gap = w", ["T_ts6_xt_ms_s10"],
-                       "NEXT / FEXT (kisi's NEXT is 70–80 % high against 3D, FEXT +6 %)"),
-             c_coupled(ctx, "DIFF_MS", "diff", "Edge-coupled 100 Ω microstrip pair on L1", ["T_ts6_diff_ms"],
-                       "Zdiff (TDR plateau), εeff of the odd mode, Sdd21 per mm")]
-        return {"a": a, "b": b}
+    bot = ctx.bot
     inner = [L for L in stk.signal if 0 < L < stk.n - 1]
-    a = [c_thru(ctx, "THRU_L1", 0), c_thru(ctx, f"THRU_L{bot + 1}", bot),
-         c_via(ctx, "B_L1L6", "B", "through via L1→L6 (no stub), drill 0.3, antipad Ø0.8 on L2/L5, 4 GND vias at 1 mm", ["B_ts6_L1L6", "B_s8_L1L8_d300"], 0.8,
-               vc.ring(4, 1.0), validates="through via without stub (via ladder)", params={"drill_mm": 0.3, "antipad_mm": 0.8}),
-         c_via(ctx, "D_S1", "D", "L1 (ref L2) → L6 (ref L5), one GND via at 1 mm", ["D_s8_stitch_1p0"], 0.8, [(0.0, 1.0)],
-               validates="return path L2 → L5", params={"stitch_mm": 1.0}),
-         c_via(ctx, "D_NONE", "D", "L1 (ref L2) → L6 (ref L5), no return via near the via (row walls only)", ["D_s8_stitch_none"], 0.8, [],
-               validates="return path without a nearby GND via", params={"stitch_mm": None}, wide=True),
-         c_vlv(ctx, "VLV_5", 5.0, inner[0], f"L1 → {sn[inner[0]]} → L1 (through vias with stubs to L6), 5 mm stripline",
-               "inner-layer exit with an open stub (B group, junction model): the via–line–via as a whole", ["B_ts6_L1L3_stub", "B_s8_L1L3_stub_d300"]),
-         c_vlv(ctx, "SL_25", 25.0, inner[0], f"Stripline {sn[inner[0]]}, 25 mm between the via transitions", "stripline γ by line–line (with VLV_5 and SL_50), Zc from the TDR plateau"),
-         c_vlv(ctx, "SL_50", 50.0, inner[0], f"Stripline {sn[inner[0]]}, 50 mm between the via transitions",
-               "asymmetric stripline Zc / εeff (kisi formula +11 % on the ThunderScope stack)", ["T_ts6_sl_10", "T_ts6_sl_20"], lines=True),
-         c_thru(ctx, "LINE_50", 0, 50.0, lines=True)]
-    b = [c_pair(ctx, "PAIR_L1", "thru", "pair 2×thru on L1 at the 1.0 mm via pitch", [], 0, False, validates="fixture of the pair via coupons (L1 side)"),
-         c_pair(ctx, "PAIR_L6", "thru", "pair 2×thru on L6 at the 1.0 mm via pitch (bottom connectors)", [], bot, False, validates="fixture of the pair via coupons (L6 side)"),
-         c_pair(ctx, "E_R_G2", "E", "pair vias L1→L6, pitch 1.0, round antipads Ø0.8, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, True, False, 2,
-                validates="differential via ladder through two plane layers", params={"pitch_mm": 1.0, "antipad": "round", "gnd_vias": 2}),
-         c_pair(ctx, "E_O_G2", "E", "pair vias L1→L6, pitch 1.0, one oval antipad, 2 GND vias", ["E_s8_L1L8_p1000_oval_g2"], bot, True, True, 2,
-                validates="oval antipad", params={"pitch_mm": 1.0, "antipad": "oval", "gnd_vias": 2}),
-         c_coupled_inner(ctx, "BS_L3L4", "bs", f"Broadside: {sn[inner[0]]} over {sn[inner[1]]} across the 0.21 mm prepreg, offset 0",
-                         ["T_ts6_broadside_o0"], "broadside NEXT / FEXT (kisi detects it, does not compute it yet)"),
-         c_coupled_inner(ctx, "DIFF_SL", "diff", f"Edge-coupled 100 Ω stripline pair on {sn[inner[0]]}", ["T_ts6_diff_sl"],
-                         "stripline Zdiff (needs a plateau value: open point in TESTS.md)")]
-    return {"a": a, "b": b}
+    ap = lambda d: int(round(d * 1000))
+    T = lambda: [c_thru(ctx, "THRU")]
+    if stk.n == 4:
+        a_ = lambda d: c_vlv(ctx, f"A{ap(d):04d}", "A", f"via–line–via L1→L4→L1 through the L2/L3 plane pair, drill 0.3, antipad Ø{d:.1f}, 4 GND vias at 1 mm",
+                             [f"A_s4_d300_ap{ap(d)}"] if d <= 1.0 else [], bot, "via ladder / coax section: antipad dependence of Z and delay (A group)", antipad=d)
+        d_ = lambda s: c_vlv(ctx, f"D_S{str(s).replace('.', 'p')}", "D", f"L1 (ref L2) → L4 (ref L3) → L1, one GND via {s:g} mm from each via, antipad Ø0.8",
+                             [f"D_s8_stitch_{str(s).replace('.', 'p')}"] if s in (1.0, 2.0) else [], bot,
+                             "return path of a reference change L2 → L3 (kisi: GND vias within 3 mm enter the ladder; up to 5 mm an inductance)",
+                             Ls=LS_RET, gnd="one", stitch=s, params={"stitch_mm": s})
+        parts = {
+            "a": [T(), [c_thru(ctx, "LINE_27", 27.0)], [c_reflect(ctx, "REFLECT")], [c_thru(ctx, "LINE_30", 30.0)], [c_thru(ctx, "LINE_50", 50.0, lines=True)],
+                  [c_thru(ctx, "LINE_100", 100.0)], [c_cpwg(ctx, "CPWG_25", 25.0)], [c_cpwg(ctx, "CPWG_50", 50.0)]],
+            "b": [T(), [a_(0.8)], [a_(1.0)], [a_(1.2)], [d_(1.0)], [d_(2.0)], [d_(3.5)],
+                  [c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L4 (ref L3) → L1, no return via (the row walls at ±6 mm only)", ["D_s8_stitch_none"], bot,
+                         "return path without a nearby GND via: the plane-pair cavity between the row walls", Ls=LS_RET, gnd=None)]],
+            "c": [[c_pair_thru(ctx, "PAIR")],
+                  [c_pair_vlv(ctx, "E_R_G2", "pair via–line–via L1→L4→L1, pitch 1.0, round antipads Ø0.8, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, False, 2,
+                              "differential via ladder: Sdd21, Zdiff, Scd21")],
+                  [c_pair_vlv(ctx, "E_O_G2", "pair via–line–via L1→L4→L1, pitch 1.0, one oval antipad, 2 GND vias", ["E_s8_L1L8_p1000_oval_g2"], bot, True, 2,
+                              "oval (non-round) antipad: kisi's equivalent radius")],
+                  [c_pair_vlv(ctx, "E_R_G0", "pair via–line–via L1→L4→L1, pitch 1.0, round antipads, no GND vias", ["E_s8_L1L8_p1000_round_g0"], bot, False, 0,
+                              "pair via without return vias")]],
+            "d": [T(), [c_capz(ctx, "CAPZ_0402", "0402")], [c_capz(ctx, "CAPZ_0603", "0603")], [c_capz(ctx, "CAPZ_0805", "0805")],
+                  [c_coupled(ctx, "XT_MS", "xt", "Microstrip aggressor and victim on L1, edge gap = w", ["T_ts6_xt_ms_s10"], "NEXT / FEXT (kisi's NEXT is 70–80 % high against 3D)")],
+                  [c_coupled(ctx, "DIFF_MS", "diff", "Edge-coupled 100 Ω microstrip pair on L1", ["T_ts6_diff_ms"], "Zdiff (TDR plateau), odd-mode εeff, Sdd21 per mm")]],
+        }
+        if stk.pwr is not None and stk.key == "jlc4_7628":
+            parts["p"] = [T(), [c_cavity(ctx, "G_CAV", 50.0, 30.0, 100.0, 3 * ROW, (-22.0, -12.0), (0.0, 0.0))],
+                          [c_hpdn(ctx, "H_D2", 2.0, -1, 50.0, 26.0), c_hpdn(ctx, "H_D5", 5.0, 1, 50.0, 26.0)],
+                          [c_hpdn(ctx, "H_D10", 10.0, -1, 50.0, 26.0), c_hpdn(ctx, "H_D20", 20.0, 1, 50.0, 26.0)]]
+        if stk.key.startswith("aisler"):
+            g = c_cavity(ctx, "G_SMALL", 25.0, 18.0, 35.0, ROW4, (-10.0, -6.0), (0.0, 0.0))
+            parts = {"a": [T(), [c_thru(ctx, "LINE_27", 27.0)], [c_thru(ctx, "LINE_30", 30.0)], [a_(0.8)], [a_(1.0)], [a_(1.2)], [d_(1.0)], [d_(2.0)],
+                           [c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L4 (ref L3) → L1, no return via (row walls only)", ["D_s8_stitch_none"], bot,
+                                  "return path without a nearby GND via", Ls=LS_RET, gnd=None)],
+                           [c_thru(ctx, "LINE_35", 35.0)], [g]]}
+        return parts
+    if stk.n == 6:
+        return {
+            "a": [T(), [c_vlv(ctx, "B_L1L6", "B", "via–line–via L1→L6→L1 (through vias, no stub), antipad Ø0.8 on L2/L5, 4 GND vias at 1 mm", ["B_ts6_L1L6", "B_s8_L1L8_d300"], bot,
+                                "through via without stub (via ladder)")],
+                  [c_vlv(ctx, "D_S1", "D", "L1 (ref L2) → L6 (ref L5) → L1, one GND via 1 mm from each via", ["D_s8_stitch_1p0"], bot, "return path L2 → L5",
+                         Ls=LS_RET, gnd="one", stitch=1.0, params={"stitch_mm": 1.0})],
+                  [c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L6 (ref L5) → L1, no return via (row walls only)", ["D_s8_stitch_none"], bot,
+                         "return path without a nearby GND via", Ls=LS_RET, gnd=None)]],
+            "b": [T(), [c_vlv(ctx, "VLV_L3", "B", f"via–line–via L1→{sn[inner[0]]}→L1 (through vias, stubs to L6), 5 mm stripline", ["B_ts6_L1L3_stub", "B_s8_L1L3_stub_d300"],
+                                inner[0], "inner-layer exit with an open stub (junction model); stub resonance above the SMA band (kisi: 32 GHz)")],
+                  [c_vlv(ctx, "SL_L3", "T", f"via–line–via with 25 mm stripline on {sn[inner[0]]}", ["T_ts6_sl_10", "T_ts6_sl_20"], inner[0],
+                         "stripline γ (line–line with VLV_L3: the vias cancel), Zc from the TDR plateau; asymmetric stripline (formula +11 % on the ThunderScope stack)",
+                         Ls=25.0, lines=True)],
+                  [c_thru(ctx, "LINE_50", 50.0, lines=True)]],
+            "c": [[c_pair_thru(ctx, "PAIR")],
+                  [c_pair_vlv(ctx, "E_R_G2", "pair via–line–via L1→L6→L1, pitch 1.0, round antipads Ø0.8, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, False, 2,
+                              "differential via ladder through two plane layers")]],
+            "d": [[c_coupled_inner(ctx, "BS_L3L4", "bs", f"Broadside: {sn[inner[0]]} over {sn[inner[1]]}, offset 0", ["T_ts6_broadside_o0"],
+                                   "broadside NEXT / FEXT (kisi lists it but does not compute it yet)")],
+                  [c_coupled_inner(ctx, "DIFF_SL", "diff", f"Edge-coupled 100 Ω stripline pair on {sn[inner[0]]}", ["T_ts6_diff_sl"],
+                                   "stripline Zdiff plateau (open point in TESTS.md)")]],
+        }
+    # 8 layers
+    return {
+        "a": [T(), [c_vlv(ctx, "VLV_L3", "B", f"via–line–via L1→{sn[inner[0]]}→L1 (through vias, 1.4 mm stubs to L8), 5 mm stripline",
+                          ["B_s8_L1L3_stub_d300", "X_s8x2_L1L3_bd_d200"], inner[0], "long open stub: notch near 20 GHz, inside the SMA band (B group)")],
+              [c_vlv(ctx, "B_L1L8", "B", "via–line–via L1→L8→L1 (through vias, no stub), 4 GND vias at 1 mm", ["B_s8_L1L8_d300"], bot, "through via without stub")],
+              [c_vlv(ctx, "SL_L3", "T", f"via–line–via with 25 mm stripline on {sn[inner[0]]}", ["T_ts6_sl_10", "T_ts6_sl_20"], inner[0],
+                     "stripline γ (line–line with VLV_L3), Zc from the TDR plateau", Ls=25.0, lines=True)]],
+        "b": [T(), [c_vlv(ctx, "VLV_L6", "B", f"via–line–via L1→{sn[inner[1]]}→L1 (through vias, short stubs to L8), 5 mm stripline", [], inner[1],
+                          "short stub: compare with VLV_L3 (long stub) and B_L1L8 (none)")],
+              [c_vlv(ctx, "D_S1", "D", "L1 (ref L2) → L8 (ref L7) → L1, one GND via 1 mm from each via", ["D_s8_stitch_1p0"], bot, "return path L2 → L7 across four planes",
+                     Ls=LS_RET, gnd="one", stitch=1.0, params={"stitch_mm": 1.0})],
+              [c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L8 (ref L7) → L1, no return via (row walls only)", ["D_s8_stitch_none"], bot,
+                     "return path without a nearby GND via", Ls=LS_RET, gnd=None)]],
+        "c": [[c_pair_thru(ctx, "PAIR")],
+              [c_pair_vlv(ctx, "E_L1L8", "pair via–line–via L1→L8→L1, pitch 1.0, round antipads, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, False, 2,
+                          "pair through four planes")]],
+        "d": [[c_pair_thru(ctx, "PAIR")],
+              [c_pair_vlv(ctx, "E_L1L3", f"pair via–line–via L1→{sn[inner[0]]}→L1 (stubs to L8), pitch 1.0, round antipads, 2 GND vias",
+                          ["E_s8_L1L3_p1000_round_g2"], inner[0], False, 2, "pair inner-layer exit with stubs")]],
+        "p": [[c_hpdn(ctx, "H_D2", 2.0, -1, 25.0, 16.0), c_hpdn(ctx, "H_D5", 5.0, 1, 25.0, 16.0)],
+              [c_hpdn(ctx, "H_D10", 10.0, -1, 25.0, 16.0), c_hpdn(ctx, "H_D2_0603", 2.0, 1, 25.0, 16.0, pkg="0603")]],
+    }
 
 
-BOARDS = {"jlc4_a": ("jlc4_7628", "a"), "jlc4_b": ("jlc4_7628", "b"), "jlc6_a": ("jlc6_7628", "a"), "jlc6_b": ("jlc6_7628", "b"),
-          "aisler4_a": ("aisler4_assumed", "a")}
+STACKS_GEN = ["jlc4_7628", "jlc6_7628", "jlc8_7628", "aisler4_assumed", "jlc4_3313", "jlc6_3313"]
+
+
+def all_boards():
+    """board key -> (stackup, part); parts follow board_specs"""
+    parts = {4: "abcd", 6: "abcd", 8: "abcdp"}
+    out = {}
+    for sk in STACKS_GEN:
+        n = len(STK["stackups"][sk]["copper"])
+        ps = "a" if sk.startswith("aisler") else parts[n] + ("p" if sk == "jlc4_7628" else "")
+        for p in ps:
+            out[f"{sk}_{p}"] = (sk, p)
+    return out
+
+
+BOARDS = all_boards()
+PART_TITLE = {"a": "lines / vias", "b": "vias / return path", "c": "pairs", "d": "coupling / capacitors", "p": "PDN"}
 
 
 # --- kisi-fdtd cases ------------------------------------------------------------------------------
@@ -1184,38 +1379,39 @@ def in_rect(x, y, r, m=0.0):
 
 
 def fdtd_case(board, G, c, win, mask=True):
-    """the coupon inside the window as a kisi-fdtd case (via_cases.Builder): planes, traces
-    (zero thickness, widened for the copper thickness), vias, antipads, pours, the solder mask as
-    a dielectric layer; lumped 50 Ω ports where traces leave the window"""
+    """the coupon inside the window as a kisi-fdtd case (via_cases.Builder): planes, traces (zero
+    thickness, widened for the copper thickness), vias, antipads, pours, islands and patches, the
+    solder mask as a dielectric layer, capacitors as a 5 mΩ lumped short on a 0.5 mm body loop (as
+    via_cases.pdn_loop); lumped 50 Ω ports where traces leave the window"""
     stk = board.stk
     x0, x1 = c.cx + win["x0"], c.cx + win["x1"]
     hy = win["half_y"] or min(c.H / 2 + 0.65, 7.0)
     xc, yc = (x0 + x1) / 2, c.cy
     W = (x0, yc - hy, x1, yc + hy)
     half_x = (x1 - x0) / 2 + 1.5
-    has_island = any(isl["cid"] == c.cid for isl in G["islands"])
+    isl_here = [isl for isl in G["islands"] if isl["cid"] == c.cid]
     key = stk.vc_key
-    if has_island:  # the island layer is not a full plane in this window
-        key = stk.vc_key + "_g"
+    if isl_here:  # the island layer is not a full plane in this window
+        key = stk.vc_key + "_isl"
         st = dict(vc.STACKUPS[stk.vc_key])
-        st["planes"] = [p for p in stk.planes if p not in [isl["layer"] for isl in G["islands"]]]
+        st["planes"] = [p for p in stk.planes if p not in [isl["layer"] for isl in isl_here]]
         vc.STACKUPS[key] = st
     b = vc.Builder(key, half_x, hy, win["fmax"], win["dfine"])
     b.case["mesh"]["thirds"] = True
     loc = lambda x, y: (round(x - xc, 5), round(y - yc, 5))
-    # traces: x-directed pieces inside the window
     ports = []
     for t in G["traces"]:
-        if t["cid"] != c.cid:
+        if t["cid"] != c.cid or t["net"] == "GND":  # GND: pad-to-via links, covered by the via pads
             continue
         L = t["layer"]
         wf = round(t["w"] + stk.dw_thick(L), 4)
         for a, q in zip(t["pts"][:-1], t["pts"][1:]):
-            if abs(a[1] - q[1]) > 1e-6:
-                if in_rect(a[0], a[1], W) or in_rect(q[0], q[1], W):
-                    if abs(a[0] - q[0]) > 1e-6:
-                        raise ValueError(f"{c.cid}/{win['name']}: diagonal trace inside the 3D window")
-                    ya, yb = sorted((a[1], q[1]))
+            if abs(a[1] - q[1]) > 1e-6:  # y-directed or diagonal piece
+                inside = in_rect(a[0], a[1], W) or in_rect(q[0], q[1], W)
+                if inside and abs(a[0] - q[0]) > 1e-6:
+                    raise ValueError(f"{c.cid}/{win['name']}: diagonal trace inside the 3D window")
+                if inside:
+                    ya, yb = max(min(a[1], q[1]), W[1]), min(max(a[1], q[1]), W[3])
                     xa_, _ = loc(a[0], 0)
                     b.case["sheets"].append({"z": stk.z[L], "rect": [round(xa_ - wf / 2, 5), round(ya - yc, 5), round(xa_ + wf / 2, 5), round(yb - yc, 5)], "net": "SIG"})
                 continue
@@ -1233,27 +1429,25 @@ def fdtd_case(board, G, c, win, mask=True):
             for xe, edge in ((ca, x0), (cb, x1)):
                 if abs(xe - edge) < 1e-9 and (hi > edge + 1e-9 if edge == x1 else lo < edge - 1e-9):
                     ports.append((loc(xe, a[1]), wf, L))
-    # pours, island, holes, vias
+    clip = lambda r: (max(r[0], W[0]), max(r[1], W[1]), min(r[2], W[2]), min(r[3], W[3]))
     for p in G["pours"]:  # this coupon's pours, ending at the port planes
-        if p["cid"] != c.cid:
-            continue
-        r = p["rect"]
-        rr = (max(r[0], W[0]), max(r[1], W[1]), min(r[2], W[2]), min(r[3], W[3]))
-        if rr[2] - rr[0] > 0.05 and rr[3] - rr[1] > 0.05:
-            a_ = loc(rr[0], rr[1])
-            b_ = loc(rr[2], rr[3])
-            b.sheet(stk.z[p["layer"]], [a_[0], a_[1], b_[0], b_[1]], net="GND")
-    for isl in G["islands"]:
-        if isl["cid"] != c.cid:
-            continue
-        r = isl["rect"]
-        g = isl.get("clearance", 0.5)
-        z = stk.z[isl["layer"]]
+        if p["cid"] == c.cid:
+            rr = clip(p["rect"])
+            if rr[2] - rr[0] > 0.05 and rr[3] - rr[1] > 0.05:
+                a_, b_ = loc(rr[0], rr[1]), loc(rr[2], rr[3])
+                b.sheet(stk.z[p["layer"]], [a_[0], a_[1], b_[0], b_[1]], net="GND")
+    hole_loc = lambda s: [*loc(s[1], s[2]), s[3]]
+    for z_ in [z for z in G["zones"] if z["cid"] == c.cid]:  # copper patches on signal layers
+        a_, b_ = loc(z_["rect"][0], z_["rect"][1]), loc(z_["rect"][2], z_["rect"][3])
+        b.sheet(stk.z[z_["layer"]], [a_[0], a_[1], b_[0], b_[1]], [hole_loc(s) for s in z_["holes"]], net="PWR")
+    dom = [-half_x, -hy, half_x, hy]
+    for isl in isl_here:
+        r, g, z = isl["rect"], isl.get("clearance", 0.5), stk.z[isl["layer"]]
         a_, b_ = loc(r[0], r[1]), loc(r[2], r[3])
-        b.sheet(z, [a_[0], a_[1], b_[0], b_[1]], net="PWR")
-        dom = [-half_x, -hy, half_x, hy]
+        b.sheet(z, [a_[0], a_[1], b_[0], b_[1]], [hole_loc(s) for s in isl["holes"]], net="PWR")
         for rr in ((dom[0], dom[1], dom[2], a_[1] - g), (dom[0], b_[1] + g, dom[2], dom[3]), (dom[0], a_[1] - g, a_[0] - g, b_[1] + g), (b_[0] + g, a_[1] - g, dom[2], b_[1] + g)):
-            b.sheet(z, list(rr), net="GND")
+            if rr[2] - rr[0] > 0.05 and rr[3] - rr[1] > 0.05:
+                b.sheet(z, list(rr), net="GND")
     for h in G["holes"]:
         if h["cid"] != c.cid:
             continue
@@ -1265,8 +1459,7 @@ def fdtd_case(board, G, c, win, mask=True):
             if L not in vc.STACKUPS[key]["planes"]:
                 continue
             if s[0] == "circle":
-                p_ = loc(s[1], s[2])
-                b.antipad(L, p_[0], p_[1], s[3])
+                b.antipad(L, *loc(s[1], s[2]), s[3])
             elif s[0] == "slot":
                 p_, q_ = loc(s[1], s[2]), loc(s[3], s[4])
                 b.antipad(L, p_[0], p_[1], s[5], q_[0], q_[1])
@@ -1280,8 +1473,27 @@ def fdtd_case(board, G, c, win, mask=True):
         if v["role"] == "gnd":
             b.via(p_[0], p_[1], v["drill"] / 2, v["pad"] / 2, 0, stk.n - 1, [], net="GND")
         else:
-            pads = v["pads"] if v["pads"] is not None else list(range(stk.n))
-            b.via(p_[0], p_[1], v["drill"] / 2, v["pad"] / 2, 0, stk.n - 1, pads, net="SIG")
+            b.via(p_[0], p_[1], v["drill"] / 2, v["pad"] / 2, 0, stk.n - 1, v["pads"] if v["pads"] is not None else list(range(stk.n)), net="SIG")
+    top = stk.z[0]
+    for part in [p for p in G["parts"] if p["cid"] == c.cid]:
+        pads = [(part["x"] + pd["x"], part["y"] + pd["y"], pd) for pd in part["pads"]]
+        for (x, y, pd) in pads:  # pads as sheets (circles as squares of the same area)
+            if not in_rect(x, y, W):
+                continue
+            sx, sy = (pd["sx"] * 0.886, pd["sy"] * 0.886) if pd.get("shape") == "circle" else (pd["sx"], pd["sy"])
+            p_ = loc(x, y)
+            b.sheet(top, [round(p_[0] - sx / 2, 5), round(p_[1] - sy / 2, 5), round(p_[0] + sx / 2, 5), round(p_[1] + sy / 2, 5)], net="PAD")
+        if part["prefix"] == "C" and all(in_rect(x, y, W) for x, y, _ in pads):
+            (xa, ya, pa), (xb, yb, pb) = pads
+            gnd_first = pa["net"] == "GND"
+            (xg, yg), (xs, ys) = ((xa, ya), (xb, yb)) if gnd_first else ((xb, yb), (xa, ya))
+            g_, s_ = loc(xg, yg), loc(xs, ys)
+            hb = 0.5
+            b.cyl(s_[0], s_[1], 0.1, top, top + hb, net="PWR")
+            lo_ = (min(g_[0], s_[0]) - 0.15, min(g_[1], s_[1]) - 0.15, max(g_[0], s_[0]) + 0.15, max(g_[1], s_[1]) + 0.15)
+            b.sheet(top + hb, [round(v, 5) for v in lo_], net="PWR")
+            # the short: a z-directed lumped element at the GND pad, between the pad and the body sheet
+            b.lumped(g_[0], g_[1], top, top + hb, r=0.005, w=0.3, name=f"{part['package']} populated with 0 Ω (5 mΩ)")
     # ports: near (left) ports first, upper y first; 4-port order 1 P near, 2 N near, 3 P far, 4 N far
     ports.sort(key=lambda t: (t[0][0] > 0, -t[0][1]))
     for k, ((x, y), wf, L) in enumerate(ports):
@@ -1289,7 +1501,7 @@ def fdtd_case(board, G, c, win, mask=True):
     for k_, v_ in win["extra"].items():
         if k_ == "meta_modes":
             b.case["meta_modes"] = v_
-        else:
+        elif k_ not in ("capz", "hpdn"):
             b.case[k_] = v_
     cid = f"{board.name}__{c.cid}__{win['name']}"
     case = b.finish(cid, win["group"], c.title + f" [{win['name']}: {win['note']}]", dict(c.params, window_mm=[win["x0"], win["x1"]]))
@@ -1307,46 +1519,45 @@ def fdtd_case(board, G, c, win, mask=True):
 
 
 # --- main -------------------------------------------------------------------------------------------
-def build(board_name, ks, pair_pitch, outdir, design_cache, fdtd_exe=None):
-    stk_key, part = BOARDS[board_name]
+def build(board_key, ks, pair_pitch, outdir, design_cache, fdtd_exe=None):
+    stk_key, part = BOARDS[board_key]
     stk = Stack(stk_key)
     if stk_key not in design_cache:
-        cpath = os.path.join(outdir, "boards", f"{stk_key}.design.json")
         des = design(stk, ks, pair_pitch)
         des["z_table"] = report_z(stk, ks, des)
-        des["stackup"] = stk_key
-        des["date"] = TODAY
-        json.dump(des, open(cpath, "w"), indent=1)
+        des.update(stackup=stk_key, date=TODAY)
+        json.dump(des, open(os.path.join(outdir, "boards", f"{stk_key}.design.json"), "w"), indent=1)
         design_cache[stk_key] = des
     des = design_cache[stk_key]
     ctx = Ctx(stk, des, pair_pitch)
-    coupons = board_specs(ctx, stk_key)[part]
+    rows = board_specs(ctx)[part]
     # rows sorted by length (stable): every row rests on a row at least as long (a stepped pyramid)
-    coupons.sort(key=lambda c: c.X)
-    X = max(c.X for c in coupons)
-    coupons.append(c_info(ctx, X, ""))
-    name = f"kisi-coupons-{board_name.replace('_', '-')}"
-    b = Board(name, stk, coupons, title=stk.d["title"])
+    rows.sort(key=lambda r: sum(c.X for c in r))
+    name = f"kisi-coupons-{board_key.replace('_', '-')}"
+    b = Board(name, stk, rows)
     b.design = des
-    info = coupons[-1]
     b.place()
-    yi = info.cy
-    b.texts.append((f"{name}  -  {stk.d['template'] or stk.d['title'][:40]}  -  {TODAY}", -X / 2 + 2.0, yi + 1.6, "F.SilkS", 1.2, "left"))
-    b.texts.append(("kisi measurement coupons - github.com/riehlies/kisi - validation/test_board", -X / 2 + 2.0, yi - 1.0, "F.SilkS", 0.9, "left"))
-    b.texts.append((f"{name} (bottom)", X / 2 - 2.0, yi, "B.SilkS", 1.0, "left"))
+    Wd, Hd = b.width(), b.height()
+    lim = LAY["board_limits"][str(stk.n)]
+    if stk.d["manufacturer"] == "JLCPCB" and (Wd > lim[0] + 1e-6 or Hd > lim[1] + 1e-6):
+        raise ValueError(f"{name}: {Wd:g} × {Hd:g} mm exceeds the {lim[0]:g} × {lim[1]:g} mm limit for {stk.n} layers")
+    # board name and order-number placeholder on the bottom silk, in the lower half of the bottom
+    # (longest) row, away from the end launches that clamp the board edges
+    yb = b.bottom
+    b.texts.append((name, 0.0, yb + 3.6, "B.SilkS", 0.8, None))
+    b.texts.append((f"{stk.d['template'] or 'assumed stackup'}  v2  {TODAY}", 0.0, yb + 2.4, "B.SilkS", 0.7, None))
     if stk.d["manufacturer"] == "JLCPCB":  # JLC prints its order number where this text is
-        b.texts.append(("JLCJLCJLCJLC", X / 2 - 2.0, yi + 2.0, "B.SilkS", 1.0, "left"))
+        b.texts.append(("JLCJLCJLCJLC", 0.0, yb + 1.2, "B.SilkS", 0.7, None))
     path = os.path.join(outdir, "boards", name + ".kicad_pcb")
     G = b.write_kicad(path)
     b.write_kisi_config(path[:-len(".kicad_pcb")] + ".kisi.json")
-    # 3D cases
-    fdir = os.path.join(outdir, "fdtd", board_name)
+    fdir = os.path.join(outdir, "fdtd", board_key)
     os.makedirs(fdir, exist_ok=True)
     for f in os.listdir(fdir):
         if f.endswith(".json"):
             os.remove(os.path.join(fdir, f))
     cases, cells = [], {}
-    for c in coupons:
+    for c in b.coupons:
         for win in c.windows:
             case = fdtd_case(b, G, c, win)
             cp = os.path.join(fdir, case["name"] + ".json")
@@ -1355,20 +1566,21 @@ def build(board_name, ks, pair_pitch, outdir, design_cache, fdtd_exe=None):
             if fdtd_exe:  # mesh only: cell count of the case
                 m = json.loads(subprocess.run([fdtd_exe, cp, "--mesh-only"], capture_output=True, text=True, check=True).stdout)
                 cells[case["name"]] = len(m["x"]) * len(m["y"]) * len(m["z"])
-    manifest = {"board": name, "file": os.path.basename(path), "stackup": stk_key, "stackup_title": stk.d["title"], "date": TODAY,
-                "size_mm": [round(X, 2), round(-b.bottom, 2)], "thickness_mm": round(stk.thickness(), 4),
+    manifest = {"board": name, "key": board_key, "part": PART_TITLE.get(part, part), "file": os.path.basename(path), "stackup": stk_key,
+                "stackup_title": stk.d["title"], "layers": stk.n, "manufacturer": stk.d["manufacturer"], "template": stk.d.get("template"), "date": TODAY,
+                "size_mm": [round(Wd, 2), round(Hd, 2)], "thickness_mm": round(stk.thickness(), 4),
                 "coupons": [{"id": c.cid, "group": c.group, "title": c.title, "length_mm": c.X, "height_mm": c.H, "validates": c.validates,
-                             "references": c.refs, "params": c.params, "nets": c.nets, "connectors": b.jmap.get(c.cid, []),
-                             "fdtd": [f"{name}__{c.cid}__{w['name']}" for w in c.windows]} for c in coupons if c.group != "info"],
+                             "references": c.refs, "params": c.params, "nets": c.nets, "measure": c.measure, "connectors": b.jmap.get(c.cid, []),
+                             "parts": b.refmap.get(c.cid, []), "fdtd": [f"{name}__{c.cid}__{w['name']}" for w in c.windows]} for c in b.coupons],
                 "fdtd_cases": cases, "fdtd_cells": cells}
     json.dump(manifest, open(os.path.join(outdir, "boards", name + ".manifest.json"), "w"), indent=1)
-    print(f"{name}: {len(coupons) - 1} coupons, {X:g} × {-b.bottom:g} mm, {len(cases)} 3D cases, {len(G['vias'])} vias", flush=True)
-    return name, path, manifest
+    print(f"{name}: {len(b.coupons)} coupons, {Wd:g} × {Hd:g} mm, {len(cases)} 3D cases", flush=True)
+    return manifest
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--boards", default="jlc4_a,jlc4_b,jlc6_a,jlc6_b,aisler4_a")
+    ap.add_argument("--boards", default=",".join(BOARDS), help="board keys: " + ", ".join(BOARDS))
     ap.add_argument("--out", default=HERE)
     ap.add_argument("--kisi", default=os.path.join(REPO, "target", "release", "kisi"))
     ap.add_argument("--kisi-mjs", default=os.path.join(REPO, "dist", "kisi.mjs"))
@@ -1385,13 +1597,14 @@ def main():
         for f in os.listdir(os.path.join(a.out, "boards")):
             if f.endswith(".design.json"):
                 d = json.load(open(os.path.join(a.out, "boards", f)))
-                if d.get("pair_pitch") == a.pair_pitch:
+                if d.get("pair_pitch") == a.pair_pitch and "pair_via" in d and len(d["pair_via"]) == len(STK["stackups"][d["stackup"]]["signal"]):
                     cache[d["stackup"]] = d
-    need = {BOARDS[bn][0] for bn in a.boards.split(",")} - set(cache)
+    keys = [k for k in a.boards.split(",") if k]
+    need = {BOARDS[k][0] for k in keys} - set(cache)
     if need:
         print(f"trace widths for {', '.join(sorted(need))} from kisi ({ks.solver}: {a.kisi_mjs if ks.solver == 'field' else a.kisi})", flush=True)
-    for bn in a.boards.split(","):
-        build(bn, ks, a.pair_pitch, a.out, cache, a.fdtd_exe)
+    for k in keys:
+        build(k, ks, a.pair_pitch, a.out, cache, a.fdtd_exe)
     print(f"kisi probe runs: {ks.calls}")
 
 

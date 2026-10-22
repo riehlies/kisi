@@ -1,0 +1,384 @@
+{
+ "board": "kisi-coupons-jlc4-7628-p",
+ "key": "jlc4_7628_p",
+ "part": "PDN",
+ "file": "kisi-coupons-jlc4-7628-p.kicad_pcb",
+ "stackup": "jlc4_7628",
+ "stackup_title": "JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template)",
+ "layers": 4,
+ "manufacturer": "JLCPCB",
+ "template": "JLC04161H-7628",
+ "date": "2026-10-22",
+ "size_mm": [
+  100.0,
+  96.0
+ ],
+ "thickness_mm": 1.5862,
+ "coupons": [
+  {
+   "id": "THRU",
+   "group": "thru",
+   "title": "2\u00d7thru on L1, 25 mm edge to edge",
+   "length_mm": 25.0,
+   "height_mm": 12.0,
+   "validates": "fixture of every coupon on this board (P370 2\u00d7thru); multiline TRL thru",
+   "references": [
+    "thru_s4_L1"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.345,
+    "length_mm": 25.0
+   },
+   "nets": [
+    "SE_THRU"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J1",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    },
+    {
+     "ref": "J2",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-7628-p__THRU__w10"
+   ]
+  },
+  {
+   "id": "G_CAV",
+   "group": "G",
+   "title": "Plane cavity 50 \u00d7 30 mm on In2.Cu under In1.Cu (d = 1.065 mm), ports at a corner and the centre",
+   "length_mm": 100.0,
+   "height_mm": 36.0,
+   "validates": "cavity resonances (kisi `power --pdn`, cavity model \u00b10.8 % against 3D) and the \u03b5r of the dielectric between the planes",
+   "references": [
+    "G_pp100",
+    "G_pp200"
+   ],
+   "params": {
+    "size_mm": "50 \u00d7 30",
+    "d_mm": 1.065,
+    "modes_GHz": [
+     1.398,
+     2.33,
+     2.717,
+     2.796,
+     3.639,
+     4.193,
+     4.659,
+     4.797
+    ],
+    "modes_mn": [
+     "10",
+     "01",
+     "11",
+     "20",
+     "21",
+     "30",
+     "02",
+     "31"
+    ],
+    "modes_note": "magnetic-wall estimate with the nominal er; fringing lowers them"
+   },
+   "nets": [
+    "CAV_G_CAV"
+   ],
+   "measure": "VNA 2-port (S21 peaks; Z21 by shunt-thru)",
+   "connectors": [
+    {
+     "ref": "J3",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "CAV_G_CAV"
+    },
+    {
+     "ref": "J4",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "CAV_G_CAV"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-7628-p__G_CAV__wg"
+   ]
+  },
+  {
+   "id": "H_D2",
+   "group": "H",
+   "title": "PDN loop: IC pin field to a 0402 capacitor 2 mm away, PWR island on In2.Cu, shunt-thru ports at the left edge",
+   "length_mm": 50.0,
+   "height_mm": 24.0,
+   "validates": "capacitor loop inductance and Z(f) at the IC (kisi `power --pdn`: pdn_ic, cavity_modal loop inductance; package ESL and mount_nh of data/components.json)",
+   "references": [
+    "H_s8_cap_2"
+   ],
+   "params": {
+    "distance_mm": 2.0,
+    "package": "0402",
+    "pins": "4 \u00d7 4, 0.8 mm",
+    "pwr_layer": "In2.Cu",
+    "island_mm": [
+     27.7,
+     21.6
+    ],
+    "gnd_pad_centre_from_field_edge_mm": 2.0
+   },
+   "nets": [
+    "VDD_H_D2",
+    "GND"
+   ],
+   "measure": "VNA 2-port shunt-thru: Z = 25\u00b7S21/(1 \u2212 S21), 100 kHz \u2013 1 GHz; unpopulated, 0 \u03a9, capacitor",
+   "connectors": [
+    {
+     "ref": "J5",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "VDD_H_D2"
+    },
+    {
+     "ref": "J6",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "VDD_H_D2"
+    }
+   ],
+   "parts": [
+    {
+     "ref": "U1",
+     "role": "ic",
+     "value": "pin field (no part)",
+     "package": null,
+     "populate": null
+    },
+    {
+     "ref": "C1",
+     "role": "decap",
+     "value": "100nF 16V X7R",
+     "package": "0402",
+     "populate": "empty / 0 \u03a9 / 100 nF X7R / others (component list)"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-7628-p__H_D2__wh"
+   ]
+  },
+  {
+   "id": "H_D5",
+   "group": "H",
+   "title": "PDN loop: IC pin field to a 0402 capacitor 5 mm away, PWR island on In2.Cu, shunt-thru ports at the right edge",
+   "length_mm": 50.0,
+   "height_mm": 24.0,
+   "validates": "capacitor loop inductance and Z(f) at the IC (kisi `power --pdn`: pdn_ic, cavity_modal loop inductance; package ESL and mount_nh of data/components.json)",
+   "references": [
+    "H_s8_cap_5"
+   ],
+   "params": {
+    "distance_mm": 5.0,
+    "package": "0402",
+    "pins": "4 \u00d7 4, 0.8 mm",
+    "pwr_layer": "In2.Cu",
+    "island_mm": [
+     27.7,
+     21.6
+    ],
+    "gnd_pad_centre_from_field_edge_mm": 5.0
+   },
+   "nets": [
+    "VDD_H_D5",
+    "GND"
+   ],
+   "measure": "VNA 2-port shunt-thru: Z = 25\u00b7S21/(1 \u2212 S21), 100 kHz \u2013 1 GHz; unpopulated, 0 \u03a9, capacitor",
+   "connectors": [
+    {
+     "ref": "J7",
+     "port": "1",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "VDD_H_D5"
+    },
+    {
+     "ref": "J8",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "VDD_H_D5"
+    }
+   ],
+   "parts": [
+    {
+     "ref": "U2",
+     "role": "ic",
+     "value": "pin field (no part)",
+     "package": null,
+     "populate": null
+    },
+    {
+     "ref": "C2",
+     "role": "decap",
+     "value": "100nF 16V X7R",
+     "package": "0402",
+     "populate": "empty / 0 \u03a9 / 100 nF X7R / others (component list)"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-7628-p__H_D5__wh"
+   ]
+  },
+  {
+   "id": "H_D10",
+   "group": "H",
+   "title": "PDN loop: IC pin field to a 0402 capacitor 10 mm away, PWR island on In2.Cu, shunt-thru ports at the left edge",
+   "length_mm": 50.0,
+   "height_mm": 24.0,
+   "validates": "capacitor loop inductance and Z(f) at the IC (kisi `power --pdn`: pdn_ic, cavity_modal loop inductance; package ESL and mount_nh of data/components.json)",
+   "references": [
+    "H_s8_cap_10"
+   ],
+   "params": {
+    "distance_mm": 10.0,
+    "package": "0402",
+    "pins": "4 \u00d7 4, 0.8 mm",
+    "pwr_layer": "In2.Cu",
+    "island_mm": [
+     27.7,
+     21.6
+    ],
+    "gnd_pad_centre_from_field_edge_mm": 10.0
+   },
+   "nets": [
+    "VDD_H_D10",
+    "GND"
+   ],
+   "measure": "VNA 2-port shunt-thru: Z = 25\u00b7S21/(1 \u2212 S21), 100 kHz \u2013 1 GHz; unpopulated, 0 \u03a9, capacitor",
+   "connectors": [
+    {
+     "ref": "J9",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "VDD_H_D10"
+    },
+    {
+     "ref": "J10",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "VDD_H_D10"
+    }
+   ],
+   "parts": [
+    {
+     "ref": "U3",
+     "role": "ic",
+     "value": "pin field (no part)",
+     "package": null,
+     "populate": null
+    },
+    {
+     "ref": "C3",
+     "role": "decap",
+     "value": "100nF 16V X7R",
+     "package": "0402",
+     "populate": "empty / 0 \u03a9 / 100 nF X7R / others (component list)"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-7628-p__H_D10__wh"
+   ]
+  },
+  {
+   "id": "H_D20",
+   "group": "H",
+   "title": "PDN loop: IC pin field to a 0402 capacitor 20 mm away, PWR island on In2.Cu, shunt-thru ports at the right edge",
+   "length_mm": 50.0,
+   "height_mm": 24.0,
+   "validates": "capacitor loop inductance and Z(f) at the IC (kisi `power --pdn`: pdn_ic, cavity_modal loop inductance; package ESL and mount_nh of data/components.json)",
+   "references": [
+    "H_s8_cap_20"
+   ],
+   "params": {
+    "distance_mm": 20.0,
+    "package": "0402",
+    "pins": "4 \u00d7 4, 0.8 mm",
+    "pwr_layer": "In2.Cu",
+    "island_mm": [
+     27.7,
+     21.6
+    ],
+    "gnd_pad_centre_from_field_edge_mm": 20.0
+   },
+   "nets": [
+    "VDD_H_D20",
+    "GND"
+   ],
+   "measure": "VNA 2-port shunt-thru: Z = 25\u00b7S21/(1 \u2212 S21), 100 kHz \u2013 1 GHz; unpopulated, 0 \u03a9, capacitor",
+   "connectors": [
+    {
+     "ref": "J11",
+     "port": "1",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "VDD_H_D20"
+    },
+    {
+     "ref": "J12",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "VDD_H_D20"
+    }
+   ],
+   "parts": [
+    {
+     "ref": "U4",
+     "role": "ic",
+     "value": "pin field (no part)",
+     "package": null,
+     "populate": null
+    },
+    {
+     "ref": "C4",
+     "role": "decap",
+     "value": "100nF 16V X7R",
+     "package": "0402",
+     "populate": "empty / 0 \u03a9 / 100 nF X7R / others (component list)"
+    }
+   ],
+   "fdtd": [
+    "kisi-coupons-jlc4-7628-p__H_D20__wh"
+   ]
+  }
+ ],
+ "fdtd_cases": [
+  "kisi-coupons-jlc4-7628-p__THRU__w10",
+  "kisi-coupons-jlc4-7628-p__G_CAV__wg",
+  "kisi-coupons-jlc4-7628-p__H_D2__wh",
+  "kisi-coupons-jlc4-7628-p__H_D5__wh",
+  "kisi-coupons-jlc4-7628-p__H_D10__wh",
+  "kisi-coupons-jlc4-7628-p__H_D20__wh"
+ ],
+ "fdtd_cells": {
+  "kisi-coupons-jlc4-7628-p__THRU__w10": 727833,
+  "kisi-coupons-jlc4-7628-p__G_CAV__wg": 1958672,
+  "kisi-coupons-jlc4-7628-p__H_D2__wh": 1867600,
+  "kisi-coupons-jlc4-7628-p__H_D5__wh": 1859550,
+  "kisi-coupons-jlc4-7628-p__H_D10__wh": 1838298,
+  "kisi-coupons-jlc4-7628-p__H_D20__wh": 1846256
+ }
+}

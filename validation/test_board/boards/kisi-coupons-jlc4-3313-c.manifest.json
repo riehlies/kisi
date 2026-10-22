@@ -1,0 +1,260 @@
+{
+ "board": "kisi-coupons-jlc4-3313-c",
+ "key": "jlc4_3313_c",
+ "part": "pairs",
+ "file": "kisi-coupons-jlc4-3313-c.kicad_pcb",
+ "stackup": "jlc4_3313",
+ "stackup_title": "JLCPCB JLC04161H-3313, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (second order with thin prepreg)",
+ "layers": 4,
+ "manufacturer": "JLCPCB",
+ "template": "JLC04161H-3313",
+ "date": "2026-10-22",
+ "size_mm": [
+  35.0,
+  96.0
+ ],
+ "thickness_mm": 1.5642,
+ "coupons": [
+  {
+   "id": "PAIR",
+   "group": "thru",
+   "title": "pair 2\u00d7thru on L1 at the 1.0 mm via pitch (100 \u03a9 differential), 30 mm edge to edge",
+   "length_mm": 30.0,
+   "height_mm": 24.0,
+   "validates": "fixture of the pair coupons on this board",
+   "references": [],
+   "params": {
+    "w_pair_mm": 0.15,
+    "pitch_mm": 1.0
+   },
+   "nets": [
+    "DP_PAIR_P",
+    "DP_PAIR_N"
+   ],
+   "measure": "VNA 4-port",
+   "connectors": [
+    {
+     "ref": "J1",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_PAIR_P"
+    },
+    {
+     "ref": "J2",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_PAIR_N"
+    },
+    {
+     "ref": "J3",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_PAIR_P"
+    },
+    {
+     "ref": "J4",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_PAIR_N"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-c__PAIR__w6"
+   ]
+  },
+  {
+   "id": "E_R_G2",
+   "group": "E",
+   "title": "pair via\u2013line\u2013via L1\u2192L4\u2192L1, pitch 1.0, round antipads \u00d80.8, 2 GND vias",
+   "length_mm": 35.0,
+   "height_mm": 24.0,
+   "validates": "differential via ladder: Sdd21, Zdiff, Scd21",
+   "references": [
+    "E_s8_L1L8_p1000_round_g2"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 5.0,
+    "pitch_mm": 1.0,
+    "antipad": "round",
+    "gnd_vias": 2,
+    "w_pair_mm": 0.15,
+    "stub": "none"
+   },
+   "nets": [
+    "DP_E_R_G2_P",
+    "DP_E_R_G2_N"
+   ],
+   "measure": "VNA 4-port",
+   "connectors": [
+    {
+     "ref": "J5",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_E_R_G2_P"
+    },
+    {
+     "ref": "J6",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_E_R_G2_N"
+    },
+    {
+     "ref": "J7",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_E_R_G2_P"
+    },
+    {
+     "ref": "J8",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_E_R_G2_N"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-c__E_R_G2__wv"
+   ]
+  },
+  {
+   "id": "E_O_G2",
+   "group": "E",
+   "title": "pair via\u2013line\u2013via L1\u2192L4\u2192L1, pitch 1.0, one oval antipad, 2 GND vias",
+   "length_mm": 35.0,
+   "height_mm": 24.0,
+   "validates": "oval (non-round) antipad: kisi's equivalent radius",
+   "references": [
+    "E_s8_L1L8_p1000_oval_g2"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 5.0,
+    "pitch_mm": 1.0,
+    "antipad": "oval",
+    "gnd_vias": 2,
+    "w_pair_mm": 0.15,
+    "stub": "none"
+   },
+   "nets": [
+    "DP_E_O_G2_P",
+    "DP_E_O_G2_N"
+   ],
+   "measure": "VNA 4-port",
+   "connectors": [
+    {
+     "ref": "J9",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_E_O_G2_P"
+    },
+    {
+     "ref": "J10",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_E_O_G2_N"
+    },
+    {
+     "ref": "J11",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_E_O_G2_P"
+    },
+    {
+     "ref": "J12",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_E_O_G2_N"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-c__E_O_G2__wv"
+   ]
+  },
+  {
+   "id": "E_R_G0",
+   "group": "E",
+   "title": "pair via\u2013line\u2013via L1\u2192L4\u2192L1, pitch 1.0, round antipads, no GND vias",
+   "length_mm": 35.0,
+   "height_mm": 24.0,
+   "validates": "pair via without return vias",
+   "references": [
+    "E_s8_L1L8_p1000_round_g0"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 5.0,
+    "pitch_mm": 1.0,
+    "antipad": "round",
+    "gnd_vias": 0,
+    "w_pair_mm": 0.15,
+    "stub": "none"
+   },
+   "nets": [
+    "DP_E_R_G0_P",
+    "DP_E_R_G0_N"
+   ],
+   "measure": "VNA 4-port",
+   "connectors": [
+    {
+     "ref": "J13",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_E_R_G0_P"
+    },
+    {
+     "ref": "J14",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_E_R_G0_N"
+    },
+    {
+     "ref": "J15",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_E_R_G0_P"
+    },
+    {
+     "ref": "J16",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_E_R_G0_N"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-c__E_R_G0__wv"
+   ]
+  }
+ ],
+ "fdtd_cases": [
+  "kisi-coupons-jlc4-3313-c__PAIR__w6",
+  "kisi-coupons-jlc4-3313-c__E_R_G2__wv",
+  "kisi-coupons-jlc4-3313-c__E_O_G2__wv",
+  "kisi-coupons-jlc4-3313-c__E_R_G0__wv"
+ ],
+ "fdtd_cells": {
+  "kisi-coupons-jlc4-3313-c__PAIR__w6": 437346,
+  "kisi-coupons-jlc4-3313-c__E_R_G2__wv": 970218,
+  "kisi-coupons-jlc4-3313-c__E_O_G2__wv": 970218,
+  "kisi-coupons-jlc4-3313-c__E_R_G0__wv": 953046
+ }
+}

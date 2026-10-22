@@ -1,0 +1,372 @@
+{
+ "board": "kisi-coupons-jlc4-3313-b",
+ "key": "jlc4_3313_b",
+ "part": "vias / return path",
+ "file": "kisi-coupons-jlc4-3313-b.kicad_pcb",
+ "stackup": "jlc4_3313",
+ "stackup_title": "JLCPCB JLC04161H-3313, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (second order with thin prepreg)",
+ "layers": 4,
+ "manufacturer": "JLCPCB",
+ "template": "JLC04161H-3313",
+ "date": "2026-10-22",
+ "size_mm": [
+  35.0,
+  96.0
+ ],
+ "thickness_mm": 1.5642,
+ "coupons": [
+  {
+   "id": "THRU",
+   "group": "thru",
+   "title": "2\u00d7thru on L1, 25 mm edge to edge",
+   "length_mm": 25.0,
+   "height_mm": 12.0,
+   "validates": "fixture of every coupon on this board (P370 2\u00d7thru); multiline TRL thru",
+   "references": [
+    "thru_s4_L1"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.15,
+    "length_mm": 25.0
+   },
+   "nets": [
+    "SE_THRU"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J1",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    },
+    {
+     "ref": "J2",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-b__THRU__w10"
+   ]
+  },
+  {
+   "id": "A0800",
+   "group": "A",
+   "title": "via\u2013line\u2013via L1\u2192L4\u2192L1 through the L2/L3 plane pair, drill 0.3, antipad \u00d80.8, 4 GND vias at 1 mm",
+   "length_mm": 30.0,
+   "height_mm": 12.0,
+   "validates": "via ladder / coax section: antipad dependence of Z and delay (A group)",
+   "references": [
+    "A_s4_d300_ap800"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 5.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "none"
+   },
+   "nets": [
+    "SE_A0800"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J3",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_A0800"
+    },
+    {
+     "ref": "J4",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_A0800"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-b__A0800__wv"
+   ]
+  },
+  {
+   "id": "A1000",
+   "group": "A",
+   "title": "via\u2013line\u2013via L1\u2192L4\u2192L1 through the L2/L3 plane pair, drill 0.3, antipad \u00d81.0, 4 GND vias at 1 mm",
+   "length_mm": 30.0,
+   "height_mm": 12.0,
+   "validates": "via ladder / coax section: antipad dependence of Z and delay (A group)",
+   "references": [
+    "A_s4_d300_ap1000"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 5.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 1.0,
+    "stub": "none"
+   },
+   "nets": [
+    "SE_A1000"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J5",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_A1000"
+    },
+    {
+     "ref": "J6",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_A1000"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-b__A1000__wv"
+   ]
+  },
+  {
+   "id": "A1200",
+   "group": "A",
+   "title": "via\u2013line\u2013via L1\u2192L4\u2192L1 through the L2/L3 plane pair, drill 0.3, antipad \u00d81.2, 4 GND vias at 1 mm",
+   "length_mm": 30.0,
+   "height_mm": 12.0,
+   "validates": "via ladder / coax section: antipad dependence of Z and delay (A group)",
+   "references": [],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 5.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 1.2,
+    "stub": "none"
+   },
+   "nets": [
+    "SE_A1200"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J7",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_A1200"
+    },
+    {
+     "ref": "J8",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_A1200"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-b__A1200__wv"
+   ]
+  },
+  {
+   "id": "D_S1p0",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L4 (ref L3) \u2192 L1, one GND via 1 mm from each via, antipad \u00d80.8",
+   "length_mm": 35.0,
+   "height_mm": 12.0,
+   "validates": "return path of a reference change L2 \u2192 L3 (kisi: GND vias within 3 mm enter the ladder; up to 5 mm an inductance)",
+   "references": [
+    "D_s8_stitch_1p0"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 10.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "none",
+    "stitch_mm": 1.0
+   },
+   "nets": [
+    "SE_D_S1p0"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J9",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_S1p0"
+    },
+    {
+     "ref": "J10",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_D_S1p0"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-b__D_S1p0__wv"
+   ]
+  },
+  {
+   "id": "D_S2p0",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L4 (ref L3) \u2192 L1, one GND via 2 mm from each via, antipad \u00d80.8",
+   "length_mm": 35.0,
+   "height_mm": 12.0,
+   "validates": "return path of a reference change L2 \u2192 L3 (kisi: GND vias within 3 mm enter the ladder; up to 5 mm an inductance)",
+   "references": [
+    "D_s8_stitch_2p0"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 10.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "none",
+    "stitch_mm": 2.0
+   },
+   "nets": [
+    "SE_D_S2p0"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J11",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_S2p0"
+    },
+    {
+     "ref": "J12",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_D_S2p0"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-b__D_S2p0__wv"
+   ]
+  },
+  {
+   "id": "D_S3p5",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L4 (ref L3) \u2192 L1, one GND via 3.5 mm from each via, antipad \u00d80.8",
+   "length_mm": 35.0,
+   "height_mm": 12.0,
+   "validates": "return path of a reference change L2 \u2192 L3 (kisi: GND vias within 3 mm enter the ladder; up to 5 mm an inductance)",
+   "references": [],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 10.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "none",
+    "stitch_mm": 3.5
+   },
+   "nets": [
+    "SE_D_S3p5"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J13",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_S3p5"
+    },
+    {
+     "ref": "J14",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_D_S3p5"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-b__D_S3p5__wv"
+   ]
+  },
+  {
+   "id": "D_NONE",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L4 (ref L3) \u2192 L1, no return via (the row walls at \u00b16 mm only)",
+   "length_mm": 35.0,
+   "height_mm": 12.0,
+   "validates": "return path without a nearby GND via: the plane-pair cavity between the row walls",
+   "references": [
+    "D_s8_stitch_none"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 10.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "none"
+   },
+   "nets": [
+    "SE_D_NONE"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J15",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_NONE"
+    },
+    {
+     "ref": "J16",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_D_NONE"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc4-3313-b__D_NONE__wv"
+   ]
+  }
+ ],
+ "fdtd_cases": [
+  "kisi-coupons-jlc4-3313-b__THRU__w10",
+  "kisi-coupons-jlc4-3313-b__A0800__wv",
+  "kisi-coupons-jlc4-3313-b__A1000__wv",
+  "kisi-coupons-jlc4-3313-b__A1200__wv",
+  "kisi-coupons-jlc4-3313-b__D_S1p0__wv",
+  "kisi-coupons-jlc4-3313-b__D_S2p0__wv",
+  "kisi-coupons-jlc4-3313-b__D_S3p5__wv",
+  "kisi-coupons-jlc4-3313-b__D_NONE__wv"
+ ],
+ "fdtd_cells": {
+  "kisi-coupons-jlc4-3313-b__THRU__w10": 677322,
+  "kisi-coupons-jlc4-3313-b__A0800__wv": 1323594,
+  "kisi-coupons-jlc4-3313-b__A1000__wv": 1323594,
+  "kisi-coupons-jlc4-3313-b__A1200__wv": 1323594,
+  "kisi-coupons-jlc4-3313-b__D_S1p0__wv": 1505250,
+  "kisi-coupons-jlc4-3313-b__D_S2p0__wv": 1505250,
+  "kisi-coupons-jlc4-3313-b__D_S3p5__wv": 1505250,
+  "kisi-coupons-jlc4-3313-b__D_NONE__wv": 1481166
+ }
+}

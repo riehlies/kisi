@@ -1,0 +1,138 @@
+{
+ "board": "kisi-coupons-jlc8-7628-d",
+ "key": "jlc8_7628_d",
+ "part": "coupling / capacitors",
+ "file": "kisi-coupons-jlc8-7628-d.kicad_pcb",
+ "stackup": "jlc8_7628",
+ "stackup_title": "JLCPCB JLC08201H-7628, 8 layers, 2.0 mm, outer 1 oz, inner 0.5 oz (JLC's default 8-layer 2.0 mm template; same 7628 top prepreg as the 4- and 6-layer boards)",
+ "layers": 8,
+ "manufacturer": "JLCPCB",
+ "template": "JLC08201H-7628",
+ "date": "2026-10-22",
+ "size_mm": [
+  35.0,
+  48.0
+ ],
+ "thickness_mm": 2.0528,
+ "coupons": [
+  {
+   "id": "PAIR",
+   "group": "thru",
+   "title": "pair 2\u00d7thru on L1 at the 1.0 mm via pitch (100 \u03a9 differential), 30 mm edge to edge",
+   "length_mm": 30.0,
+   "height_mm": 24.0,
+   "validates": "fixture of the pair coupons on this board",
+   "references": [],
+   "params": {
+    "w_pair_mm": 0.315,
+    "pitch_mm": 1.0
+   },
+   "nets": [
+    "DP_PAIR_P",
+    "DP_PAIR_N"
+   ],
+   "measure": "VNA 4-port",
+   "connectors": [
+    {
+     "ref": "J1",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_PAIR_P"
+    },
+    {
+     "ref": "J2",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_PAIR_N"
+    },
+    {
+     "ref": "J3",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_PAIR_P"
+    },
+    {
+     "ref": "J4",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_PAIR_N"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc8-7628-d__PAIR__w6"
+   ]
+  },
+  {
+   "id": "E_L1L3",
+   "group": "E",
+   "title": "pair via\u2013line\u2013via L1\u2192In2.Cu\u2192L1 (stubs to L8), pitch 1.0, round antipads, 2 GND vias",
+   "length_mm": 35.0,
+   "height_mm": 24.0,
+   "validates": "pair inner-layer exit with stubs",
+   "references": [
+    "E_s8_L1L3_p1000_round_g2"
+   ],
+   "params": {
+    "mid_layer": "In2.Cu",
+    "line_mm": 5.0,
+    "pitch_mm": 1.0,
+    "antipad": "round",
+    "gnd_vias": 2,
+    "w_pair_mm": 0.315,
+    "stub": "In2.Cu\u2192B.Cu"
+   },
+   "nets": [
+    "DP_E_L1L3_P",
+    "DP_E_L1L3_N"
+   ],
+   "measure": "VNA 4-port",
+   "connectors": [
+    {
+     "ref": "J5",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_E_L1L3_P"
+    },
+    {
+     "ref": "J6",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_E_L1L3_N"
+    },
+    {
+     "ref": "J7",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_E_L1L3_P"
+    },
+    {
+     "ref": "J8",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_E_L1L3_N"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc8-7628-d__E_L1L3__wv"
+   ]
+  }
+ ],
+ "fdtd_cases": [
+  "kisi-coupons-jlc8-7628-d__PAIR__w6",
+  "kisi-coupons-jlc8-7628-d__E_L1L3__wv"
+ ],
+ "fdtd_cells": {
+  "kisi-coupons-jlc8-7628-d__PAIR__w6": 611156,
+  "kisi-coupons-jlc8-7628-d__E_L1L3__wv": 1358019
+ }
+}

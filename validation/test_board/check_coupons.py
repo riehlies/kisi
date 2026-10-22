@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Run kisi on every coupon board (validation/test_board/README.md, section "kisi check").
 
-For each board in boards/*.manifest.json: `kisi overview`, `kisi check --all`, `kisi interfaces`,
-`kisi gaps`, and `kisi net` on every coupon net, with the native CLI (formula impedances) and, if
-given, the Node CLI (kisi.mjs, 2D field solver). Writes boards/<board>.kisi_check.json and the
-summary kisi_check.md.
+For each board in boards/*.manifest.json: `kisi overview`, `kisi config-check`, `kisi check --all`,
+`kisi interfaces`, `kisi gaps`, `kisi net` on every coupon signal net, with the native CLI (formula
+impedances) and, if given, the Node CLI (kisi.mjs, 2D field solver), and `kisi power --pdn RAIL` on
+every PDN rail (VDD_*: the H coupons). Writes boards/<board>.kisi_check.json and the summary
+kisi_check.md.
 
 usage: python3 check_coupons.py [--kisi target/release/kisi] [--kisi-mjs dist/kisi.mjs] [--boards NAME,...]
 """
@@ -55,6 +56,24 @@ def net_summary(d):
     return s
 
 
+def pdn_summary(d, rail):
+    """the per-IC PDN result of `power --pdn` for the coupon's pin field (U) and its capacitor"""
+    if "error" in d:
+        return {"error": d["error"]}
+    p = (d.get("pdn") or {})
+    pi = p.get("per_ic") or {}
+    ics = pi.get("ics") or []
+    if not ics:
+        return {"error": "no per-IC result", "warnings": pi.get("warnings")}
+    ic = ics[0]
+    caps = ic.get("capacitors_most_effective") or []
+    return {"ic": ic.get("ic"), "pins": ic.get("pins"), "z_ohm": {k: round(v, 4) for k, v in (ic.get("z_ohm") or {}).items()},
+            "caps": [{k: c.get(k) for k in ("ref", "dist_mm", "l_path_nh", "l_total_nh", "srf_mhz")} for c in caps],
+            "anti_resonances": [{"mhz": round(a["hz"] / 1e6, 1), "z_ohm": round(a["z_ohm"], 3)} for a in ic.get("anti_resonances", [])],
+            "cavity_first_resonance_mhz": round((p.get("cavity_first_resonance_hz") or 0) / 1e6, 1),
+            "capacitor_flags": pi.get("capacitor_flags"), "warnings": pi.get("warnings")}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--kisi", default=os.path.join(REPO, "target", "release", "kisi"))
@@ -81,16 +100,21 @@ def main():
         out["native"]["gaps"] = run(nat + ["gaps", pcb])
         if fld:
             out["field"]["overview"] = run(fld + ["overview", pcb, "--field-time", "600"], timeout=1800)
-        nets = {}
+        out["native"]["config_check"] = run(nat + ["config-check", pcb])
+        nets, pdn = {}, {}
         for c in man["coupons"]:
             for n in c["nets"]:
-                if n == "CAV" or n.endswith("_N"):
+                if n.startswith("VDD_"):
+                    pdn[n] = {"coupon": c["id"], "native": pdn_summary(run(nat + ["power", pcb, "--pdn", n]), n)}
+                    continue
+                if n.startswith("CAV_") or n == "GND" or n.endswith("_N"):
                     continue
                 e = {"coupon": c["id"], "native": net_summary(run(nat + ["net", pcb, n]))}
                 if fld:
                     e["field"] = net_summary(run(fld + ["net", pcb, n], timeout=900))
                 nets[n] = e
         out["nets"] = nets
+        out["pdn"] = pdn
         json.dump(out, open(os.path.join(HERE, "boards", name + ".kisi_check.json"), "w"), indent=1)
         # markdown summary
         ov = out["native"]["overview"]
@@ -102,6 +126,9 @@ def main():
         for o, lab in ((ov, "formula"), (ovf, "field solver")):
             for cl in o.get("classes", []):
                 md.append(f"- Class {cl['class']} ({lab}): {cl['nets']} nets, {round(100 * cl['within_5pct'], 1)} % of the length within ±5 % of {cl['target_ohm']:g} Ω.")
+        cc = out["native"]["config_check"]
+        md.append(f"- `config-check`: {'error: ' + cc['error'][:120] if 'error' in cc else ('ok' if cc.get('ok', not cc.get('errors')) else cc.get('errors'))}"
+                  f"{'; warnings: ' + '; '.join(map(str, cc.get('warnings'))) if cc.get('warnings') else ''}.")
         ch = out["native"]["check_all"]
         nlanes = sum(len(b.get("lanes", [])) for b in out["native"]["interfaces"].get("buses", []))
         md.append(f"- `check --all`: {len(ch.get('rows', []))} rows (summary {ch.get('summary')}); `interfaces` lists {nlanes} lanes, all "
@@ -126,6 +153,21 @@ def main():
             tmax = tdr.get("zdiff_max", tdr.get("z_max"))
             il = s.get("mixed", {}).get("sdd21_db") or s["il_db"]
             md.append(f"| {n} | {e['coupon']} | {fmt(zf)} | {fmt(zd)} | {vias} | {tmin} / {tmax} | {il.get(5.0)} / {il.get(12.5)} / {il.get(25.0)} | {'; '.join(s['warnings'])[:120] or '–'} |")
+        if pdn:
+            md += ["", "PDN coupons (`power --pdn RAIL`, native; the capacitor populated as in the board file: generic 100 nF X7R, package from the pad pitch,"
+                   " ESL / ESR / mounting estimates from `data/components.json` until PI_CAP fields are added):", "",
+                   "| rail | coupon | cap distance (mm, IC to cap centre) | L path / L total (nH) | SRF (MHz) | Z 1 / 10 / 100 MHz / 1 GHz (Ω) | first cavity resonance (MHz) | warnings |",
+                   "|---|---|---|---|---|---|---|---|"]
+            for n, e in pdn.items():
+                s = e["native"]
+                if "error" in s:
+                    md.append(f"| {n} | {e['coupon']} | error: {str(s['error'])[:80]} | | | | | |")
+                    continue
+                c = (s["caps"] or [{}])[0]
+                z = s["z_ohm"]
+                warn = [w for w in (s["warnings"] or []) if not w.startswith("no regulator")]
+                md.append(f"| {n} | {e['coupon']} | {c.get('dist_mm')} | {c.get('l_path_nh')} / {c.get('l_total_nh')} | {c.get('srf_mhz')} | "
+                          f"{z.get('1M')} / {z.get('10M')} / {z.get('100M')} / {z.get('1G')} | {s['cavity_first_resonance_mhz']} | {'; '.join(warn)[:120] or '–'} |")
         md.append("")
         print(name, "done", flush=True)
     open(os.path.join(HERE, "kisi_check.md"), "w").write("\n".join(md) + "\n")

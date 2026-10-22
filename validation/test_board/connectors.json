@@ -1,33 +1,26 @@
 {
- "_about": "End-launch connector and launch data for the coupons (validation/test_board/README.md). Dimensions in mm. 'verified': false marks values that are NOT taken from a vendor drawing and must be checked before ordering.",
+ "_about": "End-launch connector and layout data for the coupons (validation/test_board/README.md). Dimensions in mm. Everything under 'footprint' with 'verified': false is a PLACEHOLDER until the maintainer supplies the vendor drawing; edit the values here and regenerate (make_coupons.py --reuse-design).",
  "_fetched": "2026-10-22",
- "swm_narrow": {
+ "connector": {
   "vendor": "Southwest Microwave",
-  "series": "End Launch Connectors, narrow block (.350 in), clamp-on, solderless (pin interference fit, soldering optional)",
-  "parts": {
-   "sma": {
-    "pn": "292-04A-14",
-    "what": "SuperSMA jack (female), DC-27 GHz, PCB thickness .040-.090 in (1.02-2.29 mm), pin dia .010 in"
-   },
-   "k292": {
-    "pn": "1092-01A-14",
-    "what": "2.92 mm jack (female), DC-40 GHz, PCB thickness .040-.090 in; mates with SMA and 3.5 mm"
-   }
-  },
-  "why_14": "The -9 variants accept boards only up to .065 in (1.65 mm); JLC's 1.6 mm boards may be up to 1.76 mm (+/-10 %), so the -14 (.040-.090 in) range is the safe choice.",
-  "sources": {
-   "catalog": "https://mpd.southwestmicrowave.com/wp-content/uploads/End-Launch-Connectors-2024.pdf",
-   "product_list": "https://mpd.southwestmicrowave.com/product-category/end-launch-connectors",
-   "pin_and_range": "https://everythingrf.com/products/connectors/southwest-microwave/63-184-292-04a-14",
-   "price": "not published (no distributor price found on 2026-10-22); quote from Southwest Microwave or its representative"
-  },
-  "block_width": 8.89,
-  "block_width_src": "catalog ('.350 Transition Block', narrow block)",
+  "pn": "292-04A-14",
+  "what": "SuperSMA end launch jack (female), narrow block (.350 in), PCB thickness .040-.090 in (1.02-2.29 mm), clamp-on, solderless (pin interference fit; soldering optional)",
+  "pn_note": "maintainer's choice (2026-10-22): SMA, because cables and accessories for SMA exist. The online product list calls the -14 'narrow block (.350)' and uses 'thread-in' for the -12 standard-block parts: confirm the exact variant with the drawing.",
+  "frequency_max_ghz": 27.0,
+  "planning_max_ghz": 26.5,
   "pin_diameter": 0.254,
-  "pin_diameter_src": "catalog / everythingrf (.010 in)",
+  "dielectric_diameter": 1.613,
+  "block_width": 8.89,
+  "pcb_fasteners": "#1-72 SHCS",
+  "connector_fasteners": "#0-80",
+  "sources": {
+   "catalog": "https://mpd.southwestmicrowave.com/wp-content/uploads/End-Launch-Connectors-2024.pdf (SMA to 27 GHz, pin .010 in, dielectric .0635 in, PCB fasteners #1-72 SHCS, connector fasteners #0-80; block and footprint dimensions only as images)",
+   "product_list": "https://mpd.southwestmicrowave.com/product-category/end-launch-connectors",
+   "price": "not published (no distributor price found on 2026-10-22); quote from Southwest Microwave"
+  },
   "footprint": {
    "verified": false,
-   "warning": "PLACEHOLDER. The '.350 Transition Block PCB Footprint' drawing in the catalog could not be read in this workspace (drawing only, no text). Mounting-hole size and positions, the ground-contact area and the block depth below are guesses chosen to stay inside the block width; replace them with the vendor drawing (or ask Southwest Microwave for the launch design for this stackup) before ordering.",
+   "warning": "PLACEHOLDER until the vendor drawing ('.350 Transition Block PCB Footprint', catalog images) is supplied: mounting-hole size and positions, ground-contact area, block depth. All coupons use these values; edit them and regenerate.",
    "edge_pullback": 0.2,
    "edge_pullback_src": "JLCPCB: copper >= 0.2 mm from routed edges (capabilities page)",
    "signal_pad_length": 1.5,
@@ -35,40 +28,36 @@
    "gnd_contact_half_width": 4.2,
    "block_depth_on_board": 6.0,
    "body_outside_board": 14.0,
-   "mount_holes": [
-    {
-     "x": 4.5,
-     "y": 3.0,
-     "d": 2.0
-    },
-    {
-     "x": 4.5,
-     "y": -3.0,
-     "d": 2.0
-    }
-   ],
-   "mount_holes_note": "x from the board edge into the board, y across; NPTH; GUESS - check against the vendor drawing"
+   "mount_holes": [{"x": 4.5, "y": 3.0, "d": 2.0}, {"x": 4.5, "y": -3.0, "d": 2.0}],
+   "mount_holes_note": "x from the board edge into the board, y across; NPTH; GUESS for #1-72 screws - check against the drawing"
   }
  },
  "layout": {
-  "row_pitch": 12.7,
-  "row_pitch_note": "2-port coupons: one connector per edge per row; only one row is connected at a time. 12.7 mm (0.5 in) leaves 3.8 mm between two narrow blocks.",
+  "row_pitch": 12.0,
+  "row_pitch_note": "2-port coupons: one connector per edge per row, one row connected at a time; 12.0 mm leaves 3.1 mm between two narrow blocks and fits four rows on a 50 mm board",
+  "pair_row": 24.0,
   "pair_pitch": 12.7,
-  "pair_pitch_note": "4-port coupons: two connectors side by side on each edge. 12.7 mm leaves 3.8 mm between the blocks and about 3.5 mm between two 8 mm coupling nuts; check torque-wrench access with the actual cables and raise to 15 mm if needed (the generator takes --pair-pitch).",
+  "pair_pitch_note": "4-port coupons: two connectors per edge 12.7 mm apart (3.8 mm between blocks, about 3.5 mm between 8 mm coupling nuts: check torque-wrench access; --pair-pitch changes it)",
   "feed": 12.5,
   "feed_note": "board edge to the reference plane of every 2-port coupon (half of the 25 mm 2xthru)",
   "feed_4port": 15.0,
-  "feed_4port_note": "4-port coupons (pairs): the 45° fan-in from the connector pitch to the 1.0 mm via pitch needs room beyond the connector block; their own pair 2×thru has the same 15 mm",
+  "feed_4port_note": "4-port coupons: the fan-in from the connector pitch to the 1.0 mm via pitch needs room; their own pair 2xthru has the same 15 mm",
+  "via_line": 5.0,
+  "via_line_note": "via-line-via coupons: length of the line on the far layer between the two transitions (TDR separates the two vias: about 60 ps round trip)",
+  "return_line": 10.0,
+  "return_line_note": "the same for the return-path (D) coupons, so the two reference changes interact less",
   "fence_pitch_launch": 0.8,
   "wall_pitch": 2.54,
-  "gnd_via": {
-   "drill": 0.3,
-   "pad": 0.6
-  },
-  "signal_via": {
-   "drill": 0.3,
-   "pad": 0.6
-  },
-  "via_src": "JLCPCB capabilities: via hole >= 0.15 mm, annular ring >= 0.15 mm; inner-layer hole-to-copper >= 0.2 mm (so an antipad of a 0.3 mm via must be >= 0.7 mm in diameter); via hole-to-hole >= 0.2 mm"
+  "gnd_via": {"drill": 0.3, "pad": 0.6},
+  "signal_via": {"drill": 0.3, "pad": 0.6},
+  "via_src": "JLCPCB capabilities: via hole >= 0.15 mm, annular ring >= 0.15 mm; inner-layer hole-to-copper >= 0.2 mm (antipad of a 0.3 mm via >= 0.7 mm); via hole-to-hole >= 0.2 mm",
+  "board_limits": {"4": [100.0, 100.0], "6": [50.0, 50.0], "8": [50.0, 50.0]},
+  "board_limits_note": "maintainer's cost limits (2026-10-22): JLC 1-4 layers 100 x 100 mm and 6-8 layers 50 x 50 mm (JLC 'promo size', 5 pcs from 2 USD: https://jlcpcb.com/ads/pcb-manufacturer-comparison, fetched 2026-10-22)"
+ },
+ "parts": {
+  "_about": "SMD land patterns (KiCad standard library geometry, reflow): pitch = pad centre distance, pad = size along / across the part axis. kisi derives the package from the pitch (crates/kisi-pi/src/pdn_ic.rs, package_of: 0201 < 0.65, 0402 < 1.25, 0603 < 1.95, 0805 < 2.7 mm), so KiCad's 0805 (pitch 1.9) is taken for an 0603 (README, kisi findings).",
+  "0402": {"pitch": 0.96, "pad": [0.56, 0.62], "kicad": "Capacitor_SMD:C_0402_1005Metric"},
+  "0603": {"pitch": 1.55, "pad": [0.9, 0.95], "kicad": "Capacitor_SMD:C_0603_1608Metric"},
+  "0805": {"pitch": 1.9, "pad": [1.0, 1.45], "kicad": "Capacitor_SMD:C_0805_2012Metric"}
  }
 }

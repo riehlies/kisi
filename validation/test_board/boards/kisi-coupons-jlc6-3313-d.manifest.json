@@ -1,0 +1,142 @@
+{
+ "board": "kisi-coupons-jlc6-3313-d",
+ "key": "jlc6_3313_d",
+ "part": "coupling / capacitors",
+ "file": "kisi-coupons-jlc6-3313-d.kicad_pcb",
+ "stackup": "jlc6_3313",
+ "stackup_title": "JLCPCB JLC06161H-3313, 6 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 6-layer template; second order with thin prepreg)",
+ "layers": 6,
+ "manufacturer": "JLCPCB",
+ "template": "JLC06161H-3313",
+ "date": "2026-10-22",
+ "size_mm": [
+  50.0,
+  48.0
+ ],
+ "thickness_mm": 1.546,
+ "coupons": [
+  {
+   "id": "BS_L3L4",
+   "group": "T",
+   "title": "Broadside: In2.Cu over In3.Cu, offset 0, coupled 22.5 mm",
+   "length_mm": 50.0,
+   "height_mm": 24.0,
+   "validates": "broadside NEXT / FEXT (kisi lists it but does not compute it yet)",
+   "references": [
+    "T_ts6_broadside_o0"
+   ],
+   "params": {
+    "layers": "In2.Cu / In3.Cu",
+    "w_mm": [
+     0.515,
+     0.515
+    ],
+    "offset_mm": 0.0,
+    "coupled_mm": 22.5
+   },
+   "nets": [
+    "SE_BS_A",
+    "SE_BS_V"
+   ],
+   "measure": "VNA 4-port; scope TDR/TDT",
+   "connectors": [
+    {
+     "ref": "J1",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_BS_A"
+    },
+    {
+     "ref": "J2",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_BS_V"
+    },
+    {
+     "ref": "J3",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_BS_A"
+    },
+    {
+     "ref": "J4",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_BS_V"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc6-3313-d__BS_L3L4__wc"
+   ]
+  },
+  {
+   "id": "DIFF_SL",
+   "group": "T",
+   "title": "Edge-coupled 100 \u03a9 stripline pair on In2.Cu, coupled 22.9 mm",
+   "length_mm": 50.0,
+   "height_mm": 24.0,
+   "validates": "stripline Zdiff plateau (open point in TESTS.md)",
+   "references": [
+    "T_ts6_diff_sl"
+   ],
+   "params": {
+    "layer": "In2.Cu",
+    "w_mm": 0.21,
+    "s_mm": 0.2,
+    "coupled_mm": 22.91
+   },
+   "nets": [
+    "DP_DIFF_SL_P",
+    "DP_DIFF_SL_N"
+   ],
+   "measure": "VNA 4-port; scope TDR/TDT",
+   "connectors": [
+    {
+     "ref": "J5",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_DIFF_SL_P"
+    },
+    {
+     "ref": "J6",
+     "port": "2",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "DP_DIFF_SL_N"
+    },
+    {
+     "ref": "J7",
+     "port": "3",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_DIFF_SL_P"
+    },
+    {
+     "ref": "J8",
+     "port": "4",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "DP_DIFF_SL_N"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc6-3313-d__DIFF_SL__wc"
+   ]
+  }
+ ],
+ "fdtd_cases": [
+  "kisi-coupons-jlc6-3313-d__BS_L3L4__wc",
+  "kisi-coupons-jlc6-3313-d__DIFF_SL__wc"
+ ],
+ "fdtd_cells": {
+  "kisi-coupons-jlc6-3313-d__BS_L3L4__wc": 911340,
+  "kisi-coupons-jlc6-3313-d__DIFF_SL__wc": 1412880
+ }
+}

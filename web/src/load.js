@@ -67,8 +67,8 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     if (S.pool) S.pool.reset();
     const n = S.scene.stackup.copper.length;
     S.layerOn = new Array(n).fill(true);
-    // default plane layer: first inner layer with most zone area, else none
-    S.zoneLayer = guessPlaneLayer();
+    // copper zones hidden at the start ("Show copper zones: none"); the choice is kept per board
+    S.zoneLayer = -1;
     S.boardKey = key.replace(/\|v=.*$/, "") + "|v=" + (vchoice || "");
     const tParse = performance.now() - t0;
     if (snap) {
@@ -95,23 +95,6 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     $("warnings").innerHTML = `<span class="err">Could not read file: ${esc(e.message)}</span>`;
     console.error(e);
   }
-}
-
-function guessPlaneLayer() {
-  const n = S.scene.stackup.copper.length, idx = S.zones.idx, pts = S.zones.pts;
-  const area = new Array(n).fill(0);
-  for (let i = 0; i < idx.length; i += 4) {
-    const l = idx[i], st = idx[i + 2], c = idx[i + 3];
-    let a = 0;
-    for (let k = 0; k < c; k++) {
-      const j = (st + k) * 2, j2 = (st + (k + 1) % c) * 2;
-      a += pts[j] * pts[j2 + 1] - pts[j2] * pts[j + 1];
-    }
-    area[l] += Math.abs(a) / 2;
-  }
-  let best = -1, bestA = 0;
-  for (let l = 1; l < n - 1; l++) if (area[l] > bestA) { bestA = area[l]; best = l; }
-  return best;
 }
 
 // stackup changes per board (viewer only; the file is not modified)

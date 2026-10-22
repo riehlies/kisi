@@ -1,24 +1,24 @@
 # kisi – roadmap
 
-Planned and possible work after 0.2.3, roughly in order of priority. Each item says why it matters;
+Planned and possible work after 0.2.4, roughly in order of priority. Each item says why it matters;
 "Decide first" marks items that need a decision before work starts.
-
-## Done since 0.2.3
-- **Assembly variants (M0 of the channel-simulation concept, `docs/research/channel-simulation-ibis.md`
-  sections 6–8):** KiCad 10 variants from the board file, `variants` / `variant` in `<board>.kisi.json` (by sheet,
-  references or BOM), `--variant` and a selector in the viewer; parts that are not fitted leave their pads as stubs,
-  side stubs and the other path of a fork in the lane cascade; `gaps` and the lane commands ask for a variant when
-  a board has variants or forks with all alternatives fitted. ThunderScope's example config has TS-PCIe and TS-USB4.
-- **Channel view and connector ends:** one "Channel check" card in steps (with the impedance view's field solver),
-  the board map per variant (unused nets faint, click opens a channel), a Path tab for nets without devices, and an
-  eye for every lane: at a connector with the end set per connector (termination or driver) and the channel behind
-  it – a lossy line or a Touchstone file (`.s2p`, also on each line of a pair; `.s4p` of a pair) – judged when a
-  channel behind it is given (`connector_ends` in kisi.json).
 
 ## Next
 - **`kisi gaps`: supply rails without a voltage in the name.** Nets such as `Net-(IC22-VCC)` are not recognised as
   rails, so the ICs on them are missing from the load list. Use regulator outputs (`PI_REG … @V`) and the parts on
-  the net to detect them.
+  the net to detect them. XIAO nRF54LM20A (power tree test of the kisi-prepare skill): VSYS, VBUS and VBAT of the
+  nPM1300 PMIC are not found; `VSYS@5V` in the field works as a workaround.
+- **PI_REG output rails with spaces in the net name.** Hierarchical names such as `/06 Peripherals/IMU_VDD` cannot be
+  written, because the field parser splits at whitespace; allow quoting (`"/06 Peripherals/IMU_VDD"`). Workaround on
+  the XIAO: a load point at the ferrite (`IMU&MIC_3V3=0.9mA@FB3`).
+- **Default efficiency of switching regulators as an estimate.** Without a value kisi assumes 85 %; the viewer's power
+  tree shows it as “η 85 %” without an estimate mark and the CLI output has no flag for it. Mark it as an estimate in
+  both (AGENTS.md rule), so that a missing datasheet value is visible.
+- **MPN in `kisi gaps` and part lists.** Footprints often carry a Manufacturer / MPN field while the Value field is not
+  a part number; show the MPN when the value is not one, so that the user (and the skill) can look up the right
+  datasheet. XIAO: U4 has the value “英联” (the manufacturer), the MPN is UM3204H.
+- **`kisi config-template`: a load as the PI_LOAD example.** The example takes the first U part, which can be a
+  regulator (XIAO: U1 TPS628438); pick a part that is a load (not a PI_REG part, not on a regulator's output only).
 - **Skills on real boards.** Run kisi-prepare and kisi-si-pi-review on a few real projects; sharpen the research
   guidance (datasheet sections, typical vs. maximum) and add a worked example `<board>.kisi.json`.
 
@@ -30,8 +30,15 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   model per pin with real vendor files ([Model Selector], [Diff Pin], package models, pin names vs. pads), how
   IBIS ends and interface profiles fit together (swing, terminations, current-mode drivers), validation with real
   files and a reference simulator. Research and concept (solvers, model sources, DDR test flows, assembly
-  variants, staged plan): `docs/research/channel-simulation-ibis.md`; M0 (assembly variants) is done, M1 (IBIS
-  parser) is next.
+  variants, staged plan): `docs/research/channel-simulation-ibis.md`; M0 (assembly variants) is in 0.2.4. M1 (IBIS
+  parser, `kisi ibis`, mapping in kisi.json with `config-check`) and, on top of it, linearised IBIS ends in check and
+  eye with the model choice per IC and lane in the interfaces view (one “Load IBIS…”, “as the profile” as default,
+  manual pin mapping) are in branch `feat/ibis-parser`, kept there as preliminary work for M3 (transient with the
+  buffers); the viewer integration needs more work before a merge. Open there: KiCad's `Sim.*` fields as a second
+  mapping source; IBIS 8.0 keywords; package-model sections; the parser against IBISCHK on real vendor files; an
+  on-die termination and a termination resistor next to the receiver are not combined; the edge from the waveforms
+  already contains the C_comp load; open-drain drivers without the pull resistor; the receiver's R_pin; validation
+  against an IBIS simulator.
 - **Assembly variants, follow-ups:** variant-dependent `fields` in kisi.json (e.g. the TS-USB4 power tree from
   the M.2 connector); a via whose barrel continues into a stub beyond the path's layers is counted twice (its own
   stub and the side stub's via, ~0.3 mm on ThunderScope); side stubs in the net channel (`kisi net`) do not add
@@ -64,6 +71,9 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
 - **Power:** via current capacity; a temperature estimate from the losses map (2D heat spreading with
   conductivity of copper and laminate, convection; clearly an estimate); split of regulator losses between IC and
   inductor.
+- **Power tree per supply case.** Boards that run from USB or a battery (a PMIC power path) have one tree per case:
+  on the XIAO, VSYS is VBUS on USB and VBAT on battery, and the debugger is supplied only on USB; while charging, the
+  battery charge current is a load on VSYS. Today one tree has to stand for all cases.
 - **Whole-board validation** against a commercial tool (e.g. HyperLynx) on the example boards.
 - **Decide first: equalisation** (CTLE/FFE) for profiles that require it (PCIe Gen3+). So far deliberately left out.
 
@@ -76,4 +86,8 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
 
 ## Maintenance
 - Solver updates with `tools/upstream_update.sh` when js_2d_fields changes (validation decides).
+- `tools/check_viewer.py --board`: a board without impedance targets (no `.net` rows) stops the run at the net
+  detail; skip that step when there are no nets (found with the XIAO board).
+- `tools/bundle.py`: the gzip of the example boards carries a timestamp, so two builds of the same commit differ;
+  write it with mtime 0 for reproducible bundles.
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.

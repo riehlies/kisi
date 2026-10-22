@@ -57,7 +57,10 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
      IR-drop source; `PI_SOURCE` only marks source pads when there is no regulator chain).
      Regulator outputs that leave through an inductor or diode: add `out=<part>` (e.g. `out=L5`).
      Ferrites/chokes between two rails: `PI_REG` = `+3V3 > 3V3_RF pass r=0.05` (state the assumed
-     resistance). Rails without a voltage in their name: `NAME@1.2V`.
+     resistance). Rails without a voltage in their name: `NAME@1.2V`. A PMIC with several outputs gets
+     one entry per channel, separated by `;` and each with its own `id=` (`VSYS > +3V3 buck 200mA id=U2B;
+     VSYS > +1V8 ldo 50mA id=U2C`). Net names with spaces (hierarchical names) cannot be an output rail
+     yet: put the load on the rail before the bead and name the bead as load point (`+3V3=1mA@FB3`).
    - Ferrite beads and inductors in supply paths (`PI_SERIES`, for the PDN per IC): impedance at
      100 MHz and DC resistance of a bead (`z100=600 rdc=0.15`), inductance and DC resistance of an
      inductor (`l=2.2u dcr=50m`), from the part's datasheet (`kisi gaps`: bead-ratings).
@@ -65,7 +68,14 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
      sheets that hold each option, KiCad 10 variants in the board file. Define `variants` (by sheet,
      references or BOM, `source` kind `design`) and ask the user which one to analyse – write it as
      `"variant"`; never pick one silently. `"default"` = the board file as it is.
-   Use the user's own documents first (datasheet folder, BOM, fabricator files), then web search.
+   - Connector ends (`connector_ends`, lanes that end at a connector): what the connector meets – the
+     termination when it receives, the driver when it sends (the profile's, matched, high impedance or
+     custom R/C/L) – and the channel behind it: a cable or mating board as loss at the profile's Nyquist
+     frequency and delay, or the vendor's Touchstone file (`.s2p`, `.s4p`). Without a channel behind the
+     connector the eye covers the board share only and is not judged.
+   Use the user's own documents first (datasheet folder, BOM, fabricator files), then web search. Ask for
+   the datasheets early: many manufacturer PDFs cannot be read through a web fetch, and efficiencies are
+   often only given as curves.
 4. **Rules for values:**
    - Every value needs a `source`: `kind` (datasheet, standard, application_note, measurement,
      simulation, design, estimate, assumption) plus `document` and/or `url`, `page`, and a `note`.

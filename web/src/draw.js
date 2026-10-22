@@ -47,6 +47,15 @@ function drawNow() {
     ctx.globalAlpha = 1;
   }
   ctx.fillStyle = C.via; ctx.fill(S.static.vias);
+  // branches of a selected lane (the other path of a fork): dashed, under the lane itself
+  if (dim && S.stubPaths) {
+    ctx.setLineDash([3 * px, 3 * px]);
+    for (let l = n - 1; l >= 0; l--) {
+      if (!S.layerOn[l]) continue;
+      for (const g of S.stubPaths[l]) { ctx.strokeStyle = g.col; ctx.lineWidth = Math.max(g.w, 1.2 * px); ctx.stroke(g.path); }
+    }
+    ctx.setLineDash([]);
+  }
   if (dim && S.selPaths) {
     for (let l = n - 1; l >= 0; l--) {
       if (!S.layerOn[l]) continue;

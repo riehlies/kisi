@@ -23,8 +23,32 @@ function laneOfNet(net) {
   const ls = allLanes().filter((l) => l.nets.includes(net) || l.partner_nets.includes(net));
   return ls.find((l) => CHECKABLE.has(l.kind)) || ls[0] || null;
 }
-// the net that carries the target impedance (for profile and target)
-function laneNet(l) { return l.nets.find((n) => classTarget(n)) ?? l.nets[0]; }
+// the net that carries the target impedance (for profile and target): the one the lane is
+// named after (its own path), else its first net with a target
+function laneNet(l) { return l.name_net != null && classTarget(l.name_net) ? l.name_net : (l.nets.find((n) => classTarget(n)) ?? l.nets[0]); }
+// the other paths of a fork (open branches): {to, through, nets} – not part of the lane's path
+function laneBranches(l) {
+  const own = new Set([...l.nets, ...l.partner_nets]);
+  return l.branches.map((b, i) => ({
+    to: (l.branch_ends || [])[i] || "",
+    through: (b.find((h) => h.type === "series") || {}).part,
+    nets: [...new Set(b.filter((h) => h.type === "net" && !own.has(h.net)).map((h) => h.net))],
+  }));
+}
+// zoom to the lane's own path (both lines of a pair)
+function fitLane(l) {
+  const own = new Set([...l.nets, ...l.partner_nets]), pc = S.pieces;
+  let bb = [Infinity, Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < pc.n; i++) if (own.has(pc.net[i])) bb = [Math.min(bb[0], pc.ax[i], pc.bx[i]), Math.min(bb[1], pc.ay[i], pc.by[i]), Math.max(bb[2], pc.ax[i], pc.bx[i]), Math.max(bb[3], pc.ay[i], pc.by[i])];
+  if (isFinite(bb[0])) fitView([bb[0] - 1.5, bb[1] - 1.5, bb[2] + 1.5, bb[3] + 1.5]);
+}
+// board: the lane's own nets highlighted, its branches dashed
+function highlightLane(l) {
+  buildPaths(new Set([...l.nets, ...l.partner_nets]));
+  const br = new Set(laneBranches(l).flatMap((b) => b.nets));
+  S.stubPaths = br.size ? netPaths(br) : null;
+  draw();
+}
 function laneProfile(l) { return profileOf(laneNet(l)); }
 function laneZStats(l) {
   let len = 0, zs = 0, lo = Infinity, hi = -Infinity;
@@ -60,7 +84,7 @@ function laneChain(l) {
   const a = laneTx(l), b = laneRx(l);
   const mid = rev ? parts.reverse() : parts;
   const sh = l.shunts.map((s) => `<span class="lc-shunt" title="${s.across ? "across the pair" : "to " + esc(shortNet(s.to))}">∥ ${esc(s.part.refdes)} ${esc(s.part.value)}</span>`);
-  const br = l.branches.length ? `<span class="lc-branch" title="the line continues to another device: open stub">⑂ branch</span>` : "";
+  const br = laneBranches(l).map((b) => `<span class="lc-branch" title="the other path of a fork, not part of this lane: an open branch from the junction (${esc(b.nets.map(shortNet).join(", "))})">⑂ ${b.through ? esc(b.through.refdes) + " → " : ""}${esc(b.to || "branch")}</span>`).join("");
   return `<span class="lc-pin">${esc(pinLabel(a))}</span>${mid.map((x) => `<i>→</i>${x}`).join("")}<i>→</i><span class="lc-pin">${esc(pinLabel(b))}</span>${sh.join("")}${br}`;
 }
 
@@ -133,7 +157,7 @@ function renderChOverview() {
     const l = allLanes().find((x) => laneKey(x) === tr.dataset.lane);
     if (!l) return;
     S.selLane = laneKey(l); S.chTab = "check";
-    setChMode("m"); selectNet(l.nets[0]);
+    setChMode("m"); selectNet(l.nets[0], false); fitLane(l);
   });
   box.querySelectorAll("[data-swap]").forEach((bt) => bt.onclick = () => {
     const [name, cls] = bt.dataset.swap.split("|");
@@ -165,6 +189,7 @@ function renderLaneDetail(l) {
     <div class="tabs" role="tablist" aria-label="Lane">${tabs.map(([k, n]) => `<button role="tab" data-ct="${k}" aria-selected="${t === k}">${n}</button>`).join("")}</div>
     <div id="ch-body"></div>`;
   d.hidden = false;
+  highlightLane(l);
   $("closeCh").onclick = () => { S.selLane = null; selectNet(-1); };
   $("ch-edit").onclick = () => { S.profEdit = p.id; renderProfCard(); $("h-prof").scrollIntoView({ behavior: "smooth", block: "start" }); };
   $("ch-swap").onclick = () => {
@@ -207,7 +232,7 @@ function renderLanePath(body, l, r) {
   const sh = l.shunts.map((s) => `${esc(s.part.refdes)} ${esc(s.part.value)} ${s.across ? "across the pair" : "to " + esc(shortNet(s.to))}`).join(", ");
   body.innerHTML = `<div class="dstats"><span>${esc(pinLabel(laneTx(l)))} → ${esc(pinLabel(laneRx(l)))}</span><span>${fmt(ch.length_mm, 1)} mm, delay ${fmt(ch.delay_ps, 0)} ps</span>${r.skew ? `<span>skew to ${esc(netShort(r.skew.partner))} ${fmt(r.skew.skew_ps, 1)} ps${r.skew.uncertain ? " (uncertain)" : ""}</span>` : ""}</div>
     <div class="tablewrap"><table class="xs-table"><thead><tr><th>Element</th><th>Layer / part</th><th>Length</th><th>Z</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="note">Nets: ${l.nets.map((n) => esc(shortNet(n))).join(" → ")}${l.diff ? ` · partner ${l.partner_nets.map((n) => esc(shortNet(n))).join(" → ")}` : ""}.${sh ? ` Terminations: ${sh}.` : ""}${l.others.length ? ` Also connected (not modelled): ${esc(l.others.join(", "))}.` : ""} Direction: ${esc(laneSwaps()[laneKey(l)] ? "swapped by you" : l.direction)}.</p>`;
+    <p class="note">Nets: ${l.nets.map((n) => esc(shortNet(n))).join(" → ")}${l.diff ? ` · partner ${l.partner_nets.map((n) => esc(shortNet(n))).join(" → ")}` : ""}.${laneBranches(l).map((b) => ` Branch (open, dashed on the board): ${b.through ? esc(b.through.refdes) + " → " : ""}${esc(b.nets.map(shortNet).join(" → "))} → ${esc(b.to)}.`).join("")}${sh ? ` Terminations: ${sh}.` : ""}${l.others.length ? ` Also connected (not modelled): ${esc(l.others.join(", "))}.` : ""} Direction: ${esc(laneSwaps()[laneKey(l)] ? "swapped by you" : l.direction)}.</p>`;
 }
 
 // ---- channel view modes: interfaces overview / board map

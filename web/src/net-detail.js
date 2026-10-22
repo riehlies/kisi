@@ -132,7 +132,7 @@ function pathLine(net) {
 }
 
 function selectNet(net, zoom = true) {
-  S.selNet = net; S.pathCursor = null;
+  S.selNet = net; S.pathCursor = null; S.stubPaths = null;
   renderFieldStatus();
   document.querySelectorAll(".net").forEach((b) => b.setAttribute("aria-current", String(+b.dataset.net === net)));
   if (net < 0) { S.selPaths = null; $("detail").hidden = true; $("ch-detail").hidden = true; draw(); return; }

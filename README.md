@@ -75,7 +75,9 @@ Three views, each starting with what the board file gives and computing more on 
    at a connector are judged on the board share (loss, return loss, skew). Boards with assembly variants (KiCad 10
    variants or `variants` in `kisi.json`) – or with forks where all alternative parts are fitted – ask “Which
    assembly variant?” before lanes are computed; the card “Assembly variant” switches later (stored in the
-   browser, over the `kisi.json` choice) and the lane results name the variant.
+   browser, over the `kisi.json` choice) and the lane results name the variant. A lane is named after and made of
+   its own path; where a line forks with all alternatives fitted, each lane leaves the IC on its own branch and
+   carries the other path as an open branch (dashed on the board).
 3. **Power** – power tree, budget and power flow (Sankey) first, from `PI_REG` / `PI_LOAD` fields or the board's
    `kisi.json`; part references jump to the board. Then, per rail and for the ground return, voltage drop and
    current density on every layer (drop at each load, vias with the highest currents), a losses map (heat per part

@@ -396,6 +396,15 @@ fn pin(e: &topology::EndPin) -> String {
     format!("{}.{}", e.refdes, e.pin)
 }
 
+/// The net a lane's target, class and profile come from: the one it is named after (its own
+/// path), else its first net with a target.
+fn lane_net(p: &Project, l: &topology::Lane) -> u32 {
+    if p.target(l.name_net).is_some() {
+        return l.name_net;
+    }
+    l.nets.iter().copied().find(|&n| p.target(n).is_some()).unwrap_or(l.nets[0])
+}
+
 fn lane_json(p: &Project, l: &topology::Lane) -> Value {
     let rev = l.rx_end == 0;
     let (tx, rx) = if l.ends.len() == 2 { (Some(&l.ends[if rev { 1 } else { 0 }]), Some(&l.ends[if rev { 0 } else { 1 }])) } else { (None, None) };
@@ -406,7 +415,12 @@ fn lane_json(p: &Project, l: &topology::Lane) -> Value {
         "nets": l.nets.iter().map(|&n| p.board.net_name(n)).collect::<Vec<_>>(),
         "series_parts": l.hops.iter().filter_map(|h| match h { topology::Hop::Series { part } => Some(format!("{} {} ({})", part.refdes, part.value, part.package)), _ => None }).collect::<Vec<_>>(),
         "terminations": l.shunts.iter().map(|s| format!("{} {} {}", s.part.refdes, s.part.value, if s.across { "across the pair".to_string() } else { format!("to {}", p.board.net_name(s.to)) })).collect::<Vec<_>>(),
-        "branches": l.branches.len(),
+        // the other paths of a fork: open branches, not part of the lane's own path
+        "branches": l.branches.iter().enumerate().map(|(i, b)| json!({
+            "to": l.branch_ends.get(i),
+            "through": b.iter().find_map(|h| match h { topology::Hop::Series { part } => Some(format!("{} {}", part.refdes, part.value)), _ => None }),
+            "nets": b.iter().filter_map(|h| match h { topology::Hop::Net { net, .. } if !l.nets.contains(net) => Some(p.board.net_name(*net)), _ => None }).collect::<Vec<_>>(),
+        })).collect::<Vec<_>>(),
         "not_modelled": l.others,
     })
 }
@@ -419,7 +433,7 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
         .iter()
         .map(|b| {
             let l0 = &b.lanes[0];
-            let tnet = l0.nets.iter().copied().find(|&n| p.target(n).is_some()).unwrap_or(l0.nets[0]);
+            let tnet = lane_net(p, l0);
             let pid = assign.get(&b.class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &b.class, l0.diff).to_string());
             json!({"bus": b.name, "kind": b.kind, "class": b.class, "profile": pid, "devices": b.devices, "values": b.values,
                 "lanes": b.lanes.iter().map(|l| lane_json(p, l)).collect::<Vec<_>>()})
@@ -464,7 +478,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             if !wanted(&mut l.nets.iter().map(|&n| p.board.net_name(n))) {
                 continue;
             }
-            let tnet = l.nets.iter().copied().find(|&n| p.target(n).is_some()).unwrap_or(l.nets[0]);
+            let tnet = lane_net(p, l);
             let class = p.class_name(tnet);
             let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
             let Some(prof) = profiles.get(&pid) else { continue };

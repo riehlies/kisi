@@ -175,7 +175,10 @@ function renderChDetail(net) {
   if (lane && CHECKABLE.has(lane.kind)) return renderLaneDetail(lane);
   if (S.an.skeleton) {
     d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header><div id="ch-body"></div>`;
-    d.hidden = false; $("closeCh").onclick = () => selectNet(-1); needEstimate($("ch-body")); return;
+    d.hidden = false; $("closeCh").onclick = () => selectNet(-1); needEstimate($("ch-body"));
+    const sel = S.selLane && allLanes().find((l) => laneKey(l) === S.selLane && (l.nets.includes(net) || l.partner_nets.includes(net)));
+    if (sel) highlightLane(sel);
+    return;
   }
   const r = chFor(net), p = r.profile;
   const partner = st && st.partner != null ? S.scene.nets[st.partner] : null;

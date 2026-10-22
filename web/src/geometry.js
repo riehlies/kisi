@@ -68,12 +68,12 @@ function pieceColor(i) {
   return d > 0.10 ? C.high2 : C.high1;
 }
 
-function buildPaths(onlyNet = -1) {
-  // group by layer -> (color|width) -> Path2D
+// tracks grouped by layer -> (color|width) -> Path2D; `only`: a set of nets (null: all)
+function netPaths(only) {
   const n = S.scene.stackup.copper.length, pc = S.pieces;
   const layers = Array.from({ length: n }, () => new Map());
   for (let i = 0; i < pc.n; i++) {
-    if (onlyNet >= 0 && pc.net[i] !== onlyNet) continue;
+    if (only && !only.has(pc.net[i])) continue;
     const col = pieceColor(i);
     const key = col + "|" + pc.w[i].toFixed(3);
     let g = layers[pc.layer[i]].get(key);
@@ -81,8 +81,12 @@ function buildPaths(onlyNet = -1) {
     g.path.moveTo(pc.ax[i], pc.ay[i]);
     g.path.lineTo(pc.bx[i], pc.by[i]);
   }
-  const out = layers.map((m) => [...m.values()].sort((a, b) => (b.neutral - a.neutral)));
-  if (onlyNet >= 0) S.selPaths = out; else S.paths = out;
+  return layers.map((m) => [...m.values()].sort((a, b) => (b.neutral - a.neutral)));
+}
+// all tracks (S.paths), or the selection (S.selPaths: one net, or a set of nets such as a lane)
+function buildPaths(onlyNet = -1) {
+  const only = onlyNet instanceof Set ? onlyNet : onlyNet >= 0 ? new Set([onlyNet]) : null;
+  if (only) S.selPaths = netPaths(only); else S.paths = netPaths(null);
 }
 
 function buildStatic() {

@@ -3,6 +3,13 @@
 Planned and possible work after 0.2.3, roughly in order of priority. Each item says why it matters;
 "Decide first" marks items that need a decision before work starts.
 
+## Done since 0.2.3
+- **Assembly variants (M0 of the channel-simulation concept, `docs/research/channel-simulation-ibis.md`
+  sections 6–8):** KiCad 10 variants from the board file, `variants` / `variant` in `<board>.kisi.json` (by sheet,
+  references or BOM), `--variant` and a selector in the viewer; parts that are not fitted leave their pads as stubs,
+  side stubs and the other path of a fork in the lane cascade; `gaps` and the lane commands ask for a variant when
+  a board has variants or forks with all alternatives fitted. ThunderScope's example config has TS-PCIe and TS-USB4.
+
 ## Next
 - **Checks on every push.** A CI workflow that runs `cargo test`, `tools/validate_field.sh` and
   `tools/check_viewer.py` on pushes and pull requests, not only on releases.
@@ -22,7 +29,12 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   model per pin with real vendor files ([Model Selector], [Diff Pin], package models, pin names vs. pads), how
   IBIS ends and interface profiles fit together (swing, terminations, current-mode drivers), validation with real
   files and a reference simulator. Research and concept (solvers, model sources, DDR test flows, assembly
-  variants, staged plan): `docs/research/channel-simulation-ibis.md`.
+  variants, staged plan): `docs/research/channel-simulation-ibis.md`; M0 (assembly variants) is done, M1 (IBIS
+  parser) is next.
+- **Assembly variants, follow-ups:** variant-dependent `fields` in kisi.json (e.g. the TS-USB4 power tree from
+  the M.2 connector); a via whose barrel continues into a stub beyond the path's layers is counted twice (its own
+  stub and the side stub's via, ~0.3 mm on ThunderScope); side stubs in the net channel (`kisi net`) do not add
+  the via they leave through yet; the transmit direction of lanes from an IC to a connector is a guess.
 - **Eye and channel check on the 4-port pair model** (the 4-port with mode conversion is shown in the net detail;
   eye and check still use the odd-mode 2-port).
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.

@@ -430,6 +430,9 @@ pub struct CheckRow {
     pub error: Option<String>,
     /// false when no eye was computed (lane ends at a connector)
     pub eye: bool,
+    /// side stubs and branches in the channel (open stubs: unused pads, parts not fitted,
+    /// the other path of a fork)
+    pub stubs: Vec<String>,
 }
 
 pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
@@ -452,6 +455,7 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
         warnings: 0,
         error: None,
         eye: true,
+        stubs: vec![],
     }
 }
 
@@ -462,6 +466,7 @@ pub(crate) fn fill_row(row: &mut CheckRow, ch: &crate::rf::Channel, gbps: f64, r
     row.delay_ps = ch.delay_ps;
     row.vias = ch.vias;
     row.warnings = ch.warnings.len();
+    row.stubs = ch.segments.iter().filter(|s| s.kind == "branch").filter_map(|s| s.part.clone()).collect();
     let fn_ = gbps * 0.5e9;
     let df = ch.freq[0];
     let k = ((fn_ / df).round() as usize).clamp(1, ch.freq.len()) - 1;

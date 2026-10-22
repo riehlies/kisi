@@ -61,10 +61,14 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
    - Ferrite beads and inductors in supply paths (`PI_SERIES`, for the PDN per IC): impedance at
      100 MHz and DC resistance of a bead (`z100=600 rdc=0.15`), inductance and DC resistance of an
      inductor (`l=2.2u dcr=50m`), from the part's datasheet (`kisi gaps`: bead-ratings).
+   - Assembly variants (gap `assembly-variant`): the project's BOM and position files per variant, the
+     sheets that hold each option, KiCad 10 variants in the board file. Define `variants` (by sheet,
+     references or BOM, `source` kind `design`) and ask the user which one to analyse – write it as
+     `"variant"`; never pick one silently. `"default"` = the board file as it is.
    Use the user's own documents first (datasheet folder, BOM, fabricator files), then web search.
 4. **Rules for values:**
    - Every value needs a `source`: `kind` (datasheet, standard, application_note, measurement,
-     simulation, estimate, assumption) plus `document` and/or `url`, `page`, and a `note`.
+     simulation, design, estimate, assumption) plus `document` and/or `url`, `page`, and a `note`.
    - Say in the note whether a value is typical or maximum, and at which condition (frequency, load).
    - If you could not find a value, do not invent one. Either leave it out or, if the user agrees, use
      `kind: "estimate"` / `"assumption"` with the reasoning in the note.
@@ -86,9 +90,17 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
      "net_classes": {"PCIe": {"target_ohm": 85, "diff": true, "profile": "pcie3", "source": {"kind": "standard", "document": "PCIe CEM 3.0"}}},
      "fields": [{"ref": "U5", "name": "PI_LOAD", "value": "+1V0=2.5A, +1V8=300mA",
                  "source": {"kind": "datasheet", "url": "…", "page": "14", "note": "maximum, all lanes active"}}],
+     "variant": "PCIe",
+     "variants": {"PCIe": {"not_fitted_sheets": ["/USB Components/"], "fitted": ["C101"],
+                           "source": {"kind": "design", "document": "board_PCIe_BOM.csv"}},
+                  "USB": {"bom": "board_USB_BOM.csv", "bom_exceptions": ["P1"], "source": {"kind": "design", "document": "board_USB_BOM.csv"}}},
      "notes": ["what was assumed and why"]
    }
    ```
+   Variants: rules apply in the order board file → `bom` (parts not in it are not fitted, except parts
+   marked "exclude from BOM" in KiCad and `bom_exceptions`) → sheets (a sheet covers its sub-sheets, the
+   most specific wins) → `fitted` / `not_fitted` (wildcards allowed). A BOM path is relative to the
+   kisi.json.
    Dielectric `index` 0 is the layer below F.Cu. `net_classes` can only name classes that exist in the
    KiCad project; nets without a suitable class need one in KiCad first (tell the user).
 6. **Check:** `kisi config-check <board>` – fix every error (references, ranges, missing sources,

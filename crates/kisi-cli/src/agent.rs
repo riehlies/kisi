@@ -29,7 +29,7 @@ fn load(o: &Opts, with_config: bool) -> Result<Project, String> {
             None => Some(service::config_path_for(&pcb)).filter(|c| c.is_file()),
         }
     };
-    Project::load_with(&pcb, o.pro.as_deref().map(Path::new), ov.as_ref(), cfg.as_deref())
+    Project::load_with(&pcb, o.pro.as_deref().map(Path::new), ov.as_ref(), cfg.as_deref(), o.variant.as_deref())
 }
 
 fn run(o: &Opts) -> Result<Value, String> {

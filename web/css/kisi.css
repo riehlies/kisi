@@ -328,6 +328,11 @@ ul.src li { margin: 2px 0; }
 
 /* board configuration status (kisi.json) */
 .cfg-status { margin: 4px 0 0; overflow-wrap: anywhere; }
+.card.off { display: none; }
+.var-ask { margin: 0; font-size: 12.5px; color: var(--fg); border-left: 3px solid var(--z-high1); padding: 2px 0 2px 8px; }
+.var-choices { flex-wrap: wrap; }
+#variant-body details .note { overflow-wrap: anywhere; }
+#variant-body .opt select { flex: 1 1 auto; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
 .cfg-status .ok { color: var(--z-ok); }
 .cfg-status .err { color: var(--z-high2); }
 .cfg-status ul { margin: 4px 0 0; padding-left: 18px; }

@@ -78,6 +78,7 @@ const KIND_TITLE = {
 };
 function renderChOverview() {
   const box = $("ch-overview");
+  if (variantNeeded()) { box.innerHTML = variantPrompt(); bindVariantButtons(box); return; }
   if (!S.buses) { box.innerHTML = ""; return; }
   const groups = { "ic-ic": [], "ic-connector": [], other: [] };
   for (const b of S.buses) {
@@ -115,7 +116,7 @@ function renderChOverview() {
   const section = (k) => groups[k].length ? `<h3 class="ov-h">${KIND_TITLE[k][0]} <em>${groups[k].length} bus${groups[k].length === 1 ? "" : "es"}, ${nl(k)} lane${nl(k) === 1 ? "" : "s"} · ${KIND_TITLE[k][1]}</em></h3>${groups[k].map(busCard).join("")}` : "";
   box.innerHTML = `
     <div class="bal-head"><h3>Interfaces · ${esc(S.name)}</h3>
-      <p>Signals with a target impedance, followed from device to device through series resistors and AC-coupling capacitors. Terminations (∥) and branches (⑂) are part of the channel. Profiles come from the net class (“Interfaces per net class” card).</p></div>
+      <p>Signals with a target impedance, followed from device to device through series resistors and AC-coupling capacitors. Terminations (∥), branches (⑂) and side stubs (unused pads, parts not fitted) are part of the channel. Profiles come from the net class (“Interfaces per net class” card).${variantShown() ? ` Assembly variant: <b>${esc(variantShown())}</b>.` : ""}</p></div>
     <div class="bal-kpis">
       ${kpi(S.buses.length, "buses")}
       ${kpi(nl("ic-ic"), "device to device")}
@@ -145,13 +146,19 @@ function renderChOverview() {
 
 // ---- detail of one lane (stage panel "ch-detail")
 function renderLaneDetail(l) {
+  if (variantNeeded()) {
+    const d = $("ch-detail");
+    d.innerHTML = `<header><div><h3>${esc(netShort(l.name))}</h3><div class="muted">${esc(l.class)}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header><div id="ch-body">${variantPrompt()}</div>`;
+    d.hidden = false; $("closeCh").onclick = () => { S.selLane = null; selectNet(-1); }; bindVariantButtons(d);
+    return;
+  }
   const d = $("ch-detail"), r = chForLane(l), p = r.profile;
   const tab = S.chTab || "check";
   const tx = laneTx(l), rx = laneRx(l);
   const tabs = [["check", "Check"], ...(l.kind === "ic-ic" ? [["eye", "Eye"]] : []), ["path", "Path"]];
   const t = tabs.some((x) => x[0] === tab) ? tab : "check";
   d.innerHTML = `<header><div><h3>${esc(netShort(l.name))}${l.diff ? ` <span class="muted">pair</span>` : ""}</h3><div class="muted">${esc(pinLabel(tx))} ${esc(tx?.value || "")} → ${esc(pinLabel(rx))} ${esc(rx?.value || "")} · ${esc(l.class)}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
-    <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button></span></div>
+    <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}${variantShown() ? ` · variant ${esc(variantShown())}` : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button></span></div>
     <div class="dstats muted"><span>Transmitter ${esc(tx?.refdes || "")}: ${fmt(p.tx.r, 0)} Ω${p.tx.c_pf ? ", " + fmt(p.tx.c_pf, 1) + " pF" : ""}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span>
       <span>Receiver ${esc(rx?.refdes || "")}: ${r.rx_used ? (r.rx_used.r > 0 ? fmt(r.rx_used.r, 0) + " Ω" : "high impedance") : (p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "high impedance")}${p.rx.c_pf ? ", " + fmt(p.rx.c_pf, 1) + " pF" : ""}</span><span>per line</span></div>
     ${r.rx_note ? `<div class="dstats muted"><span>${esc(r.rx_note)}</span></div>` : ""}
@@ -193,7 +200,7 @@ function renderLanePath(body, l, r) {
   const rows = segs.map((s) => {
     if (s.kind === "line") return `<tr><td>line</td><td>${L(s.layer)}</td><td class="n">${fmt(s.len_mm, 1)} mm</td><td class="n">${s.z != null ? fmt(ch.diff ? 2 * s.z : s.z, 1) + " Ω" : "–"}</td><td class="muted">${esc(s.source)}</td></tr>`;
     if (s.kind === "via") return `<tr><td>via</td><td>${L(s.layer)}</td><td class="n">${fmt(s.len_mm, 2)} mm</td><td class="n">${s.z != null ? fmt(ch.diff ? 2 * s.z : s.z, 0) + " Ω" : "–"}</td><td class="muted">via model</td></tr>`;
-    if (s.kind === "branch") return `<tr class="warnrow"><td>branch</td><td colspan="2">${esc(s.part || "")}</td><td></td><td class="muted">open stub</td></tr>`;
+    if (s.kind === "branch") return `<tr class="warnrow"><td>${/^stub/.test(s.part || "") ? "stub" : "branch"}</td><td colspan="2">${esc(s.part || "")}</td><td></td><td class="muted">open${/not fitted/.test(s.part || "") ? ", pad C estimated" : ""}</td></tr>`;
     if (/ pad$/.test(s.part || "")) return "";
     return `<tr><td>${s.kind === "series" ? "series" : "shunt"}</td><td colspan="3"><b>${esc(s.part || "")}</b></td><td class="muted">estimated parasitics</td></tr>`;
   }).join("");

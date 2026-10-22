@@ -33,17 +33,24 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
   await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
   try {
     saveBoardState();
-    const key = boardKey(name, pcbText + "|" + (proText || "")) + (cfg ? "|" + textHash(cfg.text) : "");
+    // assembly variant chosen in this browser (wins over the configuration's)
+    let vchoice = lsGet(variantKey(name));
+    const key = boardKey(name, pcbText + "|" + (proText || "")) + (cfg ? "|" + textHash(cfg.text + JSON.stringify(cfg.csv || {})) : "") + "|v=" + (vchoice || "");
     const snap = S.boardCache && S.boardCache.get(key);
     const t0 = performance.now();
     S.engine.loadPro(proText || '{"net_settings":{}}');
     S.engine.loadPcb(pcbText);
     S.lastFiles = { pcbText, proText, name, piDefaults, cfg };
     S.config = null;
+    S.variant = null;
     if (cfg) {
-      try { S.config = { name: cfg.name, ...S.engine.config(cfg.text, name) }; }
+      try { S.config = { name: cfg.name, ...S.engine.config(cfg.text, name, cfgFiles(cfg), vchoice) }; S.variant = S.config.variant; }
       catch (e) { S.config = { name: cfg.name, check: { ok: false, errors: [e.message], warnings: [], entries: 0 }, targets: {}, profiles: {} }; }
     }
+    try {
+      if (!S.variant) S.variant = vchoice ? S.engine.variant(vchoice) : S.engine.variants();
+      if (vchoice && !S.variant.chosen && S.variant.errors.length) { lsSet(variantKey(name), null); vchoice = null; S.variant = S.engine.variant(null); }
+    } catch (e) { S.variant = null; console.warn(e); }
     S.scene = S.engine.scene();
     $("app").classList.remove("no-board");
     S.padSet = new Set(S.scene.pad_tracks || []);
@@ -59,7 +66,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     S.layerOn = new Array(n).fill(true);
     // default plane layer: first inner layer with most zone area, else none
     S.zoneLayer = guessPlaneLayer();
-    S.boardKey = key;
+    S.boardKey = key.replace(/\|v=.*$/, "") + "|v=" + (vchoice || "");
     const tParse = performance.now() - t0;
     if (snap) {
       // back to a board of this session: same inputs, re-run the (fast) analysis for

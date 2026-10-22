@@ -227,6 +227,7 @@ function checkItems() {
 }
 const rowMetrics = (r, lane) => ({ ...(lane ? laneZStats(lane) : zStats(r.net)), il_nyq_db: r.il_nyq_db, rl_db: r.rl_db, eye_h: r.error || r.eye === false ? null : r.eye_height, eye_w_ui: r.error || r.eye === false ? null : r.eye_width_ui, skew_ps: r.skew_ps, skew_uncertain: r.skew_uncertain, stub_ghz: r.stub_ghz, error: r.error });
 async function runCheck() {
+  if (variantNeeded()) return;
   const items = checkItems(), rows = [], gen = S.anGen, p = rfParams();
   const btn = $("ck-start"); btn.disabled = true; S.checkRunning = true;
   const lanes = new Map(allLanes().map((l) => [laneKey(l), l]));
@@ -265,7 +266,12 @@ async function runCheck() {
 function renderCheck() {
   const box = $("ck-out");
   if (!box) return;
-  $("ck-start").disabled = !!S.an?.skeleton || !!S.checkRunning;
+  $("ck-start").disabled = !!S.an?.skeleton || !!S.checkRunning || variantNeeded();
+  if (variantNeeded()) {
+    box.innerHTML = "";
+    $("ck-text").textContent = "Choose the assembly variant first (card “Assembly variant”): lanes depend on the fitted parts.";
+    return;
+  }
   if (S.an && S.an.skeleton) {
     box.innerHTML = "";
     $("ck-text").textContent = "Needs the impedance estimate first (step 2 in the “Signals” card of the impedance view).";

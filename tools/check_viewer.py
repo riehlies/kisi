@@ -6,14 +6,15 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 
 * light, dark and phone layout; all three views (impedance, channel, power)
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
-  channel check, lane eye, voltage drop with ground return, impedance seen from the ICs, losses map and power flow
+  assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
+  lane eye, voltage drop with ground return, impedance seen from the ICs, losses map and power flow
   (desktop layouts; --quick: only load and the three views)
 * uses the embedded example boards if the build has them, else --board
 * --config: drops a <board>.kisi.json and expects "check passed"
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
-import argparse, os, sys, tempfile
+import argparse, json, os, sys, tempfile
 from playwright.sync_api import sync_playwright
 
 ap = argparse.ArgumentParser()
@@ -130,12 +131,30 @@ def run(pg, tag, desktop):
     pg.evaluate("setMode('dev')"); pg.wait_for_timeout(200)
     if desktop and not a.quick:
         pg.click("#view-ch"); pg.wait_for_timeout(500)
+        # a board with assembly variants and none chosen: the channel view asks before computing lanes
+        if pg.evaluate("variantNeeded()"):
+            if not pg.locator("#ch-overview [data-variant]").count() or pg.evaluate("!!S.laneRes"):
+                problems.append(f"{tag}: assembly variant needed, but no prompt in the channel view")
+            else:
+                step("variant_prompt")
+                pg.click("#ch-overview [data-variant] >> nth=0"); pg.wait_for_function(f"!variantNeeded() && {BUSY}", timeout=90000)
+                pg.wait_for_timeout(300)
         pg.click("#ov-check"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(300); step("check")
         if pg.locator("#ch-overview tr[data-lane]").count():
             pg.click("#ch-overview tr[data-lane] >> nth=0"); pg.wait_for_timeout(600)
             if pg.locator("#ch-detail [data-ct=eye]").count():
                 pg.click("#ch-detail [data-ct=eye]"); pg.wait_for_timeout(600)
             step("lane")
+        # switch to another variant in the side card (lanes computed again) and back
+        if pg.evaluate("!!S.variant && S.variant.variants.length > 1"):
+            pg.click("#chm-o"); pg.wait_for_timeout(300)
+            other = pg.evaluate("S.variant.variants.map((v) => v.name).find((n) => n !== S.variant.chosen)")
+            pg.select_option("#variant-sel", other); pg.wait_for_function(f"S.variant.chosen === {json.dumps(other)} && {BUSY}", timeout=90000)
+            pg.wait_for_timeout(400); step("variant_other")
+            if not pg.evaluate("S.buses && S.buses.length > 0 && !S.laneRes") or other not in pg.inner_text("#ch-overview .bal-head"):
+                problems.append(f"{tag}: lanes not recomputed or variant not shown after switching to {other}")
+            pg.evaluate("setVariant(null)"); pg.wait_for_function(f"S.variant.chosen_by !== 'viewer' && {BUSY}", timeout=90000)
+            pg.wait_for_timeout(300)
         pg.click("#view-pi"); pg.wait_for_timeout(400)
         if not pg.locator("#pi-run").is_disabled():
             pg.click("#pi-run"); pg.wait_for_function(f"S.piSolved && !S.piRunning && {BUSY}", timeout=300000); pg.wait_for_timeout(300)

@@ -37,7 +37,10 @@ in the output shows the coverage; `--formula` skips the solver.
    (layer, length, Z), losses, TDR extremes, vias (antipad, stub resonance, return path), crosstalk.
    Options `--rise-ps`, `--roughness smooth|hvlp|standard`.
 4. High-speed interfaces: `kisi interfaces <board>` lists the buses and device-to-device lanes (pins,
-   series parts, terminations, branches, direction guess, profile). Check that the end devices and
+   series parts, terminations, branches, direction guess, profile). Boards with assembly variants (or
+   forks where all alternative parts are fitted) need a variant: `interfaces`, `check` and `report`
+   stop with the list – ask the user which one, then use `--variant NAME` (or `"variant"` in kisi.json);
+   `variant` in the output says which one was analysed, and `stubs` per lane names unused pads. Check that the end devices and
    profiles make sense; `kisi profiles` shows the available standards. Then `kisi check <board>`,
    with `--class CLASS=PROFILE` when the assignment is wrong (better: put it into kisi.json).
    Only yellow/red rows are printed by default (`--all` for green too, `--nets A,B` to restrict).

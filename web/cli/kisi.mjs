@@ -148,7 +148,18 @@ async function main(argv) {
         if (isFile(cp)) { try { config = { path: cp, text: fs.readFileSync(cp, "utf8") }; } catch (e) { config = { path: cp, error: e.message }; } }
       }
       const stackup = o.stackup ? readJson(o.stackup) : null;
-      const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {} };
+      // files the configuration refers to: BOMs of assembly variants (paths relative to it)
+      const files = {};
+      if (config && config.text) {
+        let c = null;
+        try { c = JSON.parse(config.text); } catch { /* reported by the engine */ }
+        for (const v of Object.values((c && c.variants) || {})) {
+          if (!v || typeof v.bom !== "string" || files[v.bom]) continue;
+          const bp = path.resolve(path.dirname(config.path), v.bom);
+          try { files[v.bom] = { text: fs.readFileSync(bp, "utf8") }; } catch (e) { files[v.bom] = { error: `${bp}: ${e.code === "ENOENT" ? "not found" : e.message}` }; }
+        }
+      }
+      const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {}, files };
       const { plan } = eng.json("kisi_cli_project", inputs);
       var fieldInfo = null;
       if (plan.length) {

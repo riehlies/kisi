@@ -26,6 +26,7 @@ function renderSide() {
   $("k-noref").textContent = an.skeleton ? "–" : fmt(noref, 0);
   $("warnings").innerHTML = (sc.warnings || []).map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
   renderCfgStatus();
+  renderVariantCard();
   // stackup
   let total = 0; su.copper.forEach((c) => total += c.thickness); su.dielectrics.forEach((d, i) => total += stackEff(i).thickness);
   $("stackTotal").textContent = fmt(total, 2) + " mm";

@@ -16,6 +16,9 @@
 //!   },
 //!   "net_classes": {"PCIe": {"target_ohm": 85, "diff": true, "profile": "pcie3", "source": {…}}},
 //!   "fields": [{"ref": "U5", "name": "PI_LOAD", "value": "+1V0=2.5A, +1V8=300mA", "source": {…}}],
+//!   "variant": "TS-PCIe",
+//!   "variants": {"TS-PCIe": {"not_fitted_sheets": ["/TS-USB4 Components/"], "fitted": ["C101"], "source": {…}},
+//!                "TS-USB4": {"bom": "TS-USB4_BOM.csv", "bom_exceptions": ["P1"], "source": {…}}},
 //!   "notes": ["…"]
 //! }
 //! ```
@@ -26,8 +29,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
 pub const VERSION: u32 = 1;
-/// kinds of sources; "estimate" and "assumption" are reported as such
-pub const SOURCE_KINDS: &[&str] = &["datasheet", "standard", "application_note", "measurement", "simulation", "estimate", "assumption"];
+/// kinds of sources; "estimate" and "assumption" are reported as such; "design" = the
+/// project's own files (BOM, position files, schematic)
+pub const SOURCE_KINDS: &[&str] = &["datasheet", "standard", "application_note", "measurement", "simulation", "design", "estimate", "assumption"];
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -93,6 +97,34 @@ pub struct FieldEntry {
     pub source: Option<Source>,
 }
 
+/// An assembly variant for boards without KiCad 10 variants (or on top of them): which
+/// parts are fitted. Applied in this order, later rules win: the board file (DNP, and the
+/// KiCad 10 variant of the same name), `bom`, the sheets, the reference lists.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct VariantEntry {
+    pub description: Option<String>,
+    /// hierarchical sheets whose parts are fitted / not fitted ("/Power/"; a sheet covers
+    /// its sub-sheets)
+    pub fitted_sheets: Vec<String>,
+    pub not_fitted_sheets: Vec<String>,
+    /// reference designators fitted / not fitted (wildcards `*` and `?` allowed)
+    pub fitted: Vec<String>,
+    pub not_fitted: Vec<String>,
+    /// a BOM (CSV, path relative to the kisi.json): parts in it are fitted, parts not in it
+    /// are not – except parts marked "exclude from BOM" in KiCad and `bom_exceptions`
+    pub bom: Option<String>,
+    /// parts never listed in a BOM that stay as in the board file (gold fingers, test points)
+    pub bom_exceptions: Vec<String>,
+    pub source: Option<Source>,
+}
+
+impl VariantEntry {
+    pub fn is_empty(&self) -> bool {
+        self.fitted_sheets.is_empty() && self.not_fitted_sheets.is_empty() && self.fitted.is_empty() && self.not_fitted.is_empty() && self.bom.is_none()
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BoardConfig {
@@ -101,6 +133,10 @@ pub struct BoardConfig {
     pub stackup: StackupEntry,
     pub net_classes: BTreeMap<String, ClassEntry>,
     pub fields: Vec<FieldEntry>,
+    /// the assembly variant to analyse (a KiCad 10 variant of the board, one of `variants`,
+    /// or "default" for the board file as it is)
+    pub variant: Option<String>,
+    pub variants: BTreeMap<String, VariantEntry>,
     pub notes: Vec<String>,
 }
 
@@ -205,8 +241,9 @@ pub fn same_board(a: &str, b: &str) -> bool {
 
 /// Check a configuration against the board (as loaded from the file, before `apply`):
 /// format, ranges, references, sources, and whether kisi can read the field values.
-/// `board_name`: the loaded board (file name or viewer name), compared with `cfg.board`.
-pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles: &crate::profile::Profiles, board_name: Option<&str>) -> CheckResult {
+/// `board_name`: the loaded board (file name or viewer name), compared with `cfg.board`;
+/// `files`: the files the configuration refers to (BOMs of variants).
+pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles: &crate::profile::Profiles, board_name: Option<&str>, files: &crate::variant::Files) -> CheckResult {
     let mut r = CheckResult::default();
     let src = |what: String, s: &Option<Source>, r: &mut CheckResult| match s {
         None => r.errors.push(format!("{what}: source missing (every value needs a source)")),
@@ -314,6 +351,7 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
         }
         src(what, &f.source, &mut r);
     }
+    check_variants(cfg, board, files, &mut r);
     // can kisi read the power fields? apply to a copy and parse them like the analyses do
     if cfg.fields.iter().any(|f| KNOWN_FIELDS.iter().any(|k| k.eq_ignore_ascii_case(&f.name))) {
         let mut b = board.clone();
@@ -330,6 +368,79 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
     }
     r.ok = r.errors.is_empty();
     r
+}
+
+/// The `variants` section and the `variant` choice.
+fn check_variants(cfg: &BoardConfig, board: &Board, files: &crate::variant::Files, r: &mut CheckResult) {
+    use crate::variant::{bom_refs, in_sheet, norm_sheet, DEFAULT};
+    let mut sheets: Vec<String> = board.footprints.iter().map(|f| norm_sheet(&f.sheet)).filter(|s| !s.is_empty()).collect();
+    sheets.sort();
+    sheets.dedup();
+    let refs: std::collections::HashSet<&str> = board.footprints.iter().map(|f| f.reference.as_str()).collect();
+    let known_ref = |p: &str| if p.contains(['*', '?']) { board.footprints.iter().any(|f| crate::board::wildcard_match(p, &f.reference)) } else { refs.contains(p) };
+    for (name, v) in &cfg.variants {
+        r.entries += 1;
+        let what = format!("variants.{name}");
+        if name.trim().eq_ignore_ascii_case(DEFAULT) {
+            r.errors.push(format!("{what}: \"{DEFAULT}\" is reserved (the board file as it is)"));
+        }
+        if v.is_empty() && !board.variants.iter().any(|b| &b.name == name) {
+            r.warnings.push(format!("{what}: defines nothing (fitted_sheets, not_fitted_sheets, fitted, not_fitted or bom)"));
+        }
+        for s in v.fitted_sheets.iter().chain(&v.not_fitted_sheets) {
+            if sheets.is_empty() {
+                r.errors.push(format!("{what}: sheet '{s}' – the board file has no sheet names (re-save it with KiCad 6 or later, or select by references)"));
+            } else if !board.footprints.iter().any(|f| in_sheet(&f.sheet, s)) {
+                r.errors.push(format!("{what}: no part on sheet '{s}' (sheets: {}{})", sheets.iter().take(12).cloned().collect::<Vec<_>>().join(", "), if sheets.len() > 12 { ", …" } else { "" }));
+            }
+        }
+        for p in v.fitted.iter().chain(&v.not_fitted).chain(&v.bom_exceptions) {
+            if !known_ref(p.trim()) {
+                r.errors.push(format!("{what}: no footprint '{p}' on the board"));
+            }
+        }
+        for p in &v.fitted {
+            if v.not_fitted.contains(p) {
+                r.errors.push(format!("{what}: '{p}' is listed as fitted and as not fitted"));
+            }
+        }
+        if !v.bom_exceptions.is_empty() && v.bom.is_none() {
+            r.warnings.push(format!("{what}: bom_exceptions without a bom"));
+        }
+        if let Some(path) = &v.bom {
+            match files.get(path) {
+                None => r.errors.push(format!("{what}: BOM {path} not loaded (path relative to the kisi.json; in the viewer, drop it together with the board)")),
+                Some(Err(e)) => r.errors.push(format!("{what}: BOM {path}: {e}")),
+                Some(Ok(t)) => match bom_refs(t) {
+                    Err(e) => r.errors.push(format!("{what}: BOM {path}: {e}")),
+                    Ok(b) => {
+                        let n = b.fitted.iter().filter(|x| !refs.contains(x.as_str())).count();
+                        if n > 0 {
+                            r.warnings.push(format!("{what}: {n} reference(s) of the BOM are not on the board"));
+                        }
+                    }
+                },
+            }
+        }
+        if v.source.is_none() && v.is_empty() {
+            continue; // only a description of a KiCad 10 variant
+        }
+        match &v.source {
+            None => r.errors.push(format!("{what}: source missing (e.g. kind \"design\" with the BOM or assembly files)")),
+            Some(s) if s.is_empty() => r.errors.push(format!("{what}: source needs a document, url or note")),
+            Some(s) if !SOURCE_KINDS.contains(&s.kind.as_str()) => r.errors.push(format!("{what}: source kind '{}' unknown (use {})", s.kind, SOURCE_KINDS.join(", "))),
+            _ => {}
+        }
+    }
+    let names: Vec<&str> = board.variants.iter().map(|v| v.name.as_str()).chain(cfg.variants.keys().map(|k| k.as_str())).collect();
+    match &cfg.variant {
+        Some(sel) if !sel.trim().eq_ignore_ascii_case(DEFAULT) && !names.iter().any(|n| n.eq_ignore_ascii_case(sel.trim())) => r.errors.push(format!(
+            "variant: '{sel}' is not defined ({}\"{DEFAULT}\" = the board file as it is)",
+            if names.is_empty() { String::new() } else { format!("variants: {}; ", names.join(", ")) }
+        )),
+        None if !names.is_empty() => r.warnings.push(format!("variant: none chosen (variants: {}) – commands that compute lanes stop and ask for one", names.join(", "))),
+        _ => {}
+    }
 }
 
 #[cfg(test)]
@@ -358,7 +469,7 @@ mod tests {
             "fields": [{"ref": "U1", "name": "PI_LOAD", "value": "+3V3=150mA", "source": {"kind": "datasheet", "url": "https://example.com/ds.pdf", "page": "12", "note": "typical"}}]}"#,
         )
         .unwrap();
-        let r = check(&cfg, &board, &classes, &profiles, None);
+        let r = check(&cfg, &board, &classes, &profiles, None, &Default::default());
         assert!(r.ok, "{:?}", r.errors);
         assert_eq!(r.entries, 3);
         let mut b = board.clone();
@@ -381,10 +492,10 @@ mod tests {
                        {"ref": "U1", "name": "PI_LOAD", "value": "+3V3=lots", "source": {"kind": "datasheet", "document": "d"}}]}"#,
         )
         .unwrap();
-        let r = check(&bad, &board, &classes, &profiles, None);
+        let r = check(&bad, &board, &classes, &profiles, None, &Default::default());
         let named = BoardConfig { board: Some("mine.kicad_pcb".into()), ..cfg.clone() };
-        assert!(check(&named, &board, &classes, &profiles, Some("other.kicad_pcb")).errors[0].contains("written for"));
-        assert!(check(&named, &board, &classes, &profiles, Some("/x/Mine.kicad_pcb")).ok);
+        assert!(check(&named, &board, &classes, &profiles, Some("other.kicad_pcb"), &Default::default()).errors[0].contains("written for"));
+        assert!(check(&named, &board, &classes, &profiles, Some("/x/Mine.kicad_pcb"), &Default::default()).ok);
         assert!(same_board("x/LibreVNA.kicad_pcb", "librevna"));
         assert!(!r.ok);
         let all = r.errors.join("\n");

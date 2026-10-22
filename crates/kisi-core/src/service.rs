@@ -29,6 +29,8 @@ pub struct Project {
     pub config_check: Option<crate::config::CheckResult>,
     /// net class → profile id from the configuration
     pub config_profiles: HashMap<String, String>,
+    /// the assembly variant in use (`crate::variant`)
+    pub variant: crate::variant::VariantState,
 }
 
 /// File contents a project is built from (see `Project::from_texts`).
@@ -42,6 +44,25 @@ pub struct Inputs {
     pub stackup: Option<StackupOverride>,
     /// field-solver results by geometry id (`Analysis::geometries`)
     pub field: HashMap<String, crate::extract::FieldResult>,
+    /// assembly variant chosen on the command line (wins over the configuration's)
+    pub variant: Option<String>,
+    /// files the configuration refers to (BOMs of variants), by the path written in it
+    pub files: crate::variant::Files,
+}
+
+/// Read the files a configuration refers to (BOMs of its variants, relative to the
+/// configuration file).
+pub fn config_files(config_path: &Path, text: &str) -> crate::variant::Files {
+    let mut files = crate::variant::Files::new();
+    let Ok(c) = crate::config::parse(text) else { return files };
+    let dir = config_path.parent().unwrap_or(Path::new("."));
+    for v in c.variants.values() {
+        if let Some(b) = &v.bom {
+            let p = dir.join(b);
+            files.insert(b.clone(), std::fs::read_to_string(&p).map_err(|e| format!("{}: {e}", p.display())));
+        }
+    }
+    files
 }
 
 /// `<board>.kisi.json` next to `board.kicad_pcb`.
@@ -55,11 +76,12 @@ impl Project {
     /// `board.kisi.json` next to it if present.
     pub fn load(pcb: &Path, pro: Option<&Path>, stackup: Option<&StackupOverride>) -> Result<Project, String> {
         let cp = config_path_for(pcb);
-        Self::load_with(pcb, pro, stackup, cp.is_file().then_some(cp.as_path()))
+        Self::load_with(pcb, pro, stackup, cp.is_file().then_some(cp.as_path()), None)
     }
 
-    /// Like `load`, with an explicit configuration file (None: no configuration).
-    pub fn load_with(pcb: &Path, pro: Option<&Path>, stackup: Option<&StackupOverride>, config: Option<&Path>) -> Result<Project, String> {
+    /// Like `load`, with an explicit configuration file (None: no configuration) and an
+    /// assembly variant chosen on the command line.
+    pub fn load_with(pcb: &Path, pro: Option<&Path>, stackup: Option<&StackupOverride>, config: Option<&Path>, variant: Option<&str>) -> Result<Project, String> {
         let text = std::fs::read_to_string(pcb).map_err(|e| format!("{}: {e}", pcb.display()))?;
         let pro_path = pro.map(Path::to_path_buf).unwrap_or_else(|| pcb.with_extension("kicad_pro"));
         let pro_text = std::fs::read_to_string(&pro_path).ok();
@@ -67,7 +89,11 @@ impl Project {
             Some(cp) => Some((cp.to_path_buf(), std::fs::read_to_string(cp).map_err(|e| format!("{}: {e}", cp.display())))),
             None => None,
         };
-        Self::from_texts(Inputs { pcb_path: pcb.to_path_buf(), pcb: text, pro: pro_text, config, stackup: stackup.cloned(), field: HashMap::new() })
+        let files = match &config {
+            Some((cp, Ok(t))) => config_files(cp, t),
+            _ => Default::default(),
+        };
+        Self::from_texts(Inputs { pcb_path: pcb.to_path_buf(), pcb: text, pro: pro_text, config, stackup: stackup.cloned(), field: HashMap::new(), variant: variant.map(str::to_string), files })
     }
 
     /// Build a project from file contents (no file system access: also used in WASM).
@@ -78,23 +104,25 @@ impl Project {
                 board.warnings.push(format!("project file: {e}"));
             }
         }
-        // configuration: checked against the board as read, then laid over it
+        // configuration: checked against the board as read, then laid over it – after the
+        // assembly variant (the command line's choice, else the configuration's), so that its
+        // fields win over the board's
         let mut cfg = None;
         let mut cfg_check = None;
-        let mut applied = crate::config::Applied::default();
         if let Some((_, text)) = &inp.config {
             match text.clone().and_then(|t| crate::config::parse(&t)) {
                 Ok(c) => {
                     let an0 = crate::extract::skeleton(&board, &Params::default());
                     let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
                     let bn = inp.pcb_path.file_name().map(|f| f.to_string_lossy().to_string());
-                    cfg_check = Some(crate::config::check(&c, &board, &classes, &Profiles::builtin(), bn.as_deref()));
-                    applied = c.apply(&mut board);
+                    cfg_check = Some(crate::config::check(&c, &board, &classes, &Profiles::builtin(), bn.as_deref(), &inp.files));
                     cfg = Some(c);
                 }
                 Err(e) => cfg_check = Some(crate::config::CheckResult { ok: false, errors: vec![e], ..Default::default() }),
             }
         }
+        let variant = crate::variant::apply(&mut board, cfg.as_ref(), inp.variant.as_deref().map(|v| (v, "command line")), &inp.files);
+        let applied = cfg.as_ref().map(|c| c.apply(&mut board)).unwrap_or_default();
         if let Some(ov) = &inp.stackup {
             let su = board.stackup().with_overrides(ov);
             board.stackup = Some(su);
@@ -102,7 +130,16 @@ impl Project {
         let params = Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, targets: applied.targets.clone(), field: inp.field, ..Default::default() };
         let an = analyze(&board, &params);
         let name = inp.pcb_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles })
+        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant })
+    }
+
+    /// Commands that compute lanes call this first: an error with the list of variants when
+    /// the board has variants (or forks with all alternatives fitted) and none is chosen.
+    pub fn require_variant(&self) -> Result<(), String> {
+        match &self.variant.message {
+            Some(m) if self.variant.needs_choice => Err(m.clone()),
+            _ => Ok(()),
+        }
     }
 
     /// Field-solver coverage of the analysis (share of the routed length with a target).
@@ -256,7 +293,7 @@ fn lane_hint(p: &Project, net: u32) -> Option<crate::geom::P> {
         for l in &b.lanes {
             let rev = l.rx_end == 0;
             for h in l.hops.iter().chain(&l.partner_hops) {
-                if let topology::Hop::Net { net: n, from, to } = h {
+                if let topology::Hop::Net { net: n, from, to, .. } = h {
                     if *n == net {
                         return Some(if rev { *to } else { *from });
                     }
@@ -390,8 +427,9 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
         .collect();
     json!({
         "buses": list,
+        "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; DNP parts are skipped. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
     })
 }
 
@@ -466,6 +504,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             j["length_mm"] = json!(row.length_mm);
             j["vias"] = json!(row.vias);
             j["eye_computed"] = json!(row.eye);
+            j["stubs"] = json!(row.stubs);
             j["metrics"] = json!(m);
             rows.push((v.status, j));
         }
@@ -509,10 +548,11 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
     let count = |s: Status| rows.iter().filter(|r| r.0 == s).count();
     json!({
         "summary": {"green": count(Status::Green), "yellow": count(Status::Yellow), "red": count(Status::Red)},
+        "variant": p.variant.summary(),
         "config": p.config_summary(),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
         "field_solver": p.field_summary(),
-        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).", p.models())
+        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).", p.models())
     })
 }
 
@@ -646,6 +686,7 @@ pub fn report(p: &Project, profiles: &Profiles) -> Value {
     let rp = RfParams::default();
     json!({
         "tool": "kisi", "version": env!("CARGO_PKG_VERSION"),
+        "variant": p.variant.summary(),
         "config": p.config_summary(),
         "overview": overview(p),
         "interfaces": interfaces(p, profiles, &HashMap::new()),

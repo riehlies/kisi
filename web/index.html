@@ -38,10 +38,15 @@
     </div>
     <button class="btn" id="reload" hidden title="Read the same files again (after saving in KiCad)">Reload</button>
     <label class="btn primary" for="file" id="load-files">Load files</label>
-    <input type="file" id="file" accept=".kicad_pcb,.kicad_pro,.json" multiple hidden>
+    <input type="file" id="file" accept=".kicad_pcb,.kicad_pro,.json,.csv" multiple hidden>
   </div>
 
   <aside class="side">
+    <section class="card off" id="variant-card" aria-labelledby="h-variant" data-view="si ch pi">
+      <h2 id="h-variant">Assembly variant <em id="variant-name"></em></h2>
+      <div id="variant-body"></div>
+    </section>
+
     <section class="card" aria-labelledby="h-sum" data-view="si">
       <h2 id="h-sum">Signals <em id="timing"></em></h2>
       <div class="kpis">
@@ -211,7 +216,7 @@
     <section class="detail" id="pi-detail" hidden aria-live="polite"></section>
     <section class="balance" id="pi-balance" hidden aria-label="Power tree"></section>
     <section class="balance" id="ch-overview" hidden aria-label="Interfaces"></section>
-    <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro or &lt;board&gt;.kisi.json here</div>
+    <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro or &lt;board&gt;.kisi.json (with the BOMs its variants name) here</div>
     <div class="busy" id="busy">Loading engine…</div>
   </main>
 </div>
@@ -237,6 +242,7 @@ const DATA = __DATA__;
 <script src="src/si-tabs.js"></script>
 <script src="src/channel.js"></script>
 <script src="src/lanes.js"></script>
+<script src="src/variants.js"></script>
 <script src="src/panels.js"></script>
 <script src="src/interaction.js"></script>
 <script src="src/field-pool.js"></script>

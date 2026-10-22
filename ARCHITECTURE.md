@@ -29,7 +29,7 @@ interface; data that changes (standards, component values) lives in files, not i
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, viewer scene, `num` | – |
 | `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,mixed,crosstalk}` (`mixed`: 4-port pair model), `via` (board → via geometry, coax-section fallback), `via_pbm` (physics-based via ladder: r–z Laplace capacitances, parallel-plate impedance with return vias, stubs, pairs; checked against kisi-fdtd), `eye`, `profile`, `topology` (device-to-device lanes) | kisi-board, kisi-sparse |
 | `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `losses` (ground return, losses, loss map, power flow), `pdn` (Z(f), plane model), `cavity_modal` (rectangular plane pair, double cosine series; loop inductance), `pdn_ic` (AC grid over all layers of the rail domain – the rail and the nets behind series resistors, inductors and ferrites up to the regulators –, PDN seen from every IC, filter resonances, recommendations) | kisi-board, kisi-sparse |
-| `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `config` (`<board>.kisi.json`), `gaps` | the three above |
+| `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `config` (`<board>.kisi.json`), `variant` (assembly variants: KiCad 10 overrides, kisi.json rules by sheet/references/BOM, the “must choose” state), `gaps` | the three above |
 | `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
 | `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` (impedance cases; `models`: the reduced models on the 3D reference cases; `via-geom`: diagnostics of one via) | kisi-core |
 | `kisi-sparse` | sparse solver (real Cholesky/LU, complex LU for the AC grid), also built as a WASM module for the field solver | faer |
@@ -43,7 +43,8 @@ viewer (via WASM) and CLI show the same result.
 * `index.html` – markup only; `css/kisi.css`; scripts in `src/` in the order of
   `src/manifest.json` (shared scope):
   `engine` (WASM) · `state` · `load` · `geometry` · `draw` · `charts` · `net-detail` · `si-tabs`
-  (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `panels` · `interaction` · `field-pool` ·
+  (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `variants` (assembly variant card and
+  prompt) · `panels` · `interaction` · `field-pool` ·
   `field-cache` · `crosstalk` (coupling scan with step 2, Couplings card, critical stretches on the map) · `pi-dc` · `pi-pdn` · `pi-balance` · `pi-loss` (losses map, power flow) · `views` · `main` (start-up, files, hand-over).
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html`: WASM modules and the field solver
   script (gzip + base64, unpacked at start), fonts (`web/fonts`, OFL), `data/*.json` and, optionally, example
@@ -57,7 +58,7 @@ viewer (via WASM) and CLI show the same result.
 * Files come in by drag and drop or the file dialog; with the File System Access API (Chromium) the viewer keeps
   the file handles and “Reload” reads them again after saving in KiCad.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
-  net class → profile assignment, power settings, lane directions. The results of the last three boards stay in memory for the session.
+  net class → profile assignment, power settings, lane directions, the chosen assembly variant. The results of the last three boards stay in memory for the session.
 
 ## Data (`data/`)
 * `<board>.kisi.json` (next to the board, not in this repository) – per-board values with sources, see above.
@@ -74,8 +75,14 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
 
 ## Board configuration and agents
 * `<board>.kisi.json` (`kisi_core::config`): values with sources that the board file lacks – stackup, net class
-  targets and profiles, footprint fields (PI_LOAD/PI_SOURCE/PI_REG). Laid over the board when loading (CLI and
-  viewer); kisi never writes into KiCad files. Precedence: board file < kisi.json < viewer edits / CLI options.
+  targets and profiles, footprint fields (PI_LOAD/PI_SOURCE/PI_REG), assembly variants. Laid over the board when
+  loading (CLI and viewer); kisi never writes into KiCad files. Precedence: board file < kisi.json < viewer edits /
+  CLI options.
+* Assembly variants (`kisi_core::variant`): order when loading – board file → variant (KiCad 10 overrides, then the
+  kisi.json rules of that name) → kisi.json fields. `kisi_si::topology::forks` finds forks where all alternative
+  series parts are fitted. With variants or such forks and no choice, `Project::require_variant` stops the lane
+  commands (`commands::needs_variant`) and the viewer asks before computing lanes. The WASM state keeps the board
+  as read and rebuilds the analysed board when the viewer switches the variant.
 * `kisi_core::gaps`: deterministic list of missing or default data, with where to find it and the kisi.json entry.
 * Agents use the CLI (`node kisi.mjs <command> <board>` → JSON) following the skills in `claude-plugin/skills/`:
   `kisi-prepare` (gaps → research with sources → kisi.json → `kisi config-check`) and `kisi-si-pi-review`.

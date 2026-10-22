@@ -8,7 +8,16 @@ async function handleFiles(files) {
   // <board>.kisi.json: board configuration with sources; other .json files are not read
   const kisiCfg = files.find((f) => /\.kisi\.json$/i.test(f.name));
   const other = files.find((f) => f.name.endsWith(".json") && f !== kisiCfg);
-  const kc = kisiCfg ? { name: kisiCfg.name, text: await kisiCfg.text() } : null;
+  // BOMs (CSV) that the configuration's variants name
+  const csv = {};
+  for (const f of files.filter((f) => /\.csv$/i.test(f.name))) csv[f.name] = await f.text();
+  let kc = kisiCfg ? { name: kisiCfg.name, text: await kisiCfg.text(), csv } : null;
+  if (!kc && Object.keys(csv).length && S.lastFiles && S.lastFiles.cfg) kc = { ...S.lastFiles.cfg, csv: { ...(S.lastFiles.cfg.csv || {}), ...csv } };
+  if (!pcb && !kisiCfg && kc) {
+    const l = S.lastFiles;
+    await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, kc);
+    return;
+  }
   if (pcb) {
     for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", "false");
     await loadFiles(await pcb.text(), pro ? await pro.text() : null, pcb.name.replace(/\.kicad_pcb$/, ""), null, kc);
@@ -70,7 +79,7 @@ window.addEventListener("drop", (e) => {
     else if (files.some((f) => /\.kicad_pcb$/i.test(f.name))) { S.fileHandles = null; $("reload").hidden = true; }
     else if (S.fileHandles && hp.some(Boolean)) {
       // a configuration file dropped later: reload reads it too
-      const extra = (await Promise.all(hp)).filter((h) => h && h.kind === "file" && /\.kisi\.json$/i.test(h.name));
+      const extra = (await Promise.all(hp)).filter((h) => h && h.kind === "file" && /\.kisi\.json$|\.csv$/i.test(h.name));
       S.fileHandles = S.fileHandles.filter((h) => !extra.some((x) => x.name === h.name)).concat(extra);
     }
     await handleFiles(files);

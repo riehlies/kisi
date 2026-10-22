@@ -304,6 +304,28 @@ return loss up to 12 GHz:
 With DNP set the lanes become clean point-to-point paths, but the via and pad stub of the unused footprint are
 then missing (lanes ignore side stubs), so the truth lies between the columns, close to the variant columns.
 
+**Update (M0 implemented, branch `feat/variants`):** the variants are defined in `web/samples/ts.kisi.json` by
+sheet (TS-PCIe: `/TS-USB4 Components/` not fitted except C101, C102, C128; TS-USB4: `/TS-PCIe Components/` not
+fitted except C22, C83, C84 – the parts of the MP BOMs; parts that no BOM lists, such as test points and the edge
+fingers P1, follow their sheet). Lanes now carry side stubs: the
+unused pad (0402 pad capacitance, estimate) at the end of its trace – and, in TS-USB4, the whole F.Cu–B.Cu via
+barrel, because the fitted part sits on F.Cu next to the FPGA trace. The board as it is (`--variant default`)
+attaches the other path at the fork instead of at the FPGA pin. Hops now end on the pad's layer: 0.2.3 could end
+on the other part's pad (same position, other side) and skip the through via. Same lanes, same settings
+(native, formula, `pcie4` at 8 GHz; RL up to 12 GHz, seen from the first end – the FPGA for the board as it is,
+the connector for the variants):
+
+| Lane | Board as it is: IL / RL (dB) | TS-PCIe: IL / RL | TS-USB4: IL / RL | at 2.5 GHz (`pcie2`), variant: IL / RL |
+|---|---|---|---|---|
+| P1 PER0 (C41) | −2.19 / 0.69 | −3.12 / 4.05 | – | −0.55 / 16.9 |
+| P1 PET3 (R26) | −3.32 / 1.03 | −4.37 / 2.44 | – | −0.78 / 9.9 |
+| J8 PER3 (C31) | −3.60 / 0.58 | – | −3.44 / 1.84 | −0.40 / 14.4 |
+| J8 PET0 (R40) | −4.10 / 1.03 | – | −5.71 / 3.64 | −1.16 / 10.6 |
+
+The variant numbers are worse than the DNP estimates above because the through via and the stubs are now in the
+path; in TS-USB4 the ~2.2 mm stub (via barrel, 0.7 mm on B.Cu, pad) resonates near 12.5 GHz and dominates above
+6 GHz. At PCIe Gen2 rates the variants are clean, the board as it is is not (e.g. P1 PER0 −1.41 / 0.69 dB).
+
 ### 6.3 Proposal
 - **Variant selection:** KiCad 10 variants from the board file; for older boards a `variants` section in
   kisi.json – by sheet path, by reference list, or from a BOM CSV ("everything not in this BOM is DNP", except

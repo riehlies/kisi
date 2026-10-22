@@ -70,9 +70,12 @@ Three views, each starting with what the board file gives and computing more on 
    the charts; A is the transmitter side of the lane or the IC, ⇄ swaps it); branches are marked where they leave
    the path and included in loss and TDR as open stubs; hovering a chart shows the position on the board.
 2. **Channel** – interfaces overview: buses and device-to-device lanes through series resistors and AC-coupling
-   capacitors, with terminations and branches; per net class an interface profile (PCIe, USB, DDR, LVDS, …
-   from `data/interfaces.json`) with transmitter, receiver and limits. Eye only from IC to IC; lanes ending at a
-   connector are judged on the board share (loss, return loss, skew).
+   capacitors, with terminations, branches and side stubs; per net class an interface profile (PCIe, USB, DDR,
+   LVDS, … from `data/interfaces.json`) with transmitter, receiver and limits. Eye only from IC to IC; lanes ending
+   at a connector are judged on the board share (loss, return loss, skew). Boards with assembly variants (KiCad 10
+   variants or `variants` in `kisi.json`) – or with forks where all alternative parts are fitted – ask “Which
+   assembly variant?” before lanes are computed; the card “Assembly variant” switches later (stored in the
+   browser, over the `kisi.json` choice) and the lane results name the variant.
 3. **Power** – power tree, budget and power flow (Sankey) first, from `PI_REG` / `PI_LOAD` fields or the board's
    `kisi.json`; part references jump to the board. Then, per rail and for the ground return, voltage drop and
    current density on every layer (drop at each load, vias with the highest currents), a losses map (heat per part
@@ -97,8 +100,13 @@ files are not changed. Results of the last three boards stay in memory while swi
 | `power` | regulator chain, budget, DC IR drop per rail and in the ground return, losses per part / rail / layer, power flow (`--pdn RAIL` adds Z(f)) |
 | `report` | everything into `analysis/kisi.json` next to the board |
 | `gaps` | missing or default data, where to find it, how to write it into `<board>.kisi.json` |
-| `config-check`, `config-template` | check / start a `<board>.kisi.json` |
+| `config-check`, `config-template` | check / start a `<board>.kisi.json` (the template suggests variants from forks) |
 | `profiles [ID]` | the interface profiles |
+
+`--variant NAME` chooses the assembly variant (a KiCad 10 variant of the board or one of the `kisi.json` variants;
+`default` = the board file as it is), over `"variant"` in `<board>.kisi.json`. When a board has variants – or forks
+where all alternative series parts are fitted – and none is chosen, `interfaces`, `check` and `report` stop with
+the list of variants (exit code 1) and `gaps` reports it; the other commands do not depend on the fitted parts.
 
 `overview`, `net`, `check`, `crosstalk` and `report` run the field solver for the cross-sections of nets with a target, the most
 routed length first, within `--field-time` seconds (default 120). Results are cached
@@ -109,6 +117,8 @@ commands with formula impedances only.
 ## Information kisi takes from KiCad
 - **Target impedance** from net class names: `50Z`, `90Z_Diff`, `100Z_Diff`, … (or `<board>.kisi.json`).
 - **Interface profile** automatically from net and class names (rules in `data/interfaces.json`), or per class.
+- **Population:** DNP and “exclude from BOM” attributes, the sheet of every part, KiCad 10 assembly variants
+  (variant list and per-part overrides: DNP, BOM, field values).
 - **Power** – fields on the symbol, copied to the footprint on “Update PCB from schematic”:
 
 | Field | Example | Meaning |
@@ -137,13 +147,28 @@ KiCad files; CLI and viewer lay this file over the board.
   "stackup": {"dielectrics": [{"index": 0, "epsilon_r": 3.65, "loss_tangent": 0.0095,
                                "source": {"kind": "datasheet", "document": "Isola FR408HR", "page": "2", "note": "10 GHz, typical"}}]},
   "net_classes": {"PCIe": {"target_ohm": 85, "diff": true, "profile": "pcie3", "source": {"kind": "standard", "document": "PCIe CEM 3.0"}}},
-  "fields": [{"ref": "U5", "name": "PI_LOAD", "value": "+1V0=2.5A", "source": {"kind": "datasheet", "url": "…", "note": "maximum"}}]
+  "fields": [{"ref": "U5", "name": "PI_LOAD", "value": "+1V0=2.5A", "source": {"kind": "datasheet", "url": "…", "note": "maximum"}}],
+  "variant": "TS-PCIe",
+  "variants": {
+    "TS-PCIe": {"description": "PCIe card", "not_fitted_sheets": ["/TS-USB4 Components/"], "fitted": ["C101", "C102", "C128"],
+                "source": {"kind": "design", "document": "TS-PCIe_MP_BOM.csv"}},
+    "TS-USB4": {"bom": "TS-USB4_MP_BOM.csv", "bom_exceptions": ["TP*"], "source": {"kind": "design", "document": "TS-USB4_MP_BOM.csv"}}
+  }
 }
 ```
 - `stackup`: εr, tanδ, thickness, material per dielectric (index 0 = below F.Cu), solder mask εr.
 - `net_classes`: target impedance and profile of existing net classes. `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`, `PI_CAP`, `PI_TARGET`, `PI_SERIES`).
-- Source kinds: datasheet, standard, application_note, measurement, simulation, estimate, assumption.
-- Precedence: board file < kisi.json < edits in the viewer / `--class` on the command line.
+- `variant`: the assembly variant to analyse – a KiCad 10 variant of the board, one of `variants`, or `default`
+  (the board file as it is). `variants`: which parts are fitted, for boards without KiCad 10 variants (or on top of
+  one of the same name). Rules in this order, later ones win: the board file (DNP, KiCad 10 overrides), `bom` (a CSV
+  next to the kisi.json with a “Reference”/“Designator” column: parts not in it are not fitted, except parts marked
+  “exclude from BOM” in KiCad and `bom_exceptions`), `fitted_sheets` / `not_fitted_sheets` (a sheet covers its
+  sub-sheets, the most specific one wins), `fitted` / `not_fitted` (references, `*` and `?` allowed). A part that is
+  not fitted connects nothing; its pads stay as copper and become stubs on the lanes. In the viewer, drop the BOMs
+  together with the board and the kisi.json.
+- Source kinds: datasheet, standard, application_note, measurement, simulation, design (the project's own BOM,
+  position or schematic files), estimate, assumption.
+- Precedence: board file < kisi.json < edits in the viewer / `--class` and `--variant` on the command line.
 
 ## Models and accuracy
 - **Impedance:** formulas (Hammerstad-Jensen, Wheeler, Wadell CPWG, IPC-2141) and the quasi-static 2D field solver
@@ -157,7 +182,10 @@ KiCad files; CLI and viewer lay this file over the board.
   an equivalent circle), stubs and back-drill, the junction to the traces; pairs with their partner. Vias that do
   not cross a plane are coaxial sections. An estimate, not a 3D result.
 - **Lanes:** series parts and terminations with package parasitics from `data/components.json` (estimates); the
-  transmit direction is a guess (termination next to the receiver) and can be swapped.
+  transmit direction is a guess (termination next to the receiver) and can be swapped. Copper of a lane net that
+  leaves the path is an open side stub: to unused pads and test points, to the pads of parts that are not fitted
+  (with their pad capacitance, an estimate), and – when all alternatives of a fork are fitted – through the other
+  part to the other device. A stub hangs on the side of a via that matches its layer.
 - **Eye:** PRBS7 NRZ with the profile's linear transmitter/receiver; no equalisation, jitter or noise.
 - **Power:** copper rasterised per layer, vias as barrels (25 µm); DC IR drop per rail. PDN per IC: the rail's
   copper on all layers as an AC grid with plane capacitance, capacitors with ESR/ESL and DC-bias derating

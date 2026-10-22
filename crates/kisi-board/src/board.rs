@@ -184,14 +184,54 @@ pub struct Footprint {
     pub at: P,
     /// user fields (symbol fields copied to the footprint), e.g. PI_LOAD
     pub props: Vec<(String, String)>,
-    /// marked "Do not populate" (KiCad 8+: `(attr … dnp)`)
+    /// not fitted: "Do not populate" (KiCad 8+: `(attr … dnp)`), or not fitted in the
+    /// chosen assembly variant (see `kisi_core::variant`)
     pub dnp: bool,
+    /// left out of the bill of materials (`(attr … exclude_from_bom)`): gold fingers,
+    /// test points, fiducials – parts a BOM never lists
+    pub exclude_from_bom: bool,
+    /// hierarchical sheet of the symbol (`(sheetname "/Power/")`); empty if unknown
+    pub sheet: String,
+    /// KiCad 10 assembly variants: the overrides of this footprint per variant
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub variants: Vec<FootprintVariant>,
 }
 
 impl Footprint {
     pub fn prop(&self, name: &str) -> Option<&str> {
         self.props.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v.as_str())
     }
+    /// Set a user field (or the value with name "Value").
+    pub fn set_prop(&mut self, name: &str, value: &str) {
+        if name.eq_ignore_ascii_case("Value") {
+            self.value = value.to_string();
+            return;
+        }
+        match self.props.iter_mut().find(|(k, _)| k.eq_ignore_ascii_case(name)) {
+            Some(p) => p.1 = value.to_string(),
+            None => self.props.push((name.to_string(), value.to_string())),
+        }
+    }
+}
+
+/// Overrides of one footprint in a KiCad 10 assembly variant (only what differs from the
+/// footprint's own attributes; `None` = as in the footprint).
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct FootprintVariant {
+    pub name: String,
+    pub dnp: Option<bool>,
+    pub exclude_from_bom: Option<bool>,
+    /// field overrides (name, value), e.g. ("Value", "10k")
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub fields: Vec<(String, String)>,
+}
+
+/// An assembly variant declared in the board file (KiCad 10, `(variants (variant (name …)
+/// (description …)))`).
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct BoardVariant {
+    pub name: String,
+    pub description: String,
 }
 
 #[derive(Debug, Clone)]
@@ -229,6 +269,8 @@ pub struct Board {
     /// nets that own copper zones (ground / power): their copper acts as
     /// reference or coplanar ground
     pub plane_net: Vec<bool>,
+    /// assembly variants declared in the board file (KiCad 10)
+    pub variants: Vec<BoardVariant>,
     pub warnings: Vec<String>,
 }
 
@@ -247,8 +289,13 @@ impl Board {
 
 const WANTED: &[&str] = &[
     "version", "generator", "layers", "setup", "net", "segment", "arc", "via", "zone",
-    "footprint", "gr_line", "gr_arc", "gr_rect", "gr_circle", "gr_poly",
+    "footprint", "gr_line", "gr_arc", "gr_rect", "gr_circle", "gr_poly", "variants",
 ];
+
+/// `(dnp)`, `(dnp yes)`, `(dnp no)` (KiCad's "maybe absent bool": a bare keyword is true).
+fn flag_value(n: &Node) -> bool {
+    !matches!(n.atom(1), Some("no") | Some("false"))
+}
 
 struct NetTable {
     names: Vec<String>,
@@ -353,6 +400,15 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
             Some("net") => {
                 if let (Some(id), Some(name)) = (it.f64(1), it.atom(2)) {
                     nets.declare(id as u32, name);
+                }
+            }
+            Some("variants") => {
+                // KiCad 10: (variants (variant (name "A") (description "…")) …)
+                for v in it.children("variant") {
+                    let Some(name) = v.child_str("name").filter(|n| !n.is_empty()) else { continue };
+                    if b.variants.iter().all(|x| x.name != name) {
+                        b.variants.push(BoardVariant { name: name.to_string(), description: v.child_str("description").unwrap_or("").to_string() });
+                    }
                 }
             }
             _ => {}
@@ -810,9 +866,20 @@ fn parse_footprint(fp: &Node, su: &Stackup, nets: &mut NetTable, out: &mut Vec<P
             _ => {}
         }
     }
-    let dnp = fp.child("attr").is_some_and(|a| (1..8).any(|i| a.atom(i) == Some("dnp")));
+    let attr = |name: &str| fp.child("attr").is_some_and(|a| (1..10).any(|i| a.atom(i) == Some(name)));
+    let (dnp, exclude_from_bom) = (attr("dnp"), attr("exclude_from_bom"));
+    let sheet = fp.child_str("sheetname").unwrap_or("").to_string();
+    // KiCad 10: (variant (name "B") (dnp yes) (exclude_from_bom yes) (field (name "Value") (value "10k")))
+    let variants = fp
+        .children("variant")
+        .filter_map(|v| {
+            let name = v.child_str("name").filter(|n| !n.is_empty())?.to_string();
+            let fields = v.children("field").filter_map(|f| Some((f.child_str("name")?.to_string(), f.child_str("value").unwrap_or("").to_string()))).collect();
+            Some(FootprintVariant { name, dnp: v.child("dnp").map(flag_value), exclude_from_bom: v.child("exclude_from_bom").map(flag_value), fields })
+        })
+        .collect();
     let fp_idx = fps.len() as u32;
-    fps.push(Footprint { reference, value, at: o, props, dnp });
+    fps.push(Footprint { reference, value, at: o, props, dnp, exclude_from_bom, sheet, variants });
     let fa = at.f64(3).unwrap_or(0.0).to_radians();
     let (s, c) = fa.sin_cos();
     for pad in fp.children("pad") {
@@ -954,6 +1021,44 @@ pub fn apply_project(b: &mut Board, pro_json: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// KiCad 10 board (format 20260206): board-level variant list and per-footprint
+    /// overrides, as written by `PCB_IO_KICAD_SEXPR::formatVariants` and the footprint writer.
+    #[test]
+    fn kicad10_variants_and_sheets() {
+        let pcb = r#"(kicad_pcb (version 20260206) (generator "pcbnew") (generator_version "10.0")
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (variants (variant (name "Lite") (description "without the radio")) (variant (name "Full")))
+  (net 0 "") (net 1 "A") (net 2 "B")
+  (footprint "R_0402" (layer "F.Cu") (uuid "1") (at 10 10 90)
+    (property "Reference" "R1" (at 0 0 0) (layer "F.SilkS")) (property "Value" "0" (at 0 0 0) (layer "F.Fab"))
+    (path "/aaa/bbb") (sheetname "/Radio/") (sheetfile "radio.kicad_sch")
+    (attr smd)
+    (pad "1" smd roundrect (at -0.5 0) (size 0.6 0.6) (layers "F.Cu") (net 1 "A"))
+    (pad "2" smd roundrect (at 0.5 0) (size 0.6 0.6) (layers "F.Cu") (net 2 "B"))
+    (variant (name "Lite") (dnp yes) (exclude_from_bom yes))
+    (variant (name "Full") (field (name "Value") (value "22")) (field (name "MPN") (value "RC0402-22R"))))
+  (footprint "TP" (layer "B.Cu") (at 20 10)
+    (property "Reference" "TP1") (property "Value" "PCB") (sheetname "/") (attr smd exclude_from_bom dnp)
+    (pad "1" smd circle (at 0 0) (size 1 1) (layers "B.Cu") (net 1 "A"))
+    (variant (name "Full") (dnp no))))
+"#;
+        let b = load_pcb(pcb).unwrap();
+        assert_eq!(b.variants.len(), 2);
+        assert_eq!((b.variants[0].name.as_str(), b.variants[0].description.as_str()), ("Lite", "without the radio"));
+        let r1 = &b.footprints[0];
+        assert_eq!((r1.reference.as_str(), r1.sheet.as_str(), r1.dnp, r1.exclude_from_bom), ("R1", "/Radio/", false, false));
+        assert_eq!(r1.variants.len(), 2);
+        assert_eq!((r1.variants[0].dnp, r1.variants[0].exclude_from_bom), (Some(true), Some(true)));
+        assert_eq!(r1.variants[1].dnp, None);
+        assert_eq!(r1.variants[1].fields, vec![("Value".to_string(), "22".to_string()), ("MPN".to_string(), "RC0402-22R".to_string())]);
+        let tp = &b.footprints[1];
+        assert!(tp.dnp && tp.exclude_from_bom && tp.sheet == "/");
+        assert_eq!(tp.variants[0].dnp, Some(false));
+        // KiCad 8/9 boards: no variants, sheets still read
+        let old = pcb.replace("(variants (variant (name \"Lite\") (description \"without the radio\")) (variant (name \"Full\")))", "");
+        assert!(load_pcb(&old).unwrap().variants.is_empty());
+    }
+
     #[test]
     fn wildcard() {
         assert!(wildcard_match("*/TERM_1M*", "/Front End/TERM_1M_A"));

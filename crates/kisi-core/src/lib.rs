@@ -17,3 +17,4 @@ pub mod commands;
 pub mod config;
 pub mod gaps;
 pub mod service;
+pub mod variant;

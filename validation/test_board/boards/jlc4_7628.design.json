@@ -1,0 +1,125 @@
+{
+ "solver": "field",
+ "kisi": "kisi.mjs",
+ "w50": {
+  "0": 0.345,
+  "3": 0.345
+ },
+ "diff": {
+  "0": {
+   "w": 0.205,
+   "s": 0.2
+  }
+ },
+ "notes": [],
+ "launch": {
+  "w": 0.315,
+  "gap": 0.3
+ },
+ "pair_via": {
+  "0": {
+   "w": 0.315,
+   "s": 0.685,
+   "pitch": 1.0
+  },
+  "3": {
+   "w": 0.315,
+   "s": 0.685,
+   "pitch": 1.0
+  }
+ },
+ "cpwg": {
+  "w": 0.28,
+  "gap": 0.18,
+  "note": "gap of the LibreVNA RF class (T_vna6_cpwg), width for 50 \u03a9"
+ },
+ "pair_pitch": 12.7,
+ "z_table": [
+  {
+   "what": "50 \u03a9 line (microstrip)",
+   "layer": "F.Cu",
+   "w_mm": 0.345,
+   "s_mm": null,
+   "gap_mm": null,
+   "target_ohm": 50.0,
+   "z_formula": 50.91,
+   "z_field": 49.83,
+   "dev_formula_pct": 1.8,
+   "dev_field_pct": -0.3
+  },
+  {
+   "what": "50 \u03a9 line (microstrip)",
+   "layer": "B.Cu",
+   "w_mm": 0.345,
+   "s_mm": null,
+   "gap_mm": null,
+   "target_ohm": 50.0,
+   "z_formula": 50.91,
+   "z_field": 49.83,
+   "dev_formula_pct": 1.8,
+   "dev_field_pct": -0.3
+  },
+  {
+   "what": "launch (grounded coplanar)",
+   "layer": "F.Cu",
+   "w_mm": 0.315,
+   "s_mm": null,
+   "gap_mm": 0.3,
+   "target_ohm": 50.0,
+   "z_formula": 52.84,
+   "z_field": 50.02,
+   "dev_formula_pct": 5.7,
+   "dev_field_pct": 0.0
+  },
+  {
+   "what": "CPWG coupon (LibreVNA class)",
+   "layer": "F.Cu",
+   "w_mm": 0.28,
+   "s_mm": null,
+   "gap_mm": 0.18,
+   "target_ohm": 50.0,
+   "z_formula": 53.46,
+   "z_field": 49.74,
+   "dev_formula_pct": 6.9,
+   "dev_field_pct": -0.5
+  },
+  {
+   "what": "100 \u03a9 coupled pair",
+   "layer": "F.Cu",
+   "w_mm": 0.205,
+   "s_mm": 0.2,
+   "gap_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 104.12,
+   "z_field": 100.14,
+   "dev_formula_pct": 4.1,
+   "dev_field_pct": 0.1
+  },
+  {
+   "what": "pair at the 1.0 mm via pitch",
+   "layer": "F.Cu",
+   "w_mm": 0.315,
+   "s_mm": 0.685,
+   "gap_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 104.34,
+   "z_field": 99.82,
+   "dev_formula_pct": 4.3,
+   "dev_field_pct": -0.2
+  },
+  {
+   "what": "pair at the 1.0 mm via pitch",
+   "layer": "B.Cu",
+   "w_mm": 0.315,
+   "s_mm": 0.685,
+   "gap_mm": null,
+   "target_ohm": 100.0,
+   "z_formula": 104.34,
+   "z_field": 99.82,
+   "dev_formula_pct": 4.3,
+   "dev_field_pct": -0.2
+  }
+ ],
+ "stackup": "jlc4_7628",
+ "date": "2026-10-22"
+}

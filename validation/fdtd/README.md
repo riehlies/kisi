@@ -76,7 +76,8 @@ and the lumped R–L–C.
 - `compare_kisi.py` runs kisi's channel model on every case (`KISI_VIA_MODEL=coax` for the former via model) and
   compares the via alone de-embedded → `results/kisi_models.json`.
 - `practice.py` measures run time, memory and bundle size on the example boards → `results/practice.json`.
-- The planned measured test board is in `../test_board.md`.
+- The measured test board: plan in `../test_board.md`, coupons and their 3D cases (`../test_board/fdtd/`, same format,
+  run with `run_refs.py`) in `../test_board/README.md`.
 
 ```
 cargo build --release -p kisi-fdtd

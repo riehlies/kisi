@@ -1,6 +1,7 @@
-# Measured test board – plan (ToDo)
+# Measured test board – plan
 
-Status: plan, nothing built. Idea: select reference cases that can be made with the standard stackups of
+Status: **coupons prepared, not ordered** – boards, 3D cases, kisi check, measurement plan and ordering
+checklist in [`test_board/README.md`](test_board/README.md) (DRC not run; connector footprint still a placeholder). Idea: select reference cases that can be made with the standard stackups of
 JLCPCB and Aisler, order them, simulate the same PCB files in CST and kisi-fdtd, and measure them on a VNA.
 
 ## Goal
@@ -63,8 +64,9 @@ de-embeds them.
 Aisler 4L).
 
 ## Data flow
-1. **Coupon generator:** extend `via_cases.py` with launches, feed lengths, board outline and the panel.
-   `kisi_board.py` writes the KiCad PCB (zones, vias, edge cuts, footprints for the connectors).
+1. **Coupon generator:** `test_board/make_coupons.py` (reuses `via_cases.py` for the 3D cases): launches, feed
+   lengths, stepped board outline, KiCad PCB with zones, vias, edge cuts and connector footprints, one description for
+   both the board and the 3D cases.
 2. **kisi-fdtd:** the coupon with the launch, and de-embedded results of the same coupon.
 3. **CST:** import the KiCad / ODB++ files with the stackup, waveguide or discrete ports at the connector
    reference planes, the same de-embedding. Alternative: the VBA macro generator planned in
@@ -78,8 +80,10 @@ Aisler 4L).
    (measurement).
 
 ## Open decisions
-- Connector: SMA (27 GHz) or 2.92 mm (40 GHz), and how many (e.g. 4 for pairs).
-- Stackups: JLC 4L + 6L, Aisler 4L. Is a second order with a thinner prepreg (JLC 2116 / 3313) wanted?
+- Connector: SMA (27 GHz) or 2.92 mm (40 GHz), and how many (e.g. 4 for pairs). Proposal in `test_board/README.md`:
+  4 × 2.92 mm narrow block (`1092-01A-14`).
+- Stackups: JLC 4L + 6L (JLC04161H-7628 primary, JLC06161H-7628), Aisler 4L. Is a second order with a thinner prepreg
+  (JLC 2116 / 3313) wanted? (`jlc4_3313`, `jlc6_3313` are in `test_board/stackups.json`.)
 - Who runs CST, which version, which solver.
 - Budget and time slot at the VNAs.
 

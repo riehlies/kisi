@@ -8,7 +8,9 @@
 
 const laneSwapKey = () => "kisi.laneswap.v1." + S.name;
 const laneKey = (l) => `${l.nets[0]}>${l.ends.length ? l.ends[l.ends.length - 1].refdes : ""}`;
-const CHECKABLE = new Set(["ic-ic", "ic-connector"]);
+// lane kinds the check judges (kisi_si::topology::checked_kind): connector to connector (coupons,
+// pass-through boards) like device to connector, on the board share
+const CHECKABLE = new Set(["ic-ic", "ic-connector", "connector-connector"]);
 function laneSwaps() {
   if (!S.laneSw || S.laneSw.board !== S.name) S.laneSw = { board: S.name, map: lsGet(laneSwapKey()) || {} };
   return S.laneSw.map;
@@ -99,13 +101,14 @@ function laneStatus(l) {
 const KIND_TITLE = {
   "ic-ic": ["Device to device", "transmitter and receiver on this board: eye, loss, return loss, skew"],
   "ic-connector": ["Device to connector", "the channel continues off the board: loss, return loss and skew of the board share; the eye (grey) with the termination or driver at the connector – information"],
+  "connector-connector": ["Connector to connector", "the board between two connectors (coupons, pass-through): loss, return loss and skew of the board share, no eye"],
   other: ["Multi-drop and open lines", "more than two devices on one line or no second device: listed, not checked"],
 };
 function renderChOverview() {
   const box = $("ch-overview");
   if (variantNeeded()) { box.innerHTML = variantPrompt(); bindVariantButtons(box); return; }
   if (!S.buses) { box.innerHTML = ""; return; }
-  const groups = { "ic-ic": [], "ic-connector": [], other: [] };
+  const groups = { "ic-ic": [], "ic-connector": [], "connector-connector": [], other: [] };
   for (const b of S.buses) {
     const k = CHECKABLE.has(b.kind) ? b.kind : "other";
     groups[k].push(b);
@@ -156,10 +159,11 @@ function renderChOverview() {
       ${kpi(S.buses.length, "buses")}
       ${kpi(nl("ic-ic"), "device to device")}
       ${kpi(nl("ic-connector"), "device to connector")}
+      ${nl("connector-connector") ? kpi(nl("connector-connector"), "connector to connector") : ""}
       ${kpi(nl("other"), "not checked")}
       ${kpi(res ? `<span style="color:${S.colors.ok}">${counts.ok}</span> / <span style="color:${S.colors.high1}">${counts.high1}</span> / <span style="color:${S.colors.high2}">${counts.high2}</span>` : "–", res ? `lanes green / yellow / red${stale ? " · outdated" : ""}` : "after the check (card “Channel check”)")}
     </div>
-    ${section("ic-ic")}${section("ic-connector")}${section("other")}`;
+    ${section("ic-ic")}${section("ic-connector")}${section("connector-connector")}${section("other")}`;
   box.querySelectorAll("tr[data-lane]").forEach((tr) => tr.onclick = () => {
     const l = allLanes().find((x) => laneKey(x) === tr.dataset.lane);
     if (!l) return;
@@ -187,7 +191,7 @@ function renderLaneDetail(l) {
   const d = $("ch-detail"), r = chForLane(l), p = r.profile;
   const tab = S.chTab || "check";
   const tx = laneTx(l), rx = laneRx(l);
-  const tabs = [["check", "Check"], ["eye", "Eye"], ["path", "Path"]];
+  const tabs = [["check", "Check"], ...(l.kind !== "connector-connector" ? [["eye", "Eye"]] : []), ["path", "Path"]];
   const t = tabs.some((x) => x[0] === tab) ? tab : "check";
   d.innerHTML = `<header><div><h3>${esc(netShort(l.name))}${l.diff ? ` <span class="muted">pair</span>` : ""}</h3><div class="muted">${esc(pinLabel(tx))} ${esc(tx?.value || "")} → ${esc(pinLabel(rx))} ${esc(rx?.value || "")} · ${esc(l.class)}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
     <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}${variantShown() ? ` · variant ${esc(variantShown())}` : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button></span></div>
@@ -217,7 +221,7 @@ function renderLaneDetail(l) {
     <div class="tablewrap"><table class="xs-table"><thead><tr><th></th><th>Criterion</th><th>Value</th><th>Limit</th></tr></thead><tbody>
     ${j.rows.map((x) => `<tr title="${esc(x.note || "")}"><td><span class="dot" style="background:${S.colors[x.st]}" aria-label="${ST_NAME[x.st]}"></span></td><td>${x.name}</td><td>${esc(String(x.value))}</td><td>${x.limit}</td></tr>`).join("")}${eb}${xt}
     </tbody></table></div>
-    <p class="note">${l.kind === "ic-ic" ? "From device pin to device pin, including series parts (package parasitics estimated, data/components.json). Loss, return loss and TDR describe the interconnect without terminations; the eye uses the profile's transmitter and receiver, with a termination next to the receiver as its termination." : (restSet ? "From the device to the connector, judged on loss, return loss and skew of the board share; the eye includes the channel behind the connector as a lossy line and the termination or driver there (set in the interface's card of the overview) and is judged." : "From the device to the connector: the board share of the channel, judged on loss, return loss and skew. The eye uses the termination or driver set for the connector (the interface's card in the overview; default the profile's receiver or transmitter right at the connector); without a channel model behind the connector it covers the board share only and is information.")} No equalisation, jitter or noise.</p>
+    <p class="note">${l.kind === "ic-ic" ? "From device pin to device pin, including series parts (package parasitics estimated, data/components.json). Loss, return loss and TDR describe the interconnect without terminations; the eye uses the profile's transmitter and receiver, with a termination next to the receiver as its termination." : l.kind === "connector-connector" ? "From connector to connector: the board share of the channel. No eye, because transmitter and receiver are off the board." : (restSet ? "From the device to the connector, judged on loss, return loss and skew of the board share; the eye includes the channel behind the connector as a lossy line and the termination or driver there (set in the interface's card of the overview) and is judged." : "From the device to the connector: the board share of the channel, judged on loss, return loss and skew. The eye uses the termination or driver set for the connector (the interface's card in the overview; default the profile's receiver or transmitter right at the connector); without a channel model behind the connector it covers the board share only and is information.")} No equalisation, jitter or noise.</p>
     ${(r.channel?.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("")}`;
 }
 

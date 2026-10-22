@@ -8,7 +8,7 @@
 //! * `eye`      – eye diagram and board-level channel check
 
 // shared board model, re-exported so modules can use `crate::board` etc.
-pub use kisi_board::{board, geom, num};
+pub use kisi_board::{board, geom, num, package};
 
 pub mod analytic;
 pub mod extract;

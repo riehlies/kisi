@@ -23,6 +23,12 @@ pub const F_DIFF_UNCOUPLED: u32 = 32; // diff-pair net but partner not adjacent 
 pub const F_REF_PERFORATED: u32 = 64; // sample lies in a small plane opening (e.g. via antipad)
 pub const F_PLANE_OPENING: u32 = 128; // opening in a layer between trace and reference (e.g. antipad under a pad)
 pub const F_PAD: u32 = 256; // cross-section through an SMD pad
+/// formula result over a cut-out in a layer between the trace and its reference, with the
+/// cut-out's edge laterally closer to the trace than the reference is below it: the closed-form
+/// models know only the reference plane (and coplanar copper on the trace's layer), not the
+/// cut-out's edges, which then carry much of the return current – a rough estimate (the 3313
+/// launch over a 0.465 mm opening in In1 reads 25 % high); the field solver models the cut-out
+pub const F_FORMULA_ROUGH: u32 = 512;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
@@ -497,6 +503,28 @@ fn snap_ratio(s: f64, ratio: f64) -> f64 {
     base * ratio.powf(((s / base).ln() / ratio.ln()).round())
 }
 
+/// Probe distance around a sample point in an opening of a plane (mm).
+const OPENING_PROBE_MM: f64 = 0.3;
+/// Openings longer than this along the track are never small (mm): antipads are smaller.
+const OPENING_SMALL_MM: f64 = 1.0;
+
+/// Whether the plane opening at sample `p` is small (a via antipad, a hole in a BGA field) so
+/// that the plane still acts as the reference: copper within `OPENING_PROBE_MM` in three of the
+/// four directions (along and across the track), and along the track in both directions within
+/// `OPENING_SMALL_MM`. An opening that continues along the track – a slot, a cut-out under a
+/// launch – is not small, also within `OPENING_PROBE_MM` of its end: the trace has no reference
+/// over it.
+fn small_opening(z: &LayerZones, p: P, dir: P, nrm: P, cover: &mut Vec<u32>) -> bool {
+    let mut covered = |d: P, r: f64| {
+        z.covering(geom::add(p, geom::scale(d, r)), cover);
+        !cover.is_empty()
+    };
+    let back = geom::scale(dir, -1.0);
+    let (f, b) = (covered(dir, OPENING_PROBE_MM), covered(back, OPENING_PROBE_MM));
+    let n = [f, b, covered(nrm, OPENING_PROBE_MM), covered(geom::scale(nrm, -1.0), OPENING_PROBE_MM)].iter().filter(|x| **x).count();
+    n >= 3 && (f || covered(dir, OPENING_SMALL_MM)) && (b || covered(back, OPENING_SMALL_MM))
+}
+
 fn q(v: Option<f64>, res: f64) -> i64 {
     match v {
         Some(x) => (x / res).round() as i64,
@@ -546,22 +574,12 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
                 for j in range {
                     zones[j].covering(p, &mut cover);
                     let mut hit = !cover.is_empty();
-                    if !hit {
+                    if !hit && small_opening(&zones[j], p, dir, nrm, &mut cover) {
                         // small openings (via antipads in a BGA field) do not
-                        // remove the reference: probe around the sample point
-                        let r = 0.3;
-                        let mut n_cov = 0;
-                        for d in [nrm, geom::scale(nrm, -1.0), dir, geom::scale(dir, -1.0)] {
-                            zones[j].covering(geom::add(p, geom::scale(d, r)), &mut cover);
-                            if !cover.is_empty() {
-                                n_cov += 1;
-                            }
-                        }
-                        if n_cov >= 3 {
-                            hit = true;
-                            perforated = true;
-                            perf_layers.push(j);
-                        }
+                        // remove the reference
+                        hit = true;
+                        perforated = true;
+                        perf_layers.push(j);
                     }
                     if hit {
                         let h = su.gap_between(li, j);
@@ -942,6 +960,10 @@ fn evaluate(
     mut flags: u32,
 ) -> CrossSection {
     let diff_gap = partner.map(|p| p.0);
+    // an opening in a layer between the trace and its reference whose edge is laterally closer
+    // to the trace than the reference is below it: the edge carries much of the return current
+    let h_ref = [up, dn].into_iter().flatten().map(|r| r.1).fold(f64::INFINITY, f64::min);
+    let near_opening = planes.iter().filter(|c| Some(c.layer) != up.map(|r| r.0) && Some(c.layer) != dn.map(|r| r.0)).filter_map(|c| [c.left, c.right].into_iter().flatten().reduce(f64::min)).any(|d| d - w / 2.0 < h_ref);
     let su = board.stackup();
     let li = layer as usize;
     let ncu = su.n();
@@ -1084,6 +1106,9 @@ fn evaluate(
             }
         }
     }
+    if solver == "formula" && kind != Kind::NoReference && flags & F_PLANE_OPENING != 0 && near_opening {
+        flags |= F_FORMULA_ROUGH;
+    }
 
     CrossSection {
         kind,
@@ -1132,6 +1157,58 @@ mod tests {
         assert_eq!(t("Default"), None);
         assert_eq!(t("3V3"), None);
     }
+    /// A 2.75 mm launch on F.Cu over a cut-out in In1 (0.465 mm wide) that ends exactly where the
+    /// launch track ends (the 3313 coupons): the reference is In2 along the whole track – the last
+    /// sample, within 0.3 mm of the cut-out's end, was taken as a small antipad (reference In1).
+    /// The line after it (over solid In1) passes a 0.5 mm square antipad: still referenced to In1.
+    #[test]
+    fn opening_ending_at_track_end() {
+        let pcb = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (4 "In1.Cu" signal) (6 "In2.Cu" signal) (2 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.0994) (material "3313") (epsilon_r 4.1) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.0175))
+    (layer "dielectric 2" (type "core") (thickness 1.265) (material "FR4") (epsilon_r 4.6) (loss_tangent 0.02))
+    (layer "In2.Cu" (type "copper") (thickness 0.0175))
+    (layer "dielectric 3" (type "prepreg") (thickness 0.0994) (material "3313") (epsilon_r 4.1) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "SIG") (net 2 "GND")
+  (segment (start 0.05 0) (end 2.8 0) (width 0.255) (layer "F.Cu") (net 1))
+  (segment (start 2.8 0) (end 10 0) (width 0.15) (layer "F.Cu") (net 1))
+  (zone (net 2) (net_name "GND") (layer "In1.Cu")
+    (filled_polygon (layer "In1.Cu") (pts (xy 0 -5) (xy 5.67 -5) (xy 5.67 0.3) (xy 0 0.3) (xy 0 0.2325) (xy 2.8 0.2325) (xy 2.8 -0.2325) (xy 0 -0.2325)))
+    (filled_polygon (layer "In1.Cu") (pts (xy 0 0.29) (xy 5.67 0.29) (xy 5.67 5) (xy 0 5)))
+    (filled_polygon (layer "In1.Cu") (pts (xy 5.6 -5) (xy 20 -5) (xy 20 -0.25) (xy 5.6 -0.25)))
+    (filled_polygon (layer "In1.Cu") (pts (xy 5.6 0.25) (xy 20 0.25) (xy 20 5) (xy 5.6 5)))
+    (filled_polygon (layer "In1.Cu") (pts (xy 6.17 -5) (xy 20 -5) (xy 20 5) (xy 6.17 5))))
+  (zone (net 2) (net_name "GND") (layer "In2.Cu") (filled_polygon (layer "In2.Cu") (pts (xy -1 -5) (xy 20 -5) (xy 20 5) (xy -1 5)))))
+"#;
+        let board = crate::board::load_pcb(pcb).unwrap();
+        let an = analyze(&board, &Params::default());
+        let pieces: Vec<(usize, f64, f64, &CrossSection)> = an.pieces.chunks(4).map(|c| (c[0] as usize, c[1], c[2], &an.cross_sections[c[3] as usize])).collect();
+        // the launch: reference In2 (index 2) over its whole length, In1 only as a cut-out
+        let launch: Vec<_> = pieces.iter().filter(|p| p.0 == 0).collect();
+        assert!(!launch.is_empty());
+        for (_, t0, t1, xs) in &launch {
+            assert_eq!((xs.ref_dn, xs.ref_up), (Some(2), None), "launch {t0:.3}–{t1:.3}: reference {:?}", xs.ref_dn);
+            assert!(xs.flags & F_PLANE_OPENING != 0 && xs.flags & F_REF_PERFORATED == 0, "flags {:#x}", xs.flags);
+            // the formula sees only In2 below: CPW-like and high, marked as a rough estimate
+            assert!(xs.solver == "formula" && xs.flags & F_FORMULA_ROUGH != 0 && xs.z0.unwrap() > 55.0, "{:?} {:#x}", xs.z0, xs.flags);
+        }
+        // with a field-solver result for the launch's cross-section the mark goes away
+        let gid = launch[0].3.geom.expect("launch geometry");
+        let mut params = Params::default();
+        params.field.insert(an.geometries[gid as usize].id.clone(), FieldResult { z0: Some(50.05), eeff: Some(2.9), ..Default::default() });
+        let an2 = analyze(&board, &params);
+        let xs2 = &an2.cross_sections[an2.pieces[3] as usize];
+        assert!(xs2.solver == "field" && xs2.flags & F_FORMULA_ROUGH == 0 && xs2.z0 == Some(50.05), "{:?}", xs2.z0);
+        // the line: In1 everywhere, the antipad (sample at its centre, x = 5.92) is perforation
+        let line: Vec<_> = pieces.iter().filter(|p| p.0 == 1).collect();
+        assert!(line.iter().all(|p| p.3.ref_dn == Some(1)), "{:?}", line.iter().map(|p| (p.1, p.3.ref_dn)).collect::<Vec<_>>());
+        assert!(line.iter().any(|p| p.3.flags & F_REF_PERFORATED != 0), "the antipad is a small opening");
+    }
+
     #[test]
     fn partners() {
         let nets: Vec<String> = ["", "/USB_D+", "/USB_D-", "CLK_P", "CLK_N", "VCCP"]

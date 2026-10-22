@@ -71,12 +71,12 @@ Three views, each starting with what the board file gives and computing more on 
    the path and included in loss and TDR as open stubs; hovering a chart shows the position on the board.
 2. **Channel** – interfaces overview: buses and device-to-device lanes through series resistors and AC-coupling
    capacitors, with terminations, branches and side stubs; per net class an interface profile (PCIe, USB, DDR,
-   LVDS, … from `data/interfaces.json`) with transmitter, receiver and limits. Lanes ending at a connector are
-   judged on the board share (loss, return loss, skew); their eye uses the end set per connector in the interface's
+   LVDS, … from `data/interfaces.json`) with transmitter, receiver and limits. Lanes ending at a connector (also connector to
+   connector: coupons, pass-through boards) are judged on the board share (loss, return loss, skew); their eye uses the end set per connector in the interface's
    card – termination when the connector receives, driver when it sends (the profile's, matched, high impedance or
    custom R/C) – and, if
    given, the channel behind the connector as a lossy line (loss at Nyquist) or a Touchstone file (.s2p, .s4p);
-   without it the eye covers the board share only and is information, with it the eye is judged. Boards with assembly variants (KiCad 10
+   without it the eye covers the board share only and is information, with it the eye is judged. Parts from a lane's net to ground (a shunt capacitor) are in its channel at their pads. Boards with assembly variants (KiCad 10
    variants or `variants` in `kisi.json`) – or with forks where all alternative parts are fitted – ask “Which
    assembly variant?” before lanes are computed; the card “Assembly variant” switches later (stored in the
    browser, over the `kisi.json` choice) and the lane results name the variant. A lane is named after and made of

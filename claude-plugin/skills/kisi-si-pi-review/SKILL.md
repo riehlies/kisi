@@ -66,8 +66,11 @@ in the output shows the coverage; `--formula` skips the solver.
 - Eyes are linear PRBS7 estimates with the profile's transmitter/receiver and no equalisation, jitter
   or noise. Limits marked "kisi" in the profile sources are guide values, not standards.
 - Skew marked uncertain comes from branched paths; do not report it as a violation.
-- Eyes exist only for lanes from IC to IC. Lanes ending at a connector are judged on the board share
-  (loss, return loss, skew); say that the rest of the channel is not included.
+- Eyes exist only for lanes from IC to IC. Lanes ending at a connector (also connector to connector,
+  e.g. test coupons) are judged on the board share (loss, return loss, skew); say that the rest of the
+  channel is not included.
+- Formula impedances flagged "rough" (a launch or pad over a cut-out in a layer between trace and
+  reference) can be 25 % off; prefer `kisi.mjs` (field solver) there.
 - Lanes with an open branch (one IC feeding two connectors, both populated) show the stub's resonance;
   suggest marking the unused population option DNP in KiCad.
 - Parasitics of series parts and terminations are estimates per package; the transmit direction is a

@@ -250,6 +250,17 @@ pub fn overview(p: &Project) -> Value {
         }
         let len: f64 = nets.iter().map(|n| n.length).sum();
         let ok: f64 = nets.iter().map(|n| n.length * n.within5.unwrap_or(0.0)).sum();
+        // length whose formula impedance is a rough estimate (over a cut-out between trace and reference)
+        let rough: f64 = p
+            .an
+            .pieces
+            .chunks_exact(4)
+            .filter(|pc| p.an.cross_sections[pc[3] as usize].flags & crate::extract::F_FORMULA_ROUGH != 0)
+            .filter_map(|pc| p.board.tracks.get(pc[0] as usize).map(|t| (t, pc)))
+            .filter(|(t, _)| nets.iter().any(|n| n.net == t.net))
+            .map(|(t, pc)| crate::geom::len(crate::geom::sub(t.b, t.a)) * (pc[2] - pc[1]))
+            .sum::<f64>()
+            + 0.0; // no -0.0 for an empty sum
         let mut worst: Vec<_> = nets.iter().filter(|n| n.z_mean.is_some()).collect();
         worst.sort_by(|a, b| {
             let da = (a.z_mean.unwrap() - t.z).abs();
@@ -259,6 +270,7 @@ pub fn overview(p: &Project) -> Value {
         classes.push(json!({
             "class": c.name, "target_ohm": t.z, "diff": t.diff, "target_source": c.target_source, "nets": nets.len(),
             "length_mm": len, "within_5pct": if len > 0.0 { ok / len } else { 0.0 },
+            "rough_formula_mm": rough,
             "worst": worst.iter().take(5).map(|n| json!({"net": n.name, "z_mean": n.z_mean, "z_min": n.z_min, "z_max": n.z_max, "within_5pct": n.within5})).collect::<Vec<_>>()
         }));
     }
@@ -351,6 +363,13 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
     let su = p.board.stackup();
     let tdr_in: Vec<f64> = ch.tdr_z.iter().zip(&ch.tdr_x_mm).filter(|(_, x)| **x <= ch.length_mm).map(|(z, _)| *z).collect();
     let k = if ch.diff { 2.0 } else { 1.0 };
+    // formula results over a cut-out between the trace and its reference: rough estimates
+    let rough = |x: Option<u32>| x.is_some_and(|x| p.an.cross_sections[x as usize].flags & crate::extract::F_FORMULA_ROUGH != 0);
+    let rough_mm: f64 = ch.segments.iter().filter(|s| s.kind == "line" && rough(s.xs)).map(|s| s.len_mm).sum();
+    let mut warnings = ch.warnings.clone();
+    if rough_mm > 0.0 {
+        warnings.push(format!("{rough_mm:.2} mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high – the field solver (kisi.mjs) models them"));
+    }
     let mixed = if ch.diff {
         match rf::mixed_mode(&p.board, &p.an, net, field, p.target(net), rp, false, lane_hint(p, net)) {
             Ok(m) => mixed_json(&m, rp.rise),
@@ -363,7 +382,15 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
         "net": ch.name, "class": st.map(|s| s.class.clone()), "target": st.and_then(|s| s.target).map(|t| json!({"ohm": t.z, "diff": t.diff})),
         "differential": ch.diff, "length_mm": ch.length_mm, "delay_ps": ch.delay_ps, "vias": ch.vias, "path": path_json(&ch),
         "impedance": st.map(|s| json!({"mean": s.z_mean, "min": s.z_min, "max": s.z_max, "within_5pct": s.within5})),
-        "segments": ch.segments.iter().filter(|s| s.kind == "line").map(|s| json!({"layer": su.copper[s.layer as usize].name, "len_mm": s.len_mm, "z_ohm_per_line": s.z})).collect::<Vec<_>>(),
+        "segments": ch.segments.iter().filter(|s| s.kind == "line").map(|s| {
+            let mut v = json!({"layer": su.copper[s.layer as usize].name, "len_mm": s.len_mm, "z_ohm_per_line": s.z});
+            if rough(s.xs) {
+                v["estimate"] = json!("rough: formula over a cut-out between trace and reference");
+            }
+            v
+        }).collect::<Vec<_>>(),
+        // lumped parts in the channel (shunt parts of the net at their pads; estimated parasitics)
+        "parts": ch.segments.iter().filter(|s| matches!(s.kind, "shunt" | "series")).map(|s| json!({"part": s.part, "kind": s.kind, "at_mm": s.s_mm, "parasitics": "estimate"})).collect::<Vec<_>>(),
         "insertion_loss_db": ch.il_marks.iter().map(|(f, d)| json!({"ghz": f, "db": d})).collect::<Vec<_>>(),
         "return_loss_worst_db": -ch.s11_db.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
         "return_loss_worst_db_b": -ch.s22_db.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
@@ -383,7 +410,7 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
             "broadside": xt.broadside.iter().map(|b| json!({"net": b.name, "layer": su.copper[b.layer as usize].name, "overlap_mm": b.overlap_mm, "dz_mm": b.dz_mm, "lateral_offset_mm": b.offset_mm, "computed": false})).collect::<Vec<_>>(),
             "note": "fractions of the aggressor swing; source 'formula' is an estimate. Differential victims: differential noise, common-mode noise in *_common. Broadside overlaps (tracks on the adjacent layer) are listed but not computed yet."},
         "mixed_mode": mixed,
-        "warnings": ch.warnings, "field_solver": p.field_summary(), "models": p.models()
+        "warnings": warnings, "field_solver": p.field_summary(), "models": p.models()
     }))
 }
 
@@ -472,7 +499,7 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
         "buses": list,
         "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
     })
 }
 
@@ -501,7 +528,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
     for b in &buses {
         for l in &b.lanes {
             on_lane.extend(l.nets.iter().chain(&l.partner_nets).copied());
-            if !matches!(l.kind.as_str(), "ic-ic" | "ic-connector") {
+            if !topology::checked_kind(&l.kind) {
                 continue;
             }
             if !wanted(&mut l.nets.iter().map(|&n| p.board.net_name(n))) {
@@ -611,7 +638,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
         "not_checked_unused": (skipped_unused > 0).then(|| format!("{skipped_unused} net(s) with a target only connect parts not fitted in this assembly (variant or DNP): not checked")),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
         "field_solver": p.field_summary(),
-        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.", p.models())
+        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.", p.models())
     })
 }
 
@@ -752,4 +779,59 @@ pub fn report(p: &Project, profiles: &Profiles) -> Value {
         "channels": channel_check(p, profiles, &HashMap::new(), None, &rp),
         "power": power(p, None, None).unwrap_or_else(|e| json!({"error": e})),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A CAPZ coupon: a 50 Ω line from connector J1 to connector J2 (class 50Z) with a 100 nF
+    /// capacitor (KiCad's 0805) to GND at 20 mm.
+    const PCB: &str = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (4 "In1.Cu" signal) (2 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.2) (material "FR4") (epsilon_r 4.3) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 2" (type "core") (thickness 1.2) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "SE_CAPZ_0805") (net 2 "GND")
+  (footprint "J" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "Value" "SMA") (attr smd)
+    (pad "1" smd rect (at 0 0) (size 0.6 0.35) (layers "F.Cu") (net 1 "SE_CAPZ_0805")))
+  (footprint "J" (layer "F.Cu") (at 40 0) (property "Reference" "J2") (property "Value" "SMA") (attr smd)
+    (pad "1" smd rect (at 0 0) (size 0.6 0.35) (layers "F.Cu") (net 1 "SE_CAPZ_0805")))
+  (footprint "Capacitor_SMD:C_0805_2012Metric" (layer "F.Cu") (at 20 0.95) (property "Reference" "C3") (property "Value" "100nF 16V X7R") (attr smd)
+    (pad "1" smd rect (at 0 -0.95) (size 1.45 1.0) (layers "F.Cu") (net 1 "SE_CAPZ_0805"))
+    (pad "2" smd rect (at 0 0.95) (size 1.45 1.0) (layers "F.Cu") (net 2 "GND")))
+  (segment (start 0 0) (end 40 0) (width 0.35) (layer "F.Cu") (net 1))
+  (zone (net 2) (net_name "GND") (layer "In1.Cu") (filled_polygon (layer "In1.Cu") (pts (xy -5 -5) (xy 45 -5) (xy 45 8) (xy -5 8)))))
+"#;
+    const PRO: &str = r#"{"net_settings": {"classes": [{"name": "Default"}, {"name": "50Z"}], "netclass_assignments": {"SE_CAPZ_0805": "50Z"}}}"#;
+
+    fn project() -> Project {
+        Project::from_texts(Inputs { pcb_path: "capz.kicad_pcb".into(), pcb: PCB.into(), pro: Some(PRO.into()), config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap()
+    }
+
+    /// `check --all` judges the connector–connector lane (board share: impedance, loss, return
+    /// loss; no eye), and `net` models the shunt capacitor at its pad.
+    #[test]
+    fn coupon_lane_is_checked_and_net_has_the_capacitor() {
+        let p = project();
+        let o = crate::commands::parse_args(&["check".into(), "capz.kicad_pcb".into(), "--all".into()]).unwrap();
+        let v = crate::commands::run(&o, Some(&p), None).unwrap();
+        let rows = v["rows"].as_array().unwrap();
+        assert_eq!(rows.len(), 1, "{v:#}");
+        let r = &rows[0];
+        assert_eq!((r["kind"].as_str(), r["lane"].as_str(), r["eye_computed"].as_bool()), (Some("connector-connector"), Some("SE_CAPZ_0805"), Some(false)));
+        let keys: Vec<&str> = r["criteria"].as_array().unwrap().iter().filter_map(|c| c["key"].as_str()).collect();
+        assert!(keys.contains(&"z") && keys.contains(&"il") && keys.contains(&"rl") && !keys.contains(&"eye_h"), "{keys:?}");
+        assert_eq!(r["terminations"][0].as_str(), Some("C3 100nF 16V X7R to GND"));
+        // the capacitor costs return loss: the row is not green
+        assert_ne!(r["status"].as_str(), Some("green"), "{r:#}");
+        // net: the capacitor at 20 mm, named in the warnings
+        let n = net_detail(&p, "SE_CAPZ_0805", &RfParams::default()).unwrap();
+        let parts = n["parts"].as_array().unwrap();
+        assert!(parts.len() == 1 && parts[0]["part"].as_str().unwrap().starts_with("C3 100nF") && (parts[0]["at_mm"].as_f64().unwrap() - 20.0).abs() < 0.6, "{parts:?}");
+        assert!(n["warnings"].as_array().unwrap().iter().any(|w| w.as_str().unwrap().contains("C3 100nF 16V X7R (0805)")));
+    }
 }

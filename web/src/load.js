@@ -54,6 +54,9 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     S.scene = S.engine.scene();
     $("app").classList.remove("no-board");
     S.padSet = new Set(S.scene.pad_tracks || []);
+    // synthetic pad track → its pad (drawn as the pad's outline, not as a stroke)
+    S.padOfTrack = new Map((S.scene.pad_tracks || []).map((t, i) => [t, (S.scene.pad_track_pad || [])[i]]));
+    S.padCustom = new Map((S.scene.pad_custom || []).map(([i, polys]) => [i, polys]));
     S.zones = S.engine.zones();
     S.name = name;
     S.overrides = {};

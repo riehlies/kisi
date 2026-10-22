@@ -134,18 +134,6 @@ pub fn parse_cap(v: &str) -> Option<f64> {
     None
 }
 
-fn package_of(pitch: f64) -> &'static str {
-    match pitch {
-        p if p < 0.65 => "0201",
-        p if p < 1.25 => "0402",
-        p if p < 1.95 => "0603",
-        p if p < 2.7 => "0805",
-        p if p < 3.8 => "1206",
-        p if p < 4.6 => "1210",
-        _ => "large",
-    }
-}
-
 /// (body ESL, ESR) estimates for an MLCC of this size and value; large values
 /// in big packages are treated as polymer/tantalum.
 fn esl_esr(pkg: &str, c: f64) -> (f64, f64) {
@@ -283,7 +271,7 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
             continue;
         };
         let pitch = geom::len(geom::sub(pr.at, pg.at));
-        let pkg = package_of(pitch);
+        let pkg = crate::package::chip_package(&f.lib, pr, pg);
         let (esl, esr) = esl_esr(pkg, c);
         let layer = pr.layers[0];
         // mounting: nearest via of each pad's net, loop down to the plane pair

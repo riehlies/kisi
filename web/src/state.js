@@ -23,6 +23,7 @@ const FLAGS = [
   [32, "Differential pair not coupled here"],
   [64, "Reference plane perforated here (e.g. via clearances)"],
   [128, "Cut-out in a layer between trace and reference (e.g. under a pad)"],
+  [512, "Formula over that cut-out: rough estimate (ignores the cut-out's edges, can read 25 % high) – the field solver models it"],
 ];
 const netLabel = (n) => String(n).replace(/\{slash\}/g, "/");
 // last part of a hierarchical net name ("/FPGA/+1V0" → "+1V0"; an escaped slash stays part of the name)

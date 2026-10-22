@@ -15,7 +15,7 @@ function renderCfgStatus() {
 function renderSide() {
   const sc = S.scene, an = S.an, su = sc.stackup;
   $("boardName").textContent = S.name;
-  $("boardMeta").textContent = `${su.copper.length} layers · ${sc.tracks.length / 7 - (sc.pad_tracks || []).length} track segments · ${(sc.pad_tracks || []).length} signal pads · ${sc.vias.length / 7} vias`;
+  $("boardMeta").textContent = `${su.copper.length} layers · ${sc.tracks.length / 7 - (sc.pad_tracks || []).length} track segments · ${new Set(sc.pad_track_pad || []).size} signal pads · ${sc.vias.length / 7} vias`;
   // KPIs
   let lenT = 0, lenOk = 0, nets = 0;
   for (const n of an.nets) if (n.target) { nets++; lenT += n.length; lenOk += (n.within5 || 0) * n.length; }

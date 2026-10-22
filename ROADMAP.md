@@ -4,8 +4,6 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
 "Decide first" marks items that need a decision before work starts.
 
 ## Next
-- **Checks on every push.** A CI workflow that runs `cargo test`, `tools/validate_field.sh` and
-  `tools/check_viewer.py` on pushes and pull requests, not only on releases.
 - **`kisi gaps`: supply rails without a voltage in the name.** Nets such as `Net-(IC22-VCC)` are not recognised as
   rails, so the ICs on them are missing from the load list. Use regulator outputs (`PI_REG … @V`) and the parts on
   the net to detect them.
@@ -13,8 +11,6 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   guidance (datasheet sections, typical vs. maximum) and add a worked example `<board>.kisi.json`.
 
 ## Publishing
-- **Make the repository public** and switch GitHub Pages to "GitHub Actions"; the release workflow then
-  publishes the live version (landing page, viewer with and without the example boards) with every tag.
 - **Measured validation:** the test board (`validation/test_board.md`) and comparisons with other solvers.
 
 ## Models and accuracy

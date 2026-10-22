@@ -1,0 +1,70 @@
+# Checks on every push and pull request (the release workflow runs the same build on tags):
+#   cargo test · field solver against HFSS/baseline (validate_field.sh) · viewer in headless Chromium
+#   (check_viewer.py on kisi-examples.html: all views, light/dark/phone, no console errors) ·
+#   Node CLI against the native CLI on the example boards (compare_cli.py) · reference page builds.
+name: ci
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["v*"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rust toolchain
+        run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown && rustup default stable
+      - name: Cargo cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+      - name: Tests
+        run: cargo test --release
+      - name: Build
+        run: |
+          cargo build --release
+          cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
+          W=target/wasm32-unknown-unknown/release
+          python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.html
+          sh tools/fetch_examples.sh examples
+          python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi-examples.html \
+            ts "ThunderScope Rev5.3" examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro \
+            vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
+          python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
+      - name: Field solver validation (HFSS / baseline, viewer bundle)
+        run: sh tools/validate_field.sh
+      - name: Node CLI against the native CLI
+        run: python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples
+      - name: Viewer in headless Chromium
+        run: |
+          python3 -m pip install --quiet playwright numpy
+          python3 -m playwright install --with-deps chromium
+          python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
+      - name: Reference cases page
+        run: python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
+      - name: Screenshots of the viewer check
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viewer-screenshots
+          path: viewer-screenshots
+          if-no-files-found: ignore

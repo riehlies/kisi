@@ -87,4 +87,5 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
 
 ## Checks after changes
 `cargo test --release` · `tools/validate_field.sh` (field solver against HFSS/baseline) ·
-`python3 tools/check_viewer.py dist/kisi.html` (all views, light/dark/phone, no console errors) · `node dist/kisi.mjs` on a board.
+`python3 tools/check_viewer.py dist/kisi-examples.html` (all views, light/dark/phone, no console errors) ·
+`python3 tools/compare_cli.py` (Node CLI against the native CLI); all of them run on every push (`.github/workflows/ci.yml`).

@@ -196,8 +196,10 @@ python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dis
         vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
 python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
 ```
-- Checks: `cargo test --release`, `sh tools/validate_field.sh` (field solver against HFSS and the stored baseline),
-  `python3 tools/check_viewer.py dist/kisi.html` (all views, light/dark/phone, no console errors).
+- Checks (also run on every push and pull request, `.github/workflows/ci.yml`): `cargo test --release`,
+  `sh tools/validate_field.sh` (field solver against HFSS and the stored baseline),
+  `python3 tools/check_viewer.py dist/kisi-examples.html` (all views, light/dark/phone, no console errors),
+  `python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples` (Node CLI against the native CLI).
 - Example boards (not in the repository): `sh tools/fetch_examples.sh examples` fetches them at fixed commits, shrinks
   them with `tools/strip_pcb.py` and writes their licence notices; their power trees are `web/samples/{ts,vna}.kisi.json`.
 - Releases: a tag `v*` runs `.github/workflows/release.yml`; it attaches `kisi.html`, `kisi-examples.html`, `kisi.mjs`

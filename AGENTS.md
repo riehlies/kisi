@@ -30,8 +30,9 @@ GitHub Pages. The example boards (ThunderScope CERN-OHL-P-2.0, LibreVNA GPL-3.0)
 * `sh tools/validate_field.sh` (field solver against HFSS/baseline, needs node)
 * Viewer: `python3 tools/check_viewer.py dist/kisi-examples.html` (headless Chromium: all three views,
   light/dark/mobile, no console errors; `--board`/`--config` for builds without example boards).
-* CLI: `node dist/kisi.mjs` (e.g. `gaps`, `check`) on an example board; results match the native `kisi`
-  with `--formula`.
+* CLI: `python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples` (Node CLI with `--formula`
+  against the native `kisi` on both example boards).
+* The same checks run on every push and pull request (`.github/workflows/ci.yml`).
 
 ## Rules
 * One verdict logic (`kisi_si::profile::judge`) for viewer and CLI – do not duplicate it; CLI commands live

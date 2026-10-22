@@ -25,14 +25,21 @@ GitHub Pages. The example boards (ThunderScope CERN-OHL-P-2.0, LibreVNA GPL-3.0)
 `tools/fetch_examples.sh` fetches them at fixed commits and shrinks them; their power trees are
 `web/samples/{ts,vna}.kisi.json`.
 
-## Checks before every commit
-* `cargo test --release`
-* `sh tools/validate_field.sh` (field solver against HFSS/baseline, needs node)
-* Viewer: `python3 tools/check_viewer.py dist/kisi-examples.html` (headless Chromium: all three views,
-  light/dark/mobile, no console errors; `--board`/`--config` for builds without example boards).
-* CLI: `python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples` (Node CLI with `--formula`
-  against the native `kisi` on both example boards).
-* The same checks run on every push and pull request (`.github/workflows/ci.yml`).
+## Checks
+Locally, before pushing a branch, run the quick checks for what you changed:
+* Rust: `cargo test --release -p <crate>` for the changed crates and the crates that use a changed API; the
+  release builds for the bundles must compile.
+* Viewer (`web/`, `kisi-wasm`): `python3 tools/check_viewer.py dist/kisi-examples.html --quick` (loads the
+  boards, all three views, no console errors; `--board`/`--config` for builds without example boards), plus a
+  short headless test of the controls you changed.
+* CLI or `kisi_core::commands`: `python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples`
+  (Node CLI with `--formula` against the native `kisi` on both example boards).
+* Field solver chain (`web/solver/`, the cross-section geometry, `tools/bundle.py`): `sh tools/validate_field.sh`
+  (against HFSS/baseline, needs node).
+
+The full suite runs in CI on every push and pull request (`.github/workflows/ci.yml`): `cargo test --release`,
+`validate_field.sh`, `check_viewer.py` in light/dark/phone, `compare_cli.py` and the reference page. Hand a
+branch over for review only with a green CI run of its last commit; `main` changes only with green CI.
 
 ## Rules
 * One verdict logic (`kisi_si::profile::judge`) for viewer and CLI – do not duplicate it; CLI commands live

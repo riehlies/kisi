@@ -240,7 +240,8 @@ python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dis
         vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
 python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
 ```
-- Checks (also run on every push and pull request, `.github/workflows/ci.yml`): `cargo test --release`,
+- Checks (all of them run in CI on every push and pull request, `.github/workflows/ci.yml`; locally the quick ones
+  for what you changed, see `AGENTS.md`): `cargo test --release`,
   `sh tools/validate_field.sh` (field solver against HFSS and the stored baseline),
   `python3 tools/check_viewer.py dist/kisi-examples.html` (all views, light/dark/phone, no console errors),
   `python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples` (Node CLI against the native CLI).

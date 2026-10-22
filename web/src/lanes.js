@@ -241,13 +241,96 @@ function pathRows(ch) {
   }).join("");
   return `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Element</th><th>Layer / part</th><th>Length</th><th>Z</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
+// impedance along a channel (lane or net without devices), from its segments in the signal
+// direction: lines as steps (coloured by the deviation from the target), vias as small marks,
+// series parts, terminations and branches as labelled marks; `tgt` = target {z, diff}, `ends` = [A, B]
+function drawChannelProfile(c, ch, tgt, ends) {
+  const d = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
+  c.width = r.width * d; c.height = r.height * d;
+  const g = c.getContext("2d");
+  const k = ch.diff ? 2 : 1, tz = tgt ? tgt.z : null;
+  const segs = [], marks = [], vias = [];
+  for (const s of ch.segments) {
+    if (s.kind === "line") { if (s.len_mm > 0) segs.push({ s0: s.s_mm, s1: s.s_mm + s.len_mm, v: s.z != null ? s.z * k : null, layer: s.layer, src: s.source }); }
+    else if (s.kind === "via") { marks.push({ x: s.s_mm, kind: "via", label: "via" }); if (s.z != null) vias.push({ x: s.s_mm, v: s.z * k, len: s.len_mm }); }
+    else if (s.kind === "branch") marks.push({ x: s.s_mm, label: (/^stub/.test(s.part || "") ? "stub " : "⑂ ") + (s.part || "").replace(/^stub\s*/, "") });
+    else if (/ pad$/.test(s.part || "")) continue;
+    else marks.push({ x: s.s_mm, label: (s.kind === "series" ? "" : "∥ ") + (s.part || s.kind), series: s.kind === "series" });
+  }
+  const total = Math.max(ch.length_mm, ...segs.map((x) => x.s1), 1e-6);
+  let lo = Infinity, hi = -Infinity;
+  for (const x of segs.concat(vias)) if (x.v != null) { lo = Math.min(lo, x.v); hi = Math.max(hi, x.v); }
+  if (tz) { lo = Math.min(lo, tz * 0.9); hi = Math.max(hi, tz * 1.1); }
+  if (!isFinite(lo)) { lo = 0; hi = 100; }
+  const padL = 40, padR = 8, padT = 8, padB = 34, W = r.width - padL - padR, H = r.height - padT - padB;
+  const X = (s) => padL + s / total * W, Y = (v) => padT + (1 - (v - lo) / (hi - lo || 1)) * H;
+  const cs = getComputedStyle(document.documentElement);
+  const muted = cs.getPropertyValue("--muted").trim(), line = cs.getPropertyValue("--line").trim(), fg = cs.getPropertyValue("--fg").trim();
+  const C = S.colors;
+  const colOf = (v) => { if (!tz || v == null) return C.none; const dv = (v - tz) / tz; return Math.abs(dv) <= 0.05 ? C.ok : dv < 0 ? (dv < -0.1 ? C.low2 : C.low1) : (dv > 0.1 ? C.high2 : C.high1); };
+  const paint = (cur) => {
+    g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, r.width, r.height);
+    g.font = "10.5px " + cs.getPropertyValue("--font-mono"); g.fillStyle = muted; g.strokeStyle = line; g.lineWidth = 1;
+    const step = niceStep((hi - lo) / 4);
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) {
+      g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(padL + W, Y(v)); g.stroke();
+      g.textAlign = "right"; g.textBaseline = "middle"; g.fillText(Math.round(v), padL - 6, Y(v));
+    }
+    const sx = niceStep(total / 5);
+    g.textAlign = "center"; g.textBaseline = "top";
+    for (let s = 0; s <= total + 1e-9; s += sx) g.fillText(fmt(s, sx < 1 ? 1 : 0), X(s), padT + H + 5);
+    g.textAlign = "right"; g.fillText("mm from A", padL + W, padT + H + 5 - 12);
+    if (tz) {
+      g.fillStyle = C.ok; g.globalAlpha = 0.14; g.fillRect(padL, Y(tz * 1.05), W, Y(tz * 0.95) - Y(tz * 1.05)); g.globalAlpha = 1;
+      g.strokeStyle = C.ok; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(padL, Y(tz)); g.lineTo(padL + W, Y(tz)); g.stroke(); g.setLineDash([]);
+    }
+    g.lineCap = "butt"; g.lineWidth = 2.5;
+    for (const x of segs) { if (x.v == null) continue; g.strokeStyle = colOf(x.v); g.beginPath(); g.moveTo(X(x.s0), Y(x.v)); g.lineTo(X(x.s1), Y(x.v)); g.stroke(); }
+    // vias: a diamond at their impedance (they have no length along the track)
+    for (const v of vias) {
+      const x = X(v.x), y = Y(v.v);
+      g.fillStyle = colOf(v.v); g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 4, y); g.lineTo(x, y + 5); g.lineTo(x - 4, y); g.closePath(); g.fill();
+    }
+    // series parts: a small box on the line at their position
+    for (const m of marks.filter((m) => m.series)) {
+      const prev = segs.filter((x) => x.s1 <= m.x + 1e-6 && x.v != null).pop() || segs.find((x) => x.v != null);
+      const y = prev ? Y(prev.v) : padT + H / 2, x = X(m.x);
+      g.fillStyle = cs.getPropertyValue("--panel").trim(); g.strokeStyle = fg; g.lineWidth = 1.5;
+      g.fillRect(x - 6, y - 4, 12, 8); g.strokeRect(x - 6, y - 4, 12, 8);
+    }
+    pathDecor(g, { ends: ends ? { a: ends[0], b: ends[1], at: total } : null, marks: marks.map((m) => ({ x: m.x, kind: m.kind, label: m.label })) },
+      { X, padL, padT, W, H, muted, xMin: 0, xMax: total });
+    if (cur != null) { g.strokeStyle = muted; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(X(cur), padT); g.lineTo(X(cur), padT + H); g.stroke(); g.setLineDash([]); }
+  };
+  paint(null);
+  const host = c.parentElement;
+  let tip = host.querySelector(".ctip");
+  if (!tip) { tip = document.createElement("div"); tip.className = "ctip"; tip.hidden = true; host.appendChild(tip); }
+  c.onpointermove = (e) => {
+    const px = e.offsetX;
+    if (px < padL || px > padL + W) { tip.hidden = true; paint(null); return; }
+    const s = (px - padL) / W * total;
+    const q = segs.find((x) => s >= x.s0 && s <= x.s1);
+    const near = marks.filter((m) => Math.abs(X(m.x) - px) < 6 && m.kind !== "via").map((m) => esc(m.label))
+      .concat(vias.filter((v) => Math.abs(X(v.x) - px) < 6).map((v) => `via ${fmt(v.len, 2)} mm: ${fmt(v.v, 0)} Ω${ch.diff ? " diff" : ""}`));
+    paint(s);
+    tip.innerHTML = `${fmt(s, 2)} mm from A` + (q && q.v != null ? `<br>${fmt(q.v, 1)} Ω${ch.diff ? " diff" : ""} · ${esc(S.scene.stackup.copper[q.layer]?.name ?? q.layer)} · ${esc(q.src)}` : "") + (near.length ? `<br>${near.join("<br>")}` : "");
+    tip.hidden = false;
+    tip.style.left = Math.min(X(s) + 10, r.width - tip.offsetWidth - 4) + "px"; tip.style.top = "6px";
+  };
+  c.onpointerleave = () => { tip.hidden = true; paint(null); };
+}
+
 function renderLanePath(body, l, r) {
   const ch = r.channel;
   if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "no channel")}</p>`; return; }
   const sh = l.shunts.map((s) => `${esc(s.part.refdes)} ${esc(s.part.value)} ${s.across ? "across the pair" : "to " + esc(shortNet(s.to))}`).join(", ");
   body.innerHTML = `<div class="dstats"><span>${esc(pinLabel(laneTx(l)))} → ${esc(pinLabel(laneRx(l)))}</span><span>${fmt(ch.length_mm, 1)} mm, delay ${fmt(ch.delay_ps, 0)} ps</span>${r.skew ? `<span>skew to ${esc(netShort(r.skew.partner))} ${fmt(r.skew.skew_ps, 1)} ps${r.skew.uncertain ? " (uncertain)" : ""}</span>` : ""}</div>
+    <div class="chart"><canvas id="ch-lprof" style="height:210px" aria-label="Impedance along the channel"></canvas></div>
     ${pathRows(ch)}
     <p class="note">Nets: ${l.nets.map((n) => esc(shortNet(n))).join(" → ")}${l.diff ? ` · partner ${l.partner_nets.map((n) => esc(shortNet(n))).join(" → ")}` : ""}.${laneBranches(l).map((b) => ` Branch (open, dashed on the board): ${b.through ? esc(b.through.refdes) + " → " : ""}${esc(b.nets.map(shortNet).join(" → "))} → ${esc(b.to)}.`).join("")}${sh ? ` Terminations: ${sh}.` : ""}${l.others.length ? ` Also connected (not modelled): ${esc(l.others.join(", "))}.` : ""} Direction: ${esc(laneSwaps()[laneKey(l)] ? "swapped by you" : l.direction)}.</p>`;
+  const tg = classTarget(laneNet(l));
+  drawChannelProfile($("ch-lprof"), ch, tg ? { z: tg.z, diff: tg.diff } : null, [pinLabel(laneTx(l)), pinLabel(laneRx(l))]);
 }
 
 // ---- channel view modes: interfaces overview / board map

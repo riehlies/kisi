@@ -325,8 +325,11 @@ function renderNetPath(body, net, r) {
   if (!ch) { body.innerHTML = `<p class="err">${esc(r.error || "no channel")}</p>`; return; }
   const br = np ? np.branches.map((b) => `${fmt(b.len_mm, 1)} mm → ${esc(b.end.label)}`) : [];
   body.innerHTML = `<div class="dstats">${np ? `<span>A ${esc(np.start.label)} → B ${esc(np.end.label)}</span>` : ""}<span>${fmt(ch.length_mm, 1)} mm, delay ${fmt(ch.delay_ps, 0)} ps, ${ch.vias} vias</span></div>
+    <div class="chart"><canvas id="ch-lprof" style="height:210px" aria-label="Impedance along the net"></canvas></div>
     ${pathRows(ch)}
     <p class="note">No lane: kisi found no pair of devices (ICs, connectors) at the ends of this net through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) or small inductors. It is checked on its own, from end A to end B of its longest path, with the profile's transmitter and receiver.${br.length ? ` Branches (open stubs): ${br.join("; ")}.` : ""}${np && np.parts > 1 ? ` ${np.parts} copper parts; the longest path is shown.` : ""}</p>`;
+  const tg = classTarget(net);
+  drawChannelProfile($("ch-lprof"), ch, tg ? { z: tg.z, diff: tg.diff } : null, np ? [np.start.label, np.end.label] : null);
 }
 
 // ---- board-level check

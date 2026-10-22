@@ -21,7 +21,8 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
 - **IBIS models as channel ends** (removed from 0.1.0; the experimental code is in commit `92b8105`). Open: the right
   model per pin with real vendor files ([Model Selector], [Diff Pin], package models, pin names vs. pads), how
   IBIS ends and interface profiles fit together (swing, terminations, current-mode drivers), validation with real
-  files and a reference simulator.
+  files and a reference simulator. Research and concept (solvers, model sources, DDR test flows, assembly
+  variants, staged plan): `docs/research/channel-simulation-ibis.md`.
 - **Eye and channel check on the 4-port pair model** (the 4-port with mode conversion is shown in the net detail;
   eye and check still use the odd-mode 2-port).
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.

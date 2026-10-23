@@ -855,10 +855,16 @@ impl<'a> Build<'a> {
                             _ => None,
                         }
                     };
-                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill, feeds, sigma: Some(rp.sigma), cavity: rp.via_cavity };
+                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill, feeds, sigma: Some(rp.sigma), cavity: rp.via_cavity, returns: rp.via_returns };
                     let (vm, info) = crate::via::build(&ctx, v, pl, tr.layer);
                     if vm.pbm.as_ref().is_some_and(|p| p.has_cavity()) {
                         let note = "via model(s) with finite plane cavities (--via-cavity, experimental); capacitors in the cavities with estimated parasitics (data/components.json)";
+                        if !self.warnings.iter().any(|w| w == note) {
+                            self.warnings.push(note.into());
+                        }
+                    }
+                    if vm.pbm.as_ref().is_some_and(|p| p.has_floats() || p.has_loads()) {
+                        let note = "via model(s) with return groups (--via-returns, experimental): floating return vias across supply planes; capacitors between the planes with estimated parasitics (data/components.json)";
                         if !self.warnings.iter().any(|w| w == note) {
                             self.warnings.push(note.into());
                         }

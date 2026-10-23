@@ -210,6 +210,54 @@ pub struct ViaCtx<'a> {
     /// plane pairs as finite cavities (`via_cavity`; also with the environment variable
     /// KISI_VIA_CAVITY=1)
     pub cavity: bool,
+    /// return groups per plane pair (also with KISI_VIA_RETURNS=1): a return via shorts only the
+    /// pairs whose two planes it joins, floats across planes of other nets, and capacitors close
+    /// pairs of two nets (validation/fdtd/BOARD_RETURNS.md)
+    pub returns: bool,
+}
+
+/// Whether a via of `net` at `at` with pad radius `r` (mm) is joined to the copper of its net on
+/// `layer`: a fill of that net covers it or reaches its pad (thermal spokes).
+pub fn joined_to_fill(board: &Board, at: P, r: f64, layer: u16, net: u32) -> bool {
+    for z in &board.zones {
+        if z.layer != layer || z.net != net {
+            continue;
+        }
+        let bb = &z.bbox;
+        if at[0] < bb.min[0] - r || at[0] > bb.max[0] + r || at[1] < bb.min[1] - r || at[1] > bb.max[1] + r {
+            continue;
+        }
+        let pts = &z.pts;
+        let n = pts.len();
+        let mut inside = false;
+        let mut dmin = f64::INFINITY;
+        for i in 0..n {
+            let a = pts[i];
+            let b = pts[(i + 1) % n];
+            if (a[1] > at[1]) != (b[1] > at[1]) {
+                let x = a[0] + (at[1] - a[1]) / (b[1] - a[1]) * (b[0] - a[0]);
+                if x > at[0] {
+                    inside = !inside;
+                }
+            }
+            let d = geom::sub(b, a);
+            let l2 = geom::dot(d, d);
+            if l2 < 1e-18 {
+                continue;
+            }
+            let u = (geom::dot(geom::sub(at, a), d) / l2).clamp(0.0, 1.0);
+            dmin = dmin.min(geom::len(geom::sub(at, geom::add(a, geom::scale(d, u)))));
+        }
+        if inside || dmin <= r {
+            return true;
+        }
+    }
+    false
+}
+
+/// return groups on (`ViaCtx::returns` or KISI_VIA_RETURNS=1)
+pub fn returns_on(ctx: &ViaCtx) -> bool {
+    ctx.returns || std::env::var("KISI_VIA_RETURNS").is_ok_and(|x| x != "0")
 }
 
 /// Trace joining a via, as the channel models it.
@@ -292,6 +340,80 @@ fn copper_z(su: &crate::board::Stackup) -> Vec<f64> {
     z
 }
 
+/// The return vias of the ladder: plane-net vias within 3 mm of `v`, the nearest 8, as posts
+/// relative to it (heights `z` of the copper layers, mm). With return groups (`groups`) each post
+/// carries the planes of the ladder it joins (`clear`: plane opening and net per layer at the via;
+/// a plane whose net is the via's and whose fill reaches it) and its openings in the others, and
+/// only vias that join one of them are taken.
+pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear: &[Option<(f64, u32)>], z: &[f64], groups: bool) -> Vec<crate::via_pbm::Post> {
+    let joined = |w: &Via| -> Vec<f64> {
+        (0..clear.len())
+            .filter(|&k| clear[k].is_some_and(|c| c.1 == w.net) && w.from as usize <= k && k <= w.to as usize)
+            .filter(|&k| !w.backdrill.is_some_and(|(b0, b1)| b0 as usize <= k && k <= b1 as usize))
+            .filter(|&k| joined_to_fill(board, w.at, w.size / 2.0 + 0.05, k as u16, w.net))
+            .map(|k| z[k])
+            .collect()
+    };
+    let mut cand: Vec<(f64, &Via)> = board
+        .vias
+        .iter()
+        .filter(|w| w.net != net && Some(w.net) != partner && w.net != 0)
+        .filter(|w| board.plane_net.get(w.net as usize).copied().unwrap_or(false))
+        .map(|w| (geom::len(geom::sub(w.at, v.at)), w))
+        .filter(|&(d, _)| d > 0.01 && d < 3.0)
+        .collect();
+    // nearest first (stable: equal distances keep the board's order), the joins only until 8 are taken
+    cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    let rets: Vec<(f64, crate::via_pbm::Post)> = cand
+        .into_iter()
+        .filter_map(|(d, w)| {
+            let (joins, open_r) = if groups {
+                let j = joined(w);
+                if j.is_empty() {
+                    return None;
+                }
+                // its openings in the planes it passes without joining them (to 0.01 mm, as the
+                // antipads: returns of one type then share the capacitance solve)
+                let o: Vec<(f64, f64)> = (0..clear.len())
+                    .filter(|&k| clear[k].is_some() && w.from as usize <= k && k <= w.to as usize && !j.iter().any(|&zj| (zj - z[k]).abs() < 1e-9))
+                    .filter_map(|k| plane_clearance(board, w.at, k as u16, w.net, None).map(|c| (z[k], (c.0.max(w.drill / 2.0 + 0.02) * 100.0).round() / 100.0)))
+                    .collect();
+                (Some(j), o)
+            } else {
+                (None, vec![])
+            };
+            Some((d, crate::via_pbm::Post { dx: w.at[0] - v.at[0], dy: w.at[1] - v.at[1], r: (w.drill / 2.0).max(0.025), z0: z[w.to as usize], z1: z[w.from as usize], joins, open_r }))
+        })
+        .take(8)
+        .collect();
+    rets.into_iter().map(|r| r.1).collect()
+}
+
+/// The return group of every plane pair (neighbouring planes) of a via with return groups: layers,
+/// plane nets, the return posts that short it, those that float across it, those that join planes
+/// on one side only (capacitive), and the capacitors (`via_pbm::CapPost`) between its planes within
+/// 3 mm (for surveys; the ladder builds the same).
+pub fn return_groups(board: &Board, v: &Via, net: u32, partner: Option<u32>) -> Vec<(u16, u16, u32, u32, usize, usize, usize, usize)> {
+    let su = board.stackup();
+    let z = copper_z(su);
+    let clear: Vec<Option<(f64, u32)>> = (0..su.n() as u16).map(|k| plane_clearance(board, v.at, k, net, partner)).collect();
+    let plane_k: Vec<usize> = (0..su.n()).filter(|&k| clear[k].is_some()).collect();
+    let rets = return_posts(board, v, net, partner, &clear, &z, true);
+    let caps = cap_posts(board, v.at, &plane_k, &clear, &z);
+    plane_k
+        .windows(2)
+        .map(|w| {
+            let (za, zb) = (z[w[0]], z[w[1]]);
+            let roles: Vec<crate::via_pbm::Role> = rets.iter().map(|p| p.role(za, zb)).collect();
+            let short = roles.iter().filter(|r| **r == crate::via_pbm::Role::Short).count();
+            let float = roles.iter().filter(|r| matches!(r, crate::via_pbm::Role::Float(..))).count();
+            let capr = roles.iter().filter(|r| **r == crate::via_pbm::Role::Cap).count();
+            let ncap = caps.iter().filter(|c| (c.z_top - za).abs() < 1e-6 && (c.z_bot - zb).abs() < 1e-6).count();
+            (w[0] as u16, w[1] as u16, clear[w[0]].unwrap().1, clear[w[1]].unwrap().1, short, float, capr, ncap)
+        })
+        .collect()
+}
+
 /// Ladder model of the via, None without a plane or without feed information.
 #[allow(clippy::too_many_arguments)]
 fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u32)>], partner_via: Option<&Via>) -> Option<crate::via_pbm::PbmVia> {
@@ -352,17 +474,12 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
             }
         }
     }
-    let mut rets: Vec<(f64, Post)> = board
-        .vias
-        .iter()
-        .filter(|w| w.net != ctx.net && Some(w.net) != ctx.partner && w.net != 0)
-        .filter(|w| board.plane_net.get(w.net as usize).copied().unwrap_or(false))
-        .map(|w| (geom::len(geom::sub(w.at, v.at)), w))
-        .filter(|&(d, _)| d > 0.01 && d < 3.0)
-        .map(|(d, w)| (d, Post { dx: w.at[0] - v.at[0], dy: w.at[1] - v.at[1], r: (w.drill / 2.0).max(0.025), z0: z[w.to as usize], z1: z[w.from as usize] }))
-        .collect();
-    rets.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-    rets.truncate(8);
+    // return groups: the planes of the ladder each return via joins (the plane net at the signal
+    // via is its net and its fill reaches it), and the capacitors between two planes nearby
+    let groups = returns_on(ctx);
+    let plane_k: Vec<usize> = (0..su.n()).filter(|&k| clear[k].is_some()).collect();
+    let rets = return_posts(board, v, ctx.net, ctx.partner, clear, &z, groups);
+    let caps = if groups { cap_posts(board, v.at, &plane_k, clear, &z) } else { vec![] };
     let feed = |side: usize, l: u16, refs: &[u16]| -> Option<Feed> {
         let fs = feeds[side];
         // reference plane: the listed reference nearest in height (a stripline lists both), else
@@ -380,12 +497,13 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
         z1,
         pads,
         pad_r: v.size / 2.0,
-        returns: rets.into_iter().map(|r| r.1).collect(),
-        partner: partner_via.map(|p| Post { dx: p.at[0] - v.at[0], dy: p.at[1] - v.at[1], r: (p.drill / 2.0).max(0.025), z0: z[p.to as usize], z1: z[p.from as usize] }),
+        returns: rets,
+        partner: partner_via.map(|p| Post { dx: p.at[0] - v.at[0], dy: p.at[1] - v.at[1], r: (p.drill / 2.0).max(0.025), z0: z[p.to as usize], z1: z[p.from as usize], joins: None, open_r: vec![] }),
         feeds: [feed(0, l_in, &ctx.refs_in)?, feed(1, l_out, &ctx.refs_out)?],
         f_loss: None,
         junction: true,
         sigma: ctx.sigma,
+        caps,
     };
     let mode = if partner_via.is_some() { Mode::Odd } else { Mode::Single };
     let debug = std::env::var("KISI_DEBUG_VIA").is_ok();
@@ -402,6 +520,19 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
     }
     if debug {
         eprintln!("{}", serde_json::to_string(&geom).unwrap_or_default());
+    }
+    if debug && groups {
+        // the return group of every plane pair: shorts, floating returns, capacitors
+        for w in plane_k.windows(2) {
+            let (za, zb) = (z[w[0]], z[w[1]]);
+            let roles: Vec<crate::via_pbm::Role> = geom.returns.iter().map(|p| p.role(za, zb)).collect();
+            let n_short = roles.iter().filter(|r| **r == crate::via_pbm::Role::Short).count();
+            let n_float = roles.iter().filter(|r| matches!(r, crate::via_pbm::Role::Float(..))).count();
+            let n_capr = roles.iter().filter(|r| **r == crate::via_pbm::Role::Cap).count();
+            let n_cap = geom.caps.iter().filter(|c| (c.z_top - za).abs() < 1e-6 && (c.z_bot - zb).abs() < 1e-6).count();
+            let net = |k: usize| clear[k].map_or(String::new(), |c| board.nets.get(c.1 as usize).cloned().unwrap_or_default());
+            eprintln!("# return group {}-{} {}/{}: {n_short} shorts, {n_float} floating, {n_capr} capacitive, {n_cap} capacitors", w[0], w[1], net(w[0]), net(w[1]));
+        }
     }
     #[cfg(not(target_arch = "wasm32"))]
     let t0 = std::time::Instant::now();
@@ -443,6 +574,55 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
     Some(m)
 }
 
+/// radius around the via within which capacitors between two of its planes enter the ladder (mm):
+/// the reach of its return vias
+const CAP_REACH: f64 = 3.0;
+
+/// The capacitors between two neighbouring planes of the via of two nets (a supply and GND) within
+/// `CAP_REACH` (return groups): fitted two-pad parts with one pad on each net, ESR and ESL with its
+/// mounting from data/components.json ("decoupling", by package; estimates), the capacitance from
+/// the footprint value, else 100 nF (an estimate), as a post of `CAVITY_CAP_POST` between the
+/// pads. A capacitor joins every neighbouring pair of these two nets (as in `via_cavity`).
+fn cap_posts(board: &Board, at: P, plane_k: &[usize], clear: &[Option<(f64, u32)>], z: &[f64]) -> Vec<crate::via_pbm::CapPost> {
+    use crate::via_cavity::{parse_cap_value, DecapData};
+    let pairs: Vec<(usize, usize, u32, u32)> = plane_k
+        .windows(2)
+        .filter_map(|w| {
+            let (na, nb) = (clear[w[0]]?.1, clear[w[1]]?.1);
+            (na != nb).then_some((w[0], w[1], na, nb))
+        })
+        .collect();
+    if pairs.is_empty() {
+        return vec![];
+    }
+    let mut by_fp: std::collections::HashMap<u32, Vec<usize>> = Default::default();
+    for (i, p) in board.pads.iter().enumerate() {
+        by_fp.entry(p.fp).or_default().push(i);
+    }
+    let mut out = vec![];
+    let mut fps: Vec<(&u32, &Vec<usize>)> = by_fp.iter().collect();
+    fps.sort();
+    for (&fp, ids) in fps {
+        if ids.len() != 2 || board.footprints.get(fp as usize).map_or(true, |f| f.dnp) {
+            continue;
+        }
+        let (p0, p1) = (&board.pads[ids[0]], &board.pads[ids[1]]);
+        let c = geom::lerp(p0.at, p1.at, 0.5);
+        if geom::len(geom::sub(c, at)) > CAP_REACH {
+            continue;
+        }
+        for &(ka, kb, na, nb) in &pairs {
+            if (p0.net == na && p1.net == nb) || (p0.net == nb && p1.net == na) {
+                let cv = parse_cap_value(&board.footprints[fp as usize].value).unwrap_or(CAVITY_CAP_C);
+                let pkg = crate::topology::package_of(board, fp as usize, ids[0], ids[1]);
+                let (r_ohm, l) = DecapData::builtin().rl(pkg, cv);
+                out.push(crate::via_pbm::CapPost { dx: c[0] - at[0], dy: c[1] - at[1], r: CAVITY_CAP_POST, z_top: z[ka], z_bot: z[kb], r_ohm, l, c: Some(cv) });
+            }
+        }
+    }
+    out
+}
+
 /// leakage ratio below which a plane pair stays an infinite radial line (`PbmVia::pair_leakage`
 /// at 10 GHz): four returns at 1 mm give 0.006 and change the via by ≤ 0.2 dB in 3D up to 25 GHz,
 /// one return at 2 mm gives 0.84 (validation/fdtd/BOARD_RESONANCES.md)
@@ -473,7 +653,9 @@ const CAVITY_CAP_POST: f64 = 0.15;
 /// parasitics), magnetic walls with their radiation at its edges; a pair of one net stitched
 /// densely (`CAVITY_DENSE`): a window of `CAVITY_WINDOW` around the via with every post in it, the
 /// window's cuts open (matched to the outgoing wave). The ladder's returns stay its ports
-/// (shorted in every pair they span, as on infinite plates).
+/// (shorted in every pair they span, as on infinite plates; with return groups the returns that
+/// short the pair or close it through their capacitance, and a pair a floating return crosses –
+/// a supply plane between two planes the return vias join – stays an infinite radial line).
 fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(u16, f64)], m: &crate::via_pbm::PbmVia, signal: [u16; 2]) -> Vec<crate::via_pbm::CavityLink> {
     use crate::via_cavity::{pair_cavity, pair_window, DecapData, EnvPort, GridEnv, Load, PairEnv, PairMedium};
     let leak = m.pair_leakage(10e9);
@@ -487,6 +669,13 @@ fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(
         }
         let Some(&(_, _, ratio)) = leak.iter().find(|l| (l.0 - za).abs() < 1e-6 && (l.1 - zb).abs() < 1e-6) else { continue };
         if ratio < CAVITY_LEAKAGE {
+            continue;
+        }
+        // return groups: a pair with floating returns (a plane of another net between two planes
+        // the return vias join) stays an infinite radial line with its floating returns – they
+        // short the pairs' common field, and the stitching beyond them is not in a cavity of one
+        // pair (BOARD_RETURNS.md)
+        if geom.returns.iter().any(|p| p.joins.is_some() && matches!(p.role(za, zb), crate::via_pbm::Role::Float(..))) {
             continue;
         }
         let na = plane_clearance(ctx.board, at, ka, ctx.net, ctx.partner).map(|c| c.1);
@@ -514,11 +703,17 @@ fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(
         }
         // ports: the via, the partner and the returns spanning the pair, at their board positions
         let mut ports = vec![EnvPort { x: at[0], y: at[1], r: geom.r }];
-        if let (Some(p), true) = (geom.partner, ctx.partner.is_some()) {
+        if let (Some(p), true) = (&geom.partner, ctx.partner.is_some()) {
             ports.push(EnvPort { x: at[0] + p.dx, y: at[1] + p.dy, r: p.r });
         }
         for p in &geom.returns {
-            if p.z0 <= zb + 1e-9 && p.z1 >= za - 1e-9 {
+            // the returns that short the pair (with return groups: those joining both planes, and
+            // those joining one, closing the pair through their capacitance to the other)
+            let short = match p.joins {
+                None => p.z0 <= zb + 1e-9 && p.z1 >= za - 1e-9,
+                Some(_) => matches!(p.role(za, zb), crate::via_pbm::Role::Short | crate::via_pbm::Role::Cap),
+            };
+            if short {
                 ports.push(EnvPort { x: at[0] + p.dx, y: at[1] + p.dy, r: p.r });
             }
         }

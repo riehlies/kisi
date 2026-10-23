@@ -146,11 +146,14 @@ pub struct RfParams {
     /// plane pairs of the via ladder as finite cavities (`via_cavity`, validation/fdtd/
     /// BOARD_RESONANCES.md) instead of infinite plates; off by default
     pub via_cavity: bool,
+    /// return groups per plane pair in the via ladder (`via::ViaCtx::returns`, validation/fdtd/
+    /// BOARD_RETURNS.md)
+    pub via_returns: bool,
 }
 
 impl Default for RfParams {
     fn default() -> Self {
-        RfParams { fmax: 25e9, npts: 500, rise: 35e-12, roughness: Roughness::Standard, sigma: 5.8e7, z_ref: None, vias: true, backdrill: None, via_cavity: false }
+        RfParams { fmax: 25e9, npts: 500, rise: 35e-12, roughness: Roughness::Standard, sigma: 5.8e7, z_ref: None, vias: true, backdrill: None, via_cavity: false, via_returns: false }
     }
 }
 

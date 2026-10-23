@@ -151,7 +151,7 @@ fn via_geom(case: &Value, mode: Mode, equivalent: bool) -> ViaGeom {
         let (zc, eeff) = feed_line(layers, &planes, w, z, zr);
         Feed { z, z_ref: zr, w, zc, eeff, dropped: 0.0, antipad_line: true }
     };
-    let post = |w: &Value| Post { dx: g(w, "x") - vx, dy: g(w, "y") - vy, r: g(w, "r"), z0: g(w, "z0"), z1: g(w, "z1") };
+    let post = |w: &Value| Post { dx: g(w, "x") - vx, dy: g(w, "y") - vy, r: g(w, "r"), z0: g(w, "z0"), z1: g(w, "z1"), joins: None, open_r: vec![] };
     ViaGeom {
         slabs: layers.iter().map(|l| Slab { z0: g(l, "z0"), z1: g(l, "z1"), er: g(l, "er"), tand: l["tand"].as_f64().unwrap_or(0.0) }).collect(),
         planes: planes.clone(),
@@ -166,6 +166,7 @@ fn via_geom(case: &Value, mode: Mode, equivalent: bool) -> ViaGeom {
         f_loss: Some(case["f_loss"].as_f64().unwrap_or(case["fmax"].as_f64().unwrap() / 2.0)),
         junction: true,
         sigma: None,
+        caps: vec![],
     }
 }
 

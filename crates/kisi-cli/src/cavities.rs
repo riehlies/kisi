@@ -5,7 +5,9 @@
 //! its stub), the region of each pair (connected overlap of both planes), its size and the lowest
 //! resonances of its bounding rectangle, the posts that short the pair (stitching vias and plated
 //! holes of the plane net) and how close they are, against the return vias the ladder takes
-//! (plane-net vias within 3 mm, the nearest 8). Prints a table; `--json` writes the details.
+//! (plane-net vias within 3 mm, the nearest 8), and the return group of every pair (the return vias
+//! that short it, that float across it, capacitors; validation/fdtd/BOARD_RETURNS.md). Prints a
+//! table; `--json` writes the details.
 
 use kisi_core::geom::{self, P};
 use kisi_core::profile::Profiles;
@@ -97,9 +99,20 @@ pub fn run(args: &[String]) {
                         "shorts_within_10mm": near.iter().filter(|&&d| d < 10.0).count(), "ladder_returns_that_short_it": ladder_shorts,
                         "rect_modes_ghz": modes}));
                 }
+                // return groups (BOARD_RETURNS.md): per plane pair the return vias that short it (join both
+                // planes), that float across it (join planes beyond it on both sides), capacitors within 3 mm
+                let groups: Vec<Value> = kisi_core::via::return_groups(board, v, net, partner)
+                    .iter()
+                    .map(|&(ka, kb, na, nb, short, float, capr, caps)| {
+                        let (lo2, hi2) = (vi.layer_in.min(vi.layer_out), vi.layer_in.max(vi.layer_out));
+                        let kind = if short > 0 { "shorted" } else if float > 0 { "bridged" } else { "open" };
+                        json!({"layers": [lname(ka), lname(kb)], "nets": [board.net_name(na), board.net_name(nb)], "in_path": ka >= lo2 && kb <= hi2,
+                            "same_net": na == nb, "shorts": short, "floating": float, "capacitive": capr, "caps": caps, "kind": kind})
+                    })
+                    .collect();
                 out_vias.push(json!({"lane": lane, "net": name, "diff": diff, "at": vi.at, "from": lname(vi.layer_in), "to": lname(vi.layer_out),
                     "barrel": [lname(v.from), lname(v.to)], "return_kind": vi.return_kind, "return_mm": vi.return_mm,
-                    "ladder_returns": rets.len(), "nearest_return_mm": rets.first().map(|r| r.0), "pairs": pv}));
+                    "ladder_returns": rets.len(), "nearest_return_mm": rets.first().map(|r| r.0), "pairs": pv, "return_groups": groups}));
             }
         }
     }
@@ -149,6 +162,25 @@ pub fn run(args: &[String]) {
             .collect();
         println!("  {:<40} {:>6}>{:<6} ret {:<8} {}", v["net"].as_str().unwrap(), v["from"].as_str().unwrap(), v["to"].as_str().unwrap(), v["return_kind"].as_str().unwrap(), pairs.join("; "));
     }
+    // return groups over all channel vias: pairs of one net / of two nets by kind, in the path or a stub
+    let mut tally: std::collections::BTreeMap<String, usize> = Default::default();
+    for v in res["via_list"].as_array().unwrap() {
+        for g in v["return_groups"].as_array().unwrap() {
+            let k = format!(
+                "{} {} ({})",
+                if g["same_net"].as_bool().unwrap() { "pair of one net," } else { "pair of two nets," },
+                g["kind"].as_str().unwrap(),
+                if g["in_path"].as_bool().unwrap() { "path" } else { "stub" }
+            );
+            *tally.entry(k).or_default() += 1;
+        }
+    }
+    println!("return groups (via × plane pair):");
+    for (k, n) in &tally {
+        println!("  {k:<48} {n}");
+    }
+    let mut res = res;
+    res["return_group_tally"] = json!(tally);
     if let Some(f) = opt("--json") {
         std::fs::write(&f, serde_json::to_string_pretty(&res).unwrap()).unwrap();
     }

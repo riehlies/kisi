@@ -43,6 +43,10 @@ list the variants); \"variant\" in <board>.kisi.json chooses one for every run.
 --via-cavity (net, check, report; experimental, off by default): the plane pairs of the via models
 as finite cavities – board edges, stitching vias, capacitors between supply and ground planes –
 instead of infinite plates (validation/fdtd/BOARD_RESONANCES.md); slower.
+--via-returns (net, check, report; experimental, off by default): return groups per plane pair in
+the via models – a return via shorts only the pairs whose two planes it joins, crosses supply
+planes as a floating return, capacitors between supply and ground planes nearby close a pair
+(validation/fdtd/BOARD_RETURNS.md).
 field solver (kisi.mjs only; overview, net, check, report): used by default for the cross-sections
 of nets with a target, results cached on disk; --formula (no field solver), --field-time S
 (time budget for new solves, default 120), --field-all (all cross-sections, not only targets),
@@ -85,6 +89,8 @@ pub struct Opts {
     pub variant: Option<String>,
     /// via models with finite plane cavities (`RfParams::via_cavity`)
     pub via_cavity: bool,
+    /// via models with return groups per plane pair (`RfParams::via_returns`)
+    pub via_returns: bool,
 }
 
 /// Parse `<command> [args…]`.
@@ -130,6 +136,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--field-xt" => o.field_xt = true,
             "--variant" => o.variant = Some(val(&mut i, a)?),
             "--via-cavity" => o.via_cavity = true,
+            "--via-returns" => o.via_returns = true,
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
         }
@@ -214,7 +221,7 @@ fn xt_plan(p: &Project, nets: &[u32], all: bool) -> Vec<(String, String, f64)> {
 }
 
 fn rf_params(o: &Opts) -> Result<RfParams, String> {
-    let mut rp = RfParams { via_cavity: o.via_cavity, ..RfParams::default() };
+    let mut rp = RfParams { via_cavity: o.via_cavity, via_returns: o.via_returns, ..RfParams::default() };
     if let Some(r) = o.rise_ps {
         rp.rise = r * 1e-12;
     }

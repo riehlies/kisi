@@ -610,6 +610,11 @@ pub fn field_source<'a>(fp: &'a crate::board::Footprint, field: &str) -> Option<
     Some(v.split_once('\t').unwrap_or((v, "")))
 }
 
+/// The document (with page) or url of a field's kisi.json source (property `<FIELD>#document`).
+pub fn field_document<'a>(fp: &'a crate::board::Footprint, field: &str) -> Option<&'a str> {
+    fp.prop(&format!("{}#document", field.to_ascii_uppercase()))
+}
+
 /// Power tree from PI_REG / PI_LOAD fields. Returns None if no PI_REG field exists.
 pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
     if !board.footprints.iter().any(|f| f.prop("PI_REG").is_some()) {

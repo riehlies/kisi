@@ -48,6 +48,15 @@ impl Source {
     fn is_empty(&self) -> bool {
         self.document.is_none() && self.url.is_none() && self.note.is_none()
     }
+    /// The document with its page ("TI LMH6518 datasheet, p. 6"), else the url; None without either.
+    pub fn citation(&self) -> Option<String> {
+        match (&self.document, &self.page, &self.url) {
+            (Some(d), Some(p), _) => Some(format!("{d}, p. {p}")),
+            (Some(d), None, _) => Some(d.clone()),
+            (None, _, Some(u)) => Some(u.clone()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -217,6 +226,9 @@ impl BoardConfig {
                 // the source travels with the field, so the power tree can show it per load
                 if let Some(src) = &f.source {
                     set(&source_key(&f.name), format!("{}\t{}", src.kind, src.note.as_deref().or(src.document.as_deref()).unwrap_or("")));
+                    if let Some(c) = src.citation() {
+                        set(&document_key(&f.name), c);
+                    }
                 }
                 a.fields += 1;
             }
@@ -237,6 +249,12 @@ impl BoardConfig {
 /// ("kind\tnote"); read by the power tree (`kisi_pi::tree::field_source`).
 pub fn source_key(name: &str) -> String {
     format!("{}#source", name.to_ascii_uppercase())
+}
+
+/// Footprint property with the document (and page) of that source; read by the temperature
+/// estimate (`kisi_pi::tree::field_document`) to name where package data came from.
+pub fn document_key(name: &str) -> String {
+    format!("{}#document", name.to_ascii_uppercase())
 }
 
 /// Result of `check`.
@@ -547,6 +565,10 @@ mod tests {
         let (t, _) = crate::tree::tree_from_fields(&b).unwrap();
         assert_eq!((t.loads[0].basis.as_str(), t.loads[0].note.as_str()), ("datasheet", "typical"));
         assert!(t.name.contains("kisi.json"));
+        // and its document (here only a url) for the temperature estimate's table of θ sources
+        assert_eq!(crate::tree::field_document(&b.footprints[0], "PI_LOAD"), Some("https://example.com/ds.pdf"));
+        let doc = Source { kind: "datasheet".into(), document: Some("TI X datasheet".into()), page: Some("6".into()), ..Default::default() };
+        assert_eq!(doc.citation().as_deref(), Some("TI X datasheet, p. 6"));
         assert!((b.stackup().dielectrics[0].loss_tangent - 0.015).abs() < 1e-12);
         assert_eq!(a.targets["50Z"].z, 50.0);
         assert_eq!(a.profiles["50Z"], "se50");

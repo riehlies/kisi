@@ -809,8 +809,8 @@ pub fn thermal_json(p: &Project, th: &crate::thermal::ThermalResult, prm: &crate
             let mut v = json!({
                 "ref": x.refdes, "part": x.part, "heat_w": w4(x.w), "heat_source": x.w_source, "side": x.side,
                 "t_board_c": c2(x.t_board_c), "tj_c": c2(x.tj_c), "t_case_top_c": opt(x.t_case_c), "case_model": x.case_model, "tj_max_c": x.tj_max_c, "tj_max_source": x.tj_max_source, "margin_k": c2(x.margin_k), "status": x.status,
-                "model": x.model, "theta_jb": opt(x.theta_jb), "theta_jc": opt(x.theta_jc), "psi_jb": x.psi_jb, "theta_ja": x.theta_ja,
-                "to_board_share": x.to_board.map(|s| (s * 1000.0).round() / 1000.0), "package_family": x.family, "data_source": x.data_source, "estimate": x.estimate,
+                "model": x.model, "theta_jb": opt(x.theta_jb), "theta_jc": opt(x.theta_jc), "psi_jb": x.psi_jb, "psi_jt": x.psi_jt, "theta_ja": x.theta_ja,
+                "to_board_share": x.to_board.map(|s| (s * 1000.0).round() / 1000.0), "package_family": x.family, "data_source": x.data_source, "source_document": x.source_document, "estimate": x.estimate,
             });
             v["under_part"] = json!(x.vias.as_ref().map(|v| json!({"vias": v.count, "thermal_pad": v.thermal_pad, "into_board_w": w4(v.to_board_w), "through_vias_w": w4(v.via_w), "through_laminate_w": w4(v.laminate_w), "sideways_in_pad_layer_w": w4(v.lateral_w),
                 "dt_pad_layer_to_next_k": c2(v.dt_next_k), "dt_pad_layer_to_other_side_k": c2(v.dt_through_k), "hint": v.hint})));

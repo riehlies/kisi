@@ -268,8 +268,12 @@ pub struct PartTemp {
     pub theta_jc: Option<f64>,
     pub psi_jb: Option<f64>,
     pub theta_ja: Option<f64>,
+    /// ψJT from PI_THERMAL (case top), None otherwise
+    pub psi_jt: Option<f64>,
     /// "PI_THERMAL (datasheet: …)" or "package default <family> (estimate)"
     pub data_source: String,
+    /// document (and page) or url of the PI_THERMAL field's source, when it has one
+    pub source_document: Option<String>,
     pub estimate: bool,
     /// board temperature under the part (pad cells, weighted by pad area) and the junction
     pub t_board_c: f64,
@@ -980,7 +984,9 @@ pub fn solve(board: &Board, rails: &[&PiResult], comps: &[CompLoss], prm: &Therm
                 theta_jc,
                 psi_jb,
                 theta_ja,
+                psi_jt: f.psi_jt,
                 data_source,
+                source_document: if fsrc.is_some() { crate::tree::field_document(&board.footprints[fi], "PI_THERMAL").map(str::to_string) } else { None },
                 estimate,
                 t_board_c: ta,
                 tj_c: ta,

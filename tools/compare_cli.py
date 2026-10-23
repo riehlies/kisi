@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare the Node CLI (dist/kisi.mjs, formula mode) with the native kisi on the example boards.
 
-Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands check,gaps]
+Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands check,gaps,thermal]
 
 Runs every command on ThunderScope and LibreVNA with their configs (web/samples/{ts,vna}.kisi.json) and compares
 the JSON outputs. Numbers are compared after rounding to 6 significant digits; keys that differ by design
@@ -64,7 +64,7 @@ def main():
     if len(sys.argv) < 4:
         raise SystemExit(__doc__)
     native, mjs, ex = sys.argv[1:4]
-    cmds = ["check", "gaps"]
+    cmds = ["check", "gaps", "thermal"]
     if "--commands" in sys.argv:
         cmds = sys.argv[sys.argv.index("--commands") + 1].split(",")
     bad = 0

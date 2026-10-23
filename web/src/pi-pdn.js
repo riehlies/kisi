@@ -90,6 +90,7 @@ function renderPdnIc(host, setup, lumped) {
     tr.onpointerenter = () => { S.pdnIcHover = +tr.dataset.cap; draw(); };
     tr.onpointerleave = () => { S.pdnIcHover = null; draw(); };
   });
+  renderLegend();
   drawZf($("ch-pdn-ic"), { freq: r.freq, series: [{ z: pt.z, color: "--pw-use", name: pt.label }].concat(own ? [{ f: lumped.freq, z: lumped.z, color: "--muted", dash: [4, 3], name: "lumped" }] : []),
     target: pt.target, fEval: pt.f_max, marks: pt.peaks.map((k) => ({ f: k.f, label: "anti-resonance" })) });
 }
@@ -106,6 +107,7 @@ function fpBBox(refdes) {
   return isFinite(b[0]) ? b : null;
 }
 // outline: at least 16 px on screen, halo, colour, light fill; the label is queued in `labels`
+// (drawBoardLabels items: just above the outline's left edge, in the part's colour)
 function partBox(b, col, lw, label, opt, labels, px) {
   if (!b) return;
   const m = Math.max(0.25, 4 * px), min = 16 * px;
@@ -121,44 +123,31 @@ function partBox(b, col, lw, label, opt, labels, px) {
     ctx.beginPath(); ctx.roundRect(x0 - g, y0 - g, x1 - x0 + 2 * g, y1 - y0 + 2 * g, 4 * px);
     ctx.setLineDash([4 * px, 3 * px]); ctx.lineWidth = 1.5 * px; ctx.strokeStyle = col; ctx.stroke(); ctx.setLineDash([]);
   }
-  if (label) labels.push({ x0, x1, y: y0 - (opt.ring ? 6 : 3) * px, text: label, col, bold: !!opt.bold });
+  if (label) labels.push({ x: x0, y: y0 - (opt.ring ? 5 : 0) * px, text: label, color: col, bold: !!opt.bold, dx: 0, dy: -4 });
 }
-// labels on a panel-coloured pill with the part's colour as border, above everything; centred
-// over small parts, at the left edge of large ones (an IC's centre may be under the detail panel)
-function drawPartLabels(labels, px) {
-  const cs = getComputedStyle(document.documentElement);
-  const mono = cs.getPropertyValue("--font-mono"), fg = cs.getPropertyValue("--fg").trim(), panel = cs.getPropertyValue("--panel").trim();
-  for (const L of labels) {
-    ctx.font = `${L.bold ? 700 : 600} ${(L.bold ? 12.5 : 11) * px}px ${mono}`;
-    const w = ctx.measureText(L.text).width, h = (L.bold ? 16 : 14) * px;
-    const cx = L.x1 - L.x0 > w + 24 * px ? L.x0 + w / 2 + 4 * px : (L.x0 + L.x1) / 2;
-    ctx.fillStyle = panel; ctx.globalAlpha = 0.95;
-    ctx.beginPath(); ctx.roundRect(cx - w / 2 - 4 * px, L.y - h, w + 8 * px, h, 3 * px); ctx.fill(); ctx.globalAlpha = 1;
-    ctx.lineWidth = (L.bold ? 2 : 1.5) * px; ctx.strokeStyle = L.col; ctx.stroke();
-    ctx.fillStyle = fg; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(L.text, cx, L.y - h / 2 + 0.5 * px);
-  }
-  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+// the queued labels at a constant screen size (shared helper): the bold ones (the picked part, the
+// IC, the selected capacitor) first, so a label that would overlap one of them is left out
+function drawPartLabels(labels) {
+  return drawBoardLabels(labels.slice().sort((a, b) => (b.bold ? 1 : 0) - (a.bold ? 1 : 0)));
 }
 // a part picked in the power flow
-function drawPiMark(px) {
+function drawPiMark(px, labels) {
   const m = S.piMark;
   if (!m || (m.rail && m.rail !== S.piRail)) return;
-  const labels = [], acc = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  const acc = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
   partBox(m.bbox, acc, 3 * px, m.refdes, { fill: 0.15, bold: true, ring: true }, labels, px);
-  drawPartLabels(labels, px);
 }
 
 // recommendation circles, the IC, its capacitors (ranked) and the series parts on the board
-// (rail detail, impedance tab): outlined footprints with their reference
-function drawPdnOverlay(px) {
-  if (!S.piRail || $("pi-detail").hidden || !$("ch-pdn-ic")) return; // only while the per-IC view is open
+// (rail detail, impedance tab): outlined footprints, their references queued in `labels`; true when drawn
+const pdnOverlayOn = () => !!S.piRail && !$("pi-detail").hidden && !!$("ch-pdn-ic");
+function drawPdnOverlay(px, labels) {
+  if (!pdnOverlayOn()) return; // only while the per-IC view is open
   const r = pdnIcOf(S.piRail);
   if (!r || r.error) return;
   const pt = r.ports.find((x) => x.label === S.pdnIcSel);
   if (!pt) return;
   const C = S.colors, acc = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
-  const labels = [];
   // series parts of the domain
   for (const x of r.series) partBox(x.bbox, x.kind === "resistor" ? C.none : C.high1, 2 * px, x.refdes, {}, labels, px);
   // capacitors: colour by loop inductance to this IC (green best … red worst); the best five,
@@ -189,13 +178,14 @@ function drawPdnOverlay(px) {
   for (const x of pt.recommendations.filter((x) => x.count && x.radius_mm > 0 && x.radius_mm < 49.9)) {
     ctx.beginPath(); ctx.arc(pt.at[0], pt.at[1], x.radius_mm, 0, Math.PI * 2); ctx.stroke();
     const lx = pt.at[0] + x.radius_mm * 0.71, ly = pt.at[1] - x.radius_mm * 0.71;
-    labels.push({ x0: lx, x1: lx, y: ly, text: `${x.count}× ${x.value}`, col: acc, bold: false });
+    labels.push({ x: lx, y: ly, text: `${x.count}× ${x.value}`, color: acc });
   }
   ctx.setLineDash([]);
-  drawPartLabels(labels, px);
+  return true;
 }
 function renderPiLayerChips() {
   if (S.piMode === "l") { renderLossChips(); return; }
+  if (S.piMode === "t") { renderThermChips(); return; }
   const su = S.scene.stackup, r = piCurrent();
   const ls = r ? r.res.layers.map((g) => g.layer) : [];
   if (r) piLayerIdx(r);
@@ -205,6 +195,7 @@ function renderPiLayerChips() {
 
 function renderPiLegend() {
   if (S.piMode === "l") { renderLossLegend(); return; }
+  if (S.piMode === "t") { renderThermLegend(); return; }
   const L = $("legend"), r = piCurrent();
   if (!r) { L.innerHTML = `<strong>Power</strong><div class="row">${S.piSolved ? "Rail without result: define source and load" : "Voltage drop not computed yet: “Compute voltage drop” in the Power card"}</div>`; return; }
   const li = piLayerIdx(r), im = piImage(r, li), sc = im.scale;
@@ -214,5 +205,6 @@ function renderPiLegend() {
   L.innerHTML = `<strong>${S.piMode === "v" ? (r.res.ground ? "Ground offset" : "Voltage drop") : "Current density"} · ${esc(S.scene.stackup.copper[S.piLayer].name)}</strong>
     <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
     <div class="ticks units"><span>0</span><span>${tick(sc.max / 2)}</span><span>${tick(sc.max)}${S.piMode === "j" ? " (99th percentile)" : ""}</span></div>
-    <div class="row"><span class="sw" style="background:${S.colors.ok}"></span>source ▲ · load ○ · circles: vias with the highest currents</div>`;
+    <div class="row"><span class="sw" style="background:${S.colors.ok}"></span>source ▲ · load ○ · circles: vias with the highest currents</div>
+    <div class="row">Labels: ${pdnOverlayOn() ? "the IC, its capacitors and the series parts (impedance tab)" : S.piMode === "j" ? "sources and loads with their current (the largest first)" : r.res.ground ? "sources, offset at the parts (the largest first)" : "sources, drop at the loads (the largest first)"}</div>`;
 }

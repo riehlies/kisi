@@ -513,6 +513,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             caps,
         ));
     }
+    out.extend(thermal_gap(p));
 
     let rank = |v: &Value| match v["priority"].as_str() {
         Some("high") => 0,
@@ -529,6 +530,44 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         "gaps": out,
         "how": "Fill the gaps in <board>.kisi.json next to the board (format: see `kisi config-template`), every value with a source; then run `kisi config-check <board>` and `kisi gaps <board>` again. Gaps marked 'not kisi.json' are fixes in KiCad."
     })
+}
+
+/// Parts that dissipate 0.1 W or more (power tree: load power, regulator and pass losses) without a
+/// PI_THERMAL field: `kisi thermal` gives them package defaults (estimates).
+fn thermal_gap(p: &Project) -> Option<Value> {
+    let b = &p.board;
+    let (spec, _) = crate::tree::tree_from_fields(b)?;
+    let t = crate::tree::solve_tree(&spec, Some(b)).ok()?;
+    let mut items: Vec<(f64, Value)> = t
+        .components
+        .iter()
+        .filter(|c| c.consumption + c.loss >= 0.1)
+        .filter_map(|c| {
+            let fi = b.footprints.iter().position(|f| f.reference == c.refdes)?;
+            let f = &b.footprints[fi];
+            if f.dnp || f.prop("PI_THERMAL").is_some() {
+                return None;
+            }
+            let w = c.consumption + c.loss;
+            let fam = crate::thermal::package_defaults(b, fi).0;
+            Some((w, json!({"ref": c.refdes, "value": f.value, "heat_w": (w * 1e3).round() / 1e3, "package_default": fam})))
+        })
+        .collect();
+    if items.is_empty() {
+        return None;
+    }
+    items.sort_by(|a, b| b.0.total_cmp(&a.0).then_with(|| a.1["ref"].as_str().cmp(&b.1["ref"].as_str())));
+    let items: Vec<Value> = items.into_iter().map(|x| x.1).collect();
+    Some(gap(
+        "thermal-data",
+        "low",
+        "power",
+        format!("{} part(s) dissipate 0.1 W or more without thermal data (field PI_THERMAL): `kisi thermal` estimates their junction temperature from package defaults and assumes Tj max 125 °C.", items.len()),
+        &["temperature estimate", "junction temperature"],
+        "Device datasheet: the Thermal Information table (RθJB, RθJC(top) – or ψJB – for the JEDEC 2s2p board) and the maximum junction temperature (Absolute Maximum Ratings / Recommended Operating Conditions). Heat that leaves the board (connectors, LEDs, RF output): p=<W>.",
+        json!({"to": "fields[] (name PI_THERMAL)", "example": {"ref": items[0]["ref"], "name": "PI_THERMAL", "value": "theta_jb=17.4 theta_jc=53.6 tj_max=125", "source": {"kind": "datasheet", "document": "…", "page": "Thermal Information", "note": "RθJB, RθJC(top), JEDEC 2s2p board"}}}),
+        items,
+    ))
 }
 
 #[cfg(test)]

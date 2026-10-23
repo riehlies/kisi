@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
-pub const COMMANDS: &[&str] = &["overview", "interfaces", "net", "check", "crosstalk", "profiles", "power", "report", "gaps", "config-check", "config-template", "help"];
+pub const COMMANDS: &[&str] = &["overview", "interfaces", "net", "check", "crosstalk", "profiles", "power", "thermal", "report", "gaps", "config-check", "config-template", "help"];
 
 pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on stdout
 
@@ -28,6 +28,10 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
   profiles [ID]    interface profiles (no board needed)
   power            regulator chain, DC IR drop per rail and ground return, losses, power flow
                                                           [--tree tree.json] [--pdn RAIL]
+  thermal          temperature estimate from the power analysis: board temperature per layer, hot
+                   spots, junction temperature per part (PI_THERMAL or package defaults), copper
+                   temperature and IR drop at temperature per rail
+                   [--tree tree.json] [--ambient °C (25)] [--h W/m²K per side] [--airflow m/s] [--vertical]
   report           write analysis/kisi.json next to the board   [--out FILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
@@ -80,6 +84,12 @@ pub struct Opts {
     pub field_xt: bool,
     /// assembly variant (wins over the configuration's `variant`)
     pub variant: Option<String>,
+    /// `thermal`: ambient temperature (°C), surface coefficient per side (W/m²K), air flow (m/s),
+    /// vertical board
+    pub ambient: Option<f64>,
+    pub h: Option<f64>,
+    pub airflow: Option<f64>,
+    pub vertical: bool,
 }
 
 /// Parse `<command> [args…]`.
@@ -124,6 +134,10 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--field-all" => o.field_all = true,
             "--field-xt" => o.field_xt = true,
             "--variant" => o.variant = Some(val(&mut i, a)?),
+            "--ambient" => o.ambient = Some(num(val(&mut i, a)?, a)?).filter(|t| (-60.0..=200.0).contains(t)).or(Some(f64::NAN)),
+            "--h" => o.h = Some(num(val(&mut i, a)?, a)?),
+            "--airflow" => o.airflow = Some(num(val(&mut i, a)?, a)?),
+            "--vertical" => o.vertical = true,
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
         }
@@ -134,6 +148,15 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
         if profiles.get(id).is_none() {
             return Err(format!("unknown profile '{id}' for class '{c}' (see `kisi profiles`)"));
         }
+    }
+    if o.ambient.is_some_and(f64::is_nan) {
+        return Err("--ambient: a temperature between -60 and 200 °C".into());
+    }
+    if o.h.is_some_and(|h| !(h > 0.0 && h < 1e5)) {
+        return Err("--h: a surface coefficient in W/m²K (> 0)".into());
+    }
+    if o.airflow.is_some_and(|v| !(0.0..100.0).contains(&v)) {
+        return Err("--airflow: an air speed in m/s (0 … 100)".into());
     }
     if needs_board(&o.cmd) && o.pos.is_empty() {
         return Err(format!("board file missing (kisi {} <board.kicad_pcb>)", o.cmd));
@@ -324,6 +347,21 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
             }
             Ok(v)
         }
+        "thermal" => {
+            let tree = match tree {
+                Some(t) => Some(serde_json::from_value(t).map_err(|e| format!("--tree: {e}"))?),
+                None => None,
+            };
+            let pr = proj()?;
+            let prm = crate::thermal::ThermalParams { ambient_c: o.ambient, h: o.h, airflow_m_s: o.airflow.unwrap_or(0.0), vertical: o.vertical, ..Default::default() };
+            let mut v = service::thermal(pr, tree, &prm)?;
+            if pr.variant.needs_choice {
+                if let Some(w) = v["warnings"].as_array_mut() {
+                    w.push(json!("no assembly variant chosen: parts as in the board file; choose one with --variant or \"variant\" in <board>.kisi.json"));
+                }
+            }
+            Ok(v)
+        }
         "report" => Ok(service::report(proj()?, &profiles)),
         "gaps" => Ok(crate::gaps::gaps(proj()?, &profiles)),
         "config-check" => {
@@ -478,6 +516,10 @@ mod tests {
         assert_eq!(parse_args(&a("--help")).unwrap().cmd, "help");
         assert_eq!(parse_args(&a("check b.kicad_pcb --variant TS-PCIe")).unwrap().variant.as_deref(), Some("TS-PCIe"));
         assert!(parse_args(&a("check b.kicad_pcb --variant")).is_err());
+        let t = parse_args(&a("thermal b.kicad_pcb --ambient 40 --airflow 1.5 --vertical")).unwrap();
+        assert_eq!((t.cmd.as_str(), t.ambient, t.airflow, t.vertical, t.h), ("thermal", Some(40.0), Some(1.5), true, None));
+        assert!(parse_args(&a("thermal b.kicad_pcb --ambient 900")).is_err());
+        assert!(parse_args(&a("thermal b.kicad_pcb --h 0")).is_err());
     }
 
     /// The template's PI_LOAD example is a load: not the regulator (with or without PI_REG), even

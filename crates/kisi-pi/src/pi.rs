@@ -537,6 +537,13 @@ pub(crate) fn pad_cells(g: &Grid, pad: &Pad) -> Vec<usize> {
 // --- the solver -------------------------------------------------------------------------
 
 pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result<PiResult, String> {
+    solve_rail_scaled(board, setup, params, None)
+}
+
+/// `solve_rail` with the resistivity scaled per place: `scale(layer, point)` = ρ/ρ₂₀ there (e.g.
+/// 1 + α(T − 20 °C) from a temperature map, `thermal::rail_at_temperature`). Each conductance uses
+/// the mean factor of its two cells.
+pub fn solve_rail_scaled(board: &Board, setup: &RailSetup, params: &PiParams, scale: Option<&dyn Fn(usize, P) -> f64>) -> Result<PiResult, String> {
     let su = board.stackup();
     let ncu = su.n();
     let net = find_net(board, &setup.net).ok_or_else(|| format!("net '{}' not found", setup.net))?;
@@ -640,6 +647,12 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
         node_of[l] = m;
     }
     let nn = node_pos.len();
+    // resistivity factor per node (empty: 1 everywhere) and the mean of an edge's two nodes
+    let div: Vec<f64> = match scale {
+        Some(f) => node_pos.iter().map(|&(l, k)| f(l, g.center(k % g.nx, k / g.nx)).max(1e-3)).collect(),
+        None => Vec::new(),
+    };
+    let dv = |a: u32, b: u32| -> f64 { if div.is_empty() { 1.0 } else { 0.5 * (div[a as usize] + div[b as usize]) } };
 
     // edges: (a, b, conductance S)
     let mut edges: Vec<(u32, u32, f64)> = Vec::with_capacity(nn * 2);
@@ -662,7 +675,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
                     }
                     let (a, b) = (wl[k] as f64, wl[k2] as f64);
                     let wf = 2.0 * a * b / (a + b);
-                    edges.push((m[k], m[k2], gs * wf));
+                    edges.push((m[k], m[k2], gs * wf / dv(m[k], m[k2])));
                 }
             }
         }
@@ -729,7 +742,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
             if let Some((pl, pn)) = prev {
                 if pn != nid {
                     let len = (layer_z[l] - layer_z[pl]).abs() * 1e-3;
-                    let gv = barrel(*drill) / (params.rho * len.max(1e-6));
+                    let gv = barrel(*drill) / (params.rho * len.max(1e-6)) / dv(pn, nid);
                     via_edges.push((edges.len(), *at, *drill));
                     edges.push((pn, nid, gv));
                 }
@@ -944,7 +957,8 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
                         };
                         let gx = d(val(i - 1, j), val(i + 1, j));
                         let gy = d(val(i, j - 1), val(i, j + 1));
-                        let jm = (gx * gx + gy * gy).sqrt() / params.rho * 1e-6; // A/mm²
+                        let dn = if div.is_empty() { 1.0 } else { div[m[j as usize * g.nx + i as usize] as usize] };
+                        let jm = (gx * gx + gy * gy).sqrt() / (params.rho * dn) * 1e-6; // A/mm²
                         if jm > max_j {
                             max_j = jm;
                             max_j_at = Some(g.center(i as usize, j as usize));

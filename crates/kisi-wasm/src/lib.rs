@@ -32,6 +32,8 @@ struct State {
     pi_store: std::collections::BTreeMap<String, kisi_core::pi::PiResult>,
     /// loss map: copper planes, then the components plane (W/mm²)
     loss_map: Vec<f32>,
+    /// last temperature estimate (from `pi_store` and `tree`), with its temperature planes
+    thermal: Option<kisi_core::thermal::ThermalResult>,
     /// last analysis and its parameters (for the RF functions)
     an: Option<kisi_core::Analysis>,
     params: Option<Params>,
@@ -105,6 +107,7 @@ fn rebuild(st: &mut State) -> Result<Option<kisi_core::config::Applied>, String>
     st.tree = None;
     st.pi_store.clear();
     st.loss_map.clear();
+    st.thermal = None;
     Ok(applied)
 }
 
@@ -478,6 +481,7 @@ pub extern "C" fn kisi_pi_clear() {
         let mut st = st.borrow_mut();
         st.pi_store.clear();
         st.loss_map.clear();
+        st.thermal = None;
     });
 }
 
@@ -547,6 +551,57 @@ pub extern "C" fn kisi_pi_map_ptr() -> *const f32 {
 #[no_mangle]
 pub extern "C" fn kisi_pi_map_len() -> usize {
     ST.with(|st| st.borrow().loss_map.len())
+}
+
+/// Temperature estimate from the stored DC results (copper loss) and the last power tree (part
+/// heat). Input: ThermalParams {ambient_c, h, airflow_m_s, vertical}. Out: ThermalResult (rails
+/// empty: `kisi_pi_thermal_rail` per rail); the temperature planes (°C, NaN outside the board) via
+/// kisi_pi_temp_ptr/len: one per copper layer, nx*ny cells each.
+#[no_mangle]
+pub extern "C" fn kisi_pi_thermal(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let prm: kisi_core::thermal::ThermalParams = serde_json::from_str(&txt).unwrap_or_default();
+    reply(ST.with(|st| -> Result<String, String> {
+        let th = {
+            let st = st.borrow();
+            let b = st.board.as_ref().ok_or("no board loaded")?;
+            let rails: Vec<&kisi_core::pi::PiResult> = st.pi_store.values().collect();
+            if rails.is_empty() && st.tree.is_none() {
+                return Err("no power results: compute the voltage drop first".into());
+            }
+            let ls = kisi_core::losses::loss_summary(b, st.tree.as_ref(), &rails);
+            kisi_core::thermal::solve(b, &rails, &ls.components, &prm)?
+        };
+        let out = serde_json::to_string(&th).unwrap();
+        st.borrow_mut().thermal = Some(th);
+        Ok(out)
+    }))
+}
+
+/// Copper temperature and IR drop at temperature of one rail (one electro-thermal step), from
+/// its stored DC result and the last temperature estimate. Input: {"setup": RailSetup, "params":
+/// PiParams} → RailThermal.
+#[no_mangle]
+pub extern "C" fn kisi_pi_thermal_rail(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let setup: kisi_core::pi::RailSetup = serde_json::from_value(v["setup"].clone()).map_err(|e| e.to_string())?;
+        let params: kisi_core::pi::PiParams = serde_json::from_value(v["params"].clone()).unwrap_or_default();
+        let th = st.thermal.as_ref().ok_or("no temperature estimate")?;
+        let base = st.pi_store.get(&setup.net).ok_or_else(|| format!("{}: no DC result", setup.net))?;
+        Ok(serde_json::to_string(&kisi_core::thermal::rail_at_temperature(b, &setup, base, th, &params)).unwrap())
+    }))
+}
+#[no_mangle]
+pub extern "C" fn kisi_pi_temp_ptr() -> *const f32 {
+    ST.with(|st| st.borrow().thermal.as_ref().map(|t| t.t.as_ptr()).unwrap_or(std::ptr::null()))
+}
+#[no_mangle]
+pub extern "C" fn kisi_pi_temp_len() -> usize {
+    ST.with(|st| st.borrow().thermal.as_ref().map(|t| t.t.len()).unwrap_or(0))
 }
 
 // --- high frequency (M3) -----------------------------------------------------------

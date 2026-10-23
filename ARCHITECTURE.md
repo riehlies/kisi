@@ -28,7 +28,7 @@ interface; data that changes (standards, component values) lives in files, not i
 |---|---|---|
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, `package` (case size of chip parts: footprint name, else pad geometry), viewer scene, `num` | – |
 | `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,mixed,crosstalk,network,timedomain,touchstone_in}` (`mixed`: 4-port pair model and the alignment of a pair's two lines; `network`: N-port networks by modified nodal analysis – chains of 2-ports or coupled pairs, admittances, S-parameter blocks, sources; `timedomain`: step responses with DC point, Gaussian window and causality/settling checks), `lanenet` (a lane as a row of network blocks with the ends: transfer to every receiver, the pair's 4-port, the channel behind a connector – also one N-port file for all lanes of a connector, the other lanes as aggressors), `via` (board → via geometry, coax-section fallback), `via_pbm` (physics-based via ladder: r–z Laplace capacitances, parallel-plate impedance with return vias, stubs, pairs; checked against kisi-fdtd), `eye`, `profile`, `topology` (device-to-device lanes, multi-drop taps) | kisi-board, kisi-sparse |
-| `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `field_syntax` (net names in the power fields, quoting), `losses` (ground return, losses, loss map, power flow), `pdn` (Z(f), plane model), `cavity_modal` (rectangular plane pair, double cosine series; loop inductance), `pdn_ic` (AC grid over all layers of the rail domain – the rail and the nets behind series resistors, inductors and ferrites up to the regulators –, PDN seen from every IC, filter resonances, recommendations) | kisi-board, kisi-sparse |
+| `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `field_syntax` (net names in the power fields, quoting), `losses` (ground return, losses, loss map, power flow), `thermal` (steady-state temperature of the board and the parts from the losses on the DC solver's building blocks, `PI_THERMAL`, the IR drop at temperature), `pdn` (Z(f), plane model), `cavity_modal` (rectangular plane pair, double cosine series; loop inductance), `pdn_ic` (AC grid over all layers of the rail domain – the rail and the nets behind series resistors, inductors and ferrites up to the regulators –, PDN seen from every IC, filter resonances, recommendations) | kisi-board, kisi-sparse |
 | `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `par` (the check's rows on scoped threads), `config` (`<board>.kisi.json`), `variant` (assembly variants: KiCad 10 overrides, kisi.json rules by sheet/references/BOM, the “must choose” state), `gaps` | the three above |
 | `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
 | `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` (impedance cases; `models`: the reduced models on the 3D reference cases; `via-geom`: diagnostics of one via) | kisi-core |
@@ -60,11 +60,11 @@ to one thread.
 * `index.html` – markup only; `css/kisi.css`; scripts in `src/` in the order of
   `src/manifest.json` (shared scope):
   `engine` (WASM) · `units` (values with SI prefixes for every view: `fmtSI`, `parseSI`, `fieldSI`; tests
-  `tools/test_units.mjs`) · `state` · `load` · `geometry` · `draw` (also `drawBoardLabels`: labels on the board at
-  a constant screen size) · `charts` · `net-detail` · `si-tabs`
+  `tools/test_units.mjs`) · `state` · `load` · `geometry` · `draw` (also `drawBoardLabels`: every text on the board – part
+  labels of all maps, A/B marks – at a constant screen size, with the overlap rule; checked by `check_viewer.py`) · `charts` · `net-detail` · `si-tabs`
   (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `variants` (assembly variant card and
   prompt) · `panels` · `interaction` · `field-pool` ·
-  `field-cache` · `check-pool` (the channel check's rows in Web Workers with engines of their own) · `crosstalk` (coupling scan with step 2, Couplings card, critical stretches on the map) · `pi-dc` · `pi-pdn` · `pi-balance` · `pi-loss` (losses map, power flow) · `views` · `main` (start-up, files, hand-over).
+  `field-cache` · `check-pool` (the channel check's rows in Web Workers with engines of their own) · `crosstalk` (coupling scan with step 2, Couplings card, critical stretches on the map) · `pi-dc` · `pi-pdn` · `pi-balance` · `pi-loss` (losses map, power flow) · `pi-thermal` (temperature step and map) · `views` · `main` (start-up, files, hand-over).
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html`: WASM modules and the field solver
   script (gzip + base64, unpacked at start), fonts (`web/fonts`, OFL), `data/*.json` and, optionally, example
   boards (`tools/fetch_examples.sh`) with their configuration `web/samples/<key>.kisi.json` → `kisi-examples.html`.
@@ -82,8 +82,11 @@ to one thread.
 
 ## Data (`data/`)
 * `<board>.kisi.json` (next to the board, not in this repository) – per-board values with sources, see above.
-* `components.json` – parasitics of passives in a channel (per package), reference-designator roles, and decoupling
-  data for the PDN (ESL/ESR by package, DC-bias derating, assumed ratings, candidate parts), with sources.
+* `components.json` – parasitics of passives in a channel (per package), reference-designator roles, decoupling
+  data for the PDN (ESL/ESR by package, DC-bias derating, assumed ratings, candidate parts) and package thermal
+  resistances (θJB, θJC per family and size) for the temperature estimate, with sources.
+* `thermal.json` – material constants (copper, laminate, solder mask, air), convection correlations and defaults of
+  the temperature estimate, with sources.
 * `interfaces.json` – interface profiles with sources (standard / guideline / kisi guide value),
   transmitter/receiver, limits, assignment rules. Built into viewer and CLI.
 * Example boards' configuration (power tree as PI_REG / PI_LOAD fields with sources): `web/samples/{ts,vna}.kisi.json`.
@@ -95,7 +98,7 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
 
 ## Board configuration and agents
 * `<board>.kisi.json` (`kisi_core::config`): values with sources that the board file lacks – stackup, net class
-  targets and profiles, footprint fields (PI_LOAD/PI_SOURCE/PI_REG), assembly variants. Laid over the board when
+  targets and profiles, footprint fields (PI_LOAD/PI_SOURCE/PI_REG/PI_THERMAL/…), assembly variants. Laid over the board when
   loading (CLI and viewer); kisi never writes into KiCad files. Precedence: board file < kisi.json < viewer edits /
   CLI options.
 * Assembly variants (`kisi_core::variant`): order when loading – board file → variant (KiCad 10 overrides, then the

@@ -26,6 +26,9 @@ PDN impedance) – in the browser, with no installation and no setup beyond the 
   - DC voltage drop and current density on the copper of every rail and of the ground return, layer by layer, with
     the drop at each load and the vias that carry the most current;
   - a losses map (heat per part, copper loss per layer);
+  - a temperature estimate from those losses: the board's temperature per copper layer in still air or an air
+    flow, the junction temperature of every part with heat (datasheet θJB/θJC from `PI_THERMAL`, else package
+    estimates) against its limit, and the IR drop with the copper at that temperature;
   - PDN impedance Z(f) per rail, and seen from every IC: the rail copper on all layers with ferrites and series
     parts up to the regulator, the loop inductance of each decoupling capacitor to that IC, anti-resonances, a target
     from the IC's current step and recommendations.
@@ -91,7 +94,9 @@ Three views, each starting with what the board file gives and computing more on 
 3. **Power** – power tree, budget and power flow (Sankey) first, from `PI_REG` / `PI_LOAD` fields or the board's
    `kisi.json`; part references jump to the board. Then, per rail and for the ground return, voltage drop and
    current density on every layer (drop at each load, vias with the highest currents), a losses map (heat per part
-   and copper loss per layer, mW/mm²) and Z(f): a lumped model of regulator, plane and capacitors with a plane
+   and copper loss per layer, mW/mm²), the temperature (step 3, an estimate for an ambient temperature and still air
+   or an air flow: map per layer, the hottest parts with their junction temperature, the rails' IR drop at
+   temperature) and Z(f): a lumped model of regulator, plane and capacitors with a plane
    model above 1 MHz, and the impedance seen from each IC – the rail domain with ferrites and series parts up to
    the regulator, the capacitors ranked by their loop inductance to the IC (outlined on the board),
    anti-resonances, a target from the IC's current step and recommendations (value, package, count, distance).
@@ -110,6 +115,7 @@ files are not changed. Results of the last three boards stay in memory while swi
 | `check` | channel check against the profiles (`--class CLASS=PROFILE`, `--nets A,B`, `--all`) |
 | `crosstalk` | coupling scan of all nets with a target, critical from 1 % (`--nets A,B`, `--all` for every row); the field solver refines the critical couplings |
 | `power` | regulator chain, budget, DC IR drop per rail and in the ground return, losses per part / rail / layer, power flow (`--pdn RAIL` adds Z(f)) |
+| `thermal` | temperature estimate from the losses: board temperature per layer, hot spots, junction and case-top temperature per part against Tj max, heat through the vias and under each hot part (with a hint when thermal vias look short), copper temperature and IR drop at temperature per rail (`--ambient °C`, `--airflow m/s`, `--vertical`, `--h W/m²K`) |
 | `report` | everything into `analysis/kisi.json` next to the board |
 | `gaps` | missing or default data, where to find it, how to write it into `<board>.kisi.json` |
 | `config-check`, `config-template` | check / start a `<board>.kisi.json` (the template suggests variants from forks) |
@@ -156,6 +162,7 @@ uses Web Workers the same way.
 | `PI_CAP` | `esr=5m esl=0.45n rated=6.3V X5R c@3.3V=2.1u` | decoupling capacitor data for the PDN (datasheet values; replaces the package estimates and the DC-bias curve) |
 | `PI_SERIES` | `z100=600 rdc=0.15` · `l=2.2u dcr=50m` · `r=10m` | ferrite bead, inductor or resistor in a supply path: the PDN per IC models the rail with the nets behind them, up to the regulators (replaces the typical values) |
 | `PI_TARGET` | `VCCINT=10m fmax=50M` or `15mOhm` | target impedance of an IC for a rail (default: from its own current step), band it applies to |
+| `PI_THERMAL` | `theta_jb=17.4 theta_jc=53.6 psi_jt=1.1 tj_max=125` | thermal data of a part from its datasheet's Thermal Information table (K/W, °C) for the temperature estimate; `psi_jb=…` when there is no θJB, `psi_jt` for the case top, `theta_ja=…` only as a fallback (JEDEC test board), `p=0.2W` for the heat that stays in the part (replaces the power tree's value, e.g. a connector passing power on) |
 
   The nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`), else from `NAME@<V>V` in a `PI_REG` entry.
   Net names are written as in KiCad, or as the last part of a hierarchical name (`IMU_VDD` for
@@ -192,7 +199,7 @@ KiCad files; CLI and viewer lay this file over the board.
   (`.sNp`): `"ports": {"A16": [1, 9], "A17": [2, 10], …}` gives per connector pin the file's port at the connector
   and at the far end; the other lanes in the file are aggressors in each lane's eye (worst case, entering at the
   connector without their board traces – conservative; their directions are the guessed lane directions). In the viewer: the interface's card in the
-  channel overview (Touchstone files are loaded there or dropped with the board and stay in memory). `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`, `PI_CAP`, `PI_TARGET`, `PI_SERIES`).
+  channel overview (Touchstone files are loaded there or dropped with the board and stay in memory). `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`, `PI_CAP`, `PI_TARGET`, `PI_SERIES`, `PI_THERMAL`).
 - `variant`: the assembly variant to analyse – a KiCad 10 variant of the board, one of `variants`, or `default`
   (the board file as it is). `variants`: which parts are fitted, for boards without KiCad 10 variants (or on top of
   one of the same name). Rules in this order, later ones win: the board file (DNP, KiCad 10 overrides), `bom` (a CSV
@@ -240,13 +247,26 @@ KiCad files; CLI and viewer lay this file over the board.
 - **Ground return and losses:** every part returns what it draws from the supply rails minus what it feeds into
   them (a buck converter takes current from ground); ground is solved like a rail with the supply input as 0 V.
   The power a load draws is counted as heat in the part (estimate), regulator losses on the regulator; copper
-  loss is I²R from the DC solutions. Power, not temperature.
+  loss is I²R from the DC solutions.
+- **Temperature (estimate):** steady state of the board in air. One sheet per copper layer on a grid over the board
+  outline (copper fill of every net, laminate in plane 0.8 and through the thickness 0.3 W/m·K, open via barrels),
+  natural or forced convection (flat-plate correlations) and radiation from both sides; heat from the copper loss of
+  every cell and the parts. A part is a junction node with θJB to the board under its pads and θJC to its top (JEDEC
+  two-resistor model), with values from `PI_THERMAL` or package defaults by family and size (`data/components.json`,
+  estimates); the case top from ψJT or that model. Per via the heat through its barrel; per hot part the split of its
+  heat into vias, laminate and the pad layer. Not included: heat sinks, conduction into mounting holes, connectors or
+  card guides, the enclosure (a device in a closed case runs hotter inside: emulate it with the case temperature as
+  `--ambient` and the inner coupling as `--h`), the split of a regulator's loss between IC and inductor, transients. The IR drop at temperature solves the rails again
+  with ρ(T) = ρ₂₀(1 + 0.393 %/K·(T − 20 °C)). Concept, physics and validation: `docs/research/thermal.md`.
 
 ### Validation
 - The 2D field solver and the line models were compared with the HFSS/Ansys cases of Forstén's test suite
   (impedance within 1.7 %, RLGC within 2 %; `tools/validate_field.sh`).
 - The via and plane models were compared with 3D results of kisi's own FDTD solver (`crates/kisi-fdtd`, checked
   against openEMS and analytic cavities); see `kisi-references.html` and `validation/fdtd/TESTS.md`.
+- The temperature solver against analytic cases (1D slab exact, fin within 0.2 %, radial spreading in a plane with
+  convection within 0.13 %, energy balance) and, with the datasheets' θJB/θJC on a model of the JEDEC JESD51-7 board,
+  against their θJA (QFN-16 +4 %, SOIC-8 −15 %, SOT-23-5 −20 %); `docs/research/thermal.md`.
 - **Still open:** validation against other solvers and against measurements (a test board is planned,
   `validation/test_board.md`). Until then, treat the numbers as plausible estimates, not as verified results.
 

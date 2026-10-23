@@ -217,10 +217,17 @@ table). `kisi config-check` reads it.
   estimates unless given), totals and the energy balance, maximum board temperature and hot spots with the
   nearest part, per part P, the board temperature under it, Tj, Tj max and its source, the θ values and their
   source (`PI_THERMAL` or the package default), per rail the copper temperature (maximum and loss-weighted
-  mean) and the IR drop at 20 °C and at that temperature. `report` includes it.
+  mean) and the IR drop at 20 °C and at that temperature. Also the case top per part, the heat path under each
+  part of 0.1 W or more (`under_part`: vias, into the board through vias / laminate / sideways, ΔT to the next
+  layer and to the other side, hint), the vias with the most heat (`vias.most_heat`) and the hints (`parts_hints`),
+  section 4.4. `report` includes it.
 - Viewer, Power view: step 3 "Temperature (estimate)" with the ambient temperature and the cooling (still air
   horizontal or vertical, air flow 1 or 3 m/s), then the "Temperature" map per layer (°C, the hottest parts
-  labelled with Tj), a side panel with the same tables as the CLI and the note that the values are estimates.
+  labelled with Tj, the vias with the most heat as grey dots), a side panel with the same tables as the CLI and
+  the note that the values are estimates. Every temperature in the tables carries a chip in the map's colour
+  scale; a click on a part or a rail selects its layer and zooms to the part or to the rail's hottest copper.
+  After step 3 the components table of the "Power tree" view adds Tj, the case top and the θ data (datasheet or
+  package default, with values and source in the tooltip).
 
 ## 6. Scope
 | Now (this increment) | Later |
@@ -329,7 +336,7 @@ the part 54.3 °C + 0.65 W · 11.6 K/W). That is right for a bare board on a ben
   and mixer junctions of 83–85 °C; `--ambient 50 --h 7` gives 82 °C mean and Tj up to 100 °C. A built-in enclosure
   model (case surface, inner coupling, a heat sink) is the next step (ROADMAP).
 - **Convection and radiation coefficients**: 13.2 W/m²K top and 9.6 W/m²K bottom at the LibreVNA's 20 K mean rise
-  (convection 7.0 / 3.5 + radiation 6.1). Typical textbook values; not the cause.
+  (convection 7.2 / 3.6 + radiation 6.0). Typical textbook values; not the cause.
 - **Spreading under small hot parts**: the hot LibreVNA parts are QFN/DFN packages with exposed pads (4 × 4 mm mixers,
   0.6 mm cells: 6–7 cells across). The 15–20 % optimism found for leaded packages (section 7.2) does not apply to them.
 - **θ defaults**: the QFN default for the 4 × 4 mm mixer (θJB 11.6 K/W) is above the datasheet's junction-to-paddle

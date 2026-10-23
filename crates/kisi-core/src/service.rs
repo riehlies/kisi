@@ -786,7 +786,7 @@ pub fn thermal_json(p: &Project, th: &crate::thermal::ThermalResult, prm: &crate
     let xy = |p: Option<crate::geom::P>| p.map(|p| json!([c2(p[0]), c2(p[1])]));
     let opt = |x: Option<f64>| x.map(c2);
     let co = &th.cooling;
-    let hottest = th.parts.first();
+    let hottest = th.parts.iter().max_by(|a, b| a.tj_c.total_cmp(&b.tj_c));
     json!({
         "estimate": "Temperatures are estimates: steady state, board in air at the ambient temperature, heat only through convection and radiation; package data from PI_THERMAL or estimated package defaults (see parts[].data_source).",
         "summary": {

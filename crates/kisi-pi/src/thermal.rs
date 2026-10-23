@@ -324,7 +324,8 @@ pub struct ThermalResult {
     pub t_max_at: Option<P>,
     pub t_max_layer: u16,
     pub hot_spots: Vec<HotSpot>,
-    /// sorted by junction temperature, hottest first
+    /// parts over their Tj max first, then within 10 K of it, then the rest; each group by
+    /// junction temperature, hottest first
     pub parts: Vec<PartTemp>,
     /// copper temperature and IR drop at temperature per rail (`rail_at_temperature`)
     pub rails: Vec<RailThermal>,
@@ -1085,7 +1086,12 @@ pub fn solve(board: &Board, rails: &[&PiResult], comps: &[CompLoss], prm: &Therm
         warnings.push(format!("the board reaches {tmax:.0} °C, above the laminate's typical maximum operating temperature of {:.0} °C (FR-4, estimate)", d.laminate.mot_c));
     }
     let mut parts: Vec<PartTemp> = parts.into_iter().map(|p| p.res).collect();
-    parts.sort_by(|a, b| b.tj_c.total_cmp(&a.tj_c));
+    let rank = |p: &PartTemp| match p.status.as_str() {
+        "over" => 0,
+        "near" => 1,
+        _ => 2,
+    };
+    parts.sort_by(|a, b| rank(a).cmp(&rank(b)).then(b.tj_c.total_cmp(&a.tj_c)));
     let n_default = parts.iter().filter(|p| p.data_source.starts_with("package default")).count();
     let n_ja = parts.iter().filter(|p| p.model == "theta_ja").count();
     notes.push("Estimate: steady state of the board in air at the ambient temperature; heat leaves by convection and radiation from both sides and the part tops – not through mounting holes, connectors, card guides or heat sinks. Copper fill of every layer, laminate (in plane 0.8, through 0.3 W/m·K) and open via barrels conduct.".into());

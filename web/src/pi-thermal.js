@@ -57,7 +57,7 @@ function renderThermStep() {
   const t = S.therm;
   if (t && t.error) { $("therm-step").innerHTML = `<span class="err">${esc(t.error)}</span>`; return; }
   if (thermOk()) {
-    const h = t.parts[0];
+    const h = thermHottest();
     $("therm-step").textContent = `Done in ${t.ms} ms. Board up to ${fmt(t.t_max_c, 0)} °C (${layerName(t.t_max_layer)})` +
       (h ? `, hottest part ${h.refdes} with Tj ≈ ${fmt(h.tj_c, 0)} °C` : "") + `. Estimate for ${fmt(t.parts_w + t.copper_w, 2)} W in ${t.cooling.airflow_m_s ? `air flow of ${t.cooling.airflow_m_s} m/s` : "still air"} at ${fmt(t.ambient_c, 0)} °C.`;
     return;
@@ -67,6 +67,7 @@ function renderThermStep() {
     : "Needs the losses of step 2.";
 }
 const layerName = (l) => (S.scene.stackup.copper[l] || {}).name || `layer ${l}`;
+const thermHottest = () => S.therm.parts.reduce((a, p) => (!a || p.tj_c > a.tj_c ? p : a), null);
 
 // colour scale: ambient … hottest cell of all layers (linear)
 function thermImage() {
@@ -149,7 +150,7 @@ function showThermTip(mx, my) {
 function renderThermDetail() {
   const box = $("pi-detail");
   if (!thermOk()) { box.hidden = true; return; }
-  const t = S.therm, c = t.cooling;
+  const t = S.therm, c = t.cooling, hot = thermHottest();
   const st = (p) => p.status === "over" ? "over Tj max" : p.status === "near" ? "near Tj max" : "";
   const parts = t.parts.slice(0, 12).map((p) => `<tr class="${p.status === "over" ? "t-over" : p.status === "near" ? "t-near" : ""}" title="${esc(`${p.model === "theta_jb" ? `θJB ${fmt(p.theta_jb, 1)}${p.theta_jc ? `, θJC ${fmt(p.theta_jc, 1)}` : ""} K/W` : p.model === "psi_jb" ? `ψJB ${fmt(p.psi_jb, 1)} K/W` : `θJA ${fmt(p.theta_ja, 1)} K/W (JEDEC board)`} – ${p.data_source}; Tj max: ${p.tj_max_source}${p.w_source === "PI_THERMAL p" ? "; heat from PI_THERMAL" : ""}`)}">
       <td><button class="t-part" data-tpart="${esc(p.refdes)}" title="Show ${esc(p.refdes)} on the board">${esc(p.refdes)}</button></td><td>${esc(p.part)}</td><td class="n">${fmt(p.w * 1e3, 0)}</td><td class="n">${fmt(p.t_board_c, 1)}</td><td class="n">${fmt(p.tj_c, 1)}${p.estimate ? "*" : ""}</td><td class="n">${fmt(p.tj_max_c, 0)}</td><td>${st(p)}</td></tr>`).join("");
@@ -157,8 +158,8 @@ function renderThermDetail() {
   const railRows = rails.map((r) => `<tr><td>${esc(netShort(r.net))}${r.ground ? " <span class=\"muted\">return</span>" : ""}</td><td class="n">${fmt(r.t_max_c, 1)}</td><td class="n">${fmt(r.drop_mv_20c, 2)}</td><td class="n">${fmt(r.drop_mv_hot, 2)}</td></tr>`).join("");
   const nDef = t.parts.filter((p) => p.estimate).length;
   box.innerHTML = `<header><div><h3>Temperature · estimate</h3><div class="muted">steady state, ${fmt(t.parts_w + t.copper_w, 2)} W, ${c.airflow_m_s ? `air flow ${c.airflow_m_s} m/s` : `still air, ${c.orientation}`}, ambient ${fmt(t.ambient_c, 0)} °C · grid ${fmt(t.cell, 2)} mm</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>
-    <div class="dstats"><span>Board max <b>${fmt(t.t_max_c, 1)} °C</b> (${esc(layerName(t.t_max_layer))})</span><span>Hottest junction <b>${t.parts[0] ? `${fmt(t.parts[0].tj_c, 1)} °C` : "–"}</b>${t.parts[0] ? ` ${esc(t.parts[0].refdes)}` : ""}</span><span>Air: h <b>${fmt(c.h_top, 1)} / ${fmt(c.h_bottom, 1)}</b> W/m²K top / bottom${c.estimated ? " (estimate)" : ""}</span></div>
-    <h4 class="sub">Hottest parts <em>mW, °C</em></h4>
+    <div class="dstats"><span>Board max <b>${fmt(t.t_max_c, 1)} °C</b> (${esc(layerName(t.t_max_layer))})</span><span>Hottest junction <b>${hot ? `${fmt(hot.tj_c, 1)} °C` : "–"}</b>${hot ? ` ${esc(hot.refdes)}` : ""}</span><span>Air: h <b>${fmt(c.h_top, 1)} / ${fmt(c.h_bottom, 1)}</b> W/m²K top / bottom${c.estimated ? " (estimate)" : ""}</span></div>
+    <h4 class="sub">Parts: over or near Tj max first, then the hottest <em>mW, °C</em></h4>
     <div class="tablewrap"><table class="xs-table ctab"><thead><tr><th>Part</th><th></th><th>mW</th><th>board</th><th>Tj</th><th>max</th><th></th></tr></thead><tbody>${parts || `<tr><td>no part with heat (power tree in step 1)</td></tr>`}</tbody></table></div>
     <h4 class="sub">Rails at temperature <em>°C, mV</em></h4>
     <div class="tablewrap"><table class="xs-table ctab"><thead><tr><th>Rail</th><th>copper max</th><th>drop 20 °C</th><th>at temp.</th></tr></thead><tbody>${railRows || `<tr><td>–</td></tr>`}</tbody></table></div>

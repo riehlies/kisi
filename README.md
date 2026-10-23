@@ -2,7 +2,7 @@
 
 kisi reads a KiCad layout (`.kicad_pcb` + `.kicad_pro`) and checks trace impedance, high-speed channels
 (loss, return loss, TDR, vias, crosstalk, skew, eye) and power delivery (regulator chain, DC IR drop,
-PDN impedance) – in the browser, with no installation and no setup beyond the board file.
+PDN impedance, temperature estimate) – in the browser, with no installation and no setup beyond the board file.
 
 **[Try it in your browser](https://riehlies.github.io/kisi/)** with two example boards, or open your own board
 (it is processed locally and never uploaded).
@@ -13,13 +13,15 @@ PDN impedance) – in the browser, with no installation and no setup beyond the 
 > Results are estimates for design checks, without any warranty of correctness – not a replacement for
 > sign-off simulation or measurement. For a real validation of a board, the channel simulation still needs IBIS
 > models and more complex tests (see [Limits](#limits)). The individual tools – impedance map with a 2D field
-> solver, TDR and loss per net, via model, crosstalk scan, power tree, IR drop, PDN per IC – are useful on their own.
+> solver, TDR and loss per net, via model, crosstalk scan, power tree, IR drop, PDN per IC, temperature estimate – are
+> useful on their own.
 
 ## What you get
 - **Impedance:** every track against its target (from net class names such as `50Z`, `90Z_Diff`), with formulas
   in a second and the 2D field solver on demand; impedance along the path, loss, TDR, vias and crosstalk per net.
 - **Channel:** buses and device-to-device lanes through series resistors and AC-coupling capacitors, checked
-  against interface profiles (PCIe, USB, DDR, LVDS, Ethernet, …).
+  against interface profiles (PCIe, USB, DDR, LVDS, Ethernet, …); differential pairs as 4-ports (both lines on
+  their own paths, mode conversion), multi-drop lines at every receiver.
 - **Power:**
   - the regulator chain and power budget from fields on the parts (`PI_REG`, `PI_LOAD`), with the power flow from
     the inputs through the regulators to the loads and where the losses go;
@@ -33,12 +35,11 @@ PDN impedance) – in the browser, with no installation and no setup beyond the 
     parts up to the regulator, the loop inductance of each decoupling capacitor to that IC, anti-resonances, a target
     from the IC's current step and recommendations.
 
-| | |
-|---|---|
-| ![Net detail with the TDR of a differential pair](docs/img/net.png) | ![Channel view: interfaces and lanes with their verdicts](docs/img/channel.png) |
-| **Net detail:** impedance along the path, loss, TDR with the vias as physics-based models, skew of pairs and crosstalk from the neighbouring tracks – for every net with a target | **Channel check:** buses and lanes from IC to IC or to a connector through series resistors and AC-coupling capacitors, judged against interface profiles on loss, return loss, skew and a linear eye – pairs as 4-ports with mode conversion, multi-drop lines per receiver (at a connector with the end and the channel behind it that you set) |
-| ![Power flow from the inputs through the regulators to the loads](docs/img/flow.png) | ![Voltage drop of a rail and its impedance seen from an IC](docs/img/power.png) |
-| **Power flow:** from the supply inputs through every regulator to the loads, with regulator, shunt and copper losses | **Voltage drop and PDN:** DC drop and current density on every layer of a rail, and its impedance seen from an IC with the decoupling capacitors ranked by loop inductance |
+<table>
+<tr><td width="50%" valign="top"><img src="docs/img/net.png" width="440" alt="Net detail with the TDR of a differential pair"><br><b>Net detail:</b> impedance along the path, loss, TDR with the vias as physics-based models, skew of pairs and crosstalk from the neighbouring tracks – for every net with a target</td><td width="50%" valign="top"><img src="docs/img/channel.png" width="440" alt="Channel view: interfaces and lanes with their verdicts"><br><b>Channel check:</b> buses and lanes from IC to IC or to a connector through series resistors and AC-coupling capacitors, judged against interface profiles on loss, return loss, skew and a linear eye – pairs as 4-ports with mode conversion, multi-drop lines per receiver (at a connector with the end and the channel behind it that you set)</td></tr>
+<tr><td width="50%" valign="top"><img src="docs/img/flow.png" width="440" alt="Power flow from the inputs through the regulators to the loads"><br><b>Power flow:</b> from the supply inputs through every regulator to the loads, with regulator, shunt and copper losses</td><td width="50%" valign="top"><img src="docs/img/power.png" width="440" alt="Voltage drop of a rail and its impedance seen from an IC"><br><b>Voltage drop and PDN:</b> DC drop and current density on every layer of a rail, and its impedance seen from an IC with the decoupling capacitors ranked by loop inductance</td></tr>
+<tr><td width="50%" valign="top"><img src="docs/img/temperature.png" width="440" alt="Temperature estimate of the board with the hottest parts"><br><b>Temperature (estimate):</b> the board's temperature per layer from the losses, the hottest parts with their junction temperature and the heat through the vias</td><td width="50%" valign="top"><img src="docs/img/parts.png" width="440" alt="Components with junction and case temperature and the source of their thermal data"><br><b>Parts at temperature:</b> junction and case temperature against Tj max, with the thermal resistances used and where they come from (datasheet or package estimate)</td></tr>
+</table>
 
 ## Quick start
 - **In the browser:** the [live version](https://riehlies.github.io/kisi/), or download `kisi.html` from the
@@ -50,6 +51,7 @@ PDN impedance) – in the browser, with no installation and no setup beyond the 
   with its power tree as a `kisi.json` (`web/samples/`).
 - **`kisi-references.html`** – 3D reference cases for vias, stubs, pairs, lines and plane cavities with field plots,
   and kisi's fast models against them. Useful for teaching as well: it shows why vias and planes behave as they do.
+  Attached to the releases in which the reference cases changed (currently [v0.2.4](https://github.com/riehlies/kisi/releases/tag/v0.2.4)).
 - **`kisi.mjs` – the command line** for scripts, CI and agents (Node.js ≥ 18):
   ```sh
   curl -fsSLO https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs
@@ -299,7 +301,8 @@ python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
 - Example boards (not in the repository): `sh tools/fetch_examples.sh examples` fetches them at fixed commits, shrinks
   them with `tools/strip_pcb.py` and writes their licence notices; their power trees are `web/samples/{ts,vna}.kisi.json`.
 - Releases: a tag `v*` runs `.github/workflows/release.yml`; it attaches `kisi.html`, `kisi-examples.html`, `kisi.mjs`
-  and `kisi-references.html` and publishes the live version on GitHub Pages.
+  (and `kisi-references.html` when the reference cases changed since the previous release) and publishes the live
+  version on GitHub Pages.
 - Contributing: `CONTRIBUTING.md`; notes for coding agents: `AGENTS.md`.
 - Solver update: `tools/upstream_update.sh` (see `UPSTREAM.md`). Structure and rules: `ARCHITECTURE.md`.
   Planned work: `ROADMAP.md`.

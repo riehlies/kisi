@@ -4,7 +4,7 @@
 This folder holds its validation and the generator of the reference cases from `validation/via_references.md`.
 The results are in `validation/via_ref/`. The reference page shows every case (geometry, S-parameters, TDR,
 mixed mode, Z, field) and the solver checks. It is built, not kept in the repository:
-`python3 validation/fdtd/make_viewer.py` → `dist/kisi-references.html` (self-contained; every release attaches it).
+`python3 validation/fdtd/make_viewer.py` → `dist/kisi-references.html` (self-contained; a release attaches it when the reference cases changed).
 
 ## Solver
 - **Mesh:** rectilinear, non-uniform. Fixed lines at layer boundaries, sheet edges, vias, holes and ports, with

@@ -36,11 +36,17 @@ Planned and possible work after 0.2.4, roughly in order of priority. Each item s
   the M.2 connector); a via whose barrel continues into a stub beyond the path's layers is counted twice (its own
   stub and the side stub's via, ~0.3 mm on ThunderScope); side stubs in the net channel (`kisi net`) do not add
   the via they leave through yet; the transmit direction of lanes from an IC to a connector is a guess.
-- **Eye and channel check on the 4-port pair model** (the 4-port with mode conversion is shown in the net detail;
-  eye and check still use the odd-mode 2-port).
-- **N-port files behind a connector with crosstalk between lanes** (one file for all lanes of a connector or cable):
-  belongs to the multi-lane network (M2 of the channel-simulation concept); today a connector takes a 2-port or a
-  pair's 4-port, without coupling to the other lanes.
+- **Channel network, M2 follow-ups.** M2's first increment (`kisi_si::rf::network`, `rf::timedomain`, `lanenet`)
+  checks pairs as 4-ports with mode conversion and multi-drop lines along one path per receiver. Open:
+  - N-port files behind a connector: one file for all lanes with a port map per pin works, the other lanes are
+    worst-case aggressors entering at the connector; open: the aggressors' own board traces and transmitters
+    (today the victim's profile, without their traces – conservative), synchronous aggressors with a known phase
+    instead of the worst phase, crosstalk on the board between the lanes (the coupling scan) in the same eye;
+  - multi-drop trees through series parts (DDR fly-by with VTT terminations), pairs on multi-drop lines;
+  - a pair's fork branches (board as it is, variant `default`) and terminations across a pair as coupled 4-port
+    elements (today per line; the common mode is terminated per line, centre-tapped);
+  - judge the mode conversion (Scd21 is information; limits per profile need sources) and a receiver setting
+    "across" vs. "centre-tapped" termination for the common mode.
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
 - **Via model against 3D results**: 74 kisi-fdtd reference cases in `validation/via_ref` (page
   `dist/kisi-references.html` from `validation/fdtd/make_viewer.py`, test log `validation/fdtd/TESTS.md`). The

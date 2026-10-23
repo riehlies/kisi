@@ -10,6 +10,8 @@ mod channel;
 mod crosstalk;
 mod line;
 mod mixed;
+mod network;
+mod timedomain;
 mod touchstone_in;
 #[cfg(test)]
 mod tests;
@@ -19,4 +21,6 @@ pub use channel::*;
 pub use crosstalk::*;
 pub use line::*;
 pub use mixed::*;
+pub use network::{max_singular, passivity, Elem, Network, Source, GND};
+pub use timedomain::{Step, TdCheck, BAND_EDGE_WARN, TD_WARN};
 pub use touchstone_in::*;

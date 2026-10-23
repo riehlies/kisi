@@ -49,6 +49,16 @@ fn ts_for<'a>(st: &'a State, ce: Option<&kisi_core::eye::ConnEnd>) -> Option<&'a
     st.touchstones.get(f).or_else(|| st.touchstones.get(f.rsplit(['/', '\\']).next()?))
 }
 
+/// One N-port file for the lanes of a connector (a port map in the connector end): the lanes at
+/// that connector, aggressors of each other.
+fn xt_for(st: &State, lane: &kisi_core::topology::Lane, ce: Option<&kisi_core::eye::ConnEnd>) -> Vec<kisi_core::lanenet::XtLane> {
+    let mapped = ce.and_then(|c| c.touchstone.as_ref()).is_some_and(|t| !t.ports.is_empty());
+    match (mapped, lane.ends.iter().find(|e| e.role == "connector"), st.buses.as_ref()) {
+        (true, Some(e), Some(bs)) => kisi_core::topology::connector_lanes(bs.iter().flat_map(|b| &b.lanes), &e.refdes),
+        _ => vec![],
+    }
+}
+
 /// Load (or with "remove": true drop) a Touchstone file for the channel behind connectors:
 /// {"name": file name, "text": contents}. Output: {nports, points, f_min_ghz, f_max_ghz, z0,
 /// warnings}. Files stay in memory only.
@@ -720,7 +730,8 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
                 let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
                 let cend: Option<kisi_core::eye::ConnEnd> = item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
                 let cts = ts_for(&st, cend.as_ref());
-                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), cts, &cd)).unwrap());
+                let xt = xt_for(&st, lane, cend.as_ref());
+                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), cts, &xt, &cd)).unwrap());
                 continue;
             }
             rows.push(serde_json::to_value(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise))).unwrap());
@@ -794,7 +805,8 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
         let ep = v["bitrate"].as_f64().map(|br| (br, v["eye_rise"].as_f64().unwrap_or(rp.rise), v["prbs"].as_u64().unwrap_or(7) as u32, end("tx"), end("rx")));
         let cend: Option<kisi_core::eye::ConnEnd> = v["conn_end"].as_object().and_then(|_| serde_json::from_value(v["conn_end"].clone()).ok());
         let cts = ts_for(&st, cend.as_ref());
-        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, cend.as_ref(), cts, &cd) {
+        let xt = xt_for(&st, lane, cend.as_ref());
+        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, cend.as_ref(), cts, &xt, &cd) {
             Ok(ev) => {
                 let eye = match ev.eye {
                     Some(Ok(e)) => serde_json::to_value(&e).unwrap(),
@@ -804,6 +816,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
                 let skew = ev.skew.map(|(ps, mm, pn, unc)| serde_json::json!({"partner": pn, "skew_ps": ps, "skew_mm": mm, "uncertain": unc}));
                 serde_json::json!({"channel": ev.ch, "error": null, "touchstone": kisi_core::rf::touchstone(&ev.ch), "eye": eye, "skew": skew,
                     "rx_used": ev.rx_used, "rx_note": ev.rx_note, "tx_used": ev.tx_used, "end_note": ev.end_note, "rest_applied": ev.rest_applied, "reversed": rev,
+                    "model": ev.model, "scd21_db": ev.scd21_db, "receivers": ev.receivers,
                     "crosstalk": kisi_core::rf::crosstalk(b, an, lane.nets[0], &params.field, &rp)})
             }
             Err(e) => serde_json::json!({"channel": null, "error": e, "crosstalk": {"aggressors": [], "geoms": []}}),
@@ -911,7 +924,15 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
                         rx: end("rx"),
                         ..Default::default()
                     };
-                    eye = match kisi_core::eye::eye(&c, &ep) {
+                    // a pair: the eye of the 4-port (both lines, mode conversion), as in the check
+                    let res = match kisi_core::rf::mixed_mode(b, an, net, &params.field, target, &rp, flip, hint).ok().filter(|_| c.diff) {
+                        Some(m) => {
+                            let d = kisi_core::eye::EndModel { r: c.z_ref, c_pf: 0.0, l_nh: 0.0 };
+                            kisi_core::lanenet::ends_transfer(&c.freq, &[m.pair_net().block()], 2, &ep.tx.unwrap_or(d), &ep.rx.unwrap_or(d)).and_then(|(h, dc)| kisi_core::eye::eye_of(&c.freq, &h, Some(dc), c.delay_ps, &ep))
+                        }
+                        None => kisi_core::eye::eye(&c, &ep),
+                    };
+                    eye = match res {
                         Ok(e) => serde_json::to_value(&e).unwrap(),
                         Err(e) => serde_json::json!({"error": e}),
                     };
@@ -1027,7 +1048,26 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
     })())
 }
 
-/// Run the command on the project. Input: {"opts", "tree": json|null, "report_path": str|null}.
+/// Rows of `check` on the project, for worker engines: {"opts", "items": [index, …]} →
+/// {"count": rows in all, "rows": [[index, row], …]} (no items: the count only).
+#[no_mangle]
+pub extern "C" fn kisi_cli_check_part(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply((|| {
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let o: kisi_core::commands::Opts = serde_json::from_value(v["opts"].clone()).map_err(|e| e.to_string())?;
+        let idx: Vec<usize> = v["items"].as_array().map(|a| a.iter().filter_map(|x| Some(x.as_u64()? as usize)).collect()).unwrap_or_default();
+        CLI.with(|c| {
+            let c = c.borrow();
+            let pr = c.as_ref().ok_or("no board loaded")?;
+            let (count, rows) = kisi_core::commands::check_rows(&o, pr, &idx)?;
+            Ok(serde_json::json!({"count": count, "rows": rows}).to_string())
+        })
+    })())
+}
+
+/// Run the command on the project. Input: {"opts", "tree": json|null, "report_path": str|null,
+/// "check_rows": [[index, row], …] | null (check: the rows from the parts)}.
 /// Output: the result; for `report` {"result": summary, "write": {"path", "content"}}.
 #[no_mangle]
 pub extern "C" fn kisi_cli_run(p: *const u8, n: usize) -> i32 {
@@ -1036,9 +1076,11 @@ pub extern "C" fn kisi_cli_run(p: *const u8, n: usize) -> i32 {
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let o: kisi_core::commands::Opts = serde_json::from_value(v["opts"].clone()).map_err(|e| e.to_string())?;
         let tree = if v["tree"].is_null() { None } else { Some(v["tree"].clone()) };
+        // check rows computed in parts by worker engines (kisi_cli_check_part)
+        let rows: Option<Vec<(usize, serde_json::Value)>> = if v["check_rows"].is_array() { Some(serde_json::from_value(v["check_rows"].clone()).map_err(|e| e.to_string())?) } else { None };
         CLI.with(|c| {
             let c = c.borrow();
-            let r = kisi_core::commands::run(&o, c.as_ref(), tree)?;
+            let r = kisi_core::commands::run_with(&o, c.as_ref(), tree, rows)?;
             if o.cmd == "report" {
                 let path = v["report_path"].as_str().unwrap_or("analysis/kisi.json");
                 return Ok(serde_json::json!({"result": kisi_core::commands::report_summary(path, &r), "write": {"path": path, "content": serde_json::to_string_pretty(&r).unwrap()}}).to_string());

@@ -9,6 +9,8 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
   lane eye, voltage drop with ground return, impedance seen from the ICs, losses map, temperature and power flow
   (desktop layouts; --quick: only load and the three views)
+* the channel check in parallel (workers with engines of their own) gives the same rows as on one thread
+  (light run; the timings are printed as a note)
 * uses the embedded example boards if the build has them, else --board; on a board without impedance
   targets the steps that need such nets (net detail, couplings, field solver run) are skipped
 * --config: a <board>.kisi.json, loaded with --board (else dropped at the end); expects "check passed"
@@ -20,7 +22,7 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
-import argparse, json, os, re, sys, tempfile
+import argparse, json, os, re, sys, tempfile, time
 from playwright.sync_api import sync_playwright
 
 ap = argparse.ArgumentParser()
@@ -259,7 +261,21 @@ def run(pg, tag, desktop):
                 step("variant_prompt")
                 pg.click("#ch-overview [data-variant] >> nth=0"); pg.wait_for_function(f"!variantNeeded() && {BUSY}", timeout=90000)
                 pg.wait_for_timeout(300)
-        pg.click("#ck-start"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000); pg.wait_for_timeout(300); step("check")
+        t0 = time.time()
+        pg.click("#ck-start"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000)
+        t_first = time.time() - t0
+        pg.wait_for_timeout(300); step("check")
+        # the check in parallel (check-pool.js) and on one thread: the same rows
+        if tag == "light":
+            rows = "JSON.stringify(S.check.rows.map((r) => { const { lane, ...x } = r; return x; }))"
+            timed = "async (n) => { if (n) S.checkThreads = n; else delete S.checkThreads; const t0 = performance.now(); await runCheck(); delete S.checkThreads; return [S.checkWorkers || 0, Math.round(performance.now() - t0), %s]; }" % rows
+            first = pg.evaluate(rows)
+            w, t_par, par = pg.evaluate(timed, 0)
+            _, t_one, one = pg.evaluate(timed, 1)
+            if not (first == par == one):
+                problems.append(f"{tag}: the parallel check ({w + 1} threads) gives other rows than on one thread")
+            notes.append(f"{tag}: channel check {pg.evaluate('S.name')} ({pg.evaluate('S.check.rows.length')} channels, {pg.evaluate('navigator.hardwareConcurrency')} cores): "
+                         f"{w + 1} threads {t_first:.1f} s with setting the workers up, {t_par / 1000:.1f} s again; one thread {t_one / 1000:.1f} s; rows {'identical' if first == par == one else 'DIFFERENT'}")
         if pg.locator("#ch-overview tr[data-lane]").count():
             pg.click("#ch-overview tr[data-lane] >> nth=0"); pg.wait_for_timeout(600)
             if pg.locator("#ch-detail [data-ct=eye]").count():
@@ -396,6 +412,8 @@ with sync_playwright() as p:
     b.close()
 for n in sorted(set(notes)):
     print("note:", n)
+    if os.environ.get("GITHUB_ACTIONS") and "channel check" in n:
+        print(f"::notice title=viewer check timing::{n}")
 for pr in problems:
     print("PROBLEM:", pr)
 print(f"screenshots: {out}")

@@ -370,11 +370,15 @@ fn graded(fixed: &[f64], fine: f64, coarse: f64, ratio: f64) -> Vec<f64> {
 }
 
 /// z, charge and z extent of every conductor-1 grid node, number of unknowns
-type Charges = std::rc::Rc<(Vec<f64>, Vec<f64>, usize, Vec<(f64, f64)>)>;
+type Charges = std::sync::Arc<(Vec<f64>, Vec<f64>, usize, Vec<(f64, f64)>)>;
 
-thread_local! {
-    /// Laplace results by geometry: the vias of a board come in few types
-    static CACHE: std::cell::RefCell<std::collections::HashMap<String, Charges>> = Default::default();
+/// Laplace results by geometry: the vias of a board come in few types. One cache for all threads
+/// (the check's rows run in parallel); a result is a function of its key only (`rz_charges`).
+static CACHE: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, Charges>>> = std::sync::LazyLock::new(Default::default);
+
+/// A cache's map (a panic elsewhere while it was held leaves it usable: entries are complete).
+fn locked<T>(m: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// Barrel charge per grid row (z mm, F per volt), for diagnostics.
@@ -392,12 +396,17 @@ pub fn charge_rows(g: &ViaGeom, grid: Grid) -> Vec<(f64, f64)> {
 
 /// Empty the Laplace cache (for timing measurements).
 pub fn clear_cache() {
-    CACHE.with(|c| c.borrow_mut().clear());
+    locked(&CACHE).clear();
 }
 
-/// [`rz_solve`] through a per-thread cache keyed by everything the solve depends on.
+/// [`rz_solve`] through a cache keyed by everything the solve depends on, to 1 nm. The solve runs
+/// on the geometry rounded to the key, so a result depends on the key only and not on which via
+/// of a type came first: the same in every thread and every order of work (parallel checks, the
+/// viewer's detail views and the check give identical numbers). Solved outside the lock: two
+/// threads may solve the same key at once, with the same result.
 fn rz_charges(g: &ViaGeom, grid: Grid) -> Charges {
     let q = |x: f64| (x * 1e6).round() as i64;
+    let u = |x: f64| q(x) as f64 * 1e-6;
     let mut key = format!("{grid:?}|{}|{}|{}|{}|", q(g.r), q(g.z0), q(g.z1), q(g.pad_r));
     for s in &g.slabs {
         key += &format!("s{},{},{};", q(s.z0), q(s.z1), q(s.er));
@@ -408,17 +417,26 @@ fn rz_charges(g: &ViaGeom, grid: Grid) -> Charges {
     for z in &g.pads {
         key += &format!("d{};", q(*z));
     }
-    if let Some(c) = CACHE.with(|c| c.borrow().get(&key).cloned()) {
+    if let Some(c) = locked(&CACHE).get(&key).cloned() {
         return c;
     }
-    let r = std::rc::Rc::new(rz_solve(g, grid));
-    CACHE.with(|c| {
-        let mut c = c.borrow_mut();
-        if c.len() > 512 {
-            c.clear();
-        }
-        c.insert(key, r.clone());
-    });
+    let mut gq = g.clone();
+    (gq.r, gq.z0, gq.z1, gq.pad_r) = (u(g.r), u(g.z0), u(g.z1), u(g.pad_r));
+    for s in gq.slabs.iter_mut() {
+        (s.z0, s.z1, s.er) = (u(s.z0), u(s.z1), u(s.er));
+    }
+    for p in gq.planes.iter_mut() {
+        (p.z, p.antipad) = (u(p.z), p.antipad.map(u));
+    }
+    for z in gq.pads.iter_mut() {
+        *z = u(*z);
+    }
+    let r = std::sync::Arc::new(rz_solve(&gq, grid));
+    let mut c = locked(&CACHE);
+    if c.len() > 512 {
+        c.clear();
+    }
+    c.insert(key, r.clone());
     r
 }
 
@@ -657,12 +675,13 @@ pub fn equivalent_radius(a: f64, rb: &[f64]) -> f64 {
     a * (2.0 * std::f64::consts::PI / flux).exp()
 }
 
-thread_local! {
-    static EQ_CACHE: std::cell::RefCell<std::collections::HashMap<Vec<i32>, f64>> = Default::default();
-}
+/// Equivalent radii of antipad openings by profile (one cache for all threads, as `CACHE`).
+static EQ_CACHE: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<Vec<i32>, f64>>> = std::sync::LazyLock::new(Default::default);
 
-/// [`equivalent_radius`] with a per-thread cache (profiles to 10 µm) and a short cut for nearly
+/// [`equivalent_radius`] with a cache (profiles to 10 µm) and a short cut for nearly
 /// round openings (max/min < 1.03: the log mean of the profile, as polygonised circles are).
+/// The solve runs on the profile rounded to the key (10 µm, the radius to 1 µm), so the result
+/// does not depend on which opening of a shape came first (any thread, any order of work).
 pub fn equivalent_radius_cached(a: f64, rb: &[f64]) -> f64 {
     let (lo, hi) = rb.iter().fold((f64::MAX, f64::MIN), |(l, h), &r| (l.min(r), h.max(r)));
     if hi / lo < 1.03 {
@@ -674,17 +693,16 @@ pub fn equivalent_radius_cached(a: f64, rb: &[f64]) -> f64 {
     let rb = &rb[..];
     let mut key: Vec<i32> = rb.iter().map(|r| (r / 0.01).round() as i32).collect();
     key.push((a / 0.001).round() as i32);
-    if let Some(b) = EQ_CACHE.with(|c| c.borrow().get(&key).copied()) {
+    if let Some(b) = locked(&EQ_CACHE).get(&key).copied() {
         return b;
     }
-    let b = equivalent_radius(a, rb);
-    EQ_CACHE.with(|c| {
-        let mut c = c.borrow_mut();
-        if c.len() > 4096 {
-            c.clear();
-        }
-        c.insert(key, b);
-    });
+    let rq: Vec<f64> = key[..rb.len()].iter().map(|&k| k as f64 * 0.01).collect();
+    let b = equivalent_radius(key[rb.len()] as f64 * 0.001, &rq);
+    let mut c = locked(&EQ_CACHE);
+    if c.len() > 4096 {
+        c.clear();
+    }
+    c.insert(key, b);
     b
 }
 

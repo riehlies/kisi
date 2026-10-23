@@ -137,6 +137,9 @@ input.si-in[aria-invalid="true"] { border-color: var(--z-high2); outline: 1px so
 .ctab th.n { text-align: right; }
 .ctab td.n { text-align: right; font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; }
 .ctab td.nw { white-space: nowrap; }
+/* with the temperature columns: tighter cells so the table fits the card */
+.ctab.with-t th, .ctab.with-t td { padding: 3px 3px; }
+.ctab.with-t .bar { min-width: 32px; }
 .ctab .bar { display: flex; gap: 2px; height: 8px; min-width: 60px; }
 .ctab .bar i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
 .ctab .bar i.u { background: var(--pw-use); }

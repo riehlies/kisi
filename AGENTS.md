@@ -20,10 +20,10 @@ python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm
 python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html  # 3D reference cases page
 ```
 Releases: a tag `v*` runs `.github/workflows/release.yml`; it attaches `kisi.html`, `kisi-examples.html`,
-`kisi.mjs` and `kisi-references.html` (built, not kept in the repository) and publishes the live demo on
-GitHub Pages. The example boards (ThunderScope CERN-OHL-P-2.0, LibreVNA GPL-3.0) are not in the repository;
-`tools/fetch_examples.sh` fetches them at fixed commits and shrinks them; their power trees are
-`web/samples/{ts,vna}.kisi.json`.
+`kisi.mjs` and – when the reference cases changed since the previous release – `kisi-references.html` (built, not
+kept in the repository) and publishes the live demo on GitHub Pages. The example boards (ThunderScope
+CERN-OHL-P-2.0, LibreVNA GPL-3.0) are not in the repository; `tools/fetch_examples.sh` fetches them at fixed
+commits and shrinks them; their power trees are `web/samples/{ts,vna}.kisi.json`.
 
 ## Checks
 Locally, before pushing a branch, run the quick checks for what you changed:

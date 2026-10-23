@@ -4,7 +4,8 @@
 #                        from their projects at fixed commits (tools/fetch_examples.sh)
 #   kisi.mjs           – the command line with the field solver (node kisi.mjs help; Node.js >= 18)
 #   kisi-references.html – the 3D reference cases (kisi-fdtd) with kisi's models against them
-#                        (validation/fdtd/make_viewer.py; built here, not kept in the repository)
+#                        (validation/fdtd/make_viewer.py; built here, not kept in the repository) – attached
+#                        only when the reference cases or the page builder changed since the previous release
 # and publish the viewers (not the reference page) with the landing page (web/pages/index.html) on GitHub Pages
 # (repository settings: Pages → Source "GitHub Actions"; needs a public repository on the free plan).
 # Run it by hand (workflow_dispatch) to get the files as a build artifact without a release.
@@ -20,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tags, to see whether the reference cases changed since the previous release
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -67,7 +70,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/kisi.html dist/kisi-examples.html dist/kisi.mjs dist/kisi-references.html --clobber
+          files="dist/kisi.html dist/kisi-examples.html dist/kisi.mjs"
+          # the reference page only when its cases or builder changed since the previous release tag
+          prev=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          if [ -z "$prev" ] || ! git diff --quiet "$prev" "$GITHUB_REF_NAME" -- validation/via_ref validation/fdtd/make_viewer.py validation/fdtd/viewer_template.html; then
+            files="$files dist/kisi-references.html"
+          else
+            echo "::notice::reference cases unchanged since $prev: kisi-references.html not attached (it stays on $prev's release)"
+          fi
+          gh release upload "$GITHUB_REF_NAME" $files --clobber
 
   pages:
     needs: build

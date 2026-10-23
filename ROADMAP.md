@@ -1,6 +1,6 @@
 # kisi – roadmap
 
-Planned and possible work after 0.2.4, roughly in order of priority. Each item says why it matters;
+Planned and possible work after 0.2.5, roughly in order of priority. Each item says why it matters;
 "Decide first" marks items that need a decision before work starts.
 
 ## Next
@@ -22,7 +22,8 @@ Planned and possible work after 0.2.4, roughly in order of priority. Each item s
   continues, look at what KiCad already brings for simulation: ngspice, IBIS through KiCad's KIBIS and the
   `Sim.*` fields. Then decide between handing kisi's channel models (lines, vias, series parts) back to KiCad
   for its simulator, and configuring the IBIS models in KiCad (in the schematic) or in `kisi.json`, so that
-  kisi does not grow a second model setup. Background: removed from 0.1.0 (experimental code in commit
+  kisi does not grow a second model setup. A research note on KiCad's simulator, KIBIS and the options is in branch
+  `research/kicad-sim` (`docs/research/kicad-simulation.md`); the concept is the next step. Background: removed from 0.1.0 (experimental code in commit
   `92b8105`); research and concept (solvers, model sources, DDR test flows, assembly variants, staged plan) in
   `docs/research/channel-simulation-ibis.md`; M0 (assembly variants) is in 0.2.4. The branch holds M1 (IBIS
   parser, `kisi ibis`, mapping in kisi.json with `config-check`) and, on top of it, linearised IBIS ends in check
@@ -98,3 +99,6 @@ Planned and possible work after 0.2.4, roughly in order of priority. Each item s
 ## Maintenance
 - Solver updates with `tools/upstream_update.sh` when js_2d_fields changes (validation decides).
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.
+- `tools/check_viewer.py dist/kisi.html --board examples/VNA.kicad_pcb …` reports three “coupling refinement”
+  problems on LibreVNA (the field-solver refinement of critical crosstalk couplings); CI runs the check on
+  `kisi-examples.html` and does not see it. Found during the 0.2.5 work, older than it.

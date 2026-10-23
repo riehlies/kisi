@@ -491,15 +491,21 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
             let l0 = &b.lanes[0];
             let tnet = lane_net(p, l0);
             let pid = assign.get(&b.class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &b.class, l0.diff).to_string());
-            json!({"bus": b.name, "kind": b.kind, "class": b.class, "profile": pid, "devices": b.devices, "values": b.values,
-                "lanes": b.lanes.iter().map(|l| lane_json(p, l)).collect::<Vec<_>>()})
+            let mut v = json!({"bus": b.name, "kind": b.kind, "class": b.class, "profile": pid, "devices": b.devices, "values": b.values,
+                "lanes": b.lanes.iter().map(|l| lane_json(p, l)).collect::<Vec<_>>()});
+            // manufacturer part numbers where the Value field is not one (a name, a description)
+            let mpns: Vec<Option<&str>> = b.devices.iter().map(|d| p.board.footprints.iter().find(|f| &f.reference == d).and_then(|f| f.mpn_if_not_value())).collect();
+            if mpns.iter().any(|m| m.is_some()) {
+                v["mpns"] = json!(mpns);
+            }
+            v
         })
         .collect();
     json!({
         "buses": list,
         "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json. mpns (when present): the devices' manufacturer part numbers where the Value field does not show one."
     })
 }
 

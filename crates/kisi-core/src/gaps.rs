@@ -17,6 +17,18 @@ fn gap(id: &str, priority: &str, area: &str, issue: String, affects: &[&str], so
     json!({"id": id, "priority": priority, "area": area, "issue": issue, "affects": affects, "where_to_find": source, "write": write, "items": items})
 }
 
+/// A part in a gap item: the manufacturer part number added when the footprint has one that the
+/// Value field does not show (Value `100n`, a manufacturer name, …), so that the datasheet can be found.
+fn part_json(mut v: Value, f: Option<&crate::board::Footprint>) -> Value {
+    if let Some(m) = f.and_then(|f| f.mpn_if_not_value()) {
+        v["mpn"] = json!(m);
+        if let Some(mf) = f.and_then(|f| f.prop("Manufacturer")).filter(|x| !x.trim().is_empty() && x.trim() != "~") {
+            v["manufacturer"] = json!(mf.trim());
+        }
+    }
+    v
+}
+
 /// All gaps of a project (after its `<board>.kisi.json` was applied).
 pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let b = &p.board;
@@ -181,7 +193,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         });
         for part in series.chain(l.shunts.iter().map(|s| &s.part)) {
             if part.val.is_none() {
-                bad_parts.entry(part.refdes.clone()).or_insert_with(|| json!({"ref": part.refdes, "value": part.value, "lane": l.name}));
+                bad_parts.entry(part.refdes.clone()).or_insert_with(|| part_json(json!({"ref": part.refdes, "value": part.value, "lane": l.name}), b.footprints.iter().find(|f| f.reference == part.refdes)));
             }
         }
     }
@@ -253,7 +265,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             .iter()
             .map(|(r, rails)| {
                 let f = b.footprints.iter().find(|f| &f.reference == r);
-                json!({"ref": r, "value": f.map(|f| f.value.clone()), "rails": rails})
+                part_json(json!({"ref": r, "value": f.map(|f| f.value.clone()), "rails": rails}), f)
             })
             .collect();
         out.push(gap(
@@ -262,7 +274,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "power",
             format!("{} IC(s) on supply rails have no load current (field PI_LOAD): their current is missing from IR drop and budget.", items.len()),
             &["DC IR drop", "power budget", "PDN target impedance"],
-            "Device datasheets: supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.",
+            "Device datasheets (look up the mpn when an item has one: the Value field is not always the part number): supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.",
             json!({"to": "fields[] (name PI_LOAD)", "example": {"ref": items[0]["ref"], "name": "PI_LOAD", "value": "+3V3=120mA", "source": {"kind": "datasheet", "url": "…", "page": "…", "note": "typical, all channels active"}}}),
             items,
         ));
@@ -276,10 +288,10 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             continue;
         }
         match crate::pdn::parse_cap(&f.value) {
-            None => caps.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))})),
+            None => caps.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f))),
             // class II range without a rated voltage in the value or a PI_CAP field: DC-bias derating guessed
             Some(c) if c >= 1e-7 && f.prop("PI_CAP").is_none() && crate::pdn_ic::value_details(&f.value).0.is_none() => {
-                unrated.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}));
+                unrated.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f)));
             }
             _ => {}
         }
@@ -307,7 +319,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         if f.dnp || !bead || !rail_names.contains(b.net_name(pad.net)) || f.prop("PI_SERIES").is_some() || crate::pdn_ic::bead_z100(&f.value).is_some() || !seen_b.insert(f.reference.clone()) {
             continue;
         }
-        beads.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}));
+        beads.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f)));
     }
     if !beads.is_empty() {
         out.push(gap(

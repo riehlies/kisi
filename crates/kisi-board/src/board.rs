@@ -211,6 +211,22 @@ impl Footprint {
     pub fn prop(&self, name: &str) -> Option<&str> {
         self.props.iter().find(|(k, _)| k.eq_ignore_ascii_case(name)).map(|(_, v)| v.as_str())
     }
+    /// Manufacturer part number from a footprint field – `MPN`, `Manufacturer Part Number`,
+    /// `MFR PN`, … (case, spaces and punctuation ignored) –, the first non-empty one.
+    pub fn mpn(&self) -> Option<&str> {
+        const KEYS: &[&str] = &["mpn", "manufacturerpartnumber", "manufacturerpn", "mfrpartnumber", "mfrpn", "mfrno", "mfgpartnumber", "mfgpn"];
+        let norm = |k: &str| k.chars().filter(|c| c.is_alphanumeric()).collect::<String>().to_lowercase();
+        KEYS.iter().find_map(|key| self.props.iter().find(|(k, v)| norm(k) == *key && !v.trim().is_empty() && v.trim() != "~").map(|(_, v)| v.trim()))
+    }
+    /// The MPN when it says more than the Value field: present and neither equal to the value nor
+    /// an extension of it (Value `TPS62130`, MPN `TPS62130RGTR` → None; Value `100n` or a
+    /// manufacturer name → the MPN). For lists where a part number is expected.
+    pub fn mpn_if_not_value(&self) -> Option<&str> {
+        let m = self.mpn()?;
+        let norm = |s: &str| s.chars().filter(|c| c.is_alphanumeric()).collect::<String>().to_lowercase();
+        let (nm, nv) = (norm(m), norm(&self.value));
+        (nv.is_empty() || !nm.starts_with(&nv)).then_some(m)
+    }
     /// Set a user field (or the value with name "Value").
     pub fn set_prop(&mut self, name: &str, value: &str) {
         if name.eq_ignore_ascii_case("Value") {
@@ -1198,6 +1214,27 @@ pub fn apply_project(b: &mut Board, pro_json: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The MPN field under its usual names, shown where the value is not a part number.
+    #[test]
+    fn mpn() {
+        let pcb = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (net 0 "") (net 1 "VSYS")
+  (footprint "U" (layer "F.Cu") (at 0 0) (property "Reference" "U4") (property "Value" "英联")
+    (property "Manufacturer Part Number" "") (property "MPN" "UM3204H")
+    (pad "C1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "VSYS") (pinfunction "VCCB") (pintype "power_in")))
+  (footprint "U" (layer "F.Cu") (at 5 0) (property "Reference" "U1") (property "Value" "TPS62130")
+    (property "MANUFACTURER PART NUMBER" "TPS62130RGTR")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "VSYS")))
+  (footprint "C" (layer "F.Cu") (at 9 0) (property "Reference" "C1") (property "Value" "100n") (property "Mfr. PN" "GRM155R61A104KA01D")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "VSYS"))))"#;
+        let b = load_pcb(pcb).unwrap();
+        let f = &b.footprints;
+        assert_eq!((f[0].mpn(), f[0].mpn_if_not_value()), (Some("UM3204H"), Some("UM3204H")));
+        assert_eq!((f[1].mpn(), f[1].mpn_if_not_value()), (Some("TPS62130RGTR"), None));
+        assert_eq!(f[2].mpn_if_not_value(), Some("GRM155R61A104KA01D"));
+    }
     /// KiCad 10 board (format 20260206): board-level variant list and per-footprint
     /// overrides, as written by `PCB_IO_KICAD_SEXPR::formatVariants` and the footprint writer.
     #[test]

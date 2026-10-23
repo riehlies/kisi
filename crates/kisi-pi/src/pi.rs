@@ -173,6 +173,36 @@ pub fn voltage_from_name(name: &str) -> Option<f64> {
     None
 }
 
+/// Whether a net or pin name says it is a signal about a supply or a logic signal: a word such
+/// as SENSE, DET, ADC, EN, PG, FB, SCL, SDA (VBUS_DET, VBAT_SENSE, VCC_EN, PG_1V0, TRIM_SCL_5V).
+pub fn signal_name(name: &str) -> bool {
+    const SIGNAL: &[&str] = &[
+        "SENSE", "SNS", "SEN", "DET", "DETECT", "ADC", "MON", "MEAS", "EN", "ENA", "ENABLE", "PG", "PGOOD", "POK", "PWRGD", "OK", "GOOD", "FB", "CTRL", "CTL", "DIV",
+        "ON", "OFF", "INT", "IRQ", "ALERT", "FLT", "FAULT", "OC", "OV", "UV", "ID", "SEL", "STAT", "STATUS", "DIS", "RST", "RESET", "REF", "PWM", "GATE", "DRV", "SIG",
+        "SCL", "SDA", "SCK", "SCLK", "CLK", "MISO", "MOSI", "CS", "TX", "RX", "TXD", "RXD", "VINP", "VINN", "VINM",
+    ];
+    words(name).iter().any(|w| SIGNAL.contains(&w.as_str()))
+}
+
+fn words(name: &str) -> Vec<String> {
+    name.replace("{slash}", "/").to_uppercase().split(|c: char| !c.is_ascii_alphanumeric()).filter(|w| !w.is_empty()).map(String::from).collect()
+}
+
+/// Whether a net name or pin name looks like a supply without a voltage in it: a word that
+/// starts with VCC, VDD, VIN, VBUS, VSYS, VBAT or VEE, or ends with VCC, VDD or VIN (VDDIO,
+/// AVDD, PVIN, VBUSOUT, VINLDO1, `Net-(IC22-VCC)`, …), or is VIO – and not a signal name
+/// (`signal_name`: VBUS_DET, VBAT_SENSE, VCC_EN, …) or an analog input (VINP, VIN+). Ground names
+/// are not supplies. A hint, not a proof: the gap list says so.
+pub fn supply_name_hint(name: &str) -> bool {
+    const PREFIX: &[&str] = &["VCC", "VDD", "VIN", "VBUS", "VSYS", "VBAT", "VEE"];
+    const SUFFIX: &[&str] = &["VCC", "VDD", "VIN"];
+    let n = name.replace("{slash}", "/").to_uppercase();
+    if is_ground_name(&n) || n.starts_with("UNCONNECTED") || n.contains("VIN+") || n.contains("VIN-)") || n.ends_with("VIN-") || signal_name(&n) {
+        return false;
+    }
+    words(&n).iter().any(|w| w == "VIO" || PREFIX.iter().any(|p| w.starts_with(p)) || SUFFIX.iter().any(|s| w.ends_with(s)))
+}
+
 pub fn is_ground_name(name: &str) -> bool {
     let n = name.rsplit('/').next().unwrap_or(name).to_uppercase();
     n.contains("GND") || n.starts_with("VSS") || n == "0V" || n.contains("EARTH")
@@ -1060,6 +1090,17 @@ mod tests {
         assert_eq!(parse_quantity("2W"), Some((2.0, 'W')));
         assert_eq!(parse_quantity("3,3V"), Some((3.3, 'V')));
         assert_eq!(parse_quantity("1.5"), Some((1.5, 'A')));
+    }
+
+    #[test]
+    fn supply_names() {
+        for n in ["VBUS", "VSYS", "VBAT", "/Power/VCC", "Net-(IC22-VCC)", "Net-(U8A-VBUS)", "VDDIO", "AVDD", "/06 Peripherals/IMU_VDD", "LSIN1/VINLDO1_B4", "PVIN", "VCC_IN", "VIO", "VDD_8"] {
+            assert!(supply_name_hint(n), "{n}");
+        }
+        for n in ["GND", "VBUS_DET", "VBAT_SENSE", "VCC_EN", "VDD_PG", "VINP", "VIN+", "Net-(U3-VIN-)", "VREF", "SDA", "unconnected-(U2-VBUS-Pad1)", "DECA", "VSS", "VOUT", "P1.17{slash}PMIC_SCL", "LDO1_IN"] {
+            assert!(!supply_name_hint(n), "{n}");
+        }
+        assert!(signal_name("/FPGA/FPGA Voltage Regs/PG_1V0") && signal_name("TRIM_SCL_5V") && !signal_name("+3V3") && !signal_name("3V3_HBLB_SWITCH"));
     }
 
     /// A 1 mm x 20 mm strip of 35 µm copper with a source pad at one end and a

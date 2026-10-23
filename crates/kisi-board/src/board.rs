@@ -183,6 +183,12 @@ pub struct Pad {
     pub number: String,
     /// index into `Board::footprints`
     pub fp: u32,
+    /// pin name and electrical type of the symbol pin (`(pinfunction "VDD")`, `(pintype "power_in")`),
+    /// empty when the board file has none
+    #[serde(skip)]
+    pub pinfunction: String,
+    #[serde(skip)]
+    pub pintype: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1113,7 +1119,9 @@ fn parse_footprint(fp: &Node, su: &Stackup, nets: &mut NetTable, out: &mut Vec<P
         let number = pad.atom(1).unwrap_or("").to_string();
         let rratio = if shape == "roundrect" { pad.child_f64("roundrect_rratio").unwrap_or(0.25).clamp(0.0, 0.5) } else { 0.0 };
         let custom = if shape == "custom" { custom_outline(pad, size) } else { vec![] };
-        out.push(Pad { at: p, size, angle, shape, rratio, custom, layers, net, drill: drill.unwrap_or(0.0), number, fp: fp_idx });
+        let pinfunction = pad.child_str("pinfunction").unwrap_or("").to_string();
+        let pintype = pad.child_str("pintype").unwrap_or("").to_string();
+        out.push(Pad { at: p, size, angle, shape, rratio, custom, layers, net, drill: drill.unwrap_or(0.0), number, fp: fp_idx, pinfunction, pintype });
     }
 }
 
@@ -1215,9 +1223,10 @@ pub fn apply_project(b: &mut Board, pro_json: &str) -> Result<(), String> {
 mod tests {
     use super::*;
 
-    /// The MPN field under its usual names, shown where the value is not a part number.
+    /// Pin names and types of the pads; the MPN field under its usual names, shown where the
+    /// value is not a part number.
     #[test]
-    fn mpn() {
+    fn pin_functions_and_mpn() {
         let pcb = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
   (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
   (net 0 "") (net 1 "VSYS")
@@ -1230,6 +1239,8 @@ mod tests {
   (footprint "C" (layer "F.Cu") (at 9 0) (property "Reference" "C1") (property "Value" "100n") (property "Mfr. PN" "GRM155R61A104KA01D")
     (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "VSYS"))))"#;
         let b = load_pcb(pcb).unwrap();
+        assert_eq!((b.pads[0].pinfunction.as_str(), b.pads[0].pintype.as_str()), ("VCCB", "power_in"));
+        assert_eq!(b.pads[1].pinfunction, "");
         let f = &b.footprints;
         assert_eq!((f[0].mpn(), f[0].mpn_if_not_value()), (Some("UM3204H"), Some("UM3204H")));
         assert_eq!((f[1].mpn(), f[1].mpn_if_not_value()), (Some("TPS62130RGTR"), None));

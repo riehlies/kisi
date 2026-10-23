@@ -642,9 +642,22 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
     })
 }
 
-/// Power: tree balance (PI_REG fields or a JSON tree), DC drop of every rail,
-/// optional PDN impedance of one rail.
-pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<&str>) -> Result<Value, String> {
+/// The DC part of the power analysis, shared by `power`, `thermal` and `report`: the tree (PI_REG
+/// fields or a JSON tree), the rail setups and the DC solution of every rail and the ground return.
+pub struct PowerRun {
+    pub source: &'static str,
+    pub tree: Option<crate::tree::TreeResult>,
+    pub balance: Option<Value>,
+    pub setups: Vec<crate::pi::RailSetup>,
+    /// solved rails, then the ground return, with the setup each came from
+    pub solved: Vec<(crate::pi::RailSetup, crate::pi::PiResult)>,
+    /// JSON row per rail (also the ones that failed)
+    pub rails: Vec<Value>,
+    pub warnings: Vec<String>,
+    pub params: crate::pi::PiParams,
+}
+
+pub fn power_run(p: &Project, tree: Option<crate::tree::TreeSpec>) -> Result<PowerRun, String> {
     let (spec, mut warnings, source) = match tree {
         Some(t) => (Some(t), vec![], "JSON"),
         None => match crate::tree::tree_from_fields(&p.board) {
@@ -683,7 +696,7 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
         match crate::pi::solve_rail(&p.board, s, &params) {
             Ok(r) => {
                 rails.push(rail_json(&r));
-                solved.push(r);
+                solved.push((s.clone(), r));
             }
             Err(e) => rails.push(json!({"rail": s.net, "error": e})),
         }
@@ -696,13 +709,24 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
             match crate::pi::solve_rail(&p.board, s, &params) {
                 Ok(r) => {
                     rails.push(rail_json(&r));
-                    solved.push(r);
+                    solved.push((s.clone(), r));
                 }
                 Err(e) => rails.push(json!({"rail": s.net, "ground_return": true, "error": e})),
             }
         }
     }
-    let refs: Vec<&crate::pi::PiResult> = solved.iter().collect();
+    Ok(PowerRun { source, tree: tree_res, balance, setups, solved, rails, warnings, params })
+}
+
+/// Power: tree balance (PI_REG fields or a JSON tree), DC drop of every rail,
+/// optional PDN impedance of one rail.
+pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<&str>) -> Result<Value, String> {
+    power_from(p, &power_run(p, tree)?, pdn_rail)
+}
+
+pub fn power_from(p: &Project, run: &PowerRun, pdn_rail: Option<&str>) -> Result<Value, String> {
+    let (setups, tree_res) = (&run.setups, &run.tree);
+    let refs: Vec<&crate::pi::PiResult> = run.solved.iter().map(|x| &x.1).collect();
     let ls = crate::losses::loss_summary(&p.board, tree_res.as_ref(), &refs);
     let losses = json!({
         "total_w": ls.total_w, "components_w": ls.components_w, "copper_rails_w": ls.copper_w, "copper_ground_w": ls.ground_w,
@@ -724,7 +748,7 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
             });
             let r = crate::pdn::pdn(&p.board, &setup, &crate::pdn::PdnParams::default())?;
             let at = |f: f64| r.freq.iter().position(|&x| x >= f).map(|i| r.z[i]);
-            let per_ic = match crate::pdn_ic::pdn_ic(&p.board, &setup, &setups, &crate::pdn::PdnParams::default()) {
+            let per_ic = match crate::pdn_ic::pdn_ic(&p.board, &setup, setups, &crate::pdn::PdnParams::default()) {
                 Ok(ic) => pdn_ic_json(&ic),
                 Err(e) => json!({"error": e}),
             };
@@ -734,7 +758,79 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
         }
         None => None,
     };
-    Ok(json!({"tree_source": source, "balance": balance, "rails": rails, "losses": losses, "flow": flow, "pdn": pdn, "warnings": warnings}))
+    Ok(json!({"tree_source": run.source, "balance": run.balance, "rails": run.rails, "losses": losses, "flow": flow, "pdn": pdn, "warnings": run.warnings}))
+}
+
+/// Temperature estimate: the power analysis, the board's temperature from its losses
+/// (`thermal::solve`) and the IR drop of every rail at that temperature.
+pub fn thermal(p: &Project, tree: Option<crate::tree::TreeSpec>, prm: &crate::thermal::ThermalParams) -> Result<Value, String> {
+    thermal_from(p, &power_run(p, tree)?, prm)
+}
+
+pub fn thermal_from(p: &Project, run: &PowerRun, prm: &crate::thermal::ThermalParams) -> Result<Value, String> {
+    let refs: Vec<&crate::pi::PiResult> = run.solved.iter().map(|x| &x.1).collect();
+    let ls = crate::losses::loss_summary(&p.board, run.tree.as_ref(), &refs);
+    let mut th = crate::thermal::solve(&p.board, &refs, &ls.components, prm)?;
+    th.rails = run.solved.iter().map(|(s, r)| crate::thermal::rail_at_temperature(&p.board, s, r, &th, &run.params)).collect();
+    let mut warnings = run.warnings.clone();
+    warnings.extend(th.warnings.iter().cloned());
+    Ok(thermal_json(p, &th, prm, run.source, warnings))
+}
+
+/// The JSON of `kisi thermal` (temperatures in °C rounded to 0.01, powers to 0.1 mW).
+pub fn thermal_json(p: &Project, th: &crate::thermal::ThermalResult, prm: &crate::thermal::ThermalParams, tree_source: &str, warnings: Vec<String>) -> Value {
+    let su = p.board.stackup();
+    let lname = |l: u16| su.copper.get(l as usize).map(|c| c.name.clone()).unwrap_or_default();
+    let c2 = |x: f64| (x * 100.0).round() / 100.0 + 0.0;
+    let w4 = |x: f64| (x * 1e4).round() / 1e4 + 0.0;
+    let xy = |p: Option<crate::geom::P>| p.map(|p| json!([c2(p[0]), c2(p[1])]));
+    let opt = |x: Option<f64>| x.map(c2);
+    let co = &th.cooling;
+    let hottest = th.parts.first();
+    json!({
+        "estimate": "Temperatures are estimates: steady state, board in air at the ambient temperature, heat only through convection and radiation; package data from PI_THERMAL or estimated package defaults (see parts[].data_source).",
+        "summary": {
+            "t_board_max_c": c2(th.t_max_c), "at": xy(th.t_max_at), "layer": lname(th.t_max_layer),
+            "hottest_part": hottest.map(|h| json!({"ref": h.refdes, "part": h.part, "tj_c": c2(h.tj_c), "tj_max_c": h.tj_max_c, "estimate": h.estimate})),
+            "parts_over_tj_max": th.parts.iter().filter(|x| x.status == "over").map(|x| x.refdes.clone()).collect::<Vec<_>>(),
+            "parts_within_10k_of_tj_max": th.parts.iter().filter(|x| x.status == "near").map(|x| x.refdes.clone()).collect::<Vec<_>>(),
+            "ir_drop_increase_max_mv": th.rails.iter().filter(|r| !r.ground).filter_map(|r| Some(r.drop_mv_hot? - r.drop_mv_20c?)).fold(None, |a: Option<f64>, x| Some(a.map_or(x, |a| a.max(x)))).map(|x| (x * 1e3).round() / 1e3),
+        },
+        "ambient_c": th.ambient_c,
+        "ambient_source": if prm.ambient_c.is_some() { "--ambient" } else { "default (assumption)" },
+        "cooling": {
+            "orientation": co.orientation, "airflow_m_s": co.airflow_m_s,
+            "h_top_w_m2k": c2(co.h_top), "h_bottom_w_m2k": c2(co.h_bottom), "h_convection_top": c2(co.h_conv_top), "h_convection_bottom": c2(co.h_conv_bottom), "h_radiation": c2(co.h_rad),
+            "mean_rise_k": c2(co.dt_mean_k),
+            "source": if co.estimated { "estimate: natural (or forced) convection from flat-plate correlations and linearised radiation (emissivity 0.9) at the board's mean temperature rise, data/thermal.json" } else { "--h (convection and radiation per side)" },
+        },
+        "heat_w": {"total": w4(th.parts_w + th.copper_w), "parts": w4(th.parts_w), "copper": w4(th.copper_w)},
+        "energy_balance": {"in_w": w4(th.balance.in_w), "convection_w": w4(th.balance.convection_w), "radiation_w": w4(th.balance.radiation_w), "error_rel": if th.balance.error_rel < 1e-6 { 0.0 } else { th.balance.error_rel }},
+        "board": {
+            "t_max_c": c2(th.t_max_c), "at": xy(th.t_max_at), "layer": lname(th.t_max_layer),
+            "per_layer": th.layers.iter().map(|l| json!({"layer": l.name, "t_max_c": c2(l.t_max_c), "t_mean_c": c2(l.t_mean_c)})).collect::<Vec<_>>(),
+        },
+        "hot_spots": th.hot_spots.iter().map(|h| json!({"t_c": c2(h.t_c), "layer": lname(h.layer), "at": xy(Some(h.at)), "near": h.near})).collect::<Vec<_>>(),
+        "parts": th.parts.iter().take(30).map(|x| json!({
+            "ref": x.refdes, "part": x.part, "heat_w": w4(x.w), "heat_source": x.w_source, "side": x.side,
+            "t_board_c": c2(x.t_board_c), "tj_c": c2(x.tj_c), "tj_max_c": x.tj_max_c, "tj_max_source": x.tj_max_source, "margin_k": c2(x.margin_k), "status": x.status,
+            "model": x.model, "theta_jb": opt(x.theta_jb), "theta_jc": opt(x.theta_jc), "psi_jb": x.psi_jb, "theta_ja": x.theta_ja,
+            "to_board_share": x.to_board.map(|s| (s * 1000.0).round() / 1000.0), "package_family": x.family, "data_source": x.data_source, "estimate": x.estimate,
+        })).collect::<Vec<_>>(),
+        "parts_omitted": th.parts.len().saturating_sub(30),
+        "rails": th.rails.iter().map(|r| json!({
+            "rail": r.net, "ground_return": r.ground, "t_copper_max_c": opt(r.t_max_c), "t_copper_mean_c": opt(r.t_mean_c),
+            "max_drop_mv_20c": r.drop_mv_20c.map(|x| (x * 1e3).round() / 1e3), "max_drop_mv_at_temperature": r.drop_mv_hot.map(|x| (x * 1e3).round() / 1e3),
+            "copper_loss_mw_20c": (r.loss_w_20c * 1e4).round() / 10.0, "copper_loss_mw_at_temperature": r.loss_w_hot.map(|x| (x * 1e4).round() / 10.0), "error": r.error,
+        })).collect::<Vec<_>>(),
+        "grid": {"cell_mm": th.cell, "nodes": th.nodes, "layers": th.layers.len(), "board_area_mm2": th.area_mm2.round()},
+        "tree_source": tree_source,
+        "config": p.config_summary(),
+        "variant": p.variant.summary(),
+        "warnings": warnings,
+        "notes": th.notes,
+        "models": "Board: one sheet per copper layer on a uniform grid over the outline (copper fill of every net, laminate in plane and through the thickness, open via barrels), convection and radiation from both sides. Heat: copper loss of every rail and the ground return (DC solution at 20 °C), part heat from the power tree (load power V·I, regulator and pass losses) or PI_THERMAL p. Parts: JEDEC two-resistor model (θJB, θJC) or ψJB / θJA. Rails: copper temperature from the map; IR drop again with ρ(T) = ρ₂₀(1 + 0.00393/K·(T − 20 °C)) (one electro-thermal step).",
+    })
 }
 
 /// Summary of the PDN seen from every IC (`pdn_ic`): Z at decades, target, bands above it,
@@ -770,6 +866,7 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
 
 pub fn report(p: &Project, profiles: &Profiles) -> Value {
     let rp = RfParams::default();
+    let run = power_run(p, None);
     json!({
         "tool": "kisi", "version": env!("CARGO_PKG_VERSION"),
         "variant": p.variant.summary(),
@@ -777,7 +874,8 @@ pub fn report(p: &Project, profiles: &Profiles) -> Value {
         "overview": overview(p),
         "interfaces": interfaces(p, profiles, &HashMap::new()),
         "channels": channel_check(p, profiles, &HashMap::new(), None, &rp),
-        "power": power(p, None, None).unwrap_or_else(|e| json!({"error": e})),
+        "power": run.as_ref().map_err(|e| e.clone()).and_then(|r| power_from(p, r, None)).unwrap_or_else(|e| json!({"error": e})),
+        "thermal": run.as_ref().map_err(|e| e.clone()).and_then(|r| thermal_from(p, r, &crate::thermal::ThermalParams::default())).unwrap_or_else(|e| json!({"error": e})),
     })
 }
 

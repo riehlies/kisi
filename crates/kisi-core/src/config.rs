@@ -156,7 +156,7 @@ pub struct BoardConfig {
 }
 
 /// Fields kisi evaluates (others are laid over too, but have no effect).
-pub const KNOWN_FIELDS: &[&str] = &["PI_LOAD", "PI_SOURCE", "PI_REG", "PI_CAP", "PI_TARGET", "PI_SERIES"];
+pub const KNOWN_FIELDS: &[&str] = &["PI_LOAD", "PI_SOURCE", "PI_REG", "PI_CAP", "PI_TARGET", "PI_SERIES", "PI_THERMAL"];
 
 pub fn parse(text: &str) -> Result<BoardConfig, String> {
     serde_json::from_str(text).map_err(|e| format!("kisi.json: {e}"))
@@ -400,6 +400,10 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
             }
         } else if f.name.eq_ignore_ascii_case("PI_SERIES") {
             if let Err(e) = crate::pdn_ic::parse_pi_series(&f.value) {
+                r.errors.push(format!("{what}: {e}"));
+            }
+        } else if f.name.eq_ignore_ascii_case("PI_THERMAL") {
+            if let Err(e) = crate::thermal::parse_pi_thermal(&f.value) {
                 r.errors.push(format!("{what}: {e}"));
             }
         } else if f.name.eq_ignore_ascii_case("PI_TARGET") {

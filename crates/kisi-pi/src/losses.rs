@@ -55,7 +55,9 @@ pub fn ground_setups(board: &Board, tree: &TreeResult) -> (Vec<RailSetup>, Vec<S
     }
     let fp_of: HashMap<&str, usize> = board.footprints.iter().enumerate().map(|(i, f)| (f.reference.as_str(), i)).collect();
     // ground pads per component and ground net
-    let mut gpads: HashMap<usize, BTreeMap<u32, usize>> = HashMap::new();
+    // ordered by footprint (a HashMap made the reference part of a ground net – and with it whether
+    // the net got a setup – change from run to run in native builds)
+    let mut gpads: BTreeMap<usize, BTreeMap<u32, usize>> = BTreeMap::new();
     for p in &board.pads {
         if gnets.contains(&p.net) {
             *gpads.entry(p.fp as usize).or_default().entry(p.net).or_default() += 1;

@@ -77,7 +77,8 @@ in the output shows the coverage; `--formula` skips the solver.
   suggest marking the unused population option DNP in KiCad.
 - Parasitics of series parts and terminations are estimates per package; the transmit direction is a
   guess (termination next to the receiver) and can be wrong.
-- Values from kisi.json carry sources; when a result depends on an `estimate` or `assumption`, say so.
+- Values from kisi.json carry sources; when a result depends on an `estimate` or `assumption`, say so. Regulator
+  efficiencies flagged `efficiency_estimate` in `kisi power` are kisi's default (85 %), not datasheet values.
 - Quote numbers with units and name the profile used for each interface.
 
 ## Working with other KiCad tools

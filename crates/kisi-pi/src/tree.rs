@@ -40,7 +40,7 @@ pub struct ElemSpec {
     pub kind: String,
     pub from: Option<String>,
     pub to: String,
-    /// efficiency of switching converters (0..1)
+    /// efficiency of switching converters (0..1); `None`: kisi's default `DEFAULT_EFF` (an estimate)
     pub eff: Option<f64>,
     /// quiescent / ground current drawn from the input (A)
     pub iq: f64,
@@ -100,6 +100,10 @@ pub struct ElemFlow {
     pub p_loss: f64,
     pub imax: Option<f64>,
     pub overload: bool,
+    /// efficiency used for a switching converter (None for inputs, LDOs and pass elements)
+    pub eff: Option<f64>,
+    /// the efficiency is kisi's default (none given): an estimate
+    pub eff_estimate: bool,
     pub note: String,
 }
 
@@ -129,6 +133,15 @@ pub struct TreeResult {
     /// board spelling of the net of every spec load (same order as `TreeSpec::loads`)
     pub load_nets: Vec<String>,
     pub warnings: Vec<String>,
+}
+
+/// Efficiency of a switching converter without a value in its PI_REG field or tree entry: an
+/// estimate (typical for small bucks at moderate load), marked as such in CLI and viewer.
+pub const DEFAULT_EFF: f64 = 0.85;
+
+/// Whether an element kind is a switching converter (efficiency applies).
+pub fn is_switching(kind: &str) -> bool {
+    !matches!(kind, "input" | "pass" | "ldo")
 }
 
 fn elem_id(e: &ElemSpec) -> String {
@@ -209,7 +222,7 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
             "pass" => i_out + i_out * i_out * e.r / v_in.abs().max(1e-9),
             "ldo" => i_out + e.iq,
             _ => {
-                let eff = e.eff.unwrap_or(0.85).clamp(0.05, 1.0);
+                let eff = e.eff.unwrap_or(DEFAULT_EFF).clamp(0.05, 1.0);
                 v_out.abs() * i_out / (eff * v_in.abs().max(1e-9)) + e.iq
             }
         }
@@ -315,6 +328,8 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
             p_loss,
             imax: e.imax,
             overload,
+            eff: is_switching(&e.kind).then(|| e.eff.unwrap_or(DEFAULT_EFF).clamp(0.05, 1.0)),
+            eff_estimate: is_switching(&e.kind) && e.eff.is_none(),
             note: e.note.clone(),
         });
     }
@@ -476,6 +491,14 @@ mod tests {
         let r5 = r.rails.iter().find(|x| x.net == "5V").unwrap();
         assert!((r5.i_total - (0.2 + 0.501 + 0.125)).abs() < 1e-12);
         assert!(!r.elements.iter().find(|e| e.id == "U1").unwrap().overload);
+        // efficiency: given (U1, U3) or kisi's default as an estimate (none here); LDOs have none
+        assert!(r.elements.iter().all(|e| !e.eff_estimate));
+        assert_eq!(u2.eff, None);
+        let mut s2 = spec();
+        s2.elements[2].eff = None;
+        let r2 = solve_tree(&s2, None).unwrap();
+        let u1 = r2.elements.iter().find(|e| e.id == "U1").unwrap();
+        assert!(u1.eff_estimate && u1.eff == Some(DEFAULT_EFF));
         // setups: the 5 V rail is fed by U1 and loads B, U2, U3
         let s5 = r.setups.iter().find(|s| s.net == "5V").unwrap();
         assert_eq!(s5.sources[0].refdes, "U1");

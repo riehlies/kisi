@@ -16,7 +16,7 @@
 //! common mode and back.
 
 use crate::eye::{ConnEnd, EndModel};
-use crate::rf::{mixed_of, reversed, s_of, sep, tdr_map, Abcd, Channel, Cx, Network, Source, Touchstone, GND};
+use crate::rf::{mixed_of, reversed, s_of, sep, tdr_map, Abcd, Channel, Cx, Network, Source, Tap, Touchstone, GND};
 use std::f64::consts::PI;
 
 pub type M4 = [[Cx; 4]; 4];
@@ -36,12 +36,23 @@ pub enum Block {
     /// P first) at the boundary before the block, `far` after it; other ports are terminated in
     /// their reference impedance. `s[k]` is N×N row-major, `dc` the same at 0 Hz.
     S { s: Vec<Vec<Cx>>, dc: Vec<Cx>, z0: Vec<f64>, near: Vec<usize>, far: Vec<usize> },
+    /// one line with receivers on side stubs (multi-drop): the main path in pieces and the
+    /// stubs to the receivers (`rf::Tap`, hanging behind piece `after`)
+    Line { pieces: Vec<(Vec<Abcd>, Abcd)>, taps: Vec<Tap> },
+}
+
+/// The transfer to one receiver (`label`: its pin; empty for the lane's own receiver).
+#[derive(Debug, Clone)]
+pub struct RxTransfer {
+    pub label: String,
+    pub h: Vec<Cx>,
+    pub dc: f64,
 }
 
 impl Block {
     fn lines(&self) -> usize {
         match self {
-            Block::Two { .. } => 1,
+            Block::Two { .. } | Block::Line { .. } => 1,
             Block::Four { .. } => 2,
             Block::S { near, .. } => near.len(),
         }
@@ -53,6 +64,15 @@ impl Block {
             Block::Two { m, dc } => Block::Two { m: m.iter().map(reversed).collect(), dc: reversed(dc) },
             Block::Four { t, dc } => Block::Four { t: t.iter().map(flip4).collect(), dc: flip4(dc) },
             Block::S { s, dc, z0, near, far } => Block::S { s: s.clone(), dc: dc.clone(), z0: z0.clone(), near: far.clone(), far: near.clone() },
+            Block::Line { pieces, taps } => {
+                // the pieces in reverse order, each seen from its other end; a tap behind piece j
+                // now hangs behind piece n − 2 − j
+                let n = pieces.len();
+                Block::Line {
+                    pieces: pieces.iter().rev().map(|(m, dc)| (m.iter().map(reversed).collect(), reversed(dc))).collect(),
+                    taps: taps.iter().map(|t| Tap { after: n - 2 - t.after, ..t.clone() }).collect(),
+                }
+            }
         }
     }
 }
@@ -101,12 +121,21 @@ fn flip4(t: &M4) -> M4 {
 /// receiver, as the open-circuit swing. `lines` = 2: a pair driven differentially, the result
 /// is the differential voltage. Returns H on `freq` and H at 0 Hz.
 pub fn ends_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &EndModel, rx: &EndModel) -> Result<(Vec<Cx>, f64), String> {
+    let mut all = receivers_transfer(freq, blocks, lines, tx, rx)?;
+    let main = all.remove(0);
+    Ok((main.h, main.dc))
+}
+
+/// As `ends_transfer`, for every receiver: the lane's own receiver first, then one per tap of a
+/// `Block::Line` (each with the same receiver model, all loading the line at once).
+pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &EndModel, rx: &EndModel) -> Result<Vec<RxTransfer>, String> {
     if blocks.iter().any(|b| b.lines() != lines) {
         return Err("blocks with different numbers of lines".into());
     }
     let npts = freq.len() + 1;
     let ws: Vec<f64> = std::iter::once(0.0).chain(freq.iter().map(|&f| 2.0 * PI * f)).collect();
     let mut net = Network::new(npts);
+    let mut taps: Vec<(String, usize)> = Vec::new();
     let bnd: Vec<Vec<usize>> = (0..=blocks.len()).map(|i| (0..lines).map(|l| net.node(format!("boundary {i}, line {l}"))).collect()).collect();
     for (i, b) in blocks.iter().enumerate() {
         match b {
@@ -137,9 +166,40 @@ pub fn ends_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &EndModel
                 let all: Vec<Vec<Cx>> = std::iter::once(dc.clone()).chain(s.iter().cloned()).collect();
                 net.s_block(nodes, z0.clone(), all);
             }
+            Block::Line { pieces, taps: tl } => {
+                let n = pieces.len();
+                let mut at: Vec<usize> = vec![bnd[i][0]];
+                for j in 1..n {
+                    at.push(net.node(format!("block {i}, junction {j}")));
+                }
+                at.push(bnd[i + 1][0]);
+                for (j, (m, dc)) in pieces.iter().enumerate() {
+                    let all: Vec<Abcd> = std::iter::once(*dc).chain(m.iter().copied()).collect();
+                    net.two_port(at[j], at[j + 1], &all);
+                }
+                for t in tl {
+                    let end = net.node(format!("tap {}", t.label));
+                    let all: Vec<Abcd> = std::iter::once(t.dc).chain(t.abcd.iter().copied()).collect();
+                    net.two_port(at[(t.after + 1).min(n)], end, &all);
+                    taps.push((t.label.clone(), end));
+                }
+            }
         }
     }
-    // ends, per line
+    // ends, per line; a receiver: inductance, then capacitance and termination to AC ground
+    let add_rx = |net: &mut Network, pin: usize, name: String| -> usize {
+        let die = if rx.l_nh > 0.0 {
+            let d = net.node(name);
+            let z: Vec<Cx> = ws.iter().map(|w| Cx::new(0.0, w * rx.l_nh * 1e-9)).collect();
+            net.series(pin, d, &z);
+            d
+        } else {
+            pin
+        };
+        let g = if rx.r > 0.0 { 1.0 / rx.r } else { 0.0 };
+        net.adm(die, GND, ws.iter().map(|w| Cx::new(g, w * rx.c_pf * 1e-12)).collect());
+        die
+    };
     let mut src = Vec::new();
     let mut probe = Vec::new();
     for l in 0..lines {
@@ -158,27 +218,21 @@ pub fn ends_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &EndModel
         let e = if lines == 2 { if l == 0 { 0.5 } else { -0.5 } } else { 1.0 };
         src.push(Source { node: die_tx, z: Cx::new(tx.r.max(0.0), 0.0), e: vec![Cx::new(e, 0.0)] });
         let pin_rx = bnd[blocks.len()][l];
-        let die_rx = if rx.l_nh > 0.0 {
-            let d = net.node(format!("receiver die, line {l}"));
-            let z: Vec<Cx> = ws.iter().map(|w| Cx::new(0.0, w * rx.l_nh * 1e-9)).collect();
-            net.series(pin_rx, d, &z);
-            d
-        } else {
-            pin_rx
-        };
-        let g = if rx.r > 0.0 { 1.0 / rx.r } else { 0.0 };
-        net.adm(die_rx, GND, ws.iter().map(|w| Cx::new(g, w * rx.c_pf * 1e-12)).collect());
-        probe.push(die_rx);
+        probe.push(add_rx(&mut net, pin_rx, format!("receiver die, line {l}")));
     }
+    let tap_dies: Vec<(String, usize)> = taps.iter().map(|(label, pin)| (label.clone(), add_rx(&mut net, *pin, format!("receiver die at {label}")))).collect();
     let scale = if rx.r > 0.0 { (tx.r.max(0.0) + rx.r) / rx.r } else { 1.0 };
-    let mut h = Vec::with_capacity(npts);
+    let mut h: Vec<Vec<Cx>> = vec![Vec::with_capacity(npts); 1 + tap_dies.len()];
     for k in 0..npts {
         let v = net.solve(k, &src)?;
         let out = if lines == 2 { v[0][probe[0]] - v[0][probe[1]] } else { v[0][probe[0]] };
-        h.push(out.scale(scale));
+        h[0].push(out.scale(scale));
+        for (q, (_, die)) in tap_dies.iter().enumerate() {
+            h[q + 1].push(v[0][*die].scale(scale));
+        }
     }
-    let dc = h[0].re;
-    Ok((h[1..].to_vec(), dc))
+    let labels = std::iter::once(String::new()).chain(tap_dies.iter().map(|t| t.0.clone()));
+    Ok(labels.zip(h).map(|(label, h)| RxTransfer { label, dc: h[0].re, h: h[1..].to_vec() }).collect())
 }
 
 /// The channel behind a connector as a block (`conn_end`): the Touchstone file (2-port on each
@@ -211,12 +265,14 @@ pub fn rest_block(ce: &ConnEnd, ts: Option<&Touchstone>, freq: &[f64], lines: us
                 }
                 let mut notes = ts.extrapolation_notes(freq);
                 notes.push(format!("{}: 4-port with mode conversion (ports {order})", ts.name));
+                notes.extend(ts.passivity_note());
                 let dc = ts.s_at(0.0);
                 let s: Vec<Vec<Cx>> = freq.iter().map(|&f| ts.s_at(f)).collect();
                 return Ok((Block::S { s, dc, z0: ts.z0.clone(), near, far }, notes.join("; ")));
             }
             let grid: Vec<f64> = std::iter::once(0.0).chain(freq.iter().copied()).collect();
-            let (m, notes) = ts.per_line_abcd(&grid, diff || lines == 2, tr.port_order.as_deref(), tr.flip)?;
+            let (m, mut notes) = ts.per_line_abcd(&grid, diff || lines == 2, tr.port_order.as_deref(), tr.flip)?;
+            notes.extend(ts.passivity_note());
             Ok((line_block(m[1..].to_vec(), m[0]), notes.join("; ")))
         }
         (Some(tr), None) => Err(format!("Touchstone file {} not loaded", tr.file)),
@@ -250,6 +306,13 @@ impl PairNet {
     pub fn block(&self) -> Block {
         Block::Four { t: self.t.clone(), dc: self.t_dc }
     }
+}
+
+/// A note when the board's own model is not passive somewhere (largest singular value of S above
+/// 1 + 1e-6): a modelling error, never expected – the line, via and part models are passive.
+pub fn passivity_check(freq: &[f64], s: &[Vec<Cx>], n: usize) -> Option<String> {
+    let (worst, k) = crate::rf::passivity(s, n);
+    (worst > 1.0 + 1e-6).then(|| format!("model not passive at {:.2} GHz (largest singular value of S {:.6}): a modelling error, please report", freq[k] / 1e9, worst))
 }
 
 /// Worst mode conversion Scd21 (dB) up to `f_hi` and its frequency (Hz).
@@ -345,6 +408,43 @@ mod tests {
             for j in 0..4 {
                 assert!((back[i][j] - t4[i][j]).abs() < 1e-9 * (1.0 + t4[i][j].abs()));
             }
+        }
+    }
+
+    /// A receiver on a side stub (multi-drop): the network gives the cascade with the stub loaded
+    /// by the receiver, Y_in = (C + D·Y_L)/(A + B·Y_L), and the voltage at the tap V_j/(A + B·Y_L);
+    /// flipping the block twice changes nothing.
+    #[test]
+    fn tap_receiver() {
+        let freq: Vec<f64> = (1..=30).map(|k| k as f64 * 0.5e9).collect();
+        let p1: Vec<Abcd> = freq.iter().map(|&f| line(50.0, 3.2, 6.0, f, 0.03)).collect();
+        let p2: Vec<Abcd> = freq.iter().map(|&f| line(50.0, 3.2, 6.0, f, 0.02)).collect();
+        let st: Vec<Abcd> = freq.iter().map(|&f| line(55.0, 3.0, 6.0, f, 0.008)).collect();
+        let tx = EndModel { r: 0.0, c_pf: 2.0, l_nh: 0.0 };
+        let rx = EndModel { r: 0.0, c_pf: 1.5, l_nh: 0.0 };
+        let id = Abcd::identity();
+        let tap = Tap { label: "U3.5".into(), after: 0, abcd: st.clone(), dc: id };
+        let blk = Block::Line { pieces: vec![(p1.clone(), id), (p2.clone(), id)], taps: vec![tap] };
+        let r = receivers_transfer(&freq, &[blk.clone()], 1, &tx, &rx).unwrap();
+        assert_eq!((r.len(), r[1].label.as_str()), (2, "U3.5"));
+        for (k, &f) in freq.iter().enumerate() {
+            let w = 2.0 * PI * f;
+            let yl = Cx::new(0.0, w * 1.5e-12);
+            let yin = (st[k].c + st[k].d * yl) / (st[k].a + st[k].b * yl);
+            // cascade to the main receiver with the loaded stub as a shunt, ideal source
+            let m = p1[k].mul(&Abcd::shunt(yin)).mul(&p2[k]).mul(&Abcd::shunt(yl));
+            let h_main = m.a.inv();
+            assert!((r[0].h[k] - h_main).abs() < 1e-10 * (1.0 + h_main.abs()), "{k}");
+            // the junction voltage, then down the stub
+            let mj = Abcd::shunt(yin).mul(&p2[k]).mul(&Abcd::shunt(yl));
+            let vj = h_main * mj.a;
+            let h_tap = vj / (st[k].a + st[k].b * yl);
+            assert!((r[1].h[k] - h_tap).abs() < 1e-10 * (1.0 + h_tap.abs()), "{k}");
+        }
+        let back = blk.flipped().flipped();
+        let r2 = receivers_transfer(&freq, &[back], 1, &tx, &rx).unwrap();
+        for k in 0..freq.len() {
+            assert!((r2[1].h[k] - r[1].h[k]).abs() < 1e-9);
         }
     }
 

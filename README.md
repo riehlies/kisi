@@ -33,7 +33,7 @@ PDN impedance) – in the browser, with no installation and no setup beyond the 
 | | |
 |---|---|
 | ![Net detail with the TDR of a differential pair](docs/img/net.png) | ![Channel view: interfaces and lanes with their verdicts](docs/img/channel.png) |
-| **Net detail:** impedance along the path, loss, TDR with the vias as physics-based models, skew of pairs and crosstalk from the neighbouring tracks – for every net with a target | **Channel check:** buses and lanes from IC to IC or to a connector through series resistors and AC-coupling capacitors, judged against interface profiles on loss, return loss, skew and a linear eye (at a connector with the end and the channel behind it that you set) |
+| **Net detail:** impedance along the path, loss, TDR with the vias as physics-based models, skew of pairs and crosstalk from the neighbouring tracks – for every net with a target | **Channel check:** buses and lanes from IC to IC or to a connector through series resistors and AC-coupling capacitors, judged against interface profiles on loss, return loss, skew and a linear eye – pairs as 4-ports with mode conversion, multi-drop lines per receiver (at a connector with the end and the channel behind it that you set) |
 | ![Power flow from the inputs through the regulators to the loads](docs/img/flow.png) | ![Voltage drop of a rail and its impedance seen from an IC](docs/img/power.png) |
 | **Power flow:** from the supply inputs through every regulator to the loads, with regulator, shunt and copper losses | **Voltage drop and PDN:** DC drop and current density on every layer of a rail, and its impedance seen from an IC with the decoupling capacitors ranked by loop inductance |
 
@@ -76,7 +76,11 @@ Three views, each starting with what the board file gives and computing more on 
    card – termination when the connector receives, driver when it sends (the profile's, matched, high impedance or
    custom R/C) – and, if
    given, the channel behind the connector as a lossy line (loss at Nyquist) or a Touchstone file (.s2p, .s4p);
-   without it the eye covers the board share only and is information, with it the eye is judged. Parts from a lane's net to ground (a shunt capacitor) are in its channel at their pads. Boards with assembly variants (KiCad 10
+   without it the eye covers the board share only and is information, with it the eye is judged. Parts from a lane's net to ground (a shunt capacitor) are in its channel at their pads.
+   A differential pair is a 4-port: both lines on their own paths with their own parts, stubs and vias, coupled
+   where they run together; loss and return loss are Sdd21/Sdd11, the eye drives P and N in opposite phase, and the
+   mode conversion (Scd21) is shown. A multi-drop line along one path (one transmitter, more devices on side stubs)
+   is checked at every receiver, all loading the line; the worst eye counts. Boards with assembly variants (KiCad 10
    variants or `variants` in `kisi.json`) – or with forks where all alternative parts are fitted – ask “Which
    assembly variant?” before lanes are computed; the card “Assembly variant” switches later (stored in the
    browser, over the `kisi.json` choice) and the lane results name the variant. A lane is named after and made of
@@ -192,7 +196,10 @@ KiCad files; CLI and viewer lay this file over the board.
   Cross-sections along every line with reference planes (also across gaps), coplanar ground and diff partner.
   Field solver against HFSS/Ansys: ≤ 1.7 %.
 - **Lines:** RLGC per cross-section; skin effect (Wheeler), roughness (Huray, presets estimated), dielectric loss
-  (Djordjevic-Sarkar); RLGC against HFSS ≤ 2 %. Channel as ABCD cascade (odd mode for pairs), TDR from S11.
+  (Djordjevic-Sarkar); RLGC against HFSS ≤ 2 %. A channel is a network of N-port elements solved by nodal analysis
+  (`kisi_si::rf::network`): the line's ABCD cascade, a pair as a 4-port (coupled sections from the odd and even
+  mode, via pairs, stubs on both lines paired up), receivers on side stubs, a Touchstone file behind a connector
+  as an S-parameter block; for a single line it equals the cascade to numerical precision. TDR from S11 (Sdd11).
 - **Vias:** a physics-based ladder per via: capacitances from an axisymmetric Laplace solve, the plane pairs as
   radial lines with the nearby return vias, pads and annular rings, antipads from the zone fills (non-round ones as
   an equivalent circle), stubs and back-drill, the junction to the traces; pairs with their partner. Vias that do
@@ -201,8 +208,16 @@ KiCad files; CLI and viewer lay this file over the board.
   transmit direction is a guess (termination next to the receiver) and can be swapped. Copper of a lane net that
   leaves the path is an open side stub: to unused pads and test points, to the pads of parts that are not fitted
   (with their pad capacitance, an estimate), and – when all alternatives of a fork are fitted – through the other
-  part to the other device. A stub hangs on the side of a via that matches its layer.
-- **Eye:** PRBS7 NRZ with the profile's linear transmitter/receiver; no equalisation, jitter or noise.
+  part to the other device. A stub hangs on the side of a via that matches its layer. On a multi-drop line along one
+  path the devices on side stubs are receivers with the profile's receiver model (more pins of the devices at the
+  ends are not); multi-drop trees through series parts are listed, not checked.
+- **Eye:** PRBS7 NRZ with the profile's linear transmitter/receiver, from the lane's network (pairs: differential
+  drive of the 4-port; ends per line to AC ground, so the common mode sees the same termination); no
+  equalisation, jitter or noise. The step response has a DC point (the resistances of the signal band; where the
+  channel changes below the lowest frequency – a small coupling capacitor, a choke – that frequency stands for DC)
+  and the Gaussian edge as window; warnings when the band ends inside the edge spectrum (above 20 % left), when
+  there is response before the signal can arrive (non-causal data, time aliasing) or the step has not settled, and
+  when S-parameters are not passive (Touchstone files, or the model itself).
 - **Power:** copper rasterised per layer, vias as barrels (25 µm); DC IR drop per rail. PDN per IC: the rail's
   copper on all layers as an AC grid with plane capacitance, capacitors with ESR/ESL and DC-bias derating
   (estimated per package unless given), series parts up to the regulators.

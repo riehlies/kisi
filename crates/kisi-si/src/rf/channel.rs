@@ -75,6 +75,23 @@ pub struct Channel {
     /// the same at 0 Hz: the DC point of the time-domain responses (`Build::seg_abcd_dc`)
     #[serde(skip)]
     pub abcd_dc: Abcd,
+    /// receivers on side stubs (multi-drop): each stub's cascade; `abcd` has them as open stubs
+    #[serde(skip)]
+    pub taps: Vec<Tap>,
+    /// with taps: the main path split at them (cascade per frequency and at 0 Hz)
+    #[serde(skip)]
+    pub pieces: Vec<(Vec<Abcd>, Abcd)>,
+}
+
+/// A receiver on a side stub of a multi-drop line: the stub from the junction on the main path
+/// (behind piece `after` of `Channel::pieces`) to the receiver's pad.
+#[derive(Debug, Clone)]
+pub struct Tap {
+    /// the receiver's pin, e.g. "U3.5"
+    pub label: String,
+    pub after: usize,
+    pub abcd: Vec<Abcd>,
+    pub dc: Abcd,
 }
 
 /// Track graph of one net: nodes are joined track ends (per layer; layers join
@@ -580,6 +597,15 @@ pub(crate) fn hop_path(board: &Board, an: &Analysis, net: u32, from: (P, u64), t
 }
 
 
+/// Length of copper (mm) from the point `from` to each of the points `to` along the tracks of
+/// `net` (points with their copper layers, bit masks, 0 = any); None where not connected.
+pub(crate) fn copper_distances(board: &Board, an: &Analysis, net: u32, from: (P, u64), to: &[(P, u64)]) -> Vec<Option<f64>> {
+    let Some(g) = NetGraph::build(board, an, net) else { return vec![None; to.len()] };
+    let Some(s) = g.nearest_on(from.0, from.1) else { return vec![None; to.len()] };
+    let d = g.reach(s);
+    to.iter().map(|&(p, l)| g.nearest_on(p, l).and_then(|n| d.get(&n).map(|x| x.0))).collect()
+}
+
 /// A lumped part in the cascade (series element or shunt to AC ground).
 #[derive(Debug, Clone)]
 pub struct LumpedPart {
@@ -695,6 +721,8 @@ pub(crate) struct Build<'a> {
     /// one line of a pair's 4-port (`pair`): the stub also in the odd mode with the partner's
     /// stub (pairs up with the partner's stub in `rf::mixed::align_pair`)
     pub(crate) branch_odd: Vec<Option<Vec<Abcd>>>,
+    /// the stub ends at a receiver (multi-drop): its pin label
+    pub(crate) branch_tap: Vec<Option<String>>,
     pub via_info: Vec<crate::via::ViaInfo>,
     field_len: f64,
     pub(crate) total_len: f64,
@@ -720,6 +748,7 @@ impl<'a> Build<'a> {
             branch: vec![],
             branch_dc: vec![],
             branch_odd: vec![],
+            branch_tap: vec![],
             via_info: vec![],
             field_len: 0.0,
             total_len: 0.0,
@@ -737,6 +766,7 @@ impl<'a> Build<'a> {
         self.branch.push(None);
         self.branch_dc.push(None);
         self.branch_odd.push(None);
+        self.branch_tap.push(None);
     }
 
     /// An open branch (stub) hanging off the line here; `ch` is the branch's own
@@ -756,6 +786,11 @@ impl<'a> Build<'a> {
     pub(crate) fn add_branch_pair(&mut self, label: String, ch: &Channel, odd: Option<&Channel>) {
         self.add_branch(label, ch);
         *self.branch_odd.last_mut().unwrap() = odd.map(|o| o.abcd.clone());
+    }
+
+    /// Mark the branch just added as ending at the receiver `pin` (a tap of a multi-drop line).
+    pub(crate) fn mark_tap(&mut self, pin: String) {
+        *self.branch_tap.last_mut().unwrap() = Some(pin);
     }
 
     pub(crate) fn add_part(&mut self, part: LumpedPart) {
@@ -1076,6 +1111,21 @@ impl<'a> Build<'a> {
             abcd.push(m);
         }
         let abcd_dc = (0..self.segs.len()).fold(Abcd::identity(), |m, i| m.mul(&self.seg_abcd_dc(i, &fallback, None)));
+        // taps (receivers on side stubs): the main path split at them, the stubs on their own
+        let tap_at: Vec<usize> = (0..self.segs.len()).filter(|&i| self.branch_tap[i].is_some()).collect();
+        let (mut pieces, mut taps) = (Vec::new(), Vec::new());
+        if !tap_at.is_empty() {
+            let mut a = 0;
+            for &t in tap_at.iter().chain(std::iter::once(&self.segs.len())) {
+                let ms: Vec<Abcd> = freq.iter().enumerate().map(|(k, &f)| (a..t).fold(Abcd::identity(), |m, i| m.mul(&self.seg_abcd(i, k, f, &fallback, None)))).collect();
+                let dc = (a..t).fold(Abcd::identity(), |m, i| m.mul(&self.seg_abcd_dc(i, &fallback, None)));
+                pieces.push((ms, dc));
+                a = t + 1;
+            }
+            for (j, &i) in tap_at.iter().enumerate() {
+                taps.push(Tap { label: self.branch_tap[i].clone().unwrap_or_default(), after: j, abcd: self.branch[i].clone().unwrap_or_default(), dc: self.branch_dc[i].unwrap_or_else(Abcd::identity) });
+            }
+        }
         let db = |x: Cx| 20.0 * x.abs().max(1e-12).log10();
         let s21_db: Vec<f64> = s21.iter().map(|&x| db(x)).collect();
         let s11_db: Vec<f64> = s11.iter().map(|&x| db(x)).collect();
@@ -1182,6 +1232,8 @@ impl<'a> Build<'a> {
             s22,
             abcd,
             abcd_dc,
+            taps,
+            pieces,
         }
     }
 }

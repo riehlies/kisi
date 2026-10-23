@@ -749,7 +749,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
                 let skew = ev.skew.map(|(ps, mm, pn, unc)| serde_json::json!({"partner": pn, "skew_ps": ps, "skew_mm": mm, "uncertain": unc}));
                 serde_json::json!({"channel": ev.ch, "error": null, "touchstone": kisi_core::rf::touchstone(&ev.ch), "eye": eye, "skew": skew,
                     "rx_used": ev.rx_used, "rx_note": ev.rx_note, "tx_used": ev.tx_used, "end_note": ev.end_note, "rest_applied": ev.rest_applied, "reversed": rev,
-                    "model": ev.model, "scd21_db": ev.scd21_db,
+                    "model": ev.model, "scd21_db": ev.scd21_db, "receivers": ev.receivers,
                     "crosstalk": kisi_core::rf::crosstalk(b, an, lane.nets[0], &params.field, &rp)})
             }
             Err(e) => serde_json::json!({"channel": null, "error": e, "crosstalk": {"aggressors": [], "geoms": []}}),

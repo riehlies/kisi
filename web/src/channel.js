@@ -258,7 +258,7 @@ function metricsOf(r, net, lane) {
 function renderChDetail(net) {
   const d = $("ch-detail"), st = S.an.nets.find((x) => x.net === net);
   const lane = S.an.skeleton ? null : (S.selLane && allLanes().find((l) => laneKey(l) === S.selLane && (l.nets.includes(net) || l.partner_nets.includes(net)))) || laneOfNet(net);
-  if (lane && CHECKABLE.has(lane.kind)) return renderLaneDetail(lane);
+  if (lane && laneChecked(lane)) return renderLaneDetail(lane);
   // a net on the board map that is no channel: not used in this variant, or no target
   const why = netUnused(net) ? `Not used in this assembly variant${variantShown() ? ` (${esc(variantShown())})` : ""}: the net only connects parts that are not fitted. It has no lane and is not checked; the other variant uses it.`
     : !variantNeeded() && !chActiveNets().has(net) ? (lane ? `Part of a ${esc(lane.kind === "ic-ic" || lane.kind === "ic-connector" ? lane.kind : "multi-drop or open")} line (${esc(lane.ends.map((e) => e.refdes).join(", ") || "no devices")}): listed in the overview, not checked.` : "No channel: the net has no target impedance (net class) and is on no lane.") : null;
@@ -307,7 +307,7 @@ function chActiveNets() {
   const set = new Set(), onLane = new Set();
   if (S.buses && S.an && !variantNeeded()) {
     for (const l of allLanes()) {
-      for (const n of [...l.nets, ...l.partner_nets]) { onLane.add(n); if (CHECKABLE.has(l.kind)) set.add(n); }
+      for (const n of [...l.nets, ...l.partner_nets]) { onLane.add(n); if (laneChecked(l)) set.add(n); }
     }
     for (const st of S.an.nets) {
       if (onLane.has(st.net) || netUnused(st.net) || !classTarget(st.net)) continue;
@@ -338,7 +338,7 @@ function checkItems() {
   const onLane = new Set();
   for (const l of allLanes()) {
     for (const n of [...l.nets, ...l.partner_nets]) onLane.add(n);
-    if (!CHECKABLE.has(l.kind)) continue;
+    if (!laneChecked(l)) continue;
     const net = laneNet(l), t = classTarget(net), p = laneProfile(l);
     out.push({ lane: l.nets[0], to: l.ends[l.ends.length - 1].refdes, reversed: laneReversed(l), laneKey: laneKey(l), net, gbps: p.rate_gbps, target: t ? [t.z, t.diff] : null, tx: p.tx, rx: p.rx, rise: p.tx.rise_ps * 1e-12, conn_end: laneConnEnd(l) });
   }
@@ -406,10 +406,10 @@ function renderCheck() {
   const stale = !!S.check && (S.check.gen !== S.anGen || S.check.stale);
   // 1 lanes and profiles (on loading; with variants after the choice)
   const ls = need || !S.buses ? [] : allLanes();
-  const nIc = ls.filter((l) => l.kind === "ic-ic").length, nCon = ls.filter((l) => l.kind === "ic-connector").length;
+  const nIc = ls.filter((l) => l.kind === "ic-ic").length, nCon = ls.filter((l) => l.kind === "ic-connector").length, nCc = ls.filter((l) => l.kind === "connector-connector").length, nMd = ls.filter((l) => l.kind === "multi-drop" && laneChecked(l)).length;
   $("cs1").classList.toggle("done", !need && !!S.buses);
   $("cs1-text").textContent = need ? "Choose the assembly variant (card above): lanes depend on the fitted parts."
-    : `${(S.buses || []).length} buses: ${nIc} lanes device to device, ${nCon} device to connector, ${ls.length - nIc - nCon} not checked (multi-drop, open). Profiles per net class (“Interfaces per net class”).${variantShown() ? ` Variant ${variantShown()}.` : ""}`;
+    : `${(S.buses || []).length} buses: ${nIc} lanes device to device, ${nCon} device to connector, ${nCc ? `${nCc} connector to connector, ` : ""}${nMd ? `${nMd} multi-drop, ` : ""}${ls.length - nIc - nCon - nCc - nMd} not checked (open, multi-drop trees). Profiles per net class (“Interfaces per net class”).${variantShown() ? ` Variant ${variantShown()}.` : ""}`;
   // 2 impedance estimate (the same as step 2 of the impedance view)
   $("cs2").classList.toggle("done", !skel);
   $("ck-est").hidden = !skel;

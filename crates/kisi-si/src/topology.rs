@@ -200,6 +200,9 @@ pub struct Lane {
     pub partner_branch_ends: Vec<String>,
     /// two ends if the lane is point to point; more for multi-drop, fewer if open
     pub ends: Vec<EndPin>,
+    /// multi-drop lines along one path: the receivers beyond `ends[0]` and `ends[1]` (pins
+    /// "U3.5", `ends[2..]`), reached through side stubs of the path – checked per receiver
+    pub taps: Vec<String>,
     /// "ic-ic", "ic-connector", "connector-connector", "multi-drop", "open"
     pub kind: String,
     /// index into `ends` of the receiving end (guess, see `direction`)
@@ -451,6 +454,7 @@ pub fn buses(board: &Board, an: &Analysis, cd: &ComponentData) -> Vec<Bus> {
         ends: Vec<EndPin>,
         kind: &'static str,
         has_target: bool,
+        taps: Vec<String>,
     }
     let mut seen: HashSet<u32> = HashSet::new();
     let mut chains: Vec<Chain> = Vec::new();
@@ -510,12 +514,15 @@ pub fn buses(board: &Board, an: &Analysis, cd: &ComponentData) -> Vec<Bus> {
             order.push(v);
         }
         let start_pin = e.iter().find(|p| p.net == first).cloned();
-        let (last_end, last_l) = e
-            .iter()
-            .rev()
-            .find(|p| p.net == cur && start_pin.as_ref().map_or(true, |s| s.refdes != p.refdes || s.pin != p.pin))
-            .map(|p| (p.at, p.layers))
-            .unwrap_or((entry, entry_l));
+        // the end of the path: of the pins on the last net, the one farthest along the copper
+        let cands: Vec<&EndPin> = e.iter().filter(|p| p.net == cur && start_pin.as_ref().map_or(true, |s| s.refdes != p.refdes || s.pin != p.pin)).collect();
+        let last_pin = if cands.len() > 1 {
+            let dist = crate::rf::copper_distances(board, an, cur, (entry, entry_l), &cands.iter().map(|p| (p.at, p.layers)).collect::<Vec<_>>());
+            cands.iter().zip(&dist).max_by(|a, b| a.1.unwrap_or(-1.0).total_cmp(&b.1.unwrap_or(-1.0))).map(|x| (*x.0).clone())
+        } else {
+            cands.first().map(|p| (*p).clone())
+        };
+        let (last_end, last_l) = last_pin.as_ref().map(|p| (p.at, p.layers)).unwrap_or((entry, entry_l));
         hops.push(Hop::Net { net: cur, from: entry, to: last_end, from_layers: entry_l, to_layers: last_l });
         if order.len() != comp.len() {
             simple = false;
@@ -534,7 +541,17 @@ pub fn buses(board: &Board, an: &Analysis, cd: &ComponentData) -> Vec<Bus> {
             }
         };
         let has_target = order.iter().any(|n| target_net.contains(n));
-        chains.push(Chain { order, hops, ends: e, kind, has_target });
+        // a multi-drop line along one path (no tree through series parts): the start and the end
+        // of the path first, the pins of other devices are taps (receivers on side stubs of the
+        // path); more pins of the devices at the ends are not receivers of their own
+        let mut taps = Vec::new();
+        if let (true, true, Some(sp), Some(lp)) = (simple, e.len() > 2, start_pin.as_ref(), last_pin.as_ref()) {
+            let same = |a: &EndPin, b: &EndPin| a.refdes == b.refdes && a.pin == b.pin;
+            let rest: Vec<EndPin> = e.iter().filter(|p| !same(p, sp) && !same(p, lp)).cloned().collect();
+            taps = rest.iter().filter(|p| p.refdes != sp.refdes && p.refdes != lp.refdes).map(|p| format!("{}.{}", p.refdes, p.pin)).collect();
+            e = std::iter::once(sp.clone()).chain(std::iter::once(lp.clone())).chain(rest).collect();
+        }
+        chains.push(Chain { order, hops, ends: e, kind, has_target, taps });
     }
     // pair chains of differential lines: a chain whose nets are partners of another
     // chain's nets (names ending in P/N or +/-, also inside "Net-(…+)" names)
@@ -590,6 +607,7 @@ pub fn buses(board: &Board, an: &Analysis, cd: &ComponentData) -> Vec<Bus> {
             partner_branches: vec![],
             partner_branch_ends: vec![],
             ends: c.ends.clone(),
+            taps: c.taps.clone(),
             kind: c.kind.to_string(),
             rx_end: 1,
             direction: String::new(),
@@ -814,12 +832,19 @@ fn name_lane(board: &Board, target_net: &HashSet<u32>, mut l: Lane) -> Lane {
     l
 }
 
-/// Lane kinds the channel check judges: IC to IC (with the eye), and lanes ending at a
+/// Lane kinds the check judges: IC to IC (with the eye), and lanes ending at a
 /// connector – IC to connector and connector to connector (coupons, pass-through boards) – on
-/// the board share only (loss, return loss, skew, TDR; no eye). Multi-drop and open lines are
-/// listed, not checked. Lanes exist only for nets with a target impedance (`buses`).
+/// the board share only (loss, return loss, skew, TDR; no eye). Open lines are listed, not
+/// checked; multi-drop lines only along one path (`checked`). Lanes exist only for nets with a
+/// target impedance (`buses`).
 pub fn checked_kind(kind: &str) -> bool {
     matches!(kind, "ic-ic" | "ic-connector" | "connector-connector")
+}
+
+/// Lanes the check judges: the kinds of `checked_kind`, and multi-drop lines along one path with
+/// their receivers on side stubs (`Lane::taps`) – the eye at every receiver, the worst counts.
+pub fn checked(lane: &Lane) -> bool {
+    checked_kind(&lane.kind) || (lane.kind == "multi-drop" && !lane.taps.is_empty())
 }
 
 /// Terminations (shunt resistors up to 200 Ω, to a supply or across the pair).
@@ -891,6 +916,7 @@ fn split_multidrop(l: Lane, route: &Route) -> Vec<Lane> {
     for (i, end) in others.iter().enumerate() {
         let Some((nets, hops)) = routes[i].clone() else { continue };
         let mut nl = l.clone();
+        nl.taps = vec![];
         nl.kind = if end.role == "ic" { "ic-ic" } else { "ic-connector" }.to_string();
         nl.ends = vec![ic.clone(), (*end).clone()];
         nl.nets = nets;
@@ -1069,6 +1095,8 @@ struct HopCtx<'c> {
     conts: Vec<(String, Vec<Hop>, String)>,
     used: Vec<bool>,
     notes: Vec<String>,
+    /// receivers on side stubs (multi-drop): pins "U3.5"
+    taps: HashSet<String>,
 }
 
 /// Add the copper and parts of `hops` to the build. Shunts on these nets are placed at the
@@ -1093,8 +1121,9 @@ fn add_hops(b: &mut Build, board: &Board, an: &Analysis, hops: &[Hop], shunts: &
                     })
                     .collect();
                 // side stubs: (piece index, after the via in front of that piece?, label, channel,
-                // the same stub in the odd mode for a line of a pair's 4-port)
-                let mut stubs: Vec<(usize, bool, String, Channel, Option<Channel>)> = Vec::new();
+                // the same stub in the odd mode for a line of a pair's 4-port, the receiver at its
+                // end for a tap of a multi-drop line)
+                let mut stubs: Vec<(usize, bool, String, Channel, Option<Channel>, Option<String>)> = Vec::new();
                 let mut at_stub_end: HashSet<String> = HashSet::new();
                 let mut short = 0usize;
                 for br in &info.branches {
@@ -1103,7 +1132,8 @@ fn add_hops(b: &mut Build, board: &Board, an: &Analysis, hops: &[Hop], shunts: &
                     let cont = ctx.conts.iter().enumerate().position(|(i, c)| !ctx.used[i] && c.0 == refdes);
                     let shunt = shunts.iter().find(|s| s.net == *net && s.part.refdes == refdes && !at_stub_end.contains(&refdes));
                     let unfitted = fp.is_some_and(|i| board.footprints[i].dnp);
-                    if !(br.modelled || cont.is_some() || unfitted || shunt.is_some()) {
+                    let tap = (br.end.kind == "pad" && ctx.taps.contains(&br.end.label)).then(|| br.end.label.clone());
+                    if !(br.modelled || cont.is_some() || unfitted || shunt.is_some() || tap.is_some()) {
                         short += 1;
                         continue;
                     }
@@ -1175,8 +1205,8 @@ fn add_hops(b: &mut Build, board: &Board, an: &Analysis, hops: &[Hop], shunts: &
                         1 => " and a via".to_string(),
                         n => format!(" and {n} vias"),
                     };
-                    let label = format!("{} {:.1} mm{via} to {what}", if cont.is_some() { "branch" } else { "stub" }, br.len_mm);
-                    stubs.push((k, after_via, label, ch, odd));
+                    let label = format!("{} {:.1} mm{via} to {what}{}", if cont.is_some() { "branch" } else { "stub" }, br.len_mm, if tap.is_some() { " (receiver)" } else { "" });
+                    stubs.push((k, after_via, label, ch, odd, tap));
                 }
                 if !stubs.is_empty() || short > 0 {
                     let mut w = format!("{} branches: {} side stub(s) included as open stubs", board.net_name(*net), stubs.len());
@@ -1198,8 +1228,14 @@ fn add_hops(b: &mut Build, board: &Board, an: &Analysis, hops: &[Hop], shunts: &
                 for lp in before {
                     b.add_part(lp);
                 }
-                for (_, _, label, ch, odd) in stubs.iter().filter(|s| s.0 == 0 && !s.1) {
+                let add = |b: &mut Build, label: &String, ch: &Channel, odd: &Option<Channel>, tap: &Option<String>| {
                     b.add_branch_pair(label.clone(), ch, odd.as_ref());
+                    if let Some(t) = tap {
+                        b.mark_tap(t.clone());
+                    }
+                };
+                for (_, _, label, ch, odd, tap) in stubs.iter().filter(|s| s.0 == 0 && !s.1) {
+                    add(b, label, ch, odd, tap);
                 }
                 let mut k = 0usize;
                 b.add_path_cuts(
@@ -1208,14 +1244,14 @@ fn add_hops(b: &mut Build, board: &Board, an: &Analysis, hops: &[Hop], shunts: &
                     None,
                     &cuts,
                     |b, step| {
-                        for (_, _, label, ch, odd) in stubs.iter().filter(|s| s.1 && s.0 == step) {
-                            b.add_branch_pair(label.clone(), ch, odd.as_ref());
+                        for (_, _, label, ch, odd, tap) in stubs.iter().filter(|s| s.1 && s.0 == step) {
+                            add(b, label, ch, odd, tap);
                         }
                     },
                     |b, _| {
                         k += 1;
-                        for (_, _, label, ch, odd) in stubs.iter().filter(|s| !s.1 && s.0 == k) {
-                            b.add_branch_pair(label.clone(), ch, odd.as_ref());
+                        for (_, _, label, ch, odd, tap) in stubs.iter().filter(|s| !s.1 && s.0 == k) {
+                            add(b, label, ch, odd, tap);
                         }
                     },
                 );
@@ -1239,6 +1275,8 @@ struct LineSpec<'l> {
     branch_ends: &'l [String],
     /// device at the lane's first end (where a branch without a junction on the copper hangs)
     end0: &'l str,
+    /// receivers on side stubs (multi-drop)
+    taps: HashSet<String>,
 }
 
 impl Lane {
@@ -1264,7 +1302,8 @@ impl Lane {
             }
         }
         let (branches, branch_ends) = if partner { (&self.partner_branches, &self.partner_branch_ends) } else { (&self.branches, &self.branch_ends) };
-        LineSpec { hops, shunts, branches, branch_ends, end0: self.ends.first().map(|e| e.refdes.as_str()).unwrap_or("") }
+        let taps = if partner { HashSet::new() } else { self.taps.iter().cloned().collect() };
+        LineSpec { hops, shunts, branches, branch_ends, end0: self.ends.first().map(|e| e.refdes.as_str()).unwrap_or(""), taps }
     }
 }
 
@@ -1289,14 +1328,14 @@ fn line_build<'a>(board: &'a Board, an: &'a Analysis, spec: &LineSpec, field: &'
         .collect();
     let build = |skip: &HashSet<usize>| -> Result<(Build<'a>, Vec<usize>), String> {
         let mine: Vec<&(usize, String, Vec<Hop>, String)> = conts.iter().filter(|c| !skip.contains(&c.0)).collect();
-        let mut ctx = HopCtx { cd, esr, target, conts: mine.iter().map(|c| (c.1.clone(), c.2.clone(), c.3.clone())).collect(), used: vec![false; mine.len()], notes: vec![] };
+        let mut ctx = HopCtx { cd, esr, target, conts: mine.iter().map(|c| (c.1.clone(), c.2.clone(), c.3.clone())).collect(), used: vec![false; mine.len()], notes: vec![], taps: spec.taps.clone() };
         let mut fixed: Vec<Channel> = Vec::new();
         for (i, bh) in spec.branches.iter().enumerate() {
             if conts.iter().any(|c| c.0 == i) && !skip.contains(&i) {
                 continue;
             }
             let mut bb = Build::new(board, an, field, rp, diff);
-            add_hops(&mut bb, board, an, bh, shunts, &mut HopCtx { cd, esr, target, conts: vec![], used: vec![], notes: vec![] })?;
+            add_hops(&mut bb, board, an, bh, shunts, &mut HopCtx { cd, esr, target, conts: vec![], used: vec![], notes: vec![], taps: HashSet::new() })?;
             fixed.push(bb.finish(0, "branch".into(), None, target));
         }
         let label = |c: &Channel| format!("open branch {:.1} mm", c.length_mm);
@@ -1378,6 +1417,9 @@ pub struct LaneEval {
     /// pairs with the 4-port: mode conversion Scd21 per frequency (dB, differential in at the
     /// transmitter, common mode out at the receiver)
     pub scd21_db: Option<Vec<f64>>,
+    /// multi-drop lines: the eye at every receiver, the lane's own receiver first (`eye` is the
+    /// worst of them)
+    pub receivers: Vec<crate::eye::RxEye>,
 }
 
 /// Evaluate a lane. `reversed`: transmit from `ends[1]` to `ends[0]` (use
@@ -1405,14 +1447,20 @@ pub fn lane_eval(
     rest_ts: Option<&crate::rf::Touchstone>,
     cd: &ComponentData,
 ) -> Result<LaneEval, String> {
-    use crate::lanenet::{apply_pair, ends_transfer, rest_block, Block};
+    use crate::lanenet::{apply_pair, receivers_transfer, rest_block, Block};
     let mut ch = lane_channel(board, an, lane, field, target, rp, reversed, false, cd)?;
     let none = HashSet::new();
     let (mut model, mut scd21_db, mut pair) = (if ch.diff { "odd mode" } else { "single-ended" }, None, None);
+    if !ch.diff {
+        let s2: Vec<Vec<crate::rf::Cx>> = (0..ch.freq.len()).map(|k| vec![ch.s11[k], ch.s21[k], ch.s21[k], ch.s22[k]]).collect();
+        ch.warnings.extend(crate::lanenet::passivity_check(&ch.freq, &s2, 2));
+    }
     if ch.diff {
         match lane_pair(board, an, lane, field, target, rp, reversed, false, &none, cd) {
             Ok(p) => {
                 let mm = p.mixed();
+                let s4: Vec<Vec<crate::rf::Cx>> = p.t.iter().map(|t| crate::rf::s_of(t, p.z_ref).iter().flatten().copied().collect()).collect();
+                ch.warnings.extend(crate::lanenet::passivity_check(&ch.freq, &s4, 4));
                 apply_pair(&mut ch, &mm, rp.rise);
                 scd21_db = Some(mm.iter().map(|m| 20.0 * m[3][0].abs().max(1e-12).log10()).collect());
                 for w in &p.warnings {
@@ -1426,8 +1474,14 @@ pub fn lane_eval(
             Err(e) => ch.warnings.push(format!("pair computed in the odd mode (2-port): {e}")),
         }
     }
-    let mut out = LaneEval { ch, eye: None, rx_used: None, rx_note: None, tx_used: None, end_note: None, rest_applied: false, skew: None, model, scd21_db };
-    if let (Some((bitrate, rise, prbs, mut tx, mut rx)), true) = (eye, matches!(lane.kind.as_str(), "ic-ic" | "ic-connector")) {
+    // multi-drop: receivers that are not on a side stub of the path do not load it
+    let missing: Vec<&str> = lane.taps.iter().filter(|t| !ch.taps.iter().any(|c| &c.label == *t)).map(|t| t.as_str()).collect();
+    if !missing.is_empty() {
+        ch.warnings.push(format!("receiver(s) {} not found on a side stub of the path: not loading the line", missing.join(", ")));
+    }
+    let mut out = LaneEval { ch, eye: None, rx_used: None, rx_note: None, tx_used: None, end_note: None, rest_applied: false, skew: None, model, scd21_db, receivers: vec![] };
+    let with_eye = matches!(lane.kind.as_str(), "ic-ic" | "ic-connector") || (lane.kind == "multi-drop" && !lane.taps.is_empty());
+    if let (Some((bitrate, rise, prbs, mut tx, mut rx)), true) = (eye, with_eye) {
         let rx_end = if reversed { 0 } else { 1 };
         // a lane ending at a connector: the rest of the channel is off the board; the eye
         // uses the connector end model in place of the receiver or the transmitter there
@@ -1498,11 +1552,11 @@ pub fn lane_eval(
         let board_block: Result<Block, String> = match (&pair, others) {
             (Some(p), false) => Ok(p.block()),
             (Some(_), true) => lane_pair(board, an, lane, field, target, rp, reversed, true, &drop, cd).map(|p| p.block()),
-            (None, false) => Ok(Block::Two { m: out.ch.abcd.clone(), dc: out.ch.abcd_dc }),
+            (None, false) => Ok(line_block(&out.ch)),
             (None, true) => {
                 let mut l2 = lane.clone();
                 l2.shunts.retain(|s| !drop.contains(&s.part.refdes));
-                lane_channel(board, an, &l2, field, target, rp, reversed, true, cd).map(|c| Block::Two { m: c.abcd, dc: c.abcd_dc })
+                lane_channel(board, an, &l2, field, target, rp, reversed, true, cd).map(|c| line_block(&c))
             }
         };
         // the channel behind the connector (a Touchstone file or a simple lossy line), on the
@@ -1543,9 +1597,29 @@ pub fn lane_eval(
         let (txm, rxm) = (tx.unwrap_or(d), rx_model.unwrap_or(d));
         let ep = crate::eye::EyeParams { bitrate, rise, prbs, tx, rx: rx_model, ..Default::default() };
         let delay = out.ch.delay_ps;
-        out.eye = Some(blocks.and_then(|bl| {
-            let (h, dc) = ends_transfer(&freq, &bl, lines, &txm, &rxm)?;
-            crate::eye::eye_of(&freq, &h, Some(dc), delay, &ep)
+        // every receiver (multi-drop: the taps as well, all loading the line); the eye of the lane
+        // is the worst one
+        let k_nyq = ((bitrate / 2.0 / freq[0]).round() as usize).clamp(1, freq.len()) - 1;
+        let rx_pin = format!("{}.{}", lane.ends[rx_end].refdes, lane.ends[rx_end].pin);
+        let res: Result<Vec<(String, crate::eye::Eye, f64)>, String> = blocks.and_then(|bl| {
+            receivers_transfer(&freq, &bl, lines, &txm, &rxm)?
+                .into_iter()
+                .map(|r| {
+                    let g = 20.0 * r.h[k_nyq].abs().max(1e-12).log10();
+                    crate::eye::eye_of(&freq, &r.h, Some(r.dc), delay, &ep).map(|e| (if r.label.is_empty() { rx_pin.clone() } else { r.label }, e, g))
+                })
+                .collect()
+        });
+        out.eye = Some(res.map(|all| {
+            if all.len() > 1 {
+                out.receivers = all.iter().map(|(pin, e, g)| crate::eye::RxEye { pin: pin.clone(), eye_height: e.height, eye_width_ui: e.width_ps / e.ui_ps, gain_nyq_db: *g }).collect();
+            }
+            let worst = all.into_iter().min_by(|a, b| a.1.height.total_cmp(&b.1.height)).unwrap();
+            let mut e = worst.1;
+            if !out.receivers.is_empty() {
+                e.warnings.insert(0, format!("eye at {} – the worst of {} receivers", worst.0, out.receivers.len()));
+            }
+            e
         }));
     }
     if out.ch.diff && !lane.partner_hops.is_empty() {
@@ -1558,6 +1632,16 @@ pub fn lane_eval(
         }
     }
     Ok(out)
+}
+
+/// The board's block of a single line: the cascade, or with receivers on side stubs the path in
+/// pieces with the stubs (multi-drop).
+fn line_block(c: &Channel) -> crate::lanenet::Block {
+    if c.taps.is_empty() {
+        crate::lanenet::Block::Two { m: c.abcd.clone(), dc: c.abcd_dc }
+    } else {
+        crate::lanenet::Block::Line { pieces: c.pieces.clone(), taps: c.taps.clone() }
+    }
 }
 
 /// Channel check of one lane: loss, return loss, stubs, skew and the eye – from IC to IC with
@@ -1590,6 +1674,7 @@ pub fn check_lane(
             crate::eye::fill_row(&mut row, &ev.ch, gbps, rise.unwrap_or(rp.rise), (ev.tx_used.or(tx), ev.rx_used.or(rx)), false);
             row.model = ev.model;
             row.mode_conversion_db = ev.scd21_db.as_ref().map(|c| crate::eye::worst_up_to(&ev.ch.freq, c, 1.5 * gbps * 0.5e9));
+            row.receivers = ev.receivers.clone();
             match ev.eye {
                 Some(Ok(e)) => {
                     row.eye = true;
@@ -1917,6 +2002,50 @@ mod tests {
         }
         // the jog costs eye height in the 4-port (part of the signal goes to the common mode)
         assert!(results[1].2 < results[0].2, "{results:?}");
+    }
+
+    /// A multi-drop line: U1 drives U2 at the end of a 40 mm line and U3 on a 5 mm stub at 20 mm.
+    /// The lane is checked per receiver: the stub is a tap with the receiver at its end, the eye is
+    /// the worst of the two, and the loaded tap takes signal from the main receiver.
+    #[test]
+    fn multi_drop_per_receiver() {
+        let board = line_board(
+            r#"  (footprint "U" (layer "F.Cu") (at 40 0) (property "Reference" "U2") (property "Value" "RX") (attr smd)
+    (pad "1" smd rect (at 0 0) (size 0.6 0.35) (layers "F.Cu") (net 1 "SIG")))
+  (footprint "U" (layer "F.Cu") (at 20 5) (property "Reference" "U3") (property "Value" "RX") (attr smd)
+    (pad "1" smd rect (at 0 0) (size 0.6 0.35) (layers "F.Cu") (net 1 "SIG")))
+"#,
+            "  (segment (start 0 0) (end 20 0) (width 0.35) (layer \"F.Cu\") (net 1))\n  (segment (start 20 0) (end 40 0) (width 0.35) (layer \"F.Cu\") (net 1))\n  (segment (start 20 0) (end 20 5) (width 0.35) (layer \"F.Cu\") (net 1))\n",
+        );
+        // U1 instead of the connector J1 at the start
+        let mut board = board;
+        board.footprints[0].reference = "U1".into();
+        let cd = ComponentData::builtin();
+        let (an, lanes) = lanes_of(&board);
+        let l = lanes.iter().find(|l| l.kind == "multi-drop").expect("multi-drop lane");
+        let names: Vec<&str> = l.ends.iter().map(|e| e.refdes.as_str()).collect();
+        assert_eq!(names, vec!["U1", "U2", "U3"], "transmitter, end of the path, tap");
+        assert_eq!(l.taps, vec!["U3.1".to_string()]);
+        assert!(checked(l));
+        let rp = RfParams { fmax: 15e9, npts: 300, ..RfParams::default() };
+        let end = Some(crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.0 });
+        let target = Some((50.0, false));
+        let ev = lane_eval(&board, &an, &HashMap::new(), l, target, &rp, Some((2e9, 100e-12, 7, end, end)), false, None, None, &cd).unwrap();
+        assert_eq!(ev.ch.taps.len(), 1);
+        assert!(ev.ch.segments.iter().any(|s| s.kind == "branch" && s.part.as_deref().is_some_and(|p| p.ends_with("to U3.1 (receiver)"))), "{:?}", ev.ch.segments);
+        let pins: Vec<&str> = ev.receivers.iter().map(|r| r.pin.as_str()).collect();
+        assert_eq!(pins, vec!["U2.1", "U3.1"]);
+        let eye = ev.eye.unwrap().unwrap();
+        let worst = ev.receivers.iter().map(|r| r.eye_height).fold(f64::INFINITY, f64::min);
+        assert!((eye.height - worst).abs() < 1e-12 && eye.warnings[0].starts_with("eye at "), "{:?}", eye.warnings);
+        // the same line with the stub open (the interconnect's cascade): the main receiver sees more
+        let open = crate::eye::eye(&ev.ch, &crate::eye::EyeParams { bitrate: 2e9, rise: 100e-12, tx: end, rx: end, ..Default::default() }).unwrap();
+        eprintln!("receivers {:?}, open stub {:.3}", ev.receivers, open.height);
+        assert!(ev.receivers[0].eye_height < open.height - 0.05, "{} vs {}", ev.receivers[0].eye_height, open.height);
+        // the check row carries every receiver
+        let row = check_lane(&board, &an, &HashMap::new(), l, target, &rp, 2.0, (end, end, Some(100e-12)), false, None, None, &cd);
+        assert_eq!(row.receivers.len(), 2);
+        assert!((row.eye_height - worst).abs() < 1e-9);
     }
 
     #[test]

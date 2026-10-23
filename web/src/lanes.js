@@ -11,6 +11,9 @@ const laneKey = (l) => `${l.nets[0]}>${l.ends.length ? l.ends[l.ends.length - 1]
 // lane kinds the check judges (kisi_si::topology::checked_kind): connector to connector (coupons,
 // pass-through boards) like device to connector, on the board share
 const CHECKABLE = new Set(["ic-ic", "ic-connector", "connector-connector"]);
+// lanes the check judges (kisi_si::topology::checked): also multi-drop lines along one path with
+// receivers on side stubs (the eye at every receiver)
+const laneChecked = (l) => CHECKABLE.has(l.kind) || (l.kind === "multi-drop" && (l.taps || []).length > 0);
 function laneSwaps() {
   if (!S.laneSw || S.laneSw.board !== S.name) S.laneSw = { board: S.name, map: lsGet(laneSwapKey()) || {} };
   return S.laneSw.map;
@@ -23,7 +26,7 @@ function laneRx(l) { return l.ends[laneReversed(l) ? 0 : 1]; }
 function laneOfNet(net) {
   if (!S.buses) return null;
   const ls = allLanes().filter((l) => l.nets.includes(net) || l.partner_nets.includes(net));
-  return ls.find((l) => CHECKABLE.has(l.kind)) || ls[0] || null;
+  return ls.find(laneChecked) || ls[0] || null;
 }
 // the net that carries the target impedance (for profile and target): the one the lane is
 // named after (its own path), else its first net with a target
@@ -102,15 +105,16 @@ const KIND_TITLE = {
   "ic-ic": ["Device to device", "transmitter and receiver on this board: eye, loss, return loss, skew"],
   "ic-connector": ["Device to connector", "the channel continues off the board: loss, return loss and skew of the board share; the eye (grey) with the termination or driver at the connector – information"],
   "connector-connector": ["Connector to connector", "the board between two connectors (coupons, pass-through): loss, return loss and skew of the board share, no eye"],
-  other: ["Multi-drop and open lines", "more than two devices on one line or no second device: listed, not checked"],
+  "multi-drop": ["Multi-drop", "one transmitter, more receivers on side stubs of the line: the eye at every receiver (the worst counts), loss and return loss of the line"],
+  other: ["Open and other multi-drop lines", "no second device, or devices on a tree through series parts: listed, not checked"],
 };
 function renderChOverview() {
   const box = $("ch-overview");
   if (variantNeeded()) { box.innerHTML = variantPrompt(); bindVariantButtons(box); return; }
   if (!S.buses) { box.innerHTML = ""; return; }
-  const groups = { "ic-ic": [], "ic-connector": [], "connector-connector": [], other: [] };
+  const groups = { "ic-ic": [], "ic-connector": [], "connector-connector": [], "multi-drop": [], other: [] };
   for (const b of S.buses) {
-    const k = CHECKABLE.has(b.kind) ? b.kind : "other";
+    const k = CHECKABLE.has(b.kind) ? b.kind : b.lanes.some(laneChecked) ? "multi-drop" : "other";
     groups[k].push(b);
   }
   const nl = (k) => groups[k].reduce((a, b) => a + b.lanes.length, 0);
@@ -128,7 +132,7 @@ function renderChOverview() {
     const oneDir = l0.ends.length === 2 && b.lanes.every((l) => l.ends.length === 2 && laneTx(l).refdes === tx.refdes);
     const dir = oneDir ? `${esc(tx.refdes)} <span class="muted">${esc(tx.value)}</span> → ${esc(rx.refdes)} <span class="muted">${esc(rx.value)}</span>`
       : b.devices.map((d, i) => `${esc(d)} <span class="muted">${esc(b.values[i] || "")}</span>`).join(" ↔ ") + (l0.ends.length === 2 ? ' <span class="muted">· direction per lane</span>' : "");
-    const checkable = CHECKABLE.has(b.kind);
+    const checkable = CHECKABLE.has(b.kind) || b.lanes.some(laneChecked);
     // lanes ending at a connector: what sits there (termination / driver) and the channel behind it
     const refs = new Map();
     for (const l of b.lanes) {
@@ -160,10 +164,11 @@ function renderChOverview() {
       ${kpi(nl("ic-ic"), "device to device")}
       ${kpi(nl("ic-connector"), "device to connector")}
       ${nl("connector-connector") ? kpi(nl("connector-connector"), "connector to connector") : ""}
+      ${nl("multi-drop") ? kpi(nl("multi-drop"), "multi-drop") : ""}
       ${kpi(nl("other"), "not checked")}
       ${kpi(res ? `<span style="color:${S.colors.ok}">${counts.ok}</span> / <span style="color:${S.colors.high1}">${counts.high1}</span> / <span style="color:${S.colors.high2}">${counts.high2}</span>` : "–", res ? `lanes green / yellow / red${stale ? " · outdated" : ""}` : "after the check (card “Channel check”)")}
     </div>
-    ${section("ic-ic")}${section("ic-connector")}${section("connector-connector")}${section("other")}`;
+    ${section("ic-ic")}${section("ic-connector")}${section("connector-connector")}${section("multi-drop")}${section("other")}`;
   box.querySelectorAll("tr[data-lane]").forEach((tr) => tr.onclick = () => {
     const l = allLanes().find((x) => laneKey(x) === tr.dataset.lane);
     if (!l) return;
@@ -198,6 +203,7 @@ function renderLaneDetail(l) {
     <div class="dstats muted"><span>Transmitter ${esc(tx?.refdes || "")}: ${(() => { const m = r.tx_used || p.tx; return `${m.r > 0 ? fmt(m.r, 0) + " Ω" : "ideal source"}${m.c_pf ? ", " + fmt(m.c_pf, 1) + " pF" : ""}`; })()}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span>
       <span>Receiver ${esc(rx?.refdes || "")}: ${(() => { const m = r.rx_used || p.rx; return `${m.r > 0 ? fmt(m.r, 0) + " Ω" : "high impedance"}${m.c_pf ? ", " + fmt(m.c_pf, 1) + " pF" : ""}`; })()}</span><span>per line</span></div>
     ${r.rx_note || r.end_note ? `<div class="dstats muted">${r.end_note ? `<span>${esc(r.end_note)} – set in the interface's card of the overview</span>` : ""}${r.rx_note ? `<span>${esc(r.rx_note)}</span>` : ""}</div>` : ""}
+    ${(r.receivers || []).length ? `<div class="dstats"><span>Receivers (all loading the line):</span>${r.receivers.map((x) => `<span>${esc(x.pin)} eye <b>${fmt(x.eye_height * 100, 0)} %</b>, ${fmt(x.gain_nyq_db, 1)} dB at Nyquist</span>`).join("")}</div>` : ""}
     <div class="tabs" role="tablist" aria-label="Lane">${tabs.map(([k, n]) => `<button role="tab" data-ct="${k}" aria-selected="${t === k}">${n}</button>`).join("")}</div>
     <div id="ch-body"></div>`;
   d.hidden = false;

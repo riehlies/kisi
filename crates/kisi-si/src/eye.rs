@@ -471,6 +471,8 @@ pub(crate) mod tests_support {
             s22: vec![Cx::new(0.0, 0.0); freq.len()],
             abcd: vec![],
             abcd_dc: Abcd::identity(),
+            taps: vec![],
+            pieces: vec![],
             freq,
         }
     }
@@ -568,6 +570,20 @@ pub struct CheckRow {
     pub model: &'static str,
     /// pairs with the 4-port: worst mode conversion Scd21 up to 1.5 × Nyquist (dB); information
     pub mode_conversion_db: Option<f64>,
+    /// multi-drop: the eye at every receiver (the row's eye is the worst)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub receivers: Vec<RxEye>,
+}
+
+/// The eye at one receiver of a multi-drop line.
+#[derive(Debug, Clone, Serialize)]
+pub struct RxEye {
+    /// the receiver's pin, e.g. "U3.5"
+    pub pin: String,
+    pub eye_height: f64,
+    pub eye_width_ui: f64,
+    /// |H| at Nyquist between the ends (dB, 0 dB = the full swing at the receiver)
+    pub gain_nyq_db: f64,
 }
 
 /// Largest value of `curve` (on `freq`) up to `f_hi`.
@@ -599,6 +615,7 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
         stubs: vec![],
         model: "single-ended",
         mode_conversion_db: None,
+        receivers: vec![],
     }
 }
 

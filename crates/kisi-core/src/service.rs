@@ -463,11 +463,12 @@ fn lane_net(p: &Project, l: &topology::Lane) -> u32 {
 
 fn lane_json(p: &Project, l: &topology::Lane) -> Value {
     let rev = l.rx_end == 0;
-    let (tx, rx) = if l.ends.len() == 2 { (Some(&l.ends[if rev { 1 } else { 0 }]), Some(&l.ends[if rev { 0 } else { 1 }])) } else { (None, None) };
+    let (tx, rx) = if l.ends.len() == 2 || (l.ends.len() > 2 && !l.taps.is_empty()) { (Some(&l.ends[if rev { 1 } else { 0 }]), Some(&l.ends[if rev { 0 } else { 1 }])) } else { (None, None) };
     json!({
         "lane": l.name, "kind": l.kind, "diff": l.diff,
         "from": tx.map(pin), "to": rx.map(pin), "direction": l.direction,
         "ends": l.ends.iter().map(pin).collect::<Vec<_>>(),
+        "receivers_on_stubs": l.taps,
         "nets": l.nets.iter().map(|&n| p.board.net_name(n)).collect::<Vec<_>>(),
         "series_parts": l.hops.iter().filter_map(|h| match h { topology::Hop::Series { part } => Some(format!("{} {} ({})", part.refdes, part.value, part.package)), _ => None }).collect::<Vec<_>>(),
         "terminations": l.shunts.iter().map(|s| format!("{} {} {}", s.part.refdes, s.part.value, if s.across { "across the pair".to_string() } else { format!("to {}", p.board.net_name(s.to)) })).collect::<Vec<_>>(),
@@ -499,7 +500,7 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
         "buses": list,
         "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop along one path (the first two ends are transmitter and receiver at the ends of the path, the other devices receivers on side stubs: the eye at every receiver, the worst counts), open lines and multi-drop trees through series parts (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
     })
 }
 
@@ -528,7 +529,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
     for b in &buses {
         for l in &b.lanes {
             on_lane.extend(l.nets.iter().chain(&l.partner_nets).copied());
-            if !topology::checked_kind(&l.kind) {
+            if !topology::checked(l) {
                 continue;
             }
             if !wanted(&mut l.nets.iter().map(|&n| p.board.net_name(n))) {
@@ -584,6 +585,9 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             }
             j["stubs"] = json!(row.stubs);
             j["model"] = json!(row.model);
+            if !row.receivers.is_empty() {
+                j["receivers"] = json!(row.receivers);
+            }
             if let Some(mc) = row.mode_conversion_db {
                 j["mode_conversion_db"] = json!(mc);
             }

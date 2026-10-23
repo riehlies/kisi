@@ -143,7 +143,11 @@ pub fn parse_touchstone(text: &str, name: &str) -> Result<Touchstone, String> {
         warnings.push(format!("{} numbers at the end ignored", nums.len() - i));
     }
     let z0 = if refs.len() >= n { refs[..n].to_vec() } else { vec![r0; n] };
-    Ok(Touchstone { name: name.to_string(), nports: n, z0, freq, s, warnings })
+    let mut ts = Touchstone { name: name.to_string(), nports: n, z0, freq, s, warnings };
+    if let Some(w) = ts.passivity_note() {
+        ts.warnings.push(w);
+    }
+    Ok(ts)
 }
 
 /// Interpolation of one S-parameter over frequency: linear in magnitude and in the unwrapped
@@ -289,6 +293,13 @@ impl Touchstone {
         notes
     }
 
+    /// Passivity of the file's data: None when every S-matrix has singular values ≤ 1 (+ 0.1 %
+    /// for measurement noise), else a note with the worst value and its frequency.
+    pub fn passivity_note(&self) -> Option<String> {
+        let (worst, k) = super::passivity(&self.s, self.nports);
+        (worst > 1.001).then(|| format!("{}: not passive – largest singular value of S {:.3} at {:.2} GHz (measurement noise or a bad de-embedding); results with it are doubtful", self.name, worst, self.freq[k] / 1e9))
+    }
+
     /// Short description for the viewer and the CLI.
     pub fn summary(&self) -> serde_json::Value {
         serde_json::json!({"name": self.name, "nports": self.nports, "points": self.freq.len(),
@@ -367,5 +378,9 @@ mod tests {
         let ts = parse_touchstone(v2, "v2.ts").unwrap();
         // 12_21: the second pair is S12
         assert!((ts.s[0][1].re - 0.1).abs() < 1e-12 && (ts.s[0][2].re - 0.9).abs() < 1e-12);
+        assert!(ts.passivity_note().is_none());
+        // gain: not passive, named in the warnings
+        let gain = parse_touchstone("# GHz S MA R 50\n1 0 0 1.1 0 1.1 0 0 0\n2 0 0 0.9 0 0.9 0 0 0\n", "amp.s2p").unwrap();
+        assert!(gain.warnings.iter().any(|w| w.contains("not passive") && w.contains("1.100 at 1.00 GHz")), "{:?}", gain.warnings);
     }
 }

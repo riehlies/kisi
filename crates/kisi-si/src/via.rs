@@ -576,6 +576,9 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
         let s21: Vec<String> = [2e9, 4e9, 8e9, 12e9, 16e9].iter().map(|&f| format!("{:.2}", 20.0 * m.abcd(f).s_params(50.0).1.abs().log10())).collect();
         eprintln!("# ladder build {:.2} ms, {} Laplace unknowns, nodes {:?}, C fF {:?}, |S21| dB at 2/4/8/12/16 GHz {}", t0.elapsed().as_secs_f64() * 1e3, m.laplace_n,
             m.nodes, m.cap.iter().map(|c| (c * 1e16).round() / 10.0).collect::<Vec<_>>(), s21.join(" "));
+        if m.has_floats() {
+            eprintln!("# return nodes (plane z mm, C fF) {:?}", m.return_nodes().iter().map(|&(z, c)| (z, (c * 1e16).round() / 10.0)).collect::<Vec<_>>());
+        }
     }
     Some(m)
 }

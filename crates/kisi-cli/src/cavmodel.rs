@@ -218,7 +218,11 @@ pub fn run(args: &[String]) {
     let leakage: Vec<Value> = [2e9, 5e9, 10e9, 20e9].iter().map(|&fl| json!({"ghz": fl / 1e9, "pairs": m0.pair_leakage(fl).iter().map(|l| json!([l.0, l.1, l.2])).collect::<Vec<_>>()})).collect();
     let s0: Vec<[Cx; 4]> = f.iter().map(|&fk| s_of(&m0.abcd(fk), 50.0)).collect();
     write_s2p(&out.join(format!("ladder_inf{suffix}.s2p")), &format!("{cid}: kisi's ladder, infinite plates{} ({title})", if returns { ", return groups" } else { "" }), &f, &s0, 50.0);
-    timing.insert("infinite".into(), json!({"ms": t0.elapsed().as_secs_f64() * 1e3, "floating_pairs": m0.floating_pairs().0, "segments": m0.floating_pairs().1}));
+    timing.insert(
+        "infinite".into(),
+        json!({"ms": t0.elapsed().as_secs_f64() * 1e3, "return_pairs": m0.floating_pairs().0, "return_spans": m0.floating_pairs().1,
+            "return_nodes_z_mm_c_ff": m0.return_nodes().iter().map(|&(z, c)| json!([z, (c * 1e16).round() / 10.0])).collect::<Vec<_>>()}),
+    );
     // the cavity environments of every pair
     let outline: Option<Vec<[f64; 2]>> = meta["plane_outline"].as_array().map(|r| r.iter().map(|p| [num(&p[0]) - bx[0], num(&p[1]) - bx[1]]).collect());
     // the region (outline or board) for the edge radiation

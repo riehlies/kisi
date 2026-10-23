@@ -1575,6 +1575,11 @@ impl PbmVia {
         self.groups.iter().any(|g| !g.loads.is_empty()) || self.pairs.iter().any(|p| !p.loads.is_empty())
     }
 
+    /// the nodes of the return ladders: (plane height mm, the return's capacitance to it F)
+    pub fn return_nodes(&self) -> Vec<(f64, f64)> {
+        self.rnodes.iter().map(|&(_, z, c)| (z, c)).collect()
+    }
+
     /// whether some plane pair has floating returns (return groups)
     pub fn has_floats(&self) -> bool {
         !self.pairs.is_empty()

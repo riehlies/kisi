@@ -12,8 +12,11 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 * uses the embedded example boards if the build has them, else --board; on a board without impedance
   targets the steps that need such nets (net detail, couplings, field solver run) are skipped
 * --config: a <board>.kisi.json, loaded with --board (else dropped at the end); expects "check passed"
-* power views: no "0.000"-style values (texts, load fields, tooltips); losses labels at a constant
-  screen size without overlaps; in the light run also for the other example boards of the build
+* power views: no "0.000"-style values (texts, load fields, tooltips); the board labels of the voltage drop,
+  current density, losses and temperature maps at a constant screen size without overlaps; in the light run
+  also for the other example boards of the build
+* board text: every text on the board canvas (labels, A/B marks, PDN parts) is drawn on a screen-space
+  transform (drawBoardLabels), none in board units
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
@@ -32,6 +35,28 @@ os.makedirs(out, exist_ok=True)
 url = "file://" + os.path.abspath(a.html)
 BUSY = "document.getElementById('busy').hidden === true"
 problems, notes = [], []
+# records every text drawn on the board canvas with the transform's scale (window.__boardText)
+TEXT_SPY = """(() => {
+  window.__boardText = [];
+  for (const k of ["fillText", "strokeText"]) {
+    const fn = CanvasRenderingContext2D.prototype[k];
+    CanvasRenderingContext2D.prototype[k] = function (t, ...rest) {
+      if (this.canvas && this.canvas.id === "pcb") { const m = this.getTransform(); window.__boardText.push([String(t), m.a, m.d]); }
+      return fn.call(this, t, ...rest);
+    };
+  }
+})()"""
+# draws the view once and returns the board texts drawn in board units (not on the screen transform)
+BOARD_TEXT = """(() => { window.__boardText = []; drawNow(); const d = window.devicePixelRatio || 1, all = window.__boardText;
+  return { n: all.length, bad: all.filter((x) => Math.abs(x[1] - d) > 1e-9 || Math.abs(x[2] - d) > 1e-9).map((x) => x[0]).slice(0, 5) }; })()"""
+
+
+def board_text(pg, tag, where, expect=True):
+    r = pg.evaluate(BOARD_TEXT)
+    if r["bad"]:
+        problems.append(f"{tag}: board text drawn in board units in {where}: {r['bad']}")
+    elif expect and not r["n"]:
+        problems.append(f"{tag}: no labels on the board in {where}")
 
 
 def start_screen(pg):
@@ -85,35 +110,54 @@ def power_units(pg, tag, step):
             problems.append(f"{tag}: fixed-decimal values in {where}: {bad[:6]}")
     if not any(w == "power tree" and t.strip() for w, t in texts):
         notes.append(f"{tag}: no power tree to check for units")
-    # losses labels: constant screen size at two zoom levels, no overlaps, transform restored
+    # board labels of the maps: constant screen size at two zoom levels (the second 8× around the first
+    # label), no overlaps, the caller's transform restored, no text in board units
     lab = pg.evaluate("""async () => {
-      const wait = () => new Promise((r) => setTimeout(r, 150));
-      if (S.piMode !== "l" || !S.loss || !S.loss.map) return null;
+      const wait = () => new Promise((r) => setTimeout(r, 150)), out = {};
       if (typeof drawBoardLabels !== "function") return { missing: true };
-      const one = () => { drawNow(); const b = S.lossLabels || [];
-        // the helper leaves the caller's transform as it was
-        ctx.setTransform(2, 0, 0, 2, 5, 7); drawBoardLabels([{ x: 0, y: 0, text: "x" }]); const t = ctx.getTransform(); drawNow();
-        return { n: b.length, h: b.map((x) => Math.round((x[3] - x[1]) * 100) / 100), overlap: b.some((p, i) => b.some((q, j) => j > i && p[0] < q[2] && p[2] > q[0] && p[1] < q[3] && p[3] > q[1])), restored: t.a === 2 && t.e === 5 && t.f === 7 }; };
-      const a = one(), keep = { ...S.view }, top = S.loss.summary.components.find((c) => c.at);
-      if (top) { const s2 = S.view.s * 8; S.view.x = cv.width / (window.devicePixelRatio || 1) / 2 - top.at[0] * s2; S.view.y = cv.height / (window.devicePixelRatio || 1) / 2 - top.at[1] * s2; S.view.s = s2; }
-      const b = one(); await wait();
-      return { a, b, keep };
+      ctx.setTransform(2, 0, 0, 2, 5, 7); drawBoardLabels([{ x: 0, y: 0, text: "x" }]); const t = ctx.getTransform();
+      out.restored = t.a === 2 && t.e === 5 && t.f === 7;
+      const keep = { ...S.view }, d = window.devicePixelRatio || 1;
+      const views = [["v", "piLabels"], ["j", "piLabels"], ["l", "lossLabels"]].concat(thermOk() ? [["t", "thermLabels"]] : []);
+      const one = (key) => { window.__boardText = []; drawNow(); const b = S[key] || [];
+        return { n: b.length, h: b.map((x) => Math.round((x[3] - x[1]) * 100) / 100), first: b[0] || null,
+          overlap: b.some((p, i) => b.some((q, j) => j > i && p[0] < q[2] && p[2] > q[0] && p[1] < q[3] && p[3] > q[1])),
+          bad: (window.__boardText || []).filter((x) => Math.abs(x[1] - d) > 1e-9 || Math.abs(x[2] - d) > 1e-9).map((x) => x[0]).slice(0, 3) }; };
+      for (const [m, key] of views) {
+        if ($("pim-" + m).disabled) continue;
+        setPiMode(m); await wait(); Object.assign(S.view, keep);
+        const a = one(key);
+        let b = null;
+        if (a.first) {
+          const cx = ((a.first[0] + a.first[2]) / 2 - S.view.x) / S.view.s, cy = ((a.first[1] + a.first[3]) / 2 - S.view.y) / S.view.s, s2 = S.view.s * 8;
+          S.view.x = cv.width / d / 2 - cx * s2; S.view.y = cv.height / d / 2 - cy * s2; S.view.s = s2;
+          b = one(key);
+        }
+        out[m] = { a, b };
+      }
+      return { out, keep };
     }""")
-    if lab and lab.get("missing"):
-        problems.append(f"{tag}: no shared label helper drawBoardLabels for the losses map")
-    elif lab:
-        step("losses_zoom")
+    if lab.get("missing"):
+        problems.append(f"{tag}: no shared label helper drawBoardLabels")
+    else:
+        step("labels_zoom")
         pg.evaluate(f"(() => {{ Object.assign(S.view, {json.dumps(lab['keep'])}); draw(); }})()")
-        a, b = lab["a"], lab["b"]
-        if not a["n"]:
-            problems.append(f"{tag}: no part labels on the losses map")
-        if a["overlap"] or b["overlap"] or not (a["restored"] and b["restored"]) or len(set(a["h"] + b["h"])) > 1:
-            problems.append(f"{tag}: losses labels: overlap {a['overlap']}/{b['overlap']}, transform restored {a['restored']}/{b['restored']}, heights {sorted(set(a['h'] + b['h']))}")
+        o = lab["out"]
+        if not o.pop("restored"):
+            problems.append(f"{tag}: drawBoardLabels does not restore the caller's transform")
+        names = {"v": "voltage drop", "j": "current density", "l": "losses", "t": "temperature"}
+        for m, r in o.items():
+            a, b = r["a"], r["b"] or r["a"]
+            if not a["n"]:
+                problems.append(f"{tag}: no labels on the {names[m]} map")
+            if a["overlap"] or b["overlap"] or len(set(a["h"] + b["h"])) > 1 or a["bad"] or b["bad"]:
+                problems.append(f"{tag}: {names[m]} labels: overlap {a['overlap']}/{b['overlap']}, heights {sorted(set(a['h'] + b['h']))}, text in board units {a['bad'] + b['bad']}")
     pg.evaluate("setPiMode('b')"); pg.wait_for_timeout(200)
 
 
 def run(pg, tag, desktop):
     errs = []
+    pg.add_init_script(TEXT_SPY)
     pg.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     pg.on("console", lambda m: errs.append(f"console {m.type}: {m.text}") if m.type == "error" else None)
     pg.goto(url)
@@ -142,6 +186,7 @@ def run(pg, tag, desktop):
         for t in ["loss", "tdr", "via", "xt"]:
             pg.click(f"#detail [data-tab={t}]"); pg.wait_for_timeout(300)
         step("net")
+        board_text(pg, tag, "the net view (A/B marks)")
         # a differential pair: 4-port loss view, differential and common-mode TDR
         dn = pg.evaluate("(() => { for (const n of S.an.nets) { const t = classTarget(n.net); if (t && t.diff) return n.net; } return -1; })()")
         if dn >= 0:
@@ -239,6 +284,7 @@ def run(pg, tag, desktop):
         if pg.locator("#pdn-ic-run").count():
             pg.click("#pdn-ic-run"); pg.wait_for_function("document.getElementById('ch-pdn-ic') || document.querySelector('#pdn-ic .err')", timeout=300000)
             pg.wait_for_timeout(300); step("pdn_ic")
+            board_text(pg, tag, "the PDN view (parts seen from the IC)", expect=pg.evaluate("!!document.getElementById('ch-pdn-ic')"))
             if pg.locator("#pdn-ic details.acc").count():
                 pg.evaluate("document.querySelector('#pdn-ic details.acc').open = true"); pg.wait_for_timeout(200)
                 pg.evaluate("document.querySelector('#pdn-ic details.acc').scrollIntoView()"); pg.wait_for_timeout(200); step("pdn_domain")
@@ -252,6 +298,7 @@ def run(pg, tag, desktop):
                 pg.click(f".sankey [data-node='{lid}']"); pg.wait_for_timeout(500)
                 if not pg.evaluate("S.piMode === 'v' && !!S.piMark"):
                     problems.append(f"{tag}: click on a load in the power flow did not show the part")
+                board_text(pg, tag, "the voltage drop view (part from the power flow)")
                 step("flow_jump"); pg.click("#pim-b"); pg.wait_for_timeout(300)
             # power tree and component list: part references jump to the board as well
             for sel in [".tree [data-part]", ".ctab [data-part]"]:

@@ -43,8 +43,8 @@ viewer (via WASM) and CLI show the same result.
 * `index.html` – markup only; `css/kisi.css`; scripts in `src/` in the order of
   `src/manifest.json` (shared scope):
   `engine` (WASM) · `units` (values with SI prefixes for every view: `fmtSI`, `parseSI`, `fieldSI`; tests
-  `tools/test_units.mjs`) · `state` · `load` · `geometry` · `draw` (also `drawBoardLabels`: labels on the board at
-  a constant screen size) · `charts` · `net-detail` · `si-tabs`
+  `tools/test_units.mjs`) · `state` · `load` · `geometry` · `draw` (also `drawBoardLabels`: every text on the board – part
+  labels of all maps, A/B marks – at a constant screen size, with the overlap rule; checked by `check_viewer.py`) · `charts` · `net-detail` · `si-tabs`
   (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `variants` (assembly variant card and
   prompt) · `panels` · `interaction` · `field-pool` ·
   `field-cache` · `crosstalk` (coupling scan with step 2, Couplings card, critical stretches on the map) · `pi-dc` · `pi-pdn` · `pi-balance` · `pi-loss` (losses map, power flow) · `pi-thermal` (temperature step and map) · `views` · `main` (start-up, files, hand-over).

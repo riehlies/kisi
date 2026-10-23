@@ -425,7 +425,7 @@ function drawPi() {
   ctx.globalAlpha = 1;
   if (S.piMode === "l") { drawLoss(px); return; }
   if (S.piMode === "t") { drawThermal(px); return; }
-  const r = piCurrent();
+  const r = piCurrent(), labels = [];  // part labels, drawn last at a constant screen size
   if (r) {
     const li = piLayerIdx(r), im = piImage(r, li), g = im.g, cell = r.res.cell;
     ctx.imageSmoothingEnabled = false;
@@ -433,12 +433,15 @@ function drawPi() {
     // sources and loads
     const net = S.scene.nets.indexOf(S.piRail), pads = S.scene.pads, setup = piSetupOf(S.piRail);
     const srcs = new Set(setup.sources.map((x) => x.refdes)), lds = new Set(setup.loads.map((x) => x.refdes));
+    const at = new Map();  // reference → its pads on this rail (sum x, sum y, count) for the label
     for (let i = 0; i < pads.length / 8; i++) {
       if (pads[i * 8 + 7] !== net) continue;
       const ref = S.scene.fp_refs[S.scene.pad_fp[i]];
       const x = pads[i * 8], y = pads[i * 8 + 1];
-      if (srcs.has(ref)) { marker(x, y, px, "src"); } else if (lds.has(ref)) { marker(x, y, px, "load"); }
+      if (srcs.has(ref)) { marker(x, y, px, "src"); } else if (lds.has(ref)) { marker(x, y, px, "load"); } else continue;
+      const a = at.get(ref) || [0, 0, 0]; a[0] += x; a[1] += y; a[2]++; at.set(ref, a);
     }
+    labels.push(...piLoadLabels(r, at));
     // vias with the highest currents
     const vmax = r.res.vias.length ? r.res.vias[0].current : 0;
     ctx.strokeStyle = C.halo; ctx.lineWidth = 1.5 * px;
@@ -460,8 +463,21 @@ function drawPi() {
     }
     ctx.fill("evenodd");
   }
-  drawPdnOverlay(px);
-  drawPiMark(px);
+  drawPdnOverlay(px, labels);
+  drawPiMark(px, labels);
+  S.piLabels = drawPartLabels(labels);
+}
+// labels of the rail's sources and loads: the sources, then the loads with the largest drop
+// (voltage drop), ground offset (ground return) or current (current density); at most 12, the
+// shared helper leaves out the ones that would overlap
+function piLoadLabels(r, at) {
+  const x = r.res, v0 = Math.abs(x.voltage), out = [];
+  const pos = (ref) => { const a = at.get(ref); return a ? { x: a[0] / a[2], y: a[1] / a[2] } : null; };
+  for (const s of x.sources || []) { const p = pos(s.refdes); if (p) out.push({ ...p, text: S.piMode === "j" ? `${s.refdes} ${fmtSI(Math.abs(s.current), "A")}` : s.refdes }); }
+  const val = (l) => S.piMode === "j" ? Math.abs(l.current) : x.ground ? (l.v_max != null ? Math.abs(l.v_max) : null) : (l.v_min != null ? v0 - Math.abs(l.v_min) : null);
+  const loads = x.loads.map((l) => ({ l, v: val(l), p: pos(l.refdes) })).filter((e) => e.p && e.v != null).sort((a, b) => b.v - a.v);
+  for (const e of loads) out.push({ ...e.p, text: `${e.l.refdes} ${fmtSI(e.v, S.piMode === "j" ? "A" : "V")}` });
+  return out.slice(0, 12);
 }
 function marker(x, y, px, kind) {
   const C = S.colors, s = 5 * px;

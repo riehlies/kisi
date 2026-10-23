@@ -409,4 +409,12 @@ fn outline_chaining() {
     assert!((t.balance.in_w - 0.14).abs() < 1e-6 && t.warnings.is_empty(), "{} {:?}", t.balance.in_w, t.warnings);
     assert!(!t.temp_at(0, [25.0, 15.0]).is_nan());
     assert_eq!(t.temp_at(0, [25.0, 15.0]), t.ambient_c); // outside the board: ambient
+    // only the cut-out closed (the outline drawn elsewhere), copper all over: the copper's box
+    let open = board_text(1.0, 1.0, &[35.0, 35.0], &[1.5], &[0], "(gr_rect (start 20 10) (end 30 20) (layer \"Edge.Cuts\"))")
+        .replace("(gr_rect (start 0 0) (end 1 1) (stroke (width 0.05)) (layer \"Edge.Cuts\"))", "")
+        .replace("(xy 0 0) (xy 1 0) (xy 1 1) (xy 0 1)", "(xy 0 0) (xy 50 0) (xy 50 30) (xy 0 30)");
+    let b2 = crate::load_pcb(&open).unwrap();
+    let t2 = solve(&b2, &[], &[], &ThermalParams { cell: Some(1.0), ..Default::default() }).unwrap();
+    assert!((t2.area_mm2 - 1500.0).abs() < 1.0 && t2.warnings.iter().any(|w| w.contains("does not contain all copper")), "{} {:?}", t2.area_mm2, t2.warnings);
+    assert!(t2.warnings.iter().any(|w| w.starts_with("no heat")));
 }

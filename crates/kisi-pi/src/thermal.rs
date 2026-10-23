@@ -496,16 +496,39 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
     let d = data();
     let su = board.stackup();
     let nl = su.n().max(1);
-    let loops = outline_loops(board);
+    let mut loops = outline_loops(board);
     let mut bb = BBox::empty();
     for l in &loops {
         for &p in l {
             bb.add(p);
         }
     }
+    // an outline drawn partly in footprints leaves only cut-outs closed: if copper reaches more than
+    // 1 mm beyond the closed loops, take the copper's bounding box instead
+    let mut cu = BBox::empty();
+    for p in &board.pads {
+        cu.add(p.at);
+    }
+    for z in &board.zones {
+        cu.add(z.bbox.min);
+        cu.add(z.bbox.max);
+    }
+    for t in board.tracks.iter().filter(|t| !t.pad) {
+        cu.add(t.a);
+        cu.add(t.b);
+    }
+    if !loops.is_empty() && cu.is_valid() && (cu.min[0] < bb.min[0] - 1.0 || cu.min[1] < bb.min[1] - 1.0 || cu.max[0] > bb.max[0] + 1.0 || cu.max[1] > bb.max[1] + 1.0) {
+        warnings.push("the closed board outline (Edge.Cuts) does not contain all copper – parts of it may be drawn in footprints: the bounding box of the copper is taken as the board".into());
+        loops.clear();
+        bb = BBox::empty();
+    }
     let (area_mm2, perim_mm) = if loops.is_empty() {
-        bb = board.bbox.ok_or("board without outline or copper")?;
-        warnings.push("no closed board outline (Edge.Cuts): the bounding box of the copper is taken as the board".into());
+        if !bb.is_valid() {
+            bb = if cu.is_valid() { cu } else { board.bbox.ok_or("board without outline or copper")? };
+            if warnings.is_empty() {
+                warnings.push("no closed board outline (Edge.Cuts): the bounding box of the copper is taken as the board".into());
+            }
+        }
         let (w, h) = (bb.max[0] - bb.min[0], bb.max[1] - bb.min[1]);
         (w * h, 2.0 * (w + h))
     } else {
@@ -884,6 +907,9 @@ pub fn solve(board: &Board, rails: &[&PiResult], comps: &[CompLoss], prm: &Therm
 
     // surface coefficients from the mean rise (energy balance on the board's area)
     let p_total = copper_w + parts_w;
+    if p_total <= 0.0 {
+        warnings.push("no heat: neither a power tree with loads (PI_REG / PI_LOAD, step 1) nor PI_THERMAL p=… – the board stays at the ambient temperature".into());
+    }
     let (hc_t, hc_b, h_rad, dt_mean) = match prm.h {
         Some(h) => (h, h, 0.0, p_total / (2.0 * h * m.area_m2)),
         None => {

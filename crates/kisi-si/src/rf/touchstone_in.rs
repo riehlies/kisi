@@ -1,7 +1,7 @@
 //! Reading Touchstone files (S-parameters, versions 1.x and 2.x) for the channel behind a
-//! connector: a 2-port (single-ended lane, or the same 2-port on every line of a pair) or a
-//! 4-port of a pair (reduced to the differential mode). N-ports with crosstalk between lanes
-//! belong to the multi-lane network (milestone M2) and are refused here.
+//! connector: a 2-port (single-ended lane, or the same 2-port on every line of a pair), a 4-port
+//! of a pair, or an N-port for all lanes of a connector with a port map per pin (`eye::TsRef`);
+//! the lane network (`kisi_si::lanenet`) takes 4-ports and N-ports as S-parameter blocks.
 
 use super::{Abcd, Cx};
 use std::f64::consts::PI;
@@ -101,8 +101,8 @@ pub fn parse_touchstone(text: &str, name: &str) -> Result<Touchstone, String> {
         return Err(format!("{name}: only S-parameters are read (the option line names Y, Z, H or G)"));
     }
     let n = nports.ok_or_else(|| format!("{name}: number of ports unknown (name the file .s2p / .s4p or give [Number of Ports])"))?;
-    if n == 0 || n > 4 || n == 3 {
-        return Err(format!("{name}: {n}-port – kisi reads 2-ports and 4-ports here; N-ports with crosstalk come with the multi-lane network (M2)"));
+    if n == 0 || n > 64 {
+        return Err(format!("{name}: {n}-port – kisi reads 1 to 64 ports"));
     }
     let per = 1 + 2 * n * n;
     let (mut freq, mut s) = (vec![], vec![]);
@@ -143,7 +143,11 @@ pub fn parse_touchstone(text: &str, name: &str) -> Result<Touchstone, String> {
         warnings.push(format!("{} numbers at the end ignored", nums.len() - i));
     }
     let z0 = if refs.len() >= n { refs[..n].to_vec() } else { vec![r0; n] };
-    Ok(Touchstone { name: name.to_string(), nports: n, z0, freq, s, warnings })
+    let mut ts = Touchstone { name: name.to_string(), nports: n, z0, freq, s, warnings };
+    if let Some(w) = ts.passivity_note() {
+        ts.warnings.push(w);
+    }
+    Ok(ts)
 }
 
 /// Interpolation of one S-parameter over frequency: linear in magnitude and in the unwrapped
@@ -258,7 +262,7 @@ impl Touchstone {
                 }
                 notes.push(format!("{}: 4-port reduced to the differential mode (ports {order})", self.name));
             }
-            n => return Err(format!("{}: {n}-port not supported here", self.name)),
+            n => return Err(format!("{}: {n}-port – give the port of every connector pin (touchstone \"ports\": {{\"<pin>\": [port at the connector, port at the far end]}})", self.name)),
         }
         if flip {
             out = out.iter().map(reversed).collect();
@@ -267,6 +271,33 @@ impl Touchstone {
             return Err(format!("{}: transmission too small to convert (S21 ≈ 0)", self.name));
         }
         Ok((out, notes))
+    }
+
+    /// The whole S-matrix (row-major) interpolated at `f` (as `per_line_abcd`: magnitude held
+    /// outside the file's range, the phase to 0 at DC).
+    pub fn s_at(&self, f: f64) -> Vec<Cx> {
+        let n = self.nports;
+        (0..n * n).map(|i| interp(&self.freq, &self.s.iter().map(|m| m[i]).collect::<Vec<_>>(), f)).collect()
+    }
+
+    /// Notes when `freq` reaches beyond the file's frequency range.
+    pub fn extrapolation_notes(&self, freq: &[f64]) -> Vec<String> {
+        let mut notes = vec![];
+        let (fmin, fmax) = (self.freq[0], *self.freq.last().unwrap());
+        if freq.iter().any(|&f| f > fmax * 1.001) {
+            notes.push(format!("{} ends at {:.2} GHz: above it extrapolated (magnitude held)", self.name, fmax / 1e9));
+        }
+        if freq.iter().any(|&f| f < fmin * 0.999) && fmin > 0.0 {
+            notes.push(format!("{} starts at {:.3} GHz: towards DC extrapolated", self.name, fmin / 1e9));
+        }
+        notes
+    }
+
+    /// Passivity of the file's data: None when every S-matrix has singular values ≤ 1 (+ 0.1 %
+    /// for measurement noise), else a note with the worst value and its frequency.
+    pub fn passivity_note(&self) -> Option<String> {
+        let (worst, k) = super::passivity(&self.s, self.nports);
+        (worst > 1.001).then(|| format!("{}: not passive – largest singular value of S {:.3} at {:.2} GHz (measurement noise or a bad de-embedding); results with it are doubtful", self.name, worst, self.freq[k] / 1e9))
     }
 
     /// Short description for the viewer and the CLI.
@@ -340,12 +371,21 @@ mod tests {
     #[test]
     fn refused_files() {
         assert!(parse_touchstone("# GHz Z MA R 50\n1 1 0 0 0 0 0 1 0\n2 1 0 0 0 0 0 1 0\n", "z.s2p").unwrap_err().contains("only S-parameters"));
-        assert!(parse_touchstone("# GHz S MA R 50\n1 1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0\n", "x.s3p").unwrap_err().contains("3-port"));
+        // a 3-port is read (as an N-port it needs a port map), 65 ports are not
+        let three = "# GHz S MA R 50\n1 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0\n2 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0\n";
+        let t3 = parse_touchstone(three, "x.s3p").unwrap();
+        assert_eq!(t3.nports, 3);
+        assert!(t3.per_line_abcd(&[1e9], false, None, false).unwrap_err().contains("port of every connector pin"));
+        assert!(parse_touchstone("# GHz S MA R 50\n1 1 0\n", "x.s65p").unwrap_err().contains("65-port"));
         assert!(parse_touchstone("# GHz S MA R 50\n1 1 0 0 0 0 0 1 0\n", "x.s2p").unwrap_err().contains("fewer than two"));
         // version 2 with keywords and 12_21 order
         let v2 = "[Version] 2.0\n# GHz S RI R 50\n[Number of Ports] 2\n[Two-Port Data Order] 12_21\n[Number of Frequencies] 2\n[Network Data]\n1 0 0 0.1 0 0.9 0 0 0\n2 0 0 0.1 0 0.8 0 0 0\n[End]\n";
         let ts = parse_touchstone(v2, "v2.ts").unwrap();
         // 12_21: the second pair is S12
         assert!((ts.s[0][1].re - 0.1).abs() < 1e-12 && (ts.s[0][2].re - 0.9).abs() < 1e-12);
+        assert!(ts.passivity_note().is_none());
+        // gain: not passive, named in the warnings
+        let gain = parse_touchstone("# GHz S MA R 50\n1 0 0 1.1 0 1.1 0 0 0\n2 0 0 0.9 0 0.9 0 0 0\n", "amp.s2p").unwrap();
+        assert!(gain.warnings.iter().any(|w| w.contains("not passive") && w.contains("1.100 at 1.00 GHz")), "{:?}", gain.warnings);
     }
 }

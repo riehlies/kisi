@@ -16,6 +16,7 @@
   "interaction.js",
   "field-pool.js",
   "field-cache.js",
+  "check-pool.js",
   "crosstalk.js",
   "pi-dc.js",
   "pi-pdn.js",

@@ -233,6 +233,12 @@ pub fn needs_variant(cmd: &str) -> bool {
 }
 
 pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, String> {
+    run_with(o, p, tree, None)
+}
+
+/// `run`; for `check`, `check_rows` are its rows computed in parts by worker engines
+/// (`check_part`, the Node CLI) – the result is the same as computing them here.
+pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: Option<Vec<(usize, Value)>>) -> Result<Value, String> {
     let profiles = Profiles::builtin();
     let proj = || p.ok_or_else(|| "no board loaded".to_string());
     if let Some(pr) = p {
@@ -271,7 +277,11 @@ pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, 
             Ok(v)
         }
         "check" => {
-            let mut v = service::channel_check(proj()?, &profiles, &o.classes, o.nets.as_deref(), &rf_params(o)?);
+            let (pr, rp) = (proj()?, rf_params(o)?);
+            let mut v = match check_rows {
+                Some(rows) => service::channel_check_merge(pr, &profiles, &o.classes, o.nets.as_deref(), rows)?,
+                None => service::channel_check(pr, &profiles, &o.classes, o.nets.as_deref(), &rp),
+            };
             let max = o.max.unwrap_or(30);
             if let Some(rows) = v["rows"].as_array_mut() {
                 if !o.all {
@@ -327,6 +337,21 @@ pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, 
         "config-template" => Ok(config_template(proj()?)),
         c => Err(format!("unknown command {c}")),
     }
+}
+
+/// The number of rows of `check` and the rows with the indices `idx` in the check's order (index,
+/// row): worker engines of the Node CLI compute them, `run_with` puts them together. No rows
+/// when the command would stop (assembly variant missing).
+pub fn check_rows(o: &Opts, p: &Project, idx: &[usize]) -> Result<(usize, Vec<(usize, Value)>), String> {
+    if needs_variant(&o.cmd) && p.require_variant().is_err() {
+        return Ok((0, vec![]));
+    }
+    let profiles = Profiles::builtin();
+    let n = service::channel_check_count(p, &profiles, &o.classes, o.nets.as_deref());
+    if idx.is_empty() {
+        return Ok((n, vec![]));
+    }
+    Ok((n, service::channel_check_rows(p, &profiles, &o.classes, o.nets.as_deref(), &rf_params(o)?, idx)))
 }
 
 /// What `report` prints after writing the file.

@@ -66,6 +66,13 @@ in the output shows the coverage; `--formula` skips the solver.
 - Eyes are linear PRBS7 estimates with the profile's transmitter/receiver and no equalisation, jitter
   or noise. Limits marked "kisi" in the profile sources are guide values, not standards.
 - Skew marked uncertain comes from branched paths; do not report it as a violation.
+- Differential pairs are computed as 4-ports (`model: "4-port"`): loss and return loss are Sdd21/Sdd11, and
+  `mode_conversion_db` (worst Scd21 up to 1.5 × Nyquist) is information, not judged – a high value (above about
+  −20 dB) points to intra-pair skew or a stub or via on one line only. Multi-drop lines along one path list every
+  receiver (`receivers`); the worst eye counts.
+- With one N-port Touchstone file for all lanes of a connector (`connector_ends.<ref>.touchstone.ports`), the
+  eye includes the worst-case crosstalk of the other lanes (`crosstalk_peak`); the aggressors enter at the
+  connector without their board traces (conservative).
 - Lanes ending at a connector (also connector to connector, e.g. test coupons) get their eye from the
   end set in `connector_ends` (termination when the connector receives, driver when it sends). Without
   a channel behind the connector (`rest_loss_db` or a Touchstone file) the eye covers the board share

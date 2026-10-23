@@ -367,7 +367,27 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
                 Some(Ok(text)) => match kisi_si::rf::parse_touchstone(text, name) {
                     Err(err) => r.errors.push(format!("{w}.touchstone: {err}")),
                     Ok(ts) => {
-                        if ts.nports == 4 && tr.port_order.is_none() {
+                        if !tr.ports.is_empty() {
+                            // one file for the lanes of the connector: every pin to two ports of the file
+                            let mut used = std::collections::HashMap::new();
+                            let pads: Vec<&str> = board.footprints.iter().position(|f| &f.reference == refdes).map(|fi| board.pads.iter().filter(|p| p.fp as usize == fi).map(|p| p.number.as_str()).collect()).unwrap_or_default();
+                            for (pin, ps) in &tr.ports {
+                                if ps.iter().any(|&x| x == 0 || x > ts.nports) {
+                                    r.errors.push(format!("{w}.touchstone.ports.{pin}: ports {} / {} – the file has {} ports (1 … {})", ps[0], ps[1], ts.nports, ts.nports));
+                                }
+                                for &x in ps {
+                                    if let Some(other) = used.insert(x, pin.clone()) {
+                                        r.errors.push(format!("{w}.touchstone.ports: port {x} given for pins {other} and {pin}"));
+                                    }
+                                }
+                                if !pads.is_empty() && !pads.contains(&pin.as_str()) {
+                                    r.warnings.push(format!("{w}.touchstone.ports: {refdes} has no pad {pin}"));
+                                }
+                            }
+                        } else if ts.nports != 2 && ts.nports != 4 {
+                            r.errors.push(format!("{w}.touchstone: {}-port – give the port of every connector pin (\"ports\": {{\"<pin>\": [port at the connector, port at the far end]}})", ts.nports));
+                        }
+                        if ts.nports == 4 && tr.port_order.is_none() && tr.ports.is_empty() {
                             r.warnings.push(format!("{w}.touchstone: 4-port without port_order – \"1-3,2-4\" (P 1→3, N 2→4) assumed"));
                         }
                         r.warnings.extend(ts.warnings.iter().map(|x| format!("{w}.touchstone: {x}")));
@@ -591,6 +611,15 @@ mod tests {
         let po = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "cab/c.s2p", "port_order": "2-4"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
         assert!(check(&po, &board, &classes, &profiles, None, &files).errors.iter().any(|e| e.contains("unknown port_order")));
         assert!(crate::service::touchstones_of(Some(&ts), &files)["cab/c.s2p"].as_ref().is_ok_and(|t| t.nports == 2 && t.name == "c.s2p"));
+        // one file for all lanes: a 3-port needs the ports per pin; ports in range and used once
+        let three = "# GHz S MA R 50\n1 0 0 0.9 0 0 0 0.9 0 0 0 0 0 0 0 0 0 0 0\n2 0 0 0.9 0 0 0 0.9 0 0 0 0 0 0 0 0 0 0 0\n".to_string();
+        let files3: crate::variant::Files = HashMap::from([("c.s3p".to_string(), Ok(three))]);
+        let nomap = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "c.s3p"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
+        assert!(check(&nomap, &board, &classes, &profiles, None, &files3).errors.iter().any(|e| e.contains("3-port – give the port of every connector pin")));
+        let map = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "c.s3p", "ports": {"1": [1, 2], "2": [2, 4]}}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
+        assert_eq!(map.connector_ends["U1"].end.touchstone.as_ref().unwrap().ports["2"], [2, 4]);
+        let errs = check(&map, &board, &classes, &profiles, None, &files3).errors.join("\n");
+        assert!(errs.contains("ports.2: ports 2 / 4 – the file has 3 ports") && errs.contains("port 2 given for pins 1 and 2"), "{errs}");
     }
 
     /// Net names with spaces in quotes, written in kisi.json with escaped quotes: config-check

@@ -38,7 +38,8 @@ Planned and possible work after 0.2.4, roughly in order of priority. Each item s
   mapping source; IBIS 8.0 keywords; package-model sections; the parser against IBISCHK on real vendor files; an
   on-die termination and a termination resistor next to the receiver are not combined; the edge from the waveforms
   already contains the C_comp load; open-drain drivers without the pull resistor; the receiver's R_pin; validation
-  against an IBIS simulator.
+  against an IBIS simulator. Alternative path through KiCad's own simulator (lane export to KiCad/KIBIS, KiCad 10
+  tuning profiles): `docs/research/kicad-simulation.md`.
 - **Assembly variants, follow-ups:** variant-dependent `fields` in kisi.json (e.g. the TS-USB4 power tree from
   the M.2 connector); a via whose barrel continues into a stub beyond the path's layers is counted twice (its own
   stub and the side stub's via, ~0.3 mm on ThunderScope); side stubs in the net channel (`kisi net`) do not add

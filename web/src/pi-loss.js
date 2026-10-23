@@ -46,17 +46,13 @@ function drawLoss(px) {
   const m = S.loss.map, im = lossImage();
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(im.canvas, m.x0, m.y0, m.nx * m.cell, m.ny * m.cell);
-  // the largest heat sources
+  ctx.imageSmoothingEnabled = true;
+  // the largest heat sources: labels at a constant screen size, the hottest first; a label that
+  // would overlap a hotter one is left out (more appear when zoomed in)
+  S.lossLabels = [];
   if (S.lossPlane === "total" || S.lossPlane === "comp") {
-    const top = S.loss.summary.components.slice(0, 5);
-    const cs = getComputedStyle(document.documentElement);
-    ctx.font = `600 ${11 * px}px ${cs.getPropertyValue("--font-mono").trim() || "monospace"}`;
-    ctx.fillStyle = cs.getPropertyValue("--fg").trim() || "#000"; ctx.strokeStyle = S.colors.canvas; ctx.lineWidth = 3 * px; ctx.lineJoin = "round";
-    for (const c of top) {
-      if (!c.at) continue;
-      const t = `${c.refdes} ${fmtSI(c.w, "W")}`;
-      ctx.strokeText(t, c.at[0] + 6 * px, c.at[1] - 6 * px); ctx.fillText(t, c.at[0] + 6 * px, c.at[1] - 6 * px);
-    }
+    const items = S.loss.summary.components.filter((c) => c.at && c.w > 0).slice(0, 25).map((c) => ({ x: c.at[0], y: c.at[1], text: `${c.refdes} ${fmtSI(c.w, "W")}` }));
+    S.lossLabels = drawBoardLabels(items, { max: 12 });
   }
 }
 

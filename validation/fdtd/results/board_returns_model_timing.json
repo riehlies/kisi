@@ -1,0 +1,269 @@
+{
+ "RG_s4_pwr_n4": {
+  "old": {
+   "grid": {
+    "cells_or_modes": [
+     6144
+    ],
+    "env_ms": 0.13519399999999998,
+    "ladder_ms": 42482.569212,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [],
+    "ms": 14.311938,
+    "segments": 0
+   },
+   "rect": {
+    "cells_or_modes": [
+     56
+    ],
+    "env_ms": 0.244568,
+    "ladder_ms": 77.170592,
+    "nf": 1000
+   }
+  },
+  "ret": {
+   "grid": {
+    "cells_or_modes": [
+     6144
+    ],
+    "env_ms": 0.14216399999999998,
+    "ladder_ms": 40674.032804,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [
+     [
+      1.4,
+      0.2
+     ]
+    ],
+    "ms": 16.851892,
+    "segments": 4
+   },
+   "rect": {
+    "cells_or_modes": [
+     56
+    ],
+    "env_ms": 0.23182699999999998,
+    "ladder_ms": 63.588167,
+    "nf": 1000
+   }
+  }
+ },
+ "RG_s4_pwr_n4_cap2": {
+  "old": {
+   "grid": {
+    "cells_or_modes": [
+     6144
+    ],
+    "env_ms": 0.166506,
+    "ladder_ms": 40847.597598,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [],
+    "ms": 15.084038,
+    "segments": 0
+   },
+   "rect": {
+    "cells_or_modes": [
+     56
+    ],
+    "env_ms": 0.330954,
+    "ladder_ms": 110.70289899999999,
+    "nf": 1000
+   }
+  },
+  "ret": {
+   "grid": {
+    "cells_or_modes": [
+     6144
+    ],
+    "env_ms": 0.148721,
+    "ladder_ms": 39749.689414,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [
+     [
+      1.4,
+      0.2
+     ]
+    ],
+    "ms": 19.877895,
+    "segments": 4
+   },
+   "rect": {
+    "cells_or_modes": [
+     56
+    ],
+    "env_ms": 0.355315,
+    "ladder_ms": 113.893064,
+    "nf": 1000
+   }
+  }
+ },
+ "R_s4_rect_n4": {
+  "old": {
+   "grid": {
+    "cells_or_modes": [
+     6144
+    ],
+    "env_ms": 0.198104,
+    "ladder_ms": 41400.122886,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [],
+    "ms": 13.329785000000001,
+    "segments": 0
+   },
+   "rect": {
+    "cells_or_modes": [
+     56
+    ],
+    "env_ms": 0.277254,
+    "ladder_ms": 79.448043,
+    "nf": 1000
+   }
+  },
+  "ret": {
+   "grid": {
+    "cells_or_modes": [
+     6144
+    ],
+    "env_ms": 0.16463799999999998,
+    "ladder_ms": 42011.734969000005,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [],
+    "ms": 14.814179000000001,
+    "segments": 0
+   },
+   "rect": {
+    "cells_or_modes": [
+     56
+    ],
+    "env_ms": 0.260909,
+    "ladder_ms": 79.595505,
+    "nf": 1000
+   }
+  }
+ },
+ "RG_ts6_sw_pwr": {
+  "old": {
+   "grid": {
+    "cells_or_modes": [
+     6144,
+     6144
+    ],
+    "env_ms": 0.32621,
+    "ladder_ms": 84230.504101,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [],
+    "ms": 25.802247,
+    "segments": 0
+   },
+   "rect": {
+    "cells_or_modes": [
+     55,
+     56
+    ],
+    "env_ms": 0.610224,
+    "ladder_ms": 184.270654,
+    "nf": 1000
+   }
+  },
+  "ret": {
+   "grid": {
+    "cells_or_modes": [
+     6144,
+     6144
+    ],
+    "env_ms": 0.329394,
+    "ladder_ms": 84305.480211,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [
+     [
+      1.2379000000000002,
+      1.1363
+     ],
+     [
+      1.1363,
+      0.1
+     ]
+    ],
+    "ms": 24.710818,
+    "segments": 8
+   },
+   "rect": {
+    "cells_or_modes": [
+     55,
+     56
+    ],
+    "env_ms": 0.573252,
+    "ladder_ms": 169.247493,
+    "nf": 1000
+   }
+  }
+ },
+ "RG_ts6_sw_gnd": {
+  "old": {
+   "grid": {
+    "cells_or_modes": [
+     6144,
+     6144
+    ],
+    "env_ms": 0.336221,
+    "ladder_ms": 82484.62269300001,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [],
+    "ms": 26.683444,
+    "segments": 0
+   },
+   "rect": {
+    "cells_or_modes": [
+     55,
+     56
+    ],
+    "env_ms": 0.599798,
+    "ladder_ms": 166.280077,
+    "nf": 1000
+   }
+  },
+  "ret": {
+   "grid": {
+    "cells_or_modes": [
+     6144,
+     6144
+    ],
+    "env_ms": 0.321434,
+    "ladder_ms": 81830.934145,
+    "nf": 1000
+   },
+   "infinite": {
+    "floating_pairs": [],
+    "ms": 29.967205,
+    "segments": 0
+   },
+   "rect": {
+    "cells_or_modes": [
+     55,
+     56
+    ],
+    "env_ms": 0.600712,
+    "ladder_ms": 153.48113899999998,
+    "nf": 1000
+   }
+  }
+ }
+}

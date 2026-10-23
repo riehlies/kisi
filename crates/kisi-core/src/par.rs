@@ -1,10 +1,11 @@
 //! Parallel work for the native CLI: the channel check computes its lanes in worker threads.
 //!
 //! Every lane is a pure function of the project, so the rows do not depend on the thread that
-//! computes them or on the order (the via model's caches are memos of quantised inputs, see
-//! `kisi_si::via_pbm`); the results are put back in their order. In WebAssembly (viewer, Node
-//! CLI) there are no threads here: the Node CLI and the viewer run engines in workers of their
-//! own (`service::channel_check_part`).
+//! computes them or on the order (the via model's caches, shared by the threads, are memos of
+//! quantised inputs, see `kisi_si::via_pbm`); the results are put back in their order. In
+//! WebAssembly (viewer, Node CLI) there are no threads here: the Node CLI and the viewer run
+//! engines in workers of their own (`service::channel_check_rows`), the rows put together by
+//! their index.
 
 /// Worker threads by default (fewer on machines with fewer CPUs).
 pub const WORKERS: usize = 4;

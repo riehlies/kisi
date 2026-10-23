@@ -5,7 +5,8 @@
 //         user overrides per profile in localStorage (PROF_KEY), class → profile
 //         assignment per board (ifcKey()).
 // Engine: S.engine.rf({..., bitrate, tx, rx, eye_rise}) for one net,
-//         kisi_check for many nets (metrics only; status is judged here).
+//         kisi_check for many nets (metrics only; status is judged here), also in
+//         workers (check-pool.js).
 
 const PROF_KEY = "kisi.profiles.v1";
 const ifcKey = () => "kisi.ifc.v1." + S.name;
@@ -378,17 +379,12 @@ async function runCheck() {
   const btn = $("ck-start"); btn.disabled = true; S.checkRunning = true;
   const lanes = new Map(allLanes().map((l) => [laneKey(l), l]));
   $("ck-barbox").hidden = false;
-  for (let i = 0; i < items.length; i += 4) {
-    if (gen !== S.anGen) break;
-    $("ck-text").textContent = `Checking ${Math.min(i + 4, items.length)} of ${items.length} channels …`;
-    $("ck-bar").style.width = `${Math.round(100 * i / Math.max(items.length, 1))}%`;
-    await new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)));
-    const chunk = items.slice(i, i + 4);
-    try {
-      S.engine.call(S.engine.k.kisi_check, JSON.stringify({ rf: p, items: chunk }));
-      JSON.parse(S.engine.out()).forEach((r, k) => { r.laneKey = chunk[k].laneKey; r.net = chunk[k].laneKey ? chunk[k].net : r.net; rows.push(r); });
-    } catch (e) { console.warn(e); }
-  }
+  // rows on the main thread and in workers with engines of their own (check-pool.js)
+  const parts = await checkChunks(items, p, gen, (done, n, threads) => {
+    $("ck-text").textContent = `Checking ${done} of ${n} channels${threads > 1 ? ` (${threads} threads)` : ""} …`;
+    $("ck-bar").style.width = `${Math.round(100 * done / Math.max(n, 1))}%`;
+  });
+  for (const [start, rs] of parts) rs.forEach((r, k) => { const it = items[start + k]; r.laneKey = it.laneKey; r.net = it.laneKey ? it.net : r.net; rows.push(r); });
   S.checkRunning = false; $("ck-barbox").hidden = true;
   S.check = { gen, rows, stale: false };
   S.chStatus = new Map();

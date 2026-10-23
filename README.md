@@ -126,6 +126,10 @@ routed length first, within `--field-time` seconds (default 120). Results are ca
 coverage, `--formula` skips the solver. A native build (`cargo install --path crates/kisi-cli`) accepts the same
 commands with formula impedances only.
 
+`check` (and the check in `report` of the native build) computes its channels on up to 4 threads, fewer on machines
+with fewer cores (`KISI_THREADS=n` sets the number); the result is the same as on one thread. The viewer's check
+uses Web Workers the same way.
+
 ## Information kisi takes from KiCad
 - **Target impedance** from net class names: `50Z`, `90Z_Diff`, `100Z_Diff`, … (or `<board>.kisi.json`).
 - **Interface profile** automatically from net and class names (rules in `data/interfaces.json`), or per class.

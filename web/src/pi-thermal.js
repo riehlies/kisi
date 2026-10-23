@@ -44,6 +44,8 @@ async function solveThermal() {
   setPiMode("t");
 }
 $("therm-run").onclick = () => solveThermal();
+// a result stays until "Recompute": say that changed settings are not applied yet
+$("therm-amb").onchange = $("therm-cool").onchange = () => { if (thermOk()) $("therm-step").textContent = "Settings changed: “Recompute” applies them."; };
 
 // side card: state of step 3
 function renderThermStep() {

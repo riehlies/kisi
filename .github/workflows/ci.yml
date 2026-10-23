@@ -1,6 +1,7 @@
 # Checks on every push and pull request (the release workflow runs the same build on tags):
-#   cargo test · field solver against HFSS/baseline (validate_field.sh) · viewer in headless Chromium
-#   (check_viewer.py on kisi-examples.html: all views, light/dark/phone, no console errors) ·
+#   cargo test and the viewer's unit formatter (tools/test_units.mjs) · field solver against HFSS/baseline
+#   (validate_field.sh) · viewer in headless Chromium (check_viewer.py on kisi-examples.html: all views,
+#   light/dark/phone, no console errors) ·
 #   Node CLI against the native CLI on the example boards (compare_cli.py) · reference page builds.
 name: ci
 on:
@@ -38,7 +39,9 @@ jobs:
           key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: cargo-${{ runner.os }}-
       - name: Tests
-        run: cargo test --release
+        run: |
+          cargo test --release
+          node tools/test_units.mjs
       - name: Build
         run: |
           cargo build --release

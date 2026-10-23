@@ -19,7 +19,8 @@ src = open(os.path.join(root, "web/cli/kisi.mjs"), encoding="utf-8").read()
 cargo = open(os.path.join(root, "Cargo.toml"), encoding="utf-8").read()
 version = re.search(r'^version\s*=\s*"([^"]+)"', cargo, re.M).group(1)
 solver_src, n = solver_bundle(root)
-# gzip before base64: about a third of the size; kisi.mjs unpacks with zlib
+# gzip before base64: about a third of the size; kisi.mjs unpacks with zlib. mtime=0: no timestamp,
+# so two builds of the same commit are identical
 gzb64 = lambda b: base64.b64encode(gzip.compress(b, 9, mtime=0)).decode()
 for k, v in [("__VERSION__", version), ("__UPSTREAM_REV__", upstream_rev(root)), ("__WASM_GZ__", gzb64(open(wasm, "rb").read())),
              ("__SPARSE_GZ__", gzb64(open(sparse, "rb").read())), ("__SOLVER_GZ__", gzb64(solver_src.encode("utf-8")))]:

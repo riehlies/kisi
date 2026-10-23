@@ -1,7 +1,7 @@
 "use strict";
 // ---- charts: line chart with crosshair, eye density, log-log impedance plot
-const fHz = (f) => f >= 1e9 ? fmt(f / 1e9, f < 1e10 ? 1 : 0) + " GHz" : f >= 1e6 ? fmt(f / 1e6, f < 1e7 ? 1 : 0) + " MHz" : fmt(f / 1e3, f < 1e4 ? 1 : 0) + " kHz";
-const ohm = (z) => z >= 10 ? fmt(z, 0) + " Ω" : z >= 1 ? fmt(z, z % 1 ? 2 : 0) + " Ω" : fmt(z * 1e3, z < 0.01 ? 1 : 0) + " mΩ";
+const fHz = (f) => fmtSI(f, "Hz");
+const ohm = (z) => fmtSI(z, "Ω");
 
 function drawEye(c, e) {
   const d = window.devicePixelRatio || 1, r = c.getBoundingClientRect();

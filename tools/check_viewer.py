@@ -9,7 +9,8 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
   lane eye, voltage drop with ground return, impedance seen from the ICs, losses map and power flow
   (desktop layouts; --quick: only load and the three views)
-* uses the embedded example boards if the build has them, else --board
+* uses the embedded example boards if the build has them, else --board; on a board without impedance
+  targets the steps that need such nets (net detail, couplings, field solver run) are skipped
 * --config: drops a <board>.kisi.json and expects "check passed"
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
@@ -63,7 +64,11 @@ def run(pg, tag, desktop):
         pg.click(f"#view-{v}"); pg.wait_for_timeout(300); step(f"start_{v}")
     pg.click("#view-si")
     pg.click("#an-start"); pg.wait_for_function(f"S.full && {BUSY}", timeout=90000); step("estimate")
-    if desktop and not a.quick:
+    # a board without impedance targets (no net rows): the steps that need such nets are skipped
+    targets = pg.evaluate("S.an.nets.filter((n) => n.target).length")
+    if not targets:
+        notes.append(f"{tag}: no nets with a target impedance – net detail, couplings and field solver steps skipped")
+    if desktop and not a.quick and targets:
         pg.click(".net >> nth=0"); pg.wait_for_timeout(400)
         for t in ["loss", "tdr", "via", "xt"]:
             pg.click(f"#detail [data-tab={t}]"); pg.wait_for_timeout(300)
@@ -89,45 +94,46 @@ def run(pg, tag, desktop):
                 pg.click(f"#detail [data-tab={t}]"); pg.wait_for_timeout(400)
             step("pair_common")
             pg.click("#detail [data-pm=d]"); pg.wait_for_timeout(300)
-    # couplings: scan with step 2, Couplings card, crosstalk map of the critical stretches,
-    # the net's Crosstalk tab; refinement of the critical couplings planned in step 3 (no solve)
-    pg.wait_for_function("S.xtScan", timeout=60000)
-    if pg.evaluate("S.xtScan.error || !S.xtScan.rows.length"):
-        problems.append(f"{tag}: coupling scan empty or failed: {pg.evaluate('S.xtScan.error')}")
-    if pg.evaluate("S.xtScan.rows.some((r) => r.critical) && (!S.xtScan.map.length || !document.querySelector('#xt-rows tr[data-net]'))"):
-        problems.append(f"{tag}: critical nets without stretches on the map or rows in the Couplings card")
-    pg.evaluate("setMode('xt')"); pg.wait_for_timeout(300)
-    if pg.get_attribute("#mode-xt", "aria-pressed") != "true":
-        problems.append(f"{tag}: crosstalk map mode not active")
-    step("couplings")
-    if not pg.evaluate("$('fs-xt').checked"):
-        problems.append(f"{tag}: coupling refinement not on by default")
-    if pg.evaluate("S.xtScan.critical_geoms.length > 0 && !scopeGeoms('target').some((x) => x.xt)"):
-        problems.append(f"{tag}: critical couplings not planned for the field solver")
-    # follow-up round: couplings that turn critical after a run are queued without a click
-    if pg.evaluate("S.xtScan.critical_geoms.length > 0") and not pg.evaluate("(() => { const p = new FieldPool(); S.pool = p; p.scope = 'target'; p.round = 1; p.followUp(); const ok = p.round === 2 && p.total > 0; p.stop(); return ok; })()"):
-        problems.append(f"{tag}: no follow-up round for new critical couplings")
-    # a short real run (3 cross-sections): results applied, then the idle threads are ended
-    # (here after 0.5 s instead of a minute)
-    if tag == "light":
-        pg.evaluate("(() => { S.poolIdleMs = 500; S.pool = new FieldPool(); S.pool.start(scopeGeoms('target').filter((x) => !S.field.has(x.id)).slice(0, 3)); })()")
-        pg.wait_for_function("S.pool === null || (!S.pool.running && S.fieldPending.size === 0)", timeout=300000)
-        pg.wait_for_timeout(1500)
-        if pg.evaluate("S.field.size") < 3 or not pg.evaluate("S.pool === null"):
-            problems.append(f"{tag}: short field solver run: {pg.evaluate('S.field.size')} results, threads ended: {pg.evaluate('S.pool === null')}")
-        pg.evaluate("delete S.poolIdleMs")
-    if desktop and not a.quick and pg.locator("#xt-rows tr[data-net]").count():
-        pg.click("#xt-rows tr[data-net] >> nth=0"); pg.wait_for_timeout(600)
-        if pg.evaluate("S.detailTab") != "xt" or not pg.locator("#ch-xt").count():
-            problems.append(f"{tag}: critical net without the crosstalk chart")
-        if pg.locator("#tab-body tr[data-net]").count():
-            pg.hover("#tab-body tr[data-net] >> nth=0"); pg.wait_for_timeout(300)
-        step("net_xt")
-        if pg.locator("#detail [data-pm=c]").count():
-            if pg.evaluate("document.querySelector('#detail [data-pm=c]').disabled"):
-                problems.append(f"{tag}: mode switch greyed out in the Crosstalk tab")
-            pg.click("#detail [data-pm=c]"); pg.wait_for_timeout(500); step("net_xt_common")
-            pg.click("#detail [data-pm=d]"); pg.wait_for_timeout(300)
+    if targets:
+        # couplings: scan with step 2, Couplings card, crosstalk map of the critical stretches,
+        # the net's Crosstalk tab; refinement of the critical couplings planned in step 3 (no solve)
+        pg.wait_for_function("S.xtScan", timeout=60000)
+        if pg.evaluate("S.xtScan.error || !S.xtScan.rows.length"):
+            problems.append(f"{tag}: coupling scan empty or failed: {pg.evaluate('S.xtScan.error')}")
+        if pg.evaluate("S.xtScan.rows.some((r) => r.critical) && (!S.xtScan.map.length || !document.querySelector('#xt-rows tr[data-net]'))"):
+            problems.append(f"{tag}: critical nets without stretches on the map or rows in the Couplings card")
+        pg.evaluate("setMode('xt')"); pg.wait_for_timeout(300)
+        if pg.get_attribute("#mode-xt", "aria-pressed") != "true":
+            problems.append(f"{tag}: crosstalk map mode not active")
+        step("couplings")
+        if not pg.evaluate("$('fs-xt').checked"):
+            problems.append(f"{tag}: coupling refinement not on by default")
+        if pg.evaluate("S.xtScan.critical_geoms.length > 0 && !scopeGeoms('target').some((x) => x.xt)"):
+            problems.append(f"{tag}: critical couplings not planned for the field solver")
+        # follow-up round: couplings that turn critical after a run are queued without a click
+        if pg.evaluate("S.xtScan.critical_geoms.length > 0") and not pg.evaluate("(() => { const p = new FieldPool(); S.pool = p; p.scope = 'target'; p.round = 1; p.followUp(); const ok = p.round === 2 && p.total > 0; p.stop(); return ok; })()"):
+            problems.append(f"{tag}: no follow-up round for new critical couplings")
+        # a short real run (3 cross-sections): results applied, then the idle threads are ended
+        # (here after 0.5 s instead of a minute)
+        if tag == "light":
+            pg.evaluate("(() => { S.poolIdleMs = 500; S.pool = new FieldPool(); S.pool.start(scopeGeoms('target').filter((x) => !S.field.has(x.id)).slice(0, 3)); })()")
+            pg.wait_for_function("S.pool === null || (!S.pool.running && S.fieldPending.size === 0)", timeout=300000)
+            pg.wait_for_timeout(1500)
+            if pg.evaluate("S.field.size") < 3 or not pg.evaluate("S.pool === null"):
+                problems.append(f"{tag}: short field solver run: {pg.evaluate('S.field.size')} results, threads ended: {pg.evaluate('S.pool === null')}")
+            pg.evaluate("delete S.poolIdleMs")
+        if desktop and not a.quick and pg.locator("#xt-rows tr[data-net]").count():
+            pg.click("#xt-rows tr[data-net] >> nth=0"); pg.wait_for_timeout(600)
+            if pg.evaluate("S.detailTab") != "xt" or not pg.locator("#ch-xt").count():
+                problems.append(f"{tag}: critical net without the crosstalk chart")
+            if pg.locator("#tab-body tr[data-net]").count():
+                pg.hover("#tab-body tr[data-net] >> nth=0"); pg.wait_for_timeout(300)
+            step("net_xt")
+            if pg.locator("#detail [data-pm=c]").count():
+                if pg.evaluate("document.querySelector('#detail [data-pm=c]').disabled"):
+                    problems.append(f"{tag}: mode switch greyed out in the Crosstalk tab")
+                pg.click("#detail [data-pm=c]"); pg.wait_for_timeout(500); step("net_xt_common")
+                pg.click("#detail [data-pm=d]"); pg.wait_for_timeout(300)
     pg.evaluate("setMode('dev')"); pg.wait_for_timeout(200)
     if desktop and not a.quick:
         pg.click("#view-ch"); pg.wait_for_timeout(500)

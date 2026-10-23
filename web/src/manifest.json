@@ -1,6 +1,7 @@
 {
  "scripts": [
   "engine.js",
+  "units.js",
   "state.js",
   "load.js",
   "geometry.js",

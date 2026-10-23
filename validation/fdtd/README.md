@@ -89,6 +89,11 @@ and the lumped R–L–C.
   `results/board_vias*.json`, plots in `results/board_vias/`). Their lines are not 50 Ω in 3D, so the 2×thru
   de-embedding first refers each fixture to its own line impedance (`sparam.deembed_matched`; checked on a known
   network with `board_vias.py deembed-check`).
+- **Plane resonances of finite boards** (`BOARD_RESONANCES.md`): `board_resonances.py` (cases `resonance_cases/`,
+  results `via_ref/R_*`) against the ladder with finite cavities (`kisi-validate cavity-model`, option `--via-cavity`).
+- **Return groups per plane pair** (`BOARD_RETURNS.md`): `board_returns.py` (cases `return_cases/`, results
+  `via_ref/RG_*`, board vias with In2 grounded) against the ladder with return groups (`kisi-validate cavity-model
+  --returns`, option `--via-returns`).
 
 ```
 cargo build --release -p kisi-fdtd

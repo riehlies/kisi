@@ -443,3 +443,36 @@ results `../via_ref/R_*`, `../via_ref/BV_vna_clk_w5`, `results/board_resonances*
 - Default path unchanged: `compare_kisi.py` identical to `results/kisi_models.json`; `compare_cli.py` identical.
   With the option the Block 1 references get worse (their planes are infinite in 3D, the KiCad stand-in board
   ends at the window).
+
+## 10. Return groups per plane pair (Block 4)
+
+Full report: **`BOARD_RETURNS.md`**; `board_returns.py` reproduces everything (cases `return_cases/`,
+results `../via_ref/RG_*`, `../via_ref/BV_ts_m2_per0_q050f25s_e35_in2gnd`, `results/board_returns*.json`,
+plots `results/board_returns/`). The model is the option `--via-returns` (off by default).
+
+### Model checks (unit tests in `kisi_si::via_pbm`)
+| # | Test | Where | Result |
+|---|---|---|---|
+| M9 | The ladder solved as nodes and spans together (the core with return spans) without returns = the chain | `coupled_core_equals_chain` | 10⁻⁹ |
+| M10 | A return joined to the outer of three planes in one dielectric (floating across the middle one) = shorts in both pairs; joined to all three = the ladder before return groups; joined to one plane (capacitive) = a poorer return than shorts | `floating_return_across_a_plane` | < 2·10⁻³·f/GHz in S21; 10⁻¹²; holds |
+| M11 | A capacitor post without impedance = a short; the roles short / floating / capacitive / open; a 1 nH capacitor is a poorer return than a via at 10 GHz | `cap_post_and_roles` | 10⁻⁹; holds |
+| M12 | A return's capacitance to a plane it passes (r–z Laplace with and without the post): between the coaxial stub value and 3× it, smaller for a larger opening or a shorter stub | `post_capacitance` | holds (119 fF for the GND vias of `RG_s4_pwr_n4`) |
+| M13 | The returns reduced onto the via's current moments (W) against the full nodal solve | `board_returns.py`, `RG_s4_pwr_n4` | cavity 10⁻¹²; infinite plates (W interpolated on 0.25 GHz) ≤ 0.001 dB |
+
+### 3D against the ladder (max / rms |ΔS21|, dB)
+| case | before return groups (default) | return groups, infinite plates | return groups, cavities | |
+|---|---|---|---|---|
+| GND vias not joined to the PWR plane (`RG_s4_pwr_n4`), 0.5–12 / 12–20 GHz | 8.45 / 1.97, 6.65 / 1.69 | 6.15 / 1.36, 4.44 / 1.11 | 2.48 / 0.68, 3.17 / 0.85 | 7/7 dips, 2.1 %, 0.44 dB |
+| the same with a capacitor 2 mm away (`RG_s4_pwr_n4_cap2`) | 9.02 / 2.10, 6.77 / 1.70 | 6.45 / 1.42, 4.33 / 1.12 | 2.94 / 0.77, 2.67 / 0.79 | 8/8 dips, 2.0 %, 0.44 dB |
+| GND/GND (`R_s4_rect_n4`) | 0.04 / 0.03, 0.11 / 0.04 | identical | identical | – |
+| ThunderScope stack, GND vias across a PWR In2 (`RG_ts6_sw_pwr`) | 0.10 / 0.04, 0.26 / 0.09 | 0.07 / 0.03, 0.19 / 0.07 | 0.11 / 0.03, 0.18 / 0.08 | – |
+| ThunderScope REFINOUT2 (board via, 3D with In2 as it is) | 0.10 / 0.06, 0.38 / 0.23 | 0.16 / 0.08, 0.66 / 0.41 | – | – |
+| ThunderScope M.2 pair (Sdd, quick mesh) | 0.27 / 0.15, 0.30 / 0.27 | 0.28 / 0.15, 0.31 / 0.28 | – | – |
+
+- The floating supply plane (PWR − GND In2): 3D 0.06 / 0.14 dB at 16 / 20 GHz on the synthetic
+  ThunderScope stack, ladder 0.07 / 0.13 dB; on REFINOUT2 3D 0.05 / 0.10 / 0.19 dB at 12 / 16 / 20 GHz,
+  ladder 0.07 / 0.15 / 0.28 dB. The M.2 pair: no effect in 3D (≤ 0.002 dB to 20 GHz) nor in the
+  ladder (≤ 0.03 dB).
+- Default path unchanged: `compare_kisi.py` identical to `results/kisi_models.json` (56 rows), also
+  with `KISI_VIA_RETURNS=1`; `check --all` of both boards byte-identical; with the option no verdict
+  changes, ThunderScope 2.9 → 4.1 s, LibreVNA 1.0 → 1.15 s.

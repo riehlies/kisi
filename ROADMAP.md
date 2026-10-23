@@ -17,6 +17,13 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
 - **Finite plane cavities in the via ladder (experimental, `--via-cavity`, off by default):** board edges,
   stitching vias and capacitors of the plane pairs a via crosses, validated against seven new 3D cases
   (`validation/fdtd/BOARD_RESONANCES.md`); `kisi-validate cavities` lists the plane pairs of a board's channel vias.
+- **Return groups per plane pair in the via ladder (experimental, `--via-returns`, off by default):** a return
+  via shorts only the pairs whose two planes it joins; across a supply plane it is a floating return, ending
+  at one a capacitive return (its capacitance to the plane from a Laplace solve); capacitors between supply
+  and ground planes nearby. Against four new finite boards and two ThunderScope board vias in 3D
+  (`validation/fdtd/BOARD_RETURNS.md`): where the GND vias do not bridge a supply plane the old ladder is flat
+  while the board resonates (8.5 dB max error), return groups with the cavities find every resonance; where
+  they bridge it (all channel vias of both example boards) the effect is ≤ 0.2 dB at 20 GHz.
 
 ## Next
 - **`kisi gaps`: supply rails without a voltage in the name.** Nets such as `Net-(IC22-VCC)` are not recognised as
@@ -66,10 +73,17 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
     (`kisi_si::via_cavity`: rectangle and grid of any shape with stitching vias, capacitors and edge radiation;
     `validation/fdtd/BOARD_RESONANCES.md`). Against 3D it finds every resonance below 12 GHz (1.6–2.5 % in
     frequency) and the coupling of two vias in one cavity; on the example boards it changes no verdict (most
-    channel vias have close return vias) at 2–4× the run time. Next: return groups per plane pair (a GND via does
-    not short a GND/supply pair; there the cavity with its capacitors is the return), via-to-via coupling in the
-    channel and crosstalk, the grid as the PDN cavity model for irregular planes, the vertical parts of the PDN
-    loop;
+    channel vias have close return vias) at 2–4× the run time;
+  - done (experimental, off by default): return groups per plane pair, `--via-returns` (return vias as small
+    ladders of their own: shorts where they join both planes, floating across supply planes, capacitive where
+    they end at one; `validation/fdtd/BOARD_RETURNS.md`). On both example boards every GND/supply pair in a
+    channel via's path is bridged by GND vias: no verdict changes, ≤ 0.03 dB insertion loss, 1.4× the run time
+    on ThunderScope; on the ThunderScope through via the floating-plane loss is 1.3–1.6× the 3D value and adds
+    to the ladder's own excess loss. Default once the pours on signal layers and the series inductance (above)
+    are fixed, or a board with unbridged GND/supply transitions shows a verdict change; a cheap step before:
+    warn in the default path when a via crosses an open GND/supply pair. Next after that: via-to-via coupling
+    in the channel and crosstalk, the grid as the PDN cavity model for irregular planes, the vertical parts of
+    the PDN loop;
   - the ladder in WebAssembly is about 2 × slower than native (Laplace solve and equivalent radius per via type).
 - **Measured test board** (ToDo): coupons from the reference cases on JLCPCB / Aisler standard stackups with
   screw-on end-launch connectors, simulated in kisi-fdtd and CST, measured on Keysight ENA / PNA-X / PNA; plan in

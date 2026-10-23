@@ -52,7 +52,7 @@ function renderTab(net, t, rowsXs) {
   const delay = mx ? (comm ? mx.delay_comm_ps : mx.delay_diff_ps) : ch.delay_ps;
   const head = `<div class="dstats"><span>${ref}</span><span>Path <b>${fmt(ch.length_mm, 1)} mm</b> incl. vias</span><span>Delay <b>${fmt(delay, 0)} ps</b></span><span>Vias <b>${ch.vias}</b></span></div>`;
   const warn = (ch.warnings || []).concat(mx ? (mx.warnings || []).filter((x) => !(ch.warnings || []).includes(x)) : []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
-  const note4 = mx ? `<p class="note">4-port model: ${esc(netShort(mx.p_net))} and ${esc(netShort(mx.n_net))} on their own paths, coupled sections from odd and even mode, via pairs with the partner via. ${esc(mx.source)}. Eye and channel check use the differential odd-mode model.</p>` : "";
+  const note4 = mx ? `<p class="note">4-port model: ${esc(netShort(mx.p_net))} and ${esc(netShort(mx.n_net))} on their own paths, coupled sections from odd and even mode, via pairs with the partner via. ${esc(mx.source)}. The channel check and the eye use the same 4-port (for a lane: its lines with their parts and stubs).</p>` : "";
   // file name: the net, for a pair both nets (P first)
   const fname = (n) => n.split("/").pop().replace(/[^\w.+-]+/g, "_") || "net";
   const base = mx ? `${fname(mx.p_net)}_${fname(mx.n_net)}` : fname(S.scene.nets[net]);

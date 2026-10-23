@@ -583,6 +583,10 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
                     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged"});
             }
             j["stubs"] = json!(row.stubs);
+            j["model"] = json!(row.model);
+            if let Some(mc) = row.mode_conversion_db {
+                j["mode_conversion_db"] = json!(mc);
+            }
             j["metrics"] = json!(m);
             rows.push((v.status, j));
         }
@@ -626,8 +630,12 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             error: row.error.clone(),
         };
         let v = judge(&m, prof, &lim);
-        rows.push((v.status, json!({"net": st.name, "kind": "net (no devices found)", "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
-            "length_mm": row.length_mm, "vias": row.vias, "metrics": m})));
+        let mut j = json!({"net": st.name, "kind": "net (no devices found)", "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
+            "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m});
+        if let Some(mc) = row.mode_conversion_db {
+            j["mode_conversion_db"] = json!(mc);
+        }
+        rows.push((v.status, j));
     }
     rows.sort_by(|a, b| a.0.cmp(&b.0));
     let count = |s: Status| rows.iter().filter(|r| r.0 == s).count();

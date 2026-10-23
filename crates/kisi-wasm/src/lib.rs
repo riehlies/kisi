@@ -749,6 +749,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
                 let skew = ev.skew.map(|(ps, mm, pn, unc)| serde_json::json!({"partner": pn, "skew_ps": ps, "skew_mm": mm, "uncertain": unc}));
                 serde_json::json!({"channel": ev.ch, "error": null, "touchstone": kisi_core::rf::touchstone(&ev.ch), "eye": eye, "skew": skew,
                     "rx_used": ev.rx_used, "rx_note": ev.rx_note, "tx_used": ev.tx_used, "end_note": ev.end_note, "rest_applied": ev.rest_applied, "reversed": rev,
+                    "model": ev.model, "scd21_db": ev.scd21_db,
                     "crosstalk": kisi_core::rf::crosstalk(b, an, lane.nets[0], &params.field, &rp)})
             }
             Err(e) => serde_json::json!({"channel": null, "error": e, "crosstalk": {"aggressors": [], "geoms": []}}),
@@ -856,7 +857,15 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
                         rx: end("rx"),
                         ..Default::default()
                     };
-                    eye = match kisi_core::eye::eye(&c, &ep) {
+                    // a pair: the eye of the 4-port (both lines, mode conversion), as in the check
+                    let res = match kisi_core::rf::mixed_mode(b, an, net, &params.field, target, &rp, flip, hint).ok().filter(|_| c.diff) {
+                        Some(m) => {
+                            let d = kisi_core::eye::EndModel { r: c.z_ref, c_pf: 0.0, l_nh: 0.0 };
+                            kisi_core::lanenet::ends_transfer(&c.freq, &[m.pair_net().block()], 2, &ep.tx.unwrap_or(d), &ep.rx.unwrap_or(d)).and_then(|(h, dc)| kisi_core::eye::eye_of(&c.freq, &h, Some(dc), c.delay_ps, &ep))
+                        }
+                        None => kisi_core::eye::eye(&c, &ep),
+                    };
+                    eye = match res {
                         Ok(e) => serde_json::to_value(&e).unwrap(),
                         Err(e) => serde_json::json!({"error": e}),
                     };

@@ -1,13 +1,15 @@
-//! Eye diagram of a channel (milestone M5): NRZ PRBS through S21.
+//! Eye diagram of a channel (milestone M5): NRZ PRBS through the channel.
 //!
-//! The step response of S21 (Gaussian transmitter edge of the given 10-90 %
-//! rise time) gives the single-bit pulse response; a periodic PRBS is
-//! superposed on it (linear, time-invariant channel, matched terminations,
-//! no equalisation). Amplitudes are fractions of the transmitter swing.
+//! The step response of the transfer between the ends (Gaussian transmitter edge of the
+//! given 10-90 % rise time, DC point, taper and checks from `rf::timedomain`) gives the
+//! single-bit pulse response; a periodic PRBS is superposed on it (linear, time-invariant
+//! channel, no equalisation). Amplitudes are fractions of the transmitter swing. The
+//! transfer comes from the cascade (`transfer`) or from a network (`rf::network`, e.g. the
+//! 4-port of a pair, see `kisi_si::lanenet`) through `eye_of`.
 
-use crate::rf::{Abcd, Channel, Cx};
+use crate::rf::{Abcd, Channel, Cx, Step, TdCheck};
 use serde::{Deserialize, Serialize};
-use std::f64::consts::{LN_2, PI};
+use std::f64::consts::PI;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(default)]
@@ -159,6 +161,16 @@ pub fn transfer(ch: &Channel, tx: &EndModel, rx: &EndModel) -> Vec<Cx> {
         .collect()
 }
 
+/// `transfer` at 0 Hz (the channel's DC cascade `abcd_dc`; resistances only): the DC point of
+/// the eye's step response.
+pub fn transfer_dc(ch: &Channel, tx: &EndModel, rx: &EndModel) -> f64 {
+    let rs = tx.r.max(0.0);
+    let scale = if rx.r > 0.0 { (rs + rx.r) / rx.r } else { 1.0 };
+    let g = if rx.r > 0.0 { 1.0 / rx.r } else { 0.0 };
+    let t = ch.abcd_dc.mul(&Abcd::shunt(Cx::new(g, 0.0)));
+    (t.a + t.c.scale(rs)).inv().scale(scale).re
+}
+
 impl Default for EyeParams {
     fn default() -> Self {
         EyeParams { bitrate: 8e9, rise: 35e-12, prbs: 7, samples_per_ui: 32, rows: 96, tx: None, rx: None }
@@ -191,6 +203,8 @@ pub struct Eye {
     /// pulse response around the main cursor: (t ps relative to the cursor, v)
     pub pulse_t_ps: Vec<f64>,
     pub pulse_v: Vec<f64>,
+    /// the step response behind it: DC point, band edge, precursor, settling
+    pub td: TdCheck,
     pub warnings: Vec<String>,
 }
 
@@ -212,47 +226,37 @@ fn prbs(order: u32) -> Vec<u8> {
         .collect()
 }
 
-/// Step response of S21 on t = i·dt, i = 0..nt (unit step at t = 0).
-fn step_response(freq: &[f64], s21: &[Cx], rise: f64, dt: f64, nt: usize) -> Vec<f64> {
-    let df = freq[0];
-    let f3 = 0.3394 / rise;
-    let s0 = s21[0].abs(); // DC gain extrapolated from the lowest frequency
-    let terms: Vec<(f64, Cx)> = freq
-        .iter()
-        .zip(s21)
-        .map(|(&f, &s)| (2.0 * PI * f, s.scale((-(LN_2 / 2.0) * (f / f3).powi(2)).exp())))
-        .filter(|(_, s)| s.abs() > 1e-7)
-        .collect();
-    let big_f = |t: f64| -> f64 {
-        let mut acc = s0 * t;
-        for &(w, sh) in &terms {
-            let e = Cx::new((w * t).cos(), (w * t).sin());
-            acc += 2.0 * (sh * e / Cx::new(0.0, w)).re;
-        }
-        acc * df
-    };
-    let f0 = big_f(-3.0 * rise);
-    (0..nt).map(|i| big_f(i as f64 * dt) - f0).collect()
-}
-
+/// Eye of a channel between the ends of `ep` (None: the reference impedance), from the
+/// cascade.
 pub fn eye(ch: &Channel, ep: &EyeParams) -> Result<Eye, String> {
     if ch.freq.len() < 10 || ch.s21.len() != ch.freq.len() {
         return Err("no S-parameters".into());
     }
-    let h: Vec<Cx> = match (&ep.tx, &ep.rx) {
-        (None, None) => ch.s21.clone(),
-        (tx, rx) if ch.abcd.len() == ch.freq.len() => {
+    let full = ch.abcd.len() == ch.freq.len();
+    let (h, dc): (Vec<Cx>, Option<f64>) = match (&ep.tx, &ep.rx) {
+        (None, None) => (ch.s21.clone(), full.then(|| ch.abcd_dc.s_params(ch.z_ref).1.re)),
+        (tx, rx) if full => {
             let d = EndModel { r: ch.z_ref, c_pf: 0.0, l_nh: 0.0 };
-            transfer(ch, tx.as_ref().unwrap_or(&d), rx.as_ref().unwrap_or(&d))
+            let (tx, rx) = (tx.as_ref().unwrap_or(&d), rx.as_ref().unwrap_or(&d));
+            (transfer(ch, tx, rx), Some(transfer_dc(ch, tx, rx)))
         }
-        _ => ch.s21.clone(),
+        _ => (ch.s21.clone(), None),
     };
+    eye_of(&ch.freq, &h, dc, ch.delay_ps, ep)
+}
+
+/// Eye from a transfer function `h` on the channel grid (f_k = k·df) with its DC point `dc`
+/// (None: extrapolated from the lowest frequency) and the channel's static delay (ps).
+pub fn eye_of(freq: &[f64], h: &[Cx], dc: Option<f64>, delay_ps: f64, ep: &EyeParams) -> Result<Eye, String> {
+    if freq.len() < 10 || h.len() != freq.len() {
+        return Err("no transfer function".into());
+    }
     let mut warnings = Vec::new();
     let ui = 1.0 / ep.bitrate;
     let spu = ep.samples_per_ui.clamp(8, 128);
     let dt = ui / spu as f64;
-    let df = ch.freq[0];
-    let fmax = *ch.freq.last().unwrap();
+    let df = freq[0];
+    let fmax = *freq.last().unwrap();
     if ep.bitrate / 2.0 * 2.5 > fmax {
         warnings.push(format!(
             "frequency range up to {:.0} GHz is tight for {:.1} Gbit/s (Nyquist {:.1} GHz)",
@@ -262,11 +266,14 @@ pub fn eye(ch: &Channel, ep: &EyeParams) -> Result<Eye, String> {
         ));
     }
     // window: delay + settling, but well inside the 1/df period of the sweep
-    let delay = ch.delay_ps * 1e-12;
+    let delay = delay_ps * 1e-12;
     let t_win = (3.0 * delay + 6.0 * ep.rise + 48.0 * ui).min(0.7 / df);
     let nt = (t_win / dt).ceil() as usize + spu;
-    let s = step_response(&ch.freq, &h, ep.rise, dt, nt);
-    let dc = h[0].abs();
+    let mut step = Step::new(freq, h, dc, ep.rise);
+    step.verify(0.8 * delay - 2.0 * ep.rise, t_win);
+    warnings.extend(step.check.warnings());
+    let s = step.samples(dt, nt);
+    let dc = step.check.dc.abs();
     // single-bit pulse response
     let p: Vec<f64> = (0..nt).map(|i| s[i] - if i >= spu { s[i - spu] } else { 0.0 }).collect();
     let (imax, &vpk) = p.iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap();
@@ -391,6 +398,7 @@ pub fn eye(ch: &Channel, ep: &EyeParams) -> Result<Eye, String> {
         isi_sum: isi,
         pulse_t_ps,
         pulse_v,
+        td: step.check.clone(),
         warnings,
     })
 }
@@ -426,8 +434,15 @@ mod tests {
         assert_eq!(b.len(), 127);
         assert_eq!(b.iter().filter(|&&x| x == 1).count(), 64);
     }
+}
 
-    pub(super) fn channel_from(freq: Vec<f64>, s21: Vec<Cx>, delay_ps: f64) -> Channel {
+/// Test helpers shared with other modules.
+#[cfg(test)]
+pub(crate) mod tests_support {
+    use super::*;
+
+    /// A channel with only frequencies, S21 and a delay.
+    pub(crate) fn channel_from(freq: Vec<f64>, s21: Vec<Cx>, delay_ps: f64) -> Channel {
         Channel {
             net: 0,
             name: String::new(),
@@ -455,9 +470,16 @@ mod tests {
             s21,
             s22: vec![Cx::new(0.0, 0.0); freq.len()],
             abcd: vec![],
+            abcd_dc: Abcd::identity(),
             freq,
         }
     }
+}
+
+#[cfg(test)]
+mod tests2 {
+    use super::tests_support::channel_from;
+    use super::*;
 
     #[test]
     fn transfer_matched_equals_s21_and_open_end() {
@@ -541,6 +563,16 @@ pub struct CheckRow {
     /// side stubs and branches in the channel (open stubs: unused pads, parts not fitted,
     /// the other path of a fork)
     pub stubs: Vec<String>,
+    /// how the channel is modelled: "single-ended", "4-port" (a pair: both lines, coupling, mode
+    /// conversion) or "odd mode" (a pair as a 2-port)
+    pub model: &'static str,
+    /// pairs with the 4-port: worst mode conversion Scd21 up to 1.5 × Nyquist (dB); information
+    pub mode_conversion_db: Option<f64>,
+}
+
+/// Largest value of `curve` (on `freq`) up to `f_hi`.
+pub(crate) fn worst_up_to(freq: &[f64], curve: &[f64], f_hi: f64) -> f64 {
+    freq.iter().zip(curve).filter(|(&f, _)| f <= f_hi * 1.0001).map(|(_, &v)| v).fold(f64::NEG_INFINITY, f64::max)
 }
 
 pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
@@ -565,12 +597,15 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
         eye: true,
         eye_board_share: false,
         stubs: vec![],
+        model: "single-ended",
+        mode_conversion_db: None,
     }
 }
 
 /// Fill loss, return loss, stubs and (if `with_eye`) the eye of a row from a channel.
 pub(crate) fn fill_row(row: &mut CheckRow, ch: &crate::rf::Channel, gbps: f64, rise: f64, ends: (Option<EndModel>, Option<EndModel>), with_eye: bool) {
     row.diff = ch.diff;
+    row.model = if ch.diff { "odd mode" } else { "single-ended" };
     row.length_mm = ch.length_mm;
     row.delay_ps = ch.delay_ps;
     row.vias = ch.vias;
@@ -610,7 +645,7 @@ pub fn check_net(
     let mut row = empty_row(net, board.net_name(net).to_string(), gbps);
     // enough bandwidth for the eye, at least 2.5 × Nyquist
     let rp = crate::rf::RfParams { fmax: rp.fmax.max(gbps * 1e9 * 1.25), ..rp.clone() };
-    let ch = match crate::rf::channel(board, an, net, field, target, &rp) {
+    let mut ch = match crate::rf::channel(board, an, net, field, target, &rp) {
         Ok(c) => c,
         Err(e) => {
             row.error = Some(e);
@@ -618,7 +653,38 @@ pub fn check_net(
         }
     };
     let (tx, rx, rise) = ends;
-    fill_row(&mut row, &ch, gbps, rise.unwrap_or(rp.rise), (tx, rx), true);
+    // a pair: the 4-port of both lines (mode conversion), as for lanes
+    let pair = if ch.diff {
+        match crate::rf::mixed_mode(board, an, net, field, target, &rp, false, None) {
+            Ok(m) => Some(m.pair_net()),
+            Err(e) => {
+                ch.warnings.push(format!("pair computed in the odd mode (2-port): {e}"));
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let mm = pair.as_ref().map(|p| p.mixed());
+    if let Some(mm) = &mm {
+        crate::lanenet::apply_pair(&mut ch, mm, rp.rise);
+    }
+    fill_row(&mut row, &ch, gbps, rise.unwrap_or(rp.rise), (tx, rx), pair.is_none());
+    if let (Some(p), Some(mm)) = (&pair, &mm) {
+        row.model = "4-port";
+        let scd: Vec<f64> = mm.iter().map(|m| 20.0 * m[3][0].abs().max(1e-12).log10()).collect();
+        row.mode_conversion_db = Some(worst_up_to(&ch.freq, &scd, 1.5 * gbps * 0.5e9));
+        row.eye = true;
+        let d = EndModel { r: ch.z_ref, c_pf: 0.0, l_nh: 0.0 };
+        let ep = EyeParams { bitrate: gbps * 1e9, rise: rise.unwrap_or(rp.rise), tx, rx, ..Default::default() };
+        match crate::lanenet::ends_transfer(&ch.freq, &[p.block()], 2, &tx.unwrap_or(d), &rx.unwrap_or(d)).and_then(|(h, dc)| eye_of(&ch.freq, &h, Some(dc), ch.delay_ps, &ep)) {
+            Ok(e) => {
+                row.eye_height = e.height;
+                row.eye_width_ui = e.width_ps / e.ui_ps;
+            }
+            Err(e) => row.error = Some(e),
+        }
+    }
     if let (true, Some(pn)) = (ch.diff, ch.partner) {
         let rq = crate::rf::RfParams { npts: 10, ..rp.clone() };
         if let Ok(pc) = crate::rf::channel(board, an, pn, field, target, &rq) {

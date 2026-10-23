@@ -153,13 +153,16 @@ pub fn mixed_of(s: &M4) -> M4 {
 }
 
 /// One element of the aligned pair cascade.
-enum El {
+pub(crate) enum El {
     /// section `seg` of line 0 (P) or 1 (N), optionally with a shorter length (mm)
     Single { line: usize, seg: usize, len: Option<f64> },
     /// coupled run of `len` mm with the modal models of P's cross-section
     Coupled { len: f64, even: LineModel, odd: LineModel },
     /// via pair: odd model with the partner via, even model = single via (of P)
     ViaPair { p: usize },
+    /// open stubs on both lines at the same place (sections `p` of P, `n` of N): the odd mode
+    /// from the stubs built as a pair, the even mode from the single stubs
+    StubPair { p: usize, n: usize },
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -244,6 +247,11 @@ pub struct MixedMode {
     pub warnings: Vec<String>,
     #[serde(skip)]
     pub s: Vec<M4>,
+    /// cascade matrices (state V_P V_N I_P I_N) per frequency and at 0 Hz, for the eye
+    #[serde(skip)]
+    pub t: Vec<M4>,
+    #[serde(skip)]
+    pub t_dc: M4,
 }
 
 /// 4-port model of the pair `net` + its partner. `flip` / `hint` choose the start as for
@@ -281,103 +289,7 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
         _ => 50.0,
     });
     let fallback = Build::fallback(z_ref);
-    let su = board.stackup();
-    let xs_of = |b: &Build, i: usize| b.segs[i].xs.map(|x| &an.cross_sections[x as usize]);
-    let tok = |b: &Build, i: usize| -> Tok {
-        match b.segs[i].kind {
-            "line" => match xs_of(b, i) {
-                Some(x) if x.diff_gap.is_some() && x.zdiff.is_some() => Tok::C(b.segs[i].layer),
-                _ => Tok::U,
-            },
-            "via" => Tok::V,
-            _ => Tok::U,
-        }
-    };
-    let modal = |b: &Build, i: usize| -> Option<(LineModel, LineModel)> {
-        let x = xs_of(b, i)?;
-        let fr = x.geom.and_then(|g| field.get(&an.geometries[g as usize].id));
-        Some((line_model_mode(su, x, fr, Mode::Even, rp)?, line_model_mode(su, x, fr, Mode::Odd, rp)?))
-    };
-
-    // align the two section lists (greedy): coupled runs on the same layer pair up over
-    // the shorter length, the rest of the longer one stays a single line; vias pair up
-    let mut els: Vec<El> = Vec::new();
-    let (mut i, mut j) = (0usize, 0usize);
-    let (mut rem_p, mut rem_n) = (f64::NAN, f64::NAN); // remaining length of the head line
-    let len_left = |b: &Build, k: usize, rem: f64| if rem.is_nan() { b.segs[k].len_mm } else { rem };
-    let mut coupled_mm = 0.0;
-    let mut asym_vias = 0usize;
-    let mut no_modal = false;
-    while i < bp.segs.len() || j < bn.segs.len() {
-        let tp = (i < bp.segs.len()).then(|| tok(&bp, i));
-        let tn = (j < bn.segs.len()).then(|| tok(&bn, j));
-        let single_p = |els: &mut Vec<El>, rem: f64| els.push(El::Single { line: 0, seg: i, len: (!rem.is_nan()).then_some(rem) });
-        let single_n = |els: &mut Vec<El>, rem: f64| els.push(El::Single { line: 1, seg: j, len: (!rem.is_nan()).then_some(rem) });
-        match (tp, tn) {
-            (Some(Tok::U), _) | (Some(_), None) => {
-                single_p(&mut els, rem_p);
-                i += 1;
-                rem_p = f64::NAN;
-            }
-            (_, Some(Tok::U)) | (None, Some(_)) => {
-                single_n(&mut els, rem_n);
-                j += 1;
-                rem_n = f64::NAN;
-            }
-            (Some(Tok::C(lp)), Some(Tok::C(ln))) if lp == ln => {
-                let (a, b) = (len_left(&bp, i, rem_p), len_left(&bn, j, rem_n));
-                let l = a.min(b);
-                match modal(&bp, i).or_else(|| modal(&bn, j)) {
-                    Some((even, odd)) => {
-                        els.push(El::Coupled { len: l, even, odd });
-                        coupled_mm += l;
-                    }
-                    None => {
-                        no_modal = true;
-                        els.push(El::Single { line: 0, seg: i, len: Some(l) });
-                        els.push(El::Single { line: 1, seg: j, len: Some(l) });
-                    }
-                }
-                rem_p = a - l;
-                rem_n = b - l;
-                if rem_p <= 1e-6 {
-                    i += 1;
-                    rem_p = f64::NAN;
-                }
-                if rem_n <= 1e-6 {
-                    j += 1;
-                    rem_n = f64::NAN;
-                }
-            }
-            (Some(Tok::V), Some(Tok::V)) => {
-                let same = match (&bp.via_models[i], &bn.via_models[j]) {
-                    (Some(a), Some(b)) => (a.delay() - b.delay()).abs() <= 0.1 * a.delay().max(b.delay()) + 1e-15,
-                    _ => false,
-                };
-                if same && bp.via_pair[i].is_some() {
-                    els.push(El::ViaPair { p: i });
-                } else {
-                    asym_vias += 1;
-                    els.push(El::Single { line: 0, seg: i, len: None });
-                    els.push(El::Single { line: 1, seg: j, len: None });
-                }
-                i += 1;
-                j += 1;
-            }
-            // coupled on one side only (other layer, or the partner already changes layer)
-            (Some(Tok::C(_)), _) => {
-                single_p(&mut els, rem_p);
-                i += 1;
-                rem_p = f64::NAN;
-            }
-            (_, Some(Tok::C(_))) => {
-                single_n(&mut els, rem_n);
-                j += 1;
-                rem_n = f64::NAN;
-            }
-            (None, None) => break,
-        }
-    }
+    let PairAlign { els, coupled_mm, asym_vias, no_modal } = align_pair(&bp, &bn, an, board.stackup(), field, rp);
     if asym_vias > 0 {
         warnings.push(format!("{asym_vias} via pair(s) with different barrels: each via modelled on its own line"));
     }
@@ -391,32 +303,17 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     let n = rp.npts.max(10);
     let df = rp.fmax / n as f64;
     let freq: Vec<f64> = (1..=n).map(|k| k as f64 * df).collect();
-    let id = Abcd::identity();
     let mut s_all: Vec<M4> = Vec::with_capacity(n);
     let mut mm_all: Vec<M4> = Vec::with_capacity(n);
+    let mut t_all: Vec<M4> = Vec::with_capacity(n);
     for (k, &f) in freq.iter().enumerate() {
-        let w = 2.0 * PI * f;
-        let mut t = m4_id();
-        for e in &els {
-            let m = match e {
-                El::Single { line: 0, seg, len } => sep(&bp.seg_abcd(*seg, k, f, &fallback, *len), &id),
-                El::Single { seg, len, .. } => sep(&id, &bn.seg_abcd(*seg, k, f, &fallback, *len)),
-                El::Coupled { len, even, odd } => {
-                    let (pe, po) = (even.rlgc(f, rp), odd.rlgc(f, rp));
-                    coupled(&Abcd::line(pe.r, pe.l, pe.g, pe.c, w, len * 1e-3), &Abcd::line(po.r, po.l, po.g, po.c, w, len * 1e-3))
-                }
-                El::ViaPair { p, .. } => {
-                    let ev = bp.via_models[*p].as_ref().map(|v| v.abcd(f, rp.sigma)).unwrap_or(id);
-                    let od = bp.via_pair[*p].as_ref().map(|v| v.abcd(f, rp.sigma)).unwrap_or(ev);
-                    coupled(&ev, &od)
-                }
-            };
-            t = m4_mul(&t, &m);
-        }
+        let t = pair_t(&bp, &bn, &els, k, f, &fallback);
         let s = s_of(&t, z_ref);
         mm_all.push(mixed_of(&s));
         s_all.push(s);
+        t_all.push(t);
     }
+    let t_dc = pair_t_dc(&bp, &bn, &els, &fallback);
     let db = |x: Cx| 20.0 * x.abs().max(1e-12).log10();
     let col = |r: usize, c: usize| -> Vec<f64> { mm_all.iter().map(|m| db(m[r][c])).collect() };
     let scd21_db = col(3, 0);
@@ -485,6 +382,7 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                 let od = bp.via_pair[*p].as_ref().map(|v| v.delay()).unwrap_or(ev);
                 (od, ev, 0.0)
             }
+            El::StubPair { .. } => (0.0, 0.0, 0.0),
         };
         td += d_d;
         tc += d_c;
@@ -588,7 +486,229 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
         source: source.into(),
         warnings,
         s: s_all,
+        t: t_all,
+        t_dc,
     })
+}
+
+impl MixedMode {
+    /// The 4-port as a `lanenet::PairNet` (for the eye and the channel check of a net).
+    pub fn pair_net(&self) -> crate::lanenet::PairNet {
+        crate::lanenet::PairNet { freq: self.freq.clone(), t: self.t.clone(), t_dc: self.t_dc, z_ref: self.z_ref, coupled_mm: self.coupled_mm, length_mm: self.length_mm, warnings: self.warnings.clone() }
+    }
+}
+
+/// The 4-port (cascade matrices on the channel grid and at 0 Hz) of the P line `bp` and the N
+/// line `bn`, both built as single lines with the pair's via models (`Build::pair`): the pair of
+/// a lane (`topology::lane_pair`).
+pub(crate) fn pair_net(board: &Board, an: &Analysis, field: &HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &RfParams, bp: Build, bn: Build) -> crate::lanenet::PairNet {
+    let mut warnings: Vec<String> = Vec::new();
+    for w in bp.warnings.iter().chain(&bn.warnings) {
+        if !warnings.contains(w) {
+            warnings.push(w.clone());
+        }
+    }
+    let z_ref = rp.z_ref.unwrap_or(match target {
+        Some((z, true)) => z / 2.0,
+        Some((z, false)) => z,
+        _ => 50.0,
+    });
+    let fallback = Build::fallback(z_ref);
+    let PairAlign { els, coupled_mm, asym_vias, no_modal } = align_pair(&bp, &bn, an, board.stackup(), field, rp);
+    if asym_vias > 0 {
+        warnings.push(format!("{asym_vias} via pair(s) with different barrels: each via modelled on its own line"));
+    }
+    if no_modal {
+        warnings.push("coupled sections without modal data: modelled as uncoupled lines".into());
+    }
+    if els.iter().any(|e| matches!(e, El::Coupled { odd, .. } if odd.source != "field")) {
+        warnings.push("4-port: even mode of coupled sections estimated where there is no field solve (Zeven ≈ Z0²/Zodd)".into());
+    }
+    let n = rp.npts.max(10);
+    let df = rp.fmax / n as f64;
+    let freq: Vec<f64> = (1..=n).map(|k| k as f64 * df).collect();
+    let t: Vec<M4> = freq.iter().enumerate().map(|(k, &f)| pair_t(&bp, &bn, &els, k, f, &fallback)).collect();
+    let t_dc = pair_t_dc(&bp, &bn, &els, &fallback);
+    let len = |b: &Build| b.segs.iter().filter(|s| s.kind == "line").map(|s| s.len_mm).sum::<f64>();
+    crate::lanenet::PairNet { freq, t, t_dc, z_ref, coupled_mm, length_mm: (len(&bp), len(&bn)), warnings }
+}
+
+/// The two lines of a pair aligned into one cascade (`align_pair`).
+pub(crate) struct PairAlign {
+    pub els: Vec<El>,
+    /// length the lines run as a coupled pair (mm)
+    pub coupled_mm: f64,
+    /// via pairs whose barrels differ (each via on its own line)
+    pub asym_vias: usize,
+    /// coupled sections without modal data (modelled as uncoupled lines)
+    pub no_modal: bool,
+}
+
+/// Align the section lists of the P line `bp` and the N line `bn` (greedy): coupled runs on the
+/// same layer pair up over the shorter length (modal models of the cross-section), the rest of
+/// the longer one stays a single line; vias pair up (coupled when both barrels match); lumped
+/// parts, stubs and uncoupled sections act on their own line.
+pub(crate) fn align_pair(bp: &Build, bn: &Build, an: &Analysis, su: &crate::board::Stackup, field: &HashMap<String, FieldResult>, rp: &RfParams) -> PairAlign {
+    let xs_of = |b: &Build, i: usize| b.segs[i].xs.map(|x| &an.cross_sections[x as usize]);
+    let tok = |b: &Build, i: usize| -> Tok {
+        match b.segs[i].kind {
+            "line" => match xs_of(b, i) {
+                Some(x) if x.diff_gap.is_some() && x.zdiff.is_some() => Tok::C(b.segs[i].layer),
+                _ => Tok::U,
+            },
+            "via" => Tok::V,
+            _ => Tok::U,
+        }
+    };
+    let modal = |b: &Build, i: usize| -> Option<(LineModel, LineModel)> {
+        let x = xs_of(b, i)?;
+        let fr = x.geom.and_then(|g| field.get(&an.geometries[g as usize].id));
+        Some((line_model_mode(su, x, fr, Mode::Even, rp)?, line_model_mode(su, x, fr, Mode::Odd, rp)?))
+    };
+
+    // align the two section lists (greedy): coupled runs on the same layer pair up over
+    // the shorter length, the rest of the longer one stays a single line; vias pair up
+    let mut els: Vec<El> = Vec::new();
+    let (mut i, mut j) = (0usize, 0usize);
+    let (mut rem_p, mut rem_n) = (f64::NAN, f64::NAN); // remaining length of the head line
+    let len_left = |b: &Build, k: usize, rem: f64| if rem.is_nan() { b.segs[k].len_mm } else { rem };
+    let mut coupled_mm = 0.0;
+    let mut asym_vias = 0usize;
+    let mut no_modal = false;
+    while i < bp.segs.len() || j < bn.segs.len() {
+        let tp = (i < bp.segs.len()).then(|| tok(&bp, i));
+        let tn = (j < bn.segs.len()).then(|| tok(&bn, j));
+        let single_p = |els: &mut Vec<El>, rem: f64| els.push(El::Single { line: 0, seg: i, len: (!rem.is_nan()).then_some(rem) });
+        let single_n = |els: &mut Vec<El>, rem: f64| els.push(El::Single { line: 1, seg: j, len: (!rem.is_nan()).then_some(rem) });
+        let stub_pair = tp == Some(Tok::U) && tn == Some(Tok::U) && bp.segs[i].kind == "branch" && bn.segs[j].kind == "branch" && bp.branch_odd[i].is_some() && bn.branch_odd[j].is_some() && {
+            let (a, b) = (bp.segs[i].len_mm, bn.segs[j].len_mm);
+            (a - b).abs() <= 0.2 * a.max(b) + 0.1
+        };
+        if stub_pair {
+            els.push(El::StubPair { p: i, n: j });
+            i += 1;
+            j += 1;
+            continue;
+        }
+        match (tp, tn) {
+            (Some(Tok::U), _) | (Some(_), None) => {
+                single_p(&mut els, rem_p);
+                i += 1;
+                rem_p = f64::NAN;
+            }
+            (_, Some(Tok::U)) | (None, Some(_)) => {
+                single_n(&mut els, rem_n);
+                j += 1;
+                rem_n = f64::NAN;
+            }
+            (Some(Tok::C(lp)), Some(Tok::C(ln))) if lp == ln => {
+                let (a, b) = (len_left(&bp, i, rem_p), len_left(&bn, j, rem_n));
+                let l = a.min(b);
+                match modal(&bp, i).or_else(|| modal(&bn, j)) {
+                    Some((even, odd)) => {
+                        els.push(El::Coupled { len: l, even, odd });
+                        coupled_mm += l;
+                    }
+                    None => {
+                        no_modal = true;
+                        els.push(El::Single { line: 0, seg: i, len: Some(l) });
+                        els.push(El::Single { line: 1, seg: j, len: Some(l) });
+                    }
+                }
+                rem_p = a - l;
+                rem_n = b - l;
+                if rem_p <= 1e-6 {
+                    i += 1;
+                    rem_p = f64::NAN;
+                }
+                if rem_n <= 1e-6 {
+                    j += 1;
+                    rem_n = f64::NAN;
+                }
+            }
+            (Some(Tok::V), Some(Tok::V)) => {
+                let same = match (&bp.via_models[i], &bn.via_models[j]) {
+                    (Some(a), Some(b)) => (a.delay() - b.delay()).abs() <= 0.1 * a.delay().max(b.delay()) + 1e-15,
+                    _ => false,
+                };
+                if same && bp.via_pair[i].is_some() {
+                    els.push(El::ViaPair { p: i });
+                } else {
+                    asym_vias += 1;
+                    els.push(El::Single { line: 0, seg: i, len: None });
+                    els.push(El::Single { line: 1, seg: j, len: None });
+                }
+                i += 1;
+                j += 1;
+            }
+            // coupled on one side only (other layer, or the partner already changes layer)
+            (Some(Tok::C(_)), _) => {
+                single_p(&mut els, rem_p);
+                i += 1;
+                rem_p = f64::NAN;
+            }
+            (_, Some(Tok::C(_))) => {
+                single_n(&mut els, rem_n);
+                j += 1;
+                rem_n = f64::NAN;
+            }
+            (None, None) => break,
+        }
+    }
+
+    PairAlign { els, coupled_mm, asym_vias, no_modal }
+}
+
+/// Cascade matrix (4×4, state V_P V_N I_P I_N) of the aligned pair at frequency index `k`.
+pub(crate) fn pair_t(bp: &Build, bn: &Build, els: &[El], k: usize, f: f64, fallback: &LineModel) -> M4 {
+    let rp = bp.rp;
+    let w = 2.0 * PI * f;
+    let id = Abcd::identity();
+    let mut t = m4_id();
+    for e in els {
+        let m = match e {
+            El::Single { line: 0, seg, len } => sep(&bp.seg_abcd(*seg, k, f, fallback, *len), &id),
+            El::Single { seg, len, .. } => sep(&id, &bn.seg_abcd(*seg, k, f, fallback, *len)),
+            El::Coupled { len, even, odd } => {
+                let (pe, po) = (even.rlgc(f, rp), odd.rlgc(f, rp));
+                coupled(&Abcd::line(pe.r, pe.l, pe.g, pe.c, w, len * 1e-3), &Abcd::line(po.r, po.l, po.g, po.c, w, len * 1e-3))
+            }
+            El::ViaPair { p, .. } => {
+                let ev = bp.via_models[*p].as_ref().map(|v| v.abcd(f, rp.sigma)).unwrap_or(id);
+                let od = bp.via_pair[*p].as_ref().map(|v| v.abcd(f, rp.sigma)).unwrap_or(ev);
+                coupled(&ev, &od)
+            }
+            El::StubPair { p, n } => {
+                let y = |m: Option<&Vec<Abcd>>| m.and_then(|m| m.get(k)).map(|m| m.c / m.a).unwrap_or(Cx::new(0.0, 0.0));
+                let even = (y(bp.branch[*p].as_ref()) + y(bn.branch[*n].as_ref())).scale(0.5);
+                let odd = (y(bp.branch_odd[*p].as_ref()) + y(bn.branch_odd[*n].as_ref())).scale(0.5);
+                coupled(&Abcd::shunt(even), &Abcd::shunt(odd))
+            }
+        };
+        t = m4_mul(&t, &m);
+    }
+    t
+}
+
+/// The same at 0 Hz (DC point): every line its DC resistance, vias shorts, lumped parts and
+/// stubs as in `Build::seg_abcd_dc`.
+pub(crate) fn pair_t_dc(bp: &Build, bn: &Build, els: &[El], fallback: &LineModel) -> M4 {
+    let id = Abcd::identity();
+    let mut t = m4_id();
+    for e in els {
+        let m = match e {
+            El::Single { line: 0, seg, len } => sep(&bp.seg_abcd_dc(*seg, fallback, *len), &id),
+            El::Single { seg, len, .. } => sep(&id, &bn.seg_abcd_dc(*seg, fallback, *len)),
+            El::Coupled { len, even, odd } => {
+                let r = |m: &LineModel| Abcd::series(Cx::new(m.r_dc * len * 1e-3, 0.0));
+                coupled(&r(even), &r(odd))
+            }
+            El::ViaPair { .. } => m4_id(),
+            El::StubPair { p, n } => sep(&bp.seg_abcd_dc(*p, fallback, None), &bn.seg_abcd_dc(*n, fallback, None)),
+        };
+        t = m4_mul(&t, &m);
+    }
+    t
 }
 
 /// Index of the `k`-th via section of a build.

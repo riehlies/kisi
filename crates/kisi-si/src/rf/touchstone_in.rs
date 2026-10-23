@@ -269,6 +269,26 @@ impl Touchstone {
         Ok((out, notes))
     }
 
+    /// The whole S-matrix (row-major) interpolated at `f` (as `per_line_abcd`: magnitude held
+    /// outside the file's range, the phase to 0 at DC).
+    pub fn s_at(&self, f: f64) -> Vec<Cx> {
+        let n = self.nports;
+        (0..n * n).map(|i| interp(&self.freq, &self.s.iter().map(|m| m[i]).collect::<Vec<_>>(), f)).collect()
+    }
+
+    /// Notes when `freq` reaches beyond the file's frequency range.
+    pub fn extrapolation_notes(&self, freq: &[f64]) -> Vec<String> {
+        let mut notes = vec![];
+        let (fmin, fmax) = (self.freq[0], *self.freq.last().unwrap());
+        if freq.iter().any(|&f| f > fmax * 1.001) {
+            notes.push(format!("{} ends at {:.2} GHz: above it extrapolated (magnitude held)", self.name, fmax / 1e9));
+        }
+        if freq.iter().any(|&f| f < fmin * 0.999) && fmin > 0.0 {
+            notes.push(format!("{} starts at {:.3} GHz: towards DC extrapolated", self.name, fmin / 1e9));
+        }
+        notes
+    }
+
     /// Short description for the viewer and the CLI.
     pub fn summary(&self) -> serde_json::Value {
         serde_json::json!({"name": self.name, "nports": self.nports, "points": self.freq.len(),

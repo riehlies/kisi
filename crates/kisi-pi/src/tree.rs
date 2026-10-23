@@ -624,7 +624,7 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
         let Some(v) = fp.prop("PI_REG") else { continue };
         let entries: Vec<&str> = crate::field_syntax::split_unquoted(v, &[';']);
         for (k, entry) in entries.iter().enumerate() {
-            match parse_reg_entry(&fp.reference, &fp.value, entry) {
+            match parse_reg_entry(&fp.reference, &fp.part_label(), entry) {
                 Ok((mut el, vs)) => {
                     if let Some((_, note)) = field_source(fp, "PI_REG") {
                         el.note = note.to_string();
@@ -680,7 +680,7 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
             };
             // basis: the kisi.json source kind (datasheet, estimate, …) or "field" for a KiCad field
             let (basis, note) = field_source(fp, "PI_LOAD").unwrap_or(("field", ""));
-            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.value.clone(), basis: basis.into(), note: note.into(), at });
+            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.part_label(), basis: basis.into(), note: note.into(), at });
         }
     }
     // rails: every net named by an element or a load

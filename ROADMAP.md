@@ -4,41 +4,34 @@ Planned and possible work after 0.2.4, roughly in order of priority. Each item s
 "Decide first" marks items that need a decision before work starts.
 
 ## Next
-- **`kisi gaps`: supply rails without a voltage in the name.** Nets such as `Net-(IC22-VCC)` are not recognised as
-  rails, so the ICs on them are missing from the load list. Use regulator outputs (`PI_REG … @V`) and the parts on
-  the net to detect them. XIAO nRF54LM20A (power tree test of the kisi-prepare skill): VSYS, VBUS and VBAT of the
-  nPM1300 PMIC are not found; `VSYS@5V` in the field works as a workaround.
-- **PI_REG output rails with spaces in the net name.** Hierarchical names such as `/06 Peripherals/IMU_VDD` cannot be
-  written, because the field parser splits at whitespace; allow quoting (`"/06 Peripherals/IMU_VDD"`). Workaround on
-  the XIAO: a load point at the ferrite (`IMU&MIC_3V3=0.9mA@FB3`).
-- **Default efficiency of switching regulators as an estimate.** Without a value kisi assumes 85 %; the viewer's power
-  tree shows it as “η 85 %” without an estimate mark and the CLI output has no flag for it. Mark it as an estimate in
-  both (AGENTS.md rule), so that a missing datasheet value is visible.
-- **MPN in `kisi gaps` and part lists.** Footprints often carry a Manufacturer / MPN field while the Value field is not
-  a part number; show the MPN when the value is not one, so that the user (and the skill) can look up the right
-  datasheet. XIAO: U4 has the value “英联” (the manufacturer), the MPN is UM3204H.
-- **`kisi config-template`: a load as the PI_LOAD example.** The example takes the first U part, which can be a
-  regulator (XIAO: U1 TPS628438); pick a part that is a load (not a PI_REG part, not on a regulator's output only).
-- **Skills on real boards.** Run kisi-prepare and kisi-si-pi-review on a few real projects; sharpen the research
-  guidance (datasheet sections, typical vs. maximum) and add a worked example `<board>.kisi.json`.
+- **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
+  (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
+  text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an
+  assumed rating. Read these fields too (their usual names belong in `data/components.json`).
+- **Skills on real boards.** Run kisi-prepare and kisi-si-pi-review on a few more real projects and sharpen the
+  research guidance (datasheet sections, typical vs. maximum, efficiency read from curves). The first worked
+  example is the XIAO nRF54LM20A (`docs/examples/xiao-nrf54lm20a/`).
 
 ## Publishing
 - **Measured validation:** the test board (`validation/test_board.md`) and comparisons with other solvers.
 
 ## Models and accuracy
-- **IBIS models as channel ends** (removed from 0.1.0; the experimental code is in commit `92b8105`). Open: the right
-  model per pin with real vendor files ([Model Selector], [Diff Pin], package models, pin names vs. pads), how
-  IBIS ends and interface profiles fit together (swing, terminations, current-mode drivers), validation with real
-  files and a reference simulator. Research and concept (solvers, model sources, DDR test flows, assembly
-  variants, staged plan): `docs/research/channel-simulation-ibis.md`; M0 (assembly variants) is in 0.2.4. M1 (IBIS
-  parser, `kisi ibis`, mapping in kisi.json with `config-check`) and, on top of it, linearised IBIS ends in check and
-  eye with the model choice per IC and lane in the interfaces view (one “Load IBIS…”, “as the profile” as default,
-  manual pin mapping) are in branch `feat/ibis-parser`, kept there as preliminary work for M3 (transient with the
-  buffers); the viewer integration needs more work before a merge. Open there: KiCad's `Sim.*` fields as a second
-  mapping source; IBIS 8.0 keywords; package-model sections; the parser against IBISCHK on real vendor files; an
-  on-die termination and a termination resistor next to the receiver are not combined; the edge from the waveforms
-  already contains the C_comp load; open-drain drivers without the pull resistor; the receiver's R_pin; validation
-  against an IBIS simulator.
+- **IBIS models as channel ends – on hold.** Decision of the maintainer (2026-10): branch `feat/ibis-parser` is
+  kept as preliminary work but not merged. Its viewer integration became too complicated – too many
+  combinations and error messages – and `main` must always have a clean, self-explanatory build. Before this
+  continues, look at what KiCad already brings for simulation: ngspice, IBIS through KiCad's KIBIS and the
+  `Sim.*` fields. Then decide between handing kisi's channel models (lines, vias, series parts) back to KiCad
+  for its simulator, and configuring the IBIS models in KiCad (in the schematic) or in `kisi.json`, so that
+  kisi does not grow a second model setup. Background: removed from 0.1.0 (experimental code in commit
+  `92b8105`); research and concept (solvers, model sources, DDR test flows, assembly variants, staged plan) in
+  `docs/research/channel-simulation-ibis.md`; M0 (assembly variants) is in 0.2.4. The branch holds M1 (IBIS
+  parser, `kisi ibis`, mapping in kisi.json with `config-check`) and, on top of it, linearised IBIS ends in check
+  and eye with the model choice per IC and lane in the interfaces view (one “Load IBIS…”, “as the profile” as
+  default, manual pin mapping), as preliminary work for M3 (transient with the buffers). Open there: KiCad's
+  `Sim.*` fields as a second mapping source; IBIS 8.0 keywords; package-model sections; the parser against
+  IBISCHK on real vendor files; an on-die termination and a termination resistor next to the receiver are not
+  combined; the edge from the waveforms already contains the C_comp load; open-drain drivers without the pull
+  resistor; the receiver's R_pin; validation against an IBIS simulator.
 - **Assembly variants, follow-ups:** variant-dependent `fields` in kisi.json (e.g. the TS-USB4 power tree from
   the M.2 connector); a via whose barrel continues into a stub beyond the path's layers is counted twice (its own
   stub and the side stub's via, ~0.3 mm on ThunderScope); side stubs in the net channel (`kisi net`) do not add
@@ -92,8 +85,4 @@ Planned and possible work after 0.2.4, roughly in order of priority. Each item s
 
 ## Maintenance
 - Solver updates with `tools/upstream_update.sh` when js_2d_fields changes (validation decides).
-- `tools/check_viewer.py --board`: a board without impedance targets (no `.net` rows) stops the run at the net
-  detail; skip that step when there are no nets (found with the XIAO board).
-- `tools/bundle.py`: the gzip of the example boards carries a timestamp, so two builds of the same commit differ;
-  write it with mtime 0 for reproducible bundles.
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.

@@ -183,13 +183,14 @@ function renderPiSide() {
     if (d != null && (!worst || d > worst.d)) worst = { d, net, pct: d / 10 / Math.abs(r.res.voltage) };
     maxJ = Math.max(maxJ, r.res.max_j);
   }
-  $("pk-drop").innerHTML = worst ? `${fmt(worst.d, 1)}<small> mV</small>` : "–";
+  const tile = (v, u) => { const [a, b] = siParts(v, u); return `${a}<small> ${b}</small>`; };
+  $("pk-drop").innerHTML = worst ? tile(worst.d * 1e-3, "V") : "–";
   const nReady = [...S.piSetups.values()].filter((r) => r.sources.length && r.loads.some((l) => l.current)).length;
   $("pi-run").textContent = S.piSolved ? "Recompute" : "Compute";
   $("pi-run").disabled = !nReady || !!S.piRunning;
   $("ps2").classList.toggle("done", !!S.piSolved);
   $("pi-step").textContent = S.piSolved
-    ? `Done in ${S.piMs} ms for ${n} rail${n === 1 ? "" : "s"}. Voltage and current density per layer, drop at every load.` + (worst ? ` Largest drop: ${fmt(worst.d, 1)} mV on ${netLabel(worst.net)}.` : "")
+    ? `Done in ${S.piMs} ms for ${n} rail${n === 1 ? "" : "s"}. Voltage and current density per layer, drop at every load.` + (worst ? ` Largest drop: ${fmtSI(worst.d * 1e-3, "V")} on ${netLabel(worst.net)}.` : "")
     : nReady ? `DC voltage drop on the copper of ${nReady} rail${nReady === 1 ? "" : "s"}: zones, tracks and vias between sources and loads; a few seconds.`
     : "No rail has both a source and a load yet.";
   const nZ = [...S.piSetups.values()].filter((r) => r.sources.length).length;
@@ -205,13 +206,13 @@ function renderPiSide() {
       : "No rail has a source yet.";
   }
   $("pk-rails").textContent = n;
-  $("pk-j").innerHTML = n ? `${fmt(maxJ, 0)}<small> A/mm²</small>` : "–";
+  $("pk-j").innerHTML = n ? tile(maxJ, "A/mm²") : "–";
   const origins = {};
   for (const r of S.piSetups.values()) for (const l of r.loads) origins[l.origin || "user"] = (origins[l.origin || "user"] || 0) + 1;
   const o = Object.entries(origins).map(([k, v]) => `${v}× ${k === "example" ? "example value (assumption)" : k === "field" ? "KiCad field" : k}`).join(", ");
   if (S.treeRes) {
     const t = S.treeRes, cu = piCopperLoss();
-    $("pi-origin").textContent = `Power tree ${t.name}: ${t.rails.length} rails, input ${fmt(t.p_input + cu, 2)} W, of which ${fmt(t.p_losses + cu, 2)} W losses${S.piSolved ? "" : " (copper losses after step 2)"}. Details in the “Power tree” view.`;
+    $("pi-origin").textContent = `Power tree ${t.name}: ${t.rails.length} rails, input ${fmtSI(t.p_input + cu, "W")}, of which ${fmtSI(t.p_losses + cu, "W")} losses${S.piSolved ? "" : " (copper losses after step 2)"}. Details in the “Power tree” view.`;
   } else $("pi-origin").textContent = S.piSetups.size
     ? `${S.piSetups.size} rail${S.piSetups.size === 1 ? "" : "s"} configured. Loads: ${o || "none"}. Each rail needs a source and a load.`
     : "No loads defined. Set PI_LOAD/PI_SOURCE (or PI_REG) fields in KiCad, add them to the board's .kisi.json or enter them in the rail editor.";
@@ -225,19 +226,19 @@ function renderPiSide() {
   $("rails").innerHTML = rails.map((r) => {
     const res = S.piRes.get(r.name), st = S.piSetups.get(r.name);
     let status;
-    if (r.ground && res && res.res) status = `return ${fmt(-res.res.total_load, 2)} A · offset ${fmt(res.res.max_drop_mv, 2)} mV · ${mW(res.res.power_loss_w)}`;
+    if (r.ground && res && res.res) status = `return ${fmtSI(-res.res.total_load, "A")} · offset ${fmtSI(res.res.max_drop_mv * 1e-3, "V")} · ${fmtSI(res.res.power_loss_w, "W")}`;
     else if (r.ground && res && res.error) status = "ground return: " + res.error;
     else if (r.ground) status = S.piTree ? "ground return after step 2" : "ground";
     else if (res && res.error) status = "error: " + res.error;
-    else if (res && res.res) status = `drop ${fmt(res.res.max_drop_mv, 1)} mV · ${fmt(res.res.total_load, 2)} A`;
+    else if (res && res.res) status = `drop ${fmtSI(res.res.max_drop_mv * 1e-3, "V")} · ${fmtSI(res.res.total_load, "A")}`;
     else if (st && st.loads.length && !st.sources.length) status = "source missing";
-    else if (st && st.loads.length && !S.piSolved) status = `${fmt(st.loads.reduce((a, l) => a + (l.current || 0), 0), 2)} A · drop not computed yet`;
+    else if (st && st.loads.length && !S.piSolved) status = `${fmtSI(st.loads.reduce((a, l) => a + (l.current || 0), 0), "A")} · drop not computed yet`;
     else status = "no load";
     const v = st && st.voltage ? st.voltage : r.voltage;
     if (r.ground) return `<button class="rail" data-net="${esc(r.name)}" aria-current="${r.name === S.piRail}">
       <span class="rn">${esc(netLabel(r.name))}</span><span class="rv">0 V</span><span class="rs">${esc(status)}</span></button>`;
     return `<button class="rail" data-net="${esc(r.name)}" aria-current="${r.name === S.piRail}">
-      <span class="rn">${esc(netLabel(r.name))}</span><span class="rv">${v != null && v !== 0 ? fmt(v, 2) + " V" : "? V"}</span>
+      <span class="rn">${esc(netLabel(r.name))}</span><span class="rv">${v != null && v !== 0 ? fmtSI(v, "V") : "? V"}</span>
       <span class="rs">${esc(status)}</span></button>`;
   }).join("");
   $("rails").querySelectorAll(".rail").forEach((b) => b.onclick = () => { S.piRail = b.dataset.net; S.piLayer = -1; S.piImg = null; fitRail(); renderPi(); renderRailEditor(); });
@@ -253,7 +254,7 @@ function renderRailEditor() {
     const rows = gs.loads.slice().sort((a, b) => Math.abs(b.current) - Math.abs(a.current));
     box.innerHTML = `<div class="rail-edit">
       <p class="note">Ground return: every part returns the current it draws from the supply rails minus what it feeds into them (a buck converter takes current from ground). Reference 0 V: ${esc(gs.sources.map((x) => x.refdes).join(", "))} (supply input).</p>
-      <div class="re-list"><span>Return currents (+ into ground)</span>${rows.map((l) => `<div class="re-load"><span>${esc(l.refdes)}</span><span class="mono">${fmt(-l.current, 3)} A</span><span></span></div>`).join("")}</div></div>`;
+      <div class="re-list"><span>Return currents (+ into ground)</span>${rows.map((l) => `<div class="re-load"><span>${esc(l.refdes)}</span><span class="mono">${fmtSI(-l.current, "A")}</span><span></span></div>`).join("")}</div></div>`;
     return;
   }
   if (S.piTree) {
@@ -261,9 +262,9 @@ function renderRailEditor() {
     const rf = S.treeRes && S.treeRes.rails.find((r) => r.net === net);
     box.innerHTML = `<div class="rail-edit">
       <p class="note">Sources and loads come from the power tree. Change currents in the <button class="btn small" id="re-tobal">power tree</button>.</p>
-      ${rf ? `<div class="re-row"><span>Voltage</span><span class="mono">${fmt(rf.voltage, 2)} V · ${fmt(rf.i_total, 3)} A</span></div>` : ""}
+      ${rf ? `<div class="re-row"><span>Voltage</span><span class="mono">${fmtSI(rf.voltage, "V")} · ${fmtSI(rf.i_total, "A")}</span></div>` : ""}
       ${st ? `<div class="re-row"><span>Source</span><span class="mono">${esc(st.sources.map((x) => x.refdes).join(", "))}${rf && rf.fed_by ? " (" + esc(rf.fed_by) + ")" : ""}</span></div>
-      <div class="re-list"><span>Loads on the net</span>${st.loads.map((l) => `<div class="re-load"><span>${esc(l.refdes)} <span class="o">${esc(l.origin)}</span></span><span class="mono">${fmt(l.current, 3)} A</span><span></span></div>`).join("")}</div>` : `<p class="note">No element feeds this rail.</p>`}
+      <div class="re-list"><span>Loads on the net</span>${st.loads.map((l) => `<div class="re-load"><span>${esc(l.refdes)} <span class="o">${esc(l.origin)}</span></span><span class="mono">${fmtSI(l.current, "A")}</span><span></span></div>`).join("")}</div>` : `<p class="note">No element feeds this rail.</p>`}
     </div>`;
     const b = $("re-tobal"); if (b) b.onclick = () => setPiMode("b");
     return;
@@ -276,9 +277,9 @@ function renderRailEditor() {
     <div class="re-row"><label for="re-v">Nominal voltage</label><input id="re-v" type="number" step="0.01" value="${st.voltage || ""}" placeholder="V"></div>
     <div class="re-row"><span>Sources</span><div class="chips">${st.sources.map((x, i) => `<span class="chip">${esc(x.refdes)}<button class="xbtn" data-rs="${i}" aria-label="Remove source ${esc(x.refdes)}">×</button></span>`).join("")}
       <select id="re-addsrc" aria-label="Add source"><option value="">+ source</option>${opt(comps.filter((c) => !srcSet.has(c)))}</select></div></div>
-    <div class="re-list"><span>Loads (current in A)</span>
+    <div class="re-list"><span>Loads (current)</span>
       ${st.loads.map((l, i) => `<div class="re-load"><span>${esc(l.refdes)} <span class="o">${esc(l.origin === "example" ? "assumption" : l.origin || "")}</span></span>
-        <input type="number" step="0.001" min="0" value="${l.current}" data-li="${i}" aria-label="Current ${esc(l.refdes)} in A"><button class="xbtn" data-rl="${i}" aria-label="Remove load ${esc(l.refdes)}">×</button></div>`).join("")}
+        <input type="text" inputmode="decimal" class="si-in" value="${esc(fmtSI(l.current, "A", 4))}" data-li="${i}" title="Current, e.g. 12 mA, 12m, 0.012 or 1.2e-5 (A)" aria-label="Current ${esc(l.refdes)}"><button class="xbtn" data-rl="${i}" aria-label="Remove load ${esc(l.refdes)}">×</button></div>`).join("")}
       <select id="re-addload" aria-label="Add load"><option value="">+ load</option>${opt(comps.filter((c) => !loadSet.has(c)))}</select>
     </div>
     <div class="re-actions"><button class="btn small primary" id="re-all">Recompute all rails</button><button class="btn small" id="re-reset">Reset inputs</button></div>
@@ -290,7 +291,11 @@ function renderRailEditor() {
   $("re-addload").onchange = (e) => { if (e.target.value) { st.loads.push({ refdes: e.target.value, current: 0.1, pads: [], origin: "user" }); changed(); } };
   box.querySelectorAll("[data-rs]").forEach((b) => b.onclick = () => { st.sources.splice(+b.dataset.rs, 1); changed(); });
   box.querySelectorAll("[data-rl]").forEach((b) => b.onclick = () => { st.loads.splice(+b.dataset.rl, 1); changed(); });
-  box.querySelectorAll("[data-li]").forEach((inp) => inp.onchange = () => { const l = st.loads[+inp.dataset.li]; l.current = Math.max(0, parseFloat(inp.value) || 0); l.origin = "user"; changed(); });
+  box.querySelectorAll("[data-li]").forEach((inp) => inp.onchange = () => {
+    const v = parseSI(inp.value, "A"); // "12 mA", "12m", "0.012", "1.2e-5" (a plain number is A)
+    if (!(v >= 0)) { inp.setAttribute("aria-invalid", "true"); return; }
+    const l = st.loads[+inp.dataset.li]; l.current = v; l.origin = "user"; changed();
+  });
   $("re-all").onclick = () => solveAllRails();
   $("re-reset").onclick = () => { try { localStorage.removeItem(piKey()); } catch (e) { /* ignore */ } initPi(S.piDefaults); };
   $("re-copy").onclick = (e) => {
@@ -307,8 +312,8 @@ function fieldsText() {
   const by = new Map();
   const add = (ref, key, val) => { if (!by.has(ref)) by.set(ref, { PI_LOAD: [], PI_SOURCE: [] }); by.get(ref)[key].push(val); };
   for (const r of S.piSetups.values()) {
-    for (const s of r.sources) add(s.refdes, "PI_SOURCE", `${netLabel(r.net)}=${r.voltage}V`);
-    for (const l of r.loads) if (l.current) add(l.refdes, "PI_LOAD", `${netLabel(r.net)}=${+l.current.toFixed(4)}A`);
+    for (const s of r.sources) add(s.refdes, "PI_SOURCE", `${fieldNet(r.net)}=${r.voltage}V`);
+    for (const l of r.loads) if (l.current) add(l.refdes, "PI_LOAD", `${fieldNet(r.net)}=${fieldSI(l.current, "A")}`);
   }
   const lines = [];
   for (const [ref, f] of [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }))) {
@@ -324,20 +329,20 @@ function treeFieldsText(t) {
   const volt = new Map(t.rails.map((r) => [r.net, r.voltage]));
   const rn = (n) => {
     const v = volt.get(n), named = /^[+-]?[0-9]+V[0-9]*$/i.test(netShort(n));
-    return named || v == null ? netLabel(n) : `${netLabel(n)}@${+v.toFixed(3)}V`;
+    return named || v == null ? fieldNet(n) : `${fieldNet(n)}@${+v.toFixed(3)}V`;
   };
   for (const e of t.elements) {
     const parts = [e.from ? `${rn(e.from)} > ${rn(e.to)}` : `${rn(e.to)}`, e.kind];
     if (e.eff != null) parts.push(`${+(e.eff * 100).toFixed(1)}%`);
-    if (e.imax != null) parts.push(`${+e.imax.toFixed(3)}A`);
-    if (e.iq) parts.push(`iq=${+(e.iq * 1e3).toFixed(3)}mA`);
-    if (e.r) parts.push(`r=${+e.r.toFixed(4)}`);
+    if (e.imax != null) parts.push(fieldSI(e.imax, "A"));
+    if (e.iq) parts.push(`iq=${fieldSI(e.iq, "A")}`);
+    if (e.r) parts.push(`r=${fieldSI(e.r, "", 4, -3, 3)}`);
     if (e.in_ref) parts.push(`in=${e.in_ref}`);
     if (e.out_ref) parts.push(`out=${e.out_ref}`);
     if (e.id && e.id !== e.refdes) parts.push(`id=${e.id.replace(/[\s;]+/g, "_")}`);
     add(e.refdes, "PI_REG", parts.join(" "));
   }
-  for (const l of t.loads) if (l.current) add(l.refdes, "PI_LOAD", `${netLabel(l.net)}=${+l.current.toFixed(4)}A${l.at ? "@" + l.at.split(",").map((x) => x.trim()).join("/") : ""}`);
+  for (const l of t.loads) if (l.current) add(l.refdes, "PI_LOAD", `${fieldNet(l.net)}=${fieldSI(l.current, "A")}${l.at ? "@" + l.at.split(",").map((x) => x.trim()).join("/") : ""}`);
   const lines = [];
   for (const [ref, f] of [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }))) {
     if (f.PI_REG.length) lines.push(`${ref}  PI_REG = ${f.PI_REG.join("; ")}`);
@@ -471,9 +476,9 @@ function showPiTip(mx, my) {
   const drop = (Math.abs(r.res.voltage) - Math.abs(r.v[k])) * 1e3;
   tip.innerHTML = `<div class="t1">${esc(netLabel(S.piRail))}${r.res.ground ? " · ground return" : ""}</div><div class="kv">
     <span>Layer</span><span>${esc(L[g.layer].name)}</span>
-    ${r.res.ground ? `<span>Offset</span><span>${fmt(r.v[k] * 1e3, 3)} mV vs. supply input</span>` : `<span>Voltage</span><span>${fmt(r.v[k], 4)} V</span>
-    <span>Drop</span><span>${fmt(drop, 2)} mV</span>`}
-    <span>Current density</span><span>${fmt(r.j[k], 1)} A/mm²</span></div>`;
+    ${r.res.ground ? `<span>Offset</span><span>${fmtSI(r.v[k], "V")} vs. supply input</span>` : `<span>Voltage</span><span>${fmtSI(r.v[k], "V", 5)}</span>
+    <span>Drop</span><span>${fmtSI(drop * 1e-3, "V")}</span>`}
+    <span>Current density</span><span>${fmtSI(r.j[k], "A/mm²")}</span></div>`;
   tip.hidden = false;
   const rs = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
   let tx = mx + 16, ty = my + 16;
@@ -488,7 +493,7 @@ function renderPiDetail() {
     if (S.pdnRes && S.pdnRes.has(S.piRail)) {
       // Z(f) computed, DC not (yet): impedance view only
       const st = S.piSetups.get(S.piRail);
-      box.innerHTML = `<header><div><h3>${esc(netLabel(S.piRail))} · ${fmt(st ? st.voltage : 0, 2)} V</h3><div class="muted">${r && r.error ? esc(r.error) : "DC voltage drop: step 2"}</div></div><button class="x" id="closePi" aria-label="Close">×</button></header><div id="pdn-body"></div>`;
+      box.innerHTML = `<header><div><h3>${esc(netLabel(S.piRail))} · ${fmtSI(st ? st.voltage : 0, "V")}</h3><div class="muted">${r && r.error ? esc(r.error) : "DC voltage drop: step 2"}</div></div><button class="x" id="closePi" aria-label="Close">×</button></header><div id="pdn-body"></div>`;
       box.hidden = false; $("closePi").onclick = () => { box.hidden = true; };
       renderPdn($("pdn-body"), st);
       return;
@@ -506,12 +511,12 @@ function renderPiDetail() {
   const loads = x.loads.map((l) => {
     const drop = l.v_min != null ? (v0 - Math.abs(l.v_min)) * 1e3 : null;
     const g = gOff.get(l.refdes);
-    return `<tr><td>${esc(l.refdes)}</td><td>${fmt(l.current, 3)}</td><td>${l.v_min != null ? fmt(l.v_min, 4) : "–"}</td><td>${drop != null ? fmt(drop, 2) : "not connected"}</td><td>${drop != null ? fmt(drop / 10 / v0, 2) : "–"}</td>${withG ? `<td>${drop != null && g != null ? fmt(drop + g, 2) : "–"}</td>` : ""}</tr>`;
+    return `<tr><td>${esc(l.refdes)}</td><td class="num">${fmtSI(l.current, "A")}</td><td class="num">${l.v_min != null ? fmtSI(l.v_min, "V", 5) : "–"}</td><td class="num">${drop != null ? fmtSI(drop * 1e-3, "V") : "not connected"}</td><td class="num">${drop != null ? fmtSig(drop / 10 / v0) : "–"}</td>${withG ? `<td class="num">${drop != null && g != null ? fmtSI((drop + g) * 1e-3, "V") : "–"}</td>` : ""}</tr>`;
   }).join("");
-  const srcs = x.sources.map((s) => `${esc(s.refdes)} ${fmt(s.current, 3)} A`).join(" · ");
-  const vias = x.vias.slice(0, 3).map((v) => `${fmt(v.current, 3)} A (drill ${fmt(v.drill, 2)} mm)`).join(" · ");
+  const srcs = x.sources.map((s) => `${esc(s.refdes)} ${fmtSI(s.current, "A")}`).join(" · ");
+  const vias = x.vias.slice(0, 3).map((v) => `${fmtSI(v.current, "A")} (drill ${fmt(v.drill, 2)} mm)`).join(" · ");
   const tabs = `<div class="tabs" role="tablist" aria-label="Rail view">${[["dc", "DC"], ["z", "Impedance Z(f)"]].map(([k, n]) => `<button role="tab" data-pt="${k}" aria-selected="${(S.piTab || "dc") === k}">${n}</button>`).join("")}</div>`;
-  const head = `<header><div><h3>${esc(netLabel(x.net))} · ${fmt(x.voltage, 2)} V</h3><div class="muted">grid ${fmt(x.cell, 3)} mm · ${x.nodes.toLocaleString("en-US")} nodes</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>${tabs}`;
+  const head = `<header><div><h3>${esc(netLabel(x.net))} · ${fmtSI(x.voltage, "V")}</h3><div class="muted">grid ${fmtSI(x.cell * 1e-3, "m")} · ${x.nodes.toLocaleString("en-US")} nodes</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>${tabs}`;
   const wire = () => {
     box.hidden = false;
     $("closePi").onclick = () => { box.hidden = true; };
@@ -519,8 +524,8 @@ function renderPiDetail() {
   };
   if (S.piTab === "z") { box.innerHTML = head + `<div id="pdn-body"></div>`; wire(); renderPdn($("pdn-body"), S.piSetups.get(S.piRail)); return; }
   box.innerHTML = head + `
-    <div class="dstats"><span>Load <b>${fmt(x.total_load, 3)} A</b></span><span>Loss <b>${fmt(x.power_loss_w * 1e3, 1)} mW</b></span><span>max. current density <b>${fmt(x.max_j, 1)} A/mm²</b></span></div>
-    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Load</th><th>A</th><th>V min</th><th>drop mV</th><th>%</th>${withG ? `<th title="rail drop plus the ground offset at the part (ground return)">incl. GND mV</th>` : ""}</tr></thead><tbody>${loads}</tbody></table></div>
+    <div class="dstats"><span>Load <b>${fmtSI(x.total_load, "A")}</b></span><span>Loss <b>${fmtSI(x.power_loss_w, "W")}</b></span><span>max. current density <b>${fmtSI(x.max_j, "A/mm²")}</b></span></div>
+    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Load</th><th class="num">current</th><th class="num">V min</th><th class="num">drop</th><th class="num">%</th>${withG ? `<th class="num" title="rail drop plus the ground offset at the part (ground return)">incl. GND</th>` : ""}</tr></thead><tbody>${loads}</tbody></table></div>
     <div class="dstats"><span>Sources: ${srcs || "–"}</span></div>
     <div class="dstats"><span>Highest-current vias: ${vias || "–"}</span></div>
     ${x.warnings.length ? `<div>${x.warnings.map((w) => `<div class="warn">${esc(w)}</div>`).join("")}</div>` : ""}`;
@@ -529,11 +534,11 @@ function renderPiDetail() {
 
 function renderGroundDetail(box, x) {
   const rows = x.loads.slice().sort((a, b) => Math.max(Math.abs(b.v_min || 0), Math.abs(b.v_max || 0)) - Math.max(Math.abs(a.v_min || 0), Math.abs(a.v_max || 0))).map((l) =>
-    `<tr><td>${esc(l.refdes)}</td><td>${fmt(-l.current, 3)}</td><td>${l.v_max != null ? fmt(l.v_max * 1e3, 3) : "not connected"}</td><td>${l.v_min != null ? fmt(l.v_min * 1e3, 3) : "–"}</td></tr>`).join("");
-  const vias = x.vias.slice(0, 3).map((v) => `${fmt(v.current, 3)} A (drill ${fmt(v.drill, 2)} mm)`).join(" · ");
-  box.innerHTML = `<header><div><h3>${esc(netLabel(x.net))} · ground return</h3><div class="muted">grid ${fmt(x.cell, 3)} mm · ${x.nodes.toLocaleString("en-US")} nodes · reference 0 V: ${esc(x.sources.map((s) => s.refdes).join(", "))}</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>
-    <div class="dstats"><span>Return current <b>${fmt(-x.total_load, 3)} A</b></span><span>Loss <b>${fmt(x.power_loss_w * 1e3, 2)} mW</b></span><span>largest offset <b>${fmt(x.max_drop_mv, 3)} mV</b></span><span>max. current density <b>${fmt(x.max_j, 1)} A/mm²</b></span></div>
-    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Part</th><th>return A</th><th>offset max mV</th><th>offset min mV</th></tr></thead><tbody>${rows}</tbody></table></div>
+    `<tr><td>${esc(l.refdes)}</td><td class="num">${fmtSI(-l.current, "A")}</td><td class="num">${l.v_max != null ? fmtSI(l.v_max, "V") : "not connected"}</td><td class="num">${l.v_min != null ? fmtSI(l.v_min, "V") : "–"}</td></tr>`).join("");
+  const vias = x.vias.slice(0, 3).map((v) => `${fmtSI(v.current, "A")} (drill ${fmt(v.drill, 2)} mm)`).join(" · ");
+  box.innerHTML = `<header><div><h3>${esc(netLabel(x.net))} · ground return</h3><div class="muted">grid ${fmtSI(x.cell * 1e-3, "m")} · ${x.nodes.toLocaleString("en-US")} nodes · reference 0 V: ${esc(x.sources.map((s) => s.refdes).join(", "))}</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>
+    <div class="dstats"><span>Return current <b>${fmtSI(-x.total_load, "A")}</b></span><span>Loss <b>${fmtSI(x.power_loss_w, "W")}</b></span><span>largest offset <b>${fmtSI(x.max_drop_mv * 1e-3, "V")}</b></span><span>max. current density <b>${fmtSI(x.max_j, "A/mm²")}</b></span></div>
+    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Part</th><th class="num">return</th><th class="num">offset max</th><th class="num">offset min</th></tr></thead><tbody>${rows}</tbody></table></div>
     <div class="dstats"><span>Highest-current vias: ${vias || "–"}</span></div>
     <p class="note">Every part returns the current it draws from the supply rails minus what it feeds into them; a negative return (buck converters) takes current from ground. The offset is the ground potential at the part relative to the supply input; it adds to the drop of the part's supply rails.</p>
     ${x.warnings.length ? `<div>${x.warnings.map((w) => `<div class="warn">${esc(w)}</div>`).join("")}</div>` : ""}`;

@@ -182,7 +182,7 @@ function segmentAt(ch, x, end) {
   const b = ch.segments.find((s) => s.kind === "branch" && Math.abs(s.s_mm - x) < near);
   const ln = ch.segments.find((s) => s.kind === "line" && x >= s.s_mm && x <= s.s_mm + s.len_mm);
   const out = [];
-  if (v) out.push(`via${v.z ? " " + fmt(v.z * (ch.diff ? 2 : 1), 0) + " Ω" : ""}${v.via_lc ? ` (${fmt(v.via_lc[0], 2)} nH, ${fmt(v.via_lc[1], 2)} pF)` : ""}`);
+  if (v) out.push(`via${v.z ? " " + fmt(v.z * (ch.diff ? 2 : 1), 0) + " Ω" : ""}${v.via_lc ? ` (${fmtSI(v.via_lc[0] * 1e-9, "H")}, ${fmtSI(v.via_lc[1] * 1e-12, "F")})` : ""}`);
   if (b) out.push(esc(b.part || "branch"));
   if (ln) {
     const xs = ln.xs != null ? S.an.cross_sections[ln.xs] : null;

@@ -13,10 +13,15 @@ from schematic"); the kisi.json keeps the KiCad files untouched.
 import json, os, re, sys
 
 
+def name(n):
+    """A net name in a field: in quotes when it has spaces or separators (hierarchical names)."""
+    return f'"{n}"' if re.search(r'[\s";,=@>→]', n) else n
+
+
 def rail(n, volts):
     v = volts.get(n)
     named = re.match(r"^[+-]?[0-9]+V[0-9]*$", n.rsplit("/", 1)[-1], re.I)
-    return n if named or v is None else f"{n}@{v:g}V"
+    return name(n) if named or v is None else f"{name(n)}@{v:g}V"
 
 
 def reg_entry(e, volts):
@@ -56,7 +61,7 @@ def entries(tree):
             continue
         # load point on other parts (e.g. the inductors of an output stage): NET=I@R1/R2
         at = "@" + "/".join(a.strip() for a in l["at"].split(",")) if l.get("at") else ""
-        loads.setdefault(l["refdes"], []).append((f"{l['net']}={l['current']:g}A{at}", l.get("basis") or "estimate", l["net"], l.get("note", "")))
+        loads.setdefault(l["refdes"], []).append((f"{name(l['net'])}={l['current']:g}A{at}", l.get("basis") or "estimate", l["net"], l.get("note", "")))
     out = []
     for ref, rs in regs.items():
         kinds = {s[0] for _, s in rs}
@@ -103,7 +108,8 @@ def write_board(tree, board, out):
 
     def ins(m):
         ref = m.group(1)
-        extra = "".join(f'(property "{k}" "{v}" (at 0 0 0) (layer "F.Fab") (hide yes)) ' for k, v in f.get(ref, {}).items())
+        q = lambda v: v.replace("\\", "\\\\").replace('"', '\\"')  # s-expression string
+        extra = "".join(f'(property "{k}" "{q(v)}" (at 0 0 0) (layer "F.Fab") (hide yes)) ' for k, v in f.get(ref, {}).items())
         if extra:
             done.add(ref)
         return extra + m.group(0)

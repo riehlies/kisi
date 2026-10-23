@@ -9,12 +9,133 @@ use crate::profile::Profiles;
 use crate::service::Project;
 use crate::topology::{self, ComponentData};
 use serde_json::{json, Value};
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 const GENERIC: &[&str] = &["se50", "diff100"];
 
 fn gap(id: &str, priority: &str, area: &str, issue: String, affects: &[&str], source: &str, write: Value, items: Vec<Value>) -> Value {
     json!({"id": id, "priority": priority, "area": area, "issue": issue, "affects": affects, "where_to_find": source, "write": write, "items": items})
+}
+
+/// A part in a gap item: the manufacturer part number added when the footprint has one that the
+/// Value field does not show (Value `100n`, a manufacturer name, …), so that the datasheet can be found.
+fn part_json(mut v: Value, f: Option<&crate::board::Footprint>) -> Value {
+    if let Some(m) = f.and_then(|f| f.mpn_if_not_value()) {
+        v["mpn"] = json!(m);
+        if let Some(mf) = f.and_then(|f| f.prop("Manufacturer")).filter(|x| !x.trim().is_empty() && x.trim() != "~") {
+            v["manufacturer"] = json!(mf.trim());
+        }
+    }
+    v
+}
+
+/// A supply rail as the gap list sees it.
+#[derive(Default)]
+struct SupplyRail {
+    voltage: Option<f64>,
+    /// why it counts as a supply: a voltage in its name, a field, its name, a pin name
+    found_by: Vec<String>,
+    /// fitted parts with pads on it, and the ICs among them
+    components: Vec<String>,
+    ics: Vec<String>,
+    /// for rails without a voltage: series parts (ferrite, inductor, link ≤ 1 Ω) to a rail with a
+    /// voltage – (part, that rail)
+    fed_through: Vec<(String, String)>,
+}
+
+/// Supply rails of the board: nets with a voltage in the name (not signal names such as PG_1V0),
+/// the rails of PI_REG / PI_LOAD /
+/// PI_SOURCE (with the voltages given there, `NAME@<V>V`), and nets that look like supplies by
+/// their name or a pin name (`pi::supply_name_hint`: VBUS, VSYS, VBAT, VDD, …). A net found only
+/// by name needs two connecting parts (not capacitors; fitted, or pads without a part such as a
+/// battery pad), so that the decoupling node of an IC's internal regulator is not taken for a rail.
+fn supply_rails(b: &crate::board::Board, cd: &ComponentData) -> BTreeMap<String, SupplyRail> {
+    let mut m: BTreeMap<String, SupplyRail> = BTreeMap::new();
+    let add = |m: &mut BTreeMap<String, SupplyRail>, name: &str, v: Option<f64>, why: String| {
+        let r = m.entry(name.to_string()).or_default();
+        if r.voltage.is_none() {
+            r.voltage = v.filter(|x| *x != 0.0);
+        }
+        if !r.found_by.contains(&why) {
+            r.found_by.push(why);
+        }
+    };
+    let mut parts: HashMap<u32, Vec<usize>> = HashMap::new();
+    for pad in b.pads.iter().filter(|p| p.net != 0) {
+        let v = parts.entry(pad.net).or_default();
+        if !v.contains(&(pad.fp as usize)) {
+            v.push(pad.fp as usize);
+        }
+    }
+    // a voltage in the name, but not a signal at that level (PG_1V0, TRIM_SCL_5V)
+    for n in crate::pi::power_nets(b).into_iter().filter(|n| !n.ground && n.voltage.is_some() && !crate::pi::signal_name(&n.name)) {
+        add(&mut m, &n.name, n.voltage, "voltage in the name".into());
+    }
+    if let Some((spec, _)) = crate::tree::tree_from_fields(b) {
+        for r in &spec.rails {
+            if let Some(id) = crate::pi::find_net(b, &r.net) {
+                add(&mut m, b.net_name(id), Some(r.voltage), "PI_REG".into());
+            }
+        }
+    }
+    for s in crate::pi::rails_from_fields(b).0 {
+        add(&mut m, &s.net, Some(s.voltage), "PI_LOAD / PI_SOURCE".into());
+    }
+    let connecting = |id: u32| {
+        parts.get(&id).map_or(0, |v| v.iter().filter(|&&fi| b.footprints.get(fi).is_some_and(|f| cd.role(&f.reference) != "capacitor" && (!f.dnp || f.exclude_from_bom))).count())
+    };
+    let known: HashSet<String> = m.keys().cloned().collect();
+    for (i, n) in b.nets.iter().enumerate().skip(1) {
+        if !known.contains(n) && crate::pi::supply_name_hint(n) && connecting(i as u32) >= 2 {
+            add(&mut m, n, crate::pi::voltage_from_name(n), "name".into());
+        }
+    }
+    for pad in &b.pads {
+        let n = b.net_name(pad.net);
+        if pad.net == 0 || known.contains(n) || m.get(n).is_some_and(|r| !r.found_by.is_empty()) || crate::pi::is_ground_name(n) {
+            continue;
+        }
+        // a pin typed as a signal (input, output, …) is not a supply pin, whatever its name
+        if pad.pinfunction.is_empty() || !matches!(pad.pintype.as_str(), "" | "power_in" | "power_out" | "passive" | "unspecified") || !crate::pi::supply_name_hint(&pad.pinfunction) {
+            continue;
+        }
+        if connecting(pad.net) >= 2 {
+            let r = b.footprints.get(pad.fp as usize).map(|f| f.reference.as_str()).unwrap_or("");
+            add(&mut m, n, crate::pi::voltage_from_name(n), format!("pin {r} {}", pad.pinfunction));
+        }
+    }
+    // parts on each rail; series parts that feed a rail without a voltage from one with a voltage
+    let ids: HashMap<&str, u32> = b.nets.iter().enumerate().map(|(i, n)| (n.as_str(), i as u32)).collect();
+    let with_v: HashSet<String> = m.iter().filter(|(_, r)| r.voltage.is_some()).map(|(n, _)| n.clone()).collect();
+    for (n, r) in m.iter_mut() {
+        let Some(id) = ids.get(n.as_str()) else { continue };
+        for &fi in parts.get(id).map(|v| v.as_slice()).unwrap_or(&[]) {
+            let f = &b.footprints[fi];
+            if f.dnp {
+                continue;
+            }
+            r.components.push(f.reference.clone());
+            match cd.role(&f.reference) {
+                "ic" => r.ics.push(f.reference.clone()),
+                role @ ("inductor" | "resistor") if r.voltage.is_none() => {
+                    if role == "resistor" && !crate::topology::parse_value(&f.value).is_some_and(|v| v <= 1.0) {
+                        continue;
+                    }
+                    let mut nets: Vec<u32> = b.pads.iter().filter(|p| p.fp as usize == fi && p.net != 0).map(|p| p.net).collect();
+                    nets.sort();
+                    nets.dedup();
+                    if let [x, y] = nets[..] {
+                        let other = b.net_name(if x == *id { y } else { x });
+                        if with_v.contains(other) {
+                            r.fed_through.push((f.reference.clone(), other.to_string()));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    m
 }
 
 /// All gaps of a project (after its `<board>.kisi.json` was applied).
@@ -83,7 +204,8 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
 
     // --- impedance targets and interface profiles -------------------------------------
     // by name only, so skip what cannot be such a signal: supply nets, stubs, diff profiles without a partner
-    let supply: HashSet<String> = crate::pi::power_nets(b).into_iter().map(|n| n.name).collect();
+    let supplies = supply_rails(b, &cd);
+    let supply: HashSet<String> = crate::pi::power_nets(b).into_iter().map(|n| n.name).chain(supplies.keys().cloned()).collect();
     let mut untargeted: BTreeMap<String, Vec<Value>> = BTreeMap::new();
     for st in p.an.nets.iter().filter(|n| n.target.is_none() && n.length >= 5.0) {
         if supply.contains(&st.name) || crate::pi::voltage_from_name(&st.name).is_some() {
@@ -181,7 +303,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         });
         for part in series.chain(l.shunts.iter().map(|s| &s.part)) {
             if part.val.is_none() {
-                bad_parts.entry(part.refdes.clone()).or_insert_with(|| json!({"ref": part.refdes, "value": part.value, "lane": l.name}));
+                bad_parts.entry(part.refdes.clone()).or_insert_with(|| part_json(json!({"ref": part.refdes, "value": part.value, "lane": l.name}), b.footprints.iter().find(|f| f.reference == part.refdes)));
             }
         }
     }
@@ -199,17 +321,23 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     }
 
     // --- power ---------------------------------------------------------------------------
-    let pnets: Vec<crate::pi::PowerNet> = crate::pi::power_nets(b).into_iter().filter(|n| !n.ground && n.voltage.is_some()).collect();
     let (rails, _) = crate::pi::rails_from_fields(b);
     let tree = crate::tree::tree_from_fields(b);
-    let reg_out: HashSet<String> = tree.as_ref().map(|t| t.0.elements.iter().map(|e| e.to.clone()).collect()).unwrap_or_default();
+    let supplies = &supplies;
     let regs: HashSet<String> = tree.as_ref().map(|t| t.0.elements.iter().map(|e| e.refdes.clone()).collect()).unwrap_or_default();
     let short = |s: &str| s.rsplit('/').next().unwrap_or(s).to_string();
-    let sourced: HashSet<String> = rails.iter().filter(|r| !r.sources.is_empty()).map(|r| short(&r.net)).chain(reg_out.iter().map(|n| short(n))).collect();
-    let mut no_source_nets: Vec<&crate::pi::PowerNet> = pnets.iter().filter(|n| !sourced.contains(&short(&n.name)) && n.components.len() > 1).collect();
-    // stable order (power_nets comes from a hash map: native runs differed from run to run)
-    no_source_nets.sort_by(|a, b| a.name.cmp(&b.name));
-    let no_source: Vec<Value> = no_source_nets.iter().map(|n| json!({"rail": n.name, "voltage": n.voltage, "components": n.components.len()})).collect();
+    let board_name = |n: &str| crate::pi::find_net(b, n).map(|i| b.net_name(i).to_string()).unwrap_or_else(|| n.to_string());
+    let sourced: HashSet<String> = rails
+        .iter()
+        .filter(|r| !r.sources.is_empty())
+        .map(|r| r.net.clone())
+        .chain(tree.iter().flat_map(|t| t.0.elements.iter().map(|e| board_name(&e.to))))
+        .collect();
+    let no_source: Vec<Value> = supplies
+        .iter()
+        .filter(|(n, r)| r.voltage.is_some() && !sourced.contains(*n) && r.components.len() > 1)
+        .map(|(n, r)| json!({"rail": n, "voltage": r.voltage, "components": r.components.len()}))
+        .collect();
     if tree.is_none() {
         out.push(gap(
             "power-tree",
@@ -220,6 +348,36 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "Regulator datasheets: topology (buck/LDO/…), efficiency at the expected load, rated output current; input and output rails from the schematic.",
             json!({"to": "fields[] (name PI_REG on the regulator)", "example": {"ref": "U3", "name": "PI_REG", "value": "+12V > +3V3 buck 90% 3A", "source": {"kind": "datasheet", "document": "regulator datasheet", "page": "…", "note": "efficiency at 1 A, typical"}}}),
             vec![],
+        ));
+    }
+    // rails found by name, pin name or a field, without a voltage
+    let no_voltage: Vec<Value> = supplies
+        .iter()
+        .filter(|(_, r)| r.voltage.is_none())
+        .map(|(n, r)| {
+            let feed: Vec<Value> = r.fed_through.iter().map(|(part, from)| json!({"part": part, "from": from})).collect();
+            let write = match r.fed_through.first() {
+                Some((part, from)) => format!("PI_REG on {part}: {} > {} pass", crate::field_syntax::quote_name(from), crate::field_syntax::quote_name(n)),
+                None => format!("{}@<V>V where a PI_REG entry names it (regulator output or supply input)", crate::field_syntax::quote_name(n)),
+            };
+            let mut v = json!({"rail": n, "found_by": r.found_by, "components": r.components.len(), "ics": r.ics, "write": write});
+            if !feed.is_empty() {
+                v["fed_through"] = json!(feed);
+            }
+            v
+        })
+        .collect();
+    if !no_voltage.is_empty() {
+        out.push(gap(
+            "rails-without-voltage",
+            "medium",
+            "power",
+            format!("{} supply rail(s) without a known voltage (found by their name, a pin name such as VBUS, VSYS, VBAT, VDD, or a field): kisi needs the voltage to put their loads and sources into the power tree, the budget and the IR drop. Found by name: confirm that each one is a supply.", no_voltage.len()),
+            &["power budget", "DC IR drop", "PDN"],
+            "Schematic: the regulator, load switch or connector that feeds the rail and its output voltage (regulator datasheet / voltage setting, USB VBUS 5 V, battery nominal voltage). A rail behind a ferrite, a 0 Ω link or a shunt takes the voltage of the rail before it.",
+            json!({"to": "fields[] – the rail with its voltage as NAME@<V>V in a PI_REG entry", "example": {"ref": "U2", "name": "PI_REG", "value": "VBUS > VSYS@5V pass", "source": {"kind": "datasheet", "document": "PMIC datasheet", "note": "VSYS follows VBUS while USB is present"}},
+                "note": "Write the voltage where the rail appears in PI_REG: as the output of the part that feeds it (`+5V > VSYS@5V buck 90%`) or as a supply input (`VBAT@3.7V input`). Behind a ferrite, 0 Ω link or shunt use a pass element (`+3V3 > IMU_VDD pass r=0.5`: the voltage carries over; items[].write suggests it when kisi finds such a part). Net names with spaces in double quotes (`\"/Power/VDD CORE\"@0.9V`). Without a power tree: PI_SOURCE `NAME=<V>V` on the source part. Nets that are not supplies: ignore."}),
+            no_voltage,
         ));
     }
     if !no_source.is_empty() {
@@ -235,9 +393,31 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             no_source,
         ));
     }
+    // switching regulators without an efficiency: kisi's default (an estimate)
+    let no_eff: Vec<Value> = tree
+        .iter()
+        .flat_map(|t| t.0.elements.iter())
+        .filter(|e| crate::tree::is_switching(&e.kind) && e.eff.is_none())
+        .map(|e| {
+            let f = b.footprints.iter().find(|f| f.reference == e.refdes);
+            part_json(json!({"ref": e.refdes, "id": if e.id.is_empty() { &e.refdes } else { &e.id }, "kind": e.kind, "from": e.from, "to": e.to}), f)
+        })
+        .collect();
+    if !no_eff.is_empty() {
+        out.push(gap(
+            "regulator-efficiency",
+            "low",
+            "power",
+            format!("{} switching regulator(s) have no efficiency in PI_REG: kisi assumes {:.0} % (an estimate, marked as such in the power tree).", no_eff.len(), crate::tree::DEFAULT_EFF * 100.0),
+            &["power budget", "regulator losses", "input current"],
+            "Regulator datasheet: efficiency at the expected load current and input voltage (often only a curve – read it there and say so in the note, kind datasheet with 'read from Figure …', or estimate).",
+            json!({"to": "fields[] (PI_REG on the regulator: the efficiency after the type)", "example": {"ref": no_eff[0]["ref"], "name": "PI_REG", "value": "+5V > +3V3 buck 88% 600mA", "source": {"kind": "datasheet", "document": "regulator datasheet", "note": "efficiency at 50 mA, 5 V in, read from the efficiency curve"}}}),
+            no_eff,
+        ));
+    }
     let loaded: HashSet<&str> = b.footprints.iter().filter(|f| f.prop("PI_LOAD").is_some()).map(|f| f.reference.as_str()).collect();
     let mut on_rails: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
-    let rail_names: HashSet<&str> = pnets.iter().map(|n| n.name.as_str()).collect();
+    let rail_names: HashSet<&str> = supplies.keys().map(|n| n.as_str()).collect();
     for pad in &b.pads {
         let Some(f) = b.footprints.get(pad.fp as usize) else { continue };
         if f.dnp || cd.role(&f.reference) != "ic" || loaded.contains(f.reference.as_str()) || regs.contains(&f.reference) {
@@ -253,7 +433,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             .iter()
             .map(|(r, rails)| {
                 let f = b.footprints.iter().find(|f| &f.reference == r);
-                json!({"ref": r, "value": f.map(|f| f.value.clone()), "rails": rails})
+                part_json(json!({"ref": r, "value": f.map(|f| f.value.clone()), "rails": rails}), f)
             })
             .collect();
         out.push(gap(
@@ -262,7 +442,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "power",
             format!("{} IC(s) on supply rails have no load current (field PI_LOAD): their current is missing from IR drop and budget.", items.len()),
             &["DC IR drop", "power budget", "PDN target impedance"],
-            "Device datasheets: supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.",
+            "Device datasheets (look up the mpn when an item has one: the Value field is not always the part number): supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.",
             json!({"to": "fields[] (name PI_LOAD)", "example": {"ref": items[0]["ref"], "name": "PI_LOAD", "value": "+3V3=120mA", "source": {"kind": "datasheet", "url": "…", "page": "…", "note": "typical, all channels active"}}}),
             items,
         ));
@@ -276,10 +456,10 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             continue;
         }
         match crate::pdn::parse_cap(&f.value) {
-            None => caps.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))})),
+            None => caps.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f))),
             // class II range without a rated voltage in the value or a PI_CAP field: DC-bias derating guessed
             Some(c) if c >= 1e-7 && f.prop("PI_CAP").is_none() && crate::pdn_ic::value_details(&f.value).0.is_none() => {
-                unrated.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}));
+                unrated.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f)));
             }
             _ => {}
         }
@@ -307,7 +487,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         if f.dnp || !bead || !rail_names.contains(b.net_name(pad.net)) || f.prop("PI_SERIES").is_some() || crate::pdn_ic::bead_z100(&f.value).is_some() || !seen_b.insert(f.reference.clone()) {
             continue;
         }
-        beads.push(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}));
+        beads.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f)));
     }
     if !beads.is_empty() {
         out.push(gap(
@@ -349,4 +529,79 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         "gaps": out,
         "how": "Fill the gaps in <board>.kisi.json next to the board (format: see `kisi config-template`), every value with a source; then run `kisi config-check <board>` and `kisi gaps <board>` again. Gaps marked 'not kisi.json' are fixes in KiCad."
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::service::Inputs;
+
+    /// A small PMIC board: VSYS and VBAT have no voltage in their names; VSYS is fed from +5V
+    /// through a 0 Ω link, VBAT has a battery pad (a test point without a part). The VBUSOUT node
+    /// (the PMIC and its capacitor only) and the VBUS_DET signal are not rails.
+    const PCB: &str = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (net 0 "") (net 1 "+5V") (net 2 "VSYS") (net 3 "VBAT") (net 4 "Net-(U1-VBUSOUT)") (net 5 "VBUS_DET") (net 6 "GND") (net 7 "+3V3")
+  (footprint "J" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "Value" "USB-C") PROPJ
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+5V") (pinfunction "VBUS") (pintype "passive"))
+    (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 6 "GND")))
+  (footprint "R" (layer "F.Cu") (at 4 0) (property "Reference" "R1") (property "Value" "0R") PROPR
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+5V"))
+    (pad "2" smd rect (at 1 0) (size 1 1) (layers "F.Cu") (net 2 "VSYS")))
+  (footprint "U" (layer "F.Cu") (at 10 0) (property "Reference" "U1") (property "Value" "英联") (property "MPN" "UM3204H") (property "Manufacturer" "英联")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 2 "VSYS") (pinfunction "VSYS") (pintype "power_in"))
+    (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 3 "VBAT") (pinfunction "VBAT") (pintype "power_in"))
+    (pad "3" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 4 "Net-(U1-VBUSOUT)") (pinfunction "VBUSOUT") (pintype "power_out"))
+    (pad "4" smd rect (at 0 3) (size 1 1) (layers "F.Cu") (net 5 "VBUS_DET") (pinfunction "VBUS_DET") (pintype "input"))
+    (pad "5" smd rect (at 0 4) (size 1 1) (layers "F.Cu") (net 6 "GND")))
+  (footprint "U" (layer "F.Cu") (at 20 0) (property "Reference" "U3") (property "Value" "TPS62843") PROPU3
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 2 "VSYS"))
+    (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 7 "+3V3"))
+    (pad "3" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 6 "GND")))
+  (footprint "TP" (layer "B.Cu") (at 12 6) (property "Reference" "TP1") (property "Value" "BAT") (attr smd exclude_from_bom dnp)
+    (pad "1" smd circle (at 0 0) (size 1 1) (layers "B.Cu") (net 3 "VBAT")))
+  (footprint "C" (layer "F.Cu") (at 12 3) (property "Reference" "C1") (property "Value" "1u")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 4 "Net-(U1-VBUSOUT)"))
+    (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 6 "GND")))
+  (footprint "R" (layer "F.Cu") (at 14 3) (property "Reference" "R2") (property "Value" "100k")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 5 "VBUS_DET"))
+    (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 1 "+5V"))))"#;
+
+    fn run(j: &str, r: &str, u3: &str) -> Value {
+        let pcb = PCB.replace("PROPJ", j).replace("PROPR", r).replace("PROPU3", u3);
+        let p = Project::from_texts(Inputs { pcb_path: "pmic.kicad_pcb".into(), pcb, pro: None, config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap();
+        gaps(&p, &Profiles::builtin())
+    }
+    fn gap_of<'a>(v: &'a Value, id: &str) -> Option<&'a Value> {
+        v["gaps"].as_array().unwrap().iter().find(|g| g["id"] == id)
+    }
+
+    #[test]
+    fn rails_without_voltage_and_mpn() {
+        let v = run("", "", "");
+        let g = gap_of(&v, "rails-without-voltage").expect("gap");
+        let rails: Vec<&str> = g["items"].as_array().unwrap().iter().map(|i| i["rail"].as_str().unwrap()).collect();
+        assert_eq!(rails, vec!["VBAT", "VSYS"], "{g:#}");
+        let vsys = &g["items"][1];
+        assert_eq!(vsys["fed_through"][0]["part"], "R1");
+        assert_eq!(vsys["write"], "PI_REG on R1: +5V > VSYS pass");
+        // the ICs on the new rails are loads without a current; the MPN where the value is none
+        let ic = gap_of(&v, "ic-loads").unwrap();
+        let u1 = ic["items"].as_array().unwrap().iter().find(|i| i["ref"] == "U1").unwrap();
+        assert_eq!((u1["mpn"].as_str(), u1["manufacturer"].as_str()), (Some("UM3204H"), Some("英联")));
+        assert_eq!(u1["rails"], json!(["VBAT", "VSYS"]));
+        assert!(gap_of(&v, "regulator-efficiency").is_none());
+
+        // the voltage from PI_REG: VSYS behind the link takes +5V's; a buck without efficiency
+        let v = run(r#"(property "PI_REG" "+5V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 600mA")"#);
+        let rails: Vec<&str> = gap_of(&v, "rails-without-voltage").unwrap()["items"].as_array().unwrap().iter().map(|i| i["rail"].as_str().unwrap()).collect();
+        assert_eq!(rails, vec!["VBAT"]);
+        let eff = gap_of(&v, "regulator-efficiency").expect("efficiency gap");
+        assert_eq!(eff["items"][0]["ref"], "U3");
+        // with the battery as an input: no rail without a voltage left
+        let v = run(r#"(property "PI_REG" "+5V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 90% 600mA")"#);
+        let v2 = run(r#"(property "PI_REG" "+5V input; VBAT@3.7V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 90% 600mA")"#);
+        assert!(gap_of(&v, "regulator-efficiency").is_none());
+        assert!(gap_of(&v2, "rails-without-voltage").is_none(), "{:#}", v2["gaps"]);
+    }
 }

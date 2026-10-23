@@ -1,0 +1,114 @@
+{
+  "kisi_config": 1,
+  "board": "XIAO nRF54LM20A.kicad_pcb",
+  "fields": [
+    {
+      "ref": "USB1",
+      "name": "PI_REG",
+      "value": "TYPEC_5V input",
+      "source": {"kind": "assumption", "note": "USB-C VBUS pins (A4/B9, B4/A9) on TYPEC_5V (netlist); 5 V USB supply. The board can also run from a battery on VBAT; this tree is the USB case."}
+    },
+    {
+      "ref": "U6",
+      "name": "PI_REG",
+      "value": "TYPEC_5V > VBUS@5V pass r=80m 2A",
+      "source": {"kind": "datasheet", "document": "TI TPS22916 data sheet SLVSDO5F, 6.5 Electrical Characteristics", "url": "https://ti.com/document-viewer/lit/html/SLVSDO5F/GUID-B2F40978-AD2C-4407-A45E-A9323081F8C6", "note": "load switch, RON at VIN = 5 V, 200 mA: 60 mOhm typical, 80 mOhm maximum at 25 °C (maximum used for IR drop); 2 A rating from the data sheet title and the schematic note 'I max=2A'"}
+    },
+    {
+      "ref": "U2",
+      "name": "PI_REG",
+      "value": "VBUS > VSYS@5V pass id=U2-VSYS; VSYS > VSYS_3V3 buck 200mA out=L2 id=U2-BUCK2; \"/03 Power/LDO1_IN\" > IMU&MIC_3V3 ldo iq=12.5u 50mA id=U2-LDO1",
+      "source": {"kind": "datasheet", "document": "Nordic nPM1300 product specification (overview); DevZone answers by Nordic staff", "url": "https://docs.nordicsemi.com/r/bundle/ps_npm1300/page/product_overview.html", "note": "VSYS follows VBUS while VBUS is present (https://devzone.nordicsemi.com/f/nordic-q-a/101423/some-questions-regarding-the-pmic-npm1300/495399), so VSYS is 5 V on USB (VBAT on battery); VBUS-to-VSYS resistance not found, taken as 0. BUCK2: 200 mA rating; VSET2 = 470 kOhm selects 3.3 V (PS v1.3: 250-500 kOhm -> 3.3 V, quoted in https://devzone.nordicsemi.com/f/nordic-q-a/128419/npm1300-buck2-not-regulating-to-3-3-v-in-standalone-mode/567750); efficiency not stated numerically, kisi's default applies (estimate). LDO1: 50 mA in LDO mode (100 mA as load switch); its input is LDO1_IN (VSYS through R14, see R14); LDO mode at 3.3 V is set by firmware over I2C (assumption from the rail name); ground current 4.5 uA from VSYS + 8 uA from LSIN (https://devzone.nordicsemi.com/f/nordic-q-a/121939/npm1300-ldo-quiescent-current/537675). BUCK1 and LDO2 are not used."}
+    },
+    {
+      "ref": "R14",
+      "name": "PI_REG",
+      "value": "VSYS > \"/03 Power/LDO1_IN\" pass",
+      "source": {"kind": "assumption", "document": "Yageo RC0201FR-070RL 0 Ohm link (Farnell product data: 500 mA)", "url": "https://uk.farnell.com/yageo/rc0201jr-070rl/res-0r0-5-0-05w-0201-thick-film/dp/2693569", "note": "0 Ohm link from VSYS to the LDO1 input of the nPM1300 (R11, the alternative from VSYS_3V3, is not fitted); its resistance (a few tens of mOhm at most) is taken as 0 – the LDO1 input current is below 2 mA."}
+    },
+    {
+      "ref": "U1",
+      "name": "PI_REG",
+      "value": "VSYS > 3V3_OUT buck 600mA out=L1",
+      "source": {"kind": "datasheet", "document": "TI TPS62843 data sheet SLVSFU8C, Table 7-1 and page 1", "url": "https://ti.com/document-viewer/lit/html/SLVSFU8C/GUID-EFCCCC79-C485-44CC-9E1A-E36B0C63C01E", "note": "TPS628438: R3 = 249 kOhm on VSET/MODE selects 3.3 V (VSET 16, '249k or larger'); 600 mA output current (page 1); efficiency only as a graph (Figure 8-6), kisi's default applies (estimate). Feeds only the 3V3 pin of the XIAO header ('Only output')."}
+    },
+    {
+      "ref": "U3",
+      "name": "PI_REG",
+      "value": "VSYS_3V3 > SAMD11_3V3 pass r=90m",
+      "source": {"kind": "datasheet", "document": "TI TPS22916 data sheet SLVSDO5F, 6.5 Electrical Characteristics", "url": "https://ti.com/document-viewer/lit/html/SLVSDO5F/GUID-B2F40978-AD2C-4407-A45E-A9323081F8C6", "note": "load switch for the SAMD11 debugger, on only while VBUS is present (EN from VBUS through R19/R15); RON at VIN = 3.6 V (nearest row to 3.3 V): 70 mOhm typical, 90 mOhm maximum at 25 °C (maximum used)"}
+    },
+    {
+      "ref": "FB3",
+      "name": "PI_REG",
+      "value": "IMU&MIC_3V3 > \"/06 Peripherals/IMU_VDD\" pass r=0.5",
+      "source": {"kind": "datasheet", "document": "Murata BLM03AG121SN1D (Digi-Key product data)", "url": "https://digikey.cn/en/products/detail/murata-electronics/BLM03AG121SN1D/610979", "note": "ferrite bead from IMU&MIC_3V3 to the IMU (U11) supply /06 Peripherals/IMU_VDD; series resistance = DC resistance 500 mOhm (maximum)"}
+    },
+    {
+      "ref": "FB4",
+      "name": "PI_REG",
+      "value": "IMU&MIC_3V3 > \"/06 Peripherals/MIC_VDD\" pass r=0.5",
+      "source": {"kind": "datasheet", "document": "Murata BLM03AG121SN1D (Digi-Key product data)", "url": "https://digikey.cn/en/products/detail/murata-electronics/BLM03AG121SN1D/610979", "note": "ferrite bead from IMU&MIC_3V3 to the microphone (U12) supply /06 Peripherals/MIC_VDD; series resistance = DC resistance 500 mOhm (maximum)"}
+    },
+    {
+      "ref": "U8",
+      "name": "PI_LOAD",
+      "value": "VSYS_3V3=12mA",
+      "source": {"kind": "datasheet", "document": "Nordic nRF54LM20A datasheet: Radio current consumption (transmitter), CPU running", "url": "https://docs.nordicsemi.com/r/09E6cV_58cJ3mJAVA8IpZA/K1dh6Q~3WIabtK0Fb4Vt6A", "note": "peak while transmitting: TX only at maximum power (CSP) 9.7 mA + CPU running CoreMark at 128 MHz from NVM 2.4 mA (https://docs.nordicsemi.com/r/09E6cV_58cJ3mJAVA8IpZA/qV4LYmLEw3ZlrYvBskCouQ), both typical. Average in wireless operation at +8 dBm: 3.87 mA measured by Seeed from a 3.7 V battery (https://wiki.seeedstudio.com/xiao_nrf54lm20a_getting_started/). USB of the nRF54LM20A is not used (R23 not fitted)."}
+    },
+    {
+      "ref": "U10",
+      "name": "PI_LOAD",
+      "value": "VSYS_3V3=6mA",
+      "source": {"kind": "estimate", "document": "Puya P25Q64H datasheet V1.4, Table 5-2 DC characteristics, page 10", "url": "https://www.puyasemi.com/download_path/%E6%95%B0%E6%8D%AE%E6%89%8B%E5%86%8C/Flash/P25Q64H_Datasheet_V1.4.pdf", "note": "the PY25Q64HA datasheet could not be read; value of the sibling P25Q64H: read (0Bh) at 85 MHz 4 mA typical, 6 mA maximum; program 4 mA, erase 5 mA maximum. Quad reads at higher clock may draw more."}
+    },
+    {
+      "ref": "U5",
+      "name": "PI_LOAD",
+      "value": "SAMD11_3V3=4.4mA",
+      "source": {"kind": "estimate", "document": "Microchip SAM D20 data sheet, Table 34-8 Current Consumption", "url": "https://onlinedocs.microchip.com/oxy/GUID-2BBF0A73-A043-4A40-A6CA-0FF154E4BFFE-en-US-11/GUID-BB06CAD3-5D65-4B02-BC73-F1C08A0BF64C.html", "note": "the SAM D11 current table could not be read; SAM D20 (same Cortex-M0+ at 48 MHz) ACTIVE CoreMark at 3.3 V: 3.90 mA typical, 4.42 mA maximum. USB transceiver current not included."}
+    },
+    {
+      "ref": "U4",
+      "name": "PI_LOAD",
+      "value": "VSYS_3V3=12uA, SAMD11_3V3=2.4uA",
+      "source": {"kind": "datasheet", "document": "Union Semiconductor UM3204 datasheet Rev16, Electrical Characteristics, page 7", "url": "https://www.union-ic.com/upload/Datasheet/Datasheet_UM3204_Rev16.pdf", "note": "UM3204H level translator (Value field '英联' is the manufacturer name, MPN in the schematic); ICCB 12 uA (VCCB side, VSYS_3V3), ICCA 2.4 uA (VCCA side, SAMD11_3V3), static; typical/maximum column not certain from the text"}
+    },
+    {
+      "ref": "U11",
+      "name": "PI_LOAD",
+      "value": "\"/06 Peripherals/IMU_VDD\"=0.9mA",
+      "source": {"kind": "datasheet", "document": "ST LSM6DS3TR-C product page", "url": "https://st.com/en/mems-and-sensors/lsm6ds3tr-c.html", "note": "0.90 mA in combo high-performance mode (accelerometer and gyroscope), typical. VDD and VDDIO on /06 Peripherals/IMU_VDD, behind FB3."}
+    },
+    {
+      "ref": "U12",
+      "name": "PI_LOAD",
+      "value": "\"/06 Peripherals/MIC_VDD\"=0.75mA",
+      "source": {"kind": "estimate", "document": "MEMSensing MSM261DDB019 datasheet V1.2, page 6", "url": "https://atta.szlcsc.com/upload/public/pdf/source/20250928/6C58538E2EEAA0003D9AE91B1B99DF1A.pdf", "note": "MSM261DGT006 datasheet not found; sibling PDM microphones: MSM261DDB019 750 uA, MSM261DHT006 670 uA typical in standard mode at 2.4 MHz clock. On /06 Peripherals/MIC_VDD, behind FB4."}
+    },
+    {
+      "ref": "LED1",
+      "name": "PI_LOAD",
+      "value": "VSYS_3V3=1.2mA",
+      "source": {"kind": "estimate", "note": "RGB LED, common anode on VSYS_3V3, each colour through 2 kOhm (R30-R32) to a GPIO: (3.3 V - Vf) / 2 kOhm with Vf about 1.9 V (red) and 2.8 V (green, blue, assumed) gives 0.7 + 0.25 + 0.25 mA with all colours on"}
+    },
+    {
+      "ref": "FB3",
+      "name": "PI_SERIES",
+      "value": "z100=120 rdc=0.5",
+      "source": {"kind": "datasheet", "document": "Murata BLM03AG121SN1D (Digi-Key product data)", "url": "https://digikey.cn/en/products/detail/murata-electronics/BLM03AG121SN1D/610979", "note": "120 Ohm at 100 MHz, DC resistance 500 mOhm (maximum), rated 200 mA"}
+    },
+    {
+      "ref": "FB4",
+      "name": "PI_SERIES",
+      "value": "z100=120 rdc=0.5",
+      "source": {"kind": "datasheet", "document": "Murata BLM03AG121SN1D (Digi-Key product data)", "url": "https://digikey.cn/en/products/detail/murata-electronics/BLM03AG121SN1D/610979", "note": "120 Ohm at 100 MHz, DC resistance 500 mOhm (maximum), rated 200 mA"}
+    }
+  ],
+  "notes": [
+    "Power tree for USB supply (5 V on TYPEC_5V): USB1 -> U6 load switch -> VBUS -> nPM1300 (U2) -> VSYS (follows VBUS) -> BUCK2 3.3 V (VSYS_3V3: nRF54LM20A, flash, RGB LED, level translator, SAMD11 through the U3 load switch), LDO1 3.3 V from LDO1_IN (VSYS through R14; IMU&MIC_3V3: IMU through FB3, microphone through FB4) and TPS628438 (U1) 3.3 V (3V3_OUT, header pin only).",
+    "On battery, VSYS = VBAT (3.0-4.2 V) and the SAMD11 debugger is off (U3 enabled from VBUS). The battery charge current (nPM1300 charger, set by firmware) is not included as a load on VSYS.",
+    "Designer notes in the schematic (sheet 03 Power) give the rail ratings: VBUS 2 A, VSYS 1 A, VSYS_3V3 200 mA, LDO1_IN / IMU&MIC_3V3 100 mA, VSYS_3V3 -> SAMD11_3V3 50 mA, 3V3_OUT 600 mA.",
+    "Open: external loads on the header pins 3V3 (3V3_OUT, up to 600 mA) and VBUS (U7) are unknown and not included (kisi gaps: ic-loads U7); VBAT has no voltage in this USB-case tree (kisi gaps: rails-without-voltage VBAT); the efficiencies of BUCK2 and U1 use kisi's default of 85 % (estimate; kisi gaps: regulator-efficiency); decoupling capacitor data (PI_CAP – the board's Voltage Rating and Dielectric fields are not read by kisi yet) and the laminate values are not filled in."
+  ]
+}

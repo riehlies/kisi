@@ -360,6 +360,44 @@ pub fn report_summary(path: &str, rep: &Value) -> Value {
         "config": rep["config"], "field_solver": rep["overview"]["field_solver"]})
 }
 
+/// The PI_LOAD example of the template: a load, not a regulator – among the ICs without a PI_REG
+/// field and with pads on supply rails with a voltage in the name, one on the fewest such rails
+/// (a regulator touches its input and its output, a PMIC several), then the one with the most
+/// pads (the main MCU, FPGA or SoC); with the rail it has most pads on.
+fn template_load(p: &Project) -> Value {
+    let b = &p.board;
+    let cd = crate::topology::ComponentData::builtin();
+    let rails: HashMap<u32, &str> = crate::pi::power_nets(b)
+        .into_iter()
+        .filter(|n| !n.ground && n.voltage.is_some() && !crate::pi::signal_name(&n.name))
+        .map(|n| (n.net, b.net_name(n.net)))
+        .collect();
+    let mut best: Option<((usize, std::cmp::Reverse<usize>), String, String)> = None;
+    for (fi, f) in b.footprints.iter().enumerate() {
+        if f.dnp || cd.role(&f.reference) != "ic" || f.prop("PI_REG").is_some() {
+            continue;
+        }
+        let pads: Vec<&crate::board::Pad> = b.pads.iter().filter(|q| q.fp as usize == fi).collect();
+        let mut on: HashMap<u32, usize> = HashMap::new();
+        for q in &pads {
+            if rails.contains_key(&q.net) {
+                *on.entry(q.net).or_default() += 1;
+            }
+        }
+        if on.is_empty() {
+            continue;
+        }
+        let rail = on.iter().max_by(|a, b| a.1.cmp(b.1).then(b.0.cmp(a.0))).map(|(n, _)| rails[n].to_string()).unwrap_or_default();
+        let key = (on.len(), std::cmp::Reverse(pads.len()));
+        if best.as_ref().map_or(true, |x| key < x.0) {
+            best = Some((key, f.reference.clone(), rail));
+        }
+    }
+    let (r, rail) = best.map(|x| (x.1, x.2)).unwrap_or_else(|| ("U1".into(), "+3V3".into()));
+    json!({"ref": r, "name": "PI_LOAD", "value": format!("{}=100mA", crate::field_syntax::quote_name(&rail)), "_note": "example: the supply current from the datasheet",
+        "source": {"kind": "datasheet", "url": null, "page": null, "note": "typical"}})
+}
+
 /// A `<board>.kisi.json` skeleton with this board's dielectrics and net classes.
 pub fn config_template(p: &Project) -> Value {
     let su = p.board.stackup();
@@ -381,7 +419,7 @@ pub fn config_template(p: &Project) -> Value {
         "board": p.pcb_path.file_name().map(|f| f.to_string_lossy().to_string()),
         "stackup": {"dielectrics": diel, "solder_mask": {"epsilon_r": null, "source": {"kind": "datasheet", "document": null}}},
         "net_classes": classes,
-        "fields": [{"ref": "U1", "name": "PI_LOAD", "value": "+3V3=100mA", "source": {"kind": "datasheet", "url": null, "page": null, "note": "typical"}}],
+        "fields": [template_load(p)],
         "notes": ["Template: keep only entries you fill in; keys starting with '_' are information and ignored. Every value needs a source (kind: datasheet, standard, application_note, measurement, simulation, design, estimate, assumption). Save as <board>.kisi.json next to the board and run `kisi config-check`."]
     });
     // assembly variants: the board's own (KiCad 10), else a starting point from forks with all
@@ -440,5 +478,30 @@ mod tests {
         assert_eq!(parse_args(&a("--help")).unwrap().cmd, "help");
         assert_eq!(parse_args(&a("check b.kicad_pcb --variant TS-PCIe")).unwrap().variant.as_deref(), Some("TS-PCIe"));
         assert!(parse_args(&a("check b.kicad_pcb --variant")).is_err());
+    }
+
+    /// The template's PI_LOAD example is a load: not the regulator (with or without PI_REG), even
+    /// when it has more pads than the load.
+    #[test]
+    fn template_load_is_a_load() {
+        let pcb = |reg: &str| {
+            format!(
+                r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (net 0 "") (net 1 "+5V") (net 2 "+3V3") (net 3 "GND") (net 4 "SW")
+  (footprint "U" (layer "F.Cu") (at 0 0) (property "Reference" "U1") (property "Value" "TPS62843") {reg}
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+5V")) (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 2 "+3V3"))
+    (pad "3" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 3 "GND")) (pad "4" smd rect (at 0 3) (size 1 1) (layers "F.Cu") (net 4 "SW"))
+    (pad "5" smd rect (at 0 4) (size 1 1) (layers "F.Cu") (net 4 "SW")) (pad "6" smd rect (at 0 5) (size 1 1) (layers "F.Cu") (net 3 "GND")))
+  (footprint "U" (layer "F.Cu") (at 9 0) (property "Reference" "U2") (property "Value" "MCU")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 2 "+3V3")) (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 2 "+3V3"))
+    (pad "3" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 3 "GND"))))"#
+            )
+        };
+        for reg in ["", r#"(property "PI_REG" "+5V > +3V3 buck")"#] {
+            let p = Project::from_texts(service::Inputs { pcb_path: "t.kicad_pcb".into(), pcb: pcb(reg), pro: None, config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap();
+            let f = &config_template(&p)["fields"][0];
+            assert_eq!((f["ref"].as_str(), f["value"].as_str()), (Some("U2"), Some("+3V3=100mA")), "{reg}");
+        }
     }
 }

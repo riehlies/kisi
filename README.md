@@ -131,23 +131,32 @@ commands with formula impedances only.
 - **Interface profile** automatically from net and class names (rules in `data/interfaces.json`), or per class.
 - **Population:** DNP and “exclude from BOM” attributes, the sheet of every part, KiCad 10 assembly variants
   (variant list and per-part overrides: DNP, BOM, field values).
+- **Part numbers:** an MPN field (`MPN`, `Manufacturer Part Number`, …) where the Value field does not show the
+  part number – in `kisi gaps`, `kisi interfaces` and the power tree.
+- **Supply rails:** a voltage in the net name, the rails named in the power fields, and – for `kisi gaps` –
+  supply-like net and pin names (VBUS, VSYS, VBAT, VCC, VDD, …), which then need a voltage (`NAME@<V>V`).
 - **Power** – fields on the symbol, copied to the footprint on “Update PCB from schematic”:
 
 | Field | Example | Meaning |
 |---|---|---|
 | `PI_REG` | `+12V input` | supply input (connector) |
-| | `+12V > +5V buck 90% 3A out=L3` | switching regulator: efficiency, rated current, part carrying the output |
+| | `+12V > +5V buck 90% 3A out=L3` | switching regulator: efficiency (without one kisi assumes 85 %, marked as an estimate), rated current, part carrying the output |
 | | `+5V > +3V3 ldo iq=2mA 1A` | linear regulator with quiescent current |
 | | `+3V3 > +3V3A pass r=0.05` | ferrite or shunt with series resistance (Ω) |
 | | `+5V > VCORE@0.9V buck 85% id=U4A` | rail without a voltage in its name; several channels of one IC with `;` |
+| | `+3V3 > "/Sensors/IMU VDD" pass r=0.5` | net name with spaces (hierarchical name) in double quotes, also `"/Power/VDD CORE"@0.9V` |
 | `PI_LOAD` | `+1V0=2.5A, +1V8=300mA` or `+1V0=2W` | load current per rail |
 | | `+5V=60mA@L32/L33` | current entering at other parts' pads (e.g. the inductors of an output stage) |
+| | `"/Sensors/IMU VDD"=0.9mA` | net name with spaces in double quotes |
 | `PI_SOURCE` | `+3V3` | source pads for the IR drop when there is no regulator chain |
 | `PI_CAP` | `esr=5m esl=0.45n rated=6.3V X5R c@3.3V=2.1u` | decoupling capacitor data for the PDN (datasheet values; replaces the package estimates and the DC-bias curve) |
 | `PI_SERIES` | `z100=600 rdc=0.15` · `l=2.2u dcr=50m` · `r=10m` | ferrite bead, inductor or resistor in a supply path: the PDN per IC models the rail with the nets behind them, up to the regulators (replaces the typical values) |
 | `PI_TARGET` | `VCCINT=10m fmax=50M` or `15mOhm` | target impedance of an IC for a rail (default: from its own current step), band it applies to |
 
-  The nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`).
+  The nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`), else from `NAME@<V>V` in a `PI_REG` entry.
+  Net names are written as in KiCad, or as the last part of a hierarchical name (`IMU_VDD` for
+  `/Sensors/IMU_VDD`) when that is unique on the board. A name with spaces or one of `; , = @ >` goes in double
+  quotes (`PI_REG`, `PI_LOAD`, `PI_SOURCE`, `PI_TARGET`); in `<board>.kisi.json` they are escaped as `\"`.
 
 ## Board configuration `<board>.kisi.json`
 Values the board file lacks or holds only as KiCad defaults, each with its source. kisi never writes into the

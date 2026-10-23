@@ -309,6 +309,8 @@ with sync_playwright() as p:
     b.close()
 for n in sorted(set(notes)):
     print("note:", n)
+    if os.environ.get("GITHUB_ACTIONS") and "channel check" in n:
+        print(f"::notice title=viewer check timing::{n}")
 for pr in problems:
     print("PROBLEM:", pr)
 print(f"screenshots: {out}")

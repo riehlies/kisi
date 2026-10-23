@@ -209,12 +209,71 @@ table). `kisi config-check` reads it.
 | open via barrels, FR-4 values | filled vias, laminate data by material name |
 
 ## 7. Validation
-### 7.1 Analytic cases (unit tests, `crates/kisi-pi/src/thermal.rs`)
-*(results filled in below after the implementation)*
+### 7.1 Analytic cases (unit tests, `crates/kisi-pi/src/thermal/tests.rs`)
+| Case | Set-up | Result |
+|---|---|---|
+| 1D slab | 60 × 40 mm, full planes on every layer, 150 W/m² on the top layer, h = 12 W/m²K per side; laterally uniform, so a ladder: top node to air ∥ (Σ h_d/k_z + 1/h') to air | 2 layers (1.5 mm): 6.43954 K vs 6.43955 K; 6 layers (ThunderScope stack): 6.41826 K vs 6.41826 K (≤ 10⁻⁶) |
+| Fin | 400 × 10 mm strip, two 35 µm planes on 0.2 mm, h = 10 W/m²K, 1 W across the width in the middle; θ(x) = P/(2Kwm)·e^{−m\|x\|}, m = √(2h'/K) | x = 10 / 20 / 40 / 80 mm: −0.00 / +0.00 / +0.01 / +0.16 % |
+| Radial spreading | 300 × 300 mm, two planes, 2 W on 4 × 4 mm in the middle, 1.5 mm cells; θ(r) = P/(2πK)·K₀(mr) plus 7 × 7 images of the adiabatic edges | r = 12 / 24 / 48 / 96 mm: +0.13 / +0.09 / +0.07 / +0.08 % |
+| Energy balance | every case, with given and with estimated surface coefficients | \|in − out\|/in ≈ 3·10⁻¹² |
+| Surface coefficients | 100 × 100 mm, 20 K over 25 °C | up 7.3, down 3.7, radiation 6.0 W/m²K; 2 W on that board: 55 % leave by radiation, the solved mean rise equals the one the coefficients were taken at (within 5 %) |
+| Electro-thermal step | 20 × 1 mm copper strip, 1 A, board at a uniform 45.45 °C (no heat) | IR drop and copper loss × 1.1000 (= 1 + 0.00393·25.45) |
+
+The discretisation error is far below the model error (data, convection, two-resistor packages). One trap
+found on the way: comparing a cell's value with the analytic value at a point that is not the cell centre made
+the radial case look 2–4 % off.
 
 ### 7.2 JEDEC θJA on a model of the JESD51-7 board
+The datasheets' θJA values are what the package vendor computed or measured for the JEDEC high-conductivity board
+in still air. kisi with the same datasheets' θJB and θJC on a model of that board should land near them. Model:
+76.2 × 114.3 mm, 4 layers (70 / 35 / 35 / 70 µm; 0.3 / 0.86 / 0.3 mm), the two inner layers full planes, a
+0.25 mm × 25 mm trace from every lead on the top layer, the QFN's exposed pad with four 0.3 mm vias; horizontal in
+still air at 25 °C, 0.5 mm cells, the power chosen for a 20–25 K rise. (Test `jedec_theta_ja`.)
+
+| Package (datasheet) | θJB / θJC K/W | θJA datasheet | θJA kisi | difference |
+|---|---|---|---|---|
+| QFN-16 3 × 3 mm, exposed pad (TPS6215x RGT [T8]) | 17.4 / 53.6 | 45.0 | 46.6 | +4 % |
+| SOIC-8 (LM358 D [T11]) | 67.9 / 66.9 | 124.7 | 105.4 | −15 % |
+| SOT-23-5 (TLV704 DBV [T12]) | 76.7 / 68.7 | 170.8 | 136.4 | −20 % |
+
+The exposed-pad package, whose heat goes through the vias into the planes, matches. The leaded packages read
+15–20 % low: their heat leaves through 0.25 mm traces, which a 0.5 mm grid smears into a fill fraction that
+conducts in every direction, and JEDEC's θJB for leaded parts already contains part of the trace path. For hot
+leaded parts kisi's Tj is therefore optimistic by up to about a fifth of the rise; an exposed pad or a plane
+under the part is modelled well. 97–99 % of the heat goes into the board in all three cases (the top path through
+θJC and natural convection from a few mm² is small).
 
 ### 7.3 Example boards
+ThunderScope Rev5.3 (variant TS-PCIe, power tree `web/samples/ts.kisi.json`, `PI_THERMAL` from the datasheets for the
+four LMH6518, TPSM82913, TPS61023, four TPS62A02 and the FPGA's Tj max): 12.83 W (12.77 W parts, 0.056 W copper),
+6 layers, 11 951 mm², 0.6 mm cells, 198 428 nodes.
+
+| | still air, horizontal, 25 °C | air flow 1 m/s | still air, vertical | 40 °C ambient |
+|---|---|---|---|---|
+| h top / bottom (W/m²K) | 15.5 / 11.0 (convection 8.9 / 4.4, radiation 6.6) | 17.5 / 17.5 | 12.7 / 12.7 | 16.2 / 11.8 |
+| mean rise of the board | 40.5 K | 30.7 K | 42.4 K | 38.3 K |
+| board maximum | 88.1 °C (F.Cu, at the LMH6518 PGAs) | 77.9 °C | 90.4 °C | 100.8 °C |
+| Tj LMH6518 (hottest of four) | 98.9 °C | 88.8 °C | 101.3 °C | 111.7 °C |
+| Tj FPGA XC7A50T (limit 85 °C) | 80.3 °C (within 10 K: "near") | 70.4 °C | 82.8 °C | 93.0 °C (over) |
+| IR drop +VUSB, 20 °C → at temperature | 14.1 → 16.9 mV | → 16.4 mV | → 17.1 mV | → 17.6 mV |
+| heat in = convection + radiation | 12.83 = 6.46 + 6.36 W | 8.19 + 4.63 W | 6.06 + 6.77 W | 5.98 + 6.85 W |
+
+Plausibility: 12.8 W from both sides of a 120 cm² board with h ≈ 13 W/m²K give 12.8 / (0.024 m² · 13) ≈ 41 K by hand
+– the solver's mean rise is 40.5 K. The hot spots sit where the heat is (the four 1.15 W PGAs, the 5 V buck module,
+the boost converter); the planes keep the board within ±25 K of its mean. TPS61023 drops from 119 °C with the SOT
+package default (θJB 80 K/W) to 95 °C with its datasheet value (31 K/W) – the reason the gap list asks for
+`PI_THERMAL` on hot parts. The FPGA within 5 K of its commercial-grade limit in still air fits the real
+ThunderScope, which runs with a fan. Copper loss is 0.4 % of the heat here, so the electro-thermal step changes the
+temperature negligibly, but it adds 20 % to the IR drops (+VUSB: copper at 71 °C loss-weighted).
+
+LibreVNA (power tree `web/samples/vna.kisi.json`, package defaults only): 5.26 W, mean rise 19.5 K, board maximum
+54.4 °C at the ADL5801 mixers (Tj ≈ 61 °C), +5V/2 IR drop 17.7 → 19.5 mV.
+
+Run time (shared 2-core machine, so only indicative): the thermal solve of ThunderScope takes about 3 s natively, the
+rails again at temperature longer than that; the viewer's step 3 takes about 11 s on both boards.
+
+Still open: a comparison with a commercial tool or a measurement (IR camera on the planned test board), and with
+IPC-2152 trace heating.
 
 ## Sources
 - [T1] Texas Instruments, SPRA953, Semiconductor and IC Package Thermal Metrics – https://www.ti.com/lit/an/spra953c/spra953c.pdf *(cited from earlier knowledge; definitions confirmed by [T2])*

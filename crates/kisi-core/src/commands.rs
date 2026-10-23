@@ -40,6 +40,9 @@ next to the board), --no-config, --stackup FILE (stackup changes, as in the view
 \"variants\"; \"default\" = the board file as it is). Boards with variants – or with forks where
 all alternative parts are fitted – need one for interfaces, check and report (else they stop and
 list the variants); \"variant\" in <board>.kisi.json chooses one for every run.
+--via-cavity (net, check, report; experimental, off by default): the plane pairs of the via models
+as finite cavities – board edges, stitching vias, capacitors between supply and ground planes –
+instead of infinite plates (validation/fdtd/BOARD_RESONANCES.md); slower.
 field solver (kisi.mjs only; overview, net, check, report): used by default for the cross-sections
 of nets with a target, results cached on disk; --formula (no field solver), --field-time S
 (time budget for new solves, default 120), --field-all (all cross-sections, not only targets),
@@ -80,6 +83,8 @@ pub struct Opts {
     pub field_xt: bool,
     /// assembly variant (wins over the configuration's `variant`)
     pub variant: Option<String>,
+    /// via models with finite plane cavities (`RfParams::via_cavity`)
+    pub via_cavity: bool,
 }
 
 /// Parse `<command> [args…]`.
@@ -124,6 +129,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--field-all" => o.field_all = true,
             "--field-xt" => o.field_xt = true,
             "--variant" => o.variant = Some(val(&mut i, a)?),
+            "--via-cavity" => o.via_cavity = true,
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
         }
@@ -208,7 +214,7 @@ fn xt_plan(p: &Project, nets: &[u32], all: bool) -> Vec<(String, String, f64)> {
 }
 
 fn rf_params(o: &Opts) -> Result<RfParams, String> {
-    let mut rp = RfParams::default();
+    let mut rp = RfParams { via_cavity: o.via_cavity, ..RfParams::default() };
     if let Some(r) = o.rise_ps {
         rp.rise = r * 1e-12;
     }

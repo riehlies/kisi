@@ -12,5 +12,10 @@ fn main() {
         eprintln!("{}", agent::HELP);
         std::process::exit(2);
     }
-    std::process::exit(agent::main(&args));
+    let code = agent::main(&args);
+    if std::env::var("KISI_CAVITY_STATS").is_ok() {
+        let (n, t, cells) = kisi_core::via_cavity::lu_stats();
+        eprintln!("cavity grids: {n} factorisations, {t:.2} s, {} cells on average", if n > 0 { cells / n } else { 0 });
+    }
+    std::process::exit(code);
 }

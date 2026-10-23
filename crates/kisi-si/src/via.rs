@@ -207,6 +207,9 @@ pub struct ViaCtx<'a> {
     pub feeds: Option<[FeedSpec; 2]>,
     /// copper conductivity for the ladder's conductor loss (S/m)
     pub sigma: Option<f64>,
+    /// plane pairs as finite cavities (`via_cavity`; also with the environment variable
+    /// KISI_VIA_CAVITY=1)
+    pub cavity: bool,
 }
 
 /// Trace joining a via, as the channel models it.
@@ -386,6 +389,13 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
     };
     let mode = if partner_via.is_some() { Mode::Odd } else { Mode::Single };
     let debug = std::env::var("KISI_DEBUG_VIA").is_ok();
+    // validation: the 3D references' loss model (dielectric conductivity fixed at this frequency,
+    // lossless metal), as `kisi-validate via-geom` uses for the comparison
+    let mut geom = geom;
+    if let Some(fl) = std::env::var("KISI_VIA_3DLOSS").ok().and_then(|x| x.parse::<f64>().ok()) {
+        geom.f_loss = Some(fl);
+        geom.sigma = None;
+    }
     #[cfg(not(target_arch = "wasm32"))]
     if debug {
         eprintln!("# planes {:.2} ms", tp.elapsed().as_secs_f64() * 1e3);
@@ -395,7 +405,35 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
     }
     #[cfg(not(target_arch = "wasm32"))]
     let t0 = std::time::Instant::now();
-    let m = PbmVia::build(&geom, mode, Grid::default());
+    let mut m = PbmVia::build(&geom, mode, Grid::default());
+    if ctx.cavity || std::env::var("KISI_VIA_CAVITY").is_ok_and(|x| x != "0") {
+        #[cfg(not(target_arch = "wasm32"))]
+        let tc = std::time::Instant::now();
+        let plane_layers: Vec<(u16, f64)> = (0..su.n()).filter(|&k| clear[k].is_some()).map(|k| (k as u16, z[k])).collect();
+        let mut ctx2 = ViaCtx { refs_in: ctx.refs_in.clone(), refs_out: ctx.refs_out.clone(), ..*ctx };
+        ctx2.sigma = geom.sigma;
+        let links = cavity_links(&ctx2, v.at, &geom, &plane_layers, &m, [l_in, l_out]);
+        if !links.is_empty() {
+            m = PbmVia::build_with(&geom, mode, Grid::default(), links);
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if debug {
+            eprintln!("# cavities {:.1} ms", tc.elapsed().as_secs_f64() * 1e3);
+        }
+    }
+    // validation: the via's S-parameters, 25 MHz … 25 GHz, 50 Ω
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Ok(dir) = std::env::var("KISI_DUMP_VIA") {
+        let mut t = String::from("# Hz S RI R 50\n");
+        for k in 1..=1000 {
+            let f = k as f64 * 25e6;
+            let mm = m.abcd(f);
+            let (s11, s21, s22) = mm.s_params(50.0);
+            t += &format!("{f:.6e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e}\n", s11.re, s11.im, s21.re, s21.im, s21.re, s21.im, s22.re, s22.im);
+        }
+        let tag = if m.has_cavity() { "_cav" } else { "" };
+        let _ = std::fs::write(format!("{dir}/via_{:.4}_{:.4}_{}{}{tag}.s2p", v.at[0], v.at[1], l_in, l_out), t);
+    }
     #[cfg(not(target_arch = "wasm32"))]
     if debug {
         let s21: Vec<String> = [2e9, 4e9, 8e9, 12e9, 16e9].iter().map(|&f| format!("{:.2}", 20.0 * m.abcd(f).s_params(50.0).1.abs().log10())).collect();
@@ -403,6 +441,138 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
             m.nodes, m.cap.iter().map(|c| (c * 1e16).round() / 10.0).collect::<Vec<_>>(), s21.join(" "));
     }
     Some(m)
+}
+
+/// leakage ratio below which a plane pair stays an infinite radial line (`PbmVia::pair_leakage`
+/// at 10 GHz): four returns at 1 mm give 0.006 and change the via by ≤ 0.2 dB in 3D up to 25 GHz,
+/// one return at 2 mm gives 0.84 (validation/fdtd/BOARD_RESONANCES.md)
+const CAVITY_LEAKAGE: f64 = 0.02;
+/// half-width of the window around the via for a plane pair of one net (mm) and its cell (mm)
+const CAVITY_WINDOW: (f64, f64) = (5.0, 0.3);
+/// frequency step (Hz) of the window's samples (open, no high-Q resonance: interpolated) and of a
+/// closed region's (the channel's own step at 25 GHz / 500 points, so its points are exact)
+const CAVITY_WINDOW_DF: f64 = 0.25e9;
+const CAVITY_REGION_DF: f64 = 0.05e9;
+/// cells of the whole region of a plane pair, least cell (mm); at most this many cells to keep
+/// them at λ/6
+const CAVITY_REGION: (usize, f64) = (2500, 0.3);
+const CAVITY_REGION_MAX: usize = 12000;
+/// mean distance of the posts of a pair of one net below which only a window around the via
+/// is modelled (mm): the stitching cuts the pair off a few rows of posts away
+const CAVITY_DENSE: f64 = 3.0;
+/// a capacitor between the planes of a pair: ESR and ESL with its mounting from
+/// data/components.json ("decoupling", by package; estimates), the capacitance from the footprint
+/// value, else 100 nF (an estimate), and the radius of its post in the plane pair (mm)
+const CAVITY_CAP_C: f64 = 100e-9;
+const CAVITY_CAP_POST: f64 = 0.15;
+
+/// The finite cavities of the via's plane pairs (`via_cavity`). A pair whose returns shield the
+/// via (leakage below `CAVITY_LEAKAGE`) and a pair bounded by a pour on the via's own signal
+/// layers stay infinite radial lines. Every other pair: its whole region on a coarse grid with the
+/// posts joining both planes as shorts and the capacitors between two nets as loads (estimated
+/// parasitics), magnetic walls with their radiation at its edges; a pair of one net stitched
+/// densely (`CAVITY_DENSE`): a window of `CAVITY_WINDOW` around the via with every post in it, the
+/// window's cuts open (matched to the outgoing wave). The ladder's returns stay its ports
+/// (shorted in every pair they span, as on infinite plates).
+fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(u16, f64)], m: &crate::via_pbm::PbmVia, signal: [u16; 2]) -> Vec<crate::via_pbm::CavityLink> {
+    use crate::via_cavity::{pair_cavity, pair_window, DecapData, EnvPort, GridEnv, Load, PairEnv, PairMedium};
+    let leak = m.pair_leakage(10e9);
+    let mut out = vec![];
+    for w in planes.windows(2) {
+        let ((ka, za), (kb, zb)) = (w[0], w[1]);
+        // a pour on the via's own signal layer is a coplanar return around its pad, not one side of
+        // a plane pair (BOARD_VIAS.md): such pairs stay infinite radial lines
+        if signal.contains(&ka) || signal.contains(&kb) {
+            continue;
+        }
+        let Some(&(_, _, ratio)) = leak.iter().find(|l| (l.0 - za).abs() < 1e-6 && (l.1 - zb).abs() < 1e-6) else { continue };
+        if ratio < CAVITY_LEAKAGE {
+            continue;
+        }
+        let na = plane_clearance(ctx.board, at, ka, ctx.net, ctx.partner).map(|c| c.1);
+        let nb = plane_clearance(ctx.board, at, kb, ctx.net, ctx.partner).map(|c| c.1);
+        // the whole region; a pair of one net stitched densely (posts closer than
+        // `CAVITY_DENSE` on average) only matters near the via: a window
+        let Some(mut pc) = pair_cavity(ctx.board, at, ka, kb, ctx.net, ctx.partner, CAVITY_REGION.0, CAVITY_REGION.1) else { continue };
+        // cells no coarser than λ/6 at 25 GHz (grid dispersion), up to `CAVITY_REGION_MAX` cells
+        let h_lambda = crate::num::C0 / (25e9 * pc.er.sqrt()) / 6.0 * 1e3;
+        if pc.mask.h > h_lambda {
+            let bb = (pc.mask.nx as f64 * pc.mask.h) * (pc.mask.ny as f64 * pc.mask.h);
+            let n = ((bb / (h_lambda * h_lambda)) as usize).min(CAVITY_REGION_MAX);
+            if let Some(p2) = pair_cavity(ctx.board, at, ka, kb, ctx.net, ctx.partner, n, CAVITY_REGION.1) {
+                pc = p2;
+            }
+        }
+        if na == nb && !pc.shorts.is_empty() && (pc.area_mm2 / pc.shorts.len() as f64).sqrt() < CAVITY_DENSE {
+            match pair_window(ctx.board, at, ka, kb, ctx.net, ctx.partner, CAVITY_WINDOW.0, CAVITY_WINDOW.1) {
+                Some(w) => pc = w,
+                None => continue,
+            }
+        }
+        if pc.mask.count() < 4 {
+            continue;
+        }
+        // ports: the via, the partner and the returns spanning the pair, at their board positions
+        let mut ports = vec![EnvPort { x: at[0], y: at[1], r: geom.r }];
+        if let (Some(p), true) = (geom.partner, ctx.partner.is_some()) {
+            ports.push(EnvPort { x: at[0] + p.dx, y: at[1] + p.dy, r: p.r });
+        }
+        for p in &geom.returns {
+            if p.z0 <= zb + 1e-9 && p.z1 >= za - 1e-9 {
+                ports.push(EnvPort { x: at[0] + p.dx, y: at[1] + p.dy, r: p.r });
+            }
+        }
+        let decap = DecapData::builtin();
+        let loads: Vec<Load> = pc
+            .caps
+            .iter()
+            .map(|cp| {
+                let c = cp.c.unwrap_or(CAVITY_CAP_C);
+                let (r_ohm, l) = decap.rl(cp.pkg, c);
+                Load { at: EnvPort { x: cp.at[0], y: cp.at[1], r: CAVITY_CAP_POST }, r_ohm, l, c: Some(c) }
+            })
+            .collect();
+        let medium = PairMedium {
+            d: pc.d_mm * 1e-3,
+            er: pc.er,
+            tand: pc.tand,
+            f_loss: geom.f_loss,
+            sigma: ctx.sigma,
+            area: pc.area_mm2 * 1e-6,
+            edges: pc.mask.edge_runs().iter().map(|l| l * 1e-3).collect(),
+        };
+        // the same via and pair in another channel build (pair, partner, eye) reuses the environment
+        let key = format!("{:.4},{:.4},{ka},{kb},{:?},{:?},{:?},{:?}", at[0], at[1], na, nb, ports.iter().map(|p| ((p.x * 1e4).round() as i64, (p.y * 1e4).round() as i64)).collect::<Vec<_>>(), ctx.sigma);
+        if let Some(env) = ENV_CACHE.with(|c| c.borrow().get(&key).cloned()) {
+            out.push(crate::via_pbm::CavityLink { z_top: za, z_bot: zb, env, origin: (at[0] * 1e-3, at[1] * 1e-3) });
+            continue;
+        }
+        let mut env = GridEnv::new_cut(&pc.mask, medium, &pc.shorts, &loads, &ports, pc.cut);
+        env.df = Some(if pc.cut.iter().any(|&c| c) { CAVITY_WINDOW_DF } else { CAVITY_REGION_DF });
+        if std::env::var("KISI_DEBUG_VIA").is_ok() {
+            eprintln!(
+                "# cavity at ({:.4}, {:.4}) {}-{} nets {:?}: leakage {ratio:.3}, {} cells of {:.2} mm, {} shorts, {} capacitors, {} ports, window cut {:?}",
+                at[0],
+                at[1],
+                ka, kb, (na, nb), env.cells(), pc.mask.h, pc.shorts.len(), loads.len(), ports.len(), pc.cut
+            );
+        }
+        let env = std::rc::Rc::new(PairEnv::Grid(env));
+        ENV_CACHE.with(|c| {
+            let mut c = c.borrow_mut();
+            if c.len() > 256 {
+                c.clear();
+            }
+            c.insert(key, env.clone());
+        });
+        out.push(crate::via_pbm::CavityLink { z_top: za, z_bot: zb, env, origin: (at[0] * 1e-3, at[1] * 1e-3) });
+    }
+    out
+}
+
+thread_local! {
+    /// cavity environments by via, pair and ports (with their frequency samples)
+    static ENV_CACHE: std::cell::RefCell<std::collections::HashMap<String, std::rc::Rc<crate::via_cavity::PairEnv>>> = Default::default();
 }
 
 /// Build the via model for a transition from `l_in` to `l_out` through `v`.

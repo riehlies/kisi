@@ -17,6 +17,7 @@ pub mod profile;
 pub mod rf;
 pub mod topology;
 pub mod via;
+pub mod via_cavity;
 pub mod via_pbm;
 pub mod xsgeom;
 

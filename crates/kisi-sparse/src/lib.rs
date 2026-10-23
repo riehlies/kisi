@@ -247,6 +247,9 @@ pub fn solve_spd_triplets(n: usize, trip: &[(usize, usize, f64)], rhs: &[f64]) -
     Ok(out)
 }
 
+/// Symbolic analysis of a sparse LU, reused for matrices with the same pattern.
+pub type SymbolicLu = faer::sparse::linalg::solvers::SymbolicLu<usize>;
+
 /// LU factorisation of a complex sparse matrix, for several solves with the same matrix.
 /// Used by the AC power-integrity grid.
 pub struct ComplexLu {

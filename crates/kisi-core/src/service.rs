@@ -196,7 +196,8 @@ impl Project {
         crate::pi::find_net(&self.board, name)
     }
 
-    fn target(&self, net: u32) -> Option<(f64, bool)> {
+    /// impedance target of the net's class: (Ω, differential)
+    pub fn target(&self, net: u32) -> Option<(f64, bool)> {
         let ci = self.board.net_class.get(net as usize).copied().unwrap_or(0) as usize;
         self.an.classes.get(ci).and_then(|c| c.target).map(|t| (t.z, t.diff))
     }
@@ -638,7 +639,7 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
         "not_checked_unused": (skipped_unused > 0).then(|| format!("{skipped_unused} net(s) with a target only connect parts not fitted in this assembly (variant or DNP): not checked")),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
         "field_solver": p.field_summary(),
-        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.", p.models())
+        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.{}", p.models(), if rp.via_cavity { " Vias: plane pairs as finite cavities (--via-cavity, experimental) – board edges, stitching vias, capacitors between the planes with estimated parasitics (data/components.json)." } else { "" })
     })
 }
 

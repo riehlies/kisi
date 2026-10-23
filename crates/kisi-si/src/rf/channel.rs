@@ -855,8 +855,14 @@ impl<'a> Build<'a> {
                             _ => None,
                         }
                     };
-                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill, feeds, sigma: Some(rp.sigma) };
+                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill, feeds, sigma: Some(rp.sigma), cavity: rp.via_cavity };
                     let (vm, info) = crate::via::build(&ctx, v, pl, tr.layer);
+                    if vm.pbm.as_ref().is_some_and(|p| p.has_cavity()) {
+                        let note = "via model(s) with finite plane cavities (--via-cavity, experimental); capacitors in the cavities with estimated parasitics (data/components.json)";
+                        if !self.warnings.iter().any(|w| w == note) {
+                            self.warnings.push(note.into());
+                        }
+                    }
                     let pair_partner = self.partner_of.get(net as usize).copied().flatten().filter(|_| self.pair);
                     let vm_pair = pair_partner.map(|pn| crate::via::build(&crate::via::ViaCtx { partner: Some(pn), ..ctx }, v, pl, tr.layer).0);
                     let (mut lt, mut ct) = (0.0, 0.0);

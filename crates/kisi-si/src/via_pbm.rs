@@ -153,6 +153,31 @@ struct Group {
     d: f64,
     /// radius on the diagonal, distances off it (m), row-major
     rr: Vec<f64>,
+    /// finite cavity: index into `PbmVia::envs` and the environment's port of every point
+    #[serde(skip)]
+    env: Option<(usize, Vec<usize>)>,
+    /// heights of the two planes (m)
+    #[serde(skip)]
+    pair: (f64, f64),
+}
+
+/// A finite plane-pair cavity for the ladder (`via_cavity`): the plane pair between the ladder's
+/// planes at `z_top` > `z_bot` (mm), its environment (posts, edges, loads) and the via's position
+/// in the environment's frame (m). The environment's ports must contain the via (and the partner
+/// and return vias the ladder uses in that pair) at their positions; the ladder then takes the
+/// pair's impedance matrix from it instead of the infinite radial line.
+#[derive(Clone)]
+pub struct CavityLink {
+    pub z_top: f64,
+    pub z_bot: f64,
+    pub env: std::rc::Rc<crate::via_cavity::PairEnv>,
+    pub origin: (f64, f64),
+}
+
+impl std::fmt::Debug for CavityLink {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CavityLink {{ z_top: {}, z_bot: {}, ports: {}, origin: {:?} }}", self.z_top, self.z_bot, self.env.ports().len(), self.origin)
+    }
 }
 
 /// Built model; evaluate with [`PbmVia::abcd`].
@@ -183,6 +208,12 @@ pub struct PbmVia {
     /// plane-pair impedances per metre divided by f on the grid k·`DF_GRID` (filled on demand)
     #[serde(skip)]
     zgrid: std::cell::RefCell<Vec<Option<Vec<Cx>>>>,
+    /// finite cavities of the plane pairs (empty: infinite plates)
+    #[serde(skip)]
+    envs: Vec<CavityLink>,
+    /// evaluate without the cavities (the local, infinite-plate ladder): stub notch, impedance
+    #[serde(skip)]
+    local: std::cell::Cell<bool>,
 }
 
 /// frequency step of the plane-pair impedance grid (Hz): Z/f is smooth in f (no resonance of
@@ -733,6 +764,11 @@ fn tline(z: f64, beta_l: f64) -> Abcd {
 
 impl PbmVia {
     pub fn build(g: &ViaGeom, mode: Mode, grid: Grid) -> PbmVia {
+        Self::build_with(g, mode, grid, vec![])
+    }
+
+    /// As [`build`](Self::build), with finite cavities for some plane pairs (`CavityLink`).
+    pub fn build_with(g: &ViaGeom, mode: Mode, grid: Grid, envs: Vec<CavityLink>) -> PbmVia {
         let mode = if g.partner.is_none() { Mode::Single } else { mode };
         let (z_in, z_out) = (g.feeds[0].z, g.feeds[1].z);
         let crossed: Vec<&Plane> = g.planes.iter().filter(|p| g.z0 - 1e-9 <= p.z && p.z <= g.z1 + 1e-9).collect();
@@ -859,12 +895,22 @@ impl PbmVia {
                 scale *= dg / (pa - pb);
             }
             let d_pair = (pa - pb) * 1e-3;
-            let gi = match groups.iter().position(|q| q.er == er && q.tand == tand && q.pts == pts && q.partner == use_partner && q.d == d_pair) {
+            // a finite cavity for this plane pair: every point must be a port of its environment
+            let env = envs.iter().position(|e| (e.z_top - pa).abs() < 1e-6 && (e.z_bot - pb).abs() < 1e-6).and_then(|ei| {
+                let e = &envs[ei];
+                let ports = e.env.ports();
+                let idx: Option<Vec<usize>> = pts
+                    .iter()
+                    .map(|&(x, y, _)| ports.iter().position(|q| (q.x - (e.origin.0 + x)).abs() < 1e-7 && (q.y - (e.origin.1 + y)).abs() < 1e-7))
+                    .collect();
+                idx.map(|i| (ei, i))
+            });
+            let gi = match groups.iter().position(|q| q.er == er && q.tand == tand && q.pts == pts && q.partner == use_partner && q.d == d_pair && q.env == env) {
                 Some(i) => i,
                 None => {
                     let n = pts.len();
                     let rr = (0..n * n).map(|q| if q / n == q % n { pts[q / n].2 } else { (pts[q / n].0 - pts[q % n].0).hypot(pts[q / n].1 - pts[q % n].1) }).collect();
-                    groups.push(Group { er, tand, pts, partner: use_partner, d: d_pair, rr });
+                    groups.push(Group { er, tand, pts, partner: use_partner, d: d_pair, rr, env, pair: (pa * 1e-3, pb * 1e-3) });
                     groups.len() - 1
                 }
             };
@@ -918,7 +964,27 @@ impl PbmVia {
             feed_cut[side] = (fd.zc, fd.eeff, -(g.pad_r.max(hb) - fd.dropped) * 1e-3);
         }
         let span_len: Vec<f64> = nodes.windows(2).map(|w| (w[0] - w[1]) * 1e-3).collect();
-        PbmVia { nodes, cap, node_tand, spans, groups, i_in, i_out, mode, f_loss: g.f_loss, ap_line, feed_cut, l_port, sigma: g.sigma, a_m: g.r * 1e-3, span_len, laplace_n, zgrid: Default::default() }
+        PbmVia {
+            nodes,
+            cap,
+            node_tand,
+            spans,
+            groups,
+            i_in,
+            i_out,
+            mode,
+            f_loss: g.f_loss,
+            ap_line,
+            feed_cut,
+            l_port,
+            sigma: g.sigma,
+            a_m: g.r * 1e-3,
+            span_len,
+            laplace_n,
+            zgrid: Default::default(),
+            envs,
+            local: Default::default(),
+        }
     }
 
     fn tan_eff(&self, tand: f64, f: f64) -> f64 {
@@ -928,9 +994,81 @@ impl PbmVia {
         }
     }
 
-    /// impedance of every plane-pair group per metre of height: linear interpolation of Z/f
-    /// between grid points (exact below the first grid point)
+    /// How much each plane pair still couples to the via with its returns in place: the real part
+    /// (the power the via cluster launches into the radial line) of the reduced impedance against
+    /// that of a lone via, Re Z_red / (ωμd/4 · J0(ka)), on infinite plates at f. A cluster of
+    /// returns close around the via gives a small ratio: what lies further out (edges, other
+    /// posts) can hardly change the via. (z_top, z_bot) of the pair in mm and the ratio.
+    pub fn pair_leakage(&self, f: f64) -> Vec<(f64, f64, f64)> {
+        let z = self.group_z_exact(f);
+        let w = 2.0 * PI * f;
+        self.groups
+            .iter()
+            .zip(&z)
+            .map(|(g, zr)| {
+                let k = Cx::new(1.0, -self.tan_eff(g.tand, f)).sqrt().scale(w * (MU0 * EPS0 * g.er).sqrt());
+                let lone = (hankel2_0(k.scale(g.pts[0].2)).scale(w * MU0 / 4.0)).re;
+                (g.pair.0 * 1e3, g.pair.1 * 1e3, (zr.re / lone).abs())
+            })
+            .collect()
+    }
+
+    /// whether some plane pair is a finite cavity
+    pub fn has_cavity(&self) -> bool {
+        self.groups.iter().any(|g| g.env.is_some())
+    }
+
+    /// impedance of every plane-pair group per metre of height: the infinite radial line
+    /// interpolated in Z/f (`group_z_hankel`), the finite cavities exact at f
     fn group_z(&self, f: f64) -> Vec<Cx> {
+        let mut z = self.group_z_hankel(f);
+        if self.local.get() {
+            return z;
+        }
+        for (gi, g) in self.groups.iter().enumerate() {
+            if let Some((ei, idx)) = &g.env {
+                let e = &self.envs[*ei];
+                let gm = e.env.green(f);
+                let ne = e.env.ports().len();
+                let n = idx.len();
+                // per metre of height: Z = jωμd·G
+                let jwm = Cx::new(0.0, 2.0 * PI * f * MU0);
+                let zz: Vec<Cx> = (0..n * n).map(|q| jwm * gm[idx[q / n] * ne + idx[q % n]]).collect();
+                z[gi] = self.reduce(zz, n, g.partner);
+            }
+        }
+        z
+    }
+
+    /// returns of a plane-pair matrix (per metre) reduced as shorts; single, odd or even mode
+    fn reduce(&self, z: Vec<Cx>, n: usize, partner: bool) -> Cx {
+        let kk = if partner { 2 } else { 1 };
+        let mut zr: Vec<Cx> = (0..kk * kk).map(|q| z[(q / kk) * n + q % kk]).collect();
+        if n > kk {
+            let m = n - kk;
+            let bb: Vec<Cx> = (0..m * m).map(|q| z[(kk + q / m) * n + kk + q % m]).collect();
+            let ba: Vec<Cx> = (0..m * kk).map(|q| z[(kk + q / kk) * n + q % kk]).collect();
+            let x = csolve(bb, ba, m, kk);
+            for a in 0..kk {
+                for c in 0..kk {
+                    let mut s = Cx::new(0.0, 0.0);
+                    for q in 0..m {
+                        s = s + z[a * n + kk + q] * x[q * kk + c];
+                    }
+                    zr[a * kk + c] = zr[a * kk + c] - s;
+                }
+            }
+        }
+        match (partner, self.mode) {
+            (true, Mode::Odd) => zr[0] - zr[1],
+            (true, _) => zr[0] + zr[1],
+            _ => zr[0],
+        }
+    }
+
+    /// infinite radial line of every group per metre: linear interpolation of Z/f between grid
+    /// points (exact below the first grid point)
+    fn group_z_hankel(&self, f: f64) -> Vec<Cx> {
         if self.groups.is_empty() {
             return vec![];
         }
@@ -981,29 +1119,8 @@ impl PbmVia {
                         z[j * n + i] = h;
                     }
                 }
-                let kk = if g.partner { 2 } else { 1 };
                 // reduce the shorted returns: Zr = Z_aa − Z_ab Z_bb⁻¹ Z_ba
-                let mut zr: Vec<Cx> = (0..kk * kk).map(|q| z[(q / kk) * n + q % kk]).collect();
-                if n > kk {
-                    let m = n - kk;
-                    let bb: Vec<Cx> = (0..m * m).map(|q| z[(kk + q / m) * n + kk + q % m]).collect();
-                    let ba: Vec<Cx> = (0..m * kk).map(|q| z[(kk + q / kk) * n + q % kk]).collect();
-                    let x = csolve(bb, ba, m, kk);
-                    for a in 0..kk {
-                        for c in 0..kk {
-                            let mut s = Cx::new(0.0, 0.0);
-                            for q in 0..m {
-                                s = s + z[a * n + kk + q] * x[q * kk + c];
-                            }
-                            zr[a * kk + c] = zr[a * kk + c] - s;
-                        }
-                    }
-                }
-                match (g.partner, self.mode) {
-                    (true, Mode::Odd) => zr[0] - zr[1],
-                    (true, _) => zr[0] + zr[1],
-                    _ => zr[0],
-                }
+                self.reduce(z, n, g.partner)
             })
             .collect()
     }
@@ -1091,8 +1208,16 @@ impl PbmVia {
         m
     }
 
-    /// group delay of the transition (s) from the S21 phase slope at low frequency
+    /// group delay of the transition (s) from the S21 phase slope at low frequency (the via
+    /// itself: without the cavities)
     pub fn delay(&self) -> f64 {
+        let was = self.local.replace(true);
+        let t = self.delay_inner();
+        self.local.set(was);
+        t
+    }
+
+    fn delay_inner(&self) -> f64 {
         let (f1, f2) = (0.5e9, 1.5e9);
         let p = |f: f64| {
             let s = self.abcd(f).s_params(50.0).1;
@@ -1116,7 +1241,9 @@ impl PbmVia {
         }
         let f = 1e8;
         let w = 2.0 * PI * f;
-        let gz = self.group_z(f);
+        // the via's own impedance: infinite plates (a finite cavity without a return via is a
+        // capacitor at low frequency)
+        let gz = self.group_z_hankel(f);
         let l: f64 = (lo..hi)
             .map(|k| match self.spans[k] {
                 SpanKind::Outer(l) => l,
@@ -1141,6 +1268,14 @@ impl PbmVia {
         if !self.has_stub() {
             return None;
         }
+        // the stub's own notch: without the cavities (their resonances are not stub notches)
+        let was = self.local.replace(true);
+        let r = self.notch_inner(fmax);
+        self.local.set(was);
+        r
+    }
+
+    fn notch_inner(&self, fmax: f64) -> Option<f64> {
         let s21 = |f: f64| self.abcd(f).s_params(50.0).1.abs();
         let df = 0.5e9;
         let mut prev = (df, s21(df));
@@ -1171,6 +1306,189 @@ impl PbmVia {
         }
         None
     }
+}
+
+/// S-parameters of N vias that share plane-pair cavities (`CavityLink`s with the same
+/// environment, whose ports contain every via): their ladders solved together, the plane pairs
+/// coupling them through the environment's transfer terms. Ports 2v (entry) and 2v + 1 (exit) of
+/// via v, reference `z0`; 2N × 2N row-major.
+///
+/// In a shared cavity the returns of all vias are shorts (the matrix over the vias' barrels with
+/// every return reduced): the self term of each via's spans, as in its own ladder, and the
+/// mutual term between a span k of via v and a span l of via w, Z_vw·s_k·s_l/d (the z-uniform
+/// field of the pair: the voltage of a span is its height's share of the pair's voltage, driven
+/// by the height-weighted mean current of the other barrel). Pairs (odd mode) are not coupled.
+pub fn coupled_s(vias: &[&PbmVia], f: f64, z0: f64) -> Vec<Cx> {
+    let w = 2.0 * PI * f;
+    let nv = vias.len();
+    let jwm = Cx::new(0.0, w * MU0);
+    // shared environments: key → (env, [(via, group)])
+    let mut shared: Vec<(std::rc::Rc<crate::via_cavity::PairEnv>, Vec<(usize, usize)>)> = vec![];
+    for (v, m) in vias.iter().enumerate() {
+        for (gi, g) in m.groups.iter().enumerate() {
+            if let Some((ei, _)) = &g.env {
+                let e = &m.envs[*ei].env;
+                match shared.iter_mut().find(|(x, _)| std::rc::Rc::ptr_eq(x, e)) {
+                    Some((_, l)) => l.push((v, gi)),
+                    None => shared.push((e.clone(), vec![(v, gi)])),
+                }
+            }
+        }
+    }
+    // per shared environment: the matrix over the vias' barrels (per metre) with all returns
+    // reduced, and the barrel index of every (via, group)
+    let mut zsh: Vec<(Vec<Cx>, Vec<usize>, usize)> = vec![];
+    for (env, users) in &shared {
+        let gm = env.green(f);
+        let ne = env.ports().len();
+        let mut sig: Vec<usize> = vec![];
+        let mut ret: Vec<usize> = vec![];
+        for &(v, gi) in users {
+            let (_, idx) = vias[v].groups[gi].env.as_ref().unwrap();
+            if !sig.contains(&idx[0]) {
+                sig.push(idx[0]);
+            }
+            let kk = if vias[v].groups[gi].partner { 2 } else { 1 };
+            for &q in &idx[kk..] {
+                if !ret.contains(&q) {
+                    ret.push(q);
+                }
+            }
+        }
+        ret.retain(|q| !sig.contains(q));
+        let (ns, nr) = (sig.len(), ret.len());
+        let mut zs: Vec<Cx> = (0..ns * ns).map(|q| jwm * gm[sig[q / ns] * ne + sig[q % ns]]).collect();
+        if nr > 0 {
+            let bb: Vec<Cx> = (0..nr * nr).map(|q| jwm * gm[ret[q / nr] * ne + ret[q % nr]]).collect();
+            let ba: Vec<Cx> = (0..nr * ns).map(|q| jwm * gm[ret[q / ns] * ne + sig[q % ns]]).collect();
+            let x = csolve(bb, ba, nr, ns);
+            for a in 0..ns {
+                for c in 0..ns {
+                    let mut acc = Cx::new(0.0, 0.0);
+                    for q in 0..nr {
+                        acc = acc + jwm * gm[sig[a] * ne + ret[q]] * x[q * ns + c];
+                    }
+                    zs[a * ns + c] = zs[a * ns + c] - acc;
+                }
+            }
+        }
+        let bidx: Vec<usize> = users.iter().map(|&(v, gi)| sig.iter().position(|&q| q == vias[v].groups[gi].env.as_ref().unwrap().1[0]).unwrap()).collect();
+        zsh.push((zs, bidx, ns));
+    }
+    let env_of = |v: usize, gi: usize| -> Option<(usize, usize)> {
+        shared.iter().enumerate().find_map(|(k, (_, users))| users.iter().position(|&u| u == (v, gi)).map(|p| (k, zsh[k].1[p])))
+    };
+    // unknowns: per via its node voltages, then its span currents
+    let mut off = vec![0usize; nv + 1];
+    for v in 0..nv {
+        let n = vias[v].nodes.len();
+        off[v + 1] = off[v] + n + n.saturating_sub(1);
+    }
+    let nt = off[nv];
+    let mut a = vec![Cx::new(0.0, 0.0); nt * nt];
+    // spans in shared cavities: (via, span, env, barrel, scale, pair height)
+    let mut cav_spans: Vec<(usize, usize, usize, usize, f64, f64)> = vec![];
+    for (v, m) in vias.iter().enumerate() {
+        let n = m.nodes.len();
+        let gz = m.group_z(f);
+        let zb = m.sigma.map(|sig| {
+            let rs = (PI * f * MU0 / sig).sqrt();
+            Cx::new(rs, rs).scale(1.0 / (2.0 * PI * m.a_m))
+        });
+        for k in 0..n {
+            let yc = Cx::new(0.0, w * m.cap[k]) * Cx::new(1.0, -m.tan_eff(m.node_tand[k], f));
+            let r = off[v] + k;
+            a[r * nt + off[v] + k] = a[r * nt + off[v] + k] + yc;
+            if k > 0 {
+                a[r * nt + off[v] + n + k - 1] = a[r * nt + off[v] + n + k - 1] - Cx::new(1.0, 0.0);
+            }
+            if k + 1 < n {
+                a[r * nt + off[v] + n + k] = a[r * nt + off[v] + n + k] + Cx::new(1.0, 0.0);
+            }
+        }
+        for k in 0..n.saturating_sub(1) {
+            let r = off[v] + n + k;
+            a[r * nt + off[v] + k] = Cx::new(1.0, 0.0);
+            a[r * nt + off[v] + k + 1] = Cx::new(-1.0, 0.0);
+            let mut zk = match m.spans[k] {
+                SpanKind::Outer(l) => Cx::new(0.0, w * l),
+                SpanKind::Pair { group, scale } => match env_of(v, group) {
+                    Some((e, b)) => {
+                        cav_spans.push((v, k, e, b, scale, m.groups[group].pair.0 - m.groups[group].pair.1));
+                        zsh[e].0[b * zsh[e].2 + b].scale(scale)
+                    }
+                    None => gz[group].scale(scale),
+                },
+            };
+            if let Some(zb) = zb {
+                zk = zk + zb.scale(m.span_len[k]);
+            }
+            a[r * nt + r] = a[r * nt + r] - zk;
+        }
+    }
+    // mutual terms between spans of different vias in the same cavity
+    for &(v, k, e, b, sk, d) in &cav_spans {
+        for &(v2, k2, e2, b2, sl, _) in &cav_spans {
+            if v2 == v || e2 != e {
+                continue;
+            }
+            let zm = zsh[e].0[b * zsh[e].2 + b2].scale(sk * sl / d);
+            let (r, c) = (off[v] + vias[v].nodes.len() + k, off[v2] + vias[v2].nodes.len() + k2);
+            a[r * nt + c] = a[r * nt + c] - zm;
+        }
+    }
+    // port nodes, unit currents → Z of the core
+    let pn: Vec<usize> = (0..nv).flat_map(|v| [off[v] + vias[v].i_in, off[v] + vias[v].i_out]).collect();
+    let np = pn.len();
+    let mut rhs = vec![Cx::new(0.0, 0.0); nt * np];
+    for (p, &node) in pn.iter().enumerate() {
+        rhs[node * np + p] = Cx::new(1.0, 0.0);
+    }
+    let x = csolve(a, rhs, nt, np);
+    let zc: Vec<Cx> = (0..np * np).map(|q| x[pn[q / np] * np + q % np]).collect();
+    // end blocks (feed removal, trace over the antipad, junction), outer port → core
+    let blocks: Vec<Abcd> = (0..nv)
+        .flat_map(|v| {
+            let m = vias[v];
+            (0..2).map(move |side| {
+                let mut t = Abcd::identity();
+                let (z, ee, ln) = m.feed_cut[side];
+                if ln != 0.0 {
+                    t = t.mul(&tline(z, w * ee.sqrt() / C0 * ln));
+                }
+                if let Some((z, er, ln)) = m.ap_line[side] {
+                    t = t.mul(&tline(z, w * er.sqrt() / C0 * ln));
+                }
+                if m.l_port[side] != 0.0 {
+                    t = t.mul(&Abcd::series(Cx::new(0.0, w * m.l_port[side])));
+                }
+                t
+            })
+        })
+        .collect();
+    // Z = (A Zc + B)(C Zc + D)⁻¹ with diagonal A, B, C, D
+    let mut num = vec![Cx::new(0.0, 0.0); np * np];
+    let mut den = vec![Cx::new(0.0, 0.0); np * np];
+    for p in 0..np {
+        for q in 0..np {
+            num[p * np + q] = blocks[p].a * zc[p * np + q];
+            den[p * np + q] = blocks[p].c * zc[p * np + q];
+        }
+        num[p * np + p] = num[p * np + p] + blocks[p].b;
+        den[p * np + p] = den[p * np + p] + blocks[p].d;
+    }
+    // Z = num · den⁻¹ → solve den^T Z^T = num^T
+    let tr = |m: &[Cx]| -> Vec<Cx> { (0..np * np).map(|q| m[(q % np) * np + q / np]).collect() };
+    let zt = csolve(tr(&den), tr(&num), np, np);
+    let z = tr(&zt);
+    // S = (Z − z0)(Z + z0)⁻¹ → solve (Z + z0)^T S^T = (Z − z0)^T
+    let mut zp = z.clone();
+    let mut zm = z;
+    for p in 0..np {
+        zp[p * np + p] = zp[p * np + p] + Cx::new(z0, 0.0);
+        zm[p * np + p] = zm[p * np + p] - Cx::new(z0, 0.0);
+    }
+    tr(&csolve(tr(&zp), tr(&zm), np, np))
 }
 
 #[cfg(test)]
@@ -1267,6 +1585,43 @@ mod tests {
         // the cached variant solves on 48 of the angles
         let bc = equivalent_radius_cached(a, &rb);
         assert!((bc / exact - 1.0).abs() < 0.015, "{bc} vs {exact}");
+    }
+
+    /// the coupled solver with a single via gives the ladder's own S-parameters
+    #[test]
+    fn coupled_single_matches_abcd() {
+        let mut g = sample();
+        g.planes.push(Plane { z: 1.0, antipad: Some(0.4) });
+        g.feeds[1] = Feed { z: 1.2, z_ref: 1.0, w: 0.15, zc: 50.0, eeff: 4.2, dropped: 0.0, antipad_line: true };
+        g.sigma = Some(5.8e7);
+        let m = PbmVia::build(&g, Mode::Single, Grid::default());
+        for f in [1e9, 9e9, 21e9] {
+            let (s11, s21, s22) = m.abcd(f).s_params(50.0);
+            let s = coupled_s(&[&m], f, 50.0);
+            for (a, b) in [(s[0], s11), (s[2], s21), (s[3], s22)] {
+                assert!((a - b).abs() < 1e-9, "{f}: {a:?} {b:?}");
+            }
+        }
+    }
+
+    /// a finite cavity much larger than the wavelength (lossy) gives the infinite ladder
+    #[test]
+    fn large_cavity_is_the_infinite_ladder() {
+        use crate::via_cavity::{EnvPort, PairEnv, PairMedium, RectEnv};
+        let mut g = sample();
+        g.f_loss = None;
+        g.slabs[0].tand = 0.1;
+        let m0 = PbmVia::build(&g, Mode::Single, Grid::default());
+        let (x0, y0) = (0.3, 0.25);
+        let ports = vec![EnvPort { x: x0, y: y0, r: 0.15e-3 }, EnvPort { x: x0 + 1e-3, y: y0, r: 0.15e-3 }];
+        let med = PairMedium { d: 1.2e-3, er: 4.2, tand: 0.1, f_loss: None, sigma: None, area: 0.0, edges: vec![] };
+        let env = std::rc::Rc::new(PairEnv::Rect(RectEnv::new(0.6, 0.5, med, ports, vec![], 20e9)));
+        let m1 = PbmVia::build_with(&g, Mode::Single, Grid::default(), vec![CavityLink { z_top: 1.4, z_bot: 0.2, env, origin: (x0, y0) }]);
+        assert!(m1.has_cavity());
+        for f in [2e9, 10e9, 20e9] {
+            let (a, b) = (m0.abcd(f).s_params(50.0).1, m1.abcd(f).s_params(50.0).1);
+            assert!((a - b).abs() < 2e-3, "{f}: {a:?} {b:?}");
+        }
     }
 
     #[test]

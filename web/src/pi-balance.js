@@ -2,7 +2,7 @@
 // ---- power balance view ------------------------------------------------------
 function piCopperLoss() { let w = 0; for (const r of S.piRes.values()) if (r.res) w += r.res.power_loss_w; return w; }
 const KIND_NAME = { input: "input", buck: "buck", boost: "boost", ldo: "LDO", inverter: "inverter", pass: "pass-through" };
-const mW = (w) => (w >= 1 ? fmt(w, 2) + " W" : fmt(w * 1e3, 0) + " mW");
+const watts = (w) => fmtSI(w, "W");
 
 function renderBalance() {
   const box = $("pi-balance"), t = S.treeRes;
@@ -15,6 +15,7 @@ function renderBalance() {
   const regLoss = t.elements.filter((e) => e.kind !== "pass" && e.kind !== "input").reduce((a, e) => a + e.p_loss, 0);
   const passLoss = t.p_losses - regLoss;
   const kpi = (v, u, l) => `<div class="bal-kpi"><span class="v">${v}<small> ${u}</small></span><span class="l">${l}</span></div>`;
+  const kpiW = (w, l) => kpi(...siParts(w, "W"), l);
   // tree, depth-first from the inputs
   const kids = (net) => t.elements.filter((e) => e.from === net);
   const loadsOn = (net) => S.piTree.loads.map((l, i) => ({ l, i })).filter((x) => t.load_nets[x.i] === net);
@@ -25,21 +26,21 @@ function renderBalance() {
     const r = t.rails.find((x) => x.net === net);
     if (!r) return;
     const pad = `style="padding-left:${d * 16}px"`;
-    rows.push(`<div class="t-rail" ${pad}><button data-rail="${esc(net)}" title="Show voltage drop of this rail">${esc(netShort(net))}</button><span class="t-num">${fmt(r.voltage, 2)} V · ${fmt(r.i_total, 3)} A · ${mW(Math.abs(r.voltage) * r.i_total)}</span></div>`);
+    rows.push(`<div class="t-rail" ${pad}><button data-rail="${esc(net)}" title="Show voltage drop of this rail">${esc(netShort(net))}</button><span class="t-num">${fmtSI(r.voltage, "V")} · ${fmtSI(r.i_total, "A")} · ${watts(Math.abs(r.voltage) * r.i_total)}</span></div>`);
     for (const { l, i } of loadsOn(net)) {
       rows.push(`<div class="t-load" style="padding-left:${d * 16 + 12}px"><span>${part(l.refdes, net)} <span class="b">${esc(l.part)} · ${esc(l.basis || "")}${l.note ? " · " + esc(l.note) : ""}</span></span>
-        <input type="number" min="0" step="0.001" value="${+l.current.toPrecision(4)}" data-load="${i}" aria-label="Current ${esc(l.refdes)} on ${esc(netLabel(net))} in A"></div>`);
+        <input type="text" inputmode="decimal" class="si-in" value="${esc(fmtSI(l.current, "A", 4))}" data-load="${i}" title="Current, e.g. 12 mA, 12m, 0.012 or 1.2e-5 (A)" aria-label="Current ${esc(l.refdes)} on ${esc(netLabel(net))}"></div>`);
     }
     for (const e of kids(net)) {
       // efficiency of the element (with its quiescent current); kisi's default when PI_REG gives none: an estimate
       const effEst = e.eff_estimate ? ` <span class="muted" title="No efficiency in the PI_REG field: kisi assumes ${fmt(100 * e.eff, 0)} %. Give the datasheet value at the expected load, e.g. “buck 90%”.">(estimate)</span>` : "";
       const eff = e.kind === "pass" ? "" : e.p_in > 0 ? ` · η ${fmt(100 * e.p_out / e.p_in, 0)} %${effEst}` : e.eff_estimate ? ` · η ${fmt(100 * e.eff, 0)} %${effEst}` : "";
-      rows.push(`<div class="t-el" style="padding-left:${d * 16 + 12}px"><span>└ ${part(e.refdes, e.to, true)}${e.id !== e.refdes ? ` <span class="b">${esc(e.id)}</span>` : ""} ${esc(KIND_NAME[e.kind] || e.kind)} · ${esc(e.part)}${e.overload ? `<span class="chip-warn">${fmt(e.i_out, 2)} A &gt; ${fmt(e.imax, 2)} A</span>` : ""}</span><span class="t-num">loss ${mW(e.p_loss)}${eff}</span></div>`);
+      rows.push(`<div class="t-el" style="padding-left:${d * 16 + 12}px"><span>└ ${part(e.refdes, e.to, true)}${e.id !== e.refdes ? ` <span class="b">${esc(e.id)}</span>` : ""} ${esc(KIND_NAME[e.kind] || e.kind)} · ${esc(e.part)}${e.overload ? `<span class="chip-warn">${fmtSI(e.i_out, "A")} &gt; ${fmtSI(e.imax, "A")}</span>` : ""}</span><span class="t-num">loss ${watts(e.p_loss)}${eff}</span></div>`);
       walk(e.to, d + 1);
     }
   };
   for (const e of t.elements.filter((e) => e.kind === "input")) {
-    rows.push(`<div class="t-el"><span>${part(e.refdes, e.to, true)} ${esc(e.part)}</span><span class="t-num">${mW(e.p_out)}</span></div>`);
+    rows.push(`<div class="t-el"><span>${part(e.refdes, e.to, true)} ${esc(e.part)}</span><span class="t-num">${watts(e.p_out)}</span></div>`);
     walk(e.to, 0);
   }
   // components
@@ -51,18 +52,18 @@ function renderBalance() {
     const wu = 100 * c.consumption / maxW, wl = 100 * c.loss / maxW;
     const el = t.elements.find((e) => e.refdes === c.refdes);
     const rail = c.rails.length ? c.rails[0][0] : el ? el.to : "";
-    return `<tr title="${esc(c.refdes)}: consumption ${mW(c.consumption)}, loss ${mW(c.loss)}"><td>${part(c.refdes, rail)}</td><td>${esc(c.part)}</td>
-      <td class="n">${c.consumption ? fmt(c.consumption * 1e3, 0) : "–"}</td><td class="n">${c.loss ? fmt(c.loss * 1e3, 0) : "–"}</td>
+    return `<tr title="${esc(c.refdes)}: consumption ${watts(c.consumption)}, loss ${watts(c.loss)}"><td>${part(c.refdes, rail)}</td><td>${esc(c.part)}</td>
+      <td class="n">${c.consumption ? watts(c.consumption) : "–"}</td><td class="n">${c.loss ? watts(c.loss) : "–"}</td>
       <td><div class="bar">${wu > 0 ? `<i class="u" style="width:${wu}%"></i>` : ""}${wl > 0 ? `<i class="l" style="width:${wl}%"></i>` : ""}</div></td><td class="b">${esc(basis(c))}</td></tr>`;
   };
   const warn = (t.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
   box.innerHTML = `
     <div class="bal-head"><h3>Power tree · ${esc(t.name)}</h3><p>${esc(t.note)}</p></div>
     <div class="bal-kpis">
-      ${kpi(fmt(pin, 2), "W", "input power")}
-      ${kpi(fmt(t.p_loads, 2), "W", "consumed by components")}
-      ${kpi(fmt(regLoss, 2), "W", "regulator losses")}
-      ${kpi(fmt((passLoss + cu) * 1e3, 0), "mW", "shunts, ferrites and copper")}
+      ${kpiW(pin, "input power")}
+      ${kpiW(t.p_loads, "consumed by components")}
+      ${kpiW(regLoss, "regulator losses")}
+      ${kpiW(passLoss + cu, "shunts, ferrites and copper")}
       ${kpi(fmt(100 * t.p_loads / pin, 0), "%", "overall efficiency")}
     </div>
     ${warn}
@@ -75,12 +76,15 @@ function renderBalance() {
         <div class="bal-actions" style="margin-top:8px"><button class="btn small" id="bal-reset">Reset values</button><span class="note">Changes are stored in this browser.</span></div></div>
       <div class="bal-card bal-comp"><h4>Components <em>${comps.length} with ≥ 0.5 mW</em></h4>
         <div class="bal-legend"><span><i style="background:var(--pw-use)"></i>consumption</span><span><i style="background:var(--pw-loss)"></i>loss (regulator, shunt, ferrite)</span></div>
-        <div class="tablewrap"><table class="ctab"><thead><tr><th>Component</th><th>Part</th><th>consumption mW</th><th>loss mW</th><th></th><th>Basis</th></tr></thead><tbody>${comps.map(crow).join("")}</tbody></table></div>
-        <p class="note">${S.piSolved ? `Copper losses of the layers (${fmt(cu * 1e3, 0)} mW) come from the voltage-drop solution and are not assigned to any component.` : "Copper losses of the layers are not included yet: they come from the voltage-drop solution (“Compute voltage drop”)."}</p></div>
+        <div class="tablewrap"><table class="ctab"><thead><tr><th>Component</th><th>Part</th><th class="n">consumption</th><th class="n">loss</th><th></th><th>Basis</th></tr></thead><tbody>${comps.map(crow).join("")}</tbody></table></div>
+        <p class="note">${S.piSolved ? `Copper losses of the layers (${watts(cu)}) come from the voltage-drop solution and are not assigned to any component.` : "Copper losses of the layers are not included yet: they come from the voltage-drop solution (“Compute voltage drop”)."}</p></div>
     </div>`;
   box.querySelectorAll("[data-load]").forEach((inp) => inp.onchange = () => {
+    // with or without prefix and unit: "12 mA", "12m", "0.012", "1.2e-5" (a plain number is A)
+    const v = parseSI(inp.value, "A");
+    if (!(v >= 0)) { inp.setAttribute("aria-invalid", "true"); return; }
     const l = S.piTree.loads[+inp.dataset.load];
-    l.current = Math.max(0, parseFloat(inp.value) || 0);
+    l.current = v;
     l.basis = "user";
     piSave(); refreshTree();
   });

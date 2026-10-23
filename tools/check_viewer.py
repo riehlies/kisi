@@ -11,11 +11,13 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   (desktop layouts; --quick: only load and the three views)
 * uses the embedded example boards if the build has them, else --board; on a board without impedance
   targets the steps that need such nets (net detail, couplings, field solver run) are skipped
-* --config: drops a <board>.kisi.json and expects "check passed"
+* --config: a <board>.kisi.json, loaded with --board (else dropped at the end); expects "check passed"
+* power views: no "0.000"-style values (texts, load fields, tooltips); losses labels at a constant
+  screen size without overlaps; in the light run also for the other example boards of the build
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
-import argparse, json, os, sys, tempfile
+import argparse, json, os, re, sys, tempfile
 from playwright.sync_api import sync_playwright
 
 ap = argparse.ArgumentParser()
@@ -46,6 +48,70 @@ def start_screen(pg):
     pg.wait_for_timeout(300)
 
 
+# a value with fixed decimals instead of an SI prefix: "0.000 A", "0.0012 W", "0.001 mW/mm²", "0.000"
+FIXED_ZERO = re.compile(r"(?<![\d.])0\.0\d*\s?[pnuµmkMG]?(?:A|W|V|Ω|F|H|Hz)(?![a-zA-Z])|(?<![\d.])0\.000\d*|(?<![A-Za-z\d.])\d+(?:\.\d+)?[eE][+-]?\d+(?![A-Za-z\d])")
+
+
+def power_units(pg, tag, step):
+    """Power views: no "0.000"-style values in the power tree, the components, the rail list and
+    editor, the drop / losses panels, the legends and the hover tooltips (voltage drop, current
+    density, losses); losses labels on the board at a constant screen size, without overlaps."""
+    texts = pg.evaluate("""async () => {
+      const wait = () => new Promise((r) => setTimeout(r, 120)), out = [], txt = (id) => { const e = $(id); return e && !e.hidden ? e.innerText : ""; };
+      const tipAt = (fn, bx, by) => { fn(S.view.x + bx * S.view.s, S.view.y + by * S.view.s); const t = $("tip"); const s = t.hidden ? "" : t.innerText; t.hidden = true; return s; };
+      setPiMode("b"); await wait();
+      out.push(["power tree", txt("pi-balance") + " " + [...document.querySelectorAll("#pi-balance input[data-load]")].map((i) => i.value).join(" ")]);
+      for (const m of ["v", "j"]) {
+        setPiMode(m); await wait();
+        out.push([m + " panels", txt("pi-detail") + " " + txt("rails") + " " + txt("rail-edit") + " " + txt("legend") + " " + txt("pi-step") + " " + txt("pi-origin")]);
+        const r = piCurrent();
+        if (r) {  // the tooltip over a cell with a result
+          const li = piLayerIdx(r), g = r.res.layers[li], c = r.res.cell;
+          for (let k = 0; k < g.nx * g.ny; k++) if (!isNaN(r.v[g.offset + k])) { out.push([m + " tooltip", tipAt(showPiTip, g.x0 + (k % g.nx + 0.5) * c, g.y0 + (Math.floor(k / g.nx) + 0.5) * c)]); break; }
+        }
+      }
+      setPiMode("l"); await wait();
+      out.push(["losses panels", txt("pi-detail") + " " + txt("legend")]);
+      if (S.loss && S.loss.map) {  // tooltips at the hottest cell and at a cool one
+        const m = S.loss.map, im = lossImage(); let hot = -1, cool = -1;
+        for (let k = 0; k < im.vals.length; k++) { if (im.vals[k] > 0 && (hot < 0 || im.vals[k] > im.vals[hot])) hot = k; if (im.vals[k] > 0 && (cool < 0 || im.vals[k] < im.vals[cool])) cool = k; }
+        for (const k of [hot, cool]) if (k >= 0) out.push(["losses tooltip", tipAt(showLossTip, m.x0 + (k % m.nx + 0.5) * m.cell, m.y0 + (Math.floor(k / m.nx) + 0.5) * m.cell)]);
+      }
+      return out;
+    }""")
+    for where, t in texts:
+        bad = sorted(set(m.group(0) for m in FIXED_ZERO.finditer(t)))
+        if bad:
+            problems.append(f"{tag}: fixed-decimal values in {where}: {bad[:6]}")
+    if not any(w == "power tree" and t.strip() for w, t in texts):
+        notes.append(f"{tag}: no power tree to check for units")
+    # losses labels: constant screen size at two zoom levels, no overlaps, transform restored
+    lab = pg.evaluate("""async () => {
+      const wait = () => new Promise((r) => setTimeout(r, 150));
+      if (S.piMode !== "l" || !S.loss || !S.loss.map) return null;
+      if (typeof drawBoardLabels !== "function") return { missing: true };
+      const one = () => { drawNow(); const b = S.lossLabels || [];
+        // the helper leaves the caller's transform as it was
+        ctx.setTransform(2, 0, 0, 2, 5, 7); drawBoardLabels([{ x: 0, y: 0, text: "x" }]); const t = ctx.getTransform(); drawNow();
+        return { n: b.length, h: b.map((x) => Math.round((x[3] - x[1]) * 100) / 100), overlap: b.some((p, i) => b.some((q, j) => j > i && p[0] < q[2] && p[2] > q[0] && p[1] < q[3] && p[3] > q[1])), restored: t.a === 2 && t.e === 5 && t.f === 7 }; };
+      const a = one(), keep = { ...S.view }, top = S.loss.summary.components.find((c) => c.at);
+      if (top) { const s2 = S.view.s * 8; S.view.x = cv.width / (window.devicePixelRatio || 1) / 2 - top.at[0] * s2; S.view.y = cv.height / (window.devicePixelRatio || 1) / 2 - top.at[1] * s2; S.view.s = s2; }
+      const b = one(); await wait();
+      return { a, b, keep };
+    }""")
+    if lab and lab.get("missing"):
+        problems.append(f"{tag}: no shared label helper drawBoardLabels for the losses map")
+    elif lab:
+        step("losses_zoom")
+        pg.evaluate(f"(() => {{ Object.assign(S.view, {json.dumps(lab['keep'])}); draw(); }})()")
+        a, b = lab["a"], lab["b"]
+        if not a["n"]:
+            problems.append(f"{tag}: no part labels on the losses map")
+        if a["overlap"] or b["overlap"] or not (a["restored"] and b["restored"]) or len(set(a["h"] + b["h"])) > 1:
+            problems.append(f"{tag}: losses labels: overlap {a['overlap']}/{b['overlap']}, transform restored {a['restored']}/{b['restored']}, heights {sorted(set(a['h'] + b['h']))}")
+    pg.evaluate("setPiMode('b')"); pg.wait_for_timeout(200)
+
+
 def run(pg, tag, desktop):
     errs = []
     pg.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
@@ -55,8 +121,11 @@ def run(pg, tag, desktop):
     if not pg.evaluate("!!S.scene"):  # start screen: no control may fail without a board
         start_screen(pg)
     if a.board:
-        pg.set_input_files("#file", [os.path.abspath(f) for f in a.board])
-        pg.wait_for_function(f"S.scene && {BUSY}", timeout=90000)
+        # with --config the board configuration comes with the board, so every view uses it
+        pg.set_input_files("#file", [os.path.abspath(f) for f in a.board + ([a.config] if a.config else [])])
+        pg.wait_for_function(f"S.scene && {BUSY}" + (" && !!S.config" if a.config else ""), timeout=90000)
+        if a.config and not pg.evaluate("S.config.check.ok"):
+            problems.append(f"{tag}: kisi.json check failed: {pg.evaluate('S.config.check.errors')[:3]}")
     elif not pg.evaluate("!!S.scene"):
         raise SystemExit("the build has no example boards: pass --board")
     step = lambda name: pg.screenshot(path=f"{out}/{tag}_{name}.png")
@@ -205,13 +274,23 @@ def run(pg, tag, desktop):
             bx = pg.locator("#pcb").bounding_box()
             pg.mouse.move(bx["x"] + 0.25 * bx["width"], bx["y"] + 0.5 * bx["height"]); pg.wait_for_timeout(200); step("temperature_bottom")
             pg.click("#pim-b"); pg.wait_for_timeout(300)
-        if a.config:
+        power_units(pg, tag, step)
+        if a.config and not a.board:
             pg.click("#view-si")
             pg.set_input_files("#file", [os.path.abspath(a.config)]); pg.wait_for_function(f"S.config && {BUSY}", timeout=90000)
             ck = pg.evaluate("S.config.check")
             if not ck["ok"]:
                 problems.append(f"{tag}: kisi.json check failed: {ck['errors'][:3]}")
             step("config")
+    # the other example boards of the build: power views with the voltage drop, units and labels
+    if desktop and not a.quick and not a.board and tag == "light":
+        for key in pg.evaluate("Object.keys(SAMPLES).filter((k) => k !== 'ts')"):
+            pg.evaluate(f"loadSample({json.dumps(key)})"); pg.wait_for_function(f"S.scene && {BUSY}", timeout=90000)
+            pg.click("#view-pi"); pg.wait_for_timeout(400)
+            if not pg.locator("#pi-run").is_disabled():
+                pg.click("#pi-run"); pg.wait_for_function(f"S.piSolved && !S.piRunning && {BUSY}", timeout=300000); pg.wait_for_timeout(300)
+            step(f"power_{key}")
+            power_units(pg, f"{tag} ({key})", lambda n, k=key: step(f"{n}_{k}"))
     if pg.evaluate("document.documentElement.scrollWidth > window.innerWidth + 1"):
         problems.append(f"{tag}: horizontal scroll")
     for e in errs:

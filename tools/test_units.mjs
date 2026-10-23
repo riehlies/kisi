@@ -7,8 +7,8 @@ import assert from "node:assert/strict";
 
 const src = readFileSync(fileURLToPath(new URL("../web/src/units.js", import.meta.url)), "utf8");
 const ctx = vm.createContext({});
-vm.runInContext(src + "\n;globalThis.U = { fmtSI, parseSI, fieldSI };", ctx);
-const { fmtSI, parseSI, fieldSI } = ctx.U;
+vm.runInContext(src + "\n;globalThis.U = { fmtSI, parseSI, fieldSI, siParts, fmtSig };", ctx);
+const { fmtSI, parseSI, fieldSI, siParts, fmtSig } = ctx.U;
 const nb = (s) => s.replace(/ /g, " ");
 let n = 0;
 const eq = (a, b, what) => { assert.equal(a, b, what); n++; };
@@ -23,11 +23,14 @@ for (const [v, u, want] of [
   [1.23456e-9, "s", "1.23 ns"], [0.000171, "V", "171 µV"], [3.29983, "V", "3.3 V"],
 ]) eq(fmtSI(v, u), nb(want), `fmtSI(${v}, ${u})`);
 eq(fmtSI(3.29983, "V", 5), nb("3.2998 V"), "5 digits");
+eq(fmtSI(5e-16, "F"), nb("0.5 fF"), "femto");
+eq(fmtSI(2.99e-36, "W/mm²"), nb("0 W/mm²"), "numerical noise is 0");
+eq(fmtSI(-3e-30, "A"), nb("0 A"), "negative noise is 0");
 eq(fmtSI(3.3, "V", 3, { zeros: true }), nb("3.30 V"), "zeros kept");
 eq(fmtSI(0, "V", 3, { zeros: true }), nb("0 V"), "zero with zeros");
 for (const v of [null, undefined, NaN, Infinity, "3"]) eq(fmtSI(v, "A"), "–", `fmtSI(${v})`);
 // no "0.000"-style output anywhere in the range
-for (let e = -12; e <= 9; e += 0.37) {
+for (let e = -40; e <= 9; e += 0.37) {
   const t = fmtSI(1.234 * 10 ** e, "W");
   assert.ok(!/^0\.0/.test(t) && !/e/.test(t), `${e}: ${t}`); n++;
 }
@@ -53,5 +56,10 @@ for (const [v, u, want] of [
 ]) eq(fieldSI(v, u), want, `fieldSI(${v})`);
 eq(fieldSI(0.0005, "", 4, -3, 3), "0.5m", "ohms: milli at most");
 for (const v of [1.2e-5, 0.012, 0.75e-3, 2.5]) near(parseSI(fieldSI(v, "A"), "A"), v, `field round trip ${v}`);
+
+// tiles and plain numbers
+eq(JSON.stringify(siParts(0.0234, "W")), JSON.stringify(["23.4", "mW"]), "siParts");
+eq(JSON.stringify(siParts(null, "W")), JSON.stringify(["–", "W"]), "siParts empty");
+for (const [v, want] of [[0.00523, "0.0052"], [12.345, "12"], [99.6, "100"], [1234.5, "1,235"], [0, "0"], [NaN, "–"]]) eq(fmtSig(v), want, `fmtSig(${v})`);
 
 console.log(`units: ${n} checks passed`);

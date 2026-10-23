@@ -83,6 +83,36 @@ function drawNow() {
 }
 // one colour group of netPaths: tracks stroked, pads filled with their outline; `halo` (css px):
 // the outline drawn wider in the halo colour instead
+// Labels on the board at a constant screen size: the font is set in CSS pixels on a screen-space
+// transform, so the text is crisp at any zoom and devicePixelRatio (text drawn in board units at
+// size N·px gets blocky when zoomed in). items: [{x, y, text, color?}] with the anchor in board mm,
+// most important first; each label sits right of and above its anchor and is skipped when it would
+// overlap one already drawn or lie outside the view. Returns the drawn labels' screen boxes
+// ([x0, y0, x1, y1] in CSS px). Restores the caller's transform. Used by the losses map.
+function drawBoardLabels(items, opt = {}) {
+  const d = window.devicePixelRatio || 1, v = S.view, size = opt.size || 11, dx = opt.dx ?? 6, dy = opt.dy ?? -6;
+  const cs = getComputedStyle(document.documentElement);
+  const W = cv.width / d, H = cv.height / d, boxes = [];
+  ctx.save();
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  ctx.font = `600 ${size}px ${cs.getPropertyValue("--font-mono").trim() || "monospace"}`;
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.lineJoin = "round"; ctx.lineWidth = 3;
+  ctx.strokeStyle = opt.halo || S.colors.canvas;
+  const fg = cs.getPropertyValue("--fg").trim() || "#000";
+  for (const it of items) {
+    if (opt.max && boxes.length >= opt.max) break;
+    const sx = v.x + it.x * v.s + dx, sy = v.y + it.y * v.s + dy, w = ctx.measureText(it.text).width;
+    const b = [sx - 2, sy - size, sx + w + 2, sy + 0.3 * size];
+    if (b[2] < 0 || b[0] > W || b[3] < 0 || b[1] > H) continue;
+    if (boxes.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])) continue;
+    boxes.push(b);
+    ctx.strokeText(it.text, sx, sy);
+    ctx.fillStyle = it.color || opt.color || fg; ctx.fillText(it.text, sx, sy);
+  }
+  ctx.restore();
+  return boxes;
+}
+
 function drawGroup(g, px, halo = 0) {
   const C = S.colors;
   ctx.strokeStyle = halo ? C.halo : g.col; ctx.lineWidth = Math.max(g.w, 1.2 * px) + halo * px; ctx.stroke(g.path);

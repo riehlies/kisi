@@ -300,6 +300,9 @@ def run(pg, tag, desktop):
                     problems.append(f"{tag}: click on a load in the power flow did not show the part")
                 board_text(pg, tag, "the voltage drop view (part from the power flow)")
                 step("flow_jump"); pg.click("#pim-b"); pg.wait_for_timeout(300)
+            # before step 3 the components table offers "Thermal" only as a disabled choice
+            if not pg.evaluate("thermOk() || (!!document.querySelector('.bal-comp [data-cm=t]') && document.querySelector('.bal-comp [data-cm=t]').disabled)"):
+                problems.append(f"{tag}: components table: the Thermal columns are not disabled before step 3")
             # power tree and component list: part references jump to the board as well
             for sel in [".tree [data-part]", ".ctab [data-part]"]:
                 if pg.locator(sel).count():
@@ -332,7 +335,15 @@ def run(pg, tag, desktop):
               const q = document.querySelector("#pi-detail [data-tpart]"); if (q) { q.click(); await wait(); }
               const partOk = !q || (!!S.thermMark && S.thermMark.label.startsWith(q.dataset.tpart));
               setPiMode("b"); await wait(); out.push(txt("pi-balance"));
-              const comp = !!document.querySelector(".bal-comp thead") && document.querySelector(".bal-comp thead").innerText.includes("Tj");
+              // components table: "Thermal" columns behind the toggle, remembered, "Power" again
+              const cm = (k) => { const b = document.querySelector(`.bal-comp [data-cm=${k}]`); if (b && !b.disabled) b.click(); };
+              cm("t"); await wait(); out.push(txt("pi-balance"));
+              const head = () => (document.querySelector(".bal-comp thead") || { innerText: "" }).innerText;
+              const thermHead = head();
+              setPiMode("v"); await wait(); setPiMode("b"); await wait();
+              const kept = head() === thermHead;
+              cm("p"); await wait();
+              const comp = thermHead.includes("Tj") && thermHead.includes("θ") && thermHead.includes("source") && kept && head().includes("consumption") && !head().includes("Tj");
               setPiMode("t"); await wait();
               return { texts: out, railOk, partOk, comp, vias: S.therm.vias.length, under: S.therm.parts.filter((x) => x.vias).length };
             }""")
@@ -343,7 +354,7 @@ def run(pg, tag, desktop):
             if not (t["railOk"] and t["partOk"]):
                 problems.append(f"{tag}: a rail or a part in the temperature tables did not jump to the map")
             if not t["comp"]:
-                problems.append(f"{tag}: no temperature in the power tree's components table")
+                problems.append(f"{tag}: components table: no Thermal columns (Tj, θ, source) behind the toggle, choice not kept, or Power columns not back")
             if not (t["vias"] > 0 and t["under"] > 0):
                 problems.append(f"{tag}: no via heat or heat paths under the parts")
             step("temperature_jump")

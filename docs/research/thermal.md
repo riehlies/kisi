@@ -215,8 +215,9 @@ table). `kisi config-check` reads it.
 - `kisi thermal <board> [--ambient °C] [--h W/m²K] [--airflow m/s] [--vertical]` (native and Node CLI, from
   `kisi_core::commands`): the power analysis, then the temperature: ambient and surface coefficients (marked as
   estimates unless given), totals and the energy balance, maximum board temperature and hot spots with the
-  nearest part, per part P, the board temperature under it, Tj, Tj max and its source, the θ values and their
-  source (`PI_THERMAL` or the package default), per rail the copper temperature (maximum and loss-weighted
+  nearest part, per part P, the board temperature under it, Tj, Tj max and its source, the θ values (also
+  `psi_jt`) and their source (`PI_THERMAL` with the document and page of its kisi.json source in
+  `source_document`, or the package default), per rail the copper temperature (maximum and loss-weighted
   mean) and the IR drop at 20 °C and at that temperature. Also the case top per part, the heat path under each
   part of 0.1 W or more (`under_part`: vias, into the board through vias / laminate / sideways, ΔT to the next
   layer and to the other side, hint), the vias with the most heat (`vias.most_heat`) and the hints (`parts_hints`),
@@ -226,8 +227,10 @@ table). `kisi config-check` reads it.
   labelled with Tj, the vias with the most heat as grey dots), a side panel with the same tables as the CLI and
   the note that the values are estimates. Every temperature in the tables carries a chip in the map's colour
   scale; a click on a part or a rail selects its layer and zooms to the part or to the rail's hottest copper.
-  After step 3 the components table of the "Power tree" view adds Tj, the case top and the θ data (datasheet or
-  package default, with values and source in the tooltip).
+  The components table of the "Power tree" view switches between "Power" (consumption, loss, basis) and, once
+  step 3 has run, "Thermal": Tj, case top, Tj max, the θ values as used (θJB / θJC, ψJB, ψJT or θJA) and
+  their source (the datasheet document and page from `PI_THERMAL`, or the package default of the family,
+  marked as an estimate); the choice is remembered in the browser.
 
 ## 6. Scope
 | Now (this increment) | Later |

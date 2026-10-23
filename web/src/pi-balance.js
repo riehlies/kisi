@@ -3,6 +3,24 @@
 function piCopperLoss() { let w = 0; for (const r of S.piRes.values()) if (r.res) w += r.res.power_loss_w; return w; }
 const KIND_NAME = { input: "input", buck: "buck", boost: "boost", ldo: "LDO", inverter: "inverter", pass: "pass-through" };
 const watts = (w) => fmtSI(w, "W");
+const COMP_COLS_KEY = "kisi.componentColumns";
+// thermal columns of one part (components table, "Thermal"): Tj, case top, Tj max, the θ values as
+// used by the model and where they come from
+function thermCells(p) {
+  if (!p) return `<td class="n">–</td><td class="n">–</td><td class="n">–</td><td>–</td><td class="src">no heat in step 3</td>`;
+  const theta = p.model === "theta_jb" ? [`θJB ${fmt(p.theta_jb, 1)}`].concat(p.theta_jc ? [`θJC ${fmt(p.theta_jc, 1)}`] : [])
+    : p.model === "psi_jb" ? [`ψJB ${fmt(p.psi_jb, 1)}`] : [`θJA ${fmt(p.theta_ja, 1)}`];
+  if (p.psi_jt != null) theta.push(`ψJT ${fmt(p.psi_jt, 2)}`);
+  const field = p.data_source.startsWith("PI_THERMAL");
+  const kind = field ? ((p.data_source.match(/^PI_THERMAL \(([^:),]+)/) || [])[1] || "PI_THERMAL") : `${p.family} default`;
+  const sub = field ? (p.source_document || (p.data_source.match(/^PI_THERMAL \([^:]+: (.*)\)$/) || [])[1] || "footprint field") + (p.model === "theta_ja" ? " · θJA of the JEDEC board (estimate)" : "")
+    : "data/components.json · estimate";
+  const tjmDef = p.tj_max_source.startsWith("default");
+  const full = `${theta.join(", ")} K/W – ${field ? p.data_source + (p.source_document ? `; ${p.source_document}` : "") : `package default ${p.family} (data/components.json, estimate)`}; Tj max ${fmt(p.tj_max_c, 0)} °C: ${p.tj_max_source}${p.case_model ? `; case top from ${p.case_model === "psi_jt" ? "ψJT" : "the two-resistor model"}` : ""}`;
+  return `<td class="n" title="${esc(full)}">${tCell(p.tj_c, p.estimate ? "*" : "")}</td><td class="n">${fmtTn(p.t_case_c)}</td>
+    <td class="n" title="${esc(p.tj_max_source)}">${fmt(p.tj_max_c, 0)}${tjmDef ? "*" : ""}</td><td class="th">${theta.map(esc).join("<br>")}</td>
+    <td class="src" title="${esc(full)}"><b>${esc(kind)}</b><span>${esc(sub)}</span></td>`;
+}
 
 function renderBalance() {
   const box = $("pi-balance"), t = S.treeRes;
@@ -48,24 +66,29 @@ function renderBalance() {
   const maxW = Math.max(...comps.map((c) => c.consumption + c.loss), 1e-9);
   const effEst = new Set(t.elements.filter((e) => e.eff_estimate).map((e) => e.refdes));
   const basis = (c) => { const b = [...new Set(c.rails.map((r) => r[2]))]; return c.rails.length ? (b.length > 1 ? "mixed" : b[0]) : effEst.has(c.refdes) ? "estimate (η)" : "computed"; };
-  // after the temperature step: junction and case temperature and the thermal data of each part
+  // columns: "Power" (consumption, loss, basis) or, once step 3 has run, "Thermal" (Tj, case top, Tj max,
+  // the thermal resistances used and their source); the choice is remembered per browser
   const th = typeof thermOk === "function" && thermOk() ? new Map(S.therm.parts.map((p) => [p.refdes, p])) : null;
-  const thCells = (c) => {
-    if (!th) return "";
-    const p = th.get(c.refdes);
-    if (!p) return `<td class="n">–</td><td class="n">–</td><td class="b">–</td>`;
-    const theta = p.model === "theta_jb" ? `θJB ${fmt(p.theta_jb, 1)}${p.theta_jc ? ` / θJC ${fmt(p.theta_jc, 1)}` : ""} K/W` : p.model === "psi_jb" ? `ψJB ${fmt(p.psi_jb, 1)} K/W` : `θJA ${fmt(p.theta_ja, 1)} K/W`;
-    const full = `${theta} – ${p.data_source.startsWith("PI_THERMAL") ? p.data_source : `package default ${p.family} (data/components.json, estimate)`}; Tj max ${fmt(p.tj_max_c, 0)} °C: ${p.tj_max_source}${p.case_model ? `; case top from ${p.case_model === "psi_jt" ? "ψJT" : "the two-resistor model"}` : ""}`;
-    return `<td class="n" title="${esc(full)}">${tCell(p.tj_c, p.estimate ? "*" : "")}</td><td class="n">${fmtTn(p.t_case_c)}</td><td class="b nw" title="${esc(full)}">${p.data_source.startsWith("PI_THERMAL") ? "datasheet" : `${esc(p.family)} est.`}</td>`;
-  };
+  let want = "p";
+  try { want = localStorage.getItem(COMP_COLS_KEY) === "t" ? "t" : "p"; } catch (e) { /* no storage */ }
+  const thermal = !!th && want === "t";
   const crow = (c) => {
-    const wu = 100 * c.consumption / maxW, wl = 100 * c.loss / maxW;
     const el = t.elements.find((e) => e.refdes === c.refdes);
     const rail = c.rails.length ? c.rails[0][0] : el ? el.to : "";
-    return `<tr title="${esc(c.refdes)}: consumption ${watts(c.consumption)}, loss ${watts(c.loss)}"><td>${part(c.refdes, rail)}</td><td>${esc(c.part)}</td>
+    const head = `<td>${part(c.refdes, rail)}</td><td>${esc(c.part)}</td>`;
+    if (thermal) return `<tr>${head}${thermCells(th.get(c.refdes))}</tr>`;
+    const wu = 100 * c.consumption / maxW, wl = 100 * c.loss / maxW;
+    return `<tr title="${esc(c.refdes)}: consumption ${watts(c.consumption)}, loss ${watts(c.loss)}">${head}
       <td class="n">${c.consumption ? watts(c.consumption) : "–"}</td><td class="n">${c.loss ? watts(c.loss) : "–"}</td>
-      <td><div class="bar">${wu > 0 ? `<i class="u" style="width:${wu}%"></i>` : ""}${wl > 0 ? `<i class="l" style="width:${wl}%"></i>` : ""}</div></td><td class="b">${esc(basis(c))}</td>${thCells(c)}</tr>`;
+      <td><div class="bar">${wu > 0 ? `<i class="u" style="width:${wu}%"></i>` : ""}${wl > 0 ? `<i class="l" style="width:${wl}%"></i>` : ""}</div></td><td class="b">${esc(basis(c))}</td></tr>`;
   };
+  const colsSw = `<span class="seg cmode" role="group" aria-label="Columns of the components table"><button data-cm="p" aria-pressed="${!thermal}">Power</button><button data-cm="t" aria-pressed="${thermal}"${th ? ` title="junction and case temperature, θ values and their source"` : ` disabled title="available after step 3 (Temperature)"`}>Thermal</button></span>`;
+  const thead = thermal
+    ? `<th>Component</th><th>Part</th><th class="n" title="junction temperature from step 3 (°C); * = estimated package data">Tj °C</th><th class="n" title="top of the package (°C): Tj − ψJT·P, else the two-resistor model">case top °C</th><th class="n" title="maximum junction temperature (°C); * = assumed default">Tj max °C</th><th title="thermal resistances as used (K/W): θJB junction–board, θJC junction–case top, ψJB/ψJT characterisation parameters, θJA (JEDEC test board only)">θ K/W</th><th title="where the θ values come from: PI_THERMAL with its source document, or the package default of the family (data/components.json, estimate)">source</th>`
+    : `<th>Component</th><th>Part</th><th class="n">consumption</th><th class="n">loss</th><th></th><th>Basis</th>`;
+  const tnote = thermal
+    ? `<p class="note">Temperatures from step 3 (estimate): ${esc(S.therm.cooling.airflow_m_s ? `air flow ${S.therm.cooling.airflow_m_s} m/s` : "still air")}, ambient ${fmtT(S.therm.ambient_c)}. * estimate: package default θ by family and size or an assumed Tj max. Hover a row for all values and sources.</p>`
+    : th ? "" : `<p class="note">“Thermal” (junction and case temperature, θ values and their source) after step 3 “Temperature”.</p>`;
   const warn = (t.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
   box.innerHTML = `
     <div class="bal-head"><h3>Power tree · ${esc(t.name)}</h3><p>${esc(t.note)}</p></div>
@@ -84,10 +107,10 @@ function renderBalance() {
     <div class="bal-cols">
       <div class="bal-card"><h4>Power tree <em>currents are editable: 12 mA, 12m, 0.012</em></h4><div class="tree">${rows.join("")}</div>
         <div class="bal-actions" style="margin-top:8px"><button class="btn small" id="bal-reset">Reset values</button><span class="note">Changes are stored in this browser.</span></div></div>
-      <div class="bal-card bal-comp"><h4>Components <em>${comps.length} with ≥ 0.5 mW</em></h4>
-        <div class="bal-legend"><span><i style="background:var(--pw-use)"></i>consumption</span><span><i style="background:var(--pw-loss)"></i>loss (regulator, shunt, ferrite)</span></div>
-        <div class="tablewrap"><table class="ctab${th ? " with-t" : ""}"><thead><tr><th>Component</th><th>Part</th><th class="n">consumption</th><th class="n">loss</th><th></th><th>Basis</th>${th ? `<th class="n" title="junction temperature from step 3 (°C); * = estimated package data">Tj °C</th><th class="n" title="top of the package (°C): ψJT or the two-resistor model">case °C</th><th title="θ values: from PI_THERMAL (datasheet) or a package default by family and size (estimate); hover a row for the values and the source">θ data</th>` : ""}</tr></thead><tbody>${comps.map(crow).join("")}</tbody></table></div>
-        ${th ? `<p class="note">Temperatures from step 3 (estimate): ${esc(S.therm.cooling.airflow_m_s ? `air flow ${S.therm.cooling.airflow_m_s} m/s` : "still air")}, ambient ${fmtT(S.therm.ambient_c)}; thermal data from PI_THERMAL (datasheet) or package defaults by family and size (data/components.json, estimates).</p>` : ""}
+      <div class="bal-card bal-comp"><h4>Components ${colsSw}<em>${comps.length} with ≥ 0.5 mW</em></h4>
+        ${thermal ? "" : `<div class="bal-legend"><span><i style="background:var(--pw-use)"></i>consumption</span><span><i style="background:var(--pw-loss)"></i>loss (regulator, shunt, ferrite)</span></div>`}
+        <div class="tablewrap"><table class="ctab${thermal ? " therm" : ""}"><thead><tr>${thead}</tr></thead><tbody>${comps.map(crow).join("")}</tbody></table></div>
+        ${tnote}
         <p class="note">${S.piSolved ? `Copper losses of the layers (${watts(cu)}) come from the voltage-drop solution and are not assigned to any component.` : "Copper losses of the layers are not included yet: they come from the voltage-drop solution (“Compute voltage drop”)."}</p></div>
     </div>`;
   box.querySelectorAll("[data-load]").forEach((inp) => inp.onchange = () => {
@@ -101,6 +124,10 @@ function renderBalance() {
   });
   box.querySelectorAll("[data-rail]").forEach((b) => b.onclick = () => { S.piRail = b.dataset.rail; S.piLayer = -1; setPiMode("v"); fitRail(); });
   box.querySelectorAll("[data-part]").forEach((b) => b.onclick = () => showPart(b.dataset.part, b.dataset.prail));
+  box.querySelectorAll("[data-cm]").forEach((b) => b.onclick = () => {
+    try { localStorage.setItem(COMP_COLS_KEY, b.dataset.cm); } catch (e) { /* not remembered */ }
+    renderBalance();
+  });
   // power flow: a rail opens the rail on the board, a regulator, input or load shows the part
   box.querySelectorAll(".sankey [data-node]").forEach((g) => {
     const go = () => sankeyJump(g.dataset.node);

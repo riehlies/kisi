@@ -178,7 +178,7 @@ KiCad files; CLI and viewer lay this file over the board.
   kisi.json) – with a channel behind the connector the eye is judged. One file for all lanes of the connector
   (`.sNp`): `"ports": {"A16": [1, 9], "A17": [2, 10], …}` gives per connector pin the file's port at the connector
   and at the far end; the other lanes in the file are aggressors in each lane's eye (worst case, entering at the
-  connector without their board traces – conservative). In the viewer: the interface's card in the
+  connector without their board traces – conservative; their directions are the guessed lane directions). In the viewer: the interface's card in the
   channel overview (Touchstone files are loaded there or dropped with the board and stay in memory). `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`, `PI_CAP`, `PI_TARGET`, `PI_SERIES`).
 - `variant`: the assembly variant to analyse – a KiCad 10 variant of the board, one of `variants`, or `default`
   (the board file as it is). `variants`: which parts are fitted, for boards without KiCad 10 variants (or on top of
@@ -239,7 +239,7 @@ KiCad files; CLI and viewer lay this file over the board.
 
 ### Limits
 - The channel check is a first look: linear transmitter and receiver from the interface profile, no IBIS models,
-  no equalisation, jitter or noise, no simulation of several aggressors at once. A real channel validation needs
+  no equalisation, jitter or noise, no simulation of several aggressors at once (except the lanes of one N-port file behind a connector, as a worst case without their board traces). A real channel validation needs
   IBIS (or AMI) models and more complex tests.
 - 2D cross-sections and reduced via/plane models instead of a full-board 3D solution; board edges, via-to-via
   coupling and resonances of the whole board are not included.

@@ -1455,8 +1455,8 @@ pub fn lane_eval(
     if !ch.diff {
         let s2: Vec<Vec<crate::rf::Cx>> = (0..ch.freq.len()).map(|k| vec![ch.s11[k], ch.s21[k], ch.s21[k], ch.s22[k]]).collect();
         ch.warnings.extend(crate::lanenet::passivity_check(&ch.freq, &s2, 2));
-    }
-    if ch.diff {
+    } else {
+        // a pair: the 4-port of both lines
         match lane_pair(board, an, lane, field, target, rp, reversed, false, &none, cd) {
             Ok(p) => {
                 let mm = p.mixed();

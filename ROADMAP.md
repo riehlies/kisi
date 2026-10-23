@@ -68,9 +68,14 @@ Planned and possible work after 0.2.4, roughly in order of priority. Each item s
   crossings of plane splits and edges (return path), then via-to-via coupling through the cavity.
 - **PDN:** per-IC grid for all rails at once, regulator models beyond R + L (control-loop output impedance),
   comparison with a measurement or a reference tool.
-- **Power:** via current capacity; a temperature estimate from the losses map (2D heat spreading with
-  conductivity of copper and laminate, convection; clearly an estimate); split of regulator losses between IC and
-  inductor.
+- **Power:** via current capacity; split of regulator losses between IC and inductor (also a second heat source
+  in the temperature estimate).
+- **Temperature, follow-ups** (the steady state is in `kisi thermal` and the viewer, `docs/research/thermal.md`): transient (thermal capacitance on
+  the same matrix, duty cycles); heat sinks (`theta_sa`), thermal pads to a chassis, conduction into mounting holes,
+  card guides and connectors (often a large share on PCIe/M.2 cards); local grid refinement under small hot parts;
+  filled vias and laminate conductivity by material name; iterating the electro-thermal step to a fixed point and
+  temperature-dependent IC power (leakage); `PI_THERMAL` data for the example boards' hot parts; a comparison with
+  IPC-2152 trace heating and a measurement (IR camera) on the test board.
 - **Power tree per supply case.** Boards that run from USB or a battery (a PMIC power path) have one tree per case:
   on the XIAO, VSYS is VBUS on USB and VBAT on battery, and the debugger is supplied only on USB; while charging, the
   battery charge current is a load on VSYS. Today one tree has to stand for all cases.

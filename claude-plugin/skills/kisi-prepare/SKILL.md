@@ -64,6 +64,11 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
    - Ferrite beads and inductors in supply paths (`PI_SERIES`, for the PDN per IC): impedance at
      100 MHz and DC resistance of a bead (`z100=600 rdc=0.15`), inductance and DC resistance of an
      inductor (`l=2.2u dcr=50m`), from the part's datasheet (`kisi gaps`: bead-ratings).
+   - Thermal data of hot parts (`PI_THERMAL`, gap `thermal-data`, for `kisi thermal`): the datasheet's
+     Thermal Information table – RθJB and RθJC(top) (`theta_jb=17.4 theta_jc=53.6`), or ψJB when RθJB is
+     missing (`psi_jb=…`); θJA only as a last resort (`theta_ja=…`, it describes the JEDEC test board, not
+     this one) – and the maximum junction temperature (`tj_max=125`; FPGAs: the speed/temperature grade).
+     Parts whose power leaves the board (connectors, LEDs, RF output stages): the heat in the part, `p=…W`.
    - Assembly variants (gap `assembly-variant`): the project's BOM and position files per variant, the
      sheets that hold each option, KiCad 10 variants in the board file. Define `variants` (by sheet,
      references or BOM, `source` kind `design`) and ask the user which one to analyse – write it as

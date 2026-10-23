@@ -1011,6 +1011,13 @@ mod tests {
             }
             let ts = touchstone4(&m);
             assert_eq!(ts.lines().filter(|l| !l.starts_with('!') && !l.starts_with('#')).count(), 4 * m.freq.len());
+            // the check of a net without devices takes the same 4-port: mode conversion with the jog
+            let end = Some(crate::eye::EndModel { r: 50.0, c_pf: 0.5, l_nh: 0.0 });
+            let row = crate::eye::check_net(&board, &an, &HashMap::new(), net, Some((100.0, true)), &rp, 5.0, (end, end, Some(40e-12)));
+            assert_eq!(row.model, "4-port");
+            assert!(row.error.is_none() && row.eye && row.eye_height > 0.5, "{row:?}");
+            let mc = row.mode_conversion_db.unwrap();
+            assert!(if jog > 0.0 { mc > -30.0 } else { mc < -60.0 }, "jog {jog}: {mc}");
         }
     }
 }

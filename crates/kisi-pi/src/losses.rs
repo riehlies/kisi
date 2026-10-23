@@ -54,9 +54,8 @@ pub fn ground_setups(board: &Board, tree: &TreeResult) -> (Vec<RailSetup>, Vec<S
         return (vec![], vec!["no ground net (GND, AGND, VSS, …) on the board: ground return not computed".into()]);
     }
     let fp_of: HashMap<&str, usize> = board.footprints.iter().enumerate().map(|(i, f)| (f.reference.as_str(), i)).collect();
-    // ground pads per component and ground net
-    // ordered by footprint (a HashMap made the reference part of a ground net – and with it whether
-    // the net got a setup – change from run to run in native builds)
+    // ground pads per component and ground net (ordered: the part a ground net hangs on must not
+    // depend on hash order – native and WASM runs chose different parts)
     let mut gpads: BTreeMap<usize, BTreeMap<u32, usize>> = BTreeMap::new();
     for p in &board.pads {
         if gnets.contains(&p.net) {

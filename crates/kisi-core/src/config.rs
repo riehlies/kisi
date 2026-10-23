@@ -408,8 +408,10 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
             }
         } else if f.name.eq_ignore_ascii_case("PI_TARGET") {
             // any rail name: parse with an impossible net so that only the syntax is checked
-            for part in f.value.split([';', ',']).map(str::trim).filter(|p| !p.is_empty()) {
-                if let Err(e) = crate::pdn_ic::parse_pi_target(part, part.split_whitespace().next().and_then(|t| t.rsplit_once('=').map(|x| x.0)).unwrap_or("")) {
+            use crate::field_syntax as fs;
+            for part in fs::split_unquoted(&f.value, &[';', ',']) {
+                let net = fs::tokens(part).first().and_then(|t| fs::rsplit_once_unquoted(t, '=')).map(|x| fs::unquote(x.0)).unwrap_or_default();
+                if let Err(e) = crate::pdn_ic::parse_pi_target(part, &net) {
                     r.errors.push(format!("{what}: {e}"));
                 }
             }
@@ -593,5 +595,42 @@ mod tests {
         let po = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "cab/c.s2p", "port_order": "2-4"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
         assert!(check(&po, &board, &classes, &profiles, None, &files).errors.iter().any(|e| e.contains("unknown port_order")));
         assert!(crate::service::touchstones_of(Some(&ts), &files)["cab/c.s2p"].as_ref().is_ok_and(|t| t.nports == 2 && t.name == "c.s2p"));
+    }
+
+    /// Net names with spaces in quotes, written in kisi.json with escaped quotes: config-check
+    /// reads them like the analyses do; an unbalanced quote is an error.
+    #[test]
+    fn quoted_net_names_in_fields() {
+        let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+  (net 0 "") (net 1 "+3V3") (net 2 "/06 Peripherals/IMU_VDD")
+  (footprint "R" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "Value" "CONN")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")))
+  (footprint "R" (layer "F.Cu") (at 5 0) (property "Reference" "FB3") (property "Value" "120R")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3"))
+    (pad "2" smd rect (at 2 0) (size 1 1) (layers "F.Cu") (net 2 "/06 Peripherals/IMU_VDD")))
+  (footprint "R" (layer "F.Cu") (at 10 0) (property "Reference" "U11") (property "Value" "IMU")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 2 "/06 Peripherals/IMU_VDD"))))"#;
+        let board = crate::load_pcb(pcb).unwrap();
+        let profiles = crate::profile::Profiles::builtin();
+        let src = r#""source": {"kind": "datasheet", "document": "d"}"#;
+        let cfg = parse(&format!(
+            r#"{{"kisi_config": 1, "fields": [
+              {{"ref": "J1", "name": "PI_REG", "value": "+3V3 input", {src}}},
+              {{"ref": "FB3", "name": "PI_REG", "value": "+3V3 > \"/06 Peripherals/IMU_VDD\" pass r=0.5", {src}}},
+              {{"ref": "U11", "name": "PI_LOAD", "value": "\"/06 Peripherals/IMU_VDD\"=0.9mA", {src}}},
+              {{"ref": "U11", "name": "PI_TARGET", "value": "\"/06 Peripherals/IMU_VDD\"=0.5", {src}}}]}}"#
+        ))
+        .unwrap();
+        let r = check(&cfg, &board, &[], &profiles, None, &Default::default());
+        assert!(r.ok, "{:?}", r.errors);
+        let mut b = board.clone();
+        cfg.apply(&mut b);
+        let (t, w) = crate::tree::tree_from_fields(&b).unwrap();
+        assert!(w.is_empty(), "{w:?}");
+        assert_eq!(t.loads[0].net, "/06 Peripherals/IMU_VDD");
+        let bad = parse(&format!(r#"{{"kisi_config": 1, "fields": [{{"ref": "FB3", "name": "PI_REG", "value": "+3V3 > \"/06 Peripherals/IMU_VDD pass", {src}}}]}}"#)).unwrap();
+        let r = check(&bad, &board, &[], &profiles, None, &Default::default());
+        assert!(r.errors.iter().any(|e| e.contains("unbalanced quotes")), "{:?}", r.errors);
     }
 }

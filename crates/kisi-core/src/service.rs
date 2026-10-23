@@ -491,15 +491,21 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
             let l0 = &b.lanes[0];
             let tnet = lane_net(p, l0);
             let pid = assign.get(&b.class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &b.class, l0.diff).to_string());
-            json!({"bus": b.name, "kind": b.kind, "class": b.class, "profile": pid, "devices": b.devices, "values": b.values,
-                "lanes": b.lanes.iter().map(|l| lane_json(p, l)).collect::<Vec<_>>()})
+            let mut v = json!({"bus": b.name, "kind": b.kind, "class": b.class, "profile": pid, "devices": b.devices, "values": b.values,
+                "lanes": b.lanes.iter().map(|l| lane_json(p, l)).collect::<Vec<_>>()});
+            // manufacturer part numbers where the Value field is not one (a name, a description)
+            let mpns: Vec<Option<&str>> = b.devices.iter().map(|d| p.board.footprints.iter().find(|f| &f.reference == d).and_then(|f| f.mpn_if_not_value())).collect();
+            if mpns.iter().any(|m| m.is_some()) {
+                v["mpns"] = json!(mpns);
+            }
+            v
         })
         .collect();
     json!({
         "buses": list,
         "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json. mpns (when present): the devices' manufacturer part numbers where the Value field does not show one."
     })
 }
 
@@ -670,8 +676,17 @@ pub fn power_run(p: &Project, tree: Option<crate::tree::TreeSpec>) -> Result<Pow
         Some(s) => {
             let t = crate::tree::solve_tree(s, Some(&p.board))?;
             warnings.extend(t.warnings.iter().cloned());
-            let bal = json!({"input_w": t.p_input, "loads_w": t.p_loads, "losses_w": t.p_losses,
-                "elements": t.elements.iter().map(|e| json!({"id": e.id, "kind": e.kind, "part": e.part, "i_in": e.i_in, "i_out": e.i_out, "loss_w": e.p_loss, "overload": e.overload})).collect::<Vec<_>>()});
+            let mut bal = json!({"input_w": t.p_input, "loads_w": t.p_loads, "losses_w": t.p_losses,
+                "elements": t.elements.iter().map(|e| json!({"id": e.id, "kind": e.kind, "part": e.part, "i_in": e.i_in, "i_out": e.i_out, "loss_w": e.p_loss, "overload": e.overload,
+                    "efficiency": e.eff, "efficiency_estimate": e.eff_estimate})).collect::<Vec<_>>()});
+            let est: Vec<&str> = t.elements.iter().filter(|e| e.eff_estimate).map(|e| e.id.as_str()).collect();
+            if !est.is_empty() {
+                bal["note"] = json!(format!(
+                    "efficiency_estimate: {} without an efficiency in PI_REG – kisi's default {:.0} % is used (estimate); give the datasheet value at the expected load (e.g. 'buck 90%').",
+                    est.join(", "),
+                    crate::tree::DEFAULT_EFF * 100.0
+                ));
+            }
             let setups = t.setups.clone();
             tree_res = Some(t);
             (setups, Some(bal))

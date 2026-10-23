@@ -35,10 +35,13 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
 1. **Gap list:** `kisi gaps path/to/board.kicad_pcb`. Each gap has `priority`, `issue`, `affects`,
    `where_to_find`, `write` (where in kisi.json, with an example) and `items` (layers, classes, parts).
    Work through `high` first, then `medium`. Gaps whose `write.to` says "not kisi.json" are fixes in
-   KiCad: list them for the user, do not try to fix them.
+   KiCad: list them for the user, do not try to fix them. Part items carry `mpn` (and `manufacturer`)
+   when the footprint has a part number that its Value field does not show (Value "英联", MPN UM3204H):
+   look up the datasheet of the MPN.
 2. **Context before research:**
    - `kisi overview <board>`: stackup with materials, net classes and targets.
-   - `kisi interfaces <board>`: which devices sit at the ends of each bus (refdes, value = part number).
+   - `kisi interfaces <board>`: which devices sit at the ends of each bus (refdes, value, and `mpns` where
+     the value is not the part number).
    - `kisi profiles`: the interface profiles a net class can get (ids such as `pcie3`, `usb2`, `lvds`).
 3. **Research**, per gap:
    - Laminate (εr, tanδ): the material name in the stackup → manufacturer datasheet. Take the values at
@@ -52,15 +55,25 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
      Current that enters the board at other parts (e.g. an output stage fed through inductors): keep it on
      the IC and name the load point, `+5V=60mA@L32/L33` – the IC then also returns it into ground.
    - Regulators (`PI_REG`): topology, efficiency at the expected load, rated output current; input and
-     output rails from the schematic. Syntax: `+12V > +3V3 buck 90% 3A` (see the gap's example).
+     output rails from the schematic. Syntax: `+12V > +3V3 buck 90% 3A` (see the gap's example). Without
+     an efficiency kisi assumes 85 % and marks it as an estimate (gap `regulator-efficiency`); when the
+     datasheet has only a curve, read the value there and say so in the note.
+   - Rails without a voltage in their name (gap `rails-without-voltage`: found by name or pin, e.g. VBUS,
+     VSYS, VBAT, `Net-(U3-VCC)`): kisi needs their voltage. Write it where the rail appears in `PI_REG`, as
+     the output of the part that feeds it (`VBUS > VSYS@5V pass`) or as an input (`VBAT@3.7V input`); a rail
+     behind a ferrite or 0 Ω link takes the voltage through a pass element (`items[].write` suggests it).
+     A net found by name that is not a supply: tell the user, do not invent a voltage.
    - Supply inputs: `PI_REG` = `+5V input` on the connector (counts in the power budget and as the
      IR-drop source; `PI_SOURCE` only marks source pads when there is no regulator chain).
      Regulator outputs that leave through an inductor or diode: add `out=<part>` (e.g. `out=L5`).
      Ferrites/chokes between two rails: `PI_REG` = `+3V3 > 3V3_RF pass r=0.05` (state the assumed
      resistance). Rails without a voltage in their name: `NAME@1.2V`. A PMIC with several outputs gets
      one entry per channel, separated by `;` and each with its own `id=` (`VSYS > +3V3 buck 200mA id=U2B;
-     VSYS > +1V8 ldo 50mA id=U2C`). Net names with spaces (hierarchical names) cannot be an output rail
-     yet: put the load on the rail before the bead and name the bead as load point (`+3V3=1mA@FB3`).
+     VSYS > +1V8 ldo 50mA id=U2C`). Net names with spaces (hierarchical names such as
+     `/06 Peripherals/IMU_VDD`) go in double quotes, in every power field: `+3V3 > "/06 Peripherals/IMU_VDD"
+     pass r=0.5` on the bead, `"/06 Peripherals/IMU_VDD"=0.9mA` on the load, `"/Power/VDD CORE"@0.9V` with a
+     voltage. In kisi.json the quotes are escaped: `"value": "+3V3 > \"/06 Peripherals/IMU_VDD\" pass r=0.5"`.
+     The last part of a hierarchical name (`IMU_VDD`) also works when it is unique on the board.
    - Ferrite beads and inductors in supply paths (`PI_SERIES`, for the PDN per IC): impedance at
      100 MHz and DC resistance of a bead (`z100=600 rdc=0.15`), inductance and DC resistance of an
      inductor (`l=2.2u dcr=50m`), from the part's datasheet (`kisi gaps`: bead-ratings).
@@ -126,6 +139,8 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
    `<board>.kisi.json` into the kisi viewer together with the board.
 
 ## Notes
+- A worked example – the power tree of the Seeed XIAO nRF54LM20A with sources, notes and the open gaps – is in
+  the kisi repository under `docs/examples/xiao-nrf54lm20a/`.
 - kisi.json values override the board file; the viewer's own edits (stackup, profiles) override
   kisi.json. A value written here is used by `kisi check`, `kisi power`, `kisi report` and the viewer.
 - If the user wants values permanently in KiCad (e.g. `PI_LOAD` as a symbol field), give them the

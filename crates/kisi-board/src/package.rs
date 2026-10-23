@@ -173,7 +173,7 @@ mod tests {
     use super::*;
 
     fn pad(at: P, size: P, angle: f64) -> Pad {
-        Pad { at, size, angle, shape: "roundrect".into(), rratio: 0.25, custom: vec![], layers: vec![0], net: 1, drill: 0.0, number: "1".into(), fp: 0 }
+        Pad { at, size, angle, shape: "roundrect".into(), rratio: 0.25, custom: vec![], layers: vec![0], net: 1, drill: 0.0, number: "1".into(), fp: 0, pinfunction: String::new(), pintype: String::new() }
     }
 
     /// Two pads of a KiCad standard land pattern (pad centres at ±x, size along × across),

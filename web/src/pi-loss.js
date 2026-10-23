@@ -54,7 +54,7 @@ function drawLoss(px) {
     ctx.fillStyle = cs.getPropertyValue("--fg").trim() || "#000"; ctx.strokeStyle = S.colors.canvas; ctx.lineWidth = 3 * px; ctx.lineJoin = "round";
     for (const c of top) {
       if (!c.at) continue;
-      const t = `${c.refdes} ${mW(c.w)}`;
+      const t = `${c.refdes} ${fmtSI(c.w, "W")}`;
       ctx.strokeText(t, c.at[0] + 6 * px, c.at[1] - 6 * px); ctx.fillText(t, c.at[0] + 6 * px, c.at[1] - 6 * px);
     }
   }
@@ -72,10 +72,10 @@ function renderLossLegend() {
   if (!S.loss || !S.loss.map) { L.innerHTML = `<strong>Losses</strong><div class="row">${S.loss && S.loss.error ? esc(S.loss.error) : "after “Compute” in step 2"}</div>`; return; }
   const im = lossImage(), plane = lossPlanes().find((p) => p.id === S.lossPlane);
   const stops = Array.from({ length: 11 }, (_, k) => turbo(k / 10 * 0.9 + 0.05)).join(",");
-  const v = (x) => { const m = x * 1e3; return m >= 100 ? fmt(m, 0) : m >= 1 ? fmt(m, 1) : m >= 0.01 ? fmt(m, 3) : m.toExponential(0); };
-  L.innerHTML = `<strong>Power density · ${esc(plane ? plane.name : "")}</strong>
+  const v = (x) => fmtSI(x, "W/mm²", 2);
+  L.innerHTML = `<strong>Power density · ${esc(plane ? plane.name : "")} · log scale</strong>
     <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
-    <div class="ticks"><span>${v(im.lo)}</span><span>${v(im.lo * 10 ** (LOSS_DECADES / 2))}</span><span>${v(im.max)} mW/mm² (log)</span></div>
+    <div class="ticks units"><span>${v(im.lo)}</span><span>${v(im.lo * 10 ** (LOSS_DECADES / 2))}</span><span>${v(im.max)}</span></div>
     <div class="row">${S.lossPlane === "comp" || S.lossPlane === "total" ? "Parts: heat over the area of their pads (estimate). " : ""}Copper: I²R of every rail and the ground return.</div>`;
 }
 
@@ -92,12 +92,12 @@ function showLossTip(mx, my) {
   const comp = b[nl * per + k];
   if (!(im.vals[k] > 0) && !(cu > 0) && !(comp > 0)) { tip.hidden = true; return; }
   const near = S.loss.summary.components.filter((c) => c.at).map((c) => ({ c, d: Math.hypot(c.at[0] - x, c.at[1] - y) })).sort((a, b2) => a.d - b2.d)[0];
-  const d = (w) => `${fmt(w * 1e3, w * 1e3 >= 10 ? 1 : 3)} mW/mm²`;
+  const d = (w) => fmtSI(w, "W/mm²");
   tip.innerHTML = `<div class="t1">Power density</div><div class="kv">
     <span>Shown</span><span>${d(im.vals[k])}</span>
     <span>Parts</span><span>${d(comp)}</span>
     <span>Copper</span><span>${d(cu)}</span>
-    ${near && near.d < 3 ? `<span>Part</span><span>${esc(near.c.refdes)} ${esc(near.c.part)} · ${mW(near.c.w)}</span>` : ""}</div>`;
+    ${near && near.d < 3 ? `<span>Part</span><span>${esc(near.c.refdes)} ${esc(near.c.part)} · ${fmtSI(near.c.w, "W")}</span>` : ""}</div>`;
   tip.hidden = false;
   const rs = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
   let tx = mx + 16, ty = my + 16;
@@ -113,21 +113,21 @@ function renderLossDetail() {
   const s = S.loss.summary, su = S.scene.stackup.copper;
   const bar = (w, max, cls) => `<div class="bar"><i class="${cls}" style="width:${max > 0 ? Math.max(1, 100 * w / max) : 0}%"></i></div>`;
   const maxL = Math.max(...s.layers.map((l) => l[2]), 1e-12);
-  const layers = s.layers.map(([l, name, w]) => `<tr><td>${esc(name || (su[l] && su[l].name) || l)}</td><td class="n">${fmt(w * 1e3, 2)}</td><td>${bar(w, maxL, "l")}</td></tr>`).join("");
+  const layers = s.layers.map(([l, name, w]) => `<tr><td>${esc(name || (su[l] && su[l].name) || l)}</td><td class="n">${fmtSI(w, "W")}</td><td>${bar(w, maxL, "l")}</td></tr>`).join("");
   const rails = s.rails.filter((r) => r.w > 0).slice(0, 8);
   const maxR = Math.max(...rails.map((r) => r.w), 1e-12);
-  const railRows = rails.map((r) => `<tr><td><button class="linkish" data-lrail="${esc(r.net)}">${esc(netShort(r.net))}</button>${r.ground ? " <span class=\"muted\">return</span>" : ""}</td><td class="n">${fmt(r.w * 1e3, 2)}</td><td>${bar(r.w, maxR, "l")}</td></tr>`).join("");
+  const railRows = rails.map((r) => `<tr><td><button class="linkish" data-lrail="${esc(r.net)}">${esc(netShort(r.net))}</button>${r.ground ? " <span class=\"muted\">return</span>" : ""}</td><td class="n">${fmtSI(r.w, "W")}</td><td>${bar(r.w, maxR, "l")}</td></tr>`).join("");
   const comps = s.components.slice(0, 10), maxC = Math.max(...comps.map((c) => c.w), 1e-12);
-  const compRows = comps.map((c) => `<tr><td>${esc(c.refdes)}</td><td>${esc(c.part)}</td><td class="n">${fmt(c.w * 1e3, 0)}</td><td>${bar(c.w, maxC, c.role === "load" ? "u" : "l")}</td></tr>`).join("");
-  box.innerHTML = `<header><div><h3>Losses · ${fmt(s.total_w, 2)} W</h3><div class="muted">where power turns into heat: parts and copper (rails and ground return)</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>
-    <div class="dstats"><span>Parts <b>${mW(s.components_w)}</b></span><span>Copper, rails <b>${fmt(s.copper_w * 1e3, 1)} mW</b></span><span>Copper, ground return <b>${fmt(s.ground_w * 1e3, 1)} mW</b></span></div>
-    <h4 class="sub">Copper per layer <em>mW</em></h4>
+  const compRows = comps.map((c) => `<tr><td>${esc(c.refdes)}</td><td>${esc(c.part)}</td><td class="n">${fmtSI(c.w, "W")}</td><td>${bar(c.w, maxC, c.role === "load" ? "u" : "l")}</td></tr>`).join("");
+  box.innerHTML = `<header><div><h3>Losses · ${fmtSI(s.total_w, "W")}</h3><div class="muted">where power turns into heat: parts and copper (rails and ground return)</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>
+    <div class="dstats"><span>Parts <b>${fmtSI(s.components_w, "W")}</b></span><span>Copper, rails <b>${fmtSI(s.copper_w, "W")}</b></span><span>Copper, ground return <b>${fmtSI(s.ground_w, "W")}</b></span></div>
+    <h4 class="sub">Copper per layer</h4>
     <div class="tablewrap"><table class="xs-table ctab"><tbody>${layers || `<tr><td>no copper losses yet</td></tr>`}</tbody></table></div>
-    <h4 class="sub">Copper per rail <em>mW</em></h4>
+    <h4 class="sub">Copper per rail</h4>
     <div class="tablewrap"><table class="xs-table ctab"><tbody>${railRows || `<tr><td>–</td></tr>`}</tbody></table></div>
-    <h4 class="sub">Hottest parts <em>mW</em></h4>
+    <h4 class="sub">Hottest parts</h4>
     <div class="tablewrap"><table class="xs-table ctab"><tbody>${compRows || `<tr><td>no power tree</td></tr>`}</tbody></table></div>
-    <p class="note">${esc((s.notes || []).join(" "))} Shown is power (W, mW/mm²), not temperature.</p>`;
+    <p class="note">${esc((s.notes || []).join(" "))} Shown is power (W, W/mm²), not temperature.</p>`;
   box.hidden = false;
   $("closePi").onclick = () => { box.hidden = true; };
   box.querySelectorAll("[data-lrail]").forEach((b) => b.onclick = () => { S.piRail = b.dataset.lrail; S.piLayer = -1; setPiMode("v"); fitRail(); });
@@ -185,7 +185,7 @@ function sankeySVG(flow, opts = {}) {
     let o = n.y; for (const l of n.outL) { l.y0 = o; o += l.w * k; }
     let i2 = n.y; for (const l of n.inL) { l.y1 = i2; i2 += l.w * k; }
   }
-  const val = (w) => mW(w);
+  const val = (w) => fmtSI(w, "W");
   const kindCol = { input: "var(--ok, #3a8f5c)", rail: "var(--accent)", regulator: "var(--muted)", load: "var(--pw-use)", loss: "var(--pw-loss)" };
   const paths = links.map((l) => {
     const a = nodes.get(l.from), b = nodes.get(l.to), t = Math.max(0.6, l.w * k);

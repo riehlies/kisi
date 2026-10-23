@@ -279,7 +279,7 @@ function renderChDetail(net) {
   const tab = S.chTab || "check";
   d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · pair with " + esc(partner) : ""}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
     <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button></span></div>
-    <div class="dstats muted"><span>Transmitter ${fmt(p.tx.r, 0)} Ω${p.tx.c_pf ? ", " + fmt(p.tx.c_pf, 1) + " pF" : ""}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span><span>Receiver ${p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "high impedance"}${p.rx.c_pf ? ", " + fmt(p.rx.c_pf, 1) + " pF" : ""}</span><span>per line</span></div>
+    <div class="dstats muted"><span>Transmitter ${fmt(p.tx.r, 0)} Ω${p.tx.c_pf ? ", " + fmtSI(p.tx.c_pf * 1e-12, "F") : ""}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span><span>Receiver ${p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "high impedance"}${p.rx.c_pf ? ", " + fmtSI(p.rx.c_pf * 1e-12, "F") : ""}</span><span>per line</span></div>
     <div class="tabs" role="tablist" aria-label="Channel">${[["check", "Check"], ["eye", "Eye"], ["path", "Path"]].map(([k, n]) => `<button role="tab" data-ct="${k}" aria-selected="${tab === k}">${n}</button>`).join("")}</div>
     <div id="ch-body"></div>`;
   d.hidden = false;

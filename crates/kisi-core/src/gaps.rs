@@ -393,6 +393,28 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             no_source,
         ));
     }
+    // switching regulators without an efficiency: kisi's default (an estimate)
+    let no_eff: Vec<Value> = tree
+        .iter()
+        .flat_map(|t| t.0.elements.iter())
+        .filter(|e| crate::tree::is_switching(&e.kind) && e.eff.is_none())
+        .map(|e| {
+            let f = b.footprints.iter().find(|f| f.reference == e.refdes);
+            part_json(json!({"ref": e.refdes, "id": if e.id.is_empty() { &e.refdes } else { &e.id }, "kind": e.kind, "from": e.from, "to": e.to}), f)
+        })
+        .collect();
+    if !no_eff.is_empty() {
+        out.push(gap(
+            "regulator-efficiency",
+            "low",
+            "power",
+            format!("{} switching regulator(s) have no efficiency in PI_REG: kisi assumes {:.0} % (an estimate, marked as such in the power tree).", no_eff.len(), crate::tree::DEFAULT_EFF * 100.0),
+            &["power budget", "regulator losses", "input current"],
+            "Regulator datasheet: efficiency at the expected load current and input voltage (often only a curve – read it there and say so in the note, kind datasheet with 'read from Figure …', or estimate).",
+            json!({"to": "fields[] (PI_REG on the regulator: the efficiency after the type)", "example": {"ref": no_eff[0]["ref"], "name": "PI_REG", "value": "+5V > +3V3 buck 88% 600mA", "source": {"kind": "datasheet", "document": "regulator datasheet", "note": "efficiency at 50 mA, 5 V in, read from the efficiency curve"}}}),
+            no_eff,
+        ));
+    }
     let loaded: HashSet<&str> = b.footprints.iter().filter(|f| f.prop("PI_LOAD").is_some()).map(|f| f.reference.as_str()).collect();
     let mut on_rails: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let rail_names: HashSet<&str> = supplies.keys().map(|n| n.as_str()).collect();
@@ -568,13 +590,18 @@ mod tests {
         let u1 = ic["items"].as_array().unwrap().iter().find(|i| i["ref"] == "U1").unwrap();
         assert_eq!((u1["mpn"].as_str(), u1["manufacturer"].as_str()), (Some("UM3204H"), Some("英联")));
         assert_eq!(u1["rails"], json!(["VBAT", "VSYS"]));
+        assert!(gap_of(&v, "regulator-efficiency").is_none());
 
-        // the voltage from PI_REG: VSYS behind the link takes +5V's
+        // the voltage from PI_REG: VSYS behind the link takes +5V's; a buck without efficiency
         let v = run(r#"(property "PI_REG" "+5V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 600mA")"#);
         let rails: Vec<&str> = gap_of(&v, "rails-without-voltage").unwrap()["items"].as_array().unwrap().iter().map(|i| i["rail"].as_str().unwrap()).collect();
         assert_eq!(rails, vec!["VBAT"]);
+        let eff = gap_of(&v, "regulator-efficiency").expect("efficiency gap");
+        assert_eq!(eff["items"][0]["ref"], "U3");
         // with the battery as an input: no rail without a voltage left
+        let v = run(r#"(property "PI_REG" "+5V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 90% 600mA")"#);
         let v2 = run(r#"(property "PI_REG" "+5V input; VBAT@3.7V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 90% 600mA")"#);
+        assert!(gap_of(&v, "regulator-efficiency").is_none());
         assert!(gap_of(&v2, "rails-without-voltage").is_none(), "{:#}", v2["gaps"]);
     }
 }

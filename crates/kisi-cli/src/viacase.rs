@@ -3,7 +3,7 @@
 //!
 //! ```text
 //! kisi-validate via-case <board.kicad_pcb> --net NAME --out DIR
-//!     [--at X,Y | --via K] [--layers IN,OUT] [--pro F] [--config F | --no-config]
+//!     [--at X,Y | --via K] [--layers IN,OUT] [--pro F] [--config F | --no-config] [--variant NAME]
 //!     [--keep 1.2] [--keep-cell 0.05] [--rotate DEG] [--feed 4.0] [--margin 2.5] [--air 1.0]
 //!     [--fmax 40e9] [--dfine 0.035] [--name ID] [--list] [--scan]
 //! ```
@@ -46,6 +46,8 @@ struct Opt {
     pro: Option<PathBuf>,
     config: Option<PathBuf>,
     no_config: bool,
+    /// assembly variant (KiCad 10 / kisi.json) to load the board with
+    variant: Option<String>,
     net: String,
     at: Option<P>,
     via_k: Option<usize>,
@@ -75,6 +77,7 @@ fn parse(args: &[String]) -> Opt {
         pro: None,
         config: None,
         no_config: false,
+        variant: None,
         net: String::new(),
         at: None,
         via_k: None,
@@ -102,6 +105,7 @@ fn parse(args: &[String]) -> Opt {
             "--net" => o.net = val(),
             "--pro" => o.pro = Some(val().into()),
             "--config" => o.config = Some(val().into()),
+            "--variant" => o.variant = Some(val()),
             "--no-config" => {
                 o.no_config = true;
                 i += 1;
@@ -366,7 +370,7 @@ struct Side {
 pub fn run(args: &[String]) {
     let o = parse(args);
     let cfg = if o.no_config { None } else { o.config.clone().or_else(|| Some(kisi_core::service::config_path_for(&o.pcb)).filter(|p| p.is_file())) };
-    let p = Project::load_with(&o.pcb, o.pro.as_deref(), None, cfg.as_deref()).unwrap_or_else(|e| die(&e));
+    let p = Project::load_with(&o.pcb, o.pro.as_deref(), None, cfg.as_deref(), o.variant.as_deref()).unwrap_or_else(|e| die(&e));
     let b = &p.board;
     let su = b.stackup();
     let nl = su.n();
@@ -706,10 +710,12 @@ pub fn run(args: &[String]) {
                 let zs: Vec<f64> = planes_at_port[si].iter().filter(|x| &x.1 == net).map(|x| z[x.0 as usize]).chain([zl]).collect();
                 let (fz0, fz1) = (zs.iter().cloned().fold(f64::INFINITY, f64::min), zs.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
                 let off = edge + dir * (fence_r + 0.15);
+                // the short form of the fence: from the feed layer to its reference plane only
+                let zr = z[s.ref_layer as usize];
                 let mut t = o.keep + 0.5;
                 while t < o.feed + 1.3 {
                     let q = if s.axis == 0 { [s.sign * t, off] } else { [off, s.sign * t] };
-                    fences.push(json!({"x": r6(q[0]), "y": r6(q[1]), "r": fence_r, "z0": r6(fz0), "z1": r6(fz1), "pad_r": 0.0, "pads": [], "dmesh": 0.1, "net": net}));
+                    fences.push(json!({"x": r6(q[0]), "y": r6(q[1]), "r": fence_r, "z0": r6(fz0), "z1": r6(fz1), "pad_r": 0.0, "pads": [], "dmesh": 0.1, "net": net, "_short": [r6(zl.min(zr)), r6(zl.max(zr))]}));
                     fence_holes.push((q[0], q[1], fz0, fz1, net.clone()));
                     t += 1.0;
                 }
@@ -762,7 +768,52 @@ pub fn run(args: &[String]) {
         vias_out.push(json!({"x": c[0], "y": c[1], "r": r6((w.drill / 2.0).max(0.025)), "z0": r6(z[bot]), "z1": r6(z[top]), "pad_r": if pads.is_empty() { 0.0 } else { r6(w.size / 2.0) }, "pads": pads, "dmesh": 0.1, "net": b.net_name(w.net)}));
     }
     vias_out.extend(extra_vias.into_iter().filter(|v| !in_corridor([v["x"].as_f64().unwrap(), v["y"].as_f64().unwrap()])));
-    vias_out.extend(fences);
+    // a fence barrel that would touch the signal copper on a layer it passes (both feeds leaving
+    // the via side by side: the fence of one runs through the other's layer) ends at the
+    // reference plane of its feed instead, or is left out when that still touches it
+    let sig_rects: Vec<(f64, [f64; 4])> = sheets
+        .iter()
+        .filter(|sh| sh["net"].as_str() == Some("SIG"))
+        .map(|sh| {
+            let r: Vec<f64> = sh["rect"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
+            (sh["z"].as_f64().unwrap(), [r[0], r[1], r[2], r[3]])
+        })
+        .collect();
+    let crosses = |f: &Value, z0: f64, z1: f64| {
+        let (x, y, r) = (f["x"].as_f64().unwrap(), f["y"].as_f64().unwrap(), f["r"].as_f64().unwrap());
+        sig_rects.iter().any(|(zs, q)| *zs > z0 + 1e-6 && *zs < z1 - 1e-6 && x + r + 0.05 > q[0] && x - r - 0.05 < q[2] && y + r + 0.05 > q[1] && y - r - 0.05 < q[3])
+    };
+    let (n_fence, mut n_short) = (fences.len(), 0);
+    let mut kept_fences: Vec<Value> = Vec::new();
+    for mut f in fences {
+        let short: Vec<f64> = f["_short"].as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect();
+        f.as_object_mut().unwrap().remove("_short");
+        let (z0, z1) = (f["z0"].as_f64().unwrap(), f["z1"].as_f64().unwrap());
+        if !crosses(&f, z0, z1) {
+            kept_fences.push(f);
+        } else if !crosses(&f, short[0], short[1]) {
+            // the clearances in the planes it no longer passes go with the cut part
+            let (x, y) = (f["x"].as_f64().unwrap(), f["y"].as_f64().unwrap());
+            for h in fence_holes.iter_mut().filter(|h| (r6(h.0) - x).abs() < 1e-9 && (r6(h.1) - y).abs() < 1e-9 && (r6(h.2) - z0).abs() < 1e-9) {
+                h.2 = short[0];
+                h.3 = short[1];
+            }
+            f["z0"] = json!(short[0]);
+            f["z1"] = json!(short[1]);
+            n_short += 1;
+            kept_fences.push(f);
+        } else {
+            let (x, y) = (f["x"].as_f64().unwrap(), f["y"].as_f64().unwrap());
+            fence_holes.retain(|h| !((r6(h.0) - x).abs() < 1e-9 && (r6(h.1) - y).abs() < 1e-9));
+        }
+    }
+    if n_short > 0 {
+        eprintln!("via-case: {n_short} fence via(s) end at their feed's reference plane where they would cross the other feed");
+    }
+    if kept_fences.len() < n_fence {
+        eprintln!("via-case: {} fence via(s) left out where they would cross the other feed", n_fence - kept_fences.len());
+    }
+    vias_out.extend(kept_fences);
     // the coplanar sheets of the extensions get a clearance around vias of other nets
     for sh in sheets.iter_mut().filter(|sh| sh["strip"].as_bool() == Some(true)) {
         let (zs, net) = (sh["z"].as_f64().unwrap(), sh["net"].as_str().unwrap_or("").to_string());

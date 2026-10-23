@@ -3,7 +3,8 @@
 // kisi command line for Node.js (≥ 18): the same engine as the viewer (WASM) plus
 // Forstén's 2D field solver in worker threads. Arguments, analyses and JSON
 // results come from kisi_core::commands, exactly as in the native CLI; this file
-// reads files, runs the field solver with a disk cache and writes the report.
+// reads files, runs the field solver with a disk cache, computes the rows of `check`
+// in worker threads with engines of their own and writes the report.
 //
 // Built into one file by tools/bundle_cli.py (dist/kisi.mjs):
 //   node kisi.mjs <command> <board.kicad_pcb> [options]      (node kisi.mjs help)
@@ -25,8 +26,8 @@ const SOLVER_GZ = "__SOLVER_GZ__";
 // ---- engine (WASM, C ABI as in the viewer)
 class Engine {
   constructor() {
-    const mod = new WebAssembly.Module(gunzip(WASM_GZ));
-    this.k = new WebAssembly.Instance(mod, {}).exports;
+    this.mod = new WebAssembly.Module(gunzip(WASM_GZ)); // compiled once, posted to check workers
+    this.k = new WebAssembly.Instance(this.mod, {}).exports;
   }
   out() { return Buffer.from(new Uint8Array(this.k.memory.buffer, this.k.kisi_out_ptr(), this.k.kisi_out_len())).toString("utf8"); }
   call(name, value) {
@@ -121,6 +122,82 @@ async function solveField(plan, budgetS, quiet) {
     note: missing ? `${missing} cross-section(s) not solved within the time budget (--field-time ${budgetS}): formula values there; run again to continue (results are cached)` : undefined } };
 }
 
+// ---- check: rows in worker threads, each with an engine and the project of its own
+// (kisi_core::commands::check_rows), handed out a few at a time; the main thread computes rows
+// too. Rows are put together by their index in the check's order (kisi_cli_run with
+// check_rows), so the result is the same as computing them in one engine. Workers: 4 with the
+// main thread (as the native CLI's threads), fewer on machines with fewer CPUs; KISI_THREADS
+// sets the number (1: no workers). A worker sets the project up itself (about as long as the
+// main thread did), in parallel to the main thread.
+const CHECK_THREADS = 4;
+const checkThreads = () => {
+  const n = Math.floor(Number(process.env.KISI_THREADS));
+  return n >= 1 ? n : Math.min(CHECK_THREADS, os.availableParallelism ? os.availableParallelism() : os.cpus().length);
+};
+const CHECK_WORKER = `
+const { parentPort, workerData } = require("node:worker_threads");
+const k = new WebAssembly.Instance(workerData.module, {}).exports;
+function call(name, value) {
+  const b = Buffer.from(JSON.stringify(value), "utf8");
+  const p = k.kisi_alloc(b.length);
+  new Uint8Array(k.memory.buffer, p, b.length).set(b);
+  const rc = k[name](p, b.length);
+  k.kisi_free(p, b.length);
+  const o = Buffer.from(new Uint8Array(k.memory.buffer, k.kisi_out_ptr(), k.kisi_out_len())).toString("utf8");
+  if (rc !== 0) throw new Error(o);
+  return o;
+}
+let failed = null;
+const setup = (inputs) => { try { call("kisi_cli_project", inputs); failed = null; } catch (e) { failed = String(e && e.message || e); } };
+setup(workerData.inputs);
+parentPort.on("message", (m) => {
+  if (m.setup) return setup(m.setup);
+  let r;
+  try { if (failed) throw new Error(failed); r = { ok: true, text: call("kisi_cli_check_part", m) }; } catch (e) { r = { ok: false, error: String(e && e.message || e) }; }
+  parentPort.postMessage(r);
+});`;
+function startCheckWorkers(eng, inputs) {
+  const n = checkThreads() - 1;
+  return Array.from({ length: Math.max(0, n) }, () => new Worker(CHECK_WORKER, { eval: true, workerData: { module: eng.mod, inputs } }));
+}
+const CHUNK = 2; // rows per request; a worker has two requests at a time, so it never waits for the main thread
+async function checkRows(eng, workers, o) {
+  const { count } = eng.json("kisi_cli_check_part", { opts: o, items: [] });
+  const rows = [], queue = Array.from({ length: count }, (_, i) => i);
+  if (count < 2 || !workers.length) return null;
+  const take = (n) => queue.splice(0, n);
+  const jobs = workers.map((wk) => new Promise((resolve) => {
+    const out = []; // requests sent, in order
+    let done = false;
+    const stop = (why) => {
+      if (done) return;
+      done = true;
+      if (why) process.stderr.write(`kisi: check worker stopped (${why}), its rows are computed here\n`);
+      for (const it of out.splice(0)) queue.unshift(...it);
+      wk.terminate();
+      resolve();
+    };
+    const send = () => { const it = take(CHUNK); if (!it.length) return false; out.push(it); wk.postMessage({ opts: o, items: it }); return true; };
+    wk.on("message", (m) => {
+      const it = out.shift();
+      if (!m.ok) { if (it) queue.unshift(...it); stop(m.error); return; }
+      rows.push(...JSON.parse(m.text).rows);
+      if (!send() && !out.length) stop(null);
+    });
+    wk.on("error", (e) => stop(e.message));
+    send(); send();
+  }));
+  const tick = () => new Promise((r) => setImmediate(r));
+  for (;;) {
+    while (queue.length) {
+      rows.push(...eng.json("kisi_cli_check_part", { opts: o, items: take(1) }).rows);
+      await tick(); // answers of the workers: their next rows
+    }
+    await Promise.all(jobs);
+    if (!queue.length) return rows;
+  }
+}
+
 // ---- main
 async function main(argv) {
   const eng = new Engine();
@@ -165,17 +242,26 @@ async function main(argv) {
         }
       }
       const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {}, files };
+      // check workers set the project up while the main thread does
+      if (o.cmd === "check") var checkWorkers = startCheckWorkers(eng, inputs);
       const { plan } = eng.json("kisi_cli_project", inputs);
       var fieldInfo = null;
       if (plan.length) {
         const budget = o.field_time ?? 120;
         const { field, info } = await solveField(plan, budget, false);
         fieldInfo = info;
-        if (Object.keys(field).length) eng.json("kisi_cli_project", { ...inputs, field });
+        if (Object.keys(field).length) {
+          for (const wk of checkWorkers || []) wk.postMessage({ setup: { ...inputs, field } });
+          eng.json("kisi_cli_project", { ...inputs, field });
+        }
+      }
+      if (checkWorkers) {
+        try { var checkRowsDone = await checkRows(eng, checkWorkers, o); }
+        finally { for (const wk of checkWorkers) wk.terminate(); }
       }
       var reportPath = o.cmd === "report" ? (o.out ? path.resolve(o.out) : path.join(dir, "analysis", "kisi.json")) : null;
     }
-    let res = eng.json("kisi_cli_run", { opts: o, tree, report_path: reportPath || null });
+    let res = eng.json("kisi_cli_run", { opts: o, tree, report_path: reportPath || null, check_rows: checkRowsDone || null });
     if (o.cmd === "report") {
       fs.mkdirSync(path.dirname(res.write.path), { recursive: true });
       fs.writeFileSync(res.write.path, res.write.content);
@@ -189,6 +275,8 @@ async function main(argv) {
     console.log(JSON.stringify({ error: e.message }, null, 2));
     process.stderr.write(`kisi ${o.cmd}: ${e.message}\n`);
     return 1;
+  } finally {
+    for (const wk of checkWorkers || []) wk.terminate();
   }
 }
 

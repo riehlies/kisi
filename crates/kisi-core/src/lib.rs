@@ -16,5 +16,6 @@ pub use kisi_si::{analytic, analyze, extract, eye, lanenet, profile, rf, topolog
 pub mod commands;
 pub mod config;
 pub mod gaps;
+pub mod par;
 pub mod service;
 pub mod variant;

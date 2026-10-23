@@ -993,7 +993,26 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
     })())
 }
 
-/// Run the command on the project. Input: {"opts", "tree": json|null, "report_path": str|null}.
+/// Rows of `check` on the project, for worker engines: {"opts", "items": [index, …]} →
+/// {"count": rows in all, "rows": [[index, row], …]} (no items: the count only).
+#[no_mangle]
+pub extern "C" fn kisi_cli_check_part(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply((|| {
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let o: kisi_core::commands::Opts = serde_json::from_value(v["opts"].clone()).map_err(|e| e.to_string())?;
+        let idx: Vec<usize> = v["items"].as_array().map(|a| a.iter().filter_map(|x| Some(x.as_u64()? as usize)).collect()).unwrap_or_default();
+        CLI.with(|c| {
+            let c = c.borrow();
+            let pr = c.as_ref().ok_or("no board loaded")?;
+            let (count, rows) = kisi_core::commands::check_rows(&o, pr, &idx)?;
+            Ok(serde_json::json!({"count": count, "rows": rows}).to_string())
+        })
+    })())
+}
+
+/// Run the command on the project. Input: {"opts", "tree": json|null, "report_path": str|null,
+/// "check_rows": [[index, row], …] | null (check: the rows from the parts)}.
 /// Output: the result; for `report` {"result": summary, "write": {"path", "content"}}.
 #[no_mangle]
 pub extern "C" fn kisi_cli_run(p: *const u8, n: usize) -> i32 {
@@ -1002,9 +1021,11 @@ pub extern "C" fn kisi_cli_run(p: *const u8, n: usize) -> i32 {
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let o: kisi_core::commands::Opts = serde_json::from_value(v["opts"].clone()).map_err(|e| e.to_string())?;
         let tree = if v["tree"].is_null() { None } else { Some(v["tree"].clone()) };
+        // check rows computed in parts by worker engines (kisi_cli_check_part)
+        let rows: Option<Vec<(usize, serde_json::Value)>> = if v["check_rows"].is_array() { Some(serde_json::from_value(v["check_rows"].clone()).map_err(|e| e.to_string())?) } else { None };
         CLI.with(|c| {
             let c = c.borrow();
-            let r = kisi_core::commands::run(&o, c.as_ref(), tree)?;
+            let r = kisi_core::commands::run_with(&o, c.as_ref(), tree, rows)?;
             if o.cmd == "report" {
                 let path = v["report_path"].as_str().unwrap_or("analysis/kisi.json");
                 return Ok(serde_json::json!({"result": kisi_core::commands::report_summary(path, &r), "write": {"path": path, "content": serde_json::to_string_pretty(&r).unwrap()}}).to_string());

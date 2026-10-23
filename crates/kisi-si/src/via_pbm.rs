@@ -395,9 +395,13 @@ pub fn clear_cache() {
     CACHE.with(|c| c.borrow_mut().clear());
 }
 
-/// [`rz_solve`] through a per-thread cache keyed by everything the solve depends on.
+/// [`rz_solve`] through a per-thread cache keyed by everything the solve depends on, to 1 nm.
+/// The solve runs on the geometry rounded to the key, so a result depends on the key only and
+/// not on which via of a type came first: the same in every thread and every order of work
+/// (parallel checks, the viewer's detail views and the check give identical numbers).
 fn rz_charges(g: &ViaGeom, grid: Grid) -> Charges {
     let q = |x: f64| (x * 1e6).round() as i64;
+    let u = |x: f64| q(x) as f64 * 1e-6;
     let mut key = format!("{grid:?}|{}|{}|{}|{}|", q(g.r), q(g.z0), q(g.z1), q(g.pad_r));
     for s in &g.slabs {
         key += &format!("s{},{},{};", q(s.z0), q(s.z1), q(s.er));
@@ -411,7 +415,18 @@ fn rz_charges(g: &ViaGeom, grid: Grid) -> Charges {
     if let Some(c) = CACHE.with(|c| c.borrow().get(&key).cloned()) {
         return c;
     }
-    let r = std::rc::Rc::new(rz_solve(g, grid));
+    let mut gq = g.clone();
+    (gq.r, gq.z0, gq.z1, gq.pad_r) = (u(g.r), u(g.z0), u(g.z1), u(g.pad_r));
+    for s in gq.slabs.iter_mut() {
+        (s.z0, s.z1, s.er) = (u(s.z0), u(s.z1), u(s.er));
+    }
+    for p in gq.planes.iter_mut() {
+        (p.z, p.antipad) = (u(p.z), p.antipad.map(u));
+    }
+    for z in gq.pads.iter_mut() {
+        *z = u(*z);
+    }
+    let r = std::rc::Rc::new(rz_solve(&gq, grid));
     CACHE.with(|c| {
         let mut c = c.borrow_mut();
         if c.len() > 512 {
@@ -663,6 +678,8 @@ thread_local! {
 
 /// [`equivalent_radius`] with a per-thread cache (profiles to 10 µm) and a short cut for nearly
 /// round openings (max/min < 1.03: the log mean of the profile, as polygonised circles are).
+/// The solve runs on the profile rounded to the key (10 µm, the radius to 1 µm), so the result
+/// does not depend on which opening of a shape came first (any thread, any order of work).
 pub fn equivalent_radius_cached(a: f64, rb: &[f64]) -> f64 {
     let (lo, hi) = rb.iter().fold((f64::MAX, f64::MIN), |(l, h), &r| (l.min(r), h.max(r)));
     if hi / lo < 1.03 {
@@ -677,7 +694,8 @@ pub fn equivalent_radius_cached(a: f64, rb: &[f64]) -> f64 {
     if let Some(b) = EQ_CACHE.with(|c| c.borrow().get(&key).copied()) {
         return b;
     }
-    let b = equivalent_radius(a, rb);
+    let rq: Vec<f64> = key[..rb.len()].iter().map(|&k| k as f64 * 0.01).collect();
+    let b = equivalent_radius(key[rb.len()] as f64 * 0.001, &rq);
     EQ_CACHE.with(|c| {
         let mut c = c.borrow_mut();
         if c.len() > 4096 {

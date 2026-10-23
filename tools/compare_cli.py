@@ -5,7 +5,9 @@ Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands
 
 Runs every command on ThunderScope and LibreVNA with their configs (web/samples/{ts,vna}.kisi.json) and compares
 the JSON outputs. Numbers are compared after rounding to 6 significant digits; keys that differ by design
-(field solver status, config echo, timings) are ignored. Exit code 1 on any difference.
+(field solver status, config echo, timings) are ignored. `check` computes its rows in parallel (native: threads,
+Node: worker threads); each CLI's output must be byte-identical to a run on one thread (KISI_THREADS=1).
+Exit code 1 on any difference.
 """
 import json, os, subprocess, sys
 
@@ -49,11 +51,12 @@ def first_diff(a, b, path="$"):
     return None if a == b else f"{path}: {a!r} != {b!r}"
 
 
-def run(cmd):
-    r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+def run(cmd, threads=None, raw=False):
+    env = dict(os.environ, KISI_THREADS=str(threads)) if threads else None
+    r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, env=env)
     if r.returncode != 0:
         raise SystemExit(f"failed ({r.returncode}): {' '.join(cmd)}\n{r.stderr[-2000:]}")
-    return json.loads(r.stdout)
+    return r.stdout if raw else json.loads(r.stdout)
 
 
 def main():
@@ -68,11 +71,17 @@ def main():
         pcb = os.path.join(ex, stem + ".kicad_pcb")
         cfg = os.path.join(ROOT, "web", "samples", key + ".kisi.json")
         for c in cmds:
-            a = run([native, c, pcb, "--config", cfg] + ARGS.get(c, []))
-            b = run(["node", mjs, c, pcb, "--config", cfg, "--formula"] + ARGS.get(c, []))
-            d = first_diff(norm(a), norm(b))
+            na = [native, c, pcb, "--config", cfg] + ARGS.get(c, [])
+            nb = ["node", mjs, c, pcb, "--config", cfg, "--formula"] + ARGS.get(c, [])
+            ta, tb = run(na, raw=True), run(nb, raw=True)
+            d = first_diff(norm(json.loads(ta)), norm(json.loads(tb)))
             print(f"{stem} {c}: {'identical' if d is None else 'DIFFERENT – ' + d}")
             bad += d is not None
+            if c == "check":
+                for name, cmd, text in (("native", na, ta), ("node", nb, tb)):
+                    same = run(cmd, threads=1, raw=True) == text
+                    print(f"{stem} {c} {name}: parallel {'byte-identical to one thread' if same else 'DIFFERENT from one thread'}")
+                    bad += not same
     sys.exit(1 if bad else 0)
 
 

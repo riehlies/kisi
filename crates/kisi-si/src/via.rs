@@ -344,13 +344,18 @@ fn copper_z(su: &crate::board::Stackup) -> Vec<f64> {
 /// relative to it (heights `z` of the copper layers, mm). With return groups (`groups`) each post
 /// carries the planes of the ladder it joins (`clear`: plane opening and net per layer at the via;
 /// a plane whose net is the via's and whose fill reaches it) and its openings in the others, and
-/// only vias that join one of them are taken.
-pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear: &[Option<(f64, u32)>], z: &[f64], groups: bool) -> Vec<crate::via_pbm::Post> {
+/// only vias that join one of them are taken. A pour on one of the via's own signal layers `sig`
+/// (the copper around its trace, which the ladder takes as a plane – BOARD_VIAS.md) counts as joined
+/// by every return that spans it, as before return groups: it is the trace's coplanar return, not
+/// a plane of its own (the finite cavities leave such pairs alone for the same reason); a via joined
+/// only to such a pour is not taken.
+#[allow(clippy::too_many_arguments)]
+pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear: &[Option<(f64, u32)>], z: &[f64], groups: bool, sig: [u16; 2]) -> Vec<crate::via_pbm::Post> {
     let joined = |w: &Via| -> Vec<f64> {
         (0..clear.len())
-            .filter(|&k| clear[k].is_some_and(|c| c.1 == w.net) && w.from as usize <= k && k <= w.to as usize)
+            .filter(|&k| clear[k].is_some() && w.from as usize <= k && k <= w.to as usize)
             .filter(|&k| !w.backdrill.is_some_and(|(b0, b1)| b0 as usize <= k && k <= b1 as usize))
-            .filter(|&k| joined_to_fill(board, w.at, w.size / 2.0 + 0.05, k as u16, w.net))
+            .filter(|&k| sig.contains(&(k as u16)) || (clear[k].is_some_and(|c| c.1 == w.net) && joined_to_fill(board, w.at, w.size / 2.0 + 0.05, k as u16, w.net)))
             .map(|k| z[k])
             .collect()
     };
@@ -369,7 +374,8 @@ pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clea
         .filter_map(|(d, w)| {
             let (joins, open_r) = if groups {
                 let j = joined(w);
-                if j.is_empty() {
+                // a via joined only to the pour around the trace carries no return between planes
+                if !j.iter().any(|&zj| !sig.iter().any(|&k| (z[k as usize] - zj).abs() < 1e-9)) {
                     return None;
                 }
                 // its openings in the planes it passes without joining them (to 0.01 mm, as the
@@ -393,12 +399,12 @@ pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clea
 /// plane nets, the return posts that short it, those that float across it, those that join planes
 /// on one side only (capacitive), and the capacitors (`via_pbm::CapPost`) between its planes within
 /// 3 mm (for surveys; the ladder builds the same).
-pub fn return_groups(board: &Board, v: &Via, net: u32, partner: Option<u32>) -> Vec<(u16, u16, u32, u32, usize, usize, usize, usize)> {
+pub fn return_groups(board: &Board, v: &Via, net: u32, partner: Option<u32>, sig: [u16; 2]) -> Vec<(u16, u16, u32, u32, usize, usize, usize, usize)> {
     let su = board.stackup();
     let z = copper_z(su);
     let clear: Vec<Option<(f64, u32)>> = (0..su.n() as u16).map(|k| plane_clearance(board, v.at, k, net, partner)).collect();
     let plane_k: Vec<usize> = (0..su.n()).filter(|&k| clear[k].is_some()).collect();
-    let rets = return_posts(board, v, net, partner, &clear, &z, true);
+    let rets = return_posts(board, v, net, partner, &clear, &z, true, sig);
     let caps = cap_posts(board, v.at, &plane_k, &clear, &z);
     plane_k
         .windows(2)
@@ -478,7 +484,7 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
     // via is its net and its fill reaches it), and the capacitors between two planes nearby
     let groups = returns_on(ctx);
     let plane_k: Vec<usize> = (0..su.n()).filter(|&k| clear[k].is_some()).collect();
-    let rets = return_posts(board, v, ctx.net, ctx.partner, clear, &z, groups);
+    let rets = return_posts(board, v, ctx.net, ctx.partner, clear, &z, groups, [l_in, l_out]);
     let caps = if groups { cap_posts(board, v.at, &plane_k, clear, &z) } else { vec![] };
     let feed = |side: usize, l: u16, refs: &[u16]| -> Option<Feed> {
         let fs = feeds[side];

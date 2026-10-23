@@ -101,7 +101,7 @@ pub fn run(args: &[String]) {
                 }
                 // return groups (BOARD_RETURNS.md): per plane pair the return vias that short it (join both
                 // planes), that float across it (join planes beyond it on both sides), capacitors within 3 mm
-                let groups: Vec<Value> = kisi_core::via::return_groups(board, v, net, partner)
+                let groups: Vec<Value> = kisi_core::via::return_groups(board, v, net, partner, [vi.layer_in, vi.layer_out])
                     .iter()
                     .map(|&(ka, kb, na, nb, short, float, capr, caps)| {
                         let (lo2, hi2) = (vi.layer_in.min(vi.layer_out), vi.layer_in.max(vi.layer_out));

@@ -32,9 +32,9 @@ pub const TD_WARN: f64 = 0.02;
 /// choke, a band-pass filter) and the lowest frequency stands for DC, as the grid cannot resolve
 /// what happens below it.
 pub const DC_AGREE: f64 = 0.05;
-/// Edge spectrum left at the top of the band above which the step rings noticeably (≈ 0.5 %
-/// overshoot at 0.2, 5 % at 0.55).
-pub const BAND_EDGE_WARN: f64 = 0.2;
+/// Edge spectrum left at the top of the band above which the step rings noticeably (overshoot
+/// of the bare edge: 0.4 % at 0.18, about 2 % at 0.35, 4.8 % at 0.54 – 30, 24 and 18 ps at 25 GHz).
+pub const BAND_EDGE_WARN: f64 = 0.35;
 
 /// What went into a step response and how well it behaves (shares of the final value).
 #[derive(Debug, Clone, Default, Serialize)]

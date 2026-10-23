@@ -218,7 +218,7 @@ KiCad files; CLI and viewer lay this file over the board.
   drive of the 4-port; ends per line to AC ground, so the common mode sees the same termination); no
   equalisation, jitter or noise. The step response has a DC point (the resistances of the signal band; where the
   channel changes below the lowest frequency – a small coupling capacitor, a choke – that frequency stands for DC)
-  and the Gaussian edge as window; warnings when the band ends inside the edge spectrum (above 20 % left), when
+  and the Gaussian edge as window; warnings when the band ends inside the edge spectrum (above 35 % left: the edge rings by about 2 % and more), when
   there is response before the signal can arrive (non-causal data, time aliasing) or the step has not settled, and
   when S-parameters are not passive (Touchstone files, or the model itself).
 - **Power:** copper rasterised per layer, vias as barrels (25 µm); DC IR drop per rail. PDN per IC: the rail's

@@ -307,8 +307,8 @@ function fieldsText() {
   const by = new Map();
   const add = (ref, key, val) => { if (!by.has(ref)) by.set(ref, { PI_LOAD: [], PI_SOURCE: [] }); by.get(ref)[key].push(val); };
   for (const r of S.piSetups.values()) {
-    for (const s of r.sources) add(s.refdes, "PI_SOURCE", `${netLabel(r.net)}=${r.voltage}V`);
-    for (const l of r.loads) if (l.current) add(l.refdes, "PI_LOAD", `${netLabel(r.net)}=${+l.current.toFixed(4)}A`);
+    for (const s of r.sources) add(s.refdes, "PI_SOURCE", `${fieldNet(r.net)}=${r.voltage}V`);
+    for (const l of r.loads) if (l.current) add(l.refdes, "PI_LOAD", `${fieldNet(r.net)}=${+l.current.toFixed(4)}A`);
   }
   const lines = [];
   for (const [ref, f] of [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }))) {
@@ -324,7 +324,7 @@ function treeFieldsText(t) {
   const volt = new Map(t.rails.map((r) => [r.net, r.voltage]));
   const rn = (n) => {
     const v = volt.get(n), named = /^[+-]?[0-9]+V[0-9]*$/i.test(netShort(n));
-    return named || v == null ? netLabel(n) : `${netLabel(n)}@${+v.toFixed(3)}V`;
+    return named || v == null ? fieldNet(n) : `${fieldNet(n)}@${+v.toFixed(3)}V`;
   };
   for (const e of t.elements) {
     const parts = [e.from ? `${rn(e.from)} > ${rn(e.to)}` : `${rn(e.to)}`, e.kind];
@@ -337,7 +337,7 @@ function treeFieldsText(t) {
     if (e.id && e.id !== e.refdes) parts.push(`id=${e.id.replace(/[\s;]+/g, "_")}`);
     add(e.refdes, "PI_REG", parts.join(" "));
   }
-  for (const l of t.loads) if (l.current) add(l.refdes, "PI_LOAD", `${netLabel(l.net)}=${+l.current.toFixed(4)}A${l.at ? "@" + l.at.split(",").map((x) => x.trim()).join("/") : ""}`);
+  for (const l of t.loads) if (l.current) add(l.refdes, "PI_LOAD", `${fieldNet(l.net)}=${+l.current.toFixed(4)}A${l.at ? "@" + l.at.split(",").map((x) => x.trim()).join("/") : ""}`);
   const lines = [];
   for (const [ref, f] of [...by.entries()].sort((a, b) => a[0].localeCompare(b[0], "en", { numeric: true }))) {
     if (f.PI_REG.length) lines.push(`${ref}  PI_REG = ${f.PI_REG.join("; ")}`);

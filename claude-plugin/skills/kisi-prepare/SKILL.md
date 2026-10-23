@@ -59,8 +59,11 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
      Ferrites/chokes between two rails: `PI_REG` = `+3V3 > 3V3_RF pass r=0.05` (state the assumed
      resistance). Rails without a voltage in their name: `NAME@1.2V`. A PMIC with several outputs gets
      one entry per channel, separated by `;` and each with its own `id=` (`VSYS > +3V3 buck 200mA id=U2B;
-     VSYS > +1V8 ldo 50mA id=U2C`). Net names with spaces (hierarchical names) cannot be an output rail
-     yet: put the load on the rail before the bead and name the bead as load point (`+3V3=1mA@FB3`).
+     VSYS > +1V8 ldo 50mA id=U2C`). Net names with spaces (hierarchical names such as
+     `/06 Peripherals/IMU_VDD`) go in double quotes, in every power field: `+3V3 > "/06 Peripherals/IMU_VDD"
+     pass r=0.5` on the bead, `"/06 Peripherals/IMU_VDD"=0.9mA` on the load, `"/Power/VDD CORE"@0.9V` with a
+     voltage. In kisi.json the quotes are escaped: `"value": "+3V3 > \"/06 Peripherals/IMU_VDD\" pass r=0.5"`.
+     The last part of a hierarchical name (`IMU_VDD`) also works when it is unique on the board.
    - Ferrite beads and inductors in supply paths (`PI_SERIES`, for the PDN per IC): impedance at
      100 MHz and DC resistance of a bead (`z100=600 rdc=0.15`), inductance and DC resistance of an
      inductor (`l=2.2u dcr=50m`), from the part's datasheet (`kisi gaps`: bead-ratings).

@@ -507,11 +507,13 @@ mod tests {
 //   +12V input                            input connector (no source rail)
 //   +5V > VCORE@0.9V buck 85%            rail without a voltage in its name: @<V>V
 //   +5V > +1V8 buck 88% 2A id=U4A        one IC with several channels: unique id
+//   +3V3 > "/Sensors/IMU VDD" pass r=0.5  net name with spaces (hierarchical name): in quotes
 //
 // '>' may also be written '->' or '→'. Values: 90% / 0.9, 3A / 500mA, iq=1mA,
 // r=10m (Ω), in=/out=<refdes>, part=<text>. Loads come from PI_LOAD
 // (`+1V0=2.5A, +1V8=300mA` or `+1V0=2W`; `NET=60mA@L32/L33`: the current enters the board at
-// these parts' pads, e.g. the inductors of an output stage), the rails from all named nets.
+// these parts' pads, e.g. the inductors of an output stage; `"/Sensors/IMU VDD"=1mA` for a name
+// with spaces), the rails from all named nets. Quoting: `field_syntax`.
 
 const KINDS: &[&str] = &["input", "buck", "boost", "ldo", "inverter", "pass", "buck-boost", "sepic"];
 
@@ -528,27 +530,23 @@ fn parse_ohms(s: &str) -> Option<f64> {
 
 /// One PI_REG entry → (element, rail voltages given with '@').
 pub fn parse_reg_entry(refdes: &str, part: &str, entry: &str) -> Result<(ElemSpec, Vec<(String, f64)>), String> {
-    let e = entry.replace("->", ">").replace('→', ">");
-    let (lhs, rhs) = match e.split_once('>') {
-        Some((a, b)) => (a.trim().to_string(), b.trim().to_string()),
-        None => (String::new(), e.trim().to_string()),
-    };
-    let mut toks = rhs.split_whitespace();
+    use crate::field_syntax as fs;
+    let (lhs, rhs) = fs::split_arrow(entry).unwrap_or(("", entry.trim()));
+    if entry.matches('"').count() % 2 == 1 {
+        return Err("unbalanced quotes (a net name with spaces goes in \"…\")".into());
+    }
+    let mut toks = fs::tokens(rhs).into_iter();
     let mut volts = Vec::new();
     let mut rail = |t: &str| -> String {
-        match t.split_once('@') {
-            Some((n, v)) => {
-                if let Some(x) = v.trim_end_matches(['V', 'v']).replace(',', ".").parse::<f64>().ok() {
-                    volts.push((n.to_string(), x));
-                }
-                n.to_string()
-            }
-            None => t.to_string(),
+        let (n, v) = fs::rail_token(t);
+        if let Some(x) = v {
+            volts.push((n.clone(), x));
         }
+        n
     };
     let to_tok = toks.next().ok_or("output rail missing")?;
     let to = rail(to_tok);
-    let from = if lhs.is_empty() { None } else { Some(rail(&lhs)) };
+    let from = if lhs.is_empty() { None } else { Some(rail(lhs)) };
     let mut el = ElemSpec { refdes: refdes.to_string(), part: part.to_string(), to, from, ..Default::default() };
     let mut kind = None;
     for t in toks {
@@ -565,8 +563,8 @@ pub fn parse_reg_entry(refdes: &str, part: &str, entry: &str) -> Result<(ElemSpe
                 "eff" => el.eff = v.trim_end_matches('%').replace(',', ".").parse::<f64>().ok().map(|x| if x > 1.0 { x / 100.0 } else { x }),
                 "out" => el.out_ref = Some(v.to_string()),
                 "in" => el.in_ref = Some(v.to_string()),
-                "id" => el.id = v.to_string(),
-                "part" => el.part = v.to_string(),
+                "id" => el.id = fs::unquote(v),
+                "part" => el.part = fs::unquote(v),
                 _ => return Err(format!("unknown key '{k}'")),
             }
         } else if t.ends_with(['A', 'a']) && parse_amps(t).is_some() {
@@ -601,7 +599,7 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
     let mut volts: HashMap<String, f64> = HashMap::new();
     for fp in &board.footprints {
         let Some(v) = fp.prop("PI_REG") else { continue };
-        let entries: Vec<&str> = v.split(';').map(str::trim).filter(|s| !s.is_empty()).collect();
+        let entries: Vec<&str> = crate::field_syntax::split_unquoted(v, &[';']);
         for (k, entry) in entries.iter().enumerate() {
             match parse_reg_entry(&fp.reference, &fp.value, entry) {
                 Ok((mut el, vs)) => {
@@ -622,12 +620,13 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
     }
     for fp in &board.footprints {
         let Some(v) = fp.prop("PI_LOAD") else { continue };
-        for item in v.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
-            let Some((name, q)) = item.split_once('=') else {
+        for item in crate::field_syntax::split_unquoted(v, &[',', ';']) {
+            let Some((name, q)) = crate::field_syntax::split_once_unquoted(item, '=') else {
                 warnings.push(format!("{}: PI_LOAD '{}' without value", fp.reference, item));
                 continue;
             };
-            let name = name.trim();
+            let name = crate::field_syntax::unquote(name);
+            let name = name.as_str();
             // load point on other parts: "NET=60mA@L32/L33" (current split over them)
             let (q, at) = match q.split_once('@') {
                 Some((q, a)) => {
@@ -721,7 +720,52 @@ mod field_tests {
         let (e, v) = parse_reg_entry("U7", "", "+5V > VCORE@0.9V buck 85%").unwrap();
         assert_eq!(e.to, "VCORE");
         assert_eq!(v, vec![("VCORE".to_string(), 0.9)]);
+        // net names with spaces in quotes, also with a voltage; the old forms unchanged
+        let (e, v) = parse_reg_entry("FB3", "", "IMU&MIC_3V3 > \"/06 Peripherals/IMU_VDD\" pass r=0.5").unwrap();
+        assert_eq!((e.from.as_deref(), e.to.as_str(), e.kind.as_str()), (Some("IMU&MIC_3V3"), "/06 Peripherals/IMU_VDD", "pass"));
+        assert!(v.is_empty() && (e.r - 0.5).abs() < 1e-12);
+        let (e, v) = parse_reg_entry("U4", "", "\"/Power/VIN MAIN\"@12V -> \"/Power/VDD CORE\"@0.9V buck 88% id=U4A part=\"TPS 1\"").unwrap();
+        assert_eq!((e.from.as_deref(), e.to.as_str(), e.id.as_str(), e.part.as_str()), (Some("/Power/VIN MAIN"), "/Power/VDD CORE", "U4A", "TPS 1"));
+        assert_eq!(v, vec![("/Power/VDD CORE".to_string(), 0.9), ("/Power/VIN MAIN".to_string(), 12.0)]);
+        let (e, _) = parse_reg_entry("J1", "", "\"/In/VBUS 1\"@5V input").unwrap();
+        assert!(e.from.is_none() && e.to == "/In/VBUS 1" && e.kind == "input");
+        assert!(parse_reg_entry("FB3", "", "+3V3 > \"/06 Peripherals/IMU_VDD pass").is_err());
         assert!(parse_reg_entry("U8", "", "+5V > +3V3 ldo foo").is_err());
         assert!(parse_reg_entry("U9", "", "+3V3 ldo").is_err());
+    }
+
+    /// Hierarchical net names with spaces, quoted in PI_REG, PI_LOAD and PI_SOURCE: the tree,
+    /// its loads and the rail setups find the board's nets.
+    #[test]
+    fn quoted_net_names() {
+        let pcb = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (net 0 "") (net 1 "+3V3") (net 2 "/06 Peripherals/IMU_VDD") (net 3 "/P/VDD CORE")
+  (footprint "R" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "PI_REG" "+3V3 input")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")))
+  (footprint "R" (layer "F.Cu") (at 5 0) (property "Reference" "FB3")
+    (property "PI_REG" "+3V3 > \"/06 Peripherals/IMU_VDD\" pass r=0.5; +3V3 > \"/P/VDD CORE\"@0.9V ldo id=X")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3"))
+    (pad "2" smd rect (at 2 0) (size 1 1) (layers "F.Cu") (net 2 "/06 Peripherals/IMU_VDD")))
+  (footprint "R" (layer "F.Cu") (at 10 0) (property "Reference" "U11")
+    (property "PI_LOAD" "\"/06 Peripherals/IMU_VDD\"=0.9mA, \"/P/VDD CORE\"=10mA")
+    (property "PI_SOURCE" "\"/P/VDD CORE\"=0.9V")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 2 "/06 Peripherals/IMU_VDD"))
+    (pad "2" smd rect (at 2 0) (size 1 1) (layers "F.Cu") (net 3 "/P/VDD CORE"))))"#;
+        let b = crate::load_pcb(pcb).unwrap();
+        let (spec, w) = tree_from_fields(&b).unwrap();
+        assert!(w.is_empty(), "{w:?}");
+        let imu = spec.rails.iter().find(|r| r.net == "/06 Peripherals/IMU_VDD").unwrap();
+        assert_eq!(imu.voltage, 3.3);
+        assert_eq!(spec.rails.iter().find(|r| r.net == "/P/VDD CORE").unwrap().voltage, 0.9);
+        assert_eq!(spec.loads.iter().map(|l| (l.net.as_str(), (l.current * 1e6).round())).collect::<Vec<_>>(), vec![("/06 Peripherals/IMU_VDD", 900.0), ("/P/VDD CORE", 10000.0)]);
+        let t = solve_tree(&spec, Some(&b)).unwrap();
+        assert!(t.warnings.is_empty(), "{:?}", t.warnings);
+        assert!((t.rails.iter().find(|r| r.net == "+3V3").unwrap().i_total - (0.9e-3 + 0.01)).abs() < 1e-6);
+        let (rails, w) = crate::pi::rails_from_fields(&b);
+        assert!(w.is_empty(), "{w:?}");
+        let core = rails.iter().find(|r| r.net == "/P/VDD CORE").unwrap();
+        assert_eq!((core.voltage, core.sources.len(), core.loads.len()), (0.9, 1, 1));
+        assert_eq!(rails.iter().find(|r| r.net == "/06 Peripherals/IMU_VDD").unwrap().loads[0].refdes, "U11");
     }
 }

@@ -290,6 +290,7 @@ fn polygon_area(p: &[P]) -> f64 {
 /// Rail setups from footprint fields:
 ///   PI_SOURCE = "+3V3" or "+3V3=3.3V" (several separated by ',' or ';')
 ///   PI_LOAD   = "+1V0=2.5A, +1V8=300mA" or "+1V0=2W" (power -> current via rail voltage)
+/// Net names with spaces in double quotes (`"/Sensors/IMU VDD"=1mA`, see `field_syntax`).
 pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
     let mut rails: Vec<RailSetup> = Vec::new();
     let mut warnings = Vec::new();
@@ -303,11 +304,12 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
     // sources first (they may define the voltage)
     for fp in &board.footprints {
         let Some(v) = fp.prop("PI_SOURCE") else { continue };
-        for item in v.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
-            let (name, val) = match item.split_once('=') {
-                Some((n, q)) => (n.trim(), Some(q)),
-                None => (item, None),
+        for item in crate::field_syntax::split_unquoted(v, &[',', ';']) {
+            let (name, val) = match crate::field_syntax::split_once_unquoted(item, '=') {
+                Some((n, q)) => (crate::field_syntax::unquote(n), Some(q)),
+                None => (crate::field_syntax::unquote(item), None),
             };
+            let name = name.as_str();
             let Some(net) = find_net(board, name) else {
                 warnings.push(format!("{}: PI_SOURCE names unknown net '{}'", fp.reference, name));
                 continue;
@@ -322,13 +324,14 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
     }
     for fp in &board.footprints {
         let Some(v) = fp.prop("PI_LOAD") else { continue };
-        for item in v.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
-            let Some((name, q)) = item.split_once('=') else {
+        for item in crate::field_syntax::split_unquoted(v, &[',', ';']) {
+            let Some((name, q)) = crate::field_syntax::split_once_unquoted(item, '=') else {
                 warnings.push(format!("{}: PI_LOAD '{}' without value (form NET=2A)", fp.reference, item));
                 continue;
             };
-            let Some(net) = find_net(board, name) else {
-                warnings.push(format!("{}: PI_LOAD names unknown net '{}'", fp.reference, name.trim()));
+            let name = crate::field_syntax::unquote(name);
+            let Some(net) = find_net(board, &name) else {
+                warnings.push(format!("{}: PI_LOAD names unknown net '{}'", fp.reference, name));
                 continue;
             };
             let net_name = board.net_name(net).to_string();

@@ -23,9 +23,13 @@ sources are listed at the end ([T1] …).
   θJC by package family and size) in `data/components.json` → `thermal`, per-part values from a new footprint
   field `PI_THERMAL` (`theta_jb=17.4 theta_jc=53.6 tj_max=125`) with its source in `<board>.kisi.json`. Every
   default is marked as an estimate in the output.
-- **Results:** temperature map per layer, hot spots, per part the board temperature under it and the junction
-  temperature with the margin to Tj max, the copper temperature per rail, the IR drop at that temperature, an
-  energy balance (heat in = convection + radiation out).
+- **Results:** temperature map per layer, hot spots, per part the board temperature under it, the junction and
+  case-top temperature with the margin to Tj max, the heat through every via and the heat paths under each hot part
+  (vias, laminate, sideways) with a hint when it looks short of thermal vias, the copper temperature per rail, the IR
+  drop at that temperature, an energy balance (heat in = convection + radiation out).
+- **Plausibility (section 7.4):** the LibreVNA's 5.5 W match its manual (up to 6 W); the open-board estimate is
+  right for a bare board, the real device in its aluminium shield runs 20–25 K hotter inside with its case near the
+  touch limit – an enclosure model is the next step.
 - **Validation:** analytic cases (1D slab, fin, radial spreading in a plane with convection, energy balance) as
   unit tests, the JEDEC θJA of three packages on a model of the JESD51-7 test board, and a plausibility check
   on ThunderScope and LibreVNA (section 7).
@@ -181,11 +185,31 @@ PI_THERMAL = p=0                               (heat in the part: a connector th
 | `theta_jc` | junction-to-case (top) thermal resistance, K/W (RθJC(top)); without it the top path is left out |
 | `psi_jb` | junction-to-board characterisation parameter, K/W; used when `theta_jb` is not given |
 | `theta_ja` | junction-to-ambient on the JEDEC board, K/W; only used when neither `theta_jb` nor `psi_jb` is given |
+| `psi_jt` | junction-to-top characterisation parameter, K/W: the case top is Tj − ψJT·P (else the two-resistor model's case node) |
 | `tj_max` | maximum junction temperature, °C |
 | `p` | heat dissipated in the part, W (replaces the power from the power tree: V·I of a load, loss of a regulator) |
 
 In `<board>.kisi.json` it is an ordinary `fields` entry with a source (datasheet, page, "Thermal Information"
 table). `kisi config-check` reads it.
+
+### 4.4 Vias as heat paths and the case top
+- **Per via and plated hole** the solver knows the barrel conductance of every layer step (k_Cu·A_barrel/Δz) and the
+  temperatures of the cells it joins, so the heat through it is G·(T_l − T_l+1). Reported: the largest flow of one step
+  (positive downwards), the temperature difference between its end layers and its hottest end. The viewer draws the
+  vias with at least 2 % of the largest flow as grey dots (larger and darker = more heat) over the temperature map;
+  heat flow rather than ΔT, because heat per via is what a thermal via array is for and its scale (W) does not depend
+  on the board, while ΔT also exists where there is no via.
+- **Per part with 0.1 W or more**: the vias inside the area of its pads, the heat it puts into the board split into
+  through those vias, through the laminate under the pads and sideways in the pad layer, and the temperature step
+  under it from the pad layer to the next layer and to the other side. A hint (kisi guide values, estimates) when it
+  looks short of thermal vias: no via under a thermal pad (0.2 W or more), 5 K or more to the next layer, or under
+  25 % through vias with over 50 % sideways (thermal pad, 0.25 W or more). Check on the JEDEC board (test
+  `vias_and_case`): a QFN-16 with four vias in its pad sends 48 % of its 0.5 W down the vias (3.8 K to the first
+  plane); without the vias it runs 6.3 K hotter, 10.9 K from the pad layer to the plane, and gets the hint.
+- **Case top** (what a finger or a heat sink meets on the package): Tj − ψJT·P when the datasheet gives ψJT
+  (`psi_jt`), else the case node of the two-resistor model, Tj − θJC·(heat through the top). For the small
+  packages on the example boards both put the top within about 1 K of the junction: almost all heat leaves through
+  the board.
 
 ## 5. Results and front ends
 - `kisi thermal <board> [--ambient °C] [--h W/m²K] [--airflow m/s] [--vertical]` (native and Node CLI, from
@@ -266,14 +290,58 @@ package default (θJB 80 K/W) to 95 °C with its datasheet value (31 K/W) – th
 ThunderScope, which runs with a fan. Copper loss is 0.4 % of the heat here, so the electro-thermal step changes the
 temperature negligibly, but it adds 20 % to the IR drops (+VUSB: copper at 71 °C loss-weighted).
 
-LibreVNA (power tree `web/samples/vna.kisi.json`, package defaults only): 5.26 W, mean rise 19.5 K, board maximum
-54.4 °C at the ADL5801 mixers (Tj ≈ 61 °C), +5V/2 IR drop 17.7 → 19.5 mV.
+LibreVNA (power tree `web/samples/vna.kisi.json`, package defaults for θ, Tj max from the datasheets of the mixers and
+synthesizers; MAX2871 current corrected, section 7.4): 5.54 W, mean rise 20.3 K (convection 7.2 / 3.6 + radiation
+6.0 W/m²K), board maximum 55.6 °C at the ADL5801 mixers (Tj 60–62 °C), +5V/2 IR drop 17.7 → 19.6 mV. Before the
+correction: 5.26 W, mean rise 19.5 K, maximum 54.4 °C.
 
 Run time (shared 2-core machine, so only indicative): the thermal solve of ThunderScope takes about 3 s natively, the
 rails again at temperature longer than that; the viewer's step 3 takes about 11 s on both boards.
 
 Still open: a comparison with a commercial tool or a measurement (IR camera on the planned test board), and with
 IPC-2152 trace heating.
+
+### 7.4 Plausibility review: "the values seem low – the LibreVNA needs heat sinks to stay touchable"
+**Data.** The LibreVNA manual gives "requires 5 V and draws up to 1.2 A" (6 W) [T15]. The power tree in
+`web/samples/vna.kisi.json` had 5.26 W (1.05 A at 5 V). Checked against the datasheets of the hot parts:
+- ADL5801 mixers (×3): 130 mA at 5 V = 0.65 W each – as in the tree; maximum junction temperature 150 °C, θJA 26.5 °C/W
+  on the evaluation board and θJC 8.7 °C/W at the exposed paddle, no θJB [T16].
+- MAX2871 synthesizers (×2): 165 mA typical with both outputs at maximum power, 25 mA per output, so about 140 mA
+  with one output [T17] – the tree had 120 mA. Corrected to 140 mA (0.46 W each); Tj max 150 °C, θJA 29 °C/W
+  (JESD51-7), θJC 1.7 °C/W.
+- MIC2253 boost (5 → 6 V for the 5 V LDOs): 0.55 W loss at the estimated 88 %; LDL212 (6 → 5 V, ×4): 0.15–0.24 W each;
+  AP2114H and NCP702 (5 → 3.3 V): 0.09–0.12 W each – from the power balance. FPGA (XC6SLX9) 0.26 W, STM32G431 0.1 W,
+  Si5351C 0.12 W, TRF37A73 0.18 W, LT5560 0.05 W each: datasheet-typical or estimated, small.
+- After the correction the input is 5.51 W (1.10 A at 5 V), 92 % of the manual's maximum. The loads are not too low;
+  what is missing is a few % (switches, LEDs, the TCXO, worst-case currents).
+
+**Model.** With these 5.5 W the open board in still air at 25 °C has a mean rise of 20.3 K (hand: 5.54 W / (2 ·
+0.01196 m² · 11.4 W/m²K) = 20.3 K), a maximum of 55.6 °C at the mixers, and the mixers' Tj is 60–62 °C (board under
+the part 54.3 °C + 0.65 W · 11.6 K/W). That is right for a bare board on a bench, and it is not the device:
+- **The enclosure (model limit, the main reason).** The LibreVNA's board sits in a closed milled aluminium shield. Its
+  heat crosses the air in the shield cavities to the case (a few mm of air: k/gap ≈ 0.027/0.003 ≈ 9 W/m²K, plus
+  little radiation to bare aluminium, ε ≈ 0.1) and only then reaches the room from the case surface. Hand estimate
+  for the case: about 0.035 m² of surface (board footprint top and bottom plus 25 mm of side), h ≈ 6.5 W/m²K for bare
+  aluminium (natural convection, ε ≈ 0.1) or ≈ 11.5 W/m²K anodised: the case runs 14–24 K above the room, 39–49 °C at
+  25 °C – right at the touch limit for metal held longer than a minute, 48 °C (IEC 62368-1 TS1) [T18]. Inside, the
+  board sits another ≈ 23 K above the case. kisi can emulate this today with the case as ambient and the inner
+  coupling as h: `kisi thermal VNA.kicad_pcb --ambient 45 --h 10` gives a board mean of 67 °C, a maximum of 79 °C
+  and mixer junctions of 83–85 °C; `--ambient 50 --h 7` gives 82 °C mean and Tj up to 100 °C. A built-in enclosure
+  model (case surface, inner coupling, a heat sink) is the next step (ROADMAP).
+- **Convection and radiation coefficients**: 13.2 W/m²K top and 9.6 W/m²K bottom at the LibreVNA's 20 K mean rise
+  (convection 7.0 / 3.5 + radiation 6.1). Typical textbook values; not the cause.
+- **Spreading under small hot parts**: the hot LibreVNA parts are QFN/DFN packages with exposed pads (4 × 4 mm mixers,
+  0.6 mm cells: 6–7 cells across). The 15–20 % optimism found for leaded packages (section 7.2) does not apply to them.
+- **θ defaults**: the QFN default for the 4 × 4 mm mixer (θJB 11.6 K/W) is above the datasheet's junction-to-paddle
+  value (8.7 K/W), i.e. on the safe side by about 2 K at 0.65 W.
+- **Case top vs. junction**: for these packages the case top is within 0.3 K of Tj (ψJT or the two-resistor model):
+  a finger on a package meets the junction temperature. A finger on the device meets the enclosure.
+
+**Verdict.** Not a data problem (the loads were 12 % below the documented maximum, now 8 %); a model limit: kisi
+estimates an open board in air, and an enclosed device runs about 20–25 K hotter inside and puts its case near the
+touch limit. ThunderScope (12.8 W, host-powered over Thunderbolt or PCIe, in a 145 × 103 × 31 mm case or on a card
+[T19]) needs the same reading: its open-board 88 °C maximum becomes hotter in the case without its fan.
+
 
 ## Sources
 - [T1] Texas Instruments, SPRA953, Semiconductor and IC Package Thermal Metrics – https://www.ti.com/lit/an/spra953c/spra953c.pdf *(cited from earlier knowledge; definitions confirmed by [T2])*
@@ -305,6 +373,19 @@ IPC-2152 trace heating.
   *(standard, cited from earlier knowledge)*
 - [T14] IEC 60115-1, fixed resistors: rated dissipation at 70 °C, upper category temperature 155 °C
   *(standard, cited from earlier knowledge)*
+- [T15] LibreVNA user manual (power supply: 5 V, up to 1.2 A; external jack 5 V 1.5 A) – https://xdevs.com/doc/LibreVNA/manual1.pdf ;
+  hardware and power block diagram in the LibreVNA repository (commit c477819, `README.md`,
+  `Documentation/DeveloperInfo/PowerBlockdiagram.tex`, read with git)
+- [T16] Analog Devices, ADL5801 datasheet, Absolute Maximum Ratings (θJA 26.5 °C/W evaluation board, θJC 8.7 °C/W at
+  the exposed paddle, Tj max 150 °C) – https://www.alldatasheet.pl/html-pdf/332514/AD/ADL5801ACPZ-R7/142/4/ADL5801ACPZ-R7.html ;
+  supply current 130 mA as in the existing power tree *(the specification page itself could not be fetched)*
+- [T17] Analog Devices (Maxim), MAX2871 datasheet: supply current 165 mA typ. (both outputs at maximum power), 25 mA
+  per output, θJA 29 °C/W, θJC 1.7 °C/W, Tj max 150 °C –
+  https://wcm-cce.cldnet.analog.com/media/en/technical-documentation/data-sheets/MAX2871.pdf
+- [T18] UL, technical brief on touch temperatures, IEC 62368-1 TS1 limits (metal: 48 °C over 1 min, 51 °C 10 s–1 min,
+  60 °C 1–10 s) – https://japan.ul.com/wp-content/uploads/sites/27/2014/06/1_techbrief_touchtemp.pdf
+- [T19] Crowd Supply, ThunderScope: host-powered (Thunderbolt / USB4), 145 × 103 × 31 mm (TS), 132 × 120 × 20 mm (PCIe) –
+  https://www.crowdsupply.com/eevengers/thunderscope
 
 **Not read for this document:** the JEDEC standards themselves (JESD51-x, JESD15-3), the IPC-2152 charts (a
 comparison of trace temperature rise against IPC-2152 would be a useful later check), AMD's package thermal data

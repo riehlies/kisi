@@ -269,6 +269,37 @@ def run(pg, tag, desktop):
             elif not pg.evaluate("S.piMode === 't' && S.therm.parts.length > 0 && S.therm.balance.error_rel < 1e-6 && S.therm.rails.length > 0 && !S.therm.rails.some((r) => r.error)"):
                 problems.append(f"{tag}: temperature view not shown, without parts or with failed rails")
             step("temperature")
+            # units in the panel, the legend and the tooltips (a via and the board); a rail and a part in the
+            # tables jump to the map; the vias and the parts' heat paths are there
+            t = pg.evaluate("""async () => {
+              const wait = () => new Promise((r) => setTimeout(r, 150)), out = [];
+              const txt = (id) => { const e = $(id); return e && !e.hidden ? e.innerText : ""; };
+              const tip = (bx, by) => { showThermTip(S.view.x + bx * S.view.s, S.view.y + by * S.view.s); const e = $("tip"); const s = e.hidden ? "" : e.innerText; e.hidden = true; return s; };
+              out.push(txt("pi-detail") + " " + txt("legend") + " " + txt("therm-step"));
+              const v = thermVias().list[0];
+              if (v) out.push(tip(v.at[0], v.at[1]));
+              const p = S.therm.parts[0];
+              if (p) out.push(tip(p.at[0], p.at[1]));
+              const r = document.querySelector("#pi-detail [data-trail]"); if (r) { r.click(); await wait(); }
+              const railOk = !r || (!!S.thermMark && S.thermLayer >= 0);
+              const q = document.querySelector("#pi-detail [data-tpart]"); if (q) { q.click(); await wait(); }
+              const partOk = !q || (!!S.thermMark && S.thermMark.label.startsWith(q.dataset.tpart));
+              setPiMode("b"); await wait(); out.push(txt("pi-balance"));
+              const comp = !!document.querySelector(".bal-comp thead") && document.querySelector(".bal-comp thead").innerText.includes("Tj");
+              setPiMode("t"); await wait();
+              return { texts: out, railOk, partOk, comp, vias: S.therm.vias.length, under: S.therm.parts.filter((x) => x.vias).length };
+            }""")
+            for tx in t["texts"]:
+                bad = sorted(set(m.group(0) for m in FIXED_ZERO.finditer(tx)))
+                if bad:
+                    problems.append(f"{tag}: fixed-decimal values in the temperature view: {bad[:6]}")
+            if not (t["railOk"] and t["partOk"]):
+                problems.append(f"{tag}: a rail or a part in the temperature tables did not jump to the map")
+            if not t["comp"]:
+                problems.append(f"{tag}: no temperature in the power tree's components table")
+            if not (t["vias"] > 0 and t["under"] > 0):
+                problems.append(f"{tag}: no via heat or heat paths under the parts")
+            step("temperature_jump")
             pg.click("#layers .chip >> nth=-1"); pg.wait_for_timeout(300)
             # tooltip over the board, left of the detail panel
             bx = pg.locator("#pcb").bounding_box()

@@ -56,10 +56,14 @@ in the output shows the coverage; `--formula` skips the solver.
    rail against its target. Losses are power; part heat assumes all drawn power stays in the part.
    Temperature: `kisi thermal <board>` – steady-state estimate in still air at 25 °C (`--ambient`,
    `--airflow m/s`, `--vertical`, `--h`): board temperature per layer and hot spots, per part the junction
-   temperature against Tj max (`parts[]`, `data_source` says whether the θ values come from PI_THERMAL or
-   estimated package defaults), per rail the copper temperature and the IR drop at that temperature.
+   temperature against Tj max and the case top (`parts[]`, `data_source` says whether the θ values come from
+   PI_THERMAL or estimated package defaults), the heat through the vias and under each hot part with
+   `parts_hints` where thermal vias look short (guide values), per rail the copper temperature and the IR drop at
+   that temperature.
    Report it as an estimate: heat leaves only through convection and radiation (no heat sinks, mounting,
-   connectors or enclosure), and Tj with package defaults can be off by tens of percent of the rise.
+   connectors or enclosure – a device in a closed case runs 20 K or more hotter inside; emulate it with the case
+   temperature as `--ambient` and `--h` for the coupling inside), and Tj with package defaults can be off by tens of
+   percent of the rise.
 6. Optionally `kisi report <board>` writes `analysis/kisi.json` next to the board, so file-based review
    tools (e.g. kicad-happy) and later sessions can reuse the results.
 7. For the interactive view (2D field solver, charts, editable profiles), the user opens `kisi.html`

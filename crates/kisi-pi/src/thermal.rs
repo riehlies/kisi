@@ -332,8 +332,11 @@ pub struct ViaTemp {
 pub struct RailThermal {
     pub net: String,
     pub ground: bool,
-    /// temperature of the copper that carries the rail's current: maximum and loss-weighted mean
+    /// temperature of the copper that carries the rail's current: maximum (and where, on which
+    /// copper layer) and loss-weighted mean
     pub t_max_c: Option<f64>,
+    pub max_at: Option<P>,
+    pub max_layer: Option<u16>,
     pub t_mean_c: Option<f64>,
     /// largest drop (ground: offset) and copper loss at 20 °C and at the estimated temperature
     pub drop_mv_20c: Option<f64>,
@@ -1302,7 +1305,7 @@ pub fn solve(board: &Board, rails: &[&PiResult], comps: &[CompLoss], prm: &Therm
 /// solved again with ρ(T) = ρ₂₀(1 + α(T − 20 °C)) at the estimated temperature.
 pub fn rail_at_temperature(board: &Board, setup: &RailSetup, base: &PiResult, th: &ThermalResult, params: &PiParams) -> RailThermal {
     let alpha = data().copper.alpha_per_k;
-    let (mut tmax, mut sw, mut st) = (f64::NEG_INFINITY, 0.0, 0.0);
+    let (mut tmax, mut sw, mut st, mut at) = (f64::NEG_INFINITY, 0.0, 0.0, None);
     for lg in &base.layers {
         for j in 0..lg.ny {
             for i in 0..lg.nx {
@@ -1310,8 +1313,12 @@ pub fn rail_at_temperature(board: &Board, setup: &RailSetup, base: &PiResult, th
                 if w <= 0.0 {
                     continue;
                 }
-                let tc = th.temp_at(lg.layer as usize, [lg.x0 + (i as f64 + 0.5) * base.cell, lg.y0 + (j as f64 + 0.5) * base.cell]);
-                tmax = tmax.max(tc);
+                let c = [lg.x0 + (i as f64 + 0.5) * base.cell, lg.y0 + (j as f64 + 0.5) * base.cell];
+                let tc = th.temp_at(lg.layer as usize, c);
+                if tc > tmax {
+                    tmax = tc;
+                    at = Some((c, lg.layer));
+                }
                 sw += w;
                 st += w * tc;
             }
@@ -1321,6 +1328,8 @@ pub fn rail_at_temperature(board: &Board, setup: &RailSetup, base: &PiResult, th
         net: base.net.clone(),
         ground: base.ground,
         t_max_c: tmax.is_finite().then_some(tmax),
+        max_at: at.map(|a| a.0),
+        max_layer: at.map(|a| a.1),
         t_mean_c: (sw > 0.0).then(|| st / sw),
         drop_mv_20c: base.max_drop_mv,
         loss_w_20c: base.power_loss_w,

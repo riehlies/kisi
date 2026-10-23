@@ -851,7 +851,7 @@ pub fn thermal_json(p: &Project, th: &crate::thermal::ThermalResult, prm: &crate
         "parts": parts,
         "parts_omitted": th.parts.len().saturating_sub(30),
         "rails": th.rails.iter().map(|r| json!({
-            "rail": r.net, "ground_return": r.ground, "t_copper_max_c": opt(r.t_max_c), "t_copper_mean_c": opt(r.t_mean_c),
+            "rail": r.net, "ground_return": r.ground, "t_copper_max_c": opt(r.t_max_c), "copper_max_at": xy(r.max_at), "copper_max_layer": r.max_layer.map(lname), "t_copper_mean_c": opt(r.t_mean_c),
             "max_drop_mv_20c": r.drop_mv_20c.map(|x| (x * 1e3).round() / 1e3), "max_drop_mv_at_temperature": r.drop_mv_hot.map(|x| (x * 1e3).round() / 1e3),
             "copper_loss_mw_20c": (r.loss_w_20c * 1e4).round() / 10.0, "copper_loss_mw_at_temperature": r.loss_w_hot.map(|x| (x * 1e4).round() / 10.0), "error": r.error,
         })).collect::<Vec<_>>(),

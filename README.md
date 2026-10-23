@@ -111,7 +111,7 @@ files are not changed. Results of the last three boards stay in memory while swi
 | `check` | channel check against the profiles (`--class CLASS=PROFILE`, `--nets A,B`, `--all`) |
 | `crosstalk` | coupling scan of all nets with a target, critical from 1 % (`--nets A,B`, `--all` for every row); the field solver refines the critical couplings |
 | `power` | regulator chain, budget, DC IR drop per rail and in the ground return, losses per part / rail / layer, power flow (`--pdn RAIL` adds Z(f)) |
-| `thermal` | temperature estimate from the losses: board temperature per layer, hot spots, junction temperature per part against Tj max, copper temperature and IR drop at temperature per rail (`--ambient °C`, `--airflow m/s`, `--vertical`, `--h W/m²K`) |
+| `thermal` | temperature estimate from the losses: board temperature per layer, hot spots, junction and case-top temperature per part against Tj max, heat through the vias and under each hot part (with a hint when thermal vias look short), copper temperature and IR drop at temperature per rail (`--ambient °C`, `--airflow m/s`, `--vertical`, `--h W/m²K`) |
 | `report` | everything into `analysis/kisi.json` next to the board |
 | `gaps` | missing or default data, where to find it, how to write it into `<board>.kisi.json` |
 | `config-check`, `config-template` | check / start a `<board>.kisi.json` (the template suggests variants from forks) |
@@ -154,7 +154,7 @@ commands with formula impedances only.
 | `PI_CAP` | `esr=5m esl=0.45n rated=6.3V X5R c@3.3V=2.1u` | decoupling capacitor data for the PDN (datasheet values; replaces the package estimates and the DC-bias curve) |
 | `PI_SERIES` | `z100=600 rdc=0.15` · `l=2.2u dcr=50m` · `r=10m` | ferrite bead, inductor or resistor in a supply path: the PDN per IC models the rail with the nets behind them, up to the regulators (replaces the typical values) |
 | `PI_TARGET` | `VCCINT=10m fmax=50M` or `15mOhm` | target impedance of an IC for a rail (default: from its own current step), band it applies to |
-| `PI_THERMAL` | `theta_jb=17.4 theta_jc=53.6 tj_max=125` | thermal data of a part from its datasheet's Thermal Information table (K/W, °C) for the temperature estimate; `psi_jb=…` when there is no θJB, `theta_ja=…` only as a fallback (JEDEC test board), `p=0.2W` for the heat that stays in the part (replaces the power tree's value, e.g. a connector passing power on) |
+| `PI_THERMAL` | `theta_jb=17.4 theta_jc=53.6 psi_jt=1.1 tj_max=125` | thermal data of a part from its datasheet's Thermal Information table (K/W, °C) for the temperature estimate; `psi_jb=…` when there is no θJB, `psi_jt` for the case top, `theta_ja=…` only as a fallback (JEDEC test board), `p=0.2W` for the heat that stays in the part (replaces the power tree's value, e.g. a connector passing power on) |
 
   The nominal voltage comes from the net name (`+3V3`, `1V8`, `-5V`), else from `NAME@<V>V` in a `PI_REG` entry.
   Net names are written as in KiCad, or as the last part of a hierarchical name (`IMU_VDD` for
@@ -231,8 +231,10 @@ KiCad files; CLI and viewer lay this file over the board.
   natural or forced convection (flat-plate correlations) and radiation from both sides; heat from the copper loss of
   every cell and the parts. A part is a junction node with θJB to the board under its pads and θJC to its top (JEDEC
   two-resistor model), with values from `PI_THERMAL` or package defaults by family and size (`data/components.json`,
-  estimates). Not included: heat sinks, conduction into mounting holes, connectors or card guides, the enclosure, the
-  split of a regulator's loss between IC and inductor, transients. The IR drop at temperature solves the rails again
+  estimates); the case top from ψJT or that model. Per via the heat through its barrel; per hot part the split of its
+  heat into vias, laminate and the pad layer. Not included: heat sinks, conduction into mounting holes, connectors or
+  card guides, the enclosure (a device in a closed case runs hotter inside: emulate it with the case temperature as
+  `--ambient` and the inner coupling as `--h`), the split of a regulator's loss between IC and inductor, transients. The IR drop at temperature solves the rails again
   with ρ(T) = ρ₂₀(1 + 0.393 %/K·(T − 20 °C)). Concept, physics and validation: `docs/research/thermal.md`.
 
 ### Validation

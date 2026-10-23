@@ -63,12 +63,19 @@ Planned and possible work after 0.2.4, roughly in order of priority. Each item s
   comparison with a measurement or a reference tool.
 - **Power:** via current capacity; split of regulator losses between IC and inductor (also a second heat source
   in the temperature estimate).
-- **Temperature, follow-ups** (the steady state is in `kisi thermal` and the viewer, `docs/research/thermal.md`): transient (thermal capacitance on
-  the same matrix, duty cycles); heat sinks (`theta_sa`), thermal pads to a chassis, conduction into mounting holes,
-  card guides and connectors (often a large share on PCIe/M.2 cards); local grid refinement under small hot parts;
-  filled vias and laminate conductivity by material name; iterating the electro-thermal step to a fixed point and
-  temperature-dependent IC power (leakage); `PI_THERMAL` data for the example boards' hot parts; a comparison with
-  IPC-2152 trace heating and a measurement (IR camera) on the test board.
+- **Temperature, follow-ups** (the steady state is in `kisi thermal` and the viewer, `docs/research/thermal.md`):
+  - **Heat sinks**: a heat sink on a part (`theta_sa`, area, or a sink touching several parts), thermal pads to a
+    chassis, conduction into mounting holes, card guides and connectors (often a large share on PCIe/M.2 cards).
+  - **More convection settings**: a closed enclosure (case surface and material, the coupling of the board to it
+    through air gaps and radiation – the LibreVNA's case runs near the touch limit, section 7.4), a vertical board in a
+    rack, a fan with a given air speed per side, the ambient inside a device.
+  - **Transient simulation**: thermal capacitance on the same matrix (implicit time steps), power profiles and duty
+    cycles, the time to reach a temperature.
+  - **Export to a 3D thermal solver** (e.g. the board's layers, copper fill, vias and the parts' power as a model for
+    an open CFD/FEM tool) to design the heat sink there.
+  - Smaller: local grid refinement under small hot parts; filled vias and laminate conductivity by material name;
+    iterating the electro-thermal step to a fixed point and temperature-dependent IC power (leakage); a comparison
+    with IPC-2152 trace heating and a measurement (IR camera) on the test board.
 - **Power tree per supply case.** Boards that run from USB or a battery (a PMIC power path) have one tree per case:
   on the XIAO, VSYS is VBUS on USB and VBAT on battery, and the debugger is supplied only on USB; while charging, the
   battery charge current is a load on VSYS. Today one tree has to stand for all cases.

@@ -14,6 +14,9 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
   eye for every lane: at a connector with the end set per connector (termination or driver) and the channel behind
   it – a lossy line or a Touchstone file (`.s2p`, also on each line of a pair; `.s4p` of a pair) – judged when a
   channel behind it is given (`connector_ends` in kisi.json).
+- **Finite plane cavities in the via ladder (experimental, `--via-cavity`, off by default):** board edges,
+  stitching vias and capacitors of the plane pairs a via crosses, validated against seven new 3D cases
+  (`validation/fdtd/BOARD_RESONANCES.md`); `kisi-validate cavities` lists the plane pairs of a board's channel vias.
 
 ## Next
 - **`kisi gaps`: supply rails without a voltage in the name.** Nets such as `Net-(IC22-VCC)` are not recognised as
@@ -59,14 +62,21 @@ Planned and possible work after 0.2.3, roughly in order of priority. Each item s
     (`sparam.deembed_matched`) when the ladder is next fitted;
   - "3D check" of a via or a track point in the viewer (exporter in WebAssembly, one worker per excitation,
     fixture cache, plots against the ladder; estimate 8 days, minimal version 4; `BOARD_VIAS.md` section 4);
-  - plane resonances of finite boards in the ladder (cavity model instead of infinite plates), via-to-via coupling
-    through the cavity, the cavity model in the PDN and the vertical parts of the PDN loop;
+  - done (experimental, off by default): plane resonances of finite boards in the ladder, `--via-cavity`
+    (`kisi_si::via_cavity`: rectangle and grid of any shape with stitching vias, capacitors and edge radiation;
+    `validation/fdtd/BOARD_RESONANCES.md`). Against 3D it finds every resonance below 12 GHz (1.6–2.5 % in
+    frequency) and the coupling of two vias in one cavity; on the example boards it changes no verdict (most
+    channel vias have close return vias) at 2–4× the run time. Next: return groups per plane pair (a GND via does
+    not short a GND/supply pair; there the cavity with its capacitors is the return), via-to-via coupling in the
+    channel and crosstalk, the grid as the PDN cavity model for irregular planes, the vertical parts of the PDN
+    loop;
   - the ladder in WebAssembly is about 2 × slower than native (Laplace solve and equivalent radius per via type).
 - **Measured test board** (ToDo): coupons from the reference cases on JLCPCB / Aisler standard stackups with
   screw-on end-launch connectors, simulated in kisi-fdtd and CST, measured on Keysight ENA / PNA-X / PNA; plan in
   `validation/test_board.md`.
 - **Crosstalk:** compute broadside coupling between layers (detected and listed so far), aggressors in the eye;
-  crossings of plane splits and edges (return path), then via-to-via coupling through the cavity.
+  crossings of plane splits and edges (return path), then via-to-via coupling through the cavity (the coupled
+  ladders are in `via_pbm::coupled_s`, validated in `BOARD_RESONANCES.md`).
 - **PDN:** per-IC grid for all rails at once, regulator models beyond R + L (control-loop output impedance),
   comparison with a measurement or a reference tool.
 - **Power:** via current capacity; a temperature estimate from the losses map (2D heat spreading with

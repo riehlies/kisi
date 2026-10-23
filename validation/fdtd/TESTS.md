@@ -409,3 +409,37 @@ Full report: **`BOARD_VIAS.md`**; `board_vias.py` reproduces everything (cases `
 - Ladder findings for follow-up work: GND pours on the via's signal layers taken as planes (too slow by 1.1–4.6 ps,
   too capacitive on M.2 and LibreVNA); series inductance 105–241 pH too high (26–127 pH without the signal-layer
   pours); the REFINOUT2 notch at 30 GHz (likely its return-via cage) is missing.
+
+## 9. Plane resonances of finite boards (Block 3)
+
+Full report: **`BOARD_RESONANCES.md`**; `board_resonances.py` reproduces everything (cases `resonance_cases/`,
+results `../via_ref/R_*`, `../via_ref/BV_vna_clk_w5`, `results/board_resonances*.json`, plots
+`results/board_resonances/`). The model is the option `--via-cavity` (off by default).
+
+### Model checks (unit tests in `kisi_si::via_cavity`, `kisi_si::via_pbm`)
+| # | Test | Where | Result |
+|---|---|---|---|
+| M1 | Rectangular cavity, single series with Kummer acceleration, against the double modal series | `rect_green_matches_double_series` | within 0.2 % |
+| M2 | A large cavity against the infinite plates (Hankel function), self and transfer terms | `rect_green_large_cavity_is_free_space` | within 0.1 % |
+| M3 | Low-frequency limit: the plate capacitance εA/d; a short reduced as a port = as a load | `rect_green_low_frequency_capacitance`, `rect_short_load_reduces` | within 1 % / 10⁻⁹ |
+| M4 | Grid (five-point, exact near field) against the rectangle, 4 ports and a short | `grid_matches_rect` | within 1 % |
+| M5 | A grid window with absorbing sides against the infinite plates | `grid_window_is_open` | within 5 % |
+| M6 | Edge radiation: the slot conductance's short and long limits ((w/λ)²/90, w/(120λ), halved for a board edge); the straight edges of an L shape | `slot_conductance_limits_and_edges` | within 2 % / 5 %; edges exact |
+| M7 | Ladder with a large lossy cavity = the infinite ladder; one via in the coupled solver = its ABCD | `large_cavity_is_the_infinite_ladder`, `coupled_single_matches_abcd` | \|ΔS21\| < 2·10⁻³ / 10⁻⁹ |
+| M8 | Decoupling-capacitor parasitics from `data/components.json` | `decap_parasitics_from_data` | 0402: 0.75 nH, 25 mΩ at 100 nF |
+
+### Finite boards in 3D against the ladder (max / rms \|ΔS21\| below 12 GHz, dB)
+| case | infinite plates (default) | cavity, rectangle | cavity, grid | resonances below 12 GHz found (grid) |
+|---|---|---|---|---|
+| one via, no return via | 4.90 / 1.13 | 1.92 / 0.47 | 1.75 / 0.46 | 6/6, \|Δf\| 2.0 %, \|Δdepth\| 0.18 dB |
+| one return via 2 mm away | 2.41 / 0.75 | 1.76 / 0.44 | 1.71 / 0.43 | 8/8, 2.5 %, 0.23 dB |
+| four return vias at 1 mm | 0.04 / 0.03 | 0.05 / 0.03 | 0.05 / 0.03 | none in 3D |
+| L-shaped planes | 5.16 / 1.13 | – | 1.61 / 0.44 | 7/8, 1.8 %, 0.25 dB |
+| capacitor in the cavity | 5.29 / 1.25 | 2.04 / 0.51 | 1.86 / 0.51 | 7/8, 1.6 %, 0.39 dB |
+| two vias sharing the cavity (coupling S31 peak, 3D −12.2 dB) | 3.95 / 1.03, no coupling | 1.81 / 0.39, −12.1 dB | 1.67 / 0.39, −12.1 dB | – |
+
+- Without edge radiation the resonances are 0.6–1.0 dB too deep and the error above 12 GHz is 2–3× larger.
+- Above 12 GHz neither form follows the 3D (rms 1.7–2.2 dB, the infinite plates 1.5–1.9 dB).
+- Default path unchanged: `compare_kisi.py` identical to `results/kisi_models.json`; `compare_cli.py` identical.
+  With the option the Block 1 references get worse (their planes are infinite in 3D, the KiCad stand-in board
+  ends at the window).

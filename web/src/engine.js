@@ -56,6 +56,15 @@ class Engine {
     r.buf = new Float32Array(m, this.k.kisi_pi_map_ptr(), this.k.kisi_pi_map_len()).slice();
     return r;
   }
+  // temperature estimate of the stored DC results: ThermalResult + t (°C planes per copper layer, NaN outside)
+  piThermal(params) {
+    this.call(this.k.kisi_pi_thermal, JSON.stringify(params || {}));
+    const r = JSON.parse(this.out());
+    r.t = new Float32Array(this.k.memory.buffer, this.k.kisi_pi_temp_ptr(), this.k.kisi_pi_temp_len()).slice();
+    return r;
+  }
+  // one rail at the estimated temperature: RailThermal (copper temperature, drop at 20 °C and at temperature)
+  piThermalRail(setup, params) { this.call(this.k.kisi_pi_thermal_rail, JSON.stringify({ setup, params })); return JSON.parse(this.out()); }
   piSolve(setup, params) {
     this.call(this.k.kisi_pi_solve, JSON.stringify({ setup, params }));
     const res = JSON.parse(this.out()), m = this.k.memory.buffer;

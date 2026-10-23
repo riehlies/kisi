@@ -186,6 +186,13 @@ tr.warnrow td { color: var(--z-high1); }
 .ce-box select { max-width: 16em; }
 .ck-scroll { max-height: 360px; overflow: auto; margin-top: 8px; border-top: 1px solid var(--line); }
 .ck-scroll thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.step-h .est { font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); margin-left: 4px; }
+.therm-opts { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.therm-opts label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.therm-opts input, .therm-opts select { border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); padding: 2px 4px; font-size: 12px; }
+.therm-opts input { width: 4em; }
+tr.t-over td { color: var(--z-high2); }
+tr.t-near td { color: var(--z-high1); }
 .fs-bar { height: 4px; border-radius: 2px; background: var(--panel-2); overflow: hidden; }
 .fs-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
 .btn.small { padding: 2px 8px; font-size: 12.5px; }

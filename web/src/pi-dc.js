@@ -42,12 +42,14 @@ function solveGround() {
 function computeLosses() {
   try { S.loss = S.engine.piLosses(null); } catch (e) { S.loss = { error: e.message }; }
   S.lossImg = null;
+  thermReset(); // the temperature follows from the losses
 }
 const piSetupOf = (net) => S.piSetups.get(net) || (S.piGround && S.piGround.get(net));
 
 function initPi(defaults) {
   S.piRes = new Map(); S.piSetups = new Map(); S.piImg = null; S.piWarn = []; S.piDefaults = defaults;
   S.piGround = new Map(); S.groundWarn = []; S.loss = null; S.lossImg = null; S.lossPlane = "total";
+  S.therm = null; S.thermImg = null; S.thermLayer = 0;
   try { S.engine.piClear(); } catch (e) { /* nothing stored */ }
   S.piTree = null; S.treeRes = null; $("pi-balance").scrollTop = 0;
   S.piSolved = false; // IR drop runs on request (button), it is the slowest part of loading
@@ -89,8 +91,12 @@ function stepProgress(key, i, n) {
   const run = i != null;
   $(key + "-barbox").hidden = !run; $(key + "-prog").hidden = !run;
   S[key + "Running"] = run;
-  $(key === "pi" ? "pi-run" : "pdn-run").disabled = run;
-  if (run) { $(key + "-bar").style.width = Math.round(100 * i / n) + "%"; $(key + "-prog").textContent = `${i} of ${n} rails`; }
+  $(key + "-run").disabled = run;
+  if (run) {
+    $(key + "-bar").style.width = Math.round(100 * i / n) + "%";
+    // temperature: the board first, then every rail again at its temperature
+    $(key + "-prog").textContent = key === "therm" ? (i === 0 ? "board temperature" : `IR drop at temperature: ${i} of ${n - 1} rails`) : `${i} of ${n} rails`;
+  }
 }
 
 async function solveAllPdn() {
@@ -157,8 +163,9 @@ function piSetup(net) {
 }
 
 function renderPi() {
-  for (const k of ["v", "j", "l", "b"]) $("pim-" + k).setAttribute("aria-pressed", String(k === S.piMode));
+  for (const k of ["v", "j", "l", "t", "b"]) $("pim-" + k).setAttribute("aria-pressed", String(k === S.piMode));
   for (const k of ["v", "j", "l"]) { $("pim-" + k).disabled = !S.piSolved; $("pim-" + k).title = S.piSolved ? "" : "after “Compute” in step 2"; }
+  $("pim-t").disabled = !thermOk(); $("pim-t").title = thermOk() ? "estimate" : "after “Compute” in step 3";
   renderPiSide();
   const bal = S.tab === "pi" && S.piMode === "b";
   $("pi-balance").hidden = !bal;
@@ -166,6 +173,7 @@ function renderPi() {
   if (S.tab !== "pi") return;
   if (bal) { $("pi-detail").hidden = true; renderBalance(); return; }
   if (S.piMode === "l") { renderLossDetail(); renderLayerChips(); renderLegend(); draw(); return; }
+  if (S.piMode === "t") { renderThermDetail(); renderLayerChips(); renderLegend(); draw(); return; }
   renderPiDetail();
   renderLayerChips();
   renderLegend();
@@ -188,6 +196,7 @@ function renderPiSide() {
   $("pi-run").textContent = S.piSolved ? "Recompute" : "Compute";
   $("pi-run").disabled = !nReady || !!S.piRunning;
   $("ps2").classList.toggle("done", !!S.piSolved);
+  renderThermStep();
   $("pi-step").textContent = S.piSolved
     ? `Done in ${S.piMs} ms for ${n} rail${n === 1 ? "" : "s"}. Voltage and current density per layer, drop at every load.` + (worst ? ` Largest drop: ${fmt(worst.d, 1)} mV on ${netLabel(worst.net)}.` : "")
     : nReady ? `DC voltage drop on the copper of ${nReady} rail${nReady === 1 ? "" : "s"}: zones, tracks and vias between sources and loads; a few seconds.`
@@ -410,6 +419,7 @@ function drawPi() {
   for (let l = n - 1; l >= 0; l--) { ctx.fillStyle = C.pad; ctx.fill(S.static.pads[l]); }
   ctx.globalAlpha = 1;
   if (S.piMode === "l") { drawLoss(px); return; }
+  if (S.piMode === "t") { drawThermal(px); return; }
   const r = piCurrent();
   if (r) {
     const li = piLayerIdx(r), im = piImage(r, li), g = im.g, cell = r.res.cell;
@@ -459,6 +469,7 @@ function marker(x, y, px, kind) {
 
 function showPiTip(mx, my) {
   if (S.piMode === "l") { showLossTip(mx, my); return; }
+  if (S.piMode === "t") { showThermTip(mx, my); return; }
   const tip = $("tip"), r = piCurrent();
   if (!r) { tip.hidden = true; return; }
   const li = piLayerIdx(r), g = r.res.layers[li], cell = r.res.cell;

@@ -20,6 +20,7 @@
   "pi-pdn.js",
   "pi-balance.js",
   "pi-loss.js",
+  "pi-thermal.js",
   "views.js",
   "main.js"
  ]

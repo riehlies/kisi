@@ -197,6 +197,7 @@ function drawPdnOverlay(px) {
 }
 function renderPiLayerChips() {
   if (S.piMode === "l") { renderLossChips(); return; }
+  if (S.piMode === "t") { renderThermChips(); return; }
   const su = S.scene.stackup, r = piCurrent();
   const ls = r ? r.res.layers.map((g) => g.layer) : [];
   if (r) piLayerIdx(r);
@@ -206,6 +207,7 @@ function renderPiLayerChips() {
 
 function renderPiLegend() {
   if (S.piMode === "l") { renderLossLegend(); return; }
+  if (S.piMode === "t") { renderThermLegend(); return; }
   const L = $("legend"), r = piCurrent();
   if (!r) { L.innerHTML = `<strong>Power</strong><div class="row">${S.piSolved ? "Rail without result: define source and load" : "Voltage drop not computed yet: “Compute voltage drop” in the Power card"}</div>`; return; }
   const li = piLayerIdx(r), im = piImage(r, li), sc = im.scale;

@@ -7,7 +7,7 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 * light, dark and phone layout; all three views (impedance, channel, power)
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
-  lane eye, voltage drop with ground return, impedance seen from the ICs, losses map and power flow
+  lane eye, voltage drop with ground return, impedance seen from the ICs, losses map, temperature and power flow
   (desktop layouts; --quick: only load and the three views)
 * uses the embedded example boards if the build has them, else --board
 * --config: drops a <board>.kisi.json and expects "check passed"
@@ -185,6 +185,18 @@ def run(pg, tag, desktop):
                     if not pg.evaluate("S.piMode === 'v' && !!S.piMark"):
                         problems.append(f"{tag}: click on a part in {sel} did not show it")
                     pg.click("#pim-b"); pg.wait_for_timeout(300)
+        # temperature (step 3): map per layer, junction temperatures, energy balance; a layer and the
+        # losses view in between, back to the power tree
+        if not pg.locator("#therm-run").is_disabled():
+            pg.click("#therm-run"); pg.wait_for_function(f"S.therm && !S.thermRunning && {BUSY}", timeout=300000); pg.wait_for_timeout(400)
+            if pg.evaluate("!!S.therm.error"):
+                problems.append(f"{tag}: temperature: {pg.evaluate('S.therm.error')}")
+            elif not pg.evaluate("S.piMode === 't' && S.therm.parts.length > 0 && S.therm.balance.error_rel < 1e-6 && S.therm.rails.length > 0 && !S.therm.rails.some((r) => r.error)"):
+                problems.append(f"{tag}: temperature view not shown, without parts or with failed rails")
+            step("temperature")
+            pg.click("#layers .chip >> nth=-1"); pg.wait_for_timeout(300)
+            pg.hover("#pcb"); pg.wait_for_timeout(200); step("temperature_bottom")
+            pg.click("#pim-b"); pg.wait_for_timeout(300)
         if a.config:
             pg.click("#view-si")
             pg.set_input_files("#file", [os.path.abspath(a.config)]); pg.wait_for_function(f"S.config && {BUSY}", timeout=90000)

@@ -140,12 +140,14 @@ pub struct ThermalField {
     pub theta_jc: Option<f64>,
     pub psi_jb: Option<f64>,
     pub theta_ja: Option<f64>,
+    /// junction-to-top characterisation parameter (K/W): the case top is Tj − ψJT·P
+    pub psi_jt: Option<f64>,
     pub tj_max: Option<f64>,
     /// heat dissipated in the part (W), replaces the power tree's value
     pub p: Option<f64>,
 }
 
-pub const PI_THERMAL_KEYS: &str = "theta_jb, theta_jc, psi_jb, theta_ja (K/W), tj_max (°C), p (W)";
+pub const PI_THERMAL_KEYS: &str = "theta_jb, theta_jc, psi_jb, psi_jt, theta_ja (K/W), tj_max (°C), p (W)";
 
 pub fn parse_pi_thermal(s: &str) -> Result<ThermalField, String> {
     let mut f = ThermalField::default();
@@ -164,12 +166,14 @@ pub fn parse_pi_thermal(s: &str) -> Result<ThermalField, String> {
         let (k, v) = tok.split_once('=').ok_or_else(bad)?;
         let k = k.trim().to_ascii_lowercase();
         match k.as_str() {
-            "theta_jb" | "theta_jc" | "psi_jb" | "theta_ja" => {
-                let x = num(v, &["°C/W", "C/W", "K/W"]).filter(|x| *x > 0.0).ok_or_else(bad)?;
+            "theta_jb" | "theta_jc" | "psi_jb" | "psi_jt" | "theta_ja" => {
+                // ψJT can be 0 or slightly negative in datasheets (top hotter than the die sensor)
+                let x = num(v, &["°C/W", "C/W", "K/W"]).filter(|x| if k == "psi_jt" { *x > -20.0 } else { *x > 0.0 }).ok_or_else(bad)?;
                 *match k.as_str() {
                     "theta_jb" => &mut f.theta_jb,
                     "theta_jc" => &mut f.theta_jc,
                     "psi_jb" => &mut f.psi_jb,
+                    "psi_jt" => &mut f.psi_jt,
                     _ => &mut f.theta_ja,
                 } = Some(x);
             }
@@ -277,6 +281,51 @@ pub struct PartTemp {
     pub margin_k: f64,
     /// "ok" | "near" (within 10 K) | "over"
     pub status: String,
+    /// temperature of the case top (°C) and how: "psi_jt" (Tj − ψJT·P) or "theta_jc" (Tj − θJC·heat
+    /// through the top, two-resistor model); None without data for the top
+    pub t_case_c: Option<f64>,
+    pub case_model: Option<String>,
+    /// heat paths under the part (parts with 0.1 W or more)
+    pub vias: Option<PartVias>,
+}
+
+/// Where the heat a part puts into the board goes under it.
+#[derive(Debug, Clone, Serialize)]
+pub struct PartVias {
+    /// vias and plated holes inside the area of the pads
+    pub count: usize,
+    /// heat into the board (W) and its paths out of the pad layer under the pads: through those
+    /// vias, through the laminate, and sideways in the pad layer (the rest)
+    pub to_board_w: f64,
+    pub via_w: f64,
+    pub laminate_w: f64,
+    pub lateral_w: f64,
+    /// temperature difference under the pads from the pad layer to the next layer and to the other
+    /// outer layer (K)
+    pub dt_next_k: f64,
+    pub dt_through_k: f64,
+    /// a thermal (exposed) pad among the pads
+    pub thermal_pad: bool,
+    /// hint when the part looks short of thermal vias (kisi guide values, estimates)
+    pub hint: Option<String>,
+}
+
+/// Heat through one via or plated hole.
+#[derive(Debug, Clone, Serialize)]
+pub struct ViaTemp {
+    pub at: P,
+    pub drill: f64,
+    /// copper layers it connects (index), top and bottom
+    pub from: u16,
+    pub to: u16,
+    pub net: String,
+    /// plated hole of a pad (else a via)
+    pub hole: bool,
+    /// largest heat flow through one step of its barrel (W, positive downwards)
+    pub q_w: f64,
+    /// temperature difference between its end layers (top − bottom, K) and its hottest end (°C)
+    pub dt_k: f64,
+    pub t_c: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -329,6 +378,10 @@ pub struct ThermalResult {
     pub parts: Vec<PartTemp>,
     /// copper temperature and IR drop at temperature per rail (`rail_at_temperature`)
     pub rails: Vec<RailThermal>,
+    /// vias and plated holes with the most heat flow (up to 400, the largest first), and how many
+    /// there are in all
+    pub vias: Vec<ViaTemp>,
+    pub vias_total: usize,
     pub warnings: Vec<String>,
     pub notes: Vec<String>,
     /// °C, `layers.len()` planes of nx·ny cells, NaN outside the board
@@ -440,11 +493,27 @@ struct Mesh {
     kxy: Vec<Vec<f64>>,
     /// vertical conductance per dielectric (between layer l and l+1) and compact cell (W/K)
     gz: Vec<Vec<f64>>,
+    /// the laminate's share of it per dielectric (the same in every cell, W/K)
+    g_lam: Vec<f64>,
+    /// vias and plated holes with their barrel conductance per layer step
+    barrels: Vec<Barrel>,
     area_m2: f64,
     perim_m: f64,
     long_m: f64,
     /// mask resistance per area on top / bottom (m²K/W)
     r_mask: [f64; 2],
+}
+
+/// A via or plated hole: compact cell, layer span and the conductance of each step lo→lo+1 … hi−1→hi.
+struct Barrel {
+    at: P,
+    drill: f64,
+    lo: usize,
+    hi: usize,
+    c: usize,
+    g: Vec<f64>,
+    net: u32,
+    hole: bool,
 }
 
 impl Mesh {
@@ -625,7 +694,8 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
     }
     // between layers: the dielectric and the barrels of vias and plated holes
     let a_cell = (cell * 1e-3).powi(2);
-    let mut gz: Vec<Vec<f64>> = (0..nl.saturating_sub(1)).map(|l| vec![kz_l * a_cell / (diel(l).max(1e-3) * 1e-3); nc]).collect();
+    let g_lam: Vec<f64> = (0..nl.saturating_sub(1)).map(|l| kz_l * a_cell / (diel(l).max(1e-3) * 1e-3)).collect();
+    let mut gz: Vec<Vec<f64>> = g_lam.iter().map(|&g| vec![g; nc]).collect();
     let layer_z: Vec<f64> = {
         let mut z = vec![0.0; nl];
         let mut acc = 0.0;
@@ -642,24 +712,24 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
         let t = tp.min(r);
         std::f64::consts::PI * (r * r - (r - t) * (r - t))
     };
-    let add_barrel = |at: P, drill: f64, lo: usize, hi: usize, gz: &mut Vec<Vec<f64>>, idx: &Vec<u32>| {
-        let Some((i, j)) = g.cell_of(at) else { return };
-        let c = idx[j * g.nx + i];
-        if c == u32::MAX {
-            return;
-        }
-        for l in lo..hi.min(nl - 1) {
-            let dz = ((layer_z[l + 1] - layer_z[l]) * 1e-3).max(1e-6);
-            gz[l][c as usize] += kcu * barrel(drill) / dz;
-        }
-    };
-    for v in &board.vias {
-        let (lo, hi) = (v.from.min(v.to) as usize, v.from.max(v.to) as usize);
-        add_barrel(v.at, v.drill, lo, hi, &mut gz, &idx);
-    }
+    // (position, drill, layer span, net, plated pad hole)
+    let mut spans: Vec<(P, f64, usize, usize, u32, bool)> = board.vias.iter().map(|v| (v.at, v.drill, v.from.min(v.to) as usize, v.from.max(v.to) as usize, v.net, false)).collect();
     for p in board.pads.iter().filter(|p| plated(p)) {
-        let (lo, hi) = (p.layers.iter().min().copied().unwrap_or(0) as usize, p.layers.iter().max().copied().unwrap_or(0) as usize);
-        add_barrel(p.at, p.drill, lo, hi, &mut gz, &idx);
+        spans.push((p.at, p.drill, p.layers.iter().min().copied().unwrap_or(0) as usize, p.layers.iter().max().copied().unwrap_or(0) as usize, p.net, true));
+    }
+    let mut barrels = Vec::new();
+    for (at, drill, lo, hi, net, hole) in spans {
+        let hi = hi.min(nl - 1);
+        let Some((i, j)) = g.cell_of(at) else { continue };
+        let c = idx[j * g.nx + i];
+        if c == u32::MAX || hi <= lo {
+            continue;
+        }
+        let gs: Vec<f64> = (lo..hi).map(|l| kcu * barrel(drill) / ((layer_z[l + 1] - layer_z[l]) * 1e-3).max(1e-6)).collect();
+        for (k, l) in (lo..hi).enumerate() {
+            gz[l][c as usize] += gs[k];
+        }
+        barrels.push(Barrel { at, drill, lo, hi, c: c as usize, g: gs, net, hole });
     }
     let mask_r = |m: &Option<crate::board::SolderMask>| m.as_ref().map(|m| m.thickness).unwrap_or(d.solder_mask.thickness_mm) * 1e-3 / d.solder_mask.k_w_mk;
     let (w, h) = (bb.max[0] - bb.min[0], bb.max[1] - bb.min[1]);
@@ -670,6 +740,8 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
         cells,
         kxy,
         gz,
+        g_lam,
+        barrels,
         area_m2: area_mm2 * 1e-6,
         perim_m: perim_mm * 1e-3,
         long_m: w.max(h) * 1e-3,
@@ -726,6 +798,11 @@ struct Part {
     /// (node, weight), weights sum to 1
     cells: Vec<(usize, f64)>,
     model: PartModel,
+    /// copper layer the part sits on, the area of its pads there, a thermal pad among them
+    side_l: usize,
+    pad_bb: BBox,
+    thermal_pad: bool,
+    psi_jt: Option<f64>,
 }
 
 /// Parts with heat: the losses' parts (power tree), replaced or added by `PI_THERMAL p=…`.
@@ -851,6 +928,15 @@ pub fn solve(board: &Board, rails: &[&PiResult], comps: &[CompLoss], prm: &Therm
         let at = if pb.is_valid() { Some([(pb.min[0] + pb.max[0]) / 2.0, (pb.min[1] + pb.max[1]) / 2.0]) } else { Some(fp.at) };
         let mut cells: Vec<(usize, f64)> = wsum.into_iter().map(|(n, a)| (n, a / tot)).collect();
         cells.sort_by_key(|c| c.0);
+        // the pads' area (for the vias under the part) and a thermal pad among them
+        let mut pad_bb = BBox::empty();
+        for p in pads.iter().filter(|p| p.layers.contains(&(side_l as u16))) {
+            let h = p.size[0].max(p.size[1]) / 2.0;
+            pad_bb.add([p.at[0] - h, p.at[1] - h]);
+            pad_bb.add([p.at[0] + h, p.at[1] + h]);
+        }
+        let bb_area = if pad_bb.is_valid() { (pad_bb.max[0] - pad_bb.min[0]) * (pad_bb.max[1] - pad_bb.min[1]) } else { 0.0 };
+        let thermal_pad = pads.len() >= 3 && pads.iter().any(|p| p.size[0] * p.size[1] >= 1.0 && p.size[0] * p.size[1] >= 0.15 * bb_area);
         let (family, def_jb, def_jc, area, _) = package_defaults(board, fi);
         let field_src = match &fsrc {
             Some((k, n)) if !n.is_empty() => format!("PI_THERMAL ({k}: {n})"),
@@ -900,9 +986,16 @@ pub fn solve(board: &Board, rails: &[&PiResult], comps: &[CompLoss], prm: &Therm
                 tj_max_source: tj_src,
                 margin_k: 0.0,
                 status: String::new(),
+                t_case_c: None,
+                case_model: None,
+                vias: None,
             },
             cells,
             model,
+            side_l,
+            pad_bb,
+            thermal_pad,
+            psi_jt: f.psi_jt,
         });
     }
 
@@ -1024,7 +1117,69 @@ pub fn solve(board: &Board, rails: &[&PiResult], comps: &[CompLoss], prm: &Therm
         };
         p.res.margin_k = p.res.tj_max_c - p.res.tj_c;
         p.res.status = if p.res.margin_k < 0.0 { "over" } else if p.res.margin_k < 10.0 { "near" } else { "ok" }.into();
+        // case top: ψJT from the datasheet, else the two-resistor model's case node
+        if let Some(psi) = p.psi_jt {
+            p.res.t_case_c = Some(p.res.tj_c - psi * p.res.w);
+            p.res.case_model = Some("psi_jt".into());
+        } else if let (PartModel::Network { g_top, .. }, Some(j), Some(jc)) = (&p.model, jn, p.res.theta_jc) {
+            p.res.t_case_c = Some(p.res.tj_c - jc * g_top * x[*j]);
+            p.res.case_model = Some("theta_jc".into());
+        }
+        // heat paths under the part: its vias, the laminate under the pads, sideways in the pad layer
+        if p.res.w >= 0.1 && nl > 1 {
+            let (sl, next, other) = if p.side_l == 0 { (0, 1, nl - 1) } else { (nl - 1, nl - 2, 0) };
+            let dl = sl.min(next); // the dielectric between the pad layer and the next one
+            let t = |l: usize, c: usize| x[m.node(l, c)];
+            let bb = p.pad_bb;
+            let inside = |q: P| bb.is_valid() && q[0] >= bb.min[0] - 0.1 && q[0] <= bb.max[0] + 0.1 && q[1] >= bb.min[1] - 0.1 && q[1] <= bb.max[1] + 0.1;
+            let (mut count, mut via_w) = (0usize, 0.0);
+            for b in m.barrels.iter().filter(|b| b.lo <= dl && b.hi > dl && inside(b.at)) {
+                count += 1;
+                via_w += b.g[dl - b.lo] * (t(sl, b.c) - t(next, b.c));
+            }
+            let mut seen = std::collections::HashSet::new();
+            let (mut lam_w, mut dt_next, mut dt_through) = (0.0, 0.0, 0.0);
+            for &(node, wt) in &p.cells {
+                let c = node - sl * nc;
+                dt_next += wt * (t(sl, c) - t(next, c));
+                dt_through += wt * (t(sl, c) - t(other, c));
+                if seen.insert(c) {
+                    lam_w += m.g_lam[dl] * (t(sl, c) - t(next, c));
+                }
+            }
+            let to_board_w = match (&p.model, jn) {
+                (PartModel::Network { g_jb, .. }, Some(j)) => g_jb * (x[*j] - p.cells.iter().map(|&(node, wt)| wt * x[node]).sum::<f64>()),
+                _ => p.res.w,
+            };
+            let lateral_w = to_board_w - via_w - lam_w;
+            // kisi guide values (estimates): no vias under a thermal pad, a large step to the next
+            // layer, or most of the heat staying in the pad layer of a part with some power
+            let hint = if p.thermal_pad && count == 0 && p.res.w >= 0.2 {
+                Some(format!("no via under the thermal pad: its {:.2} W spread only in the pad layer", to_board_w))
+            } else if dt_next >= 5.0 {
+                Some(format!("{dt_next:.1} K from the pad layer to the next layer under the part: more thermal vias would lower it"))
+            } else if p.thermal_pad && p.res.w >= 0.25 && to_board_w > 0.0 && via_w < 0.25 * to_board_w && lateral_w > 0.5 * to_board_w {
+                Some(format!("only {:.0} % of the heat goes down through vias, {:.0} % stays in the pad layer: more thermal vias?", 100.0 * via_w / to_board_w, 100.0 * lateral_w / to_board_w))
+            } else {
+                None
+            };
+            p.res.vias = Some(PartVias { count, to_board_w, via_w, laminate_w: lam_w, lateral_w, dt_next_k: dt_next, dt_through_k: dt_through, thermal_pad: p.thermal_pad, hint });
+        }
     }
+    // heat through every via and plated hole
+    let mut vias: Vec<ViaTemp> = m
+        .barrels
+        .iter()
+        .map(|b| {
+            let t = |l: usize| x[m.node(l, b.c)];
+            let q = (b.lo..b.hi).enumerate().map(|(k, l)| b.g[k] * (t(l) - t(l + 1))).fold(0.0f64, |a, v| if v.abs() > a.abs() { v } else { a });
+            let tmax = (b.lo..=b.hi).map(t).fold(f64::NEG_INFINITY, f64::max);
+            ViaTemp { at: b.at, drill: b.drill, from: b.lo as u16, to: b.hi as u16, net: board.net_name(b.net).to_string(), hole: b.hole, q_w: q, dt_k: t(b.lo) - t(b.hi), t_c: ta + tmax }
+        })
+        .collect();
+    let vias_total = vias.len();
+    vias.sort_by(|a, b| b.q_w.abs().total_cmp(&a.q_w.abs()));
+    vias.truncate(400);
     let out = out_top + out_bot + out_parts[0] + out_parts[1];
     let rad = (out_top + out_parts[0]) * h_rad / h_top + (out_bot + out_parts[1]) * h_rad / h_bot;
     let balance = Balance { in_w: p_total, convection_w: out - rad, radiation_w: rad, error_rel: if p_total > 0.0 { (p_total - out).abs() / p_total } else { 0.0 } };
@@ -1135,6 +1290,8 @@ pub fn solve(board: &Board, rails: &[&PiResult], comps: &[CompLoss], prm: &Therm
         hot_spots,
         parts,
         rails: vec![],
+        vias,
+        vias_total,
         warnings,
         notes,
         t,

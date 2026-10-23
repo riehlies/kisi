@@ -801,6 +801,28 @@ pub fn thermal_json(p: &Project, th: &crate::thermal::ThermalResult, prm: &crate
     let xy = |p: Option<crate::geom::P>| p.map(|p| json!([c2(p[0]), c2(p[1])]));
     let opt = |x: Option<f64>| x.map(c2);
     let co = &th.cooling;
+    let parts: Vec<Value> = th
+        .parts
+        .iter()
+        .take(30)
+        .map(|x| {
+            let mut v = json!({
+                "ref": x.refdes, "part": x.part, "heat_w": w4(x.w), "heat_source": x.w_source, "side": x.side,
+                "t_board_c": c2(x.t_board_c), "tj_c": c2(x.tj_c), "t_case_top_c": opt(x.t_case_c), "case_model": x.case_model, "tj_max_c": x.tj_max_c, "tj_max_source": x.tj_max_source, "margin_k": c2(x.margin_k), "status": x.status,
+                "model": x.model, "theta_jb": opt(x.theta_jb), "theta_jc": opt(x.theta_jc), "psi_jb": x.psi_jb, "theta_ja": x.theta_ja,
+                "to_board_share": x.to_board.map(|s| (s * 1000.0).round() / 1000.0), "package_family": x.family, "data_source": x.data_source, "estimate": x.estimate,
+            });
+            v["under_part"] = json!(x.vias.as_ref().map(|v| json!({"vias": v.count, "thermal_pad": v.thermal_pad, "into_board_w": w4(v.to_board_w), "through_vias_w": w4(v.via_w), "through_laminate_w": w4(v.laminate_w), "sideways_in_pad_layer_w": w4(v.lateral_w),
+                "dt_pad_layer_to_next_k": c2(v.dt_next_k), "dt_pad_layer_to_other_side_k": c2(v.dt_through_k), "hint": v.hint})));
+            v
+        })
+        .collect();
+    let vias = json!({
+        "total": th.vias_total,
+        "most_heat": th.vias.iter().take(20).map(|v| json!({"at": xy(Some(v.at)), "from": lname(v.from), "to": lname(v.to), "drill_mm": v.drill, "net": v.net, "plated_hole": v.hole,
+            "heat_w": (v.q_w * 1e6).round() / 1e6, "dt_k": c2(v.dt_k), "t_c": c2(v.t_c)})).collect::<Vec<_>>(),
+        "note": "heat_w: the largest heat flow through one layer step of the barrel (positive downwards), dt_k: temperature difference between its end layers; open barrels with 25 µm plating (estimate)",
+    });
     let hottest = th.parts.iter().max_by(|a, b| a.tj_c.total_cmp(&b.tj_c));
     json!({
         "estimate": "Temperatures are estimates: steady state, board in air at the ambient temperature, heat only through convection and radiation; package data from PI_THERMAL or estimated package defaults (see parts[].data_source).",
@@ -826,25 +848,22 @@ pub fn thermal_json(p: &Project, th: &crate::thermal::ThermalResult, prm: &crate
             "per_layer": th.layers.iter().map(|l| json!({"layer": l.name, "t_max_c": c2(l.t_max_c), "t_mean_c": c2(l.t_mean_c)})).collect::<Vec<_>>(),
         },
         "hot_spots": th.hot_spots.iter().map(|h| json!({"t_c": c2(h.t_c), "layer": lname(h.layer), "at": xy(Some(h.at)), "near": h.near})).collect::<Vec<_>>(),
-        "parts": th.parts.iter().take(30).map(|x| json!({
-            "ref": x.refdes, "part": x.part, "heat_w": w4(x.w), "heat_source": x.w_source, "side": x.side,
-            "t_board_c": c2(x.t_board_c), "tj_c": c2(x.tj_c), "tj_max_c": x.tj_max_c, "tj_max_source": x.tj_max_source, "margin_k": c2(x.margin_k), "status": x.status,
-            "model": x.model, "theta_jb": opt(x.theta_jb), "theta_jc": opt(x.theta_jc), "psi_jb": x.psi_jb, "theta_ja": x.theta_ja,
-            "to_board_share": x.to_board.map(|s| (s * 1000.0).round() / 1000.0), "package_family": x.family, "data_source": x.data_source, "estimate": x.estimate,
-        })).collect::<Vec<_>>(),
+        "parts": parts,
         "parts_omitted": th.parts.len().saturating_sub(30),
         "rails": th.rails.iter().map(|r| json!({
             "rail": r.net, "ground_return": r.ground, "t_copper_max_c": opt(r.t_max_c), "t_copper_mean_c": opt(r.t_mean_c),
             "max_drop_mv_20c": r.drop_mv_20c.map(|x| (x * 1e3).round() / 1e3), "max_drop_mv_at_temperature": r.drop_mv_hot.map(|x| (x * 1e3).round() / 1e3),
             "copper_loss_mw_20c": (r.loss_w_20c * 1e4).round() / 10.0, "copper_loss_mw_at_temperature": r.loss_w_hot.map(|x| (x * 1e4).round() / 10.0), "error": r.error,
         })).collect::<Vec<_>>(),
+        "vias": vias,
+        "parts_hints": th.parts.iter().filter_map(|x| x.vias.as_ref().and_then(|v| v.hint.as_ref()).map(|h| json!({"ref": x.refdes, "hint": h, "estimate": true}))).collect::<Vec<_>>(),
         "grid": {"cell_mm": th.cell, "nodes": th.nodes, "layers": th.layers.len(), "board_area_mm2": th.area_mm2.round()},
         "tree_source": tree_source,
         "config": p.config_summary(),
         "variant": p.variant.summary(),
         "warnings": warnings,
         "notes": th.notes,
-        "models": "Board: one sheet per copper layer on a uniform grid over the outline (copper fill of every net, laminate in plane and through the thickness, open via barrels), convection and radiation from both sides. Heat: copper loss of every rail and the ground return (DC solution at 20 °C), part heat from the power tree (load power V·I, regulator and pass losses) or PI_THERMAL p. Parts: JEDEC two-resistor model (θJB, θJC) or ψJB / θJA. Rails: copper temperature from the map; IR drop again with ρ(T) = ρ₂₀(1 + 0.00393/K·(T − 20 °C)) (one electro-thermal step).",
+        "models": "Board: one sheet per copper layer on a uniform grid over the outline (copper fill of every net, laminate in plane and through the thickness, open via barrels), convection and radiation from both sides. Heat: copper loss of every rail and the ground return (DC solution at 20 °C), part heat from the power tree (load power V·I, regulator and pass losses) or PI_THERMAL p. Parts: JEDEC two-resistor model (θJB, θJC) or ψJB / θJA. Rails: copper temperature from the map; IR drop again with ρ(T) = ρ₂₀(1 + 0.00393/K·(T − 20 °C)) (one electro-thermal step). Case top: Tj − ψJT·P with ψJT from PI_THERMAL, else the case node of the two-resistor model (Tj − θJC·heat through the top). Vias: heat through each barrel from the temperatures of the layers it joins; under_part splits a part's heat into vias, laminate and sideways in the pad layer; hints (no via under a thermal pad, 5 K or more to the next layer, under 25 % through vias with over 50 % sideways) are kisi guide values, estimates.",
     })
 }
 

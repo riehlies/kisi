@@ -418,3 +418,36 @@ fn outline_chaining() {
     assert!((t2.area_mm2 - 1500.0).abs() < 1.0 && t2.warnings.iter().any(|w| w.contains("does not contain all copper")), "{} {:?}", t2.area_mm2, t2.warnings);
     assert!(t2.warnings.iter().any(|w| w.starts_with("no heat")));
 }
+
+/// Heat through the vias under an exposed pad, the case top, and the hint for a thermal pad
+/// without vias.
+#[test]
+fn vias_and_case() {
+    let board = |field: &str, vias: bool| {
+        let mut extra = part("qfn", 38.1, 57.15, field);
+        if !vias {
+            extra = extra.split("(via ").next().unwrap().to_string();
+        }
+        crate::load_pcb(&board_text(76.2, 114.3, &[70.0, 35.0, 35.0, 70.0], &[0.3, 0.86, 0.3], &[1, 2], &extra)).unwrap()
+    };
+    let prm = ThermalParams { ambient_c: Some(25.0), ..Default::default() };
+    let t = solve(&board("theta_jb=17.4 theta_jc=53.6 p=0.5", true), &[], &[], &prm).unwrap();
+    let u = &t.parts[0];
+    let v = u.vias.as_ref().unwrap();
+    eprintln!("QFN with 4 vias: {v:?}, Tj {:.2}, case {:?} ({:?}), {} vias, top {:?}", u.tj_c, u.t_case_c, u.case_model, t.vias_total, t.vias.first());
+    assert_eq!((v.count, v.thermal_pad, t.vias_total), (4, true, 4));
+    assert!((v.via_w + v.laminate_w + v.lateral_w - v.to_board_w).abs() < 1e-9 && v.via_w > 0.2 * v.to_board_w && v.dt_next_k > 0.0 && v.hint.is_none());
+    // the four vias carry the heat downwards; the case top is (nearly) at the junction
+    assert!(t.vias.iter().all(|x| x.q_w > 0.0 && x.dt_k > 0.0 && x.from == 0 && x.to == 3));
+    assert!((t.vias.iter().map(|x| x.q_w).sum::<f64>() - v.via_w).abs() < 1e-9);
+    let (tc, tj) = (u.t_case_c.unwrap(), u.tj_c);
+    assert!(u.case_model.as_deref() == Some("theta_jc") && tc < tj && tj - tc < 1.0);
+    // ψJT from the datasheet: case = Tj − ψJT·P
+    let t2 = solve(&board("theta_jb=17.4 theta_jc=53.6 psi_jt=1.1 p=0.5", true), &[], &[], &prm).unwrap();
+    assert!((t2.parts[0].t_case_c.unwrap() - (t2.parts[0].tj_c - 0.55)).abs() < 1e-9 && t2.parts[0].case_model.as_deref() == Some("psi_jt"));
+    // no vias under the thermal pad: hotter, and the hint
+    let t3 = solve(&board("theta_jb=17.4 theta_jc=53.6 p=0.5", false), &[], &[], &prm).unwrap();
+    let v3 = t3.parts[0].vias.as_ref().unwrap();
+    eprintln!("QFN without vias: {v3:?}, Tj {:.2}", t3.parts[0].tj_c);
+    assert!(v3.count == 0 && v3.hint.as_deref().is_some_and(|h| h.starts_with("no via under the thermal pad")) && t3.parts[0].tj_c > tj);
+}

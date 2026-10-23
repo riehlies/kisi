@@ -216,7 +216,7 @@ function renderThermDetail() {
   const box = $("pi-detail");
   if (!thermOk()) { box.hidden = true; return; }
   const t = S.therm, c = t.cooling, hot = thermHottest(), n = S.scene.stackup.copper.length;
-  const st = (p) => p.status === "over" ? "over Tj max" : p.status === "near" ? "near Tj max" : "";
+  const st = (p) => p.status === "over" ? `<span title="over its Tj max">over</span>` : p.status === "near" ? `<span title="within 10 K of its Tj max">near</span>` : "";
   const thermTitle = (p) => `${p.model === "theta_jb" ? `θJB ${fmt(p.theta_jb, 1)}${p.theta_jc ? `, θJC ${fmt(p.theta_jc, 1)}` : ""} K/W` : p.model === "psi_jb" ? `ψJB ${fmt(p.psi_jb, 1)} K/W` : `θJA ${fmt(p.theta_ja, 1)} K/W (JEDEC board)`} – ${p.data_source}; Tj max: ${p.tj_max_source}${p.w_source === "PI_THERMAL p" ? "; heat from PI_THERMAL" : ""}`;
   const viaCell = (p) => {
     const v = p.vias;

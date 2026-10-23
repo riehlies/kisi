@@ -72,7 +72,7 @@ function renderBalance() {
       <div class="bal-legend"><span><i style="background:var(--pw-use)"></i>delivered</span><span><i style="background:var(--pw-loss)"></i>losses</span></div>
       <p class="note">Rails behind shunts and ferrites are merged into the rail before them. ${S.piSolved ? "Copper losses of the rails and of the ground return come from step 2." : "Copper losses (rails and ground return) join after step 2."}</p></div>` : ""}
     <div class="bal-cols">
-      <div class="bal-card"><h4>Power tree <em>currents in A are editable</em></h4><div class="tree">${rows.join("")}</div>
+      <div class="bal-card"><h4>Power tree <em>currents are editable: 12 mA, 12m, 0.012</em></h4><div class="tree">${rows.join("")}</div>
         <div class="bal-actions" style="margin-top:8px"><button class="btn small" id="bal-reset">Reset values</button><span class="note">Changes are stored in this browser.</span></div></div>
       <div class="bal-card bal-comp"><h4>Components <em>${comps.length} with ≥ 0.5 mW</em></h4>
         <div class="bal-legend"><span><i style="background:var(--pw-use)"></i>consumption</span><span><i style="background:var(--pw-loss)"></i>loss (regulator, shunt, ferrite)</span></div>

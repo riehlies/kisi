@@ -1,7 +1,7 @@
 //! Reading Touchstone files (S-parameters, versions 1.x and 2.x) for the channel behind a
-//! connector: a 2-port (single-ended lane, or the same 2-port on every line of a pair) or a
-//! 4-port of a pair (reduced to the differential mode). N-ports with crosstalk between lanes
-//! belong to the multi-lane network (milestone M2) and are refused here.
+//! connector: a 2-port (single-ended lane, or the same 2-port on every line of a pair), a 4-port
+//! of a pair, or an N-port for all lanes of a connector with a port map per pin (`eye::TsRef`);
+//! the lane network (`kisi_si::lanenet`) takes 4-ports and N-ports as S-parameter blocks.
 
 use super::{Abcd, Cx};
 use std::f64::consts::PI;
@@ -101,8 +101,8 @@ pub fn parse_touchstone(text: &str, name: &str) -> Result<Touchstone, String> {
         return Err(format!("{name}: only S-parameters are read (the option line names Y, Z, H or G)"));
     }
     let n = nports.ok_or_else(|| format!("{name}: number of ports unknown (name the file .s2p / .s4p or give [Number of Ports])"))?;
-    if n == 0 || n > 4 || n == 3 {
-        return Err(format!("{name}: {n}-port – kisi reads 2-ports and 4-ports here; N-ports with crosstalk come with the multi-lane network (M2)"));
+    if n == 0 || n > 64 {
+        return Err(format!("{name}: {n}-port – kisi reads 1 to 64 ports"));
     }
     let per = 1 + 2 * n * n;
     let (mut freq, mut s) = (vec![], vec![]);
@@ -262,7 +262,7 @@ impl Touchstone {
                 }
                 notes.push(format!("{}: 4-port reduced to the differential mode (ports {order})", self.name));
             }
-            n => return Err(format!("{}: {n}-port not supported here", self.name)),
+            n => return Err(format!("{}: {n}-port – give the port of every connector pin (touchstone \"ports\": {{\"<pin>\": [port at the connector, port at the far end]}})", self.name)),
         }
         if flip {
             out = out.iter().map(reversed).collect();
@@ -371,7 +371,12 @@ mod tests {
     #[test]
     fn refused_files() {
         assert!(parse_touchstone("# GHz Z MA R 50\n1 1 0 0 0 0 0 1 0\n2 1 0 0 0 0 0 1 0\n", "z.s2p").unwrap_err().contains("only S-parameters"));
-        assert!(parse_touchstone("# GHz S MA R 50\n1 1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0\n", "x.s3p").unwrap_err().contains("3-port"));
+        // a 3-port is read (as an N-port it needs a port map), 65 ports are not
+        let three = "# GHz S MA R 50\n1 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0\n2 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0\n";
+        let t3 = parse_touchstone(three, "x.s3p").unwrap();
+        assert_eq!(t3.nports, 3);
+        assert!(t3.per_line_abcd(&[1e9], false, None, false).unwrap_err().contains("port of every connector pin"));
+        assert!(parse_touchstone("# GHz S MA R 50\n1 1 0\n", "x.s65p").unwrap_err().contains("65-port"));
         assert!(parse_touchstone("# GHz S MA R 50\n1 1 0 0 0 0 0 1 0\n", "x.s2p").unwrap_err().contains("fewer than two"));
         // version 2 with keywords and 12_21 order
         let v2 = "[Version] 2.0\n# GHz S RI R 50\n[Number of Ports] 2\n[Two-Port Data Order] 12_21\n[Number of Frequencies] 2\n[Network Data]\n1 0 0 0.1 0 0.9 0 0 0\n2 0 0 0.1 0 0.8 0 0 0\n[End]\n";

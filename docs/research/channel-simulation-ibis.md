@@ -433,10 +433,10 @@ of chains, admittances, S blocks and sources; equal to the cascade to 1e-11 in t
 Gaussian window, band-edge, precursor and settling checks, passivity of S-matrices), `kisi_si::lanenet` (a lane's
 blocks with the ends). Pairs are 4-ports in the check and the eye (lanes and nets without devices), with mode
 conversion; a 4-port Touchstone file behind a connector enters as an S block with mode conversion; multi-drop lines
-along one path are checked at every receiver. On the example boards no verdict changed; loss at Nyquist of the
+along one path are checked at every receiver; one N-port file behind a connector serves all its lanes (a port map
+per pin), the other lanes are worst-case aggressors in the eye. On the example boards no verdict changed; loss at Nyquist of the
 ThunderScope PCIe lanes moves by up to ±0.7 dB because P and N differ, mode conversion reaches −6.4 dB where the
-intra-pair skew is 11 ps. Open: N-port files for several lanes with crosstalk, multi-drop trees through series
-parts, pairs on multi-drop lines, coupled fork branches of a pair, terminations across a pair as a 4-port element.
+intra-pair skew is 11 ps. Open: the aggressors' own board traces, multi-drop trees through series parts, pairs on multi-drop lines, coupled fork branches of a pair, terminations across a pair as a 4-port element.
 
 About 55–85 focused days in total. M0 and M1 are useful alone (correct ThunderScope lanes; `kisi ibis` as a model
 inspector). A DDR test board is needed from M5 on: Antmicro's open KiCad boards (Apache-2.0) with a Kintex-7 and a

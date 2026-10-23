@@ -79,7 +79,10 @@ pub struct ConnEnd {
 
 /// A Touchstone file for the channel behind a connector: `.s2p` (single-ended lanes, or the
 /// same 2-port on every line of a pair) or `.s4p` (a pair; `port_order` "1-3,2-4" or
-/// "1-2,3-4"); port 1 at the connector unless `flip`.
+/// "1-2,3-4"); port 1 at the connector unless `flip`. Or one file for all lanes of the
+/// connector (`.sNp`, also a 4-port of two single-ended lanes): `ports` gives, per connector
+/// pin, the file's port at the connector and at the far end (1-based); the other lanes of the
+/// connector in the file are aggressors in the eye.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 #[serde(default)]
 pub struct TsRef {
@@ -89,6 +92,9 @@ pub struct TsRef {
     pub port_order: Option<String>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub flip: bool,
+    /// connector pin → [port at the connector, port at the far end] (1-based)
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub ports: std::collections::BTreeMap<String, [usize; 2]>,
 }
 
 impl ConnEnd {
@@ -205,7 +211,23 @@ pub struct Eye {
     pub pulse_v: Vec<f64>,
     /// the step response behind it: DC point, band edge, precursor, settling
     pub td: TdCheck,
+    /// crosstalk from other lanes (an N-port file behind a connector): included in `height` and
+    /// `width_ps` as the worst case
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub xt: Option<EyeXt>,
     pub warnings: Vec<String>,
+}
+
+/// Worst-case crosstalk in an eye: every aggressor with its worst bit pattern and phase.
+#[derive(Debug, Clone, Serialize)]
+pub struct EyeXt {
+    /// aggressor lanes and the peak crosstalk of each (fraction of the swing: Σ|cursors| at
+    /// the aggressor's worst phase)
+    pub aggressors: Vec<(String, f64)>,
+    /// their sum: the eye closes by twice this (ones pulled down, zeros pulled up)
+    pub peak: f64,
+    /// the eye height without crosstalk
+    pub height_alone: f64,
 }
 
 fn prbs(order: u32) -> Vec<u8> {
@@ -248,6 +270,13 @@ pub fn eye(ch: &Channel, ep: &EyeParams) -> Result<Eye, String> {
 /// Eye from a transfer function `h` on the channel grid (f_k = k·df) with its DC point `dc`
 /// (None: extrapolated from the lowest frequency) and the channel's static delay (ps).
 pub fn eye_of(freq: &[f64], h: &[Cx], dc: Option<f64>, delay_ps: f64, ep: &EyeParams) -> Result<Eye, String> {
+    eye_with_xt(freq, h, dc, delay_ps, ep, &[])
+}
+
+/// As `eye_of`, with crosstalk from aggressors (label, transfer from the aggressor's emf to this
+/// receiver, its value at 0 Hz; same units as `h`): each with its worst bit pattern at its worst
+/// phase, summed (peak distortion) – the eye's height and width include it.
+pub fn eye_with_xt(freq: &[f64], h: &[Cx], dc: Option<f64>, delay_ps: f64, ep: &EyeParams, xt: &[(String, Vec<Cx>, f64)]) -> Result<Eye, String> {
     if freq.len() < 10 || h.len() != freq.len() {
         return Err("no transfer function".into());
     }
@@ -320,9 +349,21 @@ pub fn eye_of(freq: &[f64], h: &[Cx], dc: Option<f64>, delay_ps: f64, ep: &EyePa
         }
         *out = acc;
     }
+    // crosstalk: per aggressor the largest sum of |cursors| over the phases
+    let xt_each: Vec<(String, f64)> = xt
+        .iter()
+        .map(|(label, hx, dcx)| {
+            let s = Step::new(freq, hx, Some(*dcx), ep.rise).samples(dt, nt);
+            let q: Vec<f64> = (0..nt).map(|i| s[i] - if i >= spu { s[i - spu] } else { 0.0 }).collect();
+            let worst = (0..spu).map(|d| (d..nt).step_by(spu).map(|i| q[i].abs()).sum::<f64>()).fold(0.0, f64::max);
+            (label.clone(), worst)
+        })
+        .collect();
+    let xpk: f64 = xt_each.iter().map(|x| x.1).sum();
     // the bit decided at sample n with phase offset d from the main cursor:
     // n = k·spu + ipk + d  →  bit k
     let thr = dc / 2.0;
+    let mut best_alone = f64::NEG_INFINITY;
     let half = (spu / 2) as isize;
     let mut best = (f64::NEG_INFINITY, 0isize);
     let mut open: Vec<bool> = Vec::with_capacity(spu);
@@ -336,6 +377,8 @@ pub fn eye_of(freq: &[f64], h: &[Cx], dc: Option<f64>, delay_ps: f64, ep: &EyePa
                 hi0 = hi0.max(v[n]);
             }
         }
+        best_alone = best_alone.max(lo1 - hi0);
+        let (lo1, hi0) = (lo1 - xpk, hi0 + xpk);
         let h = lo1 - hi0;
         open.push(lo1 > thr && hi0 < thr);
         if h > best.0 {
@@ -399,6 +442,7 @@ pub fn eye_of(freq: &[f64], h: &[Cx], dc: Option<f64>, delay_ps: f64, ep: &EyePa
         pulse_t_ps,
         pulse_v,
         td: step.check.clone(),
+        xt: (!xt.is_empty()).then(|| EyeXt { aggressors: xt_each, peak: xpk, height_alone: best_alone.max(0.0) }),
         warnings,
     })
 }
@@ -573,6 +617,10 @@ pub struct CheckRow {
     /// multi-drop: the eye at every receiver (the row's eye is the worst)
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub receivers: Vec<RxEye>,
+    /// crosstalk from other lanes of an N-port file behind the connector: the worst-case peak
+    /// (fraction of the swing; the eye height includes twice this)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub xt_peak: Option<f64>,
 }
 
 /// The eye at one receiver of a multi-drop line.
@@ -616,6 +664,7 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
         model: "single-ended",
         mode_conversion_db: None,
         receivers: vec![],
+        xt_peak: None,
     }
 }
 

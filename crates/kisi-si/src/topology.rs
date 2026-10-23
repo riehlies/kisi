@@ -1445,6 +1445,7 @@ pub fn lane_eval(
     reversed: bool,
     conn_end: Option<&crate::eye::ConnEnd>,
     rest_ts: Option<&crate::rf::Touchstone>,
+    xt_lanes: &[crate::lanenet::XtLane],
     cd: &ComponentData,
 ) -> Result<LaneEval, String> {
     use crate::lanenet::{apply_pair, receivers_transfer, rest_block, Block};
@@ -1486,10 +1487,12 @@ pub fn lane_eval(
         // a lane ending at a connector: the rest of the channel is off the board; the eye
         // uses the connector end model in place of the receiver or the transmitter there
         let mut conn_side: Option<bool> = None; // the connector receives (true) or sends
+        let mut conn_pins: Vec<String> = Vec::new(); // the lane's pins there (P, N)
         if lane.kind == "ic-connector" {
             if let Some(ci) = lane.ends.iter().position(|e| e.role == "connector") {
                 let receives = ci == rx_end;
                 conn_side = Some(receives);
+                conn_pins = connector_pins(lane, &lane.ends[ci].refdes);
                 let prof = if receives { rx } else { tx };
                 let m = match conn_end.map(|c| c.resolve(prof, target)) {
                     Some(Ok(m)) => m,
@@ -1571,7 +1574,7 @@ pub fn lane_eval(
                 rest_note = format!("; behind the connector: Touchstone file {} not loaded – the eye covers the board share", tr.file);
                 return vec![bb];
             }
-            match rest_block(ce, rest_ts, &freq, lines, out.ch.diff, bitrate / 2.0, z0) {
+            match rest_block(ce, rest_ts, &freq, lines, out.ch.diff, bitrate / 2.0, z0, &conn_pins[..lines.min(conn_pins.len())], xt_lanes) {
                 Ok((rb, note)) => {
                     rest_note = match (&ce.touchstone, rest_ts) {
                         (Some(_), Some(ts)) => format!("; behind the connector {} ({}-port{})", ts.name, ts.nports, if note.is_empty() { String::new() } else { format!("; {note}") }),
@@ -1606,7 +1609,7 @@ pub fn lane_eval(
                 .into_iter()
                 .map(|r| {
                     let g = 20.0 * r.h[k_nyq].abs().max(1e-12).log10();
-                    crate::eye::eye_of(&freq, &r.h, Some(r.dc), delay, &ep).map(|e| (if r.label.is_empty() { rx_pin.clone() } else { r.label }, e, g))
+                    crate::eye::eye_with_xt(&freq, &r.h, Some(r.dc), delay, &ep, &r.xt).map(|e| (if r.label.is_empty() { rx_pin.clone() } else { r.label }, e, g))
                 })
                 .collect()
         });
@@ -1632,6 +1635,27 @@ pub fn lane_eval(
         }
     }
     Ok(out)
+}
+
+/// The lane's pins at connector `refdes`: the line's, then the partner's (pairs).
+pub fn connector_pins(lane: &Lane, refdes: &str) -> Vec<String> {
+    let own = lane.ends.iter().find(|e| e.refdes == refdes).map(|e| e.pin.clone());
+    let partner = lane.partner_ends.iter().find(|e| e.refdes == refdes).map(|e| e.pin.clone());
+    own.into_iter().chain(partner.filter(|_| lane.diff)).collect()
+}
+
+/// The lanes ending at connector `refdes` (possible aggressors in one N-port file behind it):
+/// their pins there and whether the connector is their transmitting end (the guessed direction,
+/// `Lane::rx_end`).
+pub fn connector_lanes<'l>(lanes: impl IntoIterator<Item = &'l Lane>, refdes: &str) -> Vec<crate::lanenet::XtLane> {
+    lanes
+        .into_iter()
+        .filter(|l| l.kind == "ic-connector")
+        .filter_map(|l| {
+            let ci = l.ends.iter().position(|e| e.refdes == refdes && e.role == "connector")?;
+            Some(crate::lanenet::XtLane { label: l.name.clone(), pins: connector_pins(l, refdes), sends: ci != l.rx_end })
+        })
+        .collect()
 }
 
 /// The board's block of a single line: the cascade, or with receivers on side stubs the path in
@@ -1661,13 +1685,14 @@ pub fn check_lane(
     reversed: bool,
     conn_end: Option<&crate::eye::ConnEnd>,
     rest_ts: Option<&crate::rf::Touchstone>,
+    xt_lanes: &[crate::lanenet::XtLane],
     cd: &ComponentData,
 ) -> crate::eye::CheckRow {
     let mut row = crate::eye::empty_row(lane.nets[0], lane.name.clone(), gbps);
     row.eye_board_share = lane.kind == "ic-connector";
     let rp = RfParams { fmax: rp.fmax.max(gbps * 1e9 * 1.25), ..rp.clone() };
     let (tx, rx, rise) = ends;
-    match lane_eval(board, an, field, lane, target, &rp, Some((gbps * 1e9, rise.unwrap_or(rp.rise), 7, tx, rx)), reversed, conn_end, rest_ts, cd) {
+    match lane_eval(board, an, field, lane, target, &rp, Some((gbps * 1e9, rise.unwrap_or(rp.rise), 7, tx, rx)), reversed, conn_end, rest_ts, xt_lanes, cd) {
         Ok(ev) => {
             // without a channel model behind the connector the eye covers the board share only
             row.eye_board_share = lane.kind == "ic-connector" && !ev.rest_applied;
@@ -1680,6 +1705,7 @@ pub fn check_lane(
                     row.eye = true;
                     row.eye_height = e.height;
                     row.eye_width_ui = e.width_ps / e.ui_ps;
+                    row.xt_peak = e.xt.as_ref().map(|x| x.peak);
                 }
                 Some(Err(e)) => {
                     row.eye = true;
@@ -1981,7 +2007,7 @@ mod tests {
             assert_eq!(l.partner_shunts.len(), 0);
             let target = Some((100.0, true));
             let odd = lane_channel(&board, &an, l, &HashMap::new(), target, &rp, false, false, &cd).unwrap();
-            let ev = lane_eval(&board, &an, &HashMap::new(), l, target, &rp, Some((5e9, 40e-12, 7, ends.0, ends.1)), false, None, None, &cd).unwrap();
+            let ev = lane_eval(&board, &an, &HashMap::new(), l, target, &rp, Some((5e9, 40e-12, 7, ends.0, ends.1)), false, None, None, &[], &cd).unwrap();
             assert_eq!(ev.model, "4-port");
             let scd = ev.scd21_db.as_ref().unwrap().iter().cloned().fold(f64::NEG_INFINITY, f64::max);
             let eye4 = ev.eye.unwrap().unwrap();
@@ -2030,7 +2056,7 @@ mod tests {
         let rp = RfParams { fmax: 15e9, npts: 300, ..RfParams::default() };
         let end = Some(crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.0 });
         let target = Some((50.0, false));
-        let ev = lane_eval(&board, &an, &HashMap::new(), l, target, &rp, Some((2e9, 100e-12, 7, end, end)), false, None, None, &cd).unwrap();
+        let ev = lane_eval(&board, &an, &HashMap::new(), l, target, &rp, Some((2e9, 100e-12, 7, end, end)), false, None, None, &[], &cd).unwrap();
         assert_eq!(ev.ch.taps.len(), 1);
         assert!(ev.ch.segments.iter().any(|s| s.kind == "branch" && s.part.as_deref().is_some_and(|p| p.ends_with("to U3.1 (receiver)"))), "{:?}", ev.ch.segments);
         let pins: Vec<&str> = ev.receivers.iter().map(|r| r.pin.as_str()).collect();
@@ -2043,9 +2069,76 @@ mod tests {
         eprintln!("receivers {:?}, open stub {:.3}", ev.receivers, open.height);
         assert!(ev.receivers[0].eye_height < open.height - 0.05, "{} vs {}", ev.receivers[0].eye_height, open.height);
         // the check row carries every receiver
-        let row = check_lane(&board, &an, &HashMap::new(), l, target, &rp, 2.0, (end, end, Some(100e-12)), false, None, None, &cd);
+        let row = check_lane(&board, &an, &HashMap::new(), l, target, &rp, 2.0, (end, end, Some(100e-12)), false, None, None, &[], &cd);
         assert_eq!(row.receivers.len(), 2);
         assert!((row.eye_height - worst).abs() < 1e-9);
+    }
+
+    /// Two single-ended lanes U1 → J1 (pins 1 and 2) with one 4-port file behind J1 for both
+    /// (port map per pin): each lane's eye has the other lane as aggressor through the file.
+    #[test]
+    fn n_port_file_behind_a_connector() {
+        let pcb = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (4 "In1.Cu" signal) (2 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.2) (material "FR4") (epsilon_r 4.3) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 2" (type "core") (thickness 1.2) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "A") (net 2 "B") (net 4 "GND")
+  (footprint "U" (layer "F.Cu") (at 0 0) (property "Reference" "U1") (property "Value" "IC") (attr smd)
+    (pad "1" smd rect (at 0 0) (size 0.4 0.4) (layers "F.Cu") (net 1 "A"))
+    (pad "2" smd rect (at 0 2) (size 0.4 0.4) (layers "F.Cu") (net 2 "B")))
+  (footprint "J" (layer "F.Cu") (at 30 0) (property "Reference" "J1") (property "Value" "conn") (attr smd)
+    (pad "1" smd rect (at 0 0) (size 0.4 0.4) (layers "F.Cu") (net 1 "A"))
+    (pad "2" smd rect (at 0 2) (size 0.4 0.4) (layers "F.Cu") (net 2 "B")))
+  (segment (start 0 0) (end 30 0) (width 0.35) (layer "F.Cu") (net 1))
+  (segment (start 0 2) (end 30 2) (width 0.35) (layer "F.Cu") (net 2))
+  (zone (net 4) (net_name "GND") (layer "In1.Cu") (filled_polygon (layer "In1.Cu") (pts (xy -5 -5) (xy 35 -5) (xy 35 8) (xy -5 8)))))
+"#;
+        let board = crate::board::load_pcb(pcb).unwrap();
+        let cd = ComponentData::builtin();
+        let (an, lanes) = lanes_of(&board);
+        let la = lanes.iter().find(|l| l.name == "A").expect("lane A");
+        assert_eq!(la.kind, "ic-connector");
+        let xt = connector_lanes(&lanes, "J1");
+        assert_eq!(xt.len(), 2);
+        assert_eq!(connector_pins(la, "J1"), vec!["1".to_string()]);
+        // the file: two coupled 50 Ω lines (even 56, odd 44.5 Ω), 50 mm
+        let rp = RfParams { fmax: 15e9, npts: 150, ..RfParams::default() };
+        let freq: Vec<f64> = (1..=150).map(|k| k as f64 * 0.1e9).collect();
+        let mut text = String::from("# Hz S RI R 50\n");
+        for &f in &freq {
+            let ln = |z: f64, e: f64| crate::rf::Abcd::line(2.0, z * e.sqrt() / crate::rf::C0, 1e-4, e.sqrt() / (z * crate::rf::C0), 2.0 * std::f64::consts::PI * f, 0.05);
+            let sm = crate::rf::s_of(&crate::rf::coupled(&ln(56.0, 3.4), &ln(44.5, 3.0)), 50.0);
+            text += &format!("{f}");
+            for r in sm {
+                for c in r {
+                    text += &format!(" {:.12e} {:.12e}", c.re, c.im);
+                }
+            }
+            text += "\n";
+        }
+        let ts = crate::rf::parse_touchstone(&text, "cable.s4p").unwrap();
+        let mut ports = std::collections::BTreeMap::new();
+        ports.insert("1".to_string(), [1, 3]);
+        ports.insert("2".to_string(), [2, 4]);
+        let ce = crate::eye::ConnEnd { model: "matched".into(), touchstone: Some(crate::eye::TsRef { file: "cable.s4p".into(), ports, ..Default::default() }), ..Default::default() };
+        let end = Some(crate::eye::EndModel { r: 50.0, c_pf: 0.5, l_nh: 0.0 });
+        let ev = lane_eval(&board, &an, &HashMap::new(), la, Some((50.0, false)), &rp, Some((5e9, 50e-12, 7, end, end)), la.rx_end == 0, Some(&ce), Some(&ts), &xt, &cd).unwrap();
+        assert!(ev.rest_applied, "{:?}", ev.end_note);
+        assert!(ev.end_note.as_deref().unwrap_or("").contains("1 aggressor lane"), "{:?}", ev.end_note);
+        let e = ev.eye.unwrap().unwrap();
+        let x = e.xt.clone().expect("crosstalk in the eye");
+        eprintln!("eye {:.3} (alone {:.3}), crosstalk {:?}", e.height, x.height_alone, x.aggressors);
+        assert_eq!(x.aggressors.len(), 1);
+        assert_eq!(x.aggressors[0].0, "B");
+        assert!(x.peak > 0.005 && e.height < x.height_alone);
+        // without the port map the 4-port of two single lines is refused for a single-ended lane
+        let ce2 = crate::eye::ConnEnd { touchstone: Some(crate::eye::TsRef { file: "cable.s4p".into(), ..Default::default() }), ..ce.clone() };
+        let ev2 = lane_eval(&board, &an, &HashMap::new(), la, Some((50.0, false)), &rp, Some((5e9, 50e-12, 7, end, end)), la.rx_end == 0, Some(&ce2), Some(&ts), &xt, &cd).unwrap();
+        assert!(!ev2.rest_applied && ev2.end_note.unwrap().contains("needs a differential lane"));
     }
 
     #[test]

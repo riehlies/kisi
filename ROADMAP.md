@@ -45,9 +45,10 @@ Planned and possible work after 0.2.4, roughly in order of priority. Each item s
   the via they leave through yet; the transmit direction of lanes from an IC to a connector is a guess.
 - **Channel network, M2 follow-ups.** M2's first increment (`kisi_si::rf::network`, `rf::timedomain`, `lanenet`)
   checks pairs as 4-ports with mode conversion and multi-drop lines along one path per receiver. Open:
-  - N-port files behind a connector with crosstalk between lanes (one file for all lanes of a connector or cable,
-    a port map per lane in `connector_ends`, the other lanes as aggressors in the eye); today a connector takes a
-    2-port or a pair's 4-port, without coupling to the other lanes;
+  - N-port files behind a connector: one file for all lanes with a port map per pin works, the other lanes are
+    worst-case aggressors entering at the connector; open: the aggressors' own board traces and transmitters
+    (today the victim's profile, without their traces – conservative), synchronous aggressors with a known phase
+    instead of the worst phase, crosstalk on the board between the lanes (the coupling scan) in the same eye;
   - multi-drop trees through series parts (DDR fly-by with VTT terminations), pairs on multi-drop lines;
   - a pair's fork branches (board as it is, variant `default`) and terminations across a pair as coupled 4-port
     elements (today per line; the common mode is terminated per line, centre-tapped);

@@ -543,7 +543,12 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             // a lane ending at a connector: the end model there (kisi.json connector_ends)
             let cend = l.ends.iter().find(|e| e.role == "connector").and_then(|e| p.config.as_ref()?.connector_ends.get(&e.refdes)).map(|e| &e.end);
             let cts = cend.and_then(|c| c.touchstone.as_ref()).and_then(|tr| p.touchstones.get(&tr.file)?.as_ref().ok());
-            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, cend, cts, &cd);
+            // one N-port file for the lanes of a connector: the others are aggressors
+            let xt = match (cend.and_then(|c| c.touchstone.as_ref()).filter(|t| !t.ports.is_empty()), l.ends.iter().find(|e| e.role == "connector")) {
+                (Some(_), Some(e)) => topology::connector_lanes(buses.iter().flat_map(|b| &b.lanes), &e.refdes),
+                _ => vec![],
+            };
+            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, cend, cts, &xt, &cd);
             // length-weighted impedance of the lane's nets
             let (mut len, mut zs, mut lo, mut hi) = (0.0, 0.0, f64::INFINITY, f64::NEG_INFINITY);
             for st in p.an.nets.iter().filter(|s| l.nets.contains(&s.net)) {
@@ -587,6 +592,9 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             j["model"] = json!(row.model);
             if !row.receivers.is_empty() {
                 j["receivers"] = json!(row.receivers);
+            }
+            if let Some(x) = row.xt_peak {
+                j["crosstalk_peak"] = json!(x);
             }
             if let Some(mc) = row.mode_conversion_db {
                 j["mode_conversion_db"] = json!(mc);

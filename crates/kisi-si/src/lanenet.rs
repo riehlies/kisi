@@ -33,20 +33,33 @@ pub enum Block {
     /// a pair: 4×4 cascade matrices (state V_P V_N I_P I_N) per frequency and at 0 Hz
     Four { t: Vec<M4>, dc: M4 },
     /// S-parameters on the channel's grid (a Touchstone file): port indices `near` (one per line,
-    /// P first) at the boundary before the block, `far` after it; other ports are terminated in
-    /// their reference impedance. `s[k]` is N×N row-major, `dc` the same at 0 Hz.
-    S { s: Vec<Vec<Cx>>, dc: Vec<Cx>, z0: Vec<f64>, near: Vec<usize>, far: Vec<usize> },
+    /// P first) at the boundary before the block, `far` after it; the ports of aggressors `xt`
+    /// carry their transmitter and receiver, other ports are terminated in their reference
+    /// impedance. `s[k]` is N×N row-major, `dc` the same at 0 Hz.
+    S { s: Vec<Vec<Cx>>, dc: Vec<Cx>, z0: Vec<f64>, near: Vec<usize>, far: Vec<usize>, xt: Vec<XtSrc> },
     /// one line with receivers on side stubs (multi-drop): the main path in pieces and the
     /// stubs to the receivers (`rf::Tap`, hanging behind piece `after`)
     Line { pieces: Vec<(Vec<Abcd>, Abcd)>, taps: Vec<Tap> },
 }
 
-/// The transfer to one receiver (`label`: its pin; empty for the lane's own receiver).
+/// An aggressor in an S block (another lane of the connector in the same file): its
+/// transmitter at the file's ports `drive` (one per line, P first), its other end at `load`
+/// (terminated with the receiver model).
+#[derive(Debug, Clone)]
+pub struct XtSrc {
+    pub label: String,
+    pub drive: Vec<usize>,
+    pub load: Vec<usize>,
+}
+
+/// The transfer to one receiver (`label`: its pin; empty for the lane's own receiver), and the
+/// crosstalk into it from every aggressor (label, transfer, value at 0 Hz), in the same units.
 #[derive(Debug, Clone)]
 pub struct RxTransfer {
     pub label: String,
     pub h: Vec<Cx>,
     pub dc: f64,
+    pub xt: Vec<(String, Vec<Cx>, f64)>,
 }
 
 impl Block {
@@ -63,7 +76,7 @@ impl Block {
         match self {
             Block::Two { m, dc } => Block::Two { m: m.iter().map(reversed).collect(), dc: reversed(dc) },
             Block::Four { t, dc } => Block::Four { t: t.iter().map(flip4).collect(), dc: flip4(dc) },
-            Block::S { s, dc, z0, near, far } => Block::S { s: s.clone(), dc: dc.clone(), z0: z0.clone(), near: far.clone(), far: near.clone() },
+            Block::S { s, dc, z0, near, far, xt } => Block::S { s: s.clone(), dc: dc.clone(), z0: z0.clone(), near: far.clone(), far: near.clone(), xt: xt.clone() },
             Block::Line { pieces, taps } => {
                 // the pieces in reverse order, each seen from its other end; a tap behind piece j
                 // now hangs behind piece n − 2 − j
@@ -136,6 +149,9 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
     let ws: Vec<f64> = std::iter::once(0.0).chain(freq.iter().map(|&f| 2.0 * PI * f)).collect();
     let mut net = Network::new(npts);
     let mut taps: Vec<(String, usize)> = Vec::new();
+    // aggressors: (label, drive nodes per line) and the nodes of their other ends
+    let mut aggr: Vec<(String, Vec<usize>)> = Vec::new();
+    let mut aggr_loads: Vec<usize> = Vec::new();
     let bnd: Vec<Vec<usize>> = (0..=blocks.len()).map(|i| (0..lines).map(|l| net.node(format!("boundary {i}, line {l}"))).collect()).collect();
     for (i, b) in blocks.iter().enumerate() {
         match b {
@@ -147,14 +163,23 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
                 let all: Vec<M4> = std::iter::once(*dc).chain(t.iter().copied()).collect();
                 net.four_port([bnd[i][0], bnd[i][1]], [bnd[i + 1][0], bnd[i + 1][1]], &all);
             }
-            Block::S { s, dc, z0, near, far } => {
+            Block::S { s, dc, z0, near, far, xt } => {
                 let np = z0.len();
                 let mut nodes = Vec::with_capacity(np);
+                let mut xt_nodes: Vec<Vec<usize>> = xt.iter().map(|x| vec![0; x.drive.len()]).collect();
                 for p in 0..np {
                     let node = if let Some(l) = near.iter().position(|&q| q == p) {
                         bnd[i][l]
                     } else if let Some(l) = far.iter().position(|&q| q == p) {
                         bnd[i + 1][l]
+                    } else if let Some((a, l)) = xt.iter().enumerate().find_map(|(a, x)| x.drive.iter().position(|&q| q == p).map(|l| (a, l))) {
+                        let n = net.node(format!("block {i}, port {} (aggressor {})", p + 1, xt[a].label));
+                        xt_nodes[a][l] = n;
+                        n
+                    } else if xt.iter().any(|x| x.load.contains(&p)) {
+                        let n = net.node(format!("block {i}, port {} (aggressor end)", p + 1));
+                        aggr_loads.push(n);
+                        n
                     } else {
                         // a port of the file this lane does not use: terminated
                         let n = net.node(format!("block {i}, port {}", p + 1));
@@ -165,6 +190,9 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
                 }
                 let all: Vec<Vec<Cx>> = std::iter::once(dc.clone()).chain(s.iter().cloned()).collect();
                 net.s_block(nodes, z0.clone(), all);
+                for (x, n) in xt.iter().zip(xt_nodes) {
+                    aggr.push((x.label.clone(), n));
+                }
             }
             Block::Line { pieces, taps: tl } => {
                 let n = pieces.len();
@@ -200,7 +228,22 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
         net.adm(die, GND, ws.iter().map(|w| Cx::new(g, w * rx.c_pf * 1e-12)).collect());
         die
     };
+    // excitations: 0 = the lane's own transmitter, 1 + j = aggressor j
+    let nexc = 1 + aggr.len();
+    let one = |x: usize, v: f64| -> Vec<Cx> { (0..nexc).map(|q| Cx::new(if q == x { v } else { 0.0 }, 0.0)).collect() };
     let mut src = Vec::new();
+    for (j, (_, drive)) in aggr.iter().enumerate() {
+        for (l, &n) in drive.iter().enumerate() {
+            if tx.c_pf > 0.0 {
+                net.adm(n, GND, ws.iter().map(|w| Cx::new(0.0, w * tx.c_pf * 1e-12)).collect());
+            }
+            let e = if drive.len() == 2 { if l == 0 { 0.5 } else { -0.5 } } else { 1.0 };
+            src.push(Source { node: n, z: Cx::new(tx.r.max(0.0), 0.0), e: one(1 + j, e) });
+        }
+    }
+    for &n in &aggr_loads {
+        add_rx(&mut net, n, String::new());
+    }
     let mut probe = Vec::new();
     for l in 0..lines {
         let pin_tx = bnd[0][l];
@@ -216,23 +259,33 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
             net.adm(die_tx, GND, ws.iter().map(|w| Cx::new(0.0, w * tx.c_pf * 1e-12)).collect());
         }
         let e = if lines == 2 { if l == 0 { 0.5 } else { -0.5 } } else { 1.0 };
-        src.push(Source { node: die_tx, z: Cx::new(tx.r.max(0.0), 0.0), e: vec![Cx::new(e, 0.0)] });
+        src.push(Source { node: die_tx, z: Cx::new(tx.r.max(0.0), 0.0), e: one(0, e) });
         let pin_rx = bnd[blocks.len()][l];
         probe.push(add_rx(&mut net, pin_rx, format!("receiver die, line {l}")));
     }
     let tap_dies: Vec<(String, usize)> = taps.iter().map(|(label, pin)| (label.clone(), add_rx(&mut net, *pin, format!("receiver die at {label}")))).collect();
     let scale = if rx.r > 0.0 { (tx.r.max(0.0) + rx.r) / rx.r } else { 1.0 };
-    let mut h: Vec<Vec<Cx>> = vec![Vec::with_capacity(npts); 1 + tap_dies.len()];
+    // h[receiver][excitation][point]
+    let mut h: Vec<Vec<Vec<Cx>>> = vec![vec![Vec::with_capacity(npts); nexc]; 1 + tap_dies.len()];
     for k in 0..npts {
         let v = net.solve(k, &src)?;
-        let out = if lines == 2 { v[0][probe[0]] - v[0][probe[1]] } else { v[0][probe[0]] };
-        h[0].push(out.scale(scale));
-        for (q, (_, die)) in tap_dies.iter().enumerate() {
-            h[q + 1].push(v[0][*die].scale(scale));
+        for x in 0..nexc {
+            let out = if lines == 2 { v[x][probe[0]] - v[x][probe[1]] } else { v[x][probe[0]] };
+            h[0][x].push(out.scale(scale));
+            for (q, (_, die)) in tap_dies.iter().enumerate() {
+                h[q + 1][x].push(v[x][*die].scale(scale));
+            }
         }
     }
     let labels = std::iter::once(String::new()).chain(tap_dies.iter().map(|t| t.0.clone()));
-    Ok(labels.zip(h).map(|(label, h)| RxTransfer { label, dc: h[0].re, h: h[1..].to_vec() }).collect())
+    Ok(labels
+        .zip(h)
+        .map(|(label, mut hx)| {
+            let own = hx.remove(0);
+            let xt = aggr.iter().zip(hx).map(|((al, _), hx)| (al.clone(), hx[1..].to_vec(), hx[0].re)).collect();
+            RxTransfer { label, dc: own[0].re, h: own[1..].to_vec(), xt }
+        })
+        .collect())
 }
 
 /// The channel behind a connector as a block (`conn_end`): the Touchstone file (2-port on each
@@ -242,7 +295,7 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
 /// then reduced to the differential mode). `nyq`: the profile's Nyquist frequency (the lossy
 /// line's loss is given there), `z0` per line. Returns the block (near end at the connector)
 /// and a note.
-pub fn rest_block(ce: &ConnEnd, ts: Option<&Touchstone>, freq: &[f64], lines: usize, diff: bool, nyq: f64, z0: f64) -> Result<(Block, String), String> {
+pub fn rest_block(ce: &ConnEnd, ts: Option<&Touchstone>, freq: &[f64], lines: usize, diff: bool, nyq: f64, z0: f64, pins: &[String], aggressors: &[XtLane]) -> Result<(Block, String), String> {
     let line_block = |m: Vec<Abcd>, dc: Abcd| -> Block {
         if lines == 2 {
             Block::Four { t: m.iter().map(|x| sep(x, x)).collect(), dc: sep(&dc, &dc) }
@@ -251,6 +304,46 @@ pub fn rest_block(ce: &ConnEnd, ts: Option<&Touchstone>, freq: &[f64], lines: us
         }
     };
     match (&ce.touchstone, ts) {
+        (Some(tr), Some(ts)) if !tr.ports.is_empty() => {
+            // one file for the lanes of the connector: the lane's pins, the others as aggressors
+            let port = |pin: &str| -> Result<(usize, usize), String> {
+                let p = tr.ports.get(pin).ok_or_else(|| format!("{}: pin {pin} is not in the port map (touchstone \"ports\")", ts.name))?;
+                if p.iter().any(|&x| x == 0 || x > ts.nports) {
+                    return Err(format!("{}: pin {pin} maps to port {} / {}, the file has {} ports", ts.name, p[0], p[1], ts.nports));
+                }
+                Ok(if tr.flip { (p[1] - 1, p[0] - 1) } else { (p[0] - 1, p[1] - 1) })
+            };
+            if pins.len() != lines {
+                return Err(format!("{}: the lane's connector pins are not known", ts.name));
+            }
+            let own: Vec<(usize, usize)> = pins.iter().map(|p| port(p)).collect::<Result<_, _>>()?;
+            let mut xt = Vec::new();
+            let mut skipped = Vec::new();
+            for a in aggressors {
+                if a.pins.iter().any(|p| pins.contains(p)) {
+                    continue;
+                }
+                match a.pins.iter().map(|p| port(p)).collect::<Result<Vec<_>, _>>() {
+                    Ok(ps) => {
+                        let (near, far): (Vec<usize>, Vec<usize>) = ps.into_iter().unzip();
+                        // its transmitter at the connector's side when the connector receives
+                        let (drive, load) = if a.sends { (far, near) } else { (near, far) };
+                        xt.push(XtSrc { label: a.label.clone(), drive, load });
+                    }
+                    Err(_) => skipped.push(a.label.clone()),
+                }
+            }
+            let mut notes = ts.extrapolation_notes(freq);
+            notes.extend(ts.passivity_note());
+            notes.push(format!("ports {} of the lane{}", own.iter().map(|(a, b)| format!("{}→{}", a + 1, b + 1)).collect::<Vec<_>>().join(", "), if xt.is_empty() { String::new() } else { format!(", {} aggressor lane(s) of the connector in the file (their board traces not included: an estimate, conservative)", xt.len()) }));
+            if !skipped.is_empty() {
+                notes.push(format!("{} other lane(s) of the connector not in the port map", skipped.len()));
+            }
+            let dc = ts.s_at(0.0);
+            let s: Vec<Vec<Cx>> = freq.iter().map(|&f| ts.s_at(f)).collect();
+            let (near, far) = own.into_iter().unzip();
+            Ok((Block::S { s, dc, z0: ts.z0.clone(), near, far, xt }, notes.join("; ")))
+        }
         (Some(tr), Some(ts)) => {
             if ts.nports == 4 && lines == 2 {
                 let order = tr.port_order.as_deref().unwrap_or("1-3,2-4");
@@ -268,7 +361,7 @@ pub fn rest_block(ce: &ConnEnd, ts: Option<&Touchstone>, freq: &[f64], lines: us
                 notes.extend(ts.passivity_note());
                 let dc = ts.s_at(0.0);
                 let s: Vec<Vec<Cx>> = freq.iter().map(|&f| ts.s_at(f)).collect();
-                return Ok((Block::S { s, dc, z0: ts.z0.clone(), near, far }, notes.join("; ")));
+                return Ok((Block::S { s, dc, z0: ts.z0.clone(), near, far, xt: vec![] }, notes.join("; ")));
             }
             let grid: Vec<f64> = std::iter::once(0.0).chain(freq.iter().copied()).collect();
             let (m, mut notes) = ts.per_line_abcd(&grid, diff || lines == 2, tr.port_order.as_deref(), tr.flip)?;
@@ -281,6 +374,15 @@ pub fn rest_block(ce: &ConnEnd, ts: Option<&Touchstone>, freq: &[f64], lines: us
             Ok((line_block(m, Abcd::identity()), format!("a lossy line of {:.1} dB at {:.2} GHz, {:.0} ps", ce.rest_loss_db.unwrap_or(0.0).abs(), nyq / 1e9, ce.rest_delay_ps.unwrap_or(500.0))))
         }
     }
+}
+
+/// Another lane at the same connector, a possible aggressor in an N-port file: its connector
+/// pins (P first) and whether the connector is its transmitting end.
+#[derive(Debug, Clone)]
+pub struct XtLane {
+    pub label: String,
+    pub pins: Vec<String>,
+    pub sends: bool,
 }
 
 /// The 4-port of a pair's lane or net: cascade matrices on the channel grid and at 0 Hz.
@@ -448,6 +550,65 @@ mod tests {
         }
     }
 
+    /// One file for two single-ended lanes behind a connector (ports: pin 1 → 1/3, pin 2 → 2/4):
+    /// the lane's own transfer through the S block equals the 2-port of its line when the lines
+    /// are uncoupled; coupled, the other lane is an aggressor and closes the eye by twice its
+    /// peak crosstalk.
+    #[test]
+    fn n_port_file_with_aggressor() {
+        let freq: Vec<f64> = (1..=200).map(|k| k as f64 * 0.1e9).collect();
+        let line50 = |f: f64| line(50.0, 3.2, 3.0, f, 0.05);
+        let file = |coupled_: bool| -> String {
+            // S of the two lines in the file's port order: 1 = A near, 2 = B near, 3 = A far, 4 = B far
+            let mut t = String::from("# Hz S RI R 50\n");
+            for &f in &freq {
+                let tm = if coupled_ { coupled(&line(56.0, 3.4, 3.0, f, 0.05), &line(44.5, 3.0, 3.0, f, 0.05)) } else { sep(&line50(f), &line50(f)) };
+                let sm = s_of(&tm, 50.0);
+                t += &format!("{f}");
+                for r in 0..4 {
+                    for c in 0..4 {
+                        t += &format!(" {:.12e} {:.12e}", sm[r][c].re, sm[r][c].im);
+                    }
+                }
+                t += "\n";
+            }
+            t
+        };
+        let mut ports = std::collections::BTreeMap::new();
+        ports.insert("1".to_string(), [1, 3]);
+        ports.insert("2".to_string(), [2, 4]);
+        let ce = ConnEnd { model: "matched".into(), touchstone: Some(crate::eye::TsRef { file: "two.s4p".into(), ports, ..Default::default() }), ..Default::default() };
+        let aggr = [XtLane { label: "B".into(), pins: vec!["2".into()], sends: false }, XtLane { label: "A".into(), pins: vec!["1".into()], sends: false }];
+        let end = EndModel { r: 50.0, c_pf: 0.0, l_nh: 0.0 };
+        let board: Vec<Abcd> = freq.iter().map(|&f| line50(f).mul(&line50(f))).collect();
+        let id = Abcd::identity();
+        let mut heights = vec![];
+        for coupled_ in [false, true] {
+            let ts = crate::rf::parse_touchstone(&file(coupled_), "two.s4p").unwrap();
+            let (blk, note) = rest_block(&ce, Some(&ts), &freq, 1, false, 2.5e9, 50.0, &["1".to_string()], &aggr).unwrap();
+            assert!(note.starts_with("ports 1→3") && note.contains("1 aggressor lane"), "{note}");
+            let r = receivers_transfer(&freq, &[Block::Two { m: board.clone(), dc: id }, blk], 1, &end, &end).unwrap();
+            assert_eq!(r[0].xt.len(), 1);
+            let ep = crate::eye::EyeParams { bitrate: 5e9, rise: 50e-12, ..Default::default() };
+            let e = crate::eye::eye_with_xt(&freq, &r[0].h, Some(r[0].dc), 600.0, &ep, &r[0].xt).unwrap();
+            let x = e.xt.clone().unwrap();
+            if !coupled_ {
+                // uncoupled: the lane alone, through its line in the file
+                let lone: Vec<Abcd> = freq.iter().map(|&f| line50(f).mul(&line50(f)).mul(&line50(f))).collect();
+                let (h1, _) = ends_transfer(&freq, &[Block::Two { m: lone, dc: id }], 1, &end, &end).unwrap();
+                for k in 0..freq.len() {
+                    assert!((r[0].h[k] - h1[k]).abs() < 1e-8, "{k}");
+                }
+                assert!(x.peak < 1e-6, "{x:?}");
+            } else {
+                assert!(x.peak > 0.01, "coupled lines: crosstalk {x:?}");
+                assert!((x.height_alone - e.height - 2.0 * x.peak).abs() < 0.02, "{x:?} {}", e.height);
+            }
+            heights.push(e.height);
+        }
+        assert!(heights[1] < heights[0], "{heights:?}");
+    }
+
     /// A Touchstone 4-port behind the board: the S block equals the cascade of its 4-port.
     #[test]
     fn s_block_equals_its_chain() {
@@ -473,7 +634,7 @@ mod tests {
         let tx = EndModel { r: 50.0, c_pf: 0.5, l_nh: 0.0 };
         let rx = EndModel { r: 50.0, c_pf: 0.5, l_nh: 0.2 };
         let (h1, _) = ends_transfer(&freq, &[Block::Four { t: board.clone(), dc: id }, Block::Four { t: t.clone(), dc: id }], 2, &tx, &rx).unwrap();
-        let blk = Block::S { s: s.clone(), dc: s[0].clone(), z0: vec![50.0; 4], near: vec![0, 2], far: vec![1, 3] };
+        let blk = Block::S { s: s.clone(), dc: s[0].clone(), z0: vec![50.0; 4], near: vec![0, 2], far: vec![1, 3], xt: vec![] };
         let (h2, _) = ends_transfer(&freq, &[Block::Four { t: board, dc: id }, blk], 2, &tx, &rx).unwrap();
         for k in 0..freq.len() {
             assert!((h1[k] - h2[k]).abs() < 1e-10, "{k}");

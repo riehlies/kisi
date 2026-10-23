@@ -174,8 +174,11 @@ KiCad files; CLI and viewer lay this file over the board.
   "rest_loss_db", "rest_delay_ps", "source"}`) – the termination (connector receives) or driver (connector sends)
   there, and the channel behind it as a lossy line (loss in dB at the profile's Nyquist frequency) or a Touchstone
   file (`"touchstone": {"file": "cable.s4p", "port_order": "1-3,2-4" | "1-2,3-4", "flip": false}`; `.s2p` for
-  single-ended lanes or on each line of a pair, `.s4p` of a pair reduced to the differential mode; path relative to
-  the kisi.json) – with a channel behind the connector the eye is judged. In the viewer: the interface's card in the
+  single-ended lanes or on each line of a pair, `.s4p` of a pair with its mode conversion; path relative to the
+  kisi.json) – with a channel behind the connector the eye is judged. One file for all lanes of the connector
+  (`.sNp`): `"ports": {"A16": [1, 9], "A17": [2, 10], …}` gives per connector pin the file's port at the connector
+  and at the far end; the other lanes in the file are aggressors in each lane's eye (worst case, entering at the
+  connector without their board traces – conservative). In the viewer: the interface's card in the
   channel overview (Touchstone files are loaded there or dropped with the board and stay in memory). `fields`: footprint fields (`PI_LOAD`, `PI_REG`, `PI_SOURCE`, `PI_CAP`, `PI_TARGET`, `PI_SERIES`).
 - `variant`: the assembly variant to analyse – a KiCad 10 variant of the board, one of `variants`, or `default`
   (the board file as it is). `variants`: which parts are fitted, for boards without KiCad 10 variants (or on top of

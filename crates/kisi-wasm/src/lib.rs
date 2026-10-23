@@ -47,6 +47,16 @@ fn ts_for<'a>(st: &'a State, ce: Option<&kisi_core::eye::ConnEnd>) -> Option<&'a
     st.touchstones.get(f).or_else(|| st.touchstones.get(f.rsplit(['/', '\\']).next()?))
 }
 
+/// One N-port file for the lanes of a connector (a port map in the connector end): the lanes at
+/// that connector, aggressors of each other.
+fn xt_for(st: &State, lane: &kisi_core::topology::Lane, ce: Option<&kisi_core::eye::ConnEnd>) -> Vec<kisi_core::lanenet::XtLane> {
+    let mapped = ce.and_then(|c| c.touchstone.as_ref()).is_some_and(|t| !t.ports.is_empty());
+    match (mapped, lane.ends.iter().find(|e| e.role == "connector"), st.buses.as_ref()) {
+        (true, Some(e), Some(bs)) => kisi_core::topology::connector_lanes(bs.iter().flat_map(|b| &b.lanes), &e.refdes),
+        _ => vec![],
+    }
+}
+
 /// Load (or with "remove": true drop) a Touchstone file for the channel behind connectors:
 /// {"name": file name, "text": contents}. Output: {nports, points, f_min_ghz, f_max_ghz, z0,
 /// warnings}. Files stay in memory only.
@@ -665,7 +675,8 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
                 let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
                 let cend: Option<kisi_core::eye::ConnEnd> = item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
                 let cts = ts_for(&st, cend.as_ref());
-                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), cts, &cd)).unwrap());
+                let xt = xt_for(&st, lane, cend.as_ref());
+                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), cts, &xt, &cd)).unwrap());
                 continue;
             }
             rows.push(serde_json::to_value(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise))).unwrap());
@@ -739,7 +750,8 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
         let ep = v["bitrate"].as_f64().map(|br| (br, v["eye_rise"].as_f64().unwrap_or(rp.rise), v["prbs"].as_u64().unwrap_or(7) as u32, end("tx"), end("rx")));
         let cend: Option<kisi_core::eye::ConnEnd> = v["conn_end"].as_object().and_then(|_| serde_json::from_value(v["conn_end"].clone()).ok());
         let cts = ts_for(&st, cend.as_ref());
-        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, cend.as_ref(), cts, &cd) {
+        let xt = xt_for(&st, lane, cend.as_ref());
+        let out = match kisi_core::topology::lane_eval(b, an, &params.field, lane, target, &rp, ep, rev, cend.as_ref(), cts, &xt, &cd) {
             Ok(ev) => {
                 let eye = match ev.eye {
                     Some(Ok(e)) => serde_json::to_value(&e).unwrap(),

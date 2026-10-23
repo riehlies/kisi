@@ -426,6 +426,7 @@ function drawPi() {
   if (S.piMode === "l") { drawLoss(px); return; }
   if (S.piMode === "t") { drawThermal(px); return; }
   const r = piCurrent(), labels = [];  // part labels, drawn last at a constant screen size
+  let loadLabels = [];
   if (r) {
     const li = piLayerIdx(r), im = piImage(r, li), g = im.g, cell = r.res.cell;
     ctx.imageSmoothingEnabled = false;
@@ -441,7 +442,7 @@ function drawPi() {
       if (srcs.has(ref)) { marker(x, y, px, "src"); } else if (lds.has(ref)) { marker(x, y, px, "load"); } else continue;
       const a = at.get(ref) || [0, 0, 0]; a[0] += x; a[1] += y; a[2]++; at.set(ref, a);
     }
-    labels.push(...piLoadLabels(r, at));
+    loadLabels = piLoadLabels(r, at);
     // vias with the highest currents
     const vmax = r.res.vias.length ? r.res.vias[0].current : 0;
     ctx.strokeStyle = C.halo; ctx.lineWidth = 1.5 * px;
@@ -463,8 +464,10 @@ function drawPi() {
     }
     ctx.fill("evenodd");
   }
-  drawPdnOverlay(px, labels);
+  const pdn = drawPdnOverlay(px, labels);
   drawPiMark(px, labels);
+  // sources and loads, except in the PDN view (its own parts) and for a part already outlined
+  if (!pdn) { const own = new Set(labels.map((l) => l.text)); labels.push(...loadLabels.filter((l) => !own.has(l.ref))); }
   S.piLabels = drawPartLabels(labels);
 }
 // labels of the rail's sources and loads: the sources, then the loads with the largest drop
@@ -473,10 +476,10 @@ function drawPi() {
 function piLoadLabels(r, at) {
   const x = r.res, v0 = Math.abs(x.voltage), out = [];
   const pos = (ref) => { const a = at.get(ref); return a ? { x: a[0] / a[2], y: a[1] / a[2] } : null; };
-  for (const s of x.sources || []) { const p = pos(s.refdes); if (p) out.push({ ...p, text: S.piMode === "j" ? `${s.refdes} ${fmtSI(Math.abs(s.current), "A")}` : s.refdes }); }
+  for (const s of x.sources || []) { const p = pos(s.refdes); if (p) out.push({ ...p, ref: s.refdes, text: S.piMode === "j" ? `${s.refdes} ${fmtSI(Math.abs(s.current), "A")}` : s.refdes }); }
   const val = (l) => S.piMode === "j" ? Math.abs(l.current) : x.ground ? (l.v_max != null ? Math.abs(l.v_max) : null) : (l.v_min != null ? v0 - Math.abs(l.v_min) : null);
   const loads = x.loads.map((l) => ({ l, v: val(l), p: pos(l.refdes) })).filter((e) => e.p && e.v != null).sort((a, b) => b.v - a.v);
-  for (const e of loads) out.push({ ...e.p, text: `${e.l.refdes} ${fmtSI(e.v, S.piMode === "j" ? "A" : "V")}` });
+  for (const e of loads) out.push({ ...e.p, ref: e.l.refdes, text: `${e.l.refdes} ${fmtSI(e.v, S.piMode === "j" ? "A" : "V")}` });
   return out.slice(0, 12);
 }
 function marker(x, y, px, kind) {
@@ -546,8 +549,8 @@ function renderPiDetail() {
   const head = `<header><div><h3>${esc(netLabel(x.net))} · ${fmtSI(x.voltage, "V")}</h3><div class="muted">grid ${fmtSI(x.cell * 1e-3, "m")} · ${x.nodes.toLocaleString("en-US")} nodes</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>${tabs}`;
   const wire = () => {
     box.hidden = false;
-    $("closePi").onclick = () => { box.hidden = true; };
-    box.querySelectorAll("[data-pt]").forEach((b) => b.onclick = () => { S.piTab = b.dataset.pt; renderPiDetail(); });
+    $("closePi").onclick = () => { box.hidden = true; renderLegend(); draw(); };
+    box.querySelectorAll("[data-pt]").forEach((b) => b.onclick = () => { S.piTab = b.dataset.pt; renderPiDetail(); renderLegend(); draw(); });
   };
   if (S.piTab === "z") { box.innerHTML = head + `<div id="pdn-body"></div>`; wire(); renderPdn($("pdn-body"), S.piSetups.get(S.piRail)); return; }
   box.innerHTML = head + `

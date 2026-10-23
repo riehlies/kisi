@@ -90,6 +90,7 @@ function renderPdnIc(host, setup, lumped) {
     tr.onpointerenter = () => { S.pdnIcHover = +tr.dataset.cap; draw(); };
     tr.onpointerleave = () => { S.pdnIcHover = null; draw(); };
   });
+  renderLegend();
   drawZf($("ch-pdn-ic"), { freq: r.freq, series: [{ z: pt.z, color: "--pw-use", name: pt.label }].concat(own ? [{ f: lumped.freq, z: lumped.z, color: "--muted", dash: [4, 3], name: "lumped" }] : []),
     target: pt.target, fEval: pt.f_max, marks: pt.peaks.map((k) => ({ f: k.f, label: "anti-resonance" })) });
 }
@@ -138,9 +139,10 @@ function drawPiMark(px, labels) {
 }
 
 // recommendation circles, the IC, its capacitors (ranked) and the series parts on the board
-// (rail detail, impedance tab): outlined footprints, their references queued in `labels`
+// (rail detail, impedance tab): outlined footprints, their references queued in `labels`; true when drawn
+const pdnOverlayOn = () => !!S.piRail && !$("pi-detail").hidden && !!$("ch-pdn-ic");
 function drawPdnOverlay(px, labels) {
-  if (!S.piRail || $("pi-detail").hidden || !$("ch-pdn-ic")) return; // only while the per-IC view is open
+  if (!pdnOverlayOn()) return; // only while the per-IC view is open
   const r = pdnIcOf(S.piRail);
   if (!r || r.error) return;
   const pt = r.ports.find((x) => x.label === S.pdnIcSel);
@@ -179,6 +181,7 @@ function drawPdnOverlay(px, labels) {
     labels.push({ x: lx, y: ly, text: `${x.count}× ${x.value}`, color: acc });
   }
   ctx.setLineDash([]);
+  return true;
 }
 function renderPiLayerChips() {
   if (S.piMode === "l") { renderLossChips(); return; }
@@ -203,5 +206,5 @@ function renderPiLegend() {
     <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
     <div class="ticks units"><span>0</span><span>${tick(sc.max / 2)}</span><span>${tick(sc.max)}${S.piMode === "j" ? " (99th percentile)" : ""}</span></div>
     <div class="row"><span class="sw" style="background:${S.colors.ok}"></span>source ▲ · load ○ · circles: vias with the highest currents</div>
-    <div class="row">Labels: ${S.piMode === "j" ? "sources and loads with their current" : r.res.ground ? "sources, offset at the parts" : "sources, drop at the loads"} (the largest first)</div>`;
+    <div class="row">Labels: ${pdnOverlayOn() ? "the IC, its capacitors and the series parts (impedance tab)" : S.piMode === "j" ? "sources and loads with their current (the largest first)" : r.res.ground ? "sources, offset at the parts (the largest first)" : "sources, drop at the loads (the largest first)"}</div>`;
 }

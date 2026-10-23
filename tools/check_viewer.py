@@ -195,7 +195,9 @@ def run(pg, tag, desktop):
                 problems.append(f"{tag}: temperature view not shown, without parts or with failed rails")
             step("temperature")
             pg.click("#layers .chip >> nth=-1"); pg.wait_for_timeout(300)
-            pg.hover("#pcb"); pg.wait_for_timeout(200); step("temperature_bottom")
+            # tooltip over the board, left of the detail panel
+            bx = pg.locator("#pcb").bounding_box()
+            pg.mouse.move(bx["x"] + 0.25 * bx["width"], bx["y"] + 0.5 * bx["height"]); pg.wait_for_timeout(200); step("temperature_bottom")
             pg.click("#pim-b"); pg.wait_for_timeout(300)
         if a.config:
             pg.click("#view-si")

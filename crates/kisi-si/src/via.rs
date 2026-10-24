@@ -696,7 +696,11 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
         let plane_layers: Vec<(u16, f64)> = (0..su.n()).filter(|&k| clear[k].is_some()).map(|k| (k as u16, z[k])).collect();
         let mut ctx2 = ViaCtx { refs_in: ctx.refs_in.clone(), refs_out: ctx.refs_out.clone(), ..*ctx };
         ctx2.sigma = geom.sigma;
+        #[cfg(not(target_arch = "wasm32"))]
+        let tl = std::time::Instant::now();
         let links = cavity_links(&ctx2, v.at, &geom, &plane_layers, &m, [l_in, l_out]);
+        #[cfg(not(target_arch = "wasm32"))]
+        CAV_TIME.with(|c| c.set(c.get() + tl.elapsed().as_secs_f64()));
         if !links.is_empty() {
             m = PbmVia::build_with(&geom, mode, Grid::default(), links);
         }
@@ -902,6 +906,9 @@ fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(
         }
         let mut env = GridEnv::new_cut(&pc.mask, medium, &pc.shorts, &loads, &ports, pc.cut);
         env.df = Some(if pc.cut.iter().any(|&c| c) { CAVITY_WINDOW_DF } else { CAVITY_REGION_DF });
+        // the vias that cross the same region share its factorisations (a window is centred on its
+        // via and is its own)
+        env.share();
         if std::env::var("KISI_DEBUG_VIA").is_ok() {
             eprintln!(
                 "# cavity at ({:.4}, {:.4}) {}-{} nets {:?}: leakage {ratio:.3}, {} cells of {:.2} mm, {} shorts, {} capacitors, {} ports, window cut {:?}",
@@ -924,6 +931,8 @@ fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(
 }
 
 thread_local! {
+    /// seconds spent finding the cavities of the vias (`cavity_links`), for run-time reports
+    pub static CAV_TIME: std::cell::Cell<f64> = const { std::cell::Cell::new(0.0) };
     /// cavity environments by via, pair and ports (with their frequency samples)
     static ENV_CACHE: std::cell::RefCell<std::collections::HashMap<String, std::rc::Rc<crate::via_cavity::PairEnv>>> = Default::default();
 }

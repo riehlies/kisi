@@ -303,6 +303,71 @@ impl ComplexLu {
     }
 }
 
+/// The sparsity pattern of a complex matrix assembled from triplets at fixed positions, for
+/// sweeps where only the values change (frequency sweeps of a grid): the column-compressed
+/// structure and the slot of every triplet are found once, so a new matrix is a sum into its
+/// values instead of a sort of the triplets.
+pub struct ComplexPattern {
+    n: usize,
+    col_ptr: Vec<usize>,
+    row_idx: Vec<usize>,
+    /// slot in the compressed values of every triplet, in the triplets' order
+    slot: Vec<usize>,
+}
+
+impl ComplexPattern {
+    /// the pattern of an n×n matrix with triplets at `pos` (row, column; repeats are summed)
+    pub fn new(n: usize, pos: &[(usize, usize)]) -> Result<Self, i32> {
+        let mut order: Vec<usize> = (0..pos.len()).collect();
+        if pos.iter().any(|&(r, c)| r >= n || c >= n) {
+            return Err(10);
+        }
+        order.sort_by_key(|&k| (pos[k].1, pos[k].0, k));
+        let mut col_ptr = vec![0usize; n + 1];
+        let mut row_idx: Vec<usize> = Vec::with_capacity(pos.len());
+        let mut slot = vec![0usize; pos.len()];
+        let mut last: Option<(usize, usize)> = None;
+        for &k in &order {
+            let (r, c) = pos[k];
+            if last != Some((r, c)) {
+                row_idx.push(r);
+                col_ptr[c + 1] += 1;
+                last = Some((r, c));
+            }
+            slot[k] = row_idx.len() - 1;
+        }
+        for c in 0..n {
+            col_ptr[c + 1] += col_ptr[c];
+        }
+        Ok(ComplexPattern { n, col_ptr, row_idx, slot })
+    }
+
+    /// LU of the matrix with the triplet values `vals` (re, im, in the order of the positions),
+    /// reusing the symbolic analysis of an earlier call; returns it for the next one. The repeats
+    /// of a position are summed in the triplets' order.
+    pub fn lu(&self, vals: &[(f64, f64)], sym: Option<SymbolicLu>) -> Result<(ComplexLu, SymbolicLu), i32> {
+        use faer::c64;
+        use faer::sparse::linalg::solvers::Lu;
+        use faer::sparse::{SparseColMatRef, SymbolicSparseColMatRef};
+        if vals.len() != self.slot.len() {
+            return Err(11);
+        }
+        let mut v = vec![c64::new(0.0, 0.0); self.row_idx.len()];
+        for (k, &(re, im)) in vals.iter().enumerate() {
+            let q = &mut v[self.slot[k]];
+            *q = *q + c64::new(re, im);
+        }
+        let symb = SymbolicSparseColMatRef::new_checked(self.n, self.n, &self.col_ptr, None, &self.row_idx);
+        let a = SparseColMatRef::new(symb, &v);
+        let sym = match sym {
+            Some(s) => s,
+            None => SymbolicLu::try_new(symb).map_err(|_| 20)?,
+        };
+        let lu = Lu::try_new_with_symbolic(sym.clone(), a).map_err(|_| 20)?;
+        Ok((ComplexLu { n: self.n, lu }, sym))
+    }
+}
+
 /// Solve a complex sparse system A X = B (LU) given as triplets (row, col, re, im;
 /// duplicates are summed) for several right-hand sides.
 pub fn solve_complex_multi(n: usize, trip: &[(usize, usize, f64, f64)], b: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, i32> {

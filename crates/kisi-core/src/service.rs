@@ -704,6 +704,9 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
 pub fn channel_check_with(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, threads: usize) -> Value {
     let plan = check_plan(p, profiles, assign, only);
     let cd = topology::ComponentData::builtin();
+    register_cavities(rp, |rq| {
+        crate::par::par_map_with(&plan.items, threads, |it| check_row(p, &plan, profiles, it, rq, &cd));
+    });
     let rows = crate::par::par_map_with(&plan.items, threads, |it| check_row(p, &plan, profiles, it, rp, &cd));
     check_result(p, rows, plan.skipped_unused, rp)
 }
@@ -720,7 +723,43 @@ pub fn channel_check_count(p: &Project, profiles: &Profiles, assign: &HashMap<St
 pub fn channel_check_rows(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, idx: &[usize]) -> Vec<(usize, Value)> {
     let plan = check_plan(p, profiles, assign, only);
     let cd = topology::ComponentData::builtin();
+    register_cavities(rp, |rq| {
+        for &i in idx {
+            if let Some(it) = plan.items.get(i) {
+                check_row(p, &plan, profiles, it, rq, &cd);
+            }
+        }
+    });
     idx.iter().filter_map(|&i| Some((i, check_row(p, &plan, profiles, plan.items.get(i)?, rp, &cd).1))).collect()
+}
+
+/// With finite plane cavities (`--via-cavity`): a first pass over the check's rows that only
+/// registers the vias' cavity grids (`via_cavity::set_register_only`, its results dropped), so the
+/// real pass factorises each plane-pair region once per frequency for all vias that cross it
+/// instead of once per via (validation/fdtd/BOARD_RESONANCES.md section 9). The rows are the same
+/// with and without it. Not with return groups (`--via-returns`): they leave the pairs a floating
+/// return bridges as infinite plates, few regions are left and the pass would cost more than it
+/// saves. KISI_CAVITY_PASS=0 / 1 switches it off / on.
+fn register_cavities(rp: &RfParams, pass: impl FnOnce(&RfParams)) {
+    let env = |k: &str| std::env::var(k).ok().filter(|x| x != "0");
+    let cavity = rp.via_cavity || env("KISI_VIA_CAVITY").is_some();
+    let returns = rp.via_returns || env("KISI_VIA_RETURNS").is_some();
+    let on = match std::env::var("KISI_CAVITY_PASS").ok().as_deref() {
+        Some("0") => false,
+        Some(_) => cavity,
+        None => cavity && !returns,
+    };
+    if !on {
+        return;
+    }
+    crate::via_cavity::set_register_only(true);
+    let t = std::time::Instant::now();
+    // the via models do not depend on the frequencies: a few are enough to build them all
+    pass(&RfParams { npts: 8, ..rp.clone() });
+    if std::env::var("KISI_CAVITY_STATS").is_ok() {
+        eprintln!("cavity registering pass {:.2} s", t.elapsed().as_secs_f64());
+    }
+    crate::via_cavity::set_register_only(false);
 }
 
 /// `channel_check` from rows computed in parts (`channel_check_rows`): the same result as

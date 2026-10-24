@@ -15,7 +15,11 @@ fn main() {
     let code = agent::main(&args);
     if std::env::var("KISI_CAVITY_STATS").is_ok() {
         let (n, t, cells) = kisi_core::via_cavity::lu_stats();
-        eprintln!("cavity grids: {n} factorisations, {t:.2} s, {} cells on average", if n > 0 { cells / n } else { 0 });
+        let (g, e) = kisi_core::via_cavity::group_stats();
+        eprintln!("cavity links {:.2} s", kisi_core::via::CAV_TIME.with(|c| c.get()));
+        let (na, ta) = kisi_core::via_pbm::ABCD_TIME.with(|c| c.get());
+        eprintln!("cavity vias: {na} evaluations, {ta:.2} s");
+        eprintln!("cavity grids: {n} factorisations, {t:.2} s, {} cells on average; {g} shared groups of {e} environments", if n > 0 { cells / n } else { 0 });
     }
     std::process::exit(code);
 }

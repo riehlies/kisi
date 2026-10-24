@@ -427,31 +427,53 @@ fn pair_region(board: &Board, at: P, la: u16, lb: u16, own: u32, partner: Option
         return None;
     }
     let h = if window.is_some() { h_min } else { (((bb.max[0] - bb.min[0]) * (bb.max[1] - bb.min[1]) / max_cells as f64).sqrt()).max(h_min) };
-    let mut ma = Mask::new(&bb, h);
-    let ra: Vec<&[P]> = fills(la, na).map(|z| &z.pts[..]).collect();
-    ma.fill_rings(&ra);
-    let mut mb = Mask::new(&bb, h);
-    let rb: Vec<&[P]> = fills(lb, nb).map(|z| &z.pts[..]).collect();
-    mb.fill_rings(&rb);
-    for k in 0..ma.on.len() {
-        ma.on[k] = ma.on[k] && mb.on[k];
-    }
-    ma.close_pinholes();
-    // the via's openings in both planes belong to the region (filled up to the nearest copper of
+    let overlap = || {
+        let mut ma = Mask::new(&bb, h);
+        let ra: Vec<&[P]> = fills(la, na).map(|z| &z.pts[..]).collect();
+        ma.fill_rings(&ra);
+        let mut mb = Mask::new(&bb, h);
+        let rb: Vec<&[P]> = fills(lb, nb).map(|z| &z.pts[..]).collect();
+        mb.fill_rings(&rb);
+        for k in 0..ma.on.len() {
+            ma.on[k] = ma.on[k] && mb.on[k];
+        }
+        ma.close_pinholes();
+        ma
+    };
+    // a via's openings in both planes belong to the region (filled up to the nearest copper of
     // either plane and a cell beyond): the ladder models the openings, the cavity sees the plane
     // pair around them
-    ma.nearest_on(at, 3.0)?;
-    let rfill = open_a.max(open_b).max(0.5) + 1.5 * h;
-    let (ci, cj) = ma.cell_of(at);
-    let rc = (rfill / h).ceil() as isize;
-    for dj in -rc..=rc {
-        for di in -rc..=rc {
-            let (i, j) = (ci as isize + di, cj as isize + dj);
-            if i >= 0 && j >= 0 && (i as usize) < ma.nx && (j as usize) < ma.ny && geom::len(geom::sub(ma.centre(i as usize, j as usize), at)) <= rfill {
-                ma.on[j as usize * ma.nx + i as usize] = true;
+    let fill_at = |ma: &mut Mask, p: P, open: f64| {
+        let rfill = open.max(0.5) + 1.5 * h;
+        let (ci, cj) = ma.cell_of(p);
+        let rc = (rfill / h).ceil() as isize;
+        for dj in -rc..=rc {
+            for di in -rc..=rc {
+                let (i, j) = (ci as isize + di, cj as isize + dj);
+                if i >= 0 && j >= 0 && (i as usize) < ma.nx && (j as usize) < ma.ny && geom::len(geom::sub(ma.centre(i as usize, j as usize), p)) <= rfill {
+                    ma.on[j as usize * ma.nx + i as usize] = true;
+                }
             }
         }
-    }
+    };
+    // the overlap is the same for every via of the pair: computed once (process-wide)
+    let key = format!("{la},{lb},{na},{nb},{:?},{:?},{}", bb.min.map(f64::to_bits), bb.max.map(f64::to_bits), h.to_bits());
+    let cached = OVERLAPS.lock().unwrap_or_else(|e| e.into_inner()).get(&key).cloned();
+    let base = match cached {
+        Some(m) => m,
+        None => {
+            let m = std::sync::Arc::new(overlap());
+            let mut c = OVERLAPS.lock().unwrap_or_else(|e| e.into_inner());
+            if c.len() > 256 {
+                c.clear();
+            }
+            c.insert(key, m.clone());
+            m
+        }
+    };
+    let mut ma = (*base).clone();
+    ma.nearest_on(at, 3.0)?;
+    fill_at(&mut ma, at, open_a.max(open_b));
     ma.keep_component(ma.cell_of(at));
     let area = ma.count() as f64 * h * h;
     let bbox = ma.bbox();
@@ -934,6 +956,25 @@ pub struct GridEnv {
     pub ports: Vec<EnvPort>,
     /// every port spread over the cells around it: (unknown, weight, cell column, cell row)
     port_cells: Vec<Vec<(usize, f64, i64, i64)>>,
+    /// the grid's system matrix (everything but the ports)
+    sys: GridSys,
+    sym: std::cell::RefCell<Option<kisi_sparse::SymbolicLu>>,
+    cache: std::cell::RefCell<std::collections::HashMap<u64, Vec<Cx>>>,
+    /// sample on a grid of this step (Hz) and interpolate linearly (an open window without
+    /// high-Q resonances); None: exact at every frequency
+    pub df: Option<f64>,
+    /// the group of environments with the same system matrix (`share`) and this one's index in it
+    group: Option<(std::sync::Arc<GridGroup>, usize)>,
+    /// the system's sparsity pattern (the same at every frequency)
+    pattern: std::sync::OnceLock<Option<kisi_sparse::ComplexPattern>>,
+}
+
+/// The system matrix of a grid environment, without its ports: environments of different vias
+/// in the same region share it (`GridEnv::share`).
+#[derive(Debug, Clone)]
+struct GridSys {
+    medium: PairMedium,
+    h: f64,
     n: usize,
     branches: Vec<(usize, usize)>,
     /// per unknown: shorting inductance to the plates (H, parallel of the posts in the cell)
@@ -944,11 +985,246 @@ pub struct GridEnv {
     /// faces where a window cut the region, matched to the outgoing wave of the window's centre:
     /// (unknown, face length m, cosine between the face normal and the radius, radius m)
     cut_faces: Vec<(usize, f64, f64, f64)>,
-    sym: std::cell::RefCell<Option<kisi_sparse::SymbolicLu>>,
-    cache: std::cell::RefCell<std::collections::HashMap<u64, Vec<Cx>>>,
-    /// sample on a grid of this step (Hz) and interpolate linearly (an open window without
-    /// high-Q resonances); None: exact at every frequency
-    pub df: Option<f64>,
+}
+
+impl GridSys {
+    /// the node equations at `f` as triplets (row, column, re, im)
+    fn triplets(&self, f: f64) -> Vec<(usize, usize, f64, f64)> {
+        let w = 2.0 * PI * f;
+        let d = self.medium.d;
+        let k2 = self.medium.k2_bulk(f);
+        let jwmd = Cx::new(0.0, w * MU0 * d);
+        // node equation (per cell): Σ (V_i − V_j)/(jωμd) − k² h²/(jωμd) V_i + Y_load V_i = I_i
+        let yb = jwmd.inv();
+        let yc = (Cx::new(0.0, 0.0) - k2.scale(self.h * self.h)) * yb;
+        let mut trip: Vec<(usize, usize, f64, f64)> = Vec::with_capacity(self.n + 4 * self.branches.len() + self.shorts.len() + self.loads.len());
+        for i in 0..self.n {
+            trip.push((i, i, yc.re, yc.im));
+        }
+        for &(a, b) in &self.branches {
+            trip.push((a, a, yb.re, yb.im));
+            trip.push((b, b, yb.re, yb.im));
+            trip.push((a, b, -yb.re, -yb.im));
+            trip.push((b, a, -yb.re, -yb.im));
+        }
+        for &(c, l) in &self.shorts {
+            let y = Cx::new(0.0, w * l).inv();
+            trip.push((c, c, y.re, y.im));
+        }
+        for (c, ld, l) in &self.loads {
+            let y = (ld.z(w) + Cx::new(0.0, w * l)).inv();
+            trip.push((*c, *c, y.re, y.im));
+        }
+        // edge radiation: the slot conductance of each straight run, per length of its faces
+        let k0 = w / crate::num::C0;
+        let mut gcache: Vec<(f64, f64)> = vec![];
+        for &(c, hf, run) in &self.edge_faces {
+            let g = match gcache.iter().find(|x| (x.0 - run).abs() < 1e-12) {
+                Some(x) => x.1,
+                None => {
+                    let g = slot_conductance(run, k0) / run;
+                    gcache.push((run, g));
+                    g
+                }
+            };
+            trip.push((c, c, g * hf, 0.0));
+        }
+        if !self.cut_faces.is_empty() {
+            let mut k = k2.sqrt();
+            if k.im > 0.0 {
+                k = Cx::new(-k.re, -k.im);
+            }
+            let y0 = k.scale(1.0 / (w * MU0 * d));
+            for &(c, hf, cs, rho) in &self.cut_faces {
+                let y = y0 * (Cx::new(1.0, 0.0) - Cx::new(0.0, 0.5) / k.scale(rho));
+                trip.push((c, c, y.re * hf * cs, y.im * hf * cs));
+            }
+        }
+        trip
+    }
+
+    /// LU of the system at `f`, reusing and returning the symbolic analysis (counted in
+    /// `lu_stats`)
+    fn lu(&self, f: f64, sym: Option<kisi_sparse::SymbolicLu>, pattern: &std::sync::OnceLock<Option<kisi_sparse::ComplexPattern>>) -> Result<(kisi_sparse::ComplexLu, kisi_sparse::SymbolicLu), i32> {
+        let trip = self.triplets(f);
+        #[cfg(not(target_arch = "wasm32"))]
+        let t_lu = std::time::Instant::now();
+        // the triplets' positions are the same at every frequency: their pattern once
+        let pat = pattern.get_or_init(|| kisi_sparse::ComplexPattern::new(self.n, &trip.iter().map(|t| (t.0, t.1)).collect::<Vec<_>>()).ok());
+        let lu = match pat {
+            Some(p) => p.lu(&trip.iter().map(|t| (t.2, t.3)).collect::<Vec<_>>(), sym),
+            None => kisi_sparse::ComplexLu::with_symbolic(self.n, &trip, sym),
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        LU_STATS.with(|s| {
+            let mut s = s.borrow_mut();
+            s.0 += 1;
+            s.1 += t_lu.elapsed().as_secs_f64();
+            s.2 += self.n;
+        });
+        lu
+    }
+}
+
+/// The ports' responses: zg[i·np + j] = Σ over the cells of port i of the solution for a unit
+/// current spread over the cells of port j (None when the solve fails)
+fn port_responses(lu: &kisi_sparse::ComplexLu, n: usize, cells: &[Vec<(usize, f64)>]) -> Option<Vec<Cx>> {
+    let np = cells.len();
+    let rhs: Vec<Vec<(f64, f64)>> = (0..np)
+        .map(|j| {
+            let mut b = vec![(0.0, 0.0); n];
+            for &(c, w) in &cells[j] {
+                b[c].0 += w;
+            }
+            b
+        })
+        .collect();
+    let x = lu.solve(&rhs).ok()?;
+    let mut zg = vec![Cx::new(0.0, 0.0); np * np];
+    for i in 0..np {
+        for j in 0..np {
+            let mut z = Cx::new(0.0, 0.0);
+            for &(ca, wa) in &cells[i] {
+                let v = x[j][ca];
+                z = z + Cx::new(v.0, v.1).scale(wa);
+            }
+            zg[i * np + j] = z;
+        }
+    }
+    Some(zg)
+}
+
+/// Grid environments with the same system matrix – the same region, posts and loads, crossed by
+/// different vias, which differ only in their ports: one factorisation per frequency serves them
+/// all. An environment registers its ports when it joins (`GridEnv::share`); at a frequency not
+/// computed yet the group factorises once and solves for every registered environment that
+/// lacks it (each in a solve of its own, so a result does not depend on which others were
+/// registered). `CAVITY_REGISTER_ONLY` lets a first pass over a check register them all.
+struct GridGroup {
+    sys: GridSys,
+    pattern: std::sync::OnceLock<Option<kisi_sparse::ComplexPattern>>,
+    state: std::sync::Mutex<GroupState>,
+}
+
+#[derive(Default)]
+struct GroupState {
+    sym: Option<kisi_sparse::SymbolicLu>,
+    /// the distinct ports of the registered environments (cells and weights) and their index
+    ports: Vec<Vec<(usize, f64)>>,
+    port_index: std::collections::HashMap<String, usize>,
+    /// every registered environment as its ports
+    sets: Vec<Vec<usize>>,
+    set_index: std::collections::HashMap<Vec<usize>, usize>,
+    done: std::collections::HashMap<(usize, u64), Option<Vec<Cx>>>,
+}
+
+impl GridGroup {
+    fn register(&self, cells: Vec<Vec<(usize, f64)>>) -> usize {
+        let mut st = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let ids: Vec<usize> = cells
+            .into_iter()
+            .map(|c| {
+                let key = format!("{c:?}");
+                if let Some(&i) = st.port_index.get(&key) {
+                    return i;
+                }
+                st.ports.push(c);
+                let i = st.ports.len() - 1;
+                st.port_index.insert(key, i);
+                i
+            })
+            .collect();
+        if let Some(&i) = st.set_index.get(&ids) {
+            return i;
+        }
+        st.sets.push(ids.clone());
+        let i = st.sets.len() - 1;
+        st.set_index.insert(ids, i);
+        i
+    }
+
+    /// the port responses (`port_responses`) of environment `id` at `f`: one factorisation per
+    /// frequency, one solve per distinct port for every registered environment that lacks `f`
+    /// (vias of one region share return vias), each port in a solve of its own
+    fn responses(&self, id: usize, f: f64) -> Option<Vec<Cx>> {
+        let fb = f.to_bits();
+        let mut st = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(r) = st.done.get(&(id, fb)) {
+            return r.clone();
+        }
+        let sym = st.sym.take();
+        let lu = self.sys.lu(f, sym, &self.pattern);
+        let todo: Vec<usize> = (0..st.sets.len()).filter(|&s| !st.done.contains_key(&(s, fb))).collect();
+        let lu = match lu {
+            Ok((lu, sym)) => {
+                st.sym = Some(sym);
+                lu
+            }
+            Err(_) => {
+                for s in todo {
+                    st.done.insert((s, fb), None);
+                }
+                return None;
+            }
+        };
+        let n = self.sys.n;
+        let mut need: Vec<usize> = todo.iter().flat_map(|&s| st.sets[s].iter().copied()).collect();
+        need.sort_unstable();
+        need.dedup();
+        let mut x: std::collections::HashMap<usize, Option<Vec<(f64, f64)>>> = Default::default();
+        for &p in &need {
+            let mut b = vec![(0.0, 0.0); n];
+            for &(c, w) in &st.ports[p] {
+                b[c].0 += w;
+            }
+            x.insert(p, lu.solve(&[b]).ok().and_then(|mut v| v.pop()));
+        }
+        for s in todo {
+            let set = &st.sets[s];
+            let np = set.len();
+            let mut zg = Some(vec![Cx::new(0.0, 0.0); np * np]);
+            for j in 0..np {
+                let Some(xj) = x[&set[j]].as_ref() else {
+                    zg = None;
+                    break;
+                };
+                let z = zg.as_mut().unwrap();
+                for i in 0..np {
+                    let mut v = Cx::new(0.0, 0.0);
+                    for &(ca, wa) in &st.ports[set[i]] {
+                        let q = xj[ca];
+                        v = v + Cx::new(q.0, q.1).scale(wa);
+                    }
+                    z[i * np + j] = v;
+                }
+            }
+            st.done.insert((s, fb), zg);
+        }
+        st.done.get(&(id, fb)).cloned().flatten()
+    }
+}
+
+/// the groups of grid environments by system matrix (process-wide: the threads of a parallel
+/// check share them)
+static GROUPS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, std::sync::Arc<GridGroup>>>> = std::sync::LazyLock::new(Default::default);
+
+/// the overlap of a plane pair's two planes on its grid (`pair_region`), by layers, nets, box and cell
+static OVERLAPS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, std::sync::Arc<Mask>>>> = std::sync::LazyLock::new(Default::default);
+
+/// a first pass that only registers the grid environments of a check (`set_register_only`)
+static REGISTER_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// While on, grid environments answer zero without computing (and keep nothing): a pass over a
+/// check with it registers every environment in its group, so the real pass factorises each
+/// region once per frequency for all vias that cross it. The results of that pass are wrong and
+/// must be dropped.
+pub fn set_register_only(on: bool) {
+    REGISTER_ONLY.store(on, std::sync::atomic::Ordering::SeqCst);
+}
+
+/// whether the registering pass is on (`set_register_only`)
+pub fn register_only() -> bool {
+    REGISTER_ONLY.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 impl GridEnv {
@@ -1033,7 +1309,10 @@ impl GridEnv {
             // parallel inductances: 1/L = Σ 1/L_k
             *sh.entry(c).or_insert(0.0) += 1.0 / dloc(s.r);
         }
-        let shorts_v: Vec<(usize, f64)> = sh.into_iter().map(|(c, y)| (c, 1.0 / y)).collect();
+        // by cell: the order of the triplets decides the order of the sums in the matrix (a hash
+        // map's order differed from run to run in the last digits)
+        let mut shorts_v: Vec<(usize, f64)> = sh.into_iter().map(|(c, y)| (c, 1.0 / y)).collect();
+        shorts_v.sort_by_key(|x| x.0);
         let loads_v: Vec<(usize, Load, f64)> = loads.iter().map(|l| (cell_of(l.at.x, l.at.y), *l, dloc(l.at.r))).collect();
         let port_cells: Vec<Vec<(usize, f64, i64, i64)>> = ports.iter().map(|p| spread(p.x, p.y)).collect();
         // the edge radiation (when the medium asks for it) on the boundary faces
@@ -1063,26 +1342,29 @@ impl GridEnv {
             .collect();
         // ports in metres from here on
         let ports_m: Vec<EnvPort> = ports.iter().map(|p| EnvPort { x: p.x * 1e-3, y: p.y * 1e-3, r: p.r * 1e-3 }).collect();
-        GridEnv {
-            medium,
-            h: h * 1e-3,
-            ports: ports_m,
-            port_cells,
-            n,
-            edge_faces,
-            cut_faces,
-            branches,
-            shorts: shorts_v,
-            loads: loads_v,
-            sym: Default::default(),
-            cache: Default::default(),
-            df: None,
-        }
+        let sys = GridSys { medium: medium.clone(), h: h * 1e-3, n, branches, shorts: shorts_v, loads: loads_v, edge_faces, cut_faces };
+        GridEnv { medium, h: h * 1e-3, ports: ports_m, port_cells, sys, sym: Default::default(), cache: Default::default(), df: None, group: None, pattern: Default::default() }
     }
 
     /// number of unknowns
     pub fn cells(&self) -> usize {
-        self.n
+        self.sys.n
+    }
+
+    /// Join the group of environments with the same system matrix (the same region, posts and
+    /// loads; `GridGroup`): one factorisation per frequency for all of them. The results are the
+    /// same as without.
+    pub fn share(&mut self) {
+        let key = format!("{:?}", self.sys);
+        let group = {
+            let mut g = GROUPS.lock().unwrap_or_else(|e| e.into_inner());
+            if g.len() > 512 {
+                g.clear();
+            }
+            g.entry(key).or_insert_with(|| std::sync::Arc::new(GridGroup { sys: self.sys.clone(), pattern: Default::default(), state: Default::default() })).clone()
+        };
+        let id = group.register(self.port_cells.iter().map(|p| p.iter().map(|c| (c.0, c.1)).collect()).collect());
+        self.group = Some((group, id));
     }
 
     /// free-space function of the five-point lattice between cells `di`, `dj` apart (k² of the
@@ -1137,96 +1419,51 @@ impl GridEnv {
         if let Some(g) = self.cache.borrow().get(&f.to_bits()) {
             return g.clone();
         }
-        let w = 2.0 * PI * f;
-        let d = self.medium.d;
-        let k2 = self.medium.k2_bulk(f);
-        let jwmd = Cx::new(0.0, w * MU0 * d);
-        // node equation (per cell): Σ (V_i − V_j)/(jωμd) − k² h²/(jωμd) V_i + Y_load V_i = I_i
-        let yb = jwmd.inv();
-        let yc = (Cx::new(0.0, 0.0) - k2.scale(self.h * self.h)) * yb;
-        let mut trip: Vec<(usize, usize, f64, f64)> = Vec::with_capacity(self.n + 4 * self.branches.len() + self.shorts.len() + self.loads.len());
-        for i in 0..self.n {
-            trip.push((i, i, yc.re, yc.im));
-        }
-        for &(a, b) in &self.branches {
-            trip.push((a, a, yb.re, yb.im));
-            trip.push((b, b, yb.re, yb.im));
-            trip.push((a, b, -yb.re, -yb.im));
-            trip.push((b, a, -yb.re, -yb.im));
-        }
-        for &(c, l) in &self.shorts {
-            let y = Cx::new(0.0, w * l).inv();
-            trip.push((c, c, y.re, y.im));
-        }
-        for (c, ld, l) in &self.loads {
-            let y = (ld.z(w) + Cx::new(0.0, w * l)).inv();
-            trip.push((*c, *c, y.re, y.im));
-        }
-        // edge radiation: the slot conductance of each straight run, per length of its faces
-        let k0 = w / crate::num::C0;
-        let mut gcache: Vec<(f64, f64)> = vec![];
-        for &(c, hf, run) in &self.edge_faces {
-            let g = match gcache.iter().find(|x| (x.0 - run).abs() < 1e-12) {
-                Some(x) => x.1,
-                None => {
-                    let g = slot_conductance(run, k0) / run;
-                    gcache.push((run, g));
-                    g
-                }
-            };
-            trip.push((c, c, g * hf, 0.0));
-        }
-        if !self.cut_faces.is_empty() {
-            let mut k = k2.sqrt();
-            if k.im > 0.0 {
-                k = Cx::new(-k.re, -k.im);
-            }
-            let y0 = k.scale(1.0 / (w * MU0 * d));
-            for &(c, hf, cs, rho) in &self.cut_faces {
-                let y = y0 * (Cx::new(1.0, 0.0) - Cx::new(0.0, 0.5) / k.scale(rho));
-                trip.push((c, c, y.re * hf * cs, y.im * hf * cs));
-            }
-        }
         let np = self.ports.len();
-        let sym = self.sym.borrow_mut().take();
-        #[cfg(not(target_arch = "wasm32"))]
-        let t_lu = std::time::Instant::now();
-        let lu = kisi_sparse::ComplexLu::with_symbolic(self.n, &trip, sym);
-        #[cfg(not(target_arch = "wasm32"))]
-        LU_STATS.with(|s| {
-            let mut s = s.borrow_mut();
-            s.0 += 1;
-            s.1 += t_lu.elapsed().as_secs_f64();
-            s.2 += self.n;
-        });
+        let w = 2.0 * PI * f;
+        let k2 = self.medium.k2_bulk(f);
+        let jwmd = Cx::new(0.0, w * MU0 * self.medium.d);
+        let rho = |i: usize, j: usize| {
+            let (pi, pj) = (self.ports[i], self.ports[j]);
+            if i == j {
+                pi.r
+            } else {
+                (pi.x - pj.x).hypot(pi.y - pj.y).max(1e-7)
+            }
+        };
+        if REGISTER_ONLY.load(std::sync::atomic::Ordering::Relaxed) {
+            // a first pass that only registers: the infinite plates' function (cheap, regular)
+            return (0..np * np).map(|q| green_free(k2, rho(q / np, q % np))).collect();
+        }
+        let zg = match &self.group {
+            Some((g, id)) => g.responses(*id, f),
+            None => {
+                let sym = self.sym.borrow_mut().take();
+                match self.sys.lu(f, sym, &self.pattern) {
+                    Ok((lu, sym)) => {
+                        *self.sym.borrow_mut() = Some(sym);
+                        let cells: Vec<Vec<(usize, f64)>> = self.port_cells.iter().map(|p| p.iter().map(|c| (c.0, c.1)).collect()).collect();
+                        port_responses(&lu, self.sys.n, &cells)
+                    }
+                    Err(_) => None,
+                }
+            }
+        };
         let mut out = vec![Cx::new(0.0, 0.0); np * np];
-        if let Ok((lu, sym)) = lu {
-            *self.sym.borrow_mut() = Some(sym);
-            let rhs: Vec<Vec<(f64, f64)>> = (0..np)
-                .map(|j| {
-                    let mut b = vec![(0.0, 0.0); self.n];
-                    for &(c, w, _, _) in &self.port_cells[j] {
-                        b[c].0 += w;
-                    }
-                    b
-                })
-                .collect();
-            if let Ok(x) = lu.solve(&rhs) {
-                for i in 0..np {
-                    for j in 0..np {
-                        let mut zg = Cx::new(0.0, 0.0);
-                        let mut lat = Cx::new(0.0, 0.0);
-                        for &(ca, wa, ia, ja) in &self.port_cells[i] {
-                            let v = x[j][ca];
-                            zg = zg + Cx::new(v.0, v.1).scale(wa);
-                            for &(_, wb, ib, jb) in &self.port_cells[j] {
-                                lat = lat + self.g0_lattice(k2, ia - ib, ja - jb).scale(wa * wb);
-                            }
+        if let Some(zg) = zg {
+            // the lattice function depends on the cell offset only: once per offset
+            let mut g0: std::collections::HashMap<(u64, u64), Cx> = Default::default();
+            for i in 0..np {
+                for j in 0..np {
+                    let mut lat = Cx::new(0.0, 0.0);
+                    for &(_, wa, ia, ja) in &self.port_cells[i] {
+                        for &(_, wb, ib, jb) in &self.port_cells[j] {
+                            let (di, dj) = ((ia - ib).unsigned_abs(), (ja - jb).unsigned_abs());
+                            let g = *g0.entry((di.max(dj), di.min(dj))).or_insert_with(|| self.g0_lattice(k2, ia - ib, ja - jb));
+                            lat = lat + g.scale(wa * wb);
                         }
-                        let (pi, pj) = (self.ports[i], self.ports[j]);
-                        let rho = if i == j { pi.r } else { (pi.x - pj.x).hypot(pi.y - pj.y).max(1e-7) };
-                        out[i * np + j] = zg / jwmd + green_free(k2, rho) - lat;
                     }
+                    out[i * np + j] = zg[i * np + j] / jwmd + green_free(k2, rho(i, j)) - lat;
                 }
             }
         }
@@ -1242,6 +1479,12 @@ impl GridEnv {
 thread_local! {
     /// grid factorisations so far: count, seconds, cells (for run-time reports)
     static LU_STATS: std::cell::RefCell<(usize, f64, usize)> = const { std::cell::RefCell::new((0, 0.0, 0)) };
+}
+
+/// Groups of shared grid environments: (groups, environments in them).
+pub fn group_stats() -> (usize, usize) {
+    let g = GROUPS.lock().unwrap_or_else(|e| e.into_inner());
+    (g.len(), g.values().map(|x| x.state.lock().map(|s| s.sets.len()).unwrap_or(0)).sum())
 }
 
 /// Grid factorisations so far on this thread: (count, seconds, total cells).
@@ -1393,6 +1636,39 @@ mod tests {
                 assert!(e < 0.05, "f {f}: {q}: {:?} free {:?} ({e})", g[q], gf);
             }
         }
+    }
+
+    /// environments with the same system matrix share its factorisations and give the same
+    /// results as on their own
+    #[test]
+    fn shared_grid_groups() {
+        let m = PairMedium { d: 0.3e-3, er: 4.2, tand: 0.02, f_loss: None, sigma: None, area: 0.0, edges: vec![] };
+        let bb = BBox { min: [0.0, 0.0], max: [11.0, 7.0] };
+        let mut mask = Mask::new(&bb, 0.5);
+        mask.on.iter_mut().for_each(|x| *x = true);
+        let loads = [Load { at: EnvPort { x: 5.0, y: 5.0, r: 0.15 }, r_ohm: 0.02, l: 0.6e-9, c: Some(100e-9) }];
+        let pa = vec![EnvPort { x: 2.1, y: 2.2, r: 0.1 }, EnvPort { x: 3.0, y: 2.2, r: 0.1 }];
+        let pb = vec![EnvPort { x: 7.3, y: 4.1, r: 0.1 }, EnvPort { x: 3.0, y: 2.2, r: 0.1 }, EnvPort { x: 8.0, y: 4.4, r: 0.1 }];
+        let own: Vec<GridEnv> = [&pa, &pb].iter().map(|p| GridEnv::new(&mask, m.clone(), &[], &loads, p)).collect();
+        let shared: Vec<GridEnv> = [&pa, &pb]
+            .iter()
+            .map(|p| {
+                let mut e = GridEnv::new(&mask, m.clone(), &[], &loads, p);
+                e.share();
+                e
+            })
+            .collect();
+        let g = &shared[0].group.as_ref().unwrap().0;
+        assert!(std::sync::Arc::ptr_eq(g, &shared[1].group.as_ref().unwrap().0));
+        // the port at (3.0, 2.2) is solved once for both
+        assert_eq!(g.state.lock().unwrap().ports.len(), 4);
+        for f in [0.7e9, 4.1e9] {
+            for (a, b) in own.iter().zip(&shared) {
+                assert_eq!(a.green(f), b.green(f));
+            }
+        }
+        // (the registering pass, a process-wide switch, is checked on the boards: a check gives
+        // the same rows with and without it, BOARD_RESONANCES.md section 9)
     }
 
     #[test]

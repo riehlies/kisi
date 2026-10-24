@@ -39,6 +39,11 @@ use crate::rf::Abcd;
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
+thread_local! {
+    /// calls and seconds of `PbmVia::abcd` for vias with finite cavities (run-time reports)
+    pub static ABCD_TIME: std::cell::Cell<(usize, f64)> = const { std::cell::Cell::new((0, 0.0)) };
+}
+
 /// largest span between ladder nodes inside a plane pair (mm)
 const SUB: f64 = 0.2;
 
@@ -1804,6 +1809,25 @@ impl PbmVia {
 
     /// ABCD of the via between the two feed traces (ports at the via centre).
     pub fn abcd(&self, f: f64) -> Abcd {
+        // the pass that only registers the cavity grids (`via_cavity::set_register_only`): its
+        // results are dropped, the via need not be evaluated
+        if !self.envs.is_empty() && crate::via_cavity::register_only() {
+            return Abcd::identity();
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        let t_ab = std::time::Instant::now();
+        let r = self.abcd_inner(f);
+        #[cfg(not(target_arch = "wasm32"))]
+        if !self.envs.is_empty() {
+            ABCD_TIME.with(|c| {
+                let (n, t) = c.get();
+                c.set((n + 1, t + t_ab.elapsed().as_secs_f64()))
+            });
+        }
+        r
+    }
+
+    fn abcd_inner(&self, f: f64) -> Abcd {
         let w = 2.0 * PI * f;
         let gz = self.group_z(f);
         // skin-effect resistance and internal inductance of the barrel per metre

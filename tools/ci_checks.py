@@ -14,7 +14,7 @@
   ci_checks.py sizes <dist dir>          the bundles against tools/size_budget.json (fails above the budget)
   ci_checks.py same <a> <b>              two builds of a bundle are byte-identical (reproducible bundles)
 """
-import fnmatch, glob, hashlib, json, os, re, subprocess, sys, tempfile
+import fnmatch, glob, hashlib, json, os, re, subprocess, sys, tempfile, urllib.parse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -152,7 +152,7 @@ def links():
             target = m.group(1) or m.group(2)
             if re.match(r"^[a-z]+:", target) or target.startswith("#"):
                 continue
-            path = target.split("#")[0].split("?")[0]
+            path = urllib.parse.unquote(target.split("#")[0].split("?")[0])  # GitHub needs %20 for spaces
             if not path:
                 continue
             full = os.path.normpath(os.path.join(ROOT, os.path.dirname(f), path))

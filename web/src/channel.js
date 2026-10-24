@@ -434,7 +434,7 @@ function renderCheck() {
   if (S.checkRunning) return;
   if (locked || !S.check || !S.check.rows.length) {
     box.innerHTML = "";
-    $("ck-text").textContent = locked ? "Available after steps 1 and 2." : "All lanes against the profile of their class: eye (IC to IC) with transmitter and receiver, insertion loss, return loss, skew, via stubs; nets with a target but no devices on their own. A few seconds.";
+    $("ck-text").textContent = locked ? "Available after steps 1 and 2." : "All lanes against the profile of their class: eye with transmitter and receiver (IC to IC, or with the end set at a connector), insertion loss, return loss, skew, via stubs; nets with a target but no devices on their own. A few seconds.";
     return;
   }
   const rows = S.check.rows.map((r) => ({ r, p: r.lane ? laneProfile(r.lane) : profileOf(r.net) })).map((x) => ({ ...x, st: judge(rowMetrics(x.r, x.r.lane), x.p).status }));

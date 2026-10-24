@@ -51,10 +51,10 @@ instead of infinite plates (validation/fdtd/BOARD_RESONANCES.md); slower.
 the via models – a return via shorts only the pairs whose two planes it joins, crosses supply
 planes as a floating return, capacitors between supply and ground planes nearby close a pair
 (validation/fdtd/BOARD_RETURNS.md).
-field solver (kisi.mjs only; overview, net, check, report): used by default for the cross-sections
-of nets with a target, results cached on disk; --formula (no field solver), --field-time S
-(time budget for new solves, default 120), --field-all (all cross-sections, not only targets),
---field-xt (also the coupling cross-sections of critical crosstalk victims, NEXT or FEXT from 1 %;
+field solver (kisi.mjs only; overview, net, check, crosstalk, report): used by default for the
+cross-sections of nets with a target, results cached on disk; --formula (no field solver),
+--field-time S (time budget for new solves, default 120), --field-all (all cross-sections, not
+only targets), --field-xt (also the coupling cross-sections of critical crosstalk victims, NEXT or FEXT from 1 %;
 net: always all of the net's)
 
 kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design

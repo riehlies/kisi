@@ -1,6 +1,7 @@
 # Measured test board – plan (ToDo)
 
-Status: plan, nothing built. Idea: select reference cases that can be made with the standard stackups of
+Status: plan on `main`; the coupon design (v2) is in branch `feat/test-board` (not merged, nothing ordered or
+measured yet; waiting for advice on the measurement). Idea: select reference cases that can be made with the standard stackups of
 JLCPCB and Aisler, order them, simulate the same PCB files in CST and kisi-fdtd, and measure them on a VNA.
 
 ## Goal

@@ -2,7 +2,7 @@
 
 What was tested, how, and the result. Numbers come from the JSON files in `results/` and from
 `validation/via_ref/*/meta.json`. The reference page (`python3 make_viewer.py` → `dist/kisi-references.html`,
-also attached to every release) shows the same tables (tab "Solver checks") and every case with its curves.
+attached to the releases in which the reference cases changed) shows the same tables (tab "Solver checks") and every case with its curves.
 The scripts named here reproduce each result.
 
 ## 1. Solver (kisi-fdtd)

@@ -44,8 +44,8 @@ GROUPS = {
     "refpage": ["validation/via_ref/*", "validation/fdtd/make_viewer.py", "validation/fdtd/viewer_template.html"],
     # Forstén's solver unchanged against upstream
     "upstream": ["third_party/*"],
-    # Markdown links (cheap; also on every code change)
-    "docs": ["*.md", "docs/*", "claude-plugin/*", "LICENSE*"],
+    # Markdown links (cheap; also on every code change) and the documentation PDF
+    "docs": ["*.md", "docs/*", "claude-plugin/*", "LICENSE*", "tools/docs_pdf.py"],
 }
 # changes that need no check of their own (the cheap checks still run)
 QUIET = ["docs/img/*", "tools/screenshots.py", ".gitignore", ".gitattributes", "web/pages/*", "validation/fdtd/*",

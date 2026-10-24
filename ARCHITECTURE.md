@@ -73,8 +73,8 @@ to one thread.
   (`tools/solver_bundle.py`, shared with the viewer) for Node; reads files, runs the field solver in worker
   threads with a disk cache and the rows of `check` in worker threads with engines of their own, everything else
   through `kisi_core::commands`.
-* GitHub Pages (release workflow): `web/pages/index.html` (landing page) with `kisi.html` and `kisi-examples.html`;
-  the screenshots in `docs/img/` come from `tools/screenshots.py`.
+* GitHub Pages (release workflow): `web/pages/index.html` (landing page) with `kisi.html`, `kisi-examples.html` and
+  `kisi-docs.pdf`; the screenshots in `docs/img/` come from `tools/screenshots.py`.
 * Files come in by drag and drop or the file dialog; with the File System Access API (Chromium) the viewer keeps
   the file handles and “Reload” reads them again after saving in KiCad.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
@@ -108,19 +108,36 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
   as read and rebuilds the analysed board when the viewer switches the variant.
 * `kisi_core::gaps`: deterministic list of missing or default data, with where to find it and the kisi.json entry
   (supply rails also from net and pin names; the MPN where the Value field is not a part number).
-* Worked example of a `<board>.kisi.json` (power tree with sources, the open gaps): `docs/examples/xiao-nrf54lm20a/`.
+* Worked example of a `<board>.kisi.json` (power tree with sources, the open gaps): `docs/preparing-a-board.md` with
+  the file in `docs/examples/xiao-nrf54lm20a/`.
 * Agents use the CLI (`node kisi.mjs <command> <board>` → JSON) following the skills in `claude-plugin/skills/`:
   `kisi-prepare` (gaps → research with sources → kisi.json → `kisi config-check`) and `kisi-si-pi-review`.
   An MCP server and a KiCad plugin existed until 2026-10 and were removed (git history) in favour of this.
 
+## Documentation
+* User documentation in `docs/` (Markdown, rendered by GitHub, linked from the README and the landing page):
+  `getting-started.md`, `preparing-a-board.md`, `reference.md` (fields, kisi.json), `models.md` (models, accuracy,
+  validation, estimates), `cli.md`, `agents.md`; `docs/README.md` is the index. One fact in one place: the README
+  is a short entry page, the contributor files (`ARCHITECTURE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `ROADMAP.md`,
+  `UPSTREAM.md`) stay at the top level. The skills in `claude-plugin/skills/` repeat what an agent needs, because
+  they are read without the repository.
+* `docs/research/` – background research and concepts; `docs/examples/` – prepared board configurations.
+* Kept in step with the program by `crates/kisi-core/tests/docs.rs` (part of `cargo test`): `docs/cli.md` carries
+  `kisi help` verbatim (`KISI_BLESS_DOCS=1 cargo test -p kisi-core --test docs` rewrites it) and names every command
+  and option; `docs/preparing-a-board.md` names every gap id of `kisi gaps`.
+* `tools/docs_pdf.py` renders the pages (its `ORDER`) into `kisi-docs.pdf` with a table of contents – python-markdown
+  and the headless Chromium of Playwright – and fails on links to missing files or headings.
+
 ## Releases
 `.github/workflows/release.yml`: on a tag `v*` tests, field-solver validation, build of `kisi.html`,
-`kisi-examples.html` and `kisi.mjs`, attached to the GitHub release (the skills download `kisi.mjs` from there).
+`kisi-examples.html`, `kisi.mjs` and `kisi-docs.pdf`, attached to the GitHub release (the skills download `kisi.mjs`
+from there), plus `kisi-references.html` when the reference cases changed.
 
 ## Checks after changes
 `cargo test --release` · `tools/validate_field.sh` (field solver against HFSS/baseline) ·
 `python3 tools/check_viewer.py dist/kisi-examples.html` (all views, light/dark/phone, no console errors) ·
-`python3 tools/compare_cli.py` (Node CLI against the native CLI) · `tools/golden.py` (stored results of the example
+`python3 tools/compare_cli.py` (Node CLI against the native CLI) · `python3 tools/docs_pdf.py` (documentation PDF
+and link check of `docs/`) · `tools/golden.py` (stored results of the example
 boards in `validation/golden/` and of the via models on the 3D references) · `tools/ci_checks.py` (values with sources,
 Markdown links, CLI options named in the docs, Forstén's solver unchanged, reproducible bundles, bundle sizes).
 `.github/workflows/ci.yml` runs them by what changed (`tools/ci_checks.py changes`), everything on main, by hand and

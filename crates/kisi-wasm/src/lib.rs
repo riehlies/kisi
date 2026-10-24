@@ -1094,6 +1094,24 @@ pub extern "C" fn kisi_edits_to_fields(p: *const u8, n: usize) -> i32 {
     })())
 }
 
+/// The hierarchical sheets of the loaded board with their parts (for the Prepare page's variant
+/// form): [{"sheet": "/Power/", "parts": 12}].
+#[no_mangle]
+pub extern "C" fn kisi_board_sheets() -> i32 {
+    reply(ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board_base.as_ref().ok_or("no board loaded")?;
+        let mut m: std::collections::BTreeMap<String, usize> = Default::default();
+        for f in &b.footprints {
+            let s = kisi_core::variant::norm_sheet(&f.sheet);
+            if !s.is_empty() {
+                *m.entry(s).or_default() += 1;
+            }
+        }
+        Ok(serde_json::Value::Array(m.into_iter().map(|(s, n)| serde_json::json!({"sheet": s, "parts": n})).collect()).to_string())
+    }))
+}
+
 /// Parse a command line: ["check", "board.kicad_pcb", "--all", …] → Opts.
 #[no_mangle]
 pub extern "C" fn kisi_cli_parse(p: *const u8, n: usize) -> i32 {

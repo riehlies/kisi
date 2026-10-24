@@ -409,6 +409,9 @@ pub fn lane_files(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, f
         add(bench_name, bl);
         add(format!("{st}.kicad_pro"), pro);
         add(format!("{st}.kicad_sch"), sch);
+        let (symlib, table) = super::kicad::symbol_library();
+        add("kisi.kicad_sym".into(), symlib);
+        add("sym-lib-table".into(), table);
     }
     add("README.md".into(), readme(lc, ends, f, board, &st));
     out
@@ -439,7 +442,7 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
     }
     let detailed = f.kicad && !f.kicad_compact && super::kicad::can_detail(lc);
     if f.kicad {
-        s.push_str(&format!("* `{st}.kicad_pro`, `{st}.kicad_sch`, `{st}_kicad.lib` – a KiCad simulation project: {}, the PRBS7 sources and the linear ends as R, L, C symbols, a `.tran` directive. Open it, then Inspect → Simulator → Run, and probe the receiver die.\n", if detailed { "the lane's elements as symbols" } else { "the lane as one symbol" }));
+        s.push_str(&format!("* `{st}.kicad_pro`, `{st}.kicad_sch`, `{st}_kicad.lib`, `kisi.kicad_sym`, `sym-lib-table` – a KiCad simulation project (with kisi's symbols as a project library): {}, the PRBS7 sources and the linear ends as R, L, C symbols, a `.tran` directive. Open it, then Inspect → Simulator → Run, and probe the receiver die.\n", if detailed { "the lane's elements as symbols" } else { "the lane as one symbol" }));
     }
     if f.spice && f.xyce {
         s.push_str(&format!("\n## ngspice and Xyce\n\nThe circuit, `{st}.lib`, is the same for both. Only the small decks around it differ, because the two simulators define ports and write results differently:\n\n* ngspice: results from a `.control` block (`run`, then `wrdata` to a text file); S-parameters with `.sp` and voltage sources marked `portnum N z0 Z`.\n* Xyce: results with `.print … format=csv` and, for S-parameters, port devices `P… port=N z0=Z` with `.ac` and `.lin sparcalc=1` (written as Touchstone).\n\nOne deck for both does not work without editing: ngspice reads a `P` line as its coupled-line device and has no `.lin`, Xyce knows neither `portnum` nor `.control` scripts, and both read `*` only as a comment – a commented-out dialect would have to be switched by hand. Hence one deck per simulator and analysis.\n"));

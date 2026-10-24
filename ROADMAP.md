@@ -101,7 +101,7 @@ setup (models, pin mapping, terminations, interface settings) is the main effort
   equalisers) is done in other tools. Steps 1 and 2 are done (`kisi export`, “Export…” in the viewer's lane detail
   and bus card; `kisi_si::export`; report `docs/research/channel-export.md`): the lane's board channel as SPICE
   subcircuits (RLGC ladders with fitted R(f)/G(f) networks, kisi's via model, parts, stubs; pairs with modal coupled
-  blocks), test benches for ngspice and Xyce with the profile's linear ends, a KiCad project (KiCad 7 format), and
+  blocks), test benches for ngspice and Xyce with the profile's linear ends, a KiCad project (one symbol per lane element, KiCad 7 format, checked with kicad-cli and its ERC), and
   Touchstone per lane and as one N-port of a bus. Checked in ngspice against kisi's S-parameters on ThunderScope's
   LVDS lane and the whole PCIe bus (`validation/channel_export/compare.py`, also in CI). Next:
   - **compact models** (step 3): delay plus a vector-fitted loss for long segments or whole lanes (design note in

@@ -234,37 +234,59 @@ fn sym(name: &str) -> Sym {
     }
 }
 
+/// Every symbol of kisi's library.
+const ALL_SYMBOLS: [&str; 17] = ["C", "C_V", "CPL", "GND", "L", "L_V", "LANE2", "LANE4", "PWR_FLAG", "R", "R_V", "SRC", "STUB", "STUBPAIR", "TL", "VIA", "VIAPAIR"];
+
+/// One symbol definition; `prefix` "kisi:" in the sheet's `lib_symbols`, "" in the library file.
+fn symbol_def(name: &str, prefix: &str) -> String {
+    let y = sym(name);
+    let flags = if y.power.is_some() { " (power)" } else { "" };
+    let names = if y.names { "(pin_names (offset 1.016))" } else { "(pin_names (offset 0) hide)" };
+    let mut s = format!("    (symbol {}{flags} (pin_numbers hide) {names} (in_bom yes) (on_board yes)\n", q(&format!("{prefix}{name}")));
+    s.push_str(&prop("Reference", y.reference, 0.0, 3.81, y.power.is_some()));
+    s.push_str(&prop("Value", name, 0.0, -3.81, false));
+    s.push_str(&prop("Footprint", "", 0.0, 0.0, true));
+    s.push_str(&prop("Datasheet", "", 0.0, 0.0, true));
+    s.push_str(&format!("      (symbol \"{name}_0_1\"\n{}      )\n      (symbol \"{name}_1_1\"\n", y.body));
+    for (i, p) in y.pins.iter().enumerate() {
+        let kind = y.power.unwrap_or("passive");
+        // power symbols: the pin hidden at the origin, as in KiCad's own power library
+        let hide = if y.power.is_some() { " hide" } else { "" };
+        s.push_str(&format!(
+            "        (pin {kind} line (at {} {} {}) (length {}){hide}\n          (name {} (effects (font (size 1.27 1.27))))\n          (number \"{}\" (effects (font (size 1.27 1.27))))\n        )\n",
+            p.x,
+            p.y,
+            p.ang,
+            p.len,
+            q(p.name),
+            i + 1
+        ));
+    }
+    s.push_str("      )\n    )\n");
+    s
+}
+
 /// The `lib_symbols` section with the symbols the sheet uses.
 fn lib_symbols(used: &BTreeSet<&'static str>) -> String {
     let mut s = String::from("  (lib_symbols\n");
     for &name in used {
-        let y = sym(name);
-        let flags = if y.power.is_some() { " (power)" } else { "" };
-        let names = if y.names { "(pin_names (offset 1.016))" } else { "(pin_names (offset 0) hide)" };
-        s.push_str(&format!("    (symbol {}{flags} (pin_numbers hide) {names} (in_bom yes) (on_board yes)\n", q(&format!("kisi:{name}"))));
-        s.push_str(&prop("Reference", y.reference, 0.0, 3.81, y.power.is_some()));
-        s.push_str(&prop("Value", name, 0.0, -3.81, false));
-        s.push_str(&prop("Footprint", "", 0.0, 0.0, true));
-        s.push_str(&prop("Datasheet", "", 0.0, 0.0, true));
-        s.push_str(&format!("      (symbol \"{name}_0_1\"\n{}      )\n      (symbol \"{name}_1_1\"\n", y.body));
-        for (i, p) in y.pins.iter().enumerate() {
-            let kind = y.power.unwrap_or("passive");
-            // power symbols: the pin hidden at the origin, as in KiCad's own power library
-            let hide = if y.power.is_some() { " hide" } else { "" };
-            s.push_str(&format!(
-                "        (pin {kind} line (at {} {} {}) (length {}){hide}\n          (name {} (effects (font (size 1.27 1.27))))\n          (number \"{}\" (effects (font (size 1.27 1.27))))\n        )\n",
-                p.x,
-                p.y,
-                p.ang,
-                p.len,
-                q(p.name),
-                i + 1
-            ));
-        }
-        s.push_str("      )\n    )\n");
+        s.push_str(&symbol_def(name, "kisi:"));
     }
     s.push_str("  )\n");
     s
+}
+
+/// The project's symbol library `kisi.kicad_sym` (the symbols the sheet embeds, so KiCad finds the
+/// library they come from) and its `sym-lib-table`.
+pub fn symbol_library() -> (String, String) {
+    let mut s = String::from("(kicad_symbol_lib (version 20220914) (generator kisi)\n");
+    let set: BTreeSet<&str> = ALL_SYMBOLS.iter().copied().collect();
+    for name in set {
+        s.push_str(&symbol_def(name, ""));
+    }
+    s.push_str(")\n");
+    let table = "(sym_lib_table\n  (lib (name \"kisi\")(type \"KiCad\")(uri \"${KIPRJMOD}/kisi.kicad_sym\")(options \"\")(descr \"symbols of the kisi export\"))\n)\n".to_string();
+    (s, table)
 }
 
 // --- the sheet --------------------------------------------------------------------------------

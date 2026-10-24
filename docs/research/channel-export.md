@@ -12,8 +12,9 @@ step 3 (compact, vector-fitted models) as a design study at the end. Background 
   is exactly the one kisi's channel check computes for the eye (same sections, same models, same ends).
 - **Netlist = kisi's circuit:** ngspice's S-parameter analysis of the exported subcircuit reproduces kisi's own
   evaluation of the circuit for every lane tried (LVDS lane, nine PCIe lanes; every S-parameter to 0.001), and the
-  bus subcircuit gives the same lane response as the lane alone. The KiCad 7 project, netlisted by `kicad-cli`
-  and run in ngspice, gives the bench's waveform to within 1 µV.
+  bus subcircuit gives the same lane response as the lane alone. The KiCad project shows the lane element by element
+  (lines, coupled runs, vias, parts, pads, stubs); `kicad-cli`'s netlist of it is the lane subcircuit node for node,
+  and its AC response in ngspice equals the bench's to 1e-8.
 - **Circuit vs kisi's S-parameters:** up to 1.5 × Nyquist |ΔS21| ≤ 0.025 dB on the LVDS lanes and 0.15–0.42 dB on
   the strongly reflecting PCIe lanes (|Sdd11| up to −5 dB: the ripples shift with small phase errors); the largest
   complex difference of any S-parameter ≤ 0.07 in that band (0.3–0.5 up to 25 GHz, mostly above 15 GHz). Step
@@ -53,13 +54,52 @@ Per lane (`<lane>/` in a bus export):
 | `bench_ngspice.cir`, `bench_xyce.cir` | transient test bench: PRBS7 (two periods) at the profile's bit rate and edge, the profile's linear transmitter (emf → R → C at the die → L → pin) and receiver (pin → L → C ∥ R at the die) per line, scaled so that the receiver sees ±swing at DC; ngspice writes the receiver voltage with `wrdata`, Xyce with `.print tran format=csv` |
 | `sparam_ngspice.cir`, `sparam_xyce.cir` | S-parameters on kisi's grid: ngspice `.sp` with `portnum` sources, Xyce `.ac` + `.lin` with port devices (Touchstone 2 output) |
 | `<lane>.s2p` / `.s4p` | kisi's S-parameters of the same channel (Touchstone 1.0, RI), ports as above, the port list in the header |
-| `<lane>.kicad_pro`, `.kicad_sch`, `<lane>_kicad.lib` | KiCad project: the lane symbol (`Sim.Device = SUBCKT`), the PRBS7 sources as subcircuits, the ends as R, L, C symbols whose models KiCad infers from reference and value, ground, a `.tran` directive. Written in the KiCad 7 format (20230121) with kisi's own symbols embedded, so KiCad 7–10 open it without libraries. `<lane>_kicad.lib` includes `<lane>.lib` and wraps the lane in a small subcircuit: KiCad 7 reads the model from the library it names, and the large lane library is not always parsed before the netlister asks for it |
+| `<lane>.kicad_pro`, `.kicad_sch`, `<lane>_kicad.lib` | KiCad project (section 2a): one symbol per element of the lane subcircuit (or, with `--kicad-style compact`, the lane as one symbol), the PRBS7 sources as subcircuits, the ends as R, L, C symbols whose models KiCad infers from reference and value, ground and a power flag, a `.tran` directive, notes on what the ends stand for. KiCad 7 format (20230121) with kisi's own symbols embedded, so it opens without libraries. `<lane>_kicad.lib` includes `<lane>.lib` and holds the small wrapper subcircuits the symbols call: KiCad reads the models from the file a symbol names, and a short file loads at once |
 | `README.md` | ports, files, bench ends, model, the check, what is not included, kisi's notes on the lane |
 
 A bus adds `<bus>.s<N>p` (all lanes as one N-port: ports 1…N/2 at the first device, N/2+1…N at the other, port k
 and k+N/2 the two ends of one line; every lane renormalised to the most common reference), `<bus>_ports.csv`,
 `<bus>.lib` (subcircuit `<bus>_bus` with all lanes in the same port order) and a README with the port map. The
 lanes are independent in kisi's network model, so the N-port is block-diagonal.
+
+### 2a. The KiCad sheet
+The sheet draws the lane subcircuit `<lane>_lane` element by element, in its order, with kisi's own symbols:
+`TL` line sections (consecutive sections of one line on one layer as one element), `CPL` coupled runs drawn across
+the P and N rows (consecutive runs on one layer as one), `VIA` and `VP` (via pair), the board's parts under their
+reference designator (e.g. `C40`, a capacitor symbol with the value `220n`), `CP` pad capacitances (also those of
+unfitted parts), `ST` and `SP` open stubs. A pair has two parallel rows; a long lane wraps into several bands
+(P outside on the right, inside on the left, so the two lines never cross); the paper grows from A3 as needed.
+The transmitter (PRBS7 source, R, C at the die) is on the left, the receiver (C ∥ R at the die) on the right; a note
+on the sheet says what they stand for – profile, edge, emf, and for a high source resistance (LVDS: 5 kΩ against
+50 Ω) “a current-mode driver as its Thevenin equivalent, I = emf/(R + R_rx)”.
+
+- **Models:** each element symbol has `Sim.Device = SUBCKT`, `Sim.Library = <lane>_kicad.lib`, `Sim.Name =
+  <element>_k` and `Sim.Pins`. The wrapper `<element>_k` calls the element's subcircuit in `<lane>.lib` with its
+  reference node on ground (so lines, vias and coupled runs need no ground pin; pads and shunt parts keep theirs).
+- **Parts with an editable value:** a part's wrapper is a copy of its subcircuit with the value as parameter, e.g.
+  `.subckt …_C40_2_k a b params: c=220n` (ESR, ESL and the 1 GΩ DC path fixed); the symbol has `Sim.Params =
+  c=${VALUE}`. KiCad substitutes the Value field (checked with kicad-cli 7: Value `100n` → `c=100n` in the netlist),
+  so editing the value keeps the parasitics. The Value is in SPICE notation (`100n`, `4.7u`, `1Meg`); an inductor's
+  parameter is its total inductance (kisi adds the ESL to the nominal value). Pads keep fixed values.
+- **Drawing rules:** pins visible (names and numbers hidden), every wire ends on a pin end or another wire end, a
+  junction wherever three or more items meet, everything on the 1.27 mm grid, a `PWR_FLAG` on ground (ERC: the
+  ground net is driven). `validation/channel_export/kicad_sheet.py` checks this without KiCad, then kicad-cli's
+  netlist (no unconnected pin, every element of `<lane>_lane` once and connected node for node as there, the ports at
+  the transmitter's and the receiver's die), its AC response in ngspice against the bench (exact, no time steps) and,
+  with kicad-cli 8 or later, KiCad's ERC.
+![KiCad sheet of PCIe_PER0_P](../img/channel-export/kicad_pcie_per0_p.png)
+![KiCad sheet of SYNC_OUT_P](../img/channel-export/kicad_sync_out_p.png)
+
+- **Compact sheet** (`--kicad-style compact`): the lane as one symbol, as before. It stays as an option for users
+  who want the lane as a black box; the detailed sheet is the default for lanes and buses (a PCIe lane is 48–55
+  symbols, written in milliseconds, and opens and checks cleanly).
+- **Bus:** every lane folder has its own KiCad project (simpler than hierarchical sheets and each opens on its
+  own); the bus-level files stay as they are.
+- **ngspice and Xyce decks:** the circuit (`<lane>.lib`) is shared; only the decks differ – ngspice writes results from a
+  `.control` block (`wrdata`) and takes S-parameters from `.sp` with `portnum` sources, Xyce uses `.print` and port
+  devices `P` with `.ac` + `.lin`. One deck with commented-out dialect lines would need hand editing (ngspice reads
+  `P` as its coupled-line device, Xyce knows neither `portnum` nor `.control`), so each simulator has its own decks;
+  the export README says so.
 
 What the channel contains: the board between the two end pins as the eye's network uses it – lines, vias, series
 parts, shunt parts, side stubs and forks, with the terminations that do not sit at the receiver. Terminations next
@@ -86,7 +126,9 @@ to the receiver act as the receiver's termination (bench and Touchstone leave th
 - **Pairs:** both lines on their own paths as `rf::mixed::align_pair` aligns them. Coupled runs, via pairs and stub
   pairs are modal blocks: the even- and the odd-mode chain between ideal mode converters – E sources set V_e =
   (V_P + V_N)/2 and V_o = (V_P − V_N)/2, F sources make I_P = I_e + I_o and I_N = I_e − I_o – exactly
-  `T = P·blockdiag(T_e, T_o)·P⁻¹` of `rf::mixed::coupled`. Consecutive coupled elements share one block. This keeps
+  `T = P·blockdiag(T_e, T_o)·P⁻¹` of `rf::mixed::coupled`. Each coupled run (consecutive runs on one layer
+  joined), via pair and stub pair is its own block – back-to-back mode converters are exact, and each block is
+  one element on the KiCad sheet. This keeps
   the mode-dependent conductor loss and the even mode of the via pairs, which a K/C_m ladder would not.
 - **The check inside kisi:** the circuit is evaluated element by element (cascade matrices of exactly the values
   written) and compared with kisi's cascade of the same build (`check_against_kisi`); ngspice must give the same.
@@ -99,17 +141,17 @@ response computed from it; scikit-rf reads every Touchstone file (passivity, rec
 
 | Lane | model | mm | elements R/L/C/sources | ngspice vs kisi up to 1.5×Nyquist: \|ΔS21\| dB, max \|ΔS\| | up to 25 GHz: \|ΔS21\| dB, max \|ΔS\| | kisi's evaluation: max \|ΔS\| | step: max diff, t50 ngspice / kisi (ps) | ngspice s (S-par. / step) |
 |---|---|---|---|---|---|---|---|---|
-| SYNC_OUT_P | pair | 85.4 | 20745/9091/11762/180 | 0.016, 0.008 | 10.73, 0.293 | 0.293 | 1.8 %, 576.6 / 574.3 | 5 / 8 |
+| SYNC_OUT_P | pair | 85.4 | 20745/9091/11762/200 | 0.016, 0.008 | 10.73, 0.293 | 0.293 | 1.8 %, 576.6 / 574.3 | 5 / 8 |
 | REFINOUT2 | single | 70.2 | 5573/2745/3101/0 | 0.024, 0.005 | 1.18, 0.136 | 0.136 | 1.7 %, 404.3 / 402.5 | 1 / 2 |
-| PCIe_PER0_P | pair | 34.7 | 6092/3066/3535/140 | 0.424, 0.069 | 1.43, 0.157 | 0.157 | 1.4 %, 207.4 / 205.9 | 25 / 42 |
-| PCIe_PER1_P | pair | 32.9 | 6096/3104/3516/140 | 0.383, 0.056 | 2.08, 0.179 | 0.179 | 1.5 %, 196.4 / 194.6 | 66 / 133 |
-| PCIe_PER2_P | pair | 31.1 | 5815/2934/3367/160 | 0.242, 0.049 | 2.33, 0.171 | 0.171 | 1.3 %, 188.6 / 187.0 | 56 / 54 |
-| PCIe_PER3_P | pair | 30.5 | 5687/2804/3360/200 | 0.401, 0.068 | 2.08, 0.140 | 0.140 | 1.3 %, 183.0 / 181.4 | 32 / 36 |
-| PCIe_PET0_P | pair | 59.7 | 12521/5804/7275/180 | 0.155, 0.064 | 2.80, 0.182 | 0.182 | 1.5 %, 382.3 / 380.4 | 17 / 30 |
-| PCIe_PET1_P | pair | 42.1 | 8399/4013/4930/120 | 0.149, 0.070 | 0.99, 0.219 | 0.219 | 1.3 %, 270.4 / 269.0 | 17 / 16 |
+| PCIe_PER0_P | pair | 34.7 | 6092/3066/3535/170 | 0.424, 0.069 | 1.43, 0.157 | 0.157 | 1.4 %, 207.4 / 205.9 | 25 / 42 |
+| PCIe_PER1_P | pair | 32.9 | 6096/3104/3516/170 | 0.383, 0.056 | 2.08, 0.179 | 0.179 | 1.5 %, 196.4 / 194.6 | 66 / 133 |
+| PCIe_PER2_P | pair | 31.1 | 5815/2934/3367/170 | 0.242, 0.049 | 2.33, 0.171 | 0.171 | 1.3 %, 188.6 / 187.0 | 56 / 54 |
+| PCIe_PER3_P | pair | 30.5 | 5687/2804/3360/210 | 0.401, 0.068 | 2.08, 0.140 | 0.140 | 1.3 %, 183.0 / 181.4 | 32 / 36 |
+| PCIe_PET0_P | pair | 59.7 | 12521/5804/7275/190 | 0.155, 0.064 | 2.80, 0.182 | 0.182 | 1.5 %, 382.3 / 380.4 | 17 / 30 |
+| PCIe_PET1_P | pair | 42.1 | 8399/4013/4930/150 | 0.149, 0.070 | 0.99, 0.219 | 0.219 | 1.3 %, 270.4 / 269.0 | 17 / 16 |
 | PCIe_PET2_P | pair | 45.1 | 9239/4504/5268/70 | 0.178, 0.053 | 1.24, 0.485 | 0.485 | 1.5 %, 302.4 / 300.5 | 17 / 39 |
-| PCIe_PET3_P | pair | 39.1 | 8145/3929/4728/120 | 0.157, 0.067 | 1.62, 0.244 | 0.244 | 1.5 %, 261.5 / 259.8 | 19 / 27 |
-| PCIe_REFCLK_P | pair | 37.6 | 7705/3594/4511/140 | 0.003, 0.001 | 26.60, 0.305 | 0.305 | 1.3 %, 252.3 / 250.7 | 12 / 14 |
+| PCIe_PET3_P | pair | 39.1 | 8145/3929/4728/150 | 0.157, 0.067 | 1.62, 0.244 | 0.244 | 1.5 %, 261.5 / 259.8 | 19 / 27 |
+| PCIe_REFCLK_P | pair | 37.6 | 7705/3594/4511/170 | 0.003, 0.001 | 26.60, 0.305 | 0.305 | 1.3 %, 252.3 / 250.7 | 12 / 14 |
 
 LVDS lanes (profile lvds, 1.5 × Nyquist = 0.75 GHz) and the PCIe lanes (pcie4, 16 GT/s, 1.5 × Nyquist = 12 GHz), single-ended references 50 Ω (LVDS) and 42.5 Ω (PCIe) per port. Fits of the main line sections: R 7–8 %, X 0.7–0.9 %, G 0.7–3.2 %, B ≤ 0.3 % (worst over all sections, short ones included: G 5 %, B 0.9 %; a microstrip piece over a distant plane on the PCIe receive lanes: G 96 %, B 19 %, a few tenths of a millimetre).
 
@@ -122,10 +164,19 @@ Plots (|S21|/|Sdd21|, |S11|/|Sdd11|, the differences, the step responses):
   is the same to three digits in ngspice and in kisi's own evaluation – the netlist text is the circuit.
 - **Bus:** the N-port's blocks equal the lanes' Touchstone files (difference 0); the bus subcircuit in ngspice with
   one lane's four ports driven and all other ports terminated gives that lane's response (same difference to kisi
-  as the lane alone). For the PCIe bus (9 lanes, 36 ports) the bus subcircuit's S-parameter run took 9 minutes in ngspice (4 ports driven, 32 terminated, 500 points).
-- **Transient:** the PRBS7 benches run in ngspice (about 100 s per lane on one core); the KiCad project through
-  `kicad-cli sch export netlist --format spice` and ngspice gives the bench's receiver waveform to within 1 µV (KiCad 7.0;
-  KiCad 9 opens the KiCad 7 format but was not available here).
+  as the lane alone). For the PCIe bus (9 lanes, 36 ports) the bus subcircuit's S-parameter run took 9–11 minutes in ngspice (4 ports driven, 32 terminated, 500 points).
+- **Transient:** the PRBS7 benches run in ngspice (about 100 s per lane on one core).
+- **KiCad** (`--kicad`, `kicad_sheet.py`): every lane's sheet passes the wiring check (visible pins, no open pin or
+  dangling wire, junctions, grid); kicad-cli's netlist equals the lane subcircuit node for node, and its AC response
+  in ngspice equals the bench's (relative difference 1e-10 to 5e-8, rounding). With kicad-cli 7.0.11 here for the LVDS
+  lanes and all nine PCIe lanes (27–55 symbols per sheet); with kicad-cli 9.0.9 in CI (KiCad 9 from the KiCad PPA)
+  for SYNC_OUT_P, PCIe_PER0_P and PCIe_PET1_P, where KiCad's ERC reports no error and no unconnected pin, dangling
+  wire or off-grid item – only `lib_symbol_issues` warnings, one per symbol, because the sheet's library `kisi` was
+  not in a library table; the export now ships it as a project library (`kisi.kicad_sym`, `sym-lib-table`). KiCad 9
+  thus reads the KiCad 7 file, its models and `Sim.Params` with `${VALUE}`. The sheets as kicad-cli renders them:
+  `docs/img/channel-export/kicad_*.png` (kicad-cli 7) and the CI artifact `kicad-sheets` (kicad-cli 9). Transients of
+  the KiCad netlist and the bench differ by about 1e-4 of the swing: ngspice's time steps depend on the element order.
+  Not tested: the simulator dialog of the KiCad GUI.
 - **scikit-rf** reads every file (2-, 4- and 36-port). The lanes' Touchstone files are passive and reciprocal
   except the PCIe reference clock lane (kisi's model, see the summary); the bus N-port inherits that.
 - **Not run here:** Xyce (no package), Qucs-S/Qucsator, PyBERT – the decks follow the Xyce reference guide
@@ -144,8 +195,11 @@ large reflections. The fallback model of sections without a reference plane is t
   common-mode loss; every SPICE reads E and F elements.
 - **Terminations at the receiver** belong to the receiver (as in kisi's eye), so the Touchstone file and the
   subcircuit are the interconnect and the bench is the profile's ends plus that termination.
-- **KiCad 7 format** for the project: the oldest format with the simulation model fields; it opens in every later
-  KiCad and could be tested here with `kicad-cli` 7.
+- **KiCad 7 format** for the project: the oldest format with the simulation model fields; KiCad 8 and 9 read it
+  (and convert it when saving), and it can be tested with kicad-cli 7 here and kicad-cli 9 in CI.
+- **One symbol per element, through wrappers:** the sheet is the netlist a user can edit; the wrappers keep the
+  file KiCad parses short (with the 7 k-line lane library as `Sim.Library`, kicad-cli 7 sometimes did not find the
+  model) and the elements' own subcircuits stay in one library shared with ngspice and Xyce.
 - **20 sections per wavelength:** 40 or 80 change nothing measurable against kisi's model (the fits dominate).
 
 ## 6. Step 3 – compact models (design study)

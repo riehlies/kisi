@@ -68,7 +68,8 @@ in the output shows the coverage; `--formula` skips the solver.
    tools (e.g. kicad-happy) and later sessions can reuse the results.
 7. When the user wants to simulate a lane elsewhere (ngspice, Xyce, KiCad's simulator, IBIS buffers, RF tools):
    `kisi export <board> --lane NAME` (or `--bus NAME`) writes SPICE subcircuits with test benches, Touchstone
-   files (a bus as one N-port with its port map) and a KiCad project into `analysis/export/<name>`;
+   files (a bus as one N-port with its port map) and a KiCad project (the lane's elements as symbols;
+   `--kicad-style compact` for one lane symbol) into `analysis/export/<name>`;
    `check_against_kisi` in the output says how closely the circuit follows kisi's S-parameters. The benches use
    the profile's linear ends; IBIS ends are for the user to add in KiCad.
 8. For the interactive view (2D field solver, charts, editable profiles), the user opens `kisi.html`

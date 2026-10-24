@@ -119,7 +119,7 @@ files are not changed. Results of the last three boards stay in memory while swi
 | `power` | regulator chain, budget, DC IR drop per rail and in the ground return, losses per part / rail / layer, power flow (`--pdn RAIL` adds Z(f)) |
 | `thermal` | temperature estimate from the losses: board temperature per layer, hot spots, junction and case-top temperature per part against Tj max, heat through the vias and under each hot part (with a hint when thermal vias look short), copper temperature and IR drop at temperature per rail (`--ambient °C`, `--airflow m/s`, `--vertical`, `--h W/m²K`) |
 | `report` | everything into `analysis/kisi.json` next to the board |
-| `export` | a lane (`--lane NAME`) or a whole bus (`--bus NAME`) for circuit and RF simulators: SPICE subcircuits with test benches for ngspice and Xyce, Touchstone (a bus also as one N-port with its port map) and a KiCad project with the profile's linear ends (`--format spice,xyce,touchstone,kicad`, `--out DIR`, default `analysis/export/<name>` next to the board) |
+| `export` | a lane (`--lane NAME`) or a whole bus (`--bus NAME`) for circuit and RF simulators: SPICE subcircuits with test benches for ngspice and Xyce, Touchstone (a bus also as one N-port with its port map) and a KiCad project with the profile's linear ends – the lane's elements as symbols, or the lane as one symbol with `--kicad-style compact` (`--format spice,xyce,touchstone,kicad`, `--out DIR`, default `analysis/export/<name>` next to the board) |
 | `gaps` | missing or default data, where to find it, how to write it into `<board>.kisi.json` |
 | `config-check`, `config-template` | check / start a `<board>.kisi.json` (the template suggests variants from forks) |
 | `profiles [ID]` | the interface profiles |
@@ -250,7 +250,8 @@ KiCad files; CLI and viewer lay this file over the board.
   elements only: passive and causal), vias as kisi's via ladder, parts with their estimated parasitics, open stubs;
   a pair with both lines and its coupled sections as even/odd chains between ideal mode converters (E/F sources).
   With test benches (PRBS7, the profile's linear ends) for ngspice and Xyce, an S-parameter deck, Touchstone files
-  (a bus also as one N-port with its port map) and a KiCad project (KiCad 7 format, opens in 7–10). The terminations
+  (a bus also as one N-port with its port map) and a KiCad project (one symbol per element – lines, coupled runs,
+  vias, parts with their value as parameter, pads, stubs – in the KiCad 7 format). The terminations
   next to the receiver act as the receiver's termination and are not in the subcircuit. Not included: the channel
   behind a connector, crosstalk between lanes, IBIS ends. Report: `docs/research/channel-export.md`.
 - **Power:** copper rasterised per layer, vias as barrels (25 µm); DC IR drop per rail. PDN per IC: the rail's

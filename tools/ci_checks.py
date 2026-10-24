@@ -40,6 +40,8 @@ GROUPS = {
     "models": CODE + BOARDS + ["validation/golden/*", "validation/via_ref/*", "validation/fdtd/compare_kisi.py",
                                "validation/fdtd/kisi_board.py", "validation/fdtd/sparam.py",
                                "validation/fdtd/results/kisi_models.json", "tools/golden.py", "docs/examples/*"],
+    # the channel export run in ngspice against kisi's S-parameters
+    "export": CODE + BOARDS + ["validation/channel_export/*"],
     # the 3D reference page
     "refpage": ["validation/via_ref/*", "validation/fdtd/make_viewer.py", "validation/fdtd/viewer_template.html"],
     # Forstén's solver unchanged against upstream

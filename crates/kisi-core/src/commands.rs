@@ -38,7 +38,9 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    ngspice and Xyce, Touchstone (.s2p/.s4p, a bus as one N-port with port map) and a
                    KiCad project with the profile's linear ends
                    --lane NAME | --bus NAME  [--format spice,xyce,touchstone,kicad (default all)]
-                   [--out DIR (default analysis/export/<name> next to the board)] [--class CLASS=PROFILE]
+                   [--kicad-style detailed|compact (one symbol per element, default; or the lane
+                   as one symbol)] [--out DIR (default analysis/export/<name> next to the board)]
+                   [--class CLASS=PROFILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
   config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
@@ -59,6 +61,17 @@ net: always all of the net's)
 kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design
 at TU Darmstadt. GPL-3.0-only, https://github.com/riehlies/kisi
 A quick design check: results are estimates, without any warranty of correctness.";
+
+/// The export's formats with the KiCad sheet's style.
+fn formats(o: &Opts) -> Result<crate::export::files::Formats, String> {
+    let mut f = crate::export::files::Formats::parse(o.format.as_deref().unwrap_or("all"))?;
+    f.kicad_compact = match o.kicad_style.as_deref() {
+        None | Some("detailed") => false,
+        Some("compact") => true,
+        Some(x) => return Err(format!("--kicad-style {x}: use detailed or compact")),
+    };
+    Ok(f)
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -100,6 +113,7 @@ pub struct Opts {
     pub lane: Option<String>,
     pub bus: Option<String>,
     pub format: Option<String>,
+    pub kicad_style: Option<String>,
 }
 
 /// Parse `<command> [args…]`.
@@ -151,6 +165,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--lane" => o.lane = Some(val(&mut i, a)?),
             "--bus" => o.bus = Some(val(&mut i, a)?),
             "--format" => o.format = Some(val(&mut i, a)?),
+            "--kicad-style" => o.kicad_style = Some(val(&mut i, a)?),
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
         }
@@ -178,7 +193,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
         if o.lane.is_some() == o.bus.is_some() {
             return Err("export needs --lane NAME or --bus NAME (see `kisi interfaces`)".into());
         }
-        crate::export::files::Formats::parse(o.format.as_deref().unwrap_or("all"))?;
+        formats(&o)?;
     }
     if o.cmd == "net" && o.pos.len() < 2 {
         return Err("net name missing (kisi net <board> <NET>)".into());
@@ -394,7 +409,7 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
         "config-template" => Ok(config_template(proj()?)),
         "export" => {
             let (pr, rp) = (proj()?, rf_params(o)?);
-            let f = crate::export::files::Formats::parse(o.format.as_deref().unwrap_or("all"))?;
+            let f = formats(o)?;
             let pick = match (&o.lane, &o.bus) {
                 (Some(l), _) => crate::channel_export::Pick::Lane(l),
                 (None, Some(b)) => crate::channel_export::Pick::Bus(b),

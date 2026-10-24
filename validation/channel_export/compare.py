@@ -3,7 +3,7 @@
 
 Usage:
   compare.py <kisi binary> <board.kicad_pcb> --out DIR [--config FILE] [--lane NAME]... [--bus NAME]...
-             [--report FILE.md] [--plots] [--transient] [--kicad] [--strict]
+             [--report FILE.md] [--plots] [--transient] [--kicad] [--svg DIR] [--strict]
 
 For every lane (a bus: every lane of it) the script runs `kisi export` and then, in the lane's folder:
 * reads kisi's Touchstone file (with scikit-rf when installed: that it reads, passivity, reciprocity);
@@ -13,8 +13,9 @@ For every lane (a bus: every lane of it) the script runs `kisi export` and then,
 * runs a step response in ngspice (a 100 ps edge into the lane terminated in its reference impedance) and
   compares it with the step response computed from kisi's S-parameters: the largest difference (fraction
   of the step) and the 50 % delay;
-* with --transient also the PRBS test bench (bench_ngspice.cir), with --kicad the KiCad project through
-  `kicad-cli sch export netlist --format spice` and ngspice (needs kicad-cli).
+* with --transient also the PRBS test bench (bench_ngspice.cir), with --kicad the KiCad project
+  (kicad_sheet.py: the sheet's wiring, kicad-cli's netlist against the lane subcircuit and the bench,
+  kicad-cli's ERC where it has one; --svg DIR plots the sheets).
 For a bus also: the N-port Touchstone file against the lanes' files, and the bus subcircuit in ngspice
 with one lane's ports driven (the wiring of the bus subcircuit).
 
@@ -28,6 +29,10 @@ import json, math, os, re, shutil, subprocess, sys, time
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import kicad_sheet  # noqa: E402
 
 
 def run(cmd, cwd=None, timeout=3600):
@@ -229,40 +234,9 @@ def lane_check(lane_dir, meta, opts, rep):
         if ok:
             b = np.loadtxt(os.path.join(lane_dir, "bench_ngspice.txt"))
             res["bench"]["v_min"], res["bench"]["v_max"] = float(b[:, 1].min()), float(b[:, 1].max())
-    if opts.get("kicad") and shutil.which("kicad-cli"):
-        res["kicad"] = kicad_check(lane_dir, stem)
+    if opts.get("kicad"):
+        res["kicad"] = kicad_sheet.check(lane_dir, transient=opts.get("transient"), svg_dir=opts.get("svg") and os.path.join(opts["svg"], stem), png=bool(opts.get("svg")))
     return res, (f, sk, ss, stp, f_nyq)
-
-
-def kicad_check(lane_dir, stem):
-    """The KiCad project through kicad-cli's SPICE netlist and ngspice; the receiver waveform against
-    the ngspice bench (same sources and ends)."""
-    cmd = ["kicad-cli", "sch", "export", "netlist", "--format", "spice", f"{stem}.kicad_sch", "-o", "kicad_netlist.cir"]
-    # kicad-cli writes model errors to the terminal only: run it under `script` when available
-    if shutil.which("script"):
-        r, _ = run(["script", "-qc", " ".join(cmd), "/dev/null"], cwd=lane_dir)
-    else:
-        r, _ = run(cmd, cwd=lane_dir)
-    msgs = [l.strip() for l in (r.stdout + r.stderr).splitlines() if "rror" in l]
-    if r.returncode != 0 or not os.path.exists(os.path.join(lane_dir, "kicad_netlist.cir")):
-        return {"ok": False, "error": (r.stdout + r.stderr)[-400:]}
-    net = open(os.path.join(lane_dir, "kicad_netlist.cir")).read()
-    # the receiver dies: the nodes of the receiver's C/R symbols (top pins)
-    m = re.findall(r"^[CR]RX([PN])1 (\S+) ", net, re.M)
-    dies = dict(m)
-    probe = f"v({dies['P']})-v({dies['N']})" if "N" in dies else f"v({dies.get('P', '0')})"
-    net = net.replace(".end", f".control\nrun\nwrdata kicad_bench.txt {probe}\n.endc\n.end")
-    open(os.path.join(lane_dir, "kicad_run.cir"), "w").write(net)
-    r, secs = run(["ngspice", "-b", "kicad_run.cir"], cwd=lane_dir)
-    out = {"ok": r.returncode == 0 and os.path.exists(os.path.join(lane_dir, "kicad_bench.txt")), "seconds": round(secs, 1), "kicad_cli": subprocess.run(["kicad-cli", "version"], capture_output=True, text=True).stdout.strip(), "kicad_messages": msgs}
-    if out["ok"] and os.path.exists(os.path.join(lane_dir, "bench_ngspice.txt")):
-        a = np.loadtxt(os.path.join(lane_dir, "kicad_bench.txt"))
-        b = np.loadtxt(os.path.join(lane_dir, "bench_ngspice.txt"))
-        vb = np.interp(a[:, 0], b[:, 0], b[:, 1])
-        out["max_diff_to_bench_v"] = float(np.max(np.abs(a[:, 1] - vb)))
-    elif not out["ok"]:
-        out["error"] = (r.stdout + r.stderr)[-400:]
-    return out
 
 
 def plot(res, data, path):
@@ -367,6 +341,22 @@ def bus_check(bus_dir, meta, opts):
     return out
 
 
+def kicad_fail(k):
+    if not k:
+        return ""
+    why = []
+    if not k["sheet"]["ok"]:
+        why.append(f"wiring {k['sheet']['issue_counts']}")
+    nl = k.get("netlist", {})
+    if nl and not nl.get("ok", True):
+        why.append(f"netlist {nl.get('error') or (nl.get('unconnected', []) + nl.get('single_nodes', []) + nl.get('lane_errors', []))[:3]}")
+    if k.get("erc", {}).get("available") and not k["erc"].get("ok"):
+        why.append(f"ERC {k['erc'].get('failing') or k['erc'].get('error')}")
+    if k.get("ac") and not k["ac"].get("ok"):
+        why.append(f"AC {k['ac']}")
+    return "; ".join(why)
+
+
 def main():
     a = sys.argv[1:]
     if len(a) < 2 or "--out" not in a:
@@ -375,7 +365,7 @@ def main():
     take = lambda k: [a[i + 1] for i in range(len(a) - 1) if a[i] == k]
     out = take("--out")[0]
     cfg = take("--config")
-    opts = {"transient": "--transient" in a, "kicad": "--kicad" in a}
+    opts = {"transient": "--transient" in a, "kicad": "--kicad" in a, "svg": (take("--svg") or [None])[0]}
     os.makedirs(out, exist_ok=True)
     cmd0 = [kisi if not kisi.endswith(".mjs") else "node", *([kisi] if kisi.endswith(".mjs") else []), "export", board] + (["--config", cfg[0]] if cfg else [])
     results, bus_results, bad = [], [], 0
@@ -413,7 +403,21 @@ def main():
             sk = ts.get("scikit_rf") or {}
             fails = [m for m, c in [("ngspice", not nv), ("ngspice differs from kisi's evaluation of the circuit", nv and abs(nv["max_ds"] - res["kisi_eval"]["max_ds"]) > 0.01),
                                     ("Touchstone not passive", not ts.get("passive")), ("scikit-rf does not read the Touchstone file", sk and not sk.get("read", True)),
-                                    ("step response differs by more than 5 %", st and st["max_diff_of_final"] > 0.05)] if c]
+                                    ("step response differs by more than 5 %", st and st["max_diff_of_final"] > 0.05),
+                                    ("KiCad project: " + kicad_fail(res.get("kicad")), res.get("kicad") and not res["kicad"].get("ok"))] if c]
+            kc = res.get("kicad")
+            if kc:
+                kmsg = f"KiCad sheet: {kc['sheet']['symbols']} symbols, wiring {'ok' if kc['sheet']['ok'] else kc['sheet']['issue_counts']}"
+                nl = kc.get("netlist", {})
+                if "same_as_lane" in nl:
+                    kmsg += f"; kicad-cli {nl.get('kicad_cli')} netlist ({nl.get('sheet')}) {'= lane subcircuit' if nl['same_as_lane'] else 'differs: ' + '; '.join(nl['lane_errors'][:2])}"
+                if kc.get("ac"):
+                    kmsg += f"; AC vs bench {kc['ac'].get('max_rel_diff', float('nan')):.1e}"
+                e = kc.get("erc", {})
+                kmsg += f"; ERC {('ok' if e.get('ok') else 'FAIL ' + json.dumps(e.get('failing')))} {json.dumps(e.get('violations', {}))}" if e.get("available") else "; ERC: not in this kicad-cli"
+                print(f"  {kmsg}")
+                if os.environ.get("GITHUB_ACTIONS"):
+                    print(f"::notice title=KiCad sheet {os.path.basename(lm['lane'])}::{kmsg}")
             if fails:
                 print(f"  {'FAIL' if '--strict' in a else 'note'}: {'; '.join(fails)}")
                 bad += 1
@@ -441,6 +445,15 @@ def write_report(path, results, buses, board):
         L.append(f"| {r['lane']} | {r['model']} | {r['length_mm']:.1f} | {e['r']}/{e['l']}/{e['c']}/{e['sources']} | {nv.get('max_ds21_db_nyq', float('nan')):.3f} / {nv.get('max_ds21_db', float('nan')):.2f} | "
                  f"{nv.get('max_ds_nyq', float('nan')):.3f} / {nv.get('max_ds', float('nan')):.3f} | {r['kisi_eval']['max_ds']:.3f} | "
                  f"{100 * st.get('max_diff_of_final', float('nan')):.2f} %, {st.get('t50_ngspice_ps', float('nan')):.1f} / {st.get('t50_kisi_ps', float('nan')):.1f} |")
+    ks = [r for r in results if r.get("kicad")]
+    if ks:
+        L += ["", "| lane | KiCad sheet | symbols / wires / junctions | wiring check | kicad-cli netlist = lane subcircuit | AC vs bench (rel.) | ERC |", "|---|---|---|---|---|---|---|"]
+        for r in ks:
+            k = r["kicad"]
+            sh, nl, e, ac = k["sheet"], k.get("netlist", {}), k.get("erc", {}), k.get("ac", {})
+            erc = ("ok " if e.get("ok") else "FAIL ") + ", ".join(f"{t} {n}" for t, n in e.get("violations", {}).items()) if e.get("available") else "not in this kicad-cli"
+            L.append(f"| {r['lane']} | {nl.get('sheet', '?')} ({nl.get('kicad_cli', '-')}) | {sh['symbols']} / {sh['wires']} / {sh['junctions']} | {'ok' if sh['ok'] else sh['issue_counts']} | "
+                     f"{nl.get('same_as_lane', '-')} | {ac.get('max_rel_diff', float('nan')):.1e} | {erc} |")
     open(path, "w").write("\n".join(L) + "\n")
 
 

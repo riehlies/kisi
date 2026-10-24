@@ -32,7 +32,7 @@ use crate::num::Cx;
 use crate::rf::{Abcd, LineModel, LumpedPart, RfParams, Sections};
 use crate::topology::{ComponentData, Lane};
 use crate::via::{Sec, ViaModel};
-use circuit::{Adm, Chain, Counts, El, Imp, Lib, PairEl, Zel};
+use circuit::{Adm, Chain, Counts, El, Imp, Lib, PairEl, Tag, Zel};
 use fit::{fit_freqs, fit_y, fit_z, Debye, Foster, Weight};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -108,6 +108,17 @@ pub struct LaneCircuit {
     /// one-way static delay (ps, pairs: differential) and track length (mm)
     pub delay_ps: f64,
     pub length_mm: f64,
+    /// the lane subcircuit's elements in order (subcircuit, nodes, its ports, what it is)
+    pub top: Vec<TopInst>,
+}
+
+/// One element instance of the lane subcircuit.
+#[derive(Debug, Clone)]
+pub struct TopInst {
+    pub sub: String,
+    pub nodes: Vec<String>,
+    pub ports: Vec<String>,
+    pub tag: circuit::Tag,
 }
 
 /// Fit weighting of line sections: R(f) and G(f) within the tolerance, the reactance and the
@@ -156,7 +167,7 @@ enum Item {
     /// any other element on one line, with the feed changes it asks of its neighbours (m, entry/exit)
     El { line: usize, el: El, cuts: [f64; 2] },
     /// a coupled block (both lines) in modal form
-    Modal { name: String, note: String, even: Chain, odd: Chain, cuts: [f64; 2] },
+    Modal { name: String, note: String, even: Chain, odd: Chain, cuts: [f64; 2], tag: Tag },
 }
 
 impl Item {
@@ -264,7 +275,8 @@ impl<'a> Composer<'a> {
             lm.eeff0,
             if lm.source == "field" { "field solver" } else if lm.source == "formula" { "formula" } else { "no reference plane: estimate" }
         );
-        El::Block { name: format!("TL{}_{}", self.n_line, self.layer(layer)), note, chain: Chain(vec![ld]) }
+        let tag = if what == "line" { Tag::line("line", len * 1e3, lm.z0, &self.layer(layer)) } else { Tag::default() };
+        El::Block { name: format!("TL{}_{}", self.n_line, self.layer(layer)), note, chain: Chain(vec![ld]), tag }
     }
 
     /// A lossless line (Z, εeff, length m) as an LC ladder.
@@ -420,7 +432,8 @@ impl<'a> Composer<'a> {
             chain.extend(stub(&vm.stub_out, self));
             note = format!("via {} -> {}: kisi's coaxial section model ({} sections)", self.layer(layers.0), self.layer(layers.1), vm.barrel.len());
         }
-        (El::Block { name: format!("VIA{}_{}_{}", self.n_via, self.layer(layers.0), self.layer(layers.1)), note, chain: Chain(chain) }, cuts)
+        let tag = Tag { kind: "via", value: format!("{}-{}", self.layer(layers.0), self.layer(layers.1)), ..Tag::default() };
+        (El::Block { name: format!("VIA{}_{}_{}", self.n_via, self.layer(layers.0), self.layer(layers.1)), note, chain: Chain(chain), tag }, cuts)
     }
 
     fn part(&mut self, p: &LumpedPart) -> El {
@@ -452,7 +465,11 @@ impl<'a> Composer<'a> {
             sig4(p.l * 1e9),
             p.c.map(|c| format!(", C {} pF", sig4(c * 1e12))).unwrap_or_default()
         );
-        El::Block { name: label, note, chain: Chain(vec![el]) }
+        let pad = p.label.contains(" pad");
+        let rest = p.label.split_once(' ').map(|x| x.1).unwrap_or("");
+        let value = if pad { format!("pad {}F{}", si_short(p.c.unwrap_or(0.0)), if p.label.contains("not fitted") { " (unfitted)" } else { "" }) } else { rest.to_string() };
+        let tag = Tag { kind: if pad { "pad" } else { "part" }, refdes: label.clone(), value, part: Some((p.kind, p.series, p.r, p.l, p.c)), ..Tag::default() };
+        El::Block { name: label, note, chain: Chain(vec![el]), tag }
     }
 
     /// Items of one line's sections (`len` overrides a line's length, m).
@@ -482,14 +499,21 @@ impl<'a> Composer<'a> {
     fn stub(&mut self, sub: &Sections, label: &str) -> El {
         self.n_stub += 1;
         let c = self.chain(sub);
-        El::Block { name: format!("STUB{}", self.n_stub), note: format!("open stub: {label}"), chain: Chain(vec![El::Stub(c)]) }
+        let tag = Tag { kind: "stub", value: label.split(" (").next().unwrap_or("").trim().to_string(), ..Tag::default() };
+        El::Block { name: format!("STUB{}", self.n_stub), note: format!("open stub: {label}"), chain: Chain(vec![El::Stub(c)]), tag }
     }
 
     /// A single line's sections as a chain.
     fn chain(&mut self, s: &Sections) -> Chain {
         let items: Vec<Item> = (0..s.segs.len()).filter_map(|i| self.item(s, i, 0, None, false)).collect();
         let items = self.apply_cuts(items);
-        Chain(items.into_iter().filter_map(|it| self.single_el(it)).collect())
+        let mut out: Vec<El> = Vec::new();
+        for el in items.into_iter().filter_map(|it| self.single_el(it)) {
+            if !out.last_mut().is_some_and(|last| circuit::join_blocks(last, &el)) {
+                out.push(el);
+            }
+        }
+        Chain(out)
     }
 
     fn single_el(&mut self, it: Item) -> Option<El> {
@@ -548,7 +572,8 @@ impl<'a> Composer<'a> {
                         self.n_via -= 1;
                         let (oe, _) = self.via(&od, layers);
                         let name = format!("VIAPAIR{}_{}_{}", self.n_via, self.layer(layers.0), self.layer(layers.1));
-                        items.push(Item::Modal { name, note: format!("via pair {} -> {}: even mode = the single via, odd mode = the via with its partner (kisi's via models)", self.layer(layers.0), self.layer(layers.1)), even: Chain(vec![ee]), odd: Chain(vec![oe]), cuts });
+                        let tag = Tag { kind: "viapair", value: format!("{}-{}", self.layer(layers.0), self.layer(layers.1)), ..Tag::default() };
+                        items.push(Item::Modal { name, note: format!("via pair {} -> {}: even mode = the single via, odd mode = the via with its partner (kisi's via models)", self.layer(layers.0), self.layer(layers.1)), even: Chain(vec![ee]), odd: Chain(vec![oe]), cuts, tag });
                     }
                 }
                 E::StubPair { p, n } => {
@@ -567,27 +592,16 @@ impl<'a> Composer<'a> {
                     let even = mode(false, self);
                     let odd = mode(true, self);
                     self.n_stub += 1;
-                    items.push(Item::Modal { name: format!("STUBPAIR{}", self.n_stub), note: format!("stub pair: {}", bp.segs[*p].part.clone().unwrap_or_default()), even, odd, cuts: [0.0; 2] });
+                    let label = bp.segs[*p].part.clone().unwrap_or_default();
+                    let tag = Tag { kind: "stubpair", value: label.split(" (").next().unwrap_or("").trim().to_string(), ..Tag::default() };
+                    items.push(Item::Modal { name: format!("STUBPAIR{}", self.n_stub), note: format!("stub pair: {label}"), even, odd, cuts: [0.0; 2], tag });
                 }
             }
         }
         let items = self.apply_cuts(items);
-        // consecutive coupled items form one modal block
+        // every coupled run, via pair and stub pair its own modal block (back-to-back mode
+        // converters are exact; each block is one element of the KiCad sheet)
         let mut out: Vec<PairEl> = Vec::new();
-        let mut run: Vec<(Chain, Chain, String)> = Vec::new();
-        let flush = |out: &mut Vec<PairEl>, run: &mut Vec<(Chain, Chain, String)>, k: &mut usize| {
-            if run.is_empty() {
-                return;
-            }
-            *k += 1;
-            let (mut ev, mut od, mut notes) = (Vec::new(), Vec::new(), Vec::new());
-            for (e, o, n) in run.drain(..) {
-                ev.extend(e.0);
-                od.extend(o.0);
-                notes.push(n);
-            }
-            out.push(PairEl::Modal { name: format!("CPL{k}"), note: notes.join("\n"), even: Chain(ev), odd: Chain(od) });
-        };
         let mut k = 0usize;
         for it in items {
             match it {
@@ -595,24 +609,37 @@ impl<'a> Composer<'a> {
                     if len <= 0.0 {
                         continue;
                     }
+                    k += 1;
                     let e = self.line_block(&even, len, layer, "coupled line, even mode");
                     let o = self.line_block(&odd, len, layer, "coupled line, odd mode");
-                    run.push((Chain(vec![e]), Chain(vec![o]), format!("coupled run {:.3} mm on {} (Zodd {:.2}, Zeven {:.2} ohm per line)", len * 1e3, self.layer(layer), odd.z0, even.z0)));
+                    let tag = Tag::line("coupled", len * 1e3, 2.0 * odd.z0, &self.layer(layer));
+                    let el = PairEl::Modal { name: format!("CPL{k}"), note: format!("coupled run {:.3} mm on {} (Zodd {:.2}, Zeven {:.2} ohm per line)", len * 1e3, self.layer(layer), odd.z0, even.z0), even: Chain(vec![e]), odd: Chain(vec![o]), tag };
+                    // consecutive coupled runs on one layer: one block
+                    if !out.last_mut().is_some_and(|last| circuit::join_modal(last, &el)) {
+                        out.push(el);
+                    }
                 }
-                Item::Modal { name, note, even, odd, .. } => run.push((Chain(vec![El::Block { name: format!("{name}_e"), note: note.clone(), chain: even }]), Chain(vec![El::Block { name: format!("{name}_o"), note: note.clone(), chain: odd }]), note)),
+                Item::Modal { name, note, even, odd, tag, .. } => out.push(PairEl::Modal { name, note, even, odd, tag }),
                 other => {
                     let line = match &other {
                         Item::Line { line, .. } | Item::El { line, .. } => *line,
                         _ => 0,
                     };
                     if let Some(el) = self.single_el(other) {
-                        flush(&mut out, &mut run, &mut k);
-                        out.push(PairEl::Line(line, el));
+                        // consecutive sections of one line on one layer: one block (an element on
+                        // the other line between them does not separate them)
+                        let prev = out.iter_mut().rev().find(|e| !matches!(e, PairEl::Line(l, _) if *l != line));
+                        let joined = match prev {
+                            Some(PairEl::Line(_, p)) => circuit::join_blocks(p, &el),
+                            _ => false,
+                        };
+                        if !joined {
+                            out.push(PairEl::Line(line, el));
+                        }
                     }
                 }
             }
         }
-        flush(&mut out, &mut run, &mut k);
         out
     }
 }
@@ -638,6 +665,18 @@ pub(crate) fn kisi_abcd(s: &Sections, i: usize, f: f64, rp: &RfParams, len_mm: O
             Abcd::line(p.r, p.l, p.g, p.c, w, len_mm.unwrap_or(sg.len_mm) * 1e-3)
         }
     }
+}
+
+/// A value with an SI prefix and up to 3 digits (0.1p, 220n, 4.7k).
+pub fn si_short(v: f64) -> String {
+    if v == 0.0 || !v.is_finite() {
+        return "0".into();
+    }
+    let pre = [(1e9, "G"), (1e6, "M"), (1e3, "k"), (1.0, ""), (1e-3, "m"), (1e-6, "u"), (1e-9, "n"), (1e-12, "p"), (1e-15, "f")];
+    let (m, p) = pre.iter().find(|(k, _)| v.abs() >= *k * 0.9995).map(|(k, p)| (v / k, *p)).unwrap_or((v / 1e-15, "f"));
+    let t = if m.abs() >= 100.0 { format!("{m:.0}") } else if m.abs() >= 10.0 { format!("{m:.1}") } else { format!("{m:.2}") };
+    let t = if t.contains('.') { t.trim_end_matches('0').trim_end_matches('.').to_string() } else { t };
+    format!("{t}{p}")
 }
 
 /// A value with 4 significant digits.
@@ -850,6 +889,15 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
         notes.push(format!("{:.3} mm of via feed corrections could not be applied to a neighbouring line (no line next to the via)", comp.unabsorbed * 1e3));
     }
     let counts = lib.flat_of(&subckt);
+    // the lane's elements in order (empty when the lane subcircuit holds bare elements too)
+    let top = match lib.defs.get(&subckt) {
+        Some(d) if d.other == 0 => d
+            .insts
+            .iter()
+            .map(|(sub, nodes)| TopInst { sub: sub.clone(), nodes: nodes.clone(), ports: lib.defs.get(sub).map(|x| x.ports.clone()).unwrap_or_default(), tag: lib.tags.get(sub).cloned().unwrap_or_default() })
+            .collect(),
+        _ => Vec::new(),
+    };
     let mut dedup = Vec::new();
     for w in notes {
         if !dedup.contains(&w) {
@@ -873,6 +921,7 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
         notes: dedup,
         delay_ps,
         length_mm,
+        top,
     })
 }
 

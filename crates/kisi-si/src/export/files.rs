@@ -20,20 +20,22 @@ pub struct Formats {
     pub xyce: bool,
     pub touchstone: bool,
     pub kicad: bool,
+    /// the KiCad sheet with the lane as one symbol (else one symbol per element)
+    pub kicad_compact: bool,
 }
 
 impl Formats {
-    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true };
+    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, kicad_compact: false };
     /// From a comma-separated list: spice, xyce, touchstone, kicad, all.
     pub fn parse(s: &str) -> Result<Formats, String> {
-        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false };
+        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, kicad_compact: false };
         for p in s.split(',').map(|p| p.trim().to_ascii_lowercase()).filter(|p| !p.is_empty()) {
             match p.as_str() {
                 "spice" | "ngspice" => f.spice = true,
                 "xyce" => f.xyce = true,
                 "touchstone" | "snp" => f.touchstone = true,
                 "kicad" => f.kicad = true,
-                "all" => f = Formats::ALL,
+                "all" => f = Formats { kicad_compact: f.kicad_compact, ..Formats::ALL },
                 _ => return Err(format!("--format {p}: use spice, xyce, touchstone, kicad or all (comma-separated)")),
             }
         }
@@ -165,7 +167,7 @@ fn rx_end(k: &str, pin: &str, e: &EndModel) -> (Vec<String>, String) {
 }
 
 /// Emf amplitude per line so that the receiver sees ±swing at DC (a pair: differential).
-fn emf_amp(ends: &BenchEnds, pair: bool) -> f64 {
+pub(super) fn emf_amp(ends: &BenchEnds, pair: bool) -> f64 {
     let (rt, rr) = (ends.tx.r.max(0.0), ends.rx.r);
     let k = if rr > 0.0 { (rt + rr) / rr } else { 1.0 };
     let a = ends.swing * k;
@@ -174,6 +176,35 @@ fn emf_amp(ends: &BenchEnds, pair: bool) -> f64 {
     } else {
         a
     }
+}
+
+/// What the bench's ends stand for, in words: the transmitter's lines and the receiver's lines (for the
+/// KiCad sheet and the README). A source resistance of at least ten times the receiver's termination
+/// is a current-mode driver (LVDS, CML) written as its Thevenin equivalent.
+pub fn ends_text(lc: &LaneCircuit, ends: &BenchEnds) -> (Vec<String>, Vec<String>) {
+    let a = emf_amp(ends, lc.pair);
+    let (rt, rr) = (ends.tx.r.max(0.0), ends.rx.r);
+    let per = if lc.pair { "per line, P and N in opposite phase" } else { "single-ended" };
+    let mut tx = vec![
+        format!("Transmitter ({per}): profile {}, {} Gbit/s, PRBS7, edge {} ps (10-90 %).", ends.profile, sig4(ends.bitrate / 1e9), sig4(ends.rise * 1e12)),
+        format!("Thevenin source: emf ±{} V behind R {} Ω, C {} pF at the die{}.", sig4(a), sig4(rt), sig4(ends.tx.c_pf), if ends.tx.l_nh > 0.0 { format!(", L {} nH to the pin", sig4(ends.tx.l_nh)) } else { String::new() }),
+    ];
+    if rr > 0.0 && rt >= 10.0 * rr {
+        tx.push(format!("R ≫ the receiver's {} Ω: a current-mode driver as its Thevenin equivalent, I = emf/(R + {} Ω) = {} mA per line.", sig4(rr), sig4(rr), sig4(a / (rt + rr) * 1e3)));
+    } else {
+        tx.push(format!("A voltage-mode driver with {} Ω source resistance.", sig4(rt)));
+    }
+    tx.push(format!("The emf is scaled so that the receiver sees ±{} V at DC{}.", sig4(ends.swing), if lc.pair { " differential" } else { "" }));
+    let mut rx = vec![if rr > 0.0 {
+        format!("Receiver ({}): R {} Ω and C {} pF from the die to ground{}.", if lc.pair { "per line" } else { "single-ended" }, sig4(rr), sig4(ends.rx.c_pf), if ends.rx.l_nh > 0.0 { format!(", L {} nH from the pin", sig4(ends.rx.l_nh)) } else { String::new() })
+    } else {
+        format!("Receiver: high impedance, C {} pF at the die{}.", sig4(ends.rx.c_pf), if ends.rx.l_nh > 0.0 { format!(", L {} nH from the pin", sig4(ends.rx.l_nh)) } else { String::new() })
+    }];
+    if lc.pair && rr > 0.0 {
+        rx.push(format!("A {} Ω differential termination, split into two halves to the reference.", sig4(2.0 * rr)));
+    }
+    rx.push(if lc.pair { "Probe the die nodes (top of CRX/RRX): V(P) − V(N).".to_string() } else { "Probe the die node (top of CRX/RRX).".to_string() });
+    (tx, rx)
 }
 
 /// Transient test bench: PRBS7 at the profile's bit rate through the lane with the profile's
@@ -372,8 +403,9 @@ pub fn lane_files(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, f
     if f.kicad {
         let prefix = lc.subckt.trim_end_matches("_lane").to_string();
         let bench_name = format!("{st}_kicad.lib");
-        let (bl, tstep, tstop) = super::kicad::bench_lib(lc, ends, &prefix, &lib);
-        let (pro, sch) = super::kicad::project(lc, ends, &st, &lib, &bench_name, tstep, tstop, &prefix);
+        let detailed = !f.kicad_compact && super::kicad::can_detail(lc);
+        let (bl, tstep, tstop) = super::kicad::bench_lib(lc, ends, &prefix, &lib, detailed);
+        let (pro, sch) = super::kicad::project(lc, ends, &st, &lib, &bench_name, tstep, tstop, &prefix, detailed);
         add(bench_name, bl);
         add(format!("{st}.kicad_pro"), pro);
         add(format!("{st}.kicad_sch"), sch);
@@ -405,11 +437,29 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
     if f.touchstone {
         s.push_str(&format!("* `{st}.s{n}p` – kisi's S-parameters of the same channel (Touchstone 1.0, RI) for RF tools (scikit-rf, PyBERT, Qucs-S/Qucsator).\n"));
     }
+    let detailed = f.kicad && !f.kicad_compact && super::kicad::can_detail(lc);
     if f.kicad {
-        s.push_str(&format!("* `{st}.kicad_pro`, `{st}.kicad_sch`, `{st}_kicad.lib` – a KiCad simulation project (KiCad 7 format, opens in KiCad 7–10): the lane as a symbol, the PRBS7 sources and the linear ends as R, L, C symbols, a `.tran` directive. Open it, then Inspect → Simulator → Run, and probe the receiver die.\n"));
+        s.push_str(&format!("* `{st}.kicad_pro`, `{st}.kicad_sch`, `{st}_kicad.lib` – a KiCad simulation project: {}, the PRBS7 sources and the linear ends as R, L, C symbols, a `.tran` directive. Open it, then Inspect → Simulator → Run, and probe the receiver die.\n", if detailed { "the lane's elements as symbols" } else { "the lane as one symbol" }));
+    }
+    if f.spice && f.xyce {
+        s.push_str(&format!("\n## ngspice and Xyce\n\nThe circuit, `{st}.lib`, is the same for both. Only the small decks around it differ, because the two simulators define ports and write results differently:\n\n* ngspice: results from a `.control` block (`run`, then `wrdata` to a text file); S-parameters with `.sp` and voltage sources marked `portnum N z0 Z`.\n* Xyce: results with `.print … format=csv` and, for S-parameters, port devices `P… port=N z0=Z` with `.ac` and `.lin sparcalc=1` (written as Touchstone).\n\nOne deck for both does not work without editing: ngspice reads a `P` line as its coupled-line device and has no `.lin`, Xyce knows neither `portnum` nor `.control` scripts, and both read `*` only as a comment – a commented-out dialect would have to be switched by hand. Hence one deck per simulator and analysis.\n"));
+    }
+    if f.kicad {
+        s.push_str("\n## KiCad\n\n");
+        if detailed {
+            s.push_str(&format!("The sheet shows the lane subcircuit `{}` element by element, in its order: TL line sections (consecutive sections of one line on one layer as one), CPL coupled runs spanning the P and N rows, VIA and VP vias and via pairs, the board's parts (e.g. C40) with their parasitics, CP pad capacitances (also of unfitted parts), ST and SP open stubs. A long lane wraps into several rows.\n\n", lc.subckt));
+            s.push_str(&format!("* Each symbol has `Sim.Device = SUBCKT`, `Sim.Library = {st}_kicad.lib` and `Sim.Name = <element>_k`: a wrapper that calls the element's subcircuit in `{st}.lib` with its reference node on ground. KiCad reads the models from the file `Sim.Library` names, so the wrappers keep that file short; its `.include` brings in the lane library for the simulator.\n"));
+            s.push_str("* A part's Value is its subcircuit parameter (`Sim.Params = c=${VALUE}`, or `r=`/`l=`): edit the Value in SPICE notation (100n, 4.7u, 1k, 1Meg) and the parasitics kisi uses (ESR, ESL, estimates) stay. An inductor's parameter is its total inductance (ESL included). Pads keep fixed values.\n");
+            s.push_str("* `kisi export --kicad-style compact` writes the lane as one symbol instead.\n");
+        } else {
+            s.push_str(&format!("The sheet shows the lane as one symbol (`{}` through the wrapper `<lane>_kicad` in `{st}_kicad.lib`); `--kicad-style detailed` (the default) shows its elements.\n", lc.subckt));
+        }
+        s.push_str("* File format: KiCad 7 (version 20230121), which KiCad 7, 8 and 9 open (they convert it when saving). Checked in kisi's repository with kicad-cli: the netlist equals the lane subcircuit node for node, its AC response in ngspice equals the bench's, every pin and wire end is connected, and KiCad's ERC (kicad-cli 8 and later) reports no unconnected pin or dangling wire. Not tested: the simulator dialog of the KiCad GUI.\n");
     }
     s.push_str("\n## Test bench ends (per line)\n\n");
     s.push_str(&format!("Profile `{}`: {} Gbit/s, edge {} ps (10–90 %), the receiver sees ±{} V at DC{}.\n\n", ends.profile, sig4(ends.bitrate / 1e9), sig4(ends.rise * 1e12), sig4(ends.swing), if lc.pair { " (differential)" } else { "" }));
+    let (txt, rxt) = ends_text(lc, ends);
+    s.push_str(&format!("{}\n\n{}\n\n", txt.join(" "), rxt.join(" ")));
     s.push_str(&format!("* transmitter: emf → R {} Ω → die (C {} pF to ground) → L {} nH → port\n", sig4(ends.tx.r), sig4(ends.tx.c_pf), sig4(ends.tx.l_nh)));
     s.push_str(&format!("* receiver: port → L {} nH → die: C {} pF and R {} to ground\n", sig4(ends.rx.l_nh), sig4(ends.rx.c_pf), if ends.rx.r > 0.0 { format!("{} Ω", sig4(ends.rx.r)) } else { "open (high impedance)".into() }));
     for nte in &ends.notes {

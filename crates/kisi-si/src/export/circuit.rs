@@ -121,7 +121,71 @@ pub enum El {
     /// open stub to the reference
     Stub(Chain),
     /// a named sub-chain: its own `.subckt` (a line segment, a via, a part)
-    Block { name: String, note: String, chain: Chain },
+    Block { name: String, note: String, chain: Chain, tag: Tag },
+}
+
+/// What a lane element is, for the KiCad sheet (empty for inner blocks).
+#[derive(Debug, Clone, Default)]
+pub struct Tag {
+    /// "line", "coupled", "via", "viapair", "part", "pad", "stub", "stubpair" ("" inner block)
+    pub kind: &'static str,
+    /// the part's reference designator on the board (parts and pads)
+    pub refdes: String,
+    /// readable value: length, layer and Z0 of a line, the part's value, the via's layers
+    pub value: String,
+    /// a part as built: kind ('R', 'C', 'L'), series, R, L, C (parasitics included)
+    pub part: Option<(char, bool, f64, f64, Option<f64>)>,
+    /// lines and coupled runs: length (mm), range of Z0 (a coupled run: differential), layer
+    pub len_mm: f64,
+    pub z: (f64, f64),
+    pub layer: String,
+}
+
+impl Tag {
+    /// A line section or a coupled run.
+    pub fn line(kind: &'static str, len_mm: f64, z: f64, layer: &str) -> Tag {
+        let mut t = Tag { kind, len_mm, z: (z, z), layer: layer.to_string(), ..Tag::default() };
+        t.value = t.line_value();
+        t
+    }
+    fn line_value(&self) -> String {
+        let z = if self.z.1 - self.z.0 < 0.5 { format!("{:.1}", self.z.0) } else { format!("{:.1}-{:.1}", self.z.0, self.z.1) };
+        format!("{:.2} mm {} {z} Ω{}", self.len_mm, self.layer, if self.kind == "coupled" { " diff." } else { "" })
+    }
+}
+
+/// Join two consecutive blocks of the same kind ("line" or "coupled") on the same layer into one
+/// (the same circuit, one element on the KiCad sheet).
+pub fn join_blocks(a: &mut El, b: &El) -> bool {
+    if let (El::Block { note, chain, tag, .. }, El::Block { note: nb, chain: cb, tag: tb, .. }) = (a, b) {
+        if tag.kind == "line" && tb.kind == "line" && tag.layer == tb.layer {
+            chain.0.extend(cb.0.iter().cloned());
+            note.push('\n');
+            note.push_str(nb);
+            tag.len_mm += tb.len_mm;
+            tag.z = (tag.z.0.min(tb.z.0), tag.z.1.max(tb.z.1));
+            tag.value = tag.line_value();
+            return true;
+        }
+    }
+    false
+}
+
+/// Join a coupled run into the previous modal block when both are coupled runs on one layer.
+pub fn join_modal(a: &mut PairEl, b: &PairEl) -> bool {
+    if let (PairEl::Modal { note, even, odd, tag, .. }, PairEl::Modal { note: nb, even: eb, odd: ob, tag: tb, .. }) = (a, b) {
+        if tag.kind == "coupled" && tb.kind == "coupled" && tag.layer == tb.layer {
+            even.0.extend(eb.0.iter().cloned());
+            odd.0.extend(ob.0.iter().cloned());
+            note.push('\n');
+            note.push_str(nb);
+            tag.len_mm += tb.len_mm;
+            tag.z = (tag.z.0.min(tb.z.0), tag.z.1.max(tb.z.1));
+            tag.value = tag.line_value();
+            return true;
+        }
+    }
+    false
 }
 
 /// Elements in a row from port a to port b.
@@ -154,7 +218,7 @@ impl Chain {
                 El::Shunt(y) => El::Shunt(y.scaled(1.0 / k)),
                 El::Ladder { z, y, n } => El::Ladder { z: z.scaled(k), y: y.scaled(1.0 / k), n: *n },
                 El::Stub(c) => El::Stub(c.scaled(k)),
-                El::Block { name, note, chain } => El::Block { name: name.clone(), note: note.clone(), chain: chain.scaled(k) },
+                El::Block { name, note, chain, tag } => El::Block { name: name.clone(), note: note.clone(), chain: chain.scaled(k), tag: tag.clone() },
             })
             .collect())
     }
@@ -188,7 +252,7 @@ impl El {
 #[derive(Debug, Clone)]
 pub enum PairEl {
     Line(usize, El),
-    Modal { name: String, note: String, even: Chain, odd: Chain },
+    Modal { name: String, note: String, even: Chain, odd: Chain, tag: Tag },
 }
 
 fn m4_mul(a: &M4, b: &M4) -> M4 {
@@ -259,10 +323,25 @@ pub struct Lib {
     /// flattened element counts of every written subcircuit
     flat: HashMap<String, Counts>,
     pub counts: Counts,
+    /// per written subcircuit: its ports, its subcircuit instances (name, nodes) and whether it
+    /// holds other elements too
+    pub defs: HashMap<String, Def>,
+    /// tags of the subcircuits written for tagged blocks
+    pub tags: HashMap<String, Tag>,
+}
+
+/// A written subcircuit's interface and instances.
+#[derive(Debug, Clone, Default)]
+pub struct Def {
+    pub ports: Vec<String>,
+    pub insts: Vec<(String, Vec<String>)>,
+    /// elements other than subcircuit instances (R, L, C, sources)
+    pub other: usize,
 }
 
 /// One subcircuit body being written.
 struct Body {
+    insts: Vec<(String, Vec<String>)>,
     lines: Vec<String>,
     n: HashMap<char, usize>,
     node: usize,
@@ -271,7 +350,7 @@ struct Body {
 
 impl Body {
     fn new() -> Body {
-        Body { lines: vec![], n: HashMap::new(), node: 0, flat: Counts::default() }
+        Body { insts: vec![], lines: vec![], n: HashMap::new(), node: 0, flat: Counts::default() }
     }
     fn name(&mut self, k: char) -> String {
         let c = self.n.entry(k).or_insert(0);
@@ -361,7 +440,7 @@ fn sanitize(s: &str) -> String {
 
 impl Lib {
     pub fn new(prefix: &str) -> Lib {
-        Lib { prefix: sanitize(prefix), out: vec![], names: HashMap::new(), flat: HashMap::new(), counts: Counts::default() }
+        Lib { prefix: sanitize(prefix), out: vec![], names: HashMap::new(), flat: HashMap::new(), counts: Counts::default(), defs: HashMap::new(), tags: HashMap::new() }
     }
 
     /// A unique subcircuit name from `hint` (with the library's prefix once).
@@ -394,11 +473,14 @@ impl Lib {
         self.out.push(s);
         self.counts.subckts += 1;
         self.flat.insert(name.to_string(), b.flat);
+        let other = b.lines.len() - b.insts.len();
+        self.defs.insert(name.to_string(), Def { ports: ports.split_whitespace().map(String::from).collect(), insts: b.insts, other });
     }
 
     fn inst(&mut self, b: &mut Body, sub: &str, nodes: &[&str]) {
         let nm = b.name('X');
         b.lines.push(format!("{nm} {} {sub}", nodes.join(" ")));
+        b.insts.push((sub.to_string(), nodes.iter().map(|n| n.to_string()).collect()));
         self.counts.x += 1;
         let f = self.flat.get(sub).cloned().unwrap_or_default();
         b.flat.add(&f, 1);
@@ -476,8 +558,11 @@ impl Lib {
                     self.counts.sections += n;
                     b.flat.sections += n;
                 }
-                El::Block { name, note, chain } => {
+                El::Block { name, note, chain, tag } => {
                     let nm = self.unique(name);
+                    if !tag.kind.is_empty() {
+                        self.tags.insert(nm.clone(), tag.clone());
+                    }
                     self.chain_subckt(&nm, note, chain);
                     if chain.shunt_only() {
                         self.inst(b, &nm, &[&cur, "ref"]);
@@ -517,9 +602,12 @@ impl Lib {
                     self.emit(&mut b, &Chain(vec![el.clone()]), &from, &nxt, &hint);
                     cur[l] = nxt;
                 }
-                PairEl::Modal { name, note, even, odd } => {
+                PairEl::Modal { name, note, even, odd, tag } => {
                     let shunt = even.shunt_only() && odd.shunt_only();
                     let nm = self.unique(name);
+                    if !tag.kind.is_empty() {
+                        self.tags.insert(nm.clone(), tag.clone());
+                    }
                     let ne = self.unique(&format!("{name}_even"));
                     let no = self.unique(&format!("{name}_odd"));
                     self.chain_subckt(&ne, "even mode, per line", even);

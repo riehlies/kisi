@@ -119,6 +119,40 @@ fn lane_files_are_complete() {
     assert!(bench.contains(".include \"SIG.lib\"") && bench.contains("PWL(") && bench.contains(".tran"));
 }
 
+/// The detailed KiCad sheet: one symbol per element of the lane subcircuit, each calling its own
+/// wrapper; parts with their value as parameter; visible pins; the compact sheet on request.
+#[test]
+fn kicad_sheet_has_every_element() {
+    let (board, an, lanes) = setup();
+    let field = HashMap::new();
+    for name in ["SIG", "D_P"] {
+        let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == name)).unwrap();
+        let target = if l.diff { Some((100.0, true)) } else { Some((50.0, false)) };
+        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+        assert!(!lc.top.is_empty() && super::kicad::can_detail(&lc), "{name}: no element list");
+        let ends = files::BenchEnds { profile: "p".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 5000.0, c_pf: 1.0, l_nh: 0.0 }, rx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.0 }, notes: vec![] };
+        let fs = files::lane_files(&lc, &ends, Formats::ALL, "t.kicad_pcb", 20e9, 20.0, "");
+        let get = |suffix: &str| fs.iter().find(|f| f.path.ends_with(suffix)).unwrap().content.clone();
+        let (sch, blib) = (get(".kicad_sch"), get("_kicad.lib"));
+        for t in &lc.top {
+            assert!(sch.contains(&format!("\"Sim.Name\" \"{}_k\"", t.sub)), "{name}: {} not on the sheet", t.sub);
+            assert!(blib.contains(&format!(".subckt {}_k ", t.sub)), "{name}: no wrapper for {}", t.sub);
+        }
+        // pins of parts visible: only power symbols hide theirs
+        let hidden = sch.lines().filter(|l| l.trim_start().starts_with("(pin ") && l.contains(") hide")).count();
+        assert_eq!(hidden, sch.matches("(pin power_").count(), "{name}: hidden pins");
+        assert!(sch.contains("\"Value\" \"5k\"") && sch.contains("current-mode driver"), "{name}: transmitter shown as 5k with its note");
+        if name == "SIG" {
+            assert!(sch.contains("\"Sim.Params\" \"r=${VALUE}\"") && blib.contains("params: r=22"), "the 22 Ω part with its value as parameter");
+        } else {
+            assert!(sch.contains("kisi:CPL") || sch.contains("kisi:VIAPAIR"), "pair: a coupled element");
+        }
+        let compact = files::lane_files(&lc, &ends, Formats { kicad_compact: true, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
+        let csch = &compact.iter().find(|f| f.path.ends_with(".kicad_sch")).unwrap().content;
+        assert!(csch.contains("kisi:LANE") && !csch.contains("kisi:TL\""));
+    }
+}
+
 #[test]
 fn prbs_and_formats() {
     let p = prbs7();

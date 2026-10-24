@@ -13,7 +13,7 @@ step 3 (compact, vector-fitted models) as a design study at the end. Background 
 - **Netlist = kisi's circuit:** ngspice's S-parameter analysis of the exported subcircuit reproduces kisi's own
   evaluation of the circuit for every lane tried (LVDS lane, nine PCIe lanes; every S-parameter to 0.001), and the
   bus subcircuit gives the same lane response as the lane alone. The KiCad 7 project, netlisted by `kicad-cli`
-  and run in ngspice, gives the bench's waveform to 2 nV.
+  and run in ngspice, gives the bench's waveform to within 1 µV.
 - **Circuit vs kisi's S-parameters:** up to 1.5 × Nyquist |ΔS21| ≤ 0.025 dB on the LVDS lanes and 0.15–0.42 dB on
   the strongly reflecting PCIe lanes (|Sdd11| up to −5 dB: the ripples shift with small phase errors); the largest
   complex difference of any S-parameter ≤ 0.07 in that band (0.3–0.5 up to 25 GHz, mostly above 15 GHz). Step
@@ -124,7 +124,7 @@ Plots (|S21|/|Sdd21|, |S11|/|Sdd11|, the differences, the step responses):
   one lane's four ports driven and all other ports terminated gives that lane's response (same difference to kisi
   as the lane alone). For the PCIe bus (9 lanes, 36 ports) the bus subcircuit's S-parameter run took 9 minutes in ngspice (4 ports driven, 32 terminated, 500 points).
 - **Transient:** the PRBS7 benches run in ngspice (about 100 s per lane on one core); the KiCad project through
-  `kicad-cli sch export netlist --format spice` and ngspice gives the bench's receiver waveform to 2 nV (KiCad 7.0;
+  `kicad-cli sch export netlist --format spice` and ngspice gives the bench's receiver waveform to within 1 µV (KiCad 7.0;
   KiCad 9 opens the KiCad 7 format but was not available here).
 - **scikit-rf** reads every file (2-, 4- and 36-port). The lanes' Touchstone files are passive and reciprocal
   except the PCIe reference clock lane (kisi's model, see the summary); the bus N-port inherits that.

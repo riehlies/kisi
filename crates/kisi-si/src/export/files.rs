@@ -320,7 +320,7 @@ pub fn lib_file(lc: &LaneCircuit, board: &str, fmax: f64, per_lambda: f64) -> St
         sig4(fmax / 1e9)
     ));
     s.push_str(&format!(
-        "* check against kisi's S-parameters (same model): |dS21| <= {} dB to 1.5 x Nyquist ({} dB to the top), largest |dS| {} to 1.5 x Nyquist ({} to the top)\n* fits of the line sections: R {} %, X {} %, G {} %, B {} %; via ladders {} %{}\n",
+        "* check against kisi's S-parameters (same model): |dS21| <= {} dB to 1.5 x Nyquist ({} dB to the top), largest |dS| {} to 1.5 x Nyquist ({} to the top)\n* fits of the main line sections (each at least 10 % of the length): R {} %, X {} %, G {} %, B {} %; via ladders {} %{}\n",
         sig4(lc.fidelity.max_ds21_db_nyq),
         sig4(lc.fidelity.max_ds21_db),
         sig4(lc.fidelity.max_ds_nyq),
@@ -423,7 +423,7 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
         s.push_str("* Pair: both lines on their own paths; coupled runs, via pairs and stub pairs as modal blocks – even- and odd-mode chains between ideal mode converters (E and F sources: V_e = (V_P + V_N)/2, V_o = (V_P − V_N)/2, I_P = I_e + I_o, I_N = I_e − I_o), as kisi computes them. Differential and common mode, mode conversion and skew are included.\n");
     }
     s.push_str(&format!(
-        "\nCheck against kisi's own S-parameters of this channel (the circuit evaluated in kisi): up to 1.5 × Nyquist |ΔS21| ≤ {} dB and the largest difference of any S-parameter {}; up to {} GHz {} dB and {}. Fits of the line sections: R(f) within {} %, X(f) {} %, G(f) {} %, B(f) {} %; via ladders {} %. `validation/channel_export/` in the kisi repository runs these files in ngspice and compares.\n",
+        "\nCheck against kisi's own S-parameters of this channel (the circuit evaluated in kisi): up to 1.5 × Nyquist |ΔS21| ≤ {} dB and the largest difference of any S-parameter {}; up to {} GHz {} dB and {}. Fits of the main line sections (each at least 10 % of the length): R(f) within {} %, X(f) {} %, G(f) {} %, B(f) {} %; via ladders {} %. `validation/channel_export/` in the kisi repository runs these files in ngspice and compares.\n",
         sig4(lc.fidelity.max_ds21_db_nyq),
         sig4(lc.fidelity.max_ds_nyq),
         sig4(lc.freq.last().copied().unwrap_or(0.0) / 1e9),

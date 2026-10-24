@@ -65,9 +65,12 @@ pub struct Fidelity {
     /// 1.5 × Nyquist
     pub max_ds: f64,
     pub max_ds_nyq: f64,
-    /// line sections: worst relative error of the fitted networks over the band – resistance,
-    /// reactance, conductance, susceptance (%)
+    /// line sections that make up at least 10 % of the lane's line length: worst relative error of
+    /// the fitted networks on kisi's frequency grid – resistance, reactance, conductance,
+    /// susceptance (%); `fit_line_worst_pct` over all line sections (short ones included, e.g.
+    /// microstrip over a distant plane, whose dispersion a passive circuit follows least)
     pub fit_line_pct: [f64; 4],
+    pub fit_line_worst_pct: [f64; 4],
     /// via ladders: worst complex error of the fitted span impedances and node admittances,
     /// relative to their magnitude (%)
     pub fit_via_pct: f64,
@@ -131,7 +134,8 @@ struct Composer<'a> {
     freqs: Vec<f64>,
     layers: Vec<String>,
     cache: HashMap<Vec<u64>, (Foster, Debye, f64)>,
-    fit_line: [f64; 4],
+    /// per line model: fit errors (%) and the length it is used for (m)
+    fit_line: HashMap<Vec<u64>, ([f64; 4], f64)>,
     fit_via: f64,
     active: usize,
     active_from: Option<f64>,
@@ -178,7 +182,7 @@ impl<'a> Composer<'a> {
             freqs: fit_freqs(fmax * 1e-4, fmax, 60),
             layers: su.copper.iter().map(|c| c.name.clone()).collect(),
             cache: HashMap::new(),
-            fit_line: [0.0; 4],
+            fit_line: HashMap::new(),
             fit_via: 0.0,
             active: 0,
             active_from: None,
@@ -212,15 +216,20 @@ impl<'a> Composer<'a> {
         let fz = fit_z(&self.freqs, &zt, LINE_ZW, self.opts.fit_tol, 14, false);
         let fy = fit_y(&self.freqs, &yt, LINE_W, self.opts.fit_tol, 14, lm.ms_h.is_some());
         let err = fz.err.max(fy.err);
-        for &f in &self.freqs {
+        // the reported errors: on kisi's frequency grid (the fit also covers the lowest decades for
+        // the DC point, where the loss is negligible)
+        let f_grid = self.rp.fmax / self.rp.npts.max(10) as f64;
+        for &f in self.freqs.iter().filter(|&&f| f >= f_grid * 0.999) {
             let w = 2.0 * PI * f;
             let (a, b) = (zt(f), fz.net.z(w));
             let (c, d) = (yt(f), fy.net.y(w));
             let rel = |x: f64, y: f64| if x.abs() > 0.0 { (x - y).abs() / x.abs() } else { 0.0 };
             let e = [rel(a.re, b.re), rel(a.im, b.im), rel(c.re, d.re), rel(c.im, d.im)];
+            let entry = self.fit_line.entry(k.clone()).or_insert(([0.0; 4], 0.0));
             for q in 0..4 {
-                self.fit_line[q] = self.fit_line[q].max(100.0 * e[q]);
+                entry.0[q] = entry.0[q].max(100.0 * e[q]);
             }
+
         }
         self.cache.insert(k, (fz.net.clone(), fy.net.clone(), err));
         (fz.net, fy.net)
@@ -235,6 +244,9 @@ impl<'a> Composer<'a> {
     /// RLGC ladder of a line section.
     fn ladder(&mut self, lm: &LineModel, len: f64) -> (El, usize) {
         let (fz, fy) = self.fits(lm);
+        if let Some(e) = self.fit_line.get_mut(&key_of(lm)) {
+            e.1 += len;
+        }
         let c_lo = fy.y(2.0 * PI * self.freqs[0]).im / (2.0 * PI * self.freqs[0]);
         let n = self.sections(len, fz.z(2.0 * PI * self.freqs[0]).im / (2.0 * PI * self.freqs[0]), c_lo);
         let d = len / n as f64;
@@ -815,7 +827,15 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
         notes.push(format!("kisi's S-parameters (the Touchstone file): {w}; the SPICE subcircuit is passive by construction"));
     }
     let mut fd = fidelity(&freq, &s_kisi, &s_export, pair, f_nyq);
-    fd.fit_line_pct = comp.fit_line;
+    let total: f64 = comp.fit_line.values().map(|e| e.1).sum();
+    for (e, len) in comp.fit_line.values() {
+        for q in 0..4 {
+            fd.fit_line_worst_pct[q] = fd.fit_line_worst_pct[q].max(e[q]);
+            if *len >= 0.1 * total {
+                fd.fit_line_pct[q] = fd.fit_line_pct[q].max(e[q]);
+            }
+        }
+    }
     fd.fit_via_pct = comp.fit_via;
     fd.via_spans_active = comp.active;
     fd.via_active_from_ghz = comp.active_from;

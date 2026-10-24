@@ -30,9 +30,14 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   for name-based gaps, `config::subset`, check messages with categories), the WASM exports, and the viewer's
   "Prepare PCB" page (tabs, forms for laminate, net classes, variant, regulators, loads, beads and thermal data,
   dismissals, one draft, live check, save everything or one category next to the board, the agent prompt per tab,
-  readiness dots). Next (`docs/mockups/prepare.md`, "still open"): fill the forms from a loaded kisi.json, keep an
-  unsaved draft across reloads, forms for capacitor ratings and connector ends, moving the viewer's stackup and
-  profile edits into the kisi.json.
+  readiness dots), then made fully functional: every entry of a loaded kisi.json in editable forms (keys without a
+  form kept, load and save unchanged gives the same file), the draft per board kept in the browser with Discard,
+  forms for capacitor data (by part number, with the parts' own rating fields as a suggestion), connector ends
+  (Touchstone file and ports) and variant definitions, the views' stackup, target, profile, connector-end and
+  power edits moved into the draft (power through the core's tree/setup → fields conversion), categories per
+  gap item from the core, stale dismissals with remove; `check_viewer.py` runs the acceptance on the bare
+  ThunderScope (its kisi.json entered through the forms, saved, reloaded). What remains, with reasons:
+  `docs/mockups/prepare.md`, "Still open".
 - **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
   (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
   text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an

@@ -1,10 +1,11 @@
 # Board preparation in the viewer – mockup and design note
 
-Status: the third version was approved (24 Oct 2026) and is **implemented** in branch `feat/docs-prepare` – the
-core (`views`, `applicable`, `--for`, `gaps.dismissed`, `config::subset`, check messages with categories), the WASM
-exports `kisi_gaps`, `kisi_config_check`, `kisi_config_subset`, and the viewer's Prepare PCB page with all forms of
-this note; user documentation in [Preparing a board](../preparing-a-board.md#in-the-viewer-prepare-pcb). Still open
-(see the end of this note). The mockup below is kept as the design record.
+Status: the third version was approved (24 Oct 2026) and is **implemented and functional** in branch
+`feat/docs-prepare` – the core (`views` per gap and per item, `applicable`, `--for`, `gaps.dismissed`,
+`config::subset`, check messages with categories, capacitor suggestions, tree/setups → fields), the WASM exports
+`kisi_gaps`, `kisi_config_check`, `kisi_config_subset`, `kisi_edits_to_fields`, `kisi_board_sheets`, and the
+viewer's Prepare PCB page; user documentation in [Preparing a board](../preparing-a-board.md#in-the-viewer-prepare-pcb).
+What differs from this note and what is still open: see the end. The mockup below is kept as the design record.
 
 History of the mockup: v1 was a fourth view "Prepare" with one gap list; v2 split the gaps by simulation category
 into a card at the top of each analysis view; the maintainer's answers to v2 brought the page back, with the
@@ -148,20 +149,42 @@ classes, PI_REG and PI_LOAD, download only, no dismissals and no merge – about
 10 days) the page costs about the same as the cards; the dismissals and "nothing to check" add about 1.5–2 days.
 
 ## Implemented, and what is still open
-Implemented (branch `feat/docs-prepare`): everything in "The page" and "In the core" above, with these
-differences – "save only <category>" applies `config::subset` to the draft and lays the result over the loaded
-file (so the loaded file's other entries are kept); the gap list runs in a Web Worker that replays the engine's
-state, so the page stays responsive (about a second per run on ThunderScope); `config::to_json` writes the subset
-without empty entries.
+Implemented (branch `feat/docs-prepare`): everything in "The page" and "In the core" above, and then:
+- **The draft is the kisi.json:** the loaded file (or a skeleton) with the edits. Every entry of it is in a form
+  under "In `<board>`.kisi.json" on its tab – laminate and solder mask, class targets, profiles, connector ends,
+  the variant and the variant definitions, one table per field name (`PI_REG`, `PI_LOAD`, `PI_SOURCE`,
+  `PI_SERIES`, `PI_CAP`, `PI_THERMAL`, `PI_TARGET`, others), notes. Forms change entries by key; keys without a
+  form (and source keys such as `url`, `page`) stay. Loaded and saved unchanged, the file is the same
+  (`check_viewer.py` compares).
+- **Kept per board** in the browser (`kisi.prep.v1.<board>`, like the stackup and profile edits) until saved or
+  discarded; the side card counts what is added, changed and removed against the loaded file; a draft made over
+  another kisi.json is kept and marked.
+- **Save:** everything, or the loaded file with one category's changes – the entries of `config::subset` of the
+  loaded file are replaced by those of the draft, entry by entry, so removals in that category count too; the
+  rest stays in the draft.
+- **Forms added:** capacitor data per part number (or value and package) for the whole group, with the
+  suggestion the core reads from the parts' own fields (`Voltage Rating`, `Dielectric`, `Description`; source kind
+  `design`); connector ends with the Touchstone file, port order and ports per pin; variant definitions by sheets
+  (the board's sheets as suggestions), parts, BOM and BOM exceptions.
+- **The views' edits** (stackup, targets, profiles, connector ends, the power tree or rail setups) are listed on
+  their tab and move into the draft with one source; power settings go through `tree::spec_to_fields` /
+  `pi::setups_to_fields` in the core (round-trip tests), and only the parts whose fields change are written.
+- **Categories per item** from the core: dielectrics with only a default tanδ are Channel items, forks are Channel
+  items, defined variants Channel and Power; a tab shows a gap's items for it.
+- **Stale dismissals** (the core's `not_applied`) next to their gap, or as "Stale dismissals" on the tab, with remove.
+- "hand to the agent" on any gap with a form; a category whose open gaps are all handed over says so.
+- The gap list runs in a worker, one run at a time (edits during a run ask for one more afterwards).
 
-Still open:
-- the loaded kisi.json's values do not fill the forms yet (its dismissals do; its other entries already close their
-  gaps, so the forms show what is still missing);
-- the draft lives in memory only (lost on a page reload before saving);
-- dismissals the core did not apply (`not_applied`, e.g. an item no longer reported) are shown as check warnings,
-  not next to the gap;
-- capacitor ratings (`PI_CAP`), connector ends and variant definitions by sheet or BOM have no form – they stay on
-  the agent path;
-- the viewer's own stackup and profile edits (stored in the browser) cannot be moved into the kisi.json yet;
-- per-item categories (a default εr matters for Impedance, a default tanδ for Channel).
-
+Still open, with the reason:
+- Interface profile parameters edited in the Channel view (limits, data rate) are stored per browser for all
+  boards; kisi.json has no key for them (profiles are `data/interfaces.json`), so they cannot move into it.
+- Lane direction swaps and path flips are viewer display choices, not data of the board – no kisi.json key.
+- Pads chosen for a source or load in rail setups: fields name parts, not pads – the page says which pad choices
+  are lost when the setups are taken over.
+- A part removed from the power tree whose `PI_REG` / `PI_LOAD` comes from the KiCad file cannot be removed by
+  kisi.json – the page names it (change it in KiCad).
+- Capacitor ratings from the parts' fields are a suggestion on the page, not read by the analyses (ROADMAP:
+  capacitor ratings from part fields – a model change with its own comparison).
+- The forms do not parse field values themselves; the core's check reports what it cannot read.
+- Undo is per gap for dismissals and "Discard draft" for the whole draft; there is no step-by-step undo.
+- Values that need datasheets or curves stay on the agent path (by design).

@@ -113,11 +113,11 @@ pub struct LaneCircuit {
 /// Fit weighting of line sections: R(f) and G(f) within the tolerance, the reactance and the
 /// susceptance (the delay and the impedance) ten times closer.
 const LINE_W: Weight = Weight::Parts { im: 10.0, re_floor: 0.0 };
-/// The series impedance of lines: the reactance 3 times closer than R(f) at the lowest and 30 times
+/// The series impedance of lines: the reactance 10 times closer than R(f) at the lowest and 30 times
 /// at the top frequency – kisi's roughness adds resistance without its internal inductance, which
 /// no causal circuit follows exactly; a reactance error at high frequency becomes a phase error
 /// that grows along the line.
-const LINE_ZW: Weight = Weight::Graded { lo: 3.0, hi: 30.0 };
+const LINE_ZW: Weight = Weight::Graded { lo: 10.0, hi: 30.0 };
 /// Via models (short): the reactance and the susceptance first – kisi's via models use a constant
 /// loss tangent and a barrel resistance without internal inductance, which no causal circuit
 /// follows exactly; their loss is small, their reactance sets the reflections.

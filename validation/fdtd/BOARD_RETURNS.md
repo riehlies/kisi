@@ -354,6 +354,28 @@ with unbridged GND/supply transitions shows a verdict change that 3D confirms (B
 The cheap intermediate step – a warning in the default path when a via's path crosses an open
 GND/supply pair, without changing the numbers – is section 8.
 
+### Reassessed in Block 5 (after the coplanar pours, `BOARD_VIAS.md` section 5)
+
+| | `--via-returns` | `--via-cavity` | both |
+|---|---|---|---|
+| run time `check --all`, one thread (ThunderScope / LibreVNA; default 6.9 / 1.4 s) | 10.1 / 1.4 s | 108 / 15 s | 16.3 / 12.7 s |
+| rows that change (ThunderScope / LibreVNA), verdicts | 9 / 5, none | 9 / 9, none | 9 / 9, none |
+| largest change | IL at Nyquist 0.07 dB (PCIe_PET2), RL 0.33 dB (SRC_REF_IN) | RL 1.5 dB (PCIe_PER2) | IL 0.07 dB, RL 0.84 dB |
+| REFINOUT2 against 3D, 12–20 / 20–25 GHz max |ΔS21| (default 0.41 / 0.76 dB) | 0.67 / 1.15 dB | – | – |
+| M.2 pair (quick mesh), 0.5–12 / 12–20 GHz (default 0.18 / 0.20 dB) | 0.17 / 0.19 dB | – | – |
+
+**Decision: both stay options, off by default.** The coplanar fix brought the M.2 pair close to 3D (the
+return groups now improve it slightly), but the REFINOUT2 ladder still dissipates too much above 12 GHz
+(16 % of the power at 20 GHz against 9 % in 3D), and the floating-plane loss of the return groups adds
+to that error instead of closing it. Neither example board has an open GND/supply pair, so the options
+change no verdict; where a board has one, the new warning (section 8) points at the options. The cavity
+option has become much slower than in Block 3 (ThunderScope 7.6 s there, now 108 s on one thread; with
+the return groups, which leave the bridged pairs infinite, 16 s): the 241 ladder builds with their
+cavities take 2.7 s, the rest is the cavity impedances evaluated at the channels' frequencies – the
+check evaluates more channels per lane since main (pairs as 4-ports, every line on its own path); not
+investigated further. Far from a default. Next for the
+default: the REFINOUT2 excess loss above 12 GHz, and the cavity run time.
+
 ## 8. The warning in the default path (Block 5)
 
 Without any option, every channel via now checks the plane pairs of two nets (GND/supply) in its
@@ -399,9 +421,9 @@ capacitor, and with L3 a GND plane).
 * **Floating-plane loss 1.3–1.6× too large** on REFINOUT2 (and 2× in the cavity form of the
   ThunderScope stack at 16 GHz); within 0.02 dB on the synthetic ThunderScope stack. Not separated
   from the ladder's own errors on the board via.
-* **Pours on the via's signal layers** are still planes (Block 2); return groups count them as joined
-  by every return, as before. A coplanar-return model for them is the next ladder step, and with it
-  the return groups' default.
+* **Pours on the via's signal layers** are coplanar returns since Block 5 (`BOARD_VIAS.md` section 5);
+  return groups count them as joined by every return, as before. The return groups' default now waits
+  for the REFINOUT2 excess loss above 12 GHz (section 7).
 * **Return vias**: the nearest 8 plane-net vias within 3 mm that join one of the via's planes, with
   their openings measured at their position; annular rings on planes they pass are not modelled; a
   return's capacitance assumes the planes it does not neighbour are shielded.

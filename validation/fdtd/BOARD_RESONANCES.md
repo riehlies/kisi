@@ -53,6 +53,11 @@ board: `kisi-validate cavities <board>`; the ladder with a finite cavity on a ca
   the ladder (with and without cavities) shorts through the GND return vias – is a bigger error on
   those pairs than the finite size.
 
+* **Block 5** (`BOARD_RETURNS.md` section 7): still an option. Since the merge with main the option
+  costs far more (ThunderScope `check --all` on one thread 6.9 → 108 s, LibreVNA 1.4 → 15 s; with
+  `--via-returns` 16 / 13 s) and still changes no verdict. The FPGA_CLK_R board via with the coplanar
+  pours (`BOARD_VIAS.md` section 5): C, L and delay within 4 % of 3D on infinite plates.
+
 ## 1. Approach
 
 Written before the work, kept as it was carried out:

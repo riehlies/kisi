@@ -497,11 +497,32 @@ plots `results/board_returns/`). The model is the option `--via-returns` (off by
   with `KISI_VIA_RETURNS=1`; `check --all` of both boards byte-identical; with the option no verdict
   changes, ThunderScope 2.9 → 4.1 s, LibreVNA 1.0 → 1.15 s.
 
-### The warning in the default path (Block 5)
+## 12. Block 5: the warning, the ladder fixes, the TDR of the validation scripts
+
+### The warning in the default path
 - Channel vias whose path crosses a GND/supply plane pair that no return via within 3 mm joins or
   bridges (`via::open_pairs`) get a warning in `net`, the viewer's lane/net detail and `check`
-  (`via_warning`, `via_warnings`); the numbers do not change (`check --all` of both boards
-  byte-identical to the merge with main). Example boards: no such via (both boards); the old
+  (`via_warning`, `via_warnings`); the numbers do not change. Example boards: no such via; the old
   "reference changes … capacitors" warning dropped on two LibreVNA nets whose pairs are bridged.
   `RG_s4_pwr_n4` / `_cap2`: warned (with one capacitor); `RG_ts6_sw_pwr` (bridged), `RG_ts6_sw_gnd`,
   `R_s4_rect_n4`: not. Unit test `via::tests::open_plane_pair_warning`. BOARD_RETURNS.md section 8.
+
+### The TDR of the validation scripts
+- `sparam.step_response` summed the step from the middle of the Gaussian edge, so a reflection at the
+  reference plane lost its first half and left an offset (a 60 fF capacitor read as a 56 Ω plateau).
+  Now from three rise times before the edge, as kisi's `rf::tdr`. Re-scored: ladder on the single
+  vias (`rust_models.py`) TDR error median / p90 1.3 / 9.3 → 1.1 / 4.3 %; kisi channel, single vias
+  1.4 / 7.4 → 2.3 / 5.5 %, pair vias (Zdiff) 5.9 / 17.9 → 11.7 / 14.4 %; the long-stub maxima of
+  section 7 (11–16 %) were this artefact (now 1–5 %). The numbers of sections 3, 5 and 7 are those of
+  their time.
+
+### Board vias at the via centre, and the pours on the signal layers
+- The board-via comparisons of Blocks 2–4 carried the trace the channel leaves to the ladder
+  (`Feed::dropped`): now at the via centre (`PbmVia::abcd_centre`).
+- Pours on the via's signal layers as coplanar returns (`ViaGeom::coplanar`, default): M.2 pair phase
+  23.6° → 2.2°, C 214 → 144 fF (3D 158); REFINOUT2 L 791 → 712 pH (686); LibreVNA RF via L 337 →
+  225 pH (262), 6–12 GHz 0.20 → 0.44 dB; FPGA_CLK_R C/L/delay within 4 % of 3D. `compare_kisi.py`: all
+  56 rows identical. Example boards: no verdict changes, 9 + 10 rows (BOARD_VIAS.md section 5).
+- Series inductance after both: −14 … +12 % without a common sign; no change. Wide traces (X cases):
+  the 44/47 Ω fixtures of their 3D de-embedding; no change. B_ts6_L1L6 still lacks 50 fF.
+- `--via-cavity` / `--via-returns` stay off by default (BOARD_RETURNS.md section 7).

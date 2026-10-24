@@ -33,6 +33,10 @@ Everything here is reproduced by `board_vias.py` (commands at the end). Cases: `
   to 20 GHz (the ladder rolls off earlier), capacitance within 9 fF (278 against 269 fF; the reference case
   B_ts6_L1L6 with round antipads: 260 against 210 fF), series inductance 105 pH too high. 3D shows a notch at
   30.4 GHz (−10.9 dB) that the ladder does not have; it stays when the In2 power plane is grounded.
+- **Block 5 (section 5):** the comparison of this block carried extra trace in the ladder and its TDR lost half
+  of every reflection at the reference plane; corrected, and the pours on the via's signal layers are now
+  coplanar returns in the ladder (M.2 phase 23.6° → 2.2°, LibreVNA L 337 → 225 pH against 262 pH in 3D).
+  The numbers below are those of Block 2.
 - **LibreVNA RF via F.Cu → In2 with a 0.87 mm stub:** stub notch 24.0 GHz in 3D, 22.8 GHz in the ladder
   (−5.0 %, as in the references); |S21| within 0.06 dB up to 6 GHz (the board's band) and 0.42 dB up to 16 GHz; the
   ladder is 4.6 ps too slow, 87 fF too capacitive and has 240 pH too much.
@@ -463,7 +467,113 @@ WebAssembly on the measured cases) and the standard mesh with the −35 dB stop 
 | tests (`check_viewer.py`, viewer against `board_vias.py` on one case), docs | 0.5–1 |
 | **total** | **8–8.5**; minimal version (vias only, quick and standard mesh, no field view, no segments): **3.5–4** |
 
-## 5. Reproduce
+## 5. Block 5: the ladder fixes (pours on the signal layers, inductance, TDR, wide traces, thick core)
+
+Order decided by the maintainer on 2026-10-24: the warning (`BOARD_RETURNS.md` section 8), then these
+fixes, each against the 3D references, then the 3D check in the viewer (section 4, design note 5.6).
+Reproduce: `board_vias.py fixes` (before/after on all four board vias with a 3D reference →
+`results/board_vias_fixes.json`), `board_vias.py variants`, `compare_kisi.py`, `rust_models.py`.
+
+### 5.1 Two corrections of the comparison itself
+- **The board vias were compared with extra trace in the ladder.** kisi's channel leaves the unreferenced
+  trace over the antipad (`Feed::dropped`) to the ladder, which puts it back. The ladder geometry that
+  `board_vias.py ladder` takes from the channel still carried it, while the de-embedded 3D result is
+  referred to lines that run to the via centre: LibreVNA RF via 0.15 / 0.34 mm, M.2 pair 0.03 mm of extra
+  line. The comparisons now use `dropped = 0` (`board_vias.py`, `board_returns.py`) and the ladder dumps
+  (`KISI_DUMP_VIA`, Block 3) `PbmVia::abcd_centre`. Most of what section 2 reported for the LibreVNA via
+  was this: with the pours still as planes it is 1.4 ps (not 4.6 ps) slow, C +7 fF (not +87 fF), L +75 pH
+  (not +241 pH).
+- **The TDR of the validation scripts lost half of every reflection at the reference plane.**
+  `sparam.step_response` summed the step from the middle of its Gaussian edge; a reflection centred at
+  t = 0 lost its first half, whose integral stayed as an offset (a 60 fF shunt capacitor read as a 56 Ω
+  plateau, 200 pH as 43 Ω). It now sums from three rise times before the edge, as kisi's own TDR
+  (`rf::tdr`) always did. Every TDR number was re-scored:
+
+  | TDR error (25 ps), median / p90 | before | after |
+  |---|---|---|
+  | ladder on the single-via references (`rust_models.py`, 29 vias) | 1.3 / 9.3 % | 1.1 / 4.3 % |
+  | kisi channel, single vias alone (`compare_kisi.py`) | 1.4 / 7.4 % | 2.3 / 5.5 % |
+  | kisi channel, pair vias alone (Zdiff) | 5.9 / 17.9 % | 11.7 / 14.4 % |
+  | B s8 L1→L3 long stubs (d200 / d300), ladder: min / max | 12.0 / 16.2, 9.0 / 10.8 % | 1.0 / 4.8, 0.7 / 1.1 % |
+
+  The pairs read worse because the first half of their reflection was hidden: the L1→L8 pair vias are
+  8–11 % high in Zdiff minimum in the channel pipeline (the ladder alone is not scored in Zdiff). That is
+  an open point for the pair ladder (odd-mode capacitance), not a change of the model.
+
+### 5.2 Pours on the via's own signal layers (`ViaGeom::coplanar`, the default now)
+A pour on the via's entry or exit layer (GND around the pad and the trace) entered the ladder as a full
+plane: a plate of the span to the next plane, shorted by the return vias – a radial line whose
+inductance reaches out to the return vias – and with the nodes and odd-mode scaling of a plane pair.
+Now it stays in the Laplace solve (the pad's capacitance to the pour), is a plate of the spans on the
+stub side of the junction (an inner exit: the stub's current returns on it as on any plane – without
+that the LibreVNA stub notch moved above 25 GHz) and is no plate of the spans between the two signal
+layers (the trace's return turns into the via on its reference plane and the pour's edges). The
+validation switch `KISI_VIA_POURS=planes` gives the ladder before.
+
+Before → after (3D loss model, at the via centre; max / rms |ΔS21| in dB per band; `fixes`):
+
+| via | 0.5–6 GHz | 6–12 GHz | 12–20 GHz | 20–25 GHz | phase 20 GHz | C fF (3D) | L pH (3D) | delay ps (3D) | TDR min / max Ω (3D) |
+|---|---|---|---|---|---|---|---|---|---|
+| M.2 pair (Sdd, 100 Ω) | 0.17/0.12 → 0.05/0.02 | 0.23/0.20 → 0.23/0.15 | 0.29/0.27 → 0.24/0.20 | 0.25/0.14 → 0.16/0.09 | 23.6° → 2.2° | 214 → 144 (158) | 838 → 753 (673) | 13.3 → 10.6 (10.1) | 67/87 → 78/95 (74/95) |
+| REFINOUT2 | 0.04/0.03 → 0.03/0.03 | 0.10/0.07 → 0.06/0.05 | 0.38/0.23 → 0.41/0.23 | 0.62/0.52 → 0.76/0.62 | 8.3° → 2.4° | 269 → 267 (278) | 791 → 712 (686) | 15.2 → 14.5 (14.1) | 47.9/53.6 → 46.8/52.5 (46.6/51.8) |
+| LibreVNA RF_HBLB_PORT1 | 0.06/0.03 → 0.04/0.02 | 0.20/0.10 → 0.44/0.25 | 1.87/0.74 → 1.63/0.80 | 17.0/7.9 → 18.3/8.2 | 10.9° → 6.0° | 398 → 397 (391) | 337 → 225 (262) | 14.9 → 12.7 (13.5) | 30.3/43.5 → 29.2/47.2 (28.2/42.5) |
+| LibreVNA FPGA_CLK_R (Block 3) | 0.07/0.03 → 0.02/0.01 | 0.37/0.12 → 0.32/0.12 | 8.5/2.6 → 9.9/2.9 | 2.2/1.6 → 3.6/1.4 | 44° → 39° | 416 → 414 (430) | 577 → 396 (393) | 20.2 → 16.8 (16.8) | 38.6/45.9 → 36.3/40.6 (35.0/40.6) |
+
+- The M.2 pair improves everywhere: the 16 GHz dip now 21 GHz / −0.56 dB against 20.5 GHz / −0.72 dB
+  in 3D (before 16.9 GHz / −1.00 dB). Most of the old excess capacitance was the odd-mode scaling of
+  the nodes between the pour and the next plane.
+- REFINOUT2: phase, L, delay, reflection better; the excess loss above 12 GHz stays (S21 at 20 GHz
+  −0.98 dB against −0.57 dB; the ladder dissipates 16 % of the power there, 3D 9 %), so the band maxima
+  above 12 GHz grow by 0.03–0.14 dB.
+- LibreVNA RF via (CPWG with a via fence on both layers): within its band (≤ 6 GHz) better, L and delay
+  closer, but more reflective at 6–16 GHz (|S11| at 12 GHz −5.5 against −5.6 dB in 3D, before −5.2 dB):
+  0.24 dB worse there. The stub notch stays at 22.8 GHz (3D 24.0).
+- LibreVNA FPGA_CLK_R: C, L and delay now match 3D within 4 %, 0.3 ps; below 12 GHz better; at 12–25 GHz
+  the 3D notches at 17–20 GHz, which neither ladder has, dominate the maxima.
+- Variants (`results/board_vias_variants.json`): dropping the pours altogether loses the LibreVNA notch
+  (> 25 GHz) and gives the same as the new treatment elsewhere; without the junction model the delay and
+  phase get worse on all three (M.2 8.5°, LibreVNA 15°): it stays.
+- The Block 1 references have no pours on their signal layers: all 56 `compare_kisi.py` rows identical.
+- On the example boards (`check --all`): no verdict changes; ThunderScope 9 rows change (the M.2 PCIe
+  lanes PER0–3 / PET0–3 and REFINOUT2: insertion loss at Nyquist up to +0.43 dB better (PET0
+  −5.05 → −4.62 dB), return loss ±0.4 dB), LibreVNA 10 rows (return loss +0.1 … −4.5 dB, insertion
+  loss ≤ 0.004 dB, FPGA_CLK's stub field 20.6 → 29.2 GHz). Run time unchanged.
+
+### 5.3 Series inductance
+After 5.1 and 5.2 the series inductance is +81 pH (M.2, +12 %), +26 pH (REFINOUT2, +4 %), −37 pH (LibreVNA
+RF, −14 %) and +3 pH (FPGA_CLK, +1 %) off: no common sign. The 105–241 pH of section 2 came from the
+pours as planes and the extra trace. A wide-trace scaling of the junction inductance (less current
+crowding where the trace is wider than the pad) was tried on the X cases and made them worse. No
+change.
+
+### 5.4 TDR maxima of long stubs, wide traces at the via
+- The long-stub TDR maxima (B s8 L1→L3 stubs 11–16 %, B ts6 L1→L3 stub 15 %) were the TDR artefact of
+  5.1: now 1–5 % (B ts6 stub: max 1.3 %, min 8.1 %).
+- The X cases with the 0.93 mm microstrip: their 3D results use 44 / 47 Ω stripline fixtures with the
+  z0-referred de-embedding, whose impedance steps show as TDR plateaus of 43 / 57 Ω in the 3D result
+  itself. With the matched de-embedding (`board_vias.py block1`) the wide-trace case X_s8x2 has C 61.5
+  (ladder 66.3) fF and L 88.8 (35.4) pH, X_s8x4 C 63.4 (119) fF: real ladder errors of a few tens of
+  fF/pH at exits without a plane on one side, but no single change fixes both. No change; re-scoring
+  the Block 1 references with the matched de-embedding stays the next step.
+
+### 5.5 The ThunderScope thick-core through via
+B_ts6_L1L6 (round antipads, planes on every inner layer) still lacks 50 fF (210 against 260 fF, matched
+de-embedding 259.7 fF); its TDR error is 0.5 / 1.3 %, |S21| within 0.03 dB to 20 GHz, phase 10°. The board
+via of the same stack (REFINOUT2, with pours on F.Cu / B.Cu) is within 11 fF. Not changed.
+
+### 5.6 Design note: a 3D check in the viewer (not started)
+Section 4 stands, with what Block 5 adds: the comparison has to be made at the via centre
+(`abcd_centre`), with the corrected TDR and the matched de-embedding in Rust. Minimal prototype, in this
+order: (1) `viacase.rs` into `kisi_core::viacase` and a `kisi_cli_via_case` export in kisi-wasm (0.5 d);
+(2) kisi-fdtd as a second WebAssembly module with a progress import, run in a classic worker from a
+blob URL, one worker per excitation (1 d); (3) the matched de-embedding and the metrics of
+`board_vias.py` in Rust (1 d); (4) a "3D check" button on a row of the via table: case preview, quick
+mesh, progress/cancel, |S21|/|S11|/TDR against `abcd_centre` (1 d); (5) a `check_viewer.py` test with a
+tiny case (0.5 d) – 4 days, as estimated. Not built in this block: the ladder fixes and the default
+decision took the time, and a prototype that runs 1–3 minutes per via needs the solver's setup time
+(10–24 s in WebAssembly) reduced first.
+
+## 6. Reproduce
 
 ```
 cargo build --release -p kisi-cli -p kisi-fdtd
@@ -473,6 +583,7 @@ python3 validation/fdtd/board_vias.py ladder      # kisi's ladder for the same v
 python3 validation/fdtd/board_vias.py compare     # de-embedding, metrics, plots
 python3 validation/fdtd/board_vias.py variants    # the ladder without the signal-layer pours / junction model
 python3 validation/fdtd/board_vias.py diag        # REFINOUT2 with In2 grounded (board_cases/diag)
+python3 validation/fdtd/board_vias.py fixes         # Block 5: pours as planes against coplanar, all board vias
 python3 validation/fdtd/board_vias.py deembed-check   # the de-embedding on a known network
 python3 validation/fdtd/board_vias.py block1          # Block 1 references de-embedded both ways
 python3 validation/fdtd/board_vias.py quick [--variants q070f25s,...]   # coarser meshes, other stop levels

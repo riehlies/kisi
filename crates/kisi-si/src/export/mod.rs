@@ -811,6 +811,9 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
             delay_ps = ch.delay_ps;
         }
     }
+    if let Some(w) = crate::lanenet::passivity_check(&freq, &s_kisi, ports.len()) {
+        notes.push(format!("kisi's S-parameters (the Touchstone file): {w}; the SPICE subcircuit is passive by construction"));
+    }
     let mut fd = fidelity(&freq, &s_kisi, &s_export, pair, f_nyq);
     fd.fit_line_pct = comp.fit_line;
     fd.fit_via_pct = comp.fit_via;

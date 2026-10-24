@@ -26,8 +26,11 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   net class targets and profiles, regulators and loads, thermal data), checked by the same code as `config-check`,
   and exports `<board>.kisi.json`. Research-heavy values (datasheets) stay with the agent path (skill
   kisi-prepare). No second logic in the viewer. **Mockup and design note done** (`docs/mockups/prepare.html`,
-  `prepare.md`: reuse of `kisi_core::gaps` and `config::check` through WASM, about 7–8 days, a first version 4–5).
-  Next: the maintainer's review of the mockup (open questions in `prepare.md`), then the implementation.
+  `prepare.md`), second version after the first review: split by view – a "Prepare" card at the top of the
+  Impedance, Channel and Power views with that view's readiness and gaps, one shared draft, saving one view's
+  entries alone; the view of a gap comes from the core (`views` from `affects` in `gaps.rs`, a `--for` option of `kisi gaps`,
+  `config::subset`). About 10 days, a first version 5–6. Next: the maintainer's review of the second mockup and
+  the working assumptions marked "proposed, to confirm", then the implementation.
 - **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
   (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
   text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an

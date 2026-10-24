@@ -1,81 +1,130 @@
-# "Prepare" step in the viewer – mockup and design note
+# Board preparation in the viewer – mockup and design note
 
-Status: mockup for review (24 Oct 2026), nothing implemented. Decided by the maintainer: one core for humans and
-agents, plus a "Prepare" step in the viewer; mockup first ([ROADMAP](../../ROADMAP.md), block 1).
+Status: mockup for review, second version (24 Oct 2026), nothing implemented. Decided by the maintainer: one core
+for humans and agents, plus preparation in the viewer; mockup first ([ROADMAP](../../ROADMAP.md), block 1). The
+first review asked to split the preparation by simulation category – Impedance, Channel, Power (with the
+temperature under Power) – because they need different data and a user may want to simulate only one of them.
 
 [`prepare.html`](prepare.html) is a static, clickable mockup in the viewer's look (open it from the repository so
-that it finds `web/fonts`). It embeds the real `kisi gaps` output of kisi 0.2.5 for ThunderScope Rev5.3 and the
-XIAO nRF54LM20A (both without a kisi.json; long item lists shortened); the board switch in the header changes
-between them. The check is imitated in a few lines of JavaScript with the messages of `kisi config-check`. A file
-exported from the mockup passes the real `kisi config-check` (tested on ThunderScope).
+that it finds `web/fonts`). It embeds the real `kisi gaps` output of kisi 0.2.5 for three boards: ThunderScope
+Rev5.3 without a kisi.json, ThunderScope with its example kisi.json (`web/samples/ts.kisi.json`), and the XIAO
+nRF54LM20A without one. Each gap carries the proposed `views` field (below), derived from its `affects`. The check
+imitates `kisi config-check` in a few lines of JavaScript. Files saved from the mockup pass the real
+`kisi config-check` (tested on ThunderScope: everything entered, and the Impedance entries alone).
 
-## What the step does
-- **Where:** a fourth view "Prepare" before Impedance, Channel and Power, with a badge counting the open high and
-  medium gaps. It opens with the board and stays optional – a well-prepared board shows 0.
-- **Gap list** (main column): every gap of `kisi gaps` as a card, by priority, with the issue, *where to find it*,
-  where it goes in kisi.json and what it affects. A filter shows high / medium / low / open gaps.
-- **Inline entry** of the simple values, each block with a required source (kind, document or url, note):
-  - laminate εr, tanδ and material per dielectric (`stackup-defaults`);
-  - net class target, differential flag and interface profile (`classes-without-standard`);
-  - the regulator chain as `PI_REG` rows with suggestions from `rails-without-voltage` (e.g. "PI_REG on FB3:
-    IMU&MIC_3V3 > "/06 Peripherals/IMU_VDD" pass") that add a row in one click;
-  - load currents per IC and rail (`ic-loads`, with the MPN where the Value field is not the part number),
-    typical or maximum;
-  - ferrite beads (`PI_SERIES`), thermal data (`PI_THERMAL`), the assembly variant (`default` or a defined one).
-- **Fixes in KiCad** (`nets-without-target` in the class "Default", unreadable Value fields) are shown as such,
-  without a form.
-- **Agent path:** research-heavy gaps (capacitor ratings of 256 parts, variants from BOMs, efficiencies read from
-  curves) are listed in the "Agent path" card; any other gap can be handed over too. "Copy prompt" gives a prompt
-  for the skill kisi-prepare, which merges its results into the same kisi.json (keeping the user's entries); loaded
-  again, the file fills the step.
-- **Check** (side card): the result of `config-check` on the draft, live; errors block the export.
-- **Export:** the kisi.json preview (right column) and "Download kisi.json" – saved next to the board, read by
-  the CLI and the viewer from there.
+## The design
+- **A "Prepare" card at the top of each view** (Impedance, Channel, Power), above the view's own cards. It shows:
+  - the readiness of all three views, the current one highlighted – e.g. "Impedance: ready · Channel: 3 open
+    (1 high) · Power: 5 open"; a click switches the view. The same state is a coloured dot on each view's button
+    in the header;
+  - this view's gaps, by priority, with "also Channel" where a gap serves another view too, and "KiCad" or
+    "agent" where it is not filled here;
+  - the shared draft ("10 entries – Impedance 5 · Channel 8 · Power 3"), "Enter values" and "Save kisi.json".
+- **"Enter values"** opens a panel over the board map (like the power tree in the Power view): this view's gap
+  cards with *where to find it*, where the value goes, and the forms – laminate εr/tanδ, net class targets and
+  profiles, the variant, the regulator chain (`PI_REG`, with the suggestions of `rails-without-voltage`), loads,
+  ferrite beads, thermal data – each block with a required source. Beside them: the check of the draft, the
+  kisi.json preview and the agent path for this view's research-heavy gaps ("Copy prompt" for kisi-prepare with
+  `kisi gaps --for <view>`).
+- **Readiness of a view:** no open high or medium gap for it; low gaps are shown as refinements ("ready ·
+  2 refinements"). Fixes in KiCad keep a view open until the board is reloaded.
+- **Gaps in several views are filled once.** The draft belongs to the board, not to a view: the laminate entered
+  in Impedance shows as filled in Channel; the variant chosen in Channel closes the gap in Power.
+- **Partial preparation.** "Save" offers "everything entered" or "only <view> entries". The second writes only the
+  entries that view uses – valid on its own, the other views keep their gaps – and can be saved while entries of
+  another view still have errors (the mockup shows it: a `PI_REG` typo in Power, the Impedance entries saved).
+  Which entry serves which view: stackup → Impedance and Channel; net class target → Impedance and Channel, its
+  profile → Channel; variant → Channel and Power; `PI_*` fields → Power.
+- **A loaded kisi.json** (the example boards, a user's file) is the base of the draft: saving merges into it – its
+  entries stay, the draft adds entries or replaces those with the same key – and in the implementation its
+  entries also fill the forms (not in the mockup).
 
-## Reusing kisi_core – no second logic
-The rule of the ROADMAP is that the viewer gets no logic of its own. The step only collects values and builds
-JSON; everything that decides is Rust:
+### Why cards in the views, not a fourth view
+The mockup's first version had a fourth view "Prepare". Cards are better here: the gaps appear where the user is
+about to simulate, a user who only wants impedances never sees the power gaps, and the readiness of the other
+views stays one click away in the same card. A fourth view would need category tabs anyway and would separate the
+data from the results it changes. So only the card variant is shown.
 
-| Need | Rust (exists) | WASM today | Change |
-|---|---|---|---|
-| gap list | `kisi_core::gaps::gaps(&Project, &Profiles)` | `kisi_cli_project` + `kisi_cli_run` with `{"cmd": "gaps"}` (the CLI exports are in the same module) | none for a first version; later a `kisi_gaps()` export on the viewer's own state, so the board is not parsed twice |
-| check of the draft | `kisi_core::config::check` (format, ranges, references, sources, field syntax by parsing like the analyses) | `kisi_config` runs it, but also applies the file | a pure `kisi_config_check(text)` export (about 10 lines): check without applying, for every edit (debounced) |
-| does an entry close its gap? | `gaps` with the draft as configuration | the same `kisi_cli_project` call with the draft text | none – the mockup's JavaScript guess is replaced by running `gaps` again |
-| errors per row | the check's messages carry the reference (`U6: PI_REG '…': 'pas' not understood`, `fields[U6 PI_REG]: …`) | – | map messages to rows by their prefix (presentation only) |
-| use the draft in the views | `kisi_config` (apply) | exists | "Use" applies the draft like a dropped kisi.json; the views recompute |
+## Working assumptions (proposed, to confirm)
+- **Saving is blocked by errors in what is saved; warnings are fine.** With errors only in another view's entries,
+  that view's own entries can still be saved alone.
+- **Where the file goes:** in Chromium, when the board was opened through the File System Access API, the
+  kisi.json is written next to the board (where "Reload" already reads); otherwise it is downloaded.
+- **The gap list also runs on the example boards with their kisi.json**, so a prepared board shows what is still
+  open (the mockup's "ThunderScope + kisi.json": Impedance 2 open – the KiCad fix and the laminate –, Channel 3,
+  Power 2 and 2 low).
 
-The JavaScript keeps a table from gap id to editor (which form to show) – presentation, like the labels of the
-views. Field syntax, ranges, sources and the gap list stay in `kisi_core`, so CLI, agents and viewer agree. What
-the mockup taught: choosing the variant `default` closes `assembly-variant`, but then `kisi gaps` reports
-`assembly-variant-forks` – exactly why the step must ask the core again after each change instead of predicting.
+## The category in the core – no second logic
+Everything that decides stays in `kisi_core`; the viewer shows and collects.
 
-**Merging with an existing kisi.json:** a dropped file prefills the editors; the export keeps every key the step
-does not edit (`notes`, `variants`, `connector_ends`, sources) and replaces entries by their key (dielectric index,
-class name, `ref` + field name). That merge is plain JSON; if the agent path should use the same rule, it moves
-into `kisi_core::config` as `merge(base, patch)` with a WASM export.
+**`views` per gap, from `affects`.** Each gap in `gaps.rs` already lists what it affects (`"impedance (εr)"`,
+`"loss and eye (tanδ)"`, `"DC IR drop"`, …). A small table in `gaps.rs` gives each of these words its view, and
+`gap()` writes `"views"` from it, so a new gap gets its views from the words it lists anyway:
 
-**Edits that already exist** (stackup and profiles edited in the viewer, stored in the browser) can be offered as
-entries ("put into kisi.json", source required), so they are no longer lost in one browser.
+| affects | view |
+|---|---|
+| impedance, impedance (εr), impedance check, crosstalk | `impedance` |
+| loss, eye, loss and eye (tanδ), channel check, lanes | `channel` |
+| power budget, regulator loading, regulator losses, input current, DC IR drop, PDN, PDN (fitted capacitors), PDN target impedance, PDN impedance, PDN impedance per IC, decoupling recommendations, filter resonances, temperature estimate, junction temperature | `power` |
 
-**Smaller downloads** (ROADMAP: separate WASM builds for viewer and CLI): the viewer then keeps `gaps` and
-`config::check` but not the command layer – with the `kisi_gaps` export of the second step that costs nothing.
+A test fails for a word without a view. With today's gaps this gives: `stackup-missing`, `stackup-defaults`,
+`nets-without-target` → Impedance and Channel; `classes-without-standard`, `assembly-variant-forks`,
+`channel-part-values` → Channel; `assembly-variant` → Channel and Power; all power gaps and `thermal-data` → Power.
+A later refinement can put views on items (in `stackup-defaults`, a default εr matters for Impedance, a default
+tanδ for Channel).
+
+**Readiness in the summary.** `kisi gaps` adds per view `{"impedance": {"ready": true, "high": 0, "medium": 0,
+"low": 1}, …}` next to today's `summary`, with the rule above – so viewer, CLI and agent count the same way.
+
+**`kisi gaps --for impedance|channel|power`** keeps the gaps of that view only, and the summary of that view. The
+skill kisi-prepare uses it when the user wants one analysis ("get the board ready for the impedance check"); the
+viewer's "Copy prompt" names it.
+
+**Which entry serves which view** (for "save only <view> entries" and for sorting check messages) also belongs in
+the core, next to `config::check`:
+- `config::check` returns each message with the path of its entry (`stackup.dielectrics[index 2]`,
+  `net_classes.50Z`, `fields[J10 PI_REG]`) and that entry's views, besides today's `errors`/`warnings` strings;
+- `config::subset(cfg, view)` returns the configuration with only the entries of that view.
+
+The JavaScript keeps only a table from gap id to form (presentation, like the views' labels) and the merge of the
+draft into a loaded file by keys; field syntax, ranges, sources, gaps, views and the subset stay in Rust.
+
+| Need | Rust | WASM |
+|---|---|---|
+| gaps with views and readiness | `gaps::gaps` (+ `views`, per-view summary) | a `kisi_gaps(config?)` export on the viewer's own state; until then `kisi_cli_project` + `kisi_cli_run` with `{"cmd": "gaps"}` |
+| does the draft close a gap? | `gaps::gaps` with the draft as configuration | the same call with the draft text (the mockup guesses in JavaScript – the real step asks the core) |
+| check of the draft, per view | `config::check` (+ message paths and views) | a pure `kisi_config_check(text)` export – check without applying |
+| save one view | `config::subset` | `kisi_config_subset(text, view)` |
+| use the draft in the views | `config` apply | `kisi_config` (exists) |
+
+The stored results of `kisi gaps` (`validation/golden/*.gaps.json`) change with the new fields and are updated in
+the same commit.
+
+What the mockup taught:
+- Choosing the variant `default` closes `assembly-variant`, but then `kisi gaps` reports `assembly-variant-forks` –
+  the step must ask the core again after each change instead of predicting.
+- On ThunderScope, `nets-without-target` (four QSPI nets in the class "Default", found by their names) keeps
+  Impedance open, and only a fix in KiCad closes it. Should a name-based gap that the user has looked at be
+  dismissable ("not an interface"), stored in kisi.json?
+- The XIAO has no net with a target impedance, yet Impedance shows the laminate gap. The per-view summary could say
+  "nothing to check" for a view without targets (Impedance) or without lanes (Channel).
 
 ## Effort estimate
 | Part | Days |
 |---|---|
-| WASM: `kisi_config_check(text)`, `kisi_gaps()` on the viewer state, gaps with a draft configuration | 1 |
-| Viewer: the view, cards, editors (stackup, classes, variant, PI_REG with suggestions, PI_LOAD, PI_SERIES, PI_THERMAL), source blocks, preview, export, prefill and merge with a loaded kisi.json | 4–5 |
-| Tests: `check_viewer.py` (enter values, export, the export through the native `config-check`), light/dark/phone | 1–1.5 |
-| Docs (viewer section in `docs/preparing-a-board.md`), screenshots | 0.5 |
-| **Total** | **about 7–8 focused days** |
+| Core: `views` from `affects` (table, test), per-view summary, `kisi gaps --for`, docs/cli.md, golden update | 1–1.5 |
+| Core: check messages with path and views, `config::subset`, tests | 1 |
+| WASM: `kisi_gaps`, `kisi_config_check`, `kisi_config_subset` | 0.5–1 |
+| Viewer: the card in the three views and the header dots, the panel with the forms (stackup, classes, variant, PI_REG with suggestions, PI_LOAD, PI_SERIES, PI_THERMAL), shared draft, save per view, File System Access with download fallback, prefill from and merge into a loaded kisi.json | 5–6 |
+| Tests: `check_viewer.py` per view (enter, save, the file through the native `config-check`), light/dark/phone | 1.5 |
+| Docs (viewer section in `docs/preparing-a-board.md`, skill kisi-prepare with `--for`), screenshots | 0.5 |
+| **Total** | **about 10 focused days (9.5–11.5)** |
 
-A first version with laminate, net classes, PI_REG and PI_LOAD, without merge (export of a new file only) and
-through the existing CLI exports: about 4–5 days.
+A first version – the core's `views` and `--for`, the card and panel in Impedance and Power with laminate, net
+classes, PI_REG and PI_LOAD, download only, no merge – about 5–6 days. The split by views adds about 2–3 days to the
+first estimate (7–8 days): the core fields, the subset, and the card in three places.
 
 ## Open questions
-- A fourth view (as in the mockup) or a card in the existing views?
-- Export only without errors (mockup), or with a confirmation?
-- With the File System Access API (Chromium), save the kisi.json directly next to the board, where "Reload"
-  already reads from?
-- Should the gap list also run on the example boards with their kisi.json (a "what is still open" view for
-  prepared boards)?
+- Dismissing a name-based gap ("these nets are not an interface"), and where to store that.
+- "Nothing to check" for a view without targets or lanes, instead of showing its gaps.
+- Whether the readiness dots in the header should be on by default or only after the first "Prepare" interaction.

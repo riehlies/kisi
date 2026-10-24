@@ -12,9 +12,9 @@
     <div class="brand"><b title="kisi __VERSION__">kisi<span class="ver">v__VERSION__</span></b><span id="boardName">–</span><small id="boardMeta"></small></div>
     <div class="grow"></div>
     <div class="seg" role="group" aria-label="Analysis">
-      <button id="view-si" aria-pressed="true">Impedance</button>
-      <button id="view-ch" aria-pressed="false">Channel</button>
-      <button id="view-pi" aria-pressed="false">Power</button>
+      <button id="view-si" aria-pressed="true"><span class="dot" id="dot-si" hidden></span>Impedance</button>
+      <button id="view-ch" aria-pressed="false"><span class="dot" id="dot-ch" hidden></span>Channel</button>
+      <button id="view-pi" aria-pressed="false"><span class="dot" id="dot-pi" hidden></span>Power</button>
     </div>
     <div class="seg" role="group" aria-label="Colour mode" data-view="si">
       <button id="mode-type" aria-pressed="true">Line type</button>
@@ -37,6 +37,7 @@
       <button id="sample-ts" aria-pressed="false">ThunderScope</button>
       <button id="sample-vna" aria-pressed="false">LibreVNA</button>
     </div>
+    <button class="btn prep-btn" id="prep-btn" aria-pressed="false" title="What the board file lacks, per category – enter the values and save the board's kisi.json">Prepare PCB <span class="count" id="prep-count" hidden></span></button>
     <button class="btn" id="reload" hidden title="Read the same files again (after saving in KiCad)">Reload</button>
     <label class="btn primary" for="file" id="load-files">Load files</label>
     <input type="file" id="file" accept=".kicad_pcb,.kicad_pro,.json,.csv,.s2p,.s4p" multiple hidden>
@@ -258,6 +259,38 @@
     <div class="drop" id="drop" hidden>Drop .kicad_pcb, .kicad_pro or &lt;board&gt;.kisi.json (with the BOMs and Touchstone files it names) here</div>
     <div class="busy" id="busy">Loading engine…</div>
   </main>
+  <main class="prep-page" id="prep" hidden aria-label="Prepare PCB">
+    <aside class="prep-side">
+      <section class="card prep-card" aria-labelledby="h-prep">
+        <h2 id="h-prep">Prepare the board <em id="prep-cfg"></em></h2>
+        <div class="prep-ready" id="prep-ready" role="group" aria-label="Readiness per category"></div>
+        <p class="note">What the board file lacks, from <code>kisi gaps</code>, per category. Enter the simple values, each with its source – one draft for all three tabs. The KiCad files are never changed. <span id="prep-busy" hidden>Updating…</span></p>
+        <div class="prep-draft">
+          <span class="note" id="prep-draft"></span>
+          <div class="prep-row"><select id="prep-scope" aria-label="what to save"></select><button class="btn small primary" id="prep-save">Save kisi.json</button></div>
+          <span class="note" id="prep-save-note"></span>
+        </div>
+      </section>
+      <section class="card" aria-labelledby="h-prep-check"><h2 id="h-prep-check">Check <em id="prep-check-sum"></em></h2><ul class="prep-msgs" id="prep-msgs"></ul></section>
+      <section class="card" aria-labelledby="h-prep-agent"><h2 id="h-prep-agent">Agent path <em>kisi-prepare · <span id="prep-agent-for"></span></em></h2>
+        <p class="note">Gaps of this category that need datasheets, BOMs or curves. The agent researches them with sources and merges them into the same kisi.json (keeping your entries and dismissals); loaded again, the file fills this page.</p>
+        <ul class="prep-msgs" id="prep-agent-list"></ul>
+        <pre class="prep-prompt" id="prep-prompt"></pre>
+        <div class="prep-row"><button class="btn small" id="prep-copy">Copy prompt</button><span class="note" id="prep-copied" hidden>copied</span></div>
+      </section>
+    </aside>
+    <div class="prep-main">
+      <div class="prep-tabs" role="tablist" aria-label="Category" id="prep-tabs"></div>
+      <div id="prep-head" class="prep-head"></div>
+      <div id="prep-gaps" class="prep-list"></div>
+    </div>
+    <section class="card prep-preview" aria-labelledby="h-prep-json">
+      <h2 id="h-prep-json"><span id="prep-json-name">kisi.json</span></h2>
+      <p class="note" id="prep-json-note"></p>
+      <pre class="prep-json" id="prep-json"></pre>
+      <p class="note">Precedence: board file &lt; kisi.json &lt; edits in the viewer.</p>
+    </section>
+  </main>
 </div>
 
 <script>
@@ -293,5 +326,6 @@ const DATA = __DATA__;
 <script src="src/pi-balance.js"></script>
 <script src="src/pi-loss.js"></script>
 <script src="src/views.js"></script>
+<script src="src/prepare.js"></script>
 <script src="src/main.js"></script>
 <!-- @end-scripts -->

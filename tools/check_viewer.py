@@ -8,7 +8,8 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
   lane eye, voltage drop with ground return, impedance seen from the ICs, losses map, temperature and power flow
-  (desktop layouts; --quick: only load and the three views)
+  (desktop layouts; --quick: only load and the three views), the Prepare PCB page (tabs, laminate,
+  a dismissal, saving one category)
 * the channel check in parallel (workers with engines of their own) gives the same rows as on one thread
   (light run; the timings are printed as a note)
 * uses the embedded example boards if the build has them, else --board; on a board without impedance
@@ -161,6 +162,67 @@ def power_units(pg, tag, step):
             if a["overlap"] or b["overlap"] or len(set(a["h"] + b["h"])) > 1 or a["bad"] or b["bad"]:
                 problems.append(f"{tag}: {names[m]} labels: overlap {a['overlap']}/{b['overlap']}, heights {sorted(set(a['h'] + b['h']))}, text in board units {a['bad'] + b['bad']}")
     pg.evaluate("setPiMode('b')"); pg.wait_for_timeout(200)
+
+
+def prepare_page(pg, tag, step):
+    """The Prepare PCB page: readiness dots, tabs, laminate entry, a dismissal, saving one category
+    (the saved text must pass the configuration check) and back to the views."""
+    try:
+        pg.wait_for_function("S.prep.base", timeout=90000)
+    except Exception:
+        problems.append(f"{tag}: prepare: no gap list ({pg.evaluate('S.prep.note')})")
+        return
+    dots = pg.evaluate("['si','ch','pi'].map(k => !document.getElementById('dot-' + k).hidden)")
+    if not all(dots):
+        problems.append(f"{tag}: prepare: readiness dots missing on the view buttons {dots}")
+    pg.click("#prep-btn"); pg.wait_for_timeout(300)
+    if not pg.evaluate("S.prep.open && !document.getElementById('prep').hidden && getComputedStyle(document.querySelector('.stage')).display === 'none'"):
+        problems.append(f"{tag}: prepare: the page did not open")
+        return
+    for t in ["channel", "power", "impedance"]:
+        pg.click(f'#prep-tabs [data-prep-tab="{t}"]'); pg.wait_for_timeout(150)
+        if not pg.evaluate(f"document.querySelector('#prep-tabs [data-prep-tab=\"{t}\"]').getAttribute('aria-selected') === 'true'"):
+            problems.append(f"{tag}: prepare: tab {t} not selected")
+    step("prepare")
+    entered = False
+    if pg.locator('[data-src="stackup"]').count():
+        pg.select_option('[data-src="stackup"] [data-k="kind"]', "datasheet")
+        pg.fill('[data-src="stackup"] [data-k="document"]', "laminate datasheet (viewer check)")
+        pg.locator('input[data-ed="stackup"][data-k="loss_tangent"]').first.fill("0.0095")
+        entered = True
+    if pg.locator('[data-dismiss="nets-without-target"]').count():
+        gid = "nets-without-target"
+        pg.click(f'[data-dismiss="{gid}"]'); pg.click(f'[data-dis-all="{gid}"]')
+        pg.fill(f'[data-dis-reason="{gid}"]', "not an interface (viewer check)")
+        try:
+            pg.wait_for_function(f"!S.prep.busy && S.prep.cur && !S.prep.cur.gaps.some((g) => g.id === '{gid}')", timeout=90000)
+        except Exception:
+            problems.append(f"{tag}: prepare: the dismissed gap is still listed")
+        entered = True
+    if entered:
+        pg.wait_for_function("!S.prep.busy", timeout=90000); pg.wait_for_timeout(200)
+        step("prepare_filled")
+        pg.select_option("#prep-scope", "impedance")
+        if pg.locator("#prep-save").is_disabled():
+            problems.append(f"{tag}: prepare: save disabled ({pg.inner_text('#prep-msgs')[:200]})")
+        else:
+            pg.evaluate("window.showSaveFilePicker = undefined")
+            with pg.expect_download() as dl:
+                pg.click("#prep-save")
+            text = open(dl.value.path(), encoding="utf-8").read()
+            pg.wait_for_function(f"{BUSY} && S.prep.base", timeout=90000)
+            ck = pg.evaluate("(t) => S.engine.configCheck(prepBoardFile(), t)", text)
+            if not ck["ok"]:
+                problems.append(f"{tag}: prepare: the saved kisi.json fails the check: {ck['errors'][:3]}")
+            if not pg.evaluate("S.config && S.config.check.ok"):
+                problems.append(f"{tag}: prepare: the saved kisi.json was not loaded cleanly")
+    else:
+        notes.append(f"{tag}: prepare: nothing to enter on this board (no laminate or dismissable gap)")
+    if pg.evaluate("document.documentElement.scrollWidth > window.innerWidth + 1"):
+        problems.append(f"{tag}: horizontal scroll on the Prepare page")
+    pg.click("#view-si"); pg.wait_for_timeout(300)
+    if pg.evaluate("S.prep.open || getComputedStyle(document.querySelector('.stage')).display === 'none'"):
+        problems.append(f"{tag}: prepare: back to the impedance view failed")
 
 
 def run(pg, tag, desktop):
@@ -404,6 +466,7 @@ def run(pg, tag, desktop):
             power_units(pg, f"{tag} ({key})", lambda n, k=key: step(f"{n}_{k}"))
     if pg.evaluate("document.documentElement.scrollWidth > window.innerWidth + 1"):
         problems.append(f"{tag}: horizontal scroll")
+    prepare_page(pg, tag, step)
     for e in errs:
         (notes if "Failed to load resource" in e else problems).append(f"{tag}: {e}")
 

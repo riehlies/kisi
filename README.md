@@ -119,6 +119,7 @@ files are not changed. Results of the last three boards stay in memory while swi
 | `power` | regulator chain, budget, DC IR drop per rail and in the ground return, losses per part / rail / layer, power flow (`--pdn RAIL` adds Z(f)) |
 | `thermal` | temperature estimate from the losses: board temperature per layer, hot spots, junction and case-top temperature per part against Tj max, heat through the vias and under each hot part (with a hint when thermal vias look short), copper temperature and IR drop at temperature per rail (`--ambient °C`, `--airflow m/s`, `--vertical`, `--h W/m²K`) |
 | `report` | everything into `analysis/kisi.json` next to the board |
+| `export` | a lane (`--lane NAME`) or a whole bus (`--bus NAME`) for circuit and RF simulators: SPICE subcircuits with test benches for ngspice and Xyce, Touchstone (a bus also as one N-port with its port map) and a KiCad project with the profile's linear ends (`--format spice,xyce,touchstone,kicad`, `--out DIR`, default `analysis/export/<name>` next to the board) |
 | `gaps` | missing or default data, where to find it, how to write it into `<board>.kisi.json` |
 | `config-check`, `config-template` | check / start a `<board>.kisi.json` (the template suggests variants from forks) |
 | `profiles [ID]` | the interface profiles |
@@ -243,6 +244,15 @@ KiCad files; CLI and viewer lay this file over the board.
   and the Gaussian edge as window; warnings when the band ends inside the edge spectrum (above 35 % left: the edge rings by about 2 % and more), when
   there is response before the signal can arrive (non-causal data, time aliasing) or the step has not settled, and
   when S-parameters are not passive (Touchstone files, or the model itself).
+- **Export to circuit and RF simulators** (`kisi export`, “Export…” in the lane detail and the bus card): the
+  lane's board channel as the check models it, as a SPICE subcircuit – line sections as RLGC ladders (20 sections
+  per wavelength at the top frequency) with Foster/Debye networks fitted to R(f), L(f), G(f), C(f) (positive
+  elements only: passive and causal), vias as kisi's via ladder, parts with their estimated parasitics, open stubs;
+  a pair with both lines and its coupled sections as even/odd chains between ideal mode converters (E/F sources).
+  With test benches (PRBS7, the profile's linear ends) for ngspice and Xyce, an S-parameter deck, Touchstone files
+  (a bus also as one N-port with its port map) and a KiCad project (KiCad 7 format, opens in 7–10). The terminations
+  next to the receiver act as the receiver's termination and are not in the subcircuit. Not included: the channel
+  behind a connector, crosstalk between lanes, IBIS ends. Report: `docs/research/channel-export.md`.
 - **Power:** copper rasterised per layer, vias as barrels (25 µm); DC IR drop per rail. PDN per IC: the rail's
   copper on all layers as an AC grid with plane capacitance, capacitors with ESR/ESL and DC-bias derating
   (estimated per package unless given), series parts up to the regulators.
@@ -269,6 +279,10 @@ KiCad files; CLI and viewer lay this file over the board.
 - The temperature solver against analytic cases (1D slab exact, fin within 0.2 %, radial spreading in a plane with
   convection within 0.13 %, energy balance) and, with the datasheets' θJB/θJC on a model of the JEDEC JESD51-7 board,
   against their θJA (QFN-16 +4 %, SOIC-8 −15 %, SOT-23-5 −20 %); `docs/research/thermal.md`.
+- The channel export in ngspice reproduces kisi's own evaluation of the exported circuit (all S-parameters of the
+  ThunderScope LVDS lanes and the nine PCIe lanes, to 0.001) and kisi's S-parameters within 0.03 dB (LVDS) and
+  0.15–0.42 dB (PCIe, strongly reflecting) up to 1.5 × Nyquist; step responses within 2 % and 2.3 ps
+  (`validation/channel_export/compare.py`, `docs/research/channel-export.md`).
 - **Still open:** validation against other solvers and against measurements (a test board is planned,
   `validation/test_board.md`). Until then, treat the numbers as plausible estimates, not as verified results.
 

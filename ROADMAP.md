@@ -42,8 +42,7 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
 - **Faster field solver in the CLI:** better scheduling across threads, optional larger time budget presets.
 - **Decide first: live link to KiCad** (cross-probing, reload on save). Needs a local helper process; only worth it if
   the manual “Reload” is not enough. KiCad 10 can place DRC markers from outside, and KiCad 10's tuning profiles
-  (target impedance, delay per layer in the `.kicad_pro`) could be read as targets (`docs/research/kicad-simulation.md`
-  in branch `research/kicad-sim`).
+  (target impedance, delay per layer in the `.kicad_pro`) could be read as targets (`docs/research/kicad-simulation.md`).
 
 ## 2. Solvers, accuracy, validation
 Goal: fast models whose accuracy is known – checked against other solvers and against measured test designs, with a
@@ -99,20 +98,23 @@ N-port networks, pairs as 4-ports, multi-drop: 0.2.5). IBIS-AMI and equalisers m
 setup (models, pin mapping, terminations, interface settings) is the main effort – it depends on block 1.
 - **Export of device-to-device connections to circuit and RF simulators** (first step, decided 2026-10-24). kisi
   stays a fast linear solver that provides good linear channel models; non-linear analysis (IBIS buffers, AMI,
-  equalisers) is done in other tools. Steps:
-  1. the channel as a physical RLGC ladder – a SPICE subcircuit per line segment and per element (discrete R, L, C,
-     vias, stubs), composed into the lane – for SPICE simulators (ngspice, Xyce), with a ready test bench using the
-     profile's linear transmitter and receiver; a simulation project that opens in KiCad 9 and later (IBIS ends
-     through KiCad's KIBIS where `kisi.json` names models);
-  2. a Touchstone export of the full channel (per lane and as an N-port of a bus) for RF tools (PyBERT,
-     scikit-rf, Qucsator);
-  3. a vector-fitting reduction of long RLGC segments that keeps the delay (delay lines) and the frequency-dependent
-     loss.
-  Test cases: ThunderScope LVDS (SYNC_OUT U18 → U10), then a PCIe pair; goal: the whole PCIe bus. Each export is
-  checked against kisi's own S-parameters (e.g. ngspice's AC/S-parameter analysis of the exported ladder). Research
-  note: `docs/research/kicad-simulation.md` in branch `research/kicad-sim`; KIBIS models one buffer per symbol and
-  rejects files above IBIS 7.0 or with unknown keywords, so IBIS models live in a separate simulation project, not on
-  the ICs of the design schematic.
+  equalisers) is done in other tools. Steps 1 and 2 are done (`kisi export`, “Export…” in the viewer's lane detail
+  and bus card; `kisi_si::export`; report `docs/research/channel-export.md`): the lane's board channel as SPICE
+  subcircuits (RLGC ladders with fitted R(f)/G(f) networks, kisi's via model, parts, stubs; pairs with modal coupled
+  blocks), test benches for ngspice and Xyce with the profile's linear ends, a KiCad project (KiCad 7 format), and
+  Touchstone per lane and as one N-port of a bus. Checked in ngspice against kisi's S-parameters on ThunderScope's
+  LVDS lane and the whole PCIe bus (`validation/channel_export/compare.py`, also in CI). Next:
+  - **compact models** (step 3): delay plus a vector-fitted loss for long segments or whole lanes (design note in
+    the report) – the ladders have 10–40 k elements per lane, fine for AC, slow for long transients;
+  - **IBIS ends** in the KiCad project through KIBIS where `kisi.json` names models (with the parser of
+    `feat/ibis-parser`), and in the decks;
+  - crosstalk between the lanes of a bus in the N-port (the coupling scan's sections as coupled blocks), the
+    channel behind a connector (a Touchstone block as a vector-fitted subcircuit);
+  - kisi's own model is not fully passive and causal (roughness without its internal inductance, constant loss
+    tangent and barrel resistance in the via models, via-pair spans with negative resistance above a few GHz,
+    microstrip dispersion): the export follows it as closely as a passive circuit can – a causal roughness model
+    and passive via spans would close the remaining gap (block 2);
+  - Xyce and Qucs-S/Qucsator runs of the exported files (not available in the development environment so far).
 - **IBIS models – on hold.** Branch `feat/ibis-parser` (IBIS parser, `kisi ibis`, mapping in kisi.json with
   `config-check`, linearised IBIS ends with the model choice in the interfaces view) is kept as preliminary work but
   not merged: its viewer integration became too complicated (too many combinations and error messages). Its parser

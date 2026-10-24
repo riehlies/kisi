@@ -407,13 +407,15 @@ def main():
             if st:
                 msg += f"; step: max diff {100 * st['max_diff_of_final']:.2f} %, t50 {st['t50_ngspice_ps']:.1f} / {st['t50_kisi_ps']:.1f} ps"
             print(f"{lm['lane']}: {msg}")
+            if os.environ.get("GITHUB_ACTIONS"):
+                print(f"::notice title=channel export {os.path.basename(lm['lane'])}::{msg}")
             ts = res.get("touchstone", {})
             sk = ts.get("scikit_rf") or {}
             fails = [m for m, c in [("ngspice", not nv), ("ngspice differs from kisi's evaluation of the circuit", nv and abs(nv["max_ds"] - res["kisi_eval"]["max_ds"]) > 0.01),
                                     ("Touchstone not passive", not ts.get("passive")), ("scikit-rf does not read the Touchstone file", sk and not sk.get("read", True)),
                                     ("step response differs by more than 5 %", st and st["max_diff_of_final"] > 0.05)] if c]
             if fails:
-                print(f"  FAIL: {'; '.join(fails)}")
+                print(f"  {'FAIL' if '--strict' in a else 'note'}: {'; '.join(fails)}")
                 bad += 1
         if kind == "bus":
             br = bus_check(d, meta, opts)

@@ -50,6 +50,11 @@ fn prop(name: &str, val: &str, x: f64, y: f64, hide: bool) -> String {
     format!("    (property {} {} (at {x:.2} {y:.2} 0)\n      {}\n    )\n", q(name), q(val), if hide { FONT_HIDE } else { FONT })
 }
 
+/// A visible property, left-justified at (x, y).
+fn prop_left(name: &str, val: &str, x: f64, y: f64) -> String {
+    format!("    (property {} {} (at {x:.2} {y:.2} 0)\n      (effects (font (size 1.27 1.27)) (justify left))\n    )\n", q(name), q(val))
+}
+
 fn pin(kind: &str, x: f64, y: f64, ang: u32, len: f64, name: &str, number: &str, hide_name: bool) -> String {
     format!(
         "        (pin {kind} line (at {x} {y} {ang}) (length {len}){}\n          (name {} (effects (font (size 1.27 1.27))))\n          (number {} (effects (font (size 1.27 1.27))))\n        )\n",
@@ -157,9 +162,18 @@ impl Sheet {
         let mut s = format!("  (symbol (lib_id {}) (at {:.2} {:.2} 0) (unit 1)\n    (in_bom yes) (on_board yes) (dnp no)\n    (uuid {u})\n", q(lib_id), at.0, at.1);
         let hide_ref = reference.starts_with('#');
         // the lane: reference above its box, value below; the small parts beside them
-        let (r_at, v_at) = if lib_id.starts_with("kisi:LANE") { ((at.0, at.1 - 10.16), (at.0, at.1 + 13.97)) } else { ((at.0 + 2.54, at.1 - 2.54), (at.0 + 2.54, at.1 + 3.81)) };
-        s.push_str(&prop("Reference", reference, r_at.0, r_at.1, hide_ref));
-        s.push_str(&prop("Value", value, v_at.0, v_at.1, false));
+        let (r_at, v_at) = match lib_id {
+            l if l.starts_with("kisi:LANE") => ((at.0, at.1 - 15.24), (at.0, at.1 - 12.7)),
+            "kisi:Z_V" | "kisi:SRC" => ((at.0 + 3.81, at.1 - 0.635), (at.0 + 3.81, at.1 + 1.905)),
+            _ => ((at.0, at.1 - 2.54), (at.0, at.1 + 2.54)),
+        };
+        if matches!(lib_id, "kisi:Z_V" | "kisi:SRC") {
+            s.push_str(&prop_left("Reference", reference, r_at.0, r_at.1));
+            s.push_str(&prop_left("Value", value, v_at.0, v_at.1));
+        } else {
+            s.push_str(&prop("Reference", reference, r_at.0, r_at.1, hide_ref));
+            s.push_str(&prop("Value", value, v_at.0, v_at.1, false));
+        }
         s.push_str(&prop("Footprint", "", at.0, at.1, true));
         s.push_str(&prop("Datasheet", "", at.0, at.1, true));
         for (k, v) in fields {
@@ -300,7 +314,7 @@ pub fn project(lc: &LaneCircuit, ends: &BenchEnds, name: &str, lib_file: &str, b
         }
         let mut xx = xr;
         for (i, (r, v)) in shunts.iter().enumerate() {
-            let c = xx + 7.62;
+            let c = xx + 12.7;
             sh.wire((xx, yr), (c, yr));
             if i + 1 < shunts.len() {
                 sh.junction((c, yr));

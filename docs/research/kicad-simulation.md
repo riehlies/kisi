@@ -1,6 +1,7 @@
 # KiCad's simulator, KIBIS and kisi – research note
 
-Status: research note (23 October 2026), no implementation. Question: instead of building IBIS simulation into
+Status: research note (23 October 2026). Option A (export) is implemented as `kisi export` with linear ends –
+see `channel-export.md`; KIBIS ends are still open. Question: instead of building IBIS simulation into
 kisi's viewer (branch `feat/ibis-parser`, on hold), can kisi use what KiCad already has – hand its channel models
 to KiCad's simulator, or configure the IBIS models in KiCad? Builds on `channel-simulation-ibis.md` (stages M0–M6).
 KiCad facts come mainly from the KiCad source (GitHub mirror of the GitLab repository, branches 7.0–10.0 and

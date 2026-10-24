@@ -331,6 +331,27 @@ pub fn subset(cfg: &BoardConfig, view: &str) -> BoardConfig {
     out
 }
 
+/// The configuration as JSON without empty entries (nulls, empty lists and objects) – how a written
+/// kisi.json looks.
+pub fn to_json(cfg: &BoardConfig) -> serde_json::Value {
+    fn prune(v: serde_json::Value) -> Option<serde_json::Value> {
+        use serde_json::Value as V;
+        match v {
+            V::Null => None,
+            V::Array(a) => {
+                let a: Vec<V> = a.into_iter().filter_map(prune).collect();
+                (!a.is_empty()).then_some(V::Array(a))
+            }
+            V::Object(m) => {
+                let m: serde_json::Map<String, V> = m.into_iter().filter_map(|(k, v)| prune(v).map(|v| (k, v))).collect();
+                (!m.is_empty()).then_some(V::Object(m))
+            }
+            x => Some(x),
+        }
+    }
+    prune(serde_json::to_value(cfg).unwrap_or_default()).unwrap_or_default()
+}
+
 /// The categories a check message is about, from the entry it names (its path at the start).
 pub fn message_views(cfg: &BoardConfig, text: &str) -> Vec<&'static str> {
     let all = crate::gaps::VIEWS.to_vec();

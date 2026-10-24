@@ -896,6 +896,9 @@ mod tests {
         assert_eq!((c.net_classes.len(), c.net_classes["B"].profile.as_deref(), c.variant.as_deref(), c.fields.len()), (2, Some("lvds"), Some("default"), 0));
         let w = crate::config::subset(&cfg, "power");
         assert_eq!((w.stackup.dielectrics.len(), w.net_classes.len(), w.fields.len(), w.variant.as_deref(), w.gaps.dismissed.len()), (0, 0, 1, Some("default"), 0));
+        let j = crate::config::to_json(&w);
+        assert!(j.get("stackup").is_none() && j.get("net_classes").is_none() && j["fields"][0]["ref"] == "U1" && j["kisi_config"] == 1, "{j:#}");
+        assert!(crate::config::parse(&j.to_string()).is_ok());
         assert_eq!(crate::config::message_views(&cfg, "net_classes.B: source missing"), vec!["channel"]);
         assert_eq!(crate::config::message_views(&cfg, "U1: PI_LOAD value 'x' not readable"), vec!["power"]);
     }

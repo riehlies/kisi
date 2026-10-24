@@ -134,6 +134,13 @@ impl Project {
                 board.warnings.push(format!("project file: {e}"));
             }
         }
+        Self::from_board(board, inp)
+    }
+
+    /// Build a project from a board already read (with its project file applied); `inp.pcb` and
+    /// `inp.pro` are not used. The viewer's engine keeps the board it read and builds projects
+    /// from it (e.g. for `kisi gaps` with a draft configuration).
+    pub fn from_board(mut board: Board, inp: Inputs) -> Result<Project, String> {
         // configuration: checked against the board as read, then laid over it – after the
         // assembly variant (the command line's choice, else the configuration's), so that its
         // fields win over the board's

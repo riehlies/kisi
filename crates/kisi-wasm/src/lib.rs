@@ -996,6 +996,78 @@ fn reply(r: Result<String, String>) -> i32 {
     }
 }
 
+/// The gap list (`kisi gaps`) of the board as the viewer read it, with a configuration: the loaded
+/// kisi.json or a draft of the Prepare page. Input: {"board": file name, "config": text | null,
+/// "for": category | null}. Uses the viewer's choice of assembly variant and the files dropped with
+/// the configuration (BOMs). Output: the `kisi gaps` JSON (with "config": the check of the text).
+#[no_mangle]
+pub extern "C" fn kisi_gaps(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let b = st.board_base.clone().ok_or("no board loaded")?;
+        let name = v["board"].as_str().unwrap_or("board.kicad_pcb").to_string();
+        let stem = name.trim_end_matches(".kicad_pcb").to_string();
+        let config = v["config"].as_str().map(|t| (std::path::PathBuf::from(format!("{stem}.kisi.json")), Ok(t.to_string())));
+        let inp = kisi_core::service::Inputs {
+            pcb_path: std::path::PathBuf::from(&name),
+            pcb: String::new(),
+            pro: None,
+            config,
+            stackup: None,
+            field: Default::default(),
+            variant: st.variant_choice.clone(),
+            files: st.files.clone(),
+        };
+        let proj = kisi_core::service::Project::from_board(b, inp)?;
+        let mut out = kisi_core::gaps::gaps(&proj, &kisi_core::profile::Profiles::builtin());
+        if let Some(view) = v["for"].as_str() {
+            kisi_core::gaps::only_view(&mut out, view);
+        }
+        Ok(out.to_string())
+    }))
+}
+
+/// Check a configuration text against the board as read, without applying it (the Prepare page's
+/// live check). Input: {"board": file name, "config": text}. Output: {ok, entries, errors,
+/// warnings, messages: [{level, text, views}]}. Dismissals that cannot apply on the analysed board
+/// are reported by `kisi_gaps` (its "config").
+#[no_mangle]
+pub extern "C" fn kisi_config_check(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let b = st.board_base.as_ref().ok_or("no board loaded")?;
+        let cfg = match kisi_core::config::parse(v["config"].as_str().ok_or("config missing")?) {
+            Ok(c) => c,
+            Err(e) => return Ok(serde_json::json!({"ok": false, "entries": 0, "errors": [e], "warnings": [], "messages": [{"level": "error", "text": e, "views": kisi_core::gaps::VIEWS}]}).to_string()),
+        };
+        let an0 = kisi_core::extract::skeleton(b, &Params::default());
+        let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
+        let c = kisi_core::config::check(&cfg, b, &classes, &kisi_core::profile::Profiles::builtin(), v["board"].as_str(), &st.files);
+        let msgs: Vec<serde_json::Value> = c.errors.iter().map(|t| ("error", t)).chain(c.warnings.iter().map(|t| ("warning", t))).map(|(l, t)| serde_json::json!({"level": l, "text": t, "views": kisi_core::config::message_views(&cfg, t)})).collect();
+        Ok(serde_json::json!({"ok": c.ok, "entries": c.entries, "errors": c.errors, "warnings": c.warnings, "messages": msgs}).to_string())
+    }))
+}
+
+/// The entries of one category of a configuration ("save only this category"). Input:
+/// {"config": text, "view": "impedance" | "channel" | "power"}. Output: the configuration (JSON).
+#[no_mangle]
+pub extern "C" fn kisi_config_subset(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply((|| -> Result<String, String> {
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let cfg = kisi_core::config::parse(v["config"].as_str().ok_or("config missing")?)?;
+        let view = v["view"].as_str().ok_or("view missing")?;
+        if !kisi_core::gaps::VIEWS.contains(&view) {
+            return Err(format!("view: one of {}", kisi_core::gaps::VIEWS.join(", ")));
+        }
+        serde_json::to_string_pretty(&kisi_core::config::to_json(&kisi_core::config::subset(&cfg, view))).map_err(|e| e.to_string())
+    })())
+}
+
 /// Parse a command line: ["check", "board.kicad_pcb", "--all", …] → Opts.
 #[no_mangle]
 pub extern "C" fn kisi_cli_parse(p: *const u8, n: usize) -> i32 {

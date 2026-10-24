@@ -112,8 +112,10 @@ def ladder(a):
         pair = c["meta"]["params"]["partner"] is not None
 
         def match(g):
+            # every return the case lists (cases exported before Block 6 list the nearest 8 vias,
+            # the ladder now also takes plated pads and up to 12)
             rr = [[q["dx"], q["dy"]] for q in g["returns"]]
-            return len(rr) == len(want) and all(abs(p[0] - q[0]) < 2e-3 and abs(p[1] - q[1]) < 2e-3 for p, q in zip(rr, want)) and ((g["partner"] is not None) == pair)
+            return all(any(abs(p[0] - q[0]) < 2e-3 and abs(p[1] - q[1]) < 2e-3 for p in rr) for q in want) and ((g["partner"] is not None) == pair)
         hits = [g for g in geoms if match(g)]
         if not hits:
             raise SystemExit(f"{k}: no ladder geometry of kisi matches the via ({len(geoms)} printed)")
@@ -468,7 +470,7 @@ def board_ladder_geom(a, case, board, cfg, env_extra=None):
             continue
         g = json.loads(line)
         rr = [[q["dx"], q["dy"]] for q in g["returns"]]
-        if len(rr) == len(want) and all(abs(x[0] - y[0]) < 2e-3 and abs(x[1] - y[1]) < 2e-3 for x, y in zip(rr, want)) and ((g["partner"] is not None) == pair):
+        if all(any(abs(x[0] - y[0]) < 2e-3 and abs(x[1] - y[1]) < 2e-3 for x in rr) for y in want) and ((g["partner"] is not None) == pair):
             g = dict(g, f_loss=c.get("f_loss") or c["fmax"] / 2, sigma=None)
             g["feeds"] = [dict(fd, dropped=0.0) for fd in g["feeds"]]
             return g
@@ -476,9 +478,10 @@ def board_ladder_geom(a, case, board, cfg, env_extra=None):
 
 
 def fixes(a):
-    """Block 5: the ladder before (pours on the signal layers as planes, KISI_VIA_POURS=planes) and
-    after the coplanar treatment, both between lines to the via centre, against the de-embedded 3D
-    result of every board via → results/board_vias_fixes.json"""
+    """Blocks 5 and 6: the ladder before (pours on the signal layers as planes, KISI_VIA_POURS=planes),
+    after the coplanar treatment (Block 5, the return posts as before: vias only, nearest 8) and
+    with plated pads as return posts, the nearest 12 (Block 6), all between lines to the via
+    centre, against the de-embedded 3D result of every board via → results/board_vias_fixes.json"""
     import tempfile
     tmp = tempfile.mkdtemp(prefix="bvfix_")
     out = {}
@@ -493,7 +496,8 @@ def fixes(a):
             f, D, raw, _, _, _ = deembedded(k)
             z0 = 100.0 if "cd" in raw else 50.0
         row = {}
-        for tag, env in (("before", {"KISI_VIA_POURS": "planes"}), ("after", {})):
+        old_posts = {"KISI_RET_PADS": "0", "KISI_RET_CAP": "8"}
+        for tag, env in (("before", dict(old_posts, KISI_VIA_POURS="planes")), ("after", old_posts), ("block6", {})):
             g = board_ladder_geom(a, case, board, cfg, env)
             gp = os.path.join(tmp, f"{k}_{tag}.json")
             json.dump(g, open(gp, "w"))
@@ -508,14 +512,17 @@ def fixes(a):
                 sel = (ff >= lo) & (ff <= hi + 1)
                 dd = np.abs(sparam.db(DD[sel, 1, 0]) - sparam.db(LL[sel, 1, 0]))
                 e[f"{lo / 1e9:g}-{hi / 1e9:g}"] = [round(float(dd.max()), 3), round(float(np.sqrt(np.mean(dd ** 2))), 3)]
-            row[tag] = {"dS21_max_rms_db": e, "dphase_max_deg_20": m["dphase_max_deg_20"], "C_fF": m["C_total_fF_ladder"], "L_pH": m["L_total_pH_ladder"],
+            i20 = int(np.argmin(abs(ff - 20e9)))
+            lossf = lambda X: round(float(100 * (1 - abs(X[i20, 0, 0]) ** 2 - abs(X[i20, 1, 0]) ** 2)), 2)
+            row["3d_loss_pct_20"] = lossf(DD)
+            row[tag] = {"loss_pct_20": lossf(LL), "returns": len(g["returns"]), "dS21_max_rms_db": e, "dphase_max_deg_20": m["dphase_max_deg_20"], "C_fF": m["C_total_fF_ladder"], "L_pH": m["L_total_pH_ladder"],
                         "delay_ps": m["delay_5_15ghz_ladder_ps"], "tdr_min": m["tdr_min_ladder"], "tdr_max": m["tdr_max_ladder"], "S21_min_ghz": m["S21_min_ladder_ghz"],
                         "S21_min_db": m["S21_min_ladder_db"], "coplanar_mm": g.get("coplanar", [])}
         row["3d"] = {"C_fF": m["C_total_fF_3d"], "L_pH": m["L_total_pH_3d"], "delay_ps": m["delay_5_15ghz_3d_ps"], "tdr_min": m["tdr_min_3d"], "tdr_max": m["tdr_max_3d"],
                      "S21_min_ghz": m["S21_min_3d_ghz"], "S21_min_db": m["S21_min_3d_db"]}
         out[k] = row
         print(k, json.dumps(row), flush=True)
-    json.dump({"note": "kisi's ladder (3D loss model, between lines to the via centre) with the pours on the via's signal layers as planes (before) and as coplanar returns (after, Block 5), against the de-embedded 3D result; pairs Sdd at 100 Ω",
+    json.dump({"note": "kisi's ladder (3D loss model, between lines to the via centre) with the pours on the via's signal layers as planes (before), as coplanar returns (after, Block 5) and with plated pads among the return posts, the nearest 12 (block6), against the de-embedded 3D result; pairs Sdd at 100 Ω",
                "cases": out}, open(os.path.join(RES, "board_vias_fixes.json"), "w"), indent=1)
 
 

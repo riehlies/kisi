@@ -1,8 +1,11 @@
 {
- "note": "kisi's ladder (3D loss model, between lines to the via centre) with the pours on the via's signal layers as planes (before) and as coplanar returns (after, Block 5), against the de-embedded 3D result; pairs Sdd at 100 \u03a9",
+ "note": "kisi's ladder (3D loss model, between lines to the via centre) with the pours on the via's signal layers as planes (before), as coplanar returns (after, Block 5) and with plated pads among the return posts, the nearest 12 (block6), against the de-embedded 3D result; pairs Sdd at 100 \u03a9",
  "cases": {
   "BV_ts_m2_per0": {
+   "3d_loss_pct_20": 3.07,
    "before": {
+    "loss_pct_20": 2.4,
+    "returns": 8,
     "dS21_max_rms_db": {
      "0.5-6": [
       0.168,
@@ -32,6 +35,8 @@
     "coplanar_mm": []
    },
    "after": {
+    "loss_pct_20": 2.2,
+    "returns": 8,
     "dS21_max_rms_db": {
      "0.5-6": [
       0.049,
@@ -63,6 +68,40 @@
      0.25855000000000006
     ]
    },
+   "block6": {
+    "loss_pct_20": 2.21,
+    "returns": 10,
+    "dS21_max_rms_db": {
+     "0.5-6": [
+      0.049,
+      0.02
+     ],
+     "6-12": [
+      0.229,
+      0.154
+     ],
+     "12-20": [
+      0.243,
+      0.203
+     ],
+     "20-25": [
+      0.161,
+      0.093
+     ]
+    },
+    "dphase_max_deg_20": 2.2,
+    "C_fF": 144.4,
+    "L_pH": 753.1,
+    "delay_ps": 10.57,
+    "tdr_min": 78.0,
+    "tdr_max": 95.1,
+    "S21_min_ghz": 21.3,
+    "S21_min_db": -0.56,
+    "coplanar_mm": [
+     1.4618000000000002,
+     0.25855000000000006
+    ]
+   },
    "3d": {
     "C_fF": 157.7,
     "L_pH": 672.6,
@@ -74,7 +113,10 @@
    }
   },
   "BV_ts_refinout2": {
+   "3d_loss_pct_20": 9.37,
    "before": {
+    "loss_pct_20": 16.97,
+    "returns": 8,
     "dS21_max_rms_db": {
      "0.5-6": [
       0.044,
@@ -104,6 +146,8 @@
     "coplanar_mm": []
    },
    "after": {
+    "loss_pct_20": 16.25,
+    "returns": 8,
     "dS21_max_rms_db": {
      "0.5-6": [
       0.033,
@@ -135,6 +179,40 @@
      1.4618000000000002
     ]
    },
+   "block6": {
+    "loss_pct_20": 7.1,
+    "returns": 10,
+    "dS21_max_rms_db": {
+     "0.5-6": [
+      0.033,
+      0.024
+     ],
+     "6-12": [
+      0.029,
+      0.02
+     ],
+     "12-20": [
+      0.023,
+      0.015
+     ],
+     "20-25": [
+      0.83,
+      0.317
+     ]
+    },
+    "dphase_max_deg_20": 3.8,
+    "C_fF": 267.2,
+    "L_pH": 704.8,
+    "delay_ps": 14.38,
+    "tdr_min": 46.3,
+    "tdr_max": 52.5,
+    "S21_min_ghz": 25.0,
+    "S21_min_db": -2.37,
+    "coplanar_mm": [
+     0.0,
+     1.4618000000000002
+    ]
+   },
    "3d": {
     "C_fF": 278.0,
     "L_pH": 685.6,
@@ -146,7 +224,10 @@
    }
   },
   "BV_vna_rf_hblb1": {
+   "3d_loss_pct_20": 5.54,
    "before": {
+    "loss_pct_20": 14.05,
+    "returns": 8,
     "dS21_max_rms_db": {
      "0.5-6": [
       0.056,
@@ -176,6 +257,8 @@
     "coplanar_mm": []
    },
    "after": {
+    "loss_pct_20": 11.19,
+    "returns": 8,
     "dS21_max_rms_db": {
      "0.5-6": [
       0.043,
@@ -207,6 +290,40 @@
      0.8687
     ]
    },
+   "block6": {
+    "loss_pct_20": 11.25,
+    "returns": 12,
+    "dS21_max_rms_db": {
+     "0.5-6": [
+      0.043,
+      0.023
+     ],
+     "6-12": [
+      0.439,
+      0.25
+     ],
+     "12-20": [
+      1.639,
+      0.805
+     ],
+     "20-25": [
+      18.266,
+      8.154
+     ]
+    },
+    "dphase_max_deg_20": 6.0,
+    "C_fF": 396.8,
+    "L_pH": 224.7,
+    "delay_ps": 12.66,
+    "tdr_min": 29.2,
+    "tdr_max": 47.2,
+    "S21_min_ghz": 22.8,
+    "S21_min_db": -23.28,
+    "coplanar_mm": [
+     1.5193999999999999,
+     0.8687
+    ]
+   },
    "3d": {
     "C_fF": 391.0,
     "L_pH": 261.7,
@@ -218,7 +335,10 @@
    }
   },
   "BV_vna_clk_w5": {
+   "3d_loss_pct_20": 58.27,
    "before": {
+    "loss_pct_20": 84.73,
+    "returns": 6,
     "dS21_max_rms_db": {
      "0.5-6": [
       0.067,
@@ -248,6 +368,42 @@
     "coplanar_mm": []
    },
    "after": {
+    "loss_pct_20": 78.25,
+    "returns": 6,
+    "dS21_max_rms_db": {
+     "0.5-6": [
+      0.021,
+      0.015
+     ],
+     "6-12": [
+      0.321,
+      0.116
+     ],
+     "12-20": [
+      9.878,
+      2.912
+     ],
+     "20-25": [
+      3.597,
+      1.409
+     ]
+    },
+    "dphase_max_deg_20": 38.6,
+    "C_fF": 413.9,
+    "L_pH": 395.8,
+    "delay_ps": 16.78,
+    "tdr_min": 36.3,
+    "tdr_max": 40.6,
+    "S21_min_ghz": 25.0,
+    "S21_min_db": -8.17,
+    "coplanar_mm": [
+     1.5193999999999999,
+     0.6507000000000001
+    ]
+   },
+   "block6": {
+    "loss_pct_20": 78.25,
+    "returns": 6,
     "dS21_max_rms_db": {
      "0.5-6": [
       0.021,

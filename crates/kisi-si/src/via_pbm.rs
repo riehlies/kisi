@@ -2554,7 +2554,7 @@ mod tests {
         assert!(ct(&mc) > ct(&mb) + 1e-16 && (ct(&mc) - ct(&mp)).abs() < 1e-15, "{} {} {}", ct(&mb), ct(&mc), ct(&mp));
         // the series inductance of the first span: as without the pour
         let w = 2.0 * PI * 5e9;
-        let zl = |m: &PbmVia| (m.abcd(5e9).b.im / w);
+        let zl = |m: &PbmVia| m.abcd(5e9).b.im / w;
         assert!(zl(&mc) < zl(&mp), "{} {}", zl(&mc), zl(&mp));
         // an inner exit at 0.8 mm with a pour there: the stub below keeps it as a plane
         let mut inner = sample();

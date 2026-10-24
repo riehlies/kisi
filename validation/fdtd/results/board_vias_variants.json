@@ -11,7 +11,7 @@
     "L_total_pH": 753.1,
     "delay_ps": 10.57,
     "tdr_min": 78.0,
-    "S21_min_ghz": 21.2,
+    "S21_min_ghz": 21.3,
     "S21_min_db": -0.56,
     "dS21_max_db_20": 0.243,
     "dphase_max_deg_20": 2.2
@@ -23,12 +23,12 @@
     "tdr_min": 67.4,
     "S21_min_ghz": 16.9,
     "S21_min_db": -1.0,
-    "dS21_max_db_20": 0.295,
+    "dS21_max_db_20": 0.296,
     "dphase_max_deg_20": 23.6
    },
    "no planes on the signal layers": {
     "C_total_fF": 144.3,
-    "L_total_pH": 753.1,
+    "L_total_pH": 753.0,
     "delay_ps": 10.54,
     "tdr_min": 78.1,
     "S21_min_ghz": 21.1,
@@ -42,7 +42,7 @@
     "delay_ps": 9.11,
     "tdr_min": 80.4,
     "S21_min_ghz": 23.5,
-    "S21_min_db": -0.54,
+    "S21_min_db": -0.55,
     "dS21_max_db_20": 0.308,
     "dphase_max_deg_20": 8.5
    },
@@ -72,53 +72,53 @@
    ],
    "as is": {
     "C_total_fF": 267.2,
-    "L_total_pH": 712.0,
-    "delay_ps": 14.45,
-    "tdr_min": 46.8,
+    "L_total_pH": 704.8,
+    "delay_ps": 14.38,
+    "tdr_min": 46.3,
     "S21_min_ghz": 25.0,
-    "S21_min_db": -2.3,
-    "dS21_max_db_20": 0.412,
-    "dphase_max_deg_20": 2.4
+    "S21_min_db": -2.37,
+    "dS21_max_db_20": 0.035,
+    "dphase_max_deg_20": 3.8
    },
    "pours as planes (before Block 5)": {
-    "C_total_fF": 269.1,
-    "L_total_pH": 791.1,
-    "delay_ps": 15.22,
-    "tdr_min": 47.9,
+    "C_total_fF": 269.0,
+    "L_total_pH": 782.4,
+    "delay_ps": 15.15,
+    "tdr_min": 47.6,
     "S21_min_ghz": 25.0,
-    "S21_min_db": -2.17,
-    "dS21_max_db_20": 0.379,
-    "dphase_max_deg_20": 8.3
+    "S21_min_db": -1.87,
+    "dS21_max_db_20": 0.085,
+    "dphase_max_deg_20": 9.4
    },
    "no planes on the signal layers": {
     "C_total_fF": 267.1,
-    "L_total_pH": 712.0,
-    "delay_ps": 14.44,
-    "tdr_min": 46.8,
-    "S21_min_ghz": 25.0,
-    "S21_min_db": -2.3,
-    "dS21_max_db_20": 0.411,
-    "dphase_max_deg_20": 2.3
-   },
-   "no junction model": {
-    "C_total_fF": 263.9,
-    "L_total_pH": 673.2,
-    "delay_ps": 14.05,
+    "L_total_pH": 704.8,
+    "delay_ps": 14.38,
     "tdr_min": 46.3,
     "S21_min_ghz": 25.0,
-    "S21_min_db": -2.44,
-    "dS21_max_db_20": 0.464,
-    "dphase_max_deg_20": 1.3
+    "S21_min_db": -2.37,
+    "dS21_max_db_20": 0.035,
+    "dphase_max_deg_20": 3.8
+   },
+   "no junction model": {
+    "C_total_fF": 263.8,
+    "L_total_pH": 666.0,
+    "delay_ps": 13.98,
+    "tdr_min": 45.9,
+    "S21_min_ghz": 25.0,
+    "S21_min_db": -2.57,
+    "dS21_max_db_20": 0.035,
+    "dphase_max_deg_20": 1.7
    },
    "neither": {
     "C_total_fF": 263.7,
-    "L_total_pH": 673.1,
-    "delay_ps": 14.05,
-    "tdr_min": 46.4,
+    "L_total_pH": 665.9,
+    "delay_ps": 13.98,
+    "tdr_min": 45.9,
     "S21_min_ghz": 25.0,
-    "S21_min_db": -2.44,
-    "dS21_max_db_20": 0.463,
-    "dphase_max_deg_20": 1.4
+    "S21_min_db": -2.56,
+    "dS21_max_db_20": 0.035,
+    "dphase_max_deg_20": 1.7
    },
    "3d": {
     "C_total_fF": 278.0,
@@ -136,32 +136,32 @@
    ],
    "as is": {
     "C_total_fF": 396.8,
-    "L_total_pH": 224.8,
+    "L_total_pH": 224.7,
     "delay_ps": 12.66,
     "tdr_min": 29.2,
     "S21_min_ghz": 22.8,
-    "S21_min_db": -23.32,
-    "dS21_max_db_20": 1.634,
+    "S21_min_db": -23.28,
+    "dS21_max_db_20": 1.639,
     "dphase_max_deg_20": 6.0
    },
    "pours as planes (before Block 5)": {
     "C_total_fF": 397.7,
-    "L_total_pH": 337.2,
+    "L_total_pH": 337.1,
     "delay_ps": 14.85,
     "tdr_min": 30.3,
     "S21_min_ghz": 22.8,
-    "S21_min_db": -24.25,
-    "dS21_max_db_20": 1.868,
+    "S21_min_db": -24.21,
+    "dS21_max_db_20": 1.874,
     "dphase_max_deg_20": 10.9
    },
    "no planes on the signal layers": {
     "C_total_fF": 370.1,
-    "L_total_pH": 224.6,
-    "delay_ps": 11.51,
+    "L_total_pH": 224.5,
+    "delay_ps": 11.52,
     "tdr_min": 30.2,
     "S21_min_ghz": 25.0,
-    "S21_min_db": -16.87,
-    "dS21_max_db_20": 2.055,
+    "S21_min_db": -16.85,
+    "dS21_max_db_20": 2.053,
     "dphase_max_deg_20": 16.5
    },
    "no junction model": {
@@ -170,8 +170,8 @@
     "delay_ps": 11.48,
     "tdr_min": 30.1,
     "S21_min_ghz": 22.8,
-    "S21_min_db": -23.93,
-    "dS21_max_db_20": 1.929,
+    "S21_min_db": -23.88,
+    "dS21_max_db_20": 1.935,
     "dphase_max_deg_20": 15.4
    },
    "neither": {
@@ -180,8 +180,8 @@
     "delay_ps": 10.24,
     "tdr_min": 31.1,
     "S21_min_ghz": 25.0,
-    "S21_min_db": -17.49,
-    "dS21_max_db_20": 1.924,
+    "S21_min_db": -17.47,
+    "dS21_max_db_20": 1.922,
     "dphase_max_deg_20": 26.0
    },
    "3d": {

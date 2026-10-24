@@ -361,7 +361,8 @@ fn copper_z(su: &crate::board::Stackup) -> Vec<f64> {
     z
 }
 
-/// The return vias of the ladder: plane-net vias within 3 mm of `v`, the nearest 8, as posts
+/// The return vias of the ladder: plane-net posts (`plane_posts`) within 3 mm of `v`, the nearest
+/// `RETURN_POSTS`, as posts
 /// relative to it (heights `z` of the copper layers, mm). With return groups (`groups`) each post
 /// carries the planes of the ladder it joins (`clear`: plane opening and net per layer at the via;
 /// a plane whose net is the via's and whose fill reaches it) and its openings in the others, and
@@ -373,11 +374,10 @@ fn copper_z(su: &crate::board::Stackup) -> Vec<f64> {
 #[allow(clippy::too_many_arguments)]
 pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear: &[Option<(f64, u32)>], z: &[f64], groups: bool, sig: [u16; 2]) -> Vec<crate::via_pbm::Post> {
     let joined = |w: &Via| post_joins(board, w, clear, z, sig);
-    let mut cand: Vec<(f64, &Via)> = board
-        .vias
+    let posts = plane_posts(board);
+    let mut cand: Vec<(f64, &Via)> = posts
         .iter()
         .filter(|w| w.net != net && Some(w.net) != partner && w.net != 0)
-        .filter(|w| board.plane_net.get(w.net as usize).copied().unwrap_or(false))
         .map(|w| (geom::len(geom::sub(w.at, v.at)), w))
         .filter(|&(d, _)| d > 0.01 && d < 3.0)
         .collect();
@@ -404,9 +404,39 @@ pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clea
             };
             Some((d, crate::via_pbm::Post { dx: w.at[0] - v.at[0], dy: w.at[1] - v.at[1], r: (w.drill / 2.0).max(0.025), z0: z[w.to as usize], z1: z[w.from as usize], joins, open_r }))
         })
-        .take(8)
+        .take(ret_cap())
         .collect();
     rets.into_iter().map(|r| r.1).collect()
+}
+
+/// The posts that can carry a via's return current: the vias of plane nets and the plated holes
+/// of plane-net pads (connector pins, mounting holes) as vias spanning the pad's layers. Before
+/// Block 6 only the vias (validation switch KISI_RET_PADS=0): a connector's GND pin 3 mm from the
+/// ThunderScope REFINOUT2 via closes the open side of its return-via cage, without it the ladder
+/// radiated 12 % of the power into the plane pairs at 20 GHz (BOARD_VIAS.md section 6).
+pub fn plane_posts(board: &Board) -> Vec<Via> {
+    let mut out: Vec<Via> = board.vias.iter().filter(|w| w.net != 0 && board.plane_net.get(w.net as usize).copied().unwrap_or(false)).cloned().collect();
+    if !std::env::var("KISI_RET_PADS").is_ok_and(|x| x == "0") {
+        for p in &board.pads {
+            if !p.plated || p.drill <= 0.0 || p.net == 0 || !board.plane_net.get(p.net as usize).copied().unwrap_or(false) {
+                continue;
+            }
+            let (Some(&from), Some(&to)) = (p.layers.iter().min(), p.layers.iter().max()) else { continue };
+            if from == to {
+                continue;
+            }
+            out.push(Via { at: p.at, size: p.size[0].min(p.size[1]).max(p.drill), drill: p.drill, from, to, net: p.net, backdrill: None, remove_unused: None });
+        }
+    }
+    out
+}
+
+/// the most return posts the ladder takes, nearest first (8 before Block 6; validation switch
+/// KISI_RET_CAP)
+pub const RETURN_POSTS: usize = 12;
+
+fn ret_cap() -> usize {
+    std::env::var("KISI_RET_CAP").ok().and_then(|x| x.parse().ok()).unwrap_or(RETURN_POSTS)
 }
 
 /// The heights (`z`) of the via's planes (`clear`) that the return via `w` joins: the plane net at
@@ -441,13 +471,12 @@ pub fn open_pairs(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear:
         return (0, vec![]);
     }
     let z = copper_z(board.stackup());
-    // the return vias as `return_posts` takes them (the nearest 8 within 3 mm that join one of the
+    // the return vias as `return_posts` takes them (the nearest `RETURN_POSTS` within 3 mm that join one of the
     // planes), their joins computed lazily: most pairs are bridged by the nearest one
-    let mut cand: Vec<(f64, &Via)> = board
-        .vias
+    let posts = plane_posts(board);
+    let mut cand: Vec<(f64, &Via)> = posts
         .iter()
         .filter(|w| w.net != net && Some(w.net) != partner && w.net != 0)
-        .filter(|w| board.plane_net.get(w.net as usize).copied().unwrap_or(false))
         .map(|w| (geom::len(geom::sub(w.at, v.at)), w))
         .filter(|&(d, _)| d > 0.01 && d < 3.0)
         .collect();
@@ -455,7 +484,7 @@ pub fn open_pairs(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear:
     let mut open = pairs;
     let mut taken = 0;
     for (_, w) in cand {
-        if open.is_empty() || taken == 8 {
+        if open.is_empty() || taken == ret_cap() {
             break;
         }
         let j = post_joins(board, w, clear, &z, sig);
@@ -1165,6 +1194,11 @@ mod tests {
     /// PWR plane through openings (`joined`: they join it, i.e. it is a GND plane), optionally a
     /// capacitor between the planes 2 mm away.
     fn rg_board(pwr: bool, cap: bool) -> Board {
+        crate::board::load_pcb(&rg_pcb(pwr, cap, "")).unwrap()
+    }
+
+    /// `rg_board`'s file with `extra` items
+    fn rg_pcb(pwr: bool, cap: bool, extra: &str) -> String {
         let g: Vec<(f64, f64)> = (0..4).map(|k| (std::f64::consts::FRAC_1_SQRT_2 * if k % 2 == 0 { 1.0 } else { -1.0 }, std::f64::consts::FRAC_1_SQRT_2 * if k < 2 { 1.0 } else { -1.0 })).collect();
         let mut t = String::from("(kicad_pcb (version 20240108) (generator \"test\")\n  (layers (0 \"F.Cu\" signal) (1 \"In1.Cu\" signal) (2 \"In2.Cu\" signal) (31 \"B.Cu\" signal))\n  (setup (stackup (layer \"F.Cu\" (type \"copper\") (thickness 0.035)) (layer \"d1\" (type \"core\") (thickness 0.2) (epsilon_r 4.3) (loss_tangent 0.02)) (layer \"In1.Cu\" (type \"copper\") (thickness 0.035)) (layer \"d2\" (type \"core\") (thickness 1.2) (epsilon_r 4.5) (loss_tangent 0.02)) (layer \"In2.Cu\" (type \"copper\") (thickness 0.035)) (layer \"d3\" (type \"core\") (thickness 0.2) (epsilon_r 4.3) (loss_tangent 0.02)) (layer \"B.Cu\" (type \"copper\") (thickness 0.035))))\n  (net 0 \"\") (net 1 \"SIG\") (net 2 \"GND\") (net 3 \"PWR\")\n");
         t += "  (segment (start -5 0) (end 0 0) (width 0.35) (layer \"F.Cu\") (net 1))\n  (segment (start 0 0) (end 5 0) (width 0.35) (layer \"B.Cu\") (net 1))\n";
@@ -1181,8 +1215,9 @@ mod tests {
         if cap {
             t += "  (footprint \"C_0402\" (layer \"F.Cu\") (at 0 -2) (property \"Reference\" \"C1\") (property \"Value\" \"100n\")\n    (pad \"1\" smd rect (at -0.48 0) (size 0.56 0.62) (layers \"F.Cu\") (net 2 \"GND\"))\n    (pad \"2\" smd rect (at 0.48 0) (size 0.56 0.62) (layers \"F.Cu\") (net 3 \"PWR\")))\n";
         }
+        t += extra;
         t += ")\n";
-        crate::board::load_pcb(&t).unwrap()
+        t
     }
 
     #[test]
@@ -1204,6 +1239,36 @@ mod tests {
                 assert!(open_pairs_line(&b, std::slice::from_ref(&info), false).unwrap().starts_with("1 via(s) cross a GND/supply plane pair"));
             }
         }
+    }
+
+    /// Block 6: a connector's plated GND pin is a return post over its layers; a non-plated hole,
+    /// an SMD pad and a signal pin are not; KISI_RET_CAP is not set in tests (the nearest 12).
+    #[test]
+    fn plated_pads_are_return_posts() {
+        let src = {
+            let mut s = String::new();
+            s += "  (footprint \"SMA\" (layer \"F.Cu\") (at 2 0) (property \"Reference\" \"J1\") (property \"Value\" \"SMA\")\n";
+            s += "    (pad \"2\" thru_hole circle (at 0 0) (size 1.6 1.6) (drill 1.0) (layers \"*.Cu\" \"*.Mask\") (net 2 \"GND\"))\n";
+            s += "    (pad \"\" np_thru_hole circle (at 0.5 1.5) (size 1.0 1.0) (drill 1.0) (layers \"*.Cu\" \"*.Mask\"))\n";
+            s += "    (pad \"3\" smd rect (at -0.5 -1.5) (size 0.6 0.6) (layers \"F.Cu\") (net 2 \"GND\"))\n";
+            s += "    (pad \"1\" thru_hole circle (at 0.5 -1.0) (size 1.0 1.0) (drill 0.5) (layers \"*.Cu\" \"*.Mask\") (net 1 \"SIG\")))\n";
+            s
+        };
+        // rg_board without the PWR plane, with the connector 2 mm from the via
+        let b = crate::board::load_pcb(&rg_pcb(false, false, &src)).unwrap();
+        let gnd = b.nets.iter().position(|n| n == "GND").unwrap() as u32;
+        let posts = plane_posts(&b);
+        let pads: Vec<&Via> = posts.iter().filter(|w| (w.at[0] - 2.0).abs() < 1e-9 && w.at[1].abs() < 1e-9).collect();
+        assert_eq!(pads.len(), 1, "{posts:?}");
+        assert_eq!((pads[0].drill, pads[0].size, pads[0].net, pads[0].from, pads[0].to), (1.0, 1.6, gnd, 0, b.stackup().copper.len() as u16 - 1));
+        assert_eq!(posts.len(), 5, "4 GND vias and the plated GND pin: {posts:?}");
+        let sig = b.nets.iter().position(|n| n == "SIG").unwrap() as u32;
+        let v = b.vias.iter().find(|v| v.net == sig).unwrap();
+        let z = copper_z(b.stackup());
+        let clear = vec![None; z.len()];
+        let rets = return_posts(&b, v, sig, None, &clear, &z, false, [0, 3]);
+        assert_eq!(rets.len(), 5);
+        assert!(rets.iter().any(|p| (p.dx - 2.0).abs() < 1e-9 && (p.r - 0.5).abs() < 1e-9));
     }
 
     #[test]

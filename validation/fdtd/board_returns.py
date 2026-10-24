@@ -437,8 +437,10 @@ def board_ladders(a, k, v, c):
     pair = c["meta"]["params"]["partner"] is not None
 
     def match(g):
+        # every return the case lists (cases exported before Block 6 list the nearest 8 vias, the
+        # ladder now also takes plated pads and up to 12)
         rr = [[q["dx"], q["dy"]] for q in g["returns"]]
-        return len(rr) == len(want) and all(abs(p[0] - q[0]) < 2e-3 and abs(p[1] - q[1]) < 2e-3 for p, q in zip(rr, want)) and ((g["partner"] is not None) == pair)
+        return all(any(abs(p[0] - q[0]) < 2e-3 and abs(p[1] - q[1]) < 2e-3 for p in rr) for q in want) and ((g["partner"] is not None) == pair)
     idx = [i for i, g in enumerate(runs["old"]) if match(g)]
     if not idx:
         raise SystemExit(f"{k}: no ladder geometry matches")

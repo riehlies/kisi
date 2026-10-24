@@ -5,7 +5,7 @@
 //! its stub), the region of each pair (connected overlap of both planes), its size and the lowest
 //! resonances of its bounding rectangle, the posts that short the pair (stitching vias and plated
 //! holes of the plane net) and how close they are, against the return vias the ladder takes
-//! (plane-net vias within 3 mm, the nearest 8), and the return group of every pair (the return vias
+//! (plane-net vias and plated pads within 3 mm, the nearest 12), and the return group of every pair (the return vias
 //! that short it, that float across it, capacitors; validation/fdtd/BOARD_RETURNS.md). Prints a
 //! table; `--json` writes the details.
 
@@ -60,16 +60,16 @@ pub fn run(args: &[String]) {
                 let partner = None;
                 let planes: Vec<u16> = (v.from..=v.to).filter(|&k| plane_clearance(board, v.at, k, net, partner).is_some()).collect();
                 let (lo, hi) = (vi.layer_in.min(vi.layer_out), vi.layer_in.max(vi.layer_out));
-                // ladder returns: plane-net vias within 3 mm, the nearest 8
-                let mut rets: Vec<(f64, &kisi_core::board::Via)> = board
-                    .vias
+                // ladder returns: plane-net posts within 3 mm, the nearest `via::RETURN_POSTS`
+                let posts = kisi_core::via::plane_posts(board);
+                let mut rets: Vec<(f64, &kisi_core::board::Via)> = posts
                     .iter()
-                    .filter(|w| w.net != net && w.net != 0 && board.plane_net.get(w.net as usize).copied().unwrap_or(false))
+                    .filter(|w| w.net != net && w.net != 0)
                     .map(|w| (geom::len(geom::sub(w.at, v.at)), w))
                     .filter(|&(d, _)| d > 0.01 && d < 3.0)
                     .collect();
                 rets.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-                rets.truncate(8);
+                rets.truncate(kisi_core::via::RETURN_POSTS);
                 let mut pv = vec![];
                 for w in planes.windows(2) {
                     let (ka, kb) = (w[0], w[1]);

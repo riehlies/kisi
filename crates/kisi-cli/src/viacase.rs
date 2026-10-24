@@ -862,17 +862,18 @@ pub fn run(args: &[String]) {
         let nn: String = b.net_name(net).rsplit('/').next().unwrap_or("").chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '_' }).collect();
         format!("board_{stem}_{nn}")
     });
-    // kisi's return vias for this via (plane-net vias within 3 mm, the nearest 8), to match the
+    // kisi's return vias for this via (plane-net posts within 3 mm, the nearest 12), to match the
     // ladder geometry kisi prints with KISI_DEBUG_VIA
-    let mut rets: Vec<(f64, P)> = b
-        .vias
+    // the ladder's return posts (`via::plane_posts`, the nearest `via::RETURN_POSTS` within 3 mm)
+    let posts = kisi_core::via::plane_posts(b);
+    let mut rets: Vec<(f64, P)> = posts
         .iter()
-        .filter(|w| !own(w.net) && w.net != 0 && b.plane_net.get(w.net as usize).copied().unwrap_or(false))
+        .filter(|w| !own(w.net) && w.net != 0)
         .map(|w| (geom::len(geom::sub(w.at, v.at)), geom::sub(w.at, v.at)))
         .filter(|&(d, _)| d > 0.01 && d < 3.0)
         .collect();
     rets.sort_by(|a, c| a.0.total_cmp(&c.0));
-    rets.truncate(8);
+    rets.truncate(kisi_core::via::RETURN_POSTS);
     let planes_meta: Vec<String> = planes_at_port.iter().flatten().map(|x| lname(x.0)).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
     let approx = vec![
         "copper has zero thickness; layer heights are kisi's (dielectric plus half the copper on each side)",

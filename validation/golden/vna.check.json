@@ -1168,7 +1168,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.995667
+     "value": 0.995672
     },
     {
      "hi": null,
@@ -1186,7 +1186,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.109232
+     "value": -0.109183
     },
     {
      "hi": null,
@@ -1195,7 +1195,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 30.3557
+     "value": 30.3114
     },
     {
      "hi": null,
@@ -1204,7 +1204,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 34.5078
+     "value": 28.75
     }
    ],
    "diff": false,
@@ -1220,13 +1220,13 @@
    "length_mm": 31.2285,
    "metrics": {
     "error": null,
-    "eye_h": 0.995667,
+    "eye_h": 0.995672,
     "eye_w_ui": 0.78125,
-    "il_nyq_db": -0.109232,
-    "rl_db": 30.3557,
+    "il_nyq_db": -0.109183,
+    "rl_db": 30.3114,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 34.5078,
+    "stub_ghz": 28.75,
     "z_max": 66.6634,
     "z_mean": 50.6113,
     "z_min": 35.1137
@@ -1654,7 +1654,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.116156
+     "value": -0.116153
     },
     {
      "hi": null,
@@ -1663,7 +1663,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 25.9259
+     "value": 25.9244
     },
     {
      "hi": null,
@@ -1672,7 +1672,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 23.2252
+     "value": 23.214
     }
    ],
    "diff": false,
@@ -1690,11 +1690,11 @@
     "error": null,
     "eye_h": 0.996439,
     "eye_w_ui": 0.78125,
-    "il_nyq_db": -0.116156,
-    "rl_db": 25.9259,
+    "il_nyq_db": -0.116153,
+    "rl_db": 25.9244,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 23.2252,
+    "stub_ghz": 23.214,
     "z_max": 58.6782,
     "z_mean": 50.2172,
     "z_min": 48.5281
@@ -1735,7 +1735,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.99547
+     "value": 0.995474
     },
     {
      "hi": null,
@@ -1753,7 +1753,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.13577
+     "value": -0.135757
     },
     {
      "hi": null,
@@ -1762,7 +1762,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 28.6098
+     "value": 28.6011
     },
     {
      "hi": null,
@@ -1771,7 +1771,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.9993
+     "value": 20.0155
     }
    ],
    "diff": false,
@@ -1787,13 +1787,13 @@
    "length_mm": 29.5516,
    "metrics": {
     "error": null,
-    "eye_h": 0.99547,
+    "eye_h": 0.995474,
     "eye_w_ui": 0.8125,
-    "il_nyq_db": -0.13577,
-    "rl_db": 28.6098,
+    "il_nyq_db": -0.135757,
+    "rl_db": 28.6011,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 19.9993,
+    "stub_ghz": 20.0155,
     "z_max": 58.6782,
     "z_mean": 50.3523,
     "z_min": 48.7304
@@ -1852,7 +1852,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.112294
+     "value": -0.112279
     },
     {
      "hi": null,
@@ -1861,7 +1861,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 25.724
+     "value": 25.7198
     },
     {
      "hi": null,
@@ -1870,7 +1870,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 24.4547
+     "value": 24.4493
     }
    ],
    "diff": false,
@@ -1888,11 +1888,11 @@
     "error": null,
     "eye_h": 0.99545,
     "eye_w_ui": 0.78125,
-    "il_nyq_db": -0.112294,
-    "rl_db": 25.724,
+    "il_nyq_db": -0.112279,
+    "rl_db": 25.7198,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 24.4547,
+    "stub_ghz": 24.4493,
     "z_max": 60.4802,
     "z_mean": 50.1571,
     "z_min": 35.8097
@@ -2042,7 +2042,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.997025
+     "value": 0.997021
     },
     {
      "hi": null,
@@ -2060,7 +2060,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0784829
+     "value": -0.0784388
     },
     {
      "hi": null,
@@ -2069,7 +2069,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 29.2188
+     "value": 29.1992
     },
     {
      "hi": null,
@@ -2078,7 +2078,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 37.75
+     "value": 37.5
     }
    ],
    "diff": false,
@@ -2094,13 +2094,13 @@
    "length_mm": 21.2362,
    "metrics": {
     "error": null,
-    "eye_h": 0.997025,
+    "eye_h": 0.997021,
     "eye_w_ui": 0.71875,
-    "il_nyq_db": -0.0784829,
-    "rl_db": 29.2188,
+    "il_nyq_db": -0.0784388,
+    "rl_db": 29.1992,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 37.75,
+    "stub_ghz": 37.5,
     "z_max": 60.4802,
     "z_mean": 49.1132,
     "z_min": 26.0287

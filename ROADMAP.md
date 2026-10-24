@@ -26,7 +26,7 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   net class targets and profiles, regulators and loads, thermal data), checked by the same code as `config-check`,
   and exports `<board>.kisi.json`. Research-heavy values (datasheets) stay with the agent path (skill
   kisi-prepare). No second logic in the viewer. **Mockup and design note done** (`docs/mockups/prepare.html`,
-  `prepare.md`), third version after two reviews: a "Prepare" page from the top bar with tabs Impedance, Channel and
+  `prepare.md`), third version after two reviews: a "Prepare PCB" page from the top bar (with the board actions) with tabs Impedance, Channel and
   Power (temperature under Power), gaps by priority, readiness dots on the view buttons, one shared draft, saving
   everything or one category, the agent prompt per tab (`--for`), dismissable name-based gaps (`gaps.dismissed`
   in kisi.json, with a reason) and "nothing to check" per category – all decided in the core (`views` from

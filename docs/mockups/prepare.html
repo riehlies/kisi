@@ -133,6 +133,9 @@ pre.json { margin: 0; max-height: 46vh; min-height: 120px; overflow: auto; backg
 .count { font: 600 10.5px var(--font-mono); border-radius: 999px; padding: 1px 6px; background: var(--err); color: #fff }
 .count.z { background: var(--ok) } .count.m { background: var(--warn) }
 .seg button.ana { cursor: default; opacity: .8 }
+#prepBtn { display: contents }
+.btn.prepbtn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap }
+.btn.prepbtn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent) }
 .dot.na { background: var(--muted); opacity: .6 }
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line) }
 .tabs button { border: 1px solid var(--line); border-bottom: 0; background: var(--panel-2); border-radius: var(--radius) var(--radius) 0 0; padding: 7px 14px 6px; cursor: pointer; font: 600 15px var(--font-display); color: var(--muted); display: inline-flex; align-items: baseline; gap: 7px; margin-bottom: -1px }
@@ -160,6 +163,7 @@ pre.prompt { margin: 0; background: var(--panel-2); border: 1px solid var(--line
       <button aria-pressed="false" data-board="tscfg">ThunderScope + kisi.json</button>
       <button aria-pressed="false" data-board="xiao">XIAO nRF54LM20A</button>
     </div>
+    <span id="prepBtn"></span>
     <button class="btn primary" disabled title="drop the board, its .kicad_pro and a kisi.json – not part of the mockup">Load files</button>
   </div>
 
@@ -531,8 +535,8 @@ function render() {
   $("cfgName").textContent = b.board + ".kisi.json";
   const rds = Object.keys(VIEWS).map(readiness), openCount = rds.reduce((n, x) => n + x.hi + x.me, 0);
   const countCls = rds.some((x) => x.hi) ? "" : openCount ? "m" : "z";
-  $("views").innerHTML = `<button aria-pressed="true" id="view-prep">Prepare <span class="count ${countCls}">${openCount}</span></button>` +
-    Object.entries(VIEWS).map(([v, name]) => { const x = readiness(v); return `<button aria-pressed="false" class="ana" title="${esc(name)}: ${esc(x.text)} – the analysis view (not part of the mockup)"><span class="dot ${x.cls}"></span>${name}</button>`; }).join("");
+  $("prepBtn").innerHTML = `<button class="btn prepbtn" aria-pressed="true" id="view-prep" title="what the board lacks, per category – ${openCount} open high/medium gaps">Prepare PCB <span class="count ${countCls}">${openCount}</span></button>`;
+  $("views").innerHTML = Object.entries(VIEWS).map(([v, name]) => { const x = readiness(v); return `<button aria-pressed="false" class="ana" title="${esc(name)}: ${esc(x.text)} – the analysis view (not part of the mockup)"><span class="dot ${x.cls}"></span>${name}</button>`; }).join("");
   $("ready").innerHTML = Object.entries(VIEWS).map(([v, name]) => { const x = readiness(v); return `<button data-tab="${v}" aria-current="${v === S.view}"><span class="dot ${x.cls}"></span><b>${name}</b><span>${esc(x.text)}</span></button>`; }).join("");
   $("tabs").innerHTML = Object.entries(VIEWS).map(([v, name]) => { const x = readiness(v); return `<button role="tab" aria-selected="${v === S.view}" data-tab="${v}"><span class="dot ${x.cls}"></span>${name}<small>${esc(x.text)}</small></button>`; }).join("");
   // the tab: this category's gaps by priority; nothing to check → the gaps are not blocking

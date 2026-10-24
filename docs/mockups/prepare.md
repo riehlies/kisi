@@ -5,7 +5,8 @@ for humans and agents, plus preparation in the viewer; mockup first ([ROADMAP](.
 
 History of the mockup: v1 was a fourth view "Prepare" with one gap list; v2 split the gaps by simulation category
 into a card at the top of each analysis view; the maintainer's answers to v2 brought the page back, with the
-categories as tabs, dismissable name-based gaps and "nothing to check" per category. This note describes v3.
+categories as tabs, dismissable name-based gaps and "nothing to check" per category; a last change moved its button
+("Prepare PCB") to the board actions of the top bar. This note describes v3.
 
 [`prepare.html`](prepare.html) is a static, clickable mockup in the viewer's look (open it from the repository so
 that it finds `web/fonts`). It embeds the real `kisi gaps` output of kisi 0.2.5 for three boards – ThunderScope
@@ -16,9 +17,10 @@ The check imitates `kisi config-check` in a few lines of JavaScript. A file save
 laminate plus the dismissed QSPI nets, "save only Impedance" – passes the real `kisi config-check`.
 
 ## The page
-- **"Prepare" in the top bar**, next to Impedance, Channel and Power, with a badge counting the open high and
-  medium gaps. The three analysis buttons carry a **readiness dot**, on by default: green ready, orange or red
-  open (medium / high), grey nothing to check.
+- **"Prepare PCB" in the top bar**, between the example boards and "Load files" – with the other board actions,
+  not among the analysis views – with a badge counting the open high and medium gaps. The three analysis buttons
+  (Impedance, Channel, Power) carry a **readiness dot**, on by default: green ready, orange or red open (medium /
+  high), grey nothing to check.
 - **Tabs Impedance, Channel, Power** (temperature under Power), each with its readiness ("ready", "2 open (1
   high)", "nothing to check"). A tab lists that category's gaps **by priority**, dismissed gaps last. Each gap card
   has *where to find it*, where the value goes, what it affects ("also Channel" where it serves another

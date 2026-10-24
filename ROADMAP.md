@@ -12,14 +12,14 @@ validation depends on measurements that take time.
 ## 1. Usability: GUI, CLI, documentation
 Goal: humans in the viewer and agents with the CLI can both use kisi easily. Well-prepared boards already display
 well; the challenge is preparing a new design for a meaningful analysis – missing data, definitions and models.
-- **Documentation structure** (first step, decided 2026-10-24) – **done in branch `feat/docs-prepare`:** a short
-  README and the user documentation in `docs/` (getting started, preparing a board with the XIAO nRF54LM20A as the
-  worked example, field and `kisi.json` reference, models and limits, CLI reference, agents), linked from the
-  README and the landing page; `tools/docs_pdf.py` renders it into `kisi-docs.pdf`, which CI builds (and uses as a
-  link check) and the release attaches; `crates/kisi-core/tests/docs.rs` keeps `docs/cli.md` (the `kisi help` text,
-  every command and option) and the gap ids in step with the code. The repository was checked for stale
-  statements and plans (the commit messages say what changed and why). Next: each feature updates its page in
-  the same change (rule in `AGENTS.md`); the Prepare step gets its section in `docs/preparing-a-board.md`.
+- **Documentation structure** (first step, decided 2026-10-24) – **done:** a short README and the user
+  documentation in `docs/` (getting started, preparing a board with the XIAO nRF54LM20A as the worked example, field
+  and `kisi.json` reference, models and limits, CLI reference, agents), linked from the README and the landing page;
+  `tools/docs_pdf.py` renders it into `kisi-docs.pdf`, which CI builds (and uses as a link check) and the release
+  attaches; `crates/kisi-core/tests/docs.rs` keeps `docs/cli.md` (the `kisi help` text, every command and option)
+  and the gap ids in step with the code. The repository was checked for stale statements and plans. Next: each
+  feature updates its page in the same change (rule in `AGENTS.md`); the maintainer's coordinating session keeps
+  the overview of the docs when branches are merged.
 - **Board preparation in the viewer** (decided 2026-10-24: shared core plus a "Prepare" step; a mockup first). One
   core for humans and agents: `kisi gaps` already says what is missing, where to find it and where it goes in
   `kisi.json`. The "Prepare" step lists the gaps and lets the simple values be entered directly (laminate εr/tanδ,
@@ -165,7 +165,7 @@ setup (models, pin mapping, terminations, interface settings) is the main effort
   via references (`tools/golden.py`) catch unintended model changes. Next: format the Rust code once with
   `cargo fmt` when few branches are open (today ~1400 differences) and then check it on every push; clear the clippy
   warnings and make clippy failing; the channel exports (block 3) as a CI check when they are merged (the docs PDF
-  runs in the docs group since `feat/docs-prepare`); parse a KiCad 10 test board.
+  already runs in the docs group); parse a KiCad 10 test board.
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.
 
 ### Small fixes (independent, can be done in parallel)

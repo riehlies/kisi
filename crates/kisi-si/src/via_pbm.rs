@@ -1109,6 +1109,42 @@ impl PbmVia {
         m
     }
 
+    /// The ladder for the circuit export (`kisi_si::export`): number of nodes and the ports (node
+    /// indices of the entry and the exit).
+    pub fn ladder_ports(&self) -> (usize, usize, usize) {
+        (self.nodes.len(), self.i_in, self.i_out)
+    }
+
+    /// Shunt admittance of node `k` at `f` (capacitance with the dielectric loss).
+    pub fn node_y(&self, k: usize, f: f64) -> Cx {
+        let w = 2.0 * PI * f;
+        Cx::new(0.0, w * self.cap[k]) * Cx::new(1.0, -self.tan_eff(self.node_tand[k], f))
+    }
+
+    /// Series impedance of the span between nodes `k` and `k + 1` at `f` (the plane-pair or
+    /// outer-section inductance, plate and barrel losses).
+    pub fn span_z(&self, k: usize, f: f64) -> Cx {
+        let w = 2.0 * PI * f;
+        let z = match self.spans[k] {
+            SpanKind::Outer(l) => Cx::new(0.0, w * l),
+            SpanKind::Pair { group, scale } => self.group_z(f)[group].scale(scale),
+        };
+        match self.sigma {
+            Some(sig) => {
+                let rs = (PI * f * MU0 / sig).sqrt();
+                z + Cx::new(rs, rs).scale(self.span_len[k] / (2.0 * PI * self.a_m))
+            }
+            None => z,
+        }
+    }
+
+    /// Where the traces join, per side (entry, exit): the junction inductance (H), the trace
+    /// over the antipad (Z, εr, length m) and the change of the feed trace (Z, εeff, signed
+    /// length m: negative removes feed trace that the channel runs up to the via centre).
+    pub fn junctions(&self) -> ([f64; 2], [Option<(f64, f64, f64)>; 2], [(f64, f64, f64); 2]) {
+        (self.l_port, self.ap_line, self.feed_cut)
+    }
+
     /// group delay of the transition (s) from the S21 phase slope at low frequency
     pub fn delay(&self) -> f64 {
         let (f1, f2) = (0.5e9, 1.5e9);

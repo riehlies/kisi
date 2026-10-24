@@ -156,8 +156,8 @@ pub fn mixed_of(s: &M4) -> M4 {
 pub(crate) enum El {
     /// section `seg` of line 0 (P) or 1 (N), optionally with a shorter length (mm)
     Single { line: usize, seg: usize, len: Option<f64> },
-    /// coupled run of `len` mm with the modal models of P's cross-section
-    Coupled { len: f64, even: LineModel, odd: LineModel },
+    /// coupled run of `len` mm on copper layer `layer` with the modal models of P's cross-section
+    Coupled { len: f64, even: LineModel, odd: LineModel, layer: u16 },
     /// via pair: odd model with the partner via, even model = single via (of P)
     ViaPair { p: usize },
     /// open stubs on both lines at the same place (sections `p` of P, `n` of N): the odd mode
@@ -376,7 +376,7 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                 // a section on one line only moves the mode by half of it
                 (full * frac / 2.0, full * frac / 2.0, l / 2.0)
             }
-            El::Coupled { len, even, odd } => (len * 1e-3 * (odd.l_ext * odd.c0).sqrt(), len * 1e-3 * (even.l_ext * even.c0).sqrt(), *len),
+            El::Coupled { len, even, odd, .. } => (len * 1e-3 * (odd.l_ext * odd.c0).sqrt(), len * 1e-3 * (even.l_ext * even.c0).sqrt(), *len),
             El::ViaPair { p, .. } => {
                 let ev = bp.via_models[*p].as_ref().map(|v| v.delay()).unwrap_or(0.0);
                 let od = bp.via_pair[*p].as_ref().map(|v| v.delay()).unwrap_or(ev);
@@ -606,7 +606,7 @@ pub(crate) fn align_pair(bp: &Build, bn: &Build, an: &Analysis, su: &crate::boar
                 let l = a.min(b);
                 match modal(&bp, i).or_else(|| modal(&bn, j)) {
                     Some((even, odd)) => {
-                        els.push(El::Coupled { len: l, even, odd });
+                        els.push(El::Coupled { len: l, even, odd, layer: lp });
                         coupled_mm += l;
                     }
                     None => {
@@ -669,7 +669,7 @@ pub(crate) fn pair_t(bp: &Build, bn: &Build, els: &[El], k: usize, f: f64, fallb
         let m = match e {
             El::Single { line: 0, seg, len } => sep(&bp.seg_abcd(*seg, k, f, fallback, *len), &id),
             El::Single { seg, len, .. } => sep(&id, &bn.seg_abcd(*seg, k, f, fallback, *len)),
-            El::Coupled { len, even, odd } => {
+            El::Coupled { len, even, odd, .. } => {
                 let (pe, po) = (even.rlgc(f, rp), odd.rlgc(f, rp));
                 coupled(&Abcd::line(pe.r, pe.l, pe.g, pe.c, w, len * 1e-3), &Abcd::line(po.r, po.l, po.g, po.c, w, len * 1e-3))
             }
@@ -699,7 +699,7 @@ pub(crate) fn pair_t_dc(bp: &Build, bn: &Build, els: &[El], fallback: &LineModel
         let m = match e {
             El::Single { line: 0, seg, len } => sep(&bp.seg_abcd_dc(*seg, fallback, *len), &id),
             El::Single { seg, len, .. } => sep(&id, &bn.seg_abcd_dc(*seg, fallback, *len)),
-            El::Coupled { len, even, odd } => {
+            El::Coupled { len, even, odd, .. } => {
                 let r = |m: &LineModel| Abcd::series(Cx::new(m.r_dc * len * 1e-3, 0.0));
                 coupled(&r(even), &r(odd))
             }

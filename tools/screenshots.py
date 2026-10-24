@@ -35,21 +35,28 @@ with sync_playwright() as p:
     shot = lambda name: (not only or name in only) and pg.screenshot(path=os.path.join(a.out, name + ".png"))
 
     def prepare():
-        # the Prepare PCB page on the Impedance tab: the laminate partly entered, the QSPI nets being dismissed
+        # the Prepare PCB page on the Impedance tab: the QSPI nets being dismissed, the laminate entered with its
+        # source in the form below the gaps
         pg.wait_for_function("S.prep.base", timeout=90000)
+        pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; S.prep.d = null; }")
         pg.click("#prep-btn"); pg.click('#prep-tabs [data-prep-tab="impedance"]'); pg.wait_for_timeout(300)
-        if pg.locator('[data-dismiss="nets-without-target"]').count():
-            pg.click('[data-dismiss="nets-without-target"]'); pg.click('[data-dis-all="nets-without-target"]')
-            pg.fill('[data-dis-reason="nets-without-target"]', "QSPI configuration flash at 50 MHz, short lines – no impedance control needed")
-        if pg.locator('[data-src="stackup"]').count():
-            pg.select_option('[data-src="stackup"] [data-k="kind"]', "datasheet")
-            pg.fill('[data-src="stackup"] [data-k="document"]', "Isola FR408HR data sheet")
-            pg.fill('[data-src="stackup"] [data-k="note"]', "10 GHz, typical")
-            for i in (0, 1):
-                pg.fill(f'input[data-ed="stackup"][data-i="{i}"][data-k="loss_tangent"]', "0.0095")
-        pg.wait_for_timeout(1200); pg.wait_for_function("!S.prep.busy", timeout=90000); pg.wait_for_timeout(300)
+        g = "nets-without-target"
+        if pg.locator(f'[data-b="dismiss"][data-g="{g}"]').count():
+            pg.click(f'[data-b="dismiss"][data-g="{g}"]'); pg.click(f'[data-b="dis-all"][data-g="{g}"]')
+            pg.fill(f'[data-a="dis-reason"][data-g="{g}"]', "QSPI configuration flash at 50 MHz, short lines – no impedance control needed")
+        sel = 'article[data-gap="stackup-defaults"]'
+        if pg.locator(sel).count():
+            if pg.get_attribute(sel, "aria-expanded") != "true":
+                pg.click(f"{sel} > header")
+            pg.select_option(f'{sel} [data-a="shared"][data-k="kind"]', "datasheet")
+            for k, v in (("document", "fabricator's stackup report"), ("note", "at 1 GHz")):
+                pg.fill(f'{sel} [data-a="shared"][data-k="{k}"]', v); pg.dispatch_event(f'{sel} [data-a="shared"][data-k="{k}"]', "change"); pg.wait_for_timeout(50)
+            pg.locator(f'{sel} input[data-a="diel"][data-k="epsilon_r"]').first.fill("4.3")
+            pg.locator(f'{sel} input[data-a="diel"][data-k="epsilon_r"]').first.dispatch_event("change")
+        pg.wait_for_timeout(1200); pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=90000); pg.wait_for_timeout(300)
         pg.evaluate("document.getElementById('prep').scrollTop = 0")
         shot("prepare")
+        pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; }")
         pg.click("#view-si"); pg.wait_for_timeout(300)
 
     if only and only <= {"prepare"}:

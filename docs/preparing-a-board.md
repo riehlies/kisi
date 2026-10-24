@@ -101,18 +101,35 @@ The syntax of every field and kisi.json key: [Field and kisi.json reference](ref
 its kisi.json, if one is loaded – in three tabs: Impedance, Channel and Power (with the temperature). The badge
 counts the open high and medium gaps; the dots on the view buttons show each category's state (green ready,
 orange or red open, grey nothing to check). A tab lists its gaps by priority with *where to find it* and a form
-for the simple values – laminate εr/tanδ and material, net class targets and profiles, the assembly variant, the
-regulator chain (`PI_REG`, with one-click suggestions for rails behind a ferrite or link), load currents, ferrite
-beads and thermal data – each block with a required source. Name-based gaps can be dismissed with a reason.
+for the simple values; where a gap mixes categories, a tab shows only the items that matter for it (a dielectric
+with only a default tanδ is a Channel item). Below the gaps, **In `<board>`.kisi.json** holds everything the
+category uses, loaded and entered, as editable tables:
 
-What you enter is one draft for all three tabs: the laminate entered under Impedance also closes the gap under
-Channel. The check (the same as `kisi config-check`) runs as you type, the gap list follows a moment later, and
-the right column shows the resulting kisi.json. "Save kisi.json" writes everything entered, or only the entries of
-the current category, laid over the loaded file; errors in what is saved block it, warnings do not. In Chromium a
-save dialog opens next to the board (and "Reload" reads the file from then on); other browsers download it. The
-saved file is loaded at once. Research-heavy gaps go to the agent path: the card on each tab gives a prompt for
-the kisi-prepare skill limited to that category (`kisi gaps --for …`). The draft lives in the page's memory until
-it is saved.
+| Tab | Forms |
+|---|---|
+| Impedance | laminate per dielectric (material, εr, tanδ, thickness) and the solder mask εr; net class targets (Ω, differential) |
+| Channel | the laminate; net class → interface profile; connector ends (model, R/C/L, the channel behind as loss and delay or a Touchstone file with its port order and ports per pin); the assembly variant to analyse and variant definitions (sheets, parts, BOM, BOM exceptions) |
+| Power | `PI_REG` (with one-click suggestions for rails behind a ferrite or link), load currents per rail, `PI_SOURCE`, `PI_SERIES` (Z at 100 MHz, DC resistance), `PI_CAP` (rated voltage, dielectric, ESR, ESL – one row per part number or value and package, written on every capacitor of the group, with the parts' own Voltage Rating / Dielectric fields as a one-click suggestion), `PI_THERMAL`, `PI_TARGET` and any other field |
+
+Every entry has its own source (kind, document; url, page and note behind "…"); a table's shared source fills the
+rows entered without one. Name-based gaps can be dismissed with a reason; a dismissal that this board does not
+report (any more) is listed next to its gap, or under "Stale dismissals", with "remove". **Edits made in the
+views** – the stackup and the class targets in the Impedance view, profiles and connector ends in the Channel
+view, the power tree or rail setups in the Power view – are listed on their tab and move into the draft with one
+action and a source (the power settings as `PI_REG` / `PI_LOAD` / `PI_SOURCE`, through the same conversion as the
+core's field reader).
+
+The draft is the board's kisi.json itself: the loaded file with your edits, one for all three tabs (the laminate
+entered under Impedance also closes the gap under Channel). It is kept per board in this browser until it is saved
+or discarded, so a reload of the page and of the board brings it back; the side card says how it differs from the
+loaded file, and "Discard draft" returns to it. The check (the same as `kisi config-check`) runs as you type, the
+gap list follows a moment later, and the right column shows the resulting file. "Save kisi.json" writes the
+draft, or the loaded file with only the current category's changes (the rest stays in the draft); keys the page
+has no form for are kept, and a file loaded and saved unchanged stays the same. Errors in what is saved block it,
+warnings do not. In Chromium a save dialog opens next to the board (and "Reload" reads the file from then on);
+other browsers download it. The saved file is loaded at once. Research-heavy gaps go to the agent path: "hand to
+the agent" on a gap adds it to the card's prompt for the kisi-prepare skill, limited to that category
+(`kisi gaps --for …`), and a category whose open gaps are all handed over says so.
 
 ## Worked example: Seeed Studio XIAO nRF54LM20A
 [`docs/examples/xiao-nrf54lm20a/XIAO nRF54LM20A.kisi.json`](examples/xiao-nrf54lm20a/XIAO%20nRF54LM20A.kisi.json)

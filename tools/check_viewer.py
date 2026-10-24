@@ -9,7 +9,11 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
   lane eye, voltage drop with ground return, impedance seen from the ICs, losses map, temperature and power flow
   (desktop layouts; --quick: only load and the three views), the Prepare PCB page (tabs, laminate,
-  a dismissal, saving one category)
+  a dismissal, saving one category; with the example boards: the loaded kisi.json in the forms, saving it
+  unchanged, keys without a form kept, the draft across a page reload, Discard, saving one category, the
+  views' edits into the draft, a stale dismissal; light run: the acceptance run on the bare ThunderScope –
+  its kisi.json entered through the forms, saved, reloaded)
+* --accept BOARD REF [--accept-dismiss GAP=REASON …]: the acceptance run on another bare board (light run)
 * the channel check in parallel (workers with engines of their own) gives the same rows as on one thread
   (light run; the timings are printed as a note)
 * uses the embedded example boards if the build has them, else --board; on a board without impedance
@@ -34,6 +38,9 @@ ap.add_argument("--out")
 ap.add_argument("--quick", action="store_true")
 ap.add_argument("--browser", default="chromium", choices=["chromium", "firefox", "webkit"])
 ap.add_argument("--layouts", default="light,dark,phone", help="comma-separated subset of light,dark,phone")
+ap.add_argument("--prepare-only", action="store_true", help="only the Prepare PCB checks")
+ap.add_argument("--accept", nargs=2, metavar=("BOARD", "REF"), help="Prepare acceptance run on a bare board with a reference kisi.json (light run)")
+ap.add_argument("--accept-dismiss", nargs="*", default=[], metavar="GAP=REASON", help="name-based gaps to dismiss in the acceptance run")
 a = ap.parse_args()
 out = a.out or tempfile.mkdtemp(prefix="kisi-check-")
 os.makedirs(out, exist_ok=True)
@@ -164,14 +171,83 @@ def power_units(pg, tag, step):
     pg.evaluate("setPiMode('b')"); pg.wait_for_timeout(200)
 
 
+def prep_change(pg, sel, value):
+    """Fill a Prepare page field and commit it (input, then change – as leaving the field does)."""
+    loc = pg.locator(sel + " >> visible=true").first
+    loc.fill(value)
+    loc.dispatch_event("change")
+    prep_tick(pg)
+
+
+def prep_tick(pg):
+    """Let the page draw the forms again (a change redraws right after the event)."""
+    pg.evaluate("() => new Promise((r) => setTimeout(r, 0))")
+
+
+def prep_source(pg, spec, src):
+    """The source of one entry in its row: kind, document; url, page and note behind "…"."""
+    cell = f'[data-a="src"][data-e="{spec}"]'
+    pg.locator(f'select{cell}[data-k="kind"] >> visible=true').first.select_option(src.get("kind", ""))
+    prep_tick(pg)
+    if src.get("document"):
+        prep_change(pg, f'input{cell}[data-k="document"]', src["document"])
+    more = [k for k in ("url", "page", "note") if src.get(k)]
+    if more:
+        # the "…" of the row that is shown (a gap card may hold a hidden copy of the same row)
+        pg.locator(f'select{cell}[data-k="kind"] >> visible=true').first.evaluate("(e) => { const d = e.closest('.prep-srccell').querySelector('details'); if (!d.open) d.querySelector('summary').click(); }")
+        for k in more:
+            prep_change(pg, f'input{cell}[data-k="{k}"]', src[k])
+
+
+def prep_open(pg, sel):
+    """Open a collapsed card (gap or kisi.json section)."""
+    if pg.locator(sel).count() and pg.get_attribute(sel, "aria-expanded") != "true":
+        pg.click(f"{sel} > header")
+
+
+def prep_tab(pg, t):
+    pg.click(f'#prep-tabs [data-prep-tab="{t}"]'); pg.wait_for_timeout(100)
+
+
+def prep_idle(pg):
+    pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000); pg.wait_for_timeout(100)
+
+
+def prep_load(pg, pcb_js, cfg_text, clear=True):
+    """Load a board (JS expression giving [pcb, pro, name]) with a kisi.json text or none; clear its draft."""
+    if clear:
+        pg.evaluate("() => { for (const k of Object.keys(localStorage)) if (k.startsWith('kisi.prep.v1.')) localStorage.removeItem(k); S.prep.mem = {}; }")
+    pg.evaluate("async ([cfg]) => { const [a, c, n] = await (%s); await loadFiles(a, c, n, null, cfg ? { name: n.replace(/\\.kicad_pcb$/i, '') + '.kisi.json', text: cfg } : null); }" % pcb_js, [cfg_text])
+    pg.wait_for_function(f"S.scene && {BUSY} && S.prep.base", timeout=120000)
+    prep_idle(pg)
+
+
+SAMPLE_TS = "(async () => { const s = SAMPLES.ts; const [a, c] = await Promise.all([gunzipB64(s.pcb), gunzipB64(s.pro)]); return [a, c, s.file || s.name]; })()"
+
+
+def prep_download(pg):
+    pg.evaluate("window.showSaveFilePicker = undefined")
+    with pg.expect_download() as dl:
+        pg.click("#prep-save")
+    text = open(dl.value.path(), encoding="utf-8").read()
+    try:
+        pg.wait_for_function(f"{BUSY} && S.prep.base", timeout=120000)
+    except Exception:
+        pg.screenshot(path=f"{out}/prepare_save_failed.png")
+        raise RuntimeError(f"saved, but not loaded again: {pg.evaluate('[S.prep.note, !!S.prep.base, document.getElementById(`busy`).hidden, document.getElementById(`busy`).innerText, S.prep.saved]')} {pg.inner_text('#warnings')[:300]}")
+    prep_idle(pg)
+    return text
+
+
 def prepare_page(pg, tag, step):
-    """The Prepare PCB page: readiness dots, tabs, laminate entry, a dismissal, saving one category
-    (the saved text must pass the configuration check) and back to the views."""
+    """The Prepare PCB page on the loaded board: readiness dots, tabs, laminate entry, a dismissal, saving
+    one category (the saved text must pass the configuration check) and back to the views."""
     try:
         pg.wait_for_function("S.prep.base", timeout=90000)
     except Exception:
         problems.append(f"{tag}: prepare: no gap list ({pg.evaluate('S.prep.note')})")
         return
+    pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; S.prep.d = null; }")
     dots = pg.evaluate("['si','ch','pi'].map(k => !document.getElementById('dot-' + k).hidden)")
     if not all(dots):
         problems.append(f"{tag}: prepare: readiness dots missing on the view buttons {dots}")
@@ -180,37 +256,35 @@ def prepare_page(pg, tag, step):
         problems.append(f"{tag}: prepare: the page did not open")
         return
     for t in ["channel", "power", "impedance"]:
-        pg.click(f'#prep-tabs [data-prep-tab="{t}"]'); pg.wait_for_timeout(150)
+        prep_tab(pg, t)
         if not pg.evaluate(f"document.querySelector('#prep-tabs [data-prep-tab=\"{t}\"]').getAttribute('aria-selected') === 'true'"):
             problems.append(f"{tag}: prepare: tab {t} not selected")
     step("prepare")
     entered = False
-    if pg.locator('[data-src="stackup"]').count():
-        pg.select_option('[data-src="stackup"] [data-k="kind"]', "datasheet")
-        pg.fill('[data-src="stackup"] [data-k="document"]', "laminate datasheet (viewer check)")
-        pg.locator('input[data-ed="stackup"][data-k="loss_tangent"]').first.fill("0.0095")
+    sel = 'article[data-gap="stackup-defaults"]'
+    if pg.locator(sel).count():
+        prep_open(pg, sel)
+        pg.locator(f'{sel} [data-a="shared"][data-k="kind"]').select_option("datasheet")
+        prep_change(pg, f'{sel} [data-a="shared"][data-k="document"]', "laminate datasheet (viewer check)")
+        prep_change(pg, f'{sel} input[data-a="diel"][data-k="loss_tangent"]', "0.0095")
         entered = True
-    if pg.locator('[data-dismiss="nets-without-target"]').count():
+    if pg.locator('[data-b="dismiss"][data-g="nets-without-target"]').count():
         gid = "nets-without-target"
-        pg.click(f'[data-dismiss="{gid}"]'); pg.click(f'[data-dis-all="{gid}"]')
-        pg.fill(f'[data-dis-reason="{gid}"]', "not an interface (viewer check)")
+        pg.click(f'[data-b="dismiss"][data-g="{gid}"]'); pg.click(f'[data-b="dis-all"][data-g="{gid}"]')
+        prep_change(pg, f'[data-a="dis-reason"][data-g="{gid}"]', "not an interface (viewer check)")
         try:
-            pg.wait_for_function(f"!S.prep.busy && S.prep.cur && !S.prep.cur.gaps.some((g) => g.id === '{gid}')", timeout=90000)
+            pg.wait_for_function(f"!S.prep.busy && S.prep.cur && !S.prep.cur.gaps.some((g) => g.id === '{gid}')", timeout=120000)
         except Exception:
             problems.append(f"{tag}: prepare: the dismissed gap is still listed")
         entered = True
     if entered:
-        pg.wait_for_function("!S.prep.busy", timeout=90000); pg.wait_for_timeout(200)
+        prep_idle(pg)
         step("prepare_filled")
         pg.select_option("#prep-scope", "impedance")
         if pg.locator("#prep-save").is_disabled():
             problems.append(f"{tag}: prepare: save disabled ({pg.inner_text('#prep-msgs')[:200]})")
         else:
-            pg.evaluate("window.showSaveFilePicker = undefined")
-            with pg.expect_download() as dl:
-                pg.click("#prep-save")
-            text = open(dl.value.path(), encoding="utf-8").read()
-            pg.wait_for_function(f"{BUSY} && S.prep.base", timeout=90000)
+            text = prep_download(pg)
             ck = pg.evaluate("(t) => S.engine.configCheck(prepBoardFile(), t)", text)
             if not ck["ok"]:
                 problems.append(f"{tag}: prepare: the saved kisi.json fails the check: {ck['errors'][:3]}")
@@ -223,6 +297,219 @@ def prepare_page(pg, tag, step):
     pg.click("#view-si"); pg.wait_for_timeout(300)
     if pg.evaluate("S.prep.open || getComputedStyle(document.querySelector('.stage')).display === 'none'"):
         problems.append(f"{tag}: prepare: back to the impedance view failed")
+
+
+def prepare_roundtrip(pg, tag, step):
+    """ThunderScope with its kisi.json (plus keys the page has no form for): the forms show the loaded values,
+    saving unchanged gives the same file, an edit keeps the other keys, the draft survives a page reload and
+    can be discarded, saving one category keeps the rest in the draft, the views' edits move into the draft,
+    and a stale dismissal shows next to its gap with remove."""
+    ref = json.loads(pg.evaluate("SAMPLES.ts.config.text"))
+    ref["x_custom"] = {"keep": True}
+    ref["connector_ends"] = {"P1": {"model": "matched", "rest_loss_db": 3, "source": {"kind": "assumption", "note": "PCIe slot", "url": "https://example.com/slot", "page": "4"}}}
+    ref.setdefault("gaps", {})["dismissed"] = [{"gap": "rails-without-voltage", "items": ["+1V0"], "reason": "stale on purpose (viewer check)"}]
+    text0 = json.dumps(ref, indent=1)
+    prep_load(pg, SAMPLE_TS, text0)
+    pg.click("#prep-btn"); pg.wait_for_timeout(300)
+    if pg.evaluate("prepDirty()") or not pg.evaluate("(t) => prepSame(JSON.parse(prepText('all')), JSON.parse(t))", text0):
+        problems.append(f"{tag}: prepare: the loaded kisi.json does not come back unchanged")
+    saved = prep_download(pg)
+    if json.loads(saved) != ref:
+        problems.append(f"{tag}: prepare: saving the loaded kisi.json unchanged changed it")
+    pg.click("#prep-btn") if not pg.evaluate("S.prep.open") else None
+    # the loaded values in the forms
+    prep_tab(pg, "channel")
+    if pg.evaluate("(document.querySelector('[data-a=\"conn\"][data-r=\"P1\"][data-k=\"model\"]') || {}).value") != "matched":
+        problems.append(f"{tag}: prepare: the loaded connector end P1 is not in the Channel form")
+    if pg.evaluate("(document.querySelector('input[data-a=\"variant\"][value=\"TS-PCIe\"]') || {}).checked") is not True:
+        problems.append(f"{tag}: prepare: the loaded variant is not chosen in the form")
+    prep_tab(pg, "power")
+    n_reg = pg.evaluate("document.querySelectorAll('input[data-a=\"fld\"][data-n=\"PI_REG\"]').length")
+    if n_reg != sum(1 for f in ref["fields"] if f["name"] == "PI_REG"):
+        problems.append(f"{tag}: prepare: {n_reg} PI_REG rows in the form, the file has {sum(1 for f in ref['fields'] if f['name'] == 'PI_REG')}")
+    if not pg.locator('.prep-stale [data-b="dis-drop"][data-item="+1V0"]').count():
+        problems.append(f"{tag}: prepare: the stale dismissal is not shown with remove")
+    else:
+        pg.click('.prep-stale [data-b="dis-drop"][data-item="+1V0"]'); prep_idle(pg)
+        if pg.evaluate("!!prepDis('rails-without-voltage', false)"):
+            problems.append(f"{tag}: prepare: removing the stale dismissal left it in the draft")
+    step("prepare_loaded")
+    # an edit: the other keys stay
+    load = next(f for f in ref["fields"] if f["name"] == "PI_LOAD")
+    prep_open(pg, 'article[data-sec="f-PI_LOAD"]')
+    prep_change(pg, f'input[data-a="fld"][data-r="{load["ref"]}"][data-n="PI_LOAD"]', load["value"] + ", +3V3=1mA" if "+3V3" not in load["value"] else load["value"].replace("+3V3=", "+3V3=9"))
+    prep_idle(pg)
+    w = json.loads(pg.evaluate("prepText('all')"))
+    if w.get("x_custom") != {"keep": True} or w["connector_ends"]["P1"]["source"].get("page") != "4" or w.get("notes") != ref["notes"]:
+        problems.append(f"{tag}: prepare: an edit lost keys the page has no form for")
+    if pg.evaluate("prepDiff().n") != 2:  # the PI_LOAD and the removed dismissal
+        problems.append(f"{tag}: prepare: the draft differs in {pg.evaluate('prepDiff().n')} entries, expected 2")
+    # the draft survives a reload of the page
+    pg.reload(); pg.wait_for_function("document.getElementById('busy').hidden === true || document.getElementById('drop').classList.contains('start')", timeout=90000)
+    prep_load(pg, SAMPLE_TS, text0, clear=False)
+    if not pg.evaluate("prepDirty() && prepDiff().n === 2 && !prepD().foreign"):
+        problems.append(f"{tag}: prepare: the draft did not survive a page reload")
+    pg.click("#prep-btn"); pg.wait_for_timeout(200)
+    if pg.locator("#prep-discard").is_hidden():
+        problems.append(f"{tag}: prepare: no Discard for a changed draft")
+    pg.click("#prep-discard"); prep_idle(pg)
+    if pg.evaluate("prepDirty() || lsGet(PREP_KEY()) !== null"):
+        problems.append(f"{tag}: prepare: Discard did not reset the draft")
+    # the gap forms write fields: a load current per rail, capacitor data for a whole group, a connector end
+    prep_tab(pg, "power")
+    sel = 'article[data-gap="ic-loads"]'
+    if pg.locator(sel).count():
+        prep_open(pg, sel)
+        ic = pg.get_attribute(f'{sel} input[data-a="load"][data-rail]', "data-r")
+        prep_change(pg, f'{sel} input[data-a="load"][data-r="{ic}"][data-rail]', "12 mA")
+        if not re.search(r"=12mA$", pg.evaluate(f"(prepFld({json.dumps(ic)}, 'PI_LOAD') || {{}}).value || ''")):
+            problems.append(f"{tag}: prepare: the load form did not write PI_LOAD on {ic}")
+    sel = 'article[data-gap="cap-ratings"]'
+    if pg.locator(sel).count():
+        prep_open(pg, sel)
+        grp = pg.get_attribute(f'{sel} input[data-a="capgrp"][data-k="rated"]', "data-g")
+        prep_change(pg, f'{sel} input[data-a="capgrp"][data-g="{grp}"][data-k="rated"]', "6.3V")
+        pg.locator(f'{sel} select[data-a="capgrp"][data-g="{grp}"]').first.select_option("X5R")
+        caps = pg.evaluate(f"(S.prep.capGroups[{json.dumps(grp)}] || []).map((r) => (prepFld(r, 'PI_CAP') || {{}}).value)")
+        if not caps or any(c != "rated=6.3V X5R" for c in caps):
+            problems.append(f"{tag}: prepare: the capacitor group form wrote {caps[:3]}")
+    prep_tab(pg, "channel")
+    prep_open(pg, 'article[data-sec="conn"]')
+    prep_change(pg, 'input[data-a="conn"][data-r="P1"][data-k="rest_loss_db"]', "4.5")
+    if pg.evaluate("prepConn('P1', false).rest_loss_db") != 4.5:
+        problems.append(f"{tag}: prepare: the connector end form did not change P1")
+    prep_idle(pg); step("prepare_forms")
+    pg.evaluate("prepDiscard()"); prep_idle(pg)
+    # save one category: the laminate (impedance) goes, the load (power) stays in the draft
+    prep_tab(pg, "impedance")
+    prep_open(pg, 'article[data-sec="stackup"]')
+    pg.locator('article[data-sec="stackup"] [data-a="shared"][data-k="kind"]').select_option("datasheet")
+    prep_change(pg, 'article[data-sec="stackup"] [data-a="shared"][data-k="document"]', "laminate datasheet (viewer check)")
+    prep_change(pg, 'article[data-sec="stackup"] input[data-a="diel"][data-i="0"][data-k="loss_tangent"]', "0.0091")
+    prep_tab(pg, "power")
+    prep_open(pg, 'article[data-sec="f-PI_LOAD"]')
+    prep_change(pg, f'input[data-a="fld"][data-r="{load["ref"]}"][data-n="PI_LOAD"]', load["value"].split(",")[0].split("=")[0] + "=77mA")
+    prep_tab(pg, "impedance"); prep_idle(pg)
+    pg.select_option("#prep-scope", "impedance")
+    if pg.locator("#prep-save").is_disabled():
+        problems.append(f"{tag}: prepare: saving only Impedance is disabled ({pg.inner_text('#prep-msgs')[:200]})")
+    else:
+        part = json.loads(prep_download(pg))
+        f0 = next(f for f in part["fields"] if f["ref"] == load["ref"] and f["name"] == "PI_LOAD")
+        if part["stackup"]["dielectrics"][0].get("loss_tangent") != 0.0091 or f0["value"] != load["value"]:
+            problems.append(f"{tag}: prepare: saving only Impedance did not take just the impedance entries")
+        if not pg.evaluate(f"prepDirty() && prepFld({json.dumps(load['ref'])}, 'PI_LOAD').value.endsWith('=77mA')"):
+            problems.append(f"{tag}: prepare: after saving Impedance the power change left the draft")
+    pg.evaluate("prepDiscard()"); prep_idle(pg)
+    # an edit in the Impedance view (stackup) moves into the draft with a source
+    pg.evaluate("() => { lsSet(stackKey(), { dielectrics: { 1: { loss_tangent: 0.0088 } } }); S.stackOv = null; }")
+    pg.click("#prep-btn"); pg.wait_for_timeout(100); pg.click("#prep-btn"); pg.wait_for_timeout(200)
+    prep_tab(pg, "impedance")
+    if not pg.locator('.prep-take [data-b="take"]').count():
+        problems.append(f"{tag}: prepare: the stackup edit of the Impedance view is not offered")
+    else:
+        pg.locator('.prep-take select[data-a="take"]').select_option("measurement")
+        prep_change(pg, '.prep-take input[data-a="take"][data-k="document"]', "fabricator's stackup report (viewer check)")
+        pg.click('.prep-take [data-b="take"]'); prep_idle(pg)
+        e = pg.evaluate("prepDiel(1, false)")
+        if not e or e.get("loss_tangent") != 0.0088 or (e.get("source") or {}).get("kind") != "measurement":
+            problems.append(f"{tag}: prepare: taking the views' edits did not fill the draft ({e})")
+        step("prepare_take")
+    pg.evaluate("() => { lsSet(stackKey(), null); S.stackOv = null; prepDiscard(); }")
+    pg.click("#view-si"); pg.wait_for_timeout(200)
+
+
+def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
+    """The acceptance run: a bare board, every value of a reference kisi.json entered through the forms
+    (with its source), the name-based gaps that do not apply dismissed, what needs research handed to the
+    agent; then each applicable category must be ready or have only agent items, the saved file must pass
+    the check and hold the reference's entries, and after a page reload board + saved file must give the
+    same state."""
+    ref = json.loads(ref_text)
+    t0 = time.time()
+    prep_load(pg, board_js, None)
+    pg.click("#prep-btn"); pg.wait_for_timeout(300)
+    # the variants first (the lanes and the channel gaps depend on them)
+    if ref.get("variants"):
+        prep_tab(pg, "channel")
+        card = 'article[data-gap="assembly-variant"]' if pg.locator('article[data-gap="assembly-variant"]').count() else 'article[data-sec="variants"]'
+        prep_open(pg, card)
+        for name, v in ref["variants"].items():
+            pg.fill("#prep-newvar", name); pg.click('[data-b="add-var"]')
+            for k in ("description", "not_fitted_sheets", "fitted_sheets", "not_fitted", "fitted", "bom", "bom_exceptions"):
+                if k in v:
+                    prep_change(pg, f'input[data-a="vdef"][data-v="{name}"][data-k="{k}"]', v[k] if isinstance(v[k], str) else ", ".join(v[k]))
+            prep_source(pg, f"var:{name}", v.get("source", {}))
+        if ref.get("variant"):
+            pg.locator(f'input[data-a="variant"][value="{ref["variant"]}"]').first.check()
+        prep_idle(pg)
+    prep_tab(pg, "power")
+    for f in ref.get("fields", []):
+        name = f["name"].upper()
+        sec = f'article[data-sec="f-{name}"]'
+        if pg.locator(sec).count():
+            prep_open(pg, sec)
+        else:
+            prep_open(pg, 'article[data-gap="power-tree"]')
+        pg.locator(f'input[data-a="new"][data-n="{name}"][data-k="ref"] >> visible=true').first.fill(f["ref"])
+        prep_change(pg, f'input[data-a="new"][data-n="{name}"][data-k="value"]', f["value"])
+        prep_source(pg, f"fld:{f['ref']}|{name}", f.get("source", {}))
+    if ref.get("notes"):
+        pg.evaluate("document.querySelector('.prep-notes').open = true")
+        pg.fill("#prep-notes", "\n".join(ref["notes"]))
+    prep_idle(pg)
+    for gid, reason in dismiss.items():
+        for t in ["impedance", "channel", "power"]:
+            prep_tab(pg, t)
+            if pg.locator(f'[data-b="dismiss"][data-g="{gid}"]').count():
+                pg.click(f'[data-b="dismiss"][data-g="{gid}"]'); pg.click(f'[data-b="dis-all"][data-g="{gid}"]')
+                prep_change(pg, f'[data-a="dis-reason"][data-g="{gid}"]', reason)
+                break
+    prep_idle(pg)
+    # what is left of high and medium priority goes to the agent (research: laminate, profiles, loads)
+    for t in ["impedance", "channel", "power"]:
+        prep_tab(pg, t)
+        for g in pg.evaluate(f"prepOpenHere('{t}').map((g) => g.id)"):
+            box = f'input[data-a="agent"][data-g="{g}"]'
+            if pg.locator(box).count():
+                prep_open(pg, f'article[data-gap="{g}"]')
+                pg.locator(box).first.check(); pg.wait_for_timeout(50)
+    prep_idle(pg)
+    views = pg.evaluate("prepViewsNow()")
+    for t, v in views.items():
+        left = pg.evaluate(f"prepOpenHere('{t}').map((g) => g.id)")
+        if v["applicable"] and v["state"] != "ready" and left:
+            problems.append(f"{tag}: acceptance {label}: {t} is {v['state']} with gaps not handed over: {left}")
+    step(f"accept_{label}")
+    pg.select_option("#prep-scope", "all")
+    if pg.locator("#prep-save").is_disabled():
+        problems.append(f"{tag}: acceptance {label}: save disabled ({pg.inner_text('#prep-msgs')[:300]})")
+        return
+    text = prep_download(pg)
+    open(f"{out}/accept_{label}.kisi.json", "w", encoding="utf-8").write(text)
+    ck = pg.evaluate("(t) => S.engine.configCheck(prepBoardFile(), t)", text)
+    if not ck["ok"]:
+        problems.append(f"{tag}: acceptance {label}: the saved file fails the check: {ck['errors'][:3]}")
+    got = json.loads(text)
+    key = lambda f: (f["ref"], f["name"].upper())
+    if sorted(got.get("fields", []), key=key) != sorted(ref.get("fields", []), key=key):
+        a_, b_ = {key(f): f for f in got.get("fields", [])}, {key(f): f for f in ref.get("fields", [])}
+        diff = [k for k in set(a_) | set(b_) if a_.get(k) != b_.get(k)]
+        k0 = sorted(diff)[0]
+        problems.append(f"{tag}: acceptance {label}: {len(diff)} saved fields differ from the reference: {sorted(diff)[:6]}; first: {a_.get(k0)} – reference {b_.get(k0)}")
+    for k in ("variants", "variant", "notes"):
+        if got.get(k) != ref.get(k):
+            problems.append(f"{tag}: acceptance {label}: the saved {k} differ from the reference")
+    state = pg.evaluate("JSON.stringify([prepViewsNow(), prepGapsNow().map((g) => [g.id, g.items.length]), prepEntries(prepW()).size])")
+    # a new page: the board and the saved file give the same state
+    pg.reload(); pg.wait_for_function("document.getElementById('busy').hidden === true || document.getElementById('drop').classList.contains('start')", timeout=90000)
+    prep_load(pg, board_js, text)
+    again = pg.evaluate("JSON.stringify([prepViewsNow(), prepGapsNow().map((g) => [g.id, g.items.length]), prepEntries(prepW()).size])")
+    if again != state or pg.evaluate("prepDirty()"):
+        problems.append(f"{tag}: acceptance {label}: board + saved file after a reload give another state")
+    notes.append(f"{tag}: acceptance {label}: {len(ref.get('fields', []))} fields, {len(ref.get('variants', {}))} variants entered and saved in {time.time() - t0:.0f} s; "
+                 + ", ".join(f"{t} {v['state']}" for t, v in views.items()))
+    pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; }")
 
 
 def run(pg, tag, desktop):
@@ -243,6 +530,8 @@ def run(pg, tag, desktop):
     elif not pg.evaluate("!!S.scene"):
         raise SystemExit("the build has no example boards: pass --board")
     step = lambda name: pg.screenshot(path=f"{out}/{tag}_{name}.png")
+    if a.prepare_only:
+        return prepare_all(pg, tag, step, errs)
     for v in ["si", "ch", "pi"]:
         pg.click(f"#view-{v}"); pg.wait_for_timeout(300); step(f"start_{v}")
     pg.click("#view-si")
@@ -466,7 +755,20 @@ def run(pg, tag, desktop):
             power_units(pg, f"{tag} ({key})", lambda n, k=key: step(f"{n}_{k}"))
     if pg.evaluate("document.documentElement.scrollWidth > window.innerWidth + 1"):
         problems.append(f"{tag}: horizontal scroll")
+    prepare_all(pg, tag, step, errs)
+
+
+def prepare_all(pg, tag, step, errs):
     prepare_page(pg, tag, step)
+    if pg.evaluate("typeof SAMPLES !== 'undefined' && !!SAMPLES.ts && !!SAMPLES.ts.config"):
+        prepare_roundtrip(pg, tag, step)
+        if tag == "light" and not a.quick:
+            prepare_acceptance(pg, tag, step, SAMPLE_TS, pg.evaluate("SAMPLES.ts.config.text"),
+                               {"nets-without-target": "QSPI flash of the FPGA configuration – not an impedance-controlled interface (viewer check)"}, "ts")
+    if a.accept and tag == "light":
+        pcb = os.path.abspath(a.accept[0]); pro = re.sub(r"\.kicad_pcb$", ".kicad_pro", pcb)
+        js = "Promise.resolve([%s, %s, %s])" % (json.dumps(open(pcb, encoding="utf-8").read()), json.dumps(open(pro, encoding="utf-8").read() if os.path.exists(pro) else None), json.dumps(re.sub(r"\.kicad_pcb$", "", os.path.basename(pcb))))
+        prepare_acceptance(pg, tag, step, js, open(a.accept[1], encoding="utf-8").read(), dict(x.split("=", 1) for x in a.accept_dismiss), os.path.basename(pcb).split(".")[0].split(" ")[0].lower())
     for e in errs:
         (notes if "Failed to load resource" in e else problems).append(f"{tag}: {e}")
 

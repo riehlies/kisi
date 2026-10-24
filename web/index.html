@@ -264,11 +264,12 @@
       <section class="card prep-card" aria-labelledby="h-prep">
         <h2 id="h-prep">Prepare the board <em id="prep-cfg"></em></h2>
         <div class="prep-ready" id="prep-ready" role="group" aria-label="Readiness per category"></div>
-        <p class="note">What the board file lacks, from <code>kisi gaps</code>, per category. Enter the simple values, each with its source – one draft for all three tabs. The KiCad files are never changed. <span id="prep-busy" hidden>Updating…</span></p>
+        <p class="note">What the board file lacks, from <code>kisi gaps</code>, per category, and everything the board's kisi.json holds. Enter the simple values, each with its source – one draft for all three tabs, kept in this browser until you save or discard it. The KiCad files are never changed. <span id="prep-busy" hidden>Updating…</span></p>
         <div class="prep-draft">
           <span class="note" id="prep-draft"></span>
-          <div class="prep-row"><select id="prep-scope" aria-label="what to save"></select><button class="btn small primary" id="prep-save">Save kisi.json</button></div>
+          <div class="prep-row"><select id="prep-scope" aria-label="what to save"></select><button class="btn small primary" id="prep-save">Save kisi.json</button><button class="btn small" id="prep-discard" hidden title="back to the loaded file">Discard draft</button></div>
           <span class="note" id="prep-save-note"></span>
+          <details class="prep-notes"><summary>Notes in the file <em id="prep-notes-n"></em></summary><textarea id="prep-notes" rows="4" aria-label="notes, one per line" placeholder="one note per line: the supply case, what is open, …"></textarea></details>
         </div>
       </section>
       <section class="card" aria-labelledby="h-prep-check"><h2 id="h-prep-check">Check <em id="prep-check-sum"></em></h2><ul class="prep-msgs" id="prep-msgs"></ul></section>

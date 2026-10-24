@@ -655,6 +655,9 @@ fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem,
             if let Some(mc) = row.mode_conversion_db {
                 j["mode_conversion_db"] = json!(mc);
             }
+            if let Some(w) = crate::via::open_pairs_line(&p.board, &row.open_vias, rp.via_cavity && rp.via_returns) {
+                j["via_warning"] = json!(w);
+            }
             j["metrics"] = json!(m);
             (v.status, j)
         }
@@ -681,6 +684,9 @@ fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem,
                 "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m});
             if let Some(mc) = row.mode_conversion_db {
                 j["mode_conversion_db"] = json!(mc);
+            }
+            if let Some(w) = crate::via::open_pairs_line(&p.board, &row.open_vias, rp.via_cavity && rp.via_returns) {
+                j["via_warning"] = json!(w);
             }
             (v.status, j)
         }
@@ -739,7 +745,9 @@ pub fn channel_check_merge(p: &Project, profiles: &Profiles, assign: &HashMap<St
 fn check_result(p: &Project, mut rows: Vec<(Status, Value)>, skipped_unused: usize, rp: &RfParams) -> Value {
     rows.sort_by(|a, b| a.0.cmp(&b.0));
     let count = |s: Status| rows.iter().filter(|r| r.0 == s).count();
-    json!({
+    // vias across a GND/supply plane pair no return via bridges, also of rows not shown
+    let via_warnings: Vec<String> = rows.iter().filter_map(|r| Some(format!("{}: {}", r.1["lane"].as_str().or(r.1["net"].as_str()).unwrap_or("?"), r.1["via_warning"].as_str()?))).collect();
+    let mut v = json!({
         "summary": {"green": count(Status::Green), "yellow": count(Status::Yellow), "red": count(Status::Red)},
         "variant": p.variant.summary(),
         "config": p.config_summary(),
@@ -747,7 +755,11 @@ fn check_result(p: &Project, mut rows: Vec<(Status, Value)>, skipped_unused: usi
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
         "field_solver": p.field_summary(),
         "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 × Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces – an estimate). Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.{}{}", p.models(), if rp.via_cavity { " Vias: plane pairs as finite cavities (--via-cavity, experimental) – board edges, stitching vias, capacitors between the planes with estimated parasitics (data/components.json)." } else { "" }, if rp.via_returns { " Vias: return groups per plane pair (--via-returns, experimental) – a return via shorts only the plane pairs whose two planes it joins and crosses supply planes as a floating return; capacitors between supply and ground planes within 3 mm with estimated parasitics (data/components.json)." } else { "" })
-    })
+    });
+    if !via_warnings.is_empty() {
+        v["via_warnings"] = json!(via_warnings);
+    }
+    v
 }
 
 /// The DC part of the power analysis, shared by `power`, `thermal` and `report`: the tree (PI_REG

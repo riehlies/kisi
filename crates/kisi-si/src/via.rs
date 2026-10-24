@@ -127,6 +127,27 @@ pub struct ViaInfo {
     pub l_ret_nh: f64,
     /// "ladder" (physics-based, `via_pbm`) or "coax" (section stack)
     pub model: &'static str,
+    /// plane pairs of two nets (GND/supply) in the via's path that no return via within 3 mm joins
+    /// or bridges (`open_pairs`): the return current crosses the pair's cavity
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub open_pairs: Vec<OpenPair>,
+    /// plane pairs of two nets in the via's path (open or not)
+    #[serde(skip)]
+    pub two_net_pairs: usize,
+}
+
+/// A plane pair of two nets (a GND and a supply plane) in a via's path that no return via joins
+/// or bridges (validation/fdtd/BOARD_RETURNS.md): no via within 3 mm joins both planes, nor
+/// planes above and below the pair. The ladder before return groups shorts such a pair with the
+/// GND vias and calls the transition nearly ideal, while the board's plane cavity can resonate.
+#[derive(Debug, Clone, Serialize)]
+pub struct OpenPair {
+    /// copper layers of the two planes (upper first)
+    pub layers: [u16; 2],
+    /// their nets
+    pub nets: [u32; 2],
+    /// capacitors between the two nets within 3 mm of the via
+    pub caps: usize,
 }
 
 /// Opening around `at` in the plane copper of `layer`: (radius mm, net) of the
@@ -351,14 +372,7 @@ fn copper_z(su: &crate::board::Stackup) -> Vec<f64> {
 /// only to such a pour is not taken.
 #[allow(clippy::too_many_arguments)]
 pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear: &[Option<(f64, u32)>], z: &[f64], groups: bool, sig: [u16; 2]) -> Vec<crate::via_pbm::Post> {
-    let joined = |w: &Via| -> Vec<f64> {
-        (0..clear.len())
-            .filter(|&k| clear[k].is_some() && w.from as usize <= k && k <= w.to as usize)
-            .filter(|&k| !w.backdrill.is_some_and(|(b0, b1)| b0 as usize <= k && k <= b1 as usize))
-            .filter(|&k| sig.contains(&(k as u16)) || (clear[k].is_some_and(|c| c.1 == w.net) && joined_to_fill(board, w.at, w.size / 2.0 + 0.05, k as u16, w.net)))
-            .map(|k| z[k])
-            .collect()
-    };
+    let joined = |w: &Via| post_joins(board, w, clear, z, sig);
     let mut cand: Vec<(f64, &Via)> = board
         .vias
         .iter()
@@ -393,6 +407,132 @@ pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clea
         .take(8)
         .collect();
     rets.into_iter().map(|r| r.1).collect()
+}
+
+/// The heights (`z`) of the via's planes (`clear`) that the return via `w` joins: the plane net at
+/// the signal via on that layer is `w`'s net and a fill of that net reaches `w`'s pad, the layer is
+/// not back-drilled; a pour on one of the signal via's own layers `sig` counts as joined (see
+/// `return_posts`).
+fn post_joins(board: &Board, w: &Via, clear: &[Option<(f64, u32)>], z: &[f64], sig: [u16; 2]) -> Vec<f64> {
+    (0..clear.len())
+        .filter(|&k| clear[k].is_some() && w.from as usize <= k && k <= w.to as usize)
+        .filter(|&k| !w.backdrill.is_some_and(|(b0, b1)| b0 as usize <= k && k <= b1 as usize))
+        .filter(|&k| sig.contains(&(k as u16)) || (clear[k].is_some_and(|c| c.1 == w.net) && joined_to_fill(board, w.at, w.size / 2.0 + 0.05, k as u16, w.net)))
+        .map(|k| z[k])
+        .collect()
+}
+
+/// The plane pairs of two nets between the via's layers `lo` and `hi` (its path) that no return
+/// via joins or bridges (`OpenPair`), with the return vias as the ladder with return groups takes
+/// them (`return_posts`), and the number of plane pairs of two nets in the path. Cheap when the
+/// path crosses no pair of two nets: the return vias' joins are only computed for vias that do,
+/// nearest first, until every pair is bridged.
+#[allow(clippy::too_many_arguments)]
+pub fn open_pairs(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear: &[Option<(f64, u32)>], lo: u16, hi: u16, sig: [u16; 2]) -> (usize, Vec<OpenPair>) {
+    let plane_k: Vec<usize> = (0..clear.len()).filter(|&k| clear[k].is_some()).collect();
+    let pairs: Vec<(usize, usize)> = plane_k
+        .windows(2)
+        .filter(|w| w[0] >= lo as usize && w[1] <= hi as usize)
+        .filter(|w| clear[w[0]].map(|c| c.1) != clear[w[1]].map(|c| c.1))
+        .map(|w| (w[0], w[1]))
+        .collect();
+    let n_pairs = pairs.len();
+    if pairs.is_empty() {
+        return (0, vec![]);
+    }
+    let z = copper_z(board.stackup());
+    // the return vias as `return_posts` takes them (the nearest 8 within 3 mm that join one of the
+    // planes), their joins computed lazily: most pairs are bridged by the nearest one
+    let mut cand: Vec<(f64, &Via)> = board
+        .vias
+        .iter()
+        .filter(|w| w.net != net && Some(w.net) != partner && w.net != 0)
+        .filter(|w| board.plane_net.get(w.net as usize).copied().unwrap_or(false))
+        .map(|w| (geom::len(geom::sub(w.at, v.at)), w))
+        .filter(|&(d, _)| d > 0.01 && d < 3.0)
+        .collect();
+    cand.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    let mut open = pairs;
+    let mut taken = 0;
+    for (_, w) in cand {
+        if open.is_empty() || taken == 8 {
+            break;
+        }
+        let j = post_joins(board, w, clear, &z, sig);
+        if !j.iter().any(|&zj| !sig.iter().any(|&k| (z[k as usize] - zj).abs() < 1e-9)) {
+            continue;
+        }
+        taken += 1;
+        let p = crate::via_pbm::Post { dx: 0.0, dy: 0.0, r: 0.1, z0: z[w.to as usize], z1: z[w.from as usize], joins: Some(j), open_r: vec![] };
+        open.retain(|&(ka, kb)| !matches!(p.role(z[ka], z[kb]), crate::via_pbm::Role::Short | crate::via_pbm::Role::Float(..)));
+    }
+    if open.is_empty() {
+        return (n_pairs, vec![]);
+    }
+    let caps = cap_posts(board, v.at, &plane_k, clear, &z);
+    let open = open
+        .into_iter()
+        .map(|(ka, kb)| OpenPair {
+            layers: [ka as u16, kb as u16],
+            nets: [clear[ka].unwrap().1, clear[kb].unwrap().1],
+            caps: caps.iter().filter(|c| (c.z_top - z[ka]).abs() < 1e-6 && (c.z_bot - z[kb]).abs() < 1e-6).count(),
+        })
+        .collect();
+    (n_pairs, open)
+}
+
+/// One line for a channel's warnings about a via with open plane pairs (`ViaInfo::open_pairs`);
+/// `modelled`: the via model has return groups and finite cavities (`--via-returns --via-cavity`).
+pub fn open_pair_warning(board: &Board, info: &ViaInfo, modelled: bool) -> Option<String> {
+    if info.open_pairs.is_empty() {
+        return None;
+    }
+    let su = board.stackup();
+    let ln = |k: u16| su.copper.get(k as usize).map_or(format!("L{k}"), |c| c.name.clone());
+    let pairs: Vec<String> = info
+        .open_pairs
+        .iter()
+        .map(|o| {
+            let caps = if o.caps > 0 { format!(", {} capacitor(s) within 3 mm", o.caps) } else { String::new() };
+            format!("{}/{} ({}–{}{caps})", board.net_name(o.nets[0]), board.net_name(o.nets[1]), ln(o.layers[0]), ln(o.layers[1]))
+        })
+        .collect();
+    let what = if modelled {
+        "modelled with return groups and finite cavities (experimental)"
+    } else {
+        "the via model counts the GND vias as its return and may show the transition as nearly ideal while the board resonates (estimate); add a stitching via or a decoupling capacitor next to the via, or check with --via-cavity --via-returns"
+    };
+    let pair = if info.pitch_mm.is_some() { " (a pair: its partner via carries the differential return, so mainly the common mode is affected)" } else { "" };
+    Some(format!(
+        "via at ({:.2}, {:.2}) mm {} → {} crosses the plane pair {} that no via within 3 mm joins or bridges: its return current crosses the plane cavity{pair} – {what}",
+        info.at[0],
+        info.at[1],
+        ln(info.layer_in),
+        ln(info.layer_out),
+        pairs.join(", ")
+    ))
+}
+
+/// One line for a check row about the vias of its channel with open plane pairs
+/// (`ViaInfo::open_pairs`), None without such vias; `modelled` as in `open_pair_warning`.
+pub fn open_pairs_line(board: &Board, vias: &[ViaInfo], modelled: bool) -> Option<String> {
+    if vias.is_empty() {
+        return None;
+    }
+    let su = board.stackup();
+    let ln = |k: u16| su.copper.get(k as usize).map_or(format!("L{k}"), |c| c.name.clone());
+    let mut seen: Vec<P> = vec![];
+    let mut items: Vec<String> = vec![];
+    for v in vias {
+        if seen.iter().any(|s| geom::len(geom::sub(*s, v.at)) < 0.01) {
+            continue;
+        }
+        seen.push(v.at);
+        let pairs: Vec<String> = v.open_pairs.iter().map(|o| format!("{}/{} {}–{}", board.net_name(o.nets[0]), board.net_name(o.nets[1]), ln(o.layers[0]), ln(o.layers[1]))).collect();
+        items.push(format!("({:.2}, {:.2}) {}→{} across {}", v.at[0], v.at[1], ln(v.layer_in), ln(v.layer_out), pairs.join(", ")));
+    }
+    let tail = if modelled { "modelled with return groups and finite cavities (experimental)" } else { "the via model may show these transitions as nearly ideal while the board resonates (estimate); add a stitching via or a decoupling capacitor next to the via, or check with --via-cavity --via-returns" };
+    Some(format!("{} via(s) cross a GND/supply plane pair that no via within 3 mm joins or bridges: {} – {tail}", items.len(), items.join("; ")))
 }
 
 /// The return group of every plane pair (neighbouring planes) of a via with return groups: layers,
@@ -929,7 +1069,7 @@ pub fn build(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16) -> (ViaModel, ViaInfo
         (l / c).sqrt()
     };
     let rs: Vec<f64> = (lo..=hi).filter_map(|k| clear[k as usize].map(|c| c.0)).collect();
-    let info = ViaInfo {
+    let mut info = ViaInfo {
         at: v.at,
         layer_in: l_in,
         layer_out: l_out,
@@ -946,8 +1086,10 @@ pub fn build(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16) -> (ViaModel, ViaInfo
         return_kind,
         l_ret_nh: l_ret * 1e9,
         model: "coax",
+        open_pairs: vec![],
+        two_net_pairs: 0,
     };
-    let mut info = info;
+    (info.two_net_pairs, info.open_pairs) = open_pairs(board, v, ctx.net, ctx.partner, &clear, lo, hi, [l_in, l_out]);
     let pbm = ladder(ctx, v, l_in, l_out, &clear, partner_via.map(|p| p.1)).map(Box::new);
     if let Some(p) = &pbm {
         info.model = "ladder";
@@ -967,6 +1109,84 @@ pub fn build(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16) -> (ViaModel, ViaInfo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A plane fill (−10…10 mm) with round holes, fractured as KiCad writes it: each hole joined by
+    /// a cut to the bottom edge (holes at y ≤ 0) or the top edge (KiCad's y points down: mirrored).
+    fn fill(net: u32, name: &str, layer: &str, holes: &[(f64, f64, f64)]) -> String {
+        let ring = |h: &(f64, f64, f64), top: bool| -> Vec<(f64, f64)> {
+            let n = 24;
+            let k0 = if top { n / 4 } else { 3 * n / 4 };
+            (0..=n).map(|k| {
+                let a = 2.0 * PI * ((k0 + n - k) % n) as f64 / n as f64;
+                (h.0 + h.2 * a.cos(), h.1 + h.2 * a.sin())
+            }).collect()
+        };
+        let mut low: Vec<&(f64, f64, f64)> = holes.iter().filter(|h| h.1 <= 0.0).collect();
+        let mut high: Vec<&(f64, f64, f64)> = holes.iter().filter(|h| h.1 > 0.0).collect();
+        low.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        high.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        let mut pts = vec![(-10.0, -10.0)];
+        for h in low {
+            pts.push((h.0, -10.0));
+            pts.extend(ring(h, false));
+            pts.push((h.0, -10.0));
+        }
+        pts.extend([(10.0, -10.0), (10.0, 10.0)]);
+        for h in high {
+            pts.push((h.0, 10.0));
+            pts.extend(ring(h, true));
+            pts.push((h.0, 10.0));
+        }
+        pts.push((-10.0, 10.0));
+        let xy: Vec<String> = pts.iter().map(|p| format!("(xy {:.4} {:.4})", p.0, -p.1)).collect();
+        format!("  (zone (net {net}) (net_name \"{name}\") (layer \"{layer}\") (filled_polygon (layer \"{layer}\") (pts {})))\n", xy.join(" "))
+    }
+
+    /// The 4-layer board of the 3D case RG_s4_pwr_n4 (BOARD_RETURNS.md): In1 GND, In2 PWR, a via
+    /// F.Cu → B.Cu whose B.Cu trace refers to the PWR plane, four GND vias at 1 mm that pass the
+    /// PWR plane through openings (`joined`: they join it, i.e. it is a GND plane), optionally a
+    /// capacitor between the planes 2 mm away.
+    fn rg_board(pwr: bool, cap: bool) -> Board {
+        let g: Vec<(f64, f64)> = (0..4).map(|k| (std::f64::consts::FRAC_1_SQRT_2 * if k % 2 == 0 { 1.0 } else { -1.0 }, std::f64::consts::FRAC_1_SQRT_2 * if k < 2 { 1.0 } else { -1.0 })).collect();
+        let mut t = String::from("(kicad_pcb (version 20240108) (generator \"test\")\n  (layers (0 \"F.Cu\" signal) (1 \"In1.Cu\" signal) (2 \"In2.Cu\" signal) (31 \"B.Cu\" signal))\n  (setup (stackup (layer \"F.Cu\" (type \"copper\") (thickness 0.035)) (layer \"d1\" (type \"core\") (thickness 0.2) (epsilon_r 4.3) (loss_tangent 0.02)) (layer \"In1.Cu\" (type \"copper\") (thickness 0.035)) (layer \"d2\" (type \"core\") (thickness 1.2) (epsilon_r 4.5) (loss_tangent 0.02)) (layer \"In2.Cu\" (type \"copper\") (thickness 0.035)) (layer \"d3\" (type \"core\") (thickness 0.2) (epsilon_r 4.3) (loss_tangent 0.02)) (layer \"B.Cu\" (type \"copper\") (thickness 0.035))))\n  (net 0 \"\") (net 1 \"SIG\") (net 2 \"GND\") (net 3 \"PWR\")\n");
+        t += "  (segment (start -5 0) (end 0 0) (width 0.35) (layer \"F.Cu\") (net 1))\n  (segment (start 0 0) (end 5 0) (width 0.35) (layer \"B.Cu\") (net 1))\n";
+        t += "  (via (at 0 0) (size 0.6) (drill 0.3) (layers \"F.Cu\" \"B.Cu\") (net 1))\n";
+        for p in &g {
+            t += &format!("  (via (at {:.4} {:.4}) (size 0.6) (drill 0.3) (layers \"F.Cu\" \"B.Cu\") (net 2))\n", p.0, -p.1);
+        }
+        t += &fill(2, "GND", "In1.Cu", &[(0.0, 0.0, 0.4)]);
+        let mut holes = vec![(0.0, 0.0, 0.4)];
+        if pwr {
+            holes.extend(g.iter().map(|p| (p.0, p.1, 0.35)));
+        }
+        t += &fill(if pwr { 3 } else { 2 }, if pwr { "PWR" } else { "GND" }, "In2.Cu", &holes);
+        if cap {
+            t += "  (footprint \"C_0402\" (layer \"F.Cu\") (at 0 -2) (property \"Reference\" \"C1\") (property \"Value\" \"100n\")\n    (pad \"1\" smd rect (at -0.48 0) (size 0.56 0.62) (layers \"F.Cu\") (net 2 \"GND\"))\n    (pad \"2\" smd rect (at 0.48 0) (size 0.56 0.62) (layers \"F.Cu\") (net 3 \"PWR\")))\n";
+        }
+        t += ")\n";
+        crate::board::load_pcb(&t).unwrap()
+    }
+
+    #[test]
+    fn open_plane_pair_warning() {
+        for (pwr, cap, open) in [(true, false, true), (true, true, true), (false, false, false)] {
+            let b = rg_board(pwr, cap);
+            let sig = b.nets.iter().position(|n| n == "SIG").unwrap() as u32;
+            let v = b.vias.iter().find(|v| v.net == sig).unwrap();
+            let ctx = ViaCtx { board: &b, net: sig, partner: None, refs_in: vec![1], refs_out: vec![2], backdrill: None, feeds: None, sigma: None, cavity: false, returns: false };
+            let (_, info) = build(&ctx, v, 0, 3);
+            assert_eq!(!info.open_pairs.is_empty(), open, "pwr {pwr} cap {cap}: {:?}", info.open_pairs);
+            assert_eq!(info.two_net_pairs, usize::from(pwr));
+            let w = open_pair_warning(&b, &info, false);
+            assert_eq!(w.is_some(), open);
+            if open {
+                let o = &info.open_pairs[0];
+                assert_eq!((o.layers, o.caps), ([1, 2], usize::from(cap)));
+                assert!(w.unwrap().contains("GND/PWR (In1.Cu–In2.Cu"));
+                assert!(open_pairs_line(&b, std::slice::from_ref(&info), false).unwrap().starts_with("1 via(s) cross a GND/supply plane pair"));
+            }
+        }
+    }
 
     #[test]
     fn coax_section() {

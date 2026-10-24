@@ -496,3 +496,12 @@ plots `results/board_returns/`). The model is the option `--via-returns` (off by
 - Default path unchanged: `compare_kisi.py` identical to `results/kisi_models.json` (56 rows), also
   with `KISI_VIA_RETURNS=1`; `check --all` of both boards byte-identical; with the option no verdict
   changes, ThunderScope 2.9 → 4.1 s, LibreVNA 1.0 → 1.15 s.
+
+### The warning in the default path (Block 5)
+- Channel vias whose path crosses a GND/supply plane pair that no return via within 3 mm joins or
+  bridges (`via::open_pairs`) get a warning in `net`, the viewer's lane/net detail and `check`
+  (`via_warning`, `via_warnings`); the numbers do not change (`check --all` of both boards
+  byte-identical to the merge with main). Example boards: no such via (both boards); the old
+  "reference changes … capacitors" warning dropped on two LibreVNA nets whose pairs are bridged.
+  `RG_s4_pwr_n4` / `_cap2`: warned (with one capacitor); `RG_ts6_sw_pwr` (bridged), `RG_ts6_sw_gnd`,
+  `R_s4_rect_n4`: not. Unit test `via::tests::open_plane_pair_warning`. BOARD_RETURNS.md section 8.

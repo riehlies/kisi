@@ -6,7 +6,7 @@ antipads cut in (fractured polygons, the cut runs radially from each hole to the
 signal vias with pads only where the 3D model has them (remove_unused_layers, no end layers), back-drilling as a KiCad 10 `backdrill`,
 GND vias, traces and one pad at every port: U1 at port 1 (start), J1 at port 2. Pairs: nets D0_P /
 D0_N, U1 / J1 carry both. Capacitors (group D) are not modelled by kisi's via model and are left
-out.
+out; capacitors between two planes (`meta.caps`, the finite-board cases) become 0402 parts on F.Cu.
 
 usage: python3 kisi_board.py case.json out.kicad_pcb
 """
@@ -144,6 +144,15 @@ def main():
             lb = n - 1
         size = 2 * max(v.get("pad_r", 0), v["r"] + 0.05)
         out.append(f'  (via (at {v["x"]:.4f} {-v["y"]:.4f}) (size {size:.4f}) (drill {2 * v["r"]:.4f}) (layers "{names[la]}" "{names[lb]}") (remove_unused_layers yes) (keep_end_layers no) (net {nid[net]}){bd})')
+    # capacitors between two planes (meta.caps of the resonance and return cases): a 0402 part on
+    # F.Cu with one pad on each plane net (the via model counts them; their parasitics come from
+    # data/components.json, not from the 3D case)
+    na, nb = ("GND", "PWR") if any(s.get("net") == "PWR" for s in c["sheets"]) else ("GND", "GND")
+    for i, cp in enumerate(m.get("caps", [])):
+        x, y = cp["at"]
+        out.append(f'  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu") (at {x:.4f} {-y:.4f}) (property "Reference" "C{i + 1}") (property "Value" "{cp["c"] * 1e9:g}n")')
+        out.append(f'    (pad "1" smd rect (at -0.48 0) (size 0.56 0.62) (layers "F.Cu") (net {nid[na]} "{na}"))')
+        out.append(f'    (pad "2" smd rect (at 0.48 0) (size 0.56 0.62) (layers "F.Cu") (net {nid[nb]} "{nb}")))')
     out.append(")")
     open(sys.argv[2], "w").write("\n".join(out) + "\n")
 

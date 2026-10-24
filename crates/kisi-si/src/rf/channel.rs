@@ -941,6 +941,13 @@ impl<'a> Build<'a> {
                             self.warnings.push(note.into());
                         }
                     }
+                    // a GND/supply plane pair no return via bridges (default path, BOARD_RETURNS.md)
+                    let modelled = vm.pbm.as_ref().is_some_and(|p| p.has_cavity()) && crate::via::returns_on(&ctx);
+                    if let Some(w) = crate::via::open_pair_warning(board, &info, modelled) {
+                        if !self.warnings.contains(&w) {
+                            self.warnings.push(w);
+                        }
+                    }
                     let pair_partner = self.partner_of.get(net as usize).copied().flatten().filter(|_| self.pair);
                     let vm_pair = pair_partner.map(|pn| crate::via::build(&crate::via::ViaCtx { partner: Some(pn), ..ctx }, v, pl, tr.layer).0);
                     let (mut lt, mut ct) = (0.0, 0.0);
@@ -1179,7 +1186,10 @@ impl<'a> Build<'a> {
             }
             match v.return_kind {
                 "missing" => self.warnings.push(format!("via at ({:.2}, {:.2}) mm: reference plane changes, no stitching via within 5 mm", v.at[0], v.at[1])),
-                "decap" => self.warnings.push(format!("via at ({:.2}, {:.2}) mm: reference changes to another net, return current only through capacitors", v.at[0], v.at[1])),
+                // a change to a plane of another net: an open plane pair of two nets in the path
+                // has the warning of `via::open_pair_warning`; where return vias join or bridge
+                // every such pair the return current has a via (BOARD_RETURNS.md)
+                "decap" if v.two_net_pairs == 0 => self.warnings.push(format!("via at ({:.2}, {:.2}) mm: reference changes to another net, return current only through capacitors", v.at[0], v.at[1])),
                 _ => {}
             }
         }

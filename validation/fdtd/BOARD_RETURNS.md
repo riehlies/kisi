@@ -351,10 +351,50 @@ Kept as an option (`--via-returns`, off by default), for these reasons:
 Switch it on by default when either the Block 2 ladder errors (pours on the via's signal layers,
 series inductance) are fixed – then the floating-plane loss no longer adds to an excess – or a board
 with unbridged GND/supply transitions shows a verdict change that 3D confirms (Block 3's criterion).
-A cheap intermediate step: warn in the default path when a via's path crosses an open GND/supply
-pair (the survey already finds them), without changing the numbers.
+The cheap intermediate step – a warning in the default path when a via's path crosses an open
+GND/supply pair, without changing the numbers – is section 8.
 
-## 8. Limits and open points
+## 8. The warning in the default path (Block 5)
+
+Without any option, every channel via now checks the plane pairs of two nets (GND/supply) in its
+path (`via::open_pairs`): a pair is *open* when none of the return vias the ladder with return
+groups would take (plane-net vias within 3 mm, the nearest 8 that join one of the via's planes)
+joins both planes (short) or planes above and below it (floating return) – the case where the ladder
+before return groups calls the via nearly ideal while the board resonates (section 5.1). The joins
+are computed lazily, nearest return first, and only for vias whose path crosses a pair of two nets
+(ThunderScope `check --all`: no measurable cost). The numbers do not change.
+
+* `net` and the viewer's lane and net detail: one warning per such via in the channel's warnings,
+  with the pair, its layers, the capacitors between the two nets within 3 mm, the hint (a stitching
+  via or a decoupling capacitor next to the via, or `--via-cavity --via-returns`) and "estimate";
+  for a via of a pair it adds that mainly the common mode is affected. With both options on it says
+  that the via is modelled with return groups and finite cavities. The viewer's via table marks the
+  pair as "not bridged".
+* `check`: `via_warning` on the row (one line, all such vias of the lane) and `via_warnings` at the
+  top (also for rows that are not shown, e.g. green ones).
+* The old warning "reference changes to another net, return current only through capacitors" (a
+  change of the trace's reference to a plane of another net) is dropped where the via's path has
+  plane pairs of two nets and every one of them is joined or bridged by a return via: there the
+  return current has a via (3D: ≤ 0.05 dB below 12 GHz, section 5.2). It stays where the path has
+  no such pair.
+
+| board / case | vias with an open pair | warnings changed in `net` (all nets of the check) |
+|---|---|---|
+| ThunderScope Rev5.3 (40 lane nets) | none | none |
+| LibreVNA (55 lane nets) | none | 2 old "reference changes … capacitors" warnings dropped (PORT1LO2, REFLO2: the In4 → F.Cu vias across the +5V/+6V islands, bridged by GND vias) |
+| `RG_s4_pwr_n4` (`kisi_board.py`) | the via, GND/PWR In1–In2 | the new warning instead of the old one |
+| `RG_s4_pwr_n4_cap2` | the same, "1 capacitor(s) within 3 mm" | the same |
+| `RG_ts6_sw_pwr` (In2 bridged) | none | the old warning dropped |
+| `RG_ts6_sw_gnd`, `R_s4_rect_n4` | none | none |
+
+On `RG_s4_pwr_n4` with a 50 Ω target (se50) the row is green in the default path (insertion loss
+−0.03 dB at Nyquist) and carries the warning; with `--via-cavity --via-returns` it is yellow
+(−0.30 dB), as the 3D result with its dips suggests. `kisi_board.py` now writes the capacitors of
+the finite-board cases (`meta.caps`) as 0402 parts between the plane nets, so the survey sees them.
+Unit test: `via::tests::open_plane_pair_warning` (the board of `RG_s4_pwr_n4` with and without the
+capacitor, and with L3 a GND plane).
+
+## 9. Limits and open points
 
 * **Floating-plane loss 1.3–1.6× too large** on REFINOUT2 (and 2× in the cavity form of the
   ThunderScope stack at 16 GHz); within 0.02 dB on the synthetic ThunderScope stack. Not separated

@@ -12,6 +12,7 @@ pub use kisi_board::{board, geom, num, package};
 
 pub mod analytic;
 pub mod extract;
+pub mod export;
 pub mod eye;
 pub mod lanenet;
 pub mod profile;

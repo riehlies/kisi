@@ -1,0 +1,1191 @@
+{
+ "board": "VNA",
+ "config": {
+  "entries": 68,
+  "errors": [],
+  "ok": true,
+  "warnings": []
+ },
+ "gaps": [
+  {
+   "affects": [
+    "impedance check",
+    "channel check",
+    "eye"
+   ],
+   "area": "impedance",
+   "id": "nets-without-target",
+   "issue": "2 routed net(s) look like high-speed interfaces by their name but have no target impedance (their net class has none). Name-based: confirm before acting.",
+   "items": [
+    {
+     "class": "Default",
+     "nets": [
+      {
+       "length_mm": 8.1,
+       "looks_like": "usb2",
+       "net": "USB_DN"
+      },
+      {
+       "length_mm": 8.2,
+       "looks_like": "usb2",
+       "net": "USB_DP"
+      }
+     ]
+    }
+   ],
+   "priority": "high",
+   "where_to_find": "Interface standard or the device datasheets (e.g. 85/90/100 Ω differential). Nets in the class “Default” need their own net class in KiCad first (Board Setup → Net Classes, or net class directives in the schematic) – kisi.json can only set values of existing classes.",
+   "write": {
+    "example": {
+     "diff": true,
+     "profile": "usb2",
+     "source": {
+      "document": "USB 2.0 specification",
+      "kind": "standard",
+      "note": "90 Ω differential"
+     },
+     "target_ohm": 90
+    },
+    "to": "net_classes.<class>"
+   }
+  },
+  {
+   "affects": [
+    "impedance (εr)",
+    "loss and eye (tanδ)"
+   ],
+   "area": "stackup",
+   "id": "stackup-defaults",
+   "issue": "5 dielectric layer(s) carry default or missing material data.",
+   "items": [
+    {
+     "between": "F.Cu / In1.Cu",
+     "epsilon_r": 4.4,
+     "index": 0,
+     "kind": "prepreg",
+     "loss_tangent": 0.02,
+     "material": "7628",
+     "thickness_mm": 0.2104,
+     "why": [
+      "tanδ 0.02 is KiCad's default value"
+     ]
+    },
+    {
+     "between": "In1.Cu / In2.Cu",
+     "epsilon_r": 4.6,
+     "index": 1,
+     "kind": "core",
+     "loss_tangent": 0.02,
+     "material": "FR4",
+     "thickness_mm": 0.4,
+     "why": [
+      "tanδ 0.02 is KiCad's default value"
+     ]
+    },
+    {
+     "between": "In2.Cu / In3.Cu",
+     "epsilon_r": 4.4,
+     "index": 2,
+     "kind": "prepreg",
+     "loss_tangent": 0.02,
+     "material": "7628",
+     "thickness_mm": 0.2028,
+     "why": [
+      "tanδ 0.02 is KiCad's default value"
+     ]
+    },
+    {
+     "between": "In3.Cu / In4.Cu",
+     "epsilon_r": 4.5,
+     "index": 3,
+     "kind": "core",
+     "loss_tangent": 0.02,
+     "material": "FR4",
+     "thickness_mm": 0.4,
+     "why": [
+      "tanδ 0.02 is KiCad's default value",
+      "εr 4.5 is KiCad's default value"
+     ]
+    },
+    {
+     "between": "In4.Cu / B.Cu",
+     "epsilon_r": 4.6,
+     "index": 4,
+     "kind": "prepreg",
+     "loss_tangent": 0.02,
+     "material": "7628",
+     "thickness_mm": 0.2104,
+     "why": [
+      "tanδ 0.02 is KiCad's default value"
+     ]
+    }
+   ],
+   "priority": "medium",
+   "where_to_find": "Laminate datasheet of the named material (εr and tanδ near the signal frequencies, e.g. 1–10 GHz, for the resin content / glass style of this layer), or the fabricator's stackup report. Mark typical values as such.",
+   "write": {
+    "example": {
+     "epsilon_r": 3.65,
+     "index": 0,
+     "loss_tangent": 0.0095,
+     "source": {
+      "document": "laminate datasheet",
+      "kind": "datasheet",
+      "note": "at 10 GHz, typical",
+      "page": "…",
+      "url": "…"
+     }
+    },
+    "to": "stackup.dielectrics[]"
+   }
+  },
+  {
+   "affects": [
+    "channel check",
+    "eye"
+   ],
+   "area": "interfaces",
+   "id": "classes-without-standard",
+   "issue": "1 net class(es) with a target impedance get only a generic profile (no data rate / standard): the channel check uses 1 Gbit/s and generic limits.",
+   "items": [
+    {
+     "class": "RF",
+     "diff": false,
+     "examples": [
+      "/1.LO/LO1_REFC",
+      "/1.LO/LO1_RFOUTB_N",
+      "/1.LO/LO1_RFOUTB_N_RC",
+      "/2.LO + Ref Clock/CLKIN"
+     ],
+     "nets": 134,
+     "profile_now": "se50",
+     "target_ohm": 50.0
+    }
+   ],
+   "priority": "medium",
+   "where_to_find": "What runs on these nets: schematic (bus names, the devices at the ends: `kisi interfaces`) and the device datasheets (interface, data rate). Available profiles: `kisi profiles`.",
+   "write": {
+    "example": {
+     "profile": "lvds",
+     "source": {
+      "document": "ADC datasheet",
+      "kind": "datasheet",
+      "note": "LVDS outputs, 1 Gbit/s per lane",
+      "page": "…"
+     }
+    },
+    "to": "net_classes.<class>.profile"
+   }
+  },
+  {
+   "affects": [
+    "power budget",
+    "DC IR drop",
+    "PDN"
+   ],
+   "area": "power",
+   "id": "rails-without-voltage",
+   "issue": "1 supply rail(s) without a known voltage (found by their name, a pin name such as VBUS, VSYS, VBAT, VDD, or a field): kisi needs the voltage to put their loads and sources into the power tree, the budget and the IR drop. Found by name: confirm that each one is a supply.",
+   "items": [
+    {
+     "components": 2,
+     "found_by": [
+      "pin J4 VBUS"
+     ],
+     "ics": [],
+     "rail": "USB_POWER",
+     "write": "USB_POWER@<V>V where a PI_REG entry names it (regulator output or supply input)"
+    }
+   ],
+   "priority": "medium",
+   "where_to_find": "Schematic: the regulator, load switch or connector that feeds the rail and its output voltage (regulator datasheet / voltage setting, USB VBUS 5 V, battery nominal voltage). A rail behind a ferrite, a 0 Ω link or a shunt takes the voltage of the rail before it.",
+   "write": {
+    "example": {
+     "name": "PI_REG",
+     "ref": "U2",
+     "source": {
+      "document": "PMIC datasheet",
+      "kind": "datasheet",
+      "note": "VSYS follows VBUS while USB is present"
+     },
+     "value": "VBUS > VSYS@5V pass"
+    },
+    "note": "Write the voltage where the rail appears in PI_REG: as the output of the part that feeds it (`+5V > VSYS@5V buck 90%`) or as a supply input (`VBAT@3.7V input`). Behind a ferrite, 0 Ω link or shunt use a pass element (`+3V3 > IMU_VDD pass r=0.5`: the voltage carries over; items[].write suggests it when kisi finds such a part). Net names with spaces in double quotes (`\"/Power/VDD CORE\"@0.9V`). Without a power tree: PI_SOURCE `NAME=<V>V` on the source part. Nets that are not supplies: ignore.",
+    "to": "fields[] – the rail with its voltage as NAME@<V>V in a PI_REG entry"
+   }
+  },
+  {
+   "affects": [
+    "DC IR drop",
+    "power budget"
+   ],
+   "area": "power",
+   "id": "rails-without-source",
+   "issue": "6 supply rail(s) have no source (PI_SOURCE on a connector/regulator output, or PI_REG): no IR drop for them.",
+   "items": [
+    {
+     "components": 2,
+     "rail": "/Attenuator Amp Switches/3V3_HBLB_AMP_L",
+     "voltage": 3.3
+    },
+    {
+     "components": 3,
+     "rail": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
+     "voltage": 3.3
+    },
+    {
+     "components": 3,
+     "rail": "/Attenuator Amp Switches/3V3_P12_SWITCH",
+     "voltage": 3.3
+    },
+    {
+     "components": 3,
+     "rail": "/Attenuator Amp Switches/3V3_P1_SWITCH",
+     "voltage": 3.3
+    },
+    {
+     "components": 3,
+     "rail": "/Attenuator Amp Switches/3V3_P2_SWITCH",
+     "voltage": 3.3
+    },
+    {
+     "components": 3,
+     "rail": "/Power Supply/USB_5V",
+     "voltage": 5.0
+    }
+   ],
+   "priority": "medium",
+   "where_to_find": "Schematic / netlist: which connector or regulator feeds the rail (the pad nets of the regulator show input and output).",
+   "write": {
+    "example": {
+     "name": "PI_REG",
+     "ref": "J1",
+     "source": {
+      "kind": "assumption",
+      "note": "barrel jack J1 feeds +5V (schematic / netlist)"
+     },
+     "value": "+5V input"
+    },
+    "note": "supply inputs: PI_REG '<rail> input' (counts in the power budget and as IR-drop source); regulator outputs: PI_REG on the regulator (add out=<part> when the output current leaves through an inductor or diode); PI_SOURCE only marks IR-drop source pads without a power tree",
+    "to": "fields[]"
+   }
+  },
+  {
+   "affects": [
+    "DC IR drop",
+    "power budget",
+    "PDN target impedance"
+   ],
+   "area": "power",
+   "id": "ic-loads",
+   "issue": "6 IC(s) on supply rails have no load current (field PI_LOAD): their current is missing from IR drop and budget.",
+   "items": [
+    {
+     "rails": [
+      "3V3_SRC_2"
+     ],
+     "ref": "IC11",
+     "value": "RFSW6042"
+    },
+    {
+     "rails": [
+      "3V3_SRC_2"
+     ],
+     "ref": "IC12",
+     "value": "RFSW6042"
+    },
+    {
+     "rails": [
+      "3V3_HBLB_SWITCH"
+     ],
+     "ref": "IC13",
+     "value": "QPC6324"
+    },
+    {
+     "rails": [
+      "3V3_P12_SWITCH"
+     ],
+     "ref": "IC16",
+     "value": "QPC6324"
+    },
+    {
+     "rails": [
+      "3V3_P2_SWITCH"
+     ],
+     "ref": "IC17",
+     "value": "QPC6324"
+    },
+    {
+     "rails": [
+      "3V3_P1_SWITCH"
+     ],
+     "ref": "IC18",
+     "value": "QPC6324"
+    }
+   ],
+   "priority": "medium",
+   "where_to_find": "Device datasheets (look up the mpn when an item has one: the Value field is not always the part number): supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.",
+   "write": {
+    "example": {
+     "name": "PI_LOAD",
+     "ref": "IC11",
+     "source": {
+      "kind": "datasheet",
+      "note": "typical, all channels active",
+      "page": "…",
+      "url": "…"
+     },
+     "value": "+3V3=120mA"
+    },
+    "to": "fields[] (name PI_LOAD)"
+   }
+  },
+  {
+   "affects": [
+    "PDN impedance",
+    "decoupling recommendations"
+   ],
+   "area": "power",
+   "id": "cap-ratings",
+   "issue": "98 decoupling capacitor(s) of 100 nF and more have no rated voltage or dielectric: the DC-bias derating in Z(f) uses an assumed rating.",
+   "items": [
+    {
+     "rail": "Net-(C119-Pad1)",
+     "ref": "C122",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_HBLB_ATT",
+     "ref": "C70",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C209",
+     "value": "100nF"
+    },
+    {
+     "rail": "VREG3V3_SWL",
+     "ref": "C8",
+     "value": "10uF"
+    },
+    {
+     "rail": "Net-(C119-Pad1)",
+     "ref": "C119",
+     "value": "100nF"
+    },
+    {
+     "rail": "+6V",
+     "ref": "C20",
+     "value": "1uF"
+    },
+    {
+     "rail": "3V3_HBLB_AMP",
+     "ref": "C72",
+     "value": "100nF"
+    },
+    {
+     "rail": "VCCINT",
+     "ref": "C216",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC25-OUT)",
+     "ref": "C131",
+     "value": "1uF"
+    },
+    {
+     "rail": "VREG5V{slash}2",
+     "ref": "C23",
+     "value": "4u7F"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C218",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_LO1_2",
+     "ref": "C86",
+     "value": "100nF"
+    },
+    {
+     "rail": "+6V",
+     "ref": "C16",
+     "value": "10uF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C208",
+     "value": "100nF"
+    },
+    {
+     "rail": "VCCINT",
+     "ref": "C7",
+     "value": "10uF"
+    },
+    {
+     "rail": "3V3_CLKGEN",
+     "ref": "C33",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_HBLB_AMP",
+     "ref": "C73",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_SRC_1",
+     "ref": "C56",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC29-VPDT)",
+     "ref": "C145",
+     "value": "1uF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C217",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_HBLB_SWITCH",
+     "ref": "C69",
+     "value": "100nF"
+    },
+    {
+     "rail": "+5V{slash}1",
+     "ref": "C26",
+     "value": "1uF"
+    },
+    {
+     "rail": "+5V",
+     "ref": "C3",
+     "value": "10uF"
+    },
+    {
+     "rail": "3V3_LDO2_LO1",
+     "ref": "C81",
+     "value": "1uF"
+    },
+    {
+     "rail": "+6V",
+     "ref": "C19",
+     "value": "1uF"
+    },
+    {
+     "rail": "3V3_LO1_3",
+     "ref": "C84",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(C190-Pad1)",
+     "ref": "C193",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC23-V_{S+})",
+     "ref": "C115",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_LO1_1",
+     "ref": "C94",
+     "value": "100nF"
+    },
+    {
+     "rail": "+5V{slash}2",
+     "ref": "C27",
+     "value": "1uF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C221",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC22-VCC)",
+     "ref": "C102",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C169",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_LDO2_SRC",
+     "ref": "C52",
+     "value": "1uF"
+    },
+    {
+     "rail": "Net-(C156-Pad1)",
+     "ref": "C159",
+     "value": "100nF"
+    },
+    {
+     "rail": "VREG5V{slash}3",
+     "ref": "C24",
+     "value": "4u7F"
+    },
+    {
+     "rail": "3V3_SRC_1",
+     "ref": "C61",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(C156-Pad1)",
+     "ref": "C156",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C207",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_P2_SWITCH",
+     "ref": "C77",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC22-VCC)",
+     "ref": "C103",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C215",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC36-VCC)",
+     "ref": "C205",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_SRC_2",
+     "ref": "C57",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_SRC_3",
+     "ref": "C55",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C132",
+     "value": "100nF"
+    },
+    {
+     "rail": "3v3_LDO1_SRC",
+     "ref": "C53",
+     "value": "10uF"
+    },
+    {
+     "rail": "Net-(IC25-EN)",
+     "ref": "C129",
+     "value": "1uF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C29",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_LDO1_LO1",
+     "ref": "C82",
+     "value": "10uF"
+    },
+    {
+     "rail": "Net-(C190-Pad1)",
+     "ref": "C190",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_P12_SWITCH",
+     "ref": "C75",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C14",
+     "value": "10uF"
+    },
+    {
+     "rail": "+6V",
+     "ref": "C18",
+     "value": "1uF"
+    },
+    {
+     "rail": "3V3_LO1_1",
+     "ref": "C85",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_CLKGEN",
+     "ref": "C32",
+     "value": "100nF"
+    },
+    {
+     "rail": "+5V",
+     "ref": "C1",
+     "value": "10uF"
+    },
+    {
+     "rail": "VREG5V{slash}4",
+     "ref": "C25",
+     "value": "4u7F"
+    },
+    {
+     "rail": "Net-(IC28-V_{S+})",
+     "ref": "C152",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC36-VCC)",
+     "ref": "C204",
+     "value": "100nF"
+    },
+    {
+     "rail": "VCCINT",
+     "ref": "C10",
+     "value": "10uF"
+    },
+    {
+     "rail": "VCCINT",
+     "ref": "C222",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC32-V_{S+})",
+     "ref": "C181",
+     "value": "100nF"
+    },
+    {
+     "rail": "+5V{slash}4",
+     "ref": "C79",
+     "value": "1uF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C15",
+     "value": "10uF"
+    },
+    {
+     "rail": "Net-(IC34-EN)",
+     "ref": "C195",
+     "value": "1uF"
+    },
+    {
+     "rail": "Net-(IC33-VPDT)",
+     "ref": "C177",
+     "value": "1uF"
+    },
+    {
+     "rail": "+5V{slash}4",
+     "ref": "C78",
+     "value": "10uF"
+    },
+    {
+     "rail": "VCCINT",
+     "ref": "C213",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_LO1_1",
+     "ref": "C91",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C219",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC30-OUT)",
+     "ref": "C168",
+     "value": "1uF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C206",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C31",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC34-OUT)",
+     "ref": "C198",
+     "value": "1uF"
+    },
+    {
+     "rail": "+6V",
+     "ref": "C21",
+     "value": "1uF"
+    },
+    {
+     "rail": "VCCINT",
+     "ref": "C212",
+     "value": "100nF"
+    },
+    {
+     "rail": "VREG3V3_SWL",
+     "ref": "C11",
+     "value": "10uF"
+    },
+    {
+     "rail": "+6V",
+     "ref": "C17",
+     "value": "10uF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C211",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC24-VPDT)",
+     "ref": "C108",
+     "value": "1uF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C214",
+     "value": "100nF"
+    },
+    {
+     "rail": "+5V{slash}4",
+     "ref": "C50",
+     "value": "1uF"
+    },
+    {
+     "rail": "+5V",
+     "ref": "C6",
+     "value": "100nF"
+    },
+    {
+     "rail": "Net-(IC27-VCC)",
+     "ref": "C140",
+     "value": "100nF"
+    },
+    {
+     "rail": "VCCINT",
+     "ref": "C220",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_P1_SWITCH",
+     "ref": "C76",
+     "value": "100nF"
+    },
+    {
+     "rail": "VREG5V{slash}1",
+     "ref": "C22",
+     "value": "4u7F"
+    },
+    {
+     "rail": "Net-(IC30-EN)",
+     "ref": "C166",
+     "value": "1uF"
+    },
+    {
+     "rail": "3V3_SRC_1",
+     "ref": "C64",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C201",
+     "value": "100nF"
+    },
+    {
+     "rail": "+3V3",
+     "ref": "C210",
+     "value": "100nF"
+    },
+    {
+     "rail": "+5V{slash}4",
+     "ref": "C49",
+     "value": "10uF"
+    },
+    {
+     "rail": "3V3_SRC_3",
+     "ref": "C54",
+     "value": "100nF"
+    },
+    {
+     "rail": "3V3_LO1_3",
+     "ref": "C83",
+     "value": "100nF"
+    },
+    {
+     "rail": "+5V",
+     "ref": "C2",
+     "value": "10uF"
+    },
+    {
+     "rail": "+5V{slash}3",
+     "ref": "C28",
+     "value": "1uF"
+    },
+    {
+     "rail": "Net-(IC27-VCC)",
+     "ref": "C139",
+     "value": "100nF"
+    }
+   ],
+   "priority": "low",
+   "where_to_find": "BOM / capacitor datasheet: rated voltage, dielectric (X5R/X7R/C0G), ideally the capacitance at the rail voltage from the vendor's DC-bias curve, ESR and ESL.",
+   "write": {
+    "example": {
+     "name": "PI_CAP",
+     "ref": "C122",
+     "source": {
+      "document": "capacitor datasheet / vendor DC-bias curve",
+      "kind": "datasheet",
+      "note": "capacitance at 3.3 V, 25 °C"
+     },
+     "value": "rated=6.3V X5R c@3.3V=4.1u esl=0.45n"
+    },
+    "to": "fields[] (name PI_CAP) or the KiCad Value field (e.g. 10u 6.3V X5R)"
+   }
+  },
+  {
+   "affects": [
+    "PDN impedance per IC",
+    "filter resonances"
+   ],
+   "area": "power",
+   "id": "bead-ratings",
+   "issue": "32 ferrite bead(s) on supply rails have no impedance rating: the PDN per IC assumes a typical 220 Ω at 100 MHz and 0.1 Ω DC resistance.",
+   "items": [
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "+3V3",
+     "ref": "L26",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "VREG5V{slash}1",
+     "ref": "L6",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC33-VPDT)",
+     "ref": "L59",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC28-V_{S+})",
+     "ref": "L56",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "+3V3",
+     "ref": "L10",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "3V3_LO1_3",
+     "ref": "L65",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(C156-Pad1)",
+     "ref": "L55",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC27-VCC)",
+     "ref": "L57",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "3V3_SRC_3",
+     "ref": "L64",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "VREG5V{slash}2",
+     "ref": "L7",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "+3V3",
+     "ref": "L21",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC29-VPDT)",
+     "ref": "L54",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "+3V3",
+     "ref": "L27",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "3V3_LDO2_LO1",
+     "ref": "L29",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "3V3_P12_SWITCH",
+     "ref": "L25",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "3V3_LDO1_LO1",
+     "ref": "L28",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(C119-Pad1)",
+     "ref": "L16",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC22-VCC)",
+     "ref": "L12",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC25-EN)",
+     "ref": "L13",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC24-VPDT)",
+     "ref": "L17",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC30-EN)",
+     "ref": "L58",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "3V3_LDO2_SRC",
+     "ref": "L20",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "VREG5V{slash}3",
+     "ref": "L8",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC32-V_{S+})",
+     "ref": "L62",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "+3V3",
+     "ref": "L22",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "+5V{slash}3",
+     "ref": "L63",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "+3V3",
+     "ref": "L23",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "3v3_LDO1_SRC",
+     "ref": "L19",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC36-VCC)",
+     "ref": "L61",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "VREG5V{slash}4",
+     "ref": "L9",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(IC23-V_{S+})",
+     "ref": "L15",
+     "value": "FERRITE"
+    },
+    {
+     "mpn": "BLM15AX601SN1",
+     "rail": "Net-(C190-Pad1)",
+     "ref": "L60",
+     "value": "FERRITE"
+    }
+   ],
+   "priority": "low",
+   "where_to_find": "Bead datasheet: impedance at 100 MHz and DC resistance (or the part number in the Value field, e.g. 600R@100MHz or BLM18PG221SN1).",
+   "write": {
+    "example": {
+     "name": "PI_SERIES",
+     "ref": "L26",
+     "source": {
+      "document": "ferrite bead datasheet",
+      "kind": "datasheet",
+      "note": "impedance at 100 MHz, DC resistance"
+     },
+     "value": "z100=600 rdc=0.15"
+    },
+    "to": "fields[] (name PI_SERIES) or the KiCad Value field"
+   }
+  },
+  {
+   "affects": [
+    "temperature estimate",
+    "junction temperature"
+   ],
+   "area": "power",
+   "id": "thermal-data",
+   "issue": "11 part(s) dissipate 0.1 W or more without thermal data (field PI_THERMAL): `kisi thermal` estimates their junction temperature from package defaults and assumes Tj max 125 °C.",
+   "items": [
+    {
+     "heat_w": 0.551,
+     "package_default": "qfn",
+     "ref": "IC1",
+     "value": "MIC2253"
+    },
+    {
+     "heat_w": 0.261,
+     "package_default": "qfp",
+     "ref": "U2",
+     "value": "XC6SLX9-TQG144"
+    },
+    {
+     "heat_w": 0.244,
+     "package_default": "qfn",
+     "ref": "IC6",
+     "value": "LDL212PU50R"
+    },
+    {
+     "heat_w": 0.182,
+     "package_default": "qfn",
+     "ref": "IC15",
+     "value": "TRF37A73"
+    },
+    {
+     "heat_w": 0.145,
+     "package_default": "qfn",
+     "ref": "IC3",
+     "value": "LDL212PU50R"
+    },
+    {
+     "heat_w": 0.145,
+     "package_default": "qfn",
+     "ref": "IC4",
+     "value": "LDL212PU50R"
+    },
+    {
+     "heat_w": 0.145,
+     "package_default": "qfn",
+     "ref": "IC5",
+     "value": "LDL212PU50R"
+    },
+    {
+     "heat_w": 0.12,
+     "package_default": "power",
+     "ref": "IC19",
+     "value": "AP2114H"
+    },
+    {
+     "heat_w": 0.12,
+     "package_default": "power",
+     "ref": "IC8",
+     "value": "AP2114H"
+    },
+    {
+     "heat_w": 0.115,
+     "package_default": "qfn",
+     "ref": "IC7",
+     "value": "SI5351C"
+    },
+    {
+     "heat_w": 0.107,
+     "package_default": "qfn",
+     "ref": "IC2",
+     "value": "LM3370"
+    }
+   ],
+   "priority": "low",
+   "where_to_find": "Device datasheet: the Thermal Information table (RθJB, RθJC(top) – or ψJB – for the JEDEC 2s2p board) and the maximum junction temperature (Absolute Maximum Ratings / Recommended Operating Conditions). Heat that leaves the board (connectors, LEDs, RF output): p=<W>.",
+   "write": {
+    "example": {
+     "name": "PI_THERMAL",
+     "ref": "IC1",
+     "source": {
+      "document": "…",
+      "kind": "datasheet",
+      "note": "RθJB, RθJC(top), JEDEC 2s2p board",
+      "page": "Thermal Information"
+     },
+     "value": "theta_jb=17.4 theta_jc=53.6 tj_max=125"
+    },
+    "to": "fields[] (name PI_THERMAL)"
+   }
+  }
+ ],
+ "how": "Fill the gaps in <board>.kisi.json next to the board (format: see `kisi config-template`), every value with a source; then run `kisi config-check <board>` and `kisi gaps <board>` again. Gaps marked 'not kisi.json' are fixes in KiCad.",
+ "summary": {
+  "high": 1,
+  "low": 3,
+  "medium": 5
+ },
+ "variant": {
+  "available": [],
+  "chosen_by": null,
+  "description": null,
+  "errors": [],
+  "field_overrides": [],
+  "fitted_by_variant": [],
+  "forks_all_fitted": 0,
+  "name": null,
+  "needs_choice": false,
+  "not_fitted_by_variant": [],
+  "not_fitted_total": 30,
+  "unused_nets": 0,
+  "warnings": []
+ }
+}

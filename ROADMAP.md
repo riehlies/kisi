@@ -149,10 +149,14 @@ setup (models, pin mapping, terminations, interface settings) is the main effort
   small, independent fixes ("Small fixes" below) that can be done in parallel to the blocks.
 - **Branches:** keep the number of open branches small – one branch per topic, merged as a whole when the topic is
   ready; preliminary work for one topic stays on one branch.
-- Solver updates with `tools/upstream_update.sh` when js_2d_fields changes (validation decides).
+- Solver updates with `tools/upstream_update.sh` when js_2d_fields changes (validation decides; the weekly CI run
+  reports a newer upstream revision).
+- **CI:** the checks run by what changed (`tools/ci_checks.py changes`); stored results of the example boards and the
+  via references (`tools/golden.py`) catch unintended model changes. Next: format the Rust code once with
+  `cargo fmt` when few branches are open (today ~1400 differences) and then check it on every push; clear the clippy
+  warnings and make clippy failing; the channel exports (block 3) as a CI check when they are merged (the docs PDF
+  runs in the docs group since `feat/docs-prepare`); parse a KiCad 10 test board.
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.
 
 ### Small fixes (independent, can be done in parallel)
-- `tools/check_viewer.py dist/kisi.html --board examples/VNA.kicad_pcb …` reports three “coupling refinement”
-  problems on LibreVNA (the field-solver refinement of critical crosstalk couplings); CI runs the check on
-  `kisi-examples.html` and does not see it. Found during the 0.2.5 work, older than it.
+- (none open)

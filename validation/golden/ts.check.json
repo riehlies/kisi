@@ -1,0 +1,2622 @@
+{
+ "config": {
+  "entries": 70,
+  "errors": [],
+  "ok": true,
+  "warnings": []
+ },
+ "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5–15 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 × Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces – an estimate). Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.",
+ "not_checked_unused": "20 net(s) with a target only connect parts not fitted in this assembly (variant or DNP): not checked",
+ "rows": [
+  {
+   "branches": [],
+   "bus": "U18 ↔ U6",
+   "class": "LVDS_ADC",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 110.7
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.915149
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.84375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.130435
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 21.6819
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 10.2069
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "U18.B9",
+    "U6.9"
+   ],
+   "eye_computed": true,
+   "from": "U18.B9",
+   "kind": "ic-ic",
+   "lane": "/ADC/D1A_P",
+   "length_mm": 32.9695,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.915149,
+    "eye_w_ui": 0.84375,
+    "il_nyq_db": -0.130435,
+    "rl_db": 21.6819,
+    "skew_ps": 10.2069,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 110.7,
+    "z_min": 77.3094
+   },
+   "mode_conversion_db": -32.4674,
+   "model": "4-port",
+   "nets": [
+    "/ADC/D1A_P"
+   ],
+   "not_modelled": [],
+   "profile": "lvds",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U6.9",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "U18 ↔ U6",
+   "class": "LVDS_ADC",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 110.429
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.91808
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.84375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.131981
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 21.9667
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 11.6049
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "U18.B10",
+    "U6.11"
+   ],
+   "eye_computed": true,
+   "from": "U18.B10",
+   "kind": "ic-ic",
+   "lane": "/ADC/D1B_P",
+   "length_mm": 33.8734,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.91808,
+    "eye_w_ui": 0.84375,
+    "il_nyq_db": -0.131981,
+    "rl_db": 21.9667,
+    "skew_ps": 11.6049,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 110.429,
+    "z_min": 77.3094
+   },
+   "mode_conversion_db": -31.4198,
+   "model": "4-port",
+   "nets": [
+    "/ADC/D1B_P"
+   ],
+   "not_modelled": [],
+   "profile": "lvds",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U6.11",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "U18 ↔ U6",
+   "class": "LVDS_ADC",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 110.197
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.879212
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.8125
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.114879
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 23.1535
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.304746
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "U18.A13",
+    "U6.21"
+   ],
+   "eye_computed": true,
+   "from": "U18.A13",
+   "kind": "ic-ic",
+   "lane": "/ADC/D3A_P",
+   "length_mm": 29.6308,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.879212,
+    "eye_w_ui": 0.8125,
+    "il_nyq_db": -0.114879,
+    "rl_db": 23.1535,
+    "skew_ps": 0.304746,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 110.197,
+    "z_min": 77.3094
+   },
+   "mode_conversion_db": -63.5413,
+   "model": "4-port",
+   "nets": [
+    "/ADC/D3A_P"
+   ],
+   "not_modelled": [],
+   "profile": "lvds",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U6.21",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "U18 ↔ U6",
+   "class": "LVDS_ADC",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 111.299
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.910011
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.84375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.127375
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 22.3299
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 7.1798
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "U18.B14",
+    "U6.23"
+   ],
+   "eye_computed": true,
+   "from": "U18.B14",
+   "kind": "ic-ic",
+   "lane": "/ADC/D3B_P",
+   "length_mm": 32.8425,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.910011,
+    "eye_w_ui": 0.84375,
+    "il_nyq_db": -0.127375,
+    "rl_db": 22.3299,
+    "skew_ps": 7.1798,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 111.299,
+    "z_min": 77.3094
+   },
+   "mode_conversion_db": -35.8687,
+   "model": "4-port",
+   "nets": [
+    "/ADC/D3B_P"
+   ],
+   "not_modelled": [],
+   "profile": "lvds",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U6.23",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "J3 ↔ U7",
+   "class": "50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 48.7369
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -3.7706
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 9.54683
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "J3.3",
+    "U7.8"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.656564,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 1.0
+   },
+   "eye_computed": true,
+   "from": "J3.3",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/REFINOUT2",
+   "length_mm": 70.2396,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -3.7706,
+    "rl_db": 9.54683,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 53.0238,
+    "z_mean": 48.7369,
+    "z_min": 26.8037
+   },
+   "model": "single-ended",
+   "nets": [
+    "/TS-PCIe Components/REFINOUT2",
+    "/REFINOUT",
+    "Net-(U7-OC1P)"
+   ],
+   "not_modelled": [
+    "C64",
+    "D4"
+   ],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "R5 0 (0402)",
+    "R43 49.9 (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 1.0 mm to R4.1 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "U7.8",
+   "vias": 1
+  },
+  {
+   "branches": [],
+   "bus": "J9 ↔ U18",
+   "class": "LVDS_USRIO",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 110.364
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.275338
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 19.8485
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 8.25706
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "J9.5",
+    "U18.F18"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.992349,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.96875
+   },
+   "eye_computed": true,
+   "from": "J9.5",
+   "kind": "ic-connector",
+   "lane": "/FPGA/USRIO_2_P",
+   "length_mm": 67.2751,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -0.275338,
+    "rl_db": 19.8485,
+    "skew_ps": -8.25706,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 110.364,
+    "z_min": 66.6369
+   },
+   "mode_conversion_db": -34.8294,
+   "model": "4-port",
+   "nets": [
+    "/FPGA/USRIO_2_P"
+   ],
+   "not_modelled": [],
+   "profile": "lvds",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U18.F18",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "J9 ↔ U18",
+   "class": "LVDS_USRIO",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 110.321
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.284219
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 19.8517
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 2.89638
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "J9.8",
+    "U18.H17"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.98448,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.96875
+   },
+   "eye_computed": true,
+   "from": "J9.8",
+   "kind": "ic-connector",
+   "lane": "/FPGA/USRIO_3_P",
+   "length_mm": 71.0502,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -0.284219,
+    "rl_db": 19.8517,
+    "skew_ps": 2.89638,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 110.321,
+    "z_min": 77.3094
+   },
+   "mode_conversion_db": -44.5069,
+   "model": "4-port",
+   "nets": [
+    "/FPGA/USRIO_3_P"
+   ],
+   "not_modelled": [],
+   "profile": "lvds",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U18.H17",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "J9 ↔ U18",
+   "class": "LVDS_USRIO",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 110.268
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.259906
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 19.7257
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 3.57343
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "J9.32",
+    "U18.C17"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.999117,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.96875
+   },
+   "eye_computed": true,
+   "from": "J9.32",
+   "kind": "ic-connector",
+   "lane": "/FPGA/USRIO_11_P",
+   "length_mm": 64.0716,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -0.259906,
+    "rl_db": 19.7257,
+    "skew_ps": 3.57343,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 110.268,
+    "z_min": 77.3094
+   },
+   "mode_conversion_db": -41.4966,
+   "model": "4-port",
+   "nets": [
+    "/FPGA/USRIO_11_P"
+   ],
+   "not_modelled": [],
+   "profile": "lvds",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U18.C17",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "J9 ↔ U18",
+   "class": "LVDS_USRIO",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 110.261
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.269733
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 19.881
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.453336
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "J9.35",
+    "U18.D18"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.994709,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.96875
+   },
+   "eye_computed": true,
+   "from": "J9.35",
+   "kind": "ic-connector",
+   "lane": "/FPGA/USRIO_12_P",
+   "length_mm": 67.1925,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -0.269733,
+    "rl_db": 19.881,
+    "skew_ps": 0.453336,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 110.261,
+    "z_min": 70.4694
+   },
+   "mode_conversion_db": -57.5579,
+   "model": "4-port",
+   "nets": [
+    "/FPGA/USRIO_12_P"
+   ],
+   "not_modelled": [],
+   "profile": "lvds",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U18.D18",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "criteria": [
+    {
+     "hi": 97.75,
+     "key": "z",
+     "lo": 72.25,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 91.9081
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -3.76388
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 4.59303
+    },
+    {
+     "hi": 5.0,
+     "key": "skew",
+     "lo": null,
+     "note": "path branches or is split by components",
+     "red_below": null,
+     "status": "green",
+     "value": 6.63247
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "P1.A16",
+    "U18.B2"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.604763,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.8125
+   },
+   "eye_computed": true,
+   "from": "P1.A16",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/PCIe_PER0_P",
+   "length_mm": 36.426,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -3.76388,
+    "rl_db": 4.59303,
+    "skew_ps": 6.63247,
+    "skew_uncertain": true,
+    "stub_ghz": null,
+    "z_max": 161.055,
+    "z_mean": 91.9081,
+    "z_min": 47.2292
+   },
+   "mode_conversion_db": -8.79523,
+   "model": "4-port",
+   "nets": [
+    "/TS-PCIe Components/PCIe_PER0_P",
+    "/FPGA/MGT_TX3_P"
+   ],
+   "not_modelled": [],
+   "profile": "pcie4",
+   "rate_gbps": 16.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C41 220nF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 0.8 mm to C43.2 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "U18.B2",
+   "vias": 1
+  },
+  {
+   "branches": [],
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "criteria": [
+    {
+     "hi": 97.75,
+     "key": "z",
+     "lo": 72.25,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 92.0721
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -2.71091
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 3.97521
+    },
+    {
+     "hi": 5.0,
+     "key": "skew",
+     "lo": null,
+     "note": "path branches or is split by components",
+     "red_below": null,
+     "status": "green",
+     "value": 6.55022
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "P1.A21",
+    "U18.D2"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.727282,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.875
+   },
+   "eye_computed": true,
+   "from": "P1.A21",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/PCIe_PER1_P",
+   "length_mm": 34.6229,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -2.71091,
+    "rl_db": 3.97521,
+    "skew_ps": 6.55022,
+    "skew_uncertain": true,
+    "stub_ghz": null,
+    "z_max": 161.055,
+    "z_mean": 92.0721,
+    "z_min": 47.2292
+   },
+   "mode_conversion_db": -15.666,
+   "model": "4-port",
+   "nets": [
+    "/TS-PCIe Components/PCIe_PER1_P",
+    "/FPGA/MGT_TX2_P"
+   ],
+   "not_modelled": [],
+   "profile": "pcie4",
+   "rate_gbps": 16.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C37 220nF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 0.8 mm to C39.2 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "U18.D2",
+   "vias": 1
+  },
+  {
+   "branches": [],
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "criteria": [
+    {
+     "hi": 97.75,
+     "key": "z",
+     "lo": 72.25,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 92.5493
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -2.41707
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 4.03748
+    },
+    {
+     "hi": 5.0,
+     "key": "skew",
+     "lo": null,
+     "note": "path branches or is split by components",
+     "red_below": null,
+     "status": "green",
+     "value": 10.8778
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "P1.A25",
+    "U18.F2"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.729566,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.90625
+   },
+   "eye_computed": true,
+   "from": "P1.A25",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/PCIe_PER2_P",
+   "length_mm": 33.3212,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -2.41707,
+    "rl_db": 4.03748,
+    "skew_ps": 10.8778,
+    "skew_uncertain": true,
+    "stub_ghz": null,
+    "z_max": 161.055,
+    "z_mean": 92.5493,
+    "z_min": 47.2292
+   },
+   "mode_conversion_db": -10.2865,
+   "model": "4-port",
+   "nets": [
+    "/TS-PCIe Components/PCIe_PER2_P",
+    "/FPGA/MGT_TX1_P"
+   ],
+   "not_modelled": [],
+   "profile": "pcie4",
+   "rate_gbps": 16.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C33 220nF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 0.8 mm to C35.2 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "U18.F2",
+   "vias": 1
+  },
+  {
+   "branches": [],
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "criteria": [
+    {
+     "hi": 97.75,
+     "key": "z",
+     "lo": 72.25,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 92.712
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -2.75288
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 4.50828
+    },
+    {
+     "hi": 5.0,
+     "key": "skew",
+     "lo": null,
+     "note": "path branches or is split by components",
+     "red_below": null,
+     "status": "green",
+     "value": 10.8471
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "P1.A29",
+    "U18.H2"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.596801,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.90625
+   },
+   "eye_computed": true,
+   "from": "P1.A29",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/PCIe_PER3_P",
+   "length_mm": 32.2063,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -2.75288,
+    "rl_db": 4.50828,
+    "skew_ps": 10.8471,
+    "skew_uncertain": true,
+    "stub_ghz": null,
+    "z_max": 161.055,
+    "z_mean": 92.712,
+    "z_min": 47.2292
+   },
+   "mode_conversion_db": -6.36223,
+   "model": "4-port",
+   "nets": [
+    "/TS-PCIe Components/PCIe_PER3_P",
+    "/FPGA/MGT_TX0_P"
+   ],
+   "not_modelled": [],
+   "profile": "pcie4",
+   "rate_gbps": 16.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C29 220nF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 0.8 mm to C31.2 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "U18.H2",
+   "vias": 1
+  },
+  {
+   "branches": [],
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "criteria": [
+    {
+     "hi": 97.75,
+     "key": "z",
+     "lo": 72.25,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 89.2049
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -5.04873
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 4.19215
+    },
+    {
+     "hi": 5.0,
+     "key": "skew",
+     "lo": null,
+     "note": "path branches or is split by components",
+     "red_below": null,
+     "status": "green",
+     "value": 10.967
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 16.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 46.2638
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "P1.B14",
+    "U18.G4"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.410096,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.8125
+   },
+   "eye_computed": true,
+   "from": "P1.B14",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/PCIe_PET0_P",
+   "length_mm": 62.6895,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -5.04873,
+    "rl_db": 4.19215,
+    "skew_ps": 10.967,
+    "skew_uncertain": true,
+    "stub_ghz": 46.2638,
+    "z_max": 114.122,
+    "z_mean": 89.2049,
+    "z_min": 49.5698
+   },
+   "mode_conversion_db": -13.6423,
+   "model": "4-port",
+   "nets": [
+    "/TS-PCIe Components/PCIe_PET0_P",
+    "/FPGA/MGT_RX3_P"
+   ],
+   "not_modelled": [],
+   "profile": "pcie4",
+   "rate_gbps": 16.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "R38 0 (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 0.7 mm and a via to R40.1 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "U18.G4",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "criteria": [
+    {
+     "hi": 97.75,
+     "key": "z",
+     "lo": 72.25,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 89.9471
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -3.01003
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 4.99788
+    },
+    {
+     "hi": 5.0,
+     "key": "skew",
+     "lo": null,
+     "note": "path branches or is split by components",
+     "red_below": null,
+     "status": "green",
+     "value": 7.78953
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 16.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 44.229
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "P1.B19",
+    "U18.C4"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.487506,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.78125
+   },
+   "eye_computed": true,
+   "from": "P1.B19",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/PCIe_PET1_P",
+   "length_mm": 45.0994,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -3.01003,
+    "rl_db": 4.99788,
+    "skew_ps": 7.78953,
+    "skew_uncertain": true,
+    "stub_ghz": 44.229,
+    "z_max": 112.528,
+    "z_mean": 89.9471,
+    "z_min": 49.5698
+   },
+   "mode_conversion_db": -15.1683,
+   "model": "4-port",
+   "nets": [
+    "/TS-PCIe Components/PCIe_PET1_P",
+    "/FPGA/MGT_RX2_P"
+   ],
+   "not_modelled": [],
+   "profile": "pcie4",
+   "rate_gbps": 16.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "R34 0 (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 0.7 mm and a via to R36.1 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "U18.C4",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "criteria": [
+    {
+     "hi": 97.75,
+     "key": "z",
+     "lo": 72.25,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 92.8249
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -3.12062
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 3.0114
+    },
+    {
+     "hi": 5.0,
+     "key": "skew",
+     "lo": null,
+     "note": "path branches or is split by components",
+     "red_below": null,
+     "status": "green",
+     "value": 2.76625
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 16.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 35.5
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "P1.B23",
+    "U18.A4"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.516905,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.8125
+   },
+   "eye_computed": true,
+   "from": "P1.B23",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/PCIe_PET2_P",
+   "length_mm": 48.3349,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -3.12062,
+    "rl_db": 3.0114,
+    "skew_ps": 2.76625,
+    "skew_uncertain": true,
+    "stub_ghz": 35.5,
+    "z_max": 161.055,
+    "z_mean": 92.8249,
+    "z_min": 49.5698
+   },
+   "mode_conversion_db": -22.0404,
+   "model": "4-port",
+   "nets": [
+    "/TS-PCIe Components/PCIe_PET2_P",
+    "/FPGA/MGT_RX1_P"
+   ],
+   "not_modelled": [],
+   "profile": "pcie4",
+   "rate_gbps": 16.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "R30 0 (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 0.7 mm and a via to R32.1 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "U18.A4",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "criteria": [
+    {
+     "hi": 97.75,
+     "key": "z",
+     "lo": 72.25,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 93.2967
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -4.46903
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 2.68454
+    },
+    {
+     "hi": 5.0,
+     "key": "skew",
+     "lo": null,
+     "note": "path branches or is split by components",
+     "red_below": null,
+     "status": "green",
+     "value": 7.46288
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 16.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 47.0839
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "P1.B27",
+    "U18.E4"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.470773,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.84375
+   },
+   "eye_computed": true,
+   "from": "P1.B27",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/PCIe_PET3_P",
+   "length_mm": 42.2891,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -4.46903,
+    "rl_db": 2.68454,
+    "skew_ps": 7.46288,
+    "skew_uncertain": true,
+    "stub_ghz": 47.0839,
+    "z_max": 161.055,
+    "z_mean": 93.2967,
+    "z_min": 49.5698
+   },
+   "mode_conversion_db": -15.719,
+   "model": "4-port",
+   "nets": [
+    "/TS-PCIe Components/PCIe_PET3_P",
+    "/FPGA/MGT_RX0_P"
+   ],
+   "not_modelled": [],
+   "profile": "pcie4",
+   "rate_gbps": 16.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "R26 0 (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 0.7 mm and a via to R28.1 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "U18.E4",
+   "vias": 2
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 77.0706
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999021
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0256554
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 25.1018
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 6.14,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999021,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0256554,
+    "rl_db": 25.1018,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 77.0706,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH1/ATTEN_1X",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 81.7424
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.998587
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.625
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0368428
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 23.5847
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 8.52176,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.998587,
+    "eye_w_ui": 0.625,
+    "il_nyq_db": -0.0368428,
+    "rl_db": 23.5847,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 81.7424,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH1/ATTEN_50X_IN",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 80.4676
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.996893
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.164723
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 12.198
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 12.0949,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.996893,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.164723,
+    "rl_db": 12.198,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 80.4676,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH1/ATTEN_50X_OUT",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 81.8327
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999457
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0117939
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 32.1807
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 3.24891,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999457,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0117939,
+    "rl_db": 32.1807,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 81.8327,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH1/ATTEN_IN",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 68.153
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.998937
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0225637
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 30.6211
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 6.13744,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.998937,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.0225637,
+    "rl_db": 30.6211,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 68.153,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH1/TERM_1M",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 72.9398
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.998673
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.59375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0312519
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 24.9858
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 7.65193,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.998673,
+    "eye_w_ui": 0.59375,
+    "il_nyq_db": -0.0312519,
+    "rl_db": 24.9858,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 72.9398,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH1/TERM_1M_R",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 85.4938
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999067
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.625
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0327154
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 21.0067
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 5.94117,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999067,
+    "eye_w_ui": 0.625,
+    "il_nyq_db": -0.0327154,
+    "rl_db": 21.0067,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 85.4938,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH1/TERM_50Z",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 85.0341
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999433
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0177322
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 24.5419
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 3.78852,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999433,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.0177322,
+    "rl_db": 24.5419,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 85.0341,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH1/TERM_50Z_R",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 77.0706
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999021
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0256554
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 25.1018
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 6.14,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999021,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0256554,
+    "rl_db": 25.1018,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 77.0706,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH2/ATTEN_1X",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 81.7424
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.998587
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.625
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0368428
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 23.5843
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 8.52176,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.998587,
+    "eye_w_ui": 0.625,
+    "il_nyq_db": -0.0368428,
+    "rl_db": 23.5843,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 81.7424,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH2/ATTEN_50X_IN",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 80.4557
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.996893
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.164723
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 12.0775
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 12.0949,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.996893,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.164723,
+    "rl_db": 12.0775,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 80.4557,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH2/ATTEN_50X_OUT",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 81.806
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999457
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0118151
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 32.1351
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 3.25305,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999457,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0118151,
+    "rl_db": 32.1351,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 81.806,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH2/ATTEN_IN",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "FE_50Z",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 68.153
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.998937
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0225637
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 30.6211
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 6.13744,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.998937,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.0225637,
+    "rl_db": 30.6211,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 124.075,
+    "z_mean": 68.153,
+    "z_min": 51.3498
+   },
+   "model": "single-ended",
+   "net": "/CH2/TERM_1M",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  }
+ ],
+ "rows_omitted": 41,
+ "rows_shown": "all",
+ "summary": {
+  "green": 22,
+  "red": 0,
+  "yellow": 49
+ },
+ "variant": {
+  "available": [
+   "TS-PCIe",
+   "TS-USB4"
+  ],
+  "chosen_by": "kisi.json",
+  "description": "PCIe mode: x4 edge fingers P1 to the FPGA",
+  "errors": [],
+  "field_overrides": [],
+  "fitted_by_variant": [],
+  "forks_all_fitted": 0,
+  "name": "TS-PCIe",
+  "needs_choice": false,
+  "not_fitted_by_variant": [
+   "C30",
+   "C31",
+   "C34",
+   "C35",
+   "C38",
+   "C39",
+   "C42",
+   "C43",
+   "C46",
+   "C47",
+   "C99",
+   "C100",
+   "C127",
+   "D2",
+   "D3",
+   "J1",
+   "J2",
+   "J8",
+   "J10",
+   "J11",
+   "L1",
+   "R2",
+   "R4",
+   "R14",
+   "R24",
+   "R27",
+   "R28",
+   "R31",
+   "R32",
+   "R35",
+   "R36",
+   "R39",
+   "R40",
+   "R54",
+   "R72",
+   "R82",
+   "R84",
+   "R109",
+   "R110",
+   "SO1",
+   "… 5 more"
+  ],
+  "not_fitted_total": 77,
+  "unused_nets": 51,
+  "warnings": []
+ }
+}

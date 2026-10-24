@@ -1,0 +1,1760 @@
+{
+ "buses": [
+  {
+   "bus": "IC10 ↔ IC7",
+   "class": "RF",
+   "devices": [
+    "IC10",
+    "IC7"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC10.29",
+      "IC7.8"
+     ],
+     "from": "IC10.29",
+     "kind": "ic-ic",
+     "lane": "/HF Source/SRC_REF_IN",
+     "nets": [
+      "/HF Source/SRC_REF_IN",
+      "SOURCE_REF"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C51 10nF (0402)"
+     ],
+     "terminations": [],
+     "to": "IC7.8"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "MAX2871",
+    "SI5351C"
+   ]
+  },
+  {
+   "bus": "IC11 ↔ IC12",
+   "class": "RF",
+   "devices": [
+    "IC11",
+    "IC12"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC11.9",
+      "IC12.6"
+     ],
+     "from": "IC11.9",
+     "kind": "ic-ic",
+     "lane": "/HF Source/SRC_FILT_THRU",
+     "nets": [
+      "/HF Source/SRC_FILT_THRU"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "IC12.6"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "RFSW6042",
+    "RFSW6042"
+   ]
+  },
+  {
+   "bus": "IC12 ↔ IC13",
+   "class": "RF",
+   "devices": [
+    "IC12",
+    "IC13"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC12.7",
+      "IC13.3"
+     ],
+     "from": "IC12.7",
+     "kind": "ic-ic",
+     "lane": "/HF Source/SRC_FILT_OUT_ANT",
+     "nets": [
+      "/HF Source/SRC_FILT_OUT_ANT",
+      "SOURCE_HIGHBAND"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C68 100nF/RF (0402)"
+     ],
+     "terminations": [],
+     "to": "IC13.3"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "RFSW6042",
+    "QPC6324"
+   ]
+  },
+  {
+   "bus": "IC13 ↔ IC14",
+   "class": "RF",
+   "devices": [
+    "IC13",
+    "IC14"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC13.8",
+      "IC14.5"
+     ],
+     "from": "IC13.8",
+     "kind": "ic-ic",
+     "lane": "/Attenuator Amp Switches/RF_HBLB_SWITCH",
+     "nets": [
+      "/Attenuator Amp Switches/RF_HBLB_SWITCH"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "IC14.5"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "QPC6324",
+    "RFSA3714"
+   ]
+  },
+  {
+   "bus": "IC14 ↔ IC15",
+   "class": "RF",
+   "devices": [
+    "IC14",
+    "IC15"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC14.14",
+      "IC15.2"
+     ],
+     "from": "IC14.14",
+     "kind": "ic-ic",
+     "lane": "/Attenuator Amp Switches/RF_HBLB_ATT",
+     "nets": [
+      "/Attenuator Amp Switches/RF_HBLB_ATT",
+      "/Attenuator Amp Switches/RF_HBLB_AMP_IN"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C71 100nF/RF (0402)"
+     ],
+     "terminations": [],
+     "to": "IC15.2"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "RFSA3714",
+    "TRF37A73"
+   ]
+  },
+  {
+   "bus": "IC15 ↔ IC16",
+   "class": "RF",
+   "devices": [
+    "IC15",
+    "IC16"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC15.7",
+      "IC16.8"
+     ],
+     "from": "IC15.7",
+     "kind": "ic-ic",
+     "lane": "/Attenuator Amp Switches/RF_HBLB_AMP",
+     "nets": [
+      "/Attenuator Amp Switches/RF_HBLB_AMP",
+      "/Attenuator Amp Switches/RF_HBLB_AMP_C",
+      "/Attenuator Amp Switches/RF_HBLB_REF_R",
+      "/Attenuator Amp Switches/RF_HBLB_REF"
+     ],
+     "not_modelled": [
+      "L24",
+      "R27"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C74 100nF/RF (0402)",
+      "R26 2.7R (0402)",
+      "R29 2.7R (0402)"
+     ],
+     "terminations": [],
+     "to": "IC16.8"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "TRF37A73",
+    "QPC6324"
+   ]
+  },
+  {
+   "bus": "IC16 ↔ IC17",
+   "class": "RF",
+   "devices": [
+    "IC16",
+    "IC17"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC16.3",
+      "IC17.3"
+     ],
+     "from": "IC16.3",
+     "kind": "ic-ic",
+     "lane": "/Attenuator Amp Switches/RF_HBLB_PORT2",
+     "nets": [
+      "/Attenuator Amp Switches/RF_HBLB_PORT2"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "IC17.3"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "QPC6324",
+    "QPC6324"
+   ]
+  },
+  {
+   "bus": "IC16 ↔ IC18",
+   "class": "RF",
+   "devices": [
+    "IC16",
+    "IC18"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC16.13",
+      "IC18.8"
+     ],
+     "from": "IC16.13",
+     "kind": "ic-ic",
+     "lane": "/Attenuator Amp Switches/RF_HBLB_PORT1",
+     "nets": [
+      "/Attenuator Amp Switches/RF_HBLB_PORT1"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "IC18.8"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "QPC6324",
+    "QPC6324"
+   ]
+  },
+  {
+   "bus": "IC21 ↔ IC7",
+   "class": "RF",
+   "devices": [
+    "IC21",
+    "IC7"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC21.29",
+      "IC7.17"
+     ],
+     "from": "IC21.29",
+     "kind": "ic-ic",
+     "lane": "/1.LO/LO1_REFC",
+     "nets": [
+      "/1.LO/LO1_REFC",
+      "LO1_REF"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C80 10nF (0402)"
+     ],
+     "terminations": [],
+     "to": "IC7.17"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "MAX2871",
+    "SI5351C"
+   ]
+  },
+  {
+   "bus": "IC22 ↔ IC23",
+   "class": "RF",
+   "devices": [
+    "IC22",
+    "IC23"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC22.6",
+      "IC23.8"
+     ],
+     "from": "IC22.6",
+     "kind": "ic-ic",
+     "lane": "Net-(IC22-OUT+)",
+     "nets": [
+      "Net-(IC22-OUT+)",
+      "Net-(IC23-+)"
+     ],
+     "not_modelled": [
+      "R53",
+      "R55"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C100 1uF (0402)"
+     ],
+     "terminations": [],
+     "to": "IC23.8"
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "LT5560",
+    "THS4521IDGKR"
+   ]
+  },
+  {
+   "bus": "IC22 ↔ IC7",
+   "class": "RF",
+   "devices": [
+    "IC22",
+    "IC7"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC22.8",
+      "IC7.9"
+     ],
+     "from": "IC22.8",
+     "kind": "ic-ic",
+     "lane": "PORT1LO2",
+     "nets": [
+      "Net-(IC22-LO+)",
+      "PORT1LO2",
+      "Net-(C42-Pad1)",
+      "/2.LO + Ref Clock/CLK_PORT1LO2"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C98 100nF (0402)",
+      "R52 0R (0402)",
+      "R51 0R (0402)"
+     ],
+     "terminations": [],
+     "to": "IC7.9"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "LT5560",
+    "SI5351C"
+   ]
+  },
+  {
+   "bus": "IC27 ↔ IC28",
+   "class": "RF",
+   "devices": [
+    "IC27",
+    "IC28"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC27.6",
+      "IC28.8"
+     ],
+     "from": "IC27.6",
+     "kind": "ic-ic",
+     "lane": "Net-(IC27-OUT+)",
+     "nets": [
+      "Net-(IC27-OUT+)",
+      "Net-(IC28-+)"
+     ],
+     "not_modelled": [
+      "R80",
+      "R82"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C137 1uF (0402)"
+     ],
+     "terminations": [],
+     "to": "IC28.8"
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "LT5560",
+    "THS4521IDGKR"
+   ]
+  },
+  {
+   "bus": "IC27 ↔ IC7",
+   "class": "RF",
+   "devices": [
+    "IC27",
+    "IC7"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC27.8",
+      "IC7.19"
+     ],
+     "from": "IC27.8",
+     "kind": "ic-ic",
+     "lane": "PORT2LO2",
+     "nets": [
+      "Net-(IC27-LO+)",
+      "PORT2LO2",
+      "Net-(C40-Pad1)",
+      "/2.LO + Ref Clock/CLK_PORT2_LO2"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C135 100nF (0402)",
+      "R42 0R (0402)",
+      "R41 0R (0402)"
+     ],
+     "terminations": [],
+     "to": "IC7.19"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "LT5560",
+    "SI5351C"
+   ]
+  },
+  {
+   "bus": "IC32 ↔ IC36",
+   "class": "RF",
+   "devices": [
+    "IC32",
+    "IC36"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC32.8",
+      "IC36.6"
+     ],
+     "from": "IC32.8",
+     "kind": "ic-ic",
+     "lane": "Net-(IC32-+)",
+     "nets": [
+      "Net-(IC32-+)",
+      "Net-(IC36-OUT+)"
+     ],
+     "not_modelled": [
+      "R102",
+      "R94"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C202 1uF (0402)"
+     ],
+     "terminations": [],
+     "to": "IC36.6"
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "THS4521IDGKR",
+    "LT5560"
+   ]
+  },
+  {
+   "bus": "IC33 ↔ IC36",
+   "class": "RF",
+   "devices": [
+    "IC33",
+    "IC36"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC33.20",
+      "IC36.4"
+     ],
+     "from": "IC33.20",
+     "kind": "ic-ic",
+     "lane": "Net-(IC33-OUT+)",
+     "nets": [
+      "Net-(IC33-OUT+)",
+      "Net-(C191-Pad2)",
+      "Net-(C196-Pad1)",
+      "Net-(IC36-IN-)"
+     ],
+     "not_modelled": [
+      "C194",
+      "C196",
+      "C197",
+      "L46"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C191 10nF (0402)",
+      "L48 68nH (0402)",
+      "L50 33nH (0402)"
+     ],
+     "terminations": [
+      "L52 330nH to GND"
+     ],
+     "to": "IC36.4"
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "ADL5801",
+    "LT5560"
+   ]
+  },
+  {
+   "bus": "IC36 ↔ IC7",
+   "class": "RF",
+   "devices": [
+    "IC36",
+    "IC7"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC36.8",
+      "IC7.12"
+     ],
+     "from": "IC36.8",
+     "kind": "ic-ic",
+     "lane": "REFLO2",
+     "nets": [
+      "Net-(IC36-LO+)",
+      "REFLO2",
+      "Net-(C41-Pad1)",
+      "/2.LO + Ref Clock/CLK_REFLO2"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C200 100nF (0402)",
+      "R44 0R (0402)",
+      "R43 0R (0402)"
+     ],
+     "terminations": [],
+     "to": "IC7.12"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "LT5560",
+    "SI5351C"
+   ]
+  },
+  {
+   "bus": "IC7 ↔ U2",
+   "class": "RF",
+   "devices": [
+    "IC7",
+    "U2"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC7.15",
+      "U2.50"
+     ],
+     "from": "IC7.15",
+     "kind": "ic-ic",
+     "lane": "FPGA_CLK",
+     "nets": [
+      "FPGA_CLK",
+      "/FPGA/FPGA_CLK_R"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R126 20R (0402)"
+     ],
+     "terminations": [],
+     "to": "U2.50"
+    }
+   ],
+   "mpns": [
+    null,
+    "XC6SLX9-2TQG144"
+   ],
+   "profile": "se50",
+   "values": [
+    "SI5351C",
+    "XC6SLX9-TQG144"
+   ]
+  },
+  {
+   "bus": "IC7 ↔ X1",
+   "class": "RF",
+   "devices": [
+    "IC7",
+    "X1"
+   ],
+   "kind": "ic-connector",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC7.6",
+      "X1.1"
+     ],
+     "from": "IC7.6",
+     "kind": "ic-connector",
+     "lane": "/2.LO + Ref Clock/CLKIN",
+     "nets": [
+      "/2.LO + Ref Clock/CLK_CLKIN",
+      "/2.LO + Ref Clock/CLKIN"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C30 10nF (0402)"
+     ],
+     "terminations": [],
+     "to": "X1.1"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "SI5351C",
+    "SMA"
+   ]
+  },
+  {
+   "bus": "IC7 ↔ X2",
+   "class": "RF",
+   "devices": [
+    "IC7",
+    "X2"
+   ],
+   "kind": "ic-connector",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC7.16",
+      "X2.1"
+     ],
+     "from": "IC7.16",
+     "kind": "ic-connector",
+     "lane": "/2.LO + Ref Clock/CLKOUT",
+     "nets": [
+      "/2.LO + Ref Clock/CLK_CLKOUT",
+      "/2.LO + Ref Clock/CLKOUT"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C39 10nF (0402)"
+     ],
+     "terminations": [],
+     "to": "X2.1"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "SI5351C",
+    "SMA"
+   ]
+  },
+  {
+   "bus": "IC10 ↔ IC11",
+   "class": "RF",
+   "devices": [
+    "IC10",
+    "IC11"
+   ],
+   "kind": "multi-drop",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC11.7",
+      "IC10.12",
+      "IC10.16",
+      "IC10.17",
+      "IC10.13"
+     ],
+     "from": null,
+     "kind": "multi-drop",
+     "lane": "/HF Source/SRC_FILT_IN_ANT",
+     "nets": [
+      "/HF Source/SRC_FILT_IN_ANT",
+      "/HF Source/SRC_RFOUTA_P",
+      "/HF Source/3V3_SRC_1",
+      "/HF Source/SRC_RFOUTA_N",
+      "Net-(C62-Pad1)"
+     ],
+     "not_modelled": [
+      "TP14"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C65 100nF/RF (0402)",
+      "R12 49.9R (0402)",
+      "R13 49.9R (0402)",
+      "C62 100nF (0402)"
+     ],
+     "terminations": [
+      "C56 100nF to GND",
+      "C61 100nF to GND",
+      "C64 100nF to GND",
+      "R14 49.9R to GND"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "MAX2871",
+    "RFSW6042"
+   ]
+  },
+  {
+   "bus": "IC21 ↔ IC24 ↔ IC29 ↔ IC33",
+   "class": "RF",
+   "devices": [
+    "IC21",
+    "IC24",
+    "IC29",
+    "IC33"
+   ],
+   "kind": "multi-drop",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC24.3",
+      "IC21.12",
+      "IC21.16",
+      "IC21.17",
+      "IC21.14",
+      "IC29.3",
+      "IC21.13",
+      "IC21.15",
+      "IC33.3"
+     ],
+     "from": null,
+     "kind": "multi-drop",
+     "lane": "/Port 1/RF_PORT1_LO1_CRC",
+     "nets": [
+      "/Port 1/RF_PORT1_LO1_CRC",
+      "/Port 1/RF_PORT1_LO1_CR",
+      "/Port 1/RF_PORT1_LO1_C",
+      "PORT1LO1",
+      "/1.LO/3V3_LO1_1",
+      "PORT2LO1",
+      "Net-(IC29-LO+)"
+     ],
+     "not_modelled": [
+      "TP16"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C114 100nF (0402)",
+      "R168 75R (0402)",
+      "C269 100nF (0402)",
+      "R32 49.9R (0402)",
+      "R34 49.9R (0402)",
+      "C151 100nF (0402)"
+     ],
+     "terminations": [
+      "C85 100nF to GND",
+      "C91 100nF to GND",
+      "C94 100nF to GND",
+      "R74 100R to GND",
+      "R75 100R to GND"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "MAX2871",
+    "ADL5801",
+    "ADL5801",
+    "ADL5801"
+   ]
+  },
+  {
+   "bus": "IC22 ↔ IC24",
+   "class": "RF",
+   "devices": [
+    "IC22",
+    "IC24"
+   ],
+   "kind": "multi-drop",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC24.20",
+      "IC22.4",
+      "IC22.3",
+      "IC24.21"
+     ],
+     "from": null,
+     "kind": "multi-drop",
+     "lane": "Net-(IC24-OUT+)",
+     "nets": [
+      "Net-(IC24-OUT+)",
+      "Net-(C120-Pad2)",
+      "Net-(C128-Pad1)",
+      "Net-(C130-Pad1)",
+      "Net-(IC22-IN-)",
+      "Net-(IC22-IN+)",
+      "Net-(C130-Pad2)",
+      "Net-(C128-Pad2)",
+      "Net-(C123-Pad2)",
+      "Net-(IC24-OUT-)"
+     ],
+     "not_modelled": [
+      "C124",
+      "C128",
+      "C130",
+      "L32",
+      "L33"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C120 10nF (0402)",
+      "L34 68nH (0402)",
+      "L36 33nH (0402)",
+      "R64 20R (0402)",
+      "R66 56R (0402)",
+      "R65 20R (0402)",
+      "L37 33nH (0402)",
+      "L35 68nH (0402)",
+      "C123 10nF (0402)"
+     ],
+     "terminations": [
+      "L30 330nH to GND",
+      "L31 330nH to GND"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "LT5560",
+    "ADL5801"
+   ]
+  },
+  {
+   "bus": "IC27 ↔ IC29",
+   "class": "RF",
+   "devices": [
+    "IC27",
+    "IC29"
+   ],
+   "kind": "multi-drop",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC29.20",
+      "IC27.4",
+      "IC27.3",
+      "IC29.21"
+     ],
+     "from": null,
+     "kind": "multi-drop",
+     "lane": "Net-(IC29-OUT+)",
+     "nets": [
+      "Net-(IC29-OUT+)",
+      "Net-(C157-Pad2)",
+      "Net-(C165-Pad1)",
+      "Net-(C167-Pad1)",
+      "Net-(IC27-IN-)",
+      "Net-(IC27-IN+)",
+      "Net-(C167-Pad2)"
+     ],
+     "not_modelled": [
+      "C161",
+      "C165",
+      "C167",
+      "L40"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C157 10nF (0402)",
+      "L42 68nH (0402)",
+      "L44 33nH (0402)",
+      "R91 20R (0402)",
+      "R93 56R (0402)",
+      "R92 20R (0402)",
+      "R90 56R (0402)"
+     ],
+     "terminations": [
+      "L38 330nH to GND",
+      "L39 330nH to GND"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "LT5560",
+    "ADL5801"
+   ]
+  },
+  {
+   "bus": "IC11",
+   "class": "RF",
+   "devices": [
+    "IC11"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC11.11"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/HF Source/SRC_FILT_IN_RF1",
+     "nets": [
+      "/HF Source/SRC_FILT_IN_RF1"
+     ],
+     "not_modelled": [
+      "LP1"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC11.6"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/HF Source/SRC_FILT_IN_RF3",
+     "nets": [
+      "/HF Source/SRC_FILT_IN_RF3"
+     ],
+     "not_modelled": [
+      "LP3"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC11.4"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/HF Source/SRC_FILT_IN_RF4",
+     "nets": [
+      "/HF Source/SRC_FILT_IN_RF4"
+     ],
+     "not_modelled": [
+      "LP2"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "RFSW6042"
+   ]
+  },
+  {
+   "bus": "IC12",
+   "class": "RF",
+   "devices": [
+    "IC12"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC12.9"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/HF Source/SRC_FILT_OUT_RF1",
+     "nets": [
+      "/HF Source/SRC_FILT_OUT_RF1"
+     ],
+     "not_modelled": [
+      "LP3"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC12.11"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/HF Source/SRC_FILT_OUT_RF2",
+     "nets": [
+      "/HF Source/SRC_FILT_OUT_RF2"
+     ],
+     "not_modelled": [
+      "LP2"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC12.4"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/HF Source/SRC_FILT_OUT_RF4",
+     "nets": [
+      "/HF Source/SRC_FILT_OUT_RF4"
+     ],
+     "not_modelled": [
+      "LP1"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "RFSW6042"
+   ]
+  },
+  {
+   "bus": "IC13",
+   "class": "RF",
+   "devices": [
+    "IC13"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC13.13"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "SOURCE_LOWBAND",
+     "nets": [
+      "SOURCE_LOWBAND",
+      "Net-(C48-Pad2)",
+      "Net-(C47-Pad1)"
+     ],
+     "not_modelled": [
+      "L18"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C48 100nF (0402)",
+      "R8 62R (0402)"
+     ],
+     "terminations": [
+      "C47 56pF to GND",
+      "R7 100R to GND",
+      "R9 100R to GND"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "QPC6324"
+   ]
+  },
+  {
+   "bus": "IC17",
+   "class": "RF",
+   "devices": [
+    "IC17"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC17.8"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "PORT2SRC",
+     "nets": [
+      "PORT2SRC",
+      "Net-(C133-Pad2)"
+     ],
+     "not_modelled": [
+      "R40"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C133 100nF/RF (0402)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "QPC6324"
+   ]
+  },
+  {
+   "bus": "IC18",
+   "class": "RF",
+   "devices": [
+    "IC18"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC18.3"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "PORT1SRC",
+     "nets": [
+      "PORT1SRC",
+      "Net-(C96-Pad2)"
+     ],
+     "not_modelled": [
+      "R49"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C96 100nF/RF (0402)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "QPC6324"
+   ]
+  },
+  {
+   "bus": "IC23",
+   "class": "RF",
+   "devices": [
+    "IC23"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC23.5"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(C112-Pad2)",
+     "nets": [
+      "Net-(C112-Pad2)"
+     ],
+     "not_modelled": [
+      "R55",
+      "R58"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC23.4"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(C113-Pad1)",
+     "nets": [
+      "Net-(C113-Pad1)"
+     ],
+     "not_modelled": [
+      "R56",
+      "R59"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "THS4521IDGKR"
+   ]
+  },
+  {
+   "bus": "IC24",
+   "class": "RF",
+   "devices": [
+    "IC24"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC24.16"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(IC24-IN-)",
+     "nets": [
+      "Net-(IC24-IN-)",
+      "Net-(T1-IN+)"
+     ],
+     "not_modelled": [
+      "T1"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C110 100nF/RF (0402)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "ADL5801"
+   ]
+  },
+  {
+   "bus": "IC26",
+   "class": "RF",
+   "devices": [
+    "IC26"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC26.3"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(IC26-AIN+)",
+     "nets": [
+      "Net-(IC26-AIN+)"
+     ],
+     "not_modelled": [
+      "C126",
+      "R61"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [
+      "C125 330pF to GND"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "MCP33131D-10-E/MS"
+   ]
+  },
+  {
+   "bus": "IC28",
+   "class": "RF",
+   "devices": [
+    "IC28"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC28.5"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(C149-Pad2)",
+     "nets": [
+      "Net-(C149-Pad2)"
+     ],
+     "not_modelled": [
+      "R82",
+      "R85"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC28.4"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(C150-Pad1)",
+     "nets": [
+      "Net-(C150-Pad1)"
+     ],
+     "not_modelled": [
+      "R83",
+      "R86"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "THS4521IDGKR"
+   ]
+  },
+  {
+   "bus": "IC29",
+   "class": "RF",
+   "devices": [
+    "IC29"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC29.15"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(IC29-IN+)",
+     "nets": [
+      "Net-(IC29-IN+)",
+      "Net-(T2-IN-)"
+     ],
+     "not_modelled": [
+      "T2"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C146 100nF/RF (0402)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "ADL5801"
+   ]
+  },
+  {
+   "bus": "IC31",
+   "class": "RF",
+   "devices": [
+    "IC31"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC31.3"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(IC31-AIN+)",
+     "nets": [
+      "Net-(IC31-AIN+)"
+     ],
+     "not_modelled": [
+      "C163",
+      "R88"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [
+      "C162 330pF to GND"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "MCP33131D-10-E/MS"
+   ]
+  },
+  {
+   "bus": "IC32",
+   "class": "RF",
+   "devices": [
+    "IC32"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC32.5"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(C173-Pad2)",
+     "nets": [
+      "Net-(C173-Pad2)"
+     ],
+     "not_modelled": [
+      "R94",
+      "R96"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC32.4"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(C174-Pad1)",
+     "nets": [
+      "Net-(C174-Pad1)"
+     ],
+     "not_modelled": [
+      "R95",
+      "R97"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "THS4521IDGKR"
+   ]
+  },
+  {
+   "bus": "IC33",
+   "class": "RF",
+   "devices": [
+    "IC33"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC33.15"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(IC33-IN+)",
+     "nets": [
+      "Net-(IC33-IN+)",
+      "Net-(T3-IN-)"
+     ],
+     "not_modelled": [
+      "T3"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C178 100nF/RF (0402)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "ADL5801"
+   ]
+  },
+  {
+   "bus": "IC35",
+   "class": "RF",
+   "devices": [
+    "IC35"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC35.3"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(IC35-AIN+)",
+     "nets": [
+      "Net-(IC35-AIN+)"
+     ],
+     "not_modelled": [
+      "C188",
+      "R98"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [
+      "C187 330pF to GND"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "MCP33131D-10-E/MS"
+   ]
+  },
+  {
+   "bus": "IC7",
+   "class": "RF",
+   "devices": [
+    "IC7"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "IC7.13"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/2.LO + Ref Clock/CLK_SOURCE_LB",
+     "nets": [
+      "/2.LO + Ref Clock/CLK_SOURCE_LB"
+     ],
+     "not_modelled": [
+      "L14"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [
+      "C38 56pF to GND"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "SI5351C"
+   ]
+  }
+ ],
+ "config": {
+  "entries": 68,
+  "errors": [],
+  "ok": true,
+  "warnings": []
+ },
+ "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop along one path (the first two ends are transmitter and receiver at the ends of the path, the other devices receivers on side stubs: the eye at every receiver, the worst counts), open lines and multi-drop trees through series parts (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json. mpns (when present): the devices' manufacturer part numbers where the Value field does not show one.",
+ "variant": {
+  "available": [],
+  "chosen_by": null,
+  "description": null,
+  "errors": [],
+  "field_overrides": [],
+  "fitted_by_variant": [],
+  "forks_all_fitted": 0,
+  "name": null,
+  "needs_choice": false,
+  "not_fitted_by_variant": [],
+  "not_fitted_total": 30,
+  "unused_nets": 0,
+  "warnings": []
+ }
+}

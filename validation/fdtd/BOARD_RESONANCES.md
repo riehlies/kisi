@@ -57,6 +57,10 @@ board: `kisi-validate cavities <board>`; the ladder with a finite cavity on a ca
   costs far more (ThunderScope `check --all` on one thread 6.9 → 108 s, LibreVNA 1.4 → 15 s; with
   `--via-returns` 16 / 13 s) and still changes no verdict. The FPGA_CLK_R board via with the coplanar
   pours (`BOARD_VIAS.md` section 5): C, L and delay within 4 % of 3D on infinite plates.
+* **Block 6** (section 9): the run time was 31 744 grid factorisations, one per via and frequency for
+  environments that are mostly the same matrix. Shared factorisations per region and a registering pass:
+  ThunderScope 102–109 → 55–60 s (one thread), 57–62 → 31–38 s (four), LibreVNA 14–15 → 11 s; results
+  byte-identical across threads and runs (they were not: hash order).
 
 ## 1. Approach
 
@@ -439,3 +443,57 @@ on ThunderScope); via-to-via coupling in the crosstalk check; the grid as the PD
 irregular planes; a floating-pour warning in the exporter. The default could switch once the
 return groups are in and a board with unstitched GND/supply transitions shows a verdict change
 that 3D confirms.
+
+## 9. The run time of `--via-cavity` (Block 6)
+
+**Cause.** Profile of `check --all --via-cavity` on ThunderScope (one thread, `KISI_CAVITY_STATS=1`, before
+the fix): 105 s, of it 79 s in 31 744 sparse LU factorisations of the grid cavities (1 296 cells on average) –
+one per cavity environment and sampled frequency (0.05 GHz for regions, 0.25 GHz for windows), each via
+position on its own; the rest the solves and the Green's functions around them. Block 3 needed 2 634
+factorisations (3.2 s): since the merge with main the check evaluates more vias per lane (both lines of a
+pair as a 4-port, every line on its own path), 127 cavity environments instead of a few dozen. Most of them
+are the same region of the same plane pair seen from different vias: the same system matrix, factorised
+again for every via.
+
+**Fix** (`via_cavity::GridGroup`, `kisi_sparse::ComplexPattern`, `service::register_cavities`):
+- environments whose system matrices are identical (grid, medium, shorted cells, loads, edges, cut faces)
+  share one factorisation per frequency (`GridEnv::share`, a process-wide group); each via's Green's
+  matrix comes from single-RHS solves for the ports it needs, deduplicated across the group;
+- a registering pass (8 frequencies, `set_register_only`) before the check collects every via's ports in
+  the groups, so that the first factorisation at a frequency serves all of them (off with `--via-returns`,
+  where it cost more than it saved; `KISI_CAVITY_PASS=0/1`);
+- the sparse matrix is assembled into a fixed pattern (no triplet sort per frequency), the region
+  overlaps of `pair_region` are cached;
+- the shorted cells were collected in hash order: the results changed at the last digit from run to run
+  and with the thread count. Now sorted – byte-identical across runs, threads and with the pass on or off.
+
+Not taken: one grid per region for all vias crossing it (the union of their fill masks: 7 600 instead of
+26 000 factorisations) merges islands the per-via masks keep apart (17 → 1 495 cells) and changes results;
+a multi-RHS block solve gave nothing over the single solves.
+
+**Timings** (`check --all`, both boards; the machine has 2 cores and was shared with other jobs, load
+2–4 – ranges of 2–3 runs; "before" is 9e58542, "after" this branch with Block 6, whose extra return posts
+leave fewer pairs unshielded: ThunderScope 95 environments in 74 groups, 18 902 factorisations; the
+runtime fix alone: 127 environments in 102 groups, 26 130):
+
+| | before | after |
+|---|---|---|
+| ThunderScope, default, one thread | 6.5–7.2 s | 6.4–6.9 s |
+| ThunderScope, `--via-cavity`, one thread | 102–109 s | 55–60 s |
+| ThunderScope, `--via-cavity`, four threads | 57–62 s | 31–38 s |
+| ThunderScope, `--via-cavity --via-returns`, one / four threads | 15.0–16.8 / 8.0–8.3 s | 13.2–14.6 / 7.0 s |
+| LibreVNA, `--via-cavity`, one / four threads | 14.0–15.1 / 7.6–12.8 s | 11.0–11.1 / 6.0–7.1 s |
+| LibreVNA, `--via-cavity --via-returns`, one / four threads | 10.0–10.5 / 5.7 s | 8.5–9.1 / 4.5–4.9 s |
+| Node CLI (`kisi.mjs --formula`, WebAssembly, one thread; load 4.4), `--via-cavity` ThunderScope / LibreVNA | 236 / 36 s | 159 / 29 s |
+
+The Node CLI and the viewer (WebAssembly, one thread) share the same code; the registering pass's clock call
+trapped there at first (`Instant::now` has no clock in `wasm32-unknown-unknown`) – fixed, and `compare_cli.py` now
+also compares `check --all --via-cavity` on LibreVNA (Node identical to native on both boards and both option
+sets).
+
+Results: one thread against four byte-identical on both boards and both option sets; the runtime fix
+alone left every result unchanged (`check --all` JSON identical to the old binary up to the last-digit
+noise the hash order caused, unit test `via_cavity::tests::shared_grid_groups`). Still 7× Block 3's
+time on ThunderScope: the remaining cost is the per-via fill masks (74 groups) and the frequency sampling;
+fewer factorisations need a region model shared by all vias (above) or coarser sampling with interpolation
+of the factorised operator.

@@ -65,9 +65,12 @@ validation, and every result says which level it used and how uncertain it is.
   coplanar returns in the ladder (the default; M.2 pair phase 24° → 2°); two corrections of the comparisons (board
   vias at the via centre, the TDR of the validation scripts – the long-stub TDR maxima were this);
   `--via-cavity` / `--via-returns` reassessed and kept off (`BOARD_VIAS.md` section 5, `BOARD_RETURNS.md`
-  sections 7–8). Next:
-  - the REFINOUT2 ladder dissipates too much above 12 GHz (16 % of the power at 20 GHz, 3D 9 %) – the remaining
-    obstacle for the return groups as default; the cavity option's run time (ThunderScope 108 s on one thread);
+  sections 7–8). Block 6: done – the REFINOUT2 excess loss above 12 GHz was an open return cage: plated pads of
+  plane nets (connector pins) are return posts now, the nearest 12 (12–20 GHz 0.41 → 0.02 dB against 3D, loss at
+  20 GHz 16 → 7 %, 3D 9 %; `BOARD_VIAS.md` section 6); the cavity option shares its factorisations per region
+  (ThunderScope 105 → 57 s on one thread, results reproducible; `BOARD_RESONANCES.md` section 9). Next:
+  - the return groups' floating-plane loss is 1.6× the 3D on REFINOUT2 (0.29 dB off at 12–20 GHz) – what keeps
+    them from the default; the cavity option is still 8× the default (per-via fill masks);
   - pair vias read 8–11 % high in Zdiff minimum with the corrected TDR (L1→L8 references); the X exits without
     a plane on one side (+56 fF on X_s8x4); the thick-core through via B_ts6_L1L6 (−50 fF); re-score the
     Block 1 references with the matched de-embedding;

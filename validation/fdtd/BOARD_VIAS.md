@@ -37,6 +37,10 @@ Everything here is reproduced by `board_vias.py` (commands at the end). Cases: `
   of every reflection at the reference plane; corrected, and the pours on the via's signal layers are now
   coplanar returns in the ladder (M.2 phase 23.6° → 2.2°, LibreVNA L 337 → 225 pH against 262 pH in 3D).
   The numbers below are those of Block 2.
+- **Block 6 (section 6):** REFINOUT2's ladder lost 16 % of the power at 20 GHz (3D 9 %): a connector's plated GND
+  pins, which the ladder never took as return posts, close its return-via cage. Plated pads of plane nets are
+  posts now, the nearest 12: 12–20 GHz max |ΔS21| 0.41 → 0.02 dB, loss at 20 GHz 16.2 → 7.1 %; the other board vias
+  and all 56 reference rows unchanged.
 - **LibreVNA RF via F.Cu → In2 with a 0.87 mm stub:** stub notch 24.0 GHz in 3D, 22.8 GHz in the ladder
   (−5.0 %, as in the references); |S21| within 0.06 dB up to 6 GHz (the board's band) and 0.42 dB up to 16 GHz; the
   ladder is 4.6 ps too slow, 87 fF too capacitive and has 240 pH too much.
@@ -573,7 +577,75 @@ tiny case (0.5 d) – 4 days, as estimated. Not built in this block: the ladder 
 decision took the time, and a prototype that runs 1–3 minutes per via needs the solver's setup time
 (10–24 s in WebAssembly) reduced first.
 
-## 6. Reproduce
+## 6. Block 6: why the ladder lost too much above 12 GHz
+
+REFINOUT2 dissipated 16 % of the power at 20 GHz in the ladder against 9 % in 3D (|S21| −0.98 against
+−0.57 dB), and the return groups added to it. Reproduce: `board_vias.py fixes` (column `block6`,
+`loss_pct_20`), the power balances below with `kisi-validate via-geom` on variants of
+`via_ref/BV_ts_refinout2/ladder3d_geom.json`.
+
+### 6.1 Which element dissipates it
+Power balance 1 − |S11|² − |S21|² (%), the ladder with the 3D loss model:
+
+| | 4 GHz | 8 GHz | 12 GHz | 16 GHz | 20 GHz | 24 GHz |
+|---|---|---|---|---|---|---|
+| 3D (de-embedded) | 3.4 | 3.4 | 4.6 | 5.9 | 9.4 | 14.0 |
+| ladder (Block 5) | 3.9 | 4.4 | 5.7 | 9.0 | 16.3 | 28.4 |
+| the same, lossless dielectric: radiation into the plane pairs only | 0.1 | 0.5 | 1.5 | 4.6 | 11.6 | 24.2 |
+| ladder with the board's GND posts within 3 mm (Block 6) | 3.8 | 3.9 | 4.2 | 4.9 | 7.1 | 17.3 |
+| the same, lossless | 0.0 | 0.0 | 0.1 | 0.3 | 1.5 | 10.2 |
+
+Not the dielectric (the lossless ladder keeps most of the excess), not the conductor (lossless in both),
+not the port terminations: the radial wave that leaks through the ladder's cage of return vias into
+the infinite plane pairs. The ladder took the nearest 8 *vias* of plane nets within 3 mm. On
+REFINOUT2 the return vias sit at 0.95–1.05 mm on three sides; the fourth side is closed by the GND pins
+of the coaxial connector next to it (Molex 73100-0105, plated holes Ø1.8 mm, the nearest at 2.99 mm)
+– pads, which the ladder never looked at – and a ninth via at 2.95 mm beyond the cap of 8. With them
+the leakage at 20 GHz drops from 11.6 to 1.5 %. More posts (the whole 3D case's 25 GHz posts, incl. the
+exporter's coplanar fence) leave the lossless ladder slightly non-passive (−0.5 % at 20 GHz): the cage
+is then nearly closed and the interpolation of its impedance on the 0.25 GHz grid starts to show.
+
+Checked and ruled out: tanδ applied at the wrong frequency (the 3D loss model scales it exactly as the
+3D conductivity), the return-node elements (only with `--via-returns`), the cavities (not in the
+default), and the de-embedding as the main cause – but the 3D balance has its own uncertainty: from the
+raw case minus the dissipation of the two fixtures (half of each 2×thru) the via dissipates 5.1 % at
+20 GHz and 12.4 % at 24 GHz instead of the de-embedded 9.4 / 14.0 % (the 62–64 Ω fixture lines
+reflect), so the 3D number is good to about ±4 points.
+
+The Block 1 references are not affected (4 GND vias at 1 mm, no pads): ladder minus 3D median +0.8 /
++0.4 points at 12 / 20 GHz over the 29 single vias (D stitch cases +3…+6 points at 20 GHz, B s8 L1→L3
+stubs −4).
+
+### 6.2 The fix (default): plated pads among the return posts, the nearest 12
+`via::plane_posts`: the vias of plane nets and the plated holes of plane-net pads (`Pad::plated`,
+connector pins, mounting holes) as posts over the pad's layers; `return_posts` takes the nearest 12
+within 3 mm (`via::RETURN_POSTS`, was 8). Validation switches: `KISI_RET_PADS=0`, `KISI_RET_CAP=8`.
+
+| via | max / rms \|ΔS21\| 0.5–12 / 12–20 / 20–25 GHz (dB), Block 5 → Block 6 | loss at 20 GHz (3D) | returns |
+|---|---|---|---|
+| REFINOUT2 | 0.06/0.04, 0.41/0.23, 0.76/0.62 → **0.03/0.02, 0.02/0.01, 0.83/0.32** | 16.2 → 7.1 % (9.4) | 8 → 10 |
+| M.2 pair | 0.23/0.15, 0.24/0.20, 0.16/0.09 → the same | 2.2 → 2.2 % (3.1) | 8 → 10 |
+| LibreVNA RF_HBLB_PORT1 | 0.44/0.25, 1.63/0.80, 18.3/8.2 → 0.44/0.25, 1.64/0.81, 18.3/8.2 | 11.2 → 11.2 % (5.5) | 8 → 12 |
+| LibreVNA FPGA_CLK_R | unchanged (6 posts within 3 mm) | 78 → 78 % (58) | 6 |
+
+REFINOUT2's phase error at 20 GHz grows from 2.4 to 3.8°. `compare_kisi.py`: all 56 rows unchanged
+(golden rules). Example boards (`check --all`): no verdict changes; 5 + 5 rows move by ≤ 0.03 dB in
+insertion loss and ≤ 0.04 dB in return loss (ThunderScope PCIe_PET0–3 and REFINOUT2; LibreVNA
+SRC_REF_IN, RF_HBLB_PORT1/2, LO1_REFC – the stub field of SRC_REF_IN 34.5 → 28.8 GHz); run time
+unchanged.
+
+### 6.3 What is left
+- Against the 3D run with In2 grounded the ladder (which shorts every pair) is still 0.18 dB too lossy at
+  20 GHz (−0.55 against −0.37 dB): the 3D case has more posts beyond 3 mm. That the ladder now matches the
+  3D with In2 as it is (0.02 dB to 20 GHz) is partly this compensating the floating In2.
+- The return groups' floating-plane loss stays 1.6× the 3D value (0.30 against 0.19 dB at 20 GHz): with
+  them REFINOUT2 is 0.29 dB off at 12–20 GHz (Block 5: 0.67). `BOARD_RETURNS.md` section 7.
+- The M.2 pair's lossless odd-mode ladder is slightly non-passive above 20 GHz (−0.6 % at 20 GHz, −14 % at
+  40 GHz): a defect of the pair reduction, small in kisi's band.
+- The LibreVNA RF via dissipates twice the 3D power at 20 GHz, next to its stub notch (22.8 against
+  24.0 GHz in 3D).
+
+## 7. Reproduce
 
 ```
 cargo build --release -p kisi-cli -p kisi-fdtd

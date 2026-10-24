@@ -63,6 +63,9 @@ case: `kisi-validate cavity-model <case.json> <out> --returns`.
   default once the Block 2 ladder errors (pours on the via's signal layers, series inductance) are
   fixed, or when a board with unbridged GND/supply transitions shows a verdict change – the
   criterion Block 3 set.
+* **Block 6** (section 7): the REFINOUT2 excess loss was the open return cage (plated pads now return
+  posts, `BOARD_VIAS.md` section 6); without it the return groups are 0.29 dB off the 3D at 12–20 GHz (was
+  0.67), their own floating-plane loss 1.6× the 3D's. Still an option.
 
 ## 1. Approach
 
@@ -375,6 +378,22 @@ cavities take 2.7 s, the rest is the cavity impedances evaluated at the channels
 check evaluates more channels per lane since main (pairs as 4-ports, every line on its own path); not
 investigated further. Far from a default. Next for the
 default: the REFINOUT2 excess loss above 12 GHz, and the cavity run time.
+
+### Reassessed in Block 6 (return posts from plated pads, the cavity run time)
+
+The REFINOUT2 excess loss had one cause: the ladder ignored the connector's plated GND pins and took at
+most 8 return vias, so the return cage was open on one side and the infinite plates radiated 12 % of the
+power at 20 GHz (`BOARD_VIAS.md` section 6). With plated pads among the posts and the nearest 12, the ladder
+before return groups is within 0.02 dB of the 3D (In2 as it is) to 20 GHz. The return groups now take it
+0.29 / 0.16 dB (max / rms, 12–20 GHz) away from it (Block 5: 0.67 / 0.38 dB) and 0.48 dB from the 3D with In2
+grounded (0.86): their floating-plane loss (0.30 dB at 20 GHz) is 1.6× what the 3D shows between In2
+floating and grounded (0.19 dB) – the excess no longer hides it. The M.2 pair is unchanged (0.19 / 0.18 dB
+with return groups, 0.20 / 0.19 dB without). `--via-cavity` costs 55–60 s on ThunderScope instead of
+102–109 s (one thread; `BOARD_RESONANCES.md` section 9), still 8× the default.
+
+**Decision: both stay options.** The cause of the excess is fixed in the default; what keeps the return
+groups from the default is now their own floating-plane loss on REFINOUT2, the one board via with a
+floating supply plane and a 3D reference, and still no verdict change on the example boards.
 
 ## 8. The warning in the default path (Block 5)
 

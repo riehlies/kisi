@@ -526,3 +526,29 @@ plots `results/board_returns/`). The model is the option `--via-returns` (off by
 - Series inductance after both: −14 … +12 % without a common sign; no change. Wide traces (X cases):
   the 44/47 Ω fixtures of their 3D de-embedding; no change. B_ts6_L1L6 still lacks 50 fF.
 - `--via-cavity` / `--via-returns` stay off by default (BOARD_RETURNS.md section 7).
+
+## 13. Block 6: the ladder's loss above 12 GHz, the cavity run time
+
+### Loss above 12 GHz: plated pads as return posts
+- Power balance 1 − |S11|² − |S21|² of REFINOUT2 (BOARD_VIAS.md section 6.1): at 20 GHz 3D 9.4 %, ladder
+  16.3 %, of it 11.6 % radiation into the infinite plane pairs (the same ladder with a lossless dielectric).
+  Not the dielectric, the conductor, the ports or the de-embedding (raw minus fixtures: 5.1 %, so the 3D
+  number is good to about ±4 points). Cause: the return-via cage is open on one side, closed on the board
+  by the plated GND pins of the coaxial connector (the nearest at 2.99 mm) and a ninth via beyond the cap
+  of 8. Block 1 references: ladder minus 3D median +0.8 / +0.4 points at 12 / 20 GHz.
+- Fix (default): `via::plane_posts` – vias of plane nets and plated holes of plane-net pads (`Pad::plated`) –
+  and the nearest 12 within 3 mm (`via::RETURN_POSTS`). REFINOUT2: 12–20 GHz max |ΔS21| 0.41 → 0.02 dB,
+  loss at 20 GHz 16.2 → 7.1 % (3D 9.4), 20–25 GHz rms 0.62 → 0.32 dB, phase at 20 GHz 2.4 → 3.8°; M.2
+  pair, FPGA_CLK_R unchanged, LibreVNA RF via 1.63 → 1.64 dB. `compare_kisi.py` / `golden.py vias`: all 56
+  rows unchanged. Example boards: no verdict changes, 5 + 5 rows (`golden.py boards`, ts.check and
+  vna.check). Validation switches `KISI_RET_PADS=0`, `KISI_RET_CAP=8`; `board_vias.py fixes` keeps the
+  three states (before Block 5, Block 5, Block 6). Unit test `via::tests::plated_pads_are_return_posts`.
+- With return groups REFINOUT2 is 0.29 dB off at 12–20 GHz (Block 5: 0.67); they stay an option
+  (BOARD_RETURNS.md section 7).
+
+### The cavity run time
+- 31 744 grid factorisations (79 of 105 s on ThunderScope) for environments that are mostly the same
+  matrix. Shared factorisations per region (`via_cavity::GridGroup`), a registering pass, fixed-pattern
+  assembly (`kisi_sparse::ComplexPattern`), reproducible order of the shorted cells: ThunderScope 102–109 →
+  55–60 s on one thread, LibreVNA 14–15 → 11 s; one and four threads byte-identical
+  (BOARD_RESONANCES.md section 9). Unit test `via_cavity::tests::shared_grid_groups`.

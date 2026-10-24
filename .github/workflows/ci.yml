@@ -1,8 +1,21 @@
-# Checks on every push and pull request (the release workflow runs the same build on tags):
-#   cargo test and the viewer's unit formatter (tools/test_units.mjs) · field solver against HFSS/baseline
-#   (validate_field.sh) · viewer in headless Chromium (check_viewer.py on kisi-examples.html: all views,
-#   light/dark/phone, no console errors) ·
-#   Node CLI against the native CLI on the example boards (compare_cli.py) · reference page builds.
+# Checks of kisi. What runs depends on what changed (tools/ci_checks.py changes): a branch or pull request runs the
+# checks its changes since main can affect; a push to main, a manual run (Actions → ci → Run workflow, or
+# `gh workflow run ci --ref <branch>` before merging a branch) and the weekly run do everything.
+#
+#   always              data/*.json values have sources · Markdown links
+#   rust                cargo test · the CLI commands and options named in README, docs/ and the skills exist
+#   viewer              unit formatter (test_units.mjs) · viewer in headless Chromium (check_viewer.py: all views,
+#                       light/dark/phone, no console errors)
+#   cli                 Node CLI against the native CLI on the example boards (compare_cli.py)
+#   solver              2D field solver against HFSS / baseline (validate_field.sh)
+#   models              stored results of the example boards and kisi's models on the 3D via references
+#                       (tools/golden.py; an intended change updates validation/golden in the same commit)
+#   refpage             the 3D reference page builds
+#   upstream            Forstén's solver in third_party/ is upstream's tree, unchanged
+#   viewer or cli       reproducible bundles · bundle sizes (tools/size_budget.json)
+#   full runs only      the viewer in Firefox and WebKit · kisi.mjs on Windows
+#   weekly / manual     dependency audit (cargo-audit) and licences (cargo-deny, deny.toml) · newer upstream
+#                       revision of js_2d_fields · clippy (report only)
 name: ci
 on:
   push:
@@ -10,26 +23,77 @@ on:
     tags-ignore: ["v*"]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"   # Mondays 03:17 UTC: everything on the latest stable Rust, plus the weekly checks
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 jobs:
-  checks:
+  changes:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    outputs:
+      rust: ${{ steps.c.outputs.rust }}
+      viewer: ${{ steps.c.outputs.viewer }}
+      cli: ${{ steps.c.outputs.cli }}
+      solver: ${{ steps.c.outputs.solver }}
+      models: ${{ steps.c.outputs.models }}
+      refpage: ${{ steps.c.outputs.refpage }}
+      upstream: ${{ steps.c.outputs.upstream }}
+      full: ${{ steps.c.outputs.full }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          fetch-depth: 0
+      - id: c
+        name: What changed
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BASE: ${{ github.base_ref || 'main' }}
+        run: |
+          if [ "$EVENT" != push ] && [ "$EVENT" != pull_request ] || [ "$REF" = refs/heads/main ]; then
+            python3 tools/ci_checks.py changes --full
+          else
+            python3 tools/ci_checks.py changes "$(git merge-base "origin/$BASE" HEAD)" HEAD
+          fi
+
+  checks:
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      RUST: ${{ needs.changes.outputs.rust }}
+      VIEWER: ${{ needs.changes.outputs.viewer }}
+      CLI: ${{ needs.changes.outputs.cli }}
+      SOLVER: ${{ needs.changes.outputs.solver }}
+      MODELS: ${{ needs.changes.outputs.models }}
+      FULL: ${{ needs.changes.outputs.full }}
+      BUILD: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' }}
+      BUNDLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' }}
+      EXAMPLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Values with sources, Markdown links
+        run: |
+          python3 tools/ci_checks.py data
+          python3 tools/ci_checks.py links
+      - name: Forstén's solver unchanged (third_party/js_2d_fields against upstream)
+        if: needs.changes.outputs.upstream == 'true'
+        run: python3 tools/ci_checks.py upstream
+      - uses: actions/setup-node@v4
+        if: env.BUILD == 'true'
+        with:
+          node-version: 22
       - name: Rust toolchain
+        if: env.BUILD == 'true'
         run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown && rustup default stable
       - name: Cargo cache
+        if: env.BUILD == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -39,31 +103,75 @@ jobs:
           key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
           restore-keys: cargo-${{ runner.os }}-
       - name: Tests
+        if: env.RUST == 'true'
+        run: cargo test --release
+      - name: Build the native CLI
+        if: env.BUILD == 'true'
+        run: cargo build --release
+      - name: CLI commands and options named in the docs
+        if: env.RUST == 'true'
+        run: python3 tools/ci_checks.py cli-docs target/release/kisi
+      - name: Example boards
+        if: env.EXAMPLES == 'true'
+        run: sh tools/fetch_examples.sh examples
+      - name: Build the bundles
+        if: env.BUNDLES == 'true'
         run: |
-          cargo test --release
-          node tools/test_units.mjs
-      - name: Build
-        run: |
-          cargo build --release
           cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
           W=target/wasm32-unknown-unknown/release
           python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.html
-          sh tools/fetch_examples.sh examples
           python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi-examples.html \
             ts "ThunderScope Rev5.3" examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro \
             vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
           python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
+      - name: Bundles for the other platforms
+        if: env.FULL == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundles
+          retention-days: 3
+          path: |
+            dist/kisi.html
+            dist/kisi-examples.html
+            dist/kisi.mjs
+            examples/*.kicad_pcb
+            examples/*.kicad_pro
+            web/samples/*.kisi.json
+      - name: Reproducible bundles, bundle sizes
+        if: env.BUNDLES == 'true'
+        run: |
+          W=target/wasm32-unknown-unknown/release
+          R=$RUNNER_TEMP/again
+          mkdir -p $R
+          python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm $R/kisi.html
+          python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm $R/kisi.mjs
+          python3 tools/ci_checks.py same dist/kisi.html $R/kisi.html
+          python3 tools/ci_checks.py same dist/kisi.mjs $R/kisi.mjs
+          python3 tools/ci_checks.py sizes dist
+      - name: Stored results (example boards, 3D via references)
+        if: env.MODELS == 'true'
+        run: |
+          python3 -c "import numpy" 2>/dev/null || python3 -m pip install --quiet numpy
+          python3 tools/golden.py boards target/release/kisi examples
+          python3 tools/golden.py vias target/release/kisi
       - name: Field solver validation (HFSS / baseline, viewer bundle)
+        if: env.SOLVER == 'true'
         run: sh tools/validate_field.sh
       - name: Node CLI against the native CLI
+        if: env.CLI == 'true'
         run: python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples
       - name: Viewer in headless Chromium
+        if: env.VIEWER == 'true'
         run: |
+          node tools/test_units.mjs
           python3 -m pip install --quiet playwright numpy
           python3 -m playwright install --with-deps chromium
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
       - name: Reference cases page
-        run: python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
+        if: needs.changes.outputs.refpage == 'true'
+        run: |
+          python3 -c "import numpy" 2>/dev/null || python3 -m pip install --quiet numpy
+          python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
       - name: Screenshots of the viewer check
         if: failure()
         uses: actions/upload-artifact@v4
@@ -71,3 +179,90 @@ jobs:
           name: viewer-screenshots
           path: viewer-screenshots
           if-no-files-found: ignore
+
+  browsers:
+    needs: [changes, checks]
+    # also when a later check step failed: the bundles are uploaded right after they are built
+    if: always() && needs.changes.outputs.full == 'true' && needs.checks.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: bundles
+      - name: Viewer in ${{ matrix.browser }}
+        run: |
+          python3 -m pip install --quiet playwright numpy
+          python3 -m playwright install --with-deps ${{ matrix.browser }}
+          python3 tools/check_viewer.py dist/kisi-examples.html --quick --browser ${{ matrix.browser }} --layouts light,phone \
+            --out viewer-screenshots
+      - name: Screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viewer-screenshots-${{ matrix.browser }}
+          path: viewer-screenshots
+          if-no-files-found: ignore
+
+  windows:
+    needs: [changes, checks]
+    # also when a later check step failed: the bundles are uploaded right after they are built
+    if: always() && needs.changes.outputs.full == 'true' && needs.checks.result != 'cancelled'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: bundles
+      - name: kisi.mjs on Windows
+        shell: bash
+        run: |
+          set -e
+          node dist/kisi.mjs --version
+          node dist/kisi.mjs help > /dev/null
+          for b in ts:Thunderscope_Rev5.3 vna:VNA; do
+            pcb="examples/${b#*:}.kicad_pcb"; cfg="web/samples/${b%%:*}.kisi.json"
+            node dist/kisi.mjs config-check "$pcb" --config "$cfg" | grep -q '"ok": true'
+            node dist/kisi.mjs gaps "$pcb" --config "$cfg" > /dev/null
+            node dist/kisi.mjs power "$pcb" --config "$cfg" > /dev/null
+            # a Windows path with backslashes
+            node dist/kisi.mjs overview "$(cygpath -w "$pcb")" --config "$(cygpath -w "$cfg")" --formula > /dev/null
+          done
+          node dist/kisi.mjs check examples/Thunderscope_Rev5.3.kicad_pcb --config web/samples/ts.kisi.json --formula --all \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s);console.log(r.rows.length+' rows');if(!r.rows.length)process.exit(1)})"
+
+  weekly:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
+        run: rustup toolchain install stable --profile minimal --component clippy && rustup default stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit,cargo-deny
+      - name: Security advisories (cargo-audit)
+        run: cargo audit
+      - name: Licences and sources of the dependencies (cargo-deny, deny.toml)
+        run: cargo deny check licenses sources
+      - name: Newer upstream revision of js_2d_fields
+        run: python3 tools/ci_checks.py upstream --latest
+      - name: Clippy (report only)
+        continue-on-error: true
+        run: |
+          cargo clippy --release --workspace --message-format short 2>&1 | tee clippy.txt | tail -5
+          n=$(grep -c ': warning:' clippy.txt || true)
+          echo "::notice title=clippy::$n warnings (report only)"
+          echo "### Clippy: $n warnings (report only)" >> "$GITHUB_STEP_SUMMARY"

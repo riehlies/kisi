@@ -1,0 +1,1629 @@
+{
+ "buses": [
+  {
+   "bus": "U10 ↔ U18",
+   "class": "LVDS_SYNC",
+   "devices": [
+    "U10",
+    "U18"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U10.12",
+      "U18.D8"
+     ],
+     "from": "U10.12",
+     "kind": "ic-ic",
+     "lane": "/FPGA/SYNC_IN_P",
+     "nets": [
+      "/FPGA/SYNC_IN_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.D8"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "termination R60 next to U10",
+     "ends": [
+      "U10.10",
+      "U18.D9"
+     ],
+     "from": "U18.D9",
+     "kind": "ic-ic",
+     "lane": "/FPGA/SYNC_OUT_P",
+     "nets": [
+      "/FPGA/SYNC_OUT_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [
+      "R60 100 across the pair"
+     ],
+     "to": "U10.10"
+    }
+   ],
+   "profile": "lvds",
+   "values": [
+    "FIN1019MTCX",
+    "IC FPGA XC7A50T-2CSG325C"
+   ]
+  },
+  {
+   "bus": "U12_1 ↔ U6",
+   "class": "FE_100Z_Diff",
+   "devices": [
+    "U12_1",
+    "U6"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U12_1.10",
+      "U6.38"
+     ],
+     "from": "U12_1.10",
+     "kind": "ic-ic",
+     "lane": "/ADC Driver 1/OUT_P",
+     "nets": [
+      "Net-(U12_1-OUT+)",
+      "/ADC Driver 1/OUT_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R137_1 4.99 (0402)"
+     ],
+     "terminations": [],
+     "to": "U6.38"
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "ADA4930-1YCPZ",
+    "HMCAD1520"
+   ]
+  },
+  {
+   "bus": "U12_2 ↔ U6",
+   "class": "FE_100Z_Diff",
+   "devices": [
+    "U12_2",
+    "U6"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U12_2.10",
+      "U6.41"
+     ],
+     "from": "U12_2.10",
+     "kind": "ic-ic",
+     "lane": "/ADC Driver 2/OUT_P",
+     "nets": [
+      "Net-(U12_2-OUT+)",
+      "/ADC Driver 2/OUT_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R137_2 4.99 (0402)"
+     ],
+     "terminations": [],
+     "to": "U6.41"
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "ADA4930-1YCPZ",
+    "HMCAD1520"
+   ]
+  },
+  {
+   "bus": "U12_3 ↔ U6",
+   "class": "FE_100Z_Diff",
+   "devices": [
+    "U12_3",
+    "U6"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U12_3.10",
+      "U6.44"
+     ],
+     "from": "U12_3.10",
+     "kind": "ic-ic",
+     "lane": "/ADC Driver 3/OUT_P",
+     "nets": [
+      "Net-(U12_3-OUT+)",
+      "/ADC Driver 3/OUT_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R137_3 4.99 (0402)"
+     ],
+     "terminations": [],
+     "to": "U6.44"
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "ADA4930-1YCPZ",
+    "HMCAD1520"
+   ]
+  },
+  {
+   "bus": "U12_4 ↔ U6",
+   "class": "FE_100Z_Diff",
+   "devices": [
+    "U12_4",
+    "U6"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U12_4.10",
+      "U6.47"
+     ],
+     "from": "U12_4.10",
+     "kind": "ic-ic",
+     "lane": "/ADC Driver 4/OUT_P",
+     "nets": [
+      "Net-(U12_4-OUT+)",
+      "/ADC Driver 4/OUT_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R137_4 4.99 (0402)"
+     ],
+     "terminations": [],
+     "to": "U6.47"
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "ADA4930-1YCPZ",
+    "HMCAD1520"
+   ]
+  },
+  {
+   "bus": "U18 ↔ U6",
+   "class": "LVDS_ADC",
+   "devices": [
+    "U18",
+    "U6"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.B9",
+      "U6.9"
+     ],
+     "from": "U18.B9",
+     "kind": "ic-ic",
+     "lane": "/ADC/D1A_P",
+     "nets": [
+      "/ADC/D1A_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.9"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.B10",
+      "U6.11"
+     ],
+     "from": "U18.B10",
+     "kind": "ic-ic",
+     "lane": "/ADC/D1B_P",
+     "nets": [
+      "/ADC/D1B_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.11"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.D11",
+      "U6.13"
+     ],
+     "from": "U18.D11",
+     "kind": "ic-ic",
+     "lane": "/ADC/D2A_P",
+     "nets": [
+      "/ADC/D2A_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.13"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.B11",
+      "U6.15"
+     ],
+     "from": "U18.B11",
+     "kind": "ic-ic",
+     "lane": "/ADC/D2B_P",
+     "nets": [
+      "/ADC/D2B_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.15"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.A13",
+      "U6.21"
+     ],
+     "from": "U18.A13",
+     "kind": "ic-ic",
+     "lane": "/ADC/D3A_P",
+     "nets": [
+      "/ADC/D3A_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.21"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.B14",
+      "U6.23"
+     ],
+     "from": "U18.B14",
+     "kind": "ic-ic",
+     "lane": "/ADC/D3B_P",
+     "nets": [
+      "/ADC/D3B_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.23"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.D13",
+      "U6.25"
+     ],
+     "from": "U18.D13",
+     "kind": "ic-ic",
+     "lane": "/ADC/D4A_P",
+     "nets": [
+      "/ADC/D4A_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.25"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.C14",
+      "U6.27"
+     ],
+     "from": "U18.C14",
+     "kind": "ic-ic",
+     "lane": "/ADC/D4B_P",
+     "nets": [
+      "/ADC/D4B_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.27"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.A12",
+      "U6.19"
+     ],
+     "from": "U18.A12",
+     "kind": "ic-ic",
+     "lane": "/ADC/FCLK_P",
+     "nets": [
+      "/ADC/FCLK_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.19"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U18.E13",
+      "U6.17"
+     ],
+     "from": "U18.E13",
+     "kind": "ic-ic",
+     "lane": "/ADC/LCLK_P",
+     "nets": [
+      "/ADC/LCLK_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U6.17"
+    }
+   ],
+   "profile": "lvds",
+   "values": [
+    "IC FPGA XC7A50T-2CSG325C",
+    "HMCAD1520"
+   ]
+  },
+  {
+   "bus": "U6 ↔ U7",
+   "class": "LVDS_ADC_CLK",
+   "devices": [
+    "U6",
+    "U7"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "termination R22 next to U6",
+     "ends": [
+      "U6.35",
+      "U7.47"
+     ],
+     "from": "U7.47",
+     "kind": "ic-ic",
+     "lane": "/ADC/ADC_CLK_P",
+     "nets": [
+      "/ADC/ADC_CLK_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [
+      "R22 100 across the pair"
+     ],
+     "to": "U6.35"
+    }
+   ],
+   "profile": "lvds",
+   "values": [
+    "HMCAD1520",
+    "ZL30260LDG1"
+   ]
+  },
+  {
+   "bus": "J3 ↔ U7",
+   "class": "50Z",
+   "devices": [
+    "J3",
+    "U7"
+   ],
+   "kind": "ic-connector",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J3.3",
+      "U7.8"
+     ],
+     "from": "J3.3",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/REFINOUT2",
+     "nets": [
+      "/TS-PCIe Components/REFINOUT2",
+      "/REFINOUT",
+      "Net-(U7-OC1P)"
+     ],
+     "not_modelled": [
+      "C64",
+      "D4"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R5 0 (0402)",
+      "R43 49.9 (0402)"
+     ],
+     "terminations": [],
+     "to": "U7.8"
+    }
+   ],
+   "mpns": [
+    "3220-10-0200-00",
+    null
+   ],
+   "profile": "se50",
+   "values": [
+    "1.27mm 6 Pin TH",
+    "ZL30260LDG1"
+   ]
+  },
+  {
+   "bus": "J9 ↔ U18",
+   "class": "LVDS_USRIO",
+   "devices": [
+    "J9",
+    "U18"
+   ],
+   "kind": "ic-connector",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.2",
+      "U18.E18"
+     ],
+     "from": "J9.2",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_1_P",
+     "nets": [
+      "/FPGA/USRIO_1_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.E18"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.5",
+      "U18.F18"
+     ],
+     "from": "J9.5",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_2_P",
+     "nets": [
+      "/FPGA/USRIO_2_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.F18"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.8",
+      "U18.H17"
+     ],
+     "from": "J9.8",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_3_P",
+     "nets": [
+      "/FPGA/USRIO_3_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.H17"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.11",
+      "U18.G14"
+     ],
+     "from": "J9.11",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_4_P",
+     "nets": [
+      "/FPGA/USRIO_4_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.G14"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.14",
+      "U18.G16"
+     ],
+     "from": "J9.14",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_5_P",
+     "nets": [
+      "/FPGA/USRIO_5_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.G16"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.17",
+      "U18.G15"
+     ],
+     "from": "J9.17",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_6_P",
+     "nets": [
+      "/FPGA/USRIO_6_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.G15"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.20",
+      "U18.E15"
+     ],
+     "from": "J9.20",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_7_P",
+     "nets": [
+      "/FPGA/USRIO_7_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.E15"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.23",
+      "U18.E16"
+     ],
+     "from": "J9.23",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_8_P",
+     "nets": [
+      "/FPGA/USRIO_8_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.E16"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.26",
+      "U18.C16"
+     ],
+     "from": "J9.26",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_9_P",
+     "nets": [
+      "/FPGA/USRIO_9_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.C16"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.29",
+      "U18.A17"
+     ],
+     "from": "J9.29",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_10_P",
+     "nets": [
+      "/FPGA/USRIO_10_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.A17"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.32",
+      "U18.C17"
+     ],
+     "from": "J9.32",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_11_P",
+     "nets": [
+      "/FPGA/USRIO_11_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.C17"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "J9.35",
+      "U18.D18"
+     ],
+     "from": "J9.35",
+     "kind": "ic-connector",
+     "lane": "/FPGA/USRIO_12_P",
+     "nets": [
+      "/FPGA/USRIO_12_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U18.D18"
+    }
+   ],
+   "profile": "lvds",
+   "values": [
+    "F300-1B7H1-11036-E100",
+    "IC FPGA XC7A50T-2CSG325C"
+   ]
+  },
+  {
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "devices": [
+    "P1",
+    "U18"
+   ],
+   "kind": "ic-connector",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "P1.A16",
+      "U18.B2"
+     ],
+     "from": "P1.A16",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/PCIe_PER0_P",
+     "nets": [
+      "/TS-PCIe Components/PCIe_PER0_P",
+      "/FPGA/MGT_TX3_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C41 220nF (0402)"
+     ],
+     "terminations": [],
+     "to": "U18.B2"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "P1.A21",
+      "U18.D2"
+     ],
+     "from": "P1.A21",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/PCIe_PER1_P",
+     "nets": [
+      "/TS-PCIe Components/PCIe_PER1_P",
+      "/FPGA/MGT_TX2_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C37 220nF (0402)"
+     ],
+     "terminations": [],
+     "to": "U18.D2"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "P1.A25",
+      "U18.F2"
+     ],
+     "from": "P1.A25",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/PCIe_PER2_P",
+     "nets": [
+      "/TS-PCIe Components/PCIe_PER2_P",
+      "/FPGA/MGT_TX1_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C33 220nF (0402)"
+     ],
+     "terminations": [],
+     "to": "U18.F2"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "P1.A29",
+      "U18.H2"
+     ],
+     "from": "P1.A29",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/PCIe_PER3_P",
+     "nets": [
+      "/TS-PCIe Components/PCIe_PER3_P",
+      "/FPGA/MGT_TX0_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C29 220nF (0402)"
+     ],
+     "terminations": [],
+     "to": "U18.H2"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "P1.B14",
+      "U18.G4"
+     ],
+     "from": "P1.B14",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/PCIe_PET0_P",
+     "nets": [
+      "/TS-PCIe Components/PCIe_PET0_P",
+      "/FPGA/MGT_RX3_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R38 0 (0402)"
+     ],
+     "terminations": [],
+     "to": "U18.G4"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "P1.B19",
+      "U18.C4"
+     ],
+     "from": "P1.B19",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/PCIe_PET1_P",
+     "nets": [
+      "/TS-PCIe Components/PCIe_PET1_P",
+      "/FPGA/MGT_RX2_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R34 0 (0402)"
+     ],
+     "terminations": [],
+     "to": "U18.C4"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "P1.B23",
+      "U18.A4"
+     ],
+     "from": "P1.B23",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/PCIe_PET2_P",
+     "nets": [
+      "/TS-PCIe Components/PCIe_PET2_P",
+      "/FPGA/MGT_RX1_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R30 0 (0402)"
+     ],
+     "terminations": [],
+     "to": "U18.A4"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "P1.B27",
+      "U18.E4"
+     ],
+     "from": "P1.B27",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/PCIe_PET3_P",
+     "nets": [
+      "/TS-PCIe Components/PCIe_PET3_P",
+      "/FPGA/MGT_RX0_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R26 0 (0402)"
+     ],
+     "terminations": [],
+     "to": "U18.E4"
+    },
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "P1.A13",
+      "U18.B6"
+     ],
+     "from": "P1.A13",
+     "kind": "ic-connector",
+     "lane": "/TS-PCIe Components/PCIe_REFCLK_P",
+     "nets": [
+      "/TS-PCIe Components/PCIe_REFCLK_P",
+      "/MGT_CLK1_P"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C45 100nF (0402)"
+     ],
+     "terminations": [],
+     "to": "U18.B6"
+    }
+   ],
+   "profile": "pcie4",
+   "values": [
+    "PCIeX4-GF-2D-1000-1K-O64",
+    "IC FPGA XC7A50T-2CSG325C"
+   ]
+  },
+  {
+   "bus": "J3 ↔ U10",
+   "class": "50Z",
+   "devices": [
+    "J3",
+    "U10"
+   ],
+   "kind": "multi-drop",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J3.7",
+      "U10.4",
+      "U10.2"
+     ],
+     "from": null,
+     "kind": "multi-drop",
+     "lane": "/TS-PCIe Components/SYNC2",
+     "nets": [
+      "/TS-PCIe Components/SYNC2",
+      "/SYNC",
+      "Net-(U10-RO)"
+     ],
+     "not_modelled": [
+      "D5"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R3 0 (0402)",
+      "R63 49.9 (0402)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "mpns": [
+    "3220-10-0200-00",
+    null
+   ],
+   "profile": "se50",
+   "values": [
+    "1.27mm 6 Pin TH",
+    "FIN1019MTCX"
+   ]
+  },
+  {
+   "bus": "J1002_1",
+   "class": "FE_50Z_INPUT",
+   "devices": [
+    "J1002_1"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J1002_1.1"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH1/BNC_IN",
+     "nets": [
+      "/CH1/BNC_IN"
+     ],
+     "not_modelled": [
+      "K1000_1"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "mpns": [
+    "73100-0105"
+   ],
+   "profile": "se50",
+   "values": [
+    "BNC"
+   ]
+  },
+  {
+   "bus": "J1002_2",
+   "class": "FE_50Z_INPUT",
+   "devices": [
+    "J1002_2"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J1002_2.1"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH2/BNC_IN",
+     "nets": [
+      "/CH2/BNC_IN"
+     ],
+     "not_modelled": [
+      "K1000_2"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "mpns": [
+    "73100-0105"
+   ],
+   "profile": "se50",
+   "values": [
+    "BNC"
+   ]
+  },
+  {
+   "bus": "J1002_3",
+   "class": "FE_50Z_INPUT",
+   "devices": [
+    "J1002_3"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J1002_3.1"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH3/BNC_IN",
+     "nets": [
+      "/CH3/BNC_IN"
+     ],
+     "not_modelled": [
+      "K1000_3"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "mpns": [
+    "73100-0105"
+   ],
+   "profile": "se50",
+   "values": [
+    "BNC"
+   ]
+  },
+  {
+   "bus": "J1002_4",
+   "class": "FE_50Z_INPUT",
+   "devices": [
+    "J1002_4"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J1002_4.1"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH4/BNC_IN",
+     "nets": [
+      "/CH4/BNC_IN"
+     ],
+     "not_modelled": [
+      "K1000_4"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "mpns": [
+    "73100-0105"
+   ],
+   "profile": "se50",
+   "values": [
+    "BNC"
+   ]
+  },
+  {
+   "bus": "U1008_1",
+   "class": "FE_100Z_Diff",
+   "devices": [
+    "U1008_1"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U1008_1.15"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH1_P",
+     "nets": [
+      "/CH1/OUT_R_P",
+      "/CH1_P"
+     ],
+     "not_modelled": [
+      "R132_1"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R52_1 0 (0402)"
+     ],
+     "terminations": [
+      "R131_1 120 across the pair"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "LMH6518"
+   ]
+  },
+  {
+   "bus": "U1008_2",
+   "class": "FE_100Z_Diff",
+   "devices": [
+    "U1008_2"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U1008_2.15"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH2_P",
+     "nets": [
+      "/CH2/OUT_R_P",
+      "/CH2_P"
+     ],
+     "not_modelled": [
+      "R132_2"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R52_2 0 (0402)"
+     ],
+     "terminations": [
+      "R131_2 120 across the pair"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "LMH6518"
+   ]
+  },
+  {
+   "bus": "U1008_3",
+   "class": "FE_100Z_Diff",
+   "devices": [
+    "U1008_3"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U1008_3.15"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH3_P",
+     "nets": [
+      "/CH3/OUT_R_P",
+      "/CH3_P"
+     ],
+     "not_modelled": [
+      "R132_3"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R52_3 0 (0402)"
+     ],
+     "terminations": [
+      "R131_3 120 across the pair"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "LMH6518"
+   ]
+  },
+  {
+   "bus": "U1008_4",
+   "class": "FE_100Z_Diff",
+   "devices": [
+    "U1008_4"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "U1008_4.15"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH4_P",
+     "nets": [
+      "/CH4/OUT_R_P",
+      "/CH4_P"
+     ],
+     "not_modelled": [
+      "R132_4"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R52_4 0 (0402)"
+     ],
+     "terminations": [
+      "R131_4 120 across the pair"
+     ],
+     "to": null
+    }
+   ],
+   "profile": "diff100",
+   "values": [
+    "LMH6518"
+   ]
+  },
+  {
+   "bus": "U1009_1",
+   "class": "FE_50Z",
+   "devices": [
+    "U1009_1"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U1009_1.2"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH1/BUF_IN",
+     "nets": [
+      "/CH1/BUF_IN",
+      "/CH1/ATTEN_OUT_R",
+      "/CH1/ATTEN_OUT"
+     ],
+     "not_modelled": [
+      "K1001_1",
+      "R1038_1",
+      "R1039_1"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C1030_1 1nF (0603)",
+      "R1035_1 30 (0603)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "BUF802"
+   ]
+  },
+  {
+   "bus": "U1009_2",
+   "class": "FE_50Z",
+   "devices": [
+    "U1009_2"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U1009_2.2"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH2/BUF_IN",
+     "nets": [
+      "/CH2/BUF_IN",
+      "/CH2/ATTEN_OUT_R",
+      "/CH2/ATTEN_OUT"
+     ],
+     "not_modelled": [
+      "K1001_2",
+      "R1038_2",
+      "R1039_2"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C1030_2 1nF (0603)",
+      "R1035_2 30 (0603)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "BUF802"
+   ]
+  },
+  {
+   "bus": "U1009_3",
+   "class": "FE_50Z",
+   "devices": [
+    "U1009_3"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U1009_3.2"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH3/BUF_IN",
+     "nets": [
+      "/CH3/BUF_IN",
+      "/CH3/ATTEN_OUT_R",
+      "/CH3/ATTEN_OUT"
+     ],
+     "not_modelled": [
+      "K1001_3",
+      "R1038_3",
+      "R1039_3"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C1030_3 1nF (0603)",
+      "R1035_3 30 (0603)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "BUF802"
+   ]
+  },
+  {
+   "bus": "U1009_4",
+   "class": "FE_50Z",
+   "devices": [
+    "U1009_4"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U1009_4.2"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "/CH4/BUF_IN",
+     "nets": [
+      "/CH4/BUF_IN",
+      "/CH4/ATTEN_OUT_R",
+      "/CH4/ATTEN_OUT"
+     ],
+     "not_modelled": [
+      "K1001_4",
+      "R1038_4",
+      "R1039_4"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "C1030_4 1nF (0603)",
+      "R1035_4 30 (0603)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "BUF802"
+   ]
+  },
+  {
+   "bus": "U7",
+   "class": "50Z",
+   "devices": [
+    "U7"
+   ],
+   "kind": "open",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U7.15"
+     ],
+     "from": null,
+     "kind": "open",
+     "lane": "Net-(U7-IC1P)",
+     "nets": [
+      "Net-(U7-IC1P)"
+     ],
+     "not_modelled": [
+      "C64"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "ZL30260LDG1"
+   ]
+  }
+ ],
+ "config": {
+  "entries": 70,
+  "errors": [],
+  "ok": true,
+  "warnings": []
+ },
+ "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop along one path (the first two ends are transmitter and receiver at the ends of the path, the other devices receivers on side stubs: the eye at every receiver, the worst counts), open lines and multi-drop trees through series parts (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json. mpns (when present): the devices' manufacturer part numbers where the Value field does not show one.",
+ "variant": {
+  "available": [
+   "TS-PCIe",
+   "TS-USB4"
+  ],
+  "chosen_by": "kisi.json",
+  "description": "PCIe mode: x4 edge fingers P1 to the FPGA",
+  "errors": [],
+  "field_overrides": [],
+  "fitted_by_variant": [],
+  "forks_all_fitted": 0,
+  "name": "TS-PCIe",
+  "needs_choice": false,
+  "not_fitted_by_variant": [
+   "C30",
+   "C31",
+   "C34",
+   "C35",
+   "C38",
+   "C39",
+   "C42",
+   "C43",
+   "C46",
+   "C47",
+   "C99",
+   "C100",
+   "C127",
+   "D2",
+   "D3",
+   "J1",
+   "J2",
+   "J8",
+   "J10",
+   "J11",
+   "L1",
+   "R2",
+   "R4",
+   "R14",
+   "R24",
+   "R27",
+   "R28",
+   "R31",
+   "R32",
+   "R35",
+   "R36",
+   "R39",
+   "R40",
+   "R54",
+   "R72",
+   "R82",
+   "R84",
+   "R109",
+   "R110",
+   "SO1",
+   "… 5 more"
+  ],
+  "not_fitted_total": 77,
+  "unused_nets": 51,
+  "warnings": []
+ }
+}

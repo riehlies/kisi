@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Strip a .kicad_pcb down to what kisi needs (copper, stackup, nets, outline, footprint
-fields, sheet names, DNP/BOM attributes and KiCad 10 assembly variants).
+fields, sheet names, DNP/BOM attributes, KiCad 10 assembly variants, pad pin names).
 
 Used to embed sample boards into the viewer at a reasonable size.
 Usage: strip_pcb.py in.kicad_pcb out.kicad_pcb
@@ -12,7 +12,8 @@ KEEP_TOP = {"version", "generator", "generator_version", "general", "layers", "s
             "gr_line", "gr_arc", "gr_rect", "gr_circle", "gr_poly", "variants"}
 # sheetname: assembly variants by sheet (kisi.json "variants"); variant: KiCad 10 overrides
 KEEP_FP = {"layer", "at", "pad", "attr", "property", "sheetname", "variant"}
-KEEP_PAD = {"at", "size", "drill", "layers", "net", "roundrect_rratio", "primitives"}
+# pinfunction: the symbol's pin name per pad (kisi gaps finds supply rails by pin names)
+KEEP_PAD = {"at", "size", "drill", "layers", "net", "roundrect_rratio", "primitives", "pinfunction"}
 DROP_ZONE = {"polygon", "fill", "connect_pads", "hatch", "placement", "attr", "keepout"}
 
 

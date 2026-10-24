@@ -12,18 +12,22 @@ validation depends on measurements that take time.
 ## 1. Usability: GUI, CLI, documentation
 Goal: humans in the viewer and agents with the CLI can both use kisi easily. Well-prepared boards already display
 well; the challenge is preparing a new design for a meaningful analysis – missing data, definitions and models.
-- **Documentation structure** (first step, decided 2026-10-24). The README has grown long. Split it into a short
-  README and Markdown in `docs/` (rendered by GitHub, linked from the README and the landing page): getting started,
-  preparing a board (with the XIAO nRF54LM20A as a worked tutorial), field and `kisi.json` reference, models and
-  limits, CLI reference, using kisi with agents. Same facts, one place each. The docs can be rendered to one PDF
-  that the release workflow attaches. Along with it: check the repository for confusing or outdated information,
-  files and documents and clean them up.
+- **Documentation structure** (first step, decided 2026-10-24) – **done in branch `feat/docs-prepare`:** a short
+  README and the user documentation in `docs/` (getting started, preparing a board with the XIAO nRF54LM20A as the
+  worked example, field and `kisi.json` reference, models and limits, CLI reference, agents), linked from the
+  README and the landing page; `tools/docs_pdf.py` renders it into `kisi-docs.pdf`, which CI builds (and uses as a
+  link check) and the release attaches; `crates/kisi-core/tests/docs.rs` keeps `docs/cli.md` (the `kisi help` text,
+  every command and option) and the gap ids in step with the code. The repository was checked for stale
+  statements and plans (the commit messages say what changed and why). Next: each feature updates its page in
+  the same change (rule in `AGENTS.md`); the Prepare step gets its section in `docs/preparing-a-board.md`.
 - **Board preparation in the viewer** (decided 2026-10-24: shared core plus a "Prepare" step; a mockup first). One
   core for humans and agents: `kisi gaps` already says what is missing, where to find it and where it goes in
   `kisi.json`. The "Prepare" step lists the gaps and lets the simple values be entered directly (laminate εr/tanδ,
   net class targets and profiles, regulators and loads, thermal data), checked by the same code as `config-check`,
   and exports `<board>.kisi.json`. Research-heavy values (datasheets) stay with the agent path (skill
-  kisi-prepare). No second logic in the viewer.
+  kisi-prepare). No second logic in the viewer. **Mockup and design note done** (`docs/mockups/prepare.html`,
+  `prepare.md`: reuse of `kisi_core::gaps` and `config::check` through WASM, about 7–8 days, a first version 4–5).
+  Next: the maintainer's review of the mockup (open questions in `prepare.md`), then the implementation.
 - **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
   (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
   text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an

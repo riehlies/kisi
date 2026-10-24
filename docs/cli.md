@@ -122,7 +122,10 @@ review tools and later sessions. Needs an assembly variant on boards that have t
 Missing or default data: each gap has `id`, `priority` (high, medium, low), `area`, `issue`, `affects`, `views`
 (the analysis categories it matters for: impedance, channel, power – the temperature estimate is part of power),
 `where_to_find`, `write` (where it goes in `<board>.kisi.json`, with an example) and `items` (layers, classes,
-parts with their MPN; `"dismissable": true` on items found only by a name). `views` in the result says per
+parts with their MPN; `"dismissable": true` on items found only by a name; items of gaps that mix categories
+carry their own `views` – a dielectric with only a default tanδ matters for the channel, not the impedance – and
+the gap's `views` are then those of its items; capacitors in `cap-ratings` carry their `package` and, where the
+part's own fields name them, a `suggest`ed PI_CAP value). `views` in the result says per
 category whether there is anything to check (`applicable`, `why`) and its `state`: `ready` (no open high or medium
 gap), `open`, or `nothing to check`. `--for impedance|channel|power` keeps the gaps of one category.
 `dismissed` lists the items left out because `gaps.dismissed` in kisi.json dismisses them, with the reason (and

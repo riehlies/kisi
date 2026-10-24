@@ -73,6 +73,9 @@
      "loss_tangent": 0.02,
      "material": "7628",
      "thickness_mm": 0.2104,
+     "views": [
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value"
      ]
@@ -85,6 +88,9 @@
      "loss_tangent": 0.02,
      "material": "FR4",
      "thickness_mm": 0.4,
+     "views": [
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value"
      ]
@@ -97,6 +103,9 @@
      "loss_tangent": 0.02,
      "material": "7628",
      "thickness_mm": 0.2028,
+     "views": [
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value"
      ]
@@ -109,6 +118,10 @@
      "loss_tangent": 0.02,
      "material": "FR4",
      "thickness_mm": 0.4,
+     "views": [
+      "impedance",
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value",
       "εr 4.5 is KiCad's default value"
@@ -122,6 +135,9 @@
      "loss_tangent": 0.02,
      "material": "7628",
      "thickness_mm": 0.2104,
+     "views": [
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value"
      ]
@@ -372,491 +388,589 @@
    "issue": "98 decoupling capacitor(s) of 100 nF and more have no rated voltage or dielectric: the DC-bias derating in Z(f) uses an assumed rating.",
    "items": [
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(C119-Pad1)",
      "ref": "C122",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_HBLB_ATT",
      "ref": "C70",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C209",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "VREG3V3_SWL",
      "ref": "C8",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(C119-Pad1)",
      "ref": "C119",
      "value": "100nF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "+6V",
      "ref": "C20",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_HBLB_AMP",
      "ref": "C72",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "VCCINT",
      "ref": "C216",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC25-OUT)",
      "ref": "C131",
      "value": "1uF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "VREG5V{slash}2",
      "ref": "C23",
      "value": "4u7F"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C218",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_LO1_2",
      "ref": "C86",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "+6V",
      "ref": "C16",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C208",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "VCCINT",
      "ref": "C7",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_CLKGEN",
      "ref": "C33",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_HBLB_AMP",
      "ref": "C73",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_SRC_1",
      "ref": "C56",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC29-VPDT)",
      "ref": "C145",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C217",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_HBLB_SWITCH",
      "ref": "C69",
      "value": "100nF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "+5V{slash}1",
      "ref": "C26",
      "value": "1uF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "+5V",
      "ref": "C3",
      "value": "10uF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "3V3_LDO2_LO1",
      "ref": "C81",
      "value": "1uF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "+6V",
      "ref": "C19",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_LO1_3",
      "ref": "C84",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(C190-Pad1)",
      "ref": "C193",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC23-V_{S+})",
      "ref": "C115",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_LO1_1",
      "ref": "C94",
      "value": "100nF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "+5V{slash}2",
      "ref": "C27",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C221",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC22-VCC)",
      "ref": "C102",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C169",
      "value": "100nF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "3V3_LDO2_SRC",
      "ref": "C52",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(C156-Pad1)",
      "ref": "C159",
      "value": "100nF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "VREG5V{slash}3",
      "ref": "C24",
      "value": "4u7F"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_SRC_1",
      "ref": "C61",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(C156-Pad1)",
      "ref": "C156",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C207",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_P2_SWITCH",
      "ref": "C77",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC22-VCC)",
      "ref": "C103",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C215",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC36-VCC)",
      "ref": "C205",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_SRC_2",
      "ref": "C57",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_SRC_3",
      "ref": "C55",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C132",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "3v3_LDO1_SRC",
      "ref": "C53",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC25-EN)",
      "ref": "C129",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C29",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "3V3_LDO1_LO1",
      "ref": "C82",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(C190-Pad1)",
      "ref": "C190",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_P12_SWITCH",
      "ref": "C75",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "+3V3",
      "ref": "C14",
      "value": "10uF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "+6V",
      "ref": "C18",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_LO1_1",
      "ref": "C85",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_CLKGEN",
      "ref": "C32",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "+5V",
      "ref": "C1",
      "value": "10uF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "VREG5V{slash}4",
      "ref": "C25",
      "value": "4u7F"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC28-V_{S+})",
      "ref": "C152",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC36-VCC)",
      "ref": "C204",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "VCCINT",
      "ref": "C10",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "VCCINT",
      "ref": "C222",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC32-V_{S+})",
      "ref": "C181",
      "value": "100nF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "+5V{slash}4",
      "ref": "C79",
      "value": "1uF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "+3V3",
      "ref": "C15",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC34-EN)",
      "ref": "C195",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC33-VPDT)",
      "ref": "C177",
      "value": "1uF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "+5V{slash}4",
      "ref": "C78",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "VCCINT",
      "ref": "C213",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_LO1_1",
      "ref": "C91",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C219",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC30-OUT)",
      "ref": "C168",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C206",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C31",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC34-OUT)",
      "ref": "C198",
      "value": "1uF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "+6V",
      "ref": "C21",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "VCCINT",
      "ref": "C212",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "VREG3V3_SWL",
      "ref": "C11",
      "value": "10uF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "+6V",
      "ref": "C17",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C211",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC24-VPDT)",
      "ref": "C108",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C214",
      "value": "100nF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "+5V{slash}4",
      "ref": "C50",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+5V",
      "ref": "C6",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC27-VCC)",
      "ref": "C140",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "VCCINT",
      "ref": "C220",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_P1_SWITCH",
      "ref": "C76",
      "value": "100nF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "VREG5V{slash}1",
      "ref": "C22",
      "value": "4u7F"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC30-EN)",
      "ref": "C166",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_SRC_1",
      "ref": "C64",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C201",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "+3V3",
      "ref": "C210",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "+5V{slash}4",
      "ref": "C49",
      "value": "10uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_SRC_3",
      "ref": "C54",
      "value": "100nF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "3V3_LO1_3",
      "ref": "C83",
      "value": "100nF"
     },
     {
+     "package": "C_1206_3216Metric",
      "rail": "+5V",
      "ref": "C2",
      "value": "10uF"
     },
     {
+     "package": "C_0603_1608Metric",
      "rail": "+5V{slash}3",
      "ref": "C28",
      "value": "1uF"
     },
     {
+     "package": "C_0402_1005Metric",
      "rail": "Net-(IC27-VCC)",
      "ref": "C139",
      "value": "100nF"

@@ -1068,6 +1068,32 @@ pub extern "C" fn kisi_config_subset(p: *const u8, n: usize) -> i32 {
     })())
 }
 
+/// Power settings of the viewer as footprint fields for the kisi.json (Prepare page, "take the viewer's
+/// edits"): a power tree as PI_REG / PI_LOAD, rail setups without a tree as PI_SOURCE / PI_LOAD.
+/// Input: {"tree": TreeSpec | null, "setups": [RailSetup] | null}. Output: {"fields": [{ref, name,
+/// value}], "lost": [what fields cannot say]}.
+#[no_mangle]
+pub extern "C" fn kisi_edits_to_fields(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply((|| -> Result<String, String> {
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let mut fields = Vec::new();
+        let mut lost = Vec::new();
+        if !v["tree"].is_null() {
+            let spec: kisi_core::tree::TreeSpec = serde_json::from_value(v["tree"].clone()).map_err(|e| format!("tree: {e}"))?;
+            fields.extend(kisi_core::tree::spec_to_fields(&spec));
+        }
+        if !v["setups"].is_null() {
+            let setups: Vec<kisi_core::pi::RailSetup> = serde_json::from_value(v["setups"].clone()).map_err(|e| format!("setups: {e}"))?;
+            let (f, l) = kisi_core::pi::setups_to_fields(&setups);
+            fields.extend(f);
+            lost.extend(l);
+        }
+        let fields: Vec<serde_json::Value> = fields.into_iter().map(|(r, n, v)| serde_json::json!({"ref": r, "name": n, "value": v})).collect();
+        Ok(serde_json::json!({"fields": fields, "lost": lost}).to_string())
+    })())
+}
+
 /// Parse a command line: ["check", "board.kicad_pcb", "--all", …] → Opts.
 #[no_mangle]
 pub extern "C" fn kisi_cli_parse(p: *const u8, n: usize) -> i32 {

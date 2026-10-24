@@ -28,7 +28,8 @@ The work has two halves:
 6. **Use it:** every command reads the kisi.json next to the board; in the viewer, drop it together with the
    board files.
 
-Each gap names the analysis categories it matters for (`views`: impedance, channel, power), and `kisi gaps` says per
+Each gap names the analysis categories it matters for (`views`: impedance, channel, power; where a gap mixes
+them, each item names its own – a dielectric with only KiCad's default tanδ is a channel item), and `kisi gaps` says per
 category whether there is anything to check and whether it is ready (no open high or medium gap). To prepare a
 board for one analysis only, use `kisi gaps --for impedance` (or `channel`, `power`): a board without nets with a
 target impedance has nothing to check for impedance, and its laminate gap blocks nothing yet.
@@ -206,6 +207,8 @@ the estimated 85 % and LDO1 3 mW. The largest DC drop is 0.17 mV, on VSYS_3V3.
 - `ic-loads`: **U7**, the XIAO header. External loads on the 3V3 and VBUS pins are unknown.
 - `regulator-efficiency`: **BUCK2 and U1.** The datasheets give efficiency only as curves.
 - `cap-ratings`: the board's capacitors carry `Voltage Rating` and `Dielectric` fields, but kisi does not read
-  them yet (ROADMAP: capacitor ratings from part fields), so they are not repeated as `PI_CAP` here.
+  them yet (ROADMAP: capacitor ratings from part fields), so they are not repeated as `PI_CAP` here. `kisi gaps`
+  suggests them per capacitor (`suggest`), and the viewer's Prepare page writes them as PI_CAP for a group of
+  parts at once.
 - `stackup-defaults`: the laminate values are KiCad's defaults; for a board without impedance-controlled
   interfaces they matter little.

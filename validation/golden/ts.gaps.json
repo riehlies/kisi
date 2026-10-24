@@ -85,6 +85,9 @@
      "loss_tangent": 0.02,
      "material": "FR408HR",
      "thickness_mm": 0.1107,
+     "views": [
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value"
      ]
@@ -97,6 +100,9 @@
      "loss_tangent": 0.02,
      "material": "FR408HR",
      "thickness_mm": 0.1016,
+     "views": [
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value"
      ]
@@ -109,6 +115,10 @@
      "loss_tangent": 0.02,
      "material": "FR4",
      "thickness_mm": 0.9256,
+     "views": [
+      "impedance",
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value",
       "εr 4.5 is KiCad's default value"
@@ -122,6 +132,9 @@
      "loss_tangent": 0.02,
      "material": "FR408HR",
      "thickness_mm": 0.1107,
+     "views": [
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value"
      ]
@@ -134,6 +147,9 @@
      "loss_tangent": 0.02,
      "material": "FR408HR",
      "thickness_mm": 0.1,
+     "views": [
+      "channel"
+     ],
      "why": [
       "tanδ 0.02 is KiCad's default value"
      ]
@@ -386,1793 +402,3841 @@
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1045_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1047_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C70_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VPGA",
      "ref": "C1039_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1046_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8A",
      "ref": "C16",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1052_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C105_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1045_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_PGA",
      "ref": "C76",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_PGA",
      "ref": "C126",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C122",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_PGA",
      "ref": "C1043_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1037_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1037_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+2V5_R",
      "ref": "C188",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C94",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V2_MGT",
      "ref": "C184",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V3",
      "ref": "C102",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1046_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C70_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+5V3",
      "ref": "C101",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1050_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1048_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB",
      "ref": "C73",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB",
      "ref": "C71",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1055_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB_R_ACQ",
      "ref": "C107",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C70_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C121",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+1V8_R",
      "ref": "C180",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V3_R_LDO",
      "ref": "C119",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1049_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1056_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C68",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "-5V",
      "ref": "C97",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB",
      "ref": "C72",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_PGA",
      "ref": "C1043_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V_R",
      "ref": "C106",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3_ACQ",
      "ref": "C110",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1049_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB",
      "ref": "C175",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VPGA",
      "ref": "C1039_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8_R_LDO",
      "ref": "C182",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1044_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C8",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1053_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB",
      "ref": "C10",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1055_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1050_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1040_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_PGA",
      "ref": "C1043_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C70_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C51",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C105_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V_R_PGA",
      "ref": "C125",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1053_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3_ACQ",
      "ref": "C109",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1056_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1052_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1052_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C62",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1056_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1044_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1044_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C93",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1049_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8D",
      "ref": "C18",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1055_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C5",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1037_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1038_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VPGA",
      "ref": "C1039_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1052_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1048_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+3V3_R",
      "ref": "C75",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1046_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C91",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8_R_LDO",
      "ref": "C181",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1048_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB",
      "ref": "C9",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1045_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1044_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1050_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1047_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+5V3",
      "ref": "C128",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1038_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1050_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C11",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1040_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8D",
      "ref": "C19",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C103",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1036_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8A",
      "ref": "C17",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1046_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1053_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8_ACQ",
      "ref": "C118",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB",
      "ref": "C179",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1038_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C105_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1055_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1045_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1038_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+2V5_R_ACQ",
      "ref": "C115",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V3_R_LDO",
      "ref": "C120",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1049_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1037_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB",
      "ref": "C187",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1047_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3",
      "ref": "C130",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_PGA",
      "ref": "C1043_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VPGA",
      "ref": "C1039_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+1V0_R",
      "ref": "C176",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1036_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8A",
      "ref": "C24",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1036_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1047_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C105_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V2_MGT",
      "ref": "C183",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+1V0_R",
      "ref": "C177",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1040_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+2V5_R_ACQ",
      "ref": "C116",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+5V",
      "ref": "C1048_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1053_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8_ACQ",
      "ref": "C117",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C85",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V3_R_CP",
      "ref": "C111",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+VPGA",
      "ref": "C1036_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1056_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+VUSB_R_ACQ",
      "ref": "C108",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8A",
      "ref": "C14",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1040_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GCM155R71C104KA55D",
+     "package": "GEN_C_0402",
      "rail": "+1V0_MGT",
      "ref": "C172",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=16V X7R"
+     },
      "value": "100nF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+12V_PCIe_R",
      "ref": "C80",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8_ACQ",
      "ref": "C92",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+2V5",
      "ref": "C149",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8D",
      "ref": "C21",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V0",
      "ref": "C156",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C90",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+2V5",
      "ref": "C147",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1005_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8D",
      "ref": "C20",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C1026_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Samsung",
      "mpn": "CL21A476MQYNNNE",
+     "package": "GEN_C_0805",
      "rail": "+2V5",
      "ref": "C145",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=6.3V X5R"
+     },
      "value": "47uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C49",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1057_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1006_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3_ACQ",
      "ref": "C26",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8A",
      "ref": "C15",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1007_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C84",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1005_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C1028_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_PGA",
      "ref": "C1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8A",
      "ref": "C23",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C48",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V0",
      "ref": "C154",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1004_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V0_MGT",
      "ref": "C173",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C1026_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3",
      "ref": "C139",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C89",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GCM155R71C104KA55D",
+     "package": "GEN_C_0402",
      "rail": "+12V_PCIe_R",
      "ref": "C81",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=16V X7R"
+     },
      "value": "100nF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C95",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+2V5",
      "ref": "C148",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Samsung",
      "mpn": "CL21A476MQYNNNE",
+     "package": "GEN_C_0805",
      "rail": "+1V8",
      "ref": "C161",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=6.3V X5R"
+     },
      "value": "47uF"
     },
     {
      "manufacturer": "Samsung",
      "mpn": "CL21A476MQYNNNE",
+     "package": "GEN_C_0805",
      "rail": "+1V0",
      "ref": "C153",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=6.3V X5R"
+     },
      "value": "47uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C57",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Samsung",
      "mpn": "CL21A476MQYNNNE",
+     "package": "GEN_C_0805",
      "rail": "+3V3",
      "ref": "C152",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=6.3V X5R"
+     },
      "value": "47uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+2V5",
      "ref": "C146",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1004_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C1028_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C1028_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8",
      "ref": "C163",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3",
      "ref": "C142",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C25",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1008_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C56",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C96",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GCM155R71C104KA55D",
+     "package": "GEN_C_0402",
      "rail": "+3V3",
      "ref": "C129",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=16V X7R"
+     },
      "value": "100nF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GCM155R71C104KA55D",
+     "package": "GEN_C_0402",
      "rail": "+1V0_MGT",
      "ref": "C171",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=16V X7R"
+     },
      "value": "100nF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1003_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3_ACQ",
      "ref": "C69_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C63",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C50",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C1026_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GCM155R71C104KA55D",
+     "package": "GEN_C_0402",
      "rail": "+1V2_MGT",
      "ref": "C170",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=16V X7R"
+     },
      "value": "100nF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C88",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1006_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1054_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C59",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1005_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8",
      "ref": "C164",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C83",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C60",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1004_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "-5V",
      "ref": "C98",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1008_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C52",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "Net-(U18H-VCCADC_0)",
      "ref": "C167",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1003_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1007_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3",
      "ref": "C140",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1057_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3",
      "ref": "C78",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1008_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V2_MGT",
      "ref": "C168",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1007_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3",
      "ref": "C191",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1006_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C61",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3",
      "ref": "C141",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Samsung",
      "mpn": "CL21A476MQYNNNE",
+     "package": "GEN_C_0805",
      "rail": "+3V3",
      "ref": "C144",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=6.3V X5R"
+     },
      "value": "47uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C53",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1003_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+2V5",
      "ref": "C150",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Samsung",
      "mpn": "CL21A476MQYNNNE",
+     "package": "GEN_C_0805",
      "rail": "+1V0",
      "ref": "C87",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=6.3V X5R"
+     },
      "value": "47uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GCM155R71C104KA55D",
+     "package": "GEN_C_0402",
      "rail": "+1V2_MGT",
      "ref": "C189",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=16V X7R"
+     },
      "value": "100nF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3_ACQ",
      "ref": "C69_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GCM155R71C104KA55D",
+     "package": "GEN_C_0402",
      "rail": "+1V2_MGT",
      "ref": "C190",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=16V X7R"
+     },
      "value": "100nF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1054_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C58",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C22",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Samsung",
      "mpn": "CL21A476MQYNNNE",
+     "package": "GEN_C_0805",
      "rail": "+1V0",
      "ref": "C86",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=6.3V X5R"
+     },
      "value": "47uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1005_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V0",
      "ref": "C157",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V8",
      "ref": "C162",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C1028_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V0",
      "ref": "C155",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3",
      "ref": "C143",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3_ACQ",
      "ref": "C69_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V0",
      "ref": "C158",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+12V_PCIe_R",
      "ref": "C12",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1054_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+1V0",
      "ref": "C159",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1007_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GCM155R71C104KA55D",
+     "package": "GEN_C_0402",
      "rail": "+1V2_MGT",
      "ref": "C169",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=16V X7R"
+     },
      "value": "100nF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1004_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1006_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3",
      "ref": "C79",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+2V5",
      "ref": "C151",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1057_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "-5V",
      "ref": "C1003_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM21BR61E226ME44L",
+     "package": "GEN_C_0805",
      "rail": "+VUSB",
      "ref": "C1026_1",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "22uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8",
      "ref": "C166",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+5V",
      "ref": "C1008_4",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3_ACQ",
      "ref": "C54",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8APLL",
      "ref": "C55",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM188R61E106MA73D",
+     "package": "GEN_C_0603",
      "rail": "+3V3_ACQ",
      "ref": "C69_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "10uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+1V8",
      "ref": "C165",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1054_3",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "-5V",
      "ref": "C1057_2",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     },
     {
      "manufacturer": "Samsung",
      "mpn": "CL21A476MQYNNNE",
+     "package": "GEN_C_0805",
      "rail": "+1V0",
      "ref": "C160",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=6.3V X5R"
+     },
      "value": "47uF"
     },
     {
      "manufacturer": "Murata",
      "mpn": "GRM155R61E105KA12D",
+     "package": "GEN_C_0402",
      "rail": "+3V3",
      "ref": "C138",
+     "suggest": {
+      "from": [
+       "Voltage Rating",
+       "Description"
+      ],
+      "value": "rated=25V X5R"
+     },
      "value": "1uF"
     }
    ],

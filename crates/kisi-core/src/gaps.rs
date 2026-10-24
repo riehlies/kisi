@@ -72,8 +72,14 @@ pub fn gap_views(id: &str) -> (&'static [&'static str], Vec<&'static str>) {
     (affects, v)
 }
 
+/// A gap. Items of gaps that mix categories carry their own `views` (a dielectric with only a default
+/// tanδ matters for loss and eye, not for the impedance); the gap's categories are then those of its
+/// items.
 fn gap(id: &str, priority: &str, area: &str, issue: String, source: &str, write: Value, items: Vec<Value>) -> Value {
-    let (affects, views) = gap_views(id);
+    let (affects, mut views) = gap_views(id);
+    if !items.is_empty() && items.iter().all(|it| it["views"].is_array()) {
+        views.retain(|v| items.iter().any(|it| it["views"].as_array().is_some_and(|a| a.iter().any(|x| x == v))));
+    }
     json!({"id": id, "priority": priority, "area": area, "issue": issue, "affects": affects, "views": views, "where_to_find": source, "write": write, "items": items})
 }
 
@@ -244,8 +250,10 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         if !why.is_empty() {
             let above = su.copper.get(i).map(|c| c.name.clone()).unwrap_or_default();
             let below = su.copper.get(i + 1).map(|c| c.name.clone()).unwrap_or_default();
+            // only tanδ: loss and eye (channel); εr or the material: the impedance too
+            let views: &[&str] = if why.iter().all(|w| w.starts_with("tanδ")) { &["channel"] } else { &["impedance", "channel"] };
             diel_items.push(json!({"index": i, "between": format!("{above} / {below}"), "kind": d.kind, "material": d.material, "thickness_mm": d.thickness,
-                "epsilon_r": d.epsilon_r, "loss_tangent": d.loss_tangent, "why": why}));
+                "epsilon_r": d.epsilon_r, "loss_tangent": d.loss_tangent, "why": why, "views": views}));
         }
     }
     if su.from_file && !diel_items.is_empty() {
@@ -310,8 +318,9 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     // --- assembly variant ----------------------------------------------------------------
     let vs = &p.variant;
     if vs.needs_choice || !vs.errors.is_empty() {
-        let mut items: Vec<Value> = vs.variants.iter().map(|v| json!({"variant": v.name, "description": v.description, "defined_in": v.defined_in})).collect();
-        items.extend(vs.forks.iter().map(|f| json!({"fork": crate::variant::fork_text(f), "net": f.net_name, "partner": f.partner, "parts": f.parts, "value": f.value, "towards": f.towards})));
+        // a defined variant decides the lanes and the fitted capacitors; a fork only the lanes
+        let mut items: Vec<Value> = vs.variants.iter().map(|v| json!({"variant": v.name, "description": v.description, "defined_in": v.defined_in, "views": ["channel", "power"]})).collect();
+        items.extend(vs.forks.iter().map(|f| json!({"fork": crate::variant::fork_text(f), "net": f.net_name, "partner": f.partner, "parts": f.parts, "value": f.value, "towards": f.towards, "views": ["channel"]})));
         let issue = if !vs.variants.is_empty() {
             format!("The board has {} assembly variant(s) and none is chosen: interfaces, check and report stop until one is.", vs.variants.len())
         } else {
@@ -485,7 +494,11 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             None => caps.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f))),
             // class II range without a rated voltage in the value or a PI_CAP field: DC-bias derating guessed
             Some(c) if c >= 1e-7 && f.prop("PI_CAP").is_none() && crate::pdn_ic::value_details(&f.value).0.is_none() => {
-                unrated.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f)));
+                let mut it = part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net)), "package": f.lib.rsplit(':').next().unwrap_or("")}), Some(f));
+                if let Some(s) = cap_suggestion(f) {
+                    it["suggest"] = s;
+                }
+                unrated.push(it);
             }
             _ => {}
         }
@@ -576,6 +589,50 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         "dismissed": dis.report(),
         "how": "Fill the gaps in <board>.kisi.json next to the board (format: see `kisi config-template`), every value with a source; then run `kisi config-check <board>` and `kisi gaps <board>` again. Gaps marked 'not kisi.json' are fixes in KiCad."
     })
+}
+
+/// A PI_CAP value from the part's own fields (rated voltage and dielectric as the schematic library
+/// gives them, e.g. "Voltage Rating" 10V, "Dielectric" X5R): kisi does not read these fields itself,
+/// the gap suggests them – `{"value": "rated=10V X5R", "from": [field names]}`.
+fn cap_suggestion(f: &crate::board::Footprint) -> Option<Value> {
+    let (mut rated, mut diel, mut from) = (None, String::new(), Vec::new());
+    for k in ["Voltage Rating", "Voltage", "Rated Voltage", "Voltage_Rating"] {
+        if let Some(v) = f.prop(k).and_then(|v| crate::pdn_ic::value_details(v).0) {
+            rated.get_or_insert(v);
+            from.push(k);
+            break;
+        }
+    }
+    for k in ["Dielectric", "Temperature Coefficient", "Tempco"] {
+        let d = f.prop(k).map(|v| crate::pdn_ic::value_details(v).1).unwrap_or_default();
+        if !d.is_empty() {
+            diel = d;
+            from.push(k);
+            break;
+        }
+    }
+    if rated.is_none() || diel.is_empty() {
+        // "SMD CAP Ceramic 100nF-10V-10%-X5R;0201"
+        if let Some(d) = f.prop("Description") {
+            let (r, x) = crate::pdn_ic::value_details(&d.replace('-', " "));
+            let used = (rated.is_none() && r.is_some()) || (diel.is_empty() && !x.is_empty());
+            rated = rated.or(r);
+            if diel.is_empty() {
+                diel = x;
+            }
+            if used {
+                from.push("Description");
+            }
+        }
+    }
+    let mut parts = Vec::new();
+    if let Some(v) = rated {
+        parts.push(format!("rated={v}V"));
+    }
+    if !diel.is_empty() {
+        parts.push(diel);
+    }
+    (!parts.is_empty()).then(|| json!({"value": parts.join(" "), "from": from}))
 }
 
 /// Gaps whose items can be dismissed in `<board>.kisi.json` (`gaps.dismissed`): items found only by
@@ -693,6 +750,12 @@ pub fn dismissal_problems(p: &Project) -> (Vec<String>, Vec<String>) {
 pub fn only_view(v: &mut Value, view: &str) {
     if let Some(gs) = v["gaps"].as_array_mut() {
         gs.retain(|g| g["views"].as_array().is_some_and(|a| a.iter().any(|x| x == view)));
+        // items with their own categories: those of this one
+        for g in gs.iter_mut() {
+            if let Some(items) = g["items"].as_array_mut() {
+                items.retain(|it| it["views"].as_array().is_none_or(|a| a.iter().any(|x| x == view)));
+            }
+        }
     }
     let count = |pr: &str| v["gaps"].as_array().map(|a| a.iter().filter(|g| g["priority"] == pr).count()).unwrap_or(0);
     v["summary"] = json!({"high": count("high"), "medium": count("medium"), "low": count("low")});
@@ -901,5 +964,48 @@ mod tests {
         assert!(crate::config::parse(&j.to_string()).is_ok());
         assert_eq!(crate::config::message_views(&cfg, "net_classes.B: source missing"), vec!["channel"]);
         assert_eq!(crate::config::message_views(&cfg, "U1: PI_LOAD value 'x' not readable"), vec!["power"]);
+    }
+    /// Items with their own categories: a dielectric with only a default tanδ is a channel item, one
+    /// with a default εr also an impedance item; `--for impedance` keeps only the latter. Capacitors
+    /// get a PI_CAP suggestion from their own fields.
+    #[test]
+    fn item_views_and_cap_suggestion() {
+        let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (1 "In1.Cu" signal) (31 "B.Cu" signal))
+  (setup (stackup (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.2) (material "FR408HR") (epsilon_r 3.6) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 2" (type "core") (thickness 1.2) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "+3V3") (net 2 "GND")
+  (footprint "Connector:J" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "Value" "PWR")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND")))
+  (footprint "Package:U" (layer "F.Cu") (at 5 0) (property "Reference" "U1") (property "Value" "MCU")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND")))
+  (footprint "Capacitor:C0402" (layer "F.Cu") (at 8 0) (property "Reference" "C1") (property "Value" "10uF") (property "Voltage Rating" "6.3V") (property "Dielectric" "X5R")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND")))
+  (footprint "Capacitor:C0603" (layer "F.Cu") (at 10 0) (property "Reference" "C2") (property "Value" "4u7") (property "Description" "CAP 4.7uF-16V-10%-X7R")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND"))))"#;
+        let p = Project::from_texts(Inputs { pcb_path: "s.kicad_pcb".into(), pcb: pcb.into(), pro: None, config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap();
+        let mut v = gaps(&p, &Profiles::builtin());
+        let g = gap_of(&v, "stackup-defaults").expect("stackup gap");
+        assert_eq!(g["items"][0]["views"], json!(["channel"]), "{g:#}");
+        assert_eq!(g["items"][1]["views"], json!(["impedance", "channel"]));
+        assert_eq!(g["views"], json!(["impedance", "channel"]));
+        let caps = gap_of(&v, "cap-ratings").expect("cap gap");
+        let c1 = caps["items"].as_array().unwrap().iter().find(|i| i["ref"] == "C1").unwrap();
+        assert_eq!((c1["package"].as_str(), c1["suggest"]["value"].as_str()), (Some("C0402"), Some("rated=6.3V X5R")));
+        assert_eq!(c1["suggest"]["from"], json!(["Voltage Rating", "Dielectric"]));
+        let c2 = caps["items"].as_array().unwrap().iter().find(|i| i["ref"] == "C2").unwrap();
+        assert_eq!((c2["suggest"]["value"].as_str(), c2["suggest"]["from"][0].as_str()), (Some("rated=16V X7R"), Some("Description")));
+        // the suggestion passes the PI_CAP check
+        assert!(crate::pdn_ic::parse_pi_cap(c1["suggest"]["value"].as_str().unwrap()).is_ok_and(|c| c.rated == Some(6.3)));
+        only_view(&mut v, "impedance");
+        let g = gap_of(&v, "stackup-defaults").unwrap();
+        assert_eq!((g["items"].as_array().unwrap().len(), g["items"][0]["index"].as_u64()), (1, Some(1)));
+        // only the tanδ: a channel gap only
+        let only_td = pcb.replace("(material \"FR4\") (epsilon_r 4.5)", "(material \"FR408HR\") (epsilon_r 3.7)");
+        let p = Project::from_texts(Inputs { pcb_path: "s.kicad_pcb".into(), pcb: only_td, pro: None, config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap();
+        assert_eq!(gap_of(&gaps(&p, &Profiles::builtin()), "stackup-defaults").unwrap()["views"], json!(["channel"]));
     }
 }

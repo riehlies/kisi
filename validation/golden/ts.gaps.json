@@ -6,6 +6,7 @@
   "ok": true,
   "warnings": []
  },
+ "dismissed": [],
  "gaps": [
   {
    "affects": [
@@ -21,21 +22,25 @@
      "class": "Default",
      "nets": [
       {
+       "dismissable": true,
        "length_mm": 34.8,
        "looks_like": "ddr4_dq",
        "net": "/FPGA/FPGA IO Banks/QSPI_DQ0"
       },
       {
+       "dismissable": true,
        "length_mm": 21.6,
        "looks_like": "ddr4_dq",
        "net": "/FPGA/FPGA IO Banks/QSPI_DQ1"
       },
       {
+       "dismissable": true,
        "length_mm": 13.3,
        "looks_like": "ddr4_dq",
        "net": "/FPGA/FPGA IO Banks/QSPI_DQ2"
       },
       {
+       "dismissable": true,
        "length_mm": 30.1,
        "looks_like": "ddr4_dq",
        "net": "/FPGA/FPGA IO Banks/QSPI_DQ3"
@@ -44,6 +49,10 @@
     }
    ],
    "priority": "high",
+   "views": [
+    "impedance",
+    "channel"
+   ],
    "where_to_find": "Interface standard or the device datasheets (e.g. 85/90/100 Ω differential). Nets in the class “Default” need their own net class in KiCad first (Board Setup → Net Classes, or net class directives in the schematic) – kisi.json can only set values of existing classes.",
    "write": {
     "example": {
@@ -131,6 +140,10 @@
     }
    ],
    "priority": "medium",
+   "views": [
+    "impedance",
+    "channel"
+   ],
    "where_to_find": "Laminate datasheet of the named material (εr and tanδ near the signal frequencies, e.g. 1–10 GHz, for the resin content / glass style of this layer), or the fabricator's stackup report. Mark typical values as such.",
    "write": {
     "example": {
@@ -211,6 +224,9 @@
     }
    ],
    "priority": "medium",
+   "views": [
+    "channel"
+   ],
    "where_to_find": "What runs on these nets: schematic (bus names, the devices at the ends: `kisi interfaces`) and the device datasheets (interface, data rate). Available profiles: `kisi profiles`.",
    "write": {
     "example": {
@@ -237,6 +253,7 @@
    "items": [
     {
      "components": 3,
+     "dismissable": true,
      "fed_through": [
       {
        "from": "+1V8",
@@ -254,6 +271,9 @@
     }
    ],
    "priority": "medium",
+   "views": [
+    "power"
+   ],
    "where_to_find": "Schematic: the regulator, load switch or connector that feeds the rail and its output voltage (regulator datasheet / voltage setting, USB VBUS 5 V, battery nominal voltage). A rail behind a ferrite, a 0 Ω link or a shunt takes the voltage of the rail before it.",
    "write": {
     "example": {
@@ -335,6 +355,9 @@
     }
    ],
    "priority": "medium",
+   "views": [
+    "power"
+   ],
    "where_to_find": "Device datasheets (look up the mpn when an item has one: the Value field is not always the part number): supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.",
    "write": {
     "example": {
@@ -2154,6 +2177,9 @@
     }
    ],
    "priority": "low",
+   "views": [
+    "power"
+   ],
    "where_to_find": "BOM / capacitor datasheet: rated voltage, dielectric (X5R/X7R/C0G), ideally the capacitance at the rail voltage from the vendor's DC-bias curve, ESR and ESL.",
    "write": {
     "example": {
@@ -2264,6 +2290,9 @@
     }
    ],
    "priority": "low",
+   "views": [
+    "power"
+   ],
    "where_to_find": "Device datasheet: the Thermal Information table (RθJB, RθJC(top) – or ψJB – for the JEDEC 2s2p board) and the maximum junction temperature (Absolute Maximum Ratings / Recommended Operating Conditions). Heat that leaves the board (connectors, LEDs, RF output): p=<W>.",
    "write": {
     "example": {
@@ -2346,5 +2375,31 @@
   "not_fitted_total": 77,
   "unused_nets": 51,
   "warnings": []
+ },
+ "views": {
+  "channel": {
+   "applicable": true,
+   "high": 1,
+   "low": 0,
+   "medium": 2,
+   "state": "open",
+   "why": "53 lane(s) in 24 bus(es)"
+  },
+  "impedance": {
+   "applicable": true,
+   "high": 1,
+   "low": 0,
+   "medium": 1,
+   "state": "open",
+   "why": "177 net(s) with a target impedance"
+  },
+  "power": {
+   "applicable": true,
+   "high": 0,
+   "low": 2,
+   "medium": 2,
+   "state": "open",
+   "why": "36 supply rail(s)"
+  }
  }
 }

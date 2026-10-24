@@ -161,7 +161,15 @@ impl Project {
         let an = analyze(&board, &params);
         let name = inp.pcb_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
         let touchstones = touchstones_of(cfg.as_ref(), &inp.files);
-        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, touchstones, buses: Default::default() })
+        let mut p = Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, touchstones, buses: Default::default() };
+        // dismissals that cannot apply on this board (needs the analysed project)
+        let (errors, warnings) = crate::gaps::dismissal_problems(&p);
+        if let Some(c) = p.config_check.as_mut() {
+            c.errors.extend(errors);
+            c.warnings.extend(warnings);
+            c.ok = c.errors.is_empty();
+        }
+        Ok(p)
     }
 
     /// Commands that compute lanes call this first: an error with the list of variants when

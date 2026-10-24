@@ -33,7 +33,9 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    temperature and IR drop at temperature per rail
                    [--tree tree.json] [--ambient °C (25)] [--h W/m²K per side] [--airflow m/s] [--vertical]
   report           write analysis/kisi.json next to the board   [--out FILE]
-  gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
+  gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
+                   per category (impedance, channel, power) whether there is anything to check and
+                   whether it is ready                           [--for impedance|channel|power]
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
   config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
                    assembly variants
@@ -90,6 +92,8 @@ pub struct Opts {
     pub h: Option<f64>,
     pub airflow: Option<f64>,
     pub vertical: bool,
+    /// `gaps`: only the gaps of one category (impedance, channel, power)
+    pub for_view: Option<String>,
 }
 
 /// Parse `<command> [args…]`.
@@ -138,6 +142,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--h" => o.h = Some(num(val(&mut i, a)?, a)?),
             "--airflow" => o.airflow = Some(num(val(&mut i, a)?, a)?),
             "--vertical" => o.vertical = true,
+            "--for" => o.for_view = Some(val(&mut i, a)?),
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
         }
@@ -154,6 +159,9 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
     }
     if o.h.is_some_and(|h| !(h > 0.0 && h < 1e5)) {
         return Err("--h: a surface coefficient in W/m²K (> 0)".into());
+    }
+    if o.for_view.as_deref().is_some_and(|v| !crate::gaps::VIEWS.contains(&v)) {
+        return Err(format!("--for: one of {}", crate::gaps::VIEWS.join(", ")));
     }
     if o.airflow.is_some_and(|v| !(0.0..100.0).contains(&v)) {
         return Err("--airflow: an air speed in m/s (0 … 100)".into());
@@ -363,12 +371,23 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
             Ok(v)
         }
         "report" => Ok(service::report(proj()?, &profiles)),
-        "gaps" => Ok(crate::gaps::gaps(proj()?, &profiles)),
+        "gaps" => {
+            let mut v = crate::gaps::gaps(proj()?, &profiles);
+            if let Some(view) = &o.for_view {
+                crate::gaps::only_view(&mut v, view);
+            }
+            Ok(v)
+        }
         "config-check" => {
             let pr = proj()?;
             match (&pr.config_path, &pr.config_check) {
                 (None, _) => Err(format!("no configuration: {} does not exist (create it, see `kisi config-template`)", service::config_path_for(&pr.pcb_path).display())),
-                (Some(f), Some(c)) => Ok(json!({"file": f.display().to_string(), "ok": c.ok, "entries": c.entries, "errors": c.errors, "warnings": c.warnings, "variant": pr.variant.summary()})),
+                (Some(f), Some(c)) => {
+                    let cfg = pr.config.clone().unwrap_or_default();
+                    // every message with the categories of its entry (the viewer sorts them per tab)
+                    let msgs: Vec<Value> = c.errors.iter().map(|t| ("error", t)).chain(c.warnings.iter().map(|t| ("warning", t))).map(|(l, t)| json!({"level": l, "text": t, "views": crate::config::message_views(&cfg, t)})).collect();
+                    Ok(json!({"file": f.display().to_string(), "ok": c.ok, "entries": c.entries, "errors": c.errors, "warnings": c.warnings, "messages": msgs, "variant": pr.variant.summary()}))
+                }
                 (Some(f), None) => Ok(json!({"file": f.display().to_string(), "ok": true})),
             }
         }

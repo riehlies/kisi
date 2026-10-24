@@ -28,6 +28,14 @@ The work has two halves:
 6. **Use it:** every command reads the kisi.json next to the board; in the viewer, drop it together with the
    board files.
 
+Each gap names the analysis categories it matters for (`views`: impedance, channel, power), and `kisi gaps` says per
+category whether there is anything to check and whether it is ready (no open high or medium gap). To prepare a
+board for one analysis only, use `kisi gaps --for impedance` (or `channel`, `power`): a board without nets with a
+target impedance has nothing to check for impedance, and its laminate gap blocks nothing yet.
+
+Gaps that are guesses from names (`nets-without-target`, rails found only by their name) can be dismissed with a
+reason when the name misleads – `gaps.dismissed` in kisi.json ([reference](reference.md#gapsdismissed)).
+
 Gaps whose `write.to` says "not kisi.json" are fixes in KiCad (a Value field kisi cannot read, for example).
 kisi.json can only name net classes that exist in the project: nets without a suitable class need one in KiCad
 first.
@@ -37,24 +45,27 @@ first.
 `where_to_find` the value, where to `write` it (with an example) and the `items` – layers, classes, rails or parts
 (with their MPN where the Value field is not the part number).
 
-| Gap | Priority | What is missing | Where it goes |
-|---|---|---|---|
-| `stackup-missing` | high | no stackup in the board file | `stackup.dielectrics` (or the stackup in KiCad) |
-| `stackup-defaults` | medium | dielectrics with KiCad's default εr 4.5 / tanδ 0.02 or no material | `stackup.dielectrics` |
-| `nets-without-target` | high | nets that look like high-speed interfaces by their name, without a target impedance (confirm first) | `net_classes.<class>` (a class without a target), or a net class in KiCad |
-| `classes-without-standard` | medium | classes with a target but only a generic profile (1 Gbit/s, generic limits) | `net_classes.<class>.profile` |
-| `assembly-variant` | high | the board has assembly variants (or forks where all alternatives are fitted) and none is chosen | `variant`, `variants` |
-| `assembly-variant-forks` | medium | the chosen variant still has forks where all alternative series parts are fitted | `variants.<name>.not_fitted` (or sheets, `bom`) |
-| `channel-part-values` | medium | parts in signal channels whose value kisi cannot read ("DNP", a part number): modelled as open | the Value field in KiCad (not kisi.json) |
-| `power-tree` | medium | no regulator chain (`PI_REG`): no budget, no regulator load check | `fields`: `PI_REG` |
-| `rails-without-voltage` | medium | supply rails (found by name, pin name or a field) without a known voltage | `NAME@<V>V` in a `PI_REG` entry |
-| `rails-without-source` | medium | supply rails without a source: no IR drop | `PI_REG` (input or regulator output), else `PI_SOURCE` |
-| `regulator-efficiency` | low | switching regulators without an efficiency: 85 % assumed | `PI_REG` (`buck 90%`) |
-| `ic-loads` | medium | ICs on supply rails without a load current | `fields`: `PI_LOAD` |
-| `cap-ratings` | low | decoupling capacitors of 100 nF and more without rated voltage or dielectric | `PI_CAP` or the Value field (`10u 6.3V X5R`) |
-| `bead-ratings` | low | ferrite beads on supply rails without an impedance rating | `PI_SERIES` or the Value field |
-| `cap-values` | low | capacitors on supply rails whose value kisi cannot read: left out of Z(f) | the Value field in KiCad (not kisi.json) |
-| `thermal-data` | low | parts with 0.1 W or more without thermal data: package defaults, Tj max 125 °C | `PI_THERMAL` |
+| Gap | Priority | Category | What is missing | Where it goes |
+|---|---|---|---|---|
+| `stackup-missing` | high | I, C | no stackup in the board file | `stackup.dielectrics` (or the stackup in KiCad) |
+| `stackup-defaults` | medium | I, C | dielectrics with KiCad's default εr 4.5 / tanδ 0.02 or no material | `stackup.dielectrics` |
+| `nets-without-target` | high | I, C | nets that look like high-speed interfaces by their name, without a target impedance (confirm first) | `net_classes.<class>` (a class without a target), or a net class in KiCad |
+| `classes-without-standard` | medium | C | classes with a target but only a generic profile (1 Gbit/s, generic limits) | `net_classes.<class>.profile` |
+| `assembly-variant` | high | C, P | the board has assembly variants (or forks where all alternatives are fitted) and none is chosen | `variant`, `variants` |
+| `assembly-variant-forks` | medium | C | the chosen variant still has forks where all alternative series parts are fitted | `variants.<name>.not_fitted` (or sheets, `bom`) |
+| `channel-part-values` | medium | C | parts in signal channels whose value kisi cannot read ("DNP", a part number): modelled as open | the Value field in KiCad (not kisi.json) |
+| `power-tree` | medium | P | no regulator chain (`PI_REG`): no budget, no regulator load check | `fields`: `PI_REG` |
+| `rails-without-voltage` | medium | P | supply rails (found by name, pin name or a field) without a known voltage | `NAME@<V>V` in a `PI_REG` entry |
+| `rails-without-source` | medium | P | supply rails without a source: no IR drop | `PI_REG` (input or regulator output), else `PI_SOURCE` |
+| `regulator-efficiency` | low | P | switching regulators without an efficiency: 85 % assumed | `PI_REG` (`buck 90%`) |
+| `ic-loads` | medium | P | ICs on supply rails without a load current | `fields`: `PI_LOAD` |
+| `cap-ratings` | low | P | decoupling capacitors of 100 nF and more without rated voltage or dielectric | `PI_CAP` or the Value field (`10u 6.3V X5R`) |
+| `bead-ratings` | low | P | ferrite beads on supply rails without an impedance rating | `PI_SERIES` or the Value field |
+| `cap-values` | low | P | capacitors on supply rails whose value kisi cannot read: left out of Z(f) | the Value field in KiCad (not kisi.json) |
+| `thermal-data` | low | P | parts with 0.1 W or more without thermal data: package defaults, Tj max 125 °C | `PI_THERMAL` |
+
+Categories: I impedance, C channel, P power (with the temperature estimate). `nets-without-target` and rails
+found only by name in `rails-without-voltage` can be dismissed.
 
 Where to look, per kind of value:
 - **Laminate:** the material name in the stackup → the manufacturer's datasheet, at a frequency near the signals

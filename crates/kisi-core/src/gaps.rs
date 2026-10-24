@@ -13,8 +13,68 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 const GENERIC: &[&str] = &["se50", "diff100"];
 
-fn gap(id: &str, priority: &str, area: &str, issue: String, affects: &[&str], source: &str, write: Value, items: Vec<Value>) -> Value {
-    json!({"id": id, "priority": priority, "area": area, "issue": issue, "affects": affects, "where_to_find": source, "write": write, "items": items})
+/// What each gap affects (in words), per gap id: the source of the gap's analysis categories
+/// (`views`, via `AFFECT_VIEWS`).
+pub const GAP_AFFECTS: &[(&str, &[&str])] = &[
+    ("stackup-missing", &["impedance", "loss", "eye", "crosstalk"]),
+    ("stackup-defaults", &["impedance (εr)", "loss and eye (tanδ)"]),
+    ("nets-without-target", &["impedance check", "channel check", "eye"]),
+    ("classes-without-standard", &["channel check", "eye"]),
+    ("assembly-variant", &["lanes", "channel check", "eye", "PDN (fitted capacitors)"]),
+    ("assembly-variant-forks", &["lanes", "channel check", "eye"]),
+    ("channel-part-values", &["channel check", "eye"]),
+    ("power-tree", &["power budget", "regulator loading"]),
+    ("rails-without-voltage", &["power budget", "DC IR drop", "PDN"]),
+    ("rails-without-source", &["DC IR drop", "power budget"]),
+    ("regulator-efficiency", &["power budget", "regulator losses", "input current"]),
+    ("ic-loads", &["DC IR drop", "power budget", "PDN target impedance"]),
+    ("cap-ratings", &["PDN impedance", "decoupling recommendations"]),
+    ("bead-ratings", &["PDN impedance per IC", "filter resonances"]),
+    ("cap-values", &["PDN impedance"]),
+    ("thermal-data", &["temperature estimate", "junction temperature"]),
+];
+
+/// The analysis category (viewer view) of each word in `GAP_AFFECTS`: impedance, channel or power
+/// (the temperature estimate is part of power). A test checks that every word has one.
+pub const AFFECT_VIEWS: &[(&str, &str)] = &[
+    ("impedance", "impedance"),
+    ("impedance (εr)", "impedance"),
+    ("impedance check", "impedance"),
+    ("crosstalk", "impedance"),
+    ("loss", "channel"),
+    ("eye", "channel"),
+    ("loss and eye (tanδ)", "channel"),
+    ("channel check", "channel"),
+    ("lanes", "channel"),
+    ("PDN (fitted capacitors)", "power"),
+    ("power budget", "power"),
+    ("regulator loading", "power"),
+    ("regulator losses", "power"),
+    ("input current", "power"),
+    ("DC IR drop", "power"),
+    ("PDN", "power"),
+    ("PDN target impedance", "power"),
+    ("PDN impedance", "power"),
+    ("PDN impedance per IC", "power"),
+    ("decoupling recommendations", "power"),
+    ("filter resonances", "power"),
+    ("temperature estimate", "power"),
+    ("junction temperature", "power"),
+];
+
+/// The analysis categories, in the viewer's order.
+pub const VIEWS: &[&str] = &["impedance", "channel", "power"];
+
+/// What gap `id` affects (words) and its categories (`VIEWS` order).
+pub fn gap_views(id: &str) -> (&'static [&'static str], Vec<&'static str>) {
+    let affects = GAP_AFFECTS.iter().find(|g| g.0 == id).map(|g| g.1).unwrap_or(&[]);
+    let v: Vec<&str> = VIEWS.iter().copied().filter(|v| affects.iter().any(|a| AFFECT_VIEWS.iter().any(|(w, x)| w == a && x == v))).collect();
+    (affects, v)
+}
+
+fn gap(id: &str, priority: &str, area: &str, issue: String, source: &str, write: Value, items: Vec<Value>) -> Value {
+    let (affects, views) = gap_views(id);
+    json!({"id": id, "priority": priority, "area": area, "issue": issue, "affects": affects, "views": views, "where_to_find": source, "write": write, "items": items})
 }
 
 /// A part in a gap item: the manufacturer part number added when the footprint has one that the
@@ -153,7 +213,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "high",
             "stackup",
             "The board file has no stackup: kisi uses 1.6 mm FR4 (εr 4.5, tanδ 0.02) with equal dielectric thicknesses.".into(),
-            &["impedance", "loss", "eye", "crosstalk"],
             "The fabricator's stackup for this board (layer thicknesses, laminate per layer); better: enter it in KiCad (Board Setup → Physical Stackup).",
             json!({"to": "stackup.dielectrics[]", "example": {"index": 0, "material": "…", "thickness": 0.2, "epsilon_r": 4.2, "loss_tangent": 0.015, "source": {"kind": "datasheet", "document": "…", "page": "…"}}}),
             vec![],
@@ -195,7 +254,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "medium",
             "stackup",
             format!("{} dielectric layer(s) carry default or missing material data.", diel_items.len()),
-            &["impedance (εr)", "loss and eye (tanδ)"],
             "Laminate datasheet of the named material (εr and tanδ near the signal frequencies, e.g. 1–10 GHz, for the resin content / glass style of this layer), or the fabricator's stackup report. Mark typical values as such.",
             json!({"to": "stackup.dielectrics[]", "example": {"index": diel_items[0]["index"], "epsilon_r": 3.65, "loss_tangent": 0.0095, "source": {"kind": "datasheet", "document": "laminate datasheet", "url": "…", "page": "…", "note": "at 10 GHz, typical"}}}),
             diel_items,
@@ -205,19 +263,12 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     // --- impedance targets and interface profiles -------------------------------------
     // by name only, so skip what cannot be such a signal: supply nets, stubs, diff profiles without a partner
     let supplies = supply_rails(b, &cd);
-    let supply: HashSet<String> = crate::pi::power_nets(b).into_iter().map(|n| n.name).chain(supplies.keys().cloned()).collect();
-    let mut untargeted: BTreeMap<String, Vec<Value>> = BTreeMap::new();
-    for st in p.an.nets.iter().filter(|n| n.target.is_none() && n.length >= 5.0) {
-        if supply.contains(&st.name) || crate::pi::voltage_from_name(&st.name).is_some() {
-            continue;
-        }
-        let diff = st.partner.is_some();
-        let pid = profiles.auto(&st.name, "", diff);
-        if GENERIC.contains(&pid) || (!diff && profiles.get(pid).is_some_and(|p| p.signal == "diff")) {
-            continue;
-        }
-        untargeted.entry(st.class.clone()).or_default().push(json!({"net": st.name, "looks_like": pid, "length_mm": (st.length * 10.0).round() / 10.0}));
+    let dis = Dismissed::from(&cfg);
+    let mut untargeted = untargeted_nets(p, profiles, &supplies);
+    for nets in untargeted.values_mut() {
+        nets.retain(|n| !dis.applies("nets-without-target", n["net"].as_str().unwrap_or("")));
     }
+    untargeted.retain(|_, nets| !nets.is_empty());
     if !untargeted.is_empty() {
         let n: usize = untargeted.values().map(|v| v.len()).sum();
         let items: Vec<Value> = untargeted.into_iter().map(|(c, nets)| json!({"class": c, "nets": nets})).collect();
@@ -226,7 +277,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "high",
             "impedance",
             format!("{n} routed net(s) look like high-speed interfaces by their name but have no target impedance (their net class has none). Name-based: confirm before acting."),
-            &["impedance check", "channel check", "eye"],
             "Interface standard or the device datasheets (e.g. 85/90/100 Ω differential). Nets in the class “Default” need their own net class in KiCad first (Board Setup → Net Classes, or net class directives in the schematic) – kisi.json can only set values of existing classes.",
             json!({"to": "net_classes.<class>", "example": {"target_ohm": 90, "diff": true, "profile": "usb2", "source": {"kind": "standard", "document": "USB 2.0 specification", "note": "90 Ω differential"}}}),
             items,
@@ -251,7 +301,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "medium",
             "interfaces",
             format!("{} net class(es) with a target impedance get only a generic profile (no data rate / standard): the channel check uses 1 Gbit/s and generic limits.", unclear.len()),
-            &["channel check", "eye"],
             "What runs on these nets: schematic (bus names, the devices at the ends: `kisi interfaces`) and the device datasheets (interface, data rate). Available profiles: `kisi profiles`.",
             json!({"to": "net_classes.<class>.profile", "example": {"profile": "lvds", "source": {"kind": "datasheet", "document": "ADC datasheet", "page": "…", "note": "LVDS outputs, 1 Gbit/s per lane"}}}),
             unclear,
@@ -274,7 +323,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "high",
             "interfaces",
             issue,
-            &["lanes", "channel check", "eye", "PDN (fitted capacitors)"],
             "The project's assembly outputs: BOM and position files per variant, the schematic's variant or DNP marks, the sheets that hold the parts of each option. KiCad 10: variants in the board file. Alternatively mark the unused parts DNP in KiCad.",
             json!({"to": "variant (and variants.<name> for boards without KiCad 10 variants)", "example": {"variant": "TS-PCIe", "variants": {"TS-PCIe": {"not_fitted_sheets": ["/TS-USB4 Components/"], "fitted": ["C101"], "source": {"kind": "design", "document": "board_TS-PCIe_BOM.csv"}}, "TS-USB4": {"bom": "board_TS-USB4_BOM.csv", "bom_exceptions": ["P1"], "source": {"kind": "design", "document": "board_TS-USB4_BOM.csv"}}}},
                 "note": "--variant NAME on the command line chooses for one run; \"default\" = the board file as it is"}),
@@ -286,7 +334,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "medium",
             "interfaces",
             format!("Variant '{}' still has {} fork(s) where all alternative series parts are fitted: the other paths stay in the lanes as open branches.", vs.chosen.clone().unwrap_or_default(), vs.forks.len()),
-            &["lanes", "channel check", "eye"],
             "BOM / position files of the variant: which of the alternatives is fitted.",
             json!({"to": "variants.<name>.not_fitted (or not_fitted_sheets, bom)"}),
             vs.forks.iter().map(|f| json!({"fork": crate::variant::fork_text(f), "parts": f.parts, "towards": f.towards})).collect(),
@@ -313,7 +360,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "medium",
             "interfaces",
             format!("{} part(s) in signal channels have a value kisi cannot read (e.g. “DNP”, a part number): modelled as open / very large.", bad_parts.len()),
-            &["channel check", "eye"],
             "Schematic / BOM: give the Value field a plain value (22, 4k7, 100n) or mark the part as DNP in KiCad. This is a fix in KiCad, not in kisi.json.",
             json!({"to": "KiCad Value field (not kisi.json)"}),
             bad_parts.into_values().collect(),
@@ -344,36 +390,19 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "medium",
             "power",
             "No regulator chain (field PI_REG): no power budget, no regulator load check.".into(),
-            &["power budget", "regulator loading"],
             "Regulator datasheets: topology (buck/LDO/…), efficiency at the expected load, rated output current; input and output rails from the schematic.",
             json!({"to": "fields[] (name PI_REG on the regulator)", "example": {"ref": "U3", "name": "PI_REG", "value": "+12V > +3V3 buck 90% 3A", "source": {"kind": "datasheet", "document": "regulator datasheet", "page": "…", "note": "efficiency at 1 A, typical"}}}),
             vec![],
         ));
     }
     // rails found by name, pin name or a field, without a voltage
-    let no_voltage: Vec<Value> = supplies
-        .iter()
-        .filter(|(_, r)| r.voltage.is_none())
-        .map(|(n, r)| {
-            let feed: Vec<Value> = r.fed_through.iter().map(|(part, from)| json!({"part": part, "from": from})).collect();
-            let write = match r.fed_through.first() {
-                Some((part, from)) => format!("PI_REG on {part}: {} > {} pass", crate::field_syntax::quote_name(from), crate::field_syntax::quote_name(n)),
-                None => format!("{}@<V>V where a PI_REG entry names it (regulator output or supply input)", crate::field_syntax::quote_name(n)),
-            };
-            let mut v = json!({"rail": n, "found_by": r.found_by, "components": r.components.len(), "ics": r.ics, "write": write});
-            if !feed.is_empty() {
-                v["fed_through"] = json!(feed);
-            }
-            v
-        })
-        .collect();
+    let no_voltage: Vec<Value> = rails_without_voltage(supplies).into_iter().filter(|v| !(v["dismissable"] == true && dis.applies("rails-without-voltage", v["rail"].as_str().unwrap_or("")))).collect();
     if !no_voltage.is_empty() {
         out.push(gap(
             "rails-without-voltage",
             "medium",
             "power",
             format!("{} supply rail(s) without a known voltage (found by their name, a pin name such as VBUS, VSYS, VBAT, VDD, or a field): kisi needs the voltage to put their loads and sources into the power tree, the budget and the IR drop. Found by name: confirm that each one is a supply.", no_voltage.len()),
-            &["power budget", "DC IR drop", "PDN"],
             "Schematic: the regulator, load switch or connector that feeds the rail and its output voltage (regulator datasheet / voltage setting, USB VBUS 5 V, battery nominal voltage). A rail behind a ferrite, a 0 Ω link or a shunt takes the voltage of the rail before it.",
             json!({"to": "fields[] – the rail with its voltage as NAME@<V>V in a PI_REG entry", "example": {"ref": "U2", "name": "PI_REG", "value": "VBUS > VSYS@5V pass", "source": {"kind": "datasheet", "document": "PMIC datasheet", "note": "VSYS follows VBUS while USB is present"}},
                 "note": "Write the voltage where the rail appears in PI_REG: as the output of the part that feeds it (`+5V > VSYS@5V buck 90%`) or as a supply input (`VBAT@3.7V input`). Behind a ferrite, 0 Ω link or shunt use a pass element (`+3V3 > IMU_VDD pass r=0.5`: the voltage carries over; items[].write suggests it when kisi finds such a part). Net names with spaces in double quotes (`\"/Power/VDD CORE\"@0.9V`). Without a power tree: PI_SOURCE `NAME=<V>V` on the source part. Nets that are not supplies: ignore."}),
@@ -386,7 +415,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "medium",
             "power",
             format!("{} supply rail(s) have no source (PI_SOURCE on a connector/regulator output, or PI_REG): no IR drop for them.", no_source.len()),
-            &["DC IR drop", "power budget"],
             "Schematic / netlist: which connector or regulator feeds the rail (the pad nets of the regulator show input and output).",
             json!({"to": "fields[]", "example": {"ref": "J1", "name": "PI_REG", "value": "+5V input", "source": {"kind": "assumption", "note": "barrel jack J1 feeds +5V (schematic / netlist)"}},
                 "note": "supply inputs: PI_REG '<rail> input' (counts in the power budget and as IR-drop source); regulator outputs: PI_REG on the regulator (add out=<part> when the output current leaves through an inductor or diode); PI_SOURCE only marks IR-drop source pads without a power tree"}),
@@ -409,7 +437,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "low",
             "power",
             format!("{} switching regulator(s) have no efficiency in PI_REG: kisi assumes {:.0} % (an estimate, marked as such in the power tree).", no_eff.len(), crate::tree::DEFAULT_EFF * 100.0),
-            &["power budget", "regulator losses", "input current"],
             "Regulator datasheet: efficiency at the expected load current and input voltage (often only a curve – read it there and say so in the note, kind datasheet with 'read from Figure …', or estimate).",
             json!({"to": "fields[] (PI_REG on the regulator: the efficiency after the type)", "example": {"ref": no_eff[0]["ref"], "name": "PI_REG", "value": "+5V > +3V3 buck 88% 600mA", "source": {"kind": "datasheet", "document": "regulator datasheet", "note": "efficiency at 50 mA, 5 V in, read from the efficiency curve"}}}),
             no_eff,
@@ -441,7 +468,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "medium",
             "power",
             format!("{} IC(s) on supply rails have no load current (field PI_LOAD): their current is missing from IR drop and budget.", items.len()),
-            &["DC IR drop", "power budget", "PDN target impedance"],
             "Device datasheets (look up the mpn when an item has one: the Value field is not always the part number): supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.",
             json!({"to": "fields[] (name PI_LOAD)", "example": {"ref": items[0]["ref"], "name": "PI_LOAD", "value": "+3V3=120mA", "source": {"kind": "datasheet", "url": "…", "page": "…", "note": "typical, all channels active"}}}),
             items,
@@ -470,7 +496,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "low",
             "power",
             format!("{} decoupling capacitor(s) of 100 nF and more have no rated voltage or dielectric: the DC-bias derating in Z(f) uses an assumed rating.", unrated.len()),
-            &["PDN impedance", "decoupling recommendations"],
             "BOM / capacitor datasheet: rated voltage, dielectric (X5R/X7R/C0G), ideally the capacitance at the rail voltage from the vendor's DC-bias curve, ESR and ESL.",
             json!({"to": "fields[] (name PI_CAP) or the KiCad Value field (e.g. 10u 6.3V X5R)", "example": {"ref": unrated[0]["ref"], "name": "PI_CAP", "value": "rated=6.3V X5R c@3.3V=4.1u esl=0.45n", "source": {"kind": "datasheet", "document": "capacitor datasheet / vendor DC-bias curve", "note": "capacitance at 3.3 V, 25 °C"}}}),
             unrated,
@@ -495,7 +520,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "low",
             "power",
             format!("{} ferrite bead(s) on supply rails have no impedance rating: the PDN per IC assumes a typical 220 Ω at 100 MHz and 0.1 Ω DC resistance.", beads.len()),
-            &["PDN impedance per IC", "filter resonances"],
             "Bead datasheet: impedance at 100 MHz and DC resistance (or the part number in the Value field, e.g. 600R@100MHz or BLM18PG221SN1).",
             json!({"to": "fields[] (name PI_SERIES) or the KiCad Value field", "example": {"ref": beads[0]["ref"], "name": "PI_SERIES", "value": "z100=600 rdc=0.15", "source": {"kind": "datasheet", "document": "ferrite bead datasheet", "note": "impedance at 100 MHz, DC resistance"}}}),
             beads,
@@ -507,7 +531,6 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "low",
             "power",
             format!("{} capacitor(s) on supply rails have a value kisi cannot read: left out of Z(f).", caps.len()),
-            &["PDN impedance"],
             "Schematic / BOM: plain capacitance in the Value field (100n, 4u7, 10µF/6.3V). A fix in KiCad, not in kisi.json.",
             json!({"to": "KiCad Value field (not kisi.json)"}),
             caps,
@@ -522,14 +545,163 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     };
     out.sort_by_key(rank);
     let count = |pr: &str| out.iter().filter(|g| g["priority"] == pr).count();
+    // per category: is there anything to check, and is it ready (no open high or medium gap)
+    let targets = p.an.nets.iter().filter(|n| n.target.is_some()).count();
+    let lanes: usize = buses.iter().map(|b| b.lanes.len()).sum();
+    let applicable = |v: &str| -> (bool, String) {
+        match v {
+            "impedance" if targets == 0 => (false, "no net with a target impedance (net classes such as 50Z or 90Z_Diff, or net_classes in kisi.json)".into()),
+            "impedance" => (true, format!("{targets} net(s) with a target impedance")),
+            "channel" if lanes == 0 => (false, "no buses or lanes between devices".into()),
+            "channel" => (true, format!("{lanes} lane(s) in {} bus(es)", buses.len())),
+            _ if supplies.is_empty() => (false, "no supply rails".into()),
+            _ => (true, format!("{} supply rail(s)", supplies.len())),
+        }
+    };
+    let mut views = serde_json::Map::new();
+    for v in VIEWS {
+        let (ok, why) = applicable(v);
+        let n = |pr: &str| out.iter().filter(|g| g["priority"] == pr && g["views"].as_array().is_some_and(|a| a.iter().any(|x| x == v))).count();
+        let (h, m, l) = (n("high"), n("medium"), n("low"));
+        let state = if !ok { "nothing to check" } else if h + m == 0 { "ready" } else { "open" };
+        views.insert(v.to_string(), json!({"applicable": ok, "why": why, "state": state, "high": h, "medium": m, "low": l}));
+    }
     json!({
         "board": p.name,
         "variant": p.variant.summary(),
         "config": p.config_summary(),
         "summary": {"high": count("high"), "medium": count("medium"), "low": count("low")},
+        "views": views,
         "gaps": out,
+        "dismissed": dis.report(),
         "how": "Fill the gaps in <board>.kisi.json next to the board (format: see `kisi config-template`), every value with a source; then run `kisi config-check <board>` and `kisi gaps <board>` again. Gaps marked 'not kisi.json' are fixes in KiCad."
     })
+}
+
+/// Gaps whose items can be dismissed in `<board>.kisi.json` (`gaps.dismissed`): items found only by
+/// a name heuristic, which may be wrong (`"dismissable": true` on the item).
+pub const DISMISSABLE: &[&str] = &["nets-without-target", "rails-without-voltage"];
+
+/// Routed nets that look like interfaces by their name but have no target, per net class (all of
+/// them name-based, so dismissable).
+fn untargeted_nets(p: &Project, profiles: &Profiles, supplies: &BTreeMap<String, SupplyRail>) -> BTreeMap<String, Vec<Value>> {
+    let b = &p.board;
+    let supply: HashSet<String> = crate::pi::power_nets(b).into_iter().map(|n| n.name).chain(supplies.keys().cloned()).collect();
+    let mut untargeted: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+    for st in p.an.nets.iter().filter(|n| n.target.is_none() && n.length >= 5.0) {
+        if supply.contains(&st.name) || crate::pi::voltage_from_name(&st.name).is_some() {
+            continue;
+        }
+        let diff = st.partner.is_some();
+        let pid = profiles.auto(&st.name, "", diff);
+        if GENERIC.contains(&pid) || (!diff && profiles.get(pid).is_some_and(|p| p.signal == "diff")) {
+            continue;
+        }
+        untargeted.entry(st.class.clone()).or_default().push(json!({"net": st.name, "looks_like": pid, "length_mm": (st.length * 10.0).round() / 10.0, "dismissable": true}));
+    }
+    untargeted
+}
+
+/// Supply rails without a voltage; those found only by their name are dismissable.
+fn rails_without_voltage(supplies: &BTreeMap<String, SupplyRail>) -> Vec<Value> {
+    supplies
+        .iter()
+        .filter(|(_, r)| r.voltage.is_none())
+        .map(|(n, r)| {
+            let feed: Vec<Value> = r.fed_through.iter().map(|(part, from)| json!({"part": part, "from": from})).collect();
+            let write = match r.fed_through.first() {
+                Some((part, from)) => format!("PI_REG on {part}: {} > {} pass", crate::field_syntax::quote_name(from), crate::field_syntax::quote_name(n)),
+                None => format!("{}@<V>V where a PI_REG entry names it (regulator output or supply input)", crate::field_syntax::quote_name(n)),
+            };
+            let by_name = !r.found_by.is_empty() && r.found_by.iter().all(|f| f == "name");
+            let mut v = json!({"rail": n, "found_by": r.found_by, "components": r.components.len(), "ics": r.ics, "write": write});
+            if !feed.is_empty() {
+                v["fed_through"] = json!(feed);
+            }
+            if by_name {
+                v["dismissable"] = json!(true);
+            }
+            v
+        })
+        .collect()
+}
+
+/// The dismissals of the configuration that `kisi gaps` applies: a known gap and a reason (the
+/// check reports the others).
+struct Dismissed<'a> {
+    list: Vec<&'a crate::config::Dismissal>,
+    used: std::cell::RefCell<HashSet<(String, String)>>,
+}
+
+impl<'a> Dismissed<'a> {
+    fn from(cfg: &'a crate::config::BoardConfig) -> Self {
+        let list = cfg.gaps.dismissed.iter().filter(|d| DISMISSABLE.contains(&d.gap.as_str()) && !d.reason.trim().is_empty()).collect();
+        Dismissed { list, used: Default::default() }
+    }
+    /// Is `item` of gap `gap` dismissed? (remembers it for the report)
+    fn applies(&self, gap: &str, item: &str) -> bool {
+        let hit = self.list.iter().any(|d| d.gap == gap && d.items.iter().any(|i| i == item));
+        if hit {
+            self.used.borrow_mut().insert((gap.to_string(), item.to_string()));
+        }
+        hit
+    }
+    /// The dismissals with the items they left out (`items`) and the ones that did not apply.
+    fn report(&self) -> Value {
+        let used = self.used.borrow();
+        json!(self
+            .list
+            .iter()
+            .map(|d| {
+                let (a, n): (Vec<&String>, Vec<&String>) = d.items.iter().partition(|i| used.contains(&(d.gap.clone(), (*i).clone())));
+                json!({"gap": d.gap, "reason": d.reason, "items": a, "not_applied": n})
+            })
+            .collect::<Vec<_>>())
+    }
+}
+
+/// Dismissals that cannot apply: (errors, warnings). An item that this gap reports but not as a
+/// name-based guess is an error (only guesses can be dismissed); an item the gap no longer reports
+/// is a warning (the dismissal is no longer needed). Part of the configuration check.
+pub fn dismissal_problems(p: &Project) -> (Vec<String>, Vec<String>) {
+    let (mut errors, mut warnings) = (vec![], vec![]);
+    let Some(cfg) = &p.config else { return (errors, warnings) };
+    if cfg.gaps.dismissed.is_empty() {
+        return (errors, warnings);
+    }
+    let supplies = supply_rails(&p.board, &ComponentData::builtin());
+    let nets: HashSet<String> = untargeted_nets(p, &Profiles::builtin(), &supplies).into_values().flatten().filter_map(|n| n["net"].as_str().map(str::to_string)).collect();
+    let rails: Vec<Value> = rails_without_voltage(&supplies);
+    for d in cfg.gaps.dismissed.iter().filter(|d| DISMISSABLE.contains(&d.gap.as_str())) {
+        let what = format!("gaps.dismissed[{}]", d.gap);
+        for it in &d.items {
+            match d.gap.as_str() {
+                "nets-without-target" if !nets.contains(it) => warnings.push(format!("{what}: '{it}' is no longer reported (dismissal not needed)")),
+                "rails-without-voltage" => match rails.iter().find(|r| r["rail"] == it.as_str()) {
+                    None => warnings.push(format!("{what}: '{it}' is no longer reported (dismissal not needed)")),
+                    Some(r) if r["dismissable"] != true => errors.push(format!("{what}: '{it}' was found by a pin name or a field, not only by its name – it cannot be dismissed (give its voltage)")),
+                    _ => {}
+                },
+                _ => {}
+            }
+        }
+    }
+    (errors, warnings)
+}
+
+/// `kisi gaps --for <view>`: only the gaps of one category, with its summary.
+pub fn only_view(v: &mut Value, view: &str) {
+    if let Some(gs) = v["gaps"].as_array_mut() {
+        gs.retain(|g| g["views"].as_array().is_some_and(|a| a.iter().any(|x| x == view)));
+    }
+    let count = |pr: &str| v["gaps"].as_array().map(|a| a.iter().filter(|g| g["priority"] == pr).count()).unwrap_or(0);
+    v["summary"] = json!({"high": count("high"), "medium": count("medium"), "low": count("low")});
+    let one = v["views"].get(view).cloned().unwrap_or(Value::Null);
+    v["views"] = json!({ view: one });
+    if let Some(ds) = v["dismissed"].as_array_mut() {
+        ds.retain(|d| gap_views(d["gap"].as_str().unwrap_or("")).1.contains(&view));
+    }
+    v["for"] = json!(view);
 }
 
 /// Parts that dissipate 0.1 W or more (power tree: load power, regulator and pass losses) without a
@@ -563,7 +735,6 @@ fn thermal_gap(p: &Project) -> Option<Value> {
         "low",
         "power",
         format!("{} part(s) dissipate 0.1 W or more without thermal data (field PI_THERMAL): `kisi thermal` estimates their junction temperature from package defaults and assumes Tj max 125 °C.", items.len()),
-        &["temperature estimate", "junction temperature"],
         "Device datasheet: the Thermal Information table (RθJB, RθJC(top) – or ψJB – for the JEDEC 2s2p board) and the maximum junction temperature (Absolute Maximum Ratings / Recommended Operating Conditions). Heat that leaves the board (connectors, LEDs, RF output): p=<W>.",
         json!({"to": "fields[] (name PI_THERMAL)", "example": {"ref": items[0]["ref"], "name": "PI_THERMAL", "value": "theta_jb=17.4 theta_jc=53.6 tj_max=125", "source": {"kind": "datasheet", "document": "…", "page": "Thermal Information", "note": "RθJB, RθJC(top), JEDEC 2s2p board"}}}),
         items,
@@ -606,6 +777,9 @@ mod tests {
     (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 5 "VBUS_DET"))
     (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 1 "+5V"))))"#;
 
+    pub(super) fn pcb_plain() -> String {
+        PCB.replace("PROPJ", "").replace("PROPR", "").replace("PROPU3", "")
+    }
     fn run(j: &str, r: &str, u3: &str) -> Value {
         let pcb = PCB.replace("PROPJ", j).replace("PROPR", r).replace("PROPU3", u3);
         let p = Project::from_texts(Inputs { pcb_path: "pmic.kicad_pcb".into(), pcb, pro: None, config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap();
@@ -642,5 +816,87 @@ mod tests {
         let v2 = run(r#"(property "PI_REG" "+5V input; VBAT@3.7V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 90% 600mA")"#);
         assert!(gap_of(&v, "regulator-efficiency").is_none());
         assert!(gap_of(&v2, "rails-without-voltage").is_none(), "{:#}", v2["gaps"]);
+    }
+
+    /// Every word of GAP_AFFECTS has a category, and every gap id in this file has an entry.
+    #[test]
+    fn affects_words_map() {
+        for (id, words) in GAP_AFFECTS {
+            for w in *words {
+                assert!(AFFECT_VIEWS.iter().any(|(x, _)| x == w), "gap {id}: '{w}' has no category in AFFECT_VIEWS");
+            }
+            assert!(!gap_views(id).1.is_empty(), "gap {id}: no category");
+        }
+        let src = include_str!("gaps.rs");
+        for (i, _) in src.match_indices("gap(\n") {
+            let id = src[i + 4..].trim_start().trim_start_matches('"').split('"').next().unwrap();
+            assert!(GAP_AFFECTS.iter().any(|g| g.0 == id), "gap '{id}' missing in GAP_AFFECTS");
+        }
+        assert_eq!(gap_views("stackup-defaults").1, vec!["impedance", "channel"]);
+        assert_eq!(gap_views("assembly-variant").1, vec!["channel", "power"]);
+        assert_eq!(gap_views("thermal-data").1, vec!["power"]);
+    }
+
+    /// Categories: nothing to check without targets and lanes; `--for` keeps one category.
+    #[test]
+    fn views_and_for() {
+        let mut v = run("", "", "");
+        assert_eq!(v["views"]["impedance"]["state"], "nothing to check");
+        assert_eq!(v["views"]["channel"]["applicable"], false);
+        assert_eq!((v["views"]["power"]["state"].as_str(), v["views"]["power"]["applicable"].as_bool()), (Some("open"), Some(true)));
+        assert_eq!(gap_of(&v, "rails-without-voltage").unwrap()["views"], json!(["power"]));
+        only_view(&mut v, "power");
+        assert!(v["gaps"].as_array().unwrap().iter().all(|g| g["views"].as_array().unwrap().iter().any(|x| x == "power")));
+        assert_eq!(v["views"].as_object().unwrap().len(), 1);
+        assert_eq!(v["for"], "power");
+    }
+
+    fn with_config(cfg: &str) -> Project {
+        Project::from_texts(Inputs { pcb_path: "pmic.kicad_pcb".into(), pcb: pcb_plain(), pro: None, config: Some(("pmic.kisi.json".into(), Ok(cfg.to_string()))), stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap()
+    }
+
+    /// Dismissals: only name-based gaps, with a reason; `gaps` leaves the items out and lists them.
+    #[test]
+    fn dismissals() {
+        let p = with_config(r#"{"kisi_config": 1, "gaps": {"dismissed": [{"gap": "rails-without-voltage", "items": ["VBAT"], "reason": "battery case not modelled"}]}}"#);
+        assert!(p.config_check.as_ref().unwrap().ok, "{:?}", p.config_check);
+        let v = gaps(&p, &Profiles::builtin());
+        let rails: Vec<&str> = gap_of(&v, "rails-without-voltage").unwrap()["items"].as_array().unwrap().iter().map(|i| i["rail"].as_str().unwrap()).collect();
+        assert_eq!(rails, vec!["VSYS"]);
+        assert_eq!(v["dismissed"][0]["items"], json!(["VBAT"]));
+        assert_eq!(v["dismissed"][0]["reason"], "battery case not modelled");
+        // both rails dismissed: the gap is closed
+        let p = with_config(r#"{"kisi_config": 1, "gaps": {"dismissed": [{"gap": "rails-without-voltage", "items": ["VBAT", "VSYS"], "reason": "not supplies in this case"}]}}"#);
+        assert!(gap_of(&gaps(&p, &Profiles::builtin()), "rails-without-voltage").is_none());
+        // no reason, a gap that cannot be dismissed, an unknown net, an item no longer reported
+        let p = with_config(r#"{"kisi_config": 1, "gaps": {"dismissed": [{"gap": "rails-without-voltage", "items": ["VBAT"]},
+            {"gap": "power-tree", "items": ["+5V"], "reason": "x"}, {"gap": "rails-without-voltage", "items": ["NOPE", "+5V"], "reason": "y"}]}}"#);
+        let c = p.config_check.as_ref().unwrap();
+        assert!(!c.ok);
+        for want in ["reason missing", "gap 'power-tree' cannot be dismissed", "no net 'NOPE'"] {
+            assert!(c.errors.iter().any(|e| e.contains(want)), "{want}: {:?}", c.errors);
+        }
+        assert!(c.warnings.iter().any(|w| w.contains("'+5V' is no longer reported")), "{:?}", c.warnings);
+        // without a reason the dismissal does not apply
+        assert_eq!(gap_of(&gaps(&p, &Profiles::builtin()), "rails-without-voltage").unwrap()["items"].as_array().unwrap().len(), 2);
+    }
+
+    /// One category of a configuration ("save only this category").
+    #[test]
+    fn subset_per_view() {
+        let cfg = crate::config::parse(r#"{"kisi_config": 1, "board": "b.kicad_pcb",
+            "stackup": {"dielectrics": [{"index": 0, "epsilon_r": 4.2, "source": {"kind": "estimate", "note": "x"}}]},
+            "net_classes": {"A": {"target_ohm": 50, "diff": false, "profile": "se50", "source": {"kind": "estimate", "note": "x"}}, "B": {"profile": "lvds", "source": {"kind": "estimate", "note": "x"}}},
+            "fields": [{"ref": "U1", "name": "PI_LOAD", "value": "+3V3=1mA", "source": {"kind": "estimate", "note": "x"}}],
+            "variant": "default",
+            "gaps": {"dismissed": [{"gap": "nets-without-target", "items": ["X"], "reason": "r"}]}}"#).unwrap();
+        let i = crate::config::subset(&cfg, "impedance");
+        assert_eq!((i.stackup.dielectrics.len(), i.net_classes.len(), i.net_classes["A"].profile.clone(), i.fields.len(), i.variant.clone(), i.gaps.dismissed.len()), (1, 1, None, 0, None, 1));
+        let c = crate::config::subset(&cfg, "channel");
+        assert_eq!((c.net_classes.len(), c.net_classes["B"].profile.as_deref(), c.variant.as_deref(), c.fields.len()), (2, Some("lvds"), Some("default"), 0));
+        let w = crate::config::subset(&cfg, "power");
+        assert_eq!((w.stackup.dielectrics.len(), w.net_classes.len(), w.fields.len(), w.variant.as_deref(), w.gaps.dismissed.len()), (0, 0, 1, Some("default"), 0));
+        assert_eq!(crate::config::message_views(&cfg, "net_classes.B: source missing"), vec!["channel"]);
+        assert_eq!(crate::config::message_views(&cfg, "U1: PI_LOAD value 'x' not readable"), vec!["power"]);
     }
 }

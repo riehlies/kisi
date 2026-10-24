@@ -107,7 +107,11 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
   commands (`commands::needs_variant`) and the viewer asks before computing lanes. The WASM state keeps the board
   as read and rebuilds the analysed board when the viewer switches the variant.
 * `kisi_core::gaps`: deterministic list of missing or default data, with where to find it and the kisi.json entry
-  (supply rails also from net and pin names; the MPN where the Value field is not a part number).
+  (supply rails also from net and pin names; the MPN where the Value field is not a part number). Each gap's
+  categories (`views`: impedance, channel, power) come from its `affects` words (`GAP_AFFECTS`, `AFFECT_VIEWS`);
+  per category whether there is anything to check and whether it is ready; `--for` keeps one category. Name-based
+  items can be dismissed with a reason (`gaps.dismissed` in kisi.json, checked by `config::check` and
+  `gaps::dismissal_problems`); `config::subset` keeps one category's entries.
 * Worked example of a `<board>.kisi.json` (power tree with sources, the open gaps): `docs/preparing-a-board.md` with
   the file in `docs/examples/xiao-nrf54lm20a/`.
 * Agents use the CLI (`node kisi.mjs <command> <board>` → JSON) following the skills in `claude-plugin/skills/`:

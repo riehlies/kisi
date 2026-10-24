@@ -131,6 +131,7 @@ variants; `kisi config-check <board>` checks it (the viewer runs the same check 
 | `fields` | footprint fields laid over the board: `ref`, `name` (`PI_*`), `value` |
 | `variant` | the assembly variant to analyse: a KiCad 10 variant of the board, one of `variants`, or `default` (the board file as it is) |
 | `variants` | assembly variants for boards without KiCad 10 variants, or on top of one of the same name (below) |
+| `gaps` | `dismissed`: items of name-based gaps that do not apply, with a reason (below) |
 | `notes` | free text: what was assumed and why |
 
 Every value needs a `source`: `kind` plus at least one of `document`, `url`, `note` (`page` optional). Kinds:
@@ -183,6 +184,23 @@ only connect parts not fitted are not checked. When a board has variants – or 
 parts are fitted – and none is chosen, the lane commands stop with the list (CLI) or ask (viewer); see
 [Getting started](getting-started.md#assembly-variants). In the viewer, drop the BOMs together with the board and
 the kisi.json.
+
+### `gaps.dismissed`
+Some gaps are guesses from names: nets that look like an interface by their name (`nets-without-target`) and rails
+found only by their name (`rails-without-voltage`, items with `"dismissable": true`). Items that are not what the
+name suggests can be dismissed, with a reason:
+```json
+"gaps": {"dismissed": [
+  {"gap": "nets-without-target", "items": ["/FPGA/QSPI_DQ0", "/FPGA/QSPI_DQ1"],
+   "reason": "QSPI configuration flash at 50 MHz, short lines – no impedance control needed",
+   "source": {"kind": "design", "note": "optional"}}
+]}
+```
+`kisi gaps` leaves dismissed items out (a gap whose items are all dismissed is gone) and lists them under
+`dismissed` with the reason, so a review still sees them. `config-check` requires one of the name-based gaps, a
+reason and nets that exist; an item the gap reports but not as a name-based guess (a rail found by a pin name)
+cannot be dismissed, and an item the gap no longer reports is a warning. Other gaps are filled or fixed, not
+dismissed.
 
 ## Other input files
 | File | Used by | Format |

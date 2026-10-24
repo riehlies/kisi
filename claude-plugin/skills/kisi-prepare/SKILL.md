@@ -32,8 +32,12 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
 
 ## Steps
 
-1. **Gap list:** `kisi gaps path/to/board.kicad_pcb`. Each gap has `priority`, `issue`, `affects`,
-   `where_to_find`, `write` (where in kisi.json, with an example) and `items` (layers, classes, parts).
+1. **Gap list:** `kisi gaps path/to/board.kicad_pcb`. Each gap has `priority`, `issue`, `affects`, `views`
+   (impedance, channel, power), `where_to_find`, `write` (where in kisi.json, with an example) and `items`
+   (layers, classes, parts). When the user wants one analysis ("ready for the impedance check"), use
+   `kisi gaps <board> --for impedance` (or `channel`, `power`) and work only on those. `views` in the result
+   says per category whether there is anything to check (`applicable`) and its `state` (`ready`, `open`,
+   `nothing to check`) – do not research gaps for a category with nothing to check unless the user asks.
    Work through `high` first, then `medium`. Gaps whose `write.to` says "not kisi.json" are fixes in
    KiCad: list them for the user, do not try to fix them. Part items carry `mpn` (and `manufacturer`)
    when the footprint has a part number that its Value field does not show (Value "英联", MPN UM3204H):
@@ -94,6 +98,11 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
    Use the user's own documents first (datasheet folder, BOM, fabricator files), then web search. Ask for
    the datasheets early: many manufacturer PDFs cannot be read through a web fetch, and efficiencies are
    often only given as curves.
+   - Name-based guesses (`nets-without-target`, and rails in `rails-without-voltage` with `"dismissable": true`):
+     when the schematic or datasheet shows the name misleads (a QSPI bus that looks like DDR, a net called VBAT
+     that is a sense line), dismiss the items instead of inventing values – `"gaps": {"dismissed": [{"gap":
+     "nets-without-target", "items": ["/FPGA/QSPI_DQ0"], "reason": "QSPI flash at 50 MHz, no impedance control
+     needed"}]}` – and tell the user. Keep dismissals that are already in the file.
 4. **Rules for values:**
    - Every value needs a `source`: `kind` (datasheet, standard, application_note, measurement,
      simulation, design, estimate, assumption) plus `document` and/or `url`, `page`, and a `note`.

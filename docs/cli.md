@@ -44,7 +44,9 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
                    temperature and IR drop at temperature per rail
                    [--tree tree.json] [--ambient °C (25)] [--h W/m²K per side] [--airflow m/s] [--vertical]
   report           write analysis/kisi.json next to the board   [--out FILE]
-  gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
+  gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
+                   per category (impedance, channel, power) whether there is anything to check and
+                   whether it is ready                           [--for impedance|channel|power]
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
   config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
                    assembly variants
@@ -117,13 +119,20 @@ Everything into `analysis/kisi.json` next to the board (`--out FILE` elsewhere);
 review tools and later sessions. Needs an assembly variant on boards that have them. Runs the field solver.
 
 ### `gaps`
-Missing or default data: each gap has `id`, `priority` (high, medium, low), `area`, `issue`, `affects`,
+Missing or default data: each gap has `id`, `priority` (high, medium, low), `area`, `issue`, `affects`, `views`
+(the analysis categories it matters for: impedance, channel, power – the temperature estimate is part of power),
 `where_to_find`, `write` (where it goes in `<board>.kisi.json`, with an example) and `items` (layers, classes,
-parts with their MPN). See [Preparing a board](preparing-a-board.md#the-gap-list). Fast, no field solver.
+parts with their MPN; `"dismissable": true` on items found only by a name). `views` in the result says per
+category whether there is anything to check (`applicable`, `why`) and its `state`: `ready` (no open high or medium
+gap), `open`, or `nothing to check`. `--for impedance|channel|power` keeps the gaps of one category.
+`dismissed` lists the items left out because `gaps.dismissed` in kisi.json dismisses them, with the reason (and
+`not_applied` for items that are not reported). See [Preparing a board](preparing-a-board.md#the-gap-list). Fast,
+no field solver.
 
 ### `config-check`
 Checks `<board>.kisi.json` against the board: format, ranges, references, sources, field syntax kisi cannot read,
-variants and the files they name. Prints `ok`, `errors`, `warnings` and the number of entries.
+variants and the files they name, dismissed gaps. Prints `ok`, `errors`, `warnings`, the number of entries, and
+`messages` – every error and warning with the categories (`views`) of the entry it is about.
 
 ### `config-template`
 A `<board>.kisi.json` skeleton with this board's dielectric indices, net classes and suggested assembly variants
@@ -157,6 +166,7 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--airflow m/s` | `thermal` | forced air flow over the board |
 | `--vertical` | `thermal` | the board stands vertically (natural convection) |
 | `--h W/m²K` | `thermal` | surface coefficient per side instead of the convection correlations |
+| `--for VIEW` | `gaps` | only the gaps of one category: `impedance`, `channel` or `power` |
 | `--out FILE` | `report` | where to write the report (default `analysis/kisi.json` next to the board) |
 | `--formula` | field-solver commands | no field solver (formula impedances) |
 | `--field-time S` | field-solver commands | time budget for new solves, default 120 s |

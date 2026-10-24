@@ -146,6 +146,30 @@ impl VariantEntry {
     }
 }
 
+/// `gaps.dismissed[]`: items of a name-based gap that do not apply (`kisi gaps` leaves them out
+/// and lists them with the reason). Only gaps in `gaps::DISMISSABLE`; a reason is required.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Dismissal {
+    pub gap: String,
+    pub items: Vec<String>,
+    pub reason: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<Source>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GapsEntry {
+    pub dismissed: Vec<Dismissal>,
+}
+
+impl GapsEntry {
+    pub fn is_empty(&self) -> bool {
+        self.dismissed.is_empty()
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BoardConfig {
@@ -161,6 +185,9 @@ pub struct BoardConfig {
     /// or "default" for the board file as it is)
     pub variant: Option<String>,
     pub variants: BTreeMap<String, VariantEntry>,
+    /// dismissed items of name-based gaps
+    #[serde(skip_serializing_if = "GapsEntry::is_empty")]
+    pub gaps: GapsEntry,
     pub notes: Vec<String>,
 }
 
@@ -264,6 +291,78 @@ pub struct CheckResult {
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
     pub entries: usize,
+}
+
+/// The entries of one analysis category (`gaps::VIEWS`) – "save only this category": stackup and
+/// net class targets for impedance and channel, net class profiles and connector ends for channel,
+/// footprint fields for power, the assembly variant for channel and power, a dismissal for the
+/// categories of its gap. `kisi_config`, `board` and `notes` stay.
+pub fn subset(cfg: &BoardConfig, view: &str) -> BoardConfig {
+    let has = |vs: &[&str]| vs.contains(&view);
+    let mut out = BoardConfig { kisi_config: cfg.kisi_config, board: cfg.board.clone(), notes: cfg.notes.clone(), ..Default::default() };
+    if has(&["impedance", "channel"]) {
+        out.stackup = cfg.stackup.clone();
+        out.net_classes = cfg
+            .net_classes
+            .iter()
+            .filter_map(|(k, c)| {
+                let mut c = c.clone();
+                if view == "impedance" {
+                    c.profile = None;
+                    if c.target_ohm.is_none() && c.diff.is_none() {
+                        return None;
+                    }
+                }
+                Some((k.clone(), c))
+            })
+            .collect();
+    }
+    if view == "channel" {
+        out.connector_ends = cfg.connector_ends.clone();
+    }
+    if view == "power" {
+        out.fields = cfg.fields.clone();
+    }
+    if has(&["channel", "power"]) {
+        out.variant = cfg.variant.clone();
+        out.variants = cfg.variants.clone();
+    }
+    out.gaps.dismissed = cfg.gaps.dismissed.iter().filter(|d| crate::gaps::gap_views(&d.gap).1.contains(&view)).cloned().collect();
+    out
+}
+
+/// The categories a check message is about, from the entry it names (its path at the start).
+pub fn message_views(cfg: &BoardConfig, text: &str) -> Vec<&'static str> {
+    let all = crate::gaps::VIEWS.to_vec();
+    if text.starts_with("stackup.") {
+        return vec!["impedance", "channel"];
+    }
+    if let Some(rest) = text.strip_prefix("net_classes.") {
+        let cls = rest.split(':').next().unwrap_or("");
+        let c = cfg.net_classes.get(cls);
+        let profile_only = c.is_some_and(|c| c.target_ohm.is_none() && c.diff.is_none()) || text.contains("profile '");
+        return if profile_only { vec!["channel"] } else { vec!["impedance", "channel"] };
+    }
+    if text.starts_with("connector_ends.") {
+        return vec!["channel"];
+    }
+    if text.starts_with("fields[") {
+        return vec!["power"];
+    }
+    if text.starts_with("variant") {
+        return vec!["channel", "power"];
+    }
+    if let Some(rest) = text.strip_prefix("gaps.dismissed[") {
+        let v = crate::gaps::gap_views(rest.split(']').next().unwrap_or("")).1;
+        return if v.is_empty() { all } else { v };
+    }
+    // power-field messages of the analyses start with the part's reference ("U6: PI_REG …")
+    if let Some((r, _)) = text.split_once(": ") {
+        if cfg.fields.iter().any(|f| f.refdes == r) {
+            return vec!["power"];
+        }
+    }
+    all
 }
 
 /// Board names match when their stems (without path and `.kicad_pcb`) are equal, ignoring case.
@@ -457,6 +556,27 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
         src(what, &f.source, &mut r);
     }
     check_variants(cfg, board, files, &mut r);
+    for d in &cfg.gaps.dismissed {
+        r.entries += 1;
+        let what = format!("gaps.dismissed[{}]", d.gap);
+        if !crate::gaps::DISMISSABLE.contains(&d.gap.as_str()) {
+            r.errors.push(format!("{what}: gap '{}' cannot be dismissed (only the name-based gaps {})", d.gap, crate::gaps::DISMISSABLE.join(", ")));
+        }
+        if d.reason.trim().is_empty() {
+            r.errors.push(format!("{what}: reason missing (say why the gap does not apply)"));
+        }
+        if d.items.is_empty() {
+            r.errors.push(format!("{what}: no items"));
+        }
+        for it in &d.items {
+            if crate::pi::find_net(board, it).is_none() {
+                r.errors.push(format!("{what}: no net '{it}' on the board"));
+            }
+        }
+        if d.source.is_some() {
+            src(what, &d.source, &mut r);
+        }
+    }
     // can kisi read the power fields? apply to a copy and parse them like the analyses do
     if cfg.fields.iter().any(|f| KNOWN_FIELDS.iter().any(|k| k.eq_ignore_ascii_case(&f.name))) {
         let mut b = board.clone();

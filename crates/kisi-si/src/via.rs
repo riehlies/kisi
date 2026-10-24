@@ -650,6 +650,13 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
         junction: true,
         sigma: ctx.sigma,
         caps,
+        // pours on the via's own signal layers (their planes in `planes`); validation switch
+        // KISI_VIA_POURS=planes: as planes, the ladder before Block 5 (BOARD_VIAS.md)
+        coplanar: if std::env::var("KISI_VIA_POURS").is_ok_and(|x| x == "planes") {
+            vec![]
+        } else {
+            [l_in, l_out].iter().filter(|&&k| clear[k as usize].is_some()).map(|&k| z[k as usize]).collect()
+        },
     };
     let mode = if partner_via.is_some() { Mode::Odd } else { Mode::Single };
     let debug = std::env::var("KISI_DEBUG_VIA").is_ok();
@@ -698,13 +705,15 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
             eprintln!("# cavities {:.1} ms", tc.elapsed().as_secs_f64() * 1e3);
         }
     }
-    // validation: the via's S-parameters, 25 MHz … 25 GHz, 50 Ω
+    // validation: the via's S-parameters, 25 MHz … 25 GHz, 50 Ω, between feed lines that run to the
+    // via centre (without the trace the channel left out for the ladder: the reference plane of the
+    // de-embedded 3D board vias)
     #[cfg(not(target_arch = "wasm32"))]
     if let Ok(dir) = std::env::var("KISI_DUMP_VIA") {
         let mut t = String::from("# Hz S RI R 50\n");
         for k in 1..=1000 {
             let f = k as f64 * 25e6;
-            let mm = m.abcd(f);
+            let mm = m.abcd_centre(f);
             let (s11, s21, s22) = mm.s_params(50.0);
             t += &format!("{f:.6e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e}\n", s11.re, s11.im, s21.re, s21.im, s21.re, s21.im, s22.re, s22.im);
         }

@@ -446,6 +446,8 @@ def board_ladders(a, k, v, c):
     os.makedirs(d, exist_ok=True)
     for tag in ("old", "ret"):
         g = dict(runs[tag][idx[0]], f_loss=c["fmax"] / 2, sigma=None)
+        # the via between lines to its centre (without the trace the channel left out, board_vias.py)
+        g["feeds"] = [dict(fd, dropped=0.0) for fd in g["feeds"]]
         gp = os.path.join(d, f"ladder3d_{tag}.json")
         json.dump(g, open(gp, "w"))
         subprocess.run([tool(a, "validate"), "via-geom", gp, "--s2p", os.path.join(d, f"ladder3d_{tag}.s2p")], capture_output=True, text=True, check=True)

@@ -6,8 +6,11 @@
   python3 board_vias.py compare  [--only KEY]   de-embed, compare with the ladder, plots, results
   python3 board_vias.py deembed-check            the de-embedding on a known network (lines of Zc ≠ z0)
   python3 board_vias.py block1                   Block 1 references de-embedded both ways
-  python3 board_vias.py variants [--only KEY]    ladder without the signal-layer pours / junction model
+  python3 board_vias.py variants [--only KEY]    ladder with the signal-layer pours as planes (before Block 5),
+                                                without them, without the junction model
   python3 board_vias.py diag                     REFINOUT2 with In2 grounded (board_cases/diag)
+  python3 board_vias.py fixes    [--only KEY]   Block 5: the ladder with the pours on the signal layers as
+                                                planes and as coplanar returns, all board vias → results/board_vias_fixes.json
   python3 board_vias.py quick    [--only KEY]   coarser meshes against the base mesh (resource estimate)
   python3 board_vias.py speed    [--wasm F] [--threads N]   setup time, step rate and memory,
                                                 native (1 and N threads) and WebAssembly
@@ -115,6 +118,11 @@ def ladder(a):
         if not hits:
             raise SystemExit(f"{k}: no ladder geometry of kisi matches the via ({len(geoms)} printed)")
         g = hits[0]  # a pair: the first is the differential channel's (odd-mode feeds)
+        # the via between lines that run to its centre, as the de-embedded 3D result: without the trace
+        # the channel left out for the ladder (`dropped`, which the ladder puts back in the channel;
+        # Block 2 compared with it in: LibreVNA 0.15 / 0.34 mm, M.2 0.03 mm of extra line)
+        for fd in g["feeds"]:
+            fd["dropped"] = 0.0
         d = os.path.join(REF, k)
         os.makedirs(d, exist_ok=True)
         json.dump(g, open(os.path.join(d, "ladder_geom.json"), "w"))
@@ -185,8 +193,9 @@ def metrics(f, D, L, z0):
         m[f"S21_min_{tag}_ghz"] = round(float(f[sel][i] / 1e9), 2)
         m[f"S21_min_{tag}_db"] = round(float(sparam.db(X[sel, 1, 0])[i]), 2)
         sel = (f >= 25e9) & (f <= 40e9)
-        i = int(np.argmin(sparam.db(X[sel, 1, 0])))
-        m[f"S21_min_25_40_{tag}_ghz"], m[f"S21_min_25_40_{tag}_db"] = round(float(f[sel][i] / 1e9), 2), round(float(sparam.db(X[sel, 1, 0])[i]), 2)
+        if sel.sum() > 1:
+            i = int(np.argmin(sparam.db(X[sel, 1, 0])))
+            m[f"S21_min_25_40_{tag}_ghz"], m[f"S21_min_25_40_{tag}_db"] = round(float(f[sel][i] / 1e9), 2), round(float(sparam.db(X[sel, 1, 0])[i]), 2)
         sel = (f >= 5e9) & (f <= 15e9)
         ph = np.unwrap(np.angle(X[:, 1, 0]))
         m[f"delay_5_15ghz_{tag}_ps"] = round(float(-np.polyfit(2 * np.pi * f[sel], ph[sel], 1)[0] * 1e12), 2)
@@ -414,7 +423,11 @@ def variants(a):
         zs = [g["feeds"][0]["z"], g["feeds"][1]["z"]]
         nop = copy.deepcopy(g)
         nop["planes"] = [p for p in g["planes"] if not any(abs(p["z"] - z) < 1e-6 for z in zs)]
-        vs = {"as is": g, "no planes on the signal layers": nop, "no junction model": dict(copy.deepcopy(g), junction=False), "neither": dict(copy.deepcopy(nop), junction=False)}
+        nop["coplanar"] = []
+        # before Block 5 the pours on the signal layers were planes (no `coplanar` list)
+        old = dict(copy.deepcopy(g), coplanar=[])
+        vs = {"as is": g, "pours as planes (before Block 5)": old, "no planes on the signal layers": nop, "no junction model": dict(copy.deepcopy(g), junction=False),
+              "neither": dict(copy.deepcopy(nop), junction=False)}
         out[k] = {"removed_plane_z_mm": [round(z, 4) for z in zs]}
         for nm, gg in vs.items():
             p = os.path.join(tmp, "g.json")
@@ -429,6 +442,81 @@ def variants(a):
         print(k, json.dumps(out[k]), flush=True)
     json.dump({"note": "kisi's ladder (3D loss model) for the matched via geometry, variants, against the de-embedded 3D result", "cases": out},
               open(os.path.join(RES, "board_vias_variants.json"), "w"), indent=1)
+
+
+# the board vias with a 3D reference: (case, folder of the case, folder of the result, board, config)
+FIX_VIAS = [
+    ("BV_ts_m2_per0", CASES, REF, "Thunderscope_Rev5.3", "ts"),
+    ("BV_ts_refinout2", CASES, REF, "Thunderscope_Rev5.3", "ts"),
+    ("BV_vna_rf_hblb1", CASES, REF, "VNA", "vna"),
+    ("BV_vna_clk_w5", os.path.join(HERE, "resonance_cases"), REF, "VNA", "vna"),
+]
+
+
+def board_ladder_geom(a, case, board, cfg, env_extra=None):
+    """kisi's ladder geometry for the via of a board case (KISI_DEBUG_VIA, matched by its return
+    vias), with the 3D loss model and between lines to the via centre (dropped = 0)"""
+    c = json.load(open(case))
+    p = c["meta"]["params"]
+    pcb = os.path.join(a.boards, board + ".kicad_pcb")
+    env = dict(os.environ, KISI_DEBUG_VIA="1", **(env_extra or {}))
+    r = subprocess.run([tool(a, "kisi"), "net", pcb, p["net"], "--config", os.path.join(ROOT, "web", "samples", cfg + ".kisi.json")], capture_output=True, text=True, env=env)
+    want = c["meta"]["kisi_returns"]
+    pair = p["partner"] is not None
+    for line in r.stderr.splitlines():
+        if not line.startswith("{"):
+            continue
+        g = json.loads(line)
+        rr = [[q["dx"], q["dy"]] for q in g["returns"]]
+        if len(rr) == len(want) and all(abs(x[0] - y[0]) < 2e-3 and abs(x[1] - y[1]) < 2e-3 for x, y in zip(rr, want)) and ((g["partner"] is not None) == pair):
+            g = dict(g, f_loss=c.get("f_loss") or c["fmax"] / 2, sigma=None)
+            g["feeds"] = [dict(fd, dropped=0.0) for fd in g["feeds"]]
+            return g
+    raise SystemExit(f"{case}: no ladder geometry matches")
+
+
+def fixes(a):
+    """Block 5: the ladder before (pours on the signal layers as planes, KISI_VIA_POURS=planes) and
+    after the coplanar treatment, both between lines to the via centre, against the de-embedded 3D
+    result of every board via → results/board_vias_fixes.json"""
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="bvfix_")
+    out = {}
+    for k, cdir, rdir, board, cfg in FIX_VIAS:
+        if a.only and not any(x in k for x in a.only.split(",")):
+            continue
+        case = os.path.join(cdir, k + ".json")
+        if os.path.exists(os.path.join(rdir, k, "deembedded.s2p")) and k == "BV_vna_clk_w5":
+            f, D = sparam.read_touchstone(os.path.join(rdir, k, "deembedded.s2p"))
+            z0 = 50.0
+        else:
+            f, D, raw, _, _, _ = deembedded(k)
+            z0 = 100.0 if "cd" in raw else 50.0
+        row = {}
+        for tag, env in (("before", {"KISI_VIA_POURS": "planes"}), ("after", {})):
+            g = board_ladder_geom(a, case, board, cfg, env)
+            gp = os.path.join(tmp, f"{k}_{tag}.json")
+            json.dump(g, open(gp, "w"))
+            subprocess.run([tool(a, "validate"), "via-geom", gp, "--s2p", gp[:-5] + ".s2p"], capture_output=True, text=True, check=True)
+            fl, L = sparam.read_touchstone(gp[:-5] + ".s2p")
+            sel = f <= fl[-1] + 1
+            ff, DD = f[sel], D[sel]
+            LL = np.stack([np.stack([np.interp(ff, fl, L[:, i, j].real) + 1j * np.interp(ff, fl, L[:, i, j].imag) for j in range(2)], -1) for i in range(2)], -2)
+            m = metrics(ff, DD, LL, z0)
+            e = {}
+            for lo, hi in ((0.5e9, 6e9), (6e9, 12e9), (12e9, 20e9), (20e9, 25e9)):
+                sel = (ff >= lo) & (ff <= hi + 1)
+                dd = np.abs(sparam.db(DD[sel, 1, 0]) - sparam.db(LL[sel, 1, 0]))
+                e[f"{lo / 1e9:g}-{hi / 1e9:g}"] = [round(float(dd.max()), 3), round(float(np.sqrt(np.mean(dd ** 2))), 3)]
+            row[tag] = {"dS21_max_rms_db": e, "dphase_max_deg_20": m["dphase_max_deg_20"], "C_fF": m["C_total_fF_ladder"], "L_pH": m["L_total_pH_ladder"],
+                        "delay_ps": m["delay_5_15ghz_ladder_ps"], "tdr_min": m["tdr_min_ladder"], "tdr_max": m["tdr_max_ladder"], "S21_min_ghz": m["S21_min_ladder_ghz"],
+                        "S21_min_db": m["S21_min_ladder_db"], "coplanar_mm": g.get("coplanar", [])}
+        row["3d"] = {"C_fF": m["C_total_fF_3d"], "L_pH": m["L_total_pH_3d"], "delay_ps": m["delay_5_15ghz_3d_ps"], "tdr_min": m["tdr_min_3d"], "tdr_max": m["tdr_max_3d"],
+                     "S21_min_ghz": m["S21_min_3d_ghz"], "S21_min_db": m["S21_min_3d_db"]}
+        out[k] = row
+        print(k, json.dumps(row), flush=True)
+    json.dump({"note": "kisi's ladder (3D loss model, between lines to the via centre) with the pours on the via's signal layers as planes (before) and as coplanar returns (after, Block 5), against the de-embedded 3D result; pairs Sdd at 100 Ω",
+               "cases": out}, open(os.path.join(RES, "board_vias_fixes.json"), "w"), indent=1)
 
 
 def diag(a):
@@ -681,7 +769,7 @@ def main():
         plot_case(case, a.args[1], mesh, a.zoom)
         return
     cmds = {"export": export, "run": run, "ladder": ladder, "compare": compare, "quick": quick, "speed": speed, "deembed-check": deembed_check,
-            "block1": block1, "variants": variants, "diag": diag}
+            "block1": block1, "variants": variants, "diag": diag, "fixes": fixes}
     if a.cmd not in cmds:
         raise SystemExit(f"unknown command {a.cmd}")
     cmds[a.cmd](a)

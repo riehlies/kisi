@@ -246,16 +246,21 @@ def mixed_mode(S):
 
 def step_response(f, s, rise=25e-12, tmax=None):
     """response to a unit step with a Gaussian edge (10–90 % = `rise`) of a transfer function
-    sampled on a uniform grid f_k = k·Δf (DC from the real part of the first point)"""
+    sampled on a uniform grid f_k = k·Δf (DC from the real part of the first point). t = 0 is the
+    middle of the edge; the response is integrated from 3·rise before it, as kisi's own TDR
+    (`rf::tdr`). (Before Block 5 the sum started at the middle of the edge: the half of a
+    reflection at the reference plane that lies before t = 0 was lost and its integral stayed as a
+    constant offset – a 60 fF shunt capacitor at the reference plane read as a 56 Ω plateau.)"""
     nf = len(f)
     df = f[1] - f[0]
     sig = rise / 2.563
-    g = np.exp(-0.5 * (2 * np.pi * f * sig) ** 2)
+    t0 = 3.0 * rise
+    g = np.exp(-0.5 * (2 * np.pi * f * sig) ** 2) * np.exp(-2j * np.pi * f * t0)
     spec = np.concatenate([[s[0].real], s * g])
     n = 8 * nf
     v = np.cumsum(np.fft.irfft(spec, n))
-    t = np.arange(n) / (n * df)
-    k = t <= tmax if tmax else slice(0, n // 2)
+    t = np.arange(n) / (n * df) - t0
+    k = (t >= 0) & ((t <= tmax) if tmax else (t < n / (2 * n * df) - t0))
     return t[k], v[k]
 
 

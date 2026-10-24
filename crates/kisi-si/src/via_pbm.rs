@@ -198,6 +198,10 @@ pub struct ViaGeom {
     /// capacitors between two planes near the via (return groups: the return of a pair of two nets)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub caps: Vec<CapPost>,
+    /// heights (mm) of the `planes` that are pours on the via's own signal layers (the copper around
+    /// the pad and the trace, BOARD_VIAS.md): a coplanar return, not one side of a plane pair
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub coplanar: Vec<f64>,
 }
 
 fn yes() -> bool {
@@ -323,6 +327,8 @@ pub struct PbmVia {
     ap_line: [Option<(f64, f64, f64)>; 2],
     /// feed removal per side: (Z, εeff, length m, negative)
     feed_cut: [(f64, f64, f64); 2],
+    /// the feeds' `dropped` lengths as lines (Zc, εeff, m), for `abcd_centre`
+    dropped: [(f64, f64, f64); 2],
     /// junction inductance per side (H)
     l_port: [f64; 2],
     /// conductor loss: conductivity (S/m), barrel radius (m) and the barrel length of every span (m)
@@ -1107,6 +1113,21 @@ impl PbmVia {
 
     /// As [`build`](Self::build), with finite cavities for some plane pairs (`CavityLink`).
     pub fn build_with(g: &ViaGeom, mode: Mode, grid: Grid, envs: Vec<CavityLink>) -> PbmVia {
+        // pours on the via's own signal layers (`coplanar`, BOARD_VIAS.md): in the Laplace solve
+        // (the pad's capacitance to the pour) and as a plate of the spans on the stub side of the
+        // junction (the stub's current returns on them as on any plane), but not a plate of the
+        // spans between the two signal layers – the trace's return turns into the via there on its
+        // reference plane and the pour's edges, not radially out to the return vias
+        let g_lap = g;
+        let g_ind;
+        let g = if g.coplanar.is_empty() {
+            g
+        } else {
+            let mut q = g.clone();
+            q.planes.retain(|p| !g.coplanar.iter().any(|&z| (z - p.z).abs() < 1e-6));
+            g_ind = q;
+            &g_ind
+        };
         let mode = if g.partner.is_none() { Mode::Single } else { mode };
         let (z_in, z_out) = (g.feeds[0].z, g.feeds[1].z);
         let crossed: Vec<&Plane> = g.planes.iter().filter(|p| g.z0 - 1e-9 <= p.z && p.z <= g.z1 + 1e-9).collect();
@@ -1130,7 +1151,7 @@ impl PbmVia {
         let mut nodes = sorted_unique(nodes, 1e-9);
         nodes.reverse();
         let graded_grid = matches!(grid, Grid::Graded { .. });
-        let ch = rz_charges(g, grid);
+        let ch = rz_charges(g_lap, grid);
         let (zq, qq, laplace_n) = (&ch.0, &ch.1, ch.2);
         let mut cap = vec![0.0; nodes.len()];
         // node regions in z: between the midpoints to the neighbouring nodes (nodes descend)
@@ -1295,10 +1316,13 @@ impl PbmVia {
         let mut groups: Vec<Group> = vec![];
         let mut spans = vec![];
         let mut span_pair = vec![];
+        let plane_z_full: Vec<f64> = g_lap.planes.iter().map(|p| p.z).collect();
         for k in 0..n.saturating_sub(1) {
             let (za, zb) = (nodes[k], nodes[k + 1]);
-            let above: Vec<f64> = plane_z.iter().copied().filter(|&pz| pz >= za - 1e-9).collect();
-            let below: Vec<f64> = plane_z.iter().copied().filter(|&pz| pz <= zb + 1e-9).collect();
+            let stub_side = za <= z_in.min(z_out) + 1e-9 || zb >= z_in.max(z_out) - 1e-9;
+            let pzs = if stub_side { &plane_z_full } else { &plane_z };
+            let above: Vec<f64> = pzs.iter().copied().filter(|&pz| pz >= za - 1e-9).collect();
+            let below: Vec<f64> = pzs.iter().copied().filter(|&pz| pz <= zb + 1e-9).collect();
             if above.is_empty() || below.is_empty() {
                 let pl = if !below.is_empty() { below.iter().copied().fold(f64::MAX, f64::min) } else { above.iter().copied().fold(f64::MIN, f64::max) };
                 let b = g.planes.iter().find(|p| (p.z - pl).abs() < 1e-9 && p.antipad.map_or(false, |b| b > 0.0)).and_then(|p| p.antipad).unwrap_or(2.0 * g.r);
@@ -1407,6 +1431,7 @@ impl PbmVia {
             f_loss: g.f_loss,
             ap_line,
             feed_cut,
+            dropped: [0, 1].map(|i| (g.feeds[i].zc, g.feeds[i].eeff, g.feeds[i].dropped * 1e-3)),
             l_port,
             sigma: g.sigma,
             a_m: g.r * 1e-3,
@@ -1814,6 +1839,22 @@ impl PbmVia {
             let (z, ee, ln) = self.feed_cut[side];
             if ln != 0.0 {
                 let t = tline(z, w * ee.sqrt() / C0 * ln);
+                m = if side == 0 { t.mul(&m) } else { m.mul(&t) };
+            }
+        }
+        m
+    }
+
+    /// ABCD of the via alone between ideal feed lines that run to the via centre (validation: the
+    /// reference plane of the de-embedded 3D board vias): `abcd` without the trace the caller left
+    /// out (`Feed::dropped`), which the ladder puts back for the channel.
+    pub fn abcd_centre(&self, f: f64) -> Abcd {
+        let w = 2.0 * PI * f;
+        let mut m = self.abcd(f);
+        for side in 0..2 {
+            let (z, ee, ln) = self.dropped[side];
+            if ln != 0.0 {
+                let t = tline(z, -w * ee.sqrt() / C0 * ln);
                 m = if side == 0 { t.mul(&m) } else { m.mul(&t) };
             }
         }
@@ -2268,6 +2309,7 @@ mod tests {
             junction: true,
             sigma: None,
             caps: vec![],
+            coplanar: vec![],
             feeds: [Feed { z: 1.6, z_ref: 1.4, w: 0.35, zc: 50.0, eeff: 3.3, dropped: 0.0, antipad_line: true }, Feed { z: 0.0, z_ref: 0.2, w: 0.35, zc: 50.0, eeff: 3.3, dropped: 0.0, antipad_line: true }],
             f_loss: None,
         }
@@ -2468,6 +2510,42 @@ mod tests {
         assert!(c > coax && c < 3.0 * coax, "{c} {coax}");
         assert!(post_plane_cap(&slabs, 0.15, 0.0, 1.6, &[(1.4, None), (0.2, Some(0.5))], 1) < c);
         assert!(post_plane_cap(&slabs, 0.15, 0.1, 1.6, &planes, 1) < c);
+    }
+
+    /// a pour on the via's entry layer (`coplanar`): not a plate of the span to the first plane
+    /// (the same spans as without it), but in the Laplace solve; on the stub side of an inner exit
+    /// it stays a plane
+    #[test]
+    fn coplanar_pour() {
+        let base = sample();
+        let mut plane = sample();
+        plane.planes.insert(0, Plane { z: 1.6, antipad: Some(0.5) });
+        let mut cop = plane.clone();
+        cop.coplanar = vec![1.6];
+        let (mb, mp, mc) = (PbmVia::build(&base, Mode::Single, Grid::default()), PbmVia::build(&plane, Mode::Single, Grid::default()), PbmVia::build(&cop, Mode::Single, Grid::default()));
+        // the span F → first plane: radial with the return as a plate pair, coax without (and coplanar)
+        assert!(matches!(mp.spans[0], SpanKind::Pair { .. }) && matches!(mb.spans[0], SpanKind::Outer(_)) && matches!(mc.spans[0], SpanKind::Outer(_)));
+        // capacitance: the pour's in the Laplace solve
+        let ct = |m: &PbmVia| m.cap.iter().sum::<f64>();
+        assert!(ct(&mc) > ct(&mb) + 1e-16 && (ct(&mc) - ct(&mp)).abs() < 1e-15, "{} {} {}", ct(&mb), ct(&mc), ct(&mp));
+        // the series inductance of the first span: as without the pour
+        let w = 2.0 * PI * 5e9;
+        let zl = |m: &PbmVia| (m.abcd(5e9).b.im / w);
+        assert!(zl(&mc) < zl(&mp), "{} {}", zl(&mc), zl(&mp));
+        // an inner exit at 0.8 mm with a pour there: the stub below keeps it as a plane
+        let mut inner = sample();
+        inner.feeds[1] = Feed { z: 0.8, z_ref: 0.2, ..inner.feeds[1] };
+        inner.planes.insert(1, Plane { z: 0.8, antipad: Some(0.5) });
+        inner.coplanar = vec![0.8];
+        let m = PbmVia::build(&inner, Mode::Single, Grid::default());
+        let k = m.nodes.iter().position(|&z| (z - 0.8).abs() < 1e-9).unwrap();
+        // above the exit (through path): inside the 1.4–0.2 pair; below it (stub): the pair 0.8–0.2
+        let pair_of = |i: usize| match m.spans[i] {
+            SpanKind::Pair { group, .. } => m.groups[group].pair,
+            _ => (0.0, 0.0),
+        };
+        assert!((pair_of(k - 1).1 - 0.2e-3).abs() < 1e-12 && (pair_of(k - 1).0 - 1.4e-3).abs() < 1e-12);
+        assert!((pair_of(k).0 - 0.8e-3).abs() < 1e-12);
     }
 
     #[test]

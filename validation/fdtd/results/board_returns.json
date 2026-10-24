@@ -1466,96 +1466,96 @@
   "title": "ThunderScope REFINOUT2, through via F.Cu \u2192 B.Cu across In2 (+VUSB)",
   "3D, In2 as it is vs before return groups": {
    "0.5_12": [
-    0.097,
-    0.057
+    0.064,
+    0.04
    ],
    "12_20": [
-    0.379,
-    0.234
+    0.412,
+    0.225
    ],
    "20_25": [
-    0.625,
-    0.519
+    0.759,
+    0.616
    ]
   },
   "3D, In2 as it is vs return groups": {
    "0.5_12": [
-    0.162,
-    0.08
+    0.126,
+    0.063
    ],
    "12_20": [
-    0.657,
-    0.405
+    0.669,
+    0.383
    ],
    "20_25": [
-    1.016,
-    0.868
+    1.15,
+    0.949
    ]
   },
   "3D, In2 grounded vs before return groups": {
    "0.5_12": [
-    0.144,
-    0.073
+    0.111,
+    0.056
    ],
    "12_20": [
-    0.571,
-    0.346
+    0.604,
+    0.336
    ],
    "20_25": [
-    0.874,
-    0.763
+    1.008,
+    0.859
    ]
   },
   "3D, In2 grounded vs return groups": {
    "0.5_12": [
-    0.209,
-    0.097
+    0.173,
+    0.079
    ],
    "12_20": [
-    0.849,
-    0.517
+    0.862,
+    0.494
    ],
    "20_25": [
-    1.265,
-    1.112
+    1.397,
+    1.193
    ]
   },
   "S21_db": {
    "4": {
     "3D, In2 as it is": -0.152,
     "3D, In2 grounded": -0.15,
-    "before return groups": -0.18,
-    "return groups": -0.182
+    "before return groups": -0.175,
+    "return groups": -0.178
    },
    "8": {
     "3D, In2 as it is": -0.152,
     "3D, In2 grounded": -0.139,
-    "before return groups": -0.217,
-    "return groups": -0.236
+    "before return groups": -0.198,
+    "return groups": -0.218
    },
    "12": {
     "3D, In2 as it is": -0.207,
     "3D, In2 grounded": -0.159,
-    "before return groups": -0.304,
-    "return groups": -0.369
+    "before return groups": -0.27,
+    "return groups": -0.333
    },
    "16": {
     "3D, In2 as it is": -0.292,
     "3D, In2 grounded": -0.197,
-    "before return groups": -0.503,
-    "return groups": -0.655
+    "before return groups": -0.474,
+    "return groups": -0.616
    },
    "20": {
     "3D, In2 as it is": -0.566,
     "3D, In2 grounded": -0.373,
-    "before return groups": -0.944,
-    "return groups": -1.223
+    "before return groups": -0.978,
+    "return groups": -1.235
    },
    "24": {
     "3D, In2 as it is": -1.239,
     "3D, In2 grounded": -0.979,
-    "before return groups": -1.84,
-    "return groups": -2.225
+    "before return groups": -1.967,
+    "return groups": -2.341
    }
   }
  },
@@ -1563,96 +1563,96 @@
   "title": "ThunderScope M.2 PCIe pair via F.Cu \u2192 In3.Cu across In2 (+VUSB / +1V2_MGT), quick mesh",
   "3D, In2 as it is vs before return groups": {
    "0.5_12": [
-    0.273,
-    0.152
+    0.178,
+    0.106
    ],
    "12_20": [
-    0.301,
-    0.273
+    0.202,
+    0.193
    ],
    "20_25": [
-    0.161,
-    0.087
+    0.198,
+    0.157
    ]
   },
   "3D, In2 as it is vs return groups": {
    "0.5_12": [
-    0.277,
-    0.153
+    0.173,
+    0.105
    ],
    "12_20": [
-    0.308,
-    0.282
+    0.19,
+    0.179
    ],
    "20_25": [
-    0.178,
-    0.096
+    0.168,
+    0.116
    ]
   },
   "3D, In2 grounded vs before return groups": {
    "0.5_12": [
-    0.273,
-    0.152
+    0.178,
+    0.106
    ],
    "12_20": [
-    0.3,
-    0.272
+    0.203,
+    0.194
    ],
    "20_25": [
-    0.158,
-    0.096
+    0.2,
+    0.153
    ]
   },
   "3D, In2 grounded vs return groups": {
    "0.5_12": [
-    0.277,
-    0.154
+    0.174,
+    0.105
    ],
    "12_20": [
-    0.308,
-    0.282
+    0.19,
+    0.18
    ],
    "20_25": [
-    0.175,
-    0.104
+    0.171,
+    0.11
    ]
   },
   "S21_db": {
    "4": {
     "3D, In2 as it is": -0.181,
     "3D, In2 grounded": -0.182,
-    "before return groups": -0.253,
-    "return groups": -0.254
+    "before return groups": -0.135,
+    "return groups": -0.135
    },
    "8": {
     "3D, In2 as it is": -0.341,
     "3D, In2 grounded": -0.341,
-    "before return groups": -0.505,
-    "return groups": -0.506
+    "before return groups": -0.216,
+    "return groups": -0.217
    },
    "12": {
     "3D, In2 as it is": -0.506,
     "3D, In2 grounded": -0.506,
-    "before return groups": -0.779,
-    "return groups": -0.783
+    "before return groups": -0.328,
+    "return groups": -0.332
    },
    "16": {
     "3D, In2 as it is": -0.641,
     "3D, In2 grounded": -0.64,
-    "before return groups": -0.934,
-    "return groups": -0.944
+    "before return groups": -0.44,
+    "return groups": -0.452
    },
    "20": {
     "3D, In2 as it is": -0.706,
     "3D, In2 grounded": -0.708,
-    "before return groups": -0.866,
-    "return groups": -0.884
+    "before return groups": -0.509,
+    "return groups": -0.538
    },
    "24": {
     "3D, In2 as it is": -0.605,
     "3D, In2 grounded": -0.63,
-    "before return groups": -0.569,
-    "return groups": -0.601
+    "before return groups": -0.485,
+    "return groups": -0.543
    }
   }
  }

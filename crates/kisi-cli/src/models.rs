@@ -167,6 +167,7 @@ fn via_geom(case: &Value, mode: Mode, equivalent: bool) -> ViaGeom {
         junction: true,
         sigma: None,
         caps: vec![],
+        coplanar: vec![],
     }
 }
 

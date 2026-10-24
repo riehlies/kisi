@@ -60,6 +60,7 @@ fn via_geom_k(case: &Value, k: usize) -> ViaGeom {
         junction: true,
         sigma: None,
         caps: vec![],
+        coplanar: vec![],
     }
 }
 

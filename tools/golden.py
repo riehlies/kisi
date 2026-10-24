@@ -97,6 +97,9 @@ def report(name, stored, new, update, path):
         return 1
     d = diffs(stored, new)
     print(f"{name}: {'unchanged' if not d else f'{len(d)} difference(s)'}")
+    if d and os.environ.get("GITHUB_ACTIONS"):  # visible in the run's summary without the log
+        body = "%0A".join(x.replace("%", "%25") for x in d[:12]) + (f"%0A… {len(d) - 12} more" if len(d) > 12 else "")
+        print(f"::error title=stored results {name}: {len(d)} difference(s)::{body}")
     for line in d[:MAX_LINES]:
         print("   ", line)
     if len(d) > MAX_LINES:
@@ -127,6 +130,8 @@ def boards(kisi, ex, update, only):
             secs = time.time() - t0
             if r.returncode != 0:
                 print(f"{name}: failed ({r.returncode})\n{r.stderr[-1500:]}")
+                if os.environ.get("GITHUB_ACTIONS"):
+                    print(f"::error title={name} failed::{r.stderr[-400:].replace(chr(10), '%0A')}")
                 bad += 1
                 rows.append(f"| {name} | failed | {secs:.1f} s |")
                 continue
@@ -146,6 +151,8 @@ def vias(kisi, update):
     secs = time.time() - t0
     if r.returncode != 0:
         print(f"compare_kisi.py failed ({r.returncode})\n{r.stdout[-1500:]}\n{r.stderr[-1500:]}")
+        if os.environ.get("GITHUB_ACTIONS"):
+            print(f"::error title=compare_kisi.py failed::{r.stderr[-400:].replace(chr(10), '%0A')}")
         return 1
     new, stored = norm(load(tmp)), load(VIAS)
     n = report("via references", norm(stored) if stored else None, new, update, VIAS)

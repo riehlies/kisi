@@ -124,6 +124,19 @@ jobs:
             ts "ThunderScope Rev5.3" examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro \
             vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
           python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
+      - name: Bundles for the other platforms
+        if: env.FULL == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundles
+          retention-days: 3
+          path: |
+            dist/kisi.html
+            dist/kisi-examples.html
+            dist/kisi.mjs
+            examples/*.kicad_pcb
+            examples/*.kicad_pro
+            web/samples/*.kisi.json
       - name: Reproducible bundles, bundle sizes
         if: env.BUNDLES == 'true'
         run: |
@@ -159,19 +172,6 @@ jobs:
         run: |
           python3 -c "import numpy" 2>/dev/null || python3 -m pip install --quiet numpy
           python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
-      - name: Bundles for the other platforms
-        if: env.FULL == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bundles
-          retention-days: 3
-          path: |
-            dist/kisi.html
-            dist/kisi-examples.html
-            dist/kisi.mjs
-            examples/*.kicad_pcb
-            examples/*.kicad_pro
-            web/samples/*.kisi.json
       - name: Screenshots of the viewer check
         if: failure()
         uses: actions/upload-artifact@v4
@@ -182,7 +182,8 @@ jobs:
 
   browsers:
     needs: [changes, checks]
-    if: needs.changes.outputs.full == 'true'
+    # also when a later check step failed: the bundles are uploaded right after they are built
+    if: always() && needs.changes.outputs.full == 'true' && needs.checks.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -213,7 +214,8 @@ jobs:
 
   windows:
     needs: [changes, checks]
-    if: needs.changes.outputs.full == 'true'
+    # also when a later check step failed: the bundles are uploaded right after they are built
+    if: always() && needs.changes.outputs.full == 'true' && needs.checks.result != 'cancelled'
     runs-on: windows-latest
     timeout-minutes: 20
     steps:

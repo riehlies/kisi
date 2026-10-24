@@ -12,14 +12,18 @@ validation depends on measurements that take time.
 ## 1. Usability: GUI, CLI, documentation
 Goal: humans in the viewer and agents with the CLI can both use kisi easily. Well-prepared boards already display
 well; the challenge is preparing a new design for a meaningful analysis – missing data, definitions and models.
-- **Documentation structure** (first step). The README has grown long. Split it into a short README and a `docs/`
-  set: getting started, preparing a board (with the XIAO nRF54LM20A as a worked tutorial), field and `kisi.json`
-  reference, models and limits, CLI reference, using kisi with agents. Same facts, one place each.
-- **Decide first: board preparation in the viewer.** One core for humans and agents: `kisi gaps` already says what
-  is missing, where to find it and where it goes in `kisi.json`. A "Prepare" step in the viewer would list the gaps
-  and let the simple values be entered directly (laminate εr/tanδ, net class targets and profiles, regulators and
-  loads, thermal data), checked by the same code as `config-check`, and export `<board>.kisi.json`. Research-heavy
-  values (datasheets) stay with the agent path (skill kisi-prepare). No second logic in the viewer.
+- **Documentation structure** (first step, decided 2026-10-24). The README has grown long. Split it into a short
+  README and Markdown in `docs/` (rendered by GitHub, linked from the README and the landing page): getting started,
+  preparing a board (with the XIAO nRF54LM20A as a worked tutorial), field and `kisi.json` reference, models and
+  limits, CLI reference, using kisi with agents. Same facts, one place each. The docs can be rendered to one PDF
+  that the release workflow attaches. Along with it: check the repository for confusing or outdated information,
+  files and documents and clean them up.
+- **Board preparation in the viewer** (decided 2026-10-24: shared core plus a "Prepare" step; a mockup first). One
+  core for humans and agents: `kisi gaps` already says what is missing, where to find it and where it goes in
+  `kisi.json`. The "Prepare" step lists the gaps and lets the simple values be entered directly (laminate εr/tanδ,
+  net class targets and profiles, regulators and loads, thermal data), checked by the same code as `config-check`,
+  and exports `<board>.kisi.json`. Research-heavy values (datasheets) stay with the agent path (skill
+  kisi-prepare). No second logic in the viewer.
 - **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
   (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
   text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an
@@ -50,7 +54,9 @@ validation, and every result says which level it used and how uncertain it is.
   end-launch connectors, simulated in kisi-fdtd and CST, measured on Keysight ENA / PNA-X / PNA; plan in
   `validation/test_board.md`, coupons v2 in branch `feat/test-board` (waiting for the RF group's advice on the
   measurement).
-- **Vias and planes in 3D** (preliminary work in branches, not merged): Block 2 `feat/via-3d-board` (board via →
+- **Vias and planes in 3D** (preliminary work in branches, not merged; one topic – the work continues on
+  `feat/return-groups`, which contains Blocks 2 and 3, and goes to `main` as one merge once the default path is
+  sound): Block 2 `feat/via-3d-board` (board via →
   kisi-fdtd exporter, matched de-embedding, `BOARD_VIAS.md`), Block 3 `feat/board-resonances` (finite plane cavities
   and via-to-via coupling, option `--via-cavity`, `BOARD_RESONANCES.md`), Block 4 `feat/return-groups` (return vias
   per plane pair and decoupling capacitors as returns, option `--via-returns`, `BOARD_RETURNS.md`). Next:
@@ -60,8 +66,9 @@ validation, and every result says which level it used and how uncertain it is.
   - a warning in the default path for channel vias that cross a GND/supply pair no via bridges (the cavity survey
     finds them already);
   - above 12 GHz neither ladder follows the 3D results, and the first board mode comes out 1.6–2.5 % low;
-  - **Decide first: a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker,
-    compare with the ladder; about 8 days, a minimal version 4);
+  - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
+    ladder; about 8 days, a minimal version 4) – after the warning and the ladder fixes (order decided 2026-10-24:
+    warning, ladder fixes, 3D check);
   - the ladder in WebAssembly is about 2 × slower than native.
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
 - **Crosstalk:** broadside coupling between layers (detected and listed so far), crossings of plane splits and
@@ -90,14 +97,22 @@ Goal: simulate channels as well as possible, including the dependencies between 
 references). The staged concept is in `docs/research/channel-simulation-ibis.md` (M0 assembly variants: 0.2.4; M2
 N-port networks, pairs as 4-ports, multi-drop: 0.2.5). IBIS-AMI and equalisers make the later stages large, and the
 setup (models, pin mapping, terminations, interface settings) is the main effort – it depends on block 1.
-- **Decide first: export of device-to-device connections to a circuit simulator** (first step). kisi writes a
-  lane's channel – lines, vias, series parts, stubs – as a SPICE subcircuit (a physical RLGC ladder or a fitted
-  model), together with a ready simulation project in which the ends are the profile's linear transmitter and
-  receiver or, where `kisi.json` names them, IBIS models through KiCad's KIBIS; the user simulates in KiCad
-  (ngspice) or another simulator. Research note with the findings, options (effort, risks) and open questions:
-  `docs/research/kicad-simulation.md` in branch `research/kicad-sim`. KIBIS models one buffer per symbol and rejects
-  files above IBIS 7.0 or with unknown keywords, so IBIS models are configured in a separate simulation project,
-  not on the ICs of the design schematic.
+- **Export of device-to-device connections to circuit and RF simulators** (first step, decided 2026-10-24). kisi
+  stays a fast linear solver that provides good linear channel models; non-linear analysis (IBIS buffers, AMI,
+  equalisers) is done in other tools. Steps:
+  1. the channel as a physical RLGC ladder – a SPICE subcircuit per line segment and per element (discrete R, L, C,
+     vias, stubs), composed into the lane – for SPICE simulators (ngspice, Xyce), with a ready test bench using the
+     profile's linear transmitter and receiver; a simulation project that opens in KiCad 9 and later (IBIS ends
+     through KiCad's KIBIS where `kisi.json` names models);
+  2. a Touchstone export of the full channel (per lane and as an N-port of a bus) for RF tools (PyBERT,
+     scikit-rf, Qucsator);
+  3. a vector-fitting reduction of long RLGC segments that keeps the delay (delay lines) and the frequency-dependent
+     loss.
+  Test cases: ThunderScope LVDS (SYNC_OUT U18 → U10), then a PCIe pair; goal: the whole PCIe bus. Each export is
+  checked against kisi's own S-parameters (e.g. ngspice's AC/S-parameter analysis of the exported ladder). Research
+  note: `docs/research/kicad-simulation.md` in branch `research/kicad-sim`; KIBIS models one buffer per symbol and
+  rejects files above IBIS 7.0 or with unknown keywords, so IBIS models live in a separate simulation project, not on
+  the ICs of the design schematic.
 - **IBIS models – on hold.** Branch `feat/ibis-parser` (IBIS parser, `kisi ibis`, mapping in kisi.json with
   `config-check`, linearised IBIS ends with the model choice in the interfaces view) is kept as preliminary work but
   not merged: its viewer integration became too complicated (too many combinations and error messages). Its parser
@@ -126,8 +141,14 @@ setup (models, pin mapping, terminations, interface settings) is the main effort
   validation (block 2). Today: ThunderScope, LibreVNA, XIAO nRF54LM20A (`docs/examples/`).
 
 ## Maintenance
+- **Issues and small fixes:** check the reported GitHub issues regularly, answer or label them, and keep a list of
+  small, independent fixes ("Small fixes" below) that can be done in parallel to the blocks.
+- **Branches:** keep the number of open branches small – one branch per topic, merged as a whole when the topic is
+  ready; preliminary work for one topic stays on one branch.
 - Solver updates with `tools/upstream_update.sh` when js_2d_fields changes (validation decides).
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.
+
+### Small fixes (independent, can be done in parallel)
 - `tools/check_viewer.py dist/kisi.html --board examples/VNA.kicad_pcb …` reports three “coupling refinement”
   problems on LibreVNA (the field-solver refinement of critical crosstalk couplings); CI runs the check on
   `kisi-examples.html` and does not see it. Found during the 0.2.5 work, older than it.

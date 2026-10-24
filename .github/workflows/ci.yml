@@ -2,7 +2,8 @@
 #   cargo test and the viewer's unit formatter (tools/test_units.mjs) · field solver against HFSS/baseline
 #   (validate_field.sh) · viewer in headless Chromium (check_viewer.py on kisi-examples.html: all views,
 #   light/dark/phone, no console errors) ·
-#   Node CLI against the native CLI on the example boards (compare_cli.py) · reference page builds.
+#   Node CLI against the native CLI on the example boards (compare_cli.py) · reference page builds ·
+#   the documentation PDF builds (tools/docs_pdf.py; it fails on broken links in docs/).
 name: ci
 on:
   push:
@@ -59,9 +60,11 @@ jobs:
         run: python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples
       - name: Viewer in headless Chromium
         run: |
-          python3 -m pip install --quiet playwright numpy
+          python3 -m pip install --quiet playwright numpy markdown==3.10.3 pypdf==5.9.0
           python3 -m playwright install --with-deps chromium
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
+      - name: Documentation PDF (and the link check of docs/)
+        run: python3 tools/docs_pdf.py dist/kisi-docs.pdf
       - name: Reference cases page
         run: python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
       - name: Screenshots of the viewer check

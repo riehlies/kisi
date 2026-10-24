@@ -268,6 +268,14 @@ async function main(argv) {
       res = res.result;
     }
     if (res && res._write) { fs.writeFileSync(path.resolve(res._write.path), res._write.content); res.written = res._write.path; delete res._write; }
+    if (res && res._files) { // `export`: the files into a folder
+      for (const f of res._files.files) {
+        const p = path.join(path.resolve(res._files.dir), f.path);
+        fs.mkdirSync(path.dirname(p), { recursive: true });
+        fs.writeFileSync(p, f.content);
+      }
+      res.written = res._files.dir; delete res._files;
+    }
     if (fieldInfo && res && typeof res === "object" && !Array.isArray(res)) res.field_solver_run = fieldInfo;
     console.log(JSON.stringify(res, null, 2));
     return 0;

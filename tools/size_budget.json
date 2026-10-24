@@ -1,0 +1,8 @@
+{
+  "about": "Upper limits of the bundles' sizes (tools/ci_checks.py sizes, CI). Set about 10 % above the sizes of 2026-10-24 (kisi.html 2.87 MB, kisi-examples.html 6.50 MB, kisi.mjs 2.22 MB). A change that makes a bundle larger on purpose raises the limit in the same commit.",
+  "max_bytes": {
+    "kisi.html": 3150000,
+    "kisi-examples.html": 7150000,
+    "kisi.mjs": 2450000
+  }
+}

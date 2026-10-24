@@ -120,5 +120,9 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
 ## Checks after changes
 `cargo test --release` · `tools/validate_field.sh` (field solver against HFSS/baseline) ·
 `python3 tools/check_viewer.py dist/kisi-examples.html` (all views, light/dark/phone, no console errors) ·
-`python3 tools/compare_cli.py` (Node CLI against the native CLI); all of them run on every push (`.github/workflows/ci.yml`).
-Locally only the quick checks for what changed (`AGENTS.md`); a branch goes to review with a green CI run.
+`python3 tools/compare_cli.py` (Node CLI against the native CLI) · `tools/golden.py` (stored results of the example
+boards in `validation/golden/` and of the via models on the 3D references) · `tools/ci_checks.py` (values with sources,
+Markdown links, CLI options named in the docs, Forstén's solver unchanged, reproducible bundles, bundle sizes).
+`.github/workflows/ci.yml` runs them by what changed (`tools/ci_checks.py changes`), everything on main, by hand and
+weekly (then also dependency audit and licences, `deny.toml`). Locally only the quick checks for what changed
+(`AGENTS.md`); a branch goes to review with a green CI run.

@@ -1159,4 +1159,62 @@ mod tests {
             assert!((r.sources[0].current - 1.0).abs() < 1e-6, "source current {}", r.sources[0].current);
         }
     }
+
+    /// Spreading resistance of a plane: a 100 mm x 100 mm pour of 35 µm copper, a source pad and a 1 A load pad
+    /// (round, 2 mm) 20 mm apart in the middle. Reference: two discs in a sheet, R = Rs/π · acosh(d / 2a), with the
+    /// pour's insulating edges as image sources (method of images, Neumann boundary), plus the load pad's own
+    /// spreading (current drawn evenly from the pad).
+    #[test]
+    fn plane_spreading_resistance() {
+        let (w, h, a, x1, x2, y) = (100.0, 100.0, 1.0, 40.0, 60.0, 50.0);
+        let text = format!(
+            r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "core") (thickness 1.5) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "+3V3")
+  (footprint "R" (layer "F.Cu") (at {x1} {y})
+    (property "Reference" "J1") (property "PI_SOURCE" "+3V3")
+    (pad "1" smd circle (at 0 0) (size {d} {d}) (layers "F.Cu") (net 1 "+3V3")))
+  (footprint "R" (layer "F.Cu") (at {x2} {y})
+    (property "Reference" "U1") (property "PI_LOAD" "+3V3=1A")
+    (pad "1" smd circle (at 0 0) (size {d} {d}) (layers "F.Cu") (net 1 "+3V3")))
+  (zone (net 1) (net_name "+3V3") (layer "F.Cu") (filled_polygon (layer "F.Cu") (pts (xy 0 0) (xy {w} 0) (xy {w} {h}) (xy 0 {h}))))
+)"#,
+            d = 2.0 * a
+        );
+        let rs = 1.72e-8 / 35e-6; // ohm per square
+        // potential of the source/sink pair with all images of the rectangle (Neumann edges), per ampere
+        let pot = |px: f64, py: f64| {
+            let mut v = 0.0;
+            for i in -40i32..=40 {
+                for j in -40i32..=40 {
+                    for (sx, sign) in [(x1, -1.0), (x2, 1.0)] {
+                        for (mx, my) in [(1.0, 1.0), (-1.0, 1.0), (1.0, -1.0), (-1.0, -1.0)] {
+                            let ix = 2.0 * w * i as f64 + mx * sx;
+                            let iy = 2.0 * h * j as f64 + my * y;
+                            let r2 = (px - ix).powi(2) + (py - iy).powi(2);
+                            v += sign * rs / (4.0 * std::f64::consts::PI) * r2.ln();
+                        }
+                    }
+                }
+            }
+            v
+        };
+        // the contacts' rims (averaged); kisi holds the source pad at the source voltage and draws the load
+        // current evenly from the load pad's copper, which adds Rs/4π between the load pad's rim and its centre
+        let rim = |cx: f64| (0..16).map(|k| { let t = k as f64 * std::f64::consts::PI / 8.0; pot(cx + a * t.cos(), y + a * t.sin()) }).sum::<f64>() / 16.0;
+        let expect = rim(x1) - rim(x2) + rs / (4.0 * std::f64::consts::PI);
+        let infinite = rs / std::f64::consts::PI * ((x2 - x1) / (2.0 * a)).acosh();
+        let b = load_pcb(&text).unwrap();
+        let (rails, warn) = rails_from_fields(&b);
+        assert!(warn.is_empty(), "{warn:?}");
+        let r = solve_rail(&b, &rails[0], &PiParams { cell: Some(0.25), ..Default::default() }).unwrap();
+        let drop = r.max_drop_mv.unwrap() * 1e-3;
+        let err = (drop - expect) / expect;
+        eprintln!("plane: {:.4} mV vs {:.4} mV with edges ({:.4} mV infinite sheet), {:+.1} %", drop * 1e3, expect * 1e3, infinite * 1e3, err * 100.0);
+        assert!(err.abs() < 0.05, "plane spreading: {drop} V vs {expect} V ({:+.1} %)", err * 100.0);
+    }
 }

@@ -36,10 +36,16 @@ Locally, before pushing a branch, run the quick checks for what you changed:
   (Node CLI with `--formula` against the native `kisi` on both example boards).
 * Field solver chain (`web/solver/`, the cross-section geometry, `tools/bundle.py`): `sh tools/validate_field.sh`
   (against HFSS/baseline, needs node).
+* Model code (`crates/`, `data/`): `python3 tools/golden.py boards target/release/kisi examples` and
+  `python3 tools/golden.py vias target/release/kisi` – the stored results of the example boards and kisi's models on
+  the 3D via references. An intended change: run them with `--update` and commit `validation/golden/` and
+  `validation/fdtd/results/kisi_models.json` with the change, so the review shows what moved.
 
-The full suite runs in CI on every push and pull request (`.github/workflows/ci.yml`): `cargo test --release`,
-`validate_field.sh`, `check_viewer.py` in light/dark/phone, `compare_cli.py` and the reference page. Hand a
-branch over for review only with a green CI run of its last commit; `main` changes only with green CI.
+CI (`.github/workflows/ci.yml`) runs the checks that a branch's changes since main can affect
+(`tools/ci_checks.py changes`; a ROADMAP edit runs only the Markdown checks); a push to main, a manual run and the
+weekly run do everything, including the viewer in Firefox/WebKit and `kisi.mjs` on Windows. Before merging a branch
+into main, run everything on it: `gh workflow run ci --ref <branch>` (or Actions → ci → Run workflow). Hand a branch
+over for review only with a green CI run of its last commit; `main` changes only with green CI.
 
 ## Rules
 * One verdict logic (`kisi_si::profile::judge`) for viewer and CLI – do not duplicate it; CLI commands live

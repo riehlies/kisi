@@ -1,0 +1,30 @@
+# cargo-deny (weekly CI run, .github/workflows/ci.yml): the dependencies' licences must be compatible with
+# kisi's GPL-3.0-only, and none may have a security advisory. Add a licence here only after checking that it is
+# compatible with the GPL 3 (https://www.gnu.org/licenses/license-list.html).
+[licenses]
+allow = [
+  "GPL-3.0-only",   # kisi's own crates
+  "MIT",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "Unlicense",
+  "Unicode-3.0",
+  "MPL-2.0",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+ignore = false
+
+[advisories]
+yanked = "warn"
+
+[bans]
+multiple-versions = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

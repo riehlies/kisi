@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Headless check of the bundled viewer (Playwright + Chromium).
+"""Headless check of the bundled viewer (Playwright; Chromium, or Firefox/WebKit with --browser).
 
 Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [--config board.kisi.json]
-                       [--out DIR] [--quick]
+                       [--out DIR] [--quick] [--browser chromium|firefox|webkit] [--layouts light,dark,phone]
 
 * light, dark and phone layout; all three views (impedance, channel, power)
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
@@ -31,6 +31,8 @@ ap.add_argument("--board", nargs="+")
 ap.add_argument("--config")
 ap.add_argument("--out")
 ap.add_argument("--quick", action="store_true")
+ap.add_argument("--browser", default="chromium", choices=["chromium", "firefox", "webkit"])
+ap.add_argument("--layouts", default="light,dark,phone", help="comma-separated subset of light,dark,phone")
 a = ap.parse_args()
 out = a.out or tempfile.mkdtemp(prefix="kisi-check-")
 os.makedirs(out, exist_ok=True)
@@ -73,6 +75,10 @@ def start_screen(pg):
       }
     }""")
     pg.wait_for_timeout(300)
+    # the clicks toggled settings the viewer keeps (e.g. the coupling refinement): back to a fresh start
+    pg.evaluate("localStorage.clear()")
+    pg.reload()
+    pg.wait_for_function("document.getElementById('drop').classList.contains('start')", timeout=90000)
 
 
 # a value with fixed decimals instead of an SI prefix: "0.000 A", "0.0012 W", "0.001 mW/mm²", "0.000"
@@ -403,12 +409,15 @@ def run(pg, tag, desktop):
 
 
 with sync_playwright() as p:
-    b = p.chromium.launch()
+    b = getattr(p, a.browser).launch()
+    layouts = a.layouts.split(",")
     for scheme, w, h, tag in [("light", 1440, 900, "light"), ("dark", 1440, 900, "dark"), ("light", 400, 860, "phone")]:
+        if tag not in layouts:
+            continue
         pg = b.new_page(viewport={"width": w, "height": h}, color_scheme=scheme)
         run(pg, tag, w > 800)
         pg.close()
-        print(f"{tag}: done")
+        print(f"{tag}: done ({a.browser})")
     b.close()
 for n in sorted(set(notes)):
     print("note:", n)

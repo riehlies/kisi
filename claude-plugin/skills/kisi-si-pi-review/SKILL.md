@@ -83,8 +83,9 @@ in the output shows the coverage; `--formula` skips the solver.
 - With one N-port Touchstone file for all lanes of a connector (`connector_ends.<ref>.touchstone.ports`), the
   eye includes the worst-case crosstalk of the other lanes (`crosstalk_peak`); the aggressors enter at the
   connector without their board traces (conservative).
-- Lanes ending at a connector (also connector to connector, e.g. test coupons) get their eye from the
-  end set in `connector_ends` (termination when the connector receives, driver when it sends). Without
+- Lanes from a device to a connector get their eye from the end set in `connector_ends` (termination when
+  the connector receives, driver when it sends); lanes from connector to connector (e.g. test coupons) are
+  judged on the board share only, without an eye. Without
   a channel behind the connector (`rest_loss_db` or a Touchstone file) the eye covers the board share
   only (`eye_board_share`), is information and not judged – say that the rest of the channel is not
   included; loss, return loss and skew are judged on the board share.

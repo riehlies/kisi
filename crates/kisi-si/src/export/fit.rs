@@ -203,20 +203,26 @@ pub enum Weight {
     Parts { im: f64, re_floor: f64 },
     /// the complex difference relative to the magnitude (small lumped elements)
     Complex,
+    /// as `Parts`, the imaginary part counted `lo` times at the lowest and `hi` times at the top
+    /// frequency (graded with f): a reactance error at high frequency turns into a phase error that
+    /// grows along the line
+    Graded { lo: f64, hi: f64 },
 }
 
-fn row_weights(t: Cx, w: Weight) -> (f64, f64) {
+/// Row weights (real, imaginary) at a target value; `x` is the position in the band (0 … 1).
+fn row_weights(t: Cx, w: Weight, x: f64) -> (f64, f64) {
     let mag = t.abs().max(1e-300);
     match w {
         Weight::Parts { im, re_floor } => (1.0 / t.re.abs().max(re_floor.max(1e-6) * mag), im / t.im.abs().max(1e-6 * mag)),
+        Weight::Graded { lo, hi } => (1.0 / t.re.abs().max(1e-6 * mag), (lo + (hi - lo) * x) / t.im.abs().max(1e-6 * mag)),
         Weight::Complex => (1.0 / mag, 1.0 / mag),
     }
 }
 
-fn err_of(fit: Cx, t: Cx, w: Weight) -> f64 {
-    let (wr, wi) = row_weights(t, w);
+fn err_of(fit: Cx, t: Cx, w: Weight, x: f64) -> f64 {
+    let (wr, wi) = row_weights(t, w, x);
     match w {
-        Weight::Parts { .. } => ((fit.re - t.re).abs() * wr).max((fit.im - t.im).abs() * wi),
+        Weight::Parts { .. } | Weight::Graded { .. } => ((fit.re - t.re).abs() * wr).max((fit.im - t.im).abs() * wi),
         Weight::Complex => (fit - t).abs() * wr,
     }
 }
@@ -237,7 +243,7 @@ pub fn fit_z(freqs: &[f64], target: &dyn Fn(f64) -> Cx, weight: Weight, tol: f64
         let mut b = vec![0.0; m];
         for (i, (&f, &z)) in freqs.iter().zip(&tv).enumerate() {
             let w = 2.0 * PI * f;
-            let (wr, wi) = row_weights(z, weight);
+            let (wr, wi) = row_weights(z, weight, f / f_hi);
             let (re, im) = (2 * i, 2 * i + 1);
             a[re * ncol] = wr; // R0
             a[im * ncol + 1] = w * wi; // s·L
@@ -269,7 +275,7 @@ pub fn fit_z(freqs: &[f64], target: &dyn Fn(f64) -> Cx, weight: Weight, tol: f64
                 fo.tanks.push((q * a, a / wm, 1.0 / (a * wm)));
             }
         }
-        let err = freqs.iter().zip(&tv).map(|(&f, &t)| err_of(fo.z(2.0 * PI * f), t, weight)).fold(0.0, f64::max);
+        let err = freqs.iter().zip(&tv).map(|(&f, &t)| err_of(fo.z(2.0 * PI * f), t, weight, f / f_hi)).fold(0.0, f64::max);
         if best.as_ref().is_none_or(|b| err < b.err) {
             best = Some(Fit { net: fo, err });
         }
@@ -297,7 +303,7 @@ pub fn fit_y(freqs: &[f64], target: &dyn Fn(f64) -> Cx, weight: Weight, tol: f64
         let mut b = vec![0.0; m];
         for (i, (&f, &y)) in freqs.iter().zip(&tv).enumerate() {
             let w = 2.0 * PI * f;
-            let (wr, wi) = row_weights(wt(y), weight);
+            let (wr, wi) = row_weights(wt(y), weight, f / f_hi);
             let (re, im) = (2 * i, 2 * i + 1);
             a[re * ncol] = wr; // G0
             a[im * ncol + 1] = w * wi; // s·C
@@ -330,7 +336,7 @@ pub fn fit_y(freqs: &[f64], target: &dyn Fn(f64) -> Cx, weight: Weight, tol: f64
                 de.res.push((1.0 / (a * qf), 1.0 / (a * wm), a / wm));
             }
         }
-        let err = freqs.iter().zip(&tv).map(|(&f, &t)| err_of(de.y(2.0 * PI * f), wt(t), weight).min(err_of(de.y(2.0 * PI * f), t, weight))).fold(0.0, f64::max);
+        let err = freqs.iter().zip(&tv).map(|(&f, &t)| err_of(de.y(2.0 * PI * f), wt(t), weight, f / f_hi).min(err_of(de.y(2.0 * PI * f), t, weight, f / f_hi))).fold(0.0, f64::max);
         if best.as_ref().is_none_or(|b| err < b.err) {
             best = Some(Fit { net: de, err });
         }

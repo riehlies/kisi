@@ -61,10 +61,20 @@ pub struct Fidelity {
     pub max_ds21_db_nyq: f64,
     /// worst complex |ΔS11| (pairs: Sdd11)
     pub max_ds11: f64,
-    /// worst complex difference of any S-parameter (all ports)
+    /// worst complex difference of any S-parameter (all ports), up to the top frequency and up to
+    /// 1.5 × Nyquist
     pub max_ds: f64,
-    /// worst relative error of the fitted R(f), L_int(f), G(f), C(f) networks
-    pub worst_fit: f64,
+    pub max_ds_nyq: f64,
+    /// line sections: worst relative error of the fitted networks over the band – resistance,
+    /// reactance, conductance, susceptance (%)
+    pub fit_line_pct: [f64; 4],
+    /// via ladders: worst complex error of the fitted span impedances and node admittances,
+    /// relative to their magnitude (%)
+    pub fit_via_pct: f64,
+    /// via spans whose impedance in kisi's model has a negative resistance somewhere in the band
+    /// (not passive: the export uses the nearest passive fit), and the lowest such frequency (GHz)
+    pub via_spans_active: usize,
+    pub via_active_from_ghz: Option<f64>,
 }
 
 /// A lane as a circuit, with kisi's S-parameters of the same build for comparison.
@@ -100,6 +110,11 @@ pub struct LaneCircuit {
 /// Fit weighting of line sections: R(f) and G(f) within the tolerance, the reactance and the
 /// susceptance (the delay and the impedance) ten times closer.
 const LINE_W: Weight = Weight::Parts { im: 10.0, re_floor: 0.0 };
+/// The series impedance of lines: the reactance 3 times closer than R(f) at the lowest and 30 times
+/// at the top frequency – kisi's roughness adds resistance without its internal inductance, which
+/// no causal circuit follows exactly; a reactance error at high frequency becomes a phase error
+/// that grows along the line.
+const LINE_ZW: Weight = Weight::Graded { lo: 3.0, hi: 30.0 };
 /// Via models (short): the reactance and the susceptance first – kisi's via models use a constant
 /// loss tangent and a barrel resistance without internal inductance, which no causal circuit
 /// follows exactly; their loss is small, their reactance sets the reflections.
@@ -116,7 +131,10 @@ struct Composer<'a> {
     freqs: Vec<f64>,
     layers: Vec<String>,
     cache: HashMap<Vec<u64>, (Foster, Debye, f64)>,
-    worst_fit: f64,
+    fit_line: [f64; 4],
+    fit_via: f64,
+    active: usize,
+    active_from: Option<f64>,
     /// feed trace length (m) of via models that could not be applied to a neighbouring line
     unabsorbed: f64,
     n_via: usize,
@@ -160,7 +178,10 @@ impl<'a> Composer<'a> {
             freqs: fit_freqs(fmax * 1e-4, fmax, 60),
             layers: su.copper.iter().map(|c| c.name.clone()).collect(),
             cache: HashMap::new(),
-            worst_fit: 0.0,
+            fit_line: [0.0; 4],
+            fit_via: 0.0,
+            active: 0,
+            active_from: None,
             unabsorbed: 0.0,
             n_via: 0,
             n_line: 0,
@@ -188,10 +209,19 @@ impl<'a> Composer<'a> {
             let p = lm.rlgc(f, rp);
             Cx::new(p.g, 2.0 * PI * f * p.c)
         };
-        let fz = fit_z(&self.freqs, &zt, LINE_W, self.opts.fit_tol, 14, false);
+        let fz = fit_z(&self.freqs, &zt, LINE_ZW, self.opts.fit_tol, 14, false);
         let fy = fit_y(&self.freqs, &yt, LINE_W, self.opts.fit_tol, 14, lm.ms_h.is_some());
         let err = fz.err.max(fy.err);
-        self.worst_fit = self.worst_fit.max(err);
+        for &f in &self.freqs {
+            let w = 2.0 * PI * f;
+            let (a, b) = (zt(f), fz.net.z(w));
+            let (c, d) = (yt(f), fy.net.y(w));
+            let rel = |x: f64, y: f64| if x.abs() > 0.0 { (x - y).abs() / x.abs() } else { 0.0 };
+            let e = [rel(a.re, b.re), rel(a.im, b.im), rel(c.re, d.re), rel(c.im, d.im)];
+            for q in 0..4 {
+                self.fit_line[q] = self.fit_line[q].max(100.0 * e[q]);
+            }
+        }
         self.cache.insert(k, (fz.net.clone(), fy.net.clone(), err));
         (fz.net, fy.net)
     }
@@ -244,7 +274,11 @@ impl<'a> Composer<'a> {
         let yt = |f: f64| Cx::new(2.0 * PI * f * c * s.tand, 2.0 * PI * f * c);
         let fz = fit_z(&self.freqs, &zt, VIA_W, self.opts.fit_tol, 10, false);
         let fy = fit_y(&self.freqs, &yt, VIA_W, self.opts.fit_tol, 10, false);
-        self.worst_fit = self.worst_fit.max(fz.err.max(fy.err));
+        for &f in &self.freqs {
+            let w = 2.0 * PI * f;
+            let e = ((zt(f) - fz.net.z(w)).abs() / zt(f).abs()).max((yt(f) - fy.net.y(w)).abs() / yt(f).abs());
+            self.fit_via = self.fit_via.max(100.0 * e);
+        }
         let n = self.sections(s.len, l, c);
         let d = s.len / n as f64;
         let el = El::Ladder { z: Imp::from_foster(&fz.net.scaled(d)), y: Adm::from_debye(&fy.net.scaled(d)), n };
@@ -263,7 +297,10 @@ impl<'a> Composer<'a> {
             let freqs = self.freqs.clone();
             let mut node = |k: usize| -> El {
                 let fy = fit_y(&freqs, &|f| p.node_y(k, f), LINE_W, tol, 10, false);
-                self.worst_fit = self.worst_fit.max(fy.err);
+                for &f in &freqs {
+                    let t = p.node_y(k, f);
+                    self.fit_via = self.fit_via.max(100.0 * (t - fy.net.y(2.0 * PI * f)).abs() / t.abs());
+                }
                 El::Shunt(Adm::from_debye(&fy.net))
             };
             let mut span_els: Vec<Option<El>> = vec![None; n.saturating_sub(1)];
@@ -273,7 +310,19 @@ impl<'a> Composer<'a> {
             }
             for (k, se) in span_els.iter_mut().enumerate() {
                 let fz = fit_z(&freqs, &|f| p.span_z(k, f), SPAN_W, tol, 10, true);
-                self.worst_fit = self.worst_fit.max(fz.err);
+                let mut active = None;
+                for &f in &freqs {
+                    let t = p.span_z(k, f);
+                    if t.re < 0.0 {
+                        active = active.or(Some(f));
+                    } else {
+                        self.fit_via = self.fit_via.max(100.0 * (t - fz.net.z(2.0 * PI * f)).abs() / t.abs());
+                    }
+                }
+                if let Some(f) = active {
+                    self.active += 1;
+                    self.active_from = Some(self.active_from.map_or(f / 1e9, |g: f64| g.min(f / 1e9)));
+                }
                 *se = Some(El::Series(Imp::from_foster(&fz.net)));
             }
             let (lo, hi) = (i_in.min(i_out), i_in.max(i_out));
@@ -452,53 +501,14 @@ impl<'a> Composer<'a> {
                 _ => continue,
             };
             for side in 0..2 {
-                let d = cuts[side];
-                if d == 0.0 {
+                if cuts[side] == 0.0 {
                     continue;
                 }
-                // the first item with length on each of the via's lines, walking away from the via
-                let nearest = |items: &Vec<Item>, l: usize| -> Option<usize> {
-                    let range: Box<dyn Iterator<Item = usize>> = if side == 0 { Box::new((0..i).rev()) } else { Box::new(i + 1..items.len()) };
-                    for j in range {
-                        if !items[j].on_line(l) {
-                            continue;
-                        }
-                        match &items[j] {
-                            Item::Line { len, .. } | Item::Coupled { len, .. } if *len <= 0.0 => continue,
-                            Item::Line { .. } | Item::Coupled { .. } => return Some(j),
-                            _ => return None,
-                        }
-                    }
-                    None
-                };
-                let hits: Vec<Option<usize>> = lines.iter().map(|&l| nearest(&items, l)).collect();
-                // a coupled run counts only when it is the nearest on all the via's lines
-                let shared = hits.iter().all(|h| h.is_some() && *h == hits[0]) && hits[0].is_some_and(|j| matches!(items[j], Item::Coupled { .. }));
-                let adjust = |items: &mut Vec<Item>, j: usize| -> f64 {
-                    match &mut items[j] {
-                        Item::Line { len, .. } | Item::Coupled { len, .. } => {
-                            let nl = (*len + d).max(0.0);
-                            let left = d - (nl - *len);
-                            *len = nl;
-                            left
-                        }
-                        _ => d,
-                    }
-                };
-                if shared {
-                    let left = adjust(&mut items, hits[0].unwrap());
-                    self.unabsorbed += left.abs();
-                } else {
-                    for h in &hits {
-                        match h {
-                            Some(j) if matches!(items[*j], Item::Line { .. }) => {
-                                let left = adjust(&mut items, *j);
-                                self.unabsorbed += left.abs();
-                            }
-                            _ => self.unabsorbed += d.abs(),
-                        }
-                    }
-                }
+                // what cannot be taken on this side (a via at a port) is taken on the other side:
+                // the delay stays, the place moves by the via
+                let left = absorb(&mut items, i, side, cuts[side], &lines);
+                let left = if left != 0.0 { absorb(&mut items, i, 1 - side, left, &lines) } else { 0.0 };
+                self.unabsorbed += left.abs();
             }
         }
         items
@@ -627,6 +637,54 @@ pub fn sig4(v: f64) -> String {
     format!("{v:.d$}")
 }
 
+/// Change the first line section on each of `lines` beside item `i` (side 0: before it, 1: after
+/// it) by `d` m, walking past lumped parts and stubs (the change moves by their size at most); a
+/// coupled run among them covers all the lines. Returns what could not be applied.
+fn absorb(items: &mut [Item], i: usize, side: usize, d: f64, lines: &[usize]) -> f64 {
+    let nearest = |items: &[Item], l: usize| -> Option<usize> {
+        let range: Box<dyn Iterator<Item = usize>> = if side == 0 { Box::new((0..i).rev()) } else { Box::new(i + 1..items.len()) };
+        for j in range {
+            if !items[j].on_line(l) {
+                continue;
+            }
+            match &items[j] {
+                Item::Line { len, .. } | Item::Coupled { len, .. } if *len <= 0.0 => continue,
+                Item::Line { .. } | Item::Coupled { .. } => return Some(j),
+                Item::El { el: El::Block { name, .. }, .. } if !name.starts_with("VIA") => continue,
+                _ => return None,
+            }
+        }
+        None
+    };
+    let hits: Vec<Option<usize>> = lines.iter().map(|&l| nearest(items, l)).collect();
+    let adjust = |items: &mut [Item], j: usize| -> f64 {
+        match &mut items[j] {
+            Item::Line { len, .. } | Item::Coupled { len, .. } => {
+                let nl = (*len + d).max(0.0);
+                let left = d - (nl - *len);
+                *len = nl;
+                left
+            }
+            _ => d,
+        }
+    };
+    if let Some(j) = hits.iter().flatten().copied().find(|&j| matches!(items[j], Item::Coupled { .. })) {
+        return adjust(items, j);
+    }
+    // separate lines: the worst remainder of them
+    let mut left = 0.0f64;
+    for h in &hits {
+        let l = match h {
+            Some(j) => adjust(items, *j),
+            None => d,
+        };
+        if l.abs() > left.abs() {
+            left = l;
+        }
+    }
+    left
+}
+
 /// The layer a via section starts on: the layer of the line before it.
 fn via_from(s: &Sections, i: usize) -> u16 {
     s.segs[..i].iter().rev().find(|x| x.kind == "line").map(|x| x.layer).unwrap_or(s.segs[i].layer)
@@ -675,7 +733,11 @@ fn fidelity(freq: &[f64], a: &[Vec<Cx>], b: &[Vec<Cx>], pair: bool, f_nyq: f64) 
             fd.max_ds21_db_nyq = fd.max_ds21_db_nyq.max(d21);
         }
         fd.max_ds11 = fd.max_ds11.max((s11a - s11b).abs());
-        fd.max_ds = fd.max_ds.max(a[k].iter().zip(&b[k]).map(|(x, y)| (*x - *y).abs()).fold(0.0, f64::max));
+        let ds = a[k].iter().zip(&b[k]).map(|(x, y)| (*x - *y).abs()).fold(0.0, f64::max);
+        fd.max_ds = fd.max_ds.max(ds);
+        if freq[k] <= 1.5 * f_nyq {
+            fd.max_ds_nyq = fd.max_ds_nyq.max(ds);
+        }
     }
     fd
 }
@@ -701,7 +763,10 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
     let (pair, odd_mode, s_kisi, s_export, ports, port_info, z_ref, delay_ps, length_mm);
     match tb.builds {
         crate::topology::LaneBuilds::Pair { bp, bn, z_ref: zr } => {
-            let (sp, sn) = (bp.sections(target), bn.sections(target));
+            let (mut sp, mut sn) = (bp.sections(target), bn.sections(target));
+            // sections without a reference plane: the pair's 4-port uses the per-line reference
+            sp.fallback = crate::rf::Build::fallback(zr);
+            sn.fallback = crate::rf::Build::fallback(zr);
             let els = crate::rf::align_pair(&bp, &bn, an, board.stackup(), field, rp).els;
             let pels = comp.pair(&sp, &sn, &els);
             let pn = crate::rf::pair_net(board, an, field, target, rp, bp, bn);
@@ -747,7 +812,17 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
         }
     }
     let mut fd = fidelity(&freq, &s_kisi, &s_export, pair, f_nyq);
-    fd.worst_fit = comp.worst_fit;
+    fd.fit_line_pct = comp.fit_line;
+    fd.fit_via_pct = comp.fit_via;
+    fd.via_spans_active = comp.active;
+    fd.via_active_from_ghz = comp.active_from;
+    if comp.active > 0 {
+        notes.push(format!(
+            "kisi's via model has {} plane-pair span(s) with a negative resistance from {:.1} GHz (not passive, e.g. the odd mode of a via pair); the export uses the nearest passive fit, so it differs from kisi's S-parameters there",
+            comp.active,
+            comp.active_from.unwrap_or(0.0)
+        ));
+    }
     if comp.unabsorbed > 1e-6 {
         notes.push(format!("{:.3} mm of via feed corrections could not be applied to a neighbouring line (no line next to the via)", comp.unabsorbed * 1e3));
     }

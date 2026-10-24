@@ -157,3 +157,4 @@ fn kisi_sections_give_the_cascade() {
     let m = (0..s.segs.len()).fold(Abcd::identity(), |m, i| m.mul(&kisi_abcd(&s, i, ch.freq[k], &rp, None)));
     assert!((m.a - ch.abcd[k].a).abs() < 1e-9 && (m.b - ch.abcd[k].b).abs() < 1e-6);
 }
+

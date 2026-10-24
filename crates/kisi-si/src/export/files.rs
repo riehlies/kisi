@@ -320,11 +320,17 @@ pub fn lib_file(lc: &LaneCircuit, board: &str, fmax: f64, per_lambda: f64) -> St
         sig4(fmax / 1e9)
     ));
     s.push_str(&format!(
-        "* check against kisi's S-parameters (same model): |dS21| <= {} dB (<= {} dB to 1.5 x Nyquist), |dS11| <= {}, worst fit error {} %\n",
-        sig4(lc.fidelity.max_ds21_db),
+        "* check against kisi's S-parameters (same model): |dS21| <= {} dB to 1.5 x Nyquist ({} dB to the top), largest |dS| {} to 1.5 x Nyquist ({} to the top)\n* fits of the line sections: R {} %, X {} %, G {} %, B {} %; via ladders {} %{}\n",
         sig4(lc.fidelity.max_ds21_db_nyq),
-        sig4(lc.fidelity.max_ds11),
-        sig4(lc.fidelity.worst_fit * 100.0)
+        sig4(lc.fidelity.max_ds21_db),
+        sig4(lc.fidelity.max_ds_nyq),
+        sig4(lc.fidelity.max_ds),
+        sig4(lc.fidelity.fit_line_pct[0]),
+        sig4(lc.fidelity.fit_line_pct[1]),
+        sig4(lc.fidelity.fit_line_pct[2]),
+        sig4(lc.fidelity.fit_line_pct[3]),
+        sig4(lc.fidelity.fit_via_pct),
+        if lc.fidelity.via_spans_active > 0 { format!(" ({} via spans of kisi's model not passive, fitted passive)", lc.fidelity.via_spans_active) } else { String::new() }
     ));
     s.push_str(&format!("* elements after flattening: {} R, {} L, {} C, {} sources; {} RLGC sections\n", lc.counts.r, lc.counts.l, lc.counts.c, lc.counts.sources, lc.counts.sections));
     s.push_str(&format!("* usage: X1 {} 0 {}   (the last port is the reference)\n\n", lc.ports.join(" "), lc.subckt));
@@ -379,107 +385,63 @@ pub fn lane_files(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, f
 /// What the export folder of a lane contains and how to use it.
 pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &str) -> String {
     let n = lc.ports.len();
-    let mut s = format!("# kisi export: lane {}
-
-kisi {} – board `{board}`. The lane's board channel as kisi's channel check models it, for circuit and RF simulators.
-
-", lc.lane, env!("CARGO_PKG_VERSION"));
-    s.push_str("## Ports
-
-| port | node | on the board |
-|---|---|---|
-");
+    let mut s = format!("# kisi export: lane {}\n\nkisi {} – board `{board}`. The lane's board channel as kisi's channel check models it, for circuit and RF simulators.\n\n", lc.lane, env!("CARGO_PKG_VERSION"));
+    s.push_str("## Ports\n\n| port | node | on the board |\n|---|---|---|\n");
     for (i, p) in lc.port_info.iter().enumerate() {
-        s.push_str(&format!("| {} | `{}` | {p} |
-", i + 1, lc.ports[i]));
+        s.push_str(&format!("| {} | `{}` | {p} |\n", i + 1, lc.ports[i]));
     }
-    s.push_str(&format!("| – | `ref` | reference (ground); connect to node 0 |
-
-Reference impedance {} Ω per port{}. Track length {} mm, delay {} ps.
-
-", sig4(lc.z_ref), if lc.pair || lc.odd_mode { format!(" ({} Ω differential)", sig4(2.0 * lc.z_ref)) } else { String::new() }, sig4(lc.length_mm), sig4(lc.delay_ps)));
-    s.push_str("## Files
-
-");
+    s.push_str(&format!("| – | `ref` | reference (ground); connect to node 0 |\n\nReference impedance {} Ω per port{}. Track length {} mm, delay {} ps.\n\n", sig4(lc.z_ref), if lc.pair || lc.odd_mode { format!(" ({} Ω differential)", sig4(2.0 * lc.z_ref)) } else { String::new() }, sig4(lc.length_mm), sig4(lc.delay_ps)));
+    s.push_str("## Files\n\n");
     if f.spice || f.xyce || f.kicad {
-        s.push_str(&format!("* `{st}.lib` – the lane as SPICE subcircuit `{}` (plain R, L, C, E, F, V elements: ngspice, Xyce, LTspice, KiCad). One subcircuit per line section, via, part and stub; the lane subcircuit last.
-", lc.subckt));
+        s.push_str(&format!("* `{st}.lib` – the lane as SPICE subcircuit `{}` (plain R, L, C, E, F, V elements: ngspice, Xyce, LTspice, KiCad). One subcircuit per line section, via, part and stub; the lane subcircuit last.\n", lc.subckt));
     }
     if f.spice {
-        s.push_str("* `bench_ngspice.cir` – transient test bench (PRBS7, the profile's linear ends): `ngspice -b bench_ngspice.cir` writes `bench_ngspice.txt` (time, receiver voltage).
-");
-        s.push_str(&format!("* `sparam_ngspice.cir` – S-parameter analysis on kisi's frequency grid: `ngspice -b sparam_ngspice.cir` writes `sparam_ngspice.txt` (S_i_j for i, j = 1…{n}).
-"));
+        s.push_str("* `bench_ngspice.cir` – transient test bench (PRBS7, the profile's linear ends): `ngspice -b bench_ngspice.cir` writes `bench_ngspice.txt` (time, receiver voltage).\n");
+        s.push_str(&format!("* `sparam_ngspice.cir` – S-parameter analysis on kisi's frequency grid: `ngspice -b sparam_ngspice.cir` writes `sparam_ngspice.txt` (S_i_j for i, j = 1…{n}).\n"));
     }
     if f.xyce {
-        s.push_str(&format!("* `bench_xyce.cir`, `sparam_xyce.cir` – the same for Xyce (`.print tran` to CSV; `.lin` writes `sparam_xyce.s{n}p`).
-"));
+        s.push_str(&format!("* `bench_xyce.cir`, `sparam_xyce.cir` – the same for Xyce (`.print tran` to CSV; `.lin` writes `sparam_xyce.s{n}p`).\n"));
     }
     if f.touchstone {
-        s.push_str(&format!("* `{st}.s{n}p` – kisi's S-parameters of the same channel (Touchstone 1.0, RI) for RF tools (scikit-rf, PyBERT, Qucs-S/Qucsator).
-"));
+        s.push_str(&format!("* `{st}.s{n}p` – kisi's S-parameters of the same channel (Touchstone 1.0, RI) for RF tools (scikit-rf, PyBERT, Qucs-S/Qucsator).\n"));
     }
     if f.kicad {
-        s.push_str(&format!("* `{st}.kicad_pro`, `{st}.kicad_sch`, `{st}_kicad.lib` – a KiCad simulation project (KiCad 7 format, opens in KiCad 7–10): the lane as a symbol, the PRBS7 sources and the linear ends as R, L, C symbols, a `.tran` directive. Open it, then Inspect → Simulator → Run, and probe the receiver die.
-"));
+        s.push_str(&format!("* `{st}.kicad_pro`, `{st}.kicad_sch`, `{st}_kicad.lib` – a KiCad simulation project (KiCad 7 format, opens in KiCad 7–10): the lane as a symbol, the PRBS7 sources and the linear ends as R, L, C symbols, a `.tran` directive. Open it, then Inspect → Simulator → Run, and probe the receiver die.\n"));
     }
-    s.push_str("
-## Test bench ends (per line)
-
-");
-    s.push_str(&format!("Profile `{}`: {} Gbit/s, edge {} ps (10–90 %), the receiver sees ±{} V at DC{}.
-
-", ends.profile, sig4(ends.bitrate / 1e9), sig4(ends.rise * 1e12), sig4(ends.swing), if lc.pair { " (differential)" } else { "" }));
-    s.push_str(&format!("* transmitter: emf → R {} Ω → die (C {} pF to ground) → L {} nH → port
-", sig4(ends.tx.r), sig4(ends.tx.c_pf), sig4(ends.tx.l_nh)));
-    s.push_str(&format!("* receiver: port → L {} nH → die: C {} pF and R {} to ground
-", sig4(ends.rx.l_nh), sig4(ends.rx.c_pf), if ends.rx.r > 0.0 { format!("{} Ω", sig4(ends.rx.r)) } else { "open (high impedance)".into() }));
+    s.push_str("\n## Test bench ends (per line)\n\n");
+    s.push_str(&format!("Profile `{}`: {} Gbit/s, edge {} ps (10–90 %), the receiver sees ±{} V at DC{}.\n\n", ends.profile, sig4(ends.bitrate / 1e9), sig4(ends.rise * 1e12), sig4(ends.swing), if lc.pair { " (differential)" } else { "" }));
+    s.push_str(&format!("* transmitter: emf → R {} Ω → die (C {} pF to ground) → L {} nH → port\n", sig4(ends.tx.r), sig4(ends.tx.c_pf), sig4(ends.tx.l_nh)));
+    s.push_str(&format!("* receiver: port → L {} nH → die: C {} pF and R {} to ground\n", sig4(ends.rx.l_nh), sig4(ends.rx.c_pf), if ends.rx.r > 0.0 { format!("{} Ω", sig4(ends.rx.r)) } else { "open (high impedance)".into() }));
     for nte in &ends.notes {
-        s.push_str(&format!("* {nte}
-"));
+        s.push_str(&format!("* {nte}\n"));
     }
-    s.push_str("
-## Model
-
-");
-    s.push_str("* Line sections: RLGC ladders of π sections (at least the number per wavelength at the top frequency given in the library header); per section the external inductance, a Foster network (R0 + R‖L terms) for the conductor impedance R(f) + jωL_int(f) and a Debye network (C + R–C branches) for the dielectric admittance G(f) + jωC(f), fitted to kisi's line model (skin effect, Huray roughness, Djordjevic-Sarkar) with positive elements only – passive and causal by construction.
-");
-    s.push_str("* Vias: kisi's via model – the physics-based ladder (node capacitances, plane-pair impedances, open barrel stubs, junction inductances) or the coaxial section stack. The via models run from via centre to via centre; the feed trace they remove or add is taken from the neighbouring line sections.
-");
-    s.push_str("* Parts (series and shunt) with the parasitics kisi uses (estimates from `data/components.json`); open stubs as their own chain. A series capacitor has 1 GΩ across it (a DC path for the simulator).
-");
+    s.push_str("\n## Model\n\n");
+    s.push_str("* Line sections: RLGC ladders of π sections (at least the number per wavelength at the top frequency given in the library header); per section the external inductance, a Foster network (R0 + R‖L terms) for the conductor impedance R(f) + jωL_int(f) and a Debye network (C + R–C branches) for the dielectric admittance G(f) + jωC(f), fitted to kisi's line model (skin effect, Huray roughness, Djordjevic-Sarkar) with positive elements only – passive and causal by construction.\n");
+    s.push_str("* Vias: kisi's via model – the physics-based ladder (node capacitances, plane-pair impedances, open barrel stubs, junction inductances) or the coaxial section stack. The via models run from via centre to via centre; the feed trace they remove or add is taken from the neighbouring line sections.\n");
+    s.push_str("* Parts (series and shunt) with the parasitics kisi uses (estimates from `data/components.json`); open stubs as their own chain. A series capacitor has 1 GΩ across it (a DC path for the simulator).\n");
     if lc.pair {
-        s.push_str("* Pair: both lines on their own paths; coupled runs, via pairs and stub pairs as modal blocks – even- and odd-mode chains between ideal mode converters (E and F sources: V_e = (V_P + V_N)/2, V_o = (V_P − V_N)/2, I_P = I_e + I_o, I_N = I_e − I_o), as kisi computes them. Differential and common mode, mode conversion and skew are included.
-");
+        s.push_str("* Pair: both lines on their own paths; coupled runs, via pairs and stub pairs as modal blocks – even- and odd-mode chains between ideal mode converters (E and F sources: V_e = (V_P + V_N)/2, V_o = (V_P − V_N)/2, I_P = I_e + I_o, I_N = I_e − I_o), as kisi computes them. Differential and common mode, mode conversion and skew are included.\n");
     }
     s.push_str(&format!(
-        "
-Check against kisi's own S-parameters of this channel (the circuit evaluated in kisi): |ΔS21| ≤ {} dB up to {} GHz ({} dB up to 1.5 × Nyquist), |ΔS11| ≤ {}, largest difference of any S-parameter {}; worst fit error {} %. `validation/channel_export/` in the kisi repository runs these files in ngspice and compares.
-",
-        sig4(lc.fidelity.max_ds21_db),
-        sig4(lc.freq.last().copied().unwrap_or(0.0) / 1e9),
+        "\nCheck against kisi's own S-parameters of this channel (the circuit evaluated in kisi): up to 1.5 × Nyquist |ΔS21| ≤ {} dB and the largest difference of any S-parameter {}; up to {} GHz {} dB and {}. Fits of the line sections: R(f) within {} %, X(f) {} %, G(f) {} %, B(f) {} %; via ladders {} %. `validation/channel_export/` in the kisi repository runs these files in ngspice and compares.\n",
         sig4(lc.fidelity.max_ds21_db_nyq),
-        sig4(lc.fidelity.max_ds11),
+        sig4(lc.fidelity.max_ds_nyq),
+        sig4(lc.freq.last().copied().unwrap_or(0.0) / 1e9),
+        sig4(lc.fidelity.max_ds21_db),
         sig4(lc.fidelity.max_ds),
-        sig4(lc.fidelity.worst_fit * 100.0)
+        sig4(lc.fidelity.fit_line_pct[0]),
+        sig4(lc.fidelity.fit_line_pct[1]),
+        sig4(lc.fidelity.fit_line_pct[2]),
+        sig4(lc.fidelity.fit_line_pct[3]),
+        sig4(lc.fidelity.fit_via_pct)
     ));
-    s.push_str(&format!("
-Elements after flattening: {} R, {} L, {} C, {} controlled sources and probes; {} RLGC sections.
-", lc.counts.r, lc.counts.l, lc.counts.c, lc.counts.sources, lc.counts.sections));
-    s.push_str("
-## Not included
-
-* The receiver's termination resistors on the board: they act as the receiver's termination (bench and Touchstone leave them out, as kisi's eye does).
-* The channel behind a connector, crosstalk from other lanes (kisi's coupling scan is separate), non-linear buffers: IBIS (KiCad's KIBIS) ends need `kisi.json` IBIS models – not part of this export yet; replace the source and the receiver in the KiCad schematic by KiCad's IBIS symbols by hand.
-");
+    s.push_str("\nWhy it is not exact: kisi's roughness adds resistance without its internal inductance, the via models use a constant loss tangent and a barrel resistance without internal inductance, and some via spans have a negative resistance at high frequency – a passive, causal circuit cannot follow those exactly; the fits keep the loss and, closer, the reactance (the delay).\n");
+    s.push_str(&format!("\nElements after flattening: {} R, {} L, {} C, {} controlled sources and probes; {} RLGC sections.\n", lc.counts.r, lc.counts.l, lc.counts.c, lc.counts.sources, lc.counts.sections));
+    s.push_str("\n## Not included\n\n* The receiver's termination resistors on the board: they act as the receiver's termination (bench and Touchstone leave them out, as kisi's eye does).\n* The channel behind a connector, crosstalk from other lanes (kisi's coupling scan is separate), non-linear buffers: IBIS (KiCad's KIBIS) ends need `kisi.json` IBIS models – not part of this export yet; replace the source and the receiver in the KiCad schematic by KiCad's IBIS symbols by hand.\n");
     if !lc.notes.is_empty() {
-        s.push_str("
-## Notes from kisi's model
-
-");
+        s.push_str("\n## Notes from kisi's model\n\n");
         for n in &lc.notes {
-            s.push_str(&format!("* {n}
-"));
+            s.push_str(&format!("* {n}\n"));
         }
     }
     s

@@ -1,6 +1,12 @@
 # Channel simulation with IBIS models – research and concept
 
-Status: research and concept (October 2026), no implementation. Scope: the physical channel only – IBIS
+> **Status update (24 Oct 2026).** Milestone M0 (assembly variants) shipped in 0.2.4 and M2 (N-port networks,
+> pairs as 4-ports, multi-drop lines) in 0.2.5. M1 (IBIS parser, linearised IBIS ends) is preliminary work in
+> branch `feat/ibis-parser`, on hold. The next step decided is the export of channels to circuit and RF
+> simulators, which then take the IBIS buffers ([ROADMAP](../../ROADMAP.md), block 3). Section 1 describes kisi as
+> it was before 0.2.4.
+
+Status: research and concept (October 2026). Scope: the physical channel only – IBIS
 behavioural models of drivers and receivers at the ends of kisi's linear channel models. Equalisation (CTLE, FFE,
 DFE), pre-/de-emphasis and IBIS-AMI are left out on purpose. Claims that could not be checked are marked
 *(not verified)*; sources are linked in the text and listed at the end.

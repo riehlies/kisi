@@ -18,6 +18,10 @@ Interface profiles (`data/interfaces.json`) and component data (`data/components
 place to help: every value carries its source. Corrections with a reference (standard, datasheet,
 application note) are very welcome.
 
+## Documentation
+The user documentation is in [`docs/`](docs/README.md). Corrections and clearer explanations are welcome; each fact
+has one place there, and `python3 tools/docs_pdf.py` checks the links.
+
 ## Code
 - Build and checks: see `AGENTS.md` (the same notes are used by coding agents).
 - Structure and rules: `ARCHITECTURE.md`. Changes to the models need a comparison against the references in

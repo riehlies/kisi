@@ -44,10 +44,10 @@ next to the board), --no-config, --stackup FILE (stackup changes, as in the view
 \"variants\"; \"default\" = the board file as it is). Boards with variants – or with forks where
 all alternative parts are fitted – need one for interfaces, check and report (else they stop and
 list the variants); \"variant\" in <board>.kisi.json chooses one for every run.
-field solver (kisi.mjs only; overview, net, check, report): used by default for the cross-sections
-of nets with a target, results cached on disk; --formula (no field solver), --field-time S
-(time budget for new solves, default 120), --field-all (all cross-sections, not only targets),
---field-xt (also the coupling cross-sections of critical crosstalk victims, NEXT or FEXT from 1 %;
+field solver (kisi.mjs only; overview, net, check, crosstalk, report): used by default for the
+cross-sections of nets with a target, results cached on disk; --formula (no field solver),
+--field-time S (time budget for new solves, default 120), --field-all (all cross-sections, not
+only targets), --field-xt (also the coupling cross-sections of critical crosstalk victims, NEXT or FEXT from 1 %;
 net: always all of the net's)
 
 kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design

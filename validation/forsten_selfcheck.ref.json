@@ -1,22 +1,22 @@
 [
  {
-  "name": "MS 3,0 mm auf 1,6 mm FR4",
+  "name": "MS 3.0 mm on 1.6 mm FR4",
   "z0": 49.72151477024107,
   "eeff": 3.3901051029453897
  },
  {
-  "name": "Diff-MS 3,0 mm, Abstand 1,0 mm",
+  "name": "Diff-MS 3.0 mm, spacing 1.0 mm",
   "zdiff": 79.78287617007365,
   "zodd": 39.891438085036825,
   "zeven": 57.43265886031058
  },
  {
-  "name": "Stripline 0,15 mm",
+  "name": "Stripline 0.15 mm",
   "z0": 50.141591260029536,
   "eeff": 4.164105835972988
  },
  {
-  "name": "Diff-Stripline 0,15/0,1 mm",
+  "name": "Diff-Stripline 0.15/0.1 mm",
   "zdiff": 74.16197848311349,
   "zodd": 37.08098924155674,
   "zeven": 60.802826465436176

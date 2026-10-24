@@ -22,7 +22,7 @@ reuse it:
    (`cargo install --path crates/kisi-cli`) accepts the same commands but has no field solver.
 
 Run it as `node ~/.kisi/kisi.mjs <command> <board.kicad_pcb> [options]` (below written as `kisi …`).
-`kisi help` lists the commands. The field solver runs for `overview`, `net`, `check` and `report`:
+`kisi help` lists the commands. The field solver runs for `overview`, `net`, `check`, `crosstalk` and `report`:
 the first run on a board can take minutes (it prints progress on stderr and stops new solves after
 `--field-time` seconds, default 120); results are cached, so later runs are fast. `field_solver`
 in the output shows the coverage; `--formula` skips the solver.
@@ -140,7 +140,8 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
 
 ## Notes
 - A worked example – the power tree of the Seeed XIAO nRF54LM20A with sources, notes and the open gaps – is in
-  the kisi repository under `docs/examples/xiao-nrf54lm20a/`.
+  the kisi repository: `docs/preparing-a-board.md` (the walk-through, also the gap list with every gap id) and
+  `docs/examples/xiao-nrf54lm20a/` (the kisi.json). Field syntax and every kisi.json key: `docs/reference.md`.
 - kisi.json values override the board file; the viewer's own edits (stackup, profiles) override
   kisi.json. A value written here is used by `kisi check`, `kisi power`, `kisi report` and the viewer.
 - If the user wants values permanently in KiCad (e.g. `PI_LOAD` as a symbol field), give them the

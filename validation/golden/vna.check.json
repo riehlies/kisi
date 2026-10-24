@@ -1,0 +1,2685 @@
+{
+ "config": {
+  "entries": 68,
+  "errors": [],
+  "ok": true,
+  "warnings": []
+ },
+ "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5–15 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 × Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces – an estimate). Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.",
+ "not_checked_unused": null,
+ "rows": [
+  {
+   "branches": [],
+   "bus": "IC33 ↔ IC36",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 51.2672
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "red",
+     "value": 0.392013
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.5
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -9.66809
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 0.35047
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "IC33.20",
+    "IC36.4"
+   ],
+   "eye_computed": true,
+   "from": "IC33.20",
+   "kind": "ic-ic",
+   "lane": "Net-(IC33-OUT+)",
+   "length_mm": 12.6688,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.392013,
+    "eye_w_ui": 0.5,
+    "il_nyq_db": -9.66809,
+    "rl_db": 0.35047,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 66.6634,
+    "z_mean": 51.2672,
+    "z_min": 35.0867
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC33-OUT+)",
+    "Net-(C191-Pad2)",
+    "Net-(C196-Pad1)",
+    "Net-(IC36-IN-)"
+   ],
+   "not_modelled": [
+    "C194",
+    "C196",
+    "C197",
+    "L46"
+   ],
+   "profile": "diff100",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C191 10nF (0402)",
+    "L48 68nH (0402)",
+    "L50 33nH (0402)"
+   ],
+   "status": "red",
+   "stubs": [
+    "stub 1.1 mm to C194.1",
+    "stub 1.0 mm to C196.1",
+    "stub 1.2 mm to L52 330nH"
+   ],
+   "terminations": [
+    "L52 330nH to GND"
+   ],
+   "to": "IC36.4",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC15 ↔ IC16",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 62.0664
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.947752
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.479839
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 25.009
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC15.7",
+    "IC16.8"
+   ],
+   "eye_computed": true,
+   "from": "IC15.7",
+   "kind": "ic-ic",
+   "lane": "/Attenuator Amp Switches/RF_HBLB_AMP",
+   "length_mm": 7.2788,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.947752,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.479839,
+    "rl_db": 25.009,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 90.2949,
+    "z_mean": 62.0664,
+    "z_min": 52.2772
+   },
+   "model": "single-ended",
+   "nets": [
+    "/Attenuator Amp Switches/RF_HBLB_AMP",
+    "/Attenuator Amp Switches/RF_HBLB_AMP_C",
+    "/Attenuator Amp Switches/RF_HBLB_REF_R",
+    "/Attenuator Amp Switches/RF_HBLB_REF"
+   ],
+   "not_modelled": [
+    "L24",
+    "R27"
+   ],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C74 100nF/RF (0402)",
+    "R26 2.7R (0402)",
+    "R29 2.7R (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC16.8",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC22 ↔ IC23",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 49.9162
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999061
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.9375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.023159
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 26.8012
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "IC22.6",
+    "IC23.8"
+   ],
+   "eye_computed": true,
+   "from": "IC22.6",
+   "kind": "ic-ic",
+   "lane": "Net-(IC22-OUT+)",
+   "length_mm": 4.07761,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999061,
+    "eye_w_ui": 0.9375,
+    "il_nyq_db": -0.023159,
+    "rl_db": 26.8012,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 60.4802,
+    "z_mean": 49.9162,
+    "z_min": 35.422
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC22-OUT+)",
+    "Net-(IC23-+)"
+   ],
+   "not_modelled": [
+    "R53",
+    "R55"
+   ],
+   "profile": "diff100",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C100 1uF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 2.9 mm to C112.1 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "IC23.8",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC27 ↔ IC28",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 50.2353
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.998852
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.9375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.024363
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 30.4534
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "IC27.6",
+    "IC28.8"
+   ],
+   "eye_computed": true,
+   "from": "IC27.6",
+   "kind": "ic-ic",
+   "lane": "Net-(IC27-OUT+)",
+   "length_mm": 5.2616,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.998852,
+    "eye_w_ui": 0.9375,
+    "il_nyq_db": -0.024363,
+    "rl_db": 30.4534,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 60.4802,
+    "z_mean": 50.2353,
+    "z_min": 35.422
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC27-OUT+)",
+    "Net-(IC28-+)"
+   ],
+   "not_modelled": [
+    "R80",
+    "R82"
+   ],
+   "profile": "diff100",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C137 1uF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 2.8 mm to R82.1"
+   ],
+   "terminations": [],
+   "to": "IC28.8",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC32 ↔ IC36",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 50.6223
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.998751
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.9375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0292284
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 27.4492
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "IC32.8",
+    "IC36.6"
+   ],
+   "eye_computed": true,
+   "from": "IC32.8",
+   "kind": "ic-ic",
+   "lane": "Net-(IC32-+)",
+   "length_mm": 6.23766,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.998751,
+    "eye_w_ui": 0.9375,
+    "il_nyq_db": -0.0292284,
+    "rl_db": 27.4492,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 60.4802,
+    "z_mean": 50.6223,
+    "z_min": 38.1789
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC32-+)",
+    "Net-(IC36-OUT+)"
+   ],
+   "not_modelled": [
+    "R102",
+    "R94"
+   ],
+   "profile": "diff100",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C202 1uF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 2.9 mm to C173.1 (not fitted; pad 0402, 0.10 pF estimated)"
+   ],
+   "terminations": [],
+   "to": "IC36.6",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC7 ↔ U2",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 63.3523
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.820957
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -1.91644
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "yellow",
+     "value": 9.8304
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 20.5514
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC7.15",
+    "U2.50"
+   ],
+   "eye_computed": true,
+   "from": "IC7.15",
+   "kind": "ic-ic",
+   "lane": "FPGA_CLK",
+   "length_mm": 84.0927,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.820957,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -1.91644,
+    "rl_db": 9.8304,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 20.5514,
+    "z_max": 72.87,
+    "z_mean": 63.3523,
+    "z_min": 30.2366
+   },
+   "model": "single-ended",
+   "nets": [
+    "FPGA_CLK",
+    "/FPGA/FPGA_CLK_R"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "R126 20R (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U2.50",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "IC7 ↔ X1",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 57.4928
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.411643
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 15.5494
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 25.4906
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC7.6",
+    "X1.1"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.983512,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.9375
+   },
+   "eye_computed": true,
+   "from": "IC7.6",
+   "kind": "ic-connector",
+   "lane": "/2.LO + Ref Clock/CLKIN",
+   "length_mm": 63.4896,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -0.411643,
+    "rl_db": 15.5494,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 25.4906,
+    "z_max": 74.4608,
+    "z_mean": 57.4928,
+    "z_min": 25.4242
+   },
+   "model": "single-ended",
+   "nets": [
+    "/2.LO + Ref Clock/CLK_CLKIN",
+    "/2.LO + Ref Clock/CLKIN"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C30 10nF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "X1.1",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "IC7 ↔ X2",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 57.1877
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.451755
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 15.2922
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 25.5183
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC7.16",
+    "X2.1"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.979754,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.9375
+   },
+   "eye_computed": true,
+   "from": "IC7.16",
+   "kind": "ic-connector",
+   "lane": "/2.LO + Ref Clock/CLKOUT",
+   "length_mm": 69.3597,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -0.451755,
+    "rl_db": 15.2922,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 25.5183,
+    "z_max": 74.4608,
+    "z_mean": 57.1877,
+    "z_min": 25.4242
+   },
+   "model": "single-ended",
+   "nets": [
+    "/2.LO + Ref Clock/CLK_CLKOUT",
+    "/2.LO + Ref Clock/CLKOUT"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C39 10nF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "X2.1",
+   "vias": 2
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 57.395
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999384
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0137265
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 32.6483
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 3.8681,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999384,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0137265,
+    "rl_db": 32.6483,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 66.6634,
+    "z_mean": 57.395,
+    "z_min": 35.1137
+   },
+   "model": "single-ended",
+   "net": "/1.LO/LO1_RFOUTB_N",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 62.2044
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999581
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.00959329
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 33.3733
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 3.07452,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999581,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.00959329,
+    "rl_db": 33.3733,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 90.2949,
+    "z_mean": 62.2044,
+    "z_min": 52.2772
+   },
+   "model": "single-ended",
+   "net": "Net-(C270-Pad2)",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 61.282
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999591
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.00963933
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 33.7772
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 3.275,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999591,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.00963933,
+    "rl_db": 33.7772,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 85.6522,
+    "z_mean": 61.282,
+    "z_min": 48.7304
+   },
+   "model": "single-ended",
+   "net": "Net-(T1-OUT+)",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 60.3929
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999606
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.00874203
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 36.4551
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 2.985,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999606,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.00874203,
+    "rl_db": 36.4551,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 85.6522,
+    "z_mean": 60.3929,
+    "z_min": 49.9348
+   },
+   "model": "single-ended",
+   "net": "Net-(T2-OUT-)",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 60.3852
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999682
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.00727314
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 33.3013
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 2.35861,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999682,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.00727314,
+    "rl_db": 33.3013,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 85.7807,
+    "z_mean": 60.3852,
+    "z_min": 38.1789
+   },
+   "model": "single-ended",
+   "net": "Net-(T3-OUT-)",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "yellow",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC10 ↔ IC7",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 50.6113
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.995909
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.8125
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.108198
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 34.8312
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 34.25
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC10.29",
+    "IC7.8"
+   ],
+   "eye_computed": true,
+   "from": "IC10.29",
+   "kind": "ic-ic",
+   "lane": "/HF Source/SRC_REF_IN",
+   "length_mm": 31.2285,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.995909,
+    "eye_w_ui": 0.8125,
+    "il_nyq_db": -0.108198,
+    "rl_db": 34.8312,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 34.25,
+    "z_max": 66.6634,
+    "z_mean": 50.6113,
+    "z_min": 35.1137
+   },
+   "model": "single-ended",
+   "nets": [
+    "/HF Source/SRC_REF_IN",
+    "SOURCE_REF"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C51 10nF (0402)"
+   ],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC7.8",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "IC11 ↔ IC12",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 48.8488
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.997886
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.65625
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0531835
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 41.3374
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC11.9",
+    "IC12.6"
+   ],
+   "eye_computed": true,
+   "from": "IC11.9",
+   "kind": "ic-ic",
+   "lane": "/HF Source/SRC_FILT_THRU",
+   "length_mm": 17.1758,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.997886,
+    "eye_w_ui": 0.65625,
+    "il_nyq_db": -0.0531835,
+    "rl_db": 41.3374,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 49.9348,
+    "z_mean": 48.8488,
+    "z_min": 48.5281
+   },
+   "model": "single-ended",
+   "nets": [
+    "/HF Source/SRC_FILT_THRU"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC12.6",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC12 ↔ IC13",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 51.1937
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.99883
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0242548
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 43.837
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC12.7",
+    "IC13.3"
+   ],
+   "eye_computed": true,
+   "from": "IC12.7",
+   "kind": "ic-ic",
+   "lane": "/HF Source/SRC_FILT_OUT_ANT",
+   "length_mm": 7.0801,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.99883,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.0242548,
+    "rl_db": 43.837,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 71.8908,
+    "z_mean": 51.1937,
+    "z_min": 48.7304
+   },
+   "model": "single-ended",
+   "nets": [
+    "/HF Source/SRC_FILT_OUT_ANT",
+    "SOURCE_HIGHBAND"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C68 100nF/RF (0402)"
+   ],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC13.3",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC13 ↔ IC14",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 54.058
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999391
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0124909
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 43.9069
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC13.8",
+    "IC14.5"
+   ],
+   "eye_computed": true,
+   "from": "IC13.8",
+   "kind": "ic-ic",
+   "lane": "/Attenuator Amp Switches/RF_HBLB_SWITCH",
+   "length_mm": 3.96111,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999391,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0124909,
+    "rl_db": 43.9069,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 57.7459,
+    "z_mean": 54.058,
+    "z_min": 52.6143
+   },
+   "model": "single-ended",
+   "nets": [
+    "/Attenuator Amp Switches/RF_HBLB_SWITCH"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC14.5",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC14 ↔ IC15",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 53.2198
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999309
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0103687
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 51.7129
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC14.14",
+    "IC15.2"
+   ],
+   "eye_computed": true,
+   "from": "IC14.14",
+   "kind": "ic-ic",
+   "lane": "/Attenuator Amp Switches/RF_HBLB_ATT",
+   "length_mm": 2.4808,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999309,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0103687,
+    "rl_db": 51.7129,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 87.344,
+    "z_mean": 53.2198,
+    "z_min": 38.9856
+   },
+   "model": "single-ended",
+   "nets": [
+    "/Attenuator Amp Switches/RF_HBLB_ATT",
+    "/Attenuator Amp Switches/RF_HBLB_AMP_IN"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C71 100nF/RF (0402)"
+   ],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC15.2",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "IC16 ↔ IC17",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 50.2172
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.996549
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.78125
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.114294
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 27.2461
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 23.2274
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC16.3",
+    "IC17.3"
+   ],
+   "eye_computed": true,
+   "from": "IC16.3",
+   "kind": "ic-ic",
+   "lane": "/Attenuator Amp Switches/RF_HBLB_PORT2",
+   "length_mm": 26.3386,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.996549,
+    "eye_w_ui": 0.78125,
+    "il_nyq_db": -0.114294,
+    "rl_db": 27.2461,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 23.2274,
+    "z_max": 58.6782,
+    "z_mean": 50.2172,
+    "z_min": 48.5281
+   },
+   "model": "single-ended",
+   "nets": [
+    "/Attenuator Amp Switches/RF_HBLB_PORT2"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC17.3",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "IC16 ↔ IC18",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 50.3523
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.995382
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.84375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.134164
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 30.2636
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 20.0249
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC16.13",
+    "IC18.8"
+   ],
+   "eye_computed": true,
+   "from": "IC16.13",
+   "kind": "ic-ic",
+   "lane": "/Attenuator Amp Switches/RF_HBLB_PORT1",
+   "length_mm": 29.5516,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.995382,
+    "eye_w_ui": 0.84375,
+    "il_nyq_db": -0.134164,
+    "rl_db": 30.2636,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 20.0249,
+    "z_max": 58.6782,
+    "z_mean": 50.3523,
+    "z_min": 48.7304
+   },
+   "model": "single-ended",
+   "nets": [
+    "/Attenuator Amp Switches/RF_HBLB_PORT1"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC18.8",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "IC21 ↔ IC7",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 50.1571
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.995581
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.78125
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.110168
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 27.859
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 24.6312
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC21.29",
+    "IC7.17"
+   ],
+   "eye_computed": true,
+   "from": "IC21.29",
+   "kind": "ic-ic",
+   "lane": "/1.LO/LO1_REFC",
+   "length_mm": 30.5894,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.995581,
+    "eye_w_ui": 0.78125,
+    "il_nyq_db": -0.110168,
+    "rl_db": 27.859,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 24.6312,
+    "z_max": 60.4802,
+    "z_mean": 50.1571,
+    "z_min": 35.8097
+   },
+   "model": "single-ended",
+   "nets": [
+    "/1.LO/LO1_REFC",
+    "LO1_REF"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C80 10nF (0402)"
+   ],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC7.17",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "IC22 ↔ IC7",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 50.5197
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.955694
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.512964
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 25.188
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 49.5
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC22.8",
+    "IC7.9"
+   ],
+   "eye_computed": true,
+   "from": "IC22.8",
+   "kind": "ic-ic",
+   "lane": "PORT1LO2",
+   "length_mm": 119.919,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.955694,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.512964,
+    "rl_db": 25.188,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 49.5,
+    "z_max": 60.4802,
+    "z_mean": 50.5197,
+    "z_min": 26.582
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC22-LO+)",
+    "PORT1LO2",
+    "Net-(C42-Pad1)",
+    "/2.LO + Ref Clock/CLK_PORT1LO2"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C98 100nF (0402)",
+    "R52 0R (0402)",
+    "R51 0R (0402)"
+   ],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC7.9",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "IC27 ↔ IC7",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 49.1132
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.996971
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.75
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0772745
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 32.4855
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 37.5
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC27.8",
+    "IC7.19"
+   ],
+   "eye_computed": true,
+   "from": "IC27.8",
+   "kind": "ic-ic",
+   "lane": "PORT2LO2",
+   "length_mm": 21.2362,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.996971,
+    "eye_w_ui": 0.75,
+    "il_nyq_db": -0.0772745,
+    "rl_db": 32.4855,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 37.5,
+    "z_max": 60.4802,
+    "z_mean": 49.1132,
+    "z_min": 26.0287
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC27-LO+)",
+    "PORT2LO2",
+    "Net-(C40-Pad1)",
+    "/2.LO + Ref Clock/CLK_PORT2_LO2"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C135 100nF (0402)",
+    "R42 0R (0402)",
+    "R41 0R (0402)"
+   ],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC7.19",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "IC36 ↔ IC7",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 50.2102
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.978653
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.321334
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 24.8472
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 1.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 51.25
+    }
+   ],
+   "diff": false,
+   "direction": "default order",
+   "ends": [
+    "IC36.8",
+    "IC7.12"
+   ],
+   "eye_computed": true,
+   "from": "IC36.8",
+   "kind": "ic-ic",
+   "lane": "REFLO2",
+   "length_mm": 76.7593,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.978653,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.321334,
+    "rl_db": 24.8472,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": 51.25,
+    "z_max": 60.4802,
+    "z_mean": 50.2102,
+    "z_min": 33.7362
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC36-LO+)",
+    "REFLO2",
+    "Net-(C41-Pad1)",
+    "/2.LO + Ref Clock/CLK_REFLO2"
+   ],
+   "not_modelled": [],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C200 100nF (0402)",
+    "R44 0R (0402)",
+    "R43 0R (0402)"
+   ],
+   "status": "green",
+   "stubs": [],
+   "terminations": [],
+   "to": "IC7.12",
+   "vias": 2
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 46.2609
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999765
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0033978
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 50.4115
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 1.09755,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999765,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0033978,
+    "rl_db": 50.4115,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 55.3481,
+    "z_mean": 46.2609,
+    "z_min": 38.1789
+   },
+   "model": "single-ended",
+   "net": "/1.LO/LO1_RFOUTB_N_RC",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "green",
+   "vias": 0
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 47.7267
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999571
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0087616
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 43.2741
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 2.80279,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999571,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.0087616,
+    "rl_db": 43.2741,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 55.4248,
+    "z_mean": 47.7267,
+    "z_min": 34.4139
+   },
+   "model": "single-ended",
+   "net": "Net-(C121-Pad1)",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "green",
+   "vias": 0
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 47.6263
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999563
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0089225
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 43.5499
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 2.85137,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999563,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.0089225,
+    "rl_db": 43.5499,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 55.4254,
+    "z_mean": 47.6263,
+    "z_min": 34.4139
+   },
+   "model": "single-ended",
+   "net": "Net-(C121-Pad2)",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "green",
+   "vias": 0
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 52.1671
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999046
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.9375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.021101
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 42.5326
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 7.04,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999046,
+    "eye_w_ui": 0.9375,
+    "il_nyq_db": -0.021101,
+    "rl_db": 42.5326,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 72.7535,
+    "z_mean": 52.1671,
+    "z_min": 48.7304
+   },
+   "model": "single-ended",
+   "net": "Net-(C136-Pad1)",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "green",
+   "vias": 0
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 47.9081
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999606
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.00804709
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 43.2797
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 2.58,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999606,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.00804709,
+    "rl_db": 43.2797,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 55.4254,
+    "z_mean": 47.9081,
+    "z_min": 34.4139
+   },
+   "model": "single-ended",
+   "net": "Net-(C158-Pad1)",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "green",
+   "vias": 0
+  },
+  {
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 47.9081
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999606
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.96875
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.00804709
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 43.2797
+    }
+   ],
+   "kind": "net (no devices found)",
+   "length_mm": 2.58,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999606,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.00804709,
+    "rl_db": 43.2797,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 55.4254,
+    "z_mean": 47.9081,
+    "z_min": 34.4139
+   },
+   "model": "single-ended",
+   "net": "Net-(C158-Pad2)",
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "status": "green",
+   "vias": 0
+  }
+ ],
+ "rows_omitted": 14,
+ "rows_shown": "all",
+ "summary": {
+  "green": 31,
+  "red": 1,
+  "yellow": 12
+ },
+ "variant": {
+  "available": [],
+  "chosen_by": null,
+  "description": null,
+  "errors": [],
+  "field_overrides": [],
+  "fitted_by_variant": [],
+  "forks_all_fitted": 0,
+  "name": null,
+  "needs_choice": false,
+  "not_fitted_by_variant": [],
+  "not_fitted_total": 30,
+  "unused_nets": 0,
+  "warnings": []
+ }
+}

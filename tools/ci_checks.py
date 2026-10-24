@@ -172,7 +172,8 @@ def cli_docs(kisi):
     help_text = subprocess.run([kisi, "help"], capture_output=True, text=True, check=True).stdout
     commands = set(re.findall(r"^  ([a-z][a-z-]*)", help_text, re.M)) | {"help"}
     options = set(re.findall(r"--[a-z][a-z-]*", help_text)) | {"--version", "--help"}
-    files = [f for f in tracked_md() if not f.startswith(("docs/research/", "validation/"))]
+    # research notes and mockup design notes describe planned commands and options
+    files = [f for f in tracked_md() if not f.startswith(("docs/research/", "docs/mockups/", "validation/"))]
     bad = []
     for f in files:
         for n, line in enumerate(open(os.path.join(ROOT, f), encoding="utf-8"), 1):

@@ -170,10 +170,10 @@ Plots (|S21|/|Sdd21|, |S11|/|Sdd11|, the differences, the step responses):
   dangling wire, junctions, grid); kicad-cli's netlist equals the lane subcircuit node for node, and its AC response
   in ngspice equals the bench's (relative difference 1e-10 to 5e-8, rounding). With kicad-cli 7.0.11 here for the LVDS
   lanes and all nine PCIe lanes (27–55 symbols per sheet); with kicad-cli 9.0.9 in CI (KiCad 9 from the KiCad PPA)
-  for SYNC_OUT_P, PCIe_PER0_P and PCIe_PET1_P, where KiCad's ERC reports no error and no unconnected pin, dangling
-  wire or off-grid item – only `lib_symbol_issues` warnings, one per symbol, because the sheet's library `kisi` was
-  not in a library table; the export now ships it as a project library (`kisi.kicad_sym`, `sym-lib-table`). KiCad 9
-  thus reads the KiCad 7 file, its models and `Sim.Params` with `${VALUE}`. The sheets as kicad-cli renders them:
+  for SYNC_OUT_P, PCIe_PER0_P and PCIe_PET1_P, where KiCad's ERC (all severities) reports no violation at all (before
+  the export shipped kisi's symbols as a project library, `kisi.kicad_sym` with a `sym-lib-table`, it warned once per
+  symbol about the unknown library `kisi`). KiCad 9 thus reads the KiCad 7 file, its models and `Sim.Params` with
+  `${VALUE}`. The sheets as kicad-cli renders them:
   `docs/img/channel-export/kicad_*.png` (kicad-cli 7) and the CI artifact `kicad-sheets` (kicad-cli 9). Transients of
   the KiCad netlist and the bench differ by about 1e-4 of the swing: ngspice's time steps depend on the element order.
   Not tested: the simulator dialog of the KiCad GUI.

@@ -83,6 +83,27 @@ function chForLane(l) {
   return res;
 }
 
+// export of lanes (one, or all of a bus) for circuit and RF simulators: SPICE subcircuits with
+// test benches, Touchstone, a KiCad project – with the profile, direction and connector ends set here
+function laneExportReq(l) {
+  const net = laneNet(l), t = classTarget(net), p = laneProfile(l), rp = rfParams();
+  rp.fmax = Math.max(rp.fmax, p.rate_gbps * 1.25e9);
+  return { lane: l.nets[0], to: l.ends.length ? l.ends[l.ends.length - 1].refdes : null, reversed: laneReversed(l), rf: rp, target: t ? [t.z, t.diff] : null,
+    conn_end: laneConnEnd(l), profile: p.id, bitrate: p.rate_gbps * 1e9, tx: p.tx, rx: p.rx, eye_rise: p.tx.rise_ps * 1e-12, swing_v: p.tx.swing_mv * 1e-3 };
+}
+function exportLanes(lanes, bus, btn) {
+  const old = btn.textContent;
+  btn.textContent = "Exporting…"; btn.disabled = true;
+  setTimeout(() => {
+    try {
+      const res = S.engine.exportCircuit({ board: S.name + ".kicad_pcb", formats: "all", bus: bus ? bus.name : null, devices: bus ? bus.devices : [],
+        lanes: lanes.filter((l) => l.ends.length >= 2).map(laneExportReq) });
+      saveZip(`${res.name}.zip`, res.files);
+    } catch (e) { alert("Export: " + e.message); }
+    btn.textContent = old; btn.disabled = false;
+  }, 20);
+}
+
 // path of a lane as chips: pin – parts – pin, terminations and branches
 function laneChain(l) {
   const parts = l.hops.filter((h) => h.type === "series").map((h) => `<span class="lc-part" title="${esc(h.part.package)}">${esc(h.part.refdes)} ${esc(h.part.value)}</span>`);
@@ -150,7 +171,7 @@ function renderChOverview() {
     }).join("");
     return `<div class="bal-card bus-card">
       <h4><span>${worst ? `<span class="dot" style="background:${S.colors[worst]}"></span> ` : ""}${esc(b.name)}</span><em>${esc(b.class)} · ${esc(p.name)} · ${b.lanes.length} lane${b.lanes.length === 1 ? "" : "s"}</em></h4>
-      <div class="bus-meta"><span>${dir}</span>${checkable && l0.ends.length === 2 ? `<span class="muted">${esc(laneSwaps()[laneKey(l0)] ? "direction swapped by you" : oneDir ? l0.direction : "")}</span><button class="btn small" data-swap="${esc(b.name)}|${esc(b.class)}">Swap direction</button>` : ""}</div>
+      <div class="bus-meta"><span>${dir}</span>${checkable && l0.ends.length === 2 ? `<span class="muted">${esc(laneSwaps()[laneKey(l0)] ? "direction swapped by you" : oneDir ? l0.direction : "")}</span><button class="btn small" data-swap="${esc(b.name)}|${esc(b.class)}">Swap direction</button><button class="btn small" data-export="${esc(b.name)}|${esc(b.class)}" title="All lanes of this bus for circuit and RF simulators (zip): SPICE subcircuits with test benches for ngspice and Xyce, Touchstone files and one N-port of the bus, a KiCad project">Export…</button>` : ""}</div>
       ${conn}
       <div class="tablewrap"><table class="ctab lanes"><thead><tr><th></th><th>Lane</th><th>Path</th><th>mm</th><th>IL dB</th><th>RL dB</th><th>Eye %</th><th>Skew ps</th></tr></thead><tbody>${rows}</tbody></table></div>
     </div>`;
@@ -176,6 +197,11 @@ function renderChOverview() {
     setChMode("m"); selectNet(l.nets[0], false); fitLane(l);
   });
   bindConnEnd(box, () => renderChOverview());
+  box.querySelectorAll("[data-export]").forEach((bt) => bt.onclick = () => {
+    const [name, cls] = bt.dataset.export.split("|");
+    const b = S.buses.find((x) => x.name === name && x.class === cls);
+    exportLanes(b.lanes, b, bt);
+  });
   box.querySelectorAll("[data-swap]").forEach((bt) => bt.onclick = () => {
     const [name, cls] = bt.dataset.swap.split("|");
     const b = S.buses.find((x) => x.name === name && x.class === cls);
@@ -199,7 +225,7 @@ function renderLaneDetail(l) {
   const tabs = [["check", "Check"], ...(l.kind !== "connector-connector" ? [["eye", "Eye"]] : []), ["path", "Path"]];
   const t = tabs.some((x) => x[0] === tab) ? tab : "check";
   d.innerHTML = `<header><div><h3>${esc(netShort(l.name))}${l.diff ? ` <span class="muted">pair</span>` : ""}</h3><div class="muted">${esc(pinLabel(tx))} ${esc(tx?.value || "")} → ${esc(pinLabel(rx))} ${esc(rx?.value || "")} · ${esc(l.class)}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
-    <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}${variantShown() ? ` · variant ${esc(variantShown())}` : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button></span></div>
+    <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}${variantShown() ? ` · variant ${esc(variantShown())}` : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button> <button class="btn small" id="ch-export" title="This lane for circuit and RF simulators (zip): SPICE subcircuit with test benches for ngspice and Xyce, Touchstone, a KiCad project">Export…</button></span></div>
     <div class="dstats muted"><span>Transmitter ${esc(tx?.refdes || "")}: ${(() => { const m = r.tx_used || p.tx; return `${m.r > 0 ? fmt(m.r, 0) + " Ω" : "ideal source"}${m.c_pf ? ", " + fmtSI(m.c_pf * 1e-12, "F") : ""}`; })()}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span>
       <span>Receiver ${esc(rx?.refdes || "")}: ${(() => { const m = r.rx_used || p.rx; return `${m.r > 0 ? fmt(m.r, 0) + " Ω" : "high impedance"}${m.c_pf ? ", " + fmtSI(m.c_pf * 1e-12, "F") : ""}`; })()}</span><span>per line</span></div>
     ${r.rx_note || r.end_note ? `<div class="dstats muted">${r.end_note ? `<span>${esc(r.end_note)} – set in the interface's card of the overview</span>` : ""}${r.rx_note ? `<span>${esc(r.rx_note)}</span>` : ""}</div>` : ""}
@@ -215,6 +241,7 @@ function renderLaneDetail(l) {
     if (m[k]) delete m[k]; else m[k] = true;
     lsSet(laneSwapKey(), m); S.chCache = null; markCheckStale(); renderLaneDetail(l);
   };
+  $("ch-export").onclick = (e) => exportLanes([l], null, e.target);
   d.querySelectorAll("[data-ct]").forEach((b) => b.onclick = () => { S.chTab = b.dataset.ct; renderLaneDetail(l); });
   const body = $("ch-body");
   if (t === "eye") return renderEye(body, r);

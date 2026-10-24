@@ -163,6 +163,17 @@ def power_units(pg, tag, step):
     pg.evaluate("setPiMode('b')"); pg.wait_for_timeout(200)
 
 
+def zip_names(path):
+    import zipfile
+    try:
+        with zipfile.ZipFile(path) as z:
+            if z.testzip() is not None:
+                return ["(bad CRC)"]
+            return z.namelist()
+    except zipfile.BadZipFile as e:
+        return [f"(not a zip: {e})"]
+
+
 def run(pg, tag, desktop):
     errs = []
     pg.add_init_script(TEXT_SPY)
@@ -287,6 +298,15 @@ def run(pg, tag, desktop):
             if pg.locator("#ch-detail [data-ct=eye]").count():
                 pg.click("#ch-detail [data-ct=eye]"); pg.wait_for_timeout(600)
             step("lane")
+            # the lane's export (zip): the subcircuit library, the benches, Touchstone, KiCad project, README
+            if tag == "light" and pg.locator("#ch-export").count():
+                with pg.expect_download(timeout=120000) as dl:
+                    pg.click("#ch-export")
+                names = zip_names(dl.value.path())
+                if not (any(n.endswith(".lib") for n in names) and "README.md" in names and any(n.endswith(".kicad_sch") for n in names)):
+                    problems.append(f"{tag}: lane export zip incomplete: {names}")
+                else:
+                    notes.append(f"{tag}: lane export {dl.value.suggested_filename}: {len(names)} files")
         # switch to another variant in the side card (lanes computed again) and back
         if pg.evaluate("!!S.variant && S.variant.variants.length > 1"):
             pg.click("#chm-o"); pg.wait_for_timeout(300)

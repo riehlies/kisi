@@ -9,6 +9,9 @@ use crate::num::Cx;
 use crate::profile::Profiles;
 use crate::rf::RfParams;
 use crate::service::{lane_net, Project};
+use crate::board::Board;
+use crate::eye::{ConnEnd, EndModel};
+use crate::extract::{Analysis, FieldResult};
 use crate::topology::{self, Bus, Lane};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -47,32 +50,39 @@ fn find<'p>(p: &'p Project, pick: &Pick) -> Result<(&'p Bus, Vec<&'p Lane>), Str
 }
 
 /// One lane exported: its circuit, the bench ends and its files.
-struct Done {
+pub struct Done {
     lc: LaneCircuit,
     ends: BenchEnds,
     files: Vec<ExportFile>,
 }
 
-#[allow(clippy::too_many_arguments)]
-fn export_lane(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, l: &Lane, f: Formats, rp: &RfParams, opts: &ExportOpts, dir: &str, cd: &topology::ComponentData) -> Result<Done, String> {
+/// One lane to export, with its profile and ends as the channel check (CLI) or the viewer (with
+/// the user's settings) has them.
+pub struct LaneReq<'a> {
+    pub lane: &'a Lane,
+    pub target: Option<(f64, bool)>,
+    /// as for the check (`fmax` at least 1.25 × the bit rate)
+    pub rp: RfParams,
+    pub profile: String,
+    pub gbps: f64,
+    /// 10–90 % edge of the transmitter (s) and its amplitude at the receiver (V)
+    pub rise: f64,
+    pub swing: f64,
+    pub tx: EndModel,
+    pub rx: EndModel,
+    pub reversed: bool,
+    pub conn_end: Option<&'a ConnEnd>,
+}
+
+/// Export one lane (`dir`: folder prefix of its files, "" or "name/").
+pub fn export_req(board: &Board, an: &Analysis, field: &HashMap<String, FieldResult>, req: &LaneReq, f: Formats, dir: &str, board_name: &str) -> Result<Done, String> {
+    let (l, rp, cd, opts) = (req.lane, &req.rp, topology::ComponentData::builtin(), ExportOpts::default());
     if l.ends.len() < 2 {
         return Err(format!("lane {}: open (one end), nothing to export", l.name));
     }
-    let tnet = lane_net(p, l);
-    let class = p.class_name(tnet);
-    let assign = p.assign(assign);
-    let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
-    let prof = profiles.get(&pid).ok_or_else(|| format!("unknown profile '{pid}'"))?;
-    let target = p.target(tnet);
-    let gbps = prof.rate_gbps;
-    let rp = RfParams { fmax: rp.fmax.max(gbps * 1e9 * 1.25), ..rp.clone() };
-    let reversed = l.rx_end == 0;
-    let field = &p.params.field;
     // the ends as the channel check's eye uses them (connector end models, a termination next to
     // the receiver as the receiver's termination)
-    let cend = l.ends.iter().find(|e| e.role == "connector").and_then(|e| p.config.as_ref()?.connector_ends.get(&e.refdes)).map(|e| &e.end);
-    let rise = prof.tx.rise_ps * 1e-12;
-    let ev = topology::lane_eval(&p.board, &p.an, field, l, target, &rp, Some((gbps * 1e9, rise, 7, Some(prof.tx_model()), Some(prof.rx))), reversed, cend, None, &[], cd)?;
+    let ev = topology::lane_eval(board, an, field, l, req.target, rp, Some((req.gbps * 1e9, req.rise, 7, Some(req.tx), Some(req.rx))), req.reversed, req.conn_end, None, &[], &cd)?;
     let mut notes: Vec<String> = Vec::new();
     notes.extend(ev.rx_note.clone());
     if let Some(n) = &ev.end_note {
@@ -81,11 +91,34 @@ fn export_lane(p: &Project, profiles: &Profiles, assign: &HashMap<String, String
     if l.kind == "connector-connector" {
         notes.push("lane from connector to connector: the profile's transmitter and receiver stand in for the devices behind the connectors".into());
     }
-    let ends = BenchEnds { profile: pid.clone(), bitrate: gbps * 1e9, rise, swing: prof.tx.swing_mv * 1e-3, tx: ev.tx_used.unwrap_or(prof.tx_model()), rx: ev.rx_used.unwrap_or(prof.rx), notes };
-    let lc = lane_circuit(&p.board, &p.an, field, l, target, &rp, reversed, cd, gbps * 0.5e9, opts)?;
-    let board = p.pcb_path.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-    let files = lane_files(&lc, &ends, f, &board, rp.fmax, opts.per_lambda, dir);
+    let ends = BenchEnds { profile: req.profile.clone(), bitrate: req.gbps * 1e9, rise: req.rise, swing: req.swing, tx: ev.tx_used.unwrap_or(req.tx), rx: ev.rx_used.unwrap_or(req.rx), notes };
+    let lc = lane_circuit(board, an, field, l, req.target, rp, req.reversed, &cd, req.gbps * 0.5e9, &opts)?;
+    let files = lane_files(&lc, &ends, f, board_name, rp.fmax, opts.per_lambda, dir);
     Ok(Done { lc, ends, files })
+}
+
+/// The channel check's request for a lane of the project (profile from the net class).
+fn req_of<'a>(p: &'a Project, profiles: &Profiles, assign: &HashMap<String, String>, l: &'a Lane, rp: &RfParams) -> Result<LaneReq<'a>, String> {
+    let tnet = lane_net(p, l);
+    let class = p.class_name(tnet);
+    let assign = p.assign(assign);
+    let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
+    let prof = profiles.get(&pid).ok_or_else(|| format!("unknown profile '{pid}'"))?;
+    let gbps = prof.rate_gbps;
+    let cend = l.ends.iter().find(|e| e.role == "connector").and_then(|e| p.config.as_ref()?.connector_ends.get(&e.refdes)).map(|e| &e.end);
+    Ok(LaneReq {
+        lane: l,
+        target: p.target(tnet),
+        rp: RfParams { fmax: rp.fmax.max(gbps * 1e9 * 1.25), ..rp.clone() },
+        profile: pid.clone(),
+        gbps,
+        rise: prof.tx.rise_ps * 1e-12,
+        swing: prof.tx.swing_mv * 1e-3,
+        tx: prof.tx_model(),
+        rx: prof.rx,
+        reversed: l.rx_end == 0,
+        conn_end: cend,
+    })
 }
 
 fn lane_json(d: &Done) -> Value {
@@ -102,45 +135,55 @@ fn lane_json(d: &Done) -> Value {
     })
 }
 
-/// Run the export. Returns the summary and the files (paths relative to the export folder).
+/// Run the export. Returns the summary, the files (paths relative to the export folder) and the
+/// folder's name.
 pub fn export(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, pick: Pick, f: Formats, rp: &RfParams) -> Result<(Value, Vec<ExportFile>, String), String> {
     let (bus, lanes) = find(p, &pick)?;
-    let cd = topology::ComponentData::builtin();
-    let opts = ExportOpts::default();
     let board = p.pcb_path.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+    let field = &p.params.field;
     match pick {
         Pick::Lane(_) => {
-            let d = export_lane(p, profiles, assign, lanes[0], f, rp, &opts, "", &cd)?;
-            let name = stem(&d.lc.lane);
-            let v = json!({"export": "lane", "name": d.lc.lane, "bus": bus.name, "lanes": [lane_json(&d)], "files": d.files.iter().map(|x| x.path.clone()).collect::<Vec<_>>(),
-                "note": NOTE});
-            Ok((v, d.files, name))
+            let d = export_req(&p.board, &p.an, field, &req_of(p, profiles, assign, lanes[0], rp)?, f, "", &board)?;
+            Ok(lane_result(d, &bus.name))
         }
         Pick::Bus(_) => {
-            let mut done: Vec<Done> = Vec::new();
-            let mut skipped: Vec<String> = Vec::new();
+            let mut done = Vec::new();
+            let mut skipped = Vec::new();
             for l in &lanes {
                 let dir = format!("{}/", stem(&l.name));
-                match export_lane(p, profiles, assign, l, f, rp, &opts, &dir, &cd) {
+                match req_of(p, profiles, assign, l, rp).and_then(|r| export_req(&p.board, &p.an, field, &r, f, &dir, &board)) {
                     Ok(d) => done.push(d),
                     Err(e) => skipped.push(format!("{}: {e}", l.name)),
                 }
             }
-            if done.is_empty() {
-                return Err(format!("bus {}: no lane could be exported ({})", bus.name, skipped.join("; ")));
-            }
-            let name = stem(&bus.name.replace(' ', "_").replace('↔', "-"));
-            let mut files: Vec<ExportFile> = done.iter().flat_map(|d| d.files.iter().cloned()).collect();
-            let dev_a = bus.devices.first().cloned().unwrap_or_default();
-            let (bus_files, port_map, nports, z_bus) = bus_level(&done, &dev_a, &bus.name, &board, f, &name);
-            files.extend(bus_files);
-            let v = json!({"export": "bus", "name": bus.name, "devices": bus.devices,
-                "lanes": done.iter().map(lane_json).collect::<Vec<_>>(), "skipped": skipped,
-                "n_port": {"ports": nports, "z_ref_ohm": z_bus, "port_map": port_map},
-                "files": files.iter().map(|x| x.path.clone()).collect::<Vec<_>>(), "note": NOTE});
-            Ok((v, files, name))
+            bus_result(&bus.name, &bus.devices, done, skipped, f, &board)
         }
     }
+}
+
+/// Summary and files of one lane's export (and the folder's name).
+pub fn lane_result(d: Done, bus: &str) -> (Value, Vec<ExportFile>, String) {
+    let name = stem(&d.lc.lane);
+    let v = json!({"export": "lane", "name": d.lc.lane, "bus": bus, "lanes": [lane_json(&d)], "files": d.files.iter().map(|x| x.path.clone()).collect::<Vec<_>>(), "note": NOTE});
+    (v, d.files, name)
+}
+
+/// Summary and files of a bus's export: the lanes in their folders, the bus subcircuit and the
+/// N-port Touchstone file with its port map.
+pub fn bus_result(bus: &str, devices: &[String], done: Vec<Done>, skipped: Vec<String>, f: Formats, board: &str) -> Result<(Value, Vec<ExportFile>, String), String> {
+    if done.is_empty() {
+        return Err(format!("bus {bus}: no lane could be exported ({})", skipped.join("; ")));
+    }
+    let name = stem(&bus.replace(' ', "_").replace('↔', "-"));
+    let mut files: Vec<ExportFile> = done.iter().flat_map(|d| d.files.iter().cloned()).collect();
+    let dev_a = devices.first().cloned().unwrap_or_default();
+    let (bus_files, port_map, nports, z_bus) = bus_level(&done, &dev_a, bus, board, f, &name);
+    files.extend(bus_files);
+    let v = json!({"export": "bus", "name": bus, "devices": devices,
+        "lanes": done.iter().map(lane_json).collect::<Vec<_>>(), "skipped": skipped,
+        "n_port": {"ports": nports, "z_ref_ohm": z_bus, "port_map": port_map},
+        "files": files.iter().map(|x| x.path.clone()).collect::<Vec<_>>(), "note": NOTE});
+    Ok((v, files, name))
 }
 
 const NOTE: &str = "SPICE: the lane's board channel as kisi's check models it (RLGC ladders with fitted R(f)/G(f) networks, kisi's via model, parts with estimated parasitics, stubs; pairs with modal coupled blocks); check_against_kisi compares the exported circuit with kisi's own S-parameters. Benches use the profile's linear ends; the receiver's termination resistors on the board act as the receiver's termination and are not in the subcircuit or the Touchstone file. Not included: the channel behind a connector, crosstalk between lanes, IBIS ends.";

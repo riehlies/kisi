@@ -835,6 +835,73 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// Export of a lane or a bus for circuit and RF simulators (`kisi export`, `kisi_core::channel_export`)
+/// with the viewer's settings. Input: {"board": file name, "formats": "all", "bus": name | null,
+/// "devices": [refdes], "lanes": [{"lane": first net id, "to", "reversed", "rf", "target",
+/// "profile", "bitrate", "tx", "rx", "eye_rise", "swing_v", "conn_end"}]} → {"summary", "files":
+/// [{"path", "content"}], "name"}.
+#[no_mangle]
+pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        use kisi_core::channel_export::{bus_result, export_req, lane_result, LaneReq};
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let an = st.an.as_ref().ok_or("no analysis")?;
+        let params = st.params.as_ref().ok_or("no analysis")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let f = kisi_core::export::files::Formats::parse(v["formats"].as_str().unwrap_or("all"))?;
+        let board = v["board"].as_str().unwrap_or("board.kicad_pcb").to_string();
+        let bus = v["bus"].as_str().map(str::to_string);
+        let reqs = v["lanes"].as_array().ok_or("lanes missing")?;
+        let mut done = Vec::new();
+        let mut skipped = Vec::new();
+        for item in reqs {
+            let start = item["lane"].as_u64().ok_or("lane missing")?;
+            let lane = st.buses.as_ref().and_then(|bs| bs.iter().flat_map(|b| &b.lanes).find(|l| l.nets[0] as u64 == start && item["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t)))).ok_or("lane not found")?;
+            let end = |k: &str| serde_json::from_value::<kisi_core::eye::EndModel>(item[k].clone()).unwrap_or_default();
+            let cend: Option<kisi_core::eye::ConnEnd> = item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
+            let req = LaneReq {
+                lane,
+                target: item["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?))),
+                rp: serde_json::from_value(item["rf"].clone()).unwrap_or_default(),
+                profile: item["profile"].as_str().unwrap_or("").to_string(),
+                gbps: item["bitrate"].as_f64().unwrap_or(1e9) / 1e9,
+                rise: item["eye_rise"].as_f64().unwrap_or(100e-12),
+                swing: item["swing_v"].as_f64().unwrap_or(0.4),
+                tx: end("tx"),
+                rx: end("rx"),
+                reversed: item["reversed"].as_bool().unwrap_or(lane.rx_end == 0),
+                conn_end: cend.as_ref(),
+            };
+            let dir = if bus.is_some() { format!("{}/", kisi_core::export::files::stem(&lane.name)) } else { String::new() };
+            match export_req(b, an, &params.field, &req, f, &dir, &board) {
+                Ok(d) => done.push(d),
+                Err(e) if bus.is_some() => skipped.push(format!("{}: {e}", lane.name)),
+                Err(e) => return Err(e),
+            }
+        }
+        let (summary, files, name) = match &bus {
+            Some(bn) => {
+                let devices: Vec<String> = v["devices"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect()).unwrap_or_default();
+                bus_result(bn, &devices, done, skipped, f, &board)?
+            }
+            None => lane_result(done.pop().ok_or("no lane")?, ""),
+        };
+        Ok(serde_json::json!({"summary": summary, "files": files, "name": name}).to_string())
+    });
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
 /// Path options of a request: {"flip": bool, "hint": [x, y] | null} (start end near `hint`).
 fn path_opts(v: &serde_json::Value) -> (bool, Option<kisi_core::geom::P>) {
     let flip = v["flip"].as_bool().unwrap_or(false);

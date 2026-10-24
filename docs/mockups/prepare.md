@@ -1,7 +1,10 @@
 # Board preparation in the viewer – mockup and design note
 
-Status: mockup for review, third version (24 Oct 2026), nothing implemented. Decided by the maintainer: one core
-for humans and agents, plus preparation in the viewer; mockup first ([ROADMAP](../../ROADMAP.md), block 1).
+Status: the third version was approved (24 Oct 2026) and is **implemented** in branch `feat/docs-prepare` – the
+core (`views`, `applicable`, `--for`, `gaps.dismissed`, `config::subset`, check messages with categories), the WASM
+exports `kisi_gaps`, `kisi_config_check`, `kisi_config_subset`, and the viewer's Prepare PCB page with all forms of
+this note; user documentation in [Preparing a board](../preparing-a-board.md#in-the-viewer-prepare-pcb). Still open
+(see the end of this note). The mockup below is kept as the design record.
 
 History of the mockup: v1 was a fourth view "Prepare" with one gap list; v2 split the gaps by simulation category
 into a card at the top of each analysis view; the maintainer's answers to v2 brought the page back, with the
@@ -143,3 +146,22 @@ Stored in `<board>.kisi.json`, so the viewer, the CLI and agents see the same:
 A first version – `views`, `applicable` and `--for` in the core, the page with the tabs and forms for laminate, net
 classes, PI_REG and PI_LOAD, download only, no dismissals and no merge – about 6 days. Compared with v2 (about
 10 days) the page costs about the same as the cards; the dismissals and "nothing to check" add about 1.5–2 days.
+
+## Implemented, and what is still open
+Implemented (branch `feat/docs-prepare`): everything in "The page" and "In the core" above, with these
+differences – "save only <category>" applies `config::subset` to the draft and lays the result over the loaded
+file (so the loaded file's other entries are kept); the gap list runs in a Web Worker that replays the engine's
+state, so the page stays responsive (about a second per run on ThunderScope); `config::to_json` writes the subset
+without empty entries.
+
+Still open:
+- the loaded kisi.json's values do not fill the forms yet (its dismissals do; its other entries already close their
+  gaps, so the forms show what is still missing);
+- the draft lives in memory only (lost on a page reload before saving);
+- dismissals the core did not apply (`not_applied`, e.g. an item no longer reported) are shown as check warnings,
+  not next to the gap;
+- capacitor ratings (`PI_CAP`), connector ends and variant definitions by sheet or BOM have no form – they stay on
+  the agent path;
+- the viewer's own stackup and profile edits (stored in the browser) cannot be moved into the kisi.json yet;
+- per-item categories (a default εr matters for Impedance, a default tanδ for Channel).
+

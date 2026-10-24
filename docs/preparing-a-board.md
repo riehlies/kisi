@@ -85,15 +85,33 @@ Where to look, per kind of value:
 
 The syntax of every field and kisi.json key: [Field and kisi.json reference](reference.md).
 
-## Three ways to fill it in
+## Four ways to fill it in
+- **In the viewer:** the "Prepare PCB" page (below).
 - **By hand:** edit `<board>.kisi.json` with the skeleton from `config-template`, check with `config-check`.
 - **In KiCad:** the `PI_*` fields can live on the schematic symbols instead ("Update PCB from schematic" copies
   them to the footprints). kisi.json wins where both exist; sources are only kept in kisi.json.
 - **With an agent:** the [kisi-prepare skill](agents.md) runs the gap list, researches the values with sources
   and writes the kisi.json; you review the result.
 
-The viewer lets you edit the stackup, profiles, power settings and lane directions (stored in the browser), but
-does not write a kisi.json yet; a "Prepare" step for that is planned ([ROADMAP](../ROADMAP.md), block 1).
+### In the viewer: Prepare PCB
+![The Prepare PCB page on the Impedance tab: the laminate being entered with its source](img/prepare.png)
+
+"Prepare PCB" in the top bar (between the example boards and "Load files") opens the gap list of the board – with
+its kisi.json, if one is loaded – in three tabs: Impedance, Channel and Power (with the temperature). The badge
+counts the open high and medium gaps; the dots on the view buttons show each category's state (green ready,
+orange or red open, grey nothing to check). A tab lists its gaps by priority with *where to find it* and a form
+for the simple values – laminate εr/tanδ and material, net class targets and profiles, the assembly variant, the
+regulator chain (`PI_REG`, with one-click suggestions for rails behind a ferrite or link), load currents, ferrite
+beads and thermal data – each block with a required source. Name-based gaps can be dismissed with a reason.
+
+What you enter is one draft for all three tabs: the laminate entered under Impedance also closes the gap under
+Channel. The check (the same as `kisi config-check`) runs as you type, the gap list follows a moment later, and
+the right column shows the resulting kisi.json. "Save kisi.json" writes everything entered, or only the entries of
+the current category, laid over the loaded file; errors in what is saved block it, warnings do not. In Chromium a
+save dialog opens next to the board (and "Reload" reads the file from then on); other browsers download it. The
+saved file is loaded at once. Research-heavy gaps go to the agent path: the card on each tab gives a prompt for
+the kisi-prepare skill limited to that category (`kisi gaps --for …`). The draft lives in the page's memory until
+it is saved.
 
 ## Worked example: Seeed Studio XIAO nRF54LM20A
 [`docs/examples/xiao-nrf54lm20a/XIAO nRF54LM20A.kisi.json`](examples/xiao-nrf54lm20a/XIAO%20nRF54LM20A.kisi.json)

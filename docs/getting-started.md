@@ -93,6 +93,11 @@ later, and the lane results name the variant. A lane is named after and made of 
 with all alternatives fitted, each lane leaves the IC on its own branch and carries the other path as an open
 branch (dashed on the board).
 
+### Prepare PCB
+"Prepare PCB" (between the example boards and "Load files") opens what the board file lacks, per category, with
+forms for the simple values and saving the board's kisi.json; the dots on the three view buttons show whether each
+category is ready. See [Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb).
+
 ### What the viewer stores
 Stackup (εr, tanδ, thickness), profiles, the net class → profile assignment, power settings, lane directions and
 the chosen variant can be edited; edits are stored in this browser per board and lie over the kisi.json. The

@@ -214,5 +214,5 @@ dismissed.
 - `kisi report` writes everything into `analysis/kisi.json` next to the board (`--out` elsewhere), for
   file-based review tools and later sessions.
 - `kisi net … --s2p FILE` / `--s4p FILE` write the channel's S-parameters as Touchstone.
-- The viewer exports Touchstone files per net and keeps its edits in the browser; it does not write kisi.json yet
-  (see [ROADMAP](../ROADMAP.md), "Board preparation in the viewer").
+- The viewer exports Touchstone files per net and writes `<board>.kisi.json` from its Prepare PCB page
+  ([Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb)); its other edits stay in the browser.

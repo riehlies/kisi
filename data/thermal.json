@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "about": "Material constants, surface heat transfer and defaults of the temperature estimate (kisi_pi::thermal, docs/research/thermal.md). Typical values with sources; every result that uses them is an estimate. Package thermal resistances are in components.json (thermal).",
+  "copper": {
+    "k_w_mk": 390,
+    "alpha_per_k": 0.00393,
+    "rho_20c_ohm_m": 1.72e-8,
+    "sources": [
+      {"kind": "standard", "text": "IEC 60028 (international annealed copper standard): resistivity 1/58 Ω·mm²/m = 1.724e-8 Ω·m and temperature coefficient 0.00393 /K at 20 °C; kisi's DC solver uses 1.72e-8 Ω·m."},
+      {"kind": "kisi", "text": "Thermal conductivity: 401 W/(m·K) for pure copper at 300 K (Incropera, Fundamentals of Heat and Mass Transfer, Table A.1), scaled by the resistivity ratio 1.68/1.72 (Wiedemann–Franz) for PCB foil and plating: 390 W/(m·K), an estimate."}
+    ]
+  },
+  "laminate": {
+    "k_inplane_w_mk": 0.8,
+    "k_through_w_mk": 0.3,
+    "mot_c": 130,
+    "sources": [
+      {"kind": "measurement", "text": "Glass-epoxy (FR-4) laminate: in plane 0.81–1.06 W/(m·K), through the thickness 0.29–0.34 W/(m·K) (K. Azar, J. E. Graebner, SEMI-THERM 1996; F. Sarvar et al., J. Electron. Mater. 1990), as quoted on the FR-4 page; kisi takes the lower in-plane value.", "url": "https://en.wikipedia.org/wiki/FR-4"},
+      {"kind": "kisi", "text": "Maximum operating temperature (MOT, UL 796) of standard FR-4: 130 °C is a typical value, an estimate; the laminate's datasheet or UL file gives the real one."}
+    ]
+  },
+  "solder_mask": {
+    "k_w_mk": 0.2,
+    "thickness_mm": 0.02,
+    "emissivity": 0.9,
+    "sources": [
+      {"kind": "kisi", "text": "Organic coating: thermal conductivity about 0.2 W/(m·K), 20 µm when the stackup gives no mask thickness, emissivity 0.9 (typical for paints and solder masks in infrared thermography); estimates."}
+    ]
+  },
+  "air": {
+    "k_w_mk": 0.0263,
+    "nu_m2_s": 1.589e-5,
+    "pr": 0.707,
+    "sources": [
+      {"kind": "kisi", "text": "Air at 300 K and 1 atm: thermal conductivity, kinematic viscosity, Prandtl number (Incropera, Fundamentals of Heat and Mass Transfer, Table A.4); constant over the film temperature, the expansion coefficient is 1/T_film."}
+    ]
+  },
+  "convection": {
+    "horizontal_up": {"c": 0.54, "n": 0.25, "ra_turbulent": 1e7, "c_turbulent": 0.15, "n_turbulent": 0.3333},
+    "horizontal_down": {"c": 0.27, "n": 0.25},
+    "forced_laminar": {"c": 0.664},
+    "sources": [
+      {"kind": "kisi", "text": "Natural convection: horizontal plate, hot side up Nu = 0.54 Ra^1/4 (10^4–10^7) and 0.15 Ra^1/3 above, hot side down Nu = 0.27 Ra^1/4, characteristic length area/perimeter; vertical plate: Churchill–Chu over the whole range, length the longer board side. Forced convection: laminar flat plate Nu = 0.664 Re^1/2 Pr^1/3 over the longer board side (the larger of forced and natural). Incropera, Fundamentals of Heat and Mass Transfer, 6th ed., eq. 9.30–9.32, 9.26, 7.30. One mean coefficient per side from the board's mean temperature rise (an estimate)."},
+      {"kind": "kisi", "text": "Radiation to surroundings at ambient temperature, linearised: h_rad = εσ(Ts² + Ta²)(Ts + Ta)."}
+    ]
+  },
+  "defaults": {
+    "ambient_c": 25,
+    "orientation": "horizontal",
+    "airflow_m_s": 0,
+    "max_nodes": 200000,
+    "min_cell_mm": 0.25,
+    "via_plating_um": 25,
+    "sources": [
+      {"kind": "assumption", "text": "Board in still air at 25 °C, horizontal (as on the JEDEC JESD51-2 still-air test); via barrels with 25 µm plating and no fill, as in the DC voltage-drop solver."}
+    ]
+  }
+}

@@ -9,9 +9,27 @@ class Engine {
   async init() {
     const [wasm, sparse, solver] = await Promise.all([gunzipBytes(WASM_GZ), gunzipBytes(SPARSE_GZ), gunzipB64(SOLVER_GZ)]);
     SPARSE_WASM = sparse; SOLVER_SRC = solver;
-    const { instance } = await WebAssembly.instantiate(wasm, {});
+    const { module, instance } = await WebAssembly.instantiate(wasm, {});
+    this.mod = module; // compiled once, posted to the check workers (check-pool.js)
     this.k = instance.exports;
+    this.log = new Map(); this.stateGen = 0; this.onState = null;
   }
+  // The calls that set the engine's state, for engines in workers that compute the channel check
+  // in parallel (check-pool.js): the last call of each kind (Touchstone files by name) in the
+  // order they were made – a new board drops what it replaces. replay(): [[export, input], …];
+  // stateGen counts the changes, onState() hears of them.
+  rec(slot, fn, text) {
+    const last = this.log.get(slot);
+    if (last && last.text === text && [...this.log.keys()].pop() === slot) return; // the same call again
+    if (slot === "pcb") for (const s of ["config", "variant", "analyze", "skeleton", "buses"]) this.log.delete(s);
+    this.log.delete(slot);
+    this.log.set(slot, { fn, text });
+    this.stateGen++;
+    if (this.onState) this.onState();
+  }
+  replay() { return [...this.log.values()].map((e) => [e.fn, e.text]); }
+  // a state call: run it, then note it (calls that fail are not noted)
+  callRec(slot, fn, text) { this.call(this.k[fn], text); this.rec(slot, fn, text); }
   out() { return dec.decode(new Uint8Array(this.k.memory.buffer, this.k.kisi_out_ptr(), this.k.kisi_out_len())); }
   call(fn, text) {
     const b = enc.encode(text || "");
@@ -21,20 +39,20 @@ class Engine {
     this.k.kisi_free(p, b.length);
     if (rc !== 0) throw new Error(this.out());
   }
-  loadPro(text) { this.call(this.k.kisi_load_pro, text); }
-  loadPcb(text) { this.call(this.k.kisi_load_pcb, text); }
+  loadPro(text) { this.callRec("pro", "kisi_load_pro", text); }
+  loadPcb(text) { this.callRec("pcb", "kisi_load_pcb", text); }
   // board configuration; files: BOMs its variants name ({path: text}); variant: the viewer's choice or null
-  config(text, board, files, variant) { this.call(this.k.kisi_config, JSON.stringify({ config: text, board, files: files || {}, variant: variant || null })); return JSON.parse(this.out()); }
+  config(text, board, files, variant) { this.callRec("config", "kisi_config", JSON.stringify({ config: text, board, files: files || {}, variant: variant || null })); return JSON.parse(this.out()); }
   // assembly variant: the state, or choose one (null: the configuration's) – the board is rebuilt
   variants() { if (this.k.kisi_variants() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
-  variant(name) { this.call(this.k.kisi_variant, JSON.stringify({ variant: name || null })); return JSON.parse(this.out()); }
+  variant(name) { this.callRec("variant", "kisi_variant", JSON.stringify({ variant: name || null })); return JSON.parse(this.out()); }
   scene() { if (this.k.kisi_scene() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
-  analyze(params) { this.call(this.k.kisi_analyze, JSON.stringify(params)); return JSON.parse(this.out()); }
-  buses(params) { this.call(this.k.kisi_buses, JSON.stringify(params)); return JSON.parse(this.out()); }
+  analyze(params) { this.callRec("analyze", "kisi_analyze", JSON.stringify(params)); return JSON.parse(this.out()); }
+  buses(params) { this.callRec("buses", "kisi_buses", JSON.stringify(params)); return JSON.parse(this.out()); }
   laneRf(req) { this.call(this.k.kisi_lane_rf, JSON.stringify(req)); return JSON.parse(this.out()); }
   // Touchstone file for the channel behind a connector (kept in the engine's memory)
-  touchstone(name, text) { this.call(this.k.kisi_touchstone, JSON.stringify({ name, text })); return JSON.parse(this.out()); }
-  skeleton(params) { this.call(this.k.kisi_skeleton, JSON.stringify(params)); return JSON.parse(this.out()); }
+  touchstone(name, text) { this.callRec("ts:" + name, "kisi_touchstone", JSON.stringify({ name, text })); return JSON.parse(this.out()); }
+  skeleton(params) { this.callRec("skeleton", "kisi_skeleton", JSON.stringify(params)); return JSON.parse(this.out()); }
   piNets() { if (this.k.kisi_pi_nets() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   piFields() { if (this.k.kisi_pi_fields() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   rf(req) { this.call(this.k.kisi_rf, JSON.stringify(req)); return JSON.parse(this.out()); }
@@ -56,6 +74,15 @@ class Engine {
     r.buf = new Float32Array(m, this.k.kisi_pi_map_ptr(), this.k.kisi_pi_map_len()).slice();
     return r;
   }
+  // temperature estimate of the stored DC results: ThermalResult + t (°C planes per copper layer, NaN outside)
+  piThermal(params) {
+    this.call(this.k.kisi_pi_thermal, JSON.stringify(params || {}));
+    const r = JSON.parse(this.out());
+    r.t = new Float32Array(this.k.memory.buffer, this.k.kisi_pi_temp_ptr(), this.k.kisi_pi_temp_len()).slice();
+    return r;
+  }
+  // one rail at the estimated temperature: RailThermal (copper temperature, drop at 20 °C and at temperature)
+  piThermalRail(setup, params) { this.call(this.k.kisi_pi_thermal_rail, JSON.stringify({ setup, params })); return JSON.parse(this.out()); }
   piSolve(setup, params) {
     this.call(this.k.kisi_pi_solve, JSON.stringify({ setup, params }));
     const res = JSON.parse(this.out()), m = this.k.memory.buffer;

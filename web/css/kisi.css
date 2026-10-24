@@ -128,12 +128,22 @@ button, input, select { font: inherit; color: inherit; }
 .t-el b { color: var(--fg); font-weight: 500; }
 .t-load { display: grid; grid-template-columns: minmax(0, 1fr) 82px; gap: 8px; align-items: center; padding: 1px 0; font-size: 12px; }
 .t-load input { width: 100%; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); padding: 1px 4px; font-family: var(--font-mono); font-size: 11.5px; text-align: right; }
+input.si-in[aria-invalid="true"] { border-color: var(--z-high2); outline: 1px solid var(--z-high2); }
 .t-load .b { font-size: 10.5px; color: var(--muted); }
 .chip-warn { display: inline-block; border-radius: 999px; padding: 0 6px; font-size: 10.5px; color: var(--panel); background: var(--z-high2); margin-left: 4px; }
 .ctab { width: 100%; border-collapse: collapse; font-size: 12px; }
 .ctab th { text-align: left; font-weight: 500; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--line); padding: 3px 4px; }
 .ctab td { padding: 3px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.ctab th.n { text-align: right; }
 .ctab td.n { text-align: right; font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; }
+.ctab td.nw { white-space: nowrap; }
+/* components table, "Thermal" columns: θ values one per line, the source in two short lines */
+.ctab.therm td.th { font-family: var(--font-mono); font-size: 11px; white-space: nowrap; line-height: 1.3; }
+.ctab.therm td.src { font-size: 11px; line-height: 1.3; max-width: 170px; }
+.ctab.therm td.src b { display: block; font-weight: 600; }
+.ctab.therm td.src span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--muted); }
+.bal-card h4 .cmode { margin-right: auto; }
+.bal-card h4 .cmode button { padding: 2px 9px; font-size: 12px; }
 .ctab .bar { display: flex; gap: 2px; height: 8px; min-width: 60px; }
 .ctab .bar i { display: block; height: 100%; border-radius: 0 4px 4px 0; }
 .ctab .bar i.u { background: var(--pw-use); }
@@ -186,6 +196,15 @@ tr.warnrow td { color: var(--z-high1); }
 .ce-box select { max-width: 16em; }
 .ck-scroll { max-height: 360px; overflow: auto; margin-top: 8px; border-top: 1px solid var(--line); }
 .ck-scroll thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.step-h .est { font-style: normal; font-weight: 500; font-size: 11px; color: var(--muted); margin-left: 4px; }
+.therm-opts { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+.therm-opts label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.therm-opts input, .therm-opts select { border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); padding: 2px 4px; font-size: 12px; }
+.therm-opts input { width: 4em; }
+.tchip { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; box-shadow: 0 0 0 1px var(--line); }
+.viadot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; box-shadow: 0 0 0 1px var(--halo, #fff); flex: none; }
+tr.t-over td { color: var(--z-high2); }
+tr.t-near td { color: var(--z-high1); }
 .fs-bar { height: 4px; border-radius: 2px; background: var(--panel-2); overflow: hidden; }
 .fs-bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
 .btn.small { padding: 2px 8px; font-size: 12.5px; }
@@ -265,7 +284,7 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
 .legend .row { display: flex; align-items: center; gap: 8px; }
 .legend .sw { width: 18px; height: 4px; border-radius: 2px; flex: none; }
 .legend .grad { height: 8px; width: 220px; max-width: 60vw; border-radius: 2px; }
-.legend .ticks { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); width: 220px; max-width: 60vw; }
+.legend .ticks { display: flex; justify-content: space-between; gap: 6px; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); width: 220px; max-width: 60vw; white-space: nowrap; }
 .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.18); min-width: 220px; max-width: 320px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
 .tip .t1 { font-weight: 600; overflow-wrap: anywhere; }
 .tip .kv { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; font-family: var(--font-mono); font-size: 11.5px; }
@@ -337,6 +356,7 @@ ul.src li { margin: 2px 0; }
   .legend strong { flex-basis: 100%; }
   .legend .sw { width: 12px; }
   .legend .grad, .legend .ticks { width: 160px; }
+  .legend .ticks.units span:nth-child(2):not(:last-child) { display: none; } /* no room for three values with units */
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 

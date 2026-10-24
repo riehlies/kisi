@@ -92,6 +92,9 @@ pub struct Profiles {
     pub version: u32,
     pub defaults: Defaults,
     pub profiles: Vec<Profile>,
+    /// the profiles' name rules compiled once (index of the profile, rule), in their order
+    #[serde(skip)]
+    rules: std::sync::OnceLock<Vec<(usize, regex_lite::Regex)>>,
 }
 
 impl Profiles {
@@ -109,13 +112,11 @@ impl Profiles {
     /// (without sheet path), then the class name; else generic by target.
     pub fn auto(&self, net_name: &str, class_name: &str, diff: bool) -> &str {
         let short = net_name.rsplit('/').next().unwrap_or(net_name);
+        // rules that do not compile match nothing
+        let rules = self.rules.get_or_init(|| self.profiles.iter().enumerate().flat_map(|(i, p)| p.match_.iter().filter_map(move |m| Some((i, regex_lite::RegexBuilder::new(m).case_insensitive(true).build().ok()?)))).collect());
         for s in [short, class_name] {
-            for p in &self.profiles {
-                for m in &p.match_ {
-                    if regex_lite::RegexBuilder::new(m).case_insensitive(true).build().map(|re| re.is_match(s)).unwrap_or(false) {
-                        return &p.id;
-                    }
-                }
+            if let Some((i, _)) = rules.iter().find(|(_, re)| re.is_match(s)) {
+                return &self.profiles[*i].id;
             }
         }
         if diff {

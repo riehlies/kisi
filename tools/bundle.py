@@ -26,11 +26,15 @@ rest = sys.argv[5:]
 # --- solver backend as one classic script (tools/solver_bundle.py) -------------------
 solver_src, n_modules = solver_bundle(root)
 
+# gzip before base64: about a third of the size; the viewer unpacks with DecompressionStream.
+# mtime=0: no timestamp in the gzip header, so two builds of the same commit are identical.
+gzb64 = lambda b: base64.b64encode(gzip.compress(b, 9, mtime=0)).decode()
+
 # --- samples ----------------------------------------------------------------------
 samples = {}
 for i in range(0, len(rest), 4):
     key, name, pcb, pro = rest[i:i + 4]
-    gz = lambda p: base64.b64encode(gzip.compress(open(p, "rb").read(), 9)).decode()
+    gz = lambda p: gzb64(open(p, "rb").read())
     stem = os.path.basename(pcb).removesuffix(".kicad_pcb")
     samples[key] = {"name": name, "file": stem, "pcb": gz(pcb), "pro": gz(pro)}
     # the example's board configuration: power tree (PI_REG / PI_LOAD) with sources
@@ -81,8 +85,6 @@ if os.path.isdir(ddir):
         if f.endswith(".json"):
             data[f[:-5]] = json.load(open(os.path.join(ddir, f), encoding="utf-8"))
 html = html.replace("__DATA__", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"))
-# gzip before base64: about a third of the size; the viewer unpacks with DecompressionStream
-gzb64 = lambda b: base64.b64encode(gzip.compress(b, 9, mtime=0)).decode()
 html = html.replace("__WASM_GZ__", gzb64(open(wasm, "rb").read()))
 html = html.replace("__SPARSE_GZ__", gzb64(open(sparse, "rb").read()))
 html = html.replace("__SOLVER_GZ__", gzb64(solver_src.encode("utf-8")))

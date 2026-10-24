@@ -48,6 +48,15 @@ impl Source {
     fn is_empty(&self) -> bool {
         self.document.is_none() && self.url.is_none() && self.note.is_none()
     }
+    /// The document with its page ("TI LMH6518 datasheet, p. 6"), else the url; None without either.
+    pub fn citation(&self) -> Option<String> {
+        match (&self.document, &self.page, &self.url) {
+            (Some(d), Some(p), _) => Some(format!("{d}, p. {p}")),
+            (Some(d), None, _) => Some(d.clone()),
+            (None, _, Some(u)) => Some(u.clone()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -156,7 +165,7 @@ pub struct BoardConfig {
 }
 
 /// Fields kisi evaluates (others are laid over too, but have no effect).
-pub const KNOWN_FIELDS: &[&str] = &["PI_LOAD", "PI_SOURCE", "PI_REG", "PI_CAP", "PI_TARGET", "PI_SERIES"];
+pub const KNOWN_FIELDS: &[&str] = &["PI_LOAD", "PI_SOURCE", "PI_REG", "PI_CAP", "PI_TARGET", "PI_SERIES", "PI_THERMAL"];
 
 pub fn parse(text: &str) -> Result<BoardConfig, String> {
     serde_json::from_str(text).map_err(|e| format!("kisi.json: {e}"))
@@ -217,6 +226,9 @@ impl BoardConfig {
                 // the source travels with the field, so the power tree can show it per load
                 if let Some(src) = &f.source {
                     set(&source_key(&f.name), format!("{}\t{}", src.kind, src.note.as_deref().or(src.document.as_deref()).unwrap_or("")));
+                    if let Some(c) = src.citation() {
+                        set(&document_key(&f.name), c);
+                    }
                 }
                 a.fields += 1;
             }
@@ -237,6 +249,12 @@ impl BoardConfig {
 /// ("kind\tnote"); read by the power tree (`kisi_pi::tree::field_source`).
 pub fn source_key(name: &str) -> String {
     format!("{}#source", name.to_ascii_uppercase())
+}
+
+/// Footprint property with the document (and page) of that source; read by the temperature
+/// estimate (`kisi_pi::tree::field_document`) to name where package data came from.
+pub fn document_key(name: &str) -> String {
+    format!("{}#document", name.to_ascii_uppercase())
 }
 
 /// Result of `check`.
@@ -367,7 +385,27 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
                 Some(Ok(text)) => match kisi_si::rf::parse_touchstone(text, name) {
                     Err(err) => r.errors.push(format!("{w}.touchstone: {err}")),
                     Ok(ts) => {
-                        if ts.nports == 4 && tr.port_order.is_none() {
+                        if !tr.ports.is_empty() {
+                            // one file for the lanes of the connector: every pin to two ports of the file
+                            let mut used = std::collections::HashMap::new();
+                            let pads: Vec<&str> = board.footprints.iter().position(|f| &f.reference == refdes).map(|fi| board.pads.iter().filter(|p| p.fp as usize == fi).map(|p| p.number.as_str()).collect()).unwrap_or_default();
+                            for (pin, ps) in &tr.ports {
+                                if ps.iter().any(|&x| x == 0 || x > ts.nports) {
+                                    r.errors.push(format!("{w}.touchstone.ports.{pin}: ports {} / {} – the file has {} ports (1 … {})", ps[0], ps[1], ts.nports, ts.nports));
+                                }
+                                for &x in ps {
+                                    if let Some(other) = used.insert(x, pin.clone()) {
+                                        r.errors.push(format!("{w}.touchstone.ports: port {x} given for pins {other} and {pin}"));
+                                    }
+                                }
+                                if !pads.is_empty() && !pads.contains(&pin.as_str()) {
+                                    r.warnings.push(format!("{w}.touchstone.ports: {refdes} has no pad {pin}"));
+                                }
+                            }
+                        } else if ts.nports != 2 && ts.nports != 4 {
+                            r.errors.push(format!("{w}.touchstone: {}-port – give the port of every connector pin (\"ports\": {{\"<pin>\": [port at the connector, port at the far end]}})", ts.nports));
+                        }
+                        if ts.nports == 4 && tr.port_order.is_none() && tr.ports.is_empty() {
                             r.warnings.push(format!("{w}.touchstone: 4-port without port_order – \"1-3,2-4\" (P 1→3, N 2→4) assumed"));
                         }
                         r.warnings.extend(ts.warnings.iter().map(|x| format!("{w}.touchstone: {x}")));
@@ -402,10 +440,16 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
             if let Err(e) = crate::pdn_ic::parse_pi_series(&f.value) {
                 r.errors.push(format!("{what}: {e}"));
             }
+        } else if f.name.eq_ignore_ascii_case("PI_THERMAL") {
+            if let Err(e) = crate::thermal::parse_pi_thermal(&f.value) {
+                r.errors.push(format!("{what}: {e}"));
+            }
         } else if f.name.eq_ignore_ascii_case("PI_TARGET") {
             // any rail name: parse with an impossible net so that only the syntax is checked
-            for part in f.value.split([';', ',']).map(str::trim).filter(|p| !p.is_empty()) {
-                if let Err(e) = crate::pdn_ic::parse_pi_target(part, part.split_whitespace().next().and_then(|t| t.rsplit_once('=').map(|x| x.0)).unwrap_or("")) {
+            use crate::field_syntax as fs;
+            for part in fs::split_unquoted(&f.value, &[';', ',']) {
+                let net = fs::tokens(part).first().and_then(|t| fs::rsplit_once_unquoted(t, '=')).map(|x| fs::unquote(x.0)).unwrap_or_default();
+                if let Err(e) = crate::pdn_ic::parse_pi_target(part, &net) {
                     r.errors.push(format!("{what}: {e}"));
                 }
             }
@@ -541,6 +585,10 @@ mod tests {
         let (t, _) = crate::tree::tree_from_fields(&b).unwrap();
         assert_eq!((t.loads[0].basis.as_str(), t.loads[0].note.as_str()), ("datasheet", "typical"));
         assert!(t.name.contains("kisi.json"));
+        // and its document (here only a url) for the temperature estimate's table of θ sources
+        assert_eq!(crate::tree::field_document(&b.footprints[0], "PI_LOAD"), Some("https://example.com/ds.pdf"));
+        let doc = Source { kind: "datasheet".into(), document: Some("TI X datasheet".into()), page: Some("6".into()), ..Default::default() };
+        assert_eq!(doc.citation().as_deref(), Some("TI X datasheet, p. 6"));
         assert!((b.stackup().dielectrics[0].loss_tangent - 0.015).abs() < 1e-12);
         assert_eq!(a.targets["50Z"].z, 50.0);
         assert_eq!(a.profiles["50Z"], "se50");
@@ -589,5 +637,51 @@ mod tests {
         let po = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "cab/c.s2p", "port_order": "2-4"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
         assert!(check(&po, &board, &classes, &profiles, None, &files).errors.iter().any(|e| e.contains("unknown port_order")));
         assert!(crate::service::touchstones_of(Some(&ts), &files)["cab/c.s2p"].as_ref().is_ok_and(|t| t.nports == 2 && t.name == "c.s2p"));
+        // one file for all lanes: a 3-port needs the ports per pin; ports in range and used once
+        let three = "# GHz S MA R 50\n1 0 0 0.9 0 0 0 0.9 0 0 0 0 0 0 0 0 0 0 0\n2 0 0 0.9 0 0 0 0.9 0 0 0 0 0 0 0 0 0 0 0\n".to_string();
+        let files3: crate::variant::Files = HashMap::from([("c.s3p".to_string(), Ok(three))]);
+        let nomap = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "c.s3p"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
+        assert!(check(&nomap, &board, &classes, &profiles, None, &files3).errors.iter().any(|e| e.contains("3-port – give the port of every connector pin")));
+        let map = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "c.s3p", "ports": {"1": [1, 2], "2": [2, 4]}}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
+        assert_eq!(map.connector_ends["U1"].end.touchstone.as_ref().unwrap().ports["2"], [2, 4]);
+        let errs = check(&map, &board, &classes, &profiles, None, &files3).errors.join("\n");
+        assert!(errs.contains("ports.2: ports 2 / 4 – the file has 3 ports") && errs.contains("port 2 given for pins 1 and 2"), "{errs}");
+    }
+
+    /// Net names with spaces in quotes, written in kisi.json with escaped quotes: config-check
+    /// reads them like the analyses do; an unbalanced quote is an error.
+    #[test]
+    fn quoted_net_names_in_fields() {
+        let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+  (net 0 "") (net 1 "+3V3") (net 2 "/06 Peripherals/IMU_VDD")
+  (footprint "R" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "Value" "CONN")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")))
+  (footprint "R" (layer "F.Cu") (at 5 0) (property "Reference" "FB3") (property "Value" "120R")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3"))
+    (pad "2" smd rect (at 2 0) (size 1 1) (layers "F.Cu") (net 2 "/06 Peripherals/IMU_VDD")))
+  (footprint "R" (layer "F.Cu") (at 10 0) (property "Reference" "U11") (property "Value" "IMU")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 2 "/06 Peripherals/IMU_VDD"))))"#;
+        let board = crate::load_pcb(pcb).unwrap();
+        let profiles = crate::profile::Profiles::builtin();
+        let src = r#""source": {"kind": "datasheet", "document": "d"}"#;
+        let cfg = parse(&format!(
+            r#"{{"kisi_config": 1, "fields": [
+              {{"ref": "J1", "name": "PI_REG", "value": "+3V3 input", {src}}},
+              {{"ref": "FB3", "name": "PI_REG", "value": "+3V3 > \"/06 Peripherals/IMU_VDD\" pass r=0.5", {src}}},
+              {{"ref": "U11", "name": "PI_LOAD", "value": "\"/06 Peripherals/IMU_VDD\"=0.9mA", {src}}},
+              {{"ref": "U11", "name": "PI_TARGET", "value": "\"/06 Peripherals/IMU_VDD\"=0.5", {src}}}]}}"#
+        ))
+        .unwrap();
+        let r = check(&cfg, &board, &[], &profiles, None, &Default::default());
+        assert!(r.ok, "{:?}", r.errors);
+        let mut b = board.clone();
+        cfg.apply(&mut b);
+        let (t, w) = crate::tree::tree_from_fields(&b).unwrap();
+        assert!(w.is_empty(), "{w:?}");
+        assert_eq!(t.loads[0].net, "/06 Peripherals/IMU_VDD");
+        let bad = parse(&format!(r#"{{"kisi_config": 1, "fields": [{{"ref": "FB3", "name": "PI_REG", "value": "+3V3 > \"/06 Peripherals/IMU_VDD pass", {src}}}]}}"#)).unwrap();
+        let r = check(&bad, &board, &[], &profiles, None, &Default::default());
+        assert!(r.errors.iter().any(|e| e.contains("unbalanced quotes")), "{:?}", r.errors);
     }
 }

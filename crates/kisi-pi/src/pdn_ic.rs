@@ -333,17 +333,21 @@ pub fn parse_pi_series(s: &str) -> Result<SeriesField, String> {
     Ok(f)
 }
 
-/// Target from a PI_TARGET field for `net`: "VCCINT=10m fmax=50M" or "15mOhm" (any rail).
+/// Target from a PI_TARGET field for `net`: "VCCINT=10m fmax=50M" or "15mOhm" (any rail);
+/// a rail name with spaces in quotes ("\"/P/VDD CORE\"=5m").
 /// Returns (Ω, fmax Hz if given).
 pub fn parse_pi_target(s: &str, net: &str) -> Result<Option<(f64, Option<f64>)>, String> {
-    for part in s.split([';', ',']).map(str::trim).filter(|p| !p.is_empty()) {
+    use crate::field_syntax as fs;
+    for part in fs::split_unquoted(s, &[';', ',']) {
         let mut z = None;
         let mut fmax = None;
         let mut for_net = true;
-        for tok in part.split_whitespace() {
+        for tok in fs::tokens(part) {
             if let Some(v) = tok.strip_prefix("fmax=") {
                 fmax = Some(si(v).ok_or_else(|| format!("PI_TARGET: cannot read '{tok}'"))?);
-            } else if let Some((n, v)) = tok.rsplit_once('=') {
+            } else if let Some((n, v)) = fs::rsplit_once_unquoted(tok, '=') {
+                let n = fs::unquote(n);
+                let n = n.as_str();
                 for_net = n == net || n.trim_start_matches('/') == net.trim_start_matches('/') || net.rsplit('/').next() == Some(n);
                 z = Some(si(v).ok_or_else(|| format!("PI_TARGET: cannot read '{tok}'"))?);
             } else {
@@ -1739,6 +1743,8 @@ mod tests {
         assert!(near(Some(t.0), 0.01) && near(t.1, 50e6));
         assert!(near(parse_pi_target("15mOhm", "X").unwrap().map(|t| t.0), 0.015));
         assert!(parse_pi_target("VCCINT=10m", "+3V3").unwrap().is_none());
+        let t = parse_pi_target("\"/P/VDD CORE\"=5m fmax=20M, +3V3=30m", "/P/VDD CORE").unwrap().unwrap();
+        assert!(near(Some(t.0), 0.005) && near(t.1, 20e6));
         assert_eq!(value_details("10uF 6.3V X5R"), (Some(6.3), "X5R".into()));
         assert_eq!(value_details("100n/16V/X7R"), (Some(16.0), "X7R".into()));
         assert_eq!(value_details("4u7 6V3"), (Some(6.3), String::new()));

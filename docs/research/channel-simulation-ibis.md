@@ -422,11 +422,21 @@ source, below kisi.json.
 |---|---|---|
 | M0 Variants | KiCad 10 variants and kisi.json variants (sheets, refs, BOM); side stubs and unpopulated pads in lanes; `gaps` warning; ThunderScope config with both variants | 4–6 |
 | M1 IBIS parser | `kisi-ibis` covering the in-scope keywords of the table in section 2.1, corners, selectors, diff pins; `kisi ibis`; model mapping in kisi.json; fixtures (synthetic, KiCad QA) | 6–10 |
-| M2 N-port | network assembly incl. multi-drop and 4-port pairs; impulse responses (DC point, window, causality/passivity checks); compare with today's cascade | 8–12 |
+| M2 N-port | network assembly incl. multi-drop and 4-port pairs; impulse responses (DC point, window, causality/passivity checks); compare with today's cascade (first increment in branch `feat/nport`, see below) | 8–12 |
 | M3 Transient | buffers (Ku/Kd from 0/1/2 waveforms, clamps, terminators, series), Newton solver, waveforms; self-consistency and ngspice comparison | 10–15 |
 | M4 Measurements | overshoot, ringback, slew, flight time, eye in V/ps; `judge` extension; waveform and eye views; `kisi sim`; generic single-ended flow | 8–12 |
 | M5 DDR3/DDR4 flow | detection, byte lanes, fly-by, settings, `data/ddr.json`, report | 12–20 |
 | M6 Long patterns | edge-response superposition, PDA worst-case eye; optional aggressors from the crosstalk scan | 6–10 |
+
+**M2, first increment (October 2026, branch `feat/nport`):** `kisi_si::rf::network` (modified nodal analysis
+of chains, admittances, S blocks and sources; equal to the cascade to 1e-11 in tests), `rf::timedomain` (DC point,
+Gaussian window, band-edge, precursor and settling checks, passivity of S-matrices), `kisi_si::lanenet` (a lane's
+blocks with the ends). Pairs are 4-ports in the check and the eye (lanes and nets without devices), with mode
+conversion; a 4-port Touchstone file behind a connector enters as an S block with mode conversion; multi-drop lines
+along one path are checked at every receiver; one N-port file behind a connector serves all its lanes (a port map
+per pin), the other lanes are worst-case aggressors in the eye. On the example boards no verdict changed; loss at Nyquist of the
+ThunderScope PCIe lanes moves by up to ±0.7 dB because P and N differ, mode conversion reaches −6.4 dB where the
+intra-pair skew is 11 ps. Open: the aggressors' own board traces, multi-drop trees through series parts, pairs on multi-drop lines, coupled fork branches of a pair, terminations across a pair as a 4-port element.
 
 About 55–85 focused days in total. M0 and M1 are useful alone (correct ThunderScope lanes; `kisi ibis` as a model
 inspector). A DDR test board is needed from M5 on: Antmicro's open KiCad boards (Apache-2.0) with a Kintex-7 and a

@@ -83,6 +83,41 @@ function drawNow() {
 }
 // one colour group of netPaths: tracks stroked, pads filled with their outline; `halo` (css px):
 // the outline drawn wider in the halo colour instead
+// Labels on the board at a constant screen size: the font is set in CSS pixels on a screen-space
+// transform, so the text is crisp at any zoom and devicePixelRatio (text drawn in board units at
+// size N·px gets blocky when zoomed in). items: [{x, y, text, color?, bold?, dx?, dy?}] with the
+// anchor in board mm, most important first; each label sits right of and above its anchor (dx, dy
+// in CSS px, per item or in opt) and is skipped when it would overlap one already drawn or lie
+// outside the view. opt.center: the anchor is the text's centre (a letter in a marker). Returns the
+// drawn labels' screen boxes ([x0, y0, x1, y1] in CSS px). Restores the caller's transform. Used by
+// every board view (voltage drop, current density, losses, temperature, PDN, net A/B marks).
+function drawBoardLabels(items, opt = {}) {
+  const d = window.devicePixelRatio || 1, v = S.view, size = opt.size || 11;
+  const dx0 = opt.dx ?? (opt.center ? 0 : 6), dy0 = opt.dy ?? (opt.center ? 0 : -6);
+  const cs = getComputedStyle(document.documentElement), mono = cs.getPropertyValue("--font-mono").trim() || "monospace";
+  const W = cv.width / d, H = cv.height / d, boxes = [];
+  ctx.save();
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.lineJoin = "round"; ctx.lineWidth = 3;
+  ctx.strokeStyle = opt.halo || S.colors.canvas;
+  const fg = cs.getPropertyValue("--fg").trim() || "#000";
+  for (const it of items) {
+    if (opt.max && boxes.length >= opt.max) break;
+    ctx.font = `${it.bold ? 700 : 600} ${size}px ${mono}`;
+    const w = ctx.measureText(it.text).width;
+    let sx = v.x + it.x * v.s + (it.dx ?? dx0), sy = v.y + it.y * v.s + (it.dy ?? dy0);
+    if (opt.center) { sx -= w / 2; sy += 0.36 * size; }
+    const b = [sx - 2, sy - size, sx + w + 2, sy + 0.3 * size];
+    if (b[2] < 0 || b[0] > W || b[3] < 0 || b[1] > H) continue;
+    if (boxes.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1])) continue;
+    boxes.push(b);
+    ctx.strokeText(it.text, sx, sy);
+    ctx.fillStyle = it.color || opt.color || fg; ctx.fillText(it.text, sx, sy);
+  }
+  ctx.restore();
+  return boxes;
+}
+
 function drawGroup(g, px, halo = 0) {
   const C = S.colors;
   ctx.strokeStyle = halo ? C.halo : g.col; ctx.lineWidth = Math.max(g.w, 1.2 * px) + halo * px; ctx.stroke(g.path);

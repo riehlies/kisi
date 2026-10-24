@@ -5,7 +5,8 @@
 //         user overrides per profile in localStorage (PROF_KEY), class → profile
 //         assignment per board (ifcKey()).
 // Engine: S.engine.rf({..., bitrate, tx, rx, eye_rise}) for one net,
-//         kisi_check for many nets (metrics only; status is judged here).
+//         kisi_check for many nets (metrics only; status is judged here), also in
+//         workers (check-pool.js).
 
 const PROF_KEY = "kisi.profiles.v1";
 const ifcKey = () => "kisi.ifc.v1." + S.name;
@@ -129,15 +130,20 @@ function connEndControls(ref, roles, target, diff) {
     const names = [...new Set([...Object.keys(S.tsFiles), ...(name ? [name] : [])])];
     const f = S.tsFiles[name];
     const info = !name ? "" : !f ? `<span class="err">not loaded</span>` : f.error ? `<span class="err">${esc(f.error)}</span>` : `<span class="muted">${f.info.nports}-port, ${fmt(f.info.f_min_ghz, 2)}–${fmt(f.info.f_max_ghz, 1)} GHz${f.info.nports === 2 && diff ? ", the same on each line" : ""}</span>`;
+    // one file for all lanes of the connector: the file's ports per connector pin
+    const np = f && f.info ? f.info.nports : 0, pm = tr.ports || {};
+    const showMap = Object.keys(pm).length > 0 || (np > 0 && np !== 2 && !(np === 4 && diff));
+    const mapText = Object.entries(pm).map(([pin, [a, b]]) => `${pin}=${a}>${b}`).join(", ");
     rest = `<label><select data-ce-ts="${esc(ref)}" aria-label="Touchstone file behind connector ${esc(ref)}">${names.length ? "" : '<option value="">– load a file –</option>'}${names.map((n) => `<option value="${esc(n)}" ${n === name ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>
-      <label class="btn small ce-load">Load…<input type="file" accept=".s2p,.s4p" data-ce-file="${esc(ref)}" hidden></label>${info}
-      ${f && f.info && f.info.nports === 4 ? `<label>ports <select data-ce-po="${esc(ref)}">${["1-3,2-4", "1-2,3-4"].map((p) => `<option value="${p}" ${(tr.port_order || "1-3,2-4") === p ? "selected" : ""}>${p === "1-3,2-4" ? "P 1→3, N 2→4" : "P 1→2, N 3→4"}</option>`).join("")}</select></label>` : ""}
+      <label class="btn small ce-load">Load…<input type="file" accept=".s2p,.s3p,.s4p,.s6p,.s8p,.s10p,.s12p,.s16p,.s24p,.s32p" data-ce-file="${esc(ref)}" hidden></label>${info}
+      ${showMap ? `<label title="one file for all lanes of the connector: per pin the file's port at the connector and at the far end; the other lanes in the file are aggressors in the eye">ports per pin <input type="text" size="28" data-ce-pm="${esc(ref)}" value="${esc(mapText)}" placeholder="A16=1>9, A17=2>10" aria-label="Ports per pin of connector ${esc(ref)}"></label>` : ""}
+      ${f && f.info && f.info.nports === 4 && !showMap ? `<label>ports <select data-ce-po="${esc(ref)}">${["1-3,2-4", "1-2,3-4"].map((p) => `<option value="${p}" ${(tr.port_order || "1-3,2-4") === p ? "selected" : ""}>${p === "1-3,2-4" ? "P 1→3, N 2→4" : "P 1→2, N 3→4"}</option>`).join("")}</select></label>` : ""}
       <label title="port 2 of the file at the connector (else port 1)"><input type="checkbox" data-ce-flip="${esc(ref)}" ${tr.flip ? "checked" : ""}> port 2 at the connector</label>`;
   }
   return `<div class="ce-box" data-ce-target="${esc(JSON.stringify(target || null))}">
     <span class="ce-h">Connector <b>${esc(ref)}</b> · ${what}</span>
     <label><select data-ce="${esc(ref)}" aria-label="End at connector ${esc(ref)}">${o}</select></label>${custom}
-    <span class="ce-h" title="The channel behind the connector (cable, mating board): a lossy line at the target impedance (loss at the profile's Nyquist frequency, half √f, half f) or a Touchstone file (.s2p, also on each line of a pair; .s4p of a pair). None: the eye covers the board share only and is information.">behind</span>${rm}${rest}
+    <span class="ce-h" title="The channel behind the connector (cable, mating board): a lossy line at the target impedance (loss at the profile's Nyquist frequency, half √f, half f) or a Touchstone file (.s2p, also on each line of a pair; .s4p of a pair; one .sNp for all lanes with its ports per pin). None: the eye covers the board share only and is information.">behind</span>${rm}${rest}
   </div>`;
 }
 function bindConnEnd(box, after) {
@@ -159,6 +165,13 @@ function bindConnEnd(box, after) {
   });
   box.querySelectorAll("select[data-ce-po]").forEach((s) => s.onchange = () => { const e = entry(s.dataset.cePo); e.touchstone.port_order = s.value; save(); });
   box.querySelectorAll("input[data-ce-flip]").forEach((c) => c.onchange = () => { const e = entry(c.dataset.ceFlip); e.touchstone.flip = c.checked; if (!c.checked) delete e.touchstone.flip; save(); });
+  // "A16=1>9, A17=2>10" → {"A16": [1, 9], "A17": [2, 10]}; entries that do not parse are dropped
+  box.querySelectorAll("input[data-ce-pm]").forEach((inp) => inp.onchange = () => {
+    const e = entry(inp.dataset.cePm), m = {};
+    for (const it of inp.value.split(/[,;]+/)) { const x = it.trim().match(/^([^=\s]+)\s*=\s*(\d+)\s*>\s*(\d+)$/); if (x) m[x[1]] = [+x[2], +x[3]]; }
+    if (Object.keys(m).length) e.touchstone.ports = m; else delete e.touchstone.ports;
+    save();
+  });
   box.querySelectorAll("select[data-ce]").forEach((s) => s.onchange = () => {
     const m = connEnds(), ref = s.dataset.ce, keep = m[ref] || cfgConnEnd(ref) || {};
     const t = JSON.parse(s.closest(".ce-box").dataset.ceTarget || "null");
@@ -258,7 +271,7 @@ function metricsOf(r, net, lane) {
 function renderChDetail(net) {
   const d = $("ch-detail"), st = S.an.nets.find((x) => x.net === net);
   const lane = S.an.skeleton ? null : (S.selLane && allLanes().find((l) => laneKey(l) === S.selLane && (l.nets.includes(net) || l.partner_nets.includes(net)))) || laneOfNet(net);
-  if (lane && CHECKABLE.has(lane.kind)) return renderLaneDetail(lane);
+  if (lane && laneChecked(lane)) return renderLaneDetail(lane);
   // a net on the board map that is no channel: not used in this variant, or no target
   const why = netUnused(net) ? `Not used in this assembly variant${variantShown() ? ` (${esc(variantShown())})` : ""}: the net only connects parts that are not fitted. It has no lane and is not checked; the other variant uses it.`
     : !variantNeeded() && !chActiveNets().has(net) ? (lane ? `Part of a ${esc(lane.kind === "ic-ic" || lane.kind === "ic-connector" ? lane.kind : "multi-drop or open")} line (${esc(lane.ends.map((e) => e.refdes).join(", ") || "no devices")}): listed in the overview, not checked.` : "No channel: the net has no target impedance (net class) and is on no lane.") : null;
@@ -279,7 +292,7 @@ function renderChDetail(net) {
   const tab = S.chTab || "check";
   d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · pair with " + esc(partner) : ""}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
     <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button></span></div>
-    <div class="dstats muted"><span>Transmitter ${fmt(p.tx.r, 0)} Ω${p.tx.c_pf ? ", " + fmt(p.tx.c_pf, 1) + " pF" : ""}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span><span>Receiver ${p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "high impedance"}${p.rx.c_pf ? ", " + fmt(p.rx.c_pf, 1) + " pF" : ""}</span><span>per line</span></div>
+    <div class="dstats muted"><span>Transmitter ${fmt(p.tx.r, 0)} Ω${p.tx.c_pf ? ", " + fmtSI(p.tx.c_pf * 1e-12, "F") : ""}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span><span>Receiver ${p.rx.r > 0 ? fmt(p.rx.r, 0) + " Ω" : "high impedance"}${p.rx.c_pf ? ", " + fmtSI(p.rx.c_pf * 1e-12, "F") : ""}</span><span>per line</span></div>
     <div class="tabs" role="tablist" aria-label="Channel">${[["check", "Check"], ["eye", "Eye"], ["path", "Path"]].map(([k, n]) => `<button role="tab" data-ct="${k}" aria-selected="${tab === k}">${n}</button>`).join("")}</div>
     <div id="ch-body"></div>`;
   d.hidden = false;
@@ -307,7 +320,7 @@ function chActiveNets() {
   const set = new Set(), onLane = new Set();
   if (S.buses && S.an && !variantNeeded()) {
     for (const l of allLanes()) {
-      for (const n of [...l.nets, ...l.partner_nets]) { onLane.add(n); if (CHECKABLE.has(l.kind)) set.add(n); }
+      for (const n of [...l.nets, ...l.partner_nets]) { onLane.add(n); if (laneChecked(l)) set.add(n); }
     }
     for (const st of S.an.nets) {
       if (onLane.has(st.net) || netUnused(st.net) || !classTarget(st.net)) continue;
@@ -338,7 +351,7 @@ function checkItems() {
   const onLane = new Set();
   for (const l of allLanes()) {
     for (const n of [...l.nets, ...l.partner_nets]) onLane.add(n);
-    if (!CHECKABLE.has(l.kind)) continue;
+    if (!laneChecked(l)) continue;
     const net = laneNet(l), t = classTarget(net), p = laneProfile(l);
     out.push({ lane: l.nets[0], to: l.ends[l.ends.length - 1].refdes, reversed: laneReversed(l), laneKey: laneKey(l), net, gbps: p.rate_gbps, target: t ? [t.z, t.diff] : null, tx: p.tx, rx: p.rx, rise: p.tx.rise_ps * 1e-12, conn_end: laneConnEnd(l) });
   }
@@ -366,17 +379,12 @@ async function runCheck() {
   const btn = $("ck-start"); btn.disabled = true; S.checkRunning = true;
   const lanes = new Map(allLanes().map((l) => [laneKey(l), l]));
   $("ck-barbox").hidden = false;
-  for (let i = 0; i < items.length; i += 4) {
-    if (gen !== S.anGen) break;
-    $("ck-text").textContent = `Checking ${Math.min(i + 4, items.length)} of ${items.length} channels …`;
-    $("ck-bar").style.width = `${Math.round(100 * i / Math.max(items.length, 1))}%`;
-    await new Promise((res) => requestAnimationFrame(() => setTimeout(res, 0)));
-    const chunk = items.slice(i, i + 4);
-    try {
-      S.engine.call(S.engine.k.kisi_check, JSON.stringify({ rf: p, items: chunk }));
-      JSON.parse(S.engine.out()).forEach((r, k) => { r.laneKey = chunk[k].laneKey; r.net = chunk[k].laneKey ? chunk[k].net : r.net; rows.push(r); });
-    } catch (e) { console.warn(e); }
-  }
+  // rows on the main thread and in workers with engines of their own (check-pool.js)
+  const parts = await checkChunks(items, p, gen, (done, n, threads) => {
+    $("ck-text").textContent = `Checking ${done} of ${n} channels${threads > 1 ? ` (${threads} threads)` : ""} …`;
+    $("ck-bar").style.width = `${Math.round(100 * done / Math.max(n, 1))}%`;
+  });
+  for (const [start, rs] of parts) rs.forEach((r, k) => { const it = items[start + k]; r.laneKey = it.laneKey; r.net = it.laneKey ? it.net : r.net; rows.push(r); });
   S.checkRunning = false; $("ck-barbox").hidden = true;
   S.check = { gen, rows, stale: false };
   S.chStatus = new Map();
@@ -406,10 +414,10 @@ function renderCheck() {
   const stale = !!S.check && (S.check.gen !== S.anGen || S.check.stale);
   // 1 lanes and profiles (on loading; with variants after the choice)
   const ls = need || !S.buses ? [] : allLanes();
-  const nIc = ls.filter((l) => l.kind === "ic-ic").length, nCon = ls.filter((l) => l.kind === "ic-connector").length;
+  const nIc = ls.filter((l) => l.kind === "ic-ic").length, nCon = ls.filter((l) => l.kind === "ic-connector").length, nCc = ls.filter((l) => l.kind === "connector-connector").length, nMd = ls.filter((l) => l.kind === "multi-drop" && laneChecked(l)).length;
   $("cs1").classList.toggle("done", !need && !!S.buses);
   $("cs1-text").textContent = need ? "Choose the assembly variant (card above): lanes depend on the fitted parts."
-    : `${(S.buses || []).length} buses: ${nIc} lanes device to device, ${nCon} device to connector, ${ls.length - nIc - nCon} not checked (multi-drop, open). Profiles per net class (“Interfaces per net class”).${variantShown() ? ` Variant ${variantShown()}.` : ""}`;
+    : `${(S.buses || []).length} buses: ${nIc} lanes device to device, ${nCon} device to connector, ${nCc ? `${nCc} connector to connector, ` : ""}${nMd ? `${nMd} multi-drop, ` : ""}${ls.length - nIc - nCon - nCc - nMd} not checked (open, multi-drop trees). Profiles per net class (“Interfaces per net class”).${variantShown() ? ` Variant ${variantShown()}.` : ""}`;
   // 2 impedance estimate (the same as step 2 of the impedance view)
   $("cs2").classList.toggle("done", !skel);
   $("ck-est").hidden = !skel;
@@ -438,7 +446,7 @@ function renderCheck() {
   box.innerHTML = `<div class="ck-scroll"><table class="xs-table ck-table"><thead><tr><th></th><th>Net</th><th>Profile</th><th>IL dB</th><th>Eye %</th><th>Skew ps</th></tr></thead><tbody>${rows.map(({ r, p, st }) => {
     const nm = netShort(r.name) + (r.lane ? ` (${r.lane.ends.map((e) => e.refdes).join("–")})` : "");
     const sk = r.skew_ps == null ? "–" : fmt(Math.abs(r.skew_ps), 1) + (r.skew_uncertain ? "?" : "");
-    return `<tr class="click" data-net="${r.net}" title="${esc(r.name)} · ${r.diff ? "pair" : "single-ended"}, ${fmt(r.length_mm, 1)} mm, ${r.vias} vias, RL ${fmt(r.rl_db, 1)} dB${r.stub_ghz != null ? ", stub resonance " + fmt(r.stub_ghz, 1) + " GHz" : ""}${r.error ? " · " + esc(r.error) : ""}"><td><span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span></td><td>${esc(nm)}</td><td>${esc(p.name.split(" (")[0])}</td><td>${fmt(r.il_nyq_db, 1)}</td><td>${r.error || r.eye === false ? "–" : fmt(r.eye_height * 100, 0)}</td><td>${sk}</td></tr>`;
+    return `<tr class="click" data-net="${r.net}" title="${esc(r.name)} · ${r.diff ? "pair" : "single-ended"}, ${fmt(r.length_mm, 1)} mm, ${r.vias} vias, RL ${fmt(r.rl_db, 1)} dB${r.mode_conversion_db != null ? ", mode conversion " + fmt(r.mode_conversion_db, 1) + " dB" : ""}${r.xt_peak != null ? ", crosstalk peak " + fmt(r.xt_peak * 100, 1) + " %" : ""}${r.stub_ghz != null ? ", stub resonance " + fmt(r.stub_ghz, 1) + " GHz" : ""}${r.error ? " · " + esc(r.error) : ""}"><td><span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span></td><td>${esc(nm)}</td><td>${esc(p.name.split(" (")[0])}</td><td>${fmt(r.il_nyq_db, 1)}</td><td>${r.error || r.eye === false ? "–" : fmt(r.eye_height * 100, 0)}</td><td>${sk}</td></tr>`;
   }).join("")}</tbody></table></div>
   <p class="note">Limits per profile (“Profile” card). “?” = branched path, skew uncertain.</p>`;
   box.querySelectorAll("tr[data-net]").forEach((tr, i) => tr.onclick = () => { S.chTab = "check"; const r = rows[i].r; S.selLane = r.laneKey || null; if (S.chMode === "o") setChMode("m"); selectNet(+tr.dataset.net); });
@@ -452,7 +460,8 @@ function renderEye(body, r) {
   const warn = (e.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("");
   body.innerHTML = `<div class="dstats"><span>${fmt(g, g < 1 ? 2 : g % 1 ? 2 : 0)} Gbit/s NRZ, PRBS7</span><span>UI ${fmt(e.ui_ps, 1)} ps</span><span>DC level ${fmt(e.dc * 100, 0)} % of swing</span></div>
     <div class="dstats"><span>Eye height <b>${fmt(e.height * 100, 0)} %</b> = ${fmt(e.height * p.tx.swing_mv, 0)} mV</span><span>Eye width <b>${fmt(e.width_ps, 1)} ps</b> (${uiPct(e.width_ps)} % UI)</span><span>ISI total <b>${fmt(e.isi_sum * 100, 0)} %</b></span></div>
+    ${e.xt ? `<div class="dstats"><span>Crosstalk from ${e.xt.aggressors.length} lane(s) in the file: peak <b>${fmt(e.xt.peak * 100, 1)} %</b> (worst case, included above)</span><span class="muted">eye without it ${fmt(e.xt.height_alone * 100, 0)} %</span></div>` : ""}
     <div class="chart"><canvas id="ch-eye" style="height:220px" aria-label="Eye diagram"></canvas></div>
-    <p class="note">${r.end_note ? (/behind the connector/.test(r.end_note) ? `${esc(r.end_note)}. ` : `<b>Board share only</b> (${esc(r.end_note)}): the channel behind the connector is missing, so this eye is information, not judged; set one in the interface's card of the overview. `) : ""}Single-bit response of the channel between transmitter (${(r.tx_used || p.tx).r > 0 ? fmt((r.tx_used || p.tx).r, 0) + " Ω" : "ideal source"}, edge ${fmt(p.tx.rise_ps, 0)} ps) and receiver (${(r.rx_used || p.rx).r > 0 ? fmt((r.rx_used || p.rx).r, 0) + " Ω" : "high impedance"}), PRBS7 superposed linearly. 100 % = transmit swing (at the receiver termination; open circuit for a high-impedance receiver). No equalisation, jitter or noise.${ch.diff ? " Differential: odd mode." : ""}</p>${warn}`;
+    <p class="note">${r.end_note ? (/behind the connector/.test(r.end_note) ? `${esc(r.end_note)}. ` : `<b>Board share only</b> (${esc(r.end_note)}): the channel behind the connector is missing, so this eye is information, not judged; set one in the interface's card of the overview. `) : ""}Single-bit response of the channel between transmitter (${(r.tx_used || p.tx).r > 0 ? fmt((r.tx_used || p.tx).r, 0) + " Ω" : "ideal source"}, edge ${fmt(p.tx.rise_ps, 0)} ps) and receiver (${(r.rx_used || p.rx).r > 0 ? fmt((r.rx_used || p.rx).r, 0) + " Ω" : "high impedance"}), PRBS7 superposed linearly. 100 % = transmit swing (at the receiver termination; open circuit for a high-impedance receiver). No equalisation, jitter or noise.${ch.diff ? (r.model === "4-port" ? " Differential: 4-port of both lines (coupling and mode conversion), driven in opposite phase." : " Differential: odd mode (2-port).") : ""}</p>${warn}`;
   drawEye($("ch-eye"), e);
 }

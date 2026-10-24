@@ -31,6 +31,7 @@
       <button id="pim-v" aria-pressed="false" disabled title="after “Compute” in step 2">Voltage drop</button>
       <button id="pim-j" aria-pressed="false" disabled title="after “Compute” in step 2">Current density</button>
       <button id="pim-l" aria-pressed="false" disabled title="after “Compute” in step 2">Losses</button>
+      <button id="pim-t" aria-pressed="false" disabled title="after “Compute” in step 3">Temperature</button>
     </div>
     <div class="seg samples" role="group" aria-label="Example board">
       <button id="sample-ts" aria-pressed="false">ThunderScope</button>
@@ -134,7 +135,7 @@
         <div class="kpi"><span class="v" id="pk-rails">–</span><span class="l">rails computed</span></div>
         <div class="kpi"><span class="v" id="pk-j">–</span><span class="l">highest current density</span></div>
       </div>
-      <p class="note">Power analysis in three steps. The power tree with its budget is shown after step 1; steps 2 and 3 compute on the copper of each rail.</p>
+      <p class="note">Power analysis in four steps. The power tree with its budget is shown after step 1; steps 2 and 4 compute on the copper of each rail, step 3 the board's temperature from the losses of step 2.</p>
       <ol class="steps">
         <li id="ps1" class="done">
           <div class="step-h"><b>Power tree and loads</b></div>
@@ -147,6 +148,21 @@
           <div class="fs-bar" id="pi-barbox" hidden aria-hidden="true"><i id="pi-bar"></i></div>
           <span class="note" id="pi-prog" hidden></span>
         </li>
+        <li id="ps-t">
+          <div class="step-h"><b>Temperature <em class="est">estimate</em></b><button class="btn small primary" id="therm-run" disabled>Compute</button></div>
+          <div class="therm-opts">
+            <label for="therm-amb">Ambient <input id="therm-amb" type="number" step="1" min="-40" max="150" value="25"> °C</label>
+            <label for="therm-cool">Cooling <select id="therm-cool">
+              <option value="still" selected>still air, horizontal</option>
+              <option value="vertical">still air, vertical</option>
+              <option value="air1">air flow 1 m/s</option>
+              <option value="air3">air flow 3 m/s</option>
+            </select></label>
+          </div>
+          <span class="note" id="therm-step"></span>
+          <div class="fs-bar" id="therm-barbox" hidden aria-hidden="true"><i id="therm-bar"></i></div>
+          <span class="note" id="therm-prog" hidden></span>
+        </li>
         <li id="ps3">
           <div class="step-h"><b>Impedance Z(f)</b><button class="btn small primary" id="pdn-run">Compute</button></div>
           <span class="note" id="pdn-step"></span>
@@ -158,7 +174,8 @@
         <summary>Defining loads in KiCad</summary>
         <p class="note">Field on the footprint (add it in the schematic; it reaches the board on update):</p>
         <p class="note"><span class="mono">PI_LOAD</span> = <span class="mono">+1V0=2.5A, +1V8=300mA</span> or <span class="mono">+1V0=2W</span><br>
-        <span class="mono">PI_SOURCE</span> = <span class="mono">+3V3</span> or <span class="mono">+3V3=3.3V</span> for regulators and supply inputs.</p>
+        <span class="mono">PI_SOURCE</span> = <span class="mono">+3V3</span> or <span class="mono">+3V3=3.3V</span> for regulators and supply inputs.<br>
+        <span class="mono">PI_THERMAL</span> = <span class="mono">theta_jb=17.4 theta_jc=53.6 tj_max=125</span> from the datasheet's thermal table (else package estimates).</p>
       </details>
     </section>
 
@@ -255,6 +272,7 @@ const DATA = __DATA__;
 </script>
 <!-- @scripts web/src/manifest.json -->
 <script src="src/engine.js"></script>
+<script src="src/units.js"></script>
 <script src="src/state.js"></script>
 <script src="src/load.js"></script>
 <script src="src/geometry.js"></script>
@@ -269,6 +287,7 @@ const DATA = __DATA__;
 <script src="src/interaction.js"></script>
 <script src="src/field-pool.js"></script>
 <script src="src/field-cache.js"></script>
+<script src="src/check-pool.js"></script>
 <script src="src/pi-dc.js"></script>
 <script src="src/pi-pdn.js"></script>
 <script src="src/pi-balance.js"></script>

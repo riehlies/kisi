@@ -93,5 +93,36 @@
     "max_nets": 40,
     "bead": {"z100_ohm": 220.0, "rdc_ohm": 0.1, "rp_factor": 1.5, "cp_pf": 0.5},
     "inductor_dcr_ohm": {"0201": 0.5, "0402": 0.3, "0603": 0.15, "0805": 0.1, "1206": 0.06, "1210": 0.04, "large": 0.03}
+  },
+  "thermal": {
+    "about": "Package thermal resistances for the temperature estimate (kisi_pi::thermal, two-resistor model JESD15-3: junction to board θJB, junction to case top θJC) when a part has no PI_THERMAL field. The family comes from the footprint name (first family whose pattern the name contains, case-insensitive), else from the pad geometry (an exposed centre pad: qfn; a grid of round pads: bga; two pads: chip), else generic. θ = θ_ref·(A_ref/A)^exp with A the area of the pads' bounding box in mm² (a stand-in for the package body). Values from one or two datasheets per family; every default is an estimate – the part's own datasheet (Thermal Information table) belongs in PI_THERMAL.",
+    "tj_max_c": 125,
+    "tj_max_note": "assumed when PI_THERMAL gives no tj_max: a common limit of commercial ICs (commercial FPGAs are often 85 °C, power ICs 150 °C)",
+    "families": [
+      { "family": "power", "match": ["SOT-223", "SOT223", "SOT-89", "SOT89", "TO-252", "DPAK", "TO-263", "D2PAK", "TO-220", "TO-247", "POWERPAK", "LFPAK"],
+        "ref_area_mm2": 45, "theta_jb": 12.0, "exp_jb": 0.5, "theta_jc": 47.2, "exp_jc": 0.5,
+        "source": "TI TLV1117LV datasheet SBVS160C, DCY (SOT-223): RθJB 12, RθJC(top) 47.2 K/W (row labels swapped in the table) – https://www.ti.com/document-viewer/lit/html/SBVS160C/GUID-8709A32C-BEF6-422B-A5D9-5BCC979D7382" },
+      { "family": "bga", "match": ["BGA", "CSP"],
+        "ref_area_mm2": 225, "theta_jb": 5.5, "exp_jb": 0.5, "theta_jc": 5.0, "exp_jc": 0.5,
+        "source": "TI TMS570LC4357-EP, 337-ball BGA 16 × 16 mm: RθJB 5.49, RθJC 5.02 K/W (with a 5 × 5 thermal via cluster on the 2s2p board) – https://www.ti.com.cn/document-viewer/cn/TMS570LC4357-EP/datasheet/thermal-resistance-characteristics-for-the-bga-package-gwt-thermal-char-zwt337; size exponent a kisi estimate" },
+      { "family": "qfn", "match": ["QFN", "DFN", "SON", "LGA", "LFCSP", "MLF", "MLP", "-EP", "_EP", "POWERPAD", "THERMALPAD", "HTSSOP", "HSOP"],
+        "ref_area_mm2": 9, "theta_jb": 17.4, "exp_jb": 0.45, "theta_jc": 53.6, "exp_jc": 0.8,
+        "source": "TI TPS6215x datasheet SLVSAL5E, RGT (VQFN-16, 3 × 3 mm): RθJB 17.4, RθJC(top) 53.6 K/W – https://www.ti.com/document-viewer/lit/html/SLVSAL5E/GUID-A4C7E975-BB33-458C-97B8-6CC60403872A ; size exponents from TI CC1352P, RGZ (VQFN-48, 7 × 7 mm): RθJB 8.0, RθJC(top) 13.3 K/W – https://www.ti.com/document-viewer/CC1352P/datasheet/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000175171" },
+      { "family": "qfp", "match": ["QFP"],
+        "ref_area_mm2": 200, "theta_jb": 21.9, "exp_jb": 0.5, "theta_jc": 11.5, "exp_jc": 0.5,
+        "source": "TI MSP430F6723A datasheet, PN (LQFP-80, 12 × 12 mm body): RθJB 21.9, RθJC(top) 11.5 K/W – https://www.ti.com.cn/document-viewer/cn/MSP430F6723A/datasheet/23-ZHCSDG4A ; size exponent a kisi estimate" },
+      { "family": "sot", "match": ["SOT-23", "SOT23", "SC-70", "SC70", "SC-88", "SC88", "SOT-353", "SOT353", "SOT-363", "SOT363", "SOT-553", "SOT553", "SOT-563", "SOT563", "TSOT", "SOT-5", "SOT-6"],
+        "ref_area_mm2": 7.5, "theta_jb": 80.0, "exp_jb": 0.0, "theta_jc": 90.0, "exp_jc": 0.0,
+        "source": "TI TLV704 datasheet, DBV (SOT-23-5): RθJB 76.7–97.4, RθJC(top) 68.7–110.9 K/W – https://ti.com/document-viewer/TLV704/datasheet/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000316708 ; kisi takes values in between" },
+      { "family": "so", "match": ["SOIC", "SSOP", "TSSOP", "MSOP", "VSSOP", "SOP", "SO-"],
+        "ref_area_mm2": 24, "theta_jb": 68.0, "exp_jb": 1.0, "theta_jc": 67.0, "exp_jc": 0.0,
+        "source": "TI LM358 datasheet, D (SOIC-8): RθJB 67.9, RθJC(top) 66.9 K/W; PW (TSSOP-8): RθJB 99.2, RθJC(top) 68.8 K/W – https://ti.com/document-viewer/LM358/datasheet/GUID-6D406977-775A-4C11-AB6B-61A1BCD385E8" },
+      { "family": "chip", "match": [],
+        "ref_area_mm2": 2.2, "theta_jb": 150.0, "exp_jb": 1.0, "theta_jc": null, "exp_jc": 0.0,
+        "source": "kisi estimate for two-pad chip parts (resistors, ferrites, …): a film at 155 °C at rated power and 70 °C (IEC 60115-1 rating convention) spends about half of that rise inside the part; 0603 (pad box ≈ 2.2 mm²) ≈ 150 K/W, scaled with the area; no top path" },
+      { "family": "generic", "match": [],
+        "ref_area_mm2": 10, "theta_jb": 40.0, "exp_jb": 0.5, "theta_jc": 50.0, "exp_jc": 0.5,
+        "source": "kisi estimate for parts of no known family (between the QFP/SO values for leaded and the QFN values for exposed-pad packages of a similar size)" }
+    ]
   }
 }

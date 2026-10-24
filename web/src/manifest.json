@@ -1,6 +1,7 @@
 {
  "scripts": [
   "engine.js",
+  "units.js",
   "state.js",
   "load.js",
   "geometry.js",
@@ -15,11 +16,13 @@
   "interaction.js",
   "field-pool.js",
   "field-cache.js",
+  "check-pool.js",
   "crosstalk.js",
   "pi-dc.js",
   "pi-pdn.js",
   "pi-balance.js",
   "pi-loss.js",
+  "pi-thermal.js",
   "views.js",
   "main.js"
  ]

@@ -173,6 +173,36 @@ pub fn voltage_from_name(name: &str) -> Option<f64> {
     None
 }
 
+/// Whether a net or pin name says it is a signal about a supply or a logic signal: a word such
+/// as SENSE, DET, ADC, EN, PG, FB, SCL, SDA (VBUS_DET, VBAT_SENSE, VCC_EN, PG_1V0, TRIM_SCL_5V).
+pub fn signal_name(name: &str) -> bool {
+    const SIGNAL: &[&str] = &[
+        "SENSE", "SNS", "SEN", "DET", "DETECT", "ADC", "MON", "MEAS", "EN", "ENA", "ENABLE", "PG", "PGOOD", "POK", "PWRGD", "OK", "GOOD", "FB", "CTRL", "CTL", "DIV",
+        "ON", "OFF", "INT", "IRQ", "ALERT", "FLT", "FAULT", "OC", "OV", "UV", "ID", "SEL", "STAT", "STATUS", "DIS", "RST", "RESET", "REF", "PWM", "GATE", "DRV", "SIG",
+        "SCL", "SDA", "SCK", "SCLK", "CLK", "MISO", "MOSI", "CS", "TX", "RX", "TXD", "RXD", "VINP", "VINN", "VINM",
+    ];
+    words(name).iter().any(|w| SIGNAL.contains(&w.as_str()))
+}
+
+fn words(name: &str) -> Vec<String> {
+    name.replace("{slash}", "/").to_uppercase().split(|c: char| !c.is_ascii_alphanumeric()).filter(|w| !w.is_empty()).map(String::from).collect()
+}
+
+/// Whether a net name or pin name looks like a supply without a voltage in it: a word that
+/// starts with VCC, VDD, VIN, VBUS, VSYS, VBAT or VEE, or ends with VCC, VDD or VIN (VDDIO,
+/// AVDD, PVIN, VBUSOUT, VINLDO1, `Net-(IC22-VCC)`, …), or is VIO – and not a signal name
+/// (`signal_name`: VBUS_DET, VBAT_SENSE, VCC_EN, …) or an analog input (VINP, VIN+). Ground names
+/// are not supplies. A hint, not a proof: the gap list says so.
+pub fn supply_name_hint(name: &str) -> bool {
+    const PREFIX: &[&str] = &["VCC", "VDD", "VIN", "VBUS", "VSYS", "VBAT", "VEE"];
+    const SUFFIX: &[&str] = &["VCC", "VDD", "VIN"];
+    let n = name.replace("{slash}", "/").to_uppercase();
+    if is_ground_name(&n) || n.starts_with("UNCONNECTED") || n.contains("VIN+") || n.contains("VIN-)") || n.ends_with("VIN-") || signal_name(&n) {
+        return false;
+    }
+    words(&n).iter().any(|w| w == "VIO" || PREFIX.iter().any(|p| w.starts_with(p)) || SUFFIX.iter().any(|s| w.ends_with(s)))
+}
+
 pub fn is_ground_name(name: &str) -> bool {
     let n = name.rsplit('/').next().unwrap_or(name).to_uppercase();
     n.contains("GND") || n.starts_with("VSS") || n == "0V" || n.contains("EARTH")
@@ -290,6 +320,7 @@ fn polygon_area(p: &[P]) -> f64 {
 /// Rail setups from footprint fields:
 ///   PI_SOURCE = "+3V3" or "+3V3=3.3V" (several separated by ',' or ';')
 ///   PI_LOAD   = "+1V0=2.5A, +1V8=300mA" or "+1V0=2W" (power -> current via rail voltage)
+/// Net names with spaces in double quotes (`"/Sensors/IMU VDD"=1mA`, see `field_syntax`).
 pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
     let mut rails: Vec<RailSetup> = Vec::new();
     let mut warnings = Vec::new();
@@ -303,11 +334,12 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
     // sources first (they may define the voltage)
     for fp in &board.footprints {
         let Some(v) = fp.prop("PI_SOURCE") else { continue };
-        for item in v.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
-            let (name, val) = match item.split_once('=') {
-                Some((n, q)) => (n.trim(), Some(q)),
-                None => (item, None),
+        for item in crate::field_syntax::split_unquoted(v, &[',', ';']) {
+            let (name, val) = match crate::field_syntax::split_once_unquoted(item, '=') {
+                Some((n, q)) => (crate::field_syntax::unquote(n), Some(q)),
+                None => (crate::field_syntax::unquote(item), None),
             };
+            let name = name.as_str();
             let Some(net) = find_net(board, name) else {
                 warnings.push(format!("{}: PI_SOURCE names unknown net '{}'", fp.reference, name));
                 continue;
@@ -322,13 +354,14 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
     }
     for fp in &board.footprints {
         let Some(v) = fp.prop("PI_LOAD") else { continue };
-        for item in v.split([',', ';']).map(str::trim).filter(|s| !s.is_empty()) {
-            let Some((name, q)) = item.split_once('=') else {
+        for item in crate::field_syntax::split_unquoted(v, &[',', ';']) {
+            let Some((name, q)) = crate::field_syntax::split_once_unquoted(item, '=') else {
                 warnings.push(format!("{}: PI_LOAD '{}' without value (form NET=2A)", fp.reference, item));
                 continue;
             };
-            let Some(net) = find_net(board, name) else {
-                warnings.push(format!("{}: PI_LOAD names unknown net '{}'", fp.reference, name.trim()));
+            let name = crate::field_syntax::unquote(name);
+            let Some(net) = find_net(board, &name) else {
+                warnings.push(format!("{}: PI_LOAD names unknown net '{}'", fp.reference, name));
                 continue;
             };
             let net_name = board.net_name(net).to_string();
@@ -504,6 +537,13 @@ pub(crate) fn pad_cells(g: &Grid, pad: &Pad) -> Vec<usize> {
 // --- the solver -------------------------------------------------------------------------
 
 pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result<PiResult, String> {
+    solve_rail_scaled(board, setup, params, None)
+}
+
+/// `solve_rail` with the resistivity scaled per place: `scale(layer, point)` = ρ/ρ₂₀ there (e.g.
+/// 1 + α(T − 20 °C) from a temperature map, `thermal::rail_at_temperature`). Each conductance uses
+/// the mean factor of its two cells.
+pub fn solve_rail_scaled(board: &Board, setup: &RailSetup, params: &PiParams, scale: Option<&dyn Fn(usize, P) -> f64>) -> Result<PiResult, String> {
     let su = board.stackup();
     let ncu = su.n();
     let net = find_net(board, &setup.net).ok_or_else(|| format!("net '{}' not found", setup.net))?;
@@ -607,6 +647,12 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
         node_of[l] = m;
     }
     let nn = node_pos.len();
+    // resistivity factor per node (empty: 1 everywhere) and the mean of an edge's two nodes
+    let div: Vec<f64> = match scale {
+        Some(f) => node_pos.iter().map(|&(l, k)| f(l, g.center(k % g.nx, k / g.nx)).max(1e-3)).collect(),
+        None => Vec::new(),
+    };
+    let dv = |a: u32, b: u32| -> f64 { if div.is_empty() { 1.0 } else { 0.5 * (div[a as usize] + div[b as usize]) } };
 
     // edges: (a, b, conductance S)
     let mut edges: Vec<(u32, u32, f64)> = Vec::with_capacity(nn * 2);
@@ -629,7 +675,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
                     }
                     let (a, b) = (wl[k] as f64, wl[k2] as f64);
                     let wf = 2.0 * a * b / (a + b);
-                    edges.push((m[k], m[k2], gs * wf));
+                    edges.push((m[k], m[k2], gs * wf / dv(m[k], m[k2])));
                 }
             }
         }
@@ -696,7 +742,7 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
             if let Some((pl, pn)) = prev {
                 if pn != nid {
                     let len = (layer_z[l] - layer_z[pl]).abs() * 1e-3;
-                    let gv = barrel(*drill) / (params.rho * len.max(1e-6));
+                    let gv = barrel(*drill) / (params.rho * len.max(1e-6)) / dv(pn, nid);
                     via_edges.push((edges.len(), *at, *drill));
                     edges.push((pn, nid, gv));
                 }
@@ -911,7 +957,8 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
                         };
                         let gx = d(val(i - 1, j), val(i + 1, j));
                         let gy = d(val(i, j - 1), val(i, j + 1));
-                        let jm = (gx * gx + gy * gy).sqrt() / params.rho * 1e-6; // A/mm²
+                        let dn = if div.is_empty() { 1.0 } else { div[m[j as usize * g.nx + i as usize] as usize] };
+                        let jm = (gx * gx + gy * gy).sqrt() / (params.rho * dn) * 1e-6; // A/mm²
                         if jm > max_j {
                             max_j = jm;
                             max_j_at = Some(g.center(i as usize, j as usize));
@@ -1057,6 +1104,17 @@ mod tests {
         assert_eq!(parse_quantity("2W"), Some((2.0, 'W')));
         assert_eq!(parse_quantity("3,3V"), Some((3.3, 'V')));
         assert_eq!(parse_quantity("1.5"), Some((1.5, 'A')));
+    }
+
+    #[test]
+    fn supply_names() {
+        for n in ["VBUS", "VSYS", "VBAT", "/Power/VCC", "Net-(IC22-VCC)", "Net-(U8A-VBUS)", "VDDIO", "AVDD", "/06 Peripherals/IMU_VDD", "LSIN1/VINLDO1_B4", "PVIN", "VCC_IN", "VIO", "VDD_8"] {
+            assert!(supply_name_hint(n), "{n}");
+        }
+        for n in ["GND", "VBUS_DET", "VBAT_SENSE", "VCC_EN", "VDD_PG", "VINP", "VIN+", "Net-(U3-VIN-)", "VREF", "SDA", "unconnected-(U2-VBUS-Pad1)", "DECA", "VSS", "VOUT", "P1.17{slash}PMIC_SCL", "LDO1_IN"] {
+            assert!(!supply_name_hint(n), "{n}");
+        }
+        assert!(signal_name("/FPGA/FPGA Voltage Regs/PG_1V0") && signal_name("TRIM_SCL_5V") && !signal_name("+3V3") && !signal_name("3V3_HBLB_SWITCH"));
     }
 
     /// A 1 mm x 20 mm strip of 35 µm copper with a source pad at one end and a

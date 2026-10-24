@@ -33,6 +33,8 @@ pub struct Project {
     pub variant: crate::variant::VariantState,
     /// Touchstone files of the configuration's connector ends, by the path written in it
     pub touchstones: HashMap<String, Result<crate::rf::Touchstone, String>>,
+    /// lanes grouped into buses, found once (`buses`)
+    buses: std::sync::OnceLock<Vec<topology::Bus>>,
 }
 
 /// Parse the Touchstone files the configuration's connector ends name (from `files`).
@@ -159,7 +161,7 @@ impl Project {
         let an = analyze(&board, &params);
         let name = inp.pcb_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
         let touchstones = touchstones_of(cfg.as_ref(), &inp.files);
-        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, touchstones })
+        Ok(Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, touchstones, buses: Default::default() })
     }
 
     /// Commands that compute lanes call this first: an error with the list of variants when
@@ -218,9 +220,9 @@ impl Project {
         }
     }
 
-    /// Lanes grouped into buses.
-    pub fn buses(&self) -> Vec<topology::Bus> {
-        topology::buses(&self.board, &self.an, &topology::ComponentData::builtin())
+    /// Lanes grouped into buses (found on the first call; the project does not change).
+    pub fn buses(&self) -> &[topology::Bus] {
+        self.buses.get_or_init(|| topology::buses(&self.board, &self.an, &topology::ComponentData::builtin()))
     }
 
     fn class_name(&self, net: u32) -> String {
@@ -464,11 +466,12 @@ fn lane_net(p: &Project, l: &topology::Lane) -> u32 {
 
 fn lane_json(p: &Project, l: &topology::Lane) -> Value {
     let rev = l.rx_end == 0;
-    let (tx, rx) = if l.ends.len() == 2 { (Some(&l.ends[if rev { 1 } else { 0 }]), Some(&l.ends[if rev { 0 } else { 1 }])) } else { (None, None) };
+    let (tx, rx) = if l.ends.len() == 2 || (l.ends.len() > 2 && !l.taps.is_empty()) { (Some(&l.ends[if rev { 1 } else { 0 }]), Some(&l.ends[if rev { 0 } else { 1 }])) } else { (None, None) };
     json!({
         "lane": l.name, "kind": l.kind, "diff": l.diff,
         "from": tx.map(pin), "to": rx.map(pin), "direction": l.direction,
         "ends": l.ends.iter().map(pin).collect::<Vec<_>>(),
+        "receivers_on_stubs": l.taps,
         "nets": l.nets.iter().map(|&n| p.board.net_name(n)).collect::<Vec<_>>(),
         "series_parts": l.hops.iter().filter_map(|h| match h { topology::Hop::Series { part } => Some(format!("{} {} ({})", part.refdes, part.value, part.package)), _ => None }).collect::<Vec<_>>(),
         "terminations": l.shunts.iter().map(|s| format!("{} {} {}", s.part.refdes, s.part.value, if s.across { "across the pair".to_string() } else { format!("to {}", p.board.net_name(s.to)) })).collect::<Vec<_>>(),
@@ -492,24 +495,41 @@ pub fn interfaces(p: &Project, profiles: &Profiles, assign: &HashMap<String, Str
             let l0 = &b.lanes[0];
             let tnet = lane_net(p, l0);
             let pid = assign.get(&b.class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &b.class, l0.diff).to_string());
-            json!({"bus": b.name, "kind": b.kind, "class": b.class, "profile": pid, "devices": b.devices, "values": b.values,
-                "lanes": b.lanes.iter().map(|l| lane_json(p, l)).collect::<Vec<_>>()})
+            let mut v = json!({"bus": b.name, "kind": b.kind, "class": b.class, "profile": pid, "devices": b.devices, "values": b.values,
+                "lanes": b.lanes.iter().map(|l| lane_json(p, l)).collect::<Vec<_>>()});
+            // manufacturer part numbers where the Value field is not one (a name, a description)
+            let mpns: Vec<Option<&str>> = b.devices.iter().map(|d| p.board.footprints.iter().find(|f| &f.reference == d).and_then(|f| f.mpn_if_not_value())).collect();
+            if mpns.iter().any(|m| m.is_some()) {
+                v["mpns"] = json!(mpns);
+            }
+            v
         })
         .collect();
     json!({
         "buses": list,
         "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+        "notes": "Lanes follow nets through series resistors (≤ 100 Ω), AC-coupling capacitors (≥ 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model – connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop along one path (the first two ends are transmitter and receiver at the ends of the path, the other devices receivers on side stubs: the eye at every receiver, the worst counts), open lines and multi-drop trees through series parts (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json. mpns (when present): the devices' manufacturer part numbers where the Value field does not show one."
     })
 }
 
-/// Channel check of all device-to-device lanes (plus nets with a target that are
-/// not on any lane), judged against the interface profiles.
-pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams) -> Value {
+/// One row of the channel check: a lane (bus and lane index) or a net with a target on no lane
+/// (index into the analysis' nets), with its profile.
+enum CheckItem<'a> {
+    Lane { bus: usize, lane: usize, prof: &'a crate::profile::Profile, class: String, tnet: u32 },
+    Net { st: usize, prof: &'a crate::profile::Profile, class: String },
+}
+
+/// What the channel check computes, in its order (the order of the rows before they are sorted
+/// by status).
+struct CheckPlan<'a> {
+    buses: &'a [topology::Bus],
+    items: Vec<CheckItem<'a>>,
+    skipped_unused: usize,
+}
+
+fn check_plan<'a>(p: &'a Project, profiles: &'a Profiles, assign: &HashMap<String, String>, only: Option<&[String]>) -> CheckPlan<'a> {
     let assign = &p.assign(assign);
-    let field = &p.params.field;
-    let cd = topology::ComponentData::builtin();
     let buses = p.buses();
     let wanted = |names: &mut dyn Iterator<Item = &str>| -> bool {
         match only {
@@ -524,26 +544,67 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
             }
         }
     };
-    let mut rows = Vec::new();
+    let mut items = Vec::new();
     let mut on_lane: std::collections::HashSet<u32> = std::collections::HashSet::new();
-    for b in &buses {
-        for l in &b.lanes {
+    for (bi, b) in buses.iter().enumerate() {
+        for (li, l) in b.lanes.iter().enumerate() {
             on_lane.extend(l.nets.iter().chain(&l.partner_nets).copied());
-            if !topology::checked_kind(&l.kind) {
-                continue;
-            }
-            if !wanted(&mut l.nets.iter().map(|&n| p.board.net_name(n))) {
+            if !topology::checked(l) || !wanted(&mut l.nets.iter().map(|&n| p.board.net_name(n))) {
                 continue;
             }
             let tnet = lane_net(p, l);
             let class = p.class_name(tnet);
             let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
-            let Some(prof) = profiles.get(&pid) else { continue };
+            if let Some(prof) = profiles.get(&pid) {
+                items.push(CheckItem::Lane { bus: bi, lane: li, prof, class, tnet });
+            }
+        }
+    }
+    // nets with a target that are on no lane (no devices found at their ends); nets that only
+    // connect parts not fitted have no function in this assembly and are left out
+    let unused: std::collections::HashSet<u32> = p.variant.unused_nets.iter().copied().collect();
+    let mut skipped_unused = 0usize;
+    for (si, st) in p.an.nets.iter().enumerate() {
+        let Some(t) = st.target else { continue };
+        if on_lane.contains(&st.net) || !wanted(&mut std::iter::once(st.name.as_str())) {
+            continue;
+        }
+        if unused.contains(&st.net) {
+            skipped_unused += 1;
+            continue;
+        }
+        if let Some(pn) = st.partner {
+            let pname = p.board.net_name(pn);
+            let neg = |s: &str| s.ends_with('N') || s.ends_with('-') || s.ends_with("_M");
+            if if neg(&st.name) != neg(pname) { neg(&st.name) } else { pn < st.net } {
+                continue;
+            }
+        }
+        let class = p.class_name(st.net);
+        let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(&st.name, &class, t.diff).to_string());
+        if let Some(prof) = profiles.get(&pid) {
+            items.push(CheckItem::Net { st: si, prof, class });
+        }
+    }
+    CheckPlan { buses, items, skipped_unused }
+}
+
+/// One row of the channel check (status and JSON).
+fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem, rp: &RfParams, cd: &topology::ComponentData) -> (Status, Value) {
+    let field = &p.params.field;
+    match it {
+        CheckItem::Lane { bus, lane, prof, class, tnet } => {
+            let (b, l) = (&plan.buses[*bus], &plan.buses[*bus].lanes[*lane]);
             let lim = profiles.limits(prof);
             // a lane ending at a connector: the end model there (kisi.json connector_ends)
             let cend = l.ends.iter().find(|e| e.role == "connector").and_then(|e| p.config.as_ref()?.connector_ends.get(&e.refdes)).map(|e| &e.end);
             let cts = cend.and_then(|c| c.touchstone.as_ref()).and_then(|tr| p.touchstones.get(&tr.file)?.as_ref().ok());
-            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, cend, cts, &cd);
+            // one N-port file for the lanes of a connector: the others are aggressors
+            let xt = match (cend.and_then(|c| c.touchstone.as_ref()).filter(|t| !t.ports.is_empty()), l.ends.iter().find(|e| e.role == "connector")) {
+                (Some(_), Some(e)) => topology::connector_lanes(plan.buses.iter().flat_map(|b| &b.lanes), &e.refdes),
+                _ => vec![],
+            };
+            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(*tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, cend, cts, &xt, cd);
             // length-weighted impedance of the lane's nets
             let (mut len, mut zs, mut lo, mut hi) = (0.0, 0.0, f64::INFINITY, f64::NEG_INFINITY);
             for st in p.an.nets.iter().filter(|s| l.nets.contains(&s.net)) {
@@ -584,52 +645,98 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
                     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged"});
             }
             j["stubs"] = json!(row.stubs);
-            j["metrics"] = json!(m);
-            rows.push((v.status, j));
-        }
-    }
-    // nets with a target that are on no lane (no devices found at their ends); nets that only
-    // connect parts not fitted have no function in this assembly and are left out
-    let unused: std::collections::HashSet<u32> = p.variant.unused_nets.iter().copied().collect();
-    let mut skipped_unused = 0usize;
-    for st in &p.an.nets {
-        let Some(t) = st.target else { continue };
-        if on_lane.contains(&st.net) || !wanted(&mut std::iter::once(st.name.as_str())) {
-            continue;
-        }
-        if unused.contains(&st.net) {
-            skipped_unused += 1;
-            continue;
-        }
-        if let Some(pn) = st.partner {
-            let pname = p.board.net_name(pn);
-            let neg = |s: &str| s.ends_with('N') || s.ends_with('-') || s.ends_with("_M");
-            if if neg(&st.name) != neg(pname) { neg(&st.name) } else { pn < st.net } {
-                continue;
+            j["model"] = json!(row.model);
+            if !row.receivers.is_empty() {
+                j["receivers"] = json!(row.receivers);
             }
+            if let Some(x) = row.xt_peak {
+                j["crosstalk_peak"] = json!(x);
+            }
+            if let Some(mc) = row.mode_conversion_db {
+                j["mode_conversion_db"] = json!(mc);
+            }
+            j["metrics"] = json!(m);
+            (v.status, j)
         }
-        let class = p.class_name(st.net);
-        let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(&st.name, &class, t.diff).to_string());
-        let Some(prof) = profiles.get(&pid) else { continue };
-        let lim = profiles.limits(prof);
-        let row = eye::check_net(&p.board, &p.an, field, st.net, Some((t.z, t.diff)), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)));
-        let m = Metrics {
-            z_mean: st.z_mean,
-            z_min: st.z_min,
-            z_max: st.z_max,
-            il_nyq_db: Some(row.il_nyq_db),
-            rl_db: Some(row.rl_db),
-            eye_h: row.error.is_none().then_some(row.eye_height),
-            eye_w_ui: row.error.is_none().then_some(row.eye_width_ui),
-            skew_ps: row.skew_ps,
-            skew_uncertain: row.skew_uncertain,
-            stub_ghz: row.stub_ghz,
-            error: row.error.clone(),
-        };
-        let v = judge(&m, prof, &lim);
-        rows.push((v.status, json!({"net": st.name, "kind": "net (no devices found)", "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
-            "length_mm": row.length_mm, "vias": row.vias, "metrics": m})));
+        CheckItem::Net { st, prof, class } => {
+            let st = &p.an.nets[*st];
+            let t = st.target.expect("planned with a target");
+            let lim = profiles.limits(prof);
+            let row = eye::check_net(&p.board, &p.an, field, st.net, Some((t.z, t.diff)), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)));
+            let m = Metrics {
+                z_mean: st.z_mean,
+                z_min: st.z_min,
+                z_max: st.z_max,
+                il_nyq_db: Some(row.il_nyq_db),
+                rl_db: Some(row.rl_db),
+                eye_h: row.error.is_none().then_some(row.eye_height),
+                eye_w_ui: row.error.is_none().then_some(row.eye_width_ui),
+                skew_ps: row.skew_ps,
+                skew_uncertain: row.skew_uncertain,
+                stub_ghz: row.stub_ghz,
+                error: row.error.clone(),
+            };
+            let v = judge(&m, prof, &lim);
+            let mut j = json!({"net": st.name, "kind": "net (no devices found)", "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
+                "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m});
+            if let Some(mc) = row.mode_conversion_db {
+                j["mode_conversion_db"] = json!(mc);
+            }
+            (v.status, j)
+        }
     }
+}
+
+/// Channel check of all device-to-device lanes (plus nets with a target that are
+/// not on any lane), judged against the interface profiles. The rows are computed in parallel
+/// (`par::workers()` threads natively, one in WebAssembly); the result does not depend on it.
+pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams) -> Value {
+    channel_check_with(p, profiles, assign, only, rp, crate::par::workers())
+}
+
+/// `channel_check` on `threads` threads.
+pub fn channel_check_with(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, threads: usize) -> Value {
+    let plan = check_plan(p, profiles, assign, only);
+    let cd = topology::ComponentData::builtin();
+    let rows = crate::par::par_map_with(&plan.items, threads, |it| check_row(p, &plan, profiles, it, rp, &cd));
+    check_result(p, rows, plan.skipped_unused, rp)
+}
+
+/// Number of rows `channel_check` computes (lanes and nets), for splitting it over workers.
+pub fn channel_check_count(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>) -> usize {
+    check_plan(p, profiles, assign, only).items.len()
+}
+
+/// The rows of `channel_check` with the indices `idx` in the check's order (up to
+/// `channel_check_count`), each with its index: the Node CLI computes the check in worker
+/// threads, each with an engine of its own, and puts the rows together with `channel_check_merge`.
+#[allow(clippy::too_many_arguments)]
+pub fn channel_check_rows(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, idx: &[usize]) -> Vec<(usize, Value)> {
+    let plan = check_plan(p, profiles, assign, only);
+    let cd = topology::ComponentData::builtin();
+    idx.iter().filter_map(|&i| Some((i, check_row(p, &plan, profiles, plan.items.get(i)?, rp, &cd).1))).collect()
+}
+
+/// `channel_check` from rows computed in parts (`channel_check_rows`): the same result as
+/// computing them at once. An error when the parts do not cover the check exactly.
+pub fn channel_check_merge(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, mut rows: Vec<(usize, Value)>) -> Result<Value, String> {
+    let plan = check_plan(p, profiles, assign, only);
+    rows.sort_by_key(|r| r.0);
+    if rows.len() != plan.items.len() || rows.iter().enumerate().any(|(i, r)| r.0 != i) {
+        return Err(format!("check parts do not match the check ({} rows for {} channels)", rows.len(), plan.items.len()));
+    }
+    let status = |v: &Value| match v["status"].as_str() {
+        Some("red") => Ok(Status::Red),
+        Some("yellow") => Ok(Status::Yellow),
+        Some("green") => Ok(Status::Green),
+        s => Err(format!("check part: row without status ({s:?})")),
+    };
+    let rows = rows.into_iter().map(|(_, v)| status(&v).map(|s| (s, v))).collect::<Result<Vec<_>, _>>()?;
+    Ok(check_result(p, rows, plan.skipped_unused, rp))
+}
+
+/// The check's JSON from its rows in the check's order: sorted by status (stable), counted.
+fn check_result(p: &Project, mut rows: Vec<(Status, Value)>, skipped_unused: usize, rp: &RfParams) -> Value {
     rows.sort_by(|a, b| a.0.cmp(&b.0));
     let count = |s: Status| rows.iter().filter(|r| r.0 == s).count();
     json!({
@@ -639,13 +746,26 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
         "not_checked_unused": (skipped_unused > 0).then(|| format!("{skipped_unused} net(s) with a target only connect parts not fitted in this assembly (variant or DNP): not checked")),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
         "field_solver": p.field_summary(),
-        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.{}{}", p.models(), if rp.via_cavity { " Vias: plane pairs as finite cavities (--via-cavity, experimental) – board edges, stitching vias, capacitors between the planes with estimated parasitics (data/components.json)." } else { "" }, if rp.via_returns { " Vias: return groups per plane pair (--via-returns, experimental) – a return via shorts only the plane pairs whose two planes it joins and crosses supply planes as a floating return; capacitors between supply and ground planes within 3 mm with estimated parasitics (data/components.json)." } else { "" })
+        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 × Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces – an estimate). Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.{}{}", p.models(), if rp.via_cavity { " Vias: plane pairs as finite cavities (--via-cavity, experimental) – board edges, stitching vias, capacitors between the planes with estimated parasitics (data/components.json)." } else { "" }, if rp.via_returns { " Vias: return groups per plane pair (--via-returns, experimental) – a return via shorts only the plane pairs whose two planes it joins and crosses supply planes as a floating return; capacitors between supply and ground planes within 3 mm with estimated parasitics (data/components.json)." } else { "" })
     })
 }
 
-/// Power: tree balance (PI_REG fields or a JSON tree), DC drop of every rail,
-/// optional PDN impedance of one rail.
-pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<&str>) -> Result<Value, String> {
+/// The DC part of the power analysis, shared by `power`, `thermal` and `report`: the tree (PI_REG
+/// fields or a JSON tree), the rail setups and the DC solution of every rail and the ground return.
+pub struct PowerRun {
+    pub source: &'static str,
+    pub tree: Option<crate::tree::TreeResult>,
+    pub balance: Option<Value>,
+    pub setups: Vec<crate::pi::RailSetup>,
+    /// solved rails, then the ground return, with the setup each came from
+    pub solved: Vec<(crate::pi::RailSetup, crate::pi::PiResult)>,
+    /// JSON row per rail (also the ones that failed)
+    pub rails: Vec<Value>,
+    pub warnings: Vec<String>,
+    pub params: crate::pi::PiParams,
+}
+
+pub fn power_run(p: &Project, tree: Option<crate::tree::TreeSpec>) -> Result<PowerRun, String> {
     let (spec, mut warnings, source) = match tree {
         Some(t) => (Some(t), vec![], "JSON"),
         None => match crate::tree::tree_from_fields(&p.board) {
@@ -658,8 +778,17 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
         Some(s) => {
             let t = crate::tree::solve_tree(s, Some(&p.board))?;
             warnings.extend(t.warnings.iter().cloned());
-            let bal = json!({"input_w": t.p_input, "loads_w": t.p_loads, "losses_w": t.p_losses,
-                "elements": t.elements.iter().map(|e| json!({"id": e.id, "kind": e.kind, "part": e.part, "i_in": e.i_in, "i_out": e.i_out, "loss_w": e.p_loss, "overload": e.overload})).collect::<Vec<_>>()});
+            let mut bal = json!({"input_w": t.p_input, "loads_w": t.p_loads, "losses_w": t.p_losses,
+                "elements": t.elements.iter().map(|e| json!({"id": e.id, "kind": e.kind, "part": e.part, "i_in": e.i_in, "i_out": e.i_out, "loss_w": e.p_loss, "overload": e.overload,
+                    "efficiency": e.eff, "efficiency_estimate": e.eff_estimate})).collect::<Vec<_>>()});
+            let est: Vec<&str> = t.elements.iter().filter(|e| e.eff_estimate).map(|e| e.id.as_str()).collect();
+            if !est.is_empty() {
+                bal["note"] = json!(format!(
+                    "efficiency_estimate: {} without an efficiency in PI_REG – kisi's default {:.0} % is used (estimate); give the datasheet value at the expected load (e.g. 'buck 90%').",
+                    est.join(", "),
+                    crate::tree::DEFAULT_EFF * 100.0
+                ));
+            }
             let setups = t.setups.clone();
             tree_res = Some(t);
             (setups, Some(bal))
@@ -684,7 +813,7 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
         match crate::pi::solve_rail(&p.board, s, &params) {
             Ok(r) => {
                 rails.push(rail_json(&r));
-                solved.push(r);
+                solved.push((s.clone(), r));
             }
             Err(e) => rails.push(json!({"rail": s.net, "error": e})),
         }
@@ -697,13 +826,24 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
             match crate::pi::solve_rail(&p.board, s, &params) {
                 Ok(r) => {
                     rails.push(rail_json(&r));
-                    solved.push(r);
+                    solved.push((s.clone(), r));
                 }
                 Err(e) => rails.push(json!({"rail": s.net, "ground_return": true, "error": e})),
             }
         }
     }
-    let refs: Vec<&crate::pi::PiResult> = solved.iter().collect();
+    Ok(PowerRun { source, tree: tree_res, balance, setups, solved, rails, warnings, params })
+}
+
+/// Power: tree balance (PI_REG fields or a JSON tree), DC drop of every rail,
+/// optional PDN impedance of one rail.
+pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<&str>) -> Result<Value, String> {
+    power_from(p, &power_run(p, tree)?, pdn_rail)
+}
+
+pub fn power_from(p: &Project, run: &PowerRun, pdn_rail: Option<&str>) -> Result<Value, String> {
+    let (setups, tree_res) = (&run.setups, &run.tree);
+    let refs: Vec<&crate::pi::PiResult> = run.solved.iter().map(|x| &x.1).collect();
     let ls = crate::losses::loss_summary(&p.board, tree_res.as_ref(), &refs);
     let losses = json!({
         "total_w": ls.total_w, "components_w": ls.components_w, "copper_rails_w": ls.copper_w, "copper_ground_w": ls.ground_w,
@@ -725,7 +865,7 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
             });
             let r = crate::pdn::pdn(&p.board, &setup, &crate::pdn::PdnParams::default())?;
             let at = |f: f64| r.freq.iter().position(|&x| x >= f).map(|i| r.z[i]);
-            let per_ic = match crate::pdn_ic::pdn_ic(&p.board, &setup, &setups, &crate::pdn::PdnParams::default()) {
+            let per_ic = match crate::pdn_ic::pdn_ic(&p.board, &setup, setups, &crate::pdn::PdnParams::default()) {
                 Ok(ic) => pdn_ic_json(&ic),
                 Err(e) => json!({"error": e}),
             };
@@ -735,7 +875,98 @@ pub fn power(p: &Project, tree: Option<crate::tree::TreeSpec>, pdn_rail: Option<
         }
         None => None,
     };
-    Ok(json!({"tree_source": source, "balance": balance, "rails": rails, "losses": losses, "flow": flow, "pdn": pdn, "warnings": warnings}))
+    Ok(json!({"tree_source": run.source, "balance": run.balance, "rails": run.rails, "losses": losses, "flow": flow, "pdn": pdn, "warnings": run.warnings}))
+}
+
+/// Temperature estimate: the power analysis, the board's temperature from its losses
+/// (`thermal::solve`) and the IR drop of every rail at that temperature.
+pub fn thermal(p: &Project, tree: Option<crate::tree::TreeSpec>, prm: &crate::thermal::ThermalParams) -> Result<Value, String> {
+    thermal_from(p, &power_run(p, tree)?, prm)
+}
+
+pub fn thermal_from(p: &Project, run: &PowerRun, prm: &crate::thermal::ThermalParams) -> Result<Value, String> {
+    let refs: Vec<&crate::pi::PiResult> = run.solved.iter().map(|x| &x.1).collect();
+    let ls = crate::losses::loss_summary(&p.board, run.tree.as_ref(), &refs);
+    let mut th = crate::thermal::solve(&p.board, &refs, &ls.components, prm)?;
+    th.rails = run.solved.iter().map(|(s, r)| crate::thermal::rail_at_temperature(&p.board, s, r, &th, &run.params)).collect();
+    let mut warnings = run.warnings.clone();
+    warnings.extend(th.warnings.iter().cloned());
+    Ok(thermal_json(p, &th, prm, run.source, warnings))
+}
+
+/// The JSON of `kisi thermal` (temperatures in °C rounded to 0.01, powers to 0.1 mW).
+pub fn thermal_json(p: &Project, th: &crate::thermal::ThermalResult, prm: &crate::thermal::ThermalParams, tree_source: &str, warnings: Vec<String>) -> Value {
+    let su = p.board.stackup();
+    let lname = |l: u16| su.copper.get(l as usize).map(|c| c.name.clone()).unwrap_or_default();
+    let c2 = |x: f64| (x * 100.0).round() / 100.0 + 0.0;
+    let w4 = |x: f64| (x * 1e4).round() / 1e4 + 0.0;
+    let xy = |p: Option<crate::geom::P>| p.map(|p| json!([c2(p[0]), c2(p[1])]));
+    let opt = |x: Option<f64>| x.map(c2);
+    let co = &th.cooling;
+    let parts: Vec<Value> = th
+        .parts
+        .iter()
+        .take(30)
+        .map(|x| {
+            let mut v = json!({
+                "ref": x.refdes, "part": x.part, "heat_w": w4(x.w), "heat_source": x.w_source, "side": x.side,
+                "t_board_c": c2(x.t_board_c), "tj_c": c2(x.tj_c), "t_case_top_c": opt(x.t_case_c), "case_model": x.case_model, "tj_max_c": x.tj_max_c, "tj_max_source": x.tj_max_source, "margin_k": c2(x.margin_k), "status": x.status,
+                "model": x.model, "theta_jb": opt(x.theta_jb), "theta_jc": opt(x.theta_jc), "psi_jb": x.psi_jb, "psi_jt": x.psi_jt, "theta_ja": x.theta_ja,
+                "to_board_share": x.to_board.map(|s| (s * 1000.0).round() / 1000.0), "package_family": x.family, "data_source": x.data_source, "source_document": x.source_document, "estimate": x.estimate,
+            });
+            v["under_part"] = json!(x.vias.as_ref().map(|v| json!({"vias": v.count, "thermal_pad": v.thermal_pad, "into_board_w": w4(v.to_board_w), "through_vias_w": w4(v.via_w), "through_laminate_w": w4(v.laminate_w), "sideways_in_pad_layer_w": w4(v.lateral_w),
+                "dt_pad_layer_to_next_k": c2(v.dt_next_k), "dt_pad_layer_to_other_side_k": c2(v.dt_through_k), "hint": v.hint})));
+            v
+        })
+        .collect();
+    let vias = json!({
+        "total": th.vias_total,
+        "most_heat": th.vias.iter().take(20).map(|v| json!({"at": xy(Some(v.at)), "from": lname(v.from), "to": lname(v.to), "drill_mm": v.drill, "net": v.net, "plated_hole": v.hole,
+            "heat_w": (v.q_w * 1e6).round() / 1e6, "dt_k": c2(v.dt_k), "t_c": c2(v.t_c)})).collect::<Vec<_>>(),
+        "note": "heat_w: the largest heat flow through one layer step of the barrel (positive downwards), dt_k: temperature difference between its end layers; open barrels with 25 µm plating (estimate)",
+    });
+    let hottest = th.parts.iter().max_by(|a, b| a.tj_c.total_cmp(&b.tj_c));
+    json!({
+        "estimate": "Temperatures are estimates: steady state, board in air at the ambient temperature, heat only through convection and radiation; package data from PI_THERMAL or estimated package defaults (see parts[].data_source).",
+        "summary": {
+            "t_board_max_c": c2(th.t_max_c), "at": xy(th.t_max_at), "layer": lname(th.t_max_layer),
+            "hottest_part": hottest.map(|h| json!({"ref": h.refdes, "part": h.part, "tj_c": c2(h.tj_c), "tj_max_c": h.tj_max_c, "estimate": h.estimate})),
+            "parts_over_tj_max": th.parts.iter().filter(|x| x.status == "over").map(|x| x.refdes.clone()).collect::<Vec<_>>(),
+            "parts_within_10k_of_tj_max": th.parts.iter().filter(|x| x.status == "near").map(|x| x.refdes.clone()).collect::<Vec<_>>(),
+            "ir_drop_increase_max_mv": th.rails.iter().filter(|r| !r.ground).filter_map(|r| Some(r.drop_mv_hot? - r.drop_mv_20c?)).fold(None, |a: Option<f64>, x| Some(a.map_or(x, |a| a.max(x)))).map(|x| (x * 1e3).round() / 1e3),
+        },
+        "ambient_c": th.ambient_c,
+        "ambient_source": if prm.ambient_c.is_some() { "--ambient" } else { "default (assumption)" },
+        "cooling": {
+            "orientation": co.orientation, "airflow_m_s": co.airflow_m_s,
+            "h_top_w_m2k": c2(co.h_top), "h_bottom_w_m2k": c2(co.h_bottom), "h_convection_top": c2(co.h_conv_top), "h_convection_bottom": c2(co.h_conv_bottom), "h_radiation": c2(co.h_rad),
+            "mean_rise_k": c2(co.dt_mean_k),
+            "source": if co.estimated { "estimate: natural (or forced) convection from flat-plate correlations and linearised radiation (emissivity 0.9) at the board's mean temperature rise, data/thermal.json" } else { "--h (convection and radiation per side)" },
+        },
+        "heat_w": {"total": w4(th.parts_w + th.copper_w), "parts": w4(th.parts_w), "copper": w4(th.copper_w)},
+        "energy_balance": {"in_w": w4(th.balance.in_w), "convection_w": w4(th.balance.convection_w), "radiation_w": w4(th.balance.radiation_w), "error_rel": if th.balance.error_rel < 1e-6 { 0.0 } else { th.balance.error_rel }},
+        "board": {
+            "t_max_c": c2(th.t_max_c), "at": xy(th.t_max_at), "layer": lname(th.t_max_layer),
+            "per_layer": th.layers.iter().map(|l| json!({"layer": l.name, "t_max_c": c2(l.t_max_c), "t_mean_c": c2(l.t_mean_c)})).collect::<Vec<_>>(),
+        },
+        "hot_spots": th.hot_spots.iter().map(|h| json!({"t_c": c2(h.t_c), "layer": lname(h.layer), "at": xy(Some(h.at)), "near": h.near})).collect::<Vec<_>>(),
+        "parts": parts,
+        "parts_omitted": th.parts.len().saturating_sub(30),
+        "rails": th.rails.iter().map(|r| json!({
+            "rail": r.net, "ground_return": r.ground, "t_copper_max_c": opt(r.t_max_c), "copper_max_at": xy(r.max_at), "copper_max_layer": r.max_layer.map(lname), "t_copper_mean_c": opt(r.t_mean_c),
+            "max_drop_mv_20c": r.drop_mv_20c.map(|x| (x * 1e3).round() / 1e3), "max_drop_mv_at_temperature": r.drop_mv_hot.map(|x| (x * 1e3).round() / 1e3),
+            "copper_loss_mw_20c": (r.loss_w_20c * 1e4).round() / 10.0, "copper_loss_mw_at_temperature": r.loss_w_hot.map(|x| (x * 1e4).round() / 10.0), "error": r.error,
+        })).collect::<Vec<_>>(),
+        "vias": vias,
+        "parts_hints": th.parts.iter().filter_map(|x| x.vias.as_ref().and_then(|v| v.hint.as_ref()).map(|h| json!({"ref": x.refdes, "hint": h, "estimate": true}))).collect::<Vec<_>>(),
+        "grid": {"cell_mm": th.cell, "nodes": th.nodes, "layers": th.layers.len(), "board_area_mm2": th.area_mm2.round()},
+        "tree_source": tree_source,
+        "config": p.config_summary(),
+        "variant": p.variant.summary(),
+        "warnings": warnings,
+        "notes": th.notes,
+        "models": "Board: one sheet per copper layer on a uniform grid over the outline (copper fill of every net, laminate in plane and through the thickness, open via barrels), convection and radiation from both sides. Heat: copper loss of every rail and the ground return (DC solution at 20 °C), part heat from the power tree (load power V·I, regulator and pass losses) or PI_THERMAL p. Parts: JEDEC two-resistor model (θJB, θJC) or ψJB / θJA. Rails: copper temperature from the map; IR drop again with ρ(T) = ρ₂₀(1 + 0.00393/K·(T − 20 °C)) (one electro-thermal step). Case top: Tj − ψJT·P with ψJT from PI_THERMAL, else the case node of the two-resistor model (Tj − θJC·heat through the top). Vias: heat through each barrel from the temperatures of the layers it joins; under_part splits a part's heat into vias, laminate and sideways in the pad layer; hints (no via under a thermal pad, 5 K or more to the next layer, under 25 % through vias with over 50 % sideways) are kisi guide values, estimates.",
+    })
 }
 
 /// Summary of the PDN seen from every IC (`pdn_ic`): Z at decades, target, bands above it,
@@ -771,6 +1002,7 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
 
 pub fn report(p: &Project, profiles: &Profiles) -> Value {
     let rp = RfParams::default();
+    let run = power_run(p, None);
     json!({
         "tool": "kisi", "version": env!("CARGO_PKG_VERSION"),
         "variant": p.variant.summary(),
@@ -778,7 +1010,8 @@ pub fn report(p: &Project, profiles: &Profiles) -> Value {
         "overview": overview(p),
         "interfaces": interfaces(p, profiles, &HashMap::new()),
         "channels": channel_check(p, profiles, &HashMap::new(), None, &rp),
-        "power": power(p, None, None).unwrap_or_else(|e| json!({"error": e})),
+        "power": run.as_ref().map_err(|e| e.clone()).and_then(|r| power_from(p, r, None)).unwrap_or_else(|e| json!({"error": e})),
+        "thermal": run.as_ref().map_err(|e| e.clone()).and_then(|r| thermal_from(p, r, &crate::thermal::ThermalParams::default())).unwrap_or_else(|e| json!({"error": e})),
     })
 }
 
@@ -811,6 +1044,25 @@ mod tests {
 
     fn project() -> Project {
         Project::from_texts(Inputs { pcb_path: "capz.kicad_pcb".into(), pcb: PCB.into(), pro: Some(PRO.into()), config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap()
+    }
+
+    /// The check on several threads, and from rows computed elsewhere (Node CLI worker engines),
+    /// gives the same JSON as on one thread; rows that do not cover the check are refused.
+    #[test]
+    fn check_in_parts_is_the_same() {
+        let p = project();
+        let (pr, rp, a) = (Profiles::builtin(), RfParams::default(), HashMap::new());
+        let one = channel_check_with(&p, &pr, &a, None, &rp, 1).to_string();
+        assert_eq!(channel_check_with(&p, &pr, &a, None, &rp, 4).to_string(), one);
+        let n = channel_check_count(&p, &pr, &a, None);
+        assert!(n >= 1);
+        // rows from two "workers", through JSON text and back, in any order
+        let mut rows = channel_check_rows(&p, &pr, &a, None, &rp, &(0..n).filter(|i| i % 2 == 1).collect::<Vec<_>>());
+        rows.extend(channel_check_rows(&p, &pr, &a, None, &rp, &(0..n).filter(|i| i % 2 == 0).collect::<Vec<_>>()));
+        rows.reverse();
+        let rows: Vec<(usize, Value)> = serde_json::from_str(&serde_json::to_string(&rows).unwrap()).unwrap();
+        assert_eq!(channel_check_merge(&p, &pr, &a, None, &rp, rows.clone()).unwrap().to_string(), one);
+        assert!(channel_check_merge(&p, &pr, &a, None, &rp, rows[1..].to_vec()).is_err());
     }
 
     /// `check --all` judges the connector–connector lane (board share: impedance, loss, return

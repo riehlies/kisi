@@ -5,8 +5,9 @@ Usage: screenshots.py <kisi-examples.html> [--out docs/img] [--theme light|dark]
 
 Opens the viewer with the built-in ThunderScope board (Playwright + Chromium, 1440×900 saved as 1600×1000) and saves
 impedance.png (whole board coloured by deviation from the target), net.png (TDR of a net with vias),
-channel.png (interfaces after the check), flow.png (power flow) and power.png (voltage drop of the FPGA core rail,
-its impedance seen from the ICs).
+channel.png (interfaces after the check), flow.png (power flow), power.png (voltage drop of the FPGA core rail,
+its impedance seen from the ICs), temperature.png (temperature estimate, step 3) and parts.png (the power tree's
+components with their thermal columns).
 """
 import argparse, os
 from playwright.sync_api import sync_playwright
@@ -63,5 +64,19 @@ with sync_playwright() as p:
           if (c && p) p.scrollTop += c.getBoundingClientRect().top - p.getBoundingClientRect().top - 160; })()""")
         pg.wait_for_timeout(600)
     shot("power")
+    # temperature (step 3): the board's temperature map with the hottest parts and the panel with parts and rails
+    if pg.locator("#therm-run").count() and not pg.locator("#therm-run").is_disabled():
+        pg.click("#therm-run"); pg.wait_for_function(f"typeof thermOk === 'function' && thermOk() && {BUSY}", timeout=300000)
+        pg.click("#pim-t"); pg.wait_for_timeout(800)
+        shot("temperature")
+        # the power tree's components with their thermal columns (Tj, case, θ and where they come from)
+        pg.click("#pim-b"); pg.wait_for_timeout(600)
+        if pg.locator("[data-cm=t]").count():
+            pg.click("[data-cm=t]"); pg.wait_for_timeout(500)
+            # scroll the power view (#pi-balance) so that the power tree and the components card fill the screen
+            pg.evaluate("""(() => { const v = document.getElementById('pi-balance'), c = document.querySelector('.bal-comp');
+              if (v && c) v.scrollTop += c.getBoundingClientRect().top - v.getBoundingClientRect().top - 16; })()""")
+            pg.wait_for_timeout(400)
+            shot("parts")
     b.close()
 print("screenshots in", a.out)

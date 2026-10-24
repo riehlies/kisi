@@ -108,13 +108,12 @@ function drawPathMarks(px) {
     ctx.fillStyle = acc; ctx.strokeStyle = panel; ctx.lineWidth = 1.5 * px;
     ctx.beginPath(); ctx.moveTo(b.at[0], b.at[1] - s); ctx.lineTo(b.at[0] + s, b.at[1]); ctx.lineTo(b.at[0], b.at[1] + s); ctx.lineTo(b.at[0] - s, b.at[1]); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
-  for (const [e, letter] of [[p.start, "A"], [p.end, "B"]]) {
-    const r = 7 * px;
+  for (const e of [p.start, p.end]) {
     ctx.fillStyle = acc; ctx.strokeStyle = panel; ctx.lineWidth = 2 * px;
-    ctx.beginPath(); ctx.arc(e.at[0], e.at[1], r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = panel; ctx.font = `600 ${9 * px}px ${cs.getPropertyValue("--font-mono")}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(letter, e.at[0], e.at[1] + 0.5 * px);
+    ctx.beginPath(); ctx.arc(e.at[0], e.at[1], 7 * px, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   }
+  // the letters at a constant screen size (shared helper), centred in the markers
+  drawBoardLabels([{ x: p.start.at[0], y: p.start.at[1], text: "A" }, { x: p.end.at[0], y: p.end.at[1], text: "B" }], { size: 9, center: true, color: panel, halo: acc });
   if (S.pathCursor) {
     ctx.fillStyle = cs.getPropertyValue("--fg").trim(); ctx.strokeStyle = panel; ctx.lineWidth = 2 * px;
     ctx.beginPath(); ctx.arc(S.pathCursor.x, S.pathCursor.y, 4.5 * px, 0, Math.PI * 2); ctx.fill(); ctx.stroke();

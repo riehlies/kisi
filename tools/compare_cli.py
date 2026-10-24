@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """Compare the Node CLI (dist/kisi.mjs, formula mode) with the native kisi on the example boards.
 
-Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands check,gaps]
+Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands check,gaps,thermal]
 
 Runs every command on ThunderScope and LibreVNA with their configs (web/samples/{ts,vna}.kisi.json) and compares
 the JSON outputs. Numbers are compared after rounding to 6 significant digits; keys that differ by design
-(field solver status, config echo, timings) are ignored. Exit code 1 on any difference.
+(field solver status, config echo, timings) are ignored. `check` computes its rows in parallel (native: threads,
+Node: worker threads); each CLI's output must be byte-identical to a run on one thread (KISI_THREADS=1). The
+timings of both runs are printed (in GitHub Actions also as a notice in the run's summary).
+Exit code 1 on any difference.
 """
-import json, os, subprocess, sys
+import json, os, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOARDS = [("ts", "Thunderscope_Rev5.3"), ("vna", "VNA")]
@@ -49,18 +52,19 @@ def first_diff(a, b, path="$"):
     return None if a == b else f"{path}: {a!r} != {b!r}"
 
 
-def run(cmd):
-    r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+def run(cmd, threads=None, raw=False):
+    env = dict(os.environ, KISI_THREADS=str(threads)) if threads else None
+    r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, env=env)
     if r.returncode != 0:
         raise SystemExit(f"failed ({r.returncode}): {' '.join(cmd)}\n{r.stderr[-2000:]}")
-    return json.loads(r.stdout)
+    return r.stdout if raw else json.loads(r.stdout)
 
 
 def main():
     if len(sys.argv) < 4:
         raise SystemExit(__doc__)
     native, mjs, ex = sys.argv[1:4]
-    cmds = ["check", "gaps"]
+    cmds = ["check", "gaps", "thermal"]
     if "--commands" in sys.argv:
         cmds = sys.argv[sys.argv.index("--commands") + 1].split(",")
     bad = 0
@@ -68,11 +72,24 @@ def main():
         pcb = os.path.join(ex, stem + ".kicad_pcb")
         cfg = os.path.join(ROOT, "web", "samples", key + ".kisi.json")
         for c in cmds:
-            a = run([native, c, pcb, "--config", cfg] + ARGS.get(c, []))
-            b = run(["node", mjs, c, pcb, "--config", cfg, "--formula"] + ARGS.get(c, []))
-            d = first_diff(norm(a), norm(b))
+            na = [native, c, pcb, "--config", cfg] + ARGS.get(c, [])
+            nb = ["node", mjs, c, pcb, "--config", cfg, "--formula"] + ARGS.get(c, [])
+            t0 = time.time(); ta = run(na, raw=True); t1 = time.time(); tb = run(nb, raw=True); t2 = time.time()
+            secs = {"native": t1 - t0, "node": t2 - t1}
+            d = first_diff(norm(json.loads(ta)), norm(json.loads(tb)))
             print(f"{stem} {c}: {'identical' if d is None else 'DIFFERENT – ' + d}")
             bad += d is not None
+            if c == "check":
+                timing = []
+                for name, cmd, text in (("native", na, ta), ("node", nb, tb)):
+                    t0 = time.time(); same = run(cmd, threads=1, raw=True) == text; one = time.time() - t0
+                    print(f"{stem} {c} {name}: parallel {'byte-identical to one thread' if same else 'DIFFERENT from one thread'}")
+                    bad += not same
+                    timing.append(f"{name} {secs[name]:.1f} s parallel, {one:.1f} s on one thread")
+                msg = f"{stem} check --all ({os.cpu_count()} cores): " + "; ".join(timing)
+                print("timing:", msg)
+                if os.environ.get("GITHUB_ACTIONS"):
+                    print(f"::notice title=check timing::{msg}")
     sys.exit(1 if bad else 0)
 
 

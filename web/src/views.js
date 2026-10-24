@@ -27,13 +27,14 @@ $("view-si").onclick = () => setTab("si");
 $("view-ch").onclick = () => setTab("ch");
 $("view-pi").onclick = () => setTab("pi");
 function setPiMode(m) {
-  const toLoss = m === "l" && S.piMode !== "l";
+  const toMap = (m === "l" || m === "t") && S.piMode !== m;
   S.piMode = m; S.piImg = null;
-  if (toLoss) fitView(); // the loss map covers the whole board
-  for (const k of ["v", "j", "l", "b"]) $("pim-" + k).setAttribute("aria-pressed", String(k === m));
+  if (toMap) fitView(); // the loss and temperature maps cover the whole board
+  for (const k of ["v", "j", "l", "t", "b"]) $("pim-" + k).setAttribute("aria-pressed", String(k === m));
   renderPi();
 }
 $("pim-b").onclick = () => setPiMode("b");
 $("pim-v").onclick = () => setPiMode("v");
 $("pim-j").onclick = () => setPiMode("j");
 $("pim-l").onclick = () => setPiMode("l");
+$("pim-t").onclick = () => setPiMode("t");

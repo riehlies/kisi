@@ -10,11 +10,12 @@
 //! * `kisi-sparse` – sparse solver (shared with the field-solver WASM module)
 
 pub use kisi_board::{apply_project, board, geom, load_pcb, num, sexpr, view, Board};
-pub use kisi_pi::{cavity_modal, losses, pdn, pdn_ic, pi, tree};
-pub use kisi_si::{analytic, analyze, extract, eye, profile, rf, topology, via, via_cavity, via_pbm, xsgeom, Analysis, Params};
+pub use kisi_pi::{cavity_modal, field_syntax, losses, pdn, pdn_ic, pi, thermal, tree};
+pub use kisi_si::{analytic, analyze, extract, eye, lanenet, profile, rf, topology, via, via_cavity, via_pbm, xsgeom, Analysis, Params};
 
 pub mod commands;
 pub mod config;
 pub mod gaps;
+pub mod par;
 pub mod service;
 pub mod variant;

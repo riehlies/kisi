@@ -375,7 +375,27 @@ Remaining:
 - **The fit was made on the same single vias it is scored on.** The pairs and the board pipeline (kisi channel)
   were not used for the fit and improved as well.
 
-## 8. Board vias in 3D (Block 2)
+## 8. Network assembly (M2): exactness, and pairs as 4-ports in the channel check
+
+Not a new model of lines, vias or parts: the same elements assembled as a network of N-ports by modified nodal
+analysis (`kisi_si::rf::network`, `kisi_si::lanenet`), with the time-domain step from `rf::timedomain`.
+
+| Check (unit tests in `kisi-si`) | Result |
+|---|---|
+| a cascade of lines, series and shunt parts as one chain per element | equal to the ABCD cascade, 1e-11 relative |
+| an open branch as a chain to its own node; a branch loaded at its end | equal to the shunt C/A, (C + D·Y)/(A + B·Y) |
+| a coupled pair as one 4-port chain; two lines as a 4-port; an S block | equal to `rf::mixed::s_of`, two 2-ports, the chain |
+| a single line between the ends through the network | equal to `eye::transfer` to 1e-10, DC point as well |
+| a receiver on a side stub (multi-drop) | equal to the cascade with the loaded stub, voltage at the tap |
+| a symmetric pair lane (`pair_lane_as_four_port`) | Sdd21 = odd-mode S21 (0.000 dB), the same eye; with a 2 mm jog Scd21 −6.5 dB |
+
+On the ThunderScope PCIe lanes, P aligned with itself gives P's odd-mode S21 exactly; P and N of a lane differ
+(PET2 at 8 GHz: P −3.79 dB, N −2.97 dB in the odd mode), so the 4-port gives −3.12 dB. The 3D pair references
+(T_ts6_diff_ms/sl, group E) are symmetric pairs, where the 4-port and the odd mode agree; their comparisons in
+sections 3, 5 and 7 used the net's 4-port (`rf::mixed`), which is unchanged. **Open:** a 3D reference of an
+asymmetric pair (a jog, a stub on one line) to check the mode conversion.
+
+## 9. Board vias in 3D (Block 2)
 
 Full report: **`BOARD_VIAS.md`**; `board_vias.py` reproduces everything (cases `board_cases/`, results
 `../via_ref/BV_*`, `results/board_vias*.json`).
@@ -410,7 +430,7 @@ Full report: **`BOARD_VIAS.md`**; `board_vias.py` reproduces everything (cases `
   too capacitive on M.2 and LibreVNA); series inductance 105–241 pH too high (26–127 pH without the signal-layer
   pours); the REFINOUT2 notch at 30 GHz (likely its return-via cage) is missing.
 
-## 9. Plane resonances of finite boards (Block 3)
+## 10. Plane resonances of finite boards (Block 3)
 
 Full report: **`BOARD_RESONANCES.md`**; `board_resonances.py` reproduces everything (cases `resonance_cases/`,
 results `../via_ref/R_*`, `../via_ref/BV_vna_clk_w5`, `results/board_resonances*.json`, plots
@@ -444,7 +464,7 @@ results `../via_ref/R_*`, `../via_ref/BV_vna_clk_w5`, `results/board_resonances*
   With the option the Block 1 references get worse (their planes are infinite in 3D, the KiCad stand-in board
   ends at the window).
 
-## 10. Return groups per plane pair (Block 4)
+## 11. Return groups per plane pair (Block 4)
 
 Full report: **`BOARD_RETURNS.md`**; `board_returns.py` reproduces everything (cases `return_cases/`,
 results `../via_ref/RG_*`, `../via_ref/BV_ts_m2_per0_q050f25s_e35_in2gnd`, `results/board_returns*.json`,

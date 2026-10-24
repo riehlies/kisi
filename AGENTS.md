@@ -46,10 +46,11 @@ Locally, before pushing a branch, run the quick checks for what you changed:
   `validation/fdtd/results/kisi_models.json` with the change, so the review shows what moved.
 
 CI (`.github/workflows/ci.yml`) runs the checks that a branch's changes since main can affect
-(`tools/ci_checks.py changes`; a ROADMAP edit runs only the Markdown checks and the docs PDF); a push to main, a manual run and the
-weekly run do everything, including the viewer in Firefox/WebKit and `kisi.mjs` on Windows. Before merging a branch
-into main, run everything on it: `gh workflow run ci --ref <branch>` (or Actions → ci → Run workflow). Hand a branch
-over for review only with a green CI run of its last commit; `main` changes only with green CI.
+(`tools/ci_checks.py changes`; a ROADMAP edit runs only the Markdown checks and the docs PDF); a push to main, a
+manual run and the weekly run do everything, including the viewer in Firefox/WebKit and `kisi.mjs` on Windows.
+Before merging a branch into main, run everything on it: `gh workflow run ci --ref <branch>` (or Actions → ci → Run
+workflow). Hand a branch over for review only with a green CI run of its last commit; `main` changes only with
+green CI.
 
 ## Rules
 * One verdict logic (`kisi_si::profile::judge`) for viewer and CLI – do not duplicate it; CLI commands live

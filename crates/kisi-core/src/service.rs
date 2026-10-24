@@ -753,9 +753,12 @@ fn register_cavities(rp: &RfParams, pass: impl FnOnce(&RfParams)) {
         return;
     }
     crate::via_cavity::set_register_only(true);
+    // (no clock in WebAssembly: `Instant::now` traps there)
+    #[cfg(not(target_arch = "wasm32"))]
     let t = std::time::Instant::now();
     // the via models do not depend on the frequencies: a few are enough to build them all
     pass(&RfParams { npts: 8, ..rp.clone() });
+    #[cfg(not(target_arch = "wasm32"))]
     if std::env::var("KISI_CAVITY_STATS").is_ok() {
         eprintln!("cavity registering pass {:.2} s", t.elapsed().as_secs_f64());
     }

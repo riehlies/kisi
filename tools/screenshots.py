@@ -43,7 +43,8 @@ with sync_playwright() as p:
         def commit(sel, v):
             pg.fill(sel, v); pg.dispatch_event(sel, "change"); tick()
         pg.evaluate("""async () => { for (const k of Object.keys(localStorage)) if (k.startsWith('kisi.prep.v1.')) localStorage.removeItem(k);
-          S.prep.mem = {}; const s = SAMPLES.ts; const [a, c] = await Promise.all([gunzipB64(s.pcb), gunzipB64(s.pro)]); await loadFiles(a, c, s.file || s.name, null, null); }""")
+          S.prep.mem = {}; S.sample = null; for (const k of ['ts', 'vna']) document.getElementById('sample-' + k).setAttribute('aria-pressed', 'false');
+          const s = SAMPLES.ts; const [a, c] = await Promise.all([gunzipB64(s.pcb), gunzipB64(s.pro)]); await loadFiles(a, c, s.file || s.name, null, null); }""")
         pg.wait_for_function(f"S.scene && {BUSY} && S.prep.base", timeout=120000); idle()
         pg.click("#prep-btn"); pg.click('#prep-tabs [data-prep-tab="impedance"]'); pg.wait_for_timeout(300)
         g = 'article[data-gap="nets-without-target"]'

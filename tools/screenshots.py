@@ -35,15 +35,20 @@ with sync_playwright() as p:
     shot = lambda name: (not only or name in only) and pg.screenshot(path=os.path.join(a.out, name + ".png"))
 
     def prepare():
-        # the Prepare PCB page on the Impedance tab: the QSPI nets being dismissed, the laminate entered with its
-        # source in the form below the gaps
+        # the Prepare PCB checklist on the Impedance tab: the QSPI nets dismissed (applied, marked), the laminate
+        # step open with a value and its source
         pg.wait_for_function("S.prep.base", timeout=90000)
         pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; S.prep.d = null; }")
         pg.click("#prep-btn"); pg.click('#prep-tabs [data-prep-tab="impedance"]'); pg.wait_for_timeout(300)
         g = "nets-without-target"
         if pg.locator(f'[data-b="dismiss"][data-g="{g}"]').count():
-            pg.click(f'[data-b="dismiss"][data-g="{g}"]'); pg.click(f'[data-b="dis-all"][data-g="{g}"]')
+            pg.click(f'[data-b="dismiss"][data-g="{g}"]')
+        if pg.locator(f'[data-b="dis-all"][data-g="{g}"]').count():
+            pg.click(f'[data-b="dis-all"][data-g="{g}"]')
             pg.fill(f'[data-a="dis-reason"][data-g="{g}"]', "QSPI configuration flash at 50 MHz, short lines – no impedance control needed")
+            pg.dispatch_event(f'[data-a="dis-reason"][data-g="{g}"]', "change"); pg.wait_for_timeout(50)
+            pg.click(f'article[data-gap="{g}"] [data-b="apply"]')
+            pg.wait_for_timeout(1200); pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=90000)
         sel = 'article[data-gap="stackup-defaults"]'
         if pg.locator(sel).count():
             if pg.get_attribute(sel, "aria-expanded") != "true":

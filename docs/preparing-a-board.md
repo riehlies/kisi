@@ -95,15 +95,27 @@ The syntax of every field and kisi.json key: [Field and kisi.json reference](ref
   and writes the kisi.json; you review the result.
 
 ### In the viewer: Prepare PCB
-![The Prepare PCB page on the Impedance tab: the laminate being entered with its source](img/prepare.png)
+![The Prepare PCB checklist on the Impedance tab: the QSPI nets dismissed, the laminate step done – ready for the impedance check](img/prepare.png)
 
-"Prepare PCB" in the top bar (between the example boards and "Load files") opens the gap list of the board – with
-its kisi.json, if one is loaded – in three tabs: Impedance, Channel and Power (with the temperature). The badge
-counts the open high and medium gaps; the dots on the view buttons show each category's state (green ready,
-orange or red open, grey nothing to check). A tab lists its gaps by priority with *where to find it* and a form
-for the simple values; where a gap mixes categories, a tab shows only the items that matter for it (a dielectric
-with only a default tanδ is a Channel item). Below the gaps, **In `<board>`.kisi.json** holds everything the
-category uses, loaded and entered, as editable tables:
+"Prepare PCB" in the top bar (between the example boards and "Load files") opens what the board file lacks – with
+its kisi.json, if one is loaded – as a **checklist** in three tabs: Impedance, Channel and Power (with the
+temperature). The badge counts the open points. In the analysis views, the **Preparation** card at the top of the
+side panel shows the same per category (open points, or a check mark), names the assembly variant as a step when it
+still has to be chosen (the Assembly variant card is right below it), and opens Prepare PCB at the current view's
+tab.
+
+Each gap is a step, ordered by priority, with a marker: a red or amber number while it is open (high or medium
+priority; low-priority steps are optional refinements), a green check mark when it is done, an arrow when it is
+with the agent, a dash when it is dismissed. An open step says in one line what it needs ("Enter the current per
+rail for 7 ICs, with a source") and shows only those inputs; *more* holds where to find the values, where they go
+and optional fields. **Apply** runs the gap list through the core at once: the step gets its check mark when kisi no
+longer reports it (or reports only dismissed items), and the next open step opens; otherwise the step stays open
+and says what is still missing ("6 of 7 ICs still missing: …"), with the check's errors for its entries. "hand to
+the agent" settles a step for now and adds it to the agent card's prompt. The tab shows its progress ("1 of 2
+required steps done") and ends with "Ready for the impedance check" (or the channel check, the power analysis) and
+a button to that view; the last step is saving the kisi.json. Where a gap mixes categories, a tab shows only the
+items that matter for it (a dielectric with only a default tanδ is a Channel item). Below the checklist,
+**In `<board>`.kisi.json** holds everything the category uses, loaded and entered, as editable tables:
 
 | Tab | Forms |
 |---|---|

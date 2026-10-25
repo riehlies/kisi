@@ -43,7 +43,8 @@ const PREP_KV = { PI_SERIES: ["z100", "rdc"], PI_THERMAL: ["theta_jb", "theta_jc
 const PREP_DIEL = /^(X5R|X7R|X6S|X7S|X8R|X7T|X6T|Y5V|Z5U|C0G|NP0|COG|NPO|POLYMER|TANTALUM)$/i;
 const PREP_KEY = (name) => "kisi.prep.v1." + (name ?? S.name);
 
-S.prep = { open: false, tab: "impedance", scope: "all", cards: {}, dismissing: null, busy: false, note: "", saved: "", base: null, cur: null, check: null, d: null, mem: {}, pend: {}, takeNote: "" };
+S.prep = { open: false, tab: "impedance", scope: "all", cards: {}, dismissing: null, busy: false, note: "", saved: "", base: null, cur: null, check: null, d: null, mem: {}, pend: {}, takeNote: "",
+  opt: {}, applied: {}, started: {}, moreOpen: {}, applying: null, scrollTo: null };
 
 const prepBoardFile = () => String(S.name).replace(/\.kicad_pcb$/i, "") + ".kicad_pcb";
 const prepClone = (o) => JSON.parse(JSON.stringify(o));
@@ -358,7 +359,7 @@ function prepUpdate(now) {
     const seq = ++prepSeq, name = S.name;
     S.prep.busy = true; S.prep.inflight = true; S.prep.again = false; prepRenderStatus();
     const done = () => { S.prep.inflight = false; if (S.prep.again && name === S.name) { S.prep.again = false; run(); } };
-    prepGaps(prepConfigText()).then((g) => { done(); if (seq === prepSeq && name === S.name && !S.prep.inflight) { S.prep.cur = g; S.prep.busy = false; prepRender(true); } })
+    prepGaps(prepConfigText()).then((g) => { done(); if (seq === prepSeq && name === S.name && !S.prep.inflight) { S.prep.cur = g; S.prep.busy = false; prepAfterApply(); prepRender(true); } })
       .catch((e) => { console.warn(e); done(); if (!S.prep.inflight) { S.prep.busy = false; prepRender(true); } });
   };
   if (now) run(); else { S.prep.queued = true; prepTimer = setTimeout(() => { S.prep.queued = false; run(); }, 700); }
@@ -392,37 +393,75 @@ function prepGapState(g, tab) {
   return { cls: "", text: all ? `${all} item${all === 1 ? "" : "s"}` : "open" };
 }
 const prepAgentOf = (g) => PREP_MODE[g.id] === "agent" || !!prepD().agent[g.id];
-function prepDot(v) {
-  const x = prepViewsNow() && prepViewsNow()[v];
-  if (!x) return "";
-  return x.state === "nothing to check" ? "na" : x.state === "ready" ? "ok" : x.high ? "h" : "m";
+// the steps of a tab: the gaps of the loaded file, then gaps the draft brought up (a power tree brings the
+// efficiency and thermal gaps), by priority, otherwise in the core's order
+function prepSteps(tab) {
+  const base = (S.prep.base || { gaps: [] }).gaps, extra = prepGapsNow().filter((g) => !base.some((x) => x.id === g.id));
+  return base.concat(extra).filter((g) => g.views.includes(tab) && prepItems(g, tab).length + (g.items.length ? 0 : 1) > 0)
+    .map((g, i) => [g, i]).sort((a, b) => PRIO_RANK[a[0].priority] - PRIO_RANK[b[0].priority] || a[1] - b[1]).map((x) => x[0]);
 }
-// open high/medium gaps of a category that are not with the agent
-function prepOpenHere(v) { return prepGapsNow().filter((g) => g.priority !== "low" && g.views.includes(v) && !prepAgentOf(g)); }
+// a step: open, done (the core no longer reports it for this tab), dismissed, or with the agent
+function prepStepState(g, tab) {
+  const st = prepGapState(g, tab);
+  if (st.cls === "done") return { k: "done", text: "done" };
+  if (st.cls === "dis") return { k: "dis", text: "dismissed" };
+  if (prepAgentOf(g)) return { k: "agent", text: "with the agent" };
+  return { k: "open", text: st.text };
+}
+const prepRequired = (g) => g.priority !== "low";
+// per tab: required steps (high, medium) done / with the agent / open, and the optional ones
+function prepProgress(tab) {
+  const x = prepViewsNow() && prepViewsNow()[tab];
+  const steps = prepSteps(tab), req = steps.filter(prepRequired);
+  const ks = req.map((g) => prepStepState(g, tab).k);
+  return { na: !!x && !x.applicable, ready: !!x && x.state === "ready", req: req.length, done: ks.filter((k) => k === "done" || k === "dis").length,
+    agent: ks.filter((k) => k === "agent").length, open: ks.filter((k) => k === "open").length, opt: steps.length - req.length, known: !!x };
+}
 function prepStateText(v) {
-  const x = prepViewsNow() && prepViewsNow()[v];
-  if (!x) return "…";
-  if (x.state !== "open") return x.state + (x.state === "ready" && x.low ? ` · ${x.low} refinement${x.low > 1 ? "s" : ""}` : "");
-  const agent = !prepOpenHere(v).length;
-  return `${x.high + x.medium} open${x.high ? ` (${x.high} high)` : ""}${agent ? " – all with the agent" : ""}${x.low ? ` · ${x.low} low` : ""}`;
+  const p = prepProgress(v);
+  if (!p.known) return "…";
+  if (p.na) return "nothing to check";
+  if (!p.req) return "ready";
+  return `${p.done} of ${p.req} done${p.agent ? ` · ${p.agent} with the agent` : ""}`;
 }
-// the badge: open high and medium gaps of the categories with something to check
+// the marker of a category: a check mark when nothing required is open (the agent's items aside)
+function prepMark(v) {
+  const p = prepProgress(v);
+  if (!p.known) return { cls: "", t: "…" };
+  if (p.na) return { cls: "na", t: "–" };
+  if (!p.open) return { cls: p.agent ? "agent" : "done", t: p.agent ? "↗" : "✓" };
+  const hi = prepSteps(v).some((g) => g.priority === "high" && prepStepState(g, v).k === "open");
+  return { cls: "open " + (hi ? "h" : "m"), t: String(p.open) };
+}
+// the badge and the status card: open required steps of the categories with something to check
 function prepCount() {
-  const v = prepViewsNow();
-  if (!v) return null;
-  const ok = Object.keys(PREP_VIEWS).filter((k) => v[k] && v[k].applicable);
-  return prepGapsNow().filter((g) => g.priority !== "low" && g.views.some((x) => ok.includes(x))).length;
+  if (!prepViewsNow()) return null;
+  const ids = new Set();
+  for (const v of Object.keys(PREP_VIEWS)) { const p = prepProgress(v); if (!p.na) for (const g of prepSteps(v)) if (prepRequired(g) && prepStepState(g, v).k === "open") ids.add(g.id); }
+  return ids.size;
 }
 function prepRenderStatus() {
-  for (const [t, v] of Object.entries(PREP_OF_TAB)) {
-    const el = $("dot-" + t), c = prepDot(v);
-    if (!el) continue;
-    el.className = "dot " + c; el.hidden = !c;
-    $("view-" + t).title = c ? `${PREP_VIEWS[v]}: ${prepStateText(v)} (Prepare PCB)` : "";
-  }
+  for (const [t, v] of Object.entries(PREP_OF_TAB)) $("view-" + t).title = prepViewsNow() ? `${PREP_VIEWS[v]}: ${prepStateText(v)} (Prepare PCB)` : "";
   const n = prepCount(), b = $("prep-count");
-  if (b) { b.hidden = n == null; b.textContent = n ?? ""; const v = prepViewsNow() || {}; b.className = "count " + (Object.values(v).some((x) => x.applicable && x.high) ? "h" : n ? "m" : "z"); }
+  if (b) { b.hidden = n == null; b.textContent = n ?? ""; const hi = Object.keys(PREP_VIEWS).some((v) => prepMark(v).cls === "open h"); b.className = "count " + (hi ? "h" : n ? "m" : "z"); }
   const st = $("prep-busy"); if (st) st.hidden = !S.prep.busy;
+  prepRenderStatusCard();
+}
+// the "Preparation" card at the top of the views' side panel (above the assembly variant)
+function prepRenderStatusCard() {
+  const card = $("prep-status");
+  if (!card) return;
+  card.hidden = !S.scene || !prepViewsNow();
+  if (card.hidden) return;
+  const cur = PREP_OF_TAB[S.tab] || "impedance", order = [cur, ...Object.keys(PREP_VIEWS).filter((v) => v !== cur)];
+  const n = prepCount(), applicable = order.filter((v) => !prepProgress(v).na);
+  const agent = applicable.reduce((s, v) => s + prepProgress(v).agent, 0);
+  $("prep-status-sum").textContent = n ? `${n} open point${n === 1 ? "" : "s"}` : applicable.length ? (agent ? "prepared – rest with the agent" : "board prepared") : "nothing to check";
+  const vg = prepGapsNow().find((g) => g.id === "assembly-variant");
+  const vstep = vg && !prepAgentOf(vg) ? `<div class="prep-st-step"><span class="mk open h">!</span><span><b>Assembly variant</b> – ${S.variant && S.variant.variants && S.variant.variants.length ? "choose one in the card below" : "define the variants (Prepare PCB → Channel) or choose “as in the board file” below"}; lanes are computed once it is chosen.</span></div>` : "";
+  $("prep-status-body").innerHTML = `<ul class="prep-st-list">${order.map((v) => { const m = prepMark(v); return `<li class="${v === cur ? "cur" : ""}"><span class="mk ${m.cls}">${m.t}</span><b>${PREP_VIEWS[v]}</b><span>${esc(prepStateText(v))}</span></li>`; }).join("")}</ul>${vstep}
+    <div class="fs-row"><span class="note">${n ? "What the board file lacks for the analyses – work through the list step by step." : "Every category with something to check has what it needs."}</span><button class="btn small ${n ? "primary" : ""}" id="prep-status-open" data-tab="${cur}">Prepare PCB – ${PREP_VIEWS[cur]}</button></div>`;
+  $("prep-status-open").onclick = () => { S.prep.tab = cur; S.prep.touched = true; prepOpen(true); };
 }
 
 // ---- form pieces
@@ -454,17 +493,17 @@ function prepStackTable(idx, flagged, key) {
     const a = (k) => `data-a="diel" data-i="${i}" data-k="${k}"`;
     const between = `${(st.copper[i] || {}).name || "?"} / ${(st.copper[i + 1] || {}).name || "?"}`;
     return `<tr class="${why.length ? "flag" : ""}"><td class="m" data-l="index">${i}</td>${prepTd("between", `${esc(between)}<span class="sub">${esc(d.kind || "")}${why.length ? ` · ${esc(why.join(", "))}` : ""}</span>`)}
-      ${prepTd("material", prepIn(a("material"), e.material, d.material || ""))}
+      ${prepTd("material", prepIn(a("material"), e.material, d.material || ""), "opt")}
       ${prepTd("εr", prepIn(a("epsilon_r"), e.epsilon_r, fmtSig(d.epsilon_r, 3), "num"))}
       ${prepTd("tanδ", prepIn(a("loss_tangent"), e.loss_tangent, fmtSig(d.loss_tangent, 3), "num"))}
-      ${prepTd("thickness mm", prepIn(a("thickness"), e.thickness, fmtSig(d.thickness, 3), "num"))}
+      ${prepTd("thickness mm", prepIn(a("thickness"), e.thickness, fmtSig(d.thickness, 3), "num"), "opt")}
       ${prepTd("source", prepSrcCell(`diel:${i}`, prepDiel(i, false)))}</tr>`;
   });
   if (!flagged) {
     const m = (w.stackup && w.stackup.solder_mask) || {};
-    rows.push(`<tr><td class="m" data-l="index">mask</td>${prepTd("between", `solder mask<span class="sub">both sides</span>`)}<td></td>${prepTd("εr", prepIn(`data-a="mask" data-k="epsilon_r"`, m.epsilon_r, "3.8", "num"))}<td></td><td></td>${prepTd("source", prepSrcCell("mask", w.stackup && w.stackup.solder_mask))}</tr>`);
+    rows.push(`<tr><td class="m" data-l="index">mask</td>${prepTd("between", `solder mask<span class="sub">both sides</span>`)}<td class="opt"></td>${prepTd("εr", prepIn(`data-a="mask" data-k="epsilon_r"`, m.epsilon_r, "3.8", "num"))}<td></td><td class="opt"></td>${prepTd("source", prepSrcCell("mask", w.stackup && w.stackup.solder_mask))}</tr>`);
   }
-  return `<table class="prep-ed"><thead><tr><th>#</th><th>Between</th><th>Material</th><th>εr</th><th>tanδ</th><th>Thickness mm</th><th>Source</th></tr></thead><tbody>${rows.join("")}</tbody></table>${prepSharedBlock(key || "stackup", "Source for the laminate values you enter (datasheet, fabricator's stackup)")}`;
+  return `<table class="prep-ed"><thead><tr><th>#</th><th>Between</th><th class="opt">Material</th><th>εr</th><th>tanδ</th><th class="opt">Thickness mm</th><th>Source</th></tr></thead><tbody>${rows.join("")}</tbody></table>${prepSharedBlock(key || "stackup", "Source for the laminate values you enter (datasheet, fabricator's stackup)")}`;
 }
 // net classes: targets (impedance) or profiles (channel)
 function prepClassTable(names, tab, hint) {
@@ -527,11 +566,11 @@ function prepCapsEditor(g, tab) {
     return `<tr>${prepTd("parts", `${esc(x.mpn || x.value)}<span class="sub">${refs.length} × ${esc(x.value)}${x.package ? " " + esc(x.package) : ""} · ${esc(rails)}</span><details class="prep-refs"><summary>${esc(refs.slice(0, 4).join(" "))}${refs.length > 4 ? " …" : ""}</summary>${esc(refs.join(" "))}</details>`, "m")}
       ${prepTd("rated V", prepIn(a("rated"), prepKVGet(v, "rated"), "6.3V", "num"))}
       ${prepTd("dielectric", `<select ${a("diel")}><option value=""></option>${["X5R", "X7R", "X6S", "X7S", "X8R", "C0G", "Y5V", "POLYMER", "TANTALUM"].map((d) => `<option ${prepCapDiel(v).toUpperCase() === d ? "selected" : ""}>${d}</option>`).join("")}</select>`)}
-      ${prepTd("ESR Ω", prepIn(a("esr"), prepKVGet(v, "esr"), "5m", "num"))}${prepTd("ESL H", prepIn(a("esl"), prepKVGet(v, "esl"), "0.45n", "num"))}
+      ${prepTd("ESR Ω", prepIn(a("esr"), prepKVGet(v, "esr"), "5m", "num"), "opt")}${prepTd("ESL H", prepIn(a("esl"), prepKVGet(v, "esl"), "0.45n", "num"), "opt")}
       ${prepTd("from the parts' fields", sugg || `<span class="note">–</span>`)}</tr>`;
   });
   return `<p class="note">One row per part number (or value and package): the values go as PI_CAP on every capacitor of the group. A suggestion comes from the parts' own fields (Voltage Rating, Dielectric) – kind <code>design</code>.</p>
-    <table class="prep-ed"><thead><tr><th>Parts</th><th>Rated V</th><th>Dielectric</th><th>ESR</th><th>ESL</th><th>Suggested</th></tr></thead><tbody>${rows.join("")}</tbody></table>${prepSharedBlock("PI_CAP", "Source for the capacitor values (datasheet, vendor DC-bias curve, the BOM)")}`;
+    <table class="prep-ed"><thead><tr><th>Parts</th><th>Rated V</th><th>Dielectric</th><th class="opt">ESR</th><th class="opt">ESL</th><th>Suggested</th></tr></thead><tbody>${rows.join("")}</tbody></table>${prepSharedBlock("PI_CAP", "Source for the capacitor values (datasheet, vendor DC-bias curve, the BOM)")}`;
 }
 // connectors where lanes leave the board (and those in the draft)
 function prepConnectorRefs() {
@@ -611,10 +650,10 @@ function prepEditor(g, gs, tab) {
       const f = prepFld(it.ref, "PI_LOAD"), v = f ? f.value : "", basis = f && f.source && /\bmaximum\b/.test(f.source.note || "") ? "maximum" : f && f.source && /\btypical\b/.test(f.source.note || "") ? "typical" : "";
       return `<tr>${prepTd("IC", `${esc(it.ref)}<span class="sub">${esc(it.mpn ? `${it.mpn} (${it.manufacturer || it.value})` : it.value || "")}</span>`, "m")}
         ${prepTd("current per rail", (it.rails || []).map((r) => `<div class="prep-rail"><span class="m">${esc(netShort(r))}</span><input class="num" data-a="load" data-r="${esc(it.ref)}" data-rail="${esc(r)}" value="${esc(prepLoadGet(v, r))}" placeholder="mA"></div>`).join(""))}
-        ${prepTd("basis", `<select data-a="load" data-r="${esc(it.ref)}" data-k="basis"><option value="">–</option><option ${basis === "typical" ? "selected" : ""}>typical</option><option ${basis === "maximum" ? "selected" : ""}>maximum</option></select>`)}
+        ${prepTd("basis", `<select data-a="load" data-r="${esc(it.ref)}" data-k="basis"><option value="">–</option><option ${basis === "typical" ? "selected" : ""}>typical</option><option ${basis === "maximum" ? "selected" : ""}>maximum</option></select>`, "opt")}
         ${prepTd("source", prepSrcCell(`fld:${it.ref}|PI_LOAD`, f))}</tr>`;
     }).join("");
-    return `<table class="prep-ed"><thead><tr><th>IC</th><th>Current per rail</th><th>Basis</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>${prepSharedBlock("PI_LOAD", "Source for the load currents")}`;
+    return `<table class="prep-ed"><thead><tr><th>IC</th><th>Current per rail</th><th class="opt">Basis</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>${prepSharedBlock("PI_LOAD", "Source for the load currents")}`;
   }
   if (mode === "series" || mode === "thermal") {
     const name = mode === "series" ? "PI_SERIES" : "PI_THERMAL", keys = PREP_KV[name];
@@ -622,10 +661,10 @@ function prepEditor(g, gs, tab) {
     const rows = items.map((it) => {
       const f = prepFld(it.ref, name), v = f ? f.value : "", z = (String(it.value).match(/^(\d+)R/) || [])[1] || "";
       return `<tr>${prepTd(mode === "series" ? "bead" : "part", `${esc(it.ref)}<span class="sub">${esc(it.mpn || it.value || "")}${it.rail ? " · " + esc(netShort(it.rail)) : ""}${it.heat_w ? " · " + fmtSI(it.heat_w, "W") : ""}</span>`, "m")}
-        ${keys.map((k, i) => prepTd(heads[i], prepIn(`data-a="kv" data-r="${esc(it.ref)}" data-n="${name}" data-k="${k}"`, prepKVGet(v, k), k === "z100" ? z || "220" : k === "rdc" ? "0.1" : k === "tj_max" ? "125" : "", "num"))).join("")}
+        ${keys.map((k, i) => prepTd(heads[i], prepIn(`data-a="kv" data-r="${esc(it.ref)}" data-n="${name}" data-k="${k}"`, prepKVGet(v, k), k === "z100" ? z || "220" : k === "rdc" ? "0.1" : k === "tj_max" ? "125" : "", "num"), ["psi_jt", "tj_max"].includes(k) ? "opt" : "")).join("")}
         ${prepTd("source", prepSrcCell(`fld:${it.ref}|${name}`, f))}</tr>`;
     }).join("");
-    return `<table class="prep-ed"><thead><tr><th>${mode === "series" ? "Bead" : "Part"}</th>${heads.map((h) => `<th>${h}</th>`).join("")}<th>Source</th></tr></thead><tbody>${rows}</tbody></table>${prepSharedBlock(name, mode === "series" ? "Source for the bead data" : "Source for the thermal data (the parts' Thermal Information tables)")}`;
+    return `<table class="prep-ed"><thead><tr><th>${mode === "series" ? "Bead" : "Part"}</th>${heads.map((h, i) => `<th${["psi_jt", "tj_max"].includes(keys[i]) ? ' class="opt"' : ""}>${h}</th>`).join("")}<th>Source</th></tr></thead><tbody>${rows}</tbody></table>${prepSharedBlock(name, mode === "series" ? "Source for the bead data" : "Source for the thermal data (the parts' Thermal Information tables)")}`;
   }
   if (mode === "caps") return prepCapsEditor(g, tab);
   if (mode === "kicad") {
@@ -652,30 +691,146 @@ function prepDismissBlock(g) {
   const x = prepDis(g.id, false) || { items: [], reason: "" };
   const all = [...new Set([...prepDismissable(g), ...x.items])];
   if (!all.length) return "";
-  if (S.prep.dismissing !== g.id && !x.items.length) return `<div class="prep-row"><button class="btn small" data-b="dismiss" data-g="${g.id}">Dismiss…</button><span class="note">${all.length} item${all.length > 1 ? "s" : ""} found only by ${g.id === "nets-without-target" ? "their net names" : "their names"} – dismiss what is not ${g.id === "nets-without-target" ? "an interface" : "a supply"}.</span></div>`;
+  // where dismissing is the only way to close the step here (a fix otherwise belongs in KiCad), the form is open
+  if (S.prep.dismissing !== g.id && !x.items.length && PREP_MODE[g.id] !== "kicad") return `<div class="prep-row"><button class="btn small" data-b="dismiss" data-g="${g.id}">Dismiss…</button><span class="note">${all.length} item${all.length > 1 ? "s" : ""} found only by ${g.id === "nets-without-target" ? "their net names" : "their names"} – dismiss what is not ${g.id === "nets-without-target" ? "an interface" : "a supply"}.</span></div>`;
   return `<div class="prep-dismiss"><b>Dismiss – stored in <code>${esc(S.name)}.kisi.json</code> → <code>gaps.dismissed</code> with your reason; <code>kisi gaps</code>, the CLI and agents skip these items</b>
     <div class="prep-row">${all.map((n) => `<label class="prep-chk"><input type="checkbox" data-a="dis-item" data-item="${esc(n)}" data-g="${g.id}" ${x.items.includes(n) ? "checked" : ""}> <code>${esc(netShort(n))}</code></label>`).join("")}</div>
     <input data-a="dis-reason" data-g="${g.id}" value="${esc(x.reason || "")}" placeholder="reason (required), e.g. QSPI flash at 50 MHz – no impedance control needed" aria-label="reason">
     <div class="prep-row"><button class="btn small" data-b="dis-all" data-g="${g.id}">Select all</button><button class="btn small" data-b="undo" data-g="${g.id}">Undo</button></div></div>`;
 }
-function prepCard(g, gs, na, tab) {
-  const st = prepGapState(g, tab), mode = PREP_MODE[g.id], key = S.name + g.id;
-  // open or closed as first shown, then as the user leaves it (a gap filled while typing stays open)
-  const open = S.prep.cards[key] ??= (!na && st.cls !== "dis" && st.cls !== "done" && g.priority !== "low");
+// what a step needs, in one line (the inputs below are exactly these)
+const PREP_NOUN = {
+  "stackup-defaults": ["dielectric layer", "dielectric layers"], "nets-without-target": ["net", "nets"], "classes-without-standard": ["net class", "net classes"],
+  "assembly-variant": ["fork", "forks"], "assembly-variant-forks": ["fork", "forks"], "channel-part-values": ["part", "parts"], "rails-without-voltage": ["rail", "rails"],
+  "rails-without-source": ["rail", "rails"], "regulator-efficiency": ["regulator", "regulators"], "ic-loads": ["IC", "ICs"], "cap-ratings": ["capacitor", "capacitors"],
+  "bead-ratings": ["bead", "beads"], "cap-values": ["capacitor", "capacitors"], "thermal-data": ["part", "parts"],
+};
+const prepPl = (n, id) => `${n} ${(PREP_NOUN[id] || ["item", "items"])[n === 1 ? 0 : 1]}`;
+function prepCountItems(g, tab) { const its = prepItems(g, tab); return g.id === "nets-without-target" ? its.reduce((s, i) => s + (i.nets || []).length, 0) : its.length; }
+function prepRequiredLine(g, tab) {
+  const its = prepItems(g, tab), n = prepCountItems(g, tab), N = prepPl(n, g.id);
+  switch (g.id) {
+    case "stackup-defaults": {
+      const er = its.filter((i) => i.why.some((w) => w.startsWith("εr"))).length, td = its.filter((i) => i.why.some((w) => w.startsWith("tan"))).length;
+      return `Enter ${[er && `εr for ${prepPl(er, g.id)}`, td && `tanδ for ${prepPl(td, g.id)}`].filter(Boolean).join(" and ")} (marked rows), with a source.`;
+    }
+    case "nets-without-target": return `${N} look like interfaces by their names: give their net class a target in KiCad, or dismiss them here with a reason.`;
+    case "classes-without-standard": return `Choose an interface profile for ${N}, with a source.`;
+    case "assembly-variant": return its.some((i) => i.variant) ? "Choose the assembly variant to analyse." : `Choose the variant to analyse: “default” (the board as it is) or define variants for the ${N}.`;
+    case "assembly-variant-forks": return `List the unused alternative of ${N} as not fitted in the variant.`;
+    case "power-tree": return "Enter the regulator chain: a PI_REG entry for each supply input, regulator and pass part, with a source.";
+    case "rails-without-voltage": return `Give ${N} a voltage (NAME@<V>V in a PI_REG entry), or dismiss those that are not supplies.`;
+    case "rails-without-source": return `Name what feeds ${N}: a supply input or a regulator output in PI_REG.`;
+    case "regulator-efficiency": return `Add the efficiency of ${N} to their PI_REG (e.g. buck 88%) – optional, 85 % is assumed.`;
+    case "ic-loads": return `Enter the current per rail for ${N}, with a source.`;
+    case "cap-ratings": return `Enter rated voltage and dielectric for ${N} (${prepCapGroups(its).length} groups) – optional refinement.`;
+    case "bead-ratings": return `Enter Z at 100 MHz and DC resistance for ${N}, with a source – optional refinement.`;
+    case "thermal-data": return `Enter θJB and θJC (or ψJT) for ${N}, with a source – optional refinement.`;
+    case "channel-part-values": case "cap-values": return `Fix the Value field of ${N} in KiCad, then reload the board.`;
+    case "stackup-missing": return "The board file has no stackup: enter it in KiCad, or hand it to the agent.";
+    default: return g.issue;
+  }
+}
+// what the core still reports for a step, after Apply or while it is partly filled
+function prepMissingLine(g, tab) {
+  const now = prepGapsNow().find((x) => x.id === g.id);
+  if (!now) return "";
+  const left = prepCountItems(now, tab), all = prepCountItems(g, tab);
+  const its = prepItems(now, tab);
+  const label = (it) => it.ref || (it.index != null ? `#${it.index}` : "") || it.class || (it.rail ? netShort(it.rail) : "") || it.variant || it.fork || "";
+  const names = g.id === "nets-without-target" ? its.flatMap((i) => (i.nets || []).map((x) => netShort(x.net))) : its.map(label);
+  const list = names.filter(Boolean).slice(0, 6).join(", ") + (names.length > 6 ? " …" : "");
+  if (!all) return "Still missing – the core reports it as before.";
+  return `${left} of ${prepPl(all, g.id)} still missing${list ? `: ${list}` : ""}.`;
+}
+// errors of the check in this step's entries
+const PREP_ERR = { stackup: /^stackup\./, classes: /^net_classes\./, variant: /^variant/, reg: /PI_REG/, loads: /PI_LOAD/, caps: /PI_CAP/, series: /PI_SERIES/, thermal: /PI_THERMAL/ };
+function prepStepErrors(g) {
+  const re = PREP_ERR[PREP_MODE[g.id]];
+  return prepMsgs().filter((m) => m.level === "error" && ((re && re.test(m.text)) || m.text.startsWith(`gaps.dismissed[${g.id}]`)));
+}
+// commit the new-entry rows of a step that were filled but not left yet
+function prepCommitRows(card) {
+  for (const row of card ? card.querySelectorAll("tr.new") : []) {
+    const r = row.querySelector('input[data-k="ref"]'), v = row.querySelector('input[data-k="value"]');
+    if (r && v && r.value.trim() && v.value.trim()) prepOnInput(v, true);
+  }
+}
+function prepStepMarker(k, g, n) {
+  if (k === "done") return `<span class="mk done" title="done">✓</span>`;
+  if (k === "dis") return `<span class="mk dis" title="dismissed">–</span>`;
+  if (k === "agent") return `<span class="mk agent" title="with the agent">↗</span>`;
+  return `<span class="mk open ${g.priority === "high" ? "h" : g.priority === "medium" ? "m" : "l"}" title="open, ${g.priority} priority">${n}</span>`;
+}
+function prepCard(g, gs, na, tab, n) {
+  const st = prepStepState(g, tab), mode = PREP_MODE[g.id], key = S.name + g.id;
+  const open = S.prep.cards[key] ??= false;
   const others = g.views.filter((v) => v !== tab).map((v) => `<span class="prep-tag view" title="the same entries serve this category too – filled once">also ${PREP_VIEWS[v]}</span>`).join("");
   const tags = [mode === "kicad" ? `<span class="prep-tag kicad">fix in KiCad</span>` : mode === "agent" ? `<span class="prep-tag agent">agent path</span>` : `<span class="prep-tag">enter here</span>`]
     .concat(g.affects.map((a) => `<span class="prep-tag">${esc(a)}</span>`)).join("");
   const handed = !!prepD().agent[g.id];
-  const agent = mode === "kicad" ? "" : `<div class="prep-agentbox"><p>${mode === "agent" ? "Many parts or research-heavy values: let an agent read the datasheets (skill kisi-prepare), with a source for every value." : g.id === "assembly-variant" ? "Variants from the project's BOM and position files: choose and define them here, or let an agent do it." : "Values to look up in datasheets: enter them here, or hand the gap to the agent."}</p>
-      ${mode === "agent" ? "" : `<label class="prep-chk"><input type="checkbox" data-a="agent" data-g="${g.id}" ${handed ? "checked" : ""}> hand to the agent</label>`}</div>`;
   const ns = prepItems(g, tab).length, nall = g.items.length;
-  return `<article class="prep-gap ${st.cls === "dis" ? "isdis" : ""} ${na ? "later" : ""}" id="prep-gap-${g.id}" data-gap="${g.id}" aria-expanded="${open}">
-    <header data-toggle="${g.id}"><span class="prio ${g.priority}">${g.priority}</span><h3>${esc(PREP_TITLES[g.id] || g.id)}<code>${g.id}</code></h3>
-      <span class="state ${st.cls}">${na && st.cls !== "done" && st.cls !== "dis" ? "not blocking" : handed && st.cls === "" ? "with the agent" : esc(st.text)}</span><p>${esc(g.issue)}${ns < nall ? ` Here: the ${ns} of ${nall} items that matter for ${PREP_VIEWS[tab]}.` : ""}</p></header>
+  const opt = !!S.prep.opt[key], hasOpt = ["stackup", "thermal", "caps", "loads"].includes(mode);
+  const applied = !!S.prep.applied[key], partial = st.k === "open" && /left/.test(prepGapState(g, tab).text);
+  const missing = st.k === "open" && (applied || partial) ? prepMissingLine(g, tab) : "";
+  const errs = st.k === "open" || applied ? prepStepErrors(g) : [];
+  const stateText = na && st.k === "open" ? "not blocking" : st.k === "open" ? (prepRequired(g) ? esc(prepGapState(g, tab).text) : "optional") : st.text;
+  const more = `<details class="prep-more"${S.prep.moreOpen[key] ? " open" : ""}><summary>more – where to find it, where it goes${hasOpt ? ", optional fields" : ""}</summary>
+      <dl class="prep-meta"><dt>Why</dt><dd>${esc(g.issue)}${ns < nall ? ` Here: the ${ns} of ${nall} items that matter for ${PREP_VIEWS[tab]}.` : ""}</dd><dt>Where to find it</dt><dd>${esc(g.where_to_find)}</dd><dt>Goes to</dt><dd><code>${esc((g.write && g.write.to) || "")}</code></dd><dt>Affects</dt><dd>${others}${tags}</dd></dl>
+      ${hasOpt ? `<label class="prep-chk"><input type="checkbox" data-a="opt" data-g="${g.id}" ${opt ? "checked" : ""}> show the optional fields (${mode === "stackup" ? "material, thickness" : mode === "thermal" ? "ψJT, Tj max" : mode === "caps" ? "ESR, ESL" : "basis: typical / maximum"})</label>` : ""}</details>`;
+  const canApply = mode !== "agent" && st.k !== "dis";
+  const foot = `<div class="prep-foot">${canApply ? `<button class="btn small primary" data-b="apply" data-g="${g.id}">${st.k === "done" ? "Apply again" : mode === "kicad" && !prepDismissable(g).length ? "Check again" : "Apply"}</button>` : ""}
+      ${mode === "kicad" ? "" : `<label class="prep-chk"><input type="checkbox" data-a="agent" data-g="${g.id}" ${handed || mode === "agent" ? "checked" : ""} ${mode === "agent" ? "disabled" : ""}> hand to the agent</label>`}
+      <span class="prep-res ${st.k}">${st.k === "done" ? "✓ Done – the core no longer reports it." : st.k === "dis" ? "Dismissed with your reason." : st.k === "agent" ? "With the agent: in the prompt of the agent card." : esc(missing)}</span></div>
+      ${errs.length ? `<ul class="prep-msgs">${errs.slice(0, 4).map((m) => `<li>${esc(m.text)}</li>`).join("")}${errs.length > 4 ? `<li class="o">${errs.length - 4} more errors</li>` : ""}</ul>` : ""}`;
+  return `<article class="prep-gap prep-step k-${st.k} ${na ? "later" : ""} ${opt ? "showopt" : ""}" id="prep-gap-${g.id}" data-gap="${g.id}" aria-expanded="${open}">
+    <header data-toggle="${g.id}">${prepStepMarker(st.k, g, n)}<h3>${esc(PREP_TITLES[g.id] || g.id)}<code>${g.id}</code></h3>
+      <span class="state ${st.k}">${stateText}</span><p>${esc(prepRequiredLine(g, tab))}</p></header>
     <div class="body">
-      <dl class="prep-meta"><dt>Where to find it</dt><dd>${esc(g.where_to_find)}</dd><dt>Goes to</dt><dd><code>${esc((g.write && g.write.to) || "")}</code></dd><dt>Affects</dt><dd>${others}${tags}</dd></dl>
-      ${st.cls === "dis" ? "" : prepEditor(g, gs, tab)}${prepDismissBlock(g)}${prepStaleList(g.id)}${st.cls === "dis" ? "" : agent}
+      ${st.k === "dis" ? "" : prepEditor(g, gs, tab)}${prepDismissBlock(g)}${prepStaleList(g.id)}
+      ${foot}${more}
     </div></article>`;
+}
+// the last step: save the file
+function prepSaveStep(n, tab) {
+  const diff = prepDiff(), lc = prepLoaded(), done = !diff.n && !!lc;
+  const blocked = prepBlocked(S.prep.scope);
+  const k = done ? "done" : "open";
+  const open = S.prep.cards[S.name + "save:" + tab] ?? false;
+  return `<article class="prep-gap prep-step prep-savestep k-${k}" id="prep-step-save" data-gap="save" aria-expanded="${open}">
+    <header data-toggle="save:${tab}">${done ? `<span class="mk done">✓</span>` : `<span class="mk open s">${n}</span>`}<h3>Save ${esc(S.name)}.kisi.json</h3>
+      <span class="state ${k}">${done ? "saved" : diff.n ? `${diff.n} change${diff.n === 1 ? "" : "s"}` : "nothing entered"}</span>
+      <p>${done ? "The file holds everything entered; the analyses use it." : "Write the draft next to the board – everything, or only this category's changes (choice on the left) – and load it."}</p></header>
+    <div class="body"><div class="prep-foot"><button class="btn small primary" data-b="save" ${!diff.n && !lc || blocked.length ? "disabled" : ""}>Save kisi.json</button>
+      <span class="prep-res">${blocked.length ? `${blocked.length} error${blocked.length > 1 ? "s" : ""} first (see Check on the left).` : esc(S.prep.saved || "")}</span></div></div></article>`;
+}
+// the end of a tab: ready for its analysis (or only the agent's items left)
+function prepFinish(tab) {
+  const p = prepProgress(tab);
+  if (!p.known || p.na || p.open) return "";
+  const view = { impedance: "si", channel: "ch", power: "pi" }[tab];
+  const what = { impedance: "the impedance check", channel: "the channel check", power: "the power analysis" }[tab];
+  return `<div class="prep-finish ${p.agent ? "agent" : ""}"><span class="mk ${p.agent ? "agent" : "done"}">${p.agent ? "↗" : "✓"}</span><div><b>${p.agent ? `Ready for ${what} – ${p.agent} step${p.agent > 1 ? "s" : ""} with the agent` : `Ready for ${what}`}</b>
+    <span>${p.agent ? "The open values use kisi's defaults (marked as estimates) until the agent fills them." : p.opt ? `${p.opt} optional refinement${p.opt > 1 ? "s" : ""} below.` : "Nothing more to enter."}${prepDiff().n ? " Save the kisi.json (last step) so that the analyses use it." : ""}</span></div>
+    <button class="btn small primary" data-b="goview" data-view="${view}">Open the ${PREP_VIEWS[tab]} view</button></div>`;
+}
+// after Apply: the step is done (closed, the next open step opens) or shows what is still missing
+function prepAfterApply() {
+  const a = S.prep.applying;
+  if (!a || a.name !== S.name) return;
+  S.prep.applying = null;
+  const steps = prepSteps(a.tab), g = steps.find((x) => x.id === a.gap);
+  if (!g) return;
+  if (prepStepState(g, a.tab).k === "open") { S.prep.cards[S.name + g.id] = true; S.prep.scrollTo = g.id; return; }
+  prepAdvance(a.tab, g.id);
+}
+function prepAdvance(tab, from) {
+  const steps = prepSteps(tab);
+  if (from) S.prep.cards[S.name + from] = false;
+  const open = steps.filter((x) => prepStepState(x, tab).k === "open");
+  const next = open.find(prepRequired) || open[0];
+  if (next) { S.prep.cards[S.name + next.id] = true; S.prep.scrollTo = next.id; }
+  else { S.prep.cards[S.name + "save:" + tab] = true; S.prep.scrollTo = "save"; }
 }
 
 // ---- the entries of kisi.json per category, and the viewer's own edits
@@ -795,8 +950,9 @@ function prepRender(full) {
 }
 function prepRenderMain() {
   const base = S.prep.base, tab = S.prep.tab, vnow = prepViewsNow() || {};
-  $("prep-ready").innerHTML = Object.entries(PREP_VIEWS).map(([v, name]) => `<button data-prep-tab="${v}" aria-current="${v === tab}"><span class="dot ${prepDot(v)}"></span><b>${name}</b><span>${esc(prepStateText(v))}</span></button>`).join("");
-  $("prep-tabs").innerHTML = Object.entries(PREP_VIEWS).map(([v, name]) => `<button role="tab" aria-selected="${v === tab}" data-prep-tab="${v}"><span class="dot ${prepDot(v)}"></span>${name}<small>${esc(prepStateText(v))}</small></button>`).join("");
+  const mk = (v) => { const m = prepMark(v); return `<span class="mk ${m.cls}">${m.t}</span>`; };
+  $("prep-ready").innerHTML = Object.entries(PREP_VIEWS).map(([v, name]) => `<button data-prep-tab="${v}" aria-current="${v === tab}">${mk(v)}<b>${name}</b><span>${esc(prepStateText(v))}</span></button>`).join("");
+  $("prep-tabs").innerHTML = Object.entries(PREP_VIEWS).map(([v, name]) => `<button role="tab" aria-selected="${v === tab}" data-prep-tab="${v}">${mk(v)}${name}<small>${esc(prepStateText(v))}</small></button>`).join("");
   // keep the field being typed in: its element, value and caret survive the redraw
   const ae = document.activeElement, inMain = ae && ae.closest && ae.closest("#prep-gaps");
   const focus = inMain && ae.dataset && Object.keys(ae.dataset).length ? { sel: prepSel(ae), value: ae.value, start: ae.selectionStart, end: ae.selectionEnd, type: ae.type } : null;
@@ -806,15 +962,25 @@ function prepRenderMain() {
     $("prep-gaps").innerHTML = ""; return;
   }
   const x = vnow[tab] || base.views[tab], na = x && !x.applicable;
-  const gs = base.gaps.filter((g) => g.views.includes(tab)).sort((a, b) => ((prepGapState(a, tab).cls === "dis") - (prepGapState(b, tab).cls === "dis")) || PRIO_RANK[a.priority] - PRIO_RANK[b.priority]);
+  const gs = prepSteps(tab);
+  // the first open step is open when the tab is first shown
+  if (!S.prep.started[S.name + tab]) {
+    S.prep.started[S.name + tab] = true;
+    const first = gs.filter((g) => prepStepState(g, tab).k === "open"), f = first.find(prepRequired) || first[0];
+    if (f && !na) S.prep.cards[S.name + f.id] = true;
+  }
+  const p = prepProgress(tab);
   $("prep-head").innerHTML = na
-    ? `<div class="prep-na"><b>Nothing to check for ${PREP_VIEWS[tab]}:</b> ${esc(x.why)}. ${tab === "impedance" ? "The laminate data below still matters once net classes get a target impedance (and for loss in a channel check); it blocks nothing now." : "The gaps below matter only once there is something to check; they block nothing now."}</div>`
-    : `<p class="note">${gs.length} gap${gs.length === 1 ? "" : "s"} for ${PREP_VIEWS[tab]}, by priority · ${esc(prepStateText(tab))}${x && x.why ? " · " + esc(x.why) : ""}. Gaps marked “also …” serve other categories too and are filled once.</p>`;
+    ? `<div class="prep-na"><b>Nothing to check for ${PREP_VIEWS[tab]}:</b> ${esc(x.why)}. ${tab === "impedance" ? "The laminate data below still matters once net classes get a target impedance (and for loss in a channel check); it blocks nothing now." : "The steps below matter only once there is something to check; they block nothing now."}</div>`
+    : prepFinish(tab) || `<div class="prep-progress"><span><b>${p.done} of ${p.req} required step${p.req === 1 ? "" : "s"} done</b>${p.agent ? ` · ${p.agent} with the agent` : ""}${p.opt ? ` · ${p.opt} optional` : ""}<span class="note"> – ${esc(x && x.why ? x.why : "")}</span></span>
+      <span class="note">Work down the list: fill in what a step asks for and press Apply – the step gets a check mark when kisi no longer reports it, and the next one opens. Save the kisi.json at the end.</span>
+      <div class="prep-bar"><span style="width:${p.req ? Math.round(100 * (p.done + p.agent) / p.req) : 100}%"></span></div></div>`;
   // dismissals whose gap is no longer listed for this tab
   const listed = new Set(gs.map((g) => g.id));
   const stale = prepStale().filter((s) => !listed.has(s.gap) && (((S.prep.base.gaps.find((g) => g.id === s.gap) || {}).views) || (s.gap === "nets-without-target" ? ["impedance", "channel"] : ["power"])).includes(tab));
-  const staleHtml = stale.length ? `<div class="prep-gap prep-stalecard"><header><span class="prio medium">stale</span><h3>Stale dismissals</h3><span class="state">${stale.length}</span><p>Items in gaps.dismissed that this board does not report (any more) – remove them, or keep them if the board will change back.</p></header><div class="body">${stale.map((s) => prepStaleList(s.gap)).join("")}</div></div>` : "";
-  $("prep-gaps").innerHTML = (gs.length ? gs.map((g) => prepCard(g, gs, na, tab)).join("") : `<div class="prep-empty">kisi gaps reports nothing missing for ${PREP_VIEWS[tab]}.</div>`) + staleHtml + prepEntriesHtml(tab, gs);
+  const staleHtml = stale.length ? `<div class="prep-gap prep-stalecard"><header><span class="mk open m">!</span><h3>Stale dismissals</h3><span class="state">${stale.length}</span><p>Items in gaps.dismissed that this board does not report (any more) – remove them, or keep them if the board will change back.</p></header><div class="body">${stale.map((s) => prepStaleList(s.gap)).join("")}</div></div>` : "";
+  const steps = gs.length ? gs.map((g, i) => prepCard(g, gs, na, tab, i + 1)).join("") : `<div class="prep-empty">kisi gaps reports nothing missing for ${PREP_VIEWS[tab]}.</div>`;
+  $("prep-gaps").innerHTML = steps + staleHtml + prepSaveStep(gs.length + 1, tab) + prepEntriesHtml(tab, gs);
   if (focus) {
     const el = document.querySelector(`#prep-gaps ${focus.sel}`);
     if (el) {
@@ -825,6 +991,11 @@ function prepRenderMain() {
     }
   }
   $("prep").scrollTop = scroll;
+  if (S.prep.scrollTo) {
+    const el = S.prep.scrollTo === "save" ? $("prep-step-save") : $("prep-gap-" + S.prep.scrollTo);
+    S.prep.scrollTo = null;
+    if (el) { el.scrollIntoView({ block: "start", behavior: "instant" }); const f = el.querySelector(".body input:not([type=checkbox]):not([disabled]), .body select:not([disabled])"); if (f && el.dataset.gap !== "save") f.focus({ preventScroll: true }); }
+  }
   S.prep.gs = gs; S.prep.na = na;
 }
 function prepSel(el) { return el.tagName.toLowerCase() + Object.entries(el.dataset).map(([k, v]) => `[data-${k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase())}="${CSS.escape(v)}"]`).join(""); }
@@ -967,7 +1138,15 @@ function prepOnInput(t, full) {
   if (t.id === "prep-notes") { const w = prepW(), ls = String(t.value).split("\n").map((x) => x.trim()).filter(Boolean); if (ls.length) w.notes = ls; else { delete w.notes; if ("notes" in prepBaseObj()) w.notes = []; } prepEdited(false); return; }
   if (!a) return;
   if (a === "take") { S.prep.takeSrc = { ...(S.prep.takeSrc || {}), [k]: val }; if (!String(val).trim()) delete S.prep.takeSrc[k]; const b = document.querySelector('#prep [data-b="take"]'); if (b) b.disabled = !prepSrcOk(S.prep.takeSrc); return; }
-  if (a === "agent") { prepD().agent[t.dataset.g] = t.checked; if (!t.checked) delete prepD().agent[t.dataset.g]; prepPersist(); prepRender(true); return; }
+  if (a === "agent") {
+    if (!full) return;
+    prepD().agent[t.dataset.g] = t.checked; if (!t.checked) delete prepD().agent[t.dataset.g];
+    prepPersist();
+    if (t.checked) prepAdvance(S.prep.tab, t.dataset.g);
+    clearTimeout(prepDrawTimer); prepDrawTimer = setTimeout(() => prepRender(true), 0);
+    return;
+  }
+  if (a === "opt") { if (!full) return; S.prep.opt[S.name + t.dataset.g] = t.checked; S.prep.moreOpen[S.name + t.dataset.g] = true; clearTimeout(prepDrawTimer); prepDrawTimer = setTimeout(() => prepRender(true), 0); return; }
   if (a === "src") {
     const e = prepEntry(t.dataset.e, false);
     if (!e) return;
@@ -1036,10 +1215,10 @@ function prepOnInput(t, full) {
   prepEdited(!!full);
 }
 $("prep-btn").onclick = () => { if (S.scene) prepOpen(!S.prep.open); };
-for (const k of ["si", "ch", "pi"]) $("view-" + k).addEventListener("click", () => { if (S.prep.open) prepOpen(false); });
+for (const k of ["si", "ch", "pi"]) $("view-" + k).addEventListener("click", () => { if (S.prep.open) prepOpen(false); setTimeout(prepRenderStatusCard, 0); });
 $("prep").addEventListener("input", (ev) => { const t = ev.target; if (t.matches("select, input[type=checkbox], input[type=radio]")) return; prepOnInput(t, false); });
 $("prep").addEventListener("change", (ev) => prepOnInput(ev.target, true));
-$("prep").addEventListener("toggle", (ev) => { const d = ev.target; if (d.classList && d.classList.contains("prep-srcmore")) { const e = d.querySelector("[data-e]"); if (e) S.prep.openSrc = d.open ? e.dataset.e : (S.prep.openSrc === e.dataset.e ? null : S.prep.openSrc); } }, true);
+$("prep").addEventListener("toggle", (ev) => { const d = ev.target; if (d.classList && d.classList.contains("prep-more")) { const c = d.closest("[data-gap]"); if (c) S.prep.moreOpen[S.name + c.dataset.gap] = d.open; return; } if (d.classList && d.classList.contains("prep-srcmore")) { const e = d.querySelector("[data-e]"); if (e) S.prep.openSrc = d.open ? e.dataset.e : (S.prep.openSrc === e.dataset.e ? null : S.prep.openSrc); } }, true);
 $("prep").addEventListener("click", async (ev) => {
   const t = ev.target.closest("button, header[data-toggle]");
   if (!t) return;
@@ -1050,6 +1229,17 @@ $("prep").addEventListener("click", async (ev) => {
   if (t.id === "prep-discard") { prepDiscard(); return; }
   if (t.id === "prep-copy") { try { await navigator.clipboard.writeText($("prep-prompt").textContent); } catch (e) { /* no clipboard (insecure context) */ } $("prep-copied").hidden = false; setTimeout(() => ($("prep-copied").hidden = true), 1500); return; }
   if (!b) return;
+  if (b === "apply") {
+    // the step's entries are in the draft already (as typed); Apply commits a filled new row, runs the
+    // gap list at once and then marks the step or says what is missing
+    prepCommitRows(t.closest(".prep-gap"));
+    S.prep.applied[S.name + g] = true;
+    S.prep.applying = { name: S.name, gap: g, tab: S.prep.tab };
+    S.prep.saved = ""; prepPersist(); prepUpdate(true); prepRender(true);
+    return;
+  }
+  if (b === "save") { await prepSave(); return; }
+  if (b === "goview") { prepOpen(false); $("view-" + t.dataset.view).click(); return; }
   if (b === "dismiss") { S.prep.dismissing = g; prepRender(true); return; }
   // "select all": what the gap still reports (items filled meanwhile are not dismissed)
   if (b === "dis-all") { const gap = prepGapsNow().find((x) => x.id === g) || S.prep.base.gaps.find((x) => x.id === g); const x = prepDis(g, true); x.items = [...new Set([...x.items, ...prepDismissable(gap)])]; }

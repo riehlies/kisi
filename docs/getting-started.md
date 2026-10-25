@@ -96,8 +96,10 @@ branch (dashed on the board).
 ### Prepare PCB
 "Prepare PCB" (between the example boards and "Load files") opens what the board file lacks, per category, with
 forms for the simple values and for everything a loaded kisi.json holds, a draft kept in this browser until it is
-saved, and the views' own edits taken into the file; the dots on the three view buttons show whether each
-category is ready. See [Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb).
+saved, and the views' own edits taken into the file. It is a checklist: each step says what it needs, "Apply"
+checks it with the core and gives it a check mark, and the next one opens. The **Preparation** card at the top of
+each view's side panel shows the open points per category (and the assembly variant, when it still has to be
+chosen) and opens the checklist. See [Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb).
 
 ### What the viewer stores
 Stackup (εr, tanδ, thickness), profiles, the net class → profile assignment, power settings, lane directions and

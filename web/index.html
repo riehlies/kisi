@@ -12,9 +12,9 @@
     <div class="brand"><b title="kisi __VERSION__">kisi<span class="ver">v__VERSION__</span></b><span id="boardName">–</span><small id="boardMeta"></small></div>
     <div class="grow"></div>
     <div class="seg" role="group" aria-label="Analysis">
-      <button id="view-si" aria-pressed="true"><span class="dot" id="dot-si" hidden></span>Impedance</button>
-      <button id="view-ch" aria-pressed="false"><span class="dot" id="dot-ch" hidden></span>Channel</button>
-      <button id="view-pi" aria-pressed="false"><span class="dot" id="dot-pi" hidden></span>Power</button>
+      <button id="view-si" aria-pressed="true">Impedance</button>
+      <button id="view-ch" aria-pressed="false">Channel</button>
+      <button id="view-pi" aria-pressed="false">Power</button>
     </div>
     <div class="seg" role="group" aria-label="Colour mode" data-view="si">
       <button id="mode-type" aria-pressed="true">Line type</button>
@@ -44,6 +44,10 @@
   </div>
 
   <aside class="side">
+    <section class="card prep-status" id="prep-status" aria-labelledby="h-prep-status" data-view="si ch pi" hidden>
+      <h2 id="h-prep-status">Preparation <em id="prep-status-sum"></em></h2>
+      <div id="prep-status-body"></div>
+    </section>
     <section class="card off" id="variant-card" aria-labelledby="h-variant" data-view="si ch pi">
       <h2 id="h-variant">Assembly variant <em id="variant-name"></em></h2>
       <div id="variant-body"></div>

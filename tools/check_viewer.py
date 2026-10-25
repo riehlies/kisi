@@ -205,6 +205,26 @@ def prep_open(pg, sel):
         pg.click(f"{sel} > header")
 
 
+def prep_dismiss(pg, gid, reason):
+    """Dismiss every dismissable item of a gap with a reason (the step's form, opened if needed)."""
+    if not pg.locator(f'article[data-gap="{gid}"]').count():
+        return False
+    prep_open(pg, f'article[data-gap="{gid}"]')
+    if pg.locator(f'[data-b="dismiss"][data-g="{gid}"]').count():
+        pg.click(f'[data-b="dismiss"][data-g="{gid}"]')
+    if not pg.locator(f'[data-b="dis-all"][data-g="{gid}"]').count():
+        return False
+    pg.click(f'[data-b="dis-all"][data-g="{gid}"]'); prep_tick(pg)
+    prep_change(pg, f'[data-a="dis-reason"][data-g="{gid}"]', reason)
+    return True
+
+
+def prep_apply(pg, gid):
+    """Apply a step and wait for the gap list."""
+    pg.click(f'article[data-gap="{gid}"] [data-b="apply"]')
+    prep_idle(pg)
+
+
 def prep_tab(pg, t):
     pg.click(f'#prep-tabs [data-prep-tab="{t}"]'); pg.wait_for_timeout(100)
 
@@ -248,9 +268,11 @@ def prepare_page(pg, tag, step):
         problems.append(f"{tag}: prepare: no gap list ({pg.evaluate('S.prep.note')})")
         return
     pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; S.prep.d = null; }")
-    dots = pg.evaluate("['si','ch','pi'].map(k => !document.getElementById('dot-' + k).hidden)")
-    if not all(dots):
-        problems.append(f"{tag}: prepare: readiness dots missing on the view buttons {dots}")
+    if pg.evaluate("document.querySelectorAll('#view-si .dot, #view-ch .dot, #view-pi .dot').length"):
+        problems.append(f"{tag}: prepare: readiness dots on the view buttons")
+    # the Preparation card at the top of the side panel, the assembly variant card below it
+    if not pg.evaluate("!$('prep-status').hidden && !!(($('prep-status').compareDocumentPosition($('variant-card'))) & Node.DOCUMENT_POSITION_FOLLOWING)"):
+        problems.append(f"{tag}: prepare: no Preparation card above the assembly variant card")
     pg.click("#prep-btn"); pg.wait_for_timeout(300)
     if not pg.evaluate("S.prep.open && !document.getElementById('prep').hidden && getComputedStyle(document.querySelector('.stage')).display === 'none'"):
         problems.append(f"{tag}: prepare: the page did not open")
@@ -268,10 +290,8 @@ def prepare_page(pg, tag, step):
         prep_change(pg, f'{sel} [data-a="shared"][data-k="document"]', "laminate datasheet (viewer check)")
         prep_change(pg, f'{sel} input[data-a="diel"][data-k="loss_tangent"]', "0.0095")
         entered = True
-    if pg.locator('[data-b="dismiss"][data-g="nets-without-target"]').count():
+    if prep_dismiss(pg, "nets-without-target", "not an interface (viewer check)"):
         gid = "nets-without-target"
-        pg.click(f'[data-b="dismiss"][data-g="{gid}"]'); pg.click(f'[data-b="dis-all"][data-g="{gid}"]')
-        prep_change(pg, f'[data-a="dis-reason"][data-g="{gid}"]', "not an interface (viewer check)")
         try:
             pg.wait_for_function(f"!S.prep.busy && S.prep.cur && !S.prep.cur.gaps.some((g) => g.id === '{gid}')", timeout=120000)
         except Exception:
@@ -297,6 +317,63 @@ def prepare_page(pg, tag, step):
     pg.click("#view-si"); pg.wait_for_timeout(300)
     if pg.evaluate("S.prep.open || getComputedStyle(document.querySelector('.stage')).display === 'none'"):
         problems.append(f"{tag}: prepare: back to the impedance view failed")
+
+
+def prepare_checklist(pg, tag, step):
+    """The checklist on ThunderScope with its kisi.json: the Preparation card opens the page, a step is applied
+    (dismissal) and gets its mark, the next step opens by itself, a partly filled step says what is still
+    missing, the Impedance tab ends "ready" with a button to its view, and the card's count goes down."""
+    prep_load(pg, SAMPLE_TS, pg.evaluate("SAMPLES.ts.config.text"))
+    pg.click("#view-si"); pg.wait_for_timeout(200)
+    n0 = pg.evaluate("prepCount()")
+    pg.click("#prep-status-open"); pg.wait_for_timeout(300)
+    if not pg.evaluate("S.prep.open && S.prep.tab === 'impedance'"):
+        problems.append(f"{tag}: checklist: the Preparation card did not open the Impedance tab")
+    step("checklist_open")
+    first = pg.evaluate("(() => { const s = prepSteps('impedance').filter((g) => prepStepState(g, 'impedance').k === 'open'); return s.length ? s[0].id : null; })()")
+    if first != "nets-without-target" or pg.get_attribute(f'article[data-gap="{first}"]', "aria-expanded") != "true":
+        problems.append(f"{tag}: checklist: the first open step ({first}) is not open")
+    prep_dismiss(pg, "nets-without-target", "QSPI flash, no impedance control (viewer check)")
+    prep_apply(pg, "nets-without-target")
+    if not pg.locator('article[data-gap="nets-without-target"] .mk.dis').count():
+        problems.append(f"{tag}: checklist: the dismissed step has no mark")
+    if pg.get_attribute('article[data-gap="stackup-defaults"]', "aria-expanded") != "true":
+        problems.append(f"{tag}: checklist: the next step did not open after Apply")
+    # a step applied before it is complete says what is missing (Power: one load of several)
+    prep_tab(pg, "power")
+    sel = 'article[data-gap="ic-loads"]'
+    if pg.locator(sel).count():
+        prep_open(pg, sel)
+        ic = pg.get_attribute(f'{sel} input[data-a="load"][data-rail]', "data-r")
+        prep_change(pg, f'{sel} input[data-a="load"][data-r="{ic}"][data-rail]', "5 mA")
+        prep_apply(pg, "ic-loads")
+        res = pg.inner_text(f"{sel} .prep-res")
+        if "still missing" not in res or pg.get_attribute(sel, "aria-expanded") != "true":
+            problems.append(f"{tag}: checklist: a partly filled step does not say what is missing ({res!r})")
+        step("checklist_missing")
+        prep_change(pg, f'{sel} input[data-a="load"][data-r="{ic}"][data-rail]', "")
+    prep_tab(pg, "impedance")
+    sel = 'article[data-gap="stackup-defaults"]'
+    prep_open(pg, sel)
+    pg.locator(f'{sel} [data-a="shared"][data-k="kind"]').select_option("datasheet"); prep_tick(pg)
+    prep_change(pg, f'{sel} [data-a="shared"][data-k="document"]', "fabricator's stackup report (viewer check)")
+    for i in pg.evaluate("prepItems(prepSteps('impedance').find((g) => g.id === 'stackup-defaults'), 'impedance').map((it) => it.index)"):
+        prep_change(pg, f'{sel} input[data-a="diel"][data-i="{i}"][data-k="epsilon_r"]', "4.3")
+    prep_apply(pg, "stackup-defaults")
+    if not pg.locator(f"{sel} .mk.done").count():
+        problems.append(f"{tag}: checklist: the laminate step has no check mark ({pg.inner_text(sel + ' .prep-res')!r})")
+    if not pg.locator(".prep-finish [data-b=goview]").count():
+        problems.append(f"{tag}: checklist: the Impedance tab does not end with 'Ready for the impedance check'")
+    step("checklist_ready")
+    if pg.locator(".prep-finish [data-b=goview]").count():
+        pg.click(".prep-finish [data-b=goview]"); pg.wait_for_timeout(300)
+        if pg.evaluate("S.prep.open || S.tab !== 'si'"):
+            problems.append(f"{tag}: checklist: 'Open the Impedance view' did not open it")
+    n1 = pg.evaluate("prepCount()")
+    if not (n1 < n0) or pg.evaluate("$('prep-status').querySelector('li.cur .mk').textContent") != "✓":
+        problems.append(f"{tag}: checklist: the Preparation card did not follow ({n0} → {n1} open points)")
+    step("checklist_card")
+    pg.evaluate("() => { prepDiscard(); }"); prep_idle(pg)
 
 
 def prepare_roundtrip(pg, tag, step):
@@ -461,15 +538,14 @@ def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
     for gid, reason in dismiss.items():
         for t in ["impedance", "channel", "power"]:
             prep_tab(pg, t)
-            if pg.locator(f'[data-b="dismiss"][data-g="{gid}"]').count():
-                pg.click(f'[data-b="dismiss"][data-g="{gid}"]'); pg.click(f'[data-b="dis-all"][data-g="{gid}"]')
-                prep_change(pg, f'[data-a="dis-reason"][data-g="{gid}"]', reason)
+            if prep_dismiss(pg, gid, reason):
+                prep_apply(pg, gid)
                 break
     prep_idle(pg)
     # what is left of high and medium priority goes to the agent (research: laminate, profiles, loads)
     for t in ["impedance", "channel", "power"]:
         prep_tab(pg, t)
-        for g in pg.evaluate(f"prepOpenHere('{t}').map((g) => g.id)"):
+        for g in pg.evaluate(f"prepSteps('{t}').filter((g) => prepRequired(g) && prepStepState(g, '{t}').k === 'open').map((g) => g.id)"):
             box = f'input[data-a="agent"][data-g="{g}"]'
             if pg.locator(box).count():
                 prep_open(pg, f'article[data-gap="{g}"]')
@@ -477,7 +553,7 @@ def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
     prep_idle(pg)
     views = pg.evaluate("prepViewsNow()")
     for t, v in views.items():
-        left = pg.evaluate(f"prepOpenHere('{t}').map((g) => g.id)")
+        left = pg.evaluate(f"prepSteps('{t}').filter((g) => prepRequired(g) && prepStepState(g, '{t}').k === 'open').map((g) => g.id)")
         if v["applicable"] and v["state"] != "ready" and left:
             problems.append(f"{tag}: acceptance {label}: {t} is {v['state']} with gaps not handed over: {left}")
     step(f"accept_{label}")
@@ -761,6 +837,7 @@ def run(pg, tag, desktop):
 def prepare_all(pg, tag, step, errs):
     prepare_page(pg, tag, step)
     if pg.evaluate("typeof SAMPLES !== 'undefined' && !!SAMPLES.ts && !!SAMPLES.ts.config"):
+        prepare_checklist(pg, tag, step)
         prepare_roundtrip(pg, tag, step)
         if tag == "light" and not a.quick:
             prepare_acceptance(pg, tag, step, SAMPLE_TS, pg.evaluate("SAMPLES.ts.config.text"),

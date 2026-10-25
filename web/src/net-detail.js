@@ -29,6 +29,8 @@ function xsRows(xs) {
     rows.push(["Source", `field solver · formula ${fmt(fz, 1)} Ω`]);
   } else if (xs.kind !== "NoReference") {
     rows.push(["Source", xs.geom != null && S.fieldPending.has(S.an.geometries[xs.geom].id) ? "formula, field solver running" : "formula"]);
+  } else if (xs.z0 != null) {
+    rows.push(["Source", "formula: return in the coplanar copper (estimate)"]);
   }
   return rows;
 }

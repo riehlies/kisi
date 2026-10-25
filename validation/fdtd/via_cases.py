@@ -9,7 +9,9 @@ gives the fixture for de-embedding (sparam.py).
 
 Groups G (plane cavity) and H (PDN loop inductance) use 1 Ω lumped ports.
 
-usage: python3 via_cases.py out_dir [--groups A,B,C,D,Dcap,E,G,H] [--fmax 40e9] [--dfine 0.05]
+Group P: pads and gold fingers without a reference plane (a pad or finger in a 50 Ω line).
+
+usage: python3 via_cases.py out_dir [--groups A,B,C,D,Dcap,E,G,H,T,X,P] [--fmax 40e9] [--dfine 0.05]
 """
 import argparse, json, math, os
 
@@ -117,11 +119,20 @@ class Builder:
                      "sheets": [], "vias": [], "ports": [], "fmax": fmax, "mesh": {"dfine": dfine, "ratio": 1.4, "thirds": True},
                      "boundary": "pml", "pml_cells": 8, "conformal": True, "end_db": -50, "max_steps": 150000, "nf": 400}
         self.holes = {p: [] for p in self.st["planes"]}
+        self.cuts = {p: [] for p in self.st["planes"]}
         self.ports = []
 
     def antipad(self, layer, x, y, r, x1=None, y1=None):
         if layer in self.holes:
             self.holes[layer].append([x, y, r] if x1 is None else [x, y, x1, y1, r])
+
+    def rect_cut(self, layer, x0, y0, x1, y1):
+        """a rectangular cut-out in a plane (polygon copper: the plane's outline and the cut as
+        rings, even-odd; fine mesh cells along its edges)"""
+        if layer in self.cuts:
+            self.cuts[layer].append([x0, y0, x1, y1])
+            d = self.case["mesh"]["dfine"]
+            self.case["mesh"].setdefault("refine", []).append([round(x0 - 2 * d, 6), round(y0 - 2 * d, 6), round(x1 + 2 * d, 6), round(y1 + 2 * d, 6), d])
 
     def via(self, x, y, r, pad_r, l0, l1, pads, z_bottom=None, net="SIG"):
         z0 = self.zc[l1] if z_bottom is None else z_bottom
@@ -189,7 +200,12 @@ class Builder:
 
     def finish(self, cid, group, title, params):
         for p in self.st["planes"]:
-            self.case["sheets"].append({"z": self.zc[p], "rect": self.case["board"], "holes": self.holes[p], "net": "PWR" if p in self.pwr else "GND"})
+            sh = {"z": self.zc[p], "rect": self.case["board"], "holes": self.holes[p], "net": "PWR" if p in self.pwr else "GND"}
+            if self.cuts[p]:
+                bx0, by0, bx1, by1 = self.case["board"]
+                ring = lambda a, b, c, d: [[a, b], [c, b], [c, d], [a, d]]
+                sh["polys"] = [ring(bx0, by0, bx1, by1)] + [ring(*[round(v, 6) for v in q]) for q in self.cuts[p]]
+            self.case["sheets"].append(sh)
         self.case["name"] = cid
         self.case["monitors"] = self.default_monitors(group)
         self.case.pop("meta_modes", None)
@@ -366,6 +382,54 @@ def tline(cid, title, params, stackup, traces, length, fmax, dfine, cpw=None, mi
     return c
 
 
+def pad_section(cid, title, params, stackup, sec_len, sec_w, fmax, dfine, *, cut=(), gnd_fingers=None, diff=None, half_y=3.0):
+    """P: a pad, gold finger or other wide copper of length `sec_len` (x) and width `sec_w` in the
+    middle of a 50 Ω microstrip on L1 (ports at ±FEED), as the board has it: the traces run to the
+    pad's centre (kisi_board.py writes the section as an SMD pad, `"pad": true`). `cut`: plane
+    layers cut out under the section (0.1 mm beyond it); `gnd_fingers` = gap: coplanar GND fingers
+    of the section's width on both sides, 0.5 mm longer at each end, each with a GND via to the
+    planes at both ends (outside the cut); `diff` = (trace gap, pitch): a pair (P above, N below) instead of one line"""
+    b = Builder(stackup, FEED + 1.5, half_y, fmax, dfine)
+    w, ref = feed(b.st, 0)
+    if diff:
+        gap_t, pitch = diff
+        w = 0.19
+        ys = (pitch / 2, -pitch / 2)
+    else:
+        ys = (0.0,)
+    for y in ys:
+        b.trace(0, -FEED, 0.0, y, w)
+        b.trace(0, 0.0, FEED, y, w)
+        b.case["sheets"].append({"z": b.zc[0], "rect": [-sec_len / 2, y - sec_w / 2, sec_len / 2, y + sec_w / 2], "net": "SIG", "pad": True})
+    m = 0.1
+    ymax = max(ys) + sec_w / 2
+    yc_cut = ymax + m if not gnd_fingers else ymax + gnd_fingers + sec_w + m
+    for layer in cut:
+        b.rect_cut(layer, -sec_len / 2 - m, -yc_cut, sec_len / 2 + m, yc_cut)
+    if gnd_fingers:
+        g = gnd_fingers
+        for sgn in (1, -1):
+            yc = sgn * (ymax + g + sec_w / 2)
+            x0, x1 = -sec_len / 2 - 0.5, sec_len / 2 + 0.5
+            b.sheet(b.zc[0], [x0, yc - sec_w / 2, x1, yc + sec_w / 2], net="GND")
+            for xv in (x0 + 0.2, x1 - 0.2):
+                b.via(round(xv, 4), round(yc, 4), 0.1, 0.0, 0, len(b.zc) - 1, [], net="GND")
+    if diff:
+        b.port(-FEED, ys[0], w, 0, ref, "1 P near")
+        b.port(-FEED, ys[1], w, 0, ref, "2 N near")
+        b.port(FEED, ys[0], w, 0, ref, "3 P far")
+        b.port(FEED, ys[1], w, 0, ref, "4 N far")
+    else:
+        b.port(-FEED, 0.0, w, 0, ref, "1")
+        b.port(FEED, 0.0, w, 0, ref, "2")
+    c = b.finish(cid, "P", title, dict(params, feed_w_mm=w))
+    if diff:
+        c["meta"].update(excite=[0, 2], mirror=[1, 0, 3, 2])
+    else:
+        c["meta"].update(excite=[0], mirror=[1, 0])
+    return c
+
+
 def ring(n, r):
     return [(round(r * math.cos(2 * math.pi * (k + 0.5) / n), 4), round(r * math.sin(2 * math.pi * (k + 0.5) / n), 4)) for k in range(n)]
 
@@ -459,10 +523,22 @@ def cases(groups, fmax, dfine):
         for off in (0.0, 0.5):
             out.append(tline(f"T_ts6_broadside_o{int(off * 10)}", f"Broadside: In2 over In3 across the 0.93 mm core, lateral offset {off:g} mm, 20 mm",
                              {"w_In2_mm": ws2, "w_In3_mm": ws3, "offset_mm": off, "length_mm": L}, "ts6", [(2, 0.0, ws2), (3, off, ws3)], L, fmax, dfine))
+    if "P" in groups:  # pads and gold fingers without a reference plane (block 2, 2026-10)
+        out.append(pad_section("P_ts6_pad", "0402 capacitor pad (0.56 × 0.62 mm) on a 50 Ω microstrip, plane intact", {"pad_mm": "0.56 × 0.62"},
+                               "ts6", 0.56, 0.62, fmax, dfine))
+        out.append(pad_section("P_ts6_pad_cut", "0402 capacitor pad on a 50 Ω microstrip, L2 plane cut out under it (next plane L5, 1.14 mm)",
+                               {"pad_mm": "0.56 × 0.62", "cut": "L2"}, "ts6", 0.56, 0.62, fmax, dfine, cut=(1,)))
+        out.append(pad_section("P_ts6_finger_far", "gold finger 0.7 × 2.1 mm between GND fingers (gap 0.3 mm), L2 cut back (next plane L5)",
+                               {"finger_mm": "0.7 × 2.1", "gnd_gap_mm": 0.3, "cut": "L2"}, "ts6", 2.1, 0.7, fmax, dfine, cut=(1,), gnd_fingers=0.3))
+        out.append(pad_section("P_ts6_finger_noplane", "gold finger 0.7 × 2.1 mm between GND fingers (gap 0.3 mm), every plane cut back",
+                               {"finger_mm": "0.7 × 2.1", "gnd_gap_mm": 0.3, "cut": "L2, L5"}, "ts6", 2.1, 0.7, fmax, dfine, cut=(1, 4), gnd_fingers=0.3))
+        out.append(pad_section("P_ts6_finger_diff", "gold-finger pair 0.7 × 2.1 mm, pitch 1 mm, between GND fingers (gap 0.3 mm), every plane cut back",
+                               {"finger_mm": "0.7 × 2.1", "pitch_mm": 1.0, "gnd_gap_mm": 0.3, "cut": "L2, L5"}, "ts6", 2.1, 0.7, fmax, dfine,
+                               cut=(1, 4), gnd_fingers=0.3, diff=(0.81, 1.0), half_y=3.5))
     # 2×thru companions of every feed layer used
     feeds = {}
     for c in out:
-        if c["meta"]["group"] == "T":
+        if c["meta"]["group"] in ("T", "P"):
             continue
         for p in c["meta"]["ports"]:
             if not p["layer"].startswith("L"):
@@ -476,7 +552,7 @@ def cases(groups, fmax, dfine):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("out")
-    ap.add_argument("--groups", default="A,B,C,D,Dcap,E,G,H,T,X")
+    ap.add_argument("--groups", default="A,B,C,D,Dcap,E,G,H,T,X,P")
     ap.add_argument("--fmax", type=float, default=40e9)
     ap.add_argument("--dfine", type=float, default=0.035)
     a = ap.parse_args()

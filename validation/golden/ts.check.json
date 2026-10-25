@@ -5,9 +5,215 @@
   "ok": true,
   "warnings": []
  },
- "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5–15 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 × Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces – an estimate). Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db or a Touchstone file) is given.",
+ "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5–15 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance, the other path of a fork). Pads: a track inside an SMD pad has the pad's width; the rest of a part's pad is a capacitance from the pad's cross-section (with what lies below it), else an estimate per package. Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 × Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces – an estimate). Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db or a Touchstone file) is given.",
  "not_checked_unused": "20 net(s) with a target only connect parts not fitted in this assembly (variant or DNP): not checked",
  "rows": [
+  {
+   "branches": [],
+   "bus": "U12_2 ↔ U6",
+   "class": "FE_100Z_Diff",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 86.9197
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.951243
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.447492
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 25.7961
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.00338687
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "U12_2.10",
+    "U6.41"
+   ],
+   "eye_computed": true,
+   "from": "U12_2.10",
+   "kind": "ic-ic",
+   "lane": "/ADC Driver 2/OUT_P",
+   "length_mm": 6.96539,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.951243,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.447492,
+    "rl_db": 25.7961,
+    "skew_ps": -0.00338687,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 86.9197,
+    "z_min": 26.8037
+   },
+   "mode_conversion_db": -77.492,
+   "model": "4-port",
+   "nets": [
+    "Net-(U12_2-OUT+)",
+    "/ADC Driver 2/OUT_P"
+   ],
+   "not_modelled": [],
+   "profile": "diff100",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "R137_2 4.99 (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U6.41",
+   "vias": 0
+  },
+  {
+   "branches": [],
+   "bus": "U12_3 ↔ U6",
+   "class": "FE_100Z_Diff",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 85.4906
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.951266
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 1.0
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.447372
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 26.2729
+    },
+    {
+     "hi": 50.0,
+     "key": "skew",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.0574117
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "U12_3.10",
+    "U6.44"
+   ],
+   "eye_computed": true,
+   "from": "U12_3.10",
+   "kind": "ic-ic",
+   "lane": "/ADC Driver 3/OUT_P",
+   "length_mm": 6.95422,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.951266,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.447372,
+    "rl_db": 26.2729,
+    "skew_ps": -0.0574117,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 130.145,
+    "z_mean": 85.4906,
+    "z_min": 26.8037
+   },
+   "mode_conversion_db": -77.5082,
+   "model": "4-port",
+   "nets": [
+    "Net-(U12_3-OUT+)",
+    "/ADC Driver 3/OUT_P"
+   ],
+   "not_modelled": [],
+   "profile": "diff100",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "R137_3 4.99 (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [],
+   "terminations": [],
+   "to": "U6.44",
+   "vias": 0
+  },
   {
    "branches": [],
    "bus": "U18 ↔ U6",
@@ -20,7 +226,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 110.7
+     "value": 110.342
     },
     {
      "hi": null,
@@ -29,7 +235,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.924884
+     "value": 0.924083
     },
     {
      "hi": null,
@@ -47,7 +253,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.133249
+     "value": -0.132754
     },
     {
      "hi": null,
@@ -56,7 +262,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 21.008
+     "value": 21.0883
     },
     {
      "hi": 50.0,
@@ -65,7 +271,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 10.2069
+     "value": 10.1793
     }
    ],
    "diff": true,
@@ -81,18 +287,18 @@
    "length_mm": 32.9695,
    "metrics": {
     "error": null,
-    "eye_h": 0.924884,
+    "eye_h": 0.924083,
     "eye_w_ui": 0.84375,
-    "il_nyq_db": -0.133249,
-    "rl_db": 21.008,
-    "skew_ps": 10.2069,
+    "il_nyq_db": -0.132754,
+    "rl_db": 21.0883,
+    "skew_ps": 10.1793,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 130.145,
-    "z_mean": 110.7,
+    "z_mean": 110.342,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -32.4031,
+   "mode_conversion_db": -32.395,
    "model": "4-port",
    "nets": [
     "/ADC/D1A_P"
@@ -120,7 +326,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 110.429
+     "value": 110.1
     },
     {
      "hi": null,
@@ -129,7 +335,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.92767
+     "value": 0.9259
     },
     {
      "hi": null,
@@ -147,7 +353,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.134758
+     "value": -0.133681
     },
     {
      "hi": null,
@@ -156,7 +362,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 21.2622
+     "value": 21.4566
     },
     {
      "hi": 50.0,
@@ -165,7 +371,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 11.6049
+     "value": 11.5964
     }
    ],
    "diff": true,
@@ -181,18 +387,18 @@
    "length_mm": 33.8734,
    "metrics": {
     "error": null,
-    "eye_h": 0.92767,
+    "eye_h": 0.9259,
     "eye_w_ui": 0.8125,
-    "il_nyq_db": -0.134758,
-    "rl_db": 21.2622,
-    "skew_ps": 11.6049,
+    "il_nyq_db": -0.133681,
+    "rl_db": 21.4566,
+    "skew_ps": 11.5964,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 130.145,
-    "z_mean": 110.429,
+    "z_mean": 110.1,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -31.3574,
+   "mode_conversion_db": -31.2569,
    "model": "4-port",
    "nets": [
     "/ADC/D1B_P"
@@ -220,7 +426,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 110.197
+     "value": 111.039
     },
     {
      "hi": null,
@@ -229,107 +435,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.888857
-    },
-    {
-     "hi": null,
-     "key": "eye_w",
-     "lo": 0.5,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 0.8125
-    },
-    {
-     "hi": null,
-     "key": "il",
-     "lo": null,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": -0.117017
-    },
-    {
-     "hi": null,
-     "key": "rl",
-     "lo": 10.0,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 22.4045
-    },
-    {
-     "hi": 50.0,
-     "key": "skew",
-     "lo": null,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 0.304746
-    }
-   ],
-   "diff": true,
-   "direction": "default order",
-   "ends": [
-    "U18.A13",
-    "U6.21"
-   ],
-   "eye_computed": true,
-   "from": "U18.A13",
-   "kind": "ic-ic",
-   "lane": "/ADC/D3A_P",
-   "length_mm": 29.6308,
-   "metrics": {
-    "error": null,
-    "eye_h": 0.888857,
-    "eye_w_ui": 0.8125,
-    "il_nyq_db": -0.117017,
-    "rl_db": 22.4045,
-    "skew_ps": 0.304746,
-    "skew_uncertain": false,
-    "stub_ghz": null,
-    "z_max": 130.145,
-    "z_mean": 110.197,
-    "z_min": 77.3094
-   },
-   "mode_conversion_db": -63.4744,
-   "model": "4-port",
-   "nets": [
-    "/ADC/D3A_P"
-   ],
-   "not_modelled": [],
-   "profile": "lvds",
-   "rate_gbps": 1.0,
-   "receivers_on_stubs": [],
-   "series_parts": [],
-   "status": "yellow",
-   "stubs": [],
-   "terminations": [],
-   "to": "U6.21",
-   "vias": 0
-  },
-  {
-   "branches": [],
-   "bus": "U18 ↔ U6",
-   "class": "LVDS_ADC",
-   "criteria": [
-    {
-     "hi": 110.0,
-     "key": "z",
-     "lo": 90.0,
-     "note": "mean along the line from the impedance analysis",
-     "red_below": null,
-     "status": "yellow",
-     "value": 111.299
-    },
-    {
-     "hi": null,
-     "key": "eye_h",
-     "lo": 0.65,
-     "note": null,
-     "red_below": 0.4,
-     "status": "green",
-     "value": 0.919874
+     "value": 0.919194
     },
     {
      "hi": null,
@@ -347,7 +453,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.129959
+     "value": -0.12957
     },
     {
      "hi": null,
@@ -356,7 +462,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 21.6042
+     "value": 21.687
     },
     {
      "hi": 50.0,
@@ -365,7 +471,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 7.1798
+     "value": 7.20484
     }
    ],
    "diff": true,
@@ -381,18 +487,18 @@
    "length_mm": 32.8425,
    "metrics": {
     "error": null,
-    "eye_h": 0.919874,
+    "eye_h": 0.919194,
     "eye_w_ui": 0.84375,
-    "il_nyq_db": -0.129959,
-    "rl_db": 21.6042,
-    "skew_ps": 7.1798,
+    "il_nyq_db": -0.12957,
+    "rl_db": 21.687,
+    "skew_ps": 7.20484,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 130.145,
-    "z_mean": 111.299,
+    "z_mean": 111.039,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -35.8043,
+   "mode_conversion_db": -35.7472,
    "model": "4-port",
    "nets": [
     "/ADC/D3B_P"
@@ -420,7 +526,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "green",
-     "value": 48.7369
+     "value": 49.8067
     },
     {
      "hi": null,
@@ -429,7 +535,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -3.75464
+     "value": -3.73945
     },
     {
      "hi": null,
@@ -438,7 +544,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 9.55045
+     "value": 9.56175
     }
    ],
    "diff": false,
@@ -449,7 +555,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.659014,
+    "height": 0.66152,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 1.0
    },
@@ -462,13 +568,13 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -3.75464,
-    "rl_db": 9.55045,
+    "il_nyq_db": -3.73945,
+    "rl_db": 9.56175,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
-    "z_max": 53.0238,
-    "z_mean": 48.7369,
+    "z_max": 250.764,
+    "z_mean": 49.8067,
     "z_min": 26.8037
    },
    "model": "single-ended",
@@ -490,7 +596,7 @@
    ],
    "status": "yellow",
    "stubs": [
-    "stub 1.0 mm to R4.1 (not fitted; pad 0402, 0.10 pF estimated)"
+    "stub 1.0 mm to R4.1 (not fitted; pad 0402, 0.06 pF from the pad geometry)"
    ],
    "terminations": [],
    "to": "U7.8",
@@ -508,7 +614,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 110.364
+     "value": 110.226
     },
     {
      "hi": null,
@@ -517,7 +623,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.282505
+     "value": -0.280911
     },
     {
      "hi": null,
@@ -526,7 +632,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.1328
+     "value": 19.1727
     },
     {
      "hi": 50.0,
@@ -535,7 +641,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 8.25706
+     "value": 8.27785
     }
    ],
    "diff": true,
@@ -546,7 +652,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.991709,
+    "height": 0.9915,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.96875
    },
@@ -559,16 +665,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.282505,
-    "rl_db": 19.1328,
-    "skew_ps": -8.25706,
+    "il_nyq_db": -0.280911,
+    "rl_db": 19.1727,
+    "skew_ps": -8.27785,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 130.145,
-    "z_mean": 110.364,
+    "z_mean": 110.226,
     "z_min": 66.6369
    },
-   "mode_conversion_db": -34.78,
+   "mode_conversion_db": -34.6417,
    "model": "4-port",
    "nets": [
     "/FPGA/USRIO_2_P"
@@ -596,7 +702,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 110.321
+     "value": 110.165
     },
     {
      "hi": null,
@@ -605,7 +711,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.291537
+     "value": -0.289968
     },
     {
      "hi": null,
@@ -614,7 +720,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.1386
+     "value": 19.1615
     },
     {
      "hi": 50.0,
@@ -623,7 +729,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 2.89638
+     "value": 2.91012
     }
    ],
    "diff": true,
@@ -634,7 +740,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.983131,
+    "height": 0.983057,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.96875
    },
@@ -647,16 +753,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.291537,
-    "rl_db": 19.1386,
-    "skew_ps": 2.89638,
+    "il_nyq_db": -0.289968,
+    "rl_db": 19.1615,
+    "skew_ps": 2.91012,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 130.145,
-    "z_mean": 110.321,
+    "z_mean": 110.165,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -44.4521,
+   "mode_conversion_db": -44.3465,
    "model": "4-port",
    "nets": [
     "/FPGA/USRIO_3_P"
@@ -684,7 +790,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 110.268
+     "value": 110.097
     },
     {
      "hi": null,
@@ -693,7 +799,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.266823
+     "value": -0.264951
     },
     {
      "hi": null,
@@ -702,7 +808,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.0299
+     "value": 19.0879
     },
     {
      "hi": 50.0,
@@ -711,7 +817,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 3.57343
+     "value": 3.56824
     }
    ],
    "diff": true,
@@ -722,7 +828,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.998621,
+    "height": 0.9986,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.96875
    },
@@ -735,16 +841,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.266823,
-    "rl_db": 19.0299,
-    "skew_ps": 3.57343,
+    "il_nyq_db": -0.264951,
+    "rl_db": 19.0879,
+    "skew_ps": 3.56824,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 130.145,
-    "z_mean": 110.268,
+    "z_mean": 110.097,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -41.4587,
+   "mode_conversion_db": -41.1496,
    "model": "4-port",
    "nets": [
     "/FPGA/USRIO_11_P"
@@ -772,7 +878,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 110.261
+     "value": 110.102
     },
     {
      "hi": null,
@@ -781,7 +887,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.276725
+     "value": -0.274802
     },
     {
      "hi": null,
@@ -790,7 +896,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.174
+     "value": 19.1951
     },
     {
      "hi": 50.0,
@@ -810,7 +916,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.993699,
+    "height": 0.993549,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.96875
    },
@@ -823,16 +929,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.276725,
-    "rl_db": 19.174,
+    "il_nyq_db": -0.274802,
+    "rl_db": 19.1951,
     "skew_ps": 0.453336,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 130.145,
-    "z_mean": 110.261,
+    "z_mean": 110.102,
     "z_min": 70.4694
    },
-   "mode_conversion_db": -57.5258,
+   "mode_conversion_db": -57.5253,
    "model": "4-port",
    "nets": [
     "/FPGA/USRIO_12_P"
@@ -860,7 +966,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "green",
-     "value": 91.9081
+     "value": 89.5145
     },
     {
      "hi": null,
@@ -869,7 +975,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -3.46582
+     "value": -1.82293
     },
     {
      "hi": null,
@@ -878,7 +984,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 4.9835
+     "value": 9.5092
     },
     {
      "hi": 5.0,
@@ -887,7 +993,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 6.61041
+     "value": 6.71943
     }
    ],
    "diff": true,
@@ -898,9 +1004,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.616399,
+    "height": 0.687098,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.84375
+    "width_ui": 0.90625
    },
    "eye_computed": true,
    "from": "P1.A16",
@@ -911,16 +1017,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -3.46582,
-    "rl_db": 4.9835,
-    "skew_ps": 6.61041,
+    "il_nyq_db": -1.82293,
+    "rl_db": 9.5092,
+    "skew_ps": 6.71943,
     "skew_uncertain": true,
     "stub_ghz": null,
-    "z_max": 161.055,
-    "z_mean": 91.9081,
+    "z_max": 491.537,
+    "z_mean": 89.5145,
     "z_min": 47.2292
    },
-   "mode_conversion_db": -8.73551,
+   "mode_conversion_db": -14.6116,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PER0_P",
@@ -935,7 +1041,7 @@
    ],
    "status": "yellow",
    "stubs": [
-    "stub 0.8 mm to C43.2 (not fitted; pad 0402, 0.10 pF estimated)"
+    "stub 0.8 mm to C43.2 (not fitted; pad 0402, 0.07 pF from the pad geometry)"
    ],
    "terminations": [],
    "to": "U18.B2",
@@ -953,7 +1059,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "green",
-     "value": 92.0721
+     "value": 88.5493
     },
     {
      "hi": null,
@@ -962,7 +1068,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.66118
+     "value": -1.59441
     },
     {
      "hi": null,
@@ -971,7 +1077,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 3.75646
+     "value": 9.24131
     },
     {
      "hi": 5.0,
@@ -980,7 +1086,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 6.55718
+     "value": 6.55406
     }
    ],
    "diff": true,
@@ -991,9 +1097,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.737779,
+    "height": 0.668191,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.84375
+    "width_ui": 0.90625
    },
    "eye_computed": true,
    "from": "P1.A21",
@@ -1004,16 +1110,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.66118,
-    "rl_db": 3.75646,
-    "skew_ps": 6.55718,
+    "il_nyq_db": -1.59441,
+    "rl_db": 9.24131,
+    "skew_ps": 6.55406,
     "skew_uncertain": true,
     "stub_ghz": null,
-    "z_max": 161.055,
-    "z_mean": 92.0721,
+    "z_max": 147.09,
+    "z_mean": 88.5493,
     "z_min": 47.2292
    },
-   "mode_conversion_db": -15.5845,
+   "mode_conversion_db": -14.3403,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PER1_P",
@@ -1028,7 +1134,7 @@
    ],
    "status": "yellow",
    "stubs": [
-    "stub 0.8 mm to C39.2 (not fitted; pad 0402, 0.10 pF estimated)"
+    "stub 0.8 mm to C39.2 (not fitted; pad 0402, 0.07 pF from the pad geometry)"
    ],
    "terminations": [],
    "to": "U18.D2",
@@ -1046,7 +1152,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "green",
-     "value": 92.5493
+     "value": 89.0302
     },
     {
      "hi": null,
@@ -1055,7 +1161,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.40266
+     "value": -1.5466
     },
     {
      "hi": null,
@@ -1064,7 +1170,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 3.97694
+     "value": 9.1775
     },
     {
      "hi": 5.0,
@@ -1073,7 +1179,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 10.8671
+     "value": 10.864
     }
    ],
    "diff": true,
@@ -1084,7 +1190,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.734839,
+    "height": 0.698445,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.90625
    },
@@ -1097,16 +1203,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.40266,
-    "rl_db": 3.97694,
-    "skew_ps": 10.8671,
+    "il_nyq_db": -1.5466,
+    "rl_db": 9.1775,
+    "skew_ps": 10.864,
     "skew_uncertain": true,
     "stub_ghz": null,
-    "z_max": 161.055,
-    "z_mean": 92.5493,
+    "z_max": 179.878,
+    "z_mean": 89.0302,
     "z_min": 47.2292
    },
-   "mode_conversion_db": -10.246,
+   "mode_conversion_db": -10.2052,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PER2_P",
@@ -1121,7 +1227,7 @@
    ],
    "status": "yellow",
    "stubs": [
-    "stub 0.8 mm to C35.2 (not fitted; pad 0402, 0.10 pF estimated)"
+    "stub 0.8 mm to C35.2 (not fitted; pad 0402, 0.07 pF from the pad geometry)"
    ],
    "terminations": [],
    "to": "U18.F2",
@@ -1139,7 +1245,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "green",
-     "value": 92.712
+     "value": 89.0504
     },
     {
      "hi": null,
@@ -1148,7 +1254,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.75305
+     "value": -1.63804
     },
     {
      "hi": null,
@@ -1157,7 +1263,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 4.58952
+     "value": 9.25411
     },
     {
      "hi": 5.0,
@@ -1166,7 +1272,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 10.8866
+     "value": 11.0025
     }
    ],
    "diff": true,
@@ -1177,7 +1283,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.596559,
+    "height": 0.676038,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.9375
    },
@@ -1190,16 +1296,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.75305,
-    "rl_db": 4.58952,
-    "skew_ps": 10.8866,
+    "il_nyq_db": -1.63804,
+    "rl_db": 9.25411,
+    "skew_ps": 11.0025,
     "skew_uncertain": true,
     "stub_ghz": null,
-    "z_max": 161.055,
-    "z_mean": 92.712,
+    "z_max": 165.396,
+    "z_mean": 89.0504,
     "z_min": 47.2292
    },
-   "mode_conversion_db": -6.26161,
+   "mode_conversion_db": -10.6635,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PER3_P",
@@ -1214,7 +1320,7 @@
    ],
    "status": "yellow",
    "stubs": [
-    "stub 0.8 mm to C31.2 (not fitted; pad 0402, 0.10 pF estimated)"
+    "stub 0.8 mm to C31.2 (not fitted; pad 0402, 0.07 pF from the pad geometry)"
    ],
    "terminations": [],
    "to": "U18.H2",
@@ -1232,7 +1338,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "green",
-     "value": 89.2049
+     "value": 89.0291
     },
     {
      "hi": null,
@@ -1241,7 +1347,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -4.69473
+     "value": -4.41895
     },
     {
      "hi": null,
@@ -1250,7 +1356,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 4.65774
+     "value": 4.95848
     },
     {
      "hi": 5.0,
@@ -1259,7 +1365,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 12.0048
+     "value": 11.9235
     },
     {
      "hi": null,
@@ -1268,7 +1374,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 63.5209
+     "value": 63.5086
     }
    ],
    "diff": true,
@@ -1279,9 +1385,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.44529,
+    "height": 0.409991,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.84375
+    "width_ui": 0.75
    },
    "eye_computed": true,
    "from": "P1.B14",
@@ -1292,16 +1398,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -4.69473,
-    "rl_db": 4.65774,
-    "skew_ps": 12.0048,
+    "il_nyq_db": -4.41895,
+    "rl_db": 4.95848,
+    "skew_ps": 11.9235,
     "skew_uncertain": true,
-    "stub_ghz": 63.5209,
-    "z_max": 114.122,
-    "z_mean": 89.2049,
+    "stub_ghz": 63.5086,
+    "z_max": 384.034,
+    "z_mean": 89.0291,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -13.5001,
+   "mode_conversion_db": -12.4864,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET0_P",
@@ -1316,7 +1422,7 @@
    ],
    "status": "yellow",
    "stubs": [
-    "stub 0.7 mm and a via to R40.1 (not fitted; pad 0402, 0.10 pF estimated)"
+    "stub 0.7 mm and a via to R40.1 (not fitted; pad 0402, 0.06 pF from the pad geometry)"
    ],
    "terminations": [],
    "to": "U18.G4",
@@ -1334,7 +1440,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "green",
-     "value": 89.9471
+     "value": 89.1798
     },
     {
      "hi": null,
@@ -1343,7 +1449,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.75943
+     "value": -2.87785
     },
     {
      "hi": null,
@@ -1352,7 +1458,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 5.07546
+     "value": 6.56463
     },
     {
      "hi": 5.0,
@@ -1361,7 +1467,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 7.94849
+     "value": 7.87318
     },
     {
      "hi": null,
@@ -1381,7 +1487,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.488129,
+    "height": 0.441653,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.78125
    },
@@ -1394,16 +1500,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.75943,
-    "rl_db": 5.07546,
-    "skew_ps": 7.94849,
+    "il_nyq_db": -2.87785,
+    "rl_db": 6.56463,
+    "skew_ps": 7.87318,
     "skew_uncertain": true,
     "stub_ghz": 45.0,
-    "z_max": 112.528,
-    "z_mean": 89.9471,
+    "z_max": 124.68,
+    "z_mean": 89.1798,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -14.7684,
+   "mode_conversion_db": -12.8657,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET1_P",
@@ -1418,7 +1524,7 @@
    ],
    "status": "yellow",
    "stubs": [
-    "stub 0.7 mm and a via to R36.1 (not fitted; pad 0402, 0.10 pF estimated)"
+    "stub 0.7 mm and a via to R36.1 (not fitted; pad 0402, 0.06 pF from the pad geometry)"
    ],
    "terminations": [],
    "to": "U18.C4",
@@ -1436,7 +1542,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "green",
-     "value": 92.8249
+     "value": 89.5027
     },
     {
      "hi": null,
@@ -1445,7 +1551,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -3.00338
+     "value": -3.46527
     },
     {
      "hi": null,
@@ -1454,7 +1560,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 3.07817
+     "value": 7.14537
     },
     {
      "hi": 5.0,
@@ -1463,7 +1569,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 2.66457
+     "value": 2.65363
     },
     {
      "hi": null,
@@ -1483,9 +1589,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.526977,
+    "height": 0.484265,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.8125
+    "width_ui": 0.78125
    },
    "eye_computed": true,
    "from": "P1.B23",
@@ -1496,16 +1602,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -3.00338,
-    "rl_db": 3.07817,
-    "skew_ps": 2.66457,
+    "il_nyq_db": -3.46527,
+    "rl_db": 7.14537,
+    "skew_ps": 2.65363,
     "skew_uncertain": true,
     "stub_ghz": 73.75,
-    "z_max": 161.055,
-    "z_mean": 92.8249,
+    "z_max": 139.767,
+    "z_mean": 89.5027,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -21.3842,
+   "mode_conversion_db": -22.1003,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET2_P",
@@ -1520,7 +1626,7 @@
    ],
    "status": "yellow",
    "stubs": [
-    "stub 0.7 mm and a via to R32.1 (not fitted; pad 0402, 0.10 pF estimated)"
+    "stub 0.7 mm and a via to R32.1 (not fitted; pad 0402, 0.06 pF from the pad geometry)"
    ],
    "terminations": [],
    "to": "U18.A4",
@@ -1538,7 +1644,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "green",
-     "value": 93.2967
+     "value": 89.8056
     },
     {
      "hi": null,
@@ -1547,7 +1653,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -4.19611
+     "value": -2.94125
     },
     {
      "hi": null,
@@ -1556,7 +1662,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 2.37747
+     "value": 4.97831
     },
     {
      "hi": 5.0,
@@ -1565,7 +1671,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 7.86916
+     "value": 7.92798
     },
     {
      "hi": null,
@@ -1574,7 +1680,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 62.9784
+     "value": 62.9743
     }
    ],
    "diff": true,
@@ -1585,9 +1691,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.500348,
+    "height": 0.507192,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.84375
+    "width_ui": 0.78125
    },
    "eye_computed": true,
    "from": "P1.B27",
@@ -1598,16 +1704,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -4.19611,
-    "rl_db": 2.37747,
-    "skew_ps": 7.86916,
+    "il_nyq_db": -2.94125,
+    "rl_db": 4.97831,
+    "skew_ps": 7.92798,
     "skew_uncertain": true,
-    "stub_ghz": 62.9784,
-    "z_max": 161.055,
-    "z_mean": 93.2967,
+    "stub_ghz": 62.9743,
+    "z_max": 378.062,
+    "z_mean": 89.8056,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -15.8172,
+   "mode_conversion_db": -17.0473,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET3_P",
@@ -1622,10 +1728,112 @@
    ],
    "status": "yellow",
    "stubs": [
-    "stub 0.7 mm and a via to R28.1 (not fitted; pad 0402, 0.10 pF estimated)"
+    "stub 0.7 mm and a via to R28.1 (not fitted; pad 0402, 0.06 pF from the pad geometry)"
    ],
    "terminations": [],
    "to": "U18.E4",
+   "vias": 2
+  },
+  {
+   "branches": [],
+   "bus": "P1 ↔ U18",
+   "class": "PCIe",
+   "criteria": [
+    {
+     "hi": 110.0,
+     "key": "z",
+     "lo": 90.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "yellow",
+     "value": 87.3579
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0554055
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 50.0903
+    },
+    {
+     "hi": 250.0,
+     "key": "skew",
+     "lo": null,
+     "note": "path branches or is split by components",
+     "red_below": null,
+     "status": "green",
+     "value": 5.63691
+    },
+    {
+     "hi": null,
+     "key": "stub",
+     "lo": 0.2,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 20.8539
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "P1.A13",
+    "U18.B6"
+   ],
+   "eye_board_share": {
+    "connector_end": "profile",
+    "height": 0.998745,
+    "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
+    "width_ui": 0.96875
+   },
+   "eye_computed": true,
+   "from": "P1.A13",
+   "kind": "ic-connector",
+   "lane": "/TS-PCIe Components/PCIe_REFCLK_P",
+   "length_mm": 39.5771,
+   "metrics": {
+    "error": null,
+    "eye_h": null,
+    "eye_w_ui": null,
+    "il_nyq_db": -0.0554055,
+    "rl_db": 50.0903,
+    "skew_ps": 5.63691,
+    "skew_uncertain": true,
+    "stub_ghz": 20.8539,
+    "z_max": 112.528,
+    "z_mean": 87.3579,
+    "z_min": 47.2292
+   },
+   "mode_conversion_db": -52.1883,
+   "model": "4-port",
+   "nets": [
+    "/TS-PCIe Components/PCIe_REFCLK_P",
+    "/MGT_CLK1_P"
+   ],
+   "not_modelled": [],
+   "profile": "pcie_refclk",
+   "rate_gbps": 0.2,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C45 100nF (0402)"
+   ],
+   "status": "yellow",
+   "stubs": [
+    "stub 0.8 mm and a via to C47.2 (not fitted; pad 0402, 0.07 pF from the pad geometry)"
+   ],
+   "terminations": [],
+   "to": "U18.B6",
    "vias": 2
   },
   {
@@ -1638,7 +1846,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 77.0706
+     "value": 66.1284
     },
     {
      "hi": null,
@@ -1647,7 +1855,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999072
+     "value": 0.999165
     },
     {
      "hi": null,
@@ -1656,7 +1864,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 1.0
+     "value": 0.96875
     },
     {
      "hi": null,
@@ -1665,7 +1873,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0259587
+     "value": -0.0199841
     },
     {
      "hi": null,
@@ -1674,22 +1882,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 24.9054
+     "value": 29.4258
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 6.14,
    "metrics": {
     "error": null,
-    "eye_h": 0.999072,
-    "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0259587,
-    "rl_db": 24.9054,
+    "eye_h": 0.999165,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.0199841,
+    "rl_db": 29.4258,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
-    "z_max": 124.075,
-    "z_mean": 77.0706,
+    "z_max": 82.7199,
+    "z_mean": 66.1284,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -1709,7 +1917,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 81.7424
+     "value": 64.8829
     },
     {
      "hi": null,
@@ -1718,7 +1926,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998646
+     "value": 0.998662
     },
     {
      "hi": null,
@@ -1727,7 +1935,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.625
+     "value": 0.59375
     },
     {
      "hi": null,
@@ -1736,7 +1944,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0373441
+     "value": -0.0296367
     },
     {
      "hi": null,
@@ -1745,22 +1953,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 23.3593
+     "value": 29.8991
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 8.52176,
    "metrics": {
     "error": null,
-    "eye_h": 0.998646,
-    "eye_w_ui": 0.625,
-    "il_nyq_db": -0.0373441,
-    "rl_db": 23.3593,
+    "eye_h": 0.998662,
+    "eye_w_ui": 0.59375,
+    "il_nyq_db": -0.0296367,
+    "rl_db": 29.8991,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
-    "z_max": 124.075,
-    "z_mean": 81.7424,
+    "z_max": 92.4605,
+    "z_mean": 64.8829,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -1780,7 +1988,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 80.4676
+     "value": 65.2043
     },
     {
      "hi": null,
@@ -1789,7 +1997,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.996971
+     "value": 0.993702
     },
     {
      "hi": null,
@@ -1798,7 +2006,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.96875
+     "value": 0.90625
     },
     {
      "hi": null,
@@ -1807,7 +2015,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.16255
+     "value": -0.213514
     },
     {
      "hi": null,
@@ -1816,22 +2024,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 12.2583
+     "value": 10.8693
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 12.0949,
    "metrics": {
     "error": null,
-    "eye_h": 0.996971,
-    "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.16255,
-    "rl_db": 12.2583,
+    "eye_h": 0.993702,
+    "eye_w_ui": 0.90625,
+    "il_nyq_db": -0.213514,
+    "rl_db": 10.8693,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 124.075,
-    "z_mean": 80.4676,
+    "z_mean": 65.2043,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -1851,7 +2059,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 81.8327
+     "value": 71.3671
     },
     {
      "hi": null,
@@ -1860,7 +2068,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999488
+     "value": 0.999547
     },
     {
      "hi": null,
@@ -1878,7 +2086,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0118664
+     "value": -0.0107189
     },
     {
      "hi": null,
@@ -1887,22 +2095,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 31.9399
+     "value": 32.3162
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.24891,
    "metrics": {
     "error": null,
-    "eye_h": 0.999488,
+    "eye_h": 0.999547,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0118664,
-    "rl_db": 31.9399,
+    "il_nyq_db": -0.0107189,
+    "rl_db": 32.3162,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
-    "z_max": 124.075,
-    "z_mean": 81.8327,
+    "z_max": 83.0308,
+    "z_mean": 71.3671,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -1922,7 +2130,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 68.153
+     "value": 64.2249
     },
     {
      "hi": null,
@@ -1931,7 +2139,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998991
+     "value": 0.999042
     },
     {
      "hi": null,
@@ -1949,7 +2157,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0227336
+     "value": -0.0211387
     },
     {
      "hi": null,
@@ -1958,22 +2166,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 30.2363
+     "value": 32.478
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 6.13744,
    "metrics": {
     "error": null,
-    "eye_h": 0.998991,
+    "eye_h": 0.999042,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.0227336,
-    "rl_db": 30.2363,
+    "il_nyq_db": -0.0211387,
+    "rl_db": 32.478,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 124.075,
-    "z_mean": 68.153,
+    "z_mean": 64.2249,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -1993,7 +2201,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 72.9398
+     "value": 66.7697
     },
     {
      "hi": null,
@@ -2002,7 +2210,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.99873
+     "value": 0.998899
     },
     {
      "hi": null,
@@ -2011,7 +2219,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.59375
+     "value": 1.0
     },
     {
      "hi": null,
@@ -2020,7 +2228,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0316416
+     "value": -0.0272303
     },
     {
      "hi": null,
@@ -2029,22 +2237,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 24.7421
+     "value": 27.7136
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 7.65193,
    "metrics": {
     "error": null,
-    "eye_h": 0.99873,
-    "eye_w_ui": 0.59375,
-    "il_nyq_db": -0.0316416,
-    "rl_db": 24.7421,
+    "eye_h": 0.998899,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0272303,
+    "rl_db": 27.7136,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 124.075,
-    "z_mean": 72.9398,
+    "z_mean": 66.7697,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -2064,7 +2272,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 85.4938
+     "value": 65.0856
     },
     {
      "hi": null,
@@ -2073,7 +2281,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.99911
+     "value": 0.999301
     },
     {
      "hi": null,
@@ -2082,7 +2290,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.625
+     "value": 0.96875
     },
     {
      "hi": null,
@@ -2091,7 +2299,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0331515
+     "value": -0.0185943
     },
     {
      "hi": null,
@@ -2100,22 +2308,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 20.8958
+     "value": 27.8304
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 5.94117,
    "metrics": {
     "error": null,
-    "eye_h": 0.99911,
-    "eye_w_ui": 0.625,
-    "il_nyq_db": -0.0331515,
-    "rl_db": 20.8958,
+    "eye_h": 0.999301,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.0185943,
+    "rl_db": 27.8304,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
-    "z_max": 124.075,
-    "z_mean": 85.4938,
+    "z_max": 90.3574,
+    "z_mean": 65.0856,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -2135,7 +2343,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 85.0341
+     "value": 63.2713
     },
     {
      "hi": null,
@@ -2144,7 +2352,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999464
+     "value": 0.999526
     },
     {
      "hi": null,
@@ -2153,7 +2361,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.96875
+     "value": 1.0
     },
     {
      "hi": null,
@@ -2162,7 +2370,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.017917
+     "value": -0.0115897
     },
     {
      "hi": null,
@@ -2171,22 +2379,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 24.4347
+     "value": 32.1113
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.78852,
    "metrics": {
     "error": null,
-    "eye_h": 0.999464,
-    "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.017917,
-    "rl_db": 24.4347,
+    "eye_h": 0.999526,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.0115897,
+    "rl_db": 32.1113,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
-    "z_max": 124.075,
-    "z_mean": 85.0341,
+    "z_max": 92.4605,
+    "z_mean": 63.2713,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -2206,7 +2414,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 77.0706
+     "value": 66.1284
     },
     {
      "hi": null,
@@ -2215,7 +2423,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999072
+     "value": 0.999165
     },
     {
      "hi": null,
@@ -2224,7 +2432,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 1.0
+     "value": 0.96875
     },
     {
      "hi": null,
@@ -2233,7 +2441,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0259587
+     "value": -0.0199841
     },
     {
      "hi": null,
@@ -2242,22 +2450,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 24.9054
+     "value": 29.4258
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 6.14,
    "metrics": {
     "error": null,
-    "eye_h": 0.999072,
-    "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0259587,
-    "rl_db": 24.9054,
+    "eye_h": 0.999165,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.0199841,
+    "rl_db": 29.4258,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
-    "z_max": 124.075,
-    "z_mean": 77.0706,
+    "z_max": 82.7199,
+    "z_mean": 66.1284,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -2277,7 +2485,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 81.7424
+     "value": 66.3415
     },
     {
      "hi": null,
@@ -2286,7 +2494,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998646
+     "value": 0.998638
     },
     {
      "hi": null,
@@ -2295,7 +2503,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.625
+     "value": 0.59375
     },
     {
      "hi": null,
@@ -2304,7 +2512,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0373441
+     "value": -0.0298187
     },
     {
      "hi": null,
@@ -2313,22 +2521,22 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 23.3584
+     "value": 29.7199
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 8.52176,
    "metrics": {
     "error": null,
-    "eye_h": 0.998646,
-    "eye_w_ui": 0.625,
-    "il_nyq_db": -0.0373441,
-    "rl_db": 23.3584,
+    "eye_h": 0.998638,
+    "eye_w_ui": 0.59375,
+    "il_nyq_db": -0.0298187,
+    "rl_db": 29.7199,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 124.075,
-    "z_mean": 81.7424,
+    "z_mean": 66.3415,
     "z_min": 51.3498
    },
    "model": "single-ended",
@@ -2348,7 +2556,7 @@
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
      "status": "yellow",
-     "value": 80.4557
+     "value": 62.6729
     },
     {
      "hi": null,
@@ -2357,7 +2565,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.996971
+     "value": 0.993543
     },
     {
      "hi": null,
@@ -2366,7 +2574,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.96875
+     "value": 0.90625
     },
     {
      "hi": null,
@@ -2375,7 +2583,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.16255
+     "value": -0.226254
     },
     {
      "hi": null,
@@ -2384,168 +2592,26 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 12.1368
+     "value": 10.4699
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 12.0949,
    "metrics": {
     "error": null,
-    "eye_h": 0.996971,
-    "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.16255,
-    "rl_db": 12.1368,
+    "eye_h": 0.993543,
+    "eye_w_ui": 0.90625,
+    "il_nyq_db": -0.226254,
+    "rl_db": 10.4699,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
     "z_max": 124.075,
-    "z_mean": 80.4557,
+    "z_mean": 62.6729,
     "z_min": 51.3498
    },
    "model": "single-ended",
    "net": "/CH2/ATTEN_50X_OUT",
-   "profile": "se50",
-   "rate_gbps": 1.0,
-   "status": "yellow",
-   "vias": 0
-  },
-  {
-   "class": "FE_50Z",
-   "criteria": [
-    {
-     "hi": 55.0,
-     "key": "z",
-     "lo": 45.0,
-     "note": "mean along the line from the impedance analysis",
-     "red_below": null,
-     "status": "yellow",
-     "value": 81.806
-    },
-    {
-     "hi": null,
-     "key": "eye_h",
-     "lo": 0.65,
-     "note": null,
-     "red_below": 0.4,
-     "status": "green",
-     "value": 0.999487
-    },
-    {
-     "hi": null,
-     "key": "eye_w",
-     "lo": 0.5,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 1.0
-    },
-    {
-     "hi": null,
-     "key": "il",
-     "lo": null,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": -0.011888
-    },
-    {
-     "hi": null,
-     "key": "rl",
-     "lo": 10.0,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 31.8953
-    }
-   ],
-   "kind": "net (no devices found)",
-   "length_mm": 3.25305,
-   "metrics": {
-    "error": null,
-    "eye_h": 0.999487,
-    "eye_w_ui": 1.0,
-    "il_nyq_db": -0.011888,
-    "rl_db": 31.8953,
-    "skew_ps": null,
-    "skew_uncertain": false,
-    "stub_ghz": null,
-    "z_max": 124.075,
-    "z_mean": 81.806,
-    "z_min": 51.3498
-   },
-   "model": "single-ended",
-   "net": "/CH2/ATTEN_IN",
-   "profile": "se50",
-   "rate_gbps": 1.0,
-   "status": "yellow",
-   "vias": 0
-  },
-  {
-   "class": "FE_50Z",
-   "criteria": [
-    {
-     "hi": 55.0,
-     "key": "z",
-     "lo": 45.0,
-     "note": "mean along the line from the impedance analysis",
-     "red_below": null,
-     "status": "yellow",
-     "value": 68.153
-    },
-    {
-     "hi": null,
-     "key": "eye_h",
-     "lo": 0.65,
-     "note": null,
-     "red_below": 0.4,
-     "status": "green",
-     "value": 0.998991
-    },
-    {
-     "hi": null,
-     "key": "eye_w",
-     "lo": 0.5,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 0.96875
-    },
-    {
-     "hi": null,
-     "key": "il",
-     "lo": null,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": -0.0227336
-    },
-    {
-     "hi": null,
-     "key": "rl",
-     "lo": 10.0,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 30.2363
-    }
-   ],
-   "kind": "net (no devices found)",
-   "length_mm": 6.13744,
-   "metrics": {
-    "error": null,
-    "eye_h": 0.998991,
-    "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.0227336,
-    "rl_db": 30.2363,
-    "skew_ps": null,
-    "skew_uncertain": false,
-    "stub_ghz": null,
-    "z_max": 124.075,
-    "z_mean": 68.153,
-    "z_min": 51.3498
-   },
-   "model": "single-ended",
-   "net": "/CH2/TERM_1M",
    "profile": "se50",
    "rate_gbps": 1.0,
    "status": "yellow",
@@ -2555,9 +2621,9 @@
  "rows_omitted": 41,
  "rows_shown": "all",
  "summary": {
-  "green": 22,
+  "green": 20,
   "red": 0,
-  "yellow": 49
+  "yellow": 51
  },
  "variant": {
   "available": [

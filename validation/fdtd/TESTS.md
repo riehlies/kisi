@@ -620,3 +620,61 @@ the ladder with the 3D loss model): every stored value unchanged.
 **Example boards** (`golden.py boards`): no verdict changes; ts.check 187 and vna.check 171 values moved –
 RL of well matched lanes (above 30 dB) by up to 7 dB, of the PCIe lanes by up to 0.2 dB, IL at Nyquist by at
 most 0.08 dB, eye height by at most 0.015.
+
+## 15. Pads and gold fingers without a reference plane (block 2, accuracy)
+
+Before, a track inside an SMD pad of its own net (tracks run to the pad's centre; a card-edge finger) was
+sampled with the track's width, a part's pads were a fixed capacitance per package (0402: 0.10 pF, whatever lay
+below), and copper with no plane on any layer got 1.5 × the target impedance. Now:
+- **Pad cross-sections** (`extract`): a track sample inside a same-net SMD pad has the pad's chord across the
+  track as its width (`board::pad_chord`), the track is split exactly at the pad's edge
+  (`board::pad_segment_span`); field solver or formula then see the pad with what lies below it (a cut-out in
+  the plane included). These pieces stay out of the net's impedance statistics – the pad's synthetic track
+  stands for the pad there – but keep their length.
+- **Pad shunts** (`topology::pad_shunt_c`): the half of a part's pad that no track covers (towards the body) is
+  a capacitance Σ C′·ℓ from the cross-sections of the pad's synthetic track; the package estimate stays as the
+  fallback (no track enters the pad, no impedance). Also for the pads of parts that are not fitted.
+- **No plane** (`analytic::no_plane`): copper with no plane above or below takes its return in coplanar copper
+  within max(0.5 mm, 3 widths) and in a pair's partner – coplanar waveguide and coplanar strips without ground
+  (Simons), the sides as parallel slots; otherwise still 1.5 × the target (an estimate, warned).
+- Unit tests `topology::tests::pads_from_their_geometry`, `analytic::tests::coplanar_without_plane`,
+  `board::tests::pad_chord_and_span`.
+
+**3D references** (group P, `via_cases.py --groups P`, kisi-fdtd 0.46–1.49 M cells, 25–850 s on one shared
+core): the pad or finger in the middle of an 8 mm 50 Ω microstrip on the ThunderScope stack (ports on the
+microstrip; the TDR's line level of the 3D lumped ports sits a few ohms low). TDR with a 20 ps edge, the
+section's extreme against each curve's own line level (Ω), and the worst |S11| up to 20 GHz
+(rows in `results/kisi_models.json`):
+
+| case | 3D | kisi before | kisi now, formula | kisi now, field solver |
+|---|---|---|---|---|
+| 0402 pad 0.56 × 0.62 mm, plane intact | −5.7 Ω, −11.9 dB | +0.1, −47.9 | −4.0, −13.2 | −4.0, −13.3 |
+| the same, L2 cut out under it (next plane 1.14 mm) | −3.6, −18.7 | +17.6, −5.6 | +5.8, −12.4 | −0.8, −29.9 |
+| finger 0.7 × 2.1 mm, GND fingers at 0.3 mm, L2 cut back | +11.8, −8.7 | +22.8, −5.2 | +7.0, −12.4 | +7.3, −11.2 |
+| the same, every plane cut back (no plane) | +14.4, −7.7 | +9.4, −8.8 | +9.2, −9.3 | +9.3, −9.2 |
+| finger pair, pitch 1 mm, no plane (Zdiff) | −5.6, −13.9 | −16.3, −11.3 | −13.3, −6.8 | −12.4, −7.4 |
+
+The section's peak impedance (TDR maximum, 3D / now): pad over the cut-out 50.9 / 51.2 Ω with the field
+solver (formula 56.9, flagged rough; before 68.2), finger with a far plane 61.5 / 60.1 (before 76.3), finger
+without a plane 62.9 / 62.7, finger pair 115.3 / 114.7 Ω Zdiff (before 136.7). The TDR deltas of the single
+cases are within about 4 Ω (8 %), the pair without any plane reads about 7 Ω low in its section (its feed of
+two 0.19 mm traces at 1 mm pitch reads 107 against 117 Ω in 3D, the formula's diff microstrip): the no-plane
+pair is an estimate to about 15 %.
+
+**ThunderScope PCIe lanes** (check, formula impedances; RL limit 10 dB): the trace through each 4.2 mm
+gold finger was a 0.19 mm microstrip over B.Cu 1.42 mm away (161 Ω diff, field solver 172 Ω); with the
+finger's width it reads 93 Ω. Return loss PER0–3 3.9–5.0 → 9.0–9.4 dB, PET0–3 2.5–5.2 → 5.2–7.2 dB, IL at
+Nyquist PER 2.4–3.4 → 1.6–1.9 dB; still yellow. What remains: the 0402 pads of the AC capacitors and 0 Ω
+resistors over the plane 0.11 mm below (about 21 Ω over 0.45 mm per pad – the board has no cut-outs there),
+the stubs to the unfitted alternatives, the vias. The 1.5 × fallback was not the cause: on these lanes it
+covers only zero-length pieces next to vias.
+
+**Example boards** (`golden.py boards --update`): 12 verdict changes, all on the impedance criterion (the
+length-weighted mean of the lane's nets), from counting each pad once with its own cross-section:
+ThunderScope /ADC/D3A_P yellow → green (110.2 → 109.8 Ω), /ADC Driver 2/OUT_P and Driver 3/OUT_P green →
+yellow (92.0 → 86.9 / 85.5 Ω: short nets dominated by 0402 pads), PCIe_REFCLK_P green → yellow (90.7 → 87.4 Ω:
+the 161 Ω finger trace had lifted the mean, the trace itself is 88 Ω); LibreVNA RF_HBLB_AMP, C270-Pad2,
+T1-OUT+, T3-OUT- yellow → green (60–62 → 51–55 Ω: traces over openings under pads were counted as narrow
+traces), LO1_RFOUTB_N_RC, C121-Pad2, C160-Pad2, C165-Pad2 green → yellow (46–48 → 42–45 Ω). Values moved in
+overview (the classes' share within ±5 %, by up to 13 points), check, crosstalk (the coupling
+scan sees the pads' width).

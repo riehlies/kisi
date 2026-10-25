@@ -413,7 +413,9 @@ pub(crate) fn xs_material(su: &Stackup, xs: &CrossSection) -> (f64, f64) {
     }
     let wsum: f64 = parts.iter().map(|p| p.0).sum();
     if wsum <= 0.0 {
-        return (4.2, 0.02);
+        // no plane: the dielectric next to the trace
+        let k = if li == 0 { 0 } else { li - 1 };
+        return su.dielectrics.get(k).map(|d| (d.epsilon_r, d.loss_tangent)).unwrap_or((4.2, 0.02));
     }
     let er = parts.iter().map(|p| p.0 * p.1).sum::<f64>() / wsum;
     let tand = parts.iter().map(|p| p.0 * p.2).sum::<f64>() / wsum;
@@ -449,9 +451,12 @@ pub fn line_model_mode(su: &Stackup, xs: &CrossSection, field: Option<&FieldResu
     let t_mm = xs.t;
     let (h1, h2) = match xs.kind {
         Kind::Stripline => (xs.h_dn.unwrap_or(0.1), xs.h_up.unwrap_or(0.1)),
+        // no plane: the current crowds towards the nearest coplanar return (for Wheeler's rule a
+        // microstrip at that distance; an estimate)
+        Kind::NoReference => ([xs.s_left, xs.s_right, xs.diff_gap].into_iter().flatten().fold(f64::INFINITY, f64::min).min(0.5), 0.0),
         _ => (xs.h_dn.or(xs.h_up).unwrap_or(0.1), 0.0),
     };
-    let ms_h = if xs.kind == Kind::Stripline { None } else { Some(h1 * 1e-3) };
+    let ms_h = if matches!(xs.kind, Kind::Stripline | Kind::NoReference) { None } else { Some(h1 * 1e-3) };
     let q_fill = if xs.kind == Kind::Stripline || er <= 1.0 { 1.0 } else { ((eeff - 1.0) / (er - 1.0)).clamp(0.05, 1.0) };
     let r_dc = 1.0 / (rp.sigma * (w_mm * 1e-3) * (t_mm * 1e-3));
 

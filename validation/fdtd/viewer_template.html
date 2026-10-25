@@ -137,6 +137,7 @@ const GROUPS = {
   G: ["Plane cavity", "Rectangular plane pair: impedance and resonances seen from a corner and the centre (1 Ω ports)."],
   H: ["PDN loop inductance", "BGA pin field to one capacitor at a distance: loop inductance from Im(Z)/ω (1 Ω port)."],
   T: ["Lines and coupling", "Transmission lines (microstrip, stripline, CPWG; 10 and 20 mm for Zc and εeff), coupled pairs, single-ended aggressor and victim, broadside: kisi's line and crosstalk models against 3D."],
+  P: ["Pads and gold fingers", "A capacitor pad or a card-edge finger in a 50 Ω line, with the plane under it, cut out, or every plane cut back (the finger between GND fingers): kisi's pad and no-plane models against 3D."],
   X: ["Inner exit, one plane removed", "L1→L3 as in B, without the L2 or the L4 plane: separates the junction of trace and via from the shared-cavity effect (calibration of the junction model)."],
   thru: ["2×thru", "Feed lines alone (twice the feed length): the fixtures for de-embedding."],
 };
@@ -299,7 +300,7 @@ let fieldOpen = false;  // the field panel stays as the reader left it when swit
 function fieldNote(c) {
   const g = c.meta.group;
   if (g === "G") return "Top view: the vertical field between the planes; at a resonance the plane pair shows its standing mode (m, n half waves along 50 and 30 mm).";
-  if (g === "T") return "Top view: the vertical field between the trace of port 1 and its reference; on coupled lines the victim's field shows how much reaches it.";
+  if (g === "T" || g === "P") return "Top view: the vertical field between the trace of port 1 and its reference; on coupled lines the victim's field shows how much reaches it.";
   if (g === "E") return "Top view: the vertical field in the middle of the thickest dielectric, with port 1 (the P line) driven alone, so it shows the single-ended drive (half differential, half common mode); the common-mode part spreads into the plane pair.";
   return "Top view: the vertical field in the middle of the thickest dielectric the via crosses. Where it spreads in rings, the return current has no nearby path and the plane pair carries a radial wave; GND vias close to the signal via keep it local.";
 }

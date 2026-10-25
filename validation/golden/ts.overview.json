@@ -9,41 +9,41 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 50.0,
    "target_source": "class name",
-   "within_5pct": 0.868241,
+   "within_5pct": 0.851509,
    "worst": [
     {
-     "net": "Net-(U10-RO)",
-     "within_5pct": 0.453621,
-     "z_max": 48.304,
-     "z_mean": 38.6909,
-     "z_min": 24.7849
-    },
-    {
      "net": "/SYNC",
-     "within_5pct": 0.519448,
+     "within_5pct": 0.271243,
      "z_max": 48.304,
-     "z_mean": 38.8249,
+     "z_mean": 33.9289,
      "z_min": 24.7849
     },
     {
-     "net": "/TS-USB4 Components/SYNC1",
-     "within_5pct": 0.654215,
+     "net": "Net-(U10-RO)",
+     "within_5pct": 0.203494,
      "z_max": 48.304,
-     "z_mean": 45.2678,
+     "z_mean": 34.2902,
      "z_min": 24.7849
     },
     {
      "net": "/REFINOUT",
      "within_5pct": 0.0,
      "z_max": 52.6012,
-     "z_mean": 45.4857,
+     "z_mean": 43.3006,
      "z_min": 26.8037
     },
     {
      "net": "Net-(U7-OC1P)",
-     "within_5pct": 0.508821,
+     "within_5pct": 0.421072,
      "z_max": 53.0238,
-     "z_mean": 46.8533,
+     "z_mean": 46.05,
+     "z_min": 26.8037
+    },
+    {
+     "net": "Net-(U7-IC1P)",
+     "within_5pct": 0.0,
+     "z_max": 53.0238,
+     "z_mean": 46.9524,
      "z_min": 26.8037
     }
    ]
@@ -59,38 +59,38 @@
    "within_5pct": 0.0,
    "worst": [
     {
+     "net": "/CH3_P",
+     "within_5pct": 0.0,
+     "z_max": 252.063,
+     "z_mean": 110.625,
+     "z_min": 53.6074
+    },
+    {
      "net": "/CH4_N",
      "within_5pct": 0.0,
-     "z_max": 273.124,
-     "z_mean": 111.62,
+     "z_max": 272.231,
+     "z_mean": 109.998,
      "z_min": 53.6074
     },
     {
      "net": "/CH2_N",
      "within_5pct": 0.0,
-     "z_max": 258.683,
-     "z_mean": 111.337,
+     "z_max": 265.196,
+     "z_mean": 109.898,
      "z_min": 53.6074
     },
     {
      "net": "/CH3_N",
      "within_5pct": 0.0,
-     "z_max": 241.97,
-     "z_mean": 111.23,
+     "z_max": 252.063,
+     "z_mean": 109.895,
      "z_min": 53.6074
     },
     {
-     "net": "/CH3_P",
+     "net": "/CH2_P",
      "within_5pct": 0.0,
-     "z_max": 241.97,
-     "z_mean": 111.148,
-     "z_min": 53.6074
-    },
-    {
-     "net": "/CH1_N",
-     "within_5pct": 0.0,
-     "z_max": 241.97,
-     "z_mean": 111.148,
+     "z_max": 252.063,
+     "z_mean": 109.795,
      "z_min": 53.6074
     }
    ]
@@ -100,44 +100,44 @@
    "diff": false,
    "length_mm": 428.6,
    "nets": 44,
-   "rough_formula_mm": 257.401,
+   "rough_formula_mm": 248.618,
    "target_ohm": 50.0,
    "target_source": "class name",
-   "within_5pct": 0.392472,
+   "within_5pct": 0.512506,
    "worst": [
     {
-     "net": "/CH1/ATTEN_OUT",
-     "within_5pct": 0.262795,
-     "z_max": 124.075,
-     "z_mean": 85.9833,
+     "net": "/CH4/ATTEN_OUT_R",
+     "within_5pct": 0.244606,
+     "z_max": 123.137,
+     "z_mean": 75.2638,
      "z_min": 51.3498
     },
     {
-     "net": "/CH3/TERM_50Z",
-     "within_5pct": 0.236628,
-     "z_max": 124.075,
-     "z_mean": 85.4938,
+     "net": "/CH1/ATTEN_OUT_R",
+     "within_5pct": 0.244606,
+     "z_max": 123.137,
+     "z_mean": 75.2638,
      "z_min": 51.3498
     },
     {
-     "net": "/CH4/TERM_50Z",
-     "within_5pct": 0.236628,
-     "z_max": 124.075,
-     "z_mean": 85.4938,
+     "net": "/CH2/ATTEN_OUT_R",
+     "within_5pct": 0.244606,
+     "z_max": 123.137,
+     "z_mean": 75.2638,
      "z_min": 51.3498
     },
     {
-     "net": "/CH2/TERM_50Z",
-     "within_5pct": 0.236628,
-     "z_max": 124.075,
-     "z_mean": 85.4938,
+     "net": "/CH3/ATTEN_OUT_R",
+     "within_5pct": 0.244606,
+     "z_max": 123.137,
+     "z_mean": 75.2638,
      "z_min": 51.3498
     },
     {
-     "net": "/CH1/TERM_50Z",
-     "within_5pct": 0.236628,
+     "net": "/CH4/ATTEN_IN",
+     "within_5pct": 0.350903,
      "z_max": 124.075,
-     "z_mean": 85.4938,
+     "z_mean": 73.8376,
      "z_min": 51.3498
     }
    ]
@@ -147,37 +147,37 @@
    "diff": false,
    "length_mm": 44.0315,
    "nets": 4,
-   "rough_formula_mm": 11.3715,
+   "rough_formula_mm": 11.2469,
    "target_ohm": 50.0,
    "target_source": "class name",
-   "within_5pct": 0.60302,
+   "within_5pct": 0.656757,
    "worst": [
     {
-     "net": "/CH2/BNC_IN",
-     "within_5pct": 0.599987,
-     "z_max": 124.075,
-     "z_mean": 66.2032,
-     "z_min": 51.3498
-    },
-    {
-     "net": "/CH4/BNC_IN",
-     "within_5pct": 0.60023,
-     "z_max": 124.075,
-     "z_mean": 66.113,
-     "z_min": 51.3498
-    },
-    {
      "net": "/CH1/BNC_IN",
-     "within_5pct": 0.603467,
-     "z_max": 124.075,
-     "z_mean": 64.3388,
+     "within_5pct": 0.652583,
+     "z_max": 236.835,
+     "z_mean": 66.7054,
      "z_min": 51.3498
     },
     {
      "net": "/CH3/BNC_IN",
-     "within_5pct": 0.608395,
-     "z_max": 124.075,
-     "z_mean": 63.9418,
+     "within_5pct": 0.652853,
+     "z_max": 236.835,
+     "z_mean": 66.6874,
+     "z_min": 51.3498
+    },
+    {
+     "net": "/CH4/BNC_IN",
+     "within_5pct": 0.660207,
+     "z_max": 121.749,
+     "z_mean": 60.0462,
+     "z_min": 51.3498
+    },
+    {
+     "net": "/CH2/BNC_IN",
+     "within_5pct": 0.661385,
+     "z_max": 121.749,
+     "z_mean": 60.0351,
      "z_min": 51.3498
     }
    ]
@@ -190,41 +190,41 @@
    "rough_formula_mm": 1.31405,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.31136,
+   "within_5pct": 0.320593,
    "worst": [
     {
      "net": "/ADC/D1A_N",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 111.763,
+     "z_mean": 111.602,
      "z_min": 65.0803
     },
     {
      "net": "/ADC/D3B_P",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 111.299,
-     "z_min": 77.3094
-    },
-    {
-     "net": "/ADC/D1A_P",
-     "within_5pct": 0.0,
-     "z_max": 130.145,
-     "z_mean": 110.7,
+     "z_mean": 111.039,
      "z_min": 77.3094
     },
     {
      "net": "/ADC/D1B_N",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 110.565,
+     "z_mean": 110.382,
      "z_min": 65.0803
+    },
+    {
+     "net": "/ADC/D1A_P",
+     "within_5pct": 0.0,
+     "z_max": 130.145,
+     "z_mean": 110.342,
+     "z_min": 77.3094
     },
     {
      "net": "/ADC/D1B_P",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 110.429,
+     "z_mean": 110.1,
      "z_min": 77.3094
     }
    ]
@@ -237,20 +237,20 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.0978865,
+   "within_5pct": 0.123708,
    "worst": [
     {
      "net": "/ADC/ADC_CLK_N",
-     "within_5pct": 0.0977635,
+     "within_5pct": 0.12356,
      "z_max": 130.145,
-     "z_mean": 107.758,
+     "z_mean": 102.457,
      "z_min": 51.6994
     },
     {
      "net": "/ADC/ADC_CLK_P",
-     "within_5pct": 0.0980098,
+     "within_5pct": 0.123856,
      "z_max": 130.145,
-     "z_mean": 107.677,
+     "z_mean": 102.36,
      "z_min": 51.4884
     }
    ]
@@ -260,37 +260,37 @@
    "diff": true,
    "length_mm": 353.569,
    "nets": 4,
-   "rough_formula_mm": 0.935485,
+   "rough_formula_mm": 0.451117,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.909182,
+   "within_5pct": 0.925648,
    "worst": [
     {
-     "net": "/FPGA/SYNC_IN_P",
-     "within_5pct": 0.945019,
-     "z_max": 130.145,
-     "z_mean": 98.1675,
-     "z_min": 63.1726
-    },
-    {
      "net": "/FPGA/SYNC_OUT_N",
-     "within_5pct": 0.922318,
-     "z_max": 176.909,
-     "z_mean": 98.4497,
+     "within_5pct": 0.942422,
+     "z_max": 161.896,
+     "z_mean": 97.7458,
      "z_min": 48.1579
     },
     {
      "net": "/FPGA/SYNC_OUT_P",
-     "within_5pct": 0.887437,
-     "z_max": 130.145,
-     "z_mean": 98.9437,
+     "within_5pct": 0.906827,
+     "z_max": 152.542,
+     "z_mean": 98.7057,
      "z_min": 48.1579
     },
     {
      "net": "/FPGA/SYNC_IN_N",
-     "within_5pct": 0.882693,
-     "z_max": 130.145,
-     "z_mean": 99.5266,
+     "within_5pct": 0.897239,
+     "z_max": 405.773,
+     "z_mean": 99.526,
+     "z_min": 63.1726
+    },
+    {
+     "net": "/FPGA/SYNC_IN_P",
+     "within_5pct": 0.956691,
+     "z_max": 532.596,
+     "z_mean": 99.9855,
      "z_min": 63.1726
     }
    ]
@@ -303,42 +303,42 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.217403,
+   "within_5pct": 0.219909,
    "worst": [
     {
      "net": "/FPGA/USRIO_11_N",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 111.093,
+     "z_mean": 111.005,
      "z_min": 65.0803
     },
     {
      "net": "/FPGA/USRIO_2_P",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 110.364,
+     "z_mean": 110.226,
      "z_min": 66.6369
     },
     {
      "net": "/FPGA/USRIO_3_P",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 110.321,
-     "z_min": 77.3094
-    },
-    {
-     "net": "/FPGA/USRIO_11_P",
-     "within_5pct": 0.0,
-     "z_max": 130.145,
-     "z_mean": 110.268,
+     "z_mean": 110.165,
      "z_min": 77.3094
     },
     {
      "net": "/FPGA/USRIO_12_P",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 110.261,
+     "z_mean": 110.102,
      "z_min": 70.4694
+    },
+    {
+     "net": "/FPGA/USRIO_11_P",
+     "within_5pct": 0.0,
+     "z_max": 130.145,
+     "z_mean": 110.097,
+     "z_min": 77.3094
     }
    ]
   },
@@ -347,45 +347,45 @@
    "diff": true,
    "length_mm": 1317.46,
    "nets": 54,
-   "rough_formula_mm": 0.4113,
+   "rough_formula_mm": 0.715356,
    "target_ohm": 85.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.536585,
+   "within_5pct": 0.585581,
    "worst": [
     {
-     "net": "/TS-PCIe Components/PCIe_PET3_N",
-     "within_5pct": 0.0,
-     "z_max": 161.055,
-     "z_mean": 96.2767,
-     "z_min": 53.6074
+     "net": "/TS-USB4 Components/M2_PER3_P",
+     "within_5pct": 0.598909,
+     "z_max": 495.521,
+     "z_mean": 94.0042,
+     "z_min": 51.1232
     },
     {
-     "net": "/TS-PCIe Components/PCIe_PET3_P",
+     "net": "/FPGA/MGT_TX3_P",
      "within_5pct": 0.0,
-     "z_max": 161.055,
-     "z_mean": 96.2767,
-     "z_min": 53.6074
+     "z_max": 491.537,
+     "z_mean": 93.7219,
+     "z_min": 47.2292
     },
     {
-     "net": "/TS-PCIe Components/PCIe_PET2_P",
+     "net": "/FPGA/MGT_TX0_N",
      "within_5pct": 0.0,
-     "z_max": 161.055,
-     "z_mean": 95.953,
-     "z_min": 53.6074
+     "z_max": 165.396,
+     "z_mean": 93.5557,
+     "z_min": 47.2292
     },
     {
-     "net": "/TS-PCIe Components/PCIe_PET2_N",
+     "net": "/FPGA/MGT_TX1_N",
      "within_5pct": 0.0,
-     "z_max": 161.055,
-     "z_mean": 95.953,
-     "z_min": 53.6074
+     "z_max": 179.878,
+     "z_mean": 93.4134,
+     "z_min": 47.2292
     },
     {
-     "net": "/TS-PCIe Components/PCIe_PET1_N",
+     "net": "/FPGA/MGT_TX0_P",
      "within_5pct": 0.0,
-     "z_max": 161.055,
-     "z_mean": 95.6701,
-     "z_min": 53.6074
+     "z_max": 165.396,
+     "z_mean": 91.8165,
+     "z_min": 47.2292
     }
    ]
   }

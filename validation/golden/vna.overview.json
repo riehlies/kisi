@@ -6,45 +6,45 @@
    "diff": false,
    "length_mm": 1361.29,
    "nets": 134,
-   "rough_formula_mm": 108.009,
+   "rough_formula_mm": 105.469,
    "target_ohm": 50.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.437263,
+   "within_5pct": 0.443406,
    "worst": [
     {
-     "net": "Net-(T3-IN+)",
+     "net": "/2.LO + Ref Clock/CLKIN",
      "within_5pct": 0.0,
-     "z_max": 90.2949,
-     "z_mean": 72.3769,
+     "z_max": 55.4254,
+     "z_mean": 29.434,
+     "z_min": 25.4242
+    },
+    {
+     "net": "/2.LO + Ref Clock/CLKOUT",
+     "within_5pct": 0.0,
+     "z_max": 55.4254,
+     "z_mean": 29.434,
+     "z_min": 25.4242
+    },
+    {
+     "net": "Net-(T2-IN+)",
+     "within_5pct": 0.0,
+     "z_max": 88.6295,
+     "z_mean": 62.2313,
      "z_min": 55.4254
     },
     {
      "net": "Net-(T3-IN-)",
      "within_5pct": 0.0,
      "z_max": 90.2949,
-     "z_mean": 72.0294,
+     "z_mean": 61.7497,
      "z_min": 55.4254
     },
     {
-     "net": "Net-(T2-IN-)",
+     "net": "Net-(T3-IN+)",
      "within_5pct": 0.0,
      "z_max": 90.2949,
-     "z_mean": 71.7609,
+     "z_mean": 61.6413,
      "z_min": 55.4254
-    },
-    {
-     "net": "Net-(T2-IN+)",
-     "within_5pct": 0.0,
-     "z_max": 90.2949,
-     "z_mean": 70.1896,
-     "z_min": 55.4254
-    },
-    {
-     "net": "Net-(T1-IN-)",
-     "within_5pct": 0.0,
-     "z_max": 90.2949,
-     "z_mean": 66.7187,
-     "z_min": 38.9856
     }
    ]
   }

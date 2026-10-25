@@ -13,6 +13,15 @@ simulation or measurement.
   along every line with its reference planes (also across gaps), coplanar ground and the differential partner.
   Within 1.7 % of the HFSS/Ansys references in Forstén's test suite, εeff within 1 %.
 
+- **Pads and gold fingers:** a track inside an SMD pad of its own net (a track runs to the pad's centre; a
+  card-edge finger) has the pad's cross-section – its width and what lies below it, a cut-out in the plane
+  included –, exactly from the pad's edge; the rest of a part's pad is a shunt capacitance from that
+  cross-section (without one, an estimate per package from `data/components.json`). Copper with no plane
+  above or below it on any layer – a finger with the planes cut back – takes its return in the coplanar
+  copper beside it and a pair's partner (coplanar waveguide and coplanar strips without a ground plane, an
+  estimate); with nothing within 0.5 mm (or 3 widths) beside it the channel uses 1.5 × the target impedance.
+  Against 3D: [TESTS.md](../validation/fdtd/TESTS.md) section 15.
+
 Deviation on ThunderScope cross-sections (reference: Forstén's microstrip/stripline solver; the last row HFSS):
 
 | Cross-section | Formula | Field solver |
@@ -123,7 +132,9 @@ kisi marks these as estimates in the viewer and in the CLI output:
 - laminate εr/tanδ and thicknesses that are KiCad defaults (`assumed` in `kisi overview`), until
   `<board>.kisi.json` gives them;
 - target impedances from interface keywords in class names ("interface assumption");
-- copper roughness presets; package parasitics of series parts, terminations and unfitted pads;
+- copper roughness presets; package parasitics of series parts and terminations; the pad capacitance per
+  package where a pad has no cross-section of its own; the coplanar impedance of copper without a reference
+  plane;
 - the transmit direction of a lane;
 - regulator efficiency 85 % where none is given; the heat of a load (all drawn power stays in the part);
 - capacitor ESR/ESL and DC-bias derating by package, with an assumed rated voltage where neither the Value text

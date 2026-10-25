@@ -37,7 +37,10 @@ def stadium(h, n=24):
 
 def hole_ring(h, top):
     """closed outline of a hole starting at its lowest (top=False) or highest point"""
-    pts = (circle(h[0], h[1], h[2]) if len(h) < 5 else stadium(h))[:-1]
+    if h[0] == "rect":
+        pts = [tuple(p) for p in h[1]]
+    else:
+        pts = (circle(h[0], h[1], h[2]) if len(h) < 5 else stadium(h))[:-1]
     k = max(range(len(pts)), key=lambda i: pts[i][1]) if top else min(range(len(pts)), key=lambda i: pts[i][1])
     pts = pts[k:] + pts[:k]
     return pts + [pts[0]]
@@ -47,8 +50,9 @@ def fractured(rect, holes):
     """outer rectangle with holes; each hole joined by a vertical cut to the bottom edge (holes
     at y ≤ 0) or the top edge"""
     x0, y0, x1, y1 = rect
-    low = sorted([h for h in holes if h[1] <= 0], key=lambda h: h[0])
-    high = sorted([h for h in holes if h[1] > 0], key=lambda h: -h[0])
+    cx = lambda h: (sum(p[0] for p in h[1]) / len(h[1]), sum(p[1] for p in h[1]) / len(h[1])) if h[0] == "rect" else (h[0], h[1])
+    low = sorted([h for h in holes if cx(h)[1] <= 0], key=lambda h: cx(h)[0])
+    high = sorted([h for h in holes if cx(h)[1] > 0], key=lambda h: -cx(h)[0])
     pts = [(x0, y0)]
     for h in low:  # along the bottom edge, left to right
         r = hole_ring(h, False)
@@ -78,7 +82,7 @@ def main():
             out.append(f'    (layer "dielectric {i + 1}" (type "core") (thickness {l["z1"] - l["z0"]:.4f}) (material "FR4") (epsilon_r {l["er"]}) (loss_tangent {l.get("tand", 0)}))')
     out.append("  ))")
     four = len(c["ports"]) == 4
-    pair = m["group"] == "E" or (m["group"] == "T" and four and "diff" in c["name"])
+    pair = m["group"] == "E" or (m["group"] in ("T", "P") and four and "diff" in c["name"])
     # differential pairs: D0_P above, D0_N below; coupled single lines: aggressor A1 (port 1/3), victim V1
     sig = ["D0_P", "D0_N"] if pair else (["A1", "V1"] if four else ["SIG"])
     nets = [""] + sig + ["GND", "PWR"]
@@ -109,9 +113,16 @@ def main():
         for j, (x, y, L, net, w) in enumerate(pads):
             out.append(f'  (footprint "{ref}" (layer "F.Cu") (at {x:.4f} {-y:.4f}) (property "Reference" "{ref}") (property "Value" "{"IC" if ref == "U1" else "conn"}")')
             out.append(f'    (pad "{j + 1}" smd rect (at 0 0) (size {w:.4f} {w:.4f}) (layers "{names[L]}") (net {nid[net]} "{net}")))')
+    # pads and gold fingers (group P: `"pad": true`): SMD pads of a footprint, the traces end at their centre
+    for i, s in enumerate(x for x in c["sheets"] if x.get("pad")):
+        x0, y0, x1, y1 = s["rect"]
+        xc, yc = (x0 + x1) / 2, (y0 + y1) / 2
+        L = zl(s["z"])
+        out.append(f'  (footprint "TP" (layer "F.Cu") (at {xc:.4f} {-yc:.4f}) (property "Reference" "TP{i + 1}") (property "Value" "pad")')
+        out.append(f'    (pad "1" smd rect (at 0 0) (size {x1 - x0:.4f} {y1 - y0:.4f}) (layers "{names[L]}") (net {nid[snet(yc, L)]} "{snet(yc, L)}")))')
     # traces (KiCad y points down: mirror)
     for s in c["sheets"]:
-        if s.get("net") in ("GND", "PWR"):
+        if s.get("net") in ("GND", "PWR") or s.get("pad"):
             continue
         x0, y0, x1, y1 = s["rect"]
         L = zl(s["z"])
@@ -127,7 +138,9 @@ def main():
             continue
         L = zl(s["z"])
         r = s["rect"]
-        pts = fractured(r, s.get("holes", []))
+        # rectangular cut-outs (`polys`: the outline, then the cuts) as holes of the fill
+        cuts = [q for q in s.get("polys", [])[1:]]
+        pts = fractured(r, s.get("holes", []) + [["rect", q] for q in cuts])
         out.append(f'  (zone (net {nid[net]}) (net_name "{net}") (layer "{names[L]}") (filled_polygon (layer "{names[L]}") (pts ' +
                    " ".join(f"(xy {x:.4f} {-y:.4f})" for x, y in pts) + ")))")
     # vias

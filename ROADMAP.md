@@ -187,9 +187,8 @@ export shows it). Background: `docs/models.md` (scope, why kisi is fast); the ea
   reports a newer upstream revision).
 - **CI:** the checks run by what changed (`tools/ci_checks.py changes`); stored results of the example boards and the
   via references (`tools/golden.py`) catch unintended model changes; the docs PDF and the channel export (ngspice,
-  KiCad 9 ERC) run in their groups. Next: format the Rust code once with `cargo fmt` when few branches are open
-  (today ~1400 differences) and then check it on every push; clear the clippy warnings and make clippy failing;
-  parse a KiCad 10 test board.
+  KiCad 9 ERC) run in their groups; the Rust code is formatted (`cargo fmt --check`) and clippy-clean
+  (`-D warnings`, native and wasm) on every push that touches it. Next: parse a KiCad 10 test board.
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.
 
 ### Small fixes (independent, can be done in parallel)

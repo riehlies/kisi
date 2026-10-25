@@ -28,8 +28,12 @@ them at fixed commits and shrinks them; their power trees are `web/samples/{ts,v
 
 ## Checks
 Locally, before pushing a branch, run the quick checks for what you changed:
-* Rust: `cargo test --release -p <crate>` for the changed crates and the crates that use a changed API; the
-  release builds for the bundles must compile.
+* Rust: `cargo fmt --all` (settings in `rustfmt.toml`); `cargo clippy --release --workspace --all-targets -- -D
+  warnings` and, for the wasm crates, `cargo clippy --release -p kisi-wasm -p kisi-sparse --target
+  wasm32-unknown-unknown -- -D warnings` (deliberate exceptions: `[workspace.lints]` in `Cargo.toml`, or an `#[allow]`
+  with its reason where it stands); `cargo test --release -p <crate>` for the changed crates and the crates that use
+  a changed API; the release builds for the bundles must compile. CI fails on a formatting difference or a clippy
+  warning (on the latest stable Rust).
 * Viewer (`web/`, `kisi-wasm`): `python3 tools/check_viewer.py dist/kisi-examples.html --quick` (loads the
   boards, all three views, no console errors; `--board`/`--config` for builds without example boards), plus a
   short headless test of the controls you changed.

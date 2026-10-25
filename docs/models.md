@@ -113,8 +113,9 @@ models it – for circuit and RF simulators:
   open stubs; a pair with both lines and its coupled sections as even/odd chains between ideal mode converters.
 - **Test benches** for ngspice, Xyce and LTspice (PRBS7 between the profile's linear transmitter and receiver, the
   LTspice one with `.meas` results) and S-parameter decks; the netlist is shared, only the decks differ (the
-  simulators call analyses differently; for LTspice the library carries `Rser=0` on every inductor, which LTspice
-  otherwise sets to 1 mΩ).
+  simulators call analyses differently; LTspice adds a series resistance (1 mΩ) and an implicit parallel damping
+  to inductors by default, so the LTspice library sets `Rser=0 Rpar=1e30` on every inductor to match ngspice and
+  Xyce).
 - **Touchstone** per lane (`.s2p`, `.s4p`) and a bus as one N-port with its port map.
 - **Frequency range:** the ladders have 20 sections per wavelength at the top frequency (default 25 GHz; `--fmax`, or
   5 × Nyquist of the profile), which also ends the Touchstone grid. A lower top frequency shortens transients only
@@ -159,7 +160,7 @@ kisi marks these as estimates in the viewer and in the CLI output:
   with convection within 0.13 %, energy balance) and, with the datasheets' θJB/θJC on a model of the JEDEC
   JESD51-7 board, against their θJA (QFN-16 +4 %, SOIC-8 −15 %, SOT-23-5 −20 %).
 - **Channel export:** ngspice reproduces kisi's own evaluation of the exported circuit (ThunderScope's LVDS lanes and
-  nine PCIe lanes, to 0.001) and kisi's S-parameters within 0.03 dB (LVDS) and 0.15–0.42 dB (PCIe, strongly
+  nine PCIe lanes, to 0.001) and kisi's S-parameters within 0.03 dB (LVDS) and 0.10–0.34 dB (PCIe, strongly
   reflecting) up to 1.5 × Nyquist; step responses within 2 % (`validation/channel_export/compare.py`, also in CI).
 - **Still open:** validation against other solvers and against measurements. A measured test board is planned
   ([validation/test_board.md](../validation/test_board.md)). Until then, treat the numbers as plausible estimates,

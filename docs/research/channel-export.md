@@ -15,20 +15,20 @@ step 3 (compact, vector-fitted models) as a design study at the end. Background 
   bus subcircuit gives the same lane response as the lane alone. The KiCad project shows the lane element by element
   (lines, coupled runs, vias, parts, pads, stubs); `kicad-cli`'s netlist of it is the lane subcircuit node for node,
   and its AC response in ngspice equals the bench's to 1e-8.
-- **Circuit vs kisi's S-parameters:** up to 1.5 × Nyquist |ΔS21| ≤ 0.025 dB on the LVDS lanes and 0.15–0.42 dB on
+- **Circuit vs kisi's S-parameters:** up to 1.5 × Nyquist |ΔS21| ≤ 0.025 dB on the LVDS lanes and 0.10–0.34 dB on
   the strongly reflecting PCIe lanes (|Sdd11| up to −5 dB: the ripples shift with small phase errors); the largest
-  complex difference of any S-parameter ≤ 0.07 in that band (0.3–0.5 up to 25 GHz, mostly above 15 GHz). Step
-  responses (100 ps edge, every port terminated) agree within 1.8 % of the step, the 50 % delay within 1.4–2.3 ps
+  complex difference of any S-parameter ≤ 0.064 in that band (0.13–0.54 up to 25 GHz, mostly above 15 GHz). Step
+  responses (100 ps edge, every port terminated) agree within 1.9 % of the step, the 50 % delay within 1.4–2.3 ps
   (0.3–0.8 %).
 - **Why not exact:** parts of kisi's model are not passive or not causal – the Huray roughness adds resistance
   without its internal inductance, the via models use a constant loss tangent and a barrel resistance without
   internal inductance, microstrip dispersion makes the capacitance rise with frequency, and the plane-pair spans of
-  via pairs have a negative resistance from a few GHz (on ThunderScope's PCIe reference clock lane kisi's 4-port is
-  not passive above 22 GHz, largest singular value 1.005). A circuit of positive R, L, C cannot follow those
+  via pairs have a negative resistance from a few GHz (before main's via-model changes of October 2026 this made
+  ThunderScope's PCIe reference clock lane non-passive above 22 GHz; now every lane's 4-port is passive). A circuit of positive R, L, C cannot follow those
   exactly; the export is passive and causal by construction and follows the loss closely and the reactance (the
   delay) more closely still. Above about 15 GHz the via-pair spans dominate the difference.
 - **Sizes:** 12–25 k elements per PCIe lane, 42 k for the 85 mm LVDS pair; ngspice (one core, shared machine):
-  S-parameters (500 points) in 1–66 s, a step response in 2–133 s, the PRBS7 bench (two periods) in 75–340 s.
+  S-parameters (500 points) in 2–73 s, a step response in 3–89 s, the PRBS7 bench (two periods) in 100–400 s.
 - **Not included (open points):** IBIS (KIBIS) ends, the channel behind a connector, crosstalk between lanes (the
   bus N-port is block-diagonal), Xyce and Qucs-S runs (not available here), a compact model for long transients.
 
@@ -57,7 +57,7 @@ Per lane (`<lane>/` in a bus export):
 | `<lane>.lib` | the lane as subcircuit `<lane>_lane a b ref` (pairs: `ap an bp bn ref`; transmitter end = a, receiver end = b); one subcircuit per line section, via, part and stub, the ladders as repeated section subcircuits. Header: ports, model, the check against kisi, element counts |
 | `bench_ngspice.cir`, `bench_xyce.cir` | transient test bench: PRBS7 (two periods) at the profile's bit rate and edge, the profile's linear transmitter (emf → R → C at the die → L → pin) and receiver (pin → L → C ∥ R at the die) per line, scaled so that the receiver sees ±swing at DC; ngspice writes the receiver voltage with `wrdata`, Xyce with `.print tran format=csv` |
 | `sparam_ngspice.cir`, `sparam_xyce.cir` | S-parameters on kisi's grid: ngspice `.sp` with `portnum` sources, Xyce `.ac` + `.lin` with port devices (Touchstone 2 output) |
-| `bench_ltspice.cir`, `<lane>_ltspice.lib`, `sparam_ltspice.cir` | LTspice (section 2b): the same bench with the received voltage as node `vrx` and `.meas` lines; the library with `Rser=0` on every inductor; `.net` S-parameters for a single-ended lane |
+| `bench_ltspice.cir`, `<lane>_ltspice.lib`, `sparam_ltspice.cir` | LTspice (section 2b): the same bench with the received voltage as node `vrx` and `.meas` lines; the library with `Rser=0 Rpar=1e30` on every inductor; `.net` S-parameters for a single-ended lane |
 | `<lane>.s2p` / `.s4p` | kisi's S-parameters of the same channel (Touchstone 1.0, RI), ports as above, the port list in the header |
 | `<lane>.kicad_pro`, `.kicad_sch`, `<lane>_kicad.lib` | KiCad project (section 2a): one symbol per element of the lane subcircuit (or, with `--kicad-style compact`, the lane as one symbol), the PRBS7 sources as subcircuits, the ends as R, L, C symbols whose models KiCad infers from reference and value, ground and a power flag, a `.tran` directive, notes on what the ends stand for. KiCad 7 format (20230121) with kisi's own symbols embedded, so it opens without libraries. `<lane>_kicad.lib` includes `<lane>.lib` and holds the small wrapper subcircuits the symbols call: KiCad reads the models from the file a symbol names, and a short file loads at once |
 | `README.md` | ports, files, bench ends, model, the check, what is not included, kisi's notes on the lane |
@@ -115,9 +115,11 @@ lines – the first rising zero crossing `t50`, the voltage at eight bit centres
 maximum and minimum there – which LTspice writes to its `.log`. Every value is in e-notation (in LTspice `1M` is
 milli), the include path is relative, the files are ASCII.
 
-- **The library:** LTspice gives every inductor 1 mΩ in series unless `Rser=0` is written; over the ~9000 ladder
-  inductors of an 85 mm pair that is several ohms. ngspice and Xyce reject `Rser=` on an inductor, so the export
-  writes `<lane>_ltspice.lib`: `<lane>.lib` with `Rser=0` on each inductor and ASCII comments, otherwise identical.
+- **The library:** LTspice adds a series resistance (1 mΩ) and an implicit parallel damping to inductors by
+  default; the LTspice library sets `Rser=0` and `Rpar=1e30` so that it matches ngspice and Xyce. (1 mΩ over the
+  ~9000 ladder inductors of an 85 mm pair is several ohms; the damping lowered the LVDS pair's levels during the
+  reflections by 1 %.) ngspice and Xyce reject both parameters, so the export writes `<lane>_ltspice.lib`:
+  `<lane>.lib` with `Rser=0 Rpar=1e30` on each inductor and ASCII comments, otherwise identical.
   Everything else in the library – E, F and 0 V sources, subcircuits, `+` continuation lines – is common to all three
   simulators; there are no subcircuit parameters in it.
 - **S-parameters:** for a single-ended lane `sparam_ltspice.cir` uses LTspice's two-port `.net I(Rout) Vin` with the
@@ -125,9 +127,9 @@ milli), the include path is relative, the files are ASCII.
   analysis; for pairs and buses the Touchstone files are the path (the README says so).
 - **Checked without LTspice** (`validation/channel_export/ltspice.py check`, in `compare.py` and so in CI): ASCII, no
   `.control`/`wrdata`/`portnum`/`.lin`/`.print`, every subcircuit instance names a defined subcircuit with as many
-  ports as nodes, no node of the flattened lane without a DC path to ground, `Rser=0` on every inductor and no other element parameter, values in e-notation, no node names
+  ports as nodes, no node of the flattened lane without a DC path to ground, `Rser=0 Rpar=1e30` on every inductor and no other element parameter, values in e-notation, no node names
   that differ only in case, well-formed `.tran`, `.meas`, `B` and `.net` lines, and the LTspice library equal to the
-  shared one apart from `Rser=0`. `ltspice.py expected` runs the same bench in ngspice (the `.meas` syntax is common;
+  shared one apart from `Rser=0 Rpar=1e30`. `ltspice.py expected` runs the same bench in ngspice (the `.meas` syntax is common;
   the shared library instead of the LTspice one, the LTspice-only options left out) and writes `expected.json` with
   the measurements, the run time, the element counts and – single-ended – S11/S21 at a few frequencies. LTspice
   itself runs on the maintainer's PC (LTspice 26.1.1, Windows): for REFINOUT2 `.net` gives ngspice's S11/S21 at all
@@ -135,10 +137,12 @@ milli), the include path is relative, the files are ASCII.
   ngspice's 104 s). The pair SYNC_OUT_P showed the floating converter nodes above (levels 1.1 % low, t50 to 0.1 ps);
   its export with the dual far-end converter removed the floating nodes but not the 1 % offset of the levels a few
   nanoseconds after an edge (where the reflections between the nearly open current-mode transmitter and the
-  receiver add up). `validation/channel_export/ltspice_microtests.py` writes short decks to find the cause – the
-  ends alone, one coupled block, one via pair, one line section, the whole lane with internal nodes, and the lane
-  with `Rpar=1e30` on the inductors and/or `.options method=trap` (LTspice damps inductors without `Rpar` and
-  integrates with modified trapezoidal by default) – with ngspice's values.
+  receiver add up). `validation/channel_export/ltspice_microtests.py` writes short decks to find such causes – the
+  ends alone, one coupled block, one via pair, one line section, the whole lane with internal nodes, the lane with
+  `.options method=trap` – with ngspice's values. With them the maintainer found it: LTspice's implicit parallel
+  damping of inductors. With `Rpar=1e30` on every inductor LTspice follows ngspice within 0.16 mV during the
+  reflections (default damping: up to 2.3 mV, 1 %); the integration method makes 0.2 mV. The export now writes
+  `Rpar=1e30` with `Rser=0`.
 - **Run time** (ngspice 42, one core of a shared machine, SYNC_OUT_P, 85 mm LVDS pair, two PRBS7 periods,
   257 ns at 30 ps steps): the ladder's top frequency sets the number of sections, and the run time follows the
   element count roughly linearly:
@@ -194,24 +198,24 @@ to the receiver act as the receiver's termination (bench and Touchstone leave th
   written) and compared with kisi's cascade of the same build (`check_against_kisi`); ngspice must give the same.
 
 ## 4. Verification
-`validation/channel_export/compare.py` runs `kisi export`, then ngspice on the S-parameter deck and on a step
+Numbers of 25 October 2026, after the merge of main's via-model changes (Block 2). `validation/channel_export/compare.py` runs `kisi export`, then ngspice on the S-parameter deck and on a step
 response (100 ps edge, every port in its reference), and compares with kisi's Touchstone file and with the step
 response computed from it; scikit-rf reads every Touchstone file (passivity, reciprocity). ngspice 42, scikit-rf
 2.2.0, kicad-cli 7.0.11; ThunderScope Rev5.3 with `web/samples/ts.kisi.json`, formula impedances (native CLI).
 
 | Lane | model | mm | elements R/L/C/sources | ngspice vs kisi up to 1.5×Nyquist: \|ΔS21\| dB, max \|ΔS\| | up to 25 GHz: \|ΔS21\| dB, max \|ΔS\| | kisi's evaluation: max \|ΔS\| | step: max diff, t50 ngspice / kisi (ps) | ngspice s (S-par. / step) |
 |---|---|---|---|---|---|---|---|---|
-| SYNC_OUT_P | pair | 85.4 | 20745/9091/11762/200 | 0.016, 0.008 | 10.73, 0.293 | 0.293 | 1.8 %, 576.6 / 574.3 | 5 / 8 |
-| REFINOUT2 | single | 70.2 | 5573/2745/3101/0 | 0.024, 0.005 | 1.18, 0.136 | 0.136 | 1.7 %, 404.3 / 402.5 | 1 / 2 |
-| PCIe_PER0_P | pair | 34.7 | 6092/3066/3535/170 | 0.424, 0.069 | 1.43, 0.157 | 0.157 | 1.4 %, 207.4 / 205.9 | 25 / 42 |
-| PCIe_PER1_P | pair | 32.9 | 6096/3104/3516/170 | 0.383, 0.056 | 2.08, 0.179 | 0.179 | 1.5 %, 196.4 / 194.6 | 66 / 133 |
-| PCIe_PER2_P | pair | 31.1 | 5815/2934/3367/170 | 0.242, 0.049 | 2.33, 0.171 | 0.171 | 1.3 %, 188.6 / 187.0 | 56 / 54 |
-| PCIe_PER3_P | pair | 30.5 | 5687/2804/3360/210 | 0.401, 0.068 | 2.08, 0.140 | 0.140 | 1.3 %, 183.0 / 181.4 | 32 / 36 |
-| PCIe_PET0_P | pair | 59.7 | 12521/5804/7275/190 | 0.155, 0.064 | 2.80, 0.182 | 0.182 | 1.5 %, 382.3 / 380.4 | 17 / 30 |
-| PCIe_PET1_P | pair | 42.1 | 8399/4013/4930/150 | 0.149, 0.070 | 0.99, 0.219 | 0.219 | 1.3 %, 270.4 / 269.0 | 17 / 16 |
-| PCIe_PET2_P | pair | 45.1 | 9239/4504/5268/70 | 0.178, 0.053 | 1.24, 0.485 | 0.485 | 1.5 %, 302.4 / 300.5 | 17 / 39 |
-| PCIe_PET3_P | pair | 39.1 | 8145/3929/4728/150 | 0.157, 0.067 | 1.62, 0.244 | 0.244 | 1.5 %, 261.5 / 259.8 | 19 / 27 |
-| PCIe_REFCLK_P | pair | 37.6 | 7705/3594/4511/170 | 0.003, 0.001 | 26.60, 0.305 | 0.305 | 1.3 %, 252.3 / 250.7 | 12 / 14 |
+| SYNC_OUT_P | pair | 85.4 | 20763/9109/11762/200 | 0.016, 0.008 | 10.26, 0.242 | 0.242 | 1.9 %, 572.4 / 570.1 | 16 / 26 |
+| REFINOUT2 | single | 70.2 | 5582/2754/3094/0 | 0.024, 0.005 | 2.82, 0.295 | 0.295 | 1.7 %, 403.5 / 401.7 | 2 / 3 |
+| PCIe_PER0_P | pair | 34.7 | 6122/3096/3537/170 | 0.309, 0.064 | 1.52, 0.168 | 0.168 | 1.4 %, 205.3 / 203.7 | 56 / 68 |
+| PCIe_PER1_P | pair | 32.9 | 6112/3120/3515/170 | 0.321, 0.048 | 1.24, 0.129 | 0.129 | 1.5 %, 195.0 / 193.2 | 73 / 89 |
+| PCIe_PER2_P | pair | 31.1 | 5831/2950/3366/170 | 0.206, 0.045 | 2.44, 0.181 | 0.181 | 1.3 %, 188.0 / 186.3 | 50 / 82 |
+| PCIe_PER3_P | pair | 30.5 | 5702/2819/3359/210 | 0.343, 0.061 | 0.99, 0.147 | 0.147 | 1.3 %, 181.5 / 180.0 | 38 / 61 |
+| PCIe_PET0_P | pair | 59.7 | 12571/5854/7281/190 | 0.100, 0.059 | 3.34, 0.164 | 0.164 | 1.5 %, 377.2 / 375.5 | 35 / 47 |
+| PCIe_PET1_P | pair | 42.1 | 8423/4037/4925/150 | 0.128, 0.063 | 0.89, 0.230 | 0.230 | 1.2 %, 267.8 / 266.4 | 15 / 28 |
+| PCIe_PET2_P | pair | 45.1 | 9264/4529/5271/70 | 0.165, 0.051 | 1.37, 0.535 | 0.535 | 1.5 %, 300.8 / 299.0 | 14 / 25 |
+| PCIe_PET3_P | pair | 39.1 | 8172/3956/4728/150 | 0.141, 0.063 | 1.73, 0.246 | 0.246 | 1.4 %, 258.9 / 257.2 | 23 / 36 |
+| PCIe_REFCLK_P | pair | 37.6 | 7747/3636/4515/170 | 0.003, 0.001 | 33.79, 0.329 | 0.329 | 1.3 %, 247.6 / 246.0 | 15 / 20 |
 
 LVDS lanes (profile lvds, 1.5 × Nyquist = 0.75 GHz) and the PCIe lanes (pcie4, 16 GT/s, 1.5 × Nyquist = 12 GHz), single-ended references 50 Ω (LVDS) and 42.5 Ω (PCIe) per port. Fits of the main line sections: R 7–8 %, X 0.7–0.9 %, G 0.7–3.2 %, B ≤ 0.3 % (worst over all sections, short ones included: G 5 %, B 0.9 %; a microstrip piece over a distant plane on the PCIe receive lanes: G 96 %, B 19 %, a few tenths of a millimetre).
 
@@ -224,7 +228,7 @@ Plots (|S21|/|Sdd21|, |S11|/|Sdd11|, the differences, the step responses):
   is the same to three digits in ngspice and in kisi's own evaluation – the netlist text is the circuit.
 - **Bus:** the N-port's blocks equal the lanes' Touchstone files (difference 0); the bus subcircuit in ngspice with
   one lane's four ports driven and all other ports terminated gives that lane's response (same difference to kisi
-  as the lane alone). For the PCIe bus (9 lanes, 36 ports) the bus subcircuit's S-parameter run took 9–11 minutes in ngspice (4 ports driven, 32 terminated, 500 points).
+  as the lane alone). For the PCIe bus (9 lanes, 36 ports) the bus subcircuit's S-parameter run took 9–12 minutes in ngspice (4 ports driven, 32 terminated, 500 points).
 - **Transient:** the PRBS7 benches run in ngspice (about 100 s per lane on one core).
 - **KiCad** (`--kicad`, `kicad_sheet.py`): every lane's sheet passes the wiring check (visible pins, no open pin or
   dangling wire, junctions, grid); kicad-cli's netlist equals the lane subcircuit node for node, and its AC response
@@ -237,8 +241,8 @@ Plots (|S21|/|Sdd21|, |S11|/|Sdd11|, the differences, the step responses):
   `docs/img/channel-export/kicad_*.png` (kicad-cli 7) and the CI artifact `kicad-sheets` (kicad-cli 9). Transients of
   the KiCad netlist and the bench differ by about 1e-4 of the swing: ngspice's time steps depend on the element order.
   Not tested: the simulator dialog of the KiCad GUI.
-- **scikit-rf** reads every file (2-, 4- and 36-port). The lanes' Touchstone files are passive and reciprocal
-  except the PCIe reference clock lane (kisi's model, see the summary); the bus N-port inherits that.
+- **scikit-rf** reads every file (2-, 4- and 36-port). The lanes' Touchstone files and the bus N-port are passive
+  (largest singular value 0.9993) and reciprocal.
 - **Not run here:** Xyce (no package), Qucs-S/Qucsator, PyBERT – the decks follow the Xyce reference guide
   (`.lin sparcalc=1`, port devices `P`, `.print tran format=csv`) but are untested.
 

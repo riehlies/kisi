@@ -11,13 +11,10 @@ single step at 4 ns (P up, N down, the bench's emf and edge):
   3_viapair.cir      the ends and the lane's first via pair block
   4_line_p.cir       the ends and one line section on P (N joined ideally)
   5_lane.cir         the ends and the whole lane, with internal node voltages and the source currents
-  5b_lane_rpar.cir   as 5, with Rpar=1e30 on every inductor (LTspice only: shows whether LTspice's default
-                     inductor damping, added when no Rpar is given, is the difference)
-  5c_lane_trap.cir   as 5 with .options method=trap (LTspice's default integration is modified trapezoidal;
-                     ngspice uses trapezoidal)
-  5d_lane_rpar_trap.cir  both
-The pair's levels a few nanoseconds after an edge carry the reflections between the current-mode transmitter
-(5 kOhm, nearly open) and the receiver; extra damping in the simulator lowers them.
+  5c_lane_trap.cir   as 5 with .options method=trap (LTspice's default integration is modified trapezoidal,
+                     ngspice's trapezoidal)
+These decks found the 1 % offset of the LVDS pair in LTspice: LTspice's implicit parallel damping of inductors
+(now switched off with Rpar=1e30 in the LTspice library); the integration method made 0.2 mV.
 Each measures the received differential voltage V(vrx) before the step (the DC operating point, at 3 ns) and at
 4.5–20 ns, the transmitter's current, and in 5 a few internal nodes. ngspice runs the same decks (the shared
 library, the LTspice-only options left out, `xlane:n4` written `xlane.n4`); expected.json holds its values.
@@ -49,9 +46,6 @@ def main():
     lib_lt = open(os.path.join(src, f"{st}_ltspice.lib"), encoding="ascii").read()
     shutil.copy(os.path.join(src, f"{st}_ltspice.lib"), out)
     shutil.copy(os.path.join(src, f"{st}.lib"), out)
-    # the variant with Rpar=1e30 on every inductor
-    rpar = "\n".join(l + " Rpar=1e30" if l.startswith("L") else l for l in lib_lt.splitlines()) + "\n"
-    open(os.path.join(out, f"{st}_ltspice_rpar.lib"), "w").write(rpar)
     # the ends and the emf from the bench
     emf = abs(float(re.search(r"^VTX_p \S+ 0 PWL\(\S+ (\S+)", "\n".join(bench), re.M).group(1)))
     rise = float(re.search(r"edge (\S+) ps", "\n".join(bench)).group(1)) * 1e-12
@@ -72,17 +66,15 @@ def main():
         "3_viapair": [f"XB ap an bp bn 0 {vp}"],
         "4_line_p": [f"XB ap bp 0 {tl_p}", "VC_n an bn 0"],
         "5_lane": [lane],
-        "5b_lane_rpar": [lane],
         "5c_lane_trap": [lane],
-        "5d_lane_rpar_trap": [lane],
     }
     internal = ["n4", "n7", "n27", "n29"]
     results = {}
     for name, d in dut.items():
-        lib = f"{st}_ltspice_rpar.lib" if "rpar" in name else f"{st}_ltspice.lib"
+        lib = f"{st}_ltspice.lib"
         opts = ".options plotwinsize=0 numdgt=16 reject_number_tails" + (" method=trap" if "trap" in name else "")
         txt = [f"* kisi LTspice micro-test {name} of lane {st}: the bench's ends, {' '.join(x.split()[-1] for x in d if x.startswith('X')) or 'ideal connections'}",
-               f'.include "{lib}"'] + srcs + ends + d + ["Bvrx vrx 0 V=V(rxd_p)-V(rxd_n)", ".tran 1e-11 2e-8 0 1e-11", ".save V(vrx)", opts]
+               f'.include "{lib}"'] + srcs + ends + d + ["Bvrx vrx 0 V=V(rxd_p)-V(rxd_n)", ".tran 1e-11 2e-8 0 1e-11", ".save V(vrx) I(VTX_p)" + ("".join(f" V(xlane:{n})" for n in internal) + " V(rxd_p) V(rxd_n)" if name.startswith("5") else ""), opts]
         for k, t in TIMES:
             txt.append(f".meas TRAN v_{k} FIND V(vrx) AT={t:.6e}")
         txt += [f".meas TRAN i_tx_dc FIND I(VTX_p) AT={TIMES[0][1]:.6e}", f".meas TRAN i_tx_t20 FIND I(VTX_p) AT={TIMES[-1][1]:.6e}"]
@@ -93,8 +85,8 @@ def main():
             txt += [f".meas TRAN v_rxp_dc FIND V(rxd_p) AT={TIMES[0][1]:.6e}", f".meas TRAN v_rxn_dc FIND V(rxd_n) AT={TIMES[0][1]:.6e}"]
         txt.append(".end")
         open(os.path.join(out, f"{name}.cir"), "w").write("\n".join(txt) + "\n")
-        if name[1:2] in "bcd" and name[0] == "5":
-            continue  # LTspice-only variants; ngspice's values are those of 5
+        if name == "5c_lane_trap":
+            continue  # LTspice-only variant; ngspice's values are those of 5
         # ngspice: the shared library, no LTspice options, subcircuit paths with '.'
         ng = [l for l in txt if not l.startswith(".options")]
         ng = [l.replace(lib, f"{st}.lib") for l in ng]
@@ -108,11 +100,10 @@ def main():
         os.remove(p)
         print(name, "ok" if r.returncode == 0 else "FAILED", {k: v for k, v in results[name].items() if k in ("v_dc", "v_t20")})
     info = {"lane": st, "emf_v": emf, "edge_s": rise, "blocks": {"coupled": cpl, "viapair": vp, "line_p": tl_p},
-            "simulator": "ngspice 42 (the same decks with the shared library; for 5b-5d the values of 5: ngspice adds no inductor damping and integrates trapezoidally)",
+            "simulator": "ngspice 42 (the same decks with the shared library; for 5c the values of 5: ngspice integrates trapezoidally)",
             "units": "V and A; v_* the received differential voltage V(vrx), v_dc before the step (operating point), i_tx_* the current of VTX_p",
             "expected": results}
-    for k in ("5b_lane_rpar", "5c_lane_trap", "5d_lane_rpar_trap"):
-        results[k] = results.get("5_lane")
+    results["5c_lane_trap"] = results.get("5_lane")
     json.dump(info, open(os.path.join(out, "expected.json"), "w"), indent=1)
 
 

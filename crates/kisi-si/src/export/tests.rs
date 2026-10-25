@@ -168,10 +168,10 @@ fn ltspice_files() {
         let get = |p: &str| fs.iter().find(|f| f.path == p).map(|f| f.content.clone());
         let (lib, llib, bench) = (get(&format!("{name}.lib")).unwrap(), get(&format!("{name}_ltspice.lib")).unwrap(), get("bench_ltspice.cir").unwrap());
         assert!(llib.is_ascii() && bench.is_ascii());
-        let strip = |t: &str| t.lines().filter(|l| !l.starts_with('*')).map(|l| l.replace(" Rser=0", "")).collect::<Vec<_>>();
+        let strip = |t: &str| t.lines().filter(|l| !l.starts_with('*')).map(|l| l.replace(" Rser=0 Rpar=1e30", "")).collect::<Vec<_>>();
         assert_eq!(strip(&lib), strip(&llib), "{name}: the LTspice library is the shared one");
         for l in llib.lines().chain(bench.lines()).filter(|l| l.starts_with('L')) {
-            assert!(l.ends_with(" Rser=0"), "{name}: {l}");
+            assert!(l.ends_with(" Rser=0 Rpar=1e30"), "{name}: {l}");
         }
         assert!(!bench.contains(".control") && !bench.contains("wrdata") && bench.contains(".meas TRAN t50 WHEN V(vrx)=0 RISE=1") && bench.contains("Bvrx vrx 0 V="));
         assert_eq!(get("sparam_ltspice.cir").is_some(), lc.ports.len() == 2, "{name}: .net only for a 2-port");

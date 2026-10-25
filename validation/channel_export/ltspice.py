@@ -6,9 +6,10 @@ Usage: ltspice.py check <lane folder>
 
 check (also from compare.py, so in CI): the LTspice bench and library are ASCII, have no ngspice or Xyce constructs
 (`.control`, `wrdata`, `portnum`, `.lin`, `.print`), every subcircuit instance names a subcircuit that exists with
-as many ports as nodes given, every inductor has `Rser=0` (LTspice adds 1 mOhm otherwise) and no other element has
+as many ports as nodes given, every inductor has `Rser=0 Rpar=1e30` (LTspice adds 1 mOhm in series and an implicit parallel
+damping otherwise) and no other element has
 an LTspice parameter, the `.tran`, `.meas`, `B` and `.net` lines are well formed, and `<lane>_ltspice.lib` is
-`<lane>.lib` except for `Rser=0` and ASCII comments; and no node of the flattened lane subcircuit is without a DC
+`<lane>.lib` except for `Rser=0 Rpar=1e30` and ASCII comments; and no node of the flattened lane subcircuit is without a DC
 path to ground (LTspice reports such nodes as floating and its results drift).
 
 expected: runs bench_ltspice.cir in ngspice (with `<lane>.lib` instead of the LTspice library – the same circuit;
@@ -99,8 +100,8 @@ def check(d):
         elif k[0] == "x":
             insts.append((f, t[0], len(t) - 2, t[-1].lower()))
         elif k[0] == "l":
-            if not (len(t) == 5 and t[4] == "Rser=0" and re.fullmatch(NUM, t[3], re.I)):
-                errs.append(f"{f}: inductor without Rser=0: {l[:60]}")
+            if not (len(t) == 6 and t[4] == "Rser=0" and t[5] == "Rpar=1e30" and re.fullmatch(NUM, t[3], re.I)):
+                errs.append(f"{f}: inductor without Rser=0 Rpar=1e30: {l[:60]}")
         elif k[0] in "rc" and len(t) != 4:
             errs.append(f"{f}: unexpected parameters: {l[:60]}")
         elif k == ".tran" and not (len(t) == 5 and all(re.fullmatch(NUM, x, re.I) for x in t[1:])):
@@ -128,9 +129,9 @@ def check(d):
     lib = os.path.join(d, f"{st}.lib")
     if os.path.exists(lib):
         a = [l for l in open(lib, encoding="utf-8").read().splitlines() if not l.startswith("*")]
-        b = [l.replace(" Rser=0", "") for l in open(os.path.join(d, f"{st}_ltspice.lib"), encoding="ascii").read().splitlines() if not l.startswith("*")]
+        b = [l.replace(" Rser=0 Rpar=1e30", "") for l in open(os.path.join(d, f"{st}_ltspice.lib"), encoding="ascii").read().splitlines() if not l.startswith("*")]
         if a != b:
-            errs.append(f"{st}_ltspice.lib differs from {st}.lib by more than Rser=0")
+            errs.append(f"{st}_ltspice.lib differs from {st}.lib by more than Rser=0 Rpar=1e30")
     try:
         fl = floating_nodes(d)
     except (StopIteration, KeyError) as e:
@@ -200,7 +201,7 @@ def expected(d):
     src = src.replace(f'.include "{st}_ltspice.lib"', f'.include "{st}.lib"')
     # LTspice-only options out (ngspice does not know them)
     src = "\n".join(l for l in src.splitlines() if not l.startswith(".options")) + "\n"
-    src = re.sub(r"( Rser=0)", "", src)
+    src = src.replace(" Rser=0 Rpar=1e30", "")
     open(os.path.join(d, "bench_ltspice_in_ngspice.cir"), "w").write(src)
     t0 = time.time()
     r = subprocess.run(["ngspice", "-b", "bench_ltspice_in_ngspice.cir"], cwd=d, capture_output=True, text=True, timeout=7200)

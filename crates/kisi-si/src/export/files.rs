@@ -238,7 +238,7 @@ pub fn bench(lc: &LaneCircuit, lib_file: &str, ends: &BenchEnds, d: Dialect) -> 
         let (mut r, die) = rx_end(k, pb, &ends.rx);
         if d == Dialect::Ltspice {
             for l in t.iter_mut().chain(r.iter_mut()).filter(|l| l.starts_with('L')) {
-                l.push_str(" Rser=0");
+                l.push_str(LT_L);
             }
         }
         s.push_str(&format!("* line {k}: transmitter\n{}\n* line {k}: receiver\n{}\n", t.join("\n"), r.join("\n")));
@@ -290,17 +290,20 @@ pub fn ltspice_meas(lc: &LaneCircuit, ends: &BenchEnds) -> Vec<(String, String)>
     v
 }
 
-/// The lane library for LTspice: the same circuit, with `Rser=0` on every inductor (LTspice gives an
-/// inductor 1 mΩ in series unless told otherwise; ngspice and Xyce do not accept the parameter) and
+/// What every inductor gets in LTspice: LTspice adds a series resistance (1 mΩ) and an implicit
+/// parallel damping to inductors by default; ngspice and Xyce reject these parameters.
+pub const LT_L: &str = " Rser=0 Rpar=1e30";
+
+/// The lane library for LTspice: the same circuit, with `Rser=0 Rpar=1e30` on every inductor and
 /// ASCII comments.
 pub fn ltspice_lib(lib: &str) -> String {
-    let mut s = String::with_capacity(lib.len() + lib.len() / 8);
-    s.push_str("* LTspice version of the lane library: the same circuit as the .lib next to it, with Rser=0 on every inductor\n* (LTspice would add 1 mOhm in series to each)\n");
+    let mut s = String::with_capacity(lib.len() + lib.len() / 6);
+    s.push_str("* LTspice version of the lane library: the same circuit as the .lib next to it, with Rser=0 Rpar=1e30 on every\n* inductor (LTspice adds a series resistance of 1 mOhm and an implicit parallel damping to inductors by default)\n");
     for l in lib.lines() {
         let l = ascii(l);
         s.push_str(&l);
         if l.starts_with('L') || l.starts_with('l') {
-            s.push_str(" Rser=0");
+            s.push_str(LT_L);
         }
         s.push('\n');
     }
@@ -562,7 +565,7 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
     if f.ltspice {
         s.push_str("\n## LTspice\n\n");
         s.push_str("Open `bench_ltspice.cir` in LTspice (File → Open, files of type netlist) and run it. It is the transient bench of the other simulators – the same PRBS7 PWL source, the profile's linear ends, the lane subcircuit – with the received voltage as node `vrx` (a pair: V(P) − V(N), a B source) and `.meas` lines whose results LTspice writes to the `.log` file (View → SPICE Error Log): the first rising zero crossing `t50`, the voltage at eight bit centres of the second pattern period and its extremes there. `.options plotwinsize=0 numdgt=16 reject_number_tails` keeps the waveform uncompressed and in double precision in the `.raw` file and makes LTspice report a number with stray letters instead of ignoring them; every value is written in e-notation (in LTspice `1M` would be milli).\n\n");
-        s.push_str(&format!("* `{st}_ltspice.lib` is `{st}.lib` with `Rser=0` on every inductor: LTspice gives an inductor 1 mΩ in series unless told otherwise, which adds up over thousands of ladder inductors, and ngspice and Xyce do not accept the parameter. Otherwise the two files are the same circuit (`validation/channel_export/ltspice.py check` in the kisi repository verifies it).\n"));
+        s.push_str(&format!("* `{st}_ltspice.lib` is `{st}.lib` with `Rser=0 Rpar=1e30` on every inductor: LTspice adds a series resistance (1 mΩ) and an implicit parallel damping to inductors by default; the LTspice library sets Rser=0 and Rpar=1e30 so that it matches ngspice and Xyce, which do not accept these parameters. Otherwise the two files are the same circuit (`validation/channel_export/ltspice.py check` in the kisi repository verifies it).\n"));
         if n == 2 {
             s.push_str("* `sparam_ltspice.cir`: S-parameters with LTspice's `.net` analysis (the source's `Rser` and `Rout` are the port impedances); plot `S21(Vin)` and `S11(Vin)`.\n");
         } else {

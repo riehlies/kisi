@@ -34,8 +34,8 @@ The export reports its own check (the circuit evaluated inside kisi, `check_agai
 give the same numbers – that shows the netlist text is the circuit kisi evaluated. With --strict the exit
 code is 1 when the LTspice files are not consistent (ltspice.py check), ngspice and kisi's evaluation of the circuit disagree (|max dS| differs by more than 0.01), the
 Touchstone file is not passive or scikit-rf cannot read it, the step responses differ by more than 5 % of the
-step, the exported circuit is not passive (kisi's own check from 1 kHz to 10 x f max, ngspice on its grid and with
---passivity), the compact model differs from the ladder by more than 0.02 (max |dS| up to 1.5 x Nyquist) or 2 % of
+step, the exported circuit is not passive (kisi's own check from 1 kHz to 10 x f max to 1e-9, ngspice on its grid and
+with --passivity to 1e-4: near DC, where a lane is almost lossless, ngspice's AC solution is accurate to about 1e-5), the compact model differs from the ladder by more than 0.02 (max |dS| up to 1.5 x Nyquist) or 2 % of
 the step (step response, PRBS levels at the bit centres), or a run fails.
 """
 import json, math, os, re, shutil, subprocess, sys, time
@@ -281,8 +281,9 @@ def lane_check(lane_dir, meta, opts, rep):
                         "ngspice_grid_max_sv": float(sv.max())}
     if opts.get("passivity"):
         res["passivity"]["ngspice_sweep"] = passivity_sweep(lane_dir, meta)
-    # step response
-    rise = 100e-12
+    # step response: a 100 ps edge, slower when the data end below 10 GHz (kisi's step comes from its S-parameters,
+    # which must hold the edge's spectrum)
+    rise = max(100e-12, 1.0 / f[-1])
     tstop = 2 * meta["delay_ps"] * 1e-12 + 1.5e-9
     deck = step_deck(meta, f"{stem}.lib", "step_ngspice.txt", rise, tstop)
     open(os.path.join(lane_dir, "step_ngspice.cir"), "w").write(deck)
@@ -567,7 +568,7 @@ def main():
                                     ("Touchstone not passive", not ts.get("passive")), ("scikit-rf does not read the Touchstone file", sk and not sk.get("read", True)),
                                     ("step response differs by more than 5 %", st and st["max_diff_of_final"] > 0.05),
                                     ("bench timed out", (res.get("bench") or {}).get("timed_out")),
-                                    ("circuit not passive", pv and (not (pv.get("kisi_circuit_max_sv") or 0) <= 1 + 1e-9 or pv["ngspice_grid_max_sv"] > 1 + 1e-6 or ("max_singular_value" in sw and sw["max_singular_value"] > 1 + 1e-6) or "error" in sw)),
+                                    ("circuit not passive", pv and (not (pv.get("kisi_circuit_max_sv") or 0) <= 1 + 1e-9 or pv["ngspice_grid_max_sv"] > 1 + 1e-4 or ("max_singular_value" in sw and sw["max_singular_value"] > 1 + 1e-4) or "error" in sw)),
                                     ("KiCad project: " + kicad_fail(res.get("kicad")), res.get("kicad") and not res["kicad"].get("ok")),
                                     ("LTspice files: " + "; ".join((res.get("ltspice") or {}).get("errors", [])), res.get("ltspice") and not res["ltspice"].get("ok"))] if c]
             if res.get("ltspice"):

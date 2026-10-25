@@ -663,8 +663,8 @@ pair is an estimate to about 15 %.
 
 **ThunderScope PCIe lanes** (check, formula impedances; RL limit 10 dB): the trace through each 4.2 mm
 gold finger was a 0.19 mm microstrip over B.Cu 1.42 mm away (161 Ω diff, field solver 172 Ω); with the
-finger's width it reads 93 Ω. Return loss PER0–3 3.9–5.0 → 9.0–9.4 dB, PET0–3 2.5–5.2 → 5.2–7.2 dB, IL at
-Nyquist PER 2.4–3.4 → 1.6–1.9 dB; still yellow. What remains: the 0402 pads of the AC capacitors and 0 Ω
+finger's width it reads 93 Ω. Return loss PER0–3 3.9–5.0 → 9.2–9.5 dB, PET0–3 2.5–5.2 → 5.0–7.2 dB, IL at
+Nyquist PER 2.4–3.4 → 1.6–1.8 dB, PET 2.8–4.6 → 2.9–4.4 dB; still yellow. What remains: the 0402 pads of the AC capacitors and 0 Ω
 resistors over the plane 0.11 mm below (about 21 Ω over 0.45 mm per pad – the board has no cut-outs there),
 the stubs to the unfitted alternatives, the vias. The 1.5 × fallback was not the cause: on these lanes it
 covers only zero-length pieces next to vias.

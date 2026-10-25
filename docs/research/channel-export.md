@@ -356,7 +356,12 @@ At 5 × Nyquist (`--fmax profile`, 2.5 GHz for these 1 Gbit/s lanes):
 - **Other checks:** the LTspice files of the compact export pass `ltspice.py check` (every lane above); the KiCad
   project of SYNC_OUT_P (kicad-cli 7) has the lane subcircuit node for node with an AC response equal to the bench's
   (5·10⁻⁹); CI runs the compact model against the ladder on three ThunderScope lanes with the passivity sweep and
-  the KiCad check (kicad-cli 9 with ERC) on PCIe_PER0_P. Not run here: LTspice and Xyce themselves.
+  the KiCad check (kicad-cli 9 with ERC) on PCIe_PER0_P. Not run here: Xyce.
+- **LTspice** (26.1.1 on the maintainer's PC, `bench_ltspice.cir` of the compact SYNC_OUT_P against `expected.json`
+  from ngspice): at 25 GHz t50 equal (7.7303 ns), the eight bit levels within 0.97 mV (mean 0.53 mV), maximum and
+  minimum within 0.9 mV (0.22 %), 61 s (the ladder bench took 938 s there); at 5 × Nyquist t50 within 0.7 ps, bit
+  levels within 0.42 mV, maximum and minimum within 1.2 mV (0.3 %), 61 s. As close as the ladder's LTspice run
+  (section 4: levels within 1 mV, maximum and minimum 1.3 mV).
 
 ## Sources
 - ngspice manual (S-parameter analysis `.sp`, `portnum`; E/F sources) – https://ngspice.sourceforge.io/docs.html

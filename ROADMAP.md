@@ -138,8 +138,8 @@ export shows it). Background: `docs/models.md` (scope, why kisi is fast); the ea
     LTspice implement) and implemented as `--model compact` and "Lines in the SPICE netlist" in the viewer's export
     settings: lossless-line cells – LC lines carry the delay, the ladder's fitted loss networks are lumped once per
     cell, equal consecutive sections merged; passive and causal by construction (checked to 10 × f max). Results
-    in `docs/research/channel-export.md` section 7. Next: make it the default once the maintainer has run it in
-    LTspice; the vias (now about a third of a compact lane's elements) could get a reduced ladder too; vector
+    in `docs/research/channel-export.md` section 7. LTspice 26 on the maintainer's PC follows ngspice
+    within 1 mV (0.3 %) in 61 s (ladder 938 s). Next: make it the default (to be decided); the vias (now about a third of a compact lane's elements) could get a reduced ladder too; vector
     fitting with delays and passivity enforcement stays for tabulated data (a Touchstone block behind a
     connector);
   - the top frequency from the interface profile (`--fmax profile`, 5 × Nyquist) as the default instead of 25 GHz –

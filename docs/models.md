@@ -25,8 +25,8 @@ with IBIS models, KiCad's simulator.
   the step response of the linear network.
 - **Compared with a circuit simulator:** a lane takes kisi about 0.15 s (ThunderScope: 71 lanes in about 11 s on
   one thread, a few seconds on several cores). The same ThunderScope LVDS lane exported as a SPICE ladder has about
-  42 000 elements and takes 6–15 minutes in ngspice or LTspice. A reduced export (vector fitting or lossy-line
-  elements) is planned to shorten that ([ROADMAP](../ROADMAP.md), block 3).
+  42 000 elements and takes 6–15 minutes in ngspice or LTspice; the compact export (`--model compact`, lossless-line
+  cells) brings it to about 8 000 elements and one minute, with the same accuracy in the band.
 - **2D, not 3D.** Impedances come from formulas (a board in under a second) or from a quasi-static 2D field solver
   per cross-section – only for nets with a target, cached on disk and in the browser; vias, pads and planes use
   reduced models checked against 3D references instead of a full-board 3D solution.

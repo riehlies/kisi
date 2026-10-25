@@ -3,6 +3,7 @@
 
 Usage:
   compare.py <kisi binary> <board.kicad_pcb> --out DIR [--config FILE] [--lane NAME]... [--bus NAME]...
+             [--model ladder|compact | --models ladder,compact] [--fmax GHZ|profile] [--passivity]
              [--report FILE.md] [--plots] [--transient] [--kicad] [--svg DIR] [--strict]
 
 For every lane (a bus: every lane of it) the script runs `kisi export` and then, in the lane's folder:
@@ -19,11 +20,21 @@ For every lane (a bus: every lane of it) the script runs `kisi export` and then,
 For a bus also: the N-port Touchstone file against the lanes' files, and the bus subcircuit in ngspice
 with one lane's ports driven (the wiring of the bus subcircuit).
 
+--model compact exports with the compact model (`kisi export --model compact`: lossless-line cells); --models
+ladder,compact exports every lane with both (folders <lane>_ladder and <lane>_compact) and compares them: element
+counts, ngspice run times, the compact circuit's S-parameters against the ladder's (both in ngspice), the step
+responses and – with --transient – the PRBS benches (the received voltage at the bit centres of the second pattern
+period, the first zero crossing). --passivity runs each S-parameter deck once more on a logarithmic grid from 1 kHz
+to 10 x the top frequency and reports the circuit's largest singular value (passive: <= 1). --fmax is passed to
+`kisi export`.
+
 The export reports its own check (the circuit evaluated inside kisi, `check_against_kisi`); ngspice must
 give the same numbers – that shows the netlist text is the circuit kisi evaluated. With --strict the exit
 code is 1 when the LTspice files are not consistent (ltspice.py check), ngspice and kisi's evaluation of the circuit disagree (|max dS| differs by more than 0.01), the
 Touchstone file is not passive or scikit-rf cannot read it, the step responses differ by more than 5 % of the
-step, or a run fails.
+step, the exported circuit is not passive (kisi's own check from 1 kHz to 10 x f max, ngspice on its grid and with
+--passivity), the compact model differs from the ladder by more than 0.02 (max |dS| up to 1.5 x Nyquist) or 2 % of
+the step (step response, PRBS levels at the bit centres), or a run fails.
 """
 import json, math, os, re, shutil, subprocess, sys, time
 import numpy as np
@@ -193,6 +204,39 @@ def check_touchstone(path):
     return info, (f, s, z0)
 
 
+def passivity_sweep(lane_dir, meta):
+    """The S-parameter deck once more on a logarithmic grid, 1 kHz to 10 x the top frequency: the circuit's largest
+    singular value (passive: <= 1) and where."""
+    src = open(os.path.join(lane_dir, "sparam_ngspice.cir")).read()
+    f1 = 10 * meta["frequency"]["fmax_hz"]
+    src = re.sub(r"^\.sp lin \S+ \S+ \S+", f".sp dec 25 1e3 {f1:.6e}", src, flags=re.M).replace("sparam_ngspice.txt", "passivity_ngspice.txt")
+    open(os.path.join(lane_dir, "passivity_ngspice.cir"), "w").write(src)
+    r, secs = run(["ngspice", "-b", "passivity_ngspice.cir"], cwd=lane_dir)
+    out = os.path.join(lane_dir, "passivity_ngspice.txt")
+    if r.returncode != 0 or not os.path.exists(out):
+        return {"error": (r.stdout + r.stderr)[-300:]}
+    f, s = read_wrdata(out, len(meta["ports"]))
+    sv = np.linalg.svd(s, compute_uv=False).max(axis=1)
+    k = int(np.argmax(sv))
+    return {"f_lo_hz": float(f[0]), "f_hi_hz": float(f[-1]), "points": len(f), "max_singular_value": float(sv[k]), "at_hz": float(f[k]), "seconds": round(secs, 1)}
+
+
+def bench_levels(lane_dir, meta):
+    """The PRBS bench's received voltage at the bit centres of the second pattern period (as the LTspice bench's
+    .meas lines), its extremes there and the first rising zero crossing."""
+    p = os.path.join(lane_dir, "bench_ngspice.txt")
+    if not os.path.exists(p):
+        return None
+    a = np.loadtxt(p)
+    t, v = a[:, 0], a[:, 1]
+    ui, delay = 1 / (meta["rate_gbps"] * 1e9), meta["delay_ps"] * 1e-12
+    centres = np.array([(127 + j + 1.5) * ui + delay for j in range(127)])
+    lv = np.interp(centres, t, v)
+    k = np.argmax((v[:-1] < 0) & (v[1:] >= 0))
+    t50 = float(t[k] - v[k] * (t[k + 1] - t[k]) / (v[k + 1] - v[k])) if k > 0 else float("nan")
+    return {"levels": lv, "t": t, "v": v, "t50_s": t50, "swing": float(np.max(np.abs(lv)))}
+
+
 def lane_check(lane_dir, meta, opts, rep):
     res = {"lane": meta["lane"], "dir": lane_dir, "model": meta["model"], "length_mm": meta["length_mm"], "delay_ps": meta["delay_ps"],
            "elements": meta["elements"], "kisi_eval": meta["check_against_kisi"]}
@@ -210,6 +254,12 @@ def lane_check(lane_dir, meta, opts, rep):
     fs, ss = read_wrdata(out, n)
     res["ngspice_sparam_s"] = round(secs, 1)
     res["ngspice_vs_kisi"] = compare_s(f, sk, ss, f_nyq)
+    res["line_model"] = meta.get("line_model", "ladder")
+    sv = np.linalg.svd(ss, compute_uv=False).max(axis=1)
+    res["passivity"] = {"kisi_circuit_max_sv": meta["check_against_kisi"].get("circuit_max_sv"), "kisi_circuit_max_sv_ghz": meta["check_against_kisi"].get("circuit_max_sv_ghz"),
+                        "ngspice_grid_max_sv": float(sv.max())}
+    if opts.get("passivity"):
+        res["passivity"]["ngspice_sweep"] = passivity_sweep(lane_dir, meta)
     # step response
     rise = 100e-12
     tstop = 2 * meta["delay_ps"] * 1e-12 + 1.5e-9
@@ -235,11 +285,87 @@ def lane_check(lane_dir, meta, opts, rep):
         if ok:
             b = np.loadtxt(os.path.join(lane_dir, "bench_ngspice.txt"))
             res["bench"]["v_min"], res["bench"]["v_max"] = float(b[:, 1].min()), float(b[:, 1].max())
+            res["bench"]["time_points"] = len(b)
     if os.path.exists(os.path.join(lane_dir, "bench_ltspice.cir")):
         res["ltspice"] = ltspice.check(lane_dir)
     if opts.get("kicad"):
         res["kicad"] = kicad_sheet.check(lane_dir, transient=opts.get("transient"), svg_dir=opts.get("svg") and os.path.join(opts["svg"], stem), png=bool(opts.get("svg")))
     return res, (f, sk, ss, stp, f_nyq)
+
+
+def plot_models(lane, runs, path):
+    """kisi's S-parameters, the ladder and the compact circuit in ngspice: |S21|, |S11|, the differences to kisi,
+    the step responses. `runs`: [(model, res, data)]."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(2, 2, figsize=(11, 7.5))
+    f, sk, _, stp0, f_nyq = runs[0][2]
+    pair = sk.shape[1] == 4
+    lab = "Sdd" if pair else "S"
+    g = f / 1e9
+    ax[0, 0].plot(g, db(transmission(sk)), lw=2.4, color="#444", label="kisi (Touchstone)")
+    ax[0, 1].plot(g, db(reflection(sk)), lw=2.4, color="#444", label="kisi")
+    style = {"ladder": ("#2a7ab0", "--"), "compact": ("#d1495b", ":")}
+    for model, res, data in runs:
+        _, _, ss, stp, _ = data
+        c, ls = style.get(model, ("k", "-"))
+        e = res["elements"]
+        tot = e.get("total", e["r"] + e["l"] + e["c"] + e["sources"])
+        lbl = f"{model} in ngspice ({tot / 1000:.1f} k elements)"
+        ax[0, 0].plot(g, db(transmission(ss)), ls, color=c, lw=1.6, label=lbl)
+        ax[0, 1].plot(g, db(reflection(ss)), ls, color=c, lw=1.6, label=model)
+        ax[1, 0].plot(g, np.abs(sk - ss).max(axis=(1, 2)), ls, color=c, lw=1.3, label=f"{model}: max |dS| vs kisi")
+        if stp:
+            t, vs, vk = stp
+            ax[1, 1].plot(t * 1e12, vs, ls, color=c, lw=1.6, label=f"{model}, ngspice transient")
+    if stp0:
+        t, vs, vk = stp0
+        ax[1, 1].plot(t * 1e12, vk, lw=2.4, color="#444", label="from kisi's S-parameters", zorder=0)
+    ax[0, 0].set_ylabel(f"|{lab}21| (dB)")
+    ax[0, 1].set_ylabel(f"|{lab}11| (dB)")
+    ax[1, 0].axvline(1.5 * f_nyq / 1e9, color="gray", ls=":", label="1.5 x Nyquist")
+    ax[1, 0].set_yscale("log")
+    ax[1, 0].set_ylim(1e-5, 2)
+    ax[1, 1].set_xlabel("ps")
+    ax[1, 1].set_ylabel("far-end voltage per emf volt" + (" (differential)" if pair else ""))
+    for a in ax.flat:
+        a.grid(alpha=0.3)
+        a.legend(fontsize=8)
+    for a in (ax[0, 0], ax[0, 1], ax[1, 0]):
+        a.set_xlabel("GHz")
+    fig.suptitle(f"{lane}: kisi vs the ladder and the compact export in ngspice")
+    fig.tight_layout()
+    fig.savefig(path, dpi=110)
+    plt.close(fig)
+
+
+def compare_models(runs, metas):
+    """The compact circuit against the ladder (both in ngspice): S-parameters, step responses, PRBS benches."""
+    (ml, rl, dl), (mc, rc, dc) = runs
+    f, _, sl, stl, f_nyq = dl
+    _, _, sc, stc, _ = dc
+    band = f <= 1.5 * f_nyq
+    d21 = np.abs(db(transmission(sl)) - db(transmission(sc)))
+    out = {"elements": {"ladder": rl["elements"].get("total"), "compact": rc["elements"].get("total")},
+           "max_ds21_db_nyq": float(d21[band].max()) if band.any() else 0.0, "max_ds21_db": float(d21.max()),
+           "max_ds_nyq": float(np.abs(sl - sc)[band].max()) if band.any() else 0.0, "max_ds": float(np.abs(sl - sc).max()),
+           "ngspice_sparam_s": {"ladder": rl.get("ngspice_sparam_s"), "compact": rc.get("ngspice_sparam_s")},
+           "ngspice_step_s": {"ladder": (rl.get("step") or {}).get("ngspice_s"), "compact": (rc.get("step") or {}).get("ngspice_s")}}
+    if stl and stc:
+        t, vl, vk = stl
+        vc = np.interp(t, stc[0], stc[1])
+        out["step_max_diff_of_final"] = float(np.max(np.abs(vl - vc)) / max(abs(vk[-1]), 1e-9))
+    bl, bc = bench_levels(rl["dir"], metas[0]), bench_levels(rc["dir"], metas[1])
+    if bl and bc:
+        sw = max(bl["swing"], 1e-12)
+        vc = np.interp(bl["t"], bc["t"], bc["v"])
+        out["bench"] = {"seconds": {"ladder": rl["bench"]["seconds"], "compact": rc["bench"]["seconds"]},
+                        "time_points": {"ladder": rl["bench"].get("time_points"), "compact": rc["bench"].get("time_points")},
+                        "levels_max_diff_v": float(np.max(np.abs(bl["levels"] - bc["levels"]))), "levels_max_diff_of_swing": float(np.max(np.abs(bl["levels"] - bc["levels"])) / sw),
+                        "waveform_max_diff_of_swing": float(np.max(np.abs(bl["v"] - vc)) / sw), "swing_v": sw,
+                        "t50_ps": {"ladder": bl["t50_s"] * 1e12, "compact": bc["t50_s"] * 1e12}}
+    return out
 
 
 def plot(res, data, path):
@@ -368,15 +494,18 @@ def main():
     take = lambda k: [a[i + 1] for i in range(len(a) - 1) if a[i] == k]
     out = take("--out")[0]
     cfg = take("--config")
-    opts = {"transient": "--transient" in a, "kicad": "--kicad" in a, "svg": (take("--svg") or [None])[0]}
+    opts = {"transient": "--transient" in a, "kicad": "--kicad" in a, "svg": (take("--svg") or [None])[0], "passivity": "--passivity" in a}
     os.makedirs(out, exist_ok=True)
-    cmd0 = [kisi if not kisi.endswith(".mjs") else "node", *([kisi] if kisi.endswith(".mjs") else []), "export", board] + (["--config", cfg[0]] if cfg else [])
-    results, bus_results, bad = [], [], 0
-    jobs = [("lane", x) for x in take("--lane")] + [("bus", x) for x in take("--bus")]
-    for kind, name in jobs:
-        d = os.path.join(out, re.sub(r"[^A-Za-z0-9_-]+", "_", name).strip("_"))
+    cmd0 = [kisi if not kisi.endswith(".mjs") else "node", *([kisi] if kisi.endswith(".mjs") else []), "export", board] + (["--config", cfg[0]] if cfg else []) + (["--fmax", take("--fmax")[0]] if take("--fmax") else [])
+    models = (take("--models") or [None])[0]
+    models = models.split(",") if models else [(take("--model") or ["ladder"])[0]]
+    results, bus_results, model_cmp, bad = [], [], [], 0
+    jobs = [("lane", x, m) for x in take("--lane") for m in models] + [("bus", x, m) for x in take("--bus") for m in models]
+    by_lane = {}
+    for kind, name, model in jobs:
+        d = os.path.join(out, re.sub(r"[^A-Za-z0-9_-]+", "_", name).strip("_") + (f"_{model}" if len(models) > 1 else ""))
         shutil.rmtree(d, ignore_errors=True)
-        r, secs = run(cmd0 + [f"--{kind}", name, "--out", d])
+        r, secs = run(cmd0 + [f"--{kind}", name, "--out", d] + (["--model", model] if model != "ladder" else []))
         if r.returncode != 0:
             print(f"{name}: kisi export failed\n{r.stdout[-800:]}{r.stderr[-800:]}")
             bad += 1
@@ -389,13 +518,19 @@ def main():
             res, data = lane_check(ld, lm, opts, None)
             res["export_s"] = round(secs, 1)
             results.append(res)
-            if data and "--plots" in a:
+            if data:
+                by_lane.setdefault(lm["lane"], []).append((model, res, data, lm))
+            if data and "--plots" in a and len(models) == 1:
                 png = os.path.join(out, re.sub(r"[^A-Za-z0-9_-]+", "_", lm["lane"]).strip("_") + ".png")
                 plot(res, data, png)
                 res["plot"] = os.path.basename(png)
             nv = res.get("ngspice_vs_kisi")
             msg = "ERROR " + res.get("error", "")[:200] if not nv else (
-                f"ngspice vs kisi: |dS21| {nv['max_ds21_db_nyq']:.3f} dB to 1.5xNyq, {nv['max_ds21_db']:.2f} dB to fmax; max|dS| {nv['max_ds']:.3f} (kisi's own evaluation {res['kisi_eval']['max_ds']:.3f})")
+                f"[{model}, {res['elements'].get('total', 0)} elements] ngspice vs kisi: |dS21| {nv['max_ds21_db_nyq']:.3f} dB to 1.5xNyq, {nv['max_ds21_db']:.2f} dB to fmax; max|dS| {nv['max_ds']:.3f} (kisi's own evaluation {res['kisi_eval']['max_ds']:.3f})")
+            pv = res.get("passivity") or {}
+            sw = pv.get("ngspice_sweep") or {}
+            if pv:
+                msg += f"; largest singular value: kisi {pv.get('kisi_circuit_max_sv') or float('nan'):.6f}, ngspice {pv['ngspice_grid_max_sv']:.6f}" + (f", sweep to {sw['f_hi_hz'] / 1e9:.0f} GHz {sw['max_singular_value']:.6f}" if "max_singular_value" in sw else "")
             st = res.get("step")
             if st:
                 msg += f"; step: max diff {100 * st['max_diff_of_final']:.2f} %, t50 {st['t50_ngspice_ps']:.1f} / {st['t50_kisi_ps']:.1f} ps"
@@ -407,6 +542,7 @@ def main():
             fails = [m for m, c in [("ngspice", not nv), ("ngspice differs from kisi's evaluation of the circuit", nv and abs(nv["max_ds"] - res["kisi_eval"]["max_ds"]) > 0.01),
                                     ("Touchstone not passive", not ts.get("passive")), ("scikit-rf does not read the Touchstone file", sk and not sk.get("read", True)),
                                     ("step response differs by more than 5 %", st and st["max_diff_of_final"] > 0.05),
+                                    ("circuit not passive", pv and (not (pv.get("kisi_circuit_max_sv") or 0) <= 1 + 1e-9 or pv["ngspice_grid_max_sv"] > 1 + 1e-6 or ("max_singular_value" in sw and sw["max_singular_value"] > 1 + 1e-6) or "error" in sw)),
                                     ("KiCad project: " + kicad_fail(res.get("kicad")), res.get("kicad") and not res["kicad"].get("ok")),
                                     ("LTspice files: " + "; ".join((res.get("ltspice") or {}).get("errors", [])), res.get("ltspice") and not res["ltspice"].get("ok"))] if c]
             if res.get("ltspice"):
@@ -432,15 +568,41 @@ def main():
             br["bus"] = name
             bus_results.append(br)
             print(f"bus {name}: {json.dumps(br)[:600]}")
-    json.dump({"lanes": results, "buses": bus_results}, open(os.path.join(out, "results.json"), "w"), indent=1)
+    if len(models) == 2:
+        for lane, runs in by_lane.items():
+            if len(runs) != 2:
+                continue
+            cmpd = compare_models([x[:3] for x in runs], [x[3] for x in runs])
+            cmpd["lane"] = lane
+            model_cmp.append(cmpd)
+            msg = (f"{lane}: compact vs ladder (ngspice): {cmpd['elements']['compact']} vs {cmpd['elements']['ladder']} elements; |dS21| {cmpd['max_ds21_db_nyq']:.4f} dB to 1.5xNyq, "
+                   f"{cmpd['max_ds21_db']:.3f} dB to fmax; max|dS| {cmpd['max_ds_nyq']:.4f} / {cmpd['max_ds']:.4f}; step {100 * cmpd.get('step_max_diff_of_final', float('nan')):.2f} %")
+            b = cmpd.get("bench")
+            if b:
+                msg += (f"; PRBS levels {1e3 * b['levels_max_diff_v']:.2f} mV ({100 * b['levels_max_diff_of_swing']:.2f} % of {1e3 * b['swing_v']:.0f} mV), t50 {b['t50_ps']['ladder']:.1f} / {b['t50_ps']['compact']:.1f} ps; "
+                        f"ngspice bench {b['seconds']['ladder']} / {b['seconds']['compact']} s")
+            print(msg)
+            if os.environ.get("GITHUB_ACTIONS"):
+                print(f"::notice title=compact vs ladder {os.path.basename(lane)}::{msg}")
+            fails = [m for m, c in [("compact differs from the ladder by more than 0.02 up to 1.5 x Nyquist", cmpd["max_ds_nyq"] > 0.02),
+                                    ("compact step response differs from the ladder's by more than 2 %", cmpd.get("step_max_diff_of_final", 0) > 0.02),
+                                    ("compact PRBS levels differ from the ladder's by more than 2 % of the swing", b and b["levels_max_diff_of_swing"] > 0.02)] if c]
+            if fails:
+                print(f"  {'FAIL' if '--strict' in a else 'note'}: {'; '.join(fails)}")
+                bad += 1
+            if "--plots" in a:
+                png = os.path.join(out, re.sub(r"[^A-Za-z0-9_-]+", "_", lane).strip("_") + ".png")
+                plot_models(lane, [x[:3] for x in runs], png)
+                cmpd["plot"] = os.path.basename(png)
+    json.dump({"lanes": results, "buses": bus_results, "compact_vs_ladder": model_cmp}, open(os.path.join(out, "results.json"), "w"), indent=1, default=float)
     rp = take("--report")
     if rp:
-        write_report(rp[0], results, bus_results, board)
+        write_report(rp[0], results, bus_results, board, model_cmp)
     if "--strict" in a and bad:
         raise SystemExit(1)
 
 
-def write_report(path, results, buses, board):
+def write_report(path, results, buses, board, model_cmp=()):
     L = [f"Board `{os.path.basename(board)}`. ngspice: {subprocess.run(['ngspice', '-v'], capture_output=True, text=True).stdout.splitlines()[1].strip() if shutil.which('ngspice') else 'missing'}.", ""]
     L += ["| lane | model | length mm | elements (R/L/C/src) | ngspice vs kisi: |ΔS21| dB to 1.5×Nyq / to fmax | max |ΔS| to 1.5×Nyq / all | kisi's own evaluation: max |ΔS| | step: max diff, t50 ngspice / kisi (ps) |",
           "|---|---|---|---|---|---|---|---|"]
@@ -451,6 +613,14 @@ def write_report(path, results, buses, board):
         L.append(f"| {r['lane']} | {r['model']} | {r['length_mm']:.1f} | {e['r']}/{e['l']}/{e['c']}/{e['sources']} | {nv.get('max_ds21_db_nyq', float('nan')):.3f} / {nv.get('max_ds21_db', float('nan')):.2f} | "
                  f"{nv.get('max_ds_nyq', float('nan')):.3f} / {nv.get('max_ds', float('nan')):.3f} | {r['kisi_eval']['max_ds']:.3f} | "
                  f"{100 * st.get('max_diff_of_final', float('nan')):.2f} %, {st.get('t50_ngspice_ps', float('nan')):.1f} / {st.get('t50_kisi_ps', float('nan')):.1f} |")
+    if model_cmp:
+        L += ["", "| lane | elements ladder / compact | compact vs ladder (ngspice): |ΔS21| dB to 1.5×Nyq / fmax | max |ΔS| to 1.5×Nyq / fmax | step diff | PRBS levels: max diff (of swing) | ngspice S-par. s ladder / compact | ngspice bench s ladder / compact |",
+              "|---|---|---|---|---|---|---|---|"]
+        for c in model_cmp:
+            b = c.get("bench") or {}
+            L.append(f"| {c['lane']} | {c['elements']['ladder']} / {c['elements']['compact']} | {c['max_ds21_db_nyq']:.4f} / {c['max_ds21_db']:.3f} | {c['max_ds_nyq']:.4f} / {c['max_ds']:.4f} | "
+                     f"{100 * c.get('step_max_diff_of_final', float('nan')):.2f} % | " + (f"{1e3 * b['levels_max_diff_v']:.2f} mV ({100 * b['levels_max_diff_of_swing']:.2f} %)" if b else "–") + " | "
+                     f"{c['ngspice_sparam_s']['ladder']} / {c['ngspice_sparam_s']['compact']} | " + (f"{b['seconds']['ladder']} / {b['seconds']['compact']}" if b else "–") + " |")
     ks = [r for r in results if r.get("kicad")]
     if ks:
         L += ["", "| lane | KiCad sheet | symbols / wires / junctions | wiring check | kicad-cli netlist = lane subcircuit | AC vs bench (rel.) | ERC |", "|---|---|---|---|---|---|---|"]

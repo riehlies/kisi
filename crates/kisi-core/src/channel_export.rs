@@ -134,7 +134,7 @@ impl FreqRange {
 /// Export one lane (`dir`: folder prefix of its files, "" or "name/").
 pub fn export_req(board: &Board, an: &Analysis, field: &HashMap<String, FieldResult>, req: &LaneReq, f: Formats, dir: &str, board_name: &str) -> Result<Done, String> {
     let rp_range = req.freq.apply(&req.rp, req.gbps);
-    let (l, rp, cd, opts) = (req.lane, &rp_range, topology::ComponentData::builtin(), ExportOpts::default());
+    let (l, rp, cd, opts) = (req.lane, &rp_range, topology::ComponentData::builtin(), ExportOpts { model: f.model, ..ExportOpts::default() });
     if l.ends.len() < 2 {
         return Err(format!("lane {}: open (one end), nothing to export", l.name));
     }
@@ -189,7 +189,8 @@ fn lane_json(d: &Done) -> Value {
         "profile": d.ends.profile, "rate_gbps": d.ends.bitrate / 1e9,
         "bench_ends": {"tx": d.ends.tx, "rx": d.ends.rx, "rise_ps": d.ends.rise * 1e12, "swing_v": d.ends.swing, "notes": d.ends.notes},
         "frequency": {"fmin_hz": lc.freq.first(), "fmax_hz": lc.freq.last(), "points": lc.freq.len()},
-        "elements": {"r": lc.counts.r, "l": lc.counts.l, "c": lc.counts.c, "sources": lc.counts.sources, "rlgc_sections": lc.counts.sections},
+        "line_model": lc.model, "merged_sections": lc.merged,
+        "elements": {"r": lc.counts.r, "l": lc.counts.l, "c": lc.counts.c, "sources": lc.counts.sources, "rlgc_sections": lc.counts.sections, "cells": lc.counts.cells, "total": lc.counts.elements()},
         "check_against_kisi": lc.fidelity,
         "notes": lc.notes,
     })
@@ -249,7 +250,7 @@ pub fn bus_result(bus: &str, devices: &[String], done: Vec<Done>, skipped: Vec<S
     Ok((v, files, name))
 }
 
-const NOTE: &str = "SPICE: the lane's board channel as kisi's check models it (RLGC ladders with fitted R(f)/G(f) networks, kisi's via model, parts with estimated parasitics, stubs; pairs with modal coupled blocks); check_against_kisi compares the exported circuit with kisi's own S-parameters. Benches use the profile's linear ends; the receiver's termination resistors on the board act as the receiver's termination and are not in the subcircuit or the Touchstone file. Not included: the channel behind a connector, crosstalk between lanes, IBIS ends.";
+const NOTE: &str = "SPICE: the lane's board channel as kisi's check models it (RLGC ladders with fitted R(f)/G(f) networks – or, with --model compact, lossless-line cells with the same networks lumped –, kisi's via model, parts with estimated parasitics, stubs; pairs with modal coupled blocks); check_against_kisi compares the exported circuit with kisi's own S-parameters. Benches use the profile's linear ends; the receiver's termination resistors on the board act as the receiver's termination and are not in the subcircuit or the Touchstone file. Not included: the channel behind a connector, crosstalk between lanes, IBIS ends.";
 
 /// Bus-level files: the bus subcircuit (all lanes, ports ordered by device side) and the N-port
 /// Touchstone file with its port map.

@@ -41,8 +41,11 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    [--format lib,spice,xyce,ltspice,touchstone,kicad (default all; lib: the
                    subcircuits alone, spice: with the ngspice decks)]
                    [--kicad-style detailed|compact (one symbol per element, default; or the lane
-                   as one symbol)] [--fmax GHZ|profile (top frequency of the ladder and the
-                   Touchstone grid; default as the check, 25 GHz; profile: 5 x Nyquist)]
+                   as one symbol)] [--model ladder|compact (lines as RLGC ladders, default; or
+                   compact: lossless-line cells, LC lines with the same fitted losses lumped once
+                   per cell – 2 to 5 x fewer elements)] [--fmax GHZ|profile (top frequency of the
+                   lines and the Touchstone grid; default as the check, 25 GHz; profile: 5 x
+                   Nyquist)]
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
                    [--class CLASS=PROFILE]
@@ -82,6 +85,7 @@ fn formats(o: &Opts) -> Result<crate::export::files::Formats, String> {
         Some("compact") => true,
         Some(x) => return Err(format!("--kicad-style {x}: use detailed or compact")),
     };
+    f.model = crate::export::Model::parse(o.model.as_deref().unwrap_or("ladder"))?;
     Ok(f)
 }
 
@@ -130,6 +134,8 @@ pub struct Opts {
     pub bus: Option<String>,
     pub format: Option<String>,
     pub kicad_style: Option<String>,
+    /// `export`: how line sections are written (ladder or compact)
+    pub model: Option<String>,
     pub fmin: Option<String>,
     pub fmax: Option<String>,
 }
@@ -186,6 +192,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--bus" => o.bus = Some(val(&mut i, a)?),
             "--format" => o.format = Some(val(&mut i, a)?),
             "--kicad-style" => o.kicad_style = Some(val(&mut i, a)?),
+            "--model" => o.model = Some(val(&mut i, a)?),
             "--fmin" => o.fmin = Some(val(&mut i, a)?),
             "--fmax" => o.fmax = Some(val(&mut i, a)?),
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
@@ -596,6 +603,11 @@ mod tests {
         assert_eq!((t.cmd.as_str(), t.ambient, t.airflow, t.vertical, t.h), ("thermal", Some(40.0), Some(1.5), true, None));
         assert!(parse_args(&a("thermal b.kicad_pcb --ambient 900")).is_err());
         assert!(parse_args(&a("thermal b.kicad_pcb --h 0")).is_err());
+        // export: the line model
+        let e = parse_args(&a("export b.kicad_pcb --lane X --model compact")).unwrap();
+        assert_eq!(formats(&e).unwrap().model, crate::export::Model::Compact);
+        assert_eq!(formats(&parse_args(&a("export b.kicad_pcb --lane X")).unwrap()).unwrap().model, crate::export::Model::Ladder);
+        assert!(parse_args(&a("export b.kicad_pcb --lane X --model bogus")).is_err());
     }
 
     /// The template's PI_LOAD example is a load: not the regulator (with or without PI_REG), even

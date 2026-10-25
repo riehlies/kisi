@@ -837,7 +837,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
 
 /// Export of a lane or a bus for circuit and RF simulators (`kisi export`, `kisi_core::channel_export`)
 /// with the viewer's settings. Input: {"board": file name, "formats": "all", "kicad_style":
-/// "detailed" | "compact", "fmax": GHz | "profile" | null, "fmin_ghz": GHz | null, "bus": name | null,
+/// "detailed" | "compact", "model": "ladder" | "compact", "fmax": GHz | "profile" | null, "fmin_ghz": GHz | null, "bus": name | null,
 /// "devices": [refdes], "lanes": [{"lane": first net id, "to", "reversed", "rf", "target",
 /// "profile", "bitrate", "tx", "rx", "eye_rise", "swing_v", "conn_end"}]} → {"summary", "files":
 /// [{"path", "content"}], "name"}.
@@ -853,6 +853,7 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let mut f = kisi_core::export::files::Formats::parse(v["formats"].as_str().unwrap_or("all"))?;
         f.kicad_compact = v["kicad_style"].as_str() == Some("compact");
+        f.model = kisi_core::export::Model::parse(v["model"].as_str().unwrap_or("ladder"))?;
         let board = v["board"].as_str().unwrap_or("board.kicad_pcb").to_string();
         let bus = v["bus"].as_str().map(str::to_string);
         let reqs = v["lanes"].as_array().ok_or("lanes missing")?;

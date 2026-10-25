@@ -1,8 +1,9 @@
 # Compact channel models for the SPICE export – vector fitting and the alternatives
 
 Status: research note with a recommendation (25 October 2026, branch `feat/vector-fit`), written before the
-implementation; ROADMAP block 3, step 3 of the channel export (`channel-export.md` section 6). The study script and
-its data: `validation/channel_export/compact_study.py`, `line_models.json`.
+implementation; section 8 records what the implementation changed (the lossless lines are LC ladders, not the
+simulators' line elements). ROADMAP block 3, step 3 of the channel export (`channel-export.md` section 6). The
+study script and its data: `validation/channel_export/compact_study.py`, `line_models.json`.
 
 ## Summary
 - **Problem:** the export writes each line section as an RLGC ladder of π sections (20 per wavelength at the top
@@ -29,15 +30,19 @@ its data: `validation/channel_export/compact_study.py`, `line_models.json`.
   and gives the exact line in AC/S-parameter analysis. LTspice reads LTRA too (and LTRA with R = 0 is the documented
   workaround for a `T` bug in LTspice 26.0.1). Xyce lists both line devices as not supported in `.AC` (known defect
   970-SON) – its S-parameter deck needs the ladder; its transient reads them.
-- **Recommendation:** for the export's line sections, **lossless-line cells**: per line section N =
-  ⌈3 · delay · f max⌉ cells, each an LTRA line in the lossless case (L and C from the fit's high-frequency terms)
-  with the section's fitted Foster and Debye networks (without their sL and sC terms) lumped in the cell – passive
-  by construction (positive R, L, C and lossless lines), the delay exact, the DC resistance exact, no controlled
-  sources. Consecutive sections with the same model (the many sub-millimetre pieces of a coupled run) are merged
-  first; sections shorter than one cell stay lumped π sections (so that no line delay limits the time step); vias,
-  parts and stubs stay as they are; pairs keep their modal blocks (cells per mode). Vector fitting is not used for
-  the board's lines; it stays the method for tabulated data (a Touchstone block behind a connector), where DVF with
+- **Recommendation:** for the export's line sections, **lossless-line cells**: per line section a few cells
+  (at least 3 per delay × f max), each a lossless line (L and C from the fit's high-frequency terms) with the
+  section's fitted Foster and Debye networks (without their sL and sC terms) lumped once – passive by construction
+  (positive R, L, C), the DC resistance exact, no controlled sources, no fit of a delayed response. Consecutive
+  sections with the same model (the many sub-millimetre pieces of a coupled run) are merged first; vias, parts and
+  stubs stay as they are; pairs keep their modal blocks (cells per mode). Vector fitting is not used for the
+  board's lines; it stays the method for tabulated data (a Touchstone block behind a connector), where DVF with
   passivity enforcement would be needed.
+- **As implemented** (section 8): the lossless line of each cell is an LC ladder (40 π sections per wavelength at
+  f max, 2 elements each; phase within 0.1 % at f max) instead of an LTRA line – ngspice's LTRA bounds the time step
+  to the shortest line delay and went unstable on a real lane, `T` stalls, Xyce runs neither in `.AC`. The loss
+  networks (~40 elements per cell) dominate the count either way: 2.4–4.6 × fewer elements than the ladder at
+  25 GHz, ~5 × at 5 × Nyquist, and SYNC_OUT_P's PRBS bench 67 s instead of ~450 s (41 s at 5 × Nyquist).
 
 ## 1. The problem in numbers
 | Lane | length | elements (R/L/C/sources) | ngspice | source |
@@ -114,7 +119,7 @@ out of S21 alone does not help a reflecting lane, because the delay sits in S11 
 | | ngspice | Xyce | LTspice |
 |---|---|---|---|
 | lossless line `T` | yes; breakpoint control stalls in cascades (below) | yes (TRA); not in `.AC` (970-SON) | yes; overshoot bug in 26.0.1 [LTB] |
-| LTRA `O` (constant R, L, G, C; lossless case R = G = 0) | yes, fast and exact in AC | yes; not in `.AC` (970-SON); LC case may run out of memory (1923-SRN) | yes (R = 0 is the workaround for the T bug [LTB]) |
+| LTRA `O` (constant R, L, G, C; lossless case R = G = 0) | yes, exact in AC; time step ≤ 0.8 × the shortest delay, unstable on a lane with lumped losses (section 8) | yes; not in `.AC` (970-SON); LC case may run out of memory (1923-SRN) | yes (R = 0 is the workaround for the T bug [LTB]) |
 | constant-parameter lossy lines (TXL, CPL, URC) | yes | partly | URC |
 | frequency-dependent RLGC line (W element) | no | no | no |
 | Laplace / s-domain source | XSPICE `s_xfer` code model | not documented | `Laplace=` on E/G sources [LTL] |
@@ -178,7 +183,7 @@ fitted small numbers, wrong by 10–700× and once negative. Both can be fought 
 asymptotes and H(0), enforce passivity with a delayed-model test), but none of it is by construction, and an error
 in either quantity can make a lane unstable with passive ends.
 
-## 7. Recommendation for kisi's export
+## 7. Recommendation for kisi's export (as written before the implementation)
 **Lossless-line cells per line section**, as an export option (`--model compact`, the ladder stays the default
 until the compact model is proven):
 1. The line section's fits are the ladder's (`fit_z`, `fit_y` of kisi's `LineModel::rlgc` per metre). Their sL and
@@ -214,6 +219,38 @@ lane needs ~2·τ·f max poles and passivity enforcement that fails on kisi's la
 behind a connector as a SPICE block (ROADMAP block 3) – DVF with common poles (relaxed, fast VF), a passivity test
 on a dense grid including far outside the band, and residue-perturbation enforcement are the state of the art
 ([DVF], [QP], [FPE]).
+
+## 8. What the implementation changed
+Building `--model compact` (`kisi_si::export`, `El::Cells`) and running it in ngspice on ThunderScope's lanes changed
+three things:
+
+1. **No simulator line element for the lossless part.** LTRA in its lossless case passed the AC/S-parameter
+   checks and the 40-cell chain, but on a whole lane: (a) ngspice keeps the time step below 0.8 × the shortest
+   line's delay – SYNC_OUT_P's PRBS bench at 25 GHz needed 65 618 time points (3.9 ps) and 255 s, hardly faster than
+   the ladder; the model flag `NOSTEPLIMIT` lifts the bound but the waveform is wrong (stuck at 0.156 V after 10 ns);
+   (b) with the cells of `--fmax profile` (2.5 GHz, ~100 ps per cell) the bench went unstable – "timestep too small"
+   at 7.3–7.8 ns with 2·10⁷ V, with linear, quadratic or mixed interpolation, `NOCONTROL`, trapezoidal or Gear
+   integration alike –, while the same circuit with the LTRA lines replaced by LC ladders ran cleanly; a plain chain
+   of the same lines with simple lumps was stable, so it is the combination with the lane's loss networks and mode
+   converters. `T` failed there too ("timestep too small" at 0.3 ns). A model that works in one run and diverges in
+   the next cannot be exported. The cells' lossless lines are therefore **LC ladders**: 40 π sections per
+   wavelength at f max (phase within 0.1 % there; the RLGC ladder has 20 and 0.4 %), 2 elements per section –
+   cheap next to the ~40 elements of a cell's loss networks. Every simulator reads them (Xyce's `.AC` included),
+   nothing bounds the time step, the S-parameter decks of all three simulators stay.
+2. **Cell layout and count.** With no line element there is no reason to avoid half-length lines: the layout is
+   half line – (z, y, line) × (N − 1) – z, y – half line, one lump per cell (as accurate as z/2–y–z/2, section 6).
+   N = ⌈3 · delay · f max · max(1, √(r/0.03))⌉, where r is the lumps' size against the line's reactance and
+   susceptance weighted by (f/f max)² (the discretisation error goes with r·(ωτ_cell)²): stripline lumps are
+   r ≈ 0.04 (skin effect and Djordjevic-Sarkar), microstrip's 0.06–0.10, because a passive line can carry only the
+   capacitance at infinite frequency and the dispersion's rise must be lumped (the fit's high-frequency C is ~10 %
+   below C(f) on the test board's microstrip). Every section gets at least one cell (no ladder fallback).
+3. **Passivity beyond the band** is checked on the circuit itself: kisi evaluates the exported circuit's S-matrix
+   from 1 kHz to 10 × f max by star products of scattering matrices (cascade matrices of long ladders overflow far
+   above their cut-off) – largest singular value ≤ 1 on every lane, ladder and compact alike – and `compare.py
+   --passivity` repeats that in ngspice. Asymptotically both are passive by construction (positive R, L, C, and
+   the ideal mode converters are lossless).
+
+Results on the example boards: `channel-export.md` section 7.
 
 ## Sources
 - [VF] B. Gustavsen, A. Semlyen, “Rational approximation of frequency domain responses by vector fitting”, IEEE

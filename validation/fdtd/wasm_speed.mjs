@@ -15,4 +15,4 @@ const r = JSON.parse(out);
 if (code !== 0) throw new Error(out);
 r.runs[0].seconds = secs;
 writeFileSync(outPath, JSON.stringify(r));
-console.log(`${r.name}: wasm ${secs.toFixed(1)} s, ${r.runs[0].steps} steps, ${(r.cells * r.runs[0].steps / secs / 1e6).toFixed(1)} Mcells/s`);
+console.log(`${r.name}: wasm ${secs.toFixed(1)} s, ${r.runs[0].steps} steps, ${(r.cells * r.runs[0].steps / secs / 1e6).toFixed(1)} Mcells/s, memory ${(k.memory.buffer.byteLength / 2 ** 20).toFixed(0)} MB`);

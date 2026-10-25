@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 """Compare the Node CLI (dist/kisi.mjs, formula mode) with the native kisi on the example boards.
 
-Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands check,gaps,thermal]
+Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands check,gaps,thermal,check-cavity]
 
 Runs every command on ThunderScope and LibreVNA with their configs (web/samples/{ts,vna}.kisi.json) and compares
 the JSON outputs. Numbers are compared after rounding to 6 significant digits; keys that differ by design
 (field solver status, config echo, timings) are ignored. `check` computes its rows in parallel (native: threads,
 Node: worker threads); each CLI's output must be byte-identical to a run on one thread (KISI_THREADS=1). The
 timings of both runs are printed (in GitHub Actions also as a notice in the run's summary).
-Exit code 1 on any difference.
+`check-cavity` is `check --all --via-cavity` on LibreVNA only (the cavity grids in WebAssembly; a clock call there
+once trapped). Exit code 1 on any difference.
 """
 import json, os, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOARDS = [("ts", "Thunderscope_Rev5.3"), ("vna", "VNA")]
 IGNORE = {"field_solver", "field_solver_note", "config", "timing_ms"}
-ARGS = {"check": ["--all"], "gaps": []}
+ARGS = {"check": ["--all"], "gaps": [], "check-cavity": ["--all", "--via-cavity"]}
+# pseudo commands: (command, boards)
+ALIAS = {"check-cavity": ("check", {"vna"})}
 
 
 def norm(x):
@@ -64,7 +67,7 @@ def main():
     if len(sys.argv) < 4:
         raise SystemExit(__doc__)
     native, mjs, ex = sys.argv[1:4]
-    cmds = ["check", "gaps", "thermal"]
+    cmds = ["check", "gaps", "thermal", "check-cavity"]
     if "--commands" in sys.argv:
         cmds = sys.argv[sys.argv.index("--commands") + 1].split(",")
     bad = 0
@@ -72,8 +75,11 @@ def main():
         pcb = os.path.join(ex, stem + ".kicad_pcb")
         cfg = os.path.join(ROOT, "web", "samples", key + ".kisi.json")
         for c in cmds:
-            na = [native, c, pcb, "--config", cfg] + ARGS.get(c, [])
-            nb = ["node", mjs, c, pcb, "--config", cfg, "--formula"] + ARGS.get(c, [])
+            cmd, only = ALIAS.get(c, (c, None))
+            if only and key not in only:
+                continue
+            na = [native, cmd, pcb, "--config", cfg] + ARGS.get(c, [])
+            nb = ["node", mjs, cmd, pcb, "--config", cfg, "--formula"] + ARGS.get(c, [])
             t0 = time.time(); ta = run(na, raw=True); t1 = time.time(); tb = run(nb, raw=True); t2 = time.time()
             secs = {"native": t1 - t0, "node": t2 - t1}
             d = first_diff(norm(json.loads(ta)), norm(json.loads(tb)))

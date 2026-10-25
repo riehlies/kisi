@@ -1,0 +1,84 @@
+{
+ "case": "RG_ts6_sw_gnd",
+ "meta": {
+  "group": "RG",
+  "title": "Finite board 24 \u00d7 16 mm, ThunderScope stack, via F \u2192 In3 (stub to B) through In1 GND / In2 GND / In4 GND, four GND vias at 1 mm joined to In1 and In4 and In2",
+  "params": {
+   "board_mm": "24 \u00d7 16",
+   "returns": 4,
+   "via_mm": [
+    -3.3,
+    -1.9
+   ],
+   "in2": "GND"
+  },
+  "stackup": "ts6p",
+  "stackup_title": "ThunderScope Rev5.3 6-layer with the In2 plane",
+  "copper_z": [
+   1.3486,
+   1.2379,
+   1.1363,
+   0.2107,
+   0.1,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L3",
+   "L5"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1 F",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2 In3",
+    "layer": "L4",
+    "ref": "L5"
+   }
+  ],
+  "lumped": [],
+  "board": [
+   -12.0,
+   -8.0,
+   12.0,
+   8.0
+  ],
+  "via": [
+   -3.3,
+   -1.9
+  ],
+  "thru": [
+   "thru_RG_ts6p_L1",
+   "thru_RG_ts6p_L4"
+  ],
+  "cavity": {
+   "layers": [
+    "In1",
+    "In2",
+    "In4"
+   ],
+   "er": 4.5,
+   "tand": 0.02
+  }
+ },
+ "date": "2026-10-23",
+ "fmax": 25000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 680400,
+   "steps": [
+    9801,
+    10401
+   ],
+   "dt": 1.0343665698960105e-13,
+   "seconds": 201.3,
+   "dfine": 0.07,
+   "dmax": 0.35
+  }
+ }
+}

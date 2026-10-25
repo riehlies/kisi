@@ -189,6 +189,9 @@ pub struct Pad {
     pub pinfunction: String,
     #[serde(skip)]
     pub pintype: String,
+    /// a plated hole (`thru_hole`; not `np_thru_hole`)
+    #[serde(skip)]
+    pub plated: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1131,7 +1134,8 @@ fn parse_footprint(fp: &Node, su: &Stackup, nets: &mut NetTable, out: &mut Vec<P
         let custom = if shape == "custom" { custom_outline(pad, size) } else { vec![] };
         let pinfunction = pad.child_str("pinfunction").unwrap_or("").to_string();
         let pintype = pad.child_str("pintype").unwrap_or("").to_string();
-        out.push(Pad { at: p, size, angle, shape, rratio, custom, layers, net, drill: drill.unwrap_or(0.0), number, fp: fp_idx, pinfunction, pintype });
+        let plated = pad.atom(2) == Some("thru_hole");
+        out.push(Pad { at: p, size, angle, shape, rratio, custom, layers, net, drill: drill.unwrap_or(0.0), number, fp: fp_idx, pinfunction, pintype, plated });
     }
 }
 

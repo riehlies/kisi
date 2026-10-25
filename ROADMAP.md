@@ -77,16 +77,24 @@ validation, and every result says which level it used and how uncertain it is.
   sound): Block 2 `feat/via-3d-board` (board via →
   kisi-fdtd exporter, matched de-embedding, `BOARD_VIAS.md`), Block 3 `feat/board-resonances` (finite plane cavities
   and via-to-via coupling, option `--via-cavity`, `BOARD_RESONANCES.md`), Block 4 `feat/return-groups` (return vias
-  per plane pair and decoupling capacitors as returns, option `--via-returns`, `BOARD_RETURNS.md`). Next:
-  - fix the ladder errors found in Block 2 – pours on the signal layers as a coplanar return, the series
-    inductance, TDR maxima of long stubs, wide traces at the via, the ThunderScope through via (~50 fF missing) –
-    before cavities and return groups can become the default;
-  - a warning in the default path for channel vias that cross a GND/supply pair no via bridges (the cavity survey
-    finds them already);
+  per plane pair and decoupling capacitors as returns, option `--via-returns`, `BOARD_RETURNS.md`). Block 5 on the
+  same branch: done – a warning in the default path for channel vias across a GND/supply pair no via bridges
+  (`check`, `net`, the viewer's details; none on the example boards); the pours on the via's signal layers as
+  coplanar returns in the ladder (the default; M.2 pair phase 24° → 2°); two corrections of the comparisons (board
+  vias at the via centre, the TDR of the validation scripts – the long-stub TDR maxima were this);
+  `--via-cavity` / `--via-returns` reassessed and kept off (`BOARD_VIAS.md` section 5, `BOARD_RETURNS.md`
+  sections 7–8). Block 6: done – the REFINOUT2 excess loss above 12 GHz was an open return cage: plated pads of
+  plane nets (connector pins) are return posts now, the nearest 12 (12–20 GHz 0.41 → 0.02 dB against 3D, loss at
+  20 GHz 16 → 7 %, 3D 9 %; `BOARD_VIAS.md` section 6); the cavity option shares its factorisations per region
+  (ThunderScope 105 → 57 s on one thread, results reproducible; `BOARD_RESONANCES.md` section 9). Next:
+  - the return groups' floating-plane loss is 1.6× the 3D on REFINOUT2 (0.29 dB off at 12–20 GHz) – what keeps
+    them from the default; the cavity option is still 8× the default (per-via fill masks);
+  - pair vias read 8–11 % high in Zdiff minimum with the corrected TDR (L1→L8 references); the X exits without
+    a plane on one side (+56 fF on X_s8x4); the thick-core through via B_ts6_L1L6 (−50 fF); re-score the
+    Block 1 references with the matched de-embedding;
   - above 12 GHz neither ladder follows the 3D results, and the first board mode comes out 1.6–2.5 % low;
   - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
-    ladder; about 8 days, a minimal version 4) – after the warning and the ladder fixes (order decided 2026-10-24:
-    warning, ladder fixes, 3D check);
+    ladder at the via centre; about 8 days, a minimal version 4; design note `BOARD_VIAS.md` section 5.6);
   - the ladder in WebAssembly is about 2 × slower than native.
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
 - **Crosstalk:** broadside coupling between layers (detected and listed so far), crossings of plane splits and

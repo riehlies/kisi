@@ -57,6 +57,13 @@ next to the board), --no-config, --stackup FILE (stackup changes, as in the view
 "variants"; "default" = the board file as it is). Boards with variants – or with forks where
 all alternative parts are fitted – need one for interfaces, check and report (else they stop and
 list the variants); "variant" in <board>.kisi.json chooses one for every run.
+--via-cavity (net, check, report; experimental, off by default): the plane pairs of the via models
+as finite cavities – board edges, stitching vias, capacitors between supply and ground planes –
+instead of infinite plates (validation/fdtd/BOARD_RESONANCES.md); slower.
+--via-returns (net, check, report; experimental, off by default): return groups per plane pair in
+the via models – a return via shorts only the pairs whose two planes it joins, crosses supply
+planes as a floating return, capacitors between supply and ground planes nearby close a pair
+(validation/fdtd/BOARD_RETURNS.md).
 field solver (kisi.mjs only; overview, net, check, crosstalk, report): used by default for the
 cross-sections of nets with a target, results cached on disk; --formula (no field solver),
 --field-time S (time budget for new solves, default 120), --field-all (all cross-sections, not
@@ -169,6 +176,8 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--airflow m/s` | `thermal` | forced air flow over the board |
 | `--vertical` | `thermal` | the board stands vertically (natural convection) |
 | `--h W/m²K` | `thermal` | surface coefficient per side instead of the convection correlations |
+| `--via-cavity` | `net`, `check`, `report` | experimental: the via models' plane pairs as finite cavities (board edges, stitching vias, decoupling capacitors – estimated parasitics); slower |
+| `--via-returns` | `net`, `check`, `report` | experimental: return groups per plane pair in the via models (a return via shorts only the pairs it joins; capacitors close supply/ground pairs) |
 | `--for VIEW` | `gaps` | only the gaps of one category: `impedance`, `channel` or `power` |
 | `--out FILE` | `report` | where to write the report (default `analysis/kisi.json` next to the board) |
 | `--formula` | field-solver commands | no field solver (formula impedances) |

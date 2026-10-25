@@ -1,0 +1,88 @@
+{
+ "case": "thru_BV_ts_m2_per0_q050f25s_in",
+ "meta": {
+  "copper_z": [
+   1.4618,
+   1.32075,
+   1.20165,
+   0.25855,
+   0.13035,
+   0.0
+  ],
+  "excite": [
+   0,
+   1
+  ],
+  "group": "thru",
+  "lumped": [],
+  "mirror": [
+   2,
+   3,
+   0,
+   1
+  ],
+  "params": {
+   "layer": "F.Cu",
+   "length_mm": 6.0,
+   "offsets_mm": [
+    -0.158887,
+    0.158887
+   ],
+   "width_mm": 0.19079
+  },
+  "plane_nets": [
+   "GND",
+   "+VUSB",
+   "GND",
+   "/TS-PCIe Components/PCIe_REFCLK_N"
+  ],
+  "planes": [
+   "In1.Cu",
+   "In2.Cu",
+   "In4.Cu",
+   "B.Cu"
+  ],
+  "ports": [
+   {
+    "layer": "F.Cu",
+    "name": "1 near",
+    "ref": "In1.Cu"
+   },
+   {
+    "layer": "F.Cu",
+    "name": "2 near",
+    "ref": "In1.Cu"
+   },
+   {
+    "layer": "F.Cu",
+    "name": "3 far",
+    "ref": "In1.Cu"
+   },
+   {
+    "layer": "F.Cu",
+    "name": "4 far",
+    "ref": "In1.Cu"
+   }
+  ],
+  "pwr_planes": [],
+  "stackup": "board",
+  "stackup_title": "as the board case",
+  "title": "2\u00d7thru F.Cu, 6 mm, pair"
+ },
+ "date": "2026-10-22",
+ "fmax": 25000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 199920,
+   "steps": [
+    3601,
+    3601
+   ],
+   "dt": 8.125182831273336e-14,
+   "seconds": 13.9,
+   "dfine": 0.05,
+   "dmax": null
+  }
+ }
+}

@@ -621,6 +621,10 @@ pub struct CheckRow {
     /// (fraction of the swing; the eye height includes twice this)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub xt_peak: Option<f64>,
+    /// vias of the channel that cross a GND/supply plane pair no return via bridges
+    /// (`via::ViaInfo::open_pairs`), for the row's warning
+    #[serde(skip)]
+    pub open_vias: Vec<crate::via::ViaInfo>,
 }
 
 /// The eye at one receiver of a multi-drop line.
@@ -665,6 +669,7 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
         mode_conversion_db: None,
         receivers: vec![],
         xt_peak: None,
+        open_vias: vec![],
     }
 }
 
@@ -676,6 +681,7 @@ pub(crate) fn fill_row(row: &mut CheckRow, ch: &crate::rf::Channel, gbps: f64, r
     row.delay_ps = ch.delay_ps;
     row.vias = ch.vias;
     row.warnings = ch.warnings.len();
+    row.open_vias = ch.via_info.iter().filter(|v| !v.open_pairs.is_empty()).cloned().collect();
     row.stubs = ch.segments.iter().filter(|s| s.kind == "branch").filter_map(|s| s.part.clone()).collect();
     let fn_ = gbps * 0.5e9;
     let df = ch.freq[0];

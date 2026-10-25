@@ -772,7 +772,7 @@
     "kind": "datasheet",
     "document": "Qorvo RFSW6042 product data",
     "url": "https://cn.qorvo.com/products/p/RFSW6042",
-    "note": "SP4T switch, supply current 0.065 mA"
+    "note": "SP4T switch, supply current 65 µA"
    }
   },
   {
@@ -783,7 +783,7 @@
     "kind": "datasheet",
     "document": "Qorvo RFSW6042 product data",
     "url": "https://cn.qorvo.com/products/p/RFSW6042",
-    "note": "SP4T switch, supply current 0.065 mA"
+    "note": "SP4T switch, supply current 65 µA"
    }
   },
   {

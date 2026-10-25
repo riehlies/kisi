@@ -38,8 +38,8 @@ Gaps that are guesses from names (`nets-without-target`, rails found only by the
 reason when the name misleads – `gaps.dismissed` in kisi.json ([reference](reference.md#gapsdismissed)).
 
 Gaps whose `write.to` says "not kisi.json" are fixes in KiCad (a Value field kisi cannot read, for example).
-kisi.json can only name net classes that exist in the project: nets without a suitable class need one in KiCad
-first.
+Nets without a suitable class (in "Default") get one in kisi.json with `net_classes.<class>.nets` (names or
+patterns, [reference](reference.md#target-impedance-from-net-class-names)), or in KiCad.
 
 ## The gap list
 `kisi gaps` prints a list of gaps; each has an `id`, a `priority`, the `issue`, what it `affects`,
@@ -95,18 +95,16 @@ The syntax of every field and kisi.json key: [Field and kisi.json reference](ref
   and writes the kisi.json; you review the result.
 
 ### In the viewer: Prepare PCB
-![The Prepare PCB checklist on the Impedance tab: the QSPI nets dismissed, the laminate step done – ready for the impedance check](img/prepare.png)
+![The Prepare PCB checklist of the bare ThunderScope, Impedance tab: the QSPI nets given a class of their own (applied, check mark), the laminate step open](img/prepare.png)
 
 "Prepare PCB" in the top bar (between the example boards and "Load files") opens what the board file lacks – with
 its kisi.json, if one is loaded – as a **checklist** in three tabs: Impedance, Channel and Power (with the
-temperature). The badge counts the open points. In the analysis views, the **Preparation** card at the top of the
-side panel shows the same per category (open points, or a check mark), names the assembly variant as a step when it
-still has to be chosen (the Assembly variant card is right below it), and opens Prepare PCB at the current view's
-tab.
+temperature). The badge on the button counts the open points.
 
-Each gap is a step, ordered by priority, with a marker: a red or amber number while it is open (high or medium
-priority; low-priority steps are optional refinements), a green check mark when it is done, an arrow when it is
-with the agent, a dash when it is dismissed. An open step says in one line what it needs ("Enter the current per
+Each gap is a step, ordered by priority, with a marker: while it is open, the number of its items that are still
+open (seven ICs without a current: 7), red or amber by priority (low-priority steps are optional refinements); a
+green check mark when it is done, an arrow when it is with the agent, a dash when it is dismissed. Steps keep their
+place when one is done. An open step says in one line what it needs ("Enter the current per
 rail for 7 ICs, with a source") and shows only those inputs; *more* holds where to find the values, where they go
 and optional fields. **Apply** runs the gap list through the core at once: the step gets its check mark when kisi no
 longer reports it (or reports only dismissed items), and the next open step opens; otherwise the step stays open
@@ -114,7 +112,9 @@ and says what is still missing ("6 of 7 ICs still missing: …"), with the check
 the agent" settles a step for now and adds it to the agent card's prompt. The tab shows its progress ("1 of 2
 required steps done") and ends with "Ready for the impedance check" (or the channel check, the power analysis) and
 a button to that view; the last step is saving the kisi.json. Where a gap mixes categories, a tab shows only the
-items that matter for it (a dielectric with only a default tanδ is a Channel item). Below the checklist,
+items that matter for it (a dielectric with only a default tanδ is a Channel item). Nets in "Default" that look
+like an interface get a class of their own in the step (name, nets or patterns, target, profile – written as
+`net_classes.<name>.nets`); dismissing is for nets that are not interfaces. Below the checklist,
 **In `<board>`.kisi.json** holds everything the category uses, loaded and entered, as editable tables:
 
 | Tab | Forms |

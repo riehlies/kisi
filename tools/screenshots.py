@@ -7,8 +7,8 @@ Opens the viewer with the built-in ThunderScope board (Playwright + Chromium, 14
 impedance.png (whole board coloured by deviation from the target), net.png (TDR of a net with vias),
 channel.png (interfaces after the check), flow.png (power flow), power.png (voltage drop of the FPGA core rail,
 its impedance seen from the ICs), temperature.png (temperature estimate, step 3), parts.png (the power tree's
-components with their thermal columns) and prepare.png (the Prepare PCB page, Impedance tab, with the laminate
-and a dismissal being entered). --only prepare,… makes only these.
+components with their thermal columns) and prepare.png (the Prepare PCB checklist of the bare board, Impedance
+tab: a class for the QSPI nets applied, the laminate step open). --only prepare,… makes only these.
 """
 import argparse, os
 from playwright.sync_api import sync_playwright
@@ -35,33 +35,39 @@ with sync_playwright() as p:
     shot = lambda name: (not only or name in only) and pg.screenshot(path=os.path.join(a.out, name + ".png"))
 
     def prepare():
-        # the Prepare PCB checklist on the Impedance tab: the QSPI nets dismissed (applied, marked), the laminate
-        # step open with a value and its source
+        # the Prepare PCB checklist on the bare ThunderScope (without its kisi.json), Impedance tab: the QSPI nets
+        # given a class of their own and applied (check mark), the laminate step open with a value and its source
         pg.wait_for_function("S.prep.base", timeout=90000)
-        pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; S.prep.d = null; }")
+        idle = lambda: (pg.wait_for_timeout(300), pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=90000))
+        tick = lambda: pg.evaluate("() => new Promise((r) => setTimeout(r, 0))")
+        def commit(sel, v):
+            pg.fill(sel, v); pg.dispatch_event(sel, "change"); tick()
+        pg.evaluate("""async () => { for (const k of Object.keys(localStorage)) if (k.startsWith('kisi.prep.v1.')) localStorage.removeItem(k);
+          S.prep.mem = {}; const s = SAMPLES.ts; const [a, c] = await Promise.all([gunzipB64(s.pcb), gunzipB64(s.pro)]); await loadFiles(a, c, s.file || s.name, null, null); }""")
+        pg.wait_for_function(f"S.scene && {BUSY} && S.prep.base", timeout=120000); idle()
         pg.click("#prep-btn"); pg.click('#prep-tabs [data-prep-tab="impedance"]'); pg.wait_for_timeout(300)
-        g = "nets-without-target"
-        if pg.locator(f'[data-b="dismiss"][data-g="{g}"]').count():
-            pg.click(f'[data-b="dismiss"][data-g="{g}"]')
-        if pg.locator(f'[data-b="dis-all"][data-g="{g}"]').count():
-            pg.click(f'[data-b="dis-all"][data-g="{g}"]')
-            pg.fill(f'[data-a="dis-reason"][data-g="{g}"]', "QSPI configuration flash at 50 MHz, short lines – no impedance control needed")
-            pg.dispatch_event(f'[data-a="dis-reason"][data-g="{g}"]', "change"); pg.wait_for_timeout(50)
-            pg.click(f'article[data-gap="{g}"] [data-b="apply"]')
-            pg.wait_for_timeout(1200); pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=90000)
+        g = 'article[data-gap="nets-without-target"]'
+        if pg.locator(g).count():
+            commit(f'{g} input[data-a="nc"][data-k="name"]', "QSPI")
+            commit(f'{g} input[data-a="nc"][data-k="extra"]', "QSPI_*")
+            commit(f'{g} input[data-a="nc"][data-k="target_ohm"]', "50")
+            pg.select_option(f'{g} select[data-a="nc"][data-k="profile"]', "se50"); tick()
+            pg.select_option(f'{g} [data-a="shared"][data-k="kind"]', "assumption"); tick()
+            commit(f'{g} [data-a="shared"][data-k="note"]', "single-ended 50 Ω, common practice for QSPI flash traces")
+            pg.click(f'{g} [data-b="apply"]'); idle()
         sel = 'article[data-gap="stackup-defaults"]'
         if pg.locator(sel).count():
             if pg.get_attribute(sel, "aria-expanded") != "true":
                 pg.click(f"{sel} > header")
-            pg.select_option(f'{sel} [data-a="shared"][data-k="kind"]', "datasheet")
-            for k, v in (("document", "fabricator's stackup report"), ("note", "at 1 GHz")):
-                pg.fill(f'{sel} [data-a="shared"][data-k="{k}"]', v); pg.dispatch_event(f'{sel} [data-a="shared"][data-k="{k}"]', "change"); pg.wait_for_timeout(50)
-            pg.locator(f'{sel} input[data-a="diel"][data-k="epsilon_r"]').first.fill("4.3")
-            pg.locator(f'{sel} input[data-a="diel"][data-k="epsilon_r"]').first.dispatch_event("change")
-        pg.wait_for_timeout(1200); pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=90000); pg.wait_for_timeout(300)
+            pg.select_option(f'{sel} [data-a="shared"][data-k="kind"]', "datasheet"); tick()
+            commit(f'{sel} [data-a="shared"][data-k="document"]', "Isola FR408HR data sheet, Rev. F")
+            commit(f'{sel} [data-a="shared"][data-k="note"]', "Dk at 2 GHz, typical")
+            commit(f'{sel} input[data-a="diel"][data-i="2"][data-k="epsilon_r"]', "3.68")
+        idle()
         pg.evaluate("document.getElementById('prep').scrollTop = 0")
         shot("prepare")
         pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; }")
+        pg.evaluate("loadSample('ts')"); pg.wait_for_function(f"S.scene && {BUSY}", timeout=120000)
         pg.click("#view-si"); pg.wait_for_timeout(300)
 
     if only and only <= {"prepare"}:

@@ -270,9 +270,9 @@ def prepare_page(pg, tag, step):
     pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; S.prep.d = null; }")
     if pg.evaluate("document.querySelectorAll('#view-si .dot, #view-ch .dot, #view-pi .dot').length"):
         problems.append(f"{tag}: prepare: readiness dots on the view buttons")
-    # the Preparation card at the top of the side panel, the assembly variant card below it
-    if not pg.evaluate("!$('prep-status').hidden && !!(($('prep-status').compareDocumentPosition($('variant-card'))) & Node.DOCUMENT_POSITION_FOLLOWING)"):
-        problems.append(f"{tag}: prepare: no Preparation card above the assembly variant card")
+    # no preparation card in the views: the assembly variant card is the first card of the side panel
+    if pg.evaluate("!!document.getElementById('prep-status') || document.querySelector('.side > section') !== $('variant-card')"):
+        problems.append(f"{tag}: prepare: a preparation card in the side panel, or the assembly variant card is not first")
     pg.click("#prep-btn"); pg.wait_for_timeout(300)
     if not pg.evaluate("S.prep.open && !document.getElementById('prep').hidden && getComputedStyle(document.querySelector('.stage')).display === 'none'"):
         problems.append(f"{tag}: prepare: the page did not open")
@@ -319,61 +319,141 @@ def prepare_page(pg, tag, step):
         problems.append(f"{tag}: prepare: back to the impedance view failed")
 
 
+def board_box(pg):
+    """The board's bounding box on the canvas: centre offset (share of the canvas) and the share it fills."""
+    return pg.evaluate("""() => { const r = cv.getBoundingClientRect(), b = S.scene.bbox, v = S.view;
+      const x0 = b[0] * v.s + v.x, x1 = b[2] * v.s + v.x, y0 = b[1] * v.s + v.y, y1 = b[3] * v.s + v.y;
+      return { dx: ((x0 + x1) / 2 - r.width / 2) / r.width, dy: ((y0 + y1) / 2 - r.height / 2) / r.height, fill: Math.max((x1 - x0) / r.width, (y1 - y0) / r.height), w: r.width }; }""")
+
+
+def apply_visible(pg, gid):
+    return pg.evaluate("(g) => { const b = document.querySelector(`article[data-gap='${g}'] [data-b=apply]`); return !!b && !b.disabled && b.offsetParent !== null; }", gid)
+
+
 def prepare_checklist(pg, tag, step):
-    """The checklist on ThunderScope with its kisi.json: the Preparation card opens the page, a step is applied
-    (dismissal) and gets its mark, the next step opens by itself, a partly filled step says what is still
-    missing, the Impedance tab ends "ready" with a button to its view, and the card's count goes down."""
-    prep_load(pg, SAMPLE_TS, pg.evaluate("SAMPLES.ts.config.text"))
-    pg.click("#view-si"); pg.wait_for_timeout(200)
+    """The checklist on the bare ThunderScope: a step's marker counts its open items and does not shift when
+    another step is done; a class for the QSPI nets in "Default" (kisi.json net_classes.<name>.nets) closes
+    the high step with Apply and a check mark, the next step opens; a partly filled step says what is missing;
+    Apply stays while typing, after leaving the field and after a redraw; the capacitor group form; the tab ends
+    ready; the board is where it was when coming back from the page (also after a reload while it was open)."""
+    prep_load(pg, SAMPLE_TS, None)
+    pg.click("#view-si"); pg.wait_for_timeout(300)
+    box0 = board_box(pg)
     n0 = pg.evaluate("prepCount()")
-    pg.click("#prep-status-open"); pg.wait_for_timeout(300)
-    if not pg.evaluate("S.prep.open && S.prep.tab === 'impedance'"):
-        problems.append(f"{tag}: checklist: the Preparation card did not open the Impedance tab")
+    pg.click("#prep-btn"); pg.wait_for_timeout(300)
+    prep_tab(pg, "impedance")
     step("checklist_open")
-    first = pg.evaluate("(() => { const s = prepSteps('impedance').filter((g) => prepStepState(g, 'impedance').k === 'open'); return s.length ? s[0].id : null; })()")
-    if first != "nets-without-target" or pg.get_attribute(f'article[data-gap="{first}"]', "aria-expanded") != "true":
-        problems.append(f"{tag}: checklist: the first open step ({first}) is not open")
-    prep_dismiss(pg, "nets-without-target", "QSPI flash, no impedance control (viewer check)")
+    marks = lambda: pg.evaluate("[...document.querySelectorAll('#prep-gaps .prep-step')].map((a) => [a.dataset.gap, a.querySelector('.mk').textContent])")
+    m0 = dict(marks())
+    want = pg.evaluate("prepCountItems(prepGapsNow().find((g) => g.id === 'nets-without-target'), 'impedance')")
+    if m0.get("nets-without-target") != str(want):
+        problems.append(f"{tag}: checklist: the marker of nets-without-target shows {m0.get('nets-without-target')}, not its {want} open items")
+    sel = 'article[data-gap="nets-without-target"]'
+    if pg.get_attribute(sel, "aria-expanded") != "true":
+        problems.append(f"{tag}: checklist: the first open step is not open")
+    # a class of their own for the QSPI nets, with a target, a profile and a source
+    prep_change(pg, f'{sel} input[data-a="nc"][data-k="name"]', "QSPI")
+    prep_change(pg, f'{sel} input[data-a="nc"][data-k="extra"]', "QSPI_*")
+    pg.locator(f'{sel} [data-a="shared"][data-k="kind"]').select_option("assumption"); prep_tick(pg)
+    prep_change(pg, f'{sel} [data-a="shared"][data-k="note"]', "single-ended 50 Ω, common practice for QSPI flash traces (viewer check)")
+    # Apply stays while typing, after leaving the field, after a redraw
+    pg.click(f'{sel} input[data-a="nc"][data-k="target_ohm"]'); pg.keyboard.type("50", delay=40)
+    ok = [apply_visible(pg, "nets-without-target")]
+    pg.keyboard.press("Tab"); ok.append(apply_visible(pg, "nets-without-target"))
+    prep_idle(pg); ok.append(apply_visible(pg, "nets-without-target"))
+    if not all(ok):
+        problems.append(f"{tag}: checklist: Apply not there while typing / after leaving the field / after a redraw: {ok}")
+    step("checklist_apply_kept")
+    pg.locator(f'{sel} select[data-a="nc"][data-k="profile"]').select_option("se50"); prep_tick(pg)
     prep_apply(pg, "nets-without-target")
-    if not pg.locator('article[data-gap="nets-without-target"] .mk.dis').count():
-        problems.append(f"{tag}: checklist: the dismissed step has no mark")
+    if not pg.locator(f"{sel} .mk.done").count():
+        problems.append(f"{tag}: checklist: the QSPI class did not close the step ({pg.inner_text(sel + ' .prep-res')!r}, {pg.evaluate('JSON.stringify(prepW().net_classes)')})")
     if pg.get_attribute('article[data-gap="stackup-defaults"]', "aria-expanded") != "true":
         problems.append(f"{tag}: checklist: the next step did not open after Apply")
-    # a step applied before it is complete says what is missing (Power: one load of several)
+    m1 = dict(marks())
+    moved = {g: (m0[g], m1.get(g)) for g in m0 if g != "nets-without-target" and m0[g] != m1.get(g)}
+    if moved:
+        problems.append(f"{tag}: checklist: other steps' markers changed when one was done: {moved}")
+    step("checklist_applied")
+    # a step applied before it is complete says what is missing (Power: one load of many); the marker counts down
     prep_tab(pg, "power")
     sel = 'article[data-gap="ic-loads"]'
+    prep_open(pg, sel)
+    before = pg.inner_text(f"{sel} .mk")
+    ic = pg.get_attribute(f'{sel} input[data-a="load"][data-rail]', "data-r")
+    pg.click(f'{sel} input[data-a="load"][data-r="{ic}"][data-rail]'); pg.keyboard.type("5 mA", delay=30)
+    if not apply_visible(pg, "ic-loads"):
+        problems.append(f"{tag}: checklist: Apply gone while typing a load")
+    prep_apply(pg, "ic-loads")
+    res, after = pg.inner_text(f"{sel} .prep-res"), pg.inner_text(f"{sel} .mk")
+    if "still missing" not in res or pg.get_attribute(sel, "aria-expanded") != "true" or not (after.isdigit() and before.isdigit() and int(after) == int(before) - 1):
+        problems.append(f"{tag}: checklist: a partly filled step: {res!r}, marker {before} → {after}")
+    step("checklist_missing")
+    prep_change(pg, f'{sel} input[data-a="load"][data-r="{ic}"][data-rail]', "")
+    # the capacitor group form writes PI_CAP on every part of the group
+    sel = 'article[data-gap="cap-ratings"]'
     if pg.locator(sel).count():
         prep_open(pg, sel)
-        ic = pg.get_attribute(f'{sel} input[data-a="load"][data-rail]', "data-r")
-        prep_change(pg, f'{sel} input[data-a="load"][data-r="{ic}"][data-rail]', "5 mA")
-        prep_apply(pg, "ic-loads")
-        res = pg.inner_text(f"{sel} .prep-res")
-        if "still missing" not in res or pg.get_attribute(sel, "aria-expanded") != "true":
-            problems.append(f"{tag}: checklist: a partly filled step does not say what is missing ({res!r})")
-        step("checklist_missing")
-        prep_change(pg, f'{sel} input[data-a="load"][data-r="{ic}"][data-rail]', "")
+        grp = pg.get_attribute(f'{sel} input[data-a="capgrp"][data-k="rated"]', "data-g")
+        prep_change(pg, f'{sel} input[data-a="capgrp"][data-g="{grp}"][data-k="rated"]', "6.3V")
+        pg.locator(f'{sel} select[data-a="capgrp"][data-g="{grp}"]').first.select_option("X5R"); prep_tick(pg)
+        caps = pg.evaluate(f"(S.prep.capGroups[{json.dumps(grp)}] || []).map((r) => (prepFld(r, 'PI_CAP') || {{}}).value)")
+        if not caps or any(c != "rated=6.3V X5R" for c in caps):
+            problems.append(f"{tag}: checklist: the capacitor group form wrote {caps[:3]}")
+        pg.evaluate(f"(S.prep.capGroups[{json.dumps(grp)}] || []).forEach((r) => prepSetFld(r, 'PI_CAP', ''))"); prep_idle(pg)
+    # the laminate step, then the tab is ready
     prep_tab(pg, "impedance")
     sel = 'article[data-gap="stackup-defaults"]'
     prep_open(pg, sel)
     pg.locator(f'{sel} [data-a="shared"][data-k="kind"]').select_option("datasheet"); prep_tick(pg)
-    prep_change(pg, f'{sel} [data-a="shared"][data-k="document"]', "fabricator's stackup report (viewer check)")
+    prep_change(pg, f'{sel} [data-a="shared"][data-k="document"]', "Isola FR408HR data sheet (viewer check)")
     for i in pg.evaluate("prepItems(prepSteps('impedance').find((g) => g.id === 'stackup-defaults'), 'impedance').map((it) => it.index)"):
-        prep_change(pg, f'{sel} input[data-a="diel"][data-i="{i}"][data-k="epsilon_r"]', "4.3")
+        prep_change(pg, f'{sel} input[data-a="diel"][data-i="{i}"][data-k="epsilon_r"]', "3.68")
     prep_apply(pg, "stackup-defaults")
     if not pg.locator(f"{sel} .mk.done").count():
         problems.append(f"{tag}: checklist: the laminate step has no check mark ({pg.inner_text(sel + ' .prep-res')!r})")
     if not pg.locator(".prep-finish [data-b=goview]").count():
         problems.append(f"{tag}: checklist: the Impedance tab does not end with 'Ready for the impedance check'")
     step("checklist_ready")
-    if pg.locator(".prep-finish [data-b=goview]").count():
-        pg.click(".prep-finish [data-b=goview]"); pg.wait_for_timeout(300)
-        if pg.evaluate("S.prep.open || S.tab !== 'si'"):
-            problems.append(f"{tag}: checklist: 'Open the Impedance view' did not open it")
     n1 = pg.evaluate("prepCount()")
-    if not (n1 < n0) or pg.evaluate("$('prep-status').querySelector('li.cur .mk').textContent") != "✓":
-        problems.append(f"{tag}: checklist: the Preparation card did not follow ({n0} → {n1} open points)")
-    step("checklist_card")
+    if not (n1 < n0) or pg.inner_text("#prep-count") != str(n1):
+        problems.append(f"{tag}: checklist: the badge did not follow ({n0} → {n1})")
+    # back to the views: the board where it was, also after loading the board again while the page was open
+    pg.evaluate("async () => { const l = S.lastFiles; await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, l.cfg); }")
+    pg.wait_for_function(f"S.scene && {BUSY} && S.prep.base", timeout=120000); prep_idle(pg)
+    pg.click(".prep-finish [data-b=goview]") if pg.locator(".prep-finish [data-b=goview]").count() else pg.click("#view-si")
+    for v in ["si", "ch", "pi"]:
+        pg.click(f"#view-{v}"); pg.wait_for_timeout(400)
+        if v == "pi":
+            continue  # the power view opens on the power tree, not the board
+        b = board_box(pg)
+        if abs(b["dx"]) > 0.08 or abs(b["dy"]) > 0.1 or not (0.7 * box0["fill"] <= b["fill"] <= 1.3 * box0["fill"]):
+            problems.append(f"{tag}: checklist: the board is off after Prepare in view {v}: {b} (before {box0})")
+    step("checklist_board_back")
+    pg.click("#view-si"); pg.wait_for_timeout(200)
     pg.evaluate("() => { prepDiscard(); }"); prep_idle(pg)
+
+
+def prepare_examples_clean(pg, tag, step):
+    """The example boards with their kisi.json: every category ready (or nothing to check), no required step
+    open, the check without errors or warnings – a finished checklist with the values in the forms."""
+    for key in pg.evaluate("Object.keys(SAMPLES)"):
+        js = "(async () => { const s = SAMPLES[%s]; const [a, c] = await Promise.all([gunzipB64(s.pcb), gunzipB64(s.pro)]); return [a, c, s.file || s.name]; })()" % json.dumps(key)
+        prep_load(pg, js, pg.evaluate(f"SAMPLES[{json.dumps(key)}].config && SAMPLES[{json.dumps(key)}].config.text"))
+        pg.click("#prep-btn"); pg.wait_for_timeout(300)
+        ck = pg.evaluate("S.prep.check")
+        if not ck or ck["errors"] or ck["warnings"]:
+            problems.append(f"{tag}: example {key}: the kisi.json check reports {ck and (ck['errors'] + ck['warnings'])[:3]}")
+        for t in ["impedance", "channel", "power"]:
+            prep_tab(pg, t)
+            v = pg.evaluate(f"prepViewsNow()['{t}']")
+            left = pg.evaluate(f"prepSteps('{t}').filter((g) => prepRequired(g) && prepStepState(g, '{t}').k === 'open').map((g) => g.id)")
+            if v["state"] not in ("ready", "nothing to check") or left:
+                problems.append(f"{tag}: example {key}: {t} is {v['state']}, open steps {left}")
+            step(f"example_{key}_{t}")
+        if pg.inner_text("#prep-count") != "0":
+            problems.append(f"{tag}: example {key}: the badge shows {pg.inner_text('#prep-count')} open points")
+        pg.click("#view-si"); pg.wait_for_timeout(200)
 
 
 def prepare_roundtrip(pg, tag, step):
@@ -432,24 +512,7 @@ def prepare_roundtrip(pg, tag, step):
     pg.click("#prep-discard"); prep_idle(pg)
     if pg.evaluate("prepDirty() || lsGet(PREP_KEY()) !== null"):
         problems.append(f"{tag}: prepare: Discard did not reset the draft")
-    # the gap forms write fields: a load current per rail, capacitor data for a whole group, a connector end
-    prep_tab(pg, "power")
-    sel = 'article[data-gap="ic-loads"]'
-    if pg.locator(sel).count():
-        prep_open(pg, sel)
-        ic = pg.get_attribute(f'{sel} input[data-a="load"][data-rail]', "data-r")
-        prep_change(pg, f'{sel} input[data-a="load"][data-r="{ic}"][data-rail]', "12 mA")
-        if not re.search(r"=12mA$", pg.evaluate(f"(prepFld({json.dumps(ic)}, 'PI_LOAD') || {{}}).value || ''")):
-            problems.append(f"{tag}: prepare: the load form did not write PI_LOAD on {ic}")
-    sel = 'article[data-gap="cap-ratings"]'
-    if pg.locator(sel).count():
-        prep_open(pg, sel)
-        grp = pg.get_attribute(f'{sel} input[data-a="capgrp"][data-k="rated"]', "data-g")
-        prep_change(pg, f'{sel} input[data-a="capgrp"][data-g="{grp}"][data-k="rated"]', "6.3V")
-        pg.locator(f'{sel} select[data-a="capgrp"][data-g="{grp}"]').first.select_option("X5R")
-        caps = pg.evaluate(f"(S.prep.capGroups[{json.dumps(grp)}] || []).map((r) => (prepFld(r, 'PI_CAP') || {{}}).value)")
-        if not caps or any(c != "rated=6.3V X5R" for c in caps):
-            problems.append(f"{tag}: prepare: the capacitor group form wrote {caps[:3]}")
+    # the connector end form
     prep_tab(pg, "channel")
     prep_open(pg, 'article[data-sec="conn"]')
     prep_change(pg, 'input[data-a="conn"][data-r="P1"][data-k="rest_loss_db"]', "4.5")
@@ -520,8 +583,38 @@ def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
         if ref.get("variant"):
             pg.locator(f'input[data-a="variant"][value="{ref["variant"]}"]').first.check()
         prep_idle(pg)
+    # the laminate, per dielectric with its own source (Impedance: In <board>.kisi.json)
+    if (ref.get("stackup") or {}).get("dielectrics"):
+        prep_tab(pg, "impedance"); prep_open(pg, 'article[data-sec="stackup"]')
+        for d in ref["stackup"]["dielectrics"]:
+            for k in ("material", "epsilon_r", "loss_tangent", "thickness"):
+                if k in d:
+                    prep_change(pg, f'article[data-sec="stackup"] input[data-a="diel"][data-i="{d["index"]}"][data-k="{k}"]', str(d[k]))
+            prep_source(pg, f"diel:{d['index']}", d.get("source", {}))
+    # net classes: those with nets through the step for nets in "Default", the others' profiles in the table
+    for c, e in (ref.get("net_classes") or {}).items():
+        if e.get("nets"):
+            prep_tab(pg, "impedance"); sel = 'article[data-gap="nets-without-target"]'; prep_open(pg, sel)
+            prep_change(pg, f'{sel} input[data-a="nc"][data-k="name"]', c)
+            prep_change(pg, f'{sel} input[data-a="nc"][data-k="extra"]', ", ".join(e["nets"]))
+            if "target_ohm" in e:
+                prep_change(pg, f'{sel} input[data-a="nc"][data-k="target_ohm"]', str(e["target_ohm"]))
+            box = pg.locator(f'{sel} input[data-a="nc"][data-k="diff"]').first
+            if box.is_checked() != bool(e.get("diff")):
+                box.click(); prep_tick(pg)
+            if e.get("profile"):
+                pg.locator(f'{sel} select[data-a="nc"][data-k="profile"]').first.select_option(e["profile"]); prep_tick(pg)
+            prep_source(pg, f"cls:{c}", e.get("source", {}))
+            prep_apply(pg, "nets-without-target")
+        else:
+            prep_tab(pg, "channel"); prep_open(pg, 'article[data-sec="profiles"]')
+            if e.get("profile"):
+                pg.locator(f'article[data-sec="profiles"] select[data-a="cls"][data-c="{c}"][data-k="profile"]').first.select_option(e["profile"]); prep_tick(pg)
+            prep_source(pg, f"cls:{c}", e.get("source", {}))
     prep_tab(pg, "power")
     for f in ref.get("fields", []):
+        if f["name"].upper() == "PI_CAP":
+            continue  # through the capacitor groups below
         name = f["name"].upper()
         sec = f'article[data-sec="f-{name}"]'
         if pg.locator(sec).count():
@@ -531,6 +624,13 @@ def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
         pg.locator(f'input[data-a="new"][data-n="{name}"][data-k="ref"] >> visible=true').first.fill(f["ref"])
         prep_change(pg, f'input[data-a="new"][data-n="{name}"][data-k="value"]', f["value"])
         prep_source(pg, f"fld:{f['ref']}|{name}", f.get("source", {}))
+    # capacitor data: the suggestion from the parts' own fields, per group
+    if any(f["name"].upper() == "PI_CAP" for f in ref.get("fields", [])):
+        prep_idle(pg); sel = 'article[data-gap="cap-ratings"]'
+        if pg.locator(sel).count():
+            prep_open(pg, sel)
+            for i in range(pg.locator(f'{sel} [data-b="cap-sugg"]').count()):
+                pg.locator(f'{sel} [data-b="cap-sugg"]').nth(i).click(); prep_tick(pg)
     if ref.get("notes"):
         pg.evaluate("document.querySelector('.prep-notes').open = true")
         pg.fill("#prep-notes", "\n".join(ref["notes"]))
@@ -568,8 +668,20 @@ def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
         problems.append(f"{tag}: acceptance {label}: the saved file fails the check: {ck['errors'][:3]}")
     got = json.loads(text)
     key = lambda f: (f["ref"], f["name"].upper())
-    if sorted(got.get("fields", []), key=key) != sorted(ref.get("fields", []), key=key):
-        a_, b_ = {key(f): f for f in got.get("fields", [])}, {key(f): f for f in ref.get("fields", [])}
+    # capacitor data compares by value (its source names the parts' fields in the page's words)
+    caps = lambda c: {key(f): f["value"] for f in c.get("fields", []) if f["name"].upper() == "PI_CAP"}
+    if caps(got) != caps(ref):
+        problems.append(f"{tag}: acceptance {label}: PI_CAP: {len(caps(got))} saved, {len(caps(ref))} in the reference, {sum(1 for k in caps(ref) if caps(got).get(k) != caps(ref)[k])} differ")
+    nocap = lambda c: [f for f in c.get("fields", []) if f["name"].upper() != "PI_CAP"]
+    if (ref.get("stackup") or {}) != (got.get("stackup") or {}):
+        problems.append(f"{tag}: acceptance {label}: the saved stackup differs from the reference")
+    nets_of = lambda pats: pg.evaluate("(p) => S.scene.nets.filter((n, i) => i > 0 && net_matches_js(p, n))", pats)
+    for c, e in (ref.get("net_classes") or {}).items():
+        g_ = (got.get("net_classes") or {}).get(c)
+        if not g_ or {k: v for k, v in g_.items() if k != "nets"} != {k: v for k, v in e.items() if k != "nets"} or sorted(nets_of(g_.get("nets", []))) != sorted(nets_of(e.get("nets", []))):
+            problems.append(f"{tag}: acceptance {label}: net class {c} saved as {g_}, reference {e}")
+    if sorted(nocap(got), key=key) != sorted(nocap(ref), key=key):
+        a_, b_ = {key(f): f for f in nocap(got)}, {key(f): f for f in nocap(ref)}
         diff = [k for k in set(a_) | set(b_) if a_.get(k) != b_.get(k)]
         k0 = sorted(diff)[0]
         problems.append(f"{tag}: acceptance {label}: {len(diff)} saved fields differ from the reference: {sorted(diff)[:6]}; first: {a_.get(k0)} – reference {b_.get(k0)}")
@@ -837,11 +949,11 @@ def run(pg, tag, desktop):
 def prepare_all(pg, tag, step, errs):
     prepare_page(pg, tag, step)
     if pg.evaluate("typeof SAMPLES !== 'undefined' && !!SAMPLES.ts && !!SAMPLES.ts.config"):
+        prepare_examples_clean(pg, tag, step)
         prepare_checklist(pg, tag, step)
         prepare_roundtrip(pg, tag, step)
         if tag == "light" and not a.quick:
-            prepare_acceptance(pg, tag, step, SAMPLE_TS, pg.evaluate("SAMPLES.ts.config.text"),
-                               {"nets-without-target": "QSPI flash of the FPGA configuration – not an impedance-controlled interface (viewer check)"}, "ts")
+            prepare_acceptance(pg, tag, step, SAMPLE_TS, pg.evaluate("SAMPLES.ts.config.text"), {}, "ts")
     if a.accept and tag == "light":
         pcb = os.path.abspath(a.accept[0]); pro = re.sub(r"\.kicad_pcb$", ".kicad_pro", pcb)
         js = "Promise.resolve([%s, %s, %s])" % (json.dumps(open(pcb, encoding="utf-8").read()), json.dumps(open(pro, encoding="utf-8").read() if os.path.exists(pro) else None), json.dumps(re.sub(r"\.kicad_pcb$", "", os.path.basename(pcb))))

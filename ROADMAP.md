@@ -38,8 +38,9 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   gap item from the core, stale dismissals with remove; `check_viewer.py` runs the acceptance on the bare
   ThunderScope (its kisi.json entered through the forms, saved, reloaded). After the maintainer's review the page
   became a checklist (a marker per step, one line of what it needs, Apply through the core with a check mark or
-  what is still missing, the next step opens, progress and "Ready for …" per tab, saving as the last step), and the
-  readiness dots on the view buttons gave way to a Preparation card above the Assembly variant card in the views.
+  what is still missing, the next step opens, progress and "Ready for …" per tab, saving as the last step; the
+  marker counts a step's open items), the readiness dots on the view buttons are gone, kisi.json can give nets a
+  class of their own (`net_classes.<name>.nets`), and the example boards carry a complete kisi.json.
   What remains, with reasons: `docs/mockups/prepare.md`, "Still open".
 - **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
   (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value

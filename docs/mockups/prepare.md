@@ -187,10 +187,15 @@ do I confirm?"):
   with "N of M … still missing: …" and the check's errors for its entries; "hand to the agent" settles a step too;
 - progress per tab ("1 of 2 required steps done", a bar), "Ready for the impedance check" (channel check, power
   analysis) with a button to the view at the end, and saving the kisi.json as the last step;
-- the readiness dots on the view buttons are gone; a **Preparation** card at the top of the views' side panel
-  (all three views) shows the open points per category – the current view's first – or "board prepared", the
-  assembly variant as a step while it has to be chosen, and opens Prepare PCB at the current view's tab; the
-  Assembly variant card sits below it. The badge on "Prepare PCB" counts the same open points.
+- the readiness dots on the view buttons are gone; the badge on "Prepare PCB" counts the open points. (A
+  "Preparation" card in the views' side panel was tried and removed again after the review of 25 Oct: one entry
+  point, the button; the Assembly variant card stays where it was.)
+- review of 25 Oct: the marker of an open step shows the number of its items still open (not a running ordinal
+  that shifted when a step was done); Apply stays in every step with a form (it vanished when the core reported a
+  step done or dismissed while typing, and a redraw between press and release swallowed the click – full redraws
+  now wait for the release); the board keeps its place when coming back from the page (a fit asked for while the
+  canvas was hidden happens once it is shown); nets in "Default" get a class of their own
+  (`net_classes.<name>.nets`, a small core addition); the example boards come with a complete kisi.json.
 
 Still open, with the reason:
 - Interface profile parameters edited in the Channel view (limits, data rate) are stored per browser for all

@@ -18,6 +18,10 @@ Background:
 - [research/thermal.md](research/thermal.md) – the temperature estimate: concept, physics and validation.
 - [research/accuracy-levels.md](research/accuracy-levels.md) – accuracy levels: which result gets a level and an
   uncertainty, where the numbers come from, how CLI and viewer show them.
+- [research/channel-export.md](research/channel-export.md) – the channel export to circuit and RF simulators:
+  files, model, verification.
+- [research/vector-fitting.md](research/vector-fitting.md) – compact, causal, delay-preserving models for the SPICE
+  export: vector fitting, delayed and characteristic line models, passivity, what the SPICE engines implement.
 - [examples/](examples/) – prepared board configurations.
 
 For contributors: [ARCHITECTURE.md](../ARCHITECTURE.md) (structure and rules), [CONTRIBUTING.md](../CONTRIBUTING.md),

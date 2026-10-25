@@ -34,11 +34,15 @@ single line it equals the cascade to numerical precision. TDR comes from S11 (Sd
 
 ## Vias
 A physics-based ladder per via (`kisi_si::via_pbm`): capacitances from an axisymmetric Laplace solve, the plane
-pairs as radial lines with the nearby return vias, pads and annular rings, antipads from the zone fills
-(non-round ones as an equivalent circle), stubs and back-drill, the junction to the traces; pairs with their
-partner. Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own FDTD solver:
-via impedance in the TDR median 1.4 %, 90th percentile 7.4 %; pairs within 3.5° phase; stub notch within 3 %.
-An estimate, not a 3D result: above 12 GHz the ladder no longer follows the 3D results.
+pairs as radial lines with the nearby return posts (vias and plated pins of ground and supply planes, the nearest
+12 within 3 mm), pads and annular rings, antipads from the zone fills (non-round ones as an equivalent circle),
+pours on the via's signal layers as coplanar returns, stubs and back-drill, the junction to the traces; pairs
+with their partner. Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own
+FDTD solver: via impedance in the TDR median 2.3 %, 90th percentile 5.5 % (single vias); pairs within 3.5°
+phase; stub notch within 3 %; the four board vias with a 3D reference within 0.03–0.44 dB up to 12 GHz. An
+estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
+the via's cage. A via whose path crosses a ground/supply plane pair that no return via bridges gets a warning.
+`--via-cavity` (finite plane pairs) and `--via-returns` (return groups per plane pair) are experimental options.
 
 ## Lanes and the channel check
 - **Lanes:** `kisi_si::topology` follows nets through series resistors and AC-coupling capacitors from device to

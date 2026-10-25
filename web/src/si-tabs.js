@@ -208,11 +208,13 @@ function renderVias(body, r) {
   const fmax = rfParams().fmax / 1e9;
   const rows = ch.via_info.map((v, i) => {
     const res = v.stub_f_ghz != null && v.stub_f_ghz < fmax;
-    return `<tr class="click" data-via="${i}"><td>${L(v.layer_in)} → ${L(v.layer_out)}</td><td>${fmt(v.drill_mm * 1000, 0)} / ${fmt(v.pad_mm * 1000, 0)}</td><td>${v.antipad_mm != null ? fmt(v.antipad_mm * 1000, 0) : "–"}</td><td>${fmt(v.z_via, 0)}</td><td>${fmt(v.barrel_mm, 2)}</td><td${res ? ' class="warn"' : ""}>${fmt(v.stub_mm, 2)}${v.stub_f_ghz != null && v.stub_mm > 0.01 ? ` (${fmt(v.stub_f_ghz, v.stub_f_ghz < 100 ? 1 : 0)} GHz)` : ""}${v.backdrilled ? " bd" : ""}</td><td>${ret[v.return_kind] || v.return_kind}${v.return_kind === "stitch" ? ` ${fmt(v.return_mm, 1)} mm` : ""}</td></tr>`;
+    // GND/supply plane pairs in the path that no via nearby bridges (see the warnings)
+    const open = (v.open_pairs || []).map((o) => `${esc(netShort(S.scene.nets[o.nets[0]] ?? ""))}/${esc(netShort(S.scene.nets[o.nets[1]] ?? ""))}`).join(", ");
+    return `<tr class="click" data-via="${i}"><td>${L(v.layer_in)} → ${L(v.layer_out)}</td><td>${fmt(v.drill_mm * 1000, 0)} / ${fmt(v.pad_mm * 1000, 0)}</td><td>${v.antipad_mm != null ? fmt(v.antipad_mm * 1000, 0) : "–"}</td><td>${fmt(v.z_via, 0)}</td><td>${fmt(v.barrel_mm, 2)}</td><td${res ? ' class="warn"' : ""}>${fmt(v.stub_mm, 2)}${v.stub_f_ghz != null && v.stub_mm > 0.01 ? ` (${fmt(v.stub_f_ghz, v.stub_f_ghz < 100 ? 1 : 0)} GHz)` : ""}${v.backdrilled ? " bd" : ""}</td><td${open ? ' class="warn"' : ""}>${ret[v.return_kind] || v.return_kind}${v.return_kind === "stitch" ? ` ${fmt(v.return_mm, 1)} mm` : ""}${open ? `; ${open} not bridged` : ""}</td></tr>`;
   }).join("");
   body.innerHTML = ch.via_info.length ? `<div class="dstats"><span>${ch.via_info.length} Via${ch.via_info.length > 1 ? "s" : ""} in path</span><span class="muted">Z ${ch.diff ? "differential" : "single-ended"}, target ${fmt(ch.diff ? 2 * ch.z_ref : ch.z_ref, 0)} Ω</span></div>
     <div class="tablewrap"><table class="xs-table"><thead><tr><th>Layers</th><th>drill/pad µm</th><th>antipad µm</th><th>Z Ω</th><th>barrel mm</th><th>stub mm</th><th>return path</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="note">Antipad = mean clearance in the planes the via passes through. A stub (unused via end) acts as an open line; its quarter-wave resonance causes a dip in S21. “bd” = back-drilled. Click a row to show the via on the board.</p>`
+    <p class="note">Antipad = mean clearance in the planes the via passes through. A stub (unused via end) acts as an open line; its quarter-wave resonance causes a dip in S21. “bd” = back-drilled. Click a row to show the via on the board. A plane pair “not bridged”: no via within 3 mm joins both planes or the planes beyond them, so the return current crosses the pair's cavity (see the warning).</p>`
     : `<p class="note">The computed path does not change layers.</p>`;
   body.querySelectorAll("tr[data-via]").forEach((tr) => tr.onclick = () => {
     const v = ch.via_info[+tr.dataset.via];

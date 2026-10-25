@@ -57,7 +57,7 @@ fn feed_eeff(w: f64, h: f64, er: f64, layers: &[Value], zt: f64, zref: f64) -> f
     (er + 1.0) / 2.0 + (er - 1.0) / 2.0 * (1.0 + 10.0 / u).powf(-a * b)
 }
 
-fn feed_line(layers: &[Value], planes: &[Plane], w: f64, zt: f64, zref: f64) -> (f64, f64) {
+pub(crate) fn feed_line(layers: &[Value], planes: &[Plane], w: f64, zt: f64, zref: f64) -> (f64, f64) {
     let up: Vec<f64> = planes.iter().map(|p| p.z).filter(|&z| z > zt + 1e-9).collect();
     let dn: Vec<f64> = planes.iter().map(|p| p.z).filter(|&z| z < zt - 1e-9).collect();
     if !up.is_empty() && !dn.is_empty() {
@@ -82,7 +82,7 @@ fn feed_line(layers: &[Value], planes: &[Plane], w: f64, zt: f64, zref: f64) -> 
 /// `equivalent`: the antipad as the round opening with the same in-plane capacitance
 /// (`via_pbm::equivalent_radius` around a barrel of radius `a`); else the prototype's rule (the
 /// hole centred on the via or the slot it lies on, else the nearest edge).
-fn planes_at(case: &Value, vx: f64, vy: f64, equivalent: Option<f64>) -> Vec<Plane> {
+pub(crate) fn planes_at(case: &Value, vx: f64, vy: f64, equivalent: Option<f64>) -> Vec<Plane> {
     let mut planes = vec![];
     for s in case["sheets"].as_array().unwrap() {
         let net = s["net"].as_str().unwrap_or("");
@@ -151,7 +151,7 @@ fn via_geom(case: &Value, mode: Mode, equivalent: bool) -> ViaGeom {
         let (zc, eeff) = feed_line(layers, &planes, w, z, zr);
         Feed { z, z_ref: zr, w, zc, eeff, dropped: 0.0, antipad_line: true }
     };
-    let post = |w: &Value| Post { dx: g(w, "x") - vx, dy: g(w, "y") - vy, r: g(w, "r"), z0: g(w, "z0"), z1: g(w, "z1") };
+    let post = |w: &Value| Post { dx: g(w, "x") - vx, dy: g(w, "y") - vy, r: g(w, "r"), z0: g(w, "z0"), z1: g(w, "z1"), joins: None, open_r: vec![] };
     ViaGeom {
         slabs: layers.iter().map(|l| Slab { z0: g(l, "z0"), z1: g(l, "z1"), er: g(l, "er"), tand: l["tand"].as_f64().unwrap_or(0.0) }).collect(),
         planes: planes.clone(),
@@ -166,16 +166,18 @@ fn via_geom(case: &Value, mode: Mode, equivalent: bool) -> ViaGeom {
         f_loss: Some(case["f_loss"].as_f64().unwrap_or(case["fmax"].as_f64().unwrap() / 2.0)),
         junction: true,
         sigma: None,
+        caps: vec![],
+        coplanar: vec![],
     }
 }
 
-fn freqs(case: &Value) -> Vec<f64> {
+pub(crate) fn freqs(case: &Value) -> Vec<f64> {
     let fmax = case["fmax"].as_f64().unwrap();
     let nf = case["nf"].as_u64().unwrap_or(400) as usize;
     (1..=nf).map(|k| fmax * k as f64 / nf as f64).collect()
 }
 
-fn write_s2p(path: &std::path::Path, title: &str, f: &[f64], s: &[[Cx; 4]], z0: f64) {
+pub(crate) fn write_s2p(path: &std::path::Path, title: &str, f: &[f64], s: &[[Cx; 4]], z0: f64) {
     let mut t = format!("! {title}\n# Hz S RI R {z0}\n");
     for (fk, m) in f.iter().zip(s) {
         t += &format!("{fk:.6e}");
@@ -189,7 +191,7 @@ fn write_s2p(path: &std::path::Path, title: &str, f: &[f64], s: &[[Cx; 4]], z0: 
     std::fs::write(path, t).unwrap();
 }
 
-fn s_of(m: &Abcd, z0: f64) -> [Cx; 4] {
+pub(crate) fn s_of(m: &Abcd, z0: f64) -> [Cx; 4] {
     let (s11, s21, s22) = m.s_params(z0);
     // S12 from the determinant (= S21 for a reciprocal network)
     let det = m.a * m.d - m.b * m.c;

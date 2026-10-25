@@ -1,0 +1,100 @@
+{
+ "case": "R_s4_rect_2v",
+ "meta": {
+  "group": "R",
+  "title": "Finite board 24 \u00d7 16 mm, two vias L1 \u2192 L4 9.9 mm apart sharing the L2/L3 cavity, no return via",
+  "params": {
+   "board_mm": "24 \u00d7 16",
+   "returns": 0,
+   "via_mm": [
+    -3.3,
+    -1.9
+   ],
+   "via_b_mm": [
+    5.2,
+    3.1
+   ]
+  },
+  "stackup": "s4",
+  "stackup_title": "4-layer 1.6 mm FR-4",
+  "copper_z": [
+   1.6,
+   1.4,
+   0.2,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L3"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1 L1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2 L4",
+    "layer": "L4",
+    "ref": "L3"
+   },
+   {
+    "name": "3 L1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "4 L4",
+    "layer": "L4",
+    "ref": "L3"
+   }
+  ],
+  "lumped": [],
+  "board": [
+   -12.0,
+   -8.0,
+   12.0,
+   8.0
+  ],
+  "via": [
+   -3.3,
+   -1.9
+  ],
+  "thru": [
+   "thru_R_s4_L1",
+   "thru_R_s4_L4"
+  ],
+  "cavity": {
+   "layers": [
+    "L2",
+    "L3"
+   ],
+   "d_mm": 1.2,
+   "er": 4.5,
+   "tand": 0.02
+  },
+  "excite": [
+   0
+  ],
+  "via_b": [
+   5.2,
+   3.1
+  ]
+ },
+ "date": "2026-10-22",
+ "fmax": 25000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 866502,
+   "steps": [
+    17601
+   ],
+   "dt": 1.1728589547963095e-13,
+   "seconds": 155.3,
+   "dfine": 0.07,
+   "dmax": 0.35
+  }
+ }
+}

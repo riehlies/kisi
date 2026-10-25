@@ -76,6 +76,11 @@ in the output shows the coverage; `--formula` skips the solver.
 - Eyes are linear PRBS7 estimates with the profile's transmitter/receiver and no equalisation, jitter
   or noise. Limits marked "kisi" in the profile sources are guide values, not standards.
 - Skew marked uncertain comes from branched paths; do not report it as a violation.
+- `via_warning` on a check row (and `via_warnings` at the top, also for green rows): a via crosses a
+  GND/supply plane pair that no via within 3 mm joins or bridges. The default via model then looks
+  nearly ideal although the plane cavity can resonate; report it, suggest a stitching via or a
+  decoupling capacitor next to the via, and re-run with `--via-cavity --via-returns` (experimental)
+  for an estimate of the effect.
 - Differential pairs are computed as 4-ports (`model: "4-port"`): loss and return loss are Sdd21/Sdd11, and
   `mode_conversion_db` (worst Scd21 up to 1.5 × Nyquist) is information, not judged – a high value (above about
   −20 dB) points to intra-pair skew or a stub or via on one line only. Multi-drop lines along one path list every

@@ -3,6 +3,8 @@
 //! Usage: kisi-validate <cases.json> [reference.out.json]
 //!        kisi-validate models <via_cases dir> <out dir> [--grid uniform|graded] [--only k]
 //!        (reduced via / cavity models on the 3D reference cases, see models.rs)
+//!        kisi-validate via-case <board.kicad_pcb> --net NAME --out DIR [options]
+//!        (a via cut out of the board as a kisi-fdtd case with its 2×thru fixtures, viacase.rs)
 //!
 //! Case format (lengths in mm):
 //!   {name, type, w, h, t, er, s?, gap?, cover?, er_top?, top_h?, sm_t?, sm_er?,
@@ -25,7 +27,10 @@ use kisi_core::board::{CopperLayer, Dielectric, SolderMask, Stackup};
 use kisi_core::xsgeom::{self, PlaneCut, XsDesc};
 use serde_json::Value;
 
+mod cavities;
+mod cavmodel;
 mod models;
+mod viacase;
 
 /// Synthetic stackup + description for a validation case (None if the case
 /// type has no board equivalent, e.g. a dielectric cover on a surface trace).
@@ -110,6 +115,21 @@ fn main() {
                 }
             }
         }
+        return;
+    }
+    if args.len() > 2 && args[1] == "via-case" {
+        // board → kisi-fdtd case of one via (validation/fdtd/BOARD_VIAS.md)
+        viacase::run(&args[2..]);
+        return;
+    }
+    if args.len() > 2 && args[1] == "cavities" {
+        // plane-pair cavities the channel vias cross (validation/fdtd/BOARD_RESONANCES.md)
+        cavities::run(&args[2..]);
+        return;
+    }
+    if args.len() > 3 && args[1] == "cavity-model" {
+        // the ladder with a finite plane cavity on a resonance case (BOARD_RESONANCES.md)
+        cavmodel::run(&args[2..]);
         return;
     }
     if args.len() > 3 && args[1] == "models" {

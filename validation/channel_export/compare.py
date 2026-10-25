@@ -3,7 +3,7 @@
 
 Usage:
   compare.py <kisi binary> <board.kicad_pcb> --out DIR [--config FILE] [--lane NAME]... [--bus NAME]...
-             [--model ladder|compact | --models ladder,compact] [--fmax GHZ|profile] [--passivity]
+             [--model ladder|compact | --models ladder,compact] [--fmax GHZ|profile] [--passivity] [--timeout S]
              [--report FILE.md] [--plots] [--transient] [--kicad] [--svg DIR] [--strict]
 
 For every lane (a bus: every lane of it) the script runs `kisi export` and then, in the lane's folder:
@@ -49,9 +49,16 @@ import kicad_sheet  # noqa: E402
 import ltspice  # noqa: E402
 
 
-def run(cmd, cwd=None, timeout=3600):
+TIMEOUT = [3600]
+
+
+def run(cmd, cwd=None, timeout=None):
+    """Run a command; a run that takes longer than the timeout (--timeout, default 3600 s) counts as failed."""
     t0 = time.time()
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    try:
+        r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout or TIMEOUT[0])
+    except subprocess.TimeoutExpired:
+        r = subprocess.CompletedProcess(cmd, 124, "", f"timed out after {timeout or TIMEOUT[0]} s")
     return r, time.time() - t0
 
 
@@ -295,7 +302,7 @@ def lane_check(lane_dir, meta, opts, rep):
     if opts.get("transient"):
         r, secs = run(["ngspice", "-b", "bench_ngspice.cir"], cwd=lane_dir)
         ok = r.returncode == 0 and os.path.exists(os.path.join(lane_dir, "bench_ngspice.txt"))
-        res["bench"] = {"ok": ok, "seconds": round(secs, 1)}
+        res["bench"] = {"ok": ok, "seconds": round(secs, 1)} if r.returncode != 124 else {"ok": False, "seconds": round(secs, 1), "timed_out": True}
         if ok:
             b = np.loadtxt(os.path.join(lane_dir, "bench_ngspice.txt"))
             res["bench"]["v_min"], res["bench"]["v_max"] = float(b[:, 1].min()), float(b[:, 1].max())
@@ -508,6 +515,8 @@ def main():
     take = lambda k: [a[i + 1] for i in range(len(a) - 1) if a[i] == k]
     out = take("--out")[0]
     cfg = take("--config")
+    if take("--timeout"):
+        TIMEOUT[0] = float(take("--timeout")[0])
     opts = {"transient": "--transient" in a, "kicad": "--kicad" in a, "svg": (take("--svg") or [None])[0], "passivity": "--passivity" in a}
     os.makedirs(out, exist_ok=True)
     cmd0 = [kisi if not kisi.endswith(".mjs") else "node", *([kisi] if kisi.endswith(".mjs") else []), "export", board] + (["--config", cfg[0]] if cfg else []) + (["--fmax", take("--fmax")[0]] if take("--fmax") else [])
@@ -538,6 +547,7 @@ def main():
                 png = os.path.join(out, re.sub(r"[^A-Za-z0-9_-]+", "_", lm["lane"]).strip("_") + ".png")
                 plot(res, data, png)
                 res["plot"] = os.path.basename(png)
+            json.dump({"lanes": results, "buses": bus_results}, open(os.path.join(out, "results.json"), "w"), indent=1, default=float)
             nv = res.get("ngspice_vs_kisi")
             msg = "ERROR " + res.get("error", "")[:200] if not nv else (
                 f"[{model}, {res['elements'].get('total', 0)} elements] ngspice vs kisi: |dS21| {nv['max_ds21_db_nyq']:.3f} dB to 1.5xNyq, {nv['max_ds21_db']:.2f} dB to fmax; max|dS| {nv['max_ds']:.3f} (kisi's own evaluation {res['kisi_eval']['max_ds']:.3f})")
@@ -556,6 +566,7 @@ def main():
             fails = [m for m, c in [("ngspice", not nv), ("ngspice differs from kisi's evaluation of the circuit", nv and abs(nv["max_ds"] - res["kisi_eval"]["max_ds"]) > 0.01),
                                     ("Touchstone not passive", not ts.get("passive")), ("scikit-rf does not read the Touchstone file", sk and not sk.get("read", True)),
                                     ("step response differs by more than 5 %", st and st["max_diff_of_final"] > 0.05),
+                                    ("bench timed out", (res.get("bench") or {}).get("timed_out")),
                                     ("circuit not passive", pv and (not (pv.get("kisi_circuit_max_sv") or 0) <= 1 + 1e-9 or pv["ngspice_grid_max_sv"] > 1 + 1e-6 or ("max_singular_value" in sw and sw["max_singular_value"] > 1 + 1e-6) or "error" in sw)),
                                     ("KiCad project: " + kicad_fail(res.get("kicad")), res.get("kicad") and not res["kicad"].get("ok")),
                                     ("LTspice files: " + "; ".join((res.get("ltspice") or {}).get("errors", [])), res.get("ltspice") and not res["ltspice"].get("ok"))] if c]

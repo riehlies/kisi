@@ -217,7 +217,7 @@ fn main() {
         .filter(|a| !a.starts_with("--"))
         .map(|p| serde_json::from_str(&std::fs::read_to_string(p).unwrap()).unwrap())
         .unwrap_or_default();
-    println!("{:<46} {:>9} {:>9} {:>8}  {}", "case", "ref Ω", "kisi Ω", "err", "source");
+    println!("{:<46} {:>9} {:>9} {:>8}  source", "case", "ref Ω", "kisi Ω", "err");
     let mut worst: f64 = 0.0;
     let mut n = 0usize;
     for (i, c) in cases.iter().enumerate() {

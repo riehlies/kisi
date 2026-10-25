@@ -474,16 +474,15 @@ pub fn target_from_class_name(name: &str) -> Option<(Target, &'static str)> {
             }
             let rest: String = chars[j..].iter().collect();
             let before_z = st > 0 && chars[st - 1] == 'Z';
-            if rest.starts_with('Z')
+            if (rest.starts_with('Z')
                 || rest.starts_with('R')
                 || rest.starts_with("OHM")
                 || rest.starts_with('Ω')
-                || before_z
+                || before_z)
+                && (20.0..=200.0).contains(&v)
             {
-                if (20.0..=200.0).contains(&v) {
-                    num = Some(v);
-                    break;
-                }
+                num = Some(v);
+                break;
             }
         } else {
             i += 1;
@@ -677,14 +676,12 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
             if perforated {
                 flags |= F_REF_PERFORATED;
             }
-            for r in [&up, &dn] {
-                if let Some((j, _, partial)) = r {
-                    if *partial {
-                        flags |= F_PARTIAL_REF;
-                    }
-                    if (*j as isize - li as isize).abs() > 1 {
-                        flags |= F_REF_SKIPS_LAYER;
-                    }
+            for (j, _, partial) in [&up, &dn].into_iter().flatten() {
+                if *partial {
+                    flags |= F_PARTIAL_REF;
+                }
+                if (*j as isize - li as isize).abs() > 1 {
+                    flags |= F_REF_SKIPS_LAYER;
                 }
             }
             let hmin = [up.map(|r| r.1), dn.map(|r| r.1)].into_iter().flatten().fold(f64::INFINITY, f64::min);
@@ -1077,7 +1074,6 @@ impl GeomReg {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn evaluate(
     board: &Board,
     params: &Params,

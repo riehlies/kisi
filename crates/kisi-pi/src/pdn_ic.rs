@@ -169,7 +169,7 @@ fn is_bulk(d: &str) -> bool {
 
 /// Number with an SI prefix and an optional unit: "5m", "0.45nH", "6.3V", "2.2u", "50MHz", "10mOhm".
 pub fn si(s: &str) -> Option<f64> {
-    let t = s.trim().replace(',', ".").replace('µ', "u").replace('μ', "u");
+    let t = s.trim().replace(',', ".").replace(['µ', 'μ'], "u");
     let lower = t.to_ascii_lowercase();
     let mut body = t.as_str();
     for unit in ["ohm", "Ω", "hz", "f", "h", "v", "a"] {
@@ -1612,7 +1612,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
                 }
             }
             if let Some(s0) = start {
-                above.push((freq[s0], freq.iter().copied().filter(|&f| f <= f_max).last().unwrap_or(freq[nf - 1])));
+                above.push((freq[s0], freq.iter().copied().rfind(|&f| f <= f_max).unwrap_or(freq[nf - 1])));
             }
         }
         // anti-resonances: local maxima with a prominence of ≥ 1.5 below f_max

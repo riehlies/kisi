@@ -137,8 +137,10 @@ pub extern "C" fn ks_alloc(n: usize) -> *mut u8 {
     }
 }
 
+/// # Safety
+/// `p` is null or a pointer returned by `ks_alloc` that has not been freed yet.
 #[no_mangle]
-pub extern "C" fn ks_free(p: *mut u8) {
+pub unsafe extern "C" fn ks_free(p: *mut u8) {
     if p.is_null() {
         return;
     }
@@ -150,9 +152,12 @@ pub extern "C" fn ks_free(p: *mut u8) {
 }
 
 /// Same signature as upstream's `solve_sparse_multi`.
+///
+/// # Safety
+/// `row_ptr` points to `n + 1`, `col_idx` and `values` to `nnz`, `b` and `x_out` to `n * n_rhs` valid
+/// elements (the caller's wasm memory, see web/solver/sparse_module.js).
 #[no_mangle]
-#[allow(clippy::too_many_arguments)]
-pub extern "C" fn ks_solve_sparse_multi(
+pub unsafe extern "C" fn ks_solve_sparse_multi(
     n: i32,
     nnz: i32,
     row_ptr: *const i32,
@@ -178,49 +183,6 @@ pub extern "C" fn ks_solve_sparse_multi(
             0
         }
         Err(code) => code,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn laplace_1d() {
-        // -u'' = 1 on 5 points with Dirichlet ends (as identity rows)
-        let n = 5;
-        let mut rp = vec![0i32];
-        let mut ci = Vec::new();
-        let mut va = Vec::new();
-        for i in 0..n {
-            if i == 0 || i == n - 1 {
-                ci.push(i as i32);
-                va.push(1.0);
-            } else {
-                // keep symmetric by not coupling to boundary rows
-                if i > 1 {
-                    ci.push(i as i32 - 1);
-                    va.push(-1.0);
-                }
-                ci.push(i as i32);
-                va.push(2.0);
-                if i < n - 2 {
-                    ci.push(i as i32 + 1);
-                    va.push(-1.0);
-                }
-            }
-            rp.push(ci.len() as i32);
-        }
-        let b = vec![0.0, 1.0, 1.0, 1.0, 0.0];
-        let x = solve_csr_multi(n, &rp, &ci, &va, 1, &b, false).unwrap();
-        assert!((x[1] - 1.5).abs() < 1e-12 && (x[2] - 2.0).abs() < 1e-12);
-        // negated system goes through the -A path
-        let vn: Vec<f64> = va.iter().map(|v| -v).collect();
-        let bn: Vec<f64> = b.iter().map(|v| -v).collect();
-        let x2 = solve_csr_multi(n, &rp, &ci, &vn, 1, &bn, false).unwrap();
-        assert!((x2[2] - 2.0).abs() < 1e-12);
-        // LU path
-        let x3 = solve_csr_multi(n, &rp, &ci, &va, 1, &b, true).unwrap();
-        assert!((x3[2] - 2.0).abs() < 1e-12);
     }
 }
 
@@ -356,7 +318,7 @@ impl ComplexPattern {
         let mut v = vec![c64::new(0.0, 0.0); self.row_idx.len()];
         for (k, &(re, im)) in vals.iter().enumerate() {
             let q = &mut v[self.slot[k]];
-            *q = *q + c64::new(re, im);
+            *q += c64::new(re, im);
         }
         let symb = SymbolicSparseColMatRef::new_checked(self.n, self.n, &self.col_ptr, None, &self.row_idx);
         let a = SparseColMatRef::new(symb, &v);
@@ -377,4 +339,47 @@ pub fn solve_complex_multi(
     b: &[Vec<(f64, f64)>],
 ) -> Result<Vec<Vec<(f64, f64)>>, i32> {
     ComplexLu::new(n, trip)?.solve(b)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn laplace_1d() {
+        // -u'' = 1 on 5 points with Dirichlet ends (as identity rows)
+        let n = 5;
+        let mut rp = vec![0i32];
+        let mut ci = Vec::new();
+        let mut va = Vec::new();
+        for i in 0..n {
+            if i == 0 || i == n - 1 {
+                ci.push(i as i32);
+                va.push(1.0);
+            } else {
+                // keep symmetric by not coupling to boundary rows
+                if i > 1 {
+                    ci.push(i as i32 - 1);
+                    va.push(-1.0);
+                }
+                ci.push(i as i32);
+                va.push(2.0);
+                if i < n - 2 {
+                    ci.push(i as i32 + 1);
+                    va.push(-1.0);
+                }
+            }
+            rp.push(ci.len() as i32);
+        }
+        let b = vec![0.0, 1.0, 1.0, 1.0, 0.0];
+        let x = solve_csr_multi(n, &rp, &ci, &va, 1, &b, false).unwrap();
+        assert!((x[1] - 1.5).abs() < 1e-12 && (x[2] - 2.0).abs() < 1e-12);
+        // negated system goes through the -A path
+        let vn: Vec<f64> = va.iter().map(|v| -v).collect();
+        let bn: Vec<f64> = b.iter().map(|v| -v).collect();
+        let x2 = solve_csr_multi(n, &rp, &ci, &vn, 1, &bn, false).unwrap();
+        assert!((x2[2] - 2.0).abs() < 1e-12);
+        // LU path
+        let x3 = solve_csr_multi(n, &rp, &ci, &va, 1, &b, true).unwrap();
+        assert!((x3[2] - 2.0).abs() < 1e-12);
+    }
 }

@@ -114,7 +114,7 @@ pub struct PdnResult {
 
 /// Capacitance from a footprint value: "100n", "100nF", "0.1uF 16V", "4u7", "10µF/6.3V", "1p5".
 pub fn parse_cap(v: &str) -> Option<f64> {
-    let s = v.trim().replace(',', ".").replace('µ', "u").replace('μ', "u");
+    let s = v.trim().replace(',', ".").replace(['µ', 'μ'], "u");
     let tok = s.split(|c: char| c.is_whitespace() || c == '/' || c == '_').next()?;
     let t = tok.trim_end_matches(['F', 'f']);
     let mult = |c: char| match c {

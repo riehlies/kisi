@@ -209,7 +209,7 @@ pub fn plane_clearance(board: &Board, at: P, layer: u16, own: u32, partner: Opti
         if inside || dmin > 2.0 {
             continue;
         }
-        if best.map_or(true, |(r, _)| dmin < r) {
+        if best.is_none_or(|(r, _)| dmin < r) {
             best = Some((dmin, z.net));
         }
     }
@@ -395,7 +395,6 @@ fn copper_z(su: &crate::board::Stackup) -> Vec<f64> {
 /// by every return that spans it, as before return groups: it is the trace's coplanar return, not
 /// a plane of its own (the finite cavities leave such pairs alone for the same reason); a via joined
 /// only to such a pour is not taken.
-#[allow(clippy::too_many_arguments)]
 pub fn return_posts(
     board: &Board,
     v: &Via,
@@ -531,7 +530,6 @@ fn post_joins(board: &Board, w: &Via, clear: &[Option<(f64, u32)>], z: &[f64], s
 /// them (`return_posts`), and the number of plane pairs of two nets in the path. Cheap when the
 /// path crosses no pair of two nets: the return vias' joins are only computed for vias that do,
 /// nearest first, until every pair is bridged.
-#[allow(clippy::too_many_arguments)]
 pub fn open_pairs(
     board: &Board,
     v: &Via,
@@ -727,7 +725,6 @@ pub fn return_groups(
 }
 
 /// Ladder model of the via, None without a plane or without feed information.
-#[allow(clippy::too_many_arguments)]
 fn ladder(
     ctx: &ViaCtx,
     v: &Via,
@@ -981,7 +978,7 @@ fn cap_posts(
     let mut fps: Vec<(&u32, &Vec<usize>)> = by_fp.iter().collect();
     fps.sort();
     for (&fp, ids) in fps {
-        if ids.len() != 2 || board.footprints.get(fp as usize).map_or(true, |f| f.dnp) {
+        if ids.len() != 2 || board.footprints.get(fp as usize).is_none_or(|f| f.dnp) {
             continue;
         }
         let (p0, p1) = (&board.pads[ids[0]], &board.pads[ids[1]]);
@@ -1211,7 +1208,7 @@ pub fn build(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16) -> (ViaModel, ViaInfo
             .iter()
             .filter(|w| w.net != ctx.net && Some(w.net) != ctx.partner && w.net != 0)
             .filter(|w| board.plane_net.get(w.net as usize).copied().unwrap_or(false))
-            .filter(|w| net.map_or(true, |n| w.net == n))
+            .filter(|w| net.is_none_or(|n| w.net == n))
             .filter(|w| w.from <= la.min(lb) && w.to >= la.max(lb))
             .map(|w| geom::len(geom::sub(w.at, v.at)))
             .min_by(|x, y| x.partial_cmp(y).unwrap())

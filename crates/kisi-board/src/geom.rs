@@ -122,7 +122,8 @@ mod tests {
     use super::*;
     #[test]
     fn arc_quarter() {
-        let pts = tessellate_arc([1.0, 0.0], [0.70710678, 0.70710678], [0.0, 1.0], 0.1);
+        let s = std::f64::consts::FRAC_1_SQRT_2;
+        let pts = tessellate_arc([1.0, 0.0], [s, s], [0.0, 1.0], 0.1);
         assert!(pts.len() > 5);
         for p in &pts {
             assert!((len(*p) - 1.0).abs() < 1e-6);

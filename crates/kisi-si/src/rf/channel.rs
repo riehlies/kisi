@@ -177,7 +177,7 @@ impl NetGraph {
             pos[i] = [k.0 as f64 / 200.0, k.1 as f64 / 200.0];
         }
         let mut parent: Vec<usize> = (0..n).collect();
-        fn find(p: &mut Vec<usize>, x: usize) -> usize {
+        fn find(p: &mut [usize], x: usize) -> usize {
             let mut r = x;
             while p[r] != r {
                 r = p[r];
@@ -308,8 +308,8 @@ impl NetGraph {
         while let Some(u) = stack.pop() {
             let du = dist[&u].0;
             for &(ei, v) in self.adj.get(&u).map(|x| x.as_slice()).unwrap_or(&[]) {
-                if !dist.contains_key(&v) {
-                    dist.insert(v, (du + self.edges[ei].3, Some((ei, u))));
+                if let std::collections::hash_map::Entry::Vacant(e) = dist.entry(v) {
+                    e.insert((du + self.edges[ei].3, Some((ei, u))));
                     stack.push(v);
                 }
             }
@@ -401,7 +401,7 @@ impl NetGraph {
             }
             let tl = geom::len(geom::sub(board.tracks[ti].b, board.tracks[ti].a));
             for p in ps {
-                let l = tl * (an.pieces[p * 4 + 2] - an.pieces[p * 4 + 1]) as f64;
+                let l = tl * (an.pieces[p * 4 + 2] - an.pieces[p * 4 + 1]);
                 out.push(PathPiece { piece: p, rev: !fwd, s0: s, s1: s + l });
                 s += l;
             }
@@ -614,7 +614,6 @@ pub fn net_path_info(board: &Board, an: &Analysis, net: u32, flip: bool, hint: O
 
 /// Branches leaving the main path `main` (edges from `s_node`; `node_at`: position along the
 /// path and pieces so far per main node). A branch follows its longest way to an end.
-#[allow(clippy::too_many_arguments)]
 fn collect_branches(
     g: &NetGraph,
     board: &Board,
@@ -1551,7 +1550,6 @@ pub fn channel(
 
 /// Channel of a net along its main path (start chosen as in `net_path_info`, `flip`
 /// reverses it); branches of at least `BRANCH_MIN_MM` are included as open stubs.
-#[allow(clippy::too_many_arguments)]
 pub fn channel_dir(
     board: &Board,
     an: &Analysis,
@@ -1580,7 +1578,6 @@ pub fn channel_dir(
 /// Sections of a net along `info` (main path with its modelled branches as open stubs), with
 /// `parts` (shunt parts of the net) at their pads: on the main path or on a modelled branch,
 /// wherever the pad lies closest.
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn net_build<'a>(
     board: &'a Board,
     an: &'a Analysis,

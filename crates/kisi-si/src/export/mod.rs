@@ -453,8 +453,8 @@ impl<'a> Composer<'a> {
         }
         let n = self.sections(s.len, l, c);
         let d = s.len / n as f64;
-        let el = El::Ladder { z: Imp::from_foster(&fz.net.scaled(d)), y: Adm::from_debye(&fy.net.scaled(d)), n };
-        el
+
+        El::Ladder { z: Imp::from_foster(&fz.net.scaled(d)), y: Adm::from_debye(&fy.net.scaled(d)), n }
     }
 
     /// A via as a chain, with the feed changes (m) at its entry and exit.
@@ -1098,7 +1098,6 @@ fn fidelity(freq: &[f64], a: &[Vec<Cx>], b: &[Vec<Cx>], pair: bool, f_nyq: f64) 
 /// network of the eye (the terminations next to the receiver are left out – they act as the
 /// receiver's termination, `topology::rx_terminations`), transmitter end = port 1 (P, N), receiver
 /// end = port 2. `rp` as for the check (`fmax`, `npts`); `f_nyq` for the in-band fidelity.
-#[allow(clippy::too_many_arguments)]
 pub fn lane_circuit(
     board: &Board,
     an: &Analysis,

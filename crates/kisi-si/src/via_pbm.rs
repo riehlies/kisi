@@ -803,7 +803,7 @@ fn rz_solve(g: &ViaGeom, grid: Grid) -> (Vec<f64>, Vec<f64>, usize, Vec<(f64, f6
                 cond[k] = 1;
             }
             for p in &g.planes {
-                if (zz - p.z).abs() < 1e-6 && p.antipad.map_or(true, |b| rr >= b - 1e-9) {
+                if (zz - p.z).abs() < 1e-6 && p.antipad.is_none_or(|b| rr >= b - 1e-9) {
                     cond[k] = 0;
                 }
             }
@@ -929,7 +929,7 @@ fn rz_total(slabs: &[Slab], barrel: Option<(f64, f64, f64)>, planes: &[(f64, Opt
                 }
             }
             for p in planes {
-                if (zz - p.0).abs() < 1e-6 && p.1.map_or(true, |b| rr >= b - 1e-9) {
+                if (zz - p.0).abs() < 1e-6 && p.1.is_none_or(|b| rr >= b - 1e-9) {
                     cond[idx(i, j)] = if p.2 { 1 } else { 0 };
                 }
             }
@@ -1496,7 +1496,7 @@ impl PbmVia {
                 let b = g
                     .planes
                     .iter()
-                    .find(|p| (p.z - pl).abs() < 1e-9 && p.antipad.map_or(false, |b| b > 0.0))
+                    .find(|p| (p.z - pl).abs() < 1e-9 && p.antipad.is_some_and(|b| b > 0.0))
                     .and_then(|p| p.antipad)
                     .unwrap_or(2.0 * g.r);
                 spans.push(SpanKind::Outer(MU0 * (za - zb) * 1e-3 / (2.0 * PI) * (b / g.r).max(1.01).ln()));
@@ -1582,7 +1582,7 @@ impl PbmVia {
             let hb = g
                 .planes
                 .iter()
-                .find(|p| (p.z - ref_z).abs() < 1e-6 && p.antipad.map_or(false, |b| b > 0.0))
+                .find(|p| (p.z - ref_z).abs() < 1e-6 && p.antipad.is_some_and(|b| b > 0.0))
                 .and_then(|p| p.antipad)
                 .unwrap_or(0.0);
             let strip = plane_z.iter().any(|&pz| pz > zt + 1e-9) && plane_z.iter().any(|&pz| pz < zt - 1e-9);

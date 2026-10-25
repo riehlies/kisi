@@ -16,8 +16,6 @@
 //!
 //! Validation: `validation/fdtd` (analytic cavity, mesh convergence, openEMS on the same mesh).
 
-#![allow(clippy::needless_range_loop, clippy::type_complexity, clippy::ptr_arg)]
-
 use serde::{Deserialize, Serialize};
 
 pub const C0: f64 = 299_792_458.0;
@@ -266,7 +264,7 @@ pub struct Mesh {
 /// metal: they only ask for fine cells there) go into any line within 0.9 cells and take its
 /// position. A remainder of at least half a cell becomes a cell of its own and the gap is
 /// rescaled, so no sliver cell sets the time step.
-fn grade(fixed: &mut Vec<(f64, f64, bool)>, dmax: f64, ratio: f64) -> Vec<f64> {
+fn grade(fixed: &mut [(f64, f64, bool)], dmax: f64, ratio: f64) -> Vec<f64> {
     fixed.sort_by(|a, b| a.0.total_cmp(&b.0));
     let (lo, hi) = (fixed[0].0, fixed[fixed.len() - 1].0);
     // group: (first, last, sum of hard, count of hard, sum of soft, count of soft, cell)
@@ -940,7 +938,6 @@ impl Cpml {
 /// ψ update and correction for one (component, slot) pair. E: f += sign·cb·ψ with
 /// ψ = bψ + c·(src[n] − src[n−1])/Δdual; H: f −= hc·sign·ψ with ψ = bψ + c·(src[n+1] − src[n])/Δ.
 /// ψ is stored in the loop order i, j, k with the PML axis restricted to its nodes.
-#[allow(clippy::too_many_arguments)]
 fn cpml_pass(
     g: &Grid,
     comp: usize,
@@ -1013,7 +1010,6 @@ fn cpml_pass(
 }
 
 /// One run with port `ex` excited; returns V(t), I(t) for all ports.
-#[allow(clippy::type_complexity)]
 fn run(
     c: &Case,
     m: &Mesh,
@@ -1692,7 +1688,6 @@ where
 }
 
 /// H from the curl of E on every face of the primary grid (row slices along z for vectorising).
-#[allow(clippy::too_many_arguments)]
 fn update_h(
     g: &Grid,
     h: [&mut [f32]; 3],
@@ -1748,7 +1743,6 @@ fn update_h(
 }
 
 /// E from the curl of H on the interior edges (ports and boundaries are updated separately).
-#[allow(clippy::too_many_arguments)]
 fn update_e(
     g: &Grid,
     e: [&mut [f32]; 3],

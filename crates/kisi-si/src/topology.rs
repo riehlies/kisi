@@ -46,7 +46,7 @@ impl ComponentData {
         let mut best: Option<(&str, usize)> = None;
         for (role, prefixes) in &self.roles {
             for p in prefixes {
-                if letters == p.to_uppercase() && best.map_or(true, |b| p.len() > b.1) {
+                if letters == p.to_uppercase() && best.is_none_or(|b| p.len() > b.1) {
                     best = Some((role.as_str(), p.len()));
                 }
             }
@@ -587,7 +587,7 @@ pub fn buses(board: &Board, an: &Analysis, cd: &ComponentData) -> Vec<Bus> {
         // the end of the path: of the pins on the last net, the one farthest along the copper
         let cands: Vec<&EndPin> = e
             .iter()
-            .filter(|p| p.net == cur && start_pin.as_ref().map_or(true, |s| s.refdes != p.refdes || s.pin != p.pin))
+            .filter(|p| p.net == cur && start_pin.as_ref().is_none_or(|s| s.refdes != p.refdes || s.pin != p.pin))
             .collect();
         let last_pin = if cands.len() > 1 {
             let dist = crate::rf::copper_distances(
@@ -1620,7 +1620,6 @@ impl Lane {
 /// The cascade of one line of a lane (not finished): series parts, shunts, side stubs and the
 /// other paths of a fork as open branches. `diff`: odd-mode line models (the 2-port of a pair);
 /// `pair`: also the via models with the partner via (one line of the 4-port).
-#[allow(clippy::too_many_arguments)]
 fn line_build<'a>(
     board: &'a Board,
     an: &'a Analysis,
@@ -1714,7 +1713,6 @@ fn line_build<'a>(
 /// `with_terminations`: include termination resistors (for the eye; loss, return
 /// loss and TDR describe the interconnect without them, the termination belongs to
 /// the receiving end).
-#[allow(clippy::too_many_arguments)]
 pub fn lane_channel(
     board: &Board,
     an: &Analysis,
@@ -1736,7 +1734,6 @@ pub fn lane_channel(
 /// partner's, each with its own parts, stubs and vias, aligned into coupled sections with the
 /// modal line models and via pairs (`rf::mixed`). `drop`: shunts left out by reference (the
 /// terminations used as the receiver's). An error when the partner's path is not known.
-#[allow(clippy::too_many_arguments)]
 pub fn lane_pair(
     board: &Board,
     an: &Analysis,
@@ -1819,6 +1816,8 @@ pub fn rx_terminations(lane: &Lane, reversed: bool, pair: bool) -> RxTerms {
 /// The builds of a lane's board block as the eye's network uses it (terminations next to the
 /// receiver left out, `rx_terminations`): both lines of a pair, or one line (a pair without its
 /// partner's path in the odd mode).
+// a handful of short-lived values: boxing the large variant would only add indirection
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum LaneBuilds<'a> {
     Single { b: Build<'a>, odd: bool },
     Pair { bp: Build<'a>, bn: Build<'a>, z_ref: f64 },
@@ -1832,7 +1831,6 @@ pub(crate) struct LaneBuildSet<'a> {
 }
 
 /// `LaneBuilds` of a lane, for the circuit export (`kisi_si::export`).
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn lane_builds<'a>(
     board: &'a Board,
     an: &'a Analysis,
@@ -1947,7 +1945,6 @@ pub struct LaneEval {
 /// both lines (P and N on their own paths, with their own parts, stubs and vias, coupled where
 /// they run together), driven differentially; the channel behind a connector and the ends are
 /// blocks of the same network.
-#[allow(clippy::too_many_arguments)]
 pub fn lane_eval(
     board: &Board,
     an: &Analysis,
@@ -2243,7 +2240,6 @@ fn line_block(c: &Channel) -> crate::lanenet::Block {
 /// the profile's ends, to a connector with the connector end model (`conn_end`; the eye of the
 /// board share, `eye_board_share`). `reversed`: transmit from `ends[1]` to `ends[0]` (use
 /// `lane.rx_end == 0` for the guessed direction).
-#[allow(clippy::too_many_arguments)]
 pub fn check_lane(
     board: &Board,
     an: &Analysis,

@@ -267,6 +267,8 @@ pub(crate) fn solve_dense(a: &mut [Cx], n: usize, b: &mut [Cx], m: usize) -> Res
                 p = i;
             }
         }
+        // also true for a NaN pivot
+        #[allow(clippy::neg_cmp_op_on_partial_ord)]
         if !(best > scale * 1e-15) {
             return Err("singular network: a node without a connection".into());
         }

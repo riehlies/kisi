@@ -159,7 +159,6 @@ type Near = (f64, f64, bool, geom::P, geom::P);
 
 /// Nearest parallel track of `nets` (same layer, gap ≤ gmax) at sample `p` of a trace with
 /// direction `dir`: (net, gap, width, side +normal).
-#[allow(clippy::too_many_arguments)]
 fn near_tracks(
     board: &Board,
     grid: &HashMap<(i64, i64), Vec<usize>>,
@@ -213,7 +212,6 @@ fn near_tracks(
 
 /// Tracks on another layer `layer2` that run over or under the sample (parallel, lateral offset
 /// below half the widths plus `reach`): net → (lateral offset of the centres, width).
-#[allow(clippy::too_many_arguments)]
 fn near_broadside(
     board: &Board,
     grid: &HashMap<(i64, i64), Vec<usize>>,
@@ -374,8 +372,8 @@ fn crosstalk_impl(
             continue;
         }
         let dir = geom::scale(d, 1.0 / len);
-        let l0 = len * pc[1] as f64;
-        let l1 = len * pc[2] as f64;
+        let l0 = len * pc[1];
+        let l1 = len * pc[2];
         let ns = (((l1 - l0) / step).ceil() as usize).max(1);
         let seg = (l1 - l0) / ns as f64;
         let v = C0 / xs.eeff.unwrap_or(3.0).sqrt();
@@ -447,11 +445,7 @@ fn crosstalk_impl(
                     let h = geom::scale(dir, seg / 2.0);
                     // the aggressor stretch runs the same way as the victim's
                     let oh = geom::scale(ndir, if geom::dot(ndir, dir) >= 0.0 { seg / 2.0 } else { -seg / 2.0 });
-                    let frac = if pc[2] > pc[1] {
-                        ((t / len - pc[1] as f64) / (pc[2] - pc[1]) as f64).clamp(0.0, 1.0)
-                    } else {
-                        0.5
-                    };
+                    let frac = if pc[2] > pc[1] { ((t / len - pc[1]) / (pc[2] - pc[1])).clamp(0.0, 1.0) } else { 0.5 };
                     smps.push(Smp {
                         piece: pi,
                         frac,

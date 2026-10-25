@@ -45,6 +45,8 @@ fn z_microstrip(w: f64, h: f64, er: f64) -> f64 {
 fn z_stripline_sym(w: f64, b: f64, er: f64) -> f64 {
     let k = 1.0 / (PI * w / (2.0 * b)).cosh();
     let kp = (1.0 - k * k).sqrt();
+    // the branch threshold of via_cases.py, kept digit for digit (not FRAC_1_SQRT_2) so both agree
+    #[allow(clippy::approx_constant)]
     let r = if k < 0.7071 {
         PI / (2.0 * (1.0 + kp.sqrt()) / (1.0 - kp.sqrt())).ln()
     } else {

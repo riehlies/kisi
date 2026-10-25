@@ -14,3 +14,5 @@ kisi-board = { path = "../kisi-board" }
 kisi-sparse = { path = "../kisi-sparse" }
 regex-lite = "0.1"
 
+[lints]
+workspace = true

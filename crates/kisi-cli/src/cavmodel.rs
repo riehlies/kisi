@@ -7,7 +7,8 @@
 //! * the infinite radial line (kisi's ladder as it is)        → `<out>/ladder_inf.s2p`
 //! * the rectangular cavity (`via_cavity::RectEnv`)            → `<out>/ladder_rect.s2p`
 //! * the grid of the plane outline (`via_cavity::GridEnv`, cell H mm, default 0.25)
-//!                                                             → `<out>/ladder_grid.s2p`
+//!   → `<out>/ladder_grid.s2p`
+//!
 //! Two signal vias: the coupled 4-port (`via_pbm::coupled_s`, ports A in, A out, B in, B out) →
 //! `ladder_rect.s4p`, `ladder_grid.s4p`. `--cap-r`: the radius of the post of a capacitor between
 //! the planes (the 3D lumped element is one cell wide: Peaceman's radius of its cell);

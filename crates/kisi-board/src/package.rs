@@ -124,7 +124,7 @@ pub fn case_from_name(name: &str, pitch: Option<f64>) -> Option<(&'static str, B
             }
             let code = &n[i..i + k];
             let (Some(c), Some(p0)) = (to_case(code), nominal_pitch(code)) else { continue };
-            if pitch.map_or(true, |p| (0.6..=1.6).contains(&(p / p0))) {
+            if pitch.is_none_or(|p| (0.6..=1.6).contains(&(p / p0))) {
                 return Some((c, Basis::NameAndPads));
             }
         }

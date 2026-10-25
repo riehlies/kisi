@@ -124,12 +124,8 @@ impl Project {
         let text = std::fs::read_to_string(pcb).map_err(|e| format!("{}: {e}", pcb.display()))?;
         let pro_path = pro.map(Path::to_path_buf).unwrap_or_else(|| pcb.with_extension("kicad_pro"));
         let pro_text = std::fs::read_to_string(&pro_path).ok();
-        let config = match config {
-            Some(cp) => {
-                Some((cp.to_path_buf(), std::fs::read_to_string(cp).map_err(|e| format!("{}: {e}", cp.display()))))
-            }
-            None => None,
-        };
+        let config = config
+            .map(|cp| (cp.to_path_buf(), std::fs::read_to_string(cp).map_err(|e| format!("{}: {e}", cp.display()))));
         let files = match &config {
             Some((cp, Ok(t))) => config_files(cp, t),
             _ => Default::default(),
@@ -204,7 +200,6 @@ impl Project {
             solder_mask: true,
             targets: applied.targets.clone(),
             field: inp.field,
-            ..Default::default()
         };
         let an = analyze(&board, &params);
         let name = inp.pcb_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
@@ -896,7 +891,6 @@ pub fn channel_check_count(
 /// The rows of `channel_check` with the indices `idx` in the check's order (up to
 /// `channel_check_count`), each with its index: the Node CLI computes the check in worker
 /// threads, each with an engine of its own, and puts the rows together with `channel_check_merge`.
-#[allow(clippy::too_many_arguments)]
 pub fn channel_check_rows(
     p: &Project,
     profiles: &Profiles,
@@ -980,7 +974,7 @@ pub fn channel_check_merge(
 
 /// The check's JSON from its rows in the check's order: sorted by status (stable), counted.
 fn check_result(p: &Project, mut rows: Vec<(Status, Value)>, skipped_unused: usize, rp: &RfParams) -> Value {
-    rows.sort_by(|a, b| a.0.cmp(&b.0));
+    rows.sort_by_key(|a| a.0);
     let count = |s: Status| rows.iter().filter(|r| r.0 == s).count();
     // vias across a GND/supply plane pair no return via bridges, also of rows not shown
     let via_warnings: Vec<String> = rows
@@ -1281,7 +1275,6 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
 
 /// Everything in one document, written as `analysis/kisi.json` next to the board
 /// (layout of kicad-happy's analysis folder).
-
 pub fn report(p: &Project, profiles: &Profiles) -> Value {
     let rp = RfParams::default();
     let run = power_run(p, None);

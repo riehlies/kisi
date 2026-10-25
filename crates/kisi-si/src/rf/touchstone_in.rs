@@ -71,9 +71,9 @@ pub fn parse_touchstone(text: &str, name: &str) -> Result<Touchstone, String> {
             }
             continue;
         }
-        if line.starts_with('#') {
+        if let Some(opts) = line.strip_prefix('#') {
             option_seen = true;
-            for t in line[1..].split_whitespace() {
+            for t in opts.split_whitespace() {
                 match t.to_ascii_uppercase().as_str() {
                     "HZ" => unit = 1.0,
                     "KHZ" => unit = 1e3,

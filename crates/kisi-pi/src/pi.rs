@@ -429,7 +429,7 @@ pub fn setups_to_fields(setups: &[RailSetup]) -> (Vec<(String, String, String)>,
     use crate::field_syntax::quote_name;
     let mut out: Vec<(String, String, String)> = Vec::new();
     let mut lost = Vec::new();
-    let mut push = |r: &str, name: &str, v: String, out: &mut Vec<(String, String, String)>| match out
+    let push = |r: &str, name: &str, v: String, out: &mut Vec<(String, String, String)>| match out
         .iter_mut()
         .find(|x| x.0 == r && x.1 == name)
     {

@@ -297,7 +297,6 @@ pub fn diff_microstrip_model(w: f64, s: f64, h: f64, t: f64, er: f64, mask: Opti
 
 /// Diff microstrip pair with optional coplanar ground: the IPC coupling
 /// factor applied to the plain microstrip, scaled by the coplanar effect.
-#[allow(clippy::too_many_arguments)]
 pub fn diff_microstrip_coplanar(
     w: f64,
     s: f64,

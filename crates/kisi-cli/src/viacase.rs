@@ -1111,7 +1111,6 @@ fn piece_refs(p: &Project, net: u32, layer: u16, q: P) -> Vec<u16> {
 
 /// 2×thru of one feed side: the straight trace (or pair) along x, 2·feed long, solid sheets on
 /// the layers that have copper at the port in the case.
-#[allow(clippy::too_many_arguments)]
 fn thru_case(
     name: &str,
     s: &Side,

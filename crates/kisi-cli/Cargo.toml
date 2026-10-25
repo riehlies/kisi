@@ -17,3 +17,6 @@ serde_json = "1"
 [[bin]]
 name = "kisi-validate"
 path = "src/validate.rs"
+
+[lints]
+workspace = true

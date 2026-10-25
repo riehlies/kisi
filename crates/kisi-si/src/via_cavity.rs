@@ -243,7 +243,7 @@ impl Mask {
                     continue;
                 }
                 let d = geom::len(geom::sub(self.centre(i, j), p));
-                if d <= rmax && best.map_or(true, |b| d < b.0) {
+                if d <= rmax && best.is_none_or(|b| d < b.0) {
                     best = Some((d, (i, j)));
                 }
             }
@@ -430,7 +430,6 @@ pub fn pair_window(
     pair_region(board, at, la, lb, own, partner, Some(radius), usize::MAX, h)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn pair_region(
     board: &Board,
     at: P,
@@ -1618,6 +1617,8 @@ pub fn lu_stats() -> (usize, f64, usize) {
 }
 
 /// A cavity environment of a plane pair.
+// a handful of short-lived values: boxing the large variant would only add indirection
+#[allow(clippy::large_enum_variant)]
 pub enum PairEnv {
     Rect(RectEnv),
     Grid(GridEnv),

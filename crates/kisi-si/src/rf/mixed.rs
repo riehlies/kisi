@@ -159,6 +159,8 @@ pub fn mixed_of(s: &M4) -> M4 {
 }
 
 /// One element of the aligned pair cascade.
+// a handful of short-lived values: boxing the large variant would only add indirection
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum El {
     /// section `seg` of line 0 (P) or 1 (N), optionally with a shorter length (mm)
     Single { line: usize, seg: usize, len: Option<f64> },
@@ -261,7 +263,6 @@ pub struct MixedMode {
 
 /// 4-port model of the pair `net` + its partner. `flip` / `hint` choose the start as for
 /// the channel of `net`; the partner starts at the end next to it.
-#[allow(clippy::too_many_arguments)]
 pub fn mixed_mode(
     board: &Board,
     an: &Analysis,
@@ -648,8 +649,8 @@ pub(crate) fn align_pair(
     let mut asym_vias = 0usize;
     let mut no_modal = false;
     while i < bp.segs.len() || j < bn.segs.len() {
-        let tp = (i < bp.segs.len()).then(|| tok(&bp, i));
-        let tn = (j < bn.segs.len()).then(|| tok(&bn, j));
+        let tp = (i < bp.segs.len()).then(|| tok(bp, i));
+        let tn = (j < bn.segs.len()).then(|| tok(bn, j));
         let single_p =
             |els: &mut Vec<El>, rem: f64| els.push(El::Single { line: 0, seg: i, len: (!rem.is_nan()).then_some(rem) });
         let single_n =
@@ -682,9 +683,9 @@ pub(crate) fn align_pair(
                 rem_n = f64::NAN;
             }
             (Some(Tok::C(lp)), Some(Tok::C(ln))) if lp == ln => {
-                let (a, b) = (len_left(&bp, i, rem_p), len_left(&bn, j, rem_n));
+                let (a, b) = (len_left(bp, i, rem_p), len_left(bn, j, rem_n));
                 let l = a.min(b);
-                match modal(&bp, i).or_else(|| modal(&bn, j)) {
+                match modal(bp, i).or_else(|| modal(bn, j)) {
                     Some((even, odd)) => {
                         els.push(El::Coupled { len: l, even, odd, layer: lp });
                         coupled_mm += l;

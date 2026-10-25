@@ -608,7 +608,7 @@ fn template_load(p: &Project) -> Value {
             .map(|(n, _)| rails[n].to_string())
             .unwrap_or_default();
         let key = (on.len(), std::cmp::Reverse(pads.len()));
-        if best.as_ref().map_or(true, |x| key < x.0) {
+        if best.as_ref().is_none_or(|x| key < x.0) {
             best = Some((key, f.reference.clone(), rail));
         }
     }

@@ -857,7 +857,7 @@ pub fn spec_to_fields(spec: &TreeSpec) -> Vec<(String, String, String)> {
         }
     };
     let mut out: Vec<(String, String, String)> = Vec::new();
-    let mut push = |r: &str, name: &str, v: String, sep: &str, out: &mut Vec<(String, String, String)>| match out
+    let push = |r: &str, name: &str, v: String, sep: &str, out: &mut Vec<(String, String, String)>| match out
         .iter_mut()
         .find(|x| x.0 == r && x.1 == name)
     {

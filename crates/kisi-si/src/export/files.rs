@@ -643,7 +643,6 @@ pub fn stem(lane: &str) -> String {
 }
 
 /// All files of one lane's export, under `dir` ("" or "name/").
-#[allow(clippy::too_many_arguments)]
 pub fn lane_files(
     lc: &LaneCircuit,
     ends: &BenchEnds,
@@ -813,14 +812,14 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
     ));
     s.push_str("\nWhy it is not exact: kisi's roughness adds resistance without its internal inductance, the via models use a constant loss tangent and a barrel resistance without internal inductance, and some via spans have a negative resistance at high frequency – a passive, causal circuit cannot follow those exactly; the fits keep the loss and, closer, the reactance (the delay).\n");
     s.push_str(&format!(
-        "\nElements after flattening: {} R, {} L, {} C, {} controlled sources and probes; {} RLGC sections{}. The circuit's largest singular value of S from 1 kHz to 10 × the top frequency: {} (passive: ≤ 1).\n",
+        "\nElements after flattening: {} R, {} L, {} C, {} controlled sources and probes; {} RLGC sections{}. The circuit's largest singular value of S from 1 kHz to 10 × the top frequency: {:.6} (passive: ≤ 1).\n",
         lc.counts.r,
         lc.counts.l,
         lc.counts.c,
         lc.counts.sources,
         lc.counts.sections,
         if lc.counts.cells > 0 { format!(", {} lossless-line cells", lc.counts.cells) } else { String::new() },
-        format!("{:.6}", lc.fidelity.circuit_max_sv)
+        lc.fidelity.circuit_max_sv
     ));
     s.push_str("\n## Not included\n\n* The receiver's termination resistors on the board: they act as the receiver's termination (bench and Touchstone leave them out, as kisi's eye does).\n* The channel behind a connector, crosstalk from other lanes (kisi's coupling scan is separate), non-linear buffers: IBIS (KiCad's KIBIS) ends need `kisi.json` IBIS models – not part of this export yet; replace the source and the receiver in the KiCad schematic by KiCad's IBIS symbols by hand.\n");
     if !lc.notes.is_empty() {

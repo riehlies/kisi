@@ -930,7 +930,6 @@ fn power_flag(sh: &mut Sheet, x: f64, y: f64) {
 
 /// The KiCad project: `<name>.kicad_pro` and `<name>.kicad_sch` (detailed when the lane's elements
 /// are known, else compact).
-#[allow(clippy::too_many_arguments)]
 pub fn project(
     lc: &LaneCircuit,
     ends: &BenchEnds,
@@ -1045,7 +1044,6 @@ fn up(v: f64) -> f64 {
     (v / 2.54 - 1e-6).ceil() * 2.54
 }
 
-#[allow(clippy::too_many_arguments)]
 fn detailed_project(
     lc: &LaneCircuit,
     ends: &BenchEnds,
@@ -1196,7 +1194,6 @@ fn detailed_project(
 }
 
 /// The compact sheet: the whole lane as one symbol.
-#[allow(clippy::too_many_arguments)]
 fn compact_project(
     lc: &LaneCircuit,
     ends: &BenchEnds,

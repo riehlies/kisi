@@ -21,7 +21,7 @@ fn main() {
         eprintln!("cavity vias: {na} evaluations, {ta:.2} s");
         eprintln!(
             "cavity grids: {n} factorisations, {t:.2} s, {} cells on average; {g} shared groups of {e} environments",
-            if n > 0 { cells / n } else { 0 }
+            cells.checked_div(n).unwrap_or(0)
         );
     }
     std::process::exit(code);

@@ -623,7 +623,7 @@ mod tests {
         let id = Abcd::identity();
         let tap = Tap { label: "U3.5".into(), after: 0, abcd: st.clone(), dc: id };
         let blk = Block::Line { pieces: vec![(p1.clone(), id), (p2.clone(), id)], taps: vec![tap] };
-        let r = receivers_transfer(&freq, &[blk.clone()], 1, &tx, &rx).unwrap();
+        let r = receivers_transfer(&freq, std::slice::from_ref(&blk), 1, &tx, &rx).unwrap();
         assert_eq!((r.len(), r[1].label.as_str()), (2, "U3.5"));
         for (k, &f) in freq.iter().enumerate() {
             let w = 2.0 * PI * f;

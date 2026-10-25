@@ -420,7 +420,7 @@ pub fn unused_nets(board: &Board) -> Vec<u32> {
             continue;
         }
         any[n] = true;
-        if board.footprints.get(pad.fp as usize).map_or(true, |f| !f.dnp) {
+        if board.footprints.get(pad.fp as usize).is_none_or(|f| !f.dnp) {
             fitted[n] = true;
         }
     }

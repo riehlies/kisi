@@ -127,8 +127,10 @@ pub extern "C" fn kisi_alloc(n: usize) -> *mut u8 {
     p
 }
 
+/// # Safety
+/// `p` and `n` are a pointer and the size passed to `kisi_alloc`, not freed yet.
 #[no_mangle]
-pub extern "C" fn kisi_free(p: *mut u8, n: usize) {
+pub unsafe extern "C" fn kisi_free(p: *mut u8, n: usize) {
     unsafe { drop(Vec::from_raw_parts(p, 0, n.max(1))) }
 }
 
@@ -735,7 +737,7 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
                 let lane = st.buses.as_ref().and_then(|bs| {
                     bs.iter().flat_map(|b| &b.lanes).find(|l| {
                         l.nets[0] as u64 == start
-                            && item["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t))
+                            && item["to"].as_str().is_none_or(|t| l.ends.last().is_some_and(|e| e.refdes == t))
                     })
                 });
                 let Some(lane) = lane else {
@@ -841,7 +843,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
         let lane = st
             .buses
             .as_ref()
-            .and_then(|bs| bs.iter().flat_map(|b| &b.lanes).find(|l| l.nets[0] as u64 == start && v["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t))))
+            .and_then(|bs| bs.iter().flat_map(|b| &b.lanes).find(|l| l.nets[0] as u64 == start && v["to"].as_str().is_none_or(|t| l.ends.last().is_some_and(|e| e.refdes == t))))
             .ok_or("lane not found")?;
         let rp: kisi_core::rf::RfParams = serde_json::from_value(v["rf"].clone()).unwrap_or_default();
         let target = v["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
@@ -931,7 +933,7 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
                 .and_then(|bs| {
                     bs.iter().flat_map(|b| &b.lanes).find(|l| {
                         l.nets[0] as u64 == start
-                            && item["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t))
+                            && item["to"].as_str().is_none_or(|t| l.ends.last().is_some_and(|e| e.refdes == t))
                     })
                 })
                 .ok_or("lane not found")?;

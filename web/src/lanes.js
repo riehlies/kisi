@@ -56,13 +56,14 @@ function highlightLane(l) {
 }
 function laneProfile(l) { return profileOf(laneNet(l)); }
 function laneZStats(l) {
-  let len = 0, zs = 0, lo = Infinity, hi = -Infinity;
+  let len = 0, zs = 0, lo = Infinity, hi = -Infinity, us = 0, fs = 0;
   for (const n of l.nets) {
     const st = S.an.nets.find((x) => x.net === n);
     if (!st || st.z_mean == null) continue;
     len += st.length; zs += st.z_mean * st.length; lo = Math.min(lo, st.z_min); hi = Math.max(hi, st.z_max);
+    us += (st.z_unc_pct ?? 0) * st.length; fs += (st.field_share ?? 0) * st.length;
   }
-  return len ? { z_mean: zs / len, z_min: lo, z_max: hi } : {};
+  return len ? { z_mean: zs / len, z_min: lo, z_max: hi, z_unc_pct: us / len, field_share: fs / len } : {};
 }
 const shortNet = (n) => netShort(S.scene.nets[n] || "");
 const pinLabel = (e) => e ? `${e.refdes}.${e.pin}` : "–";

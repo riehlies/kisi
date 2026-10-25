@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "about": "How uncertain kisi's results are, per accuracy level, from its own validation (docs/models.md, section Accuracy levels; design: docs/research/accuracy-levels.md). Uncertainties are typical deviations from the references (in percent of the value), not bounds: a number outside them is possible.",
+  "impedance": {
+    "about": "Impedance of a cross-section (single-ended, or the pair's differential impedance) by how it was computed.",
+    "sources": [
+      {"kind": "kisi", "text": "Field solver: Forstén's test suite against HFSS/Ansys within 1.7 % (tools/validate_field.sh, docs/models.md table); ThunderScope cross-sections within 0.5 % of Forstén's microstrip/stripline solver."},
+      {"kind": "kisi", "text": "Formulas (docs/models.md table, validation/thunderscope_xs.json): single microstrip +1.4 %, HFSS microstrip −0.6 %; diff microstrip +5.6 / +7.8 %; asymmetric stripline +10.3 %, 3D stripline T_ts6_sl +11 % (validation/fdtd/results/kisi_models.json); over a cut-out up to 25 % (flag F_FORMULA_ROUGH, extract.rs)."},
+      {"kind": "kisi", "text": "No plane (coplanar return, analytic::no_plane): gold-finger cases of validation/fdtd/TESTS.md section 15 – single fingers within about 8 %, the pair without any plane about 15 % low."}
+    ],
+    "field_pct": 2.0,
+    "formula_microstrip_pct": 2.0,
+    "formula_coupled_pct": 8.0,
+    "formula_stripline_pct": 11.0,
+    "formula_rough_pct": 25.0,
+    "no_plane_pct": 15.0
+  },
+  "vias": {
+    "about": "Via models against the 3D references: error of the impedance in the 25 ps TDR (minimum and maximum), median and 90th percentile.",
+    "sources": [
+      {"kind": "kisi", "text": "validation/fdtd/results/kisi_models.json (compare_kisi.py, tools/golden.py vias): ladder 2.45 / 5.92 % (29 single vias), pairs Zdiff 12.6 / 14.4 % (12 pairs); results/kisi_models_coax.json: coaxial fallback 8.0 / 25.5 %."}
+    ],
+    "ladder_median_pct": 2.45,
+    "ladder_p90_pct": 5.92,
+    "pair_median_pct": 12.6,
+    "pair_p90_pct": 14.4,
+    "coax_median_pct": 8.0,
+    "coax_p90_pct": 25.5
+  }
+}

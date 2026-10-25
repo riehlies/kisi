@@ -78,7 +78,7 @@ function judge(m, p) {
     const st = ST_MAP[c.status];
     switch (c.key) {
       case "error": return { key: c.key, name: "Computation", value: m.error || "error", limit: "", st };
-      case "z": return { key: c.key, name: "Impedance mean (min … max)", value: `${f1(c.value)} Ω (${fmt(m.z_min, 0)} … ${fmt(m.z_max, 0)})`, limit: `${f1(c.lo)} … ${f1(c.hi)} Ω`, st, note: c.note };
+      case "z": return { key: c.key, name: "Impedance mean (min … max)", value: `${f1(c.value)} Ω${zAcc(m.z_unc_pct, m.field_share)} (${fmt(m.z_min, 0)} … ${fmt(m.z_max, 0)})`, limit: `${f1(c.lo)} … ${f1(c.hi)} Ω`, st, note: c.note };
       case "eye_h": return { key: c.key, name: "Eye height", value: `${fmt(c.value * 100, 0)} % (${fmt(c.value * p.tx.swing_mv, 0)} mV)`, limit: `red < ${fmt(c.red_below * 100, 0)} %, yellow < ${fmt(c.lo * 100, 0)} %`, st };
       case "eye_w": return { key: c.key, name: "Eye width", value: `${fmt(c.value * 100, 0)} % UI`, limit: `≥ ${fmt(c.lo * 100, 0)} % UI`, st };
       case "il": return { key: c.key, name: `Insertion loss at ${fmt(nyq, nyq < 1 ? 2 : 1)} GHz`, value: `${fmt(c.value, 2)} dB`, limit: c.lo != null ? `≥ ${f1(c.lo)} dB` : "no limit", st };
@@ -248,7 +248,14 @@ function chFor(net) {
 }
 function zStats(net) {
   const st = S.an.nets.find((x) => x.net === net);
-  return st && st.z_mean != null ? { z_mean: st.z_mean, z_min: st.z_min, z_max: st.z_max } : {};
+  return st && st.z_mean != null ? { z_mean: st.z_mean, z_min: st.z_min, z_max: st.z_max, z_unc_pct: st.z_unc_pct, field_share: st.field_share } : {};
+}
+// accuracy of an impedance (kisi_si::accuracy, data/accuracy.json): a muted “±x %” with its level in
+// the tooltip, as estimates are marked elsewhere
+function zAcc(unc, fs) {
+  if (unc == null) return "";
+  const level = fs >= 0.999 ? "2D field solver" : fs <= 0.001 ? "formula" : `${fmt(fs * 100, 0)} % field solver, the rest formula`;
+  return ` <span class="muted" title="Accuracy level: ${level}. Typical deviation from kisi's validation (data/accuracy.json; docs/models.md, Accuracy levels): about ±${fmt(unc, unc < 10 ? 1 : 0)} %, not a bound.">±${fmt(unc, unc < 10 ? 1 : 0)} %</span>`;
 }
 function metricsOf(r, net, lane) {
   const ch = r.channel, p = r.profile;

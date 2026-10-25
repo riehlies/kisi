@@ -162,7 +162,7 @@ function selectNet(net, zoom = true) {
   const modeSw = pair ? `<div class="seg pmode" role="group" aria-label="Mode of the pair"><button data-pm="d" aria-pressed="${!comm}">Differential</button><button data-pm="c" aria-pressed="${comm}">Common mode</button></div>` : "";
   d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · pair with " + esc(partner) : ""}</div></div>${modeSw}<button class="x" id="closeDetail" aria-label="Clear selection">×</button></header>
     <div class="dstats"><span>Length <b>${fmt(st?.length, 1)} mm</b></span><span>Target <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
-    <span>min/mean/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b></span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
+    <span>min/mean/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b>${zAcc(st?.z_unc_pct, st?.field_share)}</span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
     ${pathLine(net)}
     <div class="tabs" role="tablist" aria-label="Net view">
       ${tabs.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}

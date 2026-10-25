@@ -625,6 +625,9 @@ pub struct CheckRow {
     /// (`via::ViaInfo::open_pairs`), for the row's warning
     #[serde(skip)]
     pub open_vias: Vec<crate::via::ViaInfo>,
+    /// the channel's vias by model: (ladder, coaxial fallback), for the accuracy (`accuracy::vias_of`)
+    #[serde(skip)]
+    pub via_models: (usize, usize),
 }
 
 /// The eye at one receiver of a multi-drop line.
@@ -670,6 +673,7 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
         receivers: vec![],
         xt_peak: None,
         open_vias: vec![],
+        via_models: (0, 0),
     }
 }
 
@@ -682,6 +686,7 @@ pub(crate) fn fill_row(row: &mut CheckRow, ch: &crate::rf::Channel, gbps: f64, r
     row.vias = ch.vias;
     row.warnings = ch.warnings.len();
     row.open_vias = ch.via_info.iter().filter(|v| !v.open_pairs.is_empty()).cloned().collect();
+    row.via_models = (ch.via_info.iter().filter(|v| v.model == "ladder").count(), ch.via_info.iter().filter(|v| v.model != "ladder").count());
     row.stubs = ch.segments.iter().filter(|s| s.kind == "branch").filter_map(|s| s.part.clone()).collect();
     let fn_ = gbps * 0.5e9;
     let df = ch.freq[0];

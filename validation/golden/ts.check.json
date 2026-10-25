@@ -9,6 +9,15 @@
  "not_checked_unused": "20 net(s) with a target only connect parts not fitted in this assembly (variant or DNP): not checked",
  "rows": [
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 6.8
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "branches": [],
    "bus": "U12_2 ↔ U6",
    "class": "FE_100Z_Diff",
@@ -112,6 +121,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 6.7
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "branches": [],
    "bus": "U12_3 ↔ U6",
    "class": "FE_100Z_Diff",
@@ -215,6 +233,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.8
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "branches": [],
    "bus": "U18 ↔ U6",
    "class": "LVDS_ADC",
@@ -315,6 +342,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.8
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "branches": [],
    "bus": "U18 ↔ U6",
    "class": "LVDS_ADC",
@@ -415,6 +451,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.5
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "branches": [],
    "bus": "U18 ↔ U6",
    "class": "LVDS_ADC",
@@ -515,6 +560,21 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 2.2
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder",
+     "tdr_error_pct": {
+      "median": 2.45,
+      "p90": 5.92
+     }
+    }
+   },
    "branches": [],
    "bus": "J3 ↔ U7",
    "class": "50Z",
@@ -603,6 +663,15 @@
    "vias": 1
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.8
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "branches": [],
    "bus": "J9 ↔ U18",
    "class": "LVDS_USRIO",
@@ -691,6 +760,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.8
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "branches": [],
    "bus": "J9 ↔ U18",
    "class": "LVDS_USRIO",
@@ -779,6 +857,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.8
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "branches": [],
    "bus": "J9 ↔ U18",
    "class": "LVDS_USRIO",
@@ -867,6 +954,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.8
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "branches": [],
    "bus": "J9 ↔ U18",
    "class": "LVDS_USRIO",
@@ -955,6 +1051,21 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.6
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder (pair)",
+     "tdr_error_pct": {
+      "median": 12.6,
+      "p90": 14.4
+     }
+    }
+   },
    "branches": [],
    "bus": "P1 ↔ U18",
    "class": "PCIe",
@@ -1048,6 +1159,21 @@
    "vias": 1
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.5
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder (pair)",
+     "tdr_error_pct": {
+      "median": 12.6,
+      "p90": 14.4
+     }
+    }
+   },
    "branches": [],
    "bus": "P1 ↔ U18",
    "class": "PCIe",
@@ -1141,6 +1267,21 @@
    "vias": 1
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.4
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder (pair)",
+     "tdr_error_pct": {
+      "median": 12.6,
+      "p90": 14.4
+     }
+    }
+   },
    "branches": [],
    "bus": "P1 ↔ U18",
    "class": "PCIe",
@@ -1234,6 +1375,21 @@
    "vias": 1
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 7.4
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder (pair)",
+     "tdr_error_pct": {
+      "median": 12.6,
+      "p90": 14.4
+     }
+    }
+   },
    "branches": [],
    "bus": "P1 ↔ U18",
    "class": "PCIe",
@@ -1327,6 +1483,21 @@
    "vias": 1
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 9.4
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder (pair)",
+     "tdr_error_pct": {
+      "median": 12.6,
+      "p90": 14.4
+     }
+    }
+   },
    "branches": [],
    "bus": "P1 ↔ U18",
    "class": "PCIe",
@@ -1429,6 +1600,21 @@
    "vias": 2
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 9.0
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder (pair)",
+     "tdr_error_pct": {
+      "median": 12.6,
+      "p90": 14.4
+     }
+    }
+   },
    "branches": [],
    "bus": "P1 ↔ U18",
    "class": "PCIe",
@@ -1531,6 +1717,21 @@
    "vias": 2
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 8.6
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder (pair)",
+     "tdr_error_pct": {
+      "median": 12.6,
+      "p90": 14.4
+     }
+    }
+   },
    "branches": [],
    "bus": "P1 ↔ U18",
    "class": "PCIe",
@@ -1633,6 +1834,21 @@
    "vias": 2
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 8.5
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder (pair)",
+     "tdr_error_pct": {
+      "median": 12.6,
+      "p90": 14.4
+     }
+    }
+   },
    "branches": [],
    "bus": "P1 ↔ U18",
    "class": "PCIe",
@@ -1735,6 +1951,21 @@
    "vias": 2
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 8.3
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": {
+     "model": "ladder (pair)",
+     "tdr_error_pct": {
+      "median": 12.6,
+      "p90": 14.4
+     }
+    }
+   },
    "branches": [],
    "bus": "P1 ↔ U18",
    "class": "PCIe",
@@ -1837,6 +2068,15 @@
    "vias": 2
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 12.8
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -1908,6 +2148,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 10.6
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -1979,6 +2228,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 11.5
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -2050,6 +2308,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 16.5
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -2121,6 +2388,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 10.6
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -2192,6 +2468,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 12.1
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -2263,6 +2548,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 16.4
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -2334,6 +2628,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 13.9
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -2405,6 +2708,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 12.8
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -2476,6 +2788,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 10.9
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {
@@ -2547,6 +2868,15 @@
    "vias": 0
   },
   {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 10.9
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
    "class": "FE_50Z",
    "criteria": [
     {

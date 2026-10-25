@@ -164,6 +164,10 @@ pub struct NetStat {
     pub within5: Option<f64>,
     pub within10: Option<f64>,
     pub flags: u32,
+    /// accuracy of the impedance (`accuracy`): length-weighted typical uncertainty (%) and the share
+    /// of the length from the field solver
+    pub z_unc_pct: Option<f64>,
+    pub field_share: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -852,8 +856,8 @@ fn net_stats(
     xss: &[CrossSection],
     pieces: &[f64],
 ) -> (Vec<NetStat>, Vec<ClassInfo>) {
-    // (length, impedance, flags, counted in the impedance statistics)
-    let mut acc: HashMap<u32, Vec<(f64, Option<f64>, u32, bool)>> = HashMap::new();
+    // (length, impedance, flags, counted in the impedance statistics, uncertainty %, field solver)
+    let mut acc: HashMap<u32, Vec<(f64, Option<f64>, u32, bool, f64, bool)>> = HashMap::new();
     for pc in pieces.chunks_exact(4) {
         let tr = &board.tracks[pc[0] as usize];
         let l = geom::len(geom::sub(tr.b, tr.a)) * (pc[2] - pc[1]);
@@ -864,7 +868,8 @@ fn net_stats(
         let cls = board.net_class.get(tr.net as usize).copied().unwrap_or(0) as usize;
         let target = class_targets.get(cls).and_then(|t| t.0);
         let z = compared_z(xs, target);
-        acc.entry(tr.net).or_default().push((l, z.map(|v| v.0).filter(|_| counted), xs.flags, counted));
+        let unc = crate::accuracy::impedance_of(xs).map(|u| u.1).unwrap_or(0.0);
+        acc.entry(tr.net).or_default().push((l, z.map(|v| v.0).filter(|_| counted), xs.flags, counted, unc, xs.solver == "field"));
     }
     let mut nets: Vec<NetStat> = Vec::new();
     let mut class_counts = vec![0usize; board.netclasses.len()];
@@ -879,6 +884,13 @@ fn net_stats(
         let zl: Vec<(f64, f64)> = v.iter().filter_map(|x| x.1.map(|z| (x.0, z))).collect();
         let lz: f64 = zl.iter().map(|x| x.0).sum();
         let (mut z_min, mut z_max, mut z_mean) = (None, None, None);
+        // accuracy: length-weighted uncertainty and field-solver share of the pieces with an impedance
+        let zp: Vec<&(f64, Option<f64>, u32, bool, f64, bool)> = v.iter().filter(|x| x.1.is_some()).collect();
+        let (z_unc_pct, field_share) = if lz > 0.0 {
+            (Some(zp.iter().map(|x| x.0 * x.4).sum::<f64>() / lz), Some(zp.iter().filter(|x| x.5).map(|x| x.0).sum::<f64>() / lz))
+        } else {
+            (None, None)
+        };
         let (mut w5, mut w10) = (None, None);
         if lz > 0.0 {
             z_min = zl.iter().map(|x| x.1).reduce(f64::min);
@@ -902,6 +914,8 @@ fn net_stats(
             within5: w5,
             within10: w10,
             flags: v.iter().fold(0, |a, x| a | x.2),
+            z_unc_pct,
+            field_share,
         });
     }
     nets.sort_by(|a, b| a.name.cmp(&b.name));

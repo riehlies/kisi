@@ -385,6 +385,7 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
         "net": ch.name, "class": st.map(|s| s.class.clone()), "target": st.and_then(|s| s.target).map(|t| json!({"ohm": t.z, "diff": t.diff})),
         "differential": ch.diff, "length_mm": ch.length_mm, "delay_ps": ch.delay_ps, "vias": ch.vias, "path": path_json(&ch),
         "impedance": st.map(|s| json!({"mean": s.z_mean, "min": s.z_min, "max": s.z_max, "within_5pct": s.within5})),
+        "accuracy": accuracy_json(&st.into_iter().collect::<Vec<_>>(), (ch.via_info.iter().filter(|v| v.model == "ladder").count(), ch.via_info.iter().filter(|v| v.model != "ladder").count()), ch.diff),
         "segments": ch.segments.iter().filter(|s| s.kind == "line").map(|s| {
             let mut v = json!({"layer": su.copper[s.layer as usize].name, "len_mm": s.len_mm, "z_ohm_per_line": s.z});
             if rough(s.xs) {
@@ -590,6 +591,21 @@ fn check_plan<'a>(p: &'a Project, profiles: &'a Profiles, assign: &HashMap<Strin
 }
 
 /// One row of the channel check (status and JSON).
+/// Accuracy of a check row or a net (`kisi_si::accuracy`, `data/accuracy.json`): the impedance's
+/// level and length-weighted typical uncertainty over the nets, the via models and their validated
+/// TDR error.
+pub fn accuracy_json(nets: &[&crate::extract::NetStat], vias: (usize, usize), pair: bool) -> Value {
+    let w: Vec<(f64, f64, f64)> = nets.iter().filter_map(|s| Some((s.length, s.z_unc_pct?, s.field_share?))).filter(|x| x.0 > 0.0).collect();
+    let l: f64 = w.iter().map(|x| x.0).sum();
+    let imp = (l > 0.0).then(|| {
+        let unc = w.iter().map(|x| x.0 * x.1).sum::<f64>() / l;
+        let fs = w.iter().map(|x| x.0 * x.2).sum::<f64>() / l;
+        json!({"level": crate::accuracy::level_of(fs), "uncertainty_pct": (unc * 10.0).round() / 10.0 + 0.0, "field_share": (fs * 1000.0).round() / 1000.0 + 0.0})
+    });
+    let v = crate::accuracy::vias_of(vias.0, vias.1, pair).map(|(m, med, p90)| json!({"model": m, "tdr_error_pct": {"median": med, "p90": p90}}));
+    json!({"impedance": imp, "vias": v, "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds"})
+}
+
 fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem, rp: &RfParams, cd: &topology::ComponentData) -> (Status, Value) {
     let field = &p.params.field;
     match it {
@@ -659,6 +675,8 @@ fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem,
                 j["via_warning"] = json!(w);
             }
             j["metrics"] = json!(m);
+            let lane_nets: Vec<&crate::extract::NetStat> = p.an.nets.iter().filter(|s| l.nets.contains(&s.net)).collect();
+            j["accuracy"] = accuracy_json(&lane_nets, row.via_models, row.diff);
             (v.status, j)
         }
         CheckItem::Net { st, prof, class } => {
@@ -681,7 +699,7 @@ fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem,
             };
             let v = judge(&m, prof, &lim);
             let mut j = json!({"net": st.name, "kind": "net (no devices found)", "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
-                "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m});
+                "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m, "accuracy": accuracy_json(&[st], row.via_models, row.diff)});
             if let Some(mc) = row.mode_conversion_db {
                 j["mode_conversion_db"] = json!(mc);
             }

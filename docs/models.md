@@ -127,6 +127,23 @@ closed case runs hotter inside: emulate it with the case temperature as `--ambie
 defaults can be off by tens of percent of the rise. Concept, physics and validation:
 [research/thermal.md](research/thermal.md).
 
+## Accuracy levels
+Every impedance and via result says which level it used and how far it typically is from kisi's validation
+(`data/accuracy.json`, with the sources; design: [research/accuracy-levels.md](research/accuracy-levels.md)):
+
+| Level | Typical deviation |
+|---|---|
+| 2D field solver | impedance 2 % |
+| formula: single microstrip / coupled or coplanar / stripline / over a cut-out | 2 / 8 / 11 / 25 % |
+| no plane (coplanar estimate) | 15 % |
+| via ladder: single vias / pairs (TDR, median and 90th percentile) | 2.5 and 5.9 % / 12.6 and 14.4 % |
+| coaxial via fallback | 8.0 and 25.5 % |
+
+A net or lane takes the length-weighted mean of its cross-sections; the level is “field solver”, “formula” or
+“mixed”. The CLI writes it as `accuracy` in every `check` row and in `net`, the viewer as a muted “±x %” next
+to the impedance. Verdicts are judged on the values; the uncertainty is shown beside them. Loss, return loss
+and the eye do not carry a number yet.
+
 ## What is an estimate
 kisi marks these as estimates in the viewer and in the CLI output:
 - laminate εr/tanδ and thicknesses that are KiCad defaults (`assumed` in `kisi overview`), until

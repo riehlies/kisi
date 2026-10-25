@@ -172,7 +172,7 @@ Unpack the project and run the gap list without a configuration:
 ```sh
 node kisi.mjs gaps "XIAO nRF54LM20A.kicad_pcb"
 ```
-With kisi 0.2.5 it reports no high-priority gap, five medium and two low ones:
+With kisi 0.3.0 it reports no high-priority gap, five medium and two low ones:
 
 | Gap | Items |
 |---|---|
@@ -232,7 +232,7 @@ node kisi.mjs gaps         "XIAO nRF54LM20A.kicad_pcb"   # what is still open
 In the viewer: drop the `.kicad_pcb`, the `.kicad_pro` and the `.kisi.json` together into `kisi.html`, then open
 the Power view.
 
-With kisi 0.2.5, `kisi power` gives 100 mW from USB: 83 mW to the loads and 17 mW of losses. BUCK2 loses 14 mW at
+With kisi 0.3.0, `kisi power` gives 100 mW from USB: 83 mW to the loads and 17 mW of losses. BUCK2 loses 14 mW at
 the estimated 85 % and LDO1 3 mW. The largest DC drop is 0.17 mV, on VSYS_3V3.
 
 ### What is still open

@@ -1,6 +1,6 @@
 # kisi – roadmap
 
-Planned and possible work after 0.2.5, in three development blocks plus work across them. Within a block the items
+Planned and possible work after 0.3.0, in three development blocks plus work across them. Within a block the items
 are roughly in order of priority; each says why it matters, "Decide first" marks items that need a decision before
 work starts. One rule holds for all of them: `main` always has a clean, mostly self-explanatory build – new features
 come with a small, clear UI and without option combinatorics.

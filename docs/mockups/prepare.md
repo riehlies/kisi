@@ -175,6 +175,23 @@ Implemented (branch `feat/docs-prepare`): everything in "The page" and "In the c
 - "hand to the agent" on any gap with a form; a category whose open gaps are all handed over says so.
 - The gap list runs in a worker, one run at a time (edits during a run ask for one more afterwards).
 
+**Checklist** (after the maintainer's review of the functional version: "what do I really have to enter, and where
+do I confirm?"):
+- each gap is a step with a marker – a red or amber number while open (high or medium; low-priority steps are
+  optional), a green check mark when done, an arrow when with the agent, a dash when dismissed – ordered by
+  priority; the first open step of a tab is open when the tab is first shown;
+- one line says what the step needs (which fields, how many items); only those inputs are shown; *more* holds the
+  explanation and optional fields (material and thickness, ψJT and Tj max, ESR and ESL, the load basis);
+- **Apply** commits a filled new row, runs the gap list at once and then gives the step its check mark (the core
+  no longer reports it for this tab, or only dismissed items) and opens the next open step – or keeps it open
+  with "N of M … still missing: …" and the check's errors for its entries; "hand to the agent" settles a step too;
+- progress per tab ("1 of 2 required steps done", a bar), "Ready for the impedance check" (channel check, power
+  analysis) with a button to the view at the end, and saving the kisi.json as the last step;
+- the readiness dots on the view buttons are gone; a **Preparation** card at the top of the views' side panel
+  (all three views) shows the open points per category – the current view's first – or "board prepared", the
+  assembly variant as a step while it has to be chosen, and opens Prepare PCB at the current view's tab; the
+  Assembly variant card sits below it. The badge on "Prepare PCB" counts the same open points.
+
 Still open, with the reason:
 - Interface profile parameters edited in the Channel view (limits, data rate) are stored per browser for all
   boards; kisi.json has no key for them (profiles are `data/interfaces.json`), so they cannot move into it.

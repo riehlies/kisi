@@ -36,8 +36,11 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   (Touchstone file and ports) and variant definitions, the views' stackup, target, profile, connector-end and
   power edits moved into the draft (power through the core's tree/setup → fields conversion), categories per
   gap item from the core, stale dismissals with remove; `check_viewer.py` runs the acceptance on the bare
-  ThunderScope (its kisi.json entered through the forms, saved, reloaded). What remains, with reasons:
-  `docs/mockups/prepare.md`, "Still open".
+  ThunderScope (its kisi.json entered through the forms, saved, reloaded). After the maintainer's review the page
+  became a checklist (a marker per step, one line of what it needs, Apply through the core with a check mark or
+  what is still missing, the next step opens, progress and "Ready for …" per tab, saving as the last step), and the
+  readiness dots on the view buttons gave way to a Preparation card above the Assembly variant card in the views.
+  What remains, with reasons: `docs/mockups/prepare.md`, "Still open".
 - **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
   (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
   text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an

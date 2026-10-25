@@ -517,6 +517,7 @@ pub(crate) mod tests_support {
             abcd_dc: Abcd::identity(),
             taps: vec![],
             pieces: vec![],
+            sections: None,
             freq,
         }
     }

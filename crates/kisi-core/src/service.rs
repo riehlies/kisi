@@ -225,7 +225,7 @@ impl Project {
         self.buses.get_or_init(|| topology::buses(&self.board, &self.an, &topology::ComponentData::builtin()))
     }
 
-    fn class_name(&self, net: u32) -> String {
+    pub(crate) fn class_name(&self, net: u32) -> String {
         self.an.nets.iter().find(|n| n.net == net).map(|n| n.class.clone()).unwrap_or_default()
     }
 }
@@ -458,7 +458,7 @@ fn pin(e: &topology::EndPin) -> String {
 
 /// The net a lane's target, class and profile come from: the one it is named after (its own
 /// path), else its first net with a target.
-fn lane_net(p: &Project, l: &topology::Lane) -> u32 {
+pub(crate) fn lane_net(p: &Project, l: &topology::Lane) -> u32 {
     if p.target(l.name_net).is_some() {
         return l.name_net;
     }

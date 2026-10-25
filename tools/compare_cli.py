@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare the Node CLI (dist/kisi.mjs, formula mode) with the native kisi on the example boards.
 
-Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands check,gaps,thermal,check-cavity]
+Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands check,gaps,thermal,check-cavity,export]
 
 Runs every command on ThunderScope and LibreVNA with their configs (web/samples/{ts,vna}.kisi.json) and compares
 the JSON outputs. Numbers are compared after rounding to 6 significant digits; keys that differ by design
@@ -19,6 +19,8 @@ IGNORE = {"field_solver", "field_solver_note", "config", "timing_ms"}
 ARGS = {"check": ["--all"], "gaps": [], "check-cavity": ["--all", "--via-cavity"]}
 # pseudo commands: (command, boards)
 ALIAS = {"check-cavity": ("check", {"vna"})}
+# `export`: one lane per board, the written files must be identical too
+EXPORT = {"ts": ["--lane", "SYNC_OUT_P"], "vna": ["--lane", "SRC_REF_IN", "--format", "spice,touchstone"]}
 
 
 def norm(x):
@@ -67,7 +69,7 @@ def main():
     if len(sys.argv) < 4:
         raise SystemExit(__doc__)
     native, mjs, ex = sys.argv[1:4]
-    cmds = ["check", "gaps", "thermal", "check-cavity"]
+    cmds = ["check", "gaps", "thermal", "check-cavity", "export"]
     if "--commands" in sys.argv:
         cmds = sys.argv[sys.argv.index("--commands") + 1].split(",")
     bad = 0
@@ -78,11 +80,25 @@ def main():
             cmd, only = ALIAS.get(c, (c, None))
             if only and key not in only:
                 continue
-            na = [native, cmd, pcb, "--config", cfg] + ARGS.get(c, [])
-            nb = ["node", mjs, cmd, pcb, "--config", cfg, "--formula"] + ARGS.get(c, [])
+            extra = ARGS.get(c, [])
+            if c == "export":
+                import tempfile
+                tmp = tempfile.mkdtemp(prefix="kisi-export-")
+                extra = EXPORT[key] + ["--out", os.path.join(tmp, "x")]
+            na = [native, cmd, pcb, "--config", cfg] + extra
+            nb = ["node", mjs, cmd, pcb, "--config", cfg, "--formula"] + extra
             t0 = time.time(); ta = run(na, raw=True); t1 = time.time(); tb = run(nb, raw=True); t2 = time.time()
             secs = {"native": t1 - t0, "node": t2 - t1}
             d = first_diff(norm(json.loads(ta)), norm(json.loads(tb)))
+            if c == "export" and d is None:
+                # both wrote into the same folder: write once more with the native CLI and compare the files
+                out = json.loads(ta)["written"]
+                files_node = {f: open(os.path.join(out, f), "rb").read() for f in json.loads(tb)["files"]}
+                run(na, raw=True)
+                for f, data in files_node.items():
+                    if open(os.path.join(out, f), "rb").read() != data:
+                        d = f"written file {f} differs"
+                        break
             print(f"{stem} {c}: {'identical' if d is None else 'DIFFERENT – ' + d}")
             bad += d is not None
             if c == "check":

@@ -227,6 +227,26 @@
       <div id="prof-body"></div>
     </section>
 
+    <section class="card" aria-labelledby="h-exp" data-view="ch" hidden>
+      <h2 id="h-exp">Export for simulators</h2>
+      <p class="note">“Export…” in a lane's detail or a bus card writes the board channel as the check models it, as a zip. It is available once the channel check has computed the lane.</p>
+      <details class="fs-opts" id="ex-opts">
+        <summary>Export settings</summary>
+        <div class="fs-settings" id="ex-settings">
+          <label class="opt" for="ex-ts"><span>Touchstone (.s2p/.s4p; a bus also as one N-port with its port map)</span><input type="checkbox" id="ex-ts" checked></label>
+          <label class="opt" for="ex-lib"><span id="ex-lib-label">SPICE netlist (.lib subcircuits)</span><input type="checkbox" id="ex-lib" checked></label>
+          <label class="opt" for="ex-ng"><span>Test bench and S-parameter deck for ngspice</span><input type="checkbox" id="ex-ng" checked></label>
+          <label class="opt" for="ex-xy"><span>Test bench and S-parameter deck for Xyce</span><input type="checkbox" id="ex-xy" checked></label>
+          <label class="opt" for="ex-lt"><span>Test bench for LTspice</span><input type="checkbox" id="ex-lt" checked></label>
+          <label class="opt" for="ex-kc"><span>KiCad project</span><input type="checkbox" id="ex-kc" checked></label>
+          <label class="opt" for="ex-ks"><span>KiCad sheet</span><select id="ex-ks"><option value="detailed">one symbol per element</option><option value="compact">the lane as one symbol</option></select></label>
+          <label class="opt" for="ex-fmax"><span>Frequency up to (ladder and Touchstone)</span><select id="ex-fmax"><option value="rf">as the RF settings</option><option value="profile">5 × Nyquist of the profile</option><option value="10">10 GHz</option><option value="20">20 GHz</option><option value="25">25 GHz</option><option value="40">40 GHz</option></select></label>
+          <label class="opt" for="ex-fmin"><span>Frequency grid from (and step)</span><select id="ex-fmin"><option value="">f max / 500</option><option value="0.001">1 MHz</option><option value="0.01">10 MHz</option><option value="0.05">50 MHz</option><option value="0.1">100 MHz</option></select></label>
+          <p class="note" id="ex-hint"></p>
+        </div>
+      </details>
+    </section>
+
     <section class="card" aria-labelledby="h-nets" data-view="si ch">
       <h2 id="h-nets">Nets <em id="netCount"></em></h2>
       <input class="search" id="search" type="search" placeholder="Search net or class" aria-label="Search net">

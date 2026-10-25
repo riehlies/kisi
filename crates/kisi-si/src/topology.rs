@@ -1468,6 +1468,81 @@ pub fn lane_pair(board: &Board, an: &Analysis, lane: &Lane, field: &HashMap<Stri
     Ok(crate::rf::pair_net(board, an, field, target, rp, bp, bn))
 }
 
+/// The termination resistors of a lane next to its receiver: they act as the receiver's
+/// termination in the eye (and in the export's test bench) and are left out of the board's block.
+pub struct RxTerms {
+    /// the receiver's termination per line (Ω) when there are such resistors
+    pub r: Option<f64>,
+    pub note: Option<String>,
+    /// their references (P line and, for a pair's 4-port, N line)
+    pub drop: HashSet<String>,
+    /// terminations elsewhere on the lane (source side): the board's block includes them
+    pub others: bool,
+}
+
+/// Terminations of `lane` next to its receiver (`reversed`: transmit from `ends[1]`); `pair`: the
+/// N line's own terminations count too (the 4-port).
+pub fn rx_terminations(lane: &Lane, reversed: bool, pair: bool) -> RxTerms {
+    let rx_end = if reversed { 0 } else { 1 };
+    let (rx_pos, tx_pos) = (lane.ends[rx_end].at, lane.ends[1 - rx_end].at);
+    let near_rx = |t: &&Shunt| geom::len(geom::sub(t.at, rx_pos)) < geom::len(geom::sub(t.at, tx_pos));
+    let at_rx: Vec<&Shunt> = terminations(lane).filter(near_rx).collect();
+    let at_rx_n: Vec<&Shunt> = if pair { lane.line_terms(true).filter(near_rx).collect() } else { vec![] };
+    let others = terminations(lane).count() > at_rx.len() || (pair && lane.line_terms(true).count() > at_rx_n.len());
+    let (mut r, mut note) = (None, None);
+    if !at_rx.is_empty() {
+        let g: f64 = at_rx.iter().map(|t| 1.0 / (t.part.val.unwrap_or(1e9).max(1e-3) * if t.across { 0.5 } else { 1.0 })).sum();
+        r = Some(1.0 / g);
+        note = Some(format!("termination {} at {} used as the receiver termination ({:.0} Ω per line)", at_rx.iter().map(|t| t.part.refdes.as_str()).collect::<Vec<_>>().join(", "), lane.ends[rx_end].refdes, 1.0 / g));
+    }
+    let drop = at_rx.iter().chain(&at_rx_n).map(|t| t.part.refdes.clone()).collect();
+    RxTerms { r, note, drop, others }
+}
+
+/// The builds of a lane's board block as the eye's network uses it (terminations next to the
+/// receiver left out, `rx_terminations`): both lines of a pair, or one line (a pair without its
+/// partner's path in the odd mode).
+pub(crate) enum LaneBuilds<'a> {
+    Single { b: Build<'a>, odd: bool },
+    Pair { bp: Build<'a>, bn: Build<'a>, z_ref: f64 },
+}
+
+pub(crate) struct LaneBuildSet<'a> {
+    pub builds: LaneBuilds<'a>,
+    pub notes: Vec<String>,
+    /// one-way static delay of the lane (ps; a pair: its odd mode)
+    pub delay_ps: f64,
+}
+
+/// `LaneBuilds` of a lane, for the circuit export (`kisi_si::export`).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn lane_builds<'a>(board: &'a Board, an: &'a Analysis, field: &'a HashMap<String, FieldResult>, lane: &Lane, target: Option<(f64, bool)>, rp: &'a RfParams, reversed: bool, cd: &ComponentData) -> Result<LaneBuildSet<'a>, String> {
+    if lane.ends.len() < 2 {
+        return Err("the lane has no two ends".into());
+    }
+    let diff = lane.diff && target.map(|t| t.1).unwrap_or(true);
+    let pair = diff && !lane.partner_hops.is_empty();
+    let rt = rx_terminations(lane, reversed, pair);
+    let mut notes: Vec<String> = rt.note.iter().cloned().collect();
+    let builds = if pair {
+        let bp = line_build(board, an, &lane.line_spec(false, rt.others, &rt.drop), field, target, rp, reversed, cd, false, true)?;
+        let bn = line_build(board, an, &lane.line_spec(true, rt.others, &rt.drop), field, target, rp, reversed, cd, false, true)?;
+        let z_ref = rp.z_ref.unwrap_or(match target {
+            Some((z, true)) => z / 2.0,
+            Some((z, false)) => z,
+            _ => 50.0,
+        });
+        LaneBuilds::Pair { bp, bn, z_ref }
+    } else {
+        if diff {
+            notes.push("pair computed in the odd mode (2-port): the partner line's path is not known".into());
+        }
+        LaneBuilds::Single { b: line_build(board, an, &lane.line_spec(false, rt.others, &rt.drop), field, target, rp, reversed, cd, diff, false)?, odd: diff }
+    };
+    let delay_ps = lane_channel(board, an, lane, field, target, &RfParams { npts: 10, ..rp.clone() }, reversed, false, cd).map(|c| c.delay_ps).unwrap_or(0.0);
+    Ok(LaneBuildSet { builds, notes, delay_ps })
+}
+
 /// Result of evaluating a lane: the interconnect channel (without terminations; a pair as the
 /// differential mode of its 4-port), the eye (IC to IC, and to a connector with the connector end
 /// model) and the skew to the partner line.
@@ -1601,28 +1676,17 @@ pub fn lane_eval(
             }
         }
         out.tx_used = tx;
-        // a termination resistor next to the receiver acts as the receiver's
-        // termination (R/2 per line in odd mode when it sits across the pair);
-        // terminations elsewhere (source side) stay in the channel
-        let (rx_pos, tx_pos) = (lane.ends[rx_end].at, lane.ends[1 - rx_end].at);
-        let near_rx = |t: &&Shunt| geom::len(geom::sub(t.at, rx_pos)) < geom::len(geom::sub(t.at, tx_pos));
-        let at_rx: Vec<&Shunt> = terminations(lane).filter(near_rx).collect();
-        // the N line of the 4-port: its own terminations at the receiver go with the receiver too
-        let at_rx_n: Vec<&Shunt> = if pair.is_some() { lane.line_terms(true).filter(near_rx).collect() } else { vec![] };
-        let others = terminations(lane).count() > at_rx.len() || (pair.is_some() && lane.line_terms(true).count() > at_rx_n.len());
+        // a termination resistor next to the receiver acts as the receiver's termination (R/2 per
+        // line in odd mode when it sits across the pair); terminations elsewhere (source side)
+        // stay in the channel
+        let rt = rx_terminations(lane, reversed, pair.is_some());
         let mut rx_model = rx;
-        if !at_rx.is_empty() {
-            let g: f64 = at_rx.iter().map(|t| 1.0 / (t.part.val.unwrap_or(1e9).max(1e-3) * if t.across { 0.5 } else { 1.0 })).sum();
-            rx_model = Some(crate::eye::EndModel { r: 1.0 / g, ..rx.unwrap_or_default() });
-            out.rx_note = Some(format!(
-                "termination {} at {} used as the receiver termination ({:.0} Ω per line)",
-                at_rx.iter().map(|t| t.part.refdes.as_str()).collect::<Vec<_>>().join(", "),
-                lane.ends[rx_end].refdes,
-                1.0 / g
-            ));
+        if let Some(r) = rt.r {
+            rx_model = Some(crate::eye::EndModel { r, ..rx.unwrap_or_default() });
+            out.rx_note = rt.note.clone();
         }
         out.rx_used = rx_model;
-        let drop: HashSet<String> = at_rx.iter().chain(&at_rx_n).map(|t| t.part.refdes.clone()).collect();
+        let (others, drop) = (rt.others, rt.drop);
         // the board's block: the pair's 4-port, else the cascade – with the terminations that do
         // not sit at the receiver (source side)
         let lines = if pair.is_some() { 2 } else { 1 };

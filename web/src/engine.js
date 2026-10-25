@@ -43,6 +43,14 @@ class Engine {
   loadPcb(text) { this.callRec("pcb", "kisi_load_pcb", text); }
   // board configuration; files: BOMs its variants name ({path: text}); variant: the viewer's choice or null
   config(text, board, files, variant) { this.callRec("config", "kisi_config", JSON.stringify({ config: text, board, files: files || {}, variant: variant || null })); return JSON.parse(this.out()); }
+  // board preparation (kisi_core::gaps / config): the gap list with a configuration text (the loaded
+  // kisi.json or a draft; null: none), a check of a text without applying it, one category's entries
+  gaps(board, config, view) { this.call(this.k.kisi_gaps, JSON.stringify({ board, config: config ?? null, for: view || null })); return JSON.parse(this.out()); }
+  configCheck(board, config) { this.call(this.k.kisi_config_check, JSON.stringify({ board, config })); return JSON.parse(this.out()); }
+  configSubset(config, view) { this.call(this.k.kisi_config_subset, JSON.stringify({ config, view })); return this.out(); }
+  // the viewer's power tree / rail setups as kisi.json fields: {fields: [{ref, name, value}], lost}
+  editsToFields(tree, setups) { this.call(this.k.kisi_edits_to_fields, JSON.stringify({ tree: tree || null, setups: setups || null })); return JSON.parse(this.out()); }
+  boardSheets() { if (this.k.kisi_board_sheets() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   // assembly variant: the state, or choose one (null: the configuration's) – the board is rebuilt
   variants() { if (this.k.kisi_variants() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   variant(name) { this.callRec("variant", "kisi_variant", JSON.stringify({ variant: name || null })); return JSON.parse(this.out()); }

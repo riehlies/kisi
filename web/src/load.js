@@ -90,6 +90,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
       draw();
     } else fitView();
     hideBusy();
+    prepOnBoard(); // the gap list for the readiness dots and the Prepare PCB page (prepare.js)
   } catch (e) {
     hideBusy();
     $("warnings").innerHTML = `<span class="err">Could not read file: ${esc(e.message)}</span>`;

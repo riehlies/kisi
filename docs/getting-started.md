@@ -97,9 +97,19 @@ later, and the lane results name the variant. A lane is named after and made of 
 with all alternatives fitted, each lane leaves the IC on its own branch and carries the other path as an open
 branch (dashed on the board).
 
+### Prepare PCB
+"Prepare PCB" (between the example boards and "Load files") opens what the board file lacks, per category, with
+forms for the simple values and for everything a loaded kisi.json holds, a draft kept in this browser until it is
+saved, and the views' own edits taken into the file. It is a checklist: each step says what it needs and shows
+how many of its items are open, "Apply" checks it with the core and gives it a check mark, and the next one opens;
+the badge on the button counts the open points. The example boards come with a complete kisi.json: their
+checklist is finished and shows the values in its forms. See
+[Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb).
+
 ### What the viewer stores
 Stackup (εr, tanδ, thickness), profiles, the net class → profile assignment, power settings, lane directions and
-the chosen variant can be edited; edits are stored in this browser per board and lie over the kisi.json. The
+the chosen variant can be edited; edits are stored in this browser per board and lie over the kisi.json (Prepare
+PCB moves them into the kisi.json). The
 KiCad files are never changed. Field-solver results are cached in the browser (IndexedDB); the results of the
 last three boards stay in memory while switching. The "Accuracy" section of the impedance view summarises the
 model accuracy ([Models and limits](models.md)).

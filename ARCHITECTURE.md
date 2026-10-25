@@ -73,7 +73,11 @@ to one thread.
   labels of all maps, A/B marks – at a constant screen size, with the overlap rule; checked by `check_viewer.py`) · `charts` · `net-detail` · `si-tabs`
   (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `variants` (assembly variant card and
   prompt) · `panels` · `interaction` · `field-pool` ·
-  `field-cache` · `check-pool` (the channel check's rows in Web Workers with engines of their own) · `crosstalk` (coupling scan with step 2, Couplings card, critical stretches on the map) · `pi-dc` · `pi-pdn` · `pi-balance` · `pi-loss` (losses map, power flow) · `pi-thermal` (temperature step and map) · `views` · `main` (start-up, files, hand-over).
+  `field-cache` · `check-pool` (the channel check's rows in Web Workers with engines of their own) · `crosstalk` (coupling scan with step 2, Couplings card, critical stretches on the map) · `pi-dc` · `pi-pdn` · `pi-balance` · `pi-loss` (losses map, power flow) · `pi-thermal` (temperature step and map) · `views` · `prepare` (the Prepare PCB page: gaps per category from
+  `kisi_gaps` in a worker, the draft = the board's kisi.json, kept per board in the browser, forms by entry key,
+  `kisi_config_check`, `kisi_config_subset` for saving one category, `kisi_edits_to_fields` for the views' power
+  edits, the checklist with Apply per step and markers that count a step's open items) · `main`
+  (start-up, files, hand-over).
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html`: WASM modules and the field solver
   script (gzip + base64, unpacked at start), fonts (`web/fonts`, OFL), `data/*.json` and, optionally, example
   boards (`tools/fetch_examples.sh`) with their configuration `web/samples/<key>.kisi.json` → `kisi-examples.html`.
@@ -118,7 +122,13 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
   commands (`commands::needs_variant`) and the viewer asks before computing lanes. The WASM state keeps the board
   as read and rebuilds the analysed board when the viewer switches the variant.
 * `kisi_core::gaps`: deterministic list of missing or default data, with where to find it and the kisi.json entry
-  (supply rails also from net and pin names; the MPN where the Value field is not a part number).
+  (supply rails also from net and pin names; the MPN where the Value field is not a part number). Each gap's
+  categories (`views`: impedance, channel, power) come from its `affects` words (`GAP_AFFECTS`, `AFFECT_VIEWS`),
+  or from its items where the gap mixes categories; per category whether there is anything to check and whether
+  it is ready; `--for` keeps one category. Name-based items can be dismissed with a reason (`gaps.dismissed` in
+  kisi.json, checked by `config::check` and `gaps::dismissal_problems`); `config::subset` keeps one category's
+  entries. `tree::spec_to_fields` and `pi::setups_to_fields` write a power tree or rail setups as fields (the
+  inverse of the field readers; the Prepare page uses them for the Power view's edits).
 * Worked example of a `<board>.kisi.json` (power tree with sources, the open gaps): `docs/preparing-a-board.md` with
   the file in `docs/examples/xiao-nrf54lm20a/`.
 * Agents use the CLI (`node kisi.mjs <command> <board>` → JSON) following the skills in `claude-plugin/skills/`:
@@ -132,7 +142,8 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
   is a short entry page, the contributor files (`ARCHITECTURE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `ROADMAP.md`,
   `UPSTREAM.md`) stay at the top level. The skills in `claude-plugin/skills/` repeat what an agent needs, because
   they are read without the repository.
-* `docs/research/` – background research and concepts; `docs/examples/` – prepared board configurations.
+* `docs/research/` – background research and concepts; `docs/examples/` – prepared board configurations;
+  `docs/mockups/` – static mockups of planned viewer features.
 * Kept in step with the program by `crates/kisi-core/tests/docs.rs` (part of `cargo test`): `docs/cli.md` carries
   `kisi help` verbatim (`KISI_BLESS_DOCS=1 cargo test -p kisi-core --test docs` rewrites it) and names every command
   and option; `docs/preparing-a-board.md` names every gap id of `kisi gaps`.

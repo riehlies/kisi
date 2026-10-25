@@ -24,7 +24,12 @@ contains `Diff` or `DP` (`90Z_Diff`, `FE_100Z_Diff`), or when it is 80 Ω or mor
 | `LVDS`, `HDMI`, `TMDS`, `SATA`, `MDI`, `ETH` | 100 Ω differential |
 | `RF` | 50 Ω single-ended |
 
-`net_classes` in `<board>.kisi.json` gives or overrides the target of an existing class.
+`net_classes` in `<board>.kisi.json` gives or overrides the target of an existing class. With `nets` it also gives
+nets to a class – names or patterns with `*` and `?`, matched against the full net name and its last part, like
+KiCad's net class patterns – and defines the class if the project has none of that name: nets that sit in
+"Default" get a target without a change in KiCad, e.g.
+`"QSPI": {"nets": ["*QSPI_*"], "target_ohm": 50, "diff": false, "profile": "se50", "source": {…}}`. `config-check`
+reports a pattern that matches no net and a net given to two classes.
 
 ### Interface profile
 The channel check judges every lane against an interface profile (transmitter, receiver, limits) from
@@ -126,11 +131,12 @@ variants; `kisi config-check <board>` checks it (the viewer runs the same check 
 | `kisi_config` | format version, must be `1` |
 | `board` | the board file it was written for; a different board is an error in `config-check` |
 | `stackup` | per dielectric (`index` 0 = the layer below F.Cu): `material`, `epsilon_r` (1 … 20), `loss_tangent` (0 … 0.2), `thickness` (mm); `solder_mask.epsilon_r` |
-| `net_classes` | per existing net class: `target_ohm` (10 … 200; differential when `diff` is true), `diff`, `profile` (an id from `kisi profiles`) |
+| `net_classes` | per net class: `target_ohm` (10 … 200; differential when `diff` is true), `diff`, `profile` (an id from `kisi profiles`), `nets` (names or patterns given to this class; defines a class the project does not have) |
 | `connector_ends` | per connector where lanes leave the board: what sits there and the channel behind it (below) |
 | `fields` | footprint fields laid over the board: `ref`, `name` (`PI_*`), `value` |
 | `variant` | the assembly variant to analyse: a KiCad 10 variant of the board, one of `variants`, or `default` (the board file as it is) |
 | `variants` | assembly variants for boards without KiCad 10 variants, or on top of one of the same name (below) |
+| `gaps` | `dismissed`: items of name-based gaps that do not apply, with a reason (below) |
 | `notes` | free text: what was assumed and why |
 
 Every value needs a `source`: `kind` plus at least one of `document`, `url`, `note` (`page` optional). Kinds:
@@ -184,6 +190,23 @@ parts are fitted – and none is chosen, the lane commands stop with the list (C
 [Getting started](getting-started.md#assembly-variants). In the viewer, drop the BOMs together with the board and
 the kisi.json.
 
+### `gaps.dismissed`
+Some gaps are guesses from names: nets that look like an interface by their name (`nets-without-target`) and rails
+found only by their name (`rails-without-voltage`, items with `"dismissable": true`). Items that are not what the
+name suggests can be dismissed, with a reason:
+```json
+"gaps": {"dismissed": [
+  {"gap": "nets-without-target", "items": ["/FPGA/QSPI_DQ0", "/FPGA/QSPI_DQ1"],
+   "reason": "QSPI configuration flash at 50 MHz, short lines – no impedance control needed",
+   "source": {"kind": "design", "note": "optional"}}
+]}
+```
+`kisi gaps` leaves dismissed items out (a gap whose items are all dismissed is gone) and lists them under
+`dismissed` with the reason, so a review still sees them. `config-check` requires one of the name-based gaps, a
+reason and nets that exist; an item the gap reports but not as a name-based guess (a rail found by a pin name)
+cannot be dismissed, and an item the gap no longer reports is a warning. Other gaps are filled or fixed, not
+dismissed.
+
 ## Other input files
 | File | Used by | Format |
 |---|---|---|
@@ -200,5 +223,5 @@ the kisi.json.
   subcircuit library, test benches and S-parameter decks for ngspice, Xyce and LTspice, Touchstone files, a KiCad
   project and a README; the viewer's "Export…" gives the same files as a zip, as its export settings choose
   ([CLI reference](cli.md#export)).
-- The viewer exports Touchstone files per net and keeps its edits in the browser; it does not write kisi.json yet
-  (see [ROADMAP](../ROADMAP.md), "Board preparation in the viewer").
+- The viewer exports Touchstone files per net and writes `<board>.kisi.json` from its Prepare PCB page
+  ([Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb)); its other edits stay in the browser.

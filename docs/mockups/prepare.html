@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>kisi – Prepare page (mockup)</title>
+<link rel="stylesheet" href="../../web/fonts/fonts.css">
+<style>
+/* Mockup of board preparation in the viewer (ROADMAP block 1), third version: a "Prepare" page from the top bar
+   with tabs Impedance, Channel and Power (temperature under Power), readiness dots on the view buttons, one shared
+   draft and one kisi.json, dismissable name-based gaps, "nothing to check" per category. Static: the gap data is real `kisi gaps` output of kisi 0.2.5 (embedded below, with the proposed
+   `views` field per gap); the check imitates `kisi config-check`. Design note: docs/mockups/prepare.md. */
+[hidden] { display: none !important }
+:root {
+  --bg: #e9ede9; --panel: #f7f9f7; --panel-2: #eef2ef; --fg: #17201b; --muted: #59665f; --line: #d2d9d4;
+  --accent: #a9561f; --accent-soft: #f1e2d6; --ok: #23a05a; --warn: #d6941a; --err: #d63c3c; --info: #3f7f88; --canvas: #f4f6f3;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1412; --panel: #151b18; --panel-2: #1b2320; --fg: #e2e9e4; --muted: #8e9b94; --line: #27312c;
+    --accent: #e08f52; --accent-soft: #3a2a1e; --ok: #3cc477; --warn: #f0ae35; --err: #f25d5d; --info: #6cb2bb; --canvas: #0a0e0c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1412; --panel: #151b18; --panel-2: #1b2320; --fg: #e2e9e4; --muted: #8e9b94; --line: #27312c;
+  --accent: #e08f52; --accent-soft: #3a2a1e; --ok: #3cc477; --warn: #f0ae35; --err: #f25d5d; --info: #6cb2bb; --canvas: #0a0e0c; color-scheme: dark;
+}
+* { box-sizing: border-box }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--fg); font: 14px/1.4 var(--font-body) }
+button, input, select { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+a { color: var(--accent) }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em }
+#app { display: grid; grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 10px; min-height: 100vh;
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)) }
+.bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px }
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0 }
+.brand b { font: 700 22px var(--font-display); letter-spacing: .02em; color: var(--accent) }
+.brand b small { font: 500 11px var(--font-mono); color: var(--muted); margin-left: 4px; white-space: nowrap }
+.brand span { font: 600 18px var(--font-display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.brand em { color: var(--muted); font-size: 12px; font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.grow { flex: 1 }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel) }
+.seg button { border: 0; background: none; padding: 6px 12px; cursor: pointer; font: 600 14px var(--font-display); color: var(--muted); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent) }
+.seg button:disabled { opacity: .45; cursor: not-allowed }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block }
+.dot.m { background: var(--warn) } .dot.h { background: var(--err) }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: var(--radius); padding: 6px 12px; cursor: pointer; font: 600 14px var(--font-display) }
+.btn:hover:not(:disabled) { border-color: var(--accent) }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--panel) }
+.btn.small { padding: 2px 8px; font-size: 12.5px }
+.btn:disabled { opacity: .5; cursor: not-allowed }
+.side { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+.card h2 { margin: 0; font: 600 13px var(--font-display); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: flex; justify-content: space-between; align-items: baseline; gap: 8px }
+.card h2 em { font: 400 11px var(--font-mono); letter-spacing: 0; text-transform: none; font-style: normal }
+.card.prep { border-left: 3px solid var(--accent) }
+.note { font-size: 12px; color: var(--muted); margin: 0 }
+.ready { display: flex; flex-direction: column; gap: 2px }
+.ready button { display: grid; grid-template-columns: 10px 78px minmax(0, 1fr); gap: 8px; align-items: center; text-align: left; border: 0; background: none; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 13px }
+.ready button[aria-current="true"] { background: var(--accent-soft); font-weight: 600 }
+.ready button b { font: 600 13px var(--font-display) }
+.ready button span:last-child { color: var(--muted) }
+.ready button[aria-current="true"] span:last-child { color: var(--fg) }
+.prio { font: 600 10px var(--font-mono); text-transform: uppercase; border-radius: 4px; padding: 1px 5px; color: #fff; background: var(--err) }
+.prio.medium { background: var(--warn) } .prio.low { background: var(--muted) }
+.state { font-size: 11.5px; white-space: nowrap; color: var(--muted) }
+.state.done { color: var(--ok); font-weight: 600 }
+.draft { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; font-size: 12.5px }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.in, select.in { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); padding: 2px 5px; font-size: 12.5px }
+select.scope { width: auto; flex: 1 1 140px }
+.in.num { font-family: var(--font-mono); font-size: 12px; text-align: right; max-width: 92px }
+.in.wide { font-family: var(--font-mono); font-size: 12px }
+.in[aria-invalid="true"] { border-color: var(--err); outline: 1px solid var(--err) }
+.list { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+.banner { background: var(--accent-soft); border-radius: var(--radius); padding: 8px 12px; font-size: 12.5px }
+.gap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0 }
+.gap > header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; padding: 10px 12px; cursor: pointer }
+.gap > header h3 { margin: 0; font: 600 15px var(--font-display) }
+.gap > header h3 code { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 11.5px }
+.gap > header p { grid-column: 2 / -1; margin: 0; font-size: 12.5px; color: var(--muted) }
+.gap .body { border-top: 1px solid var(--line); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 10px }
+.gap[aria-expanded="false"] .body { display: none }
+.gap.flash { outline: 2px solid var(--accent) }
+.meta { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 12px; font-size: 12.5px }
+.meta dt { color: var(--muted) } .meta dd { margin: 0 }
+.tag { display: inline-block; font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; margin: 0 4px 2px 0; color: var(--muted); white-space: nowrap }
+.tag.agent { border-color: var(--info); color: var(--info) } .tag.kicad { border-color: var(--warn); color: var(--warn) }
+.tag.view { border-color: var(--accent); color: var(--accent) }
+table.ed { width: 100%; border-collapse: collapse; font-size: 12.5px }
+table.ed th { text-align: left; font-weight: 500; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--line); padding: 3px 4px; white-space: nowrap }
+table.ed td { padding: 3px 4px; border-bottom: 1px solid var(--line); vertical-align: middle }
+table.ed td.m { font-family: var(--font-mono); font-size: 11.5px }
+table.ed .sub { display: block; color: var(--muted); font-size: 11px; font-family: var(--font-body) }
+.src { display: grid; grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; align-items: center; background: var(--panel-2); border-radius: 4px; padding: 6px 8px; font-size: 12px }
+.src b { grid-column: 1 / -1; font-weight: 600; font-size: 11.5px; color: var(--muted) }
+.src .in { background: var(--panel) }
+.sugg { display: flex; flex-wrap: wrap; gap: 6px }
+.sugg button { border: 1px dashed var(--line); background: none; border-radius: 4px; padding: 2px 8px; font: 11.5px var(--font-mono); cursor: pointer; color: var(--fg) }
+.sugg button:hover { border-color: var(--accent); color: var(--accent) }
+.agentbox { border: 1px solid var(--info); border-radius: 4px; padding: 8px 10px; font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center }
+.agentbox p { margin: 0; flex: 1 1 260px }
+.msgs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; max-height: 240px; overflow: auto }
+.msgs li { padding: 3px 6px 3px 8px; border-left: 3px solid var(--err); background: var(--panel-2); border-radius: 0 4px 4px 0; overflow-wrap: anywhere }
+.msgs li.w { border-color: var(--warn) } .msgs li.ok { border-color: var(--ok) } .msgs li.o { border-color: var(--line); color: var(--muted) }
+pre.json { margin: 0; max-height: 46vh; min-height: 120px; overflow: auto; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 8px; font: 11px/1.45 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere }
+.chk { display: inline-flex; gap: 4px; align-items: center; font-size: 12px }
+.copied { color: var(--ok); font-size: 12px }
+.empty { padding: 18px; text-align: center; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: var(--radius) }
+@media (max-width: 860px) {
+  #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto }
+  .brand { flex: 1 1 100% }
+  .seg { flex-wrap: wrap }
+  .src { grid-template-columns: minmax(0, 1fr) }
+  table.ed, table.ed tbody, table.ed tr, table.ed td { display: block; width: 100% }
+  table.ed thead { display: none }
+  table.ed tr { border-bottom: 1px solid var(--line); padding: 6px 0 }
+  table.ed td { border: 0; padding: 2px 0 }
+  table.ed td[data-l]::before { content: attr(data-l); display: block; font-size: 11px; color: var(--muted) }
+  .in.num { max-width: none; text-align: left }
+}
+/* v3: Prepare as its own page with category tabs */
+#app { grid-template-rows: auto; min-height: 0 }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 400px); gap: 10px; align-items: start; min-width: 0 }
+.preview { position: sticky; top: 10px }
+.preview pre.json { max-height: calc(100vh - 230px) }
+.count { font: 600 10.5px var(--font-mono); border-radius: 999px; padding: 1px 6px; background: var(--err); color: #fff }
+.count.z { background: var(--ok) } .count.m { background: var(--warn) }
+.seg button.ana { cursor: default; opacity: .8 }
+#prepBtn { display: contents }
+.btn.prepbtn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap }
+.btn.prepbtn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent) }
+.dot.na { background: var(--muted); opacity: .6 }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line) }
+.tabs button { border: 1px solid var(--line); border-bottom: 0; background: var(--panel-2); border-radius: var(--radius) var(--radius) 0 0; padding: 7px 14px 6px; cursor: pointer; font: 600 15px var(--font-display); color: var(--muted); display: inline-flex; align-items: baseline; gap: 7px; margin-bottom: -1px }
+.tabs button small { font: 400 11.5px var(--font-body); color: var(--muted) }
+.tabs button[aria-selected="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 2px 0 var(--accent) }
+.tabhead .na { background: var(--panel); border: 1px dashed var(--line); border-radius: var(--radius); padding: 10px 12px; font-size: 13px }
+.gap.later { opacity: .75 }
+.gap.isdis { opacity: .6 }
+.state.dis { color: var(--muted); font-style: italic }
+.dismiss { display: flex; flex-direction: column; gap: 6px; border: 1px dashed var(--warn); border-radius: 4px; padding: 8px 10px; font-size: 12.5px }
+.dismiss b { font-weight: 600; font-size: 12px; color: var(--muted) }
+pre.prompt { margin: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 8px; font: 11px/1.45 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere }
+@media (max-width: 1180px) { .main { grid-template-columns: minmax(0, 1fr) } .preview { position: static } }
+@media (max-width: 860px) { .main { order: 1 } .side { order: 2 } .tabs button { flex: 1 1 0; justify-content: center; padding: 7px 6px 6px } .tabs button small { display: none } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="bar">
+    <div class="brand"><b>kisi<small>mockup</small></b><span id="boardName">–</span><em id="boardMeta"></em></div>
+    <div class="grow"></div>
+    <div class="seg" role="group" aria-label="Analysis" id="views"></div>
+    <div class="seg" role="group" aria-label="Board (mockup data)">
+      <button aria-pressed="true" data-board="ts">ThunderScope</button>
+      <button aria-pressed="false" data-board="tscfg">ThunderScope + kisi.json</button>
+      <button aria-pressed="false" data-board="xiao">XIAO nRF54LM20A</button>
+    </div>
+    <span id="prepBtn"></span>
+    <button class="btn primary" disabled title="drop the board, its .kicad_pro and a kisi.json – not part of the mockup">Load files</button>
+  </div>
+
+  <aside class="side">
+    <section class="card prep" aria-labelledby="h-prep">
+      <h2 id="h-prep">Prepare the board <em id="cfgName"></em></h2>
+      <div class="ready" id="ready" role="group" aria-label="Readiness per category"></div>
+      <p class="note">What the board file lacks, from <code>kisi gaps</code>, per category. Enter the simple values, each with its source; one draft for all three tabs. Nothing is written into the KiCad files.</p>
+      <div class="draft">
+        <span class="note" id="draftLine"></span>
+        <div class="row"><select class="in scope" id="scope" aria-label="what to save"></select><button class="btn small primary" id="save">Save kisi.json</button></div>
+        <span class="note" id="saveNote"></span>
+      </div>
+    </section>
+    <section class="card" aria-labelledby="h-check"><h2 id="h-check">Check <em id="checkSum"></em></h2><ul class="msgs" id="msgs"></ul></section>
+    <section class="card" aria-labelledby="h-agent" id="agentCard"><h2 id="h-agent">Agent path <em id="agentFor"></em></h2>
+      <p class="note" id="agentNote"></p>
+      <ul class="msgs" id="agentList"></ul>
+      <pre class="prompt" id="prompt"></pre>
+      <div class="row"><button class="btn small" id="copyPrompt">Copy prompt</button><span class="copied" id="copied" hidden>copied</span></div>
+    </section>
+  </aside>
+
+  <main class="main">
+    <div class="list">
+      <div class="banner"><b>Mockup.</b> Real <code>kisi gaps</code> output of kisi 0.2.5 (long item lists shortened) with the proposed <code>views</code> per gap and <em>nothing to check</em> per category; the check imitates <code>kisi config-check</code> – in the viewer it would be that code (WASM). Design note: <a href="prepare.md">prepare.md</a>.</div>
+      <div class="tabs" role="tablist" aria-label="Category" id="tabs"></div>
+      <div id="tabHead" class="tabhead"></div>
+      <div id="gaps" class="list"></div>
+    </div>
+    <section class="card preview" aria-labelledby="h-json">
+      <h2 id="h-json"><span id="jsonName">board.kisi.json</span> <em id="jsonSize"></em></h2>
+      <p class="note" id="mergeNote"></p>
+      <pre class="json" id="json"></pre>
+      <p class="note">Precedence: board file &lt; kisi.json &lt; edits in the viewer. Loaded again, the file fills this page and every view.</p>
+    </section>
+  </main>
+</div>
+<script type="application/json" id="data">{"boards":{"ts":{"board":"Thunderscope_Rev5.3","summary":{"high":2,"low":1,"medium":6},"gaps":[{"id":"nets-without-target","priority":"high","area":"impedance","issue":"4 routed net(s) look like high-speed interfaces by their name but have no target impedance (their net class has none). Name-based: confirm before acting.","affects":["impedance check","channel check","eye"],"where_to_find":"Interface standard or the device datasheets (e.g. 85/90/100 Ω differential). Nets in the class “Default” need their own net class in KiCad first (Board Setup → Net Classes, or net class directives in the schematic) – kisi.json can only set values of existing classes.","views":["impedance","channel"],"write":{"example":{"diff":true,"profile":"usb2","source":{"document":"USB 2.0 specification","kind":"standard","note":"90 Ω differential"},"target_ohm":90},"to":"net_classes.<class>"},"items":[{"class":"Default","nets":[{"length_mm":34.8,"looks_like":"ddr4_dq","net":"/FPGA/FPGA IO Banks/QSPI_DQ0"},{"length_mm":21.6,"looks_like":"ddr4_dq","net":"/FPGA/FPGA IO Banks/QSPI_DQ1"},{"length_mm":13.3,"looks_like":"ddr4_dq","net":"/FPGA/FPGA IO Banks/QSPI_DQ2"},{"length_mm":30.1,"looks_like":"ddr4_dq","net":"/FPGA/FPGA IO Banks/QSPI_DQ3"}]}],"total":1},{"id":"assembly-variant","priority":"high","area":"interfaces","issue":"12 fork(s) where all alternative series parts are fitted – possibly assembly variants; none is chosen: interfaces, check and report stop until one is (\"default\" computes the board as it is, with the other paths as open branches).","affects":["lanes","channel check","eye","PDN (fitted capacitors)"],"where_to_find":"The project's assembly outputs: BOM and position files per variant, the schematic's variant or DNP marks, the sheets that hold the parts of each option. KiCad 10: variants in the board file. Alternatively mark the unused parts DNP in KiCad.","views":["channel","power"],"write":{"example":{"variant":"TS-PCIe","variants":{"TS-PCIe":{"fitted":["C101"],"not_fitted_sheets":["/TS-USB4 Components/"],"source":{"document":"board_TS-PCIe_BOM.csv","kind":"design"}},"TS-USB4":{"bom":"board_TS-USB4_BOM.csv","bom_exceptions":["P1"],"source":{"document":"board_TS-USB4_BOM.csv","kind":"design"}}}},"note":"--variant NAME on the command line chooses for one run; \"default\" = the board file as it is","to":"variant (and variants.<name> for boards without KiCad 10 variants)"},"items":[{"fork":"R26/R28 on MGT_RX0_P (→ P1 / J8)","net":"/FPGA/MGT_RX0_P","partner":"/FPGA/MGT_RX0_N","parts":["R26","R28"],"towards":[["P1"],["J8"]],"value":"0"},{"fork":"R30/R32 on MGT_RX1_P (→ P1 / J8)","net":"/FPGA/MGT_RX1_P","partner":"/FPGA/MGT_RX1_N","parts":["R30","R32"],"towards":[["P1"],["J8"]],"value":"0"},{"fork":"R34/R36 on MGT_RX2_P (→ P1 / J8)","net":"/FPGA/MGT_RX2_P","partner":"/FPGA/MGT_RX2_N","parts":["R34","R36"],"towards":[["P1"],["J8"]],"value":"0"},{"fork":"R38/R40 on MGT_RX3_P (→ P1 / J8)","net":"/FPGA/MGT_RX3_P","partner":"/FPGA/MGT_RX3_N","parts":["R38","R40"],"towards":[["P1"],["J8"]],"value":"0"},{"fork":"C31/C29 on MGT_TX0_P (→ J8 / P1)","net":"/FPGA/MGT_TX0_P","partner":"/FPGA/MGT_TX0_N","parts":["C31","C29"],"towards":[["J8"],["P1"]],"value":"220nF"},{"fork":"C35/C33 on MGT_TX1_P (→ J8 / P1)","net":"/FPGA/MGT_TX1_P","partner":"/FPGA/MGT_TX1_N","parts":["C35","C33"],"towards":[["J8"],["P1"]],"value":"220nF"},{"fork":"C39/C37 on MGT_TX2_P (→ J8 / P1)","net":"/FPGA/MGT_TX2_P","partner":"/FPGA/MGT_TX2_N","parts":["C39","C37"],"towards":[["J8"],["P1"]],"value":"220nF"},{"fork":"C43/C41 on MGT_TX3_P (→ J8 / P1)","net":"/FPGA/MGT_TX3_P","partner":"/FPGA/MGT_TX3_N","parts":["C43","C41"],"towards":[["J8"],["P1"]],"value":"220nF"},{"fork":"C47/C45 on MGT_CLK1_P (→ J8 / P1)","net":"/MGT_CLK1_P","partner":"/MGT_CLK1_N","parts":["C47","C45"],"towards":[["J8"],["P1"]],"value":"100nF"},{"fork":"R23/R24 on PERST# (→ P1 / J8)","net":"/PERST#","partner":null,"parts":["R23","R24"],"towards":[["P1"],["J8"]],"value":"49.9"},{"fork":"R4/R5 on REFINOUT (→ J1 / J3)","net":"/REFINOUT","partner":null,"parts":["R4","R5"],"towards":[["J1"],["J3"]],"value":"0"},{"fork":"R3/R2 on SYNC (→ J3 / J2)","net":"/SYNC","partner":null,"parts":["R3","R2"],"towards":[["J3"],["J2"]],"value":"0"}],"total":12},{"id":"stackup-defaults","priority":"medium","area":"stackup","issue":"5 dielectric layer(s) carry default or missing material data.","affects":["impedance (εr)","loss and eye (tanδ)"],"where_to_find":"Laminate datasheet of the named material (εr and tanδ near the signal frequencies, e.g. 1–10 GHz, for the resin content / glass style of this layer), or the fabricator's stackup report. Mark typical values as such.","views":["impedance","channel"],"write":{"example":{"epsilon_r":3.65,"index":0,"loss_tangent":0.0095,"source":{"document":"laminate datasheet","kind":"datasheet","note":"at 10 GHz, typical","page":"…","url":"…"}},"to":"stackup.dielectrics[]"},"items":[{"between":"F.Cu / In1.Cu","epsilon_r":3.2299999999999995,"index":0,"kind":"core","loss_tangent":0.02,"material":"FR408HR","thickness_mm":0.1107,"why":["tanδ 0.02 is KiCad's default value"]},{"between":"In1.Cu / In2.Cu","epsilon_r":3.66,"index":1,"kind":"prepreg","loss_tangent":0.02,"material":"FR408HR","thickness_mm":0.1016,"why":["tanδ 0.02 is KiCad's default value"]},{"between":"In2.Cu / In3.Cu","epsilon_r":4.5,"index":2,"kind":"core","loss_tangent":0.02,"material":"FR4","thickness_mm":0.9256,"why":["tanδ 0.02 is KiCad's default value","εr 4.5 is KiCad's default value"]},{"between":"In3.Cu / In4.Cu","epsilon_r":3.66,"index":3,"kind":"prepreg","loss_tangent":0.02,"material":"FR408HR","thickness_mm":0.1107,"why":["tanδ 0.02 is KiCad's default value"]},{"between":"In4.Cu / B.Cu","epsilon_r":3.23,"index":4,"kind":"core","loss_tangent":0.02,"material":"FR408HR","thickness_mm":0.1,"why":["tanδ 0.02 is KiCad's default value"]}],"total":5},{"id":"classes-without-standard","priority":"medium","area":"interfaces","issue":"4 net class(es) with a target impedance get only a generic profile (no data rate / standard): the channel check uses 1 Gbit/s and generic limits.","affects":["channel check","eye"],"where_to_find":"What runs on these nets: schematic (bus names, the devices at the ends: `kisi interfaces`) and the device datasheets (interface, data rate). Available profiles: `kisi profiles`.","views":["channel"],"write":{"example":{"profile":"lvds","source":{"document":"ADC datasheet","kind":"datasheet","note":"LVDS outputs, 1 Gbit/s per lane","page":"…"}},"to":"net_classes.<class>.profile"},"items":[{"class":"50Z","diff":false,"examples":["/REFINOUT","/SYNC","/TS-PCIe Components/REFINOUT2","/TS-PCIe Components/SYNC2"],"nets":9,"profile_now":"se50","target_ohm":50},{"class":"FE_100Z_Diff","diff":true,"examples":["/ADC Driver 1/OUT_N","/ADC Driver 1/OUT_P","/ADC Driver 2/OUT_N","/ADC Driver 2/OUT_P"],"nets":16,"profile_now":"diff100","target_ohm":100},{"class":"FE_50Z","diff":false,"examples":["/CH1/ATTEN_1X","/CH1/ATTEN_50X_IN","/CH1/ATTEN_50X_OUT","/CH1/ATTEN_IN"],"nets":44,"profile_now":"se50","target_ohm":50},{"class":"FE_50Z_INPUT","diff":false,"examples":["/CH1/BNC_IN","/CH2/BNC_IN","/CH3/BNC_IN","/CH4/BNC_IN"],"nets":4,"profile_now":"se50","target_ohm":50}],"total":4},{"id":"power-tree","priority":"medium","area":"power","issue":"No regulator chain (field PI_REG): no power budget, no regulator load check.","affects":["power budget","regulator loading"],"where_to_find":"Regulator datasheets: topology (buck/LDO/…), efficiency at the expected load, rated output current; input and output rails from the schematic.","views":["power"],"write":{"example":{"name":"PI_REG","ref":"U3","source":{"document":"regulator datasheet","kind":"datasheet","note":"efficiency at 1 A, typical","page":"…"},"value":"+12V > +3V3 buck 90% 3A"},"to":"fields[] (name PI_REG on the regulator)"},"items":[],"total":0},{"id":"rails-without-voltage","priority":"medium","area":"power","issue":"7 supply rail(s) without a known voltage (found by their name, a pin name such as VBUS, VSYS, VBAT, VDD, or a field): kisi needs the voltage to put their loads and sources into the power tree, the budget and the IR drop. Found by name: confirm that each one is a supply.","affects":["power budget","DC IR drop","PDN"],"where_to_find":"Schematic: the regulator, load switch or connector that feeds the rail and its output voltage (regulator datasheet / voltage setting, USB VBUS 5 V, battery nominal voltage). A rail behind a ferrite, a 0 Ω link or a shunt takes the voltage of the rail before it.","views":["power"],"write":{"example":{"name":"PI_REG","ref":"U2","source":{"document":"PMIC datasheet","kind":"datasheet","note":"VSYS follows VBUS while USB is present"},"value":"VBUS > VSYS@5V pass"},"note":"Write the voltage where the rail appears in PI_REG: as the output of the part that feeds it (`+5V > VSYS@5V buck 90%`) or as a supply input (`VBAT@3.7V input`). Behind a ferrite, 0 Ω link or shunt use a pass element (`+3V3 > IMU_VDD pass r=0.5`: the voltage carries over; items[].write suggests it when kisi finds such a part). Net names with spaces in double quotes (`\"/Power/VDD CORE\"@0.9V`). Without a power tree: PI_SOURCE `NAME=<V>V` on the source part. Nets that are not supplies: ignore.","to":"fields[] – the rail with its voltage as NAME@<V>V in a PI_REG entry"},"items":[{"components":46,"fed_through":[{"from":"+5V3","part":"R71"}],"found_by":["pin U23 VIN"],"ics":["U23","U8","U21","U20","U11"],"rail":"+VUSB","write":"PI_REG on R71: +5V3 > +VUSB pass"},{"components":6,"fed_through":[{"from":"+5V","part":"FB1000_1"}],"found_by":["pin U1008_1 VCC"],"ics":["U1008_1"],"rail":"/CH1/+VPGA","write":"PI_REG on FB1000_1: +5V > /CH1/+VPGA pass"},{"components":6,"fed_through":[{"from":"+5V","part":"FB1000_2"}],"found_by":["pin U1008_2 VCC"],"ics":["U1008_2"],"rail":"/CH2/+VPGA","write":"PI_REG on FB1000_2: +5V > /CH2/+VPGA pass"},{"components":6,"fed_through":[{"from":"+5V","part":"FB1000_3"}],"found_by":["pin U1008_3 VCC"],"ics":["U1008_3"],"rail":"/CH3/+VPGA","write":"PI_REG on FB1000_3: +5V > /CH3/+VPGA pass"},{"components":6,"fed_through":[{"from":"+5V","part":"FB1000_4"}],"found_by":["pin U1008_4 VCC"],"ics":["U1008_4"],"rail":"/CH4/+VPGA","write":"PI_REG on FB1000_4: +5V > /CH4/+VPGA pass"},{"components":7,"found_by":["pin U17 VIN"],"ics":["U17"],"rail":"/TS-USB4 Components/+VUSB_R","write":"\"/TS-USB4 Components/+VUSB_R\"@<V>V where a PI_REG entry names it (regulator output or supply input)"},{"components":3,"fed_through":[{"from":"+1V8","part":"FB12"}],"found_by":["name"],"ics":["U18"],"rail":"Net-(U18H-VCCADC_0)","write":"PI_REG on FB12: +1V8 > Net-(U18H-VCCADC_0) pass"}],"total":7},{"id":"rails-without-source","priority":"medium","area":"power","issue":"27 supply rail(s) have no source (PI_SOURCE on a connector/regulator output, or PI_REG): no IR drop for them.","affects":["DC IR drop","power budget"],"where_to_find":"Schematic / netlist: which connector or regulator feeds the rail (the pad nets of the regulator show input and output).","views":["power"],"write":{"example":{"name":"PI_REG","ref":"J1","source":{"kind":"assumption","note":"barrel jack J1 feeds +5V (schematic / netlist)"},"value":"+5V input"},"note":"supply inputs: PI_REG '<rail> input' (counts in the power budget and as IR-drop source); regulator outputs: PI_REG on the regulator (add out=<part> when the output current leaves through an inductor or diode); PI_SOURCE only marks IR-drop source pads without a power tree","to":"fields[]"},"items":[{"components":14,"rail":"+1V0","voltage":1},{"components":5,"rail":"+1V0_MGT","voltage":1},{"components":12,"rail":"+1V2_MGT","voltage":1.2},{"components":12,"rail":"+1V8","voltage":1.8},{"components":13,"rail":"+1V8APLL","voltage":1.8},{"components":9,"rail":"+1V8_ACQ","voltage":1.8},{"components":12,"rail":"+2V5","voltage":2.5},{"components":31,"rail":"+3V3","voltage":3.3},{"components":44,"rail":"+3V3_ACQ","voltage":3.3},{"components":22,"rail":"+3V3_PGA","voltage":3.3},{"components":81,"rail":"+5V","voltage":5},{"components":12,"rail":"+5V3","voltage":5.3}],"total":27},{"id":"ic-loads","priority":"medium","area":"power","issue":"42 IC(s) on supply rails have no load current (field PI_LOAD): their current is missing from IR drop and budget.","affects":["DC IR drop","power budget","PDN target impedance"],"where_to_find":"Device datasheets (look up the mpn when an item has one: the Value field is not always the part number): supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.","views":["power"],"write":{"example":{"name":"PI_LOAD","ref":"U1","source":{"kind":"datasheet","note":"typical, all channels active","page":"…","url":"…"},"value":"+3V3=120mA"},"to":"fields[] (name PI_LOAD)"},"items":[{"rails":["+3V3_PGA"],"ref":"U1","value":"SN74LVC1G17"},{"rails":["+3V3"],"ref":"U10","value":"FIN1019MTCX"},{"rails":["+5V","-5V"],"ref":"U1001_1","value":"TMUX4053"},{"rails":["+5V","-5V"],"ref":"U1001_2","value":"TMUX4053"},{"rails":["+5V","-5V"],"ref":"U1001_3","value":"TMUX4053"},{"rails":["+5V","-5V"],"ref":"U1001_4","value":"TMUX4053"},{"rails":["+3V3_PGA","+VPGA"],"ref":"U1008_1","value":"LMH6518"},{"rails":["+3V3_PGA","+VPGA"],"ref":"U1008_2","value":"LMH6518"},{"rails":["+3V3_PGA","+VPGA"],"ref":"U1008_3","value":"LMH6518"},{"rails":["+3V3_PGA","+VPGA"],"ref":"U1008_4","value":"LMH6518"},{"rails":["+5V","-5V"],"ref":"U1009_1","value":"BUF802"},{"rails":["+5V","-5V"],"ref":"U1009_2","value":"BUF802"},{"rails":["+5V","-5V"],"ref":"U1009_3","value":"BUF802"},{"rails":["+5V","-5V"],"ref":"U1009_4","value":"BUF802"},{"rails":["+5V","-5V"],"ref":"U1011_1","value":"OPA140AIDBVR"},{"rails":["+5V","-5V"],"ref":"U1011_2","value":"OPA140AIDBVR"}],"total":42},{"id":"cap-ratings","priority":"low","area":"power","issue":"256 decoupling capacitor(s) of 100 nF and more have no rated voltage or dielectric: the DC-bias derating in Z(f) uses an assumed rating.","affects":["PDN impedance","decoupling recommendations"],"where_to_find":"BOM / capacitor datasheet: rated voltage, dielectric (X5R/X7R/C0G), ideally the capacitance at the rail voltage from the vendor's DC-bias curve, ESR and ESL.","views":["power"],"write":{"example":{"name":"PI_CAP","ref":"C1045_1","source":{"document":"capacitor datasheet / vendor DC-bias curve","kind":"datasheet","note":"capacitance at 3.3 V, 25 °C"},"value":"rated=6.3V X5R c@3.3V=4.1u esl=0.45n"},"to":"fields[] (name PI_CAP) or the KiCad Value field (e.g. 10u 6.3V X5R)"},"items":[{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+5V","ref":"C1045_1","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+5V","ref":"C1047_3","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+3V3_ACQ","ref":"C70_3","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM188R61E106MA73D","rail":"+VPGA","ref":"C1039_2","value":"10uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+5V","ref":"C1046_1","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+1V8A","ref":"C16","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"-5V","ref":"C1052_3","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+3V3_ACQ","ref":"C105_3","value":"1uF"}],"total":256}],"config":null,"applicable":{"impedance":{"ok":true,"why":"9 net classes with a target impedance"},"channel":{"ok":true,"why":"26 buses and lanes"},"power":{"ok":true}}},"tscfg":{"board":"Thunderscope_Rev5.3","summary":{"high":1,"low":2,"medium":4},"gaps":[{"id":"nets-without-target","priority":"high","area":"impedance","issue":"4 routed net(s) look like high-speed interfaces by their name but have no target impedance (their net class has none). Name-based: confirm before acting.","affects":["impedance check","channel check","eye"],"where_to_find":"Interface standard or the device datasheets (e.g. 85/90/100 Ω differential). Nets in the class “Default” need their own net class in KiCad first (Board Setup → Net Classes, or net class directives in the schematic) – kisi.json can only set values of existing classes.","views":["impedance","channel"],"write":{"example":{"diff":true,"profile":"usb2","source":{"document":"USB 2.0 specification","kind":"standard","note":"90 Ω differential"},"target_ohm":90},"to":"net_classes.<class>"},"items":[{"class":"Default","nets":[{"length_mm":34.8,"looks_like":"ddr4_dq","net":"/FPGA/FPGA IO Banks/QSPI_DQ0"},{"length_mm":21.6,"looks_like":"ddr4_dq","net":"/FPGA/FPGA IO Banks/QSPI_DQ1"},{"length_mm":13.3,"looks_like":"ddr4_dq","net":"/FPGA/FPGA IO Banks/QSPI_DQ2"},{"length_mm":30.1,"looks_like":"ddr4_dq","net":"/FPGA/FPGA IO Banks/QSPI_DQ3"}]}],"total":1},{"id":"stackup-defaults","priority":"medium","area":"stackup","issue":"5 dielectric layer(s) carry default or missing material data.","affects":["impedance (εr)","loss and eye (tanδ)"],"where_to_find":"Laminate datasheet of the named material (εr and tanδ near the signal frequencies, e.g. 1–10 GHz, for the resin content / glass style of this layer), or the fabricator's stackup report. Mark typical values as such.","views":["impedance","channel"],"write":{"example":{"epsilon_r":3.65,"index":0,"loss_tangent":0.0095,"source":{"document":"laminate datasheet","kind":"datasheet","note":"at 10 GHz, typical","page":"…","url":"…"}},"to":"stackup.dielectrics[]"},"items":[{"between":"F.Cu / In1.Cu","epsilon_r":3.2299999999999995,"index":0,"kind":"core","loss_tangent":0.02,"material":"FR408HR","thickness_mm":0.1107,"why":["tanδ 0.02 is KiCad's default value"]},{"between":"In1.Cu / In2.Cu","epsilon_r":3.66,"index":1,"kind":"prepreg","loss_tangent":0.02,"material":"FR408HR","thickness_mm":0.1016,"why":["tanδ 0.02 is KiCad's default value"]},{"between":"In2.Cu / In3.Cu","epsilon_r":4.5,"index":2,"kind":"core","loss_tangent":0.02,"material":"FR4","thickness_mm":0.9256,"why":["tanδ 0.02 is KiCad's default value","εr 4.5 is KiCad's default value"]},{"between":"In3.Cu / In4.Cu","epsilon_r":3.66,"index":3,"kind":"prepreg","loss_tangent":0.02,"material":"FR408HR","thickness_mm":0.1107,"why":["tanδ 0.02 is KiCad's default value"]},{"between":"In4.Cu / B.Cu","epsilon_r":3.23,"index":4,"kind":"core","loss_tangent":0.02,"material":"FR408HR","thickness_mm":0.1,"why":["tanδ 0.02 is KiCad's default value"]}],"total":5},{"id":"classes-without-standard","priority":"medium","area":"interfaces","issue":"4 net class(es) with a target impedance get only a generic profile (no data rate / standard): the channel check uses 1 Gbit/s and generic limits.","affects":["channel check","eye"],"where_to_find":"What runs on these nets: schematic (bus names, the devices at the ends: `kisi interfaces`) and the device datasheets (interface, data rate). Available profiles: `kisi profiles`.","views":["channel"],"write":{"example":{"profile":"lvds","source":{"document":"ADC datasheet","kind":"datasheet","note":"LVDS outputs, 1 Gbit/s per lane","page":"…"}},"to":"net_classes.<class>.profile"},"items":[{"class":"50Z","diff":false,"examples":["/REFINOUT","/SYNC","/TS-PCIe Components/REFINOUT2","/TS-PCIe Components/SYNC2"],"nets":9,"profile_now":"se50","target_ohm":50},{"class":"FE_100Z_Diff","diff":true,"examples":["/ADC Driver 1/OUT_N","/ADC Driver 1/OUT_P","/ADC Driver 2/OUT_N","/ADC Driver 2/OUT_P"],"nets":16,"profile_now":"diff100","target_ohm":100},{"class":"FE_50Z","diff":false,"examples":["/CH1/ATTEN_1X","/CH1/ATTEN_50X_IN","/CH1/ATTEN_50X_OUT","/CH1/ATTEN_IN"],"nets":44,"profile_now":"se50","target_ohm":50},{"class":"FE_50Z_INPUT","diff":false,"examples":["/CH1/BNC_IN","/CH2/BNC_IN","/CH3/BNC_IN","/CH4/BNC_IN"],"nets":4,"profile_now":"se50","target_ohm":50}],"total":4},{"id":"rails-without-voltage","priority":"medium","area":"power","issue":"1 supply rail(s) without a known voltage (found by their name, a pin name such as VBUS, VSYS, VBAT, VDD, or a field): kisi needs the voltage to put their loads and sources into the power tree, the budget and the IR drop. Found by name: confirm that each one is a supply.","affects":["power budget","DC IR drop","PDN"],"where_to_find":"Schematic: the regulator, load switch or connector that feeds the rail and its output voltage (regulator datasheet / voltage setting, USB VBUS 5 V, battery nominal voltage). A rail behind a ferrite, a 0 Ω link or a shunt takes the voltage of the rail before it.","views":["power"],"write":{"example":{"name":"PI_REG","ref":"U2","source":{"document":"PMIC datasheet","kind":"datasheet","note":"VSYS follows VBUS while USB is present"},"value":"VBUS > VSYS@5V pass"},"note":"Write the voltage where the rail appears in PI_REG: as the output of the part that feeds it (`+5V > VSYS@5V buck 90%`) or as a supply input (`VBAT@3.7V input`). Behind a ferrite, 0 Ω link or shunt use a pass element (`+3V3 > IMU_VDD pass r=0.5`: the voltage carries over; items[].write suggests it when kisi finds such a part). Net names with spaces in double quotes (`\"/Power/VDD CORE\"@0.9V`). Without a power tree: PI_SOURCE `NAME=<V>V` on the source part. Nets that are not supplies: ignore.","to":"fields[] – the rail with its voltage as NAME@<V>V in a PI_REG entry"},"items":[{"components":3,"fed_through":[{"from":"+1V8","part":"FB12"}],"found_by":["name"],"ics":["U18"],"rail":"Net-(U18H-VCCADC_0)","write":"PI_REG on FB12: +1V8 > Net-(U18H-VCCADC_0) pass"}],"total":1},{"id":"ic-loads","priority":"medium","area":"power","issue":"7 IC(s) on supply rails have no load current (field PI_LOAD): their current is missing from IR drop and budget.","affects":["DC IR drop","power budget","PDN target impedance"],"where_to_find":"Device datasheets (look up the mpn when an item has one: the Value field is not always the part number): supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.","views":["power"],"write":{"example":{"name":"PI_LOAD","ref":"U1","source":{"kind":"datasheet","note":"typical, all channels active","page":"…","url":"…"},"value":"+3V3=120mA"},"to":"fields[] (name PI_LOAD)"},"items":[{"rails":["+3V3_PGA"],"ref":"U1","value":"SN74LVC1G17"},{"rails":["+5V","-5V"],"ref":"U1001_1","value":"TMUX4053"},{"rails":["+5V","-5V"],"ref":"U1001_2","value":"TMUX4053"},{"rails":["+5V","-5V"],"ref":"U1001_3","value":"TMUX4053"},{"rails":["+5V","-5V"],"ref":"U1001_4","value":"TMUX4053"},{"rails":["+5V"],"ref":"U2","value":"MCP4452-104E"},{"rails":["+5V"],"ref":"U3","value":"MCP4728"}],"total":7},{"id":"cap-ratings","priority":"low","area":"power","issue":"256 decoupling capacitor(s) of 100 nF and more have no rated voltage or dielectric: the DC-bias derating in Z(f) uses an assumed rating.","affects":["PDN impedance","decoupling recommendations"],"where_to_find":"BOM / capacitor datasheet: rated voltage, dielectric (X5R/X7R/C0G), ideally the capacitance at the rail voltage from the vendor's DC-bias curve, ESR and ESL.","views":["power"],"write":{"example":{"name":"PI_CAP","ref":"C1045_1","source":{"document":"capacitor datasheet / vendor DC-bias curve","kind":"datasheet","note":"capacitance at 3.3 V, 25 °C"},"value":"rated=6.3V X5R c@3.3V=4.1u esl=0.45n"},"to":"fields[] (name PI_CAP) or the KiCad Value field (e.g. 10u 6.3V X5R)"},"items":[{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+5V","ref":"C1045_1","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+5V","ref":"C1047_3","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+3V3_ACQ","ref":"C70_3","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM188R61E106MA73D","rail":"+VPGA","ref":"C1039_2","value":"10uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+5V","ref":"C1046_1","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+1V8A","ref":"C16","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"-5V","ref":"C1052_3","value":"1uF"},{"manufacturer":"Murata","mpn":"GRM155R61E105KA12D","rail":"+3V3_ACQ","ref":"C105_3","value":"1uF"}],"total":256},{"id":"thermal-data","priority":"low","area":"power","issue":"14 part(s) dissipate 0.1 W or more without thermal data (field PI_THERMAL): `kisi thermal` estimates their junction temperature from package defaults and assumes Tj max 125 °C.","affects":["temperature estimate","junction temperature"],"where_to_find":"Device datasheet: the Thermal Information table (RθJB, RθJC(top) – or ψJB – for the JEDEC 2s2p board) and the maximum junction temperature (Absolute Maximum Ratings / Recommended Operating Conditions). Heat that leaves the board (connectors, LEDs, RF output): p=<W>.","views":["power"],"write":{"example":{"name":"PI_THERMAL","ref":"U6","source":{"document":"…","kind":"datasheet","note":"RθJB, RθJC(top), JEDEC 2s2p board","page":"Thermal Information"},"value":"theta_jb=17.4 theta_jc=53.6 tj_max=125"},"to":"fields[] (name PI_THERMAL)"},"items":[{"heat_w":0.718,"package_default":"qfn","ref":"U6","value":"HMCAD1520"},{"heat_w":0.534,"package_default":"qfn","ref":"U7","value":"ZL30260LDG1"},{"heat_w":0.391,"package_default":"qfn","ref":"U14","value":"TPS7A9101"},{"heat_w":0.378,"package_default":"sot","ref":"U9","value":"NCP161ASN330T1G"},{"heat_w":0.34,"package_default":"qfn","ref":"U1009_1","value":"BUF802"},{"heat_w":0.34,"package_default":"qfn","ref":"U1009_2","value":"BUF802"},{"heat_w":0.34,"package_default":"qfn","ref":"U1009_3","value":"BUF802"},{"heat_w":0.34,"package_default":"qfn","ref":"U1009_4","value":"BUF802"},{"heat_w":0.337,"package_default":"qfn","ref":"U15","value":"TPS7A9101"},{"heat_w":0.128,"package_default":"qfn","ref":"U13","value":"LM27761"}],"total":14}],"config":{"file":"Thunderscope_Rev5.3.kisi.json (example)","entries":70},"applicable":{"impedance":{"ok":true,"why":"9 net classes with a target impedance"},"channel":{"ok":true,"why":"26 buses and lanes"},"power":{"ok":true}}},"xiao":{"board":"XIAO nRF54LM20A","summary":{"high":0,"low":2,"medium":5},"gaps":[{"id":"stackup-defaults","priority":"medium","area":"stackup","issue":"5 dielectric layer(s) carry default or missing material data.","affects":["impedance (εr)","loss and eye (tanδ)"],"where_to_find":"Laminate datasheet of the named material (εr and tanδ near the signal frequencies, e.g. 1–10 GHz, for the resin content / glass style of this layer), or the fabricator's stackup report. Mark typical values as such.","views":["impedance","channel"],"write":{"example":{"epsilon_r":3.65,"index":0,"loss_tangent":0.0095,"source":{"document":"laminate datasheet","kind":"datasheet","note":"at 10 GHz, typical","page":"…","url":"…"}},"to":"stackup.dielectrics[]"},"items":[{"between":"F.Cu / In1.Cu","epsilon_r":4.5,"index":0,"kind":"prepreg","loss_tangent":0.02,"material":"FR4","thickness_mm":0.1,"why":["tanδ 0.02 is KiCad's default value","εr 4.5 is KiCad's default value"]},{"between":"In1.Cu / In2.Cu","epsilon_r":4.5,"index":1,"kind":"core","loss_tangent":0.02,"material":"FR4","thickness_mm":0.535,"why":["tanδ 0.02 is KiCad's default value","εr 4.5 is KiCad's default value"]},{"between":"In2.Cu / In3.Cu","epsilon_r":4.5,"index":2,"kind":"prepreg","loss_tangent":0.02,"material":"FR4","thickness_mm":0.1,"why":["tanδ 0.02 is KiCad's default value","εr 4.5 is KiCad's default value"]},{"between":"In3.Cu / In4.Cu","epsilon_r":4.5,"index":3,"kind":"core","loss_tangent":0.02,"material":"FR4","thickness_mm":0.535,"why":["tanδ 0.02 is KiCad's default value","εr 4.5 is KiCad's default value"]},{"between":"In4.Cu / B.Cu","epsilon_r":4.5,"index":4,"kind":"prepreg","loss_tangent":0.02,"material":"FR4","thickness_mm":0.1,"why":["tanδ 0.02 is KiCad's default value","εr 4.5 is KiCad's default value"]}],"total":5},{"id":"power-tree","priority":"medium","area":"power","issue":"No regulator chain (field PI_REG): no power budget, no regulator load check.","affects":["power budget","regulator loading"],"where_to_find":"Regulator datasheets: topology (buck/LDO/…), efficiency at the expected load, rated output current; input and output rails from the schematic.","views":["power"],"write":{"example":{"name":"PI_REG","ref":"U3","source":{"document":"regulator datasheet","kind":"datasheet","note":"efficiency at 1 A, typical","page":"…"},"value":"+12V > +3V3 buck 90% 3A"},"to":"fields[] (name PI_REG on the regulator)"},"items":[],"total":0},{"id":"rails-without-voltage","priority":"medium","area":"power","issue":"6 supply rail(s) without a known voltage (found by their name, a pin name such as VBUS, VSYS, VBAT, VDD, or a field): kisi needs the voltage to put their loads and sources into the power tree, the budget and the IR drop. Found by name: confirm that each one is a supply.","affects":["power budget","DC IR drop","PDN"],"where_to_find":"Schematic: the regulator, load switch or connector that feeds the rail and its output voltage (regulator datasheet / voltage setting, USB VBUS 5 V, battery nominal voltage). A rail behind a ferrite, a 0 Ω link or a shunt takes the voltage of the rail before it.","views":["power"],"write":{"example":{"name":"PI_REG","ref":"U2","source":{"document":"PMIC datasheet","kind":"datasheet","note":"VSYS follows VBUS while USB is present"},"value":"VBUS > VSYS@5V pass"},"note":"Write the voltage where the rail appears in PI_REG: as the output of the part that feeds it (`+5V > VSYS@5V buck 90%`) or as a supply input (`VBAT@3.7V input`). Behind a ferrite, 0 Ω link or shunt use a pass element (`+3V3 > IMU_VDD pass r=0.5`: the voltage carries over; items[].write suggests it when kisi finds such a part). Net names with spaces in double quotes (`\"/Power/VDD CORE\"@0.9V`). Without a power tree: PI_SOURCE `NAME=<V>V` on the source part. Nets that are not supplies: ignore.","to":"fields[] – the rail with its voltage as NAME@<V>V in a PI_REG entry"},"items":[{"components":4,"found_by":["pin U2 LSIN1/VINLDO1_B4"],"ics":["U2"],"rail":"/03 Power/LDO1_IN","write":"\"/03 Power/LDO1_IN\"@<V>V where a PI_REG entry names it (regulator output or supply input)"},{"components":7,"fed_through":[{"from":"IMU&MIC_3V3","part":"FB3"}],"found_by":["name"],"ics":["U11"],"rail":"/06 Peripherals/IMU_VDD","write":"PI_REG on FB3: IMU&MIC_3V3 > \"/06 Peripherals/IMU_VDD\" pass"},{"components":4,"fed_through":[{"from":"IMU&MIC_3V3","part":"FB4"}],"found_by":["name"],"ics":["U12"],"rail":"/06 Peripherals/MIC_VDD","write":"PI_REG on FB4: IMU&MIC_3V3 > \"/06 Peripherals/MIC_VDD\" pass"},{"components":3,"found_by":["name"],"ics":["U2"],"rail":"VBAT","write":"VBAT@<V>V where a PI_REG entry names it (regulator output or supply input)"},{"components":6,"found_by":["name"],"ics":["U7","U6","U2"],"rail":"VBUS","write":"VBUS@<V>V where a PI_REG entry names it (regulator output or supply input)"},{"components":9,"found_by":["name"],"ics":["U2","U1"],"rail":"VSYS","write":"VSYS@<V>V where a PI_REG entry names it (regulator output or supply input)"}],"total":6},{"id":"rails-without-source","priority":"medium","area":"power","issue":"5 supply rail(s) have no source (PI_SOURCE on a connector/regulator output, or PI_REG): no IR drop for them.","affects":["DC IR drop","power budget"],"where_to_find":"Schematic / netlist: which connector or regulator feeds the rail (the pad nets of the regulator show input and output).","views":["power"],"write":{"example":{"name":"PI_REG","ref":"J1","source":{"kind":"assumption","note":"barrel jack J1 feeds +5V (schematic / netlist)"},"value":"+5V input"},"note":"supply inputs: PI_REG '<rail> input' (counts in the power budget and as IR-drop source); regulator outputs: PI_REG on the regulator (add out=<part> when the output current leaves through an inductor or diode); PI_SOURCE only marks IR-drop source pads without a power tree","to":"fields[]"},"items":[{"components":7,"rail":"3V3_OUT","voltage":3.3},{"components":5,"rail":"IMU&MIC_3V3","voltage":3.3},{"components":8,"rail":"SAMD11_3V3","voltage":3.3},{"components":5,"rail":"TYPEC_5V","voltage":5},{"components":26,"rail":"VSYS_3V3","voltage":3.3}],"total":5},{"id":"ic-loads","priority":"medium","area":"power","issue":"11 IC(s) on supply rails have no load current (field PI_LOAD): their current is missing from IR drop and budget.","affects":["DC IR drop","power budget","PDN target impedance"],"where_to_find":"Device datasheets (look up the mpn when an item has one: the Value field is not always the part number): supply current per rail in the expected operating mode (state typical or maximum in the source note); FPGAs/SoCs: the vendor's power estimator.","views":["power"],"write":{"example":{"name":"PI_LOAD","ref":"U1","source":{"kind":"datasheet","note":"typical, all channels active","page":"…","url":"…"},"value":"+3V3=120mA"},"to":"fields[] (name PI_LOAD)"},"items":[{"rails":["3V3_OUT","VSYS"],"ref":"U1","value":"TPS628438YKAR"},{"rails":["VSYS_3V3"],"ref":"U10","value":"PY25Q64HA-UXH-IR"},{"rails":["IMU_VDD"],"ref":"U11","value":"LSM6DS3TR-C"},{"rails":["MIC_VDD"],"ref":"U12","value":"MSM261DGT006"},{"rails":["IMU&MIC_3V3","LDO1_IN","VBAT","VBUS","VSYS","VSYS_3V3"],"ref":"U2","value":"nPM1300-CAAA"},{"rails":["SAMD11_3V3","VSYS_3V3"],"ref":"U3","value":"TPS22916CNYFPR"},{"manufacturer":"英联","mpn":"UM3204H","rails":["SAMD11_3V3","VSYS_3V3"],"ref":"U4","value":"英联"},{"rails":["SAMD11_3V3"],"ref":"U5","value":"ATSAMD11D14A-UUT"},{"rails":["TYPEC_5V","VBUS"],"ref":"U6","value":"TPS22916CNYFPR"},{"rails":["3V3_OUT","VBUS"],"ref":"U7","value":"XIAO-Add-On-Plus"},{"rails":["VSYS_3V3"],"ref":"U8","value":"nRF54LM20A"}],"total":11},{"id":"cap-ratings","priority":"low","area":"power","issue":"35 decoupling capacitor(s) of 100 nF and more have no rated voltage or dielectric: the DC-bias derating in Z(f) uses an assumed rating.","affects":["PDN impedance","decoupling recommendations"],"where_to_find":"BOM / capacitor datasheet: rated voltage, dielectric (X5R/X7R/C0G), ideally the capacitance at the rail voltage from the vendor's DC-bias curve, ESR and ESL.","views":["power"],"write":{"example":{"name":"PI_CAP","ref":"C15","source":{"document":"capacitor datasheet / vendor DC-bias curve","kind":"datasheet","note":"capacitance at 3.3 V, 25 °C"},"value":"rated=6.3V X5R c@3.3V=4.1u esl=0.45n"},"to":"fields[] (name PI_CAP) or the KiCad Value field (e.g. 10u 6.3V X5R)"},"items":[{"manufacturer":"YAGEO","mpn":"CC0201KRX5R6BB104","rail":"VSYS_3V3","ref":"C15","value":"100nF"},{"manufacturer":"YAGEO","mpn":"CC0201KRX5R6BB104","rail":"IMU_VDD","ref":"C49","value":"100nF"},{"manufacturer":"YAGEO","mpn":"CC0201KRX5R6BB104","rail":"VSYS_3V3","ref":"C52","value":"100nF"},{"manufacturer":"FH","mpn":"0201X225M6R3NT","rail":"VBAT","ref":"C11","value":"2.2uF"},{"manufacturer":"Murata","mpn":"GRM035R60J475ME15D","rail":"IMU&MIC_3V3","ref":"C18","value":"4.7uF"},{"manufacturer":"YAGEO","mpn":"CC0201KRX5R6BB104","rail":"VSYS_3V3","ref":"C31","value":"100nF"},{"manufacturer":"YAGEO","mpn":"CC0201KRX5R6BB104","rail":"LDO1_IN","ref":"C16","value":"100nF"},{"manufacturer":"YAGEO","mpn":"CC0201KRX5R6BB104","rail":"VBAT","ref":"C12","value":"100nF"}],"total":35},{"id":"bead-ratings","priority":"low","area":"power","issue":"2 ferrite bead(s) on supply rails have no impedance rating: the PDN per IC assumes a typical 220 Ω at 100 MHz and 0.1 Ω DC resistance.","affects":["PDN impedance per IC","filter resonances"],"where_to_find":"Bead datasheet: impedance at 100 MHz and DC resistance (or the part number in the Value field, e.g. 600R@100MHz or BLM18PG221SN1).","views":["power"],"write":{"example":{"name":"PI_SERIES","ref":"FB4","source":{"document":"ferrite bead datasheet","kind":"datasheet","note":"impedance at 100 MHz, DC resistance"},"value":"z100=600 rdc=0.15"},"to":"fields[] (name PI_SERIES) or the KiCad Value field"},"items":[{"manufacturer":"Murata","mpn":"BLM03AG121SN1D","rail":"MIC_VDD","ref":"FB4","value":"120R"},{"manufacturer":"Murata","mpn":"BLM03AG121SN1D","rail":"IMU_VDD","ref":"FB3","value":"120R"}],"total":2}],"config":null,"applicable":{"impedance":{"ok":false,"why":"no net class with a target impedance (kisi overview: 0 classes)"},"channel":{"ok":false,"why":"no buses or lanes between devices (kisi interfaces: 0)"},"power":{"ok":true}}}},"profiles":[{"id":"pcie_refclk","name":"PCIe reference clock 100 MHz (HCSL)","signal":"diff"},{"id":"pcie1","name":"PCIe 1.x (2.5 GT/s)","signal":"diff"},{"id":"pcie2","name":"PCIe 2.x (5 GT/s)","signal":"diff"},{"id":"pcie3","name":"PCIe 3.x (8 GT/s)","signal":"diff"},{"id":"pcie4","name":"PCIe 4.0 (16 GT/s)","signal":"diff"},{"id":"pcie5","name":"PCIe 5.0 (32 GT/s)","signal":"diff"},{"id":"usb2","name":"USB 2.0 High-Speed (480 Mbit/s)","signal":"diff"},{"id":"usb3g1","name":"USB 3.2 Gen 1 (5 Gbit/s)","signal":"diff"},{"id":"usb3g2","name":"USB 3.2 Gen 2 (10 Gbit/s)","signal":"diff"},{"id":"ddr4_dq","name":"DDR4 data/address (3200 MT/s)","signal":"se"},{"id":"ddr4_clk","name":"DDR4 DQS/CK (3200 MT/s)","signal":"diff"},{"id":"ddr5_dq","name":"DDR5 data/address (6400 MT/s)","signal":"se"},{"id":"ddr5_clk","name":"DDR5 DQS/CK (6400 MT/s)","signal":"diff"},{"id":"rgmii","name":"RGMII (125 MHz DDR)","signal":"se"},{"id":"sgmii","name":"SGMII (1.25 Gbit/s)","signal":"diff"},{"id":"eth_mdi","name":"Ethernet 1000BASE-T MDI","signal":"diff"},{"id":"hdmi20","name":"HDMI 2.0 TMDS (6 Gbit/s)","signal":"diff"},{"id":"lvds","name":"LVDS (1 Gbit/s)","signal":"diff"},{"id":"mipi_dphy","name":"MIPI D-PHY (2.5 Gbit/s)","signal":"diff"},{"id":"serdes","name":"Generic SerDes (6.25 Gbit/s, CML)","signal":"diff"},{"id":"se50","name":"Generic single-ended 50 Ω","signal":"se"},{"id":"diff100","name":"Generic differential 100 Ω","signal":"diff"}]}</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById("data").textContent);
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const KINDS = ["datasheet", "standard", "application_note", "measurement", "simulation", "design", "estimate", "assumption"];
+const REG_KINDS = ["input", "buck", "boost", "ldo", "inverter", "pass", "buck-boost", "sepic"];
+const VIEWS = { impedance: "Impedance", channel: "Channel", power: "Power" };
+const TITLES = {
+  "stackup-missing": "Stackup", "stackup-defaults": "Laminate data", "nets-without-target": "Nets without a target impedance",
+  "classes-without-standard": "Net classes without an interface standard", "assembly-variant": "Assembly variant",
+  "assembly-variant-forks": "Forks in the chosen variant", "channel-part-values": "Unreadable part values in channels",
+  "power-tree": "Regulator chain", "rails-without-voltage": "Rails without a voltage", "rails-without-source": "Rails without a source",
+  "regulator-efficiency": "Regulator efficiency", "ic-loads": "Load currents", "cap-ratings": "Capacitor ratings",
+  "bead-ratings": "Ferrite beads", "cap-values": "Unreadable capacitor values", "thermal-data": "Thermal data (temperature)",
+};
+const MODE = {
+  "stackup-missing": "agent", "stackup-defaults": "stackup", "nets-without-target": "kicad", "classes-without-standard": "classes",
+  "assembly-variant": "variant", "assembly-variant-forks": "agent", "channel-part-values": "kicad", "power-tree": "reg",
+  "rails-without-voltage": "reg", "rails-without-source": "reg", "regulator-efficiency": "reg", "ic-loads": "loads",
+  "cap-ratings": "agent", "bead-ratings": "series", "cap-values": "kicad", "thermal-data": "thermal",
+};
+const AGENT_ALSO = new Set(["ic-loads", "thermal-data", "regulator-efficiency", "assembly-variant", "bead-ratings"]);
+// which views an entry of the kisi.json serves (for saving one view only)
+const ENTRY_VIEWS = { stackup: ["impedance", "channel"], net_classes: ["impedance", "channel"], variant: ["channel", "power"], fields: ["power"] };
+
+const S = { board: "ts", view: "impedance", open: {}, agent: {}, cfg: {}, scope: "all", dismissing: null };
+function cfg() {
+  if (!S.cfg[S.board]) {
+    const c = { stackup: {}, classes: {}, reg: [], loads: {}, series: {}, thermal: {}, variant: null, src: {}, dismissed: {} };
+    if (S.board === "ts") {
+      c.stackup = { 0: { loss_tangent: "0.0095" }, 1: { loss_tangent: "0.0095" } };
+      c.src.stackup = { kind: "datasheet", document: "Isola FR408HR data sheet", note: "" };
+    }
+    S.cfg[S.board] = c;
+  }
+  return S.cfg[S.board];
+}
+const B = () => D.boards[S.board];
+const allGaps = () => B().gaps;
+const viewGaps = (v) => allGaps().filter((g) => g.views.includes(v || S.view));
+// items found only by a name (a guess): the core would mark them `"dismissable": true`
+function dismissable(g) {
+  if (g.id === "nets-without-target") return g.items.flatMap((it) => (it.nets || []).filter((n) => n.looks_like).map((n) => n.net));
+  if (g.id === "rails-without-voltage") return g.items.filter((it) => (it.found_by || []).every((f) => f === "name")).map((it) => it.rail);
+  return [];
+}
+const dismissedItems = (g) => (cfg().dismissed[g.id]?.items || []);
+const itemKeys = (g) => g.id === "nets-without-target" ? g.items.flatMap((it) => (it.nets || []).map((n) => n.net)) : g.id === "rails-without-voltage" ? g.items.map((it) => it.rail) : [];
+const reasonOk = (g) => (cfg().dismissed[g.id]?.reason || "").trim() !== "";
+const srcOk = (s) => s && KINDS.includes(s.kind) && ((s.document || "").trim() || (s.note || "").trim() || (s.url || "").trim());
+function num(v) { const x = parseFloat(String(v).replace(",", ".")); return Number.isFinite(x) ? x : null; }
+function source(s) { if (!s) return undefined; const o = { kind: s.kind || "" }; for (const k of ["document", "url", "page", "note"]) if ((s[k] || "").trim()) o[k] = s[k].trim(); return o; }
+
+// ---- the draft as kisi.json; scope "all" or a view (only the entries that serve it)
+function buildConfig(scope) {
+  const c = cfg(), out = { kisi_config: 1, board: B().board + ".kicad_pcb" };
+  const want = (key) => scope === "all" || ENTRY_VIEWS[key].includes(scope);
+  if (want("stackup")) {
+    const diel = Object.entries(c.stackup).map(([i, v]) => {
+      const e = { index: +i };
+      if ((v.material || "").trim()) e.material = v.material.trim();
+      if (v.epsilon_r !== undefined && v.epsilon_r !== "") e.epsilon_r = num(v.epsilon_r) ?? v.epsilon_r;
+      if (v.loss_tangent !== undefined && v.loss_tangent !== "") e.loss_tangent = num(v.loss_tangent) ?? v.loss_tangent;
+      if (Object.keys(e).length === 1) return null;
+      e.source = srcOk(c.src.stackup) ? source(c.src.stackup) : undefined;
+      return e;
+    }).filter(Boolean);
+    if (diel.length) out.stackup = { dielectrics: diel };
+  }
+  if (want("net_classes")) {
+    const nc = {};
+    for (const [k, v] of Object.entries(c.classes)) {
+      const e = {};
+      if (v.target_ohm !== undefined && v.target_ohm !== "") e.target_ohm = num(v.target_ohm) ?? v.target_ohm;
+      if (v.diff !== undefined) e.diff = v.diff;
+      if (v.profile && scope !== "impedance") e.profile = v.profile;   // the profile serves the channel check only
+      if (!Object.keys(e).length) continue;
+      e.source = srcOk(c.src.classes) ? source(c.src.classes) : undefined;
+      nc[k] = e;
+    }
+    if (Object.keys(nc).length) out.net_classes = nc;
+  }
+  if (want("fields")) {
+    const fields = [];
+    for (const r of c.reg) if ((r.ref || "").trim() && (r.value || "").trim()) fields.push({ ref: r.ref.trim(), name: "PI_REG", value: r.value.trim(), source: srcOk(r.src) ? source(r.src) : undefined });
+    for (const [ref, v] of Object.entries(c.loads)) {
+      const parts = Object.entries(v.rails || {}).filter(([, a]) => (a || "").trim()).map(([rail, a]) => `${/[\s";,=@>]/.test(rail) ? `"${rail}"` : rail}=${a.trim()}`);
+      if (parts.length) fields.push({ ref, name: "PI_LOAD", value: parts.join(", "), source: srcOk(v.src) ? source({ ...v.src, note: [v.basis, v.src.note].filter(Boolean).join(", ") }) : undefined });
+    }
+    for (const [ref, v] of Object.entries(c.series)) {
+      const p = []; if ((v.z100 || "").trim()) p.push(`z100=${v.z100.trim()}`); if ((v.rdc || "").trim()) p.push(`rdc=${v.rdc.trim()}`);
+      if (p.length) fields.push({ ref, name: "PI_SERIES", value: p.join(" "), source: srcOk(c.src.series) ? source(c.src.series) : undefined });
+    }
+    for (const [ref, v] of Object.entries(c.thermal)) {
+      const p = ["theta_jb", "theta_jc", "psi_jt", "tj_max"].filter((k) => (v[k] || "").trim()).map((k) => `${k}=${v[k].trim()}`);
+      if (p.length) fields.push({ ref, name: "PI_THERMAL", value: p.join(" "), source: srcOk(c.src.thermal) ? source(c.src.thermal) : undefined });
+    }
+    if (fields.length) out.fields = fields;
+  }
+  if (want("variant") && c.variant) out.variant = c.variant;
+  const dis = Object.entries(c.dismissed).filter(([id, d]) => d.items.length && (scope === "all" || (allGaps().find((g) => g.id === id)?.views || []).includes(scope)))
+    .map(([id, d]) => ({ gap: id, items: d.items, reason: (d.reason || "").trim() || undefined }));
+  if (dis.length) out.gaps = { dismissed: dis };
+  return out;
+}
+
+// ---- the check: config-check's messages; each message knows the views of its entry
+function parseReg(ref, value) {
+  const errs = [];
+  for (const entry of value.split(";").map((s) => s.trim()).filter(Boolean)) {
+    if ((entry.match(/"/g) || []).length % 2) { errs.push(`${ref}: PI_REG '${entry}': unbalanced quotes (a net name with spaces goes in "…")`); continue; }
+    const m = entry.split(/\s*(?:->|→|>)\s*/);
+    const rhs = (m.length > 1 ? m.slice(1).join(" ") : m[0]).match(/"[^"]*"(@[\d.]+V)?|\S+/g) || [];
+    if (!rhs.length) { errs.push(`${ref}: PI_REG '${entry}': output rail missing`); continue; }
+    let kind = null;
+    for (const t of rhs.slice(1)) {
+      const tl = t.toLowerCase();
+      if (REG_KINDS.includes(tl)) kind = tl;
+      else if (/^[\d.,]+%$/.test(t)) {}
+      else if (/^[a-z]+=/i.test(t)) { const k = t.split("=")[0].toLowerCase(); if (!["iq", "r", "imax", "eff", "out", "in", "id", "part"].includes(k)) errs.push(`${ref}: PI_REG '${entry}': unknown key '${k}'`); }
+      else if (/^[\d.,]+[mu]?A$/i.test(t)) {}
+      else errs.push(`${ref}: PI_REG '${entry}': '${t}' not understood`);
+    }
+    if (m.length === 1 && kind && kind !== "input") errs.push(`${ref}: PI_REG '${entry}': input rail missing (form INPUT > OUTPUT type)`);
+  }
+  return errs;
+}
+function check(scope = "all") {
+  const out = buildConfig(scope), msgs = [];
+  let entries = 0;
+  const add = (level, text, key, views) => msgs.push({ level, text, views: views || ENTRY_VIEWS[key] });
+  const src = (what, s, key) => { if (!s) add("e", `${what}: source missing (every value needs a source)`, key); };
+  for (const d of out.stackup?.dielectrics || []) {
+    entries++;
+    const what = `stackup.dielectrics[index ${d.index}]`;
+    if (d.epsilon_r !== undefined && !(d.epsilon_r >= 1 && d.epsilon_r < 20)) add("e", `${what}: epsilon_r outside 1 … 20`, "stackup");
+    if (d.loss_tangent !== undefined && !(d.loss_tangent >= 0 && d.loss_tangent < 0.2)) add("e", `${what}: loss_tangent outside 0 … 0.2`, "stackup");
+    src(what, d.source, "stackup");
+  }
+  for (const [k, e] of Object.entries(out.net_classes || {})) {
+    entries++;
+    const what = `net_classes.${k}`, cv = e.target_ohm !== undefined || e.diff !== undefined ? ["impedance", "channel"] : ["channel"];
+    if (e.target_ohm !== undefined && !(e.target_ohm >= 10 && e.target_ohm < 200)) add("e", `${what}: target_ohm outside 10 … 200`, "net_classes");
+    const it = (allGaps().find((g) => g.id === "classes-without-standard")?.items || []).find((x) => x.class === k);
+    const diff = e.diff ?? it?.diff, p = D.profiles.find((x) => x.id === e.profile);
+    if (p && diff !== undefined && (p.signal === "diff") !== diff) add("w", `${what}: profile '${p.id}' is ${p.signal} but diff = ${diff}`, "net_classes", ["channel"]);
+    if (!e.source) add("e", `${what}: source missing (every value needs a source)`, "net_classes", cv);
+  }
+  const seen = new Set();
+  for (const f of out.fields || []) {
+    entries++;
+    const what = `fields[${f.ref} ${f.name}]`;
+    if (seen.has(f.ref + f.name)) add("e", `${what}: given twice`, "fields");
+    seen.add(f.ref + f.name);
+    if (f.name === "PI_REG") parseReg(f.ref, f.value).forEach((m) => add("e", m, "fields"));
+    if (f.name === "PI_LOAD") for (const part of f.value.split(",")) { const v = part.split("=").pop().trim(); if (!/^[\d.,]+\s*(u|µ|m)?(A|W)$/i.test(v)) add("e", `${f.ref}: PI_LOAD value '${v}' not readable`, "fields"); }
+    if (f.name === "PI_THERMAL") for (const t of f.value.split(" ")) { const [, v] = t.split("="); if (!(num(v) > 0)) add("e", `${what}: PI_THERMAL: cannot read '${t}'`, "fields"); }
+    src(what, f.source, "fields");
+  }
+  if (out.variant) entries++;
+  for (const d of out.gaps?.dismissed || []) {
+    entries++;
+    const g = allGaps().find((x) => x.id === d.gap), views = g?.views || ["impedance", "channel", "power"];
+    if (!d.reason) add("e", `gaps.dismissed[${d.gap}]: reason missing (say why the gap does not apply)`, null, views);
+    const known = new Set(g ? dismissable(g) : []);
+    for (const it of d.items) if (!known.has(it)) add("e", `gaps.dismissed[${d.gap}]: '${it}' is not an item of this gap that can be dismissed`, null, views);
+  }
+  const errors = msgs.filter((m) => m.level === "e"), warnings = msgs.filter((m) => m.level === "w");
+  return { ok: !errors.length, errors, warnings, msgs, entries, out };
+}
+
+// ---- does the draft close a gap? (in the viewer: `kisi gaps` run again on the draft)
+// a gap whose every item is dismissed (with a reason) is closed
+function gapDismissed(g) { const k = itemKeys(g), d = new Set(dismissedItems(g)); return k.length > 0 && reasonOk(g) && k.every((x) => d.has(x)); }
+function gapDone(g) {
+  if (gapDismissed(g)) return true;
+  const c = cfg(), r = check();
+  const fields = (r.out.fields || []).filter((f) => !r.errors.some((e) => e.text.startsWith(`${f.ref}: ${f.name}`) || e.text.startsWith(`fields[${f.ref} ${f.name}]`)));
+  switch (g.id) {
+    case "stackup-defaults": return g.items.every((it) => { const e = c.stackup[it.index] || {}; return (!it.why.some((w) => w.startsWith("tan")) || (e.loss_tangent ?? "") !== "") && (!it.why.some((w) => w.startsWith("εr")) || (e.epsilon_r ?? "") !== ""); }) && srcOk(c.src.stackup);
+    case "classes-without-standard": return g.items.every((it) => c.classes[it.class]?.profile) && srcOk(c.src.classes);
+    case "assembly-variant": return !!c.variant;
+    case "power-tree": return fields.some((f) => f.name === "PI_REG" && f.source);
+    case "rails-without-voltage": return g.items.filter((it) => !(reasonOk(g) && dismissedItems(g).includes(it.rail))).every((it) => fields.some((f) => f.name === "PI_REG" && f.source && f.value.includes(it.rail.split("/").pop())));
+    case "rails-without-source": return g.items.every((it) => fields.some((f) => f.name === "PI_REG" && f.source && f.value.includes(it.rail)));
+    case "ic-loads": return g.items.every((it) => fields.some((f) => f.name === "PI_LOAD" && f.ref === it.ref && f.source));
+    case "bead-ratings": return g.items.every((it) => fields.some((f) => f.name === "PI_SERIES" && f.ref === it.ref && f.source));
+    case "thermal-data": return g.items.every((it) => fields.some((f) => f.name === "PI_THERMAL" && f.ref === it.ref && f.source));
+    default: return false;
+  }
+}
+// readiness of a view: no open high or medium gap (low gaps refine the result)
+function readiness(v) {
+  const ap = B().applicable?.[v];
+  if (ap && !ap.ok) return { ready: true, na: true, hi: 0, me: 0, lo: 0, text: "nothing to check", cls: "na" };
+  const open = viewGaps(v).filter((g) => !gapDone(g));
+  const hi = open.filter((g) => g.priority === "high").length, me = open.filter((g) => g.priority === "medium").length, lo = open.length - hi - me;
+  const ready = !hi && !me;
+  const text = ready ? (lo ? `ready · ${lo} refinement${lo > 1 ? "s" : ""}` : "ready") : `${hi + me} open${hi ? ` (${hi} high)` : ""}${lo ? ` · ${lo} low` : ""}`;
+  return { ready, hi, me, lo, text, cls: hi ? "h" : me ? "m" : "" };
+}
+
+function srcBlock(key, s, label) {
+  s = s || {};
+  return `<div class="src" data-src="${key}"><b>${esc(label || "Source of these values")} – required</b>
+    <select class="in" data-k="kind" aria-label="source kind"><option value="">kind…</option>${KINDS.map((k) => `<option ${s.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select>
+    <input class="in" data-k="document" placeholder="document or url" value="${esc(s.document)}" aria-label="document">
+    <input class="in" data-k="note" placeholder="note: typical / maximum, condition" value="${esc(s.note)}" aria-label="note"></div>`;
+}
+function editor(g) {
+  const c = cfg(), mode = MODE[g.id];
+  if (mode === "stackup") {
+    return `<table class="ed"><thead><tr><th>#</th><th>Between</th><th>Material</th><th>εr</th><th>tanδ</th><th>Thickness</th></tr></thead><tbody>${g.items.map((it) => {
+      const e = c.stackup[it.index] || {}, defEr = it.why.some((w) => w.startsWith("εr")), defTd = it.why.some((w) => w.startsWith("tan"));
+      return `<tr><td class="m" data-l="index">${it.index}</td><td data-l="between">${esc(it.between)}<span class="sub">${esc(it.kind)}</span></td>
+        <td data-l="material"><input class="in" data-ed="stackup" data-i="${it.index}" data-k="material" value="${esc(e.material ?? "")}" placeholder="${esc(it.material)}"></td>
+        <td data-l="εr"><input class="in num" data-ed="stackup" data-i="${it.index}" data-k="epsilon_r" value="${esc(e.epsilon_r ?? "")}" placeholder="${defEr ? "default " : ""}${it.epsilon_r.toFixed(2)}"></td>
+        <td data-l="tanδ"><input class="in num" data-ed="stackup" data-i="${it.index}" data-k="loss_tangent" value="${esc(e.loss_tangent ?? "")}" placeholder="${defTd ? "default " : ""}${it.loss_tangent}"></td>
+        <td class="m" data-l="thickness">${it.thickness_mm} mm</td></tr>`;
+    }).join("")}</tbody></table>${srcBlock("stackup", c.src.stackup)}`;
+  }
+  if (mode === "classes") {
+    return `<table class="ed"><thead><tr><th>Class</th><th>Nets</th><th>Target Ω</th><th>Diff</th><th>Profile</th></tr></thead><tbody>${g.items.map((it) => {
+      const e = c.classes[it.class] || {}, diff = e.diff ?? it.diff;
+      const opts = D.profiles.filter((p) => !["se50", "diff100"].includes(p.id)).map((p) => `<option value="${p.id}" ${e.profile === p.id ? "selected" : ""}>${esc(p.name)}${(p.signal === "diff") !== diff ? " – " + p.signal : ""}</option>`).join("");
+      return `<tr><td class="m" data-l="class">${esc(it.class)}</td><td data-l="nets">${it.nets}<span class="sub">${esc(it.examples.slice(0, 2).join(", "))}</span></td>
+        <td data-l="target Ω"><input class="in num" data-ed="classes" data-c="${esc(it.class)}" data-k="target_ohm" value="${esc(e.target_ohm ?? "")}" placeholder="${it.target_ohm}"></td>
+        <td data-l="differential"><input type="checkbox" data-ed="classes" data-c="${esc(it.class)}" data-k="diff" ${diff ? "checked" : ""} aria-label="differential"></td>
+        <td data-l="profile"><select class="in" data-ed="classes" data-c="${esc(it.class)}" data-k="profile"><option value="">${esc(it.profile_now)} (generic, now)</option>${opts}</select></td></tr>`;
+    }).join("")}</tbody></table>${srcBlock("classes", c.src.classes)}`;
+  }
+  if (mode === "variant") {
+    const parts = g.items.slice(0, 6).map((it) => `<li>${esc(it.fork)}</li>`).join("");
+    return `<p class="note">Forks where all alternative parts are fitted (${g.total}):</p><ul class="note" style="margin:0;padding-left:18px">${parts}${g.total > 6 ? `<li>… ${g.total - 6} more</li>` : ""}</ul>
+      <div class="row"><label class="chk"><input type="radio" name="var" value="default" ${c.variant === "default" ? "checked" : ""} data-ed="variant"> <b>default</b> – the board as it is, other paths as open branches</label></div>
+      <div class="row"><button class="btn small" disabled title="drop the BOM files with the board – not part of the mockup">Variants from BOMs…</button><span class="note">or define them by sheet / references in kisi.json (agent path)</span></div>`;
+  }
+  if (mode === "reg") {
+    const firstReg = viewGaps().find((x) => MODE[x.id] === "reg");
+    const sugg = g.items.filter((it) => it.write && it.write.startsWith("PI_REG on ")).map((it) => { const m = it.write.match(/^PI_REG on (\S+): (.*)$/); return m ? `<button data-add-reg="${esc(m[1])}" data-val="${esc(m[2] + " r=")}">+ ${esc(m[1])}: ${esc(m[2])}</button>` : ""; }).join("");
+    const suggHtml = sugg ? `<div class="sugg">${sugg}</div><p class="note">Suggested by <code>kisi gaps</code> (a rail behind a ferrite or link takes the voltage before it); a click adds the row to the regulator chain, then give r= and a source.</p>` : "";
+    if (firstReg && g.id !== firstReg.id) {
+      const list = g.items.slice(0, 10).map((it) => esc(it.rail + (it.voltage ? ` (${it.voltage} V)` : ""))).join(", ");
+      return `<p class="note">${list}${g.total > 10 ? ` … ${g.total - 10} more` : ""}. Entered in the regulator chain above${g.id === "rails-without-voltage" ? " as <code>NAME@&lt;V&gt;V</code> where the rail appears" : " (an input or a regulator output)"}.</p>${suggHtml}`;
+    }
+    const rows = c.reg.map((r, i) => {
+      const errs = (r.ref && r.value) ? parseReg(r.ref, r.value) : [];
+      return `<tr><td data-l="part"><input class="in" style="max-width:90px" data-ed="reg" data-i="${i}" data-k="ref" value="${esc(r.ref)}" placeholder="U3"></td>
+        <td data-l="PI_REG"><input class="in wide" data-ed="reg" data-i="${i}" data-k="value" value="${esc(r.value)}" placeholder="+12V > +3V3 buck 90% 3A" ${errs.length ? 'aria-invalid="true"' : ""}></td>
+        <td data-l="source"><select class="in" data-ed="reg" data-i="${i}" data-k="kind"><option value="">kind…</option>${KINDS.map((k) => `<option ${r.src?.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></td>
+        <td data-l="document / note"><input class="in" data-ed="reg" data-i="${i}" data-k="document" value="${esc(r.src?.document)}" placeholder="datasheet, page, note"></td></tr>`;
+    }).join("");
+    return `<table class="ed"><thead><tr><th>Part</th><th>PI_REG (input &gt; output kind values)</th><th>Source</th><th>Document / note</th></tr></thead><tbody>${rows || `<tr><td colspan="4" class="note">No regulator yet.</td></tr>`}</tbody></table>
+      <div class="row"><button class="btn small" data-add-reg="" data-val="">+ Regulator or input</button><span class="note">kinds: input, buck, boost, buck-boost, sepic, inverter, ldo, pass · values: 90%, 3A, iq=, r=, out=, id= (one PMIC channel per <code>;</code>)</span></div>${suggHtml}`;
+  }
+  if (mode === "loads") {
+    const rows = g.items.map((it) => {
+      const e = c.loads[it.ref] || {};
+      return `<tr><td class="m" data-l="part">${esc(it.ref)}<span class="sub">${esc(it.mpn ? `${it.mpn} (${it.manufacturer || it.value})` : it.value)}</span></td>
+        <td data-l="current per rail">${it.rails.map((r) => `<div class="row" style="gap:4px;flex-wrap:nowrap"><span class="mono" style="min-width:86px;font-size:11px">${esc(r)}</span><input class="in num" data-ed="loads" data-r="${esc(it.ref)}" data-rail="${esc(r)}" value="${esc(e.rails?.[r] ?? "")}" placeholder="mA"></div>`).join("")}</td>
+        <td data-l="basis"><select class="in" data-ed="loads" data-r="${esc(it.ref)}" data-k="basis"><option value="">–</option><option ${e.basis === "typical" ? "selected" : ""}>typical</option><option ${e.basis === "maximum" ? "selected" : ""}>maximum</option></select></td>
+        <td data-l="source"><select class="in" data-ed="loads" data-r="${esc(it.ref)}" data-k="kind"><option value="">kind…</option>${KINDS.map((k) => `<option ${e.src?.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select>
+          <input class="in" style="margin-top:3px" data-ed="loads" data-r="${esc(it.ref)}" data-k="document" value="${esc(e.src?.document)}" placeholder="datasheet, page"></td></tr>`;
+    }).join("");
+    return `<table class="ed"><thead><tr><th>IC</th><th>Current per rail</th><th>Basis</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table>${g.total > g.items.length ? `<p class="note">… ${g.total - g.items.length} more ICs (shortened in the mockup).</p>` : ""}`;
+  }
+  if (mode === "series") {
+    const rows = g.items.map((it) => {
+      const e = c.series[it.ref] || {}, z = (it.value.match(/^(\d+)R/) || [])[1] || "";
+      return `<tr><td class="m" data-l="part">${esc(it.ref)}<span class="sub">${esc(it.mpn || it.value)} · ${esc(it.rail)}</span></td>
+        <td data-l="Z at 100 MHz (Ω)"><input class="in num" data-ed="series" data-r="${esc(it.ref)}" data-k="z100" value="${esc(e.z100 ?? "")}" placeholder="${z || "220"}"></td>
+        <td data-l="DC resistance (Ω)"><input class="in num" data-ed="series" data-r="${esc(it.ref)}" data-k="rdc" value="${esc(e.rdc ?? "")}" placeholder="0.1"></td></tr>`;
+    }).join("");
+    return `<table class="ed"><thead><tr><th>Bead</th><th>Z at 100 MHz (Ω)</th><th>DC resistance (Ω)</th></tr></thead><tbody>${rows}</tbody></table>${srcBlock("series", c.src.series)}`;
+  }
+  if (mode === "thermal") {
+    const rows = g.items.map((it) => {
+      const e = c.thermal[it.ref] || {};
+      return `<tr><td class="m" data-l="part">${esc(it.ref)}<span class="sub">${esc(it.value || "")} ${it.heat_w ? "· " + (+it.heat_w).toFixed(2) + " W" : ""}</span></td>${["theta_jb", "theta_jc", "psi_jt", "tj_max"].map((k) =>
+        `<td data-l="${k}"><input class="in num" data-ed="thermal" data-r="${esc(it.ref)}" data-k="${k}" value="${esc(e[k] ?? "")}" placeholder="${k === "tj_max" ? "125" : "K/W"}"></td>`).join("")}</tr>`;
+    }).join("");
+    return `<table class="ed"><thead><tr><th>Part</th><th>θJB</th><th>θJC</th><th>ψJT</th><th>Tj max</th></tr></thead><tbody>${rows}</tbody></table>${g.total > g.items.length ? `<p class="note">… ${g.total - g.items.length} more parts (shortened in the mockup).</p>` : ""}${srcBlock("thermal", c.src.thermal, "Source of these values (the parts' Thermal Information tables) – required")}`;
+  }
+  if (mode === "kicad") {
+    const it = g.items[0] || {};
+    const nets = (it.nets || []).slice(0, 4).map((n) => esc(n.net.split("/").pop() + (n.looks_like ? ` (${n.looks_like}?)` : ""))).join(", ");
+    return `<p class="note">${it.class ? `Class <code>${esc(it.class)}</code>: ${nets}. ` : ""}This is a fix in KiCad, not in kisi.json: ${esc(g.write?.to || "")}. Reload the board after saving.</p>`;
+  }
+  // agent path
+  const list = g.items.slice(0, 6).map((it) => esc([it.ref, it.mpn || it.value, it.rail].filter(Boolean).join(" "))).join(" · ");
+  return `<p class="note">${list}${g.total > 6 ? ` … ${g.total} in all` : ""}</p>`;
+}
+
+
+function dismissBlock(g) {
+  const all = dismissable(g);
+  if (!all.length) return "";
+  const d = cfg().dismissed[g.id] || { items: [], reason: "" }, open = S.dismissing === g.id || d.items.length;
+  if (!open) return `<div class="row"><button class="btn small" data-dismiss="${g.id}">Dismiss…</button><span class="note">${all.length} item${all.length > 1 ? "s" : ""} found only by ${g.id === "nets-without-target" ? "their net names" : "their names"} – dismiss what is not ${g.id === "nets-without-target" ? "an interface" : "a supply"}.</span></div>`;
+  return `<div class="dismiss"><b>Dismiss – stored in <code>${esc(B().board)}.kisi.json</code> → <code>gaps.dismissed</code> with your reason; <code>kisi gaps</code>, the CLI and agents skip these items</b>
+    <div class="row">${all.map((x) => `<label class="chk"><input type="checkbox" data-dis-item="${esc(x)}" data-gap-id="${g.id}" ${d.items.includes(x) ? "checked" : ""}> <code>${esc(x.split("/").pop())}</code></label>`).join("")}</div>
+    <input class="in" data-dis-reason="${g.id}" value="${esc(d.reason)}" placeholder="reason (required), e.g. QSPI flash at 50 MHz – no impedance control needed">
+    <div class="row"><button class="btn small" data-dis-all="${g.id}">Select all</button><button class="btn small" data-undo="${g.id}">Undo</button></div></div>`;
+}
+function gapCard(g, later) {
+  const done = gapDone(g), dis = gapDismissed(g), mode = MODE[g.id], open = S.open[S.board + g.id] ?? (!later && !dis && g.priority !== "low");
+  const others = g.views.filter((v) => v !== S.view).map((v) => `<span class="tag view" title="the same entries serve this category too – filled once">also ${VIEWS[v]}</span>`).join("");
+  const tags = [mode === "kicad" ? `<span class="tag kicad">fix in KiCad</span>` : mode === "agent" ? `<span class="tag agent">agent path</span>` : `<span class="tag">enter here</span>`]
+    .concat(g.affects.map((a) => `<span class="tag">${esc(a)}</span>`)).join("");
+  const agentBox = (mode === "agent" || AGENT_ALSO.has(g.id)) ? `<div class="agentbox"><p>${mode === "agent" ? "Many parts or research-heavy values: let an agent read the datasheets (skill kisi-prepare), with a source for every value." : g.id === "assembly-variant" ? "Variants from the project's BOM and position files: choose here, or let an agent define them (by sheet, references or BOM)." : "Values to look up in datasheets: enter them here, or hand the gap to the agent."}</p>
+      <label class="chk"><input type="checkbox" data-agent="${g.id}" ${S.agent[S.board + g.id] ? "checked" : ""}> hand to the agent</label></div>` : "";
+  const st = dis ? `<span class="state dis">dismissed</span>` : later ? `<span class="state">not blocking</span>` : `<span class="state ${done ? "done" : ""}">${done ? "✓ filled" : g.total ? `${g.total} item${g.total === 1 ? "" : "s"}` : "open"}</span>`;
+  return `<article class="gap ${dis ? "isdis" : ""} ${later ? "later" : ""}" id="gap-${g.id}" data-gap="${g.id}" aria-expanded="${open}">
+    <header data-toggle="${g.id}"><span class="prio ${g.priority}">${g.priority}</span><h3>${esc(TITLES[g.id] || g.id)}<code>${g.id}</code></h3>${st}<p>${esc(g.issue)}</p></header>
+    <div class="body">
+      <dl class="meta"><dt>Where to find it</dt><dd>${esc(g.where_to_find)}</dd><dt>Goes to</dt><dd><code>${esc(g.write?.to || "")}</code></dd><dt>Affects</dt><dd>${others}${tags}</dd></dl>
+      ${dis ? "" : editor(g)}${dismissBlock(g)}${dis ? "" : agentBox}
+    </div></article>`;
+}
+const PRIO = { high: 0, medium: 1, low: 2 };
+function promptText() {
+  const ids = viewGaps().filter((g) => !gapDone(g) && (MODE[g.id] === "agent" || S.agent[S.board + g.id])).map((g) => g.id);
+  return `Prepare ${B().board}.kicad_pcb for kisi's ${VIEWS[S.view].toLowerCase()} analysis with the skill kisi-prepare. Start from \`kisi gaps --for ${S.view}\`${ids.length ? `, research the gaps ${ids.join(", ")}` : ", research this category's open gaps"} from datasheets, BOM and position files, with a source for every value. Merge the results into ${B().board}.kisi.json next to the board – keep my entries and the dismissed gaps – and run \`kisi config-check\`.`;
+}
+function render() {
+  const b = B(), r = check();
+  $("boardName").textContent = b.board;
+  $("boardMeta").textContent = b.config ? `${b.config.file} loaded · ${b.config.entries} entries` : "no kisi.json";
+  $("cfgName").textContent = b.board + ".kisi.json";
+  const rds = Object.keys(VIEWS).map(readiness), openCount = rds.reduce((n, x) => n + x.hi + x.me, 0);
+  const countCls = rds.some((x) => x.hi) ? "" : openCount ? "m" : "z";
+  $("prepBtn").innerHTML = `<button class="btn prepbtn" aria-pressed="true" id="view-prep" title="what the board lacks, per category – ${openCount} open high/medium gaps">Prepare PCB <span class="count ${countCls}">${openCount}</span></button>`;
+  $("views").innerHTML = Object.entries(VIEWS).map(([v, name]) => { const x = readiness(v); return `<button aria-pressed="false" class="ana" title="${esc(name)}: ${esc(x.text)} – the analysis view (not part of the mockup)"><span class="dot ${x.cls}"></span>${name}</button>`; }).join("");
+  $("ready").innerHTML = Object.entries(VIEWS).map(([v, name]) => { const x = readiness(v); return `<button data-tab="${v}" aria-current="${v === S.view}"><span class="dot ${x.cls}"></span><b>${name}</b><span>${esc(x.text)}</span></button>`; }).join("");
+  $("tabs").innerHTML = Object.entries(VIEWS).map(([v, name]) => { const x = readiness(v); return `<button role="tab" aria-selected="${v === S.view}" data-tab="${v}"><span class="dot ${x.cls}"></span>${name}<small>${esc(x.text)}</small></button>`; }).join("");
+  // the tab: this category's gaps by priority; nothing to check → the gaps are not blocking
+  const ap = b.applicable?.[S.view], na = ap && !ap.ok;
+  const gs = viewGaps().slice().sort((a, c) => (gapDismissed(a) - gapDismissed(c)) || PRIO[a.priority] - PRIO[c.priority]);
+  const rd = readiness(S.view);
+  $("tabHead").innerHTML = na
+    ? `<div class="na"><b>Nothing to check for ${VIEWS[S.view]}:</b> ${esc(ap.why)}. ${S.view === "impedance" ? "The laminate data below still matters once net classes get a target impedance (or for loss in a later channel check); it does not block anything now." : "The gaps below matter only once there are lanes; they block nothing now."}</div>`
+    : `<p class="note">${gs.length} gap${gs.length === 1 ? "" : "s"} for ${VIEWS[S.view]}, by priority · ${esc(rd.text)}${ap?.why ? ` · ${esc(ap.why)}` : ""}. Gaps marked “also …” serve other categories too and are filled once.</p>`;
+  const focus = document.activeElement && document.activeElement.closest("[data-gap]") ? { gap: document.activeElement.closest("[data-gap]").dataset.gap, sel: selectorOf(document.activeElement) } : null;
+  $("gaps").innerHTML = gs.length ? gs.map((g) => gapCard(g, na)).join("") : `<div class="empty">kisi gaps reports nothing missing for ${VIEWS[S.view]}.</div>`;
+  if (focus) { const el = document.querySelector(`[data-gap="${focus.gap}"] ${focus.sel}`); if (el) { el.focus(); if (el.setSelectionRange && el.type === "text") { const n = el.value.length; el.setSelectionRange(n, n); } } }
+  // draft, save
+  const per = Object.keys(VIEWS).map((v) => `${VIEWS[v]} ${check(v).entries}`).join(" · ");
+  $("draftLine").textContent = r.entries ? `Draft: ${r.entries} entries (${per})` : "Draft: nothing entered";
+  const scopes = [["all", "save everything entered"], [S.view, `save only ${VIEWS[S.view]}`]];
+  if (!scopes.some((s) => s[0] === S.scope)) S.scope = "all";
+  $("scope").innerHTML = scopes.map(([k, t]) => `<option value="${k}" ${S.scope === k ? "selected" : ""}>${t}</option>`).join("");
+  const rs = check(S.scope), fsa = "showSaveFilePicker" in window;
+  $("save").disabled = !rs.entries || !rs.ok;
+  $("save").title = !rs.entries ? "nothing to save" : rs.ok ? "" : "fix the errors first (warnings are fine)";
+  $("saveNote").textContent = !rs.entries ? "" : rs.ok ? `${fsa ? "Saves next to the board (File System Access; proposed)" : "Downloads"} ${b.board}.kisi.json${b.config ? ", merged into the loaded file" : ""}${rs.warnings.length ? ` – ${rs.warnings.length} warning${rs.warnings.length > 1 ? "s" : ""}` : ""}.` : `${rs.errors.length} error${rs.errors.length > 1 ? "s" : ""} in ${S.scope === "all" ? "the draft" : `the ${VIEWS[S.scope]} entries`}${S.scope === "all" && check(S.view).ok && check(S.view).entries ? ` – “save only ${VIEWS[S.view]}” works` : ""}.`;
+  // check of this tab
+  const mine = r.msgs.filter((m) => m.views.includes(S.view)), elsewhere = r.msgs.filter((m) => !m.views.includes(S.view));
+  $("checkSum").textContent = r.entries ? (r.ok ? "ok" : `${r.errors.length} error${r.errors.length === 1 ? "" : "s"}`) : "";
+  $("msgs").innerHTML = !r.entries ? `<li class="o">Nothing entered yet.</li>` :
+    mine.map((m) => `<li class="${m.level === "w" ? "w" : ""}">${esc(m.text)}</li>`).join("") +
+    (elsewhere.length ? `<li class="o">${elsewhere.length} more in entries of other categories (${[...new Set(elsewhere.flatMap((m) => m.views))].filter((v) => v !== S.view).map((v) => VIEWS[v]).join(", ")})</li>` : "") +
+    (r.ok ? `<li class="ok">ok – ${r.entries} entr${r.entries === 1 ? "y" : "ies"}</li>` : "");
+  // agent path of this tab
+  const ag = gs.filter((g) => !gapDone(g) && (MODE[g.id] === "agent" || S.agent[S.board + g.id]));
+  $("agentFor").textContent = `kisi-prepare · --for ${S.view}`;
+  $("agentNote").textContent = `Gaps of ${VIEWS[S.view]} that need datasheets, BOMs or curves. The agent researches them with sources and merges them into the same kisi.json (keeping your entries and dismissals); loaded again, the file fills this page.`;
+  $("agentList").innerHTML = ag.length ? ag.map((g) => `<li class="w"><b>${esc(TITLES[g.id] || g.id)}</b> <code>${g.id}</code> – ${g.total} item${g.total === 1 ? "" : "s"}</li>`).join("") : `<li class="o">nothing handed over – the prompt asks for this category's open gaps</li>`;
+  $("prompt").textContent = na ? `Nothing to check for ${VIEWS[S.view]} on this board – no prompt needed.` : promptText();
+  $("copyPrompt").disabled = !!na;
+  $("jsonName").textContent = b.board + ".kisi.json";
+  $("jsonSize").textContent = S.scope === "all" ? `${rs.entries} entries` : `${rs.entries} ${VIEWS[S.scope]} entries`;
+  $("mergeNote").textContent = b.config ? `Merged into the loaded ${b.config.file} on saving: its ${b.config.entries} entries stay, entries below are added or replace those with the same key. (In the viewer the loaded entries would also fill the forms; not in the mockup.)` : S.scope === "all" ? "Everything entered, for all categories." : `Only what ${VIEWS[S.scope]} uses – valid on its own; the other categories keep their gaps.`;
+  $("json").textContent = JSON.stringify(rs.out, null, 2);
+}
+function selectorOf(el) { return Object.entries(el.dataset).map(([k, v]) => `[data-${k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase())}="${CSS.escape(v)}"]`).join(""); }
+
+document.addEventListener("input", (ev) => {
+  const t = ev.target, c = cfg(), ed = t.dataset.ed, val = t.type === "checkbox" ? t.checked : t.value;
+  const srcEl = t.closest("[data-src]");
+  if (t.id === "scope") { S.scope = t.value; }
+  else if (t.dataset.disItem) { const d = (c.dismissed[t.dataset.gapId] ||= { items: [], reason: "" }); d.items = t.checked ? [...new Set([...d.items, t.dataset.disItem])] : d.items.filter((x) => x !== t.dataset.disItem); }
+  else if (t.dataset.disReason) { (c.dismissed[t.dataset.disReason] ||= { items: [], reason: "" }).reason = t.value; }
+  else if (srcEl) { const k = srcEl.dataset.src; c.src[k] = { ...(c.src[k] || {}), [t.dataset.k]: t.value }; }
+  else if (ed === "stackup") { (c.stackup[t.dataset.i] ||= {})[t.dataset.k] = val; }
+  else if (ed === "classes") { (c.classes[t.dataset.c] ||= {})[t.dataset.k] = val; }
+  else if (ed === "reg") { const r = c.reg[+t.dataset.i]; if (["kind", "document"].includes(t.dataset.k)) r.src = { ...(r.src || {}), [t.dataset.k]: val }; else r[t.dataset.k] = val; }
+  else if (ed === "loads") { const e = (c.loads[t.dataset.r] ||= { rails: {} }); if (t.dataset.rail) e.rails[t.dataset.rail] = val; else if (t.dataset.k === "basis") e.basis = val; else e.src = { ...(e.src || {}), [t.dataset.k]: val }; }
+  else if (ed === "series") { (c.series[t.dataset.r] ||= {})[t.dataset.k] = val; }
+  else if (ed === "thermal") { (c.thermal[t.dataset.r] ||= {})[t.dataset.k] = val; }
+  else if (ed === "variant") { c.variant = val; }
+  else if (t.dataset.agent) { S.agent[S.board + t.dataset.agent] = t.checked; }
+  else return;
+  render();
+});
+document.addEventListener("change", (ev) => { if (ev.target.matches("select, input[type=checkbox], input[type=radio]")) ev.target.dispatchEvent(new Event("input", { bubbles: true })); });
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("button, header[data-toggle]");
+  if (!t) return;
+  const c = cfg();
+  if (t.dataset.toggle) { const id = t.dataset.toggle, g = t.closest(".gap"); S.open[S.board + id] = g.getAttribute("aria-expanded") !== "true"; render(); return; }
+  if (t.dataset.tab) { S.view = t.dataset.tab; render(); return; }
+  if (t.dataset.board) { S.board = t.dataset.board; document.querySelectorAll("[data-board]").forEach((b) => b.setAttribute("aria-pressed", b === t)); render(); return; }
+  if (t.dataset.dismiss) { S.dismissing = t.dataset.dismiss; render(); return; }
+  if (t.dataset.disAll) { const g = allGaps().find((x) => x.id === t.dataset.disAll); (c.dismissed[g.id] ||= { items: [], reason: "" }).items = dismissable(g); render(); return; }
+  if (t.dataset.undo) { delete c.dismissed[t.dataset.undo]; S.dismissing = null; S.open[S.board + t.dataset.undo] = true; render(); return; }
+  if ("addReg" in t.dataset) { const first = viewGaps().find((x) => MODE[x.id] === "reg"); c.reg.push({ ref: t.dataset.addReg, value: t.dataset.val, src: {} }); if (first) S.open[S.board + first.id] = true; render(); const ins = document.querySelectorAll(`[data-gap="${first?.id}"] input[data-k="value"]`); ins[ins.length - 1]?.focus(); return; }
+  if (t.id === "save") {
+    // in the viewer: written next to the board through the File System Access handle when there is one, else downloaded
+    const blob = new Blob([JSON.stringify(check(S.scope).out, null, 2) + "\n"], { type: "application/json" });
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: B().board + ".kisi.json" });
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); return;
+  }
+  if (t.id === "copyPrompt") { navigator.clipboard?.writeText(promptText()).catch(() => {}); $("copied").hidden = false; setTimeout(() => ($("copied").hidden = true), 1500); }
+});
+render();
+</script>
+</body>
+</html>

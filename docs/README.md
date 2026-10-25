@@ -18,7 +18,7 @@ Background:
 - [research/thermal.md](research/thermal.md) – the temperature estimate: concept, physics and validation.
 - [research/accuracy-levels.md](research/accuracy-levels.md) – accuracy levels: which result gets a level and an
   uncertainty, where the numbers come from, how CLI and viewer show them.
-- [examples/](examples/) – prepared board configurations.
+- [examples/](examples/) – prepared board configurations; `mockups/` – design mockups of planned features.
 
 For contributors: [ARCHITECTURE.md](../ARCHITECTURE.md) (structure and rules), [CONTRIBUTING.md](../CONTRIBUTING.md),
 [AGENTS.md](../AGENTS.md) (build and checks), [ROADMAP.md](../ROADMAP.md), [UPSTREAM.md](../UPSTREAM.md) (the field

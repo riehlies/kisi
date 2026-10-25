@@ -24,6 +24,7 @@
   "pi-loss.js",
   "pi-thermal.js",
   "views.js",
+  "prepare.js",
   "main.js"
  ]
 }

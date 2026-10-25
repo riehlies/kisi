@@ -1,5 +1,5 @@
 {
- "critical": 60,
+ "critical": 62,
  "note": "NEXT (backward, seen at the near end) and FEXT (forward, at the far end) as fractions of the aggressor swing, all aggressors summed; critical from 1 % (kisi guide value). Source 'formula' is an estimate; kisi.mjs solves the critical coupling cross-sections with the field solver. Broadside overlaps (tracks on the adjacent layer) are counted but not computed yet. Details per net: `kisi net`.",
  "rise_ps": 35.0,
  "rows": [
@@ -381,6 +381,21 @@
   {
    "broadside_overlaps": 0,
    "critical": true,
+   "differential": true,
+   "fext": 0.0153019,
+   "fext_common": 0.0120033,
+   "net": "/Microcontroller/MCU_USB_DN",
+   "next": 0.0246014,
+   "next_common": 0.015595,
+   "partner": "/Microcontroller/MCU_USB_DP",
+   "source": "formula",
+   "unsolved_cross_sections": 12,
+   "worst_aggressor": "USB_CC2",
+   "worst_aggressor_pair": null
+  },
+  {
+   "broadside_overlaps": 0,
+   "critical": true,
    "differential": false,
    "fext": 0.0116014,
    "fext_common": null,
@@ -437,26 +452,11 @@
    "unsolved_cross_sections": 3,
    "worst_aggressor": "Net-(IC29-IN+)",
    "worst_aggressor_pair": null
-  },
-  {
-   "broadside_overlaps": 0,
-   "critical": true,
-   "differential": false,
-   "fext": 0.0129512,
-   "fext_common": null,
-   "net": "Net-(IC29-OUT+)",
-   "next": 0.0209453,
-   "next_common": null,
-   "partner": null,
-   "source": "formula",
-   "unsolved_cross_sections": 8,
-   "worst_aggressor": "Net-(IC29-OUT-)",
-   "worst_aggressor_pair": null
   }
  ],
- "rows_omitted": 30,
+ "rows_omitted": 32,
  "rows_shown": "critical (use --all for all)",
  "threshold": 0.01,
- "unsolved_critical_cross_sections": 417,
- "victims": 133
+ "unsolved_critical_cross_sections": 435,
+ "victims": 135
 }

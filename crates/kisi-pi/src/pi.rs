@@ -394,6 +394,37 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
     (rails, warnings)
 }
 
+/// Rail setups (sources and loads chosen per rail in the viewer, without a power tree) as footprint
+/// fields (ref, field name, value): PI_SOURCE `NET=<V>V` on every source part, PI_LOAD `NET=<I>`
+/// on every load part – the inverse of `rails_from_fields`. Returns the fields and what fields cannot
+/// say: pads chosen on a part (fields name parts; their pads on the rail are all used).
+pub fn setups_to_fields(setups: &[RailSetup]) -> (Vec<(String, String, String)>, Vec<String>) {
+    use crate::field_syntax::quote_name;
+    let mut out: Vec<(String, String, String)> = Vec::new();
+    let mut lost = Vec::new();
+    let mut push = |r: &str, name: &str, v: String, out: &mut Vec<(String, String, String)>| match out.iter_mut().find(|x| x.0 == r && x.1 == name) {
+        Some(x) => x.2 = format!("{}, {v}", x.2),
+        None => out.push((r.to_string(), name.to_string(), v)),
+    };
+    for s in setups.iter().filter(|s| !s.ground) {
+        let net = quote_name(&s.net);
+        for src in &s.sources {
+            let v = if s.voltage != 0.0 && voltage_from_name(&s.net).is_none_or(|x| (x - s.voltage).abs() > 1e-9) { format!("{net}={}V", crate::tree::field_num(s.voltage)) } else { net.clone() };
+            push(&src.refdes, "PI_SOURCE", v, &mut out);
+            if !src.pads.is_empty() {
+                lost.push(format!("{}: source pads {} on {} (the field uses all its pads on the rail)", src.refdes, src.pads.join(" "), s.net));
+            }
+        }
+        for l in s.loads.iter().filter(|l| l.current != 0.0 && l.origin != "regulator") {
+            push(&l.refdes, "PI_LOAD", format!("{net}={}", crate::tree::field_amps(l.current)), &mut out);
+            if !l.pads.is_empty() {
+                lost.push(format!("{}: load pads {} on {} (the field uses all its pads on the rail)", l.refdes, l.pads.join(" "), s.net));
+            }
+        }
+    }
+    (out, lost)
+}
+
 // --- rasterisation ------------------------------------------------------------------
 
 pub(crate) struct Grid {
@@ -1216,5 +1247,34 @@ mod tests {
         let err = (drop - expect) / expect;
         eprintln!("plane: {:.4} mV vs {:.4} mV with edges ({:.4} mV infinite sheet), {:+.1} %", drop * 1e3, expect * 1e3, infinite * 1e3, err * 100.0);
         assert!(err.abs() < 0.05, "plane spreading: {drop} V vs {expect} V ({:+.1} %)", err * 100.0);
+    }
+    /// Rail setups written as fields read back as the same rails (the pads chosen on a part are
+    /// reported as lost).
+    #[test]
+    fn setups_to_fields_round_trip() {
+        let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew") (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+  (net 0 "") (net 1 "+3V3") (net 2 "VCORE") (net 3 "/A B/VDD 1")
+  (footprint "J" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 2 "VCORE")))
+  (footprint "U" (layer "F.Cu") (at 3 0) (property "Reference" "U1") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 2 "VCORE")) (pad "3" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 3 "/A B/VDD 1"))))"#;
+        let setups = vec![
+            RailSetup { net: "+3V3".into(), voltage: 3.3, sources: vec![SourceSpec { refdes: "J1".into(), pads: vec![] }], loads: vec![LoadSpec { refdes: "U1".into(), current: 0.12, pads: vec![], origin: "user".into() }], ground: false },
+            RailSetup { net: "VCORE".into(), voltage: 0.9, sources: vec![SourceSpec { refdes: "J1".into(), pads: vec!["2".into()] }], loads: vec![LoadSpec { refdes: "U1".into(), current: 1.5, pads: vec![], origin: "field".into() }], ground: false },
+            RailSetup { net: "/A B/VDD 1".into(), voltage: 1.8, sources: vec![SourceSpec { refdes: "J1".into(), pads: vec![] }], loads: vec![LoadSpec { refdes: "U1".into(), current: 0.002, pads: vec![], origin: "user".into() }], ground: false },
+        ];
+        let (fields, lost) = setups_to_fields(&setups);
+        assert_eq!(lost.len(), 1, "{lost:?}");
+        let get = |r: &str, n: &str| fields.iter().find(|x| x.0 == r && x.1 == n).map(|x| x.2.clone());
+        assert_eq!(get("J1", "PI_SOURCE").as_deref(), Some("+3V3, VCORE=0.9V, \"/A B/VDD 1\"=1.8V"));
+        assert_eq!(get("U1", "PI_LOAD").as_deref(), Some("+3V3=120mA, VCORE=1.5A, \"/A B/VDD 1\"=2mA"));
+        let mut b = load_pcb(pcb).unwrap();
+        for (r, n, v) in &fields {
+            b.footprints.iter_mut().find(|f| &f.reference == r).unwrap().props.push((n.clone(), v.clone()));
+        }
+        let (rails, w) = rails_from_fields(&b);
+        assert!(w.is_empty(), "{w:?}");
+        for s in &setups {
+            let r = rails.iter().find(|r| r.net == s.net).unwrap();
+            assert!((r.voltage - s.voltage).abs() < 1e-9 && r.sources[0].refdes == "J1" && (r.loads[0].current - s.loads[0].current).abs() < 1e-12, "{r:?}");
+        }
     }
 }

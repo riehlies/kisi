@@ -57,7 +57,9 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
                    [--class CLASS=PROFILE]
-  gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
+  gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
+                   per category (impedance, channel, power) whether there is anything to check and
+                   whether it is ready                           [--for impedance|channel|power]
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
   config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
                    assembly variants
@@ -157,13 +159,23 @@ closely the circuit follows kisi's own S-parameters, the element counts and note
 boards that have them. See [Models and limits](models.md#channel-export).
 
 ### `gaps`
-Missing or default data: each gap has `id`, `priority` (high, medium, low), `area`, `issue`, `affects`,
+Missing or default data: each gap has `id`, `priority` (high, medium, low), `area`, `issue`, `affects`, `views`
+(the analysis categories it matters for: impedance, channel, power – the temperature estimate is part of power),
 `where_to_find`, `write` (where it goes in `<board>.kisi.json`, with an example) and `items` (layers, classes,
-parts with their MPN). See [Preparing a board](preparing-a-board.md#the-gap-list). Fast, no field solver.
+parts with their MPN; `"dismissable": true` on items found only by a name; items of gaps that mix categories
+carry their own `views` – a dielectric with only a default tanδ matters for the channel, not the impedance – and
+the gap's `views` are then those of its items; capacitors in `cap-ratings` carry their `package` and, where the
+part's own fields name them, a `suggest`ed PI_CAP value). `views` in the result says per
+category whether there is anything to check (`applicable`, `why`) and its `state`: `ready` (no open high or medium
+gap), `open`, or `nothing to check`. `--for impedance|channel|power` keeps the gaps of one category.
+`dismissed` lists the items left out because `gaps.dismissed` in kisi.json dismisses them, with the reason (and
+`not_applied` for items that are not reported). See [Preparing a board](preparing-a-board.md#the-gap-list). Fast,
+no field solver.
 
 ### `config-check`
 Checks `<board>.kisi.json` against the board: format, ranges, references, sources, field syntax kisi cannot read,
-variants and the files they name. Prints `ok`, `errors`, `warnings` and the number of entries.
+variants and the files they name, dismissed gaps. Prints `ok`, `errors`, `warnings`, the number of entries, and
+`messages` – every error and warning with the categories (`views`) of the entry it is about.
 
 ### `config-template`
 A `<board>.kisi.json` skeleton with this board's dielectric indices, net classes and suggested assembly variants
@@ -206,6 +218,7 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--fmax GHZ` | `export` | top frequency of the ladders and the Touchstone grid (default 25 GHz, at least 1.25 × the bit rate); `profile`: 5 × Nyquist of the lane's profile |
 | `--fmin GHZ` | `export` | start and step of the frequency grid (default f max / 500) |
 | `--kicad-style STYLE` | `export` | `detailed` (one symbol per element, default) or `compact` (the lane as one symbol) |
+| `--for VIEW` | `gaps` | only the gaps of one category: `impedance`, `channel` or `power` |
 | `--formula` | field-solver commands | no field solver (formula impedances) |
 | `--field-time S` | field-solver commands | time budget for new solves, default 120 s |
 | `--field-all` | field-solver commands | all cross-sections, not only those of nets with a target |

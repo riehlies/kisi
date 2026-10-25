@@ -23,6 +23,9 @@ PDN impedance, temperature estimate) – in the browser, with no installation an
   against interface profiles (PCIe, USB, DDR, LVDS, Ethernet, …) on loss, return loss, skew and a linear eye;
   differential pairs as 4-ports, multi-drop lines at every receiver, connectors with the channel behind them; a
   lane or a whole bus exported as SPICE subcircuits, Touchstone and a KiCad project for circuit simulators.
+- **Preparation:** "Prepare PCB" is a checklist of what the board file lacks per category (impedance, channel,
+  power): forms for the simple values, Apply per step, and `<board>.kisi.json` saved at the end; the kisi-prepare
+  skill does the datasheet research.
 - **Power:** the regulator chain and power flow from fields on the parts (`PI_REG`, `PI_LOAD`), DC voltage drop
   per rail and in the ground return, a losses map, a temperature estimate of the board and its parts, and the PDN
   impedance seen from every IC with recommendations.

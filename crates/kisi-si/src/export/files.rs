@@ -21,15 +21,17 @@ pub struct Formats {
     pub touchstone: bool,
     pub kicad: bool,
     pub ltspice: bool,
+    /// the subcircuit library alone (always written with a bench or the KiCad project)
+    pub lib: bool,
     /// the KiCad sheet with the lane as one symbol (else one symbol per element)
     pub kicad_compact: bool,
 }
 
 impl Formats {
-    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, ltspice: true, kicad_compact: false };
+    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, ltspice: true, lib: true, kicad_compact: false };
     /// From a comma-separated list: spice, xyce, touchstone, kicad, all.
     pub fn parse(s: &str) -> Result<Formats, String> {
-        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, ltspice: false, kicad_compact: false };
+        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, ltspice: false, lib: false, kicad_compact: false };
         for p in s.split(',').map(|p| p.trim().to_ascii_lowercase()).filter(|p| !p.is_empty()) {
             match p.as_str() {
                 "spice" | "ngspice" => f.spice = true,
@@ -37,11 +39,12 @@ impl Formats {
                 "touchstone" | "snp" => f.touchstone = true,
                 "kicad" => f.kicad = true,
                 "ltspice" => f.ltspice = true,
+                "lib" | "netlist" => f.lib = true,
                 "all" => f = Formats { kicad_compact: f.kicad_compact, ..Formats::ALL },
-                _ => return Err(format!("--format {p}: use spice, xyce, ltspice, touchstone, kicad or all (comma-separated)")),
+                _ => return Err(format!("--format {p}: use lib, spice, xyce, ltspice, touchstone, kicad or all (comma-separated)")),
             }
         }
-        if !(f.spice || f.xyce || f.touchstone || f.kicad || f.ltspice) {
+        if !(f.lib || f.spice || f.xyce || f.touchstone || f.kicad || f.ltspice) {
             return Err("--format: nothing to write".into());
         }
         Ok(f)
@@ -480,7 +483,7 @@ pub fn lane_files(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, f
     let lib = format!("{st}.lib");
     let mut out = Vec::new();
     let mut add = |p: String, c: String| out.push(ExportFile { path: format!("{dir}{p}"), content: c });
-    if f.spice || f.xyce || f.kicad {
+    if f.lib || f.spice || f.xyce || f.kicad {
         add(lib.clone(), lib_file(lc, board, fmax, per_lambda));
     }
     if f.spice {
@@ -533,7 +536,7 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
     }
     s.push_str(&format!("| – | `ref` | reference (ground); connect to node 0 |\n\nReference impedance {} Ω per port{}. Track length {} mm, delay {} ps.\n\n", sig4(lc.z_ref), if lc.pair || lc.odd_mode { format!(" ({} Ω differential)", sig4(2.0 * lc.z_ref)) } else { String::new() }, sig4(lc.length_mm), sig4(lc.delay_ps)));
     s.push_str("## Files\n\n");
-    if f.spice || f.xyce || f.kicad {
+    if f.lib || f.spice || f.xyce || f.kicad {
         s.push_str(&format!("* `{st}.lib` – the lane as SPICE subcircuit `{}` (plain R, L, C, E, F, V elements: ngspice, Xyce, LTspice, KiCad). One subcircuit per line section, via, part and stub; the lane subcircuit last.\n", lc.subckt));
     }
     if f.spice {

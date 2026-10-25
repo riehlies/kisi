@@ -111,9 +111,15 @@ models it – for circuit and RF simulators:
   Foster/Debye networks fitted to R(f), L(f), G(f), C(f) – positive elements only, so passive and causal; vias as
   kisi's via ladder; parts with their estimated parasitics (e.g. an AC-coupling capacitor as R–L–C with its pads);
   open stubs; a pair with both lines and its coupled sections as even/odd chains between ideal mode converters.
-- **Test benches** for ngspice and Xyce (PRBS7 between the profile's linear transmitter and receiver) and an
-  S-parameter deck; the netlist is shared, only the decks differ (the two simulators call analyses differently).
+- **Test benches** for ngspice, Xyce and LTspice (PRBS7 between the profile's linear transmitter and receiver, the
+  LTspice one with `.meas` results) and S-parameter decks; the netlist is shared, only the decks differ (the
+  simulators call analyses differently; for LTspice the library carries `Rser=0` on every inductor, which LTspice
+  otherwise sets to 1 mΩ).
 - **Touchstone** per lane (`.s2p`, `.s4p`) and a bus as one N-port with its port map.
+- **Frequency range:** the ladders have 20 sections per wavelength at the top frequency (default 25 GHz; `--fmax`, or
+  5 × Nyquist of the profile), which also ends the Touchstone grid. A lower top frequency shortens transients only
+  so far: an 85 mm LVDS pair has 42 k elements at 25 GHz and 23 k at 2.5–5 GHz (ngspice 350 s and 180 s for two PRBS7
+  periods), because every section, via and part keeps its share.
 - **KiCad project** (KiCad 7 format, opens in KiCad 7 and later; checked with KiCad 9's ERC): one symbol per
   element, parts with their value as a parameter (change `220n` in KiCad and the parasitics stay), or the lane as one
   symbol.

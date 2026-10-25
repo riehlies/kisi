@@ -46,11 +46,16 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
   report           write analysis/kisi.json next to the board   [--out FILE]
   export           a lane or a whole bus for circuit and RF simulators: SPICE subcircuits (RLGC
                    ladders, kisi's via model, parts, stubs; pairs coupled) with test benches for
-                   ngspice and Xyce, Touchstone (.s2p/.s4p, a bus as one N-port with port map) and a
-                   KiCad project with the profile's linear ends
-                   --lane NAME | --bus NAME  [--format spice,xyce,touchstone,kicad (default all)]
+                   ngspice, Xyce and LTspice, Touchstone (.s2p/.s4p, a bus as one N-port with port
+                   map) and a KiCad project with the profile's linear ends
+                   --lane NAME | --bus NAME
+                   [--format lib,spice,xyce,ltspice,touchstone,kicad (default all; lib: the
+                   subcircuits alone, spice: with the ngspice decks)]
                    [--kicad-style detailed|compact (one symbol per element, default; or the lane
-                   as one symbol)] [--out DIR (default analysis/export/<name> next to the board)]
+                   as one symbol)] [--fmax GHZ|profile (top frequency of the ladder and the
+                   Touchstone grid; default as the check, 25 GHz; profile: 5 x Nyquist)]
+                   [--fmin GHZ (grid start and step; default fmax/500)]
+                   [--out DIR (default analysis/export/<name> next to the board)]
                    [--class CLASS=PROFILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
@@ -134,13 +139,18 @@ review tools and later sessions. Needs an assembly variant on boards that have t
 ### `export`
 A lane (`--lane NAME`, a net of the lane) or a whole bus (`--bus NAME`, as `kisi interfaces` names it, e.g.
 `"P1 ↔ U18"`) for circuit and RF simulators: the board channel as the check models it, as SPICE subcircuits with test
-benches for ngspice and Xyce, Touchstone files (a bus also as one N-port with its port map) and a KiCad project with
-the interface profile's linear ends. `--format spice,xyce,touchstone,kicad` chooses the files (default: all),
-`--kicad-style detailed` (default: one symbol per element – lines, coupled runs, vias, parts with their value as a
-parameter, pads, stubs) or `compact` (the lane as one symbol), `--out DIR` the folder (default
-`analysis/export/<name>` next to the board). The JSON lists the files, the bench ends, how closely the circuit
-follows kisi's own S-parameters, the element counts and notes. Needs an assembly variant on boards that have them.
-See [Models and limits](models.md#channel-export).
+benches for ngspice, Xyce and LTspice, Touchstone files (a bus also as one N-port with its port map) and a KiCad
+project with the interface profile's linear ends. `--format` chooses the files (comma-separated, default all):
+`lib` the subcircuit library alone, `spice` with the ngspice bench and S-parameter deck, `xyce`, `ltspice` (bench,
+and for a single-ended lane a `.net` S-parameter deck), `touchstone`, `kicad`. `--kicad-style detailed` (default:
+one symbol per element – lines, coupled runs, vias, parts with their value as a parameter, pads, stubs) or `compact`
+(the lane as one symbol). `--fmax GHZ` sets the top frequency of the ladders (sections per wavelength) and of the
+Touchstone grid (default: the check's 25 GHz), `--fmax profile` uses 5 × Nyquist of the lane's interface profile
+(at least 1.25 × the bit rate either way; a bus takes the highest of its lanes, so its N-port has one grid);
+`--fmin GHZ` the grid's start and step (default f max / 500, at most 10000 points). `--out DIR` the folder (default
+`analysis/export/<name>` next to the board). The JSON lists the files, the frequency grid, the bench ends, how
+closely the circuit follows kisi's own S-parameters, the element counts and notes. Needs an assembly variant on
+boards that have them. See [Models and limits](models.md#channel-export).
 
 ### `gaps`
 Missing or default data: each gap has `id`, `priority` (high, medium, low), `area`, `issue`, `affects`,
@@ -188,7 +198,9 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--out FILE` | `report`, `export` | where to write the report (default `analysis/kisi.json` next to the board) or the export's folder (default `analysis/export/<name>`) |
 | `--lane NAME` | `export` | the lane to export (a net of it) |
 | `--bus NAME` | `export` | the bus to export, all its lanes (as `kisi interfaces` names it) |
-| `--format LIST` | `export` | `spice`, `xyce`, `touchstone`, `kicad` (comma-separated; default all) |
+| `--format LIST` | `export` | `lib`, `spice`, `xyce`, `ltspice`, `touchstone`, `kicad` (comma-separated; default all) |
+| `--fmax GHZ` | `export` | top frequency of the ladders and the Touchstone grid (default 25 GHz, at least 1.25 × the bit rate); `profile`: 5 × Nyquist of the lane's profile |
+| `--fmin GHZ` | `export` | start and step of the frequency grid (default f max / 500) |
 | `--kicad-style STYLE` | `export` | `detailed` (one symbol per element, default) or `compact` (the lane as one symbol) |
 | `--formula` | field-solver commands | no field solver (formula impedances) |
 | `--field-time S` | field-solver commands | time budget for new solves, default 120 s |

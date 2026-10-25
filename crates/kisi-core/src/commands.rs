@@ -37,9 +37,14 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    ladders, kisi's via model, parts, stubs; pairs coupled) with test benches for
                    ngspice, Xyce and LTspice, Touchstone (.s2p/.s4p, a bus as one N-port with port
                    map) and a KiCad project with the profile's linear ends
-                   --lane NAME | --bus NAME  [--format spice,xyce,ltspice,touchstone,kicad (default all)]
+                   --lane NAME | --bus NAME
+                   [--format lib,spice,xyce,ltspice,touchstone,kicad (default all; lib: the
+                   subcircuits alone, spice: with the ngspice decks)]
                    [--kicad-style detailed|compact (one symbol per element, default; or the lane
-                   as one symbol)] [--out DIR (default analysis/export/<name> next to the board)]
+                   as one symbol)] [--fmax GHZ|profile (top frequency of the ladder and the
+                   Touchstone grid; default as the check, 25 GHz; profile: 5 x Nyquist)]
+                   [--fmin GHZ (grid start and step; default fmax/500)]
+                   [--out DIR (default analysis/export/<name> next to the board)]
                    [--class CLASS=PROFILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
@@ -125,6 +130,8 @@ pub struct Opts {
     pub bus: Option<String>,
     pub format: Option<String>,
     pub kicad_style: Option<String>,
+    pub fmin: Option<String>,
+    pub fmax: Option<String>,
 }
 
 /// Parse `<command> [args…]`.
@@ -179,6 +186,8 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--bus" => o.bus = Some(val(&mut i, a)?),
             "--format" => o.format = Some(val(&mut i, a)?),
             "--kicad-style" => o.kicad_style = Some(val(&mut i, a)?),
+            "--fmin" => o.fmin = Some(val(&mut i, a)?),
+            "--fmax" => o.fmax = Some(val(&mut i, a)?),
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
         }
@@ -207,6 +216,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             return Err("export needs --lane NAME or --bus NAME (see `kisi interfaces`)".into());
         }
         formats(&o)?;
+        crate::channel_export::FreqRange::parse(o.fmin.as_deref(), o.fmax.as_deref())?;
     }
     if o.cmd == "net" && o.pos.len() < 2 {
         return Err("net name missing (kisi net <board> <NET>)".into());
@@ -428,7 +438,7 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
                 (None, Some(b)) => crate::channel_export::Pick::Bus(b),
                 _ => return Err("export needs --lane NAME or --bus NAME".into()),
             };
-            let (mut v, files, name) = crate::channel_export::export(pr, &profiles, &o.classes, pick, f, &rp)?;
+            let (mut v, files, name) = crate::channel_export::export(pr, &profiles, &o.classes, pick, f, &rp, crate::channel_export::FreqRange::parse(o.fmin.as_deref(), o.fmax.as_deref())?)?;
             // the front end writes the files into this folder and replaces "_files" by "written"
             let dir = o.out.clone().unwrap_or_else(|| {
                 let b = std::path::Path::new(&o.pos[0]);

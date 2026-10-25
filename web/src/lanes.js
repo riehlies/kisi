@@ -83,6 +83,48 @@ function chForLane(l) {
   return res;
 }
 
+// export settings (card "Export for simulators"): what to write and the frequency range; kept per
+// viewer in localStorage (collapsed by default)
+const EXPORT_KEY = "kisi.export.v1";
+const EX_BOXES = ["ts", "lib", "ng", "xy", "lt", "kc"];
+function exportSettings() {
+  const o = {};
+  for (const k of EX_BOXES) o[k] = $("ex-" + k).checked;
+  o.ks = $("ex-ks").value; o.fmax = $("ex-fmax").value; o.fmin = $("ex-fmin").value;
+  return o;
+}
+function exportFormats(o) {
+  const f = [];
+  if (o.ts) f.push("touchstone");
+  if (o.lib) f.push("lib");
+  if (o.ng) f.push("spice");
+  if (o.xy) f.push("xyce");
+  if (o.lt) f.push("ltspice");
+  if (o.kc) f.push("kicad");
+  return f.join(",");
+}
+function exportHint() {
+  const o = exportSettings(), bench = o.ng || o.xy || o.kc;
+  // the subcircuit library comes with every bench and the KiCad project
+  $("ex-lib").disabled = bench; if (bench) $("ex-lib").checked = true;
+  $("ex-ks").disabled = !o.kc;
+  const none = !exportFormats(o);
+  const last = S.exportLast ? ` Last export: ${S.exportLast}.` : "";
+  $("ex-hint").textContent = (none ? "Nothing selected: “Export…” writes nothing. " : "")
+    + "The ladder grows with the top frequency: an 85 mm LVDS pair has about 42 k elements at 25 GHz and 23 k at 2.5–5 GHz (ngspice: about 350 s and 180 s for two PRBS7 periods)." + last;
+}
+function initExportSettings() {
+  const saved = lsGet(EXPORT_KEY) || {};
+  for (const k of EX_BOXES) if (typeof saved[k] === "boolean") $("ex-" + k).checked = saved[k];
+  for (const k of ["ks", "fmax", "fmin"]) if (typeof saved[k] === "string" && [...$("ex-" + k).options].some((x) => x.value === saved[k])) $("ex-" + k).value = saved[k];
+  $("ex-opts").open = saved.open === true;
+  const save = () => { exportHint(); lsSet(EXPORT_KEY, { ...exportSettings(), open: $("ex-opts").open }); };
+  $("ex-settings").querySelectorAll("input, select").forEach((x) => x.onchange = save);
+  $("ex-opts").addEventListener("toggle", save);
+  exportHint();
+}
+initExportSettings();
+
 // export of lanes (one, or all of a bus) for circuit and RF simulators: SPICE subcircuits with
 // test benches, Touchstone, a KiCad project – with the profile, direction and connector ends set here
 function laneExportReq(l) {
@@ -96,8 +138,15 @@ function exportLanes(lanes, bus, btn) {
   btn.textContent = "Exporting…"; btn.disabled = true;
   setTimeout(() => {
     try {
-      const res = S.engine.exportCircuit({ board: S.name + ".kicad_pcb", formats: "all", bus: bus ? bus.name : null, devices: bus ? bus.devices : [],
-        lanes: lanes.filter((l) => l.ends.length >= 2).map(laneExportReq) });
+      const o = exportSettings(), formats = exportFormats(o);
+      if (!formats) throw new Error("nothing selected in the export settings");
+      const res = S.engine.exportCircuit({ board: S.name + ".kicad_pcb", formats, kicad_style: o.ks,
+        fmax: o.fmax === "rf" ? null : o.fmax === "profile" ? "profile" : parseFloat(o.fmax), fmin_ghz: o.fmin ? parseFloat(o.fmin) : null,
+        bus: bus ? bus.name : null, devices: bus ? bus.devices : [], lanes: lanes.filter((l) => l.ends.length >= 2).map(laneExportReq) });
+      const els = (res.summary.lanes || []).reduce((a, x) => a + x.elements.r + x.elements.l + x.elements.c + x.elements.sources, 0);
+      const fr = res.summary.lanes && res.summary.lanes[0] ? res.summary.lanes[0].frequency : null;
+      S.exportLast = `${res.name}, ${res.files.length} files, ${fmt(els / 1000, 1)} k elements${fr ? `, ${fmt(fr.fmax_hz / 1e9, 1)} GHz, ${fr.points} points` : ""}`;
+      exportHint();
       saveZip(`${res.name}.zip`, res.files);
     } catch (e) { alert("Export: " + e.message); }
     btn.textContent = old; btn.disabled = false;
@@ -116,6 +165,8 @@ function laneChain(l) {
 }
 
 function laneRow(l) { return S.laneRes ? S.laneRes.get(laneKey(l)) : null; }
+// a bus is computed when the check has a result for each of its lanes with two ends
+function busComputed(b) { return b.lanes.every((l) => l.ends.length < 2 || laneRow(l)); }
 function laneStatus(l) {
   const r = laneRow(l);
   return r ? judge(rowMetrics(r, l), laneProfile(l)).status : null;
@@ -171,7 +222,7 @@ function renderChOverview() {
     }).join("");
     return `<div class="bal-card bus-card">
       <h4><span>${worst ? `<span class="dot" style="background:${S.colors[worst]}"></span> ` : ""}${esc(b.name)}</span><em>${esc(b.class)} · ${esc(p.name)} · ${b.lanes.length} lane${b.lanes.length === 1 ? "" : "s"}</em></h4>
-      <div class="bus-meta"><span>${dir}</span>${checkable && l0.ends.length === 2 ? `<span class="muted">${esc(laneSwaps()[laneKey(l0)] ? "direction swapped by you" : oneDir ? l0.direction : "")}</span><button class="btn small" data-swap="${esc(b.name)}|${esc(b.class)}">Swap direction</button><button class="btn small" data-export="${esc(b.name)}|${esc(b.class)}" title="All lanes of this bus for circuit and RF simulators (zip): SPICE subcircuits with test benches for ngspice and Xyce, Touchstone files and one N-port of the bus, a KiCad project">Export…</button>` : ""}</div>
+      <div class="bus-meta"><span>${dir}</span>${checkable && l0.ends.length === 2 ? `<span class="muted">${esc(laneSwaps()[laneKey(l0)] ? "direction swapped by you" : oneDir ? l0.direction : "")}</span><button class="btn small" data-swap="${esc(b.name)}|${esc(b.class)}">Swap direction</button>${(() => { const ok = busComputed(b); return `<button class="btn small" data-export="${esc(b.name)}|${esc(b.class)}"${ok ? "" : " disabled"} title="${ok ? "All lanes of this bus for circuit and RF simulators (zip): SPICE subcircuits with test benches for ngspice, Xyce and LTspice, Touchstone files and one N-port of the bus, a KiCad project – what the export settings select" : "run the channel check first"}">Export…</button>`; })()}` : ""}</div>
       ${conn}
       <div class="tablewrap"><table class="ctab lanes"><thead><tr><th></th><th>Lane</th><th>Path</th><th>mm</th><th>IL dB</th><th>RL dB</th><th>Eye %</th><th>Skew ps</th></tr></thead><tbody>${rows}</tbody></table></div>
     </div>`;
@@ -225,7 +276,7 @@ function renderLaneDetail(l) {
   const tabs = [["check", "Check"], ...(l.kind !== "connector-connector" ? [["eye", "Eye"]] : []), ["path", "Path"]];
   const t = tabs.some((x) => x[0] === tab) ? tab : "check";
   d.innerHTML = `<header><div><h3>${esc(netShort(l.name))}${l.diff ? ` <span class="muted">pair</span>` : ""}</h3><div class="muted">${esc(pinLabel(tx))} ${esc(tx?.value || "")} → ${esc(pinLabel(rx))} ${esc(rx?.value || "")} · ${esc(l.class)}</div></div><button class="x" id="closeCh" aria-label="Clear selection">×</button></header>
-    <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}${variantShown() ? ` · variant ${esc(variantShown())}` : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button> <button class="btn small" id="ch-export" title="This lane for circuit and RF simulators (zip): SPICE subcircuit with test benches for ngspice and Xyce, Touchstone, a KiCad project">Export…</button></span></div>
+    <div class="dstats"><span>Profile <b>${esc(p.name)}</b>${p.edited ? " *" : ""}${variantShown() ? ` · variant ${esc(variantShown())}` : ""}</span><span><button class="btn small" id="ch-edit">Edit profile</button> <button class="btn small" id="ch-swap">Swap direction</button> <button class="btn small" id="ch-export"${laneRow(l) ? ` title="This lane for circuit and RF simulators (zip): SPICE subcircuit with test benches for ngspice, Xyce and LTspice, Touchstone, a KiCad project – what the export settings select"` : ' disabled title="run the channel check first"'}>Export…</button></span></div>
     <div class="dstats muted"><span>Transmitter ${esc(tx?.refdes || "")}: ${(() => { const m = r.tx_used || p.tx; return `${m.r > 0 ? fmt(m.r, 0) + " Ω" : "ideal source"}${m.c_pf ? ", " + fmtSI(m.c_pf * 1e-12, "F") : ""}`; })()}, ${fmt(p.tx.rise_ps, 0)} ps, ${fmt(p.tx.swing_mv, 0)} mV</span>
       <span>Receiver ${esc(rx?.refdes || "")}: ${(() => { const m = r.rx_used || p.rx; return `${m.r > 0 ? fmt(m.r, 0) + " Ω" : "high impedance"}${m.c_pf ? ", " + fmtSI(m.c_pf * 1e-12, "F") : ""}`; })()}</span><span>per line</span></div>
     ${r.rx_note || r.end_note ? `<div class="dstats muted">${r.end_note ? `<span>${esc(r.end_note)} – set in the interface's card of the overview</span>` : ""}${r.rx_note ? `<span>${esc(r.rx_note)}</span>` : ""}</div>` : ""}

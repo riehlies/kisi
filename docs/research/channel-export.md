@@ -34,15 +34,19 @@ step 3 (compact, vector-fitted models) as a design study at the end. Background 
 
 ## 1. Interface
 ```
-kisi export <board.kicad_pcb> --lane NAME | --bus NAME [--format spice,xyce,ltspice,touchstone,kicad] [--out DIR]
+kisi export <board.kicad_pcb> --lane NAME | --bus NAME [--format lib,spice,xyce,ltspice,touchstone,kicad]
+            [--kicad-style detailed|compact] [--fmax GHZ|profile] [--fmin GHZ] [--out DIR]
             [--class CLASS=PROFILE] [--variant NAME] [--config FILE]
 ```
 `NAME` is a lane as `kisi interfaces` lists it (or one of its nets, or the last part of a hierarchical name, e.g.
 `SYNC_OUT_P`), or a bus name (`"P1 ↔ U18"`). The default folder is `analysis/export/<name>` next to the board. The
 profile, direction, connector end models and assembly variant are the channel check's; the native CLI and
 `kisi.mjs` give the same JSON and byte-identical files (`tools/compare_cli.py`). The viewer has one “Export…”
-button in the lane detail and one in each bus card; it uses the profile, direction and connector ends set in the
-viewer and downloads a zip of the same files. The JSON names every file, the ports, the bench ends, the element
+button in the lane detail and one in each bus card, active once the channel check has computed the lane or bus;
+it uses the profile, direction and connector ends set in the viewer and downloads a zip of the same files. The
+card “Export for simulators” (collapsed by default, remembered per browser) chooses the files – Touchstone, the
+SPICE library, the ngspice, Xyce and LTspice benches, the KiCad project and its style – and the frequency range
+(as the RF settings, 5 × Nyquist of the profile, or a fixed top frequency; the grid's start and step). The JSON names every file, the ports, the bench ends, the element
 counts and the check of the circuit against kisi's S-parameters (`check_against_kisi`).
 
 ## 2. What the files contain

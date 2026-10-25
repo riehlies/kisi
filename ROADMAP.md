@@ -111,13 +111,17 @@ setup (models, pin mapping, terminations, interface settings) is the main effort
 - **Export of device-to-device connections to circuit and RF simulators** (first step, decided 2026-10-24). kisi
   stays a fast linear solver that provides good linear channel models; non-linear analysis (IBIS buffers, AMI,
   equalisers) is done in other tools. Steps 1 and 2 are done (`kisi export`, “Export…” in the viewer's lane detail
-  and bus card; `kisi_si::export`; report `docs/research/channel-export.md`): the lane's board channel as SPICE
+  and bus card with the export settings – files and frequency range; `kisi_si::export`; report `docs/research/channel-export.md`): the lane's board channel as SPICE
   subcircuits (RLGC ladders with fitted R(f)/G(f) networks, kisi's via model, parts, stubs; pairs with modal coupled
   blocks), test benches for ngspice, Xyce and LTspice with the profile's linear ends, a KiCad project (one symbol per lane element, KiCad 7 format, checked with kicad-cli and its ERC), and
   Touchstone per lane and as one N-port of a bus. Checked in ngspice against kisi's S-parameters on ThunderScope's
   LVDS lane and the whole PCIe bus (`validation/channel_export/compare.py`, also in CI). Next:
   - **compact models** (step 3): delay plus a vector-fitted loss for long segments or whole lanes (design note in
-    the report) – the ladders have 10–40 k elements per lane, fine for AC, slow for long transients;
+    the report) – the ladders have 10–40 k elements per lane, fine for AC, slow for long transients; a lower top
+    frequency saves only about 45 % (report, LTspice section). Once it is passive and checked, it becomes the next
+    option of the viewer's export settings (and of `kisi export`);
+  - the top frequency from the interface profile (`--fmax profile`, 5 × Nyquist) as the default instead of 25 GHz –
+    to be decided;
   - **IBIS ends** in the KiCad project through KIBIS where `kisi.json` names models (with the parser of
     `feat/ibis-parser`), and in the decks;
   - crosstalk between the lanes of a bus in the N-port (the coupling scan's sections as coupled blocks), the

@@ -67,8 +67,10 @@ shows and edits it. The check judges every lane on loss, return loss, skew, via 
   it the eye covers the board share only and is information; with it the eye is judged. Lanes from connector to
   connector (coupons, pass-through boards) get the board share only, without an eye.
 - Parts from a lane's net to ground (a shunt capacitor) are in its channel at their pads.
-- **Export…** in the lane detail and in the bus card downloads the lane or the whole bus as SPICE subcircuits,
-  Touchstone files and a KiCad project for circuit and RF simulators ([Channel export](models.md#channel-export)).
+- **Export…** in the lane detail and in the bus card (once the check has computed the lane) downloads the lane or
+  the whole bus as SPICE subcircuits with test benches, Touchstone files and a KiCad project for circuit and RF
+  simulators; the card "Export for simulators" sets what is written and the frequency range
+  ([Channel export](models.md#channel-export)).
 
 The board map shows the channels of the chosen variant – before the check in one colour, after it by result.
 Nets that only connect parts not fitted are drawn faint and not checked. A click on a channel opens it.

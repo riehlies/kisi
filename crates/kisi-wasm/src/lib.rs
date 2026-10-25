@@ -837,7 +837,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
 
 /// Export of a lane or a bus for circuit and RF simulators (`kisi export`, `kisi_core::channel_export`)
 /// with the viewer's settings. Input: {"board": file name, "formats": "all", "kicad_style":
-/// "detailed" | "compact", "bus": name | null,
+/// "detailed" | "compact", "fmax": GHz | "profile" | null, "fmin_ghz": GHz | null, "bus": name | null,
 /// "devices": [refdes], "lanes": [{"lane": first net id, "to", "reversed", "rf", "target",
 /// "profile", "bitrate", "tx", "rx", "eye_rise", "swing_v", "conn_end"}]} → {"summary", "files":
 /// [{"path", "content"}], "name"}.
@@ -856,6 +856,20 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
         let board = v["board"].as_str().unwrap_or("board.kicad_pcb").to_string();
         let bus = v["bus"].as_str().map(str::to_string);
         let reqs = v["lanes"].as_array().ok_or("lanes missing")?;
+        // the export's frequency range: "fmax" in GHz or "profile", "fmin_ghz"
+        let fmax_s = match &v["fmax"] {
+            serde_json::Value::Number(x) => Some(x.to_string()),
+            serde_json::Value::String(s) => Some(s.clone()),
+            _ => None,
+        };
+        let fmin_s = v["fmin_ghz"].as_f64().map(|x| x.to_string());
+        let mut freq = kisi_core::channel_export::FreqRange::parse(fmin_s.as_deref(), fmax_s.as_deref())?;
+        if bus.is_some() {
+            // one grid for the bus's N-port: the highest f max of its lanes
+            let rp: kisi_core::rf::RfParams = reqs.first().and_then(|i| serde_json::from_value(i["rf"].clone()).ok()).unwrap_or_default();
+            let rates: Vec<f64> = reqs.iter().map(|i| i["bitrate"].as_f64().unwrap_or(1e9) / 1e9).collect();
+            freq = freq.for_bus(&rp, &rates);
+        }
         let mut done = Vec::new();
         let mut skipped = Vec::new();
         for item in reqs {
@@ -875,6 +889,7 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
                 rx: end("rx"),
                 reversed: item["reversed"].as_bool().unwrap_or(lane.rx_end == 0),
                 conn_end: cend.as_ref(),
+                freq,
             };
             let dir = if bus.is_some() { format!("{}/", kisi_core::export::files::stem(&lane.name)) } else { String::new() };
             match export_req(b, an, &params.field, &req, f, &dir, &board) {

@@ -104,40 +104,34 @@ validation, and every result says which level it used and how uncertain it is.
 - **Whole-board validation** against a commercial tool (e.g. HyperLynx) on the example boards.
 
 ## 3. Channel and lane simulation
-Goal: simulate channels as well as possible, including the dependencies between lanes (crosstalk, shared
-references). The staged concept is in `docs/research/channel-simulation-ibis.md` (M0 assembly variants: 0.2.4; M2
-N-port networks, pairs as 4-ports, multi-drop: 0.2.5). IBIS-AMI and equalisers make the later stages large, and the
-setup (models, pin mapping, terminations, interface settings) is the main effort – it depends on block 1.
-- **Export of device-to-device connections to circuit and RF simulators** (first step, decided 2026-10-24). kisi
-  stays a fast linear solver that provides good linear channel models; non-linear analysis (IBIS buffers, AMI,
-  equalisers) is done in other tools. Steps 1 and 2 are done (`kisi export`, “Export…” in the viewer's lane detail
-  and bus card with the export settings – files and frequency range; `kisi_si::export`; report `docs/research/channel-export.md`): the lane's board channel as SPICE
+Goal: fast linear channel models of the whole board – lines, vias, parts and lanes as ABCD/S networks in the
+frequency domain – for quick checks with the profiles' linear ends, and as good channel models for sign-off in
+other tools. Decided 2026-10-25: **IBIS, IBIS-AMI, equalisers (CTLE/FFE/DFE) and transient interface simulations
+(DDR flows, overshoot/ringback with buffers, long patterns) are out of kisi's scope.** Non-linear and time-domain
+sign-off happens in tools made for it (PyBERT, ngspice/Xyce/LTspice with IBIS, KiCad's simulator) with kisi's
+exported channel. Why: kisi's speed comes from linear frequency-domain networks (a lane in about 0.15 s); modified
+nodal analysis with Newton-Raphson over the whole channel means large matrices and minutes per lane (the SPICE
+export shows it). Background: `docs/models.md` (scope, why kisi is fast); the earlier staged concept
+`docs/research/channel-simulation-ibis.md` is kept as background (M0 and M2 shipped; M1, M3–M6 not pursued).
+- **Export of device-to-device connections to circuit and RF simulators** (decided 2026-10-24). Steps 1 and 2 are
+  done (`kisi export`, “Export…” in the viewer's lane detail and bus card with the export settings – files and
+  frequency range; `kisi_si::export`; report `docs/research/channel-export.md`): the lane's board channel as SPICE
   subcircuits (RLGC ladders with fitted R(f)/G(f) networks, kisi's via model, parts, stubs; pairs with modal coupled
-  blocks), test benches for ngspice, Xyce and LTspice with the profile's linear ends, a KiCad project (one symbol per lane element, KiCad 7 format, checked with kicad-cli and its ERC), and
+  blocks), test benches for ngspice, Xyce and LTspice with the profile's linear ends, a KiCad project (one symbol per
+  lane element, KiCad 7 format, checked with kicad-cli and its ERC; IBIS ends can be added there by the user), and
   Touchstone per lane and as one N-port of a bus. Checked in ngspice against kisi's S-parameters on ThunderScope's
-  LVDS lane and the whole PCIe bus (`validation/channel_export/compare.py`, also in CI). Next:
-  - **compact models** (step 3): delay plus a vector-fitted loss for long segments or whole lanes (design note in
-    the report) – the ladders have 10–40 k elements per lane, fine for AC, slow for long transients; a lower top
-    frequency saves only about 45 % (report, LTspice section). Once it is passive and checked, it becomes the next
-    option of the viewer's export settings (and of `kisi export`);
+  LVDS lane and the whole PCIe bus (`validation/channel_export/compare.py`, also in CI), and in LTspice on the
+  maintainer's PC (single line within 0.07 %, LVDS pair within 0.33 %). Next:
+  - **reduced models** (step 3) to make the SPICE export fast: the ladders have 10–40 k elements per lane and take
+    minutes per transient; a lower top frequency saves only about 45 %. Options: vector fitting with the delay as
+    ideal lines (needs reliable passivity enforcement; design note in the report), or lossy-line elements (LTRA `O`,
+    coupled `CPL`: compact, but R and G constant over frequency). Either becomes an option of the export settings
+    and of `kisi export` once it is passive and checked;
   - the top frequency from the interface profile (`--fmax profile`, 5 × Nyquist) as the default instead of 25 GHz –
     to be decided;
-  - **IBIS ends** in the KiCad project through KIBIS where `kisi.json` names models (with the parser of
-    `feat/ibis-parser`), and in the decks;
   - crosstalk between the lanes of a bus in the N-port (the coupling scan's sections as coupled blocks), the
-    channel behind a connector (a Touchstone block as a vector-fitted subcircuit);
-  - kisi's own model is not fully passive and causal (roughness without its internal inductance, constant loss
-    tangent and barrel resistance in the via models, via-pair spans with negative resistance above a few GHz,
-    microstrip dispersion): the export follows it as closely as a passive circuit can – a causal roughness model
-    and passive via spans would close the remaining gap (block 2);
+    channel behind a connector (a Touchstone block as a subcircuit);
   - Xyce and Qucs-S/Qucsator runs of the exported files (not available in the development environment so far).
-- **IBIS models – on hold.** Branch `feat/ibis-parser` (IBIS parser, `kisi ibis`, mapping in kisi.json with
-  `config-check`, linearised IBIS ends with the model choice in the interfaces view) is kept as preliminary work but
-  not merged: its viewer integration became too complicated (too many combinations and error messages). Its parser
-  and checks can serve the export (e.g. "will KiCad accept this file?"). Open there: KiCad's `Sim.*` fields as a
-  mapping source; IBIS 8.0 keywords; package-model sections; the parser against IBISCHK on real vendor files;
-  on-die and external terminations combined; the C_comp load in the waveform edge; open-drain pull resistors; the
-  receiver's R_pin; validation against an IBIS simulator.
 - **Channel network, M2 follow-ups** (`kisi_si::rf::network`, `rf::timedomain`, `lanenet`):
   - N-port files behind a connector: the aggressors' own board traces and transmitters (today the victim's
     profile, without their traces – conservative), synchronous aggressors with a known phase instead of the worst
@@ -147,12 +141,7 @@ setup (models, pin mapping, terminations, interface settings) is the main effort
     elements (today per line; the common mode is terminated per line, centre-tapped);
   - judge the mode conversion (Scd21 is information; limits per profile need sources) and a receiver setting
     "across" vs. "centre-tapped" termination for the common mode.
-- **Decide first: equalisation and IBIS-AMI** (CTLE/FFE/DFE for PCIe Gen3+, DDR5, multi-gigabit Ethernet). Weigh
-  an own implementation against handing the channel to existing tools (e.g. PyBERT, a simulator with AMI support);
-  kisi's strength may be providing the channel quickly and correctly rather than the whole link simulation.
-- **Interface simulations** (later: DDR5, PCIe, Gigabit Ethernet) on top of the export and the setup work of
-  block 1 – the concept's M3–M6 (transient with buffers, measurements such as overshoot and ringback, DDR flows,
-  long patterns).
+- Branch `feat/ibis-parser` (IBIS parser, linearised IBIS ends) is not merged and not continued (out of scope).
 
 ## Across the blocks
 - **Reference boards** with a prepared `kisi.json`: tutorial (block 1), regression test (all blocks) and

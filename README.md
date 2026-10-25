@@ -13,7 +13,8 @@ PDN impedance, temperature estimate) – in the browser, with no installation an
 > Results are estimates for design checks, without any warranty of correctness – not a replacement for
 > sign-off simulation or measurement. The individual tools – impedance map with a 2D field solver, TDR and loss
 > per net, via model, crosstalk scan, power tree, IR drop, PDN per IC, temperature estimate – are useful on their
-> own; a real channel validation still needs IBIS models and more complex tests ([limits](#limits)).
+> own. kisi stays a fast linear checker – IBIS, AMI and equalisers are out of scope; for sign-off, export the
+> channel to PyBERT or a circuit simulator ([why kisi is fast, and its scope](docs/models.md#why-kisi-is-small-and-fast)).
 
 ## What you get
 - **Impedance:** every track against its target (from net class names such as `50Z`, `90Z_Diff`), with formulas

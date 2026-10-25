@@ -285,8 +285,8 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "high",
             "impedance",
             format!("{n} routed net(s) look like high-speed interfaces by their name but have no target impedance (their net class has none). Name-based: confirm before acting."),
-            "Interface standard or the device datasheets (e.g. 85/90/100 Ω differential). Nets in the class “Default” need their own net class in KiCad first (Board Setup → Net Classes, or net class directives in the schematic) – kisi.json can only set values of existing classes.",
-            json!({"to": "net_classes.<class>", "example": {"target_ohm": 90, "diff": true, "profile": "usb2", "source": {"kind": "standard", "document": "USB 2.0 specification", "note": "90 Ω differential"}}}),
+            "Interface standard or the device datasheets (e.g. 85/90/100 Ω differential). Nets in the class “Default” get a class of their own: in kisi.json with \"nets\" (names or patterns such as \"*QSPI_*\"), or in KiCad (Board Setup → Net Classes, or net class directives in the schematic).",
+            json!({"to": "net_classes.<class> (a new class with \"nets\" for nets in \"Default\")", "example": {"nets": ["USB_DP", "USB_DN"], "target_ohm": 90, "diff": true, "profile": "usb2", "source": {"kind": "standard", "document": "USB 2.0 specification", "note": "90 Ω differential"}}}),
             items,
         ));
     }

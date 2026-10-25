@@ -24,7 +24,12 @@ contains `Diff` or `DP` (`90Z_Diff`, `FE_100Z_Diff`), or when it is 80 Ω or mor
 | `LVDS`, `HDMI`, `TMDS`, `SATA`, `MDI`, `ETH` | 100 Ω differential |
 | `RF` | 50 Ω single-ended |
 
-`net_classes` in `<board>.kisi.json` gives or overrides the target of an existing class.
+`net_classes` in `<board>.kisi.json` gives or overrides the target of an existing class. With `nets` it also gives
+nets to a class – names or patterns with `*` and `?`, matched against the full net name and its last part, like
+KiCad's net class patterns – and defines the class if the project has none of that name: nets that sit in
+"Default" get a target without a change in KiCad, e.g.
+`"QSPI": {"nets": ["*QSPI_*"], "target_ohm": 50, "diff": false, "profile": "se50", "source": {…}}`. `config-check`
+reports a pattern that matches no net and a net given to two classes.
 
 ### Interface profile
 The channel check judges every lane against an interface profile (transmitter, receiver, limits) from
@@ -126,7 +131,7 @@ variants; `kisi config-check <board>` checks it (the viewer runs the same check 
 | `kisi_config` | format version, must be `1` |
 | `board` | the board file it was written for; a different board is an error in `config-check` |
 | `stackup` | per dielectric (`index` 0 = the layer below F.Cu): `material`, `epsilon_r` (1 … 20), `loss_tangent` (0 … 0.2), `thickness` (mm); `solder_mask.epsilon_r` |
-| `net_classes` | per existing net class: `target_ohm` (10 … 200; differential when `diff` is true), `diff`, `profile` (an id from `kisi profiles`) |
+| `net_classes` | per net class: `target_ohm` (10 … 200; differential when `diff` is true), `diff`, `profile` (an id from `kisi profiles`), `nets` (names or patterns given to this class; defines a class the project does not have) |
 | `connector_ends` | per connector where lanes leave the board: what sits there and the channel behind it (below) |
 | `fields` | footprint fields laid over the board: `ref`, `name` (`PI_*`), `value` |
 | `variant` | the assembly variant to analyse: a KiCad 10 variant of the board, one of `variants`, or `default` (the board file as it is) |

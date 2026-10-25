@@ -1,80 +1,1270 @@
 {
-  "kisi_config": 1,
-  "board": "VNA.kicad_pcb",
-  "notes": [
-    "LibreVNA",
-    "Supplied through the DC jack J1 (5 V); USB (Q1/Q2) uses the same path. Currents from datasheets (typ.) or estimated. According to the manual the device draws up to 1.2 A at 5 V. LEDs and small parts below 1 mA are not included.",
-    "Total at the 5 V input about 5.4 W, 90 % of the manual's maximum (1.2 A at 5 V = 6 W). The temperature estimate treats the board as open in air; the real device sits in a closed aluminium shield, which it does not model (docs/research/thermal.md, section 7.4).",
-    "Converted from a kisi power tree with tools/tree_to_fields.py."
-  ],
-  "fields": [
-    {"ref": "J1", "name": "PI_REG", "value": "+5V input", "source": {"kind": "assumption", "note": "DC jack 5 V, supply input"}},
-    {"ref": "IC1", "name": "PI_REG", "value": "+5V > +6V boost 88% in=L1 out=L5", "source": {"kind": "estimate", "note": "MIC2253, boost 5 V → 6 V for the 5 V LDOs, efficiency estimated from typical curves"}},
-    {"ref": "IC2", "name": "PI_REG", "value": "+5V > VCCINT@1.2V buck 78% 0.6A out=L2; +5V > VREG3V3_SWL@3.3V buck 90% 0.6A out=L3", "source": {"kind": "estimate", "note": "LM3370, FPGA core, efficiency estimated from typical curves; LM3370, efficiency estimated from typical curves"}},
-    {"ref": "L4", "name": "PI_REG", "value": "VREG3V3_SWL@3.3V > +3V3 pass r=0.05", "source": {"kind": "estimate", "note": "filter inductor 2.2 µH, DC resistance estimated"}},
-    {"ref": "IC3", "name": "PI_REG", "value": "+6V > VREG5V{slash}1@5V ldo 1.2A iq=0.3mA", "source": {"kind": "datasheet", "note": "LDL212 5 V, quiescent and rated current from the datasheet"}},
-    {"ref": "IC4", "name": "PI_REG", "value": "+6V > VREG5V{slash}2@5V ldo 1.2A iq=0.3mA", "source": {"kind": "datasheet", "note": "LDL212 5 V, quiescent and rated current from the datasheet"}},
-    {"ref": "IC5", "name": "PI_REG", "value": "+6V > VREG5V{slash}3@5V ldo 1.2A iq=0.3mA", "source": {"kind": "datasheet", "note": "LDL212 5 V, quiescent and rated current from the datasheet"}},
-    {"ref": "IC6", "name": "PI_REG", "value": "+6V > VREG5V{slash}4@5V ldo 1.2A iq=0.3mA", "source": {"kind": "datasheet", "note": "LDL212 5 V, quiescent and rated current from the datasheet"}},
-    {"ref": "L6", "name": "PI_REG", "value": "VREG5V{slash}1@5V > +5V{slash}1 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L7", "name": "PI_REG", "value": "VREG5V{slash}2@5V > +5V{slash}2 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L8", "name": "PI_REG", "value": "VREG5V{slash}3@5V > +5V{slash}3 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L9", "name": "PI_REG", "value": "VREG5V{slash}4@5V > +5V{slash}4 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L12", "name": "PI_REG", "value": "+5V{slash}1 > Net-(IC22-VCC) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L15", "name": "PI_REG", "value": "+5V{slash}1 > Net-(IC23-V_{S+}) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L17", "name": "PI_REG", "value": "+5V{slash}1 > Net-(IC24-VPDT) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L16", "name": "PI_REG", "value": "+5V{slash}1 > Net-(C119-Pad1) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L13", "name": "PI_REG", "value": "+5V{slash}1 > Net-(IC25-EN) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "IC25", "name": "PI_REG", "value": "Net-(IC25-EN) > Net-(IC25-OUT)@1.8V ldo 0.2A iq=0.01mA", "source": {"kind": "datasheet", "note": "NCP702 1.8 V, AVDD ADC Port 1, quiescent and rated current from the datasheet"}},
-    {"ref": "L57", "name": "PI_REG", "value": "+5V{slash}2 > Net-(IC27-VCC) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L56", "name": "PI_REG", "value": "+5V{slash}2 > Net-(IC28-V_{S+}) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L54", "name": "PI_REG", "value": "+5V{slash}2 > Net-(IC29-VPDT) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L55", "name": "PI_REG", "value": "+5V{slash}2 > Net-(C156-Pad1) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L58", "name": "PI_REG", "value": "+5V{slash}2 > Net-(IC30-EN) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "IC30", "name": "PI_REG", "value": "Net-(IC30-EN) > Net-(IC30-OUT)@1.8V ldo 0.2A iq=0.01mA", "source": {"kind": "datasheet", "note": "NCP702 1.8 V, AVDD ADC Port 2, quiescent and rated current from the datasheet"}},
-    {"ref": "L61", "name": "PI_REG", "value": "+5V{slash}3 > Net-(IC36-VCC) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L62", "name": "PI_REG", "value": "+5V{slash}3 > Net-(IC32-V_{S+}) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L59", "name": "PI_REG", "value": "+5V{slash}3 > Net-(IC33-VPDT) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L60", "name": "PI_REG", "value": "+5V{slash}3 > Net-(C190-Pad1) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L63", "name": "PI_REG", "value": "+5V{slash}3 > Net-(IC34-EN) pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "IC34", "name": "PI_REG", "value": "Net-(IC34-EN) > Net-(IC34-OUT)@1.8V ldo 0.2A iq=0.01mA", "source": {"kind": "datasheet", "note": "NCP702 1.8 V, AVDD ADC reference, quiescent and rated current from the datasheet"}},
-    {"ref": "IC8", "name": "PI_REG", "value": "+5V{slash}4 > 3v3_LDO1_SRC@3.3V ldo 1A iq=0.06mA", "source": {"kind": "datasheet", "note": "AP2114H 3.3 V, source synthesizer, quiescent and rated current from the datasheet"}},
-    {"ref": "L19", "name": "PI_REG", "value": "3v3_LDO1_SRC@3.3V > 3V3_SRC_1 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "IC9", "name": "PI_REG", "value": "+5V{slash}4 > 3V3_LDO2_SRC@3.3V ldo 0.2A iq=0.01mA", "source": {"kind": "datasheet", "note": "NCP702 3.3 V, quiescent and rated current from the datasheet"}},
-    {"ref": "L20", "name": "PI_REG", "value": "3V3_LDO2_SRC@3.3V > 3V3_SRC_2 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "IC19", "name": "PI_REG", "value": "+5V{slash}4 > 3V3_LDO1_LO1@3.3V ldo 1A iq=0.06mA", "source": {"kind": "datasheet", "note": "AP2114H 3.3 V, LO synthesizer, quiescent and rated current from the datasheet"}},
-    {"ref": "L28", "name": "PI_REG", "value": "3V3_LDO1_LO1@3.3V > 3V3_LO1_1 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "IC20", "name": "PI_REG", "value": "+5V{slash}4 > 3V3_LDO2_LO1@3.3V ldo 0.2A iq=0.01mA", "source": {"kind": "datasheet", "note": "NCP702 3.3 V, quiescent and rated current from the datasheet"}},
-    {"ref": "L29", "name": "PI_REG", "value": "3V3_LDO2_LO1@3.3V > 3V3_LO1_2 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L64", "name": "PI_REG", "value": "+3V3 > 3V3_SRC_3 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L65", "name": "PI_REG", "value": "+3V3 > 3V3_LO1_3 pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L10", "name": "PI_REG", "value": "+3V3 > 3V3_CLKGEN pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L23", "name": "PI_REG", "value": "+3V3 > 3V3_HBLB_AMP pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "L22", "name": "PI_REG", "value": "+3V3 > 3V3_HBLB_ATT pass r=0.1", "source": {"kind": "estimate", "note": "ferrite, DC resistance estimated"}},
-    {"ref": "U2", "name": "PI_LOAD", "value": "VCCINT=0.08A, +3V3=0.05A", "source": {"kind": "estimate", "note": "VCCINT: core 1.2 V; +3V3: VCCAUX and VCCO"}},
-    {"ref": "IC37", "name": "PI_LOAD", "value": "+3V3=0.03A", "source": {"kind": "estimate", "note": "rough value, check the datasheet"}},
-    {"ref": "IC7", "name": "PI_LOAD", "value": "+3V3=0.02A, 3V3_CLKGEN=0.015A", "source": {"kind": "estimate", "note": "+3V3: core; 3V3_CLKGEN: outputs"}},
-    {"ref": "U1", "name": "PI_LOAD", "value": "+3V3=0.005A", "source": {"kind": "estimate", "note": "rough value, check the datasheet"}},
-    {"ref": "IC15", "name": "PI_LOAD", "value": "3V3_HBLB_AMP=0.055A", "source": {"kind": "datasheet", "note": "RF amplifier"}},
-    {"ref": "IC14", "name": "PI_LOAD", "value": "3V3_HBLB_ATT=0.001A", "source": {"kind": "estimate", "note": "attenuator"}},
-    {"ref": "IC24", "name": "PI_LOAD", "value": "Net-(IC24-VPDT)=0.07A, Net-(C119-Pad1)=0.06A@L32/L33", "source": {"kind": "datasheet", "note": "Net-(IC24-VPDT): mixer port 1, supply (130 mA total per datasheet, split estimated); Net-(C119-Pad1): mixer port 1, output stage via the inductors"}},
-    {"ref": "IC22", "name": "PI_LOAD", "value": "Net-(IC22-VCC)=0.01A", "source": {"kind": "estimate", "note": "mixer port 1, adjustable 4 to 13.4 mA"}},
-    {"ref": "IC23", "name": "PI_LOAD", "value": "Net-(IC23-V_{S+})=0.00114A", "source": {"kind": "datasheet", "note": "ADC driver port 1"}},
-    {"ref": "IC26", "name": "PI_LOAD", "value": "Net-(IC25-OUT)=0.0016A, +3V3=0.0005A", "source": {"kind": "estimate", "note": "Net-(IC25-OUT): ADC port 1, AVDD; +3V3: ADC port 1, DVIO"}},
-    {"ref": "IC29", "name": "PI_LOAD", "value": "Net-(IC29-VPDT)=0.07A, Net-(C156-Pad1)=0.06A@L40/L41", "source": {"kind": "datasheet", "note": "Net-(IC29-VPDT): mixer port 2, supply (130 mA total per datasheet, split estimated); Net-(C156-Pad1): mixer port 2, output stage via the inductors"}},
-    {"ref": "IC27", "name": "PI_LOAD", "value": "Net-(IC27-VCC)=0.01A", "source": {"kind": "estimate", "note": "mixer port 2, adjustable 4 to 13.4 mA"}},
-    {"ref": "IC28", "name": "PI_LOAD", "value": "Net-(IC28-V_{S+})=0.00114A", "source": {"kind": "datasheet", "note": "ADC driver port 2"}},
-    {"ref": "IC31", "name": "PI_LOAD", "value": "Net-(IC30-OUT)=0.0016A, +3V3=0.0005A", "source": {"kind": "estimate", "note": "Net-(IC30-OUT): ADC port 2, AVDD; +3V3: ADC port 2, DVIO"}},
-    {"ref": "IC33", "name": "PI_LOAD", "value": "Net-(IC33-VPDT)=0.07A, Net-(C190-Pad1)=0.06A@L46/L47", "source": {"kind": "datasheet", "note": "Net-(IC33-VPDT): mixer reference, supply (130 mA total per datasheet, split estimated); Net-(C190-Pad1): mixer reference, output stage via the inductors"}},
-    {"ref": "IC36", "name": "PI_LOAD", "value": "Net-(IC36-VCC)=0.01A", "source": {"kind": "estimate", "note": "mixer reference, adjustable 4 to 13.4 mA"}},
-    {"ref": "IC32", "name": "PI_LOAD", "value": "Net-(IC32-V_{S+})=0.00114A", "source": {"kind": "datasheet", "note": "ADC driver reference"}},
-    {"ref": "IC35", "name": "PI_LOAD", "value": "Net-(IC34-OUT)=0.0016A, +3V3=0.0005A", "source": {"kind": "estimate", "note": "Net-(IC34-OUT): ADC reference, AVDD; +3V3: ADC reference, DVIO"}},
-    {"ref": "IC10", "name": "PI_LOAD", "value": "3V3_SRC_1=0.07A, 3V3_SRC_2=0.05A, 3V3_SRC_3=0.02A", "source": {"kind": "datasheet", "document": "MAX2871 datasheet, supply current", "url": "https://wcm-cce.cldnet.analog.com/media/en/technical-documentation/data-sheets/MAX2871.pdf", "note": "source synthesizer: 165 mA typ. with both outputs at maximum power, 25 mA per output at maximum power, so about 140 mA with one output; the split over the VCO (3V3_SRC_1), PLL/RF (_2) and digital/charge-pump (_3) supplies is estimated"}},
-    {"ref": "IC21", "name": "PI_LOAD", "value": "3V3_LO1_1=0.07A, 3V3_LO1_2=0.05A, 3V3_LO1_3=0.02A", "source": {"kind": "datasheet", "document": "MAX2871 datasheet, supply current", "url": "https://wcm-cce.cldnet.analog.com/media/en/technical-documentation/data-sheets/MAX2871.pdf", "note": "LO synthesizer: 165 mA typ. with both outputs at maximum power, 25 mA per output at maximum power, so about 140 mA with one output; the split over the VCO (3V3_LO1_1), PLL/RF (_2) and digital/charge-pump (_3) supplies is estimated"}},
-    {"ref": "IC24", "name": "PI_THERMAL", "value": "tj_max=150", "source": {"kind": "datasheet", "document": "ADL5801 datasheet, Absolute Maximum Ratings", "url": "https://www.alldatasheet.pl/html-pdf/332514/AD/ADL5801ACPZ-R7/142/4/ADL5801ACPZ-R7.html", "note": "maximum junction temperature 150 °C; the datasheet gives θJA 26.5 °C/W (evaluation board, paddle soldered) and θJC 8.7 °C/W at the exposed paddle but no θJB, so θ stays the QFN package default"}},
-    {"ref": "IC29", "name": "PI_THERMAL", "value": "tj_max=150", "source": {"kind": "datasheet", "document": "ADL5801 datasheet, Absolute Maximum Ratings", "url": "https://www.alldatasheet.pl/html-pdf/332514/AD/ADL5801ACPZ-R7/142/4/ADL5801ACPZ-R7.html", "note": "maximum junction temperature 150 °C; the datasheet gives θJA 26.5 °C/W (evaluation board, paddle soldered) and θJC 8.7 °C/W at the exposed paddle but no θJB, so θ stays the QFN package default"}},
-    {"ref": "IC33", "name": "PI_THERMAL", "value": "tj_max=150", "source": {"kind": "datasheet", "document": "ADL5801 datasheet, Absolute Maximum Ratings", "url": "https://www.alldatasheet.pl/html-pdf/332514/AD/ADL5801ACPZ-R7/142/4/ADL5801ACPZ-R7.html", "note": "maximum junction temperature 150 °C; the datasheet gives θJA 26.5 °C/W (evaluation board, paddle soldered) and θJC 8.7 °C/W at the exposed paddle but no θJB, so θ stays the QFN package default"}},
-    {"ref": "IC10", "name": "PI_THERMAL", "value": "tj_max=150", "source": {"kind": "datasheet", "document": "MAX2871 datasheet, Absolute Maximum Ratings and package thermal characteristics", "url": "https://wcm-cce.cldnet.analog.com/media/en/technical-documentation/data-sheets/MAX2871.pdf", "note": "maximum junction temperature 150 °C; θJA 29 °C/W (JESD51-7) and θJC 1.7 °C/W (exposed pad) but no θJB, so θ stays the QFN package default"}},
-    {"ref": "IC21", "name": "PI_THERMAL", "value": "tj_max=150", "source": {"kind": "datasheet", "document": "MAX2871 datasheet, Absolute Maximum Ratings and package thermal characteristics", "url": "https://wcm-cce.cldnet.analog.com/media/en/technical-documentation/data-sheets/MAX2871.pdf", "note": "maximum junction temperature 150 °C; θJA 29 °C/W (JESD51-7) and θJC 1.7 °C/W (exposed pad) but no θJB, so θ stays the QFN package default"}}
+ "kisi_config": 1,
+ "board": "VNA.kicad_pcb",
+ "notes": [
+  "LibreVNA",
+  "Supplied through the DC jack J1 (5 V); USB (Q1/Q2) uses the same path. Currents from datasheets (typ.) or estimated. According to the manual the device draws up to 1.2 A at 5 V. LEDs and small parts below 1 mA are not included.",
+  "Total at the 5 V input about 5.4 W, 90 % of the manual's maximum (1.2 A at 5 V = 6 W). The temperature estimate treats the board as open in air; the real device sits in a closed aluminium shield, which it does not model (docs/research/thermal.md, section 7.4).",
+  "Stackup as in the project's Gerber job file (εr per layer, tanδ 0.02); USB data lines given a class of their own with the USB 2.0 target; the RF class keeps kisi's generic 50 Ω profile on purpose; ferrites BLM15AX601SN1 with the data sheet's DC resistance.",
+  "Not filled in (optional): capacitor ratings – no project document gives rated voltage or dielectric (the BOM lists value and package only), so kisi's assumed rating applies; thermal data (PI_THERMAL) of 11 parts – package defaults apply (estimates).",
+  "Power tree first converted from a kisi power tree with tools/tree_to_fields.py."
+ ],
+ "fields": [
+  {
+   "ref": "J1",
+   "name": "PI_REG",
+   "value": "+5V input",
+   "source": {
+    "kind": "assumption",
+    "note": "DC jack 5 V, supply input"
+   }
+  },
+  {
+   "ref": "IC1",
+   "name": "PI_REG",
+   "value": "+5V > +6V boost 88% in=L1 out=L5",
+   "source": {
+    "kind": "estimate",
+    "note": "MIC2253, boost 5 V → 6 V for the 5 V LDOs, efficiency estimated from typical curves"
+   }
+  },
+  {
+   "ref": "IC2",
+   "name": "PI_REG",
+   "value": "+5V > VCCINT@1.2V buck 78% 0.6A out=L2; +5V > VREG3V3_SWL@3.3V buck 90% 0.6A out=L3",
+   "source": {
+    "kind": "estimate",
+    "note": "LM3370, FPGA core, efficiency estimated from typical curves; LM3370, efficiency estimated from typical curves"
+   }
+  },
+  {
+   "ref": "L4",
+   "name": "PI_REG",
+   "value": "VREG3V3_SWL@3.3V > +3V3 pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "filter inductor 2.2 µH, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "IC3",
+   "name": "PI_REG",
+   "value": "+6V > VREG5V{slash}1@5V ldo 1.2A iq=0.3mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "LDL212 5 V, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "IC4",
+   "name": "PI_REG",
+   "value": "+6V > VREG5V{slash}2@5V ldo 1.2A iq=0.3mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "LDL212 5 V, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "IC5",
+   "name": "PI_REG",
+   "value": "+6V > VREG5V{slash}3@5V ldo 1.2A iq=0.3mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "LDL212 5 V, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "IC6",
+   "name": "PI_REG",
+   "value": "+6V > VREG5V{slash}4@5V ldo 1.2A iq=0.3mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "LDL212 5 V, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "L6",
+   "name": "PI_REG",
+   "value": "VREG5V{slash}1@5V > +5V{slash}1 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L7",
+   "name": "PI_REG",
+   "value": "VREG5V{slash}2@5V > +5V{slash}2 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L8",
+   "name": "PI_REG",
+   "value": "VREG5V{slash}3@5V > +5V{slash}3 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L9",
+   "name": "PI_REG",
+   "value": "VREG5V{slash}4@5V > +5V{slash}4 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L12",
+   "name": "PI_REG",
+   "value": "+5V{slash}1 > Net-(IC22-VCC) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L15",
+   "name": "PI_REG",
+   "value": "+5V{slash}1 > Net-(IC23-V_{S+}) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L17",
+   "name": "PI_REG",
+   "value": "+5V{slash}1 > Net-(IC24-VPDT) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L16",
+   "name": "PI_REG",
+   "value": "+5V{slash}1 > Net-(C119-Pad1) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L13",
+   "name": "PI_REG",
+   "value": "+5V{slash}1 > Net-(IC25-EN) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "IC25",
+   "name": "PI_REG",
+   "value": "Net-(IC25-EN) > Net-(IC25-OUT)@1.8V ldo 0.2A iq=0.01mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "NCP702 1.8 V, AVDD ADC Port 1, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "L57",
+   "name": "PI_REG",
+   "value": "+5V{slash}2 > Net-(IC27-VCC) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L56",
+   "name": "PI_REG",
+   "value": "+5V{slash}2 > Net-(IC28-V_{S+}) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L54",
+   "name": "PI_REG",
+   "value": "+5V{slash}2 > Net-(IC29-VPDT) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L55",
+   "name": "PI_REG",
+   "value": "+5V{slash}2 > Net-(C156-Pad1) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L58",
+   "name": "PI_REG",
+   "value": "+5V{slash}2 > Net-(IC30-EN) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "IC30",
+   "name": "PI_REG",
+   "value": "Net-(IC30-EN) > Net-(IC30-OUT)@1.8V ldo 0.2A iq=0.01mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "NCP702 1.8 V, AVDD ADC Port 2, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "L61",
+   "name": "PI_REG",
+   "value": "+5V{slash}3 > Net-(IC36-VCC) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L62",
+   "name": "PI_REG",
+   "value": "+5V{slash}3 > Net-(IC32-V_{S+}) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L59",
+   "name": "PI_REG",
+   "value": "+5V{slash}3 > Net-(IC33-VPDT) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L60",
+   "name": "PI_REG",
+   "value": "+5V{slash}3 > Net-(C190-Pad1) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L63",
+   "name": "PI_REG",
+   "value": "+5V{slash}3 > Net-(IC34-EN) pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "IC34",
+   "name": "PI_REG",
+   "value": "Net-(IC34-EN) > Net-(IC34-OUT)@1.8V ldo 0.2A iq=0.01mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "NCP702 1.8 V, AVDD ADC reference, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "IC8",
+   "name": "PI_REG",
+   "value": "+5V{slash}4 > 3v3_LDO1_SRC@3.3V ldo 1A iq=0.06mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "AP2114H 3.3 V, source synthesizer, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "L19",
+   "name": "PI_REG",
+   "value": "3v3_LDO1_SRC@3.3V > 3V3_SRC_1 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "IC9",
+   "name": "PI_REG",
+   "value": "+5V{slash}4 > 3V3_LDO2_SRC@3.3V ldo 0.2A iq=0.01mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "NCP702 3.3 V, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "L20",
+   "name": "PI_REG",
+   "value": "3V3_LDO2_SRC@3.3V > 3V3_SRC_2 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "IC19",
+   "name": "PI_REG",
+   "value": "+5V{slash}4 > 3V3_LDO1_LO1@3.3V ldo 1A iq=0.06mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "AP2114H 3.3 V, LO synthesizer, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "L28",
+   "name": "PI_REG",
+   "value": "3V3_LDO1_LO1@3.3V > 3V3_LO1_1 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "IC20",
+   "name": "PI_REG",
+   "value": "+5V{slash}4 > 3V3_LDO2_LO1@3.3V ldo 0.2A iq=0.01mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "NCP702 3.3 V, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "L29",
+   "name": "PI_REG",
+   "value": "3V3_LDO2_LO1@3.3V > 3V3_LO1_2 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L64",
+   "name": "PI_REG",
+   "value": "+3V3 > 3V3_SRC_3 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L65",
+   "name": "PI_REG",
+   "value": "+3V3 > 3V3_LO1_3 pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L10",
+   "name": "PI_REG",
+   "value": "+3V3 > 3V3_CLKGEN pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L23",
+   "name": "PI_REG",
+   "value": "+3V3 > 3V3_HBLB_AMP pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L22",
+   "name": "PI_REG",
+   "value": "+3V3 > 3V3_HBLB_ATT pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "U2",
+   "name": "PI_LOAD",
+   "value": "VCCINT=0.08A, +3V3=0.05A",
+   "source": {
+    "kind": "estimate",
+    "note": "VCCINT: core 1.2 V; +3V3: VCCAUX and VCCO"
+   }
+  },
+  {
+   "ref": "IC37",
+   "name": "PI_LOAD",
+   "value": "+3V3=0.03A",
+   "source": {
+    "kind": "estimate",
+    "note": "rough value, check the datasheet"
+   }
+  },
+  {
+   "ref": "IC7",
+   "name": "PI_LOAD",
+   "value": "+3V3=0.02A, 3V3_CLKGEN=0.015A",
+   "source": {
+    "kind": "estimate",
+    "note": "+3V3: core; 3V3_CLKGEN: outputs"
+   }
+  },
+  {
+   "ref": "U1",
+   "name": "PI_LOAD",
+   "value": "+3V3=0.005A",
+   "source": {
+    "kind": "estimate",
+    "note": "rough value, check the datasheet"
+   }
+  },
+  {
+   "ref": "IC15",
+   "name": "PI_LOAD",
+   "value": "3V3_HBLB_AMP=0.055A",
+   "source": {
+    "kind": "datasheet",
+    "note": "RF amplifier"
+   }
+  },
+  {
+   "ref": "IC14",
+   "name": "PI_LOAD",
+   "value": "3V3_HBLB_ATT=0.001A",
+   "source": {
+    "kind": "estimate",
+    "note": "attenuator"
+   }
+  },
+  {
+   "ref": "IC24",
+   "name": "PI_LOAD",
+   "value": "Net-(IC24-VPDT)=0.07A, Net-(C119-Pad1)=0.06A@L32/L33",
+   "source": {
+    "kind": "datasheet",
+    "note": "Net-(IC24-VPDT): mixer port 1, supply (130 mA total per datasheet, split estimated); Net-(C119-Pad1): mixer port 1, output stage via the inductors"
+   }
+  },
+  {
+   "ref": "IC22",
+   "name": "PI_LOAD",
+   "value": "Net-(IC22-VCC)=0.01A",
+   "source": {
+    "kind": "estimate",
+    "note": "mixer port 1, adjustable 4 to 13.4 mA"
+   }
+  },
+  {
+   "ref": "IC23",
+   "name": "PI_LOAD",
+   "value": "Net-(IC23-V_{S+})=0.00114A",
+   "source": {
+    "kind": "datasheet",
+    "note": "ADC driver port 1"
+   }
+  },
+  {
+   "ref": "IC26",
+   "name": "PI_LOAD",
+   "value": "Net-(IC25-OUT)=0.0016A, +3V3=0.0005A",
+   "source": {
+    "kind": "estimate",
+    "note": "Net-(IC25-OUT): ADC port 1, AVDD; +3V3: ADC port 1, DVIO"
+   }
+  },
+  {
+   "ref": "IC29",
+   "name": "PI_LOAD",
+   "value": "Net-(IC29-VPDT)=0.07A, Net-(C156-Pad1)=0.06A@L40/L41",
+   "source": {
+    "kind": "datasheet",
+    "note": "Net-(IC29-VPDT): mixer port 2, supply (130 mA total per datasheet, split estimated); Net-(C156-Pad1): mixer port 2, output stage via the inductors"
+   }
+  },
+  {
+   "ref": "IC27",
+   "name": "PI_LOAD",
+   "value": "Net-(IC27-VCC)=0.01A",
+   "source": {
+    "kind": "estimate",
+    "note": "mixer port 2, adjustable 4 to 13.4 mA"
+   }
+  },
+  {
+   "ref": "IC28",
+   "name": "PI_LOAD",
+   "value": "Net-(IC28-V_{S+})=0.00114A",
+   "source": {
+    "kind": "datasheet",
+    "note": "ADC driver port 2"
+   }
+  },
+  {
+   "ref": "IC31",
+   "name": "PI_LOAD",
+   "value": "Net-(IC30-OUT)=0.0016A, +3V3=0.0005A",
+   "source": {
+    "kind": "estimate",
+    "note": "Net-(IC30-OUT): ADC port 2, AVDD; +3V3: ADC port 2, DVIO"
+   }
+  },
+  {
+   "ref": "IC33",
+   "name": "PI_LOAD",
+   "value": "Net-(IC33-VPDT)=0.07A, Net-(C190-Pad1)=0.06A@L46/L47",
+   "source": {
+    "kind": "datasheet",
+    "note": "Net-(IC33-VPDT): mixer reference, supply (130 mA total per datasheet, split estimated); Net-(C190-Pad1): mixer reference, output stage via the inductors"
+   }
+  },
+  {
+   "ref": "IC36",
+   "name": "PI_LOAD",
+   "value": "Net-(IC36-VCC)=0.01A",
+   "source": {
+    "kind": "estimate",
+    "note": "mixer reference, adjustable 4 to 13.4 mA"
+   }
+  },
+  {
+   "ref": "IC32",
+   "name": "PI_LOAD",
+   "value": "Net-(IC32-V_{S+})=0.00114A",
+   "source": {
+    "kind": "datasheet",
+    "note": "ADC driver reference"
+   }
+  },
+  {
+   "ref": "IC35",
+   "name": "PI_LOAD",
+   "value": "Net-(IC34-OUT)=0.0016A, +3V3=0.0005A",
+   "source": {
+    "kind": "estimate",
+    "note": "Net-(IC34-OUT): ADC reference, AVDD; +3V3: ADC reference, DVIO"
+   }
+  },
+  {
+   "ref": "IC10",
+   "name": "PI_LOAD",
+   "value": "3V3_SRC_1=0.07A, 3V3_SRC_2=0.05A, 3V3_SRC_3=0.02A",
+   "source": {
+    "kind": "datasheet",
+    "document": "MAX2871 datasheet, supply current",
+    "url": "https://wcm-cce.cldnet.analog.com/media/en/technical-documentation/data-sheets/MAX2871.pdf",
+    "note": "source synthesizer: 165 mA typ. with both outputs at maximum power, 25 mA per output at maximum power, so about 140 mA with one output; the split over the VCO (3V3_SRC_1), PLL/RF (_2) and digital/charge-pump (_3) supplies is estimated"
+   }
+  },
+  {
+   "ref": "IC21",
+   "name": "PI_LOAD",
+   "value": "3V3_LO1_1=0.07A, 3V3_LO1_2=0.05A, 3V3_LO1_3=0.02A",
+   "source": {
+    "kind": "datasheet",
+    "document": "MAX2871 datasheet, supply current",
+    "url": "https://wcm-cce.cldnet.analog.com/media/en/technical-documentation/data-sheets/MAX2871.pdf",
+    "note": "LO synthesizer: 165 mA typ. with both outputs at maximum power, 25 mA per output at maximum power, so about 140 mA with one output; the split over the VCO (3V3_LO1_1), PLL/RF (_2) and digital/charge-pump (_3) supplies is estimated"
+   }
+  },
+  {
+   "ref": "IC24",
+   "name": "PI_THERMAL",
+   "value": "tj_max=150",
+   "source": {
+    "kind": "datasheet",
+    "document": "ADL5801 datasheet, Absolute Maximum Ratings",
+    "url": "https://www.alldatasheet.pl/html-pdf/332514/AD/ADL5801ACPZ-R7/142/4/ADL5801ACPZ-R7.html",
+    "note": "maximum junction temperature 150 °C; the datasheet gives θJA 26.5 °C/W (evaluation board, paddle soldered) and θJC 8.7 °C/W at the exposed paddle but no θJB, so θ stays the QFN package default"
+   }
+  },
+  {
+   "ref": "IC29",
+   "name": "PI_THERMAL",
+   "value": "tj_max=150",
+   "source": {
+    "kind": "datasheet",
+    "document": "ADL5801 datasheet, Absolute Maximum Ratings",
+    "url": "https://www.alldatasheet.pl/html-pdf/332514/AD/ADL5801ACPZ-R7/142/4/ADL5801ACPZ-R7.html",
+    "note": "maximum junction temperature 150 °C; the datasheet gives θJA 26.5 °C/W (evaluation board, paddle soldered) and θJC 8.7 °C/W at the exposed paddle but no θJB, so θ stays the QFN package default"
+   }
+  },
+  {
+   "ref": "IC33",
+   "name": "PI_THERMAL",
+   "value": "tj_max=150",
+   "source": {
+    "kind": "datasheet",
+    "document": "ADL5801 datasheet, Absolute Maximum Ratings",
+    "url": "https://www.alldatasheet.pl/html-pdf/332514/AD/ADL5801ACPZ-R7/142/4/ADL5801ACPZ-R7.html",
+    "note": "maximum junction temperature 150 °C; the datasheet gives θJA 26.5 °C/W (evaluation board, paddle soldered) and θJC 8.7 °C/W at the exposed paddle but no θJB, so θ stays the QFN package default"
+   }
+  },
+  {
+   "ref": "IC10",
+   "name": "PI_THERMAL",
+   "value": "tj_max=150",
+   "source": {
+    "kind": "datasheet",
+    "document": "MAX2871 datasheet, Absolute Maximum Ratings and package thermal characteristics",
+    "url": "https://wcm-cce.cldnet.analog.com/media/en/technical-documentation/data-sheets/MAX2871.pdf",
+    "note": "maximum junction temperature 150 °C; θJA 29 °C/W (JESD51-7) and θJC 1.7 °C/W (exposed pad) but no θJB, so θ stays the QFN package default"
+   }
+  },
+  {
+   "ref": "IC21",
+   "name": "PI_THERMAL",
+   "value": "tj_max=150",
+   "source": {
+    "kind": "datasheet",
+    "document": "MAX2871 datasheet, Absolute Maximum Ratings and package thermal characteristics",
+    "url": "https://wcm-cce.cldnet.analog.com/media/en/technical-documentation/data-sheets/MAX2871.pdf",
+    "note": "maximum junction temperature 150 °C; θJA 29 °C/W (JESD51-7) and θJC 1.7 °C/W (exposed pad) but no θJB, so θ stays the QFN package default"
+   }
+  },
+  {
+   "ref": "L21",
+   "name": "PI_REG",
+   "value": "+3V3 > \"/Attenuator Amp Switches/3V3_HBLB_SWITCH\" pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L25",
+   "name": "PI_REG",
+   "value": "+3V3 > \"/Attenuator Amp Switches/3V3_P12_SWITCH\" pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L26",
+   "name": "PI_REG",
+   "value": "+3V3 > \"/Attenuator Amp Switches/3V3_P2_SWITCH\" pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L27",
+   "name": "PI_REG",
+   "value": "+3V3 > \"/Attenuator Amp Switches/3V3_P1_SWITCH\" pass r=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA; series resistance = DC resistance (maximum)"
+   }
+  },
+  {
+   "ref": "L11",
+   "name": "PI_REG",
+   "value": "3V3_HBLB_AMP > \"/Attenuator Amp Switches/3V3_HBLB_AMP_L\" pass r=0.3",
+   "source": {
+    "kind": "estimate",
+    "note": "10 µH 0805 inductor without MPN in the bias feed of the high/low-band amplifier (with L24), DC resistance estimated"
+   }
+  },
+  {
+   "ref": "J4",
+   "name": "PI_REG",
+   "value": "USB_POWER@5V input",
+   "source": {
+    "kind": "assumption",
+    "note": "USB-C VBUS 5 V. The tree is the DC-jack case (J1); the USB path J4 → Q1 → USB_5V is listed so that its rails have a voltage and a source, it carries no current here (Q2, the switch into +5V, is left out)"
+   }
+  },
+  {
+   "ref": "Q1",
+   "name": "PI_REG",
+   "value": "USB_POWER > \"/Power Supply/USB_5V\" pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "document": "Toshiba SSM3J338R (data sheet not read)",
+    "note": "P-channel MOSFET of the USB power path, on-resistance a few tens of mΩ – estimate; no current in the DC-jack case"
+   }
+  },
+  {
+   "ref": "IC11",
+   "name": "PI_LOAD",
+   "value": "3V3_SRC_2=65uA",
+   "source": {
+    "kind": "datasheet",
+    "document": "Qorvo RFSW6042 product data",
+    "url": "https://cn.qorvo.com/products/p/RFSW6042",
+    "note": "SP4T switch, supply current 0.065 mA"
+   }
+  },
+  {
+   "ref": "IC12",
+   "name": "PI_LOAD",
+   "value": "3V3_SRC_2=65uA",
+   "source": {
+    "kind": "datasheet",
+    "document": "Qorvo RFSW6042 product data",
+    "url": "https://cn.qorvo.com/products/p/RFSW6042",
+    "note": "SP4T switch, supply current 0.065 mA"
+   }
+  },
+  {
+   "ref": "IC13",
+   "name": "PI_LOAD",
+   "value": "\"/Attenuator Amp Switches/3V3_HBLB_SWITCH\"=0.2mA",
+   "source": {
+    "kind": "datasheet",
+    "document": "Qorvo QPC6324 product data (everything RF summary of the data sheet)",
+    "url": "https://www.everythingrf.com/products/switches/qorvo/613-483-qpc6324",
+    "note": "SPDT switch, supply current 0.09 to 0.2 mA – maximum taken"
+   }
+  },
+  {
+   "ref": "IC16",
+   "name": "PI_LOAD",
+   "value": "\"/Attenuator Amp Switches/3V3_P12_SWITCH\"=0.2mA",
+   "source": {
+    "kind": "datasheet",
+    "document": "Qorvo QPC6324 product data (everything RF summary of the data sheet)",
+    "url": "https://www.everythingrf.com/products/switches/qorvo/613-483-qpc6324",
+    "note": "SPDT switch, supply current 0.09 to 0.2 mA – maximum taken"
+   }
+  },
+  {
+   "ref": "IC17",
+   "name": "PI_LOAD",
+   "value": "\"/Attenuator Amp Switches/3V3_P2_SWITCH\"=0.2mA",
+   "source": {
+    "kind": "datasheet",
+    "document": "Qorvo QPC6324 product data (everything RF summary of the data sheet)",
+    "url": "https://www.everythingrf.com/products/switches/qorvo/613-483-qpc6324",
+    "note": "SPDT switch, supply current 0.09 to 0.2 mA – maximum taken"
+   }
+  },
+  {
+   "ref": "IC18",
+   "name": "PI_LOAD",
+   "value": "\"/Attenuator Amp Switches/3V3_P1_SWITCH\"=0.2mA",
+   "source": {
+    "kind": "datasheet",
+    "document": "Qorvo QPC6324 product data (everything RF summary of the data sheet)",
+    "url": "https://www.everythingrf.com/products/switches/qorvo/613-483-qpc6324",
+    "note": "SPDT switch, supply current 0.09 to 0.2 mA – maximum taken"
+   }
+  },
+  {
+   "ref": "L26",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L6",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L59",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L56",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L10",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L65",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L55",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L57",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L64",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L7",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L21",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L54",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L27",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L29",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L25",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L28",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L16",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L12",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L13",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L17",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L58",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L20",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L8",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L62",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L22",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L63",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L23",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L19",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L61",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L9",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L15",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  },
+  {
+   "ref": "L60",
+   "name": "PI_SERIES",
+   "value": "z100=600 rdc=0.34",
+   "source": {
+    "kind": "datasheet",
+    "document": "Murata BLM15AX601SN1D (Digi-Key product data)",
+    "url": "https://www.digikey.com/en/products/detail/murata-electronics/BLM15AX601SN1D/2256876",
+    "note": "600 Ω at 100 MHz, DC resistance 340 mΩ (maximum), rated 500 mA"
+   }
+  }
+ ],
+ "stackup": {
+  "dielectrics": [
+   {
+    "index": 0,
+    "epsilon_r": 4.4,
+    "loss_tangent": 0.02,
+    "source": {
+     "kind": "design",
+     "document": "Hardware/Kicad/Production/VNA-job.gbrjob (Gerber job file of the March 2024 production)",
+     "url": "https://github.com/jankae/LibreVNA",
+     "note": "MaterialStackup: DielectricConstant and LossTangent 0.02 as given for this layer (commit c477819)"
+    }
+   },
+   {
+    "index": 1,
+    "epsilon_r": 4.6,
+    "loss_tangent": 0.02,
+    "source": {
+     "kind": "design",
+     "document": "Hardware/Kicad/Production/VNA-job.gbrjob (Gerber job file of the March 2024 production)",
+     "url": "https://github.com/jankae/LibreVNA",
+     "note": "MaterialStackup: DielectricConstant and LossTangent 0.02 as given for this layer (commit c477819)"
+    }
+   },
+   {
+    "index": 2,
+    "epsilon_r": 4.4,
+    "loss_tangent": 0.02,
+    "source": {
+     "kind": "design",
+     "document": "Hardware/Kicad/Production/VNA-job.gbrjob (Gerber job file of the March 2024 production)",
+     "url": "https://github.com/jankae/LibreVNA",
+     "note": "MaterialStackup: DielectricConstant and LossTangent 0.02 as given for this layer (commit c477819)"
+    }
+   },
+   {
+    "index": 3,
+    "epsilon_r": 4.5,
+    "loss_tangent": 0.02,
+    "source": {
+     "kind": "design",
+     "document": "Hardware/Kicad/Production/VNA-job.gbrjob (Gerber job file of the March 2024 production)",
+     "url": "https://github.com/jankae/LibreVNA",
+     "note": "MaterialStackup: DielectricConstant and LossTangent 0.02 as given for this layer (commit c477819)"
+    }
+   },
+   {
+    "index": 4,
+    "epsilon_r": 4.6,
+    "loss_tangent": 0.02,
+    "source": {
+     "kind": "design",
+     "document": "Hardware/Kicad/Production/VNA-job.gbrjob (Gerber job file of the March 2024 production)",
+     "url": "https://github.com/jankae/LibreVNA",
+     "note": "MaterialStackup: DielectricConstant and LossTangent 0.02 as given for this layer (commit c477819)"
+    }
+   }
   ]
+ },
+ "net_classes": {
+  "USB": {
+   "nets": [
+    "USB_DP",
+    "USB_DN",
+    "MCU_USB_DP",
+    "MCU_USB_DN"
+   ],
+   "target_ohm": 90,
+   "diff": true,
+   "profile": "usb2",
+   "source": {
+    "kind": "standard",
+    "document": "USB 2.0 specification",
+    "note": "90 Ω differential (±15 %); the STM32 runs full speed (12 Mbit/s), the high-speed profile is the stricter case. The nets sit in the class Default on the board"
+   }
+  },
+  "RF": {
+   "profile": "se50",
+   "source": {
+    "kind": "assumption",
+    "note": "RF signal chain (analog, 50 Ω): no digital interface standard applies – kisi's generic 50 Ω profile on purpose"
+   }
+  }
+ }
 }

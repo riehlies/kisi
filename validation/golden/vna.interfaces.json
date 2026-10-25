@@ -382,7 +382,7 @@
      "to": "IC23.8"
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "LT5560",
     "THS4521IDGKR"
@@ -467,7 +467,7 @@
      "to": "IC28.8"
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "LT5560",
     "THS4521IDGKR"
@@ -552,7 +552,7 @@
      "to": "IC36.6"
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "THS4521IDGKR",
     "LT5560"
@@ -602,7 +602,7 @@
      "to": "IC36.4"
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "ADL5801",
     "LT5560"
@@ -1022,6 +1022,50 @@
    ]
   },
   {
+   "bus": "IC37 ↔ J4",
+   "class": "USB",
+   "devices": [
+    "IC37",
+    "J4"
+   ],
+   "kind": "multi-drop",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": true,
+     "direction": "default order",
+     "ends": [
+      "IC37.34",
+      "J4.A6",
+      "J4.B6"
+     ],
+     "from": null,
+     "kind": "multi-drop",
+     "lane": "/Microcontroller/MCU_USB_DP",
+     "nets": [
+      "/Microcontroller/MCU_USB_DP",
+      "USB_DP"
+     ],
+     "not_modelled": [],
+     "receivers_on_stubs": [],
+     "series_parts": [
+      "R119 20R (0402)"
+     ],
+     "terminations": [],
+     "to": null
+    }
+   ],
+   "mpns": [
+    null,
+    "LCSC C668624"
+   ],
+   "profile": "usb2",
+   "values": [
+    "STM32G431CB",
+    "USB_C_Receptacle_USB2.0_16P"
+   ]
+  },
+  {
    "bus": "IC11",
    "class": "RF",
    "devices": [
@@ -1386,7 +1430,7 @@
      "to": null
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "ADL5801"
    ]
@@ -1424,7 +1468,7 @@
      "to": null
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "MCP33131D-10-E/MS"
    ]
@@ -1520,7 +1564,7 @@
      "to": null
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "ADL5801"
    ]
@@ -1558,7 +1602,7 @@
      "to": null
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "MCP33131D-10-E/MS"
    ]
@@ -1654,7 +1698,7 @@
      "to": null
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "ADL5801"
    ]
@@ -1692,7 +1736,7 @@
      "to": null
     }
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "values": [
     "MCP33131D-10-E/MS"
    ]
@@ -1736,7 +1780,7 @@
   }
  ],
  "config": {
-  "entries": 68,
+  "entries": 120,
   "errors": [],
   "ok": true,
   "warnings": []

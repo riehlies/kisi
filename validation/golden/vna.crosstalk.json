@@ -1,5 +1,5 @@
 {
- "critical": 60,
+ "critical": 62,
  "note": "NEXT (backward, seen at the near end) and FEXT (forward, at the far end) as fractions of the aggressor swing, all aggressors summed; critical from 1 % (kisi guide value). Source 'formula' is an estimate; kisi.mjs solves the critical coupling cross-sections with the field solver. Broadside overlaps (tracks on the adjacent layer) are counted but not computed yet. Details per net: `kisi net`.",
  "rise_ps": 35.0,
  "rows": [
@@ -454,9 +454,9 @@
    "worst_aggressor_pair": null
   }
  ],
- "rows_omitted": 30,
+ "rows_omitted": 32,
  "rows_shown": "critical (use --all for all)",
  "threshold": 0.01,
- "unsolved_critical_cross_sections": 415,
- "victims": 133
+ "unsolved_critical_cross_sections": 436,
+ "victims": 135
 }

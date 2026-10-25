@@ -93,7 +93,21 @@ pub struct ClassEntry {
     pub diff: Option<bool>,
     /// interface profile id (data/interfaces.json)
     pub profile: Option<String>,
+    /// nets this class gets in addition to the project's assignment: names or patterns with `*` and `?`
+    /// (matched against the full name and its last part, "*QSPI_*", "USB_D?"), like KiCad's net class
+    /// patterns – for nets in "Default" without a KiCad change; the class need not exist in the project
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub nets: Vec<String>,
     pub source: Option<Source>,
+}
+
+/// Does net `name` match one of `patterns` (the full name, or its last part after '/')?
+pub fn net_matches(patterns: &[String], name: &str) -> bool {
+    let short = name.rsplit('/').next().unwrap_or(name);
+    patterns.iter().any(|p| {
+        let p = p.trim();
+        !p.is_empty() && (p == name || crate::board::wildcard_match(p, name) || crate::board::wildcard_match(p, short))
+    })
 }
 
 /// `connector_ends.<connector reference>`: what sits at a connector where lanes leave the
@@ -242,6 +256,27 @@ impl BoardConfig {
                 }
             }
             board.stackup = Some(su);
+        }
+        // nets given to a class here (before the targets, which go by class)
+        for (cls, c) in self.net_classes.iter().filter(|(_, c)| !c.nets.is_empty()) {
+            if board.netclasses.is_empty() {
+                board.netclasses.push(crate::board::NetClass { name: "Default".into(), track_width: None, diff_pair_width: None, diff_pair_gap: None });
+            }
+            let idx = match board.netclasses.iter().position(|n| &n.name == cls) {
+                Some(i) => i,
+                None => {
+                    board.netclasses.push(crate::board::NetClass { name: cls.clone(), track_width: None, diff_pair_width: None, diff_pair_gap: None });
+                    board.netclasses.len() - 1
+                }
+            };
+            if board.net_class.len() < board.nets.len() {
+                board.net_class.resize(board.nets.len(), 0);
+            }
+            for (id, n) in board.nets.iter().enumerate().skip(1) {
+                if net_matches(&c.nets, n) {
+                    board.net_class[id] = idx as u32;
+                }
+            }
         }
         for f in &self.fields {
             if let Some(fp) = board.footprints.iter_mut().find(|fp| fp.reference == f.refdes) {
@@ -443,8 +478,18 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
     for (cls, c) in &cfg.net_classes {
         r.entries += 1;
         let what = format!("net_classes.{cls}");
-        if !class_names.iter().any(|n| n == cls) {
-            r.errors.push(format!("{what}: no net class '{cls}' in the project (classes: {})", class_names.join(", ")));
+        if c.nets.is_empty() && !class_names.iter().any(|n| n == cls) {
+            r.errors.push(format!("{what}: no net class '{cls}' in the project (classes: {}) – give its nets in \"nets\" to define it here", class_names.join(", ")));
+        }
+        for p in &c.nets {
+            if !board.nets.iter().skip(1).any(|n| net_matches(std::slice::from_ref(p), n)) {
+                r.errors.push(format!("{what}.nets: '{p}' matches no net on the board"));
+            }
+        }
+        for (other, o) in cfg.net_classes.iter().filter(|(k, o)| k.as_str() > cls.as_str() && !o.nets.is_empty()) {
+            if let Some(n) = board.nets.iter().skip(1).find(|n| !c.nets.is_empty() && net_matches(&c.nets, n) && net_matches(&o.nets, n)) {
+                r.errors.push(format!("{what}.nets: net '{n}' is also given to net_classes.{other}"));
+            }
         }
         if c.target_ohm.is_some_and(|z| !(10.0..200.0).contains(&z)) {
             r.errors.push(format!("{what}: target_ohm outside 10 … 200"));
@@ -751,6 +796,38 @@ mod tests {
         let all = r.errors.join("\n");
         for frag in ["1 dielectrics", "epsilon_r outside", "source missing", "no net class 'PCIe'", "unknown profile 'pcie9'", "kind 'guess'", "no footprint U9", "not readable"] {
             assert!(all.contains(frag), "missing '{frag}' in\n{all}");
+        }
+    }
+
+    /// Nets given to a class in kisi.json: a new class for nets in "Default", by name or pattern;
+    /// patterns that match nothing and nets given twice are errors.
+    #[test]
+    fn class_nets() {
+        let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew") (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+  (net 0 "") (net 1 "/FPGA/QSPI_DQ0") (net 2 "/FPGA/QSPI_DQ1") (net 3 "USB_DP") (net 4 "USB_DN") (net 5 "LED"))"#;
+        let mut board = crate::load_pcb(pcb).unwrap();
+        crate::apply_project(&mut board, r#"{"net_settings": {"classes": [{"name": "Default"}]}}"#).unwrap();
+        let profiles = crate::profile::Profiles::builtin();
+        let src = r#""source": {"kind": "standard", "document": "USB 2.0 specification"}"#;
+        let cfg = parse(&format!(r#"{{"kisi_config": 1, "net_classes": {{
+            "QSPI": {{"nets": ["*QSPI_*"], "target_ohm": 50, "diff": false, "profile": "se50", {src}}},
+            "USB": {{"nets": ["USB_DP", "USB_DN"], "target_ohm": 90, "diff": true, "profile": "usb2", {src}}}}}}}"#)).unwrap();
+        let r = check(&cfg, &board, &["Default".into()], &profiles, None, &Default::default());
+        assert!(r.ok, "{:?}", r.errors);
+        let mut b = board.clone();
+        let a = cfg.apply(&mut b);
+        let cls = |n: &str| b.netclasses[b.net_class[b.nets.iter().position(|x| x == n).unwrap()] as usize].name.clone();
+        assert_eq!((cls("/FPGA/QSPI_DQ1").as_str(), cls("USB_DN").as_str(), cls("LED").as_str()), ("QSPI", "USB", "Default"));
+        assert_eq!((a.targets["USB"].z, a.targets["USB"].diff), (90.0, true));
+        // the analysis sees the targets on those nets
+        let an = crate::analyze(&b, &crate::Params { targets: a.targets.clone(), ..Default::default() });
+        let c = an.classes.iter().find(|c| c.name == "USB").expect("class USB in the analysis");
+        assert!(c.target.is_some_and(|t| t.z == 90.0 && t.diff), "{:?}", c.target);
+        let bad = parse(&format!(r#"{{"kisi_config": 1, "net_classes": {{"A": {{"nets": ["NOPE*"], "target_ohm": 50, "diff": false, {src}}},
+            "B": {{"nets": ["USB_D?"], "target_ohm": 90, "diff": true, {src}}}, "C": {{"nets": ["USB_DP"], "target_ohm": 90, "diff": true, {src}}}, "D": {{"target_ohm": 50, {src}}}}}}}"#)).unwrap();
+        let e = check(&bad, &board, &["Default".into()], &profiles, None, &Default::default()).errors.join("\n");
+        for want in ["net_classes.A.nets: 'NOPE*' matches no net", "net 'USB_DP' is also given to net_classes.C", "no net class 'D'"] {
+            assert!(e.contains(want), "{want}: {e}");
         }
     }
 

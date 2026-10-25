@@ -125,12 +125,15 @@ milli), the include path is relative, the files are ASCII.
   analysis; for pairs and buses the Touchstone files are the path (the README says so).
 - **Checked without LTspice** (`validation/channel_export/ltspice.py check`, in `compare.py` and so in CI): ASCII, no
   `.control`/`wrdata`/`portnum`/`.lin`/`.print`, every subcircuit instance names a defined subcircuit with as many
-  ports as nodes, `Rser=0` on every inductor and no other element parameter, values in e-notation, no node names
+  ports as nodes, no node of the flattened lane without a DC path to ground, `Rser=0` on every inductor and no other element parameter, values in e-notation, no node names
   that differ only in case, well-formed `.tran`, `.meas`, `B` and `.net` lines, and the LTspice library equal to the
   shared one apart from `Rser=0`. `ltspice.py expected` runs the same bench in ngspice (the `.meas` syntax is common;
   the shared library instead of the LTspice one, the LTspice-only options left out) and writes `expected.json` with
   the measurements, the run time, the element counts and – single-ended – S11/S21 at a few frequencies. LTspice
-  itself was not run here (Windows/macOS); the maintainer runs it.
+  itself runs on the maintainer's PC (LTspice 26.1.1, Windows): for REFINOUT2 `.net` gives ngspice's S11/S21 at all
+  nine frequencies to 1e-4 dB and 0.001°, the bench's t50 to 0.2 ps and its levels to 0.07 % (118 s against
+  ngspice's 104 s). The pair SYNC_OUT_P showed the floating converter nodes above (levels 1.1 % low, t50 to 0.1 ps);
+  its export with the dual far-end converter is the one to compare now.
 - **Run time** (ngspice 42, one core of a shared machine, SYNC_OUT_P, 85 mm LVDS pair, two PRBS7 periods,
   257 ns at 30 ps steps): the ladder's top frequency sets the number of sections, and the run time follows the
   element count roughly linearly:
@@ -173,7 +176,12 @@ to the receiver act as the receiver's termination (bench and Touchstone leave th
 - **Pairs:** both lines on their own paths as `rf::mixed::align_pair` aligns them. Coupled runs, via pairs and stub
   pairs are modal blocks: the even- and the odd-mode chain between ideal mode converters – E sources set V_e =
   (V_P + V_N)/2 and V_o = (V_P − V_N)/2, F sources make I_P = I_e + I_o and I_N = I_e − I_o – exactly
-  `T = P·blockdiag(T_e, T_o)·P⁻¹` of `rf::mixed::coupled`. Each coupled run (consecutive runs on one layer
+  `T = P·blockdiag(T_e, T_o)·P⁻¹` of `rf::mixed::coupled`. At the near end of a block the E sources set the
+  modal voltages from the line voltages and F sources draw the modal currents from the line nodes; at the far end
+  the converter is the dual (E sources set V_P = V_e + V_o and V_N = V_e − V_o, F sources take (I_P ± I_N)/2 from
+  the chains' ends), so every node between two blocks is driven by a voltage-defined element and has a DC path.
+  (With the same converter at both ends those nodes hung between current sources only: ngspice solved it, but
+  LTspice reported them as floating and the LVDS pair's levels came out 1.1 % low.) Each coupled run (consecutive runs on one layer
   joined), via pair and stub pair is its own block – back-to-back mode converters are exact, and each block is
   one element on the KiCad sheet. This keeps
   the mode-dependent conductor loss and the even mode of the via pairs, which a K/C_m ladder would not.

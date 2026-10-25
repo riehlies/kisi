@@ -8,7 +8,8 @@ check (also from compare.py, so in CI): the LTspice bench and library are ASCII,
 (`.control`, `wrdata`, `portnum`, `.lin`, `.print`), every subcircuit instance names a subcircuit that exists with
 as many ports as nodes given, every inductor has `Rser=0` (LTspice adds 1 mOhm otherwise) and no other element has
 an LTspice parameter, the `.tran`, `.meas`, `B` and `.net` lines are well formed, and `<lane>_ltspice.lib` is
-`<lane>.lib` except for `Rser=0` and ASCII comments.
+`<lane>.lib` except for `Rser=0` and ASCII comments; and no node of the flattened lane subcircuit is without a DC
+path to ground (LTspice reports such nodes as floating and its results drift).
 
 expected: runs bench_ltspice.cir in ngspice (with `<lane>.lib` instead of the LTspice library – the same circuit;
 the `.meas` lines are read by both simulators) and writes the measurements, ngspice's run time and the element
@@ -130,7 +131,67 @@ def check(d):
         b = [l.replace(" Rser=0", "") for l in open(os.path.join(d, f"{st}_ltspice.lib"), encoding="ascii").read().splitlines() if not l.startswith("*")]
         if a != b:
             errs.append(f"{st}_ltspice.lib differs from {st}.lib by more than Rser=0")
-    return {"ok": not errs, "subckts": len(subs), "instances": len(insts), "errors": errs[:10]}
+    try:
+        fl = floating_nodes(d)
+    except (StopIteration, KeyError) as e:
+        fl = []
+        errs.append(f"floating-node check failed: {e}")
+    if fl:
+        errs.append(f"{len(fl)} node(s) without a DC path to ground, e.g. {fl[:3]}")
+    return {"ok": not errs, "subckts": len(subs), "instances": len(insts), "floating_nodes": len(fl), "errors": errs[:10]}
+
+
+def floating_nodes(d):
+    """Nodes of the lane subcircuit without a DC path to ground (flattened): connected only through current
+    sources, capacitors or controlled-source inputs. The lane's ports count as driven (the bench's ends)."""
+    st = stem_of(d)
+    subs = {}
+    cur = None
+    for _, l in joined(os.path.join(d, f"{st}_ltspice.lib")):
+        t = l.split()
+        if not t or l.startswith("*"):
+            continue
+        if t[0].lower() == ".subckt":
+            cur = t[1].lower()
+            subs[cur] = ([x.lower() for x in t[2:] if "=" not in x and x.lower() != "params:"], [])
+        elif t[0].lower() == ".ends":
+            cur = None
+        elif cur:
+            subs[cur][1].append([x.lower() for x in t])
+    lane = next(k for k in subs if k.endswith("_lane"))
+    parent = {}
+
+    def find(a):
+        while parent.setdefault(a, a) != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    def join(a, b):
+        parent[find(a)] = find(b)
+
+    nodes = set()
+    stack = [(lane, {p: (p if p != "ref" else "0") for p in subs[lane][0]}, "")]
+    while stack:
+        name, mp, pre = stack.pop()
+        ports, body = subs[name]
+        node = lambda x: "0" if x == "0" else mp.get(x, pre + x)
+        for t in body:
+            k = t[0][0]
+            if k == "x":
+                sub = t[-1]
+                stack.append((sub, dict(zip(subs[sub][0], [node(x) for x in t[1:-1]])), pre + t[0] + "."))
+                continue
+            ns = [node(x) for x in t[1:3]]
+            nodes.update(ns)
+            if k in "rlvbe":
+                join(ns[0], ns[1])
+            if k in "ef":
+                nodes.update(node(x) for x in t[3:5] if k == "e")
+    for p in subs[lane][0]:
+        join(p if p != "ref" else "0", "0")
+    g = find("0")
+    return sorted(n for n in nodes if find(n) != g)
 
 
 def expected(d):

@@ -650,38 +650,50 @@ impl Lib {
     }
 }
 
-/// Mode converter at one end of a modal block. `near`: the modal chains start here (their
-/// currents flow into them); else they end here.
+/// Mode converter at one end of a modal block (V_e = (V_P + V_N)/2, V_o = (V_P − V_N)/2,
+/// I_P = I_e + I_o, I_N = I_e − I_o). `near`: the modal chains start here – the modal voltages are set
+/// from the line voltages (E sources, 0 V probes into the chains) and the line nodes draw the modal
+/// currents (F sources). Far end (`near` false), the dual: the line voltages are set from the modal
+/// voltages (V_P = V_e + V_o, V_N = V_e − V_o) and the chains' ends deliver the line currents
+/// (I_e = (I_P + I_N)/2, I_o = (I_P − I_N)/2). So every node between two blocks is driven by a
+/// voltage-defined element and has a DC path (LTspice reports nodes fed by current sources alone as
+/// floating); the relation is the same at both ends.
 fn converter(b: &mut Body, p: &str, n: &str, e: &str, o: &str, near: bool) {
-    let (es, os) = (format!("{e}s"), format!("{o}s"));
-    let (ex, ox) = (format!("{e}x"), format!("{o}x"));
     let push = |b: &mut Body, s: String| {
         b.lines.push(s);
         b.flat.sources += 1;
     };
     let (e1, e2, e3, e4) = (b.name('E'), b.name('E'), b.name('E'), b.name('E'));
-    push(b, format!("{e1} {ex} ref {p} ref 0.5"));
-    push(b, format!("{e2} {es} {ex} {n} ref 0.5"));
-    push(b, format!("{e3} {ox} ref {p} ref 0.5"));
-    push(b, format!("{e4} {os} {ox} {n} ref -0.5"));
-    let (ve, vo) = (b.name('V'), b.name('V'));
+    let (v1, v2) = (b.name('V'), b.name('V'));
     let (f1, f2, f3, f4) = (b.name('F'), b.name('F'), b.name('F'), b.name('F'));
     if near {
+        let (es, os) = (format!("{e}s"), format!("{o}s"));
+        let (ex, ox) = (format!("{e}x"), format!("{o}x"));
+        push(b, format!("{e1} {ex} ref {p} ref 0.5"));
+        push(b, format!("{e2} {es} {ex} {n} ref 0.5"));
+        push(b, format!("{e3} {ox} ref {p} ref 0.5"));
+        push(b, format!("{e4} {os} {ox} {n} ref -0.5"));
         // probes in the direction into the modal chains; the line nodes draw I_e ± I_o
-        push(b, format!("{ve} {es} {e} 0"));
-        push(b, format!("{vo} {os} {o} 0"));
-        push(b, format!("{f1} {p} ref {ve} 1"));
-        push(b, format!("{f2} {p} ref {vo} 1"));
-        push(b, format!("{f3} {n} ref {ve} 1"));
-        push(b, format!("{f4} {n} ref {vo} -1"));
+        push(b, format!("{v1} {es} {e} 0"));
+        push(b, format!("{v2} {os} {o} 0"));
+        push(b, format!("{f1} {p} ref {v1} 1"));
+        push(b, format!("{f2} {p} ref {v2} 1"));
+        push(b, format!("{f3} {n} ref {v1} 1"));
+        push(b, format!("{f4} {n} ref {v2} -1"));
     } else {
-        // probes in the direction out of the modal chains; the line nodes deliver I_e ± I_o
-        push(b, format!("{ve} {e} {es} 0"));
-        push(b, format!("{vo} {o} {os} 0"));
-        push(b, format!("{f1} ref {p} {ve} 1"));
-        push(b, format!("{f2} ref {p} {vo} 1"));
-        push(b, format!("{f3} ref {n} {ve} 1"));
-        push(b, format!("{f4} ref {n} {vo} -1"));
+        let (ps, ns) = (format!("{p}s"), format!("{n}s"));
+        let (px, nx) = (format!("{p}x"), format!("{n}x"));
+        push(b, format!("{e1} {px} ref {e} ref 1"));
+        push(b, format!("{e2} {ps} {px} {o} ref 1"));
+        push(b, format!("{e3} {nx} ref {e} ref 1"));
+        push(b, format!("{e4} {ns} {nx} {o} ref -1"));
+        // probes in the direction out to the line nodes; the chains' ends deliver (I_P ± I_N)/2
+        push(b, format!("{v1} {ps} {p} 0"));
+        push(b, format!("{v2} {ns} {n} 0"));
+        push(b, format!("{f1} {e} ref {v1} 0.5"));
+        push(b, format!("{f2} {e} ref {v2} 0.5"));
+        push(b, format!("{f3} {o} ref {v1} 0.5"));
+        push(b, format!("{f4} {o} ref {v2} -0.5"));
     }
 }
 

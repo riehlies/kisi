@@ -4,7 +4,7 @@ of every via reference case (validation/via_ref) and the solver checks (results/
 
 usage: python3 make_viewer.py [via_ref_dir] [out.html] [--fragment]
 """
-import base64, glob, json, math, os, sys
+import base64, glob, json, os, sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))

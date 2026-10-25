@@ -8,7 +8,7 @@ usage: python3 practice.py --kisi target/release/kisi --mjs dist/kisi.mjs [--mjs
                            [--examples examples] [--fdtd target/release/kisi-fdtd]
        → results/practice.json
 """
-import argparse, glob, json, os, re, shutil, statistics, subprocess, sys, tempfile, time
+import argparse, glob, json, os, re, shutil, statistics, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))

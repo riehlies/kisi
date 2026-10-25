@@ -85,7 +85,7 @@ def width_for(z0, fz):
 
 def feed(st, layer):
     """(width, reference layer) of a 50 Ω trace on `layer`."""
-    zc, planes, n = copper_z(st), st["planes"], len(st["diel"]) + 1
+    zc, planes = copper_z(st), st["planes"]
     above = [p for p in planes if p < layer]
     below = [p for p in planes if p > layer]
     ra, rb = (max(above) if above else None), (min(below) if below else None)
@@ -314,7 +314,7 @@ def pdn_loop(cid, dist, fmax, dfine):
     gnd_planes = [p for p in b.st["planes"] if p not in b.pwr]
     zg, zp = top + 0.05, top + 0.10
     pins = [(-1.2 + 0.8 * i, -1.2 + 0.8 * j, (i + j) % 2 == 0) for i in range(4) for j in range(4)]
-    g_holes, p_holes = [], []
+    g_holes = []
     for (x, y, is_pwr) in pins:
         if is_pwr:
             b.cyl(x, y, 0.1, zc[3], zp, net="PWR")

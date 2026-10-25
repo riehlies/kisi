@@ -12,7 +12,7 @@ cases, then compares
 usage: python3 rust_models.py [--exe kisi-validate] [--out DIR] [--no-python-timing]
        → results/rust_models.json (S-parameters of the Rust runs go to DIR, not to the repository)
 """
-import argparse, json, math, os, subprocess, sys, tempfile, time
+import argparse, json, os, subprocess, sys, tempfile, time
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -50,7 +50,7 @@ def main():
     t0 = time.time()
     rust = json.loads(subprocess.run([a.exe, "models", os.path.join(HERE, "via_cases"), a.out], capture_output=True, text=True, check=True).stdout)
     t_rust_total = time.time() - t0
-    rows, groups = {}, {}
+    rows = {}
     for cid, r in sorted(rust.items()):
         c = json.load(open(os.path.join(HERE, "via_cases", cid + ".json")))
         g = c["meta"]["group"]

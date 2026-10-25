@@ -51,7 +51,6 @@ def main():
     rise = float(re.search(r"edge (\S+) ps", "\n".join(bench)).group(1)) * 1e-12
     ends = [l for l in bench if re.match(r"^(RTX|CTX|LTX|VTXS|VTXL|LRX|VRXL|CRX|RRX)_[pn] ", l)]
     lane = [l for l in bench if l.startswith("XLANE ")][0]
-    subs = re.findall(r"^\.subckt (\S+) (.*)$", lib_lt, re.M)
     lane_name = lane.split()[-1]
     body = re.search(r"^\.subckt %s .*?\n(.*?)^\.ends" % re.escape(lane_name), lib_lt, re.M | re.S).group(1).splitlines()
     first = lambda pat: next(l.split()[-1] for l in body if re.search(pat, l.split()[-1]))

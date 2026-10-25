@@ -3,7 +3,7 @@ Touchstone files, 2×thru de-embedding, mixed-mode conversion and TDR.
 
 S arrays have the shape (nf, N, N), S[k, i, j] = b_i / a_j at freq[k].
 """
-import json, math
+import math
 import numpy as np
 
 
@@ -274,7 +274,6 @@ def line_params(f, S20, S10=None, l20=20.0, l10=10.0):
     """Zc and εeff of a uniform line from its 2-port (50 Ω ports, ABCD of the 20 mm line); γ also
     from the line–line method (T20 · T10⁻¹ is a line of l20 − l10, port effects cancel)"""
     s11, s12, s21, s22 = S20[:, 0, 0], S20[:, 0, 1], S20[:, 1, 0], S20[:, 1, 1]
-    A = ((1 + s11) * (1 - s22) + s12 * s21) / (2 * s21)
     B = 50 * ((1 + s11) * (1 + s22) - s12 * s21) / (2 * s21)
     C = ((1 - s11) * (1 - s22) - s12 * s21) / (2 * 50 * s21)
     zc = np.sqrt(B / C)

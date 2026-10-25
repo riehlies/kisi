@@ -137,7 +137,7 @@ function exportBlock(kind, r, base) {
 // skew and mode conversion of a pair: where P and N differ, conversion into common mode,
 // the TDR of each line alone
 function renderSkew(body, r, net) {
-  const ch = r.channel, mx = r.mixed, pa = ch.path;
+  const ch = r.channel, mx = r.mixed;
   const P = netShort(mx.p_net), N = netShort(mx.n_net);
   const w = mx.scd21_worst, tdrView = S.skewView === "tdr";
   const rows = mx.imbalance.map((x, i) => `<tr class="click" data-im="${i}"><td>${x.s_to_mm - x.s_from_mm < 0.05 ? "at " + fmt(x.s_from_mm, 1) : fmt(x.s_from_mm, 1) + " … " + fmt(x.s_to_mm, 1)}</td><td>${x.vias_differ && Math.abs(x.dl_mm) < 0.01 ? "via pair" : `${x.dl_mm >= 0 ? esc(P) : esc(N)} <b>+${fmt(Math.abs(x.dl_mm), 2)} mm</b>`}</td><td>${x.dt_ps >= 0 ? "+" : "−"}${fmt(Math.abs(x.dt_ps), 2)} ps</td><td>${x.vias_differ ? "vias differ" : ""}</td></tr>`).join("");

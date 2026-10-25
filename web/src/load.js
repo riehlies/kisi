@@ -122,7 +122,6 @@ function anParams() {
   return { step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field, stackup: stackParam() };
 }
 function runAnalysis(tParse) {
-  const t0 = performance.now();
   const params = anParams(), targets = params.targets;
   S.an = S.full ? S.engine.analyze(params) : S.engine.skeleton(params);
   // device-to-device lanes (topology): board and targets only, cheap
@@ -134,7 +133,6 @@ function runAnalysis(tParse) {
   S.chCache = null; S.rfCache = null;
   S.anGen++;
   setTimeout(() => { renderCheck(); if (S.tab === "ch") { renderIfcCard(); renderProfCard(); } }, 0);
-  const tAn = performance.now() - t0;
   if (tParse != null) S.parseMs = Math.round(tParse);
   $("timing").textContent = S.parseMs != null ? `read ${S.parseMs} ms` : "";
   xtUpdate();

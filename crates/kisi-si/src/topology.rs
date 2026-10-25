@@ -133,6 +133,9 @@ pub struct Passive {
     pub pad_c_pf: f64,
     /// pad positions (in the order of the nets they connect)
     pub pads: [P; 2],
+    /// the pads' indices in `Board::pads` (same order)
+    #[serde(skip)]
+    pub pad_idx: [usize; 2],
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -297,7 +300,7 @@ fn passive_of(board: &Board, cd: &ComponentData, fp: usize, role: &str, a: usize
         "inductor" => 'L',
         _ => 'R',
     };
-    Passive { refdes: f.reference.clone(), value: f.value.clone(), kind, val: parse_value(&f.value), package: pkg.to_string(), esl_nh: pd.esl_nh, pad_c_pf: pd.pad_c_pf, pads: [board.pads[a].at, board.pads[b].at] }
+    Passive { refdes: f.reference.clone(), value: f.value.clone(), kind, val: parse_value(&f.value), package: pkg.to_string(), esl_nh: pd.esl_nh, pad_c_pf: pd.pad_c_pf, pads: [board.pads[a].at, board.pads[b].at], pad_idx: [a, b] }
 }
 
 /// How a channel of one net treats a part across a differential pair.
@@ -1066,20 +1069,90 @@ fn lumped(p: &Passive, series: bool, scale: f64, esr: f64) -> LumpedPart {
     LumpedPart { label, series, kind: p.kind, r: r * scale, l: l * scale, c: c.map(|c| c / scale) }
 }
 
-fn pad_cap(p: &Passive) -> LumpedPart {
-    LumpedPart { label: format!("{} pad", p.refdes), series: false, kind: 'C', r: 0.0, l: 0.0, c: Some(p.pad_c_pf.max(1e-3) * 1e-12) }
+/// Capacitance (F) of the half of SMD pad `pad` that no line of the cascade covers: a track runs to
+/// the pad's centre, and the cross-sections of the track inside the pad already have the pad's
+/// width (`extract`); the other half – towards the part's body (`toward`: the other pad), or
+/// beyond the track's end – is a shunt C = Σ C′·ℓ over the cross-sections of the pad's synthetic
+/// track there (C′ = √εeff/(Z0·c0): the 2D field solve or formula of the pad with whatever lies
+/// below it – a cut-out in the plane under the pad, no plane at all). None when the pad has no
+/// such track (no track enters it) or no impedance.
+pub fn pad_shunt_c(board: &Board, an: &Analysis, pad: usize, toward: Option<P>) -> Option<f64> {
+    let pd = board.pads.get(pad)?;
+    let halves: Vec<usize> = (0..board.tracks.len()).filter(|&i| board.tracks[i].pad && board.tracks[i].item as usize == pad).collect();
+    if halves.is_empty() {
+        return None;
+    }
+    // a half is covered when a track of the pad's net runs along its middle
+    let covered = |ti: usize| {
+        let t = &board.tracks[ti];
+        let m = geom::lerp(t.a, t.b, 0.5);
+        board.tracks.iter().any(|o| !o.pad && o.net == t.net && o.layer == t.layer && seg_covers(m, o.a, o.b, o.width / 2.0 + 0.02))
+    };
+    let free: Vec<usize> = halves.iter().copied().filter(|&ti| !covered(ti)).collect();
+    let pick = match (free.len(), toward) {
+        (0, _) => return Some(0.0),
+        (1, _) => free[0],
+        (_, Some(q)) => *free.iter().max_by(|&&a, &&b| {
+            let d = |ti: usize| geom::dot(geom::sub(board.tracks[ti].b, pd.at), geom::sub(q, pd.at));
+            d(a).total_cmp(&d(b))
+        })?,
+        (_, None) => free[0],
+    };
+    let len = geom::len(geom::sub(board.tracks[pick].b, board.tracks[pick].a));
+    let mut c = 0.0;
+    let mut cover = 0.0;
+    for pc in an.pieces.chunks_exact(4) {
+        if pc[0] as usize != pick {
+            continue;
+        }
+        let xs = &an.cross_sections[pc[3] as usize];
+        let (z, e) = (xs.z0?, xs.eeff?);
+        let l = (pc[2] - pc[1]) * len * 1e-3;
+        c += e.sqrt() / (z * crate::rf::C0) * l;
+        cover += pc[2] - pc[1];
+    }
+    (cover > 0.99).then_some(c)
 }
 
-/// Pad capacitance of a part that is not fitted (its pads stay as copper): the value per
-/// package from `data/components.json` for two-pin parts (an estimate), None for others.
-fn unfitted_pad_cap(board: &Board, fp: usize, cd: &ComponentData) -> Option<(String, LumpedPart)> {
+/// Whether segment a → b runs past point `p` within `r` (its foot point inside the segment, not
+/// beyond either end).
+fn seg_covers(p: P, a: P, b: P, r: f64) -> bool {
+    let d = geom::sub(b, a);
+    let t = geom::dot(geom::sub(p, a), d) / geom::dot(d, d).max(1e-18);
+    (0.0..=1.0).contains(&t) && geom::len(geom::sub(p, geom::add(a, geom::scale(d, t)))) <= r
+}
+
+/// The two pad capacitances of a series part: the geometry's ([`pad_shunt_c`], the mean of both
+/// pads), else the estimate per package from `data/components.json`.
+fn pad_cap(board: &Board, an: &Analysis, p: &Passive) -> (LumpedPart, &'static str) {
+    let [a, b] = p.pad_idx;
+    let geo = match (pad_shunt_c(board, an, a, Some(board.pads[b].at)), pad_shunt_c(board, an, b, Some(board.pads[a].at))) {
+        (Some(x), Some(y)) => Some(0.5 * (x + y)),
+        _ => None,
+    };
+    match geo {
+        Some(c) => (LumpedPart { label: format!("{} pad ({:.3} pF, pad geometry)", p.refdes, c * 1e12), series: false, kind: 'C', r: 0.0, l: 0.0, c: Some(c.max(1e-18)) }, "pad geometry"),
+        None => (LumpedPart { label: format!("{} pad", p.refdes), series: false, kind: 'C', r: 0.0, l: 0.0, c: Some(p.pad_c_pf.max(1e-3) * 1e-12) }, "estimate"),
+    }
+}
+
+/// Pad capacitance of a part that is not fitted (its pads stay as copper), at the end of a stub
+/// that runs to pad `at_pad`: from the pad's geometry ([`pad_shunt_c`]), else the value per package
+/// from `data/components.json` for two-pin parts (an estimate); None for others.
+fn unfitted_pad_cap(board: &Board, an: &Analysis, fp: usize, at_pad: Option<usize>, cd: &ComponentData) -> Option<(String, LumpedPart)> {
     let pads: Vec<usize> = (0..board.pads.len()).filter(|&i| board.pads[i].fp as usize == fp).collect();
     if pads.len() != 2 {
         return None;
     }
     let pkg = package_of(board, fp, pads[0], pads[1]);
-    let c = cd.package(pkg).pad_c_pf;
     let r = &board.footprints[fp].reference;
+    if let Some(pi) = at_pad.filter(|p| pads.contains(p)) {
+        let other = if pads[0] == pi { pads[1] } else { pads[0] };
+        if let Some(c) = pad_shunt_c(board, an, pi, Some(board.pads[other].at)) {
+            return Some((format!("{pkg}, {:.2} pF from the pad geometry", c * 1e12), LumpedPart { label: format!("{r} pad (not fitted)"), series: false, kind: 'C', r: 0.0, l: 0.0, c: Some(c.max(1e-18)) }));
+        }
+    }
+    let c = cd.package(pkg).pad_c_pf;
     Some((format!("{pkg}, {c:.2} pF estimated"), LumpedPart { label: format!("{r} pad (not fitted, estimate)"), series: false, kind: 'C', r: 0.0, l: 0.0, c: Some(c.max(1e-3) * 1e-12) }))
 }
 
@@ -1177,7 +1250,7 @@ fn add_hops(b: &mut Build, board: &Board, an: &Analysis, hops: &[Hop], shunts: &
                         ctx.notes.push(format!("possible assembly variant: the line forks into {part} and on to {far}, all parts fitted – modelled as an open branch; choose the assembly variant (\"variant\" in <board>.kisi.json or --variant)"));
                         format!("{} and on through {part} to {far} (open, all alternatives fitted)", br.end.label)
                     } else if unfitted {
-                        match unfitted_pad_cap(board, fp.unwrap(), ctx.cd) {
+                        match unfitted_pad_cap(board, an, fp.unwrap(), fp.and_then(|f| (0..board.pads.len()).find(|&i| board.pads[i].fp as usize == f && Some(&board.pads[i].number) == br.end.pad.as_ref())), ctx.cd) {
                             Some((pad, lp)) => {
                                 if let Some(bo) = odd.as_mut() {
                                     bo.add_part(lp.clone());
@@ -1257,9 +1330,10 @@ fn add_hops(b: &mut Build, board: &Board, an: &Analysis, hops: &[Hop], shunts: &
                 );
             }
             Hop::Series { part } => {
-                b.add_part(pad_cap(part));
+                let (pc, src) = pad_cap(board, an, part);
+                b.add_part_src(pc.clone(), src);
                 b.add_part(lumped(part, true, 1.0, esr));
-                b.add_part(pad_cap(part));
+                b.add_part_src(pc, src);
             }
         }
     }
@@ -2218,7 +2292,7 @@ mod tests {
         let ch = lane_channel(&board, &an, l, &HashMap::new(), Some((50.0, false)), &RfParams::default(), false, false, &cd).unwrap();
         let stubs: Vec<&str> = ch.segments.iter().filter(|s| s.kind == "branch").filter_map(|s| s.part.as_deref()).collect();
         assert_eq!(stubs.len(), 1, "{stubs:?}");
-        assert!(stubs[0].starts_with("stub 3.") && stubs[0].contains(" mm to R2.1 (not fitted; pad 0402, 0.10 pF"), "{}", stubs[0]);
+        assert!(stubs[0].starts_with("stub 3.") && stubs[0].contains(" mm to R2.1 (not fitted; pad 0402, 0.05 pF from the pad geometry"), "{}", stubs[0]);
         // the stub costs a little: compared with the same lane without it (R2 removed)
         let mut bare = board.clone();
         for p in bare.pads.iter_mut().filter(|p| board.footprints[p.fp as usize].reference == "R2") {
@@ -2279,5 +2353,87 @@ mod tests {
         // the junction is at 19 mm, not at U1: the branch starts after the first 19 mm of line
         let before: f64 = ch.segments.iter().take_while(|s| s.kind != "branch").filter(|s| s.kind == "line").map(|s| s.len_mm).sum();
         assert!((before - 19.0).abs() < 0.6, "{before}");
+    }
+
+    /// J1 – 9.5 mm – 0402 capacitor C1 – 9.5 mm – J2 on the CAPZ stackup; `cut`: the In1 plane cut
+    /// out under C1 (next plane B.Cu, 1.4 mm). `finger`: a 0.7 × 2.1 mm finger pad on the A line at
+    /// 3 mm with GND fingers 0.3 mm beside it and no plane under it.
+    fn pad_board(cut: bool, finger: bool) -> Board {
+        let zone = if cut {
+            // the plane with a 1.0 × 1.2 mm cut-out under C1, fractured to the bottom edge
+            "(xy -5 -5) (xy 9.5 -5) (xy 9.5 -0.6) (xy 9.5 0.6) (xy 10.5 0.6) (xy 10.5 -0.6) (xy 9.5 -0.6) (xy 9.5 -5) (xy 25 -5) (xy 25 8) (xy -5 8)"
+        } else if finger {
+            // the plane ends at x = 4.5 under the finger region (x < 4.5 has no plane)
+            "(xy 4.5 -5) (xy 25 -5) (xy 25 8) (xy 4.5 8)"
+        } else {
+            "(xy -5 -5) (xy 25 -5) (xy 25 8) (xy -5 8)"
+        };
+        // B.Cu: a plane everywhere (under the cut-out the next reference), not under the finger
+        let bottom = if finger { "(xy 4.5 -5) (xy 25 -5) (xy 25 8) (xy 4.5 8)" } else { "(xy -5 -5) (xy 25 -5) (xy 25 8) (xy -5 8)" };
+        let fing = if finger {
+            r#"  (footprint "Edge" (layer "F.Cu") (at 3 0) (property "Reference" "P1") (property "Value" "edge") (attr smd)
+    (pad "1" smd rect (at 0 0) (size 2.1 0.7) (layers "F.Cu") (net 1 "A")))
+  (zone (net 4) (net_name "GND") (layer "F.Cu") (filled_polygon (layer "F.Cu") (pts (xy 1.95 0.65) (xy 4.05 0.65) (xy 4.05 1.35) (xy 1.95 1.35))))
+  (zone (net 4) (net_name "GND") (layer "F.Cu") (filled_polygon (layer "F.Cu") (pts (xy 1.95 -0.65) (xy 4.05 -0.65) (xy 4.05 -1.35) (xy 1.95 -1.35))))
+"#
+        } else {
+            ""
+        };
+        let pcb = format!(
+            r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (4 "In1.Cu" signal) (2 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.2) (material "FR4") (epsilon_r 4.3) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 2" (type "core") (thickness 1.2) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "A") (net 2 "B") (net 4 "GND")
+  (footprint "J" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "Value" "SMA") (attr smd)
+    (pad "1" smd rect (at 0 0) (size 0.6 0.35) (layers "F.Cu") (net 1 "A")))
+  (footprint "J" (layer "F.Cu") (at 20 0) (property "Reference" "J2") (property "Value" "SMA") (attr smd)
+    (pad "1" smd rect (at 0 0) (size 0.6 0.35) (layers "F.Cu") (net 2 "B")))
+  (footprint "Capacitor_SMD:C_0402_1005Metric" (layer "F.Cu") (at 10 0) (property "Reference" "C1") (property "Value" "100nF") (attr smd)
+    (pad "1" smd rect (at -0.48 0) (size 0.56 0.62) (layers "F.Cu") (net 1 "A"))
+    (pad "2" smd rect (at 0.48 0) (size 0.56 0.62) (layers "F.Cu") (net 2 "B")))
+{fing}  (segment (start 0 0) (end 3 0) (width 0.35) (layer "F.Cu") (net 1))
+  (segment (start 3 0) (end 9.52 0) (width 0.35) (layer "F.Cu") (net 1))
+  (segment (start 10.48 0) (end 20 0) (width 0.35) (layer "F.Cu") (net 2))
+  (zone (net 4) (net_name "GND") (layer "In1.Cu") (filled_polygon (layer "In1.Cu") (pts {zone})))
+  (zone (net 4) (net_name "GND") (layer "B.Cu") (filled_polygon (layer "B.Cu") (pts {bottom})))
+)
+"#
+        );
+        crate::board::load_pcb(&pcb).unwrap()
+    }
+
+    /// Pads: the track inside a pad has the pad's width, exactly from the pad's edge; the pads of a
+    /// series capacitor are shunts from their geometry – smaller over a cut-out in the plane; a
+    /// finger without a plane under it, between GND fingers, has the coplanar impedance.
+    #[test]
+    fn pads_from_their_geometry() {
+        let cd = ComponentData::builtin();
+        let rp = RfParams { fmax: 10e9, npts: 50, ..RfParams::default() };
+        let pad_c = |board: &Board| -> (f64, Vec<(f64, f64)>) {
+            let (an, lanes) = lanes_of(board);
+            let l = lanes.iter().find(|l| l.kind == "connector-connector").expect("lane J1–J2");
+            let ch = lane_channel(board, &an, l, &HashMap::new(), Some((50.0, false)), &rp, false, false, &cd).unwrap();
+            let pads: Vec<&crate::rf::Segment> = ch.segments.iter().filter(|s| s.kind == "shunt" && s.part.as_deref().is_some_and(|p| p.starts_with("C1 pad"))).collect();
+            assert!(pads.len() == 2 && pads.iter().all(|s| s.source == "pad geometry"), "{:?}", ch.segments.iter().map(|s| (s.kind, s.source, s.part.clone())).collect::<Vec<_>>());
+            let c: f64 = pads[0].part.as_deref().unwrap().split('(').nth(1).unwrap().split(' ').next().unwrap().parse().unwrap();
+            // the line sections in the pads: 0.62 mm wide, 0.28 mm long
+            let wide: Vec<(f64, f64)> = ch.segments.iter().filter(|s| s.kind == "line").filter_map(|s| Some((an.cross_sections[s.xs? as usize].w, s.len_mm))).filter(|(w, _)| *w > 0.5).collect();
+            (c, wide)
+        };
+        let (c0, wide) = pad_c(&pad_board(false, false));
+        assert!(wide.len() == 2 && wide.iter().all(|&(w, l)| (w - 0.62).abs() < 1e-9 && (l - 0.28).abs() < 1e-6), "{wide:?}");
+        assert!((0.03..0.09).contains(&c0), "pad over the plane: {c0} pF");
+        let (c1, _) = pad_c(&pad_board(true, false));
+        assert!(c1 < 0.5 * c0, "over the cut-out {c1} pF, over the plane {c0} pF");
+        // the finger
+        let b = pad_board(false, true);
+        let (an, _) = lanes_of(&b);
+        let xs: Vec<&crate::extract::CrossSection> = an.pieces.chunks_exact(4).filter(|p| !b.tracks[p[0] as usize].pad).map(|p| &an.cross_sections[p[3] as usize]).filter(|x| (x.w - 0.7).abs() < 1e-9).collect();
+        assert!(!xs.is_empty() && xs.iter().all(|x| x.kind == crate::extract::Kind::NoReference && x.z0.is_some_and(|z| (40.0..100.0).contains(&z))), "{:?}", xs.iter().map(|x| (x.kind, x.z0, x.s_left, x.s_right)).collect::<Vec<_>>());
     }
 }

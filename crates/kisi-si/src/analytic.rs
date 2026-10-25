@@ -140,6 +140,74 @@ pub fn cpwg(w: f64, s: f64, h: f64, er: f64) -> (f64, f64) {
     (z, eeff)
 }
 
+/// Coplanar waveguide without a ground plane (conformal mapping, zero thickness; Simons, Coplanar
+/// Waveguide Circuits, 2001, ch. 2): strip `w`, gaps `s` to coplanar grounds, on a dielectric slab of
+/// thickness `h` (εr) with air on both sides – `h` = ∞ (`f64::INFINITY`): fully embedded.
+/// Returns (Z0, εeff).
+pub fn cpw(w: f64, s: f64, h: f64, er: f64) -> (f64, f64) {
+    let k0 = w / (w + 2.0 * s);
+    let eeff = if h.is_finite() {
+        let k1 = (PI * w / (4.0 * h)).sinh() / (PI * (w + 2.0 * s) / (4.0 * h)).sinh();
+        1.0 + 0.5 * (er - 1.0) * k_ratio(k1) / k_ratio(k0)
+    } else {
+        er
+    };
+    (30.0 * PI / eeff.sqrt() / k_ratio(k0), eeff)
+}
+
+/// Coplanar strips (two strips of width `w`, gap `s`, no ground; Simons ch. 7) on a slab `h` (εr) as
+/// in [`cpw`]. Returns (Zdiff, εeff).
+pub fn cps(w: f64, s: f64, h: f64, er: f64) -> (f64, f64) {
+    let k = s / (s + 2.0 * w);
+    let eeff = if h.is_finite() {
+        let k1 = (PI * s / (4.0 * h)).sinh() / (PI * (s + 2.0 * w) / (4.0 * h)).sinh();
+        1.0 + 0.5 * (er - 1.0) * k_ratio(k1) / k_ratio(k)
+    } else {
+        er
+    };
+    (120.0 * PI / eeff.sqrt() * k_ratio(k), eeff)
+}
+
+/// A trace without a reference plane (no plane copper above or below it on any layer – a card-edge
+/// finger, a pad over a cut-out through the whole stack): the return runs in the coplanar copper
+/// beside it (gaps `s_left`, `s_right`, None = none within reach) and, for a pair, in the partner
+/// (gap `gap`). Each side with a coplanar conductor is half a [`cpw`] (2·Z_cpw of that gap); the
+/// pair's odd mode adds the partner as coplanar strips ([`cps`]), the even mode only the coplanar
+/// copper. Returns (Z0, εeff, Zdiff, Zeven) – None where no return is within reach (a single trace
+/// without coplanar copper: no Z0; a pair without it: no even mode, Z0 = Zodd). An estimate: the
+/// sides combine as parallel slots.
+pub fn no_plane(w: f64, h: f64, er: f64, s_left: Option<f64>, s_right: Option<f64>, gap: Option<f64>) -> Option<(f64, f64, Option<f64>, Option<f64>)> {
+    let side = |s: f64| {
+        let (z, e) = cpw(w, s, h, er);
+        (2.0 * z, e)
+    };
+    let mut y = 0.0;
+    let mut ye = 0.0;
+    for s in [s_left, s_right].into_iter().flatten() {
+        let (z, e) = side(s);
+        y += 1.0 / z;
+        ye += e / z;
+    }
+    let single = (y > 0.0).then(|| (1.0 / y, ye / y));
+    match gap {
+        None => single.map(|(z, e)| (z, e, None, None)),
+        Some(g) => {
+            // the partner's side is no coplanar ground: only the outer gap (the side the partner
+            // is not on) counts for this trace; with the canonical orientation the partner is on
+            // the left
+            let outer = s_right.map(side);
+            let (zd, ed) = cps(w, g, h, er);
+            let (yo, yeo) = outer.map_or((0.0, 0.0), |(z, e)| (1.0 / z, e / z));
+            let y_odd = 2.0 / zd + yo;
+            let z_odd = 1.0 / y_odd;
+            let e_odd = (2.0 * ed / zd + yeo) / y_odd;
+            let z_even = outer.map(|o| o.0);
+            let z0 = z_even.map_or(z_odd, |ze| (ze * z_odd).sqrt());
+            Some((z0, e_odd, Some(2.0 * z_odd), z_even))
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Differential approximations (IPC-2141)
 // ---------------------------------------------------------------------------
@@ -349,5 +417,24 @@ mod tests {
         let (z1, _) = cpwg(0.3, 0.1, 0.2, 4.3);
         let (z2, _) = cpwg(0.3, 0.5, 0.2, 4.3);
         assert!(z1 < z2);
+    }
+
+    /// Coplanar lines without a ground plane: on a thick substrate εeff → (εr + 1)/2; CPW and CPS are
+    /// duals (Z_cpw·Z_cps = (60π)²/εeff for the same k); a 0.7 mm finger between ground fingers at
+    /// 0.3 mm on a 1.35 mm board is about 75 Ω; a pair adds the partner.
+    #[test]
+    fn coplanar_without_plane() {
+        let (z, e) = cpw(0.3, 0.15, 1e3, 4.4);
+        assert!((e - 2.7).abs() < 1e-3, "{e}");
+        // CPS with the CPW's k (s/(s + 2w) = w/(w + 2s) for w = 0.15, s = 0.3 against w = 0.3, s = 0.15)
+        let (zs, _) = cps(0.15, 0.3, 1e3, 4.4);
+        assert!(((z * zs) - (60.0 * PI).powi(2) / e).abs() < 1e-6 * z * zs, "{z} {zs}");
+        let (zf, _) = cpw(0.7, 0.3, 1.35, 3.5);
+        assert!((65.0..85.0).contains(&zf), "{zf}");
+        let (z0, _, zd, ze) = no_plane(0.7, 1.35, 3.5, Some(0.3), Some(0.3), None).unwrap();
+        assert!((z0 - zf).abs() < 1e-9 && zd.is_none() && ze.is_none());
+        let (_, _, zd, ze) = no_plane(0.7, 1.35, 3.5, None, Some(0.3), Some(0.3)).unwrap();
+        assert!(zd.unwrap() < 2.0 * ze.unwrap(), "{zd:?} {ze:?}");
+        assert!(no_plane(0.2, 1.35, 3.5, None, None, None).is_none());
     }
 }

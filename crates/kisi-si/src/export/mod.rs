@@ -293,9 +293,9 @@ impl<'a> Composer<'a> {
         let v = crate::num::C0 / s.er.sqrt();
         let (l, c) = (s.z / v, 1.0 / (s.z * v));
         let sigma = self.rp.sigma;
-        let a = s.a;
-        let zt = |f: f64| Cx::new((PI * f * crate::num::MU0 / sigma).sqrt() / (2.0 * PI * a), 2.0 * PI * f * l);
-        let yt = |f: f64| Cx::new(2.0 * PI * f * c * s.tand, 2.0 * PI * f * c);
+        // kisi's own section model (plating with its internal inductance, causal dielectric)
+        let zt = |f: f64| s.z(f, sigma);
+        let yt = |f: f64| s.y(f);
         let fz = fit_z(&self.freqs, &zt, VIA_W, self.opts.fit_tol, 10, false);
         let fy = fit_y(&self.freqs, &yt, VIA_W, self.opts.fit_tol, 10, false);
         for &f in &self.freqs {

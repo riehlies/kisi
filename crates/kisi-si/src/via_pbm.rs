@@ -6,11 +6,13 @@
 //!   it; inside a plane pair extra nodes every ≤ 0.2 mm;
 //! * shunt at every node: the via–plate capacitance from an axisymmetric r–z Laplace solve
 //!   (barrel and pads at 1 V, planes with their antipads at 0 V, layered εr); the barrel
-//!   charge goes to the nearest node;
+//!   charge goes to the nearest node; times ε(f)/εr of the node's dielectric (Djordjevic-Sarkar,
+//!   ε′ and ε″ of one causal model);
 //! * series between two nodes inside a plane pair: the radial (parallel-plate) impedance
-//!   Z = ωμd/4 · H0⁽²⁾(k a) with the return vias of that plane pair as shorted ports
-//!   (Z_in = Z00 − z0r Zrr⁻¹ zr0). A trace that joins inside the pair weights the pair by the
-//!   height of its group, (d_g/d)²;
+//!   Z = ωμd/4 · J0(k a)·H0⁽²⁾(k a) with the return vias of that plane pair as shorted ports
+//!   (Z_in = Z00 − z0r Zrr⁻¹ zr0; cylinders of uniform current, coupled as
+//!   J0(ka_i)·J0(ka_j)·H0⁽²⁾(kd): a passive matrix). A trace that joins inside the pair weights
+//!   the pair by the height of its group, (d_g/d)²;
 //! * between a surface layer and the outermost plane: a short coax with the antipad as
 //!   outer radius;
 //! * stubs: the ladder beyond the entry and exit nodes ends open;
@@ -19,8 +21,8 @@
 //!   centre in the layout and in the 2×thru fixtures).
 //!
 //! Pairs: the partner via is a third port of the plane-pair matrix; the odd mode uses
-//! Z_PP − Z_PN and scales the barrel capacitance inside the plane pairs by
-//! ln(R/a)/ln(p/a).
+//! (Z_PP + Z_NN)/2 − Z_PN (the even mode + Z_PN) and scales the barrel capacitance inside the
+//! plane pairs by ln(R/a)/ln(p/a).
 //!
 //! Return groups (`Post::joins`, option `--via-returns`, validation/fdtd/BOARD_RETURNS.md): a
 //! return via shorts only the pairs whose two planes it joins. Elsewhere it is a small ladder of
@@ -322,6 +324,8 @@ pub struct PbmVia {
     /// node capacitances (F)
     pub cap: Vec<f64>,
     node_tand: Vec<f64>,
+    /// εr of every node's dielectric (the loss tangent's and the dispersion's material)
+    node_er: Vec<f64>,
     spans: Vec<SpanKind>,
     groups: Vec<Group>,
     i_in: usize,
@@ -470,6 +474,98 @@ pub fn hankel2_0(z: Cx) -> Cx {
         let ph = (Cx::new(0.0, -1.0) * (z - Cx::new(PI / 4.0, 0.0))).exp();
         pre * ph * sum
     }
+}
+
+/// J0(z) for complex z: power series for |z| < 12, the leading terms of the asymptotic expansion
+/// beyond (the via radii keep |ka| below about 3 up to 50 GHz).
+pub fn bessel_j0(z: Cx) -> Cx {
+    if norm2(z) < 144.0 {
+        let q = (z * z).scale(0.25);
+        let mut term = Cx::new(1.0, 0.0);
+        let mut j0 = term;
+        for k in 1..80 {
+            let kf = k as f64;
+            term = Cx::new(0.0, 0.0) - term * q.scale(1.0 / (kf * kf));
+            j0 = j0 + term;
+            if k > 4 && norm2(term) < 1e-34 * norm2(j0).max(1e-300) {
+                break;
+            }
+        }
+        j0
+    } else {
+        // J0(z) ~ √(2/(πz)) [cos(z − π/4) + sin(z − π/4)/(8z)]
+        let pre = (Cx::new(2.0 / PI, 0.0) / z).sqrt();
+        let x = z - Cx::new(PI / 4.0, 0.0);
+        let (e, ei) = ((Cx::new(0.0, 1.0) * x).exp(), (Cx::new(0.0, -1.0) * x).exp());
+        let cos = (e + ei).scale(0.5);
+        let sin = (e - ei) * Cx::new(0.0, -0.5);
+        pre * (cos + sin / z.scale(8.0))
+    }
+}
+
+/// A plane-pair matrix (per metre; the signal, the partner if `partner`, then the other points)
+/// reduced onto the via: the other points as shorts – the last `zload.len()` closed by these
+/// impedances (per metre of the pair's height: Z/d) –, then the via's single, odd or even mode.
+fn reduce_modes(z: &[Cx], n: usize, partner: bool, mode: Mode, zload: &[Cx]) -> Cx {
+    let kk = if partner { 2 } else { 1 };
+    let mut zr: Vec<Cx> = (0..kk * kk).map(|q| z[(q / kk) * n + q % kk]).collect();
+    if n > kk {
+        let m = n - kk;
+        let mut bb: Vec<Cx> = (0..m * m).map(|q| z[(kk + q / m) * n + kk + q % m]).collect();
+        for (i, zl) in zload.iter().enumerate() {
+            let q = m - zload.len() + i;
+            bb[q * m + q] = bb[q * m + q] + *zl;
+        }
+        let ba: Vec<Cx> = (0..m * kk).map(|q| z[(kk + q / kk) * n + q % kk]).collect();
+        let x = csolve(bb, ba, m, kk);
+        for a in 0..kk {
+            for c in 0..kk {
+                let mut s = Cx::new(0.0, 0.0);
+                for q in 0..m {
+                    s = s + z[a * n + kk + q] * x[q * kk + c];
+                }
+                zr[a * kk + c] = zr[a * kk + c] - s;
+            }
+        }
+    }
+    // the pair's modes: currents ±I on P and N, the voltage (V_P ∓ V_N)/2 – with returns that
+    // are not symmetric about the pair Z_PP ≠ Z_NN, and Z_PP ∓ Z_PN alone (the earlier form)
+    // is not a quadratic form of the passive matrix: its real part came out negative
+    if !partner {
+        return zr[0];
+    }
+    let self_mean = (zr[0] + zr[3]).scale(0.5);
+    let mutual = (zr[1] + zr[2]).scale(0.5);
+    if mode == Mode::Odd {
+        self_mean - mutual
+    } else {
+        self_mean + mutual
+    }
+}
+
+/// Impedance matrix of points in a radial (parallel-plate) line per metre of its height: `rr` the
+/// radius of every point on the diagonal and the distances off it (n × n, row-major). Each point is
+/// a cylinder of uniform surface current; its field outside is J0(ka)·H0⁽²⁾(kr) and the voltage on a
+/// cylinder is averaged over its surface (Graf's addition theorem):
+/// Z_ii = ωμ/4·J0(ka_i)·H0⁽²⁾(ka_i), Z_ij = ωμ/4·J0(ka_i)·J0(ka_j)·H0⁽²⁾(kd_ij). Its real part is
+/// ωμ/4·D·[J0(kd_ij)]·D with D = diag(J0(ka_i)) – the radiated power of the currents, positive
+/// semi-definite –, so every reduction of it (returns as shorts, the odd and even mode of a pair) is
+/// passive. A point source on the diagonal (H0⁽²⁾(ka) with the line source's field, the earlier
+/// form) leaves the real part J0(ka) instead of J0(ka)² there: an indefinite matrix, whose
+/// reductions with returns close around the via came out with a negative resistance at a few GHz.
+fn radial_z(k: Cx, w: f64, rr: &[f64], n: usize) -> Vec<Cx> {
+    let pre = w * MU0 / 4.0;
+    let j: Vec<Cx> = (0..n).map(|i| bessel_j0(k.scale(rr[i * n + i]))).collect();
+    let mut z = vec![Cx::new(0.0, 0.0); n * n];
+    for i in 0..n {
+        for jj in i..n {
+            let h = hankel2_0(k.scale(rr[i * n + jj])).scale(pre);
+            let v = if i == jj { h * j[i] } else { h * j[i] * j[jj] };
+            z[i * n + jj] = v;
+            z[jj * n + i] = v;
+        }
+    }
+    z
 }
 
 /// Solve the complex system a x = b (small, dense, partial pivoting); a is n×n row-major.
@@ -1223,7 +1319,9 @@ impl PbmVia {
             }
         }
         let n = nodes.len();
-        let node_tand: Vec<f64> = (0..n).map(|k| if k + 1 < n { er_at(&g.slabs, nodes[k] - 1e-4).1 } else { er_at(&g.slabs, nodes[k] + 1e-4).1 }).collect();
+        let node_mat: Vec<(f64, f64)> = (0..n).map(|k| if k + 1 < n { er_at(&g.slabs, nodes[k] - 1e-4) } else { er_at(&g.slabs, nodes[k] + 1e-4) }).collect();
+        let node_tand: Vec<f64> = node_mat.iter().map(|m| m.1).collect();
+        let node_er: Vec<f64> = node_mat.iter().map(|m| m.0).collect();
         let use_partner = mode != Mode::Single && g.partner.is_some();
         let pt = |p: &Post| (p.dx * 1e-3, p.dy * 1e-3, p.r * 1e-3);
         let cpt = |c: &CapPost| (c.dx * 1e-3, c.dy * 1e-3, c.r * 1e-3);
@@ -1428,6 +1526,7 @@ impl PbmVia {
             nodes,
             cap,
             node_tand,
+            node_er,
             spans,
             groups,
             i_in,
@@ -1453,16 +1552,19 @@ impl PbmVia {
         }
     }
 
-    fn tan_eff(&self, tand: f64, f: f64) -> f64 {
+    /// complex permittivity relative to its value at 1 GHz, ε(f)/εr: Djordjevic-Sarkar (ε′ and ε″
+    /// of one causal model; before: constant εr and tanδ, which Kramers-Kronig does not allow), or
+    /// with `f_loss` the 3D references' dielectric – a conductivity fixed at f_l, εr constant
+    fn eps_rel(&self, er: f64, tand: f64, f: f64) -> Cx {
         match self.f_loss {
-            Some(fl) => tand * fl / f,
-            None => tand,
+            Some(fl) => Cx::new(1.0, -tand * fl / f),
+            None => crate::rf::eps_c(er, tand, f).scale(1.0 / er),
         }
     }
 
     /// How much each plane pair still couples to the via with its returns in place: the real part
     /// (the power the via cluster launches into the radial line) of the reduced impedance against
-    /// that of a lone via, Re Z_red / (ωμd/4 · J0(ka)), on infinite plates at f. A cluster of
+    /// that of a lone via, Re Z_red / (ωμd/4 · J0(ka)²), on infinite plates at f. A cluster of
     /// returns close around the via gives a small ratio: what lies further out (edges, other
     /// posts) can hardly change the via. (z_top, z_bot) of the pair in mm and the ratio.
     pub fn pair_leakage(&self, f: f64) -> Vec<(f64, f64, f64)> {
@@ -1472,8 +1574,9 @@ impl PbmVia {
             .iter()
             .zip(&z)
             .map(|(g, zr)| {
-                let k = Cx::new(1.0, -self.tan_eff(g.tand, f)).sqrt().scale(w * (MU0 * EPS0 * g.er).sqrt());
-                let lone = (hankel2_0(k.scale(g.pts[0].2)).scale(w * MU0 / 4.0)).re;
+                let k = self.eps_rel(g.er, g.tand, f).sqrt().scale(w * (MU0 * EPS0 * g.er).sqrt());
+                let ka = k.scale(g.pts[0].2);
+                let lone = (hankel2_0(ka) * bessel_j0(ka)).re * w * MU0 / 4.0;
                 (g.pair.0 * 1e3, g.pair.1 * 1e3, (zr.re / lone).abs())
             })
             .collect()
@@ -1514,32 +1617,7 @@ impl PbmVia {
     /// as [`reduce`](Self::reduce), the last `zload.len()` points closed by these impedances
     /// (per metre of the pair's height: Z/d) instead of shorts
     fn reduce_loaded(&self, z: Vec<Cx>, n: usize, partner: bool, zload: &[Cx]) -> Cx {
-        let kk = if partner { 2 } else { 1 };
-        let mut zr: Vec<Cx> = (0..kk * kk).map(|q| z[(q / kk) * n + q % kk]).collect();
-        if n > kk {
-            let m = n - kk;
-            let mut bb: Vec<Cx> = (0..m * m).map(|q| z[(kk + q / m) * n + kk + q % m]).collect();
-            for (i, zl) in zload.iter().enumerate() {
-                let q = m - zload.len() + i;
-                bb[q * m + q] = bb[q * m + q] + *zl;
-            }
-            let ba: Vec<Cx> = (0..m * kk).map(|q| z[(kk + q / kk) * n + q % kk]).collect();
-            let x = csolve(bb, ba, m, kk);
-            for a in 0..kk {
-                for c in 0..kk {
-                    let mut s = Cx::new(0.0, 0.0);
-                    for q in 0..m {
-                        s = s + z[a * n + kk + q] * x[q * kk + c];
-                    }
-                    zr[a * kk + c] = zr[a * kk + c] - s;
-                }
-            }
-        }
-        match (partner, self.mode) {
-            (true, Mode::Odd) => zr[0] - zr[1],
-            (true, _) => zr[0] + zr[1],
-            _ => zr[0],
-        }
+        reduce_modes(&z, n, partner, self.mode, zload)
     }
 
     /// infinite radial line of every group per metre: linear interpolation of Z/f between grid
@@ -1579,22 +1657,14 @@ impl PbmVia {
         self.groups
             .iter()
             .map(|g| {
-                let mut k = Cx::new(1.0, -self.tan_eff(g.tand, f)).sqrt().scale(w * (MU0 * EPS0 * g.er).sqrt());
+                let mut k = self.eps_rel(g.er, g.tand, f).sqrt().scale(w * (MU0 * EPS0 * g.er).sqrt());
                 if let Some(sig) = self.sigma {
                     // plates with surface impedance (1+j)Rs: k² (1 + 2Rs/(ωμd) − j 2Rs/(ωμd))
                     let x = 2.0 * (PI * f * MU0 / sig).sqrt() / (w * MU0 * g.d);
                     k = k * Cx::new(1.0 + x, -x).sqrt();
                 }
-                let pre = w * MU0 / 4.0;
                 let n = g.pts.len();
-                let mut z = vec![Cx::new(0.0, 0.0); n * n];
-                for i in 0..n {
-                    for j in i..n {
-                        let h = hankel2_0(k.scale(g.rr[i * n + j])).scale(pre);
-                        z[i * n + j] = h;
-                        z[j * n + i] = h;
-                    }
-                }
+                let z = radial_z(k, w, &g.rr, n);
                 // reduce the shorted returns: Zr = Z_aa − Z_ab Z_bb⁻¹ Z_ba (capacitors: closed by
                 // their impedance)
                 if g.loads.is_empty() {
@@ -1610,7 +1680,7 @@ impl PbmVia {
     /// wavenumber of a plane pair at f (dielectric loss, plates of conductivity `sigma`)
     fn pair_k(&self, er: f64, tand: f64, d: f64, f: f64) -> Cx {
         let w = 2.0 * PI * f;
-        let mut k = Cx::new(1.0, -self.tan_eff(tand, f)).sqrt().scale(w * (MU0 * EPS0 * er).sqrt());
+        let mut k = self.eps_rel(er, tand, f).sqrt().scale(w * (MU0 * EPS0 * er).sqrt());
         if let Some(sig) = self.sigma {
             let x = 2.0 * (PI * f * MU0 / sig).sqrt() / (w * MU0 * d);
             k = k * Cx::new(1.0 + x, -x).sqrt();
@@ -1661,15 +1731,7 @@ impl PbmVia {
                     }
                     _ => {
                         let k = self.pair_k(p.er, p.tand, d, f);
-                        let pre = w * MU0 / 4.0;
-                        let mut z = vec![Cx::new(0.0, 0.0); n * n];
-                        for i in 0..n {
-                            for j in i..n {
-                                let h = hankel2_0(k.scale(p.rr[i * n + j])).scale(pre);
-                                z[i * n + j] = h;
-                                z[j * n + i] = h;
-                            }
-                        }
+                        let z = radial_z(k, w, &p.rr, n);
                         let mut add = vec![Cx::new(0.0, 0.0); p.nshort];
                         add.extend(p.loads.iter().map(|c| c.z(w).scale(1.0 / d)));
                         (z, n, (p.nsig..p.nsig + p.nshort + nl).collect(), add)
@@ -1682,9 +1744,9 @@ impl PbmVia {
                 let nk = keep.len();
                 let ns = p.nsig;
                 let kq = |i: usize, j: usize| kz[i * nk + j];
-                // the via's row (with the partner: the voltage on the via with the partner carrying
-                // ∓ its current, as the groups' odd and even mode Z_PP ∓ Z_PN), so that a segment in
-                // one pair is the groups' short; the return's excitation by both barrels
+                // the via's row (with the partner: the mode voltage (V_P ∓ V_N)/2 with the partner
+                // carrying ∓ its current, as the groups' odd and even mode), so that a segment in one
+                // pair is the groups' short; the return's excitation by both barrels
                 let (mut c, mut b) = (vec![], vec![]);
                 for q in 0..nf {
                     let fq = ns + q;
@@ -1695,11 +1757,11 @@ impl PbmVia {
                             b.push(kq(fq, 0));
                         }
                         (_, Mode::Odd) => {
-                            c.push(kq(0, fq));
+                            c.push((kq(0, fq) - kq(1, fq)).scale(0.5));
                             b.push(kq(fq, 0) - kq(fq, 1));
                         }
                         (_, Mode::Even) => {
-                            c.push(kq(0, fq));
+                            c.push((kq(0, fq) + kq(1, fq)).scale(0.5));
                             b.push(kq(fq, 0) + kq(fq, 1));
                         }
                     }
@@ -1845,7 +1907,7 @@ impl PbmVia {
                 None => z,
             }
         };
-        let yc = |k: usize| -> Cx { Cx::new(0.0, w * self.cap[k]) * Cx::new(1.0, -self.tan_eff(self.node_tand[k], f)) };
+        let yc = |k: usize| -> Cx { Cx::new(0.0, w * self.cap[k]) * self.eps_rel(self.node_er[k], self.node_tand[k], f) };
         let mut m = if self.pairs.is_empty() { self.core_chain(&zs, &yc) } else { self.core_coupled(f, &zs, &yc) };
         for side in 0..2 {
             if self.l_port[side] != 0.0 {
@@ -1994,7 +2056,7 @@ impl PbmVia {
     /// Shunt admittance of node `k` at `f` (capacitance with the dielectric loss).
     pub fn node_y(&self, k: usize, f: f64) -> Cx {
         let w = 2.0 * PI * f;
-        Cx::new(0.0, w * self.cap[k]) * Cx::new(1.0, -self.tan_eff(self.node_tand[k], f))
+        Cx::new(0.0, w * self.cap[k]) * self.eps_rel(self.node_er[k], self.node_tand[k], f)
     }
 
     /// Series impedance of the span between nodes `k` and `k + 1` at `f` (the plane-pair or
@@ -2233,7 +2295,7 @@ pub fn coupled_s(vias: &[&PbmVia], f: f64, z0: f64) -> Vec<Cx> {
             Cx::new(rs, rs).scale(1.0 / (2.0 * PI * m.a_m))
         });
         for k in 0..n {
-            let yc = Cx::new(0.0, w * m.cap[k]) * Cx::new(1.0, -m.tan_eff(m.node_tand[k], f));
+            let yc = Cx::new(0.0, w * m.cap[k]) * m.eps_rel(m.node_er[k], m.node_tand[k], f);
             let r = off[v] + k;
             a[r * nt + off[v] + k] = a[r * nt + off[v] + k] + yc;
             if k > 0 {
@@ -2616,5 +2678,55 @@ mod tests {
         let (cu, cd): (f64, f64) = (u.cap.iter().sum(), d.cap.iter().sum());
         assert!((cd / cu - 1.0).abs() < 0.02, "{cu} {cd}");
         assert!(d.laplace_n * 4 < u.laplace_n, "{} {}", d.laplace_n, u.laplace_n);
+    }
+
+    /// The plane-pair reductions are passive: a lossless radial line, a via with its partner and
+    /// returns placed asymmetrically, and a lone via in a close cage – the resistance of every mode
+    /// is ≥ 0 from 0.5 to 50 GHz. The earlier forms (a line source's H0⁽²⁾(ka) on the diagonal, the
+    /// pair's modes as Z_PP ∓ Z_PN) give a negative resistance on these: the cause of the via pairs'
+    /// non-passive spans above a few GHz.
+    #[test]
+    fn radial_reductions_passive() {
+        // (x, y, radius) in m
+        let pair = vec![(0.0, 0.0, 0.1e-3), (0.8e-3, 0.0, 0.1e-3), (-0.5e-3, 0.4e-3, 0.15e-3), (-0.6e-3, -0.3e-3, 0.15e-3), (1.6e-3, 0.9e-3, 0.15e-3)];
+        let cage: Vec<(f64, f64, f64)> = std::iter::once((0.0, 0.0, 0.1e-3)).chain((0..4).map(|i| {
+            let t = i as f64 * PI / 2.0;
+            (0.5e-3 * t.cos(), 0.5e-3 * t.sin(), 0.15e-3)
+        })).collect();
+        let rr = |p: &[(f64, f64, f64)]| -> Vec<f64> {
+            let n = p.len();
+            (0..n * n).map(|q| {
+                let (i, j) = (q / n, q % n);
+                if i == j { p[i].2 } else { ((p[i].0 - p[j].0).powi(2) + (p[i].1 - p[j].1).powi(2)).sqrt() }
+            }).collect()
+        };
+        let old_z = |k: Cx, w: f64, rr: &[f64], n: usize| -> Vec<Cx> { (0..n * n).map(|q| hankel2_0(k.scale(rr[q])).scale(w * MU0 / 4.0)).collect() };
+        // the earlier odd/even form: Z_PP ∓ Z_PN of the 2 × 2 reduction (the returns as shorts)
+        let old_mode = |z: &[Cx], n: usize, mode: Mode| -> Cx {
+            let m = n - 2;
+            let bb: Vec<Cx> = (0..m * m).map(|q| z[(2 + q / m) * n + 2 + q % m]).collect();
+            let ba: Vec<Cx> = (0..m * 2).map(|q| z[(2 + q / 2) * n + q % 2]).collect();
+            let x = csolve(bb, ba, m, 2);
+            let red = |a: usize, c: usize| z[a * n + c] - (0..m).fold(Cx::new(0.0, 0.0), |s, q| s + z[a * n + 2 + q] * x[q * 2 + c]);
+            if mode == Mode::Odd { red(0, 0) - red(0, 1) } else { red(0, 0) + red(0, 1) }
+        };
+        let mut old_negative = (false, false);
+        for f in [0.5e9, 2e9, 5e9, 10e9, 15e9, 20e9, 30e9, 40e9, 50e9] {
+            let w = 2.0 * PI * f;
+            let k = Cx::new(w * (MU0 * EPS0 * 4.0).sqrt(), 0.0);
+            let (rp, rc) = (rr(&pair), rr(&cage));
+            let zp = radial_z(k, w, &rp, pair.len());
+            let zc = radial_z(k, w, &rc, cage.len());
+            for (z, n, partner, modes) in [(&zp, pair.len(), true, vec![Mode::Odd, Mode::Even]), (&zc, cage.len(), false, vec![Mode::Single])] {
+                for mode in modes {
+                    let r = reduce_modes(z, n, partner, mode, &[]);
+                    assert!(r.re >= -1e-12 * r.abs(), "{:.1} GHz {mode:?}: {r:?}", f / 1e9);
+                }
+            }
+            let zpo = old_z(k, w, &rp, pair.len());
+            old_negative.0 |= old_mode(&zpo, pair.len(), Mode::Odd).re < 0.0 || old_mode(&zpo, pair.len(), Mode::Even).re < 0.0;
+            old_negative.1 |= reduce_modes(&old_z(k, w, &rc, cage.len()), cage.len(), false, Mode::Single, &[]).re < 0.0;
+        }
+        assert!(old_negative.0 && old_negative.1, "{old_negative:?}");
     }
 }

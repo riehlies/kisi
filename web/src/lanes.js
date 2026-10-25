@@ -56,13 +56,14 @@ function highlightLane(l) {
 }
 function laneProfile(l) { return profileOf(laneNet(l)); }
 function laneZStats(l) {
-  let len = 0, zs = 0, lo = Infinity, hi = -Infinity;
+  let len = 0, zs = 0, lo = Infinity, hi = -Infinity, us = 0, fs = 0;
   for (const n of l.nets) {
     const st = S.an.nets.find((x) => x.net === n);
     if (!st || st.z_mean == null) continue;
     len += st.length; zs += st.z_mean * st.length; lo = Math.min(lo, st.z_min); hi = Math.max(hi, st.z_max);
+    us += (st.z_unc_pct ?? 0) * st.length; fs += (st.field_share ?? 0) * st.length;
   }
-  return len ? { z_mean: zs / len, z_min: lo, z_max: hi } : {};
+  return len ? { z_mean: zs / len, z_min: lo, z_max: hi, z_unc_pct: us / len, field_share: fs / len } : {};
 }
 const shortNet = (n) => netShort(S.scene.nets[n] || "");
 const pinLabel = (e) => e ? `${e.refdes}.${e.pin}` : "–";
@@ -323,8 +324,8 @@ function pathRows(ch) {
   const rows = segs.map((s) => {
     if (s.kind === "line") return `<tr><td>line</td><td>${L(s.layer)}</td><td class="n">${fmt(s.len_mm, 1)} mm</td><td class="n">${s.z != null ? fmt(ch.diff ? 2 * s.z : s.z, 1) + " Ω" : "–"}</td><td class="muted">${esc(s.source)}</td></tr>`;
     if (s.kind === "via") return `<tr><td>via</td><td>${L(s.layer)}</td><td class="n">${fmt(s.len_mm, 2)} mm</td><td class="n">${s.z != null ? fmt(ch.diff ? 2 * s.z : s.z, 0) + " Ω" : "–"}</td><td class="muted">via model</td></tr>`;
-    if (s.kind === "branch") return `<tr class="warnrow"><td>${/^stub/.test(s.part || "") ? "stub" : "branch"}</td><td colspan="2">${esc(s.part || "")}</td><td></td><td class="muted">open${/not fitted/.test(s.part || "") ? ", pad C estimated" : ""}</td></tr>`;
-    if (/ pad$/.test(s.part || "")) return "";
+    if (s.kind === "branch") return `<tr class="warnrow"><td>${/^stub/.test(s.part || "") ? "stub" : "branch"}</td><td colspan="2">${esc(s.part || "")}</td><td></td><td class="muted">open${/not fitted/.test(s.part || "") ? (/pad geometry/.test(s.part || "") ? ", pad C from its geometry" : ", pad C estimated") : ""}</td></tr>`;
+    if (/ pad( \(|$)/.test(s.part || "")) return "";
     return `<tr><td>${s.kind === "series" ? "series" : "shunt"}</td><td colspan="3"><b>${esc(s.part || "")}</b></td><td class="muted">estimated parasitics</td></tr>`;
   }).join("");
   return `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Element</th><th>Layer / part</th><th>Length</th><th>Z</th><th>Source</th></tr></thead><tbody>${rows}</tbody></table></div>`;

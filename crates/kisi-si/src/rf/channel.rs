@@ -825,7 +825,12 @@ impl<'a> Build<'a> {
     }
 
     pub(crate) fn add_part(&mut self, part: LumpedPart) {
-        let seg = Segment { kind: if part.series { "series" } else { "shunt" }, len_mm: 0.0, layer: 0, xs: None, z: None, via_lc: None, source: "estimate", part: Some(part.label.clone()), s_mm: 0.0 };
+        self.add_part_src(part, "estimate");
+    }
+
+    /// `add_part` with the source of its values ("estimate", "pad geometry").
+    pub(crate) fn add_part_src(&mut self, part: LumpedPart, source: &'static str) {
+        let seg = Segment { kind: if part.series { "series" } else { "shunt" }, len_mm: 0.0, layer: 0, xs: None, z: None, via_lc: None, source, part: Some(part.label.clone()), s_mm: 0.0 };
         self.push(seg, None, None, Some(part));
     }
 
@@ -1056,7 +1061,9 @@ impl<'a> Build<'a> {
             .clone()
     }
 
-    /// Crude high-Z line for sections without a reference plane.
+    /// Crude high-Z line for sections without a reference plane and without a close coplanar
+    /// return (an estimate; with coplanar copper or a partner the cross-section has an impedance
+    /// of its own, `analytic::no_plane`).
     pub(crate) fn fallback(z_ref: f64) -> LineModel {
         LineModel {
             z0: z_ref * 1.5,
@@ -1154,7 +1161,7 @@ impl<'a> Build<'a> {
         let rp = self.rp;
         let diff = self.diff;
         if self.models.iter().zip(&self.segs).any(|(m, s)| s.kind == "line" && m.is_none() && s.len_mm > 0.0) {
-            self.warnings.push("sections without reference plane: approximated as 1.5 × nominal impedance".into());
+            self.warnings.push("sections without a reference plane and without coplanar copper close beside them: approximated as 1.5 × nominal impedance (an estimate)".into());
         }
         // reference impedance
         let z_ref = self.z_ref(target);

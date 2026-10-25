@@ -164,6 +164,10 @@ pub struct NetStat {
     pub within5: Option<f64>,
     pub within10: Option<f64>,
     pub flags: u32,
+    /// accuracy of the impedance (`accuracy`): length-weighted typical uncertainty (%) and the share
+    /// of the length from the field solver
+    pub z_unc_pct: Option<f64>,
+    pub field_share: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -331,6 +335,42 @@ impl LayerZones {
 }
 
 // --- spatial index for tracks (diff partner search) ----------------------------
+
+/// Width of the copper at `p` of track `tr` when `p` lies on an SMD pad of the track's own net and
+/// layer that is wider across the track than the track (`board.tracks` holds every such pad as two
+/// synthetic pad tracks, `Track::pad`).
+fn pad_width_at(board: &Board, tgrid: &TrackGrid, near: &mut Vec<u32>, tr: &crate::board::Track, p: P, nrm: P) -> Option<f64> {
+    tgrid.near(p, 0.05, near);
+    near.iter()
+        .map(|&i| &board.tracks[i as usize])
+        .filter(|t| t.pad && t.net == tr.net && t.layer == tr.layer)
+        .map(|t| &board.pads[t.item as usize])
+        .filter(|pd| crate::board::pad_contains(pd, p, 0.0))
+        .map(|pd| crate::board::pad_chord(pd, p, nrm))
+        .fold(None, |m: Option<f64>, x| Some(m.map_or(x, |m| m.max(x))))
+        .filter(|&x| x > tr.width + 1e-6)
+}
+
+/// Parameters t ∈ (0, 1) on track `tr` where it crosses the edge of an SMD pad of its own net and
+/// layer (the pads it touches: those with synthetic pad tracks near either end).
+fn pad_edges_on(board: &Board, tgrid: &TrackGrid, near: &mut Vec<u32>, tr: &crate::board::Track) -> Vec<f64> {
+    let mut out = Vec::new();
+    let mut seen: Vec<u32> = Vec::new();
+    for e in [tr.a, tr.b] {
+        tgrid.near(e, 0.05, near);
+        for &i in near.iter() {
+            let t = &board.tracks[i as usize];
+            if !(t.pad && t.net == tr.net && t.layer == tr.layer) || seen.contains(&t.item) {
+                continue;
+            }
+            seen.push(t.item);
+            if let Some((t0, t1)) = crate::board::pad_segment_span(&board.pads[t.item as usize], tr.a, tr.b) {
+                out.extend([t0, t1].into_iter().filter(|&x| x > 1e-6 && x < 1.0 - 1e-6));
+            }
+        }
+    }
+    out
+}
 
 struct TrackGrid {
     x0: f64,
@@ -557,15 +597,33 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
         }
         let dir = geom::scale(d, 1.0 / len);
         let nrm = [-dir[1], dir[0]];
-        let n = ((len / params.step).ceil() as usize).max(1);
         let li = tr.layer as usize;
         let partner = partners.get(tr.net as usize).copied().flatten();
+        // sample intervals: steps of at most `params.step`, split where the track enters or leaves
+        // an SMD pad of its own net (the pad's cross-section starts exactly at its edge)
+        let mut cuts = vec![0.0, 1.0];
+        if !tr.pad {
+            cuts.extend(pad_edges_on(board, &tgrid, &mut near, tr));
+            cuts.sort_by(f64::total_cmp);
+            cuts.dedup_by(|a, b| (*a - *b).abs() * len < 1e-4);
+        }
+        let mut spans: Vec<(f64, f64)> = Vec::new();
+        for c in cuts.windows(2) {
+            let m = (((c[1] - c[0]) * len / params.step).ceil() as usize).max(1);
+            spans.extend((0..m).map(|k| (c[0] + (c[1] - c[0]) * k as f64 / m as f64, c[0] + (c[1] - c[0]) * (k + 1) as f64 / m as f64)));
+        }
         let mut prev: Option<(u32, f64)> = None; // (xs, t0)
-        for k in 0..n {
+        for &(t_lo, t_hi) in &spans {
             samples += 1;
-            let tm = (k as f64 + 0.5) / n as f64;
+            let tm = 0.5 * (t_lo + t_hi);
             let p = geom::lerp(tr.a, tr.b, tm);
             let mut flags = 0u32;
+            // a trace inside an SMD pad of its own net (a track that runs to the pad's centre, a
+            // card-edge finger): the copper there is the pad, as wide as the pad across the track
+            let w = if tr.pad { tr.width } else { pad_width_at(board, &tgrid, &mut near, tr, p, nrm).unwrap_or(tr.width) };
+            if w > tr.width {
+                flags |= F_PAD;
+            }
 
             // reference planes
             let mut perforated = false;
@@ -583,7 +641,7 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
                     }
                     if hit {
                         let h = su.gap_between(li, j);
-                        let off = tr.width / 2.0 + h;
+                        let off = w / 2.0 + h;
                         let mut partial = false;
                         for s in [-1.0, 1.0] {
                             let pp = geom::add(p, geom::scale(nrm, s * off));
@@ -622,7 +680,7 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
             if up.is_some() || dn.is_some() {
                 // the field spreads laterally about as far as the nearest
                 // reference is away; copper beyond ~4 h_min changes Z by < 1 %
-                let win = (tr.width / 2.0 + 4.0 * hmin).min(2.0);
+                let win = (w / 2.0 + 4.0 * hmin).min(2.0);
                 let k_top = up.map(|r| r.0).unwrap_or(0);
                 let k_bot = dn.map(|r| r.0).unwrap_or(ncu - 1);
                 let neg = geom::scale(nrm, -1.0);
@@ -644,7 +702,7 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
                                 return None;
                             }
                         }
-                        Some(snap_rel((t - tr.width / 2.0).max(0.005), hmin) + tr.width / 2.0)
+                        Some(snap_rel((t - w / 2.0).max(0.005), hmin) + w / 2.0)
                     };
                     let (l, r) = (edge(nrm), edge(neg));
                     if l.is_some() || r.is_some() {
@@ -657,20 +715,18 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
             }
 
             // coplanar conductors on the same layer
-            let (mut s_left, mut s_right) = (None, None);
-            if hmin.is_finite() {
-                let maxd = tr.width / 2.0 + (params.coplanar_factor * hmin).min(2.0);
-                let s = |dist: Option<f64>| dist.map(|x| (x - tr.width / 2.0).max(0.005));
-                s_left = s(zones[li].ray(p, nrm, maxd, tr.net));
-                s_right = s(zones[li].ray(p, geom::scale(nrm, -1.0), maxd, tr.net));
-            }
+            // (without a plane: the coplanar copper within 2 mm is the return, `analytic::no_plane`)
+            let maxd = w / 2.0 + if hmin.is_finite() { (params.coplanar_factor * hmin).min(2.0) } else { 2.0 };
+            let s = |dist: Option<f64>| dist.map(|x| (x - w / 2.0).max(0.005));
+            let mut s_left = s(zones[li].ray(p, nrm, maxd, tr.net));
+            let mut s_right = s(zones[li].ray(p, geom::scale(nrm, -1.0), maxd, tr.net));
 
             // diff partner
             let mut diff_gap = None;
             let mut partner_geo: Option<(f64, f64, bool)> = None;
             if let Some(pn) = partner {
-                let r = 1.5f64.min(tr.width * 2.0 + 4.0 * hmin.min(0.5));
-                tgrid.near(p, r + tr.width, &mut near);
+                let r = 1.5f64.min(w * 2.0 + 4.0 * hmin.min(0.5));
+                tgrid.near(p, r + w, &mut near);
                 for &oi in &near {
                     let o = &board.tracks[oi as usize];
                     if o.net != pn || o.layer != tr.layer {
@@ -691,7 +747,7 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
                         continue;
                     }
                     let dist = geom::cross(odir, ap).abs();
-                    let gap = dist - (tr.width + o.width) / 2.0;
+                    let gap = dist - (w + o.width) / 2.0;
                     if gap > 0.0 && gap < r && diff_gap.is_none_or(|g| gap < g) {
                         diff_gap = Some(gap);
                         // partner on the +normal ("left") side?
@@ -722,7 +778,7 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
                 layer: tr.layer,
                 up: up.map(|r| r.0 as i32).unwrap_or(-1),
                 dn: dn.map(|r| r.0 as i32).unwrap_or(-1),
-                w: q(Some(tr.width), 1e-4),
+                w: q(Some(w), 1e-4),
                 sl: q(s_left, 1e-4),
                 sr: q(s_right, 1e-4),
                 gap: q(diff_gap, 5e-3),
@@ -734,14 +790,14 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
             let xi = match cache.get(&key) {
                 Some(&i) => i,
                 None => {
-                    let xs = evaluate(board, params, &mut geoms, tr.layer, tr.width, up.map(|r| (r.0, r.1)), dn.map(|r| (r.0, r.1)), s_left, s_right, partner_geo, planes, flags);
+                    let xs = evaluate(board, params, &mut geoms, tr.layer, w, up.map(|r| (r.0, r.1)), dn.map(|r| (r.0, r.1)), s_left, s_right, partner_geo, planes, flags);
                     let i = xss.len() as u32;
                     xss.push(xs);
                     cache.insert(key, i);
                     i
                 }
             };
-            let t0 = k as f64 / n as f64;
+            let t0 = t_lo;
             match prev {
                 Some((px, _)) if px == xi => {}
                 Some((px, pt0)) => {
@@ -800,15 +856,20 @@ fn net_stats(
     xss: &[CrossSection],
     pieces: &[f64],
 ) -> (Vec<NetStat>, Vec<ClassInfo>) {
-    let mut acc: HashMap<u32, Vec<(f64, Option<f64>, u32)>> = HashMap::new();
+    // (length, impedance, flags, counted in the impedance statistics, uncertainty %, field solver)
+    let mut acc: HashMap<u32, Vec<(f64, Option<f64>, u32, bool, f64, bool)>> = HashMap::new();
     for pc in pieces.chunks_exact(4) {
         let tr = &board.tracks[pc[0] as usize];
         let l = geom::len(geom::sub(tr.b, tr.a)) * (pc[2] - pc[1]);
         let xs = &xss[pc[3] as usize];
+        // a track inside an SMD pad has the pad's cross-section; the pad's own synthetic track
+        // stands for it in the impedance statistics (not counted twice), its length stays the net's
+        let counted = tr.pad || xs.flags & F_PAD == 0;
         let cls = board.net_class.get(tr.net as usize).copied().unwrap_or(0) as usize;
         let target = class_targets.get(cls).and_then(|t| t.0);
         let z = compared_z(xs, target);
-        acc.entry(tr.net).or_default().push((l, z.map(|v| v.0), xs.flags));
+        let unc = crate::accuracy::impedance_of(xs).map(|u| u.1).unwrap_or(0.0);
+        acc.entry(tr.net).or_default().push((l, z.map(|v| v.0).filter(|_| counted), xs.flags, counted, unc, xs.solver == "field"));
     }
     let mut nets: Vec<NetStat> = Vec::new();
     let mut class_counts = vec![0usize; board.netclasses.len()];
@@ -819,17 +880,25 @@ fn net_stats(
         }
         let target = class_targets.get(cls).and_then(|t| t.0);
         let length: f64 = v.iter().map(|x| x.0).sum();
+        let l_counted: f64 = v.iter().filter(|x| x.3).map(|x| x.0).sum::<f64>().max(1e-12);
         let zl: Vec<(f64, f64)> = v.iter().filter_map(|x| x.1.map(|z| (x.0, z))).collect();
         let lz: f64 = zl.iter().map(|x| x.0).sum();
         let (mut z_min, mut z_max, mut z_mean) = (None, None, None);
+        // accuracy: length-weighted uncertainty and field-solver share of the pieces with an impedance
+        let zp: Vec<&(f64, Option<f64>, u32, bool, f64, bool)> = v.iter().filter(|x| x.1.is_some()).collect();
+        let (z_unc_pct, field_share) = if lz > 0.0 {
+            (Some(zp.iter().map(|x| x.0 * x.4).sum::<f64>() / lz), Some(zp.iter().filter(|x| x.5).map(|x| x.0).sum::<f64>() / lz))
+        } else {
+            (None, None)
+        };
         let (mut w5, mut w10) = (None, None);
         if lz > 0.0 {
             z_min = zl.iter().map(|x| x.1).reduce(f64::min);
             z_max = zl.iter().map(|x| x.1).reduce(f64::max);
             z_mean = Some(zl.iter().map(|x| x.0 * x.1).sum::<f64>() / lz);
             if let Some(t) = target {
-                w5 = Some(zl.iter().filter(|x| (x.1 - t.z).abs() <= 0.05 * t.z).map(|x| x.0).sum::<f64>() / length + 0.0);
-                w10 = Some(zl.iter().filter(|x| (x.1 - t.z).abs() <= 0.10 * t.z).map(|x| x.0).sum::<f64>() / length + 0.0);
+                w5 = Some(zl.iter().filter(|x| (x.1 - t.z).abs() <= 0.05 * t.z).map(|x| x.0).sum::<f64>() / l_counted + 0.0);
+                w10 = Some(zl.iter().filter(|x| (x.1 - t.z).abs() <= 0.10 * t.z).map(|x| x.0).sum::<f64>() / l_counted + 0.0);
             }
         }
         nets.push(NetStat {
@@ -845,6 +914,8 @@ fn net_stats(
             within5: w5,
             within10: w10,
             flags: v.iter().fold(0, |a, x| a | x.2),
+            z_unc_pct,
+            field_share,
         });
     }
     nets.sort_by(|a, b| a.name.cmp(&b.name));
@@ -1042,8 +1113,28 @@ fn evaluate(
             (None, None) => {}
         }
     }
+    // no plane at all: the return in the coplanar copper beside the trace and in a pair's partner
+    // (analytic::no_plane, an estimate); without either, no impedance (the channel's fallback)
+    let mut no_plane_even = None;
     if kind == Kind::NoReference {
         flags |= F_NO_REF;
+        let (h, er) = if outer_top {
+            (su.gap_between(li, ncu - 1), su.er_between(li, ncu - 1))
+        } else if outer_bot {
+            (su.gap_between(0, li), su.er_between(0, li))
+        } else {
+            (f64::INFINITY, su.er_between(0, ncu - 1))
+        };
+        // only a close coplanar return carries the field (a card-edge finger between its ground
+        // fingers); a conductor further away – a trace crossing a via's antipads on every layer –
+        // leaves the return to plane edges the cross-section does not see: no impedance
+        let near = |s: Option<f64>| s.filter(|&x| x <= (3.0 * w).max(0.5));
+        if let Some((z, e, zd, ze)) = analytic::no_plane(w, h, er, near(s_left), near(s_right), near(diff_gap)) {
+            z0 = Some(z);
+            eeff = Some(e);
+            zdiff = zd;
+            no_plane_even = Some(ze);
+        }
     }
 
     // geometry for field solvers, and a field result if one is available
@@ -1062,8 +1153,9 @@ fn evaluate(
     let (z0_formula, zdiff_formula) = (z0, zdiff);
     // even mode from the formulas: Z0 ≈ √(Zeven·Zodd); modal permittivities of microstrip from
     // Kirschning-Jansen (the ratio around the single-line value), stripline: homogeneous
-    let mut zeven = match (z0, zdiff) {
-        (Some(z), Some(zd)) if zd > 0.0 => Some(z * z / (zd / 2.0)),
+    let mut zeven = match (no_plane_even, z0, zdiff) {
+        (Some(ze), _, _) => ze,
+        (None, Some(z), Some(zd)) if zd > 0.0 => Some(z * z / (zd / 2.0)),
         _ => None,
     };
     let (mut eeff_odd, mut eeff_even) = (eeff, eeff);

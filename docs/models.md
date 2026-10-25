@@ -46,6 +46,15 @@ with IBIS models, KiCad's simulator.
   along every line with its reference planes (also across gaps), coplanar ground and the differential partner.
   Within 1.7 % of the HFSS/Ansys references in Forstén's test suite, εeff within 1 %.
 
+- **Pads and gold fingers:** a track inside an SMD pad of its own net (a track runs to the pad's centre; a
+  card-edge finger) has the pad's cross-section – its width and what lies below it, a cut-out in the plane
+  included –, exactly from the pad's edge; the rest of a part's pad is a shunt capacitance from that
+  cross-section (without one, an estimate per package from `data/components.json`). Copper with no plane
+  above or below it on any layer – a finger with the planes cut back – takes its return in the coplanar
+  copper beside it and a pair's partner (coplanar waveguide and coplanar strips without a ground plane, an
+  estimate); with nothing within 0.5 mm (or 3 widths) beside it the channel uses 1.5 × the target impedance.
+  Against 3D: [TESTS.md](../validation/fdtd/TESTS.md) section 15.
+
 Deviation on ThunderScope cross-sections (reference: Forstén's microstrip/stripline solver; the last row HFSS):
 
 | Cross-section | Formula | Field solver |
@@ -57,8 +66,20 @@ Deviation on ThunderScope cross-sections (reference: Forstén's microstrip/strip
 | Microstrip over a 3 mm cut-out (HFSS) | +17 % | −0.5 % |
 
 ## Lines
-RLGC per cross-section: skin effect (Wheeler), copper roughness (Huray; the presets `smooth`, `hvlp`, `standard`
-are estimates), dielectric loss (Djordjevic-Sarkar). RLGC within 2 % of HFSS.
+RLGC per cross-section, passive and causal by construction (the series impedance and the shunt admittance per
+metre are positive-real functions of frequency):
+- **Conductor:** the DC resistance turning into the skin effect (Wheeler's incremental inductance, or the field
+  solve's resistance), R_dc·√(1 + jf/f_c) with its internal inductance, times the causal Huray roughness factor
+  (Bracken, DesignCon 2012) – its loss part is Huray's, its inductance part what Kramers-Kronig requires. The
+  roughness presets `smooth`, `hvlp`, `standard` are estimates.
+- **Dielectric:** one Djordjevic-Sarkar model (a wideband Debye distribution fitted to εr and tanδ at 1 GHz) for
+  ε′ and ε″ – in the lines, the via ladders and the coaxial via sections alike.
+- **Microstrip dispersion:** a lossless Lorentz term that follows Getsinger's rising εeff below a resonance
+  above the band. A passive line cannot follow a rise of εeff with frequency except below a resonance; a
+  microstrip on a thick dielectric, whose Getsinger corner lies inside the band (at 50 Ω and 25 GHz from about
+  0.4 mm), gets the rise at the top of the band and less below it.
+
+RLGC within 2 % of HFSS.
 
 A channel is a network of N-port elements solved by nodal analysis (`kisi_si::rf::network`): the line's ABCD
 cascade, a differential pair as a 4-port (coupled sections from the odd and even mode, via pairs, stubs on both
@@ -70,7 +91,9 @@ A physics-based ladder per via (`kisi_si::via_pbm`): capacitances from an axisym
 pairs as radial lines with the nearby return posts (vias and plated pins of ground and supply planes, the nearest
 12 within 3 mm), pads and annular rings, antipads from the zone fills (non-round ones as an equivalent circle),
 pours on the via's signal layers as coplanar returns, stubs and back-drill, the junction to the traces; pairs
-with their partner. Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own
+with their partner. Passive by construction: the plane-pair matrices treat every barrel as a cylinder of
+uniform current, and a pair's modes are taken as (Z_PP + Z_NN)/2 ∓ Z_PN (the earlier Z_PP ∓ Z_PN gave via pairs
+with returns on one side a negative resistance from a few GHz). Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own
 FDTD solver: via impedance in the TDR median 2.3 %, 90th percentile 5.5 % (single vias); pairs within 3.5°
 phase; stub notch within 3 %; the four board vias with a 3D reference within 0.03–0.44 dB up to 12 GHz. An
 estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
@@ -159,16 +182,36 @@ models it – for circuit and RF simulators:
   symbol.
 
 The terminations next to the receiver act as the receiver's termination and are not in the subcircuit. Not
-included: the channel behind a connector, crosstalk between lanes, IBIS ends. Above about 10 GHz kisi's own model is
-not fully passive and causal (roughness, constant tanδ, via-pair spans); the export cannot follow that part. Report:
+included: the channel behind a connector, crosstalk between lanes, IBIS ends. kisi's own model is passive and
+causal (checked over every lane of the example boards up to 25 GHz), so the fitted circuit can follow it across the
+band. Report:
 [docs/research/channel-export.md](research/channel-export.md).
+
+## Accuracy levels
+Every impedance and via result says which level it used and how far it typically is from kisi's validation
+(`data/accuracy.json`, with the sources; design: [research/accuracy-levels.md](research/accuracy-levels.md)):
+
+| Level | Typical deviation |
+|---|---|
+| 2D field solver | impedance 2 % |
+| formula: single microstrip / coupled or coplanar / stripline / over a cut-out | 2 / 8 / 11 / 25 % |
+| no plane (coplanar estimate) | 15 % |
+| via ladder: single vias / pairs (TDR, median and 90th percentile) | 2.5 and 5.9 % / 12.6 and 14.4 % |
+| coaxial via fallback | 8.0 and 25.5 % |
+
+A net or lane takes the length-weighted mean of its cross-sections; the level is “field solver”, “formula” or
+“mixed”. The CLI writes it as `accuracy` in every `check` row and in `net`, the viewer as a muted “±x %” next
+to the impedance. Verdicts are judged on the values; the uncertainty is shown beside them. Loss, return loss
+and the eye do not carry a number yet.
 
 ## What is an estimate
 kisi marks these as estimates in the viewer and in the CLI output:
 - laminate εr/tanδ and thicknesses that are KiCad defaults (`assumed` in `kisi overview`), until
   `<board>.kisi.json` gives them;
 - target impedances from interface keywords in class names ("interface assumption");
-- copper roughness presets; package parasitics of series parts, terminations and unfitted pads;
+- copper roughness presets; package parasitics of series parts and terminations; the pad capacitance per
+  package where a pad has no cross-section of its own; the coplanar impedance of copper without a reference
+  plane;
 - the transmit direction of a lane;
 - regulator efficiency 85 % where none is given; the heat of a load (all drawn power stays in the part);
 - capacitor ESR/ESL and DC-bias derating by package, with an assumed rated voltage where neither the Value text
@@ -184,6 +227,11 @@ kisi marks these as estimates in the viewer and in the CLI output:
   `tools/forsten_sparse_shim.js`); `kisi-validate <cases.json> [<refs.json>]` compares the formulas, and the
   field-solver chain (`kisi-validate --geoms` → `tools/solve_xs.mjs` → `kisi-validate --field`) is what
   `validate_field.sh` runs.
+- **Passivity and causality:** unit tests (series impedance and shunt admittance positive-real in the whole
+  right half-plane; the pulse response of a 200 mm lossy line before its front; the plane-pair reductions with
+  asymmetric returns) and a test over every lane of the example boards (`crates/kisi-core/tests/causality.rs`,
+  in CI): the board's S-parameters passive up to 25 GHz and their pulse responses causal (details and numbers:
+  [TESTS.md](../validation/fdtd/TESTS.md) section 14).
 - **Vias and planes** against 3D results of kisi's own FDTD solver (`crates/kisi-fdtd`, checked against openEMS
   and analytic cavities): 74 reference cases in `validation/via_ref`, the test log in
   [validation/fdtd/TESTS.md](../validation/fdtd/TESTS.md), and the reference page `kisi-references.html`

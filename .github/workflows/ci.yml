@@ -9,7 +9,8 @@
 #   cli                 Node CLI against the native CLI on the example boards (compare_cli.py)
 #   solver              2D field solver against HFSS / baseline (validate_field.sh)
 #   models              stored results of the example boards and kisi's models on the 3D via references
-#                       (tools/golden.py; an intended change updates validation/golden in the same commit)
+#                       (tools/golden.py; an intended change updates validation/golden in the same commit) ·
+#                       passivity and causality of the example boards' lanes (crates/kisi-core/tests/causality.rs)
 #   export              the channel export (kisi export) in ngspice against kisi's S-parameters, scikit-rf reads
 #                       the Touchstone files (validation/channel_export/compare.py)
 #   refpage             the 3D reference page builds
@@ -154,6 +155,9 @@ jobs:
           python3 tools/ci_checks.py same dist/kisi.html $R/kisi.html
           python3 tools/ci_checks.py same dist/kisi.mjs $R/kisi.mjs
           python3 tools/ci_checks.py sizes dist
+      - name: Passivity and causality of the example boards' lanes
+        if: env.MODELS == 'true'
+        run: cargo test --release -p kisi-core --test causality -- --nocapture
       - name: Stored results (example boards, 3D via references)
         if: env.MODELS == 'true'
         run: |

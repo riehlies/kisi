@@ -552,3 +552,129 @@ plots `results/board_returns/`). The model is the option `--via-returns` (off by
   assembly (`kisi_sparse::ComplexPattern`), reproducible order of the shorted cells: ThunderScope 102–109 →
   55–60 s on one thread, LibreVNA 14–15 → 11 s; one and four threads byte-identical
   (BOARD_RESONANCES.md section 9). Unit test `via_cavity::tests::shared_grid_groups`.
+
+## 14. Causal and passive line, via and pair models (block 2, accuracy)
+
+The channel export (`docs/research/channel-export.md` on `feat/channel-export`) found kisi's own channel model
+not fully passive or causal above about 10 GHz. Causes and fixes:
+- **Via pairs, negative resistance.** The pair's odd and even mode took Z_PP ∓ Z_PN of the plane-pair matrix
+  reduced with the return posts. With returns that are not symmetric about the pair (one side of a fan-out),
+  Z_PP ≠ Z_NN and that is not a quadratic form of the (passive) matrix: the spans of ThunderScope's ADC lane
+  D2B came out with Re Z < 0 from about 8 GHz and its 4-port with a largest singular value of 1.286 at
+  24.75 GHz. Now (Z_PP + Z_NN)/2 ∓ Z_PN, the mode voltage (V_P ∓ V_N)/2 at currents ±I. In addition the
+  radial-line matrix treats every barrel as a cylinder of uniform current (Graf's addition theorem:
+  Z_ii ∝ J0(ka)·H0⁽²⁾(ka), Z_ij ∝ J0(ka_i)·J0(ka_j)·H0⁽²⁾(kd)): its real part is then the radiated power,
+  positive semi-definite; the line source's H0⁽²⁾(ka) on the diagonal left an indefinite matrix whose
+  reductions go negative for a via in a close cage (4 returns at 0.5 mm: −0.002 Ω·m⁻¹ at 20 GHz). Unit test
+  `via_pbm::tests::radial_reductions_passive` (both earlier forms fail it).
+- **Dielectric.** The lines had Djordjevic-Sarkar in ε′ and ε″ already; the via ladder (node capacitances, the
+  plane pairs' wavenumber), the coaxial via sections and the cavity option used constant εr and tanδ, which
+  Kramers-Kronig does not allow. All use `rf::eps_c` now (the 3D references' conductivity model stays for the
+  comparisons with kisi-fdtd, `f_loss`). The lines' ε′ follows the mode's own loss amplitude
+  (A + B·k(f), B from the mode's tanδ at 1 GHz) instead of the material's ratio.
+- **Roughness.** Huray was an R multiplier with the smooth internal inductance: now the causal Huray factor
+  (Bracken, DesignCon 2012) multiplies the whole surface impedance R_dc·√(1 + jf/f_c) (DC to skin effect with
+  its internal inductance; before √(R_dc² + R_ac²) and L_int = R_ac/ω, unbounded at low frequency).
+- **Microstrip dispersion.** Getsinger's ε_eff(f) is a real function without a Kramers-Kronig partner, and a
+  passive shunt admittance has C(0) ≥ C(∞): a rising capacitance is possible only below a resonance. Now a
+  lossless Lorentz term with its resonance at max(fp/√G, 2·fmax), matched to Getsinger at fmax (within a few
+  percent of the small rise on thin dielectrics; a thick one, fp inside the band, rises only near the top).
+- Unit tests `rf::tests::line_models_positive_real` (Z(s), Y(s) with Re ≥ 0 on a grid of the right half-plane
+  up to 10¹³ s⁻¹, for microstrip thin and thick, stripline, a field-solved mode, the no-plane fallback, all
+  roughness presets), `lossy_line_causal` (200 mm, pulse response before the front < 1e-5 of its peak; the
+  earlier model 3.7e-4), `causal_huray_is_huray`.
+
+**The example boards** (`crates/kisi-core/tests/causality.rs`, every lane of ThunderScope and LibreVNA as the
+check builds it, 25 GHz, 500 points; in CI with the models checks): largest singular value of the board's
+S-parameters and the pulse response (Gaussian window leaving 1e-6 at 25 GHz) before 80 % of the static delay
+(transfer, relative to its peak) or before the edge (reflection, relative to the incident pulse). Lanes still
+ringing after 0.6/df (filters with resonances below the 50 MHz step: 18 of 98) are reported, not judged.
+
+| | before | after | limit |
+|---|---|---|---|
+| largest singular value | 1.2861 (ts D2B_P, 24.75 GHz) | 1.0000000 | 1 + 1e-9 |
+| transfer precursor, max (median) | 8.6e-4 (8.6e-5) – 45 lanes above the limit | 7.4e-5 (7.1e-6) | 3e-4 |
+| reflection precursor, max | 2.1e-4 | 1.3e-4 | 1e-3 |
+
+**References.** Field solver and HFSS (`validate_field.sh`): unchanged, all 15 values within 0.5 % of the
+baseline, worst 1.7 %. RLGC of the HFSS microstrip at 1 GHz: R 3.33 / L 304.6 nH / G 14.0 mS / C 123.3 pF per
+metre (HFSS 3.26 / 307 / 13.86 / 123; before 3.33 / 304.6 / 14.0 / 123.5). `compare_kisi.py` (all 56 rows in
+`results/kisi_models.json`):
+
+| | before | after | after, via ladder with constant εr (as the 3D) |
+|---|---|---|---|
+| via TDR error median / p90 | 2.33 / 5.52 % | 2.45 / 5.92 % | 1.94 / 5.13 % |
+| via mean \|ΔS21\| median | 0.102 dB | 0.097 dB | 0.096 dB |
+| pair Zdiff error median / p90 | 11.67 / 14.35 % | 12.57 / 14.42 % | 11.95 / 14.78 % |
+| pair max phase error median | 3.5° | 1.8° | 3.5° |
+| stub notch (d200 / d300) | −0.9 / −2.3 % | +1.4 / −0.5 % | −0.9 / −2.3 % |
+
+The 3D references model the dielectric as a constant εr with a conductivity fixed at f_l; the causal ladder's
+ε′ is 1.5–3 % lower than εr(1 GHz) at 5–15 GHz, which raises the via impedance in the 25 ps TDR by about 1 %
+against them – the last column is the same ladder with the references' constant εr. The line model alone
+(new roughness and dielectric, old via dielectric) brings the via TDR error from 2.82 to 2.45 %; the mode
+symmetrisation changes no reference row (their returns are symmetric); the J0 factor moves the via |ΔS21|
+by ≤ 0.02 dB. Lines (group T): |ΔS21| unchanged, TDR +0.3–0.5 Ω. Board vias (`board_vias.py ladder/compare`,
+the ladder with the 3D loss model): every stored value unchanged.
+
+**Example boards** (`golden.py boards`): no verdict changes; ts.check 187 and vna.check 171 values moved –
+RL of well matched lanes (above 30 dB) by up to 7 dB, of the PCIe lanes by up to 0.2 dB, IL at Nyquist by at
+most 0.08 dB, eye height by at most 0.015.
+
+## 15. Pads and gold fingers without a reference plane (block 2, accuracy)
+
+Before, a track inside an SMD pad of its own net (tracks run to the pad's centre; a card-edge finger) was
+sampled with the track's width, a part's pads were a fixed capacitance per package (0402: 0.10 pF, whatever lay
+below), and copper with no plane on any layer got 1.5 × the target impedance. Now:
+- **Pad cross-sections** (`extract`): a track sample inside a same-net SMD pad has the pad's chord across the
+  track as its width (`board::pad_chord`), the track is split exactly at the pad's edge
+  (`board::pad_segment_span`); field solver or formula then see the pad with what lies below it (a cut-out in
+  the plane included). These pieces stay out of the net's impedance statistics – the pad's synthetic track
+  stands for the pad there – but keep their length.
+- **Pad shunts** (`topology::pad_shunt_c`): the half of a part's pad that no track covers (towards the body) is
+  a capacitance Σ C′·ℓ from the cross-sections of the pad's synthetic track; the package estimate stays as the
+  fallback (no track enters the pad, no impedance). Also for the pads of parts that are not fitted.
+- **No plane** (`analytic::no_plane`): copper with no plane above or below takes its return in coplanar copper
+  within max(0.5 mm, 3 widths) and in a pair's partner – coplanar waveguide and coplanar strips without ground
+  (Simons), the sides as parallel slots; otherwise still 1.5 × the target (an estimate, warned).
+- Unit tests `topology::tests::pads_from_their_geometry`, `analytic::tests::coplanar_without_plane`,
+  `board::tests::pad_chord_and_span`.
+
+**3D references** (group P, `via_cases.py --groups P`, kisi-fdtd 0.46–1.49 M cells, 25–850 s on one shared
+core): the pad or finger in the middle of an 8 mm 50 Ω microstrip on the ThunderScope stack (ports on the
+microstrip; the TDR's line level of the 3D lumped ports sits a few ohms low). TDR with a 20 ps edge, the
+section's extreme against each curve's own line level (Ω), and the worst |S11| up to 20 GHz
+(rows in `results/kisi_models.json`):
+
+| case | 3D | kisi before | kisi now, formula | kisi now, field solver |
+|---|---|---|---|---|
+| 0402 pad 0.56 × 0.62 mm, plane intact | −5.7 Ω, −11.9 dB | +0.1, −47.9 | −4.0, −13.2 | −4.0, −13.3 |
+| the same, L2 cut out under it (next plane 1.14 mm) | −3.6, −18.7 | +17.6, −5.6 | +5.8, −12.4 | −0.8, −29.9 |
+| finger 0.7 × 2.1 mm, GND fingers at 0.3 mm, L2 cut back | +11.8, −8.7 | +22.8, −5.2 | +7.0, −12.4 | +7.3, −11.2 |
+| the same, every plane cut back (no plane) | +14.4, −7.7 | +9.4, −8.8 | +9.2, −9.3 | +9.3, −9.2 |
+| finger pair, pitch 1 mm, no plane (Zdiff) | −5.6, −13.9 | −16.3, −11.3 | −13.3, −6.8 | −12.4, −7.4 |
+
+The section's peak impedance (TDR maximum, 3D / now): pad over the cut-out 50.9 / 51.2 Ω with the field
+solver (formula 56.9, flagged rough; before 68.2), finger with a far plane 61.5 / 60.1 (before 76.3), finger
+without a plane 62.9 / 62.7, finger pair 115.3 / 114.7 Ω Zdiff (before 136.7). The TDR deltas of the single
+cases are within about 4 Ω (8 %), the pair without any plane reads about 7 Ω low in its section (its feed of
+two 0.19 mm traces at 1 mm pitch reads 107 against 117 Ω in 3D, the formula's diff microstrip): the no-plane
+pair is an estimate to about 15 %.
+
+**ThunderScope PCIe lanes** (check, formula impedances; RL limit 10 dB): the trace through each 4.2 mm
+gold finger was a 0.19 mm microstrip over B.Cu 1.42 mm away (161 Ω diff, field solver 172 Ω); with the
+finger's width it reads 93 Ω. Return loss PER0–3 3.9–5.0 → 9.2–9.5 dB, PET0–3 2.5–5.2 → 5.0–7.2 dB, IL at
+Nyquist PER 2.4–3.4 → 1.6–1.8 dB, PET 2.8–4.6 → 2.9–4.4 dB; still yellow. What remains: the 0402 pads of the AC capacitors and 0 Ω
+resistors over the plane 0.11 mm below (about 21 Ω over 0.45 mm per pad – the board has no cut-outs there),
+the stubs to the unfitted alternatives, the vias. The 1.5 × fallback was not the cause: on these lanes it
+covers only zero-length pieces next to vias.
+
+**Example boards** (`golden.py boards --update`): 12 verdict changes, all on the impedance criterion (the
+length-weighted mean of the lane's nets), from counting each pad once with its own cross-section:
+ThunderScope /ADC/D3A_P yellow → green (110.2 → 109.8 Ω), /ADC Driver 2/OUT_P and Driver 3/OUT_P green →
+yellow (92.0 → 86.9 / 85.5 Ω: short nets dominated by 0402 pads), PCIe_REFCLK_P green → yellow (90.7 → 87.4 Ω:
+the 161 Ω finger trace had lifted the mean, the trace itself is 88 Ω); LibreVNA RF_HBLB_AMP, C270-Pad2,
+T1-OUT+, T3-OUT- yellow → green (60–62 → 51–55 Ω: traces over openings under pads were counted as narrow
+traces), LO1_RFOUTB_N_RC, C121-Pad2, C160-Pad2, C165-Pad2 green → yellow (46–48 → 42–45 Ω). Values moved in
+overview (the classes' share within ±5 %, by up to 13 points), check, crosstalk (the coupling
+scan sees the pads' width).

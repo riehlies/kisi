@@ -104,13 +104,17 @@ Z), loss, TDR extremes, vias (antipad, stub resonance, return path) and crosstal
 differential pairs also as a 4-port (mixed mode, skew). `--rise-ps` sets the edge (default 35 ps),
 `--roughness smooth|hvlp|standard` the copper roughness preset; `--s2p FILE` writes the channel's S-parameters,
 `--s4p FILE` the pair's single-ended 4-port as Touchstone. Runs the field solver for the net's cross-sections.
+`accuracy`: the level and typical uncertainty of the impedance and the via models (as in `check`).
 
 ### `check`
 Channel check of all lanes against their interface profiles: loss, return loss, skew, via stubs and the eye;
 nets with a target but no devices on their own. Only yellow and red rows are printed (`--all` for green too,
 `--nets A,B` to restrict, `--max N` rows, default 30). `--class CLASS=PROFILE` overrides a profile (better: put it
 into kisi.json). Rows are computed on several threads (below); the result is the same as on one thread. Needs an
-assembly variant on boards that have them. Runs the field solver.
+assembly variant on boards that have them. Runs the field solver. Every row has `accuracy`:
+`impedance` (`level` formula / field solver / mixed, `uncertainty_pct` – the typical deviation from kisi's
+validation, length-weighted over the lane's nets –, `field_share`) and `vias` (`model` ladder / ladder (pair) /
+coax / mixed, `tdr_error_pct` median and p90), from `data/accuracy.json` ([models](models.md#accuracy-levels)).
 
 ### `crosstalk`
 Coupling scan of all nets with a target: NEXT and FEXT from the neighbouring tracks, critical from 1 % of the

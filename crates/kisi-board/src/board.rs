@@ -781,6 +781,53 @@ fn pad_half_extents(p: &Pad) -> (f64, f64) {
     p.custom.iter().flatten().fold((0.0f64, 0.0f64), |m, q| (m.0.max(q[0].abs()), m.1.max(q[1].abs())))
 }
 
+/// Width of a pad's copper on the line through `q` along `nrm` (unit vector in board coordinates):
+/// what a cross-section through the pad perpendicular to a track at `q` sees – the chord of the
+/// pad's rectangle (custom pads: of their bounding rectangle; rounded corners ignored).
+pub fn pad_chord(p: &Pad, q: P, nrm: P) -> f64 {
+    let (u, v) = pad_axes(p);
+    let (hu, hv) = pad_half_extents(p);
+    let o = geom::sub(q, p.at);
+    let (x0, y0) = (geom::dot(o, u), geom::dot(o, v));
+    let (dx, dy) = (geom::dot(nrm, u), geom::dot(nrm, v));
+    // the parameter interval of x0 + t·dx ∈ [−hu, hu] and y0 + t·dy ∈ [−hv, hv]
+    let (mut lo, mut hi) = (f64::NEG_INFINITY, f64::INFINITY);
+    for (c, d, h) in [(x0, dx, hu), (y0, dy, hv)] {
+        if d.abs() < 1e-12 {
+            if c.abs() > h {
+                return 0.0;
+            }
+        } else {
+            let (a, b) = ((-h - c) / d, (h - c) / d);
+            lo = lo.max(a.min(b));
+            hi = hi.min(a.max(b));
+        }
+    }
+    (hi - lo).max(0.0)
+}
+
+/// Where the segment a → b runs inside pad `p`'s rectangle (custom pads: their bounding rectangle):
+/// the parameter interval (t0, t1) on a + t·(b − a), clipped to [0, 1]; None when it misses the pad.
+pub fn pad_segment_span(p: &Pad, a: P, b: P) -> Option<(f64, f64)> {
+    let (u, v) = pad_axes(p);
+    let (hu, hv) = pad_half_extents(p);
+    let o = geom::sub(a, p.at);
+    let d = geom::sub(b, a);
+    let (mut lo, mut hi) = (0.0f64, 1.0f64);
+    for (c, dd, h) in [(geom::dot(o, u), geom::dot(d, u), hu), (geom::dot(o, v), geom::dot(d, v), hv)] {
+        if dd.abs() < 1e-12 {
+            if c.abs() > h {
+                return None;
+            }
+        } else {
+            let (t0, t1) = ((-h - c) / dd, (h - c) / dd);
+            lo = lo.max(t0.min(t1));
+            hi = hi.min(t0.max(t1));
+        }
+    }
+    (hi > lo).then_some((lo, hi))
+}
+
 /// Whether point `q` lies on the copper of pad `p` (within `tol` mm of its outline): rounded
 /// corners of roundrect, oval and circle pads count, custom pads by their pieces.
 pub fn pad_contains(p: &Pad, q: P, tol: f64) -> bool {
@@ -1235,6 +1282,21 @@ pub fn apply_project(b: &mut Board, pro_json: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    /// The chord of a pad across a track and where a track runs inside it.
+    #[test]
+    fn pad_chord_and_span() {
+        let p = Pad { at: [1.0, 0.0], size: [0.56, 0.62], angle: 0.0, shape: "rect".into(), rratio: 0.0, custom: vec![], layers: vec![0], net: 1, drill: 0.0, number: "1".into(), fp: 0, pinfunction: String::new(), pintype: String::new(), plated: false };
+        // a track along x through the pad centre: the chord across it is the pad's y size
+        assert!((pad_chord(&p, [1.0, 0.0], [0.0, 1.0]) - 0.62).abs() < 1e-12);
+        // rotated by 45°: a diagonal chord through the centre
+        let r = Pad { angle: 45.0, size: [0.6, 0.6], ..p.clone() };
+        assert!((pad_chord(&r, [1.0, 0.0], [0.0, 1.0]) - 0.6 * 2f64.sqrt()).abs() < 1e-9);
+        // a track from 0 to 1 (the pad's centre) enters it at x = 0.72
+        let (t0, t1) = pad_segment_span(&p, [0.0, 0.0], [1.0, 0.0]).unwrap();
+        assert!((t0 - 0.72).abs() < 1e-12 && (t1 - 1.0).abs() < 1e-12, "{t0} {t1}");
+        assert!(pad_segment_span(&p, [0.0, 1.0], [2.0, 1.0]).is_none());
+    }
+
     use super::*;
 
     /// Pin names and types of the pads; the MPN field under its usual names, shown where the

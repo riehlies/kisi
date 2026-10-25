@@ -57,9 +57,7 @@ validation, and every result says which level it used and how uncertain it is.
   end-launch connectors, simulated in kisi-fdtd and CST, measured on Keysight ENA / PNA-X / PNA; plan in
   `validation/test_board.md`, coupons v2 in branch `feat/test-board` (waiting for the RF group's advice on the
   measurement).
-- **Vias and planes in 3D** (preliminary work in branches, not merged; one topic – the work continues on
-  `feat/return-groups`, which contains Blocks 2 and 3, and goes to `main` as one merge once the default path is
-  sound): Block 2 `feat/via-3d-board` (board via →
+- **Vias and planes in 3D** (merged into `main` at 98af58d with Blocks 1–6): Block 2 `feat/via-3d-board` (board via →
   kisi-fdtd exporter, matched de-embedding, `BOARD_VIAS.md`), Block 3 `feat/board-resonances` (finite plane cavities
   and via-to-via coupling, option `--via-cavity`, `BOARD_RESONANCES.md`), Block 4 `feat/return-groups` (return vias
   per plane pair and decoupling capacitors as returns, option `--via-returns`, `BOARD_RETURNS.md`). Block 5 on the
@@ -81,7 +79,20 @@ validation, and every result says which level it used and how uncertain it is.
   - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
     ladder at the via centre; about 8 days, a minimal version 4; design note `BOARD_VIAS.md` section 5.6);
   - the ladder in WebAssembly is about 2 × slower than native.
-- **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
+- **Causal and passive models** (`feat/accuracy`, done): the via pairs' modes and the plane-pair matrix passive by
+  construction, Djordjevic-Sarkar everywhere, the causal Huray roughness with its inductance, microstrip
+  dispersion below a resonance; every example lane passive and causal in a test (`validation/fdtd/TESTS.md`
+  section 14). Next: a microstrip on a thick dielectric (Getsinger corner inside the band) loses its mid-band
+  dispersion – a lossy Lorentz term (surface-wave leakage) would follow it.
+- **Pads and gold fingers without a reference plane** (`feat/accuracy`, done): pads and fingers from their own
+  cross-section, a part's pads as shunts from it, copper without a plane on its coplanar return; five 3D
+  cases (TESTS.md section 15). Next: the finger pair without any plane reads ~15 % low (the coplanar estimate);
+  the finger's tip beyond the contact as a stub; a 3D case with the 0402 body (the ESL estimate).
+- **Accuracy levels** (`feat/accuracy`, first version): the impedance (formula / field solver, with the
+  validated uncertainty) and the via models carry their level in `check`, `net` and the viewer
+  (`data/accuracy.json`, design note `docs/research/accuracy-levels.md`). Next: loss (± dB at Nyquist from
+  lines and vias) and return loss (a range from the impedance uncertainty), then the eye; the 3D level per
+  selected structure with the viewer's 3D check.
 - **Crosstalk:** broadside coupling between layers (detected and listed so far), crossings of plane splits and
   edges (return path), via-to-via coupling through the cavity.
 - **PDN:** per-IC grid for all rails at once, regulator models beyond R + L (control-loop output impedance), the

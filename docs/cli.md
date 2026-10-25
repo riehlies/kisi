@@ -44,6 +44,14 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
                    temperature and IR drop at temperature per rail
                    [--tree tree.json] [--ambient °C (25)] [--h W/m²K per side] [--airflow m/s] [--vertical]
   report           write analysis/kisi.json next to the board   [--out FILE]
+  export           a lane or a whole bus for circuit and RF simulators: SPICE subcircuits (RLGC
+                   ladders, kisi's via model, parts, stubs; pairs coupled) with test benches for
+                   ngspice and Xyce, Touchstone (.s2p/.s4p, a bus as one N-port with port map) and a
+                   KiCad project with the profile's linear ends
+                   --lane NAME | --bus NAME  [--format spice,xyce,touchstone,kicad (default all)]
+                   [--kicad-style detailed|compact (one symbol per element, default; or the lane
+                   as one symbol)] [--out DIR (default analysis/export/<name> next to the board)]
+                   [--class CLASS=PROFILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
   config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
@@ -123,6 +131,17 @@ correlations, e.g. for the inside of a closed case). See [Models and limits](mod
 Everything into `analysis/kisi.json` next to the board (`--out FILE` elsewhere); prints a summary. For file-based
 review tools and later sessions. Needs an assembly variant on boards that have them. Runs the field solver.
 
+### `export`
+A lane (`--lane NAME`, a net of the lane) or a whole bus (`--bus NAME`, as `kisi interfaces` names it, e.g.
+`"P1 ↔ U18"`) for circuit and RF simulators: the board channel as the check models it, as SPICE subcircuits with test
+benches for ngspice and Xyce, Touchstone files (a bus also as one N-port with its port map) and a KiCad project with
+the interface profile's linear ends. `--format spice,xyce,touchstone,kicad` chooses the files (default: all),
+`--kicad-style detailed` (default: one symbol per element – lines, coupled runs, vias, parts with their value as a
+parameter, pads, stubs) or `compact` (the lane as one symbol), `--out DIR` the folder (default
+`analysis/export/<name>` next to the board). The JSON lists the files, the bench ends, how closely the circuit
+follows kisi's own S-parameters, the element counts and notes. Needs an assembly variant on boards that have them.
+See [Models and limits](models.md#channel-export).
+
 ### `gaps`
 Missing or default data: each gap has `id`, `priority` (high, medium, low), `area`, `issue`, `affects`,
 `where_to_find`, `write` (where it goes in `<board>.kisi.json`, with an example) and `items` (layers, classes,
@@ -166,7 +185,11 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--h W/m²K` | `thermal` | surface coefficient per side instead of the convection correlations |
 | `--via-cavity` | `net`, `check`, `report` | experimental: the via models' plane pairs as finite cavities (board edges, stitching vias, decoupling capacitors – estimated parasitics); slower |
 | `--via-returns` | `net`, `check`, `report` | experimental: return groups per plane pair in the via models (a return via shorts only the pairs it joins; capacitors close supply/ground pairs) |
-| `--out FILE` | `report` | where to write the report (default `analysis/kisi.json` next to the board) |
+| `--out FILE` | `report`, `export` | where to write the report (default `analysis/kisi.json` next to the board) or the export's folder (default `analysis/export/<name>`) |
+| `--lane NAME` | `export` | the lane to export (a net of it) |
+| `--bus NAME` | `export` | the bus to export, all its lanes (as `kisi interfaces` names it) |
+| `--format LIST` | `export` | `spice`, `xyce`, `touchstone`, `kicad` (comma-separated; default all) |
+| `--kicad-style STYLE` | `export` | `detailed` (one symbol per element, default) or `compact` (the lane as one symbol) |
 | `--formula` | field-solver commands | no field solver (formula impedances) |
 | `--field-time S` | field-solver commands | time budget for new solves, default 120 s |
 | `--field-all` | field-solver commands | all cross-sections, not only those of nets with a target |

@@ -162,10 +162,10 @@ setup (models, pin mapping, terminations, interface settings) is the main effort
 - Solver updates with `tools/upstream_update.sh` when js_2d_fields changes (validation decides; the weekly CI run
   reports a newer upstream revision).
 - **CI:** the checks run by what changed (`tools/ci_checks.py changes`); stored results of the example boards and the
-  via references (`tools/golden.py`) catch unintended model changes. Next: format the Rust code once with
-  `cargo fmt` when few branches are open (today ~1400 differences) and then check it on every push; clear the clippy
-  warnings and make clippy failing; the docs PDF (block 1) and the channel exports (block 3) as CI checks when they
-  are merged; parse a KiCad 10 test board.
+  via references (`tools/golden.py`) catch unintended model changes; the docs PDF and the channel export (ngspice,
+  KiCad 9 ERC) run in their groups. Next: format the Rust code once with `cargo fmt` when few branches are open
+  (today ~1400 differences) and then check it on every push; clear the clippy warnings and make clippy failing;
+  parse a KiCad 10 test board.
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.
 
 ### Small fixes (independent, can be done in parallel)

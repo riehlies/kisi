@@ -20,7 +20,8 @@ PDN impedance, temperature estimate) – in the browser, with no installation an
   in a second and the 2D field solver on demand; impedance along the path, loss, TDR, vias and crosstalk per net.
 - **Channel:** buses and device-to-device lanes through series resistors and AC-coupling capacitors, checked
   against interface profiles (PCIe, USB, DDR, LVDS, Ethernet, …) on loss, return loss, skew and a linear eye;
-  differential pairs as 4-ports, multi-drop lines at every receiver, connectors with the channel behind them.
+  differential pairs as 4-ports, multi-drop lines at every receiver, connectors with the channel behind them; a
+  lane or a whole bus exported as SPICE subcircuits, Touchstone and a KiCad project for circuit simulators.
 - **Power:** the regulator chain and power flow from fields on the parts (`PI_REG`, `PI_LOAD`), DC voltage drop
   per rail and in the ground return, a losses map, a temperature estimate of the board and its parts, and the PDN
   impedance seen from every IC with recommendations.

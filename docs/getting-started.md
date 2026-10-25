@@ -20,7 +20,7 @@ Every [release](https://github.com/riehlies/kisi/releases/latest) carries:
 | `kisi-examples.html` | the same viewer with two example boards built in – ThunderScope Rev5.3 and LibreVNA – each with its power tree as a kisi.json |
 | `kisi.mjs` | the command line for scripts, CI and agents (Node.js ≥ 18), with the 2D field solver |
 | `kisi-docs.pdf` | this documentation as one PDF |
-| `kisi-references.html` | 3D reference cases for vias, stubs, pairs, lines and plane cavities with field plots, and kisi's fast models against them (attached to the releases in which the cases changed, currently [v0.2.4](https://github.com/riehlies/kisi/releases/tag/v0.2.4)) |
+| `kisi-references.html` | 3D reference cases for vias, stubs, pairs, lines and plane cavities with field plots, and kisi's fast models against them (attached to the releases in which the cases changed, currently [v0.3.0](https://github.com/riehlies/kisi/releases/tag/v0.3.0)) |
 
 The [live version](https://riehlies.github.io/kisi/) serves the viewer and the example viewer from GitHub Pages.
 

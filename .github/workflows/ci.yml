@@ -245,7 +245,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: bundles
       - name: Viewer in ${{ matrix.browser }}
@@ -272,7 +272,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: bundles
       - name: kisi.mjs on Windows

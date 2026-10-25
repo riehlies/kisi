@@ -109,7 +109,8 @@ rail for 7 ICs, with a source") and shows only those inputs; *more* holds where 
 and optional fields. **Apply** runs the gap list through the core at once: the step gets its check mark when kisi no
 longer reports it (or reports only dismissed items), and the next open step opens; otherwise the step stays open
 and says what is still missing ("6 of 7 ICs still missing: …"), with the check's errors for its entries. "hand to
-the agent" settles a step for now and adds it to the agent card's prompt. The tab shows its progress ("1 of 2
+the agent" settles a step for now and adds it to the agent card's prompt; "hand single items to the agent" hands
+over only some of its items (the step's marker counts the rest). The tab shows its progress ("1 of 2
 required steps done") and ends with "Ready for the impedance check" (or the channel check, the power analysis) and
 a button to that view; the last step is saving the kisi.json. Where a gap mixes categories, a tab shows only the
 items that matter for it (a dielectric with only a default tanδ is a Channel item). Nets in "Default" that look
@@ -134,14 +135,20 @@ core's field reader).
 The draft is the board's kisi.json itself: the loaded file with your edits, one for all three tabs (the laminate
 entered under Impedance also closes the gap under Channel). It is kept per board in this browser until it is saved
 or discarded, so a reload of the page and of the board brings it back; the side card says how it differs from the
-loaded file, and "Discard draft" returns to it. The check (the same as `kisi config-check`) runs as you type, the
+loaded file, and "Discard draft" returns to it. A draft belongs to the kisi.json it was made on (by content): when
+that file has changed since – edited elsewhere, or a newer build of kisi – the draft is not applied, and a line
+above the tabs offers "Restore" (the draft over the loaded file) or "Discard". A draft made on a bundled example is
+dropped when the example's kisi.json changed. The check (the same as `kisi config-check`) runs as you type, the
 gap list follows a moment later, and the right column shows the resulting file. "Save kisi.json" writes the
 draft, or the loaded file with only the current category's changes (the rest stays in the draft); keys the page
 has no form for are kept, and a file loaded and saved unchanged stays the same. Errors in what is saved block it,
 warnings do not. In Chromium a save dialog opens next to the board (and "Reload" reads the file from then on);
-other browsers download it. The saved file is loaded at once. Research-heavy gaps go to the agent path: "hand to
-the agent" on a gap adds it to the card's prompt for the kisi-prepare skill, limited to that category
-(`kisi gaps --for …`), and a category whose open gaps are all handed over says so.
+other browsers download it. The saved file is loaded at once. Research-heavy gaps go to the agent path: what is
+handed over – whole steps or single items – is listed in the agent card, and its prompt for the kisi-prepare skill
+names each gap with what is needed, where it goes in kisi.json and its items (refdes with part number and rails,
+nets, rails, classes, layers), limited to that category (`kisi gaps --for …`) or for all categories. With nothing
+handed over the prompt asks for the category's open gaps. The marks are kept with the draft in this browser, not
+in kisi.json; a category whose open gaps are all handed over says so.
 
 ## Worked example: Seeed Studio XIAO nRF54LM20A
 [`docs/examples/xiao-nrf54lm20a/XIAO nRF54LM20A.kisi.json`](examples/xiao-nrf54lm20a/XIAO%20nRF54LM20A.kisi.json)

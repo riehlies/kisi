@@ -238,7 +238,7 @@ def prep_load(pg, pcb_js, cfg_text, clear=True):
     (no example button pressed); clear its draft."""
     if clear:
         pg.evaluate("() => { for (const k of Object.keys(localStorage)) if (k.startsWith('kisi.prep.v1.')) localStorage.removeItem(k); S.prep.mem = {}; }")
-    pg.evaluate("async ([cfg]) => { const [a, c, n] = await (%s); for (const k of ['ts', 'vna']) document.getElementById('sample-' + k).setAttribute('aria-pressed', 'false'); await loadFiles(a, c, n, null, cfg ? { name: n.replace(/\\.kicad_pcb$/i, '') + '.kisi.json', text: cfg } : null); }" % pcb_js, [cfg_text])
+    pg.evaluate("async ([cfg]) => { const [a, c, n] = await (%s); for (const k of ['ts', 'vna']) document.getElementById('sample-' + k).setAttribute('aria-pressed', 'false'); S.sample = null; await loadFiles(a, c, n, null, cfg ? { name: n.replace(/\\.kicad_pcb$/i, '') + '.kisi.json', text: cfg } : null); }" % pcb_js, [cfg_text])
     pg.wait_for_function(f"S.scene && {BUSY} && S.prep.base", timeout=120000)
     prep_idle(pg)
 
@@ -433,6 +433,92 @@ def prepare_checklist(pg, tag, step):
     pg.click("#view-si"); pg.wait_for_timeout(400)
     step("checklist_board_back")
     pg.evaluate("() => { prepDiscard(); }"); prep_idle(pg)
+
+
+def prepare_handover(pg, tag, step):
+    """Single items handed to the agent appear in the agent card's prompt (per category and for all categories),
+    an item taken back disappears, the marks survive a reload; nothing handed over: the default prompt."""
+    prep_load(pg, SAMPLE_TS, None)
+    if not pg.evaluate("S.prep.open"):
+        pg.click("#prep-btn"); pg.wait_for_timeout(300)
+    prep_tab(pg, "power")
+    sel = 'article[data-gap="ic-loads"]'
+    prompt = lambda: pg.inner_text("#prep-prompt")
+    if "research this category's open gaps" not in prompt():
+        problems.append(f"{tag}: handover: without anything handed over the prompt is not the default one")
+    prep_open(pg, sel)
+    pg.locator(f"{sel} details.prep-hand > summary").click(); pg.wait_for_timeout(100)
+    boxes = pg.locator(f'{sel} input[data-a="agentitem"]')
+    keys = [boxes.nth(i).get_attribute("data-k") for i in range(2)]
+    for k in keys:
+        pg.check(f'{sel} input[data-a="agentitem"][data-k="{k}"]'); prep_idle(pg)
+    p1 = prompt()
+    if not all(k in p1 for k in keys) or "ic-loads" not in p1 or "--for power" not in p1 or "PI_LOAD" not in p1:
+        problems.append(f"{tag}: handover: the prompt lacks the two items handed over {keys}: {p1[:300]}")
+    step("handover_prompt")
+    pg.uncheck(f'{sel} input[data-a="agentitem"][data-k="{keys[1]}"]'); prep_idle(pg)
+    p2 = prompt()
+    if keys[0] not in p2 or re.search(r"\b%s\b" % re.escape(keys[1]), p2):
+        problems.append(f"{tag}: handover: after taking {keys[1]} back the prompt is {p2[:300]}")
+    # the marks are kept in the draft: loading the board again keeps them
+    pg.evaluate("async () => { const l = S.lastFiles; await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, l.cfg); }")
+    pg.wait_for_function(f"S.scene && {BUSY} && S.prep.base", timeout=120000); prep_idle(pg)
+    if not pg.evaluate("S.prep.open"):
+        pg.click("#prep-btn"); pg.wait_for_timeout(300)
+    prep_tab(pg, "power")
+    if keys[0] not in prompt():
+        problems.append(f"{tag}: handover: the item handed over is gone after loading the board again")
+    pg.select_option("#prep-agent-scope", "all"); pg.wait_for_timeout(100)
+    pa = prompt()
+    if "Power (--for power):" not in pa or keys[0] not in pa or "`kisi gaps`" not in pa:
+        problems.append(f"{tag}: handover: the all-categories prompt is {pa[:300]}")
+    pg.select_option("#prep-agent-scope", "tab")
+    pg.evaluate("() => { const d = prepD(); d.agent = {}; d.agentItems = {}; prepPersist(); prepDiscard(); }"); prep_idle(pg)
+    pg.click("#view-si"); pg.wait_for_timeout(300)
+
+
+def prepare_stale_draft(pg, tag, step):
+    """A stored draft belongs to the kisi.json it was made on: the same board with a changed kisi.json shows the
+    notice and the loaded file (no stale gaps), Restore lays the draft over it, Discard removes it; for a bundled
+    example whose kisi.json changed the draft is dropped without a notice."""
+    text0 = pg.evaluate("SAMPLES.ts.config.text")
+    mark = "draft over the old file (viewer check)"
+    def make_draft(load):
+        load()
+        if not pg.evaluate("S.prep.open"):
+            pg.click("#prep-btn"); pg.wait_for_timeout(300)
+        pg.evaluate("(m) => { const w = prepW(); w.notes = (w.notes || []).concat([m]); prepEdited(false); }", mark); prep_idle(pg)
+        return pg.evaluate("(k) => !!localStorage.getItem(k)", "kisi.prep.v1." + pg.evaluate("S.name"))
+    text1 = json.dumps(dict(json.loads(text0), notes=json.loads(text0).get("notes", []) + ["edited elsewhere (viewer check)"]), indent=1)
+    if not make_draft(lambda: prep_load(pg, SAMPLE_TS, text0)):
+        problems.append(f"{tag}: stale draft: the draft was not stored")
+    prep_load(pg, SAMPLE_TS, text1, clear=False)
+    if not pg.evaluate("S.prep.open"):
+        pg.click("#prep-btn"); pg.wait_for_timeout(300)
+    st = pg.evaluate("() => ({ shown: !$('prep-stale').hidden, text: $('prep-stale').textContent, dirty: prepDirty(), count: prepCount() })")
+    if not st["shown"] or "earlier version of this kisi.json" not in st["text"] or st["dirty"] or st["count"] != 0:
+        problems.append(f"{tag}: stale draft: after the kisi.json changed: {st}")
+    step("stale_draft_notice")
+    pg.click('#prep-stale [data-b="stale-restore"]'); prep_idle(pg)
+    if not pg.evaluate("(m) => prepDirty() && (prepW().notes || []).includes(m) && $('prep-stale').hidden && prepD().foreign", mark):
+        problems.append(f"{tag}: stale draft: Restore did not lay the draft over the loaded file")
+    pg.evaluate("() => prepDiscard()"); prep_idle(pg)
+    make_draft(lambda: prep_load(pg, SAMPLE_TS, text0))
+    prep_load(pg, SAMPLE_TS, text1, clear=False)
+    pg.click('#prep-stale [data-b="stale-discard"]'); prep_idle(pg)
+    if pg.evaluate("(k) => !!localStorage.getItem(k) || !$('prep-stale').hidden || prepDirty()", "kisi.prep.v1." + pg.evaluate("S.name")):
+        problems.append(f"{tag}: stale draft: Discard left the old draft")
+    # a bundled example whose kisi.json changed (a new build): the draft goes without a notice
+    def load_example():
+        pg.evaluate("async () => { await loadSample('ts'); }")
+        pg.wait_for_function(f"S.scene && {BUSY} && S.prep.base", timeout=120000); prep_idle(pg)
+    make_draft(load_example)
+    pg.evaluate("(t) => { SAMPLES.ts.config.text = t; }", text1)
+    load_example()
+    if pg.evaluate("(k) => !!localStorage.getItem(k) || !$('prep-stale').hidden || prepDirty() || prepCount() !== 0", "kisi.prep.v1." + pg.evaluate("S.name")):
+        problems.append(f"{tag}: stale draft: the example kept a draft made on its earlier kisi.json")
+    pg.evaluate("(t) => { SAMPLES.ts.config.text = t; }", text0)
+    pg.click("#view-si"); pg.wait_for_timeout(300)
 
 
 def prepare_examples_clean(pg, tag, step):
@@ -952,6 +1038,8 @@ def prepare_all(pg, tag, step, errs):
     if pg.evaluate("typeof SAMPLES !== 'undefined' && !!SAMPLES.ts && !!SAMPLES.ts.config"):
         prepare_examples_clean(pg, tag, step)
         prepare_checklist(pg, tag, step)
+        prepare_handover(pg, tag, step)
+        prepare_stale_draft(pg, tag, step)
         prepare_roundtrip(pg, tag, step)
         if tag == "light" and not a.quick:
             prepare_acceptance(pg, tag, step, SAMPLE_TS, pg.evaluate("SAMPLES.ts.config.text"), {}, "ts")

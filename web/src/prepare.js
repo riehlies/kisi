@@ -43,7 +43,7 @@ const PREP_KV = { PI_SERIES: ["z100", "rdc"], PI_THERMAL: ["theta_jb", "theta_jc
 const PREP_DIEL = /^(X5R|X7R|X6S|X7S|X8R|X7T|X6T|Y5V|Z5U|C0G|NP0|COG|NPO|POLYMER|TANTALUM)$/i;
 const PREP_KEY = (name) => "kisi.prep.v1." + (name ?? S.name);
 
-S.prep = { open: false, tab: "impedance", scope: "all", cards: {}, dismissing: null, busy: false, note: "", saved: "", base: null, cur: null, check: null, d: null, mem: {}, pend: {}, takeNote: "",
+S.prep = { handOpen: {}, agentScope: "tab", open: false, tab: "impedance", scope: "all", cards: {}, dismissing: null, busy: false, note: "", saved: "", base: null, cur: null, check: null, d: null, mem: {}, pend: {}, takeNote: "",
   opt: {}, applied: {}, started: {}, moreOpen: {}, applying: null, scrollTo: null, ncName: {}, ncNets: {}, pending: {} };
 
 const prepBoardFile = () => String(S.name).replace(/\.kicad_pcb$/i, "") + ".kicad_pcb";
@@ -67,29 +67,47 @@ const prepBaseObj = () => prepLoaded() || prepSkeleton();
 // ---- the draft per board: restored from this browser, else the loaded file
 function prepD() { return S.prep.d && S.prep.d.name === S.name ? S.prep.d : prepRestore(); }
 const prepW = () => prepD().work;
+// a stored draft belongs to the kisi.json it was made on (hash of the loaded text) and to the draft format:
+// over another base (new example data, a file edited elsewhere) or an older format it is not applied – the
+// page offers Restore / Discard; a draft made on a bundled example is dropped when the example's kisi.json
+// changed (a new build)
+const PREP_DRAFT_V = 2;
+// of the content: keys sorted, formatting ignored (a file saved here and read back has the same hash)
+function prepHash(t) {
+  if (t == null) return "none";
+  const canon = (v) => Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v;
+  try { t = JSON.stringify(canon(JSON.parse(t))); } catch (e) { /* not JSON: the text itself */ }
+  let h = 0x811c9dc5;
+  for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, "0") + ":" + t.length;
+}
+const prepRec = (d, baseText, work) => ({ v: PREP_DRAFT_V, baseHash: prepHash(baseText), sample: S.sample || null, baseText, work, agent: d.agent, agentItems: d.agentItems, shared: d.shared });
 function prepRestore() {
   const lt = prepLoadedText(), base = prepBaseObj();
-  const d = { name: S.name, baseText: lt, work: prepClone(base), agent: {}, shared: {}, foreign: false };
+  const d = { name: S.name, baseText: lt, work: prepClone(base), agent: {}, agentItems: {}, shared: {}, foreign: false, stale: null };
   const st = lsGet(PREP_KEY()) || S.prep.mem[S.name] || null;
   if (st && st.work && typeof st.work === "object" && !Array.isArray(st.work)) {
-    d.agent = st.agent || {}; d.shared = st.shared || {};
-    let sb = null;
-    try { sb = st.baseText == null ? null : JSON.parse(st.baseText); } catch (e) { sb = null; }
-    // the same file (by content), or the draft over another kisi.json (or none): kept when it has edits of its own
-    if (st.baseText === lt || (sb && prepSame(sb, base))) d.work = st.work;
-    else {
-      const own = !prepSame(st.work, sb || { kisi_config: 1, board: prepBoardFile() });
-      if (own) { d.work = st.work; d.foreign = true; }
-    }
+    if (st.v === PREP_DRAFT_V && st.baseHash === prepHash(lt)) prepTakeDraft(d, st, false);
+    else if (S.sample && st.sample === S.sample) { lsSet(PREP_KEY(), null); delete S.prep.mem[S.name]; }
+    else d.stale = st;
   }
   S.prep.d = d;
   return d;
 }
+function prepTakeDraft(d, st, foreign) {
+  d.work = st.work; d.agent = st.agent || {}; d.agentItems = st.agentItems || {}; d.shared = st.shared || {}; d.foreign = foreign; d.stale = null;
+}
+// the notice's answers: the old draft over the loaded file, or away
+function prepStaleRestore() { const d = prepD(); if (!d.stale) return; prepTakeDraft(d, d.stale, true); prepPersist(); prepUpdate(true); prepRender(true); }
+function prepStaleDiscard() { const d = prepD(); if (!d.stale) return; d.stale = null; delete S.prep.mem[d.name]; lsSet(PREP_KEY(d.name), null); prepPersist(); prepRender(true); }
 function prepPersist() {
   const d = prepD();
-  const rec = { v: 1, baseText: d.baseText, work: d.work, agent: d.agent, shared: d.shared };
+  const rec = prepRec(d, d.baseText, d.work);
+  const keep = prepDirty() || Object.values(d.agent).some(Boolean) || Object.values(d.agentItems).some((x) => x.length) || Object.keys(d.shared).length;
+  // an old draft waiting for Restore / Discard stays stored until the page has something of its own
+  if (d.stale && !keep) return;
+  d.stale = null;
   S.prep.mem[d.name] = rec;
-  const keep = prepDirty() || Object.values(d.agent).some(Boolean) || Object.keys(d.shared).length;
   lsSet(PREP_KEY(d.name), keep ? rec : null);
 }
 const prepDirty = () => !prepSame(prepW(), prepBaseObj());
@@ -394,7 +412,37 @@ function prepGapState(g, tab) {
   if (left < all) return { cls: "", text: `${left} of ${all} left` };
   return { cls: "", text: all ? `${all} item${all === 1 ? "" : "s"}` : "open" };
 }
-const prepAgentOf = (g) => PREP_MODE[g.id] === "agent" || !!prepD().agent[g.id];
+const prepAgentWhole = (g) => PREP_MODE[g.id] === "agent" || !!prepD().agent[g.id];
+// the items of a gap one by one, as the agent gets them: a key, a label (refdes, net, rail, class, layer)
+// and what identifies it (MPN or value, rails); nets without a target count per net
+function prepUnits(g, tab) {
+  const its = tab ? prepItems(g, tab) : g.items;
+  if (g.id === "nets-without-target") return its.flatMap((i) => (i.nets || []).map((x) => ({ key: x.net, label: netShort(x.net), detail: x.looks_like ? `looks like ${x.looks_like}` : "" })));
+  return its.map((it) => {
+    const label = it.ref || (it.index != null ? `#${it.index} ${it.between || ""}`.trim() : "") || it.class || (it.rail ? netShort(it.rail) : "") || it.fork || it.variant || "";
+    const rails = it.rails ? it.rails.map(netShort).join(", ") : it.rail && it.ref ? netShort(it.rail) : "";
+    const what = it.mpn || it.value || (it.why ? it.why.map((w) => w.split(" ")[0]).join(", ") : "");
+    return { key: label, label, detail: [what, rails && `on ${rails}`].filter(Boolean).join(" ") };
+  }).filter((u) => u.key);
+}
+const prepHandedKeys = (g) => prepD().agentItems[g.id] || [];
+// the items of a gap with the agent now: all (the step handed over) or those handed one by one, among the
+// items the core still reports
+function prepHanded(g, tab) {
+  const now = prepGapsNow().find((x) => x.id === g.id);
+  if (!now) return [];
+  const us = prepUnits(now, tab);
+  if (prepAgentWhole(g)) return us;
+  const ks = new Set(prepHandedKeys(g));
+  return us.filter((u) => ks.has(u.key));
+}
+// a step is with the agent when handed over as a whole, or when every item still open is handed over
+const prepAgentOf = (g, tab) => {
+  if (prepAgentWhole(g)) return true;
+  if (!prepHandedKeys(g).length) return false;
+  const now = prepGapsNow().find((x) => x.id === g.id), us = now ? prepUnits(now, tab ?? S.prep.tab) : [];
+  return us.length > 0 && prepHanded(g, tab ?? S.prep.tab).length === us.length;
+};
 // the steps of a tab: the gaps of the loaded file, then gaps the draft brought up (a power tree brings the
 // efficiency and thermal gaps), by priority, otherwise in the core's order
 function prepSteps(tab) {
@@ -407,7 +455,7 @@ function prepStepState(g, tab) {
   const st = prepGapState(g, tab);
   if (st.cls === "done") return { k: "done", text: "done" };
   if (st.cls === "dis") return { k: "dis", text: "dismissed" };
-  if (prepAgentOf(g)) return { k: "agent", text: "with the agent" };
+  if (prepAgentOf(g, tab)) return { k: "agent", text: "with the agent" };
   return { k: "open", text: st.text };
 }
 const prepRequired = (g) => g.priority !== "low";
@@ -792,7 +840,7 @@ function prepStepMarker(k, g, tab) {
   if (k === "done") return `<span class="mk done" title="done">✓</span>`;
   if (k === "dis") return `<span class="mk dis" title="dismissed">–</span>`;
   if (k === "agent") return `<span class="mk agent" title="with the agent">↗</span>`;
-  const now = prepGapsNow().find((x) => x.id === g.id) || g, n = g.items.length ? prepCountItems(now, tab) : 0;
+  const now = prepGapsNow().find((x) => x.id === g.id) || g, n = g.items.length ? Math.max(0, prepCountItems(now, tab) - prepHanded(g, tab).length) : 0;
   return `<span class="mk open ${g.priority === "high" ? "h" : g.priority === "medium" ? "m" : "l"}" title="${n ? `${prepPl(n, g.id)} open` : "open"}, ${g.priority} priority">${n || "!"}</span>`;
 }
 function prepCard(g, gs, na, tab, n) {
@@ -807,7 +855,8 @@ function prepCard(g, gs, na, tab, n) {
   const applied = !!S.prep.applied[key], partial = st.k === "open" && /left/.test(prepGapState(g, tab).text);
   const missing = st.k === "open" && (applied || partial) ? prepMissingLine(g, tab) : "";
   const errs = st.k === "open" || applied ? prepStepErrors(g) : [];
-  const stateText = na && st.k === "open" ? "not blocking" : st.k === "open" ? (prepRequired(g) ? esc(prepGapState(g, tab).text) : "optional") : st.text;
+  const nh = st.k === "open" ? prepHanded(g, tab).length : 0;
+  const stateText = (na && st.k === "open" ? "not blocking" : st.k === "open" ? (prepRequired(g) ? esc(prepGapState(g, tab).text) : "optional") : st.text) + (nh ? ` · ${nh} with the agent` : "");
   const more = `<details class="prep-more"${S.prep.moreOpen[key] ? " open" : ""}><summary>more – where to find it, where it goes${hasOpt ? ", optional fields" : ""}</summary>
       <dl class="prep-meta"><dt>Why</dt><dd>${esc(g.issue)}${ns < nall ? ` Here: the ${ns} of ${nall} items that matter for ${PREP_VIEWS[tab]}.` : ""}</dd><dt>Where to find it</dt><dd>${esc(g.where_to_find)}</dd><dt>Goes to</dt><dd><code>${esc((g.write && g.write.to) || "")}</code></dd><dt>Affects</dt><dd>${others}${tags}</dd></dl>
       ${hasOpt ? `<label class="prep-chk"><input type="checkbox" data-a="opt" data-g="${g.id}" ${opt ? "checked" : ""}> show the optional fields (${mode === "stackup" ? "material, thickness" : mode === "thermal" ? "ψJT, Tj max" : mode === "caps" ? "ESR, ESL" : "basis: typical / maximum"})</label>` : ""}</details>`;
@@ -818,6 +867,7 @@ function prepCard(g, gs, na, tab, n) {
   const foot = `<div class="prep-foot">${canApply ? `<button class="btn small ${pending || st.k === "open" ? "primary" : ""}" data-b="apply" data-g="${g.id}">${label}</button>` : ""}
       ${mode === "kicad" ? "" : `<label class="prep-chk"><input type="checkbox" data-a="agent" data-g="${g.id}" ${handed || mode === "agent" ? "checked" : ""} ${mode === "agent" ? "disabled" : ""}> hand to the agent</label>`}
       <span class="prep-res ${st.k}">${st.k === "done" ? "✓ Done – the core no longer reports it." : st.k === "dis" ? "Dismissed with your reason." : st.k === "agent" ? "With the agent: in the prompt of the agent card." : esc(missing)}</span></div>
+      ${prepHandBlock(g, tab, st, mode)}
       ${errs.length ? `<ul class="prep-msgs">${errs.slice(0, 4).map((m) => `<li>${esc(m.text)}</li>`).join("")}${errs.length > 4 ? `<li class="o">${errs.length - 4} more errors</li>` : ""}</ul>` : ""}`;
   return `<article class="prep-gap prep-step k-${st.k} ${na ? "later" : ""} ${opt ? "showopt" : ""}" id="prep-gap-${g.id}" data-gap="${g.id}" aria-expanded="${open}">
     <header data-toggle="${g.id}">${prepStepMarker(st.k, g, tab)}<h3>${esc(PREP_TITLES[g.id] || g.id)}<code>${g.id}</code></h3>
@@ -826,6 +876,15 @@ function prepCard(g, gs, na, tab, n) {
       ${st.k === "dis" ? "" : prepEditor(g, gs, tab)}${prepDismissBlock(g)}${prepStaleList(g.id)}
       ${foot}${more}
     </div></article>`;
+}
+// single items to the agent: one checkbox per item still open (the step as a whole: "hand to the agent")
+function prepHandBlock(g, tab, st, mode) {
+  if (st.k !== "open" || mode === "kicad" || mode === "agent" || prepAgentWhole(g)) return "";
+  const now = prepGapsNow().find((x) => x.id === g.id), us = now ? prepUnits(now, tab) : [];
+  if (us.length < 2) return "";
+  const ks = new Set(prepHandedKeys(g)), nh = us.filter((u) => ks.has(u.key)).length, key = S.name + g.id;
+  return `<details class="prep-hand" data-hand="${g.id}"${S.prep.handOpen[key] ? " open" : ""}><summary>hand single items to the agent${nh ? ` <b>(${nh} handed over)</b>` : ""}</summary>
+    <div class="prep-hand-list">${us.map((u) => `<label class="prep-chk" title="${esc(u.detail)}"><input type="checkbox" data-a="agentitem" data-g="${g.id}" data-k="${esc(u.key)}" ${ks.has(u.key) ? "checked" : ""}> ${esc(u.label)}</label>`).join("")}</div></details>`;
 }
 // the last step: save the file
 function prepSaveStep(n, tab) {
@@ -972,9 +1031,51 @@ function prepTakeCard(tab) {
     ${S.prep.takeNote ? `<p class="note">${esc(S.prep.takeNote)}</p>` : ""}</div>`;
 }
 
-function prepPrompt(gs) {
-  const ids = gs.filter((g) => prepGapState(g, S.prep.tab).cls === "" && prepAgentOf(g)).map((g) => g.id);
-  return `Prepare ${prepBoardFile()} for kisi's ${PREP_VIEWS[S.prep.tab].toLowerCase()} analysis with the skill kisi-prepare. Start from \`kisi gaps --for ${S.prep.tab}\`${ids.length ? `, research the gaps ${ids.join(", ")}` : ", research this category's open gaps"} from datasheets, BOM and position files, with a source for every value. Merge the results into ${S.name}.kisi.json next to the board – keep my entries and the dismissed gaps – and run \`kisi config-check\`.`;
+// what was handed to the agent: per gap the items still open (all of them when the step went as a whole),
+// for one category or all of them (a gap shared by categories once, under the first)
+const PREP_NEED = {
+  "stackup-missing": "the stackup (layers, thicknesses, εr, tanδ)", "stackup-defaults": "εr and tanδ per dielectric layer",
+  "nets-without-target": "a class with target impedance and profile (or a dismissal if not an interface)",
+  "classes-without-standard": "the interface profile per class", "assembly-variant": "the assembly variant to analyse",
+  "assembly-variant-forks": "the unused alternative per fork, as not fitted", "power-tree": "the regulator chain (PI_REG)",
+  "rails-without-voltage": "the rail's voltage", "rails-without-source": "the rail's source", "ic-loads": "the current per rail",
+  "cap-ratings": "rated voltage and dielectric", "thermal-data": "θJB and θJC (or ψJT)", "regulator-efficiency": "efficiency or dropout",
+  "bead-ratings": "impedance at 100 MHz and DC resistance", "channel-part-values": "the part's value", "cap-values": "the capacitance",
+};
+function prepHandover(scope) {
+  const tabs = scope === "all" ? Object.keys(PREP_VIEWS) : [scope], seen = new Set(), out = [];
+  for (const tab of tabs) {
+    const vn = (prepViewsNow() || {})[tab];
+    if (vn && !vn.applicable) continue;
+    for (const g of prepSteps(tab)) {
+      if (seen.has(g.id)) continue;
+      const st = prepStepState(g, tab);
+      if (st.k === "done" || st.k === "dis") continue;
+      const units = prepHanded(g, tab), whole = prepAgentWhole(g);
+      if (!whole && !units.length) continue;
+      seen.add(g.id);
+      const now = prepGapsNow().find((x) => x.id === g.id);
+      out.push({ g, tab, whole, units, total: now ? prepUnits(now, tab).length : 0 });
+    }
+  }
+  return out;
+}
+function prepHandLine(h) {
+  const { g, whole, units, total } = h, cap = whole ? 12 : units.length;
+  const list = units.slice(0, cap).map((u) => u.detail ? `${u.label} (${u.detail})` : u.label).join("; ");
+  const rest = units.length > cap ? `; … +${units.length - cap} more – all ${total} items of the gap` : "";
+  const what = PREP_NEED[g.id] || g.issue.split(/[.:]/)[0];
+  const to = (g.write && g.write.to) || "";
+  return `- ${g.id}: ${what}${to ? ` → ${to}` : ""}${units.length ? ` – ${whole && units.length === total ? "all: " : ""}${list}${rest}` : ""}`;
+}
+function prepPrompt(gs, scope) {
+  scope = scope || S.prep.tab;
+  const hs = prepHandover(scope), all = scope === "all";
+  const what = all ? "analyses" : `${PREP_VIEWS[scope].toLowerCase()} analysis`, cmd = all ? "`kisi gaps`" : `\`kisi gaps --for ${scope}\``;
+  const tail = `Merge the results into ${S.name}.kisi.json next to the board – keep my entries and the dismissed gaps – and run \`kisi config-check\`.`;
+  if (!hs.length) return `Prepare ${prepBoardFile()} for kisi's ${what} with the skill kisi-prepare. Start from ${cmd}, research ${all ? "the" : "this category's"} open gaps from datasheets, BOM and position files, with a source for every value. ${tail}`;
+  const lines = all ? Object.keys(PREP_VIEWS).flatMap((t) => { const ls = hs.filter((h) => h.tab === t); return ls.length ? [`${PREP_VIEWS[t]} (--for ${t}):`, ...ls.map(prepHandLine)] : []; }) : hs.map(prepHandLine);
+  return `Prepare ${prepBoardFile()} for kisi's ${what} with the skill kisi-prepare. Start from ${cmd} and research only what I handed over (gap: what is needed → where it goes – items), from datasheets, BOM and position files, with a source for every value:\n${lines.join("\n")}\n${tail}`;
 }
 
 // ---- the page
@@ -1057,7 +1158,10 @@ function prepRenderSide() {
   const diff = prepDiff(), dirty = diff.n > 0;
   const parts = [diff.add && `${diff.add} added`, diff.chg && `${diff.chg} changed`, diff.del && `${diff.del} removed`].filter(Boolean).join(", ");
   $("prep-draft").innerHTML = (dirty ? `<b>Draft:</b> ${parts} – compared with ${lc ? "the loaded file" : "no file"}; kept in this browser until saved or discarded.` : lc ? `No changes to the loaded file (${prepEntries(prepW()).size} entries).` : "Nothing entered yet.")
-    + (d.foreign ? ` <span class="warn">This draft was started over ${d.baseText == null ? "no" : "another"} kisi.json – check it, or discard it to start from ${lc ? "the loaded file" : "scratch"}.</span>` : "");
+    + (d.foreign ? ` <span class="warn">This draft was made on ${lc ? "an earlier version of this" : "another"} kisi.json – check it, or discard it to start from ${lc ? "the loaded file" : "scratch"}.</span>` : "");
+  $("prep-stale").hidden = !d.stale;
+  if (d.stale) $("prep-stale").innerHTML = `<span>Unsaved draft from ${lc && d.stale.baseText != null ? "an earlier version of this kisi.json" : d.stale.baseText != null ? "a kisi.json that is not loaded now" : "before this kisi.json was loaded"}${d.stale.v !== PREP_DRAFT_V ? " (an earlier version of kisi)" : ""} – not applied.</span>
+    <button class="btn small" data-b="stale-restore">Restore</button><button class="btn small" data-b="stale-discard">Discard</button>`;
   $("prep-discard").hidden = !dirty;
   const scopes = [["all", "save everything"], [tab, `save only ${PREP_VIEWS[tab]}`]];
   if (!scopes.some((s) => s[0] === S.prep.scope)) S.prep.scope = "all";
@@ -1078,11 +1182,14 @@ function prepRenderSide() {
   $("prep-msgs").innerHTML = !any ? `<li class="o">Nothing entered yet.</li>` : mine.map((m) => `<li class="${m.level === "warning" ? "w" : ""}">${esc(m.text)}</li>`).join("") +
     (other.length ? `<li class="o">${other.length} more in entries of other categories</li>` : "") + (!nerr ? `<li class="ok">ok – ${entries} entr${entries === 1 ? "y" : "ies"}</li>` : "");
   const gs = S.prep.gs || [], na = S.prep.na;
-  const ag = gs.filter((g) => prepGapState(g, tab).cls === "" && prepAgentOf(g));
-  $("prep-agent-for").textContent = `--for ${tab}`;
-  $("prep-agent-list").innerHTML = ag.length ? ag.map((g) => `<li class="w"><b>${esc(PREP_TITLES[g.id] || g.id)}</b> <code>${g.id}</code></li>`).join("") : `<li class="o">nothing handed over – the prompt asks for this category's open gaps</li>`;
-  $("prep-prompt").textContent = na ? `Nothing to check for ${PREP_VIEWS[tab]} on this board – no prompt needed.` : prepPrompt(gs);
-  $("prep-copy").disabled = !!na;
+  const asc = S.prep.agentScope === "all" ? "all" : tab, hs = prepHandover(asc);
+  $("prep-agent-for").textContent = asc === "all" ? "all categories" : `--for ${tab}`;
+  $("prep-agent-scope").innerHTML = [[ "tab", `this category (${PREP_VIEWS[tab]})`], ["all", "all categories"]].map(([k, t]) => `<option value="${k}" ${(S.prep.agentScope === "all") === (k === "all") ? "selected" : ""}>${t}</option>`).join("");
+  $("prep-agent-list").innerHTML = hs.length ? hs.map((h) => `<li class="w"><b>${esc(PREP_TITLES[h.g.id] || h.g.id)}</b> <code>${h.g.id}</code>${h.units.length ? ` – ${h.whole && h.units.length === h.total ? "all " : ""}${h.units.length} item${h.units.length === 1 ? "" : "s"}${h.whole ? "" : `: ${esc(h.units.slice(0, 6).map((u) => u.label).join(", "))}${h.units.length > 6 ? " …" : ""}`}` : ""}</li>`).join("")
+    : `<li class="o">nothing handed over – the prompt asks for ${asc === "all" ? "the" : "this category's"} open gaps</li>`;
+  const nap = asc !== "all" && na;
+  $("prep-prompt").textContent = nap ? `Nothing to check for ${PREP_VIEWS[tab]} on this board – no prompt needed.` : prepPrompt(gs, asc);
+  $("prep-copy").disabled = !!nap;
   $("prep-json-name").textContent = S.name + ".kisi.json";
   let txt = "";
   try { txt = prepText(S.prep.scope); } catch (e) { txt = "(" + e.message + ")"; }
@@ -1152,7 +1259,7 @@ async function prepSave() {
   // the saved file is the new base; what was not saved (other categories) stays in the draft
   const d = prepD();
   const rest = scope === "all" ? JSON.parse(text) : d.work;
-  const rec = { v: 1, baseText: text, work: rest, agent: d.agent, shared: d.shared };
+  const rec = prepRec(d, text, rest);
   S.prep.mem[S.name] = rec; lsSet(PREP_KEY(), rec);
   S.prep.savedNext = `${name} ${how} and loaded${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}.`;
   const l = S.lastFiles;
@@ -1178,9 +1285,10 @@ function prepOnInput(t, full) {
   // a field that loses the focus while the forms are drawn again fires "change" from inside the redraw
   if (!t.isConnected || S.prep.drawing) return;
   const stepEl = t.closest && t.closest(".prep-step[data-gap]");
-  if (stepEl && stepEl.dataset.gap !== "save" && t.dataset.a && !["agent", "opt"].includes(t.dataset.a)) S.prep.pending[S.name + stepEl.dataset.gap] = true;
+  if (stepEl && stepEl.dataset.gap !== "save" && t.dataset.a && !["agent", "agentitem", "opt"].includes(t.dataset.a)) S.prep.pending[S.name + stepEl.dataset.gap] = true;
   const a = t.dataset.a, val = t.type === "checkbox" ? t.checked : t.value, k = t.dataset.k;
   if (t.id === "prep-scope") { S.prep.scope = t.value; prepRender(false); return; }
+  if (t.id === "prep-agent-scope") { S.prep.agentScope = t.value; prepRender(false); return; }
   if (t.id === "prep-notes") { const w = prepW(), ls = String(t.value).split("\n").map((x) => x.trim()).filter(Boolean); if (ls.length) w.notes = ls; else { delete w.notes; if ("notes" in prepBaseObj()) w.notes = []; } prepEdited(false); return; }
   if (!a) return;
   if (a === "take") { S.prep.takeSrc = { ...(S.prep.takeSrc || {}), [k]: val }; if (!String(val).trim()) delete S.prep.takeSrc[k]; const b = document.querySelector('#prep [data-b="take"]'); if (b) b.disabled = !prepSrcOk(S.prep.takeSrc); return; }
@@ -1189,6 +1297,16 @@ function prepOnInput(t, full) {
     prepD().agent[t.dataset.g] = t.checked; if (!t.checked) delete prepD().agent[t.dataset.g];
     prepPersist();
     if (t.checked) prepAdvance(S.prep.tab, t.dataset.g);
+    clearTimeout(prepDrawTimer); prepDrawTimer = setTimeout(() => prepRender(true), 0);
+    return;
+  }
+  if (a === "agentitem") {
+    if (!full) return;
+    const d = prepD(), g = t.dataset.g, ks = new Set(d.agentItems[g] || []);
+    if (t.checked) ks.add(k); else ks.delete(k);
+    if (ks.size) d.agentItems[g] = [...ks]; else delete d.agentItems[g];
+    S.prep.handOpen[S.name + g] = true;
+    prepPersist();
     clearTimeout(prepDrawTimer); prepDrawTimer = setTimeout(() => prepRender(true), 0);
     return;
   }
@@ -1287,7 +1405,7 @@ $("prep-btn").onclick = () => { if (S.scene) prepOpen(!S.prep.open); };
 for (const k of ["si", "ch", "pi"]) $("view-" + k).addEventListener("click", () => { if (S.prep.open) prepOpen(false); });
 $("prep").addEventListener("input", (ev) => { const t = ev.target; if (t.matches("select, input[type=checkbox], input[type=radio]")) return; prepOnInput(t, false); });
 $("prep").addEventListener("change", (ev) => prepOnInput(ev.target, true));
-$("prep").addEventListener("toggle", (ev) => { const d = ev.target; if (d.classList && d.classList.contains("prep-more")) { const c = d.closest("[data-gap]"); if (c) S.prep.moreOpen[S.name + c.dataset.gap] = d.open; return; } if (d.classList && d.classList.contains("prep-srcmore")) { const e = d.querySelector("[data-e]"); if (e) S.prep.openSrc = d.open ? e.dataset.e : (S.prep.openSrc === e.dataset.e ? null : S.prep.openSrc); } }, true);
+$("prep").addEventListener("toggle", (ev) => { const d = ev.target; if (d.classList && d.classList.contains("prep-more")) { const c = d.closest("[data-gap]"); if (c) S.prep.moreOpen[S.name + c.dataset.gap] = d.open; return; } if (d.classList && d.classList.contains("prep-hand")) { S.prep.handOpen[S.name + d.dataset.hand] = d.open; return; } if (d.classList && d.classList.contains("prep-srcmore")) { const e = d.querySelector("[data-e]"); if (e) S.prep.openSrc = d.open ? e.dataset.e : (S.prep.openSrc === e.dataset.e ? null : S.prep.openSrc); } }, true);
 $("prep").addEventListener("click", async (ev) => {
   const t = ev.target.closest("button, header[data-toggle]");
   if (!t) return;
@@ -1298,6 +1416,8 @@ $("prep").addEventListener("click", async (ev) => {
   if (t.id === "prep-discard") { prepDiscard(); return; }
   if (t.id === "prep-copy") { try { await navigator.clipboard.writeText($("prep-prompt").textContent); } catch (e) { /* no clipboard (insecure context) */ } $("prep-copied").hidden = false; setTimeout(() => ($("prep-copied").hidden = true), 1500); return; }
   if (!b) return;
+  if (b === "stale-restore") { prepStaleRestore(); return; }
+  if (b === "stale-discard") { prepStaleDiscard(); return; }
   if (b === "apply") {
     // the step's entries are in the draft already (as typed); Apply commits a filled new row, runs the
     // gap list at once and then marks the step or says what is missing

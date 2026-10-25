@@ -274,13 +274,15 @@
       </section>
       <section class="card" aria-labelledby="h-prep-check"><h2 id="h-prep-check">Check <em id="prep-check-sum"></em></h2><ul class="prep-msgs" id="prep-msgs"></ul></section>
       <section class="card" aria-labelledby="h-prep-agent"><h2 id="h-prep-agent">Agent path <em>kisi-prepare · <span id="prep-agent-for"></span></em></h2>
-        <p class="note">Gaps of this category that need datasheets, BOMs or curves. The agent researches them with sources and merges them into the same kisi.json (keeping your entries and dismissals); loaded again, the file fills this page.</p>
+        <p class="note">What you hand over (a step, or single items in it) goes into the prompt below. The agent researches it from datasheets, BOMs or curves, with sources, and merges it into the same kisi.json (keeping your entries and dismissals); loaded again, the file fills this page.</p>
+        <div class="prep-row"><select id="prep-agent-scope" aria-label="prompt for"></select></div>
         <ul class="prep-msgs" id="prep-agent-list"></ul>
         <pre class="prep-prompt" id="prep-prompt"></pre>
         <div class="prep-row"><button class="btn small" id="prep-copy">Copy prompt</button><span class="note" id="prep-copied" hidden>copied</span></div>
       </section>
     </aside>
     <div class="prep-main">
+      <div class="prep-stale" id="prep-stale" role="status" hidden></div>
       <div class="prep-tabs" role="tablist" aria-label="Category" id="prep-tabs"></div>
       <div id="prep-head" class="prep-head"></div>
       <div id="prep-gaps" class="prep-list"></div>

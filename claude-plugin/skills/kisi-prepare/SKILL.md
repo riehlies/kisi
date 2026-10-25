@@ -159,4 +159,5 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
   kisi.json. A value written here is used by `kisi check`, `kisi power`, `kisi report` and the viewer.
 - If the user wants values permanently in KiCad (e.g. `PI_LOAD` as a symbol field), give them the
   list to paste; kisi itself does not write into the schematic.
-- kisi does not use IBIS models (yet); transmitters and receivers come from the interface profiles.
+- kisi does not use IBIS models (out of its scope); transmitters and receivers come from the interface
+  profiles. For simulations with IBIS buffers, export the channel (`kisi export`) to a circuit simulator.

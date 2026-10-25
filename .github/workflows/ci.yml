@@ -9,7 +9,10 @@
 #   cli                 Node CLI against the native CLI on the example boards (compare_cli.py)
 #   solver              2D field solver against HFSS / baseline (validate_field.sh)
 #   models              stored results of the example boards and kisi's models on the 3D via references
-#                       (tools/golden.py; an intended change updates validation/golden in the same commit)
+#                       (tools/golden.py; an intended change updates validation/golden in the same commit) ·
+#                       passivity and causality of the example boards' lanes (crates/kisi-core/tests/causality.rs)
+#   export              the channel export (kisi export) in ngspice against kisi's S-parameters, scikit-rf reads
+#                       the Touchstone files (validation/channel_export/compare.py)
 #   refpage             the 3D reference page builds
 #   docs                the documentation PDF builds (tools/docs_pdf.py; also the link and heading check of docs/)
 #   upstream            Forstén's solver in third_party/ is upstream's tree, unchanged
@@ -42,6 +45,7 @@ jobs:
       models: ${{ steps.c.outputs.models }}
       refpage: ${{ steps.c.outputs.refpage }}
       docs: ${{ steps.c.outputs.docs }}
+      export: ${{ steps.c.outputs.export }}
       upstream: ${{ steps.c.outputs.upstream }}
       full: ${{ steps.c.outputs.full }}
     steps:
@@ -71,10 +75,11 @@ jobs:
       CLI: ${{ needs.changes.outputs.cli }}
       SOLVER: ${{ needs.changes.outputs.solver }}
       MODELS: ${{ needs.changes.outputs.models }}
+      EXPORT: ${{ needs.changes.outputs.export }}
       FULL: ${{ needs.changes.outputs.full }}
-      BUILD: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' }}
+      BUILD: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' || needs.changes.outputs.export == 'true' }}
       BUNDLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' }}
-      EXAMPLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' }}
+      EXAMPLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' || needs.changes.outputs.export == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -150,12 +155,33 @@ jobs:
           python3 tools/ci_checks.py same dist/kisi.html $R/kisi.html
           python3 tools/ci_checks.py same dist/kisi.mjs $R/kisi.mjs
           python3 tools/ci_checks.py sizes dist
+      - name: Passivity and causality of the example boards' lanes
+        if: env.MODELS == 'true'
+        run: cargo test --release -p kisi-core --test causality -- --nocapture
       - name: Stored results (example boards, 3D via references)
         if: env.MODELS == 'true'
         run: |
           python3 -c "import numpy" 2>/dev/null || python3 -m pip install --quiet numpy
           python3 tools/golden.py boards target/release/kisi examples
           python3 tools/golden.py vias target/release/kisi
+      - name: Channel export in ngspice and KiCad 9, LTspice files (ThunderScope LVDS, clock and PCIe lanes)
+        if: env.EXPORT == 'true'
+        run: |
+          sudo add-apt-repository -y ppa:kicad/kicad-9.0-releases > /dev/null
+          sudo apt-get update > /dev/null
+          sudo apt-get install -y --no-install-recommends ngspice kicad > /dev/null
+          kicad-cli version
+          python3 -m pip install --quiet numpy scikit-rf cairosvg
+          python3 validation/channel_export/compare.py target/release/kisi examples/Thunderscope_Rev5.3.kicad_pcb \
+            --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export --lane SYNC_OUT_P --lane REFINOUT2 --lane PCIe_PET1_P --lane PCIe_PER0_P \
+            --kicad --svg kicad-sheets --report kicad-sheets/report.md --strict
+          for d in $RUNNER_TEMP/export/*/; do cp $d/erc.json kicad-sheets/$(basename $d)_erc.json 2>/dev/null || true; done
+      - name: KiCad sheets of the channel export (rendered by kicad-cli 9, ERC results)
+        if: env.EXPORT == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kicad-sheets
+          path: kicad-sheets
       - name: Field solver validation (HFSS / baseline, viewer bundle)
         if: env.SOLVER == 'true'
         run: sh tools/validate_field.sh

@@ -171,6 +171,17 @@ def power_units(pg, tag, step):
     pg.evaluate("setPiMode('b')"); pg.wait_for_timeout(200)
 
 
+def zip_names(path):
+    import zipfile
+    try:
+        with zipfile.ZipFile(path) as z:
+            if z.testzip() is not None:
+                return ["(bad CRC)"]
+            return z.namelist()
+    except zipfile.BadZipFile as e:
+        return [f"(not a zip: {e})"]
+
+
 def prep_change(pg, sel, value):
     """Fill a Prepare page field and commit it (input, then change – as leaving the field does)."""
     loc = pg.locator(sel + " >> visible=true").first
@@ -883,6 +894,19 @@ def run(pg, tag, desktop):
                 pg.click("#detail [data-pm=c]"); pg.wait_for_timeout(500); step("net_xt_common")
                 pg.click("#detail [data-pm=d]"); pg.wait_for_timeout(300)
     pg.evaluate("setMode('dev')"); pg.wait_for_timeout(200)
+    # the export settings (card "Export for simulators"): collapsed by default, remembered when opened
+    if not a.quick and pg.locator("#view-ch").is_visible():
+        pg.click("#view-ch"); pg.wait_for_timeout(400)
+        pg.evaluate("document.getElementById('h-exp').scrollIntoView()"); pg.wait_for_timeout(200)
+        if pg.evaluate("$('ex-opts').open"):
+            problems.append(f"{tag}: export settings open by default")
+        step("export_settings")
+        pg.click("#ex-opts summary"); pg.wait_for_timeout(200)
+        pg.evaluate("document.getElementById('h-exp').scrollIntoView()"); pg.wait_for_timeout(200)
+        step("export_settings_open")
+        if not pg.evaluate("(lsGet('kisi.export.v1') || {}).open === true && $('ex-lib').disabled"):
+            problems.append(f"{tag}: export settings not remembered, or the netlist not tied to the benches")
+        pg.click("#ex-opts summary"); pg.wait_for_timeout(200)
     if desktop and not a.quick:
         pg.click("#view-ch"); pg.wait_for_timeout(500)
         # a board with assembly variants and none chosen: the channel view asks before computing lanes
@@ -893,6 +917,15 @@ def run(pg, tag, desktop):
                 step("variant_prompt")
                 pg.click("#ch-overview [data-variant] >> nth=0"); pg.wait_for_function(f"!variantNeeded() && {BUSY}", timeout=90000)
                 pg.wait_for_timeout(300)
+        # "Export…" only after the check: greyed with a hint in the bus cards and the lane detail
+        if pg.locator("#ch-overview [data-export]").count() and not pg.evaluate("[...document.querySelectorAll('#ch-overview [data-export]')].every((b) => b.disabled && b.title === 'run the channel check first')"):
+            problems.append(f"{tag}: bus export enabled before the channel check")
+        if pg.locator("#ch-overview tr[data-lane]").count():
+            pg.click("#ch-overview tr[data-lane] >> nth=0"); pg.wait_for_timeout(600)
+            if pg.locator("#ch-export").count() and not pg.evaluate("$('ch-export').disabled && $('ch-export').title === 'run the channel check first'"):
+                problems.append(f"{tag}: lane export enabled before the channel check")
+            step("export_disabled")
+            pg.click("#chm-o"); pg.wait_for_timeout(300)
         t0 = time.time()
         pg.click("#ck-start"); pg.wait_for_function("!S.checkRunning && S.laneRes", timeout=300000)
         t_first = time.time() - t0
@@ -908,11 +941,24 @@ def run(pg, tag, desktop):
                 problems.append(f"{tag}: the parallel check ({w + 1} threads) gives other rows than on one thread")
             notes.append(f"{tag}: channel check {pg.evaluate('S.name')} ({pg.evaluate('S.check.rows.length')} channels, {pg.evaluate('navigator.hardwareConcurrency')} cores): "
                          f"{w + 1} threads {t_first:.1f} s with setting the workers up, {t_par / 1000:.1f} s again; one thread {t_one / 1000:.1f} s; rows {'identical' if first == par == one else 'DIFFERENT'}")
+        if pg.locator("#ch-overview [data-export]").count() and not pg.evaluate("[...document.querySelectorAll('#ch-overview [data-export]')].some((b) => !b.disabled)"):
+            problems.append(f"{tag}: bus export still greyed after the channel check")
         if pg.locator("#ch-overview tr[data-lane]").count():
             pg.click("#ch-overview tr[data-lane] >> nth=0"); pg.wait_for_timeout(600)
+            if pg.locator("#ch-export").count() and pg.evaluate("$('ch-export').disabled"):
+                problems.append(f"{tag}: lane export still greyed after the channel check")
             if pg.locator("#ch-detail [data-ct=eye]").count():
                 pg.click("#ch-detail [data-ct=eye]"); pg.wait_for_timeout(600)
             step("lane")
+            # the lane's export (zip): the subcircuit library, the benches, Touchstone, KiCad project, README
+            if tag == "light" and pg.locator("#ch-export").count():
+                with pg.expect_download(timeout=120000) as dl:
+                    pg.click("#ch-export")
+                names = zip_names(dl.value.path())
+                if not (any(n.endswith(".lib") for n in names) and "README.md" in names and any(n.endswith(".kicad_sch") for n in names)):
+                    problems.append(f"{tag}: lane export zip incomplete: {names}")
+                else:
+                    notes.append(f"{tag}: lane export {dl.value.suggested_filename}: {len(names)} files")
         # switch to another variant in the side card (lanes computed again) and back
         if pg.evaluate("!!S.variant && S.variant.variants.length > 1"):
             pg.click("#chm-o"); pg.wait_for_timeout(300)

@@ -16,6 +16,8 @@ Background:
 - [research/channel-simulation-ibis.md](research/channel-simulation-ibis.md) – channel simulation with IBIS
   models: research and the staged concept behind assembly variants and the N-port channel.
 - [research/thermal.md](research/thermal.md) – the temperature estimate: concept, physics and validation.
+- [research/accuracy-levels.md](research/accuracy-levels.md) – accuracy levels: which result gets a level and an
+  uncertainty, where the numbers come from, how CLI and viewer show them.
 - [examples/](examples/) – prepared board configurations; `mockups/` – design mockups of planned features.
 
 For contributors: [ARCHITECTURE.md](../ARCHITECTURE.md) (structure and rules), [CONTRIBUTING.md](../CONTRIBUTING.md),

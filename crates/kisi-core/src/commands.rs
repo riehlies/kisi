@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
-pub const COMMANDS: &[&str] = &["overview", "interfaces", "net", "check", "crosstalk", "profiles", "power", "thermal", "report", "gaps", "config-check", "config-template", "help"];
+pub const COMMANDS: &[&str] = &["overview", "interfaces", "net", "check", "crosstalk", "profiles", "power", "thermal", "report", "gaps", "config-check", "config-template", "export", "help"];
 
 pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on stdout
 
@@ -33,6 +33,19 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    temperature and IR drop at temperature per rail
                    [--tree tree.json] [--ambient °C (25)] [--h W/m²K per side] [--airflow m/s] [--vertical]
   report           write analysis/kisi.json next to the board   [--out FILE]
+  export           a lane or a whole bus for circuit and RF simulators: SPICE subcircuits (RLGC
+                   ladders, kisi's via model, parts, stubs; pairs coupled) with test benches for
+                   ngspice, Xyce and LTspice, Touchstone (.s2p/.s4p, a bus as one N-port with port
+                   map) and a KiCad project with the profile's linear ends
+                   --lane NAME | --bus NAME
+                   [--format lib,spice,xyce,ltspice,touchstone,kicad (default all; lib: the
+                   subcircuits alone, spice: with the ngspice decks)]
+                   [--kicad-style detailed|compact (one symbol per element, default; or the lane
+                   as one symbol)] [--fmax GHZ|profile (top frequency of the ladder and the
+                   Touchstone grid; default as the check, 25 GHz; profile: 5 x Nyquist)]
+                   [--fmin GHZ (grid start and step; default fmax/500)]
+                   [--out DIR (default analysis/export/<name> next to the board)]
+                   [--class CLASS=PROFILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
                    per category (impedance, channel, power) whether there is anything to check and
                    whether it is ready                           [--for impedance|channel|power]
@@ -62,6 +75,17 @@ net: always all of the net's)
 kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design
 at TU Darmstadt. GPL-3.0-only, https://github.com/riehlies/kisi
 A quick design check: results are estimates, without any warranty of correctness.";
+
+/// The export's formats with the KiCad sheet's style.
+fn formats(o: &Opts) -> Result<crate::export::files::Formats, String> {
+    let mut f = crate::export::files::Formats::parse(o.format.as_deref().unwrap_or("all"))?;
+    f.kicad_compact = match o.kicad_style.as_deref() {
+        None | Some("detailed") => false,
+        Some("compact") => true,
+        Some(x) => return Err(format!("--kicad-style {x}: use detailed or compact")),
+    };
+    Ok(f)
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -103,6 +127,13 @@ pub struct Opts {
     pub h: Option<f64>,
     pub airflow: Option<f64>,
     pub vertical: bool,
+    /// `export`: the lane or bus, and what to write
+    pub lane: Option<String>,
+    pub bus: Option<String>,
+    pub format: Option<String>,
+    pub kicad_style: Option<String>,
+    pub fmin: Option<String>,
+    pub fmax: Option<String>,
     /// `gaps`: only the gaps of one category (impedance, channel, power)
     pub for_view: Option<String>,
 }
@@ -155,6 +186,12 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--h" => o.h = Some(num(val(&mut i, a)?, a)?),
             "--airflow" => o.airflow = Some(num(val(&mut i, a)?, a)?),
             "--vertical" => o.vertical = true,
+            "--lane" => o.lane = Some(val(&mut i, a)?),
+            "--bus" => o.bus = Some(val(&mut i, a)?),
+            "--format" => o.format = Some(val(&mut i, a)?),
+            "--kicad-style" => o.kicad_style = Some(val(&mut i, a)?),
+            "--fmin" => o.fmin = Some(val(&mut i, a)?),
+            "--fmax" => o.fmax = Some(val(&mut i, a)?),
             "--for" => o.for_view = Some(val(&mut i, a)?),
             _ if a.starts_with("--") => return Err(format!("unknown option {a} (see `kisi help`)")),
             _ => o.pos.push(a.to_string()),
@@ -182,6 +219,13 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
     if needs_board(&o.cmd) && o.pos.is_empty() {
         return Err(format!("board file missing (kisi {} <board.kicad_pcb>)", o.cmd));
     }
+    if o.cmd == "export" {
+        if o.lane.is_some() == o.bus.is_some() {
+            return Err("export needs --lane NAME or --bus NAME (see `kisi interfaces`)".into());
+        }
+        formats(&o)?;
+        crate::channel_export::FreqRange::parse(o.fmin.as_deref(), o.fmax.as_deref())?;
+    }
     if o.cmd == "net" && o.pos.len() < 2 {
         return Err("net name missing (kisi net <board> <NET>)".into());
     }
@@ -194,7 +238,7 @@ pub fn needs_board(cmd: &str) -> bool {
 
 /// Whether the command benefits from field-solver impedances.
 pub fn uses_field(cmd: &str) -> bool {
-    matches!(cmd, "overview" | "net" | "check" | "crosstalk" | "report")
+    matches!(cmd, "overview" | "net" | "check" | "crosstalk" | "report" | "export")
 }
 
 /// Cross-sections the field solver should solve for this command, most important first:
@@ -273,7 +317,7 @@ fn rf_params(o: &Opts) -> Result<RfParams, String> {
 /// Commands whose results depend on which parts are fitted (lanes): they need an assembly
 /// variant when the board has variants or forks with all alternatives fitted.
 pub fn needs_variant(cmd: &str) -> bool {
-    matches!(cmd, "interfaces" | "check" | "report")
+    matches!(cmd, "interfaces" | "check" | "report" | "export")
 }
 
 pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, String> {
@@ -405,6 +449,25 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
             }
         }
         "config-template" => Ok(config_template(proj()?)),
+        "export" => {
+            let (pr, rp) = (proj()?, rf_params(o)?);
+            let f = formats(o)?;
+            let pick = match (&o.lane, &o.bus) {
+                (Some(l), _) => crate::channel_export::Pick::Lane(l),
+                (None, Some(b)) => crate::channel_export::Pick::Bus(b),
+                _ => return Err("export needs --lane NAME or --bus NAME".into()),
+            };
+            let (mut v, files, name) = crate::channel_export::export(pr, &profiles, &o.classes, pick, f, &rp, crate::channel_export::FreqRange::parse(o.fmin.as_deref(), o.fmax.as_deref())?)?;
+            // the front end writes the files into this folder and replaces "_files" by "written"
+            let dir = o.out.clone().unwrap_or_else(|| {
+                let b = std::path::Path::new(&o.pos[0]);
+                b.parent().unwrap_or(std::path::Path::new("")).join("analysis").join("export").join(&name).to_string_lossy().to_string()
+            });
+            v["field_solver"] = pr.field_summary();
+            v["variant"] = pr.variant.summary();
+            v["_files"] = json!({"dir": dir, "files": files});
+            Ok(v)
+        }
         c => Err(format!("unknown command {c}")),
     }
 }

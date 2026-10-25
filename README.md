@@ -13,14 +13,16 @@ PDN impedance, temperature estimate) – in the browser, with no installation an
 > Results are estimates for design checks, without any warranty of correctness – not a replacement for
 > sign-off simulation or measurement. The individual tools – impedance map with a 2D field solver, TDR and loss
 > per net, via model, crosstalk scan, power tree, IR drop, PDN per IC, temperature estimate – are useful on their
-> own; a real channel validation still needs IBIS models and more complex tests ([limits](#limits)).
+> own. kisi stays a fast linear checker – IBIS, AMI and equalisers are out of scope; for sign-off, export the
+> channel to PyBERT or a circuit simulator ([why kisi is fast, and its scope](docs/models.md#why-kisi-is-small-and-fast)).
 
 ## What you get
 - **Impedance:** every track against its target (from net class names such as `50Z`, `90Z_Diff`), with formulas
   in a second and the 2D field solver on demand; impedance along the path, loss, TDR, vias and crosstalk per net.
 - **Channel:** buses and device-to-device lanes through series resistors and AC-coupling capacitors, checked
   against interface profiles (PCIe, USB, DDR, LVDS, Ethernet, …) on loss, return loss, skew and a linear eye;
-  differential pairs as 4-ports, multi-drop lines at every receiver, connectors with the channel behind them.
+  differential pairs as 4-ports, multi-drop lines at every receiver, connectors with the channel behind them; a
+  lane or a whole bus exported as SPICE subcircuits, Touchstone and a KiCad project for circuit simulators.
 - **Preparation:** "Prepare PCB" is a checklist of what the board file lacks per category (impedance, channel,
   power): forms for the simple values, Apply per step, and `<board>.kisi.json` saved at the end; the kisi-prepare
   skill does the datasheet research.

@@ -58,6 +58,8 @@ class Engine {
   analyze(params) { this.callRec("analyze", "kisi_analyze", JSON.stringify(params)); return JSON.parse(this.out()); }
   buses(params) { this.callRec("buses", "kisi_buses", JSON.stringify(params)); return JSON.parse(this.out()); }
   laneRf(req) { this.call(this.k.kisi_lane_rf, JSON.stringify(req)); return JSON.parse(this.out()); }
+  // a lane or a bus for circuit and RF simulators (kisi export): {summary, files: [{path, content}], name}
+  exportCircuit(req) { this.call(this.k.kisi_export, JSON.stringify(req)); return JSON.parse(this.out()); }
   // Touchstone file for the channel behind a connector (kept in the engine's memory)
   touchstone(name, text) { this.callRec("ts:" + name, "kisi_touchstone", JSON.stringify({ name, text })); return JSON.parse(this.out()); }
   skeleton(params) { this.callRec("skeleton", "kisi_skeleton", JSON.stringify(params)); return JSON.parse(this.out()); }

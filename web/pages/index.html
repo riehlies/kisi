@@ -150,8 +150,9 @@ node kisi.mjs check board.kicad_pcb</pre>
           Its results are estimates for design checks, without any warranty of correctness – not a replacement for
           sign-off simulation or measurement.</p>
         <p>The field solver was compared with HFSS cases and the via and plane models with 3D FDTD results;
-          validation against other solvers and against measurements is still open. A real channel validation also
-          needs IBIS models and more complex tests. The single tools are useful on their own already.</p>
+          validation against other solvers and against measurements is still open. kisi stays a fast linear checker:
+          for a sign-off with IBIS buffers and equalisers, export the channel to PyBERT or a circuit simulator. The
+          single tools are useful on their own already.</p>
       </div>
     </div>
   </section>

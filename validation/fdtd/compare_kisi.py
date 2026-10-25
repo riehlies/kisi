@@ -141,6 +141,10 @@ for name in cases:
         m = f <= flim
         v["dS21_max_db"] = round(float(np.max(np.abs(sparam.db(S3[m, 1, 0]) - sparam.db(Sk[m, 1, 0])))), 2)
         v["f_limit_ghz"] = round(flim / 1e9, 1)
+        if g == "P":  # pads and fingers: the reflection they cause, up to 20 GHz
+            m20 = f <= 20e9
+            v["S11_max_3d_db"] = round(float(np.max(sparam.db(S3[m20, 0, 0]))), 1)
+            v["S11_max_kisi_db"] = round(float(np.max(sparam.db(Sk[m20, 0, 0]))), 1)
         v["z_min_3d"], v["z_min_kisi"] = round(float(z3.min()), 1), round(float(zk.min()), 1)
         v["z_max_3d"], v["z_max_kisi"] = round(float(z3.max()), 1), round(float(zk.max()), 1)
         v["stub_3d_ghz"] = round(f3n / 1e9, 2) if f3n else None
@@ -173,6 +177,9 @@ for name in cases:
         mm3, mmk = sparam.mixed_mode(S3), sparam.mixed_mode(Sk)
         m = f <= 20e9
         v["dSdd21_max_db"] = round(float(np.max(np.abs(sparam.db(mm3["dd"][m, 1, 0]) - sparam.db(mmk["dd"][m, 1, 0])))), 2)
+        if g == "P":
+            v["Sdd11_max_3d_db"] = round(float(np.max(sparam.db(mm3["dd"][m, 0, 0]))), 1)
+            v["Sdd11_max_kisi_db"] = round(float(np.max(sparam.db(mmk["dd"][m, 0, 0]))), 1)
         v["Scd21_max_3d_db"] = round(float(np.max(sparam.db(mm3["cd"][m, 1, 0]))), 1)
         v["Scd21_max_kisi_db"] = round(float(np.max(sparam.db(mmk["cd"][m, 1, 0]))), 1)
         t3, z3 = sparam.tdr(f, mm3["dd"][:, 0, 0], rise=35e-12, tmax=150e-12, z0=100.0)

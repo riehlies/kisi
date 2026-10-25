@@ -153,7 +153,7 @@ and for a single-ended lane a `.net` S-parameter deck), `touchstone`, `kicad`. `
 one symbol per element – lines, coupled runs, vias, parts with their value as a parameter, pads, stubs) or `compact`
 (the lane as one symbol). `--model ladder` (default) writes line sections as RLGC ladders, `--model compact` as
 lossless-line cells: lossless LC lines carry the delay and the same fitted loss networks are lumped once per cell
-instead of in every section – passive by construction, 2–5 × fewer elements at 25 GHz and a PRBS bench 5–10 ×
+instead of in every section – passive by construction, 2–5 × fewer elements at 25 GHz and a PRBS bench 7–17 ×
 faster in ngspice. `--fmax GHZ` sets the top frequency of the ladders or cells and of the Touchstone grid (default:
 the check's 25 GHz), `--fmax profile` uses 5 × Nyquist of the lane's interface profile
 (at least 1.25 × the bit rate either way; a bus takes the highest of its lanes, so its N-port has one grid);

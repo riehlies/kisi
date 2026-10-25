@@ -285,6 +285,79 @@ passivity enforcement – the hard part. Plan: per long line segment (not per la
 fitted loss network (the line's attenuation is smooth and minimum-phase), the vias and parts stay ladders; this
 shrinks a 100 mm lane from ~40 k to a few hundred elements and keeps the export's structure.
 
+## 7. Step 3 – the compact model (`--model compact`)
+Research, alternatives and why: `vector-fitting.md`. In short: the same passive Foster/Debye fits as the ladder, but
+each line section as a few lossless-line cells – a lossless LC ladder (40 π sections per wavelength at f max, 2
+elements each) carries the fit's L and C, the rest of both networks is lumped once per cell (at least 3 cells per
+delay × f max, more where the lumps are large, as on microstrip); consecutive sections with nearly the same model
+are merged (SYNC_OUT_P's coupled run is ~140 pieces). Passive and causal by construction; vias, parts, stubs and the
+modal blocks unchanged. "Lines in the SPICE netlist" in the viewer's export settings, `--model compact` in the CLIs.
+
+**Check** (`compare.py --models ladder,compact --transient --passivity`, ngspice 42 on a shared 2-core machine, two
+runs in parallel – the times compare the two models of one run): ThunderScope with `web/samples/ts.kisi.json`
+(formula impedances), LibreVNA with `web/samples/vna.kisi.json`; f max 25 GHz.
+
+| Lane | model | elements | ngspice S-par. s | PRBS bench s | \|ΔS21\| dB vs kisi to 1.5×Nyq / f max | max \|ΔS\| vs kisi to 1.5×Nyq / f max | step vs kisi | largest singular value: kisi to 10×f max / ngspice to 5×f max |
+|---|---|---|---|---|---|---|---|---|
+| SYNC_OUT_P (LVDS pair, 85 mm) | ladder | 37840 | 19.5 | 480 | 0.004 / 4.69 | 0.0005 / 0.154 | 1.15 % | 0.999982 / 0.999987 |
+| | compact | 8252 | 2.4 | 46 | 0.004 / 4.58 | 0.0005 / 0.160 | 1.14 % | 0.999982 / 0.999981 |
+| REFINOUT2 (single, 70 mm) | ladder | 11138 | 2.7 | 200 | 0.005 / 2.68 | 0.0005 / 0.103 | 1.51 % | 0.999986 / 0.999986 |
+| | compact | 3313 | 0.3 | 20 | 0.005 / 2.79 | 0.0006 / 0.113 | 1.51 % | 0.999986 / 0.999986 |
+| PCIe_PET1_P (pair, 42 mm) | ladder | 18117 | 16.4 | 585 | 0.006 / 0.48 | 0.0064 / 0.182 | 1.32 % | 0.999993 / 0.999996 |
+| | compact | 7466 | 1.5 | 35 | 0.006 / 0.44 | 0.0059 / 0.187 | 1.32 % | 0.999993 / 0.999996 |
+| PCIe_PER0_P (pair, 35 mm) | ladder | 13421 | 409 | > 3600 | 0.135 / 0.64 | 0.0519 / 0.092 | 1.74 % | 0.999993 / 0.999994 |
+| | compact | 4663 | 1.3 | 35 | 0.141 / 0.60 | 0.0532 / 0.099 | 1.78 % | 0.999993 / 0.999994 |
+| PCIe_REFCLK_P (pair, 38 mm) | ladder | 17402 | 107 | > 3000 | 0.002 / 5.01 | 0.0004 / 0.343 | 1.59 % | 0.999992 / 0.999992 |
+| | compact | 7161 | 1.6 | 181 (Gear) | 0.002 / 5.04 | 0.0004 / 0.352 | 1.60 % | 0.999992 / 0.999992 |
+| LibreVNA FPGA_CLK (single, 84 mm) | ladder | 13212 | 3.4 | 313 | 0.003 / 4.57 | 0.0006 / 0.458 | 1.33 % | 0.999978 / 0.999978 |
+| | compact | 4298 | 0.5 | 45 | 0.004 / 4.49 | 0.0006 / 0.456 | 1.32 % | 0.999978 / 0.999978 |
+| LibreVNA PORT1LO2 (single, 120 mm) | ladder | 25104 | 9.3 | 1443 | 0.007 / 2.59 | 0.0014 / 0.103 | 1.56 % | 0.999968 / 0.999985 |
+| | compact | 5818 | 1.2 | 84 | 0.007 / 2.56 | 0.0014 / 0.103 | 1.55 % | 0.999968 / 0.999985 |
+| LibreVNA Net-(IC33-OUT+) (pair, odd mode, 13 mm) | ladder | 2872 | 1.2 | 179 | 0.006 / 0.32 | 0.0010 / 0.062 | 4.92 % | 0.999700 / 0.999999 |
+| | compact | 1409 | 0.2 | 18 | 0.006 / 0.11 | 0.0010 / 0.061 | 4.92 % | 0.999700 / 0.999999 |
+
+The compact circuit against the ladder (both in ngspice):
+
+| Lane | \|ΔS21\| dB to 1.5×Nyq / f max | max \|ΔS\| to 1.5×Nyq / f max | step | PRBS levels at the bit centres (of the swing) |
+|---|---|---|---|---|
+| SYNC_OUT_P | 0.0000 / 0.19 | 0.0001 / 0.023 | 0.05 % | 0.04 mV (0.01 %) |
+| REFINOUT2 | 0.0003 / 0.33 | 0.0001 / 0.025 | 0.02 % | 0.02 mV (0.00 %) |
+| PCIe_PET1_P | 0.0083 / 0.07 | 0.0029 / 0.023 | 0.06 % | 2.8 mV (0.22 %) |
+| PCIe_PER0_P | 0.0057 / 0.07 | 0.0029 / 0.022 | 0.07 % | – (ladder bench not finished) |
+| PCIe_REFCLK_P | 0.0000 / 0.12 | 0.0000 / 0.029 | 0.05 % | – (ladder bench not finished) |
+| FPGA_CLK | 0.0001 / 0.23 | 0.0001 / 0.019 | 0.04 % | 0.18 mV (0.02 %) |
+| PORT1LO2 | 0.0000 / 0.11 | 0.0000 / 0.019 | 0.04 % | 0.13 mV (0.01 %) |
+| Net-(IC33-OUT+) | 0.0000 / 0.31 | 0.0000 / 0.014 | 0.00 % | 0.10 mV (0.01 %) |
+
+At 5 × Nyquist (`--fmax profile`, 2.5 GHz for these 1 Gbit/s lanes):
+
+| Lane | model | elements | max \|ΔS\| vs kisi | PRBS bench s | compact vs ladder: PRBS levels |
+|---|---|---|---|---|---|
+| SYNC_OUT_P | ladder / compact | 22743 / 3883 | 0.004 / 0.004 | 397 / 24 | 0.40 mV (0.10 %) |
+| FPGA_CLK | ladder / compact | 5021 / 2096 | 0.010 / 0.004 | 940 / 40 | 2.5 mV (0.30 %) |
+
+- **Accuracy:** in the band the compact model is the ladder (|ΔS| between them ≤ 0.003 up to 1.5 × Nyquist), and
+  both are as close to kisi as before; up to 25 GHz they differ by ≤ 0.03 – the ladder's own discretisation (its
+  π sections lag 0.4 % in phase at f max, the cells' LC lines 0.1 %). At 5 × Nyquist the compact model is closer to
+  kisi than the ladder (FPGA_CLK 0.004 vs 0.010). PRBS levels agree to 0.3 % of the swing or better.
+- **Size and speed:** 2.0–4.6 × fewer elements at 25 GHz (the vias and short sections keep theirs), 2.4–5.9 × at
+  5 × Nyquist; S-parameters 6–300 × and PRBS benches 7–17 × faster at 25 GHz, 17–23 × at 5 × Nyquist. The two PCIe
+  lanes whose ladder benches did not finish within the hour (PER0, the reference clock) finish in 35 s and 181 s.
+- **Passivity:** every exported circuit (ladder and compact) has singular values ≤ 1 from 1 kHz to 10 × f max in
+  kisi's own evaluation (star products of scattering matrices) and in ngspice's sweep to 5 × f max (to 10⁻⁴: near DC
+  ngspice's AC solution is accurate to ~10⁻⁵; above an RLGC ladder's cut-off near 6.4 × f max it breaks down
+  numerically – 10⁴⁰ at 200 GHz for SYNC_OUT_P's ladder, 0.99998 in kisi's evaluation). Both models are passive by
+  construction, also asymptotically.
+- **Open receivers:** the reference clock's profile has a high-impedance receiver; the lane is then an undamped
+  resonator on which ngspice's default trapezoidal integration rings and stops with "timestep too small" (the
+  compact bench at 440 ns of 1.28 µs) or crawls (the ladder bench). Benches and KiCad projects with an open
+  receiver therefore use `.options method=gear` (181 s); terminated lanes keep the trapezoidal default, because
+  Gear's numerical damping moves the edges of SYNC_OUT_P by up to 3 % of the swing at the bench's 30 ps steps.
+- **Other checks:** the LTspice files of the compact export pass `ltspice.py check` (every lane above); the KiCad
+  project of SYNC_OUT_P (kicad-cli 7) has the lane subcircuit node for node with an AC response equal to the bench's
+  (5·10⁻⁹); CI runs the compact model against the ladder on three ThunderScope lanes with the passivity sweep and
+  the KiCad check (kicad-cli 9 with ERC) on PCIe_PER0_P. Not run here: LTspice and Xyce themselves.
+
 ## Sources
 - ngspice manual (S-parameter analysis `.sp`, `portnum`; E/F sources) – https://ngspice.sourceforge.io/docs.html
 - Xyce Reference Guide (`.LIN`, port device) – https://xyce.sandia.gov/documentation-tutorials/

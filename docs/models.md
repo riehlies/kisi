@@ -172,7 +172,7 @@ models it – for circuit and RF simulators:
   wavelength, 2 elements each) carries the delay, the rest of the fitted networks is lumped once per cell (at least
   3 cells per delay × top frequency, more for microstrip, whose dispersion is lumped); consecutive sections with
   nearly the same model are merged. Passive and causal by construction, like the ladder, with 2–5 × fewer
-  elements and PRBS benches several times faster; it follows kisi's S-parameters as closely as the ladder up to the
+  elements and PRBS benches 7–17 × faster in ngspice (23 × at 5 × Nyquist); it follows kisi's S-parameters as closely as the ladder up to the
   top frequency and is not meant for use above it (the cells' lumped losses reflect coherently from about 1.5 × the
   top frequency). The simulators' own line elements (`T`, LTRA) and vector-fitted line models were studied and not
   used: [research/vector-fitting.md](research/vector-fitting.md).
@@ -253,6 +253,9 @@ kisi marks these as estimates in the viewer and in the CLI output:
 - **Channel export:** ngspice reproduces kisi's own evaluation of the exported circuit (ThunderScope's LVDS lanes and
   nine PCIe lanes, to 0.001) and kisi's S-parameters within 0.03 dB (LVDS) and 0.10–0.34 dB (PCIe, strongly
   reflecting) up to 1.5 × Nyquist; step responses within 2 % (`validation/channel_export/compare.py`, also in CI).
+  The compact model gives the ladder's S-parameters to 0.003 up to 1.5 × Nyquist and its PRBS levels to 0.3 % of the
+  swing on eight lanes of both example boards; every exported circuit is passive from 1 kHz to 10 × f max
+  ([research/channel-export.md](research/channel-export.md) section 7).
 - **Still open:** validation against other solvers and against measurements. A measured test board is planned
   ([validation/test_board.md](../validation/test_board.md)). Until then, treat the numbers as plausible estimates,
   not as verified results.

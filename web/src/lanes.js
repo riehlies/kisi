@@ -114,7 +114,7 @@ function exportHint() {
   const last = S.exportLast ? ` Last export: ${S.exportLast}.` : "";
   $("ex-hint").textContent = (none ? "Nothing selected: “Export…” writes nothing. " : "")
     + (o.model === "compact"
-      ? "Compact: lines as lossless-line cells (lossless LC lines carry the delay, the same fitted losses lumped once per cell) – passive, 2–5 × fewer elements than the ladder, PRBS benches 5–10 × faster in ngspice; an 85 mm LVDS pair is 8 k elements at 25 GHz and 4 k at 5 × Nyquist."
+      ? "Compact: lines as lossless-line cells (lossless LC lines carry the delay, the same fitted losses lumped once per cell) – passive, 2–5 × fewer elements than the ladder, PRBS benches 7–17 × faster in ngspice; an 85 mm LVDS pair is 8 k elements at 25 GHz and 4 k at 5 × Nyquist."
       : "The ladder grows with the top frequency: an 85 mm LVDS pair has about 38 k elements at 25 GHz and 23 k at 5 × Nyquist; the compact model has 2–5 × fewer.") + last;
 }
 function initExportSettings() {

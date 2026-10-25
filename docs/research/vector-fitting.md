@@ -41,8 +41,10 @@ study script and its data: `validation/channel_export/compact_study.py`, `line_m
 - **As implemented** (section 8): the lossless line of each cell is an LC ladder (40 π sections per wavelength at
   f max, 2 elements each; phase within 0.1 % at f max) instead of an LTRA line – ngspice's LTRA bounds the time step
   to the shortest line delay and went unstable on a real lane, `T` stalls, Xyce runs neither in `.AC`. The loss
-  networks (~40 elements per cell) dominate the count either way: 2.4–4.6 × fewer elements than the ladder at
-  25 GHz, ~5 × at 5 × Nyquist, and SYNC_OUT_P's PRBS bench 67 s instead of ~450 s (41 s at 5 × Nyquist).
+  networks (~40 elements per cell) dominate the count either way: 2.0–4.6 × fewer elements than the ladder at
+  25 GHz (up to 5.9 × at 5 × Nyquist), PRBS benches 7–17 × faster in ngspice (SYNC_OUT_P 46 s instead of 480 s;
+  24 s instead of 397 s at 5 × Nyquist), the same S-parameters as the ladder in the band
+  (`channel-export.md` section 7).
 
 ## 1. The problem in numbers
 | Lane | length | elements (R/L/C/sources) | ngspice | source |

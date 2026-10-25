@@ -215,6 +215,14 @@ pub fn ends_text(lc: &LaneCircuit, ends: &BenchEnds) -> (Vec<String>, Vec<String
     (tx, rx)
 }
 
+/// ngspice's integration for the bench: Gear when the receiver is open (high impedance) – the lane
+/// is then an undamped resonator, where trapezoidal integration rings and stops with "timestep too
+/// small" (ThunderScope's PCIe reference clock, ladder and compact model alike); trapezoidal (the
+/// default, the most accurate) otherwise.
+pub fn ngspice_options(ends: &BenchEnds) -> Option<&'static str> {
+    (ends.rx.r <= 0.0).then_some(".options method=gear")
+}
+
 /// Transient test bench: PRBS7 at the profile's bit rate through the lane with the profile's
 /// linear ends, two pattern periods.
 pub fn bench(lc: &LaneCircuit, lib_file: &str, ends: &BenchEnds, d: Dialect) -> String {
@@ -251,6 +259,9 @@ pub fn bench(lc: &LaneCircuit, lib_file: &str, ends: &BenchEnds, d: Dialect) -> 
     let probe = if lc.pair { format!("v({})-v({})", outs[0], outs[1]) } else { format!("v({})", outs[0]) };
     match d {
         Dialect::Ngspice => {
+            if let Some(o) = ngspice_options(ends) {
+                s.push_str(&format!("* the receiver is open (high impedance): Gear integration, trapezoidal integration rings here\n{o}\n"));
+            }
             s.push_str(&format!(".tran {} {}\n", num(tstep), num(tstop)));
             s.push_str(".control\nrun\n");
             s.push_str(&format!("wrdata bench_ngspice.txt {probe}\n"));

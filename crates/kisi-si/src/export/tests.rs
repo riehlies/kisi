@@ -350,3 +350,20 @@ fn compact_files() {
     }
     assert!(Model::parse("compact").is_ok_and(|m| m == Model::Compact) && Model::parse("x").is_err());
 }
+
+/// An open (high-impedance) receiver gets Gear integration in the ngspice bench and the KiCad
+/// project (trapezoidal integration rings on the undamped lane); a terminated one keeps the default.
+#[test]
+fn bench_gear_for_open_receiver() {
+    let (board, an, lanes) = setup();
+    let l = lane_of(&board, &lanes, "SIG");
+    let field = HashMap::new();
+    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &compact()).unwrap();
+    for (r, gear) in [(50.0, false), (0.0, true)] {
+        let ends = files::BenchEnds { profile: "p".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.0 }, rx: crate::eye::EndModel { r, c_pf: 1.0, l_nh: 0.0 }, notes: vec![] };
+        let fs = files::lane_files(&lc, &ends, Formats { model: Model::Compact, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
+        let get = |p: &str| fs.iter().find(|f| f.path.ends_with(p)).unwrap().content.clone();
+        assert_eq!(get("bench_ngspice.cir").contains(".options method=gear"), gear);
+        assert_eq!(get(".kicad_sch").contains(".options method=gear"), gear);
+    }
+}

@@ -35,17 +35,29 @@ pub struct Sec {
 }
 
 impl Sec {
+    /// series impedance per metre at f: the barrel inductance and the plating's surface impedance
+    /// (1 + j)·Rs over the circumference (resistance and its internal inductance)
+    pub fn z(&self, f: f64, sigma: f64) -> Cx {
+        let w = 2.0 * PI * f;
+        let l = self.z * self.er.sqrt() / C0;
+        let r = (PI * f * MU0 / sigma).sqrt() / (2.0 * PI * self.a);
+        Cx::new(r, w * l + r)
+    }
+
+    /// shunt admittance per metre at f: jωC·ε(f)/εr with the Djordjevic-Sarkar dielectric (ε′ and
+    /// ε″ of one causal model)
+    pub fn y(&self, f: f64) -> Cx {
+        let w = 2.0 * PI * f;
+        let c = self.er.sqrt() / (self.z * C0);
+        Cx::new(0.0, w * c) * crate::rf::eps_c(self.er, self.tand, f).scale(1.0 / self.er)
+    }
+
     fn abcd(&self, f: f64, sigma: f64) -> Abcd {
         let w = 2.0 * PI * f;
-        let v = C0 / self.er.sqrt();
-        let l = self.z / v;
-        let c = 1.0 / (self.z * v);
-        // plating: surface impedance (1 + j)·Rs over the barrel's circumference (resistance and its
-        // internal inductance); dielectric: Djordjevic-Sarkar (ε′ and ε″ of one causal model)
-        let rs = (PI * f * MU0 / sigma).sqrt();
-        let r = rs / (2.0 * PI * self.a);
-        let e = crate::rf::eps_c(self.er, self.tand, f).scale(1.0 / self.er);
-        Abcd::line(r, l + if w > 0.0 { r / w } else { 0.0 }, -w * c * e.im, c * e.re, w, self.len)
+        let (z, y) = (self.z(f, sigma), self.y(f));
+        let l = if w > 0.0 { z.im / w } else { self.z * self.er.sqrt() / C0 };
+        let c = if w > 0.0 { y.im / w } else { self.er.sqrt() / (self.z * C0) * crate::rf::eps_c(self.er, self.tand, f).re / self.er };
+        Abcd::line(z.re, l, y.re, c, w, self.len)
     }
 }
 

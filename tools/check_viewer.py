@@ -234,10 +234,11 @@ def prep_idle(pg):
 
 
 def prep_load(pg, pcb_js, cfg_text, clear=True):
-    """Load a board (JS expression giving [pcb, pro, name]) with a kisi.json text or none; clear its draft."""
+    """Load a board (JS expression giving [pcb, pro, name]) with a kisi.json text or none, like a dropped file
+    (no example button pressed); clear its draft."""
     if clear:
         pg.evaluate("() => { for (const k of Object.keys(localStorage)) if (k.startsWith('kisi.prep.v1.')) localStorage.removeItem(k); S.prep.mem = {}; }")
-    pg.evaluate("async ([cfg]) => { const [a, c, n] = await (%s); await loadFiles(a, c, n, null, cfg ? { name: n.replace(/\\.kicad_pcb$/i, '') + '.kisi.json', text: cfg } : null); }" % pcb_js, [cfg_text])
+    pg.evaluate("async ([cfg]) => { const [a, c, n] = await (%s); for (const k of ['ts', 'vna']) document.getElementById('sample-' + k).setAttribute('aria-pressed', 'false'); await loadFiles(a, c, n, null, cfg ? { name: n.replace(/\\.kicad_pcb$/i, '') + '.kisi.json', text: cfg } : null); }" % pcb_js, [cfg_text])
     pg.wait_for_function(f"S.scene && {BUSY} && S.prep.base", timeout=120000)
     prep_idle(pg)
 
@@ -429,8 +430,8 @@ def prepare_checklist(pg, tag, step):
         b = board_box(pg)
         if abs(b["dx"]) > 0.08 or abs(b["dy"]) > 0.1 or not (0.7 * box0["fill"] <= b["fill"] <= 1.3 * box0["fill"]):
             problems.append(f"{tag}: checklist: the board is off after Prepare in view {v}: {b} (before {box0})")
+    pg.click("#view-si"); pg.wait_for_timeout(400)
     step("checklist_board_back")
-    pg.click("#view-si"); pg.wait_for_timeout(200)
     pg.evaluate("() => { prepDiscard(); }"); prep_idle(pg)
 
 

@@ -167,6 +167,15 @@ models it – for circuit and RF simulators:
   Foster/Debye networks fitted to R(f), L(f), G(f), C(f) – positive elements only, so passive and causal; vias as
   kisi's via ladder; parts with their estimated parasitics (e.g. an AC-coupling capacitor as R–L–C with its pads);
   open stubs; a pair with both lines and its coupled sections as even/odd chains between ideal mode converters.
+- **Compact model** (`--model compact`, "Lines in the SPICE netlist" in the viewer's export settings): the same
+  fitted networks, but each line section as a few lossless-line cells – a lossless LC ladder (40 sections per
+  wavelength, 2 elements each) carries the delay, the rest of the fitted networks is lumped once per cell (at least
+  3 cells per delay × top frequency, more for microstrip, whose dispersion is lumped); consecutive sections with
+  nearly the same model are merged. Passive and causal by construction, like the ladder, with 2–5 × fewer
+  elements and PRBS benches several times faster; it follows kisi's S-parameters as closely as the ladder up to the
+  top frequency and is not meant for use above it (the cells' lumped losses reflect coherently from about 1.5 × the
+  top frequency). The simulators' own line elements (`T`, LTRA) and vector-fitted line models were studied and not
+  used: [research/vector-fitting.md](research/vector-fitting.md).
 - **Test benches** for ngspice, Xyce and LTspice (PRBS7 between the profile's linear transmitter and receiver, the
   LTspice one with `.meas` results) and S-parameter decks; the netlist is shared, only the decks differ (the
   simulators call analyses differently; LTspice adds a series resistance (1 mΩ) and an implicit parallel damping
@@ -174,9 +183,10 @@ models it – for circuit and RF simulators:
   Xyce).
 - **Touchstone** per lane (`.s2p`, `.s4p`) and a bus as one N-port with its port map.
 - **Frequency range:** the ladders have 20 sections per wavelength at the top frequency (default 25 GHz; `--fmax`, or
-  5 × Nyquist of the profile), which also ends the Touchstone grid. A lower top frequency shortens transients only
-  so far: an 85 mm LVDS pair has 42 k elements at 25 GHz and 23 k at 2.5–5 GHz (ngspice 350 s and 180 s for two PRBS7
-  periods), because every section, via and part keeps its share.
+  5 × Nyquist of the profile), which also ends the Touchstone grid. A lower top frequency shortens the ladder's
+  transients only so far: an 85 mm LVDS pair has 38 k elements at 25 GHz and 23 k at 2.5 GHz, because every
+  section, via and part keeps its share. The compact model shrinks with the top frequency: 8.3 k and 3.9 k elements
+  for that pair. For long transients `--model compact --fmax profile` is the fast choice.
 - **KiCad project** (KiCad 7 format, opens in KiCad 7 and later; checked with KiCad 9's ERC): one symbol per
   element, parts with their value as a parameter (change `220n` in KiCad and the parasitics stay), or the lane as one
   symbol.

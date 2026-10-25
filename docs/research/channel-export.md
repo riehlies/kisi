@@ -2,7 +2,8 @@
 
 Status: implemented (24 October 2026) – `kisi export`, the viewer's “Export…” in the lane detail and the bus card,
 `kisi_si::export`, checked with `validation/channel_export/compare.py` (also in CI). ROADMAP block 3, steps 1 and 2;
-step 3 (compact, vector-fitted models) as a design study at the end. Background and the KiCad facts:
+step 3, the compact model (`--model compact`, 25 October 2026), in section 7 – its research note is
+`vector-fitting.md`. Background and the KiCad facts:
 `kicad-simulation.md` (option A of that note, with linear ends).
 
 ## Summary
@@ -30,7 +31,8 @@ step 3 (compact, vector-fitted models) as a design study at the end. Background 
 - **Sizes:** 12–25 k elements per PCIe lane, 42 k for the 85 mm LVDS pair; ngspice (one core, shared machine):
   S-parameters (500 points) in 2–73 s, a step response in 3–89 s, the PRBS7 bench (two periods) in 100–400 s.
 - **Not included (open points):** IBIS (KIBIS) ends, the channel behind a connector, crosstalk between lanes (the
-  bus N-port is block-diagonal), Xyce and Qucs-S runs (not available here), a compact model for long transients.
+  bus N-port is block-diagonal), Xyce and Qucs-S runs (not available here). A compact model for long transients is
+  section 7.
 
 ## 1. Interface
 ```
@@ -266,7 +268,7 @@ large reflections. The fallback model of sections without a reference plane is t
   model) and the elements' own subcircuits stay in one library shared with ngspice and Xyce.
 - **20 sections per wavelength:** 40 or 80 change nothing measurable against kisi's model (the fits dominate).
 
-## 6. Step 3 – compact models (design study)
+## 6. Step 3 – compact models (design study before the research note)
 `validation/channel_export/vf_prototype.py` fits a lane's differential 2-port with scikit-rf's vector fitting:
 
 | Lane | delay | poles | max |ΔS| | passive |

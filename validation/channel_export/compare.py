@@ -25,7 +25,9 @@ ladder,compact exports every lane with both (folders <lane>_ladder and <lane>_co
 counts, ngspice run times, the compact circuit's S-parameters against the ladder's (both in ngspice), the step
 responses and – with --transient – the PRBS benches (the received voltage at the bit centres of the second pattern
 period, the first zero crossing). --passivity runs each S-parameter deck once more on a logarithmic grid from 1 kHz
-to 10 x the top frequency and reports the circuit's largest singular value (passive: <= 1). --fmax is passed to
+to 5 x the top frequency and reports the circuit's largest singular value (passive: <= 1); above that ngspice's AC
+solution of a long RLGC ladder breaks down numerically (beyond the ladder's cut-off near 6.4 x f max: singular values
+of 1e40 at 8 x f max for an 85 mm pair, which kisi's own star-product evaluation of the same circuit puts at 0.99998). --fmax is passed to
 `kisi export`.
 
 The export reports its own check (the circuit evaluated inside kisi, `check_against_kisi`); ngspice must
@@ -51,6 +53,12 @@ def run(cmd, cwd=None, timeout=3600):
     t0 = time.time()
     r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
     return r, time.time() - t0
+
+
+def file_stem(lane):
+    """The file-name stem kisi gives a lane (`export::files::stem`): its last name component, characters other than
+    letters, digits, '_' and '-' as '_'."""
+    return re.sub(r"[^A-Za-z0-9_-]", "_", lane.rsplit("/", 1)[-1]) or "lane"
 
 
 def read_touchstone(path):
@@ -205,10 +213,10 @@ def check_touchstone(path):
 
 
 def passivity_sweep(lane_dir, meta):
-    """The S-parameter deck once more on a logarithmic grid, 1 kHz to 10 x the top frequency: the circuit's largest
+    """The S-parameter deck once more on a logarithmic grid, 1 kHz to 5 x the top frequency: the circuit's largest
     singular value (passive: <= 1) and where."""
     src = open(os.path.join(lane_dir, "sparam_ngspice.cir")).read()
-    f1 = 10 * meta["frequency"]["fmax_hz"]
+    f1 = 5 * meta["frequency"]["fmax_hz"]
     src = re.sub(r"^\.sp lin \S+ \S+ \S+", f".sp dec 25 1e3 {f1:.6e}", src, flags=re.M).replace("sparam_ngspice.txt", "passivity_ngspice.txt")
     open(os.path.join(lane_dir, "passivity_ngspice.cir"), "w").write(src)
     r, secs = run(["ngspice", "-b", "passivity_ngspice.cir"], cwd=lane_dir)
@@ -232,15 +240,21 @@ def bench_levels(lane_dir, meta):
     ui, delay = 1 / (meta["rate_gbps"] * 1e9), meta["delay_ps"] * 1e-12
     centres = np.array([(127 + j + 1.5) * ui + delay for j in range(127)])
     lv = np.interp(centres, t, v)
-    k = np.argmax((v[:-1] < 0) & (v[1:] >= 0))
-    t50 = float(t[k] - v[k] * (t[k + 1] - t[k]) / (v[k + 1] - v[k])) if k > 0 else float("nan")
-    return {"levels": lv, "t": t, "v": v, "t50_s": t50, "swing": float(np.max(np.abs(lv)))}
+    sw = float(np.max(np.abs(lv)))
+    # the first rising zero crossing after the signal has been below -25 % of the swing (an AC-coupled lane starts
+    # at 0 V)
+    low = np.argmax(v < -0.25 * sw)
+    up = (v[:-1] < 0) & (v[1:] >= 0)
+    up[:low] = False
+    k = int(np.argmax(up))
+    t50 = float(t[k] - v[k] * (t[k + 1] - t[k]) / (v[k + 1] - v[k])) if up.any() else float("nan")
+    return {"levels": lv, "t": t, "v": v, "t50_s": t50, "swing": sw}
 
 
 def lane_check(lane_dir, meta, opts, rep):
     res = {"lane": meta["lane"], "dir": lane_dir, "model": meta["model"], "length_mm": meta["length_mm"], "delay_ps": meta["delay_ps"],
            "elements": meta["elements"], "kisi_eval": meta["check_against_kisi"]}
-    stem = os.path.basename(meta["lane"])
+    stem = file_stem(meta["lane"])
     ts = [x for x in os.listdir(lane_dir) if re.match(re.escape(stem) + r"\.s\d+p$", x)][0]
     info, (f, sk, z0) = check_touchstone(os.path.join(lane_dir, ts))
     res["touchstone"] = info
@@ -416,7 +430,7 @@ def bus_check(bus_dir, meta, opts):
         pm = meta["n_port"]["port_map"]
         worst = 0.0
         for lm in meta["lanes"]:
-            stem = os.path.basename(lm["lane"])
+            stem = file_stem(lm["lane"])
             ts = [x for x in os.listdir(os.path.join(bus_dir, stem)) if re.match(re.escape(stem) + r"\.s\d+p$", x)][0]
             fl, sl, zl = read_touchstone(os.path.join(bus_dir, stem, ts))
             n = sl.shape[1]
@@ -453,7 +467,7 @@ def bus_check(bus_dir, meta, opts):
         r, secs = run(["ngspice", "-b", "bus_sparam_ngspice.cir"], cwd=bus_dir, timeout=7200)
         if r.returncode == 0 and os.path.exists(os.path.join(bus_dir, "bus_sparam.txt")):
             fs, ss = read_wrdata(os.path.join(bus_dir, "bus_sparam.txt"), n)
-            stem = os.path.basename(lm["lane"])
+            stem = file_stem(lm["lane"])
             ts = [x for x in os.listdir(os.path.join(bus_dir, stem)) if re.match(re.escape(stem) + r"\.s\d+p$", x)][0]
             fl, sl, zl = read_touchstone(os.path.join(bus_dir, stem, ts))
             g = (z - zl) / (z + zl)
@@ -514,7 +528,7 @@ def main():
         json.dump(meta, open(os.path.join(d, "export.json"), "w"), indent=1)
         lanes = meta["lanes"]
         for lm in lanes:
-            ld = d if kind == "lane" else os.path.join(d, os.path.basename(lm["lane"]))
+            ld = d if kind == "lane" else os.path.join(d, file_stem(lm["lane"]))
             res, data = lane_check(ld, lm, opts, None)
             res["export_s"] = round(secs, 1)
             results.append(res)
@@ -604,15 +618,18 @@ def main():
 
 def write_report(path, results, buses, board, model_cmp=()):
     L = [f"Board `{os.path.basename(board)}`. ngspice: {subprocess.run(['ngspice', '-v'], capture_output=True, text=True).stdout.splitlines()[1].strip() if shutil.which('ngspice') else 'missing'}.", ""]
-    L += ["| lane | model | length mm | elements (R/L/C/src) | ngspice vs kisi: |ΔS21| dB to 1.5×Nyq / to fmax | max |ΔS| to 1.5×Nyq / all | kisi's own evaluation: max |ΔS| | step: max diff, t50 ngspice / kisi (ps) |",
-          "|---|---|---|---|---|---|---|---|"]
+    L += ["| lane | model | length mm | elements (R/L/C/src) | ngspice vs kisi: |ΔS21| dB to 1.5×Nyq / to fmax | max |ΔS| to 1.5×Nyq / all | kisi's own evaluation: max |ΔS| | step: max diff, t50 ngspice / kisi (ps) | largest singular value: kisi to 10×fmax / ngspice sweep |",
+          "|---|---|---|---|---|---|---|---|---|"]
     for r in results:
         nv = r.get("ngspice_vs_kisi") or {}
         e = r["elements"]
         st = r.get("step") or {}
-        L.append(f"| {r['lane']} | {r['model']} | {r['length_mm']:.1f} | {e['r']}/{e['l']}/{e['c']}/{e['sources']} | {nv.get('max_ds21_db_nyq', float('nan')):.3f} / {nv.get('max_ds21_db', float('nan')):.2f} | "
+        pv = r.get("passivity") or {}
+        sw = (pv.get("ngspice_sweep") or {}).get("max_singular_value")
+        L.append(f"| {r['lane']} | {r['model']}, {r.get('line_model', 'ladder')} | {r['length_mm']:.1f} | {e['r']}/{e['l']}/{e['c']}/{e['sources']} | {nv.get('max_ds21_db_nyq', float('nan')):.3f} / {nv.get('max_ds21_db', float('nan')):.2f} | "
                  f"{nv.get('max_ds_nyq', float('nan')):.3f} / {nv.get('max_ds', float('nan')):.3f} | {r['kisi_eval']['max_ds']:.3f} | "
-                 f"{100 * st.get('max_diff_of_final', float('nan')):.2f} %, {st.get('t50_ngspice_ps', float('nan')):.1f} / {st.get('t50_kisi_ps', float('nan')):.1f} |")
+                 f"{100 * st.get('max_diff_of_final', float('nan')):.2f} %, {st.get('t50_ngspice_ps', float('nan')):.1f} / {st.get('t50_kisi_ps', float('nan')):.1f} | "
+                 f"{pv.get('kisi_circuit_max_sv') or float('nan'):.6f} / " + (f"{sw:.6f}" if sw is not None else "–") + " |")
     if model_cmp:
         L += ["", "| lane | elements ladder / compact | compact vs ladder (ngspice): |ΔS21| dB to 1.5×Nyq / fmax | max |ΔS| to 1.5×Nyq / fmax | step diff | PRBS levels: max diff (of swing) | ngspice S-par. s ladder / compact | ngspice bench s ladder / compact |",
               "|---|---|---|---|---|---|---|---|"]

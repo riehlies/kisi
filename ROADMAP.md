@@ -133,11 +133,15 @@ export shows it). Background: `docs/models.md` (scope, why kisi is fast); the ea
   Touchstone per lane and as one N-port of a bus. Checked in ngspice against kisi's S-parameters on ThunderScope's
   LVDS lane and the whole PCIe bus (`validation/channel_export/compare.py`, also in CI), and in LTspice on the
   maintainer's PC (single line within 0.07 %, LVDS pair within 0.33 %). Next:
-  - **reduced models** (step 3) to make the SPICE export fast: the ladders have 10–40 k elements per lane and take
-    minutes per transient; a lower top frequency saves only about 45 %. Options: vector fitting with the delay as
-    ideal lines (needs reliable passivity enforcement; design note in the report), or lossy-line elements (LTRA `O`,
-    coupled `CPL`: compact, but R and G constant over frequency). Either becomes an option of the export settings
-    and of `kisi export` once it is passive and checked;
+  - **reduced models** (step 3, branch `feat/vector-fit`): researched (`docs/research/vector-fitting.md`: vector
+    fitting and its variants, delayed and characteristic line models, passivity enforcement, what ngspice, Xyce and
+    LTspice implement) and implemented as `--model compact` and "Lines in the SPICE netlist" in the viewer's export
+    settings: lossless-line cells – LC lines carry the delay, the ladder's fitted loss networks are lumped once per
+    cell, equal consecutive sections merged; passive and causal by construction (checked to 10 × f max). Results
+    in `docs/research/channel-export.md` section 7. Next: make it the default once the maintainer has run it in
+    LTspice; the vias (now about a third of a compact lane's elements) could get a reduced ladder too; vector
+    fitting with delays and passivity enforcement stays for tabulated data (a Touchstone block behind a
+    connector);
   - the top frequency from the interface profile (`--fmax profile`, 5 × Nyquist) as the default instead of 25 GHz –
     to be decided;
   - crosstalk between the lanes of a bus in the N-port (the coupling scan's sections as coupled blocks), the

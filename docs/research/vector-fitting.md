@@ -247,7 +247,9 @@ three things:
 3. **Passivity beyond the band** is checked on the circuit itself: kisi evaluates the exported circuit's S-matrix
    from 1 kHz to 10 × f max by star products of scattering matrices (cascade matrices of long ladders overflow far
    above their cut-off) – largest singular value ≤ 1 on every lane, ladder and compact alike – and `compare.py
-   --passivity` repeats that in ngspice. Asymptotically both are passive by construction (positive R, L, C, and
+   --passivity` repeats that in ngspice up to 5 × f max (beyond the RLGC ladder's cut-off near 6.4 × f max
+   ngspice's own AC solution of an 800-section ladder breaks down numerically: singular values of 10⁴⁰ at 200 GHz
+   for SYNC_OUT_P, where the star products give 0.99998). Asymptotically both are passive by construction (positive R, L, C, and
    the ideal mode converters are lossless).
 
 Results on the example boards: `channel-export.md` section 7.

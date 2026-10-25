@@ -19,8 +19,9 @@ IGNORE = {"field_solver", "field_solver_note", "config", "timing_ms"}
 ARGS = {"check": ["--all"], "gaps": [], "check-cavity": ["--all", "--via-cavity"]}
 # pseudo commands: (command, boards)
 ALIAS = {"check-cavity": ("check", {"vna"})}
-# `export`: one lane per board, the written files must be identical too
-EXPORT = {"ts": ["--lane", "SYNC_OUT_P"], "vna": ["--lane", "SRC_REF_IN", "--format", "spice,touchstone"]}
+# `export`: one lane per board (the ladder on ThunderScope, the compact model on LibreVNA), the written files must be
+# identical too
+EXPORT = {"ts": ["--lane", "SYNC_OUT_P"], "vna": ["--lane", "SRC_REF_IN", "--format", "spice,touchstone", "--model", "compact"]}
 
 
 def norm(x):

@@ -114,8 +114,8 @@ function exportHint() {
   const last = S.exportLast ? ` Last export: ${S.exportLast}.` : "";
   $("ex-hint").textContent = (none ? "Nothing selected: “Export…” writes nothing. " : "")
     + (o.model === "compact"
-      ? "Compact: long lines as lossless-line cells (an ideal line per cell, the same fitted losses lumped) – passive, the delay exact, 4–5 × fewer elements than the ladder; with 5 × Nyquist as the top frequency an 85 mm LVDS pair is about 4 k elements. Xyce gets no S-parameter deck (no lines in its .AC)."
-      : "The ladder grows with the top frequency: an 85 mm LVDS pair has about 38 k elements at 25 GHz and 23 k at 5 × Nyquist; the compact model has 4–5 × fewer.") + last;
+      ? "Compact: lines as lossless-line cells (lossless LC lines carry the delay, the same fitted losses lumped once per cell) – passive, 2–5 × fewer elements than the ladder, PRBS benches 5–10 × faster in ngspice; an 85 mm LVDS pair is 8 k elements at 25 GHz and 4 k at 5 × Nyquist."
+      : "The ladder grows with the top frequency: an 85 mm LVDS pair has about 38 k elements at 25 GHz and 23 k at 5 × Nyquist; the compact model has 2–5 × fewer.") + last;
 }
 function initExportSettings() {
   const saved = lsGet(EXPORT_KEY) || {};

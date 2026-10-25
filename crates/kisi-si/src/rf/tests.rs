@@ -311,3 +311,90 @@ fn via_return_path_across_antipad() {
     assert_eq!(v.return_kind, "stitch", "{v:?}");
     assert!((v.return_mm.unwrap() - 1.0).abs() < 0.05, "{v:?}");
 }
+
+/// Line models for the passivity tests: thin and thick microstrip (formula), stripline, a
+/// field-solved mode (its own loss tangent) and the fallback of sections without a plane.
+fn sample_models() -> Vec<LineModel> {
+    let ms = |w: f64, h: f64| {
+        let (z, eeff) = analytic::microstrip(w, h, 0.035, 4.4);
+        LineModel { z0: z, eeff0: eeff, l_ext: z * eeff.sqrt() / C0, c0: eeff.sqrt() / (z * C0), r_dc: 1.0 / (5.8e7 * w * 1e-3 * 35e-6), k_ac: 4e-4 * 0.3 / w, er: 4.4, tand: 0.02, q_fill: (eeff - 1.0) / 3.4, tand_eff0: None, ms_h: Some(h * 1e-3), source: "formula" }
+    };
+    let sl = LineModel { z0: 50.0, eeff0: 3.66, l_ext: 50.0 * 3.66f64.sqrt() / C0, c0: 3.66f64.sqrt() / (50.0 * C0), r_dc: 8.0, k_ac: 6e-4, er: 3.66, tand: 0.02, q_fill: 1.0, tand_eff0: None, ms_h: None, source: "formula" };
+    let field = LineModel { tand_eff0: Some(0.017), source: "field", ..ms(0.2, 0.11) };
+    vec![ms(0.2, 0.11), ms(3.0, 1.6), ms(0.3, 1.0), sl, field, crate::rf::Build::fallback(50.0)]
+}
+
+/// Series impedance and shunt admittance per metre are positive-real – Re ≥ 0 everywhere in the
+/// right half of the s plane (they are analytic there by construction) –, and the RLGC at real
+/// frequencies are their values at s = jω: passive and causal lines.
+#[test]
+fn line_models_positive_real() {
+    for rough in [Roughness::Smooth, Roughness::Hvlp, Roughness::Standard] {
+        let rp = RfParams { roughness: rough, ..Default::default() };
+        for m in sample_models() {
+            for &sr in &[1e-3, 1e6, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13] {
+                for e in -30..=26 {
+                    let wi = if e < 0 { -(10f64.powf(-e as f64 / 2.0)) } else { 10f64.powf(e as f64 / 2.0) };
+                    let s = Cx::new(sr, wi);
+                    let (z, y) = (m.z_s(s, &rp), m.y_s(s, &rp));
+                    assert!(z.re >= -1e-12 * z.abs(), "{} Z({s:?}) = {z:?}", m.source);
+                    assert!(y.re >= -1e-12 * y.abs(), "{} Y({s:?}) = {y:?}", m.source);
+                }
+            }
+            for f in [1e7, 1e8, 1e9, 1e10, 2.5e10] {
+                let p = m.rlgc(f, &rp);
+                let s = Cx::new(0.0, 2.0 * PI * f);
+                let (z, y) = (m.z_s(s, &rp), m.y_s(s, &rp));
+                assert!((z.re - p.r).abs() < 1e-9 * z.abs() && (z.im - s.im * p.l).abs() < 1e-9 * z.abs(), "{} {f}", m.source);
+                assert!((y.re - p.g).abs() < 1e-9 * y.abs() && (y.im - s.im * p.c).abs() < 1e-9 * y.abs(), "{} {f}", m.source);
+            }
+        }
+    }
+}
+
+/// The causal Huray factor's loss part is the Huray power factor; it adds inductance.
+#[test]
+fn causal_huray_is_huray() {
+    for f in [1e8, 1e9, 1e10, 5e10] {
+        let delta = 1.0 / (PI * f * MU0 * 5.8e7).sqrt();
+        let (r, sr) = (1.0e-6, 1.0);
+        let huray = 1.0 + 1.5 * sr / (1.0 + delta / r + delta * delta / (2.0 * r * r));
+        assert!((Roughness::Standard.factor(f, 5.8e7) - huray).abs() < 1e-12, "{f}");
+        let k = Roughness::Standard.k(f, 5.8e7);
+        // the inductance part (Im of (1+j)K) exceeds smooth copper's
+        assert!(k.re + k.im > 1.0, "{f} {k:?}");
+    }
+}
+
+/// A 200 mm lossy microstrip and stripline (standard roughness, tanδ 0.02): the pulse response has
+/// nothing before the wave can arrive – at the line's front velocity, from L_ext and the
+/// capacitance at infinite frequency.
+#[test]
+fn lossy_line_causal() {
+    let rp = RfParams { fmax: 100e9, ..Default::default() };
+    let n = 4000;
+    let freq: Vec<f64> = (1..=n).map(|k| k as f64 * rp.fmax / n as f64).collect();
+    let len = 0.2;
+    for m in &sample_models()[..4] {
+        let h: Vec<Cx> = freq
+            .iter()
+            .map(|&f| {
+                let p = m.rlgc(f, &rp);
+                let zc = (Cx::new(p.r, 2.0 * PI * f * p.l) / Cx::new(p.g, 2.0 * PI * f * p.c)).sqrt().re;
+                Abcd::line(p.r, p.l, p.g, p.c, 2.0 * PI * f, len).s_params(zc).1
+            })
+            .collect();
+        let em = m.eps_model(&rp);
+        let t_front = len * (m.l_ext * m.c0 / m.eeff0 * (em.a - em.delta)).sqrt();
+        // the pulse response (a step less its copy two rises later: free of the DC point's ramp)
+        let rise = Step::window_rise(rp.fmax) * 3f64.sqrt();
+        let st = Step::new(&freq, &h, None, rise);
+        let p = |t: f64| st.at(t) - st.at(t - 2.0 * rise);
+        let (mut pre, mut peak) = (0.0f64, 0.0f64);
+        for i in 0..4000 {
+            let t = -10e-9 + i as f64 * 4e-12;
+            if t < t_front - 2.0 * rise { pre = pre.max(p(t).abs()) } else { peak = peak.max(p(t).abs()) }
+        }
+        assert!(pre < 1e-5 * peak, "{}: {pre} of {peak}", m.source);
+    }
+}

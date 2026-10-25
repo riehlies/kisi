@@ -24,8 +24,20 @@ Deviation on ThunderScope cross-sections (reference: Forstén's microstrip/strip
 | Microstrip over a 3 mm cut-out (HFSS) | +17 % | −0.5 % |
 
 ## Lines
-RLGC per cross-section: skin effect (Wheeler), copper roughness (Huray; the presets `smooth`, `hvlp`, `standard`
-are estimates), dielectric loss (Djordjevic-Sarkar). RLGC within 2 % of HFSS.
+RLGC per cross-section, passive and causal by construction (the series impedance and the shunt admittance per
+metre are positive-real functions of frequency):
+- **Conductor:** the DC resistance turning into the skin effect (Wheeler's incremental inductance, or the field
+  solve's resistance), R_dc·√(1 + jf/f_c) with its internal inductance, times the causal Huray roughness factor
+  (Bracken, DesignCon 2012) – its loss part is Huray's, its inductance part what Kramers-Kronig requires. The
+  roughness presets `smooth`, `hvlp`, `standard` are estimates.
+- **Dielectric:** one Djordjevic-Sarkar model (a wideband Debye distribution fitted to εr and tanδ at 1 GHz) for
+  ε′ and ε″ – in the lines, the via ladders and the coaxial via sections alike.
+- **Microstrip dispersion:** a lossless Lorentz term that follows Getsinger's rising εeff below a resonance
+  above the band. A passive line cannot follow a rise of εeff with frequency except below a resonance; a
+  microstrip on a thick dielectric, whose Getsinger corner lies inside the band (at 50 Ω and 25 GHz from about
+  0.4 mm), gets the rise at the top of the band and less below it.
+
+RLGC within 2 % of HFSS.
 
 A channel is a network of N-port elements solved by nodal analysis (`kisi_si::rf::network`): the line's ABCD
 cascade, a differential pair as a 4-port (coupled sections from the odd and even mode, via pairs, stubs on both
@@ -37,7 +49,9 @@ A physics-based ladder per via (`kisi_si::via_pbm`): capacitances from an axisym
 pairs as radial lines with the nearby return posts (vias and plated pins of ground and supply planes, the nearest
 12 within 3 mm), pads and annular rings, antipads from the zone fills (non-round ones as an equivalent circle),
 pours on the via's signal layers as coplanar returns, stubs and back-drill, the junction to the traces; pairs
-with their partner. Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own
+with their partner. Passive by construction: the plane-pair matrices treat every barrel as a cylinder of
+uniform current, and a pair's modes are taken as (Z_PP + Z_NN)/2 ∓ Z_PN (the earlier Z_PP ∓ Z_PN gave via pairs
+with returns on one side a negative resistance from a few GHz). Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own
 FDTD solver: via impedance in the TDR median 2.3 %, 90th percentile 5.5 % (single vias); pairs within 3.5°
 phase; stub notch within 3 %; the four board vias with a 3D reference within 0.03–0.44 dB up to 12 GHz. An
 estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
@@ -125,6 +139,11 @@ kisi marks these as estimates in the viewer and in the CLI output:
   `tools/forsten_sparse_shim.js`); `kisi-validate <cases.json> [<refs.json>]` compares the formulas, and the
   field-solver chain (`kisi-validate --geoms` → `tools/solve_xs.mjs` → `kisi-validate --field`) is what
   `validate_field.sh` runs.
+- **Passivity and causality:** unit tests (series impedance and shunt admittance positive-real in the whole
+  right half-plane; the pulse response of a 200 mm lossy line before its front; the plane-pair reductions with
+  asymmetric returns) and a test over every lane of the example boards (`crates/kisi-core/tests/causality.rs`,
+  in CI): the board's S-parameters passive up to 25 GHz and their pulse responses causal (details and numbers:
+  [TESTS.md](../validation/fdtd/TESTS.md) section 14).
 - **Vias and planes** against 3D results of kisi's own FDTD solver (`crates/kisi-fdtd`, checked against openEMS
   and analytic cavities): 74 reference cases in `validation/via_ref`, the test log in
   [validation/fdtd/TESTS.md](../validation/fdtd/TESTS.md), and the reference page `kisi-references.html`

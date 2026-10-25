@@ -29,7 +29,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "red",
-     "value": 0.392013
+     "value": 0.392068
     },
     {
      "hi": null,
@@ -47,7 +47,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -9.66809
+     "value": -9.66986
     },
     {
      "hi": null,
@@ -56,7 +56,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 0.35047
+     "value": 0.35061
     }
    ],
    "diff": true,
@@ -72,10 +72,10 @@
    "length_mm": 12.6688,
    "metrics": {
     "error": null,
-    "eye_h": 0.392013,
+    "eye_h": 0.392068,
     "eye_w_ui": 0.5,
-    "il_nyq_db": -9.66809,
-    "rl_db": 0.35047,
+    "il_nyq_db": -9.66986,
+    "rl_db": 0.35061,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -137,7 +137,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.947752
+     "value": 0.947792
     },
     {
      "hi": null,
@@ -146,7 +146,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.96875
+     "value": 1.0
     },
     {
      "hi": null,
@@ -155,7 +155,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.479839
+     "value": -0.479931
     },
     {
      "hi": null,
@@ -164,7 +164,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 25.009
+     "value": 24.934
     }
    ],
    "diff": false,
@@ -180,10 +180,10 @@
    "length_mm": 7.2788,
    "metrics": {
     "error": null,
-    "eye_h": 0.947752,
-    "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.479839,
-    "rl_db": 25.009,
+    "eye_h": 0.947792,
+    "eye_w_ui": 1.0,
+    "il_nyq_db": -0.479931,
+    "rl_db": 24.934,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -237,7 +237,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999061
+     "value": 0.999087
     },
     {
      "hi": null,
@@ -255,7 +255,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.023159
+     "value": -0.0230311
     },
     {
      "hi": null,
@@ -264,7 +264,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 26.8012
+     "value": 26.9274
     }
    ],
    "diff": true,
@@ -280,10 +280,10 @@
    "length_mm": 4.07761,
    "metrics": {
     "error": null,
-    "eye_h": 0.999061,
+    "eye_h": 0.999087,
     "eye_w_ui": 0.9375,
-    "il_nyq_db": -0.023159,
-    "rl_db": 26.8012,
+    "il_nyq_db": -0.0230311,
+    "rl_db": 26.9274,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -335,7 +335,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998852
+     "value": 0.998891
     },
     {
      "hi": null,
@@ -353,7 +353,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.024363
+     "value": -0.0242564
     },
     {
      "hi": null,
@@ -362,7 +362,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 30.4534
+     "value": 30.6987
     }
    ],
    "diff": true,
@@ -378,10 +378,10 @@
    "length_mm": 5.2616,
    "metrics": {
     "error": null,
-    "eye_h": 0.998852,
+    "eye_h": 0.998891,
     "eye_w_ui": 0.9375,
-    "il_nyq_db": -0.024363,
-    "rl_db": 30.4534,
+    "il_nyq_db": -0.0242564,
+    "rl_db": 30.6987,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -433,7 +433,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998751
+     "value": 0.998794
     },
     {
      "hi": null,
@@ -451,7 +451,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0292284
+     "value": -0.0290542
     },
     {
      "hi": null,
@@ -460,7 +460,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 27.4492
+     "value": 27.6492
     }
    ],
    "diff": true,
@@ -476,10 +476,10 @@
    "length_mm": 6.23766,
    "metrics": {
     "error": null,
-    "eye_h": 0.998751,
+    "eye_h": 0.998794,
     "eye_w_ui": 0.9375,
-    "il_nyq_db": -0.0292284,
-    "rl_db": 27.4492,
+    "il_nyq_db": -0.0290542,
+    "rl_db": 27.6492,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -531,7 +531,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.822134
+     "value": 0.822961
     },
     {
      "hi": null,
@@ -540,7 +540,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.9375
+     "value": 0.96875
     },
     {
      "hi": null,
@@ -549,7 +549,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -1.90763
+     "value": -1.91345
     },
     {
      "hi": null,
@@ -558,7 +558,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 9.93987
+     "value": 9.80983
     },
     {
      "hi": null,
@@ -567,7 +567,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 29.1656
+     "value": 29.9044
     }
    ],
    "diff": false,
@@ -583,13 +583,13 @@
    "length_mm": 84.0927,
    "metrics": {
     "error": null,
-    "eye_h": 0.822134,
-    "eye_w_ui": 0.9375,
-    "il_nyq_db": -1.90763,
-    "rl_db": 9.93987,
+    "eye_h": 0.822961,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -1.91345,
+    "rl_db": 9.80983,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 29.1656,
+    "stub_ghz": 29.9044,
     "z_max": 72.87,
     "z_mean": 63.3523,
     "z_min": 30.2366
@@ -633,7 +633,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.407409
+     "value": -0.418706
     },
     {
      "hi": null,
@@ -642,7 +642,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 15.5095
+     "value": 15.1518
     },
     {
      "hi": null,
@@ -651,7 +651,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 25.3396
+     "value": 25.9709
     }
    ],
    "diff": false,
@@ -662,9 +662,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.982323,
+    "height": 0.984719,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.90625
+    "width_ui": 0.875
    },
    "eye_computed": true,
    "from": "IC7.6",
@@ -675,11 +675,11 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.407409,
-    "rl_db": 15.5095,
+    "il_nyq_db": -0.418706,
+    "rl_db": 15.1518,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 25.3396,
+    "stub_ghz": 25.9709,
     "z_max": 74.4608,
     "z_mean": 57.4928,
     "z_min": 25.4242
@@ -723,7 +723,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.449913
+     "value": -0.462242
     },
     {
      "hi": null,
@@ -732,7 +732,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 15.177
+     "value": 14.8215
     },
     {
      "hi": null,
@@ -741,7 +741,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 25.4103
+     "value": 26.0261
     }
    ],
    "diff": false,
@@ -752,7 +752,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.979274,
+    "height": 0.986226,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.9375
    },
@@ -765,11 +765,11 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.449913,
-    "rl_db": 15.177,
+    "il_nyq_db": -0.462242,
+    "rl_db": 14.8215,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 25.4103,
+    "stub_ghz": 26.0261,
     "z_max": 74.4608,
     "z_mean": 57.1877,
     "z_min": 25.4242
@@ -811,7 +811,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999384
+     "value": 0.999412
     },
     {
      "hi": null,
@@ -829,7 +829,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0137265
+     "value": -0.0138045
     },
     {
      "hi": null,
@@ -838,17 +838,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 32.6483
+     "value": 32.3616
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.8681,
    "metrics": {
     "error": null,
-    "eye_h": 0.999384,
+    "eye_h": 0.999412,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0137265,
-    "rl_db": 32.6483,
+    "il_nyq_db": -0.0138045,
+    "rl_db": 32.3616,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -882,7 +882,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999581
+     "value": 0.999604
     },
     {
      "hi": null,
@@ -900,7 +900,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.00959329
+     "value": -0.00963817
     },
     {
      "hi": null,
@@ -909,17 +909,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 33.3733
+     "value": 33.1756
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.07452,
    "metrics": {
     "error": null,
-    "eye_h": 0.999581,
+    "eye_h": 0.999604,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.00959329,
-    "rl_db": 33.3733,
+    "il_nyq_db": -0.00963817,
+    "rl_db": 33.1756,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -953,7 +953,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999591
+     "value": 0.999612
     },
     {
      "hi": null,
@@ -971,7 +971,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.00963933
+     "value": -0.00968013
     },
     {
      "hi": null,
@@ -980,17 +980,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 33.7772
+     "value": 33.5799
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.275,
    "metrics": {
     "error": null,
-    "eye_h": 0.999591,
+    "eye_h": 0.999612,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.00963933,
-    "rl_db": 33.7772,
+    "il_nyq_db": -0.00968013,
+    "rl_db": 33.5799,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1024,7 +1024,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999606
+     "value": 0.999626
     },
     {
      "hi": null,
@@ -1042,7 +1042,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.00874203
+     "value": -0.00876999
     },
     {
      "hi": null,
@@ -1051,17 +1051,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 36.4551
+     "value": 36.2062
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.985,
    "metrics": {
     "error": null,
-    "eye_h": 0.999606,
+    "eye_h": 0.999626,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.00874203,
-    "rl_db": 36.4551,
+    "il_nyq_db": -0.00876999,
+    "rl_db": 36.2062,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1095,7 +1095,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999682
+     "value": 0.999699
     },
     {
      "hi": null,
@@ -1113,7 +1113,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.00727314
+     "value": -0.00730695
     },
     {
      "hi": null,
@@ -1122,17 +1122,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 33.3013
+     "value": 33.1539
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.35861,
    "metrics": {
     "error": null,
-    "eye_h": 0.999682,
+    "eye_h": 0.999699,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.00727314,
-    "rl_db": 33.3013,
+    "il_nyq_db": -0.00730695,
+    "rl_db": 33.1539,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1168,7 +1168,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.995672
+     "value": 0.996018
     },
     {
      "hi": null,
@@ -1186,7 +1186,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.109183
+     "value": -0.108821
     },
     {
      "hi": null,
@@ -1195,7 +1195,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 30.3114
+     "value": 31.086
     },
     {
      "hi": null,
@@ -1204,7 +1204,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 28.75
+     "value": 29.25
     }
    ],
    "diff": false,
@@ -1220,13 +1220,13 @@
    "length_mm": 31.2285,
    "metrics": {
     "error": null,
-    "eye_h": 0.995672,
+    "eye_h": 0.996018,
     "eye_w_ui": 0.78125,
-    "il_nyq_db": -0.109183,
-    "rl_db": 30.3114,
+    "il_nyq_db": -0.108821,
+    "rl_db": 31.086,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 28.75,
+    "stub_ghz": 29.25,
     "z_max": 66.6634,
     "z_mean": 50.6113,
     "z_min": 35.1137
@@ -1270,7 +1270,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.997886
+     "value": 0.997971
     },
     {
      "hi": null,
@@ -1288,7 +1288,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0531835
+     "value": -0.0531006
     },
     {
      "hi": null,
@@ -1297,7 +1297,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 41.3374
+     "value": 44.3321
     }
    ],
    "diff": false,
@@ -1313,10 +1313,10 @@
    "length_mm": 17.1758,
    "metrics": {
     "error": null,
-    "eye_h": 0.997886,
+    "eye_h": 0.997971,
     "eye_w_ui": 0.65625,
-    "il_nyq_db": -0.0531835,
-    "rl_db": 41.3374,
+    "il_nyq_db": -0.0531006,
+    "rl_db": 44.3321,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1360,7 +1360,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.99883
+     "value": 0.998869
     },
     {
      "hi": null,
@@ -1378,7 +1378,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0242548
+     "value": -0.0242281
     },
     {
      "hi": null,
@@ -1387,7 +1387,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 43.837
+     "value": 45.4035
     }
    ],
    "diff": false,
@@ -1403,10 +1403,10 @@
    "length_mm": 7.0801,
    "metrics": {
     "error": null,
-    "eye_h": 0.99883,
+    "eye_h": 0.998869,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.0242548,
-    "rl_db": 43.837,
+    "il_nyq_db": -0.0242281,
+    "rl_db": 45.4035,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1453,7 +1453,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999391
+     "value": 0.999411
     },
     {
      "hi": null,
@@ -1471,7 +1471,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0124909
+     "value": -0.0125099
     },
     {
      "hi": null,
@@ -1480,7 +1480,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 43.9069
+     "value": 43.0417
     }
    ],
    "diff": false,
@@ -1496,10 +1496,10 @@
    "length_mm": 3.96111,
    "metrics": {
     "error": null,
-    "eye_h": 0.999391,
+    "eye_h": 0.999411,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0124909,
-    "rl_db": 43.9069,
+    "il_nyq_db": -0.0125099,
+    "rl_db": 43.0417,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1543,7 +1543,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999309
+     "value": 0.999327
     },
     {
      "hi": null,
@@ -1561,7 +1561,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0103687
+     "value": -0.0103646
     },
     {
      "hi": null,
@@ -1570,7 +1570,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 51.7129
+     "value": 53.2206
     }
    ],
    "diff": false,
@@ -1586,10 +1586,10 @@
    "length_mm": 2.4808,
    "metrics": {
     "error": null,
-    "eye_h": 0.999309,
+    "eye_h": 0.999327,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0103687,
-    "rl_db": 51.7129,
+    "il_nyq_db": -0.0103646,
+    "rl_db": 53.2206,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1636,7 +1636,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.996439
+     "value": 0.996679
     },
     {
      "hi": null,
@@ -1654,7 +1654,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.116153
+     "value": -0.115168
     },
     {
      "hi": null,
@@ -1663,7 +1663,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 25.9244
+     "value": 26.712
     },
     {
      "hi": null,
@@ -1672,7 +1672,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 23.214
+     "value": 23.7302
     }
    ],
    "diff": false,
@@ -1688,13 +1688,13 @@
    "length_mm": 26.3386,
    "metrics": {
     "error": null,
-    "eye_h": 0.996439,
+    "eye_h": 0.996679,
     "eye_w_ui": 0.78125,
-    "il_nyq_db": -0.116153,
-    "rl_db": 25.9244,
+    "il_nyq_db": -0.115168,
+    "rl_db": 26.712,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 23.214,
+    "stub_ghz": 23.7302,
     "z_max": 58.6782,
     "z_mean": 50.2172,
     "z_min": 48.5281
@@ -1735,7 +1735,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.995474
+     "value": 0.995848
     },
     {
      "hi": null,
@@ -1744,7 +1744,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.8125
+     "value": 0.84375
     },
     {
      "hi": null,
@@ -1753,7 +1753,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.135757
+     "value": -0.13472
     },
     {
      "hi": null,
@@ -1762,7 +1762,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 28.6011
+     "value": 29.8022
     },
     {
      "hi": null,
@@ -1771,7 +1771,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 20.0155
+     "value": 20.4299
     }
    ],
    "diff": false,
@@ -1787,13 +1787,13 @@
    "length_mm": 29.5516,
    "metrics": {
     "error": null,
-    "eye_h": 0.995474,
-    "eye_w_ui": 0.8125,
-    "il_nyq_db": -0.135757,
-    "rl_db": 28.6011,
+    "eye_h": 0.995848,
+    "eye_w_ui": 0.84375,
+    "il_nyq_db": -0.13472,
+    "rl_db": 29.8022,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 20.0155,
+    "stub_ghz": 20.4299,
     "z_max": 58.6782,
     "z_mean": 50.3523,
     "z_min": 48.7304
@@ -1834,7 +1834,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.99545
+     "value": 0.995709
     },
     {
      "hi": null,
@@ -1852,7 +1852,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.112279
+     "value": -0.111532
     },
     {
      "hi": null,
@@ -1861,7 +1861,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 25.7198
+     "value": 26.2606
     },
     {
      "hi": null,
@@ -1870,7 +1870,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 24.4493
+     "value": 25.0061
     }
    ],
    "diff": false,
@@ -1886,13 +1886,13 @@
    "length_mm": 30.5894,
    "metrics": {
     "error": null,
-    "eye_h": 0.99545,
+    "eye_h": 0.995709,
     "eye_w_ui": 0.78125,
-    "il_nyq_db": -0.112279,
-    "rl_db": 25.7198,
+    "il_nyq_db": -0.111532,
+    "rl_db": 26.2606,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 24.4493,
+    "stub_ghz": 25.0061,
     "z_max": 60.4802,
     "z_mean": 50.1571,
     "z_min": 35.8097
@@ -1936,7 +1936,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.955971
+     "value": 0.959321
     },
     {
      "hi": null,
@@ -1945,7 +1945,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 1.0
+     "value": 0.96875
     },
     {
      "hi": null,
@@ -1954,7 +1954,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.515614
+     "value": -0.51752
     },
     {
      "hi": null,
@@ -1963,7 +1963,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 23.681
+     "value": 23.7545
     },
     {
      "hi": null,
@@ -1972,7 +1972,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 49.5
+     "value": 51.0
     }
    ],
    "diff": false,
@@ -1988,13 +1988,13 @@
    "length_mm": 119.919,
    "metrics": {
     "error": null,
-    "eye_h": 0.955971,
-    "eye_w_ui": 1.0,
-    "il_nyq_db": -0.515614,
-    "rl_db": 23.681,
+    "eye_h": 0.959321,
+    "eye_w_ui": 0.96875,
+    "il_nyq_db": -0.51752,
+    "rl_db": 23.7545,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 49.5,
+    "stub_ghz": 51.0,
     "z_max": 60.4802,
     "z_mean": 50.5197,
     "z_min": 26.582
@@ -2042,7 +2042,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.997021
+     "value": 0.997141
     },
     {
      "hi": null,
@@ -2051,7 +2051,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.71875
+     "value": 0.75
     },
     {
      "hi": null,
@@ -2060,7 +2060,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0784388
+     "value": -0.0781391
     },
     {
      "hi": null,
@@ -2069,7 +2069,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 29.1992
+     "value": 29.8153
     },
     {
      "hi": null,
@@ -2078,7 +2078,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 37.5
+     "value": 38.5
     }
    ],
    "diff": false,
@@ -2094,13 +2094,13 @@
    "length_mm": 21.2362,
    "metrics": {
     "error": null,
-    "eye_h": 0.997021,
-    "eye_w_ui": 0.71875,
-    "il_nyq_db": -0.0784388,
-    "rl_db": 29.1992,
+    "eye_h": 0.997141,
+    "eye_w_ui": 0.75,
+    "il_nyq_db": -0.0781391,
+    "rl_db": 29.8153,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 37.5,
+    "stub_ghz": 38.5,
     "z_max": 60.4802,
     "z_mean": 49.1132,
     "z_min": 26.0287
@@ -2148,7 +2148,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.979928
+     "value": 0.985509
     },
     {
      "hi": null,
@@ -2166,7 +2166,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.320917
+     "value": -0.322385
     },
     {
      "hi": null,
@@ -2175,7 +2175,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 23.977
+     "value": 23.3803
     },
     {
      "hi": null,
@@ -2184,7 +2184,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 51.5
+     "value": 52.8568
     }
    ],
    "diff": false,
@@ -2200,13 +2200,13 @@
    "length_mm": 76.7593,
    "metrics": {
     "error": null,
-    "eye_h": 0.979928,
+    "eye_h": 0.985509,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.320917,
-    "rl_db": 23.977,
+    "il_nyq_db": -0.322385,
+    "rl_db": 23.3803,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 51.5,
+    "stub_ghz": 52.8568,
     "z_max": 60.4802,
     "z_mean": 50.2102,
     "z_min": 33.7362
@@ -2252,7 +2252,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999765
+     "value": 0.999773
     },
     {
      "hi": null,
@@ -2270,7 +2270,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0033978
+     "value": -0.00340028
     },
     {
      "hi": null,
@@ -2279,17 +2279,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 50.4115
+     "value": 49.8923
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 1.09755,
    "metrics": {
     "error": null,
-    "eye_h": 0.999765,
+    "eye_h": 0.999773,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0033978,
-    "rl_db": 50.4115,
+    "il_nyq_db": -0.00340028,
+    "rl_db": 49.8923,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2323,7 +2323,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999571
+     "value": 0.999592
     },
     {
      "hi": null,
@@ -2341,7 +2341,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0087616
+     "value": -0.00877579
     },
     {
      "hi": null,
@@ -2350,17 +2350,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 43.2741
+     "value": 42.6944
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.80279,
    "metrics": {
     "error": null,
-    "eye_h": 0.999571,
+    "eye_h": 0.999592,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.0087616,
-    "rl_db": 43.2741,
+    "il_nyq_db": -0.00877579,
+    "rl_db": 42.6944,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2394,7 +2394,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999563
+     "value": 0.999585
     },
     {
      "hi": null,
@@ -2412,7 +2412,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0089225
+     "value": -0.00893651
     },
     {
      "hi": null,
@@ -2421,17 +2421,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 43.5499
+     "value": 42.9422
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.85137,
    "metrics": {
     "error": null,
-    "eye_h": 0.999563,
+    "eye_h": 0.999585,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.0089225,
-    "rl_db": 43.5499,
+    "il_nyq_db": -0.00893651,
+    "rl_db": 42.9422,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2465,7 +2465,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999046
+     "value": 0.999089
     },
     {
      "hi": null,
@@ -2483,7 +2483,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.021101
+     "value": -0.0211356
     },
     {
      "hi": null,
@@ -2492,17 +2492,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 42.5326
+     "value": 41.4184
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 7.04,
    "metrics": {
     "error": null,
-    "eye_h": 0.999046,
+    "eye_h": 0.999089,
     "eye_w_ui": 0.9375,
-    "il_nyq_db": -0.021101,
-    "rl_db": 42.5326,
+    "il_nyq_db": -0.0211356,
+    "rl_db": 41.4184,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2536,7 +2536,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999606
+     "value": 0.999626
     },
     {
      "hi": null,
@@ -2554,7 +2554,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.00804709
+     "value": -0.00806011
     },
     {
      "hi": null,
@@ -2563,17 +2563,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 43.2797
+     "value": 42.7441
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.58,
    "metrics": {
     "error": null,
-    "eye_h": 0.999606,
+    "eye_h": 0.999626,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.00804709,
-    "rl_db": 43.2797,
+    "il_nyq_db": -0.00806011,
+    "rl_db": 42.7441,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2607,7 +2607,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999606
+     "value": 0.999626
     },
     {
      "hi": null,
@@ -2625,7 +2625,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.00804709
+     "value": -0.00806011
     },
     {
      "hi": null,
@@ -2634,17 +2634,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 43.2797
+     "value": 42.7441
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.58,
    "metrics": {
     "error": null,
-    "eye_h": 0.999606,
+    "eye_h": 0.999626,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.00804709,
-    "rl_db": 43.2797,
+    "il_nyq_db": -0.00806011,
+    "rl_db": 42.7441,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,

@@ -29,7 +29,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.915149
+     "value": 0.924884
     },
     {
      "hi": null,
@@ -47,7 +47,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.130435
+     "value": -0.133249
     },
     {
      "hi": null,
@@ -56,7 +56,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 21.6819
+     "value": 21.008
     },
     {
      "hi": 50.0,
@@ -81,10 +81,10 @@
    "length_mm": 32.9695,
    "metrics": {
     "error": null,
-    "eye_h": 0.915149,
+    "eye_h": 0.924884,
     "eye_w_ui": 0.84375,
-    "il_nyq_db": -0.130435,
-    "rl_db": 21.6819,
+    "il_nyq_db": -0.133249,
+    "rl_db": 21.008,
     "skew_ps": 10.2069,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -92,7 +92,7 @@
     "z_mean": 110.7,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -32.4674,
+   "mode_conversion_db": -32.4031,
    "model": "4-port",
    "nets": [
     "/ADC/D1A_P"
@@ -129,7 +129,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.91808
+     "value": 0.92767
     },
     {
      "hi": null,
@@ -138,7 +138,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 0.84375
+     "value": 0.8125
     },
     {
      "hi": null,
@@ -147,7 +147,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.131981
+     "value": -0.134758
     },
     {
      "hi": null,
@@ -156,7 +156,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 21.9667
+     "value": 21.2622
     },
     {
      "hi": 50.0,
@@ -181,10 +181,10 @@
    "length_mm": 33.8734,
    "metrics": {
     "error": null,
-    "eye_h": 0.91808,
-    "eye_w_ui": 0.84375,
-    "il_nyq_db": -0.131981,
-    "rl_db": 21.9667,
+    "eye_h": 0.92767,
+    "eye_w_ui": 0.8125,
+    "il_nyq_db": -0.134758,
+    "rl_db": 21.2622,
     "skew_ps": 11.6049,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -192,7 +192,7 @@
     "z_mean": 110.429,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -31.4198,
+   "mode_conversion_db": -31.3574,
    "model": "4-port",
    "nets": [
     "/ADC/D1B_P"
@@ -229,7 +229,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.879212
+     "value": 0.888857
     },
     {
      "hi": null,
@@ -247,7 +247,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.114879
+     "value": -0.117017
     },
     {
      "hi": null,
@@ -256,7 +256,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 23.1535
+     "value": 22.4045
     },
     {
      "hi": 50.0,
@@ -281,10 +281,10 @@
    "length_mm": 29.6308,
    "metrics": {
     "error": null,
-    "eye_h": 0.879212,
+    "eye_h": 0.888857,
     "eye_w_ui": 0.8125,
-    "il_nyq_db": -0.114879,
-    "rl_db": 23.1535,
+    "il_nyq_db": -0.117017,
+    "rl_db": 22.4045,
     "skew_ps": 0.304746,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -292,7 +292,7 @@
     "z_mean": 110.197,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -63.5413,
+   "mode_conversion_db": -63.4744,
    "model": "4-port",
    "nets": [
     "/ADC/D3A_P"
@@ -329,7 +329,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.910011
+     "value": 0.919874
     },
     {
      "hi": null,
@@ -347,7 +347,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.127375
+     "value": -0.129959
     },
     {
      "hi": null,
@@ -356,7 +356,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 22.3299
+     "value": 21.6042
     },
     {
      "hi": 50.0,
@@ -381,10 +381,10 @@
    "length_mm": 32.8425,
    "metrics": {
     "error": null,
-    "eye_h": 0.910011,
+    "eye_h": 0.919874,
     "eye_w_ui": 0.84375,
-    "il_nyq_db": -0.127375,
-    "rl_db": 22.3299,
+    "il_nyq_db": -0.129959,
+    "rl_db": 21.6042,
     "skew_ps": 7.1798,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -392,7 +392,7 @@
     "z_mean": 111.299,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -35.8687,
+   "mode_conversion_db": -35.8043,
    "model": "4-port",
    "nets": [
     "/ADC/D3B_P"
@@ -429,7 +429,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -3.77748
+     "value": -3.75464
     },
     {
      "hi": null,
@@ -438,7 +438,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 9.54612
+     "value": 9.55045
     }
    ],
    "diff": false,
@@ -449,7 +449,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.656485,
+    "height": 0.659014,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 1.0
    },
@@ -462,8 +462,8 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -3.77748,
-    "rl_db": 9.54612,
+    "il_nyq_db": -3.75464,
+    "rl_db": 9.55045,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -517,7 +517,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.275338
+     "value": -0.282505
     },
     {
      "hi": null,
@@ -526,7 +526,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.8485
+     "value": 19.1328
     },
     {
      "hi": 50.0,
@@ -546,7 +546,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.992349,
+    "height": 0.991709,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.96875
    },
@@ -559,8 +559,8 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.275338,
-    "rl_db": 19.8485,
+    "il_nyq_db": -0.282505,
+    "rl_db": 19.1328,
     "skew_ps": -8.25706,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -568,7 +568,7 @@
     "z_mean": 110.364,
     "z_min": 66.6369
    },
-   "mode_conversion_db": -34.8294,
+   "mode_conversion_db": -34.78,
    "model": "4-port",
    "nets": [
     "/FPGA/USRIO_2_P"
@@ -605,7 +605,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.284219
+     "value": -0.291537
     },
     {
      "hi": null,
@@ -614,7 +614,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.8517
+     "value": 19.1386
     },
     {
      "hi": 50.0,
@@ -634,7 +634,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.98448,
+    "height": 0.983131,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.96875
    },
@@ -647,8 +647,8 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.284219,
-    "rl_db": 19.8517,
+    "il_nyq_db": -0.291537,
+    "rl_db": 19.1386,
     "skew_ps": 2.89638,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -656,7 +656,7 @@
     "z_mean": 110.321,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -44.5069,
+   "mode_conversion_db": -44.4521,
    "model": "4-port",
    "nets": [
     "/FPGA/USRIO_3_P"
@@ -693,7 +693,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.259906
+     "value": -0.266823
     },
     {
      "hi": null,
@@ -702,7 +702,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.7257
+     "value": 19.0299
     },
     {
      "hi": 50.0,
@@ -722,7 +722,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.999117,
+    "height": 0.998621,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.96875
    },
@@ -735,8 +735,8 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.259906,
-    "rl_db": 19.7257,
+    "il_nyq_db": -0.266823,
+    "rl_db": 19.0299,
     "skew_ps": 3.57343,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -744,7 +744,7 @@
     "z_mean": 110.268,
     "z_min": 77.3094
    },
-   "mode_conversion_db": -41.4966,
+   "mode_conversion_db": -41.4587,
    "model": "4-port",
    "nets": [
     "/FPGA/USRIO_11_P"
@@ -781,7 +781,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.269733
+     "value": -0.276725
     },
     {
      "hi": null,
@@ -790,7 +790,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.881
+     "value": 19.174
     },
     {
      "hi": 50.0,
@@ -810,7 +810,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.994709,
+    "height": 0.993699,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.96875
    },
@@ -823,8 +823,8 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.269733,
-    "rl_db": 19.881,
+    "il_nyq_db": -0.276725,
+    "rl_db": 19.174,
     "skew_ps": 0.453336,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -832,7 +832,7 @@
     "z_mean": 110.261,
     "z_min": 70.4694
    },
-   "mode_conversion_db": -57.5579,
+   "mode_conversion_db": -57.5258,
    "model": "4-port",
    "nets": [
     "/FPGA/USRIO_12_P"
@@ -869,7 +869,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -3.42247
+     "value": -3.46582
     },
     {
      "hi": null,
@@ -878,7 +878,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 5.02774
+     "value": 4.9835
     },
     {
      "hi": 5.0,
@@ -887,7 +887,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 6.62829
+     "value": 6.61041
     }
    ],
    "diff": true,
@@ -898,9 +898,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.620554,
+    "height": 0.616399,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.875
+    "width_ui": 0.84375
    },
    "eye_computed": true,
    "from": "P1.A16",
@@ -911,16 +911,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -3.42247,
-    "rl_db": 5.02774,
-    "skew_ps": 6.62829,
+    "il_nyq_db": -3.46582,
+    "rl_db": 4.9835,
+    "skew_ps": 6.61041,
     "skew_uncertain": true,
     "stub_ghz": null,
     "z_max": 161.055,
     "z_mean": 91.9081,
     "z_min": 47.2292
    },
-   "mode_conversion_db": -8.7493,
+   "mode_conversion_db": -8.73551,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PER0_P",
@@ -962,7 +962,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.61861
+     "value": -2.66118
     },
     {
      "hi": null,
@@ -971,7 +971,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 3.87483
+     "value": 3.75646
     },
     {
      "hi": 5.0,
@@ -980,7 +980,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 6.55088
+     "value": 6.55718
     }
    ],
    "diff": true,
@@ -991,9 +991,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.743272,
+    "height": 0.737779,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.875
+    "width_ui": 0.84375
    },
    "eye_computed": true,
    "from": "P1.A21",
@@ -1004,16 +1004,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.61861,
-    "rl_db": 3.87483,
-    "skew_ps": 6.55088,
+    "il_nyq_db": -2.66118,
+    "rl_db": 3.75646,
+    "skew_ps": 6.55718,
     "skew_uncertain": true,
     "stub_ghz": null,
     "z_max": 161.055,
     "z_mean": 92.0721,
     "z_min": 47.2292
    },
-   "mode_conversion_db": -15.5889,
+   "mode_conversion_db": -15.5845,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PER1_P",
@@ -1055,7 +1055,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.37612
+     "value": -2.40266
     },
     {
      "hi": null,
@@ -1064,7 +1064,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 4.17216
+     "value": 3.97694
     },
     {
      "hi": 5.0,
@@ -1073,7 +1073,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 10.8775
+     "value": 10.8671
     }
    ],
    "diff": true,
@@ -1084,7 +1084,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.73479,
+    "height": 0.734839,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.90625
    },
@@ -1097,16 +1097,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.37612,
-    "rl_db": 4.17216,
-    "skew_ps": 10.8775,
+    "il_nyq_db": -2.40266,
+    "rl_db": 3.97694,
+    "skew_ps": 10.8671,
     "skew_uncertain": true,
     "stub_ghz": null,
     "z_max": 161.055,
     "z_mean": 92.5493,
     "z_min": 47.2292
    },
-   "mode_conversion_db": -10.2692,
+   "mode_conversion_db": -10.246,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PER2_P",
@@ -1148,7 +1148,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.70616
+     "value": -2.75305
     },
     {
      "hi": null,
@@ -1157,7 +1157,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 4.63796
+     "value": 4.58952
     },
     {
      "hi": 5.0,
@@ -1166,7 +1166,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 10.8903
+     "value": 10.8866
     }
    ],
    "diff": true,
@@ -1177,9 +1177,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.603957,
+    "height": 0.596559,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.90625
+    "width_ui": 0.9375
    },
    "eye_computed": true,
    "from": "P1.A29",
@@ -1190,16 +1190,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.70616,
-    "rl_db": 4.63796,
-    "skew_ps": 10.8903,
+    "il_nyq_db": -2.75305,
+    "rl_db": 4.58952,
+    "skew_ps": 10.8866,
     "skew_uncertain": true,
     "stub_ghz": null,
     "z_max": 161.055,
     "z_mean": 92.712,
     "z_min": 47.2292
    },
-   "mode_conversion_db": -6.28014,
+   "mode_conversion_db": -6.26161,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PER3_P",
@@ -1241,7 +1241,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -4.62965
+     "value": -4.69473
     },
     {
      "hi": null,
@@ -1250,7 +1250,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 4.48046
+     "value": 4.65774
     },
     {
      "hi": 5.0,
@@ -1259,7 +1259,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 11.2414
+     "value": 12.0048
     },
     {
      "hi": null,
@@ -1268,7 +1268,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 46.8319
+     "value": 63.5209
     }
    ],
    "diff": true,
@@ -1279,7 +1279,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.447379,
+    "height": 0.44529,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.84375
    },
@@ -1292,16 +1292,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -4.62965,
-    "rl_db": 4.48046,
-    "skew_ps": 11.2414,
+    "il_nyq_db": -4.69473,
+    "rl_db": 4.65774,
+    "skew_ps": 12.0048,
     "skew_uncertain": true,
-    "stub_ghz": 46.8319,
+    "stub_ghz": 63.5209,
     "z_max": 114.122,
     "z_mean": 89.2049,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -13.5715,
+   "mode_conversion_db": -13.5001,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET0_P",
@@ -1343,7 +1343,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.83633
+     "value": -2.75943
     },
     {
      "hi": null,
@@ -1352,7 +1352,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 5.20232
+     "value": 5.07546
     },
     {
      "hi": 5.0,
@@ -1361,7 +1361,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 7.83569
+     "value": 7.94849
     },
     {
      "hi": null,
@@ -1370,7 +1370,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 44.3555
+     "value": 45.0
     }
    ],
    "diff": true,
@@ -1381,7 +1381,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.479993,
+    "height": 0.488129,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.78125
    },
@@ -1394,16 +1394,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.83633,
-    "rl_db": 5.20232,
-    "skew_ps": 7.83569,
+    "il_nyq_db": -2.75943,
+    "rl_db": 5.07546,
+    "skew_ps": 7.94849,
     "skew_uncertain": true,
-    "stub_ghz": 44.3555,
+    "stub_ghz": 45.0,
     "z_max": 112.528,
     "z_mean": 89.9471,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -14.7174,
+   "mode_conversion_db": -14.7684,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET1_P",
@@ -1445,7 +1445,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -3.0472
+     "value": -3.00338
     },
     {
      "hi": null,
@@ -1454,7 +1454,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 3.30538
+     "value": 3.07817
     },
     {
      "hi": 5.0,
@@ -1463,7 +1463,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 2.67179
+     "value": 2.66457
     },
     {
      "hi": null,
@@ -1472,7 +1472,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 35.0
+     "value": 73.75
     }
    ],
    "diff": true,
@@ -1483,9 +1483,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.523201,
+    "height": 0.526977,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.78125
+    "width_ui": 0.8125
    },
    "eye_computed": true,
    "from": "P1.B23",
@@ -1496,16 +1496,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -3.0472,
-    "rl_db": 3.30538,
-    "skew_ps": 2.67179,
+    "il_nyq_db": -3.00338,
+    "rl_db": 3.07817,
+    "skew_ps": 2.66457,
     "skew_uncertain": true,
-    "stub_ghz": 35.0,
+    "stub_ghz": 73.75,
     "z_max": 161.055,
     "z_mean": 92.8249,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -21.4154,
+   "mode_conversion_db": -21.3842,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET2_P",
@@ -1547,7 +1547,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -4.23923
+     "value": -4.19611
     },
     {
      "hi": null,
@@ -1556,7 +1556,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 2.46048
+     "value": 2.37747
     },
     {
      "hi": 5.0,
@@ -1565,7 +1565,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 7.55435
+     "value": 7.86916
     },
     {
      "hi": null,
@@ -1574,7 +1574,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 47.9139
+     "value": 62.9784
     }
    ],
    "diff": true,
@@ -1585,9 +1585,9 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.50009,
+    "height": 0.500348,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
-    "width_ui": 0.8125
+    "width_ui": 0.84375
    },
    "eye_computed": true,
    "from": "P1.B27",
@@ -1598,16 +1598,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -4.23923,
-    "rl_db": 2.46048,
-    "skew_ps": 7.55435,
+    "il_nyq_db": -4.19611,
+    "rl_db": 2.37747,
+    "skew_ps": 7.86916,
     "skew_uncertain": true,
-    "stub_ghz": 47.9139,
+    "stub_ghz": 62.9784,
     "z_max": 161.055,
     "z_mean": 93.2967,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -15.7754,
+   "mode_conversion_db": -15.8172,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET3_P",
@@ -1647,7 +1647,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999021
+     "value": 0.999072
     },
     {
      "hi": null,
@@ -1665,7 +1665,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0256554
+     "value": -0.0259587
     },
     {
      "hi": null,
@@ -1674,17 +1674,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 25.1018
+     "value": 24.9054
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 6.14,
    "metrics": {
     "error": null,
-    "eye_h": 0.999021,
+    "eye_h": 0.999072,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0256554,
-    "rl_db": 25.1018,
+    "il_nyq_db": -0.0259587,
+    "rl_db": 24.9054,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1718,7 +1718,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998587
+     "value": 0.998646
     },
     {
      "hi": null,
@@ -1736,7 +1736,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0368428
+     "value": -0.0373441
     },
     {
      "hi": null,
@@ -1745,17 +1745,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 23.5847
+     "value": 23.3593
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 8.52176,
    "metrics": {
     "error": null,
-    "eye_h": 0.998587,
+    "eye_h": 0.998646,
     "eye_w_ui": 0.625,
-    "il_nyq_db": -0.0368428,
-    "rl_db": 23.5847,
+    "il_nyq_db": -0.0373441,
+    "rl_db": 23.3593,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1789,7 +1789,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.996893
+     "value": 0.996971
     },
     {
      "hi": null,
@@ -1807,7 +1807,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.164723
+     "value": -0.16255
     },
     {
      "hi": null,
@@ -1816,17 +1816,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 12.198
+     "value": 12.2583
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 12.0949,
    "metrics": {
     "error": null,
-    "eye_h": 0.996893,
+    "eye_h": 0.996971,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.164723,
-    "rl_db": 12.198,
+    "il_nyq_db": -0.16255,
+    "rl_db": 12.2583,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1860,7 +1860,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999457
+     "value": 0.999488
     },
     {
      "hi": null,
@@ -1878,7 +1878,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0117939
+     "value": -0.0118664
     },
     {
      "hi": null,
@@ -1887,17 +1887,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 32.1807
+     "value": 31.9399
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.24891,
    "metrics": {
     "error": null,
-    "eye_h": 0.999457,
+    "eye_h": 0.999488,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0117939,
-    "rl_db": 32.1807,
+    "il_nyq_db": -0.0118664,
+    "rl_db": 31.9399,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -1931,7 +1931,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998937
+     "value": 0.998991
     },
     {
      "hi": null,
@@ -1949,7 +1949,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0225637
+     "value": -0.0227336
     },
     {
      "hi": null,
@@ -1958,17 +1958,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 30.6211
+     "value": 30.2363
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 6.13744,
    "metrics": {
     "error": null,
-    "eye_h": 0.998937,
+    "eye_h": 0.998991,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.0225637,
-    "rl_db": 30.6211,
+    "il_nyq_db": -0.0227336,
+    "rl_db": 30.2363,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2002,7 +2002,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998673
+     "value": 0.99873
     },
     {
      "hi": null,
@@ -2020,7 +2020,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0312519
+     "value": -0.0316416
     },
     {
      "hi": null,
@@ -2029,17 +2029,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 24.9858
+     "value": 24.7421
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 7.65193,
    "metrics": {
     "error": null,
-    "eye_h": 0.998673,
+    "eye_h": 0.99873,
     "eye_w_ui": 0.59375,
-    "il_nyq_db": -0.0312519,
-    "rl_db": 24.9858,
+    "il_nyq_db": -0.0316416,
+    "rl_db": 24.7421,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2073,7 +2073,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999067
+     "value": 0.99911
     },
     {
      "hi": null,
@@ -2091,7 +2091,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0327154
+     "value": -0.0331515
     },
     {
      "hi": null,
@@ -2100,17 +2100,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 21.0067
+     "value": 20.8958
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 5.94117,
    "metrics": {
     "error": null,
-    "eye_h": 0.999067,
+    "eye_h": 0.99911,
     "eye_w_ui": 0.625,
-    "il_nyq_db": -0.0327154,
-    "rl_db": 21.0067,
+    "il_nyq_db": -0.0331515,
+    "rl_db": 20.8958,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2144,7 +2144,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999433
+     "value": 0.999464
     },
     {
      "hi": null,
@@ -2162,7 +2162,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0177322
+     "value": -0.017917
     },
     {
      "hi": null,
@@ -2171,17 +2171,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 24.5419
+     "value": 24.4347
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.78852,
    "metrics": {
     "error": null,
-    "eye_h": 0.999433,
+    "eye_h": 0.999464,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.0177322,
-    "rl_db": 24.5419,
+    "il_nyq_db": -0.017917,
+    "rl_db": 24.4347,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2215,7 +2215,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999021
+     "value": 0.999072
     },
     {
      "hi": null,
@@ -2233,7 +2233,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0256554
+     "value": -0.0259587
     },
     {
      "hi": null,
@@ -2242,17 +2242,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 25.1018
+     "value": 24.9054
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 6.14,
    "metrics": {
     "error": null,
-    "eye_h": 0.999021,
+    "eye_h": 0.999072,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0256554,
-    "rl_db": 25.1018,
+    "il_nyq_db": -0.0259587,
+    "rl_db": 24.9054,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2286,7 +2286,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998587
+     "value": 0.998646
     },
     {
      "hi": null,
@@ -2304,7 +2304,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0368428
+     "value": -0.0373441
     },
     {
      "hi": null,
@@ -2313,17 +2313,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 23.5843
+     "value": 23.3584
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 8.52176,
    "metrics": {
     "error": null,
-    "eye_h": 0.998587,
+    "eye_h": 0.998646,
     "eye_w_ui": 0.625,
-    "il_nyq_db": -0.0368428,
-    "rl_db": 23.5843,
+    "il_nyq_db": -0.0373441,
+    "rl_db": 23.3584,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2357,7 +2357,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.996893
+     "value": 0.996971
     },
     {
      "hi": null,
@@ -2375,7 +2375,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.164723
+     "value": -0.16255
     },
     {
      "hi": null,
@@ -2384,17 +2384,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 12.0775
+     "value": 12.1368
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 12.0949,
    "metrics": {
     "error": null,
-    "eye_h": 0.996893,
+    "eye_h": 0.996971,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.164723,
-    "rl_db": 12.0775,
+    "il_nyq_db": -0.16255,
+    "rl_db": 12.1368,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2428,7 +2428,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.999457
+     "value": 0.999487
     },
     {
      "hi": null,
@@ -2446,7 +2446,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0118151
+     "value": -0.011888
     },
     {
      "hi": null,
@@ -2455,17 +2455,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 32.1351
+     "value": 31.8953
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.25305,
    "metrics": {
     "error": null,
-    "eye_h": 0.999457,
+    "eye_h": 0.999487,
     "eye_w_ui": 1.0,
-    "il_nyq_db": -0.0118151,
-    "rl_db": 32.1351,
+    "il_nyq_db": -0.011888,
+    "rl_db": 31.8953,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,
@@ -2499,7 +2499,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.998937
+     "value": 0.998991
     },
     {
      "hi": null,
@@ -2517,7 +2517,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0225637
+     "value": -0.0227336
     },
     {
      "hi": null,
@@ -2526,17 +2526,17 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 30.6211
+     "value": 30.2363
     }
    ],
    "kind": "net (no devices found)",
    "length_mm": 6.13744,
    "metrics": {
     "error": null,
-    "eye_h": 0.998937,
+    "eye_h": 0.998991,
     "eye_w_ui": 0.96875,
-    "il_nyq_db": -0.0225637,
-    "rl_db": 30.6211,
+    "il_nyq_db": -0.0227336,
+    "rl_db": 30.2363,
     "skew_ps": null,
     "skew_uncertain": false,
     "stub_ghz": null,

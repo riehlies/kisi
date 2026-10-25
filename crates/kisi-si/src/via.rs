@@ -40,9 +40,12 @@ impl Sec {
         let v = C0 / self.er.sqrt();
         let l = self.z / v;
         let c = 1.0 / (self.z * v);
+        // plating: surface impedance (1 + j)·Rs over the barrel's circumference (resistance and its
+        // internal inductance); dielectric: Djordjevic-Sarkar (ε′ and ε″ of one causal model)
         let rs = (PI * f * MU0 / sigma).sqrt();
         let r = rs / (2.0 * PI * self.a);
-        Abcd::line(r, l, w * c * self.tand, c, w, self.len)
+        let e = crate::rf::eps_c(self.er, self.tand, f).scale(1.0 / self.er);
+        Abcd::line(r, l + if w > 0.0 { r / w } else { 0.0 }, -w * c * e.im, c * e.re, w, self.len)
     }
 }
 

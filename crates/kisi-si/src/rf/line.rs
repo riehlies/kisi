@@ -1,6 +1,20 @@
 //! Per-unit-length line models: materials (Djordjevic-Sarkar, Huray roughness),
 //! RLGC of a cross-section from the field solver or closed-form formulas, and the
 //! ABCD matrix algebra used by the channel.
+//!
+//! Causal and passive by construction: the series impedance and the shunt admittance per metre
+//! are positive-real functions of s = jω, each a product or sum of terms that are –
+//! * the conductor: R_dc·√(1 + jf/f_c) (the DC resistance turning into the skin effect, internal
+//!   inductance included) times the causal Huray factor (Bracken 2012), [`conductor_z`];
+//! * the dielectric: the mode's complex effective permittivity A + B·k(f) with the
+//!   Djordjevic-Sarkar kernel k (ε′ and ε″ from one wideband Debye distribution), plus for
+//!   microstrip the dispersion as a Lorentz term with its resonance above the band,
+//!   [`LineModel::eps_eff`].
+//!
+//! The quasi-TEM microstrip dispersion (Getsinger: ε_eff rising towards εr) cannot be followed
+//! exactly by a passive shunt admittance – Kramers-Kronig gives C(0) ≥ C(∞) for any passive one
+//! – only below a resonance; the Lorentz term matches Getsinger at the top of the band and keeps
+//! its resonance at fp/√G (Getsinger's corner) or at least at twice the band.
 
 use crate::analytic;
 #[allow(unused_imports)]
@@ -79,28 +93,41 @@ pub struct DjordjevicSarkar {
 impl DjordjevicSarkar {
     const M1: f64 = 4.0;
     const M2: f64 = 12.0;
-    fn k(f: f64) -> Cx {
-        let w = 2.0 * PI * f;
+    /// the kernel log10((ω2 + s)/(ω1 + s))/(M2 − M1) at complex frequency s: a causal, passive
+    /// relaxation (a uniform distribution of Debye poles from 10^M1 to 10^M2 Hz), 1 at 0 Hz and 0
+    /// at infinity, analytic in the right half plane
+    pub fn k_s(s: Cx) -> Cx {
         let w1 = 2.0 * PI * 10f64.powf(Self::M1);
         let w2 = 2.0 * PI * 10f64.powf(Self::M2);
-        let num = Cx::new(w2, w);
-        let den = Cx::new(w1, w);
-        let q = num / den;
+        let q = (s + Cx::new(w2, 0.0)) / (s + Cx::new(w1, 0.0));
         // log10 of a complex number
         Cx::new(q.abs().ln(), q.arg()).scale(1.0 / (std::f64::consts::LN_10 * (Self::M2 - Self::M1)))
+    }
+    /// the kernel at f (s = j2πf)
+    pub fn k(f: f64) -> Cx {
+        Self::k_s(Cx::new(0.0, 2.0 * PI * f))
     }
     pub fn fit(er: f64, tand: f64) -> Self {
         let k = Self::k(F_REF);
         let de = if tand > 0.0 { -er * tand / k.im } else { 0.0 };
         DjordjevicSarkar { e_inf: er - de * k.re, de }
     }
+    /// complex permittivity ε′ − jε″ at f
+    pub fn eps(&self, f: f64) -> Cx {
+        Cx::new(self.e_inf, 0.0) + Self::k(f.max(1.0)).scale(self.de)
+    }
     /// (ε', tanδ) at frequency f
     pub fn at(&self, f: f64) -> (f64, f64) {
-        let k = Self::k(f.max(1.0));
-        let re = self.e_inf + self.de * k.re;
-        let im = -self.de * k.im;
-        (re, if re > 0.0 { im / re } else { 0.0 })
+        let e = self.eps(f);
+        (e.re, if e.re > 0.0 { -e.im / e.re } else { 0.0 })
     }
+}
+
+/// Complex relative permittivity ε′ − jε″ at f of a material given by (εr, tanδ) at 1 GHz
+/// (Djordjevic-Sarkar): what every model of kisi uses for a dielectric – lines, via ladders,
+/// coaxial via sections.
+pub fn eps_c(er: f64, tand: f64, f: f64) -> Cx {
+    DjordjevicSarkar::fit(er, tand).eps(f)
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -111,16 +138,108 @@ pub enum Roughness {
 }
 
 impl Roughness {
-    /// Huray "cannonball" factor: 1 + 1.5·SR / (1 + δ/r + δ²/(2r²)).
-    /// Preset (r, SR) are estimates for typical foils.
+    /// Huray "cannonball" (r, SR): sphere radius (m) and the spheres' surface per flat area
+    /// (4πr²N/A). Preset values are estimates for typical foils.
+    fn huray(&self) -> Option<(f64, f64)> {
+        match self {
+            Roughness::Smooth => None,
+            Roughness::Hvlp => Some((0.5e-6, 0.5)),
+            Roughness::Standard => Some((1.0e-6, 1.0)),
+        }
+    }
+
+    /// Causal Huray factor of the surface impedance at complex frequency s (E. Bracken, "A causal
+    /// Huray model for surface roughness", DesignCon 2012): K = 1 + 1.5·SR / (1 + 1/(r·√(sμσ))),
+    /// at s = jω 1 + 1.5·SR / (1 + δ/((1 + j)·r)). Its loss part Re[(1 + j)K] is the Huray power
+    /// factor 1 + 1.5·SR / (1 + δ/r + δ²/(2r²)); its imaginary part is the roughness's internal
+    /// inductance that Kramers-Kronig requires.
+    pub fn k_s(&self, s: Cx, sigma: f64) -> Cx {
+        let Some((r, sr)) = self.huray() else { return Cx::new(1.0, 0.0) };
+        let p = s.scale(MU0 * sigma).sqrt().scale(r);
+        Cx::new(1.0, 0.0) + Cx::new(1.5 * sr, 0.0) / (Cx::new(1.0, 0.0) + p.inv())
+    }
+
+    /// the causal Huray factor at f
+    pub fn k(&self, f: f64, sigma: f64) -> Cx {
+        if f <= 0.0 {
+            return Cx::new(1.0, 0.0);
+        }
+        self.k_s(Cx::new(0.0, 2.0 * PI * f), sigma)
+    }
+
+    /// The Huray loss factor (real): the resistance of rough over smooth copper at f.
     pub fn factor(&self, f: f64, sigma: f64) -> f64 {
-        let (r, sr) = match self {
-            Roughness::Smooth => return 1.0,
-            Roughness::Hvlp => (0.5e-6, 0.5),
-            Roughness::Standard => (1.0e-6, 1.0),
-        };
-        let delta = 1.0 / (PI * f * MU0 * sigma).sqrt();
-        1.0 + 1.5 * sr / (1.0 + delta / r + delta * delta / (2.0 * r * r))
+        let k = self.k(f, sigma);
+        k.re - k.im
+    }
+}
+
+/// Series impedance of the conductors per metre (Ω/m) at complex frequency s:
+/// R_dc·√(1 + s/ω_c)·K(s) – the DC resistance turning into the skin effect (1 + j)·k_ac·√f above
+/// f_c = ω_c/2π = R_dc²/(2k_ac²), with its internal inductance, times the causal roughness factor
+/// K. Each factor maps the right half of the s plane into |arg| < π/4, so their product has a
+/// positive real part there: passive and causal. (Before: R = √(R_dc² + (K_Huray·k_ac√f)²),
+/// L = L_ext + k_ac√f/ω – a resistance without its inductance.)
+pub fn conductor_zs(r_dc: f64, k_ac: f64, s: Cx, rough: Roughness, sigma: f64) -> Cx {
+    let smooth = if k_ac > 0.0 && r_dc > 0.0 {
+        let wc = PI * r_dc * r_dc / (k_ac * k_ac);
+        (Cx::new(1.0, 0.0) + s.scale(1.0 / wc)).sqrt().scale(r_dc)
+    } else if k_ac > 0.0 {
+        s.scale(1.0 / PI).sqrt().scale(k_ac)
+    } else {
+        Cx::new(r_dc, 0.0)
+    };
+    smooth * rough.k_s(s, sigma)
+}
+
+/// [`conductor_zs`] at f.
+pub fn conductor_z(r_dc: f64, k_ac: f64, f: f64, rough: Roughness, sigma: f64) -> Cx {
+    if f <= 0.0 {
+        return Cx::new(r_dc, 0.0);
+    }
+    conductor_zs(r_dc, k_ac, Cx::new(0.0, 2.0 * PI * f), rough, sigma)
+}
+
+/// k_ac (Ω/m/√Hz) such that the smooth part of [`conductor_z`] has the resistance `r0` at `f0`:
+/// Re √(1 + jx) = √((√(1 + x²) + 1)/2) = r0/R_dc.
+fn k_ac_for(r_dc: f64, r0: f64, f0: f64) -> f64 {
+    let rho = (r0 / r_dc).max(1.0 + 1e-9);
+    let x = ((2.0 * rho * rho - 1.0).powi(2) - 1.0).sqrt();
+    let fc = f0 / x;
+    r_dc / (2.0 * fc).sqrt()
+}
+
+/// The complex effective permittivity of a line mode: ε(s) = A + B·k(s) + Δ·(1/(1 + s²/ω_r²) − 1)
+/// (Djordjevic-Sarkar kernel k; the Lorentz term only for microstrip). The shunt admittance
+/// s·C_air·ε(s) is positive-real when B ≥ 0, Δ ≥ 0 and ε(∞) = A − Δ ≥ 0 – kept at ≥ 1 here.
+#[derive(Debug, Clone, Copy)]
+pub struct EpsModel {
+    pub a: f64,
+    pub b: f64,
+    /// Lorentz term: amplitude and resonance (rad/s); Δ = 0: none
+    pub delta: f64,
+    pub wr: f64,
+}
+
+impl EpsModel {
+    /// at complex frequency s
+    pub fn at_s(&self, s: Cx) -> Cx {
+        let mut e = Cx::new(self.a, 0.0) + DjordjevicSarkar::k_s(s).scale(self.b);
+        if self.delta > 0.0 {
+            let q = Cx::new(1.0, 0.0) + (s * s).scale(1.0 / (self.wr * self.wr));
+            e = e + (q.inv() - Cx::new(1.0, 0.0)).scale(self.delta);
+        }
+        e
+    }
+    /// at f; the Lorentz term held above 0.9·f_r (outside the band it is fitted to)
+    pub fn at(&self, f: f64) -> Cx {
+        let w = 2.0 * PI * f.max(1.0);
+        let mut e = Cx::new(self.a, 0.0) + DjordjevicSarkar::k_s(Cx::new(0.0, w)).scale(self.b);
+        if self.delta > 0.0 {
+            let x = (w / self.wr).min(0.9);
+            e = e + Cx::new(self.delta * x * x / (1.0 - x * x), 0.0);
+        }
+        e
     }
 }
 
@@ -193,28 +312,60 @@ pub struct Rlgc {
 impl LineModel {
     pub fn rlgc(&self, f: f64, rp: &RfParams) -> Rlgc {
         let w = 2.0 * PI * f;
+        let zc = conductor_z(self.r_dc, self.k_ac, f, rp.roughness, rp.sigma);
+        let e = self.eps_eff(f, rp);
+        let c_air = self.c0 / self.eeff0;
+        Rlgc { r: zc.re, l: self.l_ext + if w > 0.0 { zc.im / w } else { 0.0 }, g: -w * c_air * e.im, c: c_air * e.re }
+    }
+
+    /// Complex effective permittivity of the mode at f (ε′ − jε″; the shunt admittance per metre
+    /// is jω·c0/εeff0·ε_eff), see [`eps_model`](Self::eps_model).
+    pub fn eps_eff(&self, f: f64, rp: &RfParams) -> Cx {
+        self.eps_model(rp).at(f)
+    }
+
+    /// The mode's permittivity as an [`EpsModel`]: A + B·k with the Djordjevic-Sarkar kernel k – B
+    /// from the mode's loss tangent at 1 GHz (the field solve's, else the material's times the
+    /// filling factor), A from εeff0 –, so that ε′ follows ε″ as Kramers-Kronig demands. Microstrip
+    /// adds its dispersion as a lossless Lorentz term Δ·x²/(1 − x²), x = f/f_r (at real
+    /// frequencies): the rise of ε_eff below a resonance f_r = max(fp/√G, 2·fmax) (Getsinger's
+    /// fp = Z0/(2μ0h), G = 0.6 + 0.009·Z0), Δ such that it equals Getsinger's rise
+    /// (εr − εeff0)·G(f/fp)²/(1 + G(f/fp)²) at fmax, at most A − 1. Below the band it follows
+    /// Getsinger within a few percent of the (small) rise where f_r = fp/√G lies far above the band
+    /// – thin dielectrics; a thick one (fp inside the band) gets the rise at the top of the band
+    /// and less below it.
+    pub fn eps_model(&self, rp: &RfParams) -> EpsModel {
         let ds = DjordjevicSarkar::fit(self.er, self.tand);
-        let (er_f, tand_f) = ds.at(f);
-        let (er_0, tand_0) = ds.at(F_REF);
-        // effective permittivity with material dispersion
-        let ee_mat = |e: f64| if self.ms_h.is_some() { 1.0 + self.q_fill * (e - 1.0) } else { e };
-        let mut eeff = self.eeff0 * ee_mat(er_f) / ee_mat(er_0);
-        if let Some(h) = self.ms_h {
-            // Getsinger dispersion of microstrip
+        let k0 = DjordjevicSarkar::k(F_REF);
+        let er0 = ds.eps(F_REF).re;
+        let t0 = match self.tand_eff0 {
+            Some(t) => t.max(0.0),
+            None => self.tand * self.q_fill * er0 / self.eeff0,
+        };
+        let b = if k0.im < 0.0 { -self.eeff0 * t0 / k0.im } else { 0.0 };
+        let a = self.eeff0 - b * k0.re;
+        let mut m = EpsModel { a, b, delta: 0.0, wr: 1.0 };
+        let rise = er0 - self.eeff0;
+        if let (Some(h), true) = (self.ms_h, rise > 0.0 && rp.fmax > 0.0) {
             let fp = self.z0 / (2.0 * MU0 * h);
             let gg = 0.6 + 0.009 * self.z0;
-            eeff = er_f - (er_f - eeff) / (1.0 + gg * (f / fp).powi(2));
+            let u = gg * (rp.fmax / fp).powi(2);
+            let fr = (fp / gg.sqrt()).max(2.0 * rp.fmax);
+            let xt = rp.fmax / fr;
+            m.delta = (rise * u / (1.0 + u) * (1.0 - xt * xt) / (xt * xt)).min(a - 1.0).max(0.0);
+            m.wr = 2.0 * PI * fr;
         }
-        let c = self.c0 * eeff / self.eeff0;
-        let r_ac_smooth = self.k_ac * f.sqrt();
-        let r_ac = r_ac_smooth * rp.roughness.factor(f, rp.sigma);
-        let r = (self.r_dc * self.r_dc + r_ac * r_ac).sqrt();
-        let l = self.l_ext + if w > 0.0 { r_ac_smooth / w } else { 0.0 };
-        let tand_eff = match self.tand_eff0 {
-            Some(t0) => t0 * if tand_0 > 0.0 { tand_f * er_f / (tand_0 * er_0) } else { 0.0 },
-            None => tand_f * self.q_fill * er_f / eeff,
-        };
-        Rlgc { r, l, g: w * c * tand_eff, c }
+        m
+    }
+
+    /// Series impedance per metre at complex frequency s: s·L_ext + the conductors' impedance.
+    pub fn z_s(&self, s: Cx, rp: &RfParams) -> Cx {
+        s.scale(self.l_ext) + conductor_zs(self.r_dc, self.k_ac, s, rp.roughness, rp.sigma)
+    }
+
+    /// Shunt admittance per metre at complex frequency s: s·C_air·ε(s).
+    pub fn y_s(&self, s: Cx, rp: &RfParams) -> Cx {
+        s.scale(self.c0 / self.eeff0) * self.eps_model(rp).at_s(s)
     }
 }
 
@@ -315,15 +466,18 @@ pub fn line_model_mode(su: &Stackup, xs: &CrossSection, field: Option<&FieldResu
     });
     if let Some((r0, l0, g0, c0f, f0)) = fr {
         let w0 = 2.0 * PI * f0;
-        let r_ac0 = (r0 * r0 - r_dc * r_dc).max(0.0).sqrt();
-        let l_ext = (l0 - r_ac0 / w0).max(l0 * 0.5);
+        // the conductor model's smooth part through the field solve's resistance (smooth copper),
+        // its internal inductance taken out of the solve's inductance
+        let k_ac = if r0 > r_dc { k_ac_for(r_dc, r0, f0) } else { 0.0 };
+        let l_int0 = conductor_z(r_dc, k_ac, f0, Roughness::Smooth, rp.sigma).im / w0;
+        let l_ext = (l0 - l_int0).max(l0 * 0.5);
         return Some(LineModel {
             z0: (l_ext / c0f).sqrt(),
             eeff0: l_ext * c0f * C0 * C0,
             l_ext,
             c0: c0f,
             r_dc,
-            k_ac: r_ac0 / f0.sqrt(),
+            k_ac,
             er,
             tand,
             q_fill,

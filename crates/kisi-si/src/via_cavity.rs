@@ -588,7 +588,7 @@ impl PairMedium {
         1.5 * self.d * g / (w * EPS0 * self.er * self.area)
     }
 
-    /// complex k² (1/m²) at f: k² = ω²με(1 − j tanδ), with plates of surface impedance (1 + j)Rs:
+    /// complex k² (1/m²) at f: k² = ω²μ0ε0·ε(f) (Djordjevic-Sarkar), with plates of surface impedance (1 + j)Rs:
     /// k²(1 + 2Rs/(ωμd) − j 2Rs/(ωμd)) (as the ladder's radial line), and the edge radiation
     /// as a further loss tangent
     pub fn k2(&self, f: f64) -> Cx {
@@ -602,12 +602,12 @@ impl PairMedium {
 
     fn k2_with(&self, f: f64, extra: f64) -> Cx {
         let w = 2.0 * PI * f;
-        let td = match self.f_loss {
-            Some(fl) => self.tand * fl / f,
-            None => self.tand,
-        } + extra;
-        let k2 = w * w * MU0 * EPS0 * self.er;
-        let mut k2 = Cx::new(k2, -k2 * td);
+        // the dielectric as the ladder's: Djordjevic-Sarkar, or a conductivity fixed at f_l
+        let e = match self.f_loss {
+            Some(fl) => Cx::new(self.er, -self.er * self.tand * fl / f),
+            None => crate::rf::eps_c(self.er, self.tand, f),
+        } - Cx::new(0.0, self.er * extra);
+        let mut k2 = e.scale(w * w * MU0 * EPS0);
         if let Some(sig) = self.sigma {
             let x = 2.0 * (PI * f * MU0 / sig).sqrt() / (w * MU0 * self.d);
             k2 = k2 * Cx::new(1.0 + x, -x);

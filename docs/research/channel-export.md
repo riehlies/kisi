@@ -133,7 +133,12 @@ milli), the include path is relative, the files are ASCII.
   itself runs on the maintainer's PC (LTspice 26.1.1, Windows): for REFINOUT2 `.net` gives ngspice's S11/S21 at all
   nine frequencies to 1e-4 dB and 0.001°, the bench's t50 to 0.2 ps and its levels to 0.07 % (118 s against
   ngspice's 104 s). The pair SYNC_OUT_P showed the floating converter nodes above (levels 1.1 % low, t50 to 0.1 ps);
-  its export with the dual far-end converter is the one to compare now.
+  its export with the dual far-end converter removed the floating nodes but not the 1 % offset of the levels a few
+  nanoseconds after an edge (where the reflections between the nearly open current-mode transmitter and the
+  receiver add up). `validation/channel_export/ltspice_microtests.py` writes short decks to find the cause – the
+  ends alone, one coupled block, one via pair, one line section, the whole lane with internal nodes, and the lane
+  with `Rpar=1e30` on the inductors and/or `.options method=trap` (LTspice damps inductors without `Rpar` and
+  integrates with modified trapezoidal by default) – with ngspice's values.
 - **Run time** (ngspice 42, one core of a shared machine, SYNC_OUT_P, 85 mm LVDS pair, two PRBS7 periods,
   257 ns at 30 ps steps): the ladder's top frequency sets the number of sections, and the run time follows the
   element count roughly linearly:

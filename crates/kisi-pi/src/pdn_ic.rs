@@ -140,13 +140,24 @@ impl DecapData {
         if !Self::class2(dielectric, c) || vr <= 0.0 {
             return 1.0;
         }
-        let from = self.dc_bias.high_cv_from_f.get(pkg).or_else(|| self.dc_bias.high_cv_from_f.get("large")).copied().unwrap_or(1e-5);
+        let from = self
+            .dc_bias
+            .high_cv_from_f
+            .get(pkg)
+            .or_else(|| self.dc_bias.high_cv_from_f.get("large"))
+            .copied()
+            .unwrap_or(1e-5);
         let curve = if c >= from * 0.999 { &self.dc_bias.high_cv } else { &self.dc_bias.standard };
         interp(curve, v.abs() / vr)
     }
     fn rated_assumed(&self, v: f64) -> f64 {
         let need = v.abs() * self.rated_v.margin;
-        self.rated_v.series.iter().copied().find(|&r| r >= need).unwrap_or(*self.rated_v.series.last().unwrap_or(&100.0))
+        self.rated_v
+            .series
+            .iter()
+            .copied()
+            .find(|&r| r >= need)
+            .unwrap_or(*self.rated_v.series.last().unwrap_or(&100.0))
     }
 }
 
@@ -213,7 +224,11 @@ pub fn value_details(value: &str) -> (Option<f64>, String) {
                 rated = Some(v);
             }
         } else if let Some((a, b)) = t.split_once('V') {
-            if !a.is_empty() && a.chars().all(|c| c.is_ascii_digit()) && !b.is_empty() && b.chars().all(|c| c.is_ascii_digit()) {
+            if !a.is_empty()
+                && a.chars().all(|c| c.is_ascii_digit())
+                && !b.is_empty()
+                && b.chars().all(|c| c.is_ascii_digit())
+            {
                 rated = format!("{a}.{b}").parse().ok();
             }
         }
@@ -348,7 +363,9 @@ pub fn parse_pi_target(s: &str, net: &str) -> Result<Option<(f64, Option<f64>)>,
             } else if let Some((n, v)) = fs::rsplit_once_unquoted(tok, '=') {
                 let n = fs::unquote(n);
                 let n = n.as_str();
-                for_net = n == net || n.trim_start_matches('/') == net.trim_start_matches('/') || net.rsplit('/').next() == Some(n);
+                for_net = n == net
+                    || n.trim_start_matches('/') == net.trim_start_matches('/')
+                    || net.rsplit('/').next() == Some(n);
                 z = Some(si(v).ok_or_else(|| format!("PI_TARGET: cannot read '{tok}'"))?);
             } else {
                 z = Some(si(tok).ok_or_else(|| format!("PI_TARGET: cannot read '{tok}'"))?);
@@ -513,7 +530,13 @@ pub struct SeriesResult {
 
 impl SeriesResult {
     fn link(&self) -> Link {
-        Link::Series { r: self.r, l: self.l, rp: self.rp.unwrap_or(0.0), lp: self.lp.unwrap_or(0.0), cp: self.cp.unwrap_or(0.0) }
+        Link::Series {
+            r: self.r,
+            l: self.l,
+            rp: self.rp.unwrap_or(0.0),
+            lp: self.lp.unwrap_or(0.0),
+            cp: self.cp.unwrap_or(0.0),
+        }
     }
     /// inductance below the bead's peak (H): what resonates with the capacitors behind it
     fn l_low(&self) -> f64 {
@@ -625,8 +648,22 @@ fn polygon_area(p: &[P]) -> f64 {
 }
 
 fn fmt_c(c: f64) -> String {
-    let (v, u) = if c >= 1e-6 { (c * 1e6, "µF") } else if c >= 1e-9 { (c * 1e9, "nF") } else { (c * 1e12, "pF") };
-    format!("{}{}", if v >= 10.0 { format!("{v:.0}") } else { format!("{v:.2}").trim_end_matches('0').trim_end_matches('.').to_string() }, u)
+    let (v, u) = if c >= 1e-6 {
+        (c * 1e6, "µF")
+    } else if c >= 1e-9 {
+        (c * 1e9, "nF")
+    } else {
+        (c * 1e12, "pF")
+    };
+    format!(
+        "{}{}",
+        if v >= 10.0 {
+            format!("{v:.0}")
+        } else {
+            format!("{v:.2}").trim_end_matches('0').trim_end_matches('.').to_string()
+        },
+        u
+    )
 }
 
 /// PDN of `setup` seen from every load IC.
@@ -644,7 +681,8 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     // inductors, ferrite beads), up to the regulators. A net at a regulator pin without a rail of
     // its own and without a capacitor to ground (a switch node) ends the domain.
     let setups: Vec<&RailSetup> = std::iter::once(setup).chain(others.iter().filter(|s| s.net != setup.net)).collect();
-    let setup_of = |n: u32| -> Option<&RailSetup> { setups.iter().copied().find(|s| find_net(board, &s.net) == Some(n)) };
+    let setup_of =
+        |n: u32| -> Option<&RailSetup> { setups.iter().copied().find(|s| find_net(board, &s.net) == Some(n)) };
     let mut fp_all: HashMap<u32, Vec<&Pad>> = HashMap::new();
     for pd in board.pads.iter().filter(|q| !q.layers.is_empty()) {
         fp_all.entry(pd.fp).or_default().push(pd);
@@ -689,7 +727,9 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
                 let up = f.value.to_ascii_uppercase();
                 if up.contains("FERRITE") || up.contains("BEAD") || bead_z100(&f.value).is_some() {
                     "bead"
-                } else if si(&f.value).is_some() || f.prop("PI_SERIES").and_then(|v| parse_pi_series(v).ok()).is_some_and(|x| x.l.is_some()) {
+                } else if si(&f.value).is_some()
+                    || f.prop("PI_SERIES").and_then(|v| parse_pi_series(v).ok()).is_some_and(|x| x.l.is_some())
+                {
                     "inductor"
                 } else {
                     "bead"
@@ -704,11 +744,18 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         .footprints
         .iter()
         .enumerate()
-        .map(|(fi, f)| !cand_fp.contains(&(fi as u32)) && (f.prop("PI_REG").is_some() || f.prop("PI_SOURCE").is_some() || setups.iter().any(|s| s.sources.iter().any(|x| x.refdes == f.reference))))
+        .map(|(fi, f)| {
+            !cand_fp.contains(&(fi as u32))
+                && (f.prop("PI_REG").is_some()
+                    || f.prop("PI_SOURCE").is_some()
+                    || setups.iter().any(|s| s.sources.iter().any(|x| x.refdes == f.reference)))
+        })
         .collect();
     let has_cap = |n: u32| -> bool {
         fp_all.iter().any(|(fi, pads)| {
-            pads.len() == 2 && board.footprints[*fi as usize].reference.starts_with('C') && ((pads[0].net == n && is_gnd(pads[1].net)) || (pads[1].net == n && is_gnd(pads[0].net)))
+            pads.len() == 2
+                && board.footprints[*fi as usize].reference.starts_with('C')
+                && ((pads[0].net == n && is_gnd(pads[1].net)) || (pads[1].net == n && is_gnd(pads[0].net)))
         })
     };
     let mut dom: Vec<u32> = vec![net];
@@ -740,7 +787,11 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
                     }
                 }
                 if dom.len() >= sdata.max_nets {
-                    boundary.push(format!("domain limited to {} nets: {} not followed", sdata.max_nets, board.net_name(v)));
+                    boundary.push(format!(
+                        "domain limited to {} nets: {} not followed",
+                        sdata.max_nets,
+                        board.net_name(v)
+                    ));
                     continue;
                 }
                 dom.push(v);
@@ -752,7 +803,13 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     let dom_idx: HashMap<u32, usize> = dom.iter().enumerate().map(|(i, &n)| (n, i)).collect();
     let volt: Vec<f64> = dom
         .iter()
-        .map(|&n| setup_of(n).map(|s| s.voltage.abs()).filter(|v| *v > 0.0).or_else(|| crate::pi::voltage_from_name(board.net_name(n)).map(f64::abs)).unwrap_or(vrail0))
+        .map(|&n| {
+            setup_of(n)
+                .map(|s| s.voltage.abs())
+                .filter(|v| *v > 0.0)
+                .or_else(|| crate::pi::voltage_from_name(board.net_name(n)).map(f64::abs))
+                .unwrap_or(vrail0)
+        })
         .collect();
 
     // copper of the domain
@@ -794,7 +851,10 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     }
     let layers: Vec<usize> = (0..ncu).filter(|&l| used[l]).collect();
     let raw = (cu_area / p.ic_cells.max(500) as f64).sqrt();
-    let cell = [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0].into_iter().find(|&v| v >= raw).unwrap_or(raw);
+    let cell = [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0]
+        .into_iter()
+        .find(|&v| v >= raw)
+        .unwrap_or(raw);
     let g = Grid {
         x0: bb.min[0] - cell,
         y0: bb.min[1] - cell,
@@ -849,7 +909,11 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         (up, dn)
     };
     let fallback_ref = |l: usize| -> (usize, f64) {
-        (0..ncu).filter(|&j| j != l && gnd_any[j]).map(|j| (j, su.gap_between(l, j))).min_by(|a, b| a.1.total_cmp(&b.1)).unwrap_or((if l == 0 { ncu - 1 } else { 0 }, su.gap_between(l, if l == 0 { ncu - 1 } else { 0 }).max(0.1)))
+        (0..ncu)
+            .filter(|&j| j != l && gnd_any[j])
+            .map(|j| (j, su.gap_between(l, j)))
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .unwrap_or((if l == 0 { ncu - 1 } else { 0 }, su.gap_between(l, if l == 0 { ncu - 1 } else { 0 }).max(0.1)))
     };
     let tand_between = |a: usize, b: usize| -> f64 {
         let (a, b) = (a.min(b), a.max(b));
@@ -902,7 +966,10 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         model.shunts.push((i, Shunt::Plane { c, tand: if c > 0.0 { tand / c } else { 0.02 } }));
     }
     if no_ref > 0 && no_ref * 10 > ncell {
-        warnings.push(format!("{}% of the rail copper has no ground copper above or below: nearest ground layer used", no_ref * 100 / ncell));
+        warnings.push(format!(
+            "{}% of the rail copper has no ground copper above or below: nearest ground layer used",
+            no_ref * 100 / ncell
+        ));
     }
     // in-layer links
     for ni in 0..nd {
@@ -934,9 +1001,18 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         }
     }
     // vias and plated holes of the domain nets
-    let gnd_vias: Vec<P> = board.vias.iter().filter(|v| is_gnd(v.net)).map(|v| v.at).chain(board.pads.iter().filter(|q| is_gnd(q.net) && q.drill > 0.0).map(|q| q.at)).collect();
-    let near_gnd_via = |at: P| -> Option<f64> { gnd_vias.iter().map(|q| geom::len(geom::sub(*q, at))).filter(|&d| d < 3.0).min_by(|a, b| a.total_cmp(b)) };
-    let mut holes: Vec<(usize, P, f64, u16, u16)> = board.vias.iter().filter_map(|v| dom_idx.get(&v.net).map(|&ni| (ni, v.at, v.drill, v.from, v.to))).collect();
+    let gnd_vias: Vec<P> = board
+        .vias
+        .iter()
+        .filter(|v| is_gnd(v.net))
+        .map(|v| v.at)
+        .chain(board.pads.iter().filter(|q| is_gnd(q.net) && q.drill > 0.0).map(|q| q.at))
+        .collect();
+    let near_gnd_via = |at: P| -> Option<f64> {
+        gnd_vias.iter().map(|q| geom::len(geom::sub(*q, at))).filter(|&d| d < 3.0).min_by(|a, b| a.total_cmp(b))
+    };
+    let mut holes: Vec<(usize, P, f64, u16, u16)> =
+        board.vias.iter().filter_map(|v| dom_idx.get(&v.net).map(|&ni| (ni, v.at, v.drill, v.from, v.to))).collect();
     for q in board.pads.iter().filter(|q| q.drill > 0.0 && q.layers.len() > 1) {
         if let Some(&ni) = dom_idx.get(&q.net) {
             holes.push((ni, q.at, q.drill, *q.layers.iter().min().unwrap(), *q.layers.iter().max().unwrap()));
@@ -964,7 +1040,10 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             }
             best.map(|b| b.1)
         };
-        let on: Vec<(usize, u32)> = (0..ncu).filter(|&l| used_n[ni][l] && l as u16 >= from && l as u16 <= to).filter_map(|l| node_at(l).map(|n| (l, n))).collect();
+        let on: Vec<(usize, u32)> = (0..ncu)
+            .filter(|&l| used_n[ni][l] && l as u16 >= from && l as u16 <= to)
+            .filter_map(|l| node_at(l).map(|n| (l, n)))
+            .collect();
         let r = (drill / 2.0).max(0.05);
         let s = near_gnd_via(at).unwrap_or(1.5).clamp(2.0 * r + 0.1, 3.0);
         for pair in on.windows(2) {
@@ -980,7 +1059,8 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     for pd in board.pads.iter().filter(|q| dom_idx.contains_key(&q.net)) {
         fp_pads.entry(pd.fp).or_default().push(pd);
     }
-    let fp_by_ref: HashMap<&str, u32> = board.footprints.iter().enumerate().map(|(i, f)| (f.reference.as_str(), i as u32)).collect();
+    let fp_by_ref: HashMap<&str, u32> =
+        board.footprints.iter().enumerate().map(|(i, f)| (f.reference.as_str(), i as u32)).collect();
     let pad_nodes = |pd: &Pad| -> Vec<usize> {
         let mut out = Vec::new();
         let Some(&ni) = dom_idx.get(&pd.net) else { return out };
@@ -1033,7 +1113,9 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         };
         let fd = field.clone().unwrap_or_default();
         // DC resistance of a PI_REG pass stage ("A > B pass r=0.1")
-        let pass_r = f.prop("PI_REG").filter(|v| v.contains("pass")).and_then(|v| v.split_whitespace().find_map(|t| t.strip_prefix("r=")).and_then(|x| parse_resistance(x).or_else(|| si(x))));
+        let pass_r = f.prop("PI_REG").filter(|v| v.contains("pass")).and_then(|v| {
+            v.split_whitespace().find_map(|t| t.strip_prefix("r=")).and_then(|x| parse_resistance(x).or_else(|| si(x)))
+        });
         let esl = data.esl(pkg);
         let (r, l, bead, source) = match kind {
             "resistor" => {
@@ -1042,8 +1124,26 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             }
             "inductor" => {
                 let l = fd.l.or_else(|| si(&f.value)).unwrap_or(1e-6);
-                let dcr = fd.r.or(pass_r).unwrap_or_else(|| sdata.inductor_dcr_ohm.get(pkg).or_else(|| sdata.inductor_dcr_ohm.get("large")).copied().unwrap_or(0.05));
-                (dcr, l, None, if field.is_some() { "PI_SERIES" } else if pass_r.is_some() { "PI_REG pass" } else { "value" })
+                let dcr = fd.r.or(pass_r).unwrap_or_else(|| {
+                    sdata
+                        .inductor_dcr_ohm
+                        .get(pkg)
+                        .or_else(|| sdata.inductor_dcr_ohm.get("large"))
+                        .copied()
+                        .unwrap_or(0.05)
+                });
+                (
+                    dcr,
+                    l,
+                    None,
+                    if field.is_some() {
+                        "PI_SERIES"
+                    } else if pass_r.is_some() {
+                        "PI_REG pass"
+                    } else {
+                        "value"
+                    },
+                )
             }
             _ => {
                 let z_val = bead_z100(&f.value);
@@ -1052,7 +1152,13 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
                 let rp = fd.rp.unwrap_or(sdata.bead.rp_factor * z);
                 let cp = fd.cp.unwrap_or(sdata.bead.cp_pf * 1e-12);
                 let rdc = fd.r.or(pass_r).unwrap_or(sdata.bead.rdc_ohm);
-                let src = if fd.z100.is_some() || fd.lp.is_some() { "PI_SERIES" } else if z_val.is_some() { "value" } else { "estimate" };
+                let src = if fd.z100.is_some() || fd.lp.is_some() {
+                    "PI_SERIES"
+                } else if z_val.is_some() {
+                    "value"
+                } else {
+                    "estimate"
+                };
                 (rdc, esl, Some((rp, lp, cp)), src)
             }
         };
@@ -1097,7 +1203,15 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
                 continue;
             }
             let Some(&fi) = fp_by_ref.get(src.refdes.as_str()) else { continue };
-            let pads: Vec<&Pad> = fp_pads.get(&fi).map(|v| v.iter().copied().filter(|q| q.net == dn && (src.pads.is_empty() || src.pads.contains(&q.number))).collect()).unwrap_or_default();
+            let pads: Vec<&Pad> = fp_pads
+                .get(&fi)
+                .map(|v| {
+                    v.iter()
+                        .copied()
+                        .filter(|q| q.net == dn && (src.pads.is_empty() || src.pads.contains(&q.number)))
+                        .collect()
+                })
+                .unwrap_or_default();
             let nodes: Vec<usize> = pads.iter().flat_map(|q| pad_nodes(q)).collect();
             if nodes.is_empty() {
                 continue;
@@ -1111,7 +1225,8 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         }
     }
     if regulators.is_empty() {
-        warnings.push("no regulator / source in the rail domain: the low-frequency end is open (capacitors only)".into());
+        warnings
+            .push("no regulator / source in the rail domain: the low-frequency end is open (capacitors only)".into());
     }
 
     // load ICs (ports): one per component and net, currents summed
@@ -1119,7 +1234,10 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     // diodes and test points are passed through, not decoupled
     let passive = |r: &str| {
         let p: String = r.chars().take_while(|c| c.is_ascii_alphabetic()).collect::<String>().to_ascii_uppercase();
-        matches!(p.as_str(), "R" | "RN" | "FB" | "L" | "F" | "J" | "P" | "CN" | "X" | "TP" | "D" | "SW" | "K" | "BT" | "C")
+        matches!(
+            p.as_str(),
+            "R" | "RN" | "FB" | "L" | "F" | "J" | "P" | "CN" | "X" | "TP" | "D" | "SW" | "K" | "BT" | "C"
+        )
     };
     let mut loads: Vec<(String, usize, f64)> = Vec::new();
     for (ni, &dn) in dom.iter().enumerate() {
@@ -1145,16 +1263,22 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     for (refdes, ni, current) in &loads {
         let Some(&fi) = fp_by_ref.get(refdes.as_str()) else { continue };
         let dn = dom[*ni];
-        let pads: Vec<&Pad> = fp_pads.get(&fi).map(|v| v.iter().copied().filter(|q| q.net == dn).collect()).unwrap_or_default();
+        let pads: Vec<&Pad> =
+            fp_pads.get(&fi).map(|v| v.iter().copied().filter(|q| q.net == dn).collect()).unwrap_or_default();
         let nodes: Vec<usize> = pads.iter().flat_map(|q| pad_nodes(q)).collect();
         if nodes.is_empty() {
             continue;
         }
-        let at = [pads.iter().map(|q| q.at[0]).sum::<f64>() / pads.len() as f64, pads.iter().map(|q| q.at[1]).sum::<f64>() / pads.len() as f64];
+        let at = [
+            pads.iter().map(|q| q.at[0]).sum::<f64>() / pads.len() as f64,
+            pads.iter().map(|q| q.at[1]).sum::<f64>() / pads.len() as f64,
+        ];
         let fp = &board.footprints[fi as usize];
         let target = match fp.prop("PI_TARGET").map(|v| parse_pi_target(v, board.net_name(dn))) {
             Some(Ok(Some((z, fm)))) => {
-                let src = crate::tree::field_source(fp, "PI_TARGET").map(|(k, n)| format!("PI_TARGET ({k}{}{n})", if n.is_empty() { "" } else { ", " })).unwrap_or_else(|| "PI_TARGET".into());
+                let src = crate::tree::field_source(fp, "PI_TARGET")
+                    .map(|(k, n)| format!("PI_TARGET ({k}{}{n})", if n.is_empty() { "" } else { ", " }))
+                    .unwrap_or_else(|| "PI_TARGET".into());
                 Some((z, fm, src))
             }
             Some(Err(e)) => {
@@ -1164,7 +1288,16 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             _ => None,
         };
         let id = add_group(&mut model, &nodes);
-        ports.push(Port { refdes: refdes.clone(), fi, ni: *ni, node: id, at, current: *current, pins: pads.len(), target });
+        ports.push(Port {
+            refdes: refdes.clone(),
+            fi,
+            ni: *ni,
+            node: id,
+            at,
+            current: *current,
+            pins: pads.len(),
+            target,
+        });
     }
     if ports.is_empty() {
         return Err(format!("{}: no load IC in the rail domain (its loads are series parts, connectors or missing PI_LOAD): nothing to decouple here", setup.net));
@@ -1177,7 +1310,13 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     let mut unparsed = 0;
     let mut assumed_rating = 0;
     let gnd_via_of = |pd: &Pad| -> Option<(f64, f64)> {
-        board.vias.iter().filter(|v| v.net == pd.net).map(|v| (geom::len(geom::sub(v.at, pd.at)), v.drill)).filter(|x| x.0 < 2.0).min_by(|x, y| x.0.total_cmp(&y.0))
+        board
+            .vias
+            .iter()
+            .filter(|v| v.net == pd.net)
+            .map(|v| (geom::len(geom::sub(v.at, pd.at)), v.drill))
+            .filter(|x| x.0 < 2.0)
+            .min_by(|x, y| x.0.total_cmp(&y.0))
     };
     for (fi, f) in board.footprints.iter().enumerate() {
         if f.dnp || !f.reference.starts_with('C') {
@@ -1264,7 +1403,12 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         model.shunts.push((node, Shunt::Cap { r: esr, l: esl + l_gnd, c: c_eff }));
         let mut flags = Vec::new();
         if c_eff < 0.5 * c_nom {
-            flags.push(format!("DC bias: {:.0} % of the nominal value at {:.2} V{}", 100.0 * c_eff / c_nom, vrail, if rated_assumed { " (rating assumed)" } else { "" }));
+            flags.push(format!(
+                "DC bias: {:.0} % of the nominal value at {:.2} V{}",
+                100.0 * c_eff / c_nom,
+                vrail,
+                if rated_assumed { " (rating assumed)" } else { "" }
+            ));
         }
         cap_node.push(node);
         cap_ni.push(ni);
@@ -1302,7 +1446,8 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
 
     // --- Z(f) at every port ---
     let nf = p.ic_npts.max(20);
-    let freq: Vec<f64> = (0..nf).map(|i| p.fmin.max(1e3) * (p.fmax / p.fmin.max(1e3)).powf(i as f64 / (nf - 1) as f64)).collect();
+    let freq: Vec<f64> =
+        (0..nf).map(|i| p.fmin.max(1e3) * (p.fmax / p.fmin.max(1e3)).powf(i as f64 / (nf - 1) as f64)).collect();
     let n = model.n;
     let mut zs: Vec<Vec<f64>> = vec![Vec::with_capacity(nf); ports.len()];
     let mut zcx: Vec<Vec<Cx>> = vec![Vec::with_capacity(nf); ports.len()];
@@ -1316,7 +1461,8 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         .collect();
     let mut sym = None;
     for &f in &freq {
-        let (lu, s) = kisi_sparse::ComplexLu::with_symbolic(n, &model.triplets(f, true, true, &[]), sym.take()).map_err(|e| format!("AC grid: solver error {e}"))?;
+        let (lu, s) = kisi_sparse::ComplexLu::with_symbolic(n, &model.triplets(f, true, true, &[]), sym.take())
+            .map_err(|e| format!("AC grid: solver error {e}"))?;
         sym = Some(s);
         let x = lu.solve(&rhs).map_err(|e| format!("AC grid: solver error {e}"))?;
         for (k, pt) in ports.iter().enumerate() {
@@ -1354,7 +1500,8 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     }
     // ICs whose pins are not joined to a capacitor or regulator through the copper
     {
-        let fed: std::collections::HashSet<usize> = model.shunts.iter().filter(|(_, sh)| !matches!(sh, Shunt::Plane { .. })).map(|(i, _)| comp[*i]).collect();
+        let fed: std::collections::HashSet<usize> =
+            model.shunts.iter().filter(|(_, sh)| !matches!(sh, Shunt::Plane { .. })).map(|(i, _)| comp[*i]).collect();
         let size = |c: usize| comp.iter().filter(|&&x| x == c).count();
         for pt in &ports {
             if !fed.contains(&comp[pt.node]) {
@@ -1368,7 +1515,8 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             }
         }
     }
-    let lu = kisi_sparse::ComplexLu::new(n, &model.triplets(f_l, false, false, &roots)).map_err(|e| format!("AC grid: solver error {e}"))?;
+    let lu = kisi_sparse::ComplexLu::new(n, &model.triplets(f_l, false, false, &roots))
+        .map_err(|e| format!("AC grid: solver error {e}"))?;
     // G at the port and capacitor nodes, in batches
     let mut probe: Vec<usize> = ports.iter().map(|pt| pt.node).collect();
     probe.extend(cap_node.iter().copied());
@@ -1438,7 +1586,12 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             Some((z, fm, src)) => (Some(*z), src.clone(), fm.unwrap_or(crate::pdn::F_BOARD)),
             None if pt.current > 0.0 && vrail > 0.0 => (
                 Some(vrail * p.ripple / (p.step * pt.current)),
-                format!("{:.0} % ripple at a {:.0} % step of {:.0} mA (estimate)", p.ripple * 100.0, p.step * 100.0, pt.current * 1e3),
+                format!(
+                    "{:.0} % ripple at a {:.0} % step of {:.0} mA (estimate)",
+                    p.ripple * 100.0,
+                    p.step * 100.0,
+                    pt.current * 1e3
+                ),
                 crate::pdn::F_BOARD,
             ),
             None => (None, "no load current".into(), crate::pdn::F_BOARD),
@@ -1478,11 +1631,18 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             // capacitors resonating just below (inductive there) and above (still capacitive)
             let below = links.iter().filter(|l| l.srf_hz < freq[i]).max_by(|a, b| a.srf_hz.total_cmp(&b.srf_hz));
             let over = links.iter().filter(|l| l.srf_hz > freq[i]).min_by(|a, b| a.srf_hz.total_cmp(&b.srf_hz));
-            let name = |l: &CapLink| format!("{} {} (series resonance {:.1} MHz)", l.refdes, fmt_c(caps[l.cap].c_eff), l.srf_hz / 1e6);
+            let name = |l: &CapLink| {
+                format!("{} {} (series resonance {:.1} MHz)", l.refdes, fmt_c(caps[l.cap].c_eff), l.srf_hz / 1e6)
+            };
             let note = match (below, over) {
                 (Some(a), Some(b)) => format!("between {} and {}", name(a), name(b)),
-                (Some(a), None) => format!("inductance of the decoupling against the plane capacitance; highest series resonance: {}", name(a)),
-                (None, Some(b)) => format!("regulator inductance against the capacitors; lowest series resonance: {}", name(b)),
+                (Some(a), None) => format!(
+                    "inductance of the decoupling against the plane capacitance; highest series resonance: {}",
+                    name(a)
+                ),
+                (None, Some(b)) => {
+                    format!("regulator inductance against the capacitors; lowest series resonance: {}", name(b))
+                }
                 _ => "regulator against the plane capacitance".into(),
             };
             // an inductor or bead next to this net resonating with its capacitors (LC filter)
@@ -1493,7 +1653,13 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
                 }
                 let f_lc = 1.0 / (2.0 * PI * (sr.l_low() * c_net[pt.ni]).sqrt());
                 if (freq[i] / f_lc).ln().abs() < 1.6f64.ln() {
-                    note = format!("filter resonance of {} ({}, {:.2} µH below its peak) with the {} on this net; {note}", sr.refdes, sr.kind, sr.l_low() * 1e6, fmt_c(c_net[pt.ni]));
+                    note = format!(
+                        "filter resonance of {} ({}, {:.2} µH below its peak) with the {} on this net; {note}",
+                        sr.refdes,
+                        sr.kind,
+                        sr.l_low() * 1e6,
+                        fmt_c(c_net[pt.ni])
+                    );
                     break;
                 }
             }
@@ -1520,7 +1686,13 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
                 .filter_map(|cd| {
                     let c0 = parse_cap(&cd.value)?;
                     let pkg = cd.package.as_str();
-                    Some((c0, pkg, c0 * data.retention(pkg, c0, vrail, ra, ""), data.esr(pkg, c0, ""), data.esl(pkg) + mount))
+                    Some((
+                        c0,
+                        pkg,
+                        c0 * data.retention(pkg, c0, vrail, ra, ""),
+                        data.esr(pkg, c0, ""),
+                        data.esl(pkg) + mount,
+                    ))
                 })
                 .collect();
             let band: Vec<usize> = (0..nf).filter(|&i| freq[i] <= f_max).collect();
@@ -1606,7 +1778,13 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             for &(k, n, r_mm) in &groups {
                 let (c0, pkg, c, _, l) = cands[k];
                 let srf = 1.0 / (2.0 * PI * ((l + l_sp(r_mm)) * c).sqrt());
-                let worst_in = |lo: f64, hi: f64| band.iter().zip(&cur).filter(|(&i, _)| freq[i] >= lo && freq[i] <= hi).map(|(_, &v)| v).fold(0.0, f64::max);
+                let worst_in = |lo: f64, hi: f64| {
+                    band.iter()
+                        .zip(&cur)
+                        .filter(|(&i, _)| freq[i] >= lo && freq[i] <= hi)
+                        .map(|(_, &v)| v)
+                        .fold(0.0, f64::max)
+                };
                 let (fa, fb) = ((srf / 3.0).max(freq[0]), (srf * 3.0).min(f_max));
                 recs.push(Recommendation {
                     f_lo: fa,
@@ -1668,9 +1846,15 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             out_ports[i].label = format!("{} ({short})", out_ports[i].refdes);
         }
     }
-    let best_path: HashMap<String, f64> = out_ports.iter().map(|pt| (pt.label.clone(), pt.caps.iter().map(|l| l.l_path).fold(f64::INFINITY, f64::min))).collect();
+    let best_path: HashMap<String, f64> = out_ports
+        .iter()
+        .map(|pt| (pt.label.clone(), pt.caps.iter().map(|l| l.l_path).fold(f64::INFINITY, f64::min)))
+        .collect();
     for (ci, cap) in caps.iter_mut().enumerate() {
-        let best = out_ports.iter().filter_map(|pt| pt.caps.iter().find(|l| l.cap == ci).map(|l| (l.l_path, pt.label.clone()))).min_by(|a, b| a.0.total_cmp(&b.0));
+        let best = out_ports
+            .iter()
+            .filter_map(|pt| pt.caps.iter().find(|l| l.cap == ci).map(|l| (l.l_path, pt.label.clone())))
+            .min_by(|a, b| a.0.total_cmp(&b.0));
         match best {
             Some((l, ic)) => {
                 let own = cap.esl + cap.l_gnd;
@@ -1688,7 +1872,9 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
                 cap.nearest_ic = Some(ic);
             }
             // no IC on its net: a filter capacitor (e.g. at a regulator output before a bead)
-            None if out_ports.iter().any(|pt| pt.net == cap.net) => cap.flags.push("not connected to a load IC through the rail copper".into()),
+            None if out_ports.iter().any(|pt| pt.net == cap.net) => {
+                cap.flags.push("not connected to a load IC through the rail copper".into())
+            }
             None => {}
         }
     }
@@ -1823,7 +2009,15 @@ mod grid_tests {
         let pt = &r.ports[0];
         let l1 = pt.caps.iter().find(|l| l.refdes == "C1").unwrap();
         let l2 = pt.caps.iter().find(|l| l.refdes == "C2").unwrap();
-        eprintln!("cell {} mm, nodes {}, C1 {:.1} pH at {:.1} mm, C2 {:.1} pH at {:.1} mm", r.cell_mm, r.nodes, l1.l_path * 1e12, l1.dist_mm, l2.l_path * 1e12, l2.dist_mm);
+        eprintln!(
+            "cell {} mm, nodes {}, C1 {:.1} pH at {:.1} mm, C2 {:.1} pH at {:.1} mm",
+            r.cell_mm,
+            r.nodes,
+            l1.l_path * 1e12,
+            l1.dist_mm,
+            l2.l_path * 1e12,
+            l2.dist_mm
+        );
         // plane pair: ΔL = μ0·d/π·ln(D2/D1) for points far from the edges (8 % above it on this grid;
         // on the 100 × 60 mm plane the open edges add another 20 %)
         let dl = MU0 * 0.2e-3 / PI * (l2.dist_mm / l1.dist_mm).ln();
@@ -1842,7 +2036,16 @@ mod grid_tests {
         assert!(p2.target_source.starts_with("PI_TARGET"));
         assert!(!p2.above.is_empty() && !p2.recommendations.is_empty(), "{:?}", p2.above);
         for rc in &p2.recommendations {
-            eprintln!("{:.2}-{:.2} MHz: {} × {} {} within {:.1} mm ({})", rc.f_lo / 1e6, rc.f_hi / 1e6, rc.count, rc.value, rc.package, rc.radius_mm, rc.note);
+            eprintln!(
+                "{:.2}-{:.2} MHz: {} × {} {} within {:.1} mm ({})",
+                rc.f_lo / 1e6,
+                rc.f_hi / 1e6,
+                rc.count,
+                rc.value,
+                rc.package,
+                rc.radius_mm,
+                rc.note
+            );
         }
         for pk in &p2.peaks {
             eprintln!("peak {:.2} MHz {:.1} mΩ: {}", pk.f / 1e6, pk.z * 1e3, pk.note);
@@ -1900,7 +2103,13 @@ mod grid_tests {
     }
 
     fn rails() -> (RailSetup, RailSetup) {
-        let main = RailSetup { net: "+3V3".into(), voltage: 3.3, sources: vec![SourceSpec { refdes: "U2".into(), pads: vec!["1".into()] }], loads: vec![], ground: false };
+        let main = RailSetup {
+            net: "+3V3".into(),
+            voltage: 3.3,
+            sources: vec![SourceSpec { refdes: "U2".into(), pads: vec!["1".into()] }],
+            loads: vec![],
+            ground: false,
+        };
         let filt = RailSetup {
             net: "+3V3A".into(),
             voltage: 3.3,
@@ -1929,7 +2138,10 @@ mod grid_tests {
         assert!(r.boundary.iter().any(|x| x.contains("L1") && x.contains("SW")), "{:?}", r.boundary);
         assert_eq!(r.regulators, ["U2"], "FB1 is a series part, not the source");
         let fb = &r.series[0];
-        assert!(fb.refdes == "FB1" && fb.kind == "bead" && fb.source == "estimate" && (fb.z100 - 220.0).abs() < 60.0, "{fb:?}");
+        assert!(
+            fb.refdes == "FB1" && fb.kind == "bead" && fb.source == "estimate" && (fb.z100 - 220.0).abs() < 60.0,
+            "{fb:?}"
+        );
         // the regulator is reached through the bead: low impedance at 1 kHz (bead Rdc + regulator)
         let pt = &r.ports[0];
         assert_eq!((pt.refdes.as_str(), pt.net.as_str()), ("U1", "+3V3A"));

@@ -17,7 +17,8 @@ pub fn workers() -> usize {
     if cfg!(target_arch = "wasm32") {
         return 1;
     }
-    if let Some(n) = std::env::var("KISI_THREADS").ok().and_then(|v| v.trim().parse::<usize>().ok()).filter(|&n| n >= 1) {
+    if let Some(n) = std::env::var("KISI_THREADS").ok().and_then(|v| v.trim().parse::<usize>().ok()).filter(|&n| n >= 1)
+    {
         return n;
     }
     std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1).min(WORKERS)
@@ -45,7 +46,9 @@ pub fn par_map_with<T: Sync, R: Send>(items: &[T], threads: usize, f: impl Fn(&T
             mine
         };
         // the via model's Laplace solves recurse little, but leave room as the main thread has
-        let handles: Vec<_> = (0..n).map(|_| std::thread::Builder::new().stack_size(16 << 20).spawn_scoped(sc, work).expect("worker thread")).collect();
+        let handles: Vec<_> = (0..n)
+            .map(|_| std::thread::Builder::new().stack_size(16 << 20).spawn_scoped(sc, work).expect("worker thread"))
+            .collect();
         for h in handles {
             match h.join() {
                 Ok(mine) => {

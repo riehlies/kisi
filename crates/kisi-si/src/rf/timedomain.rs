@@ -101,8 +101,19 @@ impl Step {
             Some(v) if v.is_finite() => (low, "lowest frequency (the channel changes below it)"),
             _ => (low, "lowest frequency"),
         };
-        let terms: Vec<(f64, Cx)> = freq.iter().zip(h).map(|(&f, &s)| (2.0 * PI * f, s.scale(gauss(f)))).filter(|(_, s)| s.abs() > 1e-9).collect();
-        let mut st = Step { terms, s0, df, f_ref: 0.0, check: TdCheck { dc: s0, dc_source, band_edge: gauss(fmax), ..Default::default() } };
+        let terms: Vec<(f64, Cx)> = freq
+            .iter()
+            .zip(h)
+            .map(|(&f, &s)| (2.0 * PI * f, s.scale(gauss(f))))
+            .filter(|(_, s)| s.abs() > 1e-9)
+            .collect();
+        let mut st = Step {
+            terms,
+            s0,
+            df,
+            f_ref: 0.0,
+            check: TdCheck { dc: s0, dc_source, band_edge: gauss(fmax), ..Default::default() },
+        };
         st.f_ref = st.raw(-3.0 * rise);
         st
     }
@@ -160,7 +171,8 @@ mod tests {
     fn delay_line_step() {
         let freq = grid(40e9, 800);
         let tau = 200e-12;
-        let h: Vec<Cx> = freq.iter().map(|&f| Cx::new((2.0 * PI * f * tau).cos(), -(2.0 * PI * f * tau).sin())).collect();
+        let h: Vec<Cx> =
+            freq.iter().map(|&f| Cx::new((2.0 * PI * f * tau).cos(), -(2.0 * PI * f * tau).sin())).collect();
         let mut st = Step::new(&freq, &h, Some(1.0), 30e-12);
         assert!(st.at(tau).abs() - 0.5 < 1e-3 && (st.at(tau) - 0.5).abs() < 1e-3, "{}", st.at(tau));
         assert!((st.at(tau + 100e-12) - 1.0).abs() < 1e-3);
@@ -188,7 +200,8 @@ mod tests {
     fn precursor_found() {
         let freq = grid(20e9, 400);
         let tau = -150e-12; // the output 150 ps before the input
-        let h: Vec<Cx> = freq.iter().map(|&f| Cx::new((2.0 * PI * f * tau).cos(), -(2.0 * PI * f * tau).sin())).collect();
+        let h: Vec<Cx> =
+            freq.iter().map(|&f| Cx::new((2.0 * PI * f * tau).cos(), -(2.0 * PI * f * tau).sin())).collect();
         let mut st = Step::new(&freq, &h, None, 30e-12);
         st.verify(0.0, 2e-9);
         assert!(st.check.precursor > 0.5, "{:?}", st.check);

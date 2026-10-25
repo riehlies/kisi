@@ -11,7 +11,22 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 
-pub const COMMANDS: &[&str] = &["overview", "interfaces", "net", "check", "crosstalk", "profiles", "power", "thermal", "report", "gaps", "config-check", "config-template", "export", "help"];
+pub const COMMANDS: &[&str] = &[
+    "overview",
+    "interfaces",
+    "net",
+    "check",
+    "crosstalk",
+    "profiles",
+    "power",
+    "thermal",
+    "report",
+    "gaps",
+    "config-check",
+    "config-template",
+    "export",
+    "help",
+];
 
 pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on stdout
 
@@ -158,7 +173,8 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
         *i += 1;
         args.get(*i).cloned().ok_or(format!("{name} needs a value"))
     };
-    let num = |s: String, name: &str| -> Result<f64, String> { s.parse().map_err(|_| format!("{name} needs a number")) };
+    let num =
+        |s: String, name: &str| -> Result<f64, String> { s.parse().map_err(|_| format!("{name} needs a number")) };
     while i < args.len() {
         let a = args[i].as_str();
         match a {
@@ -171,7 +187,10 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
                 let (c, p) = v.split_once('=').ok_or("--class needs CLASS=PROFILE")?;
                 o.classes.insert(c.to_string(), p.to_string());
             }
-            "--nets" => o.nets = Some(val(&mut i, a)?.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()),
+            "--nets" => {
+                o.nets =
+                    Some(val(&mut i, a)?.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
+            }
             "--all" => o.all = true,
             "--max" => o.max = Some(num(val(&mut i, a)?, a)? as usize),
             "--rise-ps" => o.rise_ps = Some(num(val(&mut i, a)?, a)?),
@@ -188,7 +207,9 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--variant" => o.variant = Some(val(&mut i, a)?),
             "--via-cavity" => o.via_cavity = true,
             "--via-returns" => o.via_returns = true,
-            "--ambient" => o.ambient = Some(num(val(&mut i, a)?, a)?).filter(|t| (-60.0..=200.0).contains(t)).or(Some(f64::NAN)),
+            "--ambient" => {
+                o.ambient = Some(num(val(&mut i, a)?, a)?).filter(|t| (-60.0..=200.0).contains(t)).or(Some(f64::NAN))
+            }
             "--h" => o.h = Some(num(val(&mut i, a)?, a)?),
             "--airflow" => o.airflow = Some(num(val(&mut i, a)?, a)?),
             "--vertical" => o.vertical = true,
@@ -275,13 +296,19 @@ pub fn field_plan(p: &Project, o: &Opts) -> Vec<(String, String, f64)> {
                 *w.entry(gi).or_default() += crate::geom::len(crate::geom::sub(tr.b, tr.a)) * (t1 - t0).abs();
             }
         }
-        let mut v: Vec<(String, String, f64)> = w.into_iter().filter_map(|(gi, l)| g.get(gi as usize).map(|e| (e.id.clone(), e.text.clone(), l))).collect();
+        let mut v: Vec<(String, String, f64)> =
+            w.into_iter().filter_map(|(gi, l)| g.get(gi as usize).map(|e| (e.id.clone(), e.text.clone(), l))).collect();
         v.extend(xt_plan(p, &[net], true));
         v
     } else {
-        let mut v: Vec<(String, String, f64)> = g.iter().filter(|e| o.field_all || e.target_length > 0.0).map(|e| (e.id.clone(), e.text.clone(), if o.field_all { e.length } else { e.target_length })).collect();
+        let mut v: Vec<(String, String, f64)> = g
+            .iter()
+            .filter(|e| o.field_all || e.target_length > 0.0)
+            .map(|e| (e.id.clone(), e.text.clone(), if o.field_all { e.length } else { e.target_length }))
+            .collect();
         if o.field_xt {
-            let nets: Vec<u32> = p.an.nets.iter().filter(|s| o.field_all || s.target.is_some()).map(|s| s.net).collect();
+            let nets: Vec<u32> =
+                p.an.nets.iter().filter(|s| o.field_all || s.target.is_some()).map(|s| s.net).collect();
             v.extend(xt_plan(p, &nets, false));
         }
         v
@@ -296,9 +323,15 @@ pub fn field_plan(p: &Project, o: &Opts) -> Vec<(String, String, f64)> {
 fn xt_plan(p: &Project, nets: &[u32], all: bool) -> Vec<(String, String, f64)> {
     let (f, rp) = (HashMap::new(), RfParams::default());
     if all {
-        nets.iter().flat_map(|&n| crate::rf::crosstalk(&p.board, &p.an, n, &f, &rp).geoms).map(|(id, t)| (id, t, 1e-3)).collect()
+        nets.iter()
+            .flat_map(|&n| crate::rf::crosstalk(&p.board, &p.an, n, &f, &rp).geoms)
+            .map(|(id, t)| (id, t, 1e-3))
+            .collect()
     } else {
-        crate::rf::crosstalk_geoms(&p.board, &p.an, nets, &f, &rp).into_iter().map(|(id, t, w)| (id, t, 1e-3 * w)).collect()
+        crate::rf::crosstalk_geoms(&p.board, &p.an, nets, &f, &rp)
+            .into_iter()
+            .map(|(id, t, w)| (id, t, 1e-3 * w))
+            .collect()
     }
 }
 
@@ -333,7 +366,12 @@ pub fn run(o: &Opts, p: Option<&Project>, tree: Option<Value>) -> Result<Value, 
 
 /// `run`; for `check`, `check_rows` are its rows computed in parts by worker engines
 /// (`check_part`, the Node CLI) – the result is the same as computing them here.
-pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: Option<Vec<(usize, Value)>>) -> Result<Value, String> {
+pub fn run_with(
+    o: &Opts,
+    p: Option<&Project>,
+    tree: Option<Value>,
+    check_rows: Option<Vec<(usize, Value)>>,
+) -> Result<Value, String> {
     let profiles = Profiles::builtin();
     let proj = || p.ok_or_else(|| "no board loaded".to_string());
     if let Some(pr) = p {
@@ -354,8 +392,10 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
                 v["effective_limits"] = serde_json::to_value(profiles.limits(pr)).unwrap();
                 return Ok(v);
             }
-            Ok(json!({"profiles": profiles.profiles.iter().map(|p| json!({"id": p.id, "name": p.name, "family": p.family, "rate_gbps": p.rate_gbps, "signal": p.signal, "z_ohm": p.z, "z_tol_pct": p.z_tol_pct})).collect::<Vec<_>>(),
-                "default_limits": profiles.defaults.limits, "note": "z_ohm per line (differential: half the differential impedance). Limits marked 'kisi' are kisi guide values, not values from a standard."}))
+            Ok(
+                json!({"profiles": profiles.profiles.iter().map(|p| json!({"id": p.id, "name": p.name, "family": p.family, "rate_gbps": p.rate_gbps, "signal": p.signal, "z_ohm": p.z, "z_tol_pct": p.z_tol_pct})).collect::<Vec<_>>(),
+                "default_limits": profiles.defaults.limits, "note": "z_ohm per line (differential: half the differential impedance). Limits marked 'kisi' are kisi guide values, not values from a standard."}),
+            )
         }
         "overview" => Ok(service::overview(proj()?)),
         "interfaces" => Ok(service::interfaces(proj()?, &profiles, &o.classes)),
@@ -365,8 +405,12 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
             // the front end writes the file and replaces "_write" by "written"
             match (&o.s2p, &o.s4p) {
                 (Some(_), Some(_)) => return Err("--s2p and --s4p: give one of them".into()),
-                (Some(path), None) => v["_write"] = json!({"path": path, "content": service::net_touchstone(pr, &o.pos[1], &rp)?}),
-                (None, Some(path)) => v["_write"] = json!({"path": path, "content": service::net_touchstone4(pr, &o.pos[1], &rp)?}),
+                (Some(path), None) => {
+                    v["_write"] = json!({"path": path, "content": service::net_touchstone(pr, &o.pos[1], &rp)?})
+                }
+                (None, Some(path)) => {
+                    v["_write"] = json!({"path": path, "content": service::net_touchstone4(pr, &o.pos[1], &rp)?})
+                }
                 _ => {}
             }
             Ok(v)
@@ -425,7 +469,13 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
                 None => None,
             };
             let pr = proj()?;
-            let prm = crate::thermal::ThermalParams { ambient_c: o.ambient, h: o.h, airflow_m_s: o.airflow.unwrap_or(0.0), vertical: o.vertical, ..Default::default() };
+            let prm = crate::thermal::ThermalParams {
+                ambient_c: o.ambient,
+                h: o.h,
+                airflow_m_s: o.airflow.unwrap_or(0.0),
+                vertical: o.vertical,
+                ..Default::default()
+            };
             let mut v = service::thermal(pr, tree, &prm)?;
             if pr.variant.needs_choice {
                 if let Some(w) = v["warnings"].as_array_mut() {
@@ -445,12 +495,23 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
         "config-check" => {
             let pr = proj()?;
             match (&pr.config_path, &pr.config_check) {
-                (None, _) => Err(format!("no configuration: {} does not exist (create it, see `kisi config-template`)", service::config_path_for(&pr.pcb_path).display())),
+                (None, _) => Err(format!(
+                    "no configuration: {} does not exist (create it, see `kisi config-template`)",
+                    service::config_path_for(&pr.pcb_path).display()
+                )),
                 (Some(f), Some(c)) => {
                     let cfg = pr.config.clone().unwrap_or_default();
                     // every message with the categories of its entry (the viewer sorts them per tab)
-                    let msgs: Vec<Value> = c.errors.iter().map(|t| ("error", t)).chain(c.warnings.iter().map(|t| ("warning", t))).map(|(l, t)| json!({"level": l, "text": t, "views": crate::config::message_views(&cfg, t)})).collect();
-                    Ok(json!({"file": f.display().to_string(), "ok": c.ok, "entries": c.entries, "errors": c.errors, "warnings": c.warnings, "messages": msgs, "variant": pr.variant.summary()}))
+                    let msgs: Vec<Value> = c
+                        .errors
+                        .iter()
+                        .map(|t| ("error", t))
+                        .chain(c.warnings.iter().map(|t| ("warning", t)))
+                        .map(|(l, t)| json!({"level": l, "text": t, "views": crate::config::message_views(&cfg, t)}))
+                        .collect();
+                    Ok(
+                        json!({"file": f.display().to_string(), "ok": c.ok, "entries": c.entries, "errors": c.errors, "warnings": c.warnings, "messages": msgs, "variant": pr.variant.summary()}),
+                    )
                 }
                 (Some(f), None) => Ok(json!({"file": f.display().to_string(), "ok": true})),
             }
@@ -464,11 +525,25 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
                 (None, Some(b)) => crate::channel_export::Pick::Bus(b),
                 _ => return Err("export needs --lane NAME or --bus NAME".into()),
             };
-            let (mut v, files, name) = crate::channel_export::export(pr, &profiles, &o.classes, pick, f, &rp, crate::channel_export::FreqRange::parse(o.fmin.as_deref(), o.fmax.as_deref())?)?;
+            let (mut v, files, name) = crate::channel_export::export(
+                pr,
+                &profiles,
+                &o.classes,
+                pick,
+                f,
+                &rp,
+                crate::channel_export::FreqRange::parse(o.fmin.as_deref(), o.fmax.as_deref())?,
+            )?;
             // the front end writes the files into this folder and replaces "_files" by "written"
             let dir = o.out.clone().unwrap_or_else(|| {
                 let b = std::path::Path::new(&o.pos[0]);
-                b.parent().unwrap_or(std::path::Path::new("")).join("analysis").join("export").join(&name).to_string_lossy().to_string()
+                b.parent()
+                    .unwrap_or(std::path::Path::new(""))
+                    .join("analysis")
+                    .join("export")
+                    .join(&name)
+                    .to_string_lossy()
+                    .to_string()
             });
             v["field_solver"] = pr.field_summary();
             v["variant"] = pr.variant.summary();
@@ -527,7 +602,11 @@ fn template_load(p: &Project) -> Value {
         if on.is_empty() {
             continue;
         }
-        let rail = on.iter().max_by(|a, b| a.1.cmp(b.1).then(b.0.cmp(a.0))).map(|(n, _)| rails[n].to_string()).unwrap_or_default();
+        let rail = on
+            .iter()
+            .max_by(|a, b| a.1.cmp(b.1).then(b.0.cmp(a.0)))
+            .map(|(n, _)| rails[n].to_string())
+            .unwrap_or_default();
         let key = (on.len(), std::cmp::Reverse(pads.len()));
         if best.as_ref().map_or(true, |x| key < x.0) {
             best = Some((key, f.reference.clone(), rail));
@@ -577,7 +656,12 @@ pub fn config_template(p: &Project) -> Value {
         v["_sheets"] = json!(sheets);
         let mut variants = serde_json::Map::new();
         if !p.board.variants.is_empty() {
-            v["_board_variants"] = json!(p.board.variants.iter().map(|b| json!({"name": b.name, "description": b.description})).collect::<Vec<_>>());
+            v["_board_variants"] = json!(p
+                .board
+                .variants
+                .iter()
+                .map(|b| json!({"name": b.name, "description": b.description}))
+                .collect::<Vec<_>>());
             v["_variant_note"] = json!("The board file defines these variants (KiCad 10): choose one with \"variant\"; \"variants\" entries of the same name add rules on top.");
         } else {
             let mut keys: Vec<String> = forks.iter().flat_map(|f| f.towards.iter().map(|t| t.join(" + "))).collect();
@@ -588,7 +672,14 @@ pub fn config_template(p: &Project) -> Value {
                 let other: Vec<String> = forks
                     .iter()
                     .filter(|f| f.towards.iter().any(|t| &t.join(" + ") == k))
-                    .flat_map(|f| f.parts.iter().zip(&f.towards).filter(|(_, t)| &t.join(" + ") != k).map(|(p, _)| p.clone()).collect::<Vec<_>>())
+                    .flat_map(|f| {
+                        f.parts
+                            .iter()
+                            .zip(&f.towards)
+                            .filter(|(_, t)| &t.join(" + ") != k)
+                            .map(|(p, _)| p.clone())
+                            .collect::<Vec<_>>()
+                    })
                     .collect();
                 variants.insert(format!("towards {k}"), json!({"description": null, "not_fitted_sheets": [], "not_fitted": other, "fitted": [], "source": {"kind": "design", "document": null, "note": null}}));
             }
@@ -608,7 +699,10 @@ mod tests {
     fn args() {
         let a = |s: &str| s.split_whitespace().map(String::from).collect::<Vec<_>>();
         let o = parse_args(&a("check b.kicad_pcb --class PCIe=pcie3 --nets A,B --all --max 5 --formula")).unwrap();
-        assert_eq!((o.cmd.as_str(), o.pos.len(), o.classes["PCIe"].as_str(), o.all, o.max, o.formula), ("check", 1, "pcie3", true, Some(5), true));
+        assert_eq!(
+            (o.cmd.as_str(), o.pos.len(), o.classes["PCIe"].as_str(), o.all, o.max, o.formula),
+            ("check", 1, "pcie3", true, Some(5), true)
+        );
         assert_eq!(o.nets.unwrap(), vec!["A", "B"]);
         assert!(parse_args(&a("check b.kicad_pcb --class PCIe=pcie9")).is_err());
         assert!(parse_args(&a("net b.kicad_pcb")).is_err());
@@ -619,13 +713,19 @@ mod tests {
         assert_eq!(parse_args(&a("check b.kicad_pcb --variant TS-PCIe")).unwrap().variant.as_deref(), Some("TS-PCIe"));
         assert!(parse_args(&a("check b.kicad_pcb --variant")).is_err());
         let t = parse_args(&a("thermal b.kicad_pcb --ambient 40 --airflow 1.5 --vertical")).unwrap();
-        assert_eq!((t.cmd.as_str(), t.ambient, t.airflow, t.vertical, t.h), ("thermal", Some(40.0), Some(1.5), true, None));
+        assert_eq!(
+            (t.cmd.as_str(), t.ambient, t.airflow, t.vertical, t.h),
+            ("thermal", Some(40.0), Some(1.5), true, None)
+        );
         assert!(parse_args(&a("thermal b.kicad_pcb --ambient 900")).is_err());
         assert!(parse_args(&a("thermal b.kicad_pcb --h 0")).is_err());
         // export: the line model
         let e = parse_args(&a("export b.kicad_pcb --lane X --model compact")).unwrap();
         assert_eq!(formats(&e).unwrap().model, crate::export::Model::Compact);
-        assert_eq!(formats(&parse_args(&a("export b.kicad_pcb --lane X")).unwrap()).unwrap().model, crate::export::Model::Compact);
+        assert_eq!(
+            formats(&parse_args(&a("export b.kicad_pcb --lane X")).unwrap()).unwrap().model,
+            crate::export::Model::Compact
+        );
         assert!(parse_args(&a("export b.kicad_pcb --lane X --model bogus")).is_err());
     }
 
@@ -648,7 +748,17 @@ mod tests {
             )
         };
         for reg in ["", r#"(property "PI_REG" "+5V > +3V3 buck")"#] {
-            let p = Project::from_texts(service::Inputs { pcb_path: "t.kicad_pcb".into(), pcb: pcb(reg), pro: None, config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap();
+            let p = Project::from_texts(service::Inputs {
+                pcb_path: "t.kicad_pcb".into(),
+                pcb: pcb(reg),
+                pro: None,
+                config: None,
+                stackup: None,
+                field: HashMap::new(),
+                variant: None,
+                files: Default::default(),
+            })
+            .unwrap();
             let f = &config_template(&p)["fields"][0];
             assert_eq!((f["ref"].as_str(), f["value"].as_str()), (Some("U2"), Some("+3V3=100mA")), "{reg}");
         }

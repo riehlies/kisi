@@ -44,9 +44,25 @@ fn via_geom_k(case: &Value, k: usize) -> ViaGeom {
         let (zc, eeff) = feed_line(layers, &planes, w, z, zr);
         Feed { z, z_ref: zr, w, zc, eeff, dropped: 0.0, antipad_line: true }
     };
-    let post = |w: &Value| Post { dx: num(&w["x"]) - vx, dy: num(&w["y"]) - vy, r: num(&w["r"]), z0: num(&w["z0"]), z1: num(&w["z1"]), joins: None, open_r: vec![] };
+    let post = |w: &Value| Post {
+        dx: num(&w["x"]) - vx,
+        dy: num(&w["y"]) - vy,
+        r: num(&w["r"]),
+        z0: num(&w["z0"]),
+        z1: num(&w["z1"]),
+        joins: None,
+        open_r: vec![],
+    };
     ViaGeom {
-        slabs: layers.iter().map(|l| Slab { z0: num(&l["z0"]), z1: num(&l["z1"]), er: num(&l["er"]), tand: l["tand"].as_f64().unwrap_or(0.0) }).collect(),
+        slabs: layers
+            .iter()
+            .map(|l| Slab {
+                z0: num(&l["z0"]),
+                z1: num(&l["z1"]),
+                er: num(&l["er"]),
+                tand: l["tand"].as_f64().unwrap_or(0.0),
+            })
+            .collect(),
         planes: planes.clone(),
         r: num(&v["r"]),
         z0: num(&v["z0"]),
@@ -102,7 +118,10 @@ fn metal_at(s: &Value, x: f64, y: f64) -> bool {
             return false;
         }
     }
-    let holes: Vec<Vec<f64>> = s["holes"].as_array().map(|a| a.iter().map(|h| h.as_array().unwrap().iter().map(num).collect()).collect()).unwrap_or_default();
+    let holes: Vec<Vec<f64>> = s["holes"]
+        .as_array()
+        .map(|a| a.iter().map(|h| h.as_array().unwrap().iter().map(num).collect()).collect())
+        .unwrap_or_default();
     !holes.iter().any(|h| {
         if h.len() < 5 {
             (x - h[0]).hypot(y - h[1]) < h[2]
@@ -118,7 +137,8 @@ fn metal_at(s: &Value, x: f64, y: f64) -> bool {
 pub fn run(args: &[String]) {
     let case: Value = serde_json::from_str(&std::fs::read_to_string(&args[0]).unwrap()).unwrap();
     let out = std::path::Path::new(&args[1]);
-    let opt = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).and_then(|s| s.parse::<f64>().ok());
+    let opt =
+        |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).and_then(|s| s.parse::<f64>().ok());
     let h_grid = opt("--grid").unwrap_or(0.25);
     let cid = case["name"].as_str().unwrap_or("case").to_string();
     let meta = &case["meta"];
@@ -128,13 +148,23 @@ pub fn run(args: &[String]) {
     let bx: Vec<f64> = meta["board"].as_array().unwrap().iter().map(num).collect();
     let (a, b) = ((bx[2] - bx[0]) * 1e-3, (bx[3] - bx[1]) * 1e-3);
     // the planes (sheets of plane nets) by height, and the plane pairs between neighbours
-    let plane_sheets: Vec<&Value> = case["sheets"].as_array().unwrap().iter().filter(|s| matches!(s["net"].as_str(), Some("GND") | Some("PWR"))).collect();
+    let plane_sheets: Vec<&Value> = case["sheets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| matches!(s["net"].as_str(), Some("GND") | Some("PWR")))
+        .collect();
     let mut zp: Vec<f64> = plane_sheets.iter().map(|s| num(&s["z"])).collect();
     zp.sort_by(|x, y| y.partial_cmp(x).unwrap());
     zp.dedup_by(|x, y| (*x - *y).abs() < 1e-9);
     let pairs: Vec<(f64, f64)> = zp.windows(2).map(|w| (w[0], w[1])).collect();
     let no_rad = args.iter().any(|x| x == "--no-radiation");
-    let suffix = args.iter().position(|a| a == "--suffix").and_then(|i| args.get(i + 1)).map(|s| format!("_{s}")).unwrap_or_default();
+    let suffix = args
+        .iter()
+        .position(|a| a == "--suffix")
+        .and_then(|i| args.get(i + 1))
+        .map(|s| format!("_{s}"))
+        .unwrap_or_default();
     let skip_grid = args.iter().any(|x| x == "--no-grid");
     let returns = args.iter().any(|x| x == "--returns");
     let layers = case["layers"].as_array().unwrap();
@@ -149,15 +179,21 @@ pub fn run(args: &[String]) {
             t += o * l["tand"].as_f64().unwrap_or(0.0);
         }
         let cav = &meta["cavity"];
-        let (er, tand) = if pairs.len() == 1 && cav.is_object() { (num(&cav["er"]), num(&cav["tand"])) } else { (e / d, t / d) };
+        let (er, tand) =
+            if pairs.len() == 1 && cav.is_object() { (num(&cav["er"]), num(&cav["tand"])) } else { (e / d, t / d) };
         PairMedium { d: (za - zb) * 1e-3, er, tand, f_loss: Some(f_loss), sigma: None, area: 0.0, edges: vec![] }
     };
     // ports of the cavities: every barrel between the planes (signal vias first, then returns)
     let vias = case["vias"].as_array().unwrap();
     let sigs: Vec<&Value> = vias.iter().filter(|v| v["net"].as_str().unwrap_or("SIG") == "SIG").collect();
     let rets: Vec<&Value> = vias.iter().filter(|v| v["net"].as_str() == Some("GND")).collect();
-    let ports_mm: Vec<EnvPort> = sigs.iter().chain(rets.iter()).map(|v| EnvPort { x: num(&v["x"]) - bx[0], y: num(&v["y"]) - bx[1], r: num(&v["r"]) }).collect();
-    let ports_m: Vec<EnvPort> = ports_mm.iter().map(|p| EnvPort { x: p.x * 1e-3, y: p.y * 1e-3, r: p.r * 1e-3 }).collect();
+    let ports_mm: Vec<EnvPort> = sigs
+        .iter()
+        .chain(rets.iter())
+        .map(|v| EnvPort { x: num(&v["x"]) - bx[0], y: num(&v["y"]) - bx[1], r: num(&v["r"]) })
+        .collect();
+    let ports_m: Vec<EnvPort> =
+        ports_mm.iter().map(|p| EnvPort { x: p.x * 1e-3, y: p.y * 1e-3, r: p.r * 1e-3 }).collect();
     let cap_r = opt("--cap-r").unwrap_or(0.05);
     // capacitors: meta "caps" with the planes from the case's lumped elements (same order)
     let lumped = case["lumped"].as_array().cloned().unwrap_or_default();
@@ -167,13 +203,26 @@ pub fn run(args: &[String]) {
             cs.iter()
                 .enumerate()
                 .map(|(i, c)| {
-                    let (z1, z0) = lumped.get(i).map_or((zp[0], zp[zp.len() - 1]), |l| (num(&l["z0"]).max(num(&l["z1"])), num(&l["z0"]).min(num(&l["z1"]))));
-                    (Load { at: EnvPort { x: num(&c["at"][0]) - bx[0], y: num(&c["at"][1]) - bx[1], r: cap_r }, r_ohm: num(&c["r"]), l: num(&c["l"]), c: c["c"].as_f64() }, z1, z0)
+                    let (z1, z0) = lumped.get(i).map_or((zp[0], zp[zp.len() - 1]), |l| {
+                        (num(&l["z0"]).max(num(&l["z1"])), num(&l["z0"]).min(num(&l["z1"])))
+                    });
+                    (
+                        Load {
+                            at: EnvPort { x: num(&c["at"][0]) - bx[0], y: num(&c["at"][1]) - bx[1], r: cap_r },
+                            r_ohm: num(&c["r"]),
+                            l: num(&c["l"]),
+                            c: c["c"].as_f64(),
+                        },
+                        z1,
+                        z0,
+                    )
                 })
                 .collect()
         })
         .unwrap_or_default();
-    let caps_in = |za: f64, zb: f64| -> Vec<Load> { caps.iter().filter(|c| (c.1 - za).abs() < 1e-6 && (c.2 - zb).abs() < 1e-6).map(|c| c.0).collect() };
+    let caps_in = |za: f64, zb: f64| -> Vec<Load> {
+        caps.iter().filter(|c| (c.1 - za).abs() < 1e-6 && (c.2 - zb).abs() < 1e-6).map(|c| c.0).collect()
+    };
     let mut geoms: Vec<ViaGeom> = (0..sigs.len()).map(|k| via_geom_k(&case, k)).collect();
     if returns {
         // return groups: every GND via joins the GND sheets that have copper at it; the capacitors
@@ -186,13 +235,21 @@ pub fn run(args: &[String]) {
                     .iter()
                     .copied()
                     .filter(|&z| z >= num(&w["z0"]) - 1e-9 && z <= num(&w["z1"]) + 1e-9)
-                    .filter(|&z| plane_sheets.iter().any(|s| (num(&s["z"]) - z).abs() < 1e-9 && s["net"].as_str() == Some("GND") && metal_at(s, x, y)))
+                    .filter(|&z| {
+                        plane_sheets.iter().any(|s| {
+                            (num(&s["z"]) - z).abs() < 1e-9 && s["net"].as_str() == Some("GND") && metal_at(s, x, y)
+                        })
+                    })
                     .collect();
                 // its opening in the planes it passes: the hole of that sheet centred on it
                 p.open_r = zp
                     .iter()
                     .copied()
-                    .filter(|&z| z >= num(&w["z0"]) - 1e-9 && z <= num(&w["z1"]) + 1e-9 && !js.iter().any(|&j| (j - z).abs() < 1e-9))
+                    .filter(|&z| {
+                        z >= num(&w["z0"]) - 1e-9
+                            && z <= num(&w["z1"]) + 1e-9
+                            && !js.iter().any(|&j| (j - z).abs() < 1e-9)
+                    })
                     .filter_map(|z| {
                         plane_sheets.iter().filter(|s| (num(&s["z"]) - z).abs() < 1e-9).find_map(|s| {
                             s["holes"].as_array()?.iter().find_map(|h| {
@@ -206,7 +263,16 @@ pub fn run(args: &[String]) {
             }
             g.caps = caps
                 .iter()
-                .map(|(l, z1, z0)| CapPost { dx: l.at.x + bx[0] - vx, dy: l.at.y + bx[1] - vy, r: cap_r, z_top: *z1, z_bot: *z0, r_ohm: l.r_ohm, l: l.l, c: l.c })
+                .map(|(l, z1, z0)| CapPost {
+                    dx: l.at.x + bx[0] - vx,
+                    dy: l.at.y + bx[1] - vy,
+                    r: cap_r,
+                    z_top: *z1,
+                    z_bot: *z0,
+                    r_ohm: l.r_ohm,
+                    l: l.l,
+                    c: l.c,
+                })
                 .collect();
         }
     }
@@ -218,14 +284,21 @@ pub fn run(args: &[String]) {
     let m0 = PbmVia::build(&geoms[0], Mode::Single, Grid::default());
     let leakage: Vec<Value> = [2e9, 5e9, 10e9, 20e9].iter().map(|&fl| json!({"ghz": fl / 1e9, "pairs": m0.pair_leakage(fl).iter().map(|l| json!([l.0, l.1, l.2])).collect::<Vec<_>>()})).collect();
     let s0: Vec<[Cx; 4]> = f.iter().map(|&fk| s_of(&m0.abcd(fk), 50.0)).collect();
-    write_s2p(&out.join(format!("ladder_inf{suffix}.s2p")), &format!("{cid}: kisi's ladder, infinite plates{} ({title})", if returns { ", return groups" } else { "" }), &f, &s0, 50.0);
+    write_s2p(
+        &out.join(format!("ladder_inf{suffix}.s2p")),
+        &format!("{cid}: kisi's ladder, infinite plates{} ({title})", if returns { ", return groups" } else { "" }),
+        &f,
+        &s0,
+        50.0,
+    );
     timing.insert(
         "infinite".into(),
         json!({"ms": t0.elapsed().as_secs_f64() * 1e3, "return_pairs": m0.floating_pairs().0, "return_spans": m0.floating_pairs().1,
             "return_nodes_z_mm_c_ff": m0.return_nodes().iter().map(|&(z, c)| json!([z, (c * 1e16).round() / 10.0])).collect::<Vec<_>>()}),
     );
     // the cavity environments of every pair
-    let outline: Option<Vec<[f64; 2]>> = meta["plane_outline"].as_array().map(|r| r.iter().map(|p| [num(&p[0]) - bx[0], num(&p[1]) - bx[1]]).collect());
+    let outline: Option<Vec<[f64; 2]>> =
+        meta["plane_outline"].as_array().map(|r| r.iter().map(|p| [num(&p[0]) - bx[0], num(&p[1]) - bx[1]]).collect());
     // the region (outline or board) for the edge radiation
     let mut region = Mask::new(&BBox { min: [0.0, 0.0], max: [bx[2] - bx[0], bx[3] - bx[1]] }, h_grid);
     match &outline {
@@ -245,32 +318,83 @@ pub fn run(args: &[String]) {
         let envs = pairs
             .iter()
             .map(|&(za, zb)| {
-                let ld: Vec<Load> = caps_in(za, zb).iter().map(|l| Load { at: EnvPort { x: l.at.x * 1e-3, y: l.at.y * 1e-3, r: l.at.r * 1e-3 }, ..*l }).collect();
-                (za, zb, Rc::new(PairEnv::Rect(RectEnv::new(a, b, with_rad(medium_of(za, zb)), ports_m.clone(), ld, fmax))))
+                let ld: Vec<Load> = caps_in(za, zb)
+                    .iter()
+                    .map(|l| Load { at: EnvPort { x: l.at.x * 1e-3, y: l.at.y * 1e-3, r: l.at.r * 1e-3 }, ..*l })
+                    .collect();
+                (
+                    za,
+                    zb,
+                    Rc::new(PairEnv::Rect(RectEnv::new(a, b, with_rad(medium_of(za, zb)), ports_m.clone(), ld, fmax))),
+                )
             })
             .collect();
         kinds.push(("rect", envs, t.elapsed().as_secs_f64() * 1e3));
     }
     if !skip_grid {
         let t = Instant::now();
-        let envs = pairs.iter().map(|&(za, zb)| (za, zb, Rc::new(PairEnv::Grid(GridEnv::new(&region, with_rad(medium_of(za, zb)), &[], &caps_in(za, zb), &ports_mm))))).collect();
+        let envs = pairs
+            .iter()
+            .map(|&(za, zb)| {
+                (
+                    za,
+                    zb,
+                    Rc::new(PairEnv::Grid(GridEnv::new(
+                        &region,
+                        with_rad(medium_of(za, zb)),
+                        &[],
+                        &caps_in(za, zb),
+                        &ports_mm,
+                    ))),
+                )
+            })
+            .collect();
         kinds.push(("grid", envs, t.elapsed().as_secs_f64() * 1e3));
     }
     for (tag, envs, t_env) in kinds {
         let t = Instant::now();
-        let links = |k: usize| -> Vec<CavityLink> { envs.iter().map(|(za, zb, e)| CavityLink { z_top: *za, z_bot: *zb, env: e.clone(), origin: origin(k) }).collect() };
-        let ms: Vec<PbmVia> = geoms.iter().enumerate().map(|(k, g)| PbmVia::build_with(g, Mode::Single, Grid::default(), links(k))).collect();
+        let links = |k: usize| -> Vec<CavityLink> {
+            envs.iter()
+                .map(|(za, zb, e)| CavityLink { z_top: *za, z_bot: *zb, env: e.clone(), origin: origin(k) })
+                .collect()
+        };
+        let ms: Vec<PbmVia> = geoms
+            .iter()
+            .enumerate()
+            .map(|(k, g)| PbmVia::build_with(g, Mode::Single, Grid::default(), links(k)))
+            .collect();
         assert!(ms.iter().all(|m| m.has_cavity()), "{cid}: the cavity was not linked");
         if ms.len() == 1 {
             let s: Vec<[Cx; 4]> = f.iter().map(|&fk| s_of(&ms[0].abcd(fk), 50.0)).collect();
-            write_s2p(&out.join(format!("ladder_{tag}{suffix}.s2p")), &format!("{cid}: kisi's ladder with the plane {} ({tag}) ({title})", if pairs.len() == 1 { "pair as a finite cavity" } else { "pairs as finite cavities" }), &f, &s, 50.0);
+            write_s2p(
+                &out.join(format!("ladder_{tag}{suffix}.s2p")),
+                &format!(
+                    "{cid}: kisi's ladder with the plane {} ({tag}) ({title})",
+                    if pairs.len() == 1 { "pair as a finite cavity" } else { "pairs as finite cavities" }
+                ),
+                &f,
+                &s,
+                50.0,
+            );
         } else {
             let refs: Vec<&PbmVia> = ms.iter().collect();
             let s: Vec<Vec<Cx>> = f.iter().map(|&fk| coupled_s(&refs, fk, 50.0)).collect();
-            write_s4p(&out.join(format!("ladder_{tag}{suffix}.s4p")), &format!("{cid}: kisi's ladders coupled through the finite cavity ({tag}) ({title})"), &f, &s, 50.0);
+            write_s4p(
+                &out.join(format!("ladder_{tag}{suffix}.s4p")),
+                &format!("{cid}: kisi's ladders coupled through the finite cavity ({tag}) ({title})"),
+                &f,
+                &s,
+                50.0,
+            );
             // via A alone in the cavity (B's barrel open), as a 2-port
             let s: Vec<[Cx; 4]> = f.iter().map(|&fk| s_of(&ms[0].abcd(fk), 50.0)).collect();
-            write_s2p(&out.join(format!("ladder_{tag}{suffix}.s2p")), &format!("{cid}: via A with the finite cavity ({tag}), B open"), &f, &s, 50.0);
+            write_s2p(
+                &out.join(format!("ladder_{tag}{suffix}.s2p")),
+                &format!("{cid}: via A with the finite cavity ({tag}), B open"),
+                &f,
+                &s,
+                50.0,
+            );
         }
         let cells: Vec<Value> = envs
             .iter()

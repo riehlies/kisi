@@ -254,7 +254,23 @@ fn fill_net_at_any(sheets: &[Value], z: f64, q: P) -> Option<String> {
         }
         let inside = match s["polys"].as_array() {
             None => true,
-            Some(ps) => ps.iter().filter(|ring| inside_ring(&ring.as_array().unwrap().iter().map(|pt| [pt[0].as_f64().unwrap(), pt[1].as_f64().unwrap()]).collect::<Vec<P>>(), q)).count() % 2 == 1,
+            Some(ps) => {
+                ps.iter()
+                    .filter(|ring| {
+                        inside_ring(
+                            &ring
+                                .as_array()
+                                .unwrap()
+                                .iter()
+                                .map(|pt| [pt[0].as_f64().unwrap(), pt[1].as_f64().unwrap()])
+                                .collect::<Vec<P>>(),
+                            q,
+                        )
+                    })
+                    .count()
+                    % 2
+                    == 1
+            }
         };
         inside.then(|| s["net"].as_str().unwrap_or("").to_string())
     })
@@ -316,11 +332,19 @@ fn chain(b: &Board, net: u32, at: P, r: f64, layer: u16) -> Option<Vec<(P, P, f6
     starts.sort_by(|&x, &y| dist(x).total_cmp(&dist(y)));
     let &s0 = starts.first()?;
     if starts.len() > 1 && (dist(starts[1]) - dist(s0)).abs() < 1e-3 {
-        eprintln!("via-case: {} tracks of {} leave the via on layer {layer}; following one", starts.len(), b.net_name(net));
+        eprintln!(
+            "via-case: {} tracks of {} leave the via on layer {layer}; following one",
+            starts.len(),
+            b.net_name(net)
+        );
     }
     let t = &b.tracks[s0];
     used[s0] = true;
-    let mut segs = vec![if geom::len(geom::sub(t.a, at)) <= geom::len(geom::sub(t.b, at)) { (t.a, t.b, t.width) } else { (t.b, t.a, t.width) }];
+    let mut segs = vec![if geom::len(geom::sub(t.a, at)) <= geom::len(geom::sub(t.b, at)) {
+        (t.a, t.b, t.width)
+    } else {
+        (t.b, t.a, t.width)
+    }];
     let mut total = geom::len(geom::sub(t.b, t.a));
     while total < 40.0 {
         let end = segs.last().unwrap().1;
@@ -369,8 +393,13 @@ struct Side {
 
 pub fn run(args: &[String]) {
     let o = parse(args);
-    let cfg = if o.no_config { None } else { o.config.clone().or_else(|| Some(kisi_core::service::config_path_for(&o.pcb)).filter(|p| p.is_file())) };
-    let p = Project::load_with(&o.pcb, o.pro.as_deref(), None, cfg.as_deref(), o.variant.as_deref()).unwrap_or_else(|e| die(&e));
+    let cfg = if o.no_config {
+        None
+    } else {
+        o.config.clone().or_else(|| Some(kisi_core::service::config_path_for(&o.pcb)).filter(|p| p.is_file()))
+    };
+    let p = Project::load_with(&o.pcb, o.pro.as_deref(), None, cfg.as_deref(), o.variant.as_deref())
+        .unwrap_or_else(|e| die(&e));
     let b = &p.board;
     let su = b.stackup();
     let nl = su.n();
@@ -382,8 +411,20 @@ pub fn run(args: &[String]) {
             if v.net == 0 || b.plane_net.get(v.net as usize).copied().unwrap_or(false) {
                 continue;
             }
-            let conn: Vec<String> = (v.from..=v.to).filter(|&l| chain(b, v.net, v.at, v.size / 2.0 + 1e-3, l).is_some()).map(lname).collect();
-            println!("{}\t{}\t{:.4},{:.4}\t{}\t{:.3}/{:.3}", b.class_of(v.net).name, b.net_name(v.net), v.at[0], v.at[1], conn.join(">"), v.drill, v.size);
+            let conn: Vec<String> = (v.from..=v.to)
+                .filter(|&l| chain(b, v.net, v.at, v.size / 2.0 + 1e-3, l).is_some())
+                .map(lname)
+                .collect();
+            println!(
+                "{}\t{}\t{:.4},{:.4}\t{}\t{:.3}/{:.3}",
+                b.class_of(v.net).name,
+                b.net_name(v.net),
+                v.at[0],
+                v.at[1],
+                conn.join(">"),
+                v.drill,
+                v.size
+            );
         }
         return;
     }
@@ -395,12 +436,23 @@ pub fn run(args: &[String]) {
     }
     if o.list {
         for (k, v) in vias.iter().enumerate() {
-            println!("{k}: at ({:.4}, {:.4}) {}–{} drill {:.3} size {:.3}", v.at[0], v.at[1], lname(v.from), lname(v.to), v.drill, v.size);
+            println!(
+                "{k}: at ({:.4}, {:.4}) {}–{} drill {:.3} size {:.3}",
+                v.at[0],
+                v.at[1],
+                lname(v.from),
+                lname(v.to),
+                v.drill,
+                v.size
+            );
         }
         return;
     }
     let v: &Via = match (o.at, o.via_k) {
-        (Some(at), _) => vias.iter().min_by(|a, c| geom::len(geom::sub(a.at, at)).total_cmp(&geom::len(geom::sub(c.at, at)))).unwrap(),
+        (Some(at), _) => vias
+            .iter()
+            .min_by(|a, c| geom::len(geom::sub(a.at, at)).total_cmp(&geom::len(geom::sub(c.at, at))))
+            .unwrap(),
         (None, Some(k)) => vias.get(k).unwrap_or_else(|| die("--via index out of range")),
         (None, None) => {
             if vias.len() > 1 {
@@ -411,7 +463,13 @@ pub fn run(args: &[String]) {
     };
     // partner via: as kisi's via model (nearest via of the partner net within 2 mm)
     let pv: Option<&Via> = partner.and_then(|pn| {
-        b.vias.iter().filter(|w| w.net == pn).map(|w| (geom::len(geom::sub(w.at, v.at)), w)).filter(|&(d, _)| d < 2.0 && d > v.drill).min_by(|x, y| x.0.total_cmp(&y.0)).map(|x| x.1)
+        b.vias
+            .iter()
+            .filter(|w| w.net == pn)
+            .map(|w| (geom::len(geom::sub(w.at, v.at)), w))
+            .filter(|&(d, _)| d < 2.0 && d > v.drill)
+            .min_by(|x, y| x.0.total_cmp(&y.0))
+            .map(|x| x.1)
     });
     let sig: Vec<(&Via, u32)> = std::iter::once((v, net)).chain(pv.map(|w| (w, partner.unwrap()))).collect();
     let c0: P = if let Some(w) = pv { geom::scale(geom::add(v.at, w.at), 0.5) } else { v.at };
@@ -428,7 +486,11 @@ pub fn run(args: &[String]) {
         }
         None => {
             if conn.len() != 2 {
-                die(&format!("the via connects tracks on {} layers {:?}; choose two with --layers IN,OUT", conn.len(), conn.iter().map(|&l| lname(l)).collect::<Vec<_>>()));
+                die(&format!(
+                    "the via connects tracks on {} layers {:?}; choose two with --layers IN,OUT",
+                    conn.len(),
+                    conn.iter().map(|&l| lname(l)).collect::<Vec<_>>()
+                ));
             }
             (conn[0], conn[1])
         }
@@ -439,7 +501,10 @@ pub fn run(args: &[String]) {
         .iter()
         .map(|&l| {
             sig.iter()
-                .map(|&(w, n)| chain(b, n, w.at, w.size / 2.0 + 1e-3, l).unwrap_or_else(|| die(&format!("no track of {} at the via on {}", b.net_name(n), lname(l)))))
+                .map(|&(w, n)| {
+                    chain(b, n, w.at, w.size / 2.0 + 1e-3, l)
+                        .unwrap_or_else(|| die(&format!("no track of {} at the via on {}", b.net_name(n), lname(l))))
+                })
                 .collect()
         })
         .collect();
@@ -449,7 +514,9 @@ pub fn run(args: &[String]) {
         .map(|(chains, l)| {
             let mut dir = [0.0, 0.0];
             for ch in chains {
-                let q = ch.iter().map(|s| tc0(s.1)).find(|&q| geom::len(q) >= o.keep).unwrap_or_else(|| die(&format!("the trace on {} ends within {} mm of the via; lower --keep", lname(l), o.keep)));
+                let q = ch.iter().map(|s| tc0(s.1)).find(|&q| geom::len(q) >= o.keep).unwrap_or_else(|| {
+                    die(&format!("the trace on {} ends within {} mm of the via; lower --keep", lname(l), o.keep))
+                });
                 dir = geom::add(dir, geom::scale(q, 1.0 / geom::len(q)));
             }
             dir
@@ -497,17 +564,22 @@ pub fn run(args: &[String]) {
                 }
                 segs.push((pa, pc));
             }
-            let (w, u, a, c, t) = done.unwrap_or_else(|| die(&format!("the trace on {} does not leave the keep box along its exit axis", lname(l))));
+            let (w, u, a, c, t) = done.unwrap_or_else(|| {
+                die(&format!("the trace on {} does not leave the keep box along its exit axis", lname(l)))
+            });
             // reference planes of the trace piece at the cut (kisi's extraction)
             let q = geom::lerp(a, c, t);
             let refs = piece_refs(&p, sig[vi].1, l, q);
-            let rl = refs.into_iter().min_by(|x, y| (z[*x as usize] - z[l as usize]).abs().total_cmp(&(z[*y as usize] - z[l as usize]).abs()));
+            let rl = refs.into_iter().min_by(|x, y| {
+                (z[*x as usize] - z[l as usize]).abs().total_cmp(&(z[*y as usize] - z[l as usize]).abs())
+            });
             if ref_layer.is_none() {
                 ref_layer = rl;
             }
             kept.push((segs, w, u));
         }
-        let ref_layer = ref_layer.unwrap_or_else(|| die(&format!("the trace on {} has no reference plane at the keep-box edge", lname(l))));
+        let ref_layer = ref_layer
+            .unwrap_or_else(|| die(&format!("the trace on {} has no reference plane at the keep-box edge", lname(l))));
         sides.push(Side { layer: l, axis, sign, kept, ref_layer });
     }
     for s in &sides {
@@ -567,7 +639,9 @@ pub fn run(args: &[String]) {
     // coplanar copper next to each feed at the keep-box edge: gap and net per lateral side
     // (low u, high u); a pour closer than 3 h (at most 0.6 mm) continues along the extension
     // as a sheet with a via fence (the same in the 2×thru), so the fixture is the same line
-    let fill_net_at = |l: u16, q: P| -> Option<String> { feed_fills.iter().find(|f| f.0 == l && inside_ring(&f.2, q)).map(|f| f.1.clone()) };
+    let fill_net_at = |l: u16, q: P| -> Option<String> {
+        feed_fills.iter().find(|f| f.0 == l && inside_ring(&f.2, q)).map(|f| f.1.clone())
+    };
     let cpws: Vec<[Option<(f64, String)>; 2]> = sides
         .iter()
         .map(|s| {
@@ -601,7 +675,8 @@ pub fn run(args: &[String]) {
             }
             let cl = clip_ring(&poly, rg);
             if cl.len() >= 3 && area(&cl).abs() > 1e-8 {
-                sheets.push(json!({"z": r6(z[l as usize]), "rect": bbox(&cl), "polys": [cl], "net": b.net_name(pd.net)}));
+                sheets
+                    .push(json!({"z": r6(z[l as usize]), "rect": bbox(&cl), "polys": [cl], "net": b.net_name(pd.net)}));
             }
         }
         if pd.drill > 0.0 && in_win(c) {
@@ -637,7 +712,11 @@ pub fn run(args: &[String]) {
                 let aligned = (a[0] - c[0]).abs() < 1e-6 || (a[1] - c[1]).abs() < 1e-6;
                 if aligned {
                     let r = [a[0].min(c[0]), a[1].min(c[1]), a[0].max(c[0]), a[1].max(c[1])];
-                    let r = if (a[0] - c[0]).abs() < 1e-6 { [r[0] - w / 2.0, r[1], r[2] + w / 2.0, r[3]] } else { [r[0], r[1] - w / 2.0, r[2], r[3] + w / 2.0] };
+                    let r = if (a[0] - c[0]).abs() < 1e-6 {
+                        [r[0] - w / 2.0, r[1], r[2] + w / 2.0, r[3]]
+                    } else {
+                        [r[0], r[1] - w / 2.0, r[2], r[3] + w / 2.0]
+                    };
                     sheets.push(json!({"z": zl, "rect": r.map(r6), "net": "SIG"}));
                     // round end where it meets the next piece at an angle
                     if k + 1 < segs.len() {
@@ -646,7 +725,13 @@ pub fn run(args: &[String]) {
                 } else {
                     let cap = capsule(a, c, w);
                     let bb = bbox(&cap);
-                    refine.push([r6(bb[0] - o.dfine), r6(bb[1] - o.dfine), r6(bb[2] + o.dfine), r6(bb[3] + o.dfine), o.dfine]);
+                    refine.push([
+                        r6(bb[0] - o.dfine),
+                        r6(bb[1] - o.dfine),
+                        r6(bb[2] + o.dfine),
+                        r6(bb[3] + o.dfine),
+                        o.dfine,
+                    ]);
                     sheets.push(json!({"z": zl, "rect": bb, "polys": [cap], "net": "SIG"}));
                 }
             }
@@ -661,7 +746,11 @@ pub fn run(args: &[String]) {
                 json!({"x": r6(u - w / 2.0), "x1": r6(u + w / 2.0), "y0": r6(s1), "y1": r6(s1), "z0": zr, "z1": zl, "r": 50.0})
             };
             let num = si * sig.len() + vi + 1;
-            let pn = if pair { format!("{num} {} {}", if vi == 0 { "P" } else { "N" }, if si == 0 { "in" } else { "out" }) } else { format!("{num} {}", if si == 0 { "in" } else { "out" }) };
+            let pn = if pair {
+                format!("{num} {} {}", if vi == 0 { "P" } else { "N" }, if si == 0 { "in" } else { "out" })
+            } else {
+                format!("{num} {}", if si == 0 { "in" } else { "out" })
+            };
             ports.push(port);
             port_meta.push(json!({"name": pn, "layer": lname(s.layer), "ref": lname(s.ref_layer)}));
             ext_meta.push(json!({"side": if si == 0 { "in" } else { "out" }, "layer": lname(s.layer), "w": r6(w), "u": r6(u), "axis": if s.axis == 0 { "x" } else { "y" }, "sign": s.sign}));
@@ -675,9 +764,16 @@ pub fn run(args: &[String]) {
         .map(|s| {
             let (_, _, u) = s.kept[0];
             let q = if s.axis == 0 { [s.sign * o.feed, u] } else { [u, s.sign * o.feed] };
-            let pl: Vec<(u16, String)> = (0..nl as u16).filter(|&l| l != s.layer).filter_map(|l| fill_net_at_any(&sheets, z[l as usize], q).map(|n| (l, n))).collect();
+            let pl: Vec<(u16, String)> = (0..nl as u16)
+                .filter(|&l| l != s.layer)
+                .filter_map(|l| fill_net_at_any(&sheets, z[l as usize], q).map(|n| (l, n)))
+                .collect();
             if !pl.iter().any(|x| x.0 == s.ref_layer) {
-                eprintln!("via-case: warning: the reference {} of the {} feed has no copper at the port", lname(s.ref_layer), lname(s.layer));
+                eprintln!(
+                    "via-case: warning: the reference {} of the {} feed has no copper at the port",
+                    lname(s.ref_layer),
+                    lname(s.layer)
+                );
             }
             pl
         })
@@ -707,8 +803,12 @@ pub fn run(args: &[String]) {
             sheets.push(json!({"z": r6(zl), "rect": r.map(r6), "net": net, "strip": true}));
             let fence = ref_net.as_deref() == Some(net.as_str());
             if fence {
-                let zs: Vec<f64> = planes_at_port[si].iter().filter(|x| &x.1 == net).map(|x| z[x.0 as usize]).chain([zl]).collect();
-                let (fz0, fz1) = (zs.iter().cloned().fold(f64::INFINITY, f64::min), zs.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+                let zs: Vec<f64> =
+                    planes_at_port[si].iter().filter(|x| &x.1 == net).map(|x| z[x.0 as usize]).chain([zl]).collect();
+                let (fz0, fz1) = (
+                    zs.iter().cloned().fold(f64::INFINITY, f64::min),
+                    zs.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+                );
                 let off = edge + dir * (fence_r + 0.15);
                 // the short form of the fence: from the feed layer to its reference plane only
                 let zr = z[s.ref_layer as usize];
@@ -727,13 +827,17 @@ pub fn run(args: &[String]) {
         }
         corridors.push((s.axis, s.sign, cor));
     }
-    let in_corridor = |q: P| corridors.iter().any(|&(ax, sg, cor)| sg * q[ax] > o.keep && q[1 - ax] > cor[0] && q[1 - ax] < cor[1]);
+    let in_corridor =
+        |q: P| corridors.iter().any(|&(ax, sg, cor)| sg * q[ax] > o.keep && q[1 - ax] > cor[0] && q[1 - ax] < cor[1]);
 
     // vias: signal (and partner), then every other via in the window
     let mut vias_out: Vec<Value> = Vec::new();
     for &(w, n) in &sig {
         let (top, bot) = barrel(w);
-        let conn_w: Vec<usize> = (w.from..=w.to).filter(|&l| chain(b, n, w.at, w.size / 2.0 + 1e-3, l).is_some()).map(|l| l as usize).collect();
+        let conn_w: Vec<usize> = (w.from..=w.to)
+            .filter(|&l| chain(b, n, w.at, w.size / 2.0 + 1e-3, l).is_some())
+            .map(|l| l as usize)
+            .collect();
         let mut pads: Vec<usize> = conn_w.clone();
         match w.remove_unused {
             None => pads.extend(top..=bot),
@@ -764,10 +868,12 @@ pub fn run(args: &[String]) {
         if plane {
             n_ret += 1;
         }
-        let pads: Vec<f64> = if plane || w.remove_unused.is_some() { vec![] } else { (top..=bot).map(|k| r6(z[k])).collect() };
+        let pads: Vec<f64> =
+            if plane || w.remove_unused.is_some() { vec![] } else { (top..=bot).map(|k| r6(z[k])).collect() };
         vias_out.push(json!({"x": c[0], "y": c[1], "r": r6((w.drill / 2.0).max(0.025)), "z0": r6(z[bot]), "z1": r6(z[top]), "pad_r": if pads.is_empty() { 0.0 } else { r6(w.size / 2.0) }, "pads": pads, "dmesh": 0.1, "net": b.net_name(w.net)}));
     }
-    vias_out.extend(extra_vias.into_iter().filter(|v| !in_corridor([v["x"].as_f64().unwrap(), v["y"].as_f64().unwrap()])));
+    vias_out
+        .extend(extra_vias.into_iter().filter(|v| !in_corridor([v["x"].as_f64().unwrap(), v["y"].as_f64().unwrap()])));
     // a fence barrel that would touch the signal copper on a layer it passes (both feeds leaving
     // the via side by side: the fence of one runs through the other's layer) ends at the
     // reference plane of its feed instead, or is left out when that still touches it
@@ -781,7 +887,14 @@ pub fn run(args: &[String]) {
         .collect();
     let crosses = |f: &Value, z0: f64, z1: f64| {
         let (x, y, r) = (f["x"].as_f64().unwrap(), f["y"].as_f64().unwrap(), f["r"].as_f64().unwrap());
-        sig_rects.iter().any(|(zs, q)| *zs > z0 + 1e-6 && *zs < z1 - 1e-6 && x + r + 0.05 > q[0] && x - r - 0.05 < q[2] && y + r + 0.05 > q[1] && y - r - 0.05 < q[3])
+        sig_rects.iter().any(|(zs, q)| {
+            *zs > z0 + 1e-6
+                && *zs < z1 - 1e-6
+                && x + r + 0.05 > q[0]
+                && x - r - 0.05 < q[2]
+                && y + r + 0.05 > q[1]
+                && y - r - 0.05 < q[3]
+        })
     };
     let (n_fence, mut n_short) = (fences.len(), 0);
     let mut kept_fences: Vec<Value> = Vec::new();
@@ -794,7 +907,10 @@ pub fn run(args: &[String]) {
         } else if !crosses(&f, short[0], short[1]) {
             // the clearances in the planes it no longer passes go with the cut part
             let (x, y) = (f["x"].as_f64().unwrap(), f["y"].as_f64().unwrap());
-            for h in fence_holes.iter_mut().filter(|h| (r6(h.0) - x).abs() < 1e-9 && (r6(h.1) - y).abs() < 1e-9 && (r6(h.2) - z0).abs() < 1e-9) {
+            for h in fence_holes
+                .iter_mut()
+                .filter(|h| (r6(h.0) - x).abs() < 1e-9 && (r6(h.1) - y).abs() < 1e-9 && (r6(h.2) - z0).abs() < 1e-9)
+            {
                 h.2 = short[0];
                 h.3 = short[1];
             }
@@ -811,7 +927,10 @@ pub fn run(args: &[String]) {
         eprintln!("via-case: {n_short} fence via(s) end at their feed's reference plane where they would cross the other feed");
     }
     if kept_fences.len() < n_fence {
-        eprintln!("via-case: {} fence via(s) left out where they would cross the other feed", n_fence - kept_fences.len());
+        eprintln!(
+            "via-case: {} fence via(s) left out where they would cross the other feed",
+            n_fence - kept_fences.len()
+        );
     }
     vias_out.extend(kept_fences);
     // the coplanar sheets of the extensions get a clearance around vias of other nets
@@ -820,7 +939,11 @@ pub fn run(args: &[String]) {
         let r: Vec<f64> = sh["rect"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
         let holes: Vec<Value> = vias_out
             .iter()
-            .filter(|v| v["net"].as_str() != Some(net.as_str()) && v["z0"].as_f64().unwrap() <= zs + 1e-9 && v["z1"].as_f64().unwrap() >= zs - 1e-9)
+            .filter(|v| {
+                v["net"].as_str() != Some(net.as_str())
+                    && v["z0"].as_f64().unwrap() <= zs + 1e-9
+                    && v["z1"].as_f64().unwrap() >= zs - 1e-9
+            })
             .filter_map(|v| {
                 let (x, y) = (v["x"].as_f64().unwrap(), v["y"].as_f64().unwrap());
                 let rr = v["r"].as_f64().unwrap().max(v["pad_r"].as_f64().unwrap()) + 0.15;
@@ -835,7 +958,15 @@ pub fn run(args: &[String]) {
         let r: Vec<f64> = sh["rect"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
         let add: Vec<Value> = fence_holes
             .iter()
-            .filter(|f| f.4 != net && zs > f.2 + 1e-9 && zs < f.3 - 1e-9 && f.0 > r[0] - 0.35 && f.0 < r[2] + 0.35 && f.1 > r[1] - 0.35 && f.1 < r[3] + 0.35)
+            .filter(|f| {
+                f.4 != net
+                    && zs > f.2 + 1e-9
+                    && zs < f.3 - 1e-9
+                    && f.0 > r[0] - 0.35
+                    && f.0 < r[2] + 0.35
+                    && f.1 > r[1] - 0.35
+                    && f.1 < r[3] + 0.35
+            })
             .map(|f| json!([r6(f.0), r6(f.1), 0.35]))
             .collect();
         if !add.is_empty() {
@@ -851,7 +982,8 @@ pub fn run(args: &[String]) {
     let domain = [win[0], win[1], r6(-o.air), win[2], win[3], r6(t_board + o.air)];
     // monitors: xy plane in the thickest dielectric the signal via crosses, plane through port 1
     let (top, bot) = barrel(v);
-    let kthick = (top..bot).max_by(|&a, &c| su.dielectrics[a].thickness.total_cmp(&su.dielectrics[c].thickness)).unwrap_or(0);
+    let kthick =
+        (top..bot).max_by(|&a, &c| su.dielectrics[a].thickness.total_cmp(&su.dielectrics[c].thickness)).unwrap_or(0);
     let zmon = r6(0.5 * (z[kthick] + z[kthick + 1]));
     let s0 = &sides[0];
     let mons = json!([{"axis": "z", "pos": zmon, "freqs": [10e9, 20e9, 30e9], "comps": [2]},
@@ -859,7 +991,14 @@ pub fn run(args: &[String]) {
 
     let stem = o.pcb.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
     let name = o.name.clone().unwrap_or_else(|| {
-        let nn: String = b.net_name(net).rsplit('/').next().unwrap_or("").chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '_' }).collect();
+        let nn: String = b
+            .net_name(net)
+            .rsplit('/')
+            .next()
+            .unwrap_or("")
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect();
         format!("board_{stem}_{nn}")
     });
     // kisi's return vias for this via (plane-net posts within 3 mm, the nearest 12), to match the
@@ -874,7 +1013,13 @@ pub fn run(args: &[String]) {
         .collect();
     rets.sort_by(|a, c| a.0.total_cmp(&c.0));
     rets.truncate(kisi_core::via::RETURN_POSTS);
-    let planes_meta: Vec<String> = planes_at_port.iter().flatten().map(|x| lname(x.0)).collect::<std::collections::BTreeSet<_>>().into_iter().collect();
+    let planes_meta: Vec<String> = planes_at_port
+        .iter()
+        .flatten()
+        .map(|x| lname(x.0))
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .collect();
     let approx = vec![
         "copper has zero thickness; layer heights are kisi's (dielectric plus half the copper on each side)",
         "fills, pads and tracks outside the window are left out; copper that reaches the window edge continues through the PML",
@@ -884,7 +1029,15 @@ pub fn run(args: &[String]) {
         "solder mask, plating thickness and the barrel's hole wall are not modelled; the barrel is a solid cylinder of the drill radius",
         "dielectric loss: a conductivity fixed at fmax/2 (tanδ exact there); lossless copper",
     ];
-    let title = format!("{} via {}→{} at ({:.3}, {:.3}){}", b.net_name(net), lname(l_in), lname(l_out), v.at[0], v.at[1], pv.map(|_| " with its partner").unwrap_or(""));
+    let title = format!(
+        "{} via {}→{} at ({:.3}, {:.3}){}",
+        b.net_name(net),
+        lname(l_in),
+        lname(l_out),
+        v.at[0],
+        v.at[1],
+        pv.map(|_| " with its partner").unwrap_or("")
+    );
     let su_title = format!("{} from the board file{}", stem, if cfg.is_some() { " and its kisi.json" } else { "" });
     let thru_names = [format!("thru_{name}_in"), format!("thru_{name}_out")];
     let mut case = json!({
@@ -959,11 +1112,21 @@ fn piece_refs(p: &Project, net: u32, layer: u16, q: P) -> Vec<u16> {
 /// 2×thru of one feed side: the straight trace (or pair) along x, 2·feed long, solid sheets on
 /// the layers that have copper at the port in the case.
 #[allow(clippy::too_many_arguments)]
-fn thru_case(name: &str, s: &Side, planes: &[(u16, String)], cpw: &[Option<(f64, String)>; 2], z: &[f64], b: &Board, o: &Opt, lname: &dyn Fn(u16) -> String) -> Value {
+fn thru_case(
+    name: &str,
+    s: &Side,
+    planes: &[(u16, String)],
+    cpw: &[Option<(f64, String)>; 2],
+    z: &[f64],
+    b: &Board,
+    o: &Opt,
+    lname: &dyn Fn(u16) -> String,
+) -> Value {
     let su = b.stackup();
     let nl = su.n();
     let us: Vec<f64> = s.kept.iter().map(|k| k.2).collect();
-    let umid = 0.5 * (us.iter().cloned().fold(f64::INFINITY, f64::min) + us.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+    let umid =
+        0.5 * (us.iter().cloned().fold(f64::INFINITY, f64::min) + us.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
     let spread = us.iter().map(|u| (u - umid).abs()).fold(0.0, f64::max);
     let hx = o.feed + 1.5;
     let hy = r6(o.margin.max(3.0 - spread) + spread + s.kept[0].1);
@@ -981,7 +1144,9 @@ fn thru_case(name: &str, s: &Side, planes: &[(u16, String)], cpw: &[Option<(f64,
         for (vi, k) in s.kept.iter().enumerate() {
             let (w, u) = (k.1, r6(k.2 - umid));
             if side < 0.0 {
-                sheets.push(json!({"z": zl, "rect": [r6(-o.feed), r6(u - w / 2.0), r6(o.feed), r6(u + w / 2.0)], "net": "SIG"}));
+                sheets.push(
+                    json!({"z": zl, "rect": [r6(-o.feed), r6(u - w / 2.0), r6(o.feed), r6(u + w / 2.0)], "net": "SIG"}),
+                );
             }
             ports.push(json!({"x": r6(side * o.feed), "y0": r6(u - w / 2.0), "y1": r6(u + w / 2.0), "z0": zr, "z1": zl, "r": 50.0}));
             pm.push(json!({"name": format!("{} {}", base + vi + 1, if side < 0.0 { "near" } else { "far" }), "layer": lname(s.layer), "ref": lname(s.ref_layer)}));
@@ -1001,7 +1166,10 @@ fn thru_case(name: &str, s: &Side, planes: &[(u16, String)], cpw: &[Option<(f64,
         sheets.push(json!({"z": zl, "rect": [-hx, r6(l0), hx, r6(l1)], "net": net}));
         if ref_net.as_deref() == Some(net.as_str()) {
             let zs: Vec<f64> = planes.iter().filter(|x| &x.1 == net).map(|x| z[x.0 as usize]).chain([zl]).collect();
-            let (fz0, fz1) = (zs.iter().cloned().fold(f64::INFINITY, f64::min), zs.iter().cloned().fold(f64::NEG_INFINITY, f64::max));
+            let (fz0, fz1) = (
+                zs.iter().cloned().fold(f64::INFINITY, f64::min),
+                zs.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+            );
             let off = edge + dir * 0.3;
             fence_y.push((off, fz0, fz1, net.clone()));
             let mut t = 0.5;

@@ -8,8 +8,8 @@
 
 use crate::analytic;
 use crate::board::Board;
-use crate::xsgeom::{self, PlaneCut, XsDesc};
 use crate::geom::{self, P};
+use crate::xsgeom::{self, PlaneCut, XsDesc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -339,7 +339,14 @@ impl LayerZones {
 /// Width of the copper at `p` of track `tr` when `p` lies on an SMD pad of the track's own net and
 /// layer that is wider across the track than the track (`board.tracks` holds every such pad as two
 /// synthetic pad tracks, `Track::pad`).
-fn pad_width_at(board: &Board, tgrid: &TrackGrid, near: &mut Vec<u32>, tr: &crate::board::Track, p: P, nrm: P) -> Option<f64> {
+fn pad_width_at(
+    board: &Board,
+    tgrid: &TrackGrid,
+    near: &mut Vec<u32>,
+    tr: &crate::board::Track,
+    p: P,
+    nrm: P,
+) -> Option<f64> {
     tgrid.near(p, 0.05, near);
     near.iter()
         .map(|&i| &board.tracks[i as usize])
@@ -424,8 +431,7 @@ impl TrackGrid {
 
 /// KiCad convention: names ending in `+`/`-` or `P`/`N` with a common base.
 pub fn diff_partners(nets: &[String]) -> Vec<Option<u32>> {
-    let by_name: HashMap<&str, u32> =
-        nets.iter().enumerate().map(|(i, n)| (n.as_str(), i as u32)).collect();
+    let by_name: HashMap<&str, u32> = nets.iter().enumerate().map(|(i, n)| (n.as_str(), i as u32)).collect();
     let mut out = vec![None; nets.len()];
     for (i, n) in nets.iter().enumerate() {
         if n.len() < 2 {
@@ -468,7 +474,12 @@ pub fn target_from_class_name(name: &str) -> Option<(Target, &'static str)> {
             }
             let rest: String = chars[j..].iter().collect();
             let before_z = st > 0 && chars[st - 1] == 'Z';
-            if rest.starts_with('Z') || rest.starts_with('R') || rest.starts_with("OHM") || rest.starts_with('Ω') || before_z {
+            if rest.starts_with('Z')
+                || rest.starts_with('R')
+                || rest.starts_with("OHM")
+                || rest.starts_with('Ω')
+                || before_z
+            {
                 if (20.0..=200.0).contains(&v) {
                     num = Some(v);
                     break;
@@ -561,7 +572,10 @@ fn small_opening(z: &LayerZones, p: P, dir: P, nrm: P, cover: &mut Vec<u32>) -> 
     };
     let back = geom::scale(dir, -1.0);
     let (f, b) = (covered(dir, OPENING_PROBE_MM), covered(back, OPENING_PROBE_MM));
-    let n = [f, b, covered(nrm, OPENING_PROBE_MM), covered(geom::scale(nrm, -1.0), OPENING_PROBE_MM)].iter().filter(|x| **x).count();
+    let n = [f, b, covered(nrm, OPENING_PROBE_MM), covered(geom::scale(nrm, -1.0), OPENING_PROBE_MM)]
+        .iter()
+        .filter(|x| **x)
+        .count();
     n >= 3 && (f || covered(dir, OPENING_SMALL_MM)) && (b || covered(back, OPENING_SMALL_MM))
 }
 
@@ -610,7 +624,9 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
         let mut spans: Vec<(f64, f64)> = Vec::new();
         for c in cuts.windows(2) {
             let m = (((c[1] - c[0]) * len / params.step).ceil() as usize).max(1);
-            spans.extend((0..m).map(|k| (c[0] + (c[1] - c[0]) * k as f64 / m as f64, c[0] + (c[1] - c[0]) * (k + 1) as f64 / m as f64)));
+            spans.extend((0..m).map(|k| {
+                (c[0] + (c[1] - c[0]) * k as f64 / m as f64, c[0] + (c[1] - c[0]) * (k + 1) as f64 / m as f64)
+            }));
         }
         let mut prev: Option<(u32, f64)> = None; // (xs, t0)
         for &(t_lo, t_hi) in &spans {
@@ -620,7 +636,8 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
             let mut flags = 0u32;
             // a trace inside an SMD pad of its own net (a track that runs to the pad's centre, a
             // card-edge finger): the copper there is the pad, as wide as the pad across the track
-            let w = if tr.pad { tr.width } else { pad_width_at(board, &tgrid, &mut near, tr, p, nrm).unwrap_or(tr.width) };
+            let w =
+                if tr.pad { tr.width } else { pad_width_at(board, &tgrid, &mut near, tr, p, nrm).unwrap_or(tr.width) };
             if w > tr.width {
                 flags |= F_PAD;
             }
@@ -790,7 +807,20 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
             let xi = match cache.get(&key) {
                 Some(&i) => i,
                 None => {
-                    let xs = evaluate(board, params, &mut geoms, tr.layer, w, up.map(|r| (r.0, r.1)), dn.map(|r| (r.0, r.1)), s_left, s_right, partner_geo, planes, flags);
+                    let xs = evaluate(
+                        board,
+                        params,
+                        &mut geoms,
+                        tr.layer,
+                        w,
+                        up.map(|r| (r.0, r.1)),
+                        dn.map(|r| (r.0, r.1)),
+                        s_left,
+                        s_right,
+                        partner_geo,
+                        planes,
+                        flags,
+                    );
                     let i = xss.len() as u32;
                     xss.push(xs);
                     cache.insert(key, i);
@@ -829,7 +859,16 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
         }
     }
 
-    Analysis { unique_cross_sections: xss.len(), cross_sections: xss, geometries, pieces, nets, classes, samples, skeleton: false }
+    Analysis {
+        unique_cross_sections: xss.len(),
+        cross_sections: xss,
+        geometries,
+        pieces,
+        nets,
+        classes,
+        samples,
+        skeleton: false,
+    }
 }
 
 fn class_targets(board: &Board, params: &Params) -> Vec<(Option<Target>, String)> {
@@ -869,7 +908,14 @@ fn net_stats(
         let target = class_targets.get(cls).and_then(|t| t.0);
         let z = compared_z(xs, target);
         let unc = crate::accuracy::impedance_of(xs).map(|u| u.1).unwrap_or(0.0);
-        acc.entry(tr.net).or_default().push((l, z.map(|v| v.0).filter(|_| counted), xs.flags, counted, unc, xs.solver == "field"));
+        acc.entry(tr.net).or_default().push((
+            l,
+            z.map(|v| v.0).filter(|_| counted),
+            xs.flags,
+            counted,
+            unc,
+            xs.solver == "field",
+        ));
     }
     let mut nets: Vec<NetStat> = Vec::new();
     let mut class_counts = vec![0usize; board.netclasses.len()];
@@ -887,7 +933,10 @@ fn net_stats(
         // accuracy: length-weighted uncertainty and field-solver share of the pieces with an impedance
         let zp: Vec<&(f64, Option<f64>, u32, bool, f64, bool)> = v.iter().filter(|x| x.1.is_some()).collect();
         let (z_unc_pct, field_share) = if lz > 0.0 {
-            (Some(zp.iter().map(|x| x.0 * x.4).sum::<f64>() / lz), Some(zp.iter().filter(|x| x.5).map(|x| x.0).sum::<f64>() / lz))
+            (
+                Some(zp.iter().map(|x| x.0 * x.4).sum::<f64>() / lz),
+                Some(zp.iter().filter(|x| x.5).map(|x| x.0).sum::<f64>() / lz),
+            )
         } else {
             (None, None)
         };
@@ -897,8 +946,12 @@ fn net_stats(
             z_max = zl.iter().map(|x| x.1).reduce(f64::max);
             z_mean = Some(zl.iter().map(|x| x.0 * x.1).sum::<f64>() / lz);
             if let Some(t) = target {
-                w5 = Some(zl.iter().filter(|x| (x.1 - t.z).abs() <= 0.05 * t.z).map(|x| x.0).sum::<f64>() / l_counted + 0.0);
-                w10 = Some(zl.iter().filter(|x| (x.1 - t.z).abs() <= 0.10 * t.z).map(|x| x.0).sum::<f64>() / l_counted + 0.0);
+                w5 = Some(
+                    zl.iter().filter(|x| (x.1 - t.z).abs() <= 0.05 * t.z).map(|x| x.0).sum::<f64>() / l_counted + 0.0,
+                );
+                w10 = Some(
+                    zl.iter().filter(|x| (x.1 - t.z).abs() <= 0.10 * t.z).map(|x| x.0).sum::<f64>() / l_counted + 0.0,
+                );
             }
         }
         nets.push(NetStat {
@@ -979,7 +1032,16 @@ pub fn skeleton(board: &Board, params: &Params) -> Analysis {
         pieces.extend_from_slice(&[i as f64, 0.0, 1.0, tr.layer.min(ncu.saturating_sub(1) as u16) as f64]);
     }
     let (nets, classes) = net_stats(board, &class_targets, &partners, &xss, &pieces);
-    Analysis { unique_cross_sections: 0, cross_sections: xss, geometries: vec![], pieces, nets, classes, samples: 0, skeleton: true }
+    Analysis {
+        unique_cross_sections: 0,
+        cross_sections: xss,
+        geometries: vec![],
+        pieces,
+        nets,
+        classes,
+        samples: 0,
+        skeleton: true,
+    }
 }
 
 /// The impedance that is compared against a target:
@@ -1034,7 +1096,11 @@ fn evaluate(
     // an opening in a layer between the trace and its reference whose edge is laterally closer
     // to the trace than the reference is below it: the edge carries much of the return current
     let h_ref = [up, dn].into_iter().flatten().map(|r| r.1).fold(f64::INFINITY, f64::min);
-    let near_opening = planes.iter().filter(|c| Some(c.layer) != up.map(|r| r.0) && Some(c.layer) != dn.map(|r| r.0)).filter_map(|c| [c.left, c.right].into_iter().flatten().reduce(f64::min)).any(|d| d - w / 2.0 < h_ref);
+    let near_opening = planes
+        .iter()
+        .filter(|c| Some(c.layer) != up.map(|r| r.0) && Some(c.layer) != dn.map(|r| r.0))
+        .filter_map(|c| [c.left, c.right].into_iter().flatten().reduce(f64::min))
+        .any(|d| d - w / 2.0 < h_ref);
     let su = board.stackup();
     let li = layer as usize;
     let ncu = su.n();
@@ -1278,7 +1344,8 @@ mod tests {
 "#;
         let board = crate::board::load_pcb(pcb).unwrap();
         let an = analyze(&board, &Params::default());
-        let pieces: Vec<(usize, f64, f64, &CrossSection)> = an.pieces.chunks(4).map(|c| (c[0] as usize, c[1], c[2], &an.cross_sections[c[3] as usize])).collect();
+        let pieces: Vec<(usize, f64, f64, &CrossSection)> =
+            an.pieces.chunks(4).map(|c| (c[0] as usize, c[1], c[2], &an.cross_sections[c[3] as usize])).collect();
         // the launch: reference In2 (index 2) over its whole length, In1 only as a cut-out
         let launch: Vec<_> = pieces.iter().filter(|p| p.0 == 0).collect();
         assert!(!launch.is_empty());
@@ -1286,27 +1353,37 @@ mod tests {
             assert_eq!((xs.ref_dn, xs.ref_up), (Some(2), None), "launch {t0:.3}–{t1:.3}: reference {:?}", xs.ref_dn);
             assert!(xs.flags & F_PLANE_OPENING != 0 && xs.flags & F_REF_PERFORATED == 0, "flags {:#x}", xs.flags);
             // the formula sees only In2 below: CPW-like and high, marked as a rough estimate
-            assert!(xs.solver == "formula" && xs.flags & F_FORMULA_ROUGH != 0 && xs.z0.unwrap() > 55.0, "{:?} {:#x}", xs.z0, xs.flags);
+            assert!(
+                xs.solver == "formula" && xs.flags & F_FORMULA_ROUGH != 0 && xs.z0.unwrap() > 55.0,
+                "{:?} {:#x}",
+                xs.z0,
+                xs.flags
+            );
         }
         // with a field-solver result for the launch's cross-section the mark goes away
         let gid = launch[0].3.geom.expect("launch geometry");
         let mut params = Params::default();
-        params.field.insert(an.geometries[gid as usize].id.clone(), FieldResult { z0: Some(50.05), eeff: Some(2.9), ..Default::default() });
+        params.field.insert(
+            an.geometries[gid as usize].id.clone(),
+            FieldResult { z0: Some(50.05), eeff: Some(2.9), ..Default::default() },
+        );
         let an2 = analyze(&board, &params);
         let xs2 = &an2.cross_sections[an2.pieces[3] as usize];
         assert!(xs2.solver == "field" && xs2.flags & F_FORMULA_ROUGH == 0 && xs2.z0 == Some(50.05), "{:?}", xs2.z0);
         // the line: In1 everywhere, the antipad (sample at its centre, x = 5.92) is perforation
         let line: Vec<_> = pieces.iter().filter(|p| p.0 == 1).collect();
-        assert!(line.iter().all(|p| p.3.ref_dn == Some(1)), "{:?}", line.iter().map(|p| (p.1, p.3.ref_dn)).collect::<Vec<_>>());
+        assert!(
+            line.iter().all(|p| p.3.ref_dn == Some(1)),
+            "{:?}",
+            line.iter().map(|p| (p.1, p.3.ref_dn)).collect::<Vec<_>>()
+        );
         assert!(line.iter().any(|p| p.3.flags & F_REF_PERFORATED != 0), "the antipad is a small opening");
     }
 
     #[test]
     fn partners() {
-        let nets: Vec<String> = ["", "/USB_D+", "/USB_D-", "CLK_P", "CLK_N", "VCCP"]
-            .iter()
-            .map(|s| s.to_string())
-            .collect();
+        let nets: Vec<String> =
+            ["", "/USB_D+", "/USB_D-", "CLK_P", "CLK_N", "VCCP"].iter().map(|s| s.to_string()).collect();
         let p = diff_partners(&nets);
         assert_eq!(p[1], Some(2));
         assert_eq!(p[4], Some(3));

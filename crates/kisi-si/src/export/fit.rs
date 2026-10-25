@@ -40,7 +40,12 @@ impl Foster {
     }
     /// The same network scaled by `k` (a section of length k of a per-metre network).
     pub fn scaled(&self, k: f64) -> Foster {
-        Foster { r0: self.r0 * k, l: self.l * k, terms: self.terms.iter().map(|&(r, l)| (r * k, l * k)).collect(), tanks: self.tanks.iter().map(|&(r, l, c)| (r * k, l * k, c / k)).collect() }
+        Foster {
+            r0: self.r0 * k,
+            l: self.l * k,
+            terms: self.terms.iter().map(|&(r, l)| (r * k, l * k)).collect(),
+            tanks: self.tanks.iter().map(|&(r, l, c)| (r * k, l * k, c / k)).collect(),
+        }
     }
 }
 
@@ -72,7 +77,12 @@ impl Debye {
     }
     /// The same network scaled by `k` in admittance (a section of length k).
     pub fn scaled(&self, k: f64) -> Debye {
-        Debye { g0: self.g0 * k, c: self.c * k, terms: self.terms.iter().map(|&(r, c)| (r / k, c * k)).collect(), res: self.res.iter().map(|&(r, l, c)| (r / k, l / k, c * k)).collect() }
+        Debye {
+            g0: self.g0 * k,
+            c: self.c * k,
+            terms: self.terms.iter().map(|&(r, c)| (r / k, c * k)).collect(),
+            res: self.res.iter().map(|&(r, l, c)| (r / k, l / k, c * k)).collect(),
+        }
     }
 }
 
@@ -110,7 +120,8 @@ pub fn nnls(a: &[f64], b: &[f64], m: usize, n: usize) -> Vec<f64> {
     let col = |i: usize, j: usize| a[i * n + j] * sc[j];
     let mut x = vec![0.0; n];
     let mut passive: Vec<bool> = vec![false; n]; // true: in the positive set P
-    let resid = |x: &[f64]| -> Vec<f64> { (0..m).map(|i| b[i] - (0..n).map(|j| col(i, j) * x[j]).sum::<f64>()).collect() };
+    let resid =
+        |x: &[f64]| -> Vec<f64> { (0..m).map(|i| b[i] - (0..n).map(|j| col(i, j) * x[j]).sum::<f64>()).collect() };
     let tol = 1e-12 * b.iter().map(|v| v.abs()).fold(0.0, f64::max).max(1e-300);
     for _outer in 0..(3 * n + 10) {
         let r = resid(&x);
@@ -213,8 +224,12 @@ pub enum Weight {
 fn row_weights(t: Cx, w: Weight, x: f64) -> (f64, f64) {
     let mag = t.abs().max(1e-300);
     match w {
-        Weight::Parts { im, re_floor } => (1.0 / t.re.abs().max(re_floor.max(1e-6) * mag), im / t.im.abs().max(1e-6 * mag)),
-        Weight::Graded { lo, hi } => (1.0 / t.re.abs().max(1e-6 * mag), (lo + (hi - lo) * x) / t.im.abs().max(1e-6 * mag)),
+        Weight::Parts { im, re_floor } => {
+            (1.0 / t.re.abs().max(re_floor.max(1e-6) * mag), im / t.im.abs().max(1e-6 * mag))
+        }
+        Weight::Graded { lo, hi } => {
+            (1.0 / t.re.abs().max(1e-6 * mag), (lo + (hi - lo) * x) / t.im.abs().max(1e-6 * mag))
+        }
         Weight::Complex => (1.0 / mag, 1.0 / mag),
     }
 }
@@ -229,11 +244,22 @@ fn err_of(fit: Cx, t: Cx, w: Weight, x: f64) -> f64 {
 
 /// Fit a series impedance `R0 + s·L + Σ R_k ∥ L_k` over `freqs` (Hz), all coefficients ≥ 0.
 /// Adds terms until the error is below `tol` (at most `max_terms`).
-pub fn fit_z(freqs: &[f64], target: &dyn Fn(f64) -> Cx, weight: Weight, tol: f64, max_terms: usize, tanks: bool) -> Fit<Foster> {
+pub fn fit_z(
+    freqs: &[f64],
+    target: &dyn Fn(f64) -> Cx,
+    weight: Weight,
+    tol: f64,
+    max_terms: usize,
+    tanks: bool,
+) -> Fit<Foster> {
     let (f_lo, f_hi) = (freqs[0], *freqs.last().unwrap());
     let tv: Vec<Cx> = freqs.iter().map(|&f| target(f)).collect();
     // tanks a·s·ωm/(s² + s·ωm/Q + ωm²): resonances 1.25 … 4 × the top frequency, Q 0.7 and 2
-    let tk: Vec<(f64, f64)> = if tanks { [1.25, 1.6, 2.0, 2.5, 3.2, 4.0].iter().flat_map(|m| [0.7, 2.0].map(|q| (2.0 * PI * f_hi * m, q))).collect() } else { vec![] };
+    let tk: Vec<(f64, f64)> = if tanks {
+        [1.25, 1.6, 2.0, 2.5, 3.2, 4.0].iter().flat_map(|m| [0.7, 2.0].map(|q| (2.0 * PI * f_hi * m, q))).collect()
+    } else {
+        vec![]
+    };
     let mut best: Option<Fit<Foster>> = None;
     for nt in 0..=max_terms {
         let ps = poles(f_lo / 10.0, f_hi * 10.0, nt);
@@ -275,7 +301,8 @@ pub fn fit_z(freqs: &[f64], target: &dyn Fn(f64) -> Cx, weight: Weight, tol: f64
                 fo.tanks.push((q * a, a / wm, 1.0 / (a * wm)));
             }
         }
-        let err = freqs.iter().zip(&tv).map(|(&f, &t)| err_of(fo.z(2.0 * PI * f), t, weight, f / f_hi)).fold(0.0, f64::max);
+        let err =
+            freqs.iter().zip(&tv).map(|(&f, &t)| err_of(fo.z(2.0 * PI * f), t, weight, f / f_hi)).fold(0.0, f64::max);
         if best.as_ref().is_none_or(|b| err < b.err) {
             best = Some(Fit { net: fo, err });
         }
@@ -288,10 +315,21 @@ pub fn fit_z(freqs: &[f64], target: &dyn Fn(f64) -> Cx, weight: Weight, tol: f64
 
 /// Fit a shunt admittance `G0 + s·C + Σ (R_k + 1/(s·C_k))⁻¹` over `freqs` (Hz), all elements
 /// ≥ 0; terms are added until the error is below `tol`.
-pub fn fit_y(freqs: &[f64], target: &dyn Fn(f64) -> Cx, weight: Weight, tol: f64, max_terms: usize, resonances: bool) -> Fit<Debye> {
+pub fn fit_y(
+    freqs: &[f64],
+    target: &dyn Fn(f64) -> Cx,
+    weight: Weight,
+    tol: f64,
+    max_terms: usize,
+    resonances: bool,
+) -> Fit<Debye> {
     let (f_lo, f_hi) = (freqs[0], *freqs.last().unwrap());
     let tv: Vec<Cx> = freqs.iter().map(|&f| target(f)).collect();
-    let tk: Vec<(f64, f64)> = if resonances { [1.25, 1.6, 2.0, 2.5, 3.2, 4.0].iter().flat_map(|m| [0.7, 2.0].map(|q| (2.0 * PI * f_hi * m, q))).collect() } else { vec![] };
+    let tk: Vec<(f64, f64)> = if resonances {
+        [1.25, 1.6, 2.0, 2.5, 3.2, 4.0].iter().flat_map(|m| [0.7, 2.0].map(|q| (2.0 * PI * f_hi * m, q))).collect()
+    } else {
+        vec![]
+    };
     // a lossless admittance (G = 0) is weighted against 0.01 % of its susceptance
     let wt = |y: Cx| if y.re.abs() < 1e-4 * y.im.abs() { Cx::new(1e-4 * y.im.abs(), y.im) } else { y };
     let mut best: Option<Fit<Debye>> = None;
@@ -336,7 +374,13 @@ pub fn fit_y(freqs: &[f64], target: &dyn Fn(f64) -> Cx, weight: Weight, tol: f64
                 de.res.push((1.0 / (a * qf), 1.0 / (a * wm), a / wm));
             }
         }
-        let err = freqs.iter().zip(&tv).map(|(&f, &t)| err_of(de.y(2.0 * PI * f), wt(t), weight, f / f_hi).min(err_of(de.y(2.0 * PI * f), t, weight, f / f_hi))).fold(0.0, f64::max);
+        let err = freqs
+            .iter()
+            .zip(&tv)
+            .map(|(&f, &t)| {
+                err_of(de.y(2.0 * PI * f), wt(t), weight, f / f_hi).min(err_of(de.y(2.0 * PI * f), t, weight, f / f_hi))
+            })
+            .fold(0.0, f64::max);
         if best.as_ref().is_none_or(|b| err < b.err) {
             best = Some(Fit { net: de, err });
         }

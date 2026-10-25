@@ -271,7 +271,8 @@ impl ComplexLu {
     ) -> Result<(Self, faer::sparse::linalg::solvers::SymbolicLu<usize>), i32> {
         use faer::c64;
         use faer::sparse::linalg::solvers::{Lu, SymbolicLu};
-        let t: Vec<Triplet<usize, usize, c64>> = trip.iter().map(|&(r, c, re, im)| Triplet::new(r, c, c64::new(re, im))).collect();
+        let t: Vec<Triplet<usize, usize, c64>> =
+            trip.iter().map(|&(r, c, re, im)| Triplet::new(r, c, c64::new(re, im))).collect();
         let a = SparseColMat::<usize, c64>::try_new_from_triplets(n, n, &t).map_err(|_| 13)?;
         let sym = match sym {
             Some(s) => s,
@@ -370,6 +371,10 @@ impl ComplexPattern {
 
 /// Solve a complex sparse system A X = B (LU) given as triplets (row, col, re, im;
 /// duplicates are summed) for several right-hand sides.
-pub fn solve_complex_multi(n: usize, trip: &[(usize, usize, f64, f64)], b: &[Vec<(f64, f64)>]) -> Result<Vec<Vec<(f64, f64)>>, i32> {
+pub fn solve_complex_multi(
+    n: usize,
+    trip: &[(usize, usize, f64, f64)],
+    b: &[Vec<(f64, f64)>],
+) -> Result<Vec<Vec<(f64, f64)>>, i32> {
     ComplexLu::new(n, trip)?.solve(b)
 }

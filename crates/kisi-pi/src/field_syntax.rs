@@ -121,8 +121,14 @@ mod tests {
 
     #[test]
     fn quoting() {
-        assert_eq!(split_unquoted("A=1mA, \"/x y/B,C\"=2mA; D=3mA", &[',', ';']), vec!["A=1mA", "\"/x y/B,C\"=2mA", "D=3mA"]);
-        assert_eq!(tokens("\"/06 Peripherals/IMU_VDD\"@3.3V  pass r=0.5"), vec!["\"/06 Peripherals/IMU_VDD\"@3.3V", "pass", "r=0.5"]);
+        assert_eq!(
+            split_unquoted("A=1mA, \"/x y/B,C\"=2mA; D=3mA", &[',', ';']),
+            vec!["A=1mA", "\"/x y/B,C\"=2mA", "D=3mA"]
+        );
+        assert_eq!(
+            tokens("\"/06 Peripherals/IMU_VDD\"@3.3V  pass r=0.5"),
+            vec!["\"/06 Peripherals/IMU_VDD\"@3.3V", "pass", "r=0.5"]
+        );
         assert_eq!(split_once_unquoted("\"a=b c\"=2mA@L1", '='), Some(("\"a=b c\"", "2mA@L1")));
         assert_eq!(split_arrow("+5V -> \"/P/a>b\" ldo"), Some(("+5V", "\"/P/a>b\" ldo")));
         assert_eq!(split_arrow("\"/a b/x\" → +3V3 pass"), Some(("\"/a b/x\"", "+3V3 pass")));

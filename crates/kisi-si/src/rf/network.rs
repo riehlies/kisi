@@ -82,7 +82,10 @@ impl Network {
     /// A chain of `from.len()` lines (cascade matrices per point).
     pub fn chain(&mut self, from: Vec<usize>, to: Vec<usize>, t: Vec<Vec<Cx>>) {
         let m = from.len();
-        assert!(m > 0 && to.len() == m && t.len() == self.npts && t.iter().all(|x| x.len() == 4 * m * m), "chain: sizes");
+        assert!(
+            m > 0 && to.len() == m && t.len() == self.npts && t.iter().all(|x| x.len() == 4 * m * m),
+            "chain: sizes"
+        );
         self.elems.push(Elem::Chain { from, to, t });
     }
 
@@ -229,7 +232,15 @@ impl Network {
     /// S-matrix (N×N, row-major) at point `k` for the ports (node, reference impedance).
     pub fn s_params(&self, k: usize, ports: &[(usize, f64)]) -> Result<Vec<Cx>, String> {
         let np = ports.len();
-        let src: Vec<Source> = ports.iter().enumerate().map(|(j, &(node, z0))| Source { node, z: Cx::new(z0, 0.0), e: (0..np).map(|x| if x == j { c1() } else { cz() }).collect() }).collect();
+        let src: Vec<Source> = ports
+            .iter()
+            .enumerate()
+            .map(|(j, &(node, z0))| Source {
+                node,
+                z: Cx::new(z0, 0.0),
+                e: (0..np).map(|x| if x == j { c1() } else { cz() }).collect(),
+            })
+            .collect();
         let v = self.solve(k, &src)?;
         let mut s = vec![cz(); np * np];
         for j in 0..np {
@@ -380,7 +391,10 @@ mod tests {
             let m = els(f).iter().fold(Abcd::identity(), |a, b| a.mul(b));
             let (s11, s21, s22) = m.s_params(50.0);
             let s = net.s_params(k, &[(n[0], 50.0), (n[4], 50.0)]).unwrap();
-            assert!(close(s[0], s11, 1e-11) && close(s[2], s21, 1e-11) && close(s[1], s21, 1e-9) && close(s[3], s22, 1e-11), "{f}: {s:?} vs {s11:?} {s21:?} {s22:?}");
+            assert!(
+                close(s[0], s11, 1e-11) && close(s[2], s21, 1e-11) && close(s[1], s21, 1e-9) && close(s[3], s22, 1e-11),
+                "{f}: {s:?} vs {s11:?} {s21:?} {s22:?}"
+            );
         }
     }
 
@@ -412,7 +426,15 @@ mod tests {
                 assert!(close(s[0], s11, 1e-11) && close(s[2], s21, 1e-11), "{load:?} {k}");
                 if let Some(y) = load {
                     // voltage at the branch end for a 1 V source behind 50 Ω at A, 50 Ω at B
-                    let v = net.solve(k, &[Source { node: a, z: Cx::new(50.0, 0.0), e: vec![c1()] }, Source { node: b, z: Cx::new(50.0, 0.0), e: vec![cz()] }]).unwrap();
+                    let v = net
+                        .solve(
+                            k,
+                            &[
+                                Source { node: a, z: Cx::new(50.0, 0.0), e: vec![c1()] },
+                                Source { node: b, z: Cx::new(50.0, 0.0), e: vec![cz()] },
+                            ],
+                        )
+                        .unwrap();
                     let vj = v[0][j];
                     assert!(close(v[0][e], vj / (br[k].a + br[k].b * y), 1e-11));
                 }
@@ -430,7 +452,11 @@ mod tests {
         net.two_port(b, c, &[Abcd::shunt(Cx::new(0.01, 0.0))]);
         net.adm(c, GND, vec![Cx::new(0.02, 0.0)]);
         let v = net.solve(0, &[Source { node: a, z: cz(), e: vec![Cx::new(2.0, 0.0)] }]).unwrap();
-        assert!(close(v[0][a], Cx::new(2.0, 0.0), 1e-14) && close(v[0][b], Cx::new(2.0, 0.0), 1e-14) && close(v[0][c], Cx::new(2.0, 0.0), 1e-14));
+        assert!(
+            close(v[0][a], Cx::new(2.0, 0.0), 1e-14)
+                && close(v[0][b], Cx::new(2.0, 0.0), 1e-14)
+                && close(v[0][c], Cx::new(2.0, 0.0), 1e-14)
+        );
         // a floating node is reported
         let mut f = Network::new(1);
         let (x, _y) = (f.node("x"), f.node("y"));

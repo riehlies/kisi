@@ -51,7 +51,11 @@ fn ts_for<'a>(st: &'a State, ce: Option<&kisi_core::eye::ConnEnd>) -> Option<&'a
 
 /// One N-port file for the lanes of a connector (a port map in the connector end): the lanes at
 /// that connector, aggressors of each other.
-fn xt_for(st: &State, lane: &kisi_core::topology::Lane, ce: Option<&kisi_core::eye::ConnEnd>) -> Vec<kisi_core::lanenet::XtLane> {
+fn xt_for(
+    st: &State,
+    lane: &kisi_core::topology::Lane,
+    ce: Option<&kisi_core::eye::ConnEnd>,
+) -> Vec<kisi_core::lanenet::XtLane> {
     let mapped = ce.and_then(|c| c.touchstone.as_ref()).is_some_and(|t| !t.ports.is_empty());
     match (mapped, lane.ends.iter().find(|e| e.role == "connector"), st.buses.as_ref()) {
         (true, Some(e), Some(bs)) => kisi_core::topology::connector_lanes(bs.iter().flat_map(|b| &b.lanes), &e.refdes),
@@ -523,7 +527,8 @@ pub extern "C" fn kisi_pi_losses(p: *const u8, n: usize) -> i32 {
         let rails: Vec<&kisi_core::pi::PiResult> = st.pi_store.values().collect();
         let s = kisi_core::losses::loss_summary(b, st.tree.as_ref(), &rails);
         let flow = st.tree.as_ref().map(|t| {
-            let copper: Vec<(String, f64)> = s.rails.iter().filter(|r| !r.ground).map(|r| (r.net.clone(), r.w)).collect();
+            let copper: Vec<(String, f64)> =
+                s.rails.iter().filter(|r| !r.ground).map(|r| (r.net.clone(), r.w)).collect();
             kisi_core::losses::power_flow(t, &copper, s.ground_w)
         });
         let m = kisi_core::losses::loss_map(b, &rails, &s.components, cell)?;
@@ -635,7 +640,9 @@ pub extern "C" fn kisi_profile_auto(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
     let v: serde_json::Value = serde_json::from_str(&txt).unwrap_or_default();
     let ps = PROFILES.with(|p| p.clone());
-    let id = ps.auto(v["net"].as_str().unwrap_or(""), v["class"].as_str().unwrap_or(""), v["diff"].as_bool().unwrap_or(false)).to_string();
+    let id = ps
+        .auto(v["net"].as_str().unwrap_or(""), v["class"].as_str().unwrap_or(""), v["diff"].as_bool().unwrap_or(false))
+        .to_string();
     set_out(id);
     0
 }
@@ -717,24 +724,63 @@ pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
             let net = item["net"].as_u64().unwrap_or(0) as u32;
             let gbps = item["gbps"].as_f64().unwrap_or(1.0);
             let target = item["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?)));
-            let end = |k: &str| item[k].as_object().and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(item[k].clone()).ok());
+            let end = |k: &str| {
+                item[k]
+                    .as_object()
+                    .and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(item[k].clone()).ok())
+            };
             let rise = item["rise"].as_f64();
             if let Some(start) = item["lane"].as_u64() {
                 // device-to-device lane (see kisi_buses), identified by its first net
-                let lane = st.buses.as_ref().and_then(|bs| bs.iter().flat_map(|b| &b.lanes).find(|l| l.nets[0] as u64 == start && item["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t))));
+                let lane = st.buses.as_ref().and_then(|bs| {
+                    bs.iter().flat_map(|b| &b.lanes).find(|l| {
+                        l.nets[0] as u64 == start
+                            && item["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t))
+                    })
+                });
                 let Some(lane) = lane else {
                     rows.push(serde_json::json!({"net": net, "name": "", "error": "lane not found"}));
                     continue;
                 };
                 let cd = kisi_core::topology::ComponentData::builtin();
                 let rev = item["reversed"].as_bool().unwrap_or(lane.rx_end == 0);
-                let cend: Option<kisi_core::eye::ConnEnd> = item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
+                let cend: Option<kisi_core::eye::ConnEnd> =
+                    item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
                 let cts = ts_for(&st, cend.as_ref());
                 let xt = xt_for(&st, lane, cend.as_ref());
-                rows.push(serde_json::to_value(kisi_core::topology::check_lane(b, an, &params.field, lane, target, &rp, gbps, (end("tx"), end("rx"), rise), rev, cend.as_ref(), cts, &xt, &cd)).unwrap());
+                rows.push(
+                    serde_json::to_value(kisi_core::topology::check_lane(
+                        b,
+                        an,
+                        &params.field,
+                        lane,
+                        target,
+                        &rp,
+                        gbps,
+                        (end("tx"), end("rx"), rise),
+                        rev,
+                        cend.as_ref(),
+                        cts,
+                        &xt,
+                        &cd,
+                    ))
+                    .unwrap(),
+                );
                 continue;
             }
-            rows.push(serde_json::to_value(kisi_core::eye::check_net(b, an, &params.field, net, target, &rp, gbps, (end("tx"), end("rx"), rise))).unwrap());
+            rows.push(
+                serde_json::to_value(kisi_core::eye::check_net(
+                    b,
+                    an,
+                    &params.field,
+                    net,
+                    target,
+                    &rp,
+                    gbps,
+                    (end("tx"), end("rx"), rise),
+                ))
+                .unwrap(),
+            );
         }
         Ok(serde_json::to_string(&rows).unwrap())
     });
@@ -867,17 +913,31 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
         let mut freq = kisi_core::channel_export::FreqRange::parse(fmin_s.as_deref(), fmax_s.as_deref())?;
         if bus.is_some() {
             // one grid for the bus's N-port: the highest f max of its lanes
-            let rp: kisi_core::rf::RfParams = reqs.first().and_then(|i| serde_json::from_value(i["rf"].clone()).ok()).unwrap_or_default();
-            let rates: Vec<(f64, f64)> = reqs.iter().map(|i| (i["bitrate"].as_f64().unwrap_or(1e9) / 1e9, i["eye_rise"].as_f64().unwrap_or(100e-12))).collect();
+            let rp: kisi_core::rf::RfParams =
+                reqs.first().and_then(|i| serde_json::from_value(i["rf"].clone()).ok()).unwrap_or_default();
+            let rates: Vec<(f64, f64)> = reqs
+                .iter()
+                .map(|i| (i["bitrate"].as_f64().unwrap_or(1e9) / 1e9, i["eye_rise"].as_f64().unwrap_or(100e-12)))
+                .collect();
             freq = freq.for_bus(&rp, &rates);
         }
         let mut done = Vec::new();
         let mut skipped = Vec::new();
         for item in reqs {
             let start = item["lane"].as_u64().ok_or("lane missing")?;
-            let lane = st.buses.as_ref().and_then(|bs| bs.iter().flat_map(|b| &b.lanes).find(|l| l.nets[0] as u64 == start && item["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t)))).ok_or("lane not found")?;
+            let lane = st
+                .buses
+                .as_ref()
+                .and_then(|bs| {
+                    bs.iter().flat_map(|b| &b.lanes).find(|l| {
+                        l.nets[0] as u64 == start
+                            && item["to"].as_str().map_or(true, |t| l.ends.last().is_some_and(|e| e.refdes == t))
+                    })
+                })
+                .ok_or("lane not found")?;
             let end = |k: &str| serde_json::from_value::<kisi_core::eye::EndModel>(item[k].clone()).unwrap_or_default();
-            let cend: Option<kisi_core::eye::ConnEnd> = item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
+            let cend: Option<kisi_core::eye::ConnEnd> =
+                item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
             let req = LaneReq {
                 lane,
                 target: item["target"].as_array().and_then(|a| Some((a.first()?.as_f64()?, a.get(1)?.as_bool()?))),
@@ -892,7 +952,8 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
                 conn_end: cend.as_ref(),
                 freq,
             };
-            let dir = if bus.is_some() { format!("{}/", kisi_core::export::files::stem(&lane.name)) } else { String::new() };
+            let dir =
+                if bus.is_some() { format!("{}/", kisi_core::export::files::stem(&lane.name)) } else { String::new() };
             match export_req(b, an, &params.field, &req, f, &dir, &board) {
                 Ok(d) => done.push(d),
                 Err(e) if bus.is_some() => skipped.push(format!("{}: {e}", lane.name)),
@@ -901,7 +962,10 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
         }
         let (summary, files, name) = match &bus {
             Some(bn) => {
-                let devices: Vec<String> = v["devices"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect()).unwrap_or_default();
+                let devices: Vec<String> = v["devices"]
+                    .as_array()
+                    .map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
+                    .unwrap_or_default();
                 bus_result(bn, &devices, done, skipped, f, &board)?
             }
             None => lane_result(done.pop().ok_or("no lane")?, ""),
@@ -965,7 +1029,10 @@ pub extern "C" fn kisi_xt_scan(p: *const u8, n: usize) -> i32 {
         let params = st.params.as_ref().ok_or("no analysis")?;
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let rp: kisi_core::rf::RfParams = serde_json::from_value(v["rf"].clone()).unwrap_or_default();
-        let nets: Vec<u32> = v["nets"].as_array().map(|a| a.iter().filter_map(|x| x.as_u64()).map(|x| x as u32).collect()).unwrap_or_default();
+        let nets: Vec<u32> = v["nets"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|x| x.as_u64()).map(|x| x as u32).collect())
+            .unwrap_or_default();
         let th = v["threshold"].as_f64().unwrap_or(kisi_core::rf::XT_CRITICAL);
         Ok(serde_json::to_string(&kisi_core::rf::crosstalk_scan(b, an, &nets, &params.field, &rp, th)).unwrap())
     });
@@ -1094,7 +1161,8 @@ pub extern "C" fn kisi_gaps(p: *const u8, n: usize) -> i32 {
         let b = st.board_base.clone().ok_or("no board loaded")?;
         let name = v["board"].as_str().unwrap_or("board.kicad_pcb").to_string();
         let stem = name.trim_end_matches(".kicad_pcb").to_string();
-        let config = v["config"].as_str().map(|t| (std::path::PathBuf::from(format!("{stem}.kisi.json")), Ok(t.to_string())));
+        let config =
+            v["config"].as_str().map(|t| (std::path::PathBuf::from(format!("{stem}.kisi.json")), Ok(t.to_string())));
         let inp = kisi_core::service::Inputs {
             pcb_path: std::path::PathBuf::from(&name),
             pcb: String::new(),
@@ -1149,7 +1217,8 @@ pub extern "C" fn kisi_config_subset(p: *const u8, n: usize) -> i32 {
         if !kisi_core::gaps::VIEWS.contains(&view) {
             return Err(format!("view: one of {}", kisi_core::gaps::VIEWS.join(", ")));
         }
-        serde_json::to_string_pretty(&kisi_core::config::to_json(&kisi_core::config::subset(&cfg, view))).map_err(|e| e.to_string())
+        serde_json::to_string_pretty(&kisi_core::config::to_json(&kisi_core::config::subset(&cfg, view)))
+            .map_err(|e| e.to_string())
     })())
 }
 
@@ -1165,16 +1234,19 @@ pub extern "C" fn kisi_edits_to_fields(p: *const u8, n: usize) -> i32 {
         let mut fields = Vec::new();
         let mut lost = Vec::new();
         if !v["tree"].is_null() {
-            let spec: kisi_core::tree::TreeSpec = serde_json::from_value(v["tree"].clone()).map_err(|e| format!("tree: {e}"))?;
+            let spec: kisi_core::tree::TreeSpec =
+                serde_json::from_value(v["tree"].clone()).map_err(|e| format!("tree: {e}"))?;
             fields.extend(kisi_core::tree::spec_to_fields(&spec));
         }
         if !v["setups"].is_null() {
-            let setups: Vec<kisi_core::pi::RailSetup> = serde_json::from_value(v["setups"].clone()).map_err(|e| format!("setups: {e}"))?;
+            let setups: Vec<kisi_core::pi::RailSetup> =
+                serde_json::from_value(v["setups"].clone()).map_err(|e| format!("setups: {e}"))?;
             let (f, l) = kisi_core::pi::setups_to_fields(&setups);
             fields.extend(f);
             lost.extend(l);
         }
-        let fields: Vec<serde_json::Value> = fields.into_iter().map(|(r, n, v)| serde_json::json!({"ref": r, "name": n, "value": v})).collect();
+        let fields: Vec<serde_json::Value> =
+            fields.into_iter().map(|(r, n, v)| serde_json::json!({"ref": r, "name": n, "value": v})).collect();
         Ok(serde_json::json!({"fields": fields, "lost": lost}).to_string())
     })())
 }
@@ -1193,7 +1265,8 @@ pub extern "C" fn kisi_board_sheets() -> i32 {
                 *m.entry(s).or_default() += 1;
             }
         }
-        Ok(serde_json::Value::Array(m.into_iter().map(|(s, n)| serde_json::json!({"sheet": s, "parts": n})).collect()).to_string())
+        Ok(serde_json::Value::Array(m.into_iter().map(|(s, n)| serde_json::json!({"sheet": s, "parts": n})).collect())
+            .to_string())
     }))
 }
 
@@ -1230,7 +1303,19 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
         // files the configuration refers to (BOMs): {path: {"text"} | {"error"}}
         let files: kisi_core::variant::Files = v["files"]
             .as_object()
-            .map(|m| m.iter().map(|(k, f)| (k.clone(), f["text"].as_str().map(str::to_string).ok_or_else(|| f["error"].as_str().unwrap_or("not readable").to_string()))).collect())
+            .map(|m| {
+                m.iter()
+                    .map(|(k, f)| {
+                        (
+                            k.clone(),
+                            f["text"]
+                                .as_str()
+                                .map(str::to_string)
+                                .ok_or_else(|| f["error"].as_str().unwrap_or("not readable").to_string()),
+                        )
+                    })
+                    .collect()
+            })
             .unwrap_or_default();
         let inp = kisi_core::service::Inputs {
             pcb_path: std::path::PathBuf::from(s("pcb_path").unwrap_or_default()),
@@ -1257,7 +1342,10 @@ pub extern "C" fn kisi_cli_check_part(p: *const u8, n: usize) -> i32 {
     reply((|| {
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let o: kisi_core::commands::Opts = serde_json::from_value(v["opts"].clone()).map_err(|e| e.to_string())?;
-        let idx: Vec<usize> = v["items"].as_array().map(|a| a.iter().filter_map(|x| Some(x.as_u64()? as usize)).collect()).unwrap_or_default();
+        let idx: Vec<usize> = v["items"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|x| Some(x.as_u64()? as usize)).collect())
+            .unwrap_or_default();
         CLI.with(|c| {
             let c = c.borrow();
             let pr = c.as_ref().ok_or("no board loaded")?;
@@ -1278,7 +1366,11 @@ pub extern "C" fn kisi_cli_run(p: *const u8, n: usize) -> i32 {
         let o: kisi_core::commands::Opts = serde_json::from_value(v["opts"].clone()).map_err(|e| e.to_string())?;
         let tree = if v["tree"].is_null() { None } else { Some(v["tree"].clone()) };
         // check rows computed in parts by worker engines (kisi_cli_check_part)
-        let rows: Option<Vec<(usize, serde_json::Value)>> = if v["check_rows"].is_array() { Some(serde_json::from_value(v["check_rows"].clone()).map_err(|e| e.to_string())?) } else { None };
+        let rows: Option<Vec<(usize, serde_json::Value)>> = if v["check_rows"].is_array() {
+            Some(serde_json::from_value(v["check_rows"].clone()).map_err(|e| e.to_string())?)
+        } else {
+            None
+        };
         CLI.with(|c| {
             let c = c.borrow();
             let r = kisi_core::commands::run_with(&o, c.as_ref(), tree, rows)?;

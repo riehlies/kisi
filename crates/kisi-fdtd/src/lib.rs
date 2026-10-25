@@ -308,7 +308,8 @@ fn grade(fixed: &mut Vec<(f64, f64, bool)>, dmax: f64, ratio: f64) -> Vec<f64> {
             } else if g.3 > 0 {
                 // hard lines decide; a cluster of equal values keeps the exact value
                 let m = g.2 / g.3 as f64;
-                let first_hard = fixed.iter().find(|x| !x.2 && x.0 >= g.0 - 1e-12 && x.0 <= g.1 + 1e-12).map(|x| x.0).unwrap_or(m);
+                let first_hard =
+                    fixed.iter().find(|x| !x.2 && x.0 >= g.0 - 1e-12 && x.0 <= g.1 + 1e-12).map(|x| x.0).unwrap_or(m);
                 if (m - first_hard).abs() < 1e-9 {
                     first_hard
                 } else {
@@ -384,8 +385,10 @@ pub fn make_mesh(c: &Case) -> Mesh {
     let er_max = c.layers.iter().map(|l| l.er).fold(1.0, f64::max);
     let dmax = if c.mesh.dmax > 0.0 { c.mesh.dmax } else { C0 / c.fmax / er_max.sqrt() / 20.0 * 1e3 };
     let fine = c.mesh.dfine;
-    let mut fx: Vec<(f64, f64, bool)> = vec![(d[0], dmax, false), (d[3], dmax, false), (c.board[0], fine, false), (c.board[2], fine, false)];
-    let mut fy: Vec<(f64, f64, bool)> = vec![(d[1], dmax, false), (d[4], dmax, false), (c.board[1], fine, false), (c.board[3], fine, false)];
+    let mut fx: Vec<(f64, f64, bool)> =
+        vec![(d[0], dmax, false), (d[3], dmax, false), (c.board[0], fine, false), (c.board[2], fine, false)];
+    let mut fy: Vec<(f64, f64, bool)> =
+        vec![(d[1], dmax, false), (d[4], dmax, false), (c.board[1], fine, false), (c.board[3], fine, false)];
     let mut fz: Vec<(f64, f64, bool)> = vec![(d[2], dmax, false), (d[5], dmax, false)];
     for l in &c.layers {
         fz.push((l.z0, fine, false));
@@ -395,7 +398,9 @@ pub fn make_mesh(c: &Case) -> Mesh {
     for s in &c.sheets {
         fz.push((s.z, fine, false));
         // polygon copper adds no lines of its own (its rect is only a bounding box)
-        let along_y = s.rect[3] - s.rect[1] > s.rect[2] - s.rect[0] && !on_board_edge(s.rect[0], c.board[0], c.board[2]) && !on_board_edge(s.rect[2], c.board[0], c.board[2]);
+        let along_y = s.rect[3] - s.rect[1] > s.rect[2] - s.rect[0]
+            && !on_board_edge(s.rect[0], c.board[0], c.board[2])
+            && !on_board_edge(s.rect[2], c.board[0], c.board[2]);
         if !s.polys.is_empty() {
         } else if c.mesh.thirds && along_y {
             // a trace along y: the thirds rule on its long edges in x
@@ -405,7 +410,10 @@ pub fn make_mesh(c: &Case) -> Mesh {
             fx.push((s.rect[0] - 2.0 * fine / 3.0, fine, false));
             fx.push((s.rect[2] - fine / 3.0, fine, false));
             fx.push((s.rect[2] + 2.0 * fine / 3.0, fine, false));
-        } else if c.mesh.thirds && !on_board_edge(s.rect[1], c.board[1], c.board[3]) && !on_board_edge(s.rect[3], c.board[1], c.board[3]) {
+        } else if c.mesh.thirds
+            && !on_board_edge(s.rect[1], c.board[1], c.board[3])
+            && !on_board_edge(s.rect[3], c.board[1], c.board[3])
+        {
             // thirds rule on the long edges (the traces run along x): a line Δ/3 inside and 2Δ/3
             // outside the edge, so the staircased strip has its true electrical width
             fx.push((s.rect[0], fine, false));
@@ -484,7 +492,11 @@ pub fn make_mesh(c: &Case) -> Mesh {
     clip(&mut fx, d[0], d[3]);
     clip(&mut fy, d[1], d[4]);
     clip(&mut fz, d[2], d[5]);
-    let mut m = Mesh { x: grade(&mut fx, dmax, c.mesh.ratio), y: grade(&mut fy, dmax, c.mesh.ratio), z: grade(&mut fz, dmax, c.mesh.ratio) };
+    let mut m = Mesh {
+        x: grade(&mut fx, dmax, c.mesh.ratio),
+        y: grade(&mut fy, dmax, c.mesh.ratio),
+        z: grade(&mut fz, dmax, c.mesh.ratio),
+    };
     if c.boundary == "pml" {
         // PML cells outside the domain, as wide as the outermost cell
         for v in [&mut m.x, &mut m.y, &mut m.z] {
@@ -630,7 +642,8 @@ impl PolyIdx {
                     b.push(i as u32);
                 }
             }
-            let (cx0, cx1) = (((e[0].min(e[2]) - x0) / cell) as usize, (((e[0].max(e[2]) - x0) / cell) as usize).min(nx - 1));
+            let (cx0, cx1) =
+                (((e[0].min(e[2]) - x0) / cell) as usize, (((e[0].max(e[2]) - x0) / cell) as usize).min(nx - 1));
             let (cy0, cy1) = (((ylo - y0) / cell) as usize, (((yhi - y0) / cell) as usize).min(ny - 1));
             for cy in cy0..=cy1 {
                 for cx in cx0..=cx1 {
@@ -658,8 +671,10 @@ impl PolyIdx {
     /// does an edge pass within `reach` of (x, y)?
     fn near(&self, x: f64, y: f64, reach: f64) -> bool {
         let cl = |v: f64, n: usize| -> usize { (v.max(0.0) as usize).min(n - 1) };
-        let (cx0, cx1) = (cl((x - reach - self.x0) / self.cell, self.nx), cl((x + reach - self.x0) / self.cell, self.nx));
-        let (cy0, cy1) = (cl((y - reach - self.y0) / self.cell, self.ny), cl((y + reach - self.y0) / self.cell, self.ny));
+        let (cx0, cx1) =
+            (cl((x - reach - self.x0) / self.cell, self.nx), cl((x + reach - self.x0) / self.cell, self.nx));
+        let (cy0, cy1) =
+            (cl((y - reach - self.y0) / self.cell, self.ny), cl((y + reach - self.y0) / self.cell, self.ny));
         for cy in cy0..=cy1 {
             for cx in cx0..=cx1 {
                 for &i in &self.cells[cy * self.nx + cx] {
@@ -742,7 +757,9 @@ impl<'a> Geo<'a> {
                     inz && d2.sqrt() >= v.r - 1e-9
                 } else {
                     let rm = v.r.max(v.pad_r) + 1e-9;
-                    d2 <= rm * rm && ((inz && d2.sqrt() <= v.r + 1e-9) || (v.pads.iter().any(|&pz| (pz - z).abs() < 1e-9) && d2.sqrt() <= v.pad_r + 1e-9))
+                    d2 <= rm * rm
+                        && ((inz && d2.sqrt() <= v.r + 1e-9)
+                            || (v.pads.iter().any(|&pz| (pz - z).abs() < 1e-9) && d2.sqrt() <= v.pad_r + 1e-9))
                 }
             })
     }
@@ -762,11 +779,19 @@ impl<'a> Geo<'a> {
     /// does a circle boundary pass within `reach` of (x, y) at height z (z range for faces)?
     fn near_circle(&self, x: f64, y: f64, z0: f64, z1: f64, reach: f64) -> bool {
         self.circles.iter().any(|&(x0, y0, x1, y1, r, a, b)| {
-            let zok = if a == b { z0 <= a + 1e-9 && z1 >= a - 1e-9 && (z1 - z0) < 1e-9 } else { z1 >= a - 1e-9 && z0 <= b + 1e-9 };
+            let zok = if a == b {
+                z0 <= a + 1e-9 && z1 >= a - 1e-9 && (z1 - z0) < 1e-9
+            } else {
+                z1 >= a - 1e-9 && z0 <= b + 1e-9
+            };
             zok && (seg_dist(x, y, x0, y0, x1, y1) - r).abs() < reach
         }) || (self.c.conformal_polys
             && (z1 - z0) < 1e-9
-            && self.zgroups.iter().find(|g| (g.0 - z0).abs() < 1e-9).is_some_and(|g| g.1.iter().any(|&i| self.polys[i].as_ref().is_some_and(|p| p.near(x, y, reach)))))
+            && self
+                .zgroups
+                .iter()
+                .find(|g| (g.0 - z0).abs() < 1e-9)
+                .is_some_and(|g| g.1.iter().any(|&i| self.polys[i].as_ref().is_some_and(|p| p.near(x, y, reach)))))
     }
     /// free (non-metal) fraction of the segment p0 → p1
     fn free_len(&self, p0: [f64; 3], p1: [f64; 3]) -> f64 {
@@ -810,7 +835,8 @@ struct Cpml {
 
 /// (derivative axis, source component, sign) of the curl terms of component c:
 /// (curl F)_c = Σ sign · ∂F_src/∂axis
-const CURL: [[(usize, usize, f32); 2]; 3] = [[(1, 2, 1.0), (2, 1, -1.0)], [(2, 0, 1.0), (0, 2, -1.0)], [(0, 1, 1.0), (1, 0, -1.0)]];
+const CURL: [[(usize, usize, f32); 2]; 3] =
+    [[(1, 2, 1.0), (2, 1, -1.0)], [(2, 0, 1.0), (0, 2, -1.0)], [(0, 1, 1.0), (1, 0, -1.0)]];
 
 /// index ranges of a component along each axis: E (edges, interior) or H (faces)
 fn ranges(g: &Grid, comp: usize, is_e: bool) -> [(usize, usize); 3] {
@@ -833,7 +859,14 @@ fn ranges(g: &Grid, comp: usize, is_e: bool) -> [(usize, usize); 3] {
 }
 
 impl Cpml {
-    fn new(g: &Grid, m: &Mesh, ncell: usize, dt: f64, fmax: f64, kappa_max: f64) -> (Self, [Vec<f64>; 3], [Vec<f64>; 3]) {
+    fn new(
+        g: &Grid,
+        m: &Mesh,
+        ncell: usize,
+        dt: f64,
+        fmax: f64,
+        kappa_max: f64,
+    ) -> (Self, [Vec<f64>; 3], [Vec<f64>; 3]) {
         let order = 3.0;
         let lines = [&m.x, &m.y, &m.z];
         let mut e: [Vec<(usize, f32, f32)>; 3] = Default::default();
@@ -882,7 +915,15 @@ impl Cpml {
         }
         let size = |comp: usize, a: usize, is_e: bool, list: &Vec<(usize, f32, f32)>| -> usize {
             let r = ranges(g, comp, is_e);
-            (0..3).map(|d| if d == a { list.iter().filter(|x| x.0 >= r[d].0 && x.0 < r[d].1).count() } else { r[d].1 - r[d].0 }).product()
+            (0..3)
+                .map(|d| {
+                    if d == a {
+                        list.iter().filter(|x| x.0 >= r[d].0 && x.0 < r[d].1).count()
+                    } else {
+                        r[d].1 - r[d].0
+                    }
+                })
+                .product()
         };
         let mut pe: [[Vec<f32>; 2]; 3] = Default::default();
         let mut ph: [[Vec<f32>; 2]; 3] = Default::default();
@@ -900,7 +941,20 @@ impl Cpml {
 /// ψ = bψ + c·(src[n] − src[n−1])/Δdual; H: f −= hc·sign·ψ with ψ = bψ + c·(src[n+1] − src[n])/Δ.
 /// ψ is stored in the loop order i, j, k with the PML axis restricted to its nodes.
 #[allow(clippy::too_many_arguments)]
-fn cpml_pass(g: &Grid, comp: usize, a: usize, sign: f32, is_e: bool, list: &[(usize, f32, f32)], psi: &mut [f32], f: &mut [f32], src: &[f32], cb: Option<&[f32]>, hc: f32, inv: &[f32]) {
+fn cpml_pass(
+    g: &Grid,
+    comp: usize,
+    a: usize,
+    sign: f32,
+    is_e: bool,
+    list: &[(usize, f32, f32)],
+    psi: &mut [f32],
+    f: &mut [f32],
+    src: &[f32],
+    cb: Option<&[f32]>,
+    hc: f32,
+    inv: &[f32],
+) {
     let r = ranges(g, comp, is_e);
     let st = [g.ny * g.nz, g.nz, 1][a];
     let sel: Vec<(usize, f32, f32)> = list.iter().cloned().filter(|x| x.0 >= r[a].0 && x.0 < r[a].1).collect();
@@ -960,15 +1014,28 @@ fn cpml_pass(g: &Grid, comp: usize, a: usize, sign: f32, is_e: bool, list: &[(us
 
 /// One run with port `ex` excited; returns V(t), I(t) for all ports.
 #[allow(clippy::type_complexity)]
-fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(usize, f64)) -> (f64, usize, Vec<Vec<f64>>, Vec<Vec<f64>>, Vec<f64>, Vec<FieldPlane>) {
+fn run(
+    c: &Case,
+    m: &Mesh,
+    ex: usize,
+    record: bool,
+    on_progress: &mut dyn FnMut(usize, f64),
+) -> (f64, usize, Vec<Vec<f64>>, Vec<Vec<f64>>, Vec<f64>, Vec<FieldPlane>) {
     let g = Grid::new(m);
     let (nx, ny, nz) = (g.nx, g.ny, g.nz);
     let n = nx * ny * nz;
     let geo = Geo::new(c);
     let dmin = |v: &[f64]| v.iter().cloned().fold(f64::INFINITY, f64::min);
-    let courant = if c.courant > 0.0 { c.courant } else if c.conformal { 0.95 } else { 0.99 };
+    let courant = if c.courant > 0.0 {
+        c.courant
+    } else if c.conformal {
+        0.95
+    } else {
+        0.99
+    };
     // Courant limit of the smallest cells; conformal faces can lower it further (guard below)
-    let dt0 = courant / (C0 * (1.0 / dmin(&g.dx).powi(2) + 1.0 / dmin(&g.dy).powi(2) + 1.0 / dmin(&g.dz).powi(2)).sqrt());
+    let dt0 =
+        courant / (C0 * (1.0 / dmin(&g.dx).powi(2) + 1.0 / dmin(&g.dy).powi(2) + 1.0 / dmin(&g.dz).powi(2)).sqrt());
     let f_loss = if c.f_loss > 0.0 { c.f_loss } else { c.fmax / 2.0 };
     let cx = |i: usize| 0.5 * (m.x[i] + m.x[i + 1]);
     let cy = |j: usize| 0.5 * (m.y[j] + m.y[j + 1]);
@@ -1004,7 +1071,12 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
         let idx = [i, j, k];
         p1[comp] = lines[comp][idx[comp] + 1];
         let mid = [0.5 * (p0[0] + p1[0]), 0.5 * (p0[1] + p1[1]), 0.5 * (p0[2] + p1[2])];
-        if c.conformal && comp < 2 && strictly_in(p0) && strictly_in(p1) && geo.near_circle(mid[0], mid[1], mid[2], mid[2], p1[comp] - p0[comp]) {
+        if c.conformal
+            && comp < 2
+            && strictly_in(p0)
+            && strictly_in(p1)
+            && geo.near_circle(mid[0], mid[1], mid[2], mid[2], p1[comp] - p0[comp])
+        {
             let f = geo.free_len(p0, p1);
             if f < 0.02 {
                 0.0
@@ -1042,7 +1114,12 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                     if fr > 0.0 {
                         let xm = cx(i);
                         let (y, z) = (m.y[j], m.z[k]);
-                        let pts = [(xm, cy(j - 1), cz(k - 1), g.dy[j - 1] * g.dz[k - 1]), (xm, cy(j), cz(k - 1), g.dy[j] * g.dz[k - 1]), (xm, cy(j - 1), cz(k), g.dy[j - 1] * g.dz[k]), (xm, cy(j), cz(k), g.dy[j] * g.dz[k])];
+                        let pts = [
+                            (xm, cy(j - 1), cz(k - 1), g.dy[j - 1] * g.dz[k - 1]),
+                            (xm, cy(j), cz(k - 1), g.dy[j] * g.dz[k - 1]),
+                            (xm, cy(j - 1), cz(k), g.dy[j - 1] * g.dz[k]),
+                            (xm, cy(j), cz(k), g.dy[j] * g.dz[k]),
+                        ];
                         let _ = (y, z);
                         let (er, sg) = avg(&pts);
                         let (a, b) = coef(er, sg);
@@ -1057,7 +1134,12 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                     free[1][id] = fr as f32;
                     if fr > 0.0 {
                         let ym = cy(j);
-                        let pts = [(cx(i - 1), ym, cz(k - 1), g.dx[i - 1] * g.dz[k - 1]), (cx(i), ym, cz(k - 1), g.dx[i] * g.dz[k - 1]), (cx(i - 1), ym, cz(k), g.dx[i - 1] * g.dz[k]), (cx(i), ym, cz(k), g.dx[i] * g.dz[k])];
+                        let pts = [
+                            (cx(i - 1), ym, cz(k - 1), g.dx[i - 1] * g.dz[k - 1]),
+                            (cx(i), ym, cz(k - 1), g.dx[i] * g.dz[k - 1]),
+                            (cx(i - 1), ym, cz(k), g.dx[i - 1] * g.dz[k]),
+                            (cx(i), ym, cz(k), g.dx[i] * g.dz[k]),
+                        ];
                         let (er, sg) = avg(&pts);
                         let (a, b) = coef(er, sg);
                         ca[1][id] = a;
@@ -1071,7 +1153,12 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                     free[2][id] = fr as f32;
                     if fr > 0.0 {
                         let zm = cz(k);
-                        let pts = [(cx(i - 1), cy(j - 1), zm, g.dx[i - 1] * g.dy[j - 1]), (cx(i), cy(j - 1), zm, g.dx[i] * g.dy[j - 1]), (cx(i - 1), cy(j), zm, g.dx[i - 1] * g.dy[j]), (cx(i), cy(j), zm, g.dx[i] * g.dy[j])];
+                        let pts = [
+                            (cx(i - 1), cy(j - 1), zm, g.dx[i - 1] * g.dy[j - 1]),
+                            (cx(i), cy(j - 1), zm, g.dx[i] * g.dy[j - 1]),
+                            (cx(i - 1), cy(j), zm, g.dx[i - 1] * g.dy[j]),
+                            (cx(i), cy(j), zm, g.dx[i] * g.dy[j]),
+                        ];
                         let (er, sg) = avg(&pts);
                         let (a, b) = coef(er, sg);
                         ca[2][id] = a;
@@ -1133,7 +1220,8 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                             continue;
                         }
                         let p0 = [m.x[i], m.y[j], m.z[k]];
-                        let (du, dv) = (lines[u][idx[u] + 1] - lines[u][idx[u]], lines[v][idx[v] + 1] - lines[v][idx[v]]);
+                        let (du, dv) =
+                            (lines[u][idx[u] + 1] - lines[u][idx[u]], lines[v][idx[v] + 1] - lines[v][idx[v]]);
                         let mut far = p0;
                         far[u] += du;
                         far[v] += dv;
@@ -1151,7 +1239,8 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                         }
                         // edges: along u at v = 0 / dv, along v at u = 0 / du
                         let (e_u0, e_u1, e_v0, e_v1) = (id, id + st[v], id, id + st[u]);
-                        let (fu0, fu1, fv0, fv1) = (free[u][e_u0] as f64, free[u][e_u1] as f64, free[v][e_v0] as f64, free[v][e_v1] as f64);
+                        let (fu0, fu1, fv0, fv1) =
+                            (free[u][e_u0] as f64, free[u][e_u1] as f64, free[v][e_v0] as f64, free[v][e_v1] as f64);
                         if fu0 + fu1 + fv0 + fv1 == 0.0 {
                             continue;
                         }
@@ -1174,7 +1263,8 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                         let a_full = du * dv * 1e-6;
                         let mut wsum = 0.0;
                         for &(_, srcc, sign) in &CURL[comp] {
-                            let (dperp, lfull, f0, f1, i0, i1) = if srcc == u { (dv, du, fu0, fu1, e_u0, e_u1) } else { (du, dv, fv0, fv1, e_v0, e_v1) };
+                            let (dperp, lfull, f0, f1, i0, i1) =
+                                if srcc == u { (dv, du, fu0, fu1, e_u0, e_u1) } else { (du, dv, fv0, fv1, e_v0, e_v1) };
                             let wstd = 1.0 / (dperp * 1e-3);
                             let w0 = lfull * 1e-3 * f0 / (a_full * a_eff);
                             let w1 = lfull * 1e-3 * f1 / (a_full * a_eff);
@@ -1276,7 +1366,8 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
     drop(free);
     drop(sig);
     // ports: Ez edges, lumped resistor (and source) per edge
-    let near = |v: &[f64], x: f64| v.iter().enumerate().min_by(|a, b| (a.1 - x).abs().total_cmp(&(b.1 - x).abs())).unwrap().0;
+    let near =
+        |v: &[f64], x: f64| v.iter().enumerate().min_by(|a, b| (a.1 - x).abs().total_cmp(&(b.1 - x).abs())).unwrap().0;
     let ports: Vec<PortEdges> = c
         .ports
         .iter()
@@ -1399,7 +1490,16 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
             for &f in &mo.freqs {
                 for &comp in &mo.comps {
                     let nn = lines[u].len() * lines[v].len();
-                    planes.push(FieldPlane { axis: mo.axis.clone(), pos: lines[a][idx], freq: f, comp, u: lines[u].clone(), v: lines[v].clone(), re: vec![0.0; nn], im: vec![0.0; nn] });
+                    planes.push(FieldPlane {
+                        axis: mo.axis.clone(),
+                        pos: lines[a][idx],
+                        freq: f,
+                        comp,
+                        u: lines[u].clone(),
+                        v: lines[v].clone(),
+                        re: vec![0.0; nn],
+                        im: vec![0.0; nn],
+                    });
                 }
             }
             mons.push((idx, a, planes));
@@ -1412,7 +1512,20 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
         if let Some(p) = cpml.as_mut() {
             for comp in 0..3 {
                 for (slot, &(a, src, sign)) in CURL[comp].iter().enumerate() {
-                    cpml_pass(&g, comp, a, sign, false, &p.h[a], &mut p.ph[comp][slot], &mut h[comp], &e[src], None, hc, &raw_p[a]);
+                    cpml_pass(
+                        &g,
+                        comp,
+                        a,
+                        sign,
+                        false,
+                        &p.h[a],
+                        &mut p.ph[comp][slot],
+                        &mut h[comp],
+                        &e[src],
+                        None,
+                        hc,
+                        &raw_p[a],
+                    );
                 }
             }
         }
@@ -1435,7 +1548,20 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
         if let Some(p) = cpml.as_mut() {
             for comp in 0..3 {
                 for (slot, &(a, src, sign)) in CURL[comp].iter().enumerate() {
-                    cpml_pass(&g, comp, a, sign, true, &p.e[a], &mut p.pe[comp][slot], &mut e[comp], &h[src], Some(&cb[comp]), hc, &raw_d[a]);
+                    cpml_pass(
+                        &g,
+                        comp,
+                        a,
+                        sign,
+                        true,
+                        &p.e[a],
+                        &mut p.pe[comp][slot],
+                        &mut e[comp],
+                        &h[src],
+                        Some(&cb[comp]),
+                        hc,
+                        &raw_d[a],
+                    );
                 }
             }
         }
@@ -1474,7 +1600,8 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
             let curl = ((h[1][id] - h[1][id - sx]) * idxd[i_] - (h[0][id] - h[0][id - sy]) * idyd[j_]) as f64;
             let old = saved_l[n_e] as f64;
             let den = 2.0 * el.l / dt + el.r + dt * el.inv_c / 2.0 + el.dz * dt / (2.0 * el.eps * el.a);
-            let ib = (el.dz * old + el.dz * dt * curl / (2.0 * el.eps) + 2.0 * el.l * el.i / dt - el.q * el.inv_c) / den;
+            let ib =
+                (el.dz * old + el.dz * dt * curl / (2.0 * el.eps) + 2.0 * el.l * el.i / dt - el.q * el.inv_c) / den;
             e[2][id] = (old + dt / el.eps * (curl - ib / el.a)) as f32;
             el.i = 2.0 * ib - el.i;
             el.q += dt * ib;
@@ -1566,7 +1693,17 @@ where
 
 /// H from the curl of E on every face of the primary grid (row slices along z for vectorising).
 #[allow(clippy::too_many_arguments)]
-fn update_h(g: &Grid, h: [&mut [f32]; 3], i0: usize, i1: usize, e: &[Vec<f32>; 3], hc: f32, idx: &[f32], idy: &[f32], idz: &[f32]) {
+fn update_h(
+    g: &Grid,
+    h: [&mut [f32]; 3],
+    i0: usize,
+    i1: usize,
+    e: &[Vec<f32>; 3],
+    hc: f32,
+    idx: &[f32],
+    idy: &[f32],
+    idz: &[f32],
+) {
     let (nx, ny, nz) = (g.nx, g.ny, g.nz);
     let (sy, sx) = (nz, ny * nz);
     let [hx, hy, hz] = h;
@@ -1579,21 +1716,29 @@ fn update_h(g: &Grid, h: [&mut [f32]; 3], i0: usize, i1: usize, e: &[Vec<f32>; 3
             let (ix, iy) = (if i + 1 < nx { idx[i] } else { 0.0 }, if j + 1 < ny { idy[j] } else { 0.0 });
             if i + 1 < nx && j + 1 < ny {
                 // Hz(i+½, j+½, k)
-                let (hzr, eyr, eyx, exr, exy) = (&mut hz[o..o + nz], &ey[b..b + nz], &ey[b + sx..b + sx + nz], &ex[b..b + nz], &ex[b + sy..b + sy + nz]);
+                let (hzr, eyr, eyx, exr, exy) = (
+                    &mut hz[o..o + nz],
+                    &ey[b..b + nz],
+                    &ey[b + sx..b + sx + nz],
+                    &ex[b..b + nz],
+                    &ex[b + sy..b + sy + nz],
+                );
                 for k in 0..nz {
                     hzr[k] -= hc * ((eyx[k] - eyr[k]) * ix - (exy[k] - exr[k]) * iy);
                 }
             }
             if j + 1 < ny {
                 // Hx(i, j+½, k+½)
-                let (hxr, ezr, ezy, eyr) = (&mut hx[o..o + nz], &ez[b..b + nz], &ez[b + sy..b + sy + nz], &ey[b..b + nz]);
+                let (hxr, ezr, ezy, eyr) =
+                    (&mut hx[o..o + nz], &ez[b..b + nz], &ez[b + sy..b + sy + nz], &ey[b..b + nz]);
                 for k in 0..nz - 1 {
                     hxr[k] -= hc * ((ezy[k] - ezr[k]) * iy - (eyr[k + 1] - eyr[k]) * idz[k]);
                 }
             }
             if i + 1 < nx {
                 // Hy(i+½, j, k+½)
-                let (hyr, exr, ezr, ezx) = (&mut hy[o..o + nz], &ex[b..b + nz], &ez[b..b + nz], &ez[b + sx..b + sx + nz]);
+                let (hyr, exr, ezr, ezx) =
+                    (&mut hy[o..o + nz], &ex[b..b + nz], &ez[b..b + nz], &ez[b + sx..b + sx + nz]);
                 for k in 0..nz - 1 {
                     hyr[k] -= hc * ((exr[k + 1] - exr[k]) * idz[k] - (ezx[k] - ezr[k]) * ix);
                 }
@@ -1604,7 +1749,18 @@ fn update_h(g: &Grid, h: [&mut [f32]; 3], i0: usize, i1: usize, e: &[Vec<f32>; 3
 
 /// E from the curl of H on the interior edges (ports and boundaries are updated separately).
 #[allow(clippy::too_many_arguments)]
-fn update_e(g: &Grid, e: [&mut [f32]; 3], i0: usize, i1: usize, h: &[Vec<f32>; 3], ca: &[Vec<f32>; 3], cb: &[Vec<f32>; 3], idxd: &[f32], idyd: &[f32], idzd: &[f32]) {
+fn update_e(
+    g: &Grid,
+    e: [&mut [f32]; 3],
+    i0: usize,
+    i1: usize,
+    h: &[Vec<f32>; 3],
+    ca: &[Vec<f32>; 3],
+    cb: &[Vec<f32>; 3],
+    idxd: &[f32],
+    idyd: &[f32],
+    idzd: &[f32],
+) {
     let (nx, ny, nz) = (g.nx, g.ny, g.nz);
     let (sy, sx) = (nz, ny * nz);
     let [ex, ey, ez] = e;
@@ -1616,7 +1772,14 @@ fn update_e(g: &Grid, e: [&mut [f32]; 3], i0: usize, i1: usize, h: &[Vec<f32>; 3
             let o = b - off;
             if i + 1 < nx && j > 0 && j + 1 < ny {
                 let iy = idyd[j];
-                let (er, a, c, hzr, hzm, hyr) = (&mut ex[o..o + nz], &ca[0][b..b + nz], &cb[0][b..b + nz], &hz[b..b + nz], &hz[b - sy..b - sy + nz], &hy[b..b + nz]);
+                let (er, a, c, hzr, hzm, hyr) = (
+                    &mut ex[o..o + nz],
+                    &ca[0][b..b + nz],
+                    &cb[0][b..b + nz],
+                    &hz[b..b + nz],
+                    &hz[b - sy..b - sy + nz],
+                    &hy[b..b + nz],
+                );
                 for k in 1..nz - 1 {
                     let curl = (hzr[k] - hzm[k]) * iy - (hyr[k] - hyr[k - 1]) * idzd[k];
                     er[k] = a[k] * er[k] + c[k] * curl;
@@ -1624,7 +1787,14 @@ fn update_e(g: &Grid, e: [&mut [f32]; 3], i0: usize, i1: usize, h: &[Vec<f32>; 3
             }
             if j + 1 < ny && i > 0 && i + 1 < nx {
                 let ix = idxd[i];
-                let (er, a, c, hxr, hzr, hzm) = (&mut ey[o..o + nz], &ca[1][b..b + nz], &cb[1][b..b + nz], &hx[b..b + nz], &hz[b..b + nz], &hz[b - sx..b - sx + nz]);
+                let (er, a, c, hxr, hzr, hzm) = (
+                    &mut ey[o..o + nz],
+                    &ca[1][b..b + nz],
+                    &cb[1][b..b + nz],
+                    &hx[b..b + nz],
+                    &hz[b..b + nz],
+                    &hz[b - sx..b - sx + nz],
+                );
                 for k in 1..nz - 1 {
                     let curl = (hxr[k] - hxr[k - 1]) * idzd[k] - (hzr[k] - hzm[k]) * ix;
                     er[k] = a[k] * er[k] + c[k] * curl;
@@ -1632,7 +1802,15 @@ fn update_e(g: &Grid, e: [&mut [f32]; 3], i0: usize, i1: usize, h: &[Vec<f32>; 3
             }
             if i > 0 && i + 1 < nx && j > 0 && j + 1 < ny {
                 let (ix, iy) = (idxd[i], idyd[j]);
-                let (er, a, c, hyr, hym, hxr, hxm) = (&mut ez[o..o + nz], &ca[2][b..b + nz], &cb[2][b..b + nz], &hy[b..b + nz], &hy[b - sx..b - sx + nz], &hx[b..b + nz], &hx[b - sy..b - sy + nz]);
+                let (er, a, c, hyr, hym, hxr, hxm) = (
+                    &mut ez[o..o + nz],
+                    &ca[2][b..b + nz],
+                    &cb[2][b..b + nz],
+                    &hy[b..b + nz],
+                    &hy[b - sx..b - sx + nz],
+                    &hx[b..b + nz],
+                    &hx[b - sy..b - sy + nz],
+                );
                 for k in 0..nz - 1 {
                     let curl = (hyr[k] - hym[k]) * ix - (hxr[k] - hxm[k]) * iy;
                     er[k] = a[k] * er[k] + c[k] * curl;
@@ -1894,7 +2072,18 @@ mod tests {
         t["board"] = serde_json::json!([-2.0, -3.5, 2.0, 3.5]);
         // plane: a fractured outline reaching beyond the rect, its hole outside the rect, and a
         // second ring with a hole of its own (even-odd), so the copper inside the rect is solid
-        let ring = vec![[-2.0, -3.5], [2.4, -3.5], [2.4, 0.0], [2.2, 0.0], [2.2, 0.4], [2.3, 0.4], [2.3, 0.0], [2.4, 0.0], [2.4, 3.5], [-2.0, 3.5]];
+        let ring = vec![
+            [-2.0, -3.5],
+            [2.4, -3.5],
+            [2.4, 0.0],
+            [2.2, 0.0],
+            [2.2, 0.4],
+            [2.3, 0.4],
+            [2.3, 0.0],
+            [2.4, 0.0],
+            [2.4, 3.5],
+            [-2.0, 3.5],
+        ];
         let r2 = vec![[2.05, -1.0], [2.35, -1.0], [2.35, -0.5], [2.05, -0.5]];
         t["sheets"] = serde_json::json!([{"z": 0.0, "rect": [-2.0, -3.5, 2.0, 3.5], "polys": [ring, r2]}, {"z": 0.2, "rect": [-w / 2.0, -3.0, w / 2.0, 3.0]}]);
         t["ports"] = serde_json::json!([{"x": -w / 2.0, "x1": w / 2.0, "y0": -3.0, "y1": -3.0, "z0": 0.0, "z1": 0.2}, {"x": -w / 2.0, "x1": w / 2.0, "y0": 3.0, "y1": 3.0, "z0": 0.0, "z1": 0.2}]);
@@ -1916,7 +2105,13 @@ mod tests {
         let fine = 0.035;
         // three soft lines (refinement of polygon traces in the ThunderScope M.2 cut-out): the
         // first two join a group, its mean lands 0.018 mm from the third
-        let mut fixed: Vec<(f64, f64, bool)> = vec![(-1.0, 0.17, false), (1.0, 0.17, false), (-0.1625, fine, true), (-0.1315, fine, true), (-0.129, fine, true)];
+        let mut fixed: Vec<(f64, f64, bool)> = vec![
+            (-1.0, 0.17, false),
+            (1.0, 0.17, false),
+            (-0.1625, fine, true),
+            (-0.1315, fine, true),
+            (-0.129, fine, true),
+        ];
         let v = grade(&mut fixed, 0.17, 1.4);
         let dmin = v.windows(2).map(|w| w[1] - w[0]).fold(f64::INFINITY, f64::min);
         assert!(dmin >= 0.7 * fine - 1e-12, "smallest cell {dmin}");

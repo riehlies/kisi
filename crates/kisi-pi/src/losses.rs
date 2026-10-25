@@ -49,11 +49,14 @@ fn return_currents(tree: &TreeResult) -> (BTreeMap<String, f64>, Vec<String>) {
 pub fn ground_setups(board: &Board, tree: &TreeResult) -> (Vec<RailSetup>, Vec<String>) {
     let mut warnings = Vec::new();
     let (inj, inputs) = return_currents(tree);
-    let gnets: Vec<u32> = (0..board.nets.len() as u32).filter(|&n| !board.nets[n as usize].is_empty() && is_ground_name(&board.nets[n as usize])).collect();
+    let gnets: Vec<u32> = (0..board.nets.len() as u32)
+        .filter(|&n| !board.nets[n as usize].is_empty() && is_ground_name(&board.nets[n as usize]))
+        .collect();
     if gnets.is_empty() {
         return (vec![], vec!["no ground net (GND, AGND, VSS, …) on the board: ground return not computed".into()]);
     }
-    let fp_of: HashMap<&str, usize> = board.footprints.iter().enumerate().map(|(i, f)| (f.reference.as_str(), i)).collect();
+    let fp_of: HashMap<&str, usize> =
+        board.footprints.iter().enumerate().map(|(i, f)| (f.reference.as_str(), i)).collect();
     // ground pads per component and ground net (ordered: the part a ground net hangs on must not
     // depend on hash order – native and WASM runs chose different parts)
     let mut gpads: BTreeMap<usize, BTreeMap<u32, usize>> = BTreeMap::new();
@@ -73,7 +76,10 @@ pub fn ground_setups(board: &Board, tree: &TreeResult) -> (Vec<RailSetup>, Vec<S
         }
     }
     if source.is_empty() {
-        warnings.push(format!("ground return not computed: the supply input ({}) has no ground pads", if inputs.is_empty() { "PI_REG … input".to_string() } else { inputs.join(", ") }));
+        warnings.push(format!(
+            "ground return not computed: the supply input ({}) has no ground pads",
+            if inputs.is_empty() { "PI_REG … input".to_string() } else { inputs.join(", ") }
+        ));
         return (vec![], warnings);
     }
     let mut order: Vec<u32> = source.keys().copied().collect();
@@ -118,7 +124,11 @@ pub fn ground_setups(board: &Board, tree: &TreeResult) -> (Vec<RailSetup>, Vec<S
         for (n, c) in ns {
             let mut net = n;
             while let Some((sr, Some(parent))) = source.get(&net) {
-                if sr == r { net = *parent; } else { break; }
+                if sr == r {
+                    net = *parent;
+                } else {
+                    break;
+                }
             }
             *per_net.entry(net).or_default().entry(r.clone()).or_default() += i * c as f64 / total as f64;
         }
@@ -134,7 +144,10 @@ pub fn ground_setups(board: &Board, tree: &TreeResult) -> (Vec<RailSetup>, Vec<S
     }
     for g in &gnets {
         if !source.contains_key(g) && per_net.get(g).is_some_and(|m| !m.is_empty()) {
-            warnings.push(format!("{}: not connected to the supply input's ground, its return current is not computed", board.net_name(*g)));
+            warnings.push(format!(
+                "{}: not connected to the supply input's ground, its return current is not computed",
+                board.net_name(*g)
+            ));
         }
     }
     let mut setups = Vec::new();
@@ -148,7 +161,13 @@ pub fn ground_setups(board: &Board, tree: &TreeResult) -> (Vec<RailSetup>, Vec<S
         if loads.is_empty() {
             continue;
         }
-        setups.push(RailSetup { net: board.net_name(*g).to_string(), voltage: 0.0, sources: vec![SourceSpec { refdes: sr.clone(), pads: vec![] }], loads, ground: true });
+        setups.push(RailSetup {
+            net: board.net_name(*g).to_string(),
+            voltage: 0.0,
+            sources: vec![SourceSpec { refdes: sr.clone(), pads: vec![] }],
+            loads,
+            ground: true,
+        });
     }
     (setups, warnings)
 }
@@ -193,7 +212,11 @@ fn fp_center(board: &Board, refdes: &str) -> Option<P> {
     for p in board.pads.iter().filter(|p| p.fp as usize == i) {
         bb.add(p.at);
     }
-    if bb.is_valid() { Some([(bb.min[0] + bb.max[0]) / 2.0, (bb.min[1] + bb.max[1]) / 2.0]) } else { Some(board.footprints[i].at) }
+    if bb.is_valid() {
+        Some([(bb.min[0] + bb.max[0]) / 2.0, (bb.min[1] + bb.max[1]) / 2.0])
+    } else {
+        Some(board.footprints[i].at)
+    }
 }
 
 pub fn loss_summary(board: &Board, tree: Option<&TreeResult>, rails: &[&PiResult]) -> LossSummary {
@@ -203,7 +226,13 @@ pub fn loss_summary(board: &Board, tree: Option<&TreeResult>, rails: &[&PiResult
         for c in &t.components {
             let w = c.consumption + c.loss;
             if w > 0.0 {
-                s.components.push(CompLoss { refdes: c.refdes.clone(), part: c.part.clone(), w, role: c.role.clone(), at: fp_center(board, &c.refdes) });
+                s.components.push(CompLoss {
+                    refdes: c.refdes.clone(),
+                    part: c.part.clone(),
+                    w,
+                    role: c.role.clone(),
+                    at: fp_center(board, &c.refdes),
+                });
             }
         }
         s.components.sort_by(|a, b| b.w.partial_cmp(&a.w).unwrap());
@@ -218,10 +247,17 @@ pub fn loss_summary(board: &Board, tree: Option<&TreeResult>, rails: &[&PiResult
             *per_layer.entry(g.layer).or_default() += w;
         }
         s.rails.push(RailLoss { net: r.net.clone(), ground: r.ground, w: r.power_loss_w, layers });
-        if r.ground { s.ground_w += r.power_loss_w } else { s.copper_w += r.power_loss_w }
+        if r.ground {
+            s.ground_w += r.power_loss_w
+        } else {
+            s.copper_w += r.power_loss_w
+        }
     }
     s.rails.sort_by(|a, b| b.w.partial_cmp(&a.w).unwrap());
-    s.layers = per_layer.into_iter().map(|(l, w)| (l, su.copper.get(l as usize).map(|c| c.name.clone()).unwrap_or_default(), w)).collect();
+    s.layers = per_layer
+        .into_iter()
+        .map(|(l, w)| (l, su.copper.get(l as usize).map(|c| c.name.clone()).unwrap_or_default(), w))
+        .collect();
     s.components_w = s.components.iter().map(|c| c.w).sum();
     s.total_w = s.components_w + s.copper_w + s.ground_w;
     s
@@ -317,10 +353,22 @@ pub fn loss_map(board: &Board, rails: &[&PiResult], comps: &[CompLoss], cell: Op
     for x in cu.iter_mut().chain(cp.iter_mut()) {
         *x /= area as f32;
     }
-    let max_layer = (0..layers.len()).map(|k| cu[k * per..(k + 1) * per].iter().fold(0f32, |a, &b| a.max(b)) as f64).collect();
+    let max_layer =
+        (0..layers.len()).map(|k| cu[k * per..(k + 1) * per].iter().fold(0f32, |a, &b| a.max(b)) as f64).collect();
     let max_components = cp.iter().fold(0f32, |a, &b| a.max(b)) as f64;
     let _ = ncu;
-    Ok(LossMap { x0: bb.min[0], y0: bb.min[1], cell, nx, ny, layers, max_layer, max_components, copper: cu, components: cp })
+    Ok(LossMap {
+        x0: bb.min[0],
+        y0: bb.min[1],
+        cell,
+        nx,
+        ny,
+        layers,
+        max_layer,
+        max_components,
+        copper: cu,
+        components: cp,
+    })
 }
 
 // --- power flow ----------------------------------------------------------------------

@@ -5,16 +5,15 @@
 //! Units inside this module are SI (m, Ω, H, S, F, Hz, s) unless a name says
 //! otherwise; board geometry (mm) is converted on entry.
 
-
 mod channel;
 mod crosstalk;
 mod line;
 mod mixed;
 mod network;
-mod timedomain;
-mod touchstone_in;
 #[cfg(test)]
 mod tests;
+mod timedomain;
+mod touchstone_in;
 
 pub use crate::num::{Cx, C0, MU0};
 pub use channel::*;

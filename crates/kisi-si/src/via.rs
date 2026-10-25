@@ -56,7 +56,11 @@ impl Sec {
         let w = 2.0 * PI * f;
         let (z, y) = (self.z(f, sigma), self.y(f));
         let l = if w > 0.0 { z.im / w } else { self.z * self.er.sqrt() / C0 };
-        let c = if w > 0.0 { y.im / w } else { self.er.sqrt() / (self.z * C0) * crate::rf::eps_c(self.er, self.tand, f).re / self.er };
+        let c = if w > 0.0 {
+            y.im / w
+        } else {
+            self.er.sqrt() / (self.z * C0) * crate::rf::eps_c(self.er, self.tand, f).re / self.er
+        };
         Abcd::line(z.re, l, y.re, c, w, self.len)
     }
 }
@@ -325,14 +329,19 @@ fn hole_profile(board: &Board, at: P, layer: u16, own: u32, partner: Option<u32>
             continue;
         }
         let bb = &zf.bbox;
-        if at[0] < bb.min[0] - RMAX || at[0] > bb.max[0] + RMAX || at[1] < bb.min[1] - RMAX || at[1] > bb.max[1] + RMAX {
+        if at[0] < bb.min[0] - RMAX || at[0] > bb.max[0] + RMAX || at[1] < bb.min[1] - RMAX || at[1] > bb.max[1] + RMAX
+        {
             continue;
         }
         let n = zf.pts.len();
         for i in 0..n {
             let (p, q) = (zf.pts[i], zf.pts[(i + 1) % n]);
             // edges that can come within RMAX of the via
-            if p[0].min(q[0]) > at[0] + RMAX || p[0].max(q[0]) < at[0] - RMAX || p[1].min(q[1]) > at[1] + RMAX || p[1].max(q[1]) < at[1] - RMAX {
+            if p[0].min(q[0]) > at[0] + RMAX
+                || p[0].max(q[0]) < at[0] - RMAX
+                || p[1].min(q[1]) > at[1] + RMAX
+                || p[1].max(q[1]) < at[1] - RMAX
+            {
                 continue;
             }
             edges.push((p, q));
@@ -387,7 +396,16 @@ fn copper_z(su: &crate::board::Stackup) -> Vec<f64> {
 /// a plane of its own (the finite cavities leave such pairs alone for the same reason); a via joined
 /// only to such a pour is not taken.
 #[allow(clippy::too_many_arguments)]
-pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear: &[Option<(f64, u32)>], z: &[f64], groups: bool, sig: [u16; 2]) -> Vec<crate::via_pbm::Post> {
+pub fn return_posts(
+    board: &Board,
+    v: &Via,
+    net: u32,
+    partner: Option<u32>,
+    clear: &[Option<(f64, u32)>],
+    z: &[f64],
+    groups: bool,
+    sig: [u16; 2],
+) -> Vec<crate::via_pbm::Post> {
     let joined = |w: &Via| post_joins(board, w, clear, z, sig);
     let posts = plane_posts(board);
     let mut cand: Vec<(f64, &Via)> = posts
@@ -410,14 +428,33 @@ pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clea
                 // its openings in the planes it passes without joining them (to 0.01 mm, as the
                 // antipads: returns of one type then share the capacitance solve)
                 let o: Vec<(f64, f64)> = (0..clear.len())
-                    .filter(|&k| clear[k].is_some() && w.from as usize <= k && k <= w.to as usize && !j.iter().any(|&zj| (zj - z[k]).abs() < 1e-9))
-                    .filter_map(|k| plane_clearance(board, w.at, k as u16, w.net, None).map(|c| (z[k], (c.0.max(w.drill / 2.0 + 0.02) * 100.0).round() / 100.0)))
+                    .filter(|&k| {
+                        clear[k].is_some()
+                            && w.from as usize <= k
+                            && k <= w.to as usize
+                            && !j.iter().any(|&zj| (zj - z[k]).abs() < 1e-9)
+                    })
+                    .filter_map(|k| {
+                        plane_clearance(board, w.at, k as u16, w.net, None)
+                            .map(|c| (z[k], (c.0.max(w.drill / 2.0 + 0.02) * 100.0).round() / 100.0))
+                    })
                     .collect();
                 (Some(j), o)
             } else {
                 (None, vec![])
             };
-            Some((d, crate::via_pbm::Post { dx: w.at[0] - v.at[0], dy: w.at[1] - v.at[1], r: (w.drill / 2.0).max(0.025), z0: z[w.to as usize], z1: z[w.from as usize], joins, open_r }))
+            Some((
+                d,
+                crate::via_pbm::Post {
+                    dx: w.at[0] - v.at[0],
+                    dy: w.at[1] - v.at[1],
+                    r: (w.drill / 2.0).max(0.025),
+                    z0: z[w.to as usize],
+                    z1: z[w.from as usize],
+                    joins,
+                    open_r,
+                },
+            ))
         })
         .take(ret_cap())
         .collect();
@@ -430,17 +467,35 @@ pub fn return_posts(board: &Board, v: &Via, net: u32, partner: Option<u32>, clea
 /// ThunderScope REFINOUT2 via closes the open side of its return-via cage, without it the ladder
 /// radiated 12 % of the power into the plane pairs at 20 GHz (BOARD_VIAS.md section 6).
 pub fn plane_posts(board: &Board) -> Vec<Via> {
-    let mut out: Vec<Via> = board.vias.iter().filter(|w| w.net != 0 && board.plane_net.get(w.net as usize).copied().unwrap_or(false)).cloned().collect();
+    let mut out: Vec<Via> = board
+        .vias
+        .iter()
+        .filter(|w| w.net != 0 && board.plane_net.get(w.net as usize).copied().unwrap_or(false))
+        .cloned()
+        .collect();
     if !std::env::var("KISI_RET_PADS").is_ok_and(|x| x == "0") {
         for p in &board.pads {
-            if !p.plated || p.drill <= 0.0 || p.net == 0 || !board.plane_net.get(p.net as usize).copied().unwrap_or(false) {
+            if !p.plated
+                || p.drill <= 0.0
+                || p.net == 0
+                || !board.plane_net.get(p.net as usize).copied().unwrap_or(false)
+            {
                 continue;
             }
             let (Some(&from), Some(&to)) = (p.layers.iter().min(), p.layers.iter().max()) else { continue };
             if from == to {
                 continue;
             }
-            out.push(Via { at: p.at, size: p.size[0].min(p.size[1]).max(p.drill), drill: p.drill, from, to, net: p.net, backdrill: None, remove_unused: None });
+            out.push(Via {
+                at: p.at,
+                size: p.size[0].min(p.size[1]).max(p.drill),
+                drill: p.drill,
+                from,
+                to,
+                net: p.net,
+                backdrill: None,
+                remove_unused: None,
+            });
         }
     }
     out
@@ -462,7 +517,11 @@ fn post_joins(board: &Board, w: &Via, clear: &[Option<(f64, u32)>], z: &[f64], s
     (0..clear.len())
         .filter(|&k| clear[k].is_some() && w.from as usize <= k && k <= w.to as usize)
         .filter(|&k| !w.backdrill.is_some_and(|(b0, b1)| b0 as usize <= k && k <= b1 as usize))
-        .filter(|&k| sig.contains(&(k as u16)) || (clear[k].is_some_and(|c| c.1 == w.net) && joined_to_fill(board, w.at, w.size / 2.0 + 0.05, k as u16, w.net)))
+        .filter(|&k| {
+            sig.contains(&(k as u16))
+                || (clear[k].is_some_and(|c| c.1 == w.net)
+                    && joined_to_fill(board, w.at, w.size / 2.0 + 0.05, k as u16, w.net))
+        })
         .map(|k| z[k])
         .collect()
 }
@@ -473,7 +532,16 @@ fn post_joins(board: &Board, w: &Via, clear: &[Option<(f64, u32)>], z: &[f64], s
 /// path crosses no pair of two nets: the return vias' joins are only computed for vias that do,
 /// nearest first, until every pair is bridged.
 #[allow(clippy::too_many_arguments)]
-pub fn open_pairs(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear: &[Option<(f64, u32)>], lo: u16, hi: u16, sig: [u16; 2]) -> (usize, Vec<OpenPair>) {
+pub fn open_pairs(
+    board: &Board,
+    v: &Via,
+    net: u32,
+    partner: Option<u32>,
+    clear: &[Option<(f64, u32)>],
+    lo: u16,
+    hi: u16,
+    sig: [u16; 2],
+) -> (usize, Vec<OpenPair>) {
     let plane_k: Vec<usize> = (0..clear.len()).filter(|&k| clear[k].is_some()).collect();
     let pairs: Vec<(usize, usize)> = plane_k
         .windows(2)
@@ -507,8 +575,18 @@ pub fn open_pairs(board: &Board, v: &Via, net: u32, partner: Option<u32>, clear:
             continue;
         }
         taken += 1;
-        let p = crate::via_pbm::Post { dx: 0.0, dy: 0.0, r: 0.1, z0: z[w.to as usize], z1: z[w.from as usize], joins: Some(j), open_r: vec![] };
-        open.retain(|&(ka, kb)| !matches!(p.role(z[ka], z[kb]), crate::via_pbm::Role::Short | crate::via_pbm::Role::Float(..)));
+        let p = crate::via_pbm::Post {
+            dx: 0.0,
+            dy: 0.0,
+            r: 0.1,
+            z0: z[w.to as usize],
+            z1: z[w.from as usize],
+            joins: Some(j),
+            open_r: vec![],
+        };
+        open.retain(|&(ka, kb)| {
+            !matches!(p.role(z[ka], z[kb]), crate::via_pbm::Role::Short | crate::via_pbm::Role::Float(..))
+        });
     }
     if open.is_empty() {
         return (n_pairs, vec![]);
@@ -538,7 +616,13 @@ pub fn open_pair_warning(board: &Board, info: &ViaInfo, modelled: bool) -> Optio
         .iter()
         .map(|o| {
             let caps = if o.caps > 0 { format!(", {} capacitor(s) within 3 mm", o.caps) } else { String::new() };
-            format!("{}/{} ({}–{}{caps})", board.net_name(o.nets[0]), board.net_name(o.nets[1]), ln(o.layers[0]), ln(o.layers[1]))
+            format!(
+                "{}/{} ({}–{}{caps})",
+                board.net_name(o.nets[0]),
+                board.net_name(o.nets[1]),
+                ln(o.layers[0]),
+                ln(o.layers[1])
+            )
         })
         .collect();
     let what = if modelled {
@@ -546,7 +630,11 @@ pub fn open_pair_warning(board: &Board, info: &ViaInfo, modelled: bool) -> Optio
     } else {
         "the via model counts the GND vias as its return and may show the transition as nearly ideal while the board resonates (estimate); add a stitching via or a decoupling capacitor next to the via, or check with --via-cavity --via-returns"
     };
-    let pair = if info.pitch_mm.is_some() { " (a pair: its partner via carries the differential return, so mainly the common mode is affected)" } else { "" };
+    let pair = if info.pitch_mm.is_some() {
+        " (a pair: its partner via carries the differential return, so mainly the common mode is affected)"
+    } else {
+        ""
+    };
     Some(format!(
         "via at ({:.2}, {:.2}) mm {} → {} crosses the plane pair {} that no via within 3 mm joins or bridges: its return current crosses the plane cavity{pair} – {what}",
         info.at[0],
@@ -572,21 +660,55 @@ pub fn open_pairs_line(board: &Board, vias: &[ViaInfo], modelled: bool) -> Optio
             continue;
         }
         seen.push(v.at);
-        let pairs: Vec<String> = v.open_pairs.iter().map(|o| format!("{}/{} {}–{}", board.net_name(o.nets[0]), board.net_name(o.nets[1]), ln(o.layers[0]), ln(o.layers[1]))).collect();
-        items.push(format!("({:.2}, {:.2}) {}→{} across {}", v.at[0], v.at[1], ln(v.layer_in), ln(v.layer_out), pairs.join(", ")));
+        let pairs: Vec<String> = v
+            .open_pairs
+            .iter()
+            .map(|o| {
+                format!(
+                    "{}/{} {}–{}",
+                    board.net_name(o.nets[0]),
+                    board.net_name(o.nets[1]),
+                    ln(o.layers[0]),
+                    ln(o.layers[1])
+                )
+            })
+            .collect();
+        items.push(format!(
+            "({:.2}, {:.2}) {}→{} across {}",
+            v.at[0],
+            v.at[1],
+            ln(v.layer_in),
+            ln(v.layer_out),
+            pairs.join(", ")
+        ));
     }
-    let tail = if modelled { "modelled with return groups and finite cavities (experimental)" } else { "the via model may show these transitions as nearly ideal while the board resonates (estimate); add a stitching via or a decoupling capacitor next to the via, or check with --via-cavity --via-returns" };
-    Some(format!("{} via(s) cross a GND/supply plane pair that no via within 3 mm joins or bridges: {} – {tail}", items.len(), items.join("; ")))
+    let tail = if modelled {
+        "modelled with return groups and finite cavities (experimental)"
+    } else {
+        "the via model may show these transitions as nearly ideal while the board resonates (estimate); add a stitching via or a decoupling capacitor next to the via, or check with --via-cavity --via-returns"
+    };
+    Some(format!(
+        "{} via(s) cross a GND/supply plane pair that no via within 3 mm joins or bridges: {} – {tail}",
+        items.len(),
+        items.join("; ")
+    ))
 }
 
 /// The return group of every plane pair (neighbouring planes) of a via with return groups: layers,
 /// plane nets, the return posts that short it, those that float across it, those that join planes
 /// on one side only (capacitive), and the capacitors (`via_pbm::CapPost`) between its planes within
 /// 3 mm (for surveys; the ladder builds the same).
-pub fn return_groups(board: &Board, v: &Via, net: u32, partner: Option<u32>, sig: [u16; 2]) -> Vec<(u16, u16, u32, u32, usize, usize, usize, usize)> {
+pub fn return_groups(
+    board: &Board,
+    v: &Via,
+    net: u32,
+    partner: Option<u32>,
+    sig: [u16; 2],
+) -> Vec<(u16, u16, u32, u32, usize, usize, usize, usize)> {
     let su = board.stackup();
     let z = copper_z(su);
-    let clear: Vec<Option<(f64, u32)>> = (0..su.n() as u16).map(|k| plane_clearance(board, v.at, k, net, partner)).collect();
+    let clear: Vec<Option<(f64, u32)>> =
+        (0..su.n() as u16).map(|k| plane_clearance(board, v.at, k, net, partner)).collect();
     let plane_k: Vec<usize> = (0..su.n()).filter(|&k| clear[k].is_some()).collect();
     let rets = return_posts(board, v, net, partner, &clear, &z, true, sig);
     let caps = cap_posts(board, v.at, &plane_k, &clear, &z);
@@ -606,7 +728,14 @@ pub fn return_groups(board: &Board, v: &Via, net: u32, partner: Option<u32>, sig
 
 /// Ladder model of the via, None without a plane or without feed information.
 #[allow(clippy::too_many_arguments)]
-fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u32)>], partner_via: Option<&Via>) -> Option<crate::via_pbm::PbmVia> {
+fn ladder(
+    ctx: &ViaCtx,
+    v: &Via,
+    l_in: u16,
+    l_out: u16,
+    clear: &[Option<(f64, u32)>],
+    partner_via: Option<&Via>,
+) -> Option<crate::via_pbm::PbmVia> {
     use crate::via_pbm::{Feed, Grid, Mode, PbmVia, Plane, Post, Slab, ViaGeom};
     let feeds = ctx.feeds?;
     // validation switch: the section-stack model only (compare_kisi.py, old against new)
@@ -616,7 +745,9 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
     let board = ctx.board;
     let su = board.stackup();
     let z = copper_z(su);
-    let slabs: Vec<Slab> = (0..su.n() - 1).map(|k| Slab { z0: z[k + 1], z1: z[k], er: su.dielectrics[k].epsilon_r, tand: su.dielectrics[k].loss_tangent }).collect();
+    let slabs: Vec<Slab> = (0..su.n() - 1)
+        .map(|k| Slab { z0: z[k + 1], z1: z[k], er: su.dielectrics[k].epsilon_r, tand: su.dielectrics[k].loss_tangent })
+        .collect();
     // antipads as the round opening of the same in-plane capacitance (offset, oval and shared
     // openings), to 0.01 mm: vias of one type then share the Laplace solve
     let a = (v.drill / 2.0).max(0.025);
@@ -676,8 +807,17 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
         // the nearest plane layer
         let dz = |k: &u16| (z[*k as usize] - z[l as usize]).abs();
         let nearest = |it: &mut dyn Iterator<Item = u16>| it.min_by(|a, b| dz(a).partial_cmp(&dz(b)).unwrap());
-        let rl = nearest(&mut refs.iter().copied()).or_else(|| nearest(&mut (0..su.n() as u16).filter(|&k| clear[k as usize].is_some() && k != l)))?;
-        Some(Feed { z: z[l as usize], z_ref: z[rl as usize], w: fs.w, zc: fs.zc, eeff: fs.eeff, dropped: fs.dropped, antipad_line: true })
+        let rl = nearest(&mut refs.iter().copied())
+            .or_else(|| nearest(&mut (0..su.n() as u16).filter(|&k| clear[k as usize].is_some() && k != l)))?;
+        Some(Feed {
+            z: z[l as usize],
+            z_ref: z[rl as usize],
+            w: fs.w,
+            zc: fs.zc,
+            eeff: fs.eeff,
+            dropped: fs.dropped,
+            antipad_line: true,
+        })
     };
     let geom = ViaGeom {
         slabs,
@@ -688,7 +828,15 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
         pads,
         pad_r: v.size / 2.0,
         returns: rets,
-        partner: partner_via.map(|p| Post { dx: p.at[0] - v.at[0], dy: p.at[1] - v.at[1], r: (p.drill / 2.0).max(0.025), z0: z[p.to as usize], z1: z[p.from as usize], joins: None, open_r: vec![] }),
+        partner: partner_via.map(|p| Post {
+            dx: p.at[0] - v.at[0],
+            dy: p.at[1] - v.at[1],
+            r: (p.drill / 2.0).max(0.025),
+            z0: z[p.to as usize],
+            z1: z[p.from as usize],
+            joins: None,
+            open_r: vec![],
+        }),
         feeds: [feed(0, l_in, &ctx.refs_in)?, feed(1, l_out, &ctx.refs_out)?],
         f_loss: None,
         junction: true,
@@ -727,7 +875,9 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
             let n_float = roles.iter().filter(|r| matches!(r, crate::via_pbm::Role::Float(..))).count();
             let n_capr = roles.iter().filter(|r| **r == crate::via_pbm::Role::Cap).count();
             let n_cap = geom.caps.iter().filter(|c| (c.z_top - za).abs() < 1e-6 && (c.z_bot - zb).abs() < 1e-6).count();
-            let net = |k: usize| clear[k].map_or(String::new(), |c| board.nets.get(c.1 as usize).cloned().unwrap_or_default());
+            let net = |k: usize| {
+                clear[k].map_or(String::new(), |c| board.nets.get(c.1 as usize).cloned().unwrap_or_default())
+            };
             eprintln!("# return group {}-{} {}/{}: {n_short} shorts, {n_float} floating, {n_capr} capacitive, {n_cap} capacitors", w[0], w[1], net(w[0]), net(w[1]));
         }
     }
@@ -737,7 +887,8 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
     if ctx.cavity || std::env::var("KISI_VIA_CAVITY").is_ok_and(|x| x != "0") {
         #[cfg(not(target_arch = "wasm32"))]
         let tc = std::time::Instant::now();
-        let plane_layers: Vec<(u16, f64)> = (0..su.n()).filter(|&k| clear[k].is_some()).map(|k| (k as u16, z[k])).collect();
+        let plane_layers: Vec<(u16, f64)> =
+            (0..su.n()).filter(|&k| clear[k].is_some()).map(|k| (k as u16, z[k])).collect();
         let mut ctx2 = ViaCtx { refs_in: ctx.refs_in.clone(), refs_out: ctx.refs_out.clone(), ..*ctx };
         ctx2.sigma = geom.sigma;
         #[cfg(not(target_arch = "wasm32"))]
@@ -763,18 +914,33 @@ fn ladder(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16, clear: &[Option<(f64, u3
             let f = k as f64 * 25e6;
             let mm = m.abcd_centre(f);
             let (s11, s21, s22) = mm.s_params(50.0);
-            t += &format!("{f:.6e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e}\n", s11.re, s11.im, s21.re, s21.im, s21.re, s21.im, s22.re, s22.im);
+            t += &format!(
+                "{f:.6e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e}\n",
+                s11.re, s11.im, s21.re, s21.im, s21.re, s21.im, s22.re, s22.im
+            );
         }
         let tag = if m.has_cavity() { "_cav" } else { "" };
         let _ = std::fs::write(format!("{dir}/via_{:.4}_{:.4}_{}{}{tag}.s2p", v.at[0], v.at[1], l_in, l_out), t);
     }
     #[cfg(not(target_arch = "wasm32"))]
     if debug {
-        let s21: Vec<String> = [2e9, 4e9, 8e9, 12e9, 16e9].iter().map(|&f| format!("{:.2}", 20.0 * m.abcd(f).s_params(50.0).1.abs().log10())).collect();
-        eprintln!("# ladder build {:.2} ms, {} Laplace unknowns, nodes {:?}, C fF {:?}, |S21| dB at 2/4/8/12/16 GHz {}", t0.elapsed().as_secs_f64() * 1e3, m.laplace_n,
-            m.nodes, m.cap.iter().map(|c| (c * 1e16).round() / 10.0).collect::<Vec<_>>(), s21.join(" "));
+        let s21: Vec<String> = [2e9, 4e9, 8e9, 12e9, 16e9]
+            .iter()
+            .map(|&f| format!("{:.2}", 20.0 * m.abcd(f).s_params(50.0).1.abs().log10()))
+            .collect();
+        eprintln!(
+            "# ladder build {:.2} ms, {} Laplace unknowns, nodes {:?}, C fF {:?}, |S21| dB at 2/4/8/12/16 GHz {}",
+            t0.elapsed().as_secs_f64() * 1e3,
+            m.laplace_n,
+            m.nodes,
+            m.cap.iter().map(|c| (c * 1e16).round() / 10.0).collect::<Vec<_>>(),
+            s21.join(" ")
+        );
         if m.has_floats() {
-            eprintln!("# return nodes (plane z mm, C fF) {:?}", m.return_nodes().iter().map(|&(z, c)| (z, (c * 1e16).round() / 10.0)).collect::<Vec<_>>());
+            eprintln!(
+                "# return nodes (plane z mm, C fF) {:?}",
+                m.return_nodes().iter().map(|&(z, c)| (z, (c * 1e16).round() / 10.0)).collect::<Vec<_>>()
+            );
         }
     }
     Some(m)
@@ -789,7 +955,13 @@ const CAP_REACH: f64 = 3.0;
 /// mounting from data/components.json ("decoupling", by package; estimates), the capacitance from
 /// the footprint value, else 100 nF (an estimate), as a post of `CAVITY_CAP_POST` between the
 /// pads. A capacitor joins every neighbouring pair of these two nets (as in `via_cavity`).
-fn cap_posts(board: &Board, at: P, plane_k: &[usize], clear: &[Option<(f64, u32)>], z: &[f64]) -> Vec<crate::via_pbm::CapPost> {
+fn cap_posts(
+    board: &Board,
+    at: P,
+    plane_k: &[usize],
+    clear: &[Option<(f64, u32)>],
+    z: &[f64],
+) -> Vec<crate::via_pbm::CapPost> {
     use crate::via_cavity::{parse_cap_value, DecapData};
     let pairs: Vec<(usize, usize, u32, u32)> = plane_k
         .windows(2)
@@ -822,7 +994,16 @@ fn cap_posts(board: &Board, at: P, plane_k: &[usize], clear: &[Option<(f64, u32)
                 let cv = parse_cap_value(&board.footprints[fp as usize].value).unwrap_or(CAVITY_CAP_C);
                 let pkg = crate::topology::package_of(board, fp as usize, ids[0], ids[1]);
                 let (r_ohm, l) = DecapData::builtin().rl(pkg, cv);
-                out.push(crate::via_pbm::CapPost { dx: c[0] - at[0], dy: c[1] - at[1], r: CAVITY_CAP_POST, z_top: z[ka], z_bot: z[kb], r_ohm, l, c: Some(cv) });
+                out.push(crate::via_pbm::CapPost {
+                    dx: c[0] - at[0],
+                    dy: c[1] - at[1],
+                    r: CAVITY_CAP_POST,
+                    z_top: z[ka],
+                    z_bot: z[kb],
+                    r_ohm,
+                    l,
+                    c: Some(cv),
+                });
             }
         }
     }
@@ -862,7 +1043,14 @@ const CAVITY_CAP_POST: f64 = 0.15;
 /// (shorted in every pair they span, as on infinite plates; with return groups the returns that
 /// short the pair or close it through their capacitance, and a pair a floating return crosses –
 /// a supply plane between two planes the return vias join – stays an infinite radial line).
-fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(u16, f64)], m: &crate::via_pbm::PbmVia, signal: [u16; 2]) -> Vec<crate::via_pbm::CavityLink> {
+fn cavity_links(
+    ctx: &ViaCtx,
+    at: P,
+    geom: &crate::via_pbm::ViaGeom,
+    planes: &[(u16, f64)],
+    m: &crate::via_pbm::PbmVia,
+    signal: [u16; 2],
+) -> Vec<crate::via_pbm::CavityLink> {
     use crate::via_cavity::{pair_cavity, pair_window, DecapData, EnvPort, GridEnv, Load, PairEnv, PairMedium};
     let leak = m.pair_leakage(10e9);
     let mut out = vec![];
@@ -873,7 +1061,9 @@ fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(
         if signal.contains(&ka) || signal.contains(&kb) {
             continue;
         }
-        let Some(&(_, _, ratio)) = leak.iter().find(|l| (l.0 - za).abs() < 1e-6 && (l.1 - zb).abs() < 1e-6) else { continue };
+        let Some(&(_, _, ratio)) = leak.iter().find(|l| (l.0 - za).abs() < 1e-6 && (l.1 - zb).abs() < 1e-6) else {
+            continue;
+        };
         if ratio < CAVITY_LEAKAGE {
             continue;
         }
@@ -888,7 +1078,10 @@ fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(
         let nb = plane_clearance(ctx.board, at, kb, ctx.net, ctx.partner).map(|c| c.1);
         // the whole region; a pair of one net stitched densely (posts closer than
         // `CAVITY_DENSE` on average) only matters near the via: a window
-        let Some(mut pc) = pair_cavity(ctx.board, at, ka, kb, ctx.net, ctx.partner, CAVITY_REGION.0, CAVITY_REGION.1) else { continue };
+        let Some(mut pc) = pair_cavity(ctx.board, at, ka, kb, ctx.net, ctx.partner, CAVITY_REGION.0, CAVITY_REGION.1)
+        else {
+            continue;
+        };
         // cells no coarser than λ/6 at 25 GHz (grid dispersion), up to `CAVITY_REGION_MAX` cells
         let h_lambda = crate::num::C0 / (25e9 * pc.er.sqrt()) / 6.0 * 1e3;
         if pc.mask.h > h_lambda {
@@ -943,7 +1136,15 @@ fn cavity_links(ctx: &ViaCtx, at: P, geom: &crate::via_pbm::ViaGeom, planes: &[(
             edges: pc.mask.edge_runs().iter().map(|l| l * 1e-3).collect(),
         };
         // the same via and pair in another channel build (pair, partner, eye) reuses the environment
-        let key = format!("{:.4},{:.4},{ka},{kb},{:?},{:?},{:?},{:?}", at[0], at[1], na, nb, ports.iter().map(|p| ((p.x * 1e4).round() as i64, (p.y * 1e4).round() as i64)).collect::<Vec<_>>(), ctx.sigma);
+        let key = format!(
+            "{:.4},{:.4},{ka},{kb},{:?},{:?},{:?},{:?}",
+            at[0],
+            at[1],
+            na,
+            nb,
+            ports.iter().map(|p| ((p.x * 1e4).round() as i64, (p.y * 1e4).round() as i64)).collect::<Vec<_>>(),
+            ctx.sigma
+        );
         if let Some(env) = ENV_CACHE.with(|c| c.borrow().get(&key).cloned()) {
             out.push(crate::via_pbm::CavityLink { z_top: za, z_bot: zb, env, origin: (at[0] * 1e-3, at[1] * 1e-3) });
             continue;
@@ -990,7 +1191,8 @@ pub fn build(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16) -> (ViaModel, ViaInfo
     let (lo, hi) = (l_in.min(l_out).max(v.from), l_in.max(l_out).min(v.to));
     // per-layer antipad radius (mm) and plane net
     let nl = su.n();
-    let clear: Vec<Option<(f64, u32)>> = (0..nl as u16).map(|k| plane_clearance(board, v.at, k, ctx.net, ctx.partner)).collect();
+    let clear: Vec<Option<(f64, u32)>> =
+        (0..nl as u16).map(|k| plane_clearance(board, v.at, k, ctx.net, ctx.partner)).collect();
     // partner via
     let partner_via = ctx.partner.and_then(|pn| {
         board
@@ -1023,7 +1225,13 @@ pub fn build(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16) -> (ViaModel, ViaInfo
         let rs: Vec<f64> = [clear[k], clear[k + 1]].iter().flatten().map(|c| c.0).collect();
         let b = if rs.is_empty() { r_fallback } else { rs.iter().sum::<f64>() / rs.len() as f64 };
         let b = b.max(v.size / 2.0 + 0.02);
-        Sec { z: z_section(a_mm, b, d.epsilon_r, pitch), er: d.epsilon_r, tand: d.loss_tangent, len: len * 1e-3, a: a_mm * 1e-3 }
+        Sec {
+            z: z_section(a_mm, b, d.epsilon_r, pitch),
+            er: d.epsilon_r,
+            tand: d.loss_tangent,
+            len: len * 1e-3,
+            a: a_mm * 1e-3,
+        }
     };
     let mut barrel: Vec<Sec> = (lo as usize..hi as usize).map(sec).collect();
     if l_in > l_out {
@@ -1116,7 +1324,11 @@ pub fn build(ctx: &ViaCtx, v: &Via, l_in: u16, l_out: u16) -> (ViaModel, ViaInfo
     let longest = if sl_in >= sl_out { &stub_in } else { &stub_out };
     let stub_f = {
         let t: f64 = longest.iter().map(|x| x.len * x.er.sqrt()).sum();
-        if t > 1e-6 { Some(C0 / (4.0 * t) / 1e9) } else { None }
+        if t > 1e-6 {
+            Some(C0 / (4.0 * t) / 1e9)
+        } else {
+            None
+        }
     };
     let z_mean = if barrel.is_empty() {
         0.0
@@ -1178,10 +1390,12 @@ mod tests {
         let ring = |h: &(f64, f64, f64), top: bool| -> Vec<(f64, f64)> {
             let n = 24;
             let k0 = if top { n / 4 } else { 3 * n / 4 };
-            (0..=n).map(|k| {
-                let a = 2.0 * PI * ((k0 + n - k) % n) as f64 / n as f64;
-                (h.0 + h.2 * a.cos(), h.1 + h.2 * a.sin())
-            }).collect()
+            (0..=n)
+                .map(|k| {
+                    let a = 2.0 * PI * ((k0 + n - k) % n) as f64 / n as f64;
+                    (h.0 + h.2 * a.cos(), h.1 + h.2 * a.sin())
+                })
+                .collect()
         };
         let mut low: Vec<&(f64, f64, f64)> = holes.iter().filter(|h| h.1 <= 0.0).collect();
         let mut high: Vec<&(f64, f64, f64)> = holes.iter().filter(|h| h.1 > 0.0).collect();
@@ -1214,12 +1428,22 @@ mod tests {
 
     /// `rg_board`'s file with `extra` items
     fn rg_pcb(pwr: bool, cap: bool, extra: &str) -> String {
-        let g: Vec<(f64, f64)> = (0..4).map(|k| (std::f64::consts::FRAC_1_SQRT_2 * if k % 2 == 0 { 1.0 } else { -1.0 }, std::f64::consts::FRAC_1_SQRT_2 * if k < 2 { 1.0 } else { -1.0 })).collect();
+        let g: Vec<(f64, f64)> = (0..4)
+            .map(|k| {
+                (
+                    std::f64::consts::FRAC_1_SQRT_2 * if k % 2 == 0 { 1.0 } else { -1.0 },
+                    std::f64::consts::FRAC_1_SQRT_2 * if k < 2 { 1.0 } else { -1.0 },
+                )
+            })
+            .collect();
         let mut t = String::from("(kicad_pcb (version 20240108) (generator \"test\")\n  (layers (0 \"F.Cu\" signal) (1 \"In1.Cu\" signal) (2 \"In2.Cu\" signal) (31 \"B.Cu\" signal))\n  (setup (stackup (layer \"F.Cu\" (type \"copper\") (thickness 0.035)) (layer \"d1\" (type \"core\") (thickness 0.2) (epsilon_r 4.3) (loss_tangent 0.02)) (layer \"In1.Cu\" (type \"copper\") (thickness 0.035)) (layer \"d2\" (type \"core\") (thickness 1.2) (epsilon_r 4.5) (loss_tangent 0.02)) (layer \"In2.Cu\" (type \"copper\") (thickness 0.035)) (layer \"d3\" (type \"core\") (thickness 0.2) (epsilon_r 4.3) (loss_tangent 0.02)) (layer \"B.Cu\" (type \"copper\") (thickness 0.035))))\n  (net 0 \"\") (net 1 \"SIG\") (net 2 \"GND\") (net 3 \"PWR\")\n");
         t += "  (segment (start -5 0) (end 0 0) (width 0.35) (layer \"F.Cu\") (net 1))\n  (segment (start 0 0) (end 5 0) (width 0.35) (layer \"B.Cu\") (net 1))\n";
         t += "  (via (at 0 0) (size 0.6) (drill 0.3) (layers \"F.Cu\" \"B.Cu\") (net 1))\n";
         for p in &g {
-            t += &format!("  (via (at {:.4} {:.4}) (size 0.6) (drill 0.3) (layers \"F.Cu\" \"B.Cu\") (net 2))\n", p.0, -p.1);
+            t += &format!(
+                "  (via (at {:.4} {:.4}) (size 0.6) (drill 0.3) (layers \"F.Cu\" \"B.Cu\") (net 2))\n",
+                p.0, -p.1
+            );
         }
         t += &fill(2, "GND", "In1.Cu", &[(0.0, 0.0, 0.4)]);
         let mut holes = vec![(0.0, 0.0, 0.4)];
@@ -1241,7 +1465,18 @@ mod tests {
             let b = rg_board(pwr, cap);
             let sig = b.nets.iter().position(|n| n == "SIG").unwrap() as u32;
             let v = b.vias.iter().find(|v| v.net == sig).unwrap();
-            let ctx = ViaCtx { board: &b, net: sig, partner: None, refs_in: vec![1], refs_out: vec![2], backdrill: None, feeds: None, sigma: None, cavity: false, returns: false };
+            let ctx = ViaCtx {
+                board: &b,
+                net: sig,
+                partner: None,
+                refs_in: vec![1],
+                refs_out: vec![2],
+                backdrill: None,
+                feeds: None,
+                sigma: None,
+                cavity: false,
+                returns: false,
+            };
             let (_, info) = build(&ctx, v, 0, 3);
             assert_eq!(!info.open_pairs.is_empty(), open, "pwr {pwr} cap {cap}: {:?}", info.open_pairs);
             assert_eq!(info.two_net_pairs, usize::from(pwr));
@@ -1251,7 +1486,9 @@ mod tests {
                 let o = &info.open_pairs[0];
                 assert_eq!((o.layers, o.caps), ([1, 2], usize::from(cap)));
                 assert!(w.unwrap().contains("GND/PWR (In1.Cu–In2.Cu"));
-                assert!(open_pairs_line(&b, std::slice::from_ref(&info), false).unwrap().starts_with("1 via(s) cross a GND/supply plane pair"));
+                assert!(open_pairs_line(&b, std::slice::from_ref(&info), false)
+                    .unwrap()
+                    .starts_with("1 via(s) cross a GND/supply plane pair"));
             }
         }
     }
@@ -1275,7 +1512,10 @@ mod tests {
         let posts = plane_posts(&b);
         let pads: Vec<&Via> = posts.iter().filter(|w| (w.at[0] - 2.0).abs() < 1e-9 && w.at[1].abs() < 1e-9).collect();
         assert_eq!(pads.len(), 1, "{posts:?}");
-        assert_eq!((pads[0].drill, pads[0].size, pads[0].net, pads[0].from, pads[0].to), (1.0, 1.6, gnd, 0, b.stackup().copper.len() as u16 - 1));
+        assert_eq!(
+            (pads[0].drill, pads[0].size, pads[0].net, pads[0].from, pads[0].to),
+            (1.0, 1.6, gnd, 0, b.stackup().copper.len() as u16 - 1)
+        );
         assert_eq!(posts.len(), 5, "4 GND vias and the plated GND pin: {posts:?}");
         let sig = b.nets.iter().position(|n| n == "SIG").unwrap() as u32;
         let v = b.vias.iter().find(|v| v.net == sig).unwrap();

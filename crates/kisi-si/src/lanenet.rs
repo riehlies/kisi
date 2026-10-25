@@ -76,13 +76,24 @@ impl Block {
         match self {
             Block::Two { m, dc } => Block::Two { m: m.iter().map(reversed).collect(), dc: reversed(dc) },
             Block::Four { t, dc } => Block::Four { t: t.iter().map(flip4).collect(), dc: flip4(dc) },
-            Block::S { s, dc, z0, near, far, xt } => Block::S { s: s.clone(), dc: dc.clone(), z0: z0.clone(), near: far.clone(), far: near.clone(), xt: xt.clone() },
+            Block::S { s, dc, z0, near, far, xt } => Block::S {
+                s: s.clone(),
+                dc: dc.clone(),
+                z0: z0.clone(),
+                near: far.clone(),
+                far: near.clone(),
+                xt: xt.clone(),
+            },
             Block::Line { pieces, taps } => {
                 // the pieces in reverse order, each seen from its other end; a tap behind piece j
                 // now hangs behind piece n − 2 − j
                 let n = pieces.len();
                 Block::Line {
-                    pieces: pieces.iter().rev().map(|(m, dc)| (m.iter().map(reversed).collect(), reversed(dc))).collect(),
+                    pieces: pieces
+                        .iter()
+                        .rev()
+                        .map(|(m, dc)| (m.iter().map(reversed).collect(), reversed(dc)))
+                        .collect(),
                     taps: taps.iter().map(|t| Tap { after: n - 2 - t.after, ..t.clone() }).collect(),
                 }
             }
@@ -133,7 +144,13 @@ fn flip4(t: &M4) -> M4 {
 /// termination (a lossless link without parasitics gives 1 at DC) or, for a high-impedance
 /// receiver, as the open-circuit swing. `lines` = 2: a pair driven differentially, the result
 /// is the differential voltage. Returns H on `freq` and H at 0 Hz.
-pub fn ends_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &EndModel, rx: &EndModel) -> Result<(Vec<Cx>, f64), String> {
+pub fn ends_transfer(
+    freq: &[f64],
+    blocks: &[Block],
+    lines: usize,
+    tx: &EndModel,
+    rx: &EndModel,
+) -> Result<(Vec<Cx>, f64), String> {
     let mut all = receivers_transfer(freq, blocks, lines, tx, rx)?;
     let main = all.remove(0);
     Ok((main.h, main.dc))
@@ -141,7 +158,13 @@ pub fn ends_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &EndModel
 
 /// As `ends_transfer`, for every receiver: the lane's own receiver first, then one per tap of a
 /// `Block::Line` (each with the same receiver model, all loading the line at once).
-pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &EndModel, rx: &EndModel) -> Result<Vec<RxTransfer>, String> {
+pub fn receivers_transfer(
+    freq: &[f64],
+    blocks: &[Block],
+    lines: usize,
+    tx: &EndModel,
+    rx: &EndModel,
+) -> Result<Vec<RxTransfer>, String> {
     if blocks.iter().any(|b| b.lines() != lines) {
         return Err("blocks with different numbers of lines".into());
     }
@@ -152,7 +175,8 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
     // aggressors: (label, drive nodes per line) and the nodes of their other ends
     let mut aggr: Vec<(String, Vec<usize>)> = Vec::new();
     let mut aggr_loads: Vec<usize> = Vec::new();
-    let bnd: Vec<Vec<usize>> = (0..=blocks.len()).map(|i| (0..lines).map(|l| net.node(format!("boundary {i}, line {l}"))).collect()).collect();
+    let bnd: Vec<Vec<usize>> =
+        (0..=blocks.len()).map(|i| (0..lines).map(|l| net.node(format!("boundary {i}, line {l}"))).collect()).collect();
     for (i, b) in blocks.iter().enumerate() {
         match b {
             Block::Two { m, dc } => {
@@ -172,7 +196,9 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
                         bnd[i][l]
                     } else if let Some(l) = far.iter().position(|&q| q == p) {
                         bnd[i + 1][l]
-                    } else if let Some((a, l)) = xt.iter().enumerate().find_map(|(a, x)| x.drive.iter().position(|&q| q == p).map(|l| (a, l))) {
+                    } else if let Some((a, l)) =
+                        xt.iter().enumerate().find_map(|(a, x)| x.drive.iter().position(|&q| q == p).map(|l| (a, l)))
+                    {
                         let n = net.node(format!("block {i}, port {} (aggressor {})", p + 1, xt[a].label));
                         xt_nodes[a][l] = n;
                         n
@@ -237,7 +263,15 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
             if tx.c_pf > 0.0 {
                 net.adm(n, GND, ws.iter().map(|w| Cx::new(0.0, w * tx.c_pf * 1e-12)).collect());
             }
-            let e = if drive.len() == 2 { if l == 0 { 0.5 } else { -0.5 } } else { 1.0 };
+            let e = if drive.len() == 2 {
+                if l == 0 {
+                    0.5
+                } else {
+                    -0.5
+                }
+            } else {
+                1.0
+            };
             src.push(Source { node: n, z: Cx::new(tx.r.max(0.0), 0.0), e: one(1 + j, e) });
         }
     }
@@ -258,12 +292,23 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
         if tx.c_pf > 0.0 {
             net.adm(die_tx, GND, ws.iter().map(|w| Cx::new(0.0, w * tx.c_pf * 1e-12)).collect());
         }
-        let e = if lines == 2 { if l == 0 { 0.5 } else { -0.5 } } else { 1.0 };
+        let e = if lines == 2 {
+            if l == 0 {
+                0.5
+            } else {
+                -0.5
+            }
+        } else {
+            1.0
+        };
         src.push(Source { node: die_tx, z: Cx::new(tx.r.max(0.0), 0.0), e: one(0, e) });
         let pin_rx = bnd[blocks.len()][l];
         probe.push(add_rx(&mut net, pin_rx, format!("receiver die, line {l}")));
     }
-    let tap_dies: Vec<(String, usize)> = taps.iter().map(|(label, pin)| (label.clone(), add_rx(&mut net, *pin, format!("receiver die at {label}")))).collect();
+    let tap_dies: Vec<(String, usize)> = taps
+        .iter()
+        .map(|(label, pin)| (label.clone(), add_rx(&mut net, *pin, format!("receiver die at {label}"))))
+        .collect();
     let scale = if rx.r > 0.0 { (tx.r.max(0.0) + rx.r) / rx.r } else { 1.0 };
     // h[receiver][excitation][point]
     let mut h: Vec<Vec<Vec<Cx>>> = vec![vec![Vec::with_capacity(npts); nexc]; 1 + tap_dies.len()];
@@ -295,7 +340,17 @@ pub fn receivers_transfer(freq: &[f64], blocks: &[Block], lines: usize, tx: &End
 /// then reduced to the differential mode). `nyq`: the profile's Nyquist frequency (the lossy
 /// line's loss is given there), `z0` per line. Returns the block (near end at the connector)
 /// and a note.
-pub fn rest_block(ce: &ConnEnd, ts: Option<&Touchstone>, freq: &[f64], lines: usize, diff: bool, nyq: f64, z0: f64, pins: &[String], aggressors: &[XtLane]) -> Result<(Block, String), String> {
+pub fn rest_block(
+    ce: &ConnEnd,
+    ts: Option<&Touchstone>,
+    freq: &[f64],
+    lines: usize,
+    diff: bool,
+    nyq: f64,
+    z0: f64,
+    pins: &[String],
+    aggressors: &[XtLane],
+) -> Result<(Block, String), String> {
     let line_block = |m: Vec<Abcd>, dc: Abcd| -> Block {
         if lines == 2 {
             Block::Four { t: m.iter().map(|x| sep(x, x)).collect(), dc: sep(&dc, &dc) }
@@ -307,9 +362,15 @@ pub fn rest_block(ce: &ConnEnd, ts: Option<&Touchstone>, freq: &[f64], lines: us
         (Some(tr), Some(ts)) if !tr.ports.is_empty() => {
             // one file for the lanes of the connector: the lane's pins, the others as aggressors
             let port = |pin: &str| -> Result<(usize, usize), String> {
-                let p = tr.ports.get(pin).ok_or_else(|| format!("{}: pin {pin} is not in the port map (touchstone \"ports\")", ts.name))?;
+                let p = tr
+                    .ports
+                    .get(pin)
+                    .ok_or_else(|| format!("{}: pin {pin} is not in the port map (touchstone \"ports\")", ts.name))?;
                 if p.iter().any(|&x| x == 0 || x > ts.nports) {
-                    return Err(format!("{}: pin {pin} maps to port {} / {}, the file has {} ports", ts.name, p[0], p[1], ts.nports));
+                    return Err(format!(
+                        "{}: pin {pin} maps to port {} / {}, the file has {} ports",
+                        ts.name, p[0], p[1], ts.nports
+                    ));
                 }
                 Ok(if tr.flip { (p[1] - 1, p[0] - 1) } else { (p[0] - 1, p[1] - 1) })
             };
@@ -371,7 +432,15 @@ pub fn rest_block(ce: &ConnEnd, ts: Option<&Touchstone>, freq: &[f64], lines: us
         (Some(tr), None) => Err(format!("Touchstone file {} not loaded", tr.file)),
         (None, _) => {
             let m: Vec<Abcd> = freq.iter().map(|&f| ce.rest_abcd(f, nyq, z0).unwrap_or_else(Abcd::identity)).collect();
-            Ok((line_block(m, Abcd::identity()), format!("a lossy line of {:.1} dB at {:.2} GHz, {:.0} ps", ce.rest_loss_db.unwrap_or(0.0).abs(), nyq / 1e9, ce.rest_delay_ps.unwrap_or(500.0))))
+            Ok((
+                line_block(m, Abcd::identity()),
+                format!(
+                    "a lossy line of {:.1} dB at {:.2} GHz, {:.0} ps",
+                    ce.rest_loss_db.unwrap_or(0.0).abs(),
+                    nyq / 1e9,
+                    ce.rest_delay_ps.unwrap_or(500.0)
+                ),
+            ))
         }
     }
 }
@@ -414,12 +483,22 @@ impl PairNet {
 /// 1 + 1e-6): a modelling error, never expected – the line, via and part models are passive.
 pub fn passivity_check(freq: &[f64], s: &[Vec<Cx>], n: usize) -> Option<String> {
     let (worst, k) = crate::rf::passivity(s, n);
-    (worst > 1.0 + 1e-6).then(|| format!("model not passive at {:.2} GHz (largest singular value of S {:.6}): a modelling error, please report", freq[k] / 1e9, worst))
+    (worst > 1.0 + 1e-6).then(|| {
+        format!(
+            "model not passive at {:.2} GHz (largest singular value of S {:.6}): a modelling error, please report",
+            freq[k] / 1e9,
+            worst
+        )
+    })
 }
 
 /// Worst mode conversion Scd21 (dB) up to `f_hi` and its frequency (Hz).
 pub fn worst_scd21(freq: &[f64], mm: &[M4], f_hi: f64) -> (f64, f64) {
-    freq.iter().zip(mm).filter(|(&f, _)| f <= f_hi * 1.0001).map(|(&f, m)| (20.0 * m[3][0].abs().max(1e-12).log10(), f)).fold((f64::NEG_INFINITY, 0.0), |a, b| if b.0 > a.0 { b } else { a })
+    freq.iter()
+        .zip(mm)
+        .filter(|(&f, _)| f <= f_hi * 1.0001)
+        .map(|(&f, m)| (20.0 * m[3][0].abs().max(1e-12).log10(), f))
+        .fold((f64::NEG_INFINITY, 0.0), |a, b| if b.0 > a.0 { b } else { a })
 }
 
 /// Put the differential mode of the pair's 4-port into the odd-mode channel `ch` (same grid):
@@ -469,7 +548,11 @@ mod tests {
     }
 
     fn channel(freq: &[f64], m: &[Abcd]) -> Channel {
-        let mut ch = crate::eye::tests_support::channel_from(freq.to_vec(), m.iter().map(|x| x.s_params(50.0).1).collect(), 100.0);
+        let mut ch = crate::eye::tests_support::channel_from(
+            freq.to_vec(),
+            m.iter().map(|x| x.s_params(50.0).1).collect(),
+            100.0,
+        );
         ch.abcd = m.to_vec();
         ch.abcd_dc = Abcd::series(Cx::new(3.0, 0.0));
         ch
@@ -480,7 +563,14 @@ mod tests {
     #[test]
     fn network_transfer_equals_cascade() {
         let freq: Vec<f64> = (1..=40).map(|k| k as f64 * 0.5e9).collect();
-        let m: Vec<Abcd> = freq.iter().map(|&f| line(47.0, 3.3, 9.0, f, 0.04).mul(&Abcd::series(Cx::new(10.0, 2.0 * PI * f * 0.5e-9))).mul(&line(55.0, 3.0, 9.0, f, 0.01))).collect();
+        let m: Vec<Abcd> = freq
+            .iter()
+            .map(|&f| {
+                line(47.0, 3.3, 9.0, f, 0.04)
+                    .mul(&Abcd::series(Cx::new(10.0, 2.0 * PI * f * 0.5e-9)))
+                    .mul(&line(55.0, 3.0, 9.0, f, 0.01))
+            })
+            .collect();
         let ch = channel(&freq, &m);
         let ends = [
             (EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, EndModel { r: 50.0, c_pf: 0.8, l_nh: 0.3 }),
@@ -492,12 +582,18 @@ mod tests {
             let d0 = crate::eye::transfer_dc(&ch, &tx, &rx);
             let (h, d) = ends_transfer(&freq, &[Block::Two { m: m.clone(), dc: ch.abcd_dc }], 1, &tx, &rx).unwrap();
             for k in 0..freq.len() {
-                assert!((h[k] - h0[k]).abs() < 1e-10 * (1.0 + h0[k].abs()), "{tx:?} {rx:?} {k}: {:?} vs {:?}", h[k], h0[k]);
+                assert!(
+                    (h[k] - h0[k]).abs() < 1e-10 * (1.0 + h0[k].abs()),
+                    "{tx:?} {rx:?} {k}: {:?} vs {:?}",
+                    h[k],
+                    h0[k]
+                );
             }
             assert!((d - d0).abs() < 1e-12, "{d} {d0}");
             // symmetric pair, no coupling difference: differential = odd mode per line
             let t: Vec<M4> = m.iter().map(|x| coupled(x, x)).collect();
-            let (hp, dp) = ends_transfer(&freq, &[Block::Four { t, dc: sep(&ch.abcd_dc, &ch.abcd_dc) }], 2, &tx, &rx).unwrap();
+            let (hp, dp) =
+                ends_transfer(&freq, &[Block::Four { t, dc: sep(&ch.abcd_dc, &ch.abcd_dc) }], 2, &tx, &rx).unwrap();
             for k in 0..freq.len() {
                 assert!((hp[k] - h0[k]).abs() < 1e-10 * (1.0 + h0[k].abs()));
             }
@@ -562,7 +658,11 @@ mod tests {
             // S of the two lines in the file's port order: 1 = A near, 2 = B near, 3 = A far, 4 = B far
             let mut t = String::from("# Hz S RI R 50\n");
             for &f in &freq {
-                let tm = if coupled_ { coupled(&line(56.0, 3.4, 3.0, f, 0.05), &line(44.5, 3.0, 3.0, f, 0.05)) } else { sep(&line50(f), &line50(f)) };
+                let tm = if coupled_ {
+                    coupled(&line(56.0, 3.4, 3.0, f, 0.05), &line(44.5, 3.0, 3.0, f, 0.05))
+                } else {
+                    sep(&line50(f), &line50(f))
+                };
                 let sm = s_of(&tm, 50.0);
                 t += &format!("{f}");
                 for r in 0..4 {
@@ -577,15 +677,23 @@ mod tests {
         let mut ports = std::collections::BTreeMap::new();
         ports.insert("1".to_string(), [1, 3]);
         ports.insert("2".to_string(), [2, 4]);
-        let ce = ConnEnd { model: "matched".into(), touchstone: Some(crate::eye::TsRef { file: "two.s4p".into(), ports, ..Default::default() }), ..Default::default() };
-        let aggr = [XtLane { label: "B".into(), pins: vec!["2".into()], sends: false }, XtLane { label: "A".into(), pins: vec!["1".into()], sends: false }];
+        let ce = ConnEnd {
+            model: "matched".into(),
+            touchstone: Some(crate::eye::TsRef { file: "two.s4p".into(), ports, ..Default::default() }),
+            ..Default::default()
+        };
+        let aggr = [
+            XtLane { label: "B".into(), pins: vec!["2".into()], sends: false },
+            XtLane { label: "A".into(), pins: vec!["1".into()], sends: false },
+        ];
         let end = EndModel { r: 50.0, c_pf: 0.0, l_nh: 0.0 };
         let board: Vec<Abcd> = freq.iter().map(|&f| line50(f).mul(&line50(f))).collect();
         let id = Abcd::identity();
         let mut heights = vec![];
         for coupled_ in [false, true] {
             let ts = crate::rf::parse_touchstone(&file(coupled_), "two.s4p").unwrap();
-            let (blk, note) = rest_block(&ce, Some(&ts), &freq, 1, false, 2.5e9, 50.0, &["1".to_string()], &aggr).unwrap();
+            let (blk, note) =
+                rest_block(&ce, Some(&ts), &freq, 1, false, 2.5e9, 50.0, &["1".to_string()], &aggr).unwrap();
             assert!(note.starts_with("ports 1→3") && note.contains("1 aggressor lane"), "{note}");
             let r = receivers_transfer(&freq, &[Block::Two { m: board.clone(), dc: id }, blk], 1, &end, &end).unwrap();
             assert_eq!(r[0].xt.len(), 1);
@@ -613,8 +721,10 @@ mod tests {
     #[test]
     fn s_block_equals_its_chain() {
         let freq: Vec<f64> = (1..=10).map(|k| k as f64 * 1e9).collect();
-        let t: Vec<M4> = freq.iter().map(|&f| coupled(&line(62.0, 3.4, 4.0, f, 0.03), &line(44.0, 3.0, 5.0, f, 0.03))).collect();
-        let board: Vec<M4> = freq.iter().map(|&f| sep(&line(50.0, 3.2, 4.0, f, 0.02), &line(50.0, 3.2, 4.0, f, 0.021))).collect();
+        let t: Vec<M4> =
+            freq.iter().map(|&f| coupled(&line(62.0, 3.4, 4.0, f, 0.03), &line(44.0, 3.0, 5.0, f, 0.03))).collect();
+        let board: Vec<M4> =
+            freq.iter().map(|&f| sep(&line(50.0, 3.2, 4.0, f, 0.02), &line(50.0, 3.2, 4.0, f, 0.021))).collect();
         // S of the rest in the port order 1-2,3-4 (P 1→2, N 3→4)
         let s: Vec<Vec<Cx>> = t
             .iter()
@@ -633,8 +743,22 @@ mod tests {
         let id = sep(&Abcd::identity(), &Abcd::identity());
         let tx = EndModel { r: 50.0, c_pf: 0.5, l_nh: 0.0 };
         let rx = EndModel { r: 50.0, c_pf: 0.5, l_nh: 0.2 };
-        let (h1, _) = ends_transfer(&freq, &[Block::Four { t: board.clone(), dc: id }, Block::Four { t: t.clone(), dc: id }], 2, &tx, &rx).unwrap();
-        let blk = Block::S { s: s.clone(), dc: s[0].clone(), z0: vec![50.0; 4], near: vec![0, 2], far: vec![1, 3], xt: vec![] };
+        let (h1, _) = ends_transfer(
+            &freq,
+            &[Block::Four { t: board.clone(), dc: id }, Block::Four { t: t.clone(), dc: id }],
+            2,
+            &tx,
+            &rx,
+        )
+        .unwrap();
+        let blk = Block::S {
+            s: s.clone(),
+            dc: s[0].clone(),
+            z0: vec![50.0; 4],
+            near: vec![0, 2],
+            far: vec![1, 3],
+            xt: vec![],
+        };
         let (h2, _) = ends_transfer(&freq, &[Block::Four { t: board, dc: id }, blk], 2, &tx, &rx).unwrap();
         for k in 0..freq.len() {
             assert!((h1[k] - h2[k]).abs() < 1e-10, "{k}");

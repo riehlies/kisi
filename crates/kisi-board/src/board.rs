@@ -82,7 +82,11 @@ impl Stackup {
                 s += t / d.epsilon_r;
             }
         }
-        if s > 0.0 { h / s } else { 1.0 }
+        if s > 0.0 {
+            h / s
+        } else {
+            1.0
+        }
     }
 }
 
@@ -223,9 +227,23 @@ impl Footprint {
     /// Manufacturer part number from a footprint field – `MPN`, `Manufacturer Part Number`,
     /// `MFR PN`, … (case, spaces and punctuation ignored) –, the first non-empty one.
     pub fn mpn(&self) -> Option<&str> {
-        const KEYS: &[&str] = &["mpn", "manufacturerpartnumber", "manufacturerpn", "mfrpartnumber", "mfrpn", "mfrno", "mfgpartnumber", "mfgpn"];
+        const KEYS: &[&str] = &[
+            "mpn",
+            "manufacturerpartnumber",
+            "manufacturerpn",
+            "mfrpartnumber",
+            "mfrpn",
+            "mfrno",
+            "mfgpartnumber",
+            "mfgpn",
+        ];
         let norm = |k: &str| k.chars().filter(|c| c.is_alphanumeric()).collect::<String>().to_lowercase();
-        KEYS.iter().find_map(|key| self.props.iter().find(|(k, v)| norm(k) == *key && !v.trim().is_empty() && v.trim() != "~").map(|(_, v)| v.trim()))
+        KEYS.iter().find_map(|key| {
+            self.props
+                .iter()
+                .find(|(k, v)| norm(k) == *key && !v.trim().is_empty() && v.trim() != "~")
+                .map(|(_, v)| v.trim())
+        })
     }
     /// The MPN when it says more than the Value field: present, not an extension of the value and
     /// not contained in it (Value `TPS62130`, MPN `TPS62130RGTR` → None; Value `IC FPGA XC7A50T`,
@@ -333,8 +351,22 @@ impl Board {
 }
 
 const WANTED: &[&str] = &[
-    "version", "generator", "layers", "setup", "net", "segment", "arc", "via", "zone",
-    "footprint", "gr_line", "gr_arc", "gr_rect", "gr_circle", "gr_poly", "variants",
+    "version",
+    "generator",
+    "layers",
+    "setup",
+    "net",
+    "segment",
+    "arc",
+    "via",
+    "zone",
+    "footprint",
+    "gr_line",
+    "gr_arc",
+    "gr_rect",
+    "gr_circle",
+    "gr_poly",
+    "variants",
 ];
 
 /// `(dnp)`, `(dnp yes)`, `(dnp no)` (KiCad's "maybe absent bool": a bare keyword is true).
@@ -452,7 +484,10 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
                 for v in it.children("variant") {
                     let Some(name) = v.child_str("name").filter(|n| !n.is_empty()) else { continue };
                     if b.variants.iter().all(|x| x.name != name) {
-                        b.variants.push(BoardVariant { name: name.to_string(), description: v.child_str("description").unwrap_or("").to_string() });
+                        b.variants.push(BoardVariant {
+                            name: name.to_string(),
+                            description: v.child_str("description").unwrap_or("").to_string(),
+                        });
                     }
                 }
             }
@@ -462,9 +497,7 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
 
     if b.stackup.is_none() {
         b.stackup = Some(default_stackup(&layer_names_from_header));
-        b.warnings.push(
-            "no stackup in the file – default values used (1.6 mm FR4, εr 4.5)".into(),
-        );
+        b.warnings.push("no stackup in the file – default values used (1.6 mm FR4, εr 4.5)".into());
     }
     let su = b.stackup.clone().unwrap();
     let lidx = |name: &str| su.layer_index(name).map(|i| i as u16);
@@ -474,8 +507,7 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
     for (item_no, it) in items.iter().enumerate() {
         match it.head() {
             Some("segment") => {
-                let (Some(a), Some(e), Some(w)) =
-                    (it.child_xy("start"), it.child_xy("end"), it.child_f64("width"))
+                let (Some(a), Some(e), Some(w)) = (it.child_xy("start"), it.child_xy("end"), it.child_f64("width"))
                 else {
                     continue;
                 };
@@ -486,12 +518,9 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
                 b.tracks.push(Track { a, b: e, width: w, layer, net, item: item_no as u32, is_arc: false, pad: false });
             }
             Some("arc") => {
-                let (Some(a), Some(m), Some(e), Some(w)) = (
-                    it.child_xy("start"),
-                    it.child_xy("mid"),
-                    it.child_xy("end"),
-                    it.child_f64("width"),
-                ) else {
+                let (Some(a), Some(m), Some(e), Some(w)) =
+                    (it.child_xy("start"), it.child_xy("mid"), it.child_xy("end"), it.child_f64("width"))
+                else {
                     continue;
                 };
                 let Some(layer) = it.child_str("layer").and_then(lidx) else { continue };
@@ -536,7 +565,11 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
                 });
                 // `(remove_unused_layers)` (KiCad 7 flag) or `(remove_unused_layers yes|no)`
                 let flag = |name: &str| it.child(name).map(|n| n.atom(1) != Some("no"));
-                let remove_unused = if flag("remove_unused_layers") == Some(true) { Some(flag("keep_end_layers").unwrap_or(false)) } else { None };
+                let remove_unused = if flag("remove_unused_layers") == Some(true) {
+                    Some(flag("keep_end_layers").unwrap_or(false))
+                } else {
+                    None
+                };
                 b.vias.push(Via { at, size, drill, from, to, net, backdrill, remove_unused });
             }
             Some("zone") => {
@@ -610,12 +643,8 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
     }
     b.bbox = if bbox.is_valid() { Some(bbox) } else { None };
     b.nets = nets.names;
-    b.netclasses = vec![NetClass {
-        name: "Default".into(),
-        track_width: None,
-        diff_pair_width: None,
-        diff_pair_gap: None,
-    }];
+    b.netclasses =
+        vec![NetClass { name: "Default".into(), track_width: None, diff_pair_width: None, diff_pair_gap: None }];
     b.net_class = vec![0; b.nets.len()];
     b.plane_net = vec![false; b.nets.len()];
     for z in &b.zones {
@@ -641,7 +670,9 @@ pub fn pad_local_polygons(p: &Pad) -> Vec<Vec<P>> {
     // rectangle with rounded corners (oval: r = half the smaller side, circle: r = radius)
     let steps = if p.shape == "circle" { 4 } else { 3 };
     let mut v = Vec::with_capacity(4 * (steps + 1));
-    for (cx, cy, a0) in [(hx - r, hy - r, 0.0), (-(hx - r), hy - r, 90.0), (-(hx - r), -(hy - r), 180.0), (hx - r, -(hy - r), 270.0)] {
+    for (cx, cy, a0) in
+        [(hx - r, hy - r, 0.0), (-(hx - r), hy - r, 90.0), (-(hx - r), -(hy - r), 180.0), (hx - r, -(hy - r), 270.0)]
+    {
         for i in 0..=steps {
             let t = (a0 + 90.0 * i as f64 / steps as f64).to_radians();
             v.push([cx + r * t.cos(), cy + r * t.sin()]);
@@ -665,7 +696,10 @@ pub fn pad_polygons(p: &Pad) -> Vec<Vec<P>> {
     // same orientation convention as the viewer: rotate by -angle (y down)
     let th = -p.angle.to_radians();
     let (s, c) = th.sin_cos();
-    pad_local_polygons(p).into_iter().map(|poly| poly.into_iter().map(|q| [p.at[0] + q[0] * c - q[1] * s, p.at[1] + q[0] * s + q[1] * c]).collect()).collect()
+    pad_local_polygons(p)
+        .into_iter()
+        .map(|poly| poly.into_iter().map(|q| [p.at[0] + q[0] * c - q[1] * s, p.at[1] + q[0] * s + q[1] * c]).collect())
+        .collect()
 }
 
 /// Outline of a pad as one polygon (custom pads: the convex hull of their pieces).
@@ -685,14 +719,24 @@ fn convex_hull(mut pts: Vec<P>) -> Vec<P> {
     }
     let mut lower: Vec<P> = Vec::new();
     for &p in &pts {
-        while lower.len() >= 2 && geom::cross(geom::sub(lower[lower.len() - 1], lower[lower.len() - 2]), geom::sub(p, lower[lower.len() - 2])) <= 0.0 {
+        while lower.len() >= 2
+            && geom::cross(
+                geom::sub(lower[lower.len() - 1], lower[lower.len() - 2]),
+                geom::sub(p, lower[lower.len() - 2]),
+            ) <= 0.0
+        {
             lower.pop();
         }
         lower.push(p);
     }
     let mut upper: Vec<P> = Vec::new();
     for &p in pts.iter().rev() {
-        while upper.len() >= 2 && geom::cross(geom::sub(upper[upper.len() - 1], upper[upper.len() - 2]), geom::sub(p, upper[upper.len() - 2])) <= 0.0 {
+        while upper.len() >= 2
+            && geom::cross(
+                geom::sub(upper[upper.len() - 1], upper[upper.len() - 2]),
+                geom::sub(p, upper[upper.len() - 2]),
+            ) <= 0.0
+        {
             upper.pop();
         }
         upper.push(p);
@@ -708,11 +752,20 @@ fn convex_hull(mut pts: Vec<P>) -> Vec<P> {
 /// rectangles of their width).
 fn custom_outline(pad: &Node, size: P) -> Vec<Vec<P>> {
     let (hx, hy) = (size[0] / 2.0, size[1] / 2.0);
-    let circle = |c: P, r: f64| -> Vec<P> { (0..16).map(|i| (i as f64 / 16.0 * std::f64::consts::TAU).sin_cos()).map(|(s, co)| [c[0] + r * co, c[1] + r * s]).collect() };
+    let circle = |c: P, r: f64| -> Vec<P> {
+        (0..16)
+            .map(|i| (i as f64 / 16.0 * std::f64::consts::TAU).sin_cos())
+            .map(|(s, co)| [c[0] + r * co, c[1] + r * s])
+            .collect()
+    };
     let mut out = Vec::new();
     let anchor = pad.child("options").and_then(|o| o.child_str("anchor")).unwrap_or("rect");
     if hx > 0.0 && hy > 0.0 {
-        out.push(if anchor == "circle" { circle([0.0, 0.0], hx) } else { vec![[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]] });
+        out.push(if anchor == "circle" {
+            circle([0.0, 0.0], hx)
+        } else {
+            vec![[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]]
+        });
     }
     let thick = |a: P, b: P, w: f64| -> Option<Vec<P>> {
         let d = geom::sub(b, a);
@@ -948,7 +1001,16 @@ fn add_pad_tracks(b: &mut Board) {
         let length = (along - (4.0 - std::f64::consts::PI) * r * r / across).max(0.05 * along);
         let half = length / 2.0;
         for sign in [-1.0, 1.0] {
-            new_tracks.push(Track { a: p.at, b: geom::add(p.at, geom::scale(axis, sign * half)), width: across, layer, net: p.net, item: pi as u32, is_arc: false, pad: true });
+            new_tracks.push(Track {
+                a: p.at,
+                b: geom::add(p.at, geom::scale(axis, sign * half)),
+                width: across,
+                layer,
+                net: p.net,
+                item: pi as u32,
+                is_arc: false,
+                pad: true,
+            });
         }
     }
     b.tracks.extend(new_tracks);
@@ -968,10 +1030,7 @@ fn parse_stackup(st: &Node) -> Option<Stackup> {
                 diel.push(merge_dielectrics(&pending));
             }
             pending.clear();
-            copper.push(CopperLayer {
-                thickness: l.child_f64("thickness").unwrap_or(0.035),
-                name,
-            });
+            copper.push(CopperLayer { thickness: l.child_f64("thickness").unwrap_or(0.035), name });
         } else if name.starts_with("dielectric") || ty == "core" || ty == "prepreg" {
             // sublayers: a sequence of (thickness)(material)(epsilon_r)(loss_tangent)
             // groups separated by (addsublayer)
@@ -1130,8 +1189,18 @@ fn parse_footprint(fp: &Node, su: &Stackup, nets: &mut NetTable, out: &mut Vec<P
         .children("variant")
         .filter_map(|v| {
             let name = v.child_str("name").filter(|n| !n.is_empty())?.to_string();
-            let fields = v.children("field").filter_map(|f| Some((f.child_str("name")?.to_string(), f.child_str("value").unwrap_or("").to_string()))).collect();
-            Some(FootprintVariant { name, dnp: v.child("dnp").map(flag_value), exclude_from_bom: v.child("exclude_from_bom").map(flag_value), fields })
+            let fields = v
+                .children("field")
+                .filter_map(|f| {
+                    Some((f.child_str("name")?.to_string(), f.child_str("value").unwrap_or("").to_string()))
+                })
+                .collect();
+            Some(FootprintVariant {
+                name,
+                dnp: v.child("dnp").map(flag_value),
+                exclude_from_bom: v.child("exclude_from_bom").map(flag_value),
+                fields,
+            })
         })
         .collect();
     let fp_idx = fps.len() as u32;
@@ -1177,12 +1246,28 @@ fn parse_footprint(fp: &Node, su: &Stackup, nets: &mut NetTable, out: &mut Vec<P
         });
         let net = nets.resolve(pad.child("net"));
         let number = pad.atom(1).unwrap_or("").to_string();
-        let rratio = if shape == "roundrect" { pad.child_f64("roundrect_rratio").unwrap_or(0.25).clamp(0.0, 0.5) } else { 0.0 };
+        let rratio =
+            if shape == "roundrect" { pad.child_f64("roundrect_rratio").unwrap_or(0.25).clamp(0.0, 0.5) } else { 0.0 };
         let custom = if shape == "custom" { custom_outline(pad, size) } else { vec![] };
         let pinfunction = pad.child_str("pinfunction").unwrap_or("").to_string();
         let pintype = pad.child_str("pintype").unwrap_or("").to_string();
         let plated = pad.atom(2) == Some("thru_hole");
-        out.push(Pad { at: p, size, angle, shape, rratio, custom, layers, net, drill: drill.unwrap_or(0.0), number, fp: fp_idx, pinfunction, pintype, plated });
+        out.push(Pad {
+            at: p,
+            size,
+            angle,
+            shape,
+            rratio,
+            custom,
+            layers,
+            net,
+            drill: drill.unwrap_or(0.0),
+            number,
+            fp: fp_idx,
+            pinfunction,
+            pintype,
+            plated,
+        });
     }
 }
 
@@ -1218,12 +1303,8 @@ pub fn wildcard_match(pat: &str, s: &str) -> bool {
 pub fn apply_project(b: &mut Board, pro_json: &str) -> Result<(), String> {
     let v: serde_json::Value = serde_json::from_str(pro_json).map_err(|e| e.to_string())?;
     let ns = &v["net_settings"];
-    let mut classes = vec![NetClass {
-        name: "Default".into(),
-        track_width: None,
-        diff_pair_width: None,
-        diff_pair_gap: None,
-    }];
+    let mut classes =
+        vec![NetClass { name: "Default".into(), track_width: None, diff_pair_width: None, diff_pair_gap: None }];
     if let Some(arr) = ns["classes"].as_array() {
         for c in arr {
             let name = c["name"].as_str().unwrap_or("").to_string();
@@ -1285,7 +1366,22 @@ mod tests {
     /// The chord of a pad across a track and where a track runs inside it.
     #[test]
     fn pad_chord_and_span() {
-        let p = Pad { at: [1.0, 0.0], size: [0.56, 0.62], angle: 0.0, shape: "rect".into(), rratio: 0.0, custom: vec![], layers: vec![0], net: 1, drill: 0.0, number: "1".into(), fp: 0, pinfunction: String::new(), pintype: String::new(), plated: false };
+        let p = Pad {
+            at: [1.0, 0.0],
+            size: [0.56, 0.62],
+            angle: 0.0,
+            shape: "rect".into(),
+            rratio: 0.0,
+            custom: vec![],
+            layers: vec![0],
+            net: 1,
+            drill: 0.0,
+            number: "1".into(),
+            fp: 0,
+            pinfunction: String::new(),
+            pintype: String::new(),
+            plated: false,
+        };
         // a track along x through the pad centre: the chord across it is the pad's y size
         assert!((pad_chord(&p, [1.0, 0.0], [0.0, 1.0]) - 0.62).abs() < 1e-12);
         // rotated by 45°: a diagonal chord through the centre
@@ -1351,16 +1447,25 @@ mod tests {
         assert_eq!(b.variants.len(), 2);
         assert_eq!((b.variants[0].name.as_str(), b.variants[0].description.as_str()), ("Lite", "without the radio"));
         let r1 = &b.footprints[0];
-        assert_eq!((r1.reference.as_str(), r1.sheet.as_str(), r1.dnp, r1.exclude_from_bom), ("R1", "/Radio/", false, false));
+        assert_eq!(
+            (r1.reference.as_str(), r1.sheet.as_str(), r1.dnp, r1.exclude_from_bom),
+            ("R1", "/Radio/", false, false)
+        );
         assert_eq!(r1.variants.len(), 2);
         assert_eq!((r1.variants[0].dnp, r1.variants[0].exclude_from_bom), (Some(true), Some(true)));
         assert_eq!(r1.variants[1].dnp, None);
-        assert_eq!(r1.variants[1].fields, vec![("Value".to_string(), "22".to_string()), ("MPN".to_string(), "RC0402-22R".to_string())]);
+        assert_eq!(
+            r1.variants[1].fields,
+            vec![("Value".to_string(), "22".to_string()), ("MPN".to_string(), "RC0402-22R".to_string())]
+        );
         let tp = &b.footprints[1];
         assert!(tp.dnp && tp.exclude_from_bom && tp.sheet == "/");
         assert_eq!(tp.variants[0].dnp, Some(false));
         // KiCad 8/9 boards: no variants, sheets still read
-        let old = pcb.replace("(variants (variant (name \"Lite\") (description \"without the radio\")) (variant (name \"Full\")))", "");
+        let old = pcb.replace(
+            "(variants (variant (name \"Lite\") (description \"without the radio\")) (variant (name \"Full\")))",
+            "",
+        );
         assert!(load_pcb(&old).unwrap().variants.is_empty());
     }
 
@@ -1392,7 +1497,10 @@ mod tests {
         assert_eq!(t.len(), 2, "two synthetic half tracks");
         assert!(t[0].a == t[1].a && t[0].width == t[1].width && t[0].item == t[1].item, "halves from the pad centre");
         let (l0, l1) = (geom::len(geom::sub(t[0].b, t[0].a)), geom::len(geom::sub(t[1].b, t[1].a)));
-        assert!((l0 - l1).abs() < 1e-9 && geom::dot(geom::sub(t[0].b, t[0].a), geom::sub(t[1].b, t[1].a)) < 0.0, "opposite halves of equal length");
+        assert!(
+            (l0 - l1).abs() < 1e-9 && geom::dot(geom::sub(t[0].b, t[0].a), geom::sub(t[1].b, t[1].a)) < 0.0,
+            "opposite halves of equal length"
+        );
         Track { a: t[0].b, b: t[1].b, ..*t[0] }
     }
 
@@ -1408,7 +1516,10 @@ mod tests {
         assert!((p.at[0] - 103.6511).abs() < 1e-9 && (p.at[1] - 69.4161).abs() < 1e-9, "{:?}", p.at);
         // the pad's long side runs along x on the board: 1.86 mm wide, 0.8 mm high
         let poly = pad_polygon(p);
-        let (w, h) = (poly.iter().map(|q| q[0]).fold(f64::MIN, f64::max) - poly.iter().map(|q| q[0]).fold(f64::MAX, f64::min), poly.iter().map(|q| q[1]).fold(f64::MIN, f64::max) - poly.iter().map(|q| q[1]).fold(f64::MAX, f64::min));
+        let (w, h) = (
+            poly.iter().map(|q| q[0]).fold(f64::MIN, f64::max) - poly.iter().map(|q| q[0]).fold(f64::MAX, f64::min),
+            poly.iter().map(|q| q[1]).fold(f64::MIN, f64::max) - poly.iter().map(|q| q[1]).fold(f64::MAX, f64::min),
+        );
         assert!((w - 1.86).abs() < 1e-6 && (h - 0.8).abs() < 1e-6, "{w} × {h}");
         let t = pad_track(&b);
         assert!((t.width - 0.8).abs() < 1e-9, "width {}", t.width);
@@ -1427,26 +1538,37 @@ mod tests {
         for fp_rot in [0.0, 90.0, 180.0, 270.0, -90.0] {
             for local in [0.0, 90.0, 180.0, 270.0] {
                 let pad_rot = fp_rot + local;
-                for (shape, area) in [("rect", 0.8 * 1.86), ("roundrect", 0.8 * 1.86 - (4.0 - pi) * 0.04), ("oval", 0.8 * 1.86 - (4.0 - pi) * 0.16)] {
+                for (shape, area) in [
+                    ("rect", 0.8 * 1.86),
+                    ("roundrect", 0.8 * 1.86 - (4.0 - pi) * 0.04),
+                    ("oval", 0.8 * 1.86 - (4.0 - pi) * 0.16),
+                ] {
                     // pad "2" on the board, its long axis from its polygon
                     let probe = pad_board(fp_rot, pad_rot, shape, (0.8, 1.86), [0.0, 0.0], [0.0, 0.0]);
                     let p = &probe.pads[1];
                     let th = -pad_rot.to_radians();
                     let long = [-th.sin(), th.cos()]; // size.y (1.86) axis
-                    // a track arriving along the long axis, ending at the centre
+                                                      // a track arriving along the long axis, ending at the centre
                     let from = geom::add(p.at, geom::scale(long, 3.0));
                     let b = pad_board(fp_rot, pad_rot, shape, (0.8, 1.86), from, p.at);
                     let t = pad_track(&b);
                     let d = geom::sub(t.b, t.a);
                     assert!((t.width - 0.8).abs() < 1e-9, "{shape} fp {fp_rot} pad {pad_rot}: width {}", t.width);
-                    assert!(geom::cross(d, long).abs() < 1e-9, "{shape} fp {fp_rot} pad {pad_rot}: along the long axis");
+                    assert!(
+                        geom::cross(d, long).abs() < 1e-9,
+                        "{shape} fp {fp_rot} pad {pad_rot}: along the long axis"
+                    );
                     assert!((geom::len(d) * t.width - area).abs() < 1e-9, "{shape}: area");
                     // the same pad entered from its long side (track perpendicular, ending at the
                     // centre): a short, 1.86 mm wide section
                     let side = [long[1], -long[0]];
-                    let b = pad_board(fp_rot, pad_rot, shape, (0.8, 1.86), geom::add(p.at, geom::scale(side, 3.0)), p.at);
+                    let b =
+                        pad_board(fp_rot, pad_rot, shape, (0.8, 1.86), geom::add(p.at, geom::scale(side, 3.0)), p.at);
                     let t = pad_track(&b);
-                    assert!((t.width - 1.86).abs() < 1e-9 && geom::dot(geom::sub(t.b, t.a), long).abs() < 1e-9, "{shape} fp {fp_rot} pad {pad_rot}: side entry");
+                    assert!(
+                        (t.width - 1.86).abs() < 1e-9 && geom::dot(geom::sub(t.b, t.a), long).abs() < 1e-9,
+                        "{shape} fp {fp_rot} pad {pad_rot}: side entry"
+                    );
                 }
             }
         }
@@ -1469,14 +1591,20 @@ mod tests {
         let p = &b.pads[1];
         let at = |dx: f64, dy: f64| [p.at[0] + dx, p.at[1] + dy];
         assert!(pad_contains(p, at(0.9, 0.0), 0.0) && pad_contains(p, at(0.0, 0.39), 0.0));
-        assert!(!pad_contains(p, at(0.0, 0.5), 0.0) && !pad_contains(p, at(0.95, 0.0), 0.0), "not across the long side");
+        assert!(
+            !pad_contains(p, at(0.0, 0.5), 0.0) && !pad_contains(p, at(0.95, 0.0), 0.0),
+            "not across the long side"
+        );
         // the corner is rounded: (0.92, 0.39) lies in the bounding box but off the copper
         assert!(!pad_contains(p, at(0.92, 0.39), 0.02) && pad_contains(p, at(0.85, 0.33), 0.0));
         assert!(pad_contains(p, at(0.94, 0.0), 0.02), "tolerance");
         // a circle
         let c = pad_board(0.0, 0.0, "circle", (0.6, 0.6), [0.0, 0.0], [0.0, 0.0]);
         let q = &c.pads[1];
-        assert!(pad_contains(q, [q.at[0] + 0.2, q.at[1] + 0.2], 0.0) && !pad_contains(q, [q.at[0] + 0.25, q.at[1] + 0.25], 0.0));
+        assert!(
+            pad_contains(q, [q.at[0] + 0.2, q.at[1] + 0.2], 0.0)
+                && !pad_contains(q, [q.at[0] + 0.25, q.at[1] + 0.25], 0.0)
+        );
     }
 
     #[test]

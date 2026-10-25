@@ -239,7 +239,8 @@ impl NetGraph {
         for v in board.vias.iter().filter(|v| v.net == net) {
             let r = v.size / 2.0 + 0.03;
             let span: u64 = (v.from..=v.to).fold(0, |m, l| m | 1u64 << l.min(63));
-            let inside: Vec<usize> = (0..n).filter(|&i| node_layers[i] & span != 0 && geom::len(geom::sub(pos[i], v.at)) <= r).collect();
+            let inside: Vec<usize> =
+                (0..n).filter(|&i| node_layers[i] & span != 0 && geom::len(geom::sub(pos[i], v.at)) <= r).collect();
             for w in inside.windows(2) {
                 let (ra, rb) = (find(&mut parent, w[0]), find(&mut parent, w[1]));
                 if ra != rb {
@@ -251,7 +252,8 @@ impl NetGraph {
         for p in board.pads.iter().filter(|p| p.net == net && p.drill > 0.0 && p.layers.len() > 1) {
             let r = p.size[0].min(p.size[1]) / 2.0 + 0.03;
             let span: u64 = p.layers.iter().fold(0, |m, &l| m | 1u64 << l.min(63));
-            let inside: Vec<usize> = (0..n).filter(|&i| node_layers[i] & span != 0 && geom::len(geom::sub(pos[i], p.at)) <= r).collect();
+            let inside: Vec<usize> =
+                (0..n).filter(|&i| node_layers[i] & span != 0 && geom::len(geom::sub(pos[i], p.at)) <= r).collect();
             for w in inside.windows(2) {
                 let (ra, rb) = (find(&mut parent, w[0]), find(&mut parent, w[1]));
                 if ra != rb {
@@ -264,7 +266,8 @@ impl NetGraph {
         for i in 0..n {
             mask[root[i]] |= node_layers[i];
         }
-        let edges: Vec<(usize, usize, usize, f64)> = edges.into_iter().map(|(t, a, b, l)| (t, root[a], root[b], l)).collect();
+        let edges: Vec<(usize, usize, usize, f64)> =
+            edges.into_iter().map(|(t, a, b, l)| (t, root[a], root[b], l)).collect();
         let mut adj: HashMap<usize, Vec<(usize, usize)>> = HashMap::new(); // node -> (edge idx, other node)
         for (ei, &(_, a, b, _)) in edges.iter().enumerate() {
             if a == b {
@@ -319,11 +322,14 @@ impl NetGraph {
     /// B.Cu have their pads at the same position: the layer tells them apart.
     pub(crate) fn nearest_on(&self, p: P, layers: u64) -> Option<usize> {
         let best = |want: u64| {
-            self.adj
-                .keys()
-                .copied()
-                .filter(|&n| want == 0 || self.mask.get(n).is_some_and(|m| m & want != 0))
-                .min_by(|&a, &b| geom::len(geom::sub(self.pos[a], p)).partial_cmp(&geom::len(geom::sub(self.pos[b], p))).unwrap().then(a.cmp(&b)))
+            self.adj.keys().copied().filter(|&n| want == 0 || self.mask.get(n).is_some_and(|m| m & want != 0)).min_by(
+                |&a, &b| {
+                    geom::len(geom::sub(self.pos[a], p))
+                        .partial_cmp(&geom::len(geom::sub(self.pos[b], p)))
+                        .unwrap()
+                        .then(a.cmp(&b))
+                },
+            )
         };
         best(layers).or_else(|| best(0))
     }
@@ -332,7 +338,10 @@ impl NetGraph {
     fn far_pair(&self) -> (usize, usize) {
         let far = |start: usize| -> usize {
             let dist = self.reach(start);
-            dist.iter().max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap().then(b.0.cmp(a.0))).map(|x| *x.0).unwrap_or(start)
+            dist.iter()
+                .max_by(|a, b| a.1 .0.partial_cmp(&b.1 .0).unwrap().then(b.0.cmp(a.0)))
+                .map(|x| *x.0)
+                .unwrap_or(start)
         };
         let start = self.adj.keys().copied().min().unwrap_or(0);
         let a = far(start);
@@ -340,7 +349,11 @@ impl NetGraph {
     }
 
     /// Distances and predecessors from `start`, not entering `blocked` nodes.
-    fn reach_from(&self, start: usize, blocked: &std::collections::HashSet<usize>) -> HashMap<usize, (f64, Option<(usize, usize)>)> {
+    fn reach_from(
+        &self,
+        start: usize,
+        blocked: &std::collections::HashSet<usize>,
+    ) -> HashMap<usize, (f64, Option<(usize, usize)>)> {
         let mut dist: HashMap<usize, (f64, Option<(usize, usize)>)> = HashMap::new();
         dist.insert(start, (0.0, None));
         let mut stack = vec![start];
@@ -369,7 +382,14 @@ impl NetGraph {
     }
 
     /// Pieces along a chain of edges with their positions from `s` on.
-    fn pieces_along(&self, board: &Board, an: &Analysis, chain: &[(usize, usize, usize)], mut s: f64, mut after: impl FnMut(usize, f64, usize)) -> (Vec<PathPiece>, f64) {
+    fn pieces_along(
+        &self,
+        board: &Board,
+        an: &Analysis,
+        chain: &[(usize, usize, usize)],
+        mut s: f64,
+        mut after: impl FnMut(usize, f64, usize),
+    ) -> (Vec<PathPiece>, f64) {
         let mut out = Vec::new();
         for &(ei, from, to) in chain {
             let (ti, ea, _, _) = self.edges[ei];
@@ -393,7 +413,6 @@ impl NetGraph {
     fn layer_at(&self, board: &Board, node: usize) -> u16 {
         self.adj.get(&node).and_then(|v| v.first()).map(|&(ei, _)| board.tracks[self.edges[ei].0].layer).unwrap_or(0)
     }
-
 }
 
 // --- path with ends and branches (impedance profile, TDR, board markers) --------------------
@@ -475,12 +494,29 @@ pub const BRANCH_MIN_MM: f64 = 0.5;
 
 fn path_end(board: &Board, net: u32, at: P, layer: u16) -> PathEnd {
     // pads on the node's layer first (parts back to back on F.Cu and B.Cu share positions)
-    let near = |p: &&crate::board::Pad| p.net == net && geom::len(geom::sub(p.at, at)) <= p.size[0].max(p.size[1]) / 2.0 + 0.05;
-    let closest = |a: &&crate::board::Pad, b: &&crate::board::Pad| geom::len(geom::sub(a.at, at)).partial_cmp(&geom::len(geom::sub(b.at, at))).unwrap();
-    let pad = board.pads.iter().filter(near).filter(|p| p.layers.contains(&layer)).min_by(closest).or_else(|| board.pads.iter().filter(near).min_by(closest));
+    let near = |p: &&crate::board::Pad| {
+        p.net == net && geom::len(geom::sub(p.at, at)) <= p.size[0].max(p.size[1]) / 2.0 + 0.05
+    };
+    let closest = |a: &&crate::board::Pad, b: &&crate::board::Pad| {
+        geom::len(geom::sub(a.at, at)).partial_cmp(&geom::len(geom::sub(b.at, at))).unwrap()
+    };
+    let pad = board
+        .pads
+        .iter()
+        .filter(near)
+        .filter(|p| p.layers.contains(&layer))
+        .min_by(closest)
+        .or_else(|| board.pads.iter().filter(near).min_by(closest));
     if let Some(p) = pad {
         let r = board.footprints[p.fp as usize].reference.clone();
-        return PathEnd { at: p.at, layer, kind: "pad", label: format!("{}.{}", r, p.number), refdes: Some(r), pad: Some(p.number.clone()) };
+        return PathEnd {
+            at: p.at,
+            layer,
+            kind: "pad",
+            label: format!("{}.{}", r, p.number),
+            refdes: Some(r),
+            pad: Some(p.number.clone()),
+        };
     }
     if board.vias.iter().any(|v| v.net == net && geom::len(geom::sub(v.at, at)) <= v.size / 2.0 + 0.05) {
         return PathEnd { at, layer, kind: "via", refdes: None, pad: None, label: "via".into() };
@@ -510,7 +546,13 @@ pub fn net_path_info(board: &Board, an: &Analysis, net: u32, flip: bool, hint: O
     // ends) if there are two; else the two farthest apart overall
     let (fa, _) = g.far_pair();
     let in_part = g.reach(fa);
-    let mut good: Vec<usize> = g.adj.iter().filter(|(n, v)| v.len() == 1 && in_part.contains_key(n)).map(|(n, _)| *n).filter(|&n| start_score(&end_of(n)) >= 1).collect();
+    let mut good: Vec<usize> = g
+        .adj
+        .iter()
+        .filter(|(n, v)| v.len() == 1 && in_part.contains_key(n))
+        .map(|(n, _)| *n)
+        .filter(|&n| start_score(&end_of(n)) >= 1)
+        .collect();
     good.sort();
     let (a, b) = if good.len() >= 2 {
         let mut best = (good[0], good[1], -1.0);
@@ -537,7 +579,11 @@ pub fn net_path_info(board: &Board, an: &Analysis, net: u32, flip: bool, hint: O
         (s_node, e_node, s_end, e_end) = (b, a, eb, ea);
         direction = "starts at the IC side".to_string();
     } else {
-        let d = if start_score(&ea) > start_score(&eb) { "starts at the IC side" } else { "no preferred end (both ends of the same kind)" };
+        let d = if start_score(&ea) > start_score(&eb) {
+            "starts at the IC side"
+        } else {
+            "no preferred end (both ends of the same kind)"
+        };
         (s_node, e_node, s_end, e_end) = (a, b, ea, eb);
         direction = d.to_string();
     }
@@ -553,13 +599,32 @@ pub fn net_path_info(board: &Board, an: &Analysis, net: u32, flip: bool, hint: O
         node_at.insert(n, (s, k));
     });
     let branches = collect_branches(&g, board, an, net, s_node, &main, &node_at, [&s_end.label, &e_end.label]);
-    Some(NetPath { net, length_mm: length, start: s_end, end: e_end, pieces, branches, direction, flipped: flip, parts })
+    Some(NetPath {
+        net,
+        length_mm: length,
+        start: s_end,
+        end: e_end,
+        pieces,
+        branches,
+        direction,
+        flipped: flip,
+        parts,
+    })
 }
 
 /// Branches leaving the main path `main` (edges from `s_node`; `node_at`: position along the
 /// path and pieces so far per main node). A branch follows its longest way to an end.
 #[allow(clippy::too_many_arguments)]
-fn collect_branches(g: &NetGraph, board: &Board, an: &Analysis, net: u32, s_node: usize, main: &[(usize, usize, usize)], node_at: &HashMap<usize, (f64, usize)>, own_ends: [&str; 2]) -> Vec<PathBranch> {
+fn collect_branches(
+    g: &NetGraph,
+    board: &Board,
+    an: &Analysis,
+    net: u32,
+    s_node: usize,
+    main: &[(usize, usize, usize)],
+    node_at: &HashMap<usize, (f64, usize)>,
+    own_ends: [&str; 2],
+) -> Vec<PathBranch> {
     let end_of = |n: usize| path_end(board, net, g.pos[n], g.layer_at(board, n));
     let main_nodes: std::collections::HashSet<usize> = node_at.keys().copied().collect();
     let main_edges: std::collections::HashSet<usize> = main.iter().map(|x| x.0).collect();
@@ -571,7 +636,11 @@ fn collect_branches(g: &NetGraph, board: &Board, an: &Analysis, net: u32, s_node
                 continue;
             }
             let dist = g.reach_from(v, &main_nodes);
-            let far = dist.iter().max_by(|x, y| x.1 .0.partial_cmp(&y.1 .0).unwrap().then(y.0.cmp(x.0))).map(|x| *x.0).unwrap_or(v);
+            let far = dist
+                .iter()
+                .max_by(|x, y| x.1 .0.partial_cmp(&y.1 .0).unwrap().then(y.0.cmp(x.0)))
+                .map(|x| *x.0)
+                .unwrap_or(v);
             let mut ch = vec![(ei, n, v)];
             ch.extend(NetGraph::chain(&dist, far));
             let (bp, len) = g.pieces_along(board, an, &ch, 0.0, |_, _, _| {});
@@ -607,7 +676,11 @@ pub(crate) fn hop_path(board: &Board, an: &Analysis, net: u32, from: (P, u64), t
     let g = NetGraph::build(board, an, net)?;
     let (s_node, e_node) = (g.nearest_on(from.0, from.1)?, g.nearest_on(to.0, to.1)?);
     let end_of = |n: usize| path_end(board, net, g.pos[n], g.layer_at(board, n));
-    let main = if s_node == e_node { vec![] } else { NetGraph::chain(&g.reach_from(s_node, &std::collections::HashSet::new()), e_node) };
+    let main = if s_node == e_node {
+        vec![]
+    } else {
+        NetGraph::chain(&g.reach_from(s_node, &std::collections::HashSet::new()), e_node)
+    };
     let mut node_at: HashMap<usize, (f64, usize)> = HashMap::new();
     node_at.insert(s_node, (0.0, 0));
     let (pieces, length) = g.pieces_along(board, an, &main, 0.0, |n, s, k| {
@@ -615,13 +688,28 @@ pub(crate) fn hop_path(board: &Board, an: &Analysis, net: u32, from: (P, u64), t
     });
     let (s_end, e_end) = (end_of(s_node), end_of(e_node));
     let branches = collect_branches(&g, board, an, net, s_node, &main, &node_at, [&s_end.label, &e_end.label]);
-    Some(NetPath { net, length_mm: length, start: s_end, end: e_end, pieces, branches, direction: "lane hop".into(), flipped: false, parts: g.components() })
+    Some(NetPath {
+        net,
+        length_mm: length,
+        start: s_end,
+        end: e_end,
+        pieces,
+        branches,
+        direction: "lane hop".into(),
+        flipped: false,
+        parts: g.components(),
+    })
 }
-
 
 /// Length of copper (mm) from the point `from` to each of the points `to` along the tracks of
 /// `net` (points with their copper layers, bit masks, 0 = any); None where not connected.
-pub(crate) fn copper_distances(board: &Board, an: &Analysis, net: u32, from: (P, u64), to: &[(P, u64)]) -> Vec<Option<f64>> {
+pub(crate) fn copper_distances(
+    board: &Board,
+    an: &Analysis,
+    net: u32,
+    from: (P, u64),
+    to: &[(P, u64)],
+) -> Vec<Option<f64>> {
     let Some(g) = NetGraph::build(board, an, net) else { return vec![None; to.len()] };
     let Some(s) = g.nearest_on(from.0, from.1) else { return vec![None; to.len()] };
     let d = g.reach(s);
@@ -699,7 +787,13 @@ pub struct NetPart {
 /// Where a point lies on a path of pieces: (piece index along the path, fraction of that piece
 /// in the path's direction, distance mm). Pieces on the copper layers `layers` (bit mask, 0 =
 /// any) are preferred: a piece on another layer counts 100 mm farther.
-pub(crate) fn locate_on_path(board: &Board, an: &Analysis, path: &[(usize, bool)], at: P, layers: u64) -> Option<(usize, f64, f64)> {
+pub(crate) fn locate_on_path(
+    board: &Board,
+    an: &Analysis,
+    path: &[(usize, bool)],
+    at: P,
+    layers: u64,
+) -> Option<(usize, f64, f64)> {
     let mut best: Option<(usize, f64, f64, f64)> = None;
     for (step, &(pi, rev)) in path.iter().enumerate() {
         let pc = &an.pieces[pi * 4..pi * 4 + 4];
@@ -756,7 +850,13 @@ pub(crate) struct Build<'a> {
 }
 
 impl<'a> Build<'a> {
-    pub(crate) fn new(board: &'a Board, an: &'a Analysis, field: &'a HashMap<String, FieldResult>, rp: &'a RfParams, diff: bool) -> Self {
+    pub(crate) fn new(
+        board: &'a Board,
+        an: &'a Analysis,
+        field: &'a HashMap<String, FieldResult>,
+        rp: &'a RfParams,
+        diff: bool,
+    ) -> Self {
         Build {
             board,
             an,
@@ -784,7 +884,13 @@ impl<'a> Build<'a> {
         }
     }
 
-    fn push(&mut self, seg: Segment, model: Option<LineModel>, via: Option<crate::via::ViaModel>, part: Option<LumpedPart>) {
+    fn push(
+        &mut self,
+        seg: Segment,
+        model: Option<LineModel>,
+        via: Option<crate::via::ViaModel>,
+        part: Option<LumpedPart>,
+    ) {
         self.segs.push(seg);
         self.models.push(model);
         self.via_models.push(via);
@@ -830,7 +936,17 @@ impl<'a> Build<'a> {
 
     /// `add_part` with the source of its values ("estimate", "pad geometry").
     pub(crate) fn add_part_src(&mut self, part: LumpedPart, source: &'static str) {
-        let seg = Segment { kind: if part.series { "series" } else { "shunt" }, len_mm: 0.0, layer: 0, xs: None, z: None, via_lc: None, source, part: Some(part.label.clone()), s_mm: 0.0 };
+        let seg = Segment {
+            kind: if part.series { "series" } else { "shunt" },
+            len_mm: 0.0,
+            layer: 0,
+            xs: None,
+            z: None,
+            via_lc: None,
+            source,
+            part: Some(part.label.clone()),
+            s_mm: 0.0,
+        };
         self.push(seg, None, None, Some(part));
     }
 
@@ -844,13 +960,28 @@ impl<'a> Build<'a> {
     /// position, cross-section) of the other path there. A layer change at the start (a stub
     /// that leaves through a via) adds that via. `before(build, k)` runs before the line of
     /// piece `k` (after the via in front of it, if any), `on_piece` after it.
-    pub(crate) fn add_path_with(&mut self, net: u32, path: &[(usize, bool)], start: Option<(u16, P, u32)>, before: impl FnMut(&mut Self, usize), on_piece: impl FnMut(&mut Self, P)) {
+    pub(crate) fn add_path_with(
+        &mut self,
+        net: u32,
+        path: &[(usize, bool)],
+        start: Option<(u16, P, u32)>,
+        before: impl FnMut(&mut Self, usize),
+        on_piece: impl FnMut(&mut Self, P),
+    ) {
         self.add_path_cuts(net, path, start, &[], before, on_piece)
     }
 
     /// As `add_path_with`, with lumped parts inside the pieces (`cuts`: piece index along
     /// `path`, fraction of its length in the path's direction).
-    pub(crate) fn add_path_cuts(&mut self, net: u32, path: &[(usize, bool)], start: Option<(u16, P, u32)>, cuts: &[Cut], mut before: impl FnMut(&mut Self, usize), mut on_piece: impl FnMut(&mut Self, P)) {
+    pub(crate) fn add_path_cuts(
+        &mut self,
+        net: u32,
+        path: &[(usize, bool)],
+        start: Option<(u16, P, u32)>,
+        cuts: &[Cut],
+        mut before: impl FnMut(&mut Self, usize),
+        mut on_piece: impl FnMut(&mut Self, P),
+    ) {
         let (board, an, rp) = (self.board, self.an, self.rp);
         let su = board.stackup();
         let partner = if self.diff { self.partner_of.get(net as usize).copied().flatten() } else { None };
@@ -886,9 +1017,15 @@ impl<'a> Build<'a> {
                         Some(v) if geom::len(geom::sub(v.at, ppos)) < 1.0 => v,
                         _ => {
                             // a plated through-hole pad (connector pin) acts as the via
-                            let th = board.pads.iter().filter(|p| p.net == net && p.drill > 0.0 && p.layers.len() > 1).min_by(|a, b| {
-                                geom::len(geom::sub(a.at, ppos)).partial_cmp(&geom::len(geom::sub(b.at, ppos))).unwrap()
-                            });
+                            let th = board
+                                .pads
+                                .iter()
+                                .filter(|p| p.net == net && p.drill > 0.0 && p.layers.len() > 1)
+                                .min_by(|a, b| {
+                                    geom::len(geom::sub(a.at, ppos))
+                                        .partial_cmp(&geom::len(geom::sub(b.at, ppos)))
+                                        .unwrap()
+                                });
                             let th = th.filter(|p| geom::len(geom::sub(p.at, ppos)) < p.size[0].max(p.size[1]) + 0.5);
                             fallback_via = match th {
                                 Some(p) => crate::board::Via {
@@ -901,7 +1038,16 @@ impl<'a> Build<'a> {
                                     backdrill: None,
                                     remove_unused: None,
                                 },
-                                None => crate::board::Via { at: ppos, size: 0.45, drill: 0.2, from: 0, to: (su.n() - 1) as u16, net, backdrill: None, remove_unused: None },
+                                None => crate::board::Via {
+                                    at: ppos,
+                                    size: 0.45,
+                                    drill: 0.2,
+                                    from: 0,
+                                    to: (su.n() - 1) as u16,
+                                    net,
+                                    backdrill: None,
+                                    remove_unused: None,
+                                },
                             };
                             if th.is_none() {
                                 self.warnings.push(format!("layer change at ({:.2}, {:.2}) mm without a nearby via: standard via 0.2/0.45 mm assumed", ppos[0], ppos[1]));
@@ -963,7 +1109,18 @@ impl<'a> Build<'a> {
                             _ => None,
                         }
                     };
-                    let ctx = crate::via::ViaCtx { board, net, partner, refs_in: refs(last_ref_xs.or(prev_xs)), refs_out: refs(Some(next_ref)), backdrill: rp.backdrill, feeds, sigma: Some(rp.sigma), cavity: rp.via_cavity, returns: rp.via_returns };
+                    let ctx = crate::via::ViaCtx {
+                        board,
+                        net,
+                        partner,
+                        refs_in: refs(last_ref_xs.or(prev_xs)),
+                        refs_out: refs(Some(next_ref)),
+                        backdrill: rp.backdrill,
+                        feeds,
+                        sigma: Some(rp.sigma),
+                        cavity: rp.via_cavity,
+                        returns: rp.via_returns,
+                    };
                     let (vm, info) = crate::via::build(&ctx, v, pl, tr.layer);
                     if vm.pbm.as_ref().is_some_and(|p| p.has_cavity()) {
                         let note = "via model(s) with finite plane cavities (--via-cavity, experimental); capacitors in the cavities with estimated parasitics (data/components.json)";
@@ -985,7 +1142,9 @@ impl<'a> Build<'a> {
                         }
                     }
                     let pair_partner = self.partner_of.get(net as usize).copied().flatten().filter(|_| self.pair);
-                    let vm_pair = pair_partner.map(|pn| crate::via::build(&crate::via::ViaCtx { partner: Some(pn), ..ctx }, v, pl, tr.layer).0);
+                    let vm_pair = pair_partner.map(|pn| {
+                        crate::via::build(&crate::via::ViaCtx { partner: Some(pn), ..ctx }, v, pl, tr.layer).0
+                    });
                     let (mut lt, mut ct) = (0.0, 0.0);
                     for s in &vm.barrel {
                         let vv = C0 / s.er.sqrt();
@@ -994,7 +1153,17 @@ impl<'a> Build<'a> {
                     }
                     let zv = if self.diff { info.z_via / 2.0 } else { info.z_via };
                     self.push(
-                        Segment { kind: "via", len_mm: info.barrel_mm, layer: tr.layer, xs: None, z: Some(zv), via_lc: Some((lt * 1e9, ct * 1e12)), source: "via-model", part: None, s_mm: 0.0 },
+                        Segment {
+                            kind: "via",
+                            len_mm: info.barrel_mm,
+                            layer: tr.layer,
+                            xs: None,
+                            z: Some(zv),
+                            via_lc: Some((lt * 1e9, ct * 1e12)),
+                            source: "via-model",
+                            part: None,
+                            s_mm: 0.0,
+                        },
                         None,
                         Some(vm),
                         None,
@@ -1026,7 +1195,22 @@ impl<'a> Build<'a> {
                 if merge {
                     b.segs.last_mut().unwrap().len_mm += l;
                 } else {
-                    b.push(Segment { kind: "line", len_mm: l, layer: tr.layer, xs: Some(xi), z, via_lc: None, source: model.as_ref().map(|m| m.source).unwrap_or("none"), part: None, s_mm: 0.0 }, model.clone(), None, None);
+                    b.push(
+                        Segment {
+                            kind: "line",
+                            len_mm: l,
+                            layer: tr.layer,
+                            xs: Some(xi),
+                            z,
+                            via_lc: None,
+                            source: model.as_ref().map(|m| m.source).unwrap_or("none"),
+                            part: None,
+                            s_mm: 0.0,
+                        },
+                        model.clone(),
+                        None,
+                        None,
+                    );
                 }
             };
             // parts inside this piece, in the path's direction
@@ -1157,7 +1341,13 @@ impl<'a> Build<'a> {
         }
     }
 
-    pub(crate) fn finish(mut self, net: u32, name: String, partner: Option<u32>, target: Option<(f64, bool)>) -> Channel {
+    pub(crate) fn finish(
+        mut self,
+        net: u32,
+        name: String,
+        partner: Option<u32>,
+        target: Option<(f64, bool)>,
+    ) -> Channel {
         let rp = self.rp;
         let diff = self.diff;
         if self.models.iter().zip(&self.segs).any(|(m, s)| s.kind == "line" && m.is_none() && s.len_mm > 0.0) {
@@ -1193,13 +1383,24 @@ impl<'a> Build<'a> {
         if !tap_at.is_empty() {
             let mut a = 0;
             for &t in tap_at.iter().chain(std::iter::once(&self.segs.len())) {
-                let ms: Vec<Abcd> = freq.iter().enumerate().map(|(k, &f)| (a..t).fold(Abcd::identity(), |m, i| m.mul(&self.seg_abcd(i, k, f, &fallback, None)))).collect();
+                let ms: Vec<Abcd> = freq
+                    .iter()
+                    .enumerate()
+                    .map(|(k, &f)| {
+                        (a..t).fold(Abcd::identity(), |m, i| m.mul(&self.seg_abcd(i, k, f, &fallback, None)))
+                    })
+                    .collect();
                 let dc = (a..t).fold(Abcd::identity(), |m, i| m.mul(&self.seg_abcd_dc(i, &fallback, None)));
                 pieces.push((ms, dc));
                 a = t + 1;
             }
             for (j, &i) in tap_at.iter().enumerate() {
-                taps.push(Tap { label: self.branch_tap[i].clone().unwrap_or_default(), after: j, abcd: self.branch[i].clone().unwrap_or_default(), dc: self.branch_dc[i].unwrap_or_else(Abcd::identity) });
+                taps.push(Tap {
+                    label: self.branch_tap[i].clone().unwrap_or_default(),
+                    after: j,
+                    abcd: self.branch[i].clone().unwrap_or_default(),
+                    dc: self.branch_dc[i].unwrap_or_else(Abcd::identity),
+                });
             }
         }
         let db = |x: Cx| 20.0 * x.abs().max(1e-12).log10();
@@ -1213,7 +1414,8 @@ impl<'a> Build<'a> {
             let k = ((fghz * 1e9 / df).round() as usize).clamp(1, n) - 1;
             Some((fghz, s21_db[k]))
         };
-        let il_marks: Vec<(f64, f64)> = [1.0, 2.5, 4.0, 5.0, 8.0, 12.5, 16.0, 25.0].iter().filter_map(|&f| il_at(f)).collect();
+        let il_marks: Vec<(f64, f64)> =
+            [1.0, 2.5, 4.0, 5.0, 8.0, 12.5, 16.0, 25.0].iter().filter_map(|&f| il_at(f)).collect();
 
         // delay (lossless, static) and position along the path per section: (one-way delay, track mm)
         let mut delay = 0.0;
@@ -1252,7 +1454,10 @@ impl<'a> Build<'a> {
         }
         // loss per inch of the longest line section at a few frequencies
         let mut loss_db_per_in_at = Vec::new();
-        if let Some(i) = (0..self.segs.len()).filter(|&i| self.segs[i].kind == "line" && self.models[i].is_some()).max_by(|&a, &b| self.segs[a].len_mm.partial_cmp(&self.segs[b].len_mm).unwrap()) {
+        if let Some(i) = (0..self.segs.len())
+            .filter(|&i| self.segs[i].kind == "line" && self.models[i].is_some())
+            .max_by(|&a, &b| self.segs[a].len_mm.partial_cmp(&self.segs[b].len_mm).unwrap())
+        {
             let lm = self.models[i].as_ref().unwrap();
             for fg in [1.0, 4.0, 8.0, 16.0] {
                 if fg * 1e9 > rp.fmax {
@@ -1275,12 +1480,17 @@ impl<'a> Build<'a> {
                 Some(0) => 0.0,
                 Some(k) => {
                     let ((d0, s0), (d1, s1)) = (pos_table[k - 1], pos_table[k]);
-                    if d1 > d0 { s0 + (s1 - s0) * (h - d0) / (d1 - d0) } else { s1 }
+                    if d1 > d0 {
+                        s0 + (s1 - s0) * (h - d0) / (d1 - d0)
+                    } else {
+                        s1
+                    }
                 }
                 None => s_pos + (h - delay) * v_mean,
             }
         };
-        let (tdr_t_ps, tdr_z, tdr_x_mm) = tdr_map(&freq, &s11, z_ref, rp.rise, (2.0 * delay * 1.3 + 4.0 * rp.rise).max(200e-12), &xmap);
+        let (tdr_t_ps, tdr_z, tdr_x_mm) =
+            tdr_map(&freq, &s11, z_ref, rp.rise, (2.0 * delay * 1.3 + 4.0 * rp.rise).max(200e-12), &xmap);
         let vias = self.segs.iter().filter(|s| s.kind == "via").count();
         let sections = Some(Box::new(Sections {
             segs: self.segs.clone(),
@@ -1328,18 +1538,38 @@ impl<'a> Build<'a> {
     }
 }
 
-pub fn channel(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &RfParams) -> Result<Channel, String> {
+pub fn channel(
+    board: &Board,
+    an: &Analysis,
+    net: u32,
+    field: &HashMap<String, FieldResult>,
+    target: Option<(f64, bool)>,
+    rp: &RfParams,
+) -> Result<Channel, String> {
     channel_dir(board, an, net, field, target, rp, false, None)
 }
 
 /// Channel of a net along its main path (start chosen as in `net_path_info`, `flip`
 /// reverses it); branches of at least `BRANCH_MIN_MM` are included as open stubs.
 #[allow(clippy::too_many_arguments)]
-pub fn channel_dir(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &RfParams, flip: bool, hint: Option<P>) -> Result<Channel, String> {
+pub fn channel_dir(
+    board: &Board,
+    an: &Analysis,
+    net: u32,
+    field: &HashMap<String, FieldResult>,
+    target: Option<(f64, bool)>,
+    rp: &RfParams,
+    flip: bool,
+    hint: Option<P>,
+) -> Result<Channel, String> {
     let partner = crate::extract::diff_partners(&board.nets).get(net as usize).copied().flatten();
     let diff = partner.is_some() && target.map(|t| t.1).unwrap_or(true);
     let info = net_path_info(board, an, net, flip, hint).ok_or("net has no tracks")?;
-    let (parts, notes) = crate::topology::net_parts(board, net, if diff { crate::topology::PartMode::Odd } else { crate::topology::PartMode::Single });
+    let (parts, notes) = crate::topology::net_parts(
+        board,
+        net,
+        if diff { crate::topology::PartMode::Odd } else { crate::topology::PartMode::Single },
+    );
     let mut b = net_build(board, an, net, field, target, rp, &info, diff, false, &parts);
     b.warnings.extend(notes);
     let mut ch = b.finish(net, board.net_name(net).to_string(), partner, target);
@@ -1351,14 +1581,29 @@ pub fn channel_dir(board: &Board, an: &Analysis, net: u32, field: &HashMap<Strin
 /// `parts` (shunt parts of the net) at their pads: on the main path or on a modelled branch,
 /// wherever the pad lies closest.
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn net_build<'a>(board: &'a Board, an: &'a Analysis, net: u32, field: &'a HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &'a RfParams, info: &NetPath, diff: bool, pair: bool, parts: &[NetPart]) -> Build<'a> {
+pub(crate) fn net_build<'a>(
+    board: &'a Board,
+    an: &'a Analysis,
+    net: u32,
+    field: &'a HashMap<String, FieldResult>,
+    target: Option<(f64, bool)>,
+    rp: &'a RfParams,
+    info: &NetPath,
+    diff: bool,
+    pair: bool,
+    parts: &[NetPart],
+) -> Build<'a> {
     let mut warnings = Vec::new();
     if info.parts > 1 {
-        warnings.push(format!("net splits into {} parts (e.g. connected through components): the part with the longest path is computed", info.parts));
+        warnings.push(format!(
+            "net splits into {} parts (e.g. connected through components): the part with the longest path is computed",
+            info.parts
+        ));
     }
     let path: Vec<(usize, bool)> = info.pieces.iter().map(|p| (p.piece, p.rev)).collect();
     let modelled: Vec<&PathBranch> = info.branches.iter().filter(|b| b.modelled).collect();
-    let bpaths: Vec<Vec<(usize, bool)>> = modelled.iter().map(|br| br.pieces.iter().map(|p| (p.piece, p.rev)).collect()).collect();
+    let bpaths: Vec<Vec<(usize, bool)>> =
+        modelled.iter().map(|br| br.pieces.iter().map(|p| (p.piece, p.rev)).collect()).collect();
     // parts: (0 = main path, k + 1 = branch k) → cuts
     let mut cuts: Vec<Vec<Cut>> = vec![vec![]; bpaths.len() + 1];
     let (mut placed, mut end_loads): (Vec<&str>, Vec<&str>) = (Vec::new(), Vec::new());
@@ -1389,7 +1634,10 @@ pub(crate) fn net_build<'a>(board: &'a Board, an: &'a Analysis, net: u32, field:
         }
     }
     if !placed.is_empty() {
-        warnings.push(format!("shunt part(s) modelled at their pads: {} – package parasitics are estimates (data/components.json)", placed.join(", ")));
+        warnings.push(format!(
+            "shunt part(s) modelled at their pads: {} – package parasitics are estimates (data/components.json)",
+            placed.join(", ")
+        ));
     }
     if !end_loads.is_empty() {
         warnings.push(format!("{} at an end of the computed path: a load of that port, not in the channel (loss, return loss and TDR describe the interconnect)", end_loads.join(", ")));
@@ -1416,23 +1664,45 @@ pub(crate) fn net_build<'a>(board: &'a Board, an: &'a Analysis, net: u32, field:
     b.pair = pair;
     b.warnings = warnings;
     let mut k = 0usize;
-    b.add_path_cuts(net, &path, None, &cuts[0], |_, _| {}, |bld, _| {
-        k += 1;
-        for (_, label, ch) in stubs.iter().filter(|s| s.0 == k) {
-            bld.add_branch(label.clone(), ch);
-        }
-    });
+    b.add_path_cuts(
+        net,
+        &path,
+        None,
+        &cuts[0],
+        |_, _| {},
+        |bld, _| {
+            k += 1;
+            for (_, label, ch) in stubs.iter().filter(|s| s.0 == k) {
+                bld.add_branch(label.clone(), ch);
+            }
+        },
+    );
     b
 }
 
 /// Step response of S11 on a uniform grid f_k = k·df (k ≥ 1), with a Gaussian
 /// filter whose 10-90 % rise time is `rise`. Returns (t ps, Z Ω, x mm).
-pub fn tdr(freq: &[f64], s11: &[Cx], z_ref: f64, rise: f64, t_max: f64, delay: f64, length_mm: f64) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+pub fn tdr(
+    freq: &[f64],
+    s11: &[Cx],
+    z_ref: f64,
+    rise: f64,
+    t_max: f64,
+    delay: f64,
+    length_mm: f64,
+) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
     tdr_map(freq, s11, z_ref, rise, t_max, &|t: f64| if delay > 0.0 { t / (2.0 * delay) * length_mm } else { 0.0 })
 }
 
 /// As `tdr`, with the position of round-trip time t given by `xmap` (mm).
-pub fn tdr_map(freq: &[f64], s11: &[Cx], z_ref: f64, rise: f64, t_max: f64, xmap: &dyn Fn(f64) -> f64) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+pub fn tdr_map(
+    freq: &[f64],
+    s11: &[Cx],
+    z_ref: f64,
+    rise: f64,
+    t_max: f64,
+    xmap: &dyn Fn(f64) -> f64,
+) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
     if freq.is_empty() {
         return (vec![], vec![], vec![]);
     }
@@ -1479,7 +1749,10 @@ pub fn tdr_map(freq: &[f64], s11: &[Cx], z_ref: f64, rise: f64, t_max: f64, xmap
 pub fn touchstone(ch: &Channel) -> String {
     let mut s = String::new();
     let (a, b) = match &ch.path {
-        Some(p) => (format!("{} at {} (start of the path)", ch.name, p.start.label), format!("{} at {} (end of the path)", ch.name, p.end.label)),
+        Some(p) => (
+            format!("{} at {} (start of the path)", ch.name, p.start.label),
+            format!("{} at {} (end of the path)", ch.name, p.end.label),
+        ),
         None => (format!("{} at the start of the channel", ch.name), format!("{} at the end of the channel", ch.name)),
     };
     s.push_str(&format!("! kisi {}: S-parameters of {}\n", env!("CARGO_PKG_VERSION"), ch.name));
@@ -1489,14 +1762,18 @@ pub fn touchstone(ch: &Channel) -> String {
         s.push_str(&format!("! 2-port, single-ended, reference {:.1} ohm at both ports\n", ch.z_ref));
     }
     s.push_str(&format!("! Port 1 = A: {a}\n! Port 2 = B: {b}\n"));
-    s.push_str("! Data per frequency: S11 S21 S12 S22, each as real and imaginary part; S12 = S21 (passive, reciprocal)\n");
+    s.push_str(
+        "! Data per frequency: S11 S21 S12 S22, each as real and imaginary part; S12 = S21 (passive, reciprocal)\n",
+    );
     s.push_str(&format!("! Path {:.2} mm incl. {} vias\n", ch.length_mm, ch.vias));
     s.push_str(&format!("# HZ S RI R {:.3}\n", ch.z_ref));
     for (k, &f) in ch.freq.iter().enumerate() {
         // S11 S21 S12 S22; S12 = S21 (passive, reciprocal)
         let (a, b, c) = (ch.s11[k], ch.s21[k], ch.s22.get(k).copied().unwrap_or(ch.s11[k]));
-        s.push_str(&format!("{:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e}\n", f, a.re, a.im, b.re, b.im, b.re, b.im, c.re, c.im));
+        s.push_str(&format!(
+            "{:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e}\n",
+            f, a.re, a.im, b.re, b.im, b.re, b.im, c.re, c.im
+        ));
     }
     s
 }
-

@@ -28,7 +28,11 @@ pub fn run(args: &[String]) {
     let pcb = PathBuf::from(&args[0]);
     let opt = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).cloned();
     let no_config = args.iter().any(|a| a == "--no-config");
-    let cfg = if no_config { None } else { opt("--config").map(PathBuf::from).or_else(|| Some(service::config_path_for(&pcb)).filter(|p| p.is_file())) };
+    let cfg = if no_config {
+        None
+    } else {
+        opt("--config").map(PathBuf::from).or_else(|| Some(service::config_path_for(&pcb)).filter(|p| p.is_file()))
+    };
     let variant = opt("--variant");
     let p = Project::load_with(&pcb, None, None, cfg.as_deref(), variant.as_deref()).unwrap_or_else(|e| die(&e));
     let t0 = std::time::Instant::now();
@@ -47,10 +51,11 @@ pub fn run(args: &[String]) {
         for nn in row["nets"].as_array().cloned().unwrap_or_default() {
             let Some(name) = nn.as_str() else { continue };
             let Some(net) = p.net_id(name) else { continue };
-            let ch = match kisi_core::rf::channel_dir(board, &p.an, net, &p.params.field, p.target(net), &rp, false, None) {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
+            let ch =
+                match kisi_core::rf::channel_dir(board, &p.an, net, &p.params.field, p.target(net), &rp, false, None) {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
             for vi in &ch.via_info {
                 if seen.iter().any(|s| geom::len(geom::sub(*s, vi.at)) < 0.01) {
                     continue;
@@ -58,7 +63,8 @@ pub fn run(args: &[String]) {
                 seen.push(vi.at);
                 let Some(v) = board.vias.iter().find(|v| geom::len(geom::sub(v.at, vi.at)) < 0.01) else { continue };
                 let partner = None;
-                let planes: Vec<u16> = (v.from..=v.to).filter(|&k| plane_clearance(board, v.at, k, net, partner).is_some()).collect();
+                let planes: Vec<u16> =
+                    (v.from..=v.to).filter(|&k| plane_clearance(board, v.at, k, net, partner).is_some()).collect();
                 let (lo, hi) = (vi.layer_in.min(vi.layer_out), vi.layer_in.max(vi.layer_out));
                 // ladder returns: plane-net posts within 3 mm, the nearest `via::RETURN_POSTS`
                 let posts = kisi_core::via::plane_posts(board);
@@ -77,14 +83,20 @@ pub fn run(args: &[String]) {
                     let Some(c) = pair_cavity(board, v.at, ka, kb, net, partner, 60000, 0.25) else { continue };
                     let (a, b) = c.rect();
                     let near: Vec<f64> = {
-                        let mut d: Vec<f64> = c.shorts.iter().map(|s| geom::len(geom::sub(s.at, v.at))).filter(|&d| d > 0.01).collect();
+                        let mut d: Vec<f64> =
+                            c.shorts.iter().map(|s| geom::len(geom::sub(s.at, v.at))).filter(|&d| d > 0.01).collect();
                         d.sort_by(|x, y| x.partial_cmp(y).unwrap());
                         d
                     };
-                    let ladder_shorts = rets.iter().filter(|(_, w)| w.net == c.nets.0 && w.net == c.nets.1 && w.from <= ka && w.to >= kb).count();
+                    let ladder_shorts = rets
+                        .iter()
+                        .filter(|(_, w)| w.net == c.nets.0 && w.net == c.nets.1 && w.from <= ka && w.to >= kb)
+                        .count();
                     let modes: Vec<f64> = c.rect_modes(3).iter().map(|m| (m.0 / 1e7).round() / 100.0).collect();
-                    let key = (ka, kb, c.nets.0, c.nets.1, (c.bbox.min[0] * 10.0) as i64, (c.bbox.min[1] * 10.0) as i64);
-                    let pitch = if c.shorts.is_empty() { None } else { Some((c.area_mm2 / c.shorts.len() as f64).sqrt()) };
+                    let key =
+                        (ka, kb, c.nets.0, c.nets.1, (c.bbox.min[0] * 10.0) as i64, (c.bbox.min[1] * 10.0) as i64);
+                    let pitch =
+                        if c.shorts.is_empty() { None } else { Some((c.area_mm2 / c.shorts.len() as f64).sqrt()) };
                     pairs_seen.entry(key).or_insert_with(|| {
                         json!({"layers": [lname(ka), lname(kb)], "nets": [board.net_name(c.nets.0), board.net_name(c.nets.1)], "d_mm": c.d_mm, "er": c.er,
                             "rect_mm": [a, b], "area_mm2": c.area_mm2, "fill_ratio": c.area_mm2 / (a * b), "shorts": c.shorts.len(), "caps": c.caps.len(),
@@ -160,7 +172,14 @@ pub fn run(args: &[String]) {
                 )
             })
             .collect();
-        println!("  {:<40} {:>6}>{:<6} ret {:<8} {}", v["net"].as_str().unwrap(), v["from"].as_str().unwrap(), v["to"].as_str().unwrap(), v["return_kind"].as_str().unwrap(), pairs.join("; "));
+        println!(
+            "  {:<40} {:>6}>{:<6} ret {:<8} {}",
+            v["net"].as_str().unwrap(),
+            v["from"].as_str().unwrap(),
+            v["to"].as_str().unwrap(),
+            v["return_kind"].as_str().unwrap(),
+            pairs.join("; ")
+        );
     }
     // return groups over all channel vias: pairs of one net / of two nets by kind, in the path or a stub
     let mut tally: std::collections::BTreeMap<String, usize> = Default::default();

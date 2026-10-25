@@ -125,16 +125,32 @@ pub enum El {
     Series(Imp),
     Shunt(Adm),
     /// RLGC ladder of `n` sections `z`, `y`: y/2 – (z – y) × (n−1) – z – y/2 (π sections)
-    Ladder { z: Imp, y: Adm, n: usize },
+    Ladder {
+        z: Imp,
+        y: Adm,
+        n: usize,
+    },
     /// open stub to the reference
     Stub(Chain),
     /// lossless-line cells: `n` cells of a lossless line (inductance `l`, capacitance `c` per cell,
     /// written as an LC ladder of `m` π sections) with the series loss `z` and the shunt loss `y` of
     /// a cell in its middle: line/2 – (z – y – line) × (n−1) – z – y – line/2 (the half lines with
     /// ⌈m/2⌉ sections)
-    Cells { z: Imp, y: Adm, l: f64, c: f64, n: usize, m: usize },
+    Cells {
+        z: Imp,
+        y: Adm,
+        l: f64,
+        c: f64,
+        n: usize,
+        m: usize,
+    },
     /// a named sub-chain: its own `.subckt` (a line segment, a via, a part)
-    Block { name: String, note: String, chain: Chain, tag: Tag },
+    Block {
+        name: String,
+        note: String,
+        chain: Chain,
+        tag: Tag,
+    },
 }
 
 /// What a lane element is, for the KiCad sheet (empty for inner blocks).
@@ -162,7 +178,11 @@ impl Tag {
         t
     }
     fn line_value(&self) -> String {
-        let z = if self.z.1 - self.z.0 < 0.5 { format!("{:.1}", self.z.0) } else { format!("{:.1}-{:.1}", self.z.0, self.z.1) };
+        let z = if self.z.1 - self.z.0 < 0.5 {
+            format!("{:.1}", self.z.0)
+        } else {
+            format!("{:.1}-{:.1}", self.z.0, self.z.1)
+        };
         format!("{:.2} mm {} {z} Ω{}", self.len_mm, self.layer, if self.kind == "coupled" { " diff." } else { "" })
     }
 }
@@ -186,7 +206,9 @@ pub fn join_blocks(a: &mut El, b: &El) -> bool {
 
 /// Join a coupled run into the previous modal block when both are coupled runs on one layer.
 pub fn join_modal(a: &mut PairEl, b: &PairEl) -> bool {
-    if let (PairEl::Modal { note, even, odd, tag, .. }, PairEl::Modal { note: nb, even: eb, odd: ob, tag: tb, .. }) = (a, b) {
+    if let (PairEl::Modal { note, even, odd, tag, .. }, PairEl::Modal { note: nb, even: eb, odd: ob, tag: tb, .. }) =
+        (a, b)
+    {
         if tag.kind == "coupled" && tb.kind == "coupled" && tag.layer == tb.layer {
             even.0.extend(eb.0.iter().cloned());
             odd.0.extend(ob.0.iter().cloned());
@@ -223,18 +245,23 @@ impl Chain {
     }
     /// The chain with every impedance multiplied by k.
     pub fn scaled(&self, k: f64) -> Chain {
-        Chain(self
-            .0
-            .iter()
-            .map(|e| match e {
-                El::Series(z) => El::Series(z.scaled(k)),
-                El::Shunt(y) => El::Shunt(y.scaled(1.0 / k)),
-                El::Ladder { z, y, n } => El::Ladder { z: z.scaled(k), y: y.scaled(1.0 / k), n: *n },
-                El::Cells { z, y, l, c, n, m } => El::Cells { z: z.scaled(k), y: y.scaled(1.0 / k), l: l * k, c: c / k, n: *n, m: *m },
-                El::Stub(c) => El::Stub(c.scaled(k)),
-                El::Block { name, note, chain, tag } => El::Block { name: name.clone(), note: note.clone(), chain: chain.scaled(k), tag: tag.clone() },
-            })
-            .collect())
+        Chain(
+            self.0
+                .iter()
+                .map(|e| match e {
+                    El::Series(z) => El::Series(z.scaled(k)),
+                    El::Shunt(y) => El::Shunt(y.scaled(1.0 / k)),
+                    El::Ladder { z, y, n } => El::Ladder { z: z.scaled(k), y: y.scaled(1.0 / k), n: *n },
+                    El::Cells { z, y, l, c, n, m } => {
+                        El::Cells { z: z.scaled(k), y: y.scaled(1.0 / k), l: l * k, c: c / k, n: *n, m: *m }
+                    }
+                    El::Stub(c) => El::Stub(c.scaled(k)),
+                    El::Block { name, note, chain, tag } => {
+                        El::Block { name: name.clone(), note: note.clone(), chain: chain.scaled(k), tag: tag.clone() }
+                    }
+                })
+                .collect(),
+        )
     }
 }
 
@@ -294,7 +321,8 @@ pub fn star2(a: &S2, b: &S2) -> S2 {
     [a[0] + a[1] * b[0] * a[2] * den, a[1] * b[1] * den, a[2] * b[2] * den, b[3] + b[2] * a[3] * b[1] * den]
 }
 
-const S2_THRU: S2 = [Cx { re: 0.0, im: 0.0 }, Cx { re: 1.0, im: 0.0 }, Cx { re: 1.0, im: 0.0 }, Cx { re: 0.0, im: 0.0 }];
+const S2_THRU: S2 =
+    [Cx { re: 0.0, im: 0.0 }, Cx { re: 1.0, im: 0.0 }, Cx { re: 1.0, im: 0.0 }, Cx { re: 0.0, im: 0.0 }];
 
 /// `s` repeated `n` times (star products by binary exponentiation).
 fn star2_pow(s: &S2, mut n: usize) -> S2 {
@@ -444,7 +472,11 @@ pub fn pair_s(els: &[PairEl], w: f64, z0: f64) -> S4 {
 /// The lossless lines of a cell (inductance `l`, capacitance `c`, `m` π sections) and of half a
 /// cell (⌈m/2⌉ sections) as LC ladders.
 pub fn cell_lines(l: f64, c: f64, m: usize) -> (El, El) {
-    let lad = |l: f64, c: f64, k: usize| El::Ladder { z: Imp(vec![Zel::L(l / k as f64)]), y: Adm(vec![Imp(vec![Zel::C(c / k as f64)])]), n: k };
+    let lad = |l: f64, c: f64, k: usize| El::Ladder {
+        z: Imp(vec![Zel::L(l / k as f64)]),
+        y: Adm(vec![Imp(vec![Zel::C(c / k as f64)])]),
+        n: k,
+    };
     let mh = m.div_ceil(2).max(1);
     (lad(l, c, m.max(1)), lad(l / 2.0, c / 2.0, mh))
 }
@@ -664,7 +696,15 @@ fn sanitize(s: &str) -> String {
 
 impl Lib {
     pub fn new(prefix: &str) -> Lib {
-        Lib { prefix: sanitize(prefix), out: vec![], names: HashMap::new(), flat: HashMap::new(), counts: Counts::default(), defs: HashMap::new(), tags: HashMap::new() }
+        Lib {
+            prefix: sanitize(prefix),
+            out: vec![],
+            names: HashMap::new(),
+            flat: HashMap::new(),
+            counts: Counts::default(),
+            defs: HashMap::new(),
+            tags: HashMap::new(),
+        }
     }
 
     /// A unique subcircuit name from `hint` (with the library's prefix once).
@@ -698,7 +738,10 @@ impl Lib {
         self.counts.subckts += 1;
         self.flat.insert(name.to_string(), b.flat);
         let other = b.lines.len() - b.insts.len();
-        self.defs.insert(name.to_string(), Def { ports: ports.split_whitespace().map(String::from).collect(), insts: b.insts, other });
+        self.defs.insert(
+            name.to_string(),
+            Def { ports: ports.split_whitespace().map(String::from).collect(), insts: b.insts, other },
+        );
     }
 
     fn inst(&mut self, b: &mut Body, sub: &str, nodes: &[&str]) {
@@ -770,7 +813,12 @@ impl Lib {
                         let mut sb = Body::new();
                         sb.imp(zs, "a", "b");
                         sb.adm(&y.scaled(k), "b", "ref");
-                        self.finish(nm, "a b ref", if k == 1.0 { "one RLGC section: z, then y" } else { "last RLGC section: z, then y/2" }, sb);
+                        self.finish(
+                            nm,
+                            "a b ref",
+                            if k == 1.0 { "one RLGC section: z, then y" } else { "last RLGC section: z, then y/2" },
+                            sb,
+                        );
                     }
                     b.adm(&y.scaled(0.5), &cur, "ref");
                     for s in 0..*n {
@@ -857,7 +905,13 @@ impl Lib {
                 PairEl::Line(l, el) => {
                     let l = (*l).min(1);
                     let shunt = Chain(vec![el.clone()]).shunt_only();
-                    let nxt = if shunt { cur[l].clone() } else if Some(i) == last[l] { ports[l][1].to_string() } else { b.node() };
+                    let nxt = if shunt {
+                        cur[l].clone()
+                    } else if Some(i) == last[l] {
+                        ports[l][1].to_string()
+                    } else {
+                        b.node()
+                    };
                     let hint = format!("{}_{}", if l == 0 { "p" } else { "n" }, i);
                     let from = cur[l].clone();
                     self.emit(&mut b, &Chain(vec![el.clone()]), &from, &nxt, &hint);

@@ -12,9 +12,9 @@ pub use kisi_board::{board, geom, load_pcb, num, package};
 
 pub mod cavity_modal;
 pub mod field_syntax;
+pub mod losses;
 pub mod pdn;
 pub mod pdn_ic;
-pub mod losses;
 pub mod pi;
 pub mod thermal;
 pub mod tree;

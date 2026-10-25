@@ -1,8 +1,8 @@
 //! Crosstalk to neighbouring traces on the same layer (NEXT/FEXT estimate).
 
-use crate::analytic;
 #[allow(unused_imports)]
 use super::*;
+use crate::analytic;
 use crate::board::Board;
 use crate::extract::{Analysis, FieldResult, Kind};
 use crate::geom::{self, P};
@@ -160,7 +160,16 @@ type Near = (f64, f64, bool, geom::P, geom::P);
 /// Nearest parallel track of `nets` (same layer, gap ≤ gmax) at sample `p` of a trace with
 /// direction `dir`: (net, gap, width, side +normal).
 #[allow(clippy::too_many_arguments)]
-fn near_tracks(board: &Board, grid: &HashMap<(i64, i64), Vec<usize>>, layer: u16, p: geom::P, dir: geom::P, w: f64, gmax: f64, out: &mut HashMap<u32, Near>) {
+fn near_tracks(
+    board: &Board,
+    grid: &HashMap<(i64, i64), Vec<usize>>,
+    layer: u16,
+    p: geom::P,
+    dir: geom::P,
+    w: f64,
+    gmax: f64,
+    out: &mut HashMap<u32, Near>,
+) {
     out.clear();
     let nrm = [-dir[1], dir[0]];
     let r = (gmax + 1.0).ceil() as i64;
@@ -205,7 +214,16 @@ fn near_tracks(board: &Board, grid: &HashMap<(i64, i64), Vec<usize>>, layer: u16
 /// Tracks on another layer `layer2` that run over or under the sample (parallel, lateral offset
 /// below half the widths plus `reach`): net → (lateral offset of the centres, width).
 #[allow(clippy::too_many_arguments)]
-fn near_broadside(board: &Board, grid: &HashMap<(i64, i64), Vec<usize>>, layer2: u16, p: geom::P, dir: geom::P, w: f64, reach: f64, out: &mut HashMap<u32, (f64, f64)>) {
+fn near_broadside(
+    board: &Board,
+    grid: &HashMap<(i64, i64), Vec<usize>>,
+    layer2: u16,
+    p: geom::P,
+    dir: geom::P,
+    w: f64,
+    reach: f64,
+    out: &mut HashMap<u32, (f64, f64)>,
+) {
     out.clear();
     let r = (reach + w + 1.0).ceil() as i64;
     let (cx, cy) = (p[0].floor() as i64, p[1].floor() as i64);
@@ -274,13 +292,27 @@ fn gv(q: i64) -> f64 {
     0.001 * 1.03f64.powi(q as i32)
 }
 
-pub fn crosstalk(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, FieldResult>, rp: &RfParams) -> Crosstalk {
+pub fn crosstalk(
+    board: &Board,
+    an: &Analysis,
+    net: u32,
+    field: &HashMap<String, FieldResult>,
+    rp: &RfParams,
+) -> Crosstalk {
     crosstalk_impl(board, an, net, field, rp, None)
 }
 
 /// As `crosstalk`, with the coupling along the path (start as for the channel: `flip`, `hint`)
 /// and the coupled stretches for the board.
-pub fn crosstalk_dir(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, FieldResult>, rp: &RfParams, flip: bool, hint: Option<P>) -> Crosstalk {
+pub fn crosstalk_dir(
+    board: &Board,
+    an: &Analysis,
+    net: u32,
+    field: &HashMap<String, FieldResult>,
+    rp: &RfParams,
+    flip: bool,
+    hint: Option<P>,
+) -> Crosstalk {
     crosstalk_impl(board, an, net, field, rp, Some((flip, hint)))
 }
 
@@ -300,7 +332,14 @@ struct Smp {
     w: f64,
 }
 
-fn crosstalk_impl(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, FieldResult>, rp: &RfParams, detail: Option<(bool, Option<P>)>) -> Crosstalk {
+fn crosstalk_impl(
+    board: &Board,
+    an: &Analysis,
+    net: u32,
+    field: &HashMap<String, FieldResult>,
+    rp: &RfParams,
+    detail: Option<(bool, Option<P>)>,
+) -> Crosstalk {
     let su = board.stackup();
     let partners = crate::extract::diff_partners(&board.nets);
     let partner = partners.get(net as usize).copied().flatten();
@@ -408,8 +447,25 @@ fn crosstalk_impl(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                     let h = geom::scale(dir, seg / 2.0);
                     // the aggressor stretch runs the same way as the victim's
                     let oh = geom::scale(ndir, if geom::dot(ndir, dir) >= 0.0 { seg / 2.0 } else { -seg / 2.0 });
-                    let frac = if pc[2] > pc[1] { ((t / len - pc[1] as f64) / (pc[2] - pc[1]) as f64).clamp(0.0, 1.0) } else { 0.5 };
-                    smps.push(Smp { piece: pi, frac, ds: seg, key: ki, near, layer: tr.layer, va: geom::sub(p, h), vb: geom::add(p, h), aa: geom::sub(nfoot, oh), ab: geom::add(nfoot, oh), v, w: tr.width });
+                    let frac = if pc[2] > pc[1] {
+                        ((t / len - pc[1] as f64) / (pc[2] - pc[1]) as f64).clamp(0.0, 1.0)
+                    } else {
+                        0.5
+                    };
+                    smps.push(Smp {
+                        piece: pi,
+                        frac,
+                        ds: seg,
+                        key: ki,
+                        near,
+                        layer: tr.layer,
+                        va: geom::sub(p, h),
+                        vb: geom::add(p, h),
+                        aa: geom::sub(nfoot, oh),
+                        ab: geom::add(nfoot, oh),
+                        v,
+                        w: tr.width,
+                    });
                 }
                 let e = per_net.entry(near).or_insert((0.0, f64::INFINITY, 0.0, tr.layer));
                 e.0 += seg;
@@ -463,7 +519,13 @@ fn crosstalk_impl(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                     if n == 0 {
                         continue;
                     }
-                    let kind = if n == iv { "sig+" } else if n == vic.len() + ja { "sig-" } else { "gnd" };
+                    let kind = if n == iv {
+                        "sig+"
+                    } else if n == vic.len() + ja {
+                        "sig-"
+                    } else {
+                        "gnd"
+                    };
                     extra.push(Extra { d: l.d, w: l.w, kind });
                 }
                 // coplanar ground only on sides without further lines
@@ -477,8 +539,16 @@ fn crosstalk_impl(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                     s_left: if left_free { xs.s_left } else { None },
                     s_right: if right_free { xs.s_right } else { None },
                     partner: None,
-                    mask: if xs.mask { su.mask_top.as_ref().or(su.mask_bottom.as_ref()).map(|m| (m.thickness, m.epsilon_r)) } else { None },
-                    planes: xs.planes.iter().map(|&(k, l, r)| PlaneCut { layer: k as usize, left: l, right: r }).collect(),
+                    mask: if xs.mask {
+                        su.mask_top.as_ref().or(su.mask_bottom.as_ref()).map(|m| (m.thickness, m.epsilon_r))
+                    } else {
+                        None
+                    },
+                    planes: xs
+                        .planes
+                        .iter()
+                        .map(|&(k, l, r)| PlaneCut { layer: k as usize, left: l, right: r })
+                        .collect(),
                     extra,
                     trace_gnd: iv != 0,
                 };
@@ -557,7 +627,9 @@ fn crosstalk_impl(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
             Aggressor {
                 net: onet,
                 name: board.net_name(onet).to_string(),
-                pair: pair.or_else(|| partners.get(onet as usize).copied().flatten()).map(|o| board.net_name(o).to_string()),
+                pair: pair
+                    .or_else(|| partners.get(onet as usize).copied().flatten())
+                    .map(|o| board.net_name(o).to_string()),
                 layer: pn.3,
                 coupled_mm: pn.0,
                 gap_min_mm: pn.1,
@@ -567,18 +639,34 @@ fn crosstalk_impl(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                 fext,
                 next_c,
                 fext_c,
-                source: if src.0 >= 0.95 * src.1 && src.1 > 0.0 { "field" } else if src.0 > 0.0 { "partly field" } else { "formula" },
+                source: if src.0 >= 0.95 * src.1 && src.1 > 0.0 {
+                    "field"
+                } else if src.0 > 0.0 {
+                    "partly field"
+                } else {
+                    "formula"
+                },
             }
         })
         .filter(|a| a.coupled_mm >= 0.5)
         .collect();
-    aggressors.sort_by(|a, b| (b.next + b.fext).partial_cmp(&(a.next + a.fext)).unwrap().then(a.net.cmp(&b.net)).then(a.layer.cmp(&b.layer)));
+    aggressors.sort_by(|a, b| {
+        (b.next + b.fext).partial_cmp(&(a.next + a.fext)).unwrap().then(a.net.cmp(&b.net)).then(a.layer.cmp(&b.layer))
+    });
     let sum = |f: &dyn Fn(&Aggressor) -> f64| aggressors.iter().map(f).fold(0.0, |x, y| x + y);
-    let (next_total, fext_total, next_total_c, fext_total_c) = (sum(&|a| a.next), sum(&|a| a.fext), sum(&|a| a.next_c), sum(&|a| a.fext_c));
+    let (next_total, fext_total, next_total_c, fext_total_c) =
+        (sum(&|a| a.next), sum(&|a| a.fext), sum(&|a| a.next_c), sum(&|a| a.fext_c));
     let mut broadside: Vec<Broadside> = bside
         .into_iter()
         .filter(|(_, b)| b.0 >= 0.5)
-        .map(|((on, l), b)| Broadside { net: on, name: board.net_name(on).to_string(), layer: l, overlap_mm: b.0, dz_mm: b.1, offset_mm: b.2 })
+        .map(|((on, l), b)| Broadside {
+            net: on,
+            name: board.net_name(on).to_string(),
+            layer: l,
+            overlap_mm: b.0,
+            dz_mm: b.1,
+            offset_mm: b.2,
+        })
         .collect();
     broadside.sort_by(|a, b| b.overlap_mm.total_cmp(&a.overlap_mm).then(a.net.cmp(&b.net)));
     // profile along the path and the stretches for the board
@@ -598,17 +686,28 @@ fn crosstalk_impl(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
             let length = at.values().map(|x| x.1).fold(path.length_mm, f64::max);
             let nb = ((length / step).ceil() as usize).max(1);
             let shown: Vec<u32> = aggressors.iter().take(5).map(|a| a.net).collect();
-            let mut dens: HashMap<u32, [Vec<f64>; 4]> = shown.iter().map(|&n| (n, [vec![0.0; nb], vec![0.0; nb], vec![0.0; nb], vec![0.0; nb]])).collect();
+            let mut dens: HashMap<u32, [Vec<f64>; 4]> =
+                shown.iter().map(|&n| (n, [vec![0.0; nb], vec![0.0; nb], vec![0.0; nb], vec![0.0; nb]])).collect();
             let mut vsum = (0.0, 0.0);
             // all aggressors (differential noise for a pair): local crosstalk per stretch
             let (mut tb, mut tf) = (vec![0.0; nb], vec![0.0; nb]);
-            let bin_of = |m: &Smp| at.get(&m.piece).map(|&(s0, s1, rev)| {
-                let sp = if rev { s1 - m.frac * (s1 - s0) } else { s0 + m.frac * (s1 - s0) };
-                ((sp / step) as usize).min(nb - 1)
-            });
+            let bin_of = |m: &Smp| {
+                at.get(&m.piece).map(|&(s0, s1, rev)| {
+                    let sp = if rev { s1 - m.frac * (s1 - s0) } else { s0 + m.frac * (s1 - s0) };
+                    ((sp / step) as usize).min(nb - 1)
+                })
+            };
             for m in &smps {
                 let (kb, kf, kbc, kfc) = kcoef[m.key];
-                segments.push(XtSeg { net: m.near, layer: m.layer, va: m.va, vb: m.vb, aa: m.aa, ab: m.ab, kb: kb.abs() });
+                segments.push(XtSeg {
+                    net: m.near,
+                    layer: m.layer,
+                    va: m.va,
+                    vb: m.vb,
+                    aa: m.aa,
+                    ab: m.ab,
+                    kb: kb.abs(),
+                });
                 vsum.0 += m.v * m.ds;
                 vsum.1 += m.ds;
                 let Some(b) = bin_of(m) else { continue };
@@ -631,26 +730,38 @@ fn crosstalk_impl(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                 for i in 0..nb {
                     c[i + 1] = c[i] + d[i];
                 }
-                (0..nb).map(|i| {
-                    let lo = i.saturating_sub(nw / 2);
-                    let hi = (lo + nw).min(nb);
-                    c[hi] - c[lo]
-                }).collect()
+                (0..nb)
+                    .map(|i| {
+                        let lo = i.saturating_sub(nw / 2);
+                        let hi = (lo + nw).min(nb);
+                        c[hi] - c[lo]
+                    })
+                    .collect()
             };
             let next_of = |d: &Vec<f64>| -> Vec<f64> { win(d).into_iter().map(|x| (x / window).abs()).collect() };
             let fext_of = |d: &Vec<f64>| -> Vec<f64> {
                 let mut acc = 0.0;
-                d.iter().map(|x| {
-                    acc += x * 1e-3 / rp.rise;
-                    acc.abs()
-                }).collect()
+                d.iter()
+                    .map(|x| {
+                        acc += x * 1e-3 / rp.rise;
+                        acc.abs()
+                    })
+                    .collect()
             };
             let items = shown
                 .iter()
                 .map(|&n| {
                     let d = &dens[&n];
                     let a = aggressors.iter().find(|a| a.net == n).unwrap();
-                    XtProfileItem { net: n, name: a.name.clone(), pair: a.pair.clone(), next: next_of(&d[0]), fext: fext_of(&d[1]), next_c: next_of(&d[2]), fext_c: fext_of(&d[3]) }
+                    XtProfileItem {
+                        net: n,
+                        name: a.name.clone(),
+                        pair: a.pair.clone(),
+                        next: next_of(&d[0]),
+                        fext: fext_of(&d[1]),
+                        next_c: next_of(&d[2]),
+                        fext_c: fext_of(&d[3]),
+                    }
                 })
                 .collect();
             // local crosstalk of each sampled stretch (once per stretch, not per aggressor)
@@ -666,10 +777,30 @@ fn crosstalk_impl(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                     hot.push(XtHot { net, layer: m.layer, a: m.va, b: m.vb, w: m.w, next: nx, fext: fx });
                 }
             }
-            profile = Some(XtProfile { s_mm: (0..nb).map(|i| (i as f64 + 0.5) * step).collect(), length_mm: length, window_mm: window, items });
+            profile = Some(XtProfile {
+                s_mm: (0..nb).map(|i| (i as f64 + 0.5) * step).collect(),
+                length_mm: length,
+                window_mm: window,
+                items,
+            });
         }
     }
-    Crosstalk { net, rise_ps: rp.rise * 1e12, differential: victim_pair, aggressors, geoms, geom_weight, next_total, fext_total, next_total_c, fext_total_c, profile, segments, broadside, hot }
+    Crosstalk {
+        net,
+        rise_ps: rp.rise * 1e12,
+        differential: victim_pair,
+        aggressors,
+        geoms,
+        geom_weight,
+        next_total,
+        fext_total,
+        next_total_c,
+        fext_total_c,
+        profile,
+        segments,
+        broadside,
+        hot,
+    }
 }
 
 /// Stage 1 of the coupling analysis for many nets (formulas, or the field solver where it has
@@ -705,7 +836,14 @@ pub struct XtScan {
     pub map: Vec<XtHot>,
 }
 
-pub fn crosstalk_scan(board: &Board, an: &Analysis, nets: &[u32], field: &HashMap<String, FieldResult>, rp: &RfParams, threshold: f64) -> XtScan {
+pub fn crosstalk_scan(
+    board: &Board,
+    an: &Analysis,
+    nets: &[u32],
+    field: &HashMap<String, FieldResult>,
+    rp: &RfParams,
+    threshold: f64,
+) -> XtScan {
     let partners = crate::extract::diff_partners(&board.nets);
     let mut seen: std::collections::HashSet<u32> = std::collections::HashSet::new();
     let mut rows = Vec::new();
@@ -737,7 +875,12 @@ pub fn crosstalk_scan(board: &Board, an: &Analysis, nets: &[u32], field: &HashMa
             // the stretches that make it critical, on both lines of a pair
             map.extend(x.hot.iter().filter(|h| h.next.max(h.fext) >= threshold).cloned());
             if let Some(p) = partner.filter(|_| x.differential) {
-                map.extend(crosstalk_dir(board, an, p, field, rp, false, None).hot.into_iter().filter(|h| h.next.max(h.fext) >= threshold));
+                map.extend(
+                    crosstalk_dir(board, an, p, field, rp, false, None)
+                        .hot
+                        .into_iter()
+                        .filter(|h| h.next.max(h.fext) >= threshold),
+                );
             }
         }
         rows.push(XtRow {
@@ -751,21 +894,38 @@ pub fn crosstalk_scan(board: &Board, an: &Analysis, nets: &[u32], field: &HashMa
             fext_c: x.fext_total_c,
             worst: worst.map(|a| a.name.clone()),
             worst_pair: worst.and_then(|a| a.pair.clone()),
-            source: if nf > 0 && nf == x.aggressors.len() { "field" } else if nf > 0 || x.aggressors.iter().any(|a| a.source != "formula") { "partly field" } else { "formula" },
+            source: if nf > 0 && nf == x.aggressors.len() {
+                "field"
+            } else if nf > 0 || x.aggressors.iter().any(|a| a.source != "formula") {
+                "partly field"
+            } else {
+                "formula"
+            },
             open: x.geom_weight.iter().filter(|&&w| w >= 0.1 * threshold).count(),
             broadside: x.broadside.len(),
             critical,
         });
     }
     rows.sort_by(|a, b| b.next.max(b.fext).total_cmp(&a.next.max(a.fext)).then(a.net.cmp(&b.net)));
-    let mut critical_geoms: Vec<(String, String, f64, Vec<u32>)> = geo.into_iter().map(|(id, (t, w, v))| (id, t, w, v)).collect();
+    let mut critical_geoms: Vec<(String, String, f64, Vec<u32>)> =
+        geo.into_iter().map(|(id, (t, w, v))| (id, t, w, v)).collect();
     critical_geoms.sort_by(|a, b| b.2.total_cmp(&a.2).then(a.0.cmp(&b.0)));
     XtScan { rows, threshold, critical_geoms, map }
 }
 
 /// Coupling cross-sections of the critical victims among `nets` (stage 2): see `crosstalk_scan`.
-pub fn crosstalk_geoms(board: &Board, an: &Analysis, nets: &[u32], field: &HashMap<String, FieldResult>, rp: &RfParams) -> Vec<(String, String, f64)> {
-    crosstalk_scan(board, an, nets, field, rp, XT_CRITICAL).critical_geoms.into_iter().map(|(id, t, w, _)| (id, t, w)).collect()
+pub fn crosstalk_geoms(
+    board: &Board,
+    an: &Analysis,
+    nets: &[u32],
+    field: &HashMap<String, FieldResult>,
+    rp: &RfParams,
+) -> Vec<(String, String, f64)> {
+    crosstalk_scan(board, an, nets, field, rp, XT_CRITICAL)
+        .critical_geoms
+        .into_iter()
+        .map(|(id, t, w, _)| (id, t, w))
+        .collect()
 }
 
 /// Victims with NEXT or FEXT from this fraction of the aggressor swing on are critical (kisi

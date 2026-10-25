@@ -43,7 +43,14 @@ impl Ids {
             x
         };
         let (a, b) = (word(), word());
-        format!("{:08x}-{:04x}-4{:03x}-8{:03x}-{:012x}", (a >> 32) as u32, (a >> 16) & 0xffff, a & 0xfff, (b >> 52) & 0xfff, b & 0xffff_ffff_ffff)
+        format!(
+            "{:08x}-{:04x}-4{:03x}-8{:03x}-{:012x}",
+            (a >> 32) as u32,
+            (a >> 16) & 0xffff,
+            a & 0xfff,
+            (b >> 52) & 0xfff,
+            b & 0xffff_ffff_ffff
+        )
     }
 }
 
@@ -58,12 +65,21 @@ const FONT_HIDE: &str = "(effects (font (size 1.27 1.27)) hide)";
 const D: f64 = 25.4;
 
 fn prop(name: &str, val: &str, x: f64, y: f64, hide: bool) -> String {
-    format!("    (property {} {} (at {x:.2} {y:.2} 0)\n      {}\n    )\n", q(name), q(val), if hide { FONT_HIDE } else { FONT })
+    format!(
+        "    (property {} {} (at {x:.2} {y:.2} 0)\n      {}\n    )\n",
+        q(name),
+        q(val),
+        if hide { FONT_HIDE } else { FONT }
+    )
 }
 
 /// A visible property, left-justified at (x, y).
 fn prop_left(name: &str, val: &str, x: f64, y: f64) -> String {
-    format!("    (property {} {} (at {x:.2} {y:.2} 0)\n      (effects (font (size 1.27 1.27)) (justify left))\n    )\n", q(name), q(val))
+    format!(
+        "    (property {} {} (at {x:.2} {y:.2} 0)\n      (effects (font (size 1.27 1.27)) (justify left))\n    )\n",
+        q(name),
+        q(val)
+    )
 }
 
 // --- kisi's symbols ---------------------------------------------------------------------------
@@ -99,7 +115,15 @@ fn poly(pts: &[(f64, f64)], w: f64) -> String {
 }
 
 fn rect(a: (f64, f64), b: (f64, f64), fill: &str, dash: bool) -> String {
-    format!("        (rectangle (start {} {}) (end {} {}) (stroke (width {}) (type {})) (fill (type {fill})))\n", a.0, a.1, b.0, b.1, if dash { 0.0 } else { 0.254 }, if dash { "dash" } else { "default" })
+    format!(
+        "        (rectangle (start {} {}) (end {} {}) (stroke (width {}) (type {})) (fill (type {fill})))\n",
+        a.0,
+        a.1,
+        b.0,
+        b.1,
+        if dash { 0.0 } else { 0.254 },
+        if dash { "dash" } else { "default" }
+    )
 }
 
 fn circle(c: (f64, f64), r: f64) -> String {
@@ -107,7 +131,10 @@ fn circle(c: (f64, f64), r: f64) -> String {
 }
 
 fn arc(s: (f64, f64), m: (f64, f64), e: (f64, f64)) -> String {
-    format!("        (arc (start {} {}) (mid {} {}) (end {} {}) {STROKE} (fill (type none)))\n", s.0, s.1, m.0, m.1, e.0, e.1)
+    format!(
+        "        (arc (start {} {}) (mid {} {}) (end {} {}) {STROKE} (fill (type none)))\n",
+        s.0, s.1, m.0, m.1, e.0, e.1
+    )
 }
 
 fn label(t: &str, x: f64, y: f64) -> String {
@@ -148,15 +175,32 @@ fn stub_body(y0: f64, y1: f64) -> String {
 }
 
 fn sym(name: &str) -> Sym {
-    let plain = |pins: Vec<Pin>, body: String, reference: &'static str| Sym { pins, body, names: false, power: None, reference };
+    let plain = |pins: Vec<Pin>, body: String, reference: &'static str| Sym {
+        pins,
+        body,
+        names: false,
+        power: None,
+        reference,
+    };
     match name {
         "SRC" => {
             let mut b = circle((0.0, 0.0), 2.54);
-            b.push_str(&poly(&[(-1.27, -0.635), (-0.635, -0.635), (-0.635, 0.635), (0.635, 0.635), (0.635, -0.635), (1.27, -0.635)], 0.0));
+            b.push_str(&poly(
+                &[(-1.27, -0.635), (-0.635, -0.635), (-0.635, 0.635), (0.635, 0.635), (0.635, -0.635), (1.27, -0.635)],
+                0.0,
+            ));
             plain(vec![pn(0.0, 5.08, 270, 2.54, "out"), pn(0.0, -5.08, 90, 2.54, "ref")], b, "X")
         }
-        "R" => plain(vec![pn(-5.08, 0.0, 0, 2.54, "a"), pn(5.08, 0.0, 180, 2.54, "b")], rect((-2.54, 1.016), (2.54, -1.016), "none", false), "R"),
-        "R_V" => plain(vec![pn(0.0, 5.08, 270, 2.54, "a"), pn(0.0, -5.08, 90, 2.54, "b")], rect((-1.016, 2.54), (1.016, -2.54), "none", false), "R"),
+        "R" => plain(
+            vec![pn(-5.08, 0.0, 0, 2.54, "a"), pn(5.08, 0.0, 180, 2.54, "b")],
+            rect((-2.54, 1.016), (2.54, -1.016), "none", false),
+            "R",
+        ),
+        "R_V" => plain(
+            vec![pn(0.0, 5.08, 270, 2.54, "a"), pn(0.0, -5.08, 90, 2.54, "b")],
+            rect((-1.016, 2.54), (1.016, -2.54), "none", false),
+            "R",
+        ),
         "C" => {
             let mut b = poly(&[(-0.635, 2.032), (-0.635, -2.032)], 0.508);
             b.push_str(&poly(&[(0.635, 2.032), (0.635, -2.032)], 0.508));
@@ -191,14 +235,32 @@ fn sym(name: &str) -> Sym {
             b.push_str(&tl_body(-D));
             b.push_str(&rect((-6.35, 3.81), (6.35, -D - 3.81), "none", true));
             b.push_str(&label("coupled", 0.0, -D / 2.0));
-            plain(vec![pn(-7.62, 0.0, 0, 1.27, "p1"), pn(-7.62, -D, 0, 1.27, "n1"), pn(7.62, 0.0, 180, 1.27, "p2"), pn(7.62, -D, 180, 1.27, "n2")], b, "CPL")
+            plain(
+                vec![
+                    pn(-7.62, 0.0, 0, 1.27, "p1"),
+                    pn(-7.62, -D, 0, 1.27, "n1"),
+                    pn(7.62, 0.0, 180, 1.27, "p2"),
+                    pn(7.62, -D, 180, 1.27, "n2"),
+                ],
+                b,
+                "CPL",
+            )
         }
         "VIAPAIR" => {
             let mut b = via_body(0.0);
             b.push_str(&via_body(-D));
             b.push_str(&rect((-3.81, 3.81), (3.81, -D - 3.81), "none", true));
             b.push_str(&label("pair", 0.0, -D / 2.0));
-            plain(vec![pn(-5.08, 0.0, 0, 3.81, "p1"), pn(-5.08, -D, 0, 3.81, "n1"), pn(5.08, 0.0, 180, 3.81, "p2"), pn(5.08, -D, 180, 3.81, "n2")], b, "VP")
+            plain(
+                vec![
+                    pn(-5.08, 0.0, 0, 3.81, "p1"),
+                    pn(-5.08, -D, 0, 3.81, "n1"),
+                    pn(5.08, 0.0, 180, 3.81, "p2"),
+                    pn(5.08, -D, 180, 3.81, "n2"),
+                ],
+                b,
+                "VP",
+            )
         }
         "STUBPAIR" => {
             let mut b = stub_body(-1.27, -8.89);
@@ -210,11 +272,23 @@ fn sym(name: &str) -> Sym {
             let pair = name == "LANE4";
             let h = if pair { 7.62 } else { 5.08 };
             let pins = if pair {
-                vec![pn(-12.7, 2.54, 0, 2.54, "ap"), pn(-12.7, -2.54, 0, 2.54, "an"), pn(12.7, 2.54, 180, 2.54, "bp"), pn(12.7, -2.54, 180, 2.54, "bn"), pn(0.0, -h - 2.54, 90, 2.54, "ref")]
+                vec![
+                    pn(-12.7, 2.54, 0, 2.54, "ap"),
+                    pn(-12.7, -2.54, 0, 2.54, "an"),
+                    pn(12.7, 2.54, 180, 2.54, "bp"),
+                    pn(12.7, -2.54, 180, 2.54, "bn"),
+                    pn(0.0, -h - 2.54, 90, 2.54, "ref"),
+                ]
             } else {
                 vec![pn(-12.7, 0.0, 0, 2.54, "a"), pn(12.7, 0.0, 180, 2.54, "b"), pn(0.0, -h - 2.54, 90, 2.54, "ref")]
             };
-            Sym { pins, body: rect((-10.16, h), (10.16, -h), "background", false), names: true, power: None, reference: "X" }
+            Sym {
+                pins,
+                body: rect((-10.16, h), (10.16, -h), "background", false),
+                names: true,
+                power: None,
+                reference: "X",
+            }
         }
         "GND" => Sym {
             pins: vec![pn(0.0, 0.0, 270, 0.0, "GND")],
@@ -235,14 +309,20 @@ fn sym(name: &str) -> Sym {
 }
 
 /// Every symbol of kisi's library.
-const ALL_SYMBOLS: [&str; 17] = ["C", "C_V", "CPL", "GND", "L", "L_V", "LANE2", "LANE4", "PWR_FLAG", "R", "R_V", "SRC", "STUB", "STUBPAIR", "TL", "VIA", "VIAPAIR"];
+const ALL_SYMBOLS: [&str; 17] = [
+    "C", "C_V", "CPL", "GND", "L", "L_V", "LANE2", "LANE4", "PWR_FLAG", "R", "R_V", "SRC", "STUB", "STUBPAIR", "TL",
+    "VIA", "VIAPAIR",
+];
 
 /// One symbol definition; `prefix` "kisi:" in the sheet's `lib_symbols`, "" in the library file.
 fn symbol_def(name: &str, prefix: &str) -> String {
     let y = sym(name);
     let flags = if y.power.is_some() { " (power)" } else { "" };
     let names = if y.names { "(pin_names (offset 1.016))" } else { "(pin_names (offset 0) hide)" };
-    let mut s = format!("    (symbol {}{flags} (pin_numbers hide) {names} (in_bom yes) (on_board yes)\n", q(&format!("{prefix}{name}")));
+    let mut s = format!(
+        "    (symbol {}{flags} (pin_numbers hide) {names} (in_bom yes) (on_board yes)\n",
+        q(&format!("{prefix}{name}"))
+    );
     s.push_str(&prop("Reference", y.reference, 0.0, 3.81, y.power.is_some()));
     s.push_str(&prop("Value", name, 0.0, -3.81, false));
     s.push_str(&prop("Footprint", "", 0.0, 0.0, true));
@@ -327,7 +407,17 @@ impl Sheet {
     fn new(seed: &str, project: &str) -> Sheet {
         let mut ids = Ids::new(seed);
         let root = ids.next();
-        Sheet { ids, root, project: project.into(), items: vec![], pwr: 0, used: BTreeSet::new(), wires: vec![], pins: vec![], extent: (0.0, 0.0) }
+        Sheet {
+            ids,
+            root,
+            project: project.into(),
+            items: vec![],
+            pwr: 0,
+            used: BTreeSet::new(),
+            wires: vec![],
+            pins: vec![],
+            extent: (0.0, 0.0),
+        }
     }
     fn grow(&mut self, p: (f64, f64)) {
         self.extent.0 = self.extent.0.max(p.0);
@@ -352,7 +442,9 @@ impl Sheet {
             }
             if v.len() >= 2 {
                 let (a, b) = (v[v.len() - 2], v[v.len() - 1]);
-                if ((a.0 - b.0).abs() < 1e-6 && (b.0 - p.0).abs() < 1e-6) || ((a.1 - b.1).abs() < 1e-6 && (b.1 - p.1).abs() < 1e-6) {
+                if ((a.0 - b.0).abs() < 1e-6 && (b.0 - p.0).abs() < 1e-6)
+                    || ((a.1 - b.1).abs() < 1e-6 && (b.1 - p.1).abs() < 1e-6)
+                {
                     v.pop();
                 }
             }
@@ -369,7 +461,15 @@ impl Sheet {
         self.grow((at.0 + w * 1.1, at.1));
     }
     /// A symbol of kisi's library at `at` with extra (hidden) fields.
-    fn place(&mut self, name: &'static str, reference: &str, value: &str, at: (f64, f64), lab: Lab, fields: &[(&str, String)]) {
+    fn place(
+        &mut self,
+        name: &'static str,
+        reference: &str,
+        value: &str,
+        at: (f64, f64),
+        lab: Lab,
+        fields: &[(&str, String)],
+    ) {
         let at = (g(at.0), g(at.1));
         self.used.insert(name);
         let y = sym(name);
@@ -424,8 +524,14 @@ impl Sheet {
             }
         }
         let through = |p: (f64, f64), a: (f64, f64), b: (f64, f64)| -> bool {
-            let on_x = (a.0 - b.0).abs() < 1e-6 && (p.0 - a.0).abs() < 1e-6 && p.1 > a.1.min(b.1) + 1e-6 && p.1 < a.1.max(b.1) - 1e-6;
-            let on_y = (a.1 - b.1).abs() < 1e-6 && (p.1 - a.1).abs() < 1e-6 && p.0 > a.0.min(b.0) + 1e-6 && p.0 < a.0.max(b.0) - 1e-6;
+            let on_x = (a.0 - b.0).abs() < 1e-6
+                && (p.0 - a.0).abs() < 1e-6
+                && p.1 > a.1.min(b.1) + 1e-6
+                && p.1 < a.1.max(b.1) - 1e-6;
+            let on_y = (a.1 - b.1).abs() < 1e-6
+                && (p.1 - a.1).abs() < 1e-6
+                && p.0 > a.0.min(b.0) + 1e-6
+                && p.0 < a.0.max(b.0) - 1e-6;
             on_x || on_y
         };
         let mut junctions = Vec::new();
@@ -444,7 +550,10 @@ impl Sheet {
         }
         for p in junctions {
             let u = self.ids.next();
-            self.items.push(format!("  (junction (at {:.2} {:.2}) (diameter 0) (color 0 0 0 0)\n    (uuid {u})\n  )\n", p.0, p.1));
+            self.items.push(format!(
+                "  (junction (at {:.2} {:.2}) (diameter 0) (color 0 0 0 0)\n    (uuid {u})\n  )\n",
+                p.0, p.1
+            ));
         }
     }
     /// The schematic file.
@@ -452,11 +561,17 @@ impl Sheet {
         self.finish_wires();
         // the smallest landscape ISO sheet that holds the drawing and the title block
         let need = (self.extent.0 + 15.0, self.extent.1 + 45.0);
-        let paper = [("A4", 297.0, 210.0), ("A3", 420.0, 297.0), ("A2", 594.0, 420.0), ("A1", 841.0, 594.0), ("A0", 1189.0, 841.0)]
-            .iter()
-            .find(|p| p.1 >= need.0 && p.2 >= need.1)
-            .map(|p| format!("\"{}\"", p.0))
-            .unwrap_or_else(|| format!("\"User\" {:.0} {:.0}", need.0, need.1));
+        let paper = [
+            ("A4", 297.0, 210.0),
+            ("A3", 420.0, 297.0),
+            ("A2", 594.0, 420.0),
+            ("A1", 841.0, 594.0),
+            ("A0", 1189.0, 841.0),
+        ]
+        .iter()
+        .find(|p| p.1 >= need.0 && p.2 >= need.1)
+        .map(|p| format!("\"{}\"", p.0))
+        .unwrap_or_else(|| format!("\"User\" {:.0} {:.0}", need.0, need.1));
         let mut s = format!(
             "(kicad_sch (version 20230121) (generator eeschema)\n\n  (uuid {})\n\n  (paper {paper})\n\n  (title_block\n    (title {})\n    (comment 1 {})\n  )\n\n",
             self.root,
@@ -569,7 +684,14 @@ fn elem_sym(t: &TopInst) -> ElemSym {
                 _ => "R_V",
             };
             // SPICE notation for the parameter (M is milli there)
-            return ElemSym { sym, ports: vec!["a", b_node], body, param: Some((pc, si(pv).replace('M', "Meg"))), both: false, shunt: !series };
+            return ElemSym {
+                sym,
+                ports: vec!["a", b_node],
+                body,
+                param: Some((pc, si(pv).replace('M', "Meg"))),
+                both: false,
+                shunt: !series,
+            };
         }
     }
     let x = |ports: &[&'static str], extra: &str| format!("X1 {}{extra} {sub}\n", ports.join(" "));
@@ -577,7 +699,14 @@ fn elem_sym(t: &TopInst) -> ElemSym {
         5 => {
             let p = vec!["p1", "n1", "p2", "n2"];
             let body = x(&p, " 0");
-            ElemSym { sym: if tag.kind == "viapair" { "VIAPAIR" } else { "CPL" }, ports: p, body, param: None, both: true, shunt: false }
+            ElemSym {
+                sym: if tag.kind == "viapair" { "VIAPAIR" } else { "CPL" },
+                ports: p,
+                body,
+                param: None,
+                both: true,
+                shunt: false,
+            }
         }
         3 if t.ports[0] == "p1" => {
             let p = vec!["p1", "n1"];
@@ -619,12 +748,22 @@ fn elem_sym(t: &TopInst) -> ElemSym {
 /// reads the file it names for the models; a short file loads at once) – `<prefix>_kicad` for the
 /// compact sheet, `<element>_k` for each element of the detailed one – and one PRBS7 source
 /// subcircuit per line (`out ref`).
-pub fn bench_lib(lc: &LaneCircuit, ends: &BenchEnds, prefix: &str, lib_file: &str, detailed: bool) -> (String, f64, f64) {
+pub fn bench_lib(
+    lc: &LaneCircuit,
+    ends: &BenchEnds,
+    prefix: &str,
+    lib_file: &str,
+    detailed: bool,
+) -> (String, f64, f64) {
     let ui = 1.0 / ends.bitrate;
     let bits: Vec<bool> = super::files::prbs7().into_iter().chain(super::files::prbs7()).collect();
     let a = super::files::emf_amp(ends, lc.pair);
     let pts = pwl_points(&bits, ui, ends.rise, a);
-    let mut s = format!("* kisi {}: KiCad test bench of lane {}\n.include \"{lib_file}\"\n\n", env!("CARGO_PKG_VERSION"), lc.lane);
+    let mut s = format!(
+        "* kisi {}: KiCad test bench of lane {}\n.include \"{lib_file}\"\n\n",
+        env!("CARGO_PKG_VERSION"),
+        lc.lane
+    );
     if detailed {
         s.push_str(&format!("* the lane's elements (subcircuits in {lib_file}), reference node = ground; parts with their value as parameter\n"));
         for t in &lc.top {
@@ -637,7 +776,12 @@ pub fn bench_lib(lc: &LaneCircuit, ends: &BenchEnds, prefix: &str, lib_file: &st
         let ports = lc.ports.join(" ");
         s.push_str(&format!("* the lane (subcircuit {} in {lib_file})\n.subckt {prefix}_kicad {ports} ref\nX1 {ports} ref {}\n.ends {prefix}_kicad\n\n", lc.subckt, lc.subckt));
     }
-    s.push_str(&format!("* sources: PRBS7 at {} Gbit/s, edge {} ps (10-90 %), emf amplitude {} V per line\n", sig4(ends.bitrate / 1e9), sig4(ends.rise * 1e12), sig4(a)));
+    s.push_str(&format!(
+        "* sources: PRBS7 at {} Gbit/s, edge {} ps (10-90 %), emf amplitude {} V per line\n",
+        sig4(ends.bitrate / 1e9),
+        sig4(ends.rise * 1e12),
+        sig4(a)
+    ));
     let lines: &[(&str, f64)] = if lc.pair { &[("P", 1.0), ("N", -1.0)] } else { &[("P", 1.0)] };
     for (l, sign) in lines {
         s.push_str(&format!(".subckt {prefix}_TX{l} out ref\n"));
@@ -666,12 +810,19 @@ pub fn bench_lib(lc: &LaneCircuit, ends: &BenchEnds, prefix: &str, lib_file: &st
 /// The transmitter of line `l` on row `y`, source at `xs`: PRBS7 source, R_tx, C_tx at the die,
 /// L_tx. Returns the x of its output on the row.
 fn tx_end(sh: &mut Sheet, ends: &BenchEnds, l: &str, y: f64, xs: f64, prefix: &str, bench_file: &str) -> f64 {
-    sh.place("SRC", &format!("XTX{l}1"), &format!("PRBS7 {l}"), (xs, y + 5.08), Lab::Right(3.81, 0.0), &[
-        ("Sim.Device", "SUBCKT".into()),
-        ("Sim.Library", bench_file.into()),
-        ("Sim.Name", format!("{prefix}_TX{l}")),
-        ("Sim.Pins", "1=out 2=ref".into()),
-    ]);
+    sh.place(
+        "SRC",
+        &format!("XTX{l}1"),
+        &format!("PRBS7 {l}"),
+        (xs, y + 5.08),
+        Lab::Right(3.81, 0.0),
+        &[
+            ("Sim.Device", "SUBCKT".into()),
+            ("Sim.Library", bench_file.into()),
+            ("Sim.Name", format!("{prefix}_TX{l}")),
+            ("Sim.Pins", "1=out 2=ref".into()),
+        ],
+    );
     sh.gnd((xs, y + 10.16));
     let mut x = xs;
     if ends.tx.r > 0.0 {
@@ -722,11 +873,24 @@ fn rx_end(sh: &mut Sheet, ends: &BenchEnds, l: &str, y: f64, x: f64) {
 }
 
 /// The notes on the sheet: what it is, the analysis, what the ends stand for.
-fn notes(sh: &mut Sheet, lc: &LaneCircuit, ends: &BenchEnds, lib_file: &str, bench_file: &str, tstep: f64, tstop: f64, detailed: bool, y_end: f64) {
+fn notes(
+    sh: &mut Sheet,
+    lc: &LaneCircuit,
+    ends: &BenchEnds,
+    lib_file: &str,
+    bench_file: &str,
+    tstep: f64,
+    tstop: f64,
+    detailed: bool,
+    y_end: f64,
+) {
     let how = if detailed {
         format!("Each element symbol calls its subcircuit in {lib_file} through a wrapper `<name>_k` in {bench_file} (reference node = ground).\nA part's Value is its subcircuit parameter c, r or l (Sim.Params refers to the Value field; SPICE notation): edit the value, the parasitics stay.")
     } else {
-        format!("The lane subcircuit {} is in {lib_file} (included by {bench_file}, with the PRBS7 sources).", lc.subckt)
+        format!(
+            "The lane subcircuit {} is in {lib_file} (included by {bench_file}, with the PRBS7 sources).",
+            lc.subckt
+        )
     };
     sh.text(
         &format!(
@@ -767,7 +931,17 @@ fn power_flag(sh: &mut Sheet, x: f64, y: f64) {
 /// The KiCad project: `<name>.kicad_pro` and `<name>.kicad_sch` (detailed when the lane's elements
 /// are known, else compact).
 #[allow(clippy::too_many_arguments)]
-pub fn project(lc: &LaneCircuit, ends: &BenchEnds, name: &str, lib_file: &str, bench_file: &str, tstep: f64, tstop: f64, prefix: &str, detailed: bool) -> (String, String) {
+pub fn project(
+    lc: &LaneCircuit,
+    ends: &BenchEnds,
+    name: &str,
+    lib_file: &str,
+    bench_file: &str,
+    tstep: f64,
+    tstop: f64,
+    prefix: &str,
+    detailed: bool,
+) -> (String, String) {
     if detailed {
         if let Some(r) = detailed_project(lc, ends, name, lib_file, bench_file, tstep, tstop, prefix) {
             return r;
@@ -872,7 +1046,16 @@ fn up(v: f64) -> f64 {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn detailed_project(lc: &LaneCircuit, ends: &BenchEnds, name: &str, lib_file: &str, bench_file: &str, tstep: f64, tstop: f64, prefix: &str) -> Option<(String, String)> {
+fn detailed_project(
+    lc: &LaneCircuit,
+    ends: &BenchEnds,
+    name: &str,
+    lib_file: &str,
+    bench_file: &str,
+    tstep: f64,
+    tstop: f64,
+    prefix: &str,
+) -> Option<(String, String)> {
     let order = chain_order(lc)?;
     if lc.top.is_empty() {
         return None;
@@ -932,7 +1115,10 @@ fn detailed_project(lc: &LaneCircuit, ends: &BenchEnds, name: &str, lib_file: &s
             ("Sim.Device", "SUBCKT".into()),
             ("Sim.Library", bench_file.into()),
             ("Sim.Name", format!("{}_k", t.sub)),
-            ("Sim.Pins", e.ports.iter().enumerate().map(|(k, p)| format!("{}={p}", k + 1)).collect::<Vec<_>>().join(" ")),
+            (
+                "Sim.Pins",
+                e.ports.iter().enumerate().map(|(k, p)| format!("{}={p}", k + 1)).collect::<Vec<_>>().join(" "),
+            ),
         ];
         if let Some((k, v)) = &e.param {
             fields.push(("Sim.Params", if part_param { format!("{k}=${{VALUE}}") } else { format!("{k}={v}") }));
@@ -1011,7 +1197,16 @@ fn detailed_project(lc: &LaneCircuit, ends: &BenchEnds, name: &str, lib_file: &s
 
 /// The compact sheet: the whole lane as one symbol.
 #[allow(clippy::too_many_arguments)]
-fn compact_project(lc: &LaneCircuit, ends: &BenchEnds, name: &str, lib_file: &str, bench_file: &str, tstep: f64, tstop: f64, prefix: &str) -> (String, String) {
+fn compact_project(
+    lc: &LaneCircuit,
+    ends: &BenchEnds,
+    name: &str,
+    lib_file: &str,
+    bench_file: &str,
+    tstep: f64,
+    tstop: f64,
+    prefix: &str,
+) -> (String, String) {
     let mut sh = Sheet::new(&format!("{name}{}", lc.subckt), name);
     let lines: Vec<(&str, f64)> = if lc.pair { vec![("P", 0.0), ("N", 30.48)] } else { vec![("P", 0.0)] };
     let y0 = 63.5;
@@ -1029,15 +1224,24 @@ fn compact_project(lc: &LaneCircuit, ends: &BenchEnds, name: &str, lib_file: &st
     let yl = if lc.pair { y0 + 2.54 } else { y0 };
     let pins = if lc.pair { "1=ap 2=an 3=bp 4=bn 5=ref" } else { "1=a 2=b 3=ref" };
     let lab = Lab::Above(if lc.pair { 10.16 } else { 7.62 });
-    sh.place(if lc.pair { "LANE4" } else { "LANE2" }, "XLANE1", &lc.subckt, (x_lane, yl), lab, &[
-        ("Sim.Device", "SUBCKT".into()),
-        ("Sim.Library", bench_file.into()),
-        ("Sim.Name", format!("{prefix}_kicad")),
-        ("Sim.Pins", pins.into()),
-    ]);
+    sh.place(
+        if lc.pair { "LANE4" } else { "LANE2" },
+        "XLANE1",
+        &lc.subckt,
+        (x_lane, yl),
+        lab,
+        &[
+            ("Sim.Device", "SUBCKT".into()),
+            ("Sim.Library", bench_file.into()),
+            ("Sim.Name", format!("{prefix}_kicad")),
+            ("Sim.Pins", pins.into()),
+        ],
+    );
     // lane pins in schematic coordinates (symbol y up → sheet y down)
-    let pin_in: Vec<(f64, f64)> = if lc.pair { vec![(x_lane - 12.7, yl - 2.54), (x_lane - 12.7, yl + 2.54)] } else { vec![(x_lane - 12.7, yl)] };
-    let pin_out: Vec<(f64, f64)> = if lc.pair { vec![(x_lane + 12.7, yl - 2.54), (x_lane + 12.7, yl + 2.54)] } else { vec![(x_lane + 12.7, yl)] };
+    let pin_in: Vec<(f64, f64)> =
+        if lc.pair { vec![(x_lane - 12.7, yl - 2.54), (x_lane - 12.7, yl + 2.54)] } else { vec![(x_lane - 12.7, yl)] };
+    let pin_out: Vec<(f64, f64)> =
+        if lc.pair { vec![(x_lane + 12.7, yl - 2.54), (x_lane + 12.7, yl + 2.54)] } else { vec![(x_lane + 12.7, yl)] };
     let ref_pin = (x_lane, yl + if lc.pair { 7.62 } else { 5.08 } + 2.54);
     for (i, &(x, y)) in lane_in.iter().enumerate() {
         // along the line's row to a column before the lane, then to the pin's height

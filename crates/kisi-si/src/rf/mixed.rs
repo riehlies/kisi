@@ -51,7 +51,10 @@ fn m4_mul(a: &M4, b: &M4) -> M4 {
     m
 }
 fn m2_mul(a: &M2, b: &M2) -> M2 {
-    [[a[0][0] * b[0][0] + a[0][1] * b[1][0], a[0][0] * b[0][1] + a[0][1] * b[1][1]], [a[1][0] * b[0][0] + a[1][1] * b[1][0], a[1][0] * b[0][1] + a[1][1] * b[1][1]]]
+    [
+        [a[0][0] * b[0][0] + a[0][1] * b[1][0], a[0][0] * b[0][1] + a[0][1] * b[1][1]],
+        [a[1][0] * b[0][0] + a[1][1] * b[1][0], a[1][0] * b[0][1] + a[1][1] * b[1][1]],
+    ]
 }
 fn m2_inv(a: &M2) -> M2 {
     let det = a[0][0] * a[1][1] - a[0][1] * a[1][0];
@@ -59,7 +62,10 @@ fn m2_inv(a: &M2) -> M2 {
     [[a[1][1] * k, (z() - a[0][1]) * k], [(z() - a[1][0]) * k, a[0][0] * k]]
 }
 fn m2_add(a: &M2, b: &M2, sb: f64) -> M2 {
-    [[a[0][0] + b[0][0].scale(sb), a[0][1] + b[0][1].scale(sb)], [a[1][0] + b[1][0].scale(sb), a[1][1] + b[1][1].scale(sb)]]
+    [
+        [a[0][0] + b[0][0].scale(sb), a[0][1] + b[0][1].scale(sb)],
+        [a[1][0] + b[1][0].scale(sb), a[1][1] + b[1][1].scale(sb)],
+    ]
 }
 fn m2_scale(a: &M2, k: f64) -> M2 {
     [[a[0][0].scale(k), a[0][1].scale(k)], [a[1][0].scale(k), a[1][1].scale(k)]]
@@ -188,7 +194,6 @@ pub struct Imbalance {
     pub at: P,
 }
 
-
 #[derive(Debug, Clone, Serialize)]
 pub struct MixedMode {
     pub p_id: u32,
@@ -257,8 +262,21 @@ pub struct MixedMode {
 /// 4-port model of the pair `net` + its partner. `flip` / `hint` choose the start as for
 /// the channel of `net`; the partner starts at the end next to it.
 #[allow(clippy::too_many_arguments)]
-pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &RfParams, flip: bool, hint: Option<P>) -> Result<MixedMode, String> {
-    let partner = crate::extract::diff_partners(&board.nets).get(net as usize).copied().flatten().ok_or("net is not part of a differential pair")?;
+pub fn mixed_mode(
+    board: &Board,
+    an: &Analysis,
+    net: u32,
+    field: &HashMap<String, FieldResult>,
+    target: Option<(f64, bool)>,
+    rp: &RfParams,
+    flip: bool,
+    hint: Option<P>,
+) -> Result<MixedMode, String> {
+    let partner = crate::extract::diff_partners(&board.nets)
+        .get(net as usize)
+        .copied()
+        .flatten()
+        .ok_or("net is not part of a differential pair")?;
     let ip = net_path_info(board, an, net, flip, hint).ok_or("net has no tracks")?;
     let inn = net_path_info(board, an, partner, false, Some(ip.start.at)).ok_or("partner net has no tracks")?;
     // parts to ground on each line (single-ended shunts); a part across the pair is not part of
@@ -297,7 +315,11 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
         warnings.push("coupled sections without modal data: modelled as uncoupled lines".into());
     }
     let est = els.iter().any(|e| matches!(e, El::Coupled { odd, .. } if odd.source != "field"));
-    let source = if est { "odd mode from the field solver or formulas, even mode estimated where no field solve (Zeven ≈ Z0²/Zodd)" } else { "field solver (odd and even mode)" };
+    let source = if est {
+        "odd mode from the field solver or formulas, even mode estimated where no field solve (Zeven ≈ Z0²/Zodd)"
+    } else {
+        "field solver (odd and even mode)"
+    };
 
     // sweep
     let n = rp.npts.max(10);
@@ -317,7 +339,8 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     let db = |x: Cx| 20.0 * x.abs().max(1e-12).log10();
     let col = |r: usize, c: usize| -> Vec<f64> { mm_all.iter().map(|m| db(m[r][c])).collect() };
     let scd21_db = col(3, 0);
-    let scd21_worst = scd21_db.iter().zip(&freq).fold((f64::NEG_INFINITY, 0.0), |a, (&d, &f)| if d > a.0 { (d, f) } else { a });
+    let scd21_worst =
+        scd21_db.iter().zip(&freq).fold((f64::NEG_INFINITY, 0.0), |a, (&d, &f)| if d > a.0 { (d, f) } else { a });
 
     // static delays: per line, and per mode along the aligned cascade (position = mean track)
     let line_delay = |b: &Build| (0..b.segs.len()).map(|k| b.seg_delay(k, &fallback)).sum::<f64>();
@@ -329,7 +352,10 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     let (mut td, mut tc, mut s) = (0.0, 0.0, 0.0);
     // where P and N differ: geometric, independent of the direction (see `imbalance_geo`), plus
     // via pairs whose two vias differ
-    let (dp_all, dn_all) = ((0..bp.segs.len()).map(|k| bp.seg_delay(k, &fallback)).sum::<f64>(), (0..bn.segs.len()).map(|k| bn.seg_delay(k, &fallback)).sum::<f64>());
+    let (dp_all, dn_all) = (
+        (0..bp.segs.len()).map(|k| bp.seg_delay(k, &fallback)).sum::<f64>(),
+        (0..bn.segs.len()).map(|k| bn.seg_delay(k, &fallback)).sum::<f64>(),
+    );
     let lp_all = bp.segs.iter().filter(|x| x.kind == "line").map(|x| x.len_mm).sum::<f64>();
     let ps_per_mm = if lp_all > 0.0 { dp_all / lp_all * 1e12 } else { 6.0 };
     let _ = dn_all;
@@ -339,7 +365,9 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
         let mut pending: Option<(f64, usize)> = None; // P via without partner yet: (s, via_info index)
         for e in &els {
             match e {
-                El::Single { line: 0, seg, len } if bp.segs[*seg].kind == "line" => sp += len.unwrap_or(bp.segs[*seg].len_mm),
+                El::Single { line: 0, seg, len } if bp.segs[*seg].kind == "line" => {
+                    sp += len.unwrap_or(bp.segs[*seg].len_mm)
+                }
                 El::Coupled { len, .. } => sp += len,
                 El::Single { line: 0, seg, .. } if bp.segs[*seg].kind == "via" => {
                     pending = Some((sp, vp));
@@ -347,9 +375,17 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                 }
                 El::Single { line: 1, seg, .. } if bn.segs[*seg].kind == "via" => {
                     if let Some((s_at, ip)) = pending.take() {
-                        let d = bp.via_models[bp_via_seg(&bp, ip)].as_ref().map(|v| v.delay()).unwrap_or(0.0) - bn.via_models[bp_via_seg(&bn, vn)].as_ref().map(|v| v.delay()).unwrap_or(0.0);
+                        let d = bp.via_models[bp_via_seg(&bp, ip)].as_ref().map(|v| v.delay()).unwrap_or(0.0)
+                            - bn.via_models[bp_via_seg(&bn, vn)].as_ref().map(|v| v.delay()).unwrap_or(0.0);
                         let at = bp.via_info.get(ip).map(|v| v.at).unwrap_or(path_p.start.at);
-                        imbalance.push(Imbalance { s_from_mm: s_at, s_to_mm: s_at, dl_mm: 0.0, dt_ps: d * 1e12, vias_differ: true, at });
+                        imbalance.push(Imbalance {
+                            s_from_mm: s_at,
+                            s_to_mm: s_at,
+                            dl_mm: 0.0,
+                            dt_ps: d * 1e12,
+                            vias_differ: true,
+                            at,
+                        });
                     }
                     vn += 1;
                 }
@@ -376,7 +412,9 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                 // a section on one line only moves the mode by half of it
                 (full * frac / 2.0, full * frac / 2.0, l / 2.0)
             }
-            El::Coupled { len, even, odd, .. } => (len * 1e-3 * (odd.l_ext * odd.c0).sqrt(), len * 1e-3 * (even.l_ext * even.c0).sqrt(), *len),
+            El::Coupled { len, even, odd, .. } => {
+                (len * 1e-3 * (odd.l_ext * odd.c0).sqrt(), len * 1e-3 * (even.l_ext * even.c0).sqrt(), *len)
+            }
             El::ViaPair { p, .. } => {
                 let ev = bp.via_models[*p].as_ref().map(|v| v.delay()).unwrap_or(0.0);
                 let od = bp.via_pair[*p].as_ref().map(|v| v.delay()).unwrap_or(ev);
@@ -399,7 +437,11 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                 Some(0) => 0.0,
                 Some(k) => {
                     let ((d0, s0), (d1, s1)) = (tab[k - 1], tab[k]);
-                    if d1 > d0 { s0 + (s1 - s0) * (h - d0) / (d1 - d0) } else { s1 }
+                    if d1 > d0 {
+                        s0 + (s1 - s0) * (h - d0) / (d1 - d0)
+                    } else {
+                        s1
+                    }
                 }
                 None => s + (h - total) * v,
             }
@@ -408,7 +450,8 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
     let t_max = (2.0 * td.max(tc) * 1.3 + 4.0 * rp.rise).max(200e-12);
     let sdd11: Vec<Cx> = mm_all.iter().map(|m| m[0][0]).collect();
     let scc11: Vec<Cx> = mm_all.iter().map(|m| m[2][2]).collect();
-    let (tdr_t_ps, tdr_zdiff, tdr_x_diff_mm) = tdr_map(&freq, &sdd11, 2.0 * z_ref, rp.rise, t_max, &xmap_of(&pos_d, td));
+    let (tdr_t_ps, tdr_zdiff, tdr_x_diff_mm) =
+        tdr_map(&freq, &sdd11, 2.0 * z_ref, rp.rise, t_max, &xmap_of(&pos_d, td));
     let (_, tdr_zcomm, tdr_x_comm_mm) = tdr_map(&freq, &scc11, z_ref / 2.0, rp.rise, t_max, &xmap_of(&pos_c, tc));
     // each line alone (the other one terminated): S11 and S22 of the 4-port, positions along its own path
     let own_map = |b: &Build| {
@@ -433,7 +476,11 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
                 Some(0) => 0.0,
                 Some(k) => {
                     let ((d0, s0), (d1, s1)) = (tab[k - 1], tab[k]);
-                    if d1 > d0 { s0 + (s1 - s0) * (h - d0) / (d1 - d0) } else { s1 }
+                    if d1 > d0 {
+                        s0 + (s1 - s0) * (h - d0) / (d1 - d0)
+                    } else {
+                        s1
+                    }
                 }
                 None => len + (h - total) * if total > 0.0 { len / total } else { 0.0 },
             }
@@ -494,14 +541,30 @@ pub fn mixed_mode(board: &Board, an: &Analysis, net: u32, field: &HashMap<String
 impl MixedMode {
     /// The 4-port as a `lanenet::PairNet` (for the eye and the channel check of a net).
     pub fn pair_net(&self) -> crate::lanenet::PairNet {
-        crate::lanenet::PairNet { freq: self.freq.clone(), t: self.t.clone(), t_dc: self.t_dc, z_ref: self.z_ref, coupled_mm: self.coupled_mm, length_mm: self.length_mm, warnings: self.warnings.clone() }
+        crate::lanenet::PairNet {
+            freq: self.freq.clone(),
+            t: self.t.clone(),
+            t_dc: self.t_dc,
+            z_ref: self.z_ref,
+            coupled_mm: self.coupled_mm,
+            length_mm: self.length_mm,
+            warnings: self.warnings.clone(),
+        }
     }
 }
 
 /// The 4-port (cascade matrices on the channel grid and at 0 Hz) of the P line `bp` and the N
 /// line `bn`, both built as single lines with the pair's via models (`Build::pair`): the pair of
 /// a lane (`topology::lane_pair`).
-pub(crate) fn pair_net(board: &Board, an: &Analysis, field: &HashMap<String, FieldResult>, target: Option<(f64, bool)>, rp: &RfParams, bp: Build, bn: Build) -> crate::lanenet::PairNet {
+pub(crate) fn pair_net(
+    board: &Board,
+    an: &Analysis,
+    field: &HashMap<String, FieldResult>,
+    target: Option<(f64, bool)>,
+    rp: &RfParams,
+    bp: Build,
+    bn: Build,
+) -> crate::lanenet::PairNet {
     let mut warnings: Vec<String> = Vec::new();
     for w in bp.warnings.iter().chain(&bn.warnings) {
         if !warnings.contains(w) {
@@ -522,7 +585,9 @@ pub(crate) fn pair_net(board: &Board, an: &Analysis, field: &HashMap<String, Fie
         warnings.push("coupled sections without modal data: modelled as uncoupled lines".into());
     }
     if els.iter().any(|e| matches!(e, El::Coupled { odd, .. } if odd.source != "field")) {
-        warnings.push("4-port: even mode of coupled sections estimated where there is no field solve (Zeven ≈ Z0²/Zodd)".into());
+        warnings.push(
+            "4-port: even mode of coupled sections estimated where there is no field solve (Zeven ≈ Z0²/Zodd)".into(),
+        );
     }
     let n = rp.npts.max(10);
     let df = rp.fmax / n as f64;
@@ -548,7 +613,14 @@ pub(crate) struct PairAlign {
 /// same layer pair up over the shorter length (modal models of the cross-section), the rest of
 /// the longer one stays a single line; vias pair up (coupled when both barrels match); lumped
 /// parts, stubs and uncoupled sections act on their own line.
-pub(crate) fn align_pair(bp: &Build, bn: &Build, an: &Analysis, su: &crate::board::Stackup, field: &HashMap<String, FieldResult>, rp: &RfParams) -> PairAlign {
+pub(crate) fn align_pair(
+    bp: &Build,
+    bn: &Build,
+    an: &Analysis,
+    su: &crate::board::Stackup,
+    field: &HashMap<String, FieldResult>,
+    rp: &RfParams,
+) -> PairAlign {
     let xs_of = |b: &Build, i: usize| b.segs[i].xs.map(|x| &an.cross_sections[x as usize]);
     let tok = |b: &Build, i: usize| -> Tok {
         match b.segs[i].kind {
@@ -578,12 +650,20 @@ pub(crate) fn align_pair(bp: &Build, bn: &Build, an: &Analysis, su: &crate::boar
     while i < bp.segs.len() || j < bn.segs.len() {
         let tp = (i < bp.segs.len()).then(|| tok(&bp, i));
         let tn = (j < bn.segs.len()).then(|| tok(&bn, j));
-        let single_p = |els: &mut Vec<El>, rem: f64| els.push(El::Single { line: 0, seg: i, len: (!rem.is_nan()).then_some(rem) });
-        let single_n = |els: &mut Vec<El>, rem: f64| els.push(El::Single { line: 1, seg: j, len: (!rem.is_nan()).then_some(rem) });
-        let stub_pair = tp == Some(Tok::U) && tn == Some(Tok::U) && bp.segs[i].kind == "branch" && bn.segs[j].kind == "branch" && bp.branch_odd[i].is_some() && bn.branch_odd[j].is_some() && {
-            let (a, b) = (bp.segs[i].len_mm, bn.segs[j].len_mm);
-            (a - b).abs() <= 0.2 * a.max(b) + 0.1
-        };
+        let single_p =
+            |els: &mut Vec<El>, rem: f64| els.push(El::Single { line: 0, seg: i, len: (!rem.is_nan()).then_some(rem) });
+        let single_n =
+            |els: &mut Vec<El>, rem: f64| els.push(El::Single { line: 1, seg: j, len: (!rem.is_nan()).then_some(rem) });
+        let stub_pair = tp == Some(Tok::U)
+            && tn == Some(Tok::U)
+            && bp.segs[i].kind == "branch"
+            && bn.segs[j].kind == "branch"
+            && bp.branch_odd[i].is_some()
+            && bn.branch_odd[j].is_some()
+            && {
+                let (a, b) = (bp.segs[i].len_mm, bn.segs[j].len_mm);
+                (a - b).abs() <= 0.2 * a.max(b) + 0.1
+            };
         if stub_pair {
             els.push(El::StubPair { p: i, n: j });
             i += 1;
@@ -671,7 +751,10 @@ pub(crate) fn pair_t(bp: &Build, bn: &Build, els: &[El], k: usize, f: f64, fallb
             El::Single { seg, len, .. } => sep(&id, &bn.seg_abcd(*seg, k, f, fallback, *len)),
             El::Coupled { len, even, odd, .. } => {
                 let (pe, po) = (even.rlgc(f, rp), odd.rlgc(f, rp));
-                coupled(&Abcd::line(pe.r, pe.l, pe.g, pe.c, w, len * 1e-3), &Abcd::line(po.r, po.l, po.g, po.c, w, len * 1e-3))
+                coupled(
+                    &Abcd::line(pe.r, pe.l, pe.g, pe.c, w, len * 1e-3),
+                    &Abcd::line(po.r, po.l, po.g, po.c, w, len * 1e-3),
+                )
             }
             El::ViaPair { p, .. } => {
                 let ev = bp.via_models[*p].as_ref().map(|v| v.abcd(f, rp.sigma)).unwrap_or(id);
@@ -679,7 +762,8 @@ pub(crate) fn pair_t(bp: &Build, bn: &Build, els: &[El], k: usize, f: f64, fallb
                 coupled(&ev, &od)
             }
             El::StubPair { p, n } => {
-                let y = |m: Option<&Vec<Abcd>>| m.and_then(|m| m.get(k)).map(|m| m.c / m.a).unwrap_or(Cx::new(0.0, 0.0));
+                let y =
+                    |m: Option<&Vec<Abcd>>| m.and_then(|m| m.get(k)).map(|m| m.c / m.a).unwrap_or(Cx::new(0.0, 0.0));
                 let even = (y(bp.branch[*p].as_ref()) + y(bn.branch[*n].as_ref())).scale(0.5);
                 let odd = (y(bp.branch_odd[*p].as_ref()) + y(bn.branch_odd[*n].as_ref())).scale(0.5);
                 coupled(&Abcd::shunt(even), &Abcd::shunt(odd))
@@ -721,17 +805,25 @@ fn bp_via_seg(b: &Build, k: usize) -> usize {
 /// where the lines run in parallel and changes at jogs, fan-outs and offset ends. Stretches where
 /// it changes (merged when less than MERGE_MM apart) are listed with their share of the skew; together
 /// they add up to L(P) − L(N). Independent of the direction of the path.
-fn imbalance_geo(board: &Board, an: &Analysis, pp: &NetPath, pn: &NetPath, ps_per_mm: f64) -> (Vec<Imbalance>, Vec<(f64, f64)>) {
+fn imbalance_geo(
+    board: &Board,
+    an: &Analysis,
+    pp: &NetPath,
+    pn: &NetPath,
+    ps_per_mm: f64,
+) -> (Vec<Imbalance>, Vec<(f64, f64)>) {
     let (lp, ln) = (pp.length_mm, pn.length_mm);
     if lp <= 0.0 || ln <= 0.0 {
         return (vec![], vec![]);
     }
     let n_pts = |l: f64, step: f64| ((l / step).ceil() as usize).max(1);
     let nq = n_pts(ln, 0.1);
-    let qn: Vec<(f64, P)> = (0..=nq).map(|k| {
-        let t = ln * k as f64 / nq as f64;
-        (t, path_point(board, an, pn, t))
-    }).collect();
+    let qn: Vec<(f64, P)> = (0..=nq)
+        .map(|k| {
+            let t = ln * k as f64 / nq as f64;
+            (t, path_point(board, an, pn, t))
+        })
+        .collect();
     let np = n_pts(lp, 0.2);
     let mut j = 0usize;
     // start: nearest N point to P's start anywhere
@@ -754,17 +846,17 @@ fn imbalance_geo(board: &Board, an: &Analysis, pp: &NetPath, pn: &NetPath, ps_pe
     }
     let end_extra = ln - qn[j].0; // N length after the point matching P's end
     let mut out: Vec<Imbalance> = Vec::new();
-    let push = |out: &mut Vec<Imbalance>, s0: f64, s1: f64, dl: f64, at: P| {
-        match out.last_mut() {
-            Some(m) if s0 - m.s_to_mm < MERGE_MM => {
-                if dl.abs() > m.dl_mm.abs() {
-                    m.at = at;
-                }
-                m.s_to_mm = s1;
-                m.dl_mm += dl;
-                m.dt_ps += dl * ps_per_mm;
+    let push = |out: &mut Vec<Imbalance>, s0: f64, s1: f64, dl: f64, at: P| match out.last_mut() {
+        Some(m) if s0 - m.s_to_mm < MERGE_MM => {
+            if dl.abs() > m.dl_mm.abs() {
+                m.at = at;
             }
-            _ => out.push(Imbalance { s_from_mm: s0, s_to_mm: s1, dl_mm: dl, dt_ps: dl * ps_per_mm, vias_differ: false, at }),
+            m.s_to_mm = s1;
+            m.dl_mm += dl;
+            m.dt_ps += dl * ps_per_mm;
+        }
+        _ => {
+            out.push(Imbalance { s_from_mm: s0, s_to_mm: s1, dl_mm: dl, dt_ps: dl * ps_per_mm, vias_differ: false, at })
         }
     };
     if start_extra > 0.02 {
@@ -796,7 +888,14 @@ fn imbalance_geo(board: &Board, an: &Analysis, pp: &NetPath, pn: &NetPath, ps_pe
         m.dl_mm += rest;
         m.dt_ps += rest * ps_per_mm;
     } else if rest.abs() >= 0.05 {
-        out.push(Imbalance { s_from_mm: 0.0, s_to_mm: lp, dl_mm: rest, dt_ps: rest * ps_per_mm, vias_differ: false, at: pp.start.at });
+        out.push(Imbalance {
+            s_from_mm: 0.0,
+            s_to_mm: lp,
+            dl_mm: rest,
+            dt_ps: rest * ps_per_mm,
+            vias_differ: false,
+            at: pp.start.at,
+        });
     }
     out.retain(|x| x.dl_mm.abs() >= 0.05);
     // profile of the length difference along P for the chart (start offset included, ≤ 400 points)
@@ -812,7 +911,12 @@ const MERGE_MM: f64 = 2.5;
 /// Touchstone (.s2p, RI) of the differential mode: Sdd of the 4-port, reference 2·z_ref.
 pub fn touchstone_dd(m: &MixedMode) -> String {
     let mut s = String::new();
-    s.push_str(&format!("! kisi {}: differential S-parameters (Sdd) of the pair P = {}, N = {}\n", env!("CARGO_PKG_VERSION"), m.p_net, m.n_net));
+    s.push_str(&format!(
+        "! kisi {}: differential S-parameters (Sdd) of the pair P = {}, N = {}\n",
+        env!("CARGO_PKG_VERSION"),
+        m.p_net,
+        m.n_net
+    ));
     s.push_str(&format!("! 2-port, differential mode (mixed-mode Sdd of the 4-port model), reference {:.1} ohm differential at both ports\n", 2.0 * m.z_ref));
     s.push_str(&format!("! Port 1 = A: the pair driven differentially at {} (P) and {} (N)\n", m.p_a, m.n_a));
     s.push_str(&format!("! Port 2 = B: the pair at {} (P) and {} (N)\n", m.p_b, m.n_b));
@@ -823,7 +927,10 @@ pub fn touchstone_dd(m: &MixedMode) -> String {
         let mm = mixed_of(&m.s[k]);
         let (a, b, c, d) = (mm[0][0], mm[1][0], mm[0][1], mm[1][1]);
         // Touchstone 2-port order: S11 S21 S12 S22
-        s.push_str(&format!("{:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e}\n", f, a.re, a.im, b.re, b.im, c.re, c.im, d.re, d.im));
+        s.push_str(&format!(
+            "{:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e} {:.6e}\n",
+            f, a.re, a.im, b.re, b.im, c.re, c.im, d.re, d.im
+        ));
     }
     s
 }
@@ -831,7 +938,12 @@ pub fn touchstone_dd(m: &MixedMode) -> String {
 /// Touchstone (.s4p, RI) of a pair: single-ended 4-port, port order in the header.
 pub fn touchstone4(m: &MixedMode) -> String {
     let mut s = String::new();
-    s.push_str(&format!("! kisi {}: single-ended 4-port of the pair P = {}, N = {}\n", env!("CARGO_PKG_VERSION"), m.p_net, m.n_net));
+    s.push_str(&format!(
+        "! kisi {}: single-ended 4-port of the pair P = {}, N = {}\n",
+        env!("CARGO_PKG_VERSION"),
+        m.p_net,
+        m.n_net
+    ));
     s.push_str(&format!("! reference {:.1} ohm at every port\n", m.z_ref));
     s.push_str("! Contains both lines with their coupling: differential and common mode, mode conversion (Scd, Sdc), skew between P and N\n");
     s.push_str(&format!("! Port 1 = P at A: {} at {}\n", m.p_net, m.p_a));
@@ -841,7 +953,14 @@ pub fn touchstone4(m: &MixedMode) -> String {
     s.push_str("! Mixed mode with this order: differential port 1 = (port 1 - port 2)/sqrt(2), common port 1 = (port 1 + port 2)/sqrt(2),\n");
     s.push_str("!   ports 3 and 4 likewise for port 2; e.g. Sdd21 = (S31 - S32 - S41 + S42)/2, Scd21 = (S31 - S32 + S41 - S42)/2\n");
     s.push_str("! Data per frequency: 4 lines, line i = Si1 Si2 Si3 Si4, each as real and imaginary part\n");
-    s.push_str(&format!("! P {:.2} mm, N {:.2} mm, coupled {:.2} mm, skew {:.2} ps; {}\n", m.length_mm.0, m.length_mm.1, m.coupled_mm, m.skew_ps, m.source.replace('≈', "~").replace('²', "^2")));
+    s.push_str(&format!(
+        "! P {:.2} mm, N {:.2} mm, coupled {:.2} mm, skew {:.2} ps; {}\n",
+        m.length_mm.0,
+        m.length_mm.1,
+        m.coupled_mm,
+        m.skew_ps,
+        m.source.replace('≈', "~").replace('²', "^2")
+    ));
     s.push_str(&format!("# HZ S RI R {:.3}\n", m.z_ref));
     for (k, &f) in m.freq.iter().enumerate() {
         let sm = &m.s[k];
@@ -928,9 +1047,15 @@ mod tests {
         let y_n = 0.15;
         if jog > 0.0 {
             segs += &format!("(segment (start 0 {y_p}) (end 14 {y_p}) (width 0.15) (layer \"F.Cu\") (net 1))\n");
-            segs += &format!("(segment (start 14 {y_p}) (end 14 {}) (width 0.15) (layer \"F.Cu\") (net 1))\n", y_p - jog);
-            segs += &format!("(segment (start 14 {}) (end 15 {}) (width 0.15) (layer \"F.Cu\") (net 1))\n", y_p - jog, y_p - jog);
-            segs += &format!("(segment (start 15 {}) (end 15 {y_p}) (width 0.15) (layer \"F.Cu\") (net 1))\n", y_p - jog);
+            segs +=
+                &format!("(segment (start 14 {y_p}) (end 14 {}) (width 0.15) (layer \"F.Cu\") (net 1))\n", y_p - jog);
+            segs += &format!(
+                "(segment (start 14 {}) (end 15 {}) (width 0.15) (layer \"F.Cu\") (net 1))\n",
+                y_p - jog,
+                y_p - jog
+            );
+            segs +=
+                &format!("(segment (start 15 {}) (end 15 {y_p}) (width 0.15) (layer \"F.Cu\") (net 1))\n", y_p - jog);
             segs += &format!("(segment (start 15 {y_p}) (end 30 {y_p}) (width 0.15) (layer \"F.Cu\") (net 1))\n");
         } else {
             segs += &format!("(segment (start 0 {y_p}) (end 30 {y_p}) (width 0.15) (layer \"F.Cu\") (net 1))\n");
@@ -999,10 +1124,16 @@ mod tests {
                 assert_eq!(m.imbalance.len(), 1, "{:?}", m.imbalance);
                 let im = &m.imbalance[0];
                 assert!((im.dl_mm - 2.0).abs() < 0.3 && im.dt_ps > 8.0, "{im:?}");
-                assert!(im.s_from_mm > 13.0 && im.s_to_mm < 18.0 && (im.at[0] - 14.5).abs() < 1.0 && im.at[1] < -0.5, "{im:?}");
+                assert!(
+                    im.s_from_mm > 13.0 && im.s_to_mm < 18.0 && (im.at[0] - 14.5).abs() < 1.0 && im.at[1] < -0.5,
+                    "{im:?}"
+                );
                 // single lines: P alone sees the jog, N does not
                 assert_eq!(m.tdr_zp.len(), m.tdr_zn.len());
-                assert!(touchstone_dd(&m).lines().filter(|l| !l.starts_with('!') && !l.starts_with('#')).count() == m.freq.len());
+                assert!(
+                    touchstone_dd(&m).lines().filter(|l| !l.starts_with('!') && !l.starts_with('#')).count()
+                        == m.freq.len()
+                );
                 // asked from the N side: same pair, P first
                 let nn = board.nets.iter().position(|n| n == "D_N").unwrap() as u32;
                 let m2 = mixed_mode(&board, &an, nn, &HashMap::new(), Some((100.0, true)), &rp, false, None).unwrap();
@@ -1013,7 +1144,16 @@ mod tests {
             assert_eq!(ts.lines().filter(|l| !l.starts_with('!') && !l.starts_with('#')).count(), 4 * m.freq.len());
             // the check of a net without devices takes the same 4-port: mode conversion with the jog
             let end = Some(crate::eye::EndModel { r: 50.0, c_pf: 0.5, l_nh: 0.0 });
-            let row = crate::eye::check_net(&board, &an, &HashMap::new(), net, Some((100.0, true)), &rp, 5.0, (end, end, Some(40e-12)));
+            let row = crate::eye::check_net(
+                &board,
+                &an,
+                &HashMap::new(),
+                net,
+                Some((100.0, true)),
+                &rp,
+                5.0,
+                (end, end, Some(40e-12)),
+            );
             assert_eq!(row.model, "4-port");
             assert!(row.error.is_none() && row.eye && row.eye_height > 0.5, "{row:?}");
             let mc = row.mode_conversion_db.unwrap();

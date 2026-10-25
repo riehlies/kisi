@@ -21,7 +21,7 @@ with one lane's ports driven (the wiring of the bus subcircuit).
 
 The export reports its own check (the circuit evaluated inside kisi, `check_against_kisi`); ngspice must
 give the same numbers – that shows the netlist text is the circuit kisi evaluated. With --strict the exit
-code is 1 when ngspice and kisi's evaluation of the circuit disagree (|max dS| differs by more than 0.01), the
+code is 1 when the LTspice files are not consistent (ltspice.py check), ngspice and kisi's evaluation of the circuit disagree (|max dS| differs by more than 0.01), the
 Touchstone file is not passive or scikit-rf cannot read it, the step responses differ by more than 5 % of the
 step, or a run fails.
 """
@@ -33,6 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kicad_sheet  # noqa: E402
+import ltspice  # noqa: E402
 
 
 def run(cmd, cwd=None, timeout=3600):
@@ -234,6 +235,8 @@ def lane_check(lane_dir, meta, opts, rep):
         if ok:
             b = np.loadtxt(os.path.join(lane_dir, "bench_ngspice.txt"))
             res["bench"]["v_min"], res["bench"]["v_max"] = float(b[:, 1].min()), float(b[:, 1].max())
+    if os.path.exists(os.path.join(lane_dir, "bench_ltspice.cir")):
+        res["ltspice"] = ltspice.check(lane_dir)
     if opts.get("kicad"):
         res["kicad"] = kicad_sheet.check(lane_dir, transient=opts.get("transient"), svg_dir=opts.get("svg") and os.path.join(opts["svg"], stem), png=bool(opts.get("svg")))
     return res, (f, sk, ss, stp, f_nyq)
@@ -404,7 +407,10 @@ def main():
             fails = [m for m, c in [("ngspice", not nv), ("ngspice differs from kisi's evaluation of the circuit", nv and abs(nv["max_ds"] - res["kisi_eval"]["max_ds"]) > 0.01),
                                     ("Touchstone not passive", not ts.get("passive")), ("scikit-rf does not read the Touchstone file", sk and not sk.get("read", True)),
                                     ("step response differs by more than 5 %", st and st["max_diff_of_final"] > 0.05),
-                                    ("KiCad project: " + kicad_fail(res.get("kicad")), res.get("kicad") and not res["kicad"].get("ok"))] if c]
+                                    ("KiCad project: " + kicad_fail(res.get("kicad")), res.get("kicad") and not res["kicad"].get("ok")),
+                                    ("LTspice files: " + "; ".join((res.get("ltspice") or {}).get("errors", [])), res.get("ltspice") and not res["ltspice"].get("ok"))] if c]
+            if res.get("ltspice"):
+                print(f"  LTspice files: {'consistent' if res['ltspice']['ok'] else 'FAIL'} ({res['ltspice'].get('subckts')} subcircuits, {res['ltspice'].get('instances')} instances checked)")
             kc = res.get("kicad")
             if kc:
                 kmsg = f"KiCad sheet: {kc['sheet']['symbols']} symbols, wiring {'ok' if kc['sheet']['ok'] else kc['sheet']['issue_counts']}"

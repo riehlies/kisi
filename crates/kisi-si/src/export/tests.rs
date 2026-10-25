@@ -153,6 +153,31 @@ fn kicad_sheet_has_every_element() {
     }
 }
 
+/// The LTspice files: the shared library with Rser=0 on every inductor, no ngspice constructs, .meas lines,
+/// and the .net deck only for a single-ended lane.
+#[test]
+fn ltspice_files() {
+    let (board, an, lanes) = setup();
+    let field = HashMap::new();
+    for name in ["SIG", "D_P"] {
+        let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == name)).unwrap();
+        let target = if l.diff { Some((100.0, true)) } else { Some((50.0, false)) };
+        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+        let ends = files::BenchEnds { profile: "p".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, rx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, notes: vec![] };
+        let fs = files::lane_files(&lc, &ends, Formats::ALL, "t.kicad_pcb", 20e9, 20.0, "");
+        let get = |p: &str| fs.iter().find(|f| f.path == p).map(|f| f.content.clone());
+        let (lib, llib, bench) = (get(&format!("{name}.lib")).unwrap(), get(&format!("{name}_ltspice.lib")).unwrap(), get("bench_ltspice.cir").unwrap());
+        assert!(llib.is_ascii() && bench.is_ascii());
+        let strip = |t: &str| t.lines().filter(|l| !l.starts_with('*')).map(|l| l.replace(" Rser=0", "")).collect::<Vec<_>>();
+        assert_eq!(strip(&lib), strip(&llib), "{name}: the LTspice library is the shared one");
+        for l in llib.lines().chain(bench.lines()).filter(|l| l.starts_with('L')) {
+            assert!(l.ends_with(" Rser=0"), "{name}: {l}");
+        }
+        assert!(!bench.contains(".control") && !bench.contains("wrdata") && bench.contains(".meas TRAN t50 WHEN V(vrx)=0 RISE=1") && bench.contains("Bvrx vrx 0 V="));
+        assert_eq!(get("sparam_ltspice.cir").is_some(), lc.ports.len() == 2, "{name}: .net only for a 2-port");
+    }
+}
+
 #[test]
 fn prbs_and_formats() {
     let p = prbs7();

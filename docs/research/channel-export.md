@@ -7,7 +7,7 @@ step 3 (compact, vector-fitted models) as a design study at the end. Background 
 
 ## Summary
 - **What it does:** a lane – or every lane of a bus – becomes a SPICE subcircuit with ports at both ends (a pair:
-  P and N at each end, with the coupling between them), plus ready test benches for ngspice and Xyce, an
+  P and N at each end, with the coupling between them), plus ready test benches for ngspice, Xyce and LTspice, an
   S-parameter deck, Touchstone files (a bus also as one N-port with its port map) and a KiCad project. The channel
   is exactly the one kisi's channel check computes for the eye (same sections, same models, same ends).
 - **Netlist = kisi's circuit:** ngspice's S-parameter analysis of the exported subcircuit reproduces kisi's own
@@ -34,7 +34,7 @@ step 3 (compact, vector-fitted models) as a design study at the end. Background 
 
 ## 1. Interface
 ```
-kisi export <board.kicad_pcb> --lane NAME | --bus NAME [--format spice,xyce,touchstone,kicad] [--out DIR]
+kisi export <board.kicad_pcb> --lane NAME | --bus NAME [--format spice,xyce,ltspice,touchstone,kicad] [--out DIR]
             [--class CLASS=PROFILE] [--variant NAME] [--config FILE]
 ```
 `NAME` is a lane as `kisi interfaces` lists it (or one of its nets, or the last part of a hierarchical name, e.g.
@@ -53,6 +53,7 @@ Per lane (`<lane>/` in a bus export):
 | `<lane>.lib` | the lane as subcircuit `<lane>_lane a b ref` (pairs: `ap an bp bn ref`; transmitter end = a, receiver end = b); one subcircuit per line section, via, part and stub, the ladders as repeated section subcircuits. Header: ports, model, the check against kisi, element counts |
 | `bench_ngspice.cir`, `bench_xyce.cir` | transient test bench: PRBS7 (two periods) at the profile's bit rate and edge, the profile's linear transmitter (emf → R → C at the die → L → pin) and receiver (pin → L → C ∥ R at the die) per line, scaled so that the receiver sees ±swing at DC; ngspice writes the receiver voltage with `wrdata`, Xyce with `.print tran format=csv` |
 | `sparam_ngspice.cir`, `sparam_xyce.cir` | S-parameters on kisi's grid: ngspice `.sp` with `portnum` sources, Xyce `.ac` + `.lin` with port devices (Touchstone 2 output) |
+| `bench_ltspice.cir`, `<lane>_ltspice.lib`, `sparam_ltspice.cir` | LTspice (section 2b): the same bench with the received voltage as node `vrx` and `.meas` lines; the library with `Rser=0` on every inductor; `.net` S-parameters for a single-ended lane |
 | `<lane>.s2p` / `.s4p` | kisi's S-parameters of the same channel (Touchstone 1.0, RI), ports as above, the port list in the header |
 | `<lane>.kicad_pro`, `.kicad_sch`, `<lane>_kicad.lib` | KiCad project (section 2a): one symbol per element of the lane subcircuit (or, with `--kicad-style compact`, the lane as one symbol), the PRBS7 sources as subcircuits, the ends as R, L, C symbols whose models KiCad infers from reference and value, ground and a power flag, a `.tran` directive, notes on what the ends stand for. KiCad 7 format (20230121) with kisi's own symbols embedded, so it opens without libraries. `<lane>_kicad.lib` includes `<lane>.lib` and holds the small wrapper subcircuits the symbols call: KiCad reads the models from the file a symbol names, and a short file loads at once |
 | `README.md` | ports, files, bench ends, model, the check, what is not included, kisi's notes on the lane |
@@ -100,6 +101,48 @@ on the sheet says what they stand for – profile, edge, emf, and for a high sou
   devices `P` with `.ac` + `.lin`. One deck with commented-out dialect lines would need hand editing (ngspice reads
   `P` as its coupled-line device, Xyce knows neither `portnum` nor `.control`), so each simulator has its own decks;
   the export README says so.
+
+### 2b. LTspice
+`bench_ltspice.cir` is the transient bench of the other simulators – the same PRBS7 PWL source, the profile's
+linear ends and the lane subcircuit – for LTspice: the received voltage (a pair: V(P) − V(N)) as node `vrx` from a
+`B` source, `.tran Tstep Tstop 0 Tstep` (the time step bounded as in ngspice), `.save V(vrx)`, `.options plotwinsize=0
+numdgt=16 reject_number_tails` (uncompressed, double precision, numbers with stray letters are errors) and `.meas`
+lines – the first rising zero crossing `t50`, the voltage at eight bit centres of the second pattern period, its
+maximum and minimum there – which LTspice writes to its `.log`. Every value is in e-notation (in LTspice `1M` is
+milli), the include path is relative, the files are ASCII.
+
+- **The library:** LTspice gives every inductor 1 mΩ in series unless `Rser=0` is written; over the ~9000 ladder
+  inductors of an 85 mm pair that is several ohms. ngspice and Xyce reject `Rser=` on an inductor, so the export
+  writes `<lane>_ltspice.lib`: `<lane>.lib` with `Rser=0` on each inductor and ASCII comments, otherwise identical.
+  Everything else in the library – E, F and 0 V sources, subcircuits, `+` continuation lines – is common to all three
+  simulators; there are no subcircuit parameters in it.
+- **S-parameters:** for a single-ended lane `sparam_ltspice.cir` uses LTspice's two-port `.net I(Rout) Vin` with the
+  port impedance as the source's `Rser` and as `Rout` (traces `S11(Vin)`, `S21(Vin)`). LTspice has no N-port
+  analysis; for pairs and buses the Touchstone files are the path (the README says so).
+- **Checked without LTspice** (`validation/channel_export/ltspice.py check`, in `compare.py` and so in CI): ASCII, no
+  `.control`/`wrdata`/`portnum`/`.lin`/`.print`, every subcircuit instance names a defined subcircuit with as many
+  ports as nodes, `Rser=0` on every inductor and no other element parameter, values in e-notation, no node names
+  that differ only in case, well-formed `.tran`, `.meas`, `B` and `.net` lines, and the LTspice library equal to the
+  shared one apart from `Rser=0`. `ltspice.py expected` runs the same bench in ngspice (the `.meas` syntax is common;
+  the shared library instead of the LTspice one, the LTspice-only options left out) and writes `expected.json` with
+  the measurements, the run time, the element counts and – single-ended – S11/S21 at a few frequencies. LTspice
+  itself was not run here (Windows/macOS); the maintainer runs it.
+- **Run time** (ngspice 42, one core of a shared machine, SYNC_OUT_P, 85 mm LVDS pair, two PRBS7 periods,
+  257 ns at 30 ps steps): the ladder's top frequency sets the number of sections, and the run time follows the
+  element count roughly linearly:
+
+  | ladder f_max | RLGC sections | elements R/L/C | ngspice transient | bench result vs 25 GHz | max \|ΔS\| vs kisi to f_max |
+  |---|---|---|---|---|---|
+  | 25 GHz (today's default) | 819 | 20745/9091/11762 | 348 s | – | 0.29 (0.008 to 1.5×Nyq) |
+  | 5 GHz (10 × Nyquist of 1 Gbit/s) | 378 | 11325/4085/7351 | 191 s | levels within 0.6 % | 0.023 |
+  | 2.5 GHz (5 × Nyquist) | 355 | 11223/4213/7114 | 181 s | levels within 0.7 % | 0.012 |
+
+  An fmax from the profile would save about 45 % for LVDS, not more: below about 5 GHz the count stops falling
+  (every line section keeps at least one ladder section, the via ladders, the fitted R(f)/G(f) branches per section
+  and the parts do not shrink with fmax), and the number of time steps (set by the edge and the bit time, not by
+  fmax) is the same. A compact model (step 3, vector fitting per long segment) would replace the ladders by a few
+  hundred elements – the run time would then fall to seconds; that, not a lower fmax, is the large saving. The
+  default stays 25 GHz for now.
 
 What the channel contains: the board between the two end pins as the eye's network uses it – lines, vias, series
 parts, shunt parts, side stubs and forks, with the terminations that do not sit at the receiver. Terminations next

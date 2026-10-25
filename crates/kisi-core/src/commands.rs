@@ -35,9 +35,9 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
   report           write analysis/kisi.json next to the board   [--out FILE]
   export           a lane or a whole bus for circuit and RF simulators: SPICE subcircuits (RLGC
                    ladders, kisi's via model, parts, stubs; pairs coupled) with test benches for
-                   ngspice and Xyce, Touchstone (.s2p/.s4p, a bus as one N-port with port map) and a
-                   KiCad project with the profile's linear ends
-                   --lane NAME | --bus NAME  [--format spice,xyce,touchstone,kicad (default all)]
+                   ngspice, Xyce and LTspice, Touchstone (.s2p/.s4p, a bus as one N-port with port
+                   map) and a KiCad project with the profile's linear ends
+                   --lane NAME | --bus NAME  [--format spice,xyce,ltspice,touchstone,kicad (default all)]
                    [--kicad-style detailed|compact (one symbol per element, default; or the lane
                    as one symbol)] [--out DIR (default analysis/export/<name> next to the board)]
                    [--class CLASS=PROFILE]

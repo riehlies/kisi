@@ -20,26 +20,28 @@ pub struct Formats {
     pub xyce: bool,
     pub touchstone: bool,
     pub kicad: bool,
+    pub ltspice: bool,
     /// the KiCad sheet with the lane as one symbol (else one symbol per element)
     pub kicad_compact: bool,
 }
 
 impl Formats {
-    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, kicad_compact: false };
+    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, ltspice: true, kicad_compact: false };
     /// From a comma-separated list: spice, xyce, touchstone, kicad, all.
     pub fn parse(s: &str) -> Result<Formats, String> {
-        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, kicad_compact: false };
+        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, ltspice: false, kicad_compact: false };
         for p in s.split(',').map(|p| p.trim().to_ascii_lowercase()).filter(|p| !p.is_empty()) {
             match p.as_str() {
                 "spice" | "ngspice" => f.spice = true,
                 "xyce" => f.xyce = true,
                 "touchstone" | "snp" => f.touchstone = true,
                 "kicad" => f.kicad = true,
+                "ltspice" => f.ltspice = true,
                 "all" => f = Formats { kicad_compact: f.kicad_compact, ..Formats::ALL },
-                _ => return Err(format!("--format {p}: use spice, xyce, touchstone, kicad or all (comma-separated)")),
+                _ => return Err(format!("--format {p}: use spice, xyce, ltspice, touchstone, kicad or all (comma-separated)")),
             }
         }
-        if !(f.spice || f.xyce || f.touchstone || f.kicad) {
+        if !(f.spice || f.xyce || f.touchstone || f.kicad || f.ltspice) {
             return Err("--format: nothing to write".into());
         }
         Ok(f)
@@ -66,6 +68,7 @@ pub struct BenchEnds {
 pub enum Dialect {
     Ngspice,
     Xyce,
+    Ltspice,
 }
 
 /// PRBS7 (x⁷ + x⁶ + 1), 127 bits.
@@ -228,8 +231,13 @@ pub fn bench(lc: &LaneCircuit, lib_file: &str, ends: &BenchEnds, d: Dialect) -> 
     let mut outs = Vec::new();
     for (k, pa, pb, sign) in &lines {
         let src = pwl_source(&format!("VTX_{k}"), "{emf}", "0", &pts, *sign);
-        let (t, _) = tx_end(k, pa, &ends.tx, &src);
-        let (r, die) = rx_end(k, pb, &ends.rx);
+        let (mut t, _) = tx_end(k, pa, &ends.tx, &src);
+        let (mut r, die) = rx_end(k, pb, &ends.rx);
+        if d == Dialect::Ltspice {
+            for l in t.iter_mut().chain(r.iter_mut()).filter(|l| l.starts_with('L')) {
+                l.push_str(" Rser=0");
+            }
+        }
         s.push_str(&format!("* line {k}: transmitter\n{}\n* line {k}: receiver\n{}\n", t.join("\n"), r.join("\n")));
         outs.push(die);
     }
@@ -248,12 +256,98 @@ pub fn bench(lc: &LaneCircuit, lib_file: &str, ends: &BenchEnds, d: Dialect) -> 
             let probe = if lc.pair { format!("{{V({})-V({})}}", outs[0], outs[1]) } else { format!("V({})", outs[0]) };
             s.push_str(&format!(".print tran format=csv file=bench_xyce.csv {probe}\n.end\n"));
         }
+        Dialect::Ltspice => {
+            // the received (differential) voltage as node vrx; time step bounded like ngspice's
+            let v = if lc.pair { format!("V({})-V({})", outs[0], outs[1]) } else { format!("V({})", outs[0]) };
+            s.push_str(&format!("Bvrx vrx 0 V={v}\n.tran {} {} 0 {}\n.save V(vrx)\n.options plotwinsize=0 numdgt=16 reject_number_tails\n", num(tstep), num(tstop), num(tstep)));
+            s.push_str("* measurements (in the .log file): the first rising zero crossing, the received voltage at bit centres of the\n* second pattern period and its extremes there\n");
+            for (name, line) in ltspice_meas(lc, ends) {
+                s.push_str(&format!(".meas TRAN {name} {line}\n"));
+            }
+            s.push_str(".end\n");
+        }
     }
+    s
+}
+
+/// The `.meas` lines of the LTspice bench (name, measurement), in a syntax ngspice reads too.
+pub fn ltspice_meas(lc: &LaneCircuit, ends: &BenchEnds) -> Vec<(String, String)> {
+    let ui = 1.0 / ends.bitrate;
+    let delay = lc.delay_ps * 1e-12;
+    // bit i of the pattern lies between (i + 1) and (i + 2) UI (one low bit first)
+    let at = |i: usize| (i as f64 + 1.5) * ui + delay;
+    let mut v = vec![("t50".to_string(), "WHEN V(vrx)=0 RISE=1".to_string())];
+    for j in [3usize, 19, 35, 51, 67, 83, 99, 115] {
+        let i = 127 + j;
+        v.push((format!("v_bit{i}"), format!("FIND V(vrx) AT={}", num(at(i)))));
+    }
+    let (t0, t1) = (128.0 * ui + delay, 255.0 * ui + delay);
+    v.push(("vmax".into(), format!("MAX V(vrx) FROM={} TO={}", num(t0), num(t1))));
+    v.push(("vmin".into(), format!("MIN V(vrx) FROM={} TO={}", num(t0), num(t1))));
+    v
+}
+
+/// The lane library for LTspice: the same circuit, with `Rser=0` on every inductor (LTspice gives an
+/// inductor 1 mΩ in series unless told otherwise; ngspice and Xyce do not accept the parameter) and
+/// ASCII comments.
+pub fn ltspice_lib(lib: &str) -> String {
+    let mut s = String::with_capacity(lib.len() + lib.len() / 8);
+    s.push_str("* LTspice version of the lane library: the same circuit as the .lib next to it, with Rser=0 on every inductor\n* (LTspice would add 1 mOhm in series to each)\n");
+    for l in lib.lines() {
+        let l = ascii(l);
+        s.push_str(&l);
+        if l.starts_with('L') || l.starts_with('l') {
+            s.push_str(" Rser=0");
+        }
+        s.push('\n');
+    }
+    s
+}
+
+/// ASCII text for LTspice (older versions read files as ANSI).
+fn ascii(l: &str) -> String {
+    if l.is_ascii() {
+        return l.to_string();
+    }
+    let mut o = String::new();
+    for c in l.chars() {
+        match c {
+            'Ω' => o.push_str("ohm"),
+            '−' | '–' | '—' => o.push('-'),
+            '×' => o.push('x'),
+            '±' => o.push_str("+-"),
+            '≤' => o.push_str("<="),
+            '≥' => o.push_str(">="),
+            '→' => o.push_str("->"),
+            '↔' => o.push_str("<->"),
+            'µ' | 'μ' => o.push('u'),
+            '·' => o.push('*'),
+            '∥' => o.push_str("||"),
+            '≈' => o.push('~'),
+            'ε' => o.push_str("eps"),
+            c if c.is_ascii() => o.push(c),
+            _ => o.push('?'),
+        }
+    }
+    o
+}
+
+/// S-parameters of a single-ended lane in LTspice: `.net` with the source's and the load's resistance as
+/// the port impedances (traces S11(Vin), S21(Vin), …).
+pub fn sparam_ltspice(lc: &LaneCircuit, lib_file: &str) -> String {
+    let mut s = header(lc, &lc.port_info.iter().enumerate().map(|(i, p)| format!("port {} = {} = {p}", i + 1, lc.ports[i])).collect::<Vec<_>>(), &format!("S-parameters of the lane subcircuit in LTspice (.net), reference {} ohm per port", sig4(lc.z_ref)));
+    s.push_str(&format!(".include \"{lib_file}\"\n\n"));
+    let (f0, f1, np) = (lc.freq[0], *lc.freq.last().unwrap(), lc.freq.len());
+    s.push_str(&format!("Vin a 0 AC 1 Rser={}\nXLANE a b 0 {}\nRout b 0 {}\n", num(lc.z_ref), lc.subckt, num(lc.z_ref)));
+    s.push_str(&format!(".ac lin {np} {} {}\n.net I(Rout) Vin\n.options numdgt=16 reject_number_tails\n.end\n", num(f0), num(f1)));
     s
 }
 
 /// S-parameter deck: every port with the reference impedance, kisi's frequency grid.
 pub fn sparam_deck(lc: &LaneCircuit, lib_file: &str, d: Dialect) -> String {
+    if d == Dialect::Ltspice {
+        return sparam_ltspice(lc, lib_file);
+    }
     let n = lc.ports.len();
     let mut s = header(lc, &lc.port_info.iter().enumerate().map(|(i, p)| format!("port {} = {} = {p}", i + 1, lc.ports[i])).collect::<Vec<_>>(), &format!("S-parameters of the lane subcircuit, reference {} ohm per port", sig4(lc.z_ref)));
     s.push_str(&format!(".include \"{lib_file}\"\n\n"));
@@ -261,7 +355,7 @@ pub fn sparam_deck(lc: &LaneCircuit, lib_file: &str, d: Dialect) -> String {
     for (i, p) in lc.ports.iter().enumerate() {
         match d {
             Dialect::Ngspice => s.push_str(&format!("VP{} {p} 0 dc 0 ac 1 portnum {} z0 {}\n", i + 1, i + 1, num(lc.z_ref))),
-            Dialect::Xyce => s.push_str(&format!("P{} {p} 0 port={} z0={}\n", i + 1, i + 1, num(lc.z_ref))),
+            Dialect::Xyce | Dialect::Ltspice => s.push_str(&format!("P{} {p} 0 port={} z0={}\n", i + 1, i + 1, num(lc.z_ref))),
         }
     }
     s.push_str(&format!("XLANE {} 0 {}\n\n", lc.ports.join(" "), lc.subckt));
@@ -271,7 +365,7 @@ pub fn sparam_deck(lc: &LaneCircuit, lib_file: &str, d: Dialect) -> String {
             let vecs: Vec<String> = (1..=n).flat_map(|i| (1..=n).map(move |j| format!("S_{i}_{j}"))).collect();
             s.push_str(&format!("wrdata sparam_ngspice.txt {}\n.endc\n.end\n", vecs.join(" ")));
         }
-        Dialect::Xyce => {
+        Dialect::Xyce | Dialect::Ltspice => {
             s.push_str(&format!(".ac lin {np} {} {}\n", num(f0), num(f1)));
             s.push_str(&format!(".lin sparcalc=1 format=touchstone2 dataformat=ri file=sparam_xyce.s{n}p\n.end\n"));
         }
@@ -397,6 +491,14 @@ pub fn lane_files(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, f
         add("bench_xyce.cir".into(), bench(lc, &lib, ends, Dialect::Xyce));
         add("sparam_xyce.cir".into(), sparam_deck(lc, &lib, Dialect::Xyce));
     }
+    if f.ltspice {
+        let ll = format!("{st}_ltspice.lib");
+        add(ll.clone(), ltspice_lib(&lib_file(lc, board, fmax, per_lambda)));
+        add("bench_ltspice.cir".into(), ascii_text(&bench(lc, &ll, ends, Dialect::Ltspice)));
+        if lc.ports.len() == 2 {
+            add("sparam_ltspice.cir".into(), ascii_text(&sparam_ltspice(lc, &ll)));
+        }
+    }
     if f.touchstone {
         add(format!("{st}.s{}p", lc.ports.len()), lane_touchstone(lc, board));
     }
@@ -415,6 +517,10 @@ pub fn lane_files(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, f
     }
     add("README.md".into(), readme(lc, ends, f, board, &st));
     out
+}
+
+fn ascii_text(t: &str) -> String {
+    t.lines().map(|l| ascii(l) + "\n").collect()
 }
 
 /// What the export folder of a lane contains and how to use it.
@@ -437,6 +543,9 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
     if f.xyce {
         s.push_str(&format!("* `bench_xyce.cir`, `sparam_xyce.cir` – the same for Xyce (`.print tran` to CSV; `.lin` writes `sparam_xyce.s{n}p`).\n"));
     }
+    if f.ltspice {
+        s.push_str(&format!("* `bench_ltspice.cir`, `{st}_ltspice.lib`{} – the bench for LTspice (see below).\n", if n == 2 { ", `sparam_ltspice.cir`" } else { "" }));
+    }
     if f.touchstone {
         s.push_str(&format!("* `{st}.s{n}p` – kisi's S-parameters of the same channel (Touchstone 1.0, RI) for RF tools (scikit-rf, PyBERT, Qucs-S/Qucsator).\n"));
     }
@@ -446,6 +555,17 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
     }
     if f.spice && f.xyce {
         s.push_str(&format!("\n## ngspice and Xyce\n\nThe circuit, `{st}.lib`, is the same for both. Only the small decks around it differ, because the two simulators define ports and write results differently:\n\n* ngspice: results from a `.control` block (`run`, then `wrdata` to a text file); S-parameters with `.sp` and voltage sources marked `portnum N z0 Z`.\n* Xyce: results with `.print … format=csv` and, for S-parameters, port devices `P… port=N z0=Z` with `.ac` and `.lin sparcalc=1` (written as Touchstone).\n\nOne deck for both does not work without editing: ngspice reads a `P` line as its coupled-line device and has no `.lin`, Xyce knows neither `portnum` nor `.control` scripts, and both read `*` only as a comment – a commented-out dialect would have to be switched by hand. Hence one deck per simulator and analysis.\n"));
+    }
+    if f.ltspice {
+        s.push_str("\n## LTspice\n\n");
+        s.push_str("Open `bench_ltspice.cir` in LTspice (File → Open, files of type netlist) and run it. It is the transient bench of the other simulators – the same PRBS7 PWL source, the profile's linear ends, the lane subcircuit – with the received voltage as node `vrx` (a pair: V(P) − V(N), a B source) and `.meas` lines whose results LTspice writes to the `.log` file (View → SPICE Error Log): the first rising zero crossing `t50`, the voltage at eight bit centres of the second pattern period and its extremes there. `.options plotwinsize=0 numdgt=16 reject_number_tails` keeps the waveform uncompressed and in double precision in the `.raw` file and makes LTspice report a number with stray letters instead of ignoring them; every value is written in e-notation (in LTspice `1M` would be milli).\n\n");
+        s.push_str(&format!("* `{st}_ltspice.lib` is `{st}.lib` with `Rser=0` on every inductor: LTspice gives an inductor 1 mΩ in series unless told otherwise, which adds up over thousands of ladder inductors, and ngspice and Xyce do not accept the parameter. Otherwise the two files are the same circuit (`validation/channel_export/ltspice.py check` in the kisi repository verifies it).\n"));
+        if n == 2 {
+            s.push_str("* `sparam_ltspice.cir`: S-parameters with LTspice's `.net` analysis (the source's `Rser` and `Rout` are the port impedances); plot `S21(Vin)` and `S11(Vin)`.\n");
+        } else {
+            s.push_str(&format!("* LTspice's `.net` analysis is a two-port one; it has no N-port S-parameters, so for a pair or a bus use the Touchstone file `{st}.s{n}p`.\n"));
+        }
+        s.push_str("* Not tested in LTspice by kisi (LTspice runs on Windows and macOS only): the files follow LTspice's syntax and are checked for it; ngspice runs the same bench and gives the reference numbers.\n");
     }
     if f.kicad {
         s.push_str("\n## KiCad\n\n");

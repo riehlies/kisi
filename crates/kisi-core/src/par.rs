@@ -63,11 +63,6 @@ pub fn par_map_with<T: Sync, R: Send>(items: &[T], threads: usize, f: impl Fn(&T
     out.into_iter().map(|r| r.expect("every item computed")).collect()
 }
 
-/// `par_map_with` on `workers()` threads.
-pub fn par_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
-    par_map_with(items, workers(), f)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

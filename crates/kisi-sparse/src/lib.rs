@@ -331,16 +331,6 @@ impl ComplexPattern {
     }
 }
 
-/// Solve a complex sparse system A X = B (LU) given as triplets (row, col, re, im;
-/// duplicates are summed) for several right-hand sides.
-pub fn solve_complex_multi(
-    n: usize,
-    trip: &[(usize, usize, f64, f64)],
-    b: &[Vec<(f64, f64)>],
-) -> Result<Vec<Vec<(f64, f64)>>, i32> {
-    ComplexLu::new(n, trip)?.solve(b)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

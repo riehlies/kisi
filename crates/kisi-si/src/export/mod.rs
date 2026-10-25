@@ -1341,18 +1341,5 @@ pub fn renormalize(s: &[Cx], n: usize, z_old: f64, z_new: f64) -> Vec<Cx> {
         .collect()
 }
 
-/// The ports of a set of lanes at the two devices of a bus: lane `i`'s ports in the bus port
-/// order (near = device A side first). Returns per lane whether it runs from B to A (flipped).
-pub fn bus_flips(lanes: &[&Lane], reversed: &[bool], device_a: &str) -> Vec<bool> {
-    lanes
-        .iter()
-        .zip(reversed)
-        .map(|(l, &rev)| {
-            let tx = &l.ends[if rev { 1 } else { 0 }];
-            tx.refdes != device_a
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests;

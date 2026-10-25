@@ -492,15 +492,6 @@ pub fn passivity_check(freq: &[f64], s: &[Vec<Cx>], n: usize) -> Option<String> 
     })
 }
 
-/// Worst mode conversion Scd21 (dB) up to `f_hi` and its frequency (Hz).
-pub fn worst_scd21(freq: &[f64], mm: &[M4], f_hi: f64) -> (f64, f64) {
-    freq.iter()
-        .zip(mm)
-        .filter(|(&f, _)| f <= f_hi * 1.0001)
-        .map(|(&f, m)| (20.0 * m[3][0].abs().max(1e-12).log10(), f))
-        .fold((f64::NEG_INFINITY, 0.0), |a, b| if b.0 > a.0 { b } else { a })
-}
-
 /// Put the differential mode of the pair's 4-port into the odd-mode channel `ch` (same grid):
 /// S11/S21/S22 become Sdd11/Sdd21/Sdd22 (reference 2·z_ref differential, i.e. z_ref per line as
 /// before), with the insertion-loss marks and the TDR from Sdd11 (per line, as the channel's).

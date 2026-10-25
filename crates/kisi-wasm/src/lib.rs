@@ -853,7 +853,7 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
         let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let mut f = kisi_core::export::files::Formats::parse(v["formats"].as_str().unwrap_or("all"))?;
         f.kicad_compact = v["kicad_style"].as_str() == Some("compact");
-        f.model = kisi_core::export::Model::parse(v["model"].as_str().unwrap_or("ladder"))?;
+        f.model = kisi_core::export::Model::parse(v["model"].as_str().unwrap_or("compact"))?;
         let board = v["board"].as_str().unwrap_or("board.kicad_pcb").to_string();
         let bus = v["bus"].as_str().map(str::to_string);
         let reqs = v["lanes"].as_array().ok_or("lanes missing")?;
@@ -868,7 +868,7 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
         if bus.is_some() {
             // one grid for the bus's N-port: the highest f max of its lanes
             let rp: kisi_core::rf::RfParams = reqs.first().and_then(|i| serde_json::from_value(i["rf"].clone()).ok()).unwrap_or_default();
-            let rates: Vec<f64> = reqs.iter().map(|i| i["bitrate"].as_f64().unwrap_or(1e9) / 1e9).collect();
+            let rates: Vec<(f64, f64)> = reqs.iter().map(|i| (i["bitrate"].as_f64().unwrap_or(1e9) / 1e9, i["eye_rise"].as_f64().unwrap_or(100e-12))).collect();
             freq = freq.for_bus(&rp, &rates);
         }
         let mut done = Vec::new();

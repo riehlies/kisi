@@ -240,8 +240,8 @@
           <label class="opt" for="ex-lt"><span>Test bench for LTspice</span><input type="checkbox" id="ex-lt" checked></label>
           <label class="opt" for="ex-kc"><span>KiCad project</span><input type="checkbox" id="ex-kc" checked></label>
           <label class="opt" for="ex-ks"><span>KiCad sheet</span><select id="ex-ks"><option value="detailed">one symbol per element</option><option value="compact">the lane as one symbol</option></select></label>
-          <label class="opt" for="ex-model"><span>Lines in the SPICE netlist</span><select id="ex-model"><option value="ladder">RLGC ladders</option><option value="compact">compact (cells)</option></select></label>
-          <label class="opt" for="ex-fmax"><span>Frequency up to (lines and Touchstone)</span><select id="ex-fmax"><option value="rf">as the RF settings</option><option value="profile">5 × Nyquist of the profile</option><option value="10">10 GHz</option><option value="20">20 GHz</option><option value="25">25 GHz</option><option value="40">40 GHz</option></select></label>
+          <label class="opt" for="ex-model"><span>Lines in the SPICE netlist</span><select id="ex-model"><option value="compact" selected>compact (cells)</option><option value="ladder">RLGC ladders</option></select></label>
+          <label class="opt" for="ex-fmax"><span>Frequency up to (lines and Touchstone)</span><select id="ex-fmax"><option value="rf">as the RF settings</option><option value="profile">from the profile (5 × Nyquist or its edge)</option><option value="10">10 GHz</option><option value="20">20 GHz</option><option value="25">25 GHz</option><option value="40">40 GHz</option></select></label>
           <label class="opt" for="ex-fmin"><span>Frequency grid from (and step)</span><select id="ex-fmin"><option value="">f max / 500</option><option value="0.001">1 MHz</option><option value="0.01">10 MHz</option><option value="0.05">50 MHz</option><option value="0.1">100 MHz</option></select></label>
           <p class="note" id="ex-hint"></p>
         </div>

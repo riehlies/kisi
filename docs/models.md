@@ -25,8 +25,8 @@ with IBIS models, KiCad's simulator.
   the step response of the linear network.
 - **Compared with a circuit simulator:** a lane takes kisi about 0.15 s (ThunderScope: 71 lanes in about 11 s on
   one thread, a few seconds on several cores). The same ThunderScope LVDS lane exported as a SPICE ladder has about
-  42 000 elements and takes 6–15 minutes in ngspice or LTspice; the compact export (`--model compact`, lossless-line
-  cells) brings it to about 8 000 elements and one minute, with the same accuracy in the band.
+  42 000 elements and takes 6–15 minutes in ngspice or LTspice; the compact export (the default, lossless-line cells)
+  brings it to about 8 000 elements and one minute, with the same accuracy in the band.
 - **2D, not 3D.** Impedances come from formulas (a board in under a second) or from a quasi-static 2D field solver
   per cross-section – only for nets with a target, cached on disk and in the browser; vias, pads and planes use
   reduced models checked against 3D references instead of a full-board 3D solution.
@@ -163,16 +163,17 @@ defaults can be off by tens of percent of the rise. Concept, physics and validat
 ## Channel export
 `kisi export` and "Export…" in the viewer's lane detail and bus card write a lane's board channel – as the check
 models it – for circuit and RF simulators:
-- **SPICE subcircuit:** line sections as RLGC ladders (20 sections per wavelength at the top frequency) with
-  Foster/Debye networks fitted to R(f), L(f), G(f), C(f) – positive elements only, so passive and causal; vias as
+- **SPICE subcircuit:** line sections fitted as Foster/Debye networks to R(f), L(f), G(f), C(f) – positive
+  elements only, so passive and causal – and written as the compact model (default, below) or as RLGC ladders
+  (`--model ladder`, 20 sections per wavelength at the top frequency, the fitted networks in every section); vias as
   kisi's via ladder; parts with their estimated parasitics (e.g. an AC-coupling capacitor as R–L–C with its pads);
   open stubs; a pair with both lines and its coupled sections as even/odd chains between ideal mode converters.
-- **Compact model** (`--model compact`, "Lines in the SPICE netlist" in the viewer's export settings): the same
+- **Compact model** (the default; "Lines in the SPICE netlist" in the viewer's export settings): the same
   fitted networks, but each line section as a few lossless-line cells – a lossless LC ladder (40 sections per
   wavelength, 2 elements each) carries the delay, the rest of the fitted networks is lumped once per cell (at least
   3 cells per delay × top frequency, more for microstrip, whose dispersion is lumped); consecutive sections with
   nearly the same model are merged. Passive and causal by construction, like the ladder, with 2–5 × fewer
-  elements and PRBS benches 7–17 × faster in ngspice (23 × at 5 × Nyquist); it follows kisi's S-parameters as closely as the ladder up to the
+  elements and PRBS benches 7–17 × faster in ngspice (23 × at 5 × Nyquist) and about 15 × in LTspice; it follows kisi's S-parameters as closely as the ladder up to the
   top frequency and is not meant for use above it (the cells' lumped losses reflect coherently from about 1.5 × the
   top frequency). The simulators' own line elements (`T`, LTRA) and vector-fitted line models were studied and not
   used: [research/vector-fitting.md](research/vector-fitting.md).
@@ -182,11 +183,11 @@ models it – for circuit and RF simulators:
   to inductors by default, so the LTspice library sets `Rser=0 Rpar=1e30` on every inductor to match ngspice and
   Xyce).
 - **Touchstone** per lane (`.s2p`, `.s4p`) and a bus as one N-port with its port map.
-- **Frequency range:** the ladders have 20 sections per wavelength at the top frequency (default 25 GHz; `--fmax`, or
-  5 × Nyquist of the profile), which also ends the Touchstone grid. A lower top frequency shortens the ladder's
+- **Frequency range:** the top frequency (default 25 GHz; `--fmax`, or from the profile: 5 × Nyquist, or 0.5 / t_r of
+  its edge where that is higher) sets the cells and ladders and ends the Touchstone grid. A lower top frequency shortens the ladder's
   transients only so far: an 85 mm LVDS pair has 38 k elements at 25 GHz and 23 k at 2.5 GHz, because every
   section, via and part keeps its share. The compact model shrinks with the top frequency: 8.3 k and 3.9 k elements
-  for that pair. For long transients `--model compact --fmax profile` is the fast choice.
+  for that pair. For long transients `--fmax profile` is the fast choice.
 - **KiCad project** (KiCad 7 format, opens in KiCad 7 and later; checked with KiCad 9's ERC): one symbol per
   element, parts with their value as a parameter (change `220n` in KiCad and the parasitics stay), or the lane as one
   symbol.

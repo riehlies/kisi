@@ -20,7 +20,7 @@ For every lane (a bus: every lane of it) the script runs `kisi export` and then,
 For a bus also: the N-port Touchstone file against the lanes' files, and the bus subcircuit in ngspice
 with one lane's ports driven (the wiring of the bus subcircuit).
 
---model compact exports with the compact model (`kisi export --model compact`: lossless-line cells); --models
+--model ladder|compact chooses the line model of the export (default compact, as `kisi export`); --models
 ladder,compact exports every lane with both (folders <lane>_ladder and <lane>_compact) and compares them: element
 counts, ngspice run times, the compact circuit's S-parameters against the ladder's (both in ngspice), the step
 responses and – with --transient – the PRBS benches (the received voltage at the bit centres of the second pattern
@@ -522,14 +522,14 @@ def main():
     os.makedirs(out, exist_ok=True)
     cmd0 = [kisi if not kisi.endswith(".mjs") else "node", *([kisi] if kisi.endswith(".mjs") else []), "export", board] + (["--config", cfg[0]] if cfg else []) + (["--fmax", take("--fmax")[0]] if take("--fmax") else [])
     models = (take("--models") or [None])[0]
-    models = models.split(",") if models else [(take("--model") or ["ladder"])[0]]
+    models = models.split(",") if models else [(take("--model") or ["compact"])[0]]
     results, bus_results, model_cmp, bad = [], [], [], 0
     jobs = [("lane", x, m) for x in take("--lane") for m in models] + [("bus", x, m) for x in take("--bus") for m in models]
     by_lane = {}
     for kind, name, model in jobs:
         d = os.path.join(out, re.sub(r"[^A-Za-z0-9_-]+", "_", name).strip("_") + (f"_{model}" if len(models) > 1 else ""))
         shutil.rmtree(d, ignore_errors=True)
-        r, secs = run(cmd0 + [f"--{kind}", name, "--out", d] + (["--model", model] if model != "ladder" else []))
+        r, secs = run(cmd0 + [f"--{kind}", name, "--out", d] + ["--model", model])
         if r.returncode != 0:
             print(f"{name}: kisi export failed\n{r.stdout[-800:]}{r.stderr[-800:]}")
             bad += 1

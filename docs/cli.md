@@ -52,11 +52,11 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
                    [--format lib,spice,xyce,ltspice,touchstone,kicad (default all; lib: the
                    subcircuits alone, spice: with the ngspice decks)]
                    [--kicad-style detailed|compact (one symbol per element, default; or the lane
-                   as one symbol)] [--model ladder|compact (lines as RLGC ladders, default; or
-                   compact: lossless-line cells, LC lines with the same fitted losses lumped once
-                   per cell – 2 to 5 x fewer elements)] [--fmax GHZ|profile (top frequency of the
+                   as one symbol)] [--model compact|ladder (lines as lossless-line cells, LC
+                   lines with the fitted losses lumped once per cell, default; or ladder: RLGC
+                   ladders, 2 to 5 x more elements)] [--fmax GHZ|profile (top frequency of the
                    lines and the Touchstone grid; default as the check, 25 GHz; profile: 5 x
-                   Nyquist)]
+                   Nyquist or 0.5/t_r of the profile's edge, the higher)]
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
                    [--class CLASS=PROFILE]
@@ -151,11 +151,12 @@ project with the interface profile's linear ends. `--format` chooses the files (
 `lib` the subcircuit library alone, `spice` with the ngspice bench and S-parameter deck, `xyce`, `ltspice` (bench,
 and for a single-ended lane a `.net` S-parameter deck), `touchstone`, `kicad`. `--kicad-style detailed` (default:
 one symbol per element – lines, coupled runs, vias, parts with their value as a parameter, pads, stubs) or `compact`
-(the lane as one symbol). `--model ladder` (default) writes line sections as RLGC ladders, `--model compact` as
-lossless-line cells: lossless LC lines carry the delay and the same fitted loss networks are lumped once per cell
-instead of in every section – passive by construction, 2–5 × fewer elements at 25 GHz and a PRBS bench 7–17 ×
-faster in ngspice. `--fmax GHZ` sets the top frequency of the ladders or cells and of the Touchstone grid (default:
-the check's 25 GHz), `--fmax profile` uses 5 × Nyquist of the lane's interface profile
+(the lane as one symbol). `--model compact` (default) writes line sections as lossless-line cells: lossless LC
+lines carry the delay and the fitted loss networks are lumped once per cell instead of in every section – passive
+by construction, 2–5 × fewer elements at 25 GHz and a PRBS bench 7–17 × faster in ngspice and LTspice;
+`--model ladder` writes them as RLGC ladders with the losses in every section. `--fmax GHZ` sets the top frequency of the ladders or cells and of the Touchstone grid (default:
+the check's 25 GHz), `--fmax profile` uses 5 × Nyquist of the lane's interface profile, or 0.5 / t_r of the
+profile's 10–90 % edge where that is higher (a 100 MHz reference clock with 300 ps edges: 1.7 GHz)
 (at least 1.25 × the bit rate either way; a bus takes the highest of its lanes, so its N-port has one grid);
 `--fmin GHZ` the grid's start and step (default f max / 500, at most 10000 points). `--out DIR` the folder (default
 `analysis/export/<name>` next to the board). The JSON lists the files, the frequency grid, the bench ends, how
@@ -209,10 +210,10 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--lane NAME` | `export` | the lane to export (a net of it) |
 | `--bus NAME` | `export` | the bus to export, all its lanes (as `kisi interfaces` names it) |
 | `--format LIST` | `export` | `lib`, `spice`, `xyce`, `ltspice`, `touchstone`, `kicad` (comma-separated; default all) |
-| `--fmax GHZ` | `export` | top frequency of the ladders (or the compact model's cells) and the Touchstone grid (default 25 GHz, at least 1.25 × the bit rate); `profile`: 5 × Nyquist of the lane's profile |
+| `--fmax GHZ` | `export` | top frequency of the compact model's cells (or the ladders) and the Touchstone grid (default 25 GHz, at least 1.25 × the bit rate); `profile`: 5 × Nyquist of the lane's profile or 0.5 / t_r of its edge, the higher |
 | `--fmin GHZ` | `export` | start and step of the frequency grid (default f max / 500) |
 | `--kicad-style STYLE` | `export` | `detailed` (one symbol per element, default) or `compact` (the lane as one symbol) |
-| `--model MODEL` | `export` | line sections as `ladder` (RLGC ladders, default) or `compact` (lossless-line cells: LC lines with the fitted losses lumped once per cell) |
+| `--model MODEL` | `export` | line sections as `compact` (lossless-line cells: LC lines with the fitted losses lumped once per cell, default) or `ladder` (RLGC ladders) |
 | `--formula` | field-solver commands | no field solver (formula impedances) |
 | `--field-time S` | field-solver commands | time budget for new solves, default 120 s |
 | `--field-all` | field-solver commands | all cross-sections, not only those of nets with a target |

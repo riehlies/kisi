@@ -176,13 +176,13 @@ jobs:
             --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export --lane SYNC_OUT_P --lane REFINOUT2 --lane PCIe_PET1_P --lane PCIe_PER0_P \
             --kicad --svg kicad-sheets --report kicad-sheets/report.md --strict
           for d in $RUNNER_TEMP/export/*/; do cp $d/erc.json kicad-sheets/$(basename $d)_erc.json 2>/dev/null || true; done
-          # the compact model (--model compact) against the ladder and kisi, with the circuits' passivity to 10 x fmax,
-          # and its KiCad project
+          # the compact model (the default, above) against the ladder and kisi, with the circuits' passivity to
+          # 10 x fmax, and the ladder's KiCad project
           python3 validation/channel_export/compare.py target/release/kisi examples/Thunderscope_Rev5.3.kicad_pcb \
             --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export_compact --lane SYNC_OUT_P --lane REFINOUT2 --lane PCIe_PET1_P \
             --models ladder,compact --passivity --report kicad-sheets/compact_vs_ladder.md --strict
           python3 validation/channel_export/compare.py target/release/kisi examples/Thunderscope_Rev5.3.kicad_pcb \
-            --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export_compact_kicad --lane PCIe_PER0_P --model compact --kicad --strict
+            --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export_ladder_kicad --lane PCIe_PER0_P --model ladder --kicad --strict
       - name: KiCad sheets of the channel export (rendered by kicad-cli 9, ERC results)
         if: env.EXPORT == 'true' && always()
         uses: actions/upload-artifact@v4

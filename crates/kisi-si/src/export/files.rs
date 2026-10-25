@@ -30,10 +30,10 @@ pub struct Formats {
 }
 
 impl Formats {
-    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, ltspice: true, lib: true, kicad_compact: false, model: Model::Ladder };
+    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, ltspice: true, lib: true, kicad_compact: false, model: Model::Compact };
     /// From a comma-separated list: spice, xyce, touchstone, kicad, all.
     pub fn parse(s: &str) -> Result<Formats, String> {
-        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, ltspice: false, lib: false, kicad_compact: false, model: Model::Ladder };
+        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, ltspice: false, lib: false, kicad_compact: false, model: Model::Compact };
         for p in s.split(',').map(|p| p.trim().to_ascii_lowercase()).filter(|p| !p.is_empty()) {
             match p.as_str() {
                 "spice" | "ngspice" => f.spice = true,

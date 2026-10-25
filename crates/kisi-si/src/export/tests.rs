@@ -57,6 +57,10 @@ fn compact() -> ExportOpts {
     ExportOpts { model: Model::Compact, ..ExportOpts::default() }
 }
 
+fn ladder() -> ExportOpts {
+    ExportOpts { model: Model::Ladder, ..ExportOpts::default() }
+}
+
 fn lane_of<'a>(board: &crate::board::Board, lanes: &'a [Lane], net: &str) -> &'a Lane {
     lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == net)).unwrap()
 }
@@ -69,7 +73,7 @@ fn single_line_follows_kisi() {
     let (board, an, lanes) = setup();
     let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == "SIG")).expect("lane SIG");
     let field = HashMap::new();
-    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
     assert!(!lc.pair && lc.ports == ["a", "b"]);
     for k in 0..lc.freq.len() {
         if lc.freq[k] > 10e9 {
@@ -97,7 +101,7 @@ fn pair_follows_kisi() {
     let (board, an, lanes) = setup();
     let l = lanes.iter().find(|l| l.diff).expect("pair lane");
     let field = HashMap::new();
-    let lc = lane_circuit(&board, &an, &field, l, Some((100.0, true)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+    let lc = lane_circuit(&board, &an, &field, l, Some((100.0, true)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
     assert!(lc.pair && lc.ports.len() == 4, "{:?}", lc.notes);
     assert!(lc.fidelity.max_ds21_db_nyq < 0.1, "{:?}", lc.fidelity);
     assert!(lc.lib.contains(" ref 0.5\n") && lc.lib.contains(" -0.5\n"), "mode converters");
@@ -111,9 +115,9 @@ fn lane_files_are_complete() {
     let (board, an, lanes) = setup();
     let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == "SIG")).unwrap();
     let field = HashMap::new();
-    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
     let ends = files::BenchEnds { profile: "se50".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, rx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, notes: vec![] };
-    let fs = files::lane_files(&lc, &ends, Formats::ALL, "t.kicad_pcb", 20e9, 20.0, "");
+    let fs = files::lane_files(&lc, &ends, Formats { model: Model::Ladder, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
     let names: Vec<&str> = fs.iter().map(|f| f.path.as_str()).collect();
     for want in ["SIG.lib", "bench_ngspice.cir", "sparam_ngspice.cir", "bench_xyce.cir", "sparam_xyce.cir", "SIG.s2p", "SIG.kicad_pro", "SIG.kicad_sch", "SIG_kicad.lib", "README.md"] {
         assert!(names.contains(&want), "{want} missing in {names:?}");
@@ -136,10 +140,10 @@ fn kicad_sheet_has_every_element() {
     for name in ["SIG", "D_P"] {
         let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == name)).unwrap();
         let target = if l.diff { Some((100.0, true)) } else { Some((50.0, false)) };
-        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
         assert!(!lc.top.is_empty() && super::kicad::can_detail(&lc), "{name}: no element list");
         let ends = files::BenchEnds { profile: "p".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 5000.0, c_pf: 1.0, l_nh: 0.0 }, rx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.0 }, notes: vec![] };
-        let fs = files::lane_files(&lc, &ends, Formats::ALL, "t.kicad_pcb", 20e9, 20.0, "");
+        let fs = files::lane_files(&lc, &ends, Formats { model: Model::Ladder, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
         let get = |suffix: &str| fs.iter().find(|f| f.path.ends_with(suffix)).unwrap().content.clone();
         let (sch, blib) = (get(".kicad_sch"), get("_kicad.lib"));
         for t in &lc.top {
@@ -155,7 +159,7 @@ fn kicad_sheet_has_every_element() {
         } else {
             assert!(sch.contains("kisi:CPL") || sch.contains("kisi:VIAPAIR"), "pair: a coupled element");
         }
-        let compact = files::lane_files(&lc, &ends, Formats { kicad_compact: true, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
+        let compact = files::lane_files(&lc, &ends, Formats { kicad_compact: true, model: Model::Ladder, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
         let csch = &compact.iter().find(|f| f.path.ends_with(".kicad_sch")).unwrap().content;
         assert!(csch.contains("kisi:LANE") && !csch.contains("kisi:TL\""));
     }
@@ -170,9 +174,9 @@ fn ltspice_files() {
     for name in ["SIG", "D_P"] {
         let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == name)).unwrap();
         let target = if l.diff { Some((100.0, true)) } else { Some((50.0, false)) };
-        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
         let ends = files::BenchEnds { profile: "p".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, rx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, notes: vec![] };
-        let fs = files::lane_files(&lc, &ends, Formats::ALL, "t.kicad_pcb", 20e9, 20.0, "");
+        let fs = files::lane_files(&lc, &ends, Formats { model: Model::Ladder, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
         let get = |p: &str| fs.iter().find(|f| f.path == p).map(|f| f.content.clone());
         let (lib, llib, bench) = (get(&format!("{name}.lib")).unwrap(), get(&format!("{name}_ltspice.lib")).unwrap(), get("bench_ltspice.cir").unwrap());
         assert!(llib.is_ascii() && bench.is_ascii());
@@ -234,7 +238,7 @@ fn compact_single_line_follows_kisi() {
     let l = lane_of(&board, &lanes, "SIG");
     let field = HashMap::new();
     let run = |o: &ExportOpts| lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, o).unwrap();
-    let (lad, cmp) = (run(&ExportOpts::default()), run(&compact()));
+    let (lad, cmp) = (run(&ladder()), run(&compact()));
     assert_eq!((lad.model, cmp.model), (Model::Ladder, Model::Compact));
     for k in 0..cmp.freq.len() {
         if cmp.freq[k] > 10e9 {
@@ -262,7 +266,7 @@ fn compact_pair_follows_kisi() {
     let l = lanes.iter().find(|l| l.diff).unwrap();
     let field = HashMap::new();
     let run = |o: &ExportOpts| lane_circuit(&board, &an, &field, l, Some((100.0, true)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, o).unwrap();
-    let (lad, cmp) = (run(&ExportOpts::default()), run(&compact()));
+    let (lad, cmp) = (run(&ladder()), run(&compact()));
     assert!(cmp.pair && cmp.fidelity.max_ds21_db_nyq < 0.1, "{:?}", cmp.fidelity);
     assert!((cmp.fidelity.max_ds_nyq - lad.fidelity.max_ds_nyq).abs() < 0.01, "compact {:?} ladder {:?}", cmp.fidelity, lad.fidelity);
     assert!(cmp.lib.contains("_CPL1_even") && cmp.counts.cells > 0);
@@ -284,7 +288,7 @@ fn compact_merges_equal_sections() {
     let l = lane_of(&board, &lanes, "SIG");
     let field = HashMap::new();
     let run = |o: &ExportOpts| lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, o).unwrap();
-    let (lad, cmp) = (run(&ExportOpts::default()), run(&compact()));
+    let (lad, cmp) = (run(&ladder()), run(&compact()));
     assert_eq!(lad.merged, 0);
     assert!(cmp.merged >= 1, "{} merges", cmp.merged);
     assert!(cmp.lib.contains("sections merged"));

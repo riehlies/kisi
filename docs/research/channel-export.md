@@ -291,7 +291,10 @@ each line section as a few lossless-line cells – a lossless LC ladder (40 π s
 elements each) carries the fit's L and C, the rest of both networks is lumped once per cell (at least 3 cells per
 delay × f max, more where the lumps are large, as on microstrip); consecutive sections with nearly the same model
 are merged (SYNC_OUT_P's coupled run is ~140 pieces). Passive and causal by construction; vias, parts, stubs and the
-modal blocks unchanged. "Lines in the SPICE netlist" in the viewer's export settings, `--model compact` in the CLIs.
+modal blocks unchanged. "Lines in the SPICE netlist" in the viewer's export settings, `--model compact` in the CLIs;
+the default since 25 October 2026, after the LTspice check below (`--model ladder` remains). `--fmax profile` takes
+5 × Nyquist or 0.5 / t_r of the profile's edge, whichever is higher, so that a slow rate with a fast edge (the PCIe
+reference clock, the generic profiles) keeps its edge; the default stays 25 GHz.
 
 **Check** (`compare.py --models ladder,compact --transient --passivity`, ngspice 42 on a shared 2-core machine, two
 runs in parallel – the times compare the two models of one run): ThunderScope with `web/samples/ts.kisi.json`

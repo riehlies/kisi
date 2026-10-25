@@ -90,7 +90,7 @@ pub struct ExportOpts {
 
 impl Default for ExportOpts {
     fn default() -> Self {
-        ExportOpts { per_lambda: 20.0, fit_tol: 0.01, model: Model::Ladder, cells_per: 3.0, lc_per_lambda: 40.0 }
+        ExportOpts { per_lambda: 20.0, fit_tol: 0.01, model: Model::Compact, cells_per: 3.0, lc_per_lambda: 40.0 }
     }
 }
 

@@ -41,11 +41,11 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    [--format lib,spice,xyce,ltspice,touchstone,kicad (default all; lib: the
                    subcircuits alone, spice: with the ngspice decks)]
                    [--kicad-style detailed|compact (one symbol per element, default; or the lane
-                   as one symbol)] [--model ladder|compact (lines as RLGC ladders, default; or
-                   compact: lossless-line cells, LC lines with the same fitted losses lumped once
-                   per cell – 2 to 5 x fewer elements)] [--fmax GHZ|profile (top frequency of the
+                   as one symbol)] [--model compact|ladder (lines as lossless-line cells, LC
+                   lines with the fitted losses lumped once per cell, default; or ladder: RLGC
+                   ladders, 2 to 5 x more elements)] [--fmax GHZ|profile (top frequency of the
                    lines and the Touchstone grid; default as the check, 25 GHz; profile: 5 x
-                   Nyquist)]
+                   Nyquist or 0.5/t_r of the profile's edge, the higher)]
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
                    [--class CLASS=PROFILE]
@@ -85,7 +85,7 @@ fn formats(o: &Opts) -> Result<crate::export::files::Formats, String> {
         Some("compact") => true,
         Some(x) => return Err(format!("--kicad-style {x}: use detailed or compact")),
     };
-    f.model = crate::export::Model::parse(o.model.as_deref().unwrap_or("ladder"))?;
+    f.model = crate::export::Model::parse(o.model.as_deref().unwrap_or("compact"))?;
     Ok(f)
 }
 
@@ -606,7 +606,7 @@ mod tests {
         // export: the line model
         let e = parse_args(&a("export b.kicad_pcb --lane X --model compact")).unwrap();
         assert_eq!(formats(&e).unwrap().model, crate::export::Model::Compact);
-        assert_eq!(formats(&parse_args(&a("export b.kicad_pcb --lane X")).unwrap()).unwrap().model, crate::export::Model::Ladder);
+        assert_eq!(formats(&parse_args(&a("export b.kicad_pcb --lane X")).unwrap()).unwrap().model, crate::export::Model::Compact);
         assert!(parse_args(&a("export b.kicad_pcb --lane X --model bogus")).is_err());
     }
 

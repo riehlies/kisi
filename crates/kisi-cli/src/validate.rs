@@ -1,10 +1,12 @@
 //! Compare kisi's impedance models against reference results.
 //!
+//! ```text
 //! Usage: kisi-validate <cases.json> [reference.out.json]
 //!        kisi-validate models <via_cases dir> <out dir> [--grid uniform|graded] [--only k]
 //!        (reduced via / cavity models on the 3D reference cases, see models.rs)
 //!        kisi-validate via-case <board.kicad_pcb> --net NAME --out DIR [options]
 //!        (a via cut out of the board as a kisi-fdtd case with its 2×thru fixtures, viacase.rs)
+//! ```
 //!
 //! Case format (lengths in mm):
 //!   {name, type, w, h, t, er, s?, gap?, cover?, er_top?, top_h?, sm_t?, sm_er?,

@@ -553,7 +553,7 @@ pub struct RunResult {
     pub steps: usize,
     pub dt: f64,
     pub seconds: f64,
-    /// S[i] = b_i / a_excited over `freq`, as (re, im)
+    /// `S[i] = b_i / a_excited` over `freq`, as (re, im)
     pub s: Vec<Vec<(f64, f64)>>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub fields: Vec<FieldPlane>,

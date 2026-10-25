@@ -806,7 +806,7 @@ fn log_sum(theta: f64, tau: f64) -> f64 {
 /// gm = [e^{−γ|y−y'|} + e^{−γ(y+y')} + e^{−γ(2b−y−y')} + e^{−γ(2b−|y−y'|)}] / (2γ(1 − e^{−2γb})),
 /// γ = √(αm² − k²): the double cosine series summed in closed form along y. For large m the
 /// terms approach (1/(2πm)) Σ_u Σ_v cos(mπu/a) e^{−mπv/a} (u = x ∓ x'; v = |y − y'|, y + y',
-/// 2b − y − y'), whose sum is [`log_sum`] (Kummer): it carries the logarithmic singularity, so
+/// 2b − y − y'), whose sum is `log_sum` (Kummer): it carries the logarithmic singularity, so
 /// a post's self term is G at its radius, as H0⁽²⁾(ka) in the ladder. The k² terms of the
 /// expansion beyond the last mode M are added from frequency-independent sums, so the remainder
 /// falls as 1/m⁵.

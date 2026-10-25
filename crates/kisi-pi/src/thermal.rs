@@ -276,7 +276,7 @@ pub struct PartTemp {
     pub theta_ja: Option<f64>,
     /// ψJT from PI_THERMAL (case top), None otherwise
     pub psi_jt: Option<f64>,
-    /// "PI_THERMAL (datasheet: …)" or "package default <family> (estimate)"
+    /// "PI_THERMAL (datasheet: …)" or "package default `<family>` (estimate)"
     pub data_source: String,
     /// document (and page) or url of the PI_THERMAL field's source, when it has one
     pub source_document: Option<String>,

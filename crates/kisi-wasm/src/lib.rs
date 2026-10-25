@@ -692,7 +692,7 @@ pub extern "C" fn kisi_pdn(p: *const u8, n: usize) -> i32 {
     }
 }
 
-/// PDN seen from every IC of a rail domain. Input: {"setup": RailSetup, "setups": [RailSetup] (all
+/// PDN seen from every IC of a rail domain. Input: {"setup": RailSetup, "setups": \[RailSetup\] (all
 /// rails, for the nets behind series parts), "params": PdnParams} → IcPdnResult
 #[no_mangle]
 pub extern "C" fn kisi_pdn_ic(p: *const u8, n: usize) -> i32 {
@@ -710,7 +710,7 @@ pub extern "C" fn kisi_pdn_ic(p: *const u8, n: usize) -> i32 {
 }
 
 /// Channel check of many nets (eye, loss at Nyquist, skew). Input:
-/// {"rf": RfParams, "items": [{"net": id, "gbps": f, "target": [z, diff] | null}]} → [CheckRow]
+/// {"rf": RfParams, "items": [{"net": id, "gbps": f, "target": [z, diff] | null}]} → \[CheckRow\]
 #[no_mangle]
 pub extern "C" fn kisi_check(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -886,7 +886,7 @@ pub extern "C" fn kisi_lane_rf(p: *const u8, n: usize) -> i32 {
 /// Export of a lane or a bus for circuit and RF simulators (`kisi export`, `kisi_core::channel_export`)
 /// with the viewer's settings. Input: {"board": file name, "formats": "all", "kicad_style":
 /// "detailed" | "compact", "model": "ladder" | "compact", "fmax": GHz | "profile" | null, "fmin_ghz": GHz | null, "bus": name | null,
-/// "devices": [refdes], "lanes": [{"lane": first net id, "to", "reversed", "rf", "target",
+/// "devices": \[refdes\], "lanes": [{"lane": first net id, "to", "reversed", "rf", "target",
 /// "profile", "bitrate", "tx", "rx", "eye_rise", "swing_v", "conn_end"}]} → {"summary", "files":
 /// [{"path", "content"}], "name"}.
 #[no_mangle]
@@ -1226,7 +1226,7 @@ pub extern "C" fn kisi_config_subset(p: *const u8, n: usize) -> i32 {
 
 /// Power settings of the viewer as footprint fields for the kisi.json (Prepare page, "take the viewer's
 /// edits"): a power tree as PI_REG / PI_LOAD, rail setups without a tree as PI_SOURCE / PI_LOAD.
-/// Input: {"tree": TreeSpec | null, "setups": [RailSetup] | null}. Output: {"fields": [{ref, name,
+/// Input: {"tree": TreeSpec | null, "setups": \[RailSetup\] | null}. Output: {"fields": [{ref, name,
 /// value}], "lost": [what fields cannot say]}.
 #[no_mangle]
 pub extern "C" fn kisi_edits_to_fields(p: *const u8, n: usize) -> i32 {

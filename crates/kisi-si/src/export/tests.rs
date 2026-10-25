@@ -53,6 +53,18 @@ fn rp() -> RfParams {
     RfParams { fmax: 20e9, npts: 200, ..Default::default() }
 }
 
+fn compact() -> ExportOpts {
+    ExportOpts { model: Model::Compact, ..ExportOpts::default() }
+}
+
+fn ladder() -> ExportOpts {
+    ExportOpts { model: Model::Ladder, ..ExportOpts::default() }
+}
+
+fn lane_of<'a>(board: &crate::board::Board, lanes: &'a [Lane], net: &str) -> &'a Lane {
+    lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == net)).unwrap()
+}
+
 /// The exported single line follows kisi's own S-parameters of the same build: |S21| within
 /// 0.05 dB up to 10 GHz, every S-parameter within 0.05 up to 10 GHz; the library has the lane
 /// subcircuit with its ports, the series resistor and the via.
@@ -61,7 +73,7 @@ fn single_line_follows_kisi() {
     let (board, an, lanes) = setup();
     let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == "SIG")).expect("lane SIG");
     let field = HashMap::new();
-    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
     assert!(!lc.pair && lc.ports == ["a", "b"]);
     for k in 0..lc.freq.len() {
         if lc.freq[k] > 10e9 {
@@ -89,7 +101,7 @@ fn pair_follows_kisi() {
     let (board, an, lanes) = setup();
     let l = lanes.iter().find(|l| l.diff).expect("pair lane");
     let field = HashMap::new();
-    let lc = lane_circuit(&board, &an, &field, l, Some((100.0, true)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+    let lc = lane_circuit(&board, &an, &field, l, Some((100.0, true)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
     assert!(lc.pair && lc.ports.len() == 4, "{:?}", lc.notes);
     assert!(lc.fidelity.max_ds21_db_nyq < 0.1, "{:?}", lc.fidelity);
     assert!(lc.lib.contains(" ref 0.5\n") && lc.lib.contains(" -0.5\n"), "mode converters");
@@ -103,9 +115,9 @@ fn lane_files_are_complete() {
     let (board, an, lanes) = setup();
     let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == "SIG")).unwrap();
     let field = HashMap::new();
-    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
     let ends = files::BenchEnds { profile: "se50".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, rx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, notes: vec![] };
-    let fs = files::lane_files(&lc, &ends, Formats::ALL, "t.kicad_pcb", 20e9, 20.0, "");
+    let fs = files::lane_files(&lc, &ends, Formats { model: Model::Ladder, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
     let names: Vec<&str> = fs.iter().map(|f| f.path.as_str()).collect();
     for want in ["SIG.lib", "bench_ngspice.cir", "sparam_ngspice.cir", "bench_xyce.cir", "sparam_xyce.cir", "SIG.s2p", "SIG.kicad_pro", "SIG.kicad_sch", "SIG_kicad.lib", "README.md"] {
         assert!(names.contains(&want), "{want} missing in {names:?}");
@@ -128,10 +140,10 @@ fn kicad_sheet_has_every_element() {
     for name in ["SIG", "D_P"] {
         let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == name)).unwrap();
         let target = if l.diff { Some((100.0, true)) } else { Some((50.0, false)) };
-        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
         assert!(!lc.top.is_empty() && super::kicad::can_detail(&lc), "{name}: no element list");
         let ends = files::BenchEnds { profile: "p".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 5000.0, c_pf: 1.0, l_nh: 0.0 }, rx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.0 }, notes: vec![] };
-        let fs = files::lane_files(&lc, &ends, Formats::ALL, "t.kicad_pcb", 20e9, 20.0, "");
+        let fs = files::lane_files(&lc, &ends, Formats { model: Model::Ladder, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
         let get = |suffix: &str| fs.iter().find(|f| f.path.ends_with(suffix)).unwrap().content.clone();
         let (sch, blib) = (get(".kicad_sch"), get("_kicad.lib"));
         for t in &lc.top {
@@ -147,7 +159,7 @@ fn kicad_sheet_has_every_element() {
         } else {
             assert!(sch.contains("kisi:CPL") || sch.contains("kisi:VIAPAIR"), "pair: a coupled element");
         }
-        let compact = files::lane_files(&lc, &ends, Formats { kicad_compact: true, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
+        let compact = files::lane_files(&lc, &ends, Formats { kicad_compact: true, model: Model::Ladder, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
         let csch = &compact.iter().find(|f| f.path.ends_with(".kicad_sch")).unwrap().content;
         assert!(csch.contains("kisi:LANE") && !csch.contains("kisi:TL\""));
     }
@@ -162,9 +174,9 @@ fn ltspice_files() {
     for name in ["SIG", "D_P"] {
         let l = lanes.iter().find(|l| l.nets.iter().any(|&n| board.net_name(n) == name)).unwrap();
         let target = if l.diff { Some((100.0, true)) } else { Some((50.0, false)) };
-        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ExportOpts::default()).unwrap();
+        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &ladder()).unwrap();
         let ends = files::BenchEnds { profile: "p".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, rx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, notes: vec![] };
-        let fs = files::lane_files(&lc, &ends, Formats::ALL, "t.kicad_pcb", 20e9, 20.0, "");
+        let fs = files::lane_files(&lc, &ends, Formats { model: Model::Ladder, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
         let get = |p: &str| fs.iter().find(|f| f.path == p).map(|f| f.content.clone());
         let (lib, llib, bench) = (get(&format!("{name}.lib")).unwrap(), get(&format!("{name}_ltspice.lib")).unwrap(), get("bench_ltspice.cir").unwrap());
         assert!(llib.is_ascii() && bench.is_ascii());
@@ -217,4 +229,145 @@ fn kisi_sections_give_the_cascade() {
     assert!((m.a - ch.abcd[k].a).abs() < 1e-9 && (m.b - ch.abcd[k].b).abs() < 1e-6);
 }
 
+/// The compact model of the single line: as close to kisi's S-parameters as the ladder (|S21|
+/// within 0.05 dB, every S-parameter within 0.05 up to 10 GHz), lossless LTRA lines in the
+/// library, fewer elements than the ladder, passive from 1 kHz to 10 × f max.
+#[test]
+fn compact_single_line_follows_kisi() {
+    let (board, an, lanes) = setup();
+    let l = lane_of(&board, &lanes, "SIG");
+    let field = HashMap::new();
+    let run = |o: &ExportOpts| lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, o).unwrap();
+    let (lad, cmp) = (run(&ladder()), run(&compact()));
+    assert_eq!((lad.model, cmp.model), (Model::Ladder, Model::Compact));
+    for k in 0..cmp.freq.len() {
+        if cmp.freq[k] > 10e9 {
+            break;
+        }
+        let d21 = (db(cmp.s_kisi[k][2]) - db(cmp.s_export[k][2])).abs();
+        let ds = cmp.s_kisi[k].iter().zip(&cmp.s_export[k]).map(|(a, b)| (*a - *b).abs()).fold(0.0, f64::max);
+        assert!(d21 < 0.05 && ds < 0.05, "{} GHz: |dS21| {d21:.4} dB, |dS| {ds:.4}", cmp.freq[k] / 1e9);
+    }
+    assert!(cmp.counts.cells > 0 && lad.counts.cells == 0, "{:?}", cmp.counts);
+    assert!(cmp.lib.contains("lossless-line cells (LC ladders of") && cmp.lib.contains("_cell a b ref"));
+    assert!(cmp.counts.elements() < lad.counts.elements() / 2, "compact {} vs ladder {}", cmp.counts.elements(), lad.counts.elements());
+    for lc in [&lad, &cmp] {
+        assert!(lc.fidelity.circuit_max_sv <= 1.0 + 1e-9, "{:?}: largest singular value {} at {} GHz", lc.model, lc.fidelity.circuit_max_sv, lc.fidelity.circuit_max_sv_ghz);
+    }
+    // only R, L, C, sources and subcircuits
+    assert!(cmp.lib.lines().filter(|x| !x.starts_with('*') && !x.starts_with('.') && !x.is_empty()).all(|x| "RLCEFVX".contains(x.chars().next().unwrap())));
+}
 
+/// The compact pair: modal blocks with cells per mode, Sdd21 within 0.1 dB of kisi's up to 1.5 ×
+/// Nyquist, passive beyond the band, fewer elements than the ladder.
+#[test]
+fn compact_pair_follows_kisi() {
+    let (board, an, lanes) = setup();
+    let l = lanes.iter().find(|l| l.diff).unwrap();
+    let field = HashMap::new();
+    let run = |o: &ExportOpts| lane_circuit(&board, &an, &field, l, Some((100.0, true)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, o).unwrap();
+    let (lad, cmp) = (run(&ladder()), run(&compact()));
+    assert!(cmp.pair && cmp.fidelity.max_ds21_db_nyq < 0.1, "{:?}", cmp.fidelity);
+    assert!((cmp.fidelity.max_ds_nyq - lad.fidelity.max_ds_nyq).abs() < 0.01, "compact {:?} ladder {:?}", cmp.fidelity, lad.fidelity);
+    assert!(cmp.lib.contains("_CPL1_even") && cmp.counts.cells > 0);
+    assert!(cmp.counts.elements() < lad.counts.elements());
+    assert!(cmp.fidelity.circuit_max_sv <= 1.0 + 1e-9 && lad.fidelity.circuit_max_sv <= 1.0 + 1e-9);
+}
+
+/// Consecutive sections of one line with nearly the same model are merged into one section in
+/// the compact model (the ladder keeps them): a track whose width changes by 1 µm per segment.
+#[test]
+fn compact_merges_equal_sections() {
+    let pcb = PCB.replace(r#"(segment (start 0 0) (end 30 0) (width 0.35) (layer "F.Cu") (net 1))"#, r#"(segment (start 0 0) (end 10 0) (width 0.35) (layer "F.Cu") (net 1)) (segment (start 10 0) (end 20 0) (width 0.351) (layer "F.Cu") (net 1)) (segment (start 20 0) (end 30 0) (width 0.352) (layer "F.Cu") (net 1))"#);
+    assert_ne!(pcb, PCB);
+    let board = crate::board::load_pcb(&pcb).unwrap();
+    let mut params = crate::extract::Params::default();
+    params.targets.insert("Default".into(), crate::extract::Target { z: 50.0, diff: false });
+    let an = crate::analyze(&board, &params);
+    let lanes: Vec<Lane> = buses(&board, &an, &ComponentData::builtin()).into_iter().flat_map(|b| b.lanes).collect();
+    let l = lane_of(&board, &lanes, "SIG");
+    let field = HashMap::new();
+    let run = |o: &ExportOpts| lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, o).unwrap();
+    let (lad, cmp) = (run(&ladder()), run(&compact()));
+    assert_eq!(lad.merged, 0);
+    assert!(cmp.merged >= 1, "{} merges", cmp.merged);
+    assert!(cmp.lib.contains("sections merged"));
+    assert!(cmp.fidelity.max_ds_nyq < 0.02, "{:?}", cmp.fidelity);
+}
+
+/// Lossless-line cells without losses are the lossless line of n × td, and the star products
+/// (the passivity check beyond the band) equal the cascade matrices where both are finite.
+#[test]
+fn cells_and_star_products() {
+    use circuit::{lossless, pair_s, pair_t};
+    let w = 2.0 * PI * 7.3e9;
+    // 5 cells of 9 ps, 47 ohm, 40 sections per wavelength at 25 GHz: within 0.1 % of the line's phase
+    let (zl, td) = (47.0, 9e-12);
+    let el = El::Cells { z: Imp(vec![]), y: Adm(vec![]), l: zl * td, c: td / zl, n: 5, m: 9 };
+    let (a, b) = (el.abcd(2.0 * PI * 25e9), lossless(zl, 2.0 * PI * 25e9 * 45e-12));
+    let (sa, sb) = (s2(&a, zl), s2(&b, zl));
+    assert!((sa[2].arg() - sb[2].arg()).abs() < 1e-3 * 2.0 * PI * 25e9 * 45e-12 && sa[0].abs() < 0.01, "{:?} {:?}", sa, sb);
+    let fz = Foster { r0: 0.2, l: 0.0, terms: vec![(0.5, 1e-11)], tanks: vec![] };
+    let fy = Debye { g0: 1e-6, c: 0.0, terms: vec![(5e3, 2e-14)], res: vec![] };
+    let cells = El::Cells { z: Imp::from_foster(&fz), y: Adm::from_debye(&fy), l: 52.0 * 1e-11, c: 1e-11 / 52.0, n: 7, m: 10 };
+    let ladder = El::Ladder { z: Imp(vec![Zel::R(0.1), Zel::L(2e-10)]), y: Adm(vec![Imp(vec![Zel::C(8e-14)])]), n: 30 };
+    for e in [&cells, &ladder] {
+        let (s, m) = (e.s(w, 50.0), s2(&e.abcd(w), 50.0));
+        for (x, y) in s.iter().zip(&m) {
+            assert!((*x - *y).abs() < 1e-9, "{x:?} {y:?}");
+        }
+    }
+    // far above the ladder's cut-off its cascade matrix overflows; the star product stays passive
+    let s = Chain(vec![ladder.clone(); 30]).s(2.0 * PI * 2e12, 50.0);
+    assert!(s.iter().all(|x| x.re.is_finite() && x.im.is_finite()) && crate::rf::max_singular(&s, 2) <= 1.0 + 1e-9);
+    let pels = vec![
+        PairEl::Line(0, cells.clone()),
+        PairEl::Modal { name: "M".into(), note: String::new(), even: Chain(vec![ladder.clone()]), odd: Chain(vec![cells.clone()]), tag: Tag::default() },
+        PairEl::Line(1, ladder.clone()),
+    ];
+    let (a, b) = (pair_s(&pels, w, 45.0), s4(&pair_t(&pels, w), 45.0));
+    for i in 0..4 {
+        for j in 0..4 {
+            assert!((a[i][j] - b[i * 4 + j]).abs() < 1e-9, "S{i}{j}: {:?} {:?}", a[i][j], b[i * 4 + j]);
+        }
+    }
+}
+
+/// The files of a compact export: the LTspice library is the shared one with Rser/Rpar on the
+/// inductors, every deck is written, the README and the library header name the model.
+#[test]
+fn compact_files() {
+    let (board, an, lanes) = setup();
+    let field = HashMap::new();
+    for name in ["SIG", "D_P"] {
+        let l = lane_of(&board, &lanes, name);
+        let target = if l.diff { Some((100.0, true)) } else { Some((50.0, false)) };
+        let lc = lane_circuit(&board, &an, &field, l, target, &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &compact()).unwrap();
+        let ends = files::BenchEnds { profile: "p".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, rx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.5 }, notes: vec![] };
+        let fs = files::lane_files(&lc, &ends, Formats { model: Model::Compact, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
+        let get = |p: &str| fs.iter().find(|f| f.path == p).map(|f| f.content.clone());
+        let (lib, llib, readme) = (get(&format!("{name}.lib")).unwrap(), get(&format!("{name}_ltspice.lib")).unwrap(), get("README.md").unwrap());
+        let strip = |t: &str| t.lines().filter(|l| !l.starts_with('*')).map(|l| l.replace(" Rser=0 Rpar=1e30", "")).collect::<Vec<_>>();
+        assert_eq!(strip(&lib), strip(&llib), "{name}");
+        assert!(get("sparam_xyce.cir").is_some() && get("bench_xyce.cir").is_some() && get("sparam_ngspice.cir").is_some());
+        assert!(lib.contains("* model (compact)") && readme.contains("compact model") && readme.contains("lossless-line cells"));
+    }
+    assert!(Model::parse("compact").is_ok_and(|m| m == Model::Compact) && Model::parse("x").is_err());
+}
+
+/// An open (high-impedance) receiver gets Gear integration in the ngspice bench and the KiCad
+/// project (trapezoidal integration rings on the undamped lane); a terminated one keeps the default.
+#[test]
+fn bench_gear_for_open_receiver() {
+    let (board, an, lanes) = setup();
+    let l = lane_of(&board, &lanes, "SIG");
+    let field = HashMap::new();
+    let lc = lane_circuit(&board, &an, &field, l, Some((50.0, false)), &rp(), l.rx_end == 0, &ComponentData::builtin(), 5e9, &compact()).unwrap();
+    for (r, gear) in [(50.0, false), (0.0, true)] {
+        let ends = files::BenchEnds { profile: "p".into(), bitrate: 1e9, rise: 100e-12, swing: 0.4, tx: crate::eye::EndModel { r: 50.0, c_pf: 1.0, l_nh: 0.0 }, rx: crate::eye::EndModel { r, c_pf: 1.0, l_nh: 0.0 }, notes: vec![] };
+        let fs = files::lane_files(&lc, &ends, Formats { model: Model::Compact, ..Formats::ALL }, "t.kicad_pcb", 20e9, 20.0, "");
+        let get = |p: &str| fs.iter().find(|f| f.path.ends_with(p)).unwrap().content.clone();
+        assert_eq!(get("bench_ngspice.cir").contains(".options method=gear"), gear);
+        assert_eq!(get(".kicad_sch").contains(".options method=gear"), gear);
+    }
+}

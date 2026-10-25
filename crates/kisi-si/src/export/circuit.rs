@@ -9,6 +9,14 @@
 //! (`rf::mixed::coupled`). The converters are voltage-controlled voltage sources and
 //! current-controlled current sources (E and F elements), which ngspice, Xyce, LTspice and Qucs
 //! all read.
+//!
+//! The compact model (`export::Model::Compact`) writes line sections as lossless-line cells
+//! (`El::Cells`): lossless LC ladders (40 π sections per wavelength at the top frequency, 2 elements
+//! each) carry the external inductance and the high-frequency capacitance – the delay –, and the
+//! fitted loss networks are lumped once per cell instead of in every section. The simulators' own
+//! line elements were tried for the lossless part and rejected (`docs/research/vector-fitting.md`):
+//! ngspice's `T` stalls in a cascade of short lines, its LTRA bounds the time step to the shortest
+//! line delay and went unstable in a lane with long cells, and Xyce runs neither in `.AC`.
 
 use super::fit::{Debye, Foster};
 use crate::lanenet::M4;
@@ -120,6 +128,11 @@ pub enum El {
     Ladder { z: Imp, y: Adm, n: usize },
     /// open stub to the reference
     Stub(Chain),
+    /// lossless-line cells: `n` cells of a lossless line (inductance `l`, capacitance `c` per cell,
+    /// written as an LC ladder of `m` π sections) with the series loss `z` and the shunt loss `y` of
+    /// a cell in its middle: line/2 – (z – y – line) × (n−1) – z – y – line/2 (the half lines with
+    /// ⌈m/2⌉ sections)
+    Cells { z: Imp, y: Adm, l: f64, c: f64, n: usize, m: usize },
     /// a named sub-chain: its own `.subckt` (a line segment, a via, a part)
     Block { name: String, note: String, chain: Chain, tag: Tag },
 }
@@ -217,6 +230,7 @@ impl Chain {
                 El::Series(z) => El::Series(z.scaled(k)),
                 El::Shunt(y) => El::Shunt(y.scaled(1.0 / k)),
                 El::Ladder { z, y, n } => El::Ladder { z: z.scaled(k), y: y.scaled(1.0 / k), n: *n },
+                El::Cells { z, y, l, c, n, m } => El::Cells { z: z.scaled(k), y: y.scaled(1.0 / k), l: l * k, c: c / k, n: *n, m: *m },
                 El::Stub(c) => El::Stub(c.scaled(k)),
                 El::Block { name, note, chain, tag } => El::Block { name: name.clone(), note: note.clone(), chain: chain.scaled(k), tag: tag.clone() },
             })
@@ -239,6 +253,16 @@ impl El {
                 }
                 m.mul(&Abcd::series(zz)).mul(&half)
             }
+            El::Cells { z, y, l, c, n, m } => {
+                let (full, half) = cell_lines(*l, *c, *m);
+                let lump = Abcd::series(z.z(w)).mul(&Abcd::shunt(y.y(w)));
+                let (lf, lh) = (full.abcd(w), half.abcd(w));
+                let mut t = lh;
+                for k in 0..*n {
+                    t = t.mul(&lump).mul(if k + 1 == *n { &lh } else { &lf });
+                }
+                t
+            }
             El::Stub(c) => {
                 let m = c.abcd(w);
                 Abcd::shunt(m.c / m.a)
@@ -246,6 +270,189 @@ impl El {
             El::Block { chain, .. } => chain.abcd(w),
         }
     }
+}
+
+// --- scattering matrices (the passivity check beyond the band) --------------------------------
+//
+// Cascade matrices of long ladders overflow far above their cut-off frequency (the growth of an
+// evanescent wave over hundreds of sections); scattering matrices combined by star products stay
+// bounded at every frequency.
+
+/// A 2-port's S-matrix (S11, S12, S21, S22), reference z0 at both ports.
+pub type S2 = [Cx; 4];
+/// A pair's 4-port S-matrix, ports P near, N near, P far, N far.
+pub type S4 = [[Cx; 4]; 4];
+
+fn s2_of(m: &Abcd, z0: f64) -> S2 {
+    let (s11, s21, s22) = m.s_params(z0);
+    [s11, s21, s21, s22]
+}
+
+/// Star product: the 2-port `a` followed by `b`.
+pub fn star2(a: &S2, b: &S2) -> S2 {
+    let den = (Cx::new(1.0, 0.0) - a[3] * b[0]).inv();
+    [a[0] + a[1] * b[0] * a[2] * den, a[1] * b[1] * den, a[2] * b[2] * den, b[3] + b[2] * a[3] * b[1] * den]
+}
+
+const S2_THRU: S2 = [Cx { re: 0.0, im: 0.0 }, Cx { re: 1.0, im: 0.0 }, Cx { re: 1.0, im: 0.0 }, Cx { re: 0.0, im: 0.0 }];
+
+/// `s` repeated `n` times (star products by binary exponentiation).
+fn star2_pow(s: &S2, mut n: usize) -> S2 {
+    let (mut acc, mut base) = (S2_THRU, *s);
+    while n > 0 {
+        if n & 1 == 1 {
+            acc = star2(&acc, &base);
+        }
+        base = star2(&base, &base);
+        n >>= 1;
+    }
+    acc
+}
+
+impl Chain {
+    /// The chain's S-matrix at ω (star products: bounded at every frequency).
+    pub fn s(&self, w: f64, z0: f64) -> S2 {
+        self.0.iter().fold(S2_THRU, |acc, e| star2(&acc, &e.s(w, z0)))
+    }
+}
+
+impl El {
+    /// The element's S-matrix at ω, reference z0.
+    pub fn s(&self, w: f64, z0: f64) -> S2 {
+        match self {
+            El::Series(z) => s2_of(&Abcd::series(z.z(w)), z0),
+            El::Shunt(y) => s2_of(&Abcd::shunt(y.y(w)), z0),
+            El::Ladder { z, y, n } => {
+                let (zz, yy) = (z.z(w), y.y(w));
+                let half = s2_of(&Abcd::shunt(yy.scale(0.5)), z0);
+                let sec = s2_of(&Abcd::series(zz).mul(&Abcd::shunt(yy)), z0);
+                let m = star2(&half, &star2_pow(&sec, n - 1));
+                star2(&star2(&m, &s2_of(&Abcd::series(zz), z0)), &half)
+            }
+            El::Cells { z, y, l, c, n, m } => {
+                let (full, half) = cell_lines(*l, *c, *m);
+                let (lf, lh) = (full.s(w, z0), half.s(w, z0));
+                let lump = s2_of(&Abcd::series(z.z(w)).mul(&Abcd::shunt(y.y(w))), z0);
+                let cell = star2(&lump, &lf);
+                star2(&star2(&star2(&lh, &star2_pow(&cell, n - 1)), &lump), &lh)
+            }
+            El::Stub(c) => {
+                // the open chain's input reflection Γ, then a shunt of y·z0 = (1 − Γ)/(1 + Γ)
+                let m = c.s(w, z0);
+                let one = Cx::new(1.0, 0.0);
+                let g = m[0] + m[1] * m[2] * (one - m[3]).inv();
+                let d = (Cx::new(3.0, 0.0) + g).inv();
+                let s21 = (one + g).scale(2.0) * d;
+                let s11 = Cx::new(0.0, 0.0) - (one - g) * d;
+                [s11, s21, s21, s11]
+            }
+            El::Block { chain, .. } => chain.s(w, z0),
+        }
+    }
+}
+
+type M2 = [[Cx; 2]; 2];
+
+fn m2(a: Cx, b: Cx, c: Cx, d: Cx) -> M2 {
+    [[a, b], [c, d]]
+}
+fn m2_mul(a: &M2, b: &M2) -> M2 {
+    let mut c = [[Cx::new(0.0, 0.0); 2]; 2];
+    for i in 0..2 {
+        for j in 0..2 {
+            c[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j];
+        }
+    }
+    c
+}
+fn m2_add(a: &M2, b: &M2) -> M2 {
+    [[a[0][0] + b[0][0], a[0][1] + b[0][1]], [a[1][0] + b[1][0], a[1][1] + b[1][1]]]
+}
+/// (1 − a)⁻¹
+fn m2_one_minus_inv(a: &M2) -> M2 {
+    let one = Cx::new(1.0, 0.0);
+    let (p, q, r, t) = (one - a[0][0], Cx::new(0.0, 0.0) - a[0][1], Cx::new(0.0, 0.0) - a[1][0], one - a[1][1]);
+    let det = (p * t - q * r).inv();
+    m2(t * det, Cx::new(0.0, 0.0) - q * det, Cx::new(0.0, 0.0) - r * det, p * det)
+}
+
+/// Star product of two 4-ports (near ports 0, 1 and far ports 2, 3).
+fn star4(a: &S4, b: &S4) -> S4 {
+    let blk = |s: &S4, r: usize, c: usize| -> M2 { [[s[r][c], s[r][c + 1]], [s[r + 1][c], s[r + 1][c + 1]]] };
+    let (a11, a12, a21, a22) = (blk(a, 0, 0), blk(a, 0, 2), blk(a, 2, 0), blk(a, 2, 2));
+    let (b11, b12, b21, b22) = (blk(b, 0, 0), blk(b, 0, 2), blk(b, 2, 0), blk(b, 2, 2));
+    let k1 = m2_one_minus_inv(&m2_mul(&b11, &a22)); // (1 − B11 A22)⁻¹
+    let k2 = m2_one_minus_inv(&m2_mul(&a22, &b11)); // (1 − A22 B11)⁻¹
+    let s11 = m2_add(&a11, &m2_mul(&m2_mul(&m2_mul(&a12, &k1), &b11), &a21));
+    let s12 = m2_mul(&m2_mul(&a12, &k1), &b12);
+    let s21 = m2_mul(&m2_mul(&b21, &k2), &a21);
+    let s22 = m2_add(&b22, &m2_mul(&m2_mul(&m2_mul(&b21, &k2), &a22), &b12));
+    let mut s = [[Cx::new(0.0, 0.0); 4]; 4];
+    for i in 0..2 {
+        for j in 0..2 {
+            s[i][j] = s11[i][j];
+            s[i][j + 2] = s12[i][j];
+            s[i + 2][j] = s21[i][j];
+            s[i + 2][j + 2] = s22[i][j];
+        }
+    }
+    s
+}
+
+/// S-matrix (ports P near, N near, P far, N far; z0 per line) of a pair's elements at ω, by star
+/// products – bounded at every frequency, unlike `pair_t`'s cascade matrices.
+pub fn pair_s(els: &[PairEl], w: f64, z0: f64) -> S4 {
+    let zero = Cx::new(0.0, 0.0);
+    let mut acc = [[zero; 4]; 4];
+    for i in 0..2 {
+        acc[i][i + 2] = Cx::new(1.0, 0.0);
+        acc[i + 2][i] = Cx::new(1.0, 0.0);
+    }
+    let thru = acc;
+    for e in els {
+        let m = match e {
+            PairEl::Line(l, el) => {
+                let (l, o) = ((*l).min(1), 1 - (*l).min(1));
+                let s = el.s(w, z0);
+                let mut m = thru;
+                m[o][o + 2] = Cx::new(1.0, 0.0);
+                m[l][l] = s[0];
+                m[l][l + 2] = s[1];
+                m[l + 2][l] = s[2];
+                m[l + 2][l + 2] = s[3];
+                m
+            }
+            PairEl::Modal { even, odd, .. } => {
+                // V_P = V_e + V_o, V_N = V_e − V_o with the same reference per line in both modes:
+                // S[x_i, y_j] = (Se_ij + σx σy So_ij)/2, σ = +1 for P, −1 for N
+                let (se, so) = (even.s(w, z0), odd.s(w, z0));
+                let mut m = [[zero; 4]; 4];
+                for (r, &(ri, rs)) in [(0usize, 1.0), (0, -1.0), (1, 1.0), (1, -1.0)].iter().enumerate() {
+                    for (c, &(ci, cs)) in [(0usize, 1.0), (0, -1.0), (1, 1.0), (1, -1.0)].iter().enumerate() {
+                        let k = ri * 2 + ci;
+                        m[r][c] = (se[k] + so[k].scale(rs * cs)).scale(0.5);
+                    }
+                }
+                m
+            }
+        };
+        acc = star4(&acc, &m);
+    }
+    acc
+}
+
+/// The lossless lines of a cell (inductance `l`, capacitance `c`, `m` π sections) and of half a
+/// cell (⌈m/2⌉ sections) as LC ladders.
+pub fn cell_lines(l: f64, c: f64, m: usize) -> (El, El) {
+    let lad = |l: f64, c: f64, k: usize| El::Ladder { z: Imp(vec![Zel::L(l / k as f64)]), y: Adm(vec![Imp(vec![Zel::C(c / k as f64)])]), n: k };
+    let mh = m.div_ceil(2).max(1);
+    (lad(l, c, m.max(1)), lad(l / 2.0, c / 2.0, mh))
+}
+
+/// Cascade matrix of a lossless line of impedance `z` and electrical length `theta` (rad).
+pub fn lossless(z: f64, theta: f64) -> Abcd {
+    let (s, c) = theta.sin_cos();
+    Abcd { a: Cx::new(c, 0.0), b: Cx::new(0.0, z * s), c: Cx::new(0.0, s / z), d: Cx::new(c, 0.0) }
 }
 
 /// An element of a pair: on line 0 (P) or 1 (N), or a coupled block in modal form.
@@ -299,6 +506,8 @@ pub struct Counts {
     pub subckts: usize,
     /// RLGC ladder sections
     pub sections: usize,
+    /// lossless-line cells of the compact model
+    pub cells: usize,
 }
 
 impl Counts {
@@ -312,6 +521,7 @@ impl Counts {
         self.c += o.c * times;
         self.sources += o.sources * times;
         self.sections += o.sections * times;
+        self.cells += o.cells * times;
     }
 }
 
@@ -419,6 +629,20 @@ impl Body {
         self.lines.push(format!("{nm} {a} {b} 0"));
         self.flat.sources += 1;
     }
+    /// A lossless line from a to b as an LC ladder of `k` π sections (inductance `l`, capacitance
+    /// `c` in all): c/2k – l/k – c/k – … – l/k – c/2k.
+    fn lc_line(&mut self, a: &str, b: &str, l: f64, c: f64, k: usize) {
+        let k = k.max(1);
+        let (ls, cs) = (l / k as f64, c / k as f64);
+        self.el('C', a, "ref", cs / 2.0);
+        let mut cur = a.to_string();
+        for i in 0..k {
+            let nxt = if i + 1 == k { b.to_string() } else { self.node() };
+            self.el('L', &cur, &nxt, ls);
+            self.el('C', &nxt, "ref", if i + 1 == k { cs / 2.0 } else { cs });
+            cur = nxt;
+        }
+    }
 }
 
 /// A number in SPICE notation (7 significant digits).
@@ -513,7 +737,7 @@ impl Lib {
     fn emit(&mut self, b: &mut Body, chain: &Chain, a: &str, z: &str, hint: &str) {
         // the last element that moves along the line ends at `z`
         let last = chain.0.iter().rposition(|e| match e {
-            El::Series(_) | El::Ladder { .. } => true,
+            El::Series(_) | El::Ladder { .. } | El::Cells { .. } => true,
             El::Block { chain, .. } => !chain.shunt_only(),
             _ => false,
         });
@@ -557,6 +781,43 @@ impl Lib {
                     }
                     self.counts.sections += n;
                     b.flat.sections += n;
+                }
+                El::Cells { z: zs, y, l, c, n, m } => {
+                    let nxt = if Some(i) == last { z.to_string() } else { b.node() };
+                    // three subcircuits: half a lossless line, a cell (z, y, line) and the last cell
+                    // (z, y, half a line); the lines as LC ladders
+                    let head = self.unique(&format!("{hint}_head"));
+                    let cell = self.unique(&format!("{hint}_cell"));
+                    let end = self.unique(&format!("{hint}_end"));
+                    let mh = m.div_ceil(2).max(1);
+                    let mut hb = Body::new();
+                    hb.lc_line("a", "b", l / 2.0, c / 2.0, mh);
+                    self.finish(&head, "a b ref", "half a lossless line (LC ladder)", hb);
+                    for (nm, full) in [(&cell, true), (&end, false)] {
+                        if full && *n < 2 {
+                            continue;
+                        }
+                        let mut cb = Body::new();
+                        cb.imp(zs, "a", "x");
+                        cb.adm(y, "x", "ref");
+                        if full {
+                            cb.lc_line("x", "b", *l, *c, *m);
+                        } else {
+                            cb.lc_line("x", "b", l / 2.0, c / 2.0, mh);
+                        }
+                        cb.flat.cells += 1;
+                        self.finish(nm, "a b ref", if full { "one lossless-line cell: series loss z, shunt loss y, then the lossless line (LC ladder)" } else { "last cell: z, y, then half the lossless line" }, cb);
+                    }
+                    let first = b.node();
+                    self.inst(b, &head, &[&cur, &first, "ref"]);
+                    cur = first;
+                    for k in 0..*n {
+                        let to = if k + 1 == *n { nxt.clone() } else { b.node() };
+                        let sub = if k + 1 == *n { end.clone() } else { cell.clone() };
+                        self.inst(b, &sub, &[&cur, &to, "ref"]);
+                        cur = to;
+                    }
+                    self.counts.cells += n;
                 }
                 El::Block { name, note, chain, tag } => {
                     let nm = self.unique(name);

@@ -19,6 +19,14 @@
 //! The export evaluates its own circuit (`circuit::Chain::abcd`) and reports the difference to
 //! kisi's S-parameters of the same build; `validation/channel_export/` runs the netlists in ngspice
 //! and compares again.
+//!
+//! **Compact model** (`Model::Compact`, `docs/research/vector-fitting.md`): the same fits, but a
+//! line section becomes a few lossless-line cells (`circuit::El::Cells`, at least `cells_per` (3) per
+//! delay × f max) – a lossless LC ladder (40 sections per wavelength, 2 elements each) carries the
+//! fit's sL and sC terms (the delay), the rest of the fitted Foster and Debye networks is lumped
+//! once per cell instead of in every section; passive and causal by construction.
+//! Consecutive sections of one line on one layer with nearly the same model (and consecutive
+//! coupled runs) are merged first, with the length-weighted mean of their R(f), L(f), G(f), C(f).
 
 pub mod circuit;
 pub mod fit;
@@ -37,6 +45,33 @@ use fit::{fit_freqs, fit_y, fit_z, Debye, Foster, Weight};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 
+/// How line sections are written: RLGC ladders (20 π sections per wavelength at the top frequency)
+/// or the compact model (lossless-line cells with lumped loss networks).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Model {
+    #[default]
+    Ladder,
+    Compact,
+}
+
+impl Model {
+    /// From the CLI's `--model ladder|compact`.
+    pub fn parse(s: &str) -> Result<Model, String> {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "ladder" => Ok(Model::Ladder),
+            "compact" => Ok(Model::Compact),
+            x => Err(format!("--model {x}: use ladder or compact")),
+        }
+    }
+    pub fn name(self) -> &'static str {
+        match self {
+            Model::Ladder => "ladder",
+            Model::Compact => "compact",
+        }
+    }
+}
+
 /// Settings of the circuit export.
 #[derive(Debug, Clone)]
 pub struct ExportOpts {
@@ -44,11 +79,18 @@ pub struct ExportOpts {
     pub per_lambda: f64,
     /// relative error allowed in the fits of R(f), L_int(f), G(f), C(f)
     pub fit_tol: f64,
+    pub model: Model,
+    /// compact model: lossless-line cells per (delay × top frequency) – at least; more where the
+    /// lumped losses are large; 3 puts the cells' Bragg frequency (their lumped losses reflect
+    /// coherently there) at 1.5 × the top frequency or above
+    pub cells_per: f64,
+    /// compact model: LC π sections per wavelength at the top frequency in the lossless lines
+    pub lc_per_lambda: f64,
 }
 
 impl Default for ExportOpts {
     fn default() -> Self {
-        ExportOpts { per_lambda: 20.0, fit_tol: 0.01 }
+        ExportOpts { per_lambda: 20.0, fit_tol: 0.01, model: Model::Compact, cells_per: 3.0, lc_per_lambda: 40.0 }
     }
 }
 
@@ -78,6 +120,10 @@ pub struct Fidelity {
     /// (not passive: the export uses the nearest passive fit), and the lowest such frequency (GHz)
     pub via_spans_active: usize,
     pub via_active_from_ghz: Option<f64>,
+    /// the exported circuit itself: the largest singular value of its S-matrix from 1 kHz to 10 ×
+    /// the top frequency (≤ 1: passive there; the circuit is passive by construction) and where
+    pub circuit_max_sv: f64,
+    pub circuit_max_sv_ghz: f64,
 }
 
 /// A lane as a circuit, with kisi's S-parameters of the same build for comparison.
@@ -104,6 +150,11 @@ pub struct LaneCircuit {
     pub s_export: Vec<Vec<Cx>>,
     pub counts: Counts,
     pub fidelity: Fidelity,
+    /// how the line sections are written
+    pub model: Model,
+    /// compact model: line sections merged with their neighbours (same line and layer, nearly the
+    /// same model) and the lossless-line cells written
+    pub merged: usize,
     pub notes: Vec<String>,
     /// one-way static delay (ps, pairs: differential) and track length (mm)
     pub delay_ps: f64,
@@ -145,6 +196,8 @@ struct Composer<'a> {
     freqs: Vec<f64>,
     layers: Vec<String>,
     cache: HashMap<Vec<u64>, (Foster, Debye, f64)>,
+    /// compact model: line sections merged into a neighbour
+    merged: usize,
     /// per line model: fit errors (%) and the length it is used for (m)
     fit_line: HashMap<Vec<u64>, ([f64; 4], f64)>,
     fit_via: f64,
@@ -160,10 +213,11 @@ struct Composer<'a> {
 
 /// One element before the feed corrections of the vias are applied to the neighbouring lines.
 enum Item {
-    /// a line on line 0 / 1 of length m
-    Line { line: usize, lm: LineModel, len: f64, layer: u16 },
-    /// a coupled run (both lines) of length m
-    Coupled { even: LineModel, odd: LineModel, len: f64, layer: u16 },
+    /// a line on line 0 / 1 of length m; `mix`: sections merged into it (their models and lengths,
+    /// empty: `lm` alone)
+    Line { line: usize, lm: LineModel, len: f64, layer: u16, mix: Vec<(LineModel, f64)> },
+    /// a coupled run (both lines) of length m; `mix` as for lines (even, odd, length)
+    Coupled { even: LineModel, odd: LineModel, len: f64, layer: u16, mix: Vec<(LineModel, LineModel, f64)> },
     /// any other element on one line, with the feed changes it asks of its neighbours (m, entry/exit)
     El { line: usize, el: El, cuts: [f64; 2] },
     /// a coupled block (both lines) in modal form
@@ -183,6 +237,39 @@ fn key_of(lm: &LineModel) -> Vec<u64> {
     [lm.z0, lm.eeff0, lm.l_ext, lm.c0, lm.r_dc, lm.k_ac, lm.er, lm.tand, lm.q_fill, lm.tand_eff0.unwrap_or(-1.0), lm.ms_h.unwrap_or(-1.0)].iter().map(|v| v.to_bits()).collect()
 }
 
+/// Cache key of a line model or of merged sections (models with their length shares).
+fn key_mix(mix: &[(LineModel, f64)]) -> Vec<u64> {
+    if mix.len() == 1 {
+        return key_of(&mix[0].0);
+    }
+    let total: f64 = mix.iter().map(|m| m.1).sum();
+    mix.iter().flat_map(|(lm, len)| key_of(lm).into_iter().chain([((len / total * 1e9).round()).to_bits()])).collect()
+}
+
+/// Per-metre R, L, G, C of merged sections: the length-weighted mean of their models.
+fn rlgc_mix(mix: &[(LineModel, f64)], f: f64, rp: &RfParams) -> crate::rf::Rlgc {
+    let total: f64 = mix.iter().map(|m| m.1).sum::<f64>().max(1e-300);
+    let mut o = crate::rf::Rlgc { r: 0.0, l: 0.0, g: 0.0, c: 0.0 };
+    for (lm, len) in mix {
+        let (p, w) = (lm.rlgc(f, rp), len / total);
+        o.r += w * p.r;
+        o.l += w * p.l;
+        o.g += w * p.g;
+        o.c += w * p.c;
+    }
+    o
+}
+
+/// Two line models close enough to be merged into one section: the same kind of model,
+/// impedance and effective permittivity within 0.5 %, resistance and conductance at the top
+/// frequency within 5 %.
+fn similar(a: &LineModel, b: &LineModel, f: f64, rp: &RfParams) -> bool {
+    let rel = |x: f64, y: f64| (x - y).abs() <= 0.005 * x.abs().max(y.abs());
+    let rel5 = |x: f64, y: f64| (x - y).abs() <= 0.05 * x.abs().max(y.abs()) + 1e-30;
+    let (pa, pb) = (a.rlgc(f, rp), b.rlgc(f, rp));
+    a.source == b.source && a.ms_h.is_some() == b.ms_h.is_some() && rel(a.z0, b.z0) && rel(a.eeff0, b.eeff0) && rel5(pa.r, pb.r) && rel5(pa.g, pb.g)
+}
+
 impl<'a> Composer<'a> {
     fn new(board: &Board, rp: &'a RfParams, fmax: f64, opts: &ExportOpts) -> Self {
         let su = board.stackup();
@@ -193,6 +280,7 @@ impl<'a> Composer<'a> {
             freqs: fit_freqs(fmax * 1e-4, fmax, 60),
             layers: su.copper.iter().map(|c| c.name.clone()).collect(),
             cache: HashMap::new(),
+            merged: 0,
             fit_line: HashMap::new(),
             fit_via: 0.0,
             active: 0,
@@ -209,23 +297,23 @@ impl<'a> Composer<'a> {
         self.layers.get(l as usize).cloned().unwrap_or_else(|| format!("L{l}"))
     }
 
-    /// Fitted per-metre networks of a line model (cached).
-    fn fits(&mut self, lm: &LineModel) -> (Foster, Debye) {
-        let k = key_of(lm);
+    /// Fitted per-metre networks of a line model, or of merged sections (`mix`, cached).
+    fn fits(&mut self, mix: &[(LineModel, f64)]) -> (Foster, Debye) {
+        let k = key_mix(mix);
         if let Some((z, y, _)) = self.cache.get(&k) {
             return (z.clone(), y.clone());
         }
         let rp = self.rp;
         let zt = |f: f64| {
-            let p = lm.rlgc(f, rp);
+            let p = rlgc_mix(mix, f, rp);
             Cx::new(p.r, 2.0 * PI * f * p.l)
         };
         let yt = |f: f64| {
-            let p = lm.rlgc(f, rp);
+            let p = rlgc_mix(mix, f, rp);
             Cx::new(p.g, 2.0 * PI * f * p.c)
         };
         let fz = fit_z(&self.freqs, &zt, LINE_ZW, self.opts.fit_tol, 14, false);
-        let fy = fit_y(&self.freqs, &yt, LINE_W, self.opts.fit_tol, 14, lm.ms_h.is_some());
+        let fy = fit_y(&self.freqs, &yt, LINE_W, self.opts.fit_tol, 14, mix[0].0.ms_h.is_some());
         let err = fz.err.max(fy.err);
         // the reported errors: on kisi's frequency grid (the fit also covers the lowest decades for
         // the DC point, where the loss is negligible)
@@ -252,11 +340,32 @@ impl<'a> Composer<'a> {
         ((tau * self.fmax * self.opts.per_lambda).ceil() as usize).max(1)
     }
 
-    /// RLGC ladder of a line section.
-    fn ladder(&mut self, lm: &LineModel, len: f64) -> (El, usize) {
-        let (fz, fy) = self.fits(lm);
-        if let Some(e) = self.fit_line.get_mut(&key_of(lm)) {
+    /// RLGC ladder of a line section – or, in the compact model, its lossless-line cells.
+    fn ladder(&mut self, mix: &[(LineModel, f64)], len: f64) -> (El, usize) {
+        let (fz, fy) = self.fits(mix);
+        if let Some(e) = self.fit_line.get_mut(&key_mix(mix)) {
             e.1 += len;
+        }
+        if self.opts.model == Model::Compact && fz.l > 0.0 && fy.c > 0.0 {
+            let tau = len * (fz.l * fy.c).sqrt();
+            // the lumps' size against the line's reactance and susceptance, weighted by (f / f max)²:
+            // the cells' discretisation error goes with r · (ω τ_cell)². Stripline lumps are
+            // r ≈ 0.04 (skin effect, Djordjevic-Sarkar), microstrip's 0.06–0.1 (its dispersion is
+            // lumped: a passive line carries only the capacitance at infinite frequency), so the
+            // cells shrink with √r
+            let wm = 2.0 * PI * self.fmax;
+            let (zl, yl) = (Foster { l: 0.0, ..fz.clone() }, Debye { c: 0.0, ..fy.clone() });
+            let r = self.freqs.iter().map(|&f| {
+                let w = 2.0 * PI * f;
+                (zl.z(w).abs() / (w * fz.l)).max(yl.y(w).abs() / (w * fy.c)) * (w / wm).powi(2)
+            }).fold(0.0, f64::max);
+            let n = ((self.opts.cells_per * tau * self.fmax * (r / 0.03).sqrt().max(1.0)).ceil() as usize).max(1);
+            let d = len / n as f64;
+            // the lossless line of a cell: LC π sections, `lc_per_lambda` per wavelength
+            let m = ((self.opts.lc_per_lambda * tau / n as f64 * self.fmax).ceil() as usize).max(1);
+            let z = Imp::from_foster(&Foster { l: 0.0, ..zl.scaled(d) });
+            let y = Adm::from_debye(&Debye { c: 0.0, ..yl.scaled(d) });
+            return (El::Cells { z, y, l: fz.l * d, c: fy.c * d, n, m }, n);
         }
         let c_lo = fy.y(2.0 * PI * self.freqs[0]).im / (2.0 * PI * self.freqs[0]);
         let n = self.sections(len, fz.z(2.0 * PI * self.freqs[0]).im / (2.0 * PI * self.freqs[0]), c_lo);
@@ -264,18 +373,26 @@ impl<'a> Composer<'a> {
         (El::Ladder { z: Imp::from_foster(&fz.scaled(d)), y: Adm::from_debye(&fy.scaled(d)), n }, n)
     }
 
-    fn line_block(&mut self, lm: &LineModel, len: f64, layer: u16, what: &str) -> El {
+    fn line_block(&mut self, mix: &[(LineModel, f64)], len: f64, layer: u16, what: &str) -> El {
         self.n_line += 1;
-        let (ld, n) = self.ladder(lm, len);
+        let (ld, n) = self.ladder(mix, len);
+        let lm = &mix[0].0;
+        let total: f64 = mix.iter().map(|m| m.1).sum::<f64>().max(1e-300);
+        let (z0, ee) = mix.iter().fold((0.0, 0.0), |a, (m, l)| (a.0 + m.z0 * l / total, a.1 + m.eeff0 * l / total));
+        let how = match &ld {
+            El::Cells { n, m, .. } => format!("{n} lossless-line cells (LC ladders of {m} sections) with lumped losses"),
+            _ => format!("{n} RLGC sections"),
+        };
         let note = format!(
-            "{what}: {:.3} mm on {}, Z0 {:.2} ohm, eps_eff {:.3} at 1 GHz ({}), {n} RLGC sections",
+            "{what}: {:.3} mm on {}, Z0 {:.2} ohm, eps_eff {:.3} at 1 GHz ({}), {how}{}",
             len * 1e3,
             self.layer(layer),
-            lm.z0,
-            lm.eeff0,
-            if lm.source == "field" { "field solver" } else if lm.source == "formula" { "formula" } else { "no reference plane: estimate" }
+            z0,
+            ee,
+            if lm.source == "field" { "field solver" } else if lm.source == "formula" { "formula" } else { "no reference plane: estimate" },
+            if mix.len() > 1 { format!(" ({} sections merged)", mix.len()) } else { String::new() }
         );
-        let tag = if what == "line" { Tag::line("line", len * 1e3, lm.z0, &self.layer(layer)) } else { Tag::default() };
+        let tag = if what == "line" { Tag::line("line", len * 1e3, z0, &self.layer(layer)) } else { Tag::default() };
         El::Block { name: format!("TL{}_{}", self.n_line, self.layer(layer)), note, chain: Chain(vec![ld]), tag }
     }
 
@@ -479,7 +596,7 @@ impl<'a> Composer<'a> {
             "line" => {
                 let len = len_mm.unwrap_or(sg.len_mm) * 1e-3;
                 let lm = s.models[i].clone().unwrap_or_else(|| s.fallback.clone());
-                Some(Item::Line { line, lm, len, layer: sg.layer })
+                Some(Item::Line { line, lm, len, layer: sg.layer, mix: vec![] })
             }
             "via" => {
                 let vm = s.via_models[i].as_ref()?;
@@ -507,6 +624,7 @@ impl<'a> Composer<'a> {
     fn chain(&mut self, s: &Sections) -> Chain {
         let items: Vec<Item> = (0..s.segs.len()).filter_map(|i| self.item(s, i, 0, None, false)).collect();
         let items = self.apply_cuts(items);
+        let items = self.merge(items);
         let mut out: Vec<El> = Vec::new();
         for el in items.into_iter().filter_map(|it| self.single_el(it)) {
             if !out.last_mut().is_some_and(|last| circuit::join_blocks(last, &el)) {
@@ -518,9 +636,9 @@ impl<'a> Composer<'a> {
 
     fn single_el(&mut self, it: Item) -> Option<El> {
         match it {
-            Item::Line { lm, len, layer, .. } => (len > 0.0).then(|| {
-                let b = self.line_block(&lm, len, layer, "line");
-                b
+            Item::Line { lm, len, layer, mix, .. } => (len > 0.0).then(|| {
+                let mix = if mix.is_empty() { vec![(lm, len)] } else { mix };
+                self.line_block(&mix, len, layer, "line")
             }),
             Item::El { el, .. } => Some(el),
             _ => None,
@@ -550,6 +668,63 @@ impl<'a> Composer<'a> {
         items
     }
 
+    /// Compact model: merge consecutive line sections of one line on one layer with nearly the same
+    /// model (an element on the other line of a pair between them does not separate them), and
+    /// consecutive coupled runs on one layer, into one section each (`Item::Line::mix`). The ladder
+    /// keeps every section as it is.
+    fn merge(&mut self, items: Vec<Item>) -> Vec<Item> {
+        if self.opts.model != Model::Compact {
+            return items;
+        }
+        let (f, rp) = (self.fmax, self.rp);
+        let mut out: Vec<Item> = Vec::with_capacity(items.len());
+        for it in items {
+            match it {
+                Item::Line { len, .. } | Item::Coupled { len, .. } if len <= 0.0 => continue,
+                Item::Line { line, lm, len, layer, mix } => {
+                    // the last item on this line
+                    let prev = out.iter_mut().rev().find(|x| x.on_line(line));
+                    if let Some(Item::Line { lm: pl, len: plen, layer: play, mix: pmix, .. }) = prev {
+                        if *play == layer && similar(pl, &lm, f, rp) {
+                            if pmix.is_empty() {
+                                pmix.push((pl.clone(), *plen));
+                            }
+                            if mix.is_empty() {
+                                pmix.push((lm, len));
+                            } else {
+                                pmix.extend(mix);
+                            }
+                            *plen += len;
+                            self.merged += 1;
+                            continue;
+                        }
+                    }
+                    out.push(Item::Line { line, lm, len, layer, mix });
+                }
+                Item::Coupled { even, odd, len, layer, mix } => {
+                    if let Some(Item::Coupled { even: pe, odd: po, len: plen, layer: play, mix: pmix }) = out.last_mut() {
+                        if *play == layer && similar(pe, &even, f, rp) && similar(po, &odd, f, rp) {
+                            if pmix.is_empty() {
+                                pmix.push((pe.clone(), po.clone(), *plen));
+                            }
+                            if mix.is_empty() {
+                                pmix.push((even, odd, len));
+                            } else {
+                                pmix.extend(mix);
+                            }
+                            *plen += len;
+                            self.merged += 1;
+                            continue;
+                        }
+                    }
+                    out.push(Item::Coupled { even, odd, len, layer, mix });
+                }
+                other => out.push(other),
+            }
+        }
+        out
+    }
+
     /// A pair's aligned elements as modal blocks and single-line elements.
     fn pair(&mut self, bp: &Sections, bn: &Sections, els: &[crate::rf::El]) -> Vec<PairEl> {
         use crate::rf::El as E;
@@ -561,7 +736,7 @@ impl<'a> Composer<'a> {
                     items.extend(self.item(s, *seg, *line, *len, false));
                 }
                 E::Coupled { len, even, odd, layer } => {
-                    items.push(Item::Coupled { even: even.clone(), odd: odd.clone(), len: len * 1e-3, layer: *layer });
+                    items.push(Item::Coupled { even: even.clone(), odd: odd.clone(), len: len * 1e-3, layer: *layer, mix: vec![] });
                 }
                 E::ViaPair { p } => {
                     let layers = (via_from(bp, *p), bp.segs[*p].layer);
@@ -599,19 +774,23 @@ impl<'a> Composer<'a> {
             }
         }
         let items = self.apply_cuts(items);
+        let items = self.merge(items);
         // every coupled run, via pair and stub pair its own modal block (back-to-back mode
         // converters are exact; each block is one element of the KiCad sheet)
         let mut out: Vec<PairEl> = Vec::new();
         let mut k = 0usize;
         for it in items {
             match it {
-                Item::Coupled { even, odd, len, layer } => {
+                Item::Coupled { even, odd, len, layer, mix } => {
                     if len <= 0.0 {
                         continue;
                     }
                     k += 1;
-                    let e = self.line_block(&even, len, layer, "coupled line, even mode");
-                    let o = self.line_block(&odd, len, layer, "coupled line, odd mode");
+                    let mix = if mix.is_empty() { vec![(even.clone(), odd.clone(), len)] } else { mix };
+                    let me: Vec<(LineModel, f64)> = mix.iter().map(|m| (m.0.clone(), m.2)).collect();
+                    let mo: Vec<(LineModel, f64)> = mix.iter().map(|m| (m.1.clone(), m.2)).collect();
+                    let e = self.line_block(&me, len, layer, "coupled line, even mode");
+                    let o = self.line_block(&mo, len, layer, "coupled line, odd mode");
                     let tag = Tag::line("coupled", len * 1e3, 2.0 * odd.z0, &self.layer(layer));
                     let el = PairEl::Modal { name: format!("CPL{k}"), note: format!("coupled run {:.3} mm on {} (Zodd {:.2}, Zeven {:.2} ohm per line)", len * 1e3, self.layer(layer), odd.z0, even.z0), even: Chain(vec![e]), odd: Chain(vec![o]), tag };
                     // consecutive coupled runs on one layer: one block
@@ -811,7 +990,9 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
     let pin = |e: Option<&crate::topology::EndPin>| e.map(|e| format!("{}.{}", e.refdes, e.pin)).unwrap_or_else(|| "?".into());
     let net = |id: u32| board.net_name(id).to_string();
     let mut notes = tb.notes.clone();
-    let (pair, odd_mode, s_kisi, s_export, ports, port_info, z_ref, delay_ps, length_mm);
+    // the circuit's own passivity: its S-matrices from 1 kHz to 10 × the top frequency
+    let f_ext: Vec<f64> = fit_freqs(1e3, 10.0 * rp.fmax, 240);
+    let (pair, odd_mode, s_kisi, s_export, ports, port_info, z_ref, delay_ps, length_mm, s_ext);
     match tb.builds {
         crate::topology::LaneBuilds::Pair { bp, bn, z_ref: zr } => {
             let (mut sp, mut sn) = (bp.sections(target), bn.sections(target));
@@ -824,6 +1005,7 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
             notes.extend(pn.warnings.iter().cloned());
             s_kisi = pn.t.iter().map(|t| s4(t, zr)).collect::<Vec<_>>();
             s_export = freq.iter().map(|&f| s4(&circuit::pair_t(&pels, 2.0 * PI * f), zr)).collect::<Vec<_>>();
+            s_ext = f_ext.iter().map(|&f| circuit::pair_s(&pels, 2.0 * PI * f, zr).iter().flatten().copied().collect()).collect::<Vec<Vec<Cx>>>();
             lib.pair_subckt(&subckt, &format!("lane {}: pair, transmitter end = ap/an, receiver end = bp/bn", lane.name), &pels);
             pair = true;
             odd_mode = false;
@@ -852,6 +1034,7 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
             z_ref = ch.z_ref;
             s_kisi = ch.abcd.iter().map(|m| s2(m, z_ref)).collect::<Vec<_>>();
             s_export = freq.iter().map(|&f| s2(&chain.abcd(2.0 * PI * f), z_ref)).collect::<Vec<_>>();
+            s_ext = f_ext.iter().map(|&f| chain.s(2.0 * PI * f, z_ref).to_vec()).collect::<Vec<_>>();
             lib.chain_subckt(&subckt, &format!("lane {}: {}, transmitter end = a, receiver end = b", lane.name, if odd { "pair in the odd mode (one line, odd-mode models; differential = 2 x per line)" } else { "single line" }), &chain);
             pair = false;
             odd_mode = odd;
@@ -876,6 +1059,9 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
         }
     }
     fd.fit_via_pct = comp.fit_via;
+    let (sv, k) = crate::rf::passivity(&s_ext, ports.len());
+    let (sv2, k2) = crate::rf::passivity(&s_export, ports.len());
+    (fd.circuit_max_sv, fd.circuit_max_sv_ghz) = if sv2 > sv { (sv2, freq[k2] / 1e9) } else { (sv, f_ext[k] / 1e9) };
     fd.via_spans_active = comp.active;
     fd.via_active_from_ghz = comp.active_from;
     if comp.active > 0 {
@@ -918,6 +1104,8 @@ pub fn lane_circuit(board: &Board, an: &Analysis, field: &HashMap<String, FieldR
         s_export,
         counts,
         fidelity: fd,
+        model: opts.model,
+        merged: comp.merged,
         notes: dedup,
         delay_ps,
         length_mm,

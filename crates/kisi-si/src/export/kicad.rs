@@ -736,7 +736,9 @@ fn notes(sh: &mut Sheet, lc: &LaneCircuit, ends: &BenchEnds, lib_file: &str, ben
         ),
         (38.1, 38.1),
     );
-    sh.text(&format!(".tran {} {}", num(tstep), num(tstop)), (38.1, 45.72));
+    // an open receiver: Gear integration (`files::ngspice_options`)
+    let opts = super::files::ngspice_options(ends).map(|o| format!("{o}\n")).unwrap_or_default();
+    sh.text(&format!("{opts}.tran {} {}", num(tstep), num(tstop)), (38.1, 45.72));
     let (tx, rx) = super::files::ends_text(lc, ends);
     let mut note = tx.join("\n");
     note.push_str("\n\n");

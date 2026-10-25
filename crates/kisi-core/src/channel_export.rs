@@ -76,9 +76,18 @@ pub struct LaneReq<'a> {
     pub freq: FreqRange,
 }
 
+/// The top frequency a lane's profile needs: 5 × Nyquist (2.5 × the bit rate, NRZ) or 0.5 / t_r of the
+/// 10–90 % edge (the edge's knee 0.35 / t_r with margin), whichever is higher.
+pub fn profile_fmax(gbps: f64, rise: f64) -> f64 {
+    let edge = if rise > 0.0 { 0.5 / rise } else { 0.0 };
+    (2.5 * gbps * 1e9).max(edge)
+}
+
 /// The export's frequency range: the ladder's top frequency and the Touchstone grid. `fmax` (Hz)
-/// replaces the check's, `fmax_profile` uses 5 × Nyquist of the lane's profile; at least 1.25 × the
-/// bit rate either way. The grid runs from `fmin` in steps of `fmin` (Hz; at most 10000 points),
+/// replaces the check's, `fmax_profile` follows the lane's profile: 5 × Nyquist, or the edge's
+/// bandwidth with margin (0.5 / t_r of the 10–90 % edge) where that is higher – a slow bit rate with a
+/// fast edge (a reference clock, the generic profiles) keeps its edge; at least 1.25 × the bit rate
+/// either way. The grid runs from `fmin` in steps of `fmin` (Hz; at most 10000 points),
 /// by default 500 points (from fmax/500).
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct FreqRange {
@@ -110,16 +119,16 @@ impl FreqRange {
         Ok(r)
     }
     /// One range for all lanes of a bus (the N-port needs one grid): the highest f max of the lanes
-    /// (`rates`: their bit rates in Gbit/s).
-    pub fn for_bus(&self, rp: &RfParams, rates: &[f64]) -> FreqRange {
-        let fmax = rates.iter().map(|&g| self.apply(rp, g).fmax).fold(0.0, f64::max);
+    /// (`rates`: their bit rates in Gbit/s and edges in s).
+    pub fn for_bus(&self, rp: &RfParams, rates: &[(f64, f64)]) -> FreqRange {
+        let fmax = rates.iter().map(|&(g, tr)| self.apply(rp, g, tr).fmax).fold(0.0, f64::max);
         FreqRange { fmin: self.fmin, fmax: (fmax > 0.0).then_some(fmax), fmax_profile: false }
     }
-    /// The check's RF parameters with this range for a lane at `gbps`.
-    pub fn apply(&self, rp: &RfParams, gbps: f64) -> RfParams {
+    /// The check's RF parameters with this range for a lane at `gbps` with a 10–90 % edge of `rise` s.
+    pub fn apply(&self, rp: &RfParams, gbps: f64, rise: f64) -> RfParams {
         let mut r = rp.clone();
         if self.fmax_profile {
-            r.fmax = 2.5 * gbps * 1e9;
+            r.fmax = profile_fmax(gbps, rise);
         } else if let Some(f) = self.fmax {
             r.fmax = f;
         }
@@ -133,8 +142,8 @@ impl FreqRange {
 
 /// Export one lane (`dir`: folder prefix of its files, "" or "name/").
 pub fn export_req(board: &Board, an: &Analysis, field: &HashMap<String, FieldResult>, req: &LaneReq, f: Formats, dir: &str, board_name: &str) -> Result<Done, String> {
-    let rp_range = req.freq.apply(&req.rp, req.gbps);
-    let (l, rp, cd, opts) = (req.lane, &rp_range, topology::ComponentData::builtin(), ExportOpts::default());
+    let rp_range = req.freq.apply(&req.rp, req.gbps, req.rise);
+    let (l, rp, cd, opts) = (req.lane, &rp_range, topology::ComponentData::builtin(), ExportOpts { model: f.model, ..ExportOpts::default() });
     if l.ends.len() < 2 {
         return Err(format!("lane {}: open (one end), nothing to export", l.name));
     }
@@ -189,7 +198,8 @@ fn lane_json(d: &Done) -> Value {
         "profile": d.ends.profile, "rate_gbps": d.ends.bitrate / 1e9,
         "bench_ends": {"tx": d.ends.tx, "rx": d.ends.rx, "rise_ps": d.ends.rise * 1e12, "swing_v": d.ends.swing, "notes": d.ends.notes},
         "frequency": {"fmin_hz": lc.freq.first(), "fmax_hz": lc.freq.last(), "points": lc.freq.len()},
-        "elements": {"r": lc.counts.r, "l": lc.counts.l, "c": lc.counts.c, "sources": lc.counts.sources, "rlgc_sections": lc.counts.sections},
+        "line_model": lc.model, "merged_sections": lc.merged,
+        "elements": {"r": lc.counts.r, "l": lc.counts.l, "c": lc.counts.c, "sources": lc.counts.sources, "rlgc_sections": lc.counts.sections, "cells": lc.counts.cells, "total": lc.counts.elements()},
         "check_against_kisi": lc.fidelity,
         "notes": lc.notes,
     })
@@ -209,7 +219,7 @@ pub fn export(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>
         Pick::Bus(_) => {
             let mut done = Vec::new();
             let mut skipped = Vec::new();
-            let rates: Vec<f64> = lanes.iter().filter_map(|l| req_of(p, profiles, assign, l, rp, freq).ok().map(|r| r.gbps)).collect();
+            let rates: Vec<(f64, f64)> = lanes.iter().filter_map(|l| req_of(p, profiles, assign, l, rp, freq).ok().map(|r| (r.gbps, r.rise))).collect();
             let freq = freq.for_bus(rp, &rates);
             for l in &lanes {
                 let dir = format!("{}/", stem(&l.name));
@@ -249,7 +259,7 @@ pub fn bus_result(bus: &str, devices: &[String], done: Vec<Done>, skipped: Vec<S
     Ok((v, files, name))
 }
 
-const NOTE: &str = "SPICE: the lane's board channel as kisi's check models it (RLGC ladders with fitted R(f)/G(f) networks, kisi's via model, parts with estimated parasitics, stubs; pairs with modal coupled blocks); check_against_kisi compares the exported circuit with kisi's own S-parameters. Benches use the profile's linear ends; the receiver's termination resistors on the board act as the receiver's termination and are not in the subcircuit or the Touchstone file. Not included: the channel behind a connector, crosstalk between lanes, IBIS ends.";
+const NOTE: &str = "SPICE: the lane's board channel as kisi's check models it (RLGC ladders with fitted R(f)/G(f) networks – or, with --model compact, lossless-line cells with the same networks lumped –, kisi's via model, parts with estimated parasitics, stubs; pairs with modal coupled blocks); check_against_kisi compares the exported circuit with kisi's own S-parameters. Benches use the profile's linear ends; the receiver's termination resistors on the board act as the receiver's termination and are not in the subcircuit or the Touchstone file. Not included: the channel behind a connector, crosstalk between lanes, IBIS ends.";
 
 /// Bus-level files: the bus subcircuit (all lanes, ports ordered by device side) and the N-port
 /// Touchstone file with its port map.
@@ -352,13 +362,17 @@ mod tests {
         let rp = RfParams::default();
         let d = FreqRange::parse(None, None).unwrap();
         assert_eq!(d, FreqRange::default());
-        assert_eq!((d.apply(&rp, 1.0).fmax, d.apply(&rp, 1.0).npts), (25e9, 500));
+        assert_eq!((d.apply(&rp, 1.0, 300e-12).fmax, d.apply(&rp, 1.0, 300e-12).npts), (25e9, 500));
         let p = FreqRange::parse(None, Some("profile")).unwrap();
-        assert_eq!(p.apply(&rp, 1.0).fmax, 2.5e9);
+        // LVDS (1 Gbit/s, 300 ps): 5 x Nyquist; a generic 1 Gbit/s profile with 100 ps edges: the edge;
+        // the 100 MHz reference clock (0.2 Gbit/s, 300 ps): the edge
+        assert_eq!(p.apply(&rp, 1.0, 300e-12).fmax, 2.5e9);
+        assert!((p.apply(&rp, 1.0, 100e-12).fmax - 5e9).abs() < 1.0);
+        assert!((p.apply(&rp, 0.2, 300e-12).fmax - 0.5 / 300e-12).abs() < 1.0);
         let f = FreqRange::parse(Some("0.01"), Some("10")).unwrap();
-        let r = f.apply(&rp, 16.0);
+        let r = f.apply(&rp, 16.0, 18e-12);
         assert_eq!((r.fmax, r.npts), (20e9, 2000), "at least 1.25 x the bit rate, grid from 10 MHz");
         assert!(FreqRange::parse(Some("5"), Some("2")).is_err() && FreqRange::parse(None, Some("x")).is_err());
-        assert_eq!(p.for_bus(&rp, &[1.0, 16.0]).fmax, Some(40e9));
+        assert_eq!(p.for_bus(&rp, &[(1.0, 300e-12), (16.0, 25e-12)]).fmax, Some(40e9));
     }
 }

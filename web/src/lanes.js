@@ -91,7 +91,7 @@ const EX_BOXES = ["ts", "lib", "ng", "xy", "lt", "kc"];
 function exportSettings() {
   const o = {};
   for (const k of EX_BOXES) o[k] = $("ex-" + k).checked;
-  o.ks = $("ex-ks").value; o.fmax = $("ex-fmax").value; o.fmin = $("ex-fmin").value;
+  o.ks = $("ex-ks").value; o.model = $("ex-model").value; o.fmax = $("ex-fmax").value; o.fmin = $("ex-fmin").value;
   return o;
 }
 function exportFormats(o) {
@@ -109,15 +109,18 @@ function exportHint() {
   // the subcircuit library comes with every bench and the KiCad project
   $("ex-lib").disabled = bench; if (bench) $("ex-lib").checked = true;
   $("ex-ks").disabled = !o.kc;
+  $("ex-model").disabled = !(o.lib || bench || o.lt);
   const none = !exportFormats(o);
   const last = S.exportLast ? ` Last export: ${S.exportLast}.` : "";
   $("ex-hint").textContent = (none ? "Nothing selected: “Export…” writes nothing. " : "")
-    + "The ladder grows with the top frequency: an 85 mm LVDS pair has about 42 k elements at 25 GHz and 23 k at 2.5–5 GHz (ngspice: about 350 s and 180 s for two PRBS7 periods)." + last;
+    + (o.model === "compact"
+      ? "Compact: lines as lossless-line cells (lossless LC lines carry the delay, the same fitted losses lumped once per cell) – passive, 2–5 × fewer elements than the ladder, PRBS benches 7–17 × faster in ngspice and LTspice; an 85 mm LVDS pair is 8 k elements at 25 GHz and 4 k at 5 × Nyquist. “From the profile”: 5 × Nyquist, or 0.5 / t_r of the profile's edge where that is higher."
+      : "The ladder grows with the top frequency: an 85 mm LVDS pair has about 38 k elements at 25 GHz and 23 k at 5 × Nyquist; the compact model has 2–5 × fewer.") + last;
 }
 function initExportSettings() {
   const saved = lsGet(EXPORT_KEY) || {};
   for (const k of EX_BOXES) if (typeof saved[k] === "boolean") $("ex-" + k).checked = saved[k];
-  for (const k of ["ks", "fmax", "fmin"]) if (typeof saved[k] === "string" && [...$("ex-" + k).options].some((x) => x.value === saved[k])) $("ex-" + k).value = saved[k];
+  for (const k of ["ks", "model", "fmax", "fmin"]) if (typeof saved[k] === "string" && [...$("ex-" + k).options].some((x) => x.value === saved[k])) $("ex-" + k).value = saved[k];
   $("ex-opts").open = saved.open === true;
   const save = () => { exportHint(); lsSet(EXPORT_KEY, { ...exportSettings(), open: $("ex-opts").open }); };
   $("ex-settings").querySelectorAll("input, select").forEach((x) => x.onchange = save);
@@ -141,10 +144,10 @@ function exportLanes(lanes, bus, btn) {
     try {
       const o = exportSettings(), formats = exportFormats(o);
       if (!formats) throw new Error("nothing selected in the export settings");
-      const res = S.engine.exportCircuit({ board: S.name + ".kicad_pcb", formats, kicad_style: o.ks,
+      const res = S.engine.exportCircuit({ board: S.name + ".kicad_pcb", formats, kicad_style: o.ks, model: o.model,
         fmax: o.fmax === "rf" ? null : o.fmax === "profile" ? "profile" : parseFloat(o.fmax), fmin_ghz: o.fmin ? parseFloat(o.fmin) : null,
         bus: bus ? bus.name : null, devices: bus ? bus.devices : [], lanes: lanes.filter((l) => l.ends.length >= 2).map(laneExportReq) });
-      const els = (res.summary.lanes || []).reduce((a, x) => a + x.elements.r + x.elements.l + x.elements.c + x.elements.sources, 0);
+      const els = (res.summary.lanes || []).reduce((a, x) => a + (x.elements.total ?? x.elements.r + x.elements.l + x.elements.c + x.elements.sources), 0);
       const fr = res.summary.lanes && res.summary.lanes[0] ? res.summary.lanes[0].frequency : null;
       S.exportLast = `${res.name}, ${res.files.length} files, ${fmt(els / 1000, 1)} k elements${fr ? `, ${fmt(fr.fmax_hz / 1e9, 1)} GHz, ${fr.points} points` : ""}`;
       exportHint();

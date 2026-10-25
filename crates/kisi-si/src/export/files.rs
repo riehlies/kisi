@@ -2,7 +2,7 @@
 //! S-parameter decks, Touchstone files, a KiCad project and a README.
 
 use super::circuit::num;
-use super::{sig4, LaneCircuit};
+use super::{sig4, LaneCircuit, Model};
 use crate::eye::EndModel;
 use crate::num::Cx;
 
@@ -25,13 +25,15 @@ pub struct Formats {
     pub lib: bool,
     /// the KiCad sheet with the lane as one symbol (else one symbol per element)
     pub kicad_compact: bool,
+    /// how line sections are written (`--model ladder|compact`)
+    pub model: Model,
 }
 
 impl Formats {
-    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, ltspice: true, lib: true, kicad_compact: false };
+    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, ltspice: true, lib: true, kicad_compact: false, model: Model::Compact };
     /// From a comma-separated list: spice, xyce, touchstone, kicad, all.
     pub fn parse(s: &str) -> Result<Formats, String> {
-        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, ltspice: false, lib: false, kicad_compact: false };
+        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, ltspice: false, lib: false, kicad_compact: false, model: Model::Compact };
         for p in s.split(',').map(|p| p.trim().to_ascii_lowercase()).filter(|p| !p.is_empty()) {
             match p.as_str() {
                 "spice" | "ngspice" => f.spice = true,
@@ -40,7 +42,7 @@ impl Formats {
                 "kicad" => f.kicad = true,
                 "ltspice" => f.ltspice = true,
                 "lib" | "netlist" => f.lib = true,
-                "all" => f = Formats { kicad_compact: f.kicad_compact, ..Formats::ALL },
+                "all" => f = Formats { kicad_compact: f.kicad_compact, model: f.model, ..Formats::ALL },
                 _ => return Err(format!("--format {p}: use lib, spice, xyce, ltspice, touchstone, kicad or all (comma-separated)")),
             }
         }
@@ -213,6 +215,14 @@ pub fn ends_text(lc: &LaneCircuit, ends: &BenchEnds) -> (Vec<String>, Vec<String
     (tx, rx)
 }
 
+/// ngspice's integration for the bench: Gear when the receiver is open (high impedance) – the lane
+/// is then an undamped resonator, where trapezoidal integration rings and stops with "timestep too
+/// small" (ThunderScope's PCIe reference clock, ladder and compact model alike); trapezoidal (the
+/// default, the most accurate) otherwise.
+pub fn ngspice_options(ends: &BenchEnds) -> Option<&'static str> {
+    (ends.rx.r <= 0.0).then_some(".options method=gear")
+}
+
 /// Transient test bench: PRBS7 at the profile's bit rate through the lane with the profile's
 /// linear ends, two pattern periods.
 pub fn bench(lc: &LaneCircuit, lib_file: &str, ends: &BenchEnds, d: Dialect) -> String {
@@ -249,6 +259,9 @@ pub fn bench(lc: &LaneCircuit, lib_file: &str, ends: &BenchEnds, d: Dialect) -> 
     let probe = if lc.pair { format!("v({})-v({})", outs[0], outs[1]) } else { format!("v({})", outs[0]) };
     match d {
         Dialect::Ngspice => {
+            if let Some(o) = ngspice_options(ends) {
+                s.push_str(&format!("* the receiver is open (high impedance): Gear integration, trapezoidal integration rings here\n{o}\n"));
+            }
             s.push_str(&format!(".tran {} {}\n", num(tstep), num(tstop)));
             s.push_str(".control\nrun\n");
             s.push_str(&format!("wrdata bench_ngspice.txt {probe}\n"));
@@ -443,13 +456,24 @@ pub fn lib_file(lc: &LaneCircuit, board: &str, fmax: f64, per_lambda: f64) -> St
     for l in lane_info(lc, board) {
         s.push_str(&format!("* {l}\n"));
     }
-    s.push_str(&format!(
-        "* model: kisi's channel sections; lines as RLGC ladders ({} sections per wavelength at {} GHz) with fitted\n\
-         *   Foster (R(f), L_int(f)) and Debye (G(f), C(f)) networks, vias as kisi's via ladder, parts with estimated\n\
-         *   parasitics, open stubs; coupled sections of a pair as even/odd chains between ideal mode converters (E/F)\n",
-        sig4(per_lambda),
-        sig4(fmax / 1e9)
-    ));
+    match lc.model {
+        Model::Ladder => s.push_str(&format!(
+            "* model: kisi's channel sections; lines as RLGC ladders ({} sections per wavelength at {} GHz) with fitted\n\
+             *   Foster (R(f), L_int(f)) and Debye (G(f), C(f)) networks, vias as kisi's via ladder, parts with estimated\n\
+             *   parasitics, open stubs; coupled sections of a pair as even/odd chains between ideal mode converters (E/F)\n",
+            sig4(per_lambda),
+            sig4(fmax / 1e9)
+        )),
+        Model::Compact => s.push_str(&format!(
+            "* model (compact): kisi's channel sections; lines as lossless-line cells (at least 3 per delay x {} GHz): per cell\n\
+             *   a lossless LC ladder (40 sections per wavelength: the delay) and the fitted Foster (R(f), L_int(f)) and Debye\n\
+             *   (G(f), C(f)) networks lumped once; consecutive sections with the same model merged ({} merges); vias as kisi's\n\
+             *   via ladder, parts with estimated parasitics, open stubs; coupled sections of a pair as even/odd chains between\n\
+             *   ideal mode converters (E/F). Passive and causal by construction.\n",
+            sig4(fmax / 1e9),
+            lc.merged
+        )),
+    }
     s.push_str(&format!(
         "* check against kisi's S-parameters (same model): |dS21| <= {} dB to 1.5 x Nyquist ({} dB to the top), largest |dS| {} to 1.5 x Nyquist ({} to the top)\n* fits of the main line sections (each at least 10 % of the length): R {} %, X {} %, G {} %, B {} %; via ladders {} %{}\n",
         sig4(lc.fidelity.max_ds21_db_nyq),
@@ -463,7 +487,15 @@ pub fn lib_file(lc: &LaneCircuit, board: &str, fmax: f64, per_lambda: f64) -> St
         sig4(lc.fidelity.fit_via_pct),
         if lc.fidelity.via_spans_active > 0 { format!(" ({} via spans of kisi's model not passive, fitted passive)", lc.fidelity.via_spans_active) } else { String::new() }
     ));
-    s.push_str(&format!("* elements after flattening: {} R, {} L, {} C, {} sources; {} RLGC sections\n", lc.counts.r, lc.counts.l, lc.counts.c, lc.counts.sources, lc.counts.sections));
+    s.push_str(&format!(
+        "* elements after flattening: {} R, {} L, {} C, {} sources; {} RLGC sections{}\n",
+        lc.counts.r,
+        lc.counts.l,
+        lc.counts.c,
+        lc.counts.sources,
+        lc.counts.sections,
+        if lc.counts.cells > 0 { format!(", {} lossless-line cells", lc.counts.cells) } else { String::new() }
+    ));
     s.push_str(&format!("* usage: X1 {} 0 {}   (the last port is the reference)\n\n", lc.ports.join(" "), lc.subckt));
     s.push_str(&lc.lib);
     s
@@ -595,7 +627,13 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
         s.push_str(&format!("* {nte}\n"));
     }
     s.push_str("\n## Model\n\n");
-    s.push_str("* Line sections: RLGC ladders of π sections (at least the number per wavelength at the top frequency given in the library header); per section the external inductance, a Foster network (R0 + R‖L terms) for the conductor impedance R(f) + jωL_int(f) and a Debye network (C + R–C branches) for the dielectric admittance G(f) + jωC(f), fitted to kisi's line model (skin effect, Huray roughness, Djordjevic-Sarkar) with positive elements only – passive and causal by construction.\n");
+    match lc.model {
+        Model::Ladder => s.push_str("* Line sections: RLGC ladders of π sections (at least the number per wavelength at the top frequency given in the library header); per section the external inductance, a Foster network (R0 + R‖L terms) for the conductor impedance R(f) + jωL_int(f) and a Debye network (C + R–C branches) for the dielectric admittance G(f) + jωC(f), fitted to kisi's line model (skin effect, Huray roughness, Djordjevic-Sarkar) with positive elements only – passive and causal by construction.\n"),
+        Model::Compact => {
+            s.push_str("* Line sections (compact model, `--model compact`): the same fitted networks as the ladder – a Foster network (R0 + L + R‖L terms) for the conductor impedance R(f) + jωL(f) and a Debye network (C + R–C branches) for the dielectric admittance G(f) + jωC(f), fitted to kisi's line model with positive elements only – but written as lossless-line cells: a lossless LC ladder with the fits' L and C (40 π sections per wavelength at the top frequency: the delay, within 0.1 % in phase there) and the rest of both networks lumped once per cell, at least 3 cells per (delay × top frequency), more where the lumped losses are large (microstrip). Every element is a positive R, L or C: passive and causal by construction. Consecutive sections of one line on one layer with nearly the same model are merged into one (the length-weighted mean of their R(f), L(f), G(f), C(f)).\n");
+            s.push_str(&format!("* The cells' lumped losses reflect coherently from about 1.5 × the top frequency ({} GHz) on: above the top frequency the model is not meant to be used.\n", sig4(1.5 * lc.freq.last().copied().unwrap_or(0.0) / 1e9)));
+        }
+    }
     s.push_str("* Vias: kisi's via model – the physics-based ladder (node capacitances, plane-pair impedances, open barrel stubs, junction inductances) or the coaxial section stack. The via models run from via centre to via centre; the feed trace they remove or add is taken from the neighbouring line sections.\n");
     s.push_str("* Parts (series and shunt) with the parasitics kisi uses (estimates from `data/components.json`); open stubs as their own chain. A series capacitor has 1 GΩ across it (a DC path for the simulator).\n");
     if lc.pair {
@@ -615,7 +653,16 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
         sig4(lc.fidelity.fit_via_pct)
     ));
     s.push_str("\nWhy it is not exact: kisi's roughness adds resistance without its internal inductance, the via models use a constant loss tangent and a barrel resistance without internal inductance, and some via spans have a negative resistance at high frequency – a passive, causal circuit cannot follow those exactly; the fits keep the loss and, closer, the reactance (the delay).\n");
-    s.push_str(&format!("\nElements after flattening: {} R, {} L, {} C, {} controlled sources and probes; {} RLGC sections.\n", lc.counts.r, lc.counts.l, lc.counts.c, lc.counts.sources, lc.counts.sections));
+    s.push_str(&format!(
+        "\nElements after flattening: {} R, {} L, {} C, {} controlled sources and probes; {} RLGC sections{}. The circuit's largest singular value of S from 1 kHz to 10 × the top frequency: {} (passive: ≤ 1).\n",
+        lc.counts.r,
+        lc.counts.l,
+        lc.counts.c,
+        lc.counts.sources,
+        lc.counts.sections,
+        if lc.counts.cells > 0 { format!(", {} lossless-line cells", lc.counts.cells) } else { String::new() },
+        format!("{:.6}", lc.fidelity.circuit_max_sv)
+    ));
     s.push_str("\n## Not included\n\n* The receiver's termination resistors on the board: they act as the receiver's termination (bench and Touchstone leave them out, as kisi's eye does).\n* The channel behind a connector, crosstalk from other lanes (kisi's coupling scan is separate), non-linear buffers: IBIS (KiCad's KIBIS) ends need `kisi.json` IBIS models – not part of this export yet; replace the source and the receiver in the KiCad schematic by KiCad's IBIS symbols by hand.\n");
     if !lc.notes.is_empty() {
         s.push_str("\n## Notes from kisi's model\n\n");

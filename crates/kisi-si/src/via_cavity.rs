@@ -83,7 +83,7 @@ impl Mask {
                     }
                 }
                 xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                for pair in xs.chunks_exact(2) {
+                for pair in xs.as_chunks::<2>().0 {
                     let i0 = ((pair[0] - self.x0) / self.h - 0.5).ceil().max(0.0) as usize;
                     let i1 = ((pair[1] - self.x0) / self.h - 0.5).floor();
                     if i1 < 0.0 {
@@ -1000,7 +1000,7 @@ impl RectEnv {
 /// the grid's node value equals the continuous field of a point source at this distance,
 /// h·e^{−γ}/(2√2) ≈ 0.1985·h
 pub fn peaceman_radius(h: f64) -> f64 {
-    h * (-0.577_215_664_901_532_9f64).exp() / (2.0 * std::f64::consts::SQRT_2)
+    h * (-std::f64::consts::EULER_GAMMA).exp() / (2.0 * std::f64::consts::SQRT_2)
 }
 
 /// A plane pair of any shape on square cells (the region of a [`PairCavity`]): each cell joined

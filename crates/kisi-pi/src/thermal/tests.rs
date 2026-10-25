@@ -161,6 +161,8 @@ fn bessel_i0(x: f64) -> f64 {
     let t = (x / 3.75).powi(2);
     1.0 + t * (3.5156229 + t * (3.0899424 + t * (1.2067492 + t * (0.2659732 + t * (0.0360768 + t * 0.0045813)))))
 }
+// the polynomial coefficients as tabulated (Abramowitz & Stegun 9.8.5), -0.57721566 among them
+#[allow(clippy::approx_constant)]
 fn bessel_k0(x: f64) -> f64 {
     if x <= 2.0 {
         let t = (x / 2.0).powi(2);

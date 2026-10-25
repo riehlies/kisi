@@ -16,7 +16,6 @@
 //! – only below a resonance; the Lorentz term matches Getsinger at the top of the band and keeps
 //! its resonance at fp/√G (Getsinger's corner) or at least at twice the band.
 
-#[allow(unused_imports)]
 use super::*;
 use crate::analytic;
 use crate::board::Stackup;

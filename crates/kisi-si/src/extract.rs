@@ -843,7 +843,7 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
 
     // routed length per geometry
     let mut geometries = geoms.list;
-    for pc in pieces.chunks_exact(4) {
+    for pc in pieces.as_chunks::<4>().0 {
         let xs = &xss[pc[3] as usize];
         if let Some(g) = xs.geom {
             let tr = &board.tracks[pc[0] as usize];
@@ -894,7 +894,7 @@ fn net_stats(
 ) -> (Vec<NetStat>, Vec<ClassInfo>) {
     // (length, impedance, flags, counted in the impedance statistics, uncertainty %, field solver)
     let mut acc: HashMap<u32, Vec<(f64, Option<f64>, u32, bool, f64, bool)>> = HashMap::new();
-    for pc in pieces.chunks_exact(4) {
+    for pc in pieces.as_chunks::<4>().0 {
         let tr = &board.tracks[pc[0] as usize];
         let l = geom::len(geom::sub(tr.b, tr.a)) * (pc[2] - pc[1]);
         let xs = &xss[pc[3] as usize];

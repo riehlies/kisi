@@ -1240,7 +1240,7 @@ pub fn pad_shunt_c(board: &Board, an: &Analysis, pad: usize, toward: Option<P>) 
     let len = geom::len(geom::sub(board.tracks[pick].b, board.tracks[pick].a));
     let mut c = 0.0;
     let mut cover = 0.0;
-    for pc in an.pieces.chunks_exact(4) {
+    for pc in an.pieces.as_chunks::<4>().0 {
         if pc[0] as usize != pick {
             continue;
         }
@@ -3115,7 +3115,9 @@ mod tests {
         let (an, _) = lanes_of(&b);
         let xs: Vec<&crate::extract::CrossSection> = an
             .pieces
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter(|p| !b.tracks[p[0] as usize].pad)
             .map(|p| &an.cross_sections[p[3] as usize])
             .filter(|x| (x.w - 0.7).abs() < 1e-9)

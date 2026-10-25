@@ -685,7 +685,7 @@ pub fn cavity(
                 }
             }
             xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            for pair in xs.chunks_exact(2) {
+            for pair in xs.as_chunks::<2>().0 {
                 let i0 = ((pair[0] - lo[0]) / h - 0.5).ceil().max(0.0) as usize;
                 let i1 = ((pair[1] - lo[0]) / h - 0.5).floor();
                 if i1 < 0.0 {

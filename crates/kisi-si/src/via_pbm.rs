@@ -449,7 +449,7 @@ pub fn hankel2_0(z: Cx) -> Cx {
                 break;
             }
         }
-        let gamma = 0.577_215_664_901_532_9;
+        let gamma = std::f64::consts::EULER_GAMMA;
         let lz = cln(z.scale(0.5)) + Cx::new(gamma, 0.0);
         let y0 = (lz * j0 + ysum).scale(2.0 / PI);
         j0 - Cx::new(0.0, 1.0) * y0

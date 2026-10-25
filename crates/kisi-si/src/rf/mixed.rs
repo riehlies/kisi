@@ -12,7 +12,6 @@
 //! via, even mode as the single via) when both vias have the same barrel length, otherwise
 //! each via on its own line.
 
-#[allow(unused_imports)]
 use super::*;
 use crate::board::Board;
 use crate::extract::{Analysis, FieldResult};

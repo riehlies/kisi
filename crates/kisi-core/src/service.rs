@@ -324,7 +324,9 @@ pub fn overview(p: &Project) -> Value {
         // length whose formula impedance is a rough estimate (over a cut-out between trace and reference)
         let rough: f64 =
             p.an.pieces
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .filter(|pc| p.an.cross_sections[pc[3] as usize].flags & crate::extract::F_FORMULA_ROUGH != 0)
                 .filter_map(|pc| p.board.tracks.get(pc[0] as usize).map(|t| (t, pc)))
                 .filter(|(t, _)| nets.iter().any(|n| n.net == t.net))

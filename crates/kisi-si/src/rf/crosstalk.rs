@@ -1,6 +1,5 @@
 //! Crosstalk to neighbouring traces on the same layer (NEXT/FEXT estimate).
 
-#[allow(unused_imports)]
 use super::*;
 use crate::analytic;
 use crate::board::Board;
@@ -354,7 +353,7 @@ fn crosstalk_impl(
     let mut bside: HashMap<(u32, u16), (f64, f64, f64)> = HashMap::new(); // overlap, dz, min offset
     let (mut best, mut pbest, mut bbest) = (HashMap::new(), HashMap::new(), HashMap::new());
     let q = |v: f64, u: f64| (v / u).round() as i64;
-    for (pi, pc) in an.pieces.chunks_exact(4).enumerate() {
+    for (pi, pc) in an.pieces.as_chunks::<4>().0.iter().enumerate() {
         let tr = &board.tracks[pc[0] as usize];
         if tr.net != net || tr.pad {
             continue;

@@ -531,7 +531,7 @@ pub(crate) fn fill_polygon(g: &Grid, pts: &[P], w: &mut [f32]) -> usize {
     for (r, xs) in rows.iter_mut().enumerate() {
         xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let j = j0 + r;
-        for pair in xs.chunks_exact(2) {
+        for pair in xs.as_chunks::<2>().0 {
             let i0 = (((pair[0] - g.x0) / g.cell - 0.5).ceil().max(0.0)) as usize;
             let i1 = ((pair[1] - g.x0) / g.cell - 0.5).floor();
             if i1 < i0 as f64 {

@@ -2,7 +2,6 @@
 //! graph, cascade of line sections, vias and lumped parts, S-parameters, TDR
 //! and Touchstone export.
 
-#[allow(unused_imports)]
 use super::*;
 use crate::board::Board;
 use crate::extract::{Analysis, FieldResult};
@@ -124,8 +123,6 @@ pub(crate) struct NetGraph {
     adj: HashMap<usize, Vec<(usize, usize)>>,
     /// position of every node (after joining: representative positions)
     pos: Vec<P>,
-    #[allow(dead_code)]
-    root: Vec<usize>,
     pieces_of: HashMap<usize, Vec<usize>>,
     /// copper layers of every node (bit per layer; a via node has all layers it joins)
     mask: Vec<u64>,
@@ -136,7 +133,7 @@ impl NetGraph {
         // tracks of the net (real tracks and synthetic pad tracks)
         let mut tracks: Vec<usize> = Vec::new();
         let mut pieces_of: HashMap<usize, Vec<usize>> = HashMap::new();
-        for (pi, pc) in an.pieces.chunks_exact(4).enumerate() {
+        for (pi, pc) in an.pieces.as_chunks::<4>().0.iter().enumerate() {
             let ti = pc[0] as usize;
             if board.tracks[ti].net != net {
                 continue;
@@ -276,7 +273,7 @@ impl NetGraph {
             adj.entry(a).or_default().push((ei, b));
             adj.entry(b).or_default().push((ei, a));
         }
-        Some(NetGraph { edges, adj, pos, root, pieces_of, mask })
+        Some(NetGraph { edges, adj, pos, pieces_of, mask })
     }
 
     fn components(&self) -> usize {

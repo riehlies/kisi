@@ -196,5 +196,9 @@ the kisi.json.
 - `kisi report` writes everything into `analysis/kisi.json` next to the board (`--out` elsewhere), for
   file-based review tools and later sessions.
 - `kisi net … --s2p FILE` / `--s4p FILE` write the channel's S-parameters as Touchstone.
+- `kisi export` writes a lane or a bus into `analysis/export/<name>` next to the board (`--out` elsewhere): the
+  subcircuit library, test benches and S-parameter decks for ngspice, Xyce and LTspice, Touchstone files, a KiCad
+  project and a README; the viewer's "Export…" gives the same files as a zip, as its export settings choose
+  ([CLI reference](cli.md#export)).
 - The viewer exports Touchstone files per net and keeps its edits in the browser; it does not write kisi.json yet
   (see [ROADMAP](../ROADMAP.md), "Board preparation in the viewer").

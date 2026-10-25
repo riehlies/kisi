@@ -4,6 +4,39 @@ What kisi computes, how, how well it agrees with references, and which numbers a
 design check: its results are estimates without any warranty of correctness, not a replacement for sign-off
 simulation or measurement.
 
+## Scope: what kisi computes and what it leaves to other tools
+kisi is a fast linear checker. It computes the board's lines, vias and channels as linear networks in the frequency
+domain and judges them against interface profiles with a linear transmitter and receiver: impedance, loss, return
+loss, skew, crosstalk estimates and a linear eye for every lane of a board in seconds, plus the DC and PDN analyses
+of the power side.
+
+Out of scope, on purpose: IBIS and IBIS-AMI buffer models, equalisers (CTLE, FFE, DFE) and transient simulations
+with non-linear drivers (overshoot and ringback with real buffers, DDR timing flows, long patterns). For sign-off,
+export the channel ([Channel export](#channel-export)) – as Touchstone files (a lane, or a whole bus as one N-port)
+or as SPICE subcircuits – and simulate it with the buffers in a tool made for that: PyBERT, ngspice, Xyce or LTspice
+with IBIS models, KiCad's simulator.
+
+## Why kisi is small and fast
+- **Linear networks in the frequency domain.** A line is a chain of 2×2 ABCD matrices per frequency (RLGC per
+  cross-section), a via a small ladder, a part a few impedances; a lane is the product of these matrices – a few
+  hundred multiplications per frequency point. Where a lane branches (a pair as a 4-port, receivers on a
+  multi-drop line, an N-port file behind a connector) kisi solves one small linear system per frequency (nodal
+  analysis with a handful of nodes). There is no Newton-Raphson iteration and no time stepping: the eye comes from
+  the step response of the linear network.
+- **Compared with a circuit simulator:** a lane takes kisi about 0.15 s (ThunderScope: 71 lanes in about 11 s on
+  one thread, a few seconds on several cores). The same ThunderScope LVDS lane exported as a SPICE ladder has about
+  42 000 elements and takes 6–15 minutes in ngspice or LTspice. A reduced export (vector fitting or lossy-line
+  elements) is planned to shorten that ([ROADMAP](../ROADMAP.md), block 3).
+- **2D, not 3D.** Impedances come from formulas (a board in under a second) or from a quasi-static 2D field solver
+  per cross-section – only for nets with a target, cached on disk and in the browser; vias, pads and planes use
+  reduced models checked against 3D references instead of a full-board 3D solution.
+- **Sparse and parallel where it counts.** The DC voltage drop, temperature and PDN grids use sparse solvers
+  (`kisi-sparse` on faer); the channel check computes its lanes on several threads (native) or Web Workers
+  (viewer) with results identical to one thread.
+- **One engine, compiled once.** The models are Rust compiled to WebAssembly: the whole viewer including the field
+  solver is one HTML file of about 3 MB that runs offline in a browser, and the same engine runs the Node CLI
+  `kisi.mjs`.
+
 ## Impedance
 - **Formulas:** Hammerstad-Jensen, Wheeler, Wadell (CPWG), IPC-2141 – in a second for every track. Microstrip
   within 1–2 %; coupled and coplanar lines 5–15 % off (asymmetric stripline +11 %). A formula value over a cut-out
@@ -104,6 +137,32 @@ closed case runs hotter inside: emulate it with the case temperature as `--ambie
 defaults can be off by tens of percent of the rise. Concept, physics and validation:
 [research/thermal.md](research/thermal.md).
 
+## Channel export
+`kisi export` and "Export…" in the viewer's lane detail and bus card write a lane's board channel – as the check
+models it – for circuit and RF simulators:
+- **SPICE subcircuit:** line sections as RLGC ladders (20 sections per wavelength at the top frequency) with
+  Foster/Debye networks fitted to R(f), L(f), G(f), C(f) – positive elements only, so passive and causal; vias as
+  kisi's via ladder; parts with their estimated parasitics (e.g. an AC-coupling capacitor as R–L–C with its pads);
+  open stubs; a pair with both lines and its coupled sections as even/odd chains between ideal mode converters.
+- **Test benches** for ngspice, Xyce and LTspice (PRBS7 between the profile's linear transmitter and receiver, the
+  LTspice one with `.meas` results) and S-parameter decks; the netlist is shared, only the decks differ (the
+  simulators call analyses differently; LTspice adds a series resistance (1 mΩ) and an implicit parallel damping
+  to inductors by default, so the LTspice library sets `Rser=0 Rpar=1e30` on every inductor to match ngspice and
+  Xyce).
+- **Touchstone** per lane (`.s2p`, `.s4p`) and a bus as one N-port with its port map.
+- **Frequency range:** the ladders have 20 sections per wavelength at the top frequency (default 25 GHz; `--fmax`, or
+  5 × Nyquist of the profile), which also ends the Touchstone grid. A lower top frequency shortens transients only
+  so far: an 85 mm LVDS pair has 42 k elements at 25 GHz and 23 k at 2.5–5 GHz (ngspice 350 s and 180 s for two PRBS7
+  periods), because every section, via and part keeps its share.
+- **KiCad project** (KiCad 7 format, opens in KiCad 7 and later; checked with KiCad 9's ERC): one symbol per
+  element, parts with their value as a parameter (change `220n` in KiCad and the parasitics stay), or the lane as one
+  symbol.
+
+The terminations next to the receiver act as the receiver's termination and are not in the subcircuit. Not
+included: the channel behind a connector, crosstalk between lanes, IBIS ends. Above about 10 GHz kisi's own model is
+not fully passive and causal (roughness, constant tanδ, via-pair spans); the export cannot follow that part. Report:
+[docs/research/channel-export.md](research/channel-export.md).
+
 ## What is an estimate
 kisi marks these as estimates in the viewer and in the CLI output:
 - laminate εr/tanδ and thicknesses that are KiCad defaults (`assumed` in `kisi overview`), until
@@ -133,15 +192,18 @@ kisi marks these as estimates in the viewer and in the CLI output:
 - **Temperature solver** against analytic cases (1D slab exact, fin within 0.2 %, radial spreading in a plane
   with convection within 0.13 %, energy balance) and, with the datasheets' θJB/θJC on a model of the JEDEC
   JESD51-7 board, against their θJA (QFN-16 +4 %, SOIC-8 −15 %, SOT-23-5 −20 %).
+- **Channel export:** ngspice reproduces kisi's own evaluation of the exported circuit (ThunderScope's LVDS lanes and
+  nine PCIe lanes, to 0.001) and kisi's S-parameters within 0.03 dB (LVDS) and 0.10–0.34 dB (PCIe, strongly
+  reflecting) up to 1.5 × Nyquist; step responses within 2 % (`validation/channel_export/compare.py`, also in CI).
 - **Still open:** validation against other solvers and against measurements. A measured test board is planned
   ([validation/test_board.md](../validation/test_board.md)). Until then, treat the numbers as plausible estimates,
   not as verified results.
 
 ## Limits
-- The channel check is a first look: linear transmitter and receiver from the interface profile, no IBIS models,
-  no equalisation, jitter or noise, no simulation of several aggressors at once (except the lanes of one N-port
-  file behind a connector). A real channel validation needs IBIS (or AMI) models and more complex tests; kisi's
-  plan is to export its linear channel models to tools that do that ([ROADMAP](../ROADMAP.md), block 3).
+- The channel check is a first look: linear transmitter and receiver from the interface profile, no jitter or
+  noise, no simulation of several aggressors at once (except the lanes of one N-port file behind a connector). IBIS,
+  IBIS-AMI and equalisers are out of kisi's scope ([Scope](#scope-what-kisi-computes-and-what-it-leaves-to-other-tools));
+  a sign-off simulation uses the exported channel in a tool made for that ([Channel export](#channel-export)).
 - 2D cross-sections and reduced via and plane models instead of a full-board 3D solution; board edges, via-to-via
   coupling and resonances of the whole board are not included.
 - Data the board file does not hold (laminate εr/tanδ, load currents, capacitor data) defaults to estimates;

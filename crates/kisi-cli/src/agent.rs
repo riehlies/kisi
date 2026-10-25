@@ -54,6 +54,18 @@ fn run(o: &Opts) -> Result<Value, String> {
         std::fs::write(path, content).map_err(|e| format!("{path}: {e}"))?;
         v["written"] = json!(path);
     }
+    // the files of `export`: into a folder
+    if let Some(w) = v.as_object_mut().and_then(|m| m.remove("_files")) {
+        let dir = PathBuf::from(w["dir"].as_str().unwrap_or("."));
+        for f in w["files"].as_array().map(|a| a.as_slice()).unwrap_or(&[]) {
+            let path = dir.join(f["path"].as_str().unwrap_or("x"));
+            if let Some(d) = path.parent() {
+                std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
+            }
+            std::fs::write(&path, f["content"].as_str().unwrap_or("")).map_err(|e| format!("{}: {e}", path.display()))?;
+        }
+        v["written"] = json!(dir.display().to_string());
+    }
     if commands::uses_field(&o.cmd) && !o.formula {
         v["field_solver_note"] = json!("native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver");
     }

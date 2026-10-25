@@ -81,6 +81,28 @@ pub struct Channel {
     /// with taps: the main path split at them (cascade per frequency and at 0 Hz)
     #[serde(skip)]
     pub pieces: Vec<(Vec<Abcd>, Abcd)>,
+    /// the sections the cascade was built from (models, vias, parts, stubs), for the circuit
+    /// export (`kisi_si::export`); a stub keeps its own in its parent's `Sections::branch`
+    #[serde(skip)]
+    pub sections: Option<Box<Sections>>,
+}
+
+/// The sections of a channel's cascade with their models, as `Build` holds them: what the circuit
+/// export (`kisi_si::export`) turns into SPICE subcircuits. Index i of every list belongs to
+/// section i of `segs`.
+#[derive(Debug, Clone)]
+pub struct Sections {
+    pub segs: Vec<Segment>,
+    pub models: Vec<Option<LineModel>>,
+    pub via_models: Vec<Option<crate::via::ViaModel>>,
+    /// odd-mode via model with the partner via (one line of a pair's 4-port)
+    pub via_pair: Vec<Option<crate::via::ViaModel>>,
+    pub lumped: Vec<Option<LumpedPart>>,
+    /// open stubs: their own sections; `branch_odd` the same stub with the pair's odd-mode models
+    pub branch: Vec<Option<Box<Sections>>>,
+    pub branch_odd: Vec<Option<Box<Sections>>>,
+    /// model of line sections without a reference plane (`Build::fallback`)
+    pub fallback: LineModel,
 }
 
 /// A receiver on a side stub of a multi-drop line: the stub from the junction on the main path
@@ -723,6 +745,9 @@ pub(crate) struct Build<'a> {
     pub(crate) branch_odd: Vec<Option<Vec<Abcd>>>,
     /// the stub ends at a receiver (multi-drop): its pin label
     pub(crate) branch_tap: Vec<Option<String>>,
+    /// the stubs' own sections (and in the odd mode), for the circuit export
+    pub(crate) branch_secs: Vec<Option<Box<Sections>>>,
+    pub(crate) branch_odd_secs: Vec<Option<Box<Sections>>>,
     pub via_info: Vec<crate::via::ViaInfo>,
     field_len: f64,
     pub(crate) total_len: f64,
@@ -749,6 +774,8 @@ impl<'a> Build<'a> {
             branch_dc: vec![],
             branch_odd: vec![],
             branch_tap: vec![],
+            branch_secs: vec![],
+            branch_odd_secs: vec![],
             via_info: vec![],
             field_len: 0.0,
             total_len: 0.0,
@@ -767,6 +794,8 @@ impl<'a> Build<'a> {
         self.branch_dc.push(None);
         self.branch_odd.push(None);
         self.branch_tap.push(None);
+        self.branch_secs.push(None);
+        self.branch_odd_secs.push(None);
     }
 
     /// An open branch (stub) hanging off the line here; `ch` is the branch's own
@@ -779,6 +808,7 @@ impl<'a> Build<'a> {
         self.lumped[i] = None;
         self.branch[i] = Some(ch.abcd.clone());
         self.branch_dc[i] = Some(ch.abcd_dc);
+        self.branch_secs[i] = ch.sections.clone();
     }
 
     /// As `add_branch`, with the stub's odd-mode cascade (`odd`, the same copper built with the
@@ -786,6 +816,7 @@ impl<'a> Build<'a> {
     pub(crate) fn add_branch_pair(&mut self, label: String, ch: &Channel, odd: Option<&Channel>) {
         self.add_branch(label, ch);
         *self.branch_odd.last_mut().unwrap() = odd.map(|o| o.abcd.clone());
+        *self.branch_odd_secs.last_mut().unwrap() = odd.and_then(|o| o.sections.clone());
     }
 
     /// Mark the branch just added as ending at the receiver `pin` (a tap of a multi-drop line).
@@ -1096,6 +1127,29 @@ impl<'a> Build<'a> {
         }
     }
 
+    /// Reference impedance of the channel (`finish`): the option, else the target per line.
+    pub(crate) fn z_ref(&self, target: Option<(f64, bool)>) -> f64 {
+        self.rp.z_ref.unwrap_or(match target {
+            Some((z, true)) if self.diff => z / 2.0,
+            Some((z, false)) => z,
+            _ => 50.0,
+        })
+    }
+
+    /// The sections as they stand (a copy), for the circuit export.
+    pub(crate) fn sections(&self, target: Option<(f64, bool)>) -> Sections {
+        Sections {
+            segs: self.segs.clone(),
+            models: self.models.clone(),
+            via_models: self.via_models.clone(),
+            via_pair: self.via_pair.clone(),
+            lumped: self.lumped.clone(),
+            branch: self.branch_secs.clone(),
+            branch_odd: self.branch_odd_secs.clone(),
+            fallback: Self::fallback(self.z_ref(target)),
+        }
+    }
+
     pub(crate) fn finish(mut self, net: u32, name: String, partner: Option<u32>, target: Option<(f64, bool)>) -> Channel {
         let rp = self.rp;
         let diff = self.diff;
@@ -1103,11 +1157,7 @@ impl<'a> Build<'a> {
             self.warnings.push("sections without reference plane: approximated as 1.5 × nominal impedance".into());
         }
         // reference impedance
-        let z_ref = rp.z_ref.unwrap_or(match target {
-            Some((z, true)) if diff => z / 2.0,
-            Some((z, false)) => z,
-            _ => 50.0,
-        });
+        let z_ref = self.z_ref(target);
         // fallback model for sections without reference: crude high-Z line
         let fallback = Self::fallback(z_ref);
         // frequency sweep
@@ -1225,6 +1275,16 @@ impl<'a> Build<'a> {
         };
         let (tdr_t_ps, tdr_z, tdr_x_mm) = tdr_map(&freq, &s11, z_ref, rp.rise, (2.0 * delay * 1.3 + 4.0 * rp.rise).max(200e-12), &xmap);
         let vias = self.segs.iter().filter(|s| s.kind == "via").count();
+        let sections = Some(Box::new(Sections {
+            segs: self.segs.clone(),
+            models: std::mem::take(&mut self.models),
+            via_models: std::mem::take(&mut self.via_models),
+            via_pair: std::mem::take(&mut self.via_pair),
+            lumped: std::mem::take(&mut self.lumped),
+            branch: std::mem::take(&mut self.branch_secs),
+            branch_odd: std::mem::take(&mut self.branch_odd_secs),
+            fallback,
+        }));
         Channel {
             net,
             name,
@@ -1256,6 +1316,7 @@ impl<'a> Build<'a> {
             abcd_dc,
             taps,
             pieces,
+            sections,
         }
     }
 }

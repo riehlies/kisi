@@ -40,6 +40,10 @@ Locally, before pushing a branch, run the quick checks for what you changed:
 * Documentation (`docs/`, `kisi help`, gap ids): `cargo test --release -p kisi-core --test docs` (the help text
   in `docs/cli.md`, every command, option and gap id) and `python3 tools/docs_pdf.py dist/kisi-docs.pdf` (the PDF;
   fails on links to missing files or headings in `docs/`).
+* Channel export (`kisi_si::export`, `kisi export`): `python3 validation/channel_export/compare.py target/release/kisi
+  examples/Thunderscope_Rev5.3.kicad_pcb --config web/samples/ts.kisi.json --out /tmp/export --lane SYNC_OUT_P --strict`
+  (the exported netlist in ngspice against kisi's S-parameters; needs ngspice, numpy, optionally scikit-rf); add
+  `--kicad` for the KiCad project (`validation/channel_export/kicad_sheet.py`: wiring, kicad-cli netlist and ERC).
 * Model code (`crates/`, `data/`): `python3 tools/golden.py boards target/release/kisi examples` and
   `python3 tools/golden.py vias target/release/kisi` – the stored results of the example boards and kisi's models on
   the 3D via references. An intended change: run them with `--update` and commit `validation/golden/` and

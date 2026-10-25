@@ -331,3 +331,28 @@ function drawProfile(net, t) {
   };
   c.onpointerleave = () => { tip.hidden = true; paint(null); setPathCursor(net, null); };
 }
+
+// files as one zip archive for the user to save (stored, no compression): [{path, content}]
+function saveZip(name, files) {
+  const enc = new TextEncoder(), crcT = saveZip.t || (saveZip.t = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; }));
+  const crc = (b) => { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = crcT[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const parts = [], dir = [];
+  let off = 0;
+  const u16 = (v) => [v & 255, (v >>> 8) & 255], u32 = (v) => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  for (const f of files) {
+    const nm = enc.encode(f.path), data = enc.encode(f.content), c = crc(data);
+    // version, flags (UTF-8 names), method 0, time, date, crc, sizes, name length, extra length
+    const common = [...u16(20), ...u16(0x800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(nm.length), ...u16(0)];
+    const local = new Uint8Array([...u32(0x04034b50), ...common]);
+    parts.push(local, nm, data);
+    dir.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...common, ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]), nm);
+    off += local.length + nm.length + data.length;
+  }
+  const dsize = dir.reduce((a, b) => a + b.length, 0);
+  const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(dsize), ...u32(off), ...u16(0)]);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([...parts, ...dir, end], { type: "application/zip" }));
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}

@@ -14,7 +14,7 @@
   ci_checks.py sizes <dist dir>          the bundles against tools/size_budget.json (fails above the budget)
   ci_checks.py same <a> <b>              two builds of a bundle are byte-identical (reproducible bundles)
 """
-import fnmatch, glob, hashlib, json, os, re, subprocess, sys, tempfile
+import fnmatch, glob, hashlib, json, os, re, subprocess, sys, tempfile, urllib.parse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -46,8 +46,8 @@ GROUPS = {
     "refpage": ["validation/via_ref/*", "validation/fdtd/make_viewer.py", "validation/fdtd/viewer_template.html"],
     # Forstén's solver unchanged against upstream
     "upstream": ["third_party/*"],
-    # Markdown links (cheap; also on every code change)
-    "docs": ["*.md", "docs/*", "claude-plugin/*", "LICENSE*"],
+    # Markdown links (cheap; also on every code change) and the documentation PDF
+    "docs": ["*.md", "docs/*", "claude-plugin/*", "LICENSE*", "tools/docs_pdf.py"],
 }
 # changes that need no check of their own (the cheap checks still run)
 QUIET = ["docs/img/*", "tools/screenshots.py", ".gitignore", ".gitattributes", "web/pages/*", "validation/fdtd/*",
@@ -154,7 +154,7 @@ def links():
             target = m.group(1) or m.group(2)
             if re.match(r"^[a-z]+:", target) or target.startswith("#"):
                 continue
-            path = target.split("#")[0].split("?")[0]
+            path = urllib.parse.unquote(target.split("#")[0].split("?")[0])  # GitHub needs %20 for spaces
             if not path:
                 continue
             full = os.path.normpath(os.path.join(ROOT, os.path.dirname(f), path))

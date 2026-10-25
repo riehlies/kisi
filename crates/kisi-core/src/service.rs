@@ -198,7 +198,8 @@ impl Project {
         crate::pi::find_net(&self.board, name)
     }
 
-    pub(crate) fn target(&self, net: u32) -> Option<(f64, bool)> {
+    /// impedance target of the net's class: (Ω, differential)
+    pub fn target(&self, net: u32) -> Option<(f64, bool)> {
         let ci = self.board.net_class.get(net as usize).copied().unwrap_or(0) as usize;
         self.an.classes.get(ci).and_then(|c| c.target).map(|t| (t.z, t.diff))
     }
@@ -654,6 +655,9 @@ fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem,
             if let Some(mc) = row.mode_conversion_db {
                 j["mode_conversion_db"] = json!(mc);
             }
+            if let Some(w) = crate::via::open_pairs_line(&p.board, &row.open_vias, rp.via_cavity && rp.via_returns) {
+                j["via_warning"] = json!(w);
+            }
             j["metrics"] = json!(m);
             (v.status, j)
         }
@@ -681,6 +685,9 @@ fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem,
             if let Some(mc) = row.mode_conversion_db {
                 j["mode_conversion_db"] = json!(mc);
             }
+            if let Some(w) = crate::via::open_pairs_line(&p.board, &row.open_vias, rp.via_cavity && rp.via_returns) {
+                j["via_warning"] = json!(w);
+            }
             (v.status, j)
         }
     }
@@ -697,8 +704,11 @@ pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, 
 pub fn channel_check_with(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, threads: usize) -> Value {
     let plan = check_plan(p, profiles, assign, only);
     let cd = topology::ComponentData::builtin();
+    register_cavities(rp, |rq| {
+        crate::par::par_map_with(&plan.items, threads, |it| check_row(p, &plan, profiles, it, rq, &cd));
+    });
     let rows = crate::par::par_map_with(&plan.items, threads, |it| check_row(p, &plan, profiles, it, rp, &cd));
-    check_result(p, rows, plan.skipped_unused)
+    check_result(p, rows, plan.skipped_unused, rp)
 }
 
 /// Number of rows `channel_check` computes (lanes and nets), for splitting it over workers.
@@ -713,12 +723,51 @@ pub fn channel_check_count(p: &Project, profiles: &Profiles, assign: &HashMap<St
 pub fn channel_check_rows(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, idx: &[usize]) -> Vec<(usize, Value)> {
     let plan = check_plan(p, profiles, assign, only);
     let cd = topology::ComponentData::builtin();
+    register_cavities(rp, |rq| {
+        for &i in idx {
+            if let Some(it) = plan.items.get(i) {
+                check_row(p, &plan, profiles, it, rq, &cd);
+            }
+        }
+    });
     idx.iter().filter_map(|&i| Some((i, check_row(p, &plan, profiles, plan.items.get(i)?, rp, &cd).1))).collect()
+}
+
+/// With finite plane cavities (`--via-cavity`): a first pass over the check's rows that only
+/// registers the vias' cavity grids (`via_cavity::set_register_only`, its results dropped), so the
+/// real pass factorises each plane-pair region once per frequency for all vias that cross it
+/// instead of once per via (validation/fdtd/BOARD_RESONANCES.md section 9). The rows are the same
+/// with and without it. Not with return groups (`--via-returns`): they leave the pairs a floating
+/// return bridges as infinite plates, few regions are left and the pass would cost more than it
+/// saves. KISI_CAVITY_PASS=0 / 1 switches it off / on.
+fn register_cavities(rp: &RfParams, pass: impl FnOnce(&RfParams)) {
+    let env = |k: &str| std::env::var(k).ok().filter(|x| x != "0");
+    let cavity = rp.via_cavity || env("KISI_VIA_CAVITY").is_some();
+    let returns = rp.via_returns || env("KISI_VIA_RETURNS").is_some();
+    let on = match std::env::var("KISI_CAVITY_PASS").ok().as_deref() {
+        Some("0") => false,
+        Some(_) => cavity,
+        None => cavity && !returns,
+    };
+    if !on {
+        return;
+    }
+    crate::via_cavity::set_register_only(true);
+    // (no clock in WebAssembly: `Instant::now` traps there)
+    #[cfg(not(target_arch = "wasm32"))]
+    let t = std::time::Instant::now();
+    // the via models do not depend on the frequencies: a few are enough to build them all
+    pass(&RfParams { npts: 8, ..rp.clone() });
+    #[cfg(not(target_arch = "wasm32"))]
+    if std::env::var("KISI_CAVITY_STATS").is_ok() {
+        eprintln!("cavity registering pass {:.2} s", t.elapsed().as_secs_f64());
+    }
+    crate::via_cavity::set_register_only(false);
 }
 
 /// `channel_check` from rows computed in parts (`channel_check_rows`): the same result as
 /// computing them at once. An error when the parts do not cover the check exactly.
-pub fn channel_check_merge(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, mut rows: Vec<(usize, Value)>) -> Result<Value, String> {
+pub fn channel_check_merge(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, mut rows: Vec<(usize, Value)>) -> Result<Value, String> {
     let plan = check_plan(p, profiles, assign, only);
     rows.sort_by_key(|r| r.0);
     if rows.len() != plan.items.len() || rows.iter().enumerate().any(|(i, r)| r.0 != i) {
@@ -731,22 +780,28 @@ pub fn channel_check_merge(p: &Project, profiles: &Profiles, assign: &HashMap<St
         s => Err(format!("check part: row without status ({s:?})")),
     };
     let rows = rows.into_iter().map(|(_, v)| status(&v).map(|s| (s, v))).collect::<Result<Vec<_>, _>>()?;
-    Ok(check_result(p, rows, plan.skipped_unused))
+    Ok(check_result(p, rows, plan.skipped_unused, rp))
 }
 
 /// The check's JSON from its rows in the check's order: sorted by status (stable), counted.
-fn check_result(p: &Project, mut rows: Vec<(Status, Value)>, skipped_unused: usize) -> Value {
+fn check_result(p: &Project, mut rows: Vec<(Status, Value)>, skipped_unused: usize, rp: &RfParams) -> Value {
     rows.sort_by(|a, b| a.0.cmp(&b.0));
     let count = |s: Status| rows.iter().filter(|r| r.0 == s).count();
-    json!({
+    // vias across a GND/supply plane pair no return via bridges, also of rows not shown
+    let via_warnings: Vec<String> = rows.iter().filter_map(|r| Some(format!("{}: {}", r.1["lane"].as_str().or(r.1["net"].as_str()).unwrap_or("?"), r.1["via_warning"].as_str()?))).collect();
+    let mut v = json!({
         "summary": {"green": count(Status::Green), "yellow": count(Status::Yellow), "red": count(Status::Red)},
         "variant": p.variant.summary(),
         "config": p.config_summary(),
         "not_checked_unused": (skipped_unused > 0).then(|| format!("{skipped_unused} net(s) with a target only connect parts not fitted in this assembly (variant or DNP): not checked")),
         "rows": rows.into_iter().map(|r| r.1).collect::<Vec<_>>(),
         "field_solver": p.field_summary(),
-        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 × Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces – an estimate). Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db) is given.", p.models())
-    })
+        "models": format!("{} Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance – estimates –, the other path of a fork). Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 × Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces – an estimate). Shunt parts on the lane's nets (capacitors to ground, …) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share – loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) – information (eye_board_share), or judged when a channel behind the connector (rest_loss_db or a Touchstone file) is given.{}{}", p.models(), if rp.via_cavity { " Vias: plane pairs as finite cavities (--via-cavity, experimental) – board edges, stitching vias, capacitors between the planes with estimated parasitics (data/components.json)." } else { "" }, if rp.via_returns { " Vias: return groups per plane pair (--via-returns, experimental) – a return via shorts only the plane pairs whose two planes it joins and crosses supply planes as a floating return; capacitors between supply and ground planes within 3 mm with estimated parasitics (data/components.json)." } else { "" })
+    });
+    if !via_warnings.is_empty() {
+        v["via_warnings"] = json!(via_warnings);
+    }
+    v
 }
 
 /// The DC part of the power analysis, shared by `power`, `thermal` and `report`: the tree (PI_REG
@@ -1060,8 +1115,8 @@ mod tests {
         rows.extend(channel_check_rows(&p, &pr, &a, None, &rp, &(0..n).filter(|i| i % 2 == 0).collect::<Vec<_>>()));
         rows.reverse();
         let rows: Vec<(usize, Value)> = serde_json::from_str(&serde_json::to_string(&rows).unwrap()).unwrap();
-        assert_eq!(channel_check_merge(&p, &pr, &a, None, rows.clone()).unwrap().to_string(), one);
-        assert!(channel_check_merge(&p, &pr, &a, None, rows[1..].to_vec()).is_err());
+        assert_eq!(channel_check_merge(&p, &pr, &a, None, &rp, rows.clone()).unwrap().to_string(), one);
+        assert!(channel_check_merge(&p, &pr, &a, None, &rp, rows[1..].to_vec()).is_err());
     }
 
     /// `check --all` judges the connector–connector lane (board share: impedance, loss, return

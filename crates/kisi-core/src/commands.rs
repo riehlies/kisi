@@ -52,10 +52,17 @@ next to the board), --no-config, --stackup FILE (stackup changes, as in the view
 \"variants\"; \"default\" = the board file as it is). Boards with variants – or with forks where
 all alternative parts are fitted – need one for interfaces, check and report (else they stop and
 list the variants); \"variant\" in <board>.kisi.json chooses one for every run.
-field solver (kisi.mjs only; overview, net, check, report): used by default for the cross-sections
-of nets with a target, results cached on disk; --formula (no field solver), --field-time S
-(time budget for new solves, default 120), --field-all (all cross-sections, not only targets),
---field-xt (also the coupling cross-sections of critical crosstalk victims, NEXT or FEXT from 1 %;
+--via-cavity (net, check, report; experimental, off by default): the plane pairs of the via models
+as finite cavities – board edges, stitching vias, capacitors between supply and ground planes –
+instead of infinite plates (validation/fdtd/BOARD_RESONANCES.md); slower.
+--via-returns (net, check, report; experimental, off by default): return groups per plane pair in
+the via models – a return via shorts only the pairs whose two planes it joins, crosses supply
+planes as a floating return, capacitors between supply and ground planes nearby close a pair
+(validation/fdtd/BOARD_RETURNS.md).
+field solver (kisi.mjs only; overview, net, check, crosstalk, report): used by default for the
+cross-sections of nets with a target, results cached on disk; --formula (no field solver),
+--field-time S (time budget for new solves, default 120), --field-all (all cross-sections, not
+only targets), --field-xt (also the coupling cross-sections of critical crosstalk victims, NEXT or FEXT from 1 %;
 net: always all of the net's)
 
 kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design
@@ -103,6 +110,10 @@ pub struct Opts {
     pub field_xt: bool,
     /// assembly variant (wins over the configuration's `variant`)
     pub variant: Option<String>,
+    /// via models with finite plane cavities (`RfParams::via_cavity`)
+    pub via_cavity: bool,
+    /// via models with return groups per plane pair (`RfParams::via_returns`)
+    pub via_returns: bool,
     /// `thermal`: ambient temperature (°C), surface coefficient per side (W/m²K), air flow (m/s),
     /// vertical board
     pub ambient: Option<f64>,
@@ -158,6 +169,8 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--field-all" => o.field_all = true,
             "--field-xt" => o.field_xt = true,
             "--variant" => o.variant = Some(val(&mut i, a)?),
+            "--via-cavity" => o.via_cavity = true,
+            "--via-returns" => o.via_returns = true,
             "--ambient" => o.ambient = Some(num(val(&mut i, a)?, a)?).filter(|t| (-60.0..=200.0).contains(t)).or(Some(f64::NAN)),
             "--h" => o.h = Some(num(val(&mut i, a)?, a)?),
             "--airflow" => o.airflow = Some(num(val(&mut i, a)?, a)?),
@@ -265,7 +278,7 @@ fn xt_plan(p: &Project, nets: &[u32], all: bool) -> Vec<(String, String, f64)> {
 }
 
 fn rf_params(o: &Opts) -> Result<RfParams, String> {
-    let mut rp = RfParams::default();
+    let mut rp = RfParams { via_cavity: o.via_cavity, via_returns: o.via_returns, ..RfParams::default() };
     if let Some(r) = o.rise_ps {
         rp.rise = r * 1e-12;
     }
@@ -336,7 +349,7 @@ pub fn run_with(o: &Opts, p: Option<&Project>, tree: Option<Value>, check_rows: 
         "check" => {
             let (pr, rp) = (proj()?, rf_params(o)?);
             let mut v = match check_rows {
-                Some(rows) => service::channel_check_merge(pr, &profiles, &o.classes, o.nets.as_deref(), rows)?,
+                Some(rows) => service::channel_check_merge(pr, &profiles, &o.classes, o.nets.as_deref(), &rp, rows)?,
                 None => service::channel_check(pr, &profiles, &o.classes, o.nets.as_deref(), &rp),
             };
             let max = o.max.unwrap_or(30);

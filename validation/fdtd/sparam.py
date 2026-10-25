@@ -174,6 +174,57 @@ def deembed2(S, FL, FR):
     return _t2s(tD)
 
 
+def renorm(S, z_old, z_new):
+    """2-port S from per-port references z_old to z_new (each a scalar, a pair, or an (nf, 2)
+    array; complex allowed). Voltage waves a = (V + Zr I)/2, b = (V − Zr I)/2: S = (Z − R)(Z + R)⁻¹.
+    T-matrix cascading stays valid where both sides of a plane use the same reference; with real,
+    equal references it is the usual S."""
+    nf = S.shape[0]
+    zo = np.broadcast_to(np.asarray(z_old, complex), (nf, 2)) if np.ndim(z_old) < 2 else np.asarray(z_old, complex)
+    zn = np.broadcast_to(np.asarray(z_new, complex), (nf, 2)) if np.ndim(z_new) < 2 else np.asarray(z_new, complex)
+    I = np.eye(2)
+    Ro = zo[:, :, None] * I
+    Rn = zn[:, :, None] * I
+    Z = np.linalg.inv(I - S) @ (I + S) @ Ro
+    return (Z - Rn) @ np.linalg.inv(Z + Rn)
+
+
+def line_impedance(f, T, z0=50.0, band=(2e9, 30e9)):
+    """Characteristic impedance Zc(f) of the line of a symmetric 2×thru (lumped ports at both ends):
+    the image impedance sqrt(B/C) of the thru, fitted with Zc² = Z∞² · jω / (jω + g) (lossless
+    metal, a dielectric conductivity fixed in frequency: g = G/C). The fit avoids the frequencies
+    where the thru is a multiple of half a wavelength (B, C → 0). Returns Zc(f), Z∞, g."""
+    s11, s12, s21, s22 = T[:, 0, 0], T[:, 0, 1], T[:, 1, 0], T[:, 1, 1]
+    B = z0 * ((1 + s11) * (1 + s22) - s12 * s21) / (2 * s21)
+    C = ((1 - s11) * (1 - s22) - s12 * s21) / (2 * z0 * s21)
+    y = C / B  # 1 / Zc² = 1/Z∞² − j g / (ω Z∞²)
+    w = 2 * np.pi * f
+    sel = (f >= band[0]) & (f <= band[1])
+    a = float(np.median(y.real[sel]))
+    b = float(np.median(-(w * y.imag)[sel]))
+    zinf = 1 / math.sqrt(a)
+    g = b / a
+    return zinf * np.sqrt(1j * w / (1j * w + g)), zinf, g
+
+
+def deembed_matched(f, S, T_in, T_out, z0=50.0):
+    """2×thru de-embedding with the outer ports first referred to each line's own impedance, so
+    that each 2×thru is nearly matched and the NZC split only has to place the small port
+    parasitics; the DUT then comes out referred to the line impedances at its planes and is
+    converted to z0 at the end (the via between ideal z0 lines, as kisi's ladder gives it).
+    With z0-referred NZC (fixture_2xthru on the raw data) a line of Zc ≠ z0 leaves an impedance
+    step of (Zc − z0)/(Zc + z0) in the fixture model at each plane. Returns D, (Zc_in, Zc_out)."""
+    zi, zinf_i, _ = line_impedance(f, T_in, z0)
+    zo, zinf_o, _ = line_impedance(f, T_out, z0)
+    Ti = renorm(T_in, z0, np.stack([zi, zi], 1))
+    To = renorm(T_out, z0, np.stack([zo, zo], 1))
+    Sc = renorm(S, z0, np.stack([zi, zo], 1))
+    FL, _ = fixture_2xthru(f, Ti)
+    FR, _ = fixture_2xthru(f, To)
+    Dc = deembed2(Sc, FL, FR)
+    return renorm(Dc, np.stack([zi, zo], 1), z0), (zinf_i, zinf_o)
+
+
 def deembed_shift(S, F_per_port):
     """N-port plane shift: S'_ij = S_ij / (h_i h_j) with h the fixture transmission per port."""
     out = S.copy()
@@ -195,16 +246,21 @@ def mixed_mode(S):
 
 def step_response(f, s, rise=25e-12, tmax=None):
     """response to a unit step with a Gaussian edge (10–90 % = `rise`) of a transfer function
-    sampled on a uniform grid f_k = k·Δf (DC from the real part of the first point)"""
+    sampled on a uniform grid f_k = k·Δf (DC from the real part of the first point). t = 0 is the
+    middle of the edge; the response is integrated from 3·rise before it, as kisi's own TDR
+    (`rf::tdr`). (Before Block 5 the sum started at the middle of the edge: the half of a
+    reflection at the reference plane that lies before t = 0 was lost and its integral stayed as a
+    constant offset – a 60 fF shunt capacitor at the reference plane read as a 56 Ω plateau.)"""
     nf = len(f)
     df = f[1] - f[0]
     sig = rise / 2.563
-    g = np.exp(-0.5 * (2 * np.pi * f * sig) ** 2)
+    t0 = 3.0 * rise
+    g = np.exp(-0.5 * (2 * np.pi * f * sig) ** 2) * np.exp(-2j * np.pi * f * t0)
     spec = np.concatenate([[s[0].real], s * g])
     n = 8 * nf
     v = np.cumsum(np.fft.irfft(spec, n))
-    t = np.arange(n) / (n * df)
-    k = t <= tmax if tmax else slice(0, n // 2)
+    t = np.arange(n) / (n * df) - t0
+    k = (t >= 0) & ((t <= tmax) if tmax else (t < n / (2 * n * df) - t0))
     return t[k], v[k]
 
 

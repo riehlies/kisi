@@ -27,13 +27,13 @@ interface; data that changes (standards, component values) lives in files, not i
 | Crate | Contents | depends on |
 |---|---|---|
 | `kisi-board` | parser, stackup, `StackupOverride`, geometry, `package` (case size of chip parts: footprint name, else pad geometry), viewer scene, `num` | – |
-| `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,mixed,crosstalk,network,timedomain,touchstone_in}` (`mixed`: 4-port pair model and the alignment of a pair's two lines; `network`: N-port networks by modified nodal analysis – chains of 2-ports or coupled pairs, admittances, S-parameter blocks, sources; `timedomain`: step responses with DC point, Gaussian window and causality/settling checks), `lanenet` (a lane as a row of network blocks with the ends: transfer to every receiver, the pair's 4-port, the channel behind a connector – also one N-port file for all lanes of a connector, the other lanes as aggressors), `via` (board → via geometry, coax-section fallback), `via_pbm` (physics-based via ladder: r–z Laplace capacitances, parallel-plate impedance with return vias, stubs, pairs; checked against kisi-fdtd), `eye`, `profile`, `topology` (device-to-device lanes, multi-drop taps), `export` (a lane's channel as a circuit: `fit` – passive Foster/Debye fits of R(f), L(f), G(f), C(f); `circuit` – the netlist that kisi evaluates and writes as SPICE subcircuits; `files` – benches for ngspice/Xyce, Touchstone, README; `kicad` – the KiCad project: one symbol per element of the lane subcircuit, or the lane as one symbol) | kisi-board, kisi-sparse |
+| `kisi-si` | `extract`, `analytic`, `xsgeom`, `rf/{line,channel,mixed,crosstalk,network,timedomain,touchstone_in}` (`mixed`: 4-port pair model and the alignment of a pair's two lines; `network`: N-port networks by modified nodal analysis – chains of 2-ports or coupled pairs, admittances, S-parameter blocks, sources; `timedomain`: step responses with DC point, Gaussian window and causality/settling checks), `lanenet` (a lane as a row of network blocks with the ends: transfer to every receiver, the pair's 4-port, the channel behind a connector – also one N-port file for all lanes of a connector, the other lanes as aggressors), `via` (board → via geometry, coax-section fallback; the return posts – vias and plated pads of plane nets, `plane_posts`; the GND/supply plane pairs in a via's path that no return via bridges, `open_pairs`, for the warning in `check`/`net`), `via_pbm` (physics-based via ladder: r–z Laplace capacitances, parallel-plate impedance with return vias, stubs, pairs, pours on the via's signal layers as coplanar returns; checked against kisi-fdtd; vias coupled through a shared cavity; return groups, option `--via-returns`: a return via shorts only the plane pairs whose two planes it joins, elsewhere a small ladder of its own – floating across a supply plane, capacitive where it ends at one –, capacitors between supply and ground planes nearby; `validation/fdtd/BOARD_RETURNS.md`), `via_cavity` (finite plane-pair cavities for the ladder, option `--via-cavity`: region of a plane pair on the board, rectangular modal series, grid of any shape with the exact near field of the vias, edge radiation; identical grids of several vias share one factorisation per frequency, `GridGroup`, filled by a registering pass in `kisi_core::service`; `validation/fdtd/BOARD_RESONANCES.md`), `eye`, `profile`, `topology` (device-to-device lanes, multi-drop taps), `export` (a lane's channel as a circuit: `fit` – passive Foster/Debye fits of R(f), L(f), G(f), C(f); `circuit` – the netlist that kisi evaluates and writes as SPICE subcircuits; `files` – benches for ngspice/Xyce, Touchstone, README; `kicad` – the KiCad project: one symbol per element of the lane subcircuit, or the lane as one symbol) | kisi-board, kisi-sparse |
 | `kisi-pi` | `pi` (DC), `tree` (regulator chains, `PI_REG`), `field_syntax` (net names in the power fields, quoting), `losses` (ground return, losses, loss map, power flow), `thermal` (steady-state temperature of the board and the parts from the losses on the DC solver's building blocks, `PI_THERMAL`, the IR drop at temperature), `pdn` (Z(f), plane model), `cavity_modal` (rectangular plane pair, double cosine series; loop inductance), `pdn_ic` (AC grid over all layers of the rail domain – the rail and the nets behind series resistors, inductors and ferrites up to the regulators –, PDN seen from every IC, filter resonances, recommendations) | kisi-board, kisi-sparse |
 | `kisi-core` | facade with stable paths (`kisi_core::rf`, …), `service` (Project from files or texts, JSON summaries), `commands` (arguments and results of `kisi <command>`, shared by both CLIs), `channel_export` (`kisi export` and the viewer's export: lane requests with the check's or the viewer's profile and ends, bus N-port and port map), `par` (the check's rows on scoped threads), `config` (`<board>.kisi.json`), `variant` (assembly variants: KiCad 10 overrides, kisi.json rules by sheet/references/BOM, the “must choose” state), `gaps` | the three above |
 | `kisi-wasm` | C ABI for the browser and for `kisi.mjs` (`kisi_cli_*`) | kisi-core |
-| `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` (impedance cases; `models`: the reduced models on the 3D reference cases; `via-geom`: diagnostics of one via) | kisi-core |
+| `kisi-cli` | `kisi` (JSON commands in `agent.rs`, text output for people), `kisi-validate` (impedance cases; `models`: the reduced models on the 3D reference cases; `via-geom`: diagnostics of one via; `via-case`: a board via as a kisi-fdtd case with its 2×thru fixtures, `validation/fdtd/BOARD_VIAS.md`; `cavities`: the plane pairs the channel vias of a board cross and their return groups; `cavity-model`: the ladder with a finite cavity per plane pair on a 3D case, `--returns` with return groups, `validation/fdtd/BOARD_RESONANCES.md`, `BOARD_RETURNS.md`) | kisi-core |
 | `kisi-sparse` | sparse solver (real Cholesky/LU, complex LU for the AC grid), also built as a WASM module for the field solver | faer |
-| `kisi-fdtd` | 3D FDTD (Yee, non-uniform mesh, conformal metal, CPML, lumped ports, S-parameters) for via transitions; generates the via references (`validation/fdtd`, results in `validation/via_ref`); native binary and WASM (`fd_run`) | serde |
+| `kisi-fdtd` | 3D FDTD (Yee, non-uniform mesh, conformal metal incl. polygon copper, CPML, lumped ports, S-parameters) for via transitions and board cut-outs; generates the via references (`validation/fdtd`, results in `validation/via_ref`); native binary and WASM (`fd_run`) | serde |
 
 Rule: front ends only use `kisi-core`. Inside kisi-si/kisi-pi things can be restructured as long as
 the facade stays the same. The channel verdict (`kisi_si::profile::judge`) exists exactly once;
@@ -82,8 +82,8 @@ to one thread.
   (`tools/solver_bundle.py`, shared with the viewer) for Node; reads files, runs the field solver in worker
   threads with a disk cache and the rows of `check` in worker threads with engines of their own, everything else
   through `kisi_core::commands`.
-* GitHub Pages (release workflow): `web/pages/index.html` (landing page) with `kisi.html` and `kisi-examples.html`;
-  the screenshots in `docs/img/` come from `tools/screenshots.py`.
+* GitHub Pages (release workflow): `web/pages/index.html` (landing page) with `kisi.html`, `kisi-examples.html` and
+  `kisi-docs.pdf`; the screenshots in `docs/img/` come from `tools/screenshots.py`.
 * Files come in by drag and drop or the file dialog; with the File System Access API (Chromium) the viewer keeps
   the file handles and “Reload” reads them again after saving in KiCad.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
@@ -117,19 +117,36 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
   as read and rebuilds the analysed board when the viewer switches the variant.
 * `kisi_core::gaps`: deterministic list of missing or default data, with where to find it and the kisi.json entry
   (supply rails also from net and pin names; the MPN where the Value field is not a part number).
-* Worked example of a `<board>.kisi.json` (power tree with sources, the open gaps): `docs/examples/xiao-nrf54lm20a/`.
+* Worked example of a `<board>.kisi.json` (power tree with sources, the open gaps): `docs/preparing-a-board.md` with
+  the file in `docs/examples/xiao-nrf54lm20a/`.
 * Agents use the CLI (`node kisi.mjs <command> <board>` → JSON) following the skills in `claude-plugin/skills/`:
   `kisi-prepare` (gaps → research with sources → kisi.json → `kisi config-check`) and `kisi-si-pi-review`.
   An MCP server and a KiCad plugin existed until 2026-10 and were removed (git history) in favour of this.
 
+## Documentation
+* User documentation in `docs/` (Markdown, rendered by GitHub, linked from the README and the landing page):
+  `getting-started.md`, `preparing-a-board.md`, `reference.md` (fields, kisi.json), `models.md` (models, accuracy,
+  validation, estimates), `cli.md`, `agents.md`; `docs/README.md` is the index. One fact in one place: the README
+  is a short entry page, the contributor files (`ARCHITECTURE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `ROADMAP.md`,
+  `UPSTREAM.md`) stay at the top level. The skills in `claude-plugin/skills/` repeat what an agent needs, because
+  they are read without the repository.
+* `docs/research/` – background research and concepts; `docs/examples/` – prepared board configurations.
+* Kept in step with the program by `crates/kisi-core/tests/docs.rs` (part of `cargo test`): `docs/cli.md` carries
+  `kisi help` verbatim (`KISI_BLESS_DOCS=1 cargo test -p kisi-core --test docs` rewrites it) and names every command
+  and option; `docs/preparing-a-board.md` names every gap id of `kisi gaps`.
+* `tools/docs_pdf.py` renders the pages (its `ORDER`) into `kisi-docs.pdf` with a table of contents – python-markdown
+  and the headless Chromium of Playwright – and fails on links to missing files or headings.
+
 ## Releases
 `.github/workflows/release.yml`: on a tag `v*` tests, field-solver validation, build of `kisi.html`,
-`kisi-examples.html` and `kisi.mjs`, attached to the GitHub release (the skills download `kisi.mjs` from there).
+`kisi-examples.html`, `kisi.mjs` and `kisi-docs.pdf`, attached to the GitHub release (the skills download `kisi.mjs`
+from there), plus `kisi-references.html` when the reference cases changed.
 
 ## Checks after changes
 `cargo test --release` · `tools/validate_field.sh` (field solver against HFSS/baseline) ·
 `python3 tools/check_viewer.py dist/kisi-examples.html` (all views, light/dark/phone, no console errors) ·
-`python3 tools/compare_cli.py` (Node CLI against the native CLI) · `tools/golden.py` (stored results of the example
+`python3 tools/compare_cli.py` (Node CLI against the native CLI) · `python3 tools/docs_pdf.py` (documentation PDF
+and link check of `docs/`) · `tools/golden.py` (stored results of the example
 boards in `validation/golden/` and of the via models on the 3D references) · `tools/ci_checks.py` (values with sources,
 Markdown links, CLI options named in the docs, Forstén's solver unchanged, reproducible bundles, bundle sizes).
 `.github/workflows/ci.yml` runs them by what changed (`tools/ci_checks.py changes`), everything on main, by hand and

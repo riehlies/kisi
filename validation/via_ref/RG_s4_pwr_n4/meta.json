@@ -1,0 +1,83 @@
+{
+ "case": "RG_s4_pwr_n4",
+ "meta": {
+  "group": "RG",
+  "title": "Finite board 24 \u00d7 16 mm, via L1 \u2192 L4 through the GND/PWR pair L2/L3, four GND vias at 1 mm joined to L2 only (openings in the PWR plane L3)",
+  "params": {
+   "board_mm": "24 \u00d7 16",
+   "returns": 4,
+   "via_mm": [
+    -3.3,
+    -1.9
+   ],
+   "pwr_plane": "L3"
+  },
+  "stackup": "s4",
+  "stackup_title": "4-layer 1.6 mm FR-4",
+  "copper_z": [
+   1.6,
+   1.4,
+   0.2,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L3"
+  ],
+  "pwr_planes": [
+   "L3"
+  ],
+  "ports": [
+   {
+    "name": "1 L1",
+    "layer": "L1",
+    "ref": "L2"
+   },
+   {
+    "name": "2 L4",
+    "layer": "L4",
+    "ref": "L3"
+   }
+  ],
+  "lumped": [],
+  "board": [
+   -12.0,
+   -8.0,
+   12.0,
+   8.0
+  ],
+  "via": [
+   -3.3,
+   -1.9
+  ],
+  "thru": [
+   "thru_R_s4_L1",
+   "thru_R_s4_L4"
+  ],
+  "cavity": {
+   "layers": [
+    "L2",
+    "L3"
+   ],
+   "d_mm": 1.2,
+   "er": 4.5,
+   "tand": 0.02
+  }
+ },
+ "date": "2026-10-23",
+ "fmax": 25000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 805736,
+   "steps": [
+    19601,
+    19801
+   ],
+   "dt": 1.0924581434799315e-13,
+   "seconds": 348.0,
+   "dfine": 0.07,
+   "dmax": 0.35
+  }
+ }
+}

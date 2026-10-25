@@ -1,9 +1,9 @@
 //! 3D FDTD (Yee scheme) for via transitions and small cut-outs of a PCB.
 //!
 //! A case (`Case`, JSON) describes a box: dielectric layers of the board, zero-thickness copper
-//! sheets (traces, planes with round or slot-shaped antipads, pads), vias as solid cylinders and
-//! lumped ports. The mesh is rectilinear and non-uniform (`make_mesh`). Dielectric loss is a
-//! conductivity fixed at `f_loss`.
+//! sheets (traces, planes with round or slot-shaped antipads, pads, polygon copper such as zone
+//! fills cut out of a board), vias as solid cylinders and lumped ports. The mesh is rectilinear
+//! and non-uniform (`make_mesh`). Dielectric loss is a conductivity fixed at `f_loss`.
 //!
 //! * Metal: conformal (Dey–Mittra) on round boundaries – the H update of every face that touches a
 //!   partially free edge uses the free edge lengths and an effective face area that keeps the
@@ -38,12 +38,20 @@ pub struct Layer {
 
 /// Zero-thickness copper at height z: a rectangle with holes (antipads). A hole is a circle
 /// [cx, cy, r] or a slot [x0, y0, x1, y1, r] (all points within r of the segment).
+///
+/// `polys` (optional): polygon copper, e.g. a zone fill taken from a board. The rings
+/// [[x, y], …] combine by the even-odd rule (outlines and their holes, or one fractured
+/// outline as KiCad stores fills); the sheet is metal inside `rect` where the rings say so,
+/// minus `holes`. Polygon edges are treated conformally like the round boundaries, and add no
+/// mesh lines of their own (`MeshSpec::refine` can ask for fine cells).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Sheet {
     pub z: f64,
     pub rect: [f64; 4],
     #[serde(default)]
     pub holes: Vec<Vec<f64>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub polys: Vec<Vec<[f64; 2]>>,
 }
 
 /// segment and radius of a hole
@@ -83,7 +91,8 @@ pub struct Via {
     pub dmesh: f64,
 }
 
-/// Lumped port along z at x, over y0..y1, from z0 (reference) to z1 (signal).
+/// Lumped port along z at x, over y0..y1, from z0 (reference) to z1 (signal) – across a trace
+/// that runs along x. With `x1`: at y = y0, over x..x1, across a trace that runs along y.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Port {
     pub x: f64,
@@ -93,6 +102,8 @@ pub struct Port {
     pub z1: f64,
     #[serde(default = "r50")]
     pub r: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub x1: Option<f64>,
 }
 fn r50() -> f64 {
     50.0
@@ -155,6 +166,10 @@ pub struct MeshSpec {
     /// thirds rule at the long edges of traces (lines Δ/3 inside, 2Δ/3 outside)
     #[serde(default)]
     pub thirds: bool,
+    /// boxes [x0, y0, x1, y1, cell] (mm) with mesh lines at most `cell` apart in x over x0..x1
+    /// and in y over y0..y1 (diagonal traces, polygon antipads)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub refine: Vec<[f64; 5]>,
 }
 fn ratio() -> f64 {
     1.4
@@ -206,6 +221,12 @@ pub struct Case {
     /// conformal metal (Dey–Mittra) on round vias, pads and antipads; false: staircase
     #[serde(default = "yes")]
     pub conformal: bool,
+    /// fraction of the Courant limit for the time step (default 0.95 conformal, 0.99 staircase)
+    #[serde(default)]
+    pub courant: f64,
+    /// conformal treatment also for polygon edges (default); false: polygons staircased
+    #[serde(default = "yes")]
+    pub conformal_polys: bool,
 }
 fn one() -> usize {
     1
@@ -335,6 +356,26 @@ fn grade(fixed: &mut Vec<(f64, f64, bool)>, dmax: f64, ratio: f64) -> Vec<f64> {
         }
         out.push(b);
     }
+    // Clusters of nearby features (board cut-outs: trace edges with the thirds rule, polygon
+    // refinement, pads) can still leave a sliver between two merged groups, and one sliver sets
+    // the time step of the whole run. Lines closer than 0.7 × the finest requested cell merge
+    // (the references have no cell below 0.84 · dfine, so they are unchanged).
+    let min_gap = 0.7 * fixed.iter().map(|x| x.1).fold(f64::INFINITY, f64::min);
+    let mut i = 1;
+    while i < out.len() {
+        if out[i] - out[i - 1] < min_gap && out.len() > 2 {
+            if i == out.len() - 1 {
+                out.remove(i - 1);
+            } else if i == 1 {
+                out.remove(i);
+            } else {
+                out[i - 1] = 0.5 * (out[i - 1] + out[i]);
+                out.remove(i);
+            }
+        } else {
+            i += 1;
+        }
+    }
     out
 }
 
@@ -353,16 +394,29 @@ pub fn make_mesh(c: &Case) -> Mesh {
     let on_board_edge = |v: f64, lo: f64, hi: f64| (v - lo).abs() < 1e-9 || (v - hi).abs() < 1e-9;
     for s in &c.sheets {
         fz.push((s.z, fine, false));
-        fx.push((s.rect[0], fine, false));
-        fx.push((s.rect[2], fine, false));
-        if c.mesh.thirds && !on_board_edge(s.rect[1], c.board[1], c.board[3]) && !on_board_edge(s.rect[3], c.board[1], c.board[3]) {
+        // polygon copper adds no lines of its own (its rect is only a bounding box)
+        let along_y = s.rect[3] - s.rect[1] > s.rect[2] - s.rect[0] && !on_board_edge(s.rect[0], c.board[0], c.board[2]) && !on_board_edge(s.rect[2], c.board[0], c.board[2]);
+        if !s.polys.is_empty() {
+        } else if c.mesh.thirds && along_y {
+            // a trace along y: the thirds rule on its long edges in x
+            fy.push((s.rect[1], fine, false));
+            fy.push((s.rect[3], fine, false));
+            fx.push((s.rect[0] + fine / 3.0, fine, false));
+            fx.push((s.rect[0] - 2.0 * fine / 3.0, fine, false));
+            fx.push((s.rect[2] - fine / 3.0, fine, false));
+            fx.push((s.rect[2] + 2.0 * fine / 3.0, fine, false));
+        } else if c.mesh.thirds && !on_board_edge(s.rect[1], c.board[1], c.board[3]) && !on_board_edge(s.rect[3], c.board[1], c.board[3]) {
             // thirds rule on the long edges (the traces run along x): a line Δ/3 inside and 2Δ/3
             // outside the edge, so the staircased strip has its true electrical width
+            fx.push((s.rect[0], fine, false));
+            fx.push((s.rect[2], fine, false));
             fy.push((s.rect[1] + fine / 3.0, fine, false));
             fy.push((s.rect[1] - 2.0 * fine / 3.0, fine, false));
             fy.push((s.rect[3] - fine / 3.0, fine, false));
             fy.push((s.rect[3] + 2.0 * fine / 3.0, fine, false));
         } else {
+            fx.push((s.rect[0], fine, false));
+            fx.push((s.rect[2], fine, false));
             fy.push((s.rect[1], fine, false));
             fy.push((s.rect[3], fine, false));
         }
@@ -397,13 +451,34 @@ pub fn make_mesh(c: &Case) -> Mesh {
         fz.push((v.z1, fine, false));
     }
     for p in &c.ports {
-        fx.push((p.x, fine, false));
-        if !c.mesh.thirds {
-            fy.push((p.y0, fine, false));
-            fy.push((p.y1, fine, false));
+        match p.x1 {
+            None => {
+                fx.push((p.x, fine, false));
+                if !c.mesh.thirds {
+                    fy.push((p.y0, fine, false));
+                    fy.push((p.y1, fine, false));
+                }
+            }
+            Some(x1) => {
+                fy.push((p.y0, fine, false));
+                if !c.mesh.thirds {
+                    fx.push((p.x, fine, false));
+                    fx.push((x1, fine, false));
+                }
+            }
         }
         fz.push((p.z0, fine, false));
         fz.push((p.z1, fine, false));
+    }
+    // refinement boxes: soft lines every `cell` (they give way to the geometry's own lines)
+    for r in &c.mesh.refine {
+        let cell = r[4].max(1e-3);
+        for (v, lo, hi) in [(&mut fx, r[0], r[2]), (&mut fy, r[1], r[3])] {
+            let n = ((hi - lo) / cell).ceil().max(1.0) as usize;
+            for k in 0..=n {
+                v.push((lo + (hi - lo) * k as f64 / n as f64, cell, true));
+            }
+        }
     }
     let clip = |v: &mut Vec<(f64, f64, bool)>, lo: f64, hi: f64| v.retain(|x| x.0 >= lo - 1e-9 && x.0 <= hi + 1e-9);
     clip(&mut fx, d[0], d[3]);
@@ -504,11 +579,110 @@ struct PortEdges {
 /// radius, z0, z1; z0 == z1 for one in a sheet plane.
 type Circle = (f64, f64, f64, f64, f64, f64, f64);
 
+/// Polygon copper of one sheet (even-odd rings): the edges, sorted into horizontal bands for
+/// the point test and into square cells for the search of nearby boundaries.
+struct PolyIdx {
+    /// x0, y0, x1, y1
+    edges: Vec<[f64; 4]>,
+    y0: f64,
+    band: f64,
+    bands: Vec<Vec<u32>>,
+    x0: f64,
+    cell: f64,
+    nx: usize,
+    ny: usize,
+    cells: Vec<Vec<u32>>,
+}
+
+impl PolyIdx {
+    fn new(rings: &[Vec<[f64; 2]>]) -> Self {
+        let mut edges = Vec::new();
+        for r in rings {
+            let n = r.len();
+            for k in 0..n {
+                let (a, b) = (r[k], r[(k + 1) % n]);
+                if a != b {
+                    edges.push([a[0], a[1], b[0], b[1]]);
+                }
+            }
+        }
+        let (mut x0, mut y0, mut x1, mut y1) = (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);
+        for e in &edges {
+            x0 = x0.min(e[0]).min(e[2]);
+            x1 = x1.max(e[0]).max(e[2]);
+            y0 = y0.min(e[1]).min(e[3]);
+            y1 = y1.max(e[1]).max(e[3]);
+        }
+        if edges.is_empty() {
+            (x0, y0, x1, y1) = (0.0, 0.0, 1.0, 1.0);
+        }
+        let band = ((y1 - y0) / 4000.0).max(0.01);
+        let nb = ((y1 - y0) / band).ceil() as usize + 1;
+        let mut bands = vec![Vec::new(); nb];
+        let cell = 0.1;
+        let nx = ((x1 - x0) / cell).ceil() as usize + 1;
+        let ny = ((y1 - y0) / cell).ceil() as usize + 1;
+        let mut cells = vec![Vec::new(); nx * ny];
+        for (i, e) in edges.iter().enumerate() {
+            let (ylo, yhi) = (e[1].min(e[3]), e[1].max(e[3]));
+            if yhi > ylo {
+                for b in &mut bands[((ylo - y0) / band) as usize..=(((yhi - y0) / band) as usize).min(nb - 1)] {
+                    b.push(i as u32);
+                }
+            }
+            let (cx0, cx1) = (((e[0].min(e[2]) - x0) / cell) as usize, (((e[0].max(e[2]) - x0) / cell) as usize).min(nx - 1));
+            let (cy0, cy1) = (((ylo - y0) / cell) as usize, (((yhi - y0) / cell) as usize).min(ny - 1));
+            for cy in cy0..=cy1 {
+                for cx in cx0..=cx1 {
+                    cells[cy * nx + cx].push(i as u32);
+                }
+            }
+        }
+        PolyIdx { edges, y0, band, bands, x0, cell, nx, ny, cells }
+    }
+    /// even-odd test (crossings of a ray towards +x)
+    fn inside(&self, x: f64, y: f64) -> bool {
+        let b = (y - self.y0) / self.band;
+        if b < 0.0 || b as usize >= self.bands.len() {
+            return false;
+        }
+        let mut odd = false;
+        for &i in &self.bands[b as usize] {
+            let e = &self.edges[i as usize];
+            if (e[1] > y) != (e[3] > y) && e[0] + (y - e[1]) * (e[2] - e[0]) / (e[3] - e[1]) > x {
+                odd = !odd;
+            }
+        }
+        odd
+    }
+    /// does an edge pass within `reach` of (x, y)?
+    fn near(&self, x: f64, y: f64, reach: f64) -> bool {
+        let cl = |v: f64, n: usize| -> usize { (v.max(0.0) as usize).min(n - 1) };
+        let (cx0, cx1) = (cl((x - reach - self.x0) / self.cell, self.nx), cl((x + reach - self.x0) / self.cell, self.nx));
+        let (cy0, cy1) = (cl((y - reach - self.y0) / self.cell, self.ny), cl((y + reach - self.y0) / self.cell, self.ny));
+        for cy in cy0..=cy1 {
+            for cx in cx0..=cx1 {
+                for &i in &self.cells[cy * self.nx + cx] {
+                    let e = &self.edges[i as usize];
+                    if seg_dist(x, y, e[0], e[1], e[2], e[3]) < reach {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+}
+
 /// Geometry tests of a case. Points outside the domain (in the PML) are clamped to it, so
 /// whatever touches the domain boundary continues straight through the PML.
 struct Geo<'a> {
     c: &'a Case,
     circles: Vec<Circle>,
+    /// sheets grouped by height: (z, sheet indices)
+    zgroups: Vec<(f64, Vec<usize>)>,
+    /// polygon index per sheet (None: a plain rectangle)
+    polys: Vec<Option<PolyIdx>>,
 }
 
 impl<'a> Geo<'a> {
@@ -528,7 +702,15 @@ impl<'a> Geo<'a> {
                 }
             }
         }
-        Geo { c, circles }
+        let mut zgroups: Vec<(f64, Vec<usize>)> = Vec::new();
+        for (i, s) in c.sheets.iter().enumerate() {
+            match zgroups.iter_mut().find(|g| (g.0 - s.z).abs() < 1e-9) {
+                Some(g) => g.1.push(i),
+                None => zgroups.push((s.z, vec![i])),
+            }
+        }
+        let polys = c.sheets.iter().map(|s| (!s.polys.is_empty()).then(|| PolyIdx::new(&s.polys))).collect();
+        Geo { c, circles, zgroups, polys }
     }
     fn clamp(&self, x: f64, y: f64, z: f64) -> (f64, f64, f64) {
         let d = &self.c.domain;
@@ -537,20 +719,32 @@ impl<'a> Geo<'a> {
     fn metal(&self, x: f64, y: f64, z: f64) -> bool {
         let (x, y, z) = self.clamp(x, y, z);
         let c = self.c;
-        c.sheets.iter().any(|s| {
-            (s.z - z).abs() < 1e-9 && x >= s.rect[0] - 1e-9 && x <= s.rect[2] + 1e-9 && y >= s.rect[1] - 1e-9 && y <= s.rect[3] + 1e-9 && !s.holes.iter().any(|h| {
-                    let (x0, y0, x1, y1, r) = hole_seg(h);
-                    seg_dist(x, y, x0, y0, x1, y1) < r - 1e-9
-                })
-        }) || c.vias.iter().any(|v| {
-            let d = (x - v.x).hypot(y - v.y);
-            let inz = z >= v.z0 - 1e-9 && z <= v.z1 + 1e-9;
-            if v.outer {
-                inz && d >= v.r - 1e-9
-            } else {
-                (inz && d <= v.r + 1e-9) || (v.pads.iter().any(|&pz| (pz - z).abs() < 1e-9) && d <= v.pad_r + 1e-9)
-            }
-        })
+        let sheet = self.zgroups.iter().find(|g| (g.0 - z).abs() < 1e-9).is_some_and(|g| {
+            g.1.iter().any(|&i| {
+                let s = &c.sheets[i];
+                x >= s.rect[0] - 1e-9
+                    && x <= s.rect[2] + 1e-9
+                    && y >= s.rect[1] - 1e-9
+                    && y <= s.rect[3] + 1e-9
+                    && self.polys[i].as_ref().is_none_or(|p| p.inside(x, y))
+                    && !s.holes.iter().any(|h| {
+                        let (x0, y0, x1, y1, r) = hole_seg(h);
+                        seg_dist(x, y, x0, y0, x1, y1) < r - 1e-9
+                    })
+            })
+        });
+        sheet
+            || c.vias.iter().any(|v| {
+                let (dx, dy) = (x - v.x, y - v.y);
+                let d2 = dx * dx + dy * dy;
+                let inz = z >= v.z0 - 1e-9 && z <= v.z1 + 1e-9;
+                if v.outer {
+                    inz && d2.sqrt() >= v.r - 1e-9
+                } else {
+                    let rm = v.r.max(v.pad_r) + 1e-9;
+                    d2 <= rm * rm && ((inz && d2.sqrt() <= v.r + 1e-9) || (v.pads.iter().any(|&pz| (pz - z).abs() < 1e-9) && d2.sqrt() <= v.pad_r + 1e-9))
+                }
+            })
     }
     /// relative permittivity and conductivity at a point (dielectric loss at f_loss)
     fn mat(&self, x: f64, y: f64, z: f64, f_loss: f64) -> (f64, f64) {
@@ -570,7 +764,9 @@ impl<'a> Geo<'a> {
         self.circles.iter().any(|&(x0, y0, x1, y1, r, a, b)| {
             let zok = if a == b { z0 <= a + 1e-9 && z1 >= a - 1e-9 && (z1 - z0) < 1e-9 } else { z1 >= a - 1e-9 && z0 <= b + 1e-9 };
             zok && (seg_dist(x, y, x0, y0, x1, y1) - r).abs() < reach
-        })
+        }) || (self.c.conformal_polys
+            && (z1 - z0) < 1e-9
+            && self.zgroups.iter().find(|g| (g.0 - z0).abs() < 1e-9).is_some_and(|g| g.1.iter().any(|&i| self.polys[i].as_ref().is_some_and(|p| p.near(x, y, reach)))))
     }
     /// free (non-metal) fraction of the segment p0 → p1
     fn free_len(&self, p0: [f64; 3], p1: [f64; 3]) -> f64 {
@@ -770,8 +966,9 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
     let n = nx * ny * nz;
     let geo = Geo::new(c);
     let dmin = |v: &[f64]| v.iter().cloned().fold(f64::INFINITY, f64::min);
-    let courant = if c.conformal { 0.95 } else { 0.99 };
-    let dt = courant / (C0 * (1.0 / dmin(&g.dx).powi(2) + 1.0 / dmin(&g.dy).powi(2) + 1.0 / dmin(&g.dz).powi(2)).sqrt());
+    let courant = if c.courant > 0.0 { c.courant } else if c.conformal { 0.95 } else { 0.99 };
+    // Courant limit of the smallest cells; conformal faces can lower it further (guard below)
+    let dt0 = courant / (C0 * (1.0 / dmin(&g.dx).powi(2) + 1.0 / dmin(&g.dy).powi(2) + 1.0 / dmin(&g.dz).powi(2)).sqrt());
     let f_loss = if c.f_loss > 0.0 { c.f_loss } else { c.fmax / 2.0 };
     let cx = |i: usize| 0.5 * (m.x[i] + m.x[i + 1]);
     let cy = |j: usize| 0.5 * (m.y[j] + m.y[j + 1]);
@@ -792,6 +989,14 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
         }
     };
     let lines = [&m.x, &m.y, &m.z];
+    // conformal metal only inside the domain: in the PML the geometry is the domain face
+    // extruded (staircase there), since the CPML terms use the full-cell spacings. A partial edge
+    // must lie strictly inside (not on a domain face): every face that contains it is then inside
+    // as well and gets the conformal update (a partial edge on the boundary, next to a regular PML
+    // face, made a coarse board cut-out grow without bound).
+    let dom = c.domain;
+    let in_dom = |p: [f64; 3]| (0..3).all(|a| p[a] >= dom[a] - 1e-9 && p[a] <= dom[a + 3] + 1e-9);
+    let strictly_in = |p: [f64; 3]| (0..3).all(|a| p[a] > dom[a] + 1e-9 && p[a] < dom[a + 3] - 1e-9);
     // free fraction of every edge: 0 metal, 1 free; partial only near a circle in conformal mode
     let edge_free = |comp: usize, i: usize, j: usize, k: usize| -> f64 {
         let p0 = [m.x[i], m.y[j], m.z[k]];
@@ -799,7 +1004,7 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
         let idx = [i, j, k];
         p1[comp] = lines[comp][idx[comp] + 1];
         let mid = [0.5 * (p0[0] + p1[0]), 0.5 * (p0[1] + p1[1]), 0.5 * (p0[2] + p1[2])];
-        if c.conformal && comp < 2 && geo.near_circle(mid[0], mid[1], mid[2], mid[2], p1[comp] - p0[comp]) {
+        if c.conformal && comp < 2 && strictly_in(p0) && strictly_in(p1) && geo.near_circle(mid[0], mid[1], mid[2], mid[2], p1[comp] - p0[comp]) {
             let f = geo.free_len(p0, p1);
             if f < 0.02 {
                 0.0
@@ -819,11 +1024,13 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
     let mut cb = [vec![0f32; n], vec![0f32; n], vec![0f32; n]];
     let mut epsr = [vec![1f32; n], vec![1f32; n], vec![1f32; n]];
     let mut free = [vec![0f32; n], vec![0f32; n], vec![0f32; n]];
-    let coef = |er: f64, sg: f64| -> (f32, f32) {
+    let mut sig = [vec![0f32; n], vec![0f32; n], vec![0f32; n]];
+    let coef_dt = |er: f64, sg: f64, dt: f64| -> (f32, f32) {
         let eps = EPS0 * er;
         let a = sg * dt / (2.0 * eps);
         (((1.0 - a) / (1.0 + a)) as f32, ((dt / eps) / (1.0 + a)) as f32)
     };
+    let coef = |er: f64, sg: f64| coef_dt(er, sg, dt0);
     for i in 0..nx {
         for j in 0..ny {
             for k in 0..nz {
@@ -842,6 +1049,7 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                         ca[0][id] = a;
                         cb[0][id] = b;
                         epsr[0][id] = er as f32;
+                        sig[0][id] = sg as f32;
                     }
                 }
                 if j + 1 < ny && i > 0 && i + 1 < nx && k > 0 && k + 1 < nz {
@@ -855,6 +1063,7 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                         ca[1][id] = a;
                         cb[1][id] = b;
                         epsr[1][id] = er as f32;
+                        sig[1][id] = sg as f32;
                     }
                 }
                 if k + 1 < nz && i > 0 && i + 1 < nx && j > 0 && j + 1 < ny {
@@ -868,6 +1077,7 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                         ca[2][id] = a;
                         cb[2][id] = b;
                         epsr[2][id] = er as f32;
+                        sig[2][id] = sg as f32;
                     }
                 }
             }
@@ -880,7 +1090,9 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
     // (real eigenvalues, stable). A_eff ≥ A · (weighted free fraction of the edges) keeps the
     // face's local frequency at most that of the full cell.
     let mut conf: Vec<(usize, usize, [(usize, usize, f32); 4])> = Vec::new();
-    if c.conformal && !geo.circles.is_empty() {
+    // sum of the conformal edge weights per face (1/m), for the time-step guard
+    let mut conf_sum: std::collections::HashMap<(usize, usize), f64> = std::collections::HashMap::new();
+    if c.conformal && (!geo.circles.is_empty() || geo.polys.iter().any(|p| p.is_some())) {
         let (sy, sx) = (nz, ny * nz);
         let st = [sx, sy, 1];
         let n3 = [nx, ny, nz];
@@ -922,6 +1134,12 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                         }
                         let p0 = [m.x[i], m.y[j], m.z[k]];
                         let (du, dv) = (lines[u][idx[u] + 1] - lines[u][idx[u]], lines[v][idx[v] + 1] - lines[v][idx[v]]);
+                        let mut far = p0;
+                        far[u] += du;
+                        far[v] += dv;
+                        if !in_dom(p0) || !in_dom(far) {
+                            continue;
+                        }
                         if !mark[comp][id] {
                             let mut ctr = p0;
                             ctr[u] += 0.5 * du;
@@ -954,37 +1172,129 @@ fn run(c: &Case, m: &Mesh, ex: usize, record: bool, on_progress: &mut dyn FnMut(
                         let mut terms = [(0usize, 0usize, 0f32); 4];
                         let mut t = 0;
                         let a_full = du * dv * 1e-6;
+                        let mut wsum = 0.0;
                         for &(_, srcc, sign) in &CURL[comp] {
                             let (dperp, lfull, f0, f1, i0, i1) = if srcc == u { (dv, du, fu0, fu1, e_u0, e_u1) } else { (du, dv, fv0, fv1, e_v0, e_v1) };
                             let wstd = 1.0 / (dperp * 1e-3);
                             let w0 = lfull * 1e-3 * f0 / (a_full * a_eff);
                             let w1 = lfull * 1e-3 * f1 / (a_full * a_eff);
+                            wsum += w0 + w1;
                             terms[t] = (srcc, i0, (-(sign as f64) * (wstd - w0)) as f32);
                             terms[t + 1] = (srcc, i1, ((sign as f64) * (wstd - w1)) as f32);
                             t += 2;
                         }
                         conf.push((comp, id, terms));
+                        conf_sum.insert((comp, id), wsum);
                     }
                 }
             }
         }
     }
+    // Time-step guard: Gershgorin bound of the E-field operator ε⁻¹·C_H·μ⁻¹·C_E (rows of the free
+    // and partial edges; metal edges stay 0). A_eff keeps a conformal face's own frequency at that
+    // of a full cell, but an edge between several shrunken faces can still exceed the Courant limit
+    // of the regular cells (found on a coarse board cut-out: a GND via of 2 cells' diameter inside a
+    // pour). If the largest row sum next to conformal faces exceeds the largest regular one, the
+    // time step shrinks by the square root of the ratio. Regular meshes are not touched.
+    let dt = {
+        let (sy, sx) = (nz, ny * nz);
+        let st = [sx, sy, 1];
+        let n3 = [nx, ny, nz];
+        let dual = [&g.dxd, &g.dyd, &g.dzd];
+        let prim = [&g.dx, &g.dy, &g.dz];
+        let face_sum = |b: usize, idf: usize, idx: [usize; 3]| -> (f64, bool) {
+            if let Some(&w) = conf_sum.get(&(b, idf)) {
+                return (w, true);
+            }
+            let (u, v) = match b {
+                0 => (1, 2),
+                1 => (0, 2),
+                _ => (0, 1),
+            };
+            if idx[u] + 1 >= n3[u] || idx[v] + 1 >= n3[v] {
+                return (0.0, false);
+            }
+            let (wu, wv) = (1.0 / prim[v][idx[v]], 1.0 / prim[u][idx[u]]);
+            let fr = |a: usize, i: usize| if free[a][i] > 0.0 { 1.0 } else { 0.0 };
+            (wu * (fr(u, idf) + fr(u, idf + st[v])) + wv * (fr(v, idf) + fr(v, idf + st[u])), false)
+        };
+        let (mut g_reg, mut g_conf) = (0.0f64, 0.0f64);
+        if !conf_sum.is_empty() {
+            for a in 0..3 {
+                for id in 0..n {
+                    if free[a][id] <= 0.0 {
+                        continue;
+                    }
+                    let idx = [id / sx, (id / sy) % ny, id % nz];
+                    let (mut gsum, mut touched) = (0.0, false);
+                    for b in 0..3 {
+                        if b == a {
+                            continue;
+                        }
+                        let cax = 3 - a - b;
+                        let wh = 1.0 / dual[cax][idx[cax]];
+                        let (s1, t1) = face_sum(b, id, idx);
+                        let (s2, t2) = if idx[cax] > 0 {
+                            let mut i2 = idx;
+                            i2[cax] -= 1;
+                            face_sum(b, id - st[cax], i2)
+                        } else {
+                            (0.0, false)
+                        };
+                        gsum += wh * (s1 + s2);
+                        touched |= t1 || t2;
+                    }
+                    let gv = gsum / epsr[a][id] as f64;
+                    if touched {
+                        g_conf = g_conf.max(gv);
+                    } else {
+                        g_reg = g_reg.max(gv);
+                    }
+                }
+            }
+        }
+        let scale = if g_reg > 0.0 && g_conf > g_reg { (g_reg / g_conf).sqrt() } else { 1.0 };
+        if std::env::var("KISI_FDTD_DEBUG").is_ok() {
+            eprintln!("dt guard: regular {g_reg:.4e}, next to conformal faces {g_conf:.4e}, time step × {scale:.4}");
+        }
+        if scale < 1.0 {
+            let dt = dt0 * scale;
+            for a in 0..3 {
+                for id in 0..n {
+                    if free[a][id] > 0.0 {
+                        let (x, y) = coef_dt(epsr[a][id] as f64, sig[a][id] as f64, dt);
+                        ca[a][id] = x;
+                        cb[a][id] = y;
+                    }
+                }
+            }
+            dt
+        } else {
+            dt0
+        }
+    };
     drop(free);
+    drop(sig);
     // ports: Ez edges, lumped resistor (and source) per edge
     let near = |v: &[f64], x: f64| v.iter().enumerate().min_by(|a, b| (a.1 - x).abs().total_cmp(&(b.1 - x).abs())).unwrap().0;
     let ports: Vec<PortEdges> = c
         .ports
         .iter()
         .map(|p| {
-            let i = near(&m.x, p.x);
-            let (j0, j1) = (near(&m.y, p.y0), near(&m.y, p.y1));
+            // a strip of Ez columns: along y at x (default) or along x at y0 (`x1` given)
+            let (i0, i1, j0, j1) = match p.x1 {
+                None => (near(&m.x, p.x), near(&m.x, p.x), near(&m.y, p.y0), near(&m.y, p.y1)),
+                Some(x1) => (near(&m.x, p.x.min(x1)), near(&m.x, p.x.max(x1)), near(&m.y, p.y0), near(&m.y, p.y0)),
+            };
             let (k0, k1) = (near(&m.z, p.z0.min(p.z1)), near(&m.z, p.z0.max(p.z1)));
-            let (nser, npar) = (k1 - k0, j1 - j0 + 1);
+            let (nser, npar) = (k1 - k0, (i1 - i0 + 1) * (j1 - j0 + 1));
             let mut edges = Vec::new();
-            for j in j0..=j1 {
-                for k in k0..k1 {
-                    let id = g.id(i, j, k);
-                    edges.push((id, g.dz[k], g.dxd[i] * g.dyd[j], EPS0 * epsr[2][id] as f64));
+            for i in i0..=i1 {
+                for j in j0..=j1 {
+                    for k in k0..k1 {
+                        let id = g.id(i, j, k);
+                        edges.push((id, g.dz[k], g.dxd[i] * g.dyd[j], EPS0 * epsr[2][id] as f64));
+                    }
                 }
             }
             PortEdges { edges, s: if p.z1 >= p.z0 { 1.0 } else { -1.0 }, nser, npar, r: p.r }
@@ -1562,6 +1872,85 @@ mod tests {
             eprintln!("{:.1} GHz: S11 {s11:.1} dB, S21 {s21:.2} dB", r.freq[k] / 1e9);
             assert!(s11 < -12.0 && s21 > -0.6 && s21 < 0.05, "{s11} {s21}");
         }
+    }
+
+    /// The same microstrip as `short_microstrip`, turned to run along y (ports with `x1`) and with
+    /// the ground plane as a polygon sheet (a fractured outline with a far-away square hole):
+    /// S equals the rectangle case.
+    #[test]
+    fn polygon_plane_and_y_ports() {
+        let w = 0.35;
+        let base = serde_json::json!({
+            "name": "t", "domain": [-4.0, -2.5, -1.0, 4.0, 2.5, 2.2], "board": [-3.5, -2.0, 3.5, 2.0],
+            "layers": [{"z0": 0.0, "z1": 0.2, "er": 4.3, "tand": 0.0}],
+            "sheets": [{"z": 0.0, "rect": [-3.5, -2.0, 3.5, 2.0]}, {"z": 0.2, "rect": [-3.0, -w / 2.0, 3.0, w / 2.0]}],
+            "ports": [{"x": -3.0, "y0": -w / 2.0, "y1": w / 2.0, "z0": 0.0, "z1": 0.2}, {"x": 3.0, "y0": -w / 2.0, "y1": w / 2.0, "z0": 0.0, "z1": 0.2}],
+            "fmax": 10e9, "mesh": {"dfine": 0.05, "thirds": true}, "end_db": -35, "max_steps": 20000, "excite": [0], "nf": 20
+        });
+        let c0: Case = serde_json::from_value(base.clone()).unwrap();
+        // turned by 90°: x → y, y → −x
+        let mut t = base.clone();
+        t["domain"] = serde_json::json!([-2.5, -4.0, -1.0, 2.5, 4.0, 2.2]);
+        t["board"] = serde_json::json!([-2.0, -3.5, 2.0, 3.5]);
+        // plane: a fractured outline reaching beyond the rect, its hole outside the rect, and a
+        // second ring with a hole of its own (even-odd), so the copper inside the rect is solid
+        let ring = vec![[-2.0, -3.5], [2.4, -3.5], [2.4, 0.0], [2.2, 0.0], [2.2, 0.4], [2.3, 0.4], [2.3, 0.0], [2.4, 0.0], [2.4, 3.5], [-2.0, 3.5]];
+        let r2 = vec![[2.05, -1.0], [2.35, -1.0], [2.35, -0.5], [2.05, -0.5]];
+        t["sheets"] = serde_json::json!([{"z": 0.0, "rect": [-2.0, -3.5, 2.0, 3.5], "polys": [ring, r2]}, {"z": 0.2, "rect": [-w / 2.0, -3.0, w / 2.0, 3.0]}]);
+        t["ports"] = serde_json::json!([{"x": -w / 2.0, "x1": w / 2.0, "y0": -3.0, "y1": -3.0, "z0": 0.0, "z1": 0.2}, {"x": -w / 2.0, "x1": w / 2.0, "y0": 3.0, "y1": 3.0, "z0": 0.0, "z1": 0.2}]);
+        let c1: Case = serde_json::from_value(t).unwrap();
+        let (r0, r1) = (simulate(&c0, None, &mut |_, _, _| {}), simulate(&c1, None, &mut |_, _, _| {}));
+        assert_eq!(r0.cells, r1.cells);
+        for k in [1, 9, 19] {
+            for i in 0..2 {
+                let (a, b) = (r0.runs[0].s[i][k], r1.runs[0].s[i][k]);
+                assert!((a.0 - b.0).abs() < 2e-3 && (a.1 - b.1).abs() < 2e-3, "S{}1 at {k}: {a:?} {b:?}", i + 1);
+            }
+        }
+    }
+
+    /// Clustered feature lines leave no cell below 0.7 · dfine: one sliver would set the time
+    /// step of the whole run.
+    #[test]
+    fn no_sliver_cells() {
+        let fine = 0.035;
+        // three soft lines (refinement of polygon traces in the ThunderScope M.2 cut-out): the
+        // first two join a group, its mean lands 0.018 mm from the third
+        let mut fixed: Vec<(f64, f64, bool)> = vec![(-1.0, 0.17, false), (1.0, 0.17, false), (-0.1625, fine, true), (-0.1315, fine, true), (-0.129, fine, true)];
+        let v = grade(&mut fixed, 0.17, 1.4);
+        let dmin = v.windows(2).map(|w| w[1] - w[0]).fold(f64::INFINITY, f64::min);
+        assert!(dmin >= 0.7 * fine - 1e-12, "smallest cell {dmin}");
+    }
+
+    /// A trace (polygon copper) of another net that runs out of the window into the PML, as in
+    /// a board cut-out: the run decays. Smoke test of the rule that partial edges lie strictly
+    /// inside the domain (with partial edges in the PML or on the domain faces, next to regular
+    /// faces, the ThunderScope M.2 cut-out and a coarse mesh of REFINOUT2,
+    /// validation/fdtd/board_cases/quick/BV_ts_refinout2_q050f25s.json, grew without bound).
+    #[test]
+    fn trace_into_pml_stable() {
+        let mut cap: Vec<[f64; 2]> = Vec::new();
+        for (cy, a0) in [(-2.4f64, 0.0f64), (0.5, std::f64::consts::PI)] {
+            for k in 0..=8 {
+                let t = a0 + std::f64::consts::PI * k as f64 / 8.0;
+                cap.push([0.3 + 0.095 * t.cos(), cy - 0.095 * t.sin()]);
+            }
+        }
+        let c: Case = serde_json::from_value(serde_json::json!({
+            "name": "pml", "domain": [-1.5, -1.5, -0.6, 1.5, 1.5, 0.8], "board": [-1.5, -1.5, 1.5, 1.5],
+            "layers": [{"z0": 0.0, "z1": 0.2, "er": 4.0}],
+            "sheets": [{"z": 0.0, "rect": [-1.5, -1.5, 1.5, 1.5]}, {"z": 0.2, "rect": [0.0, -2.6, 0.6, 0.7], "polys": [cap]}],
+            "ports": [{"x": 0.2, "x1": 0.4, "y0": 0.4, "y1": 0.4, "z0": 0.0, "z1": 0.2}],
+            "fmax": 30e9, "mesh": {"dfine": 0.05, "dmax": 0.1}, "end_db": -300, "max_steps": 6001, "nf": 4
+        }))
+        .unwrap();
+        let mut last = 0.0;
+        simulate(&c, None, &mut |_, s, db| {
+            if s > 3000 {
+                last = db
+            }
+        });
+        assert!(last < -30.0, "energy {last} dB");
     }
 
     /// A lone pad (a disc in a plane) with conformal metal: the energy must decay, not grow

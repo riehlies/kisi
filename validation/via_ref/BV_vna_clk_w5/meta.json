@@ -1,0 +1,170 @@
+{
+ "case": "BV_vna_clk_w5",
+ "meta": {
+  "approximations": [
+   "copper has zero thickness; layer heights are kisi's (dielectric plus half the copper on each side)",
+   "fills, pads and tracks outside the window are left out; copper that reaches the window edge continues through the PML",
+   "on the feed layers only the keep box is taken from the board: outside it the own trace(s) run straight along the nearest axis to the port, without pour or other copper",
+   "traces of other nets are cut at the keep box on the feed layers (floating ends)",
+   "other vias and traces of the own net (and of the partner net) are left out",
+   "solder mask, plating thickness and the barrel's hole wall are not modelled; the barrel is a solid cylinder of the drill radius",
+   "dielectric loss: a conductivity fixed at fmax/2 (tan\u03b4 exact there); lossless copper"
+  ],
+  "coplanar": [
+   {
+    "fence": true,
+    "gap_mm": 0.3225,
+    "lateral": "low",
+    "net": "GND",
+    "side": "in"
+   },
+   {
+    "fence": true,
+    "gap_mm": 0.3225,
+    "lateral": "high",
+    "net": "GND",
+    "side": "in"
+   },
+   {
+    "fence": true,
+    "gap_mm": 0.1525,
+    "lateral": "high",
+    "net": "GND",
+    "side": "out"
+   }
+  ],
+  "copper_z": [
+   1.5194,
+   1.2839,
+   0.8687,
+   0.6507,
+   0.2355,
+   0.0
+  ],
+  "extensions": [
+   {
+    "axis": "y",
+    "layer": "F.Cu",
+    "side": "in",
+    "sign": 1.0,
+    "u": 0.0,
+    "w": 0.3
+   },
+   {
+    "axis": "y",
+    "layer": "In3.Cu",
+    "side": "out",
+    "sign": 1.0,
+    "u": 0.5,
+    "w": 0.15
+   }
+  ],
+  "group": "board",
+  "kisi_returns": [
+   [
+    1.05,
+    0.1
+   ],
+   [
+    1.525,
+    -1.025
+   ],
+   [
+    0.0,
+    2.8
+   ],
+   [
+    -2.8,
+    -0.6
+   ],
+   [
+    1.0,
+    2.8
+   ],
+   [
+    -1.0,
+    2.8
+   ]
+  ],
+  "lumped": [],
+  "params": {
+   "backdrill": null,
+   "board": "VNA.kicad_pcb",
+   "drill_mm": 0.25,
+   "feed_mm": 3.0,
+   "fill_vertices": 1297,
+   "keep_mm": 1.1,
+   "l_in": "F.Cu",
+   "l_out": "In3.Cu",
+   "layers": [
+    "F.Cu",
+    "B.Cu"
+   ],
+   "net": "/FPGA/FPGA_CLK_R",
+   "origin": [
+    180.4011,
+    101.7536
+   ],
+   "pad_mm": 0.5,
+   "partner": null,
+   "partner_at": null,
+   "pitch_mm": null,
+   "remove_unused_layers": false,
+   "return_vias_in_window": 43,
+   "rotation_deg": 0.0,
+   "via_at": [
+    180.4011,
+    101.7536
+   ],
+   "window": [
+    -6.1,
+    -6.1,
+    6.1,
+    4.5
+   ],
+   "y": "up (board y flipped)"
+  },
+  "planes": [
+   "B.Cu",
+   "In1.Cu",
+   "In2.Cu",
+   "In4.Cu"
+  ],
+  "ports": [
+   {
+    "layer": "F.Cu",
+    "name": "1 in",
+    "ref": "In1.Cu"
+   },
+   {
+    "layer": "In3.Cu",
+    "name": "2 out",
+    "ref": "In2.Cu"
+   }
+  ],
+  "pwr_planes": [],
+  "stackup": "VNA",
+  "stackup_title": "VNA from the board file and its kisi.json",
+  "thru": [
+   "thru_BV_vna_clk_w5_in",
+   "thru_BV_vna_clk_w5_out"
+  ],
+  "title": "/FPGA/FPGA_CLK_R via F.Cu\u2192In3.Cu at (180.401, 101.754)"
+ },
+ "date": "2026-10-22",
+ "fmax": 25000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 724992,
+   "steps": [
+    30001,
+    32401
+   ],
+   "dt": 9.911390485946384e-14,
+   "seconds": 454.7,
+   "dfine": 0.07,
+   "dmax": null
+  }
+ }
+}

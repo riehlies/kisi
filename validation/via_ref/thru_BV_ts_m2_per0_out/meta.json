@@ -1,0 +1,86 @@
+{
+ "case": "thru_BV_ts_m2_per0_out",
+ "meta": {
+  "copper_z": [
+   1.4618,
+   1.32075,
+   1.20165,
+   0.25855,
+   0.13035,
+   0.0
+  ],
+  "excite": [
+   0,
+   1
+  ],
+  "group": "thru",
+  "lumped": [],
+  "mirror": [
+   2,
+   3,
+   0,
+   1
+  ],
+  "params": {
+   "layer": "In3.Cu",
+   "length_mm": 8.0,
+   "offsets_mm": [
+    -0.137462,
+    0.137462
+   ],
+   "width_mm": 0.14789
+  },
+  "plane_nets": [
+   "GND",
+   "+VUSB",
+   "GND"
+  ],
+  "planes": [
+   "In1.Cu",
+   "In2.Cu",
+   "In4.Cu"
+  ],
+  "ports": [
+   {
+    "layer": "In3.Cu",
+    "name": "1 near",
+    "ref": "In4.Cu"
+   },
+   {
+    "layer": "In3.Cu",
+    "name": "2 near",
+    "ref": "In4.Cu"
+   },
+   {
+    "layer": "In3.Cu",
+    "name": "3 far",
+    "ref": "In4.Cu"
+   },
+   {
+    "layer": "In3.Cu",
+    "name": "4 far",
+    "ref": "In4.Cu"
+   }
+  ],
+  "pwr_planes": [],
+  "stackup": "board",
+  "stackup_title": "as the board case",
+  "title": "2\u00d7thru In3.Cu, 8 mm, pair"
+ },
+ "date": "2026-10-22",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 392448,
+   "steps": [
+    4201,
+    4201
+   ],
+   "dt": 6.401561457509722e-14,
+   "seconds": 32.6,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

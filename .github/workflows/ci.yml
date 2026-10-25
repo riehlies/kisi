@@ -13,6 +13,7 @@
 #   export              the channel export (kisi export) in ngspice against kisi's S-parameters, scikit-rf reads
 #                       the Touchstone files (validation/channel_export/compare.py)
 #   refpage             the 3D reference page builds
+#   docs                the documentation PDF builds (tools/docs_pdf.py; also the link and heading check of docs/)
 #   upstream            Forstén's solver in third_party/ is upstream's tree, unchanged
 #   viewer or cli       reproducible bundles · bundle sizes (tools/size_budget.json)
 #   full runs only      the viewer in Firefox and WebKit · kisi.mjs on Windows
@@ -42,6 +43,7 @@ jobs:
       solver: ${{ steps.c.outputs.solver }}
       models: ${{ steps.c.outputs.models }}
       refpage: ${{ steps.c.outputs.refpage }}
+      docs: ${{ steps.c.outputs.docs }}
       export: ${{ steps.c.outputs.export }}
       upstream: ${{ steps.c.outputs.upstream }}
       full: ${{ steps.c.outputs.full }}
@@ -189,6 +191,12 @@ jobs:
           python3 -m pip install --quiet playwright numpy
           python3 -m playwright install --with-deps chromium
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
+      - name: Documentation PDF (and the link and heading check of docs/)
+        if: needs.changes.outputs.docs == 'true'
+        run: |
+          python3 -m pip install --quiet playwright markdown==3.10.3 pypdf==5.9.0
+          python3 -m playwright install --with-deps chromium
+          python3 tools/docs_pdf.py dist/kisi-docs.pdf
       - name: Reference cases page
         if: needs.changes.outputs.refpage == 'true'
         run: |

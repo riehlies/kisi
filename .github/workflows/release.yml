@@ -4,10 +4,12 @@
 #                        from their projects at fixed commits (tools/fetch_examples.sh)
 #   kisi.mjs           – the command line with the field solver (node kisi.mjs help; Node.js >= 18; smoke-tested
 #                        on Node 22 and 20, the viewers headless in Chromium)
+#   kisi-docs.pdf      – the documentation in docs/ as one PDF (tools/docs_pdf.py)
 #   kisi-references.html – the 3D reference cases (kisi-fdtd) with kisi's models against them
 #                        (validation/fdtd/make_viewer.py; built here, not kept in the repository) – attached
 #                        only when the reference cases or the page builder changed since the previous release
-# and publish the viewers (not the reference page) with the landing page (web/pages/index.html) on GitHub Pages
+# and publish the viewers and the documentation PDF (not the reference page) with the landing page
+# (web/pages/index.html) on GitHub Pages
 # (repository settings: Pages → Source "GitHub Actions"; needs a public repository on the free plan).
 # Run it by hand (workflow_dispatch) to get the files as a build artifact without a release.
 name: release
@@ -46,6 +48,14 @@ jobs:
         run: |
           python3 -c "import numpy" 2>/dev/null || sudo apt-get install -y python3-numpy
           python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Documentation PDF
+        run: |
+          python3 -m pip install --quiet playwright markdown==3.10.3 pypdf==5.9.0
+          python3 -m playwright install --with-deps chromium
+          python3 tools/docs_pdf.py dist/kisi-docs.pdf
       - name: Field solver validation (HFSS / baseline, viewer bundle)
         run: sh tools/validate_field.sh
       - name: Smoke test of kisi.mjs
@@ -80,6 +90,7 @@ jobs:
             dist/kisi.html
             dist/kisi-examples.html
             dist/kisi.mjs
+            dist/kisi-docs.pdf
             dist/kisi-references.html
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -87,7 +98,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes
-          files="dist/kisi.html dist/kisi-examples.html dist/kisi.mjs"
+          files="dist/kisi.html dist/kisi-examples.html dist/kisi.mjs dist/kisi-docs.pdf"
           # the reference page only when its cases or builder changed since the previous release tag
           prev=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
           if [ -z "$prev" ] || ! git diff --quiet "$prev" "$GITHUB_REF_NAME" -- validation/via_ref validation/fdtd/make_viewer.py validation/fdtd/viewer_template.html; then

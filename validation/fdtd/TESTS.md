@@ -2,7 +2,7 @@
 
 What was tested, how, and the result. Numbers come from the JSON files in `results/` and from
 `validation/via_ref/*/meta.json`. The reference page (`python3 make_viewer.py` → `dist/kisi-references.html`,
-also attached to every release) shows the same tables (tab "Solver checks") and every case with its curves.
+attached to the releases in which the reference cases changed) shows the same tables (tab "Solver checks") and every case with its curves.
 The scripts named here reproduce each result.
 
 ## 1. Solver (kisi-fdtd)
@@ -394,3 +394,161 @@ On the ThunderScope PCIe lanes, P aligned with itself gives P's odd-mode S21 exa
 (T_ts6_diff_ms/sl, group E) are symmetric pairs, where the 4-port and the odd mode agree; their comparisons in
 sections 3, 5 and 7 used the net's 4-port (`rf::mixed`), which is unchanged. **Open:** a 3D reference of an
 asymmetric pair (a jog, a stub on one line) to check the mode conversion.
+
+## 9. Board vias in 3D (Block 2)
+
+Full report: **`BOARD_VIAS.md`**; `board_vias.py` reproduces everything (cases `board_cases/`, results
+`../via_ref/BV_*`, `results/board_vias*.json`).
+
+### Solver
+| # | Test | Where | Result |
+|---|---|---|---|
+| S9 | Polygon copper and ports across y-directed traces: the microstrip of `short_microstrip` turned by 90° with a polygon plane | unit test `polygon_plane_and_y_ports` | same mesh, S within 2·10⁻³ |
+| S10 | No sliver cells: three soft refinement lines of the M.2 cut-out gave a 0.018 mm cell (0.005 mm in the whole case, time step 7× too small) | unit test `no_sliver_cells` | fails without the rule, passes with it; 74 reference meshes unchanged |
+| S11 | Conformal edges only strictly inside the domain (the M.2 case and a coarse REFINOUT2 mesh grew without bound with partial edges in the PML and on its faces) | board cases, smoke test `trace_into_pml_stable` | stable; a reference via case (C_s8_offset) and the board 2×thru fixtures rerun bit-identical, the board cases within 0.07 dB |
+| S12 | Time-step guard: Gershgorin bound of the operator next to conformal faces against the regular cells | `KISI_FDTD_DEBUG=1` | never triggered (74 references, 3 board cases) |
+
+### De-embedding
+| # | Test | Where | Result |
+|---|---|---|---|
+| S13 | 2×thru de-embedding with lines of Zc ≠ z0: a known π-section via between 30 pH ports and 4 mm lossy lines of 64/62, 53/51.5, 50/50 and 114/94 Ω | `board_vias.py deembed-check` | z0-referred NZC: C up to +82 fF, L up to −200 pH; `sparam.deembed_matched` (fixtures referred to their own line first): C within 5 fF, L within 4 pH, \|S21\| within 0.2 dB to 20 GHz |
+| S14 | Block 1 single vias de-embedded both ways | `board_vias.py block1` | fixtures 49.4–50.7 Ω: C −1…−5 fF, L 0…+11 pH (B_s8 L1L3 stub / back-drill: C −8…−20 fF); 44–47 Ω fixtures change more (X_s8x2_L1L3_bd_d200: C 22 → 62 fF) |
+
+### Board vias against kisi's ladder (matched de-embedding, ladder with the 3D loss model)
+| | M.2 PCIe pair (Sdd) | ThunderScope through via | LibreVNA via with stub |
+|---|---|---|---|
+| max Δ\|S21\| to 16 / 20 GHz | 0.29 / 0.30 dB | 0.21 / 0.38 dB | 0.42 / 1.85 dB (notch shift; 0.06 dB to 6 GHz) |
+| dip / notch, 3D / ladder | 16 / 17 GHz, −0.71 / −1.00 dB | 30.4 GHz notch in 3D only | 24.0 / 22.8 GHz (−5.0 %) |
+| TDR min | −8.4 % | −0.6 % | −2.1 % |
+| delay, 3D / ladder | 10.1 / 13.5 ps | 14.1 / 15.2 ps | 13.5 / 18.1 ps |
+| C, L 3D / ladder | 158 / 217 fF, 673 / 855 pH (diff.) | 278 / 269 fF, 686 / 791 pH | 391 / 478 fF, 262 / 503 pH |
+| ladder without the signal-layer pours: phase error at 20 GHz | 25° → 3.4° | 8° → 2.3° | 34° → 9° (notch > 25 GHz) |
+
+- The M.2 16 GHz dip is real: the broad reflection maximum of the low-impedance pair via, not a resonance; the
+  ladder makes it 0.29 dB too deep.
+- Ladder findings for follow-up work: GND pours on the via's signal layers taken as planes (too slow by 1.1–4.6 ps,
+  too capacitive on M.2 and LibreVNA); series inductance 105–241 pH too high (26–127 pH without the signal-layer
+  pours); the REFINOUT2 notch at 30 GHz (likely its return-via cage) is missing.
+
+## 10. Plane resonances of finite boards (Block 3)
+
+Full report: **`BOARD_RESONANCES.md`**; `board_resonances.py` reproduces everything (cases `resonance_cases/`,
+results `../via_ref/R_*`, `../via_ref/BV_vna_clk_w5`, `results/board_resonances*.json`, plots
+`results/board_resonances/`). The model is the option `--via-cavity` (off by default).
+
+### Model checks (unit tests in `kisi_si::via_cavity`, `kisi_si::via_pbm`)
+| # | Test | Where | Result |
+|---|---|---|---|
+| M1 | Rectangular cavity, single series with Kummer acceleration, against the double modal series | `rect_green_matches_double_series` | within 0.2 % |
+| M2 | A large cavity against the infinite plates (Hankel function), self and transfer terms | `rect_green_large_cavity_is_free_space` | within 0.1 % |
+| M3 | Low-frequency limit: the plate capacitance εA/d; a short reduced as a port = as a load | `rect_green_low_frequency_capacitance`, `rect_short_load_reduces` | within 1 % / 10⁻⁹ |
+| M4 | Grid (five-point, exact near field) against the rectangle, 4 ports and a short | `grid_matches_rect` | within 1 % |
+| M5 | A grid window with absorbing sides against the infinite plates | `grid_window_is_open` | within 5 % |
+| M6 | Edge radiation: the slot conductance's short and long limits ((w/λ)²/90, w/(120λ), halved for a board edge); the straight edges of an L shape | `slot_conductance_limits_and_edges` | within 2 % / 5 %; edges exact |
+| M7 | Ladder with a large lossy cavity = the infinite ladder; one via in the coupled solver = its ABCD | `large_cavity_is_the_infinite_ladder`, `coupled_single_matches_abcd` | \|ΔS21\| < 2·10⁻³ / 10⁻⁹ |
+| M8 | Decoupling-capacitor parasitics from `data/components.json` | `decap_parasitics_from_data` | 0402: 0.75 nH, 25 mΩ at 100 nF |
+
+### Finite boards in 3D against the ladder (max / rms \|ΔS21\| below 12 GHz, dB)
+| case | infinite plates (default) | cavity, rectangle | cavity, grid | resonances below 12 GHz found (grid) |
+|---|---|---|---|---|
+| one via, no return via | 4.90 / 1.13 | 1.92 / 0.47 | 1.75 / 0.46 | 6/6, \|Δf\| 2.0 %, \|Δdepth\| 0.18 dB |
+| one return via 2 mm away | 2.41 / 0.75 | 1.76 / 0.44 | 1.71 / 0.43 | 8/8, 2.5 %, 0.23 dB |
+| four return vias at 1 mm | 0.04 / 0.03 | 0.05 / 0.03 | 0.05 / 0.03 | none in 3D |
+| L-shaped planes | 5.16 / 1.13 | – | 1.61 / 0.44 | 7/8, 1.8 %, 0.25 dB |
+| capacitor in the cavity | 5.29 / 1.25 | 2.04 / 0.51 | 1.86 / 0.51 | 7/8, 1.6 %, 0.39 dB |
+| two vias sharing the cavity (coupling S31 peak, 3D −12.2 dB) | 3.95 / 1.03, no coupling | 1.81 / 0.39, −12.1 dB | 1.67 / 0.39, −12.1 dB | – |
+
+- Without edge radiation the resonances are 0.6–1.0 dB too deep and the error above 12 GHz is 2–3× larger.
+- Above 12 GHz neither form follows the 3D (rms 1.7–2.2 dB, the infinite plates 1.5–1.9 dB).
+- Default path unchanged: `compare_kisi.py` identical to `results/kisi_models.json`; `compare_cli.py` identical.
+  With the option the Block 1 references get worse (their planes are infinite in 3D, the KiCad stand-in board
+  ends at the window).
+
+## 11. Return groups per plane pair (Block 4)
+
+Full report: **`BOARD_RETURNS.md`**; `board_returns.py` reproduces everything (cases `return_cases/`,
+results `../via_ref/RG_*`, `../via_ref/BV_ts_m2_per0_q050f25s_e35_in2gnd`, `results/board_returns*.json`,
+plots `results/board_returns/`). The model is the option `--via-returns` (off by default).
+
+### Model checks (unit tests in `kisi_si::via_pbm`)
+| # | Test | Where | Result |
+|---|---|---|---|
+| M9 | The ladder solved as nodes and spans together (the core with return spans) without returns = the chain | `coupled_core_equals_chain` | 10⁻⁹ |
+| M10 | A return joined to the outer of three planes in one dielectric (floating across the middle one) = shorts in both pairs; joined to all three = the ladder before return groups; joined to one plane (capacitive) = a poorer return than shorts | `floating_return_across_a_plane` | < 2·10⁻³·f/GHz in S21; 10⁻¹²; holds |
+| M11 | A capacitor post without impedance = a short; the roles short / floating / capacitive / open; a 1 nH capacitor is a poorer return than a via at 10 GHz | `cap_post_and_roles` | 10⁻⁹; holds |
+| M12 | A return's capacitance to a plane it passes (r–z Laplace with and without the post): between the coaxial stub value and 3× it, smaller for a larger opening or a shorter stub | `post_capacitance` | holds (119 fF for the GND vias of `RG_s4_pwr_n4`) |
+| M13 | The returns reduced onto the via's current moments (W) against the full nodal solve | `board_returns.py`, `RG_s4_pwr_n4` | cavity 10⁻¹²; infinite plates (W interpolated on 0.25 GHz) ≤ 0.001 dB |
+
+### 3D against the ladder (max / rms |ΔS21|, dB)
+| case | before return groups (default) | return groups, infinite plates | return groups, cavities | |
+|---|---|---|---|---|
+| GND vias not joined to the PWR plane (`RG_s4_pwr_n4`), 0.5–12 / 12–20 GHz | 8.45 / 1.97, 6.65 / 1.69 | 6.15 / 1.36, 4.44 / 1.11 | 2.48 / 0.68, 3.17 / 0.85 | 7/7 dips, 2.1 %, 0.44 dB |
+| the same with a capacitor 2 mm away (`RG_s4_pwr_n4_cap2`) | 9.02 / 2.10, 6.77 / 1.70 | 6.45 / 1.42, 4.33 / 1.12 | 2.94 / 0.77, 2.67 / 0.79 | 8/8 dips, 2.0 %, 0.44 dB |
+| GND/GND (`R_s4_rect_n4`) | 0.04 / 0.03, 0.11 / 0.04 | identical | identical | – |
+| ThunderScope stack, GND vias across a PWR In2 (`RG_ts6_sw_pwr`) | 0.10 / 0.04, 0.26 / 0.09 | 0.07 / 0.03, 0.19 / 0.07 | 0.11 / 0.03, 0.18 / 0.08 | – |
+| ThunderScope REFINOUT2 (board via, 3D with In2 as it is) | 0.10 / 0.06, 0.38 / 0.23 | 0.16 / 0.08, 0.66 / 0.41 | – | – |
+| ThunderScope M.2 pair (Sdd, quick mesh) | 0.27 / 0.15, 0.30 / 0.27 | 0.28 / 0.15, 0.31 / 0.28 | – | – |
+
+- The floating supply plane (PWR − GND In2): 3D 0.06 / 0.14 dB at 16 / 20 GHz on the synthetic
+  ThunderScope stack, ladder 0.07 / 0.13 dB; on REFINOUT2 3D 0.05 / 0.10 / 0.19 dB at 12 / 16 / 20 GHz,
+  ladder 0.07 / 0.15 / 0.28 dB. The M.2 pair: no effect in 3D (≤ 0.002 dB to 20 GHz) nor in the
+  ladder (≤ 0.03 dB).
+- Default path unchanged: `compare_kisi.py` identical to `results/kisi_models.json` (56 rows), also
+  with `KISI_VIA_RETURNS=1`; `check --all` of both boards byte-identical; with the option no verdict
+  changes, ThunderScope 2.9 → 4.1 s, LibreVNA 1.0 → 1.15 s.
+
+## 12. Block 5: the warning, the ladder fixes, the TDR of the validation scripts
+
+### The warning in the default path
+- Channel vias whose path crosses a GND/supply plane pair that no return via within 3 mm joins or
+  bridges (`via::open_pairs`) get a warning in `net`, the viewer's lane/net detail and `check`
+  (`via_warning`, `via_warnings`); the numbers do not change. Example boards: no such via; the old
+  "reference changes … capacitors" warning dropped on two LibreVNA nets whose pairs are bridged.
+  `RG_s4_pwr_n4` / `_cap2`: warned (with one capacitor); `RG_ts6_sw_pwr` (bridged), `RG_ts6_sw_gnd`,
+  `R_s4_rect_n4`: not. Unit test `via::tests::open_plane_pair_warning`. BOARD_RETURNS.md section 8.
+
+### The TDR of the validation scripts
+- `sparam.step_response` summed the step from the middle of the Gaussian edge, so a reflection at the
+  reference plane lost its first half and left an offset (a 60 fF capacitor read as a 56 Ω plateau).
+  Now from three rise times before the edge, as kisi's `rf::tdr`. Re-scored: ladder on the single
+  vias (`rust_models.py`) TDR error median / p90 1.3 / 9.3 → 1.1 / 4.3 %; kisi channel, single vias
+  1.4 / 7.4 → 2.3 / 5.5 %, pair vias (Zdiff) 5.9 / 17.9 → 11.7 / 14.4 %; the long-stub maxima of
+  section 7 (11–16 %) were this artefact (now 1–5 %). The numbers of sections 3, 5 and 7 are those of
+  their time.
+
+### Board vias at the via centre, and the pours on the signal layers
+- The board-via comparisons of Blocks 2–4 carried the trace the channel leaves to the ladder
+  (`Feed::dropped`): now at the via centre (`PbmVia::abcd_centre`).
+- Pours on the via's signal layers as coplanar returns (`ViaGeom::coplanar`, default): M.2 pair phase
+  23.6° → 2.2°, C 214 → 144 fF (3D 158); REFINOUT2 L 791 → 712 pH (686); LibreVNA RF via L 337 →
+  225 pH (262), 6–12 GHz 0.20 → 0.44 dB; FPGA_CLK_R C/L/delay within 4 % of 3D. `compare_kisi.py`: all
+  56 rows identical. Example boards: no verdict changes, 9 + 10 rows (BOARD_VIAS.md section 5).
+- Series inductance after both: −14 … +12 % without a common sign; no change. Wide traces (X cases):
+  the 44/47 Ω fixtures of their 3D de-embedding; no change. B_ts6_L1L6 still lacks 50 fF.
+- `--via-cavity` / `--via-returns` stay off by default (BOARD_RETURNS.md section 7).
+
+## 13. Block 6: the ladder's loss above 12 GHz, the cavity run time
+
+### Loss above 12 GHz: plated pads as return posts
+- Power balance 1 − |S11|² − |S21|² of REFINOUT2 (BOARD_VIAS.md section 6.1): at 20 GHz 3D 9.4 %, ladder
+  16.3 %, of it 11.6 % radiation into the infinite plane pairs (the same ladder with a lossless dielectric).
+  Not the dielectric, the conductor, the ports or the de-embedding (raw minus fixtures: 5.1 %, so the 3D
+  number is good to about ±4 points). Cause: the return-via cage is open on one side, closed on the board
+  by the plated GND pins of the coaxial connector (the nearest at 2.99 mm) and a ninth via beyond the cap
+  of 8. Block 1 references: ladder minus 3D median +0.8 / +0.4 points at 12 / 20 GHz.
+- Fix (default): `via::plane_posts` – vias of plane nets and plated holes of plane-net pads (`Pad::plated`) –
+  and the nearest 12 within 3 mm (`via::RETURN_POSTS`). REFINOUT2: 12–20 GHz max |ΔS21| 0.41 → 0.02 dB,
+  loss at 20 GHz 16.2 → 7.1 % (3D 9.4), 20–25 GHz rms 0.62 → 0.32 dB, phase at 20 GHz 2.4 → 3.8°; M.2
+  pair, FPGA_CLK_R unchanged, LibreVNA RF via 1.63 → 1.64 dB. `compare_kisi.py` / `golden.py vias`: all 56
+  rows unchanged. Example boards: no verdict changes, 5 + 5 rows (`golden.py boards`, ts.check and
+  vna.check). Validation switches `KISI_RET_PADS=0`, `KISI_RET_CAP=8`; `board_vias.py fixes` keeps the
+  three states (before Block 5, Block 5, Block 6). Unit test `via::tests::plated_pads_are_return_posts`.
+- With return groups REFINOUT2 is 0.29 dB off at 12–20 GHz (Block 5: 0.67); they stay an option
+  (BOARD_RETURNS.md section 7).
+
+### The cavity run time
+- 31 744 grid factorisations (79 of 105 s on ThunderScope) for environments that are mostly the same
+  matrix. Shared factorisations per region (`via_cavity::GridGroup`), a registering pass, fixed-pattern
+  assembly (`kisi_sparse::ComplexPattern`), reproducible order of the shorted cells: ThunderScope 102–109 →
+  55–60 s on one thread, LibreVNA 14–15 → 11 s; one and four threads byte-identical
+  (BOARD_RESONANCES.md section 9). Unit test `via_cavity::tests::shared_grid_groups`.

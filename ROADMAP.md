@@ -12,18 +12,22 @@ validation depends on measurements that take time.
 ## 1. Usability: GUI, CLI, documentation
 Goal: humans in the viewer and agents with the CLI can both use kisi easily. Well-prepared boards already display
 well; the challenge is preparing a new design for a meaningful analysis – missing data, definitions and models.
-- **Documentation structure** (first step, decided 2026-10-24). The README has grown long. Split it into a short
-  README and Markdown in `docs/` (rendered by GitHub, linked from the README and the landing page): getting started,
-  preparing a board (with the XIAO nRF54LM20A as a worked tutorial), field and `kisi.json` reference, models and
-  limits, CLI reference, using kisi with agents. Same facts, one place each. The docs can be rendered to one PDF
-  that the release workflow attaches. Along with it: check the repository for confusing or outdated information,
-  files and documents and clean them up.
+- **Documentation structure** (first step, decided 2026-10-24) – **done:** a short README and the user
+  documentation in `docs/` (getting started, preparing a board with the XIAO nRF54LM20A as the worked example, field
+  and `kisi.json` reference, models and limits, CLI reference, agents), linked from the README and the landing page;
+  `tools/docs_pdf.py` renders it into `kisi-docs.pdf`, which CI builds (and uses as a link check) and the release
+  attaches; `crates/kisi-core/tests/docs.rs` keeps `docs/cli.md` (the `kisi help` text, every command and option)
+  and the gap ids in step with the code. The repository was checked for stale statements and plans. Next: each
+  feature updates its page in the same change (rule in `AGENTS.md`); the maintainer's coordinating session keeps
+  the overview of the docs when branches are merged.
 - **Board preparation in the viewer** (decided 2026-10-24: shared core plus a "Prepare" step; a mockup first). One
   core for humans and agents: `kisi gaps` already says what is missing, where to find it and where it goes in
   `kisi.json`. The "Prepare" step lists the gaps and lets the simple values be entered directly (laminate εr/tanδ,
   net class targets and profiles, regulators and loads, thermal data), checked by the same code as `config-check`,
   and exports `<board>.kisi.json`. Research-heavy values (datasheets) stay with the agent path (skill
-  kisi-prepare). No second logic in the viewer.
+  kisi-prepare). No second logic in the viewer. **In progress on branch `feat/docs-prepare`** (mockup approved:
+  a "Prepare PCB" page with tabs Impedance / Channel / Power; first version built; being made fully functional
+  before it is merged).
 - **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
   (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
   text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an
@@ -58,16 +62,24 @@ validation, and every result says which level it used and how uncertain it is.
   sound): Block 2 `feat/via-3d-board` (board via →
   kisi-fdtd exporter, matched de-embedding, `BOARD_VIAS.md`), Block 3 `feat/board-resonances` (finite plane cavities
   and via-to-via coupling, option `--via-cavity`, `BOARD_RESONANCES.md`), Block 4 `feat/return-groups` (return vias
-  per plane pair and decoupling capacitors as returns, option `--via-returns`, `BOARD_RETURNS.md`). Next:
-  - fix the ladder errors found in Block 2 – pours on the signal layers as a coplanar return, the series
-    inductance, TDR maxima of long stubs, wide traces at the via, the ThunderScope through via (~50 fF missing) –
-    before cavities and return groups can become the default;
-  - a warning in the default path for channel vias that cross a GND/supply pair no via bridges (the cavity survey
-    finds them already);
+  per plane pair and decoupling capacitors as returns, option `--via-returns`, `BOARD_RETURNS.md`). Block 5 on the
+  same branch: done – a warning in the default path for channel vias across a GND/supply pair no via bridges
+  (`check`, `net`, the viewer's details; none on the example boards); the pours on the via's signal layers as
+  coplanar returns in the ladder (the default; M.2 pair phase 24° → 2°); two corrections of the comparisons (board
+  vias at the via centre, the TDR of the validation scripts – the long-stub TDR maxima were this);
+  `--via-cavity` / `--via-returns` reassessed and kept off (`BOARD_VIAS.md` section 5, `BOARD_RETURNS.md`
+  sections 7–8). Block 6: done – the REFINOUT2 excess loss above 12 GHz was an open return cage: plated pads of
+  plane nets (connector pins) are return posts now, the nearest 12 (12–20 GHz 0.41 → 0.02 dB against 3D, loss at
+  20 GHz 16 → 7 %, 3D 9 %; `BOARD_VIAS.md` section 6); the cavity option shares its factorisations per region
+  (ThunderScope 105 → 57 s on one thread, results reproducible; `BOARD_RESONANCES.md` section 9). Next:
+  - the return groups' floating-plane loss is 1.6× the 3D on REFINOUT2 (0.29 dB off at 12–20 GHz) – what keeps
+    them from the default; the cavity option is still 8× the default (per-via fill masks);
+  - pair vias read 8–11 % high in Zdiff minimum with the corrected TDR (L1→L8 references); the X exits without
+    a plane on one side (+56 fF on X_s8x4); the thick-core through via B_ts6_L1L6 (−50 fF); re-score the
+    Block 1 references with the matched de-embedding;
   - above 12 GHz neither ladder follows the 3D results, and the first board mode comes out 1.6–2.5 % low;
   - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
-    ladder; about 8 days, a minimal version 4) – after the warning and the ladder fixes (order decided 2026-10-24:
-    warning, ladder fixes, 3D check);
+    ladder at the via centre; about 8 days, a minimal version 4; design note `BOARD_VIAS.md` section 5.6);
   - the ladder in WebAssembly is about 2 × slower than native.
 - **Pads and gold fingers without a reference plane:** a proper model instead of the ~1.5 × estimate.
 - **Crosstalk:** broadside coupling between layers (detected and listed so far), crossings of plane splits and

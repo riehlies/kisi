@@ -37,11 +37,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.144732,
-    "i_out": 0.143335,
+    "i_in": 0.148205,
+    "i_out": 0.14674,
     "id": "L6",
     "kind": "pass",
-    "loss_w": 0.00698528,
+    "loss_w": 0.00732114,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
@@ -92,11 +92,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0150232,
-    "i_out": 0.015,
+    "i_in": 0.0176319,
+    "i_out": 0.0176,
     "id": "L10",
     "kind": "pass",
-    "loss_w": 7.65e-05,
+    "loss_w": 0.000105318,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
@@ -125,11 +125,11 @@
    {
     "efficiency": 0.88,
     "efficiency_estimate": false,
-    "i_in": 0.928866,
-    "i_out": 0.681168,
+    "i_in": 0.943072,
+    "i_out": 0.691586,
     "id": "IC1",
     "kind": "boost",
-    "loss_w": 0.557319,
+    "loss_w": 0.565843,
     "overload": false,
     "part": "MIC2253"
    },
@@ -147,11 +147,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0100068,
-    "i_out": 0.01,
+    "i_in": 0.0134122,
+    "i_out": 0.0134,
     "id": "L57",
     "kind": "pass",
-    "loss_w": 3.4e-05,
+    "loss_w": 6.10504e-05,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
@@ -169,22 +169,22 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.144732,
-    "i_out": 0.143335,
+    "i_in": 0.148205,
+    "i_out": 0.14674,
     "id": "L7",
     "kind": "pass",
-    "loss_w": 0.00698528,
+    "loss_w": 0.00732114,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.145032,
-    "i_out": 0.144732,
+    "i_in": 0.148505,
+    "i_out": 0.148205,
     "id": "IC4",
     "kind": "ldo",
-    "loss_w": 0.146532,
+    "loss_w": 0.150005,
     "overload": false,
     "part": "LDL212PU50R"
    },
@@ -246,8 +246,8 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 1.11441,
-    "i_out": 1.11441,
+    "i_in": 1.13242,
+    "i_out": 1.13242,
     "id": "J1",
     "kind": "input",
     "loss_w": 0.0,
@@ -268,11 +268,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.219442,
-    "i_out": 0.218717,
+    "i_in": 0.224635,
+    "i_out": 0.223876,
     "id": "L4",
     "kind": "pass",
-    "loss_w": 0.00239186,
+    "loss_w": 0.00250602,
     "overload": false,
     "part": "2.2uH (SRN5040-2R2Y)"
    },
@@ -312,11 +312,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0100068,
-    "i_out": 0.01,
+    "i_in": 0.0134122,
+    "i_out": 0.0134,
     "id": "L12",
     "kind": "pass",
-    "loss_w": 3.4e-05,
+    "loss_w": 6.10504e-05,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
@@ -356,11 +356,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.145032,
-    "i_out": 0.144732,
+    "i_in": 0.148505,
+    "i_out": 0.148205,
     "id": "IC5",
     "kind": "ldo",
-    "loss_w": 0.146532,
+    "loss_w": 0.150005,
     "overload": false,
     "part": "LDL212PU50R"
    },
@@ -389,11 +389,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.144732,
-    "i_out": 0.143335,
+    "i_in": 0.148205,
+    "i_out": 0.14674,
     "id": "L8",
     "kind": "pass",
-    "loss_w": 0.00698528,
+    "loss_w": 0.00732114,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
@@ -433,11 +433,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0010001,
-    "i_out": 0.001,
+    "i_in": 0.000180003,
+    "i_out": 0.00018,
     "id": "L22",
     "kind": "pass",
-    "loss_w": 3.4e-07,
+    "loss_w": 1.1016e-08,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
@@ -477,11 +477,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.145032,
-    "i_out": 0.144732,
+    "i_in": 0.148505,
+    "i_out": 0.148205,
     "id": "IC3",
     "kind": "ldo",
-    "loss_w": 0.146532,
+    "loss_w": 0.150005,
     "overload": false,
     "part": "LDL212PU50R"
    },
@@ -499,22 +499,22 @@
    {
     "efficiency": 0.9,
     "efficiency_estimate": false,
-    "i_in": 0.160924,
-    "i_out": 0.219442,
+    "i_in": 0.164733,
+    "i_out": 0.224635,
     "id": "IC2.2",
     "kind": "buck",
-    "loss_w": 0.0804621,
+    "loss_w": 0.0823663,
     "overload": false,
     "part": "LM3370"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0100068,
-    "i_out": 0.01,
+    "i_in": 0.0134122,
+    "i_out": 0.0134,
     "id": "L61",
     "kind": "pass",
-    "loss_w": 3.4e-05,
+    "loss_w": 6.10504e-05,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
@@ -563,9 +563,9 @@
     "part": "FERRITE (BLM15AX601SN1)"
    }
   ],
-  "input_w": 5.57203,
-  "loads_w": 3.73456,
-  "losses_w": 1.83747
+  "input_w": 5.6621,
+  "loads_w": 3.80255,
+  "losses_w": 1.85954
  },
  "config": {
   "entries": 120,
@@ -578,12 +578,12 @@
    {
     "from": "el:IC1",
     "to": "loss:reg",
-    "w": 0.557319
+    "w": 0.565843
    },
    {
     "from": "el:IC1",
     "to": "rail:+6V",
-    "w": 4.08701
+    "w": 4.14952
    },
    {
     "from": "el:IC19",
@@ -608,12 +608,12 @@
    {
     "from": "el:IC2.2",
     "to": "loss:reg",
-    "w": 0.0804621
+    "w": 0.0823663
    },
    {
     "from": "el:IC2.2",
     "to": "rail:/Power Supply/VREG3V3_SWL",
-    "w": 0.724159
+    "w": 0.741297
    },
    {
     "from": "el:IC20",
@@ -638,12 +638,12 @@
    {
     "from": "el:IC3",
     "to": "loss:reg",
-    "w": 0.146532
+    "w": 0.150005
    },
    {
     "from": "el:IC3",
     "to": "rail:/Power Supply/VREG5V{slash}1",
-    "w": 0.723661
+    "w": 0.741024
    },
    {
     "from": "el:IC30",
@@ -668,22 +668,22 @@
    {
     "from": "el:IC4",
     "to": "loss:reg",
-    "w": 0.146532
+    "w": 0.150005
    },
    {
     "from": "el:IC4",
     "to": "rail:/Power Supply/VREG5V{slash}2",
-    "w": 0.723661
+    "w": 0.741024
    },
    {
     "from": "el:IC5",
     "to": "loss:reg",
-    "w": 0.146532
+    "w": 0.150005
    },
    {
     "from": "el:IC5",
     "to": "rail:/Power Supply/VREG5V{slash}3",
-    "w": 0.723661
+    "w": 0.741024
    },
    {
     "from": "el:IC6",
@@ -718,17 +718,17 @@
    {
     "from": "in:J1",
     "to": "rail:+5V",
-    "w": 5.57203
+    "w": 5.6621
    },
    {
     "from": "in:J4",
     "to": "loss:ground",
-    "w": 0.000668978
+    "w": 0.000690957
    },
    {
     "from": "rail:+5V",
     "to": "el:IC1",
-    "w": 4.64433
+    "w": 4.71536
    },
    {
     "from": "rail:+5V",
@@ -738,27 +738,27 @@
    {
     "from": "rail:+5V",
     "to": "el:IC2.2",
-    "w": 0.804621
+    "w": 0.823663
    },
    {
     "from": "rail:+5V",
     "to": "loss:copper",
-    "w": 0.016269
+    "w": 0.0167947
    },
    {
     "from": "rail:+6V",
     "to": "el:IC3",
-    "w": 0.870193
+    "w": 0.891028
    },
    {
     "from": "rail:+6V",
     "to": "el:IC4",
-    "w": 0.870193
+    "w": 0.891028
    },
    {
     "from": "rail:+6V",
     "to": "el:IC5",
-    "w": 0.870193
+    "w": 0.891028
    },
    {
     "from": "rail:+6V",
@@ -768,7 +768,7 @@
    {
     "from": "rail:+6V",
     "to": "loss:copper",
-    "w": 0.00705459
+    "w": 0.00729815
    },
    {
     "from": "rail:/1.LO/3V3_LDO1_LO1",
@@ -853,7 +853,7 @@
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC14",
-    "w": 0.0033
+    "w": 0.000594
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
@@ -883,17 +883,17 @@
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC26",
-    "w": 0.00165
+    "w": 0.000957
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC31",
-    "w": 0.00165
+    "w": 0.000957
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC35",
-    "w": 0.00165
+    "w": 0.000957
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
@@ -903,12 +903,12 @@
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC7",
-    "w": 0.1155
+    "w": 0.14718
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:U1",
-    "w": 0.0165
+    "w": 0.0066
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
@@ -918,12 +918,12 @@
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "loss:copper",
-    "w": 0.0018157
+    "w": 0.00192547
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "loss:pass",
-    "w": 0.00376926
+    "w": 0.00391191
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
@@ -933,7 +933,7 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
     "to": "load:IC22",
-    "w": 0.05
+    "w": 0.067
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
@@ -948,12 +948,12 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
     "to": "loss:copper",
-    "w": 0.000594506
+    "w": 0.000601132
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
     "to": "loss:pass",
-    "w": 0.0099106
+    "w": 0.0102735
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
@@ -963,7 +963,7 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
     "to": "load:IC27",
-    "w": 0.05
+    "w": 0.067
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
@@ -978,12 +978,12 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
     "to": "loss:copper",
-    "w": 0.00245645
+    "w": 0.00252037
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
     "to": "loss:pass",
-    "w": 0.0099106
+    "w": 0.0102735
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
@@ -1003,17 +1003,17 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
     "to": "load:IC36",
-    "w": 0.05
+    "w": 0.067
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
     "to": "loss:copper",
-    "w": 0.000461999
+    "w": 0.000481335
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
     "to": "loss:pass",
-    "w": 0.0099106
+    "w": 0.0102735
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}4",
@@ -1532,13 +1532,6 @@
    },
    {
     "depth": 8,
-    "id": "load:IC14",
-    "kind": "load",
-    "label": "IC14 RFSA3714",
-    "members": []
-   },
-   {
-    "depth": 8,
     "id": "load:IC16",
     "kind": "load",
     "label": "IC16 QPC6324",
@@ -1563,6 +1556,13 @@
     "id": "load:IC17",
     "kind": "load",
     "label": "IC17 QPC6324",
+    "members": []
+   },
+   {
+    "depth": 8,
+    "id": "load:IC14",
+    "kind": "load",
+    "label": "IC14 RFSA3714",
     "members": []
    },
    {
@@ -1616,7 +1616,7 @@
     "role": "load"
    },
    {
-    "heat_w": 0.557319,
+    "heat_w": 0.565843,
     "part": "MIC2253",
     "ref": "IC1",
     "role": "regulator"
@@ -1652,22 +1652,28 @@
     "role": "load"
    },
    {
-    "heat_w": 0.146532,
+    "heat_w": 0.150005,
     "part": "LDL212PU50R",
     "ref": "IC4",
     "role": "regulator"
    },
    {
-    "heat_w": 0.146532,
+    "heat_w": 0.150005,
     "part": "LDL212PU50R",
     "ref": "IC5",
     "role": "regulator"
    },
    {
-    "heat_w": 0.146532,
+    "heat_w": 0.150005,
     "part": "LDL212PU50R",
     "ref": "IC3",
     "role": "regulator"
+   },
+   {
+    "heat_w": 0.14718,
+    "part": "SI5351C",
+    "ref": "IC7",
+    "role": "load"
    },
    {
     "heat_w": 0.120158,
@@ -1682,13 +1688,7 @@
     "role": "regulator"
    },
    {
-    "heat_w": 0.1155,
-    "part": "SI5351C",
-    "ref": "IC7",
-    "role": "load"
-   },
-   {
-    "heat_w": 0.107539,
+    "heat_w": 0.109443,
     "part": "LM3370",
     "ref": "IC2",
     "role": "regulator"
@@ -1712,19 +1712,19 @@
     "role": "regulator"
    },
    {
-    "heat_w": 0.05,
+    "heat_w": 0.067,
     "part": "LT5560",
     "ref": "IC36",
     "role": "load"
    },
    {
-    "heat_w": 0.05,
+    "heat_w": 0.067,
     "part": "LT5560",
     "ref": "IC27",
     "role": "load"
    },
    {
-    "heat_w": 0.05,
+    "heat_w": 0.067,
     "part": "LT5560",
     "ref": "IC22",
     "role": "load"
@@ -1736,73 +1736,73 @@
     "role": "pass-through"
    },
    {
-    "heat_w": 0.0165,
-    "part": "W25Q16BVSN (W25Q16JL)",
-    "ref": "U1",
-    "role": "load"
-   },
-   {
-    "heat_w": 0.00698528,
+    "heat_w": 0.00732114,
     "part": "FERRITE (BLM15AX601SN1)",
     "ref": "L6",
     "role": "pass-through"
+   },
+   {
+    "heat_w": 0.00732114,
+    "part": "FERRITE (BLM15AX601SN1)",
+    "ref": "L7",
+    "role": "pass-through"
    }
   ],
-  "components_w": 5.57203,
-  "copper_ground_w": 0.000668978,
-  "copper_rails_w": 0.0298519,
+  "components_w": 5.6621,
+  "copper_ground_w": 0.000690957,
+  "copper_rails_w": 0.0308208,
   "notes": [
    "Component heat: the power a load draws is taken as heat in the part (estimate: power leaving the board, e.g. through connectors or LEDs, is included); regulator losses are put on the regulator."
   ],
   "per_layer": [
    {
-    "copper_w": 0.00302254,
+    "copper_w": 0.00310746,
     "layer": "F.Cu"
    },
    {
-    "copper_w": 0.000112149,
+    "copper_w": 0.000115872,
     "layer": "In1.Cu"
    },
    {
-    "copper_w": 0.000108444,
+    "copper_w": 0.000112075,
     "layer": "In2.Cu"
    },
    {
-    "copper_w": 0.0187648,
+    "copper_w": 0.0193273,
     "layer": "In3.Cu"
    },
    {
-    "copper_w": 0.00829638,
+    "copper_w": 0.00862512,
     "layer": "In4.Cu"
    },
    {
-    "copper_w": 0.0002166,
+    "copper_w": 0.000223942,
     "layer": "B.Cu"
    }
   ],
   "per_rail": [
    {
-    "copper_w": 0.016269,
+    "copper_w": 0.0167947,
     "ground_return": false,
     "rail": "+5V"
    },
    {
-    "copper_w": 0.00705459,
+    "copper_w": 0.00729815,
     "ground_return": false,
     "rail": "+6V"
    },
    {
-    "copper_w": 0.00229293,
+    "copper_w": 0.00235119,
     "ground_return": false,
     "rail": "+5V{slash}2"
    },
    {
-    "copper_w": 0.00158593,
+    "copper_w": 0.00168435,
     "ground_return": false,
     "rail": "+3V3"
    },
    {
-    "copper_w": 0.000668978,
+    "copper_w": 0.000690957,
     "ground_return": true,
     "rail": "GND"
    },
@@ -1812,12 +1812,12 @@
     "rail": "+5V{slash}4"
    },
    {
-    "copper_w": 0.000429136,
+    "copper_w": 0.000431476,
     "ground_return": false,
     "rail": "+5V{slash}1"
    },
    {
-    "copper_w": 0.000349604,
+    "copper_w": 0.000363732,
     "ground_return": false,
     "rail": "+5V{slash}3"
    },
@@ -1827,7 +1827,7 @@
     "rail": "/HF Source/3V3_SRC_1"
    },
    {
-    "copper_w": 0.000197309,
+    "copper_w": 0.000206758,
     "ground_return": false,
     "rail": "/Power Supply/VREG3V3_SWL"
    },
@@ -1857,24 +1857,24 @@
     "rail": "Net-(IC29-VPDT)"
    },
    {
-    "copper_w": 5.24663e-05,
+    "copper_w": 5.50142e-05,
     "ground_return": false,
     "rail": "/Power Supply/VREG5V{slash}3"
    },
    {
-    "copper_w": 5.23638e-05,
+    "copper_w": 5.49067e-05,
     "ground_return": false,
     "rail": "/Power Supply/VREG5V{slash}1"
+   },
+   {
+    "copper_w": 5.33946e-05,
+    "ground_return": false,
+    "rail": "/Power Supply/VREG5V{slash}2"
    },
    {
     "copper_w": 5.18581e-05,
     "ground_return": false,
     "rail": "/HF Source/3V3_SRC_2"
-   },
-   {
-    "copper_w": 5.09217e-05,
-    "ground_return": false,
-    "rail": "/Power Supply/VREG5V{slash}2"
    },
    {
     "copper_w": 3.99257e-05,
@@ -1917,9 +1917,19 @@
     "rail": "/HF Source/3v3_LDO1_SRC"
    },
    {
-    "copper_w": 5.07171e-06,
+    "copper_w": 7.19e-06,
+    "ground_return": false,
+    "rail": "Net-(IC27-VCC)"
+   },
+   {
+    "copper_w": 6.98228e-06,
     "ground_return": false,
     "rail": "/2.LO + Ref Clock/3V3_CLKGEN"
+   },
+   {
+    "copper_w": 6.00231e-06,
+    "ground_return": false,
+    "rail": "Net-(IC36-VCC)"
    },
    {
     "copper_w": 5.06777e-06,
@@ -1937,24 +1947,14 @@
     "rail": "/1.LO/3V3_LDO2_LO1"
    },
    {
-    "copper_w": 4.00423e-06,
+    "copper_w": 3.93245e-06,
     "ground_return": false,
-    "rail": "Net-(IC27-VCC)"
+    "rail": "Net-(IC22-VCC)"
    },
    {
     "copper_w": 3.47412e-06,
     "ground_return": false,
     "rail": "/HF Source/3V3_SRC_3"
-   },
-   {
-    "copper_w": 3.34279e-06,
-    "ground_return": false,
-    "rail": "Net-(IC36-VCC)"
-   },
-   {
-    "copper_w": 2.19005e-06,
-    "ground_return": false,
-    "rail": "Net-(IC22-VCC)"
    },
    {
     "copper_w": 4.0324e-08,
@@ -1987,11 +1987,6 @@
     "rail": "Net-(IC30-OUT)"
    },
    {
-    "copper_w": 9.15368e-09,
-    "ground_return": false,
-    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT"
-   },
-   {
     "copper_w": 7.4741e-09,
     "ground_return": false,
     "rail": "Net-(IC25-EN)"
@@ -2010,6 +2005,11 @@
     "copper_w": 3.08434e-10,
     "ground_return": false,
     "rail": "/Attenuator Amp Switches/3V3_P1_SWITCH"
+   },
+   {
+    "copper_w": 2.96582e-10,
+    "ground_return": false,
+    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT"
    },
    {
     "copper_w": 2.47479e-10,
@@ -2032,7 +2032,7 @@
     "rail": "USB_POWER"
    }
   ],
-  "total_w": 5.60255
+  "total_w": 5.69361
  },
  "pdn": {
   "above_target_hz": [
@@ -2519,13 +2519,13 @@
        "srf_mhz": 4.8
       }
      ],
-     "current_a": 0.0005,
+     "current_a": 0.00029,
      "ic": "IC35",
      "net": "+3V3",
      "pins": 2,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 396.0,
+     "target_ohm": 682.759,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 0.549828,
@@ -2610,13 +2610,13 @@
        "srf_mhz": 2.93
       }
      ],
-     "current_a": 0.0005,
+     "current_a": 0.00029,
      "ic": "IC31",
      "net": "+3V3",
      "pins": 2,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 396.0,
+     "target_ohm": 682.759,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 0.802634,
@@ -2707,14 +2707,14 @@
        "srf_mhz": 4.12
       }
      ],
-     "current_a": 0.005,
+     "current_a": 0.002,
      "ic": "U1",
      "net": "+3V3",
      "pins": 3,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 39.6,
-     "target_source": "3 % ripple at a 50 % step of 5 mA (estimate)",
+     "target_ohm": 99.0,
+     "target_source": "3 % ripple at a 50 % step of 2 mA (estimate)",
      "z_ohm": {
       "100M": 0.43527,
       "100k": 0.120401,
@@ -2804,14 +2804,14 @@
        "srf_mhz": 2.87
       }
      ],
-     "current_a": 0.02,
+     "current_a": 0.027,
      "ic": "IC7",
      "net": "+3V3",
      "pins": 1,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 9.9,
-     "target_source": "3 % ripple at a 50 % step of 20 mA (estimate)",
+     "target_ohm": 7.33333,
+     "target_source": "3 % ripple at a 50 % step of 27 mA (estimate)",
      "z_ohm": {
       "100M": 1.44282,
       "100k": 0.290203,
@@ -2895,13 +2895,13 @@
        "srf_mhz": 4.6
       }
      ],
-     "current_a": 0.0005,
+     "current_a": 0.00029,
      "ic": "IC26",
      "net": "+3V3",
      "pins": 2,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 396.0,
+     "target_ohm": 682.759,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 1.02715,
@@ -2986,14 +2986,14 @@
        "srf_mhz": 12.89
       }
      ],
-     "current_a": 0.015,
+     "current_a": 0.0176,
      "ic": "IC7",
      "net": "/2.LO + Ref Clock/3V3_CLKGEN",
      "pins": 4,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 13.2,
-     "target_source": "3 % ripple at a 50 % step of 15 mA (estimate)",
+     "target_ohm": 11.25,
+     "target_source": "3 % ripple at a 50 % step of 18 mA (estimate)",
      "z_ohm": {
       "100M": 0.533996,
       "100k": 0.825916,
@@ -3269,14 +3269,14 @@
        "srf_mhz": 10.32
       }
      ],
-     "current_a": 0.001,
+     "current_a": 0.00018,
      "ic": "IC14",
      "net": "/Attenuator Amp Switches/3V3_HBLB_ATT",
      "pins": 2,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 198.0,
-     "target_source": "3 % ripple at a 50 % step of 1 mA (estimate)",
+     "target_ohm": 1100.0,
+     "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 1.65864,
       "100k": 0.833851,
@@ -3534,24 +3534,24 @@
    ]
   },
   "rail": "+3V3",
-  "target_ohm": 0.905278,
+  "target_ohm": 0.884418,
   "warnings": [
    "rail without a plane over ground: no plane capacitance, spreading inductance over traces roughly estimated"
   ],
   "z_ohm": {
-   "100M": 0.577012,
-   "100k": 0.0169068,
-   "10M": 0.0544281,
-   "1M": 0.0493653,
+   "100M": 0.586826,
+   "100k": 0.016907,
+   "10M": 0.0555192,
+   "1M": 0.0494688,
    "1k": 0.00200398
   }
  },
  "rails": [
   {
-   "copper_loss_mw": 7.05459,
-   "load_a": 0.681168,
-   "max_drop_mv": 14.3378,
-   "max_j_a_mm2": 35.0753,
+   "copper_loss_mw": 7.29815,
+   "load_a": 0.691586,
+   "max_drop_mv": 14.6781,
+   "max_j_a_mm2": 35.3867,
    "rail": "+6V",
    "voltage": 6.0,
    "warnings": [
@@ -3586,10 +3586,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.58593,
-   "load_a": 0.218717,
-   "max_drop_mv": 11.3063,
-   "max_j_a_mm2": 18.0593,
+   "copper_loss_mw": 1.68435,
+   "load_a": 0.223876,
+   "max_drop_mv": 11.2006,
+   "max_j_a_mm2": 17.8668,
    "rail": "+3V3",
    "voltage": 3.3,
    "warnings": []
@@ -3604,19 +3604,19 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0523638,
-   "load_a": 0.144732,
-   "max_drop_mv": 0.372251,
-   "max_j_a_mm2": 12.4975,
+   "copper_loss_mw": 0.0549067,
+   "load_a": 0.148205,
+   "max_drop_mv": 0.381182,
+   "max_j_a_mm2": 12.7974,
    "rail": "/Power Supply/VREG5V{slash}1",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.429136,
-   "load_a": 0.143335,
-   "max_drop_mv": 4.2055,
-   "max_j_a_mm2": 28.89,
+   "copper_loss_mw": 0.431476,
+   "load_a": 0.14674,
+   "max_drop_mv": 4.213,
+   "max_j_a_mm2": 28.9498,
    "rail": "+5V{slash}1",
    "voltage": 5.0,
    "warnings": []
@@ -3631,10 +3631,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.349604,
-   "load_a": 0.143335,
-   "max_drop_mv": 2.92807,
-   "max_j_a_mm2": 31.0589,
+   "copper_loss_mw": 0.363732,
+   "load_a": 0.14674,
+   "max_drop_mv": 2.94689,
+   "max_j_a_mm2": 31.7968,
    "rail": "+5V{slash}3",
    "voltage": 5.0,
    "warnings": []
@@ -3658,10 +3658,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.29293,
-   "load_a": 0.143335,
-   "max_drop_mv": 17.7809,
-   "max_j_a_mm2": 35.961,
+   "copper_loss_mw": 2.35119,
+   "load_a": 0.14674,
+   "max_drop_mv": 17.9837,
+   "max_j_a_mm2": 36.8255,
    "rail": "+5V{slash}2",
    "voltage": 5.0,
    "warnings": []
@@ -3676,10 +3676,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00507171,
-   "load_a": 0.015,
-   "max_drop_mv": 0.411105,
-   "max_j_a_mm2": 5.56589,
+   "copper_loss_mw": 0.00698228,
+   "load_a": 0.0176,
+   "max_drop_mv": 0.482363,
+   "max_j_a_mm2": 6.53064,
    "rail": "/2.LO + Ref Clock/3V3_CLKGEN",
    "voltage": 3.3,
    "warnings": []
@@ -3703,19 +3703,19 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 16.269,
-   "load_a": 1.11441,
-   "max_drop_mv": 15.233,
-   "max_j_a_mm2": 121.483,
+   "copper_loss_mw": 16.7947,
+   "load_a": 1.13242,
+   "max_drop_mv": 15.4766,
+   "max_j_a_mm2": 123.447,
    "rail": "+5V",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00400423,
-   "load_a": 0.01,
-   "max_drop_mv": 0.403312,
-   "max_j_a_mm2": 3.71059,
+   "copper_loss_mw": 0.00719,
+   "load_a": 0.0134,
+   "max_drop_mv": 0.540437,
+   "max_j_a_mm2": 4.97219,
    "rail": "Net-(IC27-VCC)",
    "voltage": 5.0,
    "warnings": []
@@ -3730,10 +3730,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0509217,
-   "load_a": 0.144732,
-   "max_drop_mv": 0.363081,
-   "max_j_a_mm2": 11.0918,
+   "copper_loss_mw": 0.0533946,
+   "load_a": 0.148205,
+   "max_drop_mv": 0.371792,
+   "max_j_a_mm2": 11.3579,
    "rail": "/Power Supply/VREG5V{slash}2",
    "voltage": 5.0,
    "warnings": []
@@ -3811,10 +3811,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.197309,
-   "load_a": 0.219442,
-   "max_drop_mv": 0.941491,
-   "max_j_a_mm2": 12.2814,
+   "copper_loss_mw": 0.206758,
+   "load_a": 0.224635,
+   "max_drop_mv": 0.963772,
+   "max_j_a_mm2": 12.572,
    "rail": "/Power Supply/VREG3V3_SWL",
    "voltage": 3.3,
    "warnings": []
@@ -3856,10 +3856,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00219005,
-   "load_a": 0.01,
-   "max_drop_mv": 0.222097,
-   "max_j_a_mm2": 3.00412,
+   "copper_loss_mw": 0.00393245,
+   "load_a": 0.0134,
+   "max_drop_mv": 0.29761,
+   "max_j_a_mm2": 4.02552,
    "rail": "Net-(IC22-VCC)",
    "voltage": 5.0,
    "warnings": []
@@ -3892,10 +3892,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0524663,
-   "load_a": 0.144732,
-   "max_drop_mv": 0.372958,
-   "max_j_a_mm2": 12.7408,
+   "copper_loss_mw": 0.0550142,
+   "load_a": 0.148205,
+   "max_drop_mv": 0.381907,
+   "max_j_a_mm2": 13.0465,
    "rail": "/Power Supply/VREG5V{slash}3",
    "voltage": 5.0,
    "warnings": []
@@ -3937,10 +3937,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 9.15368e-06,
-   "load_a": 0.001,
-   "max_drop_mv": 0.0135629,
-   "max_j_a_mm2": 0.156086,
+   "copper_loss_mw": 2.96582e-07,
+   "load_a": 0.00018,
+   "max_drop_mv": 0.00244134,
+   "max_j_a_mm2": 0.0280957,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT",
    "voltage": 3.3,
    "warnings": []
@@ -3964,10 +3964,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00334279,
-   "load_a": 0.01,
-   "max_drop_mv": 0.337166,
-   "max_j_a_mm2": 3.71059,
+   "copper_loss_mw": 0.00600231,
+   "load_a": 0.0134,
+   "max_drop_mv": 0.451802,
+   "max_j_a_mm2": 4.97219,
    "rail": "Net-(IC36-VCC)",
    "voltage": 5.0,
    "warnings": []
@@ -3991,12 +3991,12 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.668978,
+   "copper_loss_mw": 0.690957,
    "ground_return": true,
-   "max_j_a_mm2": 11.0004,
-   "max_offset_mv": 0.526408,
+   "max_j_a_mm2": 11.1782,
+   "max_offset_mv": 0.53491,
    "rail": "GND",
-   "return_a": -0.0125904,
+   "return_a": -0.0128514,
    "warnings": [
     "486 cells without connection to a source (copper islands) ignored",
     "load IC10: 1 of 8 pads not connected, their current is missing from the result",

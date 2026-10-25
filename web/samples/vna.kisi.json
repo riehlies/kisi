@@ -3,8 +3,8 @@
  "board": "VNA.kicad_pcb",
  "notes": [
   "LibreVNA",
-  "Supplied through the DC jack J1 (5 V); USB (Q1/Q2) uses the same path. Currents from datasheets (typ.) or estimated. According to the manual the device draws up to 1.2 A at 5 V. LEDs and small parts below 1 mA are not included.",
-  "Total at the 5 V input about 5.4 W, 90 % of the manual's maximum (1.2 A at 5 V = 6 W). The temperature estimate treats the board as open in air; the real device sits in a closed aluminium shield, which it does not model (docs/research/thermal.md, section 7.4).",
+  "Supplied through the DC jack J1 (5 V); USB (Q1/Q2) uses the same path. Load currents from datasheets (typ.), each with its document and page; only the FPGA (U2: quiescent from DS162, the dynamic part assumed) and the MCU (IC37: its data sheet could not be fetched) are estimates, with the basis in their source note. According to the manual the device draws up to 1.2 A at 5 V. LEDs and small parts below 1 mA are not included.",
+  "Total at the 5 V input about 5.7 W, 94 % of the manual's maximum (1.2 A at 5 V = 6 W). The temperature estimate treats the board as open in air; the real device sits in a closed aluminium shield, which it does not model (docs/research/thermal.md, section 7.4).",
   "Stackup as in the project's Gerber job file (εr per layer, tanδ 0.02); USB data lines given a class of their own with the USB 2.0 target; the RF class keeps kisi's generic 50 Ω profile on purpose; ferrites BLM15AX601SN1 with the data sheet's DC resistance.",
   "Not filled in (optional): capacitor ratings – no project document gives rated voltage or dielectric (the BOM lists value and package only), so kisi's assumed rating applies; thermal data (PI_THERMAL) of 11 parts – package defaults apply (estimates).",
   "Power tree first converted from a kisi power tree with tools/tree_to_fields.py."
@@ -459,7 +459,10 @@
    "value": "VCCINT=0.08A, +3V3=0.05A",
    "source": {
     "kind": "estimate",
-    "note": "VCCINT: core 1.2 V; +3V3: VCCAUX and VCCO"
+    "document": "Xilinx DS162 v3.1 (Spartan-6 DC and switching characteristics), Table 5",
+    "url": "https://classes.engineering.wustl.edu/cse462/images/3/3c/Ds162.pdf",
+    "page": "6–7",
+    "note": "quiescent XC6SLX9 typ. at 25 °C: ICCINTQ 4 mA, ICCAUXQ 2.5 mA, ICCOQ 1 mA per bank (4 banks) – the rest is dynamic, not from a document: VCCINT about 76 mA assuming most of the LX9 in use at about 100 MHz with the Xilinx Power Estimator's default 12.5 % toggle rate; +3V3 (VCCAUX and VCCO) about 43 mA for the ADC, synthesizer and MCU interfaces switching. No XPE run of the project's design"
    }
   },
   {
@@ -468,25 +471,33 @@
    "value": "+3V3=0.03A",
    "source": {
     "kind": "estimate",
-    "note": "rough value, check the datasheet"
+    "document": "ST STM32G431xB data sheet DS12589, current consumption in Run mode",
+    "url": "https://www.st.com/resource/en/datasheet/stm32g431cb.pdf",
+    "note": "not taken from the data sheet: its table could not be fetched here (the URL was refused). 30 mA assumes the Cortex-M4 at 170 MHz from flash with USB, SPI and I2C active – check the Run mode table of DS12589"
    }
   },
   {
    "ref": "IC7",
    "name": "PI_LOAD",
-   "value": "+3V3=0.02A, 3V3_CLKGEN=0.015A",
+   "value": "+3V3=27mA, 3V3_CLKGEN=17.6mA",
    "source": {
-    "kind": "estimate",
-    "note": "+3V3: core; 3V3_CLKGEN: outputs"
+    "kind": "datasheet",
+    "document": "Silicon Labs Si5351A/B/C-B data sheet Rev. 1.3, Table 4",
+    "url": "https://cdn.sparkfun.com/assets/3/e/a/9/a/Si5351-datasheet.pdf",
+    "page": "8",
+    "note": "core IDD (VDD pin, +3V3) 27 mA typ. with 8 outputs (20-QFN, 45 mA max); output buffers (VDDOA–VDDOD, 3V3_CLKGEN) 2.2 mA typ. per output at CL 5 pF, ≤ 100 MHz – all 8 outputs are used on the board: 17.6 mA"
    }
   },
   {
    "ref": "U1",
    "name": "PI_LOAD",
-   "value": "+3V3=0.005A",
+   "value": "+3V3=2mA",
    "source": {
-    "kind": "estimate",
-    "note": "rough value, check the datasheet"
+    "kind": "datasheet",
+    "document": "Winbond W25Q16JL data sheet Rev. D, features",
+    "url": "https://static.chipdip.ru/lib/520/DOC011520315.pdf",
+    "page": "5",
+    "note": "2 mA active current (typ.) – the MCU reads the FPGA bitstream from it; idle (standby ICC1) it draws less, but the DC table on p. 63 could not be read here (the PDF was cut off and the download was refused), so the active value is taken"
    }
   },
   {
@@ -501,10 +512,13 @@
   {
    "ref": "IC14",
    "name": "PI_LOAD",
-   "value": "3V3_HBLB_ATT=0.001A",
+   "value": "3V3_HBLB_ATT=0.18mA",
    "source": {
-    "kind": "estimate",
-    "note": "attenuator"
+    "kind": "datasheet",
+    "document": "Qorvo RFSA3714 data sheet (27 Oct 2020), electrical specifications",
+    "url": "https://www.mouser.com/datasheet/2/412/RFSA3714_Data_Sheet-1393349.pdf",
+    "page": "3",
+    "note": "supply current 180 µA in steady state (attenuation state changes draw more)"
    }
   },
   {
@@ -519,10 +533,13 @@
   {
    "ref": "IC22",
    "name": "PI_LOAD",
-   "value": "Net-(IC22-VCC)=0.01A",
+   "value": "Net-(IC22-VCC)=13.4mA",
    "source": {
-    "kind": "estimate",
-    "note": "mixer port 1, adjustable 4 to 13.4 mA"
+    "kind": "datasheet",
+    "document": "Analog Devices LT5560 data sheet (5560f)",
+    "url": "https://www.analog.com/media/en/technical-documentation/data-sheets/5560f.pdf",
+    "page": "1, 10, 21",
+    "note": "supply current adjustable 4 to 13.4 mA with R1 in the input pins' DC path to ground (10 mA at R1 = 3 Ω, p. 2; 0 Ω: about 6 mA out of each input pin, p. 10; Fig. 13, p. 21); on the board IN+/IN− go to ground through 330 nH inductors (L30/L31) with no resistor, R1 ≈ 0 Ω → the top of the range; the OUT pins draw through R53/R54 from the same net. Data sheet at VCC 3 V; the board runs it from 5 V (Fig. G01: somewhat more at higher VCC) – mixer port 1"
    }
   },
   {
@@ -537,10 +554,13 @@
   {
    "ref": "IC26",
    "name": "PI_LOAD",
-   "value": "Net-(IC25-OUT)=0.0016A, +3V3=0.0005A",
+   "value": "Net-(IC25-OUT)=1.6mA, +3V3=0.29mA",
    "source": {
-    "kind": "estimate",
-    "note": "Net-(IC25-OUT): ADC port 1, AVDD; +3V3: ADC port 1, DVIO"
+    "kind": "datasheet",
+    "document": "Microchip MCP331x1D-10 data sheet DS20005947A, Table 1-1",
+    "url": "https://www.farnell.com/datasheets/2608040.pdf",
+    "page": "3",
+    "note": "AVDD during conversion 1.6 mA typ. (2.4 mA max), DVIO during output data reading 290 µA typ., both at fs = 1 Msps, AVDD 1.8 V, DVIO 3.3 V – ADC port 1"
    }
   },
   {
@@ -555,10 +575,13 @@
   {
    "ref": "IC27",
    "name": "PI_LOAD",
-   "value": "Net-(IC27-VCC)=0.01A",
+   "value": "Net-(IC27-VCC)=13.4mA",
    "source": {
-    "kind": "estimate",
-    "note": "mixer port 2, adjustable 4 to 13.4 mA"
+    "kind": "datasheet",
+    "document": "Analog Devices LT5560 data sheet (5560f)",
+    "url": "https://www.analog.com/media/en/technical-documentation/data-sheets/5560f.pdf",
+    "page": "1, 10, 21",
+    "note": "supply current adjustable 4 to 13.4 mA with R1 in the input pins' DC path to ground (10 mA at R1 = 3 Ω, p. 2; 0 Ω: about 6 mA out of each input pin, p. 10; Fig. 13, p. 21); on the board IN+/IN− go to ground through 330 nH inductors (L38/L39) with no resistor, R1 ≈ 0 Ω → the top of the range; the OUT pins draw through R80/R81 from the same net. Data sheet at VCC 3 V; the board runs it from 5 V (Fig. G01: somewhat more at higher VCC) – mixer port 2"
    }
   },
   {
@@ -573,10 +596,13 @@
   {
    "ref": "IC31",
    "name": "PI_LOAD",
-   "value": "Net-(IC30-OUT)=0.0016A, +3V3=0.0005A",
+   "value": "Net-(IC30-OUT)=1.6mA, +3V3=0.29mA",
    "source": {
-    "kind": "estimate",
-    "note": "Net-(IC30-OUT): ADC port 2, AVDD; +3V3: ADC port 2, DVIO"
+    "kind": "datasheet",
+    "document": "Microchip MCP331x1D-10 data sheet DS20005947A, Table 1-1",
+    "url": "https://www.farnell.com/datasheets/2608040.pdf",
+    "page": "3",
+    "note": "AVDD during conversion 1.6 mA typ. (2.4 mA max), DVIO during output data reading 290 µA typ., both at fs = 1 Msps, AVDD 1.8 V, DVIO 3.3 V – ADC port 2"
    }
   },
   {
@@ -591,10 +617,13 @@
   {
    "ref": "IC36",
    "name": "PI_LOAD",
-   "value": "Net-(IC36-VCC)=0.01A",
+   "value": "Net-(IC36-VCC)=13.4mA",
    "source": {
-    "kind": "estimate",
-    "note": "mixer reference, adjustable 4 to 13.4 mA"
+    "kind": "datasheet",
+    "document": "Analog Devices LT5560 data sheet (5560f)",
+    "url": "https://www.analog.com/media/en/technical-documentation/data-sheets/5560f.pdf",
+    "page": "1, 10, 21",
+    "note": "supply current adjustable 4 to 13.4 mA with R1 in the input pins' DC path to ground (10 mA at R1 = 3 Ω, p. 2; 0 Ω: about 6 mA out of each input pin, p. 10; Fig. 13, p. 21); on the board IN+/IN− go to ground through 330 nH inductors (L52/L53) with no resistor, R1 ≈ 0 Ω → the top of the range; the OUT pins draw through R102/R103 from the same net. Data sheet at VCC 3 V; the board runs it from 5 V (Fig. G01: somewhat more at higher VCC) – mixer reference"
    }
   },
   {
@@ -609,10 +638,13 @@
   {
    "ref": "IC35",
    "name": "PI_LOAD",
-   "value": "Net-(IC34-OUT)=0.0016A, +3V3=0.0005A",
+   "value": "Net-(IC34-OUT)=1.6mA, +3V3=0.29mA",
    "source": {
-    "kind": "estimate",
-    "note": "Net-(IC34-OUT): ADC reference, AVDD; +3V3: ADC reference, DVIO"
+    "kind": "datasheet",
+    "document": "Microchip MCP331x1D-10 data sheet DS20005947A, Table 1-1",
+    "url": "https://www.farnell.com/datasheets/2608040.pdf",
+    "page": "3",
+    "note": "AVDD during conversion 1.6 mA typ. (2.4 mA max), DVIO during output data reading 290 µA typ., both at fs = 1 Msps, AVDD 1.8 V, DVIO 3.3 V – ADC reference"
    }
   },
   {

@@ -635,7 +635,7 @@
    "issue": "11 part(s) dissipate 0.1 W or more without thermal data (field PI_THERMAL): `kisi thermal` estimates their junction temperature from package defaults and assumes Tj max 125 °C.",
    "items": [
     {
-     "heat_w": 0.557,
+     "heat_w": 0.566,
      "package_default": "qfn",
      "ref": "IC1",
      "value": "MIC2253"
@@ -659,22 +659,28 @@
      "value": "TRF37A73"
     },
     {
-     "heat_w": 0.147,
+     "heat_w": 0.15,
      "package_default": "qfn",
      "ref": "IC3",
      "value": "LDL212PU50R"
     },
     {
-     "heat_w": 0.147,
+     "heat_w": 0.15,
      "package_default": "qfn",
      "ref": "IC4",
      "value": "LDL212PU50R"
     },
     {
-     "heat_w": 0.147,
+     "heat_w": 0.15,
      "package_default": "qfn",
      "ref": "IC5",
      "value": "LDL212PU50R"
+    },
+    {
+     "heat_w": 0.147,
+     "package_default": "qfn",
+     "ref": "IC7",
+     "value": "SI5351C"
     },
     {
      "heat_w": 0.12,
@@ -689,13 +695,7 @@
      "value": "AP2114H"
     },
     {
-     "heat_w": 0.115,
-     "package_default": "qfn",
-     "ref": "IC7",
-     "value": "SI5351C"
-    },
-    {
-     "heat_w": 0.108,
+     "heat_w": 0.109,
      "package_default": "qfn",
      "ref": "IC2",
      "value": "LM3370"

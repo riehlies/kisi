@@ -101,9 +101,9 @@ footer p { margin: 0; max-width: 90ch }
       <h2>What it checks</h2>
       <div class="cols">
         <div class="card"><h3>Impedance</h3>
-          <ul><li>Targets from net class names (<code>50Z</code>, <code>90Z_Diff</code>)</li><li>Formulas in a second, the 2D field solver on demand</li><li>Impedance along the path, loss, TDR, vias, crosstalk</li></ul></div>
+          <ul><li>Targets from net class names (<code>50Z</code>, <code>90Z_Diff</code>)</li><li>Formulas in a second, the 2D field solver on demand</li><li>Impedance along the path, loss, TDR, vias, crosstalk</li><li>Each result with its accuracy level and typical deviation (± %)</li></ul></div>
         <div class="card"><h3>Channel</h3>
-          <ul><li>Buses and lanes through series parts and AC caps, per assembly variant</li><li>Profiles: PCIe, USB, DDR, LVDS, Ethernet, HDMI, MIPI …</li><li>Loss, return loss, skew and a linear eye, also at connectors with the channel behind them</li><li>Differential pairs as 4-ports, multi-drop lines at every receiver</li></ul></div>
+          <ul><li>Buses and lanes through series parts and AC caps, per assembly variant</li><li>Profiles: PCIe, USB, DDR, LVDS, Ethernet, HDMI, MIPI …</li><li>Loss, return loss, skew and a linear eye, also at connectors with the channel behind them</li><li>Differential pairs as 4-ports, multi-drop lines at every receiver</li><li>Export of a lane or a whole bus: SPICE subcircuits with test benches, Touchstone, a KiCad project</li></ul></div>
         <div class="card"><h3>Power</h3>
           <ul><li>Regulator chain, budget and power flow with losses</li><li>DC voltage drop and current density per rail and layer, also in the ground return</li><li>PDN impedance seen from every IC: capacitors ranked by loop inductance, anti-resonances, target and recommendations</li><li>Temperature estimate: board map per layer, junction and case temperature of every part, heat through the vias</li></ul></div>
       </div>
@@ -113,6 +113,7 @@ footer p { margin: 0; max-width: 90ch }
         <figure><img src="img/flow.png" width="1600" height="1000" alt="Power flow from the inputs through the regulators to the loads"><figcaption><b>Power flow:</b> from the supply inputs through every regulator to the loads, with regulator, shunt and copper losses</figcaption></figure>
         <figure><img src="img/power.png" width="1600" height="1000" alt="Voltage drop of a rail and its impedance seen from an IC"><figcaption><b>Voltage drop and PDN:</b> DC drop on every layer of a rail, and its impedance seen from an IC with the decoupling capacitors ranked by loop inductance</figcaption></figure>
         <figure><img src="img/temperature.png" width="1600" height="1000" alt="Temperature estimate of the board with the hottest parts"><figcaption><b>Temperature (estimate):</b> the board's temperature per layer from the losses, the hottest parts with their junction temperature and the heat through the vias</figcaption></figure>
+        <figure><img src="img/prepare.png" width="1600" height="1000" alt="Prepare PCB page: a checklist of what the board lacks per category, with forms for the values"><figcaption><b>Prepare PCB:</b> a checklist of what the board file lacks per category – fill in a step, Apply, check mark – with a live check and the board's kisi.json</figcaption></figure>
         <figure><img src="img/parts.png" width="1600" height="1000" alt="Components with junction and case temperature and the source of their thermal data"><figcaption><b>Parts at temperature:</b> junction and case temperature against Tj max, with the thermal resistances used and where they come from</figcaption></figure>
       </div>
     </div>

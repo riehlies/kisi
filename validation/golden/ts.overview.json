@@ -56,41 +56,41 @@
    "rough_formula_mm": 20.1213,
    "target_ohm": 100.0,
    "target_source": "class name",
-   "within_5pct": 0.0,
+   "within_5pct": 0.00371826,
    "worst": [
     {
      "net": "/CH3_P",
-     "within_5pct": 0.0,
-     "z_max": 252.063,
-     "z_mean": 110.625,
+     "within_5pct": 0.0041249,
+     "z_max": 266.779,
+     "z_mean": 110.864,
      "z_min": 53.6074
     },
     {
      "net": "/CH4_N",
-     "within_5pct": 0.0,
-     "z_max": 272.231,
-     "z_mean": 109.998,
+     "within_5pct": 0.00441176,
+     "z_max": 288.405,
+     "z_mean": 110.162,
      "z_min": 53.6074
     },
     {
      "net": "/CH2_N",
-     "within_5pct": 0.0,
-     "z_max": 265.196,
-     "z_mean": 109.898,
+     "within_5pct": 0.00415047,
+     "z_max": 280.812,
+     "z_mean": 110.052,
      "z_min": 53.6074
     },
     {
      "net": "/CH3_N",
-     "within_5pct": 0.0,
-     "z_max": 252.063,
-     "z_mean": 109.895,
+     "within_5pct": 0.0041505,
+     "z_max": 266.779,
+     "z_mean": 110.048,
      "z_min": 53.6074
     },
     {
      "net": "/CH2_P",
-     "within_5pct": 0.0,
-     "z_max": 252.063,
-     "z_mean": 109.795,
+     "within_5pct": 0.00415046,
+     "z_max": 266.779,
+     "z_mean": 109.948,
      "z_min": 53.6074
     }
    ]
@@ -108,36 +108,36 @@
     {
      "net": "/CH4/ATTEN_OUT_R",
      "within_5pct": 0.244606,
-     "z_max": 123.137,
-     "z_mean": 75.2638,
+     "z_max": 130.769,
+     "z_mean": 79.4275,
      "z_min": 51.3498
     },
     {
      "net": "/CH1/ATTEN_OUT_R",
      "within_5pct": 0.244606,
-     "z_max": 123.137,
-     "z_mean": 75.2638,
+     "z_max": 130.769,
+     "z_mean": 79.4275,
      "z_min": 51.3498
     },
     {
      "net": "/CH2/ATTEN_OUT_R",
      "within_5pct": 0.244606,
-     "z_max": 123.137,
-     "z_mean": 75.2638,
+     "z_max": 130.769,
+     "z_mean": 79.4275,
      "z_min": 51.3498
     },
     {
      "net": "/CH3/ATTEN_OUT_R",
      "within_5pct": 0.244606,
-     "z_max": 123.137,
-     "z_mean": 75.2638,
+     "z_max": 130.769,
+     "z_mean": 79.4275,
      "z_min": 51.3498
     },
     {
      "net": "/CH4/ATTEN_IN",
      "within_5pct": 0.350903,
-     "z_max": 124.075,
-     "z_mean": 73.8376,
+     "z_max": 131.785,
+     "z_mean": 77.5616,
      "z_min": 51.3498
     }
    ]
@@ -155,29 +155,29 @@
     {
      "net": "/CH1/BNC_IN",
      "within_5pct": 0.652583,
-     "z_max": 236.835,
-     "z_mean": 66.7054,
+     "z_max": 248.845,
+     "z_mean": 68.4318,
      "z_min": 51.3498
     },
     {
      "net": "/CH3/BNC_IN",
      "within_5pct": 0.652853,
-     "z_max": 236.835,
-     "z_mean": 66.6874,
+     "z_max": 248.845,
+     "z_mean": 68.4125,
      "z_min": 51.3498
     },
     {
      "net": "/CH4/BNC_IN",
      "within_5pct": 0.660207,
-     "z_max": 121.749,
-     "z_mean": 60.0462,
+     "z_max": 129.262,
+     "z_mean": 61.4243,
      "z_min": 51.3498
     },
     {
      "net": "/CH2/BNC_IN",
      "within_5pct": 0.661385,
-     "z_max": 121.749,
-     "z_mean": 60.0351,
+     "z_max": 129.262,
+     "z_mean": 61.4114,
      "z_min": 51.3498
     }
    ]
@@ -190,7 +190,7 @@
    "rough_formula_mm": 1.31405,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.320593,
+   "within_5pct": 0.32194,
    "worst": [
     {
      "net": "/ADC/D1A_N",
@@ -263,35 +263,35 @@
    "rough_formula_mm": 0.451117,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.925648,
+   "within_5pct": 0.924679,
    "worst": [
     {
-     "net": "/FPGA/SYNC_OUT_N",
-     "within_5pct": 0.942422,
-     "z_max": 161.896,
-     "z_mean": 97.7458,
-     "z_min": 48.1579
+     "net": "/FPGA/SYNC_IN_P",
+     "within_5pct": 0.956691,
+     "z_max": 559.685,
+     "z_mean": 103.085,
+     "z_min": 63.1726
+    },
+    {
+     "net": "/FPGA/SYNC_IN_N",
+     "within_5pct": 0.89337,
+     "z_max": 432.157,
+     "z_mean": 102.567,
+     "z_min": 63.1726
     },
     {
      "net": "/FPGA/SYNC_OUT_P",
      "within_5pct": 0.906827,
-     "z_max": 152.542,
-     "z_mean": 98.7057,
+     "z_max": 160.345,
+     "z_mean": 101.72,
      "z_min": 48.1579
     },
     {
-     "net": "/FPGA/SYNC_IN_N",
-     "within_5pct": 0.897239,
-     "z_max": 405.773,
-     "z_mean": 99.526,
-     "z_min": 63.1726
-    },
-    {
-     "net": "/FPGA/SYNC_IN_P",
-     "within_5pct": 0.956691,
-     "z_max": 532.596,
-     "z_mean": 99.9855,
-     "z_min": 63.1726
+     "net": "/FPGA/SYNC_OUT_N",
+     "within_5pct": 0.942422,
+     "z_max": 172.423,
+     "z_mean": 100.724,
+     "z_min": 48.1579
     }
    ]
   },
@@ -303,7 +303,7 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.219909,
+   "within_5pct": 0.220301,
    "worst": [
     {
      "net": "/FPGA/USRIO_11_N",
@@ -350,48 +350,95 @@
    "rough_formula_mm": 0.715356,
    "target_ohm": 85.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.585581,
+   "within_5pct": 0.561757,
    "worst": [
     {
      "net": "/TS-USB4 Components/M2_PER3_P",
      "within_5pct": 0.598909,
-     "z_max": 495.521,
-     "z_mean": 94.0042,
+     "z_max": 520.644,
+     "z_mean": 96.4775,
      "z_min": 51.1232
     },
     {
      "net": "/FPGA/MGT_TX3_P",
      "within_5pct": 0.0,
-     "z_max": 491.537,
-     "z_mean": 93.7219,
+     "z_max": 516.468,
+     "z_mean": 94.4335,
      "z_min": 47.2292
     },
     {
      "net": "/FPGA/MGT_TX0_N",
      "within_5pct": 0.0,
-     "z_max": 165.396,
-     "z_mean": 93.5557,
+     "z_max": 173.837,
+     "z_mean": 94.1721,
      "z_min": 47.2292
     },
     {
      "net": "/FPGA/MGT_TX1_N",
      "within_5pct": 0.0,
-     "z_max": 179.878,
-     "z_mean": 93.4134,
+     "z_max": 189.047,
+     "z_mean": 94.0341,
      "z_min": 47.2292
     },
     {
-     "net": "/FPGA/MGT_TX0_P",
+     "net": "/TS-USB4 Components/M2_PER3_N",
+     "within_5pct": 0.567256,
+     "z_max": 504.087,
+     "z_mean": 93.4441,
+     "z_min": 51.1232
+    }
+   ]
+  },
+  {
+   "class": "QSPI",
+   "diff": false,
+   "length_mm": 140.439,
+   "nets": 6,
+   "rough_formula_mm": 0.0,
+   "target_ohm": 50.0,
+   "target_source": "user",
+   "within_5pct": 0.0,
+   "worst": [
+    {
+     "net": "/FPGA/FPGA IO Banks/QSPI_DQ1",
      "within_5pct": 0.0,
-     "z_max": 165.396,
-     "z_mean": 91.8165,
-     "z_min": 47.2292
+     "z_max": 233.164,
+     "z_mean": 63.3303,
+     "z_min": 16.3606
+    },
+    {
+     "net": "/FPGA/FPGA Config and Transceivers/QSPI_CLK",
+     "within_5pct": 0.0,
+     "z_max": 190.638,
+     "z_mean": 60.8236,
+     "z_min": 16.4839
+    },
+    {
+     "net": "/FPGA/FPGA IO Banks/QSPI_DQ0",
+     "within_5pct": 0.0,
+     "z_max": 231.257,
+     "z_mean": 60.8185,
+     "z_min": 16.4052
+    },
+    {
+     "net": "/FPGA/FPGA Config and Transceivers/QSPI_CS",
+     "within_5pct": 0.0,
+     "z_max": 267.209,
+     "z_mean": 60.148,
+     "z_min": 16.4839
+    },
+    {
+     "net": "/FPGA/FPGA IO Banks/QSPI_DQ3",
+     "within_5pct": 0.0,
+     "z_max": 61.7596,
+     "z_mean": 57.9656,
+     "z_min": 16.4052
     }
    ]
   }
  ],
  "config": {
-  "entries": 70,
+  "entries": 344,
   "errors": [],
   "ok": true,
   "warnings": []
@@ -405,7 +452,7 @@
     "assumed": [],
     "er": 3.23,
     "material": "FR408HR",
-    "tand": 0.02,
+    "tand": 0.0092,
     "thickness_um": 110.7
    },
    "layer": "F.Cu"
@@ -416,7 +463,7 @@
     "assumed": [],
     "er": 3.66,
     "material": "FR408HR",
-    "tand": 0.02,
+    "tand": 0.0092,
     "thickness_um": 101.6
    },
    "layer": "In1.Cu"
@@ -425,9 +472,9 @@
    "cu_um": 17.5,
    "dielectric_below": {
     "assumed": [],
-    "er": 4.5,
-    "material": "FR4",
-    "tand": 0.02,
+    "er": 3.68,
+    "material": "FR408HR",
+    "tand": 0.0092,
     "thickness_um": 925.6
    },
    "layer": "In2.Cu"
@@ -438,7 +485,7 @@
     "assumed": [],
     "er": 3.66,
     "material": "FR408HR",
-    "tand": 0.02,
+    "tand": 0.0092,
     "thickness_um": 110.7
    },
    "layer": "In3.Cu"
@@ -449,7 +496,7 @@
     "assumed": [],
     "er": 3.23,
     "material": "FR408HR",
-    "tand": 0.02,
+    "tand": 0.0092,
     "thickness_um": 100.0
    },
    "layer": "In4.Cu"

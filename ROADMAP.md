@@ -1,6 +1,6 @@
 # kisi – roadmap
 
-Planned and possible work after 0.2.5, in three development blocks plus work across them. Within a block the items
+Planned and possible work after 0.3.0, in three development blocks plus work across them. Within a block the items
 are roughly in order of priority; each says why it matters, "Decide first" marks items that need a decision before
 work starts. One rule holds for all of them: `main` always has a clean, mostly self-explanatory build – new features
 come with a small, clear UI and without option combinatorics.
@@ -25,9 +25,23 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   `kisi.json`. The "Prepare" step lists the gaps and lets the simple values be entered directly (laminate εr/tanδ,
   net class targets and profiles, regulators and loads, thermal data), checked by the same code as `config-check`,
   and exports `<board>.kisi.json`. Research-heavy values (datasheets) stay with the agent path (skill
-  kisi-prepare). No second logic in the viewer. **In progress on branch `feat/docs-prepare`** (mockup approved:
-  a "Prepare PCB" page with tabs Impedance / Channel / Power; first version built; being made fully functional
-  before it is merged).
+  kisi-prepare). No second logic in the viewer. **Done in branch `feat/docs-prepare`** (mockup v3 approved, then implemented): the core
+  (gap categories from `affects`, "nothing to check" per category, readiness, `kisi gaps --for`, `gaps.dismissed`
+  for name-based gaps, `config::subset`, check messages with categories), the WASM exports, and the viewer's
+  "Prepare PCB" page (tabs, forms for laminate, net classes, variant, regulators, loads, beads and thermal data,
+  dismissals, one draft, live check, save everything or one category next to the board, the agent prompt per tab,
+  readiness dots), then made fully functional: every entry of a loaded kisi.json in editable forms (keys without a
+  form kept, load and save unchanged gives the same file), the draft per board kept in the browser with Discard,
+  forms for capacitor data (by part number, with the parts' own rating fields as a suggestion), connector ends
+  (Touchstone file and ports) and variant definitions, the views' stackup, target, profile, connector-end and
+  power edits moved into the draft (power through the core's tree/setup → fields conversion), categories per
+  gap item from the core, stale dismissals with remove; `check_viewer.py` runs the acceptance on the bare
+  ThunderScope (its kisi.json entered through the forms, saved, reloaded). After the maintainer's review the page
+  became a checklist (a marker per step, one line of what it needs, Apply through the core with a check mark or
+  what is still missing, the next step opens, progress and "Ready for …" per tab, saving as the last step; the
+  marker counts a step's open items), the readiness dots on the view buttons are gone, kisi.json can give nets a
+  class of their own (`net_classes.<name>.nets`), and the example boards carry a complete kisi.json.
+  What remains, with reasons: `docs/mockups/prepare.md`, "Still open".
 - **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
   (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
   text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an

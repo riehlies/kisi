@@ -47,10 +47,50 @@
      "z_min": 55.4254
     }
    ]
+  },
+  {
+   "class": "USB",
+   "diff": true,
+   "length_mm": 24.3359,
+   "nets": 4,
+   "rough_formula_mm": 0.0,
+   "target_ohm": 90.0,
+   "target_source": "user",
+   "within_5pct": 0.163247,
+   "worst": [
+    {
+     "net": "USB_DP",
+     "within_5pct": 0.154443,
+     "z_max": 133.327,
+     "z_mean": 116.725,
+     "z_min": 67.8208
+    },
+    {
+     "net": "USB_DN",
+     "within_5pct": 0.335969,
+     "z_max": 133.327,
+     "z_mean": 113.342,
+     "z_min": 69.8815
+    },
+    {
+     "net": "/Microcontroller/MCU_USB_DN",
+     "within_5pct": 0.0,
+     "z_max": 133.327,
+     "z_mean": 108.64,
+     "z_min": 79.7621
+    },
+    {
+     "net": "/Microcontroller/MCU_USB_DP",
+     "within_5pct": 0.0,
+     "z_max": 127.368,
+     "z_mean": 107.775,
+     "z_min": 69.462
+    }
+   ]
   }
  ],
  "config": {
-  "entries": 68,
+  "entries": 120,
   "errors": [],
   "ok": true,
   "warnings": []

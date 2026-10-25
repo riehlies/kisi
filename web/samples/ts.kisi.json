@@ -1,94 +1,3427 @@
 {
-  "kisi_config": 1,
-  "board": "Thunderscope_Rev5.3.kicad_pcb",
-  "variant": "TS-PCIe",
-  "variants": {
-    "TS-PCIe": {
-      "description": "PCIe mode: x4 edge fingers P1 to the FPGA",
-      "not_fitted_sheets": ["/TS-USB4 Components/"],
-      "fitted": ["C101", "C102", "C128"],
-      "source": {"kind": "design", "document": "Thunderscope_Rev5.3_TS-PCIe_MP_BOM.csv and _Positions.txt (Hardware/Thunderscope_Rev5.3/Outputs/TS-PCIe Assembly/)", "url": "https://github.com/EEVengers/ThunderScope", "note": "commit df2b845: the BOM has no part of the sheet /TS-USB4 Components/ except C101, C102, C128; every part outside the two variant sheets is in both BOMs"}
-    },
-    "TS-USB4": {
-      "description": "M.2 mode: PCIe x4 through the M.2 Key M socket J8 (USB4 adapter) to the FPGA",
-      "not_fitted_sheets": ["/TS-PCIe Components/"],
-      "fitted": ["C22", "C83", "C84"],
-      "source": {"kind": "design", "document": "Thunderscope_Rev5.3_TS-USB4_MP_BOM.csv and _Positions.txt (Hardware/Thunderscope_Rev5.3/Outputs/TS-USB4 Assembly/)", "url": "https://github.com/EEVengers/ThunderScope", "note": "commit df2b845: the BOM has no part of the sheet /TS-PCIe Components/ except C22, C83, C84; the PCIe edge fingers P1 stay as copper"}
-    }
+ "kisi_config": 1,
+ "board": "Thunderscope_Rev5.3.kicad_pcb",
+ "variant": "TS-PCIe",
+ "variants": {
+  "TS-PCIe": {
+   "description": "PCIe mode: x4 edge fingers P1 to the FPGA",
+   "not_fitted_sheets": [
+    "/TS-USB4 Components/"
+   ],
+   "fitted": [
+    "C101",
+    "C102",
+    "C128"
+   ],
+   "source": {
+    "kind": "design",
+    "document": "Thunderscope_Rev5.3_TS-PCIe_MP_BOM.csv and _Positions.txt (Hardware/Thunderscope_Rev5.3/Outputs/TS-PCIe Assembly/)",
+    "url": "https://github.com/EEVengers/ThunderScope",
+    "note": "commit df2b845: the BOM has no part of the sheet /TS-USB4 Components/ except C101, C102, C128; every part outside the two variant sheets is in both BOMs"
+   }
   },
-  "notes": [
-    "ThunderScope Rev5.3",
-    "Assembly variants TS-PCIe and TS-USB4 (separate BOMs and position files, parts on the sheets /TS-PCIe Components/ and /TS-USB4 Components/); TS-PCIe is analysed. The power tree is that of TS-PCIe (12 V from the slot), all four channels active; the M.2/USB4 supply path (J8, R54) is not computed. Currents from datasheets (typ.) or estimated; efficiencies estimated from typical curves.",
-    "Converted from a kisi power tree with tools/tree_to_fields.py."
-  ],
-  "fields": [
-    {"ref": "P1", "name": "PI_REG", "value": "+12V_PCIe@12V input", "source": {"kind": "assumption", "note": "PCIe x4 add-in card, supply input"}},
-    {"ref": "R42", "name": "PI_REG", "value": "+12V_PCIe@12V > +12V_PCIe_R pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "U11", "name": "PI_REG", "value": "+12V_PCIe_R > +VUSB@5V buck 91% 3A", "source": {"kind": "estimate", "note": "TPSM82913, buck module 12 V → 5 V, efficiency estimated from typical curves"}},
-    {"ref": "U20", "name": "PI_REG", "value": "+VUSB@5V > +1V0_R@1V buck 80% 2A out=L2", "source": {"kind": "estimate", "note": "TPS62A02, FPGA core, efficiency estimated from typical curves"}},
-    {"ref": "R116", "name": "PI_REG", "value": "+1V0_R@1V > +1V0 pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "FB13", "name": "PI_REG", "value": "+1V0 > +1V0_MGT pass r=0.05", "source": {"kind": "estimate", "note": "ferrite 120 Ω, DC resistance estimated"}},
-    {"ref": "U21", "name": "PI_REG", "value": "+VUSB@5V > +1V8_R@1.8V buck 86% 2A out=L3", "source": {"kind": "estimate", "note": "TPS62A02, efficiency estimated from typical curves"}},
-    {"ref": "R120", "name": "PI_REG", "value": "+1V8_R@1.8V > +1V8 pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "R123", "name": "PI_REG", "value": "+1V8 > +1V8_R_LDO pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "U22", "name": "PI_REG", "value": "+1V8_R_LDO > +1V2_MGT@1.2V ldo 1A iq=3mA", "source": {"kind": "datasheet", "note": "TPS7A9101, GTP termination, quiescent and rated current from the datasheet"}},
-    {"ref": "U23", "name": "PI_REG", "value": "+VUSB@5V > +2V5_R@2.5V buck 89% 2A out=L4", "source": {"kind": "estimate", "note": "TPS62A02, efficiency estimated from typical curves"}},
-    {"ref": "R126", "name": "PI_REG", "value": "+2V5_R@2.5V > +2V5 pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "R97", "name": "PI_REG", "value": "+2V5 > +2V5_R_ACQ pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "U14", "name": "PI_REG", "value": "+2V5_R_ACQ > +1V8_ACQ@1.8V ldo 1A iq=3mA", "source": {"kind": "datasheet", "note": "TPS7A9101, ADC and PLL, quiescent and rated current from the datasheet"}},
-    {"ref": "FB1", "name": "PI_REG", "value": "+1V8_ACQ@1.8V > +1V8D pass r=0.05", "source": {"kind": "estimate", "note": "ferrite 120 Ω, DC resistance estimated"}},
-    {"ref": "FB2", "name": "PI_REG", "value": "+1V8_ACQ@1.8V > +1V8A pass r=0.05", "source": {"kind": "estimate", "note": "ferrite 120 Ω, DC resistance estimated"}},
-    {"ref": "FB3", "name": "PI_REG", "value": "+1V8_ACQ@1.8V > +1V8APLL pass r=0.05", "source": {"kind": "estimate", "note": "ferrite 120 Ω, DC resistance estimated"}},
-    {"ref": "U8", "name": "PI_REG", "value": "+VUSB@5V > +3V3_R@3.3V buck 85% 2A out=L5", "source": {"kind": "estimate", "note": "TPS62A02, light load, efficiency in the partial-load range, efficiency estimated from typical curves"}},
-    {"ref": "R57", "name": "PI_REG", "value": "+3V3_R@3.3V > +3V3 pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "R89", "name": "PI_REG", "value": "+VUSB@5V > +VUSB_R_ACQ pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "U9", "name": "PI_REG", "value": "+VUSB_R_ACQ > +3V3_ACQ@3.3V ldo 0.45A iq=0.02mA", "source": {"kind": "datasheet", "note": "NCP161 3.3 V, quiescent and rated current from the datasheet"}},
-    {"ref": "R14", "name": "PI_REG", "value": "+VUSB@5V > +VUSB_R pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "U17", "name": "PI_REG", "value": "+VUSB_R > +5V3 boost 93% in=L1", "source": {"kind": "estimate", "note": "TPS61023, boost 5 V → 5.3 V as headroom for the low-noise ±5 V, efficiency estimated from typical curves"}},
-    {"ref": "R98", "name": "PI_REG", "value": "+5V3 > +5V3_R_LDO pass r=0.01", "source": {"kind": "assumption", "note": "shunt 10 mΩ, resistance = component value"}},
-    {"ref": "U15", "name": "PI_REG", "value": "+5V3_R_LDO > +5V ldo 1A iq=3mA", "source": {"kind": "datasheet", "note": "TPS7A9101, front end +5 V, quiescent and rated current from the datasheet"}},
-    {"ref": "FB1000_1", "name": "PI_REG", "value": "+5V > /CH1/+VPGA pass r=0.05", "source": {"kind": "estimate", "note": "ferrite 120 Ω, DC resistance estimated"}},
-    {"ref": "FB1000_2", "name": "PI_REG", "value": "+5V > /CH2/+VPGA pass r=0.05", "source": {"kind": "estimate", "note": "ferrite 120 Ω, DC resistance estimated"}},
-    {"ref": "FB1000_3", "name": "PI_REG", "value": "+5V > /CH3/+VPGA pass r=0.05", "source": {"kind": "estimate", "note": "ferrite 120 Ω, DC resistance estimated"}},
-    {"ref": "FB1000_4", "name": "PI_REG", "value": "+5V > /CH4/+VPGA pass r=0.05", "source": {"kind": "estimate", "note": "ferrite 120 Ω, DC resistance estimated"}},
-    {"ref": "R106", "name": "PI_REG", "value": "+5V > +5V_R_PGA pass r=0.1", "source": {"kind": "assumption", "note": "shunt 0.1 Ω, resistance = component value"}},
-    {"ref": "U16", "name": "PI_REG", "value": "+5V_R_PGA > +3V3_PGA@3.3V ldo 0.45A iq=0.02mA", "source": {"kind": "datasheet", "note": "NCP161 3.3 V, logic supply of the PGAs, quiescent and rated current from the datasheet"}},
-    {"ref": "R90", "name": "PI_REG", "value": "+5V3 > +5V3_R_CP pass r=0.1", "source": {"kind": "assumption", "note": "shunt 0.1 Ω, resistance = component value"}},
-    {"ref": "U13", "name": "PI_REG", "value": "+5V3_R_CP > -5V_R@-5V inverter 85% 0.25A", "source": {"kind": "estimate", "note": "LM27761, charge pump with LDO, −5 V, efficiency estimated from typical curves"}},
-    {"ref": "R91", "name": "PI_REG", "value": "-5V_R@-5V > -5V pass r=0.05", "source": {"kind": "estimate", "note": "ferrite 120 Ω, DC resistance estimated"}},
-    {"ref": "U18", "name": "PI_LOAD", "value": "+1V0=0.6A, +1V8=0.12A, +2V5=0.06A, +3V3=0.03A, +1V0_MGT=0.18A, +1V2_MGT=0.14A", "source": {"kind": "estimate", "note": "+1V0: VCCINT/VCCBRAM, PCIe core and LVDS deserialisation; +1V8: VCCAUX and 1.8 V banks; +2V5: VCCO of the LVDS banks; +3V3: VCCO 3.3 V; +1V0_MGT: MGTAVCC, 4 GTP-Lanes; +1V2_MGT: MGTAVTT, 4 GTP-Lanes"}},
-    {"ref": "U19", "name": "PI_LOAD", "value": "+3V3=0.005A", "source": {"kind": "estimate", "note": "flash, active only during configuration"}},
-    {"ref": "U10", "name": "PI_LOAD", "value": "+3V3=0.01A", "source": {"kind": "estimate", "note": "rough value, check the datasheet"}},
-    {"ref": "U6", "name": "PI_LOAD", "value": "+1V8A=0.27A, +1V8D=0.125A, +3V3_ACQ=0.002A", "source": {"kind": "estimate", "note": "+1V8A: AVDD, 1 GS/s (values of the 8-bit variant HMCAD1511); +1V8D: DVDD incl. LVDS outputs; +3V3_ACQ: (estimate)"}},
-    {"ref": "U7", "name": "PI_LOAD", "value": "+1V8APLL=0.15A, +3V3_ACQ=0.08A", "source": {"kind": "estimate", "note": "+1V8APLL: core; +3V3_ACQ: output drivers"}},
-    {"ref": "U12_1", "name": "PI_LOAD", "value": "+3V3_ACQ=0.035A", "source": {"kind": "datasheet", "note": "ADC driver"}},
-    {"ref": "U12_2", "name": "PI_LOAD", "value": "+3V3_ACQ=0.035A", "source": {"kind": "datasheet", "note": "ADC driver"}},
-    {"ref": "U12_3", "name": "PI_LOAD", "value": "+3V3_ACQ=0.035A", "source": {"kind": "datasheet", "note": "ADC driver"}},
-    {"ref": "U12_4", "name": "PI_LOAD", "value": "+3V3_ACQ=0.035A", "source": {"kind": "datasheet", "note": "ADC driver"}},
-    {"ref": "U1008_1", "name": "PI_LOAD", "value": "/CH1/+VPGA=0.23A, +3V3_PGA=0.0004A", "source": {"kind": "datasheet", "note": "/CH1/+VPGA: PGA, analogue section 5 V; +3V3_PGA: PGA, logic"}},
-    {"ref": "U1008_2", "name": "PI_LOAD", "value": "/CH2/+VPGA=0.23A, +3V3_PGA=0.0004A", "source": {"kind": "datasheet", "note": "/CH2/+VPGA: PGA, analogue section 5 V; +3V3_PGA: PGA, logic"}},
-    {"ref": "U1008_3", "name": "PI_LOAD", "value": "/CH3/+VPGA=0.23A, +3V3_PGA=0.0004A", "source": {"kind": "datasheet", "note": "/CH3/+VPGA: PGA, analogue section 5 V; +3V3_PGA: PGA, logic"}},
-    {"ref": "U1008_4", "name": "PI_LOAD", "value": "/CH4/+VPGA=0.23A, +3V3_PGA=0.0004A", "source": {"kind": "datasheet", "note": "/CH4/+VPGA: PGA, analogue section 5 V; +3V3_PGA: PGA, logic"}},
-    {"ref": "U1008_1", "name": "PI_THERMAL", "value": "theta_jb=11.5 theta_jc=31.7", "source": {"kind": "datasheet", "document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information", "url": "https://www.ti.com.cn/document-viewer/cn/lit/html/ZHCSPP6E/GUID-A5B8C6D0-C035-4943-8991-051893760CEB", "note": "RGH (WQFN-16): RθJB 11.5, RθJC(top) 31.7 °C/W; Tj max not taken (default 125 °C)"}},
-    {"ref": "U1008_2", "name": "PI_THERMAL", "value": "theta_jb=11.5 theta_jc=31.7", "source": {"kind": "datasheet", "document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information", "url": "https://www.ti.com.cn/document-viewer/cn/lit/html/ZHCSPP6E/GUID-A5B8C6D0-C035-4943-8991-051893760CEB", "note": "RGH (WQFN-16): RθJB 11.5, RθJC(top) 31.7 °C/W; Tj max not taken (default 125 °C)"}},
-    {"ref": "U1008_3", "name": "PI_THERMAL", "value": "theta_jb=11.5 theta_jc=31.7", "source": {"kind": "datasheet", "document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information", "url": "https://www.ti.com.cn/document-viewer/cn/lit/html/ZHCSPP6E/GUID-A5B8C6D0-C035-4943-8991-051893760CEB", "note": "RGH (WQFN-16): RθJB 11.5, RθJC(top) 31.7 °C/W; Tj max not taken (default 125 °C)"}},
-    {"ref": "U1008_4", "name": "PI_THERMAL", "value": "theta_jb=11.5 theta_jc=31.7", "source": {"kind": "datasheet", "document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information", "url": "https://www.ti.com.cn/document-viewer/cn/lit/html/ZHCSPP6E/GUID-A5B8C6D0-C035-4943-8991-051893760CEB", "note": "RGH (WQFN-16): RθJB 11.5, RθJC(top) 31.7 °C/W; Tj max not taken (default 125 °C)"}},
-    {"ref": "U11", "name": "PI_THERMAL", "value": "theta_jb=7.2 theta_jc=22.4", "source": {"kind": "datasheet", "document": "TI TPSM82913 datasheet (ZHCSOW9C), Thermal Information", "url": "https://www.ti.com.cn/document-viewer/cn/TPSM82913/datasheet/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000259467", "note": "RDU, JEDEC 51-7 board column: RθJB 7.2, RθJC(top) 22.4 °C/W"}},
-    {"ref": "U17", "name": "PI_THERMAL", "value": "theta_jb=31.0 theta_jc=55.7", "source": {"kind": "datasheet", "document": "TI TPS61023 datasheet (ZHCSK97B), Thermal Information", "url": "https://www.ti.com.cn/document-viewer/cn/TPS61023/datasheet/GUID-3F9DF5E0-9857-4037-BF6D-2F63C3676729", "note": "DRL (SOT-563), standard board column: RθJB 31.0, RθJC 55.7 °C/W"}},
-    {"ref": "U8", "name": "PI_THERMAL", "value": "theta_jb=45.6 theta_jc=92.2", "source": {"kind": "datasheet", "document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information", "url": "https://ti.com/document-viewer/lit/html/SLUSEG9E/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000338754", "note": "TPS62A02, DRL (SOT-563): RθJB 45.6, RθJC(top) 92.2 °C/W"}},
-    {"ref": "U20", "name": "PI_THERMAL", "value": "theta_jb=45.6 theta_jc=92.2", "source": {"kind": "datasheet", "document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information", "url": "https://ti.com/document-viewer/lit/html/SLUSEG9E/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000338754", "note": "TPS62A02, DRL (SOT-563): RθJB 45.6, RθJC(top) 92.2 °C/W"}},
-    {"ref": "U21", "name": "PI_THERMAL", "value": "theta_jb=45.6 theta_jc=92.2", "source": {"kind": "datasheet", "document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information", "url": "https://ti.com/document-viewer/lit/html/SLUSEG9E/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000338754", "note": "TPS62A02, DRL (SOT-563): RθJB 45.6, RθJC(top) 92.2 °C/W"}},
-    {"ref": "U23", "name": "PI_THERMAL", "value": "theta_jb=45.6 theta_jc=92.2", "source": {"kind": "datasheet", "document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information", "url": "https://ti.com/document-viewer/lit/html/SLUSEG9E/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000338754", "note": "TPS62A02, DRL (SOT-563): RθJB 45.6, RθJC(top) 92.2 °C/W"}},
-    {"ref": "U18", "name": "PI_THERMAL", "value": "tj_max=85", "source": {"kind": "datasheet", "document": "AMD/Xilinx DS181 v1.27, Artix-7 DC and AC Switching Characteristics, Table 2", "url": "https://cdn.sparkfun.com/assets/0/f/b/6/2/Artix_7_Data_Sheet.pdf", "note": "XC7A50T-2CSG325C, commercial grade: junction temperature 0–85 °C; θ values not taken (package default)"}},
-    {"ref": "U1009_1", "name": "PI_LOAD", "value": "+5V=0.034A, -5V=0.034A", "source": {"kind": "datasheet", "note": "+5V: input buffer, positive side; -5V: input buffer, negative side"}},
-    {"ref": "U1009_2", "name": "PI_LOAD", "value": "+5V=0.034A, -5V=0.034A", "source": {"kind": "datasheet", "note": "+5V: input buffer, positive side; -5V: input buffer, negative side"}},
-    {"ref": "U1009_3", "name": "PI_LOAD", "value": "+5V=0.034A, -5V=0.034A", "source": {"kind": "datasheet", "note": "+5V: input buffer, positive side; -5V: input buffer, negative side"}},
-    {"ref": "U1009_4", "name": "PI_LOAD", "value": "+5V=0.034A, -5V=0.034A", "source": {"kind": "datasheet", "note": "+5V: input buffer, positive side; -5V: input buffer, negative side"}},
-    {"ref": "U1011_1", "name": "PI_LOAD", "value": "+5V=0.0018A, -5V=0.0018A", "source": {"kind": "estimate", "note": "rough value, check the datasheet"}},
-    {"ref": "U1011_2", "name": "PI_LOAD", "value": "+5V=0.0018A, -5V=0.0018A", "source": {"kind": "estimate", "note": "rough value, check the datasheet"}},
-    {"ref": "U1011_3", "name": "PI_LOAD", "value": "+5V=0.0018A, -5V=0.0018A", "source": {"kind": "estimate", "note": "rough value, check the datasheet"}},
-    {"ref": "U1011_4", "name": "PI_LOAD", "value": "+5V=0.0018A, -5V=0.0018A", "source": {"kind": "estimate", "note": "rough value, check the datasheet"}},
-    {"ref": "U5", "name": "PI_LOAD", "value": "+5V=0.0018A, -5V=0.0018A", "source": {"kind": "estimate", "note": "rough value, check the datasheet"}},
-    {"ref": "U4", "name": "PI_LOAD", "value": "+5V=0.0005A", "source": {"kind": "estimate", "note": "rough value, check the datasheet"}}
+  "TS-USB4": {
+   "description": "M.2 mode: PCIe x4 through the M.2 Key M socket J8 (USB4 adapter) to the FPGA",
+   "not_fitted_sheets": [
+    "/TS-PCIe Components/"
+   ],
+   "fitted": [
+    "C22",
+    "C83",
+    "C84"
+   ],
+   "source": {
+    "kind": "design",
+    "document": "Thunderscope_Rev5.3_TS-USB4_MP_BOM.csv and _Positions.txt (Hardware/Thunderscope_Rev5.3/Outputs/TS-USB4 Assembly/)",
+    "url": "https://github.com/EEVengers/ThunderScope",
+    "note": "commit df2b845: the BOM has no part of the sheet /TS-PCIe Components/ except C22, C83, C84; the PCIe edge fingers P1 stay as copper"
+   }
+  }
+ },
+ "notes": [
+  "ThunderScope Rev5.3",
+  "Assembly variants TS-PCIe and TS-USB4 (separate BOMs and position files, parts on the sheets /TS-PCIe Components/ and /TS-USB4 Components/); TS-PCIe is analysed. The power tree is that of TS-PCIe (12 V from the slot), all four channels active; the M.2/USB4 supply path (J8, R54) is not computed. Currents from datasheets (typ.) or estimated; efficiencies estimated from typical curves.",
+  "Laminate: Isola FR408HR throughout (Fab_Readme.txt), Df at 2 GHz from the data sheet; impedance targets of the QSPI flash nets assumed (50 Ω); the analog classes keep kisi's generic profiles on purpose.",
+  "Not filled in (optional): thermal data (PI_THERMAL) of 14 parts – package defaults apply (estimates), the data sheets' Thermal Information tables were not entered.",
+  "Power tree first converted from a kisi power tree with tools/tree_to_fields.py."
+ ],
+ "fields": [
+  {
+   "ref": "P1",
+   "name": "PI_REG",
+   "value": "+12V_PCIe@12V input",
+   "source": {
+    "kind": "assumption",
+    "note": "PCIe x4 add-in card, supply input"
+   }
+  },
+  {
+   "ref": "R42",
+   "name": "PI_REG",
+   "value": "+12V_PCIe@12V > +12V_PCIe_R pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "U11",
+   "name": "PI_REG",
+   "value": "+12V_PCIe_R > +VUSB@5V buck 91% 3A",
+   "source": {
+    "kind": "estimate",
+    "note": "TPSM82913, buck module 12 V → 5 V, efficiency estimated from typical curves"
+   }
+  },
+  {
+   "ref": "U20",
+   "name": "PI_REG",
+   "value": "+VUSB@5V > +1V0_R@1V buck 80% 2A out=L2",
+   "source": {
+    "kind": "estimate",
+    "note": "TPS62A02, FPGA core, efficiency estimated from typical curves"
+   }
+  },
+  {
+   "ref": "R116",
+   "name": "PI_REG",
+   "value": "+1V0_R@1V > +1V0 pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "FB13",
+   "name": "PI_REG",
+   "value": "+1V0 > +1V0_MGT pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "U21",
+   "name": "PI_REG",
+   "value": "+VUSB@5V > +1V8_R@1.8V buck 86% 2A out=L3",
+   "source": {
+    "kind": "estimate",
+    "note": "TPS62A02, efficiency estimated from typical curves"
+   }
+  },
+  {
+   "ref": "R120",
+   "name": "PI_REG",
+   "value": "+1V8_R@1.8V > +1V8 pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "R123",
+   "name": "PI_REG",
+   "value": "+1V8 > +1V8_R_LDO pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "U22",
+   "name": "PI_REG",
+   "value": "+1V8_R_LDO > +1V2_MGT@1.2V ldo 1A iq=3mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "TPS7A9101, GTP termination, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "U23",
+   "name": "PI_REG",
+   "value": "+VUSB@5V > +2V5_R@2.5V buck 89% 2A out=L4",
+   "source": {
+    "kind": "estimate",
+    "note": "TPS62A02, efficiency estimated from typical curves"
+   }
+  },
+  {
+   "ref": "R126",
+   "name": "PI_REG",
+   "value": "+2V5_R@2.5V > +2V5 pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "R97",
+   "name": "PI_REG",
+   "value": "+2V5 > +2V5_R_ACQ pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "U14",
+   "name": "PI_REG",
+   "value": "+2V5_R_ACQ > +1V8_ACQ@1.8V ldo 1A iq=3mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "TPS7A9101, ADC and PLL, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "FB1",
+   "name": "PI_REG",
+   "value": "+1V8_ACQ@1.8V > +1V8D pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "FB2",
+   "name": "PI_REG",
+   "value": "+1V8_ACQ@1.8V > +1V8A pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "FB3",
+   "name": "PI_REG",
+   "value": "+1V8_ACQ@1.8V > +1V8APLL pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "U8",
+   "name": "PI_REG",
+   "value": "+VUSB@5V > +3V3_R@3.3V buck 85% 2A out=L5",
+   "source": {
+    "kind": "estimate",
+    "note": "TPS62A02, light load, efficiency in the partial-load range, efficiency estimated from typical curves"
+   }
+  },
+  {
+   "ref": "R57",
+   "name": "PI_REG",
+   "value": "+3V3_R@3.3V > +3V3 pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "R89",
+   "name": "PI_REG",
+   "value": "+VUSB@5V > +VUSB_R_ACQ pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "U9",
+   "name": "PI_REG",
+   "value": "+VUSB_R_ACQ > +3V3_ACQ@3.3V ldo 0.45A iq=0.02mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "NCP161 3.3 V, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "R14",
+   "name": "PI_REG",
+   "value": "+VUSB@5V > +VUSB_R pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "U17",
+   "name": "PI_REG",
+   "value": "+VUSB_R > +5V3 boost 93% in=L1",
+   "source": {
+    "kind": "estimate",
+    "note": "TPS61023, boost 5 V → 5.3 V as headroom for the low-noise ±5 V, efficiency estimated from typical curves"
+   }
+  },
+  {
+   "ref": "R98",
+   "name": "PI_REG",
+   "value": "+5V3 > +5V3_R_LDO pass r=0.01",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 10 mΩ, resistance = component value"
+   }
+  },
+  {
+   "ref": "U15",
+   "name": "PI_REG",
+   "value": "+5V3_R_LDO > +5V ldo 1A iq=3mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "TPS7A9101, front end +5 V, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "FB1000_1",
+   "name": "PI_REG",
+   "value": "+5V > /CH1/+VPGA pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "FB1000_2",
+   "name": "PI_REG",
+   "value": "+5V > /CH2/+VPGA pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "FB1000_3",
+   "name": "PI_REG",
+   "value": "+5V > /CH3/+VPGA pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "FB1000_4",
+   "name": "PI_REG",
+   "value": "+5V > /CH4/+VPGA pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "R106",
+   "name": "PI_REG",
+   "value": "+5V > +5V_R_PGA pass r=0.1",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 0.1 Ω, resistance = component value"
+   }
+  },
+  {
+   "ref": "U16",
+   "name": "PI_REG",
+   "value": "+5V_R_PGA > +3V3_PGA@3.3V ldo 0.45A iq=0.02mA",
+   "source": {
+    "kind": "datasheet",
+    "note": "NCP161 3.3 V, logic supply of the PGAs, quiescent and rated current from the datasheet"
+   }
+  },
+  {
+   "ref": "R90",
+   "name": "PI_REG",
+   "value": "+5V3 > +5V3_R_CP pass r=0.1",
+   "source": {
+    "kind": "assumption",
+    "note": "shunt 0.1 Ω, resistance = component value"
+   }
+  },
+  {
+   "ref": "U13",
+   "name": "PI_REG",
+   "value": "+5V3_R_CP > -5V_R@-5V inverter 85% 0.25A",
+   "source": {
+    "kind": "estimate",
+    "note": "LM27761, charge pump with LDO, −5 V, efficiency estimated from typical curves"
+   }
+  },
+  {
+   "ref": "R91",
+   "name": "PI_REG",
+   "value": "-5V_R@-5V > -5V pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω, DC resistance estimated"
+   }
+  },
+  {
+   "ref": "U18",
+   "name": "PI_LOAD",
+   "value": "+1V0=0.6A, +1V8=0.12A, +2V5=0.06A, +3V3=0.03A, +1V0_MGT=0.18A, +1V2_MGT=0.14A",
+   "source": {
+    "kind": "estimate",
+    "note": "+1V0: VCCINT/VCCBRAM, PCIe core and LVDS deserialisation; +1V8: VCCAUX and 1.8 V banks; +2V5: VCCO of the LVDS banks; +3V3: VCCO 3.3 V; +1V0_MGT: MGTAVCC, 4 GTP-Lanes; +1V2_MGT: MGTAVTT, 4 GTP-Lanes"
+   }
+  },
+  {
+   "ref": "U19",
+   "name": "PI_LOAD",
+   "value": "+3V3=0.005A",
+   "source": {
+    "kind": "estimate",
+    "note": "flash, active only during configuration"
+   }
+  },
+  {
+   "ref": "U10",
+   "name": "PI_LOAD",
+   "value": "+3V3=0.01A",
+   "source": {
+    "kind": "estimate",
+    "note": "rough value, check the datasheet"
+   }
+  },
+  {
+   "ref": "U6",
+   "name": "PI_LOAD",
+   "value": "+1V8A=0.27A, +1V8D=0.125A, +3V3_ACQ=0.002A",
+   "source": {
+    "kind": "estimate",
+    "note": "+1V8A: AVDD, 1 GS/s (values of the 8-bit variant HMCAD1511); +1V8D: DVDD incl. LVDS outputs; +3V3_ACQ: (estimate)"
+   }
+  },
+  {
+   "ref": "U7",
+   "name": "PI_LOAD",
+   "value": "+1V8APLL=0.15A, +3V3_ACQ=0.08A",
+   "source": {
+    "kind": "estimate",
+    "note": "+1V8APLL: core; +3V3_ACQ: output drivers"
+   }
+  },
+  {
+   "ref": "U12_1",
+   "name": "PI_LOAD",
+   "value": "+3V3_ACQ=0.035A",
+   "source": {
+    "kind": "datasheet",
+    "note": "ADC driver"
+   }
+  },
+  {
+   "ref": "U12_2",
+   "name": "PI_LOAD",
+   "value": "+3V3_ACQ=0.035A",
+   "source": {
+    "kind": "datasheet",
+    "note": "ADC driver"
+   }
+  },
+  {
+   "ref": "U12_3",
+   "name": "PI_LOAD",
+   "value": "+3V3_ACQ=0.035A",
+   "source": {
+    "kind": "datasheet",
+    "note": "ADC driver"
+   }
+  },
+  {
+   "ref": "U12_4",
+   "name": "PI_LOAD",
+   "value": "+3V3_ACQ=0.035A",
+   "source": {
+    "kind": "datasheet",
+    "note": "ADC driver"
+   }
+  },
+  {
+   "ref": "U1008_1",
+   "name": "PI_LOAD",
+   "value": "/CH1/+VPGA=0.23A, +3V3_PGA=0.0004A",
+   "source": {
+    "kind": "datasheet",
+    "note": "/CH1/+VPGA: PGA, analogue section 5 V; +3V3_PGA: PGA, logic"
+   }
+  },
+  {
+   "ref": "U1008_2",
+   "name": "PI_LOAD",
+   "value": "/CH2/+VPGA=0.23A, +3V3_PGA=0.0004A",
+   "source": {
+    "kind": "datasheet",
+    "note": "/CH2/+VPGA: PGA, analogue section 5 V; +3V3_PGA: PGA, logic"
+   }
+  },
+  {
+   "ref": "U1008_3",
+   "name": "PI_LOAD",
+   "value": "/CH3/+VPGA=0.23A, +3V3_PGA=0.0004A",
+   "source": {
+    "kind": "datasheet",
+    "note": "/CH3/+VPGA: PGA, analogue section 5 V; +3V3_PGA: PGA, logic"
+   }
+  },
+  {
+   "ref": "U1008_4",
+   "name": "PI_LOAD",
+   "value": "/CH4/+VPGA=0.23A, +3V3_PGA=0.0004A",
+   "source": {
+    "kind": "datasheet",
+    "note": "/CH4/+VPGA: PGA, analogue section 5 V; +3V3_PGA: PGA, logic"
+   }
+  },
+  {
+   "ref": "U1008_1",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=11.5 theta_jc=31.7",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information",
+    "url": "https://www.ti.com.cn/document-viewer/cn/lit/html/ZHCSPP6E/GUID-A5B8C6D0-C035-4943-8991-051893760CEB",
+    "note": "RGH (WQFN-16): RθJB 11.5, RθJC(top) 31.7 °C/W; Tj max not taken (default 125 °C)"
+   }
+  },
+  {
+   "ref": "U1008_2",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=11.5 theta_jc=31.7",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information",
+    "url": "https://www.ti.com.cn/document-viewer/cn/lit/html/ZHCSPP6E/GUID-A5B8C6D0-C035-4943-8991-051893760CEB",
+    "note": "RGH (WQFN-16): RθJB 11.5, RθJC(top) 31.7 °C/W; Tj max not taken (default 125 °C)"
+   }
+  },
+  {
+   "ref": "U1008_3",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=11.5 theta_jc=31.7",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information",
+    "url": "https://www.ti.com.cn/document-viewer/cn/lit/html/ZHCSPP6E/GUID-A5B8C6D0-C035-4943-8991-051893760CEB",
+    "note": "RGH (WQFN-16): RθJB 11.5, RθJC(top) 31.7 °C/W; Tj max not taken (default 125 °C)"
+   }
+  },
+  {
+   "ref": "U1008_4",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=11.5 theta_jc=31.7",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information",
+    "url": "https://www.ti.com.cn/document-viewer/cn/lit/html/ZHCSPP6E/GUID-A5B8C6D0-C035-4943-8991-051893760CEB",
+    "note": "RGH (WQFN-16): RθJB 11.5, RθJC(top) 31.7 °C/W; Tj max not taken (default 125 °C)"
+   }
+  },
+  {
+   "ref": "U11",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=7.2 theta_jc=22.4",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TPSM82913 datasheet (ZHCSOW9C), Thermal Information",
+    "url": "https://www.ti.com.cn/document-viewer/cn/TPSM82913/datasheet/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000259467",
+    "note": "RDU, JEDEC 51-7 board column: RθJB 7.2, RθJC(top) 22.4 °C/W"
+   }
+  },
+  {
+   "ref": "U17",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=31.0 theta_jc=55.7",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TPS61023 datasheet (ZHCSK97B), Thermal Information",
+    "url": "https://www.ti.com.cn/document-viewer/cn/TPS61023/datasheet/GUID-3F9DF5E0-9857-4037-BF6D-2F63C3676729",
+    "note": "DRL (SOT-563), standard board column: RθJB 31.0, RθJC 55.7 °C/W"
+   }
+  },
+  {
+   "ref": "U8",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=45.6 theta_jc=92.2",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information",
+    "url": "https://ti.com/document-viewer/lit/html/SLUSEG9E/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000338754",
+    "note": "TPS62A02, DRL (SOT-563): RθJB 45.6, RθJC(top) 92.2 °C/W"
+   }
+  },
+  {
+   "ref": "U20",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=45.6 theta_jc=92.2",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information",
+    "url": "https://ti.com/document-viewer/lit/html/SLUSEG9E/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000338754",
+    "note": "TPS62A02, DRL (SOT-563): RθJB 45.6, RθJC(top) 92.2 °C/W"
+   }
+  },
+  {
+   "ref": "U21",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=45.6 theta_jc=92.2",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information",
+    "url": "https://ti.com/document-viewer/lit/html/SLUSEG9E/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000338754",
+    "note": "TPS62A02, DRL (SOT-563): RθJB 45.6, RθJC(top) 92.2 °C/W"
+   }
+  },
+  {
+   "ref": "U23",
+   "name": "PI_THERMAL",
+   "value": "theta_jb=45.6 theta_jc=92.2",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information",
+    "url": "https://ti.com/document-viewer/lit/html/SLUSEG9E/GUID-XXXXXXXX-SF0T-XXXX-XXXX-000000338754",
+    "note": "TPS62A02, DRL (SOT-563): RθJB 45.6, RθJC(top) 92.2 °C/W"
+   }
+  },
+  {
+   "ref": "U18",
+   "name": "PI_THERMAL",
+   "value": "tj_max=85",
+   "source": {
+    "kind": "datasheet",
+    "document": "AMD/Xilinx DS181 v1.27, Artix-7 DC and AC Switching Characteristics, Table 2",
+    "url": "https://cdn.sparkfun.com/assets/0/f/b/6/2/Artix_7_Data_Sheet.pdf",
+    "note": "XC7A50T-2CSG325C, commercial grade: junction temperature 0–85 °C; θ values not taken (package default)"
+   }
+  },
+  {
+   "ref": "U1009_1",
+   "name": "PI_LOAD",
+   "value": "+5V=0.034A, -5V=0.034A",
+   "source": {
+    "kind": "datasheet",
+    "note": "+5V: input buffer, positive side; -5V: input buffer, negative side"
+   }
+  },
+  {
+   "ref": "U1009_2",
+   "name": "PI_LOAD",
+   "value": "+5V=0.034A, -5V=0.034A",
+   "source": {
+    "kind": "datasheet",
+    "note": "+5V: input buffer, positive side; -5V: input buffer, negative side"
+   }
+  },
+  {
+   "ref": "U1009_3",
+   "name": "PI_LOAD",
+   "value": "+5V=0.034A, -5V=0.034A",
+   "source": {
+    "kind": "datasheet",
+    "note": "+5V: input buffer, positive side; -5V: input buffer, negative side"
+   }
+  },
+  {
+   "ref": "U1009_4",
+   "name": "PI_LOAD",
+   "value": "+5V=0.034A, -5V=0.034A",
+   "source": {
+    "kind": "datasheet",
+    "note": "+5V: input buffer, positive side; -5V: input buffer, negative side"
+   }
+  },
+  {
+   "ref": "U1011_1",
+   "name": "PI_LOAD",
+   "value": "+5V=0.0018A, -5V=0.0018A",
+   "source": {
+    "kind": "estimate",
+    "note": "rough value, check the datasheet"
+   }
+  },
+  {
+   "ref": "U1011_2",
+   "name": "PI_LOAD",
+   "value": "+5V=0.0018A, -5V=0.0018A",
+   "source": {
+    "kind": "estimate",
+    "note": "rough value, check the datasheet"
+   }
+  },
+  {
+   "ref": "U1011_3",
+   "name": "PI_LOAD",
+   "value": "+5V=0.0018A, -5V=0.0018A",
+   "source": {
+    "kind": "estimate",
+    "note": "rough value, check the datasheet"
+   }
+  },
+  {
+   "ref": "U1011_4",
+   "name": "PI_LOAD",
+   "value": "+5V=0.0018A, -5V=0.0018A",
+   "source": {
+    "kind": "estimate",
+    "note": "rough value, check the datasheet"
+   }
+  },
+  {
+   "ref": "U5",
+   "name": "PI_LOAD",
+   "value": "+5V=0.0018A, -5V=0.0018A",
+   "source": {
+    "kind": "estimate",
+    "note": "rough value, check the datasheet"
+   }
+  },
+  {
+   "ref": "U4",
+   "name": "PI_LOAD",
+   "value": "+5V=0.0005A",
+   "source": {
+    "kind": "estimate",
+    "note": "rough value, check the datasheet"
+   }
+  },
+  {
+   "ref": "FB12",
+   "name": "PI_REG",
+   "value": "+1V8 > Net-(U18H-VCCADC_0) pass r=0.05",
+   "source": {
+    "kind": "estimate",
+    "note": "ferrite 120 Ω at 100 MHz feeding the FPGA's XADC supply VCCADC from +1V8, DC resistance estimated (as FB13)"
+   }
+  },
+  {
+   "ref": "U1",
+   "name": "PI_LOAD",
+   "value": "+3V3_PGA=10uA",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI SN74LVC1G17 product data (datasheet Rev. Y)",
+    "url": "https://www.ti.com/product/SN74LVC1G17",
+    "note": "ICC 10 µA maximum (static)"
+   }
+  },
+  {
+   "ref": "U1001_1",
+   "name": "PI_LOAD",
+   "value": "+5V=20uA, -5V=20uA",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TMUX405x product data (datasheet Rev. E)",
+    "url": "https://www.ti.com/product/TMUX4053",
+    "note": "supply current 20 µA typical (IDD); the same taken for the −5 V supply (ISS)"
+   }
+  },
+  {
+   "ref": "U1001_2",
+   "name": "PI_LOAD",
+   "value": "+5V=20uA, -5V=20uA",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TMUX405x product data (datasheet Rev. E)",
+    "url": "https://www.ti.com/product/TMUX4053",
+    "note": "supply current 20 µA typical (IDD); the same taken for the −5 V supply (ISS)"
+   }
+  },
+  {
+   "ref": "U1001_3",
+   "name": "PI_LOAD",
+   "value": "+5V=20uA, -5V=20uA",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TMUX405x product data (datasheet Rev. E)",
+    "url": "https://www.ti.com/product/TMUX4053",
+    "note": "supply current 20 µA typical (IDD); the same taken for the −5 V supply (ISS)"
+   }
+  },
+  {
+   "ref": "U1001_4",
+   "name": "PI_LOAD",
+   "value": "+5V=20uA, -5V=20uA",
+   "source": {
+    "kind": "datasheet",
+    "document": "TI TMUX405x product data (datasheet Rev. E)",
+    "url": "https://www.ti.com/product/TMUX4053",
+    "note": "supply current 20 µA typical (IDD); the same taken for the −5 V supply (ISS)"
+   }
+  },
+  {
+   "ref": "U2",
+   "name": "PI_LOAD",
+   "value": "+5V=5uA",
+   "source": {
+    "kind": "estimate",
+    "document": "Microchip MCP445X data sheet (not read)",
+    "note": "static supply current of the I2C digital potentiometer, a few µA – estimate, negligible for IR drop and budget"
+   }
+  },
+  {
+   "ref": "U3",
+   "name": "PI_LOAD",
+   "value": "+5V=800uA",
+   "source": {
+    "kind": "datasheet",
+    "document": "Microchip MCP4728 data sheet DS22187E, Electrical Characteristics, page 3",
+    "url": "https://www.microchip.com/content/dam/mchp/documents/OTH/ProductDocuments/DataSheets/22187E.pdf",
+    "note": "IDD 800 µA typical with all 4 channels in normal mode (1400 µA maximum at 5.5 V)"
+   }
+  },
+  {
+   "ref": "C1045_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1047_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C70_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1039_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1046_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C16",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1052_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C105_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1045_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C76",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C126",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C122",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1043_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1037_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1037_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C188",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C94",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C184",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C102",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1046_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C70_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C101",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1050_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1048_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C73",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C71",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1055_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C107",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C70_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C121",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C180",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C119",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1049_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1056_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C68",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C97",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C72",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1043_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C106",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C110",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1049_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C175",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1039_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C182",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1044_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C8",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1053_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C10",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1055_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1050_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1040_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1043_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C70_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C51",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C105_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C125",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1053_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C109",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1056_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1052_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1052_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C62",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1056_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1044_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1044_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C93",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1049_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C18",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1055_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C5",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1037_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1038_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1039_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1052_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1048_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C75",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1046_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C91",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C181",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1048_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C9",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1045_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1044_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1050_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1047_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C128",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1038_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1050_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C11",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1040_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C19",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C103",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1036_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C17",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1046_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1053_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C118",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C179",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1038_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C105_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1055_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1045_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1038_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C115",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C120",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1049_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1037_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C187",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1047_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C130",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1043_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1039_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C176",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1036_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C24",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1036_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1047_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C105_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C183",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C177",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1040_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C116",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1048_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1053_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C117",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C85",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C111",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1036_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1056_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C108",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C14",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1040_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C172",
+   "name": "PI_CAP",
+   "value": "rated=16V X7R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GCM155R71C104KA55D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C80",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C92",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C149",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C21",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C156",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C90",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C147",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1005_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C20",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1026_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C145",
+   "name": "PI_CAP",
+   "value": "rated=6.3V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "CL21A476MQYNNNE – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C49",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1057_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1006_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C26",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C15",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1007_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C84",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1005_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1028_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C23",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C48",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C154",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1004_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C173",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1026_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C139",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C89",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C81",
+   "name": "PI_CAP",
+   "value": "rated=16V X7R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GCM155R71C104KA55D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C95",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C148",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C161",
+   "name": "PI_CAP",
+   "value": "rated=6.3V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "CL21A476MQYNNNE – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C153",
+   "name": "PI_CAP",
+   "value": "rated=6.3V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "CL21A476MQYNNNE – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C57",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C152",
+   "name": "PI_CAP",
+   "value": "rated=6.3V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "CL21A476MQYNNNE – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C146",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1004_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1028_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1028_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C163",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C142",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C25",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1008_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C56",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C96",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C129",
+   "name": "PI_CAP",
+   "value": "rated=16V X7R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GCM155R71C104KA55D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C171",
+   "name": "PI_CAP",
+   "value": "rated=16V X7R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GCM155R71C104KA55D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1003_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C69_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C63",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C50",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1026_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C170",
+   "name": "PI_CAP",
+   "value": "rated=16V X7R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GCM155R71C104KA55D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C88",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1006_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1054_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C59",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1005_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C164",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C83",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C60",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1004_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C98",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1008_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C52",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C167",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1003_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1007_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C140",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1057_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C78",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1008_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C168",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1007_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C191",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1006_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C61",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C141",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C144",
+   "name": "PI_CAP",
+   "value": "rated=6.3V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "CL21A476MQYNNNE – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C53",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1003_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C150",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C87",
+   "name": "PI_CAP",
+   "value": "rated=6.3V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "CL21A476MQYNNNE – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C189",
+   "name": "PI_CAP",
+   "value": "rated=16V X7R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GCM155R71C104KA55D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C69_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C190",
+   "name": "PI_CAP",
+   "value": "rated=16V X7R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GCM155R71C104KA55D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1054_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C58",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C22",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C86",
+   "name": "PI_CAP",
+   "value": "rated=6.3V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "CL21A476MQYNNNE – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1005_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C157",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C162",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1028_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C155",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C143",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C69_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C158",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C12",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1054_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C159",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1007_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C169",
+   "name": "PI_CAP",
+   "value": "rated=16V X7R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GCM155R71C104KA55D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1004_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1006_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C79",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C151",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1057_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1003_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1026_1",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM21BR61E226ME44L – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C166",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1008_4",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C54",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C55",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C69_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM188R61E106MA73D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C165",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1054_3",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C1057_2",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C160",
+   "name": "PI_CAP",
+   "value": "rated=6.3V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "CL21A476MQYNNNE – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  },
+  {
+   "ref": "C138",
+   "name": "PI_CAP",
+   "value": "rated=25V X5R",
+   "source": {
+    "kind": "design",
+    "document": "board file: the part's fields Voltage Rating and Description",
+    "note": "GRM155R61E105KA12D – rated voltage and dielectric as the Murata/Samsung part number codes them"
+   }
+  }
+ ],
+ "stackup": {
+  "dielectrics": [
+   {
+    "index": 0,
+    "loss_tangent": 0.0092,
+    "source": {
+     "kind": "datasheet",
+     "document": "Isola FR408HR data sheet, Rev. F (typical values)",
+     "url": "https://www.isola-group.com/wp-content/uploads/data-sheets/fr408hr-laminate-and-prepreg.pdf",
+     "note": "Df 0.0092 at 2 GHz (Bereskin stripline), typical – near the 2.5 GHz Nyquist frequency of the 5 GT/s PCIe lanes; base material Isola FR408HR per Outputs/Fab_Readme.txt; the layer's εr is the board file's"
+    }
+   },
+   {
+    "index": 1,
+    "loss_tangent": 0.0092,
+    "source": {
+     "kind": "datasheet",
+     "document": "Isola FR408HR data sheet, Rev. F (typical values)",
+     "url": "https://www.isola-group.com/wp-content/uploads/data-sheets/fr408hr-laminate-and-prepreg.pdf",
+     "note": "Df 0.0092 at 2 GHz (Bereskin stripline), typical – near the 2.5 GHz Nyquist frequency of the 5 GT/s PCIe lanes; base material Isola FR408HR per Outputs/Fab_Readme.txt; the layer's εr is the board file's"
+    }
+   },
+   {
+    "index": 2,
+    "material": "FR408HR",
+    "epsilon_r": 3.68,
+    "loss_tangent": 0.0092,
+    "source": {
+     "kind": "datasheet",
+     "document": "Isola FR408HR data sheet, Rev. F (typical values)",
+     "url": "https://www.isola-group.com/wp-content/uploads/data-sheets/fr408hr-laminate-and-prepreg.pdf",
+     "note": "Dk 3.68 and Df 0.0092 at 2 GHz (Bereskin stripline), typical. Outputs/Fab_Readme.txt names Isola FR408HR as the base material of the board; the board file calls this core FR4 with KiCad's default εr 4.5. Resin content of the core not stated – typical laminate values"
+    }
+   },
+   {
+    "index": 3,
+    "loss_tangent": 0.0092,
+    "source": {
+     "kind": "datasheet",
+     "document": "Isola FR408HR data sheet, Rev. F (typical values)",
+     "url": "https://www.isola-group.com/wp-content/uploads/data-sheets/fr408hr-laminate-and-prepreg.pdf",
+     "note": "Df 0.0092 at 2 GHz (Bereskin stripline), typical – near the 2.5 GHz Nyquist frequency of the 5 GT/s PCIe lanes; base material Isola FR408HR per Outputs/Fab_Readme.txt; the layer's εr is the board file's"
+    }
+   },
+   {
+    "index": 4,
+    "loss_tangent": 0.0092,
+    "source": {
+     "kind": "datasheet",
+     "document": "Isola FR408HR data sheet, Rev. F (typical values)",
+     "url": "https://www.isola-group.com/wp-content/uploads/data-sheets/fr408hr-laminate-and-prepreg.pdf",
+     "note": "Df 0.0092 at 2 GHz (Bereskin stripline), typical – near the 2.5 GHz Nyquist frequency of the 5 GT/s PCIe lanes; base material Isola FR408HR per Outputs/Fab_Readme.txt; the layer's εr is the board file's"
+    }
+   }
   ]
+ },
+ "net_classes": {
+  "QSPI": {
+   "nets": [
+    "QSPI_*"
+   ],
+   "target_ohm": 50,
+   "diff": false,
+   "profile": "se50",
+   "source": {
+    "kind": "assumption",
+    "note": "single-ended 50 Ω, common practice for QSPI flash traces (no project document states a target); the six QSPI nets of the FPGA configuration flash sit in the class Default on the board"
+   }
+  },
+  "50Z": {
+   "profile": "se50",
+   "source": {
+    "kind": "assumption",
+    "note": "10 MHz reference in/out and sync (REFINOUT, SYNC), analog clock: no digital interface standard applies – kisi's generic profile on purpose (the channel check uses its generic limits)"
+   }
+  },
+  "FE_100Z_Diff": {
+   "profile": "diff100",
+   "source": {
+    "kind": "assumption",
+    "note": "analog differential ADC driver outputs to the HMCAD1520 inputs: no digital interface standard applies – kisi's generic profile on purpose (the channel check uses its generic limits)"
+   }
+  },
+  "FE_50Z": {
+   "profile": "se50",
+   "source": {
+    "kind": "assumption",
+    "note": "analog front end (attenuators, amplifiers): no digital interface standard applies – kisi's generic profile on purpose (the channel check uses its generic limits)"
+   }
+  },
+  "FE_50Z_INPUT": {
+   "profile": "se50",
+   "source": {
+    "kind": "assumption",
+    "note": "BNC inputs, analog: no digital interface standard applies – kisi's generic profile on purpose (the channel check uses its generic limits)"
+   }
+  }
+ }
 }

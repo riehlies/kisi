@@ -215,6 +215,160 @@
    ]
   },
   {
+   "bus": "U18 ↔ U19",
+   "class": "QSPI",
+   "devices": [
+    "U18",
+    "U19"
+   ],
+   "kind": "ic-ic",
+   "lanes": [
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U18.E8",
+      "U19.6"
+     ],
+     "from": "U18.E8",
+     "kind": "ic-ic",
+     "lane": "/FPGA/FPGA Config and Transceivers/QSPI_CLK",
+     "nets": [
+      "/FPGA/FPGA Config and Transceivers/QSPI_CLK"
+     ],
+     "not_modelled": [
+      "TP43"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U19.6"
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U18.L15",
+      "U19.1"
+     ],
+     "from": "U18.L15",
+     "kind": "ic-ic",
+     "lane": "/FPGA/FPGA Config and Transceivers/QSPI_CS",
+     "nets": [
+      "/FPGA/FPGA Config and Transceivers/QSPI_CS"
+     ],
+     "not_modelled": [
+      "TP53"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [
+      "R67 10K to +3V3"
+     ],
+     "to": "U19.1"
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U18.K16",
+      "U19.5"
+     ],
+     "from": "U18.K16",
+     "kind": "ic-ic",
+     "lane": "/FPGA/FPGA IO Banks/QSPI_DQ0",
+     "nets": [
+      "/FPGA/FPGA IO Banks/QSPI_DQ0"
+     ],
+     "not_modelled": [
+      "TP47"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U19.5"
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U18.L17",
+      "U19.2"
+     ],
+     "from": "U18.L17",
+     "kind": "ic-ic",
+     "lane": "/FPGA/FPGA IO Banks/QSPI_DQ1",
+     "nets": [
+      "/FPGA/FPGA IO Banks/QSPI_DQ1"
+     ],
+     "not_modelled": [
+      "TP46"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [],
+     "to": "U19.2"
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U18.J15",
+      "U19.3"
+     ],
+     "from": "U18.J15",
+     "kind": "ic-ic",
+     "lane": "/FPGA/FPGA IO Banks/QSPI_DQ2",
+     "nets": [
+      "/FPGA/FPGA IO Banks/QSPI_DQ2"
+     ],
+     "not_modelled": [
+      "TP48"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [
+      "R66 10K to +3V3"
+     ],
+     "to": "U19.3"
+    },
+    {
+     "branches": [],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "U18.J16",
+      "U19.7"
+     ],
+     "from": "U18.J16",
+     "kind": "ic-ic",
+     "lane": "/FPGA/FPGA IO Banks/QSPI_DQ3",
+     "nets": [
+      "/FPGA/FPGA IO Banks/QSPI_DQ3"
+     ],
+     "not_modelled": [
+      "TP52"
+     ],
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "terminations": [
+      "R68 10K to +3V3"
+     ],
+     "to": "U19.7"
+    }
+   ],
+   "profile": "se50",
+   "values": [
+    "IC FPGA XC7A50T-2CSG325C",
+    "MX25L6433FZNI-08G"
+   ]
+  },
+  {
    "bus": "U18 ↔ U6",
    "class": "LVDS_ADC",
    "devices": [
@@ -1560,7 +1714,7 @@
   }
  ],
  "config": {
-  "entries": 70,
+  "entries": 344,
   "errors": [],
   "ok": true,
   "warnings": []

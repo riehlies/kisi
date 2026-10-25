@@ -4,11 +4,15 @@ const cv = $("pcb"), ctx = cv.getContext("2d");
 function resize() {
   const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
   cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d));
+  // a fit asked for while the canvas was hidden (the Prepare PCB page) happens once it is shown
+  if (S.fitPending && r.width > 10 && r.height > 10) { const bb = S.fitPending; S.fitPending = null; fitView(bb === true ? null : bb); return; }
   draw();
 }
 function fitView(bb) {
   if (!S.scene) return;
   const b = bb || S.scene.bbox, r = cv.getBoundingClientRect();
+  if (r.width <= 10 || r.height <= 10) { S.fitPending = bb || true; return; }
+  S.fitPending = null;
   const w = b[2] - b[0], h = b[3] - b[1];
   const s = Math.min((r.width - 40) / Math.max(w, 0.1), (r.height - 90) / Math.max(h, 0.1));
   S.view.s = Math.max(0.5, Math.min(s, 400));

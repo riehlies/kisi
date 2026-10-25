@@ -93,7 +93,21 @@ pub struct ClassEntry {
     pub diff: Option<bool>,
     /// interface profile id (data/interfaces.json)
     pub profile: Option<String>,
+    /// nets this class gets in addition to the project's assignment: names or patterns with `*` and `?`
+    /// (matched against the full name and its last part, "*QSPI_*", "USB_D?"), like KiCad's net class
+    /// patterns – for nets in "Default" without a KiCad change; the class need not exist in the project
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub nets: Vec<String>,
     pub source: Option<Source>,
+}
+
+/// Does net `name` match one of `patterns` (the full name, or its last part after '/')?
+pub fn net_matches(patterns: &[String], name: &str) -> bool {
+    let short = name.rsplit('/').next().unwrap_or(name);
+    patterns.iter().any(|p| {
+        let p = p.trim();
+        !p.is_empty() && (p == name || crate::board::wildcard_match(p, name) || crate::board::wildcard_match(p, short))
+    })
 }
 
 /// `connector_ends.<connector reference>`: what sits at a connector where lanes leave the
@@ -146,6 +160,30 @@ impl VariantEntry {
     }
 }
 
+/// `gaps.dismissed[]`: items of a name-based gap that do not apply (`kisi gaps` leaves them out
+/// and lists them with the reason). Only gaps in `gaps::DISMISSABLE`; a reason is required.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Dismissal {
+    pub gap: String,
+    pub items: Vec<String>,
+    pub reason: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<Source>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GapsEntry {
+    pub dismissed: Vec<Dismissal>,
+}
+
+impl GapsEntry {
+    pub fn is_empty(&self) -> bool {
+        self.dismissed.is_empty()
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct BoardConfig {
@@ -161,6 +199,9 @@ pub struct BoardConfig {
     /// or "default" for the board file as it is)
     pub variant: Option<String>,
     pub variants: BTreeMap<String, VariantEntry>,
+    /// dismissed items of name-based gaps
+    #[serde(skip_serializing_if = "GapsEntry::is_empty")]
+    pub gaps: GapsEntry,
     pub notes: Vec<String>,
 }
 
@@ -216,6 +257,27 @@ impl BoardConfig {
             }
             board.stackup = Some(su);
         }
+        // nets given to a class here (before the targets, which go by class)
+        for (cls, c) in self.net_classes.iter().filter(|(_, c)| !c.nets.is_empty()) {
+            if board.netclasses.is_empty() {
+                board.netclasses.push(crate::board::NetClass { name: "Default".into(), track_width: None, diff_pair_width: None, diff_pair_gap: None });
+            }
+            let idx = match board.netclasses.iter().position(|n| &n.name == cls) {
+                Some(i) => i,
+                None => {
+                    board.netclasses.push(crate::board::NetClass { name: cls.clone(), track_width: None, diff_pair_width: None, diff_pair_gap: None });
+                    board.netclasses.len() - 1
+                }
+            };
+            if board.net_class.len() < board.nets.len() {
+                board.net_class.resize(board.nets.len(), 0);
+            }
+            for (id, n) in board.nets.iter().enumerate().skip(1) {
+                if net_matches(&c.nets, n) {
+                    board.net_class[id] = idx as u32;
+                }
+            }
+        }
         for f in &self.fields {
             if let Some(fp) = board.footprints.iter_mut().find(|fp| fp.reference == f.refdes) {
                 let mut set = |k: &str, v: String| match fp.props.iter_mut().find(|(n, _)| n.eq_ignore_ascii_case(k)) {
@@ -264,6 +326,99 @@ pub struct CheckResult {
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
     pub entries: usize,
+}
+
+/// The entries of one analysis category (`gaps::VIEWS`) – "save only this category": stackup and
+/// net class targets for impedance and channel, net class profiles and connector ends for channel,
+/// footprint fields for power, the assembly variant for channel and power, a dismissal for the
+/// categories of its gap. `kisi_config`, `board` and `notes` stay.
+pub fn subset(cfg: &BoardConfig, view: &str) -> BoardConfig {
+    let has = |vs: &[&str]| vs.contains(&view);
+    let mut out = BoardConfig { kisi_config: cfg.kisi_config, board: cfg.board.clone(), notes: cfg.notes.clone(), ..Default::default() };
+    if has(&["impedance", "channel"]) {
+        out.stackup = cfg.stackup.clone();
+        out.net_classes = cfg
+            .net_classes
+            .iter()
+            .filter_map(|(k, c)| {
+                let mut c = c.clone();
+                if view == "impedance" {
+                    c.profile = None;
+                    if c.target_ohm.is_none() && c.diff.is_none() {
+                        return None;
+                    }
+                }
+                Some((k.clone(), c))
+            })
+            .collect();
+    }
+    if view == "channel" {
+        out.connector_ends = cfg.connector_ends.clone();
+    }
+    if view == "power" {
+        out.fields = cfg.fields.clone();
+    }
+    if has(&["channel", "power"]) {
+        out.variant = cfg.variant.clone();
+        out.variants = cfg.variants.clone();
+    }
+    out.gaps.dismissed = cfg.gaps.dismissed.iter().filter(|d| crate::gaps::gap_views(&d.gap).1.contains(&view)).cloned().collect();
+    out
+}
+
+/// The configuration as JSON without empty entries (nulls, empty lists and objects) – how a written
+/// kisi.json looks.
+pub fn to_json(cfg: &BoardConfig) -> serde_json::Value {
+    fn prune(v: serde_json::Value) -> Option<serde_json::Value> {
+        use serde_json::Value as V;
+        match v {
+            V::Null => None,
+            V::Array(a) => {
+                let a: Vec<V> = a.into_iter().filter_map(prune).collect();
+                (!a.is_empty()).then_some(V::Array(a))
+            }
+            V::Object(m) => {
+                let m: serde_json::Map<String, V> = m.into_iter().filter_map(|(k, v)| prune(v).map(|v| (k, v))).collect();
+                (!m.is_empty()).then_some(V::Object(m))
+            }
+            x => Some(x),
+        }
+    }
+    prune(serde_json::to_value(cfg).unwrap_or_default()).unwrap_or_default()
+}
+
+/// The categories a check message is about, from the entry it names (its path at the start).
+pub fn message_views(cfg: &BoardConfig, text: &str) -> Vec<&'static str> {
+    let all = crate::gaps::VIEWS.to_vec();
+    if text.starts_with("stackup.") {
+        return vec!["impedance", "channel"];
+    }
+    if let Some(rest) = text.strip_prefix("net_classes.") {
+        let cls = rest.split(':').next().unwrap_or("");
+        let c = cfg.net_classes.get(cls);
+        let profile_only = c.is_some_and(|c| c.target_ohm.is_none() && c.diff.is_none()) || text.contains("profile '");
+        return if profile_only { vec!["channel"] } else { vec!["impedance", "channel"] };
+    }
+    if text.starts_with("connector_ends.") {
+        return vec!["channel"];
+    }
+    if text.starts_with("fields[") {
+        return vec!["power"];
+    }
+    if text.starts_with("variant") {
+        return vec!["channel", "power"];
+    }
+    if let Some(rest) = text.strip_prefix("gaps.dismissed[") {
+        let v = crate::gaps::gap_views(rest.split(']').next().unwrap_or("")).1;
+        return if v.is_empty() { all } else { v };
+    }
+    // power-field messages of the analyses start with the part's reference ("U6: PI_REG …")
+    if let Some((r, _)) = text.split_once(": ") {
+        if cfg.fields.iter().any(|f| f.refdes == r) {
+            return vec!["power"];
+        }
+    }
+    all
 }
 
 /// Board names match when their stems (without path and `.kicad_pcb`) are equal, ignoring case.
@@ -323,8 +478,18 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
     for (cls, c) in &cfg.net_classes {
         r.entries += 1;
         let what = format!("net_classes.{cls}");
-        if !class_names.iter().any(|n| n == cls) {
-            r.errors.push(format!("{what}: no net class '{cls}' in the project (classes: {})", class_names.join(", ")));
+        if c.nets.is_empty() && !class_names.iter().any(|n| n == cls) {
+            r.errors.push(format!("{what}: no net class '{cls}' in the project (classes: {}) – give its nets in \"nets\" to define it here", class_names.join(", ")));
+        }
+        for p in &c.nets {
+            if !board.nets.iter().skip(1).any(|n| net_matches(std::slice::from_ref(p), n)) {
+                r.errors.push(format!("{what}.nets: '{p}' matches no net on the board"));
+            }
+        }
+        for (other, o) in cfg.net_classes.iter().filter(|(k, o)| k.as_str() > cls.as_str() && !o.nets.is_empty()) {
+            if let Some(n) = board.nets.iter().skip(1).find(|n| !c.nets.is_empty() && net_matches(&c.nets, n) && net_matches(&o.nets, n)) {
+                r.errors.push(format!("{what}.nets: net '{n}' is also given to net_classes.{other}"));
+            }
         }
         if c.target_ohm.is_some_and(|z| !(10.0..200.0).contains(&z)) {
             r.errors.push(format!("{what}: target_ohm outside 10 … 200"));
@@ -457,6 +622,27 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
         src(what, &f.source, &mut r);
     }
     check_variants(cfg, board, files, &mut r);
+    for d in &cfg.gaps.dismissed {
+        r.entries += 1;
+        let what = format!("gaps.dismissed[{}]", d.gap);
+        if !crate::gaps::DISMISSABLE.contains(&d.gap.as_str()) {
+            r.errors.push(format!("{what}: gap '{}' cannot be dismissed (only the name-based gaps {})", d.gap, crate::gaps::DISMISSABLE.join(", ")));
+        }
+        if d.reason.trim().is_empty() {
+            r.errors.push(format!("{what}: reason missing (say why the gap does not apply)"));
+        }
+        if d.items.is_empty() {
+            r.errors.push(format!("{what}: no items"));
+        }
+        for it in &d.items {
+            if crate::pi::find_net(board, it).is_none() {
+                r.errors.push(format!("{what}: no net '{it}' on the board"));
+            }
+        }
+        if d.source.is_some() {
+            src(what, &d.source, &mut r);
+        }
+    }
     // can kisi read the power fields? apply to a copy and parse them like the analyses do
     if cfg.fields.iter().any(|f| KNOWN_FIELDS.iter().any(|k| k.eq_ignore_ascii_case(&f.name))) {
         let mut b = board.clone();
@@ -610,6 +796,38 @@ mod tests {
         let all = r.errors.join("\n");
         for frag in ["1 dielectrics", "epsilon_r outside", "source missing", "no net class 'PCIe'", "unknown profile 'pcie9'", "kind 'guess'", "no footprint U9", "not readable"] {
             assert!(all.contains(frag), "missing '{frag}' in\n{all}");
+        }
+    }
+
+    /// Nets given to a class in kisi.json: a new class for nets in "Default", by name or pattern;
+    /// patterns that match nothing and nets given twice are errors.
+    #[test]
+    fn class_nets() {
+        let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew") (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+  (net 0 "") (net 1 "/FPGA/QSPI_DQ0") (net 2 "/FPGA/QSPI_DQ1") (net 3 "USB_DP") (net 4 "USB_DN") (net 5 "LED"))"#;
+        let mut board = crate::load_pcb(pcb).unwrap();
+        crate::apply_project(&mut board, r#"{"net_settings": {"classes": [{"name": "Default"}]}}"#).unwrap();
+        let profiles = crate::profile::Profiles::builtin();
+        let src = r#""source": {"kind": "standard", "document": "USB 2.0 specification"}"#;
+        let cfg = parse(&format!(r#"{{"kisi_config": 1, "net_classes": {{
+            "QSPI": {{"nets": ["*QSPI_*"], "target_ohm": 50, "diff": false, "profile": "se50", {src}}},
+            "USB": {{"nets": ["USB_DP", "USB_DN"], "target_ohm": 90, "diff": true, "profile": "usb2", {src}}}}}}}"#)).unwrap();
+        let r = check(&cfg, &board, &["Default".into()], &profiles, None, &Default::default());
+        assert!(r.ok, "{:?}", r.errors);
+        let mut b = board.clone();
+        let a = cfg.apply(&mut b);
+        let cls = |n: &str| b.netclasses[b.net_class[b.nets.iter().position(|x| x == n).unwrap()] as usize].name.clone();
+        assert_eq!((cls("/FPGA/QSPI_DQ1").as_str(), cls("USB_DN").as_str(), cls("LED").as_str()), ("QSPI", "USB", "Default"));
+        assert_eq!((a.targets["USB"].z, a.targets["USB"].diff), (90.0, true));
+        // the analysis sees the targets on those nets
+        let an = crate::analyze(&b, &crate::Params { targets: a.targets.clone(), ..Default::default() });
+        let c = an.classes.iter().find(|c| c.name == "USB").expect("class USB in the analysis");
+        assert!(c.target.is_some_and(|t| t.z == 90.0 && t.diff), "{:?}", c.target);
+        let bad = parse(&format!(r#"{{"kisi_config": 1, "net_classes": {{"A": {{"nets": ["NOPE*"], "target_ohm": 50, "diff": false, {src}}},
+            "B": {{"nets": ["USB_D?"], "target_ohm": 90, "diff": true, {src}}}, "C": {{"nets": ["USB_DP"], "target_ohm": 90, "diff": true, {src}}}, "D": {{"target_ohm": 50, {src}}}}}}}"#)).unwrap();
+        let e = check(&bad, &board, &["Default".into()], &profiles, None, &Default::default()).errors.join("\n");
+        for want in ["net_classes.A.nets: 'NOPE*' matches no net", "net 'USB_DP' is also given to net_classes.C", "no net class 'D'"] {
+            assert!(e.contains(want), "{want}: {e}");
         }
     }
 

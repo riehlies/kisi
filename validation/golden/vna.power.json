@@ -4,11 +4,11 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.242046,
-    "i_out": 0.241746,
+    "i_in": 0.246072,
+    "i_out": 0.245772,
     "id": "IC6",
     "kind": "ldo",
-    "loss_w": 0.243546,
+    "loss_w": 0.247572,
     "overload": false,
     "part": "LDL212PU50R"
    },
@@ -26,132 +26,198 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.143331,
-    "i_out": 0.142922,
-    "id": "L6",
+    "i_in": 0.000200004,
+    "i_out": 0.0002,
+    "id": "L26",
     "kind": "pass",
-    "loss_w": 0.00204267,
+    "loss_w": 1.36e-08,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.070098,
+    "i_in": 0.148205,
+    "i_out": 0.14674,
+    "id": "L6",
+    "kind": "pass",
+    "loss_w": 0.00732114,
+    "overload": false,
+    "part": "FERRITE (BLM15AX601SN1)"
+   },
+   {
+    "efficiency": null,
+    "efficiency_estimate": false,
+    "i_in": 0.0,
+    "i_out": 0.0,
+    "id": "L11",
+    "kind": "pass",
+    "loss_w": 0.0,
+    "overload": false,
+    "part": "10uH"
+   },
+   {
+    "efficiency": null,
+    "efficiency_estimate": false,
+    "i_in": 0.0703332,
     "i_out": 0.07,
     "id": "L59",
     "kind": "pass",
-    "loss_w": 0.00049,
+    "loss_w": 0.001666,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.00114003,
+    "i_in": 0.0,
+    "i_out": 0.0,
+    "id": "J4",
+    "kind": "input",
+    "loss_w": 0.0,
+    "overload": false,
+    "part": "USB_C_Receptacle_USB2.0_16P (LCSC C668624)"
+   },
+   {
+    "efficiency": null,
+    "efficiency_estimate": false,
+    "i_in": 0.00114009,
     "i_out": 0.00114,
     "id": "L56",
     "kind": "pass",
-    "loss_w": 1.2996e-07,
+    "loss_w": 4.41864e-07,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0150068,
-    "i_out": 0.015,
+    "i_in": 0.0176319,
+    "i_out": 0.0176,
     "id": "L10",
     "kind": "pass",
-    "loss_w": 2.25e-05,
+    "loss_w": 0.000105318,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0200121,
+    "i_in": 0.0200412,
     "i_out": 0.02,
     "id": "L65",
     "kind": "pass",
-    "loss_w": 4e-05,
+    "loss_w": 0.000136,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.060072,
+    "i_in": 0.0602448,
     "i_out": 0.06,
     "id": "L55",
     "kind": "pass",
-    "loss_w": 0.00036,
+    "loss_w": 0.001224,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": 0.88,
     "efficiency_estimate": false,
-    "i_in": 0.917643,
-    "i_out": 0.672938,
+    "i_in": 0.943072,
+    "i_out": 0.691586,
     "id": "IC1",
     "kind": "boost",
-    "loss_w": 0.550586,
+    "loss_w": 0.565843,
     "overload": false,
     "part": "MIC2253"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.010002,
-    "i_out": 0.01,
+    "i_in": 0.0,
+    "i_out": 0.0,
+    "id": "Q1",
+    "kind": "pass",
+    "loss_w": 0.0,
+    "overload": false,
+    "part": "SSM3J338R"
+   },
+   {
+    "efficiency": null,
+    "efficiency_estimate": false,
+    "i_in": 0.0134122,
+    "i_out": 0.0134,
     "id": "L57",
     "kind": "pass",
-    "loss_w": 1e-05,
+    "loss_w": 6.10504e-05,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0200121,
+    "i_in": 0.0200412,
     "i_out": 0.02,
     "id": "L64",
     "kind": "pass",
-    "loss_w": 4e-05,
+    "loss_w": 0.000136,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.143331,
-    "i_out": 0.142922,
+    "i_in": 0.148205,
+    "i_out": 0.14674,
     "id": "L7",
     "kind": "pass",
-    "loss_w": 0.00204267,
+    "loss_w": 0.00732114,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.143631,
-    "i_out": 0.143331,
+    "i_in": 0.148505,
+    "i_out": 0.148205,
     "id": "IC4",
     "kind": "ldo",
-    "loss_w": 0.145131,
+    "loss_w": 0.150005,
     "overload": false,
     "part": "LDL212PU50R"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.070098,
+    "i_in": 0.000200004,
+    "i_out": 0.0002,
+    "id": "L21",
+    "kind": "pass",
+    "loss_w": 1.36e-08,
+    "overload": false,
+    "part": "FERRITE (BLM15AX601SN1)"
+   },
+   {
+    "efficiency": null,
+    "efficiency_estimate": false,
+    "i_in": 0.0703332,
     "i_out": 0.07,
     "id": "L54",
     "kind": "pass",
-    "loss_w": 0.00049,
+    "loss_w": 0.001666,
+    "overload": false,
+    "part": "FERRITE (BLM15AX601SN1)"
+   },
+   {
+    "efficiency": null,
+    "efficiency_estimate": false,
+    "i_in": 0.000200004,
+    "i_out": 0.0002,
+    "id": "L27",
+    "kind": "pass",
+    "loss_w": 1.36e-08,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
@@ -169,19 +235,19 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0500758,
+    "i_in": 0.0502576,
     "i_out": 0.05,
     "id": "L29",
     "kind": "pass",
-    "loss_w": 0.00025,
+    "loss_w": 0.00085,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 1.10237,
-    "i_out": 1.10237,
+    "i_in": 1.13242,
+    "i_out": 1.13242,
     "id": "J1",
     "kind": "input",
     "loss_w": 0.0,
@@ -191,154 +257,165 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.21834,
-    "i_out": 0.217623,
+    "i_in": 0.000200004,
+    "i_out": 0.0002,
+    "id": "L25",
+    "kind": "pass",
+    "loss_w": 1.36e-08,
+    "overload": false,
+    "part": "FERRITE (BLM15AX601SN1)"
+   },
+   {
+    "efficiency": null,
+    "efficiency_estimate": false,
+    "i_in": 0.224635,
+    "i_out": 0.223876,
     "id": "L4",
     "kind": "pass",
-    "loss_w": 0.00236798,
+    "loss_w": 0.00250602,
     "overload": false,
     "part": "2.2uH (SRN5040-2R2Y)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0500858,
-    "i_out": 0.0500758,
+    "i_in": 0.0502676,
+    "i_out": 0.0502576,
     "id": "IC20",
     "kind": "ldo",
-    "loss_w": 0.0851788,
+    "loss_w": 0.0854879,
     "overload": false,
     "part": "NCP702-3.3 (NCP702SN33T1G)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0701485,
+    "i_in": 0.0705048,
     "i_out": 0.07,
     "id": "L28",
     "kind": "pass",
-    "loss_w": 0.00049,
+    "loss_w": 0.001666,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.060072,
+    "i_in": 0.0602448,
     "i_out": 0.06,
     "id": "L16",
     "kind": "pass",
-    "loss_w": 0.00036,
+    "loss_w": 0.001224,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.010002,
-    "i_out": 0.01,
+    "i_in": 0.0134122,
+    "i_out": 0.0134,
     "id": "L12",
     "kind": "pass",
-    "loss_w": 1e-05,
+    "loss_w": 6.10504e-05,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.00161005,
+    "i_in": 0.00161018,
     "i_out": 0.00161,
     "id": "L13",
     "kind": "pass",
-    "loss_w": 2.5921e-07,
+    "loss_w": 8.81314e-07,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.070098,
+    "i_in": 0.0703332,
     "i_out": 0.07,
     "id": "L17",
     "kind": "pass",
-    "loss_w": 0.00049,
+    "loss_w": 0.001666,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0500858,
-    "i_out": 0.0500758,
+    "i_in": 0.0503989,
+    "i_out": 0.0503889,
     "id": "IC9",
     "kind": "ldo",
-    "loss_w": 0.0851788,
+    "loss_w": 0.0857112,
     "overload": false,
     "part": "NCP702-3.3 (NCP702SN33T1G)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.143631,
-    "i_out": 0.143331,
+    "i_in": 0.148505,
+    "i_out": 0.148205,
     "id": "IC5",
     "kind": "ldo",
-    "loss_w": 0.145131,
+    "loss_w": 0.150005,
     "overload": false,
     "part": "LDL212PU50R"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.00161005,
+    "i_in": 0.00161018,
     "i_out": 0.00161,
     "id": "L58",
     "kind": "pass",
-    "loss_w": 2.5921e-07,
+    "loss_w": 8.81314e-07,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0500758,
-    "i_out": 0.05,
+    "i_in": 0.0503889,
+    "i_out": 0.05013,
     "id": "L20",
     "kind": "pass",
-    "loss_w": 0.00025,
+    "loss_w": 0.000854426,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.143331,
-    "i_out": 0.142922,
+    "i_in": 0.148205,
+    "i_out": 0.14674,
     "id": "L8",
     "kind": "pass",
-    "loss_w": 0.00204267,
+    "loss_w": 0.00732114,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.00114003,
+    "i_in": 0.00114009,
     "i_out": 0.00114,
     "id": "L62",
     "kind": "pass",
-    "loss_w": 1.2996e-07,
+    "loss_w": 4.41864e-07,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0702085,
-    "i_out": 0.0701485,
+    "i_in": 0.0705648,
+    "i_out": 0.0705048,
     "id": "IC8",
     "kind": "ldo",
-    "loss_w": 0.119552,
+    "loss_w": 0.120158,
     "overload": false,
     "part": "AP2114H"
    },
@@ -356,55 +433,55 @@
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.00100003,
-    "i_out": 0.001,
+    "i_in": 0.000180003,
+    "i_out": 0.00018,
     "id": "L22",
     "kind": "pass",
-    "loss_w": 1e-07,
+    "loss_w": 1.1016e-08,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.00161005,
+    "i_in": 0.00161018,
     "i_out": 0.00161,
     "id": "L63",
     "kind": "pass",
-    "loss_w": 2.5921e-07,
+    "loss_w": 8.81314e-07,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0550917,
+    "i_in": 0.0553117,
     "i_out": 0.055,
     "id": "L23",
     "kind": "pass",
-    "loss_w": 0.0003025,
+    "loss_w": 0.0010285,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0701485,
+    "i_in": 0.0705048,
     "i_out": 0.07,
     "id": "L19",
     "kind": "pass",
-    "loss_w": 0.00049,
+    "loss_w": 0.001666,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.143631,
-    "i_out": 0.143331,
+    "i_in": 0.148505,
+    "i_out": 0.148205,
     "id": "IC3",
     "kind": "ldo",
-    "loss_w": 0.145131,
+    "loss_w": 0.150005,
     "overload": false,
     "part": "LDL212PU50R"
    },
@@ -422,76 +499,76 @@
    {
     "efficiency": 0.9,
     "efficiency_estimate": false,
-    "i_in": 0.160116,
-    "i_out": 0.21834,
+    "i_in": 0.164733,
+    "i_out": 0.224635,
     "id": "IC2.2",
     "kind": "buck",
-    "loss_w": 0.0800581,
+    "loss_w": 0.0823663,
     "overload": false,
     "part": "LM3370"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.010002,
-    "i_out": 0.01,
+    "i_in": 0.0134122,
+    "i_out": 0.0134,
     "id": "L61",
     "kind": "pass",
-    "loss_w": 1e-05,
+    "loss_w": 6.10504e-05,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.241746,
-    "i_out": 0.240588,
+    "i_in": 0.245772,
+    "i_out": 0.241796,
     "id": "L9",
     "kind": "pass",
-    "loss_w": 0.00578828,
+    "loss_w": 0.0198782,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.0702085,
-    "i_out": 0.0701485,
+    "i_in": 0.0705648,
+    "i_out": 0.0705048,
     "id": "IC19",
     "kind": "ldo",
-    "loss_w": 0.119552,
+    "loss_w": 0.120158,
     "overload": false,
     "part": "AP2114H"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.00114003,
+    "i_in": 0.00114009,
     "i_out": 0.00114,
     "id": "L15",
     "kind": "pass",
-    "loss_w": 1.2996e-07,
+    "loss_w": 4.41864e-07,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    },
    {
     "efficiency": null,
     "efficiency_estimate": false,
-    "i_in": 0.060072,
+    "i_in": 0.0602448,
     "i_out": 0.06,
     "id": "L60",
     "kind": "pass",
-    "loss_w": 0.00036,
+    "loss_w": 0.001224,
     "overload": false,
     "part": "FERRITE (BLM15AX601SN1)"
    }
   ],
-  "input_w": 5.51187,
-  "loads_w": 3.73149,
-  "losses_w": 1.78038
+  "input_w": 5.6621,
+  "loads_w": 3.80255,
+  "losses_w": 1.85954
  },
  "config": {
-  "entries": 68,
+  "entries": 120,
   "errors": [],
   "ok": true,
   "warnings": []
@@ -501,22 +578,22 @@
    {
     "from": "el:IC1",
     "to": "loss:reg",
-    "w": 0.550586
+    "w": 0.565843
    },
    {
     "from": "el:IC1",
     "to": "rail:+6V",
-    "w": 4.03763
+    "w": 4.14952
    },
    {
     "from": "el:IC19",
     "to": "loss:reg",
-    "w": 0.119552
+    "w": 0.120158
    },
    {
     "from": "el:IC19",
     "to": "rail:/1.LO/3V3_LDO1_LO1",
-    "w": 0.23149
+    "w": 0.232666
    },
    {
     "from": "el:IC2.1",
@@ -531,22 +608,22 @@
    {
     "from": "el:IC2.2",
     "to": "loss:reg",
-    "w": 0.0800581
+    "w": 0.0823663
    },
    {
     "from": "el:IC2.2",
     "to": "rail:/Power Supply/VREG3V3_SWL",
-    "w": 0.720523
+    "w": 0.741297
    },
    {
     "from": "el:IC20",
     "to": "loss:reg",
-    "w": 0.0851788
+    "w": 0.0854879
    },
    {
     "from": "el:IC20",
     "to": "rail:/1.LO/3V3_LDO2_LO1",
-    "w": 0.16525
+    "w": 0.16585
    },
    {
     "from": "el:IC25",
@@ -561,12 +638,12 @@
    {
     "from": "el:IC3",
     "to": "loss:reg",
-    "w": 0.145131
+    "w": 0.150005
    },
    {
     "from": "el:IC3",
     "to": "rail:/Power Supply/VREG5V{slash}1",
-    "w": 0.716653
+    "w": 0.741024
    },
    {
     "from": "el:IC30",
@@ -591,67 +668,67 @@
    {
     "from": "el:IC4",
     "to": "loss:reg",
-    "w": 0.145131
+    "w": 0.150005
    },
    {
     "from": "el:IC4",
     "to": "rail:/Power Supply/VREG5V{slash}2",
-    "w": 0.716653
+    "w": 0.741024
    },
    {
     "from": "el:IC5",
     "to": "loss:reg",
-    "w": 0.145131
+    "w": 0.150005
    },
    {
     "from": "el:IC5",
     "to": "rail:/Power Supply/VREG5V{slash}3",
-    "w": 0.716653
+    "w": 0.741024
    },
    {
     "from": "el:IC6",
     "to": "loss:reg",
-    "w": 0.243546
+    "w": 0.247572
    },
    {
     "from": "el:IC6",
     "to": "rail:/Power Supply/VREG5V{slash}4",
-    "w": 1.20873
+    "w": 1.22886
    },
    {
     "from": "el:IC8",
     "to": "loss:reg",
-    "w": 0.119552
+    "w": 0.120158
    },
    {
     "from": "el:IC8",
     "to": "rail:/HF Source/3v3_LDO1_SRC",
-    "w": 0.23149
+    "w": 0.232666
    },
    {
     "from": "el:IC9",
     "to": "loss:reg",
-    "w": 0.0851788
+    "w": 0.0857112
    },
    {
     "from": "el:IC9",
     "to": "rail:/HF Source/3V3_LDO2_SRC",
-    "w": 0.16525
-   },
-   {
-    "from": "in:J1",
-    "to": "loss:ground",
-    "w": 0.000486519
+    "w": 0.166283
    },
    {
     "from": "in:J1",
     "to": "rail:+5V",
-    "w": 5.51187
+    "w": 5.6621
+   },
+   {
+    "from": "in:J4",
+    "to": "loss:ground",
+    "w": 0.000690957
    },
    {
     "from": "rail:+5V",
     "to": "el:IC1",
-    "w": 4.58821
+    "w": 4.71536
    },
    {
     "from": "rail:+5V",
@@ -661,37 +738,37 @@
    {
     "from": "rail:+5V",
     "to": "el:IC2.2",
-    "w": 0.800581
+    "w": 0.823663
    },
    {
     "from": "rail:+5V",
     "to": "loss:copper",
-    "w": 0.0159131
+    "w": 0.0167947
    },
    {
     "from": "rail:+6V",
     "to": "el:IC3",
-    "w": 0.861784
+    "w": 0.891028
    },
    {
     "from": "rail:+6V",
     "to": "el:IC4",
-    "w": 0.861784
+    "w": 0.891028
    },
    {
     "from": "rail:+6V",
     "to": "el:IC5",
-    "w": 0.861784
+    "w": 0.891028
    },
    {
     "from": "rail:+6V",
     "to": "el:IC6",
-    "w": 1.45228
+    "w": 1.47643
    },
    {
     "from": "rail:+6V",
     "to": "loss:copper",
-    "w": 0.00689216
+    "w": 0.00729815
    },
    {
     "from": "rail:/1.LO/3V3_LDO1_LO1",
@@ -701,12 +778,12 @@
    {
     "from": "rail:/1.LO/3V3_LDO1_LO1",
     "to": "loss:copper",
-    "w": 0.000131365
+    "w": 0.000131477
    },
    {
     "from": "rail:/1.LO/3V3_LDO1_LO1",
     "to": "loss:pass",
-    "w": 0.00049
+    "w": 0.001666
    },
    {
     "from": "rail:/1.LO/3V3_LDO2_LO1",
@@ -716,12 +793,12 @@
    {
     "from": "rail:/1.LO/3V3_LDO2_LO1",
     "to": "loss:copper",
-    "w": 4.40087e-05
+    "w": 4.40384e-05
    },
    {
     "from": "rail:/1.LO/3V3_LDO2_LO1",
     "to": "loss:pass",
-    "w": 0.00025
+    "w": 0.00085
    },
    {
     "from": "rail:/HF Source/3V3_LDO2_SRC",
@@ -730,13 +807,23 @@
    },
    {
     "from": "rail:/HF Source/3V3_LDO2_SRC",
+    "to": "load:IC11",
+    "w": 0.0002145
+   },
+   {
+    "from": "rail:/HF Source/3V3_LDO2_SRC",
+    "to": "load:IC12",
+    "w": 0.0002145
+   },
+   {
+    "from": "rail:/HF Source/3V3_LDO2_SRC",
     "to": "loss:copper",
-    "w": 5.65886e-05
+    "w": 5.69259e-05
    },
    {
     "from": "rail:/HF Source/3V3_LDO2_SRC",
     "to": "loss:pass",
-    "w": 0.00025
+    "w": 0.000854426
    },
    {
     "from": "rail:/HF Source/3v3_LDO1_SRC",
@@ -746,12 +833,12 @@
    {
     "from": "rail:/HF Source/3v3_LDO1_SRC",
     "to": "loss:copper",
-    "w": 0.000224559
+    "w": 0.000224657
    },
    {
     "from": "rail:/HF Source/3v3_LDO1_SRC",
     "to": "loss:pass",
-    "w": 0.00049
+    "w": 0.001666
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
@@ -760,13 +847,33 @@
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
+    "to": "load:IC13",
+    "w": 0.00066
+   },
+   {
+    "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC14",
-    "w": 0.0033
+    "w": 0.000594
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC15",
     "w": 0.1815
+   },
+   {
+    "from": "rail:/Power Supply/VREG3V3_SWL",
+    "to": "load:IC16",
+    "w": 0.00066
+   },
+   {
+    "from": "rail:/Power Supply/VREG3V3_SWL",
+    "to": "load:IC17",
+    "w": 0.00066
+   },
+   {
+    "from": "rail:/Power Supply/VREG3V3_SWL",
+    "to": "load:IC18",
+    "w": 0.00066
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
@@ -776,17 +883,17 @@
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC26",
-    "w": 0.00165
+    "w": 0.000957
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC31",
-    "w": 0.00165
+    "w": 0.000957
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC35",
-    "w": 0.00165
+    "w": 0.000957
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
@@ -796,12 +903,12 @@
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:IC7",
-    "w": 0.1155
+    "w": 0.14718
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "load:U1",
-    "w": 0.0165
+    "w": 0.0066
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
@@ -811,12 +918,12 @@
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "loss:copper",
-    "w": 0.0017925
+    "w": 0.00192547
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "loss:pass",
-    "w": 0.00277308
+    "w": 0.00391191
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
@@ -826,7 +933,7 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
     "to": "load:IC22",
-    "w": 0.05
+    "w": 0.067
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
@@ -841,12 +948,12 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
     "to": "loss:copper",
-    "w": 0.000590802
+    "w": 0.000601132
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
     "to": "loss:pass",
-    "w": 0.00290306
+    "w": 0.0102735
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
@@ -856,7 +963,7 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
     "to": "load:IC27",
-    "w": 0.05
+    "w": 0.067
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
@@ -871,12 +978,12 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
     "to": "loss:copper",
-    "w": 0.0024417
+    "w": 0.00252037
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
     "to": "loss:pass",
-    "w": 0.00290306
+    "w": 0.0102735
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
@@ -896,47 +1003,47 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
     "to": "load:IC36",
-    "w": 0.05
+    "w": 0.067
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
     "to": "loss:copper",
-    "w": 0.000458917
+    "w": 0.000481335
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
     "to": "loss:pass",
-    "w": 0.00290306
+    "w": 0.0102735
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}4",
     "to": "el:IC19",
-    "w": 0.351042
+    "w": 0.352824
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}4",
     "to": "el:IC20",
-    "w": 0.250429
+    "w": 0.251338
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}4",
     "to": "el:IC8",
-    "w": 0.351042
+    "w": 0.352824
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}4",
     "to": "el:IC9",
-    "w": 0.250429
+    "w": 0.251995
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}4",
     "to": "loss:copper",
-    "w": 0.000633096
+    "w": 0.000641963
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}4",
     "to": "loss:pass",
-    "w": 0.00578828
+    "w": 0.0198782
    },
    {
     "from": "rail:Net-(IC25-OUT)",
@@ -967,6 +1074,11 @@
     "from": "rail:Net-(IC34-OUT)",
     "to": "loss:copper",
     "w": 2.20386e-08
+   },
+   {
+    "from": "rail:USB_POWER",
+    "to": "loss:copper",
+    "w": 8.14846e-22
    },
    {
     "from": "rail:VCCINT",
@@ -1042,15 +1154,20 @@
     "depth": 3,
     "id": "rail:/Power Supply/VREG3V3_SWL",
     "kind": "rail",
-    "label": "VREG3V3_SWL (+6)",
+    "label": "VREG3V3_SWL (+11)",
     "members": [
      "+3V3",
+     "/Attenuator Amp Switches/3V3_P2_SWITCH",
+     "/Attenuator Amp Switches/3V3_HBLB_AMP",
+     "/Attenuator Amp Switches/3V3_HBLB_AMP_L",
      "/2.LO + Ref Clock/3V3_CLKGEN",
      "/1.LO/3V3_LO1_3",
      "/HF Source/3V3_SRC_3",
+     "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
+     "/Attenuator Amp Switches/3V3_P1_SWITCH",
+     "/Attenuator Amp Switches/3V3_P12_SWITCH",
      "/Power Supply/VREG3V3_SWL",
-     "/Attenuator Amp Switches/3V3_HBLB_ATT",
-     "/Attenuator Amp Switches/3V3_HBLB_AMP"
+     "/Attenuator Amp Switches/3V3_HBLB_ATT"
     ]
    },
    {
@@ -1136,6 +1253,16 @@
     ]
    },
    {
+    "depth": 1,
+    "id": "rail:USB_POWER",
+    "kind": "rail",
+    "label": "USB_POWER (+1)",
+    "members": [
+     "USB_POWER",
+     "/Power Supply/USB_5V"
+    ]
+   },
+   {
     "depth": 3,
     "id": "rail:VCCINT",
     "kind": "rail",
@@ -1170,6 +1297,13 @@
     "id": "loss:pass",
     "kind": "loss",
     "label": "Shunts and ferrites",
+    "members": []
+   },
+   {
+    "depth": 0,
+    "id": "in:J4",
+    "kind": "input",
+    "label": "J4 USB_C_Receptacle_USB2.0_16P (LCSC C668624)",
     "members": []
    },
    {
@@ -1398,9 +1532,51 @@
    },
    {
     "depth": 8,
+    "id": "load:IC16",
+    "kind": "load",
+    "label": "IC16 QPC6324",
+    "members": []
+   },
+   {
+    "depth": 8,
+    "id": "load:IC13",
+    "kind": "load",
+    "label": "IC13 QPC6324",
+    "members": []
+   },
+   {
+    "depth": 8,
+    "id": "load:IC18",
+    "kind": "load",
+    "label": "IC18 QPC6324",
+    "members": []
+   },
+   {
+    "depth": 8,
+    "id": "load:IC17",
+    "kind": "load",
+    "label": "IC17 QPC6324",
+    "members": []
+   },
+   {
+    "depth": 8,
     "id": "load:IC14",
     "kind": "load",
     "label": "IC14 RFSA3714",
+    "members": []
+   },
+   {
+    "depth": 8,
+    "id": "load:IC11",
+    "kind": "load",
+    "label": "IC11 RFSW6042",
+    "members": []
+   },
+   {
+    "depth": 8,
+    "id": "load:IC12",
+    "kind": "load",
+    "label": "IC12 RFSW6042",
     "members": []
    },
    {
@@ -1440,7 +1616,7 @@
     "role": "load"
    },
    {
-    "heat_w": 0.550586,
+    "heat_w": 0.565843,
     "part": "MIC2253",
     "ref": "IC1",
     "role": "regulator"
@@ -1464,7 +1640,7 @@
     "role": "load"
    },
    {
-    "heat_w": 0.243546,
+    "heat_w": 0.247572,
     "part": "LDL212PU50R",
     "ref": "IC6",
     "role": "regulator"
@@ -1476,43 +1652,43 @@
     "role": "load"
    },
    {
-    "heat_w": 0.145131,
+    "heat_w": 0.150005,
     "part": "LDL212PU50R",
     "ref": "IC4",
     "role": "regulator"
    },
    {
-    "heat_w": 0.145131,
+    "heat_w": 0.150005,
     "part": "LDL212PU50R",
     "ref": "IC5",
     "role": "regulator"
    },
    {
-    "heat_w": 0.145131,
+    "heat_w": 0.150005,
     "part": "LDL212PU50R",
     "ref": "IC3",
     "role": "regulator"
    },
    {
-    "heat_w": 0.119552,
-    "part": "AP2114H",
-    "ref": "IC8",
-    "role": "regulator"
-   },
-   {
-    "heat_w": 0.119552,
-    "part": "AP2114H",
-    "ref": "IC19",
-    "role": "regulator"
-   },
-   {
-    "heat_w": 0.1155,
+    "heat_w": 0.14718,
     "part": "SI5351C",
     "ref": "IC7",
     "role": "load"
    },
    {
-    "heat_w": 0.107135,
+    "heat_w": 0.120158,
+    "part": "AP2114H",
+    "ref": "IC8",
+    "role": "regulator"
+   },
+   {
+    "heat_w": 0.120158,
+    "part": "AP2114H",
+    "ref": "IC19",
+    "role": "regulator"
+   },
+   {
+    "heat_w": 0.109443,
     "part": "LM3370",
     "ref": "IC2",
     "role": "regulator"
@@ -1524,124 +1700,124 @@
     "role": "load"
    },
    {
-    "heat_w": 0.0851788,
-    "part": "NCP702-3.3 (NCP702SN33T1G)",
-    "ref": "IC20",
-    "role": "regulator"
-   },
-   {
-    "heat_w": 0.0851788,
+    "heat_w": 0.0857112,
     "part": "NCP702-3.3 (NCP702SN33T1G)",
     "ref": "IC9",
     "role": "regulator"
    },
    {
-    "heat_w": 0.05,
+    "heat_w": 0.0854879,
+    "part": "NCP702-3.3 (NCP702SN33T1G)",
+    "ref": "IC20",
+    "role": "regulator"
+   },
+   {
+    "heat_w": 0.067,
     "part": "LT5560",
     "ref": "IC36",
     "role": "load"
    },
    {
-    "heat_w": 0.05,
+    "heat_w": 0.067,
     "part": "LT5560",
     "ref": "IC27",
     "role": "load"
    },
    {
-    "heat_w": 0.05,
+    "heat_w": 0.067,
     "part": "LT5560",
     "ref": "IC22",
     "role": "load"
    },
    {
-    "heat_w": 0.0165,
-    "part": "W25Q16BVSN (W25Q16JL)",
-    "ref": "U1",
-    "role": "load"
-   },
-   {
-    "heat_w": 0.00578828,
+    "heat_w": 0.0198782,
     "part": "FERRITE (BLM15AX601SN1)",
     "ref": "L9",
     "role": "pass-through"
    },
    {
-    "heat_w": 0.0057,
-    "part": "THS4521IDGKR",
-    "ref": "IC32",
-    "role": "load"
+    "heat_w": 0.00732114,
+    "part": "FERRITE (BLM15AX601SN1)",
+    "ref": "L6",
+    "role": "pass-through"
+   },
+   {
+    "heat_w": 0.00732114,
+    "part": "FERRITE (BLM15AX601SN1)",
+    "ref": "L7",
+    "role": "pass-through"
    }
   ],
-  "components_w": 5.51187,
-  "copper_ground_w": 0.000486519,
-  "copper_rails_w": 0.0292794,
+  "components_w": 5.6621,
+  "copper_ground_w": 0.000690957,
+  "copper_rails_w": 0.0308208,
   "notes": [
    "Component heat: the power a load draws is taken as heat in the part (estimate: power leaving the board, e.g. through connectors or LEDs, is included); regulator losses are put on the regulator."
   ],
   "per_layer": [
    {
-    "copper_w": 0.00291052,
+    "copper_w": 0.00310746,
     "layer": "F.Cu"
    },
    {
-    "copper_w": 9.04709e-05,
+    "copper_w": 0.000115872,
     "layer": "In1.Cu"
    },
    {
-    "copper_w": 8.38093e-05,
+    "copper_w": 0.000112075,
     "layer": "In2.Cu"
    },
    {
-    "copper_w": 0.0183885,
+    "copper_w": 0.0193273,
     "layer": "In3.Cu"
    },
    {
-    "copper_w": 0.00811311,
+    "copper_w": 0.00862512,
     "layer": "In4.Cu"
    },
    {
-    "copper_w": 0.000179497,
+    "copper_w": 0.000223942,
     "layer": "B.Cu"
    }
   ],
   "per_rail": [
    {
-    "copper_w": 0.0159131,
+    "copper_w": 0.0167947,
     "ground_return": false,
     "rail": "+5V"
    },
    {
-    "copper_w": 0.00689216,
+    "copper_w": 0.00729815,
     "ground_return": false,
     "rail": "+6V"
    },
    {
-    "copper_w": 0.00227916,
+    "copper_w": 0.00235119,
     "ground_return": false,
     "rail": "+5V{slash}2"
    },
    {
-    "copper_w": 0.00156471,
+    "copper_w": 0.00168435,
     "ground_return": false,
     "rail": "+3V3"
    },
    {
-    "copper_w": 0.000510994,
-    "ground_return": false,
-    "rail": "+5V{slash}4"
-   },
-   {
-    "copper_w": 0.000486519,
+    "copper_w": 0.000690957,
     "ground_return": true,
     "rail": "GND"
    },
    {
-    "copper_w": 0.000426441,
+    "copper_w": 0.000515761,
+    "ground_return": false,
+    "rail": "+5V{slash}4"
+   },
+   {
+    "copper_w": 0.000431476,
     "ground_return": false,
     "rail": "+5V{slash}1"
    },
    {
-    "copper_w": 0.000347533,
+    "copper_w": 0.000363732,
     "ground_return": false,
     "rail": "+5V{slash}3"
    },
@@ -1651,12 +1827,12 @@
     "rail": "/HF Source/3V3_SRC_1"
    },
    {
-    "copper_w": 0.000195333,
+    "copper_w": 0.000206758,
     "ground_return": false,
     "rail": "/Power Supply/VREG3V3_SWL"
    },
    {
-    "copper_w": 0.000122102,
+    "copper_w": 0.000126202,
     "ground_return": false,
     "rail": "/Power Supply/VREG5V{slash}4"
    },
@@ -1681,24 +1857,24 @@
     "rail": "Net-(IC29-VPDT)"
    },
    {
-    "copper_w": 5.15836e-05,
-    "ground_return": false,
-    "rail": "/HF Source/3V3_SRC_2"
-   },
-   {
-    "copper_w": 5.14551e-05,
+    "copper_w": 5.50142e-05,
     "ground_return": false,
     "rail": "/Power Supply/VREG5V{slash}3"
    },
    {
-    "copper_w": 5.13546e-05,
+    "copper_w": 5.49067e-05,
     "ground_return": false,
     "rail": "/Power Supply/VREG5V{slash}1"
    },
    {
-    "copper_w": 4.99403e-05,
+    "copper_w": 5.33946e-05,
     "ground_return": false,
     "rail": "/Power Supply/VREG5V{slash}2"
+   },
+   {
+    "copper_w": 5.18581e-05,
+    "ground_return": false,
+    "rail": "/HF Source/3V3_SRC_2"
    },
    {
     "copper_w": 3.99257e-05,
@@ -1731,22 +1907,32 @@
     "rail": "/Attenuator Amp Switches/3V3_HBLB_AMP"
    },
    {
-    "copper_w": 1.09291e-05,
+    "copper_w": 1.10404e-05,
     "ground_return": false,
     "rail": "/1.LO/3V3_LDO1_LO1"
    },
    {
-    "copper_w": 9.5734e-06,
+    "copper_w": 9.67091e-06,
     "ground_return": false,
     "rail": "/HF Source/3v3_LDO1_SRC"
    },
    {
-    "copper_w": 5.07171e-06,
+    "copper_w": 7.19e-06,
+    "ground_return": false,
+    "rail": "Net-(IC27-VCC)"
+   },
+   {
+    "copper_w": 6.98228e-06,
     "ground_return": false,
     "rail": "/2.LO + Ref Clock/3V3_CLKGEN"
    },
    {
-    "copper_w": 5.00497e-06,
+    "copper_w": 6.00231e-06,
+    "ground_return": false,
+    "rail": "Net-(IC36-VCC)"
+   },
+   {
+    "copper_w": 5.06777e-06,
     "ground_return": false,
     "rail": "/HF Source/3V3_LDO2_SRC"
    },
@@ -1756,29 +1942,19 @@
     "rail": "/1.LO/3V3_LO1_3"
    },
    {
-    "copper_w": 4.08302e-06,
+    "copper_w": 4.11273e-06,
     "ground_return": false,
     "rail": "/1.LO/3V3_LDO2_LO1"
    },
    {
-    "copper_w": 4.00423e-06,
+    "copper_w": 3.93245e-06,
     "ground_return": false,
-    "rail": "Net-(IC27-VCC)"
+    "rail": "Net-(IC22-VCC)"
    },
    {
     "copper_w": 3.47412e-06,
     "ground_return": false,
     "rail": "/HF Source/3V3_SRC_3"
-   },
-   {
-    "copper_w": 3.34279e-06,
-    "ground_return": false,
-    "rail": "Net-(IC36-VCC)"
-   },
-   {
-    "copper_w": 2.19005e-06,
-    "ground_return": false,
-    "rail": "Net-(IC22-VCC)"
    },
    {
     "copper_w": 4.0324e-08,
@@ -1811,11 +1987,6 @@
     "rail": "Net-(IC30-OUT)"
    },
    {
-    "copper_w": 9.15368e-09,
-    "ground_return": false,
-    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT"
-   },
-   {
     "copper_w": 7.4741e-09,
     "ground_return": false,
     "rail": "Net-(IC25-EN)"
@@ -1829,12 +2000,47 @@
     "copper_w": 4.67166e-09,
     "ground_return": false,
     "rail": "Net-(IC30-EN)"
+   },
+   {
+    "copper_w": 3.08434e-10,
+    "ground_return": false,
+    "rail": "/Attenuator Amp Switches/3V3_P1_SWITCH"
+   },
+   {
+    "copper_w": 2.96582e-10,
+    "ground_return": false,
+    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT"
+   },
+   {
+    "copper_w": 2.47479e-10,
+    "ground_return": false,
+    "rail": "/Attenuator Amp Switches/3V3_HBLB_SWITCH"
+   },
+   {
+    "copper_w": 1.87395e-10,
+    "ground_return": false,
+    "rail": "/Attenuator Amp Switches/3V3_P12_SWITCH"
+   },
+   {
+    "copper_w": 1.6871e-10,
+    "ground_return": false,
+    "rail": "/Attenuator Amp Switches/3V3_P2_SWITCH"
+   },
+   {
+    "copper_w": 8.14846e-22,
+    "ground_return": false,
+    "rail": "USB_POWER"
    }
   ],
-  "total_w": 5.54164
+  "total_w": 5.69361
  },
  "pdn": {
-  "above_target_hz": [],
+  "above_target_hz": [
+   [
+    1496240.0,
+    1496240.0
+   ]
+  ],
   "c_plane_f": 0.0,
   "c_total_f": 2.17e-05,
   "caps": 19,
@@ -1926,7 +2132,9 @@
     {
      "c_total_uf": 0.09,
      "capacitors": 1,
-     "ics": [],
+     "ics": [
+      "IC17"
+     ],
      "net": "/Attenuator Amp Switches/3V3_P2_SWITCH",
      "regulators": [],
      "voltage": 3.3
@@ -1964,7 +2172,9 @@
     {
      "c_total_uf": 0.09,
      "capacitors": 1,
-     "ics": [],
+     "ics": [
+      "IC13"
+     ],
      "net": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
      "regulators": [],
      "voltage": 3.3
@@ -1972,7 +2182,9 @@
     {
      "c_total_uf": 0.09,
      "capacitors": 1,
-     "ics": [],
+     "ics": [
+      "IC18"
+     ],
      "net": "/Attenuator Amp Switches/3V3_P1_SWITCH",
      "regulators": [],
      "voltage": 3.3
@@ -1980,7 +2192,9 @@
     {
      "c_total_uf": 0.09,
      "capacitors": 1,
-     "ics": [],
+     "ics": [
+      "IC16"
+     ],
      "net": "/Attenuator Amp Switches/3V3_P12_SWITCH",
      "regulators": [],
      "voltage": 3.3
@@ -2046,7 +2260,7 @@
    "grid": {
     "cell_mm": 0.3,
     "layers": 6,
-    "nodes": 5258
+    "nodes": 5262
    },
    "ics": [
     {
@@ -2056,7 +2270,7 @@
        "above_target": false,
        "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.5 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.01967
+       "z_ohm": 2.01684
       }
      ],
      "capacitors_most_effective": [
@@ -2126,12 +2340,12 @@
      "target_ohm": 3.96,
      "target_source": "3 % ripple at a 50 % step of 50 mA (estimate)",
      "z_ohm": {
-      "100M": 0.104704,
-      "100k": 0.17486,
-      "10M": 0.0143596,
+      "100M": 0.104705,
+      "100k": 0.174906,
+      "10M": 0.0143597,
       "10k": 0.283695,
-      "1G": 1.13977,
-      "1M": 0.170703
+      "1G": 1.13975,
+      "1M": 0.173953
      }
     },
     {
@@ -2141,19 +2355,19 @@
        "above_target": false,
        "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.9 MHz)",
        "hz": 25118.9,
-       "z_ohm": 1.89229
+       "z_ohm": 1.88943
       },
       {
        "above_target": false,
        "between": "between C169 89nF (series resonance 3.7 MHz) and C210 89nF (series resonance 4.1 MHz)",
        "hz": 3981070.0,
-       "z_ohm": 0.168058
+       "z_ohm": 0.168163
       },
       {
        "above_target": false,
        "between": "between C209 89nF (series resonance 6.2 MHz) and C208 89nF (series resonance 10.6 MHz)",
        "hz": 7943280.0,
-       "z_ohm": 0.130575
+       "z_ohm": 0.130561
       }
      ],
      "capacitors_most_effective": [
@@ -2223,12 +2437,12 @@
      "target_ohm": 6.6,
      "target_source": "3 % ripple at a 50 % step of 30 mA (estimate)",
      "z_ohm": {
-      "100M": 0.310176,
-      "100k": 0.104556,
-      "10M": 0.0497642,
-      "10k": 0.186121,
-      "1G": 3.22346,
-      "1M": 0.027468
+      "100M": 0.310178,
+      "100k": 0.104349,
+      "10M": 0.0497596,
+      "10k": 0.18612,
+      "1G": 3.22284,
+      "1M": 0.0269857
      }
     },
     {
@@ -2238,13 +2452,13 @@
        "above_target": false,
        "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.11105
+       "z_ohm": 2.10824
       },
       {
        "above_target": false,
        "between": "between C214 89nF (series resonance 5.0 MHz) and C215 89nF (series resonance 5.1 MHz)",
        "hz": 5011870.0,
-       "z_ohm": 0.645056
+       "z_ohm": 0.648495
       }
      ],
      "capacitors_most_effective": [
@@ -2305,21 +2519,21 @@
        "srf_mhz": 4.8
       }
      ],
-     "current_a": 0.0005,
+     "current_a": 0.00029,
      "ic": "IC35",
      "net": "+3V3",
      "pins": 2,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 396.0,
+     "target_ohm": 682.759,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
-      "100M": 0.549724,
-      "100k": 0.253637,
-      "10M": 0.178143,
+      "100M": 0.549828,
+      "100k": 0.253726,
+      "10M": 0.177282,
       "10k": 0.367692,
-      "1G": 5.70283,
-      "1M": 0.227649
+      "1G": 5.70087,
+      "1M": 0.2526
      }
     },
     {
@@ -2329,13 +2543,13 @@
        "above_target": false,
        "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C15 6.78µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.05867
+       "z_ohm": 2.0559
       },
       {
        "above_target": false,
        "between": "between C207 89nF (series resonance 3.6 MHz) and C169 89nF (series resonance 14.7 MHz)",
        "hz": 3981070.0,
-       "z_ohm": 0.92284
+       "z_ohm": 0.922871
       }
      ],
      "capacitors_most_effective": [
@@ -2396,21 +2610,21 @@
        "srf_mhz": 2.93
       }
      ],
-     "current_a": 0.0005,
+     "current_a": 0.00029,
      "ic": "IC31",
      "net": "+3V3",
      "pins": 2,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 396.0,
+     "target_ohm": 682.759,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
-      "100M": 0.802633,
-      "100k": 0.220666,
-      "10M": 0.12544,
-      "10k": 0.319762,
-      "1G": 8.44466,
-      "1M": 0.234777
+      "100M": 0.802634,
+      "100k": 0.220774,
+      "10M": 0.125438,
+      "10k": 0.319763,
+      "1G": 8.44334,
+      "1M": 0.23473
      }
     },
     {
@@ -2420,19 +2634,19 @@
        "above_target": false,
        "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.6 MHz)",
        "hz": 25118.9,
-       "z_ohm": 1.93885
+       "z_ohm": 1.93601
       },
       {
        "above_target": false,
        "between": "between C211 89nF (series resonance 4.0 MHz) and C218 89nF (series resonance 4.0 MHz)",
        "hz": 3981070.0,
-       "z_ohm": 0.421727
+       "z_ohm": 0.421886
       },
       {
        "above_target": false,
        "between": "between C206 89nF (series resonance 6.9 MHz) and C209 89nF (series resonance 18.7 MHz)",
        "hz": 7943280.0,
-       "z_ohm": 0.373732
+       "z_ohm": 0.373763
       }
      ],
      "capacitors_most_effective": [
@@ -2493,21 +2707,21 @@
        "srf_mhz": 4.12
       }
      ],
-     "current_a": 0.005,
+     "current_a": 0.002,
      "ic": "U1",
      "net": "+3V3",
      "pins": 3,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 39.6,
-     "target_source": "3 % ripple at a 50 % step of 5 mA (estimate)",
+     "target_ohm": 99.0,
+     "target_source": "3 % ripple at a 50 % step of 2 mA (estimate)",
      "z_ohm": {
-      "100M": 0.435269,
-      "100k": 0.120474,
+      "100M": 0.43527,
+      "100k": 0.120401,
       "10M": 0.197669,
-      "10k": 0.217215,
-      "1G": 4.79435,
-      "1M": 0.0911701
+      "10k": 0.217214,
+      "1G": 4.79421,
+      "1M": 0.0903675
      }
     },
     {
@@ -2517,19 +2731,19 @@
        "above_target": false,
        "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C15 6.78µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.14185
+       "z_ohm": 2.13873
       },
       {
        "above_target": false,
        "between": "between C201 89nF (series resonance 2.4 MHz) and C210 89nF (series resonance 2.5 MHz)",
        "hz": 2511890.0,
-       "z_ohm": 0.656583
+       "z_ohm": 0.625362
       },
       {
        "above_target": false,
        "between": "between C29 89nF (series resonance 5.7 MHz) and C31 89nF (series resonance 10.9 MHz)",
        "hz": 7943280.0,
-       "z_ohm": 0.206748
+       "z_ohm": 0.209356
       }
      ],
      "capacitors_most_effective": [
@@ -2590,21 +2804,21 @@
        "srf_mhz": 2.87
       }
      ],
-     "current_a": 0.02,
+     "current_a": 0.027,
      "ic": "IC7",
      "net": "+3V3",
      "pins": 1,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 9.9,
-     "target_source": "3 % ripple at a 50 % step of 20 mA (estimate)",
+     "target_ohm": 7.33333,
+     "target_source": "3 % ripple at a 50 % step of 27 mA (estimate)",
      "z_ohm": {
-      "100M": 1.44248,
-      "100k": 0.290861,
-      "10M": 0.154303,
-      "10k": 0.398395,
-      "1G": 15.0101,
-      "1M": 0.299491
+      "100M": 1.44282,
+      "100k": 0.290203,
+      "10M": 0.153323,
+      "10k": 0.398389,
+      "1G": 15.4843,
+      "1M": 0.338481
      }
     },
     {
@@ -2614,13 +2828,13 @@
        "above_target": false,
        "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.11348
+       "z_ohm": 2.11068
       },
       {
        "above_target": false,
        "between": "between C217 89nF (series resonance 4.9 MHz) and C211 89nF (series resonance 5.2 MHz)",
        "hz": 5011870.0,
-       "z_ohm": 0.668017
+       "z_ohm": 0.66703
       }
      ],
      "capacitors_most_effective": [
@@ -2681,21 +2895,63 @@
        "srf_mhz": 4.6
       }
      ],
-     "current_a": 0.0005,
+     "current_a": 0.00029,
      "ic": "IC26",
      "net": "+3V3",
      "pins": 2,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 396.0,
+     "target_ohm": 682.759,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 1.02715,
-      "100k": 0.255714,
+      "100k": 0.255841,
       "10M": 0.127425,
-      "10k": 0.369998,
+      "10k": 0.369999,
       "1G": 10.4404,
-      "1M": 0.27149
+      "1M": 0.261434
+     }
+    },
+    {
+     "above_target_hz": [],
+     "anti_resonances": [
+      {
+       "above_target": false,
+       "between": "regulator inductance against the capacitors; lowest series resonance: C77 89nF (series resonance 14.7 MHz)",
+       "hz": 25118.9,
+       "z_ohm": 2.93802
+      },
+      {
+       "above_target": false,
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C77 89nF (series resonance 14.7 MHz)",
+       "hz": 501187.0,
+       "z_ohm": 10.9647
+      }
+     ],
+     "capacitors_most_effective": [
+      {
+       "dist_mm": 2.1,
+       "l_path_nh": 0.959,
+       "l_total_nh": 1.309,
+       "ref": "C77",
+       "srf_mhz": 14.72
+      }
+     ],
+     "current_a": 0.0002,
+     "ic": "IC17",
+     "net": "/Attenuator Amp Switches/3V3_P2_SWITCH",
+     "pins": 1,
+     "recommendations": [],
+     "target_fmax_hz": 100000000.0,
+     "target_ohm": 990.0,
+     "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
+     "z_ohm": {
+      "100M": 0.806013,
+      "100k": 1.18001,
+      "10M": 0.101169,
+      "10k": 1.16412,
+      "1G": 8.30255,
+      "1M": 2.42993
      }
     },
     {
@@ -2705,13 +2961,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C32 89nF (series resonance 12.9 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.24678
+       "z_ohm": 2.51404
       },
       {
        "above_target": false,
-       "between": "filter resonance of L10 (bead, 0.35 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C32 89nF (series resonance 12.9 MHz)",
-       "hz": 630957.0,
-       "z_ohm": 6.66209
+       "between": "filter resonance of L10 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C32 89nF (series resonance 12.9 MHz)",
+       "hz": 398107.0,
+       "z_ohm": 9.19339
       }
      ],
      "capacitors_most_effective": [
@@ -2730,21 +2986,21 @@
        "srf_mhz": 12.89
       }
      ],
-     "current_a": 0.015,
+     "current_a": 0.0176,
      "ic": "IC7",
      "net": "/2.LO + Ref Clock/3V3_CLKGEN",
      "pins": 4,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 13.2,
-     "target_source": "3 % ripple at a 50 % step of 15 mA (estimate)",
+     "target_ohm": 11.25,
+     "target_source": "3 % ripple at a 50 % step of 18 mA (estimate)",
      "z_ohm": {
-      "100M": 0.533638,
-      "100k": 0.385612,
-      "10M": 0.0388533,
-      "10k": 0.485712,
-      "1G": 5.66004,
-      "1M": 1.39862
+      "100M": 0.533996,
+      "100k": 0.825916,
+      "10M": 0.0387658,
+      "10k": 0.725565,
+      "1G": 5.67358,
+      "1M": 1.03384
      }
     },
     {
@@ -2754,13 +3010,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C84 89nF (series resonance 12.6 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.43383
+       "z_ohm": 2.70126
       },
       {
        "above_target": false,
-       "between": "filter resonance of L65 (bead, 0.35 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C84 89nF (series resonance 12.6 MHz)",
-       "hz": 630957.0,
-       "z_ohm": 4.7163
+       "between": "filter resonance of L65 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C84 89nF (series resonance 12.6 MHz)",
+       "hz": 398107.0,
+       "z_ohm": 7.33017
       }
      ],
      "capacitors_most_effective": [
@@ -2788,28 +3044,33 @@
      "target_ohm": 9.9,
      "target_source": "3 % ripple at a 50 % step of 20 mA (estimate)",
      "z_ohm": {
-      "100M": 0.570601,
-      "100k": 0.577846,
-      "10M": 0.0358029,
-      "10k": 0.671394,
-      "1G": 5.86628,
-      "1M": 1.34118
+      "100M": 0.570635,
+      "100k": 0.997085,
+      "10M": 0.0356476,
+      "10k": 0.914078,
+      "1G": 5.87324,
+      "1M": 1.03031
      }
     },
     {
-     "above_target_hz": [],
+     "above_target_hz": [
+      [
+       398107.0,
+       398107.0
+      ]
+     ],
      "anti_resonances": [
       {
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C54 89nF (series resonance 12.5 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.10919
+       "z_ohm": 2.37618
       },
       {
-       "above_target": false,
-       "between": "filter resonance of L64 (bead, 0.35 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C54 89nF (series resonance 12.5 MHz)",
-       "hz": 630957.0,
-       "z_ohm": 9.28466
+       "above_target": true,
+       "between": "filter resonance of L64 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C54 89nF (series resonance 12.5 MHz)",
+       "hz": 398107.0,
+       "z_ohm": 11.08
       }
      ],
      "capacitors_most_effective": [
@@ -2832,17 +3093,155 @@
      "ic": "IC10",
      "net": "/HF Source/3V3_SRC_3",
      "pins": 2,
-     "recommendations": [],
+     "recommendations": [
+      {
+       "count": 1,
+       "hz": [
+        182466.0,
+        1642190.0
+       ],
+       "note": "32µF effective each at 3.3 V (DC bias, rating 6.3 V assumed), series resonance 0.5 MHz at that distance",
+       "package": "1206",
+       "value": "47µF",
+       "within_mm": 50.0
+      }
+     ],
      "target_fmax_hz": 100000000.0,
      "target_ohm": 9.9,
      "target_source": "3 % ripple at a 50 % step of 20 mA (estimate)",
      "z_ohm": {
-      "100M": 0.587191,
-      "100k": 0.252538,
-      "10M": 0.0338489,
-      "10k": 0.354389,
-      "1G": 6.00412,
-      "1M": 1.44643
+      "100M": 0.587259,
+      "100k": 0.717267,
+      "10M": 0.0337112,
+      "10k": 0.588136,
+      "1G": 6.0073,
+      "1M": 1.03579
+     }
+    },
+    {
+     "above_target_hz": [],
+     "anti_resonances": [
+      {
+       "above_target": false,
+       "between": "regulator inductance against the capacitors; lowest series resonance: C69 89nF (series resonance 11.4 MHz)",
+       "hz": 25118.9,
+       "z_ohm": 2.51073
+      },
+      {
+       "above_target": false,
+       "between": "filter resonance of L21 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C69 89nF (series resonance 11.4 MHz)",
+       "hz": 501187.0,
+       "z_ohm": 14.1023
+      }
+     ],
+     "capacitors_most_effective": [
+      {
+       "dist_mm": 1.8,
+       "l_path_nh": 1.851,
+       "l_total_nh": 2.201,
+       "ref": "C69",
+       "srf_mhz": 11.35
+      }
+     ],
+     "current_a": 0.0002,
+     "ic": "IC13",
+     "net": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
+     "pins": 1,
+     "recommendations": [],
+     "target_fmax_hz": 100000000.0,
+     "target_ohm": 990.0,
+     "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
+     "z_ohm": {
+      "100M": 1.36639,
+      "100k": 0.796849,
+      "10M": 0.0546029,
+      "10k": 0.732371,
+      "1G": 13.9339,
+      "1M": 2.47795
+     }
+    },
+    {
+     "above_target_hz": [],
+     "anti_resonances": [
+      {
+       "above_target": false,
+       "between": "regulator inductance against the capacitors; lowest series resonance: C76 89nF (series resonance 9.5 MHz)",
+       "hz": 25118.9,
+       "z_ohm": 2.73051
+      },
+      {
+       "above_target": false,
+       "between": "filter resonance of L27 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C76 89nF (series resonance 9.5 MHz)",
+       "hz": 501187.0,
+       "z_ohm": 11.9759
+      }
+     ],
+     "capacitors_most_effective": [
+      {
+       "dist_mm": 2.7,
+       "l_path_nh": 2.806,
+       "l_total_nh": 3.156,
+       "ref": "C76",
+       "srf_mhz": 9.48
+      }
+     ],
+     "current_a": 0.0002,
+     "ic": "IC18",
+     "net": "/Attenuator Amp Switches/3V3_P1_SWITCH",
+     "pins": 1,
+     "recommendations": [],
+     "target_fmax_hz": 100000000.0,
+     "target_ohm": 990.0,
+     "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
+     "z_ohm": {
+      "100M": 1.96663,
+      "100k": 1.00679,
+      "10M": 0.0471393,
+      "10k": 0.950618,
+      "1G": 20.0201,
+      "1M": 2.44934
+     }
+    },
+    {
+     "above_target_hz": [],
+     "anti_resonances": [
+      {
+       "above_target": false,
+       "between": "regulator inductance against the capacitors; lowest series resonance: C75 89nF (series resonance 14.2 MHz)",
+       "hz": 25118.9,
+       "z_ohm": 2.85268
+      },
+      {
+       "above_target": false,
+       "between": "filter resonance of L25 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C75 89nF (series resonance 14.2 MHz)",
+       "hz": 501187.0,
+       "z_ohm": 11.6388
+      }
+     ],
+     "capacitors_most_effective": [
+      {
+       "dist_mm": 1.3,
+       "l_path_nh": 1.058,
+       "l_total_nh": 1.408,
+       "ref": "C75",
+       "srf_mhz": 14.19
+      }
+     ],
+     "current_a": 0.0002,
+     "ic": "IC16",
+     "net": "/Attenuator Amp Switches/3V3_P12_SWITCH",
+     "pins": 1,
+     "recommendations": [],
+     "target_fmax_hz": 100000000.0,
+     "target_ohm": 990.0,
+     "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
+     "z_ohm": {
+      "100M": 0.867787,
+      "100k": 1.09776,
+      "10M": 0.095578,
+      "10k": 1.07774,
+      "1G": 8.89012,
+      "1M": 2.43994
      }
     },
     {
@@ -2852,13 +3251,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C70 89nF (series resonance 10.3 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.29894
+       "z_ohm": 2.55958
       },
       {
        "above_target": false,
-       "between": "filter resonance of L22 (bead, 0.35 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C70 89nF (series resonance 10.3 MHz)",
-       "hz": 1000000.0,
-       "z_ohm": 6.95516
+       "between": "filter resonance of L22 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C70 89nF (series resonance 10.3 MHz)",
+       "hz": 501187.0,
+       "z_ohm": 13.8119
       }
      ],
      "capacitors_most_effective": [
@@ -2870,28 +3269,28 @@
        "srf_mhz": 10.32
       }
      ],
-     "current_a": 0.001,
+     "current_a": 0.00018,
      "ic": "IC14",
      "net": "/Attenuator Amp Switches/3V3_HBLB_ATT",
      "pins": 2,
      "recommendations": [],
      "target_fmax_hz": 100000000.0,
-     "target_ohm": 198.0,
-     "target_source": "3 % ripple at a 50 % step of 1 mA (estimate)",
+     "target_ohm": 1100.0,
+     "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
-      "100M": 1.65852,
-      "100k": 0.425855,
-      "10M": 0.0421745,
-      "10k": 0.540885,
-      "1G": 18.0898,
-      "1M": 6.95516
+      "100M": 1.65864,
+      "100k": 0.833851,
+      "10M": 0.041758,
+      "10k": 0.781684,
+      "1G": 18.0934,
+      "1M": 2.46886
      }
     },
     {
      "above_target_hz": [
       [
-       630957.0,
-       630957.0
+       316228.0,
+       501187.0
       ]
      ],
      "anti_resonances": [
@@ -2899,13 +3298,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C73 89nF (series resonance 9.7 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.36569
+       "z_ohm": 2.63256
       },
       {
        "above_target": true,
-       "between": "filter resonance of L23 (bead, 0.35 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C73 89nF (series resonance 9.7 MHz)",
-       "hz": 630957.0,
-       "z_ohm": 4.84233
+       "between": "filter resonance of L23 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C73 89nF (series resonance 9.7 MHz)",
+       "hz": 398107.0,
+       "z_ohm": 8.12652
       }
      ],
      "capacitors_most_effective": [
@@ -2945,12 +3344,12 @@
      "target_ohm": 3.6,
      "target_source": "3 % ripple at a 50 % step of 55 mA (estimate)",
      "z_ohm": {
-      "100M": 0.895508,
-      "100k": 0.495577,
-      "10M": 0.037233,
-      "10k": 0.603759,
-      "1G": 9.14236,
-      "1M": 1.42485
+      "100M": 0.895511,
+      "100k": 0.915795,
+      "10M": 0.0374125,
+      "10k": 0.845845,
+      "1G": 9.14245,
+      "1M": 1.027
      }
     }
    ],
@@ -2963,92 +3362,92 @@
      "from": "+3V3",
      "kind": "bead",
      "l_nh": 0.35,
-     "lp_nh": 350.141,
-     "r_ohm": 0.1,
+     "lp_nh": 954.93,
+     "r_ohm": 0.34,
      "ref": "L26",
-     "rp_ohm": 330.0,
-     "source": "estimate",
+     "rp_ohm": 900.0,
+     "source": "PI_SERIES",
      "to": "/Attenuator Amp Switches/3V3_P2_SWITCH",
      "value": "FERRITE",
-     "z_100mhz_ohm": 192.4
+     "z_100mhz_ohm": 571.7
     },
     {
      "from": "+3V3",
      "kind": "bead",
      "l_nh": 0.35,
-     "lp_nh": 350.141,
-     "r_ohm": 0.1,
+     "lp_nh": 954.93,
+     "r_ohm": 0.34,
      "ref": "L10",
-     "rp_ohm": 330.0,
-     "source": "estimate",
+     "rp_ohm": 900.0,
+     "source": "PI_SERIES",
      "to": "/2.LO + Ref Clock/3V3_CLKGEN",
      "value": "FERRITE",
-     "z_100mhz_ohm": 192.4
+     "z_100mhz_ohm": 571.7
     },
     {
      "from": "+3V3",
      "kind": "bead",
      "l_nh": 0.35,
-     "lp_nh": 350.141,
-     "r_ohm": 0.1,
+     "lp_nh": 954.93,
+     "r_ohm": 0.34,
      "ref": "L65",
-     "rp_ohm": 330.0,
-     "source": "estimate",
+     "rp_ohm": 900.0,
+     "source": "PI_SERIES",
      "to": "/1.LO/3V3_LO1_3",
      "value": "FERRITE",
-     "z_100mhz_ohm": 192.4
+     "z_100mhz_ohm": 571.7
     },
     {
      "from": "+3V3",
      "kind": "bead",
      "l_nh": 0.35,
-     "lp_nh": 350.141,
-     "r_ohm": 0.1,
+     "lp_nh": 954.93,
+     "r_ohm": 0.34,
      "ref": "L64",
-     "rp_ohm": 330.0,
-     "source": "estimate",
+     "rp_ohm": 900.0,
+     "source": "PI_SERIES",
      "to": "/HF Source/3V3_SRC_3",
      "value": "FERRITE",
-     "z_100mhz_ohm": 192.4
+     "z_100mhz_ohm": 571.7
     },
     {
      "from": "+3V3",
      "kind": "bead",
      "l_nh": 0.35,
-     "lp_nh": 350.141,
-     "r_ohm": 0.1,
+     "lp_nh": 954.93,
+     "r_ohm": 0.34,
      "ref": "L21",
-     "rp_ohm": 330.0,
-     "source": "estimate",
+     "rp_ohm": 900.0,
+     "source": "PI_SERIES",
      "to": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
      "value": "FERRITE",
-     "z_100mhz_ohm": 192.4
+     "z_100mhz_ohm": 571.7
     },
     {
      "from": "+3V3",
      "kind": "bead",
      "l_nh": 0.35,
-     "lp_nh": 350.141,
-     "r_ohm": 0.1,
+     "lp_nh": 954.93,
+     "r_ohm": 0.34,
      "ref": "L27",
-     "rp_ohm": 330.0,
-     "source": "estimate",
+     "rp_ohm": 900.0,
+     "source": "PI_SERIES",
      "to": "/Attenuator Amp Switches/3V3_P1_SWITCH",
      "value": "FERRITE",
-     "z_100mhz_ohm": 192.4
+     "z_100mhz_ohm": 571.7
     },
     {
      "from": "+3V3",
      "kind": "bead",
      "l_nh": 0.35,
-     "lp_nh": 350.141,
-     "r_ohm": 0.1,
+     "lp_nh": 954.93,
+     "r_ohm": 0.34,
      "ref": "L25",
-     "rp_ohm": 330.0,
-     "source": "estimate",
+     "rp_ohm": 900.0,
+     "source": "PI_SERIES",
      "to": "/Attenuator Amp Switches/3V3_P12_SWITCH",
      "value": "FERRITE",
-     "z_100mhz_ohm": 192.4
+     "z_100mhz_ohm": 571.7
     },
     {
      "from": "+3V3",
@@ -3080,37 +3479,37 @@
      "from": "+3V3",
      "kind": "bead",
      "l_nh": 0.35,
-     "lp_nh": 350.141,
-     "r_ohm": 0.1,
+     "lp_nh": 954.93,
+     "r_ohm": 0.34,
      "ref": "L22",
-     "rp_ohm": 330.0,
-     "source": "estimate",
+     "rp_ohm": 900.0,
+     "source": "PI_SERIES",
      "to": "/Attenuator Amp Switches/3V3_HBLB_ATT",
      "value": "FERRITE",
-     "z_100mhz_ohm": 192.4
+     "z_100mhz_ohm": 571.7
     },
     {
      "from": "+3V3",
      "kind": "bead",
      "l_nh": 0.35,
-     "lp_nh": 350.141,
-     "r_ohm": 0.1,
+     "lp_nh": 954.93,
+     "r_ohm": 0.34,
      "ref": "L23",
-     "rp_ohm": 330.0,
-     "source": "estimate",
+     "rp_ohm": 900.0,
+     "source": "PI_SERIES",
      "to": "/Attenuator Amp Switches/3V3_HBLB_AMP",
      "value": "FERRITE",
-     "z_100mhz_ohm": 192.4
+     "z_100mhz_ohm": 571.7
     },
     {
      "from": "/Attenuator Amp Switches/3V3_HBLB_AMP",
      "kind": "inductor",
      "l_nh": 10000.0,
      "lp_nh": null,
-     "r_ohm": 0.1,
+     "r_ohm": 0.3,
      "ref": "L11",
      "rp_ohm": null,
-     "source": "value",
+     "source": "PI_REG pass",
      "to": "/Attenuator Amp Switches/3V3_HBLB_AMP_L",
      "value": "10uH",
      "z_100mhz_ohm": 6283.2
@@ -3135,24 +3534,24 @@
    ]
   },
   "rail": "+3V3",
-  "target_ohm": 0.909831,
+  "target_ohm": 0.884418,
   "warnings": [
    "rail without a plane over ground: no plane capacitance, spreading inductance over traces roughly estimated"
   ],
   "z_ohm": {
-   "100M": 0.575894,
-   "100k": 0.0169054,
-   "10M": 0.0543099,
-   "1M": 0.0490527,
+   "100M": 0.586826,
+   "100k": 0.016907,
+   "10M": 0.0555192,
+   "1M": 0.0494688,
    "1k": 0.00200398
   }
  },
  "rails": [
   {
-   "copper_loss_mw": 6.89216,
-   "load_a": 0.672938,
-   "max_drop_mv": 14.1984,
-   "max_j_a_mm2": 34.5885,
+   "copper_loss_mw": 7.29815,
+   "load_a": 0.691586,
+   "max_drop_mv": 14.6781,
+   "max_j_a_mm2": 35.3867,
    "rail": "+6V",
    "voltage": 6.0,
    "warnings": [
@@ -3160,10 +3559,10 @@
    ]
   },
   {
-   "copper_loss_mw": 0.122102,
-   "load_a": 0.241746,
-   "max_drop_mv": 0.523361,
-   "max_j_a_mm2": 20.992,
+   "copper_loss_mw": 0.126202,
+   "load_a": 0.245772,
+   "max_drop_mv": 0.532076,
+   "max_j_a_mm2": 21.3415,
    "rail": "/Power Supply/VREG5V{slash}4",
    "voltage": 5.0,
    "warnings": []
@@ -3187,28 +3586,55 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0513546,
-   "load_a": 0.143331,
-   "max_drop_mv": 0.368646,
-   "max_j_a_mm2": 12.3765,
+   "copper_loss_mw": 1.68435,
+   "load_a": 0.223876,
+   "max_drop_mv": 11.2006,
+   "max_j_a_mm2": 17.8668,
+   "rail": "+3V3",
+   "voltage": 3.3,
+   "warnings": []
+  },
+  {
+   "copper_loss_mw": 1.6871e-07,
+   "load_a": 0.0002,
+   "max_drop_mv": 0.000895497,
+   "max_j_a_mm2": 0.0249037,
+   "rail": "/Attenuator Amp Switches/3V3_P2_SWITCH",
+   "voltage": 3.3,
+   "warnings": []
+  },
+  {
+   "copper_loss_mw": 0.0549067,
+   "load_a": 0.148205,
+   "max_drop_mv": 0.381182,
+   "max_j_a_mm2": 12.7974,
    "rail": "/Power Supply/VREG5V{slash}1",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.426441,
-   "load_a": 0.142922,
-   "max_drop_mv": 4.19189,
-   "max_j_a_mm2": 28.8013,
+   "copper_loss_mw": 0.431476,
+   "load_a": 0.14674,
+   "max_drop_mv": 4.213,
+   "max_j_a_mm2": 28.9498,
    "rail": "+5V{slash}1",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.347533,
-   "load_a": 0.142922,
-   "max_drop_mv": 2.91864,
-   "max_j_a_mm2": 30.9694,
+   "copper_loss_mw": 0.0196924,
+   "load_a": 0.055,
+   "max_drop_mv": 0.363125,
+   "max_j_a_mm2": 7.89266,
+   "rail": "/Attenuator Amp Switches/3V3_HBLB_AMP",
+   "voltage": 3.3,
+   "warnings": []
+  },
+  {
+   "copper_loss_mw": 0.363732,
+   "load_a": 0.14674,
+   "max_drop_mv": 2.94689,
+   "max_j_a_mm2": 31.7968,
    "rail": "+5V{slash}3",
    "voltage": 5.0,
    "warnings": []
@@ -3223,10 +3649,19 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.27916,
-   "load_a": 0.142922,
-   "max_drop_mv": 17.7275,
-   "max_j_a_mm2": 35.8561,
+   "copper_loss_mw": 8.14846e-19,
+   "load_a": 0.0,
+   "max_drop_mv": 1.35447e-09,
+   "max_j_a_mm2": 6.19423e-08,
+   "rail": "USB_POWER",
+   "voltage": 5.0,
+   "warnings": []
+  },
+  {
+   "copper_loss_mw": 2.35119,
+   "load_a": 0.14674,
+   "max_drop_mv": 17.9837,
+   "max_j_a_mm2": 36.8255,
    "rail": "+5V{slash}2",
    "voltage": 5.0,
    "warnings": []
@@ -3241,19 +3676,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.56471,
-   "load_a": 0.217623,
-   "max_drop_mv": 11.1736,
-   "max_j_a_mm2": 17.86,
-   "rail": "+3V3",
-   "voltage": 3.3,
-   "warnings": []
-  },
-  {
-   "copper_loss_mw": 0.00507171,
-   "load_a": 0.015,
-   "max_drop_mv": 0.411105,
-   "max_j_a_mm2": 5.56589,
+   "copper_loss_mw": 0.00698228,
+   "load_a": 0.0176,
+   "max_drop_mv": 0.482363,
+   "max_j_a_mm2": 6.53064,
    "rail": "/2.LO + Ref Clock/3V3_CLKGEN",
    "voltage": 3.3,
    "warnings": []
@@ -3277,19 +3703,19 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 15.9131,
-   "load_a": 1.10237,
-   "max_drop_mv": 15.0646,
-   "max_j_a_mm2": 120.172,
+   "copper_loss_mw": 16.7947,
+   "load_a": 1.13242,
+   "max_drop_mv": 15.4766,
+   "max_j_a_mm2": 123.447,
    "rail": "+5V",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00400423,
-   "load_a": 0.01,
-   "max_drop_mv": 0.403312,
-   "max_j_a_mm2": 3.71059,
+   "copper_loss_mw": 0.00719,
+   "load_a": 0.0134,
+   "max_drop_mv": 0.540437,
+   "max_j_a_mm2": 4.97219,
    "rail": "Net-(IC27-VCC)",
    "voltage": 5.0,
    "warnings": []
@@ -3304,12 +3730,21 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0499403,
-   "load_a": 0.143331,
-   "max_drop_mv": 0.359565,
-   "max_j_a_mm2": 10.9844,
+   "copper_loss_mw": 0.0533946,
+   "load_a": 0.148205,
+   "max_drop_mv": 0.371792,
+   "max_j_a_mm2": 11.3579,
    "rail": "/Power Supply/VREG5V{slash}2",
    "voltage": 5.0,
+   "warnings": []
+  },
+  {
+   "copper_loss_mw": 2.47479e-07,
+   "load_a": 0.0002,
+   "max_drop_mv": 0.00128961,
+   "max_j_a_mm2": 0.0311758,
+   "rail": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
+   "voltage": 3.3,
    "warnings": []
   },
   {
@@ -3319,6 +3754,15 @@
    "max_j_a_mm2": 21.9063,
    "rail": "Net-(IC29-VPDT)",
    "voltage": 5.0,
+   "warnings": []
+  },
+  {
+   "copper_loss_mw": 3.08434e-07,
+   "load_a": 0.0002,
+   "max_drop_mv": 0.00160504,
+   "max_j_a_mm2": 0.0393971,
+   "rail": "/Attenuator Amp Switches/3V3_P1_SWITCH",
+   "voltage": 3.3,
    "warnings": []
   },
   {
@@ -3340,10 +3784,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00408302,
-   "load_a": 0.0500758,
-   "max_drop_mv": 0.0856947,
-   "max_j_a_mm2": 3.77999,
+   "copper_loss_mw": 0.00411273,
+   "load_a": 0.0502576,
+   "max_drop_mv": 0.0860058,
+   "max_j_a_mm2": 3.79372,
    "rail": "/1.LO/3V3_LDO2_LO1",
    "voltage": 3.3,
    "warnings": []
@@ -3358,28 +3802,37 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.195333,
-   "load_a": 0.21834,
-   "max_drop_mv": 0.936763,
-   "max_j_a_mm2": 12.2197,
+   "copper_loss_mw": 1.87395e-07,
+   "load_a": 0.0002,
+   "max_drop_mv": 0.000990826,
+   "max_j_a_mm2": 0.0310859,
+   "rail": "/Attenuator Amp Switches/3V3_P12_SWITCH",
+   "voltage": 3.3,
+   "warnings": []
+  },
+  {
+   "copper_loss_mw": 0.206758,
+   "load_a": 0.224635,
+   "max_drop_mv": 0.963772,
+   "max_j_a_mm2": 12.572,
    "rail": "/Power Supply/VREG3V3_SWL",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.510994,
-   "load_a": 0.240588,
-   "max_drop_mv": 3.8739,
-   "max_j_a_mm2": 17.301,
+   "copper_loss_mw": 0.515761,
+   "load_a": 0.241796,
+   "max_drop_mv": 3.89147,
+   "max_j_a_mm2": 17.3829,
    "rail": "+5V{slash}4",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0109291,
-   "load_a": 0.0701485,
-   "max_drop_mv": 0.162207,
-   "max_j_a_mm2": 6.19149,
+   "copper_loss_mw": 0.0110404,
+   "load_a": 0.0705048,
+   "max_drop_mv": 0.163031,
+   "max_j_a_mm2": 6.22295,
    "rail": "/1.LO/3V3_LDO1_LO1",
    "voltage": 3.3,
    "warnings": []
@@ -3403,10 +3856,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00219005,
-   "load_a": 0.01,
-   "max_drop_mv": 0.222097,
-   "max_j_a_mm2": 3.00412,
+   "copper_loss_mw": 0.00393245,
+   "load_a": 0.0134,
+   "max_drop_mv": 0.29761,
+   "max_j_a_mm2": 4.02552,
    "rail": "Net-(IC22-VCC)",
    "voltage": 5.0,
    "warnings": []
@@ -3430,28 +3883,28 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00500497,
-   "load_a": 0.0500758,
-   "max_drop_mv": 0.103491,
-   "max_j_a_mm2": 3.87934,
+   "copper_loss_mw": 0.00506777,
+   "load_a": 0.0503889,
+   "max_drop_mv": 0.104138,
+   "max_j_a_mm2": 3.9036,
    "rail": "/HF Source/3V3_LDO2_SRC",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0514551,
-   "load_a": 0.143331,
-   "max_drop_mv": 0.369347,
-   "max_j_a_mm2": 12.6174,
+   "copper_loss_mw": 0.0550142,
+   "load_a": 0.148205,
+   "max_drop_mv": 0.381907,
+   "max_j_a_mm2": 13.0465,
    "rail": "/Power Supply/VREG5V{slash}3",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0515836,
-   "load_a": 0.05,
-   "max_drop_mv": 1.13743,
-   "max_j_a_mm2": 12.3712,
+   "copper_loss_mw": 0.0518581,
+   "load_a": 0.05013,
+   "max_drop_mv": 1.14072,
+   "max_j_a_mm2": 12.4033,
    "rail": "/HF Source/3V3_SRC_2",
    "voltage": 3.3,
    "warnings": []
@@ -3466,10 +3919,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0095734,
-   "load_a": 0.0701485,
-   "max_drop_mv": 0.142811,
-   "max_j_a_mm2": 6.21914,
+   "copper_loss_mw": 0.00967091,
+   "load_a": 0.0705048,
+   "max_drop_mv": 0.143536,
+   "max_j_a_mm2": 6.25073,
    "rail": "/HF Source/3v3_LDO1_SRC",
    "voltage": 3.3,
    "warnings": []
@@ -3484,20 +3937,11 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 9.15368e-06,
-   "load_a": 0.001,
-   "max_drop_mv": 0.0135629,
-   "max_j_a_mm2": 0.156086,
+   "copper_loss_mw": 2.96582e-07,
+   "load_a": 0.00018,
+   "max_drop_mv": 0.00244134,
+   "max_j_a_mm2": 0.0280957,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT",
-   "voltage": 3.3,
-   "warnings": []
-  },
-  {
-   "copper_loss_mw": 0.0196924,
-   "load_a": 0.055,
-   "max_drop_mv": 0.363125,
-   "max_j_a_mm2": 7.89266,
-   "rail": "/Attenuator Amp Switches/3V3_HBLB_AMP",
    "voltage": 3.3,
    "warnings": []
   },
@@ -3520,10 +3964,10 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00334279,
-   "load_a": 0.01,
-   "max_drop_mv": 0.337166,
-   "max_j_a_mm2": 3.71059,
+   "copper_loss_mw": 0.00600231,
+   "load_a": 0.0134,
+   "max_drop_mv": 0.451802,
+   "max_j_a_mm2": 4.97219,
    "rail": "Net-(IC36-VCC)",
    "voltage": 5.0,
    "warnings": []
@@ -3547,12 +3991,12 @@
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.486519,
+   "copper_loss_mw": 0.690957,
    "ground_return": true,
-   "max_j_a_mm2": 9.09571,
-   "max_offset_mv": 0.517031,
+   "max_j_a_mm2": 11.1782,
+   "max_offset_mv": 0.53491,
    "rail": "GND",
-   "return_a": 1.09819,
+   "return_a": -0.0128514,
    "warnings": [
     "486 cells without connection to a source (copper islands) ignored",
     "load IC10: 1 of 8 pads not connected, their current is missing from the result",

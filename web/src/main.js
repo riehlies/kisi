@@ -2,7 +2,7 @@
 // ---- files, samples, theme and start-up
 // files
 async function handleFiles(files) {
-  files = [...files];
+  files = [...files]; S.sample = null;
   const pcb = files.find((f) => f.name.endsWith(".kicad_pcb"));
   const pro = files.find((f) => f.name.endsWith(".kicad_pro"));
   // <board>.kisi.json: board configuration with sources; other .json files are not read
@@ -101,7 +101,7 @@ window.addEventListener("drop", (e) => {
 });
 
 async function loadSample(key) {
-  S.fileHandles = null; $("reload").hidden = true;
+  S.fileHandles = null; $("reload").hidden = true; S.sample = key;
   const s = SAMPLES[key];
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", String(k === key));
   showBusy("Unpacking example board…");

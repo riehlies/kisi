@@ -22,7 +22,7 @@ Background:
   files, model, verification.
 - [research/vector-fitting.md](research/vector-fitting.md) – compact, causal, delay-preserving models for the SPICE
   export: vector fitting, delayed and characteristic line models, passivity, what the SPICE engines implement.
-- [examples/](examples/) – prepared board configurations.
+- [examples/](examples/) – prepared board configurations; `mockups/` – design mockups of planned features.
 
 For contributors: [ARCHITECTURE.md](../ARCHITECTURE.md) (structure and rules), [CONTRIBUTING.md](../CONTRIBUTING.md),
 [AGENTS.md](../AGENTS.md) (build and checks), [ROADMAP.md](../ROADMAP.md), [UPSTREAM.md](../UPSTREAM.md) (the field

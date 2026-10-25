@@ -28,33 +28,45 @@ The work has two halves:
 6. **Use it:** every command reads the kisi.json next to the board; in the viewer, drop it together with the
    board files.
 
+Each gap names the analysis categories it matters for (`views`: impedance, channel, power; where a gap mixes
+them, each item names its own – a dielectric with only KiCad's default tanδ is a channel item), and `kisi gaps` says per
+category whether there is anything to check and whether it is ready (no open high or medium gap). To prepare a
+board for one analysis only, use `kisi gaps --for impedance` (or `channel`, `power`): a board without nets with a
+target impedance has nothing to check for impedance, and its laminate gap blocks nothing yet.
+
+Gaps that are guesses from names (`nets-without-target`, rails found only by their name) can be dismissed with a
+reason when the name misleads – `gaps.dismissed` in kisi.json ([reference](reference.md#gapsdismissed)).
+
 Gaps whose `write.to` says "not kisi.json" are fixes in KiCad (a Value field kisi cannot read, for example).
-kisi.json can only name net classes that exist in the project: nets without a suitable class need one in KiCad
-first.
+Nets without a suitable class (in "Default") get one in kisi.json with `net_classes.<class>.nets` (names or
+patterns, [reference](reference.md#target-impedance-from-net-class-names)), or in KiCad.
 
 ## The gap list
 `kisi gaps` prints a list of gaps; each has an `id`, a `priority`, the `issue`, what it `affects`,
 `where_to_find` the value, where to `write` it (with an example) and the `items` – layers, classes, rails or parts
 (with their MPN where the Value field is not the part number).
 
-| Gap | Priority | What is missing | Where it goes |
-|---|---|---|---|
-| `stackup-missing` | high | no stackup in the board file | `stackup.dielectrics` (or the stackup in KiCad) |
-| `stackup-defaults` | medium | dielectrics with KiCad's default εr 4.5 / tanδ 0.02 or no material | `stackup.dielectrics` |
-| `nets-without-target` | high | nets that look like high-speed interfaces by their name, without a target impedance (confirm first) | `net_classes.<class>` (a class without a target), or a net class in KiCad |
-| `classes-without-standard` | medium | classes with a target but only a generic profile (1 Gbit/s, generic limits) | `net_classes.<class>.profile` |
-| `assembly-variant` | high | the board has assembly variants (or forks where all alternatives are fitted) and none is chosen | `variant`, `variants` |
-| `assembly-variant-forks` | medium | the chosen variant still has forks where all alternative series parts are fitted | `variants.<name>.not_fitted` (or sheets, `bom`) |
-| `channel-part-values` | medium | parts in signal channels whose value kisi cannot read ("DNP", a part number): modelled as open | the Value field in KiCad (not kisi.json) |
-| `power-tree` | medium | no regulator chain (`PI_REG`): no budget, no regulator load check | `fields`: `PI_REG` |
-| `rails-without-voltage` | medium | supply rails (found by name, pin name or a field) without a known voltage | `NAME@<V>V` in a `PI_REG` entry |
-| `rails-without-source` | medium | supply rails without a source: no IR drop | `PI_REG` (input or regulator output), else `PI_SOURCE` |
-| `regulator-efficiency` | low | switching regulators without an efficiency: 85 % assumed | `PI_REG` (`buck 90%`) |
-| `ic-loads` | medium | ICs on supply rails without a load current | `fields`: `PI_LOAD` |
-| `cap-ratings` | low | decoupling capacitors of 100 nF and more without rated voltage or dielectric | `PI_CAP` or the Value field (`10u 6.3V X5R`) |
-| `bead-ratings` | low | ferrite beads on supply rails without an impedance rating | `PI_SERIES` or the Value field |
-| `cap-values` | low | capacitors on supply rails whose value kisi cannot read: left out of Z(f) | the Value field in KiCad (not kisi.json) |
-| `thermal-data` | low | parts with 0.1 W or more without thermal data: package defaults, Tj max 125 °C | `PI_THERMAL` |
+| Gap | Priority | Category | What is missing | Where it goes |
+|---|---|---|---|---|
+| `stackup-missing` | high | I, C | no stackup in the board file | `stackup.dielectrics` (or the stackup in KiCad) |
+| `stackup-defaults` | medium | I, C | dielectrics with KiCad's default εr 4.5 / tanδ 0.02 or no material | `stackup.dielectrics` |
+| `nets-without-target` | high | I, C | nets that look like high-speed interfaces by their name, without a target impedance (confirm first) | `net_classes.<class>` (a class without a target), or a net class in KiCad |
+| `classes-without-standard` | medium | C | classes with a target but only a generic profile (1 Gbit/s, generic limits) | `net_classes.<class>.profile` |
+| `assembly-variant` | high | C, P | the board has assembly variants (or forks where all alternatives are fitted) and none is chosen | `variant`, `variants` |
+| `assembly-variant-forks` | medium | C | the chosen variant still has forks where all alternative series parts are fitted | `variants.<name>.not_fitted` (or sheets, `bom`) |
+| `channel-part-values` | medium | C | parts in signal channels whose value kisi cannot read ("DNP", a part number): modelled as open | the Value field in KiCad (not kisi.json) |
+| `power-tree` | medium | P | no regulator chain (`PI_REG`): no budget, no regulator load check | `fields`: `PI_REG` |
+| `rails-without-voltage` | medium | P | supply rails (found by name, pin name or a field) without a known voltage | `NAME@<V>V` in a `PI_REG` entry |
+| `rails-without-source` | medium | P | supply rails without a source: no IR drop | `PI_REG` (input or regulator output), else `PI_SOURCE` |
+| `regulator-efficiency` | low | P | switching regulators without an efficiency: 85 % assumed | `PI_REG` (`buck 90%`) |
+| `ic-loads` | medium | P | ICs on supply rails without a load current | `fields`: `PI_LOAD` |
+| `cap-ratings` | low | P | decoupling capacitors of 100 nF and more without rated voltage or dielectric | `PI_CAP` or the Value field (`10u 6.3V X5R`) |
+| `bead-ratings` | low | P | ferrite beads on supply rails without an impedance rating | `PI_SERIES` or the Value field |
+| `cap-values` | low | P | capacitors on supply rails whose value kisi cannot read: left out of Z(f) | the Value field in KiCad (not kisi.json) |
+| `thermal-data` | low | P | parts with 0.1 W or more without thermal data: package defaults, Tj max 125 °C | `PI_THERMAL` |
+
+Categories: I impedance, C channel, P power (with the temperature estimate). `nets-without-target` and rails
+found only by name in `rails-without-voltage` can be dismissed.
 
 Where to look, per kind of value:
 - **Laminate:** the material name in the stackup → the manufacturer's datasheet, at a frequency near the signals
@@ -74,15 +86,69 @@ Where to look, per kind of value:
 
 The syntax of every field and kisi.json key: [Field and kisi.json reference](reference.md).
 
-## Three ways to fill it in
+## Four ways to fill it in
+- **In the viewer:** the "Prepare PCB" page (below).
 - **By hand:** edit `<board>.kisi.json` with the skeleton from `config-template`, check with `config-check`.
 - **In KiCad:** the `PI_*` fields can live on the schematic symbols instead ("Update PCB from schematic" copies
   them to the footprints). kisi.json wins where both exist; sources are only kept in kisi.json.
 - **With an agent:** the [kisi-prepare skill](agents.md) runs the gap list, researches the values with sources
   and writes the kisi.json; you review the result.
 
-The viewer lets you edit the stackup, profiles, power settings and lane directions (stored in the browser), but
-does not write a kisi.json yet; a "Prepare" step for that is planned ([ROADMAP](../ROADMAP.md), block 1).
+### In the viewer: Prepare PCB
+![The Prepare PCB checklist of the bare ThunderScope, Impedance tab: the QSPI nets given a class of their own (applied, check mark), the laminate step open](img/prepare.png)
+
+"Prepare PCB" in the top bar (between the example boards and "Load files") opens what the board file lacks – with
+its kisi.json, if one is loaded – as a **checklist** in three tabs: Impedance, Channel and Power (with the
+temperature). The badge on the button counts the open points.
+
+Each gap is a step, ordered by priority, with a marker: while it is open, the number of its items that are still
+open (seven ICs without a current: 7), red or amber by priority (low-priority steps are optional refinements); a
+green check mark when it is done, an arrow when it is with the agent, a dash when it is dismissed. Steps keep their
+place when one is done. An open step says in one line what it needs ("Enter the current per
+rail for 7 ICs, with a source") and shows only those inputs; *more* holds where to find the values, where they go
+and optional fields. **Apply** runs the gap list through the core at once: the step gets its check mark when kisi no
+longer reports it (or reports only dismissed items), and the next open step opens; otherwise the step stays open
+and says what is still missing ("6 of 7 ICs still missing: …"), with the check's errors for its entries. "hand to
+the agent" settles a step for now and adds it to the agent card's prompt; "hand single items to the agent" hands
+over only some of its items (the step's marker counts the rest). The tab shows its progress ("1 of 2
+required steps done") and ends with "Ready for the impedance check" (or the channel check, the power analysis) and
+a button to that view; the last step is saving the kisi.json. Where a gap mixes categories, a tab shows only the
+items that matter for it (a dielectric with only a default tanδ is a Channel item). Nets in "Default" that look
+like an interface get a class of their own in the step (name, nets or patterns, target, profile – written as
+`net_classes.<name>.nets`); dismissing is for nets that are not interfaces. Below the checklist,
+**In `<board>`.kisi.json** holds everything the category uses, loaded and entered, as editable tables:
+
+| Tab | Forms |
+|---|---|
+| Impedance | laminate per dielectric (material, εr, tanδ, thickness) and the solder mask εr; net class targets (Ω, differential) |
+| Channel | the laminate; net class → interface profile; connector ends (model, R/C/L, the channel behind as loss and delay or a Touchstone file with its port order and ports per pin); the assembly variant to analyse and variant definitions (sheets, parts, BOM, BOM exceptions) |
+| Power | `PI_REG` (with one-click suggestions for rails behind a ferrite or link), load currents per rail, `PI_SOURCE`, `PI_SERIES` (Z at 100 MHz, DC resistance), `PI_CAP` (rated voltage, dielectric, ESR, ESL – one row per part number or value and package, written on every capacitor of the group, with the parts' own Voltage Rating / Dielectric fields as a one-click suggestion), `PI_THERMAL`, `PI_TARGET` and any other field |
+
+Every entry has its own source (kind, document; url, page and note behind "…"); a table's shared source fills the
+rows entered without one. Name-based gaps can be dismissed with a reason; a dismissal that this board does not
+report (any more) is listed next to its gap, or under "Stale dismissals", with "remove". **Edits made in the
+views** – the stackup and the class targets in the Impedance view, profiles and connector ends in the Channel
+view, the power tree or rail setups in the Power view – are listed on their tab and move into the draft with one
+action and a source (the power settings as `PI_REG` / `PI_LOAD` / `PI_SOURCE`, through the same conversion as the
+core's field reader).
+
+The draft is the board's kisi.json itself: the loaded file with your edits, one for all three tabs (the laminate
+entered under Impedance also closes the gap under Channel). It is kept per board in this browser until it is saved
+or discarded, so a reload of the page and of the board brings it back; the side card says how it differs from the
+loaded file, and "Discard draft" returns to it. A draft belongs to the kisi.json it was made on (by content): when
+that file has changed since – edited elsewhere, or a newer build of kisi – the draft is not applied, and a line
+above the tabs offers "Restore" (the draft over the loaded file) or "Discard". A draft made on a bundled example is
+dropped when the example's kisi.json changed. The check (the same as `kisi config-check`) runs as you type, the
+gap list follows a moment later, and the right column shows the resulting file. "Save kisi.json" writes the
+draft, or the loaded file with only the current category's changes (the rest stays in the draft); keys the page
+has no form for are kept, and a file loaded and saved unchanged stays the same. Errors in what is saved block it,
+warnings do not. In Chromium a save dialog opens next to the board (and "Reload" reads the file from then on);
+other browsers download it. The saved file is loaded at once. Research-heavy gaps go to the agent path: what is
+handed over – whole steps or single items – is listed in the agent card, and its prompt for the kisi-prepare skill
+names each gap with what is needed, where it goes in kisi.json and its items (refdes with part number and rails,
+nets, rails, classes, layers), limited to that category (`kisi gaps --for …`) or for all categories. With nothing
+handed over the prompt asks for the category's open gaps. The marks are kept with the draft in this browser, not
+in kisi.json; a category whose open gaps are all handed over says so.
 
 ## Worked example: Seeed Studio XIAO nRF54LM20A
 [`docs/examples/xiao-nrf54lm20a/XIAO nRF54LM20A.kisi.json`](examples/xiao-nrf54lm20a/XIAO%20nRF54LM20A.kisi.json)
@@ -106,7 +172,7 @@ Unpack the project and run the gap list without a configuration:
 ```sh
 node kisi.mjs gaps "XIAO nRF54LM20A.kicad_pcb"
 ```
-With kisi 0.2.5 it reports no high-priority gap, five medium and two low ones:
+With kisi 0.3.0 it reports no high-priority gap, five medium and two low ones:
 
 | Gap | Items |
 |---|---|
@@ -166,7 +232,7 @@ node kisi.mjs gaps         "XIAO nRF54LM20A.kicad_pcb"   # what is still open
 In the viewer: drop the `.kicad_pcb`, the `.kicad_pro` and the `.kisi.json` together into `kisi.html`, then open
 the Power view.
 
-With kisi 0.2.5, `kisi power` gives 100 mW from USB: 83 mW to the loads and 17 mW of losses. BUCK2 loses 14 mW at
+With kisi 0.3.0, `kisi power` gives 100 mW from USB: 83 mW to the loads and 17 mW of losses. BUCK2 loses 14 mW at
 the estimated 85 % and LDO1 3 mW. The largest DC drop is 0.17 mV, on VSYS_3V3.
 
 ### What is still open
@@ -177,6 +243,8 @@ the estimated 85 % and LDO1 3 mW. The largest DC drop is 0.17 mV, on VSYS_3V3.
 - `ic-loads`: **U7**, the XIAO header. External loads on the 3V3 and VBUS pins are unknown.
 - `regulator-efficiency`: **BUCK2 and U1.** The datasheets give efficiency only as curves.
 - `cap-ratings`: the board's capacitors carry `Voltage Rating` and `Dielectric` fields, but kisi does not read
-  them yet (ROADMAP: capacitor ratings from part fields), so they are not repeated as `PI_CAP` here.
+  them yet (ROADMAP: capacitor ratings from part fields), so they are not repeated as `PI_CAP` here. `kisi gaps`
+  suggests them per capacitor (`suggest`), and the viewer's Prepare page writes them as PI_CAP for a group of
+  parts at once.
 - `stackup-defaults`: the laminate values are KiCad's defaults; for a board without impedance-controlled
   interfaces they matter little.

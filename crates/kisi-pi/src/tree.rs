@@ -728,9 +728,147 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
     Some((spec, warnings))
 }
 
+/// A number for a field value: up to six significant digits, no trailing zeros ("91", "0.08").
+pub fn field_num(x: f64) -> String {
+    if x == 0.0 || !x.is_finite() {
+        return "0".into();
+    }
+    let d = (5 - x.abs().log10().floor() as i32).clamp(0, 12) as usize;
+    let s = format!("{x:.d$}");
+    if s.contains('.') { s.trim_end_matches('0').trim_end_matches('.').to_string() } else { s }
+}
+
+/// A current for a field value: "3A", "600mA", "12.5uA".
+pub fn field_amps(a: f64) -> String {
+    let m = a.abs();
+    if m >= 1.0 || m == 0.0 {
+        format!("{}A", field_num(a))
+    } else if m >= 1e-3 {
+        format!("{}mA", field_num(a * 1e3))
+    } else {
+        format!("{}uA", field_num(a * 1e6))
+    }
+}
+
+/// A power tree as footprint fields (ref, field name, value): one PI_REG per part (its elements
+/// separated by ';'), one PI_LOAD per part – the inverse of `tree_from_fields`, so that a tree edited
+/// in the viewer can go into `<board>.kisi.json`. A rail gets `@<V>V` where its voltage does not
+/// follow from its name or from the element that feeds it.
+pub fn spec_to_fields(spec: &TreeSpec) -> Vec<(String, String, String)> {
+    use crate::field_syntax::quote_name;
+    let volt = |n: &str| spec.rails.iter().find(|r| r.net == n).map(|r| r.voltage).filter(|v| *v != 0.0);
+    let named = |n: &str, v: f64| crate::pi::voltage_from_name(n).is_some_and(|x| (x - v).abs() < 1e-9);
+    let fed: Vec<&str> = spec.elements.iter().map(|e| e.to.as_str()).collect();
+    let rail = |n: &str, out: bool, from: Option<&str>| -> String {
+        let q = quote_name(n);
+        match volt(n) {
+            // a pass element's output takes its input voltage
+            Some(v) if out && from.is_some_and(|f| volt(f).is_some_and(|x| (x - v).abs() < 1e-9)) && spec.elements.iter().any(|e| e.to == n && e.kind == "pass") => q,
+            Some(v) if !named(n, v) && (out || !fed.contains(&n)) => format!("{q}@{}V", field_num(v)),
+            _ => q,
+        }
+    };
+    let mut out: Vec<(String, String, String)> = Vec::new();
+    let mut push = |r: &str, name: &str, v: String, sep: &str, out: &mut Vec<(String, String, String)>| match out.iter_mut().find(|x| x.0 == r && x.1 == name) {
+        Some(x) => x.2 = format!("{}{sep}{v}", x.2),
+        None => out.push((r.to_string(), name.to_string(), v)),
+    };
+    for (k, e) in spec.elements.iter().enumerate() {
+        let mut t = match &e.from {
+            Some(f) => format!("{} > {}", rail(f, false, None), rail(&e.to, true, Some(f))),
+            None => rail(&e.to, true, None),
+        };
+        t.push(' ');
+        t.push_str(if e.kind.is_empty() { "buck" } else { &e.kind });
+        if let Some(x) = e.eff {
+            t.push_str(&format!(" {}%", field_num(x * 100.0)));
+        }
+        if let Some(x) = e.imax {
+            t.push_str(&format!(" {}", field_amps(x)));
+        }
+        if e.iq > 0.0 {
+            t.push_str(&format!(" iq={}", field_amps(e.iq)));
+        }
+        if e.r > 0.0 {
+            t.push_str(&format!(" r={}", field_num(e.r)));
+        }
+        if let Some(x) = &e.in_ref {
+            t.push_str(&format!(" in={x}"));
+        }
+        if let Some(x) = &e.out_ref {
+            t.push_str(&format!(" out={x}"));
+        }
+        // ids the field reading gives anyway (the part, or part.N for several entries) are left out
+        let auto = e.id.is_empty() || e.id == e.refdes || e.id.strip_prefix(&format!("{}.", e.refdes)).is_some_and(|n| n.chars().all(|c| c.is_ascii_digit()));
+        if !auto {
+            t.push_str(&format!(" id={}", quote_name(&e.id)));
+        }
+        let _ = k;
+        push(&e.refdes, "PI_REG", t, "; ", &mut out);
+    }
+    for l in &spec.loads {
+        if l.current == 0.0 {
+            continue;
+        }
+        let at = l.at.as_deref().map(|a| format!("@{}", a.split(',').map(str::trim).filter(|x| !x.is_empty()).collect::<Vec<_>>().join("/"))).unwrap_or_default();
+        push(&l.refdes, "PI_LOAD", format!("{}={}{at}", quote_name(&l.net), field_amps(l.current)), ", ", &mut out);
+    }
+    out
+}
+
 #[cfg(test)]
 mod field_tests {
     use super::*;
+
+    /// A tree written as fields reads back as the same tree.
+    #[test]
+    fn spec_to_fields_round_trip() {
+        let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew") (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+  (net 0 "") (net 1 "+12V") (net 2 "VSYS") (net 3 "+3V3") (net 4 "/Power/IMU VDD") (net 5 "VBAT") (net 6 "+1V8")
+  (footprint "J" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+12V")))
+  (footprint "U" (layer "F.Cu") (at 1 0) (property "Reference" "U1") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 2 "VSYS")))
+  (footprint "U" (layer "F.Cu") (at 2 0) (property "Reference" "U2") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 3 "+3V3")))
+  (footprint "L" (layer "F.Cu") (at 3 0) (property "Reference" "L2") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 3 "+3V3")))
+  (footprint "FB" (layer "F.Cu") (at 4 0) (property "Reference" "FB1") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 4 "/Power/IMU VDD")))
+  (footprint "U" (layer "F.Cu") (at 5 0) (property "Reference" "U5") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 4 "/Power/IMU VDD")))
+  (footprint "U" (layer "F.Cu") (at 6 0) (property "Reference" "U6") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 3 "+3V3"))))"#;
+        let mut b = crate::load_pcb(pcb).unwrap();
+        let fields = [
+            ("J1", "PI_REG", "+12V input; VBAT@3.7V input"),
+            ("U1", "PI_REG", "+12V > VSYS@5V buck 91% 3A iq=12.5u"),
+            ("U2", "PI_REG", "VSYS > +3V3 buck 88% 600mA out=L2 id=U2-BUCK; VSYS > +1V8 ldo iq=2mA 150mA"),
+            ("FB1", "PI_REG", "+3V3 > \"/Power/IMU VDD\" pass r=0.5"),
+            ("U5", "PI_LOAD", "\"/Power/IMU VDD\"=0.9mA"),
+            ("U6", "PI_LOAD", "+3V3=120mA, +1V8=2.5mA@U2"),
+        ];
+        for (r, n, v) in fields {
+            b.footprints.iter_mut().find(|f| f.reference == r).unwrap().props.push((n.into(), v.into()));
+        }
+        let (spec, w) = tree_from_fields(&b).unwrap();
+        assert!(w.iter().all(|x| !x.contains("PI_")), "{w:?}");
+        let out = spec_to_fields(&spec);
+        let mut b2 = crate::load_pcb(pcb).unwrap();
+        for (r, n, v) in &out {
+            b2.footprints.iter_mut().find(|f| &f.reference == r).unwrap().props.push((n.clone(), v.clone()));
+        }
+        let (spec2, _) = tree_from_fields(&b2).unwrap();
+        // numbers to 12 digits (900uA reads back as 9.000000000000001e-4)
+        fn round(v: serde_json::Value) -> serde_json::Value {
+            match v {
+                serde_json::Value::Number(n) => serde_json::json!(format!("{:.12e}", n.as_f64().unwrap())),
+                serde_json::Value::Array(a) => serde_json::Value::Array(a.into_iter().map(round).collect()),
+                serde_json::Value::Object(m) => serde_json::Value::Object(m.into_iter().map(|(k, v)| (k, round(v))).collect()),
+                x => x,
+            }
+        }
+        let j = |s: &TreeSpec| round(serde_json::to_value((&s.rails, &s.elements, &s.loads)).unwrap()).to_string();
+        assert_eq!(j(&spec), j(&spec2), "{out:#?}");
+        let get = |r: &str, n: &str| out.iter().find(|x| x.0 == r && x.1 == n).map(|x| x.2.as_str());
+        assert_eq!(get("U1", "PI_REG"), Some("+12V > VSYS@5V buck 91% 3A iq=12.5uA"));
+        assert_eq!(get("FB1", "PI_REG"), Some("+3V3 > \"/Power/IMU VDD\" pass r=0.5"));
+        assert_eq!(get("U6", "PI_LOAD"), Some("+3V3=120mA, +1V8=2.5mA@U2"));
+        assert_eq!((field_num(0.91 * 100.0), field_amps(0.0125e-3), field_num(0.08)), ("91".into(), "12.5uA".into(), "0.08".into()));
+    }
 
     #[test]
     fn reg_entries() {

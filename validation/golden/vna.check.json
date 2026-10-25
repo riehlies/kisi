@@ -1,6 +1,6 @@
 {
  "config": {
-  "entries": 68,
+  "entries": 120,
   "errors": [],
   "ok": true,
   "warnings": []
@@ -23,12 +23,12 @@
    "class": "RF",
    "criteria": [
     {
-     "hi": 110.0,
+     "hi": 55.0,
      "key": "z",
-     "lo": 90.0,
+     "lo": 45.0,
      "note": "mean along the line from the impedance analysis",
      "red_below": null,
-     "status": "yellow",
+     "status": "green",
      "value": 49.8346
     },
     {
@@ -105,7 +105,7 @@
     "C197",
     "L46"
    ],
-   "profile": "diff100",
+   "profile": "se50",
    "rate_gbps": 1.0,
    "receivers_on_stubs": [],
    "series_parts": [
@@ -123,327 +123,6 @@
     "L52 330nH to GND"
    ],
    "to": "IC36.4",
-   "vias": 0
-  },
-  {
-   "accuracy": {
-    "impedance": {
-     "field_share": 0.0,
-     "level": "formula",
-     "uncertainty_pct": 5.9
-    },
-    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
-    "vias": null
-   },
-   "branches": [],
-   "bus": "IC22 ↔ IC23",
-   "class": "RF",
-   "criteria": [
-    {
-     "hi": 110.0,
-     "key": "z",
-     "lo": 90.0,
-     "note": "mean along the line from the impedance analysis",
-     "red_below": null,
-     "status": "yellow",
-     "value": 48.4352
-    },
-    {
-     "hi": null,
-     "key": "eye_h",
-     "lo": 0.65,
-     "note": null,
-     "red_below": 0.4,
-     "status": "green",
-     "value": 0.999066
-    },
-    {
-     "hi": null,
-     "key": "eye_w",
-     "lo": 0.5,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 0.9375
-    },
-    {
-     "hi": null,
-     "key": "il",
-     "lo": null,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": -0.0246034
-    },
-    {
-     "hi": null,
-     "key": "rl",
-     "lo": 10.0,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 26.4159
-    }
-   ],
-   "diff": true,
-   "direction": "default order",
-   "ends": [
-    "IC22.6",
-    "IC23.8"
-   ],
-   "eye_computed": true,
-   "from": "IC22.6",
-   "kind": "ic-ic",
-   "lane": "Net-(IC22-OUT+)",
-   "length_mm": 4.07761,
-   "metrics": {
-    "error": null,
-    "eye_h": 0.999066,
-    "eye_w_ui": 0.9375,
-    "il_nyq_db": -0.0246034,
-    "rl_db": 26.4159,
-    "skew_ps": null,
-    "skew_uncertain": false,
-    "stub_ghz": null,
-    "z_max": 60.4802,
-    "z_mean": 48.4352,
-    "z_min": 35.422
-   },
-   "model": "single-ended",
-   "nets": [
-    "Net-(IC22-OUT+)",
-    "Net-(IC23-+)"
-   ],
-   "not_modelled": [
-    "R53",
-    "R55"
-   ],
-   "profile": "diff100",
-   "rate_gbps": 1.0,
-   "receivers_on_stubs": [],
-   "series_parts": [
-    "C100 1uF (0402)"
-   ],
-   "status": "yellow",
-   "stubs": [
-    "stub 2.9 mm to C112.1 (not fitted; pad 0402, 0.05 pF from the pad geometry)"
-   ],
-   "terminations": [],
-   "to": "IC23.8",
-   "vias": 0
-  },
-  {
-   "accuracy": {
-    "impedance": {
-     "field_share": 0.0,
-     "level": "formula",
-     "uncertainty_pct": 6.3
-    },
-    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
-    "vias": null
-   },
-   "branches": [],
-   "bus": "IC27 ↔ IC28",
-   "class": "RF",
-   "criteria": [
-    {
-     "hi": 110.0,
-     "key": "z",
-     "lo": 90.0,
-     "note": "mean along the line from the impedance analysis",
-     "red_below": null,
-     "status": "yellow",
-     "value": 48.7125
-    },
-    {
-     "hi": null,
-     "key": "eye_h",
-     "lo": 0.65,
-     "note": null,
-     "red_below": 0.4,
-     "status": "green",
-     "value": 0.998873
-    },
-    {
-     "hi": null,
-     "key": "eye_w",
-     "lo": 0.5,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 0.9375
-    },
-    {
-     "hi": null,
-     "key": "il",
-     "lo": null,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": -0.0268459
-    },
-    {
-     "hi": null,
-     "key": "rl",
-     "lo": 10.0,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 28.0271
-    }
-   ],
-   "diff": true,
-   "direction": "default order",
-   "ends": [
-    "IC27.6",
-    "IC28.8"
-   ],
-   "eye_computed": true,
-   "from": "IC27.6",
-   "kind": "ic-ic",
-   "lane": "Net-(IC27-OUT+)",
-   "length_mm": 5.2616,
-   "metrics": {
-    "error": null,
-    "eye_h": 0.998873,
-    "eye_w_ui": 0.9375,
-    "il_nyq_db": -0.0268459,
-    "rl_db": 28.0271,
-    "skew_ps": null,
-    "skew_uncertain": false,
-    "stub_ghz": null,
-    "z_max": 60.4802,
-    "z_mean": 48.7125,
-    "z_min": 35.422
-   },
-   "model": "single-ended",
-   "nets": [
-    "Net-(IC27-OUT+)",
-    "Net-(IC28-+)"
-   ],
-   "not_modelled": [
-    "R80",
-    "R82"
-   ],
-   "profile": "diff100",
-   "rate_gbps": 1.0,
-   "receivers_on_stubs": [],
-   "series_parts": [
-    "C137 1uF (0402)"
-   ],
-   "status": "yellow",
-   "stubs": [
-    "stub 2.8 mm to R82.1"
-   ],
-   "terminations": [],
-   "to": "IC28.8",
-   "vias": 0
-  },
-  {
-   "accuracy": {
-    "impedance": {
-     "field_share": 0.0,
-     "level": "formula",
-     "uncertainty_pct": 6.7
-    },
-    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
-    "vias": null
-   },
-   "branches": [],
-   "bus": "IC32 ↔ IC36",
-   "class": "RF",
-   "criteria": [
-    {
-     "hi": 110.0,
-     "key": "z",
-     "lo": 90.0,
-     "note": "mean along the line from the impedance analysis",
-     "red_below": null,
-     "status": "yellow",
-     "value": 49.2818
-    },
-    {
-     "hi": null,
-     "key": "eye_h",
-     "lo": 0.65,
-     "note": null,
-     "red_below": 0.4,
-     "status": "green",
-     "value": 0.998754
-    },
-    {
-     "hi": null,
-     "key": "eye_w",
-     "lo": 0.5,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 0.9375
-    },
-    {
-     "hi": null,
-     "key": "il",
-     "lo": null,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": -0.0308846
-    },
-    {
-     "hi": null,
-     "key": "rl",
-     "lo": 10.0,
-     "note": null,
-     "red_below": null,
-     "status": "green",
-     "value": 26.9994
-    }
-   ],
-   "diff": true,
-   "direction": "default order",
-   "ends": [
-    "IC32.8",
-    "IC36.6"
-   ],
-   "eye_computed": true,
-   "from": "IC32.8",
-   "kind": "ic-ic",
-   "lane": "Net-(IC32-+)",
-   "length_mm": 6.23766,
-   "metrics": {
-    "error": null,
-    "eye_h": 0.998754,
-    "eye_w_ui": 0.9375,
-    "il_nyq_db": -0.0308846,
-    "rl_db": 26.9994,
-    "skew_ps": null,
-    "skew_uncertain": false,
-    "stub_ghz": null,
-    "z_max": 60.4802,
-    "z_mean": 49.2818,
-    "z_min": 38.1789
-   },
-   "model": "single-ended",
-   "nets": [
-    "Net-(IC32-+)",
-    "Net-(IC36-OUT+)"
-   ],
-   "not_modelled": [
-    "R102",
-    "R94"
-   ],
-   "profile": "diff100",
-   "rate_gbps": 1.0,
-   "receivers_on_stubs": [],
-   "series_parts": [
-    "C202 1uF (0402)"
-   ],
-   "status": "yellow",
-   "stubs": [
-    "stub 2.9 mm to C173.1 (not fitted; pad 0402, 0.05 pF from the pad geometry)"
-   ],
-   "terminations": [],
-   "to": "IC36.6",
    "vias": 0
   },
   {
@@ -2231,6 +1910,113 @@
     "impedance": {
      "field_share": 0.0,
      "level": "formula",
+     "uncertainty_pct": 5.9
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
+   "branches": [],
+   "bus": "IC22 ↔ IC23",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 48.4352
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.999066
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.9375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0246034
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 26.4159
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "IC22.6",
+    "IC23.8"
+   ],
+   "eye_computed": true,
+   "from": "IC22.6",
+   "kind": "ic-ic",
+   "lane": "Net-(IC22-OUT+)",
+   "length_mm": 4.07761,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.999066,
+    "eye_w_ui": 0.9375,
+    "il_nyq_db": -0.0246034,
+    "rl_db": 26.4159,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 60.4802,
+    "z_mean": 48.4352,
+    "z_min": 35.422
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC22-OUT+)",
+    "Net-(IC23-+)"
+   ],
+   "not_modelled": [
+    "R53",
+    "R55"
+   ],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C100 1uF (0402)"
+   ],
+   "status": "green",
+   "stubs": [
+    "stub 2.9 mm to C112.1 (not fitted; pad 0402, 0.05 pF from the pad geometry)"
+   ],
+   "terminations": [],
+   "to": "IC23.8",
+   "vias": 0
+  },
+  {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
      "uncertainty_pct": 11.8
     },
     "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
@@ -2352,6 +2138,113 @@
     "impedance": {
      "field_share": 0.0,
      "level": "formula",
+     "uncertainty_pct": 6.3
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
+   "branches": [],
+   "bus": "IC27 ↔ IC28",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 48.7125
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.998873
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.9375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0268459
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 28.0271
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "IC27.6",
+    "IC28.8"
+   ],
+   "eye_computed": true,
+   "from": "IC27.6",
+   "kind": "ic-ic",
+   "lane": "Net-(IC27-OUT+)",
+   "length_mm": 5.2616,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.998873,
+    "eye_w_ui": 0.9375,
+    "il_nyq_db": -0.0268459,
+    "rl_db": 28.0271,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 60.4802,
+    "z_mean": 48.7125,
+    "z_min": 35.422
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC27-OUT+)",
+    "Net-(IC28-+)"
+   ],
+   "not_modelled": [
+    "R80",
+    "R82"
+   ],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C137 1uF (0402)"
+   ],
+   "status": "green",
+   "stubs": [
+    "stub 2.8 mm to R82.1"
+   ],
+   "terminations": [],
+   "to": "IC28.8",
+   "vias": 0
+  },
+  {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
      "uncertainty_pct": 9.0
     },
     "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
@@ -2467,6 +2360,113 @@
    "terminations": [],
    "to": "IC7.19",
    "vias": 2
+  },
+  {
+   "accuracy": {
+    "impedance": {
+     "field_share": 0.0,
+     "level": "formula",
+     "uncertainty_pct": 6.7
+    },
+    "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+    "vias": null
+   },
+   "branches": [],
+   "bus": "IC32 ↔ IC36",
+   "class": "RF",
+   "criteria": [
+    {
+     "hi": 55.0,
+     "key": "z",
+     "lo": 45.0,
+     "note": "mean along the line from the impedance analysis",
+     "red_below": null,
+     "status": "green",
+     "value": 49.2818
+    },
+    {
+     "hi": null,
+     "key": "eye_h",
+     "lo": 0.65,
+     "note": null,
+     "red_below": 0.4,
+     "status": "green",
+     "value": 0.998754
+    },
+    {
+     "hi": null,
+     "key": "eye_w",
+     "lo": 0.5,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 0.9375
+    },
+    {
+     "hi": null,
+     "key": "il",
+     "lo": null,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": -0.0308846
+    },
+    {
+     "hi": null,
+     "key": "rl",
+     "lo": 10.0,
+     "note": null,
+     "red_below": null,
+     "status": "green",
+     "value": 26.9994
+    }
+   ],
+   "diff": true,
+   "direction": "default order",
+   "ends": [
+    "IC32.8",
+    "IC36.6"
+   ],
+   "eye_computed": true,
+   "from": "IC32.8",
+   "kind": "ic-ic",
+   "lane": "Net-(IC32-+)",
+   "length_mm": 6.23766,
+   "metrics": {
+    "error": null,
+    "eye_h": 0.998754,
+    "eye_w_ui": 0.9375,
+    "il_nyq_db": -0.0308846,
+    "rl_db": 26.9994,
+    "skew_ps": null,
+    "skew_uncertain": false,
+    "stub_ghz": null,
+    "z_max": 60.4802,
+    "z_mean": 49.2818,
+    "z_min": 38.1789
+   },
+   "model": "single-ended",
+   "nets": [
+    "Net-(IC32-+)",
+    "Net-(IC36-OUT+)"
+   ],
+   "not_modelled": [
+    "R102",
+    "R94"
+   ],
+   "profile": "se50",
+   "rate_gbps": 1.0,
+   "receivers_on_stubs": [],
+   "series_parts": [
+    "C202 1uF (0402)"
+   ],
+   "status": "green",
+   "stubs": [
+    "stub 2.9 mm to C173.1 (not fitted; pad 0402, 0.05 pF from the pad geometry)"
+   ],
+   "terminations": [],
+   "to": "IC36.6",
+   "vias": 0
   },
   {
    "accuracy": {
@@ -2993,9 +2993,9 @@
  "rows_omitted": 14,
  "rows_shown": "all",
  "summary": {
-  "green": 31,
+  "green": 34,
   "red": 1,
-  "yellow": 12
+  "yellow": 9
  },
  "variant": {
   "available": [],

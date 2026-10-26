@@ -235,12 +235,12 @@ Plots (|S21|/|Sdd21|, |S11|/|Sdd11|, the differences, the step responses):
 - **KiCad** (`--kicad`, `kicad_sheet.py`): every lane's sheet passes the wiring check (visible pins, no open pin or
   dangling wire, junctions, grid); kicad-cli's netlist equals the lane subcircuit node for node, and its AC response
   in ngspice equals the bench's (relative difference 1e-10 to 5e-8, rounding). With kicad-cli 7.0.11 here for the LVDS
-  lanes and all nine PCIe lanes (27–55 symbols per sheet); with kicad-cli 9.0.9 in CI (KiCad 9 from the KiCad PPA)
-  for SYNC_OUT_P, PCIe_PER0_P and PCIe_PET1_P, where KiCad's ERC (all severities) reports no violation at all (before
+  lanes and all nine PCIe lanes (27–55 symbols per sheet); with kicad-cli 9.0.9 (KiCad 9 from the KiCad PPA, in CI
+  until 26 Oct 2026) for SYNC_OUT_P, PCIe_PER0_P and PCIe_PET1_P, where KiCad's ERC (all severities) reports no violation at all (before
   the export shipped kisi's symbols as a project library, `kisi.kicad_sym` with a `sym-lib-table`, it warned once per
   symbol about the unknown library `kisi`). KiCad 9 thus reads the KiCad 7 file, its models and `Sim.Params` with
   `${VALUE}`. The sheets as kicad-cli renders them:
-  `docs/img/channel-export/kicad_*.png` (kicad-cli 7) and the CI artifact `kicad-sheets` (kicad-cli 9). Transients of
+  `docs/img/channel-export/kicad_*.png` (kicad-cli 7); `compare.py --kicad --svg DIR` renders them locally. Transients of
   the KiCad netlist and the bench differ by about 1e-4 of the swing: ngspice's time steps depend on the element order.
   Not tested: the simulator dialog of the KiCad GUI.
 - **scikit-rf** reads every file (2-, 4- and 36-port). The lanes' Touchstone files and the bus N-port are passive
@@ -262,7 +262,7 @@ large reflections. The fallback model of sections without a reference plane is t
 - **Terminations at the receiver** belong to the receiver (as in kisi's eye), so the Touchstone file and the
   subcircuit are the interconnect and the bench is the profile's ends plus that termination.
 - **KiCad 7 format** for the project: the oldest format with the simulation model fields; KiCad 8 and 9 read it
-  (and convert it when saving), and it can be tested with kicad-cli 7 here and kicad-cli 9 in CI.
+  (and convert it when saving); it was tested with kicad-cli 7 and 9.
 - **One symbol per element, through wrappers:** the sheet is the netlist a user can edit; the wrappers keep the
   file KiCad parses short (with the 7 k-line lane library as `Sim.Library`, kicad-cli 7 sometimes did not find the
   model) and the elements' own subcircuits stay in one library shared with ngspice and Xyce.
@@ -362,9 +362,9 @@ At 5 × Nyquist (`--fmax profile`, 2.5 GHz for these 1 Gbit/s lanes):
   Gear's numerical damping moves the edges of SYNC_OUT_P by up to 3 % of the swing at the bench's 30 ps steps.
 - **Other checks:** the LTspice files of the compact export pass `ltspice.py check` (every lane above); the KiCad
   project of SYNC_OUT_P (kicad-cli 7) has the lane subcircuit node for node with an AC response equal to the bench's
-  (5·10⁻⁹); CI runs the compact model (the default) on four ThunderScope lanes with the KiCad check (kicad-cli 9
-  with ERC), against the ladder on three lanes with the passivity sweep, and the ladder's KiCad check on
-  SYNC_OUT_P (PCIe_PER0_P's ladder takes minutes in ngspice's S-parameter analysis). Not run here: Xyce.
+  (5·10⁻⁹); CI runs the compact model (the default) on four ThunderScope lanes and against the ladder on three
+  lanes with the passivity sweep. The KiCad check (`compare.py --kicad`: kicad-cli netlist, AC, ERC) runs locally
+  only since 26 Oct 2026 – installing KiCad from its PPA stalled too often in CI. Not run here: Xyce.
 - **LTspice** (26.1.1 on the maintainer's PC, `bench_ltspice.cir` of the compact SYNC_OUT_P against `expected.json`
   from ngspice): at 25 GHz t50 equal (7.7303 ns), the eight bit levels within 0.97 mV (mean 0.53 mV), maximum and
   minimum within 0.9 mV (0.22 %), 61 s (the ladder bench took 938 s there); at 5 × Nyquist t50 within 0.7 ps, bit

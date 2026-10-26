@@ -1,9 +1,10 @@
 #!/bin/sh
 # Package installs of the CI (.github/workflows), with retries, time limits and a GitHub annotation per phase
 # (`::notice::` with its duration), because the run logs are not always at hand and the downloads – not the
-# checks – were what made runs slow or hang (apt mirrors, the KiCad PPA, Playwright's browsers).
+# checks – were what made runs slow or hang (apt mirrors, Playwright's browsers; the KiCad PPA, which is why the
+# KiCad check left the CI).
 #
-#   sh tools/ci_install.sh kicad              ngspice and KiCad 9 (PPA); .deb files kept in ~/apt-debs (cached)
+#   sh tools/ci_install.sh ngspice            ngspice; .deb files kept in ~/apt-debs (cached)
 #   sh tools/ci_install.sh playwright NAME    Playwright's NAME browser (chromium, firefox, webkit) with its
 #                                             system packages; the Python package is installed by the caller
 #
@@ -69,15 +70,14 @@ phase() {
 }
 
 case "${1:-}" in
-  kicad)
+  ngspice)
     mkdir -p "$HOME/apt-debs/partial"
-    note "kicad: $(find "$HOME/apt-debs" -name '*.deb' | wc -l) cached .deb files"
-    phase "add the KiCad 9 PPA" 180 3 1 sudo add-apt-repository -y ppa:kicad/kicad-9.0-releases || exit 1
+    note "ngspice: $(find "$HOME/apt-debs" -name '*.deb' | wc -l) cached .deb files"
     # shellcheck disable=SC2086
     phase "apt-get update" 180 3 1 sudo apt-get $APT_OPTS update || exit 1
     # shellcheck disable=SC2086
-    phase "apt-get install ngspice kicad" 420 3 1 sudo apt-get $APT_OPTS install -y --no-install-recommends \
-      -o Dir::Cache::Archives="$HOME/apt-debs" ngspice kicad || exit 1
+    phase "apt-get install ngspice" 420 3 1 sudo apt-get $APT_OPTS install -y --no-install-recommends \
+      -o Dir::Cache::Archives="$HOME/apt-debs" ngspice || exit 1
     sudo chown -R "$(id -u):$(id -g)" "$HOME/apt-debs"
     rm -rf "$HOME/apt-debs/partial" "$HOME/apt-debs/lock"
     ;;

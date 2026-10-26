@@ -13,7 +13,8 @@
 #                       (tools/golden.py; an intended change updates validation/golden in the same commit) ·
 #                       passivity and causality of the example boards' lanes (crates/kisi-core/tests/causality.rs)
 #   export              the channel export (kisi export) in ngspice against kisi's S-parameters, scikit-rf reads
-#                       the Touchstone files (validation/channel_export/compare.py)
+#                       the Touchstone files (validation/channel_export/compare.py; the KiCad project check with
+#                       --kicad runs locally only)
 #   refpage             the 3D reference page builds
 #   docs                the documentation PDF builds (tools/docs_pdf.py; also the link and heading check of docs/)
 #   upstream            Forstén's solver in third_party/ is upstream's tree, unchanged
@@ -173,45 +174,40 @@ jobs:
           python3 -c "import numpy" 2>/dev/null || python3 -m pip install --quiet numpy
           python3 tools/golden.py boards target/release/kisi examples
           python3 tools/golden.py vias target/release/kisi
-      # installs in their own steps, so that the step times show where a slow run spends its time (package
-      # downloads vary a lot between runs)
-      # the KiCad packages (a few hundred MB from the PPA) took 1 min in one run and over 20 in another: their .deb
-      # files are cached; tools/ci_install.sh retries a stalled phase and annotates each phase with its duration
-      - name: Package cache (ngspice, KiCad 9)
+      # the install in its own step (package downloads varied a lot between runs); the KiCad project check
+      # (compare.py --kicad, kicad-cli and ERC) runs locally only – the KiCad PPA download stalled too often in CI
+      - name: Package cache (ngspice)
         if: env.EXPORT == 'true'
         uses: actions/cache@v5
         with:
           path: ~/apt-debs
-          key: apt-debs-ngspice-kicad9-${{ runner.os }}-24.04-v1
-      - name: Install ngspice, KiCad 9 and the Python packages of the export check
+          key: apt-debs-ngspice-${{ runner.os }}-24.04-v1
+      - name: Install ngspice and the Python packages of the export check
         if: env.EXPORT == 'true'
         timeout-minutes: 30
         run: |
-          sh tools/ci_install.sh kicad
-          kicad-cli version
-          python3 -m pip install --quiet numpy scikit-rf cairosvg
-      - name: Channel export in ngspice and KiCad 9, LTspice files (ThunderScope LVDS, clock and PCIe lanes; ladder and compact model)
+          sh tools/ci_install.sh ngspice
+          python3 -m pip install --quiet numpy scikit-rf
+      - name: Channel export in ngspice, LTspice files (ThunderScope LVDS, clock and PCIe lanes; compact and ladder model)
         if: env.EXPORT == 'true'
         # a simulator run that hangs fails after 10 min (--timeout), the step after 30
         timeout-minutes: 30
         run: |
+          mkdir -p export-reports
           python3 validation/channel_export/compare.py target/release/kisi examples/Thunderscope_Rev5.3.kicad_pcb --timeout 600 \
             --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export --lane SYNC_OUT_P --lane REFINOUT2 --lane PCIe_PET1_P --lane PCIe_PER0_P \
-            --kicad --svg kicad-sheets --report kicad-sheets/report.md --strict
-          for d in $RUNNER_TEMP/export/*/; do cp $d/erc.json kicad-sheets/$(basename $d)_erc.json 2>/dev/null || true; done
-          # the compact model (the default, above) against the ladder and kisi, with the circuits' passivity to
-          # 10 x fmax, and the ladder's KiCad project
+            --report export-reports/report.md --strict
+          # the compact model (the default, above) against the ladder and kisi, with the circuits' passivity to 10 x fmax
           python3 validation/channel_export/compare.py target/release/kisi examples/Thunderscope_Rev5.3.kicad_pcb --timeout 600 \
             --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export_compact --lane SYNC_OUT_P --lane REFINOUT2 --lane PCIe_PET1_P \
-            --models ladder,compact --passivity --report kicad-sheets/compact_vs_ladder.md --strict
-          python3 validation/channel_export/compare.py target/release/kisi examples/Thunderscope_Rev5.3.kicad_pcb --timeout 600 \
-            --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export_ladder_kicad --lane SYNC_OUT_P --model ladder --kicad --strict
-      - name: KiCad sheets of the channel export (rendered by kicad-cli 9, ERC results)
+            --models ladder,compact --passivity --report export-reports/compact_vs_ladder.md --strict
+      - name: Reports of the channel export
         if: env.EXPORT == 'true' && always()
         uses: actions/upload-artifact@v6
         with:
-          name: kicad-sheets
-          path: kicad-sheets
+          name: export-reports
+          path: export-reports
+          if-no-files-found: ignore
       - name: Field solver validation (HFSS / baseline, viewer bundle)
         if: env.SOLVER == 'true'
         run: sh tools/validate_field.sh

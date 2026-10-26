@@ -1,0 +1,8 @@
+# The Rust version for builds, tests, rustfmt and clippy – locally and in CI. Pinned so that a new stable
+# release's lints cannot turn CI red overnight; raise it on purpose (update here, run clippy and the tests,
+# commit the fixes with it).
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"

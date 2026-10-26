@@ -192,8 +192,9 @@ export shows it). Background: `docs/models.md` (scope, why kisi is fast); the ea
 - Solver updates with `tools/upstream_update.sh` when js_2d_fields changes (validation decides; the weekly CI run
   reports a newer upstream revision).
 - **CI:** the checks run by what changed (`tools/ci_checks.py changes`); stored results of the example boards and the
-  via references (`tools/golden.py`) catch unintended model changes; the docs PDF and the channel export (ngspice,
-  KiCad 9 ERC) run in their groups; the Rust code is formatted (`cargo fmt --check`) and clippy-clean
+  via references (`tools/golden.py`) catch unintended model changes; the docs PDF and the channel export in ngspice
+  run in their groups (the KiCad project check `compare.py --kicad` locally only: the KiCad PPA download stalled
+  too often in CI; package installs go through `tools/ci_install.sh` with retries, a mirror fallback and a cache); the Rust code is formatted (`cargo fmt --check`) and clippy-clean
   (`-D warnings`, native and wasm) on every push that touches it, with the Rust version pinned in
   `rust-toolchain.toml` (raised on purpose, not by a new stable release). Next: parse a KiCad 10 test board.
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.

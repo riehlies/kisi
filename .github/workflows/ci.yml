@@ -208,13 +208,13 @@ jobs:
         if: env.VIEWER == 'true'
         run: |
           node tools/test_units.mjs
-          python3 -m pip install --quiet playwright numpy
+          python3 -m pip install --quiet playwright==1.64.1 numpy
           python3 -m playwright install --with-deps chromium
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
       - name: Documentation PDF (and the link and heading check of docs/)
         if: needs.changes.outputs.docs == 'true'
         run: |
-          python3 -m pip install --quiet playwright markdown==3.10.3 pypdf==5.9.0
+          python3 -m pip install --quiet playwright==1.64.1 markdown==3.10.3 pypdf==5.9.0
           python3 -m playwright install --with-deps chromium
           python3 tools/docs_pdf.py dist/kisi-docs.pdf
       - name: Reference cases page
@@ -234,7 +234,9 @@ jobs:
     needs: [changes, checks]
     # also when a later check step failed: the bundles are uploaded right after they are built
     if: always() && needs.changes.outputs.full == 'true' && needs.checks.result != 'cancelled'
-    runs-on: ubuntu-latest
+    # Ubuntu 24.04, not ubuntu-latest: since ubuntu-latest started moving to Ubuntu 26 (Oct 2026) the WebKit run
+    # hung now and then for the whole job (3 of 6 runs on 26 Oct, none before)
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -249,8 +251,10 @@ jobs:
         with:
           name: bundles
       - name: Viewer in ${{ matrix.browser }}
+        # a hang fails here (and uploads the screenshots so far) instead of running into the job's limit
+        timeout-minutes: 15
         run: |
-          python3 -m pip install --quiet playwright numpy
+          python3 -m pip install --quiet playwright==1.64.1 numpy
           python3 -m playwright install --with-deps ${{ matrix.browser }}
           python3 tools/check_viewer.py dist/kisi-examples.html --quick --browser ${{ matrix.browser }} --layouts light,phone \
             --out viewer-screenshots

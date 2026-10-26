@@ -89,7 +89,9 @@ to one thread.
 * GitHub Pages (release workflow): `web/pages/index.html` (landing page) with `kisi.html`, `kisi-examples.html` and
   `kisi-docs.pdf`; the screenshots in `docs/img/` come from `tools/screenshots.py`.
 * Files come in by drag and drop or the file dialog; with the File System Access API (Chromium) the viewer keeps
-  the file handles and “Reload” reads them again after saving in KiCad.
+  the file handles and “Reload” reads them again after saving in KiCad. A page made by the KiCad plugin carries the
+  board's files in `KICAD_BOARD` (`index.html`) and loads them the same way (`main.js`, `loadKicadBoard` →
+  `handleFiles`), with the "From KiCad" card and the board's folder on the Prepare page's save step.
 * Stored in the browser (per viewer): field solver results (IndexedDB), stackup changes, profile changes,
   net class → profile assignment, power settings, lane directions, the chosen assembly variant. The results of the last three boards stay in memory for the session.
 
@@ -133,7 +135,22 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
   the file in `docs/examples/xiao-nrf54lm20a/`.
 * Agents use the CLI (`node kisi.mjs <command> <board>` → JSON) following the skills in `claude-plugin/skills/`:
   `kisi-prepare` (gaps → research with sources → kisi.json → `kisi config-check`) and `kisi-si-pi-review`.
-  An MCP server and a KiCad plugin existed until 2026-10 and were removed (git history) in favour of this.
+  An MCP server existed until 2026-10 and was removed (git history) in favour of this.
+
+## KiCad plugin (`kicad-plugin/`)
+An IPC API plugin for KiCad 9/10 (`plugin.json`, Python runtime: KiCad makes the plugin's virtual environment and
+installs `requirements.txt`, i.e. kicad-python). One toolbar action in the PCB editor: `kisi_action.py` asks KiCad
+for the open board (file name, project folder; unsaved changes where the API can tell – not in KiCad 10) and hands
+it to `kisi_kicad.py` (standard library only): read the saved `.kicad_pcb`, `.kicad_pro` and `<board>.kisi.json`
+(created as the viewer's skeleton when missing – the only file written next to the board) with the BOMs and
+Touchstone files it names, embed them in the viewer page of the same release (`viewer/kisi.html`, the marker
+`null; /*@kicad-board*/`), write the page to `<temp>/kisi-kicad/` and open it in the browser. No local server, no
+second load path in the viewer. Problems: stderr (KiCad's alert triangle), an error page, `<temp>/kisi-kicad/kisi-kicad.log`.
+`tools/build_kicad_pcm.py` packs it with `dist/kisi.html` into `kisi-kicad-<version>.zip` for KiCad's Plugin and
+Content Manager (layout and sources: `docs/research/kicad-plugin.md`) and writes the PCM repository entry;
+`kicad-plugin/tests` (unit tests, the package against KiCad's vendored schemas) and `tools/check_kicad_plugin.py`
+(the package installed as the PCM does, its page in headless Chromium) check it; icons from
+`kicad-plugin/icons/make_icons.py`.
 
 ## Documentation
 * User documentation in `docs/` (Markdown, rendered by GitHub, linked from the README and the landing page):
@@ -151,7 +168,8 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
 
 ## Releases
 `.github/workflows/release.yml`: on a tag `v*` tests, field-solver validation, build of `kisi.html`,
-`kisi-examples.html`, `kisi.mjs` and `kisi-docs.pdf`, attached to the GitHub release (the skills download `kisi.mjs`
+`kisi-examples.html`, `kisi.mjs`, `kisi-docs.pdf` and the KiCad plugin `kisi-kicad-<version>.zip` with its PCM
+repository entry `kisi-kicad-<version>.metadata.json`, attached to the GitHub release (the skills download `kisi.mjs`
 from there), plus `kisi-references.html` when the reference cases changed.
 
 ## Checks after changes

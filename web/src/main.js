@@ -3,6 +3,8 @@
 // files
 async function handleFiles(files) {
   files = [...files]; S.sample = null;
+  // the KiCad card belongs to the files the plugin handed over (loadKicadBoard), not to files dropped later
+  if (S.kicad) { S.kicad.on = !!S.kicad.loading; S.kicad.loading = false; }
   const pcb = files.find((f) => f.name.endsWith(".kicad_pcb"));
   const pro = files.find((f) => f.name.endsWith(".kicad_pro"));
   // <board>.kisi.json: board configuration with sources; other .json files are not read
@@ -102,6 +104,7 @@ window.addEventListener("drop", (e) => {
 
 async function loadSample(key) {
   S.fileHandles = null; $("reload").hidden = true; S.sample = key;
+  if (S.kicad) S.kicad.on = false;
   const s = SAMPLES[key];
   for (const k of ["ts", "vna"]) $("sample-" + k).setAttribute("aria-pressed", String(k === key));
   showBusy("Unpacking example board…");
@@ -109,6 +112,36 @@ async function loadSample(key) {
   // name = file name, so the example's kisi.json matches the board like a dropped one
   await loadFiles(pcb, pro, s.file || s.name, null, s.config || null);
 }
+// ---- a board from the KiCad plugin (KICAD_BOARD, kicad-plugin/): its files take the way of dropped files
+async function loadKicadBoard(k) {
+  showBusy("Unpacking the board from KiCad…");
+  const files = await Promise.all(k.files.map(async (f) => new File([await gunzipB64(f.gz)], f.name)));
+  S.kicad = { ...k, files: undefined, on: false, loading: true };
+  await handleFiles(files);
+  kicadCard();
+}
+const kicadActive = () => !!(S.kicad && S.kicad.on && S.scene && S.name === S.kicad.board);
+// where the board's kisi.json belongs (the plugin's path, with the platform's separators)
+const kicadCfgPath = () => S.kicad.config_path || S.kicad.dir + (S.kicad.dir.includes("\\") ? "\\" : "/") + S.kicad.board + ".kisi.json";
+function kicadCard() {
+  const on = kicadActive(), k = S.kicad;
+  $("kicad-card").classList.toggle("off", !on);
+  if (!on) return;
+  $("kicad-saved").textContent = k.saved ? `saved ${k.saved}` : "";
+  const name = esc(k.board + ".kisi.json"), prep = `<a href="#" data-kicad-prep>Prepare PCB</a>`;
+  const cfg = {
+    loaded: `${name} loaded from next to the board.`,
+    created: `There was no ${name}: an empty one was created next to the board. Fill it on the ${prep} page.`,
+    saved: `${name} saved from the ${prep} page and loaded.`,
+    downloaded: `${name} downloaded: move it from the downloads folder next to the board (the folder above), then click kisi in KiCad again.`,
+  }[k.config] || `No ${name} next to the board.`;
+  const unsaved = k.modified === "modified"
+    ? `<p class="warn">KiCad reports unsaved changes: this is the last saved version of the board. Save in KiCad and click kisi again.</p>`
+    : k.modified === "unmodified" ? "" : `<p class="note">Read from the saved file: changes not yet saved in KiCad are not included – save there and click kisi again.</p>`;
+  $("kicad-body").innerHTML = `<p class="note"><b>${esc(k.board)}.kicad_pcb</b> in <code class="kicad-dir">${esc(k.dir)}</code></p>${unsaved}<p class="note">${cfg}</p>`
+    + (k.notes || []).map((n) => `<p class="note warn">${esc(n)}</p>`).join("");
+}
+document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-kicad-prep]")) { e.preventDefault(); prepOpen(true); } });
 $("sample-ts").onclick = () => loadSample("ts");
 $("sample-vna").onclick = () => loadSample("vna");
 
@@ -157,7 +190,8 @@ new ResizeObserver(resize).observe(cv);
       if (SAMPLES[k] && SAMPLES[k].notice) $("sample-" + k).title = SAMPLES[k].notice.split("\n")[0]; // credit and licence
     }
     $("sample-ts").parentElement.hidden = !SAMPLES.ts && !SAMPLES.vna;
-    if (SAMPLES.ts) await loadSample("ts");
+    if (KICAD_BOARD) await loadKicadBoard(KICAD_BOARD);
+    else if (SAMPLES.ts) await loadSample("ts");
     else { hideBusy(); $("drop").hidden = false; $("drop").classList.add("start"); }
   } catch (e) {
     showBusy("Engine failed to start: " + e.message);

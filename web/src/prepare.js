@@ -1169,10 +1169,16 @@ function prepRenderSide() {
   const blocked = prepBlocked(S.prep.scope), can = dirty || !!lc;
   $("prep-save").disabled = !can || blocked.length > 0;
   $("prep-save").title = !can ? "nothing entered" : blocked.length ? "fix the errors first (warnings are fine)" : "";
-  const fsa = typeof window.showSaveFilePicker === "function";
+  const fsa = typeof window.showSaveFilePicker === "function", kc = kicadActive();
+  // a board from the KiCad plugin: the file belongs into the board's folder, which the page knows but cannot open
+  const where = !kc ? (fsa ? "Saves next to the board (you choose the place)" : "Downloads")
+    : fsa ? `Saves next to the board: choose the board's folder in the dialog (or paste the path below as the file name) – kisi remembers it for this board. Saves`
+      : `Downloads – then move it from the downloads folder to the board's folder (path below) and click kisi in KiCad again. Downloads`;
   $("prep-save-note").textContent = S.prep.saved ? S.prep.saved : !can ? "" : blocked.length
     ? `${blocked.length} error${blocked.length > 1 ? "s" : ""} in ${S.prep.scope === "all" ? "the draft" : `the ${PREP_VIEWS[S.prep.scope]} entries`}${S.prep.scope === "all" && !prepBlocked(tab).length ? ` – “save only ${PREP_VIEWS[tab]}” works` : ""}.`
-    : `${fsa ? "Saves next to the board (you choose the place)" : "Downloads"} ${S.name}.kisi.json${dirty ? "" : " as loaded"}, then loads it.`;
+    : `${where} ${S.name}.kisi.json${dirty ? "" : " as loaded"}, then loads it.`;
+  $("prep-kicad").hidden = !kc;
+  if (kc) $("prep-kicad-path").textContent = kicadCfgPath();
   const nn = (prepW().notes || []).length;
   $("prep-notes-n").textContent = nn ? `(${nn})` : "";
   if (document.activeElement !== $("prep-notes")) $("prep-notes").value = (prepW().notes || []).join("\n");
@@ -1249,19 +1255,26 @@ async function prepSave() {
   if (typeof window.showSaveFilePicker === "function") {
     try {
       const start = (S.fileHandles || []).find((h) => /\.kicad_pcb$/i.test(h.name));
-      const h = await window.showSaveFilePicker({ suggestedName: name, startIn: start || "documents", types: [{ description: "kisi board configuration", accept: { "application/json": [".json"] } }] });
+      // id: the browser remembers the folder chosen for this board; a handle of the board file, where there is one,
+      // starts the dialog next to it. A board from KiCad has no handle: no startIn, so nothing competes with the id
+      const kc = kicadActive(), id = "kisi-" + textHash(kc ? S.kicad.dir : S.name);
+      const opts = { id, suggestedName: name, types: [{ description: "kisi board configuration", accept: { "application/json": [".json"] } }] };
+      if (start || !kc) opts.startIn = start || "documents";
+      const h = await window.showSaveFilePicker(opts);
       const wr = await h.createWritable(); await wr.write(text); await wr.close();
       if (S.fileHandles) S.fileHandles = S.fileHandles.filter((x) => !/\.kisi\.json$/i.test(x.name)).concat([h]);
       how = "saved";
     } catch (e) { if (e && e.name === "AbortError") return; console.warn(e); prepDownload(name, text); }
   } else prepDownload(name, text);
   S.prep.lastSaved = text;
+  if (kicadActive()) S.kicad.config = how;
   // the saved file is the new base; what was not saved (other categories) stays in the draft
   const d = prepD();
   const rest = scope === "all" ? JSON.parse(text) : d.work;
   const rec = prepRec(d, text, rest);
   S.prep.mem[S.name] = rec; lsSet(PREP_KEY(), rec);
-  S.prep.savedNext = `${name} ${how} and loaded${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}.`;
+  S.prep.savedNext = `${name} ${how} and loaded${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}.`
+    + (kicadActive() && how === "downloaded" ? " Move it from the downloads folder to the board's folder (path below), then click kisi in KiCad again." : "");
   const l = S.lastFiles;
   await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, { name, text, csv: (l.cfg && l.cfg.csv) || {} });
 }
@@ -1413,6 +1426,7 @@ $("prep").addEventListener("click", async (ev) => {
   if (t.dataset.toggle) { const card = t.closest(".prep-gap"); S.prep.cards[S.name + t.dataset.toggle] = card.getAttribute("aria-expanded") !== "true"; prepRender(true); return; }
   if (t.dataset.prepTab) { S.prep.tab = t.dataset.prepTab; S.prep.touched = true; prepRender(true); return; }
   if (t.id === "prep-save") { await prepSave(); return; }
+  if (t.id === "prep-kicad-copy") { try { await navigator.clipboard.writeText(kicadCfgPath()); t.textContent = "Copied"; } catch (err) { t.textContent = "Select and copy the path"; } setTimeout(() => { t.textContent = "Copy path"; }, 1500); return; }
   if (t.id === "prep-discard") { prepDiscard(); return; }
   if (t.id === "prep-copy") { try { await navigator.clipboard.writeText($("prep-prompt").textContent); } catch (e) { /* no clipboard (insecure context) */ } $("prep-copied").hidden = false; setTimeout(() => ($("prep-copied").hidden = true), 1500); return; }
   if (!b) return;

@@ -1,0 +1,10 @@
+JSON schemas of KiCad (GPL-3.0-or-later, The KiCad Developers), copied unchanged from the KiCad source
+(mirror https://github.com/KiCad/kicad-source-mirror) for the plugin's checks (test_package.py,
+tools/build_kicad_pcm.py):
+
+api.v1.schema.json         api/schemas/api.v1.schema.json, branch 10.0 at f4fb7776ffced64c48c602ebd0bb960e04ff1e6c
+                           (plugin.json; identical on branch 9.0) – https://go.kicad.org/api/schemas/v1
+pcm.v2.schema.json         kicad/pcm/schemas/pcm.v2.schema.json, branch 10.0 at f4fb7776ffced64c48c602ebd0bb960e04ff1e6c
+                           (KiCad 10 checks a package's metadata.json against it) – https://go.kicad.org/pcm/schemas/v2
+pcm.v1.kicad9.schema.json  kicad/pcm/schemas/pcm.v1.schema.json, branch 9.0 at ce707d0a6c8736cbf4689560be4fee3d6a7f7f5e
+                           (KiCad 9 checks "Install from File" against it)

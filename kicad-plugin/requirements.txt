@@ -1,0 +1,2 @@
+# Installed by KiCad into the plugin's own Python environment (pip --only-binary :all:) on first start.
+kicad-python>=0.4.0,<1

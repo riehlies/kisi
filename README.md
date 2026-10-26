@@ -41,6 +41,9 @@ PDN impedance, temperature estimate) – in the browser, with no installation an
 - **Browser:** the [live version](https://riehlies.github.io/kisi/), or `kisi.html` from the
   [latest release](https://github.com/riehlies/kisi/releases/latest), offline. Drop the `.kicad_pcb` with the
   `.kicad_pro` (and `<board>.kisi.json` if there is one). KiCad 8, 9 and 10.
+- **KiCad:** the plugin `kisi-kicad-<version>.zip` from the release (KiCad's Plugin and Content Manager → *Install
+  from File…*) adds a button to the PCB editor that opens the board in the viewer, with its `<board>.kisi.json` –
+  see [Getting started](docs/getting-started.md#from-kicad-the-plugin).
 - **Command line** for scripts, CI and agents (Node.js ≥ 18; every command prints JSON):
   ```sh
   curl -fsSLO https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs

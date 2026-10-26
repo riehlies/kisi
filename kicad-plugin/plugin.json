@@ -1,0 +1,21 @@
+{
+  "$schema": "https://go.kicad.org/api/schemas/v1",
+  "identifier": "com.github.riehlies.kisi",
+  "name": "kisi",
+  "description": "Opens the board of the PCB editor in kisi's viewer (impedance, channel and power checks) in the browser, with its <board>.kisi.json.",
+  "runtime": {
+    "type": "python"
+  },
+  "actions": [
+    {
+      "identifier": "open-viewer",
+      "name": "Open in kisi",
+      "description": "Open the saved board in kisi's SI/PI viewer (browser), with its kisi.json",
+      "show-button": true,
+      "scopes": ["pcb"],
+      "entrypoint": "kisi_action.py",
+      "icons-light": ["icons/kisi-24.png", "icons/kisi-48.png"],
+      "icons-dark": ["icons/kisi-24-dark.png", "icons/kisi-48-dark.png"]
+    }
+  ]
+}

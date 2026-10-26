@@ -363,6 +363,14 @@ ul.src li { margin: 2px 0; }
 /* board configuration status (kisi.json) */
 .cfg-status { margin: 4px 0 0; overflow-wrap: anywhere; }
 .card.off { display: none; }
+/* the "From KiCad" card (a board handed over by the KiCad plugin) and the path of its kisi.json on the Prepare page */
+.kicad-card p { margin: 0; }
+#kicad-body { display: flex; flex-direction: column; gap: 6px; }
+.kicad-card .warn { font-size: 12px; }
+.kicad-card a { color: var(--accent); }
+.kicad-dir, .prep-kicad code { font-size: 11.5px; overflow-wrap: anywhere; user-select: all; }
+.prep-kicad { align-items: center; }
+.prep-kicad code { flex: 1; min-width: 0; }
 .var-ask { margin: 0; font-size: 12.5px; color: var(--fg); border-left: 3px solid var(--z-high1); padding: 2px 0 2px 8px; }
 .var-choices { flex-wrap: wrap; }
 #variant-body details .note { overflow-wrap: anywhere; }

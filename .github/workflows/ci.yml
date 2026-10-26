@@ -19,8 +19,8 @@
 #   docs                the documentation PDF builds (tools/docs_pdf.py; also the link and heading check of docs/)
 #   upstream            Forstén's solver in third_party/ is upstream's tree, unchanged
 #   viewer or cli       reproducible bundles · bundle sizes (tools/size_budget.json)
-#   full runs only      the viewer in Firefox and WebKit · kisi.mjs on Windows
-#   weekly / manual     dependency audit (cargo-audit) and licences (cargo-deny, deny.toml) · newer upstream
+#   full runs only      kisi.mjs on Windows
+#   weekly / manual     the viewer in Firefox and WebKit · dependency audit (cargo-audit) and licences (cargo-deny, deny.toml) · newer upstream
 #                       revision of js_2d_fields
 name: ci
 on:
@@ -244,8 +244,10 @@ jobs:
 
   browsers:
     needs: [changes, checks]
-    # also when a later check step failed: the bundles are uploaded right after they are built
-    if: always() && needs.changes.outputs.full == 'true' && needs.checks.result != 'cancelled'
+    # weekly and on a manual run (before a merge), not on every push to main: their system packages (WebKit's
+    # gstreamer, fonts) come from apt mirrors that stalled for 20 minutes and more; also when a later check step
+    # failed: the bundles are uploaded right after they are built
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && needs.checks.result != 'cancelled'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:

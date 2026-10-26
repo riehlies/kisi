@@ -56,7 +56,8 @@ Locally, before pushing a branch, run the quick checks for what you changed:
 
 CI (`.github/workflows/ci.yml`) runs the checks that a branch's changes since main can affect
 (`tools/ci_checks.py changes`; a ROADMAP edit runs only the Markdown checks and the docs PDF); a push to main, a manual run and the
-weekly run do everything, including the viewer in Firefox/WebKit and `kisi.mjs` on Windows. Before merging a branch
+weekly run do everything, including `kisi.mjs` on Windows; the viewer in Firefox/WebKit runs on a manual and the
+weekly run. Before merging a branch
 into main, run everything on it: `gh workflow run ci --ref <branch>` (or Actions → ci → Run workflow). Hand a branch
 over for review only with a green CI run of its last commit; `main` changes only with green CI.
 

@@ -37,6 +37,8 @@ apt_recover() {
 apt_next_mirror() {
   m=$(echo "$MIRRORS" | cut -d' ' -f1)
   MIRRORS="$(echo "$MIRRORS" | cut -s -d' ' -f2-) $m"
+  # GitHub's images list their mirrors in /etc/apt/apt-mirrors.txt (sources: mirror+file:...), others name them
+  [ -f /etc/apt/apt-mirrors.txt ] && echo "$m" | sudo tee /etc/apt/apt-mirrors.txt > /dev/null
   for f in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
     [ -f "$f" ] && sudo sed -i -E "s#https?://[a-z0-9.-]*(archive|mirrors?)[a-z0-9.-]*/ubuntu/?#$m#g" "$f"
   done
@@ -83,8 +85,12 @@ case "${1:-}" in
     ;;
   playwright)
     b=${2:?browser name}
-    # system packages (apt) and the browser download (Playwright's CDN) separately, to see which one is slow
-    phase "playwright install-deps $b" 420 3 1 python3 -m playwright install-deps "$b" || exit 1
+    # system packages (apt) and the browser download (Playwright's CDN) separately, to see which one is slow.
+    # Chromium runs with what GitHub's Ubuntu image has (it carries Chrome); its install-deps pulled ~100 MB of
+    # fonts and codecs from the stalling mirror.
+    if [ "$b" != chromium ]; then
+      phase "playwright install-deps $b" 420 3 1 python3 -m playwright install-deps "$b" || exit 1
+    fi
     phase "playwright install $b" 300 3 0 python3 -m playwright install "$b" || exit 1
     ;;
   *)

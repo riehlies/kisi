@@ -54,7 +54,7 @@ jobs:
       - name: Documentation PDF
         run: |
           python3 -m pip install --quiet playwright==1.64.1 markdown==3.10.3 pypdf==5.9.0
-          python3 -m playwright install --with-deps chromium
+          sh tools/ci_install.sh playwright chromium
           python3 tools/docs_pdf.py dist/kisi-docs.pdf
       - name: Field solver validation (HFSS / baseline, viewer bundle)
         run: sh tools/validate_field.sh
@@ -79,7 +79,7 @@ jobs:
       - name: Smoke test of the viewers (headless Chromium)
         run: |
           python3 -m pip install --quiet playwright==1.64.1 numpy
-          python3 -m playwright install --with-deps chromium
+          sh tools/ci_install.sh playwright chromium
           python3 tools/check_viewer.py dist/kisi-examples.html --quick --layouts light
           python3 tools/check_viewer.py dist/kisi.html --quick --layouts light \
             --board examples/VNA.kicad_pcb examples/VNA.kicad_pro --config web/samples/vna.kisi.json

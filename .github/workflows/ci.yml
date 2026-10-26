@@ -69,7 +69,7 @@ jobs:
   checks:
     needs: changes
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       RUST: ${{ needs.changes.outputs.rust }}
       VIEWER: ${{ needs.changes.outputs.viewer }}
@@ -176,7 +176,7 @@ jobs:
       # installs in their own steps, so that the step times show where a slow run spends its time (package
       # downloads vary a lot between runs)
       # the KiCad packages (a few hundred MB from the PPA) took 1 min in one run and over 20 in another: their .deb
-      # files are cached, and a stalled download is retried
+      # files are cached; tools/ci_install.sh retries a stalled phase and annotates each phase with its duration
       - name: Package cache (ngspice, KiCad 9)
         if: env.EXPORT == 'true'
         uses: actions/cache@v5
@@ -185,17 +185,9 @@ jobs:
           key: apt-debs-ngspice-kicad9-${{ runner.os }}-24.04-v1
       - name: Install ngspice, KiCad 9 and the Python packages of the export check
         if: env.EXPORT == 'true'
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: |
-          mkdir -p ~/apt-debs/partial
-          sudo add-apt-repository -y ppa:kicad/kicad-9.0-releases > /dev/null
-          sudo apt-get update > /dev/null
-          for i in 1 2 3; do
-            sudo timeout 420 apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$HOME/apt-debs" \
-              -o Acquire::http::Timeout=60 ngspice kicad > /dev/null && break
-            echo "::warning::apt-get install attempt $i failed or timed out"
-          done
-          sudo chown -R "$(id -u):$(id -g)" ~/apt-debs && rm -rf ~/apt-debs/partial ~/apt-debs/lock
+          sh tools/ci_install.sh kicad
           kicad-cli version
           python3 -m pip install --quiet numpy scikit-rf cairosvg
       - name: Channel export in ngspice and KiCad 9, LTspice files (ThunderScope LVDS, clock and PCIe lanes; ladder and compact model)
@@ -228,10 +220,10 @@ jobs:
         run: python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples
       - name: Install Playwright and Chromium
         if: env.VIEWER == 'true' || needs.changes.outputs.docs == 'true'
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: |
           python3 -m pip install --quiet playwright==1.64.1 numpy markdown==3.10.3 pypdf==5.9.0
-          python3 -m playwright install --with-deps chromium
+          sh tools/ci_install.sh playwright chromium
       - name: Viewer in headless Chromium
         if: env.VIEWER == 'true'
         timeout-minutes: 20
@@ -259,7 +251,7 @@ jobs:
     # also when a later check step failed: the bundles are uploaded right after they are built
     if: always() && needs.changes.outputs.full == 'true' && needs.checks.result != 'cancelled'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -273,10 +265,10 @@ jobs:
         with:
           name: bundles
       - name: Install Playwright and ${{ matrix.browser }}
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: |
           python3 -m pip install --quiet playwright==1.64.1 numpy
-          python3 -m playwright install --with-deps ${{ matrix.browser }}
+          sh tools/ci_install.sh playwright ${{ matrix.browser }}
       - name: Viewer in ${{ matrix.browser }}
         # a hang fails here (and uploads the screenshots so far) instead of running into the job's limit
         timeout-minutes: 15

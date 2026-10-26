@@ -220,7 +220,7 @@ jobs:
         run: python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples
       - name: Install Playwright and Chromium
         if: env.VIEWER == 'true' || needs.changes.outputs.docs == 'true'
-        timeout-minutes: 25
+        timeout-minutes: 30
         run: |
           python3 -m pip install --quiet playwright==1.64.1 numpy markdown==3.10.3 pypdf==5.9.0
           sh tools/ci_install.sh playwright chromium
@@ -265,7 +265,7 @@ jobs:
         with:
           name: bundles
       - name: Install Playwright and ${{ matrix.browser }}
-        timeout-minutes: 25
+        timeout-minutes: 30
         run: |
           python3 -m pip install --quiet playwright==1.64.1 numpy
           sh tools/ci_install.sh playwright ${{ matrix.browser }}

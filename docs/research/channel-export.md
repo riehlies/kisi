@@ -362,8 +362,9 @@ At 5 × Nyquist (`--fmax profile`, 2.5 GHz for these 1 Gbit/s lanes):
   Gear's numerical damping moves the edges of SYNC_OUT_P by up to 3 % of the swing at the bench's 30 ps steps.
 - **Other checks:** the LTspice files of the compact export pass `ltspice.py check` (every lane above); the KiCad
   project of SYNC_OUT_P (kicad-cli 7) has the lane subcircuit node for node with an AC response equal to the bench's
-  (5·10⁻⁹); CI runs the compact model against the ladder on three ThunderScope lanes with the passivity sweep and
-  the KiCad check (kicad-cli 9 with ERC) on PCIe_PER0_P. Not run here: Xyce.
+  (5·10⁻⁹); CI runs the compact model (the default) on four ThunderScope lanes with the KiCad check (kicad-cli 9
+  with ERC), against the ladder on three lanes with the passivity sweep, and the ladder's KiCad check on
+  SYNC_OUT_P (PCIe_PER0_P's ladder takes minutes in ngspice's S-parameter analysis). Not run here: Xyce.
 - **LTspice** (26.1.1 on the maintainer's PC, `bench_ltspice.cir` of the compact SYNC_OUT_P against `expected.json`
   from ngspice): at 25 GHz t50 equal (7.7303 ns), the eight bit levels within 0.97 mV (mean 0.53 mV), maximum and
   minimum within 0.9 mV (0.22 %), 61 s (the ladder bench took 938 s there); at 5 × Nyquist t50 within 0.7 ps, bit

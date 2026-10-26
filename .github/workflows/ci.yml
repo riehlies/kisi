@@ -175,13 +175,27 @@ jobs:
           python3 tools/golden.py vias target/release/kisi
       # installs in their own steps, so that the step times show where a slow run spends its time (package
       # downloads vary a lot between runs)
+      # the KiCad packages (a few hundred MB from the PPA) took 1 min in one run and over 20 in another: their .deb
+      # files are cached, and a stalled download is retried
+      - name: Package cache (ngspice, KiCad 9)
+        if: env.EXPORT == 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/apt-debs
+          key: apt-debs-ngspice-kicad9-${{ runner.os }}-24.04-v1
       - name: Install ngspice, KiCad 9 and the Python packages of the export check
         if: env.EXPORT == 'true'
         timeout-minutes: 20
         run: |
+          mkdir -p ~/apt-debs/partial
           sudo add-apt-repository -y ppa:kicad/kicad-9.0-releases > /dev/null
           sudo apt-get update > /dev/null
-          sudo apt-get install -y --no-install-recommends ngspice kicad > /dev/null
+          for i in 1 2 3; do
+            sudo timeout 420 apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$HOME/apt-debs" \
+              -o Acquire::http::Timeout=60 ngspice kicad > /dev/null && break
+            echo "::warning::apt-get install attempt $i failed or timed out"
+          done
+          sudo chown -R "$(id -u):$(id -g)" ~/apt-debs && rm -rf ~/apt-debs/partial ~/apt-debs/lock
           kicad-cli version
           python3 -m pip install --quiet numpy scikit-rf cairosvg
       - name: Channel export in ngspice and KiCad 9, LTspice files (ThunderScope LVDS, clock and PCIe lanes; ladder and compact model)

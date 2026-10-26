@@ -173,16 +173,22 @@ jobs:
           python3 -c "import numpy" 2>/dev/null || python3 -m pip install --quiet numpy
           python3 tools/golden.py boards target/release/kisi examples
           python3 tools/golden.py vias target/release/kisi
-      - name: Channel export in ngspice and KiCad 9, LTspice files (ThunderScope LVDS, clock and PCIe lanes; ladder and compact model)
+      # installs in their own steps, so that the step times show where a slow run spends its time (package
+      # downloads vary a lot between runs)
+      - name: Install ngspice, KiCad 9 and the Python packages of the export check
         if: env.EXPORT == 'true'
-        # usually 6–16 min; a simulator run that hangs fails after 10 min (--timeout), the step after 30
-        timeout-minutes: 30
+        timeout-minutes: 20
         run: |
           sudo add-apt-repository -y ppa:kicad/kicad-9.0-releases > /dev/null
           sudo apt-get update > /dev/null
           sudo apt-get install -y --no-install-recommends ngspice kicad > /dev/null
           kicad-cli version
           python3 -m pip install --quiet numpy scikit-rf cairosvg
+      - name: Channel export in ngspice and KiCad 9, LTspice files (ThunderScope LVDS, clock and PCIe lanes; ladder and compact model)
+        if: env.EXPORT == 'true'
+        # a simulator run that hangs fails after 10 min (--timeout), the step after 30
+        timeout-minutes: 30
+        run: |
           python3 validation/channel_export/compare.py target/release/kisi examples/Thunderscope_Rev5.3.kicad_pcb --timeout 600 \
             --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export --lane SYNC_OUT_P --lane REFINOUT2 --lane PCIe_PET1_P --lane PCIe_PER0_P \
             --kicad --svg kicad-sheets --report kicad-sheets/report.md --strict
@@ -206,19 +212,21 @@ jobs:
       - name: Node CLI against the native CLI
         if: env.CLI == 'true'
         run: python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples
+      - name: Install Playwright and Chromium
+        if: env.VIEWER == 'true' || needs.changes.outputs.docs == 'true'
+        timeout-minutes: 15
+        run: |
+          python3 -m pip install --quiet playwright==1.64.1 numpy markdown==3.10.3 pypdf==5.9.0
+          python3 -m playwright install --with-deps chromium
       - name: Viewer in headless Chromium
         if: env.VIEWER == 'true'
+        timeout-minutes: 20
         run: |
           node tools/test_units.mjs
-          python3 -m pip install --quiet playwright==1.64.1 numpy
-          python3 -m playwright install --with-deps chromium
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
       - name: Documentation PDF (and the link and heading check of docs/)
         if: needs.changes.outputs.docs == 'true'
-        run: |
-          python3 -m pip install --quiet playwright==1.64.1 markdown==3.10.3 pypdf==5.9.0
-          python3 -m playwright install --with-deps chromium
-          python3 tools/docs_pdf.py dist/kisi-docs.pdf
+        run: python3 tools/docs_pdf.py dist/kisi-docs.pdf
       - name: Reference cases page
         if: needs.changes.outputs.refpage == 'true'
         run: |
@@ -250,12 +258,15 @@ jobs:
       - uses: actions/download-artifact@v7
         with:
           name: bundles
-      - name: Viewer in ${{ matrix.browser }}
-        # a hang fails here (and uploads the screenshots so far) instead of running into the job's limit
+      - name: Install Playwright and ${{ matrix.browser }}
         timeout-minutes: 15
         run: |
           python3 -m pip install --quiet playwright==1.64.1 numpy
           python3 -m playwright install --with-deps ${{ matrix.browser }}
+      - name: Viewer in ${{ matrix.browser }}
+        # a hang fails here (and uploads the screenshots so far) instead of running into the job's limit
+        timeout-minutes: 15
+        run: |
           python3 tools/check_viewer.py dist/kisi-examples.html --quick --browser ${{ matrix.browser }} --layouts light,phone \
             --out viewer-screenshots
       - name: Screenshots

@@ -464,7 +464,7 @@ selected yet)*.
    1 %, 20 mV, 5 %). KIBIS and kisi read the same file, so a shared misreading would go unnoticed – IBISCHK and
    the self-consistency test cover that.
 5. **LTI eye:** PyBERT with the same Touchstone and linear ends.
-6. **Measurement:** add a digital section to the planned test board (`validation/test_board.md`): a GPIO with an
+6. **Measurement:** add a digital section to the planned test board (branch `feat/test-board`): a GPIO with an
    IBIS model driving lines with stubs and termination options, scope and TDR.
 7. **Commercial:** HyperLynx on the example boards if a licence becomes available (already in the roadmap).
 

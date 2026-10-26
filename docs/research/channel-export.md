@@ -269,7 +269,8 @@ large reflections. The fallback model of sections without a reference plane is t
 - **20 sections per wavelength:** 40 or 80 change nothing measurable against kisi's model (the fits dominate).
 
 ## 6. Step 3 – compact models (design study before the research note)
-`validation/channel_export/vf_prototype.py` fits a lane's differential 2-port with scikit-rf's vector fitting:
+A first study fitted a lane's differential 2-port as a whole with scikit-rf's vector fitting (a prototype script,
+removed once the compact model replaced it; in the repository's history up to commit fa51dfb):
 
 | Lane | delay | poles | max |ΔS| | passive |
 |---|---|---|---|---|
@@ -284,6 +285,9 @@ ideal lines (T elements) at the ports and a fit of what lies between them (delay
 passivity enforcement – the hard part. Plan: per long line segment (not per lane) a constant-delay T line plus a
 fitted loss network (the line's attenuation is smooth and minimum-phase), the vias and parts stay ladders; this
 shrinks a 100 mm lane from ~40 k to a few hundred elements and keeps the export's structure.
+
+What came of it: the research note ([vector-fitting.md](vector-fitting.md)) and the compact model of section 7 –
+lossless-line cells in `kisi_si::export` (`--model compact`, the default), with no fitted delay at all.
 
 ## 7. Step 3 – the compact model (`--model compact`)
 Research, alternatives and why: `vector-fitting.md`. In short: the same passive Foster/Debye fits as the ladder, but

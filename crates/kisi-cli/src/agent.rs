@@ -17,7 +17,9 @@ fn read(p: &str) -> Result<String, String> {
 fn load(o: &Opts, with_config: bool) -> Result<Project, String> {
     let pcb = PathBuf::from(&o.pos[0]);
     let ov = match &o.stackup {
-        Some(f) => Some(serde_json::from_str::<kisi_core::board::StackupOverride>(&read(f)?).map_err(|e| format!("{f}: {e}"))?),
+        Some(f) => Some(
+            serde_json::from_str::<kisi_core::board::StackupOverride>(&read(f)?).map_err(|e| format!("{f}: {e}"))?,
+        ),
         None => None,
     };
     let cfg = if o.no_config || !with_config {
@@ -41,11 +43,16 @@ fn run(o: &Opts) -> Result<Value, String> {
     let mut v = commands::run(o, p.as_ref(), tree)?;
     if o.cmd == "report" {
         let p = p.as_ref().unwrap();
-        let path = o.out.clone().map(PathBuf::from).unwrap_or_else(|| p.pcb_path.parent().unwrap_or(Path::new(".")).join("analysis").join("kisi.json"));
+        let path = o
+            .out
+            .clone()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| p.pcb_path.parent().unwrap_or(Path::new(".")).join("analysis").join("kisi.json"));
         if let Some(d) = path.parent() {
             std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
         }
-        std::fs::write(&path, serde_json::to_string_pretty(&v).unwrap()).map_err(|e| format!("{}: {e}", path.display()))?;
+        std::fs::write(&path, serde_json::to_string_pretty(&v).unwrap())
+            .map_err(|e| format!("{}: {e}", path.display()))?;
         v = commands::report_summary(&path.display().to_string(), &v);
     }
     // files a command asks to write (e.g. `net --s2p`)
@@ -62,12 +69,14 @@ fn run(o: &Opts) -> Result<Value, String> {
             if let Some(d) = path.parent() {
                 std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
             }
-            std::fs::write(&path, f["content"].as_str().unwrap_or("")).map_err(|e| format!("{}: {e}", path.display()))?;
+            std::fs::write(&path, f["content"].as_str().unwrap_or(""))
+                .map_err(|e| format!("{}: {e}", path.display()))?;
         }
         v["written"] = json!(dir.display().to_string());
     }
     if commands::uses_field(&o.cmd) && !o.formula {
-        v["field_solver_note"] = json!("native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver");
+        v["field_solver_note"] =
+            json!("native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver");
     }
     Ok(v)
 }

@@ -113,7 +113,17 @@ impl Profiles {
     pub fn auto(&self, net_name: &str, class_name: &str, diff: bool) -> &str {
         let short = net_name.rsplit('/').next().unwrap_or(net_name);
         // rules that do not compile match nothing
-        let rules = self.rules.get_or_init(|| self.profiles.iter().enumerate().flat_map(|(i, p)| p.match_.iter().filter_map(move |m| Some((i, regex_lite::RegexBuilder::new(m).case_insensitive(true).build().ok()?)))).collect());
+        let rules = self.rules.get_or_init(|| {
+            self.profiles
+                .iter()
+                .enumerate()
+                .flat_map(|(i, p)| {
+                    p.match_.iter().filter_map(move |m| {
+                        Some((i, regex_lite::RegexBuilder::new(m).case_insensitive(true).build().ok()?))
+                    })
+                })
+                .collect()
+        });
         for s in [short, class_name] {
             if let Some((i, _)) = rules.iter().find(|(_, re)| re.is_match(s)) {
                 return &self.profiles[*i].id;
@@ -174,17 +184,32 @@ pub fn judge(m: &Metrics, p: &Profile, l: &Limits) -> Verdict {
     let nyq = p.rate_gbps / 2.0;
     let ui = 1000.0 / p.rate_gbps.max(1e-6);
     let mut c = Vec::new();
-    let mut add = |key, status, value, lo, hi, red_below, note| c.push(Criterion { key, status, value, lo, hi, red_below, note });
+    let mut add =
+        |key, status, value, lo, hi, red_below, note| c.push(Criterion { key, status, value, lo, hi, red_below, note });
     if m.error.is_some() {
         add("error", Status::Red, None, None, None, None, None);
     }
     if let Some(z) = m.z_mean {
         let (lo, hi) = (p.z * (1.0 - p.z_tol_pct / 100.0), p.z * (1.0 + p.z_tol_pct / 100.0));
-        add("z", if z < lo || z > hi { Status::Yellow } else { Status::Green }, Some(z), Some(lo), Some(hi), None, Some("mean along the line from the impedance analysis"));
+        add(
+            "z",
+            if z < lo || z > hi { Status::Yellow } else { Status::Green },
+            Some(z),
+            Some(lo),
+            Some(hi),
+            None,
+            Some("mean along the line from the impedance analysis"),
+        );
     }
     if let Some(h) = m.eye_h {
         let (red, yel) = (l.eye_h_red.unwrap_or(0.4), l.eye_h_yellow.unwrap_or(0.65));
-        let st = if h < red { Status::Red } else if h < yel { Status::Yellow } else { Status::Green };
+        let st = if h < red {
+            Status::Red
+        } else if h < yel {
+            Status::Yellow
+        } else {
+            Status::Green
+        };
         add("eye_h", st, Some(h), Some(yel), None, Some(red), None);
     }
     if let Some(w) = m.eye_w_ui {
@@ -192,7 +217,15 @@ pub fn judge(m: &Metrics, p: &Profile, l: &Limits) -> Verdict {
         add("eye_w", if w < lo { Status::Yellow } else { Status::Green }, Some(w), Some(lo), None, None, None);
     }
     if let Some(il) = m.il_nyq_db {
-        add("il", if l.il_board_db.is_some_and(|b| il < b) { Status::Yellow } else { Status::Green }, Some(il), l.il_board_db, None, None, None);
+        add(
+            "il",
+            if l.il_board_db.is_some_and(|b| il < b) { Status::Yellow } else { Status::Green },
+            Some(il),
+            l.il_board_db,
+            None,
+            None,
+            None,
+        );
     }
     if let Some(rl) = m.rl_db {
         let lo = l.rl_min_db.unwrap_or(10.0);
@@ -201,7 +234,15 @@ pub fn judge(m: &Metrics, p: &Profile, l: &Limits) -> Verdict {
     if let Some(s) = m.skew_ps {
         let hi = l.skew_ps.unwrap_or(0.05 * ui);
         let bad = !m.skew_uncertain && s.abs() > hi;
-        add("skew", if bad { Status::Yellow } else { Status::Green }, Some(s.abs()), None, Some(hi), None, if m.skew_uncertain { Some("path branches or is split by components") } else { None });
+        add(
+            "skew",
+            if bad { Status::Yellow } else { Status::Green },
+            Some(s.abs()),
+            None,
+            Some(hi),
+            None,
+            if m.skew_uncertain { Some("path branches or is split by components") } else { None },
+        );
     }
     if let Some(f) = m.stub_ghz {
         let lo = l.stub_factor.unwrap_or(2.0) * nyq;
@@ -238,7 +279,13 @@ mod tests {
         assert_eq!(judge(&m, p, &l).status, Status::Red);
         let m = Metrics { eye_h: Some(0.8), z_mean: Some(86.0), skew_ps: Some(7.0), ..Default::default() };
         assert_eq!(judge(&m, p, &l).status, Status::Yellow);
-        let m = Metrics { eye_h: Some(0.8), z_mean: Some(86.0), skew_ps: Some(7.0), skew_uncertain: true, ..Default::default() };
+        let m = Metrics {
+            eye_h: Some(0.8),
+            z_mean: Some(86.0),
+            skew_ps: Some(7.0),
+            skew_uncertain: true,
+            ..Default::default()
+        };
         assert_eq!(judge(&m, p, &l).status, Status::Green);
     }
 }

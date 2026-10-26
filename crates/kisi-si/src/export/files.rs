@@ -30,10 +30,28 @@ pub struct Formats {
 }
 
 impl Formats {
-    pub const ALL: Formats = Formats { spice: true, xyce: true, touchstone: true, kicad: true, ltspice: true, lib: true, kicad_compact: false, model: Model::Compact };
+    pub const ALL: Formats = Formats {
+        spice: true,
+        xyce: true,
+        touchstone: true,
+        kicad: true,
+        ltspice: true,
+        lib: true,
+        kicad_compact: false,
+        model: Model::Compact,
+    };
     /// From a comma-separated list: spice, xyce, touchstone, kicad, all.
     pub fn parse(s: &str) -> Result<Formats, String> {
-        let mut f = Formats { spice: false, xyce: false, touchstone: false, kicad: false, ltspice: false, lib: false, kicad_compact: false, model: Model::Compact };
+        let mut f = Formats {
+            spice: false,
+            xyce: false,
+            touchstone: false,
+            kicad: false,
+            ltspice: false,
+            lib: false,
+            kicad_compact: false,
+            model: Model::Compact,
+        };
         for p in s.split(',').map(|p| p.trim().to_ascii_lowercase()).filter(|p| !p.is_empty()) {
             match p.as_str() {
                 "spice" | "ngspice" => f.spice = true,
@@ -43,7 +61,11 @@ impl Formats {
                 "ltspice" => f.ltspice = true,
                 "lib" | "netlist" => f.lib = true,
                 "all" => f = Formats { kicad_compact: f.kicad_compact, model: f.model, ..Formats::ALL },
-                _ => return Err(format!("--format {p}: use lib, spice, xyce, ltspice, touchstone, kicad or all (comma-separated)")),
+                _ => {
+                    return Err(format!(
+                        "--format {p}: use lib, spice, xyce, ltspice, touchstone, kicad or all (comma-separated)"
+                    ))
+                }
             }
         }
         if !(f.lib || f.spice || f.xyce || f.touchstone || f.kicad || f.ltspice) {
@@ -194,24 +216,53 @@ pub fn ends_text(lc: &LaneCircuit, ends: &BenchEnds) -> (Vec<String>, Vec<String
     let (rt, rr) = (ends.tx.r.max(0.0), ends.rx.r);
     let per = if lc.pair { "per line, P and N in opposite phase" } else { "single-ended" };
     let mut tx = vec![
-        format!("Transmitter ({per}): profile {}, {} Gbit/s, PRBS7, edge {} ps (10-90 %).", ends.profile, sig4(ends.bitrate / 1e9), sig4(ends.rise * 1e12)),
-        format!("Thevenin source: emf ±{} V behind R {} Ω, C {} pF at the die{}.", sig4(a), sig4(rt), sig4(ends.tx.c_pf), if ends.tx.l_nh > 0.0 { format!(", L {} nH to the pin", sig4(ends.tx.l_nh)) } else { String::new() }),
+        format!(
+            "Transmitter ({per}): profile {}, {} Gbit/s, PRBS7, edge {} ps (10-90 %).",
+            ends.profile,
+            sig4(ends.bitrate / 1e9),
+            sig4(ends.rise * 1e12)
+        ),
+        format!(
+            "Thevenin source: emf ±{} V behind R {} Ω, C {} pF at the die{}.",
+            sig4(a),
+            sig4(rt),
+            sig4(ends.tx.c_pf),
+            if ends.tx.l_nh > 0.0 { format!(", L {} nH to the pin", sig4(ends.tx.l_nh)) } else { String::new() }
+        ),
     ];
     if rr > 0.0 && rt >= 10.0 * rr {
         tx.push(format!("R ≫ the receiver's {} Ω: a current-mode driver as its Thevenin equivalent, I = emf/(R + {} Ω) = {} mA per line.", sig4(rr), sig4(rr), sig4(a / (rt + rr) * 1e3)));
     } else {
         tx.push(format!("A voltage-mode driver with {} Ω source resistance.", sig4(rt)));
     }
-    tx.push(format!("The emf is scaled so that the receiver sees ±{} V at DC{}.", sig4(ends.swing), if lc.pair { " differential" } else { "" }));
+    tx.push(format!(
+        "The emf is scaled so that the receiver sees ±{} V at DC{}.",
+        sig4(ends.swing),
+        if lc.pair { " differential" } else { "" }
+    ));
     let mut rx = vec![if rr > 0.0 {
-        format!("Receiver ({}): R {} Ω and C {} pF from the die to ground{}.", if lc.pair { "per line" } else { "single-ended" }, sig4(rr), sig4(ends.rx.c_pf), if ends.rx.l_nh > 0.0 { format!(", L {} nH from the pin", sig4(ends.rx.l_nh)) } else { String::new() })
+        format!(
+            "Receiver ({}): R {} Ω and C {} pF from the die to ground{}.",
+            if lc.pair { "per line" } else { "single-ended" },
+            sig4(rr),
+            sig4(ends.rx.c_pf),
+            if ends.rx.l_nh > 0.0 { format!(", L {} nH from the pin", sig4(ends.rx.l_nh)) } else { String::new() }
+        )
     } else {
-        format!("Receiver: high impedance, C {} pF at the die{}.", sig4(ends.rx.c_pf), if ends.rx.l_nh > 0.0 { format!(", L {} nH from the pin", sig4(ends.rx.l_nh)) } else { String::new() })
+        format!(
+            "Receiver: high impedance, C {} pF at the die{}.",
+            sig4(ends.rx.c_pf),
+            if ends.rx.l_nh > 0.0 { format!(", L {} nH from the pin", sig4(ends.rx.l_nh)) } else { String::new() }
+        )
     }];
     if lc.pair && rr > 0.0 {
         rx.push(format!("A {} Ω differential termination, split into two halves to the reference.", sig4(2.0 * rr)));
     }
-    rx.push(if lc.pair { "Probe the die nodes (top of CRX/RRX): V(P) − V(N).".to_string() } else { "Probe the die node (top of CRX/RRX).".to_string() });
+    rx.push(if lc.pair {
+        "Probe the die nodes (top of CRX/RRX): V(P) − V(N).".to_string()
+    } else {
+        "Probe the die node (top of CRX/RRX).".to_string()
+    });
     (tx, rx)
 }
 
@@ -233,14 +284,32 @@ pub fn bench(lc: &LaneCircuit, lib_file: &str, ends: &BenchEnds, d: Dialect) -> 
     let tstop = (bits.len() + 2) as f64 * ui + 2.0 * lc.delay_ps * 1e-12;
     let tstep = (ends.rise / 10.0).min(ui / 20.0);
     let mut info = vec![
-        format!("transient test bench: PRBS7 at {} Gbit/s, edge {} ps (10-90 %), profile {}", sig4(ends.bitrate / 1e9), sig4(ends.rise * 1e12), ends.profile),
-        format!("transmitter per line: R {} ohm, C {} pF, L {} nH; receiver per line: L {} nH, C {} pF, R {} ohm", sig4(ends.tx.r), sig4(ends.tx.c_pf), sig4(ends.tx.l_nh), sig4(ends.rx.l_nh), sig4(ends.rx.c_pf), if ends.rx.r > 0.0 { sig4(ends.rx.r) } else { "open".into() }),
-        format!("emf scaled so that the receiver sees +-{} V at DC{}", sig4(ends.swing), if lc.pair { " (differential; P and N in opposite phase)" } else { "" }),
+        format!(
+            "transient test bench: PRBS7 at {} Gbit/s, edge {} ps (10-90 %), profile {}",
+            sig4(ends.bitrate / 1e9),
+            sig4(ends.rise * 1e12),
+            ends.profile
+        ),
+        format!(
+            "transmitter per line: R {} ohm, C {} pF, L {} nH; receiver per line: L {} nH, C {} pF, R {} ohm",
+            sig4(ends.tx.r),
+            sig4(ends.tx.c_pf),
+            sig4(ends.tx.l_nh),
+            sig4(ends.rx.l_nh),
+            sig4(ends.rx.c_pf),
+            if ends.rx.r > 0.0 { sig4(ends.rx.r) } else { "open".into() }
+        ),
+        format!(
+            "emf scaled so that the receiver sees +-{} V at DC{}",
+            sig4(ends.swing),
+            if lc.pair { " (differential; P and N in opposite phase)" } else { "" }
+        ),
     ];
     info.extend(ends.notes.iter().cloned());
     let mut s = header(lc, &info, "transient test bench");
     s.push_str(&format!(".include \"{lib_file}\"\n\n"));
-    let lines: Vec<(&str, &str, &str, f64)> = if lc.pair { vec![("p", "ap", "bp", 1.0), ("n", "an", "bn", -1.0)] } else { vec![("p", "a", "b", 1.0)] };
+    let lines: Vec<(&str, &str, &str, f64)> =
+        if lc.pair { vec![("p", "ap", "bp", 1.0), ("n", "an", "bn", -1.0)] } else { vec![("p", "a", "b", 1.0)] };
     let mut outs = Vec::new();
     for (k, pa, pb, sign) in &lines {
         let src = pwl_source(&format!("VTX_{k}"), "{emf}", "0", &pts, *sign);
@@ -354,11 +423,28 @@ fn ascii(l: &str) -> String {
 /// S-parameters of a single-ended lane in LTspice: `.net` with the source's and the load's resistance as
 /// the port impedances (traces S11(Vin), S21(Vin), …).
 pub fn sparam_ltspice(lc: &LaneCircuit, lib_file: &str) -> String {
-    let mut s = header(lc, &lc.port_info.iter().enumerate().map(|(i, p)| format!("port {} = {} = {p}", i + 1, lc.ports[i])).collect::<Vec<_>>(), &format!("S-parameters of the lane subcircuit in LTspice (.net), reference {} ohm per port", sig4(lc.z_ref)));
+    let mut s = header(
+        lc,
+        &lc.port_info
+            .iter()
+            .enumerate()
+            .map(|(i, p)| format!("port {} = {} = {p}", i + 1, lc.ports[i]))
+            .collect::<Vec<_>>(),
+        &format!("S-parameters of the lane subcircuit in LTspice (.net), reference {} ohm per port", sig4(lc.z_ref)),
+    );
     s.push_str(&format!(".include \"{lib_file}\"\n\n"));
     let (f0, f1, np) = (lc.freq[0], *lc.freq.last().unwrap(), lc.freq.len());
-    s.push_str(&format!("Vin a 0 AC 1 Rser={}\nXLANE a b 0 {}\nRout b 0 {}\n", num(lc.z_ref), lc.subckt, num(lc.z_ref)));
-    s.push_str(&format!(".ac lin {np} {} {}\n.net I(Rout) Vin\n.options numdgt=16 reject_number_tails\n.end\n", num(f0), num(f1)));
+    s.push_str(&format!(
+        "Vin a 0 AC 1 Rser={}\nXLANE a b 0 {}\nRout b 0 {}\n",
+        num(lc.z_ref),
+        lc.subckt,
+        num(lc.z_ref)
+    ));
+    s.push_str(&format!(
+        ".ac lin {np} {} {}\n.net I(Rout) Vin\n.options numdgt=16 reject_number_tails\n.end\n",
+        num(f0),
+        num(f1)
+    ));
     s
 }
 
@@ -368,13 +454,25 @@ pub fn sparam_deck(lc: &LaneCircuit, lib_file: &str, d: Dialect) -> String {
         return sparam_ltspice(lc, lib_file);
     }
     let n = lc.ports.len();
-    let mut s = header(lc, &lc.port_info.iter().enumerate().map(|(i, p)| format!("port {} = {} = {p}", i + 1, lc.ports[i])).collect::<Vec<_>>(), &format!("S-parameters of the lane subcircuit, reference {} ohm per port", sig4(lc.z_ref)));
+    let mut s = header(
+        lc,
+        &lc.port_info
+            .iter()
+            .enumerate()
+            .map(|(i, p)| format!("port {} = {} = {p}", i + 1, lc.ports[i]))
+            .collect::<Vec<_>>(),
+        &format!("S-parameters of the lane subcircuit, reference {} ohm per port", sig4(lc.z_ref)),
+    );
     s.push_str(&format!(".include \"{lib_file}\"\n\n"));
     let (f0, f1, np) = (lc.freq[0], *lc.freq.last().unwrap(), lc.freq.len());
     for (i, p) in lc.ports.iter().enumerate() {
         match d {
-            Dialect::Ngspice => s.push_str(&format!("VP{} {p} 0 dc 0 ac 1 portnum {} z0 {}\n", i + 1, i + 1, num(lc.z_ref))),
-            Dialect::Xyce | Dialect::Ltspice => s.push_str(&format!("P{} {p} 0 port={} z0={}\n", i + 1, i + 1, num(lc.z_ref))),
+            Dialect::Ngspice => {
+                s.push_str(&format!("VP{} {p} 0 dc 0 ac 1 portnum {} z0 {}\n", i + 1, i + 1, num(lc.z_ref)))
+            }
+            Dialect::Xyce | Dialect::Ltspice => {
+                s.push_str(&format!("P{} {p} 0 port={} z0={}\n", i + 1, i + 1, num(lc.z_ref)))
+            }
         }
     }
     s.push_str(&format!("XLANE {} 0 {}\n\n", lc.ports.join(" "), lc.subckt));
@@ -399,7 +497,8 @@ pub fn touchstone(comments: &[String], freq: &[f64], s: &[Vec<Cx>], n: usize, z0
         out.push_str(&format!("! {c}\n"));
     }
     out.push_str(&format!("# HZ S RI R {}\n", num(z0)));
-    let cell = |x: Cx| if x.re == 0.0 && x.im == 0.0 { "0 0".to_string() } else { format!("{:.6e} {:.6e}", x.re, x.im) };
+    let cell =
+        |x: Cx| if x.re == 0.0 && x.im == 0.0 { "0 0".to_string() } else { format!("{:.6e} {:.6e}", x.re, x.im) };
     for (k, &f) in freq.iter().enumerate() {
         let m = &s[k];
         if n == 2 {
@@ -427,17 +526,39 @@ pub fn touchstone(comments: &[String], freq: &[f64], s: &[Vec<Cx>], n: usize, z0
 
 /// Lines describing the lane (for headers and the README).
 pub fn lane_info(lc: &LaneCircuit, board: &str) -> Vec<String> {
-    let mut v = vec![format!("board {board}"), format!("subcircuit {} ({})", lc.subckt, if lc.pair { "pair: P and N on their own paths, coupled sections in modal form" } else if lc.odd_mode { "pair in the odd mode: one line with the odd-mode models" } else { "single line" })];
+    let mut v = vec![
+        format!("board {board}"),
+        format!(
+            "subcircuit {} ({})",
+            lc.subckt,
+            if lc.pair {
+                "pair: P and N on their own paths, coupled sections in modal form"
+            } else if lc.odd_mode {
+                "pair in the odd mode: one line with the odd-mode models"
+            } else {
+                "single line"
+            }
+        ),
+    ];
     for (i, p) in lc.port_info.iter().enumerate() {
         v.push(format!("port {} ({}): {p}", i + 1, lc.ports[i]));
     }
-    v.push(format!("track length {} mm, delay {} ps, reference {} ohm per port", sig4(lc.length_mm), sig4(lc.delay_ps), sig4(lc.z_ref)));
+    v.push(format!(
+        "track length {} mm, delay {} ps, reference {} ohm per port",
+        sig4(lc.length_mm),
+        sig4(lc.delay_ps),
+        sig4(lc.z_ref)
+    ));
     v
 }
 
 /// The lane's S-parameters from kisi's model as Touchstone (.s2p / .s4p).
 pub fn lane_touchstone(lc: &LaneCircuit, board: &str) -> String {
-    let mut c = vec![format!("kisi {}: S-parameters of lane {} (kisi's channel model of the board)", env!("CARGO_PKG_VERSION"), lc.lane)];
+    let mut c = vec![format!(
+        "kisi {}: S-parameters of lane {} (kisi's channel model of the board)",
+        env!("CARGO_PKG_VERSION"),
+        lc.lane
+    )];
     c.extend(lane_info(lc, board));
     if lc.pair {
         c.push("mixed mode with this order: differential port 1 = (port 1 - port 2)/sqrt(2), port 2 = (port 3 - port 4)/sqrt(2)".into());
@@ -452,7 +573,11 @@ pub fn lane_touchstone(lc: &LaneCircuit, board: &str) -> String {
 /// The library file: header and the subcircuits.
 pub fn lib_file(lc: &LaneCircuit, board: &str, fmax: f64, per_lambda: f64) -> String {
     let mut s = String::new();
-    s.push_str(&format!("* kisi {}: lane {} as a SPICE subcircuit (ngspice, Xyce, LTspice, KiCad)\n", env!("CARGO_PKG_VERSION"), lc.lane));
+    s.push_str(&format!(
+        "* kisi {}: lane {} as a SPICE subcircuit (ngspice, Xyce, LTspice, KiCad)\n",
+        env!("CARGO_PKG_VERSION"),
+        lc.lane
+    ));
     for l in lane_info(lc, board) {
         s.push_str(&format!("* {l}\n"));
     }
@@ -503,7 +628,13 @@ pub fn lib_file(lc: &LaneCircuit, board: &str, fmax: f64, per_lambda: f64) -> St
 
 /// File-name stem of a lane: its last name component.
 pub fn stem(lane: &str) -> String {
-    let t: String = lane.rsplit('/').next().unwrap_or(lane).chars().map(|c| if c.is_ascii_alphanumeric() || c == '_' || c == '-' { c } else { '_' }).collect();
+    let t: String = lane
+        .rsplit('/')
+        .next()
+        .unwrap_or(lane)
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .collect();
     if t.is_empty() {
         "lane".into()
     } else {
@@ -512,8 +643,15 @@ pub fn stem(lane: &str) -> String {
 }
 
 /// All files of one lane's export, under `dir` ("" or "name/").
-#[allow(clippy::too_many_arguments)]
-pub fn lane_files(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, fmax: f64, per_lambda: f64, dir: &str) -> Vec<ExportFile> {
+pub fn lane_files(
+    lc: &LaneCircuit,
+    ends: &BenchEnds,
+    f: Formats,
+    board: &str,
+    fmax: f64,
+    per_lambda: f64,
+    dir: &str,
+) -> Vec<ExportFile> {
     let st = stem(&lc.lane);
     let lib = format!("{st}.lib");
     let mut out = Vec::new();
@@ -582,7 +720,10 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
         s.push_str(&format!("* `bench_xyce.cir`, `sparam_xyce.cir` – the same for Xyce (`.print tran` to CSV; `.lin` writes `sparam_xyce.s{n}p`).\n"));
     }
     if f.ltspice {
-        s.push_str(&format!("* `bench_ltspice.cir`, `{st}_ltspice.lib`{} – the bench for LTspice (see below).\n", if n == 2 { ", `sparam_ltspice.cir`" } else { "" }));
+        s.push_str(&format!(
+            "* `bench_ltspice.cir`, `{st}_ltspice.lib`{} – the bench for LTspice (see below).\n",
+            if n == 2 { ", `sparam_ltspice.cir`" } else { "" }
+        ));
     }
     if f.touchstone {
         s.push_str(&format!("* `{st}.s{n}p` – kisi's S-parameters of the same channel (Touchstone 1.0, RI) for RF tools (scikit-rf, PyBERT, Qucs-S/Qucsator).\n"));
@@ -618,11 +759,28 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
         s.push_str("* File format: KiCad 7 (version 20230121), which KiCad 7, 8 and 9 open (they convert it when saving). Checked in kisi's repository with kicad-cli: the netlist equals the lane subcircuit node for node, its AC response in ngspice equals the bench's, every pin and wire end is connected, and KiCad's ERC (kicad-cli 8 and later) reports no unconnected pin or dangling wire. Not tested: the simulator dialog of the KiCad GUI.\n");
     }
     s.push_str("\n## Test bench ends (per line)\n\n");
-    s.push_str(&format!("Profile `{}`: {} Gbit/s, edge {} ps (10–90 %), the receiver sees ±{} V at DC{}.\n\n", ends.profile, sig4(ends.bitrate / 1e9), sig4(ends.rise * 1e12), sig4(ends.swing), if lc.pair { " (differential)" } else { "" }));
+    s.push_str(&format!(
+        "Profile `{}`: {} Gbit/s, edge {} ps (10–90 %), the receiver sees ±{} V at DC{}.\n\n",
+        ends.profile,
+        sig4(ends.bitrate / 1e9),
+        sig4(ends.rise * 1e12),
+        sig4(ends.swing),
+        if lc.pair { " (differential)" } else { "" }
+    ));
     let (txt, rxt) = ends_text(lc, ends);
     s.push_str(&format!("{}\n\n{}\n\n", txt.join(" "), rxt.join(" ")));
-    s.push_str(&format!("* transmitter: emf → R {} Ω → die (C {} pF to ground) → L {} nH → port\n", sig4(ends.tx.r), sig4(ends.tx.c_pf), sig4(ends.tx.l_nh)));
-    s.push_str(&format!("* receiver: port → L {} nH → die: C {} pF and R {} to ground\n", sig4(ends.rx.l_nh), sig4(ends.rx.c_pf), if ends.rx.r > 0.0 { format!("{} Ω", sig4(ends.rx.r)) } else { "open (high impedance)".into() }));
+    s.push_str(&format!(
+        "* transmitter: emf → R {} Ω → die (C {} pF to ground) → L {} nH → port\n",
+        sig4(ends.tx.r),
+        sig4(ends.tx.c_pf),
+        sig4(ends.tx.l_nh)
+    ));
+    s.push_str(&format!(
+        "* receiver: port → L {} nH → die: C {} pF and R {} to ground\n",
+        sig4(ends.rx.l_nh),
+        sig4(ends.rx.c_pf),
+        if ends.rx.r > 0.0 { format!("{} Ω", sig4(ends.rx.r)) } else { "open (high impedance)".into() }
+    ));
     for nte in &ends.notes {
         s.push_str(&format!("* {nte}\n"));
     }
@@ -654,14 +812,14 @@ pub fn readme(lc: &LaneCircuit, ends: &BenchEnds, f: Formats, board: &str, st: &
     ));
     s.push_str("\nWhy it is not exact: kisi's roughness adds resistance without its internal inductance, the via models use a constant loss tangent and a barrel resistance without internal inductance, and some via spans have a negative resistance at high frequency – a passive, causal circuit cannot follow those exactly; the fits keep the loss and, closer, the reactance (the delay).\n");
     s.push_str(&format!(
-        "\nElements after flattening: {} R, {} L, {} C, {} controlled sources and probes; {} RLGC sections{}. The circuit's largest singular value of S from 1 kHz to 10 × the top frequency: {} (passive: ≤ 1).\n",
+        "\nElements after flattening: {} R, {} L, {} C, {} controlled sources and probes; {} RLGC sections{}. The circuit's largest singular value of S from 1 kHz to 10 × the top frequency: {:.6} (passive: ≤ 1).\n",
         lc.counts.r,
         lc.counts.l,
         lc.counts.c,
         lc.counts.sources,
         lc.counts.sections,
         if lc.counts.cells > 0 { format!(", {} lossless-line cells", lc.counts.cells) } else { String::new() },
-        format!("{:.6}", lc.fidelity.circuit_max_sv)
+        lc.fidelity.circuit_max_sv
     ));
     s.push_str("\n## Not included\n\n* The receiver's termination resistors on the board: they act as the receiver's termination (bench and Touchstone leave them out, as kisi's eye does).\n* The channel behind a connector, crosstalk from other lanes (kisi's coupling scan is separate), non-linear buffers: IBIS (KiCad's KIBIS) ends need `kisi.json` IBIS models – not part of this export yet; replace the source and the receiver in the KiCad schematic by KiCad's IBIS symbols by hand.\n");
     if !lc.notes.is_empty() {

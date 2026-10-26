@@ -68,7 +68,11 @@ pub const VIEWS: &[&str] = &["impedance", "channel", "power"];
 /// What gap `id` affects (words) and its categories (`VIEWS` order).
 pub fn gap_views(id: &str) -> (&'static [&'static str], Vec<&'static str>) {
     let affects = GAP_AFFECTS.iter().find(|g| g.0 == id).map(|g| g.1).unwrap_or(&[]);
-    let v: Vec<&str> = VIEWS.iter().copied().filter(|v| affects.iter().any(|a| AFFECT_VIEWS.iter().any(|(w, x)| w == a && x == v))).collect();
+    let v: Vec<&str> = VIEWS
+        .iter()
+        .copied()
+        .filter(|v| affects.iter().any(|a| AFFECT_VIEWS.iter().any(|(w, x)| w == a && x == v)))
+        .collect();
     (affects, v)
 }
 
@@ -134,7 +138,10 @@ fn supply_rails(b: &crate::board::Board, cd: &ComponentData) -> BTreeMap<String,
         }
     }
     // a voltage in the name, but not a signal at that level (PG_1V0, TRIM_SCL_5V)
-    for n in crate::pi::power_nets(b).into_iter().filter(|n| !n.ground && n.voltage.is_some() && !crate::pi::signal_name(&n.name)) {
+    for n in crate::pi::power_nets(b)
+        .into_iter()
+        .filter(|n| !n.ground && n.voltage.is_some() && !crate::pi::signal_name(&n.name))
+    {
         add(&mut m, &n.name, n.voltage, "voltage in the name".into());
     }
     if let Some((spec, _)) = crate::tree::tree_from_fields(b) {
@@ -148,7 +155,15 @@ fn supply_rails(b: &crate::board::Board, cd: &ComponentData) -> BTreeMap<String,
         add(&mut m, &s.net, Some(s.voltage), "PI_LOAD / PI_SOURCE".into());
     }
     let connecting = |id: u32| {
-        parts.get(&id).map_or(0, |v| v.iter().filter(|&&fi| b.footprints.get(fi).is_some_and(|f| cd.role(&f.reference) != "capacitor" && (!f.dnp || f.exclude_from_bom))).count())
+        parts.get(&id).map_or(0, |v| {
+            v.iter()
+                .filter(|&&fi| {
+                    b.footprints
+                        .get(fi)
+                        .is_some_and(|f| cd.role(&f.reference) != "capacitor" && (!f.dnp || f.exclude_from_bom))
+                })
+                .count()
+        })
     };
     let known: HashSet<String> = m.keys().cloned().collect();
     for (i, n) in b.nets.iter().enumerate().skip(1) {
@@ -158,11 +173,18 @@ fn supply_rails(b: &crate::board::Board, cd: &ComponentData) -> BTreeMap<String,
     }
     for pad in &b.pads {
         let n = b.net_name(pad.net);
-        if pad.net == 0 || known.contains(n) || m.get(n).is_some_and(|r| !r.found_by.is_empty()) || crate::pi::is_ground_name(n) {
+        if pad.net == 0
+            || known.contains(n)
+            || m.get(n).is_some_and(|r| !r.found_by.is_empty())
+            || crate::pi::is_ground_name(n)
+        {
             continue;
         }
         // a pin typed as a signal (input, output, …) is not a supply pin, whatever its name
-        if pad.pinfunction.is_empty() || !matches!(pad.pintype.as_str(), "" | "power_in" | "power_out" | "passive" | "unspecified") || !crate::pi::supply_name_hint(&pad.pinfunction) {
+        if pad.pinfunction.is_empty()
+            || !matches!(pad.pintype.as_str(), "" | "power_in" | "power_out" | "passive" | "unspecified")
+            || !crate::pi::supply_name_hint(&pad.pinfunction)
+        {
             continue;
         }
         if connecting(pad.net) >= 2 {
@@ -187,7 +209,8 @@ fn supply_rails(b: &crate::board::Board, cd: &ComponentData) -> BTreeMap<String,
                     if role == "resistor" && !crate::topology::parse_value(&f.value).is_some_and(|v| v <= 1.0) {
                         continue;
                     }
-                    let mut nets: Vec<u32> = b.pads.iter().filter(|p| p.fp as usize == fi && p.net != 0).map(|p| p.net).collect();
+                    let mut nets: Vec<u32> =
+                        b.pads.iter().filter(|p| p.fp as usize == fi && p.net != 0).map(|p| p.net).collect();
                     nets.sort();
                     nets.dedup();
                     if let [x, y] = nets[..] {
@@ -237,11 +260,16 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let mut diel_items = Vec::new();
     for (i, d) in su.dielectrics.iter().enumerate() {
         let mut why = Vec::new();
-        let generic_mat = d.material.is_empty() || d.material.eq_ignore_ascii_case("fr4") || d.material.contains("assumed");
-        if !configured(i, "loss_tangent") && (d.assumed.iter().any(|a| a == "loss_tangent") || (d.loss_tangent - 0.02).abs() < 1e-9) {
+        let generic_mat =
+            d.material.is_empty() || d.material.eq_ignore_ascii_case("fr4") || d.material.contains("assumed");
+        if !configured(i, "loss_tangent")
+            && (d.assumed.iter().any(|a| a == "loss_tangent") || (d.loss_tangent - 0.02).abs() < 1e-9)
+        {
             why.push("tanδ 0.02 is KiCad's default value");
         }
-        if !configured(i, "epsilon_r") && (d.assumed.iter().any(|a| a == "epsilon_r") || ((d.epsilon_r - 4.5).abs() < 1e-9 && generic_mat)) {
+        if !configured(i, "epsilon_r")
+            && (d.assumed.iter().any(|a| a == "epsilon_r") || ((d.epsilon_r - 4.5).abs() < 1e-9 && generic_mat))
+        {
             why.push("εr 4.5 is KiCad's default value");
         }
         if !configured(i, "material") && d.material.trim().is_empty() {
@@ -251,7 +279,8 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             let above = su.copper.get(i).map(|c| c.name.clone()).unwrap_or_default();
             let below = su.copper.get(i + 1).map(|c| c.name.clone()).unwrap_or_default();
             // only tanδ: loss and eye (channel); εr or the material: the impedance too
-            let views: &[&str] = if why.iter().all(|w| w.starts_with("tanδ")) { &["channel"] } else { &["impedance", "channel"] };
+            let views: &[&str] =
+                if why.iter().all(|w| w.starts_with("tanδ")) { &["channel"] } else { &["impedance", "channel"] };
             diel_items.push(json!({"index": i, "between": format!("{above} / {below}"), "kind": d.kind, "material": d.material, "thickness_mm": d.thickness,
                 "epsilon_r": d.epsilon_r, "loss_tangent": d.loss_tangent, "why": why, "views": views}));
         }
@@ -295,7 +324,8 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         if p.config_profiles.contains_key(&c.name) {
             continue;
         }
-        let nets: Vec<&crate::extract::NetStat> = p.an.nets.iter().filter(|n| n.class == c.name && n.length > 0.0).collect();
+        let nets: Vec<&crate::extract::NetStat> =
+            p.an.nets.iter().filter(|n| n.class == c.name && n.length > 0.0).collect();
         let diff = c.target.is_some_and(|t| t.diff);
         let ids: BTreeSet<&str> = nets.iter().map(|n| profiles.auto(&n.name, &c.name, diff)).collect();
         if ids.iter().all(|i| GENERIC.contains(i)) {
@@ -359,7 +389,12 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         });
         for part in series.chain(l.shunts.iter().map(|s| &s.part)) {
             if part.val.is_none() {
-                bad_parts.entry(part.refdes.clone()).or_insert_with(|| part_json(json!({"ref": part.refdes, "value": part.value, "lane": l.name}), b.footprints.iter().find(|f| f.reference == part.refdes)));
+                bad_parts.entry(part.refdes.clone()).or_insert_with(|| {
+                    part_json(
+                        json!({"ref": part.refdes, "value": part.value, "lane": l.name}),
+                        b.footprints.iter().find(|f| f.reference == part.refdes),
+                    )
+                });
             }
         }
     }
@@ -379,9 +414,11 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let (rails, _) = crate::pi::rails_from_fields(b);
     let tree = crate::tree::tree_from_fields(b);
     let supplies = &supplies;
-    let regs: HashSet<String> = tree.as_ref().map(|t| t.0.elements.iter().map(|e| e.refdes.clone()).collect()).unwrap_or_default();
+    let regs: HashSet<String> =
+        tree.as_ref().map(|t| t.0.elements.iter().map(|e| e.refdes.clone()).collect()).unwrap_or_default();
     let short = |s: &str| s.rsplit('/').next().unwrap_or(s).to_string();
-    let board_name = |n: &str| crate::pi::find_net(b, n).map(|i| b.net_name(i).to_string()).unwrap_or_else(|| n.to_string());
+    let board_name =
+        |n: &str| crate::pi::find_net(b, n).map(|i| b.net_name(i).to_string()).unwrap_or_else(|| n.to_string());
     let sourced: HashSet<String> = rails
         .iter()
         .filter(|r| !r.sources.is_empty())
@@ -405,7 +442,12 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         ));
     }
     // rails found by name, pin name or a field, without a voltage
-    let no_voltage: Vec<Value> = rails_without_voltage(supplies).into_iter().filter(|v| !(v["dismissable"] == true && dis.applies("rails-without-voltage", v["rail"].as_str().unwrap_or("")))).collect();
+    let no_voltage: Vec<Value> = rails_without_voltage(supplies)
+        .into_iter()
+        .filter(|v| {
+            !(v["dismissable"] == true && dis.applies("rails-without-voltage", v["rail"].as_str().unwrap_or("")))
+        })
+        .collect();
     if !no_voltage.is_empty() {
         out.push(gap(
             "rails-without-voltage",
@@ -451,12 +493,17 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             no_eff,
         ));
     }
-    let loaded: HashSet<&str> = b.footprints.iter().filter(|f| f.prop("PI_LOAD").is_some()).map(|f| f.reference.as_str()).collect();
+    let loaded: HashSet<&str> =
+        b.footprints.iter().filter(|f| f.prop("PI_LOAD").is_some()).map(|f| f.reference.as_str()).collect();
     let mut on_rails: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let rail_names: HashSet<&str> = supplies.keys().map(|n| n.as_str()).collect();
     for pad in &b.pads {
         let Some(f) = b.footprints.get(pad.fp as usize) else { continue };
-        if f.dnp || cd.role(&f.reference) != "ic" || loaded.contains(f.reference.as_str()) || regs.contains(&f.reference) {
+        if f.dnp
+            || cd.role(&f.reference) != "ic"
+            || loaded.contains(f.reference.as_str())
+            || regs.contains(&f.reference)
+        {
             continue;
         }
         let net = b.net_name(pad.net);
@@ -487,14 +534,26 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let mut seen = HashSet::new();
     for pad in &b.pads {
         let Some(f) = b.footprints.get(pad.fp as usize) else { continue };
-        if f.dnp || cd.role(&f.reference) != "capacitor" || !rail_names.contains(b.net_name(pad.net)) || !seen.insert(f.reference.clone()) {
+        if f.dnp
+            || cd.role(&f.reference) != "capacitor"
+            || !rail_names.contains(b.net_name(pad.net))
+            || !seen.insert(f.reference.clone())
+        {
             continue;
         }
         match crate::pdn::parse_cap(&f.value) {
-            None => caps.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f))),
+            None => caps.push(part_json(
+                json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}),
+                Some(f),
+            )),
             // class II range without a rated voltage in the value or a PI_CAP field: DC-bias derating guessed
-            Some(c) if c >= 1e-7 && f.prop("PI_CAP").is_none() && crate::pdn_ic::value_details(&f.value).0.is_none() => {
-                let mut it = part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net)), "package": f.lib.rsplit(':').next().unwrap_or("")}), Some(f));
+            Some(c)
+                if c >= 1e-7 && f.prop("PI_CAP").is_none() && crate::pdn_ic::value_details(&f.value).0.is_none() =>
+            {
+                let mut it = part_json(
+                    json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net)), "package": f.lib.rsplit(':').next().unwrap_or("")}),
+                    Some(f),
+                );
                 if let Some(s) = cap_suggestion(f) {
                     it["suggest"] = s;
                 }
@@ -519,13 +578,23 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let mut seen_b = HashSet::new();
     for pad in &b.pads {
         let Some(f) = b.footprints.get(pad.fp as usize) else { continue };
-        let pre: String = f.reference.chars().take_while(|c| c.is_ascii_alphabetic()).collect::<String>().to_ascii_uppercase();
+        let pre: String =
+            f.reference.chars().take_while(|c| c.is_ascii_alphabetic()).collect::<String>().to_ascii_uppercase();
         let up = f.value.to_ascii_uppercase();
         let bead = pre == "FB" || (pre == "L" && (up.contains("FERRITE") || up.contains("BEAD")));
-        if f.dnp || !bead || !rail_names.contains(b.net_name(pad.net)) || f.prop("PI_SERIES").is_some() || crate::pdn_ic::bead_z100(&f.value).is_some() || !seen_b.insert(f.reference.clone()) {
+        if f.dnp
+            || !bead
+            || !rail_names.contains(b.net_name(pad.net))
+            || f.prop("PI_SERIES").is_some()
+            || crate::pdn_ic::bead_z100(&f.value).is_some()
+            || !seen_b.insert(f.reference.clone())
+        {
             continue;
         }
-        beads.push(part_json(json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}), Some(f)));
+        beads.push(part_json(
+            json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}),
+            Some(f),
+        ));
     }
     if !beads.is_empty() {
         out.push(gap(
@@ -563,7 +632,11 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let lanes: usize = buses.iter().map(|b| b.lanes.len()).sum();
     let applicable = |v: &str| -> (bool, String) {
         match v {
-            "impedance" if targets == 0 => (false, "no net with a target impedance (net classes such as 50Z or 90Z_Diff, or net_classes in kisi.json)".into()),
+            "impedance" if targets == 0 => (
+                false,
+                "no net with a target impedance (net classes such as 50Z or 90Z_Diff, or net_classes in kisi.json)"
+                    .into(),
+            ),
             "impedance" => (true, format!("{targets} net(s) with a target impedance")),
             "channel" if lanes == 0 => (false, "no buses or lanes between devices".into()),
             "channel" => (true, format!("{lanes} lane(s) in {} bus(es)", buses.len())),
@@ -574,10 +647,23 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let mut views = serde_json::Map::new();
     for v in VIEWS {
         let (ok, why) = applicable(v);
-        let n = |pr: &str| out.iter().filter(|g| g["priority"] == pr && g["views"].as_array().is_some_and(|a| a.iter().any(|x| x == v))).count();
+        let n = |pr: &str| {
+            out.iter()
+                .filter(|g| g["priority"] == pr && g["views"].as_array().is_some_and(|a| a.iter().any(|x| x == v)))
+                .count()
+        };
         let (h, m, l) = (n("high"), n("medium"), n("low"));
-        let state = if !ok { "nothing to check" } else if h + m == 0 { "ready" } else { "open" };
-        views.insert(v.to_string(), json!({"applicable": ok, "why": why, "state": state, "high": h, "medium": m, "low": l}));
+        let state = if !ok {
+            "nothing to check"
+        } else if h + m == 0 {
+            "ready"
+        } else {
+            "open"
+        };
+        views.insert(
+            v.to_string(),
+            json!({"applicable": ok, "why": why, "state": state, "high": h, "medium": m, "low": l}),
+        );
     }
     json!({
         "board": p.name,
@@ -641,9 +727,14 @@ pub const DISMISSABLE: &[&str] = &["nets-without-target", "rails-without-voltage
 
 /// Routed nets that look like interfaces by their name but have no target, per net class (all of
 /// them name-based, so dismissable).
-fn untargeted_nets(p: &Project, profiles: &Profiles, supplies: &BTreeMap<String, SupplyRail>) -> BTreeMap<String, Vec<Value>> {
+fn untargeted_nets(
+    p: &Project,
+    profiles: &Profiles,
+    supplies: &BTreeMap<String, SupplyRail>,
+) -> BTreeMap<String, Vec<Value>> {
     let b = &p.board;
-    let supply: HashSet<String> = crate::pi::power_nets(b).into_iter().map(|n| n.name).chain(supplies.keys().cloned()).collect();
+    let supply: HashSet<String> =
+        crate::pi::power_nets(b).into_iter().map(|n| n.name).chain(supplies.keys().cloned()).collect();
     let mut untargeted: BTreeMap<String, Vec<Value>> = BTreeMap::new();
     for st in p.an.nets.iter().filter(|n| n.target.is_none() && n.length >= 5.0) {
         if supply.contains(&st.name) || crate::pi::voltage_from_name(&st.name).is_some() {
@@ -692,7 +783,12 @@ struct Dismissed<'a> {
 
 impl<'a> Dismissed<'a> {
     fn from(cfg: &'a crate::config::BoardConfig) -> Self {
-        let list = cfg.gaps.dismissed.iter().filter(|d| DISMISSABLE.contains(&d.gap.as_str()) && !d.reason.trim().is_empty()).collect();
+        let list = cfg
+            .gaps
+            .dismissed
+            .iter()
+            .filter(|d| DISMISSABLE.contains(&d.gap.as_str()) && !d.reason.trim().is_empty())
+            .collect();
         Dismissed { list, used: Default::default() }
     }
     /// Is `item` of gap `gap` dismissed? (remembers it for the report)
@@ -710,7 +806,8 @@ impl<'a> Dismissed<'a> {
             .list
             .iter()
             .map(|d| {
-                let (a, n): (Vec<&String>, Vec<&String>) = d.items.iter().partition(|i| used.contains(&(d.gap.clone(), (*i).clone())));
+                let (a, n): (Vec<&String>, Vec<&String>) =
+                    d.items.iter().partition(|i| used.contains(&(d.gap.clone(), (*i).clone())));
                 json!({"gap": d.gap, "reason": d.reason, "items": a, "not_applied": n})
             })
             .collect::<Vec<_>>())
@@ -727,7 +824,11 @@ pub fn dismissal_problems(p: &Project) -> (Vec<String>, Vec<String>) {
         return (errors, warnings);
     }
     let supplies = supply_rails(&p.board, &ComponentData::builtin());
-    let nets: HashSet<String> = untargeted_nets(p, &Profiles::builtin(), &supplies).into_values().flatten().filter_map(|n| n["net"].as_str().map(str::to_string)).collect();
+    let nets: HashSet<String> = untargeted_nets(p, &Profiles::builtin(), &supplies)
+        .into_values()
+        .flatten()
+        .filter_map(|n| n["net"].as_str().map(str::to_string))
+        .collect();
     let rails: Vec<Value> = rails_without_voltage(&supplies);
     for d in cfg.gaps.dismissed.iter().filter(|d| DISMISSABLE.contains(&d.gap.as_str())) {
         let what = format!("gaps.dismissed[{}]", d.gap);
@@ -785,7 +886,10 @@ fn thermal_gap(p: &Project) -> Option<Value> {
             }
             let w = c.consumption + c.loss;
             let fam = crate::thermal::package_defaults(b, fi).0;
-            Some((w, json!({"ref": c.refdes, "value": f.value, "heat_w": (w * 1e3).round() / 1e3, "package_default": fam})))
+            Some((
+                w,
+                json!({"ref": c.refdes, "value": f.value, "heat_w": (w * 1e3).round() / 1e3, "package_default": fam}),
+            ))
         })
         .collect();
     if items.is_empty() {
@@ -845,7 +949,17 @@ mod tests {
     }
     fn run(j: &str, r: &str, u3: &str) -> Value {
         let pcb = PCB.replace("PROPJ", j).replace("PROPR", r).replace("PROPU3", u3);
-        let p = Project::from_texts(Inputs { pcb_path: "pmic.kicad_pcb".into(), pcb, pro: None, config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap();
+        let p = Project::from_texts(Inputs {
+            pcb_path: "pmic.kicad_pcb".into(),
+            pcb,
+            pro: None,
+            config: None,
+            stackup: None,
+            field: HashMap::new(),
+            variant: None,
+            files: Default::default(),
+        })
+        .unwrap();
         gaps(&p, &Profiles::builtin())
     }
     fn gap_of<'a>(v: &'a Value, id: &str) -> Option<&'a Value> {
@@ -869,14 +983,31 @@ mod tests {
         assert!(gap_of(&v, "regulator-efficiency").is_none());
 
         // the voltage from PI_REG: VSYS behind the link takes +5V's; a buck without efficiency
-        let v = run(r#"(property "PI_REG" "+5V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 600mA")"#);
-        let rails: Vec<&str> = gap_of(&v, "rails-without-voltage").unwrap()["items"].as_array().unwrap().iter().map(|i| i["rail"].as_str().unwrap()).collect();
+        let v = run(
+            r#"(property "PI_REG" "+5V input")"#,
+            r#"(property "PI_REG" "+5V > VSYS pass")"#,
+            r#"(property "PI_REG" "VSYS > +3V3 buck 600mA")"#,
+        );
+        let rails: Vec<&str> = gap_of(&v, "rails-without-voltage").unwrap()["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["rail"].as_str().unwrap())
+            .collect();
         assert_eq!(rails, vec!["VBAT"]);
         let eff = gap_of(&v, "regulator-efficiency").expect("efficiency gap");
         assert_eq!(eff["items"][0]["ref"], "U3");
         // with the battery as an input: no rail without a voltage left
-        let v = run(r#"(property "PI_REG" "+5V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 90% 600mA")"#);
-        let v2 = run(r#"(property "PI_REG" "+5V input; VBAT@3.7V input")"#, r#"(property "PI_REG" "+5V > VSYS pass")"#, r#"(property "PI_REG" "VSYS > +3V3 buck 90% 600mA")"#);
+        let v = run(
+            r#"(property "PI_REG" "+5V input")"#,
+            r#"(property "PI_REG" "+5V > VSYS pass")"#,
+            r#"(property "PI_REG" "VSYS > +3V3 buck 90% 600mA")"#,
+        );
+        let v2 = run(
+            r#"(property "PI_REG" "+5V input; VBAT@3.7V input")"#,
+            r#"(property "PI_REG" "+5V > VSYS pass")"#,
+            r#"(property "PI_REG" "VSYS > +3V3 buck 90% 600mA")"#,
+        );
         assert!(gap_of(&v, "regulator-efficiency").is_none());
         assert!(gap_of(&v2, "rails-without-voltage").is_none(), "{:#}", v2["gaps"]);
     }
@@ -906,34 +1037,62 @@ mod tests {
         let mut v = run("", "", "");
         assert_eq!(v["views"]["impedance"]["state"], "nothing to check");
         assert_eq!(v["views"]["channel"]["applicable"], false);
-        assert_eq!((v["views"]["power"]["state"].as_str(), v["views"]["power"]["applicable"].as_bool()), (Some("open"), Some(true)));
+        assert_eq!(
+            (v["views"]["power"]["state"].as_str(), v["views"]["power"]["applicable"].as_bool()),
+            (Some("open"), Some(true))
+        );
         assert_eq!(gap_of(&v, "rails-without-voltage").unwrap()["views"], json!(["power"]));
         only_view(&mut v, "power");
-        assert!(v["gaps"].as_array().unwrap().iter().all(|g| g["views"].as_array().unwrap().iter().any(|x| x == "power")));
+        assert!(v["gaps"].as_array().unwrap().iter().all(|g| g["views"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x == "power")));
         assert_eq!(v["views"].as_object().unwrap().len(), 1);
         assert_eq!(v["for"], "power");
     }
 
     fn with_config(cfg: &str) -> Project {
-        Project::from_texts(Inputs { pcb_path: "pmic.kicad_pcb".into(), pcb: pcb_plain(), pro: None, config: Some(("pmic.kisi.json".into(), Ok(cfg.to_string()))), stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap()
+        Project::from_texts(Inputs {
+            pcb_path: "pmic.kicad_pcb".into(),
+            pcb: pcb_plain(),
+            pro: None,
+            config: Some(("pmic.kisi.json".into(), Ok(cfg.to_string()))),
+            stackup: None,
+            field: HashMap::new(),
+            variant: None,
+            files: Default::default(),
+        })
+        .unwrap()
     }
 
     /// Dismissals: only name-based gaps, with a reason; `gaps` leaves the items out and lists them.
     #[test]
     fn dismissals() {
-        let p = with_config(r#"{"kisi_config": 1, "gaps": {"dismissed": [{"gap": "rails-without-voltage", "items": ["VBAT"], "reason": "battery case not modelled"}]}}"#);
+        let p = with_config(
+            r#"{"kisi_config": 1, "gaps": {"dismissed": [{"gap": "rails-without-voltage", "items": ["VBAT"], "reason": "battery case not modelled"}]}}"#,
+        );
         assert!(p.config_check.as_ref().unwrap().ok, "{:?}", p.config_check);
         let v = gaps(&p, &Profiles::builtin());
-        let rails: Vec<&str> = gap_of(&v, "rails-without-voltage").unwrap()["items"].as_array().unwrap().iter().map(|i| i["rail"].as_str().unwrap()).collect();
+        let rails: Vec<&str> = gap_of(&v, "rails-without-voltage").unwrap()["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["rail"].as_str().unwrap())
+            .collect();
         assert_eq!(rails, vec!["VSYS"]);
         assert_eq!(v["dismissed"][0]["items"], json!(["VBAT"]));
         assert_eq!(v["dismissed"][0]["reason"], "battery case not modelled");
         // both rails dismissed: the gap is closed
-        let p = with_config(r#"{"kisi_config": 1, "gaps": {"dismissed": [{"gap": "rails-without-voltage", "items": ["VBAT", "VSYS"], "reason": "not supplies in this case"}]}}"#);
+        let p = with_config(
+            r#"{"kisi_config": 1, "gaps": {"dismissed": [{"gap": "rails-without-voltage", "items": ["VBAT", "VSYS"], "reason": "not supplies in this case"}]}}"#,
+        );
         assert!(gap_of(&gaps(&p, &Profiles::builtin()), "rails-without-voltage").is_none());
         // no reason, a gap that cannot be dismissed, an unknown net, an item no longer reported
-        let p = with_config(r#"{"kisi_config": 1, "gaps": {"dismissed": [{"gap": "rails-without-voltage", "items": ["VBAT"]},
-            {"gap": "power-tree", "items": ["+5V"], "reason": "x"}, {"gap": "rails-without-voltage", "items": ["NOPE", "+5V"], "reason": "y"}]}}"#);
+        let p = with_config(
+            r#"{"kisi_config": 1, "gaps": {"dismissed": [{"gap": "rails-without-voltage", "items": ["VBAT"]},
+            {"gap": "power-tree", "items": ["+5V"], "reason": "x"}, {"gap": "rails-without-voltage", "items": ["NOPE", "+5V"], "reason": "y"}]}}"#,
+        );
         let c = p.config_check.as_ref().unwrap();
         assert!(!c.ok);
         for want in ["reason missing", "gap 'power-tree' cannot be dismissed", "no net 'NOPE'"] {
@@ -941,7 +1100,13 @@ mod tests {
         }
         assert!(c.warnings.iter().any(|w| w.contains("'+5V' is no longer reported")), "{:?}", c.warnings);
         // without a reason the dismissal does not apply
-        assert_eq!(gap_of(&gaps(&p, &Profiles::builtin()), "rails-without-voltage").unwrap()["items"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            gap_of(&gaps(&p, &Profiles::builtin()), "rails-without-voltage").unwrap()["items"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
     }
 
     /// One category of a configuration ("save only this category").
@@ -954,13 +1119,41 @@ mod tests {
             "variant": "default",
             "gaps": {"dismissed": [{"gap": "nets-without-target", "items": ["X"], "reason": "r"}]}}"#).unwrap();
         let i = crate::config::subset(&cfg, "impedance");
-        assert_eq!((i.stackup.dielectrics.len(), i.net_classes.len(), i.net_classes["A"].profile.clone(), i.fields.len(), i.variant.clone(), i.gaps.dismissed.len()), (1, 1, None, 0, None, 1));
+        assert_eq!(
+            (
+                i.stackup.dielectrics.len(),
+                i.net_classes.len(),
+                i.net_classes["A"].profile.clone(),
+                i.fields.len(),
+                i.variant.clone(),
+                i.gaps.dismissed.len()
+            ),
+            (1, 1, None, 0, None, 1)
+        );
         let c = crate::config::subset(&cfg, "channel");
-        assert_eq!((c.net_classes.len(), c.net_classes["B"].profile.as_deref(), c.variant.as_deref(), c.fields.len()), (2, Some("lvds"), Some("default"), 0));
+        assert_eq!(
+            (c.net_classes.len(), c.net_classes["B"].profile.as_deref(), c.variant.as_deref(), c.fields.len()),
+            (2, Some("lvds"), Some("default"), 0)
+        );
         let w = crate::config::subset(&cfg, "power");
-        assert_eq!((w.stackup.dielectrics.len(), w.net_classes.len(), w.fields.len(), w.variant.as_deref(), w.gaps.dismissed.len()), (0, 0, 1, Some("default"), 0));
+        assert_eq!(
+            (
+                w.stackup.dielectrics.len(),
+                w.net_classes.len(),
+                w.fields.len(),
+                w.variant.as_deref(),
+                w.gaps.dismissed.len()
+            ),
+            (0, 0, 1, Some("default"), 0)
+        );
         let j = crate::config::to_json(&w);
-        assert!(j.get("stackup").is_none() && j.get("net_classes").is_none() && j["fields"][0]["ref"] == "U1" && j["kisi_config"] == 1, "{j:#}");
+        assert!(
+            j.get("stackup").is_none()
+                && j.get("net_classes").is_none()
+                && j["fields"][0]["ref"] == "U1"
+                && j["kisi_config"] == 1,
+            "{j:#}"
+        );
         assert!(crate::config::parse(&j.to_string()).is_ok());
         assert_eq!(crate::config::message_views(&cfg, "net_classes.B: source missing"), vec!["channel"]);
         assert_eq!(crate::config::message_views(&cfg, "U1: PI_LOAD value 'x' not readable"), vec!["power"]);
@@ -986,7 +1179,17 @@ mod tests {
     (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND")))
   (footprint "Capacitor:C0603" (layer "F.Cu") (at 10 0) (property "Reference" "C2") (property "Value" "4u7") (property "Description" "CAP 4.7uF-16V-10%-X7R")
     (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND"))))"#;
-        let p = Project::from_texts(Inputs { pcb_path: "s.kicad_pcb".into(), pcb: pcb.into(), pro: None, config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap();
+        let p = Project::from_texts(Inputs {
+            pcb_path: "s.kicad_pcb".into(),
+            pcb: pcb.into(),
+            pro: None,
+            config: None,
+            stackup: None,
+            field: HashMap::new(),
+            variant: None,
+            files: Default::default(),
+        })
+        .unwrap();
         let mut v = gaps(&p, &Profiles::builtin());
         let g = gap_of(&v, "stackup-defaults").expect("stackup gap");
         assert_eq!(g["items"][0]["views"], json!(["channel"]), "{g:#}");
@@ -997,15 +1200,30 @@ mod tests {
         assert_eq!((c1["package"].as_str(), c1["suggest"]["value"].as_str()), (Some("C0402"), Some("rated=6.3V X5R")));
         assert_eq!(c1["suggest"]["from"], json!(["Voltage Rating", "Dielectric"]));
         let c2 = caps["items"].as_array().unwrap().iter().find(|i| i["ref"] == "C2").unwrap();
-        assert_eq!((c2["suggest"]["value"].as_str(), c2["suggest"]["from"][0].as_str()), (Some("rated=16V X7R"), Some("Description")));
+        assert_eq!(
+            (c2["suggest"]["value"].as_str(), c2["suggest"]["from"][0].as_str()),
+            (Some("rated=16V X7R"), Some("Description"))
+        );
         // the suggestion passes the PI_CAP check
-        assert!(crate::pdn_ic::parse_pi_cap(c1["suggest"]["value"].as_str().unwrap()).is_ok_and(|c| c.rated == Some(6.3)));
+        assert!(
+            crate::pdn_ic::parse_pi_cap(c1["suggest"]["value"].as_str().unwrap()).is_ok_and(|c| c.rated == Some(6.3))
+        );
         only_view(&mut v, "impedance");
         let g = gap_of(&v, "stackup-defaults").unwrap();
         assert_eq!((g["items"].as_array().unwrap().len(), g["items"][0]["index"].as_u64()), (1, Some(1)));
         // only the tanδ: a channel gap only
         let only_td = pcb.replace("(material \"FR4\") (epsilon_r 4.5)", "(material \"FR408HR\") (epsilon_r 3.7)");
-        let p = Project::from_texts(Inputs { pcb_path: "s.kicad_pcb".into(), pcb: only_td, pro: None, config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap();
+        let p = Project::from_texts(Inputs {
+            pcb_path: "s.kicad_pcb".into(),
+            pcb: only_td,
+            pro: None,
+            config: None,
+            stackup: None,
+            field: HashMap::new(),
+            variant: None,
+            files: Default::default(),
+        })
+        .unwrap();
         assert_eq!(gap_of(&gaps(&p, &Profiles::builtin()), "stackup-defaults").unwrap()["views"], json!(["channel"]));
     }
 }

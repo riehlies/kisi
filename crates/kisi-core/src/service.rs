@@ -7,8 +7,8 @@
 //! assumed profiles) so an agent can report it truthfully.
 
 use crate::board::{Board, StackupOverride};
-use crate::eye;
 use crate::extract::{analyze, Analysis, Params};
+use crate::eye;
 use crate::profile::{judge, Metrics, Profiles, Status};
 use crate::rf::{self, RfParams};
 use crate::topology;
@@ -38,7 +38,10 @@ pub struct Project {
 }
 
 /// Parse the Touchstone files the configuration's connector ends name (from `files`).
-pub fn touchstones_of(cfg: Option<&crate::config::BoardConfig>, files: &crate::variant::Files) -> HashMap<String, Result<crate::rf::Touchstone, String>> {
+pub fn touchstones_of(
+    cfg: Option<&crate::config::BoardConfig>,
+    files: &crate::variant::Files,
+) -> HashMap<String, Result<crate::rf::Touchstone, String>> {
     let mut out = HashMap::new();
     for e in cfg.map(|c| c.connector_ends.values().collect::<Vec<_>>()).unwrap_or_default() {
         let Some(tr) = &e.end.touchstone else { continue };
@@ -111,19 +114,32 @@ impl Project {
 
     /// Like `load`, with an explicit configuration file (None: no configuration) and an
     /// assembly variant chosen on the command line.
-    pub fn load_with(pcb: &Path, pro: Option<&Path>, stackup: Option<&StackupOverride>, config: Option<&Path>, variant: Option<&str>) -> Result<Project, String> {
+    pub fn load_with(
+        pcb: &Path,
+        pro: Option<&Path>,
+        stackup: Option<&StackupOverride>,
+        config: Option<&Path>,
+        variant: Option<&str>,
+    ) -> Result<Project, String> {
         let text = std::fs::read_to_string(pcb).map_err(|e| format!("{}: {e}", pcb.display()))?;
         let pro_path = pro.map(Path::to_path_buf).unwrap_or_else(|| pcb.with_extension("kicad_pro"));
         let pro_text = std::fs::read_to_string(&pro_path).ok();
-        let config = match config {
-            Some(cp) => Some((cp.to_path_buf(), std::fs::read_to_string(cp).map_err(|e| format!("{}: {e}", cp.display())))),
-            None => None,
-        };
+        let config = config
+            .map(|cp| (cp.to_path_buf(), std::fs::read_to_string(cp).map_err(|e| format!("{}: {e}", cp.display()))));
         let files = match &config {
             Some((cp, Ok(t))) => config_files(cp, t),
             _ => Default::default(),
         };
-        Self::from_texts(Inputs { pcb_path: pcb.to_path_buf(), pcb: text, pro: pro_text, config, stackup: stackup.cloned(), field: HashMap::new(), variant: variant.map(str::to_string), files })
+        Self::from_texts(Inputs {
+            pcb_path: pcb.to_path_buf(),
+            pcb: text,
+            pro: pro_text,
+            config,
+            stackup: stackup.cloned(),
+            field: HashMap::new(),
+            variant: variant.map(str::to_string),
+            files,
+        })
     }
 
     /// Build a project from file contents (no file system access: also used in WASM).
@@ -152,23 +168,56 @@ impl Project {
                     let an0 = crate::extract::skeleton(&board, &Params::default());
                     let classes: Vec<String> = an0.classes.iter().map(|c| c.name.clone()).collect();
                     let bn = inp.pcb_path.file_name().map(|f| f.to_string_lossy().to_string());
-                    cfg_check = Some(crate::config::check(&c, &board, &classes, &Profiles::builtin(), bn.as_deref(), &inp.files));
+                    cfg_check = Some(crate::config::check(
+                        &c,
+                        &board,
+                        &classes,
+                        &Profiles::builtin(),
+                        bn.as_deref(),
+                        &inp.files,
+                    ));
                     cfg = Some(c);
                 }
-                Err(e) => cfg_check = Some(crate::config::CheckResult { ok: false, errors: vec![e], ..Default::default() }),
+                Err(e) => {
+                    cfg_check = Some(crate::config::CheckResult { ok: false, errors: vec![e], ..Default::default() })
+                }
             }
         }
-        let variant = crate::variant::apply(&mut board, cfg.as_ref(), inp.variant.as_deref().map(|v| (v, "command line")), &inp.files);
+        let variant = crate::variant::apply(
+            &mut board,
+            cfg.as_ref(),
+            inp.variant.as_deref().map(|v| (v, "command line")),
+            &inp.files,
+        );
         let applied = cfg.as_ref().map(|c| c.apply(&mut board)).unwrap_or_default();
         if let Some(ov) = &inp.stackup {
             let su = board.stackup().with_overrides(ov);
             board.stackup = Some(su);
         }
-        let params = Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, targets: applied.targets.clone(), field: inp.field, ..Default::default() };
+        let params = Params {
+            step: 0.5,
+            coplanar_factor: 3.0,
+            solder_mask: true,
+            targets: applied.targets.clone(),
+            field: inp.field,
+        };
         let an = analyze(&board, &params);
         let name = inp.pcb_path.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
         let touchstones = touchstones_of(cfg.as_ref(), &inp.files);
-        let mut p = Project { pcb_path: inp.pcb_path, name, board, an, params, config_path: inp.config.map(|c| c.0), config: cfg, config_check: cfg_check, config_profiles: applied.profiles, variant, touchstones, buses: Default::default() };
+        let mut p = Project {
+            pcb_path: inp.pcb_path,
+            name,
+            board,
+            an,
+            params,
+            config_path: inp.config.map(|c| c.0),
+            config: cfg,
+            config_check: cfg_check,
+            config_profiles: applied.profiles,
+            variant,
+            touchstones,
+            buses: Default::default(),
+        };
         // dismissals that cannot apply on this board (needs the analysed project)
         let (errors, warnings) = crate::gaps::dismissal_problems(&p);
         if let Some(c) = p.config_check.as_mut() {
@@ -192,7 +241,8 @@ impl Project {
     pub fn field_summary(&self) -> Value {
         let g = &self.an.geometries;
         let total: f64 = g.iter().map(|e| e.target_length).sum();
-        let solved: Vec<&crate::extract::GeomEntry> = g.iter().filter(|e| self.params.field.contains_key(&e.id)).collect();
+        let solved: Vec<&crate::extract::GeomEntry> =
+            g.iter().filter(|e| self.params.field.contains_key(&e.id)).collect();
         let cov: f64 = solved.iter().map(|e| e.target_length).sum();
         json!({"cross_sections_field": solved.len(), "cross_sections": g.len(),
             "target_length_coverage_pct": if total > 0.0 { (1000.0 * cov / total).round() / 10.0 + 0.0 } else { 0.0 }})
@@ -229,8 +279,12 @@ impl Project {
     /// Which configuration was used (for every summary).
     pub fn config_summary(&self) -> Value {
         match (&self.config_path, &self.config_check) {
-            (None, _) => json!({"file": null, "note": "no <board>.kisi.json next to the board: values from the board file only"}),
-            (Some(p), Some(c)) => json!({"file": p.display().to_string(), "entries": c.entries, "ok": c.ok, "errors": c.errors, "warnings": c.warnings}),
+            (None, _) => {
+                json!({"file": null, "note": "no <board>.kisi.json next to the board: values from the board file only"})
+            }
+            (Some(p), Some(c)) => {
+                json!({"file": p.display().to_string(), "entries": c.entries, "ok": c.ok, "errors": c.errors, "warnings": c.warnings})
+            }
             (Some(p), None) => json!({"file": p.display().to_string()}),
         }
     }
@@ -244,7 +298,6 @@ impl Project {
         self.an.nets.iter().find(|n| n.net == net).map(|n| n.class.clone()).unwrap_or_default()
     }
 }
-
 
 /// Board overview: stackup, classes with targets, impedance compliance per class.
 pub fn overview(p: &Project) -> Value {
@@ -269,16 +322,17 @@ pub fn overview(p: &Project) -> Value {
         let len: f64 = nets.iter().map(|n| n.length).sum();
         let ok: f64 = nets.iter().map(|n| n.length * n.within5.unwrap_or(0.0)).sum();
         // length whose formula impedance is a rough estimate (over a cut-out between trace and reference)
-        let rough: f64 = p
-            .an
-            .pieces
-            .chunks_exact(4)
-            .filter(|pc| p.an.cross_sections[pc[3] as usize].flags & crate::extract::F_FORMULA_ROUGH != 0)
-            .filter_map(|pc| p.board.tracks.get(pc[0] as usize).map(|t| (t, pc)))
-            .filter(|(t, _)| nets.iter().any(|n| n.net == t.net))
-            .map(|(t, pc)| crate::geom::len(crate::geom::sub(t.b, t.a)) * (pc[2] - pc[1]))
-            .sum::<f64>()
-            + 0.0; // no -0.0 for an empty sum
+        let rough: f64 =
+            p.an.pieces
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .filter(|pc| p.an.cross_sections[pc[3] as usize].flags & crate::extract::F_FORMULA_ROUGH != 0)
+                .filter_map(|pc| p.board.tracks.get(pc[0] as usize).map(|t| (t, pc)))
+                .filter(|(t, _)| nets.iter().any(|n| n.net == t.net))
+                .map(|(t, pc)| crate::geom::len(crate::geom::sub(t.b, t.a)) * (pc[2] - pc[1]))
+                .sum::<f64>()
+                + 0.0; // no -0.0 for an empty sum
         let mut worst: Vec<_> = nets.iter().filter(|n| n.z_mean.is_some()).collect();
         worst.sort_by(|a, b| {
             let da = (a.z_mean.unwrap() - t.z).abs();
@@ -315,7 +369,9 @@ pub fn net_touchstone4(p: &Project, net_name: &str, rp: &RfParams) -> Result<Str
 /// Touchstone (.s2p) of a net: the channel, for a differential pair Sdd of its 4-port model.
 fn net_touchstone2(p: &Project, net: u32, rp: &RfParams, ch: &rf::Channel) -> Result<String, String> {
     if ch.diff {
-        if let Ok(m) = rf::mixed_mode(&p.board, &p.an, net, &p.params.field, p.target(net), rp, false, lane_hint(p, net)) {
+        if let Ok(m) =
+            rf::mixed_mode(&p.board, &p.an, net, &p.params.field, p.target(net), rp, false, lane_hint(p, net))
+        {
             return Ok(rf::touchstone_dd(&m));
         }
     }
@@ -325,9 +381,17 @@ fn net_touchstone2(p: &Project, net: u32, rp: &RfParams, ch: &rf::Channel) -> Re
 /// Summary of a pair's 4-port model (mixed-mode S-parameters, modal TDR, skew).
 pub fn mixed_json(m: &rf::MixedMode, rise: f64) -> Value {
     let at = |v: &[f64], g: f64| -> Option<f64> { m.freq.iter().position(|&f| f >= g * 1e9 - 1.0).map(|k| v[k]) };
-    let marks = |v: &[f64]| [1.0, 2.5, 5.0, 8.0, 12.5, 16.0, 25.0].iter().filter_map(|&g| at(v, g).map(|d| json!({"ghz": g, "db": d}))).collect::<Vec<_>>();
+    let marks = |v: &[f64]| {
+        [1.0, 2.5, 5.0, 8.0, 12.5, 16.0, 25.0]
+            .iter()
+            .filter_map(|&g| at(v, g).map(|d| json!({"ghz": g, "db": d})))
+            .collect::<Vec<_>>()
+    };
     let inside = |z: &[f64], x: &[f64]| -> (f64, f64) {
-        z.iter().zip(x).filter(|(_, x)| **x <= m.tdr_end_mm).fold((f64::INFINITY, f64::NEG_INFINITY), |a, (z, _)| (a.0.min(*z), a.1.max(*z)))
+        z.iter()
+            .zip(x)
+            .filter(|(_, x)| **x <= m.tdr_end_mm)
+            .fold((f64::INFINITY, f64::NEG_INFINITY), |a, (z, _)| (a.0.min(*z), a.1.max(*z)))
     };
     let (dmin, dmax) = inside(&m.tdr_zdiff, &m.tdr_x_diff_mm);
     let (cmin, cmax) = inside(&m.tdr_zcomm, &m.tdr_x_comm_mm);
@@ -365,8 +429,10 @@ fn lane_hint(p: &Project, net: u32) -> Option<crate::geom::P> {
 
 fn path_json(ch: &rf::Channel) -> Value {
     match &ch.path {
-        Some(pa) => json!({"start": pa.start.label, "end": pa.end.label, "direction": pa.direction, "length_mm": pa.length_mm,
-            "branches": pa.branches.iter().map(|b| json!({"at_mm": b.at_s, "len_mm": b.len_mm, "to": b.end.label, "modelled": b.modelled})).collect::<Vec<_>>()}),
+        Some(pa) => {
+            json!({"start": pa.start.label, "end": pa.end.label, "direction": pa.direction, "length_mm": pa.length_mm,
+            "branches": pa.branches.iter().map(|b| json!({"at_mm": b.at_s, "len_mm": b.len_mm, "to": b.end.label, "modelled": b.modelled})).collect::<Vec<_>>()})
+        }
         None => Value::Null,
     }
 }
@@ -379,10 +445,13 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
     let ch = rf::channel_dir(&p.board, &p.an, net, field, p.target(net), rp, false, lane_hint(p, net))?;
     let xt = rf::crosstalk(&p.board, &p.an, net, field, rp);
     let su = p.board.stackup();
-    let tdr_in: Vec<f64> = ch.tdr_z.iter().zip(&ch.tdr_x_mm).filter(|(_, x)| **x <= ch.length_mm).map(|(z, _)| *z).collect();
+    let tdr_in: Vec<f64> =
+        ch.tdr_z.iter().zip(&ch.tdr_x_mm).filter(|(_, x)| **x <= ch.length_mm).map(|(z, _)| *z).collect();
     let k = if ch.diff { 2.0 } else { 1.0 };
     // formula results over a cut-out between the trace and its reference: rough estimates
-    let rough = |x: Option<u32>| x.is_some_and(|x| p.an.cross_sections[x as usize].flags & crate::extract::F_FORMULA_ROUGH != 0);
+    let rough = |x: Option<u32>| {
+        x.is_some_and(|x| p.an.cross_sections[x as usize].flags & crate::extract::F_FORMULA_ROUGH != 0)
+    };
     let rough_mm: f64 = ch.segments.iter().filter(|s| s.kind == "line" && rough(s.xs)).map(|s| s.len_mm).sum();
     let mut warnings = ch.warnings.clone();
     if rough_mm > 0.0 {
@@ -482,7 +551,11 @@ pub(crate) fn lane_net(p: &Project, l: &topology::Lane) -> u32 {
 
 fn lane_json(p: &Project, l: &topology::Lane) -> Value {
     let rev = l.rx_end == 0;
-    let (tx, rx) = if l.ends.len() == 2 || (l.ends.len() > 2 && !l.taps.is_empty()) { (Some(&l.ends[if rev { 1 } else { 0 }]), Some(&l.ends[if rev { 0 } else { 1 }])) } else { (None, None) };
+    let (tx, rx) = if l.ends.len() == 2 || (l.ends.len() > 2 && !l.taps.is_empty()) {
+        (Some(&l.ends[if rev { 1 } else { 0 }]), Some(&l.ends[if rev { 0 } else { 1 }]))
+    } else {
+        (None, None)
+    };
     json!({
         "lane": l.name, "kind": l.kind, "diff": l.diff,
         "from": tx.map(pin), "to": rx.map(pin), "direction": l.direction,
@@ -544,7 +617,12 @@ struct CheckPlan<'a> {
     skipped_unused: usize,
 }
 
-fn check_plan<'a>(p: &'a Project, profiles: &'a Profiles, assign: &HashMap<String, String>, only: Option<&[String]>) -> CheckPlan<'a> {
+fn check_plan<'a>(
+    p: &'a Project,
+    profiles: &'a Profiles,
+    assign: &HashMap<String, String>,
+    only: Option<&[String]>,
+) -> CheckPlan<'a> {
     let assign = &p.assign(assign);
     let buses = p.buses();
     let wanted = |names: &mut dyn Iterator<Item = &str>| -> bool {
@@ -570,7 +648,10 @@ fn check_plan<'a>(p: &'a Project, profiles: &'a Profiles, assign: &HashMap<Strin
             }
             let tnet = lane_net(p, l);
             let class = p.class_name(tnet);
-            let pid = assign.get(&class).cloned().unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
+            let pid = assign
+                .get(&class)
+                .cloned()
+                .unwrap_or_else(|| profiles.auto(p.board.net_name(tnet), &class, l.diff).to_string());
             if let Some(prof) = profiles.get(&pid) {
                 items.push(CheckItem::Lane { bus: bi, lane: li, prof, class, tnet });
             }
@@ -610,32 +691,64 @@ fn check_plan<'a>(p: &'a Project, profiles: &'a Profiles, assign: &HashMap<Strin
 /// level and length-weighted typical uncertainty over the nets, the via models and their validated
 /// TDR error.
 pub fn accuracy_json(nets: &[&crate::extract::NetStat], vias: (usize, usize), pair: bool) -> Value {
-    let w: Vec<(f64, f64, f64)> = nets.iter().filter_map(|s| Some((s.length, s.z_unc_pct?, s.field_share?))).filter(|x| x.0 > 0.0).collect();
+    let w: Vec<(f64, f64, f64)> =
+        nets.iter().filter_map(|s| Some((s.length, s.z_unc_pct?, s.field_share?))).filter(|x| x.0 > 0.0).collect();
     let l: f64 = w.iter().map(|x| x.0).sum();
     let imp = (l > 0.0).then(|| {
         let unc = w.iter().map(|x| x.0 * x.1).sum::<f64>() / l;
         let fs = w.iter().map(|x| x.0 * x.2).sum::<f64>() / l;
         json!({"level": crate::accuracy::level_of(fs), "uncertainty_pct": (unc * 10.0).round() / 10.0 + 0.0, "field_share": (fs * 1000.0).round() / 1000.0 + 0.0})
     });
-    let v = crate::accuracy::vias_of(vias.0, vias.1, pair).map(|(m, med, p90)| json!({"model": m, "tdr_error_pct": {"median": med, "p90": p90}}));
+    let v = crate::accuracy::vias_of(vias.0, vias.1, pair)
+        .map(|(m, med, p90)| json!({"model": m, "tdr_error_pct": {"median": med, "p90": p90}}));
     json!({"impedance": imp, "vias": v, "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds"})
 }
 
-fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem, rp: &RfParams, cd: &topology::ComponentData) -> (Status, Value) {
+fn check_row(
+    p: &Project,
+    plan: &CheckPlan,
+    profiles: &Profiles,
+    it: &CheckItem,
+    rp: &RfParams,
+    cd: &topology::ComponentData,
+) -> (Status, Value) {
     let field = &p.params.field;
     match it {
         CheckItem::Lane { bus, lane, prof, class, tnet } => {
             let (b, l) = (&plan.buses[*bus], &plan.buses[*bus].lanes[*lane]);
             let lim = profiles.limits(prof);
             // a lane ending at a connector: the end model there (kisi.json connector_ends)
-            let cend = l.ends.iter().find(|e| e.role == "connector").and_then(|e| p.config.as_ref()?.connector_ends.get(&e.refdes)).map(|e| &e.end);
-            let cts = cend.and_then(|c| c.touchstone.as_ref()).and_then(|tr| p.touchstones.get(&tr.file)?.as_ref().ok());
+            let cend = l
+                .ends
+                .iter()
+                .find(|e| e.role == "connector")
+                .and_then(|e| p.config.as_ref()?.connector_ends.get(&e.refdes))
+                .map(|e| &e.end);
+            let cts =
+                cend.and_then(|c| c.touchstone.as_ref()).and_then(|tr| p.touchstones.get(&tr.file)?.as_ref().ok());
             // one N-port file for the lanes of a connector: the others are aggressors
-            let xt = match (cend.and_then(|c| c.touchstone.as_ref()).filter(|t| !t.ports.is_empty()), l.ends.iter().find(|e| e.role == "connector")) {
+            let xt = match (
+                cend.and_then(|c| c.touchstone.as_ref()).filter(|t| !t.ports.is_empty()),
+                l.ends.iter().find(|e| e.role == "connector"),
+            ) {
                 (Some(_), Some(e)) => topology::connector_lanes(plan.buses.iter().flat_map(|b| &b.lanes), &e.refdes),
                 _ => vec![],
             };
-            let row = topology::check_lane(&p.board, &p.an, field, l, p.target(*tnet), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)), l.rx_end == 0, cend, cts, &xt, cd);
+            let row = topology::check_lane(
+                &p.board,
+                &p.an,
+                field,
+                l,
+                p.target(*tnet),
+                rp,
+                prof.rate_gbps,
+                (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)),
+                l.rx_end == 0,
+                cend,
+                cts,
+                &xt,
+                cd,
+            );
             // length-weighted impedance of the lane's nets
             let (mut len, mut zs, mut lo, mut hi) = (0.0, 0.0, f64::INFINITY, f64::NEG_INFINITY);
             for st in p.an.nets.iter().filter(|s| l.nets.contains(&s.net)) {
@@ -690,7 +803,8 @@ fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem,
                 j["via_warning"] = json!(w);
             }
             j["metrics"] = json!(m);
-            let lane_nets: Vec<&crate::extract::NetStat> = p.an.nets.iter().filter(|s| l.nets.contains(&s.net)).collect();
+            let lane_nets: Vec<&crate::extract::NetStat> =
+                p.an.nets.iter().filter(|s| l.nets.contains(&s.net)).collect();
             j["accuracy"] = accuracy_json(&lane_nets, row.via_models, row.diff);
             (v.status, j)
         }
@@ -698,7 +812,16 @@ fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem,
             let st = &p.an.nets[*st];
             let t = st.target.expect("planned with a target");
             let lim = profiles.limits(prof);
-            let row = eye::check_net(&p.board, &p.an, field, st.net, Some((t.z, t.diff)), rp, prof.rate_gbps, (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)));
+            let row = eye::check_net(
+                &p.board,
+                &p.an,
+                field,
+                st.net,
+                Some((t.z, t.diff)),
+                rp,
+                prof.rate_gbps,
+                (Some(prof.tx_model()), Some(prof.rx), Some(prof.tx.rise_ps * 1e-12)),
+            );
             let m = Metrics {
                 z_mean: st.z_mean,
                 z_min: st.z_min,
@@ -729,12 +852,25 @@ fn check_row(p: &Project, plan: &CheckPlan, profiles: &Profiles, it: &CheckItem,
 /// Channel check of all device-to-device lanes (plus nets with a target that are
 /// not on any lane), judged against the interface profiles. The rows are computed in parallel
 /// (`par::workers()` threads natively, one in WebAssembly); the result does not depend on it.
-pub fn channel_check(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams) -> Value {
+pub fn channel_check(
+    p: &Project,
+    profiles: &Profiles,
+    assign: &HashMap<String, String>,
+    only: Option<&[String]>,
+    rp: &RfParams,
+) -> Value {
     channel_check_with(p, profiles, assign, only, rp, crate::par::workers())
 }
 
 /// `channel_check` on `threads` threads.
-pub fn channel_check_with(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, threads: usize) -> Value {
+pub fn channel_check_with(
+    p: &Project,
+    profiles: &Profiles,
+    assign: &HashMap<String, String>,
+    only: Option<&[String]>,
+    rp: &RfParams,
+    threads: usize,
+) -> Value {
     let plan = check_plan(p, profiles, assign, only);
     let cd = topology::ComponentData::builtin();
     register_cavities(rp, |rq| {
@@ -745,15 +881,26 @@ pub fn channel_check_with(p: &Project, profiles: &Profiles, assign: &HashMap<Str
 }
 
 /// Number of rows `channel_check` computes (lanes and nets), for splitting it over workers.
-pub fn channel_check_count(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>) -> usize {
+pub fn channel_check_count(
+    p: &Project,
+    profiles: &Profiles,
+    assign: &HashMap<String, String>,
+    only: Option<&[String]>,
+) -> usize {
     check_plan(p, profiles, assign, only).items.len()
 }
 
 /// The rows of `channel_check` with the indices `idx` in the check's order (up to
 /// `channel_check_count`), each with its index: the Node CLI computes the check in worker
 /// threads, each with an engine of its own, and puts the rows together with `channel_check_merge`.
-#[allow(clippy::too_many_arguments)]
-pub fn channel_check_rows(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, idx: &[usize]) -> Vec<(usize, Value)> {
+pub fn channel_check_rows(
+    p: &Project,
+    profiles: &Profiles,
+    assign: &HashMap<String, String>,
+    only: Option<&[String]>,
+    rp: &RfParams,
+    idx: &[usize],
+) -> Vec<(usize, Value)> {
     let plan = check_plan(p, profiles, assign, only);
     let cd = topology::ComponentData::builtin();
     register_cavities(rp, |rq| {
@@ -800,11 +947,22 @@ fn register_cavities(rp: &RfParams, pass: impl FnOnce(&RfParams)) {
 
 /// `channel_check` from rows computed in parts (`channel_check_rows`): the same result as
 /// computing them at once. An error when the parts do not cover the check exactly.
-pub fn channel_check_merge(p: &Project, profiles: &Profiles, assign: &HashMap<String, String>, only: Option<&[String]>, rp: &RfParams, mut rows: Vec<(usize, Value)>) -> Result<Value, String> {
+pub fn channel_check_merge(
+    p: &Project,
+    profiles: &Profiles,
+    assign: &HashMap<String, String>,
+    only: Option<&[String]>,
+    rp: &RfParams,
+    mut rows: Vec<(usize, Value)>,
+) -> Result<Value, String> {
     let plan = check_plan(p, profiles, assign, only);
     rows.sort_by_key(|r| r.0);
     if rows.len() != plan.items.len() || rows.iter().enumerate().any(|(i, r)| r.0 != i) {
-        return Err(format!("check parts do not match the check ({} rows for {} channels)", rows.len(), plan.items.len()));
+        return Err(format!(
+            "check parts do not match the check ({} rows for {} channels)",
+            rows.len(),
+            plan.items.len()
+        ));
     }
     let status = |v: &Value| match v["status"].as_str() {
         Some("red") => Ok(Status::Red),
@@ -818,10 +976,19 @@ pub fn channel_check_merge(p: &Project, profiles: &Profiles, assign: &HashMap<St
 
 /// The check's JSON from its rows in the check's order: sorted by status (stable), counted.
 fn check_result(p: &Project, mut rows: Vec<(Status, Value)>, skipped_unused: usize, rp: &RfParams) -> Value {
-    rows.sort_by(|a, b| a.0.cmp(&b.0));
+    rows.sort_by_key(|a| a.0);
     let count = |s: Status| rows.iter().filter(|r| r.0 == s).count();
     // vias across a GND/supply plane pair no return via bridges, also of rows not shown
-    let via_warnings: Vec<String> = rows.iter().filter_map(|r| Some(format!("{}: {}", r.1["lane"].as_str().or(r.1["net"].as_str()).unwrap_or("?"), r.1["via_warning"].as_str()?))).collect();
+    let via_warnings: Vec<String> = rows
+        .iter()
+        .filter_map(|r| {
+            Some(format!(
+                "{}: {}",
+                r.1["lane"].as_str().or(r.1["net"].as_str()).unwrap_or("?"),
+                r.1["via_warning"].as_str()?
+            ))
+        })
+        .collect();
     let mut v = json!({
         "summary": {"green": count(Status::Green), "yellow": count(Status::Yellow), "red": count(Status::Red)},
         "variant": p.variant.summary(),
@@ -945,29 +1112,41 @@ pub fn power_from(p: &Project, run: &PowerRun, pdn_rail: Option<&str>) -> Result
     });
     let pdn = match pdn_rail {
         Some(name) => {
-            let setup = setups.iter().find(|r| r.net == name || r.net.rsplit('/').next() == Some(name)).cloned().unwrap_or_else(|| crate::pi::RailSetup {
-                net: name.to_string(),
-                voltage: crate::pi::voltage_from_name(name).unwrap_or(0.0),
-                ..Default::default()
-            });
+            let setup = setups
+                .iter()
+                .find(|r| r.net == name || r.net.rsplit('/').next() == Some(name))
+                .cloned()
+                .unwrap_or_else(|| crate::pi::RailSetup {
+                    net: name.to_string(),
+                    voltage: crate::pi::voltage_from_name(name).unwrap_or(0.0),
+                    ..Default::default()
+                });
             let r = crate::pdn::pdn(&p.board, &setup, &crate::pdn::PdnParams::default())?;
             let at = |f: f64| r.freq.iter().position(|&x| x >= f).map(|i| r.z[i]);
             let per_ic = match crate::pdn_ic::pdn_ic(&p.board, &setup, setups, &crate::pdn::PdnParams::default()) {
                 Ok(ic) => pdn_ic_json(&ic),
                 Err(e) => json!({"error": e}),
             };
-            Some(json!({"rail": r.net, "target_ohm": r.target_ohm, "above_target_hz": r.above_target, "c_total_f": r.c_total, "c_plane_f": r.c_plane,
+            Some(
+                json!({"rail": r.net, "target_ohm": r.target_ohm, "above_target_hz": r.above_target, "c_total_f": r.c_total, "c_plane_f": r.c_plane,
                 "cavity_first_resonance_hz": r.cavity_hz, "z_ohm": {"1k": at(1e3), "100k": at(1e5), "1M": at(1e6), "10M": at(1e7), "100M": at(1e8)},
-                "caps": r.caps.len(), "warnings": r.warnings, "per_ic": per_ic}))
+                "caps": r.caps.len(), "warnings": r.warnings, "per_ic": per_ic}),
+            )
         }
         None => None,
     };
-    Ok(json!({"tree_source": run.source, "balance": run.balance, "rails": run.rails, "losses": losses, "flow": flow, "pdn": pdn, "warnings": run.warnings}))
+    Ok(
+        json!({"tree_source": run.source, "balance": run.balance, "rails": run.rails, "losses": losses, "flow": flow, "pdn": pdn, "warnings": run.warnings}),
+    )
 }
 
 /// Temperature estimate: the power analysis, the board's temperature from its losses
 /// (`thermal::solve`) and the IR drop of every rail at that temperature.
-pub fn thermal(p: &Project, tree: Option<crate::tree::TreeSpec>, prm: &crate::thermal::ThermalParams) -> Result<Value, String> {
+pub fn thermal(
+    p: &Project,
+    tree: Option<crate::tree::TreeSpec>,
+    prm: &crate::thermal::ThermalParams,
+) -> Result<Value, String> {
     thermal_from(p, &power_run(p, tree)?, prm)
 }
 
@@ -975,14 +1154,21 @@ pub fn thermal_from(p: &Project, run: &PowerRun, prm: &crate::thermal::ThermalPa
     let refs: Vec<&crate::pi::PiResult> = run.solved.iter().map(|x| &x.1).collect();
     let ls = crate::losses::loss_summary(&p.board, run.tree.as_ref(), &refs);
     let mut th = crate::thermal::solve(&p.board, &refs, &ls.components, prm)?;
-    th.rails = run.solved.iter().map(|(s, r)| crate::thermal::rail_at_temperature(&p.board, s, r, &th, &run.params)).collect();
+    th.rails =
+        run.solved.iter().map(|(s, r)| crate::thermal::rail_at_temperature(&p.board, s, r, &th, &run.params)).collect();
     let mut warnings = run.warnings.clone();
     warnings.extend(th.warnings.iter().cloned());
     Ok(thermal_json(p, &th, prm, run.source, warnings))
 }
 
 /// The JSON of `kisi thermal` (temperatures in °C rounded to 0.01, powers to 0.1 mW).
-pub fn thermal_json(p: &Project, th: &crate::thermal::ThermalResult, prm: &crate::thermal::ThermalParams, tree_source: &str, warnings: Vec<String>) -> Value {
+pub fn thermal_json(
+    p: &Project,
+    th: &crate::thermal::ThermalResult,
+    prm: &crate::thermal::ThermalParams,
+    tree_source: &str,
+    warnings: Vec<String>,
+) -> Value {
     let su = p.board.stackup();
     let lname = |l: u16| su.copper.get(l as usize).map(|c| c.name.clone()).unwrap_or_default();
     let c2 = |x: f64| (x * 100.0).round() / 100.0 + 0.0;
@@ -1072,7 +1258,12 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
             "recommendations": pt.recommendations.iter().map(|x| json!({"hz": [x.f_lo, x.f_hi], "value": x.value, "package": x.package, "count": x.count, "within_mm": (x.radius_mm * 10.0).round() / 10.0, "note": x.note})).collect::<Vec<_>>(),
         })
     }).collect();
-    let flagged: Vec<Value> = r.caps.iter().filter(|c| !c.flags.is_empty()).map(|c| json!({"ref": c.refdes, "value": c.value, "flags": c.flags})).collect();
+    let flagged: Vec<Value> = r
+        .caps
+        .iter()
+        .filter(|c| !c.flags.is_empty())
+        .map(|c| json!({"ref": c.refdes, "value": c.value, "flags": c.flags}))
+        .collect();
     json!({
         "ics": ports, "capacitors": r.caps.len(), "capacitor_flags": flagged, "regulators": r.regulators,
         "domain": r.domain.iter().map(|d| json!({"net": d.net, "voltage": d.voltage, "capacitors": d.caps, "c_total_uf": (d.c_total * 1e8).round() / 100.0, "ics": d.ics, "regulators": d.regulators})).collect::<Vec<_>>(),
@@ -1086,7 +1277,6 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
 
 /// Everything in one document, written as `analysis/kisi.json` next to the board
 /// (layout of kicad-happy's analysis folder).
-
 pub fn report(p: &Project, profiles: &Profiles) -> Value {
     let rp = RfParams::default();
     let run = power_run(p, None);
@@ -1130,7 +1320,17 @@ mod tests {
     const PRO: &str = r#"{"net_settings": {"classes": [{"name": "Default"}, {"name": "50Z"}], "netclass_assignments": {"SE_CAPZ_0805": "50Z"}}}"#;
 
     fn project() -> Project {
-        Project::from_texts(Inputs { pcb_path: "capz.kicad_pcb".into(), pcb: PCB.into(), pro: Some(PRO.into()), config: None, stackup: None, field: HashMap::new(), variant: None, files: Default::default() }).unwrap()
+        Project::from_texts(Inputs {
+            pcb_path: "capz.kicad_pcb".into(),
+            pcb: PCB.into(),
+            pro: Some(PRO.into()),
+            config: None,
+            stackup: None,
+            field: HashMap::new(),
+            variant: None,
+            files: Default::default(),
+        })
+        .unwrap()
     }
 
     /// The check on several threads, and from rows computed elsewhere (Node CLI worker engines),
@@ -1162,16 +1362,31 @@ mod tests {
         let rows = v["rows"].as_array().unwrap();
         assert_eq!(rows.len(), 1, "{v:#}");
         let r = &rows[0];
-        assert_eq!((r["kind"].as_str(), r["lane"].as_str(), r["eye_computed"].as_bool()), (Some("connector-connector"), Some("SE_CAPZ_0805"), Some(false)));
+        assert_eq!(
+            (r["kind"].as_str(), r["lane"].as_str(), r["eye_computed"].as_bool()),
+            (Some("connector-connector"), Some("SE_CAPZ_0805"), Some(false))
+        );
         let keys: Vec<&str> = r["criteria"].as_array().unwrap().iter().filter_map(|c| c["key"].as_str()).collect();
-        assert!(keys.contains(&"z") && keys.contains(&"il") && keys.contains(&"rl") && !keys.contains(&"eye_h"), "{keys:?}");
+        assert!(
+            keys.contains(&"z") && keys.contains(&"il") && keys.contains(&"rl") && !keys.contains(&"eye_h"),
+            "{keys:?}"
+        );
         assert_eq!(r["terminations"][0].as_str(), Some("C3 100nF 16V X7R to GND"));
         // the capacitor costs return loss: the row is not green
         assert_ne!(r["status"].as_str(), Some("green"), "{r:#}");
         // net: the capacitor at 20 mm, named in the warnings
         let n = net_detail(&p, "SE_CAPZ_0805", &RfParams::default()).unwrap();
         let parts = n["parts"].as_array().unwrap();
-        assert!(parts.len() == 1 && parts[0]["part"].as_str().unwrap().starts_with("C3 100nF") && (parts[0]["at_mm"].as_f64().unwrap() - 20.0).abs() < 0.6, "{parts:?}");
-        assert!(n["warnings"].as_array().unwrap().iter().any(|w| w.as_str().unwrap().contains("C3 100nF 16V X7R (0805)")));
+        assert!(
+            parts.len() == 1
+                && parts[0]["part"].as_str().unwrap().starts_with("C3 100nF")
+                && (parts[0]["at_mm"].as_f64().unwrap() - 20.0).abs() < 0.6,
+            "{parts:?}"
+        );
+        assert!(n["warnings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|w| w.as_str().unwrap().contains("C3 100nF 16V X7R (0805)")));
     }
 }

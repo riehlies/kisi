@@ -29,7 +29,7 @@ function renderBalance() {
     return;
   }
   const cu = piCopperLoss();
-  const pin = t.p_input + cu, loss = t.p_losses + cu;
+  const pin = t.p_input + cu;
   const regLoss = t.elements.filter((e) => e.kind !== "pass" && e.kind !== "input").reduce((a, e) => a + e.p_loss, 0);
   const passLoss = t.p_losses - regLoss;
   const kpi = (v, u, l) => `<div class="bal-kpi"><span class="v">${v}<small> ${u}</small></span><span class="l">${l}</span></div>`;

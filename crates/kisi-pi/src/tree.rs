@@ -145,7 +145,11 @@ pub fn is_switching(kind: &str) -> bool {
 }
 
 fn elem_id(e: &ElemSpec) -> String {
-    if e.id.is_empty() { e.refdes.clone() } else { e.id.clone() }
+    if e.id.is_empty() {
+        e.refdes.clone()
+    } else {
+        e.id.clone()
+    }
 }
 
 /// Map a net name of the spec to the board's spelling (if a board is given).
@@ -193,14 +197,21 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
             break;
         }
     }
-    let v_of = |n: &str| -> Result<f64, String> { volt.get(n).copied().ok_or_else(|| format!("voltage of '{n}' missing")) };
+    let v_of =
+        |n: &str| -> Result<f64, String> { volt.get(n).copied().ok_or_else(|| format!("voltage of '{n}' missing")) };
 
     // feeding element per rail, children per rail
     let mut fed: HashMap<String, usize> = HashMap::new();
     let mut children: HashMap<String, Vec<usize>> = HashMap::new();
     for (i, (e, from, to)) in elems.iter().enumerate() {
         if let Some(prev) = fed.insert(to.clone(), i) {
-            warnings.push(format!("{} is fed by {} and {}; only {} is computed", to, elem_id(&elems[prev].0), elem_id(e), elem_id(e)));
+            warnings.push(format!(
+                "{} is fed by {} and {}; only {} is computed",
+                to,
+                elem_id(&elems[prev].0),
+                elem_id(e),
+                elem_id(e)
+            ));
         }
         if let Some(f) = from {
             children.entry(f.clone()).or_default().push(i);
@@ -293,7 +304,10 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
         let v_out = v_of(to)?;
         let i_out = memo.get(to).copied().unwrap_or(0.0);
         let (v_in, i_in) = match from {
-            Some(f) => (v_of(f)?, elem_in.get(&i).copied().unwrap_or_else(|| i_in_of(e, v_of(f).unwrap_or(v_out), v_out, i_out))),
+            Some(f) => (
+                v_of(f)?,
+                elem_in.get(&i).copied().unwrap_or_else(|| i_in_of(e, v_of(f).unwrap_or(v_out), v_out, i_out)),
+            ),
             None => (v_out, i_out),
         };
         let p_out = v_out.abs() * i_out;
@@ -335,7 +349,13 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
     }
     // rails with depth from the inputs
     let mut depth: HashMap<String, usize> = HashMap::new();
-    fn set_depth(net: &str, d: usize, children: &HashMap<String, Vec<usize>>, elems: &[(ElemSpec, Option<String>, String)], depth: &mut HashMap<String, usize>) {
+    fn set_depth(
+        net: &str,
+        d: usize,
+        children: &HashMap<String, Vec<usize>>,
+        elems: &[(ElemSpec, Option<String>, String)],
+        depth: &mut HashMap<String, usize>,
+    ) {
         if depth.get(net).is_some_and(|&x| x <= d) {
             return;
         }
@@ -373,7 +393,14 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
         if let Some(&i) = idx.get(r) {
             return i;
         }
-        comps.push(CompPower { refdes: r.to_string(), part: part.to_string(), consumption: 0.0, loss: 0.0, rails: vec![], role: role.to_string() });
+        comps.push(CompPower {
+            refdes: r.to_string(),
+            part: part.to_string(),
+            consumption: 0.0,
+            loss: 0.0,
+            rails: vec![],
+            role: role.to_string(),
+        });
         idx.insert(r.to_string(), comps.len() - 1);
         comps.len() - 1
     };
@@ -428,12 +455,23 @@ pub fn solve_tree(spec: &TreeSpec, board: Option<&Board>) -> Result<TreeResult, 
         for &ci in children.get(n).map(|v| v.as_slice()).unwrap_or(&[]) {
             let e = &elems[ci].0;
             let r = e.in_ref.clone().unwrap_or_else(|| e.refdes.clone());
-            add(&mut ls, &r, elem_in.get(&ci).copied().unwrap_or(0.0), if e.kind == "pass" { "pass-through" } else { "regulator" });
+            add(
+                &mut ls,
+                &r,
+                elem_in.get(&ci).copied().unwrap_or(0.0),
+                if e.kind == "pass" { "pass-through" } else { "regulator" },
+            );
         }
         if ls.is_empty() {
             continue;
         }
-        setups.push(RailSetup { net: n.clone(), voltage: volt.get(n).copied().unwrap_or(0.0), sources: vec![SourceSpec { refdes: src, pads: vec![] }], loads: ls, ground: false });
+        setups.push(RailSetup {
+            net: n.clone(),
+            voltage: volt.get(n).copied().unwrap_or(0.0),
+            sources: vec![SourceSpec { refdes: src, pads: vec![] }],
+            loads: ls,
+            ground: false,
+        });
     }
 
     Ok(TreeResult {
@@ -513,7 +551,13 @@ mod tests {
         s.loads[1].current = 2.0;
         let r = solve_tree(&s, None).unwrap();
         assert!(r.elements.iter().find(|e| e.id == "U1").unwrap().overload);
-        s.elements.push(ElemSpec { refdes: "X".into(), kind: "pass".into(), from: Some("3V3".into()), to: "VIN".into(), ..Default::default() });
+        s.elements.push(ElemSpec {
+            refdes: "X".into(),
+            kind: "pass".into(),
+            from: Some("3V3".into()),
+            to: "VIN".into(),
+            ..Default::default()
+        });
         assert!(solve_tree(&s, None).is_err());
     }
 }
@@ -542,12 +586,24 @@ const KINDS: &[&str] = &["input", "buck", "boost", "ldo", "inverter", "pass", "b
 
 fn parse_amps(s: &str) -> Option<f64> {
     let t = s.trim().trim_end_matches(['A', 'a']);
-    let (n, m) = if let Some(x) = t.strip_suffix('m') { (x, 1e-3) } else if let Some(x) = t.strip_suffix('u').or_else(|| t.strip_suffix('µ')) { (x, 1e-6) } else { (t, 1.0) };
+    let (n, m) = if let Some(x) = t.strip_suffix('m') {
+        (x, 1e-3)
+    } else if let Some(x) = t.strip_suffix('u').or_else(|| t.strip_suffix('µ')) {
+        (x, 1e-6)
+    } else {
+        (t, 1.0)
+    };
     n.replace(',', ".").parse::<f64>().ok().map(|v| v * m)
 }
 fn parse_ohms(s: &str) -> Option<f64> {
     let t = s.trim().trim_end_matches(['Ω', 'R']).trim_end_matches("Ohm").trim_end_matches("ohm");
-    let (n, m) = if let Some(x) = t.strip_suffix('m') { (x, 1e-3) } else if let Some(x) = t.strip_suffix('k') { (x, 1e3) } else { (t, 1.0) };
+    let (n, m) = if let Some(x) = t.strip_suffix('m') {
+        (x, 1e-3)
+    } else if let Some(x) = t.strip_suffix('k') {
+        (x, 1e3)
+    } else {
+        (t, 1.0)
+    };
     n.replace(',', ".").parse::<f64>().ok().map(|v| v * m)
 }
 
@@ -583,7 +639,15 @@ pub fn parse_reg_entry(refdes: &str, part: &str, entry: &str) -> Result<(ElemSpe
                 "iq" => el.iq = parse_amps(v).ok_or(format!("iq '{v}' not readable"))?,
                 "r" => el.r = parse_ohms(v).ok_or(format!("r '{v}' not readable"))?,
                 "imax" => el.imax = parse_amps(v),
-                "eff" => el.eff = v.trim_end_matches('%').replace(',', ".").parse::<f64>().ok().map(|x| if x > 1.0 { x / 100.0 } else { x }),
+                "eff" => {
+                    el.eff = v.trim_end_matches('%').replace(',', ".").parse::<f64>().ok().map(|x| {
+                        if x > 1.0 {
+                            x / 100.0
+                        } else {
+                            x
+                        }
+                    })
+                }
                 "out" => el.out_ref = Some(v.to_string()),
                 "in" => el.in_ref = Some(v.to_string()),
                 "id" => el.id = fs::unquote(v),
@@ -620,8 +684,13 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
     if !board.footprints.iter().any(|f| f.prop("PI_REG").is_some()) {
         return None;
     }
-    let from_cfg = board.footprints.iter().any(|f| field_source(f, "PI_REG").is_some() || field_source(f, "PI_LOAD").is_some());
-    let name = if from_cfg { "from kisi.json / KiCad fields (PI_REG, PI_LOAD)" } else { "from KiCad fields (PI_REG, PI_LOAD)" };
+    let from_cfg =
+        board.footprints.iter().any(|f| field_source(f, "PI_REG").is_some() || field_source(f, "PI_LOAD").is_some());
+    let name = if from_cfg {
+        "from kisi.json / KiCad fields (PI_REG, PI_LOAD)"
+    } else {
+        "from KiCad fields (PI_REG, PI_LOAD)"
+    };
     let mut spec = TreeSpec { name: name.into(), ..Default::default() };
     let mut warnings = Vec::new();
     let mut volts: HashMap<String, f64> = HashMap::new();
@@ -685,7 +754,15 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
             };
             // basis: the kisi.json source kind (datasheet, estimate, …) or "field" for a KiCad field
             let (basis, note) = field_source(fp, "PI_LOAD").unwrap_or(("field", ""));
-            spec.loads.push(LoadDef { refdes: fp.reference.clone(), net: name.to_string(), current, part: fp.part_label(), basis: basis.into(), note: note.into(), at });
+            spec.loads.push(LoadDef {
+                refdes: fp.reference.clone(),
+                net: name.to_string(),
+                current,
+                part: fp.part_label(),
+                basis: basis.into(),
+                note: note.into(),
+                at,
+            });
         }
     }
     // rails: every net named by an element or a load
@@ -710,7 +787,8 @@ pub fn tree_from_fields(board: &Board) -> Option<(TreeSpec, Vec<String>)> {
             }
             let Some(f) = &e.from else { continue };
             let vin = volts.get(f).copied().or_else(|| crate::pi::voltage_from_name(f));
-            if let (Some(v), false) = (vin, volts.contains_key(&e.to) || crate::pi::voltage_from_name(&e.to).is_some()) {
+            if let (Some(v), false) = (vin, volts.contains_key(&e.to) || crate::pi::voltage_from_name(&e.to).is_some())
+            {
                 volts.insert(e.to.clone(), v);
             }
         }
@@ -735,7 +813,11 @@ pub fn field_num(x: f64) -> String {
     }
     let d = (5 - x.abs().log10().floor() as i32).clamp(0, 12) as usize;
     let s = format!("{x:.d$}");
-    if s.contains('.') { s.trim_end_matches('0').trim_end_matches('.').to_string() } else { s }
+    if s.contains('.') {
+        s.trim_end_matches('0').trim_end_matches('.').to_string()
+    } else {
+        s
+    }
 }
 
 /// A current for a field value: "3A", "600mA", "12.5uA".
@@ -763,13 +845,22 @@ pub fn spec_to_fields(spec: &TreeSpec) -> Vec<(String, String, String)> {
         let q = quote_name(n);
         match volt(n) {
             // a pass element's output takes its input voltage
-            Some(v) if out && from.is_some_and(|f| volt(f).is_some_and(|x| (x - v).abs() < 1e-9)) && spec.elements.iter().any(|e| e.to == n && e.kind == "pass") => q,
+            Some(v)
+                if out
+                    && from.is_some_and(|f| volt(f).is_some_and(|x| (x - v).abs() < 1e-9))
+                    && spec.elements.iter().any(|e| e.to == n && e.kind == "pass") =>
+            {
+                q
+            }
             Some(v) if !named(n, v) && (out || !fed.contains(&n)) => format!("{q}@{}V", field_num(v)),
             _ => q,
         }
     };
     let mut out: Vec<(String, String, String)> = Vec::new();
-    let mut push = |r: &str, name: &str, v: String, sep: &str, out: &mut Vec<(String, String, String)>| match out.iter_mut().find(|x| x.0 == r && x.1 == name) {
+    let push = |r: &str, name: &str, v: String, sep: &str, out: &mut Vec<(String, String, String)>| match out
+        .iter_mut()
+        .find(|x| x.0 == r && x.1 == name)
+    {
         Some(x) => x.2 = format!("{}{sep}{v}", x.2),
         None => out.push((r.to_string(), name.to_string(), v)),
     };
@@ -799,7 +890,9 @@ pub fn spec_to_fields(spec: &TreeSpec) -> Vec<(String, String, String)> {
             t.push_str(&format!(" out={x}"));
         }
         // ids the field reading gives anyway (the part, or part.N for several entries) are left out
-        let auto = e.id.is_empty() || e.id == e.refdes || e.id.strip_prefix(&format!("{}.", e.refdes)).is_some_and(|n| n.chars().all(|c| c.is_ascii_digit()));
+        let auto = e.id.is_empty()
+            || e.id == e.refdes
+            || e.id.strip_prefix(&format!("{}.", e.refdes)).is_some_and(|n| n.chars().all(|c| c.is_ascii_digit()));
         if !auto {
             t.push_str(&format!(" id={}", quote_name(&e.id)));
         }
@@ -810,7 +903,12 @@ pub fn spec_to_fields(spec: &TreeSpec) -> Vec<(String, String, String)> {
         if l.current == 0.0 {
             continue;
         }
-        let at = l.at.as_deref().map(|a| format!("@{}", a.split(',').map(str::trim).filter(|x| !x.is_empty()).collect::<Vec<_>>().join("/"))).unwrap_or_default();
+        let at =
+            l.at.as_deref()
+                .map(|a| {
+                    format!("@{}", a.split(',').map(str::trim).filter(|x| !x.is_empty()).collect::<Vec<_>>().join("/"))
+                })
+                .unwrap_or_default();
         push(&l.refdes, "PI_LOAD", format!("{}={}{at}", quote_name(&l.net), field_amps(l.current)), ", ", &mut out);
     }
     out
@@ -857,7 +955,9 @@ mod field_tests {
             match v {
                 serde_json::Value::Number(n) => serde_json::json!(format!("{:.12e}", n.as_f64().unwrap())),
                 serde_json::Value::Array(a) => serde_json::Value::Array(a.into_iter().map(round).collect()),
-                serde_json::Value::Object(m) => serde_json::Value::Object(m.into_iter().map(|(k, v)| (k, round(v))).collect()),
+                serde_json::Value::Object(m) => {
+                    serde_json::Value::Object(m.into_iter().map(|(k, v)| (k, round(v))).collect())
+                }
                 x => x,
             }
         }
@@ -867,7 +967,10 @@ mod field_tests {
         assert_eq!(get("U1", "PI_REG"), Some("+12V > VSYS@5V buck 91% 3A iq=12.5uA"));
         assert_eq!(get("FB1", "PI_REG"), Some("+3V3 > \"/Power/IMU VDD\" pass r=0.5"));
         assert_eq!(get("U6", "PI_LOAD"), Some("+3V3=120mA, +1V8=2.5mA@U2"));
-        assert_eq!((field_num(0.91 * 100.0), field_amps(0.0125e-3), field_num(0.08)), ("91".into(), "12.5uA".into(), "0.08".into()));
+        assert_eq!(
+            (field_num(0.91 * 100.0), field_amps(0.0125e-3), field_num(0.08)),
+            ("91".into(), "12.5uA".into(), "0.08".into())
+        );
     }
 
     #[test]
@@ -888,10 +991,21 @@ mod field_tests {
         assert_eq!(v, vec![("VCORE".to_string(), 0.9)]);
         // net names with spaces in quotes, also with a voltage; the old forms unchanged
         let (e, v) = parse_reg_entry("FB3", "", "IMU&MIC_3V3 > \"/06 Peripherals/IMU_VDD\" pass r=0.5").unwrap();
-        assert_eq!((e.from.as_deref(), e.to.as_str(), e.kind.as_str()), (Some("IMU&MIC_3V3"), "/06 Peripherals/IMU_VDD", "pass"));
+        assert_eq!(
+            (e.from.as_deref(), e.to.as_str(), e.kind.as_str()),
+            (Some("IMU&MIC_3V3"), "/06 Peripherals/IMU_VDD", "pass")
+        );
         assert!(v.is_empty() && (e.r - 0.5).abs() < 1e-12);
-        let (e, v) = parse_reg_entry("U4", "", "\"/Power/VIN MAIN\"@12V -> \"/Power/VDD CORE\"@0.9V buck 88% id=U4A part=\"TPS 1\"").unwrap();
-        assert_eq!((e.from.as_deref(), e.to.as_str(), e.id.as_str(), e.part.as_str()), (Some("/Power/VIN MAIN"), "/Power/VDD CORE", "U4A", "TPS 1"));
+        let (e, v) = parse_reg_entry(
+            "U4",
+            "",
+            "\"/Power/VIN MAIN\"@12V -> \"/Power/VDD CORE\"@0.9V buck 88% id=U4A part=\"TPS 1\"",
+        )
+        .unwrap();
+        assert_eq!(
+            (e.from.as_deref(), e.to.as_str(), e.id.as_str(), e.part.as_str()),
+            (Some("/Power/VIN MAIN"), "/Power/VDD CORE", "U4A", "TPS 1")
+        );
         assert_eq!(v, vec![("/Power/VDD CORE".to_string(), 0.9), ("/Power/VIN MAIN".to_string(), 12.0)]);
         let (e, _) = parse_reg_entry("J1", "", "\"/In/VBUS 1\"@5V input").unwrap();
         assert!(e.from.is_none() && e.to == "/In/VBUS 1" && e.kind == "input");
@@ -924,7 +1038,10 @@ mod field_tests {
         let imu = spec.rails.iter().find(|r| r.net == "/06 Peripherals/IMU_VDD").unwrap();
         assert_eq!(imu.voltage, 3.3);
         assert_eq!(spec.rails.iter().find(|r| r.net == "/P/VDD CORE").unwrap().voltage, 0.9);
-        assert_eq!(spec.loads.iter().map(|l| (l.net.as_str(), (l.current * 1e6).round())).collect::<Vec<_>>(), vec![("/06 Peripherals/IMU_VDD", 900.0), ("/P/VDD CORE", 10000.0)]);
+        assert_eq!(
+            spec.loads.iter().map(|l| (l.net.as_str(), (l.current * 1e6).round())).collect::<Vec<_>>(),
+            vec![("/06 Peripherals/IMU_VDD", 900.0), ("/P/VDD CORE", 10000.0)]
+        );
         let t = solve_tree(&spec, Some(&b)).unwrap();
         assert!(t.warnings.is_empty(), "{:?}", t.warnings);
         assert!((t.rails.iter().find(|r| r.net == "+3V3").unwrap().i_total - (0.9e-3 + 0.01)).abs() < 1e-6);

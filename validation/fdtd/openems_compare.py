@@ -8,7 +8,6 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import sparam  # noqa: E402
 from run_refs import excitation  # noqa: E402
 
 exe = sys.argv[1]

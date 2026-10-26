@@ -78,8 +78,7 @@ pub fn stripline_sym(w: f64, b: f64, t: f64, er: f64) -> f64 {
     let wb = w / b;
     let m = 2.0 / (1.0 + (2.0 / 3.0) * x / (1.0 - x));
     let dw = if x > 0.0 {
-        x / (PI * (1.0 - x))
-            * (1.0 - 0.5 * ((x / (2.0 - x)).powi(2) + (0.0796 * x / (wb + 1.1 * x)).powf(m)).ln())
+        x / (PI * (1.0 - x)) * (1.0 - 0.5 * ((x / (2.0 - x)).powi(2) + (0.0796 * x / (wb + 1.1 * x)).powf(m)).ln())
     } else {
         0.0
     };
@@ -176,7 +175,14 @@ pub fn cps(w: f64, s: f64, h: f64, er: f64) -> (f64, f64) {
 /// copper. Returns (Z0, εeff, Zdiff, Zeven) – None where no return is within reach (a single trace
 /// without coplanar copper: no Z0; a pair without it: no even mode, Z0 = Zodd). An estimate: the
 /// sides combine as parallel slots.
-pub fn no_plane(w: f64, h: f64, er: f64, s_left: Option<f64>, s_right: Option<f64>, gap: Option<f64>) -> Option<(f64, f64, Option<f64>, Option<f64>)> {
+pub fn no_plane(
+    w: f64,
+    h: f64,
+    er: f64,
+    s_left: Option<f64>,
+    s_right: Option<f64>,
+    gap: Option<f64>,
+) -> Option<(f64, f64, Option<f64>, Option<f64>)> {
     let side = |s: f64| {
         let (z, e) = cpw(w, s, h, er);
         (2.0 * z, e)
@@ -221,7 +227,6 @@ pub fn diff_microstrip(z0: f64, s: f64, h: f64) -> f64 {
 pub fn diff_stripline(z0: f64, s: f64, b: f64) -> f64 {
     2.0 * z0 * (1.0 - 0.347 * (-2.9 * s / b).exp())
 }
-
 
 // ---------------------------------------------------------------------------
 // Asymmetric stripline variants
@@ -292,7 +297,6 @@ pub fn diff_microstrip_model(w: f64, s: f64, h: f64, t: f64, er: f64, mask: Opti
 
 /// Diff microstrip pair with optional coplanar ground: the IPC coupling
 /// factor applied to the plain microstrip, scaled by the coplanar effect.
-#[allow(clippy::too_many_arguments)]
 pub fn diff_microstrip_coplanar(
     w: f64,
     s: f64,
@@ -323,7 +327,8 @@ pub fn kirschning_jansen(w: f64, s: f64, h: f64, er: f64) -> (f64, f64, f64, f64
     let u = w / h;
     let g = (s / h).max(1e-4);
     let ab = |u: f64| -> (f64, f64) {
-        let a = 1.0 + ((u.powi(4) + (u / 52.0).powi(2)) / (u.powi(4) + 0.432)).ln() / 49.0
+        let a = 1.0
+            + ((u.powi(4) + (u / 52.0).powi(2)) / (u.powi(4) + 0.432)).ln() / 49.0
             + (1.0 + (u / 18.1).powi(3)).ln() / 18.7;
         let b = 0.564 * ((er - 0.9) / (er + 3.0)).powf(0.053);
         (a, b)

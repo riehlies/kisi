@@ -118,7 +118,14 @@ pub fn build(su: &Stackup, d: &XsDesc) -> Option<String> {
     for k in k_top..k_bot {
         let die = &su.dielectrics[k];
         let (y0, y1) = fy(cu[k + 1].y1, cu[k].y0);
-        let _ = writeln!(out, "diel x=-inf w=inf y={} h={} er={} tand={}", f(y0), f(y1 - y0), f(die.epsilon_r), f(die.loss_tangent));
+        let _ = writeln!(
+            out,
+            "diel x=-inf w=inf y={} h={} er={} tand={}",
+            f(y0),
+            f(y1 - y0),
+            f(die.epsilon_r),
+            f(die.loss_tangent)
+        );
     }
     // copper bands of all non-plane layers in range: resin fill
     for k in k_top..=k_bot {
@@ -186,9 +193,19 @@ pub fn build(su: &Stackup, d: &XsDesc) -> Option<String> {
     let surface = li == 0 || li == n - 1;
     if surface {
         if let Some((tm, em)) = d.mask {
-            let _ = writeln!(out, "diel x=-inf w=inf y={} h={} er={} tand={} thin=1", f(ty0), f(tm), f(em), f(MASK_TAND));
+            let _ =
+                writeln!(out, "diel x=-inf w=inf y={} h={} er={} tand={} thin=1", f(ty0), f(tm), f(em), f(MASK_TAND));
             for &(x, w, _) in &traces {
-                let _ = writeln!(out, "diel x={} w={} y={} h={} er={} tand={}", f(x - tm), f(w + 2.0 * tm), f(ty0), f(t + tm), f(em), f(MASK_TAND));
+                let _ = writeln!(
+                    out,
+                    "diel x={} w={} y={} h={} er={} tand={}",
+                    f(x - tm),
+                    f(w + 2.0 * tm),
+                    f(ty0),
+                    f(t + tm),
+                    f(em),
+                    f(MASK_TAND)
+                );
             }
         }
     }
@@ -262,7 +279,8 @@ pub fn build(su: &Stackup, d: &XsDesc) -> Option<String> {
 fn fill_er(su: &Stackup, k: usize) -> (f64, f64) {
     let above = if k > 0 { su.dielectrics.get(k - 1) } else { None };
     let below = su.dielectrics.get(k);
-    let is_pp = |d: Option<&crate::board::Dielectric>| d.map(|d| d.kind.eq_ignore_ascii_case("prepreg")).unwrap_or(false);
+    let is_pp =
+        |d: Option<&crate::board::Dielectric>| d.map(|d| d.kind.eq_ignore_ascii_case("prepreg")).unwrap_or(false);
     let d = if is_pp(above) {
         above
     } else if is_pp(below) {
@@ -279,7 +297,11 @@ const MASK_TAND: f64 = 0.025;
 fn f(v: f64) -> String {
     let s = format!("{:.5}", v);
     let s = s.trim_end_matches('0').trim_end_matches('.');
-    if s == "-0" { "0".into() } else { s.to_string() }
+    if s == "-0" {
+        "0".into()
+    } else {
+        s.to_string()
+    }
 }
 
 /// Stable 64-bit FNV-1a hash of the geometry text, as hex (cache key).
@@ -309,8 +331,21 @@ mod tests {
             assumed: vec![],
         };
         Stackup {
-            copper: vec![cu("F.Cu", 0.0432), cu("In1.Cu", 0.0175), cu("In2.Cu", 0.0175), cu("In3.Cu", 0.0175), cu("In4.Cu", 0.0175), cu("B.Cu", 0.0432)],
-            dielectrics: vec![di("core", 0.1107, 3.23), di("prepreg", 0.1016, 3.66), di("core", 0.9256, 4.5), di("prepreg", 0.1107, 3.66), di("core", 0.1, 3.23)],
+            copper: vec![
+                cu("F.Cu", 0.0432),
+                cu("In1.Cu", 0.0175),
+                cu("In2.Cu", 0.0175),
+                cu("In3.Cu", 0.0175),
+                cu("In4.Cu", 0.0175),
+                cu("B.Cu", 0.0432),
+            ],
+            dielectrics: vec![
+                di("core", 0.1107, 3.23),
+                di("prepreg", 0.1016, 3.66),
+                di("core", 0.9256, 4.5),
+                di("prepreg", 0.1107, 3.66),
+                di("core", 0.1, 3.23),
+            ],
             mask_top: Some(SolderMask { thickness: 0.0152, epsilon_r: 3.3 }),
             mask_bottom: Some(SolderMask { thickness: 0.0152, epsilon_r: 3.3 }),
             from_file: true,
@@ -320,7 +355,22 @@ mod tests {
     #[test]
     fn microstrip_top() {
         let su = ts();
-        let g = build(&su, &XsDesc { layer: 0, w: 0.213, ref_up: None, ref_dn: Some(1), s_left: None, s_right: None, partner: None, mask: Some((0.0152, 3.3)), planes: vec![], ..Default::default() }).unwrap();
+        let g = build(
+            &su,
+            &XsDesc {
+                layer: 0,
+                w: 0.213,
+                ref_up: None,
+                ref_dn: Some(1),
+                s_left: None,
+                s_right: None,
+                partner: None,
+                mask: Some((0.0152, 3.3)),
+                planes: vec![],
+                ..Default::default()
+            },
+        )
+        .unwrap();
         // substrate 0.1107 thick directly under the trace, plane below it
         assert!(g.contains("h=0.1107 er=3.23 tand=0.02"), "{g}");
         assert!(g.contains("sig+ x=-0.1065 w=0.213"), "{g}");
@@ -331,7 +381,22 @@ mod tests {
     #[test]
     fn bottom_trace_is_flipped() {
         let su = ts();
-        let g = build(&su, &XsDesc { layer: 5, w: 0.2, ref_up: Some(4), ref_dn: None, s_left: None, s_right: None, partner: None, mask: Some((0.0152, 3.3)), planes: vec![], ..Default::default() }).unwrap();
+        let g = build(
+            &su,
+            &XsDesc {
+                layer: 5,
+                w: 0.2,
+                ref_up: Some(4),
+                ref_dn: None,
+                s_left: None,
+                s_right: None,
+                partner: None,
+                mask: Some((0.0152, 3.3)),
+                planes: vec![],
+                ..Default::default()
+            },
+        )
+        .unwrap();
         // the plane must be below the trace after the flip
         let y_of = |prefix: &str| -> f64 {
             let line = g.lines().find(|l| l.starts_with(prefix)).unwrap();
@@ -343,7 +408,22 @@ mod tests {
     #[test]
     fn stripline_inner_pair() {
         let su = ts();
-        let g = build(&su, &XsDesc { layer: 3, w: 0.127, ref_up: Some(2), ref_dn: Some(4), s_left: None, s_right: None, partner: Some((0.23, 0.127, true)), mask: None, planes: vec![], ..Default::default() }).unwrap();
+        let g = build(
+            &su,
+            &XsDesc {
+                layer: 3,
+                w: 0.127,
+                ref_up: Some(2),
+                ref_dn: Some(4),
+                s_left: None,
+                s_right: None,
+                partner: Some((0.23, 0.127, true)),
+                mask: None,
+                planes: vec![],
+                ..Default::default()
+            },
+        )
+        .unwrap();
         assert_eq!(g.matches("gnd x=-inf").count(), 2, "{g}");
         assert!(g.contains("sig-") && g.contains("sig+"));
         // In3 copper band filled with the prepreg below (3.66)
@@ -354,11 +434,25 @@ mod tests {
     fn antipad_under_pad() {
         // trace on F.Cu, In1 cut out 0.4/0.5 mm around it, reference In2
         let su = ts();
-        let g = build(&su, &XsDesc {
-            layer: 0, w: 0.5, ref_up: None, ref_dn: Some(2), s_left: None, s_right: None, partner: None, mask: None,
-            planes: vec![PlaneCut { layer: 1, left: Some(0.4), right: Some(0.5) }, PlaneCut { layer: 2, left: None, right: None }],
-            ..Default::default()
-        }).unwrap();
+        let g = build(
+            &su,
+            &XsDesc {
+                layer: 0,
+                w: 0.5,
+                ref_up: None,
+                ref_dn: Some(2),
+                s_left: None,
+                s_right: None,
+                partner: None,
+                mask: None,
+                planes: vec![
+                    PlaneCut { layer: 1, left: Some(0.4), right: Some(0.5) },
+                    PlaneCut { layer: 2, left: None, right: None },
+                ],
+                ..Default::default()
+            },
+        )
+        .unwrap();
         assert!(g.contains("gnd x=-0.4 w=-inf"), "{g}");
         assert!(g.contains("gnd x=0.5 w=inf"), "{g}");
         assert!(g.contains("gnd x=-inf w=inf"), "{g}");
@@ -367,11 +461,22 @@ mod tests {
     #[test]
     fn plane_edge() {
         let su = ts();
-        let g = build(&su, &XsDesc {
-            layer: 0, w: 0.2, ref_up: None, ref_dn: Some(1), s_left: None, s_right: None, partner: None, mask: None,
-            planes: vec![PlaneCut { layer: 1, left: None, right: Some(0.3) }],
-            ..Default::default()
-        }).unwrap();
+        let g = build(
+            &su,
+            &XsDesc {
+                layer: 0,
+                w: 0.2,
+                ref_up: None,
+                ref_dn: Some(1),
+                s_left: None,
+                s_right: None,
+                partner: None,
+                mask: None,
+                planes: vec![PlaneCut { layer: 1, left: None, right: Some(0.3) }],
+                ..Default::default()
+            },
+        )
+        .unwrap();
         // plane continues to the left, ends 0.3 mm right of the trace centre
         assert!(g.contains("gnd x=0.3 w=-inf"), "{g}");
     }
@@ -379,7 +484,22 @@ mod tests {
     #[test]
     fn coplanar_ground_beyond_partner() {
         let su = ts();
-        let g = build(&su, &XsDesc { layer: 0, w: 0.1, ref_up: None, ref_dn: Some(1), s_left: Some(0.5), s_right: Some(0.2), partner: Some((0.1, 0.1, true)), mask: None, planes: vec![], ..Default::default() }).unwrap();
+        let g = build(
+            &su,
+            &XsDesc {
+                layer: 0,
+                w: 0.1,
+                ref_up: None,
+                ref_dn: Some(1),
+                s_left: Some(0.5),
+                s_right: Some(0.2),
+                partner: Some((0.1, 0.1, true)),
+                mask: None,
+                planes: vec![],
+                ..Default::default()
+            },
+        )
+        .unwrap();
         // left: ground 0.5 from sampled trace = 0.3 beyond partner's outer edge
         assert!(g.contains("w=-inf"), "{g}");
         assert!(g.contains("gnd x=-0.45 w=-inf"), "{g}");

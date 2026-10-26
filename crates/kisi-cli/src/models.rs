@@ -13,7 +13,9 @@
 use kisi_core::cavity_modal::{loop_inductance, Cavity};
 use kisi_core::num::Cx;
 use kisi_core::rf::Abcd;
-use kisi_core::via_pbm::{clear_cache, equivalent_radius, ray_profile, Feed, Grid, Mode, PbmVia, Plane, Post, Slab, ViaGeom};
+use kisi_core::via_pbm::{
+    clear_cache, equivalent_radius, ray_profile, Feed, Grid, Mode, PbmVia, Plane, Post, Slab, ViaGeom,
+};
 use serde_json::{json, Value};
 use std::f64::consts::PI;
 use std::time::Instant;
@@ -30,7 +32,9 @@ fn er_at(layers: &[Value], z: f64) -> (f64, f64) {
 
 fn z_microstrip(w: f64, h: f64, er: f64) -> f64 {
     let u = w / h;
-    let a = 1.0 + ((u.powi(4) + (u / 52.0).powi(2)) / (u.powi(4) + 0.432)).ln() / 49.0 + (1.0 + (u / 18.1).powi(3)).ln() / 18.7;
+    let a = 1.0
+        + ((u.powi(4) + (u / 52.0).powi(2)) / (u.powi(4) + 0.432)).ln() / 49.0
+        + (1.0 + (u / 18.1).powi(3)).ln() / 18.7;
     let b = 0.564 * ((er - 0.9) / (er + 3.0)).powf(0.053);
     let ee = (er + 1.0) / 2.0 + (er - 1.0) / 2.0 * (1.0 + 10.0 / u).powf(-a * b);
     let f = 6.0 + (2.0 * PI - 6.0) * (-(30.666 / u).powf(0.7528)).exp();
@@ -41,7 +45,13 @@ fn z_microstrip(w: f64, h: f64, er: f64) -> f64 {
 fn z_stripline_sym(w: f64, b: f64, er: f64) -> f64 {
     let k = 1.0 / (PI * w / (2.0 * b)).cosh();
     let kp = (1.0 - k * k).sqrt();
-    let r = if k < 0.7071 { PI / (2.0 * (1.0 + kp.sqrt()) / (1.0 - kp.sqrt())).ln() } else { (2.0 * (1.0 + k.sqrt()) / (1.0 - k.sqrt())).ln() / PI };
+    // the branch threshold of via_cases.py, kept digit for digit (not FRAC_1_SQRT_2) so both agree
+    #[allow(clippy::approx_constant)]
+    let r = if k < 0.7071 {
+        PI / (2.0 * (1.0 + kp.sqrt()) / (1.0 - kp.sqrt())).ln()
+    } else {
+        (2.0 * (1.0 + k.sqrt()) / (1.0 - k.sqrt())).ln() / PI
+    };
     30.0 * PI / er.sqrt() * r
 }
 
@@ -52,7 +62,9 @@ fn feed_eeff(w: f64, h: f64, er: f64, layers: &[Value], zt: f64, zref: f64) -> f
         return er;
     }
     let u = w / h;
-    let a = 1.0 + ((u.powi(4) + (u / 52.0).powi(2)) / (u.powi(4) + 0.432)).ln() / 49.0 + (1.0 + (u / 18.1).powi(3)).ln() / 18.7;
+    let a = 1.0
+        + ((u.powi(4) + (u / 52.0).powi(2)) / (u.powi(4) + 0.432)).ln() / 49.0
+        + (1.0 + (u / 18.1).powi(3)).ln() / 18.7;
     let b = 0.564 * ((er - 0.9) / (er + 3.0)).powf(0.053);
     (er + 1.0) / 2.0 + (er - 1.0) / 2.0 * (1.0 + 10.0 / u).powf(-a * b)
 }
@@ -89,7 +101,10 @@ pub(crate) fn planes_at(case: &Value, vx: f64, vy: f64, equivalent: Option<f64>)
         if net != "GND" && net != "PWR" {
             continue;
         }
-        let holes: Vec<Vec<f64>> = s["holes"].as_array().map(|a| a.iter().map(|h| h.as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()).collect()).unwrap_or_default();
+        let holes: Vec<Vec<f64>> = s["holes"]
+            .as_array()
+            .map(|a| a.iter().map(|h| h.as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect()).collect())
+            .unwrap_or_default();
         let mut b = None;
         for h in &holes {
             if h.len() < 5 && (h[0] - vx).hypot(h[1] - vy) < 1e-6 {
@@ -151,9 +166,20 @@ fn via_geom(case: &Value, mode: Mode, equivalent: bool) -> ViaGeom {
         let (zc, eeff) = feed_line(layers, &planes, w, z, zr);
         Feed { z, z_ref: zr, w, zc, eeff, dropped: 0.0, antipad_line: true }
     };
-    let post = |w: &Value| Post { dx: g(w, "x") - vx, dy: g(w, "y") - vy, r: g(w, "r"), z0: g(w, "z0"), z1: g(w, "z1"), joins: None, open_r: vec![] };
+    let post = |w: &Value| Post {
+        dx: g(w, "x") - vx,
+        dy: g(w, "y") - vy,
+        r: g(w, "r"),
+        z0: g(w, "z0"),
+        z1: g(w, "z1"),
+        joins: None,
+        open_r: vec![],
+    };
     ViaGeom {
-        slabs: layers.iter().map(|l| Slab { z0: g(l, "z0"), z1: g(l, "z1"), er: g(l, "er"), tand: l["tand"].as_f64().unwrap_or(0.0) }).collect(),
+        slabs: layers
+            .iter()
+            .map(|l| Slab { z0: g(l, "z0"), z1: g(l, "z1"), er: g(l, "er"), tand: l["tand"].as_f64().unwrap_or(0.0) })
+            .collect(),
         planes: planes.clone(),
         r: g(v, "r"),
         z0: g(v, "z0"),
@@ -209,7 +235,12 @@ pub fn run(args: &[String]) {
         _ => vec![("rust_pbm", Grid::Uniform { dr: 0.01, rmax: 3.0 }), ("rust_pbm_graded", Grid::default())],
     };
     let only: Vec<String> = opt("--only").map(|s| s.split(',').map(String::from).collect()).unwrap_or_default();
-    let mut names: Vec<String> = std::fs::read_dir(dir).unwrap().filter_map(|e| e.ok()).map(|e| e.file_name().to_string_lossy().to_string()).filter(|n| n.ends_with(".json")).collect();
+    let mut names: Vec<String> = std::fs::read_dir(dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .filter(|n| n.ends_with(".json"))
+        .collect();
     names.sort();
     let mut res = serde_json::Map::new();
     for fname in names {
@@ -245,7 +276,13 @@ pub fn run(args: &[String]) {
                     let t1 = Instant::now();
                     let s: Vec<[Cx; 4]> = f.iter().map(|&fk| s_of(&m.abcd(fk), 50.0)).collect();
                     let t_eval = t1.elapsed().as_secs_f64();
-                    write_s2p(&out.join(&cid).join(format!("{tag}.s2p")), &format!("{cid}: reduced via model (Rust, {tag})"), &f, &s, 50.0);
+                    write_s2p(
+                        &out.join(&cid).join(format!("{tag}.s2p")),
+                        &format!("{cid}: reduced via model (Rust, {tag})"),
+                        &f,
+                        &s,
+                        50.0,
+                    );
                     r.insert(
                         tag.to_string(),
                         json!({"build_ms": t_build * 1e3, "eval_ms": t_eval * 1e3, "nf": f.len(), "laplace_unknowns": m.laplace_n,
@@ -273,7 +310,12 @@ pub fn run(args: &[String]) {
                     .as_array()
                     .unwrap()
                     .iter()
-                    .map(|p| ((p["x"].as_f64().unwrap() - bx[0]) * 1e-3, ((p["y0"].as_f64().unwrap() + p["y1"].as_f64().unwrap()) / 2.0 - bx[1]) * 1e-3))
+                    .map(|p| {
+                        (
+                            (p["x"].as_f64().unwrap() - bx[0]) * 1e-3,
+                            ((p["y0"].as_f64().unwrap() + p["y1"].as_f64().unwrap()) / 2.0 - bx[1]) * 1e-3,
+                        )
+                    })
                     .collect();
                 let w = case["mesh"]["dfine"].as_f64().unwrap() * 1e-3;
                 let t0 = Instant::now();
@@ -289,23 +331,47 @@ pub fn run(args: &[String]) {
                         let one = Cx::new(1.0, 0.0);
                         let (a, b, cc, dd) = (z[0] + one, z[1], z[2], z[3] + one);
                         let det = a * dd - b * cc;
-                        let (ia, ib, ic, id) = (dd / det, Cx::new(0.0, 0.0) - b / det, Cx::new(0.0, 0.0) - cc / det, a / det);
+                        let (ia, ib, ic, id) =
+                            (dd / det, Cx::new(0.0, 0.0) - b / det, Cx::new(0.0, 0.0) - cc / det, a / det);
                         let (m0, m1, m2, m3) = (z[0] - one, z[1], z[2], z[3] - one);
                         [m0 * ia + m1 * ic, m0 * ib + m1 * id, m2 * ia + m3 * ic, m2 * ib + m3 * id]
                     })
                     .collect();
-                write_s2p(&out.join(&cid).join("rust_model.s2p"), &format!("{cid}: cavity model (Rust), 1 ohm"), &f, &s, 1.0);
+                write_s2p(
+                    &out.join(&cid).join("rust_model.s2p"),
+                    &format!("{cid}: cavity model (Rust), 1 ohm"),
+                    &f,
+                    &s,
+                    1.0,
+                );
                 res.insert(cid, json!({"cavity": {"build_ms": t_build * 1e3, "eval_ms": t_eval * 1e3, "nf": f.len(), "modes": 120 * 80}}));
             }
             "H" => {
                 let bx: Vec<f64> = case["board"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
-                let zc: Vec<f64> = case["meta"]["copper_z"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
+                let zc: Vec<f64> =
+                    case["meta"]["copper_z"].as_array().unwrap().iter().map(|x| x.as_f64().unwrap()).collect();
                 let (d1, d2) = (zc[1] - zc[3], zc[3] - zc[4]);
                 let d_eff = d1 * d2 / (d1 + d2);
-                let c = Cavity { a: (bx[2] - bx[0]) * 1e-3, b: (bx[3] - bx[1]) * 1e-3, d: d_eff * 1e-3, er: 4.0, tand: 0.0, f_loss: None, fringe: 0.0, modes: (200, 60) };
+                let c = Cavity {
+                    a: (bx[2] - bx[0]) * 1e-3,
+                    b: (bx[3] - bx[1]) * 1e-3,
+                    d: d_eff * 1e-3,
+                    er: 4.0,
+                    tand: 0.0,
+                    f_loss: None,
+                    fringe: 0.0,
+                    modes: (200, 60),
+                };
                 let lx = case["lumped"][0]["x"].as_f64().unwrap();
                 let t0 = Instant::now();
-                let l = loop_inductance(&c, ((0.0 - bx[0]) * 1e-3, (0.0 - bx[1]) * 1e-3), 2.4e-3, ((lx + 0.5 - bx[0]) * 1e-3, (0.0 - bx[1]) * 1e-3), 0.2e-3, 50e6);
+                let l = loop_inductance(
+                    &c,
+                    ((0.0 - bx[0]) * 1e-3, (0.0 - bx[1]) * 1e-3),
+                    2.4e-3,
+                    ((lx + 0.5 - bx[0]) * 1e-3, (0.0 - bx[1]) * 1e-3),
+                    0.2e-3,
+                    50e6,
+                );
                 let t = t0.elapsed().as_secs_f64();
                 res.insert(cid, json!({"pdn_loop": {"L_plane_model_nH": l * 1e9, "ms": t * 1e3}}));
             }

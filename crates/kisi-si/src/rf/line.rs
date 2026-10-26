@@ -16,9 +16,8 @@
 //! – only below a resonance; the Lorentz term matches Getsinger at the top of the band and keeps
 //! its resonance at fp/√G (Getsinger's corner) or at least at twice the band.
 
-use crate::analytic;
-#[allow(unused_imports)]
 use super::*;
+use crate::analytic;
 use crate::board::Stackup;
 use crate::extract::{CrossSection, FieldResult, Kind};
 use serde::{Deserialize, Serialize};
@@ -272,7 +271,18 @@ pub struct RfParams {
 
 impl Default for RfParams {
     fn default() -> Self {
-        RfParams { fmax: 25e9, npts: 500, rise: 35e-12, roughness: Roughness::Standard, sigma: 5.8e7, z_ref: None, vias: true, backdrill: None, via_cavity: false, via_returns: false }
+        RfParams {
+            fmax: 25e9,
+            npts: 500,
+            rise: 35e-12,
+            roughness: Roughness::Standard,
+            sigma: 5.8e7,
+            z_ref: None,
+            vias: true,
+            backdrill: None,
+            via_cavity: false,
+            via_returns: false,
+        }
     }
 }
 
@@ -403,7 +413,11 @@ pub(crate) fn xs_material(su: &Stackup, xs: &CrossSection) -> (f64, f64) {
             h += d.thickness;
             s += d.thickness * d.loss_tangent;
         }
-        if h > 0.0 { s / h } else { 0.02 }
+        if h > 0.0 {
+            s / h
+        } else {
+            0.02
+        }
     };
     let mut parts = Vec::new();
     for (r, h, e) in [(xs.ref_up, xs.h_up, xs.er_up), (xs.ref_dn, xs.h_dn, xs.er_dn)] {
@@ -432,14 +446,26 @@ pub enum Mode {
     Even,
 }
 
-pub fn line_model(su: &Stackup, xs: &CrossSection, field: Option<&FieldResult>, odd: bool, rp: &RfParams) -> Option<LineModel> {
+pub fn line_model(
+    su: &Stackup,
+    xs: &CrossSection,
+    field: Option<&FieldResult>,
+    odd: bool,
+    rp: &RfParams,
+) -> Option<LineModel> {
     line_model_mode(su, xs, field, if odd { Mode::Odd } else { Mode::Single }, rp)
 }
 
 /// Line model per mode. Odd and even values are per line of the pair (Zdiff = 2·Zodd,
 /// Zcommon = Zeven/2). Without a field solve the even mode comes from the formulas
 /// (Zeven ≈ Z0²/Zodd, Kirschning-Jansen permittivities): an estimate.
-pub fn line_model_mode(su: &Stackup, xs: &CrossSection, field: Option<&FieldResult>, mode: Mode, rp: &RfParams) -> Option<LineModel> {
+pub fn line_model_mode(
+    su: &Stackup,
+    xs: &CrossSection,
+    field: Option<&FieldResult>,
+    mode: Mode,
+    rp: &RfParams,
+) -> Option<LineModel> {
     let (er, tand) = xs_material(su, xs);
     let odd = mode == Mode::Odd;
     let (z, eeff) = match mode {
@@ -453,11 +479,14 @@ pub fn line_model_mode(su: &Stackup, xs: &CrossSection, field: Option<&FieldResu
         Kind::Stripline => (xs.h_dn.unwrap_or(0.1), xs.h_up.unwrap_or(0.1)),
         // no plane: the current crowds towards the nearest coplanar return (for Wheeler's rule a
         // microstrip at that distance; an estimate)
-        Kind::NoReference => ([xs.s_left, xs.s_right, xs.diff_gap].into_iter().flatten().fold(f64::INFINITY, f64::min).min(0.5), 0.0),
+        Kind::NoReference => {
+            ([xs.s_left, xs.s_right, xs.diff_gap].into_iter().flatten().fold(f64::INFINITY, f64::min).min(0.5), 0.0)
+        }
         _ => (xs.h_dn.or(xs.h_up).unwrap_or(0.1), 0.0),
     };
     let ms_h = if matches!(xs.kind, Kind::Stripline | Kind::NoReference) { None } else { Some(h1 * 1e-3) };
-    let q_fill = if xs.kind == Kind::Stripline || er <= 1.0 { 1.0 } else { ((eeff - 1.0) / (er - 1.0)).clamp(0.05, 1.0) };
+    let q_fill =
+        if xs.kind == Kind::Stripline || er <= 1.0 { 1.0 } else { ((eeff - 1.0) / (er - 1.0)).clamp(0.05, 1.0) };
     let r_dc = 1.0 / (rp.sigma * (w_mm * 1e-3) * (t_mm * 1e-3));
 
     // field solve at f0 if available (smooth copper)
@@ -497,11 +526,30 @@ pub fn line_model_mode(su: &Stackup, xs: &CrossSection, field: Option<&FieldResu
     let dn = 1e-3; // mm (1 µm recession)
     let gap = if odd { xs.diff_gap } else { None };
     let la = l_air(xs.kind, w_mm, t_mm, h1, h2, gap);
-    let lb = l_air(xs.kind, w_mm - 2.0 * dn, (t_mm - 2.0 * dn).max(1e-4), h1 + 2.0 * dn, h2 + 2.0 * dn, gap.map(|s| s + 2.0 * dn));
+    let lb = l_air(
+        xs.kind,
+        w_mm - 2.0 * dn,
+        (t_mm - 2.0 * dn).max(1e-4),
+        h1 + 2.0 * dn,
+        h2 + 2.0 * dn,
+        gap.map(|s| s + 2.0 * dn),
+    );
     let dl_dn = ((lb - la) / (dn * 1e-3)).max(0.0);
     let k_ac = (PI * MU0 / rp.sigma).sqrt() / MU0 * dl_dn;
     let l_ext = z * eeff.sqrt() / C0;
     let c0 = eeff.sqrt() / (z * C0);
-    Some(LineModel { z0: z, eeff0: eeff, l_ext, c0, r_dc, k_ac, er, tand, q_fill, tand_eff0: None, ms_h, source: "formula" })
+    Some(LineModel {
+        z0: z,
+        eeff0: eeff,
+        l_ext,
+        c0,
+        r_dc,
+        k_ac,
+        er,
+        tand,
+        q_fill,
+        tand_eff0: None,
+        ms_h,
+        source: "formula",
+    })
 }
-

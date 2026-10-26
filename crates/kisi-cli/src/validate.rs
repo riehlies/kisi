@@ -1,10 +1,12 @@
 //! Compare kisi's impedance models against reference results.
 //!
+//! ```text
 //! Usage: kisi-validate <cases.json> [reference.out.json]
 //!        kisi-validate models <via_cases dir> <out dir> [--grid uniform|graded] [--only k]
 //!        (reduced via / cavity models on the 3D reference cases, see models.rs)
 //!        kisi-validate via-case <board.kicad_pcb> --net NAME --out DIR [options]
 //!        (a via cut out of the board as a kisi-fdtd case with its 2×thru fixtures, viacase.rs)
+//! ```
 //!
 //! Case format (lengths in mm):
 //!   {name, type, w, h, t, er, s?, gap?, cover?, er_top?, top_h?, sm_t?, sm_er?,
@@ -39,7 +41,15 @@ fn case_geometry(c: &Value) -> Option<String> {
     let (w, h, t, er) = (f("w")?, f("h")?, f("t")?, f("er")?);
     let ty = c["type"].as_str()?;
     let cu = |n: &str, t: f64| CopperLayer { name: n.into(), thickness: t };
-    let di = |k: &str, h: f64, er: f64| Dielectric { name: "d".into(), kind: k.into(), material: "m".into(), thickness: h, epsilon_r: er, loss_tangent: 0.0, assumed: vec![] };
+    let di = |k: &str, h: f64, er: f64| Dielectric {
+        name: "d".into(),
+        kind: k.into(),
+        material: "m".into(),
+        thickness: h,
+        epsilon_r: er,
+        loss_tangent: 0.0,
+        assumed: vec![],
+    };
     let mask = f("sm_t").map(|tm| (tm, f("sm_er").unwrap_or(3.3)));
     let partner = f("s").map(|s| (s, w, true));
     let (su, desc) = match ty {
@@ -52,7 +62,21 @@ fn case_geometry(c: &Value) -> Option<String> {
                 from_file: true,
             };
             let gap = f("gap");
-            (su, XsDesc { layer: 0, w, ref_up: None, ref_dn: Some(1), s_left: gap.map(|g| g + partner.map(|p| p.0 + p.1).unwrap_or(0.0)), s_right: gap, partner, mask, planes: vec![], ..Default::default() })
+            (
+                su,
+                XsDesc {
+                    layer: 0,
+                    w,
+                    ref_up: None,
+                    ref_dn: Some(1),
+                    s_left: gap.map(|g| g + partner.map(|p| p.0 + p.1).unwrap_or(0.0)),
+                    s_right: gap,
+                    partner,
+                    mask,
+                    planes: vec![],
+                    ..Default::default()
+                },
+            )
         }
         "microstrip_cut" => {
             // plane directly under the trace has an opening of width `cut`;
@@ -66,7 +90,21 @@ fn case_geometry(c: &Value) -> Option<String> {
                 from_file: true,
             };
             let planes = vec![PlaneCut { layer: 1, left: Some(cut / 2.0), right: Some(cut / 2.0) }];
-            (su, XsDesc { layer: 0, w, ref_up: None, ref_dn: Some(2), s_left: None, s_right: None, partner: None, mask: None, planes, ..Default::default() })
+            (
+                su,
+                XsDesc {
+                    layer: 0,
+                    w,
+                    ref_up: None,
+                    ref_dn: Some(2),
+                    s_left: None,
+                    s_right: None,
+                    partner: None,
+                    mask: None,
+                    planes,
+                    ..Default::default()
+                },
+            )
         }
         "stripline" | "diff_stripline" => {
             let h2 = f("top_h")? - t;
@@ -77,7 +115,21 @@ fn case_geometry(c: &Value) -> Option<String> {
                 mask_bottom: None,
                 from_file: true,
             };
-            (su, XsDesc { layer: 1, w, ref_up: Some(0), ref_dn: Some(2), s_left: None, s_right: None, partner, mask: None, planes: vec![], ..Default::default() })
+            (
+                su,
+                XsDesc {
+                    layer: 1,
+                    w,
+                    ref_up: Some(0),
+                    ref_dn: Some(2),
+                    s_left: None,
+                    s_right: None,
+                    partner,
+                    mask: None,
+                    planes: vec![],
+                    ..Default::default()
+                },
+            )
         }
         _ => return None,
     };
@@ -90,12 +142,18 @@ fn main() {
         // diagnostics: a ViaGeom JSON line (KISI_DEBUG_VIA output) → nodes, capacitances, row charges
         use kisi_core::via_pbm::{charge_rows, Grid, Mode, PbmVia, ViaGeom};
         let g: ViaGeom = serde_json::from_str(std::fs::read_to_string(&args[2]).unwrap().trim()).unwrap();
-        let grid = if args.iter().any(|a| a == "--uniform") { Grid::Uniform { dr: 0.01, rmax: 3.0 } } else { Grid::default() };
+        let grid =
+            if args.iter().any(|a| a == "--uniform") { Grid::Uniform { dr: 0.01, rmax: 3.0 } } else { Grid::default() };
         let m = PbmVia::build(&g, if g.partner.is_some() { Mode::Odd } else { Mode::Single }, grid);
         println!("nodes {:?}\nC fF {:?}", m.nodes, m.cap.iter().map(|c| (c * 1e16).round() / 10.0).collect::<Vec<_>>());
         for f in [1e9, 4e9, 8e9, 12e9, 16e9, 20e9] {
             let (s11, s21, _) = m.abcd(f).s_params(50.0);
-            println!("{:5.1} GHz  |S21| {:7.2} dB  |S11| {:7.2} dB", f / 1e9, 20.0 * s21.abs().log10(), 20.0 * s11.abs().log10());
+            println!(
+                "{:5.1} GHz  |S21| {:7.2} dB  |S11| {:7.2} dB",
+                f / 1e9,
+                20.0 * s21.abs().log10(),
+                20.0 * s11.abs().log10()
+            );
         }
         if let Some(i) = args.iter().position(|a| a == "--s2p") {
             // S-parameters 0.1 … 40 GHz in 0.1 GHz steps (as the reference cases), 50 Ω
@@ -104,7 +162,10 @@ fn main() {
                 let f = k as f64 * 1e8;
                 let m2 = m.abcd(f);
                 let (s11, s21, s22) = m2.s_params(50.0);
-                t += &format!("{f:.6e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e}\n", s11.re, s11.im, s21.re, s21.im, s21.re, s21.im, s22.re, s22.im);
+                t += &format!(
+                    "{f:.6e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e} {:.9e}\n",
+                    s11.re, s11.im, s21.re, s21.im, s21.re, s21.im, s22.re, s22.im
+                );
             }
             std::fs::write(&args[i + 1], t).unwrap();
         }
@@ -151,15 +212,14 @@ fn main() {
         println!("{} geometries written to {out}", list.len());
         return;
     }
-    let field: Vec<Value> = opt("--field")
-        .map(|p| serde_json::from_str(&std::fs::read_to_string(p).unwrap()).unwrap())
-        .unwrap_or_default();
+    let field: Vec<Value> =
+        opt("--field").map(|p| serde_json::from_str(&std::fs::read_to_string(p).unwrap()).unwrap()).unwrap_or_default();
     let refs: Vec<Value> = args
         .get(2)
         .filter(|a| !a.starts_with("--"))
         .map(|p| serde_json::from_str(&std::fs::read_to_string(p).unwrap()).unwrap())
         .unwrap_or_default();
-    println!("{:<46} {:>9} {:>9} {:>8}  {}", "case", "ref Ω", "kisi Ω", "err", "source");
+    println!("{:<46} {:>9} {:>9} {:>8}  source", "case", "ref Ω", "kisi Ω", "err");
     let mut worst: f64 = 0.0;
     let mut n = 0usize;
     for (i, c) in cases.iter().enumerate() {

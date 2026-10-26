@@ -25,7 +25,7 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   `kisi.json`. The "Prepare" step lists the gaps and lets the simple values be entered directly (laminate εr/tanδ,
   net class targets and profiles, regulators and loads, thermal data), checked by the same code as `config-check`,
   and exports `<board>.kisi.json`. Research-heavy values (datasheets) stay with the agent path (skill
-  kisi-prepare). No second logic in the viewer. **Done in branch `feat/docs-prepare`** (mockup v3 approved, then implemented): the core
+  kisi-prepare). No second logic in the viewer. **Done, released in 0.3.0** (mockup v3 approved, then implemented): the core
   (gap categories from `affects`, "nothing to check" per category, readiness, `kisi gaps --for`, `gaps.dismissed`
   for name-based gaps, `config::subset`, check messages with categories), the WASM exports, and the viewer's
   "Prepare PCB" page (tabs, forms for laminate, net classes, variant, regulators, loads, beads and thermal data,
@@ -41,7 +41,13 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   what is still missing, the next step opens, progress and "Ready for …" per tab, saving as the last step; the
   marker counts a step's open items), the readiness dots on the view buttons are gone, kisi.json can give nets a
   class of their own (`net_classes.<name>.nets`), and the example boards carry a complete kisi.json.
-  What remains, with reasons: `docs/mockups/prepare.md`, "Still open".
+  Still open, with the reason: profile parameters edited in the Channel view (limits, data rate) are stored per
+  browser – kisi.json has no key for them; lane direction swaps and path flips are display choices, not board data;
+  pads chosen for a source or load in rail setups are lost when the setups move into fields (fields name parts, not
+  pads – the page says so); a `PI_REG`/`PI_LOAD` from the KiCad file cannot be removed by kisi.json (the page names
+  it); the forms do not parse field values themselves (the core's check reports what it cannot read); no
+  step-by-step undo (per gap for dismissals, "Discard draft" for all); values from datasheets or curves stay on the
+  agent path, by design.
 - **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
   (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
   text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an
@@ -68,8 +74,8 @@ Goal: fast models whose accuracy is known – checked against other solvers and 
 principle: accuracy levels formula → 2D field solver → 3D for selected structures, each with an error from the
 validation, and every result says which level it used and how uncertain it is.
 - **Measured test board.** Coupons from the reference cases on JLCPCB / Aisler standard stackups with screw-on
-  end-launch connectors, simulated in kisi-fdtd and CST, measured on Keysight ENA / PNA-X / PNA; plan in
-  `validation/test_board.md`, coupons v2 in branch `feat/test-board` (waiting for the RF group's advice on the
+  end-launch connectors, simulated in kisi-fdtd and CST, measured on Keysight ENA / PNA-X / PNA; plan
+  (`validation/test_board.md`) and coupons v2 in branch `feat/test-board` (waiting for the RF group's advice on the
   measurement).
 - **Vias and planes in 3D** (merged into `main` at 98af58d with Blocks 1–6): Block 2 `feat/via-3d-board` (board via →
   kisi-fdtd exporter, matched de-embedding, `BOARD_VIAS.md`), Block 3 `feat/board-resonances` (finite plane cavities
@@ -187,9 +193,9 @@ export shows it). Background: `docs/models.md` (scope, why kisi is fast); the ea
   reports a newer upstream revision).
 - **CI:** the checks run by what changed (`tools/ci_checks.py changes`); stored results of the example boards and the
   via references (`tools/golden.py`) catch unintended model changes; the docs PDF and the channel export (ngspice,
-  KiCad 9 ERC) run in their groups. Next: format the Rust code once with `cargo fmt` when few branches are open
-  (today ~1400 differences) and then check it on every push; clear the clippy warnings and make clippy failing;
-  parse a KiCad 10 test board.
+  KiCad 9 ERC) run in their groups; the Rust code is formatted (`cargo fmt --check`) and clippy-clean
+  (`-D warnings`, native and wasm) on every push that touches it, with the Rust version pinned in
+  `rust-toolchain.toml` (raised on purpose, not by a new stable release). Next: parse a KiCad 10 test board.
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.
 
 ### Small fixes (independent, can be done in parallel)

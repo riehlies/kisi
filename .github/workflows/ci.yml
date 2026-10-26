@@ -3,7 +3,8 @@
 # `gh workflow run ci --ref <branch>` before merging a branch) and the weekly run do everything.
 #
 #   always              data/*.json values have sources · Markdown links
-#   rust                cargo test · the CLI commands and options named in README, docs/ and the skills exist
+#   rust                formatting (cargo fmt --check) · clippy without warnings (native and wasm) · cargo test ·
+#                       the CLI commands and options named in README, docs/ and the skills exist
 #   viewer              unit formatter (test_units.mjs) · viewer in headless Chromium (check_viewer.py: all views,
 #                       light/dark/phone, no console errors)
 #   cli                 Node CLI against the native CLI on the example boards (compare_cli.py)
@@ -19,7 +20,7 @@
 #   viewer or cli       reproducible bundles · bundle sizes (tools/size_budget.json)
 #   full runs only      the viewer in Firefox and WebKit · kisi.mjs on Windows
 #   weekly / manual     dependency audit (cargo-audit) and licences (cargo-deny, deny.toml) · newer upstream
-#                       revision of js_2d_fields · clippy (report only)
+#                       revision of js_2d_fields
 name: ci
 on:
   push:
@@ -49,7 +50,7 @@ jobs:
       upstream: ${{ steps.c.outputs.upstream }}
       full: ${{ steps.c.outputs.full }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - id: c
@@ -81,8 +82,8 @@ jobs:
       BUNDLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' }}
       EXAMPLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' || needs.changes.outputs.export == 'true' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Values with sources, Markdown links
@@ -92,23 +93,31 @@ jobs:
       - name: Forstén's solver unchanged (third_party/js_2d_fields against upstream)
         if: needs.changes.outputs.upstream == 'true'
         run: python3 tools/ci_checks.py upstream
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         if: env.BUILD == 'true'
         with:
           node-version: 22
       - name: Rust toolchain
         if: env.BUILD == 'true'
-        run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown && rustup default stable
+        run: TC=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml) && rustup toolchain install "$TC" --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown  # rust-toolchain.toml
       - name: Cargo cache
         if: env.BUILD == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
           restore-keys: cargo-${{ runner.os }}-
+      - name: Formatting (rustfmt.toml)
+        if: env.RUST == 'true'
+        run: cargo fmt --all -- --check
+      - name: Clippy (warnings fail)
+        if: env.RUST == 'true'
+        run: |
+          cargo clippy --release --workspace --all-targets -- -D warnings
+          cargo clippy --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown -- -D warnings
       - name: Tests
         if: env.RUST == 'true'
         run: cargo test --release
@@ -133,7 +142,7 @@ jobs:
           python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
       - name: Bundles for the other platforms
         if: env.FULL == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bundles
           retention-days: 3
@@ -182,10 +191,10 @@ jobs:
             --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export_compact --lane SYNC_OUT_P --lane REFINOUT2 --lane PCIe_PET1_P \
             --models ladder,compact --passivity --report kicad-sheets/compact_vs_ladder.md --strict
           python3 validation/channel_export/compare.py target/release/kisi examples/Thunderscope_Rev5.3.kicad_pcb \
-            --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export_ladder_kicad --lane PCIe_PER0_P --model ladder --kicad --strict
+            --config web/samples/ts.kisi.json --out $RUNNER_TEMP/export_ladder_kicad --lane SYNC_OUT_P --model ladder --kicad --strict
       - name: KiCad sheets of the channel export (rendered by kicad-cli 9, ERC results)
         if: env.EXPORT == 'true' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: kicad-sheets
           path: kicad-sheets
@@ -215,7 +224,7 @@ jobs:
           python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
       - name: Screenshots of the viewer check
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: viewer-screenshots
           path: viewer-screenshots
@@ -232,11 +241,11 @@ jobs:
       matrix:
         browser: [firefox, webkit]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: bundles
       - name: Viewer in ${{ matrix.browser }}
@@ -247,7 +256,7 @@ jobs:
             --out viewer-screenshots
       - name: Screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: viewer-screenshots-${{ matrix.browser }}
           path: viewer-screenshots
@@ -260,10 +269,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: bundles
       - name: kisi.mjs on Windows
@@ -288,9 +297,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Rust toolchain
-        run: rustup toolchain install stable --profile minimal --component clippy && rustup default stable
+        run: TC=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml) && rustup toolchain install "$TC" --profile minimal  # rust-toolchain.toml
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit,cargo-deny
@@ -300,10 +309,3 @@ jobs:
         run: cargo deny check licenses sources
       - name: Newer upstream revision of js_2d_fields
         run: python3 tools/ci_checks.py upstream --latest
-      - name: Clippy (report only)
-        continue-on-error: true
-        run: |
-          cargo clippy --release --workspace --message-format short 2>&1 | tee clippy.txt | tail -5
-          n=$(grep -c ': warning:' clippy.txt || true)
-          echo "::notice title=clippy::$n warnings (report only)"
-          echo "### Clippy: $n warnings (report only)" >> "$GITHUB_STEP_SUMMARY"

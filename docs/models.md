@@ -258,7 +258,7 @@ kisi marks these as estimates in the viewer and in the CLI output:
   swing on eight lanes of both example boards; every exported circuit is passive from 1 kHz to 10 × f max
   ([research/channel-export.md](research/channel-export.md) section 7).
 - **Still open:** validation against other solvers and against measurements. A measured test board is planned
-  ([validation/test_board.md](../validation/test_board.md)). Until then, treat the numbers as plausible estimates,
+  (plan and coupon design in branch `feat/test-board`, `validation/test_board.md` there). Until then, treat the numbers as plausible estimates,
   not as verified results.
 
 ## Limits

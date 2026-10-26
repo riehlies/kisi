@@ -84,7 +84,7 @@ and the lumped R–L–C.
 - `practice.py` measures run time, memory and bundle size on the example boards → `results/practice.json`.
 - `wasm_speed.mjs` runs one case in the WebAssembly build of kisi-fdtd (`fd_run`, the engine a browser would use)
   and prints its run time and cell rate, for the comparison with the native solver.
-- The planned measured test board is in `../test_board.md`.
+- The planned measured test board is in branch `feat/test-board` (`validation/test_board.md` there).
 - **Board vias** (`BOARD_VIAS.md`): `kisi-validate via-case` cuts a via (or the via pair of a differential pair)
   out of a KiCad board as a case with its 2×thru fixtures; `board_vias.py` exports, runs and compares three
   critical vias of the example boards with kisi's ladder (`board_cases/`, results in `via_ref/BV_*`,

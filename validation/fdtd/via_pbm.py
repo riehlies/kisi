@@ -214,7 +214,6 @@ def ladder(case, f, via_index=0, loss_as_3d=True, mode=None):
     F_LOSS = (case.get("f_loss") or case["fmax"] / 2) if loss_as_3d else None
     via = [v for v in case["vias"] if v.get("net", "SIG") == "SIG"][via_index]
     planes = geometry(case, via)
-    zc = case["meta"]["copper_z"]
     ports = case["ports"]
     if len(ports) == 4:  # pair: P near, N near, P far, N far
         ports = [ports[0], ports[2]]
@@ -381,7 +380,6 @@ def ladder(case, f, via_index=0, loss_as_3d=True, mode=None):
             p = ports[side]
             wt = p["y1"] - p["y0"]
             zt = p["z1"]
-            h = abs(zt - p["z0"])
             er_, _ = er_at(case, (zt + p["z0"]) / 2)
             zf, ee = feed_line(case, planes, wt, zt, p["z0"])
             beta = w * math.sqrt(ee) / C0

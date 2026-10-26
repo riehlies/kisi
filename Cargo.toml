@@ -18,6 +18,15 @@ license = "GPL-3.0-only"
 authors = ["David Riehl", "kisi contributors"]
 repository = "https://github.com/riehlies/kisi"
 
+# Lints for all crates (each crate has `[lints] workspace = true`). Allowed: deliberate styles of the numeric code.
+[workspace.lints.clippy]
+# numeric kernels index several parallel arrays (and neighbours i±1) with one loop variable
+needless_range_loop = "allow"
+# solver and model functions take the physical parameters one by one, as in the formulas they implement
+too_many_arguments = "allow"
+# tuples of geometry and result values are returned and stored without a named type
+type_complexity = "allow"
+
 [profile.release]
 opt-level = 3
 lto = true

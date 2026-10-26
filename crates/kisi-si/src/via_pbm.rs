@@ -313,7 +313,14 @@ pub struct CavityLink {
 
 impl std::fmt::Debug for CavityLink {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CavityLink {{ z_top: {}, z_bot: {}, ports: {}, origin: {:?} }}", self.z_top, self.z_bot, self.env.ports().len(), self.origin)
+        write!(
+            f,
+            "CavityLink {{ z_top: {}, z_bot: {}, ports: {}, origin: {:?} }}",
+            self.z_top,
+            self.z_bot,
+            self.env.ports().len(),
+            self.origin
+        )
     }
 }
 
@@ -442,7 +449,7 @@ pub fn hankel2_0(z: Cx) -> Cx {
                 break;
             }
         }
-        let gamma = 0.577_215_664_901_532_9;
+        let gamma = std::f64::consts::EULER_GAMMA;
         let lz = cln(z.scale(0.5)) + Cx::new(gamma, 0.0);
         let y0 = (lz * j0 + ysum).scale(2.0 / PI);
         j0 - Cx::new(0.0, 1.0) * y0
@@ -681,7 +688,8 @@ type Charges = std::sync::Arc<(Vec<f64>, Vec<f64>, usize, Vec<(f64, f64)>)>;
 
 /// Laplace results by geometry: the vias of a board come in few types. One cache for all threads
 /// (the check's rows run in parallel); a result is a function of its key only (`rz_charges`).
-static CACHE: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, Charges>>> = std::sync::LazyLock::new(Default::default);
+static CACHE: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, Charges>>> =
+    std::sync::LazyLock::new(Default::default);
 
 /// A cache's map (a panic elsewhere while it was held leaves it usable: entries are complete).
 fn locked<T>(m: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -795,7 +803,7 @@ fn rz_solve(g: &ViaGeom, grid: Grid) -> (Vec<f64>, Vec<f64>, usize, Vec<(f64, f6
                 cond[k] = 1;
             }
             for p in &g.planes {
-                if (zz - p.z).abs() < 1e-6 && p.antipad.map_or(true, |b| rr >= b - 1e-9) {
+                if (zz - p.z).abs() < 1e-6 && p.antipad.is_none_or(|b| rr >= b - 1e-9) {
                     cond[k] = 0;
                 }
             }
@@ -806,7 +814,8 @@ fn rz_solve(g: &ViaGeom, grid: Grid) -> (Vec<f64>, Vec<f64>, usize, Vec<(f64, f6
     let rl = |i: usize| if i == 0 { 0.0 } else { 0.5 * (r[i - 1] + r[i]) };
     let rh = |i: usize| if i + 1 == nr { r[i] } else { 0.5 * (r[i] + r[i + 1]) };
     for j in 0..nz {
-        let dzh = 0.5 * if j + 1 < nz { z[j + 1] - z[j] } else { 0.0 } + 0.5 * if j > 0 { z[j] - z[j - 1] } else { 0.0 };
+        let dzh =
+            0.5 * if j + 1 < nz { z[j + 1] - z[j] } else { 0.0 } + 0.5 * if j > 0 { z[j] - z[j - 1] } else { 0.0 };
         let e = {
             let (mut s, mut n) = (0.0, 0.0);
             for jj in [j as isize - 1, j as isize] {
@@ -873,7 +882,10 @@ fn rz_solve(g: &ViaGeom, grid: Grid) -> (Vec<f64>, Vec<f64>, usize, Vec<(f64, f6
             let j = k / nr;
             zq.push(z[j]);
             qq.push(q[k]);
-            ext.push((if j > 0 { 0.5 * (z[j - 1] + z[j]) } else { z[j] }, if j + 1 < nz { 0.5 * (z[j] + z[j + 1]) } else { z[j] }));
+            ext.push((
+                if j > 0 { 0.5 * (z[j - 1] + z[j]) } else { z[j] },
+                if j + 1 < nz { 0.5 * (z[j] + z[j + 1]) } else { z[j] },
+            ));
         }
     }
     (zq, qq, nf, ext)
@@ -917,7 +929,7 @@ fn rz_total(slabs: &[Slab], barrel: Option<(f64, f64, f64)>, planes: &[(f64, Opt
                 }
             }
             for p in planes {
-                if (zz - p.0).abs() < 1e-6 && p.1.map_or(true, |b| rr >= b - 1e-9) {
+                if (zz - p.0).abs() < 1e-6 && p.1.is_none_or(|b| rr >= b - 1e-9) {
                     cond[idx(i, j)] = if p.2 { 1 } else { 0 };
                 }
             }
@@ -928,7 +940,8 @@ fn rz_total(slabs: &[Slab], barrel: Option<(f64, f64, f64)>, planes: &[(f64, Opt
     let rh = |i: usize| if i + 1 == nr { rs[i] } else { 0.5 * (rs[i] + rs[i + 1]) };
     let mut links: Vec<(usize, usize, f64)> = Vec::with_capacity(2 * nr * nz);
     for j in 0..nz {
-        let dzh = 0.5 * if j + 1 < nz { zs[j + 1] - zs[j] } else { 0.0 } + 0.5 * if j > 0 { zs[j] - zs[j - 1] } else { 0.0 };
+        let dzh =
+            0.5 * if j + 1 < nz { zs[j + 1] - zs[j] } else { 0.0 } + 0.5 * if j > 0 { zs[j] - zs[j - 1] } else { 0.0 };
         let (mut s, mut n) = (0.0, 0.0);
         for jj in [j as isize - 1, j as isize] {
             if jj >= 0 && (jj as usize) < nz - 1 {
@@ -939,10 +952,18 @@ fn rz_total(slabs: &[Slab], barrel: Option<(f64, f64, f64)>, planes: &[(f64, Opt
         let e = s / n;
         for i in 0..nr {
             if i + 1 < nr {
-                links.push((idx(i, j), idx(i + 1, j), EPS0 * e * 2.0 * PI * 0.5 * (rs[i] + rs[i + 1]) * dzh / (rs[i + 1] - rs[i]) * 1e-3));
+                links.push((
+                    idx(i, j),
+                    idx(i + 1, j),
+                    EPS0 * e * 2.0 * PI * 0.5 * (rs[i] + rs[i + 1]) * dzh / (rs[i + 1] - rs[i]) * 1e-3,
+                ));
             }
             if j + 1 < nz {
-                links.push((idx(i, j), idx(i, j + 1), EPS0 * ecell[j] * PI * (rh(i).powi(2) - rl(i).powi(2)) / (zs[j + 1] - zs[j]) * 1e-3));
+                links.push((
+                    idx(i, j),
+                    idx(i, j + 1),
+                    EPS0 * ecell[j] * PI * (rh(i).powi(2) - rl(i).powi(2)) / (zs[j + 1] - zs[j]) * 1e-3,
+                ));
             }
         }
     }
@@ -1012,7 +1033,9 @@ pub fn post_plane_cap(slabs: &[Slab], a: f64, z0: f64, z1: f64, planes: &[(f64, 
     // only the node's plane and its neighbours: the planes at the post's potential shield the rest,
     // and the post ends at them
     let (lo, hi) = (node.saturating_sub(1), (node + 1).min(planes.len() - 1));
-    let pl: Vec<(f64, Option<f64>, bool)> = (lo..=hi).map(|k| (planes[k].0, if k == node { Some(planes[k].1.unwrap_or(a + 0.2)) } else { planes[k].1 }, k != node)).collect();
+    let pl: Vec<(f64, Option<f64>, bool)> = (lo..=hi)
+        .map(|k| (planes[k].0, if k == node { Some(planes[k].1.unwrap_or(a + 0.2)) } else { planes[k].1 }, k != node))
+        .collect();
     // planes top-down: the neighbour above is node − 1, below node + 1
     let zt = if node > 0 { z1.min(planes[node - 1].0) } else { z1 };
     let zb = if node + 1 < planes.len() { z0.max(planes[node + 1].0) } else { z0 };
@@ -1134,7 +1157,8 @@ pub fn equivalent_radius(a: f64, rb: &[f64]) -> f64 {
 }
 
 /// Equivalent radii of antipad openings by profile (one cache for all threads, as `CACHE`).
-static EQ_CACHE: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<Vec<i32>, f64>>> = std::sync::LazyLock::new(Default::default);
+static EQ_CACHE: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<Vec<i32>, f64>>> =
+    std::sync::LazyLock::new(Default::default);
 
 /// [`equivalent_radius`] with a cache (profiles to 10 µm) and a short cut for nearly
 /// round openings (max/min < 1.03: the log mean of the profile, as polygonised circles are).
@@ -1195,7 +1219,9 @@ pub fn ray_profile(p: [f64; 2], nt: usize, rmax: f64, step: f64, inside: &dyn Fn
 /// zero-thickness Hammerstad–Jensen microstrip impedance (as the case generator)
 fn z_ms(w: f64, h: f64, er: f64) -> f64 {
     let u = w / h;
-    let a = 1.0 + ((u.powi(4) + (u / 52.0).powi(2)) / (u.powi(4) + 0.432)).ln() / 49.0 + (1.0 + (u / 18.1).powi(3)).ln() / 18.7;
+    let a = 1.0
+        + ((u.powi(4) + (u / 52.0).powi(2)) / (u.powi(4) + 0.432)).ln() / 49.0
+        + (1.0 + (u / 18.1).powi(3)).ln() / 18.7;
     let b = 0.564 * ((er - 0.9) / (er + 3.0)).powf(0.053);
     let ee = (er + 1.0) / 2.0 + (er - 1.0) / 2.0 * (1.0 + 10.0 / u).powf(-a * b);
     let f = 6.0 + (2.0 * PI - 6.0) * (-(30.666 / u).powf(0.7528)).exp();
@@ -1319,7 +1345,9 @@ impl PbmVia {
             }
         }
         let n = nodes.len();
-        let node_mat: Vec<(f64, f64)> = (0..n).map(|k| if k + 1 < n { er_at(&g.slabs, nodes[k] - 1e-4) } else { er_at(&g.slabs, nodes[k] + 1e-4) }).collect();
+        let node_mat: Vec<(f64, f64)> = (0..n)
+            .map(|k| if k + 1 < n { er_at(&g.slabs, nodes[k] - 1e-4) } else { er_at(&g.slabs, nodes[k] + 1e-4) })
+            .collect();
         let node_tand: Vec<f64> = node_mat.iter().map(|m| m.1).collect();
         let node_er: Vec<f64> = node_mat.iter().map(|m| m.0).collect();
         let use_partner = mode != Mode::Single && g.partner.is_some();
@@ -1333,14 +1361,26 @@ impl PbmVia {
                 let ports = e.env.ports();
                 let idx: Option<Vec<usize>> = pts
                     .iter()
-                    .map(|&(x, y, _)| ports.iter().position(|q| (q.x - (e.origin.0 + x)).abs() < 1e-7 && (q.y - (e.origin.1 + y)).abs() < 1e-7))
+                    .map(|&(x, y, _)| {
+                        ports.iter().position(|q| {
+                            (q.x - (e.origin.0 + x)).abs() < 1e-7 && (q.y - (e.origin.1 + y)).abs() < 1e-7
+                        })
+                    })
                     .collect();
                 idx.map(|i| (ei, i))
             })
         };
         let dist = |pts: &[(f64, f64, f64)]| -> Vec<f64> {
             let n = pts.len();
-            (0..n * n).map(|q| if q / n == q % n { pts[q / n].2 } else { (pts[q / n].0 - pts[q % n].0).hypot(pts[q / n].1 - pts[q % n].1) }).collect()
+            (0..n * n)
+                .map(|q| {
+                    if q / n == q % n {
+                        pts[q / n].2
+                    } else {
+                        (pts[q / n].0 - pts[q % n].0).hypot(pts[q / n].1 - pts[q % n].1)
+                    }
+                })
+                .collect()
         };
         // return groups: every return post that does not short all pairs it spans is a ladder of its
         // own – a node at each plane it passes without joining it (with its capacitance to that
@@ -1363,7 +1403,16 @@ impl PbmVia {
                 }
                 let planes_r: Vec<(f64, Option<f64>)> = ks
                     .iter()
-                    .map(|&k| (pl[k], if has(pl[k]) { None } else { Some(p.open_r.iter().find(|o| (o.0 - pl[k]).abs() < 1e-6).map_or(p.r + 0.2, |o| o.1)) }))
+                    .map(|&k| {
+                        (
+                            pl[k],
+                            if has(pl[k]) {
+                                None
+                            } else {
+                                Some(p.open_r.iter().find(|o| (o.0 - pl[k]).abs() < 1e-6).map_or(p.r + 0.2, |o| o.1))
+                            },
+                        )
+                    })
                     .collect();
                 let node: Vec<Option<usize>> = ks
                     .iter()
@@ -1403,7 +1452,8 @@ impl PbmVia {
                 let nshort = pts.len() - nsig;
                 pts.extend(act.iter().map(|a| pt(&g.returns[a.0])));
                 let env = env_for(pa, pb, &pts);
-                let loads: Vec<CapPost> = if env.is_some() { vec![] } else { g.caps.iter().copied().filter(|c| joins(c, pa, pb)).collect() };
+                let loads: Vec<CapPost> =
+                    if env.is_some() { vec![] } else { g.caps.iter().copied().filter(|c| joins(c, pa, pb)).collect() };
                 // capacitors before the returns with spans
                 let at = nsig + nshort;
                 for (k, c) in loads.iter().enumerate() {
@@ -1412,7 +1462,18 @@ impl PbmVia {
                 let mid = 0.5 * (pa + pb);
                 let er = er_weighted(&g.slabs, pa, pb).unwrap_or(er_at(&g.slabs, mid).0);
                 let rr = dist(&pts);
-                pairs.push(PairM { pair: (pa * 1e-3, pb * 1e-3), er, tand: er_at(&g.slabs, mid).1, pts, nsig, nshort, loads, segs: act.iter().map(|a| a.1).collect(), rr, env });
+                pairs.push(PairM {
+                    pair: (pa * 1e-3, pb * 1e-3),
+                    er,
+                    tand: er_at(&g.slabs, mid).1,
+                    pts,
+                    nsig,
+                    nshort,
+                    loads,
+                    segs: act.iter().map(|a| a.1).collect(),
+                    rr,
+                    env,
+                });
             }
         }
         // spans
@@ -1427,8 +1488,17 @@ impl PbmVia {
             let above: Vec<f64> = pzs.iter().copied().filter(|&pz| pz >= za - 1e-9).collect();
             let below: Vec<f64> = pzs.iter().copied().filter(|&pz| pz <= zb + 1e-9).collect();
             if above.is_empty() || below.is_empty() {
-                let pl = if !below.is_empty() { below.iter().copied().fold(f64::MAX, f64::min) } else { above.iter().copied().fold(f64::MIN, f64::max) };
-                let b = g.planes.iter().find(|p| (p.z - pl).abs() < 1e-9 && p.antipad.map_or(false, |b| b > 0.0)).and_then(|p| p.antipad).unwrap_or(2.0 * g.r);
+                let pl = if !below.is_empty() {
+                    below.iter().copied().fold(f64::MAX, f64::min)
+                } else {
+                    above.iter().copied().fold(f64::MIN, f64::max)
+                };
+                let b = g
+                    .planes
+                    .iter()
+                    .find(|p| (p.z - pl).abs() < 1e-9 && p.antipad.is_some_and(|b| b > 0.0))
+                    .and_then(|p| p.antipad)
+                    .unwrap_or(2.0 * g.r);
                 spans.push(SpanKind::Outer(MU0 * (za - zb) * 1e-3 / (2.0 * PI) * (b / g.r).max(1.01).ln()));
                 span_pair.push(None);
                 continue;
@@ -1452,7 +1522,9 @@ impl PbmVia {
                     pts.push(pt(p));
                 }
             }
-            span_pair.push(pairs.iter().position(|q| (q.pair.0 - round6(pa) * 1e-3).abs() < 1e-12 && (q.pair.1 - round6(pb) * 1e-3).abs() < 1e-12));
+            span_pair.push(pairs.iter().position(|q| {
+                (q.pair.0 - round6(pa) * 1e-3).abs() < 1e-12 && (q.pair.1 - round6(pb) * 1e-3).abs() < 1e-12
+            }));
             let mut scale = (za - zb) * 1e-3;
             if let Some(&zj) = [z_in, z_out].iter().find(|&&zj| pb + 1e-9 < zj && zj < pa - 1e-9) {
                 let dg = if za <= pa + 1e-9 && zb >= zj - 1e-9 { pa - zj } else { zj - pb };
@@ -1462,13 +1534,35 @@ impl PbmVia {
             // a finite cavity for this plane pair: every point must be a port of its environment
             let env = env_for(pa, pb, &pts);
             // capacitors between the two planes (on infinite plates; a cavity has its own)
-            let loads: Vec<CapPost> = if env.is_some() { vec![] } else { g.caps.iter().copied().filter(|c| joins(c, round6(pa), round6(pb))).collect() };
+            let loads: Vec<CapPost> = if env.is_some() {
+                vec![]
+            } else {
+                g.caps.iter().copied().filter(|c| joins(c, round6(pa), round6(pb))).collect()
+            };
             pts.extend(loads.iter().map(cpt));
-            let gi = match groups.iter().position(|q| q.er == er && q.tand == tand && q.pts == pts && q.partner == use_partner && q.d == d_pair && q.env == env && q.loads == loads) {
+            let gi = match groups.iter().position(|q| {
+                q.er == er
+                    && q.tand == tand
+                    && q.pts == pts
+                    && q.partner == use_partner
+                    && q.d == d_pair
+                    && q.env == env
+                    && q.loads == loads
+            }) {
                 Some(i) => i,
                 None => {
                     let rr = dist(&pts);
-                    groups.push(Group { er, tand, pts, partner: use_partner, d: d_pair, rr, loads, env, pair: (pa * 1e-3, pb * 1e-3) });
+                    groups.push(Group {
+                        er,
+                        tand,
+                        pts,
+                        partner: use_partner,
+                        d: d_pair,
+                        rr,
+                        loads,
+                        env,
+                        pair: (pa * 1e-3, pb * 1e-3),
+                    });
                     groups.len() - 1
                 }
             };
@@ -1485,7 +1579,12 @@ impl PbmVia {
             let fd = g.feeds[side];
             let (zt, ref_z) = (fd.z, fd.z_ref);
             let h_ref = (zt - ref_z).abs();
-            let hb = g.planes.iter().find(|p| (p.z - ref_z).abs() < 1e-6 && p.antipad.map_or(false, |b| b > 0.0)).and_then(|p| p.antipad).unwrap_or(0.0);
+            let hb = g
+                .planes
+                .iter()
+                .find(|p| (p.z - ref_z).abs() < 1e-6 && p.antipad.is_some_and(|b| b > 0.0))
+                .and_then(|p| p.antipad)
+                .unwrap_or(0.0);
             let strip = plane_z.iter().any(|&pz| pz > zt + 1e-9) && plane_z.iter().any(|&pz| pz < zt - 1e-9);
             if g.junction {
                 // fitted to the 3D references (TESTS.md section 7): where the trace current turns
@@ -1507,7 +1606,11 @@ impl PbmVia {
                     (fd.zc * z_ms(fd.w, he, 4.0) / z_ms(fd.w, h_ref, 4.0), fd.eeff, ln)
                 } else {
                     // prototype: a microstrip over the next plane beyond the reference
-                    let nxt: Vec<f64> = plane_z.iter().copied().filter(|&pz| if ref_z < zt { pz < ref_z - 1e-6 } else { pz > ref_z + 1e-6 }).collect();
+                    let nxt: Vec<f64> = plane_z
+                        .iter()
+                        .copied()
+                        .filter(|&pz| if ref_z < zt { pz < ref_z - 1e-6 } else { pz > ref_z + 1e-6 })
+                        .collect();
                     let h2 = if nxt.is_empty() {
                         h_ref * 3.0
                     } else if ref_z < zt {
@@ -1727,7 +1830,12 @@ impl PbmVia {
                         let ne = e.env.ports().len();
                         let m = idx.len();
                         let jwm = Cx::new(0.0, w * MU0);
-                        ((0..m * m).map(|q| jwm * gm[idx[q / m] * ne + idx[q % m]]).collect(), m, (p.nsig..p.nsig + p.nshort).collect(), vec![Cx::new(0.0, 0.0); p.nshort])
+                        (
+                            (0..m * m).map(|q| jwm * gm[idx[q / m] * ne + idx[q % m]]).collect(),
+                            m,
+                            (p.nsig..p.nsig + p.nshort).collect(),
+                            vec![Cx::new(0.0, 0.0); p.nshort],
+                        )
                     }
                     _ => {
                         let k = self.pair_k(p.er, p.tand, d, f);
@@ -1907,7 +2015,8 @@ impl PbmVia {
                 None => z,
             }
         };
-        let yc = |k: usize| -> Cx { Cx::new(0.0, w * self.cap[k]) * self.eps_rel(self.node_er[k], self.node_tand[k], f) };
+        let yc =
+            |k: usize| -> Cx { Cx::new(0.0, w * self.cap[k]) * self.eps_rel(self.node_er[k], self.node_tand[k], f) };
         let mut m = if self.pairs.is_empty() { self.core_chain(&zs, &yc) } else { self.core_coupled(f, &zs, &yc) };
         for side in 0..2 {
             if self.l_port[side] != 0.0 {
@@ -2271,11 +2380,17 @@ pub fn coupled_s(vias: &[&PbmVia], f: f64, z0: f64) -> Vec<Cx> {
                 }
             }
         }
-        let bidx: Vec<usize> = users.iter().map(|&(v, gi)| sig.iter().position(|&q| q == vias[v].groups[gi].env.as_ref().unwrap().1[0]).unwrap()).collect();
+        let bidx: Vec<usize> = users
+            .iter()
+            .map(|&(v, gi)| sig.iter().position(|&q| q == vias[v].groups[gi].env.as_ref().unwrap().1[0]).unwrap())
+            .collect();
         zsh.push((zs, bidx, ns));
     }
     let env_of = |v: usize, gi: usize| -> Option<(usize, usize)> {
-        shared.iter().enumerate().find_map(|(k, (_, users))| users.iter().position(|&u| u == (v, gi)).map(|p| (k, zsh[k].1[p])))
+        shared
+            .iter()
+            .enumerate()
+            .find_map(|(k, (_, users))| users.iter().position(|&u| u == (v, gi)).map(|p| (k, zsh[k].1[p])))
     };
     // unknowns: per via its node voltages, then its span currents
     let mut off = vec![0usize; nv + 1];
@@ -2432,7 +2547,10 @@ mod tests {
             sigma: None,
             caps: vec![],
             coplanar: vec![],
-            feeds: [Feed { z: 1.6, z_ref: 1.4, w: 0.35, zc: 50.0, eeff: 3.3, dropped: 0.0, antipad_line: true }, Feed { z: 0.0, z_ref: 0.2, w: 0.35, zc: 50.0, eeff: 3.3, dropped: 0.0, antipad_line: true }],
+            feeds: [
+                Feed { z: 1.6, z_ref: 1.4, w: 0.35, zc: 50.0, eeff: 3.3, dropped: 0.0, antipad_line: true },
+                Feed { z: 0.0, z_ref: 0.2, w: 0.35, zc: 50.0, eeff: 3.3, dropped: 0.0, antipad_line: true },
+            ],
             f_loss: None,
         }
     }
@@ -2517,7 +2635,12 @@ mod tests {
         let ports = vec![EnvPort { x: x0, y: y0, r: 0.15e-3 }, EnvPort { x: x0 + 1e-3, y: y0, r: 0.15e-3 }];
         let med = PairMedium { d: 1.2e-3, er: 4.2, tand: 0.1, f_loss: None, sigma: None, area: 0.0, edges: vec![] };
         let env = std::rc::Rc::new(PairEnv::Rect(RectEnv::new(0.6, 0.5, med, ports, vec![], 20e9)));
-        let m1 = PbmVia::build_with(&g, Mode::Single, Grid::default(), vec![CavityLink { z_top: 1.4, z_bot: 0.2, env, origin: (x0, y0) }]);
+        let m1 = PbmVia::build_with(
+            &g,
+            Mode::Single,
+            Grid::default(),
+            vec![CavityLink { z_top: 1.4, z_bot: 0.2, env, origin: (x0, y0) }],
+        );
         assert!(m1.has_cavity());
         for f in [2e9, 10e9, 20e9] {
             let (a, b) = (m0.abcd(f).s_params(50.0).1, m1.abcd(f).s_params(50.0).1);
@@ -2528,7 +2651,11 @@ mod tests {
     /// three planes (1.4, 0.8, 0.2 mm) in one dielectric, a through via with one return
     fn three_planes(joins: Option<Vec<f64>>) -> ViaGeom {
         let mut g = sample();
-        g.planes = vec![Plane { z: 1.4, antipad: Some(0.4) }, Plane { z: 0.8, antipad: Some(0.4) }, Plane { z: 0.2, antipad: Some(0.4) }];
+        g.planes = vec![
+            Plane { z: 1.4, antipad: Some(0.4) },
+            Plane { z: 0.8, antipad: Some(0.4) },
+            Plane { z: 0.2, antipad: Some(0.4) },
+        ];
         g.returns[0].joins = joins;
         g
     }
@@ -2625,7 +2752,11 @@ mod tests {
     /// fringe of the opening; larger openings and shorter stubs give less
     #[test]
     fn post_capacitance() {
-        let slabs = vec![Slab { z0: 0.0, z1: 0.2, er: 4.3, tand: 0.0 }, Slab { z0: 0.2, z1: 1.4, er: 4.5, tand: 0.0 }, Slab { z0: 1.4, z1: 1.6, er: 4.3, tand: 0.0 }];
+        let slabs = vec![
+            Slab { z0: 0.0, z1: 0.2, er: 4.3, tand: 0.0 },
+            Slab { z0: 0.2, z1: 1.4, er: 4.5, tand: 0.0 },
+            Slab { z0: 1.4, z1: 1.6, er: 4.3, tand: 0.0 },
+        ];
         let planes = [(1.4, None), (0.2, Some(0.35))];
         let c = post_plane_cap(&slabs, 0.15, 0.0, 1.6, &planes, 1);
         let coax = 2.0 * PI * EPS0 * 4.3 * 0.2e-3 / (0.35f64 / 0.15).ln();
@@ -2644,9 +2775,17 @@ mod tests {
         plane.planes.insert(0, Plane { z: 1.6, antipad: Some(0.5) });
         let mut cop = plane.clone();
         cop.coplanar = vec![1.6];
-        let (mb, mp, mc) = (PbmVia::build(&base, Mode::Single, Grid::default()), PbmVia::build(&plane, Mode::Single, Grid::default()), PbmVia::build(&cop, Mode::Single, Grid::default()));
+        let (mb, mp, mc) = (
+            PbmVia::build(&base, Mode::Single, Grid::default()),
+            PbmVia::build(&plane, Mode::Single, Grid::default()),
+            PbmVia::build(&cop, Mode::Single, Grid::default()),
+        );
         // the span F → first plane: radial with the return as a plate pair, coax without (and coplanar)
-        assert!(matches!(mp.spans[0], SpanKind::Pair { .. }) && matches!(mb.spans[0], SpanKind::Outer(_)) && matches!(mc.spans[0], SpanKind::Outer(_)));
+        assert!(
+            matches!(mp.spans[0], SpanKind::Pair { .. })
+                && matches!(mb.spans[0], SpanKind::Outer(_))
+                && matches!(mc.spans[0], SpanKind::Outer(_))
+        );
         // capacitance: the pour's in the Laplace solve
         let ct = |m: &PbmVia| m.cap.iter().sum::<f64>();
         assert!(ct(&mc) > ct(&mb) + 1e-16 && (ct(&mc) - ct(&mp)).abs() < 1e-15, "{} {} {}", ct(&mb), ct(&mc), ct(&mp));
@@ -2688,27 +2827,49 @@ mod tests {
     #[test]
     fn radial_reductions_passive() {
         // (x, y, radius) in m
-        let pair = vec![(0.0, 0.0, 0.1e-3), (0.8e-3, 0.0, 0.1e-3), (-0.5e-3, 0.4e-3, 0.15e-3), (-0.6e-3, -0.3e-3, 0.15e-3), (1.6e-3, 0.9e-3, 0.15e-3)];
-        let cage: Vec<(f64, f64, f64)> = std::iter::once((0.0, 0.0, 0.1e-3)).chain((0..4).map(|i| {
-            let t = i as f64 * PI / 2.0;
-            (0.5e-3 * t.cos(), 0.5e-3 * t.sin(), 0.15e-3)
-        })).collect();
+        let pair = vec![
+            (0.0, 0.0, 0.1e-3),
+            (0.8e-3, 0.0, 0.1e-3),
+            (-0.5e-3, 0.4e-3, 0.15e-3),
+            (-0.6e-3, -0.3e-3, 0.15e-3),
+            (1.6e-3, 0.9e-3, 0.15e-3),
+        ];
+        let cage: Vec<(f64, f64, f64)> = std::iter::once((0.0, 0.0, 0.1e-3))
+            .chain((0..4).map(|i| {
+                let t = i as f64 * PI / 2.0;
+                (0.5e-3 * t.cos(), 0.5e-3 * t.sin(), 0.15e-3)
+            }))
+            .collect();
         let rr = |p: &[(f64, f64, f64)]| -> Vec<f64> {
             let n = p.len();
-            (0..n * n).map(|q| {
-                let (i, j) = (q / n, q % n);
-                if i == j { p[i].2 } else { ((p[i].0 - p[j].0).powi(2) + (p[i].1 - p[j].1).powi(2)).sqrt() }
-            }).collect()
+            (0..n * n)
+                .map(|q| {
+                    let (i, j) = (q / n, q % n);
+                    if i == j {
+                        p[i].2
+                    } else {
+                        ((p[i].0 - p[j].0).powi(2) + (p[i].1 - p[j].1).powi(2)).sqrt()
+                    }
+                })
+                .collect()
         };
-        let old_z = |k: Cx, w: f64, rr: &[f64], n: usize| -> Vec<Cx> { (0..n * n).map(|q| hankel2_0(k.scale(rr[q])).scale(w * MU0 / 4.0)).collect() };
+        let old_z = |k: Cx, w: f64, rr: &[f64], n: usize| -> Vec<Cx> {
+            (0..n * n).map(|q| hankel2_0(k.scale(rr[q])).scale(w * MU0 / 4.0)).collect()
+        };
         // the earlier odd/even form: Z_PP ∓ Z_PN of the 2 × 2 reduction (the returns as shorts)
         let old_mode = |z: &[Cx], n: usize, mode: Mode| -> Cx {
             let m = n - 2;
             let bb: Vec<Cx> = (0..m * m).map(|q| z[(2 + q / m) * n + 2 + q % m]).collect();
             let ba: Vec<Cx> = (0..m * 2).map(|q| z[(2 + q / 2) * n + q % 2]).collect();
             let x = csolve(bb, ba, m, 2);
-            let red = |a: usize, c: usize| z[a * n + c] - (0..m).fold(Cx::new(0.0, 0.0), |s, q| s + z[a * n + 2 + q] * x[q * 2 + c]);
-            if mode == Mode::Odd { red(0, 0) - red(0, 1) } else { red(0, 0) + red(0, 1) }
+            let red = |a: usize, c: usize| {
+                z[a * n + c] - (0..m).fold(Cx::new(0.0, 0.0), |s, q| s + z[a * n + 2 + q] * x[q * 2 + c])
+            };
+            if mode == Mode::Odd {
+                red(0, 0) - red(0, 1)
+            } else {
+                red(0, 0) + red(0, 1)
+            }
         };
         let mut old_negative = (false, false);
         for f in [0.5e9, 2e9, 5e9, 10e9, 15e9, 20e9, 30e9, 40e9, 50e9] {
@@ -2717,15 +2878,19 @@ mod tests {
             let (rp, rc) = (rr(&pair), rr(&cage));
             let zp = radial_z(k, w, &rp, pair.len());
             let zc = radial_z(k, w, &rc, cage.len());
-            for (z, n, partner, modes) in [(&zp, pair.len(), true, vec![Mode::Odd, Mode::Even]), (&zc, cage.len(), false, vec![Mode::Single])] {
+            for (z, n, partner, modes) in
+                [(&zp, pair.len(), true, vec![Mode::Odd, Mode::Even]), (&zc, cage.len(), false, vec![Mode::Single])]
+            {
                 for mode in modes {
                     let r = reduce_modes(z, n, partner, mode, &[]);
                     assert!(r.re >= -1e-12 * r.abs(), "{:.1} GHz {mode:?}: {r:?}", f / 1e9);
                 }
             }
             let zpo = old_z(k, w, &rp, pair.len());
-            old_negative.0 |= old_mode(&zpo, pair.len(), Mode::Odd).re < 0.0 || old_mode(&zpo, pair.len(), Mode::Even).re < 0.0;
-            old_negative.1 |= reduce_modes(&old_z(k, w, &rc, cage.len()), cage.len(), false, Mode::Single, &[]).re < 0.0;
+            old_negative.0 |=
+                old_mode(&zpo, pair.len(), Mode::Odd).re < 0.0 || old_mode(&zpo, pair.len(), Mode::Even).re < 0.0;
+            old_negative.1 |=
+                reduce_modes(&old_z(k, w, &rc, cage.len()), cage.len(), false, Mode::Single, &[]).re < 0.0;
         }
         assert!(old_negative.0 && old_negative.1, "{old_negative:?}");
     }

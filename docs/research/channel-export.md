@@ -269,7 +269,8 @@ large reflections. The fallback model of sections without a reference plane is t
 - **20 sections per wavelength:** 40 or 80 change nothing measurable against kisi's model (the fits dominate).
 
 ## 6. Step 3 – compact models (design study before the research note)
-`validation/channel_export/vf_prototype.py` fits a lane's differential 2-port with scikit-rf's vector fitting:
+A first study fitted a lane's differential 2-port as a whole with scikit-rf's vector fitting (a prototype script,
+removed once the compact model replaced it; in the repository's history up to commit fa51dfb):
 
 | Lane | delay | poles | max |ΔS| | passive |
 |---|---|---|---|---|
@@ -284,6 +285,9 @@ ideal lines (T elements) at the ports and a fit of what lies between them (delay
 passivity enforcement – the hard part. Plan: per long line segment (not per lane) a constant-delay T line plus a
 fitted loss network (the line's attenuation is smooth and minimum-phase), the vias and parts stay ladders; this
 shrinks a 100 mm lane from ~40 k to a few hundred elements and keeps the export's structure.
+
+What came of it: the research note ([vector-fitting.md](vector-fitting.md)) and the compact model of section 7 –
+lossless-line cells in `kisi_si::export` (`--model compact`, the default), with no fitted delay at all.
 
 ## 7. Step 3 – the compact model (`--model compact`)
 Research, alternatives and why: `vector-fitting.md`. In short: the same passive Foster/Debye fits as the ladder, but
@@ -358,8 +362,9 @@ At 5 × Nyquist (`--fmax profile`, 2.5 GHz for these 1 Gbit/s lanes):
   Gear's numerical damping moves the edges of SYNC_OUT_P by up to 3 % of the swing at the bench's 30 ps steps.
 - **Other checks:** the LTspice files of the compact export pass `ltspice.py check` (every lane above); the KiCad
   project of SYNC_OUT_P (kicad-cli 7) has the lane subcircuit node for node with an AC response equal to the bench's
-  (5·10⁻⁹); CI runs the compact model against the ladder on three ThunderScope lanes with the passivity sweep and
-  the KiCad check (kicad-cli 9 with ERC) on PCIe_PER0_P. Not run here: Xyce.
+  (5·10⁻⁹); CI runs the compact model (the default) on four ThunderScope lanes with the KiCad check (kicad-cli 9
+  with ERC), against the ladder on three lanes with the passivity sweep, and the ladder's KiCad check on
+  SYNC_OUT_P (PCIe_PER0_P's ladder takes minutes in ngspice's S-parameter analysis). Not run here: Xyce.
 - **LTspice** (26.1.1 on the maintainer's PC, `bench_ltspice.cir` of the compact SYNC_OUT_P against `expected.json`
   from ngspice): at 25 GHz t50 equal (7.7303 ns), the eight bit levels within 0.97 mV (mean 0.53 mV), maximum and
   minimum within 0.9 mV (0.22 %), 61 s (the ladder bench took 938 s there); at 5 × Nyquist t50 within 0.7 ps, bit

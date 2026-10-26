@@ -53,21 +53,48 @@ fn check_board(stem: &str, key: &str, report: bool) -> Option<(Worst, Vec<String
         for lane in &bus.lanes {
             let target = p.target(lane.name_net);
             let rev = lane.rx_end == 0;
-            let Ok(ch) = topology::lane_channel(&p.board, &p.an, lane, &p.params.field, target, &rp, rev, false, &cd) else { continue };
+            let Ok(ch) = topology::lane_channel(&p.board, &p.an, lane, &p.params.field, target, &rp, rev, false, &cd)
+            else {
+                continue;
+            };
             let freq = ch.freq.clone();
             // S per frequency (row-major), the transfer and the reflection
-            let (s, n, h21, h11, kind): (Vec<Vec<Cx>>, usize, Vec<Cx>, Vec<Cx>, &str) = if ch.diff && !lane.partner_hops.is_empty() {
-                match topology::lane_pair(&p.board, &p.an, lane, &p.params.field, target, &rp, rev, false, &HashSet::new(), &cd) {
-                    Ok(pn) => {
-                        let s4: Vec<_> = pn.t.iter().map(|t| s_of(t, pn.z_ref)).collect();
-                        let mm: Vec<_> = s4.iter().map(mixed_of).collect();
-                        (s4.iter().map(|m| m.iter().flatten().copied().collect()).collect(), 4, mm.iter().map(|m| m[1][0]).collect(), mm.iter().map(|m| m[0][0]).collect(), "4-port")
+            let (s, n, h21, h11, kind): (Vec<Vec<Cx>>, usize, Vec<Cx>, Vec<Cx>, &str) =
+                if ch.diff && !lane.partner_hops.is_empty() {
+                    match topology::lane_pair(
+                        &p.board,
+                        &p.an,
+                        lane,
+                        &p.params.field,
+                        target,
+                        &rp,
+                        rev,
+                        false,
+                        &HashSet::new(),
+                        &cd,
+                    ) {
+                        Ok(pn) => {
+                            let s4: Vec<_> = pn.t.iter().map(|t| s_of(t, pn.z_ref)).collect();
+                            let mm: Vec<_> = s4.iter().map(mixed_of).collect();
+                            (
+                                s4.iter().map(|m| m.iter().flatten().copied().collect()).collect(),
+                                4,
+                                mm.iter().map(|m| m[1][0]).collect(),
+                                mm.iter().map(|m| m[0][0]).collect(),
+                                "4-port",
+                            )
+                        }
+                        Err(_) => continue,
                     }
-                    Err(_) => continue,
-                }
-            } else {
-                ((0..freq.len()).map(|k| vec![ch.s11[k], ch.s21[k], ch.s21[k], ch.s22[k]]).collect(), 2, ch.s21.clone(), ch.s11.clone(), "2-port")
-            };
+                } else {
+                    (
+                        (0..freq.len()).map(|k| vec![ch.s11[k], ch.s21[k], ch.s21[k], ch.s22[k]]).collect(),
+                        2,
+                        ch.s21.clone(),
+                        ch.s11.clone(),
+                        "2-port",
+                    )
+                };
             let (sig, k) = passivity(&s, n);
             // the transfer: nothing before 80 % of the static delay (less the edge); the reflection:
             // nothing before the edge reaches port 1
@@ -83,7 +110,10 @@ fn check_board(stem: &str, key: &str, report: bool) -> Option<(Worst, Vec<String
                 fails.push(format!("{key} {}: not passive, σmax {sig:.7} at {:.2} GHz", lane.name, freq[k] / 1e9));
             }
             if settled && (pre_t > PRE_T || pre_r > PRE_R) {
-                fails.push(format!("{key} {}: response before the signal arrives {:.2e} (S21) / {:.2e} (S11)", lane.name, pre_t, pre_r));
+                fails.push(format!(
+                    "{key} {}: response before the signal arrives {:.2e} (S21) / {:.2e} (S11)",
+                    lane.name, pre_t, pre_r
+                ));
             }
             worst.sigma = worst.sigma.max(sig);
             if settled {
@@ -130,7 +160,10 @@ fn example_lanes_passive_and_causal() {
     let mut fails = Vec::new();
     for (stem, key) in [("Thunderscope_Rev5.3", "ts"), ("VNA", "vna")] {
         if let Some((w, f)) = check_board(stem, key, report) {
-            eprintln!("{key}: largest singular value {:.7}, largest precursor {:.2e} (transfer) / {:.2e} (reflection)", w.sigma, w.pre_t, w.pre_r);
+            eprintln!(
+                "{key}: largest singular value {:.7}, largest precursor {:.2e} (transfer) / {:.2e} (reflection)",
+                w.sigma, w.pre_t, w.pre_r
+            );
             fails.extend(f);
         }
     }

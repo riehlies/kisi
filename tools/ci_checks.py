@@ -19,14 +19,14 @@ import fnmatch, glob, hashlib, json, os, re, subprocess, sys, tempfile, urllib.p
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ---- changes: file patterns per check group --------------------------------------------------------------------
-CODE = ["crates/*", "Cargo.toml", "Cargo.lock", "data/*", "rust-toolchain*"]
+CODE = ["crates/*", "Cargo.toml", "Cargo.lock", "data/*", "rust-toolchain*", "rustfmt.toml"]
 BOARDS = ["web/samples/*", "tools/fetch_examples.sh", "tools/strip_pcb.py"]
 SOLVER = ["web/solver/*", "third_party/*", "crates/kisi-si/src/xsgeom*", "crates/kisi-sparse/*", "tools/bundle.py",
           "tools/solver_bundle.py", "tools/esm_classic.py", "tools/forsten_sparse_shim.js", "tools/ref_forsten.mjs",
           "tools/compare_baseline.mjs", "tools/solve_xs.mjs", "tools/upstream_hooks.mjs", "tools/upstream_update.sh",
           "tools/validate_field.sh", "validation/*.json"]
 GROUPS = {
-    # Rust: tests, formatting, lints, the CLI options named in the docs
+    # Rust: formatting, clippy, tests, the CLI options named in the docs
     "rust": CODE,
     # the viewer in headless Chromium (needs the bundles)
     "viewer": CODE + BOARDS + ["web/*", "tools/bundle.py", "tools/solver_bundle.py", "tools/esm_classic.py",
@@ -47,11 +47,11 @@ GROUPS = {
     # Forstén's solver unchanged against upstream
     "upstream": ["third_party/*"],
     # Markdown links (cheap; also on every code change) and the documentation PDF
-    "docs": ["*.md", "docs/*", "claude-plugin/*", "LICENSE*", "tools/docs_pdf.py"],
+    "docs": ["*.md", "docs/*", "claude-plugin/*", ".claude-plugin/*", "LICENSE*", "tools/docs_pdf.py"],
 }
 # changes that need no check of their own (the cheap checks still run)
-QUIET = ["docs/img/*", "tools/screenshots.py", ".gitignore", ".gitattributes", "web/pages/*", "validation/fdtd/*",
-         "validation/*.md", "tools/tree_to_fields.py"]
+QUIET = ["docs/img/*", "tools/screenshots.py", ".gitignore", ".gitattributes", ".git-blame-ignore-revs", "web/pages/*",
+         "validation/fdtd/*", "validation/*.md", "tools/tree_to_fields.py"]
 # changes to the CI itself run everything
 FULL = [".github/*", "tools/ci_checks.py", "tools/size_budget.json", "deny.toml"]
 
@@ -174,8 +174,8 @@ def cli_docs(kisi):
     help_text = subprocess.run([kisi, "help"], capture_output=True, text=True, check=True).stdout
     commands = set(re.findall(r"^  ([a-z][a-z-]*)", help_text, re.M)) | {"help"}
     options = set(re.findall(r"--[a-z][a-z-]*", help_text)) | {"--version", "--help"}
-    # research notes and mockup design notes describe planned commands and options
-    files = [f for f in tracked_md() if not f.startswith(("docs/research/", "docs/mockups/", "validation/"))]
+    # research notes describe planned commands and options
+    files = [f for f in tracked_md() if not f.startswith(("docs/research/", "validation/"))]
     bad = []
     for f in files:
         for n, line in enumerate(open(os.path.join(ROOT, f), encoding="utf-8"), 1):

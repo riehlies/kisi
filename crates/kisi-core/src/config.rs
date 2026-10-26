@@ -31,7 +31,8 @@ use std::collections::{BTreeMap, HashMap};
 pub const VERSION: u32 = 1;
 /// kinds of sources; "estimate" and "assumption" are reported as such; "design" = the
 /// project's own files (BOM, position files, schematic)
-pub const SOURCE_KINDS: &[&str] = &["datasheet", "standard", "application_note", "measurement", "simulation", "design", "estimate", "assumption"];
+pub const SOURCE_KINDS: &[&str] =
+    &["datasheet", "standard", "application_note", "measurement", "simulation", "design", "estimate", "assumption"];
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -156,7 +157,11 @@ pub struct VariantEntry {
 
 impl VariantEntry {
     pub fn is_empty(&self) -> bool {
-        self.fitted_sheets.is_empty() && self.not_fitted_sheets.is_empty() && self.fitted.is_empty() && self.not_fitted.is_empty() && self.bom.is_none()
+        self.fitted_sheets.is_empty()
+            && self.not_fitted_sheets.is_empty()
+            && self.fitted.is_empty()
+            && self.not_fitted.is_empty()
+            && self.bom.is_none()
     }
 }
 
@@ -229,7 +234,12 @@ impl BoardConfig {
                 .stackup
                 .dielectrics
                 .iter()
-                .map(|d| DielectricOverride { index: d.index, epsilon_r: d.epsilon_r, loss_tangent: d.loss_tangent, thickness: d.thickness })
+                .map(|d| DielectricOverride {
+                    index: d.index,
+                    epsilon_r: d.epsilon_r,
+                    loss_tangent: d.loss_tangent,
+                    thickness: d.thickness,
+                })
                 .collect(),
             mask_epsilon_r: self.stackup.solder_mask.as_ref().and_then(|m| m.epsilon_r),
         }
@@ -246,11 +256,16 @@ impl BoardConfig {
                     if let Some(m) = &d.material {
                         x.material = m.clone();
                     }
-                    let given: Vec<&str> = [("material", d.material.is_some()), ("epsilon_r", d.epsilon_r.is_some()), ("loss_tangent", d.loss_tangent.is_some()), ("thickness", d.thickness.is_some())]
-                        .iter()
-                        .filter(|g| g.1)
-                        .map(|g| g.0)
-                        .collect();
+                    let given: Vec<&str> = [
+                        ("material", d.material.is_some()),
+                        ("epsilon_r", d.epsilon_r.is_some()),
+                        ("loss_tangent", d.loss_tangent.is_some()),
+                        ("thickness", d.thickness.is_some()),
+                    ]
+                    .iter()
+                    .filter(|g| g.1)
+                    .map(|g| g.0)
+                    .collect();
                     x.assumed.retain(|p| !given.contains(&p.as_str()));
                     a.dielectrics += 1;
                 }
@@ -260,12 +275,22 @@ impl BoardConfig {
         // nets given to a class here (before the targets, which go by class)
         for (cls, c) in self.net_classes.iter().filter(|(_, c)| !c.nets.is_empty()) {
             if board.netclasses.is_empty() {
-                board.netclasses.push(crate::board::NetClass { name: "Default".into(), track_width: None, diff_pair_width: None, diff_pair_gap: None });
+                board.netclasses.push(crate::board::NetClass {
+                    name: "Default".into(),
+                    track_width: None,
+                    diff_pair_width: None,
+                    diff_pair_gap: None,
+                });
             }
             let idx = match board.netclasses.iter().position(|n| &n.name == cls) {
                 Some(i) => i,
                 None => {
-                    board.netclasses.push(crate::board::NetClass { name: cls.clone(), track_width: None, diff_pair_width: None, diff_pair_gap: None });
+                    board.netclasses.push(crate::board::NetClass {
+                        name: cls.clone(),
+                        track_width: None,
+                        diff_pair_width: None,
+                        diff_pair_gap: None,
+                    });
                     board.netclasses.len() - 1
                 }
             };
@@ -287,7 +312,10 @@ impl BoardConfig {
                 set(&f.name, f.value.clone());
                 // the source travels with the field, so the power tree can show it per load
                 if let Some(src) = &f.source {
-                    set(&source_key(&f.name), format!("{}\t{}", src.kind, src.note.as_deref().or(src.document.as_deref()).unwrap_or("")));
+                    set(
+                        &source_key(&f.name),
+                        format!("{}\t{}", src.kind, src.note.as_deref().or(src.document.as_deref()).unwrap_or("")),
+                    );
                     if let Some(c) = src.citation() {
                         set(&document_key(&f.name), c);
                     }
@@ -334,7 +362,12 @@ pub struct CheckResult {
 /// categories of its gap. `kisi_config`, `board` and `notes` stay.
 pub fn subset(cfg: &BoardConfig, view: &str) -> BoardConfig {
     let has = |vs: &[&str]| vs.contains(&view);
-    let mut out = BoardConfig { kisi_config: cfg.kisi_config, board: cfg.board.clone(), notes: cfg.notes.clone(), ..Default::default() };
+    let mut out = BoardConfig {
+        kisi_config: cfg.kisi_config,
+        board: cfg.board.clone(),
+        notes: cfg.notes.clone(),
+        ..Default::default()
+    };
     if has(&["impedance", "channel"]) {
         out.stackup = cfg.stackup.clone();
         out.net_classes = cfg
@@ -362,7 +395,8 @@ pub fn subset(cfg: &BoardConfig, view: &str) -> BoardConfig {
         out.variant = cfg.variant.clone();
         out.variants = cfg.variants.clone();
     }
-    out.gaps.dismissed = cfg.gaps.dismissed.iter().filter(|d| crate::gaps::gap_views(&d.gap).1.contains(&view)).cloned().collect();
+    out.gaps.dismissed =
+        cfg.gaps.dismissed.iter().filter(|d| crate::gaps::gap_views(&d.gap).1.contains(&view)).cloned().collect();
     out
 }
 
@@ -378,7 +412,8 @@ pub fn to_json(cfg: &BoardConfig) -> serde_json::Value {
                 (!a.is_empty()).then_some(V::Array(a))
             }
             V::Object(m) => {
-                let m: serde_json::Map<String, V> = m.into_iter().filter_map(|(k, v)| prune(v).map(|v| (k, v))).collect();
+                let m: serde_json::Map<String, V> =
+                    m.into_iter().filter_map(|(k, v)| prune(v).map(|v| (k, v))).collect();
                 (!m.is_empty()).then_some(V::Object(m))
             }
             x => Some(x),
@@ -423,7 +458,8 @@ pub fn message_views(cfg: &BoardConfig, text: &str) -> Vec<&'static str> {
 
 /// Board names match when their stems (without path and `.kicad_pcb`) are equal, ignoring case.
 pub fn same_board(a: &str, b: &str) -> bool {
-    let stem = |s: &str| s.trim().rsplit(['/', '\\']).next().unwrap_or("").trim_end_matches(".kicad_pcb").to_ascii_lowercase();
+    let stem =
+        |s: &str| s.trim().rsplit(['/', '\\']).next().unwrap_or("").trim_end_matches(".kicad_pcb").to_ascii_lowercase();
     stem(a) == stem(b)
 }
 
@@ -431,12 +467,21 @@ pub fn same_board(a: &str, b: &str) -> bool {
 /// format, ranges, references, sources, and whether kisi can read the field values.
 /// `board_name`: the loaded board (file name or viewer name), compared with `cfg.board`;
 /// `files`: the files the configuration refers to (BOMs of variants).
-pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles: &crate::profile::Profiles, board_name: Option<&str>, files: &crate::variant::Files) -> CheckResult {
+pub fn check(
+    cfg: &BoardConfig,
+    board: &Board,
+    class_names: &[String],
+    profiles: &crate::profile::Profiles,
+    board_name: Option<&str>,
+    files: &crate::variant::Files,
+) -> CheckResult {
     let mut r = CheckResult::default();
     let src = |what: String, s: &Option<Source>, r: &mut CheckResult| match s {
         None => r.errors.push(format!("{what}: source missing (every value needs a source)")),
         Some(s) if s.is_empty() => r.errors.push(format!("{what}: source needs a document, url or note")),
-        Some(s) if !SOURCE_KINDS.contains(&s.kind.as_str()) => r.errors.push(format!("{what}: source kind '{}' unknown (use {})", s.kind, SOURCE_KINDS.join(", "))),
+        Some(s) if !SOURCE_KINDS.contains(&s.kind.as_str()) => {
+            r.errors.push(format!("{what}: source kind '{}' unknown (use {})", s.kind, SOURCE_KINDS.join(", ")))
+        }
         _ => {}
     };
     if cfg.kisi_config != VERSION {
@@ -487,7 +532,12 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
             }
         }
         for (other, o) in cfg.net_classes.iter().filter(|(k, o)| k.as_str() > cls.as_str() && !o.nets.is_empty()) {
-            if let Some(n) = board.nets.iter().skip(1).find(|n| !c.nets.is_empty() && net_matches(&c.nets, n) && net_matches(&o.nets, n)) {
+            if let Some(n) = board
+                .nets
+                .iter()
+                .skip(1)
+                .find(|n| !c.nets.is_empty() && net_matches(&c.nets, n) && net_matches(&o.nets, n))
+            {
                 r.errors.push(format!("{what}.nets: net '{n}' is also given to net_classes.{other}"));
             }
         }
@@ -527,14 +577,20 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
         if m == "custom" && e.end.r_ohm.is_none() {
             r.errors.push(format!("{w}: model 'custom' needs r_ohm (Ω per line; 0 = high impedance)"));
         }
-        if e.end.r_ohm.is_some_and(|v| !(0.0..=10000.0).contains(&v)) || e.end.c_pf.is_some_and(|v| !(0.0..=100.0).contains(&v)) || e.end.l_nh.is_some_and(|v| !(0.0..=100.0).contains(&v)) {
+        if e.end.r_ohm.is_some_and(|v| !(0.0..=10000.0).contains(&v))
+            || e.end.c_pf.is_some_and(|v| !(0.0..=100.0).contains(&v))
+            || e.end.l_nh.is_some_and(|v| !(0.0..=100.0).contains(&v))
+        {
             r.errors.push(format!("{w}: r_ohm 0 … 10000, c_pf and l_nh 0 … 100"));
         }
-        if e.end.rest_loss_db.is_some_and(|v| !(0.0..=100.0).contains(&v)) || e.end.rest_delay_ps.is_some_and(|v| !(0.0..=100000.0).contains(&v)) {
+        if e.end.rest_loss_db.is_some_and(|v| !(0.0..=100.0).contains(&v))
+            || e.end.rest_delay_ps.is_some_and(|v| !(0.0..=100000.0).contains(&v))
+        {
             r.errors.push(format!("{w}: rest_loss_db 0 … 100 dB, rest_delay_ps 0 … 100000"));
         }
         if (e.end.r_ohm.is_some() || e.end.c_pf.is_some()) && !matches!(m, "custom" | "high_impedance") {
-            r.warnings.push(format!("{w}: r_ohm / c_pf are only used with model 'custom' (or c_pf with 'high_impedance')"));
+            r.warnings
+                .push(format!("{w}: r_ohm / c_pf are only used with model 'custom' (or c_pf with 'high_impedance')"));
         }
         if let Some(tr) = &e.end.touchstone {
             if tr.port_order.as_deref().is_some_and(|o| !kisi_si::rf::PORT_ORDERS.contains(&o)) {
@@ -547,35 +603,53 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
             match files.get(&tr.file) {
                 None => r.errors.push(format!("{w}.touchstone: {} not loaded", tr.file)),
                 Some(Err(err)) => r.errors.push(format!("{w}.touchstone: {err}")),
-                Some(Ok(text)) => match kisi_si::rf::parse_touchstone(text, name) {
-                    Err(err) => r.errors.push(format!("{w}.touchstone: {err}")),
-                    Ok(ts) => {
-                        if !tr.ports.is_empty() {
-                            // one file for the lanes of the connector: every pin to two ports of the file
-                            let mut used = std::collections::HashMap::new();
-                            let pads: Vec<&str> = board.footprints.iter().position(|f| &f.reference == refdes).map(|fi| board.pads.iter().filter(|p| p.fp as usize == fi).map(|p| p.number.as_str()).collect()).unwrap_or_default();
-                            for (pin, ps) in &tr.ports {
-                                if ps.iter().any(|&x| x == 0 || x > ts.nports) {
-                                    r.errors.push(format!("{w}.touchstone.ports.{pin}: ports {} / {} – the file has {} ports (1 … {})", ps[0], ps[1], ts.nports, ts.nports));
-                                }
-                                for &x in ps {
-                                    if let Some(other) = used.insert(x, pin.clone()) {
-                                        r.errors.push(format!("{w}.touchstone.ports: port {x} given for pins {other} and {pin}"));
+                Some(Ok(text)) => {
+                    match kisi_si::rf::parse_touchstone(text, name) {
+                        Err(err) => r.errors.push(format!("{w}.touchstone: {err}")),
+                        Ok(ts) => {
+                            if !tr.ports.is_empty() {
+                                // one file for the lanes of the connector: every pin to two ports of the file
+                                let mut used = std::collections::HashMap::new();
+                                let pads: Vec<&str> = board
+                                    .footprints
+                                    .iter()
+                                    .position(|f| &f.reference == refdes)
+                                    .map(|fi| {
+                                        board
+                                            .pads
+                                            .iter()
+                                            .filter(|p| p.fp as usize == fi)
+                                            .map(|p| p.number.as_str())
+                                            .collect()
+                                    })
+                                    .unwrap_or_default();
+                                for (pin, ps) in &tr.ports {
+                                    if ps.iter().any(|&x| x == 0 || x > ts.nports) {
+                                        r.errors.push(format!("{w}.touchstone.ports.{pin}: ports {} / {} – the file has {} ports (1 … {})", ps[0], ps[1], ts.nports, ts.nports));
+                                    }
+                                    for &x in ps {
+                                        if let Some(other) = used.insert(x, pin.clone()) {
+                                            r.errors.push(format!(
+                                                "{w}.touchstone.ports: port {x} given for pins {other} and {pin}"
+                                            ));
+                                        }
+                                    }
+                                    if !pads.is_empty() && !pads.contains(&pin.as_str()) {
+                                        r.warnings.push(format!("{w}.touchstone.ports: {refdes} has no pad {pin}"));
                                     }
                                 }
-                                if !pads.is_empty() && !pads.contains(&pin.as_str()) {
-                                    r.warnings.push(format!("{w}.touchstone.ports: {refdes} has no pad {pin}"));
-                                }
+                            } else if ts.nports != 2 && ts.nports != 4 {
+                                r.errors.push(format!("{w}.touchstone: {}-port – give the port of every connector pin (\"ports\": {{\"<pin>\": [port at the connector, port at the far end]}})", ts.nports));
                             }
-                        } else if ts.nports != 2 && ts.nports != 4 {
-                            r.errors.push(format!("{w}.touchstone: {}-port – give the port of every connector pin (\"ports\": {{\"<pin>\": [port at the connector, port at the far end]}})", ts.nports));
+                            if ts.nports == 4 && tr.port_order.is_none() && tr.ports.is_empty() {
+                                r.warnings.push(format!(
+                                    "{w}.touchstone: 4-port without port_order – \"1-3,2-4\" (P 1→3, N 2→4) assumed"
+                                ));
+                            }
+                            r.warnings.extend(ts.warnings.iter().map(|x| format!("{w}.touchstone: {x}")));
                         }
-                        if ts.nports == 4 && tr.port_order.is_none() && tr.ports.is_empty() {
-                            r.warnings.push(format!("{w}.touchstone: 4-port without port_order – \"1-3,2-4\" (P 1→3, N 2→4) assumed"));
-                        }
-                        r.warnings.extend(ts.warnings.iter().map(|x| format!("{w}.touchstone: {x}")));
                     }
-                },
+                }
             }
         }
         src(w, &e.source, &mut r);
@@ -613,7 +687,11 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
             // any rail name: parse with an impossible net so that only the syntax is checked
             use crate::field_syntax as fs;
             for part in fs::split_unquoted(&f.value, &[';', ',']) {
-                let net = fs::tokens(part).first().and_then(|t| fs::rsplit_once_unquoted(t, '=')).map(|x| fs::unquote(x.0)).unwrap_or_default();
+                let net = fs::tokens(part)
+                    .first()
+                    .and_then(|t| fs::rsplit_once_unquoted(t, '='))
+                    .map(|x| fs::unquote(x.0))
+                    .unwrap_or_default();
                 if let Err(e) = crate::pdn_ic::parse_pi_target(part, &net) {
                     r.errors.push(format!("{what}: {e}"));
                 }
@@ -626,7 +704,11 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
         r.entries += 1;
         let what = format!("gaps.dismissed[{}]", d.gap);
         if !crate::gaps::DISMISSABLE.contains(&d.gap.as_str()) {
-            r.errors.push(format!("{what}: gap '{}' cannot be dismissed (only the name-based gaps {})", d.gap, crate::gaps::DISMISSABLE.join(", ")));
+            r.errors.push(format!(
+                "{what}: gap '{}' cannot be dismissed (only the name-based gaps {})",
+                d.gap,
+                crate::gaps::DISMISSABLE.join(", ")
+            ));
         }
         if d.reason.trim().is_empty() {
             r.errors.push(format!("{what}: reason missing (say why the gap does not apply)"));
@@ -664,11 +746,18 @@ pub fn check(cfg: &BoardConfig, board: &Board, class_names: &[String], profiles:
 /// The `variants` section and the `variant` choice.
 fn check_variants(cfg: &BoardConfig, board: &Board, files: &crate::variant::Files, r: &mut CheckResult) {
     use crate::variant::{bom_refs, in_sheet, norm_sheet, DEFAULT};
-    let mut sheets: Vec<String> = board.footprints.iter().map(|f| norm_sheet(&f.sheet)).filter(|s| !s.is_empty()).collect();
+    let mut sheets: Vec<String> =
+        board.footprints.iter().map(|f| norm_sheet(&f.sheet)).filter(|s| !s.is_empty()).collect();
     sheets.sort();
     sheets.dedup();
     let refs: std::collections::HashSet<&str> = board.footprints.iter().map(|f| f.reference.as_str()).collect();
-    let known_ref = |p: &str| if p.contains(['*', '?']) { board.footprints.iter().any(|f| crate::board::wildcard_match(p, &f.reference)) } else { refs.contains(p) };
+    let known_ref = |p: &str| {
+        if p.contains(['*', '?']) {
+            board.footprints.iter().any(|f| crate::board::wildcard_match(p, &f.reference))
+        } else {
+            refs.contains(p)
+        }
+    };
     for (name, v) in &cfg.variants {
         r.entries += 1;
         let what = format!("variants.{name}");
@@ -676,13 +765,18 @@ fn check_variants(cfg: &BoardConfig, board: &Board, files: &crate::variant::File
             r.errors.push(format!("{what}: \"{DEFAULT}\" is reserved (the board file as it is)"));
         }
         if v.is_empty() && !board.variants.iter().any(|b| &b.name == name) {
-            r.warnings.push(format!("{what}: defines nothing (fitted_sheets, not_fitted_sheets, fitted, not_fitted or bom)"));
+            r.warnings
+                .push(format!("{what}: defines nothing (fitted_sheets, not_fitted_sheets, fitted, not_fitted or bom)"));
         }
         for s in v.fitted_sheets.iter().chain(&v.not_fitted_sheets) {
             if sheets.is_empty() {
                 r.errors.push(format!("{what}: sheet '{s}' – the board file has no sheet names (re-save it with KiCad 6 or later, or select by references)"));
             } else if !board.footprints.iter().any(|f| in_sheet(&f.sheet, s)) {
-                r.errors.push(format!("{what}: no part on sheet '{s}' (sheets: {}{})", sheets.iter().take(12).cloned().collect::<Vec<_>>().join(", "), if sheets.len() > 12 { ", …" } else { "" }));
+                r.errors.push(format!(
+                    "{what}: no part on sheet '{s}' (sheets: {}{})",
+                    sheets.iter().take(12).cloned().collect::<Vec<_>>().join(", "),
+                    if sheets.len() > 12 { ", …" } else { "" }
+                ));
             }
         }
         for p in v.fitted.iter().chain(&v.not_fitted).chain(&v.bom_exceptions) {
@@ -717,19 +811,32 @@ fn check_variants(cfg: &BoardConfig, board: &Board, files: &crate::variant::File
             continue; // only a description of a KiCad 10 variant
         }
         match &v.source {
-            None => r.errors.push(format!("{what}: source missing (e.g. kind \"design\" with the BOM or assembly files)")),
+            None => {
+                r.errors.push(format!("{what}: source missing (e.g. kind \"design\" with the BOM or assembly files)"))
+            }
             Some(s) if s.is_empty() => r.errors.push(format!("{what}: source needs a document, url or note")),
-            Some(s) if !SOURCE_KINDS.contains(&s.kind.as_str()) => r.errors.push(format!("{what}: source kind '{}' unknown (use {})", s.kind, SOURCE_KINDS.join(", "))),
+            Some(s) if !SOURCE_KINDS.contains(&s.kind.as_str()) => {
+                r.errors.push(format!("{what}: source kind '{}' unknown (use {})", s.kind, SOURCE_KINDS.join(", ")))
+            }
             _ => {}
         }
     }
-    let names: Vec<&str> = board.variants.iter().map(|v| v.name.as_str()).chain(cfg.variants.keys().map(|k| k.as_str())).collect();
+    let names: Vec<&str> =
+        board.variants.iter().map(|v| v.name.as_str()).chain(cfg.variants.keys().map(|k| k.as_str())).collect();
     match &cfg.variant {
-        Some(sel) if !sel.trim().eq_ignore_ascii_case(DEFAULT) && !names.iter().any(|n| n.eq_ignore_ascii_case(sel.trim())) => r.errors.push(format!(
-            "variant: '{sel}' is not defined ({}\"{DEFAULT}\" = the board file as it is)",
-            if names.is_empty() { String::new() } else { format!("variants: {}; ", names.join(", ")) }
+        Some(sel)
+            if !sel.trim().eq_ignore_ascii_case(DEFAULT)
+                && !names.iter().any(|n| n.eq_ignore_ascii_case(sel.trim())) =>
+        {
+            r.errors.push(format!(
+                "variant: '{sel}' is not defined ({}\"{DEFAULT}\" = the board file as it is)",
+                if names.is_empty() { String::new() } else { format!("variants: {}; ", names.join(", ")) }
+            ))
+        }
+        None if !names.is_empty() => r.warnings.push(format!(
+            "variant: none chosen (variants: {}) – commands that compute lanes stop and ask for one",
+            names.join(", ")
         )),
-        None if !names.is_empty() => r.warnings.push(format!("variant: none chosen (variants: {}) – commands that compute lanes stop and ask for one", names.join(", "))),
         _ => {}
     }
 }
@@ -773,7 +880,12 @@ mod tests {
         assert!(t.name.contains("kisi.json"));
         // and its document (here only a url) for the temperature estimate's table of θ sources
         assert_eq!(crate::tree::field_document(&b.footprints[0], "PI_LOAD"), Some("https://example.com/ds.pdf"));
-        let doc = Source { kind: "datasheet".into(), document: Some("TI X datasheet".into()), page: Some("6".into()), ..Default::default() };
+        let doc = Source {
+            kind: "datasheet".into(),
+            document: Some("TI X datasheet".into()),
+            page: Some("6".into()),
+            ..Default::default()
+        };
         assert_eq!(doc.citation().as_deref(), Some("TI X datasheet, p. 6"));
         assert!((b.stackup().dielectrics[0].loss_tangent - 0.015).abs() < 1e-12);
         assert_eq!(a.targets["50Z"].z, 50.0);
@@ -789,12 +901,22 @@ mod tests {
         .unwrap();
         let r = check(&bad, &board, &classes, &profiles, None, &Default::default());
         let named = BoardConfig { board: Some("mine.kicad_pcb".into()), ..cfg.clone() };
-        assert!(check(&named, &board, &classes, &profiles, Some("other.kicad_pcb"), &Default::default()).errors[0].contains("written for"));
+        assert!(check(&named, &board, &classes, &profiles, Some("other.kicad_pcb"), &Default::default()).errors[0]
+            .contains("written for"));
         assert!(check(&named, &board, &classes, &profiles, Some("/x/Mine.kicad_pcb"), &Default::default()).ok);
         assert!(same_board("x/LibreVNA.kicad_pcb", "librevna"));
         assert!(!r.ok);
         let all = r.errors.join("\n");
-        for frag in ["1 dielectrics", "epsilon_r outside", "source missing", "no net class 'PCIe'", "unknown profile 'pcie9'", "kind 'guess'", "no footprint U9", "not readable"] {
+        for frag in [
+            "1 dielectrics",
+            "epsilon_r outside",
+            "source missing",
+            "no net class 'PCIe'",
+            "unknown profile 'pcie9'",
+            "kind 'guess'",
+            "no footprint U9",
+            "not readable",
+        ] {
             assert!(all.contains(frag), "missing '{frag}' in\n{all}");
         }
     }
@@ -809,15 +931,22 @@ mod tests {
         crate::apply_project(&mut board, r#"{"net_settings": {"classes": [{"name": "Default"}]}}"#).unwrap();
         let profiles = crate::profile::Profiles::builtin();
         let src = r#""source": {"kind": "standard", "document": "USB 2.0 specification"}"#;
-        let cfg = parse(&format!(r#"{{"kisi_config": 1, "net_classes": {{
+        let cfg = parse(&format!(
+            r#"{{"kisi_config": 1, "net_classes": {{
             "QSPI": {{"nets": ["*QSPI_*"], "target_ohm": 50, "diff": false, "profile": "se50", {src}}},
-            "USB": {{"nets": ["USB_DP", "USB_DN"], "target_ohm": 90, "diff": true, "profile": "usb2", {src}}}}}}}"#)).unwrap();
+            "USB": {{"nets": ["USB_DP", "USB_DN"], "target_ohm": 90, "diff": true, "profile": "usb2", {src}}}}}}}"#
+        ))
+        .unwrap();
         let r = check(&cfg, &board, &["Default".into()], &profiles, None, &Default::default());
         assert!(r.ok, "{:?}", r.errors);
         let mut b = board.clone();
         let a = cfg.apply(&mut b);
-        let cls = |n: &str| b.netclasses[b.net_class[b.nets.iter().position(|x| x == n).unwrap()] as usize].name.clone();
-        assert_eq!((cls("/FPGA/QSPI_DQ1").as_str(), cls("USB_DN").as_str(), cls("LED").as_str()), ("QSPI", "USB", "Default"));
+        let cls =
+            |n: &str| b.netclasses[b.net_class[b.nets.iter().position(|x| x == n).unwrap()] as usize].name.clone();
+        assert_eq!(
+            (cls("/FPGA/QSPI_DQ1").as_str(), cls("USB_DN").as_str(), cls("LED").as_str()),
+            ("QSPI", "USB", "Default")
+        );
         assert_eq!((a.targets["USB"].z, a.targets["USB"].diff), (90.0, true));
         // the analysis sees the targets on those nets
         let an = crate::analyze(&b, &crate::Params { targets: a.targets.clone(), ..Default::default() });
@@ -826,7 +955,11 @@ mod tests {
         let bad = parse(&format!(r#"{{"kisi_config": 1, "net_classes": {{"A": {{"nets": ["NOPE*"], "target_ohm": 50, "diff": false, {src}}},
             "B": {{"nets": ["USB_D?"], "target_ohm": 90, "diff": true, {src}}}, "C": {{"nets": ["USB_DP"], "target_ohm": 90, "diff": true, {src}}}, "D": {{"target_ohm": 50, {src}}}}}}}"#)).unwrap();
         let e = check(&bad, &board, &["Default".into()], &profiles, None, &Default::default()).errors.join("\n");
-        for want in ["net_classes.A.nets: 'NOPE*' matches no net", "net 'USB_DP' is also given to net_classes.C", "no net class 'D'"] {
+        for want in [
+            "net_classes.A.nets: 'NOPE*' matches no net",
+            "net 'USB_DP' is also given to net_classes.C",
+            "no net class 'D'",
+        ] {
             assert!(e.contains(want), "{want}: {e}");
         }
     }
@@ -843,27 +976,46 @@ mod tests {
         assert!(e.model == "matched" && e.has_rest());
         let bad = parse(r#"{"kisi_config": 1, "connector_ends": {"J9": {"model": "custom"}, "U1": {"model": "lossy", "rest_loss_db": 300}}}"#).unwrap();
         let all = check(&bad, &board, &classes, &profiles, None, &Default::default()).errors.join("\n");
-        for frag in ["no part 'J9'", "needs r_ohm", "unknown model 'lossy'", "rest_loss_db 0 … 100", "source missing"] {
+        for frag in ["no part 'J9'", "needs r_ohm", "unknown model 'lossy'", "rest_loss_db 0 … 100", "source missing"]
+        {
             assert!(all.contains(frag), "missing '{frag}' in\n{all}");
         }
         // a Touchstone file behind the connector: checked when loaded, an error when not
         let ts = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "cab/c.s2p"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
-        assert!(check(&ts, &board, &classes, &profiles, None, &Default::default()).errors[0].contains("cab/c.s2p not loaded"));
-        let files: crate::variant::Files = HashMap::from([("cab/c.s2p".to_string(), Ok("# GHz S MA R 50\n1 0 0 0.9 -10 0.9 -10 0 0\n2 0 0 0.8 -20 0.8 -20 0 0\n".to_string()))]);
+        assert!(check(&ts, &board, &classes, &profiles, None, &Default::default()).errors[0]
+            .contains("cab/c.s2p not loaded"));
+        let files: crate::variant::Files = HashMap::from([(
+            "cab/c.s2p".to_string(),
+            Ok("# GHz S MA R 50\n1 0 0 0.9 -10 0.9 -10 0 0\n2 0 0 0.8 -20 0.8 -20 0 0\n".to_string()),
+        )]);
         let r = check(&ts, &board, &classes, &profiles, None, &files);
         assert!(r.ok, "{:?}", r.errors);
         let po = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "cab/c.s2p", "port_order": "2-4"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
-        assert!(check(&po, &board, &classes, &profiles, None, &files).errors.iter().any(|e| e.contains("unknown port_order")));
-        assert!(crate::service::touchstones_of(Some(&ts), &files)["cab/c.s2p"].as_ref().is_ok_and(|t| t.nports == 2 && t.name == "c.s2p"));
+        assert!(check(&po, &board, &classes, &profiles, None, &files)
+            .errors
+            .iter()
+            .any(|e| e.contains("unknown port_order")));
+        assert!(crate::service::touchstones_of(Some(&ts), &files)["cab/c.s2p"]
+            .as_ref()
+            .is_ok_and(|t| t.nports == 2 && t.name == "c.s2p"));
         // one file for all lanes: a 3-port needs the ports per pin; ports in range and used once
-        let three = "# GHz S MA R 50\n1 0 0 0.9 0 0 0 0.9 0 0 0 0 0 0 0 0 0 0 0\n2 0 0 0.9 0 0 0 0.9 0 0 0 0 0 0 0 0 0 0 0\n".to_string();
+        let three =
+            "# GHz S MA R 50\n1 0 0 0.9 0 0 0 0.9 0 0 0 0 0 0 0 0 0 0 0\n2 0 0 0.9 0 0 0 0.9 0 0 0 0 0 0 0 0 0 0 0\n"
+                .to_string();
         let files3: crate::variant::Files = HashMap::from([("c.s3p".to_string(), Ok(three))]);
         let nomap = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "c.s3p"}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
-        assert!(check(&nomap, &board, &classes, &profiles, None, &files3).errors.iter().any(|e| e.contains("3-port – give the port of every connector pin")));
+        assert!(check(&nomap, &board, &classes, &profiles, None, &files3)
+            .errors
+            .iter()
+            .any(|e| e.contains("3-port – give the port of every connector pin")));
         let map = parse(r#"{"kisi_config": 1, "connector_ends": {"U1": {"touchstone": {"file": "c.s3p", "ports": {"1": [1, 2], "2": [2, 4]}}, "source": {"kind": "measurement", "note": "VNA"}}}}"#).unwrap();
         assert_eq!(map.connector_ends["U1"].end.touchstone.as_ref().unwrap().ports["2"], [2, 4]);
         let errs = check(&map, &board, &classes, &profiles, None, &files3).errors.join("\n");
-        assert!(errs.contains("ports.2: ports 2 / 4 – the file has 3 ports") && errs.contains("port 2 given for pins 1 and 2"), "{errs}");
+        assert!(
+            errs.contains("ports.2: ports 2 / 4 – the file has 3 ports")
+                && errs.contains("port 2 given for pins 1 and 2"),
+            "{errs}"
+        );
     }
 
     /// Net names with spaces in quotes, written in kisi.json with escaped quotes: config-check

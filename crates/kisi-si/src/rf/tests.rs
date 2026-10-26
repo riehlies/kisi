@@ -1,7 +1,7 @@
+use super::*;
 use crate::analytic;
 use crate::extract::Kind;
 use std::f64::consts::PI;
-use super::*;
 
 fn close(a: f64, b: f64, tol: f64) -> bool {
     (a - b).abs() <= tol * b.abs()
@@ -107,7 +107,6 @@ fn coupling_symmetric() {
     assert!(kb > 0.0 && kf.abs() > 0.0);
 }
 
-
 #[test]
 fn net_path_ends_branches_and_stub() {
     // U1 ── 20 mm ── junction ── 10 mm ── J1, branch 3 mm to TP1, over a ground plane
@@ -149,7 +148,17 @@ fn net_path_ends_branches_and_stub() {
     assert!((f.branches[0].at_s - 10.0).abs() < 0.8);
     // a hint near J1 starts there
     assert_eq!(net_path_info(&board, &an, net, false, Some([29.0, 0.0])).unwrap().start.label, "J1.1");
-    let ch = channel_dir(&board, &an, net, &std::collections::HashMap::new(), Some((50.0, false)), &RfParams::default(), false, None).unwrap();
+    let ch = channel_dir(
+        &board,
+        &an,
+        net,
+        &std::collections::HashMap::new(),
+        Some((50.0, false)),
+        &RfParams::default(),
+        false,
+        None,
+    )
+    .unwrap();
     assert!(ch.segments.iter().any(|s| s.kind == "branch"), "stub in the cascade");
     assert!(ch.path.is_some());
 }
@@ -200,7 +209,13 @@ fn crosstalk_into_a_pair() {
     let (ze, zo, ee, eo) = crate::analytic::kirschning_jansen(0.15, 0.2, 0.1, 4.0);
     let kb1 = coupling_from_modes(ze, zo, ee, eo).0;
     assert!(np < kb1 && np > 0.2 * kb1, "{np} vs single {kb1}");
-    assert!(xp.geoms.len() == 2 && xp.geoms.iter().all(|g| g.1.contains("sig+") && g.1.contains("sig-") && g.1.matches("gnd x=").count() >= 2));
+    assert!(
+        xp.geoms.len() == 2
+            && xp
+                .geoms
+                .iter()
+                .all(|g| g.1.contains("sig+") && g.1.contains("sig-") && g.1.matches("gnd x=").count() >= 2)
+    );
     // common mode: the far line adds instead of cancelling, (k_P + k_N)/2 lies between
     // the differential noise and the single-line coupling
     let c = xp.aggressors[0].next_c;
@@ -216,7 +231,10 @@ fn crosstalk_into_a_pair() {
     assert!(it.fext.windows(2).all(|w| w[1] >= w[0] - 1e-12));
     let mid = it.next[it.next.len() / 2];
     assert!((mid - np).abs() < 0.05 * np, "NEXT density {mid} vs {np}");
-    assert!(!xd.segments.is_empty() && xd.segments.iter().all(|s| (s.aa[1] + 0.5).abs() < 1e-6 && (s.va[1] + 0.15).abs() < 1e-6));
+    assert!(
+        !xd.segments.is_empty()
+            && xd.segments.iter().all(|s| (s.aa[1] + 0.5).abs() < 1e-6 && (s.va[1] + 0.15).abs() < 1e-6)
+    );
     assert!(xd.broadside.is_empty());
     // scan: the pair once, critical from 1 %, its coupling cross-sections for stage 2
     let sc = crosstalk_scan(&board, &an, &[id("D_P"), id("D_N"), id("AGG")], &field, &rp, XT_CRITICAL);
@@ -274,7 +292,10 @@ fn via_return_path_across_antipad() {
         }
         pts.extend([(10.0, 5.0), (25.0, 5.0), (25.0, -5.0), (-5.0, -5.0)]);
         let p: Vec<String> = pts.iter().map(|(x, y)| format!("(xy {x:.4} {y:.4})")).collect();
-        format!("(zone (net 2) (net_name \"GND\") (layer \"{layer}\") (filled_polygon (layer \"{layer}\") (pts {})))", p.join(" "))
+        format!(
+            "(zone (net 2) (net_name \"GND\") (layer \"{layer}\") (filled_polygon (layer \"{layer}\") (pts {})))",
+            p.join(" ")
+        )
     };
     let pcb = format!(
         r#"(kicad_pcb (version 20240108) (generator "pcbnew")
@@ -317,9 +338,35 @@ fn via_return_path_across_antipad() {
 fn sample_models() -> Vec<LineModel> {
     let ms = |w: f64, h: f64| {
         let (z, eeff) = analytic::microstrip(w, h, 0.035, 4.4);
-        LineModel { z0: z, eeff0: eeff, l_ext: z * eeff.sqrt() / C0, c0: eeff.sqrt() / (z * C0), r_dc: 1.0 / (5.8e7 * w * 1e-3 * 35e-6), k_ac: 4e-4 * 0.3 / w, er: 4.4, tand: 0.02, q_fill: (eeff - 1.0) / 3.4, tand_eff0: None, ms_h: Some(h * 1e-3), source: "formula" }
+        LineModel {
+            z0: z,
+            eeff0: eeff,
+            l_ext: z * eeff.sqrt() / C0,
+            c0: eeff.sqrt() / (z * C0),
+            r_dc: 1.0 / (5.8e7 * w * 1e-3 * 35e-6),
+            k_ac: 4e-4 * 0.3 / w,
+            er: 4.4,
+            tand: 0.02,
+            q_fill: (eeff - 1.0) / 3.4,
+            tand_eff0: None,
+            ms_h: Some(h * 1e-3),
+            source: "formula",
+        }
     };
-    let sl = LineModel { z0: 50.0, eeff0: 3.66, l_ext: 50.0 * 3.66f64.sqrt() / C0, c0: 3.66f64.sqrt() / (50.0 * C0), r_dc: 8.0, k_ac: 6e-4, er: 3.66, tand: 0.02, q_fill: 1.0, tand_eff0: None, ms_h: None, source: "formula" };
+    let sl = LineModel {
+        z0: 50.0,
+        eeff0: 3.66,
+        l_ext: 50.0 * 3.66f64.sqrt() / C0,
+        c0: 3.66f64.sqrt() / (50.0 * C0),
+        r_dc: 8.0,
+        k_ac: 6e-4,
+        er: 3.66,
+        tand: 0.02,
+        q_fill: 1.0,
+        tand_eff0: None,
+        ms_h: None,
+        source: "formula",
+    };
     let field = LineModel { tand_eff0: Some(0.017), source: "field", ..ms(0.2, 0.11) };
     vec![ms(0.2, 0.11), ms(3.0, 1.6), ms(0.3, 1.0), sl, field, crate::rf::Build::fallback(50.0)]
 }
@@ -345,8 +392,16 @@ fn line_models_positive_real() {
                 let p = m.rlgc(f, &rp);
                 let s = Cx::new(0.0, 2.0 * PI * f);
                 let (z, y) = (m.z_s(s, &rp), m.y_s(s, &rp));
-                assert!((z.re - p.r).abs() < 1e-9 * z.abs() && (z.im - s.im * p.l).abs() < 1e-9 * z.abs(), "{} {f}", m.source);
-                assert!((y.re - p.g).abs() < 1e-9 * y.abs() && (y.im - s.im * p.c).abs() < 1e-9 * y.abs(), "{} {f}", m.source);
+                assert!(
+                    (z.re - p.r).abs() < 1e-9 * z.abs() && (z.im - s.im * p.l).abs() < 1e-9 * z.abs(),
+                    "{} {f}",
+                    m.source
+                );
+                assert!(
+                    (y.re - p.g).abs() < 1e-9 * y.abs() && (y.im - s.im * p.c).abs() < 1e-9 * y.abs(),
+                    "{} {f}",
+                    m.source
+                );
             }
         }
     }
@@ -393,7 +448,11 @@ fn lossy_line_causal() {
         let (mut pre, mut peak) = (0.0f64, 0.0f64);
         for i in 0..4000 {
             let t = -10e-9 + i as f64 * 4e-12;
-            if t < t_front - 2.0 * rise { pre = pre.max(p(t).abs()) } else { peak = peak.max(p(t).abs()) }
+            if t < t_front - 2.0 * rise {
+                pre = pre.max(p(t).abs())
+            } else {
+                peak = peak.max(p(t).abs())
+            }
         }
         assert!(pre < 1e-5 * peak, "{}: {pre} of {peak}", m.source);
     }

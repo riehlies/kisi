@@ -9,8 +9,8 @@
 
 use crate::board::Board;
 use crate::geom::{self, P};
+use crate::num::{Cx, C0, EPS0, MU0};
 use crate::pi::{find_net, is_ground_name, RailSetup};
-use crate::num::{Cx, MU0, EPS0, C0};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f64::consts::PI;
@@ -40,7 +40,18 @@ pub struct PdnParams {
 
 impl Default for PdnParams {
     fn default() -> Self {
-        PdnParams { fmin: 1e3, fmax: 1e9, npts: 241, vrm_r: 2e-3, vrm_l: 20e-9, ripple: 0.03, step: 0.5, max_cells: 2500, ic_cells: 6000, ic_npts: 61 }
+        PdnParams {
+            fmin: 1e3,
+            fmax: 1e9,
+            npts: 241,
+            vrm_r: 2e-3,
+            vrm_l: 20e-9,
+            ripple: 0.03,
+            step: 0.5,
+            max_cells: 2500,
+            ic_cells: 6000,
+            ic_npts: 61,
+        }
     }
 }
 
@@ -103,7 +114,7 @@ pub struct PdnResult {
 
 /// Capacitance from a footprint value: "100n", "100nF", "0.1uF 16V", "4u7", "10µF/6.3V", "1p5".
 pub fn parse_cap(v: &str) -> Option<f64> {
-    let s = v.trim().replace(',', ".").replace('µ', "u").replace('μ', "u");
+    let s = v.trim().replace(',', ".").replace(['µ', 'μ'], "u");
     let tok = s.split(|c: char| c.is_whitespace() || c == '/' || c == '_').next()?;
     let t = tok.trim_end_matches(['F', 'f']);
     let mult = |c: char| match c {
@@ -210,7 +221,11 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
         (Some(m), Some((lo, hi))) => {
             let lmax = (hi[0] - lo[0]).max(hi[1] - lo[1]) * 1e-3;
             let er = su.er_between(m.layer as usize, m.gnd_layer as usize);
-            if lmax > 0.0 { Some(C0 / (2.0 * er.sqrt() * lmax)) } else { None }
+            if lmax > 0.0 {
+                Some(C0 / (2.0 * er.sqrt() * lmax))
+            } else {
+                None
+            }
         }
         _ => None,
     };
@@ -223,14 +238,18 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
     for (i, pd) in board.pads.iter().enumerate() {
         fp_pads.entry(pd.fp).or_default().push(i);
     }
-    let fp_by_ref: HashMap<&str, u32> = board.footprints.iter().enumerate().map(|(i, f)| (f.reference.as_str(), i as u32)).collect();
+    let fp_by_ref: HashMap<&str, u32> =
+        board.footprints.iter().enumerate().map(|(i, f)| (f.reference.as_str(), i as u32)).collect();
     let mut wsum = 0.0;
     let mut cen = [0.0, 0.0];
     let mut load_current = 0.0;
     for l in &setup.loads {
         load_current += l.current.abs();
         let Some(&fi) = fp_by_ref.get(l.refdes.as_str()) else { continue };
-        let pads: Vec<&crate::board::Pad> = fp_pads.get(&fi).map(|v| v.iter().map(|&i| &board.pads[i]).filter(|pd| pd.net == net).collect()).unwrap_or_default();
+        let pads: Vec<&crate::board::Pad> = fp_pads
+            .get(&fi)
+            .map(|v| v.iter().map(|&i| &board.pads[i]).filter(|pd| pd.net == net).collect())
+            .unwrap_or_default();
         if pads.is_empty() {
             continue;
         }
@@ -251,7 +270,8 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
     let mut unparsed = 0;
     for (fi, f) in board.footprints.iter().enumerate() {
         let Some(pi) = fp_pads.get(&(fi as u32)) else { continue };
-        let cu: Vec<&crate::board::Pad> = pi.iter().map(|&i| &board.pads[i]).filter(|pd| !pd.layers.is_empty()).collect();
+        let cu: Vec<&crate::board::Pad> =
+            pi.iter().map(|&i| &board.pads[i]).filter(|pd| !pd.layers.is_empty()).collect();
         if cu.len() != 2 {
             continue;
         }
@@ -284,12 +304,16 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
                 .filter(|x| x.0 < 2.0)
                 .min_by(|x, y| x.0.partial_cmp(&y.0).unwrap())
         };
-        let depth = |target: Option<usize>| -> f64 { target.map_or(0.2, |t| su.gap_between(layer as usize, t).max(0.05)) };
+        let depth =
+            |target: Option<usize>| -> f64 { target.map_or(0.2, |t| su.gap_between(layer as usize, t).max(0.05)) };
         let rail_layer = main.as_ref().map(|m| m.layer as usize);
         let gnd_layer = main.as_ref().map(|m| m.gnd_layer as usize);
         let h = depth(rail_layer).max(depth(gnd_layer));
         let (vr, vg) = (near_via(pr), near_via(pg));
-        let on_plane = |pd: &crate::board::Pad| main.as_ref().is_some_and(|m| (m.layer == layer && pd.net == net) || (m.gnd_layer == layer && is_gnd(pd.net)));
+        let on_plane = |pd: &crate::board::Pad| {
+            main.as_ref()
+                .is_some_and(|m| (m.layer == layer && pd.net == net) || (m.gnd_layer == layer && is_gnd(pd.net)))
+        };
         let mut l_mount = 0.0;
         let trace = |d: f64| 0.4e-9 * d; // pad → via, ~0.4 nH/mm
         let s = match (vr, vg) {
@@ -362,12 +386,19 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
     let (mut cav_freq, mut cav_z, mut cav_cells, mut cav_h) = (Vec::new(), Vec::new(), 0, 0.0);
     if let (Some(m), Some(lp), true) = (&main, load_at, p.max_cells > 0) {
         let fq: Vec<f64> = freq.iter().cloned().filter(|&f| f >= 1e6).step_by(2).collect();
-        let mut shunts: Vec<Shunt> = caps.iter().map(|c| Shunt { at: c.at, r: c.esr, l: c.esl + c.l_mount, c: Some(c.c) }).collect();
+        let mut shunts: Vec<Shunt> =
+            caps.iter().map(|c| Shunt { at: c.at, r: c.esr, l: c.esl + c.l_mount, c: Some(c.c) }).collect();
         for src in &setup.sources {
             if let Some(&fi) = fp_by_ref.get(src.refdes.as_str()) {
-                let pads: Vec<P> = fp_pads.get(&fi).map(|v| v.iter().map(|&i| &board.pads[i]).filter(|pd| pd.net == net).map(|pd| pd.at).collect()).unwrap_or_default();
+                let pads: Vec<P> = fp_pads
+                    .get(&fi)
+                    .map(|v| v.iter().map(|&i| &board.pads[i]).filter(|pd| pd.net == net).map(|pd| pd.at).collect())
+                    .unwrap_or_default();
                 if !pads.is_empty() {
-                    let c = [pads.iter().map(|q| q[0]).sum::<f64>() / pads.len() as f64, pads.iter().map(|q| q[1]).sum::<f64>() / pads.len() as f64];
+                    let c = [
+                        pads.iter().map(|q| q[0]).sum::<f64>() / pads.len() as f64,
+                        pads.iter().map(|q| q[1]).sum::<f64>() / pads.len() as f64,
+                    ];
                     shunts.push(Shunt { at: c, r: p.vrm_r, l: p.vrm_l, c: None });
                 }
             }
@@ -419,7 +450,12 @@ pub fn pdn(board: &Board, setup: &RailSetup, p: &PdnParams) -> Result<PdnResult,
             }
         }
         if let Some(s0) = start {
-            above.push((s0, freq[n - 1].min(if cav_freq.is_empty() { cavity_hz.unwrap_or(f64::INFINITY) } else { f64::INFINITY }).min(F_BOARD)));
+            above.push((
+                s0,
+                freq[n - 1]
+                    .min(if cav_freq.is_empty() { cavity_hz.unwrap_or(f64::INFINITY) } else { f64::INFINITY })
+                    .min(F_BOARD),
+            ));
         }
     }
     let c_total = caps.iter().map(|c| c.c).fold(c_plane, |a, b| a + b);
@@ -453,7 +489,15 @@ mod tests {
 
     #[test]
     fn cap_values() {
-        let cases = [("100n", 100e-9), ("100nF", 100e-9), ("0.1uF 16V", 0.1e-6), ("4u7", 4.7e-6), ("10µF/6.3V", 10e-6), ("1p5", 1.5e-12), ("22uF_X5R", 22e-6)];
+        let cases = [
+            ("100n", 100e-9),
+            ("100nF", 100e-9),
+            ("0.1uF 16V", 0.1e-6),
+            ("4u7", 4.7e-6),
+            ("10µF/6.3V", 10e-6),
+            ("1p5", 1.5e-12),
+            ("22uF_X5R", 22e-6),
+        ];
         for (s, v) in cases {
             let c = parse_cap(s).unwrap_or(0.0);
             assert!((c - v).abs() < v * 1e-9, "{s}: {c}");
@@ -596,7 +640,18 @@ pub struct CavityResult {
 }
 
 /// Grid model of the rail plane `layer` of net `net` over ground at distance `d_mm`.
-pub fn cavity(board: &Board, net: u32, layer: u16, d_mm: f64, er: f64, tand: f64, shunts: &[Shunt], port: P, freq: &[f64], max_cells: usize) -> Option<CavityResult> {
+pub fn cavity(
+    board: &Board,
+    net: u32,
+    layer: u16,
+    d_mm: f64,
+    er: f64,
+    tand: f64,
+    shunts: &[Shunt],
+    port: P,
+    freq: &[f64],
+    max_cells: usize,
+) -> Option<CavityResult> {
     let polys: Vec<&crate::board::ZoneFill> = board.zones.iter().filter(|z| z.net == net && z.layer == layer).collect();
     if polys.is_empty() {
         return None;
@@ -630,7 +685,7 @@ pub fn cavity(board: &Board, net: u32, layer: u16, d_mm: f64, er: f64, tand: f64
                 }
             }
             xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-            for pair in xs.chunks_exact(2) {
+            for pair in xs.as_chunks::<2>().0 {
                 let i0 = ((pair[0] - lo[0]) / h - 0.5).ceil().max(0.0) as usize;
                 let i1 = ((pair[1] - lo[0]) / h - 0.5).floor();
                 if i1 < 0.0 {
@@ -772,8 +827,19 @@ mod cavity_tests {
         // resonance (1,0) at c/(2·50 mm·√4.3) ≈ 1.446 GHz
         let pts = vec![[0.0, 0.0], [50.0, 0.0], [50.0, 30.0], [0.0, 30.0]];
         let su = Stackup {
-            copper: vec![CopperLayer { name: "F.Cu".into(), thickness: 0.035 }, CopperLayer { name: "B.Cu".into(), thickness: 0.035 }],
-            dielectrics: vec![Dielectric { name: "d".into(), kind: "core".into(), material: "FR4".into(), thickness: 0.1, epsilon_r: 4.3, loss_tangent: 0.02, assumed: vec![] }],
+            copper: vec![
+                CopperLayer { name: "F.Cu".into(), thickness: 0.035 },
+                CopperLayer { name: "B.Cu".into(), thickness: 0.035 },
+            ],
+            dielectrics: vec![Dielectric {
+                name: "d".into(),
+                kind: "core".into(),
+                material: "FR4".into(),
+                thickness: 0.1,
+                epsilon_r: 4.3,
+                loss_tangent: 0.02,
+                assumed: vec![],
+            }],
             mask_top: None,
             mask_bottom: None,
             from_file: true,

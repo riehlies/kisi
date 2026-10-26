@@ -23,14 +23,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # tags, to see whether the reference cases changed since the previous release
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: Rust toolchain
-        run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown && rustup default stable
+        run: TC=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml) && rustup toolchain install "$TC" --profile minimal --target wasm32-unknown-unknown  # rust-toolchain.toml
       - name: Tests
         run: cargo test --release
       - name: Build
@@ -48,7 +48,7 @@ jobs:
         run: |
           python3 -c "import numpy" 2>/dev/null || sudo apt-get install -y python3-numpy
           python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Documentation PDF
@@ -67,7 +67,7 @@ jobs:
             node dist/kisi.mjs config-check examples/${b#*:}.kicad_pcb --config web/samples/${b%%:*}.kisi.json | grep -q '"ok": true'
             node dist/kisi.mjs power examples/${b#*:}.kicad_pcb --config web/samples/${b%%:*}.kisi.json > /dev/null
           done
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
       - name: Smoke test of kisi.mjs on Node 20
@@ -83,7 +83,7 @@ jobs:
           python3 tools/check_viewer.py dist/kisi-examples.html --quick --layouts light
           python3 tools/check_viewer.py dist/kisi.html --quick --layouts light \
             --board examples/VNA.kicad_pcb examples/VNA.kicad_pro --config web/samples/vna.kisi.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: kisi
           path: |
@@ -119,8 +119,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
         with:
           name: kisi
           path: site

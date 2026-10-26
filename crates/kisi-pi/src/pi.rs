@@ -146,7 +146,9 @@ pub fn voltage_from_name(name: &str) -> Option<f64> {
     let c: Vec<char> = n.chars().collect();
     let mut i = 0;
     while i < c.len() {
-        if c[i].is_ascii_digit() && (i == 0 || !c[i - 1].is_ascii_alphanumeric() || c[i - 1] == 'V' || c[i - 1] == 'C' || c[i - 1] == 'D') {
+        if c[i].is_ascii_digit()
+            && (i == 0 || !c[i - 1].is_ascii_alphanumeric() || c[i - 1] == 'V' || c[i - 1] == 'C' || c[i - 1] == 'D')
+        {
             let st = i;
             while i < c.len() && (c[i].is_ascii_digit() || c[i] == '.') {
                 i += 1;
@@ -177,15 +179,21 @@ pub fn voltage_from_name(name: &str) -> Option<f64> {
 /// as SENSE, DET, ADC, EN, PG, FB, SCL, SDA (VBUS_DET, VBAT_SENSE, VCC_EN, PG_1V0, TRIM_SCL_5V).
 pub fn signal_name(name: &str) -> bool {
     const SIGNAL: &[&str] = &[
-        "SENSE", "SNS", "SEN", "DET", "DETECT", "ADC", "MON", "MEAS", "EN", "ENA", "ENABLE", "PG", "PGOOD", "POK", "PWRGD", "OK", "GOOD", "FB", "CTRL", "CTL", "DIV",
-        "ON", "OFF", "INT", "IRQ", "ALERT", "FLT", "FAULT", "OC", "OV", "UV", "ID", "SEL", "STAT", "STATUS", "DIS", "RST", "RESET", "REF", "PWM", "GATE", "DRV", "SIG",
-        "SCL", "SDA", "SCK", "SCLK", "CLK", "MISO", "MOSI", "CS", "TX", "RX", "TXD", "RXD", "VINP", "VINN", "VINM",
+        "SENSE", "SNS", "SEN", "DET", "DETECT", "ADC", "MON", "MEAS", "EN", "ENA", "ENABLE", "PG", "PGOOD", "POK",
+        "PWRGD", "OK", "GOOD", "FB", "CTRL", "CTL", "DIV", "ON", "OFF", "INT", "IRQ", "ALERT", "FLT", "FAULT", "OC",
+        "OV", "UV", "ID", "SEL", "STAT", "STATUS", "DIS", "RST", "RESET", "REF", "PWM", "GATE", "DRV", "SIG", "SCL",
+        "SDA", "SCK", "SCLK", "CLK", "MISO", "MOSI", "CS", "TX", "RX", "TXD", "RXD", "VINP", "VINN", "VINM",
     ];
     words(name).iter().any(|w| SIGNAL.contains(&w.as_str()))
 }
 
 fn words(name: &str) -> Vec<String> {
-    name.replace("{slash}", "/").to_uppercase().split(|c: char| !c.is_ascii_alphanumeric()).filter(|w| !w.is_empty()).map(String::from).collect()
+    name.replace("{slash}", "/")
+        .to_uppercase()
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .map(String::from)
+        .collect()
 }
 
 /// Whether a net name or pin name looks like a supply without a voltage in it: a word that
@@ -197,10 +205,18 @@ pub fn supply_name_hint(name: &str) -> bool {
     const PREFIX: &[&str] = &["VCC", "VDD", "VIN", "VBUS", "VSYS", "VBAT", "VEE"];
     const SUFFIX: &[&str] = &["VCC", "VDD", "VIN"];
     let n = name.replace("{slash}", "/").to_uppercase();
-    if is_ground_name(&n) || n.starts_with("UNCONNECTED") || n.contains("VIN+") || n.contains("VIN-)") || n.ends_with("VIN-") || signal_name(&n) {
+    if is_ground_name(&n)
+        || n.starts_with("UNCONNECTED")
+        || n.contains("VIN+")
+        || n.contains("VIN-)")
+        || n.ends_with("VIN-")
+        || signal_name(&n)
+    {
         return false;
     }
-    words(&n).iter().any(|w| w == "VIO" || PREFIX.iter().any(|p| w.starts_with(p)) || SUFFIX.iter().any(|s| w.ends_with(s)))
+    words(&n)
+        .iter()
+        .any(|w| w == "VIO" || PREFIX.iter().any(|p| w.starts_with(p)) || SUFFIX.iter().any(|s| w.ends_with(s)))
 }
 
 pub fn is_ground_name(name: &str) -> bool {
@@ -328,7 +344,11 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
         if let Some(i) = rails.iter().position(|r| r.net == net) {
             return i;
         }
-        rails.push(RailSetup { net: net.to_string(), voltage: voltage_from_name(net).unwrap_or(0.0), ..Default::default() });
+        rails.push(RailSetup {
+            net: net.to_string(),
+            voltage: voltage_from_name(net).unwrap_or(0.0),
+            ..Default::default()
+        });
         rails.len() - 1
     };
     // sources first (they may define the voltage)
@@ -368,7 +388,9 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
             let i = rail_idx(&mut rails, &net_name);
             // "NET=60mA@L32/L33": the current enters at these parts' pads (split evenly)
             let (q, at): (&str, Vec<String>) = match q.split_once('@') {
-                Some((q, a)) => (q, a.split(['/', '+']).map(|r| r.trim().to_string()).filter(|r| !r.is_empty()).collect()),
+                Some((q, a)) => {
+                    (q, a.split(['/', '+']).map(|r| r.trim().to_string()).filter(|r| !r.is_empty()).collect())
+                }
                 None => (q, vec![fp.reference.clone()]),
             };
             let current = match parse_quantity(q) {
@@ -387,7 +409,12 @@ pub fn rails_from_fields(board: &Board) -> (Vec<RailSetup>, Vec<String>) {
                 }
             };
             for r in &at {
-                rails[i].loads.push(LoadSpec { refdes: r.clone(), current: current / at.len() as f64, pads: vec![], origin: "field".into() });
+                rails[i].loads.push(LoadSpec {
+                    refdes: r.clone(),
+                    current: current / at.len() as f64,
+                    pads: vec![],
+                    origin: "field".into(),
+                });
             }
         }
     }
@@ -402,23 +429,40 @@ pub fn setups_to_fields(setups: &[RailSetup]) -> (Vec<(String, String, String)>,
     use crate::field_syntax::quote_name;
     let mut out: Vec<(String, String, String)> = Vec::new();
     let mut lost = Vec::new();
-    let mut push = |r: &str, name: &str, v: String, out: &mut Vec<(String, String, String)>| match out.iter_mut().find(|x| x.0 == r && x.1 == name) {
+    let push = |r: &str, name: &str, v: String, out: &mut Vec<(String, String, String)>| match out
+        .iter_mut()
+        .find(|x| x.0 == r && x.1 == name)
+    {
         Some(x) => x.2 = format!("{}, {v}", x.2),
         None => out.push((r.to_string(), name.to_string(), v)),
     };
     for s in setups.iter().filter(|s| !s.ground) {
         let net = quote_name(&s.net);
         for src in &s.sources {
-            let v = if s.voltage != 0.0 && voltage_from_name(&s.net).is_none_or(|x| (x - s.voltage).abs() > 1e-9) { format!("{net}={}V", crate::tree::field_num(s.voltage)) } else { net.clone() };
+            let v = if s.voltage != 0.0 && voltage_from_name(&s.net).is_none_or(|x| (x - s.voltage).abs() > 1e-9) {
+                format!("{net}={}V", crate::tree::field_num(s.voltage))
+            } else {
+                net.clone()
+            };
             push(&src.refdes, "PI_SOURCE", v, &mut out);
             if !src.pads.is_empty() {
-                lost.push(format!("{}: source pads {} on {} (the field uses all its pads on the rail)", src.refdes, src.pads.join(" "), s.net));
+                lost.push(format!(
+                    "{}: source pads {} on {} (the field uses all its pads on the rail)",
+                    src.refdes,
+                    src.pads.join(" "),
+                    s.net
+                ));
             }
         }
         for l in s.loads.iter().filter(|l| l.current != 0.0 && l.origin != "regulator") {
             push(&l.refdes, "PI_LOAD", format!("{net}={}", crate::tree::field_amps(l.current)), &mut out);
             if !l.pads.is_empty() {
-                lost.push(format!("{}: load pads {} on {} (the field uses all its pads on the rail)", l.refdes, l.pads.join(" "), s.net));
+                lost.push(format!(
+                    "{}: load pads {} on {} (the field uses all its pads on the rail)",
+                    l.refdes,
+                    l.pads.join(" "),
+                    s.net
+                ));
             }
         }
     }
@@ -487,7 +531,7 @@ pub(crate) fn fill_polygon(g: &Grid, pts: &[P], w: &mut [f32]) -> usize {
     for (r, xs) in rows.iter_mut().enumerate() {
         xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let j = j0 + r;
-        for pair in xs.chunks_exact(2) {
+        for pair in xs.as_chunks::<2>().0 {
             let i0 = (((pair[0] - g.x0) / g.cell - 0.5).ceil().max(0.0)) as usize;
             let i1 = ((pair[1] - g.x0) / g.cell - 0.5).floor();
             if i1 < i0 as f64 {
@@ -517,7 +561,10 @@ pub(crate) fn fill_track(g: &Grid, a: P, b: P, width: f64, w: &mut [f32]) {
     let bb_max = [a[0].max(b[0]) + reach, a[1].max(b[1]) + reach];
     let (Some((i0, j0)), Some((i1, j1))) = (
         g.cell_of([bb_min[0].max(g.x0), bb_min[1].max(g.y0)]),
-        g.cell_of([bb_max[0].min(g.x0 + g.nx as f64 * g.cell - 1e-9), bb_max[1].min(g.y0 + g.ny as f64 * g.cell - 1e-9)]),
+        g.cell_of([
+            bb_max[0].min(g.x0 + g.nx as f64 * g.cell - 1e-9),
+            bb_max[1].min(g.y0 + g.ny as f64 * g.cell - 1e-9),
+        ]),
     ) else {
         return;
     };
@@ -546,7 +593,13 @@ pub(crate) fn pad_cells(g: &Grid, pad: &Pad) -> Vec<usize> {
     let mut out = Vec::new();
     // small local fill
     if let (Some((i0, j0)), Some((i1, j1))) = (g.cell_of(bb.min), g.cell_of(bb.max)) {
-        let sub = Grid { x0: g.x0 + i0 as f64 * g.cell, y0: g.y0 + j0 as f64 * g.cell, cell: g.cell, nx: i1 - i0 + 1, ny: j1 - j0 + 1 };
+        let sub = Grid {
+            x0: g.x0 + i0 as f64 * g.cell,
+            y0: g.y0 + j0 as f64 * g.cell,
+            cell: g.cell,
+            nx: i1 - i0 + 1,
+            ny: j1 - j0 + 1,
+        };
         tmp.resize(sub.nx * sub.ny, 0.0);
         fill_polygon(&sub, &poly, &mut tmp);
         for jj in 0..sub.ny {
@@ -574,7 +627,12 @@ pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result
 /// `solve_rail` with the resistivity scaled per place: `scale(layer, point)` = ρ/ρ₂₀ there (e.g.
 /// 1 + α(T − 20 °C) from a temperature map, `thermal::rail_at_temperature`). Each conductance uses
 /// the mean factor of its two cells.
-pub fn solve_rail_scaled(board: &Board, setup: &RailSetup, params: &PiParams, scale: Option<&dyn Fn(usize, P) -> f64>) -> Result<PiResult, String> {
+pub fn solve_rail_scaled(
+    board: &Board,
+    setup: &RailSetup,
+    params: &PiParams,
+    scale: Option<&dyn Fn(usize, P) -> f64>,
+) -> Result<PiResult, String> {
     let su = board.stackup();
     let ncu = su.n();
     let net = find_net(board, &setup.net).ok_or_else(|| format!("net '{}' not found", setup.net))?;
@@ -683,7 +741,13 @@ pub fn solve_rail_scaled(board: &Board, setup: &RailSetup, params: &PiParams, sc
         Some(f) => node_pos.iter().map(|&(l, k)| f(l, g.center(k % g.nx, k / g.nx)).max(1e-3)).collect(),
         None => Vec::new(),
     };
-    let dv = |a: u32, b: u32| -> f64 { if div.is_empty() { 1.0 } else { 0.5 * (div[a as usize] + div[b as usize]) } };
+    let dv = |a: u32, b: u32| -> f64 {
+        if div.is_empty() {
+            1.0
+        } else {
+            0.5 * (div[a as usize] + div[b as usize])
+        }
+    };
 
     // edges: (a, b, conductance S)
     let mut edges: Vec<(u32, u32, f64)> = Vec::with_capacity(nn * 2);
@@ -787,7 +851,11 @@ pub fn solve_rail_scaled(board: &Board, setup: &RailSetup, params: &PiParams, sc
         board
             .pads
             .iter()
-            .filter(|p| p.net == net && board.footprints[p.fp as usize].reference == refdes && (numbers.is_empty() || numbers.contains(&p.number)))
+            .filter(|p| {
+                p.net == net
+                    && board.footprints[p.fp as usize].reference == refdes
+                    && (numbers.is_empty() || numbers.contains(&p.number))
+            })
             .collect()
     };
     let pad_nodes = |p: &Pad| -> Vec<u32> {
@@ -938,7 +1006,11 @@ pub fn solve_rail_scaled(board: &Board, setup: &RailSetup, params: &PiParams, sc
             _ => {}
         }
     }
-    let x = if nu > 0 { kisi_sparse::solve_spd_triplets(nu, &trip, &rhs).map_err(|c| format!("linear solver: error {c}"))? } else { vec![] };
+    let x = if nu > 0 {
+        kisi_sparse::solve_spd_triplets(nu, &trip, &rhs).map_err(|c| format!("linear solver: error {c}"))?
+    } else {
+        vec![]
+    };
     let mut v = vec![f64::NAN; nn];
     for i in 0..nn {
         if fixed[i] {
@@ -1008,7 +1080,10 @@ pub fn solve_rail_scaled(board: &Board, setup: &RailSetup, params: &PiParams, sc
         let ld = &setup.loads[*li];
         let open = load_pad_nodes[k].iter().filter(|pn| pn.iter().all(|&n| !reach[n as usize])).count();
         if open > 0 && open < *npads {
-            warnings.push(format!("load {}: {} of {} pads not connected, their current is missing from the result", ld.refdes, open, npads));
+            warnings.push(format!(
+                "load {}: {} of {} pads not connected, their current is missing from the result",
+                ld.refdes, open, npads
+            ));
         }
         let vals: Vec<f64> = ns.iter().map(|&n| v[n as usize]).filter(|x| x.is_finite()).collect();
         let connected = !vals.is_empty();
@@ -1100,7 +1175,11 @@ pub fn solve_rail_scaled(board: &Board, setup: &RailSetup, params: &PiParams, sc
         cell,
         layers: grids,
         loads,
-        sources: src_nodes.iter().zip(src_cur).map(|((r, _, np), c)| SourceResult { refdes: r.clone(), current: c, pads: *np }).collect(),
+        sources: src_nodes
+            .iter()
+            .zip(src_cur)
+            .map(|((r, _, np), c)| SourceResult { refdes: r.clone(), current: c, pads: *np })
+            .collect(),
         vias,
         nodes: nn,
         v_min,
@@ -1139,13 +1218,50 @@ mod tests {
 
     #[test]
     fn supply_names() {
-        for n in ["VBUS", "VSYS", "VBAT", "/Power/VCC", "Net-(IC22-VCC)", "Net-(U8A-VBUS)", "VDDIO", "AVDD", "/06 Peripherals/IMU_VDD", "LSIN1/VINLDO1_B4", "PVIN", "VCC_IN", "VIO", "VDD_8"] {
+        for n in [
+            "VBUS",
+            "VSYS",
+            "VBAT",
+            "/Power/VCC",
+            "Net-(IC22-VCC)",
+            "Net-(U8A-VBUS)",
+            "VDDIO",
+            "AVDD",
+            "/06 Peripherals/IMU_VDD",
+            "LSIN1/VINLDO1_B4",
+            "PVIN",
+            "VCC_IN",
+            "VIO",
+            "VDD_8",
+        ] {
             assert!(supply_name_hint(n), "{n}");
         }
-        for n in ["GND", "VBUS_DET", "VBAT_SENSE", "VCC_EN", "VDD_PG", "VINP", "VIN+", "Net-(U3-VIN-)", "VREF", "SDA", "unconnected-(U2-VBUS-Pad1)", "DECA", "VSS", "VOUT", "P1.17{slash}PMIC_SCL", "LDO1_IN"] {
+        for n in [
+            "GND",
+            "VBUS_DET",
+            "VBAT_SENSE",
+            "VCC_EN",
+            "VDD_PG",
+            "VINP",
+            "VIN+",
+            "Net-(U3-VIN-)",
+            "VREF",
+            "SDA",
+            "unconnected-(U2-VBUS-Pad1)",
+            "DECA",
+            "VSS",
+            "VOUT",
+            "P1.17{slash}PMIC_SCL",
+            "LDO1_IN",
+        ] {
             assert!(!supply_name_hint(n), "{n}");
         }
-        assert!(signal_name("/FPGA/FPGA Voltage Regs/PG_1V0") && signal_name("TRIM_SCL_5V") && !signal_name("+3V3") && !signal_name("3V3_HBLB_SWITCH"));
+        assert!(
+            signal_name("/FPGA/FPGA Voltage Regs/PG_1V0")
+                && signal_name("TRIM_SCL_5V")
+                && !signal_name("+3V3")
+                && !signal_name("3V3_HBLB_SWITCH")
+        );
     }
 
     /// A 1 mm x 20 mm strip of 35 µm copper with a source pad at one end and a
@@ -1185,7 +1301,12 @@ mod tests {
             let expect = 1.72e-8 * (l * 1e-3) / (width * 1e-3 * 35e-6); // ohm, 1 A
             let drop = r.max_drop_mv.unwrap() * 1e-3;
             let err = (drop - expect) / expect;
-            eprintln!("strip w={width} cell={cell}: {:.2} mV vs {:.2} mV ({:+.1} %)", drop * 1e3, expect * 1e3, err * 100.0);
+            eprintln!(
+                "strip w={width} cell={cell}: {:.2} mV vs {:.2} mV ({:+.1} %)",
+                drop * 1e3,
+                expect * 1e3,
+                err * 100.0
+            );
             assert!(err.abs() < 0.08, "w={width} cell={cell}: drop {drop} V vs {expect} V ({:.1} %)", err * 100.0);
             assert!((r.sources[0].current - 1.0).abs() < 1e-6, "source current {}", r.sources[0].current);
         }
@@ -1217,7 +1338,7 @@ mod tests {
             d = 2.0 * a
         );
         let rs = 1.72e-8 / 35e-6; // ohm per square
-        // potential of the source/sink pair with all images of the rectangle (Neumann edges), per ampere
+                                  // potential of the source/sink pair with all images of the rectangle (Neumann edges), per ampere
         let pot = |px: f64, py: f64| {
             let mut v = 0.0;
             for i in -40i32..=40 {
@@ -1236,7 +1357,15 @@ mod tests {
         };
         // the contacts' rims (averaged); kisi holds the source pad at the source voltage and draws the load
         // current evenly from the load pad's copper, which adds Rs/4π between the load pad's rim and its centre
-        let rim = |cx: f64| (0..16).map(|k| { let t = k as f64 * std::f64::consts::PI / 8.0; pot(cx + a * t.cos(), y + a * t.sin()) }).sum::<f64>() / 16.0;
+        let rim = |cx: f64| {
+            (0..16)
+                .map(|k| {
+                    let t = k as f64 * std::f64::consts::PI / 8.0;
+                    pot(cx + a * t.cos(), y + a * t.sin())
+                })
+                .sum::<f64>()
+                / 16.0
+        };
         let expect = rim(x1) - rim(x2) + rs / (4.0 * std::f64::consts::PI);
         let infinite = rs / std::f64::consts::PI * ((x2 - x1) / (2.0 * a)).acosh();
         let b = load_pcb(&text).unwrap();
@@ -1245,7 +1374,13 @@ mod tests {
         let r = solve_rail(&b, &rails[0], &PiParams { cell: Some(0.25), ..Default::default() }).unwrap();
         let drop = r.max_drop_mv.unwrap() * 1e-3;
         let err = (drop - expect) / expect;
-        eprintln!("plane: {:.4} mV vs {:.4} mV with edges ({:.4} mV infinite sheet), {:+.1} %", drop * 1e3, expect * 1e3, infinite * 1e3, err * 100.0);
+        eprintln!(
+            "plane: {:.4} mV vs {:.4} mV with edges ({:.4} mV infinite sheet), {:+.1} %",
+            drop * 1e3,
+            expect * 1e3,
+            infinite * 1e3,
+            err * 100.0
+        );
         assert!(err.abs() < 0.05, "plane spreading: {drop} V vs {expect} V ({:+.1} %)", err * 100.0);
     }
     /// Rail setups written as fields read back as the same rails (the pads chosen on a part are
@@ -1257,9 +1392,27 @@ mod tests {
   (footprint "J" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 2 "VCORE")))
   (footprint "U" (layer "F.Cu") (at 3 0) (property "Reference" "U1") (property "Value" "x") (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 1) (size 1 1) (layers "F.Cu") (net 2 "VCORE")) (pad "3" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 3 "/A B/VDD 1"))))"#;
         let setups = vec![
-            RailSetup { net: "+3V3".into(), voltage: 3.3, sources: vec![SourceSpec { refdes: "J1".into(), pads: vec![] }], loads: vec![LoadSpec { refdes: "U1".into(), current: 0.12, pads: vec![], origin: "user".into() }], ground: false },
-            RailSetup { net: "VCORE".into(), voltage: 0.9, sources: vec![SourceSpec { refdes: "J1".into(), pads: vec!["2".into()] }], loads: vec![LoadSpec { refdes: "U1".into(), current: 1.5, pads: vec![], origin: "field".into() }], ground: false },
-            RailSetup { net: "/A B/VDD 1".into(), voltage: 1.8, sources: vec![SourceSpec { refdes: "J1".into(), pads: vec![] }], loads: vec![LoadSpec { refdes: "U1".into(), current: 0.002, pads: vec![], origin: "user".into() }], ground: false },
+            RailSetup {
+                net: "+3V3".into(),
+                voltage: 3.3,
+                sources: vec![SourceSpec { refdes: "J1".into(), pads: vec![] }],
+                loads: vec![LoadSpec { refdes: "U1".into(), current: 0.12, pads: vec![], origin: "user".into() }],
+                ground: false,
+            },
+            RailSetup {
+                net: "VCORE".into(),
+                voltage: 0.9,
+                sources: vec![SourceSpec { refdes: "J1".into(), pads: vec!["2".into()] }],
+                loads: vec![LoadSpec { refdes: "U1".into(), current: 1.5, pads: vec![], origin: "field".into() }],
+                ground: false,
+            },
+            RailSetup {
+                net: "/A B/VDD 1".into(),
+                voltage: 1.8,
+                sources: vec![SourceSpec { refdes: "J1".into(), pads: vec![] }],
+                loads: vec![LoadSpec { refdes: "U1".into(), current: 0.002, pads: vec![], origin: "user".into() }],
+                ground: false,
+            },
         ];
         let (fields, lost) = setups_to_fields(&setups);
         assert_eq!(lost.len(), 1, "{lost:?}");
@@ -1274,7 +1427,12 @@ mod tests {
         assert!(w.is_empty(), "{w:?}");
         for s in &setups {
             let r = rails.iter().find(|r| r.net == s.net).unwrap();
-            assert!((r.voltage - s.voltage).abs() < 1e-9 && r.sources[0].refdes == "J1" && (r.loads[0].current - s.loads[0].current).abs() < 1e-12, "{r:?}");
+            assert!(
+                (r.voltage - s.voltage).abs() < 1e-9
+                    && r.sources[0].refdes == "J1"
+                    && (r.loads[0].current - s.loads[0].current).abs() < 1e-12,
+                "{r:?}"
+            );
         }
     }
 }

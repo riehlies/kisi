@@ -4,7 +4,10 @@ fn main() {
     let a: Vec<String> = std::env::args().collect();
     let path = a.get(1).expect("case.json");
     let case: kisi_fdtd::Case = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
-    let mesh = a.iter().position(|x| x == "--mesh").map(|i| serde_json::from_str::<kisi_fdtd::Mesh>(&std::fs::read_to_string(&a[i + 1]).unwrap()).unwrap());
+    let mesh = a
+        .iter()
+        .position(|x| x == "--mesh")
+        .map(|i| serde_json::from_str::<kisi_fdtd::Mesh>(&std::fs::read_to_string(&a[i + 1]).unwrap()).unwrap());
     if a.iter().any(|x| x == "--mesh-only") {
         let m = mesh.unwrap_or_else(|| kisi_fdtd::make_mesh(&case));
         println!("{}", serde_json::to_string(&m).unwrap());

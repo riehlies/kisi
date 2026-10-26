@@ -39,13 +39,25 @@ pub fn scene(b: &Board) -> Scene<'_> {
     let mut tracks = Vec::with_capacity(b.tracks.len() * 7);
     for t in &b.tracks {
         tracks.extend_from_slice(&[
-            t.a[0] as f32, t.a[1] as f32, t.b[0] as f32, t.b[1] as f32, t.width as f32, t.layer as f32, t.net as f32,
+            t.a[0] as f32,
+            t.a[1] as f32,
+            t.b[0] as f32,
+            t.b[1] as f32,
+            t.width as f32,
+            t.layer as f32,
+            t.net as f32,
         ]);
     }
     let mut vias = Vec::with_capacity(b.vias.len() * 7);
     for v in &b.vias {
         vias.extend_from_slice(&[
-            v.at[0] as f32, v.at[1] as f32, v.size as f32, v.drill as f32, v.from as f32, v.to as f32, v.net as f32,
+            v.at[0] as f32,
+            v.at[1] as f32,
+            v.size as f32,
+            v.drill as f32,
+            v.from as f32,
+            v.to as f32,
+            v.net as f32,
         ]);
     }
     let mut pads = Vec::with_capacity(b.pads.len() * 8);
@@ -59,7 +71,14 @@ pub fn scene(b: &Board) -> Scene<'_> {
         };
         let mask: u32 = p.layers.iter().fold(0, |m, &l| if l < 24 { m | (1 << l) } else { m });
         pads.extend_from_slice(&[
-            p.at[0] as f32, p.at[1] as f32, p.size[0] as f32, p.size[1] as f32, p.angle as f32, shape, mask as f32, p.net as f32,
+            p.at[0] as f32,
+            p.at[1] as f32,
+            p.size[0] as f32,
+            p.size[1] as f32,
+            p.angle as f32,
+            shape,
+            mask as f32,
+            p.net as f32,
         ]);
     }
     Scene {
@@ -74,7 +93,15 @@ pub fn scene(b: &Board) -> Scene<'_> {
         vias,
         pads,
         pad_radius: b.pads.iter().map(|p| crate::board::pad_corner_radius(p) as f32).collect(),
-        pad_custom: b.pads.iter().enumerate().filter(|(_, p)| !p.custom.is_empty()).map(|(i, p)| (i as u32, p.custom.iter().map(|c| c.iter().map(|q| [q[0] as f32, q[1] as f32]).collect()).collect())).collect(),
+        pad_custom: b
+            .pads
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| !p.custom.is_empty())
+            .map(|(i, p)| {
+                (i as u32, p.custom.iter().map(|c| c.iter().map(|q| [q[0] as f32, q[1] as f32]).collect()).collect())
+            })
+            .collect(),
         outline: b.outline.iter().map(|p| p.iter().map(|q| [q[0] as f32, q[1] as f32]).collect()).collect(),
         pad_tracks: b.tracks.iter().enumerate().filter(|(_, t)| t.pad).map(|(i, _)| i as u32).collect(),
         pad_track_pad: b.tracks.iter().filter(|t| t.pad).map(|t| t.item).collect(),

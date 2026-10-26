@@ -15,3 +15,5 @@ serde = { version = "=1.0.229", features = ["derive"] }
 # float_roundtrip: numbers read back exactly (check rows from worker engines, field results from JS)
 serde_json = { version = "1", features = ["float_roundtrip"] }
 
+[lints]
+workspace = true

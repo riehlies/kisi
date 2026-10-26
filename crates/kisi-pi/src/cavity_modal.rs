@@ -60,8 +60,10 @@ impl Cavity {
                 base[m * nn + n] = chi2 * sinc(kx[m] * w / 2.0).powi(2) * sinc(ky[n] * w / 2.0).powi(2);
             }
         }
-        let cx: Vec<Vec<f64>> = ports.iter().map(|&(x, _)| kx.iter().map(|k| (k * (x + self.fringe)).cos()).collect()).collect();
-        let cy: Vec<Vec<f64>> = ports.iter().map(|&(_, y)| ky.iter().map(|k| (k * (y + self.fringe)).cos()).collect()).collect();
+        let cx: Vec<Vec<f64>> =
+            ports.iter().map(|&(x, _)| kx.iter().map(|k| (k * (x + self.fringe)).cos()).collect()).collect();
+        let cy: Vec<Vec<f64>> =
+            ports.iter().map(|&(_, y)| ky.iter().map(|k| (k * (y + self.fringe)).cos()).collect()).collect();
         let mut wts = vec![];
         for i in 0..np {
             for j in 0..np {
@@ -74,7 +76,13 @@ impl Cavity {
                 wts.push(v);
             }
         }
-        CavityPorts { kx2: kx.iter().map(|k| k * k).collect(), ky2: ky.iter().map(|k| k * k).collect(), w: wts, n: np, pre: MU0 * self.d / (a2 * b2) }
+        CavityPorts {
+            kx2: kx.iter().map(|k| k * k).collect(),
+            ky2: ky.iter().map(|k| k * k).collect(),
+            w: wts,
+            n: np,
+            pre: MU0 * self.d / (a2 * b2),
+        }
     }
 
     /// Z matrix (row-major n×n, Ω) at frequency f.
@@ -87,10 +95,10 @@ impl Cavity {
         let k2 = Cx::new(w0 * w0 * MU0 * EPS0 * self.er, -w0 * w0 * MU0 * EPS0 * self.er * td);
         let nn = p.ky2.len();
         // 1/(kx²+ky²−k²) once per mode
-        let inv: Vec<Cx> = (0..p.kx2.len() * nn).map(|q| (Cx::new(p.kx2[q / nn] + p.ky2[q % nn], 0.0) - k2).inv()).collect();
+        let inv: Vec<Cx> =
+            (0..p.kx2.len() * nn).map(|q| (Cx::new(p.kx2[q / nn] + p.ky2[q % nn], 0.0) - k2).inv()).collect();
         let jw = Cx::new(0.0, w0 * p.pre);
-        p.w
-            .iter()
+        p.w.iter()
             .map(|wt| {
                 let (mut re, mut im) = (0.0, 0.0);
                 for (x, c) in wt.iter().zip(&inv) {
@@ -137,7 +145,8 @@ mod tests {
 
     #[test]
     fn loop_inductance_grows_with_distance() {
-        let c = Cavity { a: 0.03, b: 0.03, d: 0.233e-3, er: 4.0, tand: 0.0, f_loss: None, fringe: 0.0, modes: (200, 200) };
+        let c =
+            Cavity { a: 0.03, b: 0.03, d: 0.233e-3, er: 4.0, tand: 0.0, f_loss: None, fringe: 0.0, modes: (200, 200) };
         let l1 = loop_inductance(&c, (0.01, 0.015), 2.4e-3, (0.015, 0.015), 0.2e-3, 50e6);
         let l2 = loop_inductance(&c, (0.01, 0.015), 2.4e-3, (0.02, 0.015), 0.2e-3, 50e6);
         assert!(l1 > 0.0 && l2 > l1, "{l1} {l2}");

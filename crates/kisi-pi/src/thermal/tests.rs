@@ -8,8 +8,24 @@ use crate::pi::LayerGrid;
 /// full copper planes (net GND) on the layers in `planes`, and `extra` S-expressions.
 fn board_text(w: f64, h: f64, cu_um: &[f64], diel_mm: &[f64], planes: &[usize], extra: &str) -> String {
     let n = cu_um.len();
-    let name = |i: usize| if i == 0 { "F.Cu".to_string() } else if i == n - 1 { "B.Cu".to_string() } else { format!("In{i}.Cu") };
-    let ord = |i: usize| if i == 0 { 0 } else if i == n - 1 { 2 } else { 2 + 2 * i };
+    let name = |i: usize| {
+        if i == 0 {
+            "F.Cu".to_string()
+        } else if i == n - 1 {
+            "B.Cu".to_string()
+        } else {
+            format!("In{i}.Cu")
+        }
+    };
+    let ord = |i: usize| {
+        if i == 0 {
+            0
+        } else if i == n - 1 {
+            2
+        } else {
+            2 + 2 * i
+        }
+    };
     let layers: String = (0..n).map(|i| format!("({} \"{}\" signal)", ord(i), name(i))).collect::<Vec<_>>().join(" ");
     let mut stack = String::new();
     for i in 0..n {
@@ -71,7 +87,9 @@ fn t_mean(r: &ThermalResult, p: P) -> f64 {
 /// surface coefficient with the mask in series and the energy balance.
 #[test]
 fn slab_1d() {
-    for (cu, diel) in [(vec![35.0, 35.0], vec![1.5]), (vec![35.0, 17.5, 17.5, 17.5, 17.5, 35.0], vec![0.11, 0.1, 0.9, 0.11, 0.1])] {
+    for (cu, diel) in
+        [(vec![35.0, 35.0], vec![1.5]), (vec![35.0, 17.5, 17.5, 17.5, 17.5, 35.0], vec![0.11, 0.1, 0.9, 0.11, 0.1])]
+    {
         let n = cu.len();
         let b = crate::load_pcb(&board_text(60.0, 40.0, &cu, &diel, &(0..n).collect::<Vec<_>>(), "")).unwrap();
         let (h, q_area) = (12.0, 150.0); // W/m²K per side, W/m² on the top layer
@@ -90,7 +108,11 @@ fn slab_1d() {
         assert!((got - rise_top).abs() < 1e-6 * rise_top, "{got} vs {rise_top}");
         // every cell the same
         assert!((t.t_max_c - 25.0 - rise_top).abs() < 1e-6 * rise_top);
-        assert!(t.balance.error_rel < 1e-8 && (t.balance.in_w - q_area * 60e-3 * 40e-3).abs() < 1e-6, "{:?}", t.balance);
+        assert!(
+            t.balance.error_rel < 1e-8 && (t.balance.in_w - q_area * 60e-3 * 40e-3).abs() < 1e-6,
+            "{:?}",
+            t.balance
+        );
         assert_eq!(t.balance.radiation_w, 0.0);
     }
 }
@@ -109,7 +131,13 @@ fn fin_strip() {
         loss[j * nx + 200] = 0.1; // 1 W in the column at x = 200…201 mm
     }
     let r = heat(0, 0.0, 0.0, cell, nx, ny, loss);
-    let t = solve(&b, &[&r], &[], &ThermalParams { h: Some(h), ambient_c: Some(20.0), cell: Some(cell), ..Default::default() }).unwrap();
+    let t = solve(
+        &b,
+        &[&r],
+        &[],
+        &ThermalParams { h: Some(h), ambient_c: Some(20.0), cell: Some(cell), ..Default::default() },
+    )
+    .unwrap();
     let d = data();
     let k_sheet = 2.0 * d.copper.k_w_mk * 35e-6 + d.laminate.k_inplane_w_mk * diel * 1e-3;
     let hp = 1.0 / (1.0 / h + mask_r());
@@ -133,13 +161,20 @@ fn bessel_i0(x: f64) -> f64 {
     let t = (x / 3.75).powi(2);
     1.0 + t * (3.5156229 + t * (3.0899424 + t * (1.2067492 + t * (0.2659732 + t * (0.0360768 + t * 0.0045813)))))
 }
+// the polynomial coefficients as tabulated (Abramowitz & Stegun 9.8.5), -0.57721566 among them
+#[allow(clippy::approx_constant)]
 fn bessel_k0(x: f64) -> f64 {
     if x <= 2.0 {
         let t = (x / 2.0).powi(2);
-        -(x / 2.0).ln() * bessel_i0(x) - 0.57721566 + t * (0.42278420 + t * (0.23069756 + t * (0.03488590 + t * (0.00262698 + t * (0.00010750 + t * 0.0000074)))))
+        -(x / 2.0).ln() * bessel_i0(x) - 0.57721566
+            + t * (0.42278420
+                + t * (0.23069756 + t * (0.03488590 + t * (0.00262698 + t * (0.00010750 + t * 0.0000074)))))
     } else {
         let y = 2.0 / x;
-        (-x).exp() / x.sqrt() * (1.25331414 + y * (-0.07832358 + y * (0.02189568 + y * (-0.01062446 + y * (0.00587872 + y * (-0.00251540 + y * 0.00053208))))))
+        (-x).exp() / x.sqrt()
+            * (1.25331414
+                + y * (-0.07832358
+                    + y * (0.02189568 + y * (-0.01062446 + y * (0.00587872 + y * (-0.00251540 + y * 0.00053208))))))
     }
 }
 
@@ -162,7 +197,13 @@ fn radial_spreading() {
         }
     }
     let r = heat(0, 0.0, 0.0, rc, n, n, loss);
-    let t = solve(&b, &[&r], &[], &ThermalParams { h: Some(h), ambient_c: Some(20.0), cell: Some(cell), ..Default::default() }).unwrap();
+    let t = solve(
+        &b,
+        &[&r],
+        &[],
+        &ThermalParams { h: Some(h), ambient_c: Some(20.0), cell: Some(cell), ..Default::default() },
+    )
+    .unwrap();
     let d = data();
     let k_sheet = 2.0 * d.copper.k_w_mk * 35e-6 + d.laminate.k_inplane_w_mk * diel * 1e-3;
     let hp = 1.0 / (1.0 / h + mask_r());
@@ -201,9 +242,11 @@ fn convection_coefficients() {
     let (up, down, rad) = surface_coefficients(&ThermalParams::default(), 0.01, 0.4, 0.1, 20.0, 298.15);
     eprintln!("h up {up:.2}, down {down:.2}, rad {rad:.2} W/m²K");
     assert!((6.5..8.0).contains(&up) && (3.0..4.5).contains(&down) && (5.5..6.5).contains(&rad));
-    let (v, _, _) = surface_coefficients(&ThermalParams { vertical: true, ..Default::default() }, 0.01, 0.4, 0.1, 20.0, 298.15);
+    let (v, _, _) =
+        surface_coefficients(&ThermalParams { vertical: true, ..Default::default() }, 0.01, 0.4, 0.1, 20.0, 298.15);
     assert!((4.0..6.5).contains(&v), "vertical {v}");
-    let (f, _, _) = surface_coefficients(&ThermalParams { airflow_m_s: 1.0, ..Default::default() }, 0.01, 0.4, 0.1, 20.0, 298.15);
+    let (f, _, _) =
+        surface_coefficients(&ThermalParams { airflow_m_s: 1.0, ..Default::default() }, 0.01, 0.4, 0.1, 20.0, 298.15);
     assert!((11.0..14.0).contains(&f), "1 m/s {f}");
     // estimated coefficients: the balance closes and the mean rise matches the one h was taken at
     let b = crate::load_pcb(&board_text(100.0, 100.0, &[35.0, 35.0], &[1.5], &[0, 1], "")).unwrap();
@@ -237,9 +280,15 @@ fn part(kind: &str, cx: f64, cy: f64, field: &str) -> String {
     let mut traces = String::new();
     let mut vias = String::new();
     let lead = |pads: &mut String, traces: &mut String, n: usize, x: f64, y: f64, sx: f64, sy: f64, dir: [f64; 2]| {
-        pads.push_str(&format!("(pad \"{n}\" smd rect (at {x} {y}) (size {sx} {sy}) (layers \"F.Cu\") (net 2 \"SIG\"))"));
+        pads.push_str(&format!(
+            "(pad \"{n}\" smd rect (at {x} {y}) (size {sx} {sy}) (layers \"F.Cu\") (net 2 \"SIG\"))"
+        ));
         let (ax, ay) = (cx + x, cy + y);
-        traces.push_str(&format!("(segment (start {ax} {ay}) (end {} {}) (width 0.25) (layer \"F.Cu\") (net 2))", ax + 25.0 * dir[0], ay + 25.0 * dir[1]));
+        traces.push_str(&format!(
+            "(segment (start {ax} {ay}) (end {} {}) (width 0.25) (layer \"F.Cu\") (net 2))",
+            ax + 25.0 * dir[0],
+            ay + 25.0 * dir[1]
+        ));
     };
     let lib = match kind {
         "qfn" => {
@@ -254,7 +303,11 @@ fn part(kind: &str, cx: f64, cy: f64, field: &str) -> String {
             }
             pads.push_str("(pad \"17\" smd rect (at 0 0) (size 1.7 1.7) (layers \"F.Cu\") (net 1 \"GND\"))");
             for (x, y) in [(-0.45, -0.45), (0.45, -0.45), (-0.45, 0.45), (0.45, 0.45)] {
-                vias.push_str(&format!("(via (at {} {}) (size 0.6) (drill 0.3) (layers \"F.Cu\" \"B.Cu\") (net 1))", cx + x, cy + y));
+                vias.push_str(&format!(
+                    "(via (at {} {}) (size 0.6) (drill 0.3) (layers \"F.Cu\" \"B.Cu\") (net 1))",
+                    cx + x,
+                    cy + y
+                ));
             }
             "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.7x1.7mm"
         }
@@ -295,7 +348,8 @@ fn jedec_theta_ja() {
     for (kind, jb, jc, ja, p) in cases {
         let (w, h) = (76.2, 114.3);
         let extra = part(kind, w / 2.0, h / 2.0, &format!("theta_jb={jb} theta_jc={jc} tj_max=125 p={p}"));
-        let b = crate::load_pcb(&board_text(w, h, &[70.0, 35.0, 35.0, 70.0], &[0.3, 0.86, 0.3], &[1, 2], &extra)).unwrap();
+        let b =
+            crate::load_pcb(&board_text(w, h, &[70.0, 35.0, 35.0, 70.0], &[0.3, 0.86, 0.3], &[1, 2], &extra)).unwrap();
         let t = solve(&b, &[], &[], &ThermalParams { ambient_c: Some(25.0), ..Default::default() }).unwrap();
         let u = &t.parts[0];
         let theta = (u.tj_c - 25.0) / p;
@@ -337,7 +391,15 @@ fn package_families() {
         }
         // a QFN under a custom name: found by its exposed centre pad
         if fam == "qfn" {
-            let b2 = crate::load_pcb(&board_text(40.0, 40.0, &[35.0, 35.0], &[1.5], &[], &extra.replace(lib, "MyLib:TPS62A02"))).unwrap();
+            let b2 = crate::load_pcb(&board_text(
+                40.0,
+                40.0,
+                &[35.0, 35.0],
+                &[1.5],
+                &[],
+                &extra.replace(lib, "MyLib:TPS62A02"),
+            ))
+            .unwrap();
             assert_eq!(package_defaults(&b2, 0).0, "qfn");
         }
     }
@@ -354,12 +416,30 @@ fn part_models_and_electro_thermal() {
     let u = &t.parts[0];
     assert_eq!((u.model.as_str(), u.w_source.as_str()), ("psi_jb", "power tree"));
     assert!((u.tj_c - (u.t_board_c + 17.4 * 0.4)).abs() < 1e-9 && u.tj_max_c == 85.0);
-    let b2 = crate::load_pcb(&board_text(40.0, 40.0, &[35.0, 35.0], &[1.5], &[1], &part("qfn", 20.0, 20.0, "theta_ja=45"))).unwrap();
+    let b2 =
+        crate::load_pcb(&board_text(40.0, 40.0, &[35.0, 35.0], &[1.5], &[1], &part("qfn", 20.0, 20.0, "theta_ja=45")))
+            .unwrap();
     let t2 = solve(&b2, &[], &comps, &ThermalParams::default()).unwrap();
-    assert!(t2.parts[0].model == "theta_ja" && (t2.parts[0].tj_c - (25.0 + 45.0 * 0.4)).abs() < 1e-9 && t2.parts[0].estimate);
-    let b3 = crate::load_pcb(&board_text(40.0, 40.0, &[35.0, 35.0], &[1.5], &[1], &part("qfn", 20.0, 20.0, "tj_max=125").replace("(property \"PI_THERMAL\" \"tj_max=125\")", ""))).unwrap();
+    assert!(
+        t2.parts[0].model == "theta_ja"
+            && (t2.parts[0].tj_c - (25.0 + 45.0 * 0.4)).abs() < 1e-9
+            && t2.parts[0].estimate
+    );
+    let b3 = crate::load_pcb(&board_text(
+        40.0,
+        40.0,
+        &[35.0, 35.0],
+        &[1.5],
+        &[1],
+        &part("qfn", 20.0, 20.0, "tj_max=125").replace("(property \"PI_THERMAL\" \"tj_max=125\")", ""),
+    ))
+    .unwrap();
     let t3 = solve(&b3, &[], &comps, &ThermalParams::default()).unwrap();
-    assert!(t3.parts[0].data_source.starts_with("package default qfn") && t3.parts[0].estimate && t3.parts[0].tj_max_source.starts_with("default"));
+    assert!(
+        t3.parts[0].data_source.starts_with("package default qfn")
+            && t3.parts[0].estimate
+            && t3.parts[0].tj_max_source.starts_with("default")
+    );
     assert!(t3.notes.iter().any(|n| n.contains("package default")));
 
     // electro-thermal: a copper strip (20 × 1 mm, 1 A) on a board at a uniform 45.445 °C (no heat):
@@ -393,7 +473,8 @@ fn outline_chaining() {
     let lines = "(gr_line (start 0 0) (end 50 0) (layer \"Edge.Cuts\")) (gr_line (start 50 30) (end 50 0) (layer \"Edge.Cuts\"))
       (gr_line (start 50 30) (end 0 30) (layer \"Edge.Cuts\")) (gr_line (start 0 0) (end 0 30) (layer \"Edge.Cuts\"))
       (gr_rect (start 20 10) (end 30 20) (layer \"Edge.Cuts\"))";
-    let txt = board_text(1.0, 1.0, &[35.0, 35.0], &[1.5], &[], lines).replace("(gr_rect (start 0 0) (end 1 1) (stroke (width 0.05)) (layer \"Edge.Cuts\"))", "");
+    let txt = board_text(1.0, 1.0, &[35.0, 35.0], &[1.5], &[], lines)
+        .replace("(gr_rect (start 0 0) (end 1 1) (stroke (width 0.05)) (layer \"Edge.Cuts\"))", "");
     let b = crate::load_pcb(&txt).unwrap();
     let loops = outline_loops(&b);
     assert_eq!(loops.len(), 2, "{loops:?}");
@@ -409,13 +490,19 @@ fn outline_chaining() {
     assert!((t.balance.in_w - 0.14).abs() < 1e-6 && t.warnings.is_empty(), "{} {:?}", t.balance.in_w, t.warnings);
     assert!(!t.temp_at(0, [25.0, 15.0]).is_nan());
     assert_eq!(t.temp_at(0, [25.0, 15.0]), t.ambient_c); // outside the board: ambient
-    // only the cut-out closed (the outline drawn elsewhere), copper all over: the copper's box
-    let open = board_text(1.0, 1.0, &[35.0, 35.0], &[1.5], &[0], "(gr_rect (start 20 10) (end 30 20) (layer \"Edge.Cuts\"))")
-        .replace("(gr_rect (start 0 0) (end 1 1) (stroke (width 0.05)) (layer \"Edge.Cuts\"))", "")
-        .replace("(xy 0 0) (xy 1 0) (xy 1 1) (xy 0 1)", "(xy 0 0) (xy 50 0) (xy 50 30) (xy 0 30)");
+                                                         // only the cut-out closed (the outline drawn elsewhere), copper all over: the copper's box
+    let open =
+        board_text(1.0, 1.0, &[35.0, 35.0], &[1.5], &[0], "(gr_rect (start 20 10) (end 30 20) (layer \"Edge.Cuts\"))")
+            .replace("(gr_rect (start 0 0) (end 1 1) (stroke (width 0.05)) (layer \"Edge.Cuts\"))", "")
+            .replace("(xy 0 0) (xy 1 0) (xy 1 1) (xy 0 1)", "(xy 0 0) (xy 50 0) (xy 50 30) (xy 0 30)");
     let b2 = crate::load_pcb(&open).unwrap();
     let t2 = solve(&b2, &[], &[], &ThermalParams { cell: Some(1.0), ..Default::default() }).unwrap();
-    assert!((t2.area_mm2 - 1500.0).abs() < 1.0 && t2.warnings.iter().any(|w| w.contains("does not contain all copper")), "{} {:?}", t2.area_mm2, t2.warnings);
+    assert!(
+        (t2.area_mm2 - 1500.0).abs() < 1.0 && t2.warnings.iter().any(|w| w.contains("does not contain all copper")),
+        "{} {:?}",
+        t2.area_mm2,
+        t2.warnings
+    );
     assert!(t2.warnings.iter().any(|w| w.starts_with("no heat")));
 }
 
@@ -428,15 +515,28 @@ fn vias_and_case() {
         if !vias {
             extra = extra.split("(via ").next().unwrap().to_string();
         }
-        crate::load_pcb(&board_text(76.2, 114.3, &[70.0, 35.0, 35.0, 70.0], &[0.3, 0.86, 0.3], &[1, 2], &extra)).unwrap()
+        crate::load_pcb(&board_text(76.2, 114.3, &[70.0, 35.0, 35.0, 70.0], &[0.3, 0.86, 0.3], &[1, 2], &extra))
+            .unwrap()
     };
     let prm = ThermalParams { ambient_c: Some(25.0), ..Default::default() };
     let t = solve(&board("theta_jb=17.4 theta_jc=53.6 p=0.5", true), &[], &[], &prm).unwrap();
     let u = &t.parts[0];
     let v = u.vias.as_ref().unwrap();
-    eprintln!("QFN with 4 vias: {v:?}, Tj {:.2}, case {:?} ({:?}), {} vias, top {:?}", u.tj_c, u.t_case_c, u.case_model, t.vias_total, t.vias.first());
+    eprintln!(
+        "QFN with 4 vias: {v:?}, Tj {:.2}, case {:?} ({:?}), {} vias, top {:?}",
+        u.tj_c,
+        u.t_case_c,
+        u.case_model,
+        t.vias_total,
+        t.vias.first()
+    );
     assert_eq!((v.count, v.thermal_pad, t.vias_total), (4, true, 4));
-    assert!((v.via_w + v.laminate_w + v.lateral_w - v.to_board_w).abs() < 1e-9 && v.via_w > 0.2 * v.to_board_w && v.dt_next_k > 0.0 && v.hint.is_none());
+    assert!(
+        (v.via_w + v.laminate_w + v.lateral_w - v.to_board_w).abs() < 1e-9
+            && v.via_w > 0.2 * v.to_board_w
+            && v.dt_next_k > 0.0
+            && v.hint.is_none()
+    );
     // the four vias carry the heat downwards; the case top is (nearly) at the junction
     assert!(t.vias.iter().all(|x| x.q_w > 0.0 && x.dt_k > 0.0 && x.from == 0 && x.to == 3));
     assert!((t.vias.iter().map(|x| x.q_w).sum::<f64>() - v.via_w).abs() < 1e-9);
@@ -444,10 +544,17 @@ fn vias_and_case() {
     assert!(u.case_model.as_deref() == Some("theta_jc") && tc < tj && tj - tc < 1.0);
     // ψJT from the datasheet: case = Tj − ψJT·P
     let t2 = solve(&board("theta_jb=17.4 theta_jc=53.6 psi_jt=1.1 p=0.5", true), &[], &[], &prm).unwrap();
-    assert!((t2.parts[0].t_case_c.unwrap() - (t2.parts[0].tj_c - 0.55)).abs() < 1e-9 && t2.parts[0].case_model.as_deref() == Some("psi_jt"));
+    assert!(
+        (t2.parts[0].t_case_c.unwrap() - (t2.parts[0].tj_c - 0.55)).abs() < 1e-9
+            && t2.parts[0].case_model.as_deref() == Some("psi_jt")
+    );
     // no vias under the thermal pad: hotter, and the hint
     let t3 = solve(&board("theta_jb=17.4 theta_jc=53.6 p=0.5", false), &[], &[], &prm).unwrap();
     let v3 = t3.parts[0].vias.as_ref().unwrap();
     eprintln!("QFN without vias: {v3:?}, Tj {:.2}", t3.parts[0].tj_c);
-    assert!(v3.count == 0 && v3.hint.as_deref().is_some_and(|h| h.starts_with("no via under the thermal pad")) && t3.parts[0].tj_c > tj);
+    assert!(
+        v3.count == 0
+            && v3.hint.as_deref().is_some_and(|h| h.starts_with("no via under the thermal pad"))
+            && t3.parts[0].tj_c > tj
+    );
 }

@@ -2,7 +2,7 @@
 // ============================================================== prepare (board preparation)
 // The "Prepare PCB" page: what the board file lacks, per analysis category (tabs Impedance, Channel,
 // Power – the temperature is under Power), with forms for the simple values, the live check, the
-// kisi.json preview and saving next to the board. Design: docs/mockups/prepare.md.
+// kisi.json preview and saving next to the board. User documentation: docs/preparing-a-board.md.
 //
 // Data:   the draft is the board's kisi.json itself (S.prep.d.work: the loaded file, or a skeleton,
 //         with the edits), kept per board in this browser (PREP_KEY) until it is saved or discarded.

@@ -122,14 +122,20 @@ impl ConnEnd {
 
     /// The end model at the connector; `profile_end` is the profile's receiver or transmitter
     /// for that end, `target` the lane's target impedance (single-ended, or differential).
-    pub fn resolve(&self, profile_end: Option<EndModel>, target: Option<(f64, bool)>) -> Result<Option<EndModel>, String> {
+    pub fn resolve(
+        &self,
+        profile_end: Option<EndModel>,
+        target: Option<(f64, bool)>,
+    ) -> Result<Option<EndModel>, String> {
         match self.model.as_str() {
             "" | "profile" => Ok(profile_end),
             "matched" => {
                 let (z, diff) = target.ok_or("connector end 'matched' needs a target impedance")?;
                 Ok(Some(EndModel { r: if diff { z / 2.0 } else { z }, c_pf: 0.0, l_nh: 0.0 }))
             }
-            "high_impedance" => Ok(Some(EndModel { r: 0.0, c_pf: self.c_pf.unwrap_or(0.0), l_nh: self.l_nh.unwrap_or(0.0) })),
+            "high_impedance" => {
+                Ok(Some(EndModel { r: 0.0, c_pf: self.c_pf.unwrap_or(0.0), l_nh: self.l_nh.unwrap_or(0.0) }))
+            }
             "custom" => {
                 let r = self.r_ohm.ok_or("connector end 'custom' needs r_ohm")?;
                 Ok(Some(EndModel { r, c_pf: self.c_pf.unwrap_or(0.0), l_nh: self.l_nh.unwrap_or(0.0) }))
@@ -276,7 +282,14 @@ pub fn eye_of(freq: &[f64], h: &[Cx], dc: Option<f64>, delay_ps: f64, ep: &EyePa
 /// As `eye_of`, with crosstalk from aggressors (label, transfer from the aggressor's emf to this
 /// receiver, its value at 0 Hz; same units as `h`): each with its worst bit pattern at its worst
 /// phase, summed (peak distortion) – the eye's height and width include it.
-pub fn eye_with_xt(freq: &[f64], h: &[Cx], dc: Option<f64>, delay_ps: f64, ep: &EyeParams, xt: &[(String, Vec<Cx>, f64)]) -> Result<Eye, String> {
+pub fn eye_with_xt(
+    freq: &[f64],
+    h: &[Cx],
+    dc: Option<f64>,
+    delay_ps: f64,
+    ep: &EyeParams,
+    xt: &[(String, Vec<Cx>, f64)],
+) -> Result<Eye, String> {
     if freq.len() < 10 || h.len() != freq.len() {
         return Err("no transfer function".into());
     }
@@ -408,7 +421,8 @@ pub fn eye_with_xt(freq: &[f64], h: &[Cx], dc: Option<f64>, delay_ps: f64, ep: &
     let vmax = v.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
     let m = 0.08 * (vmax - vmin).max(1e-3);
     let (v_lo, v_hi) = (vmin - m, vmax + m);
-    let row = |x: f64| (((v_hi - x) / (v_hi - v_lo)) * (rows - 1) as f64).round().clamp(0.0, (rows - 1) as f64) as usize;
+    let row =
+        |x: f64| (((v_hi - x) / (v_hi - v_lo)) * (rows - 1) as f64).round().clamp(0.0, (rows - 1) as f64) as usize;
     let mut hist = vec![0u32; rows * cols];
     let centre = ipk as isize + best.1; // sampling instant of bit 0
     for n in 0..np {
@@ -556,7 +570,8 @@ mod tests2 {
         let df = 25e9 / n as f64;
         let freq: Vec<f64> = (1..=n).map(|k| k as f64 * df).collect();
         let tau = 100e-12;
-        let s21: Vec<Cx> = freq.iter().map(|&f| Cx::new((2.0 * PI * f * tau).cos(), -(2.0 * PI * f * tau).sin())).collect();
+        let s21: Vec<Cx> =
+            freq.iter().map(|&f| Cx::new((2.0 * PI * f * tau).cos(), -(2.0 * PI * f * tau).sin())).collect();
         let ch = channel_from(freq, s21, 100.0);
         let e = eye(&ch, &EyeParams { bitrate: 5e9, rise: 35e-12, ..Default::default() }).unwrap();
         assert!(e.height > 0.95, "height {}", e.height);
@@ -679,7 +694,14 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
 }
 
 /// Fill loss, return loss, stubs and (if `with_eye`) the eye of a row from a channel.
-pub(crate) fn fill_row(row: &mut CheckRow, ch: &crate::rf::Channel, gbps: f64, rise: f64, ends: (Option<EndModel>, Option<EndModel>), with_eye: bool) {
+pub(crate) fn fill_row(
+    row: &mut CheckRow,
+    ch: &crate::rf::Channel,
+    gbps: f64,
+    rise: f64,
+    ends: (Option<EndModel>, Option<EndModel>),
+    with_eye: bool,
+) {
     row.diff = ch.diff;
     row.model = if ch.diff { "odd mode" } else { "single-ended" };
     row.length_mm = ch.length_mm;
@@ -687,7 +709,10 @@ pub(crate) fn fill_row(row: &mut CheckRow, ch: &crate::rf::Channel, gbps: f64, r
     row.vias = ch.vias;
     row.warnings = ch.warnings.len();
     row.open_vias = ch.via_info.iter().filter(|v| !v.open_pairs.is_empty()).cloned().collect();
-    row.via_models = (ch.via_info.iter().filter(|v| v.model == "ladder").count(), ch.via_info.iter().filter(|v| v.model != "ladder").count());
+    row.via_models = (
+        ch.via_info.iter().filter(|v| v.model == "ladder").count(),
+        ch.via_info.iter().filter(|v| v.model != "ladder").count(),
+    );
     row.stubs = ch.segments.iter().filter(|s| s.kind == "branch").filter_map(|s| s.part.clone()).collect();
     let fn_ = gbps * 0.5e9;
     let df = ch.freq[0];
@@ -695,7 +720,12 @@ pub(crate) fn fill_row(row: &mut CheckRow, ch: &crate::rf::Channel, gbps: f64, r
     row.il_nyq_db = ch.s21_db[k];
     let k2 = ((1.5 * fn_ / df).round() as usize).clamp(1, ch.freq.len());
     row.rl_db = -ch.s11_db[..k2].iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-    row.stub_ghz = ch.via_info.iter().filter(|v| v.stub_mm > 0.01).filter_map(|v| v.stub_f_ghz).fold(None, |a: Option<f64>, b| Some(a.map_or(b, |x| x.min(b))));
+    row.stub_ghz = ch
+        .via_info
+        .iter()
+        .filter(|v| v.stub_mm > 0.01)
+        .filter_map(|v| v.stub_f_ghz)
+        .fold(None, |a: Option<f64>, b| Some(a.map_or(b, |x| x.min(b))));
     row.eye = with_eye;
     if !with_eye {
         return;
@@ -755,7 +785,9 @@ pub fn check_net(
         row.eye = true;
         let d = EndModel { r: ch.z_ref, c_pf: 0.0, l_nh: 0.0 };
         let ep = EyeParams { bitrate: gbps * 1e9, rise: rise.unwrap_or(rp.rise), tx, rx, ..Default::default() };
-        match crate::lanenet::ends_transfer(&ch.freq, &[p.block()], 2, &tx.unwrap_or(d), &rx.unwrap_or(d)).and_then(|(h, dc)| eye_of(&ch.freq, &h, Some(dc), ch.delay_ps, &ep)) {
+        match crate::lanenet::ends_transfer(&ch.freq, &[p.block()], 2, &tx.unwrap_or(d), &rx.unwrap_or(d))
+            .and_then(|(h, dc)| eye_of(&ch.freq, &h, Some(dc), ch.delay_ps, &ep))
+        {
             Ok(e) => {
                 row.eye_height = e.height;
                 row.eye_width_ui = e.width_ps / e.ui_ps;
@@ -767,7 +799,11 @@ pub fn check_net(
         let rq = crate::rf::RfParams { npts: 10, ..rp.clone() };
         if let Ok(pc) = crate::rf::channel(board, an, pn, field, target, &rq) {
             row.skew_ps = Some(ch.delay_ps - pc.delay_ps);
-            row.skew_uncertain = ch.warnings.iter().chain(&pc.warnings).any(|w| w.starts_with("net branches") || w.starts_with("net splits"));
+            row.skew_uncertain = ch
+                .warnings
+                .iter()
+                .chain(&pc.warnings)
+                .any(|w| w.starts_with("net branches") || w.starts_with("net splits"));
         }
     }
     row

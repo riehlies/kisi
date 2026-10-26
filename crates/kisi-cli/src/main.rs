@@ -19,7 +19,10 @@ fn main() {
         eprintln!("cavity links {:.2} s", kisi_core::via::CAV_TIME.with(|c| c.get()));
         let (na, ta) = kisi_core::via_pbm::ABCD_TIME.with(|c| c.get());
         eprintln!("cavity vias: {na} evaluations, {ta:.2} s");
-        eprintln!("cavity grids: {n} factorisations, {t:.2} s, {} cells on average; {g} shared groups of {e} environments", if n > 0 { cells / n } else { 0 });
+        eprintln!(
+            "cavity grids: {n} factorisations, {t:.2} s, {} cells on average; {g} shared groups of {e} environments",
+            cells.checked_div(n).unwrap_or(0)
+        );
     }
     std::process::exit(code);
 }

@@ -83,7 +83,7 @@ impl Mask {
                     }
                 }
                 xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-                for pair in xs.chunks_exact(2) {
+                for pair in xs.as_chunks::<2>().0 {
                     let i0 = ((pair[0] - self.x0) / self.h - 0.5).ceil().max(0.0) as usize;
                     let i1 = ((pair[1] - self.x0) / self.h - 0.5).floor();
                     if i1 < 0.0 {
@@ -101,7 +101,12 @@ impl Mask {
         let mut add = vec![];
         for j in 1..self.ny.saturating_sub(1) {
             for i in 1..self.nx.saturating_sub(1) {
-                if !self.get(i, j) && self.get(i - 1, j) && self.get(i + 1, j) && self.get(i, j - 1) && self.get(i, j + 1) {
+                if !self.get(i, j)
+                    && self.get(i - 1, j)
+                    && self.get(i + 1, j)
+                    && self.get(i, j - 1)
+                    && self.get(i, j + 1)
+                {
                     add.push(j * self.nx + i);
                 }
             }
@@ -152,7 +157,9 @@ impl Mask {
     /// lengths of the straight runs of the region's boundary (cell faces between an on and an
     /// off cell, or the raster's border), in mm
     pub fn edge_runs(&self) -> Vec<f64> {
-        let on = |i: isize, j: isize| i >= 0 && j >= 0 && (i as usize) < self.nx && (j as usize) < self.ny && self.get(i as usize, j as usize);
+        let on = |i: isize, j: isize| {
+            i >= 0 && j >= 0 && (i as usize) < self.nx && (j as usize) < self.ny && self.get(i as usize, j as usize)
+        };
         let mut runs = vec![];
         // faces normal to y (between rows j−1 and j), along x; then faces normal to x, along y
         for horizontal in [true, false] {
@@ -180,7 +187,9 @@ impl Mask {
     /// belongs to (mm), side of the raster's border the face lies on: 0 x0, 1 x1, 2 y0, 3 y1, or
     /// none inside); every face is one cell side long
     pub fn edge_faces(&self) -> Vec<(usize, usize, f64, Option<u8>)> {
-        let on = |i: isize, j: isize| i >= 0 && j >= 0 && (i as usize) < self.nx && (j as usize) < self.ny && self.get(i as usize, j as usize);
+        let on = |i: isize, j: isize| {
+            i >= 0 && j >= 0 && (i as usize) < self.nx && (j as usize) < self.ny && self.get(i as usize, j as usize)
+        };
         let mut out = vec![];
         for horizontal in [true, false] {
             let (n_outer, n_inner) = if horizontal { (self.ny + 1, self.nx) } else { (self.nx + 1, self.ny) };
@@ -234,7 +243,7 @@ impl Mask {
                     continue;
                 }
                 let d = geom::len(geom::sub(self.centre(i, j), p));
-                if d <= rmax && best.map_or(true, |b| d < b.0) {
+                if d <= rmax && best.is_none_or(|b| d < b.0) {
                     best = Some((d, (i, j)));
                 }
             }
@@ -313,7 +322,11 @@ impl DecapData {
             decoupling: DecapData,
         }
         static DATA: std::sync::OnceLock<DecapData> = std::sync::OnceLock::new();
-        DATA.get_or_init(|| serde_json::from_str::<Wrap>(crate::topology::COMPONENTS_JSON).expect("data/components.json: decoupling").decoupling)
+        DATA.get_or_init(|| {
+            serde_json::from_str::<Wrap>(crate::topology::COMPONENTS_JSON)
+                .expect("data/components.json: decoupling")
+                .decoupling
+        })
     }
     /// (ESR Ω, ESL + mounting inductance H) of a capacitor c (F) in package pkg
     pub fn rl(&self, pkg: &str, c: f64) -> (f64, f64) {
@@ -338,7 +351,9 @@ impl PairCavity {
                 if m + q == 0 {
                     continue;
                 }
-                let f = crate::num::C0 / (2.0 * self.er.sqrt()) * ((m as f64 / a).powi(2) + (q as f64 / b).powi(2)).sqrt() * 1e3;
+                let f = crate::num::C0 / (2.0 * self.er.sqrt())
+                    * ((m as f64 / a).powi(2) + (q as f64 / b).powi(2)).sqrt()
+                    * 1e3;
                 v.push((f, m, q));
             }
         }
@@ -387,18 +402,45 @@ pub fn parse_cap_value(v: &str) -> Option<f64> {
 /// on each layer (the net whose fill opens around the via, `via::plane_clearance`), their overlap
 /// on a raster of at most `max_cells` cells (cell ≥ `h_min` mm), the connected part next to the
 /// via, and the posts that join both planes in it. None if a layer has no plane at the via.
-pub fn pair_cavity(board: &Board, at: P, la: u16, lb: u16, own: u32, partner: Option<u32>, max_cells: usize, h_min: f64) -> Option<PairCavity> {
+pub fn pair_cavity(
+    board: &Board,
+    at: P,
+    la: u16,
+    lb: u16,
+    own: u32,
+    partner: Option<u32>,
+    max_cells: usize,
+    h_min: f64,
+) -> Option<PairCavity> {
     pair_region(board, at, la, lb, own, partner, None, max_cells, h_min)
 }
 
 /// As [`pair_cavity`] within a square window of half-width `radius` (mm) around the via, on cells
 /// of `h` mm; the sides where the window cuts the region are marked (`PairCavity::cut`).
-pub fn pair_window(board: &Board, at: P, la: u16, lb: u16, own: u32, partner: Option<u32>, radius: f64, h: f64) -> Option<PairCavity> {
+pub fn pair_window(
+    board: &Board,
+    at: P,
+    la: u16,
+    lb: u16,
+    own: u32,
+    partner: Option<u32>,
+    radius: f64,
+    h: f64,
+) -> Option<PairCavity> {
     pair_region(board, at, la, lb, own, partner, Some(radius), usize::MAX, h)
 }
 
-#[allow(clippy::too_many_arguments)]
-fn pair_region(board: &Board, at: P, la: u16, lb: u16, own: u32, partner: Option<u32>, window: Option<f64>, max_cells: usize, h_min: f64) -> Option<PairCavity> {
+fn pair_region(
+    board: &Board,
+    at: P,
+    la: u16,
+    lb: u16,
+    own: u32,
+    partner: Option<u32>,
+    window: Option<f64>,
+    max_cells: usize,
+    h_min: f64,
+) -> Option<PairCavity> {
     let (la, lb) = (la.min(lb), la.max(lb));
     let (open_a, na) = crate::via::plane_clearance(board, at, la, own, partner)?;
     let (open_b, nb) = crate::via::plane_clearance(board, at, lb, own, partner)?;
@@ -416,7 +458,10 @@ fn pair_region(board: &Board, at: P, la: u16, lb: u16, own: u32, partner: Option
     if !bba.is_valid() || !bbb.is_valid() {
         return None;
     }
-    let mut bb = BBox { min: [bba.min[0].max(bbb.min[0]), bba.min[1].max(bbb.min[1])], max: [bba.max[0].min(bbb.max[0]), bba.max[1].min(bbb.max[1])] };
+    let mut bb = BBox {
+        min: [bba.min[0].max(bbb.min[0]), bba.min[1].max(bbb.min[1])],
+        max: [bba.max[0].min(bbb.max[0]), bba.max[1].min(bbb.max[1])],
+    };
     let mut cut = [false; 4];
     if let Some(r) = window {
         let w = [at[0] - r, at[0] + r, at[1] - r, at[1] + r];
@@ -426,7 +471,11 @@ fn pair_region(board: &Board, at: P, la: u16, lb: u16, own: u32, partner: Option
     if bb.max[0] <= bb.min[0] || bb.max[1] <= bb.min[1] {
         return None;
     }
-    let h = if window.is_some() { h_min } else { (((bb.max[0] - bb.min[0]) * (bb.max[1] - bb.min[1]) / max_cells as f64).sqrt()).max(h_min) };
+    let h = if window.is_some() {
+        h_min
+    } else {
+        (((bb.max[0] - bb.min[0]) * (bb.max[1] - bb.min[1]) / max_cells as f64).sqrt()).max(h_min)
+    };
     let overlap = || {
         let mut ma = Mask::new(&bb, h);
         let ra: Vec<&[P]> = fills(la, na).map(|z| &z.pts[..]).collect();
@@ -450,14 +499,20 @@ fn pair_region(board: &Board, at: P, la: u16, lb: u16, own: u32, partner: Option
         for dj in -rc..=rc {
             for di in -rc..=rc {
                 let (i, j) = (ci as isize + di, cj as isize + dj);
-                if i >= 0 && j >= 0 && (i as usize) < ma.nx && (j as usize) < ma.ny && geom::len(geom::sub(ma.centre(i as usize, j as usize), p)) <= rfill {
+                if i >= 0
+                    && j >= 0
+                    && (i as usize) < ma.nx
+                    && (j as usize) < ma.ny
+                    && geom::len(geom::sub(ma.centre(i as usize, j as usize), p)) <= rfill
+                {
                     ma.on[j as usize * ma.nx + i as usize] = true;
                 }
             }
         }
     };
     // the overlap is the same for every via of the pair: computed once (process-wide)
-    let key = format!("{la},{lb},{na},{nb},{:?},{:?},{}", bb.min.map(f64::to_bits), bb.max.map(f64::to_bits), h.to_bits());
+    let key =
+        format!("{la},{lb},{na},{nb},{:?},{:?},{}", bb.min.map(f64::to_bits), bb.max.map(f64::to_bits), h.to_bits());
     let cached = OVERLAPS.lock().unwrap_or_else(|e| e.into_inner()).get(&key).cloned();
     let base = match cached {
         Some(m) => m,
@@ -486,7 +541,11 @@ fn pair_region(board: &Board, at: P, la: u16, lb: u16, own: u32, partner: Option
     };
     // a post with a thermal relief sits in its own clearance: next to the region counts
     let near = |p: P| -> bool {
-        p[0] >= ma.x0 - 0.6 && p[1] >= ma.y0 - 0.6 && p[0] <= ma.x0 + ma.nx as f64 * h + 0.6 && p[1] <= ma.y0 + ma.ny as f64 * h + 0.6 && (inside(p) || ma.nearest_on(p, 0.6).is_some())
+        p[0] >= ma.x0 - 0.6
+            && p[1] >= ma.y0 - 0.6
+            && p[0] <= ma.x0 + ma.nx as f64 * h + 0.6
+            && p[1] <= ma.y0 + ma.ny as f64 * h + 0.6
+            && (inside(p) || ma.nearest_on(p, 0.6).is_some())
     };
     let mut shorts = vec![];
     if na == nb {
@@ -531,7 +590,19 @@ fn pair_region(board: &Board, at: P, la: u16, lb: u16, own: u32, partner: Option
         }
     }
     let (d, er, tand) = diel_between(board, la as usize, lb as usize);
-    Some(PairCavity { layers: (la, lb), nets: (na, nb), d_mm: d, er, tand, mask: ma, area_mm2: area, bbox, shorts, caps, cut })
+    Some(PairCavity {
+        layers: (la, lb),
+        nets: (na, nb),
+        d_mm: d,
+        er,
+        tand,
+        mask: ma,
+        area_mm2: area,
+        bbox,
+        shorts,
+        caps,
+        cut,
+    })
 }
 
 // --- medium ----------------------------------------------------------------------------------
@@ -735,7 +806,7 @@ fn log_sum(theta: f64, tau: f64) -> f64 {
 /// gm = [e^{−γ|y−y'|} + e^{−γ(y+y')} + e^{−γ(2b−y−y')} + e^{−γ(2b−|y−y'|)}] / (2γ(1 − e^{−2γb})),
 /// γ = √(αm² − k²): the double cosine series summed in closed form along y. For large m the
 /// terms approach (1/(2πm)) Σ_u Σ_v cos(mπu/a) e^{−mπv/a} (u = x ∓ x'; v = |y − y'|, y + y',
-/// 2b − y − y'), whose sum is [`log_sum`] (Kummer): it carries the logarithmic singularity, so
+/// 2b − y − y'), whose sum is `log_sum` (Kummer): it carries the logarithmic singularity, so
 /// a post's self term is G at its radius, as H0⁽²⁾(ka) in the ladder. The k² terms of the
 /// expansion beyond the last mode M are added from frequency-independent sums, so the remainder
 /// falls as 1/m⁵.
@@ -777,50 +848,50 @@ impl RectEnv {
                 let mut cc_sum = 0.0;
                 let mut t2_sum = 0.0;
                 for &sd in sides {
-                let (us, vs) = Self::uv(&pts, i, j, bb, sd);
-                let mut closed = 0.0;
-                for &u in &us {
-                    for &v in &vs {
-                        closed += log_sum(PI * u / aa, PI * v / aa);
-                    }
-                }
-                closed /= 2.0 * PI;
-                let mut first = 0.0;
-                for m in 1..=modes {
-                    let al = m as f64 * PI / aa;
-                    let mut s = 0.0;
+                    let (us, vs) = Self::uv(&pts, i, j, bb, sd);
+                    let mut closed = 0.0;
                     for &u in &us {
-                        let cu = (al * u).cos();
                         for &v in &vs {
-                            s += cu * (-al * v).exp();
+                            closed += log_sum(PI * u / aa, PI * v / aa);
                         }
                     }
-                    first += s / (2.0 * PI * m as f64);
-                }
-                // second-order tail Σ_{m>M} Re(z^m)·[v a/(4π² m²) + a²/(4π³ m³)], z = e^{−τ + iθ}
-                let last = modes + 20 * modes + 4000;
-                let mut t2 = 0.0;
-                for &u in &us {
-                    for &v in &vs {
-                        let (th, ta) = (PI * u / aa, PI * v / aa);
-                        if ta * (modes as f64) > 40.0 {
-                            continue;
+                    closed /= 2.0 * PI;
+                    let mut first = 0.0;
+                    for m in 1..=modes {
+                        let al = m as f64 * PI / aa;
+                        let mut s = 0.0;
+                        for &u in &us {
+                            let cu = (al * u).cos();
+                            for &v in &vs {
+                                s += cu * (-al * v).exp();
+                            }
                         }
-                        let z = Cx::new(-ta, th).exp();
-                        let mut zm = Cx::new(-ta * (modes as f64 + 1.0), th * (modes as f64 + 1.0)).exp();
-                        let (c2, c3) = (v * aa / (4.0 * PI * PI), aa * aa / (4.0 * PI * PI * PI));
-                        for m in modes + 1..=last {
-                            let mf = m as f64;
-                            t2 += zm.re * (c2 / (mf * mf) + c3 / (mf * mf * mf));
-                            zm = zm * z;
-                            if (m & 63) == 0 && zm.re * zm.re + zm.im * zm.im < 1e-30 {
-                                break;
+                        first += s / (2.0 * PI * m as f64);
+                    }
+                    // second-order tail Σ_{m>M} Re(z^m)·[v a/(4π² m²) + a²/(4π³ m³)], z = e^{−τ + iθ}
+                    let last = modes + 20 * modes + 4000;
+                    let mut t2 = 0.0;
+                    for &u in &us {
+                        for &v in &vs {
+                            let (th, ta) = (PI * u / aa, PI * v / aa);
+                            if ta * (modes as f64) > 40.0 {
+                                continue;
+                            }
+                            let z = Cx::new(-ta, th).exp();
+                            let mut zm = Cx::new(-ta * (modes as f64 + 1.0), th * (modes as f64 + 1.0)).exp();
+                            let (c2, c3) = (v * aa / (4.0 * PI * PI), aa * aa / (4.0 * PI * PI * PI));
+                            for m in modes + 1..=last {
+                                let mf = m as f64;
+                                t2 += zm.re * (c2 / (mf * mf) + c3 / (mf * mf * mf));
+                                zm = zm * z;
+                                if (m & 63) == 0 && zm.re * zm.re + zm.im * zm.im < 1e-30 {
+                                    break;
+                                }
                             }
                         }
                     }
-                }
-                cc_sum += closed - first;
-                t2_sum += t2;
+                    cc_sum += closed - first;
+                    t2_sum += t2;
                 }
                 let ns = sides.len() as f64;
                 cconst[i * n + j] = cc_sum / ns;
@@ -881,27 +952,27 @@ impl RectEnv {
                 let sides: &[f64] = if i == j { &[1.0, -1.0] } else { &[0.0] };
                 let mut sum = Cx::new(0.0, 0.0);
                 for &sd in sides {
-                let yp = if i == j { y + sd * r } else { self.pts[j].1 };
-                let dy = (y - yp).abs();
-                let (s1, s2) = (y + yp, 2.0 * b - y - yp);
-                let wside = 1.0 / sides.len() as f64;
-                for m in 0..=m_n {
-                    let gm = gams[m];
-                    let al = m as f64 * PI / a;
-                    let e = |v: f64| gm.scale(-v).exp();
-                    let mut s = e(dy);
-                    if gm.re * s1 < 60.0 {
-                        s = s + e(s1);
+                    let yp = if i == j { y + sd * r } else { self.pts[j].1 };
+                    let dy = (y - yp).abs();
+                    let (s1, s2) = (y + yp, 2.0 * b - y - yp);
+                    let wside = 1.0 / sides.len() as f64;
+                    for m in 0..=m_n {
+                        let gm = gams[m];
+                        let al = m as f64 * PI / a;
+                        let e = |v: f64| gm.scale(-v).exp();
+                        let mut s = e(dy);
+                        if gm.re * s1 < 60.0 {
+                            s = s + e(s1);
+                        }
+                        if gm.re * s2 < 60.0 {
+                            s = s + e(s2);
+                        }
+                        if gm.re * (2.0 * b - dy) < 60.0 {
+                            s = s + q2b[m] * gm.scale(dy).exp();
+                        }
+                        let w = if m == 0 { 1.0 / a } else { 2.0 / a * (al * x).cos() * (al * xp).cos() };
+                        sum = sum + (s * pre[m]).scale(w * wside);
                     }
-                    if gm.re * s2 < 60.0 {
-                        s = s + e(s2);
-                    }
-                    if gm.re * (2.0 * b - dy) < 60.0 {
-                        s = s + q2b[m] * gm.scale(dy).exp();
-                    }
-                    let w = if m == 0 { 1.0 / a } else { 2.0 / a * (al * x).cos() * (al * xp).cos() };
-                    sum = sum + (s * pre[m]).scale(w * wside);
-                }
                 }
                 let v = sum + Cx::new(self.cconst[i * n + j], 0.0) + k2.scale(self.tail2[i * n + j]);
                 g[i * n + j] = v;
@@ -929,7 +1000,7 @@ impl RectEnv {
 /// the grid's node value equals the continuous field of a point source at this distance,
 /// h·e^{−γ}/(2√2) ≈ 0.1985·h
 pub fn peaceman_radius(h: f64) -> f64 {
-    h * (-0.577_215_664_901_532_9f64).exp() / (2.0 * std::f64::consts::SQRT_2)
+    h * (-std::f64::consts::EULER_GAMMA).exp() / (2.0 * std::f64::consts::SQRT_2)
 }
 
 /// A plane pair of any shape on square cells (the region of a [`PairCavity`]): each cell joined
@@ -997,7 +1068,8 @@ impl GridSys {
         // node equation (per cell): Σ (V_i − V_j)/(jωμd) − k² h²/(jωμd) V_i + Y_load V_i = I_i
         let yb = jwmd.inv();
         let yc = (Cx::new(0.0, 0.0) - k2.scale(self.h * self.h)) * yb;
-        let mut trip: Vec<(usize, usize, f64, f64)> = Vec::with_capacity(self.n + 4 * self.branches.len() + self.shorts.len() + self.loads.len());
+        let mut trip: Vec<(usize, usize, f64, f64)> =
+            Vec::with_capacity(self.n + 4 * self.branches.len() + self.shorts.len() + self.loads.len());
         for i in 0..self.n {
             trip.push((i, i, yc.re, yc.im));
         }
@@ -1045,12 +1117,19 @@ impl GridSys {
 
     /// LU of the system at `f`, reusing and returning the symbolic analysis (counted in
     /// `lu_stats`)
-    fn lu(&self, f: f64, sym: Option<kisi_sparse::SymbolicLu>, pattern: &std::sync::OnceLock<Option<kisi_sparse::ComplexPattern>>) -> Result<(kisi_sparse::ComplexLu, kisi_sparse::SymbolicLu), i32> {
+    fn lu(
+        &self,
+        f: f64,
+        sym: Option<kisi_sparse::SymbolicLu>,
+        pattern: &std::sync::OnceLock<Option<kisi_sparse::ComplexPattern>>,
+    ) -> Result<(kisi_sparse::ComplexLu, kisi_sparse::SymbolicLu), i32> {
         let trip = self.triplets(f);
         #[cfg(not(target_arch = "wasm32"))]
         let t_lu = std::time::Instant::now();
         // the triplets' positions are the same at every frequency: their pattern once
-        let pat = pattern.get_or_init(|| kisi_sparse::ComplexPattern::new(self.n, &trip.iter().map(|t| (t.0, t.1)).collect::<Vec<_>>()).ok());
+        let pat = pattern.get_or_init(|| {
+            kisi_sparse::ComplexPattern::new(self.n, &trip.iter().map(|t| (t.0, t.1)).collect::<Vec<_>>()).ok()
+        });
         let lu = match pat {
             Some(p) => p.lu(&trip.iter().map(|t| (t.2, t.3)).collect::<Vec<_>>(), sym),
             None => kisi_sparse::ComplexLu::with_symbolic(self.n, &trip, sym),
@@ -1206,10 +1285,12 @@ impl GridGroup {
 
 /// the groups of grid environments by system matrix (process-wide: the threads of a parallel
 /// check share them)
-static GROUPS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, std::sync::Arc<GridGroup>>>> = std::sync::LazyLock::new(Default::default);
+static GROUPS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, std::sync::Arc<GridGroup>>>> =
+    std::sync::LazyLock::new(Default::default);
 
 /// the overlap of a plane pair's two planes on its grid (`pair_region`), by layers, nets, box and cell
-static OVERLAPS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, std::sync::Arc<Mask>>>> = std::sync::LazyLock::new(Default::default);
+static OVERLAPS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, std::sync::Arc<Mask>>>> =
+    std::sync::LazyLock::new(Default::default);
 
 /// a first pass that only registers the grid environments of a check (`set_register_only`)
 static REGISTER_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -1240,7 +1321,14 @@ impl GridEnv {
     /// wave leaving the window's centre (the first port), per length
     /// k/(ωμd)·(1 − j/(2kρ))·cos θ (the large-argument ratio H1⁽²⁾/H0⁽²⁾ ≈ j + 1/(2kρ), θ between the face
     /// normal and the radius).
-    pub fn new_cut(mask: &Mask, medium: PairMedium, shorts: &[Short], loads: &[Load], ports: &[EnvPort], cut: [bool; 4]) -> GridEnv {
+    pub fn new_cut(
+        mask: &Mask,
+        medium: PairMedium,
+        shorts: &[Short],
+        loads: &[Load],
+        ports: &[EnvPort],
+        cut: [bool; 4],
+    ) -> GridEnv {
         let (nx, ny, h) = (mask.nx, mask.ny, mask.h);
         let mut id = vec![usize::MAX; nx * ny];
         let mut n = 0;
@@ -1265,9 +1353,12 @@ impl GridEnv {
             let (i0, j0) = (u.floor() as i64, v.floor() as i64);
             let (tu, tv) = (u - i0 as f64, v - j0 as f64);
             let mut out = vec![];
-            for (di, dj, w) in [(0, 0, (1.0 - tu) * (1.0 - tv)), (1, 0, tu * (1.0 - tv)), (0, 1, (1.0 - tu) * tv), (1, 1, tu * tv)] {
+            for (di, dj, w) in
+                [(0, 0, (1.0 - tu) * (1.0 - tv)), (1, 0, tu * (1.0 - tv)), (0, 1, (1.0 - tu) * tv), (1, 1, tu * tv)]
+            {
                 let (i, j) = (i0 + di, j0 + dj);
-                if i < 0 || j < 0 || i >= nx as i64 || j >= ny as i64 || id[j as usize * nx + i as usize] == usize::MAX {
+                if i < 0 || j < 0 || i >= nx as i64 || j >= ny as i64 || id[j as usize * nx + i as usize] == usize::MAX
+                {
                     out.clear();
                     break;
                 }
@@ -1313,7 +1404,8 @@ impl GridEnv {
         // map's order differed from run to run in the last digits)
         let mut shorts_v: Vec<(usize, f64)> = sh.into_iter().map(|(c, y)| (c, 1.0 / y)).collect();
         shorts_v.sort_by_key(|x| x.0);
-        let loads_v: Vec<(usize, Load, f64)> = loads.iter().map(|l| (cell_of(l.at.x, l.at.y), *l, dloc(l.at.r))).collect();
+        let loads_v: Vec<(usize, Load, f64)> =
+            loads.iter().map(|l| (cell_of(l.at.x, l.at.y), *l, dloc(l.at.r))).collect();
         let port_cells: Vec<Vec<(usize, f64, i64, i64)>> = ports.iter().map(|p| spread(p.x, p.y)).collect();
         // the edge radiation (when the medium asks for it) on the boundary faces
         let faces = mask.edge_faces();
@@ -1341,9 +1433,30 @@ impl GridEnv {
             })
             .collect();
         // ports in metres from here on
-        let ports_m: Vec<EnvPort> = ports.iter().map(|p| EnvPort { x: p.x * 1e-3, y: p.y * 1e-3, r: p.r * 1e-3 }).collect();
-        let sys = GridSys { medium: medium.clone(), h: h * 1e-3, n, branches, shorts: shorts_v, loads: loads_v, edge_faces, cut_faces };
-        GridEnv { medium, h: h * 1e-3, ports: ports_m, port_cells, sys, sym: Default::default(), cache: Default::default(), df: None, group: None, pattern: Default::default() }
+        let ports_m: Vec<EnvPort> =
+            ports.iter().map(|p| EnvPort { x: p.x * 1e-3, y: p.y * 1e-3, r: p.r * 1e-3 }).collect();
+        let sys = GridSys {
+            medium: medium.clone(),
+            h: h * 1e-3,
+            n,
+            branches,
+            shorts: shorts_v,
+            loads: loads_v,
+            edge_faces,
+            cut_faces,
+        };
+        GridEnv {
+            medium,
+            h: h * 1e-3,
+            ports: ports_m,
+            port_cells,
+            sys,
+            sym: Default::default(),
+            cache: Default::default(),
+            df: None,
+            group: None,
+            pattern: Default::default(),
+        }
     }
 
     /// number of unknowns
@@ -1361,7 +1474,15 @@ impl GridEnv {
             if g.len() > 512 {
                 g.clear();
             }
-            g.entry(key).or_insert_with(|| std::sync::Arc::new(GridGroup { sys: self.sys.clone(), pattern: Default::default(), state: Default::default() })).clone()
+            g.entry(key)
+                .or_insert_with(|| {
+                    std::sync::Arc::new(GridGroup {
+                        sys: self.sys.clone(),
+                        pattern: Default::default(),
+                        state: Default::default(),
+                    })
+                })
+                .clone()
         };
         let id = group.register(self.port_cells.iter().map(|p| p.iter().map(|c| (c.0, c.1)).collect()).collect());
         self.group = Some((group, id));
@@ -1442,7 +1563,8 @@ impl GridEnv {
                 match self.sys.lu(f, sym, &self.pattern) {
                     Ok((lu, sym)) => {
                         *self.sym.borrow_mut() = Some(sym);
-                        let cells: Vec<Vec<(usize, f64)>> = self.port_cells.iter().map(|p| p.iter().map(|c| (c.0, c.1)).collect()).collect();
+                        let cells: Vec<Vec<(usize, f64)>> =
+                            self.port_cells.iter().map(|p| p.iter().map(|c| (c.0, c.1)).collect()).collect();
                         port_responses(&lu, self.sys.n, &cells)
                     }
                     Err(_) => None,
@@ -1459,7 +1581,9 @@ impl GridEnv {
                     for &(_, wa, ia, ja) in &self.port_cells[i] {
                         for &(_, wb, ib, jb) in &self.port_cells[j] {
                             let (di, dj) = ((ia - ib).unsigned_abs(), (ja - jb).unsigned_abs());
-                            let g = *g0.entry((di.max(dj), di.min(dj))).or_insert_with(|| self.g0_lattice(k2, ia - ib, ja - jb));
+                            let g = *g0
+                                .entry((di.max(dj), di.min(dj)))
+                                .or_insert_with(|| self.g0_lattice(k2, ia - ib, ja - jb));
                             lat = lat + g.scale(wa * wb);
                         }
                     }
@@ -1493,6 +1617,8 @@ pub fn lu_stats() -> (usize, f64, usize) {
 }
 
 /// A cavity environment of a plane pair.
+// a handful of short-lived values: boxing the large variant would only add indirection
+#[allow(clippy::large_enum_variant)]
 pub enum PairEnv {
     Rect(RectEnv),
     Grid(GridEnv),
@@ -1561,7 +1687,11 @@ mod tests {
         let m = med(4.0, 0.1);
         let f = 20e9;
         let k2 = m.k2(f);
-        let ports = vec![EnvPort { x: 0.3, y: 0.25, r: 0.15e-3 }, EnvPort { x: 0.301, y: 0.25, r: 0.15e-3 }, EnvPort { x: 0.302, y: 0.252, r: 0.1e-3 }];
+        let ports = vec![
+            EnvPort { x: 0.3, y: 0.25, r: 0.15e-3 },
+            EnvPort { x: 0.301, y: 0.25, r: 0.15e-3 },
+            EnvPort { x: 0.302, y: 0.252, r: 0.1e-3 },
+        ];
         let e = RectEnv::new(0.6, 0.5, m, ports.clone(), vec![], f);
         let g = e.green(f);
         for (i, j) in [(0, 0), (0, 1), (0, 2), (2, 2)] {
@@ -1648,7 +1778,11 @@ mod tests {
         mask.on.iter_mut().for_each(|x| *x = true);
         let loads = [Load { at: EnvPort { x: 5.0, y: 5.0, r: 0.15 }, r_ohm: 0.02, l: 0.6e-9, c: Some(100e-9) }];
         let pa = vec![EnvPort { x: 2.1, y: 2.2, r: 0.1 }, EnvPort { x: 3.0, y: 2.2, r: 0.1 }];
-        let pb = vec![EnvPort { x: 7.3, y: 4.1, r: 0.1 }, EnvPort { x: 3.0, y: 2.2, r: 0.1 }, EnvPort { x: 8.0, y: 4.4, r: 0.1 }];
+        let pb = vec![
+            EnvPort { x: 7.3, y: 4.1, r: 0.1 },
+            EnvPort { x: 3.0, y: 2.2, r: 0.1 },
+            EnvPort { x: 8.0, y: 4.4, r: 0.1 },
+        ];
         let own: Vec<GridEnv> = [&pa, &pb].iter().map(|p| GridEnv::new(&mask, m.clone(), &[], &loads, p)).collect();
         let shared: Vec<GridEnv> = [&pa, &pb]
             .iter()
@@ -1683,7 +1817,14 @@ mod tests {
 
     #[test]
     fn cap_values() {
-        for (s, v) in [("100n", 100e-9), ("0.1uF", 0.1e-6), ("4u7", 4.7e-6), ("10µF/6.3V", 10e-6), ("1p5", 1.5e-12), ("2.2nF 50V", 2.2e-9)] {
+        for (s, v) in [
+            ("100n", 100e-9),
+            ("0.1uF", 0.1e-6),
+            ("4u7", 4.7e-6),
+            ("10µF/6.3V", 10e-6),
+            ("1p5", 1.5e-12),
+            ("2.2nF 50V", 2.2e-9),
+        ] {
             let x = parse_cap_value(s).unwrap();
             assert!((x / v - 1.0).abs() < 1e-9, "{s}: {x}");
         }
@@ -1698,9 +1839,14 @@ mod tests {
         let bb = BBox { min: [0.0, 0.0], max: [a, b] };
         let mut mask = Mask::new(&bb, 0.25);
         mask.on.iter_mut().for_each(|x| *x = true);
-        let ports_mm = vec![EnvPort { x: 8.7, y: 6.1, r: 0.15 }, EnvPort { x: 8.7, y: 8.1, r: 0.15 }, EnvPort { x: 17.2, y: 11.1, r: 0.15 }];
+        let ports_mm = vec![
+            EnvPort { x: 8.7, y: 6.1, r: 0.15 },
+            EnvPort { x: 8.7, y: 8.1, r: 0.15 },
+            EnvPort { x: 17.2, y: 11.1, r: 0.15 },
+        ];
         let ge = GridEnv::new(&mask, m.clone(), &[], &[], &ports_mm);
-        let pm: Vec<EnvPort> = ports_mm.iter().map(|p| EnvPort { x: p.x * 1e-3, y: p.y * 1e-3, r: p.r * 1e-3 }).collect();
+        let pm: Vec<EnvPort> =
+            ports_mm.iter().map(|p| EnvPort { x: p.x * 1e-3, y: p.y * 1e-3, r: p.r * 1e-3 }).collect();
         let re = RectEnv::new(a * 1e-3, b * 1e-3, m, pm, vec![], 10e9);
         for f in [1e9, 3.3e9, 7e9] {
             let (g1, g2) = (ge.green(f), re.green(f));

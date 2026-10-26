@@ -8,9 +8,9 @@
 //! * `num`   – complex numbers and physical constants
 
 pub mod board;
-pub mod package;
 pub mod geom;
 pub mod num;
+pub mod package;
 pub mod sexpr;
 pub mod view;
 

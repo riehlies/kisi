@@ -1,0 +1,4 @@
+# Commits that only reformat the code; `git blame` skips them with
+# `git config blame.ignoreRevsFile .git-blame-ignore-revs` (GitHub does it by itself).
+# cargo fmt with rustfmt.toml
+24042cbc2bd6a71cd96ac26a188453a5b0f62061

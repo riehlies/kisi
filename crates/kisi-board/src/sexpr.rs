@@ -64,9 +64,6 @@ impl Node {
         }
         None
     }
-    pub fn has_sym(&self, sym: &str) -> bool {
-        self.items().iter().any(|n| matches!(n, Node::Sym(s) if s == sym))
-    }
 }
 
 pub struct Reader<'a> {

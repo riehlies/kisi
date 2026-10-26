@@ -52,22 +52,28 @@ pub fn parse_touchstone(text: &str, name: &str) -> Result<Touchstone, String> {
             let rest = line[close + 1..].trim();
             match key.as_str() {
                 "version" => v2 = true,
-                "number of ports" => nports = Some(rest.parse().map_err(|_| format!("{name}: [Number of Ports] '{rest}'"))?),
+                "number of ports" => {
+                    nports = Some(rest.parse().map_err(|_| format!("{name}: [Number of Ports] '{rest}'"))?)
+                }
                 "two-port data order" => order_21_12 = rest.eq_ignore_ascii_case("21_12"),
                 "reference" => {
                     in_ref = true;
                     refs.extend(rest.split_whitespace().filter_map(|t| t.parse::<f64>().ok()));
                 }
-                "matrix format" if !rest.eq_ignore_ascii_case("full") => return Err(format!("{name}: [Matrix Format] {rest} is not supported (only Full)")),
-                "mixed-mode order" => return Err(format!("{name}: mixed-mode files are not supported; give the single-ended 4-port")),
+                "matrix format" if !rest.eq_ignore_ascii_case("full") => {
+                    return Err(format!("{name}: [Matrix Format] {rest} is not supported (only Full)"))
+                }
+                "mixed-mode order" => {
+                    return Err(format!("{name}: mixed-mode files are not supported; give the single-ended 4-port"))
+                }
                 "noise data" | "end" => break,
                 _ => {}
             }
             continue;
         }
-        if line.starts_with('#') {
+        if let Some(opts) = line.strip_prefix('#') {
             option_seen = true;
-            for t in line[1..].split_whitespace() {
+            for t in opts.split_whitespace() {
                 match t.to_ascii_uppercase().as_str() {
                     "HZ" => unit = 1.0,
                     "KHZ" => unit = 1e3,
@@ -100,7 +106,9 @@ pub fn parse_touchstone(text: &str, name: &str) -> Result<Touchstone, String> {
     if !param_s {
         return Err(format!("{name}: only S-parameters are read (the option line names Y, Z, H or G)"));
     }
-    let n = nports.ok_or_else(|| format!("{name}: number of ports unknown (name the file .s2p / .s4p or give [Number of Ports])"))?;
+    let n = nports.ok_or_else(|| {
+        format!("{name}: number of ports unknown (name the file .s2p / .s4p or give [Number of Ports])")
+    })?;
     if n == 0 || n > 64 {
         return Err(format!("{name}: {n}-port – kisi reads 1 to 64 ports"));
     }
@@ -205,7 +213,13 @@ impl Touchstone {
     /// coupling); a 4-port of a pair reduced to the differential mode and expressed per
     /// line (odd mode, half the differential impedance). `flip` swaps the near and far end.
     /// Returns the matrices and notes (extrapolation, reference impedances).
-    pub fn per_line_abcd(&self, freq: &[f64], diff: bool, port_order: Option<&str>, flip: bool) -> Result<(Vec<Abcd>, Vec<String>), String> {
+    pub fn per_line_abcd(
+        &self,
+        freq: &[f64],
+        diff: bool,
+        port_order: Option<&str>,
+        flip: bool,
+    ) -> Result<(Vec<Abcd>, Vec<String>), String> {
         let mut notes = vec![];
         let (fmin, fmax) = (self.freq[0], *self.freq.last().unwrap());
         if freq.iter().any(|&f| f > fmax * 1.001) {
@@ -349,7 +363,10 @@ mod tests {
             let s = line_s(50.0, f, f * 1e9);
             // row-major 4×4: S13 = S31 = S24 = S42 = s, rest 0
             let mut m = [[Cx::new(0.0, 0.0); 4]; 4];
-            m[0][2] = s; m[2][0] = s; m[1][3] = s; m[3][1] = s;
+            m[0][2] = s;
+            m[2][0] = s;
+            m[1][3] = s;
+            m[3][1] = s;
             t += &format!("{f}");
             for r in 0..4 {
                 for c in 0..4 {
@@ -370,14 +387,18 @@ mod tests {
 
     #[test]
     fn refused_files() {
-        assert!(parse_touchstone("# GHz Z MA R 50\n1 1 0 0 0 0 0 1 0\n2 1 0 0 0 0 0 1 0\n", "z.s2p").unwrap_err().contains("only S-parameters"));
+        assert!(parse_touchstone("# GHz Z MA R 50\n1 1 0 0 0 0 0 1 0\n2 1 0 0 0 0 0 1 0\n", "z.s2p")
+            .unwrap_err()
+            .contains("only S-parameters"));
         // a 3-port is read (as an N-port it needs a port map), 65 ports are not
         let three = "# GHz S MA R 50\n1 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0\n2 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0\n";
         let t3 = parse_touchstone(three, "x.s3p").unwrap();
         assert_eq!(t3.nports, 3);
         assert!(t3.per_line_abcd(&[1e9], false, None, false).unwrap_err().contains("port of every connector pin"));
         assert!(parse_touchstone("# GHz S MA R 50\n1 1 0\n", "x.s65p").unwrap_err().contains("65-port"));
-        assert!(parse_touchstone("# GHz S MA R 50\n1 1 0 0 0 0 0 1 0\n", "x.s2p").unwrap_err().contains("fewer than two"));
+        assert!(parse_touchstone("# GHz S MA R 50\n1 1 0 0 0 0 0 1 0\n", "x.s2p")
+            .unwrap_err()
+            .contains("fewer than two"));
         // version 2 with keywords and 12_21 order
         let v2 = "[Version] 2.0\n# GHz S RI R 50\n[Number of Ports] 2\n[Two-Port Data Order] 12_21\n[Number of Frequencies] 2\n[Network Data]\n1 0 0 0.1 0 0.9 0 0 0\n2 0 0 0.1 0 0.8 0 0 0\n[End]\n";
         let ts = parse_touchstone(v2, "v2.ts").unwrap();
@@ -385,7 +406,12 @@ mod tests {
         assert!((ts.s[0][1].re - 0.1).abs() < 1e-12 && (ts.s[0][2].re - 0.9).abs() < 1e-12);
         assert!(ts.passivity_note().is_none());
         // gain: not passive, named in the warnings
-        let gain = parse_touchstone("# GHz S MA R 50\n1 0 0 1.1 0 1.1 0 0 0\n2 0 0 0.9 0 0.9 0 0 0\n", "amp.s2p").unwrap();
-        assert!(gain.warnings.iter().any(|w| w.contains("not passive") && w.contains("1.100 at 1.00 GHz")), "{:?}", gain.warnings);
+        let gain =
+            parse_touchstone("# GHz S MA R 50\n1 0 0 1.1 0 1.1 0 0 0\n2 0 0 0.9 0 0.9 0 0 0\n", "amp.s2p").unwrap();
+        assert!(
+            gain.warnings.iter().any(|w| w.contains("not passive") && w.contains("1.100 at 1.00 GHz")),
+            "{:?}",
+            gain.warnings
+        );
     }
 }

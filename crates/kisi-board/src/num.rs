@@ -5,7 +5,7 @@ use std::f64::consts::PI;
 
 pub const C0: f64 = 299_792_458.0;
 pub const MU0: f64 = 4.0e-7 * PI;
-pub const EPS0: f64 = 8.854_187_8128e-12;
+pub const EPS0: f64 = 8.854_187_812_8e-12;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Cx {
@@ -60,6 +60,8 @@ impl std::ops::Mul for Cx {
 }
 impl std::ops::Div for Cx {
     type Output = Cx;
+    // a / b as a · (1/b), deliberately (the results are compared digit for digit)
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, o: Cx) -> Cx {
         self * o.inv()
     }

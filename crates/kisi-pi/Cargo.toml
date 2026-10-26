@@ -13,3 +13,5 @@ serde_json = "1"
 kisi-board = { path = "../kisi-board" }
 kisi-sparse = { path = "../kisi-sparse" }
 
+[lints]
+workspace = true

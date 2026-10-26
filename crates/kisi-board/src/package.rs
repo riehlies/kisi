@@ -77,7 +77,11 @@ pub fn case_from_name(name: &str, pitch: Option<f64>) -> Option<(&'static str, B
     let n = name.rsplit(':').next().unwrap_or(name);
     let b = n.as_bytes();
     let digits_at = |i: usize, k: usize| i + k <= b.len() && b[i..i + k].iter().all(u8::is_ascii_digit);
-    let bounded = |i: usize, k: usize| digits_at(i, k) && (i == 0 || !(b[i - 1].is_ascii_digit() || b[i - 1] == b'.')) && (i + k == b.len() || !(b[i + k].is_ascii_digit() || b[i + k] == b'.'));
+    let bounded = |i: usize, k: usize| {
+        digits_at(i, k)
+            && (i == 0 || !(b[i - 1].is_ascii_digit() || b[i - 1] == b'.'))
+            && (i + k == b.len() || !(b[i + k].is_ascii_digit() || b[i + k] == b'.'))
+    };
     // KiCad: "<imperial>_<metric>Metric"
     if let Some(m) = n.find("Metric") {
         if m >= 4 && digits_at(m - 4, 4) {
@@ -120,7 +124,7 @@ pub fn case_from_name(name: &str, pitch: Option<f64>) -> Option<(&'static str, B
             }
             let code = &n[i..i + k];
             let (Some(c), Some(p0)) = (to_case(code), nominal_pitch(code)) else { continue };
-            if pitch.map_or(true, |p| (0.6..=1.6).contains(&(p / p0))) {
+            if pitch.is_none_or(|p| (0.6..=1.6).contains(&(p / p0))) {
                 return Some((c, Basis::NameAndPads));
             }
         }
@@ -135,7 +139,12 @@ pub fn case_from_pads(pitch: f64, across: f64) -> &'static str {
     }
     // reverse-geometry (wide-terminal) parts, e.g. 0508/0612: the current path is the short side
     if across <= 0.0 || across > 1.3 * pitch {
-        return LAND.iter().take(6).min_by(|a, b| (pitch / a.1).ln().abs().total_cmp(&(pitch / b.1).ln().abs())).map(|l| to_case(l.0).unwrap()).unwrap();
+        return LAND
+            .iter()
+            .take(6)
+            .min_by(|a, b| (pitch / a.1).ln().abs().total_cmp(&(pitch / b.1).ln().abs()))
+            .map(|l| to_case(l.0).unwrap())
+            .unwrap();
     }
     let d = |l: &(&str, f64, f64)| (pitch / l.1).ln().powi(2) + (across / l.2).ln().powi(2);
     LAND.iter().min_by(|a, b| d(a).total_cmp(&d(b))).map(|l| to_case(l.0).unwrap_or("large")).unwrap_or("large")
@@ -173,7 +182,22 @@ mod tests {
     use super::*;
 
     fn pad(at: P, size: P, angle: f64) -> Pad {
-        Pad { at, size, angle, shape: "roundrect".into(), rratio: 0.25, custom: vec![], layers: vec![0], net: 1, drill: 0.0, number: "1".into(), fp: 0, pinfunction: String::new(), pintype: String::new(), plated: false }
+        Pad {
+            at,
+            size,
+            angle,
+            shape: "roundrect".into(),
+            rratio: 0.25,
+            custom: vec![],
+            layers: vec![0],
+            net: 1,
+            drill: 0.0,
+            number: "1".into(),
+            fp: 0,
+            pinfunction: String::new(),
+            pintype: String::new(),
+            plated: false,
+        }
     }
 
     /// Two pads of a KiCad standard land pattern (pad centres at ±x, size along × across),
@@ -245,7 +269,11 @@ mod tests {
         // the name wins over the geometry, a plain code needs a fitting pitch
         let (a, b) = part(0.95, 1.0, 1.45, 90.0);
         assert_eq!(chip_case("Capacitor_SMD:C_0805_2012Metric", &a, &b), ("0805", Basis::Name));
-        assert_eq!(chip_case("MyLib:C_0603", &a, &b), ("0603", Basis::NameAndPads), "a plausible plain code is trusted");
+        assert_eq!(
+            chip_case("MyLib:C_0603", &a, &b),
+            ("0603", Basis::NameAndPads),
+            "a plausible plain code is trusted"
+        );
         // reverse geometry (wide terminals, 0508): by the pitch
         let (a, b) = part(0.575, 0.762, 2.25, 0.0);
         assert_eq!(chip_package("GEN_R_0508", &a, &b), "0402");

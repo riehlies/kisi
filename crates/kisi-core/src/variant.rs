@@ -69,7 +69,11 @@ impl VariantState {
             if v.len() <= 40 {
                 serde_json::json!(v)
             } else {
-                serde_json::json!(v[..40].iter().cloned().chain(std::iter::once(format!("… {} more", v.len() - 40))).collect::<Vec<_>>())
+                serde_json::json!(v[..40]
+                    .iter()
+                    .cloned()
+                    .chain(std::iter::once(format!("… {} more", v.len() - 40)))
+                    .collect::<Vec<_>>())
             }
         };
         serde_json::json!({
@@ -85,7 +89,15 @@ impl VariantState {
 
 /// Variants of the board file and the configuration.
 pub fn available(board: &Board, cfg: Option<&BoardConfig>) -> Vec<VariantInfo> {
-    let mut out: Vec<VariantInfo> = board.variants.iter().map(|v| VariantInfo { name: v.name.clone(), description: v.description.clone(), defined_in: "board file".into() }).collect();
+    let mut out: Vec<VariantInfo> = board
+        .variants
+        .iter()
+        .map(|v| VariantInfo {
+            name: v.name.clone(),
+            description: v.description.clone(),
+            defined_in: "board file".into(),
+        })
+        .collect();
     if let Some(c) = cfg {
         for (name, e) in &c.variants {
             match out.iter_mut().find(|v| &v.name == name) {
@@ -95,7 +107,11 @@ pub fn available(board: &Board, cfg: Option<&BoardConfig>) -> Vec<VariantInfo> {
                         v.description = d.clone();
                     }
                 }
-                None => out.push(VariantInfo { name: name.clone(), description: e.description.clone().unwrap_or_default(), defined_in: "kisi.json".into() }),
+                None => out.push(VariantInfo {
+                    name: name.clone(),
+                    description: e.description.clone().unwrap_or_default(),
+                    defined_in: "kisi.json".into(),
+                }),
             }
         }
     }
@@ -185,11 +201,23 @@ fn expand_range(tok: &str) -> Vec<String> {
 /// or spaces ("R1-R4" ranges allowed). Rows marked not fitted (a column "DNP", "Do not
 /// populate", "Fitted"/"Populate" = no, or the value "DNP"/"DNF") count as not fitted.
 pub fn bom_refs(text: &str) -> Result<BomRefs, String> {
-    let lines: Vec<&str> = text.lines().map(|l| l.trim_start_matches('\u{feff}')).filter(|l| !l.trim().is_empty()).collect();
+    let lines: Vec<&str> =
+        text.lines().map(|l| l.trim_start_matches('\u{feff}')).filter(|l| !l.trim().is_empty()).collect();
     let first = lines.first().ok_or("empty file")?;
     let delim = [',', ';', '\t'].into_iter().max_by_key(|d| first.matches(*d).count()).unwrap_or(',');
     let norm = |s: &str| s.trim().to_ascii_lowercase();
-    const REF: &[&str] = &["reference", "references", "ref", "refs", "refdes", "designator", "designators", "reference designator", "reference designators", "ref des"];
+    const REF: &[&str] = &[
+        "reference",
+        "references",
+        "ref",
+        "refs",
+        "refdes",
+        "designator",
+        "designators",
+        "reference designator",
+        "reference designators",
+        "ref des",
+    ];
     let (hi, header) = lines
         .iter()
         .take(20)
@@ -203,7 +231,9 @@ pub fn bom_refs(text: &str) -> Result<BomRefs, String> {
     let fit_col = col(&["fitted", "populate", "populated", "mount", "mounted", "place", "fit"]);
     let val_col = col(&["value", "val", "comment"]);
     let yes = |s: &str| matches!(norm(s).as_str(), "x" | "yes" | "y" | "1" | "true" | "dnp" | "dnf" | "not fitted");
-    let no = |s: &str| matches!(norm(s).as_str(), "no" | "n" | "0" | "false" | "dnp" | "dnf" | "not fitted" | "do not populate");
+    let no = |s: &str| {
+        matches!(norm(s).as_str(), "no" | "n" | "0" | "false" | "dnp" | "dnf" | "not fitted" | "do not populate")
+    };
     let mut out = BomRefs::default();
     for l in &lines[hi + 1..] {
         let cells = csv_cells(l, delim);
@@ -250,7 +280,9 @@ fn apply_board_variant(board: &mut Board, name: &str, st: &mut VariantState) {
 fn apply_entry(board: &mut Board, e: &VariantEntry, files: &Files, st: &mut VariantState) {
     if let Some(path) = &e.bom {
         match files.get(path) {
-            None => st.errors.push(format!("BOM {path} not loaded (give it next to the kisi.json; in the viewer, drop it together with the board)")),
+            None => st.errors.push(format!(
+                "BOM {path} not loaded (give it next to the kisi.json; in the viewer, drop it together with the board)"
+            )),
             Some(Err(err)) => st.errors.push(format!("BOM {path}: {err}")),
             Some(Ok(text)) => match bom_refs(text) {
                 Err(err) => st.errors.push(format!("BOM {path}: {err}")),
@@ -260,7 +292,12 @@ fn apply_entry(board: &mut Board, e: &VariantEntry, files: &Files, st: &mut Vari
                     if !missing.is_empty() {
                         let mut m: Vec<&str> = missing.iter().map(|s| s.as_str()).collect();
                         m.sort_unstable();
-                        st.warnings.push(format!("BOM {path}: {} reference(s) not on the board ({}{})", m.len(), m.iter().take(8).cloned().collect::<Vec<_>>().join(", "), if m.len() > 8 { ", …" } else { "" }));
+                        st.warnings.push(format!(
+                            "BOM {path}: {} reference(s) not on the board ({}{})",
+                            m.len(),
+                            m.iter().take(8).cloned().collect::<Vec<_>>().join(", "),
+                            if m.len() > 8 { ", …" } else { "" }
+                        ));
                     }
                     for fp in &mut board.footprints {
                         if fp.exclude_from_bom || e.bom_exceptions.iter().any(|p| ref_match(p, &fp.reference)) {
@@ -298,21 +335,39 @@ fn apply_entry(board: &mut Board, e: &VariantEntry, files: &Files, st: &mut Vari
 
 /// Apply the chosen variant to the board (`choice` = (name, chosen by) from the command line or
 /// the viewer; else the configuration's `variant`) and find forks with all alternatives fitted.
-pub fn apply(board: &mut Board, cfg: Option<&BoardConfig>, choice: Option<(&str, &str)>, files: &Files) -> VariantState {
+pub fn apply(
+    board: &mut Board,
+    cfg: Option<&BoardConfig>,
+    choice: Option<(&str, &str)>,
+    files: &Files,
+) -> VariantState {
     let mut st = VariantState { variants: available(board, cfg), ..Default::default() };
-    let sel = choice.map(|(n, by)| (n.to_string(), by.to_string())).or_else(|| cfg.and_then(|c| c.variant.clone()).map(|v| (v, "kisi.json".to_string())));
+    let sel = choice
+        .map(|(n, by)| (n.to_string(), by.to_string()))
+        .or_else(|| cfg.and_then(|c| c.variant.clone()).map(|v| (v, "kisi.json".to_string())));
     let before: Vec<bool> = board.footprints.iter().map(|f| f.dnp).collect();
     if let Some((name, by)) = sel.filter(|(n, _)| !n.trim().is_empty()) {
         let name = name.trim();
         let canon = if name.eq_ignore_ascii_case(DEFAULT) {
             Some(DEFAULT.to_string())
         } else {
-            st.variants.iter().find(|v| v.name == name).or_else(|| st.variants.iter().find(|v| v.name.eq_ignore_ascii_case(name))).map(|v| v.name.clone())
+            st.variants
+                .iter()
+                .find(|v| v.name == name)
+                .or_else(|| st.variants.iter().find(|v| v.name.eq_ignore_ascii_case(name)))
+                .map(|v| v.name.clone())
         };
         match canon {
             None => st.errors.push(format!(
                 "unknown assembly variant '{name}' ({by}); {}",
-                if st.variants.is_empty() { "the board defines none (\"default\" = the board file as it is)".to_string() } else { format!("variants: {}, or \"default\" (the board file as it is)", st.variants.iter().map(|v| v.name.as_str()).collect::<Vec<_>>().join(", ")) }
+                if st.variants.is_empty() {
+                    "the board defines none (\"default\" = the board file as it is)".to_string()
+                } else {
+                    format!(
+                        "variants: {}, or \"default\" (the board file as it is)",
+                        st.variants.iter().map(|v| v.name.as_str()).collect::<Vec<_>>().join(", ")
+                    )
+                }
             )),
             Some(c) => {
                 if c != DEFAULT {
@@ -320,7 +375,12 @@ pub fn apply(board: &mut Board, cfg: Option<&BoardConfig>, choice: Option<(&str,
                     if let Some(e) = cfg.and_then(|cf| cf.variants.get(&c)) {
                         apply_entry(board, e, files, &mut st);
                     }
-                    st.description = st.variants.iter().find(|v| v.name == c).map(|v| v.description.clone()).filter(|d| !d.is_empty());
+                    st.description = st
+                        .variants
+                        .iter()
+                        .find(|v| v.name == c)
+                        .map(|v| v.description.clone())
+                        .filter(|d| !d.is_empty());
                 } else {
                     st.description = Some("the board file as it is".into());
                 }
@@ -360,7 +420,7 @@ pub fn unused_nets(board: &Board) -> Vec<u32> {
             continue;
         }
         any[n] = true;
-        if board.footprints.get(pad.fp as usize).map_or(true, |f| !f.dnp) {
+        if board.footprints.get(pad.fp as usize).is_none_or(|f| !f.dnp) {
             fitted[n] = true;
         }
     }
@@ -370,15 +430,27 @@ pub fn unused_nets(board: &Board) -> Vec<u32> {
 /// Forks in a few words: "C41/C43 on /FPGA/MGT_TX3_P (→ P1 / J8)".
 pub fn fork_text(f: &Fork) -> String {
     let short = |n: &str| n.rsplit('/').next().unwrap_or(n).to_string();
-    format!("{} on {} (→ {})", f.parts.join("/"), short(&f.net_name), f.towards.iter().map(|t| t.join(", ")).collect::<Vec<_>>().join(" / "))
+    format!(
+        "{} on {} (→ {})",
+        f.parts.join("/"),
+        short(&f.net_name),
+        f.towards.iter().map(|t| t.join(", ")).collect::<Vec<_>>().join(" / ")
+    )
 }
 
 /// Why a variant must be chosen and how.
 pub fn message(st: &VariantState) -> String {
     let how = "choose one with --variant NAME or \"variant\": \"NAME\" in <board>.kisi.json (\"default\" = the board file as it is)";
     let mut m = if !st.variants.is_empty() {
-        let list: Vec<String> = st.variants.iter().map(|v| if v.description.is_empty() { v.name.clone() } else { format!("{} ({})", v.name, v.description) }).collect();
-        format!("This board has assembly variants and none is chosen: {}. Lanes depend on which parts are fitted: {how}.", list.join(", "))
+        let list: Vec<String> = st
+            .variants
+            .iter()
+            .map(|v| if v.description.is_empty() { v.name.clone() } else { format!("{} ({})", v.name, v.description) })
+            .collect();
+        format!(
+            "This board has assembly variants and none is chosen: {}. Lanes depend on which parts are fitted: {how}.",
+            list.join(", ")
+        )
     } else {
         let list: Vec<String> = st.forks.iter().take(4).map(fork_text).collect();
         format!(
@@ -410,7 +482,12 @@ mod tests {
         let b = bom_refs(semi).unwrap();
         assert!(b.fitted.contains("U2") && b.not_fitted.contains("J1"));
         assert!(bom_refs("a,b\n1,2\n").is_err());
-        assert!(in_sheet("/TS-PCIe Components/", "/TS-PCIe Components") && in_sheet("/FPGA/IO/", "/FPGA/") && !in_sheet("", "/") && !in_sheet("/FPGA2/", "/FPGA/"));
+        assert!(
+            in_sheet("/TS-PCIe Components/", "/TS-PCIe Components")
+                && in_sheet("/FPGA/IO/", "/FPGA/")
+                && !in_sheet("", "/")
+                && !in_sheet("/FPGA2/", "/FPGA/")
+        );
         assert_eq!(expand_range("C10-C12"), vec!["C10", "C11", "C12"]);
     }
 
@@ -480,7 +557,12 @@ mod tests {
         let p = project(Some(cfg), Some("Lite"), files.clone());
         assert!(p.variant.chosen.is_none() && p.variant.errors[0].contains("unknown assembly variant 'Lite'"));
         let bad = cfg.replace("\"variant\": \"PCIe\"", "\"variant\": \"Lite\"");
-        assert!(project(Some(&bad), None, files.clone()).config_check.unwrap().errors.iter().any(|e| e.contains("'Lite' is not defined")));
+        assert!(project(Some(&bad), None, files.clone())
+            .config_check
+            .unwrap()
+            .errors
+            .iter()
+            .any(|e| e.contains("'Lite' is not defined")));
     }
 
     #[test]
@@ -496,7 +578,12 @@ mod tests {
         assert!(crate::commands::run(&o, Some(&p), None).is_err());
         let o = crate::commands::parse_args(&["overview".to_string(), "b.kicad_pcb".to_string()]).unwrap();
         assert!(crate::commands::run(&o, Some(&p), None).is_ok(), "overview does not depend on the parts");
-        let gaps = crate::commands::run(&crate::commands::parse_args(&["gaps".to_string(), "b.kicad_pcb".to_string()]).unwrap(), Some(&p), None).unwrap();
+        let gaps = crate::commands::run(
+            &crate::commands::parse_args(&["gaps".to_string(), "b.kicad_pcb".to_string()]).unwrap(),
+            Some(&p),
+            None,
+        )
+        .unwrap();
         assert!(gaps["gaps"].as_array().unwrap().iter().any(|g| g["id"] == "assembly-variant"));
         // "default" is an informed choice: the board file as it is
         let p = project(Some(cfg), Some("default"), Files::new());

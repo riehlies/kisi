@@ -142,8 +142,7 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
   is a short entry page, the contributor files (`ARCHITECTURE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `ROADMAP.md`,
   `UPSTREAM.md`) stay at the top level. The skills in `claude-plugin/skills/` repeat what an agent needs, because
   they are read without the repository.
-* `docs/research/` – background research and concepts; `docs/examples/` – prepared board configurations;
-  `docs/mockups/` – static mockups of planned viewer features.
+* `docs/research/` – background research and concepts; `docs/examples/` – prepared board configurations.
 * Kept in step with the program by `crates/kisi-core/tests/docs.rs` (part of `cargo test`): `docs/cli.md` carries
   `kisi help` verbatim (`KISI_BLESS_DOCS=1 cargo test -p kisi-core --test docs` rewrites it) and names every command
   and option; `docs/preparing-a-board.md` names every gap id of `kisi gaps`.

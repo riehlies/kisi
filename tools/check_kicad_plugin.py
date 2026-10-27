@@ -136,6 +136,14 @@ def age(path, seconds):
     os.utime(path, (t, t))
 
 
+# a directory handle as showDirectoryPicker gives it (the picker itself cannot run headless): name, the files in it,
+# permission "prompt" until requested; records what is written and every permission request
+DIR_STUB = """([name, files, grant]) => { const h = { kind: "directory", name, written: {}, asked: 0,
+    queryPermission: async () => (h.asked ? (grant ? "granted" : "denied") : "prompt"),
+    requestPermission: async () => { h.asked++; return grant ? "granted" : "denied"; },
+    getFileHandle: async (n, o) => { if (!files.includes(n) && !(o && o.create)) throw new DOMException("not found", "NotFoundError");
+      return { kind: "file", name: n, createWritable: async () => ({ write: async (t) => { h.written[n] = t; }, close: async () => {} }) }; } };
+  window.__dir = h; window.showDirectoryPicker = async (o) => { window.__dirOpts = o; return h; }; }"""
 FSA_STUB = """() => { window.__fsa = null; window.__saved = null;
   window.showSaveFilePicker = async (o) => { window.__fsa = o; return { kind: "file", name: o.suggestedName,
     createWritable: async () => ({ write: async (t) => { window.__saved = t; }, close: async () => {} }) }; }; }"""
@@ -171,7 +179,12 @@ with sync_playwright() as p:
     pg.evaluate("S.prep.agentScope = 'all'; prepRender(true)")  # a prompt also where this tab has nothing to check
     ag_all = agent(pg)
     check(ag_all["cmd"] == f'node "{cli}" gaps "{pcb}"', f"agent card (all categories): command {ag_all['cmd']!r}")
-    check(f'write "{cfg}" directly' in ag_all["prompt"] and f'node "{cli}"' in ag_all["prompt"], f"agent card: the prompt lacks the paths: {ag_all['prompt'][-400:]!r}")
+    guide = os.path.join(plugin, "agent", "KISI-AGENT-GUIDE.md")
+    check(f'its kisi.json belongs at "{cfg}"' in ag_all["prompt"] and f'node "{cli}"' in ag_all["prompt"], f"agent card: the prompt lacks the paths: {ag_all['prompt'][-500:]!r}")
+    check('Follow the kisi agent guide (KISI-AGENT-GUIDE.md' in ag_all["prompt"] and guide in ag_all["prompt"] and "return the complete new kisi.json" in ag_all["prompt"],
+          f"agent card: the prompt does not refer to the guide and both modes: {ag_all['prompt'][-600:]!r}")
+    check(guide in ag["text"] and pg.evaluate("!!document.getElementById('prep-guide-copy') && S.kicad.guide.text === %s" % json.dumps(pathlib.Path(guide).read_text(encoding="utf-8"))),
+          "agent card: the guide's path or the Copy guide button / text")
     pg.evaluate("S.prep.agentScope = 'tab'; prepRender(true)")
     check(("Node.js" in ag["text"] and "found" in ag["text"]) if have_node else "nodejs.org" in ag["text"], f"agent card: Node.js status: {ag['text']!r}")
     pg.locator("#prep-agent-kicad").scroll_into_view_if_needed()
@@ -195,6 +208,39 @@ with sync_playwright() as p:
     check(saved.get("board") == stem + ".kicad_pcb" and saved.get("kisi_config") == 1, f"save: content {o['saved'][:200]}")
     check("saved from the" in card(pg), f"save: card after saving: {card(pg)!r}")
     pg.screenshot(path=f"{out}/kicad-saved.png")
+    # 2b. Chromium: the board's folder chosen once (showDirectoryPicker), then saving writes there without a dialog
+    check(pg.evaluate("kdirSet('probe', { a: 1 }).then(async (ok) => ok && (await kdirGet('probe')).a === 1)"), "IndexedDB does not work on file://")
+    check(pg.evaluate("!document.getElementById('prep-kicad-dir').hidden") and "Choose the board folder" in pg.inner_text("#prep-kicad-dir"),
+          f"folder: no 'Choose the board folder' step: {pg.inner_text('#prep-kicad-dir')!r}")
+    base = os.path.basename(bdir)
+    for name, files, want in (("Downloads", [stem + ".kicad_pcb"], "is not the board's folder"), (base, [], "has no " + stem + ".kicad_pcb")):
+        pg.evaluate(DIR_STUB, [name, files, True])
+        pg.click("#prep-kicad-choose"); pg.wait_for_timeout(300)
+        check(want in pg.inner_text("#prep-kicad-dir") and pg.evaluate("!S.kicad.dirHandle"), f"folder {name!r}: {pg.inner_text('#prep-kicad-dir')!r}")
+    pg.evaluate(DIR_STUB, [base, [stem + ".kicad_pcb", stem + ".kisi.json"], True])
+    pg.click("#prep-kicad-choose"); pg.wait_for_timeout(300)
+    opts = pg.evaluate("({ id: window.__dirOpts.id, mode: window.__dirOpts.mode, startIn: typeof window.__dirOpts.startIn === 'string' ? window.__dirOpts.startIn : 'handle' })")
+    check(opts["mode"] == "readwrite" and opts["startIn"] == "documents" and re.fullmatch(r"kisi-dir-[0-9a-f]{1,8}", opts["id"] or ""), f"folder: picker options {opts}")
+    check(f"Saves straight into the board's folder {base}" in pg.inner_text("#prep-kicad-dir"), f"folder: chosen: {pg.inner_text('#prep-kicad-dir')!r}")
+    pg.evaluate(FSA_STUB)  # records a dialog, which must not open now
+    pg.evaluate("""() => { const w = prepW(); w.notes = ["written into the chosen folder"]; prepEdited(true); }""")
+    pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=60000)
+    check("Writes straight into the board's folder" in pg.inner_text("#prep-save-note"), f"folder: save note {pg.inner_text('#prep-save-note')!r}")
+    pg.click("#prep-save")
+    pg.wait_for_function(f"{BUSY} && /saved into the board's folder and loaded/.test(document.getElementById('prep-save-note').textContent)", timeout=120000)
+    r = pg.evaluate("({ text: window.__dir.written[%s], asked: window.__dir.asked, dialog: !!window.__fsa })" % json.dumps(stem + ".kisi.json"))
+    check(r["text"] and "written into the chosen folder" in r["text"] and r["asked"] == 1 and not r["dialog"], f"folder: direct save {r}")
+    pg.locator("#prep-kicad-dir").scroll_into_view_if_needed()
+    pg.screenshot(path=f"{out}/kicad-folder-saved.png")
+    # permission refused: the save dialog instead, starting in the chosen folder
+    pg.evaluate(DIR_STUB, [base, [stem + ".kicad_pcb"], False])
+    pg.evaluate("S.kicad.dirHandle = window.__dir")
+    pg.evaluate(FSA_STUB)
+    pg.click("#prep-save")
+    pg.wait_for_function(f"window.__saved && {BUSY} && /saved and loaded/.test(document.getElementById('prep-save-note').textContent)", timeout=120000)
+    check(pg.evaluate("window.__fsa.startIn === window.__dir") and "no permission" in pg.inner_text("#prep-kicad-dir"),
+          f"folder: refused permission → dialog in the chosen folder: {pg.inner_text('#prep-kicad-dir')!r}")
+    pg.evaluate("S.kicad.dirHandle = null; window.showDirectoryPicker = undefined; S.kicad.dirNote = ''")  # as in Firefox and Safari
     # 3. the download path (Firefox, Safari): the browsers' setting, else the take-over on the next click
     pg.evaluate("window.showSaveFilePicker = undefined; S.prep.saved = ''; prepRender(true)")  # as after the next edit
     note = pg.inner_text("#prep-save-note")
@@ -206,8 +252,9 @@ with sync_playwright() as p:
     check(dl.value.suggested_filename == stem + ".kisi.json", f"download: file name {dl.value.suggested_filename!r}")
     got = os.path.join(downloads, dl.value.suggested_filename)
     dl.value.save_as(got)  # where the browser puts it by default
-    pg.wait_for_function(f"{BUSY} && /downloaded and loaded/.test(document.getElementById('prep-save-note').textContent)", timeout=120000)
-    check("takes it over from the downloads folder" in pg.inner_text("#prep-save-note"), "download: note after saving")
+    pg.wait_for_function(f"{BUSY} && /Saved to the downloads folder/.test(document.getElementById('prep-save-note').textContent)", timeout=120000)
+    check("click kisi in KiCad again to move it next to the board" in pg.inner_text("#prep-save-note") and "Always ask you where to save files" in pg.inner_text("#prep-save-note")
+          and pg.evaluate("document.getElementById('prep-save-note').classList.contains('prep-dl')"), f"download: note after saving: {pg.inner_text('#prep-save-note')!r}")
     check("Click kisi in KiCad again" in card(pg), f"download: card: {card(pg)!r}")
     pg.screenshot(path=f"{out}/kicad-download.png")
     for e in errs:

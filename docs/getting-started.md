@@ -152,19 +152,24 @@ KiCad's files are never written or saved.
 
 **Saving kisi.json** – on the viewer's *Prepare PCB* page, "Save kisi.json" writes the file next to the board,
 where the next click reads it:
-- in Chrome and Edge a save dialog opens; choose the board's folder (the page shows its path; "Copy path" copies
-  the full file name, which can be pasted into the dialog's file name field). The browser remembers the folder for
-  this board.
-- in Firefox and Safari the file is downloaded. To choose the folder instead, let the browser ask where to save:
-  Firefox: *Settings → General → Downloads → Always ask you where to save files* (Firefox then remembers the last
-  folder); Safari: *Settings → General → File download location → Ask for each download*. Otherwise simply click
-  the button in KiCad again: the plugin takes the file over from the downloads folder (step 2 above).
+- in Chrome and Edge: **Choose the board folder…** once per board (the page shows the folder's path; kisi checks
+  that the chosen folder holds the board). From then on "Save kisi.json" writes the file straight into that folder,
+  without a dialog; the browser asks once per session for permission to edit files there. Without a chosen folder
+  a save dialog opens instead ("Copy path" copies the full file name, which can be pasted into the dialog's file
+  name field).
+- in Firefox and Safari the file goes to the downloads folder: then **click kisi in KiCad again** – the plugin moves
+  it next to the board (step 2 above); the page says so after saving. To choose the folder yourself instead, let the
+  browser ask where to save: Firefox: *Settings → General → Downloads → Always ask you where to save files* (Firefox
+  then remembers the last folder); Safari: *Settings → General → File download location → Ask for each download*.
 
-**With an agent** – the plugin carries kisi's command line (`cli/kisi.mjs` in its folder). With Node.js 18 or newer
-installed ([nodejs.org](https://nodejs.org), LTS), the agent card on *Prepare PCB* shows the ready command with the
-real paths, e.g. `node "…\com_github_riehlies_kisi\cli\kisi.mjs" gaps "…\board.kicad_pcb" --for impedance`, and the
-copied prompt tells the agent where the board's kisi.json belongs; the agent writes it there directly, and the next
-click in KiCad loads it. Without Node.js the card says where to get it.
+**With an agent** – the plugin carries kisi's command line (`cli/kisi.mjs` in its folder) and the
+[agent guide](agents.md#any-assistant-the-agent-guide) for any assistant (`agent/KISI-AGENT-GUIDE.md`). On *Prepare
+PCB* the agent card has "Copy guide" and "Copy prompt": give both to the assistant. The prompt names the guide, the
+board, where its kisi.json belongs and the CLI. An agent that can run commands uses the ready command shown on the
+card (with Node.js 18 or newer installed, [nodejs.org](https://nodejs.org), LTS), e.g.
+`node "…\com_github_riehlies_kisi\cli\kisi.mjs" gaps "…\board.kicad_pcb" --for impedance`, and writes the
+kisi.json there itself; a chat assistant asks for the commands' output and returns the complete kisi.json, which
+you save next to the board. The next click in KiCad loads it. Without Node.js the card says where to get it.
 
 **If nothing happens** – KiCad 10 shows the plugin's error at the warning triangle in the PCB editor's status bar
 (bottom right), and the browser opens a page saying what went wrong. Details are in the plugin's log

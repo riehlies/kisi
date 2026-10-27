@@ -50,6 +50,8 @@ Locally, before pushing a branch, run the quick checks for what you changed:
   `python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs && python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip
   examples/Thunderscope_Rev5.3.kicad_pcb --config web/samples/ts.kisi.json` (the package installed as KiCad's PCM
   does, its page in headless Chromium). No KiCad runs in CI: a change of the plugin's KiCad side needs a test in KiCad.
+  The agent guide `kicad-plugin/agent/KISI-AGENT-GUIDE.md` is generated: after editing the kisi-prepare skill's
+  `agent-guide:…` blocks or `KISI-AGENT-GUIDE.in.md`, run `python3 tools/agent_guide.py` (`--check` in CI).
 * Documentation (`docs/`, `kisi help`, gap ids): `cargo test --release -p kisi-core --test docs` (the help text
   in `docs/cli.md`, every command, option and gap id) and `python3 tools/docs_pdf.py dist/kisi-docs.pdf` (the PDF;
   fails on links to missing files or headings in `docs/`).

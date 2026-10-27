@@ -35,6 +35,7 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
 `config-template`, `interfaces` and `profiles` are fast.
 
 ## Steps
+<!-- agent-guide:steps begin – shared with kicad-plugin/agent/KISI-AGENT-GUIDE.md (tools/agent_guide.py) -->
 
 1. **Gap list:** `kisi gaps path/to/board.kicad_pcb`. Each gap has `priority`, `issue`, `affects`, `views`
    (impedance, channel, power), `where_to_find`, `write` (where in kisi.json, with an example) and `items`
@@ -151,11 +152,13 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
 6. **Check:** `kisi config-check <board>` – fix every error (references, ranges, missing sources,
    field syntax kisi cannot read) and look at the warnings. Then `kisi gaps <board>` again: the filled
    gaps should be gone.
+<!-- agent-guide:steps end -->
 7. **Report to the user:** what was filled (with sources), what was assumed, what is still open, and
    the KiCad fixes from step 1. Suggest the review next (skill kisi-si-pi-review) and that they can drop
    `<board>.kisi.json` into the kisi viewer together with the board.
 
 ## Notes
+<!-- agent-guide:notes begin – shared with kicad-plugin/agent/KISI-AGENT-GUIDE.md (tools/agent_guide.py) -->
 - A worked example – the power tree of the Seeed XIAO nRF54LM20A with sources, notes and the open gaps – is in
   the kisi repository: `docs/preparing-a-board.md` (the walk-through, also the gap list with every gap id) and
   `docs/examples/xiao-nrf54lm20a/` (the kisi.json). Field syntax and every kisi.json key: `docs/reference.md`.
@@ -165,3 +168,4 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
   list to paste; kisi itself does not write into the schematic.
 - kisi does not use IBIS models (out of its scope); transmitters and receivers come from the interface
   profiles. For simulations with IBIS buffers, export the channel (`kisi export`) to a circuit simulator.
+<!-- agent-guide:notes end -->

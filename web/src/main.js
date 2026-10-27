@@ -116,7 +116,10 @@ async function loadSample(key) {
 async function loadKicadBoard(k) {
   showBusy("Unpacking the board from KiCad…");
   const files = await Promise.all(k.files.map(async (f) => new File([await gunzipB64(f.gz)], f.name)));
-  S.kicad = { ...k, files: undefined, on: false, loading: true };
+  S.kicad = { ...k, files: undefined, on: false, loading: true, dirHandle: null, dirStored: false, dirNote: "" };
+  // the board's folder chosen in an earlier session of this browser (Chromium; kdirChoose)
+  S.kicad.dirHandle = await kdirGet(k.pcb_path);
+  S.kicad.dirStored = !!S.kicad.dirHandle;
   await handleFiles(files);
   kicadCard();
 }
@@ -155,6 +158,65 @@ function kicadCard() {
     + (k.notes || []).map((n) => `<p class="note warn">${esc(n)}</p>`).join("");
 }
 document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-kicad-prep]")) { e.preventDefault(); prepOpen(true); } });
+
+// ---- the board's folder, chosen once (Chromium: showDirectoryPicker), so that "Save kisi.json" writes there without
+// a dialog. Its handle is kept in IndexedDB per board path (handles can be stored there; the browser asks for write
+// permission again once per session). Elsewhere, or when the handle cannot be stored, it lasts for this page.
+const KDIR_DB = "kisi-kicad-folders";
+function kdirDb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(KDIR_DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("dirs");
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function kdirGet(key) {
+  try {
+    const db = await kdirDb();
+    return await new Promise((res) => { const q = db.transaction("dirs").objectStore("dirs").get(key); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); });
+  } catch (e) { return null; }
+}
+async function kdirSet(key, h) {
+  try {
+    const db = await kdirDb();
+    await new Promise((res, rej) => { const t = db.transaction("dirs", "readwrite"); t.objectStore("dirs").put(h, key); t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); });
+    return true;
+  } catch (e) { return false; }
+}
+// the chosen folder is the board's: its name is the board folder's and it holds <board>.kicad_pcb
+async function kdirCheck(h) {
+  const base = String(S.kicad.dir).split(/[\\/]/).filter(Boolean).pop() || "";
+  if (String(h.name).toLowerCase() !== base.toLowerCase()) return `the chosen folder “${h.name}” is not the board's folder “${base}”`;
+  try { await h.getFileHandle(S.kicad.board + ".kicad_pcb"); } catch (e) { return `the chosen folder “${h.name}” has no ${S.kicad.board}.kicad_pcb`; }
+  return "";
+}
+async function kdirChoose() {
+  let h;
+  try { h = await window.showDirectoryPicker({ id: "kisi-dir-" + textHash(S.kicad.dir), mode: "readwrite", startIn: S.kicad.dirHandle || "documents" }); }
+  catch (e) { if (!e || e.name !== "AbortError") { S.kicad.dirNote = `the folder could not be chosen (${e && e.message})`; prepRender(false); } return; }
+  const bad = await kdirCheck(h);
+  if (bad) { S.kicad.dirNote = bad + " – choose the folder shown above."; prepRender(false); return; }
+  S.kicad.dirHandle = h; S.kicad.dirNote = "";
+  S.kicad.dirStored = await kdirSet(S.kicad.pcb_path, h);
+  prepRender(false);
+}
+// write <board>.kisi.json into the chosen folder: true, or false with the reason in dirNote (then the save dialog)
+async function kdirWrite(name, text) {
+  const h = S.kicad.dirHandle;
+  try {
+    let p = h.queryPermission ? await h.queryPermission({ mode: "readwrite" }) : "granted";
+    if (p !== "granted" && h.requestPermission) p = await h.requestPermission({ mode: "readwrite" });
+    if (p !== "granted") { S.kicad.dirNote = "no permission to write into the board's folder – saved through the dialog instead"; return false; }
+    const bad = await kdirCheck(h);
+    if (bad) { S.kicad.dirNote = bad + " – not written there; choose the board's folder again"; return false; }
+    const fh = await h.getFileHandle(name, { create: true }), w = await fh.createWritable();
+    await w.write(text); await w.close();
+    S.kicad.dirNote = "";
+    return true;
+  } catch (e) { S.kicad.dirNote = `writing into the board's folder failed (${e.message}) – saved through the dialog instead`; return false; }
+}
+// the agent guide shipped with the plugin (KISI-AGENT-GUIDE.md): path and text for the agent card
+const kicadGuide = () => (kicadActive() && S.kicad.guide && S.kicad.guide.text ? S.kicad.guide : null);
 $("sample-ts").onclick = () => loadSample("ts");
 $("sample-vna").onclick = () => loadSample("vna");
 

@@ -81,20 +81,42 @@ def say(msg):
         pass
 
 
-def open_page(path, log):
+def open_page(path, log, system=None, startfile=None, popen=None, browser=None):
+    """Open the page in the default browser; returns how. Windows: os.startfile with the plain path – the .html
+    file's default handler, i.e. the default browser (a file:// URL of a path with umlauts reached Edge as its start
+    page in the KiCad 10 test); macOS: `open`; Linux: `xdg-open`; else, and as the fallback, webbrowser with the
+    file:// URL. The arguments are replaced in tests."""
     if os.environ.get("KISI_NO_BROWSER"):
-        return
+        return "none (KISI_NO_BROWSER)"
+    import platform
+    import subprocess
+    from pathlib import Path
+    system = system or platform.system()
+    startfile = startfile if startfile is not None else getattr(os, "startfile", None)
+    popen = popen or subprocess.Popen
+    browser = browser or webbrowser
+    path = os.path.normpath(os.path.abspath(path))
+    tried = []
+    if system == "Windows" and startfile:
+        try:
+            startfile(path)  # noqa: S606 (our own page)
+            return f"os.startfile({path!r})"
+        except OSError as e:
+            tried.append(f"os.startfile: {e}")
+    elif system in ("Darwin", "Linux") or system.endswith("BSD"):
+        cmd = ["open", path] if system == "Darwin" else ["xdg-open", path]
+        try:
+            popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            return " ".join(cmd[:1]) + f" {path!r}"
+        except OSError as e:
+            tried.append(f"{cmd[0]}: {e}")
+    uri = Path(path).as_uri()
     try:
-        from pathlib import Path
-        ok = webbrowser.open(Path(path).as_uri())
+        if browser.open(uri):
+            return f"webbrowser.open({uri!r})" + (f" after {'; '.join(tried)}" if tried else "")
     except Exception as e:
-        log(f"webbrowser: {e!r}")
-        ok = False
-    if not ok and hasattr(os, "startfile"):  # Windows: the .html association
-        os.startfile(path)  # noqa: S606 (our own file in the temp folder)
-        ok = True
-    if not ok:
-        raise core.PluginError(f"could not start a browser – open {path} yourself")
+        tried.append(f"webbrowser: {e!r}")
+    raise core.PluginError(f"could not start a browser ({'; '.join(tried) or 'webbrowser refused'}) – open {path} yourself")
 
 
 def main(argv=None):
@@ -118,7 +140,7 @@ def main(argv=None):
             f"kisi.json {payload['config']}: {payload['config_path']}; files {[f['name'] for f in payload['files']]}; notes {payload['notes']}")
         log(f"downloads {imp['folder'] or '-'}: {imp['state']} {imp['from']} {imp['backup']} {imp['checked']} {imp['reasons']}; "
             f"cli {cli['path'] or '-'}; node {cli['node']}")
-        open_page(page, log)
+        log(f"browser: {open_page(page, log)}")
         print(page)
         return 0
     except core.PluginError as e:
@@ -129,7 +151,7 @@ def main(argv=None):
     log("error: " + msg)
     say(msg + f" (log: {log.path})")
     try:
-        open_page(core.error_page(msg, log.path), log)
+        log(f"browser (error page): {open_page(core.error_page(msg, log.path), log)}")
     except Exception as e:
         log(f"error page: {e!r}")
     return 1

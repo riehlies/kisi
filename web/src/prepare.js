@@ -1090,21 +1090,24 @@ function prepKicadCmd(scope) {
   return c ? `node ${prepQ(c.path)} gaps ${prepQ(S.kicad.pcb_path)}${scope === "all" ? "" : ` --for ${scope}`}` : "";
 }
 function prepKicadPromptTail() {
-  const c = kicadCli();
+  const c = kicadCli(), g = kicadGuide();
   if (!c) return "";
   const node = c.node || {};
-  return `\nPaths: the board is ${prepQ(S.kicad.pcb_path)}; write ${prepQ(kicadCfgPath())} directly (next to the board, no browser save needed). `
-    + `Run kisi with the CLI that came with the KiCad plugin: node ${prepQ(c.path)} <command> … (${node.ok ? `Node.js ${node.version} is installed` : "Node.js ≥ 18 is needed: https://nodejs.org"}). `
-    + `When it is written, I click kisi in KiCad again to load it.`;
+  return `\n${g ? `Follow the kisi agent guide (KISI-AGENT-GUIDE.md – I paste or attach it; on my disk: ${prepQ(g.path)}). ` : ""}`
+    + `Paths: the board is ${prepQ(S.kicad.pcb_path)}; its kisi.json belongs at ${prepQ(kicadCfgPath())}. `
+    + `kisi's command line came with the KiCad plugin: node ${prepQ(c.path)} <command> … (${node.ok ? `Node.js ${node.version} is installed` : "Node.js ≥ 18 is needed: https://nodejs.org"}). `
+    + `If you can run commands, run them yourself and write the kisi.json there directly. If you cannot (a chat): tell me the exact commands to run, `
+    + `I paste their output and the current kisi.json, and you return the complete new kisi.json, which I save there. Afterwards I click kisi in KiCad again to load it.`;
 }
 function prepPrompt(gs, scope) {
   scope = scope || S.prep.tab;
   const hs = prepHandover(scope), all = scope === "all";
   const what = all ? "analyses" : `${PREP_VIEWS[scope].toLowerCase()} analysis`, cmd = all ? "`kisi gaps`" : `\`kisi gaps --for ${scope}\``;
+  const via = kicadGuide() ? "following the kisi agent guide (Claude Code: the skill kisi-prepare)" : "with the skill kisi-prepare";
   const tail = `Merge the results into ${S.name}.kisi.json next to the board – keep my entries and the dismissed gaps – and run \`kisi config-check\`.` + prepKicadPromptTail();
-  if (!hs.length) return `Prepare ${prepBoardFile()} for kisi's ${what} with the skill kisi-prepare. Start from ${cmd}, research ${all ? "the" : "this category's"} open gaps from datasheets, BOM and position files, with a source for every value. ${tail}`;
+  if (!hs.length) return `Prepare ${prepBoardFile()} for kisi's ${what} ${via}. Start from ${cmd}, research ${all ? "the" : "this category's"} open gaps from datasheets, BOM and position files, with a source for every value. ${tail}`;
   const lines = all ? Object.keys(PREP_VIEWS).flatMap((t) => { const ls = hs.filter((h) => h.tab === t); return ls.length ? [`${PREP_VIEWS[t]} (--for ${t}):`, ...ls.map(prepHandLine)] : []; }) : hs.map(prepHandLine);
-  return `Prepare ${prepBoardFile()} for kisi's ${what} with the skill kisi-prepare. Start from ${cmd} and research only what I handed over (gap: what is needed → where it goes – items), from datasheets, BOM and position files, with a source for every value:\n${lines.join("\n")}\n${tail}`;
+  return `Prepare ${prepBoardFile()} for kisi's ${what} ${via}. Start from ${cmd} and research only what I handed over (gap: what is needed → where it goes – items), from datasheets, BOM and position files, with a source for every value:\n${lines.join("\n")}\n${tail}`;
 }
 
 // ---- the page
@@ -1200,14 +1203,26 @@ function prepRenderSide() {
   $("prep-save").title = !can ? "nothing entered" : blocked.length ? "fix the errors first (warnings are fine)" : "";
   const fsa = typeof window.showSaveFilePicker === "function", kc = kicadActive();
   // a board from the KiCad plugin: the file belongs into the board's folder, which the page knows but cannot open
+  const dirApi = kc && typeof window.showDirectoryPicker === "function";
   const where = !kc ? (fsa ? "Saves next to the board (you choose the place)" : "Downloads")
-    : fsa ? `Saves next to the board: choose the board's folder in the dialog (or paste the path below as the file name) – kisi remembers it for this board. Saves`
+    : dirApi && S.kicad.dirHandle ? `Writes straight into the board's folder (the browser asks once per session for permission). Saves`
+    : fsa ? `Saves next to the board: choose the board's folder once (below), or in the save dialog (or paste the path below as the file name). Saves`
       : `Downloads – with the browser set to ask where to save (Firefox: Settings → General → Downloads → “Always ask you where to save files”; Safari: Settings → General → File download location → “Ask for each download”) choose the board's folder (path below); otherwise click kisi in KiCad again and the plugin takes the file over from the downloads folder. Downloads`;
   $("prep-save-note").textContent = S.prep.saved ? S.prep.saved : !can ? "" : blocked.length
     ? `${blocked.length} error${blocked.length > 1 ? "s" : ""} in ${S.prep.scope === "all" ? "the draft" : `the ${PREP_VIEWS[S.prep.scope]} entries`}${S.prep.scope === "all" && !prepBlocked(tab).length ? ` – “save only ${PREP_VIEWS[tab]}” works` : ""}.`
     : `${where} ${S.name}.kisi.json${dirty ? "" : " as loaded"}, then loads it.`;
   $("prep-kicad").hidden = !kc;
   if (kc) $("prep-kicad-path").textContent = kicadCfgPath();
+  $("prep-save-note").classList.toggle("prep-dl", !!(kc && S.prep.savedDownload && S.prep.saved));
+  // Chromium: the board's folder chosen once, then saving needs no dialog
+  $("prep-kicad-dir").hidden = !dirApi;
+  if (dirApi) {
+    const h = S.kicad.dirHandle;
+    $("prep-kicad-dir").innerHTML = (h
+      ? `<span class="note">Saves straight into the board's folder <b>${esc(h.name)}</b>, chosen in this browser${S.kicad.dirStored ? "" : " (for this page only)"} – no dialog.</span><button class="btn small" id="prep-kicad-choose">Change…</button>`
+      : `<button class="btn small" id="prep-kicad-choose">Choose the board folder…</button><span class="note">once per board: pick the folder shown above – then “Save kisi.json” writes there without a dialog.</span>`)
+      + (S.kicad.dirNote ? `<span class="warn">${esc(S.kicad.dirNote)}</span>` : "");
+  }
   const nn = (prepW().notes || []).length;
   $("prep-notes-n").textContent = nn ? `(${nn})` : "";
   if (document.activeElement !== $("prep-notes")) $("prep-notes").value = (prepW().notes || []).join("\n");
@@ -1229,7 +1244,9 @@ function prepRenderSide() {
   $("prep-agent-kicad").hidden = !kcli;
   if (kcli) {
     const node = kcli.node || {};
-    $("prep-agent-kicad").innerHTML = `<span class="note">The CLI came with the KiCad plugin – the agent writes <code>${esc(S.name)}.kisi.json</code> next to the board itself:</span>
+    const g = kicadGuide();
+    $("prep-agent-kicad").innerHTML = (g ? `<div class="prep-row"><span class="note">For any assistant (ChatGPT, Claude, local models …): the agent guide <code class="kicad-dir">${esc(g.path)}</code> – give it with the prompt.</span><button class="btn small" id="prep-guide-copy">Copy guide</button></div>` : "")
+      + `<span class="note">The CLI came with the KiCad plugin – an agent that runs commands writes <code>${esc(S.name)}.kisi.json</code> next to the board itself:</span>
       <pre class="prep-cmd" id="prep-agent-cmd">${esc(prepKicadCmd(asc))}</pre>`
       + (node.ok ? `<span class="note">Node.js ${esc(node.version)} found.</span>`
         : `<span class="warn">Node.js ≥ 18 was not found (${esc(node.reason || "not checked")}) – install the LTS version from <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a>, then click kisi in KiCad again.</span>`);
@@ -1291,7 +1308,10 @@ async function prepSave() {
   try { ck = S.engine.configCheck(prepBoardFile(), text); } catch (e) { ck = { ok: false, errors: [e.message] }; }
   if (!ck.ok) { S.prep.saved = "Not saved: " + ck.errors.slice(0, 2).join("; "); prepRender(); return; }
   let how = "downloaded";
-  if (typeof window.showSaveFilePicker === "function") {
+  // a board from KiCad with its folder chosen in this browser (Chromium): straight into it, no dialog
+  const direct = kicadActive() && S.kicad.dirHandle ? await kdirWrite(name, text) : false;
+  if (direct) how = "saved";
+  else if (typeof window.showSaveFilePicker === "function") {
     try {
       const start = (S.fileHandles || []).find((h) => /\.kicad_pcb$/i.test(h.name));
       // id: the browser remembers the folder chosen for this board; a handle of the board file, where there is one,
@@ -1299,6 +1319,7 @@ async function prepSave() {
       const kc = kicadActive(), id = "kisi-" + textHash(kc ? S.kicad.dir : S.name);
       const opts = { id, suggestedName: name, types: [{ description: "kisi board configuration", accept: { "application/json": [".json"] } }] };
       if (start || !kc) opts.startIn = start || "documents";
+      else if (S.kicad.dirHandle) opts.startIn = S.kicad.dirHandle; // the chosen folder, where writing straight failed
       const h = await window.showSaveFilePicker(opts);
       const wr = await h.createWritable(); await wr.write(text); await wr.close();
       if (S.fileHandles) S.fileHandles = S.fileHandles.filter((x) => !/\.kisi\.json$/i.test(x.name)).concat([h]);
@@ -1312,8 +1333,11 @@ async function prepSave() {
   const rest = scope === "all" ? JSON.parse(text) : d.work;
   const rec = prepRec(d, text, rest);
   S.prep.mem[S.name] = rec; lsSet(PREP_KEY(), rec);
-  S.prep.savedNext = `${name} ${how} and loaded${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}.`
-    + (kicadActive() && how === "downloaded" ? " Saved somewhere else than the board's folder (path below)? Click kisi in KiCad again: the plugin takes it over from the downloads folder." : "");
+  S.prep.savedDownload = kicadActive() && how === "downloaded";
+  S.prep.savedNext = S.prep.savedDownload
+    // Firefox, Safari: the intended way – the next click in KiCad moves the file next to the board
+    ? `Saved to the downloads folder – click kisi in KiCad again to move it next to the board${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}. (To save into the board's folder directly, let the browser ask where to save: Firefox → Settings → General → Downloads → “Always ask you where to save files”.)`
+    : `${name} ${how}${direct ? " into the board's folder" : ""} and loaded${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}.`;
   const l = S.lastFiles;
   await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, { name, text, csv: (l.cfg && l.cfg.csv) || {} });
 }
@@ -1467,6 +1491,8 @@ $("prep").addEventListener("click", async (ev) => {
   if (t.dataset.toggle) { const card = t.closest(".prep-gap"); S.prep.cards[S.name + t.dataset.toggle] = card.getAttribute("aria-expanded") !== "true"; prepRender(true); return; }
   if (t.dataset.prepTab) { S.prep.tab = t.dataset.prepTab; S.prep.touched = true; prepRender(true); return; }
   if (t.id === "prep-save") { await prepSave(); return; }
+  if (t.id === "prep-kicad-choose") { await kdirChoose(); return; }
+  if (t.id === "prep-guide-copy") { try { await navigator.clipboard.writeText(kicadGuide().text); t.textContent = "Copied"; } catch (err) { t.textContent = "Copy failed – open the file"; } setTimeout(() => { t.textContent = "Copy guide"; }, 1500); return; }
   if (t.id === "prep-kicad-copy") { try { await navigator.clipboard.writeText(kicadCfgPath()); t.textContent = "Copied"; } catch (err) { t.textContent = "Select and copy the path"; } setTimeout(() => { t.textContent = "Copy path"; }, 1500); return; }
   if (t.id === "prep-discard") { prepDiscard(); return; }
   if (t.id === "prep-copy") { try { await navigator.clipboard.writeText($("prep-prompt").textContent); } catch (e) { /* no clipboard (insecure context) */ } $("prep-copied").hidden = false; setTimeout(() => ($("prep-copied").hidden = true), 1500); return; }

@@ -83,6 +83,8 @@ class PageTests(unittest.TestCase):
         self.assertEqual((q["format"], q["source"], q["board"], q["config"], q["modified"], q["kicad"]), (1, "kicad", self.b.stem, "created", "unknown", "10.0.7"))
         self.assertEqual(q["page"], {"path": page, "where": "analysis", "reason": ""})
         self.assertEqual((q["dir"], q["import"]["state"]), (self.b.dir, "none"))
+        self.assertEqual(q["guide"]["path"], os.path.join(PLUGIN, "agent", "KISI-AGENT-GUIDE.md"))
+        self.assertIn("Mode B – chat without a shell", q["guide"]["text"])
         files = unpack(q)
         self.assertEqual(sorted(files), sorted([self.b.stem + ".kicad_pcb", self.b.stem + ".kicad_pro", self.b.stem + ".kisi.json"]))
         self.assertEqual(files[self.b.stem + ".kicad_pcb"], PCB)
@@ -583,6 +585,69 @@ class ActionTests(unittest.TestCase):
         rc, out, err = self.run_action([])
         self.assertEqual(rc, 1)
         self.assertIn("Recreate Plugin Environment", err)
+
+
+class BrowserTests(unittest.TestCase):
+    """How the page is opened (kisi_action.open_page), with the calls replaced: Windows gets the plain path through
+    os.startfile – a file:// URL of a path with umlauts opened Edge's start page in the KiCad 10 test."""
+
+    def setUp(self):
+        import kisi_action
+        self.action = kisi_action
+        self.env = os.environ.pop("KISI_NO_BROWSER", None)
+        self.path = os.path.join(tempfile.gettempdir(), "Documents", "kisi Test äöü", "video", "analysis", "video.kisi.html")
+
+    def tearDown(self):
+        if self.env is not None:
+            os.environ["KISI_NO_BROWSER"] = self.env
+
+    class Browser:
+        def __init__(self, ok=True):
+            self.calls, self.ok = [], ok
+
+        def open(self, url):
+            self.calls.append(url)
+            return self.ok
+
+    def test_windows_plain_path(self):
+        got, br = [], self.Browser()
+        how = self.action.open_page(self.path, print, system="Windows", startfile=got.append, browser=br)
+        self.assertEqual(got, [os.path.normpath(self.path)])
+        self.assertNotIn("%", got[0])  # the path, not a percent-encoded URL
+        self.assertIn("äöü", got[0])
+        self.assertTrue(how.startswith("os.startfile("))
+        self.assertEqual(br.calls, [])
+
+    def test_windows_fallback(self):
+        def fail(p):
+            raise OSError("no association")
+        br = self.Browser()
+        how = self.action.open_page(self.path, print, system="Windows", startfile=fail, browser=br)
+        self.assertEqual(br.calls, [pathlib.Path(os.path.normpath(self.path)).as_uri()])
+        self.assertIn("webbrowser.open", how)
+        self.assertIn("no association", how)
+
+    def test_macos_and_linux(self):
+        for system, tool in (("Darwin", "open"), ("Linux", "xdg-open")):
+            calls = []
+            how = self.action.open_page(self.path, print, system=system, popen=lambda cmd, **kw: calls.append((cmd, kw)), browser=self.Browser())
+            self.assertEqual(calls[0][0], [tool, os.path.normpath(self.path)])
+            self.assertTrue(calls[0][1]["start_new_session"])
+            self.assertTrue(how.startswith(tool + " "))
+
+    def test_linux_without_xdg_open(self):
+        def missing(cmd, **kw):
+            raise FileNotFoundError("xdg-open")
+        br = self.Browser()
+        self.action.open_page(self.path, print, system="Linux", popen=missing, browser=br)
+        self.assertEqual(len(br.calls), 1)
+        self.assertTrue(br.calls[0].startswith("file:///"))
+
+    def test_nothing_works(self):
+        def fail(p):
+            raise OSError("x")
+        with self.assertRaises(core.PluginError):
+            self.action.open_page(self.path, print, system="Windows", startfile=fail, browser=self.Browser(ok=False))
 
 
 # ---- with the real kicad-python (pip install kicad-python), against a fake API connection ------------------------

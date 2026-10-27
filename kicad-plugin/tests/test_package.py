@@ -55,11 +55,23 @@ class PackageTests(unittest.TestCase):
         names = zipfile.ZipFile(self.r["zip"]).namelist()
         self.assertEqual(names[0], "metadata.json")
         for n in ["plugins/plugin.json", "plugins/requirements.txt", "plugins/kisi_action.py", "plugins/kisi_kicad.py",
-                  "plugins/kisi_build.json", "plugins/viewer/kisi.html", "plugins/cli/kisi.mjs", "plugins/LICENSE", "resources/icon.png"]:
+                  "plugins/kisi_build.json", "plugins/viewer/kisi.html", "plugins/cli/kisi.mjs", "plugins/agent/KISI-AGENT-GUIDE.md",
+                  "plugins/LICENSE", "resources/icon.png"]:
             self.assertIn(n, names)
         # nothing else at the root, no nested plugin folder, no tests or generator scripts
         self.assertEqual({n.split("/")[0] for n in names}, {"metadata.json", "plugins", "resources"})
-        self.assertFalse([n for n in names if "tests/" in n or n.endswith(("make_icons.py", ".pyc"))])
+        self.assertFalse([n for n in names if "tests/" in n or n.endswith(("make_icons.py", ".pyc", ".in.md"))])
+
+    def test_agent_guide(self):
+        """The guide is the generated one (one source with the kisi-prepare skill) and names no assistant's tools."""
+        import agent_guide
+        text = zipfile.ZipFile(self.r["zip"]).read("plugins/agent/KISI-AGENT-GUIDE.md").decode("utf-8")
+        self.assertEqual(text, agent_guide.HEAD + agent_guide.body())
+        self.assertEqual(agent_guide.problems(agent_guide.body()), [])
+        for want in ("Mode A", "Mode B", "complete new `<board>.kisi.json`", "kisi config-check", "kind", "estimate"):
+            self.assertIn(want, text)
+        skill = pathlib.Path(agent_guide.SKILL).read_text(encoding="utf-8")
+        self.assertIn(agent_guide.block(skill, "steps"), text)  # the skill's steps, verbatim
 
     def test_as_kicad_installs_it(self):
         third = os.path.join(self.tmp, "3rdparty")
@@ -89,6 +101,7 @@ class PackageTests(unittest.TestCase):
         self.assertIn('"plugin":"0.0.0"', html)
         self.assertEqual(page, os.path.join(os.path.dirname(board), "analysis", "b.kisi.html"))
         self.assertIn(json.dumps(os.path.join(base, "cli", "kisi.mjs"))[1:-1], html)  # the installed CLI path
+        self.assertIn(json.dumps(os.path.join(base, "agent", "KISI-AGENT-GUIDE.md"))[1:-1], html)  # and the guide
         self.assertTrue(os.path.isfile(os.path.join(os.path.dirname(board), "b.kisi.json")))
 
     def test_metadata(self):

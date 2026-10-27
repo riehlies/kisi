@@ -102,6 +102,7 @@ jobs:
         if: needs.changes.outputs.kicad == 'true'
         run: |
           python3 -m pip install --quiet jsonschema==4.26.0 kicad-python==0.8.0
+          python3 tools/agent_guide.py --check
           python3 -m unittest discover -s kicad-plugin/tests -v
       - uses: actions/setup-node@v5
         if: env.BUILD == 'true'

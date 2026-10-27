@@ -72,8 +72,9 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   next click takes over from the Downloads folder); the package carries the CLI for the agent path, the agent card
   shows the command with the installed paths; `kicad-plugin/`, `tools/build_kicad_pcm.py`, release asset
   `kisi-kicad-<version>.zip` (`docs/research/kicad-plugin.md`). First test in KiCad 10 on Windows passed
-  (2026-10-27: install, button, viewer, skeleton); round 2 (analysis/, the take-over, the CLI, the marked inputs
-  on Prepare PCB) to be re-tested. Next: a release and the merge request to KiCad's PCM repository (by hand); the "unsaved changes" notice once KiCad's API
+  (2026-10-27: install, button, viewer, skeleton); round 2 re-tested (analysis/, the take-over, the CLI, the
+  marked inputs on Prepare PCB); round 3 (the page opened from paths with umlauts, the board folder chosen once
+  in Chromium, the agent guide for any assistant) to be re-tested. Next: a release and the merge request to KiCad's PCM repository (by hand); the "unsaved changes" notice once KiCad's API
   reports them (`GetDocumentModifiedState`, KiCad's development branch – the plugin uses it when kicad-python has it).
 - **Decide first: live link to KiCad** (cross-probing, reload on save). Needs a local helper process; only worth it if
   the manual “Reload” is not enough. KiCad 10 can place DRC markers from outside, and KiCad 10's tuning profiles

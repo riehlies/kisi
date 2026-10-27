@@ -20,6 +20,8 @@ KiCad's plugin manager finds plugin.json; docs/research/kicad-plugin.md):
   plugins/kisi_build.json      version and the viewer's SHA-256
   plugins/icons/*.png          toolbar icons (24 px, 48 px; light and dark)
   plugins/viewer/kisi.html     the viewer of this version (the hand-over marker of web/index.html inside)
+  plugins/agent/KISI-AGENT-GUIDE.md  the agent guide for any assistant (tools/agent_guide.py, from the kisi-prepare
+                               skill; the viewer's agent card copies it)
   plugins/cli/kisi.mjs         the command line of this version (Node.js ≥ 18), for the agent path – the viewer's
                                agent card names it with its installed path
   plugins/LICENSE              GPL-3.0
@@ -31,6 +33,9 @@ exist, the viewer has one hand-over marker and this version, the CLI this versio
 """
 import argparse, hashlib, io, json, os, re, sys, zipfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import agent_guide  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "kicad-plugin")
 SCHEMAS = os.path.join(SRC, "tests", "schemas")
@@ -39,7 +44,7 @@ MARKER = "null; /*@kicad-board*/"
 # KiCad's API_PLUGIN::IsValidIdentifier (common/api/api_plugin.cpp): reverse DNS, at least three parts
 KICAD_ID = re.compile(r"^[a-zA-Z]{2,}(\.([a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]|[a-zA-Z0-9])){2,}$")
 DATE = (1980, 1, 1, 0, 0, 0)  # zip timestamps: fixed, so the package is reproducible
-PLUGIN_FILES = ["plugin.json", "requirements.txt", "kisi_action.py", "kisi_kicad.py",
+PLUGIN_FILES = ["plugin.json", "requirements.txt", "kisi_action.py", "kisi_kicad.py", "agent/KISI-AGENT-GUIDE.md",
                 "icons/kisi-24.png", "icons/kisi-48.png", "icons/kisi-24-dark.png", "icons/kisi-48-dark.png"]
 
 
@@ -142,6 +147,10 @@ def build(viewer, cli, out, version=None, test_viewer=False):
     md["versions"][0]["version"] = version
     html, js = rd(viewer), rd(cli)
     bad = check_plugin_json(pj) + check_metadata(md) + check_viewer(html, version, test_viewer) + check_cli(js, version, test_viewer)
+    guide = agent_guide.HEAD + agent_guide.body()
+    if rd(os.path.join(SRC, "agent", "KISI-AGENT-GUIDE.md")) != guide:
+        bad.append("kicad-plugin/agent/KISI-AGENT-GUIDE.md is not up to date – run tools/agent_guide.py")
+    bad += agent_guide.problems(agent_guide.body())
     if md["identifier"] != pj["identifier"]:
         bad.append("metadata.json and plugin.json: different identifiers")
     if bad:

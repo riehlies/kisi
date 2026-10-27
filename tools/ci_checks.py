@@ -49,7 +49,7 @@ GROUPS = {
     # Forstén's solver unchanged against upstream
     "upstream": ["third_party/*"],
     # the KiCad plugin: its unit tests, the package against KiCad's schemas (cheap, no bundles needed)
-    "kicad": ["kicad-plugin/*", "tools/build_kicad_pcm.py"],
+    "kicad": ["kicad-plugin/*", "tools/build_kicad_pcm.py", "tools/agent_guide.py", "claude-plugin/skills/kisi-prepare/*"],
     # Markdown links (cheap; also on every code change) and the documentation PDF
     "docs": ["*.md", "docs/*", "claude-plugin/*", ".claude-plugin/*", "LICENSE*", "tools/docs_pdf.py"],
 }

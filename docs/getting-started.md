@@ -133,18 +133,38 @@ in *Preferences → PCB Editor → Plugins* (KiCad 10), where its environment ca
 **What the button does**
 1. It asks KiCad which board is open and reads the saved `.kicad_pcb`, the `.kicad_pro` and the
    `<board>.kisi.json` next to the board. Changes not yet saved in KiCad are not included: save first.
-2. If there is no `<board>.kisi.json`, it creates an empty one next to the board – the only file it ever writes
-   there. KiCad's files are never written or saved.
-3. It writes a copy of the viewer with these files built in to a folder `kisi-kicad` in the system's temporary
-   folder and opens it. The page works offline, like `kisi.html`; the card "From KiCad" names the board, its
-   folder and what happened to the kisi.json. Clicking the button again replaces the page with the current files.
+2. If the viewer downloaded a `<board>.kisi.json` since the last click (browsers without a folder dialog, see
+   below), it takes that file over from your downloads folder first – only when exactly one such file
+   (`<board>.kisi.json`, also `<board>.kisi(1).json`, `<board>.kisi (1).json`) is newer than the one next to the
+   board, is a kisi.json for this board and passes `kisi config-check` (when Node.js is installed). The previous
+   file is kept as `analysis/<board>.kisi.json.<date-time>.bak`; anything doubtful (several files, another board,
+   an error) leaves everything as it is, and the viewer says why.
+3. If there is no `<board>.kisi.json`, it creates an empty one next to the board.
+4. It writes a copy of the viewer with these files built in to `analysis/<board>.kisi.html` next to the board – the
+   folder `kisi report` and `kisi export` use – and opens it; each click writes it anew. If `analysis/` cannot be
+   written (a read-only folder), the page goes to a folder `kisi-kicad` in the system's temporary folder instead,
+   and the viewer says so. The page works offline, like `kisi.html`; the card "From KiCad" names the board, its
+   folder, the page and what happened to the kisi.json. In a project under version control, add `analysis/` to
+   `.gitignore`.
+
+Next to the board the plugin writes nothing but `<board>.kisi.json` and, in `analysis/`, the page and the backups;
+KiCad's files are never written or saved.
 
 **Saving kisi.json** – on the viewer's *Prepare PCB* page, "Save kisi.json" writes the file next to the board,
 where the next click reads it:
 - in Chrome and Edge a save dialog opens; choose the board's folder (the page shows its path; "Copy path" copies
   the full file name, which can be pasted into the dialog's file name field). The browser remembers the folder for
   this board.
-- in Firefox and Safari the file is downloaded; move it from the downloads folder next to the board.
+- in Firefox and Safari the file is downloaded. To choose the folder instead, let the browser ask where to save:
+  Firefox: *Settings → General → Downloads → Always ask you where to save files* (Firefox then remembers the last
+  folder); Safari: *Settings → General → File download location → Ask for each download*. Otherwise simply click
+  the button in KiCad again: the plugin takes the file over from the downloads folder (step 2 above).
+
+**With an agent** – the plugin carries kisi's command line (`cli/kisi.mjs` in its folder). With Node.js 18 or newer
+installed ([nodejs.org](https://nodejs.org), LTS), the agent card on *Prepare PCB* shows the ready command with the
+real paths, e.g. `node "…\com_github_riehlies_kisi\cli\kisi.mjs" gaps "…\board.kicad_pcb" --for impedance`, and the
+copied prompt tells the agent where the board's kisi.json belongs; the agent writes it there directly, and the next
+click in KiCad loads it. Without Node.js the card says where to get it.
 
 **If nothing happens** – KiCad 10 shows the plugin's error at the warning triangle in the PCB editor's status bar
 (bottom right), and the browser opens a page saying what went wrong. Details are in the plugin's log

@@ -371,6 +371,9 @@ ul.src li { margin: 2px 0; }
 .kicad-dir, .prep-kicad code { font-size: 11.5px; overflow-wrap: anywhere; user-select: all; }
 .prep-kicad { align-items: center; }
 .prep-kicad code { flex: 1; min-width: 0; }
+.prep-agent-kicad { display: flex; flex-direction: column; gap: 4px; }
+.prep-agent-kicad .prep-cmd { margin: 0; font-size: 11.5px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; background: var(--accent-soft); padding: 6px 8px; border-radius: 4px; }
+.prep-agent-kicad a { color: var(--accent); }
 .var-ask { margin: 0; font-size: 12.5px; color: var(--fg); border-left: 3px solid var(--z-high1); padding: 2px 0 2px 8px; }
 .var-choices { flex-wrap: wrap; }
 #variant-body details .note { overflow-wrap: anywhere; }
@@ -501,6 +504,11 @@ table.prep-ed input.ref { max-width: 90px; }
 .prep-dismiss b { font-weight: 600; font-size: 12px; color: var(--muted); }
 .prep-srccell { display: grid; grid-template-columns: minmax(84px, 110px) minmax(90px, 1fr) auto; gap: 4px; align-items: start; min-width: 200px; }
 .prep-srccell.miss select, .prep-srccell.miss input { border-color: var(--z-high1) !important; }
+/* the open values of a step: where to type (the source is marked only once a value is there) */
+#prep input.prep-need, #prep select.prep-need { border-color: var(--z-high1) !important; box-shadow: 0 0 0 2px var(--accent-soft); background: var(--accent-soft); }
+#prep .prep-need::placeholder { color: var(--muted); font-style: italic; opacity: .8; }
+#prep .prep-sugg.prep-need { border-color: var(--z-high1); }
+#prep .prep-need[role="radiogroup"] { outline: 2px solid var(--z-high1); outline-offset: 3px; border-radius: 4px; }
 .prep-srcmore { position: relative; }
 .prep-srcmore > summary { list-style: none; cursor: pointer; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-size: 12px; color: var(--muted); }
 .prep-srcmore > summary::-webkit-details-marker { display: none; }

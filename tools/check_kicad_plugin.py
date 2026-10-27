@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Headless check of the KiCad plugin package with the viewer it carries (Playwright; Chromium by default).
+"""Headless check of the KiCad plugin package with the viewer and CLI it carries (Playwright; Chromium by default).
 
 Usage: check_kicad_plugin.py <kisi-kicad-X.zip> <board.kicad_pcb> [--config ref.kisi.json] [--out DIR]
                              [--browser chromium|firefox|webkit]
@@ -7,17 +7,23 @@ Usage: check_kicad_plugin.py <kisi-kicad-X.zip> <board.kicad_pcb> [--config ref.
 Without KiCad (no KiCad runs in CI): the zip is extracted the way KiCad's Plugin and Content Manager does
 (<zip>/plugins/… → 3rdparty/plugins/com_github_riehlies_kisi/…), the board is copied into a folder whose name has
 spaces and umlauts, and the extracted kisi_action.py makes the page (--pcb, as KiCad's button does with the board's
-path from the API). Then, opened from disk (file://):
-1. no kisi.json next to the board: the plugin creates the skeleton; the page starts with the board loaded from the
-   embedded files, the "From KiCad" card (board, folder, kisi.json created, the saved-file note), no console errors
+path from the API), with a HOME of its own whose Downloads folder the plugin watches. Then, opened from disk:
+1. no kisi.json next to the board: the plugin creates the skeleton and writes analysis/<board>.kisi.html; the page
+   starts with the board from the embedded files, the "From KiCad" card (board, folder, kisi.json created, the
+   page's place, the saved-file note), the agent card with the installed CLI's command and the board's paths
+   (Node.js found when this machine has it), no console errors
 2. Prepare PCB: the path of the board's kisi.json, saving through the File System Access dialog (stubbed: the
    options – suggested name, the remembered-folder id), the saved file loaded, the card says so
-3. the download path (no File System Access): the download and the note where to put the file
-4. a second click with the saved kisi.json next to the board: loaded from there
-5. --config: a full kisi.json next to the board, checked without errors; KiCad's "unsaved changes" notice
-Screenshots (kicad-start.png, kicad-prepare.png, kicad-saved.png, …) go to --out. Exit code 1 on problems.
+3. the download path (no File System Access): the note with the browsers' "ask where to save" settings, the
+   download (put into the Downloads folder as a browser would), the card's note about the next click
+4. the next click takes the download over: moved next to the board (checked with the CLI's config-check where Node.js
+   is there), the previous kisi.json kept in analysis/, the card says so; two candidates: nothing is taken over
+5. --config: a full kisi.json next to the board, checked without errors; KiCad's "unsaved changes" notice; the agent
+   card without Node.js (the nodejs.org note)
+Screenshots (kicad-start.png, kicad-prepare.png, kicad-saved.png, kicad-download.png, kicad-import.png, …) and a
+generated page go to --out. Exit code 1 on problems.
 """
-import argparse, json, os, pathlib, re, shutil, subprocess, sys, tempfile, zipfile
+import argparse, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time, zipfile
 from playwright.sync_api import sync_playwright
 
 ap = argparse.ArgumentParser()
@@ -53,8 +59,10 @@ with zipfile.ZipFile(a.zip) as z:
         pathlib.Path(t).write_bytes(z.read(e))
 plugin = os.path.join(root, "3rdparty", "plugins", md["identifier"].replace(".", "_"))
 action = os.path.join(plugin, "kisi_action.py")
+cli = os.path.join(plugin, "cli", "kisi.mjs")
 check(os.path.isfile(os.path.join(plugin, "plugin.json")) and os.path.isfile(os.path.join(plugin, "requirements.txt")),
       "plugin.json or requirements.txt not where KiCad looks")
+check(os.path.isfile(cli), "cli/kisi.mjs is not in the package")
 
 stem = os.path.basename(a.board).removesuffix(".kicad_pcb")
 bdir = os.path.join(root, "Projekte", "kisi Test äöü ß")
@@ -65,18 +73,24 @@ if os.path.exists(pro):
     shutil.copy(pro, bdir)
 pcb = os.path.join(bdir, stem + ".kicad_pcb")
 cfg = os.path.join(bdir, stem + ".kisi.json")
-tmp = os.path.join(root, "temp")
+page_want = os.path.join(bdir, "analysis", stem + ".kisi.html")
+tmp, home = os.path.join(root, "temp"), os.path.join(root, "home")
+downloads = os.path.join(home, "Downloads")
 os.makedirs(tmp)
-ENV = dict(os.environ, TMPDIR=tmp, TEMP=tmp, TMP=tmp)
+os.makedirs(downloads)
+# the plugin's Downloads folder: ~/Downloads of this HOME (xdg-user-dir, where installed, gives the same)
+ENV = dict(os.environ, TMPDIR=tmp, TEMP=tmp, TMP=tmp, HOME=home, XDG_CONFIG_HOME=os.path.join(home, ".config"))
+have_node = bool(shutil.which("node"))
 
 
-def make_page(modified=None):
+def make_page(modified=None, node_off=False):
     """The extracted plugin makes the page: kisi_action.py --pcb (KiCad's way minus the API), or kisi_kicad with a
-    modified state (what KiCad's API would report)."""
-    if modified:
-        code = ("import sys; sys.path.insert(0, sys.argv[1]); import kisi_kicad as k, os; "
-                "print(k.make_page(os.path.basename(sys.argv[2]), os.path.dirname(sys.argv[2]), '', modified=sys.argv[3], kicad_version='10.0.7')[0])")
-        cmd = [sys.executable, "-I", "-c", code, plugin, pcb, modified]
+    modified state (what KiCad's API would report) and, with node_off, as on a machine without Node.js."""
+    if modified or node_off:
+        code = ("import sys, os; sys.path.insert(0, sys.argv[1]); import kisi_kicad as k; "
+                "node = {'ok': False, 'path': '', 'version': '', 'reason': 'Node.js was not found'} if sys.argv[4] == '1' else 'auto'; "
+                "print(k.make_page(os.path.basename(sys.argv[2]), os.path.dirname(sys.argv[2]), '', modified=sys.argv[3], kicad_version='10.0.7', node=node)[0])")
+        cmd = [sys.executable, "-I", "-c", code, plugin, pcb, modified or "unknown", "1" if node_off else "0"]
     else:
         cmd = [sys.executable, "-I", action, "--pcb", pcb, "--no-browser"]
     p = subprocess.run(cmd, capture_output=True, text=True, env=ENV, cwd=plugin)
@@ -102,14 +116,24 @@ def open_page(pg, page, tag):
 
 
 def card(pg):
-    return pg.evaluate("document.getElementById('kicad-card').classList.contains('off') ? null : document.getElementById('kicad-card').innerText")
+    return pg.evaluate("document.getElementById('kicad-card').classList.contains('off') ? null : document.getElementById('kicad-card').innerText") or ""
 
 
 def open_prepare(pg):
     if not pg.evaluate("S.prep.open"):
         pg.click("#prep-btn")
-    pg.wait_for_function("S.prep.open && !S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)
+    pg.wait_for_function("S.prep.open && !S.prep.busy && !S.prep.inflight && !S.prep.queued && !!document.querySelector('#prep-gaps .prep-step, #prep-gaps .prep-empty')", timeout=120000)
     pg.wait_for_timeout(200)
+
+
+def agent(pg):
+    return pg.evaluate("({ shown: !document.getElementById('prep-agent-kicad').hidden, text: document.getElementById('prep-agent-kicad').innerText,"
+                       " cmd: (document.getElementById('prep-agent-cmd') || {}).textContent || '', prompt: document.getElementById('prep-prompt').textContent })")
+
+
+def age(path, seconds):
+    t = time.time() - seconds
+    os.utime(path, (t, t))
 
 
 FSA_STUB = """() => { window.__fsa = null; window.__saved = null;
@@ -121,24 +145,39 @@ with sync_playwright() as p:
     ctx = b.new_context(viewport={"width": 1440, "height": 900}, accept_downloads=True)
     # 1. first click: no kisi.json next to the board
     page1 = make_page()
+    check(page1 == page_want, f"start: the page is {page1}, not analysis/{stem}.kisi.html next to the board")
     shutil.copy(page1, os.path.join(out, f"{stem}-from-kicad.html"))  # a sample of the generated page
     check(os.path.isfile(cfg), "the skeleton kisi.json was not created next to the board")
     check(json.loads(pathlib.Path(cfg).read_text(encoding="utf-8")) == {"kisi_config": 1, "board": stem + ".kicad_pcb"}, "skeleton content")
+    check(sorted(os.listdir(bdir)) == sorted([stem + ".kicad_pcb", stem + ".kisi.json", "analysis"] + ([stem + ".kicad_pro"] if os.path.exists(pro) else [])),
+          f"start: files next to the board: {sorted(os.listdir(bdir))}")
     pg = ctx.new_page()
     errs = open_page(pg, page1, "start")
     st = pg.evaluate("({ name: S.name, cfg: S.lastFiles && S.lastFiles.cfg && S.lastFiles.cfg.name, ok: !!(S.config && S.config.check && S.config.check.ok),"
-                     " fsa: typeof window.showSaveFilePicker, secure: window.isSecureContext, sample: S.sample })")
+                     " fsa: typeof window.showSaveFilePicker, secure: window.isSecureContext })")
     check(st["name"] == stem, f"start: board name {st['name']!r}")
     check(st["cfg"] == stem + ".kisi.json" and st["ok"], f"start: kisi.json not loaded or not ok: {st}")
-    c = card(pg) or ""
+    c = card(pg)
     check("from kicad" in c.lower() and stem + ".kicad_pcb" in c and bdir in c, f"start: the KiCad card: {c!r}")
     check("empty one was created next to the board" in c and "not yet saved in KiCad" in c, f"start: card text: {c!r}")
-    notes.append(f"{a.browser} on file://: showSaveFilePicker {st['fsa']}, secure context {st['secure']}")
+    check(f"This page: {page_want}" in c, f"start: the card does not name the page in analysis/: {c!r}")
+    notes.append(f"{a.browser} on file://: showSaveFilePicker {st['fsa']}, secure context {st['secure']}; node on this machine: {have_node}")
     pg.screenshot(path=f"{out}/kicad-start.png")
-    # 2. Prepare PCB: save through the File System Access dialog (stubbed)
+    # 2. Prepare PCB: the agent card with the installed CLI, then saving through the File System Access dialog (stubbed)
     open_prepare(pg)
-    vis = pg.evaluate("[!document.getElementById('prep-kicad').hidden, document.getElementById('prep-kicad-path').textContent, document.getElementById('prep-save').disabled, document.getElementById('prep-save-note').textContent]")
-    check(vis[0] and vis[1] == cfg, f"prepare: path of the kisi.json: {vis[:2]}")
+    ag = agent(pg)
+    want_cmd = f'node "{cli}" gaps "{pcb}" --for impedance'
+    check(ag["shown"] and ag["cmd"] == want_cmd, f"agent card: command {ag['cmd']!r}, expected {want_cmd!r}")
+    pg.evaluate("S.prep.agentScope = 'all'; prepRender(true)")  # a prompt also where this tab has nothing to check
+    ag_all = agent(pg)
+    check(ag_all["cmd"] == f'node "{cli}" gaps "{pcb}"', f"agent card (all categories): command {ag_all['cmd']!r}")
+    check(f'write "{cfg}" directly' in ag_all["prompt"] and f'node "{cli}"' in ag_all["prompt"], f"agent card: the prompt lacks the paths: {ag_all['prompt'][-400:]!r}")
+    pg.evaluate("S.prep.agentScope = 'tab'; prepRender(true)")
+    check(("Node.js" in ag["text"] and "found" in ag["text"]) if have_node else "nodejs.org" in ag["text"], f"agent card: Node.js status: {ag['text']!r}")
+    pg.locator("#prep-agent-kicad").scroll_into_view_if_needed()
+    pg.screenshot(path=f"{out}/kicad-agent.png")
+    vis = pg.evaluate("[!document.getElementById('prep-kicad').hidden, document.getElementById('prep-kicad-path').textContent]")
+    check(vis[0] and vis[1] == cfg, f"prepare: path of the kisi.json: {vis}")
     pg.evaluate(FSA_STUB)
     pg.evaluate("prepRender(true)")
     note = pg.inner_text("#prep-save-note")
@@ -154,46 +193,78 @@ with sync_playwright() as p:
     check(o["startIn"] is None, f"save: startIn {o['startIn']!r} (none: the id's remembered folder decides)")
     saved = json.loads(o["saved"])
     check(saved.get("board") == stem + ".kicad_pcb" and saved.get("kisi_config") == 1, f"save: content {o['saved'][:200]}")
-    c = card(pg) or ""
-    check("saved from the" in c, f"save: card after saving: {c!r}")
+    check("saved from the" in card(pg), f"save: card after saving: {card(pg)!r}")
     pg.screenshot(path=f"{out}/kicad-saved.png")
-    # 3. the download path (Firefox, Safari)
+    # 3. the download path (Firefox, Safari): the browsers' setting, else the take-over on the next click
     pg.evaluate("window.showSaveFilePicker = undefined; S.prep.saved = ''; prepRender(true)")  # as after the next edit
     note = pg.inner_text("#prep-save-note")
-    check("move it from the downloads folder" in note, f"download: note before saving: {note!r}")
+    check("Always ask you where to save files" in note and "Ask for each download" in note and "takes the file over" in note, f"download: note before saving: {note!r}")
+    pg.evaluate("""() => { const w = prepW(); w.notes = ["entered in the browser, downloaded"]; prepEdited(true); }""")
+    pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=60000)
     with pg.expect_download() as dl:
         pg.click("#prep-save")
     check(dl.value.suggested_filename == stem + ".kisi.json", f"download: file name {dl.value.suggested_filename!r}")
+    got = os.path.join(downloads, dl.value.suggested_filename)
+    dl.value.save_as(got)  # where the browser puts it by default
     pg.wait_for_function(f"{BUSY} && /downloaded and loaded/.test(document.getElementById('prep-save-note').textContent)", timeout=120000)
-    check("Move it from the downloads folder" in pg.inner_text("#prep-save-note"), "download: note after saving")
-    check("downloaded: move it" in (card(pg) or ""), f"download: card: {card(pg)!r}")
+    check("takes it over from the downloads folder" in pg.inner_text("#prep-save-note"), "download: note after saving")
+    check("Click kisi in KiCad again" in card(pg), f"download: card: {card(pg)!r}")
     pg.screenshot(path=f"{out}/kicad-download.png")
     for e in errs:
         check(False, f"first page: {e}")
     pg.close()
-    # 4. second click: the saved kisi.json next to the board (as the dialog wrote it)
-    pathlib.Path(cfg).write_text(o["saved"], encoding="utf-8")
+    # 4. the next click takes the download over (the skeleton next to the board is older)
+    age(cfg, 120)
+    old = pathlib.Path(cfg).read_text(encoding="utf-8")
+    want = pathlib.Path(got).read_text(encoding="utf-8")
     page2 = make_page()
-    check(page2 == page1, "second click: a new page instead of replacing the first")
+    check(page2 == page1, "second click: another page instead of analysis/<board>.kisi.html again")
+    check(pathlib.Path(cfg).read_text(encoding="utf-8") == want and not os.path.exists(got), "import: the download was not moved next to the board")
+    baks = [f for f in os.listdir(os.path.join(bdir, "analysis")) if f.endswith(".bak")]
+    check(len(baks) == 1 and pathlib.Path(bdir, "analysis", baks[0]).read_text(encoding="utf-8") == old, f"import: backup in analysis/: {baks}")
     pg = ctx.new_page()
-    errs = open_page(pg, page2, "second")
-    c = card(pg) or ""
-    check("loaded from next to the board" in c, f"second click: card: {c!r}")
+    errs = open_page(pg, page2, "import")
+    c = card(pg)
+    check("Taken over from the downloads folder" in c and got in c and "previous file is kept" in c, f"import: card: {c!r}")
+    check(("kisi config-check ok" in c) if have_node else ("format checked" in c), f"import: card names the check: {c!r}")
+    check(pg.evaluate("S.lastFiles.cfg.text") == want, "import: the page did not load the taken-over kisi.json")
+    pg.screenshot(path=f"{out}/kicad-import.png")
     for e in errs:
-        check(False, f"second page: {e}")
+        check(False, f"import page: {e}")
     pg.close()
-    # 5. a full kisi.json, and KiCad reporting unsaved changes
+    # two candidates: nothing is taken over
+    age(cfg, 120)
+    for n in (stem + ".kisi.json", stem + ".kisi (1).json"):
+        pathlib.Path(downloads, n).write_text(want, encoding="utf-8")
+    before = pathlib.Path(cfg).read_text(encoding="utf-8")
+    page3 = make_page()
+    check(pathlib.Path(cfg).read_text(encoding="utf-8") == before and len(os.listdir(downloads)) == 2, "ambiguous: something was taken over")
+    pg = ctx.new_page()
+    errs = open_page(pg, page3, "ambiguous")
+    check("Not taken over from the downloads folder" in card(pg) and "2 files" in card(pg), f"ambiguous: card: {card(pg)!r}")
+    pg.screenshot(path=f"{out}/kicad-ambiguous.png")
+    for e in errs:
+        check(False, f"ambiguous page: {e}")
+    pg.close()
+    for n in os.listdir(downloads):
+        os.remove(os.path.join(downloads, n))
+    # 5. a full kisi.json, KiCad reporting unsaved changes, no Node.js
     if a.config:
         shutil.copy(a.config, cfg)
-    page3 = make_page(modified="modified")
+    page4 = make_page(modified="modified", node_off=True)
     pg = ctx.new_page()
-    errs = open_page(pg, page3, "modified")
-    c = card(pg) or ""
-    check("KiCad reports unsaved changes" in c, f"modified: card: {c!r}")
+    errs = open_page(pg, page4, "modified")
+    check("KiCad reports unsaved changes" in card(pg), f"modified: card: {card(pg)!r}")
     if a.config:
         r = pg.evaluate("({ ok: S.config.check.ok, entries: S.config.check.entries, errors: S.config.check.errors })")
         check(r["ok"] and r["entries"] > 0, f"--config: {r}")
     pg.screenshot(path=f"{out}/kicad-modified.png")
+    open_prepare(pg)
+    pg.evaluate("S.prep.agentScope = 'all'; prepRender(true)")
+    ag = agent(pg)
+    check(ag["shown"] and "nodejs.org" in ag["text"] and "Node.js ≥ 18 is needed" in ag["prompt"], f"no Node.js: agent card {ag['text']!r}")
+    pg.locator("#prep-agent-kicad").scroll_into_view_if_needed()
+    pg.screenshot(path=f"{out}/kicad-agent-no-node.png")
     for e in errs:
         check(False, f"modified page: {e}")
     pg.close()

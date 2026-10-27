@@ -107,8 +107,9 @@ S4, S5]; only 10 is tested. `tools/build_kicad_pcm.py` validates against the ven
    (the viewer's own start, `config-check` ok) only when no file exists (exclusive create); a guard refuses any other
    write next to the board.
 5. The files go gzip + base64 into the payload that replaces `null; /*@kicad-board*/` in `viewer/kisi.html`
-   (`<` escaped); the page goes to `<temp>/kisi-kicad/<board>-<hash of the path>.html` (a second click replaces it;
-   pages older than 14 days are removed) and opens with `webbrowser` (Windows: `os.startfile` as fallback).
+   (`<` escaped); the page goes to `analysis/<board>.kisi.html` next to the board (round 2; before:
+   `<temp>/kisi-kicad/<board>-<hash of the path>.html`, still the fallback) and opens with `webbrowser` (Windows:
+   `os.startfile` as fallback).
 6. In the viewer, `loadKicadBoard` turns the payload into `File` objects and calls `handleFiles` – the drop path.
    The "From KiCad" card names board, folder, the kisi.json's state and the unsaved-changes note.
 7. Prepare PCB → "Save kisi.json": Chromium/Edge `showSaveFilePicker` with `suggestedName` `<board>.kisi.json` and
@@ -118,6 +119,41 @@ S4, S5]; only 10 is tested. `tools/build_kicad_pcm.py` validates against the ven
    name); Firefox/Safari download, with the note to move the file next to the board.
 8. Problems: one line on stderr (shown at the alert triangle from KiCad 10.0.1 [S1]), exit code 1, an error page
    in the browser, details in `<temp>/kisi-kicad/kisi-kicad.log`.
+
+## Round 2 (2026-10-27, after the first test in KiCad 10 on Windows)
+The first test passed in principle (install, button, viewer with the board, skeleton). The maintainer's decisions
+for round 2 – **no local server** (a security risk) – and how they are built:
+- **The page into `analysis/`:** `analysis/<board>.kisi.html` next to the board (the folder `kisi report` and
+  `kisi export` use), written anew on each click; the temporary folder when `analysis/` cannot be written, said in
+  the card. `Guard` allows exactly `<board>.kisi.json`, `analysis/<board>.kisi.html` and the backups
+  `analysis/<board>.kisi.json.<YYYYmmdd-HHMMSS>[-n].bak` next to the board, and the plugin's temp folder.
+- **Prepare PCB marks what a step needs:** before, `prepSrcCell` marked the source of every entry without a source –
+  also entries without a value – and nothing marked the value inputs. Now an open step marks its empty value inputs
+  (`prep-need`; per step type: εr/tanδ of the flagged layers, target Ω, profile, variant choice, the regulator
+  chain's new entry and suggestions, currents per rail, rated V and dielectric, bead Z/R, θJB/θJC) and focuses the
+  first; the source is marked once the entry has a value. `check_viewer.py` (`prepare_marks`) checks every step type
+  on the bare example boards and ThunderScope with its kisi.json (thermal data).
+- **The CLI in the package:** `plugins/cli/kisi.mjs` of the same version; `find_node` runs `node --version` (5 s,
+  no console window; PATH, then `%ProgramFiles%\nodejs`, `%LOCALAPPDATA%\Programs\nodejs`, `NVM_SYMLINK`) and the
+  page gets the CLI path and the Node.js status; the agent card shows `node "<plugin>\cli\kisi.mjs" gaps "<board>"
+  --for <tab>` and the copied prompt names the CLI, the board and where its kisi.json goes (the agent writes it
+  directly). The skill kisi-prepare names the plugin's folder as a place to find `kisi.mjs`.
+- **Saving without File System Access:** (A) the save step and `docs/getting-started.md` give the browsers' "ask where
+  to save" settings (Firefox: Settings → General → Downloads → "Always ask you where to save files"; Safari: Settings
+  → General → File download location → "Ask for each download"). (B) The next click takes a downloaded
+  `<board>.kisi.json` over (`import_download`): the Downloads folder from `SHGetKnownFolderPath(FOLDERID_Downloads)`
+  ([S12]), else `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders` value
+  `{374DE290-123F-4565-9164-39C4925E467B}` (REG_EXPAND_SZ), else `%USERPROFILE%\Downloads`; on Linux
+  `xdg-user-dir DOWNLOAD`, else `user-dirs.dirs` ([S13]), else `~/Downloads`; macOS `~/Downloads`. Candidates:
+  `<board>.kisi.json` and the browsers' duplicate names `<board>.kisi(1).json` (Firefox), `<board>.kisi (1).json`
+  (Chrome, Edge), `<board>.kisi-1.json`; only those newer than the board's kisi.json (1 s slack). Exactly one, valid
+  JSON with `kisi_config` 1 and `board` naming this board, and `kisi config-check` ok when Node.js and the CLI are
+  there (a check that cannot run is reported, the format check stands); then the old file is copied to `analysis/`
+  (exclusive create), the download's bytes replace the kisi.json (atomic), the download is removed. Several
+  candidates, another board, invalid content or a failed backup: nothing changes, the card says why.
+- [S12] FOLDERID_Downloads = `{374DE290-123F-4565-9164-39C4925E467B}` (KNOWNFOLDERID; e.g. Free Pascal's WinDirs
+  reference, https://www.freepascal.org/docs-html/3.2.0/rtl/windirs/folderid_downloads.html).
+- [S13] xdg-user-dirs (`xdg-user-dir`, `~/.config/user-dirs.dirs`), freedesktop.org.
 
 ## Checked here, and what only KiCad can show
 Checked without KiCad: the unit tests (paths with spaces and umlauts, Windows path rules with `ntpath`, skeleton,

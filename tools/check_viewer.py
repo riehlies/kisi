@@ -8,7 +8,8 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
   lane eye, voltage drop with ground return, impedance seen from the ICs, losses map, temperature and power flow
-  (desktop layouts; --quick: only load and the three views), the Prepare PCB page (tabs, laminate,
+  (desktop layouts; --quick: only load and the three views), the Prepare PCB page (what a step needs marked on its
+  inputs for every step type, the source only after a value, the focus on the first marked input; tabs, laminate,
   a dismissal, saving one category; with the example boards: the loaded kisi.json in the forms, saving it
   unchanged, keys without a form kept, the draft across a page reload, Discard, saving one category, the
   views' edits into the draft, a stale dismissal; light run: the acceptance run on the bare ThunderScope –
@@ -554,6 +555,80 @@ def prepare_examples_clean(pg, tag, step):
         pg.click("#view-si"); pg.wait_for_timeout(200)
 
 
+# per step type: the gap, the value typed into its first marked input (None: a select or radio, chosen instead), and
+# whether the entry then gets a source cell of its own (caps and the regulator chain share one source)
+MARK_STEPS = {"nets-without-target": "50", "stackup-defaults": "0.012", "classes-without-standard": None, "assembly-variant": None,
+              "power-tree": None, "ic-loads": "120", "cap-ratings": "6.3V", "bead-ratings": "220", "thermal-data": "20"}
+MARK_SOURCE = {"nets-without-target", "stackup-defaults", "classes-without-standard", "ic-loads", "bead-ratings", "thermal-data"}
+
+
+def prepare_marks(pg, tag, step):
+    """What a step needs is marked where it is entered: on the bare example boards (and ThunderScope with its kisi.json
+    for the thermal data) every open step with a form marks its empty value inputs (prep-need), no source cell is
+    marked before its entry has a value, opening the step focuses the first marked input; a value typed there drops
+    the mark and marks the entry's source instead."""
+    seen = set()
+    for key, cfg in (("ts", False), ("vna", False), ("ts", True)):
+        if not pg.evaluate(f"!!SAMPLES[{json.dumps(key)}]"):
+            continue
+        js = "(async () => { const s = SAMPLES[%s]; const [a, c] = await Promise.all([gunzipB64(s.pcb), gunzipB64(s.pro)]); return [a, c, s.file || s.name]; })()" % json.dumps(key)
+        prep_load(pg, js, pg.evaluate(f"SAMPLES[{json.dumps(key)}].config.text") if cfg else None)
+        if not pg.evaluate("S.prep.open"):
+            pg.click("#prep-btn")
+        for t in ["impedance", "channel", "power"]:
+            prep_tab(pg, t)
+            for g in pg.evaluate("[...document.querySelectorAll('#prep-gaps .prep-step.k-open[data-gap]')].map((e) => e.dataset.gap).filter((g) => g !== 'save')"):
+                if g in seen or g not in MARK_STEPS:
+                    continue
+                seen.add(g)
+                pg.evaluate(f"S.prep.cards[S.name + {json.dumps(g)}] = true; S.prep.scrollTo = {json.dumps(g)}; prepRender(true)")
+                pg.wait_for_timeout(250)
+                r = pg.evaluate("""(g) => { const el = document.getElementById('prep-gap-' + g), f = document.activeElement;
+                  return { need: el.querySelectorAll('.body .prep-need').length, miss: el.querySelectorAll('.body .prep-srccell.miss').length,
+                           focus: !!f && el.contains(f) && (f.classList.contains('prep-need') || !!f.closest('.prep-need')) }; }""", g)
+                where = f"{tag}: prepare marks ({key}{' with kisi.json' if cfg else ''}, {t}) {g}"
+                if not r["need"]:
+                    problems.append(f"{where}: no input marked as needed")
+                    continue
+                if r["miss"]:
+                    problems.append(f"{where}: {r['miss']} source cell(s) marked before any value")
+                if not r["focus"]:
+                    problems.append(f"{where}: the focus is not on a marked input")
+                step(f"marks_{g}")
+                # enter the first value: the mark goes, the entry's source is marked (until a source is given)
+                sel = pg.evaluate("""(g) => { const el = document.querySelector('#prep-gap-' + g + ' .body .prep-need');
+                  const x = el.matches('input, select') ? el : el.querySelector('input'); return prepSel(x); }""", g)
+                full = f"#prep-gap-{g} {sel}"
+                loc = pg.locator(full).first
+                tagname = loc.evaluate("(e) => e.tagName + ':' + e.type")
+                if tagname == "SELECT:select-one":
+                    loc.select_option(index=1)
+                elif tagname.endswith(":radio"):
+                    pg.locator(f"#prep-gap-{g} [role=radiogroup] input").first.check()
+                elif MARK_STEPS[g] is not None:
+                    loc.fill(MARK_STEPS[g]); loc.press("Tab")
+                else:
+                    continue
+                prep_idle(pg)
+                after = pg.evaluate("""([g, sel]) => { const x = document.querySelector('#prep-gap-' + g + ' ' + sel);
+                  const box = x && (x.closest('tr') || x.closest('.prep-nc') || x.closest('.prep-conn'));
+                  return { gone: !x || !x.classList.contains('prep-need'), src: !!box && !!box.querySelector('.prep-srccell.miss'), step: !!document.getElementById('prep-gap-' + g) }; }""", [g, sel])
+                if not after["gone"]:
+                    problems.append(f"{where}: the input stays marked after a value was entered")
+                if g in MARK_SOURCE and after["step"] and not after["src"]:
+                    problems.append(f"{where}: the source of the entry is not marked after its value")
+    want = {"nets-without-target", "stackup-defaults", "classes-without-standard", "assembly-variant", "power-tree", "ic-loads", "cap-ratings"}
+    if pg.evaluate("!!SAMPLES.vna"):
+        want.add("bead-ratings")
+    if pg.evaluate("!!(SAMPLES.ts && SAMPLES.ts.config)"):
+        want.add("thermal-data")
+    if want - seen:
+        problems.append(f"{tag}: prepare marks: step types not checked: {sorted(want - seen)}")
+    pg.evaluate("() => { for (const k of Object.keys(localStorage)) if (k.startsWith('kisi.prep.v1.')) localStorage.removeItem(k); S.prep.mem = {}; }")
+    if pg.evaluate("S.prep.open"):
+        pg.click("#view-si"); pg.wait_for_timeout(200)
+
+
 def prepare_roundtrip(pg, tag, step):
     """ThunderScope with its kisi.json (plus keys the page has no form for): the forms show the loaded values,
     saving unchanged gives the same file, an edit keeps the other keys, the draft survives a page reload and
@@ -1083,6 +1158,8 @@ def prepare_all(pg, tag, step, errs):
     prepare_page(pg, tag, step)
     if pg.evaluate("typeof SAMPLES !== 'undefined' && !!SAMPLES.ts && !!SAMPLES.ts.config"):
         prepare_examples_clean(pg, tag, step)
+        if tag != "phone":
+            prepare_marks(pg, tag, step)
         prepare_checklist(pg, tag, step)
         prepare_handover(pg, tag, step)
         prepare_stale_draft(pg, tag, step)

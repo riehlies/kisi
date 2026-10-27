@@ -13,7 +13,11 @@ viewer) lays that file over the board when it loads it. **Never edit the KiCad f
 ### Getting kisi
 kisi is one file, `kisi.mjs` (Node.js ≥ 18; it includes the 2D field solver). Look for it in this order and
 reuse it:
-1. `$KISI_MJS` if set, else `~/.kisi/kisi.mjs`.
+1. `$KISI_MJS` if set, else `~/.kisi/kisi.mjs`. With kisi's KiCad plugin installed, the CLI of the same version is
+   in the plugin's folder: `cli/kisi.mjs` under `Documents\KiCad\10.0\3rdparty\plugins\com_github_riehlies_kisi\`
+   (Windows; macOS `~/Documents/KiCad/10.0/3rdparty/plugins/…`, Linux `~/.local/share/kicad/10.0/3rdparty/plugins/…`).
+   A prompt copied from the viewer's agent card names that path, the board and where `<board>.kisi.json` goes –
+   write the file there directly; the user's next click in KiCad loads it.
 2. Otherwise download the latest release into `~/.kisi/`:
    - `curl -fsSL --create-dirs -o ~/.kisi/kisi.mjs https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs`
      (PowerShell: `Invoke-WebRequest <same URL> -OutFile $HOME\.kisi\kisi.mjs`), or

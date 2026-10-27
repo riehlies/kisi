@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build kisi's KiCad plugin package (KiCad 9/10 IPC plugin) from kicad-plugin/ and the viewer bundle.
 
-Usage: build_kicad_pcm.py <kisi.html> [--out DIR] [--version X.Y.Z]
+Usage: build_kicad_pcm.py <kisi.html> <kisi.mjs> [--out DIR] [--version X.Y.Z]
 
 Writes into DIR (default dist/):
   kisi-kicad-<version>.zip                 the package: "Install from File…" in KiCad's Plugin and Content Manager,
@@ -20,12 +20,14 @@ KiCad's plugin manager finds plugin.json; docs/research/kicad-plugin.md):
   plugins/kisi_build.json      version and the viewer's SHA-256
   plugins/icons/*.png          toolbar icons (24 px, 48 px; light and dark)
   plugins/viewer/kisi.html     the viewer of this version (the hand-over marker of web/index.html inside)
+  plugins/cli/kisi.mjs         the command line of this version (Node.js ≥ 18), for the agent path – the viewer's
+                               agent card names it with its installed path
   plugins/LICENSE              GPL-3.0
   resources/icon.png           64×64 package icon
 
 Checks (fail the build): metadata against KiCad 10's PCM schema v2 and KiCad 9's schema v1 (Install from File
 validates against them), plugin.json against KiCad's plugin schema and identifier rule, the files plugin.json names
-exist, the viewer has one hand-over marker and this version. Reproducible: fixed order, timestamps and modes.
+exist, the viewer has one hand-over marker and this version, the CLI this version. Reproducible: fixed order, timestamps and modes.
 """
 import argparse, hashlib, io, json, os, re, sys, zipfile
 
@@ -113,6 +115,12 @@ def check_viewer(html, version, test_viewer=False):
     return bad
 
 
+def check_cli(js, version, test_viewer=False):
+    if not test_viewer and f'VERSION = "{version}"' not in js:
+        return [f"cli: kisi.mjs is not version {version} (bundle it from this tree: tools/bundle_cli.py)"]
+    return []
+
+
 def zip_bytes(entries):
     """entries: [(name, bytes)] → a reproducible zip."""
     buf = io.BytesIO()
@@ -126,23 +134,24 @@ def zip_bytes(entries):
     return buf.getvalue()
 
 
-def build(viewer, out, version=None, test_viewer=False):
+def build(viewer, cli, out, version=None, test_viewer=False):
     """Build the package; returns {zip, metadata, sha256, size, install_size}. Raises SystemExit on problems."""
     version = version or cargo_version()
     pj = json.loads(rd(os.path.join(SRC, "plugin.json")))
     md = json.loads(rd(os.path.join(SRC, "metadata.json")))
     md["versions"][0]["version"] = version
-    html = rd(viewer)
-    bad = check_plugin_json(pj) + check_metadata(md) + check_viewer(html, version, test_viewer)
+    html, js = rd(viewer), rd(cli)
+    bad = check_plugin_json(pj) + check_metadata(md) + check_viewer(html, version, test_viewer) + check_cli(js, version, test_viewer)
     if md["identifier"] != pj["identifier"]:
         bad.append("metadata.json and plugin.json: different identifiers")
     if bad:
         raise SystemExit("build_kicad_pcm: " + "\n  ".join(["problems:"] + bad))
     hb = html.encode("utf-8")
-    info = {"version": version, "viewer_sha256": hashlib.sha256(hb).hexdigest()}
+    jb = js.encode("utf-8")
+    info = {"version": version, "viewer_sha256": hashlib.sha256(hb).hexdigest(), "cli_sha256": hashlib.sha256(jb).hexdigest()}
     entries = [("metadata.json", (json.dumps(md, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))]
     plugin = [(f, rd(os.path.join(SRC, f), "rb")) for f in PLUGIN_FILES]
-    plugin += [("kisi_build.json", (json.dumps(info, indent=2) + "\n").encode()), ("viewer/kisi.html", hb),
+    plugin += [("kisi_build.json", (json.dumps(info, indent=2) + "\n").encode()), ("viewer/kisi.html", hb), ("cli/kisi.mjs", jb),
                ("LICENSE", rd(os.path.join(ROOT, "LICENSE"), "rb"))]
     entries += sorted(("plugins/" + f, d) for f, d in plugin)
     entries.append(("resources/icon.png", rd(os.path.join(SRC, "resources", "icon.png"), "rb")))
@@ -172,10 +181,11 @@ def build(viewer, out, version=None, test_viewer=False):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("viewer", help="the viewer bundle dist/kisi.html of this tree")
+    ap.add_argument("cli", help="the command line bundle dist/kisi.mjs of this tree")
     ap.add_argument("--out", default=os.path.join(ROOT, "dist"))
     ap.add_argument("--version", help="default: the workspace version in Cargo.toml")
     a = ap.parse_args()
-    r = build(a.viewer, a.out, a.version)
+    r = build(a.viewer, a.cli, a.out, a.version)
     print(f"{r['zip']}: {r['size'] / 1e6:.2f} MB (installed {r['install_size'] / 1e6:.2f} MB), sha256 {r['sha256']}")
     print(f"{r['metadata']}: the PCM repository entry (also in {os.path.join(a.out, 'pcm')})")
     return 0

@@ -122,23 +122,36 @@ async function loadKicadBoard(k) {
 }
 const kicadActive = () => !!(S.kicad && S.kicad.on && S.scene && S.name === S.kicad.board);
 // where the board's kisi.json belongs (the plugin's path, with the platform's separators)
+// the plugin's kisi.mjs and Node.js (kisi_kicad.find_cli, find_node): the agent card's command
+const kicadCli = () => (kicadActive() && S.kicad.cli && S.kicad.cli.path ? S.kicad.cli : null);
 const kicadCfgPath = () => S.kicad.config_path || S.kicad.dir + (S.kicad.dir.includes("\\") ? "\\" : "/") + S.kicad.board + ".kisi.json";
 function kicadCard() {
   const on = kicadActive(), k = S.kicad;
   $("kicad-card").classList.toggle("off", !on);
   if (!on) return;
   $("kicad-saved").textContent = k.saved ? `saved ${k.saved}` : "";
-  const name = esc(k.board + ".kisi.json"), prep = `<a href="#" data-kicad-prep>Prepare PCB</a>`;
+  const name = esc(k.board + ".kisi.json"), prep = `<a href="#" data-kicad-prep>Prepare PCB</a>`, imp = k.import || {};
   const cfg = {
     loaded: `${name} loaded from next to the board.`,
+    imported: `${name} taken over from the downloads folder and loaded.`,
     created: `There was no ${name}: an empty one was created next to the board. Fill it on the ${prep} page.`,
     saved: `${name} saved from the ${prep} page and loaded.`,
-    downloaded: `${name} downloaded: move it from the downloads folder next to the board (the folder above), then click kisi in KiCad again.`,
+    downloaded: `${name} downloaded and loaded here. Click kisi in KiCad again: the plugin takes it over from the downloads folder (or move it next to the board yourself).`,
   }[k.config] || `No ${name} next to the board.`;
+  // a kisi.json the viewer downloaded earlier: taken over on this click, or why not (kisi_kicad.import_download)
+  const impHtml = imp.state === "taken"
+    ? `<p class="note">Taken over from the downloads folder: <code class="kicad-dir">${esc(imp.from)}</code> (${esc(imp.time)}${imp.checked ? ", " + esc(imp.checked) : ""}).${imp.backup ? ` The previous file is kept as <code class="kicad-dir">${esc(imp.backup)}</code>.` : ""}${(imp.reasons || []).map((r) => " " + esc(r)).join("")}</p>`
+    : ["ambiguous", "invalid"].includes(imp.state)
+      ? `<p class="warn">Not taken over from the downloads folder${imp.from ? ` (<code class="kicad-dir">${esc(imp.from)}</code>)` : ""}: ${esc((imp.reasons || []).join("; "))}. The kisi.json next to the board is unchanged.</p>` : "";
+  // where this page lies: analysis/<board>.kisi.html next to the board, or the temporary folder
+  const pg = k.page || {};
+  const pageHtml = pg.where === "temp"
+    ? `<p class="warn">This page is in the temporary folder (<code class="kicad-dir">${esc(pg.path)}</code>): ${esc(pg.reason || "analysis/ next to the board could not be written")}.</p>`
+    : pg.path ? `<p class="note">This page: <code class="kicad-dir">${esc(pg.path)}</code> – each click writes it anew.</p>` : "";
   const unsaved = k.modified === "modified"
     ? `<p class="warn">KiCad reports unsaved changes: this is the last saved version of the board. Save in KiCad and click kisi again.</p>`
     : k.modified === "unmodified" ? "" : `<p class="note">Read from the saved file: changes not yet saved in KiCad are not included – save there and click kisi again.</p>`;
-  $("kicad-body").innerHTML = `<p class="note"><b>${esc(k.board)}.kicad_pcb</b> in <code class="kicad-dir">${esc(k.dir)}</code></p>${unsaved}<p class="note">${cfg}</p>`
+  $("kicad-body").innerHTML = `<p class="note"><b>${esc(k.board)}.kicad_pcb</b> in <code class="kicad-dir">${esc(k.dir)}</code></p>${unsaved}${impHtml}<p class="note">${cfg}</p>${pageHtml}`
     + (k.notes || []).map((n) => `<p class="note warn">${esc(n)}</p>`).join("");
 }
 document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-kicad-prep]")) { e.preventDefault(); prepOpen(true); } });

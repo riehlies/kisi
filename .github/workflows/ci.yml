@@ -236,7 +236,7 @@ jobs:
           node tools/test_units.mjs
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
           # the KiCad plugin package with this viewer: installed as KiCad's PCM does, its page from disk
-          python3 tools/build_kicad_pcm.py dist/kisi.html --out dist
+          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --out dist
           python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip examples/Thunderscope_Rev5.3.kicad_pcb \
             --config web/samples/ts.kisi.json --out viewer-screenshots/kicad
       - name: Documentation PDF (and the link and heading check of docs/)

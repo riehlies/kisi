@@ -19,7 +19,7 @@ python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm
   target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs   # Node CLI with field solver
 python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html  # 3D reference cases page
 python3 tools/docs_pdf.py dist/kisi-docs.pdf             # docs/ as one PDF (pip: markdown playwright pypdf)
-python3 tools/build_kicad_pcm.py dist/kisi.html          # KiCad plugin → dist/kisi-kicad-<version>.zip + PCM entry (pip: jsonschema)
+python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs  # KiCad plugin → dist/kisi-kicad-<version>.zip + PCM entry (pip: jsonschema)
 ```
 Releases: a tag `v*` runs `.github/workflows/release.yml`; it attaches `kisi.html`, `kisi-examples.html`,
 `kisi.mjs`, `kisi-docs.pdf`, the KiCad plugin `kisi-kicad-<version>.zip` with its PCM repository entry
@@ -46,8 +46,8 @@ Locally, before pushing a branch, run the quick checks for what you changed:
 * Field solver chain (`web/solver/`, the cross-section geometry, `tools/bundle.py`): `sh tools/validate_field.sh`
   (against HFSS/baseline, needs node).
 * KiCad plugin (`kicad-plugin/`, `tools/build_kicad_pcm.py`): `python3 -m unittest discover -s kicad-plugin/tests`
-  (pip: jsonschema, optionally kicad-python==0.8.0 for the tests against its classes), then with a fresh `dist/kisi.html`
-  `python3 tools/build_kicad_pcm.py dist/kisi.html && python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip
+  (pip: jsonschema, optionally kicad-python==0.8.0 for the tests against its classes), then with fresh bundles
+  `python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs && python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip
   examples/Thunderscope_Rev5.3.kicad_pcb --config web/samples/ts.kisi.json` (the package installed as KiCad's PCM
   does, its page in headless Chromium). No KiCad runs in CI: a change of the plugin's KiCad side needs a test in KiCad.
 * Documentation (`docs/`, `kisi help`, gap ids): `cargo test --release -p kisi-core --test docs` (the help text

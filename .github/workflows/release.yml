@@ -67,7 +67,7 @@ jobs:
           V=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
           # the repository entry downloads the zip from the release of the tag: tag and version must agree
           if [ "${GITHUB_REF_NAME#v}" != "$V" ] && [ "$GITHUB_REF_TYPE" = tag ]; then echo "::error::tag $GITHUB_REF_NAME, version $V"; exit 1; fi
-          python3 tools/build_kicad_pcm.py dist/kisi.html --out dist
+          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --out dist
       - name: Field solver validation (HFSS / baseline, viewer bundle)
         run: sh tools/validate_field.sh
       - name: Smoke test of kisi.mjs

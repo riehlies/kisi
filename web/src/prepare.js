@@ -497,10 +497,19 @@ function prepRenderStatus() {
   const st = $("prep-busy"); if (st) st.hidden = !S.prep.busy;
 }
 // ---- form pieces
+// what a step still needs is marked on its inputs (prep-need: the open values of an open step – εr/tanδ, target Ω,
+// currents, ratings …); the source of an entry only once the entry has a value (prepSrcCell). PREP_MARKING is set
+// while an open step's form is drawn (prepCard), so the forms of the "In kisi.json" section stay unmarked.
+let PREP_MARKING = false;
+const prepBlank = (v) => v == null || String(v).trim() === "";
+const prepNeed = (empty) => (PREP_MARKING && empty ? " prep-need" : "");
+// an entry with a value of its own (not only its source or its name)
+const PREP_NOT_VALUES = ["source", "ref", "name", "nets", "diff", "index"];
+const prepHasValue = (e) => !!e && Object.entries(e).some(([k, v]) => !PREP_NOT_VALUES.includes(k) && (v && typeof v === "object" ? Object.keys(v).length > 0 : !prepBlank(v)));
 const prepKindOpts = (cur) => `<option value="">kind…</option>${SRC_KINDS.map((k) => `<option ${cur === k ? "selected" : ""}>${k}</option>`).join("")}`;
 // the source of one entry: kind, document; url, page and note behind "…"
 function prepSrcCell(spec, e) {
-  const s = (e && e.source) || {}, ok = prepSrcOk(s);
+  const s = (e && e.source) || {}, ok = prepSrcOk(s) || !prepHasValue(e);
   const a = `data-a="src" data-e="${esc(spec)}"`;
   const more = ["url", "page", "note"].filter((k) => s[k]).length;
   return `<div class="prep-srccell${ok ? "" : " miss"}"><select ${a} data-k="kind" aria-label="source kind" ${e ? "" : "disabled"}>${prepKindOpts(s.kind)}</select><input ${a} data-k="document" value="${esc(s.document || "")}" placeholder="${e ? "document" : "source after the value"}" aria-label="source document" ${e ? "" : "disabled"}>
@@ -522,12 +531,13 @@ function prepStackTable(idx, flagged, key) {
   const st = S.scene.stackup, w = prepW();
   const rows = idx.map((i) => {
     const d = st.dielectrics[i] || {}, e = prepDiel(i, false) || {}, why = (flagged && flagged[i]) || [];
+    const wEr = why.some((x) => /εr|epsilon/i.test(x)), wTan = why.some((x) => /tanδ|loss/i.test(x));
     const a = (k) => `data-a="diel" data-i="${i}" data-k="${k}"`;
     const between = `${(st.copper[i] || {}).name || "?"} / ${(st.copper[i + 1] || {}).name || "?"}`;
     return `<tr class="${why.length ? "flag" : ""}"><td class="m" data-l="index">${i}</td>${prepTd("between", `${esc(between)}<span class="sub">${esc(d.kind || "")}${why.length ? ` · ${esc(why.join(", "))}` : ""}</span>`)}
       ${prepTd("material", prepIn(a("material"), e.material, d.material || ""), "opt")}
-      ${prepTd("εr", prepIn(a("epsilon_r"), e.epsilon_r, fmtSig(d.epsilon_r, 3), "num"))}
-      ${prepTd("tanδ", prepIn(a("loss_tangent"), e.loss_tangent, fmtSig(d.loss_tangent, 3), "num"))}
+      ${prepTd("εr", prepIn(a("epsilon_r"), e.epsilon_r, fmtSig(d.epsilon_r, 3), "num" + prepNeed(wEr && prepBlank(e.epsilon_r))))}
+      ${prepTd("tanδ", prepIn(a("loss_tangent"), e.loss_tangent, fmtSig(d.loss_tangent, 3), "num" + prepNeed(wTan && prepBlank(e.loss_tangent))))}
       ${prepTd("thickness mm", prepIn(a("thickness"), e.thickness, fmtSig(d.thickness, 3), "num"), "opt")}
       ${prepTd("source", prepSrcCell(`diel:${i}`, prepDiel(i, false)))}</tr>`;
   });
@@ -546,14 +556,14 @@ function prepClassTable(names, tab, hint) {
     const diff = e.diff ?? (t ? t.diff : h.diff ?? false);
     const head = prepTd("class", `${esc(n)}<span class="sub">${c.nets ?? h.nets ?? 0} nets${h.examples ? " · " + esc(h.examples.slice(0, 2).map(netShort).join(", ")) : ""}</span>`, "m");
     if (tab === "impedance") {
-      return `<tr>${head}${prepTd("target Ω", prepIn(a("target_ohm"), e.target_ohm, t ? fmtSig(t.z, 3) : "–", "num"))}
+      return `<tr>${head}${prepTd("target Ω", prepIn(a("target_ohm"), e.target_ohm, t ? fmtSig(t.z, 3) : "–", "num" + prepNeed(!t && prepBlank(e.target_ohm))))}
         ${prepTd("differential", `<input type="checkbox" ${a("diff")} ${diff ? "checked" : ""} aria-label="differential">`)}${prepTd("source", prepSrcCell(`cls:${n}`, prepCls(n, false)))}</tr>`;
     }
     // the generic profiles last: chosen on purpose for signals without an interface standard (analog, RF)
     const ord = [...IFC.profiles.filter((p) => !["se50", "diff100"].includes(p.id)), ...IFC.profiles.filter((p) => ["se50", "diff100"].includes(p.id))];
     const opts = ord.map((p) => `<option value="${p.id}" ${e.profile === p.id ? "selected" : ""}>${esc(p.name)}${["se50", "diff100"].includes(p.id) ? " (on purpose)" : ""}${(p.signal === "diff") !== diff ? " – " + p.signal : ""}</option>`).join("");
     const now = h.profile_now || (typeof cfgProfile === "function" && cfgProfile(n)) || "generic";
-    return `<tr>${head}${prepTd("profile", `<select ${a("profile")}><option value="">${esc(e.profile && !IFC.profiles.some((p) => p.id === e.profile) ? e.profile : now)} (now)</option>${opts}</select>`)}
+    return `<tr>${head}${prepTd("profile", `<select ${a("profile")} class="${prepNeed(!e.profile).trim()}"><option value="">${esc(e.profile && !IFC.profiles.some((p) => p.id === e.profile) ? e.profile : now)} (now)</option>${opts}</select>`)}
       ${prepTd("differential", diff ? "diff" : "single-ended")}${prepTd("source", prepSrcCell(`cls:${n}`, prepCls(n, false)))}</tr>`;
   });
   return `<table class="prep-ed"><thead><tr><th>Class</th>${tab === "impedance" ? "<th>Target Ω</th><th>Diff</th>" : "<th>Profile</th><th></th>"}<th>Source</th></tr></thead><tbody>${rows.join("")}</tbody></table>${prepSharedBlock("classes", "Source for the class values you enter (standard, datasheet)")}`;
@@ -585,7 +595,7 @@ function prepNetTargetEditor(g, items) {
         <span class="note">in “${esc(items[gi].class)}” on the board; kisi.json gives these nets to it (<code>net_classes.${esc(name)}.nets</code>), KiCad stays unchanged</span></div>
       <div class="prep-row">${nets.map((n) => `<label class="prep-chk"><input type="checkbox" data-a="ncnet" data-g="${esc(key)}" data-n="${esc(name)}" data-net="${esc(n)}" ${chosen.includes(n) ? "checked" : ""}> <code>${esc(netShort(n))}</code></label>`).join("")}
         <label>more nets or patterns ${prepIn(a("extra"), extra.join(", "), "QSPI_*, USB_D?", "grow")}</label></div>
-      <div class="prep-row"><label>target Ω ${prepIn(a("target_ohm"), e ? e.target_ohm : "", lp && lp.signal === "diff" ? "90" : "50", "num")}</label>
+      <div class="prep-row"><label>target Ω ${prepIn(a("target_ohm"), e ? e.target_ohm : "", lp && lp.signal === "diff" ? "90" : "50", "num" + prepNeed(!e || prepBlank(e.target_ohm)))}</label>
         <label class="prep-chk"><input type="checkbox" ${a("diff")} ${diff ? "checked" : ""}> differential</label>
         <label>profile <select ${a("profile")}><option value="">${esc(looks ? `${looks}? (from the names)` : "generic")}</option>${opts}</select></label></div>
       <div class="src">${prepSrcCell(`cls:${name}`, e)}</div></div>`;
@@ -609,14 +619,14 @@ function prepFieldTable(name, ph, refs) {
   });
   const p = S.prep.pend[name] || {};
   rows.push(`<tr class="new">${prepTd("part", `<input class="ref" data-a="new" data-n="${name}" data-k="ref" value="${esc(p.ref || "")}" placeholder="new: U3" aria-label="new part">`)}
-    ${prepTd(name, `<input class="wide" data-a="new" data-n="${name}" data-k="value" value="${esc(p.value || "")}" placeholder="${esc(ph)}" aria-label="new ${name} value">`)}
+    ${prepTd(name, `<input class="wide${prepNeed(prepBlank(p.value))}" data-a="new" data-n="${name}" data-k="value" value="${esc(p.value || "")}" placeholder="${esc(ph)}" aria-label="new ${name} value">`)}
     ${prepTd("source", `<span class="note">after the value</span>`)}<td></td></tr>`);
   return `<table class="prep-ed fields"><thead><tr><th>Part</th><th>${name}</th><th>Source</th><th></th></tr></thead><tbody>${rows.join("")}</tbody></table>${prepSharedBlock(name)}`;
 }
 function prepRegSuggestions(g) {
   return g.items.filter((it) => it.write && it.write.startsWith("PI_REG on ")).map((it) => {
     const m = it.write.match(/^PI_REG on (\S+): (.*)$/);
-    return m ? `<button class="prep-sugg" data-b="sugg-reg" data-r="${esc(m[1])}" data-val="${esc(m[2])}">+ ${esc(m[1])}: ${esc(m[2])}</button>` : "";
+    return m ? `<button class="prep-sugg${prepNeed(true)}" data-b="sugg-reg" data-r="${esc(m[1])}" data-val="${esc(m[2])}">+ ${esc(m[1])}: ${esc(m[2])}</button>` : "";
   }).join("");
 }
 // capacitors grouped by MPN (or value and package): one row writes PI_CAP on all of them
@@ -642,8 +652,8 @@ function prepCapsEditor(g, tab) {
     const rails = [...new Set(x.items.map((i) => i.rail))].slice(0, 3).map(netShort).join(", ");
     const sugg = x.suggest ? `<button class="prep-sugg" data-b="cap-sugg" data-g="${esc(x.key)}" data-val="${esc(x.suggest.value)}" data-from="${esc((x.suggest.from || []).join(", "))}" title="from the parts' own fields: ${esc((x.suggest.from || []).join(", "))}">${esc(x.suggest.value)}</button>` : "";
     return `<tr>${prepTd("parts", `${esc(x.mpn || x.value)}<span class="sub">${refs.length} × ${esc(x.value)}${x.package ? " " + esc(x.package) : ""} · ${esc(rails)}</span><details class="prep-refs"><summary>${esc(refs.slice(0, 4).join(" "))}${refs.length > 4 ? " …" : ""}</summary>${esc(refs.join(" "))}</details>`, "m")}
-      ${prepTd("rated V", prepIn(a("rated"), prepKVGet(v, "rated"), "6.3V", "num"))}
-      ${prepTd("dielectric", `<select ${a("diel")}><option value=""></option>${["X5R", "X7R", "X6S", "X7S", "X8R", "C0G", "Y5V", "POLYMER", "TANTALUM"].map((d) => `<option ${prepCapDiel(v).toUpperCase() === d ? "selected" : ""}>${d}</option>`).join("")}</select>`)}
+      ${prepTd("rated V", prepIn(a("rated"), prepKVGet(v, "rated"), "6.3V", "num" + prepNeed(prepBlank(prepKVGet(v, "rated")))))}
+      ${prepTd("dielectric", `<select ${a("diel")} class="${prepNeed(!prepCapDiel(v)).trim()}"><option value=""></option>${["X5R", "X7R", "X6S", "X7S", "X8R", "C0G", "Y5V", "POLYMER", "TANTALUM"].map((d) => `<option ${prepCapDiel(v).toUpperCase() === d ? "selected" : ""}>${d}</option>`).join("")}</select>`)}
       ${prepTd("ESR Ω", prepIn(a("esr"), prepKVGet(v, "esr"), "5m", "num"), "opt")}${prepTd("ESL H", prepIn(a("esl"), prepKVGet(v, "esl"), "0.45n", "num"), "opt")}
       ${prepTd("from the parts' fields", sugg || `<span class="note">–</span>`)}</tr>`;
   });
@@ -695,13 +705,18 @@ function prepVariantEditor(g) {
       <div class="src">${prepSrcCell(`var:${n}`, v)}</div></div>`;
   }).join("");
   return `${forks.length ? `<p class="note">Forks where all alternative parts are fitted (${forks.length}): ${esc(forks.slice(0, 4).map((f) => f.fork).join("; "))}${forks.length > 4 ? " …" : ""}</p>` : ""}
-    <div class="prep-row" role="radiogroup" aria-label="variant to analyse">${["default", ...names].map((n) => `<label class="prep-chk"><input type="radio" name="prep-var" value="${esc(n)}" data-a="variant" ${(w.variant || "") === n ? "checked" : ""}> <b>${esc(n)}</b>${n === "default" ? " – the board file as it is" : ""}</label>`).join("")}
+    <div class="prep-row${prepNeed(!w.variant)}" role="radiogroup" aria-label="variant to analyse">${["default", ...names].map((n) => `<label class="prep-chk"><input type="radio" name="prep-var" value="${esc(n)}" data-a="variant" ${(w.variant || "") === n ? "checked" : ""}> <b>${esc(n)}</b>${n === "default" ? " – the board file as it is" : ""}</label>`).join("")}
       ${w.variant ? `<button class="btn small" data-b="no-variant" title="no variant in kisi.json">clear</button>` : ""}</div>
     <datalist id="prep-sheets">${sheets.map((s) => `<option value="${esc(s.sheet)}">${s.parts} parts</option>`).join("")}</datalist>
     ${defs}<div class="prep-row"><input id="prep-newvar" placeholder="new variant name" aria-label="new variant name"><button class="btn small" data-b="add-var">+ Define a variant</button>
     <span class="note">by sheets (${sheets.length} on this board), parts or a BOM; lists comma-separated</span></div>${Object.keys(w.variants || {}).length ? prepSharedBlock("variants", "Source for the variant definitions (BOM, position files)") : ""}`;
 }
 
+// the form of an open step marks what it needs (PREP_MARKING)
+function prepEditorMarked(g, gs, tab, open) {
+  PREP_MARKING = open;
+  try { return prepEditor(g, gs, tab); } finally { PREP_MARKING = false; }
+}
 // the form of a gap (its items)
 function prepEditor(g, gs, tab) {
   const mode = PREP_MODE[g.id], items = prepItems(g, tab);
@@ -728,7 +743,7 @@ function prepEditor(g, gs, tab) {
     const rows = items.map((it) => {
       const f = prepFld(it.ref, "PI_LOAD"), v = f ? f.value : "", basis = f && f.source && /\bmaximum\b/.test(f.source.note || "") ? "maximum" : f && f.source && /\btypical\b/.test(f.source.note || "") ? "typical" : "";
       return `<tr>${prepTd("IC", `${esc(it.ref)}<span class="sub">${esc(it.mpn ? `${it.mpn} (${it.manufacturer || it.value})` : it.value || "")}</span>`, "m")}
-        ${prepTd("current per rail", (it.rails || []).map((r) => `<div class="prep-rail"><span class="m">${esc(netShort(r))}</span><input class="num" data-a="load" data-r="${esc(it.ref)}" data-rail="${esc(r)}" value="${esc(prepLoadGet(v, r))}" placeholder="mA"></div>`).join(""))}
+        ${prepTd("current per rail", (it.rails || []).map((r) => `<div class="prep-rail"><span class="m">${esc(netShort(r))}</span><input class="num${prepNeed(prepBlank(prepLoadGet(v, r)))}" data-a="load" data-r="${esc(it.ref)}" data-rail="${esc(r)}" value="${esc(prepLoadGet(v, r))}" placeholder="mA"></div>`).join(""))}
         ${prepTd("basis", `<select data-a="load" data-r="${esc(it.ref)}" data-k="basis"><option value="">–</option><option ${basis === "typical" ? "selected" : ""}>typical</option><option ${basis === "maximum" ? "selected" : ""}>maximum</option></select>`, "opt")}
         ${prepTd("source", prepSrcCell(`fld:${it.ref}|PI_LOAD`, f))}</tr>`;
     }).join("");
@@ -740,7 +755,7 @@ function prepEditor(g, gs, tab) {
     const rows = items.map((it) => {
       const f = prepFld(it.ref, name), v = f ? f.value : "", z = (String(it.value).match(/^(\d+)R/) || [])[1] || "";
       return `<tr>${prepTd(mode === "series" ? "bead" : "part", `${esc(it.ref)}<span class="sub">${esc(it.mpn || it.value || "")}${it.rail ? " · " + esc(netShort(it.rail)) : ""}${it.heat_w ? " · " + fmtSI(it.heat_w, "W") : ""}</span>`, "m")}
-        ${keys.map((k, i) => prepTd(heads[i], prepIn(`data-a="kv" data-r="${esc(it.ref)}" data-n="${name}" data-k="${k}"`, prepKVGet(v, k), k === "z100" ? z || "220" : k === "rdc" ? "0.1" : k === "tj_max" ? "125" : "", "num"), ["psi_jt", "tj_max"].includes(k) ? "opt" : "")).join("")}
+        ${keys.map((k, i) => prepTd(heads[i], prepIn(`data-a="kv" data-r="${esc(it.ref)}" data-n="${name}" data-k="${k}"`, prepKVGet(v, k), k === "z100" ? z || "220" : k === "rdc" ? "0.1" : k === "tj_max" ? "125" : "", "num" + prepNeed(!["psi_jt", "tj_max"].includes(k) && prepBlank(prepKVGet(v, k)))), ["psi_jt", "tj_max"].includes(k) ? "opt" : "")).join("")}
         ${prepTd("source", prepSrcCell(`fld:${it.ref}|${name}`, f))}</tr>`;
     }).join("");
     return `<table class="prep-ed"><thead><tr><th>${mode === "series" ? "Bead" : "Part"}</th>${heads.map((h, i) => `<th${["psi_jt", "tj_max"].includes(keys[i]) ? ' class="opt"' : ""}>${h}</th>`).join("")}<th>Source</th></tr></thead><tbody>${rows}</tbody></table>${prepSharedBlock(name, mode === "series" ? "Source for the bead data" : "Source for the thermal data (the parts' Thermal Information tables)")}`;
@@ -873,7 +888,7 @@ function prepCard(g, gs, na, tab, n) {
     <header data-toggle="${g.id}">${prepStepMarker(st.k, g, tab)}<h3>${esc(PREP_TITLES[g.id] || g.id)}<code>${g.id}</code></h3>
       <span class="state ${st.k}">${stateText}</span><p>${esc(prepRequiredLine(g, tab))}</p></header>
     <div class="body">
-      ${st.k === "dis" ? "" : prepEditor(g, gs, tab)}${prepDismissBlock(g)}${prepStaleList(g.id)}
+      ${st.k === "dis" ? "" : prepEditorMarked(g, gs, tab, st.k === "open")}${prepDismissBlock(g)}${prepStaleList(g.id)}
       ${foot}${more}
     </div></article>`;
 }
@@ -1068,11 +1083,25 @@ function prepHandLine(h) {
   const to = (g.write && g.write.to) || "";
   return `- ${g.id}: ${what}${to ? ` → ${to}` : ""}${units.length ? ` – ${whole && units.length === total ? "all: " : ""}${list}${rest}` : ""}`;
 }
+// a board from the KiCad plugin: the agent gets the paths – the CLI shipped with the plugin, the board, its kisi.json
+const prepQ = (p) => `"${p}"`;
+function prepKicadCmd(scope) {
+  const c = kicadCli();
+  return c ? `node ${prepQ(c.path)} gaps ${prepQ(S.kicad.pcb_path)}${scope === "all" ? "" : ` --for ${scope}`}` : "";
+}
+function prepKicadPromptTail() {
+  const c = kicadCli();
+  if (!c) return "";
+  const node = c.node || {};
+  return `\nPaths: the board is ${prepQ(S.kicad.pcb_path)}; write ${prepQ(kicadCfgPath())} directly (next to the board, no browser save needed). `
+    + `Run kisi with the CLI that came with the KiCad plugin: node ${prepQ(c.path)} <command> … (${node.ok ? `Node.js ${node.version} is installed` : "Node.js ≥ 18 is needed: https://nodejs.org"}). `
+    + `When it is written, I click kisi in KiCad again to load it.`;
+}
 function prepPrompt(gs, scope) {
   scope = scope || S.prep.tab;
   const hs = prepHandover(scope), all = scope === "all";
   const what = all ? "analyses" : `${PREP_VIEWS[scope].toLowerCase()} analysis`, cmd = all ? "`kisi gaps`" : `\`kisi gaps --for ${scope}\``;
-  const tail = `Merge the results into ${S.name}.kisi.json next to the board – keep my entries and the dismissed gaps – and run \`kisi config-check\`.`;
+  const tail = `Merge the results into ${S.name}.kisi.json next to the board – keep my entries and the dismissed gaps – and run \`kisi config-check\`.` + prepKicadPromptTail();
   if (!hs.length) return `Prepare ${prepBoardFile()} for kisi's ${what} with the skill kisi-prepare. Start from ${cmd}, research ${all ? "the" : "this category's"} open gaps from datasheets, BOM and position files, with a source for every value. ${tail}`;
   const lines = all ? Object.keys(PREP_VIEWS).flatMap((t) => { const ls = hs.filter((h) => h.tab === t); return ls.length ? [`${PREP_VIEWS[t]} (--for ${t}):`, ...ls.map(prepHandLine)] : []; }) : hs.map(prepHandLine);
   return `Prepare ${prepBoardFile()} for kisi's ${what} with the skill kisi-prepare. Start from ${cmd} and research only what I handed over (gap: what is needed → where it goes – items), from datasheets, BOM and position files, with a source for every value:\n${lines.join("\n")}\n${tail}`;
@@ -1139,7 +1168,7 @@ function prepRenderMain() {
   if (S.prep.scrollTo) {
     const el = S.prep.scrollTo === "save" ? $("prep-step-save") : $("prep-gap-" + S.prep.scrollTo);
     S.prep.scrollTo = null;
-    if (el) { el.scrollIntoView({ block: "start", behavior: "instant" }); const f = el.querySelector(".body input:not([type=checkbox]):not([disabled]), .body select:not([disabled])"); if (f && el.dataset.gap !== "save") f.focus({ preventScroll: true }); }
+    if (el) { el.scrollIntoView({ block: "start", behavior: "instant" }); const f = el.querySelector(".body .prep-need:is(input, select, button):not([disabled]), .body .prep-need input:not([disabled])") || el.querySelector(".body input:not([type=checkbox]):not([disabled]), .body select:not([disabled])"); if (f && el.dataset.gap !== "save") f.focus({ preventScroll: true }); }
   }
   S.prep.gs = gs; S.prep.na = na;
 }
@@ -1173,7 +1202,7 @@ function prepRenderSide() {
   // a board from the KiCad plugin: the file belongs into the board's folder, which the page knows but cannot open
   const where = !kc ? (fsa ? "Saves next to the board (you choose the place)" : "Downloads")
     : fsa ? `Saves next to the board: choose the board's folder in the dialog (or paste the path below as the file name) – kisi remembers it for this board. Saves`
-      : `Downloads – then move it from the downloads folder to the board's folder (path below) and click kisi in KiCad again. Downloads`;
+      : `Downloads – with the browser set to ask where to save (Firefox: Settings → General → Downloads → “Always ask you where to save files”; Safari: Settings → General → File download location → “Ask for each download”) choose the board's folder (path below); otherwise click kisi in KiCad again and the plugin takes the file over from the downloads folder. Downloads`;
   $("prep-save-note").textContent = S.prep.saved ? S.prep.saved : !can ? "" : blocked.length
     ? `${blocked.length} error${blocked.length > 1 ? "s" : ""} in ${S.prep.scope === "all" ? "the draft" : `the ${PREP_VIEWS[S.prep.scope]} entries`}${S.prep.scope === "all" && !prepBlocked(tab).length ? ` – “save only ${PREP_VIEWS[tab]}” works` : ""}.`
     : `${where} ${S.name}.kisi.json${dirty ? "" : " as loaded"}, then loads it.`;
@@ -1195,6 +1224,16 @@ function prepRenderSide() {
     : `<li class="o">nothing handed over – the prompt asks for ${asc === "all" ? "the" : "this category's"} open gaps</li>`;
   const nap = asc !== "all" && na;
   $("prep-prompt").textContent = nap ? `Nothing to check for ${PREP_VIEWS[tab]} on this board – no prompt needed.` : prepPrompt(gs, asc);
+  // a board from the KiCad plugin: the ready command with the installed CLI, or where to get Node.js
+  const kcli = kicadCli();
+  $("prep-agent-kicad").hidden = !kcli;
+  if (kcli) {
+    const node = kcli.node || {};
+    $("prep-agent-kicad").innerHTML = `<span class="note">The CLI came with the KiCad plugin – the agent writes <code>${esc(S.name)}.kisi.json</code> next to the board itself:</span>
+      <pre class="prep-cmd" id="prep-agent-cmd">${esc(prepKicadCmd(asc))}</pre>`
+      + (node.ok ? `<span class="note">Node.js ${esc(node.version)} found.</span>`
+        : `<span class="warn">Node.js ≥ 18 was not found (${esc(node.reason || "not checked")}) – install the LTS version from <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a>, then click kisi in KiCad again.</span>`);
+  }
   $("prep-copy").disabled = !!nap;
   $("prep-json-name").textContent = S.name + ".kisi.json";
   let txt = "";
@@ -1274,7 +1313,7 @@ async function prepSave() {
   const rec = prepRec(d, text, rest);
   S.prep.mem[S.name] = rec; lsSet(PREP_KEY(), rec);
   S.prep.savedNext = `${name} ${how} and loaded${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}.`
-    + (kicadActive() && how === "downloaded" ? " Move it from the downloads folder to the board's folder (path below), then click kisi in KiCad again." : "");
+    + (kicadActive() && how === "downloaded" ? " Saved somewhere else than the board's folder (path below)? Click kisi in KiCad again: the plugin takes it over from the downloads folder." : "");
   const l = S.lastFiles;
   await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, { name, text, csv: (l.cfg && l.cfg.csv) || {} });
 }
@@ -1300,6 +1339,8 @@ function prepOnInput(t, full) {
   const stepEl = t.closest && t.closest(".prep-step[data-gap]");
   if (stepEl && stepEl.dataset.gap !== "save" && t.dataset.a && !["agent", "agentitem", "opt"].includes(t.dataset.a)) S.prep.pending[S.name + stepEl.dataset.gap] = true;
   const a = t.dataset.a, val = t.type === "checkbox" ? t.checked : t.value, k = t.dataset.k;
+  if (t.classList.contains("prep-need") && !prepBlank(val)) t.classList.remove("prep-need");
+  if (t.type === "radio") { const ng = t.closest(".prep-need"); if (ng) ng.classList.remove("prep-need"); }
   if (t.id === "prep-scope") { S.prep.scope = t.value; prepRender(false); return; }
   if (t.id === "prep-agent-scope") { S.prep.agentScope = t.value; prepRender(false); return; }
   if (t.id === "prep-notes") { const w = prepW(), ls = String(t.value).split("\n").map((x) => x.trim()).filter(Boolean); if (ls.length) w.notes = ls; else { delete w.notes; if ("notes" in prepBaseObj()) w.notes = []; } prepEdited(false); return; }

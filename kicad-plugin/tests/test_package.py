@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import build_kicad_pcm as pcm  # noqa: E402
 
 VIEWER = '<!doctype html><script>const KICAD_BOARD = null; /*@kicad-board*/</script><span class="ver">v0.0.0</span>'
+CLI = '#!/usr/bin/env node\nconst VERSION = "0.0.0";\nconsole.log(JSON.stringify({ok: true, errors: []}));\n'
 # KiCad's package folders (kicad/pcm/pcm.h, PCM_PACKAGE_DIRECTORIES)
 PCM_DIRS = {"plugins", "footprints", "3dmodels", "symbols", "resources", "colors", "templates", "scripts"}
 
@@ -42,7 +43,9 @@ class PackageTests(unittest.TestCase):
         cls.tmp = tempfile.mkdtemp(prefix="kisi-pcm-test-")
         cls.viewer = os.path.join(cls.tmp, "kisi.html")
         pathlib.Path(cls.viewer).write_text(encoding="utf-8", data=VIEWER)
-        cls.r = pcm.build(cls.viewer, os.path.join(cls.tmp, "dist"), version="0.0.0", test_viewer=True)
+        cls.cli = os.path.join(cls.tmp, "kisi.mjs")
+        pathlib.Path(cls.cli).write_text(encoding="utf-8", data=CLI)
+        cls.r = pcm.build(cls.viewer, cls.cli, os.path.join(cls.tmp, "dist"), version="0.0.0", test_viewer=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -52,7 +55,7 @@ class PackageTests(unittest.TestCase):
         names = zipfile.ZipFile(self.r["zip"]).namelist()
         self.assertEqual(names[0], "metadata.json")
         for n in ["plugins/plugin.json", "plugins/requirements.txt", "plugins/kisi_action.py", "plugins/kisi_kicad.py",
-                  "plugins/kisi_build.json", "plugins/viewer/kisi.html", "plugins/LICENSE", "resources/icon.png"]:
+                  "plugins/kisi_build.json", "plugins/viewer/kisi.html", "plugins/cli/kisi.mjs", "plugins/LICENSE", "resources/icon.png"]:
             self.assertIn(n, names)
         # nothing else at the root, no nested plugin folder, no tests or generator scripts
         self.assertEqual({n.split("/")[0] for n in names}, {"metadata.json", "plugins", "resources"})
@@ -84,6 +87,8 @@ class PackageTests(unittest.TestCase):
         page = p.stdout.strip().splitlines()[-1]
         html = pathlib.Path(page).read_text(encoding="utf-8")
         self.assertIn('"plugin":"0.0.0"', html)
+        self.assertEqual(page, os.path.join(os.path.dirname(board), "analysis", "b.kisi.html"))
+        self.assertIn(json.dumps(os.path.join(base, "cli", "kisi.mjs"))[1:-1], html)  # the installed CLI path
         self.assertTrue(os.path.isfile(os.path.join(os.path.dirname(board), "b.kisi.json")))
 
     def test_metadata(self):
@@ -125,7 +130,7 @@ class PackageTests(unittest.TestCase):
             self.assertEqual((int.from_bytes(d[16:20], "big"), int.from_bytes(d[20:24], "big")), (size, size), n)
 
     def test_reproducible(self):
-        r2 = pcm.build(self.viewer, os.path.join(self.tmp, "dist2"), version="0.0.0", test_viewer=True)
+        r2 = pcm.build(self.viewer, self.cli, os.path.join(self.tmp, "dist2"), version="0.0.0", test_viewer=True)
         self.assertEqual(r2["sha256"], self.r["sha256"])
         for zi in zipfile.ZipFile(self.r["zip"]).infolist():
             self.assertEqual(zi.date_time, (1980, 1, 1, 0, 0, 0))
@@ -135,6 +140,8 @@ class PackageTests(unittest.TestCase):
         self.assertTrue(pcm.check_viewer(VIEWER, "1.2.3"))  # another version
         self.assertEqual(pcm.check_viewer(VIEWER, "0.0.0"), [])
         self.assertTrue(re.search("hand-over", pcm.check_viewer(VIEWER + VIEWER, "0.0.0")[0]))
+        self.assertEqual(pcm.check_cli(CLI, "0.0.0"), [])
+        self.assertTrue(pcm.check_cli(CLI, "1.2.3"))
 
 
 if __name__ == "__main__":

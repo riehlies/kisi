@@ -105,8 +105,10 @@ Each gap is a step, ordered by priority, with a marker: while it is open, the nu
 open (seven ICs without a current: 7), red or amber by priority (low-priority steps are optional refinements); a
 green check mark when it is done, an arrow when it is with the agent, a dash when it is dismissed. Steps keep their
 place when one is done. An open step says in one line what it needs ("Enter the current per
-rail for 7 ICs, with a source") and shows only those inputs; *more* holds where to find the values, where they go
-and optional fields. **Apply** runs the gap list through the core at once: the step gets its check mark when kisi no
+rail for 7 ICs, with a source") and shows only those inputs; the inputs it still needs are marked and the first one
+has the focus when the step opens (εr or tanδ of the marked layers, a target impedance, a profile, the currents,
+the ratings), and an entry's source is marked once its value is there; *more* holds where to find the values, where
+they go and optional fields. **Apply** runs the gap list through the core at once: the step gets its check mark when kisi no
 longer reports it (or reports only dismissed items), and the next open step opens; otherwise the step stays open
 and says what is still missing ("6 of 7 ICs still missing: …"), with the check's errors for its entries. "hand to
 the agent" settles a step for now and adds it to the agent card's prompt; "hand single items to the agent" hands

@@ -4,7 +4,7 @@
 
 Run: python3 -m unittest discover -s kicad-plugin/tests -v
 """
-import base64, pathlib, gzip, hashlib, importlib, io, json, ntpath, os, posixpath, re, shutil, sys, tempfile, time, types, unittest
+import base64, pathlib, gzip, hashlib, importlib, io, json, ntpath, os, posixpath, re, shutil, subprocess, sys, tempfile, time, types, unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import PureWindowsPath
 
@@ -55,6 +55,10 @@ class Board:
         shutil.rmtree(self.root, ignore_errors=True)
 
 
+NODE_OK = {"ok": True, "path": "/usr/bin/node", "version": "22.1.0", "reason": ""}
+NO_NODE = {"ok": False, "path": "", "version": "", "reason": "Node.js was not found"}
+
+
 class PageTests(unittest.TestCase):
     def setUp(self):
         self.b = Board()
@@ -63,29 +67,48 @@ class PageTests(unittest.TestCase):
         self.b.close()
 
     def make(self, **kw):
-        return core.make_page(self.b.stem + ".kicad_pcb", self.b.dir, self.b.stem, viewer=self.b.viewer, folder=self.b.out, **kw)
+        kw.setdefault("downloads", None)
+        kw.setdefault("node", NO_NODE)
+        kw.setdefault("cli", None)
+        return core.make_page(self.b.stem + ".kicad_pcb", self.b.dir, self.b.stem, viewer=self.b.viewer, temp=self.b.out, **kw)
 
-    def test_page_with_skeleton(self):
+    def test_page_in_analysis_with_skeleton(self):
         before = {f: digest(os.path.join(self.b.dir, f)) for f in os.listdir(self.b.dir)}
         page, p = self.make(kicad_version="10.0.7")
-        self.assertTrue(page.startswith(self.b.out) and page.endswith(".html"))
+        self.assertEqual(page, os.path.join(self.b.dir, "analysis", self.b.stem + ".kisi.html"))
         html = pathlib.Path(page).read_text(encoding="utf-8")
         self.assertEqual(html.count("/*@kicad-board*/"), 1)
         q = payload_of(html)
         self.assertEqual(q, json.loads(json.dumps(p)))
         self.assertEqual((q["format"], q["source"], q["board"], q["config"], q["modified"], q["kicad"]), (1, "kicad", self.b.stem, "created", "unknown", "10.0.7"))
-        self.assertEqual(q["dir"], self.b.dir)
+        self.assertEqual(q["page"], {"path": page, "where": "analysis", "reason": ""})
+        self.assertEqual((q["dir"], q["import"]["state"]), (self.b.dir, "none"))
         files = unpack(q)
         self.assertEqual(sorted(files), sorted([self.b.stem + ".kicad_pcb", self.b.stem + ".kicad_pro", self.b.stem + ".kisi.json"]))
         self.assertEqual(files[self.b.stem + ".kicad_pcb"], PCB)
         # the skeleton: next to the board, the same as the viewer's own (prepare.js prepSkeleton)
         self.assertEqual(json.loads(pathlib.Path(self.b.cfg).read_text(encoding="utf-8")), {"kisi_config": 1, "board": self.b.stem + ".kicad_pcb"})
-        self.assertEqual(files[self.b.stem + ".kisi.json"], pathlib.Path(self.b.cfg).read_text(encoding="utf-8"))
-        # KiCad's files untouched; the only new file next to the board is the kisi.json
-        after = {f: digest(os.path.join(self.b.dir, f)) for f in os.listdir(self.b.dir)}
-        self.assertEqual(set(after) - set(before), {self.b.stem + ".kisi.json"})
+        # KiCad's files untouched; new next to the board: exactly the kisi.json and analysis/<board>.kisi.html
+        after = {f: digest(os.path.join(self.b.dir, f)) for f in os.listdir(self.b.dir) if os.path.isfile(os.path.join(self.b.dir, f))}
+        self.assertEqual(set(os.listdir(self.b.dir)) - set(before), {self.b.stem + ".kisi.json", "analysis"})
+        self.assertEqual(os.listdir(os.path.join(self.b.dir, "analysis")), [self.b.stem + ".kisi.html"])
         for f, h in before.items():
             self.assertEqual(after[f], h, f)
+        self.assertFalse(os.path.exists(self.b.out))  # nothing in the temporary folder
+
+    def test_second_click_overwrites_the_page(self):
+        p1, _ = self.make()
+        p2, q = self.make()
+        self.assertEqual(p1, p2)
+        self.assertEqual(q["config"], "loaded")
+        self.assertEqual(os.listdir(os.path.join(self.b.dir, "analysis")), [self.b.stem + ".kisi.html"])
+
+    def test_cli_and_node_in_the_payload(self):
+        _, p = self.make(node=NODE_OK, cli="C:\\Users\\Jürgen\\Documents\\KiCad\\10.0\\3rdparty\\plugins\\com_github_riehlies_kisi\\cli\\kisi.mjs")
+        self.assertEqual(p["cli"]["node"], NODE_OK)
+        self.assertTrue(p["cli"]["path"].endswith("cli\\kisi.mjs"))
+        _, p = self.make()
+        self.assertEqual((p["cli"]["path"], p["cli"]["node"]["ok"]), ("", False))
 
     def test_existing_config_is_read_not_written(self):
         cfg = json.dumps({"kisi_config": 1, "board": self.b.stem + ".kicad_pcb",
@@ -124,33 +147,38 @@ class PageTests(unittest.TestCase):
 
     def test_project_named_differently(self):
         os.rename(os.path.join(self.b.dir, self.b.stem + ".kicad_pro"), os.path.join(self.b.dir, "proj.kicad_pro"))
-        _, p = core.make_page(self.b.stem + ".kicad_pcb", self.b.dir, "proj", viewer=self.b.viewer, folder=self.b.out)
+        _, p = core.make_page(self.b.stem + ".kicad_pcb", self.b.dir, "proj", viewer=self.b.viewer, temp=self.b.out, downloads=None, node=NO_NODE, cli=None)
         self.assertIn(self.b.stem + ".kicad_pro", unpack(p))  # named after the board, as the viewer expects
 
     def test_unsaved_board(self):
         for name, folder in (("", self.b.dir), ("Untitled.kicad_pcb", self.b.dir), ("x.kicad_pcb", "")):
             with self.assertRaises(core.PluginError) as cm:
-                core.make_page(name, folder, "", viewer=self.b.viewer, folder=self.b.out)
+                core.make_page(name, folder, "", viewer=self.b.viewer, temp=self.b.out, downloads=None, node=NO_NODE, cli=None)
             self.assertIn("save the board", str(cm.exception))
         self.assertFalse(os.path.exists(os.path.join(self.b.dir, "Untitled.kisi.json")))
+        self.assertFalse(os.path.exists(os.path.join(self.b.dir, "analysis")))
 
-    def test_read_only_folder(self):
-        if os.name == "nt" or os.geteuid() == 0:
-            self.skipTest("permissions are not enforced here")
+    @unittest.skipIf(os.name == "nt" or os.geteuid() == 0, "permissions are not enforced here")
+    def test_read_only_folder_falls_back_to_temp(self):
         os.chmod(self.b.dir, 0o555)
         try:
-            _, p = self.make()
+            page, p = self.make()
         finally:
             os.chmod(self.b.dir, 0o755)
         self.assertEqual(p["config"], "none")
         self.assertTrue(any("could not create" in n for n in p["notes"]))
+        self.assertTrue(page.startswith(self.b.out), page)
+        self.assertEqual(p["page"]["where"], "temp")
+        self.assertIn("could not be written", p["page"]["reason"])
+        self.assertEqual(payload_of(pathlib.Path(page).read_text(encoding="utf-8"))["page"]["where"], "temp")
 
-    def test_second_click_replaces_the_page(self):
-        p1, _ = self.make()
-        p2, q = self.make()
-        self.assertEqual(p1, p2)
-        self.assertEqual(q["config"], "loaded")
-        self.assertEqual([f for f in os.listdir(self.b.out) if f.endswith(".html")], [os.path.basename(p1)])
+    def test_analysis_not_writable_falls_back_to_temp(self):
+        # a file named "analysis" blocks the folder (works as root too)
+        pathlib.Path(os.path.join(self.b.dir, "analysis")).write_text("x")
+        page, p = self.make()
+        self.assertEqual((p["page"]["where"], p["config"]), ("temp", "created"))
+        self.assertTrue(page.startswith(self.b.out))
+        self.assertEqual(pathlib.Path(os.path.join(self.b.dir, "analysis")).read_text(), "x")
 
     def test_marker_problems(self):
         for t in ("<html>no marker</html>", TEMPLATE + TEMPLATE):
@@ -161,16 +189,6 @@ class PageTests(unittest.TestCase):
         html = core.embed(TEMPLATE, {"notes": ["</script><script>alert(1)</script>"], "files": []})
         self.assertNotIn("</script><script>alert", html)
         self.assertEqual(payload_of(html)["notes"][0], "</script><script>alert(1)</script>")
-
-    def test_guard_refuses_kicad_files(self):
-        for name in ("x.kicad_pcb", "x.kicad_pro", "X.KICAD_PCB", "notes.txt"):
-            with self.assertRaises(core.PluginError):
-                core._guarded_write(os.path.join(self.b.dir, name), b"x")
-        with self.assertRaises(core.PluginError):  # even inside the output folder
-            core._guarded_write(os.path.join(self.b.out, "a.kicad_pcb"), b"x", allowed_dir=self.b.out)
-        with self.assertRaises(FileExistsError):  # the skeleton never replaces a file
-            pathlib.Path(self.b.cfg).write_text(encoding="utf-8", data="{}")
-            core._guarded_write(self.b.cfg, b"{}", exclusive=True)
 
     def test_cleanup_old_pages(self):
         os.makedirs(self.b.out)
@@ -190,6 +208,46 @@ class PageTests(unittest.TestCase):
         self.assertIn("C:\\Temp\\kisi-kicad\\kisi-kicad.log", html)
 
 
+class GuardTests(unittest.TestCase):
+    """Next to the board exactly <board>.kisi.json, analysis/<board>.kisi.html and the backups; the temp folder."""
+
+    def test_exact_paths(self):
+        b = Board()
+        try:
+            paths = core.board_paths(b.stem + ".kicad_pcb", b.dir, b.stem)
+            g = core.Guard(paths, b.out)
+            ok = [paths["cfg"], paths["page"], os.path.join(paths["analysis"], b.stem + ".kisi.json.20261027-081500.bak"),
+                  os.path.join(paths["analysis"], b.stem + ".kisi.json.20261027-081500-2.bak"), os.path.join(b.out, "x-1234.html")]
+            bad = [paths["pcb"], os.path.join(b.dir, b.stem + ".kicad_pro"), os.path.join(b.dir, "other.kisi.json"),
+                   os.path.join(b.dir, b.stem + ".kisi.html"), os.path.join(paths["analysis"], "other.kisi.html"),
+                   os.path.join(paths["analysis"], b.stem + ".kisi.json"), os.path.join(paths["analysis"], b.stem + ".kisi.json.bak"),
+                   os.path.join(paths["analysis"], "report.md"), os.path.join(b.dir, "notes.txt"), os.path.join(b.out, "x.kicad_pcb"),
+                   os.path.join(b.root, "outside", "x.html"), b.out + "-other" + os.sep + "x.html"]
+            for p in ok:
+                self.assertTrue(g.allowed(p), p)
+            for p in bad:
+                self.assertFalse(g.allowed(p), p)
+                with self.assertRaises(core.PluginError):
+                    g.write(p, b"x")
+            with self.assertRaises(FileExistsError):  # the skeleton never replaces a file
+                pathlib.Path(b.cfg).write_text("{}")
+                g.write(b.cfg, b"{}", exclusive=True)
+            self.assertNotEqual(g.backup_path(), g.backup_path() + "x")
+        finally:
+            b.close()
+
+    def test_windows_paths(self):
+        paths = core.board_paths("Mein Board.kicad_pcb", "C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board", "Mein Board", pathmod=ntpath)
+        g = core.Guard(paths, "C:\\Users\\Jürgen\\AppData\\Local\\Temp\\kisi-kicad", pathmod=ntpath)
+        self.assertTrue(g.allowed("c:\\users\\jürgen\\documents\\kicad projekte\\mein board\\mein board.kisi.json"))  # case-insensitive
+        self.assertTrue(g.allowed("C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\analysis\\Mein Board.kisi.html"))
+        self.assertTrue(g.allowed("C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\analysis\\Mein Board.kisi.json.20261027-081500.bak"))
+        self.assertTrue(g.allowed("C:\\Users\\Jürgen\\AppData\\Local\\Temp\\kisi-kicad\\Mein_Board-0123abcd.html"))
+        self.assertFalse(g.allowed("C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\Mein Board.kicad_pcb"))
+        self.assertFalse(g.allowed("C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\analysis\\Mein Board.kisi.json"))
+        self.assertFalse(g.allowed("C:\\Users\\Jürgen\\AppData\\Local\\Temp\\kisi-kicad-x\\a.html"))
+
+
 class PathTests(unittest.TestCase):
     """Windows paths (the maintainer's platform) with the Windows path rules (ntpath), also on Linux CI."""
 
@@ -197,6 +255,7 @@ class PathTests(unittest.TestCase):
         p = core.board_paths("Mein Board.kicad_pcb", "C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board", "Mein Board", pathmod=ntpath)
         self.assertEqual(p["pcb"], "C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\Mein Board.kicad_pcb")
         self.assertEqual(p["cfg"], "C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\Mein Board.kisi.json")
+        self.assertEqual(p["page"], "C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\analysis\\Mein Board.kisi.html")
         self.assertEqual(p["dir"], "C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board")
         self.assertEqual(p["pro_candidates"], ["C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\Mein Board.kicad_pro"])
         # KiCad on Windows may send forward slashes in the project path
@@ -208,22 +267,222 @@ class PathTests(unittest.TestCase):
 
     def test_posix_paths(self):
         p = core.board_paths("b.kicad_pcb", "/home/jürgen/My Boards/b/", "b", pathmod=posixpath)
-        self.assertEqual(p["pcb"], "/home/jürgen/My Boards/b/b.kicad_pcb")
+        self.assertEqual((p["pcb"], p["page"]), ("/home/jürgen/My Boards/b/b.kicad_pcb", "/home/jürgen/My Boards/b/analysis/b.kisi.html"))
 
     def test_page_name_and_uri(self):
         n = core.page_name("C:\\Users\\Jürgen\\Mein Board\\Mein Board.kicad_pcb", "Mein Board")
         self.assertRegex(n, r"^Mein_Board-[0-9a-f]{8}\.html$")
         self.assertNotEqual(n, core.page_name("C:\\other\\Mein Board.kicad_pcb", "Mein Board"))
-        self.assertRegex(core.page_name("/x/Prüf Böard.kicad_pcb", "Prüf Böard"), r"^Prüf_Böard-[0-9a-f]{8}\.html$")
         self.assertRegex(core.page_name("/x/...", "..."), r"^board-[0-9a-f]{8}\.html$")
-        # the URL the browser gets for a page in a Windows temp folder with an umlaut in the user name
-        uri = PureWindowsPath("C:\\Users\\Jürgen\\AppData\\Local\\Temp\\kisi-kicad\\Mein_Board-0123abcd.html").as_uri()
-        self.assertEqual(uri, "file:///C:/Users/J%C3%BCrgen/AppData/Local/Temp/kisi-kicad/Mein_Board-0123abcd.html")
+        # the URL the browser gets for the page in a project folder with umlauts and spaces
+        uri = PureWindowsPath("C:\\Users\\Jürgen\\KiCad Projekte\\Mein Board\\analysis\\Mein Board.kisi.html").as_uri()
+        self.assertEqual(uri, "file:///C:/Users/J%C3%BCrgen/KiCad%20Projekte/Mein%20Board/analysis/Mein%20Board.kisi.html")
 
     def test_config_refs(self):
         self.assertEqual(core.config_refs('{"variants": {"a": {"bom": "x.csv"}, "b": {"bom": "x.csv"}}, "connector_ends": {"J": {"touchstone": {"file": "c.s2p"}}}}'), ["x.csv", "c.s2p"])
         for t in ("[]", "nope", '{"variants": []}', '{"variants": {"a": {"bom": "x.exe"}}}'):
             self.assertEqual(core.config_refs(t), [])
+
+
+class NodeTests(unittest.TestCase):
+    """find_node with a fake `node --version` (no Node.js needed)."""
+
+    def fake(self, outputs):
+        calls = []
+
+        def run(cmd, **kw):
+            calls.append((cmd, kw))
+            o = outputs.get(cmd[0])
+            if isinstance(o, Exception):
+                raise o
+            return types.SimpleNamespace(stdout=o, stderr="", returncode=0)
+        return run, calls
+
+    def test_found(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            node = os.path.join(tmp, "node")
+            pathlib.Path(node).write_text("")
+            run, calls = self.fake({node: "v22.11.0\n"})
+            r = core.find_node(run=run, which=lambda n: node, env={}, system="Linux")
+            self.assertEqual(r, {"ok": True, "path": node, "version": "22.11.0", "reason": ""})
+            self.assertEqual(calls[0][0], [node, "--version"])
+            self.assertLessEqual(calls[0][1]["timeout"], 10)
+            run, _ = self.fake({node: "v16.20.2\n"})
+            r = core.find_node(run=run, which=lambda n: node, env={}, system="Linux")
+            self.assertFalse(r["ok"])
+            self.assertIn("older than 18", r["reason"])
+            run, _ = self.fake({node: subprocess.TimeoutExpired("node", 5)})
+            r = core.find_node(run=run, which=lambda n: node, env={}, system="Linux")
+            self.assertFalse(r["ok"])
+            self.assertIn("failed", r["reason"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_windows_program_files(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            exe = os.path.join(tmp, "nodejs", "node.exe")
+            os.makedirs(os.path.dirname(exe))
+            pathlib.Path(exe).write_text("")
+            run, _ = self.fake({exe: "v20.18.1"})
+            r = core.find_node(run=run, which=lambda n: None, env={"ProgramFiles": tmp}, system="Windows")
+            self.assertEqual((r["ok"], r["path"], r["version"]), (True, exe, "20.18.1"))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_missing(self):
+        run, _ = self.fake({})
+        r = core.find_node(run=run, which=lambda n: None, env={}, system="Windows")
+        self.assertEqual((r["ok"], r["reason"]), (False, "Node.js was not found"))
+
+
+class DownloadsDirTests(unittest.TestCase):
+    def test_windows(self):
+        dirs = {"D:\\Daten\\Downloads Jürgen", "C:\\Users\\Jürgen\\Downloads"}
+        isdir = lambda p: p in dirs
+        env = {"USERPROFILE": "C:\\Users\\Jürgen"}
+        # the known folder first, then the registry (REG_EXPAND_SZ, %USERPROFILE% expanded), then the profile
+        self.assertEqual(core.downloads_dir("Windows", env, known=lambda: "D:\\Daten\\Downloads Jürgen", registry=lambda: 1 / 0, isdir=isdir), "D:\\Daten\\Downloads Jürgen")
+        self.assertEqual(core.downloads_dir("Windows", env, known=lambda: None, registry=lambda: "%USERPROFILE%\\Downloads", isdir=isdir), "C:\\Users\\Jürgen\\Downloads")
+        self.assertEqual(core.downloads_dir("Windows", env, known=lambda: 1 / 0, registry=lambda: 1 / 0, isdir=isdir), "C:\\Users\\Jürgen\\Downloads")
+        self.assertIsNone(core.downloads_dir("Windows", {}, known=lambda: None, registry=lambda: None, isdir=isdir))
+        self.assertEqual(core.DOWNLOADS_GUID, "{374DE290-123F-4565-9164-39C4925E467B}")
+
+    def test_linux_and_macos(self):
+        home = "/home/jürgen"
+        isdir = lambda p: p in {"/home/jürgen/Downloads", "/home/jürgen/Herunterladen"}
+        xdg = lambda cmd, **kw: types.SimpleNamespace(stdout="/home/jürgen/Herunterladen\n")
+        self.assertEqual(core.downloads_dir("Linux", {}, home, run=xdg, isdir=isdir), "/home/jürgen/Herunterladen")
+        nox = lambda cmd, **kw: (_ for _ in ()).throw(FileNotFoundError("xdg-user-dir"))
+        self.assertEqual(core.downloads_dir("Linux", {"XDG_CONFIG_HOME": "/nonexistent"}, home, run=nox, isdir=isdir), "/home/jürgen/Downloads")
+        self.assertEqual(core.downloads_dir("Darwin", {}, home, isdir=isdir), "/home/jürgen/Downloads")
+
+
+class ImportTests(unittest.TestCase):
+    """A kisi.json the viewer downloaded is taken over from the Downloads folder on the next click."""
+
+    def setUp(self):
+        self.b = Board(folder="KiCad Projekte ä\\Mein Board" if os.name == "nt" else "KiCad Projekte ä/Mein Board", stem="Mein Board")
+        self.dl = os.path.join(self.b.root, "Downloads Jürgen")
+        os.makedirs(self.dl)
+        self.good = json.dumps({"kisi_config": 1, "board": "Mein Board.kicad_pcb", "net_classes": {"QSPI": {"target_ohm": 50}}}, indent=2) + "\n"
+
+    def tearDown(self):
+        self.b.close()
+
+    def put(self, name, text, age=0):
+        p = os.path.join(self.dl, name)
+        pathlib.Path(p).write_text(encoding="utf-8", data=text)
+        t = time.time() - age
+        os.utime(p, (t, t))
+        return p
+
+    def make(self, **kw):
+        kw.setdefault("node", NO_NODE)
+        kw.setdefault("cli", None)
+        return core.make_page("Mein Board.kicad_pcb", self.b.dir, "Mein Board", viewer=self.b.viewer, temp=self.b.out, downloads=self.dl, **kw)
+
+    def old_cfg(self, text='{"kisi_config": 1, "board": "Mein Board.kicad_pcb"}\n', age=3600):
+        pathlib.Path(self.b.cfg).write_text(encoding="utf-8", data=text)
+        t = time.time() - age
+        os.utime(self.b.cfg, (t, t))
+        return text
+
+    def test_names(self):
+        rx = core.download_name_re("Mein Board")
+        for n in ("Mein Board.kisi.json", "mein board.kisi.json", "Mein Board.kisi(1).json", "Mein Board.kisi (2).json", "Mein Board.kisi-1.json"):
+            self.assertTrue(rx.fullmatch(n), n)
+        for n in ("Mein Board.kisi.json.txt", "Other.kisi.json", "Mein Board 2.kisi.json", "Mein Board.json", "Mein Board.kisi(x).json", "xMein Board.kisi.json"):
+            self.assertFalse(rx.fullmatch(n), n)
+
+    def test_taken_over_with_backup(self):
+        old = self.old_cfg()
+        src = self.put("Mein Board.kisi (1).json", self.good)
+        _, p = self.make()
+        imp = p["import"]
+        self.assertEqual((imp["state"], imp["from"], p["config"]), ("taken", src, "imported"))
+        self.assertEqual(pathlib.Path(self.b.cfg).read_text(encoding="utf-8"), self.good)
+        self.assertFalse(os.path.exists(src))  # moved
+        self.assertTrue(imp["backup"].startswith(os.path.join(self.b.dir, "analysis", "Mein Board.kisi.json.")))
+        self.assertEqual(pathlib.Path(imp["backup"]).read_text(encoding="utf-8"), old)
+        self.assertEqual(unpack(p)["Mein Board.kisi.json"], self.good)
+        # the next click: nothing newer, nothing happens
+        _, p = self.make()
+        self.assertEqual((p["import"]["state"], p["config"]), ("none", "loaded"))
+
+    def test_no_kisi_json_yet(self):
+        self.put("Mein Board.kisi.json", self.good)
+        _, p = self.make()
+        self.assertEqual((p["import"]["state"], p["import"]["backup"], p["config"]), ("taken", "", "imported"))
+        self.assertEqual(pathlib.Path(self.b.cfg).read_text(encoding="utf-8"), self.good)
+
+    def test_older_download_is_ignored(self):
+        self.old_cfg(age=60)
+        src = self.put("Mein Board.kisi.json", self.good, age=7200)
+        _, p = self.make()
+        self.assertEqual(p["import"]["state"], "none")
+        self.assertTrue(os.path.exists(src))
+
+    def test_ambiguous(self):
+        old = self.old_cfg()
+        a = self.put("Mein Board.kisi.json", self.good, age=10)
+        b = self.put("Mein Board.kisi(1).json", self.good)
+        _, p = self.make()
+        self.assertEqual(p["import"]["state"], "ambiguous")
+        self.assertIn("2 files", p["import"]["reasons"][0])
+        self.assertEqual(pathlib.Path(self.b.cfg).read_text(encoding="utf-8"), old)
+        self.assertTrue(os.path.exists(a) and os.path.exists(b))
+        self.assertFalse(os.path.exists(os.path.join(self.b.dir, "analysis", "Mein Board.kisi.json.bak")))
+
+    def test_invalid_or_other_board(self):
+        old = self.old_cfg()
+        for text, want in (("{ broken", "not valid JSON"), ('{"kisi_config": 2, "board": "Mein Board.kicad_pcb"}', "kisi_config"),
+                           ('{"kisi_config": 1, "board": "Other.kicad_pcb"}', "written for the board"), ("[1]", "no JSON object")):
+            src = self.put("Mein Board.kisi.json", text)
+            _, p = self.make()
+            self.assertEqual(p["import"]["state"], "invalid", text)
+            self.assertIn(want, p["import"]["reasons"][0])
+            self.assertEqual(pathlib.Path(self.b.cfg).read_text(encoding="utf-8"), old)
+            self.assertTrue(os.path.exists(src))
+            os.remove(src)
+        backups = [f for f in os.listdir(os.path.join(self.b.dir, "analysis")) if f.endswith(".bak")]
+        self.assertEqual(backups, [])
+
+    def test_config_check_with_node(self):
+        old = self.old_cfg()
+        self.put("Mein Board.kisi.json", self.good)
+        seen = []
+
+        def run(cmd, **kw):
+            seen.append(cmd)
+            return types.SimpleNamespace(stdout=json.dumps({"ok": False, "errors": ["net_classes.QSPI: no source"]}), stderr="", returncode=0)
+        _, p = self.make(node=NODE_OK, cli="/x/cli/kisi.mjs", run=run)
+        self.assertEqual(p["import"]["state"], "invalid")
+        self.assertIn("no source", p["import"]["reasons"][0])
+        self.assertEqual(seen[0][:3], ["/usr/bin/node", "/x/cli/kisi.mjs", "config-check"])
+        self.assertEqual(seen[0][3], os.path.join(self.b.dir, "Mein Board.kicad_pcb"))
+        self.assertEqual(seen[0][4:6], ["--config", os.path.join(self.dl, "Mein Board.kisi.json")])
+        self.assertEqual(pathlib.Path(self.b.cfg).read_text(encoding="utf-8"), old)
+        ok = lambda cmd, **kw: types.SimpleNamespace(stdout='{"ok": true, "errors": []}', stderr="", returncode=0)
+        _, p = self.make(node=NODE_OK, cli="/x/cli/kisi.mjs", run=ok)
+        self.assertEqual((p["import"]["state"], p["import"]["checked"]), ("taken", "kisi config-check ok"))
+
+    def test_config_check_that_cannot_run(self):
+        self.old_cfg()
+        self.put("Mein Board.kisi.json", self.good)
+
+        def run(cmd, **kw):
+            raise subprocess.TimeoutExpired(cmd, 90)
+        _, p = self.make(node=NODE_OK, cli="/x/cli/kisi.mjs", run=run)
+        self.assertEqual(p["import"]["state"], "taken")
+        self.assertIn("did not run", p["import"]["checked"])
+
+    def test_saved_into_the_board_folder(self):
+        # a browser that asked where to save, pointed at the board's folder: its own kisi.json is not a candidate
+        self.old_cfg(text=self.good, age=0)
+        _, p = core.make_page("Mein Board.kicad_pcb", self.b.dir, "Mein Board", viewer=self.b.viewer, temp=self.b.out, downloads=self.b.dir, node=NO_NODE, cli=None)
+        self.assertEqual((p["import"]["state"], p["config"]), ("none", "loaded"))
 
 
 # ---- the action (kisi_action.py) with a stand-in for kicad-python ---------------------------------------------
@@ -263,11 +522,15 @@ class ActionTests(unittest.TestCase):
         self.saved_modules = {k: sys.modules.get(k) for k in ("kipy",)}
         import kisi_action
         self.action = importlib.reload(kisi_action)
-        self.find_viewer = core.find_viewer
+        self.saved = {k: getattr(core, k) for k in ("find_viewer", "find_node", "downloads_dir", "find_cli")}
         core.find_viewer = lambda: self.b.viewer
+        core.find_node = lambda run=None: NO_NODE
+        core.downloads_dir = lambda: None
+        core.find_cli = lambda: None
 
     def tearDown(self):
-        core.find_viewer = self.find_viewer
+        for k, v in self.saved.items():
+            setattr(core, k, v)
         for k, v in self.saved_modules.items():
             if v is None:
                 sys.modules.pop(k, None)
@@ -292,7 +555,7 @@ class ActionTests(unittest.TestCase):
         rc, out, err = self.run_action([], fake_kipy(self.b.stem + ".kicad_pcb", self.b.dir, self.b.stem))
         self.assertEqual((rc, err), (0, ""))
         page = out.strip()
-        self.assertTrue(page.startswith(os.path.join(self.tmp, "kisi-kicad")), page)
+        self.assertEqual(page, os.path.join(self.b.dir, "analysis", self.b.stem + ".kisi.html"))
         q = payload_of(pathlib.Path(page).read_text(encoding="utf-8"))
         self.assertEqual((q["board"], q["config"], q["modified"], q["kicad"]), (self.b.stem, "created", "unknown", "10.0.7 (10.0.7)"))
         log = pathlib.Path(os.path.join(self.tmp, "kisi-kicad", "kisi-kicad.log")).read_text(encoding="utf-8")

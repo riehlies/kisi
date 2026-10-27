@@ -9,6 +9,8 @@ opened in the default browser. Nothing is saved in KiCad and no KiCad file is wr
 
 Without KiCad (to test the rest): python kisi_action.py --pcb path/to/board.kicad_pcb [--no-browser]
 
+The page goes to analysis/<board>.kisi.html next to the board (or the temporary folder when that cannot be written);
+a kisi.json the viewer downloaded is taken over from the Downloads folder first (kisi_kicad.import_download).
 Problems: one line on stderr (KiCad 10.0.1 and later show it at the alert triangle in the PCB editor's status bar),
 an error page in the browser, and the details in <temp>/kisi-kicad/kisi-kicad.log.
 """
@@ -111,8 +113,11 @@ def main(argv=None):
         else:
             name, folder, project, state, kv = board_from_kicad(log)
         page, payload = core.make_page(name, folder, project, modified=state, kicad_version=kv)
-        log(f"page {page} ({os.path.getsize(page)} bytes); kisi.json {payload['config']}: {payload['config_path']}; "
-            f"files {[f['name'] for f in payload['files']]}; notes {payload['notes']}")
+        imp, cli = payload["import"], payload["cli"]
+        log(f"page {page} ({os.path.getsize(page)} bytes, {payload['page']['where']}{': ' + payload['page']['reason'] if payload['page']['reason'] else ''}); "
+            f"kisi.json {payload['config']}: {payload['config_path']}; files {[f['name'] for f in payload['files']]}; notes {payload['notes']}")
+        log(f"downloads {imp['folder'] or '-'}: {imp['state']} {imp['from']} {imp['backup']} {imp['checked']} {imp['reasons']}; "
+            f"cli {cli['path'] or '-'}; node {cli['node']}")
         open_page(page, log)
         print(page)
         return 0

@@ -141,11 +141,16 @@ See `UPSTREAM.md`: Forstén's js_2d_fields unmodified as a vendored copy (`third
 An IPC API plugin for KiCad 9/10 (`plugin.json`, Python runtime: KiCad makes the plugin's virtual environment and
 installs `requirements.txt`, i.e. kicad-python). One toolbar action in the PCB editor: `kisi_action.py` asks KiCad
 for the open board (file name, project folder; unsaved changes where the API can tell – not in KiCad 10) and hands
-it to `kisi_kicad.py` (standard library only): read the saved `.kicad_pcb`, `.kicad_pro` and `<board>.kisi.json`
-(created as the viewer's skeleton when missing – the only file written next to the board) with the BOMs and
-Touchstone files it names, embed them in the viewer page of the same release (`viewer/kisi.html`, the marker
-`null; /*@kicad-board*/`), write the page to `<temp>/kisi-kicad/` and open it in the browser. No local server, no
-second load path in the viewer. Problems: stderr (KiCad's alert triangle), an error page, `<temp>/kisi-kicad/kisi-kicad.log`.
+it to `kisi_kicad.py` (standard library only): take over a `<board>.kisi.json` the viewer downloaded (the user's
+Downloads folder: exactly one candidate newer than the board's file, for this board, `kisi config-check` with the
+plugin's CLI where Node.js is there; the old file to `analysis/` as a backup), read the saved `.kicad_pcb`,
+`.kicad_pro` and `<board>.kisi.json` (created as the viewer's skeleton when missing) with the BOMs and Touchstone
+files it names, embed them with the CLI's path and the Node.js status in the viewer page of the same release
+(`viewer/kisi.html`, the marker `null; /*@kicad-board*/`), write the page to `analysis/<board>.kisi.html` next to the
+board (else `<temp>/kisi-kicad/`) and open it in the browser. `Guard` allows exactly these writes next to the board:
+`<board>.kisi.json`, `analysis/<board>.kisi.html`, `analysis/<board>.kisi.json.<time>.bak`. The package also carries
+`cli/kisi.mjs` for the agent path (the viewer's agent card shows the command with the installed paths). No local
+server, no second load path in the viewer. Problems: stderr (KiCad's alert triangle), an error page, `<temp>/kisi-kicad/kisi-kicad.log`.
 `tools/build_kicad_pcm.py` packs it with `dist/kisi.html` into `kisi-kicad-<version>.zip` for KiCad's Plugin and
 Content Manager (layout and sources: `docs/research/kicad-plugin.md`) and writes the PCM repository entry;
 `kicad-plugin/tests` (unit tests, the package against KiCad's vendored schemas) and `tools/check_kicad_plugin.py`

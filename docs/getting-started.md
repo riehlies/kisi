@@ -116,7 +116,7 @@ last three boards stay in memory while switching. The "Accuracy" section of the 
 model accuracy ([Models and limits](models.md)).
 
 ## From KiCad: the plugin
-A button in KiCad's PCB editor (KiCad 10; KiCad 9 should work the same) opens the open board in the viewer, in
+A button in KiCad's PCB editor (KiCad 10) opens the open board in the viewer, in
 your default browser, with its `<board>.kisi.json`.
 
 **Install** – either way, in KiCad's project window: *Plugin and Content Manager*

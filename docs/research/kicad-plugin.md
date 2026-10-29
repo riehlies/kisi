@@ -89,8 +89,9 @@ their zips; the layout and the API switch are the likely causes, and the test pl
 Metadata: `$schema` v2 (recommended for new packages [S2]); it also validates against KiCad 9's v1 schema, which
 KiCad 9 uses for "Install from File" [S3]. Hence `"license": "GPL-3.0"`: v1 only accepts names from its list, and
 under the Debian rules v1 follows [S2] `GPL-3.0` means version 3 only (`GPL-3.0+` would be "or later") – the same as
-SPDX `GPL-3.0-only`, which v1 rejects. `kicad_version` 9.0: the code paths used are the same in 9.0 and 10.0 [S3,
-S4, S5]; only 10 is tested. `tools/build_kicad_pcm.py` validates against the vendored schemas
+SPDX `GPL-3.0-only`, which v1 rejects. `kicad_version` 10.0 and status `testing` (maintainer's decision for the first
+release: only KiCad 10 is tested; the code paths are the same in 9.0 [S3, S4, S5], so KiCad 9 can follow once it is
+tested). `tools/build_kicad_pcm.py` validates against the vendored schemas
 (`kicad-plugin/tests/schemas/`).
 
 ## What the plugin does

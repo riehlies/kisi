@@ -20,6 +20,7 @@ Every [release](https://github.com/riehlies/kisi/releases/latest) carries:
 | `kisi-examples.html` | the same viewer with two example boards built in – ThunderScope Rev5.3 and LibreVNA – each with its power tree as a kisi.json |
 | `kisi.mjs` | the command line for scripts, CI and agents (Node.js ≥ 18), with the 2D field solver |
 | `kisi-docs.pdf` | this documentation as one PDF |
+| `kisi-kicad-<version>.zip` | the KiCad plugin: a button in KiCad's PCB editor that opens the board in the viewer ([below](#from-kicad-the-plugin)) |
 | `kisi-references.html` | 3D reference cases for vias, stubs, pairs, lines and plane cavities with field plots, and kisi's fast models against them (attached to the releases in which the cases changed, currently [v0.3.0](https://github.com/riehlies/kisi/releases/tag/v0.3.0)) |
 
 The [live version](https://riehlies.github.io/kisi/) serves the viewer and the example viewer from GitHub Pages.
@@ -113,6 +114,68 @@ PCB moves them into the kisi.json). The
 KiCad files are never changed. Field-solver results are cached in the browser (IndexedDB); the results of the
 last three boards stay in memory while switching. The "Accuracy" section of the impedance view summarises the
 model accuracy ([Models and limits](models.md)).
+
+## From KiCad: the plugin
+A button in KiCad's PCB editor (KiCad 10) opens the open board in the viewer, in
+your default browser, with its `<board>.kisi.json`.
+
+**Install** – either way, in KiCad's project window: *Plugin and Content Manager*
+- search for **kisi** and install it (once the package is in KiCad's repository), or
+- download `kisi-kicad-<version>.zip` from the [latest release](https://github.com/riehlies/kisi/releases/latest)
+  and choose *Install from File…* (bottom left).
+
+The plugin uses the KiCad API: if KiCad asks whether to enable it, say yes – otherwise tick *Preferences →
+Plugins → Enable KiCad API*. On the first start KiCad sets up the plugin's own Python environment and installs
+`kicad-python` from the internet (a minute or so); the button appears when that is done. It sits at the right
+end of the PCB editor's top toolbar (an eye-diagram icon, "Open in kisi"); the plugin's actions are also listed
+in *Preferences → PCB Editor → Plugins* (KiCad 10), where its environment can be recreated (right-click).
+
+**What the button does**
+1. It asks KiCad which board is open and reads the saved `.kicad_pcb`, the `.kicad_pro` and the
+   `<board>.kisi.json` next to the board. Changes not yet saved in KiCad are not included: save first.
+2. If the viewer downloaded a `<board>.kisi.json` since the last click (browsers without a folder dialog, see
+   below), it takes that file over from your downloads folder first – only when exactly one such file
+   (`<board>.kisi.json`, also `<board>.kisi(1).json`, `<board>.kisi (1).json`) is newer than the one next to the
+   board, is a kisi.json for this board and passes `kisi config-check` (when Node.js is installed). The previous
+   file is kept as `analysis/<board>.kisi.json.<date-time>.bak`; anything doubtful (several files, another board,
+   an error) leaves everything as it is, and the viewer says why.
+3. If there is no `<board>.kisi.json`, it creates an empty one next to the board.
+4. It writes a copy of the viewer with these files built in to `analysis/<board>.kisi.html` next to the board – the
+   folder `kisi report` and `kisi export` use – and opens it; each click writes it anew. If `analysis/` cannot be
+   written (a read-only folder), the page goes to a folder `kisi-kicad` in the system's temporary folder instead,
+   and the viewer says so. The page works offline, like `kisi.html`; the card "From KiCad" names the board, its
+   folder, the page and what happened to the kisi.json. In a project under version control, add `analysis/` to
+   `.gitignore`.
+
+Next to the board the plugin writes nothing but `<board>.kisi.json` and, in `analysis/`, the page and the backups;
+KiCad's files are never written or saved.
+
+**Saving kisi.json** – on the viewer's *Prepare PCB* page, "Save kisi.json" writes the file next to the board,
+where the next click reads it:
+- in Chrome and Edge: **Choose the board folder…** once per board (the page shows the folder's path; kisi checks
+  that the chosen folder holds the board). From then on "Save kisi.json" writes the file straight into that folder,
+  without a dialog; the browser asks once per session for permission to edit files there. Without a chosen folder
+  a save dialog opens instead ("Copy path" copies the full file name, which can be pasted into the dialog's file
+  name field).
+- in Firefox and Safari the file goes to the downloads folder: then **click kisi in KiCad again** – the plugin moves
+  it next to the board (step 2 above); the page says so after saving. To choose the folder yourself instead, let the
+  browser ask where to save: Firefox: *Settings → General → Downloads → Always ask you where to save files* (Firefox
+  then remembers the last folder); Safari: *Settings → General → File download location → Ask for each download*.
+
+**With an agent** – the plugin carries kisi's command line (`cli/kisi.mjs` in its folder) and the
+[agent guide](agents.md#any-assistant-the-agent-guide) for any assistant (`agent/KISI-AGENT-GUIDE.md`). On *Prepare
+PCB* the agent card has "Copy guide" and "Copy prompt": give both to the assistant. The prompt names the guide, the
+board, where its kisi.json belongs and the CLI. An agent that can run commands uses the ready command shown on the
+card (with Node.js 18 or newer installed, [nodejs.org](https://nodejs.org), LTS), e.g.
+`node "…\com_github_riehlies_kisi\cli\kisi.mjs" gaps "…\board.kicad_pcb" --for impedance`, and writes the
+kisi.json there itself; a chat assistant asks for the commands' output and returns the complete kisi.json, which
+you save next to the board. The next click in KiCad loads it. Without Node.js the card says where to get it.
+
+**If nothing happens** – KiCad 10 shows the plugin's error at the warning triangle in the PCB editor's status bar
+(bottom right), and the browser opens a page saying what went wrong. Details are in the plugin's log
+`kisi-kicad/kisi-kicad.log` in the temporary folder (on Windows `%TEMP%\kisi-kicad\kisi-kicad.log`). If the
+button does not appear, check that the API is enabled and that *Preferences → Plugins* shows a Python interpreter.
+To remove the plugin, uninstall it in the Plugin and Content Manager; the kisi.json files next to your boards stay.
 
 ## The command line
 ```sh

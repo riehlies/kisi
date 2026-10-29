@@ -1,0 +1,29 @@
+{
+  "$schema": "https://go.kicad.org/pcm/schemas/v2",
+  "name": "kisi – SI/PI checks",
+  "description": "Signal and power integrity checks: opens the board in kisi's viewer in the browser.",
+  "description_full": "kisi checks signal and power integrity of a KiCad board: trace impedance per net class, high-speed channels against interface profiles (loss, eye, skew), vias, crosstalk, the regulator chain, DC voltage drop and PDN impedance.\n\nThe toolbar button opens the board of the PCB editor in kisi's viewer, a self-contained page that runs offline in the default browser. The board's <board>.kisi.json (values with sources that the board file lacks) is loaded with it, or created as an empty skeleton next to the board. The viewer's Prepare PCB page fills and saves it.\n\nThe plugin reads the saved board file; it never writes KiCad's files. Needs the KiCad API (Preferences > Plugins > Enable KiCad API); KiCad installs kicad-python on first start.",
+  "identifier": "com.github.riehlies.kisi",
+  "type": "plugin",
+  "author": {
+    "name": "David Riehl",
+    "contact": {
+      "github": "https://github.com/riehlies"
+    }
+  },
+  "license": "GPL-3.0",
+  "resources": {
+    "homepage": "https://github.com/riehlies/kisi",
+    "documentation": "https://github.com/riehlies/kisi/blob/main/docs/getting-started.md",
+    "issues": "https://github.com/riehlies/kisi/issues"
+  },
+  "tags": ["signal-integrity", "power-integrity", "impedance", "simulation", "pcb"],
+  "versions": [
+    {
+      "version": "VERSION",
+      "status": "testing",
+      "kicad_version": "10.0",
+      "runtime": "ipc"
+    }
+  ]
+}

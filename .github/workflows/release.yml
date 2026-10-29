@@ -5,6 +5,10 @@
 #   kisi.mjs           – the command line with the field solver (node kisi.mjs help; Node.js >= 18; smoke-tested
 #                        on Node 22 and 20, the viewers headless in Chromium)
 #   kisi-docs.pdf      – the documentation in docs/ as one PDF (tools/docs_pdf.py)
+#   kisi-kicad-<version>.zip – the KiCad plugin (tools/build_kicad_pcm.py): KiCad's "Install from File…", and the
+#                        download of the entry in KiCad's PCM repository; kisi-kicad-<version>.metadata.json is that
+#                        entry (download URL = this release's zip, its SHA-256 and sizes) for the merge request to
+#                        gitlab.com/kicad/addons/metadata (packages/com.github.riehlies.kisi/, done by hand)
 #   kisi-references.html – the 3D reference cases (kisi-fdtd) with kisi's models against them
 #                        (validation/fdtd/make_viewer.py; built here, not kept in the repository) – attached
 #                        only when the reference cases or the page builder changed since the previous release
@@ -56,6 +60,14 @@ jobs:
           python3 -m pip install --quiet playwright==1.64.1 markdown==3.10.3 pypdf==5.9.0
           sh tools/ci_install.sh playwright chromium
           python3 tools/docs_pdf.py dist/kisi-docs.pdf
+      - name: KiCad plugin package
+        run: |
+          python3 -m pip install --quiet jsonschema==4.26.0 kicad-python==0.8.0
+          python3 -m unittest discover -s kicad-plugin/tests
+          V=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
+          # the repository entry downloads the zip from the release of the tag: tag and version must agree
+          if [ "${GITHUB_REF_NAME#v}" != "$V" ] && [ "$GITHUB_REF_TYPE" = tag ]; then echo "::error::tag $GITHUB_REF_NAME, version $V"; exit 1; fi
+          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --out dist
       - name: Field solver validation (HFSS / baseline, viewer bundle)
         run: sh tools/validate_field.sh
       - name: Smoke test of kisi.mjs
@@ -83,6 +95,7 @@ jobs:
           python3 tools/check_viewer.py dist/kisi-examples.html --quick --layouts light
           python3 tools/check_viewer.py dist/kisi.html --quick --layouts light \
             --board examples/VNA.kicad_pcb examples/VNA.kicad_pro --config web/samples/vna.kisi.json
+          python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip examples/VNA.kicad_pcb --config web/samples/vna.kisi.json
       - uses: actions/upload-artifact@v6
         with:
           name: kisi
@@ -92,13 +105,15 @@ jobs:
             dist/kisi.mjs
             dist/kisi-docs.pdf
             dist/kisi-references.html
+            dist/kisi-kicad-*.zip
+            dist/kisi-kicad-*.metadata.json
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes
-          files="dist/kisi.html dist/kisi-examples.html dist/kisi.mjs dist/kisi-docs.pdf"
+          files="dist/kisi.html dist/kisi-examples.html dist/kisi.mjs dist/kisi-docs.pdf $(ls dist/kisi-kicad-*.zip dist/kisi-kicad-*.metadata.json)"
           # the reference page only when its cases or builder changed since the previous release tag
           prev=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
           if [ -z "$prev" ] || ! git diff --quiet "$prev" "$GITHUB_REF_NAME" -- validation/via_ref validation/fdtd/make_viewer.py validation/fdtd/viewer_template.html; then
@@ -127,7 +142,7 @@ jobs:
       - name: Site
         run: |
           cp web/pages/index.html site/
-          rm -f site/kisi-references.html   # the reference page stays a release file
+          rm -f site/kisi-references.html site/kisi-kicad-*   # the reference page and the KiCad plugin stay release files
           mkdir -p site/fonts site/img
           cp web/fonts/fonts.css web/fonts/*.woff2 web/fonts/OFL-*.txt site/fonts/
           cp docs/img/*.png site/img/

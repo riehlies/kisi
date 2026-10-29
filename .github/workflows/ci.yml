@@ -18,6 +18,9 @@
 #   refpage             the 3D reference page builds
 #   docs                the documentation PDF builds (tools/docs_pdf.py; also the link and heading check of docs/)
 #   upstream            Forstén's solver in third_party/ is upstream's tree, unchanged
+#   kicad               the KiCad plugin's unit tests (also with kicad-python), its package against KiCad's schemas
+#                       (kicad-plugin/tests); with the bundles: the package with this kisi.html, installed as KiCad's
+#                       PCM does and its page in headless Chromium (tools/check_kicad_plugin.py, viewer step)
 #   viewer or cli       reproducible bundles · bundle sizes (tools/size_budget.json)
 #   full runs only      kisi.mjs on Windows
 #   weekly / manual     the viewer in Firefox and WebKit · dependency audit (cargo-audit) and licences (cargo-deny, deny.toml) · newer upstream
@@ -49,6 +52,7 @@ jobs:
       docs: ${{ steps.c.outputs.docs }}
       export: ${{ steps.c.outputs.export }}
       upstream: ${{ steps.c.outputs.upstream }}
+      kicad: ${{ steps.c.outputs.kicad }}
       full: ${{ steps.c.outputs.full }}
     steps:
       - uses: actions/checkout@v5
@@ -94,6 +98,12 @@ jobs:
       - name: Forstén's solver unchanged (third_party/js_2d_fields against upstream)
         if: needs.changes.outputs.upstream == 'true'
         run: python3 tools/ci_checks.py upstream
+      - name: KiCad plugin (unit tests, package against KiCad's schemas)
+        if: needs.changes.outputs.kicad == 'true'
+        run: |
+          python3 -m pip install --quiet jsonschema==4.26.0 kicad-python==0.8.0
+          python3 tools/agent_guide.py --check
+          python3 -m unittest discover -s kicad-plugin/tests -v
       - uses: actions/setup-node@v5
         if: env.BUILD == 'true'
         with:
@@ -218,7 +228,7 @@ jobs:
         if: env.VIEWER == 'true' || needs.changes.outputs.docs == 'true'
         timeout-minutes: 30
         run: |
-          python3 -m pip install --quiet playwright==1.64.1 numpy markdown==3.10.3 pypdf==5.9.0
+          python3 -m pip install --quiet playwright==1.64.1 numpy markdown==3.10.3 pypdf==5.9.0 jsonschema==4.26.0
           sh tools/ci_install.sh playwright chromium
       - name: Viewer in headless Chromium
         if: env.VIEWER == 'true'
@@ -226,6 +236,10 @@ jobs:
         run: |
           node tools/test_units.mjs
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
+          # the KiCad plugin package with this viewer: installed as KiCad's PCM does, its page from disk
+          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --out dist
+          python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip examples/Thunderscope_Rev5.3.kicad_pcb \
+            --config web/samples/ts.kisi.json --out viewer-screenshots/kicad
       - name: Documentation PDF (and the link and heading check of docs/)
         if: needs.changes.outputs.docs == 'true'
         run: python3 tools/docs_pdf.py dist/kisi-docs.pdf

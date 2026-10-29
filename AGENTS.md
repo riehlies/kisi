@@ -19,10 +19,13 @@ python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm
   target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs   # Node CLI with field solver
 python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html  # 3D reference cases page
 python3 tools/docs_pdf.py dist/kisi-docs.pdf             # docs/ as one PDF (pip: markdown playwright pypdf)
+python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs  # KiCad plugin → dist/kisi-kicad-<version>.zip + PCM entry (pip: jsonschema)
 ```
 Releases: a tag `v*` runs `.github/workflows/release.yml`; it attaches `kisi.html`, `kisi-examples.html`,
-`kisi.mjs`, `kisi-docs.pdf` and – when the reference cases changed since the previous release –
-`kisi-references.html` (built, not kept in the repository) and publishes the live demo on GitHub Pages. The example
+`kisi.mjs`, `kisi-docs.pdf`, the KiCad plugin `kisi-kicad-<version>.zip` with its PCM repository entry
+`kisi-kicad-<version>.metadata.json` (the merge request to gitlab.com/kicad/addons/metadata is made by hand) and –
+when the reference cases changed since the previous release – `kisi-references.html` (built, not kept in the
+repository) and publishes the live demo on GitHub Pages. The example
 boards (ThunderScope CERN-OHL-P-2.0, LibreVNA GPL-3.0) are not in the repository; `tools/fetch_examples.sh` fetches
 them at fixed commits and shrinks them; their power trees are `web/samples/{ts,vna}.kisi.json`.
 
@@ -42,6 +45,13 @@ Locally, before pushing a branch, run the quick checks for what you changed:
   (Node CLI with `--formula` against the native `kisi` on both example boards).
 * Field solver chain (`web/solver/`, the cross-section geometry, `tools/bundle.py`): `sh tools/validate_field.sh`
   (against HFSS/baseline, needs node).
+* KiCad plugin (`kicad-plugin/`, `tools/build_kicad_pcm.py`): `python3 -m unittest discover -s kicad-plugin/tests`
+  (pip: jsonschema, optionally kicad-python==0.8.0 for the tests against its classes), then with fresh bundles
+  `python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs && python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip
+  examples/Thunderscope_Rev5.3.kicad_pcb --config web/samples/ts.kisi.json` (the package installed as KiCad's PCM
+  does, its page in headless Chromium). No KiCad runs in CI: a change of the plugin's KiCad side needs a test in KiCad.
+  The agent guide `kicad-plugin/agent/KISI-AGENT-GUIDE.md` is generated: after editing the kisi-prepare skill's
+  `agent-guide:…` blocks or `KISI-AGENT-GUIDE.in.md`, run `python3 tools/agent_guide.py` (`--check` in CI).
 * Documentation (`docs/`, `kisi help`, gap ids): `cargo test --release -p kisi-core --test docs` (the help text
   in `docs/cli.md`, every command, option and gap id) and `python3 tools/docs_pdf.py dist/kisi-docs.pdf` (the PDF;
   fails on links to missing files or headings in `docs/`).

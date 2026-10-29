@@ -30,7 +30,9 @@ GROUPS = {
     "rust": CODE,
     # the viewer in headless Chromium (needs the bundles)
     "viewer": CODE + BOARDS + ["web/*", "tools/bundle.py", "tools/solver_bundle.py", "tools/esm_classic.py",
-                               "tools/check_viewer.py", "tools/test_units.mjs", "third_party/*"],
+                               "tools/check_viewer.py", "tools/test_units.mjs", "third_party/*",
+                               # the plugin's page in the browser (tools/check_kicad_plugin.py)
+                               "kicad-plugin/kisi_kicad.py", "kicad-plugin/kisi_action.py", "tools/check_kicad_plugin.py"],
     # Node CLI against the native CLI
     "cli": CODE + BOARDS + ["web/cli/*", "web/solver/*", "third_party/*", "tools/bundle_cli.py",
                             "tools/solver_bundle.py", "tools/compare_cli.py"],
@@ -46,6 +48,8 @@ GROUPS = {
     "refpage": ["validation/via_ref/*", "validation/fdtd/make_viewer.py", "validation/fdtd/viewer_template.html"],
     # Forstén's solver unchanged against upstream
     "upstream": ["third_party/*"],
+    # the KiCad plugin: its unit tests, the package against KiCad's schemas (cheap, no bundles needed)
+    "kicad": ["kicad-plugin/*", "tools/build_kicad_pcm.py", "tools/agent_guide.py", "claude-plugin/skills/kisi-prepare/*"],
     # Markdown links (cheap; also on every code change) and the documentation PDF
     "docs": ["*.md", "docs/*", "claude-plugin/*", ".claude-plugin/*", "LICENSE*", "tools/docs_pdf.py"],
 }

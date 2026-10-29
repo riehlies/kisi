@@ -14,6 +14,17 @@ A typical session: "prepare this board for kisi" (kisi-prepare), then "review it
 (kisi-si-pi-review). The worked example of a prepared board – the Seeed XIAO nRF54LM20A – is in
 [Preparing a board](preparing-a-board.md#worked-example-seeed-studio-xiao-nrf54lm20a).
 
+## Any assistant: the agent guide
+[KISI-AGENT-GUIDE.md](../kicad-plugin/agent/KISI-AGENT-GUIDE.md) is the same preparation as kisi-prepare, written for
+any assistant – ChatGPT, Claude, Gemini, local models in LM Studio or Ollama, coding agents. Give it to the assistant
+together with your request (attach or paste it). It works in two modes: an agent that can run commands calls
+`kisi.mjs` itself and writes `<board>.kisi.json`; a chat assistant without a shell asks you for the output of
+`kisi gaps` and the current kisi.json and returns the complete new kisi.json for you to save next to the board.
+The KiCad plugin carries the guide (`agent/KISI-AGENT-GUIDE.md` in its folder); on the viewer's *Prepare PCB* page
+the agent card has "Copy guide", and its prompt names the guide, the plugin's `kisi.mjs`, the board and where the
+kisi.json goes ([Getting started](getting-started.md#from-kicad-the-plugin)). The guide is generated from the
+kisi-prepare skill (`tools/agent_guide.py`), so both say the same.
+
 ## Setup
 1. Node.js ≥ 18 ([nodejs.org](https://nodejs.org), LTS).
 2. Claude Code: `/plugin marketplace add riehlies/kisi`, then `/plugin install kisi@kisi`.
@@ -42,5 +53,5 @@ gh release download --repo riehlies/kisi --pattern kisi.mjs --dir ~/.kisi --clob
 - With a tool that edits KiCad live (e.g. Konnect): change the copper, save, then run `kisi net` / `kisi check`
   again to confirm.
 
-An MCP server and a KiCad plugin existed until October 2026 and were removed in favour of the CLI and the skills
-(they remain in the git history).
+An MCP server existed until October 2026 and was removed in favour of the CLI and the skills (it remains in the git
+history).

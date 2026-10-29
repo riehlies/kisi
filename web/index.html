@@ -48,6 +48,10 @@
       <h2 id="h-variant">Assembly variant <em id="variant-name"></em></h2>
       <div id="variant-body"></div>
     </section>
+    <section class="card kicad-card off" id="kicad-card" aria-labelledby="h-kicad" data-view="si ch pi">
+      <h2 id="h-kicad">From KiCad <em id="kicad-saved"></em></h2>
+      <div id="kicad-body"></div>
+    </section>
 
     <section class="card" aria-labelledby="h-check" data-view="ch" hidden>
       <h2 id="h-check">Channel check <em id="ck-count"></em></h2>
@@ -290,6 +294,8 @@
           <span class="note" id="prep-draft"></span>
           <div class="prep-row"><select id="prep-scope" aria-label="what to save"></select><button class="btn small primary" id="prep-save">Save kisi.json</button><button class="btn small" id="prep-discard" hidden title="back to the loaded file">Discard draft</button></div>
           <span class="note" id="prep-save-note"></span>
+          <div class="prep-row prep-kicad" id="prep-kicad" hidden><code id="prep-kicad-path"></code><button class="btn small" id="prep-kicad-copy" title="the full path of the kisi.json next to the board – paste it as the file name in the save dialog">Copy path</button></div>
+          <div class="prep-row prep-kicad" id="prep-kicad-dir" hidden></div>
           <details class="prep-notes"><summary>Notes in the file <em id="prep-notes-n"></em></summary><textarea id="prep-notes" rows="4" aria-label="notes, one per line" placeholder="one note per line: the supply case, what is open, …"></textarea></details>
         </div>
       </section>
@@ -298,6 +304,7 @@
         <p class="note">What you hand over (a step, or single items in it) goes into the prompt below. The agent researches it from datasheets, BOMs or curves, with sources, and merges it into the same kisi.json (keeping your entries and dismissals); loaded again, the file fills this page.</p>
         <div class="prep-row"><select id="prep-agent-scope" aria-label="prompt for"></select></div>
         <ul class="prep-msgs" id="prep-agent-list"></ul>
+        <div class="prep-agent-kicad" id="prep-agent-kicad" hidden></div>
         <pre class="prep-prompt" id="prep-prompt"></pre>
         <div class="prep-row"><button class="btn small" id="prep-copy">Copy prompt</button><span class="note" id="prep-copied" hidden>copied</span></div>
       </section>
@@ -325,6 +332,9 @@ const SOLVER_GZ = "__SOLVER_GZ__";
 let SPARSE_WASM = null, SOLVER_SRC = null;
 const UPSTREAM_REV = "__UPSTREAM_REV__";
 const SAMPLES = __SAMPLES__;
+// a board handed over by the KiCad plugin (kicad-plugin/kisi_kicad.py writes it in place of the null in its copy
+// of this page): the board's files, loaded like dropped files (main.js, loadKicadBoard)
+const KICAD_BOARD = null; /*@kicad-board*/
 const DATA = __DATA__;
 </script>
 <!-- @scripts web/src/manifest.json -->

@@ -12,7 +12,7 @@ Usage: bundle.py <index.html> <kisi_wasm.wasm> <kisi_sparse.wasm> <out.html> [ke
 * sample boards: gzip + base64, with web/samples/<key>.kisi.json (their board configuration) and
   <board>.notice.txt next to the board file (source and licence, tools/fetch_examples.sh)
 * viewer: web/index.html (markup), web/fonts (embedded fonts), web/css/kisi.css, web/src/*.js in the order
-  of web/src/manifest.json (one shared scope, concatenated), data/*.json as DATA
+  of web/src/manifest.json (one shared scope, concatenated), data/*.json as DATA (not corpus.json)
 """
 import base64, gzip, json, os, re, sys
 
@@ -78,11 +78,13 @@ def inline_scripts(m):
 html = re.sub(r"<!-- @scripts (\S+) -->.*?<!-- @end-scripts -->", inline_scripts, html, flags=re.S)
 
 # --- data files (data/*.json): presets that can be updated without touching code
+# (corpus.json is the board list of tools/corpus.py, not used by the viewer)
+NOT_BUNDLED = {"corpus.json"}
 data = {}
 ddir = os.path.join(root, "data")
 if os.path.isdir(ddir):
     for f in sorted(os.listdir(ddir)):
-        if f.endswith(".json"):
+        if f.endswith(".json") and f not in NOT_BUNDLED:
             data[f[:-5]] = json.load(open(os.path.join(ddir, f), encoding="utf-8"))
 html = html.replace("__DATA__", json.dumps(data, ensure_ascii=False).replace("</", "<\\/"))
 html = html.replace("__WASM_GZ__", gzb64(open(wasm, "rb").read()))

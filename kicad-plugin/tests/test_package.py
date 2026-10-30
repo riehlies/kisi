@@ -86,7 +86,11 @@ class PackageTests(unittest.TestCase):
             for f in [a["entrypoint"]] + a["icons-light"] + a["icons-dark"]:
                 self.assertTrue(os.path.isfile(os.path.join(base, f)), f)  # relative to plugin.json, as KiCad resolves
         self.assertTrue(os.path.isfile(os.path.join(third, "resources", "com_github_riehlies_kisi", "icon.png")))
-        self.assertEqual(sum(os.path.getsize(f) for f in files), self.r["install_size"])
+        # install_size counts every file in the archive, metadata.json included, as KiCad's metadata repository
+        # validator does (0.3.1's first submission counted only the extracted files and was rejected)
+        with zipfile.ZipFile(self.r["zip"]) as z:
+            self.assertEqual(sum(i.file_size for i in z.infolist()), self.r["install_size"])
+            self.assertEqual(sum(os.path.getsize(f) for f in files) + z.getinfo("metadata.json").file_size, self.r["install_size"])
         # the extracted plugin makes a page (without KiCad: --pcb)
         board = os.path.join(self.tmp, "Board Ä", "b.kicad_pcb")
         os.makedirs(os.path.dirname(board))

@@ -137,7 +137,7 @@
    "pdn": {"pwr": 3, "note": "PDN coupons: PWR islands on In3 (L4) over the GND plane In4 (L5), 0.35 mm core"},
    "total_mm": 2.0528,
    "total_src": "jlc_api (compressionThickness)",
-   "why": "2.0 mm: the L1 -> L3 via leaves a 1.4 mm stub to L8, so its notch falls near 20 GHz, inside the SMA band (a 1.6 mm board allows about 1.1 mm: notch near 25 GHz); the -14 connector takes boards up to .090 in (2.29 mm)"
+   "why": "2.0 mm: the L1 -> L3 via leaves a 1.4 mm stub to L8, so its notch falls near 20 GHz, inside the band of every VNA here (also the 20 GHz ENA). With the 2.92 mm connector (40 GHz, v3) a 1.6 mm board (about 1.1 mm stub: notch near 25 GHz) would be inside the band too; the 2.0 mm board stays for the deeper, lower notch. The Samtec -01 connector takes boards up to .100 in (2.54 mm)"
   },
   "jlc8_2116_1p6": {
    "title": "JLCPCB JLC08161H-2116, 8 layers, 1.6 mm (JLC's default 8-layer 1.6 mm template; alternative, not generated)",

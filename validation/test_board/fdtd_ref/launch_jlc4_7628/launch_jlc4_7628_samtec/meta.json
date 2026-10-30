@@ -1,0 +1,77 @@
+{
+ "case": "launch_jlc4_7628_samtec",
+ "meta": {
+  "group": "launch",
+  "title": "Samtec 292-J-P-EP-ST-EL-01 launch on JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template): samtec",
+  "params": {
+   "variant": "samtec",
+   "tip_w": 0.229,
+   "taper_len": 0.85,
+   "pad_w": 0.521,
+   "pad_len": 6.477,
+   "pad_gap": 1.188,
+   "w": 0.315,
+   "gap": 0.3,
+   "launch_length": 6.477,
+   "gnd_cut": null,
+   "fence": {
+    "pitch": 0.8,
+    "first_x": 0.8,
+    "rows": 2,
+    "row_pitch": 0.8,
+    "offset": 0.4,
+    "hole_keep": 0.45,
+    "note": "fence vias along both coplanar gaps: columns from first_x every pitch to launch_length - 0.35, rows offset from the gap edge; none within hole_keep of a screw hole's copper"
+   },
+   "body": false,
+   "line_w": 0.345
+  },
+  "stackup": "tb_jlc4_7628",
+  "stackup_title": "JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template)",
+  "copper_z": [
+   1.4858,
+   1.2754,
+   0.2104,
+   0.0
+  ],
+  "planes": [
+   "L2",
+   "L3"
+  ],
+  "pwr_planes": [],
+  "ports": [
+   {
+    "name": "1 edge (launch)",
+    "layer": "L1",
+    "ref": "In1.Cu"
+   },
+   {
+    "name": "2 line",
+    "layer": "L1",
+    "ref": "L2"
+   }
+  ],
+  "lumped": [],
+  "excite": [
+   0
+  ],
+  "mirror": null,
+  "target": "|S11| < -20 dB to 40 GHz at the edge port (Samtec's own fixture: -23 to -25 dB, report 2023-06-01)",
+  "limits": "connector coax and pin not modelled; port 1 is a lumped port at the edge; the jaw is approximated (body)"
+ },
+ "date": "2026-10-30",
+ "fmax": 40000000000.0,
+ "tool": "kisi-fdtd (conformal metal, CPML)",
+ "runs": {
+  "kisi": {
+   "cells": 970368,
+   "steps": [
+    42001
+   ],
+   "dt": 5.2511752101277764e-14,
+   "seconds": 678.6,
+   "dfine": 0.035,
+   "dmax": null
+  }
+ }
+}

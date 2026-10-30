@@ -85,8 +85,8 @@ principle: accuracy levels formula → 2D field solver → 3D for selected struc
 validation, and every result says which level it used and how uncertain it is.
 - **Measured test board.** Coupons from the reference cases on JLCPCB / Aisler standard stackups with screw-on
   end-launch connectors, simulated in kisi-fdtd and CST, measured on Keysight ENA / PNA-X / PNA; plan
-  (`validation/test_board.md`) and coupons v2 in branch `feat/test-board` (waiting for the RF group's advice on the
-  measurement).
+  (`validation/test_board.md`) and coupons v3 in branch `feat/test-board` (2.92 mm Samtec connector to 40 GHz on the RF
+  group's advice; footprint from Samtec's drawing, launch optimisation in kisi-fdtd before ordering).
 - **Vias and planes in 3D** (merged into `main` at 98af58d with Blocks 1–6): Block 2 `feat/via-3d-board` (board via →
   kisi-fdtd exporter, matched de-embedding, `BOARD_VIAS.md`), Block 3 `feat/board-resonances` (finite plane cavities
   and via-to-via coupling, option `--via-cavity`, `BOARD_RESONANCES.md`), Block 4 `feat/return-groups` (return vias

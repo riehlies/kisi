@@ -8,7 +8,7 @@
  "layers": 6,
  "manufacturer": "JLCPCB",
  "template": "JLC06161H-7628",
- "date": "2026-10-22",
+ "date": "2026-10-30",
  "size_mm": [
   50.0,
   48.0
@@ -61,7 +61,7 @@
    "title": "via\u2013line\u2013via L1\u2192In2.Cu\u2192L1 (through vias, stubs to L6), 5 mm stripline",
    "length_mm": 30.0,
    "height_mm": 12.0,
-   "validates": "inner-layer exit with an open stub (junction model); stub resonance above the SMA band (kisi: 32 GHz)",
+   "validates": "inner-layer exit with an open stub (junction model); stub resonance inside the 40 GHz band (kisi: 32 GHz)",
    "references": [
     "B_ts6_L1L3_stub",
     "B_s8_L1L3_stub_d300"
@@ -194,11 +194,11 @@
   "kisi-coupons-jlc6-7628-b__LINE_50__w20"
  ],
  "fdtd_cells": {
-  "kisi-coupons-jlc6-7628-b__THRU__w10": 817216,
-  "kisi-coupons-jlc6-7628-b__VLV_L3__wv": 1568704,
-  "kisi-coupons-jlc6-7628-b__SL_L3__w10": 852992,
-  "kisi-coupons-jlc6-7628-b__SL_L3__w20": 1369088,
-  "kisi-coupons-jlc6-7628-b__LINE_50__w10": 817216,
-  "kisi-coupons-jlc6-7628-b__LINE_50__w20": 1265600
+  "kisi-coupons-jlc6-7628-b__THRU__w10": 860608,
+  "kisi-coupons-jlc6-7628-b__VLV_L3__wv": 1617472,
+  "kisi-coupons-jlc6-7628-b__SL_L3__w10": 939008,
+  "kisi-coupons-jlc6-7628-b__SL_L3__w20": 1498112,
+  "kisi-coupons-jlc6-7628-b__LINE_50__w10": 911232,
+  "kisi-coupons-jlc6-7628-b__LINE_50__w20": 1403008
  }
 }

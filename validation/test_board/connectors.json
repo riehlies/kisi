@@ -1,43 +1,251 @@
 {
- "_about": "End-launch connector and layout data for the coupons (validation/test_board/README.md). Dimensions in mm. Everything under 'footprint' with 'verified': false is a PLACEHOLDER until the maintainer supplies the vendor drawing; edit the values here and regenerate (make_coupons.py --reuse-design).",
- "_fetched": "2026-10-22",
+ "_about": "End-launch connector and layout data for the coupons (validation/test_board/README.md). Dimensions in mm. make_coupons.py generates the connector footprint from 'footprint' (Samtec's drawing; DRAFT until checked) and the launch from 'launch' (parametric, to be optimised); edit the values here and regenerate (make_coupons.py --reuse-design).",
+ "_fetched": "2026-10-30",
  "connector": {
-  "vendor": "Southwest Microwave",
-  "pn": "292-04A-14",
-  "what": "SuperSMA end launch jack (female), narrow block (.350 in), PCB thickness .040-.090 in (1.02-2.29 mm), clamp-on, solderless (pin interference fit; soldering optional)",
-  "pn_note": "maintainer's choice (2026-10-22): SMA, because cables and accessories for SMA exist. The online product list calls the -14 'narrow block (.350)' and uses 'thread-in' for the -12 standard-block parts: confirm the exact variant with the drawing.",
-  "frequency_max_ghz": 27.0,
-  "planning_max_ghz": 26.5,
-  "pin_diameter": 0.254,
-  "dielectric_diameter": 1.613,
-  "block_width": 8.89,
-  "pcb_fasteners": "#1-72 SHCS",
-  "connector_fasteners": "#0-80",
-  "sources": {
-   "catalog": "https://mpd.southwestmicrowave.com/wp-content/uploads/End-Launch-Connectors-2024.pdf (SMA to 27 GHz, pin .010 in, dielectric .0635 in, PCB fasteners #1-72 SHCS, connector fasteners #0-80; block and footprint dimensions only as images)",
-   "product_list": "https://mpd.southwestmicrowave.com/product-category/end-launch-connectors",
-   "price": "not published (no distributor price found on 2026-10-22); quote from Southwest Microwave"
+  "vendor": "Samtec",
+  "pn": "292-J-P-EP-ST-EL-01",
+  "what": "50 Ω 2.92 mm (K) jack, edge launch, solderless compression mount (field replaceable), PCB thickness .040-.100 in (1.02-2.54 mm, option -01), 2 × #1-72 SHCS with #1 split washers, torque 0.5-0.8 in-lb; air dielectric; intermates with 3.5 mm and SMA",
+  "decision": "maintainer, 2026-10-30, on the RF group's advice (2.92 mm to 40 GHz instead of SMA): orderable at DigiKey (about 6 weeks) / Mouser, the -01 thickness range covers every board (1.55-2.05 mm), solderless and reusable",
+  "replaces": "Southwest Microwave 292-04A-14 (SMA, 27 GHz; design v2, 2026-10-22): not orderable from DigiKey / Mouser",
+  "frequency_max_ghz": 40.0,
+  "planning_max_ghz": 40.0,
+  "pcb_thickness": [
+   1.016,
+   2.54
+  ],
+  "price_usd": {
+   "1": 52.65,
+   "10": 50.14,
+   "src": "samtec.com product page, OEM price, fetched 2026-10-30"
   },
-  "footprint": {
-   "verified": false,
-   "warning": "PLACEHOLDER until the vendor drawing ('.350 Transition Block PCB Footprint', catalog images) is supplied: mounting-hole size and positions, ground-contact area, block depth. All coupons use these values; edit them and regenerate.",
-   "edge_pullback": 0.2,
-   "edge_pullback_src": "JLCPCB: copper >= 0.2 mm from routed edges (capabilities page)",
-   "signal_pad_length": 1.5,
-   "launch_length": 3.0,
-   "gnd_contact_half_width": 4.2,
-   "block_depth_on_board": 6.0,
-   "body_outside_board": 14.0,
-   "mount_holes": [{"x": 4.5, "y": 3.0, "d": 2.0}, {"x": 4.5, "y": -3.0, "d": 2.0}],
-   "mount_holes_note": "x from the board edge into the board, y across; NPTH; GUESS for #1-72 screws - check against the drawing"
+  "quantity": {
+   "needed": 4,
+   "note": "2 per 2-port coupon, 4 for the 4-port (pair, coupling) coupons; the connectors move between coupons. A fifth as a spare, a sixth to leave THRU mounted for the repeatability check (optional)."
+  },
+  "pcb_fasteners": "2 × #1-72 SHCS with #1 split washer (on the drawing: whether they come with the part is to be confirmed); 1/16 in hex key",
+  "torque_in_lb": {
+   "pcb_screws": [
+    0.5,
+    0.8
+   ],
+   "mating_2p92": 8.0,
+   "src": "drawing note 1 (screws); 2.92 mm mating torque as for SMA / 3.5 mm (8 in-lb, 0.9 N·m)"
+  },
+  "pin_diameter": 0.178,
+  "pin_length": 0.737,
+  "pin_note": "drawing (sheet 1, details A and B): launch pin Ø.007 in [0.18] in a Ø.0276 in [0.70] opening of the front lip, .029 in [0.74] beyond the reference plane B (the board edge). Samtec's 3D model (used locally, not in the repository): pin axis 0.13 mm above the board surface, the pin ends 0.69 mm from the edge",
+  "sources": {
+   "product": "https://www.samtec.com/products/292-j-p-ep-st-el-01 (fetched 2026-10-30: 50 Ω, performance to 40 GHz, compression mount, price; 3D model, prints and footprint only in the email 'Specs Kit')",
+   "drawing": "Samtec drawing 292-J-P-EP-ST-EL-01-X-MKT, rev C, 2022-01-10 (sheet 1 part, sheet 2 'recommended footprint'); https://suddendocs.samtec.com/prints/292-j-p-ep-st-el-01-x-mkt.pdf - supplied by the maintainer 2026-10-30, not in the repository",
+   "test_report": "Samtec RF Characterization Report, series 292, 292-J-P-EP-ST-EL-01, report revision 2023-06-01 (tested 2023-03), https://suddendocs.samtec.com/testreports/20230601_t-3691751_rfc_292-j-p-ep-st-el-01.pdf - not in the repository",
+   "footprint_model": "SnapMagic KiCad footprint SAMTEC_292-J-P-EP-ST-EL-01 and CADENAS STEP 292-J-P-EP-ST-EL-01 (supplied by the maintainer 2026-10-30; their licences forbid redistributing the models, so they are not in the repository - make_coupons.py generates the footprint from the parameters below)"
+  },
+  "body_on_board": "Samtec's 3D model (CADENAS STEP, used locally, not redistributed): the top jaw covers the board 5.08 mm from the edge, 9.53 mm wide; a front lip 0.38 mm deep with the pin opening, then a slot over the trace 2.67 mm wide (0.38-0.64 mm) and 3.18 mm wide (0.64-5.08 mm, open to the top); the lower plate 8.89 × 5.33 mm clamps the bottom side; screws at 2.79 mm from the edge, ±2.92 mm",
+  "benchmark": {
+   "fixture": "PCB-240MM-112613-SIG-0, 4 layers Isola I-Tera MT40 (εr 3.45, tan δ 0.0031 at 10 GHz for the 3.45 grade: https://www.isola-group.com/pcb-laminates-prepreg/i-tera-mt40-rf-mw/), 50 Ω grounded-coplanar trace, launch optimised with a full-wave solver; PNA N5227B 10 MHz-40 GHz, Maury 8770CK 2.92 mm mechanical cal at the cable ends",
+   "one_connector_500mil": {
+    "s11_max_db": [
+     -25.4,
+     -23.1
+    ],
+    "at_ghz": [
+     34.1,
+     37.4
+    ],
+    "s21_db_at_40ghz": [
+     -1.05,
+     -0.94
+    ]
+   },
+   "two_connectors_1in": {
+    "s11_max_db": [
+     -20.5,
+     -17.2
+    ],
+    "at_ghz": [
+     36.1,
+     36.9
+    ],
+    "s21_db_at_40ghz": [
+     -2.1,
+     -1.88
+    ]
+   },
+   "note": "target for our launch on FR-4 7628: |S11| below -20 dB to 40 GHz for one launch; expect more line loss than MT40 (tan δ 0.02 vs 0.003)"
+  },
+  "drawing_footprint_sheet": {
+   "_about": "Sheet 2 of the drawing, inches [mm]; what each value is (read from the drawing view and the SnapMagic footprint)",
+   "dims": [
+    {
+     "in": ".1100",
+     "mm": 2.79,
+     "count": "2X",
+     "is": "screw-hole centre from the board edge"
+    },
+    {
+     "in": ".230",
+     "mm": 5.84,
+     "count": "2X",
+     "is": "screw-hole spacing (±2.92 mm)"
+    },
+    {
+     "in": ".0810",
+     "mm": 2.06,
+     "count": "2X",
+     "is": "screw-hole diameter; plated, with the ground pad on every copper layer (SnapMagic footprint)"
+    },
+    {
+     "in": ".2550",
+     "mm": 6.48,
+     "count": "",
+     "is": "depth of the ground pads from the edge"
+    },
+    {
+     "in": ".414",
+     "mm": 10.52,
+     "count": "",
+     "is": "overall width of the two ground pads"
+    },
+    {
+     "in": ".314",
+     "mm": 7.98,
+     "count": "",
+     "is": "width at the end of the 45° chamfers of their outer back corners"
+    },
+    {
+     "in": ".205",
+     "mm": 5.21,
+     "count": "",
+     "is": "edge to the start of the chamfer"
+    },
+    {
+     "in": ".114",
+     "mm": 2.9,
+     "count": "",
+     "is": "distance between the inner edges of the ground pads"
+    },
+    {
+     "in": ".025",
+     "mm": 0.64,
+     "count": "",
+     "is": "depth of the ground fingers that reach towards the signal at the edge"
+    },
+    {
+     "in": ".0220",
+     "mm": 0.56,
+     "count": "",
+     "is": "distance between the ground fingers at the edge"
+    },
+    {
+     "in": ".0205",
+     "mm": 0.52,
+     "count": "",
+     "is": "signal-pad width"
+    },
+    {
+     "in": ".0090",
+     "mm": 0.23,
+     "count": "",
+     "is": "signal-pad tip width at the edge"
+    }
+   ],
+   "not_on_drawing": "from the SnapMagic footprint: the finger contour (0.84 mm half-width at 0.64 mm, 0.35 mm at 0.45 mm, 0.28 mm at the edge) and the signal taper length (0.23 → 0.52 mm over 0.85 mm); mask openings 0.05-0.1 mm larger than the copper"
+  }
+ },
+ "footprint": {
+  "status": "DRAFT",
+  "verified": false,
+  "warning": "generated by make_coupons.py from these parameters; the geometry follows Samtec's drawing 292-J-P-EP-ST-EL-01-X-MKT rev C (sheet 2) and the SnapMagic footprint. Samtec calls it a general footprint, not optimised for electrical performance: the launch inside it (connectors.json 'launch') is ours and still to be optimised in kisi-fdtd; confirm with SIG@samtec.com if needed",
+  "name": "Samtec_292-J-P-EP-ST-EL-01_EdgeLaunch",
+  "edge_pullback": 0.2,
+  "edge_pullback_src": "JLCPCB: copper >= 0.2 mm from routed edges (capabilities page). Samtec's footprint runs copper to the edge: the pin still rests 0.54 mm on the pad, the front lip 0.18 mm on the ground fingers (open point: ask JLC for less)",
+  "mount_holes": [
+   {
+    "x": 2.794,
+    "y": 2.921,
+    "d": 2.057
+   },
+   {
+    "x": 2.794,
+    "y": -2.921,
+    "d": 2.057
+   }
+  ],
+  "mount_holes_note": "x from the board edge into the board, y across; plated, GND",
+  "hole_ring": 2.7,
+  "hole_ring_note": "round pad of the plated holes on every copper layer (SnapMagic anchor Ø2.7 mm); the ground pads themselves only on the top and bottom copper, where the jaws clamp (Samtec's footprint has them on every layer: on the inner layers our GND planes do that job, and PWR islands stay clear)",
+  "gnd_pad": {
+   "depth": 6.477,
+   "half_width": 5.258,
+   "chamfer_start": 5.207,
+   "chamfer_half_width": 3.988,
+   "inner_half": 1.448,
+   "fingers": [
+    [
+     0.635,
+     0.84
+    ],
+    [
+     0.45,
+     0.35
+    ],
+    [
+     0.0,
+     0.279
+    ]
+   ],
+   "note": "ground pad outline per side (x from the edge, y from the centreline): outer edge at half_width up to chamfer_start, 45° to (depth, chamfer_half_width), back edge at depth, inner edge at inner_half down to the fingers (x, y) that reach towards the signal at the edge"
+  },
+  "mask_margin": 0.05,
+  "bottom_contact": true,
+  "bottom_contact_note": "the lower plate clamps the bottom side: the ground pads are on every copper layer (as in Samtec's footprint), mask open on both sides",
+  "block_width": 9.525,
+  "body_on_board": 5.08,
+  "courtyard_half_width": 5.51,
+  "courtyard_on_board": 6.73,
+  "body_outside_board": 11.57,
+  "body_note": "body 9.53 mm wide (.375), 5.08 mm over the board, 11.57 mm outside (bushing Ø6.35); courtyard ±5.51 mm, 6.73 mm on the board, 11.82 mm outside (SnapMagic)"
+ },
+ "launch": {
+  "_about": "The launch inside the Samtec ground pads, parametric for the optimisation (README section 2). mm, x from the board edge. null = the stackup's designed 50 Ω launch (boards/<stackup>.design.json 'launch': w, gap, and the plane opening of the thin-prepreg boards). Sections: tip (tip_w at the edge, Samtec 0.23 mm) tapering to pad_w at taper_len, pad (pad_w, gap pad_gap) to pad_len, grounded coplanar launch (w, gap) to launch_length, then the coupon's 50 Ω line. The top ground is the union of the Samtec ground pads and the coplanar pours.",
+  "status": "DRAFT (not optimised; kisi-fdtd sweep planned, README section 2)",
+  "tip_w": 0.229,
+  "taper_len": 0.85,
+  "pad_w": null,
+  "pad_len": null,
+  "pad_gap": null,
+  "pad_w_min": 0.255,
+  "pad_w_min_note": "the narrowest launch the design may give (the thin-prepreg (3313) launch, design v2 value, kept); the pin (Ø0.18 mm) lands on the tip",
+  "samtec_general": {
+   "pad_w": 0.521,
+   "pad_len": 6.477,
+   "pad_gap": 1.188,
+   "launch_length": 6.477,
+   "note": "Samtec's general footprint: 0.52 mm signal between the ground pads (1.19 mm gap): 43.5 Ω on the 0.21 mm 7628 prepreg (kisi field solver; 115 Ω with In1 cut out 1.12 mm wide under it); a sweep point"
+  },
+  "launch_length": 6.477,
+  "launch_length_note": "the depth of the ground pads",
+  "gnd_cut": {
+   "width": null,
+   "length": null,
+   "note": "opening in the first plane under the tip / pad (width across, length from the edge); null = none (7628), or the design's opening along the whole launch (3313 thin prepreg)"
+  },
+  "fence": {
+   "pitch": 0.8,
+   "first_x": 0.8,
+   "rows": 2,
+   "row_pitch": 0.8,
+   "offset": 0.4,
+   "hole_keep": 0.45,
+   "note": "fence vias along both coplanar gaps: columns from first_x every pitch to launch_length - 0.35, rows offset from the gap edge; none within hole_keep of a screw hole's copper"
   }
  },
  "layout": {
   "row_pitch": 12.0,
-  "row_pitch_note": "2-port coupons: one connector per edge per row, one row connected at a time; 12.0 mm leaves 3.1 mm between two narrow blocks and fits four rows on a 50 mm board",
+  "row_pitch_note": "2-port coupons: one connector per edge per row, one row connected at a time; 12.0 mm leaves 3.1 mm between two .350 in blocks (1.5 mm between the .414 in courtyards) and fits four rows on a 50 mm board",
   "pair_row": 24.0,
   "pair_pitch": 12.7,
-  "pair_pitch_note": "4-port coupons: two connectors per edge 12.7 mm apart (3.8 mm between blocks, about 3.5 mm between 8 mm coupling nuts: check torque-wrench access; --pair-pitch changes it)",
+  "pair_pitch_note": "4-port coupons: two connectors per edge 12.7 mm apart (3.8 mm between blocks, about 3.5 mm between the 5/16 in (7.94 mm) coupling nuts across their corners: check torque-wrench access; --pair-pitch changes it)",
   "feed": 12.5,
   "feed_note": "board edge to the reference plane of every 2-port coupon (half of the 25 mm 2xthru)",
   "feed_4port": 15.0,
@@ -46,18 +254,58 @@
   "via_line_note": "via-line-via coupons: length of the line on the far layer between the two transitions (TDR separates the two vias: about 60 ps round trip)",
   "return_line": 10.0,
   "return_line_note": "the same for the return-path (D) coupons, so the two reference changes interact less",
-  "fence_pitch_launch": 0.8,
-  "wall_pitch": 2.54,
-  "gnd_via": {"drill": 0.3, "pad": 0.6},
-  "signal_via": {"drill": 0.3, "pad": 0.6},
+  "wall_pitch": 1.27,
+  "wall_pitch_note": "v3: 1.27 mm (was 2.54): GND via walls between rows must stay closed to 40 GHz; a 2.54 mm pitch is λ/2 in FR-4 near 28 GHz, 1.27 mm near 56 GHz",
+  "gnd_via": {
+   "drill": 0.3,
+   "pad": 0.6
+  },
+  "signal_via": {
+   "drill": 0.3,
+   "pad": 0.6
+  },
   "via_src": "JLCPCB capabilities: via hole >= 0.15 mm, annular ring >= 0.15 mm; inner-layer hole-to-copper >= 0.2 mm (antipad of a 0.3 mm via >= 0.7 mm); via hole-to-hole >= 0.2 mm",
-  "board_limits": {"4": [100.0, 100.0], "6": [50.0, 50.0], "8": [50.0, 50.0]},
+  "board_limits": {
+   "4": [
+    100.0,
+    100.0
+   ],
+   "6": [
+    50.0,
+    50.0
+   ],
+   "8": [
+    50.0,
+    50.0
+   ]
+  },
   "board_limits_note": "maintainer's cost limits (2026-10-22): JLC 1-4 layers 100 x 100 mm and 6-8 layers 50 x 50 mm (JLC 'promo size', 5 pcs from 2 USD: https://jlcpcb.com/ads/pcb-manufacturer-comparison, fetched 2026-10-22)"
  },
  "parts": {
   "_about": "SMD land patterns (KiCad standard library geometry, reflow): pitch = pad centre distance, pad = size along / across the part axis. kisi derives the package from the pitch (crates/kisi-pi/src/pdn_ic.rs, package_of: 0201 < 0.65, 0402 < 1.25, 0603 < 1.95, 0805 < 2.7 mm), so KiCad's 0805 (pitch 1.9) is taken for an 0603 (README, kisi findings).",
-  "0402": {"pitch": 0.96, "pad": [0.56, 0.62], "kicad": "Capacitor_SMD:C_0402_1005Metric"},
-  "0603": {"pitch": 1.55, "pad": [0.9, 0.95], "kicad": "Capacitor_SMD:C_0603_1608Metric"},
-  "0805": {"pitch": 1.9, "pad": [1.0, 1.45], "kicad": "Capacitor_SMD:C_0805_2012Metric"}
+  "0402": {
+   "pitch": 0.96,
+   "pad": [
+    0.56,
+    0.62
+   ],
+   "kicad": "Capacitor_SMD:C_0402_1005Metric"
+  },
+  "0603": {
+   "pitch": 1.55,
+   "pad": [
+    0.9,
+    0.95
+   ],
+   "kicad": "Capacitor_SMD:C_0603_1608Metric"
+  },
+  "0805": {
+   "pitch": 1.9,
+   "pad": [
+    1.0,
+    1.45
+   ],
+   "kicad": "Capacitor_SMD:C_0805_2012Metric"
+  }
  }
 }

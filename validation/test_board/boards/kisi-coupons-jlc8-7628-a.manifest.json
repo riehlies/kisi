@@ -8,7 +8,7 @@
  "layers": 8,
  "manufacturer": "JLCPCB",
  "template": "JLC08201H-7628",
- "date": "2026-10-22",
+ "date": "2026-10-30",
  "size_mm": [
   50.0,
   48.0
@@ -61,7 +61,7 @@
    "title": "via\u2013line\u2013via L1\u2192In2.Cu\u2192L1 (through vias, 1.4 mm stubs to L8), 5 mm stripline",
    "length_mm": 30.0,
    "height_mm": 12.0,
-   "validates": "long open stub: notch near 20 GHz, inside the SMA band (B group)",
+   "validates": "long open stub: notch near 20 GHz, inside the band of every VNA (B group)",
    "references": [
     "B_s8_L1L3_stub_d300",
     "X_s8x2_L1L3_bd_d200"
@@ -193,10 +193,10 @@
   "kisi-coupons-jlc8-7628-a__SL_L3__w20"
  ],
  "fdtd_cells": {
-  "kisi-coupons-jlc8-7628-a__THRU__w10": 932137,
-  "kisi-coupons-jlc8-7628-a__VLV_L3__wv": 1789303,
-  "kisi-coupons-jlc8-7628-a__B_L1L8__wv": 1761125,
-  "kisi-coupons-jlc8-7628-a__SL_L3__w10": 972944,
-  "kisi-coupons-jlc8-7628-a__SL_L3__w20": 1561616
+  "kisi-coupons-jlc8-7628-a__THRU__w10": 981631,
+  "kisi-coupons-jlc8-7628-a__VLV_L3__wv": 1844929,
+  "kisi-coupons-jlc8-7628-a__B_L1L8__wv": 1815875,
+  "kisi-coupons-jlc8-7628-a__SL_L3__w10": 1071056,
+  "kisi-coupons-jlc8-7628-a__SL_L3__w20": 1708784
  }
 }

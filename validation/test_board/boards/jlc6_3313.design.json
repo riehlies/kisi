@@ -45,7 +45,7 @@
   "gap": 0.105,
   "cut": 0.465,
   "cut_layer": 1,
-  "note": "pin-wide launch with an opening in the first plane under it (thin top dielectric); PLACEHOLDER like the footprint"
+  "note": "pin-wide launch with an opening in the first plane under it (thin top dielectric); DRAFT like the footprint"
  },
  "cpwg": {
   "w": 0.14,

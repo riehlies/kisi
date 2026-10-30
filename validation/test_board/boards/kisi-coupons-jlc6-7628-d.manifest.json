@@ -8,7 +8,7 @@
  "layers": 6,
  "manufacturer": "JLCPCB",
  "template": "JLC06161H-7628",
- "date": "2026-10-22",
+ "date": "2026-10-30",
  "size_mm": [
   50.0,
   48.0
@@ -18,7 +18,7 @@
   {
    "id": "BS_L3L4",
    "group": "T",
-   "title": "Broadside: In2.Cu over In3.Cu, offset 0, coupled 22.5 mm",
+   "title": "Broadside: In2.Cu over In3.Cu, offset 0, coupled 20.9 mm",
    "length_mm": 50.0,
    "height_mm": 24.0,
    "validates": "broadside NEXT / FEXT (kisi lists it but does not compute it yet)",
@@ -32,7 +32,7 @@
      0.405
     ],
     "offset_mm": 0.0,
-    "coupled_mm": 22.5
+    "coupled_mm": 20.95
    },
    "nets": [
     "SE_BS_A",
@@ -77,7 +77,7 @@
   {
    "id": "DIFF_SL",
    "group": "T",
-   "title": "Edge-coupled 100 \u03a9 stripline pair on In2.Cu, coupled 22.9 mm",
+   "title": "Edge-coupled 100 \u03a9 stripline pair on In2.Cu, coupled 21.3 mm",
    "length_mm": 50.0,
    "height_mm": 24.0,
    "validates": "stripline Zdiff plateau (open point in TESTS.md)",
@@ -88,7 +88,7 @@
     "layer": "In2.Cu",
     "w_mm": 0.19,
     "s_mm": 0.2,
-    "coupled_mm": 22.89
+    "coupled_mm": 21.34
    },
    "nets": [
     "DP_DIFF_SL_P",
@@ -136,7 +136,7 @@
   "kisi-coupons-jlc6-7628-d__DIFF_SL__wc"
  ],
  "fdtd_cells": {
-  "kisi-coupons-jlc6-7628-d__BS_L3L4__wc": 983808,
-  "kisi-coupons-jlc6-7628-d__DIFF_SL__wc": 1053184
+  "kisi-coupons-jlc6-7628-d__BS_L3L4__wc": 940800,
+  "kisi-coupons-jlc6-7628-d__DIFF_SL__wc": 1008128
  }
 }

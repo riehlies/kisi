@@ -8,7 +8,7 @@
  "layers": 4,
  "manufacturer": "JLCPCB",
  "template": "JLC04161H-3313",
- "date": "2026-10-22",
+ "date": "2026-10-30",
  "size_mm": [
   100.0,
   96.0
@@ -344,10 +344,10 @@
   "kisi-coupons-jlc4-3313-a__CPWG_50__w20"
  ],
  "fdtd_cells": {
-  "kisi-coupons-jlc4-3313-a__THRU__w10": 677322,
-  "kisi-coupons-jlc4-3313-a__CPWG_25__w10": 951750,
-  "kisi-coupons-jlc4-3313-a__LINE_50__w10": 713286,
-  "kisi-coupons-jlc4-3313-a__LINE_50__w20": 1144854,
-  "kisi-coupons-jlc4-3313-a__CPWG_50__w20": 1499958
+  "kisi-coupons-jlc4-3313-a__THRU__w10": 713286,
+  "kisi-coupons-jlc4-3313-a__CPWG_25__w10": 972972,
+  "kisi-coupons-jlc4-3313-a__LINE_50__w10": 785214,
+  "kisi-coupons-jlc4-3313-a__LINE_50__w20": 1252746,
+  "kisi-coupons-jlc4-3313-a__CPWG_50__w20": 1575288
  }
 }

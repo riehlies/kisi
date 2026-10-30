@@ -1,6 +1,6 @@
 {
  "board": "kisi-coupons-jlc8-7628-p",
- "date": "2026-10-22",
+ "date": "2026-10-30",
  "native": {
   "overview": {
    "board": "kisi-coupons-jlc8-7628-p",
@@ -122,7 +122,8 @@
     "target_length_coverage_pct": 0.0
    },
    "field_solver_note": "native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver",
-   "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5\u201315 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).",
+   "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5\u201315 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance, the other path of a fork). Pads: a track inside an SMD pad has the pad's width; the rest of a part's pad is a capacitance from the pad's cross-section (with what lies below it), else an estimate per package. Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 \u00d7 Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces \u2013 an estimate). Shunt parts on the lane's nets (capacitors to ground, \u2026) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share \u2013 loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) \u2013 information (eye_board_share), or judged when a channel behind the connector (rest_loss_db or a Touchstone file) is given.",
+   "not_checked_unused": null,
    "rows": [],
    "rows_omitted": 0,
    "rows_shown": "all",
@@ -130,6 +131,21 @@
     "green": 0,
     "red": 0,
     "yellow": 0
+   },
+   "variant": {
+    "available": [],
+    "chosen_by": null,
+    "description": null,
+    "errors": [],
+    "field_overrides": [],
+    "fitted_by_variant": [],
+    "forks_all_fitted": 0,
+    "name": null,
+    "needs_choice": false,
+    "not_fitted_by_variant": [],
+    "not_fitted_total": 0,
+    "unused_nets": 0,
+    "warnings": []
    }
   },
   "interfaces": {
@@ -141,7 +157,22 @@
     "ok": true,
     "warnings": []
    },
-   "notes": "Lanes follow nets through series resistors (\u2264 100 \u03a9), AC-coupling capacitors (\u2265 1 nF) and small inductors; DNP parts are skipped. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+   "notes": "Lanes follow nets through series resistors (\u2264 100 \u03a9), AC-coupling capacitors (\u2265 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model \u2013 connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop along one path (the first two ends are transmitter and receiver at the ends of the path, the other devices receivers on side stubs: the eye at every receiver, the worst counts), open lines and multi-drop trees through series parts (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json. mpns (when present): the devices' manufacturer part numbers where the Value field does not show one.",
+   "variant": {
+    "available": [],
+    "chosen_by": null,
+    "description": null,
+    "errors": [],
+    "field_overrides": [],
+    "fitted_by_variant": [],
+    "forks_all_fitted": 0,
+    "name": null,
+    "needs_choice": false,
+    "not_fitted_by_variant": [],
+    "not_fitted_total": 0,
+    "unused_nets": 0,
+    "warnings": []
+   }
   },
   "gaps": {
    "board": "kisi-coupons-jlc8-7628-p",
@@ -152,6 +183,7 @@
     "ok": true,
     "warnings": []
    },
+   "dismissed": [],
    "gaps": [
     {
      "affects": [
@@ -163,6 +195,9 @@
      "issue": "No regulator chain (field PI_REG): no power budget, no regulator load check.",
      "items": [],
      "priority": "medium",
+     "views": [
+      "power"
+     ],
      "where_to_find": "Regulator datasheets: topology (buck/LDO/\u2026), efficiency at the expected load, rated output current; input and output rails from the schematic.",
      "write": {
       "example": {
@@ -178,20 +213,152 @@
       },
       "to": "fields[] (name PI_REG on the regulator)"
      }
+    },
+    {
+     "affects": [
+      "power budget",
+      "DC IR drop",
+      "PDN"
+     ],
+     "area": "power",
+     "id": "rails-without-voltage",
+     "issue": "4 supply rail(s) without a known voltage (found by their name, a pin name such as VBUS, VSYS, VBAT, VDD, or a field): kisi needs the voltage to put their loads and sources into the power tree, the budget and the IR drop. Found by name: confirm that each one is a supply.",
+     "items": [
+      {
+       "components": 4,
+       "found_by": [
+        "PI_LOAD / PI_SOURCE"
+       ],
+       "ics": [
+        "U3"
+       ],
+       "rail": "VDD_H_D10",
+       "write": "VDD_H_D10@<V>V where a PI_REG entry names it (regulator output or supply input)"
+      },
+      {
+       "components": 4,
+       "found_by": [
+        "PI_LOAD / PI_SOURCE"
+       ],
+       "ics": [
+        "U1"
+       ],
+       "rail": "VDD_H_D2",
+       "write": "VDD_H_D2@<V>V where a PI_REG entry names it (regulator output or supply input)"
+      },
+      {
+       "components": 4,
+       "found_by": [
+        "PI_LOAD / PI_SOURCE"
+       ],
+       "ics": [
+        "U4"
+       ],
+       "rail": "VDD_H_D2_0603",
+       "write": "VDD_H_D2_0603@<V>V where a PI_REG entry names it (regulator output or supply input)"
+      },
+      {
+       "components": 4,
+       "found_by": [
+        "PI_LOAD / PI_SOURCE"
+       ],
+       "ics": [
+        "U2"
+       ],
+       "rail": "VDD_H_D5",
+       "write": "VDD_H_D5@<V>V where a PI_REG entry names it (regulator output or supply input)"
+      }
+     ],
+     "priority": "medium",
+     "views": [
+      "power"
+     ],
+     "where_to_find": "Schematic: the regulator, load switch or connector that feeds the rail and its output voltage (regulator datasheet / voltage setting, USB VBUS 5 V, battery nominal voltage). A rail behind a ferrite, a 0 \u03a9 link or a shunt takes the voltage of the rail before it.",
+     "write": {
+      "example": {
+       "name": "PI_REG",
+       "ref": "U2",
+       "source": {
+        "document": "PMIC datasheet",
+        "kind": "datasheet",
+        "note": "VSYS follows VBUS while USB is present"
+       },
+       "value": "VBUS > VSYS@5V pass"
+      },
+      "note": "Write the voltage where the rail appears in PI_REG: as the output of the part that feeds it (`+5V > VSYS@5V buck 90%`) or as a supply input (`VBAT@3.7V input`). Behind a ferrite, 0 \u03a9 link or shunt use a pass element (`+3V3 > IMU_VDD pass r=0.5`: the voltage carries over; items[].write suggests it when kisi finds such a part). Net names with spaces in double quotes (`\"/Power/VDD CORE\"@0.9V`). Without a power tree: PI_SOURCE `NAME=<V>V` on the source part. Nets that are not supplies: ignore.",
+      "to": "fields[] \u2013 the rail with its voltage as NAME@<V>V in a PI_REG entry"
+     }
     }
    ],
    "how": "Fill the gaps in <board>.kisi.json next to the board (format: see `kisi config-template`), every value with a source; then run `kisi config-check <board>` and `kisi gaps <board>` again. Gaps marked 'not kisi.json' are fixes in KiCad.",
    "summary": {
     "high": 0,
     "low": 0,
-    "medium": 1
+    "medium": 2
+   },
+   "variant": {
+    "available": [],
+    "chosen_by": null,
+    "description": null,
+    "errors": [],
+    "field_overrides": [],
+    "fitted_by_variant": [],
+    "forks_all_fitted": 0,
+    "name": null,
+    "needs_choice": false,
+    "not_fitted_by_variant": [],
+    "not_fitted_total": 0,
+    "unused_nets": 0,
+    "warnings": []
+   },
+   "views": {
+    "channel": {
+     "applicable": false,
+     "high": 0,
+     "low": 0,
+     "medium": 0,
+     "state": "nothing to check",
+     "why": "no buses or lanes between devices"
+    },
+    "impedance": {
+     "applicable": false,
+     "high": 0,
+     "low": 0,
+     "medium": 0,
+     "state": "nothing to check",
+     "why": "no net with a target impedance (net classes such as 50Z or 90Z_Diff, or net_classes in kisi.json)"
+    },
+    "power": {
+     "applicable": true,
+     "high": 0,
+     "low": 0,
+     "medium": 2,
+     "state": "open",
+     "why": "4 supply rail(s)"
+    }
    }
   },
   "config_check": {
    "entries": 10,
    "errors": [],
    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc8-7628-p.kisi.json",
+   "messages": [],
    "ok": true,
+   "variant": {
+    "available": [],
+    "chosen_by": null,
+    "description": null,
+    "errors": [],
+    "field_overrides": [],
+    "fitted_by_variant": [],
+    "forks_all_fitted": 0,
+    "name": null,
+    "needs_choice": false,
+    "not_fitted_by_variant": [],
+    "not_fitted_total": 0,
+    "unused_nets": 0,
+    "warnings": []
+   },
    "warnings": []
   }
  },
@@ -310,26 +477,26 @@
     "ic": "U1",
     "pins": 8,
     "z_ohm": {
-     "100M": 1.0335,
-     "100k": 15.9031,
-     "10M": 0.065,
-     "10k": 159.0403,
-     "1G": 1.6942,
-     "1M": 1.5806
+     "100M": 1.1286,
+     "100k": 15.9029,
+     "10M": 0.0578,
+     "10k": 159.0401,
+     "1G": 1.6064,
+     "1M": 1.5797
     },
     "caps": [
      {
       "ref": "C1",
       "dist_mm": 4.1,
-      "l_path_nh": 0.969,
-      "l_total_nh": 1.609,
-      "srf_mhz": 12.55
+      "l_path_nh": 1.108,
+      "l_total_nh": 1.748,
+      "srf_mhz": 12.04
      }
     ],
     "anti_resonances": [
      {
       "mhz": 501.2,
-      "z_ohm": 79.831
+      "z_ohm": 32.535
      }
     ],
     "cavity_first_resonance_mhz": 3235.6,
@@ -380,26 +547,26 @@
     "ic": "U3",
     "pins": 8,
     "z_ohm": {
-     "100M": 1.1299,
+     "100M": 1.121,
      "100k": 15.903,
-     "10M": 0.0576,
-     "10k": 159.0404,
-     "1G": 1.9036,
+     "10M": 0.0583,
+     "10k": 159.0402,
+     "1G": 1.8928,
      "1M": 1.5797
     },
     "caps": [
      {
       "ref": "C3",
       "dist_mm": 12.1,
-      "l_path_nh": 1.114,
-      "l_total_nh": 1.754,
-      "srf_mhz": 12.02
+      "l_path_nh": 1.101,
+      "l_total_nh": 1.741,
+      "srf_mhz": 12.06
      }
     ],
     "anti_resonances": [
      {
       "mhz": 501.2,
-      "z_ohm": 59.286
+      "z_ohm": 64.319
      }
     ],
     "cavity_first_resonance_mhz": 3235.6,

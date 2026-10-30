@@ -8,7 +8,7 @@
  "layers": 4,
  "manufacturer": "JLCPCB",
  "template": "JLC04161H-3313",
- "date": "2026-10-22",
+ "date": "2026-10-30",
  "size_mm": [
   50.0,
   96.0
@@ -199,7 +199,7 @@
   {
    "id": "XT_MS",
    "group": "T",
-   "title": "Microstrip aggressor and victim on L1, edge gap = w, coupled 25.6 mm",
+   "title": "Microstrip aggressor and victim on L1, edge gap = w, coupled 24.0 mm",
    "length_mm": 50.0,
    "height_mm": 24.0,
    "validates": "NEXT / FEXT (kisi's NEXT is 70\u201380 % high against 3D)",
@@ -209,7 +209,7 @@
    "params": {
     "w_mm": 0.15,
     "gap_mm": 0.15,
-    "coupled_mm": 25.6
+    "coupled_mm": 24.05
    },
    "nets": [
     "SE_XT_A",
@@ -254,7 +254,7 @@
   {
    "id": "DIFF_MS",
    "group": "T",
-   "title": "Edge-coupled 100 \u03a9 microstrip pair on L1, coupled 25.0 mm",
+   "title": "Edge-coupled 100 \u03a9 microstrip pair on L1, coupled 23.5 mm",
    "length_mm": 50.0,
    "height_mm": 24.0,
    "validates": "Zdiff (TDR plateau), odd-mode \u03b5eff, Sdd21 per mm",
@@ -264,7 +264,7 @@
    "params": {
     "w_mm": 0.115,
     "s_mm": 0.2,
-    "coupled_mm": 25.02
+    "coupled_mm": 23.46
    },
    "nets": [
     "DP_DIFF_MS_P",
@@ -316,11 +316,11 @@
   "kisi-coupons-jlc4-3313-d__DIFF_MS__wc"
  ],
  "fdtd_cells": {
-  "kisi-coupons-jlc4-3313-d__THRU__w10": 677322,
-  "kisi-coupons-jlc4-3313-d__CAPZ_0402__w10": 747040,
-  "kisi-coupons-jlc4-3313-d__CAPZ_0603__w10": 835142,
-  "kisi-coupons-jlc4-3313-d__CAPZ_0805__w10": 856196,
-  "kisi-coupons-jlc4-3313-d__XT_MS__wc": 913410,
-  "kisi-coupons-jlc4-3313-d__DIFF_MS__wc": 884520
+  "kisi-coupons-jlc4-3313-d__THRU__w10": 713286,
+  "kisi-coupons-jlc4-3313-d__CAPZ_0402__w10": 759220,
+  "kisi-coupons-jlc4-3313-d__CAPZ_0603__w10": 876554,
+  "kisi-coupons-jlc4-3313-d__CAPZ_0805__w10": 883920,
+  "kisi-coupons-jlc4-3313-d__XT_MS__wc": 876690,
+  "kisi-coupons-jlc4-3313-d__DIFF_MS__wc": 848232
  }
 }

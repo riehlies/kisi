@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measurement coupons for kisi, design v2 (validation/test_board/README.md).
+"""Measurement coupons for kisi, design v3 (validation/test_board/README.md).
 
 Per board: a KiCad 8 board (boards/<board>.kicad_pcb) with its project (.kicad_pro, net classes 50Z
 and 100Z_Diff), a kisi configuration (.kisi.json, stackup values with sources) and a manifest; per
@@ -11,12 +11,15 @@ validation/fdtd/via_cases.py, run with validation/fdtd/run_refs.py).
   with kisi's formulas (--solver formula); stored in boards/<stackup>.design.json.
 * Every coupon is described once (traces, vias, antipads, pours, islands, parts, ports in coupon
   coordinates); the KiCad board and the kisi-fdtd cases are written from that one description.
-* All connectors are SMA end launches on the top side; every board carries its own 2×thru (and a
+* All connectors are 2.92 mm edge launches (Samtec 292-J-P-EP-ST-EL-01, to 40 GHz) on the top
+  side; every board carries its own 2×thru (and a
   pair 2×thru when it has 4-port coupons), and the via coupons are via–line–via structures fed
   from L1 at both ends, so one fixture per board de-embeds them.
 * Board sizes stay within the limits in connectors.json (4 layers 100 × 100 mm, 6 and 8 layers
   50 × 50 mm). Stackups (stackups.json) and connector data (connectors.json) carry their sources;
-  the end-launch footprint is a PLACEHOLDER until the vendor drawing is supplied.
+  the end-launch footprint is a DRAFT read from Samtec's drawing (connectors.json, footprint) and
+  the launch on the board is parametric (connectors.json, launch) for the kisi-fdtd optimisation
+  (--launch-cases writes its 3D cases).
 
 Coordinates: mm, x along the coupons, y up (KiCad's y points down: converted on output). A board is
 a stack of rows; a row is one coupon from the left to the right board edge, or two coupons side by
@@ -24,7 +27,7 @@ side that have their ports on the outer edges only. Rows are centred on x = 0 an
 
 usage: python3 make_coupons.py [--boards jlc4_7628_a,...] [--kisi KISI] [--kisi-mjs KISI.MJS]
                                [--solver auto|field|formula] [--pair-pitch 12.7] [--reuse-design]
-                               [--fdtd-exe KISI_FDTD]
+                               [--fdtd-exe KISI_FDTD] [--launch-cases STACKUP[,…]]
 """
 import argparse, datetime, json, math, os, shutil, subprocess, sys, tempfile, uuid
 
@@ -37,7 +40,8 @@ import kisi_board as kb  # noqa: E402  (layer names, circle and stadium outlines
 STK = json.load(open(os.path.join(HERE, "stackups.json")))
 CON = json.load(open(os.path.join(HERE, "connectors.json")))
 CONN = CON["connector"]
-FP = CONN["footprint"]
+FP = CON["footprint"]
+LNC = CON["launch"]             # the launch on the board (parametric, DRAFT)
 LAY = CON["layout"]
 PKG = CON["parts"]
 FEED = LAY["feed"]              # board edge to the reference plane of a 2-port coupon
@@ -45,7 +49,9 @@ FEED4 = LAY["feed_4port"]       # the same for the 4-port pair coupons
 ROW, ROW4 = LAY["row_pitch"], LAY["pair_row"]
 LS_VIA, LS_RET = LAY["via_line"], LAY["return_line"]
 # traces leave the launch straight until they are clear of the connector's mounting holes
-X_CLEAR = max(FP["launch_length"] + 0.3, max(h["x"] + h["d"] / 2 for h in FP["mount_holes"]) + 0.5)
+LAUNCH_LEN = max(LNC["launch_length"], LNC["pad_len"] or 0.0, LNC["taper_len"])  # edge to the coupon's own line
+X_CLEAR = max(LAUNCH_LEN + 0.3, max(h["x"] + h["d"] / 2 for h in FP["mount_holes"]) + 0.5)
+DESIGN_REV = "3"
 ZONE_INSET = 0.25               # zone outlines stay this far inside the board edge
 FENCE_OFF = 0.4                 # fence via centre from the pour edge
 WALL_EDGE = 0.9                 # no wall via closer than this to a left/right board edge
@@ -129,8 +135,8 @@ class Coupon:
         if abs(x1 - x0) > 0.05 and abs(y1 - y0) > 0.05:
             self.pours.append({"layer": layer, "rect": (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)), "net": net})
 
-    def port(self, side, y, layer, net, w, gap, name):
-        self.ports.append({"side": side, "y": y, "layer": layer, "net": net, "w": w, "gap": gap, "name": name})
+    def port(self, side, y, layer, net, w, gap, name, geom=None):
+        self.ports.append({"side": side, "y": y, "layer": layer, "net": net, "w": w, "gap": gap, "name": name, "geom": geom})
 
     def window(self, name, x0, x1, half_y=None, excite=None, mirror=None, dfine=0.035, fmax=40e9, note="", group=None, extra=None):
         self.windows.append({"name": name, "x0": x0, "x1": x1, "half_y": half_y, "excite": excite, "mirror": mirror,
@@ -223,19 +229,20 @@ def design(stk, ks, pair_pitch):
             continue
         out["w50"][str(layer)] = r5(ks.solve(lambda x, fld: ks.z(stk, layer, x, field=fld), 50.0, 0.04, 2.0))
     # launch: grounded coplanar section at the connector (the connector ground contacts the top
-    # copper): gap 0.3 mm, width for 50 Ω; if below the pin diameter, the pin diameter and its gap
+    # copper): gap 0.3 mm, width for 50 Ω; if below the narrowest pad the pin may land on
+    # (connectors.json launch.pad_w_min), that width and its gap
     g0 = 0.3
     wl = ks.solve(lambda x, fld: ks.z(stk, 0, x, gap=g0, field=fld), 50.0, 0.04, 2.0)
     out["launch"] = {"w": r5(wl), "gap": r5(g0)}
-    if wl < CONN["pin_diameter"]:
+    if wl < LNC["pad_w_min"]:
         # thin top dielectric: the pad must carry the connector pin, so it is pin-wide; 50 Ω comes
         # from an opening in the first plane under the launch (the same width as the coplanar
         # opening on top, reference = the next plane) and the top gap is solved; JLC's minimum
         # spacing (0.1 mm) bounds the gap from below
-        wl = CONN["pin_diameter"]
+        wl = LNC["pad_w_min"]
         g0 = max(0.1, ks.solve(lambda x, fld: ks.z(stk, 0, wl, gap=x, cut=wl + 2 * x, field=fld), 50.0, 0.06, 0.4, increasing=True))
         out["launch"] = {"w": r5(wl), "gap": r5(g0), "cut": r5(wl + 2 * r5(g0)), "cut_layer": stk.planes[0],
-                         "note": "pin-wide launch with an opening in the first plane under it (thin top dielectric); PLACEHOLDER like the footprint"}
+                         "note": "pin-wide launch with an opening in the first plane under it (thin top dielectric); DRAFT like the footprint"}
     # tightly coupled 100 Ω pair (outer layer and the first inner signal layer), spacing 0.2 mm
     for layer in [0] + [L for L in stk.signal if 0 < L < stk.n - 1][:1]:
         out["diff"][str(layer)] = {"w": r5(ks.solve(lambda x, fld: ks.z(stk, layer, x, s=0.2, field=fld), 100.0, 0.04, 1.5)), "s": 0.2}
@@ -400,6 +407,37 @@ def clear_of_traces(x, y, r, segs):
     return True
 
 
+def gnd_pad_outline():
+    """one Samtec ground pad in (u from the board edge, v across, v > 0 side), clipped at the
+    edge pull-back; the other pad is its mirror (connectors.json footprint.gnd_pad)"""
+    gp, pb = FP["gnd_pad"], FP["edge_pullback"]
+    fing = [tuple(q) for q in gp["fingers"]]
+    (u1, v1), (u0, v0) = fing[-2], fing[-1]
+    v_pb = v0 + (v1 - v0) * (pb - u0) / (u1 - u0)
+    return ([(pb, gp["half_width"]), (gp["chamfer_start"], gp["half_width"]), (gp["depth"], gp["chamfer_half_width"]),
+             (gp["depth"], gp["inner_half"]), (fing[0][0], gp["inner_half"])] + [q for q in fing[:-1] if q[0] > pb] + [(pb, v_pb)])
+
+
+def gnd_pad_polys(port):
+    """the two ground pads of a connector at `port` (board coordinates)"""
+    xe, side, y = port["x"], port["side"], port["y"]
+    return [[(xe - side * u, y + sg * v) for u, v in gnd_pad_outline()] for sg in (1, -1)]
+
+
+def in_poly(x, y, poly):
+    inside = False
+    for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+        if (y0 > y) != (y1 > y) and x < x0 + (y - y0) * (x1 - x0) / (y1 - y0):
+            inside = not inside
+    return inside
+
+
+def rect_hits_polys(r, polys, step=0.05):
+    nx, ny = max(2, int((r[2] - r[0]) / step) + 1), max(2, int((r[3] - r[1]) / step) + 1)
+    return any(in_poly(r[0] + (r[2] - r[0]) * i / (nx - 1), r[1] + (r[3] - r[1]) * j / (ny - 1), q)
+               for i in range(nx) for j in range(ny) for q in polys)
+
+
 # --- board ---------------------------------------------------------------------------------------
 class Board:
     def __init__(self, name, stk, rows, probe=False):
@@ -530,6 +568,26 @@ class Board:
                 if pd["net"] not in nets:
                     nets.append(pd["net"])
         W.nets(nets)
+        # the connector's ground pads (top and bottom copper) and screw holes: nothing of another net there
+        gp = FP["gnd_pad"]
+        for p in G["ports"]:
+            xe = p["x"]
+            r = (min(xe, xe - p["side"] * (gp["depth"] + 0.3)), p["y"] - gp["half_width"] - 0.3, max(xe, xe - p["side"] * (gp["depth"] + 0.3)), p["y"] + gp["half_width"] + 0.3)
+            for isl in G["islands"] + G["zones"]:
+                q = isl["rect"]
+                if isl["layer"] not in (0, self.stk.n - 1):  # inner layers: only the plated holes' round pads
+                    rr = FP["hole_ring"] / 2 + isl.get("clearance", 0.2)
+                    if any(q[0] - rr < xe - p["side"] * h["x"] < q[2] + rr and q[1] - rr < p["y"] + h["y"] < q[3] + rr for h in FP["mount_holes"]):
+                        raise ValueError(f"{self.name}: {isl['net']} island of {isl['cid']} too close to a connector screw hole of {p['cid']}")
+                    continue
+                cl = isl.get("clearance", 0.2)
+                if q[0] < r[2] and r[0] < q[2] and q[1] < r[3] and r[1] < q[3] and rect_hits_polys((q[0] - cl, q[1] - cl, q[2] + cl, q[3] + cl), gnd_pad_polys(p)):
+                    raise ValueError(f"{self.name}: {isl['net']} {'island' if isl in G['islands'] else 'patch'} of {isl['cid']} under the connector ground pads of {p['cid']}")
+            for t in G["traces"]:
+                if t["net"] in (p["net"], "GND") or t["layer"] not in (0, self.stk.n - 1):
+                    continue
+                if any(r[0] < x < r[2] and r[1] < y < r[3] and rect_hits_polys((x - t["w"] / 2 - 0.2, y - t["w"] / 2 - 0.2, x + t["w"] / 2 + 0.2, y + t["w"] / 2 + 0.2), gnd_pad_polys(p)) for x, y in t["pts"]):
+                    raise ValueError(f"{self.name}: trace {t['net']} under the connector ground pads of {p['cid']}")
         # connectors and parts
         self.jmap, self.refmap = {}, {}
         count = {}
@@ -551,8 +609,9 @@ class Board:
             W.part(ref, p, stk)
         W.gr_poly(outline, "Edge.Cuts", 0.1)
         for c in self.coupons:
-            lx = c.cx - c.X / 2 + X_CLEAR + 0.3 if not any(pp["side"] > 0 for pp in c.ports) or any(pp["side"] < 0 for pp in c.ports) else c.cx + c.X / 2 - X_CLEAR - 4.0
-            W.text(c.cid, lx, c.cy + c.H / 2 - 1.2, "F.SilkS", 0.8, justify="left")
+            left = not any(pp["side"] > 0 for pp in c.ports) or any(pp["side"] < 0 for pp in c.ports)
+            lx = c.cx - c.X / 2 + X_CLEAR + 0.3 if left else c.cx + c.X / 2 - X_CLEAR - 0.3
+            W.text(c.cid, lx, c.cy + c.H / 2 - 1.2, "F.SilkS", 0.8, justify="left" if left else "right")
         for t in self.texts:
             W.text(*t)
         for t in G["traces"]:
@@ -677,7 +736,7 @@ class KicadText:
         L.append('(kicad_pcb (version 20240108) (generator "kisi_make_coupons") (generator_version "8.0")')
         L.append(f"  (general (thickness {thick:.4f}) (legacy_teardrops no))")
         L.append('  (paper "A4")')
-        L.append(f'  (title_block (title "{self.board}") (date "{TODAY}") (rev "2") (company "kisi measurement coupons") '
+        L.append(f'  (title_block (title "{self.board}") (date "{TODAY}") (rev "{DESIGN_REV}") (company "kisi measurement coupons") '
                  f'(comment 1 "{stk.d["title"]}") (comment 2 "generated by validation/test_board/make_coupons.py - DRC not run"))')
         ids = kb.kicad_ids(stk.n)
         cu = " ".join(f'({i} "{nm}" signal)' for i, nm in zip(ids, stk.names))
@@ -708,31 +767,59 @@ class KicadText:
         return f'(net {self.netid[net]} "{net}")'
 
     def endlaunch(self, ref, p):
-        """SMA end-launch footprint at the board edge: signal pad, mask opening of the ground
-        contact, mounting holes and block outline (PLACEHOLDER values from connectors.json)"""
+        """Samtec 292-J-P-EP-ST-EL-01 edge-launch footprint at the board edge, generated from
+        connectors.json (footprint, launch). The geometry follows Samtec's drawing
+        292-J-P-EP-ST-EL-01-X-MKT rev C, sheet 2 (recommended footprint): two plated screw holes
+        Ø2.06 mm 2.79 mm from the edge, ±2.92 mm, with the ground pads (6.48 mm deep, 10.52 mm
+        overall, 45° chamfers, fingers towards the signal at the edge) on every copper layer and
+        the mask open on both sides; the signal pad's tip (0.23 mm at the edge, tapering to the
+        launch width). Copper pulled back from the routed edge by edge_pullback (JLC rule)."""
         top = p["layer"] == 0
         cu, mk, fab, crt, silk = (("F.Cu", "F.Mask", "F.Fab", "F.CrtYd", "F.SilkS") if top else ("B.Cu", "B.Mask", "B.Fab", "B.CrtYd", "B.SilkS"))
         rot = 0 if p["side"] < 0 else 180
         L = self.lines
         mir = "" if top else " (justify mirror)"
-        L.append(f'  (footprint "kisi_coupons:SWM_292-04A-14_EndLaunch_PLACEHOLDER" (layer "{cu}") (uuid "{self.uid()}") (at {self.X(p["x"])} {self.Y(p["y"])} {rot})')
-        L.append(f'    (descr "Southwest Microwave {CONN["pn"]} SMA end launch, narrow block (.350 in), PCB .040-.090 in. '
-                 f'Footprint PLACEHOLDER - mounting holes and ground contact from connectors.json until the vendor drawing is supplied")')
-        L.append(f'    (property "Reference" "{ref}" (at 2.0 {-(4.445 + 0.9)} {rot}) (layer "{silk}") (uuid "{self.uid()}") (effects (font (size 0.8 0.8) (thickness 0.12)){mir}))')
-        L.append(f'    (property "Value" "{CONN["pn"]}" (at 2.0 {4.445 + 0.9} {rot}) (layer "{fab}") (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1)){mir}))')
+        pb = FP["edge_pullback"]
+        lg = p.get("geom") or {"tip_w": min(LNC["tip_w"], p["w"]), "taper_len": LNC["taper_len"], "pad_w": p["w"]}
+        f = lambda v: f"{v:.4f}".rstrip("0").rstrip(".")
+        # KiCad footprint frame: x into the board from the edge, y down (our y up: mirrored, the footprint is symmetric)
+        L.append(f'  (footprint "kisi_coupons:{FP["name"]}" (layer "{cu}") (uuid "{self.uid()}") (at {self.X(p["x"])} {self.Y(p["y"])} {rot})')
+        L.append(f'    (descr "Samtec {CONN["pn"]} 2.92 mm jack, edge launch, compression mount, to 40 GHz, PCB 1.02-2.54 mm. '
+                 f'Generated by validation/test_board/make_coupons.py; geometry follows Samtec drawing 292-J-P-EP-ST-EL-01-X-MKT rev C (sheet 2). '
+                 f'DRAFT: footprint to be checked, launch (tip {f(lg["tip_w"])} to {f(lg["pad_w"])} mm over {f(lg["taper_len"])} mm) not yet optimised")')
+        L.append(f'    (property "Reference" "{ref}" (at 3.0 {-(FP["block_width"] / 2 - 0.6)} {rot}) (layer "{fab}") (uuid "{self.uid()}") (effects (font (size 0.8 0.8) (thickness 0.12)){mir}))')
+        L.append(f'    (property "Value" "{CONN["pn"]}" (at -5.0 0 {rot}) (layer "{fab}") (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1)){mir}))')
         L.append(f'    (property "Port" "{p["cid"]} port {p["name"]}" (at 0 0 {rot}) (layer "{fab}") (hide yes) (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1))))')
+        L.append(f'    (property "Status" "DRAFT footprint (connectors.json footprint.status)" (at 0 0 {rot}) (layer "{fab}") (hide yes) (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1))))')
         L.append("    (attr smd exclude_from_pos_files exclude_from_bom)")
-        bw = CONN["block_width"] / 2
-        L.append(f'    (fp_rect (start {-FP["body_outside_board"]} {-bw}) (end {FP["block_depth_on_board"]} {bw}) (stroke (width 0.05) (type default)) (fill none) (layer "{crt}") (uuid "{self.uid()}"))')
-        L.append(f'    (fp_rect (start {-FP["body_outside_board"] + 0.2} {-bw + 0.2}) (end {FP["block_depth_on_board"] - 0.2} {bw - 0.2}) (stroke (width 0.1) (type default)) (fill none) (layer "{fab}") (uuid "{self.uid()}"))')
-        g0 = p["w"] / 2 + p["gap"]
-        for s in (1, -1):
-            L.append(f'    (fp_rect (start {FP["edge_pullback"]} {s * g0}) (end {FP["launch_length"] - 0.3} {s * FP["gnd_contact_half_width"]}) '
-                     f'(stroke (width 0) (type solid)) (fill solid) (layer "{mk}") (uuid "{self.uid()}"))')
-        lp = FP["signal_pad_length"]
-        L.append(f'    (pad "1" smd rect (at {FP["edge_pullback"] + lp / 2:.4f} 0 {rot}) (size {lp} {p["w"]}) (layers "{cu}" "{mk}") {self.n(p["net"])} (uuid "{self.uid()}"))')
-        for h in FP["mount_holes"]:
-            L.append(f'    (pad "" np_thru_hole circle (at {h["x"]} {h["y"]} {rot}) (size {h["d"]} {h["d"]}) (drill {h["d"]}) (layers "*.Cu" "*.Mask") (uuid "{self.uid()}"))')
+        cw, cd, co = FP["courtyard_half_width"], FP["courtyard_on_board"], FP["body_outside_board"] + 0.25
+        L.append(f'    (fp_rect (start {-co} {-cw}) (end {cd} {cw}) (stroke (width 0.05) (type default)) (fill none) (layer "{crt}") (uuid "{self.uid()}"))')
+        bw = FP["block_width"] / 2
+        L.append(f'    (fp_rect (start {-FP["body_outside_board"]} {-bw}) (end {FP["body_on_board"]} {bw}) (stroke (width 0.1) (type default)) (fill none) (layer "{fab}") (uuid "{self.uid()}"))')
+        L.append(f'    (fp_line (start 0 {-cw}) (end 0 {cw}) (stroke (width 0.1) (type dash)) (layer "{fab}") (uuid "{self.uid()}"))')
+        L.append(f'    (fp_text user "DRAFT" (at 3.0 0 {rot}) (layer "{fab}") (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1)){mir}))')
+        outline = gnd_pad_outline()
+        ring = FP["hole_ring"]
+        for k, h in enumerate(FP["mount_holes"]):
+            sg = 1 if h["y"] > 0 else -1
+            hx, hy = h["x"], -h["y"]            # KiCad local y is down
+            # plated hole with a round pad on every copper layer (inner layers: tied to the planes) ...
+            L.append(f'    (pad "{2 + k}" thru_hole circle (at {f(hx)} {f(hy)} {rot}) (size {f(ring)} {f(ring)}) (drill {f(h["d"])}) '
+                     f'(layers "*.Cu" "*.Mask") (solder_mask_margin {FP["mask_margin"]}) {self.n("GND")} (uuid "{self.uid()}"))')
+            # ... and the ground pad where the jaws clamp: top and bottom copper, mask open
+            pts = " ".join(f"(xy {f(u - hx)} {f(-sg * v - hy)})" for u, v in outline)
+            for lay, msk in (("F.Cu", "F.Mask"), ("B.Cu", "B.Mask")):
+                L.append(f'    (pad "{2 + k}" smd custom (at {f(hx)} {f(hy)} {rot}) (size 1 1) (layers "{lay}" "{msk}") (solder_mask_margin {FP["mask_margin"]}) '
+                         f'{self.n("GND")} (options (clearance outline) (anchor circle)) (primitives (gr_poly (pts {pts}) (width 0) (fill yes))) (uuid "{self.uid()}"))')
+        # signal pad: the tip the pin rests on, tapering to the launch width
+        tw, tl, pw = lg["tip_w"], lg["taper_len"], lg["pad_w"]
+        hw = lambda u: tw / 2 + (pw / 2 - tw / 2) * u / tl
+        x0 = pb
+        poly = [(x0, -hw(x0)), (tl, -pw / 2), (tl, pw / 2), (x0, hw(x0))]
+        a0, xa = 0.1, (x0 + tl) / 2         # small anchor in the middle of the taper
+        pts = " ".join(f"(xy {f(u - xa)} {f(v)})" for u, v in poly)
+        L.append(f'    (pad "1" smd custom (at {f(xa)} 0 {rot}) (size {a0} {f(2 * hw(xa))}) (layers "{cu}" "{mk}") (solder_mask_margin {FP["mask_margin"]}) {self.n(p["net"])} '
+                 f'(options (clearance outline) (anchor rect)) (primitives (gr_poly (pts {pts}) (width 0) (fill yes))) (uuid "{self.uid()}"))')
         L.append("  )")
 
     def part(self, ref, p, stk):
@@ -797,11 +884,11 @@ class KicadText:
     def notes(self, board, x, y):
         stk = board.stk
         d = board.design
-        lines = [f"{board.name}: kisi measurement coupons v2 ({TODAY})", f"Stackup: {stk.d['title']}",
+        lines = [f"{board.name}: kisi measurement coupons v{DESIGN_REV} ({TODAY})", f"Stackup: {stk.d['title']}",
                  f"Impedance control: 50 ohm single-ended (class 50Z) on L1, w = {d.get('w50', {}).get('0')} mm; 100 ohm differential (class 100Z_Diff).",
                  "Finish ENIG; green LPI mask both sides over all lines; through vias 0.3/0.6 mm, inner non-functional pads removed.",
-                 "Copper comes to 0.2 mm from the left/right edges at the SMA end launches (Southwest Microwave 292-04A-14).",
-                 "Connector footprint is a PLACEHOLDER (connectors.json) until the vendor drawing is supplied.",
+                 f"Copper comes to {FP['edge_pullback']:g} mm from the left/right edges at the 2.92 mm edge launches (Samtec {CONN['pn']}, plated screw holes).",
+                 "Connector footprint generated from Samtec's drawing (DRAFT, connectors.json); launch not yet optimised.",
                  "Zones are pre-filled by the generator: refill in KiCad (B) and run DRC before plotting. DRC has NOT been run."]
         for i, s in enumerate(lines):
             self.text(s, x, y - 1.6 * i, "Cmts.User", 1.0, justify="left")
@@ -829,35 +916,79 @@ def edge_x(c, side):
     return side * (c.X / 2 - FP["edge_pullback"])
 
 
-def launch(c, ctx, side, y, layer, net, name, w=None, gap=None, pour_lo=None, pour_hi=None):
-    """end-launch port at the edge `side` (-1 left, +1 right): the launch trace (grounded coplanar,
-    launch width) from the edge to `launch_length`, ground pours on both sides of it with two rows
-    of fence vias. Returns the x where the coupon's own trace starts."""
+def launch_geometry(ctx, w=None, gap=None):
+    """the launch of this stackup with the parametric values of connectors.json (launch): tip
+    width and taper length, pad width / length / gap, coplanar width / gap and length, ground cut
+    (width, length, layer) or None, fence. x from the board edge."""
     w = ctx.wlaunch if w is None else w
     gap = ctx.glaunch if gap is None else gap
-    c.port(side, y, layer, net, w, gap, name)
-    x_in = side * (c.X / 2 - FP["launch_length"])
-    c.trace(layer, [(edge_x(c, side), y), (x_in, y)], w, net)
     lc = ctx.des["launch"]
-    if lc.get("cut") and layer == 0 and w == ctx.wlaunch:  # opening in the first plane under the launch
-        c.notches.append({"layer": lc["cut_layer"], "side": side, "y0": y - lc["cut"] / 2, "y1": y + lc["cut"] / 2, "depth": FP["launch_length"]})
-    xa = side * (c.X / 2 - ZONE_INSET)
+    std = w == ctx.wlaunch
+    pick = lambda k, dflt: (LNC[k] if (std and LNC[k] is not None) else dflt)
+    pw, pg = pick("pad_w", w), pick("pad_gap", gap)
+    tl = LNC["taper_len"]
+    pl = max(pick("pad_len", tl), tl)
+    cut = None
+    if std and LNC["gnd_cut"]["width"] is not None:
+        cut = {"width": LNC["gnd_cut"]["width"], "length": LNC["gnd_cut"]["length"] or pl, "layer": ctx.stk.planes[0]}
+    elif std and lc.get("cut"):  # the design's opening (thin top dielectric): along the whole launch
+        cut = {"width": lc["cut"], "length": LNC["launch_length"], "layer": lc["cut_layer"]}
+    return {"w": w, "gap": gap, "tip_w": min(LNC["tip_w"], pw), "taper_len": tl, "pad_w": pw, "pad_gap": pg, "pad_len": pl,
+            "len": max(LNC["launch_length"], pl), "cut": cut, "fence": LNC["fence"]}
+
+
+def launch(c, ctx, side, y, layer, net, name, w=None, gap=None, pour_lo=None, pour_hi=None):
+    """end-launch port at the edge `side` (-1 left, +1 right), inside the Samtec ground pads
+    (written with the connector footprint): the tip the pin rests on (part of the footprint's
+    signal pad), the pad (pad_w, gap pad_gap) to pad_len, the grounded coplanar launch (w, gap) to
+    launch_length, ground pours on both sides with rows of fence vias (kept clear of the screw
+    holes) and the optional opening in the first plane under the pad (gnd_cut). Returns the x
+    where the coupon's own trace starts."""
+    lg = launch_geometry(ctx, w, gap)
+    w, gap, pw, pg = lg["w"], lg["gap"], lg["pad_w"], lg["pad_gap"]
+    c.port(side, y, layer, net, pw, pg, name, geom=lg)
+    e = c.X / 2
+    X = lambda u: side * (e - u)        # x of a point u mm from this edge
+    x_in = X(lg["len"])
+    x_tp = X(lg["taper_len"] - 0.05)    # the trace overlaps the footprint's tapered tip
+    x_pad = X(lg["pad_len"])
+    if lg["pad_len"] > lg["taper_len"] + 1e-9 and abs(pw - w) > 1e-9:
+        c.trace(layer, [(x_tp, y), (x_pad, y)], pw, net)
+        c.trace(layer, [(x_pad, y), (x_in, y)], w, net)
+    else:
+        c.trace(layer, [(x_tp, y), (x_in, y)], w if lg["pad_len"] <= lg["taper_len"] + 1e-9 else pw, net)
+    if lg["cut"] and layer == 0:  # opening in the first plane under the pad / launch
+        ct = lg["cut"]
+        c.notches.append({"layer": ct["layer"], "side": side, "y0": y - ct["width"] / 2, "y1": y + ct["width"] / 2, "depth": ct["length"]})
+    xa = X(ZONE_INSET)
     lo = -c.H / 2 + 0.3 if pour_lo is None else pour_lo
     hi = c.H / 2 - 0.3 if pour_hi is None else pour_hi
+    fn = lg["fence"]
+    holes = [(X(h["x"]), y + h["y"], h["d"]) for h in FP["mount_holes"]] if layer == 0 else []
     cols = []
     k = 0
-    while 0.8 + k * LAY["fence_pitch_launch"] <= FP["launch_length"] - 0.35:
-        cols.append(side * (c.X / 2 - 0.8 - k * LAY["fence_pitch_launch"]))
+    while fn["first_x"] + k * fn["pitch"] <= lg["len"] - 0.35:
+        cols.append(X(fn["first_x"] + k * fn["pitch"]))
         k += 1
-    for s, (y0, y1) in ((1, (y + w / 2 + gap, hi)), (-1, (lo, y - w / 2 - gap))):
+    g_pad, g_cp = pw / 2 + pg, w / 2 + gap
+    g_f = max(g_pad, g_cp)  # the fence follows the wider of the two openings
+    vd = LAY["gnd_via"]["drill"]
+    for s, (y0, y1) in ((1, (y + g_cp, hi)), (-1, (lo, y - g_cp))):
         if y1 - y0 < 0.6:
             continue
-        c.pour(layer, (min(xa, x_in), y0, max(xa, x_in), y1))
-        for row in (0, 1):
-            yy = (y0 + FENCE_OFF + row * 0.8) if s > 0 else (y1 - FENCE_OFF - row * 0.8)
-            if y0 + 0.3 <= yy <= y1 - 0.3:
+        if abs(g_pad - g_cp) > 1e-9:
+            yp0, yp1 = (y + g_pad, y1) if s > 0 else (y0, y - g_pad)
+            c.pour(layer, (min(xa, x_pad), yp0, max(xa, x_pad), yp1))
+            c.pour(layer, (min(x_pad, x_in), y0, max(x_pad, x_in), y1))
+        else:
+            c.pour(layer, (min(xa, x_in), y0, max(xa, x_in), y1))
+        yf0, yf1 = (y + g_f, y1) if s > 0 else (y0, y - g_f)
+        for row in range(fn["rows"]):
+            yy = (yf0 + fn["offset"] + row * fn["row_pitch"]) if s > 0 else (yf1 - fn["offset"] - row * fn["row_pitch"])
+            if yf0 + 0.3 <= yy <= yf1 - 0.3:
                 for xx in cols:
-                    c.via(xx, yy, "GND", role="gnd", fence=True)
+                    if all(math.hypot(xx - hx, yy - hy) >= hd / 2 + vd / 2 + fn["hole_keep"] for hx, hy, hd in holes):
+                        c.via(xx, yy, "GND", role="gnd", fence=True)
     return x_in
 
 
@@ -875,7 +1006,7 @@ def fan(c, x_in, side, y_out, y_in, x_end, layer, net, w_out, w_in, x_min=0.3):
     """from the launch end (x_in, y_out): straight until clear of the connector, a 45° diagonal
     (steeper if there is no room) to y_in, then straight to x_end; width w_out up to the end of
     the diagonal, then w_in. Returns the x where the diagonal ends."""
-    xs = side * (abs(x_in) + FP["launch_length"] - X_CLEAR)
+    xs = side * (abs(x_in) + LAUNCH_LEN - X_CLEAR)
     xd = xs - side * abs(y_out - y_in)
     if side * (xd - x_end) < x_min:
         xd = x_end + side * x_min
@@ -984,7 +1115,8 @@ def c_cpwg(ctx, cid, X):
         xa = abs(xl)
         c.params["launch"] = "pin-wide launch with the plane opening, then the CPWG"
     else:
-        c.trace(0, [(edge_x(c, -1), 0.0), (edge_x(c, 1), 0.0)], w, net)
+        xt = c.X / 2 - LNC["taper_len"] + 0.05   # from the footprint's tapered tip
+        c.trace(0, [(-xt, 0.0), (xt, 0.0)], w, net)
         c.port(-1, 0.0, 0, net, w, g, "1")
         c.port(1, 0.0, 0, net, w, g, "2")
         xa = c.X / 2 - ZONE_INSET
@@ -1157,7 +1289,7 @@ def c_cavity(ctx, cid, a, b, X, H, p1, p2):
     c.params.update(modes_GHz=[round(f / 1e9, 3) for f, m, n in modes if f < 8e9][:8], modes_mn=[f"{m}{n}" for f, m, n in modes if f < 8e9][:8],
                     modes_note="magnetic-wall estimate with the nominal er; fringing lowers them")
     c.measure = "VNA 2-port (S21 peaks; Z21 by shunt-thru)"
-    xw = min(max(a / 2, abs(p1[0]), abs(p2[0])) + 5.0, X / 2 - FP["launch_length"] - 0.2)  # ports on the feed lines
+    xw = min(max(a / 2, abs(p1[0]), abs(p2[0])) + 5.0, X / 2 - LAUNCH_LEN - 0.2)  # ports on the feed lines
     c.window("wg", -xw, xw, half_y=H / 2 + 0.6, dfine=0.1, fmax=8e9, note="the whole island with the L1 feeds up to the window",
              extra={"nf": 600, "f_loss": 2.5e9, "max_steps": 400000, "meta_modes": [round(f, -6) for f, m, n in modes]})
     return c
@@ -1317,7 +1449,7 @@ def board_specs(ctx):
                   [c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L6 (ref L5) → L1, no return via (row walls only)", ["D_s8_stitch_none"], bot,
                          "return path without a nearby GND via", Ls=LS_RET, gnd=None)]],
             "b": [T(), [c_vlv(ctx, "VLV_L3", "B", f"via–line–via L1→{sn[inner[0]]}→L1 (through vias, stubs to L6), 5 mm stripline", ["B_ts6_L1L3_stub", "B_s8_L1L3_stub_d300"],
-                                inner[0], "inner-layer exit with an open stub (junction model); stub resonance above the SMA band (kisi: 32 GHz)")],
+                                inner[0], "inner-layer exit with an open stub (junction model); stub resonance inside the 40 GHz band (kisi: 32 GHz)")],
                   [c_vlv(ctx, "SL_L3", "T", f"via–line–via with 25 mm stripline on {sn[inner[0]]}", ["T_ts6_sl_10", "T_ts6_sl_20"], inner[0],
                          "stripline γ (line–line with VLV_L3: the vias cancel), Zc from the TDR plateau; asymmetric stripline (formula +11 % on the ThunderScope stack)",
                          Ls=25.0, lines=True)],
@@ -1333,7 +1465,7 @@ def board_specs(ctx):
     # 8 layers
     return {
         "a": [T(), [c_vlv(ctx, "VLV_L3", "B", f"via–line–via L1→{sn[inner[0]]}→L1 (through vias, 1.4 mm stubs to L8), 5 mm stripline",
-                          ["B_s8_L1L3_stub_d300", "X_s8x2_L1L3_bd_d200"], inner[0], "long open stub: notch near 20 GHz, inside the SMA band (B group)")],
+                          ["B_s8_L1L3_stub_d300", "X_s8x2_L1L3_bd_d200"], inner[0], "long open stub: notch near 20 GHz, inside the band of every VNA (B group)")],
               [c_vlv(ctx, "B_L1L8", "B", "via–line–via L1→L8→L1 (through vias, no stub), 4 GND vias at 1 mm", ["B_s8_L1L8_d300"], bot, "through via without stub")],
               [c_vlv(ctx, "SL_L3", "T", f"via–line–via with 25 mm stripline on {sn[inner[0]]}", ["T_ts6_sl_10", "T_ts6_sl_20"], inner[0],
                      "stripline γ (line–line with VLV_L3), Zc from the TDR plateau", Ls=25.0, lines=True)]],
@@ -1518,6 +1650,133 @@ def fdtd_case(board, G, c, win, mask=True):
     return case
 
 
+# --- launch optimisation cases (kisi-fdtd) ------------------------------------------------------------
+LAUNCH_VARIANTS = {
+    # name: overrides of connectors.json 'launch' (and 'body': the connector's top jaw, approximated)
+    "ours": {},
+    "ours_body": {"body": True},
+    "notaper": {"tip_w": None},
+    "samtec": {"pad_w": 0.521, "pad_len": 6.477, "pad_gap": 1.188},
+    "samtec_cut": {"pad_w": 0.521, "pad_len": 6.477, "pad_gap": 1.188, "gnd_cut": {"width": 0.521, "length": 6.477}},
+}
+
+
+def launch_case(stk_key, des, var, over, fmax=40e9, dfine=0.035, line=2.5):
+    """one launch as a kisi-fdtd case: the board from its edge (x = 0) to launch_length + `line`
+    mm of the 50 Ω microstrip, the Samtec ground pads (top and bottom), the plated screw holes, the
+    tip, pad and coplanar launch with its fence, the optional ground cut, and (body) the top jaw of
+    the connector as metal sheets with its slot and posts along the slot walls (from Samtec's 3D
+    model: jaw 5.08 mm over the board, slot 2.67 / 3.18 mm wide from 0.38 / 0.64 mm). Port 1 is a
+    lumped 50 Ω port at the edge (tip to the first plane, which keeps a 0.25 mm strip at the edge
+    when it is cut out): the coax and the pin of the connector are NOT modelled (CST with the STEP
+    model does that). Port 2 at the end of the microstrip, 1.5 mm from the domain boundary."""
+    stk = Stack(stk_key)
+    lc = dict(LNC, **{k: v for k, v in over.items() if k in LNC})
+    w, gap, wm = des["launch"]["w"], des["launch"]["gap"], des["w50"]["0"]
+    tip = lc["tip_w"] if lc["tip_w"] is not None else (lc["pad_w"] or w)
+    pw = lc["pad_w"] or w
+    pg = lc["pad_gap"] if lc["pad_gap"] is not None else gap
+    tl = lc["taper_len"]
+    pl = max(lc["pad_len"] or tl, tl)
+    L = max(lc["launch_length"], pl)
+    cut = lc["gnd_cut"] if lc["gnd_cut"].get("width") else (({"width": des["launch"]["cut"], "length": L}) if des["launch"].get("cut") else None)
+    pb = FP["edge_pullback"]
+    xp = L + line                # port 2: the line ends there (a line running on into the PML would load the port)
+    x1 = xp + 1.5
+    hy = 6.0
+    b = vc.Builder(stk.vc_key, x1, hy + 0.5, fmax, dfine, board=[0.0, -(hy + 0.5), x1, hy + 0.5], x0=-0.6)
+    zt, zb = stk.z[0], stk.z[-1]
+    sig = lambda poly: b.case["sheets"].append({"z": zt, "rect": [min(p[0] for p in poly), min(p[1] for p in poly), max(p[0] for p in poly), max(p[1] for p in poly)],
+                                                "polys": [[[round(x, 5), round(y, 5)] for x, y in poly]], "net": "SIG"})
+    dw = stk.dw_thick(0)
+    hwt = lambda u: (tip + (pw - tip) * min(u, tl) / tl) / 2 + dw / 2
+    sig([(pb, -hwt(pb)), (tl, -hwt(tl)), (tl, hwt(tl)), (pb, hwt(pb))])
+    if pl > tl:
+        b.case["sheets"].append({"z": zt, "rect": [tl, -(pw + dw) / 2, pl, (pw + dw) / 2], "net": "SIG"})
+    b.case["sheets"].append({"z": zt, "rect": [pl, -(w + dw) / 2, L, (w + dw) / 2], "net": "SIG"})
+    b.case["sheets"].append({"z": zt, "rect": [L, -(wm + dw) / 2, xp, (wm + dw) / 2], "net": "SIG"})
+    # ground: Samtec pads top and bottom (polygons), coplanar pours on top
+    for sg in (1, -1):
+        poly = [[round(u, 5), round(sg * v, 5)] for u, v in gnd_pad_outline()]
+        for z in (zt, zb):
+            b.case["sheets"].append({"z": z, "rect": [pb, -hy, FP["gnd_pad"]["depth"], hy], "polys": [poly], "net": "GND"})
+        g_pad, g_cp = pw / 2 + pg, w / 2 + gap
+        if pl > tl + 1e-9:
+            b.sheet(zt, [ZONE_INSET, min(sg * g_pad, sg * hy), pl, max(sg * g_pad, sg * hy)], net="GND")
+            b.sheet(zt, [pl, min(sg * g_cp, sg * hy), L, max(sg * g_cp, sg * hy)], net="GND")
+        else:
+            b.sheet(zt, [ZONE_INSET, min(sg * g_cp, sg * hy), L, max(sg * g_cp, sg * hy)], net="GND")
+    # fence and screw holes
+    fn = lc["fence"]
+    g_f = max(pw / 2 + pg, w / 2 + gap)
+    holes = [(h["x"], h["y"], h["d"]) for h in FP["mount_holes"]]
+    k = 0
+    while fn["first_x"] + k * fn["pitch"] <= L - 0.35:
+        xx = fn["first_x"] + k * fn["pitch"]
+        for sg in (1, -1):
+            for row in range(fn["rows"]):
+                yy = sg * (g_f + fn["offset"] + row * fn["row_pitch"])
+                if all(math.hypot(xx - hx, yy - hy_) >= hd / 2 + LAY["gnd_via"]["drill"] / 2 + fn["hole_keep"] for hx, hy_, hd in holes):
+                    b.via(round(xx, 4), round(yy, 4), LAY["gnd_via"]["drill"] / 2, LAY["gnd_via"]["pad"] / 2, 0, stk.n - 1, [], net="GND")
+        k += 1
+    body = over.get("body")
+    top_m = zt + (1.0 if body else 0.0)
+    for hx, hy_, hd in holes:  # plated holes (and the screw through the jaw)
+        b.case["vias"].append({"x": hx, "y": hy_, "r": hd / 2, "z0": round(zb, 6), "z1": round(top_m if body else zt, 6), "pad_r": FP["hole_ring"] / 2,
+                               "pads": [stk.z[i] for i in range(stk.n)], "net": "GND", "dmesh": 0.1})
+    if cut:
+        b.rect_cut(stk.planes[0], 0.25, -cut["width"] / 2, cut["length"], cut["width"] / 2)
+    if body:  # the top jaw: metal sheets at four heights with the slot, posts along the slot walls and the lip
+        jb = FP["block_width"] / 2
+        for dz in (0.0, 0.25, 0.5, 1.0):
+            z = zt + dz + (0.001 if dz == 0 else 0)
+            for sg in (1, -1):
+                b.sheet(z, [0.38, min(sg * 1.335, sg * jb), 0.64, max(sg * 1.335, sg * jb)], net="GND")
+                b.sheet(z, [0.64, min(sg * 1.59, sg * jb), FP["body_on_board"], max(sg * 1.59, sg * jb)], net="GND")
+            if dz > 0.4:  # the lip above the pin opening (Ø0.70 at 0.13 mm above the board: top at +0.48)
+                b.sheet(z, [0.0, -jb, 0.38, jb], net="GND")
+        for sg in (1, -1):
+            b.sheet(zt + 0.001, [0.0, min(sg * 0.33, sg * jb), 0.38, max(sg * 0.33, sg * jb)], net="GND")
+            ys = [(0.38, 0.64, 1.335), (0.64, FP["body_on_board"], 1.59)]
+            for xa, xb_, yw in ys:
+                n = max(2, int((xb_ - xa) / 0.25) + 1)
+                for i in range(n):
+                    b.cyl(round(xa + (xb_ - xa) * i / (n - 1), 4), sg * yw, 0.05, zt, zt + 1.0, net="GND")
+            for i in range(3):  # sides of the pin opening
+                b.cyl(round(0.38 * i / 2, 4), sg * 0.38, 0.05, zt, zt + 0.48, net="GND")
+    # ports
+    b.port_raw(pb, 0.0, stk.z[stk.planes[0]], zt, 50.0, "1 edge (launch)", "L1", stk.names[stk.planes[0]], w=round(2 * hwt(pb), 4))
+    b.port(xp, 0.0, round(wm + dw, 4), 0, stk.planes[0], "2 line")
+    title = f"Samtec 292-J-P-EP-ST-EL-01 launch on {stk.d['title']}: {var}"
+    params = {"variant": var, "tip_w": tip, "taper_len": tl, "pad_w": pw, "pad_len": pl, "pad_gap": pg, "w": w, "gap": gap, "launch_length": L,
+              "gnd_cut": cut, "fence": fn, "body": bool(body), "line_w": wm}
+    case = b.finish(f"launch_{stk_key}_{var}", "launch", title, params)
+    t = stk.mask["thickness"]
+    case["layers"].append({"z0": round(zt, 6), "z1": round(zt + t, 6), "er": stk.mask["er"], "tand": stk.mask["tand"]})
+    case["layers"].insert(0, {"z0": round(zb - t, 6), "z1": round(zb, 6), "er": stk.mask["er"], "tand": stk.mask["tand"]})
+    case["meta"].update(excite=[0], mirror=None, target="|S11| < -20 dB to 40 GHz at the edge port (Samtec's own fixture: -23 to -25 dB, report 2023-06-01)",
+                        limits="connector coax and pin not modelled; port 1 is a lumped port at the edge; the jaw is approximated (body)")
+    return case
+
+
+def write_launch_cases(stk_keys, outdir, fdtd_exe=None):
+    for sk in stk_keys:
+        des = json.load(open(os.path.join(outdir, "boards", f"{sk}.design.json")))
+        d = os.path.join(outdir, "fdtd", f"launch_{sk}")
+        os.makedirs(d, exist_ok=True)
+        for var, over in LAUNCH_VARIANTS.items():
+            if des["launch"].get("cut") and var.startswith("samtec"):
+                continue
+            case = launch_case(sk, des, var, over)
+            cp = os.path.join(d, case["name"] + ".json")
+            json.dump(case, open(cp, "w"), indent=1)
+            cells = ""
+            if fdtd_exe:
+                m = json.loads(subprocess.run([fdtd_exe, cp, "--mesh-only"], capture_output=True, text=True, check=True).stdout)
+                cells = f", {len(m['x']) * len(m['y']) * len(m['z']) / 1e6:.2f} M cells"
+            print(f"{case['name']}{cells}", flush=True)
+
+
 # --- main -------------------------------------------------------------------------------------------
 def build(board_key, ks, pair_pitch, outdir, design_cache, fdtd_exe=None):
     stk_key, part = BOARDS[board_key]
@@ -1544,10 +1803,11 @@ def build(board_key, ks, pair_pitch, outdir, design_cache, fdtd_exe=None):
     # board name and order-number placeholder on the bottom silk, in the lower half of the bottom
     # (longest) row, away from the end launches that clamp the board edges
     yb = b.bottom
-    b.texts.append((name, 0.0, yb + 3.6, "B.SilkS", 0.8, None))
-    b.texts.append((f"{stk.d['template'] or 'assumed stackup'}  v2  {TODAY}", 0.0, yb + 2.4, "B.SilkS", 0.7, None))
+    b.texts.append((name, 0.0, yb + 4.8, "B.SilkS", 0.8, None))
+    b.texts.append((f"{stk.d['template'] or 'assumed stackup'}  v{DESIGN_REV}", 0.0, yb + 3.6, "B.SilkS", 0.8, None))
+    b.texts.append((TODAY, 0.0, yb + 2.4, "B.SilkS", 0.8, None))
     if stk.d["manufacturer"] == "JLCPCB":  # JLC prints its order number where this text is
-        b.texts.append(("JLCJLCJLCJLC", 0.0, yb + 1.2, "B.SilkS", 0.7, None))
+        b.texts.append(("JLCJLCJLCJLC", 0.0, yb + 1.2, "B.SilkS", 0.8, None))
     path = os.path.join(outdir, "boards", name + ".kicad_pcb")
     G = b.write_kicad(path)
     b.write_kisi_config(path[:-len(".kicad_pcb")] + ".kisi.json")
@@ -1589,7 +1849,11 @@ def main():
     ap.add_argument("--reuse-design", action="store_true", help="use boards/<stackup>.design.json if present (keeps the trace widths; "
                     "stackup values may have changed, e.g. after the extraction)")
     ap.add_argument("--fdtd-exe", default=None, help="kisi-fdtd binary: record the cell count of every 3D case (mesh only)")
+    ap.add_argument("--launch-cases", default=None, help="stackup keys: write only the launch optimisation cases (fdtd/launch_<stackup>/) and stop")
     a = ap.parse_args()
+    if a.launch_cases:
+        write_launch_cases([k for k in a.launch_cases.split(",") if k], a.out, a.fdtd_exe)
+        return
     os.makedirs(os.path.join(a.out, "boards"), exist_ok=True)
     ks = Kisi(a.kisi, a.kisi_mjs, a.solver)
     cache = {}

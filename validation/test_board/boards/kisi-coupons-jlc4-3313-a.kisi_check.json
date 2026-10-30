@@ -1,6 +1,6 @@
 {
  "board": "kisi-coupons-jlc4-3313-a",
- "date": "2026-10-22",
+ "date": "2026-10-30",
  "native": {
   "overview": {
    "board": "kisi-coupons-jlc4-3313-a",
@@ -8,46 +8,47 @@
     {
      "class": "50Z",
      "diff": false,
-     "length_mm": 348.72,
+     "length_mm": 329.60000000000014,
      "nets": 9,
+     "rough_formula_mm": 101.23200000000013,
      "target_ohm": 50.0,
      "target_source": "user",
-     "within_5pct": 0.6337462720807524,
+     "within_5pct": 0.543919902912621,
      "worst": [
       {
        "net": "SE_CPWG_25",
        "within_5pct": 0.0,
        "z_max": 62.621029085179124,
-       "z_mean": 55.01529647762754,
-       "z_min": 38.21448199023257
-      },
-      {
-       "net": "SE_CPWG_50",
-       "within_5pct": 0.0,
-       "z_max": 62.621029085179124,
-       "z_mean": 54.03645083496936,
-       "z_min": 38.21448199023257
+       "z_mean": 57.917112226433964,
+       "z_min": 52.97577369658496
       },
       {
        "net": "SE_REFLECT_L",
-       "within_5pct": 0.7013658176448874,
+       "within_5pct": 0.48769230769230704,
        "z_max": 62.621029085179124,
-       "z_mean": 53.90468546735658,
-       "z_min": 38.21448199023257
+       "z_mean": 57.14485268238278,
+       "z_min": 51.39227620878283
       },
       {
        "net": "SE_REFLECT_R",
-       "within_5pct": 0.7013658176448874,
+       "within_5pct": 0.48769230769230704,
        "z_max": 62.621029085179124,
-       "z_mean": 53.90468546735658,
-       "z_min": 38.21448199023257
+       "z_mean": 57.14485268238278,
+       "z_min": 51.39227620878283
       },
       {
        "net": "SE_THRU",
-       "within_5pct": 0.7013658176448874,
+       "within_5pct": 0.48769230769230704,
        "z_max": 62.621029085179124,
-       "z_mean": 53.90468546735658,
-       "z_min": 38.21448199023257
+       "z_mean": 57.14485268238276,
+       "z_min": 51.39227620878283
+      },
+      {
+       "net": "SE_LINE_27",
+       "within_5pct": 0.5260674157303364,
+       "z_max": 62.621029085179124,
+       "z_mean": 56.71394807761874,
+       "z_min": 51.39227620878283
       }
      ]
     }
@@ -60,7 +61,7 @@
     "warnings": []
    },
    "field_solver": {
-    "cross_sections": 4,
+    "cross_sections": 3,
     "cross_sections_field": 0,
     "target_length_coverage_pct": 0.0
    },
@@ -120,19 +121,603 @@
     "warnings": []
    },
    "field_solver": {
-    "cross_sections": 4,
+    "cross_sections": 3,
     "cross_sections_field": 0,
     "target_length_coverage_pct": 0.0
    },
    "field_solver_note": "native kisi: formula impedances only; the Node CLI kisi.mjs adds the 2D field solver",
-   "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5\u201315 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics). Eye only from IC to IC: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise. Lanes ending at a connector: board share only (loss, return loss, skew).",
-   "rows": [],
+   "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5\u201315 %. Losses: Wheeler/Huray/Djordjevic-Sarkar. Lanes run from device pin to device pin through series parts (estimated parasitics); side stubs of the lane nets are open stubs (unused pads, parts not fitted with their pad capacitance, the other path of a fork). Pads: a track inside an SMD pad has the pad's width; the rest of a part's pad is a capacitance from the pad's cross-section (with what lies below it), else an estimate per package. Eye: PRBS7, linear transmitter/receiver from the profile (a termination next to the receiver acts as its termination), without equalisation, jitter and noise; the step response with a DC point and checks (band edge, response before arrival, settling, passivity) in its warnings. Pairs are 4-ports (both lines on their own paths, coupled where they run together): loss and return loss Sdd21/Sdd11, the eye driven differentially, mode_conversion_db (worst Scd21 up to 1.5 \u00d7 Nyquist) as information. Multi-drop lines along one path: the eye at every receiver (receivers), the worst counts. One N-port Touchstone file behind a connector with a port map (connector_ends.<connector>.touchstone.ports): the connector's other lanes in it are worst-case aggressors (crosstalk_peak; they enter at the connector without their board traces \u2013 an estimate). Shunt parts on the lane's nets (capacitors to ground, \u2026) are in the channel at their pads. Lanes from connector to connector: board share only (loss, return loss, skew, TDR), no eye. Lanes ending at a connector: board share \u2013 loss, return loss and skew judged; the eye with the connector end model (kisi.json connector_ends.<connector>, default the profile's receiver or transmitter at the connector) \u2013 information (eye_board_share), or judged when a channel behind the connector (rest_loss_db or a Touchstone file) is given.",
+   "not_checked_unused": null,
+   "rows": [
+    {
+     "accuracy": {
+      "impedance": {
+       "field_share": 0.0,
+       "level": "formula",
+       "uncertainty_pct": 13.8
+      },
+      "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+      "vias": null
+     },
+     "branches": [],
+     "bus": "J1 \u2194 J2",
+     "class": "50Z",
+     "criteria": [
+      {
+       "hi": 55.00000000000001,
+       "key": "z",
+       "lo": 45.0,
+       "note": "mean along the line from the impedance analysis",
+       "red_below": null,
+       "status": "yellow",
+       "value": 57.14485268238276
+      },
+      {
+       "hi": null,
+       "key": "il",
+       "lo": null,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": -0.10093409080184484
+      },
+      {
+       "hi": null,
+       "key": "rl",
+       "lo": 10.0,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": 21.824017853829858
+      }
+     ],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J1.1",
+      "J2.1"
+     ],
+     "eye_computed": false,
+     "from": "J1.1",
+     "kind": "connector-connector",
+     "lane": "SE_THRU",
+     "length_mm": 23.400000000000006,
+     "metrics": {
+      "error": null,
+      "eye_h": null,
+      "eye_w_ui": null,
+      "il_nyq_db": -0.10093409080184484,
+      "rl_db": 21.824017853829858,
+      "skew_ps": null,
+      "skew_uncertain": false,
+      "stub_ghz": null,
+      "z_max": 62.621029085179124,
+      "z_mean": 57.14485268238276,
+      "z_min": 51.39227620878283
+     },
+     "model": "single-ended",
+     "nets": [
+      "SE_THRU"
+     ],
+     "not_modelled": [],
+     "profile": "se50",
+     "rate_gbps": 1.0,
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "status": "yellow",
+     "stubs": [],
+     "terminations": [],
+     "to": "J2.1",
+     "vias": 0
+    },
+    {
+     "accuracy": {
+      "impedance": {
+       "field_share": 0.0,
+       "level": "formula",
+       "uncertainty_pct": 11.8
+      },
+      "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+      "vias": null
+     },
+     "branches": [],
+     "bus": "J10 \u2194 J9",
+     "class": "50Z",
+     "criteria": [
+      {
+       "hi": 55.00000000000001,
+       "key": "z",
+       "lo": 45.0,
+       "note": "mean along the line from the impedance analysis",
+       "red_below": null,
+       "status": "yellow",
+       "value": 56.176405464605004
+      },
+      {
+       "hi": null,
+       "key": "il",
+       "lo": null,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": -0.12471268866153046
+      },
+      {
+       "hi": null,
+       "key": "rl",
+       "lo": 10.0,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": 21.80786263843572
+      }
+     ],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J10.1",
+      "J9.1"
+     ],
+     "eye_computed": false,
+     "from": "J10.1",
+     "kind": "connector-connector",
+     "lane": "SE_LINE_30",
+     "length_mm": 28.400000000000006,
+     "metrics": {
+      "error": null,
+      "eye_h": null,
+      "eye_w_ui": null,
+      "il_nyq_db": -0.12471268866153046,
+      "rl_db": 21.80786263843572,
+      "skew_ps": null,
+      "skew_uncertain": false,
+      "stub_ghz": null,
+      "z_max": 62.621029085179124,
+      "z_mean": 56.176405464605004,
+      "z_min": 51.39227620878283
+     },
+     "model": "single-ended",
+     "nets": [
+      "SE_LINE_30"
+     ],
+     "not_modelled": [],
+     "profile": "se50",
+     "rate_gbps": 1.0,
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "status": "yellow",
+     "stubs": [],
+     "terminations": [],
+     "to": "J9.1",
+     "vias": 0
+    },
+    {
+     "accuracy": {
+      "impedance": {
+       "field_share": 0.0,
+       "level": "formula",
+       "uncertainty_pct": 12.3
+      },
+      "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+      "vias": null
+     },
+     "branches": [],
+     "bus": "J13 \u2194 J14",
+     "class": "50Z",
+     "criteria": [
+      {
+       "hi": 55.00000000000001,
+       "key": "z",
+       "lo": 45.0,
+       "note": "mean along the line from the impedance analysis",
+       "red_below": null,
+       "status": "yellow",
+       "value": 55.431529464940496
+      },
+      {
+       "hi": null,
+       "key": "il",
+       "lo": null,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": -0.23117517953480038
+      },
+      {
+       "hi": null,
+       "key": "rl",
+       "lo": 10.0,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": 20.668144248410595
+      }
+     ],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J13.1",
+      "J14.1"
+     ],
+     "eye_computed": false,
+     "from": "J13.1",
+     "kind": "connector-connector",
+     "lane": "SE_CPWG_50",
+     "length_mm": 48.400000000000006,
+     "metrics": {
+      "error": null,
+      "eye_h": null,
+      "eye_w_ui": null,
+      "il_nyq_db": -0.23117517953480038,
+      "rl_db": 20.668144248410595,
+      "skew_ps": null,
+      "skew_uncertain": false,
+      "stub_ghz": null,
+      "z_max": 62.621029085179124,
+      "z_mean": 55.431529464940496,
+      "z_min": 52.97577369658496
+     },
+     "model": "single-ended",
+     "nets": [
+      "SE_CPWG_50"
+     ],
+     "not_modelled": [],
+     "profile": "se50",
+     "rate_gbps": 1.0,
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "status": "yellow",
+     "stubs": [],
+     "terminations": [],
+     "to": "J14.1",
+     "vias": 0
+    },
+    {
+     "accuracy": {
+      "impedance": {
+       "field_share": 0.0,
+       "level": "formula",
+       "uncertainty_pct": 16.7
+      },
+      "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+      "vias": null
+     },
+     "branches": [],
+     "bus": "J3 \u2194 J4",
+     "class": "50Z",
+     "criteria": [
+      {
+       "hi": 55.00000000000001,
+       "key": "z",
+       "lo": 45.0,
+       "note": "mean along the line from the impedance analysis",
+       "red_below": null,
+       "status": "yellow",
+       "value": 57.917112226433964
+      },
+      {
+       "hi": null,
+       "key": "il",
+       "lo": null,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": -0.10564363939937906
+      },
+      {
+       "hi": null,
+       "key": "rl",
+       "lo": 10.0,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": 20.798971189529276
+      }
+     ],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J3.1",
+      "J4.1"
+     ],
+     "eye_computed": false,
+     "from": "J3.1",
+     "kind": "connector-connector",
+     "lane": "SE_CPWG_25",
+     "length_mm": 23.400000000000006,
+     "metrics": {
+      "error": null,
+      "eye_h": null,
+      "eye_w_ui": null,
+      "il_nyq_db": -0.10564363939937906,
+      "rl_db": 20.798971189529276,
+      "skew_ps": null,
+      "skew_uncertain": false,
+      "stub_ghz": null,
+      "z_max": 62.621029085179124,
+      "z_mean": 57.917112226433964,
+      "z_min": 52.97577369658496
+     },
+     "model": "single-ended",
+     "nets": [
+      "SE_CPWG_25"
+     ],
+     "not_modelled": [],
+     "profile": "se50",
+     "rate_gbps": 1.0,
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "status": "yellow",
+     "stubs": [],
+     "terminations": [],
+     "to": "J4.1",
+     "vias": 0
+    },
+    {
+     "accuracy": {
+      "impedance": {
+       "field_share": 0.0,
+       "level": "formula",
+       "uncertainty_pct": 12.9
+      },
+      "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+      "vias": null
+     },
+     "branches": [],
+     "bus": "J5 \u2194 J6",
+     "class": "50Z",
+     "criteria": [
+      {
+       "hi": 55.00000000000001,
+       "key": "z",
+       "lo": 45.0,
+       "note": "mean along the line from the impedance analysis",
+       "red_below": null,
+       "status": "yellow",
+       "value": 56.71394807761874
+      },
+      {
+       "hi": null,
+       "key": "il",
+       "lo": null,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": -0.11048546289912817
+      },
+      {
+       "hi": null,
+       "key": "rl",
+       "lo": 10.0,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": 21.796197892503436
+      }
+     ],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J5.1",
+      "J6.1"
+     ],
+     "eye_computed": false,
+     "from": "J5.1",
+     "kind": "connector-connector",
+     "lane": "SE_LINE_27",
+     "length_mm": 25.400000000000006,
+     "metrics": {
+      "error": null,
+      "eye_h": null,
+      "eye_w_ui": null,
+      "il_nyq_db": -0.11048546289912817,
+      "rl_db": 21.796197892503436,
+      "skew_ps": null,
+      "skew_uncertain": false,
+      "stub_ghz": null,
+      "z_max": 62.621029085179124,
+      "z_mean": 56.71394807761874,
+      "z_min": 51.39227620878283
+     },
+     "model": "single-ended",
+     "nets": [
+      "SE_LINE_27"
+     ],
+     "not_modelled": [],
+     "profile": "se50",
+     "rate_gbps": 1.0,
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "status": "yellow",
+     "stubs": [],
+     "terminations": [],
+     "to": "J6.1",
+     "vias": 0
+    },
+    {
+     "accuracy": {
+      "impedance": {
+       "field_share": 0.0,
+       "level": "formula",
+       "uncertainty_pct": 7.9
+      },
+      "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+      "vias": null
+     },
+     "branches": [],
+     "bus": "J11 \u2194 J12",
+     "class": "50Z",
+     "criteria": [
+      {
+       "hi": 55.00000000000001,
+       "key": "z",
+       "lo": 45.0,
+       "note": "mean along the line from the impedance analysis",
+       "red_below": null,
+       "status": "green",
+       "value": 54.25120254475705
+      },
+      {
+       "hi": null,
+       "key": "il",
+       "lo": null,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": -0.21598992355170454
+      },
+      {
+       "hi": null,
+       "key": "rl",
+       "lo": 10.0,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": 23.24079249541011
+      }
+     ],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J11.1",
+      "J12.1"
+     ],
+     "eye_computed": false,
+     "from": "J11.1",
+     "kind": "connector-connector",
+     "lane": "SE_LINE_50",
+     "length_mm": 48.400000000000006,
+     "metrics": {
+      "error": null,
+      "eye_h": null,
+      "eye_w_ui": null,
+      "il_nyq_db": -0.21598992355170454,
+      "rl_db": 23.24079249541011,
+      "skew_ps": null,
+      "skew_uncertain": false,
+      "stub_ghz": null,
+      "z_max": 62.621029085179124,
+      "z_mean": 54.25120254475705,
+      "z_min": 51.39227620878283
+     },
+     "model": "single-ended",
+     "nets": [
+      "SE_LINE_50"
+     ],
+     "not_modelled": [],
+     "profile": "se50",
+     "rate_gbps": 1.0,
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "status": "green",
+     "stubs": [],
+     "terminations": [],
+     "to": "J12.1",
+     "vias": 0
+    },
+    {
+     "accuracy": {
+      "impedance": {
+       "field_share": 0.0,
+       "level": "formula",
+       "uncertainty_pct": 4.9
+      },
+      "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds",
+      "vias": null
+     },
+     "branches": [],
+     "bus": "J15 \u2194 J16",
+     "class": "50Z",
+     "criteria": [
+      {
+       "hi": 55.00000000000001,
+       "key": "z",
+       "lo": 45.0,
+       "note": "mean along the line from the impedance analysis",
+       "red_below": null,
+       "status": "green",
+       "value": 52.817438083385824
+      },
+      {
+       "hi": null,
+       "key": "il",
+       "lo": null,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": -0.42349063828447964
+      },
+      {
+       "hi": null,
+       "key": "rl",
+       "lo": 10.0,
+       "note": null,
+       "red_below": null,
+       "status": "green",
+       "value": 24.79409992058935
+      }
+     ],
+     "diff": false,
+     "direction": "default order",
+     "ends": [
+      "J15.1",
+      "J16.1"
+     ],
+     "eye_computed": false,
+     "from": "J15.1",
+     "kind": "connector-connector",
+     "lane": "SE_LINE_100",
+     "length_mm": 98.39999999999998,
+     "metrics": {
+      "error": null,
+      "eye_h": null,
+      "eye_w_ui": null,
+      "il_nyq_db": -0.42349063828447964,
+      "rl_db": 24.79409992058935,
+      "skew_ps": null,
+      "skew_uncertain": false,
+      "stub_ghz": null,
+      "z_max": 62.621029085179124,
+      "z_mean": 52.817438083385824,
+      "z_min": 51.39227620878283
+     },
+     "model": "single-ended",
+     "nets": [
+      "SE_LINE_100"
+     ],
+     "not_modelled": [],
+     "profile": "se50",
+     "rate_gbps": 1.0,
+     "receivers_on_stubs": [],
+     "series_parts": [],
+     "status": "green",
+     "stubs": [],
+     "terminations": [],
+     "to": "J16.1",
+     "vias": 0
+    }
+   ],
    "rows_omitted": 0,
    "rows_shown": "all",
    "summary": {
-    "green": 0,
+    "green": 2,
     "red": 0,
-    "yellow": 0
+    "yellow": 5
+   },
+   "variant": {
+    "available": [],
+    "chosen_by": null,
+    "description": null,
+    "errors": [],
+    "field_overrides": [],
+    "fitted_by_variant": [],
+    "forks_all_fitted": 0,
+    "name": null,
+    "needs_choice": false,
+    "not_fitted_by_variant": [],
+    "not_fitted_total": 0,
+    "unused_nets": 0,
+    "warnings": []
    }
   },
   "interfaces": {
@@ -147,7 +732,7 @@
      "kind": "connector-connector",
      "lanes": [
       {
-       "branches": 0,
+       "branches": [],
        "diff": false,
        "direction": "default order",
        "ends": [
@@ -161,6 +746,7 @@
         "SE_THRU"
        ],
        "not_modelled": [],
+       "receivers_on_stubs": [],
        "series_parts": [],
        "terminations": [],
        "to": "J2.1"
@@ -168,8 +754,8 @@
      ],
      "profile": "se50",
      "values": [
-      "292-04A-14",
-      "292-04A-14"
+      "292-J-P-EP-ST-EL-01",
+      "292-J-P-EP-ST-EL-01"
      ]
     },
     {
@@ -182,7 +768,7 @@
      "kind": "connector-connector",
      "lanes": [
       {
-       "branches": 0,
+       "branches": [],
        "diff": false,
        "direction": "default order",
        "ends": [
@@ -196,6 +782,7 @@
         "SE_LINE_30"
        ],
        "not_modelled": [],
+       "receivers_on_stubs": [],
        "series_parts": [],
        "terminations": [],
        "to": "J9.1"
@@ -203,8 +790,8 @@
      ],
      "profile": "se50",
      "values": [
-      "292-04A-14",
-      "292-04A-14"
+      "292-J-P-EP-ST-EL-01",
+      "292-J-P-EP-ST-EL-01"
      ]
     },
     {
@@ -217,7 +804,7 @@
      "kind": "connector-connector",
      "lanes": [
       {
-       "branches": 0,
+       "branches": [],
        "diff": false,
        "direction": "default order",
        "ends": [
@@ -231,6 +818,7 @@
         "SE_LINE_50"
        ],
        "not_modelled": [],
+       "receivers_on_stubs": [],
        "series_parts": [],
        "terminations": [],
        "to": "J12.1"
@@ -238,8 +826,8 @@
      ],
      "profile": "se50",
      "values": [
-      "292-04A-14",
-      "292-04A-14"
+      "292-J-P-EP-ST-EL-01",
+      "292-J-P-EP-ST-EL-01"
      ]
     },
     {
@@ -252,7 +840,7 @@
      "kind": "connector-connector",
      "lanes": [
       {
-       "branches": 0,
+       "branches": [],
        "diff": false,
        "direction": "default order",
        "ends": [
@@ -266,6 +854,7 @@
         "SE_CPWG_50"
        ],
        "not_modelled": [],
+       "receivers_on_stubs": [],
        "series_parts": [],
        "terminations": [],
        "to": "J14.1"
@@ -273,8 +862,8 @@
      ],
      "profile": "se50",
      "values": [
-      "292-04A-14",
-      "292-04A-14"
+      "292-J-P-EP-ST-EL-01",
+      "292-J-P-EP-ST-EL-01"
      ]
     },
     {
@@ -287,7 +876,7 @@
      "kind": "connector-connector",
      "lanes": [
       {
-       "branches": 0,
+       "branches": [],
        "diff": false,
        "direction": "default order",
        "ends": [
@@ -301,6 +890,7 @@
         "SE_LINE_100"
        ],
        "not_modelled": [],
+       "receivers_on_stubs": [],
        "series_parts": [],
        "terminations": [],
        "to": "J16.1"
@@ -308,8 +898,8 @@
      ],
      "profile": "se50",
      "values": [
-      "292-04A-14",
-      "292-04A-14"
+      "292-J-P-EP-ST-EL-01",
+      "292-J-P-EP-ST-EL-01"
      ]
     },
     {
@@ -322,7 +912,7 @@
      "kind": "connector-connector",
      "lanes": [
       {
-       "branches": 0,
+       "branches": [],
        "diff": false,
        "direction": "default order",
        "ends": [
@@ -336,6 +926,7 @@
         "SE_CPWG_25"
        ],
        "not_modelled": [],
+       "receivers_on_stubs": [],
        "series_parts": [],
        "terminations": [],
        "to": "J4.1"
@@ -343,8 +934,8 @@
      ],
      "profile": "se50",
      "values": [
-      "292-04A-14",
-      "292-04A-14"
+      "292-J-P-EP-ST-EL-01",
+      "292-J-P-EP-ST-EL-01"
      ]
     },
     {
@@ -357,7 +948,7 @@
      "kind": "connector-connector",
      "lanes": [
       {
-       "branches": 0,
+       "branches": [],
        "diff": false,
        "direction": "default order",
        "ends": [
@@ -371,6 +962,7 @@
         "SE_LINE_27"
        ],
        "not_modelled": [],
+       "receivers_on_stubs": [],
        "series_parts": [],
        "terminations": [],
        "to": "J6.1"
@@ -378,8 +970,8 @@
      ],
      "profile": "se50",
      "values": [
-      "292-04A-14",
-      "292-04A-14"
+      "292-J-P-EP-ST-EL-01",
+      "292-J-P-EP-ST-EL-01"
      ]
     },
     {
@@ -391,7 +983,7 @@
      "kind": "open",
      "lanes": [
       {
-       "branches": 0,
+       "branches": [],
        "diff": false,
        "direction": "default order",
        "ends": [
@@ -404,6 +996,7 @@
         "SE_REFLECT_L"
        ],
        "not_modelled": [],
+       "receivers_on_stubs": [],
        "series_parts": [],
        "terminations": [],
        "to": null
@@ -411,7 +1004,7 @@
      ],
      "profile": "se50",
      "values": [
-      "292-04A-14"
+      "292-J-P-EP-ST-EL-01"
      ]
     },
     {
@@ -423,7 +1016,7 @@
      "kind": "open",
      "lanes": [
       {
-       "branches": 0,
+       "branches": [],
        "diff": false,
        "direction": "default order",
        "ends": [
@@ -436,6 +1029,7 @@
         "SE_REFLECT_R"
        ],
        "not_modelled": [],
+       "receivers_on_stubs": [],
        "series_parts": [],
        "terminations": [],
        "to": null
@@ -443,7 +1037,7 @@
      ],
      "profile": "se50",
      "values": [
-      "292-04A-14"
+      "292-J-P-EP-ST-EL-01"
      ]
     }
    ],
@@ -454,7 +1048,22 @@
     "ok": true,
     "warnings": []
    },
-   "notes": "Lanes follow nets through series resistors (\u2264 100 \u03a9), AC-coupling capacitors (\u2265 1 nF) and small inductors; DNP parts are skipped. kind: ic-ic (eye checked), ic-connector (board share only, no eye), multi-drop/open (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json."
+   "notes": "Lanes follow nets through series resistors (\u2264 100 \u03a9), AC-coupling capacitors (\u2265 1 nF) and small inductors; parts not fitted (DNP in KiCad or not in the chosen assembly variant) connect nothing, their pads stay as stubs. kind: ic-ic (eye checked), connector-connector (board share only, no eye), ic-connector (board share: loss, return loss, skew judged; the eye with the connector end model \u2013 connector_ends.<connector> in kisi.json, default the profile's receiver or transmitter; information unless a channel behind the connector is given), multi-drop along one path (the first two ends are transmitter and receiver at the ends of the path, the other devices receivers on side stubs: the eye at every receiver, the worst counts), open lines and multi-drop trees through series parts (not checked). Direction is a guess (termination next to the receiver), parasitics of passives are estimates from data/components.json. mpns (when present): the devices' manufacturer part numbers where the Value field does not show one.",
+   "variant": {
+    "available": [],
+    "chosen_by": null,
+    "description": null,
+    "errors": [],
+    "field_overrides": [],
+    "fitted_by_variant": [],
+    "forks_all_fitted": 0,
+    "name": null,
+    "needs_choice": false,
+    "not_fitted_by_variant": [],
+    "not_fitted_total": 0,
+    "unused_nets": 0,
+    "warnings": []
+   }
   },
   "gaps": {
    "board": "kisi-coupons-jlc4-3313-a",
@@ -465,6 +1074,7 @@
     "ok": true,
     "warnings": []
    },
+   "dismissed": [],
    "gaps": [
     {
      "affects": [
@@ -476,6 +1086,9 @@
      "issue": "No regulator chain (field PI_REG): no power budget, no regulator load check.",
      "items": [],
      "priority": "medium",
+     "views": [
+      "power"
+     ],
      "where_to_find": "Regulator datasheets: topology (buck/LDO/\u2026), efficiency at the expected load, rated output current; input and output rails from the schematic.",
      "write": {
       "example": {
@@ -498,13 +1111,70 @@
     "high": 0,
     "low": 0,
     "medium": 1
+   },
+   "variant": {
+    "available": [],
+    "chosen_by": null,
+    "description": null,
+    "errors": [],
+    "field_overrides": [],
+    "fitted_by_variant": [],
+    "forks_all_fitted": 0,
+    "name": null,
+    "needs_choice": false,
+    "not_fitted_by_variant": [],
+    "not_fitted_total": 0,
+    "unused_nets": 0,
+    "warnings": []
+   },
+   "views": {
+    "channel": {
+     "applicable": true,
+     "high": 0,
+     "low": 0,
+     "medium": 0,
+     "state": "ready",
+     "why": "9 lane(s) in 9 bus(es)"
+    },
+    "impedance": {
+     "applicable": true,
+     "high": 0,
+     "low": 0,
+     "medium": 0,
+     "state": "ready",
+     "why": "9 net(s) with a target impedance"
+    },
+    "power": {
+     "applicable": false,
+     "high": 0,
+     "low": 0,
+     "medium": 1,
+     "state": "nothing to check",
+     "why": "no supply rails"
+    }
    }
   },
   "config_check": {
    "entries": 6,
    "errors": [],
    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-3313-a.kisi.json",
+   "messages": [],
    "ok": true,
+   "variant": {
+    "available": [],
+    "chosen_by": null,
+    "description": null,
+    "errors": [],
+    "field_overrides": [],
+    "fitted_by_variant": [],
+    "forks_all_fitted": 0,
+    "name": null,
+    "needs_choice": false,
+    "not_fitted_by_variant": [],
+    "not_fitted_total": 0,
+    "unused_nets": 0,
+    "warnings": []
+   },
    "warnings": []
   }
  },
@@ -515,46 +1185,47 @@
     {
      "class": "50Z",
      "diff": false,
-     "length_mm": 348.72,
+     "length_mm": 329.60000000000014,
      "nets": 9,
+     "rough_formula_mm": 0,
      "target_ohm": 50,
      "target_source": "user",
-     "within_5pct": 0.978588361244934,
+     "within_5pct": 1,
      "worst": [
       {
-       "net": "SE_CPWG_25",
-       "within_5pct": 0.9655469422911285,
+       "net": "SE_LINE_100",
+       "within_5pct": 1,
+       "z_max": 50.20434802357432,
+       "z_mean": 50.18454631165171,
+       "z_min": 50.04833169050299
+      },
+      {
+       "net": "SE_LINE_50",
+       "within_5pct": 1,
+       "z_max": 50.20434802357432,
+       "z_mean": 50.164625072292935,
+       "z_min": 50.04833169050299
+      },
+      {
+       "net": "SE_CPWG_50",
+       "within_5pct": 1,
        "z_max": 50.18582225382348,
-       "z_mean": 49.62667572181602,
-       "z_min": 35.010852160339184
+       "z_mean": 50.150816105166385,
+       "z_min": 50.04833169050299
       },
       {
-       "net": "SE_REFLECT_L",
-       "within_5pct": 0.9655469422911285,
+       "net": "SE_LINE_30",
+       "within_5pct": 1,
        "z_max": 50.20434802357432,
-       "z_mean": 49.6396690634648,
-       "z_min": 35.010852160339184
-      },
-      {
-       "net": "SE_REFLECT_R",
-       "within_5pct": 0.9655469422911285,
-       "z_max": 50.20434802357432,
-       "z_mean": 49.6396690634648,
-       "z_min": 35.010852160339184
-      },
-      {
-       "net": "SE_THRU",
-       "within_5pct": 0.9655469422911285,
-       "z_max": 50.20434802357432,
-       "z_mean": 49.639669063464815,
-       "z_min": 35.010852160339184
+       "z_mean": 50.13787561015059,
+       "z_min": 50.04833169050299
       },
       {
        "net": "SE_LINE_27",
-       "within_5pct": 0.9679156640311678,
+       "within_5pct": 1,
        "z_max": 50.20434802357432,
-       "z_mean": 49.67849195518772,
-       "z_min": 35.010852160339184
+       "z_mean": 50.13040679965354,
+       "z_min": 50.04833169050299
       }
      ]
     }
@@ -567,13 +1238,13 @@
     "warnings": []
    },
    "field_solver": {
-    "cross_sections": 4,
-    "cross_sections_field": 4,
+    "cross_sections": 3,
+    "cross_sections_field": 3,
     "target_length_coverage_pct": 100
    },
    "file": "/home/claude/kisi-testboard/validation/test_board/boards/kisi-coupons-jlc4-3313-a.kicad_pcb",
    "layers": 4,
-   "models": "Impedance from Forst\u00e9n's 2D field solver for 4 cross-sections (see field_solver: coverage), formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for the rest. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
+   "models": "Impedance from Forst\u00e9n's 2D field solver for 3 cross-sections (see field_solver: coverage), formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for the rest. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
    "stackup": [
     {
      "cu_um": 35,
@@ -617,8 +1288,8 @@
    "stackup_from_file": true,
    "warnings": [],
    "field_solver_run": {
-    "planned": 4,
-    "from_cache": 4,
+    "planned": 3,
+    "from_cache": 3,
     "solved_now": 0,
     "failed_now": 0,
     "not_solved": 0,
@@ -631,103 +1302,85 @@
   "SE_THRU": {
    "coupon": "THRU",
    "native": {
-    "length_mm": 24.6,
-    "delay_ps": 146.5,
+    "length_mm": 23.4,
+    "delay_ps": 139.2,
     "z": {
      "max": 62.62,
-     "mean": 53.9,
-     "min": 38.21,
-     "within_5pct": 0.7
+     "mean": 57.14,
+     "min": 51.39,
+     "within_5pct": 0.49
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       62.62
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      19.0,
+      12.05,
       51.39
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       62.62
      ]
     ],
     "il_db": {
-     "5.0": -0.67,
-     "12.5": -1.46,
-     "25.0": -2.83
+     "5.0": -1.1,
+     "12.5": -1.31,
+     "25.0": -2.27
     },
-    "rl_worst_db": 10.6,
+    "rl_worst_db": 9.6,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35.0,
-     "z_max": 56.6,
-     "z_min": 51.9
+     "z_max": 63.1,
+     "z_min": 52.6
     },
     "vias": [],
-    "warnings": []
+    "warnings": [
+     "11.35 mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high \u2013 the field solver (kisi.mjs) models them"
+    ]
    },
    "field": {
-    "length_mm": 24.6,
-    "delay_ps": 148.5,
+    "length_mm": 23.4,
+    "delay_ps": 138.9,
     "z": {
      "max": 50.2,
-     "mean": 49.64,
-     "min": 35.01,
-     "within_5pct": 0.97
+     "mean": 50.12,
+     "min": 50.05,
+     "within_5pct": 1
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       50.05
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      19,
+      12.05,
       50.2
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       50.05
      ]
     ],
     "il_db": {
-     "5.0": -0.69,
-     "12.5": -1.68,
-     "25.0": -2.83
+     "5.0": -0.63,
+     "12.5": -1.38,
+     "25.0": -2.49
     },
-    "rl_worst_db": 12.9,
+    "rl_worst_db": 20.2,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35,
-     "z_max": 51.2,
-     "z_min": 47.0
+     "z_max": 51.5,
+     "z_min": 50.6
     },
     "vias": [],
     "warnings": []
@@ -736,103 +1389,85 @@
   "SE_CPWG_25": {
    "coupon": "CPWG_25",
    "native": {
-    "length_mm": 24.6,
-    "delay_ps": 146.4,
+    "length_mm": 23.4,
+    "delay_ps": 139.2,
     "z": {
      "max": 62.62,
-     "mean": 55.02,
-     "min": 38.21,
+     "mean": 57.92,
+     "min": 52.98,
      "within_5pct": 0.0
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       62.62
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      19.0,
+      12.05,
       52.98
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       62.62
      ]
     ],
     "il_db": {
-     "5.0": -0.68,
-     "12.5": -1.46,
-     "25.0": -2.88
+     "5.0": -1.04,
+     "12.5": -1.32,
+     "25.0": -2.27
     },
-    "rl_worst_db": 10.5,
+    "rl_worst_db": 10.1,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35.0,
-     "z_max": 56.7,
-     "z_min": 53.1
+     "z_max": 63.1,
+     "z_min": 54.2
     },
     "vias": [],
-    "warnings": []
+    "warnings": [
+     "11.35 mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high \u2013 the field solver (kisi.mjs) models them"
+    ]
    },
    "field": {
-    "length_mm": 24.6,
-    "delay_ps": 146.5,
+    "length_mm": 23.4,
+    "delay_ps": 137.6,
     "z": {
      "max": 50.19,
-     "mean": 49.63,
-     "min": 35.01,
-     "within_5pct": 0.97
+     "mean": 50.12,
+     "min": 50.05,
+     "within_5pct": 1
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       50.05
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      19,
+      12.05,
       50.18
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       50.05
      ]
     ],
     "il_db": {
-     "5.0": -0.7,
-     "12.5": -1.7,
-     "25.0": -2.81
+     "5.0": -0.63,
+     "12.5": -1.37,
+     "25.0": -2.49
     },
-    "rl_worst_db": 13.0,
+    "rl_worst_db": 20.3,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35,
-     "z_max": 51.2,
-     "z_min": 47.0
+     "z_max": 51.5,
+     "z_min": 50.6
     },
     "vias": [],
     "warnings": []
@@ -841,103 +1476,85 @@
   "SE_LINE_27": {
    "coupon": "LINE_27",
    "native": {
-    "length_mm": 26.6,
-    "delay_ps": 158.4,
+    "length_mm": 25.4,
+    "delay_ps": 151.1,
     "z": {
      "max": 62.62,
-     "mean": 53.73,
-     "min": 38.21,
-     "within_5pct": 0.72
+     "mean": 56.71,
+     "min": 51.39,
+     "within_5pct": 0.53
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       62.62
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      21.0,
+      14.05,
       51.39
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       62.62
      ]
     ],
     "il_db": {
-     "5.0": -0.71,
-     "12.5": -1.68,
-     "25.0": -3.03
+     "5.0": -1.06,
+     "12.5": -1.51,
+     "25.0": -2.54
     },
-    "rl_worst_db": 10.8,
+    "rl_worst_db": 9.2,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35.0,
-     "z_max": 56.6,
-     "z_min": 51.9
+     "z_max": 63.1,
+     "z_min": 52.6
     },
     "vias": [],
-    "warnings": []
+    "warnings": [
+     "11.35 mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high \u2013 the field solver (kisi.mjs) models them"
+    ]
    },
    "field": {
-    "length_mm": 26.6,
-    "delay_ps": 160.7,
+    "length_mm": 25.4,
+    "delay_ps": 151.1,
     "z": {
      "max": 50.2,
-     "mean": 49.68,
-     "min": 35.01,
-     "within_5pct": 0.97
+     "mean": 50.13,
+     "min": 50.05,
+     "within_5pct": 1
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       50.05
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      21,
+      14.05,
       50.2
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       50.05
      ]
     ],
     "il_db": {
-     "5.0": -0.74,
-     "12.5": -1.66,
-     "25.0": -3.0
+     "5.0": -0.69,
+     "12.5": -1.5,
+     "25.0": -2.74
     },
-    "rl_worst_db": 13.0,
+    "rl_worst_db": 21.6,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35,
-     "z_max": 51.2,
-     "z_min": 47.0
+     "z_max": 51.5,
+     "z_min": 50.6
     },
     "vias": [],
     "warnings": []
@@ -946,83 +1563,75 @@
   "SE_REFLECT_L": {
    "coupon": "REFLECT",
    "native": {
-    "length_mm": 12.3,
-    "delay_ps": 73.2,
+    "length_mm": 11.7,
+    "delay_ps": 69.6,
     "z": {
      "max": 62.62,
-     "mean": 53.9,
-     "min": 38.21,
-     "within_5pct": 0.7
+     "mean": 57.14,
+     "min": 51.39,
+     "within_5pct": 0.49
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       62.62
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      9.5,
+      6.02,
       51.39
      ]
     ],
     "il_db": {
-     "5.0": -0.33,
-     "12.5": -0.76,
-     "25.0": -1.46
+     "5.0": -0.43,
+     "12.5": -0.68,
+     "25.0": -1.16
     },
-    "rl_worst_db": 14.0,
+    "rl_worst_db": 14.7,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35.0,
-     "z_max": 56.6,
-     "z_min": 51.2
+     "z_max": 63.1,
+     "z_min": 51.4
     },
     "vias": [],
-    "warnings": []
+    "warnings": [
+     "5.68 mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high \u2013 the field solver (kisi.mjs) models them"
+    ]
    },
    "field": {
-    "length_mm": 12.3,
-    "delay_ps": 74.3,
+    "length_mm": 11.7,
+    "delay_ps": 69.4,
     "z": {
      "max": 50.2,
-     "mean": 49.64,
-     "min": 35.01,
-     "within_5pct": 0.97
+     "mean": 50.12,
+     "min": 50.05,
+     "within_5pct": 1
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       50.05
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      9.5,
+      6.02,
       50.2
      ]
     ],
     "il_db": {
-     "5.0": -0.35,
-     "12.5": -0.82,
-     "25.0": -1.4
+     "5.0": -0.32,
+     "12.5": -0.69,
+     "25.0": -1.25
     },
-    "rl_worst_db": 16.9,
+    "rl_worst_db": 23.8,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35,
-     "z_max": 51.2,
-     "z_min": 47.0
+     "z_max": 51.4,
+     "z_min": 50.6
     },
     "vias": [],
     "warnings": []
@@ -1031,83 +1640,75 @@
   "SE_REFLECT_R": {
    "coupon": "REFLECT",
    "native": {
-    "length_mm": 12.3,
-    "delay_ps": 73.2,
+    "length_mm": 11.7,
+    "delay_ps": 69.6,
     "z": {
      "max": 62.62,
-     "mean": 53.9,
-     "min": 38.21,
-     "within_5pct": 0.7
+     "mean": 57.14,
+     "min": 51.39,
+     "within_5pct": 0.49
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       62.62
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      9.5,
+      6.02,
       51.39
      ]
     ],
     "il_db": {
-     "5.0": -0.33,
-     "12.5": -0.76,
-     "25.0": -1.46
+     "5.0": -0.43,
+     "12.5": -0.68,
+     "25.0": -1.16
     },
-    "rl_worst_db": 14.0,
+    "rl_worst_db": 14.7,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35.0,
-     "z_max": 56.6,
-     "z_min": 51.2
+     "z_max": 63.1,
+     "z_min": 51.4
     },
     "vias": [],
-    "warnings": []
+    "warnings": [
+     "5.68 mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high \u2013 the field solver (kisi.mjs) models them"
+    ]
    },
    "field": {
-    "length_mm": 12.3,
-    "delay_ps": 74.3,
+    "length_mm": 11.7,
+    "delay_ps": 69.4,
     "z": {
      "max": 50.2,
-     "mean": 49.64,
-     "min": 35.01,
-     "within_5pct": 0.97
+     "mean": 50.12,
+     "min": 50.05,
+     "within_5pct": 1
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       50.05
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      9.5,
+      6.02,
       50.2
      ]
     ],
     "il_db": {
-     "5.0": -0.35,
-     "12.5": -0.82,
-     "25.0": -1.4
+     "5.0": -0.32,
+     "12.5": -0.69,
+     "25.0": -1.25
     },
-    "rl_worst_db": 16.9,
+    "rl_worst_db": 23.8,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35,
-     "z_max": 51.2,
-     "z_min": 47.0
+     "z_max": 51.4,
+     "z_min": 50.6
     },
     "vias": [],
     "warnings": []
@@ -1116,103 +1717,85 @@
   "SE_LINE_30": {
    "coupon": "LINE_30",
    "native": {
-    "length_mm": 29.6,
-    "delay_ps": 176.2,
+    "length_mm": 28.4,
+    "delay_ps": 169.0,
     "z": {
      "max": 62.62,
-     "mean": 53.51,
-     "min": 38.21,
-     "within_5pct": 0.75
+     "mean": 56.18,
+     "min": 51.39,
+     "within_5pct": 0.57
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       62.62
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      24.0,
+      17.05,
       51.39
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       62.62
      ]
     ],
     "il_db": {
-     "5.0": -0.8,
-     "12.5": -1.91,
-     "25.0": -3.48
+     "5.0": -0.87,
+     "12.5": -1.59,
+     "25.0": -2.86
     },
-    "rl_worst_db": 10.9,
+    "rl_worst_db": 8.9,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35.0,
-     "z_max": 56.6,
-     "z_min": 51.9
+     "z_max": 63.1,
+     "z_min": 52.6
     },
     "vias": [],
-    "warnings": []
+    "warnings": [
+     "11.35 mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high \u2013 the field solver (kisi.mjs) models them"
+    ]
    },
    "field": {
-    "length_mm": 29.6,
-    "delay_ps": 179.1,
+    "length_mm": 28.4,
+    "delay_ps": 169.4,
     "z": {
      "max": 50.2,
-     "mean": 49.73,
-     "min": 35.01,
-     "within_5pct": 0.97
+     "mean": 50.14,
+     "min": 50.05,
+     "within_5pct": 1
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       50.05
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      24,
+      17.05,
       50.2
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       50.05
      ]
     ],
     "il_db": {
-     "5.0": -0.83,
-     "12.5": -2.03,
-     "25.0": -3.33
+     "5.0": -0.77,
+     "12.5": -1.69,
+     "25.0": -3.07
     },
-    "rl_worst_db": 13.2,
+    "rl_worst_db": 21.4,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35,
-     "z_max": 51.2,
-     "z_min": 47.0
+     "z_max": 51.6,
+     "z_min": 50.6
     },
     "vias": [],
     "warnings": []
@@ -1221,103 +1804,85 @@
   "SE_LINE_50": {
    "coupon": "LINE_50",
    "native": {
-    "length_mm": 49.6,
-    "delay_ps": 295.3,
+    "length_mm": 48.4,
+    "delay_ps": 288.1,
     "z": {
      "max": 62.62,
-     "mean": 52.7,
-     "min": 38.21,
-     "within_5pct": 0.84
+     "mean": 54.25,
+     "min": 51.39,
+     "within_5pct": 0.75
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       62.62
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      44.0,
+      37.05,
       51.39
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       62.62
      ]
     ],
     "il_db": {
-     "5.0": -1.38,
-     "12.5": -3.13,
-     "25.0": -5.69
+     "5.0": -1.33,
+     "12.5": -2.82,
+     "25.0": -5.04
     },
-    "rl_worst_db": 12.1,
+    "rl_worst_db": 9.6,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35.0,
-     "z_max": 56.6,
-     "z_min": 51.9
+     "z_max": 63.1,
+     "z_min": 52.6
     },
     "vias": [],
-    "warnings": []
+    "warnings": [
+     "11.35 mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high \u2013 the field solver (kisi.mjs) models them"
+    ]
    },
    "field": {
-    "length_mm": 49.6,
-    "delay_ps": 301.3,
+    "length_mm": 48.4,
+    "delay_ps": 291.6,
     "z": {
      "max": 50.2,
-     "mean": 49.91,
-     "min": 35.01,
-     "within_5pct": 0.98
+     "mean": 50.16,
+     "min": 50.05,
+     "within_5pct": 1
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       50.05
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      44,
+      37.05,
       50.2
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       50.05
      ]
     ],
     "il_db": {
-     "5.0": -1.41,
-     "12.5": -3.23,
-     "25.0": -5.54
+     "5.0": -1.34,
+     "12.5": -2.93,
+     "25.0": -5.34
     },
-    "rl_worst_db": 14.1,
+    "rl_worst_db": 22.0,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35,
-     "z_max": 51.4,
-     "z_min": 47.0
+     "z_max": 51.8,
+     "z_min": 50.6
     },
     "vias": [],
     "warnings": []
@@ -1326,103 +1891,85 @@
   "SE_CPWG_50": {
    "coupon": "CPWG_50",
    "native": {
-    "length_mm": 49.6,
-    "delay_ps": 295.3,
+    "length_mm": 48.4,
+    "delay_ps": 288.0,
     "z": {
      "max": 62.62,
-     "mean": 54.04,
-     "min": 38.21,
+     "mean": 55.43,
+     "min": 52.98,
      "within_5pct": 0.0
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       62.62
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      44.0,
+      37.05,
       52.98
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       62.62
      ]
     ],
     "il_db": {
-     "5.0": -1.37,
-     "12.5": -3.1,
-     "25.0": -5.73
+     "5.0": -1.32,
+     "12.5": -2.81,
+     "25.0": -5.05
     },
-    "rl_worst_db": 12.0,
+    "rl_worst_db": 10.2,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35.0,
-     "z_max": 56.7,
-     "z_min": 53.1
+     "z_max": 63.1,
+     "z_min": 54.2
     },
     "vias": [],
-    "warnings": []
+    "warnings": [
+     "11.35 mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high \u2013 the field solver (kisi.mjs) models them"
+    ]
    },
    "field": {
-    "length_mm": 49.6,
-    "delay_ps": 296.6,
+    "length_mm": 48.4,
+    "delay_ps": 287.7,
     "z": {
      "max": 50.19,
-     "mean": 49.9,
-     "min": 35.01,
-     "within_5pct": 0.98
+     "mean": 50.15,
+     "min": 50.05,
+     "within_5pct": 1
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       50.05
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      44,
+      37.05,
       50.18
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       50.05
      ]
     ],
     "il_db": {
-     "5.0": -1.41,
-     "12.5": -3.2,
-     "25.0": -5.53
+     "5.0": -1.35,
+     "12.5": -2.93,
+     "25.0": -5.3
     },
-    "rl_worst_db": 14.1,
+    "rl_worst_db": 22.0,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35,
-     "z_max": 51.4,
-     "z_min": 47.0
+     "z_max": 51.9,
+     "z_min": 50.6
     },
     "vias": [],
     "warnings": []
@@ -1431,103 +1978,85 @@
   "SE_LINE_100": {
    "coupon": "LINE_100",
    "native": {
-    "length_mm": 99.6,
-    "delay_ps": 593.0,
+    "length_mm": 98.4,
+    "delay_ps": 585.8,
     "z": {
      "max": 62.62,
-     "mean": 52.06,
-     "min": 38.21,
-     "within_5pct": 0.92
+     "mean": 52.82,
+     "min": 51.39,
+     "within_5pct": 0.87
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       62.62
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      94.0,
+      87.05,
       51.39
      ],
      [
       "F.Cu",
-      0.47,
-      38.21
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       62.62
      ]
     ],
     "il_db": {
      "5.0": -2.78,
-     "12.5": -6.06,
-     "25.0": -11.07
+     "12.5": -5.87,
+     "25.0": -10.51
     },
-    "rl_worst_db": 13.7,
+    "rl_worst_db": 10.7,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35.0,
-     "z_max": 56.6,
-     "z_min": 51.9
+     "z_max": 63.1,
+     "z_min": 52.6
     },
     "vias": [],
-    "warnings": []
+    "warnings": [
+     "11.35 mm of the path lie over a cut-out in a layer between the trace and its reference (a launch or pad over a plane opening): the formula impedance there is a rough estimate, it ignores the cut-out's edges and can read 25 % high \u2013 the field solver (kisi.mjs) models them"
+    ]
    },
    "field": {
-    "length_mm": 99.6,
-    "delay_ps": 606.8,
+    "length_mm": 98.4,
+    "delay_ps": 597.1,
     "z": {
      "max": 50.2,
-     "mean": 50.05,
-     "min": 35.01,
-     "within_5pct": 0.99
+     "mean": 50.18,
+     "min": 50.05,
+     "within_5pct": 1
     },
     "segments": [
      [
       "F.Cu",
-      2.33,
+      5.68,
       50.05
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      94,
+      87.05,
       50.2
      ],
      [
       "F.Cu",
-      0.47,
-      35.01
-     ],
-     [
-      "F.Cu",
-      2.33,
+      5.68,
       50.05
      ]
     ],
     "il_db": {
-     "5.0": -2.82,
-     "12.5": -6.18,
-     "25.0": -11.08
+     "5.0": -2.77,
+     "12.5": -6.05,
+     "25.0": -11.0
     },
-    "rl_worst_db": 15.8,
+    "rl_worst_db": 23.7,
     "tdr": {
      "mode": "single-ended",
      "rise_ps": 35,
-     "z_max": 51.8,
-     "z_min": 47.0
+     "z_max": 52.3,
+     "z_min": 50.6
     },
     "vias": [],
     "warnings": []

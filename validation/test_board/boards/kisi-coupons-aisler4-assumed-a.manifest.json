@@ -8,7 +8,7 @@
  "layers": 4,
  "manufacturer": "Aisler",
  "template": null,
- "date": "2026-10-22",
+ "date": "2026-10-30",
  "size_mm": [
   35.0,
   144.0
@@ -493,13 +493,13 @@
   "kisi-coupons-aisler4-assumed-a__G_SMALL__wg"
  ],
  "fdtd_cells": {
-  "kisi-coupons-aisler4-assumed-a__THRU__w10": 689865,
-  "kisi-coupons-aisler4-assumed-a__A0800__wv": 1305645,
-  "kisi-coupons-aisler4-assumed-a__A1000__wv": 1305645,
-  "kisi-coupons-aisler4-assumed-a__A1200__wv": 1305645,
-  "kisi-coupons-aisler4-assumed-a__D_S1p0__wv": 1508595,
-  "kisi-coupons-aisler4-assumed-a__D_S2p0__wv": 1508595,
-  "kisi-coupons-aisler4-assumed-a__D_NONE__wv": 1484065,
-  "kisi-coupons-aisler4-assumed-a__G_SMALL__wg": 866400
+  "kisi-coupons-aisler4-assumed-a__THRU__w10": 677655,
+  "kisi-coupons-aisler4-assumed-a__A0800__wv": 1292115,
+  "kisi-coupons-aisler4-assumed-a__A1000__wv": 1292115,
+  "kisi-coupons-aisler4-assumed-a__A1200__wv": 1292115,
+  "kisi-coupons-aisler4-assumed-a__D_S1p0__wv": 1495065,
+  "kisi-coupons-aisler4-assumed-a__D_S2p0__wv": 1495065,
+  "kisi-coupons-aisler4-assumed-a__D_NONE__wv": 1470755,
+  "kisi-coupons-aisler4-assumed-a__G_SMALL__wg": 773262
  }
 }

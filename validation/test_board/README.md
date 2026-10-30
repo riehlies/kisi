@@ -1,18 +1,26 @@
 # Measurement coupons (test boards)
 
-Status: **design v2, prepared, not ordered.** 23 boards are generated (first order: JLC 4 / 6 / 8 layers with 7628
+Status: **design v3, prepared, not ordered.** 23 boards are generated (first order: JLC 4 / 6 / 8 layers with 7628
 prepreg plus one Aisler board; second order: JLC 4 / 6 layers with 3313 prepreg). kisi reads all of them, their
 impedances are on target with kisi's field solver, the PDN and capacitor coupons have a measurement method and a
-component list, and the 3D cases are written (**not run**). **KiCad DRC has not been run** (the workspace has only
-KiCad 7, which cannot read KiCad 8 boards): the maintainer runs it. The SMA end-launch footprint is a
-**placeholder** (section 3). The plan behind this is `../test_board.md`.
+component list, and the 3D cases are written (**not run**). The connector is the 2.92 mm Samtec
+`292-J-P-EP-ST-EL-01` (40 GHz); its footprint is generated from Samtec's drawing and is a **DRAFT**, and the launch
+inside it is parametric and **not yet optimised** (section 2). **DRC:** KiCad 7 (the workspace has no KiCad 8) on
+copies converted to KiCad 7 syntax, zones refilled: no errors, no unconnected items (section 13); the maintainer
+reruns it in KiCad 8 / 9. The plan behind this is `../test_board.md`.
 
 Goal: close the loop simulation → measurement for kisi's fast models and the 3D references (`../via_ref`). The same
 coupon geometry is measured, computed with kisi-fdtd (cases generated from the same description as the KiCad board)
 and with kisi (the board file itself), and all three are de-embedded the same way (IEEE P370-style 2×thru,
 `../fdtd/sparam.py`).
 
-What changed from v1 (commit d7a7ec8): SMA connector and a 26.5 GHz frequency plan; boards split to the JLC price
+What changed in v3 (2026-10-30): the 2.92 mm Samtec connector instead of SMA and a 40 GHz frequency plan
+(section 2); the footprint generated from Samtec's drawing with plated screw holes and ground pads on top and bottom;
+a parametric launch (tip, taper, pad, coplanar section, ground cut, fence) and its kisi-fdtd cases
+(`fdtd/launch_<stackup>/`, `make_coupons.py --launch-cases`); the GND via walls between rows at 1.27 mm instead of
+2.54 mm (closed to 40 GHz). The coupons, widths and stackups are unchanged.
+
+What changed in v2 from v1 (commit d7a7ec8): SMA connector and a 26.5 GHz frequency plan; boards split to the JLC price
 brackets; every board has its own 2×thru and all connectors are on the top side (via coupons are via–line–via);
 an 8-layer set; the thin-prepreg set; PDN coupons (plane cavity, pin field with capacitors) and capacitor coupons
 with a component list; a pin-wide launch with a plane opening for the thin prepreg. The single v1 3D result
@@ -24,50 +32,143 @@ with a component list; a pin-wide launch with a plane opening for the thin prepr
 |---|---|
 | `make_coupons.py` | generator: boards, kisi configuration, 3D cases; trace widths from kisi |
 | `stackups.json` | stackups with values and sources (JLC 4 / 6 / 8 layers, Aisler assumed, thin prepreg) |
-| `connectors.json` | SMA end launch, footprint (**placeholder**), layout pitches, via sizes, capacitor land patterns, size limits |
+| `connectors.json` | Samtec 2.92 mm edge launch with sources and the drawing's dimensions, footprint parameters (**DRAFT**), launch parameters (to be optimised), layout pitches, via sizes, capacitor land patterns, size limits |
 | `boards/<board>.kicad_pcb`, `.kicad_pro` | KiCad 8 boards (KiCad 9 opens them); net classes `50Z`, `100Z_Diff` |
 | `boards/<board>.kisi.json` | kisi configuration: dielectric values with sources, class targets and profiles |
 | `boards/<board>.manifest.json` | coupons, nets, connectors (J numbers, port order), parts (C/U refs), 3D cases and their cell counts |
 | `boards/<stackup>.design.json` | trace widths and the impedance table (kisi formula and field solver) |
 | `boards/<board>.kisi_check.json`, `kisi_check.md` | kisi run on every board (section 9) |
 | `fdtd/<board key>/*.json` | kisi-fdtd cases, format of `../fdtd/via_cases.py`; run with `../fdtd/run_refs.py` |
+| `fdtd/launch_<stackup>/*.json` | launch optimisation cases (section 2) |
+| `fdtd_ref/launch_<stackup>/<case>/` | kisi-fdtd results of the launch cases (`kisi.s2p`, `meta.json`; section 2) |
 | `check_coupons.py` | runs kisi on the boards → `kisi_check.md` |
 | `compare_measured.py` | measured vs kisi vs kisi-fdtd (section 12) |
 
-## 2. Connector and frequency plan
+## 2. Connector, launch and frequency plan
 
-- **Southwest Microwave `292-04A-14`**, SMA end launch jack, narrow block (.350 in), clamp-on, solderless, boards
-  .040–.090 in (1.02–2.29 mm; the 2.05 mm 8-layer board fits). 2024 catalogue
-  ([PDF](https://mpd.southwestmicrowave.com/wp-content/uploads/End-Launch-Connectors-2024.pdf)): SMA to 27 GHz, pin
-  Ø.010 in (0.254 mm), dielectric Ø.0635 in, PCB fasteners #1-72 SHCS, connector fasteners #0-80. **Planned to
-  26.5 GHz.** Price not published (no distributor price found on 2026-10-22): quote from Southwest. Needed: 4 (the
-  4-port coupons), moved between coupons.
-- **Footprint: PLACEHOLDER** (`connectors.json`, `footprint.verified: false`). Block and footprint dimensions are only
-  images in the catalogue. Signal pad (1.5 mm), ground-contact mask opening, two NPTH Ø2.0 holes at 4.5 mm / ±3.0 mm
-  and the block outline (8.89 × 6 mm on the board, 14 mm outside) are guesses inside the 8.89 mm block. **To update:**
-  edit `connectors.json` → `connector.footprint` and run
-  `make_coupons.py --reuse-design` (the widths stay; boards, manifests and 3D cases are rewritten in about a minute).
-  The generator asserts that the PDN coupons' feed corners and PWR islands keep clear of the hole pattern, and all
-  other traces leave the launch straight until they are past the holes (`X_CLEAR` follows the hole positions).
-- **Launch:** a 3 mm grounded coplanar section at the edge with two rows of fence vias (0.8 mm) into the ground pour
-  the block clamps on, then the 50 Ω line. 7628 boards: 0.315 mm / gap 0.3 mm (the 50 Ω microstrip is 0.345 mm, wider
-  than the pin). **3313 boards** (0.099 mm top prepreg: the 50 Ω line is 0.15 mm, narrower than the pin): the launch
-  pad is pin-wide (0.255 mm), the first plane (In1) has a 0.465 mm wide opening under it (the coplanar opening;
-  reference is the next plane) and the top gap is 0.105 mm (kisi field solver 50.05 Ω; JLC minimum spacing
-  0.1 mm). Copper ends 0.2 mm before the routed edge (JLC rule).
-- **Frequency plan (SMA, 26.5 GHz).** kisi's stub resonance for the stubbed vias (`kisi_check.md`):
+### Connector
 
-  | Coupon | Stub | kisi stub resonance | In the band? | Action |
-  |---|---|---|---|---|
-  | 6 layers VLV_L3, SL_L3 (L1 → In2, stub to L6) | 0.88 mm (3313: 0.82) | 32.4 GHz (34.5) | no | kept: the stub capacitance is measurable below the notch; the notch moves to the 8-layer board |
-  | 6 layers DIFF_SL, BS_L3L4 (inner exits) | 0.65–0.88 mm | 24.5–38 GHz | partly | kept (coupling coupons; time domain) |
-  | **8 layers VLV_L3, SL_L3** (L1 → In2, stub to L8, 2.05 mm board) | **1.42 mm** | **19.8 GHz** | **yes** | new: the stub notch inside the band (the plan's "notch below ~20 GHz") |
-  | **8 layers E_L1L3** (pair, stub to L8) | 1.42 mm | 22.1 GHz | yes | new: differential stub notch |
-  | 8 layers VLV_L6 (L1 → In5, stub to L8) | 0.60 mm | 38.5 GHz | no | short-stub reference next to VLV_L3 and B_L1L8 (none) |
+- **Samtec `292-J-P-EP-ST-EL-01`** (decided 2026-10-30, on the RF group's advice): 50 Ω 2.92 mm (K) jack, edge
+  launch, solderless compression mount (field replaceable), performance to **40 GHz**, PCB thickness .040–.100 in
+  (1.02–2.54 mm, option `-01`: every board fits, the 2.05 mm 8-layer board included), two #1-72 socket-head screws
+  with #1 split washers (1/16 in hex key), **0.5–0.8 in-lb**; intermates with 3.5 mm and SMA. Why: orderable at
+  DigiKey (about 6 weeks) and Mouser, solderless and reusable. Price 52.65 USD for one (Samtec, 2026-10-30). Needed:
+  **4** (2 per 2-port coupon, 4 for the 4-port coupons; they move between coupons), a fifth as a spare. Sources and
+  the drawing's dimensions: `connectors.json` (`connector`).
+- Data from Samtec (supplied by the maintainer 2026-10-30, **not in the repository**: the terms of the SnapMagic
+  footprint and the CADENAS STEP model forbid redistributing the models; the drawing is proprietary): drawing
+  292-J-P-EP-ST-EL-01-X-MKT rev C, SnapMagic KiCad footprint and symbol, CADENAS STEP model, RF Characterization
+  Report (2023-06-01). Samtec has no CST / HFSS model of the part.
+- From the drawing and the STEP model: launch pin Ø0.18 mm (.007 in), 0.74 mm beyond the reference plane (the board
+  edge), its axis 0.13 mm above the board, in a Ø0.70 mm opening of the body's front lip; the top jaw covers the
+  board 5.08 mm deep and 9.53 mm wide, with a slot over the trace (2.67 mm wide from 0.38 mm, 3.18 mm from 0.64 mm,
+  open to the top); the lower plate clamps the bottom side; screws 2.79 mm from the edge, ±2.92 mm.
 
-  A 1.6 mm 8-layer board allows about 1.1 mm of stub (notch near 25 GHz), hence JLC's 2.0 mm 8-layer template.
-  Everything else (lines, through vias, return path, pairs without stubs, coupling) has no resonance below 26.5 GHz;
-  the plane cavities resonate at 1.4–3.2 GHz (measured to 8 GHz).
+### Footprint (generated, DRAFT)
+
+`make_coupons.py` writes the footprint `kisi_coupons:Samtec_292-J-P-EP-ST-EL-01_EdgeLaunch` from the parameters in
+`connectors.json` (`footprint`); its geometry follows Samtec's drawing (sheet 2, "recommended footprint"):
+
+| Feature | Drawing | Footprint |
+|---|---|---|
+| Screw holes | 2X Ø.0810 in, 2X .1100 in from the edge, 2X .230 in apart | Ø2.06 mm plated, GND, 2.79 mm from the edge, ±2.92 mm; Ø2.7 mm pad on every copper layer |
+| Ground pads | .2550 in deep, .414 in overall, inner edges .114 in apart, 45° chamfers from .205 in to .314 in, fingers .025 in deep, .0220 in apart at the edge | the same, on the top and bottom copper (where the jaws clamp; Samtec's model has them on every layer: our planes do that inside, and PWR islands stay clear), mask open both sides (+0.05 mm) |
+| Signal pad | .0205 in wide (0.52 mm), tip .0090 in (0.23 mm) | our launch (below): tip 0.23 mm tapering to the launch width over 0.85 mm (taper length from the SnapMagic model) |
+| Edge | copper to the edge | pulled back 0.2 mm (JLC rule): the pin still rests 0.54 mm on the tip, the lip 0.18 mm on the fingers |
+| Body, courtyard | body .375 in wide | Fab: body 9.53 mm wide, 5.08 mm on the board, 11.57 mm outside; courtyard ±5.51 mm, 6.73 mm on the board |
+
+The generator checks that no copper of another net lies under the ground pads (top / bottom) and that PWR islands
+keep clear of the screw holes. The finger contour (0.84 mm half-width at 0.64 mm, 0.35 mm at 0.45 mm) and the taper
+length come from the SnapMagic footprint, not from dimensions on the drawing.
+
+### Launch (parametric, not yet optimised)
+
+Samtec's general signal pad (0.52 mm wide, 1.19 mm from the ground pads, 6.48 mm long) is 43.5 Ω on the 0.21 mm 7628
+prepreg (kisi field solver): Samtec states the footprint is not optimised for electrical performance. Our launch
+inside the same ground pads (`connectors.json` `launch`, `null` = the stackup's designed launch):
+
+| Parameter | Default (7628 / 3313) | Meaning |
+|---|---|---|
+| `tip_w`, `taper_len` | 0.23 mm, 0.85 mm | the tip at the edge (the pin rests on it) and its taper to the pad width |
+| `pad_w`, `pad_len`, `pad_gap` | = launch: 0.315 mm, no extra pad, gap 0.3 mm / 0.255 mm, gap 0.105 mm | an optional wider pad after the taper (Samtec: 0.52 mm × 6.48 mm, gap 1.19 mm) |
+| `w`, `gap` (design) | 0.315 / 0.3 mm (50.0 Ω) / 0.255 / 0.105 mm with the In1 opening (50.05 Ω) | the grounded coplanar launch |
+| `launch_length` | 6.48 mm | to the end of the ground pads, then the coupon's 50 Ω line |
+| `gnd_cut` | none / the design's In1 opening (0.465 mm) over the whole launch | an opening in the first plane under the tip / pad |
+| `fence` | 0.8 mm pitch from 0.8 mm, two rows 0.4 / 1.2 mm off the gap, none within 0.45 mm of a screw hole | GND vias into all planes |
+
+The top ground is the union of the Samtec ground pads and the coplanar pours. The outer fence row (1.66 mm off the
+centre) lies in the ground pads, where the mask is open and the jaw edge (slot wall at 1.59 mm) presses: open via
+holes in the contact area are harmless electrically; if the jaw should sit on flat copper, order plugged vias or move
+that row inside 1.45 mm (a fence parameter). Change the values and run
+`make_coupons.py --reuse-design` (the boards, manifests and 3D cases are rewritten in seconds).
+
+### Launch optimisation (kisi-fdtd)
+
+`make_coupons.py --launch-cases jlc4_7628 [--fdtd-exe …]` writes `fdtd/launch_jlc4_7628/`: the board from its edge to
+the end of the launch plus 2.5 mm of the 50 Ω microstrip, the ground pads top and bottom, the plated screw holes,
+the fence, the mask, port 1 a lumped 50 Ω port at the edge (tip to In1; under a ground cut In1 keeps a 0.25 mm strip
+at the edge), port 2 on the microstrip. The 7628 top prepreg is the same on the 4-, 6- and 8-layer boards, so one
+stackup serves the first order (the planes below In1 differ; check the result on the 6- and 8-layer stacks).
+
+| Case | What | Cells |
+|---|---|---|
+| `ours` | the default launch | 0.82 M |
+| `ours_body` | the same with the connector's top jaw (metal sheets at four heights with its slot, posts along the slot walls and the lip, the screws through it) | 2.12 M |
+| `notaper` | no tip: the launch width to the edge | 0.82 M |
+| `samtec` | Samtec's general pad (0.52 mm, gap 1.19 mm, 6.48 mm) | 0.89 M |
+| `samtec_cut` | the same with In1 cut out under the pad (0.52 mm) | 2.18 M |
+
+- **Not modelled:** the connector's coax and the pin (kisi-fdtd has z-directed cylinders and horizontal sheets only):
+  the edge port stands in for them, so the cases optimise the board side. CST with Samtec's STEP model and a
+  waveguide port on the 2.92 mm interface checks the whole transition (open point).
+- **Target:** |S11| < −20 dB to 40 GHz for one launch (Samtec's own optimised fixture on MT40: −23 to −25 dB for one
+  connector with 500 mil of trace, report 2023-06-01).
+- **Sweep plan** (after the first runs): one parameter at a time around the best case, about 20 runs –
+  `tip_w` 0.18–0.35 mm, `taper_len` 0.4–1.5 mm, the coplanar `gap` 0.2–0.4 mm with `w` re-solved for 50 Ω, a cut in
+  In1 under the tip (0.3–0.8 mm wide, 0.3–1.0 mm long), the first fence column 0.4–0.8 mm and pitch 0.5–0.8 mm, then a
+  2-D refinement of the two most sensitive parameters, with and without the jaw. Time-gated S11 (TDR) locates the
+  discontinuity. The thin-prepreg (3313) launch follows the same way (its own cases: `--launch-cases jlc4_3313`).
+- **Run time:** 0.9 M cells, 23 000–42 000 steps: 280–680 s per case on this workspace (2 vCPUs shared with other
+  jobs, about half a core each); the jaw cases (2.1–2.2 M cells) about three times that. A sweep of 20 cases: 2–4 h.
+- **First runs (2026-10-30, `fdtd_ref/launch_jlc4_7628/`):**
+
+  | Case | max \|S11\| 0.5–40 GHz | \|S11\| at 10 / 20 / 30 / 40 GHz | \|S21\| at 40 GHz (≈ 9 mm) |
+  |---|---|---|---|
+  | `notaper` (0.315 / 0.3 mm to the edge) | −18.9 dB at 36.8 GHz | −29.9 / −28.4 / −29.1 / −22.2 dB | −0.84 dB |
+  | `ours` (the default: 0.23 mm tip) | −15.7 dB at 37.2 GHz | −38.0 / −30.5 / −19.9 / −15.7 dB | −0.93 dB |
+  | `samtec` (0.52 mm pad, 1.19 mm gap) | −14.6 dB at 24.8 GHz | −26.6 / −19.7 / −19.5 / −22.0 dB | −1.19 dB |
+
+  Reading: our 50 Ω coplanar launch inside the Samtec pads is close to the target (−20 dB to 35 GHz, −18.9 dB at the
+  top); Samtec's general pad is not usable on the 0.21 mm prepreg (−14.6 dB, and its sparse fence – the rows move out
+  to the screw holes – lets the plane-pair mode carry power away: \|S21\| −2 dB already at 1 GHz). Without the pin in
+  the model the 0.23 mm tip only adds inductance (worse above 30 GHz); the pin over the tip adds the capacitance the tip
+  compensates, so the tip stays the default until a case with the pin decides. All three show narrow \|S21\| dips at
+  25.5, 27, 35.5 and 37.5 GHz: resonances of the fence / screw-hole region, the first thing to sweep (fence pitch,
+  vias between the holes). Values below about 2 GHz are limited by the edge port (−24 dB at 1 GHz on every case).
+  Next: the pin as a strip over the tip, the jaw (`ours_body`), then the sweep.
+
+### Frequency plan (2.92 mm, 40 GHz)
+
+kisi's stub resonance for the stubbed vias (`kisi_check.md`):
+
+| Coupon | Stub | kisi stub resonance | In the 40 GHz band? | v3 |
+|---|---|---|---|---|
+| 6 layers VLV_L3, SL_L3 (L1 → In2, stub to L6) | 0.88 mm (3313: 0.82) | 32.4 GHz (34.5) | **yes** (v2: no) | the notch is now measured on the 6-layer board too (PNA-X, PNA) |
+| 6 layers DIFF_SL, BS_L3L4 (inner exits) | 0.65–0.88 mm | 24.5–38 GHz | yes (v2: partly) | coupling coupons, read in the time domain |
+| 8 layers VLV_L3, SL_L3 (L1 → In2, stub to L8, 2.05 mm board) | 1.42 mm | 19.8 GHz | yes | inside the band of every VNA, the 20 GHz ENA included |
+| 8 layers E_L1L3 (pair, stub to L8) | 1.42 mm | 22.1 GHz | yes | differential stub notch |
+| 8 layers VLV_L6 (L1 → In5, stub to L8) | 0.60 mm | 38.5 GHz | **yes**, at the top (v2: no) | short-stub reference; its notch now just inside the band |
+
+- **2.0 mm 8-layer board:** with 40 GHz, a 1.6 mm 8-layer board (about 1.1 mm of stub, notch near 25 GHz) would now be
+  inside the band too; the 2.0 mm board stays (a lower, deeper notch that the 20 GHz ENA sees as well; within the
+  connector's 2.54 mm limit). Not changed.
+- **Row walls:** at 2.54 mm the GND via walls between rows open near 28 GHz (pitch = λ/2 in FR-4); v3 uses 1.27 mm
+  (λ/2 near 56 GHz). The launch fence (0.8 mm, below λ/4 at 40 GHz) and the CPWG fence (1.0 mm, below λ/2) stay.
+- **TRL:** LINE_27 (ΔL 2 mm) reaches 160° near 37 GHz; the multiline set (ΔL 2 / 5 / 10 / 25 / 75 mm) stays usable to
+  40 GHz with LINE_30 and LINE_50.
+- **3D cases:** already computed to 40 GHz (section 7), unchanged.
+- Everything else (lines, through vias, return path, pairs without stubs, coupling) has no stub resonance below
+  40 GHz; the plane cavities resonate at 1.4–3.2 GHz (measured to 8 GHz).
 
 ## 3. Stackups
 
@@ -98,7 +199,7 @@ Limits (maintainer, 2026-10-22, JLC price brackets): 4 layers ≤ 100 × 100 mm,
 generator refuses a JLC board that exceeds them. Aisler charges by area: one dense board of 35 mm rows.
 Rows are sorted by length (a stepped outline); a row is one coupon from edge to edge, or two coupons side by side
 with their ports on the outer edges (PDN coupons). 2-port rows are 12 mm, 4-port rows 24 mm (two connectors per
-edge, 12.7 mm apart). GND via walls (2.54 mm, through all layers) run along every row boundary and along the
+edge, 12.7 mm apart). GND via walls (1.27 mm, through all layers; v2: 2.54 mm) run along every row boundary and along the
 exposed step edges. Through vias only, drill 0.3 / pad 0.6 mm, inner non-functional pads removed. Antipads, island
 clearances and the launch openings are KiCad keep-out rule areas, so a refill reproduces them. Bottom silk: board
 name, template, date and JLC's order-number placeholder `JLCJLCJLCJLC`.
@@ -214,8 +315,8 @@ What the structures provide:
   floor with the 0 Ω population (the reading at 100 kHz must stay at the jumper's resistance).
 - **Populate variants:** each board comes as 5 copies, so the same footprint is measured with several parts (table
   below). File names `<COUPON>.<variant>.s2p`; `compare_measured.py` extracts C, SRF, ESR, ESL / loop inductance and
-  compares with kisi (H: `power --pdn` with that part as a PI_CAP; CAPZ: `data/components.json` directly, because
-  kisi's `net` does not model a shunt part on a signal net).
+  compares with kisi (H: `power --pdn` with that part as a PI_CAP; CAPZ: `data/components.json` directly – written
+  when kisi's `net` ignored shunt parts; kisi 0.3.1 models them at their pads, so `net` could be compared too).
 
 ### Component list (generic; the maintainer picks parts from stock)
 
@@ -241,7 +342,7 @@ What they validate in kisi (`data/components.json`, `decoupling` / `packages`):
 | `decoupling.mount_nh` | 0.4 nH | CAPZ copy 2 (0 Ω): footprint + vias; 4 layers 7628 vs 3313 (0.21 vs 0.1 mm to the plane) |
 | `packages.pad_c_pf` | 0402 0.1, 0603 0.15, 0805 0.2 pF | CAPZ copy 1 (empty) |
 | kisi PDN: plane spreading and via inductance (`l_path`), cavity model | 4 layers: L path 2.43 → 3.70 nH (d = 2 → 20 mm); 8 layers: 0.97 → 1.11 nH (2 → 10 mm) | H copy 2 (0 Ω): Im Z / ω; G: resonances, plane capacitance |
-| package from the pad pitch | 0805 (pitch 1.9 mm) is taken as 0603 | CAPZ_0805 (section 9) |
+| package from the footprint | 0805 read from the footprint name (v2: from the pad pitch, taken as 0603) | CAPZ_0805 (section 9) |
 
 **After populating, please enter the datasheet values** of the parts actually used. For the H coupons, as PI_CAP
 fields in the board's `.kisi.json` (refs in the manifest, e.g. C1 = H_D2 on jlc4-7628-p):
@@ -273,7 +374,7 @@ CAPZ: 20 GHz). Windows: `w10` / `w20` lines and THRU (10 / 20 mm), `wv` via–li
 (5 mΩ lumped short on a 0.5 mm body loop, as `via_cases.pdn_loop`), so the 3D result is the mounting / loop
 inductance. The fixtures `THRU w10` and `PAIR w6` de-embed the 3D results with the same geometry as the measurement.
 
-**105 cases, 0.4–2.0 M cells each, 126 M cells in total** (`fdtd_cells` in the manifests). Not run here (maintainer's
+**105 cases, 0.4–2.4 M cells each, 131 M cells in total** (`fdtd_cells` in the manifests; v2: 126 M, the denser row walls add the rest), plus the launch cases (section 2). Not run here (maintainer's
 decision); v1 proved the format with one case (0.75 M cells, 36–85 s on one shared core). *Estimate: 1–5 min per via
 case, longer for G and H (low-frequency ringing); several CPU hours in total.*
 ```
@@ -306,29 +407,29 @@ target of the measurement.
 ## 9. kisi check (native CLI and kisi.mjs)
 
 `check_coupons.py` ran `overview`, `config-check`, `check --all`, `interfaces`, `gaps`, `net` on every signal net and
-`power --pdn` on every PDN rail, with the native `kisi` (formulas) and `kisi.mjs` (field solver). The `dist/kisi.mjs` in
-the workspace was older (2026-10-20, without the per-IC PDN and the via junction model), so a `kisi.mjs` was bundled
-from the current wasm build (`tools/bundle_cli.py`, version 0.2.3; its field-solver impedances equal the old build's,
-and with `--formula` its `net` and `power --pdn` output equals the native CLI). Full tables: `kisi_check.md`.
+`power --pdn` on every PDN rail, with the native `kisi` (formulas) and `kisi.mjs` (field solver), both kisi 0.3.1
+(v3 run 2026-10-30 on the regenerated boards; the v2 run used 0.2.3). Full tables: `kisi_check.md`.
 
 - All 23 boards parse with the stackup from the file and no board warnings; `config-check` is ok; `gaps` reports only
-  the missing regulator chain (irrelevant here).
-- 50Z within ±5 % of the length: 92–100 % with the field solver, 63–83 % with the formulas; 100Z_Diff 92–97 % field,
-  39–83 % formula. What falls out with the field solver: fan-in / taper pieces, traces over antipads, and kisi's
-  sampling at the ends of the 3313 launch openings (next point).
-- **kisi findings (reported, kisi's Rust code not changed):**
-  1. **KiCad's 0805 capacitor is taken for an 0603**: kisi derives the package from the pad pitch
-     (`crates/kisi-pi/src/pdn_ic.rs`, `package_of`: 0603 below 1.95 mm); `C_0805_2012Metric` has 1.9 mm. ESL 0.5
-     instead of 0.6 nH. CAPZ_0805 measures which is right.
-  2. **A shunt capacitor on a signal net is ignored by `net`** without a warning: the CAPZ nets give the same result as
-     THRU. The CAPZ comparison therefore uses `data/components.json` directly.
-  3. `check --all` returns no rows: kisi checks only ic–ic and ic–connector lanes (`kisi-core/src/service.rs`); every
-     coupon lane is connector–connector, so the coupons are judged with `net` (as in v1).
-  4. A plane opening that ends exactly where a track ends: kisi samples the last ~0.5 mm as if the plane were solid
-     (3313 launch: 0.47 mm at 35 Ω instead of 50 Ω). Only the fixture is affected (de-embedded).
-  5. The launch over a plane opening is 25 % high with the formulas (the field solver is right): a new formula weak spot.
-  6. `power` without `--pdn` reports "no nominal voltage" for the VDD_* rails (no voltage in the name): expected, the
-     PDN coupons are meant unbiased.
+  the missing regulator chain (and on the PDN boards the rails without a voltage, finding 4).
+- 50Z within ±5 % of the length: 93–100 % with the field solver, 54–76 % with the formulas; 100Z_Diff 92–97 % field,
+  31–76 % formula. The formula share dropped from v2 (63–83 %) because the grounded coplanar launch is now 6.48 mm per
+  side instead of 3 mm, and kisi's coplanar formula is +5.7 % high there. What falls out with the field solver:
+  fan-in / taper pieces, traces over antipads, the short piece where the trace meets the connector's tip.
+- `check --all` now returns rows for the connector–connector lanes as well (kisi 0.3.1; v2: none); the coupons are
+  still judged with `net`.
+- **kisi findings of v2, rechecked with kisi 0.3.1:**
+  1. KiCad's 0805 capacitor taken for an 0603 (package from the pad pitch): **resolved** – kisi now reads the case size
+     from the footprint name (`kisi_si::package::chip_package`); CAPZ_0805 is an 0805.
+  2. A shunt capacitor on a signal net ignored by `net`: **resolved** – `net` models shunt parts at their pads (with a
+     note that the package parasitics are estimates); the CAPZ nets now show the capacitor.
+  3. A plane opening that ends where a track ends sampled as solid plane (3313 launch at 35 Ω): **resolved** – the
+     3313 launch is 50 Ω with the field solver along its whole length, and kisi warns that the path lies over a
+     cut-out in a layer between the trace and its reference.
+  4. `power` without `--pdn` reports "no nominal voltage" for the VDD_* rails (`gaps`: rails-without-voltage):
+     expected, the PDN coupons are meant unbiased.
+  5. The launch over a plane opening is 25 % high with the formulas (the field solver is right): still a formula weak
+     spot.
 - Via results (ladder model): see `kisi_check.md` (A group Z rises with the antipad; D group "missing" return path for
   D_NONE; stub resonances in section 2).
 
@@ -341,8 +442,8 @@ G_CAV. P3 Aisler, the TRL set, a second copy of each board (build spread), the s
 | Instrument | Coupons | Settings | Calibration |
 |---|---|---|---|
 | ENA, 4 ports, 20 GHz | all S-parameter coupons; 4-port coupons with all four ports | linear 10 MHz – 20 GHz, Δf 10 MHz (P370 and TDR need f_k = k·Δf), IFBW 300 Hz (100 Hz for XT and G), −10 … 0 dBm | ECal / SOLT at the cable ends |
-| PNA-X, 4 ports | the same to 26.5 GHz (SMA); priority the stub coupons (8 layers VLV_L3, E_L1L3), A, D, E | 10 MHz – 26.5 GHz, Δf 10 MHz | ECal 3.5 mm / SMA at the cable ends |
-| PNA, 2 ports | 2-port coupons; TRL set | 10 MHz – 26.5 GHz | SOLT, then on-board multiline TRL |
+| PNA-X, 4 ports | the same to 40 GHz (2.92 mm); priority the stub coupons (8 layers VLV_L3, E_L1L3, VLV_L6; 6 layers VLV_L3), A, D, E | 10 MHz – 40 GHz, Δf 10 MHz (4000 points) | 2.92 mm ECal or mechanical kit at the cable ends (Samtec used a Maury 8770CK) |
+| PNA, 2 ports | 2-port coupons; TRL set | 10 MHz – 40 GHz | 2.92 mm SOLT, then on-board multiline TRL |
 | VNA 2-port with low-frequency range (e.g. ENA E5061B LF-RF) | H, CAPZ, G (shunt-thru) | log 100 kHz – 100 MHz + linear 10 MHz – 2 GHz (section 6); ground-loop isolator on port 2 | SOLT at the cable ends |
 | Scope + step source (TDR/TDT) | THRU (Zc plateau), A / D vias, E (differential), XT / BS / DIFF (NEXT, FEXT, Zdiff plateau) | normalised to a 35 ps Gaussian edge | open / short / load at the cable end |
 
@@ -380,8 +481,11 @@ G_CAV. P3 Aisler, the TRL set, a second copy of each board (build spread), the s
   $40–80; shipping about $15–30 per order. First order about $330–710 + shipping; second order about $120–280 +
   shipping.* Take the online quote before ordering; dropping jlc8-7628-d (E_L1L3) or merging the two 8-layer pair
   boards (50 × 72 mm, outside the bracket) are the levers if the 8-layer price is high.
-- **Connectors:** 4 × `292-04A-14`, quote from Southwest Microwave (*estimate 100–300 USD each, not quoted*); screws
-  per Southwest; SMA torque wrench (8 in-lb).
+- **Connectors:** 4 (+1 spare) × Samtec `292-J-P-EP-ST-EL-01` from DigiKey or Mouser, about 52.65 USD each (Samtec's
+  price for one, 2026-10-30) = about 211 USD for 4; **lead time about 6 weeks: order them first**. The #1-72 screws
+  and split washers are on Samtec's drawing (whether they come with the part: check on delivery; spares of both).
+  Tools: a torque screwdriver for 0.5–0.8 in-lb (0.06–0.09 N·m) with a 1/16 in hex bit for the board screws, an
+  8 in-lb 5/16 in torque wrench for the 2.92 mm cables, a 5/16 in open-end wrench to hold the jack.
 - **Parts:** from stock (section 6).
 
 ## 12. Comparison
@@ -398,16 +502,26 @@ section 6, with the measured connector repeatability as the floor.
 
 ## 13. To check by a human before ordering
 
-1. **Connector footprint** (blocker): mounting holes, ground contact, block depth, and Southwest's launch
-   recommendation for the 0.1 mm (3313) top dielectric (the plane opening here is a placeholder too); edit
-   `connectors.json`, regenerate (`--reuse-design`).
-2. **KiCad 8 or 9**: open each board, refill zones (B), run DRC, look at every layer (antipads, island clearances,
+1. **Connector footprint and launch** (blocker): compare the generated footprint with Samtec's (drawing sheet 2,
+   SnapMagic footprint, STEP model in KiCad's 3D view: screws, ground pads, pin on the tip, jaw over the launch);
+   run the launch optimisation (section 2) and put the result into `connectors.json` (`launch`); cross-check the
+   launch with the STEP model in CST; optionally ask SIG@samtec.com for their launch on a 0.2 mm (7628) and a 0.1 mm
+   (3313) top dielectric. Regenerate (`--reuse-design`).
+2. **Copper to the edge:** Samtec's footprint runs the ground fingers and the tip to the board edge; the boards keep
+   JLC's 0.2 mm. Ask JLC whether 0.1 mm (or copper to the edge) is possible on these edges, or accept 0.2 mm (the pin
+   still rests 0.54 mm on the tip).
+3. **KiCad 8 or 9**: open each board, refill zones (B), run DRC, look at every layer (antipads, island clearances,
    launch openings, removed non-functional pads). Then rerun `check_coupons.py`: the numbers should not change.
-3. JLC: the five templates still exist in the order form; impedance-control option and line specs accepted; decline
+   Done in the workspace with KiCad 7 on converted copies (pcbnew's DRC after a zone refill): no errors and no
+   unconnected items on any of the 23 boards; warnings only for the missing footprint library `kisi_coupons`, the open
+   ends of REFLECT and four isolated fill pieces of the G_SMALL island (Aisler). (v2 in the same check: 22 copper-to-edge
+   errors at the old launch, 46 isolated-fill warnings.) The script: `k8to7.py` + pcbnew's `WriteDRCReport`, not in the
+   repository (a workaround for the missing KiCad 8).
+4. JLC: the five templates still exist in the order form; impedance-control option and line specs accepted; decline
    copper thieving near the coupons; the 0.105 mm launch gap of the 3313 boards is accepted.
-4. 4-port connector pitch 12.7 mm: torque-wrench access with the real cables.
-5. Aisler: stackup data; regenerate with the real values.
-6. Parts: pick from stock, enter the PI_CAP values (section 6).
+5. 4-port connector pitch 12.7 mm: torque-wrench access with the real cables (3.2 mm between the 9.53 mm bodies).
+6. Aisler: stackup data; regenerate with the real values.
+7. Parts: pick from stock, enter the PI_CAP values (section 6).
 
 ## 14. Regenerate
 
@@ -415,6 +529,8 @@ section 6, with the measured connector repeatability as the floor.
 python3 validation/test_board/make_coupons.py --kisi target/release/kisi --kisi-mjs dist/kisi.mjs \
     [--boards jlc4_7628_a,...] [--reuse-design] [--fdtd-exe target/release/kisi-fdtd]
 python3 validation/test_board/check_coupons.py --kisi target/release/kisi --kisi-mjs dist/kisi.mjs
+python3 validation/test_board/make_coupons.py --launch-cases jlc4_7628 --fdtd-exe target/release/kisi-fdtd
+python3 validation/fdtd/run_refs.py validation/test_board/fdtd/launch_jlc4_7628 OUT --exe target/release/kisi-fdtd --jobs 2
 ```
 Board keys: `<stackup>_<part>` with stackups `jlc4_7628`, `jlc6_7628`, `jlc8_7628`, `aisler4_assumed`, `jlc4_3313`,
 `jlc6_3313` and parts `a`–`d`, `p`. Without `--reuse-design` the widths are solved again (several minutes per stackup

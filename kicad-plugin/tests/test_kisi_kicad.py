@@ -618,6 +618,24 @@ class BrowserTests(unittest.TestCase):
         self.assertTrue(how.startswith("os.startfile("))
         self.assertEqual(br.calls, [])
 
+    def test_windows_lets_the_browser_come_to_the_front(self):
+        # a running browser gets a new tab; without the right handed on it stays behind KiCad (second click)
+        order = []
+
+        class User32:
+            def AllowSetForegroundWindow(self, pid):
+                order.append(("allow", pid))
+                return 1
+        self.action.open_page(self.path, print, system="Windows", startfile=lambda p: order.append(("open", p)),
+                              browser=self.Browser(), user32=User32())
+        self.assertEqual([o[0] for o in order], ["allow", "open"])
+        self.assertEqual(order[0][1], -1)  # ASFW_ANY
+        # no user32 (not Windows) or a refusal: the page still opens
+        got = []
+        self.action.open_page(self.path, got.append, system="Windows", startfile=lambda p: got.append("open"),
+                              browser=self.Browser(), user32=object())
+        self.assertIn("open", got)
+
     def test_windows_fallback(self):
         def fail(p):
             raise OSError("no association")

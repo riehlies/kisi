@@ -58,6 +58,14 @@ struct Cand {
 struct Mount {
     value: f64,
 }
+/// Footprint fields that give a capacitor's rated voltage and dielectric (data/components.json,
+/// "decoupling.rating_fields"), each list in its order of precedence.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RatingFields {
+    pub rated_voltage: Vec<String>,
+    pub dielectric: Vec<String>,
+    pub free_text: Vec<String>,
+}
 #[derive(Debug, Clone, Deserialize)]
 pub struct DecapData {
     esl_nh: BTreeMap<String, f64>,
@@ -65,6 +73,7 @@ pub struct DecapData {
     mount_nh: Mount,
     dc_bias: Bias,
     rated_v: Rated,
+    pub rating_fields: RatingFields,
     candidates: Vec<Cand>,
 }
 #[derive(Debug, Clone, Deserialize)]
@@ -129,7 +138,8 @@ impl DecapData {
         }
         r
     }
-    fn class2(dielectric: &str, c: f64) -> bool {
+    /// A class II dielectric (DC-bias derating applies); an unknown one counts as class II from 1 nF on.
+    pub fn class2(dielectric: &str, c: f64) -> bool {
         match dielectric {
             "" => c >= 1e-9, // unknown: class II from 1 nF on (assumption)
             d => matches!(d, "X5R" | "X7R" | "X6S" | "X7S" | "X8R" | "X7T" | "X6T" | "Y5V" | "Z5U"),
@@ -234,6 +244,197 @@ pub fn value_details(value: &str) -> (Option<f64>, String) {
         }
     }
     (rated, diel)
+}
+
+// --- rated voltage and dielectric from the part's own fields --------------------------------
+
+/// Field names compare without case, spaces and punctuation: "VOLTAGE RATING" = "Voltage_Rating".
+fn field_key(name: &str) -> String {
+    name.chars().filter(|c| c.is_alphanumeric()).flat_map(char::to_lowercase).collect()
+}
+
+impl RatingFields {
+    /// One of the rating fields (the names compare as in `cap_rating`).
+    pub fn contains(&self, name: &str) -> bool {
+        let k = field_key(name);
+        self.rated_voltage.iter().chain(&self.dielectric).chain(&self.free_text).any(|n| field_key(n) == k)
+    }
+}
+
+/// A rated voltage in a token: "16V", "6.3V", "16VDC", "1KV", "6V3"; with `bare`, also "16".
+fn volt_token(t: &str, bare: bool) -> Option<f64> {
+    let t = t.strip_suffix("DC").unwrap_or(t);
+    let (num, mult) = if let Some(n) = t.strip_suffix("KV") {
+        (n.to_string(), 1e3)
+    } else if let Some(n) = t.strip_suffix('V') {
+        (n.to_string(), 1.0)
+    } else if let Some((a, b)) = t.split_once('V') {
+        // "6V3"
+        if a.is_empty() || b.is_empty() || !a.chars().chain(b.chars()).all(|c| c.is_ascii_digit()) {
+            return None;
+        }
+        (format!("{a}.{b}"), 1.0)
+    } else if bare {
+        (t.to_string(), 1.0)
+    } else {
+        return None;
+    };
+    if num.is_empty() || !num.chars().all(|c| c.is_ascii_digit() || c == '.') {
+        return None;
+    }
+    num.parse::<f64>().ok().map(|v| v * mult)
+}
+
+/// Rated voltage from a rating field: "16V", "16 V", "6.3V", "6V3", "6,3 V", "16VDC", "50 V (DC)", "1 kV",
+/// a bare "16", or one voltage among other words ("X7R-25V"). None for anything else, for two different
+/// voltages and outside 1 V … 20 kV.
+pub fn parse_rated_field(s: &str) -> Option<f64> {
+    let up = s.trim().to_uppercase().replace(',', ".");
+    let compact: String = up.chars().filter(|c| !c.is_whitespace() && !matches!(c, '(' | ')')).collect();
+    let v = volt_token(&compact, true).or_else(|| {
+        let mut found: Option<f64> = None;
+        let tokens = up.split(|c: char| !(c.is_ascii_alphanumeric() || c == '.')).filter(|t| !t.is_empty());
+        let toks: Vec<&str> = tokens.collect();
+        let mut i = 0;
+        while i < toks.len() {
+            // "16 V" / "16 VDC" as two tokens
+            let joined = match toks.get(i + 1) {
+                Some(&n) if matches!(n, "V" | "VDC" | "KV") => {
+                    i += 1;
+                    format!("{}{n}", toks[i - 1])
+                }
+                _ => toks[i].to_string(),
+            };
+            if let Some(v) = volt_token(&joined, false) {
+                if found.is_some_and(|f| (f - v).abs() > 1e-9) {
+                    return None;
+                }
+                found = Some(v);
+            }
+            i += 1;
+        }
+        found
+    })?;
+    (1.0..=20e3).contains(&v).then_some(v)
+}
+
+/// Dielectric from a dielectric field: "X5R", "x7r", "C0G/NP0", "C0G (NP0)", "NP0", "X7R-25V", "Polymer",
+/// "Tantalum", "Aluminum Electrolytic". None when the field names none or two different ones ("X5R/X7R").
+pub fn parse_dielectric_field(s: &str) -> Option<String> {
+    let up = s.to_uppercase();
+    let mut found: Vec<&str> = Vec::new();
+    for t in up.split(|c: char| !c.is_ascii_alphanumeric()).filter(|t| !t.is_empty()) {
+        let d = match t {
+            "X5R" | "X7R" | "X6S" | "X7S" | "X8R" | "X7T" | "X6T" | "Y5V" | "Z5U" => t,
+            "C0G" | "COG" | "NP0" | "NPO" => "C0G",
+            _ if t.starts_with("POLY") => "POLYMER",
+            _ if t.starts_with("TANT") => "TANTALUM",
+            "ELECTROLYTIC" | "ALUMINUM" | "ALUMINIUM" => "ELECTROLYTIC",
+            _ => continue,
+        };
+        if !found.contains(&d) {
+            found.push(d);
+        }
+    }
+    // an aluminium polymer capacitor is a polymer one
+    if found.contains(&"POLYMER") {
+        found.retain(|d| *d != "ELECTROLYTIC");
+    }
+    match found.as_slice() {
+        [d] => Some((*d).to_string()),
+        _ => None,
+    }
+}
+
+/// A capacitor's rated voltage and dielectric with where each came from: "PI_CAP", "field <name as on
+/// the part>", "value" (the Value text), or None when nothing gives it (the PDN then assumes a rating
+/// for class II parts – an estimate).
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct CapRating {
+    pub rated_v: Option<f64>,
+    pub rated_from: Option<String>,
+    pub dielectric: Option<String>,
+    pub dielectric_from: Option<String>,
+    /// capacitance points at a DC bias from PI_CAP (then no rating is needed for the derating)
+    pub has_bias_points: bool,
+}
+
+impl CapRating {
+    /// The PDN model will assume a rated voltage: class II (or unknown) dielectric, no rating, no
+    /// capacitance-at-bias points.
+    pub fn rating_assumed(&self, c: f64) -> bool {
+        self.rated_v.is_none()
+            && !self.has_bias_points
+            && DecapData::class2(self.dielectric.as_deref().unwrap_or(""), c)
+    }
+}
+
+/// Rated voltage and dielectric of a capacitor, each from the first that gives it: PI_CAP (already
+/// parsed, `pi_cap`), the rating fields of data/components.json in their order, the Value text, the
+/// free-text fields (Description). One logic for the PDN, `kisi gaps` and the viewer.
+pub fn cap_rating(f: &crate::board::Footprint, pi_cap: Option<&CapField>, names: &RatingFields) -> CapRating {
+    let mut r = CapRating { has_bias_points: pi_cap.is_some_and(|x| !x.c_at.is_empty()), ..Default::default() };
+    if let Some(x) = pi_cap {
+        if let Some(v) = x.rated {
+            r.rated_v = Some(v);
+            r.rated_from = Some("PI_CAP".into());
+        }
+        if let Some(d) = &x.dielectric {
+            r.dielectric = Some(d.clone());
+            r.dielectric_from = Some("PI_CAP".into());
+        }
+    }
+    let field = |want: &str| -> Option<(&str, &str)> {
+        let k = field_key(want);
+        f.props.iter().find(|(n, v)| field_key(n) == k && !v.trim().is_empty()).map(|(n, v)| (n.as_str(), v.as_str()))
+    };
+    if r.rated_v.is_none() {
+        if let Some((n, v)) =
+            names.rated_voltage.iter().filter_map(|w| field(w)).find_map(|(n, v)| parse_rated_field(v).map(|x| (n, x)))
+        {
+            r.rated_v = Some(v);
+            r.rated_from = Some(format!("field {n}"));
+        }
+    }
+    if r.dielectric.is_none() {
+        if let Some((n, d)) = names
+            .dielectric
+            .iter()
+            .filter_map(|w| field(w))
+            .find_map(|(n, v)| parse_dielectric_field(v).map(|x| (n, x)))
+        {
+            r.dielectric = Some(d);
+            r.dielectric_from = Some(format!("field {n}"));
+        }
+    }
+    let (vt, dt) = value_details(&f.value);
+    if r.rated_v.is_none() && vt.is_some() {
+        r.rated_v = vt;
+        r.rated_from = Some("value".into());
+    }
+    if r.dielectric.is_none() && !dt.is_empty() {
+        r.dielectric = Some(dt);
+        r.dielectric_from = Some("value".into());
+    }
+    for w in &names.free_text {
+        if r.rated_v.is_some() && r.dielectric.is_some() {
+            break;
+        }
+        let Some((n, v)) = field(w) else { continue };
+        // "SMD CAP Ceramic 100nF-10V-10%-X5R;0201"
+        let (vt, dt) = value_details(&v.replace('-', " "));
+        if r.rated_v.is_none() {
+            if let Some(v) = vt.filter(|v| (1.0..=20e3).contains(v)) {
+                r.rated_v = Some(v);
+                r.rated_from = Some(format!("field {n}"));
+            }
+        }
+        if r.dielectric.is_none() && !dt.is_empty() {
+            r.dielectric = Some(dt);
+            r.dielectric_from = Some(format!("field {n}"));
+        }
+    }
+    r
 }
 
 /// Capacitor data from a PI_CAP field: "esr=5m esl=0.45n rated=6.3V X5R c@3.3V=2.1u c=10u".
@@ -395,8 +596,12 @@ pub struct CapResult {
     pub c_nom: f64,
     pub c_eff: f64,
     pub dielectric: String,
+    /// where the dielectric came from: "PI_CAP", "field <name>", "value" or "" (unknown)
+    pub dielectric_from: String,
     pub rated_v: Option<f64>,
     pub rated_assumed: bool,
+    /// where the rated voltage came from: "PI_CAP", "field <name>", "value", "assumed" (an estimate) or ""
+    pub rated_from: String,
     pub esr: f64,
     pub esl: f64,
     /// ground-side mounting inductance: pad → via → ground (H)
@@ -1349,17 +1554,22 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         };
         let pitch = geom::len(geom::sub(pr.at, pg.at));
         let pkg = crate::package::chip_package(&f.lib, pr, pg);
-        let (vr_text, diel_text) = value_details(&f.value);
-        let dielectric = field.as_ref().and_then(|x| x.dielectric.clone()).unwrap_or(diel_text);
-        let rated = field.as_ref().and_then(|x| x.rated).or(vr_text);
+        // PI_CAP > the part's rating fields > the Value text > its description (cap_rating)
+        let rating = cap_rating(f, field.as_ref(), &data.rating_fields);
+        let dielectric = rating.dielectric.clone().unwrap_or_default();
         let class2 = DecapData::class2(&dielectric, c_nom);
-        let (rated_v, rated_assumed) = match rated {
+        let (rated_v, rated_assumed) = match rating.rated_v {
             Some(v) => (Some(v), false),
             None if class2 => {
                 assumed_rating += 1;
                 (Some(data.rated_assumed(vrail)), true)
             }
             None => (None, false),
+        };
+        let rated_from = match (&rating.rated_from, rated_assumed) {
+            (Some(s), _) => s.clone(),
+            (None, true) => "assumed".into(),
+            (None, false) => String::new(),
         };
         // capacitance at the rail voltage: datasheet points from PI_CAP, else the derating curve
         let c_eff = match field.as_ref().filter(|x| !x.c_at.is_empty()) {
@@ -1423,8 +1633,10 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             c_nom,
             c_eff,
             dielectric,
+            dielectric_from: rating.dielectric_from.unwrap_or_default(),
             rated_v,
             rated_assumed,
+            rated_from,
             esr,
             esl,
             l_gnd,
@@ -1438,7 +1650,7 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
         warnings.push(format!("{unparsed} capacitors with unreadable value skipped"));
     }
     if assumed_rating > 0 {
-        warnings.push(format!("{assumed_rating} class II capacitors without rated voltage: the smallest standard rating ≥ {:.1} × the net voltage assumed for the DC-bias derating (add it to the value or a PI_CAP field)", data.rated_v.margin));
+        warnings.push(format!("{assumed_rating} class II capacitors without rated voltage: the smallest standard rating ≥ {:.1} × the net voltage assumed for the DC-bias derating – an estimate (add it to a rating field such as Voltage Rating, the value or PI_CAP)", data.rated_v.margin));
     }
     if caps.is_empty() {
         warnings.push("no decoupling capacitors found between the rail domain and ground".into());
@@ -1946,6 +2158,102 @@ mod tests {
         assert!(d.retention("0402", 100e-9, 3.3, 16.0, "X7R") > 0.9);
         assert_eq!(d.rated_assumed(3.3), 6.3);
         assert_eq!(d.rated_assumed(1.0), 4.0);
+    }
+
+    #[test]
+    fn rating_field_values() {
+        for (s, v) in [
+            ("16V", 16.0),
+            ("16 V", 16.0),
+            ("6.3V", 6.3),
+            ("6,3 V", 6.3),
+            ("6V3", 6.3),
+            ("16VDC", 16.0),
+            ("16 Vdc", 16.0),
+            ("50 V (DC)", 50.0),
+            ("1kV", 1000.0),
+            ("1 kV", 1000.0),
+            ("25", 25.0),
+            ("X7R-25V", 25.0),
+            ("25V X7R", 25.0),
+            ("2.5V", 2.5),
+        ] {
+            assert_eq!(parse_rated_field(s), Some(v), "{s}");
+        }
+        for s in
+            ["", "-", "N/A", "~", "16A", "100nF", "0V", "16V/25V", "-55°C to 85°C", "X7R", "100kV", "abc V", "1.2.3V"]
+        {
+            assert_eq!(parse_rated_field(s), None, "{s}");
+        }
+        for (s, d) in [
+            ("X5R", "X5R"),
+            ("x7r", "X7R"),
+            ("C0G/NP0", "C0G"),
+            ("C0G (NP0)", "C0G"),
+            ("NPO", "C0G"),
+            ("X7R-25V", "X7R"),
+            ("Polymer", "POLYMER"),
+            ("Aluminum Polymer", "POLYMER"),
+            ("Tantalum", "TANTALUM"),
+            ("Aluminum Electrolytic", "ELECTROLYTIC"),
+        ] {
+            assert_eq!(parse_dielectric_field(s).as_deref(), Some(d), "{s}");
+        }
+        for s in ["", "Ceramic", "X5R/X7R", "-55°C to 85°C", "Class II"] {
+            assert_eq!(parse_dielectric_field(s), None, "{s}");
+        }
+    }
+
+    #[test]
+    fn rating_precedence() {
+        let names = DecapData::builtin().rating_fields;
+        let fp = |value: &str, props: &[(&str, &str)]| crate::board::Footprint {
+            lib: "Capacitor_SMD:C_0402_1005Metric".into(),
+            reference: "C1".into(),
+            value: value.into(),
+            at: [0.0, 0.0],
+            props: props.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            dnp: false,
+            exclude_from_bom: false,
+            sheet: String::new(),
+            variants: Vec::new(),
+        };
+        let from = |r: &CapRating| (r.rated_v, r.rated_from.clone(), r.dielectric.clone(), r.dielectric_from.clone());
+        let s = |x: &str| Some(x.to_string());
+        // XIAO: Voltage Rating and Dielectric; its Temperature field (a range) is not a dielectric
+        let f = fp("100nF", &[("Voltage Rating", "10V"), ("Dielectric", "X5R"), ("Temperature", "-55°C to 85°C")]);
+        assert_eq!(
+            from(&cap_rating(&f, None, &names)),
+            (Some(10.0), s("field Voltage Rating"), s("X5R"), s("field Dielectric"))
+        );
+        // ThunderScope: names in capitals; the dielectric from its Digi-Key description
+        let f = fp(
+            "1uF",
+            &[("VOLTAGE RATING", "25V"), ("Description", "1 µF ±10% 25V Ceramic Capacitor X5R 0402 (1005 Metric)")],
+        );
+        assert_eq!(
+            from(&cap_rating(&f, None, &names)),
+            (Some(25.0), s("field VOLTAGE RATING"), s("X5R"), s("field Description"))
+        );
+        // PI_CAP first, then the fields, then the value text, then the description – per value
+        let f = fp("10u 6.3V X5R", &[("Voltage_Rating", "10V"), ("Description", "CAP 10uF-16V-X7R")]);
+        let pc = parse_pi_cap("rated=16V").unwrap();
+        assert_eq!(from(&cap_rating(&f, Some(&pc), &names)), (Some(16.0), s("PI_CAP"), s("X5R"), s("value")));
+        assert_eq!(from(&cap_rating(&f, None, &names)), (Some(10.0), s("field Voltage_Rating"), s("X5R"), s("value")));
+        let f = fp("10uF", &[("Description", "SMD CAP Ceramic 10uF-6.3V-20%-X5R;0402")]);
+        assert_eq!(
+            from(&cap_rating(&f, None, &names)),
+            (Some(6.3), s("field Description"), s("X5R"), s("field Description"))
+        );
+        // LibreVNA: "Characteristic" with 6V3; a field that cannot be read is passed over
+        let f = fp("1uF", &[("Voltage", "n/a"), ("Characteristic", "6V3")]);
+        assert_eq!(from(&cap_rating(&f, None, &names)).0, Some(6.3));
+        // nothing: the PDN assumes a rating for a class II part, not for C0G or with bias points
+        let r = cap_rating(&fp("1uF", &[]), None, &names);
+        assert!(r.rated_v.is_none() && r.rating_assumed(1e-6));
+        assert!(!cap_rating(&fp("1uF C0G", &[]), None, &names).rating_assumed(1e-6));
+        let pc = parse_pi_cap("c@3.3V=0.6u").unwrap();
+        assert!(!cap_rating(&fp("1uF", &[]), Some(&pc), &names).rating_assumed(1e-6));
     }
 }
 

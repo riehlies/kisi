@@ -667,7 +667,9 @@ pub fn check(
         if f.value.trim().is_empty() {
             r.errors.push(format!("{what}: empty value"));
         }
-        if !KNOWN_FIELDS.iter().any(|k| k.eq_ignore_ascii_case(&f.name)) {
+        if !KNOWN_FIELDS.iter().any(|k| k.eq_ignore_ascii_case(&f.name))
+            && !crate::pdn_ic::DecapData::builtin().rating_fields.contains(&f.name)
+        {
             r.warnings.push(format!("{what}: kisi does not evaluate this field (known: {})", KNOWN_FIELDS.join(", ")));
         }
         // PDN fields: readable values

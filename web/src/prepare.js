@@ -657,7 +657,7 @@ function prepCapsEditor(g, tab) {
       ${prepTd("ESR Ω", prepIn(a("esr"), prepKVGet(v, "esr"), "5m", "num"), "opt")}${prepTd("ESL H", prepIn(a("esl"), prepKVGet(v, "esl"), "0.45n", "num"), "opt")}
       ${prepTd("from the parts' fields", sugg || `<span class="note">–</span>`)}</tr>`;
   });
-  return `<p class="note">One row per part number (or value and package): the values go as PI_CAP on every capacitor of the group. A suggestion comes from the parts' own fields (Voltage Rating, Dielectric) – kind <code>design</code>.</p>
+  return `<p class="note">One row per part number (or value and package): the values go as PI_CAP on every capacitor of the group. A rating in the parts' own fields (Voltage Rating, Dielectric, Temperature Coefficient, the description, …) is read without an entry – the capacitors here have none kisi can read; what their fields do give (a dielectric, say) is offered as a suggestion – kind <code>design</code>.</p>
     <table class="prep-ed"><thead><tr><th>Parts</th><th>Rated V</th><th>Dielectric</th><th class="opt">ESR</th><th class="opt">ESL</th><th>Suggested</th></tr></thead><tbody>${rows.join("")}</tbody></table>${prepSharedBlock("PI_CAP", "Source for the capacitor values (datasheet, vendor DC-bias curve, the BOM)")}`;
 }
 // connectors where lanes leave the board (and those in the draft)

@@ -532,6 +532,7 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
     let mut caps = Vec::new();
     let mut unrated = Vec::new();
     let mut seen = HashSet::new();
+    let decap = crate::pdn_ic::DecapData::builtin();
     for pad in &b.pads {
         let Some(f) = b.footprints.get(pad.fp as usize) else { continue };
         if f.dnp
@@ -541,25 +542,27 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
         {
             continue;
         }
-        match crate::pdn::parse_cap(&f.value) {
+        let pi_cap = f.prop("PI_CAP").and_then(|v| crate::pdn_ic::parse_pi_cap(v).ok());
+        match pi_cap.as_ref().and_then(|x| x.c).or_else(|| crate::pdn::parse_cap(&f.value)) {
             None => caps.push(part_json(
                 json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net))}),
                 Some(f),
             )),
-            // class II range without a rated voltage in the value or a PI_CAP field: DC-bias derating guessed
-            Some(c)
-                if c >= 1e-7 && f.prop("PI_CAP").is_none() && crate::pdn_ic::value_details(&f.value).0.is_none() =>
-            {
-                let mut it = part_json(
-                    json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net)), "package": f.lib.rsplit(':').next().unwrap_or("")}),
-                    Some(f),
-                );
-                if let Some(s) = cap_suggestion(f) {
-                    it["suggest"] = s;
+            // class II range where neither PI_CAP, a rating field, the value nor the description gives the
+            // rated voltage: the PDN's DC-bias derating assumes one (the same test as the model's)
+            Some(c) => {
+                let r = crate::pdn_ic::cap_rating(f, pi_cap.as_ref(), &decap.rating_fields);
+                if c >= 1e-7 && r.rating_assumed(c) {
+                    let mut it = part_json(
+                        json!({"ref": f.reference, "value": f.value, "rail": short(b.net_name(pad.net)), "package": f.lib.rsplit(':').next().unwrap_or("")}),
+                        Some(f),
+                    );
+                    if let Some(s) = cap_suggestion(&r) {
+                        it["suggest"] = s;
+                    }
+                    unrated.push(it);
                 }
-                unrated.push(it);
             }
-            _ => {}
         }
     }
     if !unrated.is_empty() {
@@ -567,9 +570,9 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
             "cap-ratings",
             "low",
             "power",
-            format!("{} decoupling capacitor(s) of 100 nF and more have no rated voltage or dielectric: the DC-bias derating in Z(f) uses an assumed rating.", unrated.len()),
-            "BOM / capacitor datasheet: rated voltage, dielectric (X5R/X7R/C0G), ideally the capacitance at the rail voltage from the vendor's DC-bias curve, ESR and ESL.",
-            json!({"to": "fields[] (name PI_CAP) or the KiCad Value field (e.g. 10u 6.3V X5R)", "example": {"ref": unrated[0]["ref"], "name": "PI_CAP", "value": "rated=6.3V X5R c@3.3V=4.1u esl=0.45n", "source": {"kind": "datasheet", "document": "capacitor datasheet / vendor DC-bias curve", "note": "capacitance at 3.3 V, 25 °C"}}}),
+            format!("{} decoupling capacitor(s) of 100 nF and more have no rated voltage (not in PI_CAP, a rating field such as Voltage Rating, the value or the description): the DC-bias derating in Z(f) uses an assumed rating.", unrated.len()),
+            "BOM / capacitor datasheet: rated voltage, dielectric (X5R/X7R/C0G), ideally the capacitance at the rail voltage from the vendor's DC-bias curve, ESR and ESL. Fields the parts already have (a dielectric without a rating) are given as `suggest`.",
+            json!({"to": "fields[] (name PI_CAP), a rating field in KiCad (Voltage Rating, Dielectric) or the KiCad Value field (e.g. 10u 6.3V X5R)", "example": {"ref": unrated[0]["ref"], "name": "PI_CAP", "value": "rated=6.3V X5R c@3.3V=4.1u esl=0.45n", "source": {"kind": "datasheet", "document": "capacitor datasheet / vendor DC-bias curve", "note": "capacitance at 3.3 V, 25 °C"}}}),
             unrated,
         ));
     }
@@ -680,43 +683,22 @@ pub fn gaps(p: &Project, profiles: &Profiles) -> Value {
 /// A PI_CAP value from the part's own fields (rated voltage and dielectric as the schematic library
 /// gives them, e.g. "Voltage Rating" 10V, "Dielectric" X5R): kisi does not read these fields itself,
 /// the gap suggests them – `{"value": "rated=10V X5R", "from": [field names]}`.
-fn cap_suggestion(f: &crate::board::Footprint) -> Option<Value> {
-    let (mut rated, mut diel, mut from) = (None, String::new(), Vec::new());
-    for k in ["Voltage Rating", "Voltage", "Rated Voltage", "Voltage_Rating"] {
-        if let Some(v) = f.prop(k).and_then(|v| crate::pdn_ic::value_details(v).0) {
-            rated.get_or_insert(v);
-            from.push(k);
-            break;
-        }
-    }
-    for k in ["Dielectric", "Temperature Coefficient", "Tempco"] {
-        let d = f.prop(k).map(|v| crate::pdn_ic::value_details(v).1).unwrap_or_default();
-        if !d.is_empty() {
-            diel = d;
-            from.push(k);
-            break;
-        }
-    }
-    if rated.is_none() || diel.is_empty() {
-        // "SMD CAP Ceramic 100nF-10V-10%-X5R;0201"
-        if let Some(d) = f.prop("Description") {
-            let (r, x) = crate::pdn_ic::value_details(&d.replace('-', " "));
-            let used = (rated.is_none() && r.is_some()) || (diel.is_empty() && !x.is_empty());
-            rated = rated.or(r);
-            if diel.is_empty() {
-                diel = x;
-            }
-            if used {
-                from.push("Description");
-            }
-        }
-    }
+/// What the part's own fields give (a dielectric without a rated voltage, say) as a PI_CAP value for the
+/// viewer's capacitor form – from the same `cap_rating` the PDN uses; values from the Value text or
+/// PI_CAP are not repeated.
+fn cap_suggestion(r: &crate::pdn_ic::CapRating) -> Option<Value> {
+    let field = |from: &Option<String>| from.as_deref().and_then(|s| s.strip_prefix("field ")).map(str::to_string);
     let mut parts = Vec::new();
-    if let Some(v) = rated {
+    let mut from: Vec<String> = Vec::new();
+    if let (Some(v), Some(n)) = (r.rated_v, field(&r.rated_from)) {
         parts.push(format!("rated={v}V"));
+        from.push(n);
     }
-    if !diel.is_empty() {
-        parts.push(diel);
+    if let (Some(d), Some(n)) = (&r.dielectric, field(&r.dielectric_from)) {
+        parts.push(d.clone());
+        if !from.contains(&n) {
+            from.push(n);
+        }
     }
     (!parts.is_empty()).then(|| json!({"value": parts.join(" "), "from": from}))
 }
@@ -1178,6 +1160,14 @@ mod tests {
   (footprint "Capacitor:C0402" (layer "F.Cu") (at 8 0) (property "Reference" "C1") (property "Value" "10uF") (property "Voltage Rating" "6.3V") (property "Dielectric" "X5R")
     (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND")))
   (footprint "Capacitor:C0603" (layer "F.Cu") (at 10 0) (property "Reference" "C2") (property "Value" "4u7") (property "Description" "CAP 4.7uF-16V-10%-X7R")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND")))
+  (footprint "Capacitor:C0402" (layer "F.Cu") (at 12 0) (property "Reference" "C3") (property "Value" "10uF") (property "Temperature Coefficient" "X5R") (property "Temperature" "-55°C to 85°C")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND")))
+  (footprint "Capacitor:C0402" (layer "F.Cu") (at 14 0) (property "Reference" "C4") (property "Value" "1uF")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND")))
+  (footprint "Capacitor:C0402" (layer "F.Cu") (at 16 0) (property "Reference" "C5") (property "Value" "1uF") (property "VOLTAGE RATING" "16 V")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND")))
+  (footprint "Capacitor:C0402" (layer "F.Cu") (at 18 0) (property "Reference" "C6") (property "Value" "1uF") (property "PI_CAP" "esl=0.3n")
     (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")) (pad "2" smd rect (at 0 2) (size 1 1) (layers "F.Cu") (net 2 "GND"))))"#;
         let p = Project::from_texts(Inputs {
             pcb_path: "s.kicad_pcb".into(),
@@ -1195,19 +1185,19 @@ mod tests {
         assert_eq!(g["items"][0]["views"], json!(["channel"]), "{g:#}");
         assert_eq!(g["items"][1]["views"], json!(["impedance", "channel"]));
         assert_eq!(g["views"], json!(["impedance", "channel"]));
+        // the rating from the parts' own fields: C1 (Voltage Rating, Dielectric), C2 (its description) and
+        // C5 (VOLTAGE RATING "16 V") are not listed; C3 has a dielectric only, C4 nothing, C6 a PI_CAP
+        // without a rating
         let caps = gap_of(&v, "cap-ratings").expect("cap gap");
-        let c1 = caps["items"].as_array().unwrap().iter().find(|i| i["ref"] == "C1").unwrap();
-        assert_eq!((c1["package"].as_str(), c1["suggest"]["value"].as_str()), (Some("C0402"), Some("rated=6.3V X5R")));
-        assert_eq!(c1["suggest"]["from"], json!(["Voltage Rating", "Dielectric"]));
-        let c2 = caps["items"].as_array().unwrap().iter().find(|i| i["ref"] == "C2").unwrap();
-        assert_eq!(
-            (c2["suggest"]["value"].as_str(), c2["suggest"]["from"][0].as_str()),
-            (Some("rated=16V X7R"), Some("Description"))
-        );
+        let refs: Vec<&str> = caps["items"].as_array().unwrap().iter().filter_map(|i| i["ref"].as_str()).collect();
+        assert_eq!(refs, ["C3", "C4", "C6"], "{caps:#}");
+        let c3 = &caps["items"][0];
+        assert_eq!((c3["package"].as_str(), c3["suggest"]["value"].as_str()), (Some("C0402"), Some("X5R")));
+        assert_eq!(c3["suggest"]["from"], json!(["Temperature Coefficient"]));
+        assert!(caps["items"][1].get("suggest").is_none());
         // the suggestion passes the PI_CAP check
-        assert!(
-            crate::pdn_ic::parse_pi_cap(c1["suggest"]["value"].as_str().unwrap()).is_ok_and(|c| c.rated == Some(6.3))
-        );
+        assert!(crate::pdn_ic::parse_pi_cap(c3["suggest"]["value"].as_str().unwrap())
+            .is_ok_and(|c| c.dielectric.as_deref() == Some("X5R")));
         only_view(&mut v, "impedance");
         let g = gap_of(&v, "stackup-defaults").unwrap();
         assert_eq!((g["items"].as_array().unwrap().len(), g["items"][0]["index"].as_u64()), (1, Some(1)));

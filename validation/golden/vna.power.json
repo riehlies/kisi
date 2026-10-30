@@ -2114,7 +2114,7 @@
    "capacitors": 34,
    "domain": [
     {
-     "c_total_uf": 15.07,
+     "c_total_uf": 17.56,
      "capacitors": 19,
      "ics": [
       "U2",
@@ -2200,7 +2200,7 @@
      "voltage": 3.3
     },
     {
-     "c_total_uf": 13.56,
+     "c_total_uf": 16.04,
      "capacitors": 2,
      "ics": [],
      "net": "/Power Supply/VREG3V3_SWL",
@@ -2268,9 +2268,9 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.5 MHz)",
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.01684
+       "z_ohm": 2.03341
       }
      ],
      "capacitors_most_effective": [
@@ -2341,11 +2341,11 @@
      "target_source": "3 % ripple at a 50 % step of 50 mA (estimate)",
      "z_ohm": {
       "100M": 0.104705,
-      "100k": 0.174906,
+      "100k": 0.168193,
       "10M": 0.0143597,
-      "10k": 0.283695,
+      "10k": 0.288684,
       "1G": 1.13975,
-      "1M": 0.173953
+      "1M": 0.175701
      }
     },
     {
@@ -2353,21 +2353,21 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.9 MHz)",
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.8 MHz)",
        "hz": 25118.9,
-       "z_ohm": 1.88943
+       "z_ohm": 1.9079
       },
       {
        "above_target": false,
        "between": "between C169 89nF (series resonance 3.7 MHz) and C210 89nF (series resonance 4.1 MHz)",
        "hz": 3981070.0,
-       "z_ohm": 0.168163
+       "z_ohm": 0.169035
       },
       {
        "above_target": false,
        "between": "between C209 89nF (series resonance 6.2 MHz) and C208 89nF (series resonance 10.6 MHz)",
        "hz": 7943280.0,
-       "z_ohm": 0.130561
+       "z_ohm": 0.130532
       }
      ],
      "capacitors_most_effective": [
@@ -2397,14 +2397,14 @@
        "l_path_nh": 3.856,
        "l_total_nh": 4.656,
        "ref": "C15",
-       "srf_mhz": 0.9
+       "srf_mhz": 0.82
       },
       {
        "dist_mm": 11.6,
        "l_path_nh": 3.872,
        "l_total_nh": 4.672,
        "ref": "C14",
-       "srf_mhz": 0.89
+       "srf_mhz": 0.82
       },
       {
        "dist_mm": 20.6,
@@ -2438,11 +2438,11 @@
      "target_source": "3 % ripple at a 50 % step of 30 mA (estimate)",
      "z_ohm": {
       "100M": 0.310178,
-      "100k": 0.104349,
-      "10M": 0.0497596,
-      "10k": 0.18612,
+      "100k": 0.0897981,
+      "10M": 0.0497528,
+      "10k": 0.190716,
       "1G": 3.22284,
-      "1M": 0.0269857
+      "1M": 0.0282675
      }
     },
     {
@@ -2450,15 +2450,15 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.4 MHz)",
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.10824
+       "z_ohm": 2.12191
       },
       {
        "above_target": false,
        "between": "between C214 89nF (series resonance 5.0 MHz) and C215 89nF (series resonance 5.1 MHz)",
        "hz": 5011870.0,
-       "z_ohm": 0.648495
+       "z_ohm": 0.648478
       }
      ],
      "capacitors_most_effective": [
@@ -2529,11 +2529,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 0.549828,
-      "100k": 0.253726,
+      "100k": 0.250492,
       "10M": 0.177282,
-      "10k": 0.367692,
+      "10k": 0.372629,
       "1G": 5.70087,
-      "1M": 0.2526
+      "1M": 0.254203
      }
     },
     {
@@ -2541,15 +2541,15 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C15 6.78µF (series resonance 0.4 MHz)",
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C15 8.02µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.0559
+       "z_ohm": 2.07528
       },
       {
        "above_target": false,
        "between": "between C207 89nF (series resonance 3.6 MHz) and C169 89nF (series resonance 14.7 MHz)",
        "hz": 3981070.0,
-       "z_ohm": 0.922871
+       "z_ohm": 0.92328
       }
      ],
      "capacitors_most_effective": [
@@ -2565,14 +2565,14 @@
        "l_path_nh": 17.757,
        "l_total_nh": 18.557,
        "ref": "C14",
-       "srf_mhz": 0.45
+       "srf_mhz": 0.41
       },
       {
        "dist_mm": 40.4,
        "l_path_nh": 17.783,
        "l_total_nh": 18.583,
        "ref": "C15",
-       "srf_mhz": 0.45
+       "srf_mhz": 0.41
       },
       {
        "dist_mm": 45.8,
@@ -2620,11 +2620,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 0.802634,
-      "100k": 0.220774,
-      "10M": 0.125438,
-      "10k": 0.319763,
+      "100k": 0.214545,
+      "10M": 0.125435,
+      "10k": 0.324732,
       "1G": 8.44334,
-      "1M": 0.23473
+      "1M": 0.235644
      }
     },
     {
@@ -2632,21 +2632,21 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.6 MHz)",
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.6 MHz)",
        "hz": 25118.9,
-       "z_ohm": 1.93601
+       "z_ohm": 1.95426
       },
       {
        "above_target": false,
        "between": "between C211 89nF (series resonance 4.0 MHz) and C218 89nF (series resonance 4.0 MHz)",
        "hz": 3981070.0,
-       "z_ohm": 0.421886
+       "z_ohm": 0.422795
       },
       {
        "above_target": false,
        "between": "between C206 89nF (series resonance 6.9 MHz) and C209 89nF (series resonance 18.7 MHz)",
        "hz": 7943280.0,
-       "z_ohm": 0.373763
+       "z_ohm": 0.373853
       }
      ],
      "capacitors_most_effective": [
@@ -2683,14 +2683,14 @@
        "l_path_nh": 8.749,
        "l_total_nh": 9.549,
        "ref": "C15",
-       "srf_mhz": 0.63
+       "srf_mhz": 0.58
       },
       {
        "dist_mm": 22.1,
        "l_path_nh": 8.762,
        "l_total_nh": 9.562,
        "ref": "C14",
-       "srf_mhz": 0.63
+       "srf_mhz": 0.57
       },
       {
        "dist_mm": 30.1,
@@ -2717,11 +2717,11 @@
      "target_source": "3 % ripple at a 50 % step of 2 mA (estimate)",
      "z_ohm": {
       "100M": 0.43527,
-      "100k": 0.120401,
-      "10M": 0.197669,
-      "10k": 0.217214,
+      "100k": 0.108521,
+      "10M": 0.19767,
+      "10k": 0.222095,
       "1G": 4.79421,
-      "1M": 0.0903675
+      "1M": 0.0918235
      }
     },
     {
@@ -2729,21 +2729,21 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C15 6.78µF (series resonance 0.4 MHz)",
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C15 8.02µF (series resonance 0.3 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.13873
+       "z_ohm": 2.15458
       },
       {
        "above_target": false,
        "between": "between C201 89nF (series resonance 2.4 MHz) and C210 89nF (series resonance 2.5 MHz)",
        "hz": 2511890.0,
-       "z_ohm": 0.625362
+       "z_ohm": 0.626345
       },
       {
        "above_target": false,
        "between": "between C29 89nF (series resonance 5.7 MHz) and C31 89nF (series resonance 10.9 MHz)",
        "hz": 7943280.0,
-       "z_ohm": 0.209356
+       "z_ohm": 0.209363
       }
      ],
      "capacitors_most_effective": [
@@ -2766,14 +2766,14 @@
        "l_path_nh": 25.168,
        "l_total_nh": 25.968,
        "ref": "C14",
-       "srf_mhz": 0.38
+       "srf_mhz": 0.35
       },
       {
        "dist_mm": 40.0,
        "l_path_nh": 25.182,
        "l_total_nh": 25.982,
        "ref": "C15",
-       "srf_mhz": 0.38
+       "srf_mhz": 0.35
       },
       {
        "dist_mm": 48.0,
@@ -2814,11 +2814,11 @@
      "target_source": "3 % ripple at a 50 % step of 27 mA (estimate)",
      "z_ohm": {
       "100M": 1.44282,
-      "100k": 0.290203,
+      "100k": 0.286929,
       "10M": 0.153323,
-      "10k": 0.398389,
+      "10k": 0.403291,
       "1G": 15.4843,
-      "1M": 0.338481
+      "1M": 0.339604
      }
     },
     {
@@ -2826,15 +2826,15 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "filter resonance of L4 (inductor, 2.20 µH below its peak) with the 15µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 6.78µF (series resonance 0.4 MHz)",
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.3 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.11068
+       "z_ohm": 2.12421
       },
       {
        "above_target": false,
        "between": "between C217 89nF (series resonance 4.9 MHz) and C211 89nF (series resonance 5.2 MHz)",
        "hz": 5011870.0,
-       "z_ohm": 0.66703
+       "z_ohm": 0.667006
       }
      ],
      "capacitors_most_effective": [
@@ -2905,11 +2905,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 1.02715,
-      "100k": 0.255841,
+      "100k": 0.252693,
       "10M": 0.127425,
-      "10k": 0.369999,
+      "10k": 0.374934,
       "1G": 10.4404,
-      "1M": 0.261434
+      "1M": 0.263074
      }
     },
     {
@@ -2919,13 +2919,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C77 89nF (series resonance 14.7 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.93802
+       "z_ohm": 2.85909
       },
       {
        "above_target": false,
        "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C77 89nF (series resonance 14.7 MHz)",
        "hz": 501187.0,
-       "z_ohm": 10.9647
+       "z_ohm": 10.9638
       }
      ],
      "capacitors_most_effective": [
@@ -2947,11 +2947,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 0.806013,
-      "100k": 1.18001,
+      "100k": 1.19024,
       "10M": 0.101169,
-      "10k": 1.16412,
+      "10k": 1.16874,
       "1G": 8.30255,
-      "1M": 2.42993
+      "1M": 2.42984
      }
     },
     {
@@ -2961,13 +2961,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C32 89nF (series resonance 12.9 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.51404
+       "z_ohm": 2.43958
       },
       {
        "above_target": false,
        "between": "filter resonance of L10 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C32 89nF (series resonance 12.9 MHz)",
        "hz": 398107.0,
-       "z_ohm": 9.19339
+       "z_ohm": 9.19629
       }
      ],
      "capacitors_most_effective": [
@@ -2996,11 +2996,11 @@
      "target_source": "3 % ripple at a 50 % step of 18 mA (estimate)",
      "z_ohm": {
       "100M": 0.533996,
-      "100k": 0.825916,
+      "100k": 0.838515,
       "10M": 0.0387658,
-      "10k": 0.725565,
+      "10k": 0.730361,
       "1G": 5.67358,
-      "1M": 1.03384
+      "1M": 1.03379
      }
     },
     {
@@ -3010,13 +3010,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C84 89nF (series resonance 12.6 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.70126
+       "z_ohm": 2.62705
       },
       {
        "above_target": false,
        "between": "filter resonance of L65 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C84 89nF (series resonance 12.6 MHz)",
        "hz": 398107.0,
-       "z_ohm": 7.33017
+       "z_ohm": 7.33353
       }
      ],
      "capacitors_most_effective": [
@@ -3045,11 +3045,11 @@
      "target_source": "3 % ripple at a 50 % step of 20 mA (estimate)",
      "z_ohm": {
       "100M": 0.570635,
-      "100k": 0.997085,
+      "100k": 1.00855,
       "10M": 0.0356476,
-      "10k": 0.914078,
+      "10k": 0.918782,
       "1G": 5.87324,
-      "1M": 1.03031
+      "1M": 1.03025
      }
     },
     {
@@ -3064,13 +3064,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C54 89nF (series resonance 12.5 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.37618
+       "z_ohm": 2.30103
       },
       {
        "above_target": true,
        "between": "filter resonance of L64 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C54 89nF (series resonance 12.5 MHz)",
        "hz": 398107.0,
-       "z_ohm": 11.08
+       "z_ohm": 11.078
       }
      ],
      "capacitors_most_effective": [
@@ -3111,11 +3111,11 @@
      "target_source": "3 % ripple at a 50 % step of 20 mA (estimate)",
      "z_ohm": {
       "100M": 0.587259,
-      "100k": 0.717267,
+      "100k": 0.730795,
       "10M": 0.0337112,
-      "10k": 0.588136,
+      "10k": 0.593019,
       "1G": 6.0073,
-      "1M": 1.03579
+      "1M": 1.03575
      }
     },
     {
@@ -3125,13 +3125,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C69 89nF (series resonance 11.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.51073
+       "z_ohm": 2.43448
       },
       {
        "above_target": false,
        "between": "filter resonance of L21 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C69 89nF (series resonance 11.4 MHz)",
        "hz": 501187.0,
-       "z_ohm": 14.1023
+       "z_ohm": 14.1166
       }
      ],
      "capacitors_most_effective": [
@@ -3153,11 +3153,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 1.36639,
-      "100k": 0.796849,
+      "100k": 0.808863,
       "10M": 0.0546029,
-      "10k": 0.732371,
+      "10k": 0.737164,
       "1G": 13.9339,
-      "1M": 2.47795
+      "1M": 2.47781
      }
     },
     {
@@ -3167,13 +3167,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C76 89nF (series resonance 9.5 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.73051
+       "z_ohm": 2.65025
       },
       {
        "above_target": false,
        "between": "filter resonance of L27 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C76 89nF (series resonance 9.5 MHz)",
        "hz": 501187.0,
-       "z_ohm": 11.9759
+       "z_ohm": 11.9682
       }
      ],
      "capacitors_most_effective": [
@@ -3195,11 +3195,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 1.96663,
-      "100k": 1.00679,
+      "100k": 1.01798,
       "10M": 0.0471393,
-      "10k": 0.950618,
+      "10k": 0.955315,
       "1G": 20.0201,
-      "1M": 2.44934
+      "1M": 2.44945
      }
     },
     {
@@ -3209,13 +3209,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C75 89nF (series resonance 14.2 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.85268
+       "z_ohm": 2.77398
       },
       {
        "above_target": false,
        "between": "filter resonance of L25 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C75 89nF (series resonance 14.2 MHz)",
        "hz": 501187.0,
-       "z_ohm": 11.6388
+       "z_ohm": 11.6386
       }
      ],
      "capacitors_most_effective": [
@@ -3237,11 +3237,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 0.867787,
-      "100k": 1.09776,
+      "100k": 1.10832,
       "10M": 0.095578,
-      "10k": 1.07774,
+      "10k": 1.08238,
       "1G": 8.89012,
-      "1M": 2.43994
+      "1M": 2.43985
      }
     },
     {
@@ -3251,13 +3251,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C70 89nF (series resonance 10.3 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.55958
+       "z_ohm": 2.48249
       },
       {
        "above_target": false,
        "between": "filter resonance of L22 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C70 89nF (series resonance 10.3 MHz)",
        "hz": 501187.0,
-       "z_ohm": 13.8119
+       "z_ohm": 13.8205
       }
      ],
      "capacitors_most_effective": [
@@ -3279,11 +3279,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 1.65864,
-      "100k": 0.833851,
+      "100k": 0.845706,
       "10M": 0.041758,
-      "10k": 0.781684,
+      "10k": 0.786451,
       "1G": 18.0934,
-      "1M": 2.46886
+      "1M": 2.46873
      }
     },
     {
@@ -3298,13 +3298,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C73 89nF (series resonance 9.7 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.63256
+       "z_ohm": 2.55337
       },
       {
        "above_target": true,
        "between": "filter resonance of L23 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C73 89nF (series resonance 9.7 MHz)",
        "hz": 398107.0,
-       "z_ohm": 8.12652
+       "z_ohm": 8.11635
       }
      ],
      "capacitors_most_effective": [
@@ -3345,15 +3345,15 @@
      "target_source": "3 % ripple at a 50 % step of 55 mA (estimate)",
      "z_ohm": {
       "100M": 0.895511,
-      "100k": 0.915795,
+      "100k": 0.928315,
       "10M": 0.0374125,
-      "10k": 0.845845,
+      "10k": 0.850587,
       "1G": 9.14245,
-      "1M": 1.027
+      "1M": 1.02698
      }
     }
    ],
-   "note": "AC grid of the rail domain (the rail and the nets behind series resistors, inductors and ferrite beads, up to the regulators) over all layers against ground (ideal reference); series parts with R, L and the bead's lossy part (estimates unless PI_SERIES or the value gives them); capacitors with ESR, ESL, mounting and DC-bias-derated capacitance (estimates unless PI_CAP); targets from each IC's current step unless PI_TARGET. Design check, not a signoff PDN simulation.",
+   "note": "AC grid of the rail domain (the rail and the nets behind series resistors, inductors and ferrite beads, up to the regulators) over all layers against ground (ideal reference); series parts with R, L and the bead's lossy part (estimates unless PI_SERIES or the value gives them); capacitors with ESR, ESL, mounting and DC-bias-derated capacitance (estimates unless PI_CAP; rated voltage and dielectric also from the parts' rating fields or value, an assumed rating otherwise); targets from each IC's current step unless PI_TARGET. Design check, not a signoff PDN simulation.",
    "regulators": [
     "L3"
    ],
@@ -3530,7 +3530,7 @@
    ],
    "warnings": [
     "14% of the rail copper has no ground copper above or below: nearest ground layer used",
-    "34 class II capacitors without rated voltage: the smallest standard rating ≥ 1.8 × the net voltage assumed for the DC-bias derating (add it to the value or a PI_CAP field)"
+    "30 class II capacitors without rated voltage: the smallest standard rating ≥ 1.8 × the net voltage assumed for the DC-bias derating – an estimate (add it to a rating field such as Voltage Rating, the value or PI_CAP)"
    ]
   },
   "rail": "+3V3",

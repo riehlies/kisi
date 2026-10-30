@@ -108,10 +108,11 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
      that is a sense line), dismiss the items instead of inventing values – `"gaps": {"dismissed": [{"gap":
      "nets-without-target", "items": ["/FPGA/QSPI_DQ0"], "reason": "QSPI flash at 50 MHz, no impedance control
      needed"}]}` – and tell the user. Keep dismissals that are already in the file.
-   - `cap-ratings` items with a `suggest` value carry the rated voltage and dielectric from the parts' own
-     fields (`Voltage Rating`, `Dielectric`): check them against the BOM or datasheet and write them as `PI_CAP`
-     (kind `design` when taken from the fields as they are). Items with their own `views` matter only for those
-     categories (a dielectric with only a default tanδ: loss and eye).
+   - `cap-ratings` lists only capacitors whose rated voltage kisi finds nowhere (kisi reads `PI_CAP`, rating
+     fields such as `Voltage Rating` / `Dielectric`, the Value text and the description itself – do not copy
+     those into `PI_CAP`). A `suggest` value carries what the parts' fields do give (a dielectric, say): add the
+     rated voltage from the BOM or datasheet and write both as `PI_CAP`. Items with their own `views` matter only
+     for those categories (a dielectric with only a default tanδ: loss and eye).
 4. **Rules for values:**
    - Every value needs a `source`: `kind` (datasheet, standard, application_note, measurement,
      simulation, design, estimate, assumption) plus `document` and/or `url`, `page`, and a `note`.

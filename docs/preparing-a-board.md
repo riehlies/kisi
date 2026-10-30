@@ -60,7 +60,7 @@ patterns, [reference](reference.md#target-impedance-from-net-class-names)), or i
 | `rails-without-source` | medium | P | supply rails without a source: no IR drop | `PI_REG` (input or regulator output), else `PI_SOURCE` |
 | `regulator-efficiency` | low | P | switching regulators without an efficiency: 85 % assumed | `PI_REG` (`buck 90%`) |
 | `ic-loads` | medium | P | ICs on supply rails without a load current | `fields`: `PI_LOAD` |
-| `cap-ratings` | low | P | decoupling capacitors of 100 nF and more without rated voltage or dielectric | `PI_CAP` or the Value field (`10u 6.3V X5R`) |
+| `cap-ratings` | low | P | decoupling capacitors of 100 nF and more whose rated voltage kisi cannot find (not in `PI_CAP`, a rating field such as `Voltage Rating`, the Value or the description – [Capacitor ratings](reference.md#capacitor-ratings-from-the-parts-fields)) | `PI_CAP`, a rating field in KiCad, or the Value field (`10u 6.3V X5R`) |
 | `bead-ratings` | low | P | ferrite beads on supply rails without an impedance rating | `PI_SERIES` or the Value field |
 | `cap-values` | low | P | capacitors on supply rails whose value kisi cannot read: left out of Z(f) | the Value field in KiCad (not kisi.json) |
 | `thermal-data` | low | P | parts with 0.1 W or more without thermal data: package defaults, Tj max 125 °C | `PI_THERMAL` |
@@ -124,7 +124,7 @@ like an interface get a class of their own in the step (name, nets or patterns, 
 |---|---|
 | Impedance | laminate per dielectric (material, εr, tanδ, thickness) and the solder mask εr; net class targets (Ω, differential) |
 | Channel | the laminate; net class → interface profile; connector ends (model, R/C/L, the channel behind as loss and delay or a Touchstone file with its port order and ports per pin); the assembly variant to analyse and variant definitions (sheets, parts, BOM, BOM exceptions) |
-| Power | `PI_REG` (with one-click suggestions for rails behind a ferrite or link), load currents per rail, `PI_SOURCE`, `PI_SERIES` (Z at 100 MHz, DC resistance), `PI_CAP` (rated voltage, dielectric, ESR, ESL – one row per part number or value and package, written on every capacitor of the group, with the parts' own Voltage Rating / Dielectric fields as a one-click suggestion), `PI_THERMAL`, `PI_TARGET` and any other field |
+| Power | `PI_REG` (with one-click suggestions for rails behind a ferrite or link), load currents per rail, `PI_SOURCE`, `PI_SERIES` (Z at 100 MHz, DC resistance), `PI_CAP` (rated voltage, dielectric, ESR, ESL – one row per part number or value and package, written on every capacitor of the group; capacitors whose own fields give the rating are not listed, what their fields give in part is a one-click suggestion), `PI_THERMAL`, `PI_TARGET` and any other field |
 
 Every entry has its own source (kind, document; url, page and note behind "…"); a table's shared source fills the
 rows entered without one. Name-based gaps can be dismissed with a reason; a dismissal that this board does not
@@ -183,7 +183,7 @@ With kisi 0.3.0 it reports no high-priority gap, five medium and two low ones:
 | `rails-without-voltage` | `/03 Power/LDO1_IN` (found by a pin name of U2), `/06 Peripherals/IMU_VDD` and `/06 Peripherals/MIC_VDD` (behind FB3 / FB4 – the gap suggests the `pass` entry), `VBAT`, `VBUS`, `VSYS` |
 | `rails-without-source` | `3V3_OUT`, `IMU&MIC_3V3`, `SAMD11_3V3`, `TYPEC_5V`, `VSYS_3V3` |
 | `ic-loads` | 11 ICs, among them U8 nRF54LM20A, U10 flash, U11 IMU, U12 microphone, U5 SAMD11 – and U4, whose Value field is the manufacturer's name; the gap names its MPN UM3204H |
-| `cap-ratings` | 35 capacitors of 100 nF and more (with their MPNs) |
+| `cap-ratings` | 35 capacitors of 100 nF and more (with their MPNs) – no longer listed since kisi reads their `Voltage Rating` and `Dielectric` fields |
 | `bead-ratings` | FB3, FB4 (Murata BLM03AG121SN1D) |
 
 The board is a small Bluetooth module without impedance-controlled interfaces, so the work is the power tree.
@@ -244,9 +244,8 @@ the estimated 85 % and LDO1 3 mW. The largest DC drop is 0.17 mV, on VSYS_3V3.
   case). The nPM1300 battery charger is not modelled either – while it charges, its current is a load on VSYS.
 - `ic-loads`: **U7**, the XIAO header. External loads on the 3V3 and VBUS pins are unknown.
 - `regulator-efficiency`: **BUCK2 and U1.** The datasheets give efficiency only as curves.
-- `cap-ratings`: the board's capacitors carry `Voltage Rating` and `Dielectric` fields, but kisi does not read
-  them yet (ROADMAP: capacitor ratings from part fields), so they are not repeated as `PI_CAP` here. `kisi gaps`
-  suggests them per capacitor (`suggest`), and the viewer's Prepare page writes them as PI_CAP for a group of
-  parts at once.
+- The capacitors are not on this list: their `Voltage Rating` and `Dielectric` fields give the rated voltage and
+  the dielectric of every one of them, which kisi reads for the DC-bias derating
+  ([Capacitor ratings](reference.md#capacitor-ratings-from-the-parts-fields)); the kisi.json needs no `PI_CAP`.
 - `stackup-defaults`: the laminate values are KiCad's defaults; for a board without impedance-controlled
   interfaces they matter little.

@@ -1,0 +1,2819 @@
+{
+ "boards": {
+  "aper-oculus": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 1.06
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 1.06
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 5,
+       "cap-ratings": 142,
+       "ic-loads": 43,
+       "nets-without-target": 46,
+       "power-tree": 0,
+       "rails-without-source": 33,
+       "rails-without-voltage": 5,
+       "stackup-defaults": 15
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 1.38
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 1.01
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 16,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 1.03
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 1.06
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 13256.0,
+      "nodes": 135872,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 8.08
+    }
+   },
+   "total_s": 14.7
+  },
+  "bitaxe": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.07
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.08
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 37,
+       "ic-loads": 11,
+       "power-tree": 0,
+       "rails-without-source": 4,
+       "rails-without-voltage": 9,
+       "stackup-defaults": 3
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.08
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.08
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.09
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.08
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 5635.0,
+      "nodes": 140332,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.0
+    }
+   },
+   "total_s": 2.5
+  },
+  "bms-c1": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.16
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.14
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 9,
+       "ic-loads": 4,
+       "nets-without-target": 2,
+       "power-tree": 0,
+       "rails-without-source": 1,
+       "rails-without-voltage": 1,
+       "stackup-defaults": 3
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.18
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.19
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.15
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.18
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 9207.0,
+      "nodes": 147336,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.31
+    }
+   },
+   "total_s": 3.3
+  },
+  "butterstick-hardware": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.4
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.45
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 6,
+       "cap-ratings": 125,
+       "ic-loads": 17,
+       "nets-without-target": 50,
+       "power-tree": 0,
+       "rails-without-source": 9,
+       "rails-without-voltage": 10,
+       "stackup-defaults": 7
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.47
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.47
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 8,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.51
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.49
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 3912.0,
+      "nodes": 194864,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 3.24
+    }
+   },
+   "total_s": 6.0
+  },
+  "cm4-baseboard-lvds-adapter": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 10,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.85
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 10
+     },
+     "rc": 0,
+     "s": 0.25
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 1,
+       "cap-values": 21,
+       "ic-loads": 5,
+       "power-tree": 0,
+       "rails-without-source": 8,
+       "rails-without-voltage": 2,
+       "stackup-defaults": 5
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "ready",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.23
+    },
+    "interfaces": {
+     "key": {
+      "buses": 2,
+      "lanes": 10
+     },
+     "rc": 0,
+     "s": 0.25
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 2,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        100.0,
+        true,
+        "class name"
+       ],
+       [
+        100.0,
+        true,
+        "class name"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.26
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.21
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 2236.0,
+      "nodes": 148434,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 1.78
+    }
+   },
+   "total_s": 3.8
+  },
+  "cynthion-hardware": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.15
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.14
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "ic-loads": 17,
+       "nets-without-target": 8,
+       "power-tree": 0,
+       "rails-without-source": 4,
+       "rails-without-voltage": 15,
+       "stackup-defaults": 2
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.16
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.15
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.15
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.19
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 3120.0,
+      "nodes": 117060,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 1.3
+    }
+   },
+   "total_s": 2.2
+  },
+  "dc-scm-osm-l-carrier-card": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 51,
+       "red": 9,
+       "yellow": 40
+      }
+     },
+     "rc": 0,
+     "s": 11.88
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 71,
+      "victims": 133
+     },
+     "rc": 0,
+     "s": 2.46
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "assembly-variant-forks": 1,
+       "bead-ratings": 4,
+       "cap-values": 106,
+       "ic-loads": 30,
+       "nets-without-target": 2,
+       "power-tree": 0,
+       "rails-without-source": 30,
+       "rails-without-voltage": 14,
+       "stackup-defaults": 9
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 1.7
+    },
+    "interfaces": {
+     "key": {
+      "buses": 28,
+      "lanes": 112
+     },
+     "rc": 0,
+     "s": 3.15
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 4,
+      "layers": 10,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        50.0,
+        false,
+        "class name"
+       ],
+       [
+        85.0,
+        true,
+        "class name"
+       ],
+       [
+        90.0,
+        true,
+        "class name"
+       ],
+       [
+        100.0,
+        true,
+        "class name"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 1.57
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 1.65
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 9821.0,
+      "nodes": 175160,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 4.72
+    }
+   },
+   "total_s": 27.1,
+   "variant_stop": true
+  },
+  "diy-laptop": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.15
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.16
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "nets-without-target": 47,
+       "power-tree": 0,
+       "stackup-missing": 0
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "nothing to check"
+      }
+     },
+     "rc": 0,
+     "s": 0.25
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.25
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 6,
+      "stackup_from_file": false,
+      "targets": [],
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 0.29
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.23
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 8899.0,
+      "nodes": 147744,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.32
+    }
+   },
+   "total_s": 3.6
+  },
+  "emberone00-pcb": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.43
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.58
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 107,
+       "ic-loads": 47,
+       "nets-without-target": 2,
+       "power-tree": 0,
+       "rails-without-source": 28,
+       "rails-without-voltage": 4,
+       "stackup-defaults": 5
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.28
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.37
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.39
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.28
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 16378.0,
+      "nodes": 175362,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 4.04
+    }
+   },
+   "total_s": 6.4
+  },
+  "esp32-p4-pc": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 6,
+       "red": 0,
+       "yellow": 14
+      }
+     },
+     "rc": 0,
+     "s": 4.23
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 20
+     },
+     "rc": 0,
+     "s": 0.39
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-values": 13,
+       "ic-loads": 13,
+       "nets-without-target": 3,
+       "power-tree": 0,
+       "rails-without-source": 12,
+       "rails-without-voltage": 15,
+       "stackup-defaults": 3
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.39
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.39
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 2,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        90.0,
+        true,
+        "class name"
+       ],
+       [
+        100.0,
+        true,
+        "class name"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.38
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.39
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 5400.0,
+      "nodes": 135000,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 1.94
+    }
+   },
+   "total_s": 8.1
+  },
+  "gamebub": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.18
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.23
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 132,
+       "ic-loads": 27,
+       "nets-without-target": 43,
+       "power-tree": 0,
+       "rails-without-source": 13,
+       "rails-without-voltage": 8,
+       "stackup-defaults": 5
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.19
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.18
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.18
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.21
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 11886.0,
+      "nodes": 197778,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.58
+    }
+   },
+   "total_s": 3.8
+  },
+  "hackrf": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.3
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.49
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 1,
+       "ic-loads": 16,
+       "power-tree": 0,
+       "rails-without-source": 1,
+       "rails-without-voltage": 7
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.4
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.28
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.36
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.39
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 8944.0,
+      "nodes": 143136,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.48
+    }
+   },
+   "total_s": 4.7
+  },
+  "hackrf-pro": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 1,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.82
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 2,
+      "victims": 4
+     },
+     "rc": 0,
+     "s": 0.59
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "assembly-variant-forks": 2,
+       "bead-ratings": 8,
+       "cap-values": 121,
+       "classes-without-standard": 2,
+       "ic-loads": 38,
+       "power-tree": 0,
+       "rails-without-source": 10,
+       "rails-without-voltage": 9,
+       "stackup-defaults": 2
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "ready",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.61
+    },
+    "interfaces": {
+     "key": {
+      "buses": 3,
+      "lanes": 4
+     },
+     "rc": 0,
+     "s": 1.35
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 2,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        90.0,
+        true,
+        "class name"
+       ],
+       [
+        100.0,
+        true,
+        "class name"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.6
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.62
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 6963.0,
+      "nodes": 167196,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 4.66
+    }
+   },
+   "total_s": 9.2,
+   "variant_stop": true
+  },
+  "halpi2-hardware": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 19,
+       "red": 0,
+       "yellow": 28
+      }
+     },
+     "rc": 0,
+     "s": 6.95
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 47
+     },
+     "rc": 0,
+     "s": 0.61
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 1,
+       "cap-ratings": 104,
+       "cap-values": 1,
+       "ic-loads": 34,
+       "power-tree": 0,
+       "rails-without-source": 13,
+       "rails-without-voltage": 21,
+       "stackup-defaults": 2
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.5
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.49
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 2,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        90.0,
+        true,
+        "class name"
+       ],
+       [
+        100.0,
+        true,
+        "class name"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.49
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.46
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 19768.0,
+      "nodes": 118650,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 1.54
+    }
+   },
+   "total_s": 11.0
+  },
+  "hdmi-mipi-bridge": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 18
+      }
+     },
+     "rc": 0,
+     "s": 1.51
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 18,
+      "victims": 18
+     },
+     "rc": 0,
+     "s": 0.43
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "assembly-variant-forks": 2,
+       "bead-ratings": 10,
+       "cap-values": 34,
+       "ic-loads": 10,
+       "nets-without-target": 1,
+       "power-tree": 0,
+       "rails-without-source": 6,
+       "rails-without-voltage": 12,
+       "stackup-defaults": 3
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.32
+    },
+    "interfaces": {
+     "key": {
+      "buses": 4,
+      "lanes": 18
+     },
+     "rc": 0,
+     "s": 0.63
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 2,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        100.0,
+        true,
+        "class name"
+       ],
+       [
+        100.0,
+        true,
+        "class name"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.27
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.32
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 3060.0,
+      "nodes": 195840,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 1.7
+    }
+   },
+   "total_s": 5.2,
+   "variant_stop": true
+  },
+  "icepi-zero": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.22
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.23
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 39,
+       "ic-loads": 8,
+       "nets-without-target": 18,
+       "power-tree": 0,
+       "rails-without-source": 6,
+       "stackup-defaults": 3
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.23
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.23
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.23
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.25
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 1939.0,
+      "nodes": 124128,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 1.92
+    }
+   },
+   "total_s": 3.3
+  },
+  "jabr-cm5-carrier": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.19
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 17,
+      "victims": 32
+     },
+     "rc": 0,
+     "s": 0.76
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 17,
+       "ic-loads": 6,
+       "power-tree": 0,
+       "rails-without-source": 4,
+       "rails-without-voltage": 3,
+       "stackup-defaults": 3
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.19
+    },
+    "interfaces": {
+     "key": {
+      "buses": 9,
+      "lanes": 32
+     },
+     "rc": 0,
+     "s": 0.26
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 3,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        90.0,
+        false,
+        "class name"
+       ],
+       [
+        100.0,
+        false,
+        "class name"
+       ],
+       [
+        100.0,
+        true,
+        "interface assumption"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.21
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.21
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 14389.0,
+      "nodes": 160088,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.18
+    }
+   },
+   "total_s": 4.0
+  },
+  "kicad-make": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 3,
+       "red": 1,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.49
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 1,
+      "victims": 7
+     },
+     "rc": 0,
+     "s": 0.16
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 2,
+       "cap-ratings": 32,
+       "ic-loads": 5,
+       "power-tree": 0,
+       "rails-without-source": 5,
+       "stackup-defaults": 5
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "ready",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.38
+    },
+    "interfaces": {
+     "key": {
+      "buses": 1,
+      "lanes": 4
+     },
+     "rc": 0,
+     "s": 0.1
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 1,
+      "layers": 8,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        100.0,
+        true,
+        "class name"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.11
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.1
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 2857.0,
+      "nodes": 142824,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 3.79
+    }
+   },
+   "total_s": 5.1
+  },
+  "kimchi-micro": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.54
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.55
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 149,
+       "ic-loads": 11,
+       "nets-without-target": 33,
+       "power-tree": 0,
+       "rails-without-source": 16,
+       "rails-without-voltage": 7,
+       "stackup-missing": 0
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.61
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.57
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 8,
+      "stackup_from_file": false,
+      "targets": [],
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 0.56
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.57
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 2080.0,
+      "nodes": 185752,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 4.24
+    }
+   },
+   "total_s": 7.6
+  },
+  "kthfs-dcdc": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.19
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.21
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 27,
+       "ic-loads": 10,
+       "power-tree": 0,
+       "rails-without-source": 12,
+       "rails-without-voltage": 1,
+       "stackup-defaults": 3
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.19
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.31
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.12
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.17
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 8934.0,
+      "nodes": 142964,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.21
+    }
+   },
+   "total_s": 3.4,
+   "variant_stop": true
+  },
+  "latentred": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.41
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.46
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 4,
+       "cap-values": 121,
+       "ic-loads": 26,
+       "nets-without-target": 36,
+       "power-tree": 0,
+       "rails-without-source": 17,
+       "rails-without-voltage": 6,
+       "stackup-defaults": 9
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.42
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.45
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 10,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.42
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.42
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 15249.0,
+      "nodes": 152490,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.63
+    }
+   },
+   "total_s": 5.2
+  },
+  "librevna": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 31,
+       "red": 1,
+       "yellow": 12
+      }
+     },
+     "rc": 0,
+     "s": 1.89
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 59,
+      "victims": 133
+     },
+     "rc": 0,
+     "s": 0.85
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 32,
+       "cap-ratings": 50,
+       "classes-without-standard": 1,
+       "ic-loads": 33,
+       "nets-without-target": 2,
+       "power-tree": 0,
+       "rails-without-source": 26,
+       "rails-without-voltage": 8,
+       "stackup-defaults": 5
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.47
+    },
+    "interfaces": {
+     "key": {
+      "buses": 38,
+      "lanes": 45
+     },
+     "rc": 0,
+     "s": 0.33
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 1,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        50.0,
+        false,
+        "interface assumption"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.39
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.41
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 11956.0,
+      "nodes": 198534,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 4.19
+    }
+   },
+   "total_s": 8.5
+  },
+  "marble": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 2.14
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 2.44
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "assembly-variant-forks": 7,
+       "cap-values": 290,
+       "ic-loads": 65,
+       "nets-without-target": 175,
+       "power-tree": 0,
+       "rails-without-source": 17,
+       "rails-without-voltage": 25,
+       "stackup-defaults": 11
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 2.57
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 4.41
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 12,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 2.61
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 2.53
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 27000.0,
+      "nodes": 144000,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 6.68
+    }
+   },
+   "total_s": 23.4,
+   "variant_stop": true
+  },
+  "moteus": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.17
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.19
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 22,
+       "ic-loads": 8,
+       "power-tree": 0,
+       "rails-without-source": 4,
+       "rails-without-voltage": 1,
+       "stackup-defaults": 5
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.2
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.18
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.18
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.2
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 3128.0,
+      "nodes": 117312,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.15
+    }
+   },
+   "total_s": 3.3
+  },
+  "openrx": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.07
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.07
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 15,
+       "ic-loads": 6,
+       "power-tree": 0,
+       "rails-without-source": 2,
+       "rails-without-voltage": 1,
+       "stackup-defaults": 5
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.08
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.07
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 0.05
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.08
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 739.0,
+      "nodes": 71280,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 1.22
+    }
+   },
+   "total_s": 1.6
+  },
+  "osm-l-bmc-som": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 96,
+       "red": 1,
+       "yellow": 101
+      }
+     },
+     "rc": 0,
+     "s": 20.78
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 144,
+      "victims": 201
+     },
+     "rc": 0,
+     "s": 1.79
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "assembly-variant-forks": 1,
+       "bead-ratings": 3,
+       "cap-values": 186,
+       "classes-without-standard": 1,
+       "ic-loads": 21,
+       "power-tree": 0,
+       "rails-without-source": 7,
+       "rails-without-voltage": 13
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "ready",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 1.13
+    },
+    "interfaces": {
+     "key": {
+      "buses": 25,
+      "lanes": 201
+     },
+     "rc": 0,
+     "s": 3.07
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 5,
+      "layers": 10,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        45.0,
+        false,
+        "class name"
+       ],
+       [
+        50.0,
+        false,
+        "class name"
+       ],
+       [
+        85.0,
+        true,
+        "class name"
+       ],
+       [
+        90.0,
+        true,
+        "class name"
+       ],
+       [
+        100.0,
+        true,
+        "class name"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 1.5
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 1.0
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 2025.0,
+      "nodes": 126560,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.84
+    }
+   },
+   "total_s": 32.1,
+   "variant_stop": true
+  },
+  "ping-dev-kit": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 2
+      }
+     },
+     "rc": 0,
+     "s": 1.22
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 4
+     },
+     "rc": 0,
+     "s": 0.74
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "ic-loads": 17,
+       "nets-without-target": 4,
+       "power-tree": 0,
+       "rails-without-source": 4,
+       "rails-without-voltage": 9,
+       "stackup-defaults": 7
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.55
+    },
+    "interfaces": {
+     "key": {
+      "buses": 2,
+      "lanes": 4
+     },
+     "rc": 0,
+     "s": 0.45
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 2,
+      "layers": 8,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        100.0,
+        true,
+        "interface assumption"
+       ],
+       [
+        100.0,
+        true,
+        "interface assumption"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.42
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.52
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 21373.0,
+      "nodes": 171016,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 5.32
+    }
+   },
+   "total_s": 9.2
+  },
+  "scalenode-cm4-baseboard": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.35
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.44
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "assembly-variant-forks": 2,
+       "bead-ratings": 1,
+       "cap-values": 29,
+       "ic-loads": 8,
+       "nets-without-target": 22,
+       "power-tree": 0,
+       "rails-without-source": 5,
+       "rails-without-voltage": 2,
+       "stackup-defaults": 3
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.44
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.78
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.3
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.3
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 4933.0,
+      "nodes": 123216,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 1.12
+    }
+   },
+   "total_s": 3.7,
+   "variant_stop": true
+  },
+  "udimm-ddr5-tester": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 131,
+       "red": 7,
+       "yellow": 33
+      }
+     },
+     "rc": 0,
+     "s": 14.95
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 67,
+      "victims": 176
+     },
+     "rc": 0,
+     "s": 4.45
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "assembly-variant-forks": 1,
+       "bead-ratings": 5,
+       "cap-values": 187,
+       "classes-without-standard": 2,
+       "ic-loads": 26,
+       "nets-without-target": 2,
+       "power-tree": 0,
+       "rails-without-source": 24,
+       "rails-without-voltage": 6
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 1.63
+    },
+    "interfaces": {
+     "key": {
+      "buses": 13,
+      "lanes": 172
+     },
+     "rc": 0,
+     "s": 1.91
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 5,
+      "layers": 12,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        40.0,
+        false,
+        "class name"
+       ],
+       [
+        50.0,
+        false,
+        "class name"
+       ],
+       [
+        80.0,
+        true,
+        "class name"
+       ],
+       [
+        90.0,
+        true,
+        "class name"
+       ],
+       [
+        100.0,
+        true,
+        "class name"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 1.02
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 1.57
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 14114.0,
+      "nodes": 171000,
+      "t_board_max_c": 25.0,
+      "warnings": 2
+     },
+     "rc": 0,
+     "s": 6.5
+    }
+   },
+   "total_s": 32.0,
+   "variant_stop": true
+  },
+  "ulx4m-ls": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 2.15
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 2.11
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 1,
+       "cap-ratings": 19,
+       "ic-loads": 7,
+       "nets-without-target": 228,
+       "power-tree": 0,
+       "rails-without-source": 24,
+       "stackup-defaults": 5
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 2.03
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 2.46
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 6,
+      "stackup_from_file": true,
+      "targets": [],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 2.4
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 1.7
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 10485.0,
+      "nodes": 175362,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 3.16
+    }
+   },
+   "total_s": 16.0
+  },
+  "usb-3-switcher": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 7,
+       "red": 0,
+       "yellow": 14
+      }
+     },
+     "rc": 0,
+     "s": 3.9
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 2,
+      "victims": 35
+     },
+     "rc": 0,
+     "s": 0.56
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 4,
+       "cap-ratings": 72,
+       "ic-loads": 21,
+       "power-tree": 0,
+       "rails-without-source": 7,
+       "rails-without-voltage": 9,
+       "stackup-defaults": 3
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.32
+    },
+    "interfaces": {
+     "key": {
+      "buses": 21,
+      "lanes": 21
+     },
+     "rc": 0,
+     "s": 0.3
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 3,
+      "layers": 4,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        90.0,
+        true,
+        "interface assumption"
+       ],
+       [
+        90.0,
+        true,
+        "interface assumption"
+       ],
+       [
+        90.0,
+        true,
+        "interface assumption"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.33
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.28
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 6832.0,
+      "nodes": 170800,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 2.68
+    }
+   },
+   "total_s": 8.4
+  },
+  "zynq-som": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 6,
+       "red": 0,
+       "yellow": 24
+      }
+     },
+     "rc": 0,
+     "s": 2.89
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 10,
+      "victims": 31
+     },
+     "rc": 0,
+     "s": 0.73
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "cap-ratings": 118,
+       "classes-without-standard": 1,
+       "ic-loads": 13,
+       "nets-without-target": 47,
+       "power-tree": 0,
+       "rails-without-source": 11,
+       "rails-without-voltage": 9,
+       "stackup-defaults": 7
+      },
+      "views": {
+       "channel": "open",
+       "impedance": "open",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.63
+    },
+    "interfaces": {
+     "key": {
+      "buses": 6,
+      "lanes": 30
+     },
+     "rc": 0,
+     "s": 0.54
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 5,
+      "layers": 8,
+      "stackup_from_file": true,
+      "targets": [
+       [
+        90.0,
+        true,
+        "interface assumption"
+       ],
+       [
+        90.0,
+        true,
+        "interface assumption"
+       ],
+       [
+        100.0,
+        true,
+        "interface assumption"
+       ],
+       [
+        100.0,
+        true,
+        "interface assumption"
+       ],
+       [
+        100.0,
+        true,
+        "interface assumption"
+       ]
+      ],
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.52
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.56
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 2092.0,
+      "nodes": 186320,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 4.17
+    }
+   },
+   "total_s": 10.0
+  }
+ },
+ "kisi": "0.3.1",
+ "set": "weekly"
+}

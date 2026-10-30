@@ -66,9 +66,22 @@
       }
     },
     "rated_v": {
-      "note": "rated voltage assumed when neither the value text nor PI_CAP gives one: the smallest standard rating ≥ margin × rail voltage",
+      "note": "rated voltage assumed when neither PI_CAP, a rating field nor the value text gives one: the smallest standard rating ≥ margin × rail voltage (an estimate)",
       "series": [4, 6.3, 10, 16, 25, 35, 50, 100],
       "margin": 1.8
+    },
+    "rating_fields": {
+      "note": "Footprint fields (symbol fields copied to the footprint, or fields[] of <board>.kisi.json) that give a capacitor's rated voltage and dielectric, tried in this order; names compare without case, spaces and punctuation ('VOLTAGE RATING' = 'Voltage_Rating'). A rated-voltage field holds '16V', '16 V', '6.3V', '6V3', '6,3 V', '16VDC', '1kV' or a bare number (1 V … 20 kV); a dielectric field 'X5R', 'C0G/NP0', 'NP0', 'X7R-25V'; anything else, or two different values in one field, is not read. free_text fields are descriptions searched for a rating token ('100nF-10V-10%-X5R', '0.1 µF ±10% 16V Ceramic Capacitor X7R'). Precedence per value: PI_CAP > these fields > the Value text > free_text > the assumption of rated_v.",
+      "rated_voltage": ["Voltage Rating", "Rated Voltage", "Voltage Rated", "Voltage - Rated", "Voltage Rating DC", "Rated Voltage DC", "Voltage", "Characteristic"],
+      "dielectric": ["Dielectric", "Dielectric Material", "Dielectric Type", "Temperature Coefficient", "Temp Coefficient", "Tempco", "TC", "Characteristic"],
+      "free_text": ["Description"],
+      "sources": [
+        { "kind": "kisi", "url": "https://files.seeedstudio.com/wiki/XIAO_nRF54LM20A/getting_start/RES/XIAO_nRF54LM20A_V1.0_SCH&PCB_260508.zip", "text": "Field survey, 2026-10-30: Seeed Studio XIAO nRF54LM20A V1.0 (files.seeedstudio.com, 2026-05-08; the worked example in docs/preparing-a-board.md): every capacitor has 'Voltage Rating' ('10V', '6.3V', '50V') and 'Dielectric' ('X5R', 'C0G', 'NP0'); the Description reads 'SMD CAP Ceramic 100nF-10V-10%-X5R;0201'. Its 'Temperature' field is the operating range ('-55°C to 85°C'), not a dielectric, and is not read." },
+        { "kind": "kisi", "text": "Field survey, 2026-10-30: ThunderScope Rev5.3 (example board, from Altium): 'VOLTAGE RATING' ('25V', '16V', '6.3V') on 390 of 395 capacitors, 'TEMPERATURE COEFFICIENT' ('C0G') on 42, Digi-Key descriptions ('0.1 µF ±10% 16V Ceramic Capacitor X7R 0402 (1005 Metric)')." },
+        { "kind": "kisi", "text": "Field survey, 2026-10-30: LibreVNA (example board): the rated voltage in a field 'Characteristic' ('25V', '10V', '6V3') on 173 of 274 capacitors." },
+        { "kind": "kisi", "url": "https://github.com/CDFER/JLCPCB-Kicad-Library", "text": "Field survey: CDFER JLCPCB-Kicad-Library (github.com/CDFER/JLCPCB-Kicad-Library, libraryCreatorScript.py and autoLibrarySymbols.py, read 2026-10-30): capacitor symbols carry the LCSC parameters as fields, 'Voltage Rated' (or 'Rated Voltage') and 'Temperature Coefficient' ('NP0', 'X7R'). Distributor parameter names: Digi-Key 'Voltage - Rated' and 'Temperature Coefficient', Mouser 'Voltage Rating DC' and 'Dielectric'." },
+        { "kind": "kisi", "text": "Field survey: KiCad's official symbol library (Device:C, C_Small, C_Polarized): Value, Footprint, Datasheet and Description only – no rating fields; the Value text (10u 6.3V X5R) is read as before." }
+      ]
     },
     "candidates": [
       {"value": "47u", "package": "1206"},

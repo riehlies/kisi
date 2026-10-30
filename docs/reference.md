@@ -93,6 +93,27 @@ also be written `->` or `→`.
 
 Values take SI prefixes (`5m`, `0.45n`, `2.2u`, `50M`); resistances also `4R7`, `2k2`, `10mR`.
 
+### Capacitor ratings from the parts' fields
+The DC-bias derating of a class II capacitor (X5R, X7R, …) needs its rated voltage. Many libraries carry it, and
+the dielectric, in fields of their own; kisi reads these, so such capacitors need no `PI_CAP`. Each of the two
+values comes from the first of:
+1. `PI_CAP` (`rated=`, a dielectric word) – a `PI_CAP` in `<board>.kisi.json` replaces one in the board file;
+2. a rating field of the part, in this order – rated voltage: `Voltage Rating`, `Rated Voltage`, `Voltage Rated`,
+   `Voltage - Rated`, `Voltage Rating DC`, `Rated Voltage DC`, `Voltage`, `Characteristic`; dielectric:
+   `Dielectric`, `Dielectric Material`, `Dielectric Type`, `Temperature Coefficient`, `Temp Coefficient`, `Tempco`,
+   `TC`, `Characteristic`. Names compare without case, spaces and punctuation (`VOLTAGE RATING`, `Voltage_Rating`);
+   the list, with the libraries it was taken from, is `decoupling.rating_fields` in `data/components.json`;
+3. the Value text (`10u 6.3V X5R`, `100n/16V/X7R`, `4u7 6V3`);
+4. the `Description` field (`SMD CAP Ceramic 100nF-10V-10%-X5R;0201`, `0.1 µF ±10% 16V Ceramic Capacitor X7R`);
+5. none: for a class II (or unknown) dielectric the smallest standard rating ≥ 1.8 × the rail voltage is assumed –
+   an estimate, marked as such; a capacitor of 100 nF or more is then listed in the `cap-ratings` gap.
+
+A rated-voltage field may read `16V`, `16 V`, `6.3V`, `6V3`, `6,3 V`, `16VDC`, `1kV` or a bare `16` (1 V … 20 kV);
+a dielectric field `X5R`, `C0G/NP0`, `NP0`, `X7R-25V`, `Polymer`, `Tantalum`. A field kisi cannot read (`n/a`, a
+temperature range, two different values such as `X5R/X7R`) is passed over. The PDN results name where each value
+came from (`rated_from`, `dielectric_from`: `PI_CAP`, `field <name>`, `value`, `assumed`); the viewer shows it on a
+capacitor's row in the PDN table. A field of this list given in `<board>.kisi.json` `fields` is read the same way.
+
 ### Net names in fields
 Net names are written as in KiCad, or as the last part of a hierarchical name (`IMU_VDD` for
 `/Sensors/IMU_VDD`) when that is unique on the board. A name with spaces or one of `; , = @ >` goes in double
@@ -133,7 +154,7 @@ variants; `kisi config-check <board>` checks it (the viewer runs the same check 
 | `stackup` | per dielectric (`index` 0 = the layer below F.Cu): `material`, `epsilon_r` (1 … 20), `loss_tangent` (0 … 0.2), `thickness` (mm); `solder_mask.epsilon_r` |
 | `net_classes` | per net class: `target_ohm` (10 … 200; differential when `diff` is true), `diff`, `profile` (an id from `kisi profiles`), `nets` (names or patterns given to this class; defines a class the project does not have) |
 | `connector_ends` | per connector where lanes leave the board: what sits there and the channel behind it (below) |
-| `fields` | footprint fields laid over the board: `ref`, `name` (`PI_*`), `value` |
+| `fields` | footprint fields laid over the board: `ref`, `name` (`PI_*`, or a [capacitor rating field](#capacitor-ratings-from-the-parts-fields)), `value` |
 | `variant` | the assembly variant to analyse: a KiCad 10 variant of the board, one of `variants`, or `default` (the board file as it is) |
 | `variants` | assembly variants for boards without KiCad 10 variants, or on top of one of the same name (below) |
 | `gaps` | `dismissed`: items of name-based gaps that do not apply, with a reason (below) |

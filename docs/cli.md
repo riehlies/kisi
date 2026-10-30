@@ -172,7 +172,7 @@ Missing or default data: each gap has `id`, `priority` (high, medium, low), `are
 parts with their MPN; `"dismissable": true` on items found only by a name; items of gaps that mix categories
 carry their own `views` – a dielectric with only a default tanδ matters for the channel, not the impedance – and
 the gap's `views` are then those of its items; capacitors in `cap-ratings` carry their `package` and, where the
-part's own fields name them, a `suggest`ed PI_CAP value). `views` in the result says per
+part's own fields give part of the rating – a dielectric without a rated voltage –, a `suggest`ed PI_CAP value). `views` in the result says per
 category whether there is anything to check (`applicable`, `why`) and its `state`: `ready` (no open high or medium
 gap), `open`, or `nothing to check`. `--for impedance|channel|power` keeps the gaps of one category.
 `dismissed` lists the items left out because `gaps.dismissed` in kisi.json dismisses them, with the reason (and

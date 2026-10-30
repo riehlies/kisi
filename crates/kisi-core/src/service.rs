@@ -1270,7 +1270,7 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
         "series_parts": r.series.iter().map(|x| json!({"ref": x.refdes, "value": x.value, "kind": x.kind, "from": x.from, "to": x.to, "r_ohm": x.r, "l_nh": nh(x.l), "lp_nh": x.lp.map(nh), "rp_ohm": x.rp, "z_100mhz_ohm": (x.z100 * 10.0).round() / 10.0, "source": x.source})).collect::<Vec<_>>(),
         "domain_ends": r.boundary,
         "grid": {"cell_mm": r.cell_mm, "nodes": r.nodes, "layers": r.layers.len()},
-        "note": "AC grid of the rail domain (the rail and the nets behind series resistors, inductors and ferrite beads, up to the regulators) over all layers against ground (ideal reference); series parts with R, L and the bead's lossy part (estimates unless PI_SERIES or the value gives them); capacitors with ESR, ESL, mounting and DC-bias-derated capacitance (estimates unless PI_CAP); targets from each IC's current step unless PI_TARGET. Design check, not a signoff PDN simulation.",
+        "note": "AC grid of the rail domain (the rail and the nets behind series resistors, inductors and ferrite beads, up to the regulators) over all layers against ground (ideal reference); series parts with R, L and the bead's lossy part (estimates unless PI_SERIES or the value gives them); capacitors with ESR, ESL, mounting and DC-bias-derated capacitance (estimates unless PI_CAP; rated voltage and dielectric also from the parts' rating fields or value, an assumed rating otherwise); targets from each IC's current step unless PI_TARGET. Design check, not a signoff PDN simulation.",
         "warnings": r.warnings
     })
 }

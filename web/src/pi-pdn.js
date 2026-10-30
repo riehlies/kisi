@@ -1,5 +1,14 @@
 "use strict";
 // ---- AC impedance of a rail (PDN) -----------------------------------------------------
+// nominal value, rated voltage and dielectric with where they came from (the core's cap_rating: PI_CAP, a field
+// of the part, the value text; an assumed rating is an estimate)
+function capRatingTitle(c) {
+  const from = (f) => f === "value" ? "value text" : f || "";
+  const rated = c.rated_v ? `, rated ${fmtSI(c.rated_v, "V")} (${c.rated_assumed ? "assumed – estimate" : from(c.rated_from)})` : "";
+  const diel = c.dielectric ? `, ${c.dielectric}${c.dielectric_from ? ` (${from(c.dielectric_from)})` : ""}` : "";
+  return `nominal ${c.value}${rated}${diel}`;
+}
+
 function renderPdn(body, setup) {
   let r;
   r = S.pdnRes && S.pdnRes.get(setup.net);
@@ -62,7 +71,7 @@ function renderPdnIc(host, setup, lumped) {
   const rows = pt.caps.slice(0, 30).map((l) => {
     const c = r.caps[l.cap];
     const fl = c.flags.length ? ` <span class="warn" title="${esc(c.flags.join("; "))}">!</span>` : "";
-    return `<tr class="click" data-cap="${l.cap}"><td>${esc(l.refdes)}${fl}</td><td title="nominal ${esc(c.value)}${c.rated_v ? `, rated ${fmtSI(c.rated_v, "V")}${c.rated_assumed ? " (assumed)" : ""}` : ""}${c.dielectric ? " " + esc(c.dielectric) : ""}">${capVal(c.c_eff)}${c.c_eff < 0.95 * c.c_nom ? ` <span class="muted">(${fmt(100 * c.c_eff / c.c_nom, 0)} %)</span>` : ""}</td><td>${c.package}</td><td class="num">${fmtSI(l.l_path, "H")}</td><td class="num">${fmtSI(l.l_total, "H")}</td><td class="num">${fHz(l.srf_hz)}</td><td class="num">${fmt(l.dist_mm, 1)}</td></tr>`;
+    return `<tr class="click" data-cap="${l.cap}"><td>${esc(l.refdes)}${fl}</td><td title="${esc(capRatingTitle(c))}">${capVal(c.c_eff)}${c.c_eff < 0.95 * c.c_nom ? ` <span class="muted">(${fmt(100 * c.c_eff / c.c_nom, 0)} %)</span>` : ""}</td><td>${c.package}</td><td class="num">${fmtSI(l.l_path, "H")}</td><td class="num">${fmtSI(l.l_total, "H")}</td><td class="num">${fHz(l.srf_hz)}</td><td class="num">${fmt(l.dist_mm, 1)}</td></tr>`;
   }).join("");
   const recs = pt.recommendations.map((x) => x.count
     ? `<li><b>${x.count} × ${esc(x.value)} ${esc(x.package)}</b> ${x.radius_mm >= 49.9 ? "anywhere on the rail" : `within <b>${fmt(x.radius_mm, 1)} mm</b> of ${esc(pt.refdes)}`} <span class="muted">(${fHz(x.f_lo)} … ${fHz(x.f_hi)}; ${esc(x.note)})</span></li>`
@@ -80,7 +89,7 @@ function renderPdnIc(host, setup, lumped) {
     ${peaks ? `<p class="note"><b>Anti-resonances</b></p><ul class="plain">${peaks}</ul>` : ""}
     <div class="tablewrap"><table class="xs-table"><thead><tr><th>Capacitor</th><th>C at ${fmtSI(Math.abs(dn(pt.net).voltage), "V")}</th><th>Package</th><th class="num" title="loop inductance from the IC through the planes and vias to the capacitor pad">L path</th><th class="num" title="L path + ground-side mounting + ESL">L total</th><th class="num">Resonance</th><th class="num">mm</th></tr></thead><tbody>${rows}</tbody></table></div>
     ${flagged ? `<p class="note"><b>Flags</b></p><ul class="plain">${flagged}</ul>` : ""}
-    <p class="note">AC grid (${fmt(r.cell_mm, 2)} mm cells, ${r.nodes.toLocaleString("en-US")} nodes, ${r.layers.length} layers) of the rail domain copper against ground as ideal reference: plane capacitance and μ0·d per square, vias with their barrel inductance, the IC's rail pins shorted as one port. Capacitors with ESR, ESL and ground-side mounting by package and DC-bias derating (estimates unless a PI_CAP field gives them); regulator ${esc(r.regulators.join(", ") || "none")} as 2 mΩ + 20 nH (estimate). Targets from the IC's current step unless PI_TARGET. Recommendations add parts next to the IC until the target holds, then widen the radius as far as the result allows (estimate).</p>
+    <p class="note">AC grid (${fmt(r.cell_mm, 2)} mm cells, ${r.nodes.toLocaleString("en-US")} nodes, ${r.layers.length} layers) of the rail domain copper against ground as ideal reference: plane capacitance and μ0·d per square, vias with their barrel inductance, the IC's rail pins shorted as one port. Capacitors with ESR, ESL and ground-side mounting by package and DC-bias derating (estimates unless a PI_CAP field gives them; the rated voltage also from the parts' rating fields or value – hover a capacitor for its source); regulator ${esc(r.regulators.join(", ") || "none")} as 2 mΩ + 20 nH (estimate). Targets from the IC's current step unless PI_TARGET. Recommendations add parts next to the IC until the target holds, then widen the radius as far as the result allows (estimate).</p>
     ${r.warnings.map((w) => `<div class="warn">${esc(w)}</div>`).join("")}`;
   host.querySelectorAll("[data-ic]").forEach((b) => b.onclick = () => { S.pdnIcSel = b.dataset.ic; renderPdnIc(host, setup, lumped); draw(); });
   const keepOpen = host.querySelector("details.acc");

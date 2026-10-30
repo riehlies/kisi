@@ -48,10 +48,12 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   it); the forms do not parse field values themselves (the core's check reports what it cannot read); no
   step-by-step undo (per gap for dismissals, "Discard draft" for all); values from datasheets or curves stay on the
   agent path, by design.
-- **Capacitor ratings from part fields.** Many libraries carry the rated voltage and the dielectric in fields
-  (`Voltage Rating`, `Dielectric`; XIAO nRF54LM20A: on every capacitor), but kisi reads them only from the Value
-  text or `PI_CAP`, so `kisi gaps` lists such capacitors under cap-ratings and the DC-bias derating uses an
-  assumed rating. Read these fields too (their usual names belong in `data/components.json`).
+- **Capacitor ratings from part fields** – **done:** the rated voltage and dielectric come from PI_CAP, then the
+  parts' rating fields (`Voltage Rating`, `Dielectric`, `Temperature Coefficient`, … – the names, surveyed on the
+  example boards, the XIAO and the JLC/LCSC library, in `data/components.json`), then the Value text, then the
+  description; the PDN names the source of each value, `kisi gaps` lists only capacitors still without a rating,
+  and the viewer's capacitor form suggests what the fields give in part. The XIAO and ThunderScope need no
+  `PI_CAP` for it any more (ThunderScope's 256 entries removed from its kisi.json, results unchanged).
 - **Power tree per supply case.** Boards that run from USB or a battery (a PMIC power path) have one tree per case:
   on the XIAO, VSYS is VBUS on USB and VBAT on battery, and the debugger is supplied only on USB; while charging, the
   battery charge current is a load on VSYS. Today one tree has to stand for all cases.

@@ -456,6 +456,7 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
 
     // --- header / stackup ---------------------------------------------------
     let mut layer_names_from_header: Vec<String> = Vec::new();
+    let mut setup_stackup: Option<&Node> = None;
     for it in &items {
         match it.head() {
             Some("version") => b.version = it.atom(1).unwrap_or("").to_string(),
@@ -469,11 +470,7 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
                     }
                 }
             }
-            Some("setup") => {
-                if let Some(st) = it.child("stackup") {
-                    b.stackup = parse_stackup(st);
-                }
-            }
+            Some("setup") => setup_stackup = it.child("stackup"),
             Some("net") => {
                 if let (Some(id), Some(name)) = (it.f64(1), it.atom(2)) {
                     nets.declare(id as u32, name);
@@ -495,9 +492,16 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
         }
     }
 
+    if let Some(st) = setup_stackup {
+        let (su, w) = parse_stackup(st, &layer_names_from_header);
+        b.stackup = su;
+        b.warnings.extend(w);
+    }
     if b.stackup.is_none() {
         b.stackup = Some(default_stackup(&layer_names_from_header));
-        b.warnings.push("no stackup in the file – default values used (1.6 mm FR4, εr 4.5)".into());
+        if setup_stackup.is_none() {
+            b.warnings.push("no stackup in the file – default values used (1.6 mm FR4, εr 4.5)".into());
+        }
     }
     let su = b.stackup.clone().unwrap();
     let lidx = |name: &str| su.layer_index(name).map(|i| i as u16);
@@ -1016,15 +1020,31 @@ fn add_pad_tracks(b: &mut Board) {
     b.tracks.extend(new_tracks);
 }
 
-fn parse_stackup(st: &Node) -> Option<Stackup> {
+/// The stackup of `(setup (stackup …))` and the warnings about it. Some files list the whole layer
+/// stack more than once (seen in KiCad 8 and 10 files of the kicad-happy corpus): the layers after the
+/// first repeated name are ignored. The copper layers follow the board's `(layers …)` section
+/// (`header_cu`, any order): a stackup copper layer missing there is dropped (its dielectrics merged
+/// with the neighbours), and a board copper layer missing in the stackup makes the stackup unusable
+/// (None: kisi's default stackup for the board's layers).
+fn parse_stackup(st: &Node, header_cu: &[String]) -> (Option<Stackup>, Vec<String>) {
+    let mut warnings = Vec::new();
     let mut copper = Vec::new();
     let mut diel: Vec<Dielectric> = Vec::new();
     let mut pending: Vec<Dielectric> = Vec::new();
     let mut mask_top = None;
     let mut mask_bottom = None;
-    for l in st.children("layer") {
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let layers: Vec<&Node> = st.children("layer").collect();
+    for (k, l) in layers.iter().enumerate() {
         let name = l.atom(1).unwrap_or("").to_string();
         let ty = l.child_str("type").unwrap_or("").to_string();
+        if !name.is_empty() && !seen.insert(name.clone()) {
+            let copies = layers.iter().filter(|x| x.atom(1) == Some(name.as_str())).count();
+            warnings.push(format!(
+                "stackup: the file lists the layer stack {copies} times ('{name}' repeats after {k} entries) – the first copy is used, the repeated entries are ignored"
+            ));
+            break;
+        }
         if name.ends_with(".Cu") {
             if !copper.is_empty() {
                 diel.push(merge_dielectrics(&pending));
@@ -1086,9 +1106,54 @@ fn parse_stackup(st: &Node) -> Option<Stackup> {
         }
     }
     if copper.len() < 2 || diel.len() != copper.len() - 1 {
-        return None;
+        return (None, warnings);
     }
-    Some(Stackup { copper, dielectrics: diel, mask_top, mask_bottom, from_file: true })
+    if !header_cu.is_empty() {
+        // copper layers of the stackup that the board does not have: merge the dielectrics around them
+        let mut i = 0;
+        let mut dropped = Vec::new();
+        while i < copper.len() && copper.len() > 2 {
+            if header_cu.contains(&copper[i].name) {
+                i += 1;
+                continue;
+            }
+            let gone = copper.remove(i);
+            if i == 0 {
+                diel.remove(0);
+            } else if i == copper.len() {
+                diel.pop();
+            } else {
+                let (a, c) = (diel[i - 1].clone(), diel.remove(i));
+                let cu = Dielectric {
+                    name: gone.name.clone(),
+                    kind: "copper".into(),
+                    material: a.material.clone(),
+                    thickness: gone.thickness,
+                    epsilon_r: a.epsilon_r,
+                    loss_tangent: a.loss_tangent,
+                    assumed: vec![],
+                };
+                diel[i - 1] = merge_dielectrics(&[a, cu, c]);
+            }
+            dropped.push(gone.name);
+        }
+        if !dropped.is_empty() {
+            warnings.push(format!(
+                "stackup: {} not in the board's layer list – left out, the dielectrics around merged",
+                dropped.join(", ")
+            ));
+        }
+        let missing: Vec<&str> =
+            header_cu.iter().filter(|n| copper.iter().all(|c| &c.name != *n)).map(String::as_str).collect();
+        if !missing.is_empty() || copper.iter().any(|c| !header_cu.contains(&c.name)) {
+            warnings.push(format!(
+                "stackup: the board's copper layer(s) {} are missing in the file's stackup – default values used (1.6 mm FR4, εr 4.5)",
+                missing.join(", ")
+            ));
+            return (None, warnings);
+        }
+    }
+    (Some(Stackup { copper, dielectrics: diel, mask_top, mask_bottom, from_file: true }), warnings)
 }
 
 fn merge_dielectrics(parts: &[Dielectric]) -> Dielectric {
@@ -1424,6 +1489,62 @@ mod tests {
     }
     /// KiCad 10 board (format 20260206): board-level variant list and per-footprint
     /// overrides, as written by `PCB_IO_KICAD_SEXPR::formatVariants` and the footprint writer.
+    /// A stackup that lists the whole layer stack twice (a KiCad 10 file of the corpus, OpenRX-Mono;
+    /// a KiCad 8 file had it seven times): the first copy is used, with a warning; a stackup copper
+    /// layer the board does not have is left out, a missing one gives the default stackup.
+    #[test]
+    fn repeated_stackup() {
+        let copy = |d: usize| {
+            format!(
+                r#"(layer "F.Mask" (type "Top Solder Mask") (thickness 0.01))
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric {}" (type "prepreg") (thickness 0.1) (material "FR4") (epsilon_r 4.2) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.0175))
+    (layer "dielectric {}" (type "core") (thickness 1.2) (material "FR4") (epsilon_r 4.6) (loss_tangent 0.02))
+    (layer "In2.Cu" (type "copper") (thickness 0.0175))
+    (layer "dielectric {}" (type "prepreg") (thickness 0.1) (material "FR4") (epsilon_r 4.2) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))
+    (layer "B.Mask" (type "Bottom Solder Mask") (thickness 0.01))"#,
+                d + 1,
+                d + 2,
+                d + 3
+            )
+        };
+        let pcb = |layers: &str, stack: &str| {
+            format!(
+                r#"(kicad_pcb (version 20260206) (generator "pcbnew")
+  (layers {layers} (25 "Edge.Cuts" user))
+  (setup (stackup {stack}))
+  (net 0 "") (net 1 "S")
+  (segment (start 0 0) (end 10 0) (width 0.2) (layer "In2.Cu") (net 1)))"#
+            )
+        };
+        let four = r#"(0 "F.Cu" signal) (4 "In1.Cu" signal) (6 "In2.Cu" signal) (2 "B.Cu" signal)"#;
+        let b = load_pcb(&pcb(four, &format!("{} {}", copy(0), copy(3)))).unwrap();
+        let su = b.stackup();
+        assert!(su.from_file);
+        assert_eq!(su.copper.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["F.Cu", "In1.Cu", "In2.Cu", "B.Cu"]);
+        assert_eq!(su.dielectrics.len(), 3);
+        assert!((su.dielectrics[1].thickness - 1.2).abs() < 1e-9 && (su.dielectrics[1].epsilon_r - 4.6).abs() < 1e-9);
+        assert!(su.mask_top.is_some() && su.mask_bottom.is_some());
+        assert_eq!(b.tracks.iter().filter(|t| !t.pad).map(|t| t.layer).collect::<Vec<_>>(), [2]);
+        assert!(b.warnings.iter().any(|w| w.contains("lists the layer stack 2 times")), "{:?}", b.warnings);
+        // the board has no In2.Cu: left out, the dielectrics around it merged (series εr)
+        let three = r#"(0 "F.Cu" signal) (4 "In1.Cu" signal) (2 "B.Cu" signal)"#;
+        let b = load_pcb(&pcb(three, &copy(0))).unwrap();
+        let su = b.stackup();
+        assert_eq!(su.copper.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["F.Cu", "In1.Cu", "B.Cu"]);
+        let d = &su.dielectrics[1];
+        assert!((d.thickness - 1.3175).abs() < 1e-9, "{}", d.thickness);
+        let er = 1.3175 / (1.2 / 4.6 + 0.0175 / 4.6 + 0.1 / 4.2);
+        assert!((d.epsilon_r - er).abs() < 1e-9, "{} {er}", d.epsilon_r);
+        assert!(b.warnings.iter().any(|w| w.contains("In2.Cu not in the board's layer list")), "{:?}", b.warnings);
+        // the board has a copper layer the stackup lacks: default stackup for the board's layers
+        let six = r#"(0 "F.Cu" signal) (4 "In1.Cu" signal) (6 "In2.Cu" signal) (8 "In3.Cu" signal) (2 "B.Cu" signal)"#;
+        let b = load_pcb(&pcb(six, &copy(0))).unwrap();
+        assert!(!b.stackup().from_file && b.stackup().n() == 5);
+        assert!(b.warnings.iter().any(|w| w.contains("In3.Cu are missing")), "{:?}", b.warnings);
+    }
     #[test]
     fn kicad10_variants_and_sheets() {
         let pcb = r#"(kicad_pcb (version 20260206) (generator "pcbnew") (generator_version "10.0")

@@ -63,7 +63,9 @@ reports a pattern that matches no net and a net given to two classes.
 ### Interface profile
 The channel check judges every lane against an interface profile (transmitter, receiver, limits) from
 `data/interfaces.json`. kisi assigns one automatically – by net name first, then by class name, the first
-matching rule of the file – unless `net_classes.<class>.profile` in `<board>.kisi.json`, the viewer's choice or
+matching rule of the file; a profile with `context` rules (the DDR3 ones: `DDR3` in the sheet path, net or class
+name; DDR4 address/command: `DDR`, `DRAM` or `MEM`) only where its context matches, so that `/FPGA-DDR3L/A0` is
+DDR3 address/command (`ddr3_ca`) and an address bus `/CPU/A0` no memory line at all – unless `net_classes.<class>.profile` in `<board>.kisi.json`, the viewer's choice or
 `--class CLASS=PROFILE` sets one. `kisi profiles` lists the profiles; every value in the file carries its source
 (standard, vendor guideline, or a kisi guide value).
 

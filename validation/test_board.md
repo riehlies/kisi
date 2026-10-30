@@ -5,7 +5,7 @@ prepreg and one Aisler board; second order: JLC 4 / 6 layers with 3313 prepreg),
 component list, 3D cases (written, not run), kisi check, measurement plan and ordering checklist in
 [`test_board/README.md`](test_board/README.md). v3 (2026-10-30): 2.92 mm connector (Samtec 292-J-P-EP-ST-EL-01) and
 a 40 GHz plan; the footprint is generated from Samtec's drawing (**DRAFT**), the launch inside it is parametric and
-**not yet optimised** (kisi-fdtd plan below); DRC run with KiCad 7 on down-converted copies (no errors).
+optimised on the board side in a first kisi-fdtd step (|S11| −21 dB at worst to 40 GHz; the connector itself still to be checked in CST); DRC run with KiCad 7 on down-converted copies (no errors).
 Idea: select reference cases that can be made with the standard stackups of JLCPCB and Aisler, order them,
 simulate the same PCB files in CST and kisi-fdtd, and measure them on a VNA.
 
@@ -27,7 +27,7 @@ Screw-on, solderless edge-launch connectors at the board edge, reusable across a
 - **Decision (maintainer, 2026-10-30, on the RF group's advice): 2.92 mm (K), Samtec `292-J-P-EP-ST-EL-01`** –
   50 Ω jack, edge launch, compression mount, performance to 40 GHz, PCB thickness .040–.100 in (1.02–2.54 mm, option
   `-01`), two #1-72 socket-head screws with split washers, 0.5–0.8 in-lb.
-  - Why: orderable at DigiKey (about 6 weeks) and Mouser, which the maintainer can order from; the thickness range
+  - Why: in stock at DigiKey (maintainer, 2026-10-30), also at Mouser, which the maintainer can order from; the thickness range
     covers every board (1.55–2.05 mm, the 2.0 mm 8-layer board included); solderless and reusable; intermates with
     3.5 mm and SMA cables (to their own limit).
   - Replaces the v2 choice, SMA Southwest Microwave `292-04A-14` (27 GHz, planned to 26.5 GHz; no distributor).
@@ -41,12 +41,11 @@ Screw-on, solderless edge-launch connectors at the board edge, reusable across a
   calls it a general footprint, not optimised for electrical performance. **DRAFT** until checked. Samtec's drawing,
   KiCad footprint and STEP model are not in the repository (their terms forbid redistributing the models).
 - **Launch:** Samtec's general signal pad (0.52 mm, 43.5 Ω on our 0.21 mm 7628 prepreg) is replaced by our launch
-  inside the same ground pads: the pin (Ø0.18 mm, 0.74 mm beyond the edge) rests on a tip 0.23 mm wide at the edge
-  that tapers to the 50 Ω grounded coplanar launch (7628: 0.315 / gap 0.3 mm) over 0.85 mm, with a via fence, to
-  6.48 mm. Tip, taper, pad width / length / gap, the ground cut under the pad and the fence are parameters, to be
-  optimised in kisi-fdtd before ordering (README section 2, launch optimisation; first board-side runs: |S11| −18.9 dB
-  at worst to 40 GHz with the launch width to the edge, Samtec's 0.52 mm pad −14.6 dB); CST cross-checks the launch
-  with Samtec's STEP model.
+  inside the same ground pads: the pin (Ø0.18 mm, 0.74 mm beyond the edge) rests on the 50 Ω grounded coplanar launch
+  (7628: 0.315 / gap 0.3 mm), which runs to the edge with a via fence (0.55 mm) to 6.48 mm. Tip, taper, pad width /
+  length / gap, the ground cut under the pad and the fence are parameters (README section 2). First kisi-fdtd
+  optimisation step (board side, the connector's coax not modelled): |S11| −21.0 dB at worst to 40 GHz; Samtec's
+  0.52 mm pad −14.6 dB, its 0.23 mm tip −16.8 dB. CST cross-checks the whole transition with Samtec's STEP model.
 - **Benchmark:** Samtec's RF Characterization Report for the part (series 292, report revision 2023-06-01, tested
   2023-03; fixture PCB-240MM-112613-SIG-0, four layers Isola I-Tera MT40, 50 Ω grounded coplanar trace, launch
   optimised with a full-wave solver; PNA N5227B, 10 MHz–40 GHz, Maury 2.92 mm mechanical calibration): one connector +
@@ -121,6 +120,6 @@ Aisler (priced by area) one dense 35 × 144 mm board.
 - Coupon generator and KiCad output: 1–2 days.
 - Launch optimisation in kisi-fdtd: 1–2 days (README section 2: about 20 runs of 15–40 min on 2 cores).
 - 3D runs: a few hours of machine time.
-- Order: boards 1–2 weeks; connectors about 6 weeks (order them first).
+- Order: 1–2 weeks (the boards; the connectors are in stock at DigiKey).
 - Measurement: 1 day.
 - Evaluation: 1 day.

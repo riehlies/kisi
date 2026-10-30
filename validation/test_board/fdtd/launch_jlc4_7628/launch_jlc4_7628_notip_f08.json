@@ -653,7 +653,7 @@
  "end_db": -50,
  "max_steps": 150000,
  "nf": 400,
- "name": "launch_jlc4_7628_notaper",
+ "name": "launch_jlc4_7628_notip_f08",
  "monitors": [
   {
    "axis": "z",
@@ -683,9 +683,9 @@
  ],
  "meta": {
   "group": "launch",
-  "title": "Samtec 292-J-P-EP-ST-EL-01 launch on JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template): notaper",
+  "title": "Samtec 292-J-P-EP-ST-EL-01 launch on JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template): notip_f08",
   "params": {
-   "variant": "notaper",
+   "variant": "notip_f08",
    "tip_w": 0.315,
    "taper_len": 0.85,
    "pad_w": 0.315,
@@ -701,10 +701,10 @@
     "rows": 2,
     "row_pitch": 0.8,
     "offset": 0.4,
-    "hole_keep": 0.45,
-    "note": "fence vias along both coplanar gaps: columns from first_x every pitch to launch_length - 0.35, rows offset from the gap edge; none within hole_keep of a screw hole's copper"
+    "hole_keep": 0.45
    },
    "body": false,
+   "pin": false,
    "line_w": 0.345
   },
   "stackup": "tb_jlc4_7628",

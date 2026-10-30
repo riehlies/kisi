@@ -1,11 +1,11 @@
 {
- "case": "launch_jlc4_7628_notaper",
+ "case": "launch_jlc4_7628_tip023_f08",
  "meta": {
   "group": "launch",
-  "title": "Samtec 292-J-P-EP-ST-EL-01 launch on JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template): notaper",
+  "title": "Samtec 292-J-P-EP-ST-EL-01 launch on JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template): ours",
   "params": {
-   "variant": "notaper",
-   "tip_w": 0.315,
+   "variant": "tip023_f08",
+   "tip_w": 0.229,
    "taper_len": 0.85,
    "pad_w": 0.315,
    "pad_len": 0.85,
@@ -57,7 +57,8 @@
   ],
   "mirror": null,
   "target": "|S11| < -20 dB to 40 GHz at the edge port (Samtec's own fixture: -23 to -25 dB, report 2023-06-01)",
-  "limits": "connector coax and pin not modelled; port 1 is a lumped port at the edge; the jaw is approximated (body)"
+  "limits": "connector coax and pin not modelled; port 1 is a lumped port at the edge; the jaw is approximated (body)",
+  "renamed_from": "ours"
  },
  "date": "2026-10-30",
  "fmax": 40000000000.0,
@@ -69,7 +70,7 @@
     23201
    ],
    "dt": 5.89441122835038e-14,
-   "seconds": 278.4,
+   "seconds": 335.6,
    "dfine": 0.035,
    "dmax": null
   }

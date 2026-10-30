@@ -5,7 +5,8 @@ prepreg plus one Aisler board; second order: JLC 4 / 6 layers with 3313 prepreg)
 impedances are on target with kisi's field solver, the PDN and capacitor coupons have a measurement method and a
 component list, and the 3D cases are written (**not run**). The connector is the 2.92 mm Samtec
 `292-J-P-EP-ST-EL-01` (40 GHz); its footprint is generated from Samtec's drawing and is a **DRAFT**, and the launch
-inside it is parametric and **not yet optimised** (section 2). **DRC:** KiCad 7 (the workspace has no KiCad 8) on
+inside it is parametric, optimised on the board side in a first kisi-fdtd step (|S11| −21 dB at worst to 40 GHz;
+the connector's coax not in the model, section 2). **DRC:** KiCad 7 (the workspace has no KiCad 8) on
 copies converted to KiCad 7 syntax, zones refilled: no errors, no unconnected items (section 13); the maintainer
 reruns it in KiCad 8 / 9. The plan behind this is `../test_board.md`.
 
@@ -52,7 +53,7 @@ with a component list; a pin-wide launch with a plane opening for the thin prepr
   launch, solderless compression mount (field replaceable), performance to **40 GHz**, PCB thickness .040–.100 in
   (1.02–2.54 mm, option `-01`: every board fits, the 2.05 mm 8-layer board included), two #1-72 socket-head screws
   with #1 split washers (1/16 in hex key), **0.5–0.8 in-lb**; intermates with 3.5 mm and SMA. Why: orderable at
-  DigiKey (about 6 weeks) and Mouser, solderless and reusable. Price 52.65 USD for one (Samtec, 2026-10-30). Needed:
+  DigiKey (in stock, maintainer 2026-10-30) and Mouser, solderless and reusable. Price 52.65 USD for one (Samtec, 2026-10-30). Needed:
   **4** (2 per 2-port coupon, 4 for the 4-port coupons; they move between coupons), a fifth as a spare. Sources and
   the drawing's dimensions: `connectors.json` (`connector`).
 - Data from Samtec (supplied by the maintainer 2026-10-30, **not in the repository**: the terms of the SnapMagic
@@ -73,7 +74,7 @@ with a component list; a pin-wide launch with a plane opening for the thin prepr
 |---|---|---|
 | Screw holes | 2X Ø.0810 in, 2X .1100 in from the edge, 2X .230 in apart | Ø2.06 mm plated, GND, 2.79 mm from the edge, ±2.92 mm; Ø2.7 mm pad on every copper layer |
 | Ground pads | .2550 in deep, .414 in overall, inner edges .114 in apart, 45° chamfers from .205 in to .314 in, fingers .025 in deep, .0220 in apart at the edge | the same, on the top and bottom copper (where the jaws clamp; Samtec's model has them on every layer: our planes do that inside, and PWR islands stay clear), mask open both sides (+0.05 mm) |
-| Signal pad | .0205 in wide (0.52 mm), tip .0090 in (0.23 mm) | our launch (below): tip 0.23 mm tapering to the launch width over 0.85 mm (taper length from the SnapMagic model) |
+| Signal pad | .0205 in wide (0.52 mm), tip .0090 in (0.23 mm) | our launch (below): by default the launch width to the edge; Samtec's 0.23 mm tip tapering over 0.85 mm (taper length from the SnapMagic model) as an option |
 | Edge | copper to the edge | pulled back 0.2 mm (JLC rule): the pin still rests 0.54 mm on the tip, the lip 0.18 mm on the fingers |
 | Body, courtyard | body .375 in wide | Fab: body 9.53 mm wide, 5.08 mm on the board, 11.57 mm outside; courtyard ±5.51 mm, 6.73 mm on the board |
 
@@ -81,75 +82,69 @@ The generator checks that no copper of another net lies under the ground pads (t
 keep clear of the screw holes. The finger contour (0.84 mm half-width at 0.64 mm, 0.35 mm at 0.45 mm) and the taper
 length come from the SnapMagic footprint, not from dimensions on the drawing.
 
-### Launch (parametric, not yet optimised)
+### Launch (parametric, first optimisation step)
 
 Samtec's general signal pad (0.52 mm wide, 1.19 mm from the ground pads, 6.48 mm long) is 43.5 Ω on the 0.21 mm 7628
 prepreg (kisi field solver): Samtec states the footprint is not optimised for electrical performance. Our launch
-inside the same ground pads (`connectors.json` `launch`, `null` = the stackup's designed launch):
+inside the same ground pads (`connectors.json` `launch`, `null` = the stackup's designed launch); the defaults are the
+best of the first kisi-fdtd runs below:
 
 | Parameter | Default (7628 / 3313) | Meaning |
 |---|---|---|
-| `tip_w`, `taper_len` | 0.23 mm, 0.85 mm | the tip at the edge (the pin rests on it) and its taper to the pad width |
-| `pad_w`, `pad_len`, `pad_gap` | = launch: 0.315 mm, no extra pad, gap 0.3 mm / 0.255 mm, gap 0.105 mm | an optional wider pad after the taper (Samtec: 0.52 mm × 6.48 mm, gap 1.19 mm) |
+| `tip_w`, `taper_len` | `null` (the launch width to the edge), 0.85 mm | an optional narrower tip at the edge tapering to the pad width (Samtec: 0.23 mm; a sweep point) |
+| `pad_w`, `pad_len`, `pad_gap` | = launch: 0.315 mm, no extra pad, gap 0.3 mm / 0.255 mm, gap 0.105 mm | an optional wider pad (Samtec: 0.52 mm × 6.48 mm, gap 1.19 mm) |
 | `w`, `gap` (design) | 0.315 / 0.3 mm (50.0 Ω) / 0.255 / 0.105 mm with the In1 opening (50.05 Ω) | the grounded coplanar launch |
 | `launch_length` | 6.48 mm | to the end of the ground pads, then the coupon's 50 Ω line |
 | `gnd_cut` | none / the design's In1 opening (0.465 mm) over the whole launch | an opening in the first plane under the tip / pad |
-| `fence` | 0.8 mm pitch from 0.8 mm, two rows 0.4 / 1.2 mm off the gap, none within 0.45 mm of a screw hole | GND vias into all planes |
+| `fence` | 0.55 mm pitch from 0.5 mm, two rows 0.4 / 1.2 mm off the gap, none within 0.45 mm of a screw hole | GND vias into all planes (0.55 mm: hole-to-hole 0.25 mm, the DRC minimum) |
 
-The top ground is the union of the Samtec ground pads and the coplanar pours. The outer fence row (1.66 mm off the
-centre) lies in the ground pads, where the mask is open and the jaw edge (slot wall at 1.59 mm) presses: open via
-holes in the contact area are harmless electrically; if the jaw should sit on flat copper, order plugged vias or move
-that row inside 1.45 mm (a fence parameter). Change the values and run
-`make_coupons.py --reuse-design` (the boards, manifests and 3D cases are rewritten in seconds).
+The pin (Ø0.18 mm) rests on the 0.315 mm launch on 7628 and on the 0.255 mm launch on 3313. The top ground is the
+union of the Samtec ground pads and the coplanar pours. The outer fence row (1.66 mm off the centre) lies in the
+ground pads, where the mask is open and the jaw edge (slot wall at 1.59 mm) presses: open via holes in the contact
+area are harmless electrically; if the jaw should sit on flat copper, order plugged vias or move that row inside
+1.45 mm (a fence parameter). Change the values and run `make_coupons.py --reuse-design` (the boards, manifests and 3D
+cases are rewritten in seconds).
 
 ### Launch optimisation (kisi-fdtd)
 
 `make_coupons.py --launch-cases jlc4_7628 [--fdtd-exe …]` writes `fdtd/launch_jlc4_7628/`: the board from its edge to
 the end of the launch plus 2.5 mm of the 50 Ω microstrip, the ground pads top and bottom, the plated screw holes,
 the fence, the mask, port 1 a lumped 50 Ω port at the edge (tip to In1; under a ground cut In1 keeps a 0.25 mm strip
-at the edge), port 2 on the microstrip. The 7628 top prepreg is the same on the 4-, 6- and 8-layer boards, so one
-stackup serves the first order (the planes below In1 differ; check the result on the 6- and 8-layer stacks).
+at the edge), port 2 at the end of the microstrip. The 7628 top prepreg is the same on the 4-, 6- and 8-layer boards,
+so one stackup serves the first order (the planes below In1 differ; check the result on the 6- and 8-layer stacks).
 
-| Case | What | Cells |
-|---|---|---|
-| `ours` | the default launch | 0.82 M |
-| `ours_body` | the same with the connector's top jaw (metal sheets at four heights with its slot, posts along the slot walls and the lip, the screws through it) | 2.12 M |
-| `notaper` | no tip: the launch width to the edge | 0.82 M |
-| `samtec` | Samtec's general pad (0.52 mm, gap 1.19 mm, 6.48 mm) | 0.89 M |
-| `samtec_cut` | the same with In1 cut out under the pad (0.52 mm) | 2.18 M |
-
-- **Not modelled:** the connector's coax and the pin (kisi-fdtd has z-directed cylinders and horizontal sheets only):
-  the edge port stands in for them, so the cases optimise the board side. CST with Samtec's STEP model and a
-  waveguide port on the 2.92 mm interface checks the whole transition (open point).
+- **Not modelled:** the connector's coax (kisi-fdtd has z-directed cylinders and horizontal sheets only): the edge
+  port stands in for it, so the cases optimise the board side. `pin` adds the pin as a strip on the tip; `body` the
+  top jaw (sheets with its slot, posts, the lip). CST with Samtec's STEP model and a waveguide port on the 2.92 mm
+  interface checks the whole transition (open point).
 - **Target:** |S11| < −20 dB to 40 GHz for one launch (Samtec's own optimised fixture on MT40: −23 to −25 dB for one
   connector with 500 mil of trace, report 2023-06-01).
-- **Sweep plan** (after the first runs): one parameter at a time around the best case, about 20 runs –
-  `tip_w` 0.18–0.35 mm, `taper_len` 0.4–1.5 mm, the coplanar `gap` 0.2–0.4 mm with `w` re-solved for 50 Ω, a cut in
-  In1 under the tip (0.3–0.8 mm wide, 0.3–1.0 mm long), the first fence column 0.4–0.8 mm and pitch 0.5–0.8 mm, then a
-  2-D refinement of the two most sensitive parameters, with and without the jaw. Time-gated S11 (TDR) locates the
-  discontinuity. The thin-prepreg (3313) launch follows the same way (its own cases: `--launch-cases jlc4_3313`).
-- **Run time:** 0.9 M cells, 23 000–42 000 steps: 280–680 s per case on this workspace (2 vCPUs shared with other
-  jobs, about half a core each); the jaw cases (2.1–2.2 M cells) about three times that. A sweep of 20 cases: 2–4 h.
-- **First runs (2026-10-30, `fdtd_ref/launch_jlc4_7628/`):**
+- **Results (2026-10-30, `fdtd_ref/launch_jlc4_7628/`):**
 
-  | Case | max \|S11\| 0.5–40 GHz | \|S11\| at 10 / 20 / 30 / 40 GHz | \|S21\| at 40 GHz (≈ 9 mm) |
-  |---|---|---|---|
-  | `notaper` (0.315 / 0.3 mm to the edge) | −18.9 dB at 36.8 GHz | −29.9 / −28.4 / −29.1 / −22.2 dB | −0.84 dB |
-  | `ours` (the default: 0.23 mm tip) | −15.7 dB at 37.2 GHz | −38.0 / −30.5 / −19.9 / −15.7 dB | −0.93 dB |
-  | `samtec` (0.52 mm pad, 1.19 mm gap) | −14.6 dB at 24.8 GHz | −26.6 / −19.7 / −19.5 / −22.0 dB | −1.19 dB |
+  | Case | What | max \|S11\| 0.5–40 GHz | \|S11\| at 10 / 20 / 30 / 40 GHz | \|S21\| at 40 GHz (≈ 9 mm) |
+  |---|---|---|---|---|
+  | `default` | launch width to the edge, fence 0.55 mm | **−21.0 dB** at 36.5 GHz | −29.8 / −28.5 / −28.6 / −25.0 dB | −0.75 dB |
+  | `notip_f05` | the same, fence 0.5 mm | −21.0 dB at 36.4 GHz | −29.9 / −28.5 / −28.7 / −25.0 dB | −0.75 dB |
+  | `notip_f08` | the same, fence 0.8 mm from 0.8 mm (first draft) | −18.9 dB at 36.8 GHz | −29.9 / −28.4 / −29.1 / −22.2 dB | −0.84 dB |
+  | `tip023_f08` | Samtec's 0.23 mm tip, fence 0.8 mm | −15.7 dB at 37.2 GHz | −38.0 / −30.5 / −19.9 / −15.7 dB | −0.93 dB |
+  | `tip023_pin_f08` | the same with the pin | −16.8 dB at 37.0 GHz | −35.6 / −33.2 / −22.1 / −17.3 dB | −0.90 dB |
+  | `samtec` | Samtec's pad (0.52 mm, gap 1.19 mm, 0.23 mm tip), fence 0.8 mm | −14.6 dB at 24.8 GHz | −26.6 / −19.7 / −19.5 / −22.0 dB | −1.19 dB |
+  | `default_body`, `samtec_cut` | with the jaw; Samtec's pad over an In1 cut | not valid yet / not run | | |
 
-  Reading: our 50 Ω coplanar launch inside the Samtec pads is close to the target (−20 dB to 35 GHz, −18.9 dB at the
-  top); Samtec's general pad is not usable on the 0.21 mm prepreg (−14.6 dB, and its sparse fence – the rows move out
-  to the screw holes – lets the plane-pair mode carry power away: \|S21\| −2 dB already at 1 GHz). Without the pin in
-  the model the 0.23 mm tip only adds inductance (worse above 30 GHz); the pin over the tip adds the capacitance the tip
-  compensates, so the tip stays the default until a case with the pin decides. All three show narrow \|S21\| dips at
-  25.5, 27, 35.5 and 37.5 GHz: resonances of the fence / screw-hole region, the first thing to sweep (fence pitch,
-  vias between the holes). Values below about 2 GHz are limited by the edge port (−24 dB at 1 GHz on every case).
-  `ours_body` (the jaw) ran twice and is **not valid yet**: port 1 sees a near short (\|S11\| about 0 dB at low
-  frequency, \|S21\| −30 dB at 1 GHz rising to −2.7 dB at 40 GHz), also after moving the jaw's underside to the
-  copper height and its top off the domain boundary. The jaw approximation (sheets with the slot, the lip next to the
-  edge port, posts) needs debugging before its numbers mean anything. Next: fix that case, the pin as a strip over the
-  tip, then the sweep.
+  Reading: our 50 Ω coplanar launch inside the Samtec pads meets the target on the board side (−21.0 dB worst). The
+  0.8 mm fence left narrow \|S21\| dips at 25.5, 27, 35.5 and 37.5 GHz (resonances of the fence / screw-hole region);
+  0.55 mm from 0.5 mm removes them (and halves the ringing: 12 800 instead of 23 200 steps). Samtec's 0.23 mm tip is
+  inductive on 7628 even with the pin over it (−16.8 dB); Samtec's general pad is not usable on the 0.21 mm prepreg
+  (−14.6 dB, and its sparse fence – the rows move out to the screw holes – lets the plane-pair mode carry power
+  away: \|S21\| −2 dB already at 1 GHz). Values below about 2 GHz are limited by the edge port (−24 dB at 1 GHz on
+  every case). `default_body` (the jaw) ran twice (as `ours_body`) and is **not valid yet**: port 1 sees a near short
+  (\|S11\| about 0 dB at low frequency, \|S21\| −30 dB at 1 GHz rising to −2.7 dB at 40 GHz), also after moving the
+  jaw's underside to the copper height and its top off the domain boundary – the jaw approximation needs debugging.
+- **Run time:** 0.9–1.0 M cells: 120–680 s per case on this workspace (2 vCPUs shared with other jobs); the jaw cases
+  (2.1–2.3 M cells) about 950 s.
+- **Next:** fix the jaw case; the coplanar `gap` 0.2–0.4 mm with `w` re-solved for 50 Ω, `launch_length` 3–6.48 mm, a
+  cut in In1 under the edge (0.3–0.8 mm wide, 0.3–1.0 mm long), the fence row offset; the 6- and 8-layer stacks; the
+  thin-prepreg (3313) launch (`--launch-cases jlc4_3313`); then CST with the STEP model for the whole connector.
 
 ### Frequency plan (2.92 mm, 40 GHz)
 
@@ -486,7 +481,7 @@ G_CAV. P3 Aisler, the TRL set, a second copy of each board (build spread), the s
   shipping.* Take the online quote before ordering; dropping jlc8-7628-d (E_L1L3) or merging the two 8-layer pair
   boards (50 × 72 mm, outside the bracket) are the levers if the 8-layer price is high.
 - **Connectors:** 4 (+1 spare) × Samtec `292-J-P-EP-ST-EL-01` from DigiKey or Mouser, about 52.65 USD each (Samtec's
-  price for one, 2026-10-30) = about 211 USD for 4; **lead time about 6 weeks: order them first**. The #1-72 screws
+  price for one, 2026-10-30) = about 211 USD for 4; in stock at DigiKey (2026-10-30), so the boards (1–2 weeks) set the timeline. The #1-72 screws
   and split washers are on Samtec's drawing (whether they come with the part: check on delivery; spares of both).
   Tools: a torque screwdriver for 0.5–0.8 in-lb (0.06–0.09 N·m) with a 1/16 in hex bit for the board screws, an
   8 in-lb 5/16 in torque wrench for the 2.92 mm cables, a 5/16 in open-end wrench to hold the jack.

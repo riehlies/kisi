@@ -57,7 +57,8 @@
   ],
   "mirror": null,
   "target": "|S11| < -20 dB to 40 GHz at the edge port (Samtec's own fixture: -23 to -25 dB, report 2023-06-01)",
-  "limits": "connector coax and pin not modelled; port 1 is a lumped port at the edge; the jaw is approximated (body)"
+  "limits": "connector coax and pin not modelled; port 1 is a lumped port at the edge; the jaw is approximated (body)",
+  "renamed_from": "samtec"
  },
  "date": "2026-10-30",
  "fmax": 40000000000.0,

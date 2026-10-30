@@ -601,10 +601,10 @@
     "rows": 2,
     "row_pitch": 0.8,
     "offset": 0.4,
-    "hole_keep": 0.45,
-    "note": "fence vias along both coplanar gaps: columns from first_x every pitch to launch_length - 0.35, rows offset from the gap edge; none within hole_keep of a screw hole's copper"
+    "hole_keep": 0.45
    },
    "body": false,
+   "pin": false,
    "line_w": 0.345
   },
   "stackup": "tb_jlc4_7628",

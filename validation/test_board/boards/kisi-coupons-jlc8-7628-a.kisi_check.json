@@ -982,11 +982,11 @@
    "warnings": [],
    "field_solver_run": {
     "planned": 6,
-    "from_cache": 5,
-    "solved_now": 1,
+    "from_cache": 6,
+    "solved_now": 0,
     "failed_now": 0,
     "not_solved": 0,
-    "seconds": 1.9,
+    "seconds": 0,
     "cache": "/root/.cache/kisi/field-cache.json"
    }
   }

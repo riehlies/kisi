@@ -5,7 +5,7 @@
   "vendor": "Samtec",
   "pn": "292-J-P-EP-ST-EL-01",
   "what": "50 Ω 2.92 mm (K) jack, edge launch, solderless compression mount (field replaceable), PCB thickness .040-.100 in (1.02-2.54 mm, option -01), 2 × #1-72 SHCS with #1 split washers, torque 0.5-0.8 in-lb; air dielectric; intermates with 3.5 mm and SMA",
-  "decision": "maintainer, 2026-10-30, on the RF group's advice (2.92 mm to 40 GHz instead of SMA): orderable at DigiKey (about 6 weeks) / Mouser, the -01 thickness range covers every board (1.55-2.05 mm), solderless and reusable",
+  "decision": "maintainer, 2026-10-30, on the RF group's advice (2.92 mm to 40 GHz instead of SMA): in stock at DigiKey (maintainer, 2026-10-30), also Mouser, the -01 thickness range covers every board (1.55-2.05 mm), solderless and reusable",
   "replaces": "Southwest Microwave 292-04A-14 (SMA, 27 GHz; design v2, 2026-10-22): not orderable from DigiKey / Mouser",
   "frequency_max_ghz": 40.0,
   "planning_max_ghz": 40.0,
@@ -208,8 +208,8 @@
  },
  "launch": {
   "_about": "The launch inside the Samtec ground pads, parametric for the optimisation (README section 2). mm, x from the board edge. null = the stackup's designed 50 Ω launch (boards/<stackup>.design.json 'launch': w, gap, and the plane opening of the thin-prepreg boards). Sections: tip (tip_w at the edge, Samtec 0.23 mm) tapering to pad_w at taper_len, pad (pad_w, gap pad_gap) to pad_len, grounded coplanar launch (w, gap) to launch_length, then the coupon's 50 Ω line. The top ground is the union of the Samtec ground pads and the coplanar pours.",
-  "status": "DRAFT (not optimised; kisi-fdtd sweep planned, README section 2)",
-  "tip_w": 0.229,
+  "status": "DRAFT – first kisi-fdtd optimisation step (2026-10-30, README section 2): launch width to the edge (no tip), fence 0.55 mm from 0.5 mm; board side only, the connector's coax / pin / jaw not yet in the model",
+  "tip_w": null,
   "taper_len": 0.85,
   "pad_w": null,
   "pad_len": null,
@@ -231,14 +231,15 @@
    "note": "opening in the first plane under the tip / pad (width across, length from the edge); null = none (7628), or the design's opening along the whole launch (3313 thin prepreg)"
   },
   "fence": {
-   "pitch": 0.8,
-   "first_x": 0.8,
+   "pitch": 0.55,
+   "first_x": 0.5,
    "rows": 2,
    "row_pitch": 0.8,
    "offset": 0.4,
    "hole_keep": 0.45,
-   "note": "fence vias along both coplanar gaps: columns from first_x every pitch to launch_length - 0.35, rows offset from the gap edge; none within hole_keep of a screw hole's copper"
-  }
+   "note": "fence vias along both coplanar gaps: columns from first_x every pitch to launch_length - 0.35, rows offset from the gap edge; none within hole_keep of a screw hole's copper. 0.55 mm (hole-to-hole 0.25 mm, the board's DRC minimum) removes the |S21| dips of the 0.8 mm draft at 25-38 GHz"
+  },
+  "tip_w_note": "null = the launch width to the edge (best in the board-side kisi-fdtd runs: -21.0 dB worst to 40 GHz); Samtec's footprint narrows the tip to 0.229 mm (-15.7 dB, with the pin modelled -16.8 dB): a sweep point until the connector is in the model"
  },
  "layout": {
   "row_pitch": 12.0,

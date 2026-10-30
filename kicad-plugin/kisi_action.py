@@ -81,11 +81,27 @@ def say(msg):
         pass
 
 
-def open_page(path, log, system=None, startfile=None, popen=None, browser=None):
+def allow_foreground(log, user32=None):
+    """Windows: let the browser bring its window to the front. A browser that is already running gets the page as a
+    new tab, and Windows lets it raise its window only when the process asking may do so – this one may (KiCad, in
+    the foreground, started it) and hands the right on (AllowSetForegroundWindow(ASFW_ANY)). Without it the tab
+    opens behind KiCad from the second click on. `user32` is replaced in tests."""
+    try:
+        if user32 is None:
+            import ctypes
+            user32 = ctypes.windll.user32
+        if not user32.AllowSetForegroundWindow(-1):  # ASFW_ANY
+            log("AllowSetForegroundWindow: refused (the browser may open behind KiCad)")
+    except Exception as e:
+        log(f"AllowSetForegroundWindow: {e!r}")
+
+
+def open_page(path, log, system=None, startfile=None, popen=None, browser=None, user32=None):
     """Open the page in the default browser; returns how. Windows: os.startfile with the plain path – the .html
     file's default handler, i.e. the default browser (a file:// URL of a path with umlauts reached Edge as its start
     page in the KiCad 10 test); macOS: `open`; Linux: `xdg-open`; else, and as the fallback, webbrowser with the
-    file:// URL. The arguments are replaced in tests."""
+    file:// URL. Windows lets the browser come to the front first (allow_foreground). The arguments are replaced in
+    tests."""
     if os.environ.get("KISI_NO_BROWSER"):
         return "none (KISI_NO_BROWSER)"
     import platform
@@ -98,6 +114,7 @@ def open_page(path, log, system=None, startfile=None, popen=None, browser=None):
     path = os.path.normpath(os.path.abspath(path))
     tried = []
     if system == "Windows" and startfile:
+        allow_foreground(log, user32)
         try:
             startfile(path)  # noqa: S606 (our own page)
             return f"os.startfile({path!r})"

@@ -117,7 +117,8 @@ model accuracy ([Models and limits](models.md)).
 
 ## From KiCad: the plugin
 A button in KiCad's PCB editor (KiCad 10) opens the open board in the viewer, in
-your default browser, with its `<board>.kisi.json`.
+your default browser, with its `<board>.kisi.json`. It has been tested in KiCad 10 on Windows; Linux and macOS
+should work the same way but are not tested yet – a report of how it went helps (see *Reporting a problem* below).
 
 **Install** – either way, in KiCad's project window: *Plugin and Content Manager*
 - search for **kisi** and install it (once the package is in KiCad's repository), or
@@ -142,8 +143,8 @@ in *Preferences → PCB Editor → Plugins* (KiCad 10), where its environment ca
 3. If there is no `<board>.kisi.json`, it creates an empty one next to the board.
 4. It writes a copy of the viewer with these files built in to `analysis/<board>.kisi.html` next to the board – the
    folder `kisi report` and `kisi export` use – and opens it; each click writes it anew. If `analysis/` cannot be
-   written (a read-only folder), the page goes to a folder `kisi-kicad` in the system's temporary folder instead,
-   and the viewer says so. The page works offline, like `kisi.html`; the card "From KiCad" names the board, its
+   written (a read-only folder), the page goes to the plugin's own folder instead (the one with the log, see
+   below), and the viewer says so. The page works offline, like `kisi.html`; the card "From KiCad" names the board, its
    folder, the page and what happened to the kisi.json. In a project under version control, add `analysis/` to
    `.gitignore`.
 
@@ -173,9 +174,19 @@ you save next to the board. The next click in KiCad loads it. Without Node.js th
 
 **If nothing happens** – KiCad 10 shows the plugin's error at the warning triangle in the PCB editor's status bar
 (bottom right), and the browser opens a page saying what went wrong. Details are in the plugin's log
-`kisi-kicad/kisi-kicad.log` in the temporary folder (on Windows `%TEMP%\kisi-kicad\kisi-kicad.log`). If the
-button does not appear, check that the API is enabled and that *Preferences → Plugins* shows a Python interpreter.
-To remove the plugin, uninstall it in the Plugin and Content Manager; the kisi.json files next to your boards stay.
+`kisi-kicad.log`, in the plugin's own folder:
+- Windows: `%TEMP%\kisi-kicad\kisi-kicad.log` (paste `%TEMP%\kisi-kicad` into the Explorer's address bar),
+- macOS: `$TMPDIR/kisi-kicad/kisi-kicad.log` (in Terminal: `open "$TMPDIR/kisi-kicad"`),
+- Linux: `~/.cache/kisi-kicad/kisi-kicad.log` (KiCad as a Flatpak: `~/.var/app/org.kicad.KiCad/cache/kisi-kicad/`).
+
+If the button does not appear, check that the API is enabled and that *Preferences → Plugins* shows a Python
+interpreter. To remove the plugin, uninstall it in the Plugin and Content Manager; the kisi.json files next to your
+boards stay.
+
+**Reporting a problem** – open an issue at [github.com/riehlies/kisi/issues](https://github.com/riehlies/kisi/issues)
+with your system, the KiCad version (*Help → About KiCad*, "Copy Version Info"), the browser, the message KiCad or
+the error page showed and the end of `kisi-kicad.log` (it holds folder and file names and kisi's messages, not the design
+itself).
 
 ## The command line
 ```sh

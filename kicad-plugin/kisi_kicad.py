@@ -10,7 +10,8 @@ Given the open board's file on disk, it
 * embeds them, with the BOMs and Touchstone files the kisi.json names, the plugin's CLI path and the Node.js status,
   into a copy of the viewer page shipped with the plugin (viewer/kisi.html, which has the marker below), and
 * writes that page to analysis/<board>.kisi.html next to the board (the folder `kisi report` and `kisi export`
-  use), or to a folder in the system's temporary directory when analysis/ cannot be written.
+  use), or to the plugin's own folder (temp_dir: the temporary folder, on Linux ~/.cache) when analysis/ cannot be
+  written.
 
 Next to the board it writes exactly <board>.kisi.json and, in analysis/, <board>.kisi.html and the backups
 <board>.kisi.json.<time>.bak – the Guard refuses anything else; KiCad's files are never written.
@@ -28,6 +29,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import unicodedata
 
 # in web/index.html: `const KICAD_BOARD = null; /*@kicad-board*/` – replaced by the payload
 MARKER = "null; /*@kicad-board*/"
@@ -36,7 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR_NAME = "kisi-kicad"
 LOG_NAME = "kisi-kicad.log"
 ANALYSIS = "analysis"
-KEEP_DAYS = 14  # pages in the temporary folder older than this are removed
+KEEP_DAYS = 14  # pages in the plugin's folder (temp_dir) older than this are removed
 MAX_EXTRA = 64 * 1024 * 1024  # largest BOM / Touchstone file that is embedded
 NODE_MIN = 18
 KICAD_FILES = (".kicad_pcb", ".kicad_pro", ".kicad_sch", ".kicad_prl", ".kicad_sym", ".kicad_mod")
@@ -83,8 +85,22 @@ def find_guide():
     return _first_file(os.path.join(HERE, "agent", "KISI-AGENT-GUIDE.md"))
 
 
-def temp_dir():
-    return os.path.join(tempfile.gettempdir(), OUT_DIR_NAME)
+def temp_dir(system=None, env=None, home=None):
+    """The plugin's own folder for its log, the error page and the fallback page. Windows and macOS: kisi-kicad in
+    the user's temporary folder (%TEMP%, $TMPDIR – both per user); Linux and the BSDs: $XDG_CACHE_HOME/kisi-kicad
+    (~/.cache/kisi-kicad), because /tmp is shared by all users (a folder there could belong to another user, and the
+    pages hold the board) and a Flatpak KiCad's /tmp is invisible outside its sandbox."""
+    system = system or platform.system()
+    if system in ("Windows", "Darwin"):
+        return os.path.join(tempfile.gettempdir(), OUT_DIR_NAME)
+    env = os.environ if env is None else env
+    cache = env.get("XDG_CACHE_HOME") or os.path.join(home or os.path.expanduser("~"), ".cache")
+    return os.path.join(cache, OUT_DIR_NAME)
+
+
+def make_own_dir(folder):
+    """Create the plugin's folder, readable only by the user on Linux/macOS."""
+    os.makedirs(folder, mode=0o700, exist_ok=True)
 
 
 def _quiet():
@@ -93,9 +109,34 @@ def _quiet():
 
 
 # ---- Node.js ---------------------------------------------------------------------------------------------------
-def find_node(run=subprocess.run, which=shutil.which, env=None, system=None):
+def _version_key(name):
+    return tuple(int(x) for x in re.findall(r"\d+", name)[:3])
+
+
+def node_candidates_posix(env, home, listdir=os.listdir):
+    """Where Node.js lives on Linux/macOS besides the PATH: KiCad started from the desktop (macOS: Finder, Dock)
+    gets a short PATH without the shell's additions, and a Flatpak KiCad sees the home folder but not /usr of the
+    host. System and package-manager folders, then the version managers in the home folder (Volta, nvm's newest
+    version, fnm's default, asdf)."""
+    cands = ["/usr/local/bin/node", "/opt/homebrew/bin/node", "/usr/bin/node", "/opt/local/bin/node", "/snap/bin/node",
+             os.path.join(home, ".volta", "bin", "node")]
+    nvm = os.path.join(env.get("NVM_DIR") or os.path.join(home, ".nvm"), "versions", "node")
+    try:
+        versions = sorted((v for v in listdir(nvm) if re.match(r"v?\d+\.\d+\.\d+$", v)), key=_version_key, reverse=True)
+    except OSError:
+        versions = []
+    cands += [os.path.join(nvm, v, "bin", "node") for v in versions]
+    for base in (env.get("FNM_DIR"), os.path.join(home, ".local", "share", "fnm"), os.path.join(home, "Library", "Application Support", "fnm"),
+                 os.path.join(home, ".fnm")):
+        if base:
+            cands.append(os.path.join(base, "aliases", "default", "bin", "node"))
+    cands += [os.path.join(env.get("ASDF_DATA_DIR") or os.path.join(home, ".asdf"), "shims", "node"), os.path.join(home, ".local", "bin", "node")]
+    return cands
+
+
+def find_node(run=subprocess.run, which=shutil.which, env=None, system=None, home=None, listdir=os.listdir):
     """{ok, path, version, reason}: a Node.js ≥ 18 for the plugin's kisi.mjs (agents run it; the import checks a
-    downloaded kisi.json with it). `run`, `which`, `env`, `system` are replaced in tests."""
+    downloaded kisi.json with it). `run`, `which`, `env`, `system`, `home`, `listdir` are replaced in tests."""
     env = os.environ if env is None else env
     system = system or platform.system()
     cands = [which("node")]
@@ -104,7 +145,7 @@ def find_node(run=subprocess.run, which=shutil.which, env=None, system=None):
             if env.get(var):
                 cands.append(os.path.join(env[var], sub, "node.exe") if sub else os.path.join(env[var], "node.exe"))
     else:
-        cands += ["/usr/local/bin/node", "/opt/homebrew/bin/node", "/usr/bin/node"]
+        cands += node_candidates_posix(env, home or os.path.expanduser("~"), listdir=listdir)
     seen, reasons = [], []
     for c in cands:
         if not c or c in seen or not os.path.isfile(c):
@@ -163,7 +204,7 @@ def board_paths(board_filename, project_dir, project_name, pathmod=os.path):
 
 
 def page_name(pcb_path, stem):
-    """The page's file name in the temporary folder: per board file, short and safe."""
+    """The page's file name in the plugin's folder (temp_dir): per board file, short and safe."""
     h = hashlib.sha1(os.path.normcase(pcb_path).encode("utf-8", "surrogatepass")).hexdigest()[:8]
     safe = re.sub(r"[^\w.-]+", "_", stem, flags=re.UNICODE).strip("._") or "board"
     return f"{safe[:60]}-{h}.html"
@@ -173,7 +214,7 @@ def page_name(pcb_path, stem):
 class Guard:
     """The only way the plugin writes: next to the board exactly <board>.kisi.json, in analysis/ exactly
     <board>.kisi.html and the backups <board>.kisi.json.<YYYYmmdd-HHMMSS>[-n].bak, and anything in its own folder
-    in the temporary directory; never a KiCad file."""
+    (temp_dir); never a KiCad file."""
 
     def __init__(self, paths, temp=None, pathmod=os.path):
         self.p, self.pm = paths, pathmod
@@ -301,28 +342,53 @@ def downloads_dir(system=None, env=None, home=None, run=subprocess.run, known=No
         cands.append(os.path.join(home, "Downloads"))
     else:
         try:
-            out = run(["xdg-user-dir", "DOWNLOAD"], capture_output=True, text=True, timeout=5)
+            out = run(["xdg-user-dir", "DOWNLOAD"], capture_output=True, text=True, timeout=5, encoding="utf-8", errors="surrogateescape")
             v = (out.stdout or "").strip()
             if v and os.path.normpath(v) != os.path.normpath(home):
                 cands.append(v)
         except (OSError, subprocess.SubprocessError):
             pass
-        conf = os.path.join(env.get("XDG_CONFIG_HOME") or os.path.join(home, ".config"), "user-dirs.dirs")
-        try:
-            with open(conf, encoding="utf-8") as f:
-                m = re.search(r'^XDG_DOWNLOAD_DIR="([^"]+)"', f.read(), re.M)
-            if m:
-                cands.append(m.group(1).replace("$HOME", home))
-        except OSError:
-            pass
+        # $XDG_CONFIG_HOME, then ~/.config: a Flatpak KiCad points XDG_CONFIG_HOME into its sandbox folder
+        confs = [os.path.join(env["XDG_CONFIG_HOME"], "user-dirs.dirs")] if env.get("XDG_CONFIG_HOME") else []
+        confs.append(os.path.join(home, ".config", "user-dirs.dirs"))
+        for conf in dict.fromkeys(confs):
+            try:
+                with open(conf, encoding="utf-8", errors="surrogateescape") as f:
+                    v = user_dirs_download(f.read(), home)
+            except OSError:
+                continue
+            if v:
+                cands.append(v)
         cands.append(os.path.join(home, "Downloads"))
     return next((c for c in cands if c and isdir(c)), None)
 
 
+def user_dirs_download(text, home):
+    """XDG_DOWNLOAD_DIR from user-dirs.dirs: "$HOME/…" or an absolute path, shell-quoted (xdg-user-dirs); None when
+    it is not set or names the home folder itself (xdg-user-dirs' way of saying "disabled")."""
+    m = re.search(r'^\s*XDG_DOWNLOAD_DIR\s*=\s*"((?:[^"\\]|\\.)*)"', text, re.M)
+    if not m:
+        return None
+    v = re.sub(r"\\(.)", r"\1", m.group(1))
+    if v == "$HOME" or v.startswith("$HOME/"):
+        v = home + v[5:]
+    elif v.startswith("${HOME}"):
+        v = home + v[7:]
+    if not v.startswith("/") or os.path.normpath(v) == os.path.normpath(home):
+        return None
+    return v
+
+
+def nfc(s):
+    """Names compared in one Unicode form: macOS file names (and so KiCad's board name or a download's name) may be
+    decomposed (NFD: "u" + combining diaeresis), the browser's names and a kisi.json's "board" composed (NFC)."""
+    return unicodedata.normalize("NFC", s)
+
+
 def download_name_re(stem):
     """<board>.kisi.json as the browsers save it, duplicates included: "x.kisi(1).json" (Firefox), "x.kisi (1).json"
-    (Chrome, Edge), "x.kisi-1.json" (Safari)."""
-    return re.compile(re.escape(stem) + r"\.kisi(?:\s?\(\d+\)|-\d+)?\.json", re.I)
+    (Chrome, Edge), "x.kisi-1.json" (Safari). Matched against NFC names (nfc)."""
+    return re.compile(re.escape(nfc(stem)) + r"\.kisi(?:\s?\(\d+\)|-\d+)?\.json", re.I)
 
 
 def download_candidates(folder, stem, listdir=os.listdir):
@@ -331,7 +397,7 @@ def download_candidates(folder, stem, listdir=os.listdir):
         names = listdir(folder)
     except OSError:
         return []
-    return sorted(os.path.join(folder, n) for n in names if rx.fullmatch(n) and os.path.isfile(os.path.join(folder, n)))
+    return sorted(os.path.join(folder, n) for n in names if rx.fullmatch(nfc(n)) and os.path.isfile(os.path.join(folder, n)))
 
 
 def check_download(text, stem):
@@ -345,7 +411,7 @@ def check_download(text, stem):
     if cfg.get("kisi_config") != 1:
         return f"kisi_config is {cfg.get('kisi_config')!r}, not 1"
     want = stem + ".kicad_pcb"
-    if str(cfg.get("board", "")).casefold() != want.casefold():
+    if nfc(str(cfg.get("board", ""))).casefold() != nfc(want).casefold():
         return f"written for the board {cfg.get('board')!r}, not {want}"
     return None
 
@@ -504,7 +570,7 @@ def embed(template_text, payload):
 
 
 def cleanup(folder, keep_days=KEEP_DAYS, now=None):
-    """Remove generated pages in the temporary folder older than keep_days (each is a few MB)."""
+    """Remove generated pages in the plugin's folder older than keep_days (each is a few MB)."""
     now = now or time.time()
     removed = 0
     try:
@@ -538,14 +604,14 @@ def make_page(board_filename, project_dir, project_name, modified="unknown", kic
     viewer = viewer or find_viewer()
     with open(viewer, encoding="utf-8") as f:
         template = f.read()
-    # analysis/<board>.kisi.html next to the board; the temporary folder when analysis/ cannot be written
+    # analysis/<board>.kisi.html next to the board; the plugin's folder when analysis/ cannot be written
     payload["page"] = {"path": paths["page"], "where": "analysis", "reason": ""}
     try:
         guard.write(paths["page"], embed(template, payload).encode("utf-8"))
         return paths["page"], payload
     except OSError as e:
         reason = f"{paths['analysis']} could not be written ({e.strerror or e})"
-    os.makedirs(temp, exist_ok=True)
+    make_own_dir(temp)
     cleanup(temp)
     page = os.path.join(temp, page_name(paths["pcb"], paths["stem"]))
     payload["page"] = {"path": page, "where": "temp", "reason": reason}
@@ -554,9 +620,9 @@ def make_page(board_filename, project_dir, project_name, modified="unknown", kic
 
 
 def error_page(message, log_path, folder=None):
-    """A small page that says what went wrong (opened instead of the viewer), in the temporary folder."""
+    """A small page that says what went wrong (opened instead of the viewer), in the plugin's folder."""
     folder = folder or temp_dir()
-    os.makedirs(folder, exist_ok=True)
+    make_own_dir(folder)
     esc = lambda s: str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     html = f"""<!doctype html>
 <meta charset="utf-8"><title>kisi – could not open the board</title>
@@ -575,14 +641,14 @@ code{{background:#f2f2f2;padding:1px 4px;border-radius:3px}}@media(prefers-color
     return page
 
 
-# ---- log file (in the temporary folder) -------------------------------------------------------------------------
+# ---- log file (in the plugin's folder) -----------------------------------------------------------------------------
 class Log:
-    """Appends to <temp>/kisi-kicad/kisi-kicad.log (kept below ~512 kB: the older half goes to .log.1)."""
+    """Appends to kisi-kicad.log in the plugin's folder (temp_dir; kept below ~512 kB: the older half goes to .log.1)."""
 
     def __init__(self, folder=None):
         self.path = os.path.join(folder or temp_dir(), LOG_NAME)
         try:
-            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            make_own_dir(os.path.dirname(self.path))
             if os.path.isfile(self.path) and os.path.getsize(self.path) > 512 * 1024:
                 os.replace(self.path, self.path + ".1")
         except OSError:

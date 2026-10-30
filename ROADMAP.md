@@ -64,18 +64,14 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
 - **Report export** from the viewer (HTML/PDF summary of checks and power results).
 - **Smaller downloads:** separate WASM builds for viewer and CLI (the viewer does not need the CLI commands).
 - **Faster field solver in the CLI:** better scheduling across threads, optional larger time budget presets.
-- **KiCad plugin** (decided 2026-10-26: IPC API plugin, no local server, distributed through KiCad's Plugin and
-  Content Manager and as a zip) – **built on `feat/kicad-plugin`, to be tested in KiCad 10:** a toolbar button in the
-  PCB editor opens the saved board in a copy of the viewer with the board's files built in
-  (`analysis/<board>.kisi.html`), creates an empty `<board>.kisi.json` next to the board when there is none, and
-  the Prepare page saves it there (File System Access dialog with a remembered folder, else a download that the
-  next click takes over from the Downloads folder); the package carries the CLI for the agent path, the agent card
-  shows the command with the installed paths; `kicad-plugin/`, `tools/build_kicad_pcm.py`, release asset
-  `kisi-kicad-<version>.zip` (`docs/research/kicad-plugin.md`). First test in KiCad 10 on Windows passed
-  (2026-10-27: install, button, viewer, skeleton); round 2 re-tested (analysis/, the take-over, the CLI, the
-  marked inputs on Prepare PCB); round 3 (the page opened from paths with umlauts, the board folder chosen once
-  in Chromium, the agent guide for any assistant) to be re-tested. Next: a release and the merge request to KiCad's PCM repository (by hand); the "unsaved changes" notice once KiCad's API
-  reports them (`GetDocumentModifiedState`, KiCad's development branch – the plugin uses it when kicad-python has it).
+- **KiCad plugin** (decided 2026-10-26: IPC API plugin, no local server) – **released in 0.3.1:** a toolbar button
+  in KiCad 10's PCB editor opens the saved board with its `<board>.kisi.json` in a copy of the viewer
+  (`analysis/<board>.kisi.html`), the package carries the CLI and the agent guide (`docs/getting-started.md`,
+  design note `docs/research/kicad-plugin.md`). Tested in KiCad 10 on Windows; the entry for KiCad's Plugin and
+  Content Manager (status `testing`, KiCad 10.0) is under review. Open: a test in KiCad 10 on Linux and macOS
+  (checklist in the design note; their code paths are reviewed and unit-tested), then status `stable`; KiCad 9
+  (untested); the "unsaved changes" notice once KiCad's API reports them (`GetDocumentModifiedState`, KiCad's
+  development branch – the plugin uses it when kicad-python has it).
 - **Decide first: live link to KiCad** (cross-probing, reload on save). Needs a local helper process; only worth it if
   the manual “Reload” is not enough. KiCad 10 can place DRC markers from outside, and KiCad 10's tuning profiles
   (target impedance, delay per layer in the `.kicad_pro`) could be read as targets (`docs/research/kicad-simulation.md`).

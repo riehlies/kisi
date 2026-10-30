@@ -6,6 +6,8 @@
 //!        (reduced via / cavity models on the 3D reference cases, see models.rs)
 //!        kisi-validate via-case <board.kicad_pcb> --net NAME --out DIR [options]
 //!        (a via cut out of the board as a kisi-fdtd case with its 2×thru fixtures, viacase.rs)
+//!        kisi-validate xs-cases <cases.json> --out F | xs-board <board.kicad_pcb> --out F
+//!        (cross-sections for the external 2D-solver comparison validation/cst_xs, xscases.rs)
 //! ```
 //!
 //! Case format (lengths in mm):
@@ -33,6 +35,7 @@ mod cavities;
 mod cavmodel;
 mod models;
 mod viacase;
+mod xscases;
 
 /// Synthetic stackup + description for a validation case (None if the case
 /// type has no board equivalent, e.g. a dielectric cover on a surface trace).
@@ -176,6 +179,14 @@ fn main() {
                 }
             }
         }
+        return;
+    }
+    if args.len() > 2 && args[1] == "xs-cases" {
+        xscases::run_cases(&args[2..]);
+        return;
+    }
+    if args.len() > 2 && args[1] == "xs-board" {
+        xscases::run_board(&args[2..]);
         return;
     }
     if args.len() > 2 && args[1] == "via-case" {

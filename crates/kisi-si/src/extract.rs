@@ -1101,33 +1101,143 @@ fn evaluate(
     let li = layer as usize;
     let ncu = su.n();
     let t = su.copper[li].thickness;
-    let er_up = up.map(|(j, _)| su.er_between(li, j));
-    let er_dn = dn.map(|(j, _)| su.er_between(li, j));
-    let outer_top = li == 0;
-    let outer_bot = li + 1 == ncu;
-    let mask = if outer_top {
+    let mask = if li == 0 {
         su.mask_top.as_ref()
-    } else if outer_bot {
+    } else if li + 1 == ncu {
         su.mask_bottom.as_ref()
     } else {
         None
     }
     .filter(|_| params.solder_mask);
 
+    // geometry for field solvers, and a field result if one is available
+    let desc = XsDesc {
+        layer: li,
+        w,
+        ref_up: up.map(|r| r.0),
+        ref_dn: dn.map(|r| r.0),
+        s_left,
+        s_right,
+        partner,
+        mask: mask.map(|m| (m.thickness, m.epsilon_r)),
+        planes: planes.clone(),
+        ..Default::default()
+    };
+    let fx = formula_xs(su, &desc);
+    flags |= fx.flags;
+    let kind = fx.kind;
+    let (er_up, er_dn) = (fx.er_up, fx.er_dn);
+    let (mut z0, mut eeff, mut zdiff, mut zeven) = (fx.z0, fx.eeff, fx.zdiff, fx.zeven);
+    let (mut eeff_odd, mut eeff_even) = (fx.eeff_odd, fx.eeff_even);
+    let (z0_formula, zdiff_formula) = (z0, zdiff);
+    let mut solver = "formula";
+    let geom_idx = xsgeom::build(su, &desc).map(|text| geoms.add(text));
+    if let Some(gi) = geom_idx {
+        let id = &geoms.list[gi as usize].id;
+        if let Some(fr) = params.field.get(id) {
+            if let (Some(zo), Some(ze)) = (fr.zodd, fr.zeven) {
+                zdiff = Some(2.0 * zo);
+                zeven = Some(ze);
+                // single-ended impedance of one trace of the pair (uncoupled
+                // estimate): geometric mean of the modal impedances
+                z0 = Some((zo * ze).sqrt());
+                if let (Some(a), Some(b)) = (fr.eeff_odd, fr.eeff_even) {
+                    eeff = Some(0.5 * (a + b));
+                    eeff_odd = Some(a);
+                    eeff_even = Some(b);
+                }
+                solver = "field";
+            } else if let Some(z) = fr.z0 {
+                z0 = Some(z);
+                eeff = fr.eeff.or(eeff);
+                solver = "field";
+            }
+            if solver == "field" {
+                flags &= !F_COPLANAR_IGNORED;
+            }
+        }
+    }
+    if solver == "formula" && kind != Kind::NoReference && flags & F_PLANE_OPENING != 0 && near_opening {
+        flags |= F_FORMULA_ROUGH;
+    }
+
+    CrossSection {
+        kind,
+        layer,
+        w,
+        t,
+        ref_up: up.map(|r| r.0 as u16),
+        ref_dn: dn.map(|r| r.0 as u16),
+        h_up: up.map(|r| r.1),
+        h_dn: dn.map(|r| r.1),
+        er_up,
+        er_dn,
+        s_left,
+        s_right,
+        diff_gap,
+        partner_w: partner.map(|p| p.1),
+        mask: mask.is_some(),
+        z0,
+        eeff,
+        zdiff,
+        zeven,
+        eeff_odd,
+        eeff_even,
+        z0_formula,
+        zdiff_formula,
+        solver,
+        geom: geom_idx,
+        planes: planes.iter().map(|c| (c.layer as u16, c.left, c.right)).collect(),
+        flags,
+    }
+}
+
+/// Formula impedances of one cross-section: the extraction's closed-form path, a function of
+/// the stackup and the cross-section description alone (the same inputs as the geometry text of
+/// `xsgeom::build`). The reference heights are the dielectric gaps to the reference layers.
+#[derive(Debug, Clone)]
+pub struct FormulaXs {
+    pub kind: Kind,
+    pub z0: Option<f64>,
+    pub eeff: Option<f64>,
+    pub zdiff: Option<f64>,
+    pub zeven: Option<f64>,
+    pub eeff_odd: Option<f64>,
+    pub eeff_even: Option<f64>,
+    pub er_up: Option<f64>,
+    pub er_dn: Option<f64>,
+    /// F_ONE_SIDED, F_COPLANAR_IGNORED, F_NO_REF as they apply
+    pub flags: u32,
+}
+
+pub fn formula_xs(su: &crate::board::Stackup, d: &XsDesc) -> FormulaXs {
+    let li = d.layer;
+    let w = d.w;
+    let (s_left, s_right) = (d.s_left, d.s_right);
+    let up = d.ref_up.map(|j| (j, su.gap_between(li, j)));
+    let dn = d.ref_dn.map(|j| (j, su.gap_between(li, j)));
+    let diff_gap = d.partner.map(|p| p.0);
+    let mut flags = 0;
+    let ncu = su.n();
+    let t = su.copper[li].thickness;
+    let er_up = up.map(|(j, _)| su.er_between(li, j));
+    let er_dn = dn.map(|(j, _)| su.er_between(li, j));
+    let outer_top = li == 0;
+    let outer_bot = li + 1 == ncu;
+    let mask_p = d.mask.filter(|_| outer_top || outer_bot);
+
     let mut kind = Kind::NoReference;
     let mut z0 = None;
     let mut eeff = None;
     let mut zdiff = None;
 
-    let mask_p = mask.map(|m| (m.thickness, m.epsilon_r));
     let ms = |h: f64, er: f64| -> (f64, f64) {
-        let e = match mask {
-            Some(m) => analytic::microstrip_masked(w, h, t, er, m.thickness, m.epsilon_r).1,
+        let e = match mask_p {
+            Some((mt, me)) => analytic::microstrip_masked(w, h, t, er, mt, me).1,
             None => analytic::microstrip(w, h, t, er).1,
         };
         (analytic::microstrip_coplanar(w, h, t, er, mask_p, s_left, s_right), e)
     };
-
     if outer_top || outer_bot {
         let r = if outer_top { dn } else { up };
         let er = if outer_top { er_dn } else { er_up };
@@ -1199,23 +1309,9 @@ fn evaluate(
         }
     }
 
-    // geometry for field solvers, and a field result if one is available
-    let desc = XsDesc {
-        layer: li,
-        w,
-        ref_up: up.map(|r| r.0),
-        ref_dn: dn.map(|r| r.0),
-        s_left,
-        s_right,
-        partner,
-        mask: mask.map(|m| (m.thickness, m.epsilon_r)),
-        planes: planes.clone(),
-        ..Default::default()
-    };
-    let (z0_formula, zdiff_formula) = (z0, zdiff);
     // even mode from the formulas: Z0 ≈ √(Zeven·Zodd); modal permittivities of microstrip from
     // Kirschning-Jansen (the ratio around the single-line value), stripline: homogeneous
-    let mut zeven = match (no_plane_even, z0, zdiff) {
+    let zeven = match (no_plane_even, z0, zdiff) {
         (Some(ze), _, _) => ze,
         (None, Some(z), Some(zd)) if zd > 0.0 => Some(z * z / (zd / 2.0)),
         _ => None,
@@ -1233,66 +1329,7 @@ fn evaluate(
             }
         }
     }
-    let mut solver = "formula";
-    let geom_idx = xsgeom::build(su, &desc).map(|text| geoms.add(text));
-    if let Some(gi) = geom_idx {
-        let id = &geoms.list[gi as usize].id;
-        if let Some(fr) = params.field.get(id) {
-            if let (Some(zo), Some(ze)) = (fr.zodd, fr.zeven) {
-                zdiff = Some(2.0 * zo);
-                zeven = Some(ze);
-                // single-ended impedance of one trace of the pair (uncoupled
-                // estimate): geometric mean of the modal impedances
-                z0 = Some((zo * ze).sqrt());
-                if let (Some(a), Some(b)) = (fr.eeff_odd, fr.eeff_even) {
-                    eeff = Some(0.5 * (a + b));
-                    eeff_odd = Some(a);
-                    eeff_even = Some(b);
-                }
-                solver = "field";
-            } else if let Some(z) = fr.z0 {
-                z0 = Some(z);
-                eeff = fr.eeff.or(eeff);
-                solver = "field";
-            }
-            if solver == "field" {
-                flags &= !F_COPLANAR_IGNORED;
-            }
-        }
-    }
-    if solver == "formula" && kind != Kind::NoReference && flags & F_PLANE_OPENING != 0 && near_opening {
-        flags |= F_FORMULA_ROUGH;
-    }
-
-    CrossSection {
-        kind,
-        layer,
-        w,
-        t,
-        ref_up: up.map(|r| r.0 as u16),
-        ref_dn: dn.map(|r| r.0 as u16),
-        h_up: up.map(|r| r.1),
-        h_dn: dn.map(|r| r.1),
-        er_up,
-        er_dn,
-        s_left,
-        s_right,
-        diff_gap,
-        partner_w: partner.map(|p| p.1),
-        mask: mask.is_some(),
-        z0,
-        eeff,
-        zdiff,
-        zeven,
-        eeff_odd,
-        eeff_even,
-        z0_formula,
-        zdiff_formula,
-        solver,
-        geom: geom_idx,
-        planes: planes.iter().map(|c| (c.layer as u16, c.left, c.right)).collect(),
-        flags,
-    }
+    FormulaXs { kind, z0, eeff, zdiff, zeven, eeff_odd, eeff_even, er_up, er_dn, flags }
 }
 
 #[cfg(test)]

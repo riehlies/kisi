@@ -366,6 +366,7 @@ const WANTED: &[&str] = &[
     "gr_rect",
     "gr_circle",
     "gr_poly",
+    "gr_curve",
     "variants",
 ];
 
@@ -589,50 +590,12 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
                     b.zones.push(ZoneFill { layer, net, pts, bbox: bb });
                 }
             }
-            Some("footprint") => parse_footprint(it, &su, &mut nets, &mut b.pads, &mut b.footprints),
-            Some(h @ ("gr_line" | "gr_arc" | "gr_rect" | "gr_circle" | "gr_poly")) => {
+            Some("footprint") => parse_footprint(it, &su, &mut nets, &mut b.pads, &mut b.footprints, &mut b.outline),
+            Some(h) if h.starts_with("gr_") => {
                 if it.child_str("layer") != Some("Edge.Cuts") {
                     continue;
                 }
-                let poly: Vec<P> = match h {
-                    "gr_line" => match (it.child_xy("start"), it.child_xy("end")) {
-                        (Some(a), Some(e)) => vec![a, e],
-                        _ => continue,
-                    },
-                    "gr_arc" => match (it.child_xy("start"), it.child_xy("mid"), it.child_xy("end")) {
-                        (Some(a), Some(m), Some(e)) => geom::tessellate_arc(a, m, e, 5f64.to_radians()),
-                        _ => continue,
-                    },
-                    "gr_rect" => match (it.child_xy("start"), it.child_xy("end")) {
-                        (Some(a), Some(e)) => vec![a, [e[0], a[1]], e, [a[0], e[1]], a],
-                        _ => continue,
-                    },
-                    "gr_circle" => match (it.child_xy("center"), it.child_xy("end")) {
-                        (Some(c), Some(e)) => {
-                            let r = geom::len(geom::sub(e, c));
-                            (0..=72)
-                                .map(|i| {
-                                    let t = i as f64 / 72.0 * std::f64::consts::TAU;
-                                    [c[0] + r * t.cos(), c[1] + r * t.sin()]
-                                })
-                                .collect()
-                        }
-                        _ => continue,
-                    },
-                    _ => match it.pts() {
-                        Some(p) => {
-                            let mut v = p.to_vec();
-                            if let Some(&f) = v.first() {
-                                v.push(f);
-                            }
-                            v
-                        }
-                        None => match it.child("pts").and_then(|n| n.pts()) {
-                            Some(p) => p.to_vec(),
-                            None => continue,
-                        },
-                    },
-                };
+                let Some(poly) = edge_shape(it, &h[3..]) else { continue };
                 for &p in &poly {
                     bbox.add(p);
                 }
@@ -1224,7 +1187,78 @@ fn default_stackup(names: &[String]) -> Stackup {
     }
 }
 
-fn parse_footprint(fp: &Node, su: &Stackup, nets: &mut NetTable, out: &mut Vec<Pad>, fps: &mut Vec<Footprint>) {
+/// One Edge.Cuts drawing (`gr_*` on the board or `fp_*` in a footprint, `kind` without the prefix:
+/// line, arc, rect, circle, poly, curve) as a polyline in the drawing's own coordinates; closed
+/// shapes end on their first point. Arcs of KiCad 5 files (`start` = centre, `end` = first point,
+/// `angle` in degrees) are converted.
+fn edge_shape(it: &Node, kind: &str) -> Option<Vec<P>> {
+    let closed = |mut v: Vec<P>| {
+        if v.len() > 2 && v.first().map(|f| geom::len(geom::sub(*f, *v.last().unwrap())) > 1e-9) == Some(true) {
+            v.push(v[0]);
+        }
+        v
+    };
+    Some(match kind {
+        "line" => vec![it.child_xy("start")?, it.child_xy("end")?],
+        "arc" => match (it.child_xy("start"), it.child_xy("mid"), it.child_xy("end"), it.child_f64("angle")) {
+            (Some(a), Some(m), Some(e), _) => geom::tessellate_arc(a, m, e, 5f64.to_radians()),
+            (Some(c), None, Some(p0), Some(deg)) => {
+                // KiCad 5: rotate the first point about the centre by the angle (positive: clockwise on
+                // screen with y down, i.e. the mathematical sense in KiCad's coordinates)
+                let rot = |t: f64| {
+                    let (s, k) = t.to_radians().sin_cos();
+                    let d = geom::sub(p0, c);
+                    [c[0] + d[0] * k - d[1] * s, c[1] + d[0] * s + d[1] * k]
+                };
+                if deg.abs() >= 359.999 {
+                    return Some((0..=72).map(|i| rot(i as f64 * 5.0)).collect());
+                }
+                geom::tessellate_arc(p0, rot(deg / 2.0), rot(deg), 5f64.to_radians())
+            }
+            _ => return None,
+        },
+        "rect" => {
+            let (a, e) = (it.child_xy("start")?, it.child_xy("end")?);
+            vec![a, [e[0], a[1]], e, [a[0], e[1]], a]
+        }
+        "circle" => {
+            let (c, e) = (it.child_xy("center")?, it.child_xy("end")?);
+            let r = geom::len(geom::sub(e, c));
+            (0..=72)
+                .map(|i| {
+                    let t = i as f64 / 72.0 * std::f64::consts::TAU;
+                    [c[0] + r * t.cos(), c[1] + r * t.sin()]
+                })
+                .collect()
+        }
+        "poly" => closed(it.pts().or_else(|| it.child("pts").and_then(|n| n.pts()))?.to_vec()),
+        "curve" | "bezier" => {
+            // cubic Bézier through its four control points
+            let q = it.pts().or_else(|| it.child("pts").and_then(|n| n.pts()))?;
+            if q.len() != 4 {
+                return None;
+            }
+            (0..=16)
+                .map(|i| {
+                    let t = i as f64 / 16.0;
+                    let u = 1.0 - t;
+                    let w = [u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t];
+                    [(0..4).map(|k| w[k] * q[k][0]).sum::<f64>(), (0..4).map(|k| w[k] * q[k][1]).sum::<f64>()]
+                })
+                .collect()
+        }
+        _ => return None,
+    })
+}
+
+fn parse_footprint(
+    fp: &Node,
+    su: &Stackup,
+    nets: &mut NetTable,
+    out: &mut Vec<Pad>,
+    fps: &mut Vec<Footprint>,
+    outline: &mut Vec<Vec<P>>,
+) {
     let Some(at) = fp.child("at") else { return };
     let o = [at.f64(1).unwrap_or(0.0), at.f64(2).unwrap_or(0.0)];
     // KiCad 8+: (property "Reference" "U3" ...); older: (fp_text reference "U3" ...)
@@ -1273,6 +1307,16 @@ fn parse_footprint(fp: &Node, su: &Stackup, nets: &mut NetTable, out: &mut Vec<P
     fps.push(Footprint { lib, reference, value, at: o, props, dnp, exclude_from_bom, sheet, variants });
     let fa = at.f64(3).unwrap_or(0.0).to_radians();
     let (s, c) = fa.sin_cos();
+    // Edge.Cuts drawn in the footprint (in its own frame: rotated, already mirrored on the back)
+    for g in fp.items() {
+        let Some(kind) = g.head().and_then(|h| h.strip_prefix("fp_")) else { continue };
+        if g.child_str("layer") != Some("Edge.Cuts") {
+            continue;
+        }
+        if let Some(poly) = edge_shape(g, kind) {
+            outline.push(poly.iter().map(|&[lx, ly]| [o[0] + lx * c + ly * s, o[1] - lx * s + ly * c]).collect());
+        }
+    }
     for pad in fp.children("pad") {
         let Some(pat) = pad.child("at") else { continue };
         let lx = pat.f64(1).unwrap_or(0.0);

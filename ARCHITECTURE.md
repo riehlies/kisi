@@ -106,6 +106,8 @@ to one thread.
   formula kinds, field solver, no plane; via ladder, pairs, coaxial fallback), with the validation tables as sources.
 * `interfaces.json` – interface profiles with sources (standard / guideline / kisi guide value),
   transmitter/receiver, limits, assignment rules. Built into viewer and CLI.
+* `netclass_names.json` – how a net class name gives a target impedance (prefixes such as `SE50`, `Diff_100`,
+  `ZDIFF=100`, units, interface keywords with their usual impedance and sources; `kisi_si::classname`).
 * Example boards' configuration (power tree as PI_REG / PI_LOAD fields with sources): `web/samples/{ts,vna}.kisi.json`.
   `tools/tree_to_fields.py` converts a power tree JSON (`kisi power --tree`) into such fields.
 

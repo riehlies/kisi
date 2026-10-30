@@ -24,10 +24,22 @@ Everything kisi reads besides the copper: names and fields in the KiCad project,
   Without it, no net class has a target impedance unless `<board>.kisi.json` gives one.
 
 ### Target impedance from net class names
-A class name with a number followed by `Z`, `R`, `Ohm` or `Ω` (or `Z` followed by a number) between 20 and 200
-gives the target: `50Z`, `FE_50Z_INPUT`, `USB_90R`, `Z85_PCIe`. The target is differential when the name
-contains `Diff` or `DP` (`90Z_Diff`, `FE_100Z_Diff`), or when it is 80 Ω or more and the name contains `USB`,
-`LVDS` or `PCI`. Without a number, interface keywords give an assumed target, marked "interface assumption":
+Without a target in `<board>.kisi.json`, kisi reads one from the class name. A number between 20 and 200 counts
+when
+- a unit follows it: `Z`, `R`, `Ohm` or `Ω` – `50Z`, `FE_50Z_INPUT`, `USB_90R`, `Diff100ohm`;
+- a prefix stands right before it (one `_`, `-`, `=` or space between allowed): single-ended `SE`, `S`, `ZSE`,
+  `ZS`, `ZSINGLE`, `SINGLE` – `SE50`, `SE_50`, `S50`, `ZSINGLE=50`; differential `DIFF`, `DIF`, `DE`, `ZD`,
+  `ZDIFF` – `Diff_100`, `diff90`, `ZDIFF=100`; or `Z` – `Z85_PCIe`. Prefixes of one or two letters must
+  stand alone (`S50`, not `BUS50`);
+- or, with neither, a kind word follows it: `100_DIFF`, `50_SE`.
+
+With a unit or a `Z` prefix the target is differential when the name contains `Diff` or `DP` (`90Z_Diff`,
+`FE_100Z_Diff`), or when it is 80 Ω or more and the name contains `USB`, `LVDS` or `PCI`. A name with a
+single-ended and a differential value, such as `SE55DE100`, gives the differential target (100 Ω, what the
+pairs are judged on) and names the single-ended value in the source; two different values of one kind
+(`SE50_SE60`) give no target. Such targets show "class name" as their source (in `kisi overview` and the
+viewer's class list): what the designer named the class, not an estimate. Without a number, interface keywords
+give an assumed target, marked "interface assumption":
 
 | Keyword in the class name | Target |
 |---|---|
@@ -35,6 +47,11 @@ contains `Diff` or `DP` (`90Z_Diff`, `FE_100Z_Diff`), or when it is 80 Ω or mor
 | `PCIE`, `PCI_E` | 85 Ω differential |
 | `LVDS`, `HDMI`, `TMDS`, `SATA`, `MDI`, `ETH` | 100 Ω differential |
 | `RF` | 50 Ω single-ended |
+
+The prefixes, units, keywords and their values are in `data/netclass_names.json` (with sources); boards that
+use other names can be added there. A class only gets a target for nets that belong to it: kisi reads the
+assignments of the project file (`netclass_assignments`, `netclass_patterns`); a class whose nets are assigned
+only in the schematic stays empty for kisi – `net_classes.<class>.nets` in `<board>.kisi.json` fills it.
 
 `net_classes` in `<board>.kisi.json` gives or overrides the target of an existing class. With `nets` it also gives
 nets to a class – names or patterns with `*` and `?`, matched against the full net name and its last part, like

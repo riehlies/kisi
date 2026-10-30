@@ -56,6 +56,8 @@ GROUPS = {
 # changes that need no check of their own (the cheap checks still run)
 QUIET = ["docs/img/*", "tools/screenshots.py", ".gitignore", ".gitattributes", ".git-blame-ignore-revs", "web/pages/*",
          "validation/fdtd/*", "validation/*.md", "tools/tree_to_fields.py"]
+# the corpus run (data/corpus.json is no data kisi reads): runs weekly and by hand, no check of its own on a push
+CORPUS = ["data/corpus.json", "tools/corpus.py", "validation/corpus/*"]
 # changes to the CI itself run everything
 FULL = [".github/*", "tools/ci_checks.py", "tools/size_budget.json", "deny.toml"]
 
@@ -74,10 +76,10 @@ def changes(base, head="HEAD"):
     for f in files:
         if match(f, FULL):
             full = True
-        hit = [g for g, pats in GROUPS.items() if match(f, pats)]
+        hit = [] if match(f, CORPUS) else [g for g, pats in GROUPS.items() if match(f, pats)]
         for g in hit:
             flags[g] = True
-        if not hit and not match(f, QUIET + FULL):
+        if not hit and not match(f, QUIET + FULL + CORPUS):
             unknown.append(f)
     if unknown:
         full = True

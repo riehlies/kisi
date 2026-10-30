@@ -40,6 +40,8 @@ Validation (`../validation/`):
   `ltspice.py`, and the studies behind the research notes (`compact_study.py`, `ltspice_microtests.py`).
 - `golden/` – stored results of the example boards (`tools/golden.py`); the field-solver baselines
   (`field_baseline.json`, `*.ref.json`).
+- [corpus/README.md](../validation/corpus/README.md) – the corpus run: kisi on about 230 open-source KiCad boards
+  fetched at pinned commits (`data/corpus.json`, `tools/corpus.py`), stored numbers per board, the weekly CI job.
 
 Board configurations: [examples/](examples/).
 

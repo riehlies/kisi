@@ -1003,9 +1003,11 @@ fn parse_stackup(st: &Node, header_cu: &[String]) -> (Option<Stackup>, Vec<Strin
         let ty = l.child_str("type").unwrap_or("").to_string();
         if !name.is_empty() && !seen.insert(name.clone()) {
             let copies = layers.iter().filter(|x| x.atom(1) == Some(name.as_str())).count();
-            warnings.push(format!(
-                "stackup: the file lists the layer stack {copies} times ('{name}' repeats after {k} entries) – the first copy is used, the repeated entries are ignored"
-            ));
+            warnings.push(if layers[0].atom(1) == Some(name.as_str()) {
+                format!("stackup: the file lists the layer stack {copies} times – the first copy is used, the repeated entries are ignored")
+            } else {
+                format!("stackup: the file names the layer '{name}' {copies} times – the entries from its repetition on (entry {}) are ignored", k + 1)
+            });
             break;
         }
         if name.ends_with(".Cu") {
@@ -1588,6 +1590,12 @@ mod tests {
         let b = load_pcb(&pcb(six, &copy(0))).unwrap();
         assert!(!b.stackup().from_file && b.stackup().n() == 5);
         assert!(b.warnings.iter().any(|w| w.contains("In3.Cu are missing")), "{:?}", b.warnings);
+        // one copper layer named twice inside the stack (a corpus board): read up to the repetition,
+        // the board's other layers missing there – the default stackup
+        let twice = copy(0).replace(r#"(layer "In2.Cu""#, r#"(layer "In1.Cu""#);
+        let b = load_pcb(&pcb(four, &twice)).unwrap();
+        assert!(!b.stackup().from_file && b.stackup().n() == 4);
+        assert!(b.warnings.iter().any(|w| w.contains("names the layer 'In1.Cu' 2 times")), "{:?}", b.warnings);
     }
     #[test]
     fn kicad10_variants_and_sheets() {

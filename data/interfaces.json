@@ -328,7 +328,7 @@
     },
     {
       "id": "ddr3_clk",
-      "name": "DDR3/DDR3L DQS/CK (1600 MT/s)",
+      "name": "DDR3/3L DQS/CK (1600 MT/s)",
       "family": "DDR",
       "rate_gbps": 1.6,
       "signal": "diff",
@@ -370,7 +370,7 @@
     },
     {
       "id": "ddr3_ca",
-      "name": "DDR3/DDR3L address/command (800 Mbit/s, fly-by)",
+      "name": "DDR3/3L address/cmd (800 Mbit/s)",
       "family": "DDR",
       "rate_gbps": 0.8,
       "signal": "se",
@@ -422,7 +422,7 @@
     },
     {
       "id": "ddr3_dq",
-      "name": "DDR3/DDR3L data (1600 MT/s)",
+      "name": "DDR3/3L data (1600 MT/s)",
       "family": "DDR",
       "rate_gbps": 1.6,
       "signal": "se",
@@ -498,7 +498,7 @@
     },
     {
       "id": "ddr4_ca",
-      "name": "DDR4 address/command (1600 Mbit/s, fly-by)",
+      "name": "DDR4 address/cmd (1600 Mbit/s)",
       "family": "DDR",
       "rate_gbps": 1.6,
       "signal": "se",

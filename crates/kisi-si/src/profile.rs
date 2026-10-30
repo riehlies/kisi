@@ -274,6 +274,10 @@ mod tests {
         assert_eq!(ps.auto("PCIe_REFCLK_P", "PCIe", true), "pcie_refclk");
         assert_eq!(ps.auto("/FPGA/USRIO_3_P", "LVDS_USRIO", true), "lvds");
         assert_eq!(ps.auto("FOO", "Default", false), "se50");
+        // the viewer's profile selection shows the names: longer ones scroll a phone screen sideways
+        for p in &ps.profiles {
+            assert!(p.name.chars().count() <= 36, "profile name too long for the viewer on a phone: {}", p.name);
+        }
         // DDR (butterstick in the kicad-happy corpus: DDR3L address nets were "ddr4_dq"): the
         // generation from the sheet path or class name, address/command apart from data
         assert_eq!(ps.auto("/FPGA-DDR3L/A0", "", false), "ddr3_ca");

@@ -3,12 +3,23 @@
 Design note for `kicad-plugin/` (2026-10-26). The user-facing description is in
 [Getting started](../getting-started.md#from-kicad-the-plugin); the structure in `ARCHITECTURE.md`.
 
+## Status (2026-10-30)
+- Released in 0.3.1 (`kisi-kicad-0.3.1.zip`, release asset). The entry for KiCad's PCM repository (package
+  `com.github.riehlies.kisi`, status `testing`, `kicad_version` 10.0) is a merge request to
+  gitlab.com/kicad/addons/metadata, under review.
+- Tested in KiCad 10 on Windows (from 2026-10-27: install, API prompt, button, viewer, skeleton, take-over of a
+  download, CLI, agent card, paths with umlauts).
+- Open: a test in KiCad 10 on Linux and on macOS ([checklist](#linux-and-macos-checklist)), then status `stable`;
+  KiCad 9 (same code paths [S3–S5], untested); the unsaved-changes notice once KiCad's API reports it (step 3
+  below).
+
 ## Decisions (maintainer, 2026-10-26)
 - One click in KiCad's PCB editor opens kisi's viewer in the browser with the open board and its
   `<board>.kisi.json`; the plugin creates that file (a minimal skeleton) when it does not exist.
 - An IPC API plugin (KiCad 9/10, PCB editor only), not a SWIG action plugin (SWIG is removed in KiCad 11).
-- No local server: the plugin writes a self-contained viewer page with the board embedded to a temporary folder and
-  opens it (`file://`); the viewer ships inside the package (same version, offline).
+- No local server: the plugin writes a self-contained viewer page with the board embedded and opens it (`file://`;
+  first in a temporary folder, since the first test in `analysis/` next to the board); the viewer ships inside the
+  package (same version, offline).
 - The plugin never writes KiCad's files and reads the saved board; unsaved changes are reported where KiCad can tell.
 - Distribution through KiCad's Plugin and Content Manager (PCM) repository and as a zip ("Install from File…");
   identifier `com.github.riehlies.kisi`, GPL-3.0-only.
@@ -108,9 +119,9 @@ tested). `tools/build_kicad_pcm.py` validates against the vendored schemas
    (the viewer's own start, `config-check` ok) only when no file exists (exclusive create); a guard refuses any other
    write next to the board.
 5. The files go gzip + base64 into the payload that replaces `null; /*@kicad-board*/` in `viewer/kisi.html`
-   (`<` escaped); the page goes to `analysis/<board>.kisi.html` next to the board (round 2; before:
-   `<temp>/kisi-kicad/<board>-<hash of the path>.html`, still the fallback) and opens with `webbrowser` (Windows:
-   `os.startfile` as fallback).
+   (`<` escaped); the page goes to `analysis/<board>.kisi.html` next to the board – or, when `analysis/` cannot be
+   written, to `<board>-<hash of the path>.html` in the plugin's own folder (`temp_dir`, step 8) – and opens in the
+   default browser: Windows `os.startfile(<path>)`, macOS `open`, Linux `xdg-open`, `webbrowser` as the fallback.
 6. In the viewer, `loadKicadBoard` turns the payload into `File` objects and calls `handleFiles` – the drop path.
    The "From KiCad" card names board, folder, the kisi.json's state and the unsaved-changes note.
 7. Prepare PCB → "Save kisi.json": Chromium/Edge `showSaveFilePicker` with `suggestedName` `<board>.kisi.json` and
@@ -119,15 +130,16 @@ tested). `tools/build_kicad_pcm.py` validates against the vendored schemas
    remembered folder), the path shown with "Copy path" (Windows' save dialog takes a full path as file
    name); Firefox/Safari download, with the note to move the file next to the board.
 8. Problems: one line on stderr (shown at the alert triangle from KiCad 10.0.1 [S1]), exit code 1, an error page
-   in the browser, details in `<temp>/kisi-kicad/kisi-kicad.log`.
+   in the browser, details in `kisi-kicad.log` in the plugin's own folder: `%TEMP%\kisi-kicad\` on Windows,
+   `$TMPDIR/kisi-kicad/` on macOS (both per user), `~/.cache/kisi-kicad/` (`$XDG_CACHE_HOME`) on Linux.
 
-## Round 2 (2026-10-27, after the first test in KiCad 10 on Windows)
+## After the first test (2026-10-27, KiCad 10 on Windows)
 The first test passed in principle (install, button, viewer with the board, skeleton). The maintainer's decisions
-for round 2 – **no local server** (a security risk) – and how they are built:
+after it – **no local server** (a security risk) – and how they are built:
 - **The page into `analysis/`:** `analysis/<board>.kisi.html` next to the board (the folder `kisi report` and
-  `kisi export` use), written anew on each click; the temporary folder when `analysis/` cannot be written, said in
-  the card. `Guard` allows exactly `<board>.kisi.json`, `analysis/<board>.kisi.html` and the backups
-  `analysis/<board>.kisi.json.<YYYYmmdd-HHMMSS>[-n].bak` next to the board, and the plugin's temp folder.
+  `kisi export` use), written anew on each click; the plugin's own folder when `analysis/` cannot be written, said
+  in the card. `Guard` allows exactly `<board>.kisi.json`, `analysis/<board>.kisi.html` and the backups
+  `analysis/<board>.kisi.json.<YYYYmmdd-HHMMSS>[-n].bak` next to the board, and the plugin's own folder.
 - **Prepare PCB marks what a step needs:** before, `prepSrcCell` marked the source of every entry without a source –
   also entries without a value – and nothing marked the value inputs. Now an open step marks its empty value inputs
   (`prep-need`; per step type: εr/tanδ of the flagged layers, target Ω, profile, variant choice, the regulator
@@ -156,7 +168,7 @@ for round 2 – **no local server** (a security risk) – and how they are built
   reference, https://www.freepascal.org/docs-html/3.2.0/rtl/windirs/folderid_downloads.html).
 - [S13] xdg-user-dirs (`xdg-user-dir`, `~/.config/user-dirs.dirs`), freedesktop.org.
 
-## Round 3 (2026-10-27, after the re-test)
+## After the second test (2026-10-27)
 Re-test: the Downloads folder was found, the page in `analysis/` works, the marks help, the agent prompt worked with
 ChatGPT. Changed:
 - **Opening the page:** with the page in `analysis/` of a folder with umlauts (`kisi Test äöü`), `webbrowser.open`
@@ -182,6 +194,36 @@ ChatGPT. Changed:
   package ships it in `plugins/agent/`; the agent card shows its path and "Copy guide", and the prompt refers to it
   for both modes.
 
+## After the release (2026-10-30)
+- **Windows: the browser in front.** From the second click on, the new tab opened behind KiCad: a running browser
+  may raise its window only when the process that asks may. The plugin – started by KiCad, which is in the
+  foreground – hands that right on with `AllowSetForegroundWindow(ASFW_ANY)` before `os.startfile` (released in
+  0.3.1).
+- **`install_size`** in the PCM entry counts every file of the archive, `metadata.json` included, as the metadata
+  repository's validator does (the 0.3.1 entry was 1636 bytes short; `tools/build_kicad_pcm.py`).
+- **Linux and macOS, reviewed without KiCad** (none of these paths had run in KiCad yet):
+  - The plugin's own folder (log, error page, fallback page) was `kisi-kicad` in the system's temporary folder. On
+    Linux that is the shared `/tmp`: the folder could belong to another user (then neither log nor page could be
+    written) and the pages, which hold the board, were readable by everyone; a Flatpak KiCad's `/tmp` is not
+    visible outside its sandbox, so the log could not be found. Now `$XDG_CACHE_HOME/kisi-kicad`
+    (`~/.cache/kisi-kicad`; a Flatpak's points into `~/.var/app/<id>/cache`), created readable only by the user;
+    Windows and macOS keep their per-user temporary folder.
+  - `open`/`xdg-open` were taken as success as soon as they started. They exit non-zero when no application takes
+    the file (xdg-open 3: no tool, 4: failed); the plugin now waits up to 3 s and then falls back to `webbrowser`;
+    an opener still running after that (xdg-open without a desktop environment runs the browser itself) counts as
+    opened.
+  - Node.js: KiCad started from the desktop (macOS: Finder or Dock) gets a short PATH, and a Flatpak KiCad sees
+    the home folder but not the host's `/usr`. Besides the PATH, `/usr/local/bin`, `/opt/homebrew/bin`, `/usr/bin`,
+    MacPorts' `/opt/local/bin` and `/snap/bin`, the plugin now looks for the version managers' Node.js in the home
+    folder: Volta (`~/.volta/bin`), nvm (`$NVM_DIR/versions/node`, newest first), fnm's default alias, asdf's shim,
+    `~/.local/bin`.
+  - Downloads folder: a Flatpak KiCad sets `XDG_CONFIG_HOME` inside its sandbox folder, so `user-dirs.dirs` was not
+    found when `xdg-user-dir` is missing; now `~/.config/user-dirs.dirs` is read too, with xdg-user-dirs' quoting
+    and its "disabled" value (the home folder itself).
+  - Names in two Unicode forms: macOS may list a file name decomposed (NFD), while the browser's download name and
+    the kisi.json's `board` are composed (NFC) – a board named with umlauts would never have its download taken
+    over. Names are now compared in NFC.
+
 ## Checked here, and what only KiCad can show
 Checked without KiCad: the unit tests (paths with spaces and umlauts, Windows path rules with `ntpath`, skeleton,
 existing and invalid kisi.json, read-only folder, the KiCad files' hashes unchanged, error paths), the action with
@@ -191,5 +233,41 @@ headless Chromium (`tools/check_kicad_plugin.py`: start, card, Prepare save via 
 the download path, the second click, a full kisi.json, the unsaved-changes notice). Only KiCad can show: that the
 PCM installs the zip and offers to enable the API, that the environment is built and the button appears, the
 icons, the real `KICAD_API_SOCKET` connection, the browser start from `pythonw.exe`, the real save dialog and its
-remembered folder (Chromium's handling of `id` is not documented in detail). The maintainer's test plan
-covers these steps.
+remembered folder (Chromium's handling of `id` is not documented in detail).
+
+A KiCad 10 run under Xvfb in the build container was tried on 2026-10-30 and is not possible there: the container
+has KiCad 7 (no IPC API), and KiCad's PPA, Flathub, Docker Hub and gitlab.com are not reachable from it; building
+KiCad 10 from source on two cores is out of proportion. Linux and macOS therefore wait for the checklist below.
+
+## Linux and macOS checklist
+For a test in KiCad 10 (10.0.1 or later, so that the plugin's messages show) on each system; the log is
+`~/.cache/kisi-kicad/kisi-kicad.log` on Linux (Flatpak: `~/.var/app/org.kicad.KiCad/cache/kisi-kicad/`),
+`$TMPDIR/kisi-kicad/kisi-kicad.log` on macOS (`open "$TMPDIR/kisi-kicad"`). Note the KiCad build (distribution
+package, PPA, Flatpak, AppImage; macOS: Apple silicon or Intel), the browser and whether Node.js is installed and
+how (package, Homebrew, nvm, Volta).
+1. **Install** the release zip with *Install from File…*; KiCad offers to enable the API (else *Preferences →
+   Plugins → Enable KiCad API*). The files are in `3rdparty/plugins/com_github_riehlies_kisi/` (Linux:
+   `~/.local/share/kicad/10.0/3rdparty/`, Flatpak: `~/.var/app/org.kicad.KiCad/data/kicad/10.0/3rdparty/`, macOS:
+   `~/Documents/KiCad/10.0/3rdparty/`).
+2. **Environment:** the button appears after the first start (KiCad builds a venv and installs kicad-python; a
+   missing `python3-venv` on Debian/Ubuntu or no network shows at the alert triangle). *Preferences → PCB Editor →
+   Plugins* lists the action; "Recreate Plugin Environment" works.
+3. **Button and icon:** the eye icon at the right end of the top toolbar, light and dark theme, high-DPI screen
+   (48 px icon).
+4. **First click** on a saved board in a folder with spaces and umlauts (`~/KiCad Tests/Prüf äöü/`): the default
+   browser opens `analysis/<board>.kisi.html` in front, the card names the board; `<board>.kisi.json` is created;
+   the log names the opener (`xdg-open` / `open`) and the Node.js found.
+5. **Second click** while the browser is open: a new tab, the browser comes to the front (Wayland and X11 on Linux).
+6. **Save in Chromium/Chrome:** *Choose the board folder…*, Save kisi.json writes next to the board; after a restart
+   of the browser the folder is still known (or the card says "for this page only").
+7. **Save in Firefox (and Safari on macOS):** the download, then a click in KiCad takes it over (the backup in
+   `analysis/`); also with a board name with umlauts (macOS: NFD names) and with a localized Downloads folder
+   (Linux: e.g. `~/Téléchargements`, from `xdg-user-dir`).
+8. **Node.js:** the agent card shows the command with the installed `cli/kisi.mjs`; copy it into a terminal and run
+   it. With Node.js only from nvm or Volta (not on KiCad's PATH) the plugin still finds it (log). Flatpak: Node.js
+   from the host's `/usr` is invisible to the sandbox – the card says Node.js is missing, which is expected.
+9. **Errors:** a never-saved board → the message at the alert triangle and an error page; the log has the details.
+10. **Read-only board folder:** the page goes to the plugin's own folder and the card says so.
+11. **Flatpak and AppImage:** the browser starts (Flatpak through the desktop portal); an AppImage's library path
+    must not break the browser or `node` – if it does, the log shows the opener's exit code.
+Then set `status` to `stable` in `kicad-plugin/metadata.json` (and the PCM entry) for the systems that passed.

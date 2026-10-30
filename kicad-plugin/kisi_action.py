@@ -12,10 +12,12 @@ Without KiCad (to test the rest): python kisi_action.py --pcb path/to/board.kica
 The page goes to analysis/<board>.kisi.html next to the board (or the temporary folder when that cannot be written);
 a kisi.json the viewer downloaded is taken over from the Downloads folder first (kisi_kicad.import_download).
 Problems: one line on stderr (KiCad 10.0.1 and later show it at the alert triangle in the PCB editor's status bar),
-an error page in the browser, and the details in <temp>/kisi-kicad/kisi-kicad.log.
+an error page in the browser, and the details in kisi-kicad.log in the plugin's folder (kisi_kicad.temp_dir:
+%TEMP%\\kisi-kicad on Windows, $TMPDIR/kisi-kicad on macOS, ~/.cache/kisi-kicad on Linux).
 """
 import argparse
 import os
+import platform
 import sys
 import traceback
 import webbrowser
@@ -96,15 +98,19 @@ def allow_foreground(log, user32=None):
         log(f"AllowSetForegroundWindow: {e!r}")
 
 
+OPENER_WAIT = 3  # seconds: how long `open`/`xdg-open` may take to report a failure
+
+
 def open_page(path, log, system=None, startfile=None, popen=None, browser=None, user32=None):
     """Open the page in the default browser; returns how. Windows: os.startfile with the plain path – the .html
     file's default handler, i.e. the default browser (a file:// URL of a path with umlauts reached Edge as its start
     page in the KiCad 10 test); macOS: `open`; Linux: `xdg-open`; else, and as the fallback, webbrowser with the
-    file:// URL. Windows lets the browser come to the front first (allow_foreground). The arguments are replaced in
-    tests."""
+    file:// URL. `open` and `xdg-open` hand the file on and exit, non-zero when no application took it (xdg-open:
+    3 = no tool, 4 = the action failed) – then the fallback; one still running after OPENER_WAIT seconds (xdg-open
+    without a desktop environment runs the browser itself) counts as opened. Windows lets the browser come to the
+    front first (allow_foreground). The arguments are replaced in tests."""
     if os.environ.get("KISI_NO_BROWSER"):
         return "none (KISI_NO_BROWSER)"
-    import platform
     import subprocess
     from pathlib import Path
     system = system or platform.system()
@@ -123,8 +129,14 @@ def open_page(path, log, system=None, startfile=None, popen=None, browser=None, 
     elif system in ("Darwin", "Linux") or system.endswith("BSD"):
         cmd = ["open", path] if system == "Darwin" else ["xdg-open", path]
         try:
-            popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-            return " ".join(cmd[:1]) + f" {path!r}"
+            proc = popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            try:
+                rc = proc.wait(timeout=OPENER_WAIT)
+            except subprocess.TimeoutExpired:
+                rc = 0
+            if rc == 0:
+                return f"{cmd[0]} {path!r}"
+            tried.append(f"{cmd[0]} exited with {rc}")
         except OSError as e:
             tried.append(f"{cmd[0]}: {e}")
     uri = Path(path).as_uri()
@@ -144,7 +156,7 @@ def main(argv=None):
     if a.no_browser:
         os.environ["KISI_NO_BROWSER"] = "1"
     log = core.Log()
-    log(f"---- kisi plugin {core.version()}, Python {sys.version.split()[0]} ({sys.executable}), cwd {os.getcwd()}")
+    log(f"---- kisi plugin {core.version()}, {platform.platform()}, Python {sys.version.split()[0]} ({sys.executable}), cwd {os.getcwd()}")
     try:
         if a.pcb:
             pcb = os.path.abspath(a.pcb)
@@ -158,7 +170,10 @@ def main(argv=None):
         log(f"downloads {imp['folder'] or '-'}: {imp['state']} {imp['from']} {imp['backup']} {imp['checked']} {imp['reasons']}; "
             f"cli {cli['path'] or '-'}; node {cli['node']}")
         log(f"browser: {open_page(page, log)}")
-        print(page)
+        try:  # for KiCad's messages and tests; the page is open already, so a console that cannot print it is no error
+            print(page)
+        except Exception as e:
+            log(f"stdout: {e!r}")
         return 0
     except core.PluginError as e:
         msg = str(e)

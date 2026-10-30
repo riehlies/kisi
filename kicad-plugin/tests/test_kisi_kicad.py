@@ -338,6 +338,54 @@ class NodeTests(unittest.TestCase):
         r = core.find_node(run=run, which=lambda n: None, env={}, system="Windows")
         self.assertEqual((r["ok"], r["reason"]), (False, "Node.js was not found"))
 
+    def test_version_managers_in_the_home_folder(self):
+        # KiCad started from the desktop (or as a Flatpak) has no shell PATH: nvm's newest version, Volta, fnm
+        home = tempfile.mkdtemp()
+        try:
+            nvm = os.path.join(home, ".nvm", "versions", "node")
+            for v in ("v9.11.2", "v20.18.1", "v22.11.0", "system"):
+                os.makedirs(os.path.join(nvm, v, "bin"))
+                pathlib.Path(os.path.join(nvm, v, "bin", "node")).write_text("")
+            cands = core.node_candidates_posix({}, home)
+            nvm_c = [c for c in cands if c.startswith(nvm)]
+            self.assertEqual(nvm_c[0], os.path.join(nvm, "v22.11.0", "bin", "node"))  # newest first, numerically
+            self.assertEqual(len(nvm_c), 3)
+            self.assertIn(os.path.join(home, ".volta", "bin", "node"), cands)
+            self.assertIn(os.path.join(home, ".local", "share", "fnm", "aliases", "default", "bin", "node"), cands)
+            self.assertIn("/opt/homebrew/bin/node", cands)
+            newest = os.path.join(nvm, "v22.11.0", "bin", "node")
+            run, _ = self.fake({newest: "v22.11.0"})
+            r = core.find_node(run=run, which=lambda n: None, env={}, system="Darwin", home=home)
+            self.assertEqual((r["ok"], r["path"]), (True, newest))
+            # NVM_DIR elsewhere
+            r = core.find_node(run=run, which=lambda n: None, env={"NVM_DIR": os.path.join(home, "none")}, system="Linux", home=home)
+            self.assertFalse(r["ok"])
+        finally:
+            shutil.rmtree(home, ignore_errors=True)
+
+
+class OwnFolderTests(unittest.TestCase):
+    """The plugin's folder (log, error page, fallback page): per user on every system."""
+
+    def test_per_system(self):
+        self.assertEqual(core.temp_dir("Windows"), os.path.join(tempfile.gettempdir(), "kisi-kicad"))
+        self.assertEqual(core.temp_dir("Darwin"), os.path.join(tempfile.gettempdir(), "kisi-kicad"))
+        # Linux: not the shared /tmp – the user's cache folder (a Flatpak KiCad's points into ~/.var/app/…)
+        self.assertEqual(core.temp_dir("Linux", {}, "/home/jürgen"), "/home/jürgen/.cache/kisi-kicad")
+        self.assertEqual(core.temp_dir("Linux", {"XDG_CACHE_HOME": "/home/j/.var/app/org.kicad.KiCad/cache"}, "/home/j"),
+                         "/home/j/.var/app/org.kicad.KiCad/cache/kisi-kicad")
+        self.assertEqual(core.temp_dir("FreeBSD", {}, "/home/j"), "/home/j/.cache/kisi-kicad")
+
+    @unittest.skipIf(os.name == "nt", "POSIX permissions")
+    def test_only_the_user_can_read_it(self):
+        root = tempfile.mkdtemp()
+        try:
+            log = core.Log(os.path.join(root, "kisi-kicad"))
+            log("x")
+            self.assertEqual(os.stat(os.path.dirname(log.path)).st_mode & 0o777, 0o700)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
 
 class DownloadsDirTests(unittest.TestCase):
     def test_windows(self):
@@ -359,6 +407,33 @@ class DownloadsDirTests(unittest.TestCase):
         nox = lambda cmd, **kw: (_ for _ in ()).throw(FileNotFoundError("xdg-user-dir"))
         self.assertEqual(core.downloads_dir("Linux", {"XDG_CONFIG_HOME": "/nonexistent"}, home, run=nox, isdir=isdir), "/home/jürgen/Downloads")
         self.assertEqual(core.downloads_dir("Darwin", {}, home, isdir=isdir), "/home/jürgen/Downloads")
+
+    def test_linux_user_dirs(self):
+        home = tempfile.mkdtemp()
+        try:
+            nox = lambda cmd, **kw: (_ for _ in ()).throw(FileNotFoundError("xdg-user-dir"))
+            dl = os.path.join(home, "Téléchargements")
+            os.makedirs(dl)
+            os.makedirs(os.path.join(home, ".config"))
+            pathlib.Path(os.path.join(home, ".config", "user-dirs.dirs")).write_text(
+                encoding="utf-8", data='# written by xdg-user-dirs-update\nXDG_DESKTOP_DIR="$HOME/Bureau"\nXDG_DOWNLOAD_DIR="$HOME/Téléchargements"\n')
+            # a Flatpak KiCad: XDG_CONFIG_HOME inside its sandbox folder, without user-dirs.dirs – the home's is read
+            env = {"XDG_CONFIG_HOME": os.path.join(home, ".var", "app", "org.kicad.KiCad", "config")}
+            self.assertEqual(core.downloads_dir("Linux", env, home, run=nox), dl)
+            # xdg-user-dir's answer wins; it prints the home folder when the entry is missing
+            here = lambda cmd, **kw: types.SimpleNamespace(stdout=home + "\n")
+            self.assertEqual(core.downloads_dir("Linux", {}, home, run=here), dl)
+        finally:
+            shutil.rmtree(home, ignore_errors=True)
+
+    def test_user_dirs_values(self):
+        h = "/home/j"
+        self.assertEqual(core.user_dirs_download('XDG_DOWNLOAD_DIR="$HOME/Downloads"', h), "/home/j/Downloads")
+        self.assertEqual(core.user_dirs_download('XDG_DOWNLOAD_DIR="${HOME}/Down loads"', h), "/home/j/Down loads")
+        self.assertEqual(core.user_dirs_download('XDG_DOWNLOAD_DIR="/data/My \\"DL\\""', h), '/data/My "DL"')
+        self.assertIsNone(core.user_dirs_download('XDG_DOWNLOAD_DIR="$HOME/"', h))  # disabled
+        self.assertIsNone(core.user_dirs_download('XDG_DOWNLOAD_DIR="Downloads"', h))  # not absolute
+        self.assertIsNone(core.user_dirs_download('#XDG_DOWNLOAD_DIR="$HOME/x"\nXDG_MUSIC_DIR="$HOME/M"', h))
 
 
 class ImportTests(unittest.TestCase):
@@ -397,6 +472,18 @@ class ImportTests(unittest.TestCase):
             self.assertTrue(rx.fullmatch(n), n)
         for n in ("Mein Board.kisi.json.txt", "Other.kisi.json", "Mein Board 2.kisi.json", "Mein Board.json", "Mein Board.kisi(x).json", "xMein Board.kisi.json"):
             self.assertFalse(rx.fullmatch(n), n)
+
+    def test_decomposed_names(self):
+        # macOS: a file name may come decomposed (NFD), the kisi.json's "board" and the browser's name composed
+        import unicodedata
+        nfd = unicodedata.normalize("NFD", "Prüf Board")
+        self.assertNotEqual(nfd, "Prüf Board")
+        self.assertTrue(core.download_name_re(nfd).fullmatch("Prüf Board.kisi (1).json"))
+        self.assertIsNone(core.check_download('{"kisi_config": 1, "board": "Prüf Board.kicad_pcb"}', nfd))
+        self.assertIsNone(core.check_download(json.dumps({"kisi_config": 1, "board": nfd + ".kicad_pcb"}), "Prüf Board"))
+        src = self.put(nfd + ".kisi.json", self.good)  # the name as listed in a folder on macOS
+        self.assertEqual(core.download_candidates(self.dl, "Prüf Board"), [src])
+        self.assertEqual(core.download_candidates(self.dl, nfd), [src])
 
     def test_taken_over_with_backup(self):
         old = self.old_cfg()
@@ -518,8 +605,9 @@ class ActionTests(unittest.TestCase):
         self.b = Board()
         self.tmp = os.path.join(self.b.root, "tmp")
         os.makedirs(self.tmp)
-        self.env = {k: os.environ.get(k) for k in ("TMPDIR", "TEMP", "TMP", "KISI_NO_BROWSER")}
-        os.environ.update({"TMPDIR": self.tmp, "TEMP": self.tmp, "TMP": self.tmp, "KISI_NO_BROWSER": "1"})
+        self.env = {k: os.environ.get(k) for k in ("TMPDIR", "TEMP", "TMP", "XDG_CACHE_HOME", "KISI_NO_BROWSER")}
+        # the plugin's folder: the temporary folder on Windows and macOS, $XDG_CACHE_HOME on Linux
+        os.environ.update({"TMPDIR": self.tmp, "TEMP": self.tmp, "TMP": self.tmp, "XDG_CACHE_HOME": self.tmp, "KISI_NO_BROWSER": "1"})
         tempfile.tempdir = None
         self.saved_modules = {k: sys.modules.get(k) for k in ("kipy",)}
         import kisi_action
@@ -645,13 +733,49 @@ class BrowserTests(unittest.TestCase):
         self.assertIn("webbrowser.open", how)
         self.assertIn("no association", how)
 
+    class Proc:
+        """What `open`/`xdg-open` do: exit with rc, or keep running (rc None: xdg-open running the browser itself)."""
+
+        def __init__(self, rc=0):
+            self.rc, self.waited = rc, []
+
+        def wait(self, timeout=None):
+            self.waited.append(timeout)
+            if self.rc is None:
+                raise subprocess.TimeoutExpired("xdg-open", timeout)
+            return self.rc
+
+    def opener(self, rc=0):
+        calls = []
+
+        def popen(cmd, **kw):
+            calls.append((cmd, kw))
+            return self.Proc(rc)
+        return popen, calls
+
     def test_macos_and_linux(self):
         for system, tool in (("Darwin", "open"), ("Linux", "xdg-open")):
-            calls = []
-            how = self.action.open_page(self.path, print, system=system, popen=lambda cmd, **kw: calls.append((cmd, kw)), browser=self.Browser())
+            popen, calls = self.opener()
+            br = self.Browser()
+            how = self.action.open_page(self.path, print, system=system, popen=popen, browser=br)
             self.assertEqual(calls[0][0], [tool, os.path.normpath(self.path)])
             self.assertTrue(calls[0][1]["start_new_session"])
             self.assertTrue(how.startswith(tool + " "))
+            self.assertEqual(br.calls, [])
+
+    def test_linux_opener_fails_or_keeps_running(self):
+        # xdg-open exits 3 (no tool) or 4 (failed): webbrowser instead
+        popen, _ = self.opener(rc=4)
+        br = self.Browser()
+        how = self.action.open_page(self.path, print, system="Linux", popen=popen, browser=br)
+        self.assertEqual(len(br.calls), 1)
+        self.assertIn("xdg-open exited with 4", how)
+        # still running after the wait (it started the browser in the foreground): opened
+        popen, _ = self.opener(rc=None)
+        br = self.Browser()
+        how = self.action.open_page(self.path, print, system="Linux", popen=popen, browser=br)
+        self.assertEqual(br.calls, [])
+        self.assertTrue(how.startswith("xdg-open "))
 
     def test_linux_without_xdg_open(self):
         def missing(cmd, **kw):

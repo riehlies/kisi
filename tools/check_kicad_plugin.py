@@ -79,7 +79,8 @@ downloads = os.path.join(home, "Downloads")
 os.makedirs(tmp)
 os.makedirs(downloads)
 # the plugin's Downloads folder: ~/Downloads of this HOME (xdg-user-dir, where installed, gives the same)
-ENV = dict(os.environ, TMPDIR=tmp, TEMP=tmp, TMP=tmp, HOME=home, XDG_CONFIG_HOME=os.path.join(home, ".config"))
+# the plugin's own folder: the temporary folder (Windows, macOS) or $XDG_CACHE_HOME (Linux) – both point to tmp
+ENV = dict(os.environ, TMPDIR=tmp, TEMP=tmp, TMP=tmp, XDG_CACHE_HOME=tmp, HOME=home, XDG_CONFIG_HOME=os.path.join(home, ".config"))
 have_node = bool(shutil.which("node"))
 
 

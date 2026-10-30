@@ -170,7 +170,7 @@ def build(viewer, cli, out, version=None, test_viewer=False):
     zpath = os.path.join(out, name)
     wr(zpath, data)
     sha = hashlib.sha256(data).hexdigest()
-    install = sum(len(d) for n, d in entries if n.startswith(("plugins/", "resources/")))  # what the PCM extracts
+    install = sum(len(d) for _, d in entries)  # all files – what KiCad's metadata repository validator counts
     sub = json.loads(json.dumps(md))
     sub["versions"][0].update({"download_url": f"{REPO_URL}/releases/download/v{version}/{name}", "download_sha256": sha,
                                "download_size": len(data), "install_size": install})

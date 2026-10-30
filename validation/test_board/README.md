@@ -1,7 +1,8 @@
 # Measurement coupons (test boards)
 
-Status: **design v3, prepared, not ordered.** 23 boards are generated (first order: JLC 4 / 6 / 8 layers with 7628
-prepreg plus one Aisler board; second order: JLC 4 / 6 layers with 3313 prepreg). kisi reads all of them, their
+Status: **design v3, prepared, not ordered.** First order (maintainer, 2026-10-30): three JLC 4-layer and three JLC
+6-layer designs with 7628 prepreg (section 4, `make_coupons.py --first-order`). 23 more boards stay generated for
+later (JLC 4 / 6 / 8 layers with 7628 prepreg, one Aisler board, JLC 4 / 6 layers with 3313 prepreg). kisi reads all of them, their
 impedances are on target with kisi's field solver, the PDN and capacitor coupons have a measurement method and a
 component list, and the 3D cases are written (**not run**). The connector is the 2.92 mm Samtec
 `292-J-P-EP-ST-EL-01` (40 GHz); its footprint is generated from Samtec's drawing and is a **DRAFT**, and the launch
@@ -140,6 +141,10 @@ so one stackup serves the first order (the planes below In1 differ; check the re
   every case). `default_body` (the jaw) ran twice (as `ours_body`) and is **not valid yet**: port 1 sees a near short
   (\|S11\| about 0 dB at low frequency, \|S21\| −30 dB at 1 GHz rising to −2.7 dB at 40 GHz), also after moving the
   jaw's underside to the copper height and its top off the domain boundary – the jaw approximation needs debugging.
+- **Other stacks** (the `default` case written with `launch_case` for each, not stored): jlc6-7628 and jlc8-7628
+  give the same −21.0 dB at 36.5 GHz (the same 7628 top prepreg; the planes below In1 do not matter here), so the
+  first order's 6-layer boards share the 4-layer launch. jlc4-3313 (the pin-wide 0.255 mm launch over the In1
+  opening): −16.7 dB at 34.5 GHz – to be optimised before a 3313 order.
 - **Run time:** 0.9–1.0 M cells: 120–680 s per case on this workspace (2 vCPUs shared with other jobs); the jaw cases
   (2.1–2.3 M cells) about 950 s.
 - **Next:** fix the jaw case; the coplanar `gap` 0.2–0.4 mm with `w` re-solved for 50 Ω, `launch_length` 3–6.48 mm, a
@@ -194,6 +199,46 @@ are identical on all first-order JLC boards: a build-to-build check. The Aisler 
 
 ## 4. Boards
 
+### First order (maintainer, 2026-10-30)
+
+Only JLC 4 layers (JLC04161H-7628, ≤ 100 × 100 mm) and JLC 6 layers (JLC06161H-7628, ≤ 50 × 50 mm); the other
+boards below stay generated for later. The maintainer asked for two boards; the coupons need 36 connector positions
+on the 4-layer stack and 22 on the 6-layer stack, while a board within the limits has 16 (4 layers: 8 rows of 12 mm,
+one connector per edge per row) or 8 (6 layers: 4 rows). Hence three designs per stack, each with its own 2×thru
+(section 5). `make_coupons.py --first-order` writes only these:
+
+| Board | Size (mm) | Coupon | What | 3D reference cases |
+|---|---|---|---|---|
+| **jlc4-7628-f1** | 50 × 96 | THRU | 2×thru L1 (fixture of this board) | thru_s4_L1 |
+| | | CPWG_25, CPWG_50 | grounded coplanar line, L and 2L (εr, tan δ, roughness by line–line) | T_vna6_cpwg_10 / _20 |
+| | | A0800, A1000, A1200 | coax section L1 → L4 → L1, antipad Ø0.8 / 1.0 / 1.2, 4 GND vias at 1 mm | A_s4_d300_ap800 / ap1000 (1.2: none) |
+| | | D_S0p7, D_S2p0 | return via 0.7 / 2 mm from each via, L1 (ref In1) → L4 (ref In2) | D_s8_stitch_0p5 / 2p0 |
+| **jlc4-7628-f2** | 35 × 96 | THRU, D_NONE | fixture; no return via | thru_s4_L1, D_s8_stitch_none |
+| | | PAIR | pair 2×thru at the 1.0 mm via pitch (fixture of E) | – |
+| | | E_R_G2, E_R_G0 | differential via pair L1 → L4 → L1, round antipads, 2 / 0 GND vias (4-port) | E_s8_L1L8_p1000_round_g2 / g0 |
+| **jlc4-7628-f3** | 100 × 72 | THRU | fixture | thru_s4_L1 |
+| | | XT_MS | edge-coupled microstrip aggressor / victim (4-port) | T_ts6_xt_ms_s10 |
+| | | G_CAV | plane cavity 50 × 30 mm, two ports (shunt-thru) | G_pp100 / pp200 |
+| **jlc6-7628-f1** | 50 × 48 | THRU | 2×thru L1 | thru_s4_L1 |
+| | | SL_L3, VLV_L3 | 25 mm stripline on In2 (L3) and the 5 mm version: line–line = the stripline 2×thru; VLV_L3 is also the via with stub (to L6, notch 32 GHz) | T_ts6_sl_10 / _20, B_ts6_L1L3_stub, B_s8_L1L3_stub_d300 |
+| | | B_L1L6 | through via without stub | B_ts6_L1L6, B_s8_L1L8_d300 |
+| **jlc6-7628-f2** | 35 × 48 | PAIR, E_R_G2 | pair 2×thru; pair L1 → L6 → L1, 2 GND vias | E_s8_L1L8_p1000_round_g2 |
+| **jlc6-7628-f3** | 35 × 48 | THRU, D_S0p7, D_S2p0, D_NONE | fixture; return via 0.7 / 2 mm / none, L1 (ref In1) → L6 (ref In4) | D_s8_stitch_0p5 / 2p0 / none |
+
+- **0.5 mm return via:** made at 0.7 mm. With the 0.3 / 0.6 mm vias the pads would overlap at 0.5 mm (the 3D
+  reference D_s8_stitch_0p5 is idealised: a bare barrel); 0.7 mm keeps 0.1 mm between the pads (JLC) and puts the
+  GND barrel just outside the Ø0.8 antipad. The 3D case of D_S0p7 has the 0.7 mm geometry.
+- **8-layer board:** the 6-layer stub notch (VLV_L3, kisi 32.4 GHz; 3D reference B_ts6_L1L3_stub) is inside the
+  40 GHz band, so the first order measures a stub notch without the 8-layer board. The 8-layer long-stub board
+  (notch near 20 GHz, deeper, also within the 20 GHz ENA) stays for later.
+- **Later (generated, not in the first order):** the PDN loop and capacitor coupons (assembly: jlc4-7628-p, -d,
+  jlc8-7628-p), Aisler, the 3313 thin-prepreg boards, the 8-layer boards, and the other JLC 4 / 6-layer coupons
+  (microstrip lines and the TRL set, oval antipad, D at 1 / 3.5 mm, broadside, stripline pair: jlc4-7628-a … -d,
+  jlc6-7628-a … -d).
+- **DRC** (KiCad 7 on converted copies, section 13): no errors, no unconnected items on the six boards.
+
+### All boards
+
 Limits (maintainer, 2026-10-22, JLC price brackets): 4 layers ≤ 100 × 100 mm, 6 and 8 layers ≤ 50 × 50 mm; the
 generator refuses a JLC board that exceeds them. Aisler charges by area: one dense board of 35 mm rows.
 Rows are sorted by length (a stepped outline); a row is one coupon from edge to edge, or two coupons side by side
@@ -223,7 +268,7 @@ name, template, date and JLC's order-number placeholder `JLCJLCJLCJLC`.
 | kisi-coupons-jlc4-3313-a … -d | 4 | as jlc4-7628-a … -d | the same coupons on the thin prepreg (CAPZ: the mounting inductance with 0.1 mm to the plane) |
 | kisi-coupons-jlc6-3313-a … -d | 6 | as jlc6-7628-a … -d | the same coupons on the thin prepreg |
 
-First order: 15 boards (14 JLC + 1 Aisler); second order: 8 JLC boards.
+Besides the first order (above): 14 JLC 7628 boards and the Aisler board, and 8 JLC 3313 boards, generated for later.
 
 ### Coupons
 
@@ -373,7 +418,8 @@ CAPZ: 20 GHz). Windows: `w10` / `w20` lines and THRU (10 / 20 mm), `wv` via–li
 (5 mΩ lumped short on a 0.5 mm body loop, as `via_cases.pdn_loop`), so the 3D result is the mounting / loop
 inductance. The fixtures `THRU w10` and `PAIR w6` de-embed the 3D results with the same geometry as the measurement.
 
-**105 cases, 0.4–2.4 M cells each, 131 M cells in total** (`fdtd_cells` in the manifests; v2: 126 M, the denser row walls add the rest), plus the launch cases (section 2). Not run here (maintainer's
+**105 cases, 0.4–2.4 M cells each, 131 M cells in total** (`fdtd_cells` in the manifests; v2: 126 M, the denser row walls add the rest); the first-order boards add 27 cases
+(34 M cells, mostly copies of the same coupons); plus the launch cases (section 2). Not run here (maintainer's
 decision); v1 proved the format with one case (0.75 M cells, 36–85 s on one shared core). *Estimate: 1–5 min per via
 case, longer for G and H (low-frequency ringing); several CPU hours in total.*
 ```
@@ -409,10 +455,10 @@ target of the measurement.
 `power --pdn` on every PDN rail, with the native `kisi` (formulas) and `kisi.mjs` (field solver), both kisi 0.3.1
 (v3 run 2026-10-30 on the regenerated boards; the v2 run used 0.2.3). Full tables: `kisi_check.md`.
 
-- All 23 boards parse with the stackup from the file and no board warnings; `config-check` is ok; `gaps` reports only
+- All 29 boards (23 + the 6 first-order boards) parse with the stackup from the file and no board warnings; `config-check` is ok; `gaps` reports only
   the missing regulator chain (and on the PDN boards the rails without a voltage, finding 4).
-- 50Z within ±5 % of the length: 93–100 % with the field solver, 54–76 % with the formulas; 100Z_Diff 92–97 % field,
-  31–76 % formula. The formula share dropped from v2 (63–83 %) because the grounded coplanar launch is now 6.48 mm per
+- 50Z within ±5 % of the length: 93–100 % with the field solver, 41–76 % with the formulas (41 %: jlc4-7628-f1 with its
+  two CPWG coupons, where kisi's coplanar formula is 6.9 % high); 100Z_Diff 92–97 % field, 31–76 % formula. The formula share dropped from v2 (63–83 %) because the grounded coplanar launch is now 6.48 mm per
   side instead of 3 mm, and kisi's coplanar formula is +5.7 % high there. What falls out with the field solver:
   fan-in / taper pieces, traces over antipads, the short piece where the trace meets the connector's tip.
 - `check --all` now returns rows for the connector–connector lanes as well (kisi 0.3.1; v2: none); the coupons are
@@ -434,9 +480,10 @@ target of the measurement.
 
 ## 10. Measurement plan
 
-**Priority:** P1 THRU, LINE_50, LINE_100, A0800, A1200, D_S1p0, D_NONE, PAIR, E_R_G2, XT_MS (jlc4-7628); THRU, B_L1L6,
-VLV_L3, SL_L3 (jlc6-7628); VLV_L3, E_L1L3 (jlc8, stub notch); CAPZ and H copies 1–3. P2 the rest of the first order,
-G_CAV. P3 Aisler, the TRL set, a second copy of each board (build spread), the second (3313) order.
+**Priority (first order):** P1 THRU (every board), CPWG_25 / CPWG_50, A0800, A1200, D_S0p7, D_NONE, PAIR, E_R_G2,
+XT_MS (4 layers); THRU, VLV_L3 (stub notch on the PNA-X / PNA), SL_L3, B_L1L6 (6 layers). P2 the rest of the first
+order (A1000, D_S2p0, E_R_G0, G_CAV, the 6-layer pair and D boards), a second copy of each board (build spread).
+Later orders: CAPZ and H (assembly), the 8-layer boards, Aisler, the 3313 boards, the TRL set.
 
 | Instrument | Coupons | Settings | Calibration |
 |---|---|---|---|
@@ -454,17 +501,18 @@ G_CAV. P3 Aisler, the TRL set, a second copy of each board (build spread), the s
 
 ## 11. Ordering checklist
 
-| Item | JLCPCB, first order | JLCPCB, second order | Aisler |
-|---|---|---|---|
-| Boards | 14 designs: 5 × 4 layers (100 × 96, 35 × 96, 35 × 96, 50 × 96, 100 × 96), 4 × 6 layers (35/50 × 48), 5 × 8 layers (35/50 × 48) | 8 designs: 4 × 4 layers, 4 × 6 layers (sizes as the first order) | 1: 35 × 144 mm |
-| Files | Gerbers + drill from KiCad after refill (B) and DRC, one order line per board | same | KiCad upload |
-| Stackup | impedance control **on**; templates **JLC04161H-7628**, **JLC06161H-7628**, **JLC08201H-7628** (2.0 mm), FR-4 TG155 | **JLC04161H-3313**, **JLC06161H-3313** | ask sales for the stackup first; 35 µm outer if offered |
-| Impedance specs | 50 Ω L1 0.345 mm; 100 Ω diff. L1 0.205/0.2; 6 layers In2 stripline 0.405, pair 0.19/0.2; 8 layers In2 stripline 0.21, pair 0.14/0.2 | 50 Ω L1 0.15; diff. 0.115/0.2; 6 layers In2 0.515, pair 0.21/0.2 | – |
-| Copper / finish / mask | 1 oz outer, 0.5 oz inner; **ENIG**; green mask both sides | same | ENIG, green |
-| Outline | single boards, stepped outline, no panel | same | – |
-| Quantity | 5 each | 5 each | 3 (minimum) |
-| Order number | at `JLCJLCJLCJLC` (bottom silk) | same | – |
-| Assembly | none ordered: the maintainer populates P and D boards from stock (section 6) | D boards (CAPZ) | – |
+| Item | JLCPCB, **first order** (2026-10-30) | JLCPCB, later (7628) | JLCPCB, later (3313) | Aisler, later |
+|---|---|---|---|---|
+| Boards | 6 designs: jlc4-7628-f1 (50 × 96), -f2 (35 × 96), -f3 (100 × 72); jlc6-7628-f1 (50 × 48), -f2 (35 × 48), -f3 (35 × 48) | 14 designs: 5 × 4 layers (a–d, p), 4 × 6 layers (a–d), 5 × 8 layers (a–d, p) | 8 designs: 4 × 4 layers, 4 × 6 layers | 1: 35 × 144 mm |
+| Files | Gerbers + drill from KiCad after refill (B) and DRC, one order line per board | same | same | KiCad upload |
+| Stackup | impedance control **on**; templates **JLC04161H-7628**, **JLC06161H-7628**, FR-4 TG155 | + **JLC08201H-7628** (2.0 mm) | **JLC04161H-3313**, **JLC06161H-3313** | ask sales for the stackup first; 35 µm outer if offered |
+| Impedance specs | 50 Ω L1 0.345 mm; 100 Ω diff. at the via pitch L1 0.315/0.685; 6 layers In2 stripline 0.405 | + 100 Ω diff. L1 0.205/0.2; 6 layers pair 0.19/0.2; 8 layers In2 stripline 0.21, pair 0.14/0.2 | 50 Ω L1 0.15; diff. 0.115/0.2; 6 layers In2 0.515, pair 0.21/0.2 | – |
+| Copper / finish / mask | 1 oz outer, 0.5 oz inner; **ENIG**; green mask both sides | same | same | ENIG, green |
+| Outline | single boards, stepped outline, no panel | same | same | – |
+| Quantity | 5 each | 5 each | 5 each | 3 (minimum) |
+| Order number | at `JLCJLCJLCJLC` (bottom silk) | same | same | – |
+| Assembly | none (no parts on the first-order boards) | the maintainer populates P and D boards from stock (section 6) | D boards (CAPZ) | – |
+| Connectors | 4 (+1 spare) Samtec 292-J-P-EP-ST-EL-01, DigiKey stock (below) | the same connectors | same | same |
 
 **Price estimates** (fetched 2026-10-22; the JLC online quote could not be run from the workspace):
 - **Aisler**, "4 Layer 1.6mm ENIG Budget": job fee €14.00 + area × €0.13/cm² × quantity, sets of 3, net
@@ -477,9 +525,9 @@ G_CAV. P3 Aisler, the TRL set, a second copy of each board (build spread), the s
   ([JLC news, 2026-08-03](https://jlcpcb.com/news/jlcpcb-fr4-pcb-price-adjustment-august2026)).
   *Estimate, not a quote: 4 layers ≤ 100 × 100 mm, 5 pcs, ENIG, impedance template about $10–30 per design;
   6 layers ≤ 50 × 50 mm $2 with the coupon, else about $20–40; 8 layers ≤ 50 × 50 mm $2 with the coupon, else about
-  $40–80; shipping about $15–30 per order. First order about $330–710 + shipping; second order about $120–280 +
-  shipping.* Take the online quote before ordering; dropping jlc8-7628-d (E_L1L3) or merging the two 8-layer pair
-  boards (50 × 72 mm, outside the bracket) are the levers if the 8-layer price is high.
+  $40–80; shipping about $15–30 per order. **First order (3 × 4 layers, 3 × 6 layers) about $40–210 + shipping**;
+  the later 7628 boards about $330–710, the 3313 boards about $120–280, each + shipping.* Take the online quote
+  before ordering.
 - **Connectors:** 4 (+1 spare) × Samtec `292-J-P-EP-ST-EL-01` from DigiKey or Mouser, about 52.65 USD each (Samtec's
   price for one, 2026-10-30) = about 211 USD for 4; in stock at DigiKey (2026-10-30), so the boards (1–2 weeks) set the timeline. The #1-72 screws
   and split washers are on Samtec's drawing (whether they come with the part: check on delivery; spares of both).
@@ -512,7 +560,7 @@ section 6, with the measured connector repeatability as the floor.
 3. **KiCad 8 or 9**: open each board, refill zones (B), run DRC, look at every layer (antipads, island clearances,
    launch openings, removed non-functional pads). Then rerun `check_coupons.py`: the numbers should not change.
    Done in the workspace with KiCad 7 on converted copies (pcbnew's DRC after a zone refill): no errors and no
-   unconnected items on any of the 23 boards; warnings only for the missing footprint library `kisi_coupons`, the open
+   unconnected items on any of the 29 boards (the six first-order boards included); warnings only for the missing footprint library `kisi_coupons`, the open
    ends of REFLECT and four isolated fill pieces of the G_SMALL island (Aisler). (v2 in the same check: 22 copper-to-edge
    errors at the old launch, 46 isolated-fill warnings.) The script: `k8to7.py` + pcbnew's `WriteDRCReport`, not in the
    repository (a workaround for the missing KiCad 8).
@@ -532,5 +580,5 @@ python3 validation/test_board/make_coupons.py --launch-cases jlc4_7628 --fdtd-ex
 python3 validation/fdtd/run_refs.py validation/test_board/fdtd/launch_jlc4_7628 OUT --exe target/release/kisi-fdtd --jobs 2
 ```
 Board keys: `<stackup>_<part>` with stackups `jlc4_7628`, `jlc6_7628`, `jlc8_7628`, `aisler4_assumed`, `jlc4_3313`,
-`jlc6_3313` and parts `a`–`d`, `p`. Without `--reuse-design` the widths are solved again (several minutes per stackup
+`jlc6_3313` and parts `a`–`d`, `p`; the first order is `jlc4_7628_f1` … `f3` and `jlc6_7628_f1` … `f3` (`--first-order`). Without `--reuse-design` the widths are solved again (several minutes per stackup
 with the field solver); with it, only boards, manifests and 3D cases are rewritten.

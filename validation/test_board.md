@@ -1,7 +1,8 @@
 # Measured test board – plan
 
-Status: **coupons prepared (design v3), not ordered** – 23 boards (first order: JLC 4 / 6 / 8 layers with 7628
-prepreg and one Aisler board; second order: JLC 4 / 6 layers with 3313 prepreg), PDN and capacitor coupons with a
+Status: **coupons prepared (design v3), not ordered** – first order (maintainer, 2026-10-30): three JLC 4-layer and
+three JLC 6-layer designs with 7628 prepreg (below); 23 more boards stay generated for later (JLC 4 / 6 / 8 layers
+with 7628 prepreg, one Aisler board, JLC 4 / 6 layers with 3313 prepreg), PDN and capacitor coupons with a
 component list, 3D cases (written, not run), kisi check, measurement plan and ordering checklist in
 [`test_board/README.md`](test_board/README.md). v3 (2026-10-30): 2.92 mm connector (Samtec 292-J-P-EP-ST-EL-01) and
 a 40 GHz plan; the footprint is generated from Samtec's drawing (**DRAFT**), the launch inside it is parametric and
@@ -87,6 +88,29 @@ All 2-port coupons use the same launch and feed length (12.5 mm per side, all co
 | mounted capacitor 0402 / 0603 / 0805 in shunt on a 50 Ω line (assembled) | – | yes | – |
 | via with a long stub (L1 → L3, 1.4 mm stub on a 2.0 mm board) | B | – | 8 layers |
 
+**First order (maintainer, 2026-10-30):** JLC 4 layers 7628 and JLC 6 layers 7628 only; everything else stays
+generated for later. The requested coupons need 36 connector positions on the 4-layer stack and 22 on the 6-layer
+stack (plus a 2×thru on every further board); a board within the cost limits has 8 rows of 12 mm (4 layers, 96 mm) or 4 rows (6 layers, 48 mm), i.e. 16
+or 8 positions on its two edges (edge launches: one connector per edge per row). So the first order is **three
+4-layer and three 6-layer designs**, not two boards (`make_coupons.py --first-order`; coupon list, reference cases
+and ordering checklist in `test_board/README.md` section 4):
+
+| Board | Size (mm) | Coupons |
+|---|---|---|
+| jlc4-7628-f1 | 50 × 96 | THRU, CPWG_25 / CPWG_50 (L, 2L), A0800 / A1000 / A1200, D_S0p7, D_S2p0 |
+| jlc4-7628-f2 | 35 × 96 | THRU, D_NONE, PAIR, E_R_G2, E_R_G0 |
+| jlc4-7628-f3 | 100 × 72 | THRU, XT_MS, G_CAV |
+| jlc6-7628-f1 | 50 × 48 | THRU, SL_L3 (stripline 2×thru by line–line with VLV_L3), VLV_L3 (stub), B_L1L6 (no stub) |
+| jlc6-7628-f2 | 35 × 48 | PAIR, E_R_G2 (L1→L6) |
+| jlc6-7628-f3 | 35 × 48 | THRU, D_S0p7, D_S2p0, D_NONE (L1→L6) |
+
+The return via "at 0.5 mm" is made at 0.7 mm: with the 0.3 / 0.6 mm vias the pads would overlap at 0.5 mm (the 3D
+reference D_s8_stitch_0p5 is idealised); 0.7 mm keeps JLC's 0.1 mm between the pads. The 6-layer stub notch (VLV_L3,
+kisi 32.4 GHz) lies inside the 40 GHz band, so the 8-layer long-stub board is not needed for the first order (it
+would give a deeper notch near 20 GHz that the 20 GHz ENA also sees; later). Later, prepared: the PDN loop and
+capacitor coupons (assembly), Aisler, the 3313 thin-prepreg boards, the 8-layer boards, and the other JLC 4 / 6-layer
+coupons (lines, TRL set, oval antipad, broadside, stripline pair).
+
 **Size (v2):** boards split for cost: 4 layers ≤ 100 × 100 mm, 6 and 8 layers ≤ 50 × 50 mm (JLC price brackets);
 Aisler (priced by area) one dense 35 × 144 mm board.
 
@@ -110,9 +134,9 @@ Aisler (priced by area) one dense 35 × 144 mm board.
 - Connector: 2.92 mm Samtec `292-J-P-EP-ST-EL-01` (decided 2026-10-30); 4 needed (pairs). Open: confirm the
   footprint (Samtec's footprint and 3D model are at hand; SIG@samtec.com for the launch), optimise the launch in
   kisi-fdtd, cross-check it in CST with the STEP model.
-- Stackups: JLC 4L / 6L / 8L with 7628 prepreg (JLC04161H-7628, JLC06161H-7628, JLC08201H-7628) and Aisler 4L
-  first; a second order with thin prepreg (JLC04161H-3313, JLC06161H-3313) is generated as well (decided).
-- PDN coupons with assembly (decided); exact capacitors from stock, their datasheet values go into PI_CAP fields.
+- Stackups: first order JLC 4L / 6L with 7628 prepreg (JLC04161H-7628, JLC06161H-7628; maintainer 2026-10-30);
+  generated for later: JLC 8L 7628 (JLC08201H-7628), Aisler 4L, thin prepreg (JLC04161H-3313, JLC06161H-3313).
+- PDN coupons with assembly (decided, later order); exact capacitors from stock, their datasheet values go into PI_CAP fields.
 - Open: who runs CST and the 3D cases, which version, which solver.
 - Budget and time slot at the VNAs.
 

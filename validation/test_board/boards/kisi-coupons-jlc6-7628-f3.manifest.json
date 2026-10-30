@@ -1,0 +1,199 @@
+{
+ "board": "kisi-coupons-jlc6-7628-f3",
+ "key": "jlc6_7628_f3",
+ "part": "first order 3",
+ "file": "kisi-coupons-jlc6-7628-f3.kicad_pcb",
+ "stackup": "jlc6_7628",
+ "stackup_title": "JLCPCB JLC06161H-7628, 6 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (same top prepreg as JLC04161H-7628; the LibreVNA stack)",
+ "layers": 6,
+ "manufacturer": "JLCPCB",
+ "template": "JLC06161H-7628",
+ "date": "2026-10-30",
+ "size_mm": [
+  35.0,
+  48.0
+ ],
+ "thickness_mm": 1.562,
+ "coupons": [
+  {
+   "id": "THRU",
+   "group": "thru",
+   "title": "2\u00d7thru on L1, 25 mm edge to edge",
+   "length_mm": 25.0,
+   "height_mm": 12.0,
+   "validates": "fixture of every coupon on this board (P370 2\u00d7thru); multiline TRL thru",
+   "references": [
+    "thru_s4_L1"
+   ],
+   "params": {
+    "layer": "F.Cu",
+    "w_mm": 0.345,
+    "length_mm": 25.0
+   },
+   "nets": [
+    "SE_THRU"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J1",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    },
+    {
+     "ref": "J2",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_THRU"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc6-7628-f3__THRU__w10"
+   ]
+  },
+  {
+   "id": "D_S0p7",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L6 (ref L5) \u2192 L1, one GND via 0.7 mm from each via",
+   "length_mm": 35.0,
+   "height_mm": 12.0,
+   "validates": "return path L2 \u2192 L5",
+   "references": [
+    "D_s8_stitch_0p5"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 10.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "none",
+    "stitch_mm": 0.7
+   },
+   "nets": [
+    "SE_D_S0p7"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J3",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_S0p7"
+    },
+    {
+     "ref": "J4",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_D_S0p7"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc6-7628-f3__D_S0p7__wv"
+   ]
+  },
+  {
+   "id": "D_S2p0",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L6 (ref L5) \u2192 L1, one GND via 2 mm from each via",
+   "length_mm": 35.0,
+   "height_mm": 12.0,
+   "validates": "return path L2 \u2192 L5",
+   "references": [
+    "D_s8_stitch_2p0"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 10.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "none",
+    "stitch_mm": 2.0
+   },
+   "nets": [
+    "SE_D_S2p0"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J5",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_S2p0"
+    },
+    {
+     "ref": "J6",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_D_S2p0"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc6-7628-f3__D_S2p0__wv"
+   ]
+  },
+  {
+   "id": "D_NONE",
+   "group": "D",
+   "title": "L1 (ref L2) \u2192 L6 (ref L5) \u2192 L1, no return via (row walls only)",
+   "length_mm": 35.0,
+   "height_mm": 12.0,
+   "validates": "return path without a nearby GND via",
+   "references": [
+    "D_s8_stitch_none"
+   ],
+   "params": {
+    "mid_layer": "B.Cu",
+    "line_mm": 10.0,
+    "drill_mm": 0.3,
+    "antipad_mm": 0.8,
+    "stub": "none"
+   },
+   "nets": [
+    "SE_D_NONE"
+   ],
+   "measure": "VNA 2-port",
+   "connectors": [
+    {
+     "ref": "J7",
+     "port": "1",
+     "side": "left",
+     "layer": "F.Cu",
+     "net": "SE_D_NONE"
+    },
+    {
+     "ref": "J8",
+     "port": "2",
+     "side": "right",
+     "layer": "F.Cu",
+     "net": "SE_D_NONE"
+    }
+   ],
+   "parts": [],
+   "fdtd": [
+    "kisi-coupons-jlc6-7628-f3__D_NONE__wv"
+   ]
+  }
+ ],
+ "fdtd_cases": [
+  "kisi-coupons-jlc6-7628-f3__THRU__w10",
+  "kisi-coupons-jlc6-7628-f3__D_S0p7__wv",
+  "kisi-coupons-jlc6-7628-f3__D_S2p0__wv",
+  "kisi-coupons-jlc6-7628-f3__D_NONE__wv"
+ ],
+ "fdtd_cells": {
+  "kisi-coupons-jlc6-7628-f3__THRU__w10": 860608,
+  "kisi-coupons-jlc6-7628-f3__D_S0p7__wv": 1834176,
+  "kisi-coupons-jlc6-7628-f3__D_S2p0__wv": 1834176,
+  "kisi-coupons-jlc6-7628-f3__D_NONE__wv": 1804352
+ }
+}

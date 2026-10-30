@@ -52,6 +52,9 @@ LS_VIA, LS_RET = LAY["via_line"], LAY["return_line"]
 LAUNCH_LEN = max(LNC["launch_length"], LNC["pad_len"] or 0.0, LNC["taper_len"])  # edge to the coupon's own line
 X_CLEAR = max(LAUNCH_LEN + 0.3, max(h["x"] + h["d"] / 2 for h in FP["mount_holes"]) + 0.5)
 DESIGN_REV = "3"
+# the closest return via next to the 0.3 / 0.6 mm signal via with standard vias: 0.7 mm keeps 0.1 mm
+# between the 0.6 mm pads (hole-to-hole 0.4 mm); the 3D reference has 0.5 mm, which overlaps the pads
+D_CLOSE = 0.7
 ZONE_INSET = 0.25               # zone outlines stay this far inside the board edge
 FENCE_OFF = 0.4                 # fence via centre from the pour edge
 WALL_EDGE = 0.9                 # no wall via closer than this to a left/right board edge
@@ -1409,7 +1412,7 @@ def board_specs(ctx):
         a_ = lambda d: c_vlv(ctx, f"A{ap(d):04d}", "A", f"via–line–via L1→L4→L1 through the L2/L3 plane pair, drill 0.3, antipad Ø{d:.1f}, 4 GND vias at 1 mm",
                              [f"A_s4_d300_ap{ap(d)}"] if d <= 1.0 else [], bot, "via ladder / coax section: antipad dependence of Z and delay (A group)", antipad=d)
         d_ = lambda s: c_vlv(ctx, f"D_S{str(s).replace('.', 'p')}", "D", f"L1 (ref L2) → L4 (ref L3) → L1, one GND via {s:g} mm from each via, antipad Ø0.8",
-                             [f"D_s8_stitch_{str(s).replace('.', 'p')}"] if s in (1.0, 2.0) else [], bot,
+                             [f"D_s8_stitch_{str(s).replace('.', 'p')}"] if s in (1.0, 2.0) else (["D_s8_stitch_0p5"] if s < 1.0 else []), bot,
                              "return path of a reference change L2 → L3 (kisi: GND vias within 3 mm enter the ladder; up to 5 mm an inductance)",
                              Ls=LS_RET, gnd="one", stitch=s, params={"stitch_mm": s})
         parts = {
@@ -1429,6 +1432,17 @@ def board_specs(ctx):
                   [c_coupled(ctx, "XT_MS", "xt", "Microstrip aggressor and victim on L1, edge gap = w", ["T_ts6_xt_ms_s10"], "NEXT / FEXT (kisi's NEXT is 70–80 % high against 3D)")],
                   [c_coupled(ctx, "DIFF_MS", "diff", "Edge-coupled 100 Ω microstrip pair on L1", ["T_ts6_diff_ms"], "Zdiff (TDR plateau), odd-mode εeff, Sdd21 per mm")]],
         }
+        if stk.key == "jlc4_7628":  # first order (maintainer, 2026-10-30): three 4-layer boards ≤ 100 × 100 mm
+            dnone = lambda: c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L4 (ref L3) → L1, no return via (the row walls at ±6 mm only)", ["D_s8_stitch_none"], bot,
+                                  "return path without a nearby GND via: the plane-pair cavity between the row walls", Ls=LS_RET, gnd=None)
+            parts["f1"] = [T(), [c_cpwg(ctx, "CPWG_25", 25.0)], [c_cpwg(ctx, "CPWG_50", 50.0)], [a_(0.8)], [a_(1.0)], [a_(1.2)], [d_(D_CLOSE)], [d_(2.0)]]
+            parts["f2"] = [T(), [dnone()], [c_pair_thru(ctx, "PAIR")],
+                           [c_pair_vlv(ctx, "E_R_G2", "pair via–line–via L1→L4→L1, pitch 1.0, round antipads Ø0.8, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, False, 2,
+                                       "differential via ladder: Sdd21, Zdiff, Scd21")],
+                           [c_pair_vlv(ctx, "E_R_G0", "pair via–line–via L1→L4→L1, pitch 1.0, round antipads, no GND vias", ["E_s8_L1L8_p1000_round_g0"], bot, False, 0,
+                                       "pair via without return vias")]]
+            parts["f3"] = [T(), [c_coupled(ctx, "XT_MS", "xt", "Microstrip aggressor and victim on L1, edge gap = w", ["T_ts6_xt_ms_s10"], "NEXT / FEXT (kisi's NEXT is 70–80 % high against 3D)")],
+                           [c_cavity(ctx, "G_CAV", 50.0, 30.0, 100.0, 3 * ROW, (-22.0, -12.0), (0.0, 0.0))]]
         if stk.pwr is not None and stk.key == "jlc4_7628":
             parts["p"] = [T(), [c_cavity(ctx, "G_CAV", 50.0, 30.0, 100.0, 3 * ROW, (-22.0, -12.0), (0.0, 0.0))],
                           [c_hpdn(ctx, "H_D2", 2.0, -1, 50.0, 26.0), c_hpdn(ctx, "H_D5", 5.0, 1, 50.0, 26.0)],
@@ -1441,7 +1455,26 @@ def board_specs(ctx):
                            [c_thru(ctx, "LINE_35", 35.0)], [g]]}
         return parts
     if stk.n == 6:
-        return {
+        d6 = lambda st: c_vlv(ctx, f"D_S{str(st).replace('.', 'p')}", "D", f"L1 (ref L2) → L6 (ref L5) → L1, one GND via {st:g} mm from each via",
+                              [f"D_s8_stitch_{str(st).replace('.', 'p')}"] if st in (1.0, 2.0) else (["D_s8_stitch_0p5"] if st < 1.0 else []), bot,
+                              "return path L2 → L5", Ls=LS_RET, gnd="one", stitch=st, params={"stitch_mm": st})
+        first = {}
+        if stk.key == "jlc6_7628":  # first order (maintainer, 2026-10-30): three 6-layer boards ≤ 50 × 50 mm
+            first = {
+                "f1": [T(), [c_vlv(ctx, "SL_L3", "T", f"via–line–via with 25 mm stripline on {sn[inner[0]]}", ["T_ts6_sl_10", "T_ts6_sl_20"], inner[0],
+                                   "stripline γ (line–line with VLV_L3: the vias cancel), Zc from the TDR plateau", Ls=25.0, lines=True)],
+                       [c_vlv(ctx, "VLV_L3", "B", f"via–line–via L1→{sn[inner[0]]}→L1 (through vias, stubs to L6), 5 mm stripline", ["B_ts6_L1L3_stub", "B_s8_L1L3_stub_d300"],
+                              inner[0], "inner-layer exit with an open stub (junction model); stub notch inside the 40 GHz band (kisi: 32 GHz)")],
+                       [c_vlv(ctx, "B_L1L6", "B", "via–line–via L1→L6→L1 (through vias, no stub), antipad Ø0.8 on L2/L5, 4 GND vias at 1 mm", ["B_ts6_L1L6", "B_s8_L1L8_d300"], bot,
+                              "through via without stub (via ladder)")]],
+                "f2": [[c_pair_thru(ctx, "PAIR")],
+                       [c_pair_vlv(ctx, "E_R_G2", "pair via–line–via L1→L6→L1, pitch 1.0, round antipads Ø0.8, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, False, 2,
+                                   "differential via ladder through two plane layers")]],
+                "f3": [T(), [d6(D_CLOSE)], [d6(2.0)],
+                       [c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L6 (ref L5) → L1, no return via (row walls only)", ["D_s8_stitch_none"], bot,
+                              "return path without a nearby GND via", Ls=LS_RET, gnd=None)]],
+            }
+        return dict(first, **{
             "a": [T(), [c_vlv(ctx, "B_L1L6", "B", "via–line–via L1→L6→L1 (through vias, no stub), antipad Ø0.8 on L2/L5, 4 GND vias at 1 mm", ["B_ts6_L1L6", "B_s8_L1L8_d300"], bot,
                                 "through via without stub (via ladder)")],
                   [c_vlv(ctx, "D_S1", "D", "L1 (ref L2) → L6 (ref L5) → L1, one GND via 1 mm from each via", ["D_s8_stitch_1p0"], bot, "return path L2 → L5",
@@ -1461,7 +1494,7 @@ def board_specs(ctx):
                                    "broadside NEXT / FEXT (kisi lists it but does not compute it yet)")],
                   [c_coupled_inner(ctx, "DIFF_SL", "diff", f"Edge-coupled 100 Ω stripline pair on {sn[inner[0]]}", ["T_ts6_diff_sl"],
                                    "stripline Zdiff plateau (open point in TESTS.md)")]],
-        }
+        })
     # 8 layers
     return {
         "a": [T(), [c_vlv(ctx, "VLV_L3", "B", f"via–line–via L1→{sn[inner[0]]}→L1 (through vias, 1.4 mm stubs to L8), 5 mm stripline",
@@ -1489,10 +1522,13 @@ def board_specs(ctx):
 STACKS_GEN = ["jlc4_7628", "jlc6_7628", "jlc8_7628", "aisler4_assumed", "jlc4_3313", "jlc6_3313"]
 
 
+FIRST_ORDER = {"jlc4_7628": ("f1", "f2", "f3"), "jlc6_7628": ("f1", "f2", "f3")}
+
+
 def all_boards():
-    """board key -> (stackup, part); parts follow board_specs"""
+    """board key -> (stackup, part); parts follow board_specs; the first order first"""
     parts = {4: "abcd", 6: "abcd", 8: "abcdp"}
-    out = {}
+    out = {f"{sk}_{p}": (sk, p) for sk, ps in FIRST_ORDER.items() for p in ps}
     for sk in STACKS_GEN:
         n = len(STK["stackups"][sk]["copper"])
         ps = "a" if sk.startswith("aisler") else parts[n] + ("p" if sk == "jlc4_7628" else "")
@@ -1502,7 +1538,8 @@ def all_boards():
 
 
 BOARDS = all_boards()
-PART_TITLE = {"a": "lines / vias", "b": "vias / return path", "c": "pairs", "d": "coupling / capacitors", "p": "PDN"}
+PART_TITLE = {"a": "lines / vias", "b": "vias / return path", "c": "pairs", "d": "coupling / capacitors", "p": "PDN",
+              "f1": "first order 1", "f2": "first order 2", "f3": "first order 3"}
 
 
 # --- kisi-fdtd cases ------------------------------------------------------------------------------
@@ -1850,6 +1887,7 @@ def build(board_key, ks, pair_pitch, outdir, design_cache, fdtd_exe=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--boards", default=",".join(BOARDS), help="board keys: " + ", ".join(BOARDS))
+    ap.add_argument("--first-order", action="store_true", help="only the first-order boards: " + ", ".join(k for k in BOARDS if BOARDS[k][1].startswith("f")))
     ap.add_argument("--out", default=HERE)
     ap.add_argument("--kisi", default=os.path.join(REPO, "target", "release", "kisi"))
     ap.add_argument("--kisi-mjs", default=os.path.join(REPO, "dist", "kisi.mjs"))
@@ -1873,6 +1911,8 @@ def main():
                 if d.get("pair_pitch") == a.pair_pitch and "pair_via" in d and len(d["pair_via"]) == len(STK["stackups"][d["stackup"]]["signal"]):
                     cache[d["stackup"]] = d
     keys = [k for k in a.boards.split(",") if k]
+    if a.first_order:
+        keys = [k for k in keys if BOARDS[k][1].startswith("f")]
     need = {BOARDS[k][0] for k in keys} - set(cache)
     if need:
         print(f"trace widths for {', '.join(sorted(need))} from kisi ({ks.solver}: {a.kisi_mjs if ks.solver == 'field' else a.kisi})", flush=True)

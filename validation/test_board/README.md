@@ -145,7 +145,11 @@ stackup serves the first order (the planes below In1 differ; check the result on
   compensates, so the tip stays the default until a case with the pin decides. All three show narrow \|S21\| dips at
   25.5, 27, 35.5 and 37.5 GHz: resonances of the fence / screw-hole region, the first thing to sweep (fence pitch,
   vias between the holes). Values below about 2 GHz are limited by the edge port (−24 dB at 1 GHz on every case).
-  Next: the pin as a strip over the tip, the jaw (`ours_body`), then the sweep.
+  `ours_body` (the jaw) ran twice and is **not valid yet**: port 1 sees a near short (\|S11\| about 0 dB at low
+  frequency, \|S21\| −30 dB at 1 GHz rising to −2.7 dB at 40 GHz), also after moving the jaw's underside to the
+  copper height and its top off the domain boundary. The jaw approximation (sheets with the slot, the lip next to the
+  edge port, posts) needs debugging before its numbers mean anything. Next: fix that case, the pin as a strip over the
+  tip, then the sweep.
 
 ### Frequency plan (2.92 mm, 40 GHz)
 

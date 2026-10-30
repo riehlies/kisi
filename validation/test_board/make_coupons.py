@@ -1720,7 +1720,7 @@ def launch_case(stk_key, des, var, over, fmax=40e9, dfine=0.035, line=2.5):
                     b.via(round(xx, 4), round(yy, 4), LAY["gnd_via"]["drill"] / 2, LAY["gnd_via"]["pad"] / 2, 0, stk.n - 1, [], net="GND")
         k += 1
     body = over.get("body")
-    top_m = zt + (1.0 if body else 0.0)
+    top_m = zt + (0.9 if body else 0.0)
     for hx, hy_, hd in holes:  # plated holes (and the screw through the jaw)
         b.case["vias"].append({"x": hx, "y": hy_, "r": hd / 2, "z0": round(zb, 6), "z1": round(top_m if body else zt, 6), "pad_r": FP["hole_ring"] / 2,
                                "pads": [stk.z[i] for i in range(stk.n)], "net": "GND", "dmesh": 0.1})
@@ -1728,20 +1728,20 @@ def launch_case(stk_key, des, var, over, fmax=40e9, dfine=0.035, line=2.5):
         b.rect_cut(stk.planes[0], 0.25, -cut["width"] / 2, cut["length"], cut["width"] / 2)
     if body:  # the top jaw: metal sheets at four heights with the slot, posts along the slot walls and the lip
         jb = FP["block_width"] / 2
-        for dz in (0.0, 0.25, 0.5, 1.0):
-            z = zt + dz + (0.001 if dz == 0 else 0)
+        for dz in (0.0, 0.25, 0.5, 0.9):   # the jaw's underside at the copper height (it rests on the ground pads)
+            z = zt + dz
             for sg in (1, -1):
                 b.sheet(z, [0.38, min(sg * 1.335, sg * jb), 0.64, max(sg * 1.335, sg * jb)], net="GND")
                 b.sheet(z, [0.64, min(sg * 1.59, sg * jb), FP["body_on_board"], max(sg * 1.59, sg * jb)], net="GND")
             if dz > 0.4:  # the lip above the pin opening (Ø0.70 at 0.13 mm above the board: top at +0.48)
                 b.sheet(z, [0.0, -jb, 0.38, jb], net="GND")
         for sg in (1, -1):
-            b.sheet(zt + 0.001, [0.0, min(sg * 0.33, sg * jb), 0.38, max(sg * 0.33, sg * jb)], net="GND")
+            b.sheet(zt, [0.0, min(sg * 0.33, sg * jb), 0.38, max(sg * 0.33, sg * jb)], net="GND")
             ys = [(0.38, 0.64, 1.335), (0.64, FP["body_on_board"], 1.59)]
             for xa, xb_, yw in ys:
                 n = max(2, int((xb_ - xa) / 0.25) + 1)
                 for i in range(n):
-                    b.cyl(round(xa + (xb_ - xa) * i / (n - 1), 4), sg * yw, 0.05, zt, zt + 1.0, net="GND")
+                    b.cyl(round(xa + (xb_ - xa) * i / (n - 1), 4), sg * yw, 0.05, zt, zt + 0.9, net="GND")
             for i in range(3):  # sides of the pin opening
                 b.cyl(round(0.38 * i / 2, 4), sg * 0.38, 0.05, zt, zt + 0.48, net="GND")
     # ports

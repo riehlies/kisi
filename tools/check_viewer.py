@@ -1202,6 +1202,7 @@ def pre_kicad6(b, page_url, label):
     k5 = os.path.join(tempfile.mkdtemp(prefix="kisi-k5-"), "old.kicad_pcb")
     with open(k5, "w") as f:
         f.write(K5_PCB)
+    n0 = len(errs)
     pg.set_input_files("#file", [k5])
     sel = "#warnings" if board else "#drop-err"
     try:
@@ -1214,9 +1215,12 @@ def pre_kicad6(b, page_url, label):
         if board and pg.evaluate("S.scene ? S.name : null") != board:
             problems.append(f"{label}: KiCad 5 board: the loaded board {board} was not kept")
         pg.screenshot(path=f"{out}/{label.replace(' ', '_')}_kicad5_refused.png")
-    # the viewer logs the load error; any other console error counts
-    for e in errs:
-        if K5_MSG not in e:
+    # the viewer logs the load error once (console.error of the Error; its text differs between browsers); every
+    # other page or console error counts
+    pg.wait_for_timeout(300)
+    logged = next((i for i in range(n0, len(errs)) if errs[i].startswith("console error")), None)
+    for i, e in enumerate(errs):
+        if i != logged:
             (notes if "Failed to load resource" in e else problems).append(f"{label}: {e}")
     pg.close()
     print(f"{label}: KiCad 5 board refused ({'board kept' if board else 'start screen'})")
@@ -1244,5 +1248,9 @@ for n in sorted(set(notes)):
         print(f"::notice title=viewer check timing::{n}")
 for pr in problems:
     print("PROBLEM:", pr)
+    if os.environ.get("GITHUB_ACTIONS"):
+        # also as an annotation: readable in the run's summary without the job log
+        msg = pr[:900].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title=viewer check ({a.browser})::{msg}")
 print(f"screenshots: {out}")
 sys.exit(1 if problems else 0)

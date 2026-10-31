@@ -33,13 +33,14 @@ RES = os.path.join(HERE, "results")
 sys.path.insert(0, HERE)
 import sparam  # noqa: E402
 
-# the vias: case name → board, net, via and exporter options
+# the vias: case name → board, net, via and exporter options; ref_refine: the reference with the cell at metal
+# halved (inner-layer exits, TESTS.md section 17; run_refs.py / fdtd_refs.py)
 VIAS = {
-    "BV_ts_m2_per0": {"board": "Thunderscope_Rev5.3", "config": "ts", "net": "/TS-USB4 Components/M2_PER0_P", "via": 0, "opts": ["--keep", "1.2"],
+    "BV_ts_m2_per0": {"board": "Thunderscope_Rev5.3", "config": "ts", "net": "/TS-USB4 Components/M2_PER0_P", "via": 0, "opts": ["--keep", "1.2"], "ref_refine": 2,
                       "title": "ThunderScope M.2 PCIe RX lane 0 (PER0_P/N), pair via F.Cu → In3.Cu, pitch 0.53 mm"},
     "BV_ts_refinout2": {"board": "Thunderscope_Rev5.3", "config": "ts", "net": "/TS-PCIe Components/REFINOUT2", "via": 0, "opts": ["--keep", "1.2"],
                         "title": "ThunderScope 50 Ω REFINOUT2, through via F.Cu → B.Cu (thick core)"},
-    "BV_vna_rf_hblb1": {"board": "VNA", "config": "vna", "net": "/Attenuator Amp Switches/RF_HBLB_PORT1", "via": 0, "opts": ["--keep", "1.2"],
+    "BV_vna_rf_hblb1": {"board": "VNA", "config": "vna", "net": "/Attenuator Amp Switches/RF_HBLB_PORT1", "via": 0, "opts": ["--keep", "1.2"], "ref_refine": 2,
                         "title": "LibreVNA RF_HBLB_PORT1, via F.Cu → In2.Cu with a 0.87 mm stub to B.Cu (CPWG feeds)"},
 }
 
@@ -74,6 +75,8 @@ def export(a):
             raise SystemExit(r.stderr)
         c = json.load(open(os.path.join(CASES, k + ".json")))
         c["meta"]["title"] = v["title"]
+        if v.get("ref_refine"):
+            c["meta"]["ref_refine"] = v["ref_refine"]
         json.dump(c, open(os.path.join(CASES, k + ".json"), "w"))
         os.makedirs(os.path.join(RES, "board_vias"), exist_ok=True)
         plot_case(c, os.path.join(RES, "board_vias", k + "_case.png"))

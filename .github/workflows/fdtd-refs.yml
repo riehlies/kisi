@@ -1,0 +1,105 @@
+# kisi-fdtd references too large for one machine (validation/fdtd/fdtd_refs.py, TESTS.md section 17): the shards of
+# validation/fdtd/fdtd_plan.json in parallel (at most 15 at a time), each on a 4-vCPU runner, kisi-fdtd with four
+# threads per task. The raw results (one JSON per case and excited port, with the runner's CPU) are committed to the
+# branch the workflow runs on, under validation/fdtd/fdtd_raw/; tasks whose result is already there are skipped, so a
+# second run completes what a first one left. `fdtd_refs.py merge --keep-base` turns them into
+# validation/via_ref/<case>/ locally; the raw folder is then removed again (and kept out of the history).
+#
+# Long and it commits: manual only (Actions → fdtd-refs → Run workflow, or `gh workflow run fdtd-refs --ref <branch>`
+# once the workflow is on the default branch), never on main. Make the plan first (`fdtd_refs.py plan CASES`).
+name: fdtd-refs
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fdtd-refs-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    outputs:
+      shards: ${{ steps.p.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: p
+        name: Shards of the plan
+        run: echo "shards=$(python3 -c 'import json; print(json.dumps(list(range(len(json.load(open("validation/fdtd/fdtd_plan.json"))["shards"])))))')" >> "$GITHUB_OUTPUT"
+      - name: Rust toolchain
+        run: TC=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml) && rustup toolchain install "$TC" --profile minimal  # rust-toolchain.toml
+      - name: Cargo cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-fdtd-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml', 'crates/kisi-fdtd/**') }}
+          restore-keys: |
+            cargo-fdtd-${{ runner.os }}-
+            cargo-${{ runner.os }}-
+      - name: kisi-fdtd
+        run: cargo build --release -p kisi-fdtd
+      - uses: actions/upload-artifact@v6
+        with:
+          name: kisi-fdtd
+          path: target/release/kisi-fdtd
+          retention-days: 3
+
+  shard:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    strategy:
+      fail-fast: false
+      max-parallel: 15  # leaves runners for the CI of other branches
+      matrix:
+        shard: ${{ fromJSON(needs.prepare.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: numpy
+        run: python3 -m pip install --quiet numpy
+      - uses: actions/download-artifact@v7
+        with:
+          name: kisi-fdtd
+          path: bin
+      - name: Run the shard (stops after 5 h 40 min)
+        run: |
+          chmod +x bin/kisi-fdtd
+          lscpu; free -g  # the runner (also stored with the results: "host" per result, fdtd_raw/_logs/shard<K>.txt)
+          timeout 340m python3 validation/fdtd/fdtd_refs.py run --shard ${{ matrix.shard }} \
+            --exe bin/kisi-fdtd --out validation/fdtd/fdtd_raw || echo "shard ended with status $?"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: fdtd-raw-${{ matrix.shard }}
+          path: validation/fdtd/fdtd_raw
+          if-no-files-found: ignore
+          retention-days: 3
+
+  collect:
+    needs: [prepare, shard]
+    if: always() && needs.prepare.result == 'success' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: fdtd-raw-*
+          path: validation/fdtd/fdtd_raw
+          merge-multiple: true
+      - name: Commit the raw results to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add validation/fdtd/fdtd_raw
+          git diff --cached --quiet && exit 0
+          git commit -q -m "kisi-fdtd raw results (run ${{ github.run_id }})"
+          for i in 1 2 3 4 5; do git pull -q --rebase origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 10; done

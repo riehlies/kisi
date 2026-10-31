@@ -192,6 +192,13 @@ It loads the board with kisi's own parser and configuration (`Project::load_with
 
 ## 2. Results
 
+Since `TESTS.md` section 17 the references of the M.2 pair and the LibreVNA via (both exit on an inner layer) are on
+the refined mesh (the cell at metal halved, computed on GitHub Actions runners); the tables of this report are
+against the former ones (`kisi_base.sNp`). With the refined references (`results/board_vias.json`): M.2 delay
+10.1 → 9.8 ps, C 158 → 153 fF, L 673 → 636 pH (differential), the ladder's max Δ\|S21\| to 20 GHz 0.24 → 0.18 dB;
+LibreVNA delay 13.5 → 11.8 ps, C 391 → 360 fF, L 262 → 228 pH, stub notch 24.0 → 24.4 GHz, the ladder's max
+Δ\|S21\| to 20 GHz 1.64 → 2.22 dB (notch shift), its TDR errors 3.5 / 11.1 → 1.7 / 3.3 %.
+
 | | M.2 pair PER0 (Sdd, 100 Ω) | REFINOUT2 through via | LibreVNA RF_HBLB_PORT1 |
 |---|---|---|---|
 | layers, drill / pad | F.Cu → In3.Cu (stub to B.Cu 0.26 mm), 0.203 / 0.406, pitch 0.533 | F.Cu → B.Cu, 0.203 / 0.406 | F.Cu → In2.Cu (stub to B.Cu 0.87 mm), 0.25 / 0.5 |

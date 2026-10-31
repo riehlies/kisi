@@ -44,6 +44,8 @@ The full test log, with the numbers, is in **`TESTS.md`**. In brief:
 | CPML on a matched microstrip | `check_pml.py` | converged at 8 cells; openEMS PML_8 reflects 8–14 dB more above 10 GHz |
 | kisi-fdtd (staircase) against openEMS on the same mesh, one case each of A, B, D, E | `openems_compare.py` | Δ\|S21\| mean 0.011–0.028 dB |
 | Every reference case (106) in openEMS: on kisi-fdtd's mesh (both staircase) and with the cell at metal halved | `openems_refs.py` | same mesh: Δ\|S21\| median 0.018 dB, \|Δτ\| 0.04 ps; references against openEMS refined: median 0.06 dB; outliers and their causes in `TESTS.md` section 16 |
+| Every reference case (106) in CST Studio Suite (FIT, conformal metal) | `cst_case.py`, `run_cst.py`, `cst_compare.py` | lines, thrus, vias, pairs: \|S21\| median 0.03–0.09 dB per group, delay −0.42 … +0.26 ps against the current references; `CST.md` |
+| Inner-layer exits on a finer mesh (21 references recomputed with the cell at metal halved, the four board vias on GitHub Actions) | `run_refs.py`, `fdtd_refs.py`, `openems_refs.py` | via cases: base → fine 1.1–2.3 ps faster on 14 of 17, afterwards kisi-fdtd − CST within ±0.07 ps; board vias −0.3 … +1.1 ps; `TESTS.md` section 17 |
 | Lumped R–L–C | unit test `lumped_rlc` | series resonance within 2 % of the circuit |
 | kisi's fast channel model on every case (mini KiCad boards) | `kisi_board.py`, `compare_kisi.py` | via ~15 % low, stub notch +17 %; a return-path bug found and fixed |
 | Reduced via model (prototype) | `via_pbm.py` | phase ±5°, \|S21\| ±0.15 dB, TDR ±2–5 %, stub notch ±1–6 % up to 20 GHz |
@@ -64,9 +66,12 @@ and the lumped R–L–C.
   - **H** PDN loop: BGA pin field to a 0402 capacitor at 2–20 mm.
   - Plus a 2×thru per feed layer.
 - `run_refs.py` runs them and writes `via_ref/<case>/`:
-  - `kisi.sNp`: conformal, base mesh.
+  - `kisi.sNp`: conformal, the case's mesh: dfine, or the cell at metal halved where the case's `meta.ref_refine` asks
+    for it (every transition that ends on an inner layer, the ThunderScope through via, the RG_ts6 cases:
+    `TESTS.md` section 17); `--refine F` overrides it for a convergence study.
+  - `kisi_base.sNp` (the cases of section 17): the former reference on the base mesh, kept for the comparison.
   - `kisi_fine.sNp` with `--fine`: refined mesh for the convergence check.
-  - `meta.json`: cells, steps, run time and convergence.
+  - `meta.json`: cells, steps, run time and convergence (`mesh_convergence`: base → fine, fine → extra-fine).
 - `openems_refs.py` computes every case in openEMS and compares (`TESTS.md` section 16):
   - `openems_base.sNp`: openEMS (staircase) on the mesh of the kisi-fdtd run, `openems.sNp`: with the cell at metal
     halved; their run info (cells, time per excited port, cell rate, runner) in `meta.json`.
@@ -86,6 +91,18 @@ and the lumped R–L–C.
   and the 3D results, with run times → `results/rust_models.json`; kisi's ladder per case → `via_ref/<case>/ladder.s2p`.
   `kisi-validate via-geom geom.json [--s2p f.s2p]` evaluates one via geometry (the JSON that `KISI_DEBUG_VIA=1`
   prints from `kisi` or `kisi-validate models`).
+- `fdtd_refs.py` runs kisi-fdtd references too large for one machine on GitHub Actions runners (workflow
+  `fdtd-refs`, manual, never on main): `plan` cuts the cases into tasks (case × excited port) and shards
+  (`fdtd_plan.json`), `run` runs a shard, `merge --keep-base` writes `via_ref/<case>/` from the raw results the
+  workflow commits to its branch (`fdtd_raw/`, removed again after the merge). The board vias with an inner exit were
+  computed this way (`TESTS.md` section 17).
+- **CST** (`CST.md`): `cst_case.py` writes a case as CST VBA history blocks, `run_cst.py` runs cases in CST Studio
+  Suite (with CST's Python libraries) → `via_ref/<case>/cst[_fine|_xfine|_mid].sNp` and `*_meta.json`,
+  `cst_compare.py` compares with kisi-fdtd (also its former `kisi_base.sNp`) and openEMS → `results/cst_compare.json`
+  and the tables of `CST.md` (`--md`). The reference page draws CST's finest mesh, with a per-case chip next to the
+  openEMS one and the group table under "Solver checks".
+- `junction_fit.py` re-checks the two fitted choices of the ladder's junction model (`TESTS.md` sections 7 and 17)
+  against the de-embedded references, on the ladder as `rust_models.py --out DIR` computes it.
 - `compare_kisi.py` runs kisi's channel model on every case (`KISI_VIA_MODEL=coax` for the former via model) and
   compares the via alone de-embedded → `results/kisi_models.json`.
 - `practice.py` measures run time, memory and bundle size on the example boards → `results/practice.json`.
@@ -117,6 +134,9 @@ python3 validation/fdtd/openems_refs.py run --shard 0 --exe target/release/kisi-
 python3 validation/fdtd/openems_refs.py merge validation/fdtd/openems_raw
 python3 validation/fdtd/openems_refs.py stair --exe target/release/kisi-fdtd --out /tmp/stair --jobs 2
 python3 validation/fdtd/openems_refs.py compare --stair /tmp/stair
+# kisi-fdtd on runners (board vias): plan, then Actions → fdtd-refs → Run workflow on the branch, then
+python3 validation/fdtd/fdtd_refs.py plan BV_vna_rf_hblb1,BV_vna_clk_w5 --refine 2
+python3 validation/fdtd/fdtd_refs.py merge --keep-base
 python3 validation/fdtd/make_viewer.py
 ```
 

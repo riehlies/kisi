@@ -356,6 +356,12 @@ cut-out ends in the PML as well, so this case checks the window model, not a boa
 
 ![real board via](results/board_resonances/BV_vna_clk_w5.png)
 
+* Since `TESTS.md` section 17 the 3D reference is on the refined mesh (cell at metal 0.035 mm, computed on GitHub
+  Actions runners; the numbers above are against the former 0.07 mm result, `kisi_base.s2p`): its notches move to
+  17.6, 18.7 (−15.8 dB) and 20.9 GHz, the one at 22.9 GHz goes, and the ladder's error at 12–20 GHz becomes
+  8.87 / 2.76 dB (infinite plates) and 8.20 / 2.60 dB (cavity) in `results/board_resonances.json`; below 12 GHz
+  0.41 / 0.12 and 0.29 / 0.07 dB.
+
 ### 5.4 The Block 2 board vias
 
 The two single-via cases of Block 2 (`BOARD_VIAS.md`, de-embedded there) with the ladder as the

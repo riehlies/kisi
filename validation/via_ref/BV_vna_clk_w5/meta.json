@@ -149,22 +149,50 @@
    "thru_BV_vna_clk_w5_in",
    "thru_BV_vna_clk_w5_out"
   ],
-  "title": "/FPGA/FPGA_CLK_R via F.Cu\u2192In3.Cu at (180.401, 101.754)"
+  "title": "/FPGA/FPGA_CLK_R via F.Cu\u2192In3.Cu at (180.401, 101.754)",
+  "ref_refine": 2.0
  },
- "date": "2026-10-22",
+ "date": "2026-10-31",
  "fmax": 25000000000.0,
  "tool": "kisi-fdtd (conformal metal, CPML)",
  "runs": {
   "kisi": {
-   "cells": 724992,
+   "cells": 2553966,
    "steps": [
-    30001,
-    32401
+    55601,
+    57401
    ],
-   "dt": 9.911390485946384e-14,
-   "seconds": 454.7,
-   "dfine": 0.07,
-   "dmax": null
+   "dt": 5.284986499812879e-14,
+   "seconds": 2304.8,
+   "dfine": 0.035,
+   "dmax": null,
+   "refine": 2.0,
+   "threads": 4,
+   "runner": "GitHub Actions ubuntu-24.04 (fdtd_refs.py, workflow fdtd-refs)",
+   "seconds_per_excitation": [
+    1250.9,
+    1053.9
+   ],
+   "hosts": [
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    }
+   ]
   },
   "openems_base": {
    "tool": "openEMS 0.37.0 (staircase, PML_8)",
@@ -251,6 +279,84 @@
      "model": "AMD EPYC 9V74 80-Core Processor",
      "sockets": "1",
      "threads_per_core": "2"
+    }
+   ]
+  },
+  "kisi_base": {
+   "cells": 724992,
+   "steps": [
+    30001,
+    32401
+   ],
+   "dt": 9.911390485946384e-14,
+   "seconds": 454.7,
+   "dfine": 0.07,
+   "dmax": null,
+   "date": "2026-10-22",
+   "file": "kisi_base.s2p"
+  }
+ },
+ "mesh_convergence": {
+  "note": "kisi-fdtd mesh convergence (TESTS.md section 17): the former reference on the base mesh against this one (cell at metal \u00f7 2), and this one against the cell at metal \u00f7 4 (extra-fine, not stored)",
+  "base_vs_fine": {
+   "dS_thru_mean_db": 0.45,
+   "dS_thru_max_db": 5.325,
+   "dS11_mean_db": 0.88,
+   "dS11_max_db": 15.38,
+   "dphase_fmax_deg": 7.85,
+   "dtau_ps": 0.45
+  },
+  "base_vs_fine_20GHz": {
+   "dS_thru_mean_db": 0.319,
+   "dS_thru_max_db": 3.309,
+   "dS11_mean_db": 0.74,
+   "dS11_max_db": 15.38,
+   "dphase_fmax_deg": -7.46,
+   "dtau_ps": 0.6
+  },
+  "fine_vs_xfine": {
+   "dS_thru_mean_db": 0.242,
+   "dS_thru_max_db": 2.81,
+   "dS11_mean_db": 0.51,
+   "dS11_max_db": 10.43,
+   "dphase_fmax_deg": 6.81,
+   "dtau_ps": 0.23
+  },
+  "fine_vs_xfine_20GHz": {
+   "dS_thru_mean_db": 0.179,
+   "dS_thru_max_db": 2.126,
+   "dS11_mean_db": 0.53,
+   "dS11_max_db": 10.43,
+   "dphase_fmax_deg": -1.71,
+   "dtau_ps": 0.26
+  },
+  "xfine_run": {
+   "cells": 8751360,
+   "steps": [
+    117801,
+    121001
+   ],
+   "seconds": 19547.3,
+   "dfine": 0.0175,
+   "refine": 4.0,
+   "hosts": [
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
     }
    ]
   }

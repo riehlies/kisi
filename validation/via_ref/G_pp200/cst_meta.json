@@ -1,0 +1,23 @@
+{
+ "case": "G_pp200",
+ "tag": "",
+ "date": "2026-10-30",
+ "tool": "CST Studio Suite",
+ "solver": "time domain (FIT, hexahedral, PBA)",
+ "mesh_settings": {
+  "lpw": 20,
+  "lpb": 20,
+  "minstep": 0.0,
+  "ratio": 20
+ },
+ "port_request": "face",
+ "ports_used": [
+  "port 1 (edge)",
+  "port 2 (edge)"
+ ],
+ "blocks_failed": [],
+ "status": "ok",
+ "seconds": 37.3,
+ "cells": 45968,
+ "cst_version": "CST Studio Suite 2025.5 Release from 2025-05-30"
+}

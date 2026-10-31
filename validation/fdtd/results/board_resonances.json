@@ -2259,15 +2259,42 @@
  "BV_vna_clk_w5": {
   "title": "/FPGA/FPGA_CLK_R via F.Cu\u2192In3.Cu at (180.401, 101.754)",
   "cells": {
-   "cells": 724992,
+   "cells": 2553966,
    "steps": [
-    30001,
-    32401
+    55601,
+    57401
    ],
-   "dt": 9.911390485946384e-14,
-   "seconds": 454.7,
-   "dfine": 0.07,
-   "dmax": null
+   "dt": 5.284986499812879e-14,
+   "seconds": 2304.8,
+   "dfine": 0.035,
+   "dmax": null,
+   "refine": 2.0,
+   "threads": 4,
+   "runner": "GitHub Actions ubuntu-24.04 (fdtd_refs.py, workflow fdtd-refs)",
+   "seconds_per_excitation": [
+    1250.9,
+    1053.9
+   ],
+   "hosts": [
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    }
+   ]
   },
   "leakage_note": "plane pairs with a cavity: see BOARD_RESONANCES.md",
   "line_z_ohm": [
@@ -2276,90 +2303,86 @@
   ],
   "dips_3d": [
    [
-    17.375,
-    -10.62
+    17.55,
+    -9.91
    ],
    [
-    18.525,
-    -16.82
+    18.65,
+    -15.84
    ],
    [
-    20.425,
-    -10.65
-   ],
-   [
-    22.925,
-    -7.32
+    20.875,
+    -9.68
    ]
   ],
   "inf": {
    "dips": [],
    "dS21_max_rms_db_0.5_6": [
-    0.02,
-    0.01
+    0.04,
+    0.03
    ],
    "dS11_max_rms_db_0.5_6": [
-    1.98,
-    0.84
+    1.42,
+    0.46
    ],
    "dS21_max_rms_db_0.5_12": [
-    0.32,
-    0.08
+    0.41,
+    0.12
    ],
    "dS11_max_rms_db_0.5_12": [
-    1.98,
-    0.91
+    1.42,
+    0.59
    ],
    "dS21_max_rms_db_12_20": [
-    9.88,
-    2.91
+    8.87,
+    2.76
    ],
    "dS11_max_rms_db_12_20": [
-    26.72,
-    12.8
+    25.26,
+    12.48
    ],
    "dS21_max_rms_db_20_25": [
-    3.6,
-    1.41
+    2.62,
+    1.07
    ],
    "dS11_max_rms_db_20_25": [
-    10.24,
-    6.02
+    10.53,
+    5.36
    ]
   },
   "grid": {
    "dips": [],
    "dS21_max_rms_db_0.5_6": [
-    0.02,
-    0.01
+    0.03,
+    0.02
    ],
    "dS11_max_rms_db_0.5_6": [
-    1.95,
-    0.79
+    1.39,
+    0.42
    ],
    "dS21_max_rms_db_0.5_12": [
-    0.2,
-    0.04
+    0.29,
+    0.07
    ],
    "dS11_max_rms_db_0.5_12": [
-    1.95,
-    0.82
+    1.39,
+    0.49
    ],
    "dS21_max_rms_db_12_20": [
-    9.29,
-    2.73
+    8.2,
+    2.6
    ],
    "dS11_max_rms_db_12_20": [
-    30.87,
-    13.02
+    28.32,
+    12.63
    ],
    "dS21_max_rms_db_20_25": [
-    3.75,
-    1.63
+    3.15,
+    1.25
    ],
    "dS11_max_rms_db_20_25": [
-    11.6,
-    5.74
+    10.15,
+    5.03
    ]
   }
  }

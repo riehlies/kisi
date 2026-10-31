@@ -254,6 +254,7 @@
     "ref": "L5"
    }
   ],
-  "lumped": []
+  "lumped": [],
+  "ref_refine": 2
  }
 }

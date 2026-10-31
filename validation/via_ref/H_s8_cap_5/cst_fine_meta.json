@@ -1,0 +1,22 @@
+{
+ "case": "H_s8_cap_5",
+ "tag": "fine",
+ "date": "2026-10-30",
+ "tool": "CST Studio Suite",
+ "solver": "time domain (FIT, hexahedral, PBA)",
+ "mesh_settings": {
+  "lpw": 30.0,
+  "lpb": 30.0,
+  "minstep": 0.0,
+  "ratio": 20
+ },
+ "port_request": "face",
+ "ports_used": [
+  "port 1 (edge)"
+ ],
+ "blocks_failed": [],
+ "status": "ok",
+ "seconds": 245.6,
+ "cells": 290016,
+ "cst_version": "CST Studio Suite 2025.5 Release from 2025-05-30"
+}

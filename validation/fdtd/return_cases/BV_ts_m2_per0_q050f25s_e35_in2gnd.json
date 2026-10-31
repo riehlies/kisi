@@ -277,7 +277,8 @@
    "thru_BV_ts_m2_per0_q050f25s_out"
   ],
   "title": "/TS-USB4 Components/M2_PER0_P via F.Cu\u2192In3.Cu at (161.287, 130.742) with its partner \u2013 diagnosis: In2 joined to every GND via",
-  "thru_dir": "quick"
+  "thru_dir": "quick",
+  "ref_refine": 2
  },
  "monitors": [
   {

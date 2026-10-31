@@ -164,22 +164,50 @@
    "thru_BV_vna_rf_hblb1_in",
    "thru_BV_vna_rf_hblb1_out"
   ],
-  "title": "LibreVNA RF_HBLB_PORT1, via F.Cu \u2192 In2.Cu with a 0.87 mm stub to B.Cu (CPWG feeds)"
+  "title": "LibreVNA RF_HBLB_PORT1, via F.Cu \u2192 In2.Cu with a 0.87 mm stub to B.Cu (CPWG feeds)",
+  "ref_refine": 2.0
  },
- "date": "2026-10-22",
+ "date": "2026-10-31",
  "fmax": 40000000000.0,
  "tool": "kisi-fdtd (conformal metal, CPML)",
  "runs": {
   "kisi": {
-   "cells": 1529280,
+   "cells": 5409600,
    "steps": [
-    32001,
-    43401
+    62001,
+    88401
    ],
-   "dt": 5.002398391767997e-14,
-   "seconds": 1118.9,
-   "dfine": 0.035,
-   "dmax": null
+   "dt": 2.4682449246080738e-14,
+   "seconds": 7397.0,
+   "dfine": 0.0175,
+   "dmax": null,
+   "refine": 2.0,
+   "threads": 4,
+   "runner": "GitHub Actions ubuntu-24.04 (fdtd_refs.py, workflow fdtd-refs)",
+   "seconds_per_excitation": [
+    3132.3,
+    4264.7
+   ],
+   "hosts": [
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    }
+   ]
   },
   "openems_base": {
    "tool": "openEMS 0.37.0 (staircase, PML_8)",
@@ -272,6 +300,38 @@
      "threads_per_core": "2"
     }
    ]
+  },
+  "kisi_base": {
+   "cells": 1529280,
+   "steps": [
+    32001,
+    43401
+   ],
+   "dt": 5.002398391767997e-14,
+   "seconds": 1118.9,
+   "dfine": 0.035,
+   "dmax": null,
+   "date": "2026-10-22",
+   "file": "kisi_base.s2p"
+  }
+ },
+ "mesh_convergence": {
+  "note": "kisi-fdtd mesh convergence (TESTS.md section 17): the former reference on the base mesh against this one (cell at metal \u00f7 2)",
+  "base_vs_fine": {
+   "dS_thru_mean_db": 0.549,
+   "dS_thru_max_db": 7.76,
+   "dS11_mean_db": 0.22,
+   "dS11_max_db": 0.78,
+   "dphase_fmax_deg": -18.64,
+   "dtau_ps": 1.05
+  },
+  "base_vs_fine_20GHz": {
+   "dS_thru_mean_db": 0.095,
+   "dS_thru_max_db": 0.6,
+   "dS11_mean_db": 0.29,
+   "dS11_max_db": 0.78,
+   "dphase_fmax_deg": -9.02,
+   "dtau_ps": 1.17
   }
  }
 }

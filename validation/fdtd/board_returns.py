@@ -116,8 +116,12 @@ def ts6_case(cid, in2):
     title = ("Finite board 24 × 16 mm, ThunderScope stack, via F → In3 (stub to B) through In1 GND / In2 {} / In4 GND, "
              "four GND vias at 1 mm joined to In1 and In4{}").format("PWR" if in2 == "PWR" else "GND", " (openings in In2)" if in2 == "PWR" else " and In2")
     zm = round((zc[2] + zc[3]) / 2, 6)
-    return finish(b, cid, title, {"board_mm": "24 × 16", "returns": 4, "via_mm": list(VIA_A), "in2": in2},
-                  ["thru_RG_ts6p_L1", "thru_RG_ts6p_L4"], {"layers": ["In1", "In2", "In4"], "er": 4.5, "tand": 0.02, "z_mid": zm})
+    c = finish(b, cid, title, {"board_mm": "24 × 16", "returns": 4, "via_mm": list(VIA_A), "in2": in2},
+               ["thru_RG_ts6p_L1", "thru_RG_ts6p_L4"], {"layers": ["In1", "In2", "In4"], "er": 4.5, "tand": 0.02, "z_mid": zm})
+    # the reference with the cell at metal halved (0.035 mm; run_refs.py, TESTS.md section 17): at 0.07 mm the
+    # exit on In3 came out 1.8 ps slow
+    c["meta"]["ref_refine"] = 2
+    return c
 
 
 def cases():
@@ -415,6 +419,7 @@ def write_m2_in2gnd():
     c["name"] = BOARD_VIAS[k]["gnd"]
     c["meta"]["title"] = c["meta"]["title"] + " – diagnosis: In2 joined to every GND via"
     c["meta"]["thru_dir"] = "quick"
+    c["meta"]["ref_refine"] = 2  # the reference with the cell at metal halved (TESTS.md section 17)
     os.makedirs(CASES, exist_ok=True)
     json.dump(c, open(os.path.join(CASES, c["name"] + ".json"), "w"), indent=1)
     print(f"{c['name']}: {n} GND vias joined to In2")

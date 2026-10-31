@@ -23,7 +23,22 @@ def r2(a, d=2):
     return [None if not np.isfinite(x) else round(float(x), d) for x in a]
 
 
+CST_MESHES = (("cst_fine", "fine"), ("cst_mid", "intermediate"), ("cst", "base"))  # CST's finest mesh first (CST.md)
+
+
+def cst_mesh(name, thru=False):
+    """the CST result shown for a case: its finest mesh (the intermediate mesh has no 2×thru of its own)"""
+    for tool, label in CST_MESHES:
+        if thru and tool == "cst_mid":
+            continue
+        if any(os.path.exists(os.path.join(REF, name, f"{tool}.s{n}p")) for n in (1, 2, 4)):
+            return tool, label
+    return None, None
+
+
 def load(name, tool):
+    if tool == "cst":
+        tool = cst_mesh(name, name.startswith("thru_"))[0] or "cst"
     for n in (1, 2, 4):
         p = os.path.join(REF, name, f"{tool}.s{n}p")
         if os.path.exists(p):
@@ -191,6 +206,88 @@ def agreement(r):
             "text": f"openEMS: Δ|{nm}| {mean:.2f} / {mx:.2f} dB, Δτ {s['dtau_ps']:+.1f} ps"}
 
 
+CST_MESH_NAME = {"fine": "fine mesh", "mid": "intermediate mesh", "base": "base mesh"}
+
+
+def agreement_cst(r, oe):
+    """the chip of a case: kisi-fdtd against CST on CST's finest mesh (results/cst_compare.json), with the metrics and
+    thresholds of the openEMS chip"""
+    if not r:
+        return None
+    mesh = CST_MESH_NAME.get(r.get("mesh"), r.get("mesh", ""))
+    if "pdn_vs_kisi" in r:
+        p = r["pdn_vs_kisi"]  # [CST, kisi-fdtd]
+        title = f"kisi-fdtd against CST Studio Suite (FIT, conformal metal) on its {mesh}; method and results: CST.md"
+        if "Z11_peaks_GHz" in p:
+            pc, pk = p["Z11_peaks_GHz"][0][:3], p["Z11_peaks_GHz"][1][:3]
+            dev = max((abs(a / b - 1) * 100 for a, b in zip(pk, pc)), default=0)
+            return {"ok": dev < 1.0, "title": title, "text": f"CST ({mesh}): first resonances {' / '.join(f'{x:g}' for x in pc)} GHz, max {dev:.1f} %"}
+        lc, lk = p["L50_nH"]
+        return {"ok": abs(lk / lc - 1) < 0.03, "title": title, "text": f"CST ({mesh}): loop L at 50 MHz {lc:.3f} nH ({(lk / lc - 1) * 100:+.1f} %)"}
+    s = r.get("chip_kisi_vs_cst")
+    if not s:
+        return None
+    title = (f"kisi-fdtd (conformal) against CST Studio Suite (FIT, conformal metal) on its {mesh}, up to the case's f max: mean / max difference "
+             f"of the through path, delay difference τ kisi-fdtd − τ CST; method and per-case results: CST.md")
+    pair = (oe or {}).get("pair", False)
+    key = "Sdd21" if pair and "dSdd21_mean_db" in s else "thru"
+    mean, mx = (s["dSdd21_mean_db"], s["dSdd21_max_db"]) if key == "Sdd21" else (s["dS_thru_mean_db"], s["dS_thru_max_db"])
+    nm = "Sdd21" if key == "Sdd21" else "S21" if (oe or {}).get("ports", 2) == 2 else "through"
+    return {"ok": mean <= OK_THRU_DB and abs(s["dtau_ps"]) <= OK_DELAY_PS, "title": title,
+            "text": f"CST ({mesh}): Δ|{nm}| {mean:.2f} / {mx:.2f} dB, Δτ {s['dtau_ps']:+.1f} ps"}
+
+
+def cst_check(d, oe):
+    """the table of the solver checks: kisi-fdtd against CST per group, and openEMS against CST"""
+    def grp(cid):
+        return "thru" if cid.startswith("thru") else "board" if cid.startswith("BV") else (oe.get("cases", {}).get(cid) or {}).get("group") or cid.split("_")[0]
+
+    def med(v):
+        return round(float(np.median(v)), 3) if v else "–"
+    groups = {}
+    for cid, r in d.items():
+        if cid == "note" or not isinstance(r, dict):
+            continue
+        groups.setdefault(grp(cid), []).append((cid, r))
+    order = list(oe.get("summary", {}).keys()) or sorted(groups)
+    rows = []
+    for g in order + [g for g in sorted(groups) if g not in order]:
+        rr = groups.get(g)
+        if not rr:
+            continue
+        meshes = ", ".join(f"{sum(1 for _, r in rr if r.get('mesh') == m)} {CST_MESH_NAME[m].replace(' mesh', '')}" for m in ("fine", "mid", "base")
+                           if any(r.get("mesh") == m for _, r in rr))
+        if g in ("G", "H"):
+            if g == "G":
+                dev = []
+                for _, r in rr:
+                    pc, pk = r["pdn_vs_kisi"]["Z11_peaks_GHz"]
+                    dev.append(max(abs(a / b - 1) * 100 for a, b in zip(pk[:3], pc[:3])))
+                cell = f"first three |Z11| resonances within {max(dev):.1f} %"
+            else:
+                dl = [(r["pdn_vs_kisi"]["L50_nH"][1] / r["pdn_vs_kisi"]["L50_nH"][0] - 1) * 100 for _, r in rr]
+                cell = f"loop L at 50 MHz {min(dl):+.1f} … {max(dl):+.1f} %"
+            rows.append([g, len(rr), meshes, cell, "–", "–", "–"])
+            continue
+        k = [r["chip_kisi_vs_cst"] for _, r in rr if "chip_kisi_vs_cst" in r]
+        o = [r["chip_openems_vs_cst"] for _, r in rr if "chip_openems_vs_cst" in r]
+        rows.append([g, len(rr), meshes,
+                     f"{med([x['dS_thru_mean_db'] for x in k])} / {max(x['dS_thru_mean_db'] for x in k):.3f} / {max(x['dS_thru_max_db'] for x in k):.3f}" if k else "–",
+                     med([x["dtau_ps"] for x in k]) if k else "–",
+                     f"{med([x['dS_thru_mean_db'] for x in o])} / {max(x['dS_thru_mean_db'] for x in o):.3f}" if o else "–",
+                     med([x["dtau_ps"] for x in o]) if o else "–"])
+    text = ["Every reference case computed a third time with CST Studio Suite 2025.5 (time domain, FIT with PBA conformal metal, discrete face "
+            "ports, open boundaries) from the same case files, on CST's own mesh: fine (30 lines per wavelength and per model box) where it stays "
+            "within the 1 M cell limit, else the intermediate (25 / 25) or base mesh (20 / 20). Compared with kisi-fdtd's references as they are since "
+            "the refined inner-layer exits, with the metrics of the openEMS table (through path S21, of a pair S31; Δτ = τ kisi-fdtd (or openEMS) − τ CST "
+            "from the phase above f max / 4; G: |Z11| resonances, H: loop inductance at 50 MHz). Method, mesh checks and per-case results: CST.md; summary: TESTS.md S16, "
+            "sections 16 and 17."]
+    return {"title": "Every reference case in CST", "text": text,
+            "cols": ["group", "cases", "CST mesh (cases)", "Δ|S21| kisi-fdtd vs CST: median of the case means / largest mean / largest max (dB); G, H: as noted",
+                     "Δτ kisi-fdtd − CST, median (ps)", "Δ|S21| openEMS fine vs CST: median of the case means / largest mean (dB)", "Δτ openEMS − CST, median (ps)"],
+            "rows": rows}
+
+
 MESH_NAME = {"openems": "refined mesh", "openems_base": "base mesh"}
 
 
@@ -271,12 +368,16 @@ def main():
     thru = thrus["kisi"]
     po = os.path.join(HERE, "results", "openems_refs.json")
     oe_refs = json.load(open(po)) if os.path.exists(po) else {}
+    pc = os.path.join(HERE, "results", "cst_compare.json")
+    cst_refs = json.load(open(pc)) if os.path.exists(pc) else {}
     cases = []
     for cp in sorted(glob.glob(os.path.join(CASES, "*.json"))):
         c = json.load(open(cp))
         nm = c["name"]
         f, S = load(nm, "kisi")
         entry = {"id": nm, "case": {k: c[k] for k in ("domain", "board", "layers", "sheets", "vias", "ports", "fmax")}, "meta": c["meta"]}
+        if cst_mesh(nm)[1]:
+            entry["cst_mesh"] = cst_mesh(nm)[1]
         fp = os.path.join(REF, nm, "fields.json")
         if os.path.exists(fp):
             entry["fields"] = json.load(open(fp))["planes"]
@@ -288,7 +389,7 @@ def main():
             grp = c["meta"]["group"]
             z0 = c["ports"][0].get("r", 50.0)
             res = {"kisi": curves(S, grp, f, z0)}
-            for tool in ("kisi_fine", "openems", "openems_base", "cst", "kisi_model", "pbm", "ladder", "model"):
+            for tool in ("kisi_fine", "kisi_base", "openems", "openems_base", "cst", "kisi_model", "pbm", "ladder", "model"):
                 f2, S2 = load(nm, tool)
                 if S2 is None or (S2.shape[1] != S.shape[1] and tool not in ("pbm", "ladder")):
                     continue
@@ -323,6 +424,9 @@ def main():
             ag = agreement(oe_refs.get("cases", {}).get(nm))
             if ag:
                 entry["agree"] = ag
+            agc = agreement_cst(cst_refs.get(nm), oe_refs.get("cases", {}).get(nm))
+            if agc:
+                entry["agree_cst"] = agc
             if grp in ("G", "H"):
                 entry["res"] = res
                 cases.append(entry)
@@ -357,6 +461,8 @@ def main():
             checks[nm] = model_check(nm, d)
     if oe_refs:
         checks["openems_refs"] = openems_check(oe_refs)
+    if cst_refs:
+        checks["cst_refs"] = cst_check(cst_refs, oe_refs)
     if "cavity" in checks and "rows" in checks["cavity"] and "cols" not in checks["cavity"]:
         checks["cavity"] = cavity_check(checks["cavity"])
     data = json.dumps({"cases": cases, "checks": checks}, separators=(",", ":"))

@@ -14,6 +14,7 @@ The scripts named here reproduce each result.
 | S3 | CPML on a matched microstrip: 8 / 16 cells, larger box, openEMS PML_8 | `check_pml.py` | S11 identical for 8 and 16 cells (converged), openEMS 8–14 dB more reflection above 10 GHz, S21 within 0.01 dB | pass |
 | S4 | Implementation against openEMS on the same mesh (staircase, PML), one case each of A, B, D, E | `openems_compare.py` | on the mesh of the reference runs: Δ\|S21\| mean 0.011–0.028 dB, max 0.04–0.22 dB (before, on a staircase-mode mesh with lines on every circle extreme: 0.02–0.22 / up to 2.5 dB) | pass |
 | S15 | Every reference case (106) in openEMS, on kisi-fdtd's mesh and with the cell at metal halved | `openems_refs.py` | section 16 | pass, with the outliers explained there |
+| S16 | Every reference case (106) in CST Studio Suite 2025.5 (FIT, conformal PBA metal, face ports; fine mesh for 101) | `cst_case.py`, `run_cst.py`, `cst_compare.py`, `CST.md` | against the references since section 17: lines, thrus, vias and pairs \|S21\| median 0.026–0.088 dB per group, delay −0.42 … +0.26 ps (via groups A–E, X); the former inner-exit references were 1.0–2.4 ps slow (section 17) | pass; board vias and plane resonances limited by both solvers' meshes (`CST.md`) |
 | S5 | Lumped series R–L–C at the end of a 1 mm microstrip | unit test `lumped_rlc` | series resonance 4.35–4.40 GHz against 4.33 GHz from the circuit with the line's 0.35 nH, Re Z 9.6 Ω against 10 Ω | pass |
 | S6 | Stability: lone conformal pad in a PEC box, 12 000 steps | unit test `conformal_pad_stable` | energy decays (found and fixed: every face touching a partially free edge must use its free length, otherwise the operator is not symmetric and the energy grows) | pass |
 | S8 | Line impedance and the edge effect of zero-thickness strips: Zc and εeff of 20 mm microstrip / stripline (ThunderScope stack; γ from 10 / 20 mm) against kisi's 2D field solver (≤ 1.7 % from HFSS) | `compare_kisi.py … kisi.mjs` | mesh lines on the strip edges: Zc 6 % low (46.1 / 43.3 Ω against 49.1 / 46.1 Ω), εeff within 1 %; thirds rule (lines Δ/3 inside, 2Δ/3 outside the long edges): Zc 48.6 / 46.5 Ω (−1.0 / +0.8 %), εeff 2.580 / 3.920 (+0.5 / +0.4 %) | thirds rule on for all cases with traces; references recomputed |
@@ -760,7 +761,7 @@ identical to the 10 MHz grid. The largest same-mesh differences:
 - **H loop inductance (openEMS +3.5 … +7.6 %):** kisi-fdtd staircase 1.339 / 1.468 / 1.675 / 2.083 nH, openEMS 1.410 / 1.527 /
   1.734 / 2.241 nH at 2 / 5 / 10 / 20 mm, kisi-fdtd conformal 1.328 / 1.456 / 1.663 / 2.071 nH. Not the PEC end caps
   (openEMS without them: unchanged); the one-edge 1 Ω port is measured differently (openEMS: a probe line and an
-  H loop at mid-height, kisi-fdtd: the edge sums). The CST session (branch `feat/cst-refs`) finds CST between the two.
+  H loop at mid-height, kisi-fdtd: the edge sums). CST finds 1.42 / 1.49 / 1.69 / 2.10 nH, between the two (`CST.md`).
   The loop inductance is therefore defined only to about ±4 % by the port model – well inside the ±15–25 % targets.
 
 ### kisi-fdtd's references against openEMS (refined mesh)
@@ -788,13 +789,13 @@ identical to the 10 MHz grid. The largest same-mesh differences:
 - **Inner-layer exits and the ThunderScope through via (before section 17):** kisi-fdtd was 0.8–2.1 ps *slower* (B and E L1→L3,
   B_ts6_L1L6). Here kisi-fdtd's own reference is not converged: on the fine mesh it moves by −1.13 ps
   (B_s8_L1L3_stub_d300), −1.12 ps (E_s8_L1L3_p1000_round_g2) and −1.81 ps (B_ts6_L1L6), and then agrees with
-  openEMS fine within 0.2–0.5 ps; X_s8x2 (no L2 plane) and the L1→L8 cases move by 0.04–0.12 ps only. The CST
-  session finds kisi-fdtd 1.0–2.4 ps slow on L1→L3 / L1→L6 with openEMS within 0.1–0.5 ps of CST: the same finding
-  from a third solver.
+  openEMS fine within 0.2–0.5 ps; X_s8x2 (no L2 plane) and the L1→L8 cases move by 0.04–0.12 ps only. CST found
+  kisi-fdtd 1.0–2.4 ps slow on L1→L3 / L1→L6 with openEMS within 0.1–0.5 ps of CST: the same finding from a third
+  solver. Section 17 recomputes these references; CST − kisi-fdtd is now −0.12 … +0.20 ps there (D_s8_cap_10 −0.42 ps on CST's base mesh; `CST.md`).
 - **Stub notches:** the same mesh puts them at the same frequency in both tools (20.8 / 20.9, 21.0 / 21.0,
   25.4 / 25.4 GHz). openEMS refined moves up towards kisi-fdtd (21.0 → 21.4 GHz, 25.4 → 26.0 GHz; extrapolated
   21.8 against 21.5–21.8 GHz); kisi-fdtd refined moves up by 0.2 GHz. Matched dips 1.2–2.9 % apart, which is what
-  gives the 3–7 dB maxima on the notch flanks (the CST session: CST and kisi-fdtd within 0.3–0.45 dB there).
+  gives the 3–7 dB maxima on the notch flanks (CST and kisi-fdtd within 0.2–0.6 dB there, `CST.md`).
 - **Finite boards and return groups:** resonances matched within 0.0–0.4 % (R, 8/8 per case; R_s4_rect_2v 7/7) and
   1.0–1.2 % (RG), depths within 0.1–0.5 dB; RG's base → fine change (0.16 dB) is the largest of the plain
   cases – the floating GND vias across the PWR plane (narrow clearances) are where staircase metal matters most.
@@ -842,7 +843,7 @@ channel 8.98 / 13.981 % against kisi-fdtd).
 
 ## 17. Inner-layer exits on a refined mesh
 
-Both cross-checks of section 16 (openEMS, and CST on branch `feat/cst-refs`, `CST.md`) found kisi-fdtd's references
+Both cross-checks of section 16 (openEMS, and CST: `CST.md`) found kisi-fdtd's references
 1.0–2.4 ps slow on the via transitions that end on an inner layer and on the ThunderScope through via, with |S21|
 barely affected, while the two other solvers agreed within 0.1–0.5 ps. kisi-fdtd's own fine-mesh runs of section 16
 showed that this is the mesh, not the solver: those references were not converged at dfine 0.035 mm.
@@ -905,7 +906,7 @@ showed that this is the mesh, not the solver: those references were not converge
 | X_s8x2_L1L3_bd_d200 | +0.04 | 0.012 / 0.07 | -0.61 → -0.62 | -0.75 → -0.75 | -0.51 → -0.55 | +0.24 → +0.21 |
 | X_s8x4_L1L3_bd_d200 | +0.13 | 0.019 / 0.10 | -0.63 → -0.64 | -0.78 → -0.77 | -0.24 → -0.37 | +0.08 → -0.04 |
 
-S31 for the pairs. CST: its finest mesh on `feat/cst-refs` (extra-fine on B_s8_L1L3_bd_d200, base on D_s8_cap_10),
+S31 for the pairs. CST: its finest mesh (`CST.md`; extra-fine on B_s8_L1L3_bd_d200, base on D_s8_cap_10),
 delay from the raw S21 phase between 5 and 20 GHz (`CST.md` fits the de-embedded phase, Sdd for the pairs, so its
 numbers differ from these by up to 0.4 ps). D_s8_cap_2 / _10 are judged against openEMS on its base mesh (its refined runs are unstable, section 16),
 where staircase metal makes the via slow.

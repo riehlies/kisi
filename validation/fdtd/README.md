@@ -44,6 +44,7 @@ The full test log, with the numbers, is in **`TESTS.md`**. In brief:
 | CPML on a matched microstrip | `check_pml.py` | converged at 8 cells; openEMS PML_8 reflects 8–14 dB more above 10 GHz |
 | kisi-fdtd (staircase) against openEMS on the same mesh, one case each of A, B, D, E | `openems_compare.py` | Δ\|S21\| mean 0.011–0.028 dB |
 | Every reference case (106) in openEMS: on kisi-fdtd's mesh (both staircase) and with the cell at metal halved | `openems_refs.py` | same mesh: Δ\|S21\| median 0.018 dB, \|Δτ\| 0.04 ps; references against openEMS refined: median 0.06 dB; outliers and their causes in `TESTS.md` section 16 |
+| Every reference case (106) in CST Studio Suite (FIT, conformal metal) | `cst_case.py`, `run_cst.py`, `cst_compare.py` | lines, thrus, vias, pairs: \|S21\| median 0.03–0.09 dB per group, delay −0.42 … +0.26 ps against the current references; `CST.md` |
 | Inner-layer exits on a finer mesh (21 references recomputed with the cell at metal halved, the four board vias on GitHub Actions) | `run_refs.py`, `fdtd_refs.py`, `openems_refs.py` | via cases: base → fine 1.1–2.3 ps faster on 14 of 17, afterwards kisi-fdtd − CST within ±0.07 ps; board vias −0.3 … +1.1 ps; `TESTS.md` section 17 |
 | Lumped R–L–C | unit test `lumped_rlc` | series resonance within 2 % of the circuit |
 | kisi's fast channel model on every case (mini KiCad boards) | `kisi_board.py`, `compare_kisi.py` | via ~15 % low, stub notch +17 %; a return-path bug found and fixed |
@@ -95,6 +96,10 @@ and the lumped R–L–C.
   (`fdtd_plan.json`), `run` runs a shard, `merge --keep-base` writes `via_ref/<case>/` from the raw results the
   workflow commits to its branch (`fdtd_raw/`, removed again after the merge). The board vias with an inner exit were
   computed this way (`TESTS.md` section 17).
+- **CST** (`CST.md`): `cst_case.py` writes a case as CST VBA history blocks, `run_cst.py` runs cases in CST Studio
+  Suite (with CST's Python libraries) → `via_ref/<case>/cst[_fine|_xfine|_mid].sNp` and `*_meta.json`,
+  `cst_compare.py` compares with kisi-fdtd (also its former `kisi_base.sNp`) and openEMS → `results/cst_compare.json`
+  and the tables of `CST.md` (`--md`). The reference page draws CST's finest mesh.
 - `junction_fit.py` re-checks the two fitted choices of the ladder's junction model (`TESTS.md` sections 7 and 17)
   against the de-embedded references, on the ladder as `rust_models.py --out DIR` computes it.
 - `compare_kisi.py` runs kisi's channel model on every case (`KISI_VIA_MODEL=coax` for the former via model) and

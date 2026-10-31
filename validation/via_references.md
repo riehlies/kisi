@@ -7,7 +7,10 @@
 > `cst_via.py` and `validate_via.sh` named below, which were never written). **Every case was then also computed in
 > openEMS** (0.37.0, staircase metal, on kisi-fdtd's mesh and on a mesh with the cell at metal halved;
 > `openems_refs.py`), as the independent check this plan asked for: results in `via_ref/<case>/openems*.sNp`, method
-> and numbers in [`fdtd/TESTS.md`](fdtd/TESTS.md) section 16. CST runs on branch `feat/cst-refs`. The via model this
+> and numbers in [`fdtd/TESTS.md`](fdtd/TESTS.md) section 16. **The CST cross-check is done as well, on every case rather
+than the subset of the matrix below** (CST Studio Suite 2025.5, FIT with conformal metal; report
+[`fdtd/CST.md`](fdtd/CST.md), results `via_ref/<case>/cst*.sNp`); together with openEMS it found the inner-layer exit
+references not converged, which are now recomputed on a refined mesh ([`fdtd/TESTS.md`](fdtd/TESTS.md) section 17). The via model this
 > plan calls "current" (coaxial sections) has since been replaced by the physics-based ladder `kisi_si::via_pbm`, and
 > the PDN per IC is on `main`. What was done and the results: [`fdtd/README.md`](fdtd/README.md) and
 > [`fdtd/TESTS.md`](fdtd/TESTS.md). The plan is kept for its test matrix and acceptance targets.
@@ -57,7 +60,7 @@ product filtered to sensible combinations). The same file feeds:
 Stackups: (a) the ThunderScope 6-layer stack (FR408HR, 1.51 mm, values from the board file), (b) a generic
 8-layer 1.6 mm FR-4 stack, (c) a 2-layer 1.6 mm board for the coax sanity check.
 
-| Group | What it checks | Cases (parameters) | CST subset |
+| Group | What it checks | Cases (parameters) | CST subset (done: every case, `fdtd/CST.md`) |
 |---|---|---|---|
 | **A** Coax sanity | via between two full planes, no stubs: Z of the coaxial section, delay | drill 0.2 / 0.3 mm, antipad Ø 0.6 / 0.8 / 1.0 mm, stack (c) – 6 cases | 2 |
 | **B** Stubs | L1→L3 (long stub), L1→L6 / L1→L8 (no stub), back-drilled to 0.2 mm residual; stub resonance frequency and depth | stacks (a), (b); drill 0.2 / 0.3; 8 cases | 3 |

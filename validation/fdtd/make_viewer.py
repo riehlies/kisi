@@ -23,7 +23,22 @@ def r2(a, d=2):
     return [None if not np.isfinite(x) else round(float(x), d) for x in a]
 
 
+CST_MESHES = (("cst_fine", "fine"), ("cst_mid", "intermediate"), ("cst", "base"))  # CST's finest mesh first (CST.md)
+
+
+def cst_mesh(name, thru=False):
+    """the CST result shown for a case: its finest mesh (the intermediate mesh has no 2×thru of its own)"""
+    for tool, label in CST_MESHES:
+        if thru and tool == "cst_mid":
+            continue
+        if any(os.path.exists(os.path.join(REF, name, f"{tool}.s{n}p")) for n in (1, 2, 4)):
+            return tool, label
+    return None, None
+
+
 def load(name, tool):
+    if tool == "cst":
+        tool = cst_mesh(name, name.startswith("thru_"))[0] or "cst"
     for n in (1, 2, 4):
         p = os.path.join(REF, name, f"{tool}.s{n}p")
         if os.path.exists(p):
@@ -277,6 +292,8 @@ def main():
         nm = c["name"]
         f, S = load(nm, "kisi")
         entry = {"id": nm, "case": {k: c[k] for k in ("domain", "board", "layers", "sheets", "vias", "ports", "fmax")}, "meta": c["meta"]}
+        if cst_mesh(nm)[1]:
+            entry["cst_mesh"] = cst_mesh(nm)[1]
         fp = os.path.join(REF, nm, "fields.json")
         if os.path.exists(fp):
             entry["fields"] = json.load(open(fp))["planes"]

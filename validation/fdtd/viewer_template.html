@@ -444,6 +444,9 @@ function chipList(c) {
 }
 function renderCase(c) {
   cur = c;
+  // CST: its finest mesh for this case (CST.md)
+  TOOLS.cst[0] = "CST" + (c.cst_mesh ? ` (${c.cst_mesh} mesh)` : "");
+  TOOLS.cst_de[0] = "CST" + (c.cst_mesh ? ` (${c.cst_mesh} mesh)` : "") + ", de-embedded (its own 2×thru)";
   const box = $("case");
   const m = c.meta;
   const ports = m.ports.map((p, i) => `${i + 1}: ${p.name.replace(/^\d+ ?/, "") || "port"} ${p.layer} (ref ${p.ref})`).join(" · ");

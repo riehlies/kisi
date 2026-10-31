@@ -1,12 +1,12 @@
 """Compare CST results (via_ref/<case>/cst.sNp) with kisi-fdtd (kisi.sNp) and, where present,
-openEMS (openems.sNp): raw S-parameters at the ports, the via de-embedded with the 2×thru of each
+openEMS (openems.sNp), and the former kisi-fdtd reference (kisi_base.sNp) where the reference was recomputed on a
+refined mesh (TESTS.md section 17): raw S-parameters at the ports, the via de-embedded with the 2×thru of each
 feed layer (same NZC method as via_pbm.py / kisi_deembedded.s2p, the thru taken from the same
 solver), mixed mode for pairs, TDR. Prints a table and writes results/cst_compare.json.
 
 usage: python3 cst_compare.py [case-id substrings ...] [--fmax-cmp 20e9] [--md FILE] [--openems DIR]
 
---openems DIR: a via_ref tree with the openEMS results (openems.sNp), e.g. a worktree of the openEMS
-branch after `openems_refs.py merge openems_raw`; default: via_ref itself.
+--openems DIR: another via_ref tree with openEMS results (openems.sNp); default: via_ref itself.
 """
 import json, os, sys
 import numpy as np
@@ -48,7 +48,7 @@ def deembed(c, tool, f, S):
     """2-port vias: NZC 2×thru; pairs: first-order shift per line; None if the thrus are missing"""
     th = []
     for t in thru_names(c):
-        r = load(t, tool)
+        r = load(t, "kisi" if tool == "kisi_base" else tool)  # the fixtures stayed on the base mesh (TESTS.md section 17)
         if r is None and tool == "cst_mid":  # no thrus on the intermediate mesh: the finest there is
             r = load(t, "cst_fine") or load(t, "cst")
         if r is None:
@@ -121,7 +121,7 @@ def write_md(path, out, fcmp):
         x = v.get(k) if v else None
         return "–" if x is None or (isinstance(x, float) and x != x) else fmt.format(x)
 
-    lines = [f"| Case | Mesh | Cells | Time | Δ\\|S21\\| max / mean raw (dB) | Δ\\|S21\\| max de-emb. (dB) | \\|ΔS11\\| max | Δdelay (ps) | TDR min CST / kisi (Ω) | mesh change Δ\\|S21\\| max (dB) | openEMS: Δ\\|S21\\| max de-emb. or raw (dB), Δdelay (ps) |",
+    lines = ["| Case | Mesh | Cells | Time | Δ\\|S21\\| max / mean raw (dB) | Δ\\|S21\\| max de-emb. (dB) | \\|ΔS11\\| max | Δdelay (ps) | TDR min CST / kisi (Ω) | mesh change Δ\\|S21\\| max (dB) | openEMS: Δ\\|S21\\| max de-emb. or raw (dB), Δdelay (ps) |",
              "|---|---|---|---|---|---|---|---|---|---|---|"]
     for cid in sorted(out):
         row = out[cid]
@@ -148,9 +148,45 @@ def write_md(path, out, fcmp):
         if not r and row.get("kisi_note"):
             lines.append(f"| {cid} | {row['mesh']} | {cells} | {secs} | kisi-fdtd {row['kisi_note']} | | | | | {g(fn, 'dS21_max_db', '{:.3f}')} | {oe} |")
             continue
+        kb = row.get("deemb_vs_kisi_base") if d else row.get("raw_vs_kisi_base")
+        dl = g(d or r, 'ddelay_ps', '{:+.2f}') if not kb else f"{kb['ddelay_ps']:+.2f} → {(d or r)['ddelay_ps']:+.2f}"
         lines.append(f"| {cid} | {row['mesh']} | {cells} | {secs} | {g(r, 'dS21_max_db', '{:.3f}')} / {g(r, 'dS21_mean_db', '{:.3f}')} | {g(d, 'dS21_max_db', '{:.3f}')} | "
-                     f"{g(r, 'dS11_max_lin', '{:.3f}')} | {g(d or r, 'ddelay_ps', '{:+.2f}')} | {tdr} | {g(fn, 'dS21_max_db', '{:.3f}')} | {oe} |")
-    open(path, "w", encoding="utf-8").write(f"Up to {fcmp / 1e9:g} GHz; pairs as Sdd.\n\n" + "\n".join(lines) + "\n")
+                     f"{g(r, 'dS11_max_lin', '{:.3f}')} | {dl} | {tdr} | {g(fn, 'dS21_max_db', '{:.3f}')} | {oe} |")
+    open(path, "w", encoding="utf-8").write(f"Up to {fcmp / 1e9:g} GHz; pairs as Sdd.\n\n" + group_table(out) + "\n\n" + "\n".join(lines) + "\n")
+
+
+GROUPS = [("thru", "thru"), ("A", "A (4-layer via, drill/antipad)"), ("B", "B (8- / 6-layer transitions, stubs)"), ("C", "C (antipad variants)"),
+          ("D", "D (return vias, caps)"), ("E", "E (pairs, Sdd)"), ("P", "P (pads, fingers)"), ("T", "T (lines, coupling)"), ("X", "X (one plane removed)"),
+          ("R", "R (plane resonances)"), ("RG", "RG (return groups)"), ("board", "board vias (BV)")]
+
+
+def group_table(out):
+    """per group: median (range) of max Δ|S21| raw and the range of Δdelay (de-embedded where available) for
+    CST − kisi-fdtd, CST − openEMS and openEMS − kisi-fdtd"""
+    def grp(cid):
+        if cid.startswith("thru"):
+            return "thru"
+        if cid.startswith("BV"):
+            return "board"
+        if cid.startswith("RG"):
+            return "RG"
+        return cid.split("_")[0]
+
+    def cell(rows, raw, de):
+        v = [r[raw] for r in rows if raw in r]
+        if not v:
+            return "–"
+        dm = [x["dS21_max_db"] for x in v]
+        dl = [(r.get(de) or r[raw])["ddelay_ps"] for r in rows if raw in r]
+        fmt = lambda x: f"{x:.3f}" if x < 1 else f"{x:.2g}"  # noqa: E731
+        return f"{fmt(float(np.median(dm)))} dB ({fmt(min(dm))}…{fmt(max(dm))}), {min(dl):+.2f}…{max(dl):+.2f} ps"
+    lines = ["| Group | n | CST – kisi-fdtd | CST – openEMS | openEMS – kisi-fdtd |", "|---|---|---|---|---|"]
+    for g_, title in GROUPS:
+        rows = [r for c, r in out.items() if grp(c) == g_ and "pdn_vs_kisi" not in r]
+        if rows:
+            lines.append(f"| {title} | {len(rows)} | {cell(rows, 'raw_vs_kisi', 'deemb_vs_kisi')} | {cell(rows, 'raw_vs_openems', 'deemb_vs_openems')} | "
+                         f"{cell(rows, 'raw_openems_vs_kisi', 'deemb_openems_vs_kisi')} |")
+    return "\n".join(lines)
 
 
 def main():
@@ -200,7 +236,12 @@ def main():
         xf = load(cid, "cst_xfine")
         if xf is not None and fine is not None:
             row["cst_xfine_vs_cst_fine"] = metrics(f, xf[1], fine[1], fcmp)
-        for tool in ("kisi", "openems"):
+        k_ref = None  # kisi-fdtd's reference, for openEMS against kisi-fdtd
+        rk = load(cid, "kisi")
+        if rk is not None and not np.isnan(rk[1]).any() and len(rk[0]) == len(f):
+            k_ref = rk[1]
+        # kisi_base: the former kisi-fdtd reference of the cases recomputed on a refined mesh (TESTS.md section 17)
+        for tool in ("kisi", "kisi_base", "openems"):
             r = load(cid, tool)
             if r is None:
                 continue
@@ -215,12 +256,18 @@ def main():
                 print(cid, tool, "frequency grids differ, skipped")
                 continue
             row[f"raw_vs_{tool}"] = metrics(f, Sc, St, fcmp)
+            if tool == "openems" and k_ref is not None:
+                row["raw_openems_vs_kisi"] = metrics(f, St, k_ref, fcmp)
             if tool == "kisi" and base is not None and prim != "cst":
                 row["base_raw_vs_kisi"] = metrics(f, base[1], St, fcmp)
             if c["meta"]["group"] != "thru":
                 Dc, Dt = deembed(c, prim, f, Sc), deembed(c, tool, f, St)
                 if Dc is not None and Dt is not None:
                     row[f"deemb_vs_{tool}"] = metrics(f, Dc, Dt, fcmp)
+                    if tool == "openems" and k_ref is not None:
+                        Dk = deembed(c, "kisi", f, k_ref)
+                        if Dk is not None:
+                            row["deemb_openems_vs_kisi"] = metrics(f, Dt, Dk, fcmp)
         out[cid] = row
         for k, v in row.items():
             if not isinstance(v, dict) or "dS21_max_db" not in v:

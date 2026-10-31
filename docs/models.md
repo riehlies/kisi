@@ -243,11 +243,17 @@ kisi marks these as estimates in the viewer and in the CLI output:
   asymmetric returns) and a test over every lane of the example boards (`crates/kisi-core/tests/causality.rs`,
   in CI): the board's S-parameters passive up to 25 GHz and their pulse responses causal (details and numbers:
   [TESTS.md](../validation/fdtd/TESTS.md) section 14).
-- **Vias and planes** against 3D results of kisi's own FDTD solver (`crates/kisi-fdtd`, checked against analytic
-  cavities, and every one of its 106 reference cases in `validation/via_ref` recomputed with openEMS: the two agree
-  in \|S21\| to a median of 0.06 dB, with known differences in via delay of up to about 2 ps – section 16 of the test
-  log [validation/fdtd/TESTS.md](../validation/fdtd/TESTS.md)), and the reference page `kisi-references.html`
-  (attached to the releases in which the cases changed) with every case, openEMS and kisi's models against it.
+- **Vias and planes** against 3D results of kisi's own FDTD solver (`crates/kisi-fdtd`, conformal metal, checked
+  against analytic cavities), whose 106 reference cases in `validation/via_ref` were each computed again with two
+  independent solvers: openEMS (FDTD, staircase metal) and CST Studio Suite (FIT, conformal metal). For lines, 2×thru
+  fixtures, vias and pairs kisi-fdtd and CST agree in \|S21\| to a median of 0.03–0.09 dB per group up to 20 GHz and
+  in delay within −0.42 … +0.26 ps; openEMS adds a staircase offset of 0.2–0.7 ps on vias. The cross-check found the
+  references of via transitions that end on an inner layer not converged (1.0–2.4 ps slow); they were recomputed on
+  a refined mesh. Board vias cut out of the example boards keep a mesh uncertainty of a few tenths of a picosecond
+  (up to about 0.7 ps per halving of the cell on one pair) and 0.1–0.2 GHz at their notches. Sections 16 and 17 of
+  the test log [validation/fdtd/TESTS.md](../validation/fdtd/TESTS.md) and
+  [validation/fdtd/CST.md](../validation/fdtd/CST.md); the reference page `kisi-references.html` (attached to the
+  releases in which the cases changed) shows every case with kisi-fdtd, openEMS, CST and kisi's models.
   Useful for teaching as well: it shows why vias and planes behave as they do.
 - **Temperature solver** against analytic cases (1D slab exact, fin within 0.2 %, radial spreading in a plane
   with convection within 0.13 %, energy balance) and, with the datasheets' θJB/θJC on a model of the JEDEC
@@ -258,8 +264,7 @@ kisi marks these as estimates in the viewer and in the CLI output:
   The compact model gives the ladder's S-parameters to 0.003 up to 1.5 × Nyquist and its PRBS levels to 0.3 % of the
   swing on eight lanes of both example boards; every exported circuit is passive from 1 kHz to 10 × f max
   ([research/channel-export.md](research/channel-export.md) section 7).
-- **Still open:** validation against a solver of another method (CST, branch `feat/cst-refs`) and against
-  measurements. A measured test board is planned
+- **Still open:** validation against measurements. A measured test board is planned
   (plan and coupon design in branch `feat/test-board`, `validation/test_board.md` there). Until then, treat the numbers as plausible estimates,
   not as verified results.
 

@@ -210,7 +210,14 @@ With Solver
 End With"""
 
 
-def port_adapt_block(passes):
+def port_adapt_block(passes, on=True):
+    """adaptive port meshing; CST 2025.5's default is on (accuracy 1 %, 4 passes; the accuracy is an integer
+    percentage), so "off" has to be set explicitly"""
+    if not on:
+        return """
+With Solver
+ .AdaptivePortMeshing "False"
+End With"""
     return f"""
 With Solver
  .AdaptivePortMeshing "True"
@@ -687,8 +694,7 @@ class Runner:
                     cp = os.path.join(wd, f"{cid}_{wk}_{tag}.cst")
                     try:
                         self.add_blocks(prj, blocks, meta)
-                        if a.port_adapt:
-                            self.add_blocks(prj, [{"caption": "adaptive port meshing", "code": port_adapt_block(a.port_passes), "kind": "setup", "optional": True}], meta)
+                        self.add_blocks(prj, [{"caption": "adaptive port meshing", "code": port_adapt_block(a.port_passes, a.port_adapt), "kind": "setup", "optional": True}], meta)
                         try:
                             prj.save(cp, allow_overwrite=True)
                         except TypeError:

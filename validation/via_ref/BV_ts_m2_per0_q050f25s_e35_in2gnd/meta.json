@@ -171,24 +171,72 @@
    "thru_BV_ts_m2_per0_q050f25s_out"
   ],
   "title": "/TS-USB4 Components/M2_PER0_P via F.Cu\u2192In3.Cu at (161.287, 130.742) with its partner \u2013 diagnosis: In2 joined to every GND via",
-  "thru_dir": "quick"
+  "thru_dir": "quick",
+  "ref_refine": 2.0
  },
- "date": "2026-10-23",
+ "date": "2026-10-31",
  "fmax": 25000000000.0,
  "tool": "kisi-fdtd (conformal metal, CPML)",
  "runs": {
   "kisi": {
-   "cells": 520478,
+   "cells": 1699792,
    "steps": [
-    7801,
-    8001,
-    8201,
-    13401
+    11801,
+    11601,
+    12801,
+    18201
    ],
-   "dt": 7.033530446888377e-14,
-   "seconds": 322.6,
-   "dfine": 0.05,
-   "dmax": null
+   "dt": 3.493211898706374e-14,
+   "seconds": 681.7,
+   "dfine": 0.025,
+   "dmax": null,
+   "refine": 2.0,
+   "threads": 4,
+   "runner": "GitHub Actions ubuntu-24.04 (fdtd_refs.py, workflow fdtd-refs)",
+   "seconds_per_excitation": [
+    121.9,
+    168.2,
+    164.2,
+    227.4
+   ],
+   "hosts": [
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 9V45 96-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    }
+   ]
   },
   "openems_base": {
    "tool": "openEMS 0.37.0 (staircase, PML_8)",
@@ -306,6 +354,115 @@
      "model": "AMD EPYC 7763 64-Core Processor",
      "sockets": "1",
      "threads_per_core": "2"
+    }
+   ]
+  },
+  "kisi_base": {
+   "cells": 520478,
+   "steps": [
+    7801,
+    8001,
+    8201,
+    13401
+   ],
+   "dt": 7.033530446888377e-14,
+   "seconds": 322.6,
+   "dfine": 0.05,
+   "dmax": null,
+   "date": "2026-10-23",
+   "file": "kisi_base.s4p"
+  }
+ },
+ "mesh_convergence": {
+  "note": "kisi-fdtd mesh convergence (TESTS.md section 17): the former reference on the base mesh against this one (cell at metal \u00f7 2), and this one against the cell at metal \u00f7 4 (extra-fine, not stored)",
+  "base_vs_fine": {
+   "dS_thru_mean_db": 0.055,
+   "dS_thru_max_db": 0.369,
+   "dS11_mean_db": 0.59,
+   "dS11_max_db": 1.66,
+   "dphase_fmax_deg": 1.19,
+   "dtau_ps": -0.28,
+   "dSdd21_mean_db": 0.063,
+   "dSdd21_max_db": 0.128
+  },
+  "base_vs_fine_20GHz": {
+   "dS_thru_mean_db": 0.021,
+   "dS_thru_max_db": 0.125,
+   "dS11_mean_db": 0.54,
+   "dS11_max_db": 1.66,
+   "dphase_fmax_deg": 1.03,
+   "dtau_ps": -0.28,
+   "dSdd21_mean_db": 0.061,
+   "dSdd21_max_db": 0.128
+  },
+  "fine_vs_xfine": {
+   "dS_thru_mean_db": 0.039,
+   "dS_thru_max_db": 0.157,
+   "dS11_mean_db": 0.39,
+   "dS11_max_db": 2.16,
+   "dphase_fmax_deg": -8.5,
+   "dtau_ps": 0.92,
+   "dSdd21_mean_db": 0.037,
+   "dSdd21_max_db": 0.104
+  },
+  "fine_vs_xfine_20GHz": {
+   "dS_thru_mean_db": 0.024,
+   "dS_thru_max_db": 0.062,
+   "dS11_mean_db": 0.26,
+   "dS11_max_db": 0.87,
+   "dphase_fmax_deg": -6.88,
+   "dtau_ps": 0.93,
+   "dSdd21_mean_db": 0.037,
+   "dSdd21_max_db": 0.104
+  },
+  "xfine_run": {
+   "cells": 6441600,
+   "steps": [
+    20801,
+    19601,
+    23201,
+    30601
+   ],
+   "seconds": 4449.7,
+   "dfine": 0.0125,
+   "refine": 4.0,
+   "hosts": [
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 9V45 96-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "max_mhz": "2800.0000",
+     "l3": "48 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 9V45 96-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 9V74 80-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
     }
    ]
   }

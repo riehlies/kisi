@@ -26,7 +26,9 @@ A real board via (not written by `cases`; exported with kisi-validate via-case, 
                    with its stitching vias; `model` takes kisi's ladder from `kisi net` (KISI_DUMP_VIA)
     kisi-validate via-case examples/VNA.kicad_pcb --net /FPGA/FPGA_CLK_R --via 0 --keep 1.1 --feed 3.0 \\
       --config web/samples/vna.kisi.json --out validation/fdtd/resonance_cases --name BV_vna_clk_w5 \\
-      --margin 5 --dfine 0.07 --keep-cell 0.07 --fmax 25e9      (then "nf": 1000 in the three files)
+      --margin 5 --dfine 0.07 --keep-cell 0.07 --fmax 25e9      (then "nf": 1000 in the three files, and
+                   "ref_refine": 2 in the meta of BV_vna_clk_w5: its reference has the cell at metal halved, TESTS.md
+                   section 17)
 """
 import argparse, glob, json, math, os, subprocess, sys
 import numpy as np

@@ -169,24 +169,72 @@
    "thru_BV_ts_m2_per0_in",
    "thru_BV_ts_m2_per0_out"
   ],
-  "title": "ThunderScope M.2 PCIe RX lane 0 (PER0_P/N), pair via F.Cu \u2192 In3.Cu, pitch 0.53 mm"
+  "title": "ThunderScope M.2 PCIe RX lane 0 (PER0_P/N), pair via F.Cu \u2192 In3.Cu, pitch 0.53 mm",
+  "ref_refine": 2.0
  },
- "date": "2026-10-22",
+ "date": "2026-10-31",
  "fmax": 40000000000.0,
  "tool": "kisi-fdtd (conformal metal, CPML)",
  "runs": {
   "kisi": {
-   "cells": 1029952,
+   "cells": 3756215,
    "steps": [
-    41801,
-    38801,
-    36401,
-    40601
+    85801,
+    78601,
+    76001,
+    82601
    ],
-   "dt": 5.182186615882961e-14,
-   "seconds": 1737.1,
-   "dfine": 0.035,
-   "dmax": null
+   "dt": 2.474441495883251e-14,
+   "seconds": 10482.2,
+   "dfine": 0.0175,
+   "dmax": null,
+   "refine": 2.0,
+   "threads": 4,
+   "runner": "GitHub Actions ubuntu-24.04 (fdtd_refs.py, workflow fdtd-refs)",
+   "seconds_per_excitation": [
+    2435.0,
+    2704.7,
+    2518.6,
+    2823.9
+   ],
+   "hosts": [
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 9V45 96-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    },
+    {
+     "cpus": 4,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "threads_per_core": "2",
+     "cores_per_socket": "2",
+     "sockets": "1",
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6
+    }
+   ]
   },
   "openems_base": {
    "tool": "openEMS 0.37.0 (staircase, PML_8)",
@@ -321,6 +369,44 @@
      "threads_per_core": "2"
     }
    ]
+  },
+  "kisi_base": {
+   "cells": 1029952,
+   "steps": [
+    41801,
+    38801,
+    36401,
+    40601
+   ],
+   "dt": 5.182186615882961e-14,
+   "seconds": 1737.1,
+   "dfine": 0.035,
+   "dmax": null,
+   "date": "2026-10-22",
+   "file": "kisi_base.s4p"
+  }
+ },
+ "mesh_convergence": {
+  "note": "kisi-fdtd mesh convergence (TESTS.md section 17): the former reference on the base mesh against this one (cell at metal \u00f7 2)",
+  "base_vs_fine": {
+   "dS_thru_mean_db": 0.132,
+   "dS_thru_max_db": 1.123,
+   "dS11_mean_db": 0.79,
+   "dS11_max_db": 15.78,
+   "dphase_fmax_deg": -6.92,
+   "dtau_ps": 0.35,
+   "dSdd21_mean_db": 0.098,
+   "dSdd21_max_db": 0.8
+  },
+  "base_vs_fine_20GHz": {
+   "dS_thru_mean_db": 0.048,
+   "dS_thru_max_db": 0.116,
+   "dS11_mean_db": 0.36,
+   "dS11_max_db": 0.6,
+   "dphase_fmax_deg": -2.18,
+   "dtau_ps": 0.33,
+   "dSdd21_mean_db": 0.034,
+   "dSdd21_max_db": 0.082
   }
  }
 }

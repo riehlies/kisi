@@ -429,6 +429,9 @@ Full report: **`BOARD_VIAS.md`**; `board_vias.py` reproduces everything (cases `
 | C, L 3D / ladder | 158 / 217 fF, 673 / 855 pH (diff.) | 278 / 269 fF, 686 / 791 pH | 391 / 478 fF, 262 / 503 pH |
 | ladder without the signal-layer pours: phase error at 20 GHz | 25° → 3.4° | 8° → 2.3° | 34° → 9° (notch > 25 GHz) |
 
+The table is against the Block 2 references; the M.2 and LibreVNA references are on the refined mesh since section 17
+(M.2 delay 10.1 → 9.8 ps, LibreVNA 13.5 → 11.8 ps, C 391 → 360 fF, notch 24.0 → 24.4 GHz).
+
 - The M.2 16 GHz dip is real: the broad reflection maximum of the low-impedance pair via, not a resonance; the
   ladder makes it 0.29 dB too deep.
 - Ladder findings for follow-up work: GND pours on the via's signal layers taken as planes (too slow by 1.1–4.6 ps,
@@ -772,7 +775,7 @@ identical to the 10 MHz grid. The largest same-mesh differences:
 | T | 12 | 0.011 / 0.037 | 0.30 | -0.06 | 0.013 / 0.021 | 0.004 |
 | P | 5 | 0.060 / 0.062 | 0.47 | -0.03 | 0.016 / 0.024 | 0.043 |
 | thru | 24 | 0.013 / 0.126 | 0.35 | -0.07 | 0.007 / 0.100 | 0.007 |
-| board | 5 (2: base mesh only) | 0.406 / 1.675 | 17.32 | -1.02 | 0.022 / 0.054 | 0.349 |
+| board | 5 (2: base mesh only) | 0.470 / 1.986 | 19.80 | -1.14 | 0.022 / 0.054 | 0.349 |
 | R | 6 | 0.100 / 0.113 | 0.83 | -0.32 | 0.074 / 0.089 | 0.077 |
 | RG | 4 | 0.175 / 0.290 | 2.56 | -0.48 | 0.039 / 0.054 | 0.162 |
 | G | 2 | 0.032 / 0.061 | 2.14 | 0.00 | 0.023 / 0.042 | – |
@@ -799,7 +802,7 @@ identical to the 10 MHz grid. The largest same-mesh differences:
 - **De-embedded via alone (A–E, X, each tool with its own 2×thru, to 20 GHz):** \|S21\| median difference
   0.007–0.025 dB; the via's TDR extremes median 0.2–1.6 %, at most 6.8 % (the long B stubs).
 - **Board vias (BV):** the same mesh agrees within 0.010–0.054 dB, \|Δτ\| ≤ 0.11 ps, after the fixes below.
-  Against kisi-fdtd's conformal result the differences are larger – REFINOUT2 0.37 dB, FPGA_CLK_R (vna_clk_w5)
+  Against kisi-fdtd's conformal result (the base-mesh references before section 17) the differences are larger – REFINOUT2 0.37 dB, FPGA_CLK_R (vna_clk_w5)
   0.51 dB, the M.2 pair 0.41 dB, the LibreVNA RF via 1.68 dB with a 2.2 % notch shift at 24 GHz, kisi-fdtd 0.5–1.4 ps
   faster – and so is the staircase sensitivity (openEMS base → fine 0.35 dB on REFINOUT2, 1.02 dB on FPGA_CLK_R at
   0.07 → 0.035 mm): fill edges, clearances and pad rings of a real board are where conformal metal matters most.
@@ -846,21 +849,19 @@ showed that this is the mesh, not the solver: those references were not converge
 
 ### Which cases
 - **Rule:** every transition that ends on an inner layer, and B_ts6_L1L6 (the one through via that moved): the
-  case's `meta.ref_refine: 2` (`via_cases.py`, `board_returns.py`) makes `run_refs.py` compute its reference with the
+  case's `meta.ref_refine: 2` (`via_cases.py`, `board_returns.py`, `board_vias.py`, set by hand in the exported
+  BV_vna_clk_w5) makes `run_refs.py` compute its reference with the
   cell at metal halved – openems_refs.py's "fine" mesh: dfine, the GND vias' cell and the refinement boxes ÷ 2, the
   largest cell (λ/20 at f max) kept.
-- **17 cases:** B_s8_L1L3_bd_d200 / _d300, B_s8_L1L3_stub_d200 / _d300, B_ts6_L1L3_stub, B_ts6_L1L6, D_s8_cap_none /
+- **17 via cases** (and the four board vias below): B_s8_L1L3_bd_d200 / _d300, B_s8_L1L3_stub_d200 / _d300, B_ts6_L1L3_stub, B_ts6_L1L6, D_s8_cap_none /
   _2 / _10 (L1 → L3 with the L4 PWR plane), the four E L1→L3 pairs, X_s8x2 / X_s8x4 (dfine 0.035 → 0.0175 mm) and
   RG_ts6_sw_gnd / _pwr (F → In3 on the finite ThunderScope board, 0.07 → 0.035 mm). 1.1–3.4 M cells, 4–29 min per case
   on one core of the 2-vCPU machine (run time and cells in each `meta.json`).
 - **Checked and left on the base mesh:** the L1→L8 / L1→L4 through vias (section 16: kisi-fdtd moves by 0.07–0.20
   ps on the fine mesh), the 2×thru of the exit layers (thru_s8_L3 0.05 ps / 0.005 dB mean, thru_ts6_L6 0.03 ps,
   thru_RG_ts6p_L1 / _L4 0.08 ps / ≤ 0.003 dB), so the de-embedding keeps its fixtures.
-- **Not recomputed: the board vias with an inner exit** (BV_vna_rf_hblb1, BV_vna_clk_w5, BV_ts_m2_per0 and its
-  in2gnd copy). On the refined mesh they need 1.7–5.4 M cells and 30 000–43 000 steps per excited port at the halved
-  cell (two to four ports), several hours each on this machine: a job for 4-vCPU runners as in section 16. Their
-  offsets against openEMS have the other sign (kisi-fdtd 0.5–1.4 ps faster), which section 16 traces to openEMS'
-  staircase error on board copper; CST is on its base or intermediate mesh there.
+- **Board vias with an inner exit** (BV_vna_rf_hblb1 F → In2, BV_vna_clk_w5 F → In3, the M.2 pair BV_ts_m2_per0
+  F → In3 and its In2-grounded copy): on GitHub Actions runners, see "Board vias on runners" below.
 
 ### Mesh convergence
 | case | dfine (mm) | cells | Δτ to the next finer mesh (ps) | Δ\|S21\| mean / max to the next finer mesh (dB) |
@@ -919,6 +920,60 @@ where staircase metal makes the via slow.
 - The former references are kept as `kisi_base.sNp` next to the new ones (the reference page draws them dashed);
   `meta.json` holds both runs and `mesh_convergence`. `openems_refs.py compare` uses them for the convergence rows
   (`kisi_base_vs_kisi_fine`, `kisi_base_vs_openems`) and for the staircase-against-conformal row on the base mesh.
+
+### Board vias on runners (`fdtd_refs.py`, workflow `fdtd-refs`)
+The four board vias with an inner exit need 1.7–5.4 M cells and 12 000–88 000 steps per excited port on the refined
+mesh – hours each on the 2-vCPU machine. `fdtd_refs.py plan` cuts them into tasks (case × excited port), together
+with their 2×thru fixtures, and balances them over 15 shards (`fdtd_plan.json`); the workflow `fdtd-refs` (manual,
+never on main, as `openems-refs`) runs each shard on a 4-vCPU ubuntu-24.04 runner with kisi-fdtd on four threads
+and commits the raw results to its branch; `fdtd_refs.py merge --keep-base` writes `via_ref/<case>/` as run_refs.py
+would (bit-identical on a local test: the merged excitations of B_ts6_L1L6 against its stored reference) and keeps
+the former result as `kisi_base.sNp`. Runner, CPU model, threads and wall time per excited port are in each
+`meta.json` (`runs.kisi.hosts`, `seconds_per_excitation`). The 20 tasks took 1 h 12 min on 15 runners (AMD EPYC
+7763 / 9V45, Intel Xeon Platinum 8573C; the longest task, BV_vna_rf_hblb1 port 2: 5.41 M cells, 88 400 steps,
+71 min).
+
+| case | dfine (mm) | Δτ base − fine (ps) | Δ\|S21\| base vs fine, mean / max (dB) | \|S21\| 10 GHz | \|S21\| 20 GHz | Δτ kisi-fdtd − openEMS, before → after (ps) | Δτ kisi-fdtd − CST, before → after (ps) |
+|---|---|---|---|---|---|---|---|
+| BV_vna_rf_hblb1 | 0.035 → 0.0175 | +1.05 | 0.549 / 7.76 (to 20 GHz 0.095 / 0.60) | −1.69 → −1.75 | −7.44 → −6.84 | −1.02 → −2.06 (openEMS base mesh) | +0.63 → −0.54 (CST base mesh) |
+| BV_vna_clk_w5 | 0.07 → 0.035 | +0.45 | 0.450 / 5.33 (to 20 GHz 0.319 / 3.31) | −1.95 → −1.81 | −7.63 → −7.95 | −0.69 → −1.14 | −0.26 → −0.86 (CST intermediate mesh) |
+| BV_ts_m2_per0 (S31; Sdd21 to 20 GHz 0.034 / 0.08 dB) | 0.035 → 0.0175 | +0.35 | 0.132 / 1.12 (to 20 GHz 0.048 / 0.12) | −1.25 → −1.18 | −1.86 → −1.76 | −1.39 → −1.74 (openEMS base mesh) | −0.36 → −0.69 (CST base mesh) |
+| BV_ts_m2_per0_q050f25s_e35_in2gnd (S31; Sdd21 0.061 / 0.13 dB) | 0.05 → 0.025 | −0.28 | 0.055 / 0.37 (to 20 GHz 0.021 / 0.13) | −0.66 → −0.63 | −1.31 → −1.18 | −1.09 → −0.81 | +0.35 → +0.63 (CST fine) |
+
+**Their own convergence (cell at metal ÷ 4, second runner run, 2 h 44 min, not stored; `meta.json` →
+`mesh_convergence`):**
+
+| case | cells fine → extra-fine | Δτ fine − extra-fine (ps) | Δ\|S21\| mean / max (dB) | notches base → fine → extra-fine (GHz) |
+|---|---|---|---|---|
+| BV_vna_clk_w5 | 2.55 → 8.75 M (118 000–121 000 steps, 2 h 43 min per port) | +0.23 | 0.242 / 2.81 (to 20 GHz 0.18 / 2.13) | 17.40 / 18.53 / 20.43 → 17.58 / 18.68 / 20.88 → 17.65 / 18.78 / 21.00 |
+| BV_ts_m2_per0_q050f25s_e35_in2gnd | 1.70 → 6.44 M | +0.92 (S31); Sdd21 delay 47.02 → 46.30 → 45.61 ps | 0.039 / 0.16 (to 20 GHz 0.024 / 0.06), Sdd21 0.037 / 0.10 | – |
+
+- **The board vias are not converged on the refined mesh** the way the via cases are: FPGA_CLK_R's notches still
+  move by 0.07–0.12 GHz (half the base → fine step) and its |S21| by 0.18 dB mean below 20 GHz; the M.2 in2gnd pair's
+  delay moves by 0.7 ps per halving, with |S21| converged to 0.02–0.04 dB. Their copper is what converges slowly:
+  45° polygon traces and fills, narrow clearances, pads in pours (the via cases have straight traces on mesh lines
+  and round openings). The refined references are the better ones (closer by a factor of about two), but carry a
+  remaining mesh error of about that size; the extra-fine results would be better references for these two (8.8 and
+  6.4 M cells; BV_ts_m2_per0 and BV_vna_rf_hblb1 would need 13.6 / 19.5 M cells and about 6 / 9 h per excited port
+  at the runners' 107 M cell updates/s, beyond the 6 h a runner job may take).
+
+- **The board vias are not the L1→L3 case:** they move by −0.28 … +1.05 ps, and on the refined mesh kisi-fdtd moves
+  *away* from openEMS and CST (now 0.5–2.1 ps faster than both, except the in2gnd pair). Neither is converged here:
+  openEMS is judged on its staircase base mesh for two of them (its refined runs are unstable) and is slow on board
+  copper (section 16: base → fine 0.35–1.02 dB), and CST ran on its base or intermediate mesh because the fine one
+  exceeds its 1 M-cell limit (`CST.md`: base → intermediate 0.69 dB on BV_vna_clk_w5). The conformal result's own
+  convergence (above) is the evidence on these cases, and it says the refinement went the right way but is not yet
+  complete.
+- **The LibreVNA RF via** (the 0.87 mm stub to B.Cu, notch 24.0 → 24.4 GHz) and **FPGA_CLK_R** (notches above
+  17 GHz) change most: |S21| differs by up to 0.6 / 3.3 dB below 20 GHz, at the notch flanks. De-embedded
+  (`results/board_vias.json`): LibreVNA delay 13.5 → 11.8 ps, C 391 → 360 fF, L 262 → 228 pH; M.2 delay 10.1 → 9.8
+  ps; FPGA_CLK_R's notches 17.4 / 18.5 / 20.4 GHz → 17.6 / 18.7 / 20.9 GHz (`results/board_resonances.json`).
+- The fixtures move by ≤ 0.09 ps and ≤ 0.07 dB (thru_BV_vna_rf_hblb1_in / _out 0.03 / 0.07 ps, thru_BV_vna_clk_w5
+  0.03 / 0.06 ps, thru_BV_ts_m2_per0 0.09 / 0.03 ps): they stay on the base mesh. The in2gnd pair has no stored
+  fixtures (its comparison in `board_returns.py board` needs the quick-mesh results that are not in the repository).
+- kisi's ladder against the refined board vias: M.2 max Δ\|S21\| to 20 GHz 0.24 → 0.18 dB, TDR minimum error 5.5 → 5.3 %;
+  LibreVNA 1.64 → 2.22 dB (notch shift), TDR errors 3.5 / 11.1 → 1.7 / 3.3 %; FPGA_CLK_R 12–20 GHz 9.88 / 2.91 →
+  8.87 / 2.76 dB. kisi's fast models on the via cases (`kisi_models.json`) do not use the board vias.
 
 ### What moved with the references
 - `kisi_deembedded.s2p` of the single vias and `results/via_pbm.json` (`via_pbm.py`), `results/openems_refs.json`,

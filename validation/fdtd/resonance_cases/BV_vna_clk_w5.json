@@ -220,7 +220,8 @@
    "thru_BV_vna_clk_w5_in",
    "thru_BV_vna_clk_w5_out"
   ],
-  "title": "/FPGA/FPGA_CLK_R via F.Cu\u2192In3.Cu at (180.401, 101.754)"
+  "title": "/FPGA/FPGA_CLK_R via F.Cu\u2192In3.Cu at (180.401, 101.754)",
+  "ref_refine": 2
  },
  "monitors": [
   {

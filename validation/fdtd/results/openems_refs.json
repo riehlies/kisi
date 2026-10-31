@@ -628,20 +628,20 @@
   "board": {
    "cases": 5,
    "kisi_vs_openems": {
-    "dS_thru_mean_db": 0.406,
-    "dS_thru_max_db": 17.318,
-    "dS_thru_mean_db_max": 1.675,
+    "dS_thru_mean_db": 0.47,
+    "dS_thru_max_db": 19.796,
+    "dS_thru_mean_db_max": 1.986,
     "dS11_mean_db": 0.75,
-    "dtau_ps_median": -1.02,
+    "dtau_ps_median": -1.14,
     "dphase_fmax_deg_median": 14.62
    },
    "kisi_vs_openems_base": {
     "dS_thru_mean_db": 0.656,
-    "dS_thru_max_db": 9.959,
-    "dS_thru_mean_db_max": 1.195,
+    "dS_thru_max_db": 9.529,
+    "dS_thru_mean_db_max": 1.351,
     "dS11_mean_db": 1.59,
-    "dtau_ps_median": -1.65,
-    "dphase_fmax_deg_median": 20.16
+    "dtau_ps_median": -1.49,
+    "dphase_fmax_deg_median": 19.81
    },
    "openems_base_vs_fine": {
     "dS_thru_mean_db": 0.349,
@@ -653,11 +653,11 @@
    },
    "kisi_vs_openems_extrap": {
     "dS_thru_mean_db": 0.356,
-    "dS_thru_max_db": 15.463,
-    "dS_thru_mean_db_max": 1.128,
-    "dS11_mean_db": 1.25,
-    "dtau_ps_median": -0.04,
-    "dphase_fmax_deg_median": 0.91
+    "dS_thru_max_db": 18.522,
+    "dS_thru_mean_db_max": 1.275,
+    "dS11_mean_db": 1.21,
+    "dtau_ps_median": -0.14,
+    "dphase_fmax_deg_median": -0.27
    },
    "stair_vs_openems_base": {
     "dS_thru_mean_db": 0.022,
@@ -666,6 +666,22 @@
     "dS11_mean_db": 0.15,
     "dtau_ps_median": -0.01,
     "dphase_fmax_deg_median": -0.07
+   },
+   "kisi_base_vs_kisi_fine": {
+    "dS_thru_mean_db": 0.291,
+    "dS_thru_max_db": 7.76,
+    "dS_thru_mean_db_max": 0.549,
+    "dS11_mean_db": 0.69,
+    "dtau_ps_median": 0.4,
+    "dphase_fmax_deg_median": -2.865
+   },
+   "kisi_fine_vs_openems": {
+    "dS_thru_mean_db": 0.446,
+    "dS_thru_max_db": 6.853,
+    "dS_thru_mean_db_max": 0.797,
+    "dS11_mean_db": 0.78,
+    "dtau_ps_median": -0.975,
+    "dphase_fmax_deg_median": 0.265
    }
   },
   "thru": {
@@ -9529,6 +9545,26 @@
    },
    "judged_on": "base mesh (the refined openEMS run is invalid)",
    "kisi_vs_openems": {
+    "dS_thru_mean_db": 0.47,
+    "dS_thru_max_db": 2.113,
+    "dS11_mean_db": 1.93,
+    "dS11_max_db": 33.25,
+    "dphase_fmax_deg": 23.87,
+    "dtau_ps": -1.74,
+    "dSdd21_mean_db": 0.318,
+    "dSdd21_max_db": 2.662
+   },
+   "kisi_base_vs_kisi_fine": {
+    "dS_thru_mean_db": 0.132,
+    "dS_thru_max_db": 1.123,
+    "dS11_mean_db": 0.79,
+    "dS11_max_db": 15.78,
+    "dphase_fmax_deg": -6.92,
+    "dtau_ps": 0.35,
+    "dSdd21_mean_db": 0.098,
+    "dSdd21_max_db": 0.8
+   },
+   "kisi_base_vs_openems": {
     "dS_thru_mean_db": 0.406,
     "dS_thru_max_db": 1.977,
     "dS11_mean_db": 1.7,
@@ -9560,8 +9596,8 @@
    },
    "tdr_raw_ohm": {
     "kisi": [
-     44.64,
-     66.53
+     44.68,
+     65.62
     ],
     "openems": [
      44.71,
@@ -9570,8 +9606,8 @@
    },
    "runs": {
     "kisi": {
-     "cells": 1029952,
-     "seconds": 1737.1
+     "cells": 3756215,
+     "seconds": 10482.2
     },
     "openems_base": {
      "cells": 1029952,
@@ -9695,6 +9731,22 @@
    },
    "judged_on": "base mesh (the refined openEMS run is invalid)",
    "kisi_vs_openems": {
+    "dS_thru_mean_db": 1.986,
+    "dS_thru_max_db": 19.796,
+    "dS11_mean_db": 0.69,
+    "dS11_max_db": 2.42,
+    "dphase_fmax_deg": 49.77,
+    "dtau_ps": -2.06
+   },
+   "kisi_base_vs_kisi_fine": {
+    "dS_thru_mean_db": 0.549,
+    "dS_thru_max_db": 7.76,
+    "dS11_mean_db": 0.22,
+    "dS11_max_db": 0.78,
+    "dphase_fmax_deg": -18.64,
+    "dtau_ps": 1.05
+   },
+   "kisi_base_vs_openems": {
     "dS_thru_mean_db": 1.675,
     "dS_thru_max_db": 17.318,
     "dS11_mean_db": 0.56,
@@ -9722,9 +9774,9 @@
     "dips_ref": 2,
     "dips_other": 2,
     "matched": 1,
-    "df_pct_median": 2.19,
-    "df_pct_max": 2.19,
-    "ddepth_db_median": 0.47,
+    "df_pct_median": 2.55,
+    "df_pct_max": 2.55,
+    "ddepth_db_median": 0.74,
     "openems_ghz_db": [
      [
       22.7,
@@ -9737,19 +9789,19 @@
     ],
     "kisi_ghz_db": [
      [
-      24.0,
-      -32.41
+      24.4,
+      -32.87
      ],
      [
-      28.0,
-      -8.83
+      28.1,
+      -9.11
      ]
     ]
    },
    "tdr_raw_ohm": {
     "kisi": [
-     29.02,
-     51.0
+     29.67,
+     52.55
     ],
     "openems": [
      28.45,
@@ -9758,8 +9810,8 @@
    },
    "runs": {
     "kisi": {
-     "cells": 1529280,
-     "seconds": 1118.9
+     "cells": 5409600,
+     "seconds": 7397.0
     },
     "openems_base": {
      "cells": 1529280,
@@ -10269,20 +10321,20 @@
    "ports": 2,
    "pair": false,
    "kisi_vs_openems": {
-    "dS_thru_mean_db": 0.512,
-    "dS_thru_max_db": 4.482,
-    "dS11_mean_db": 0.9,
-    "dS11_max_db": 14.95,
-    "dphase_fmax_deg": -0.72,
-    "dtau_ps": -0.69
+    "dS_thru_mean_db": 0.797,
+    "dS_thru_max_db": 6.853,
+    "dS11_mean_db": 1.05,
+    "dS11_max_db": 18.19,
+    "dphase_fmax_deg": -8.58,
+    "dtau_ps": -1.14
    },
    "kisi_vs_openems_base": {
-    "dS_thru_mean_db": 1.195,
-    "dS_thru_max_db": 9.959,
-    "dS11_mean_db": 2.03,
-    "dS11_max_db": 21.68,
-    "dphase_fmax_deg": 2.82,
-    "dtau_ps": -1.65
+    "dS_thru_mean_db": 1.351,
+    "dS_thru_max_db": 9.529,
+    "dS11_mean_db": 2.11,
+    "dS11_max_db": 21.1,
+    "dphase_fmax_deg": -5.04,
+    "dtau_ps": -2.11
    },
    "openems_base_vs_fine": {
     "dS_thru_mean_db": 1.024,
@@ -10293,12 +10345,36 @@
     "dtau_ps": 0.97
    },
    "kisi_vs_openems_extrap": {
-    "dS_thru_mean_db": 1.128,
-    "dS_thru_max_db": 15.463,
-    "dS11_mean_db": 2.6,
-    "dS11_max_db": 21.56,
-    "dphase_fmax_deg": -4.86,
-    "dtau_ps": 0.14
+    "dS_thru_mean_db": 1.275,
+    "dS_thru_max_db": 18.522,
+    "dS11_mean_db": 2.32,
+    "dS11_max_db": 22.48,
+    "dphase_fmax_deg": -12.71,
+    "dtau_ps": -0.32
+   },
+   "kisi_base_vs_kisi_fine": {
+    "dS_thru_mean_db": 0.45,
+    "dS_thru_max_db": 5.325,
+    "dS11_mean_db": 0.88,
+    "dS11_max_db": 15.38,
+    "dphase_fmax_deg": 7.85,
+    "dtau_ps": 0.45
+   },
+   "kisi_base_vs_openems": {
+    "dS_thru_mean_db": 0.512,
+    "dS_thru_max_db": 4.482,
+    "dS11_mean_db": 0.9,
+    "dS11_max_db": 14.95,
+    "dphase_fmax_deg": -0.72,
+    "dtau_ps": -0.69
+   },
+   "kisi_fine_vs_openems": {
+    "dS_thru_mean_db": 0.797,
+    "dS_thru_max_db": 6.853,
+    "dS11_mean_db": 1.05,
+    "dS11_max_db": 18.19,
+    "dphase_fmax_deg": -8.58,
+    "dtau_ps": -1.14
    },
    "stair_vs_openems_base": {
     "dS_thru_mean_db": 0.054,
@@ -10319,10 +10395,10 @@
    "dips": {
     "dips_ref": 4,
     "dips_other": 4,
-    "matched": 4,
-    "df_pct_median": 1.38,
-    "df_pct_max": 2.81,
-    "ddepth_db_median": 0.35,
+    "matched": 2,
+    "df_pct_median": 2.18,
+    "df_pct_max": 2.47,
+    "ddepth_db_median": 0.57,
     "openems_ghz_db": [
      [
       17.25,
@@ -10343,27 +10419,27 @@
     ],
     "kisi_ghz_db": [
      [
-      17.4,
-      -11.18
+      17.575,
+      -10.43
      ],
      [
-      18.525,
-      -17.14
+      18.675,
+      -16.17
      ],
      [
-      20.425,
-      -11.58
+      20.875,
+      -10.5
      ],
      [
-      24.7,
-      -11.53
+      24.975,
+      -11.11
      ]
     ]
    },
    "tdr_raw_ohm": {
     "kisi": [
-     37.65,
-     58.8
+     38.16,
+     58.99
     ],
     "openems": [
      37.94,
@@ -10372,8 +10448,8 @@
    },
    "runs": {
     "kisi": {
-     "cells": 724992,
-     "seconds": 454.7
+     "cells": 2553966,
+     "seconds": 2304.8
     },
     "openems_base": {
      "cells": 724992,
@@ -11559,24 +11635,24 @@
    "ports": 4,
    "pair": true,
    "kisi_vs_openems": {
-    "dS_thru_mean_db": 0.072,
-    "dS_thru_max_db": 0.512,
-    "dS11_mean_db": 0.71,
-    "dS11_max_db": 2.7,
-    "dphase_fmax_deg": 10.29,
-    "dtau_ps": -1.09,
-    "dSdd21_mean_db": 0.07,
-    "dSdd21_max_db": 0.156
+    "dS_thru_mean_db": 0.095,
+    "dS_thru_max_db": 0.583,
+    "dS11_mean_db": 0.51,
+    "dS11_max_db": 3.21,
+    "dphase_fmax_deg": 9.11,
+    "dtau_ps": -0.81,
+    "dSdd21_mean_db": 0.018,
+    "dSdd21_max_db": 0.078
    },
    "kisi_vs_openems_base": {
-    "dS_thru_mean_db": 0.158,
-    "dS_thru_max_db": 0.952,
-    "dS11_mean_db": 1.08,
-    "dS11_max_db": 5.58,
-    "dphase_fmax_deg": 21.0,
-    "dtau_ps": -1.77,
-    "dSdd21_mean_db": 0.066,
-    "dSdd21_max_db": 0.3
+    "dS_thru_mean_db": 0.169,
+    "dS_thru_max_db": 1.095,
+    "dS11_mean_db": 1.31,
+    "dS11_max_db": 5.37,
+    "dphase_fmax_deg": 19.81,
+    "dtau_ps": -1.49,
+    "dSdd21_mean_db": 0.096,
+    "dSdd21_max_db": 0.261
    },
    "openems_base_vs_fine": {
     "dS_thru_mean_db": 0.118,
@@ -11589,14 +11665,44 @@
     "dSdd21_max_db": 0.205
    },
    "kisi_vs_openems_extrap": {
-    "dS_thru_mean_db": 0.153,
-    "dS_thru_max_db": 0.862,
-    "dS11_mean_db": 1.25,
-    "dS11_max_db": 4.17,
-    "dphase_fmax_deg": 0.91,
-    "dtau_ps": -0.42,
-    "dSdd21_mean_db": 0.177,
-    "dSdd21_max_db": 0.541
+    "dS_thru_mean_db": 0.155,
+    "dS_thru_max_db": 0.96,
+    "dS11_mean_db": 0.9,
+    "dS11_max_db": 3.79,
+    "dphase_fmax_deg": -0.27,
+    "dtau_ps": -0.14,
+    "dSdd21_mean_db": 0.124,
+    "dSdd21_max_db": 0.465
+   },
+   "kisi_base_vs_kisi_fine": {
+    "dS_thru_mean_db": 0.055,
+    "dS_thru_max_db": 0.369,
+    "dS11_mean_db": 0.59,
+    "dS11_max_db": 1.66,
+    "dphase_fmax_deg": 1.19,
+    "dtau_ps": -0.28,
+    "dSdd21_mean_db": 0.063,
+    "dSdd21_max_db": 0.128
+   },
+   "kisi_base_vs_openems": {
+    "dS_thru_mean_db": 0.072,
+    "dS_thru_max_db": 0.512,
+    "dS11_mean_db": 0.71,
+    "dS11_max_db": 2.7,
+    "dphase_fmax_deg": 10.29,
+    "dtau_ps": -1.09,
+    "dSdd21_mean_db": 0.07,
+    "dSdd21_max_db": 0.156
+   },
+   "kisi_fine_vs_openems": {
+    "dS_thru_mean_db": 0.095,
+    "dS_thru_max_db": 0.583,
+    "dS11_mean_db": 0.51,
+    "dS11_max_db": 3.21,
+    "dphase_fmax_deg": 9.11,
+    "dtau_ps": -0.81,
+    "dSdd21_mean_db": 0.018,
+    "dSdd21_max_db": 0.078
    },
    "stair_vs_openems_base": {
     "dS_thru_mean_db": 0.01,
@@ -11620,8 +11726,8 @@
    },
    "tdr_raw_ohm": {
     "kisi": [
-     46.8,
-     63.66
+     46.91,
+     63.98
     ],
     "openems": [
      46.84,
@@ -11630,8 +11736,8 @@
    },
    "runs": {
     "kisi": {
-     "cells": 520478,
-     "seconds": 322.6
+     "cells": 1699792,
+     "seconds": 681.7
     },
     "openems_base": {
      "cells": 520478,

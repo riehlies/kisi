@@ -419,6 +419,7 @@ def write_m2_in2gnd():
     c["name"] = BOARD_VIAS[k]["gnd"]
     c["meta"]["title"] = c["meta"]["title"] + " – diagnosis: In2 joined to every GND via"
     c["meta"]["thru_dir"] = "quick"
+    c["meta"]["ref_refine"] = 2  # the reference with the cell at metal halved (TESTS.md section 17)
     os.makedirs(CASES, exist_ok=True)
     json.dump(c, open(os.path.join(CASES, c["name"] + ".json"), "w"), indent=1)
     print(f"{c['name']}: {n} GND vias joined to In2")

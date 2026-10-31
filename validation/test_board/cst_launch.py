@@ -33,8 +33,9 @@ C0 = 299792458.0
 EPS0 = 8.8541878128e-12
 STEP_TOKEN = "@@STEP_FILE@@"
 MESH_PRESETS = {  # CST.md (feat/cst-refs): base 20/20, mid 25/25, fine 30/30; coarse only as a last resort
-    "fine": {"lpw": 30, "lpb": 30}, "mid": {"lpw": 25, "lpb": 25}, "base": {"lpw": 20, "lpb": 20}, "coarse": {"lpw": 15, "lpb": 15}}
-MESH_ORDER = ["fine", "mid", "base", "coarse"]
+    "fine": {"lpw": 30, "lpb": 30}, "mid": {"lpw": 25, "lpb": 25}, "base": {"lpw": 20, "lpb": 20}, "coarse": {"lpw": 15, "lpb": 15},
+    "rough": {"lpw": 12, "lpb": 12, "edge": 2, "ratio": 10}}  # last resort for the 1 M licence; check with a finer run
+MESH_ORDER = ["fine", "mid", "base", "coarse", "rough"]
 MONITOR_GHZ = [10, 20, 30, 40]
 # launch variants: make_coupons.LAUNCH_VARIANTS (same names as the kisi-fdtd results in fdtd_ref/launch_<stackup>/)
 # without the ones that approximate the connector (pin, body: here the STEP model is the connector), plus two
@@ -399,7 +400,7 @@ def build_model(a):
     preset = a.mesh
     if preset == "auto":
         preset = next((k for k in MESH_ORDER if est[k]["local"] <= a.max_cells * 0.85), "coarse")
-    model["mesh"] = dict(MESH_PRESETS[preset], preset=preset, ratio=20, minstep=0.0)
+    model["mesh"] = dict({"ratio": 20, "minstep": 0.0}, **MESH_PRESETS[preset], preset=preset)
     if a.lpw or a.lpb:
         model["mesh"].update(preset="custom", lpw=a.lpw or model["mesh"]["lpw"], lpb=a.lpb or model["mesh"]["lpb"])
         model["cells_estimate"]["custom"] = estimate_cells(model, model["mesh"]["lpw"])
@@ -924,7 +925,7 @@ With MeshSettings
  .SetMeshType "Hex"
  .Set "FaceRefinementOn", "0"
  .Set "EdgeRefinementOn", "1"
- .Set "EdgeRefinementRatio", "4"
+ .Set "EdgeRefinementRatio", {q(mesh.get('edge', 4))}
  .Set "EdgeRefinementBufferLines", "3"
 End With"""
 
@@ -1257,7 +1258,7 @@ def run_in_cst(m, blocks, a, od):
         for k, pr in enumerate(presets):
             if k:
                 log(f"   mesh '{presets[k - 1]}' exceeds the licence's mesh size: '{pr}' instead (--fallback)")
-                prj.model3d.add_to_history(f"mesh (fallback {pr})", mesh_vba(dict(MESH_PRESETS[pr], ratio=20, minstep=0.0)))
+                prj.model3d.add_to_history(f"mesh (fallback {pr})", mesh_vba(dict({"ratio": 20, "minstep": 0.0}, **MESH_PRESETS[pr])))
             t0 = time.time()
             try:
                 prj.model3d.run_solver()
@@ -1372,6 +1373,8 @@ def main():
     ap.add_argument("--clip-body", type=float, default=3.0, help="cut the connector body's outside more than this above / below the axis (mm; 0: the full body)")
     ap.add_argument("--no-orient-check", action="store_true")
     ap.add_argument("--step-scale", type=float, default=None, help="scale the imported STEP solids (25.4 if CST imports the inch STEP without converting it to mm)")
+    ap.add_argument("--edge-ratio", type=float, default=None, help="CST edge refinement ratio (default 4; 2 saves cells)")
+    ap.add_argument("--ratio-limit", type=float, default=None, help="CST mesh ratio limit (default 20; 10 saves cells)")
     ap.add_argument("--keep-open", action="store_true", help="leave the project open in CST after a successful run (a failed run always stays open)")
     ap.add_argument("--plot", action="store_true", help="geometry plot also without --dry-run")
     a = ap.parse_args()
@@ -1381,6 +1384,15 @@ def main():
         m = build_model(a)
     if a.step_scale:
         m["step"]["step_scale"] = a.step_scale
+    if a.from_json:  # mesh choices also apply to a model rebuilt from its JSON
+        if a.mesh != "auto":
+            m["mesh"] = dict({"ratio": 20, "minstep": 0.0}, **MESH_PRESETS[a.mesh], preset=a.mesh)
+        if a.lpw or a.lpb:
+            m["mesh"].update(preset="custom", lpw=a.lpw or m["mesh"]["lpw"], lpb=a.lpb or m["mesh"]["lpb"])
+    if a.edge_ratio:
+        m["mesh"]["edge"] = a.edge_ratio
+    if a.ratio_limit:
+        m["mesh"]["ratio"] = a.ratio_limit
     print_summary(m)
     blocks = vba_blocks(m)
     probs = [f"{b['caption']}: {p}" for b in blocks for p in lint_vba(b["code"])]

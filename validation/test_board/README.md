@@ -119,7 +119,7 @@ so one stackup serves the first order (the planes below In1 differ; check the re
 - **Not modelled:** the connector's coax (kisi-fdtd has z-directed cylinders and horizontal sheets only): the edge
   port stands in for it, so the cases optimise the board side. `pin` adds the pin as a strip on the tip; `body` the
   top jaw (sheets with its slot, posts, the lip). CST with Samtec's STEP model and a waveguide port on the 2.92 mm
-  interface checks the whole transition: `cst_launch.py` builds it (`README_cst_launch.md`; written, not run in CST yet).
+  interface checks the whole transition: `cst_launch.py` builds it (`README_cst_launch.md`; the connector from primitives with the STEP's dimensions; a first run with the imported STEP failed, to be run again).
 - **Target:** |S11| < −20 dB to 40 GHz for one launch (Samtec's own optimised fixture on MT40: −23 to −25 dB for one
   connector with 500 mil of trace, report 2023-06-01).
 - **Results (2026-10-30, `fdtd_ref/launch_jlc4_7628/`):**

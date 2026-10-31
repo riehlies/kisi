@@ -76,6 +76,9 @@
    "board_bottom_note": "top of the lower plate (the model shows a 1.905 mm board); the plate has a 0.51 × 0.08 mm groove under the trace",
    "plate": {"x": [11.5316, 16.8656], "y": [-3.4036, -2.032], "z_half": 4.445},
    "body_box": {"x": [0.0, 16.6116], "y": [-4.7625, 4.7625], "z_half": 4.7625},
+   "bushing_r": 3.175,
+   "hex_x": 5.6301,
+   "body_shape_note": "outside: 1/4-36 thread Ø6.35 (relief Ø5.36 at x 4.83-5.63), hex Ø9.53 across the corners x 5.63-6.83, then the Ø9.53 cylinder cut flat at y = ±3.975 (jaw top y = 1.778 from x = 11.66); cst_launch.py --connector parametric: Ø6.35 to the hex, Ø9.53 after it, clipped to ±clip_body",
    "jaw": {"lip_x": 11.2776, "underside_inner_half": 0.3267, "slot_half": [1.3335, 1.5875], "slot_x": 11.9126, "top_y": [1.778, 3.9751]}
   },
   "benchmark": {

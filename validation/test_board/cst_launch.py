@@ -11,20 +11,23 @@ Models (--model):
                 ASSUMED 4-layer I-Tera MT40 stackup: a plausibility check against Samtec's RF report
 
 The board side (Samtec ground pads, plated screw holes, launch, fence, planes) is the kisi-fdtd launch case of
-make_coupons.launch_case(), so it follows connectors.json; the connector is Samtec's STEP model (--step, not in
-the repository: its licence forbids redistribution) with the part roles, the support bead, a bore of assumed
-impedance where the model is solid around the contact, and the placement from connectors.json
-(connector.step_model). Same model conventions as validation/fdtd/cst_case.py (branch feat/cst-refs):
+make_coupons.launch_case(), so it follows connectors.json. The connector (--connector parametric, default) is built
+from CST primitives directly in model coordinates with the dimensions measured from Samtec's STEP model
+(connectors.json connector.step_model): air line, support bead with its holes, contact, a bore of assumed impedance
+where the STEP is solid around the contact, lip, pin, jaw with its slot, lower plate. --connector step imports
+Samtec's STEP instead (--step, not in the repository: its licence forbids redistribution; --step-scale 25.4 if CST
+does not convert its inches), for comparison only. Same model conventions as validation/fdtd/cst_case.py (branch feat/cst-refs):
 zero-thickness PEC copper widened by Wheeler's dw, dielectric loss as a constant conductivity at fmax/2
 (--loss tand: CST's constant-tan(delta) model), time-domain solver, PBA, open (PML) boundaries.
 
 usage:
   python3 cst_launch.py --model launch1 --dry-run --out OUT            # .bas + model JSON + geometry plot, no CST
-  python cst_launch.py --model thru2 --step C:/samtec/292-J-P-EP-ST-EL-01.stp --out OUT   # in/next to CST 2025.5
-  python cst_launch.py --from-json OUT/launch1_default_jlc4_7628/launch1_default_jlc4_7628.model.json --step ...
+  python cst_launch.py --model thru2 --out OUT                              # with CST 2025.5's python_cst_libraries
+  python cst_launch.py --from-json launch1_default_jlc4_7628.model.json --out OUT   # outside the repository
 Options: --variant (launch variants of make_coupons / connectors.json), --mesh fine|mid|base|coarse|auto
 (estimated cells against --max-cells), --monitors (E-field at 10/20/30/40 GHz), --bead-er/--bead-tand,
---metal pec|lossy, --part ROLE=PATTERN, --symmetry magnetic|none, --coax-port inner|ext, --no-walls.
+--metal pec|lossy, --symmetry magnetic|none, --walls, --check-occ (OpenCASCADE check, pip gmsh),
+--connector step [--step-scale, --part ROLE=PATTERN, --coax-port inner|ext].
 """
 import argparse, datetime, json, math, os, re, sys, time
 
@@ -319,7 +322,7 @@ def build_model(a):
                 full += [s, mirror_sheet(s, Lb)]
         sheets = full
         vias = vias + [dict(v, x=round(Lb - v["x"], 6)) for v in vias]
-    diel = [l for l in case["layers"] if l["z0"] >= z_bot - 1e-9 and l["z1"] <= z_top + 1e-9]
+    diel = [l for l in case["layers"] if l["z0"] >= z_bot - 1e-9 and l["z1"] <= z_top + 1e-9 and l["z1"] - l["z0"] > 1e-6]
     bricks = [{"name": f"layer{k}", "x": [0.0, Lb], "y": [-hy, hy], "z": [l["z0"], l["z1"]], "er": l["er"], "tand": l["tand"]} for k, l in enumerate(diel)]
     mask = stk.mask
     x_open = fp["gnd_pad"]["depth"] + fp["mask_margin"]
@@ -351,7 +354,9 @@ def build_model(a):
         x_cut = -a.ext_len
         ref = -(sm["mating_plane_x"] + a.ext_len)
         what = f"coax waveguide port on a {sm['mating_plane_x'] + a.ext_len:.3f} mm ideal air coax (Ø2.92/Ø1.27, the mating plug) ahead of the mating plane, referred to it"
-    hp = a.coax_port_half
+    if a.connector == "parametric" and a.coax_port != "inner":
+        raise SystemExit("--coax-port ext: only with --connector step")
+    hp = a.coax_port_half or sm["oc_bore"]["r"]  # the port square circumscribes the outer conductor: one TEM mode
     for c in conns:
         xs = (c["edge_x"] + (e - x_cut)) if c["mirror"] else (c["edge_x"] - (e - x_cut))
         ports.append({"num": c["id"], "type": "waveguide", "orientation": "xmax" if c["mirror"] else "xmin", "x": round(xs, 6),
@@ -375,10 +380,17 @@ def build_model(a):
             lo, hi = max(u0, x0), min(u1, x1)
             if hi - lo > 1e-6:
                 cav.append([round(lo, 4), round(hi, 4), round(r * math.exp(a.cavity_z * math.sqrt(a.cavity_er) / 60.0), 4), r])
+        # where the bore narrows at a contact shoulder (x 10.693: Ø1.016 -> Ø0.254, bore Ø2.34 -> Ø0.58) the shoulder face
+        # would lie in the plane of the bore's step and touch it (a short): the wider bore runs on 0.1 mm past the shoulder
+        for k in range(1, len(cav)):
+            if cav[k][2] < cav[k - 1][3] + 0.05:
+                u = round(min(cav[k][0] + 0.1, (cav[k][0] + cav[k][1]) / 2), 4)
+                cav[k - 1][1], cav[k][0] = u, u
     step["cavity"] = {"sections": cav, "z": a.cavity_z, "er": a.cavity_er,
                       "note": "ASSUMED: the STEP has no bore between the bead and the front lip; a coaxial bore of this impedance (fill εr) is cut around each contact section"}
     step["cut_x"] = x_cut
     step["coax_port"] = a.coax_port
+    step["connector"] = a.connector
     step["pin_contact"] = a.pin_contact
     step["clip_body"] = a.clip_body
     mats = {"bead": {"er": a.bead_er, "tand": a.bead_tand}, "metal": a.metal}
@@ -631,6 +643,10 @@ def connector_vba(m, c):
         A(f'Solid.Subtract sBody, "{comp}:cutA"')
         A(brick("cutB", comp, "Vacuum", -2.0, x, -8, 8, -8, 8).rstrip())
         A(f'Solid.Subtract sCont, "{comp}:cutB"')
+        A("' the socket's bore (D0.95, to x = 5.04) is open at the port plane: the contact would be a tube there and the port")
+        A("' would see a second, decoupled region inside it; fill it (as the mated pin does)")
+        A(cyl_x("sockfill", comp, mat_cont, x - 0.01, 5.04, 0.4765).rstrip())
+        A(f'Solid.Add sCont, "{comp}:sockfill"')
     else:
         x0, xm = sm["cut_x"], sm["mating_plane_x"]
         A("' the mating plug as an ideal air coax: outer conductor in the counterbore, inner conductor to the socket, pin in the socket bore")
@@ -698,6 +714,215 @@ def connector_vba(m, c):
     A(transform("shp(i)", "Translate", (c["dx"], 0, c["dz_main"])).rstrip())
     A(" End If")
     A("Next i")
+    return "\n".join(o)
+
+
+def connector_ops(m, c, grow=0.0):
+    """the connector from primitives in model coordinates (no import, no rotation: replay-safe), dimensions of
+    connectors.json step_model (measured from Samtec's STEP): [(op, ...)] with op brick | cylx | cylz (create: name,
+    material, geometry) and add | subtract | insert (a, b). STEP x (axis) -> model x from the board edge, STEP y (up) ->
+    model z (axis at z_axis), STEP z (across) -> model -y. The outside of the body is a box clipped to clip_body about
+    the axis (bushing, hex, thread are outside the coax and the launch: not modelled)"""
+    sm = m["step"]
+    comp = f"conn{c['id']}"
+    sg = -1.0 if c["mirror"] else 1.0
+    e, xe = sm["board_edge_x"], c["edge_x"]
+    za = m["z_axis"]
+    X = lambda u: round(xe + sg * (u - e), 6)
+    Zm = lambda y: round(za + y, 6)
+    Zp = lambda y: round(m["z_bot"] + (y - sm["board_bottom_y"]), 6)
+    mt = m["materials"]["metal"]
+    mat_body, mat_cont = ("PEC", "PEC") if mt == "pec" else ("stainless", "gold")
+    ops = []
+    n = [0]
+
+    def nm(base):
+        n[0] += 1
+        return f"{comp}:{base}{n[0]}"
+
+    def box(name, mat, u0, u1, y0, y1, z0, z1, plate=False):
+        x0, x1 = sorted((X(u0), X(u1)))
+        Z = Zp if plate else Zm
+        ops.append(("brick", name, mat, x0, x1, round(-z1, 6), round(-z0, 6), Z(y0), Z(y1)))
+        return name
+
+    def cylx(name, mat, u0, u1, r, yc=0.0, zc=0.0):
+        x0, x1 = sorted((X(u0), X(u1)))
+        ops.append(("cylx", name, mat, x0, x1, round(-zc, 6), Zm(yc), r))
+        return name
+
+    def cylv(name, mat, u, zc, r, y0, y1):  # along STEP y = model z
+        ops.append(("cylz", name, mat, X(u), round(-zc, 6), r, Zm(y0), Zm(y1)))
+        return name
+
+    def cut(a, b):
+        ops.append(("subtract", a, b))
+
+    def add(a, b):
+        ops.append(("add", a, b))
+
+    up = sm["cut_x"]                 # the coax port plane
+    h = sm.get("clip_body") or 3.0
+    jw = sm["body_box"]["z_half"]
+    ty = sm["board_top_y"]
+    jaw = sm["jaw"]
+    lip0 = jaw["lip_x"]
+    jtop = jaw["top_y"][0]
+    ob, bd, lo = sm["oc_bore"], sm["bead"], sm["lip_opening"]
+    body = f"{comp}:body"
+    # body: round (Ø6.35 thread bushing ahead of the hex, then Ø9.53) and cut flat above / below: the front, the tongue that
+    # meets the board edge, the jaw over the board (STEP: the body's sides are the Ø9.53 cylinder)
+    def round_part(name, u0, u1, r, y0, y1):
+        cylx(name, mat_body, u0, u1, r)
+        cut(name, box(nm("flat"), "Vacuum", u0 - 0.1, u1 + 0.1, y1, r + 1, -r - 1, r + 1))
+        cut(name, box(nm("flat"), "Vacuum", u0 - 0.1, u1 + 0.1, -r - 1, y0, -r - 1, r + 1))
+        return name
+    hexu = sm.get("hex_x", 5.6301)
+    round_part(body, up, hexu, sm.get("bushing_r", 3.175), -h, h)
+    add(body, round_part(nm("hex"), hexu, lip0, jw, -h, h))
+    add(body, box(nm("tongue"), mat_body, lip0, e, -h, ty, -1.27, 1.27))
+    add(body, round_part(nm("front"), lip0, e, jw, ty, h))
+    add(body, round_part(nm("jaw"), e, sm["body_box"]["x"][1], jw, ty, jtop))
+    # inside: the air line, the bead seat, the (ASSUMED) bore, the lip opening for the pin
+    cut(body, cylx(nm("bore"), "Vacuum", up - 0.1, bd["x"][0], ob["r"]))
+    cut(body, cylx(nm("seat"), "Vacuum", bd["x"][0], bd["x"][1], bd["r"]))
+    cav = sm["cavity"]
+    fill = cav["sections"] and cav["er"] > 1.0
+    fills = []
+    for (u0, u1, r, _) in cav["sections"]:
+        if fill:
+            fills.append(cylx(nm("fill"), "cavity_fill", u0, u1, r))
+        else:
+            cut(body, cylx(nm("cav"), "Vacuum", u0, u1, r))
+    if not cav["sections"]:  # the STEP's void behind the bead only (the contact is then shorted to the body)
+        cut(body, cylx(nm("void"), "Vacuum", *sm["void_behind_bead"]["x"], sm["void_behind_bead"]["r"]))
+    cut(body, cylx(nm("lip"), "Vacuum", lo["x"][0] - 0.01, lo["x"][1] + 0.05, lo["r"]))
+    # the slot over the trace (open to the top), the screw slots
+    sx = jaw["slot_x"]
+    s1 = 12.167  # STEP: the slot widens from 2.67 to 3.18 mm here
+    cut(body, box(nm("slot"), "Vacuum", sx, s1, ty - 0.01, jtop + 0.01, -jaw["slot_half"][0], jaw["slot_half"][0]))
+    cut(body, box(nm("slot"), "Vacuum", s1, sm["body_box"]["x"][1] + 0.1, ty - 0.01, jtop + 0.01, -jaw["slot_half"][1], jaw["slot_half"][1]))
+    for zs in (1, -1):
+        zc = zs * 2.921
+        cut(body, box(nm("screw"), "Vacuum", 13.208, 15.24, ty - 0.01, jtop + 0.01, zc - 1.016, zc + 1.016))
+        for u in (13.208, 15.24):
+            cut(body, cylv(nm("screw"), "Vacuum", u, zc, 1.016, ty - 0.01, jtop + 0.01))
+    # lower plate (with its groove under the trace)
+    pl = sm["plate"]
+    plate = f"{comp}:plate"
+    box(plate, mat_body, pl["x"][0], pl["x"][1], pl["y"][0], pl["y"][1], -pl["z_half"], pl["z_half"], plate=True)
+    cut(plate, box(nm("groove"), "Vacuum", pl["x"][0] - 0.1, pl["x"][1] + 0.1, pl["y"][1] - 0.0762, pl["y"][1] + 0.01, -0.254, 0.254, plate=True))
+    # centre contact from the port plane to the pin end (the socket lies ahead of the port plane)
+    cont = f"{comp}:contact"
+    first = True
+    for (u0, u1, r, _) in sm["contact"]:
+        if u1 <= up + 1e-9:
+            continue
+        if first:
+            cylx(cont, mat_cont, max(u0, up), u1 + grow, r + grow)
+            first = False
+        else:
+            add(cont, cylx(nm("ct"), mat_cont, u0, u1 + grow, r + grow))
+    if sm["pin_contact"]:
+        pin = sm["contact"][-1]
+        add(cont, box(nm("pinblk"), mat_cont, e + m["edge_pullback"], pin[1] + grow, ty + grow, 0.0, -pin[2] - grow, pin[2] + grow))
+    # the support bead: disc with six holes and the centre hole, minus the contact's shoulder
+    bead = f"{comp}:bead"
+    cylx(bead, "bead", bd["x"][0], bd["x"][1], bd["r"])
+    hl = bd["holes"]
+    for k in range(hl["n"]):
+        t = 2 * math.pi * k / hl["n"]
+        cut(bead, cylx(nm("hole"), "Vacuum", bd["x"][0] - 0.01, bd["x"][1] + 0.01, hl["r"], hl["pitch_r"] * math.cos(t), hl["pitch_r"] * math.sin(t)))
+    cut(bead, cylx(nm("hole"), "Vacuum", bd["x"][0] - 0.01, bd["x"][1] + 0.01, bd["centre_hole_r"]))
+    ops.append(("insert", bead, cont))
+    if fill:
+        for f_ in fills[1:]:
+            add(fills[0], f_)
+        ops.append(("insert", body, fills[0]))
+        ops.append(("insert", fills[0], cont))
+    return ops
+
+
+def ops_vba(ops):
+    o = ["' connector from primitives (cst_launch.py connector_ops): dimensions measured from Samtec's STEP, placed directly"]
+    for op in ops:
+        k = op[0]
+        if k in ("brick", "cylx", "cylz"):
+            comp, name = op[1].split(":")
+            if k == "brick":
+                o.append(brick(name, comp, op[2], *op[3:]).rstrip())
+            elif k == "cylx":
+                x0, x1, yc, zc, r = op[3:]
+                o.append(f'With Cylinder\n .Reset\n .Name "{name}"\n .Component "{comp}"\n .Material "{op[2]}"\n .OuterRadius {q(r)}\n'
+                         f' .InnerRadius "0"\n .Axis "x"\n .Xrange {q(x0)}, {q(x1)}\n .Ycenter {q(yc)}\n .Zcenter {q(zc)}\n .Segments "0"\n .Create\nEnd With')
+            else:
+                x, y, r, z0, z1 = op[3:]
+                o.append(cyl_z(name, comp, op[2], x, y, r, z0, z1).rstrip())
+        else:
+            o.append(f'Solid.{ {"add": "Add", "subtract": "Subtract", "insert": "Insert"}[k] } "{op[1]}", "{op[2]}"')
+    return "\n".join(o)
+
+
+def ops_occ(ops, occ):
+    """the same operations with OpenCASCADE (gmsh): {name: [tags]} (checks without CST)"""
+    tags = {}
+    for op in ops:
+        k = op[0]
+        if k == "brick":
+            x0, x1, y0, y1, z0, z1 = op[3:]
+            tags[op[1]] = [occ.addBox(x0, y0, z0, x1 - x0, y1 - y0, z1 - z0)]
+        elif k == "cylx":
+            x0, x1, yc, zc, r = op[3:]
+            tags[op[1]] = [occ.addCylinder(x0, yc, zc, x1 - x0, 0, 0, r)]
+        elif k == "cylz":
+            x, y, r, z0, z1 = op[3:]
+            tags[op[1]] = [occ.addCylinder(x, y, z0, 0, 0, z1 - z0, r)]
+        else:
+            a, b = [(3, t) for t in tags[op[1]]], [(3, t) for t in tags[op[2]]]
+            if k == "add":
+                res, _ = occ.fuse(a, b)
+            else:
+                res, _ = occ.cut(a, b, removeObject=True, removeTool=(k == "subtract"))
+            tags[op[1]] = [t for d, t in res if d == 3]
+            if k == "subtract":
+                tags.pop(op[2])
+    return tags
+
+
+def port_conductor_check(m):
+    """history block: the conductors at every coax port plane must be the contact (centred, its radius) inside the
+    body (outer conductor); a misplaced connector (e.g. a STEP placed differently on replay) stops the build here"""
+    sm = m["step"]
+    o = ["' the coax ports: contact centred in the outer conductor at the port plane (else: stop)", "Dim xa As Double, xb As Double, ya As Double, yb As Double, za As Double, zb As Double", "Dim bad As String"]
+    par = sm.get("connector", "step") == "parametric"
+    r0 = next(r for (u0, u1, r, _) in sm["contact"] if u0 <= sm["cut_x"] < u1)
+    # every waveguide port must lie on the structure's bounding box (CST's domain boundary): a part beyond it moves the
+    # boundary and leaves the port inside the model
+    o += ["Dim i As Long, gx0 As Double, gx1 As Double", "gx0 = 1e30", "gx1 = -1e30",
+          "For i = 0 To Solid.GetNumberOfShapes - 1",
+          " Solid.GetLooseBoundingBoxOfShape Solid.GetNameOfShapeFromIndex(i), xa, xb, ya, yb, za, zb",
+          " If xa < gx0 Then gx0 = xa", " If xb > gx1 Then gx1 = xb", "Next i",
+          'ReportInformationToWindow "model x extent " & gx0 & " .. " & gx1']
+    for p in [p for p in m["ports"] if p["type"] == "waveguide"]:
+        g = "gx0" if p["orientation"] == "xmin" else "gx1"
+        o.append(f'If Abs({g} - ({p["x"]:.6f})) > 0.02 Then ReportError "port {p["num"]} (x = {p["x"]:.4f}) is not on the model boundary (" & {g} & "): a part reaches beyond it"')
+    for p in [p for p in m["ports"] if p["type"] == "waveguide" and abs(p["ref_shift"]) > 0]:
+        k = p["num"]
+        za_ = m["z_axis"]
+        if par:
+            o.append(f'Solid.GetLooseBoundingBoxOfShape "conn{k}:contact", xa, xb, ya, yb, za, zb')
+            o.append(f'ReportInformationToWindow "port {k}: contact box x " & xa & " .. " & xb & ", y " & ya & " .. " & yb & ", z " & za & " .. " & zb')
+            o.append('bad = ""')
+            xe = "xa" if p["orientation"] == "xmin" else "xb"
+            o.append(f'If Abs({xe} - ({p["x"]:.6f})) > 0.01 Then bad = bad & " contact does not reach the port plane;"')
+            o.append(f'If Abs((ya + yb) / 2) > 0.01 Or Abs((za + zb) / 2 - ({za_:.6f})) > 0.08 Then bad = bad & " contact not on the axis;"')
+            o.append(f'If yb - ya > {2 * r0 + 0.1:.4f} Then bad = bad & " contact wider than its {2 * r0:.3f} mm;"')
+            o.append(f'Solid.GetLooseBoundingBoxOfShape "conn{k}:body", xa, xb, ya, yb, za, zb')
+            o.append(f'ReportInformationToWindow "port {k}: outer conductor (body) box x " & xa & " .. " & xb & ", z " & za & " .. " & zb')
+            o.append(f'If Abs({xe} - ({p["x"]:.6f})) > 0.01 Then bad = bad & " outer conductor does not reach the port plane;"')
+            o.append(f'If za > {za_ - sm["oc_bore"]["r"]:.6f} Or zb < {za_ + sm["oc_bore"]["r"]:.6f} Then bad = bad & " outer conductor does not enclose the bore;"')
+            o.append(f'If bad <> "" Then ReportError "port {k}:" & bad & " (expected: contact D{2 * r0:.3f} on the axis z = {za_:.4f} in the D{2 * sm["oc_bore"]["r"]:.3f} bore at x = {p["x"]:.4f})"')
+        o.append(f'ReportInformationToWindow "port {k}: square {2 * (p["y"][1]):.4f} mm at x = {p["x"]:.4f}, centre z = {(p["z"][0] + p["z"][1]) / 2:.4f} (axis {za_:.4f}): one TEM mode expected, Z = 60 ln(D/d) = {60 * math.log(sm["oc_bore"]["r"] / r0):.2f} ohm"')
     return "\n".join(o)
 
 
@@ -807,7 +1032,11 @@ End With""", "setup")
             pn = B.name(f"{vn}_pad")
             B.add(f"{vn} pad", B.circle_sheet("metal", pn, v["x"], v["y"], v["pad_r"], pz))
     for c in m["connectors"]:
-        B.add(f"connector {c['id']} (Samtec STEP)", connector_vba(m, c), "connector")
+        if m["step"].get("connector", "step") == "parametric":
+            B.add(f"connector {c['id']} (parametric)", ops_vba(connector_ops(m, c)), "connector")
+        else:
+            B.add(f"connector {c['id']} (Samtec STEP)", connector_vba(m, c), "connector")
+    B.add("check: conductors at the coax ports", port_conductor_check(m), "check")
     for p in m["ports"]:
         if p["type"] == "waveguide":
             B.add(f"port {p['num']} (waveguide)", f"""
@@ -944,17 +1173,22 @@ def to_bas(blocks, m, step_path=""):
          "' generated by kisi validation/test_board/cst_launch.py " + m["date"] + " for CST Studio Suite 2025.5",
          f"' mesh '{m['mesh']['preset']}' ({m['mesh']['lpw']} lines/wavelength, {m['mesh']['lpb']} per box); estimated cells "
          + ", ".join(f"{k} {v['local'] / 1e6:.2f} M (up to {v['global'] / 1e6:.2f} M)" for k, v in m["cells_estimate"].items()),
-         "' Samtec's STEP model is NOT part of kisi (licence): set stepFile below or pick the file when asked.",
-         "Option Explicit", "", "Sub Main", " Dim stepFile As String, outDir As String, h As String, RUN_SOLVER As Boolean",
+         ("' connector from primitives with the dimensions measured from Samtec's STEP (no STEP needed)" if m["step"].get("connector") == "parametric"
+          else "' Samtec's STEP model is NOT part of kisi (licence): set stepFile below or pick the file when asked."),
+         "Option Explicit", "", "Sub Main", " Dim stepFile As String, outDir As String, h As String, RUN_SOLVER As Boolean, PORT_CHECK As Boolean",
+         " Dim p As Long, mt As String, zl As Double, msg As String, bad As Boolean",
          f' stepFile = "{step_path}"',
          ' outDir = ""            \' folder for the Touchstone file (RUN_SOLVER = True)',
          " RUN_SOLVER = False",
-         ' If stepFile = "" Then stepFile = GetFilePath("292-J-P-EP-ST-EL-01.stp", "STEP|*.stp;*.step", , "Samtec STEP model 292-J-P-EP-ST-EL-01", 0)',
-         ' If stepFile = "" Then',
-         '  MsgBox "No STEP file: stopped."',
-         "  Exit Sub",
-         " End If",
-         ' stepFile = Replace(stepFile, "\\", "/")']
+         " PORT_CHECK = True      ' modes-only solver run: every port must have the expected mode type and impedance",
+         ]
+    if any(STEP_TOKEN in b["code"] for b in blocks):
+        s += [' If stepFile = "" Then stepFile = GetFilePath("292-J-P-EP-ST-EL-01.stp", "STEP|*.stp;*.step", , "Samtec STEP model 292-J-P-EP-ST-EL-01", 0)',
+              ' If stepFile = "" Then',
+              '  MsgBox "No STEP file: stopped."',
+              "  Exit Sub",
+              " End If",
+              ' stepFile = Replace(stepFile, "\\", "/")']
     for b in blocks:
         s.append(f" ' --- {b['caption']}")
         s.append(' h = ""')
@@ -963,7 +1197,28 @@ def to_bas(blocks, m, step_path=""):
             lit = lit.replace(STEP_TOKEN, '" & stepFile & "')
             s.append(f" h = h & {lit} & vbLf")
         s.append(f' AddToHistory "{ascii_only(b["caption"])}", h')
-    s += [" If RUN_SOLVER Then",
+    s += [" If PORT_CHECK Then",
+          '  Solver.CalculateModesOnly "True"',
+          "  Solver.Start",
+          '  msg = ""',
+          "  bad = False"]
+    for p in m["ports"]:
+        if p["type"] != "waveguide":
+            continue
+        coax = abs(p["ref_shift"]) > 0 or p["orientation"] == "xmin"
+        lo, hi = (47.0, 53.0) if coax else (40.0, 60.0)
+        s += [f"  mt = Port.GetModeType({p['num']}, 1)",
+              f"  zl = Port.GetLineImpedance({p['num']}, 1)",
+              f'  msg = msg & "port {p["num"]}: mode 1 " & mt & ", Z = " & Format(zl, "0.00") & " ohm" & vbLf',
+              f'  If zl < {lo} Or zl > {hi} Or mt = "" Or InStr("TEM|QTEM", mt) = 0 Then bad = True']
+    s += ['  Solver.CalculateModesOnly "False"',
+          '  ReportInformationToWindow "port modes:" & vbLf & msg',
+          "  If bad Then",
+          '   MsgBox "Port check FAILED (expected one TEM mode of about 50 ohm on the coax, a (quasi-)TEM line mode):" & vbLf & msg, vbCritical',
+          "   Exit Sub",
+          "  End If",
+          " End If",
+          " If RUN_SOLVER Then",
           "  Solver.Start",
           '  If outDir <> "" Then',
           "   With TOUCHSTONE",
@@ -1032,39 +1287,178 @@ def lint_vba(code):
     return probs
 
 
-# --- geometry plot -------------------------------------------------------------------------------------------------
-def step_sections(step_path, sm):
-    """outlines of the STEP's solids in the section z = 0 (through the axis, STEP coordinates), via gmsh/OCC if
-    installed: {part role: [[(x, y), ...], ...]} or None"""
+# --- checks with OpenCASCADE (gmsh, optional) ----------------------------------------------------------------------
+def _occ_vol(occ, tags):
+    return sum(occ.getMass(3, t) for t in tags)
+
+
+def _occ_common(occ, a, b):
+    if not a or not b:
+        return 0.0
+    r, _ = occ.intersect([(3, t) for t in a], [(3, t) for t in b], removeObject=False, removeTool=False)
+    occ.synchronize()
+    v = sum(occ.getMass(3, t) for d, t in r if d == 3)
+    occ.remove(r, recursive=True)
+    occ.synchronize()
+    return v
+
+
+def step_parts_model(m, occ, gmsh, step_path, c):
+    """Samtec's STEP placed as the --connector step mode does (gmsh converts its inch units to mm): {role: [tags]}"""
+    sm = m["step"]
+    before = set(t for _, t in gmsh.model.getEntities(3))
+    occ.importShapes(step_path)
+    occ.synchronize()
+    role = {}
+    for d, t in gmsh.model.getEntities(3):
+        if t in before:
+            continue
+        nm = gmsh.model.getEntityName(d, t)
+        role.setdefault(next((r for pat, r in sm["parts_map"] if pat in nm), "other"), []).append(t)
+    occ.remove([(3, t) for t in role.pop("drop", [])], recursive=True)
+    body, cont, plate = role["body"], role["contact"], role["plate"]
+    b = sm["bead"]
+    cyl = lambda x0, x1, r: [(3, occ.addCylinder(x0, 0, 0, x1 - x0, 0, 0, r))]
+    holes, _ = occ.cut(cyl(b["x"][0] - 0.05, b["x"][1], b["r"]), [(3, t) for t in body], removeTool=False)
+    bead, _ = occ.cut(cyl(b["x"][0] - 0.05, b["x"][1], b["r"]), holes)
+    body2, _ = occ.cut([(3, t) for t in body], bead, removeTool=False)
+    bead2, _ = occ.cut(bead, [(3, t) for t in cont], removeTool=False)
+    cav = [cyl(x0, x1, r)[0] for x0, x1, r, _ in sm["cavity"]["sections"]]
+    if cav:
+        body2, _ = occ.cut(body2, cav)
+    x = sm["cut_x"]
+    body2, _ = occ.cut(body2, [(3, occ.addBox(-2, -8, -8, x + 2, 16, 16))])
+    cont2, _ = occ.cut([(3, t) for t in cont], [(3, occ.addBox(-2, -8, -8, x + 2, 16, 16))])
+    cont2, _ = occ.fuse(cont2, cyl(x - 0.01, 5.04, 0.4765))
+    cont2, _ = occ.cut(cont2, [(3, occ.addBox(-2, -8, -8, x + 2, 16, 16))])
+    h = sm.get("clip_body") or 0
+    if h:
+        body2, _ = occ.cut(body2, [(3, occ.addBox(-2, h, -8, 22, 8, 16)), (3, occ.addBox(-2, -8 - h, -8, 22, 8, 16))])
+    if sm["pin_contact"]:
+        pin, e = sm["contact"][-1], sm["board_edge_x"]
+        cont2, _ = occ.fuse(cont2, [(3, occ.addBox(e + m["edge_pullback"], sm["board_top_y"], -pin[2], pin[1] - e - m["edge_pullback"], -sm["board_top_y"], 2 * pin[2]))])
+    out = {"body": [t for _, t in body2], "contact": [t for _, t in cont2], "bead": [t for _, t in bead2], "plate": plate}
+    main = [(3, t) for k in ("body", "contact", "bead") for t in out[k]]
+    occ.rotate(main + [(3, t) for t in plate], 0, 0, 0, 1, 0, 0, math.pi / 2)
+    if c["mirror"]:
+        occ.rotate(main + [(3, t) for t in plate], 0, 0, 0, 0, 0, 1, math.pi)
+    occ.translate(main, c["dx"], 0, c["dz_main"])
+    occ.translate([(3, t) for t in plate], c["dx"], 0, c["dz_plate"])
+    occ.synchronize()
+    return out
+
+
+def check_occ(m, step_path=None):
+    """the parametric connector built with OpenCASCADE: volumes, no overlap between contact, body and bead, the jaw
+    on the top copper, the pin block on the trace, nothing inside a board brick; with the STEP: the same parts of
+    Samtec's model placed as --connector step does, volumes and the volume where the two differ"""
+    import gmsh
+    gmsh.initialize()
+    gmsh.option.setNumber("General.Terminal", 0)
+    occ = gmsh.model.occ
+    res = {"connectors": []}
+    try:
+        for c in m["connectors"]:
+            k = c["id"]
+            t = ops_occ(connector_ops(m, c), occ)
+            occ.synchronize()
+            par = {r: t.get(f"conn{k}:{r}", []) for r in ("body", "contact", "bead", "plate")}
+            r = {"id": k, "volume_mm3": {x: round(_occ_vol(occ, v), 4) for x, v in par.items()}}
+            r["overlap_mm3"] = {"contact_body": round(_occ_common(occ, par["contact"], par["body"]), 6),
+                                "contact_bead": round(_occ_common(occ, par["contact"], par["bead"]), 6),
+                                "bead_body": round(_occ_common(occ, par["bead"], par["body"]), 6),
+                                "contact_plate": round(_occ_common(occ, par["contact"], par["plate"]), 6)}
+            zt, sg = m["z_top"], (-1 if c["mirror"] else 1)
+            x0, x1 = sorted((c["edge_x"] + sg * 0.05, c["edge_x"] + sg * 5.0))
+            slab = lambda za_, zb_, y0=-6, y1=6, xa=x0, xb=x1: [occ.addBox(xa, y0, za_, xb - xa, y1 - y0, zb_ - za_)]
+            r["body_below_top_copper_mm3"] = round(_occ_common(occ, par["body"], slab(zt - 1.0, zt)), 6)
+            r["body_on_top_copper_mm3"] = round(_occ_common(occ, par["body"], slab(zt, zt + 0.01)), 4)
+            px0, px1 = sorted((c["edge_x"] + sg * 0.25, c["edge_x"] + sg * 0.6))
+            r["pin_on_trace_mm3"] = round(_occ_common(occ, par["contact"], slab(zt, zt + 0.01, -0.1, 0.1, px0, px1)), 6)
+            trace = []  # the signal copper as thin prisms (polygons as drawn)
+            for sh in m["sheets"]:
+                if sh["net"] != "SIG" or abs(sh["z"] - zt) > 1e-9:
+                    continue
+                rings = sh.get("polys") or [[[sh["rect"][0], sh["rect"][1]], [sh["rect"][2], sh["rect"][1]], [sh["rect"][2], sh["rect"][3]], [sh["rect"][0], sh["rect"][3]]]]
+                for rg in rings:
+                    rg = clean_ring(rg)
+                    if not rg:
+                        continue
+                    pts = [occ.addPoint(x_, y_, zt - 0.005) for x_, y_ in rg]
+                    lines = [occ.addLine(pts[i_], pts[(i_ + 1) % len(pts)]) for i_ in range(len(pts))]
+                    srf = occ.addPlaneSurface([occ.addCurveLoop(lines)])
+                    ex = occ.extrude([(2, srf)], 0, 0, 0.015)
+                    trace += [t_ for d_, t_ in ex if d_ == 3]
+            r["body_on_trace_mm3"] = round(_occ_common(occ, par["body"], trace), 6)
+            g = ops_occ([op for op in connector_ops(m, c, grow=0.02) if op[1].startswith(f"conn{k}:c") or op[0] in ("add",) and op[1] == f"conn{k}:contact"
+                         or (op[0] in ("brick",) and "pinblk" in op[1])], occ)
+            occ.synchronize()
+            r["clearance_0p02mm"] = {"grown_contact_body": round(_occ_common(occ, g.get(f"conn{k}:contact", []), par["body"]), 6),
+                                     "grown_contact_plate": round(_occ_common(occ, g.get(f"conn{k}:contact", []), par["plate"]), 6)}
+            hit = []
+            for bk in m["bricks"]:
+                v = _occ_common(occ, par["body"] + par["contact"] + par["plate"] + par["bead"],
+                                [occ.addBox(bk["x"][0], bk["y"][0], bk["z"][0], bk["x"][1] - bk["x"][0], bk["y"][1] - bk["y"][0], bk["z"][1] - bk["z"][0])])
+                if v > 1e-9:
+                    hit.append([bk["name"], round(v, 6)])
+            r["inside_board_bricks"] = hit
+            if step_path and k == 1:
+                st = step_parts_model(m, occ, gmsh, step_path, c)
+                cmp_ = {}
+                for x in ("body", "contact", "bead", "plate"):
+                    va, vb = _occ_vol(occ, par[x]), _occ_vol(occ, st[x])
+                    common = _occ_common(occ, par[x], st[x])
+                    cmp_[x] = {"parametric": round(va, 4), "step": round(vb, 4), "differ": round(va + vb - 2 * common, 4)}
+                r["vs_step_mm3"] = cmp_
+            res["connectors"].append(r)
+        return res
+    finally:
+        gmsh.finalize()
+
+
+def occ_sections(m, step_path=None):
+    """outlines in the section y = 0 (model coordinates) of the parametric connector and, with the STEP, of
+    Samtec's model: {"parametric": {role: [curves]}, "step": {...}} or None without gmsh"""
     try:
         import gmsh
     except ImportError:
         return None
     gmsh.initialize()
+    gmsh.option.setNumber("General.Terminal", 0)
+    occ = gmsh.model.occ
+    out = {"parametric": {}, "step": {}}
     try:
-        gmsh.option.setNumber("General.Terminal", 0)
-        gmsh.model.occ.importShapes(step_path)
-        gmsh.model.occ.synchronize()
-        out = {}
-        for d, t in gmsh.model.getEntities(3):
-            nm = gmsh.model.getEntityName(d, t)
-            role = next((r for pat, r in sm["parts_map"] if pat in nm), "other")
-            if role == "drop":
-                continue
-            rect = gmsh.model.occ.addRectangle(-2, -6, 0, 22, 12)
-            res, _ = gmsh.model.occ.intersect([(2, rect)], [(3, t)], removeObject=True, removeTool=False)
-            gmsh.model.occ.synchronize()
-            for dd, ss in res:
-                for _, cv in gmsh.model.getBoundary([(dd, ss)], oriented=False):
-                    lo, hi = gmsh.model.getParametrizationBounds(1, abs(cv))
-                    us = [lo[0] + (hi[0] - lo[0]) * i / 24 for i in range(25)]
-                    xyz = gmsh.model.getValue(1, abs(cv), us)
-                    out.setdefault(role, []).append([(xyz[3 * i], xyz[3 * i + 1]) for i in range(25)])
+        groups = []
+        for c in m["connectors"]:
+            t = ops_occ(connector_ops(m, c), occ)
+            occ.synchronize()
+            groups.append(("parametric", {r: t.get(f"conn{c['id']}:{r}", []) for r in ("body", "contact", "bead", "plate")}))
+            if step_path:
+                groups.append(("step", step_parts_model(m, occ, gmsh, step_path, c)))
+        x0 = min(p["x"] for p in m["ports"]) - 1
+        x1 = max(max(p["x"] for p in m["ports"]), m["board_x"][1]) + 1
+        z0, z1 = m["z_span"][0] - 1, m["z_span"][1] + 1
+        for kind, parts in groups:
+            for role, tags in parts.items():
+                for tg in tags:
+                    rect = occ.addRectangle(x0, z0, 0, x1 - x0, z1 - z0)
+                    occ.rotate([(2, rect)], 0, 0, 0, 1, 0, 0, math.pi / 2)  # the plane y = 0 (x, z)
+                    sec, _ = occ.intersect([(2, rect)], [(3, tg)], removeObject=True, removeTool=False)
+                    occ.synchronize()
+                    for dd, ss in sec:
+                        if dd != 2:
+                            continue
+                        for _, cv in gmsh.model.getBoundary([(2, ss)], oriented=False):
+                            lo, hi = gmsh.model.getParametrizationBounds(1, abs(cv))
+                            us = [lo[0] + (hi[0] - lo[0]) * i / 24 for i in range(25)]
+                            xyz = gmsh.model.getValue(1, abs(cv), us)
+                            out[kind].setdefault(role, []).append([(xyz[3 * i], xyz[3 * i + 2]) for i in range(25)])
         return out
     finally:
         gmsh.finalize()
 
 
+# --- geometry plot -------------------------------------------------------------------------------------------------
 def plot_model(m, path, step_path=None):
     import matplotlib
     matplotlib.use("Agg")
@@ -1131,17 +1525,17 @@ def plot_model(m, path, step_path=None):
                 if not any(abs(p[1]) < 1e-3 for p in pts) and not copper_at(s, (xs[0] + xs[1]) / 2, 0.0):
                     continue
             ax2.plot(xs, [s["z"]] * 2, color="#b0531e" if s["net"] == "SIG" else "#a07820", lw=2)
-    secs = step_sections(step_path, sm) if step_path else None
+    secs = occ_sections(m, step_path)
+    if secs:
+        colr = {"body": "#3060a0", "contact": "#c02060", "plate": "#3060a0", "bead": "#555555"}
+        for kind, lw, ls in (("parametric", 0.9, "-"), ("step", 0.6, "--")):
+            for role, curves in secs[kind].items():
+                for cv in curves:
+                    ax2.plot([p_[0] for p_ in cv], [p_[1] for p_ in cv], ls, color="k" if kind == "step" else colr.get(role, "#999"), lw=lw)
     for c in m["connectors"]:
         X = (lambda u, c=c: c["dx"] - u if c["mirror"] else c["dx"] + u)
-        if secs:
-            colr = {"body": "#3060a0", "contact": "#c02060", "plate": "#3060a0", "other": "#999"}
-            for role, curves in secs.items():
-                dz = c["dz_plate"] if role == "plate" else c["dz_main"]
-                for cv in curves:
-                    ax2.plot([X(p[0]) for p in cv], [p[1] + dz for p in cv], color=colr.get(role, "#999"), lw=0.7)
-        else:  # schematic from the measurements
-            ob, bd = sm["oc_bore"], sm["bead"]
+        if not secs:  # schematic from the measurements
+            ob = sm["oc_bore"]
             for sg in (1, -1):
                 ax2.plot([X(ob["x"][0]), X(ob["x"][1])], [za + sg * ob["r"]] * 2, color="#3060a0", lw=1)
                 ax2.plot([X(sm["lip_opening"]["x"][0]), X(sm["lip_opening"]["x"][1])], [za + sg * sm["lip_opening"]["r"]] * 2, color="#3060a0", lw=1)
@@ -1175,7 +1569,8 @@ def plot_model(m, path, step_path=None):
     ax2.set_aspect("equal")
     ax2.set_xlim(xlo, xhi)
     ax2.set_ylim(m["z_span"][0] - 0.3, m["z_span"][1] + 0.3)
-    ax2.set_title("section y = 0: board (green), copper, connector " + ("(STEP section, blue / contact pink)" if secs else "(schematic)")
+    ax2.set_title("section y = 0: board (green), copper, connector " + ("(parametric model: blue body / plate, pink contact"
+                  + ("; Samtec's STEP dashed black)" if step_path else ")") if secs else "(schematic)")
                   + "; bead grey, ASSUMED bore yellow, pin contact block", fontsize=9)
     ax2.set_xlabel("x / mm")
     ax2.set_ylabel("z / mm")
@@ -1197,22 +1592,84 @@ def start_de(cst):
     raise RuntimeError("cannot start the CST design environment")
 
 
+def pick_sparam_items(items, nports):
+    """{(i, j): tree item} of the S-parameters between the FUNDAMENTAL modes: 'S2(1),1(1)' (multi-mode ports) or 'S2,1',
+    only directly in a '...\\S-Parameters' folder; anything else (a second mode 'S1(2),1(1)', a missing entry) fails"""
+    found, other = {}, []
+    for t in items:
+        parts = t.split("\\")
+        if len(parts) < 2 or parts[-2] != "S-Parameters":
+            continue
+        mm = re.fullmatch(r"S(\d+)(?:\((\d+)\))?,(\d+)(?:\((\d+)\))?", parts[-1])
+        if not mm:
+            continue
+        i, mi, j, mj = int(mm.group(1)), mm.group(2), int(mm.group(3)), mm.group(4)
+        if (mi or "1") != "1" or (mj or "1") != "1":
+            other.append(parts[-1])
+            continue
+        key = (i - 1, j - 1)
+        if key in found and found[key] != t:  # prefer the explicit mode form
+            if "(" in parts[-1]:
+                found[key] = t
+            continue
+        found[key] = t
+    missing = [(i + 1, j + 1) for i in range(nports) for j in range(nports) if (i, j) not in found]
+    if missing:
+        raise RuntimeError(f"S-parameters missing for {missing}; S-parameter items: {[t.split(chr(92))[-1] for t in items][:40]}")
+    if other:
+        raise RuntimeError(f"higher port modes in the results ({other[:8]}): a port has more than one mode - check the port modes "
+                           "(the coax port must have one TEM mode)")
+    return found
+
+
 def read_sparams(cst, prj_path, nports):
     pf = cst.results.ProjectFile(prj_path, allow_interactive=True)
     r3 = pf.get_3d()
     items = [t for t in r3.get_tree_items() if "S-Parameters" in t]
-    found = {}
-    for t in items:
-        mm = re.fullmatch(r"S(\d+)(?:\(1\))?,(\d+)(?:\(1\))?", t.split("\\")[-1])
-        if mm:
-            found[(int(mm.group(1)) - 1, int(mm.group(2)) - 1)] = t
-    if len(found) < nports * nports:
-        raise RuntimeError(f"S-parameters missing: found {sorted(found)} in {items[:40]}")
+    found = pick_sparam_items(items, nports)
     data = {}
     for (i, j), t in found.items():
         it = r3.get_result_item(t)
         data[(i, j)] = ([float(x) * 1e9 for x in it.get_xdata()], [complex(y) for y in it.get_ydata()])
-    return data
+        if all(abs(v) == 0 for v in data[(i, j)][1]):
+            raise RuntimeError(f"{t} is identically zero: no coupling between the ports - check the port modes and the geometry")
+    log("   S-parameters read from:", ", ".join(f"S{i + 1}{j + 1} = {t.split(chr(92))[-1]}" for (i, j), t in sorted(found.items())))
+    return data, {f"S{i + 1}{j + 1}": t for (i, j), t in found.items()}
+
+
+def port_mode_report(cst, prj_path, m):
+    """port line impedances from the results of a modes-only run: [(port, mode, Z)] (best effort: the tree names
+    differ between versions; nothing found -> [])"""
+    pf = cst.results.ProjectFile(prj_path, allow_interactive=True)
+    r3 = pf.get_3d()
+    rows = []
+    for t in r3.get_tree_items():
+        if "Line Impedance" not in t and "Port Impedance" not in t:
+            continue
+        mm = re.search(r"Port ?(\d+)\D*(?:\[(\d+)\])?$", t.split("\\")[-1])
+        if not mm:
+            continue
+        try:
+            ys = [abs(complex(y)) for y in r3.get_result_item(t).get_ydata()]
+        except Exception:
+            continue
+        if ys:
+            rows.append((int(mm.group(1)), int(mm.group(2) or 1), sum(ys) / len(ys), t))
+    return rows
+
+
+def solver_cells(od, name):
+    """mesh cells from CST's solver log (None if not found)"""
+    import glob
+    for f in sorted(glob.glob(os.path.join(od, name, "**", "*.log"), recursive=True), key=os.path.getmtime, reverse=True)[:12]:
+        try:
+            t = open(f, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        mm = re.search(r"(?:Total number of mesh cells|Number of mesh cells|mesh cells)[^\d]*([\d][\d,\. ]*\d)", t, re.I)
+        if mm:
+            return int(re.sub(r"[,\. ]", "", mm.group(1)))
+    return None
 
 
 def write_touchstone(path, freq, S, comments, z0=50.0):
@@ -1254,6 +1711,22 @@ def run_in_cst(m, blocks, a, od):
         if a.no_solve:
             meta["status"] = "built"
             return meta
+        if not a.no_port_check:  # modes only: one TEM mode of about 50 ohm on every coax port
+            prj.model3d.add_to_history("port check: modes only", 'Solver.CalculateModesOnly "True"')
+            prj.model3d.run_solver()
+            prj.save()
+            rows = port_mode_report(cst, cp, m)
+            meta["port_modes"] = [{"port": r[0], "mode": r[1], "z_ohm": round(r[2], 3), "item": r[3]} for r in rows]
+            for r in rows:
+                log(f"   port {r[0]} mode {r[1]}: Z = {r[2]:.2f} ohm  ({r[3]})")
+            if not rows:
+                log("   port check: no line impedance found in the results; look at 2D/3D Results > Port Modes")
+            coax = [p["num"] for p in m["ports"] if p["type"] == "waveguide" and abs(p["ref_shift"]) > 0]
+            bad = [r for r in rows if r[1] > 1] + [r for r in rows if r[0] in coax and r[1] == 1 and not 47.0 < r[2] < 53.0]
+            if bad:
+                raise RuntimeError(f"port check failed: {[(r[0], r[1], round(r[2], 2)) for r in bad]} (expected one mode per port, "
+                                   "about 50 ohm on the coax); see 2D/3D Results > Port Modes")
+            prj.model3d.add_to_history("port check done: full solve", 'Solver.CalculateModesOnly "False"')
         presets = MESH_ORDER[MESH_ORDER.index(m["mesh"]["preset"]):] if m["mesh"]["preset"] in MESH_ORDER else [m["mesh"]["preset"]]
         for k, pr in enumerate(presets):
             if k:
@@ -1272,10 +1745,11 @@ def run_in_cst(m, blocks, a, od):
                 raise
         prj.save()
         n = len(m["ports"])
-        data = read_sparams(cst, cp, n)
+        meta["cells"] = solver_cells(od, m["name"])
+        data, meta["sparam_items"] = read_sparams(cst, cp, n)
         freq = data[(0, 0)][0]
         S = [[[data[(i, j)][1][kk] for j in range(n)] for i in range(n)] for kk in range(len(freq))]
-        hdr = [f"{m['name']}: {m['title']}", f"CST Studio Suite, time domain, PBA, mesh '{meta['mesh']}', {meta.get('seconds')} s",
+        hdr = [f"{m['name']}: {m['title']}", f"CST Studio Suite, time domain, PBA, mesh '{meta['mesh']}' {m['mesh']}, {meta.get('cells')} cells, {meta.get('seconds')} s",
                "ports: " + "; ".join(f"{p['num']} {p['what']}" for p in m["ports"]), "S normalised to 50 ohm"] + m["notes"]
         tp = os.path.join(od, f"cst_{meta['mesh']}.s{n}p")
         write_touchstone(tp, freq, S, [ascii_only(h) for h in hdr])
@@ -1360,7 +1834,11 @@ def main():
     ap.add_argument("--coax-port", choices=["inner", "ext"], default="inner")
     ap.add_argument("--coax-cut", type=float, default=4.4, help="inner: STEP x of the coax port (uniform air line 4.0-5.1 mm)")
     ap.add_argument("--ext-len", type=float, default=1.0, help="ext: plug extension ahead of the connector's front face (mm)")
-    ap.add_argument("--coax-port-half", type=float, default=1.6)
+    ap.add_argument("--coax-port-half", type=float, default=None, help="half side of the square coax port (default: the outer conductor's radius)")
+    ap.add_argument("--connector", choices=["parametric", "step"], default="parametric",
+                    help="parametric (default): the connector from CST primitives with the dimensions measured from Samtec's STEP "
+                         "(connectors.json step_model), placed directly; step: Samtec's STEP imported (for comparison; --step, --step-scale)")
+    ap.add_argument("--no-port-check", action="store_true", help="skip the port-mode check (modes-only solver run) before the solve")
     ap.add_argument("--port2", choices=["wg", "face"], default="wg", help="launch1 / samtec_bench --connectors 1: port at the line end")
     ap.add_argument("--line-port-half", type=float, default=1.4)
     ap.add_argument("--line-port-height", type=float, default=1.2, help="waveguide port on the line: height above L1 (mm)")
@@ -1377,6 +1855,8 @@ def main():
     ap.add_argument("--ratio-limit", type=float, default=None, help="CST mesh ratio limit (default 20; 10 saves cells)")
     ap.add_argument("--keep-open", action="store_true", help="leave the project open in CST after a successful run (a failed run always stays open)")
     ap.add_argument("--plot", action="store_true", help="geometry plot also without --dry-run")
+    ap.add_argument("--check-occ", action="store_true", help="build the parametric connector with OpenCASCADE (pip: gmsh) and check it; "
+                    "with --step also against Samtec's model")
     a = ap.parse_args()
     if a.from_json:
         m = json.load(open(a.from_json, encoding="utf-8"))
@@ -1408,6 +1888,22 @@ def main():
         for p in probs[:20]:
             log("  VBA lint:", p)
         raise SystemExit(f"{len(probs)} VBA lint problems")
+    if a.check_occ:
+        res = check_occ(m, a.step or None)
+        json.dump(res, open(os.path.join(od, m["name"] + ".occ_check.json"), "w", encoding="utf-8"), indent=1)
+        for r in res["connectors"]:
+            log(f"  OCC check connector {r['id']}: volumes {r['volume_mm3']}")
+            log(f"    overlaps {r['overlap_mm3']} (all 0), clearance 0.02 mm {r['clearance_0p02mm']} (all 0)")
+            log(f"    body below the top copper {r['body_below_top_copper_mm3']} (0), on it {r['body_on_top_copper_mm3']} (> 0), "
+                f"on the trace {r['body_on_trace_mm3']} (0), pin block on the trace {r['pin_on_trace_mm3']} (> 0), inside board bricks {r['inside_board_bricks']}")
+            if "vs_step_mm3" in r:
+                log(f"    parametric vs Samtec's STEP: {r['vs_step_mm3']}")
+            ok = (all(v < 1e-6 for v in r["overlap_mm3"].values()) and all(v < 1e-6 for v in r["clearance_0p02mm"].values())
+                  and r["body_below_top_copper_mm3"] < 1e-6 and r["body_on_top_copper_mm3"] > 0 and r["body_on_trace_mm3"] < 1e-6
+                  and (r["pin_on_trace_mm3"] > 0 or not m["step"]["pin_contact"]) and not r["inside_board_bricks"])
+            if not ok:
+                raise SystemExit(f"OCC check of connector {r['id']} FAILED")
+        log("  OCC check passed")
     if a.dry_run or a.plot:
         try:
             plot_model(m, os.path.join(od, m["name"] + ".png"), a.step or None)
@@ -1416,8 +1912,8 @@ def main():
             log("  no plot (matplotlib missing):", e)
     if a.dry_run:
         return
-    if not a.step or not os.path.exists(a.step):
-        raise SystemExit("--step: Samtec's STEP file is needed to build the model in CST")
+    if m["step"].get("connector", "step") == "step" and (not a.step or not os.path.exists(a.step)):
+        raise SystemExit("--connector step: Samtec's STEP file (--step) is needed")
     meta = run_in_cst(m, blocks, a, os.path.abspath(od))
     log("status:", meta["status"], meta.get("touchstone", meta.get("error", "")))
 

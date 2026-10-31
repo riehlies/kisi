@@ -558,7 +558,8 @@ class Runner:
             try:
                 prj.model3d.add_to_history(b["caption"], b["code"])
             except Exception as e:
-                meta["blocks_failed"].append({"caption": b["caption"], "error": str(e)})
+                if not any(f["caption"] == b["caption"] for f in meta["blocks_failed"]):
+                    meta["blocks_failed"].append({"caption": b["caption"], "error": str(e)})
                 if b["kind"] == "port":
                     # without potentials: the port's eigenmodes (CST's own impedance definition)
                     log(f"   port with potentials failed ({e}); eigenmodes without potentials")
@@ -600,15 +601,36 @@ class Runner:
         meta["_last_raw"] = res
         return {"mesh": mesh, "cells": cells, "port_mesh": port_nodes, "seconds": round(secs, 1), "modes": modes, "values": derive(modes)}
 
-    def converge(self, prj, cp, wd, meta, sets, f_ghz, er_max, start=0, fixed=None):
+    def solve_fresh(self, make, tag, meta, sets, f_ghz, er_max, mesh, extra=None):
+        """build a new project (make), solve it once, close it. CST 2025.5 keeps the port-mode results of
+        the first solve of a project: a second solve with another mesh writes no new port results
+        (Port1_Info1[1].mmd and the result tree stay as they were; seen in the pilot), so each mesh level
+        and each frequency gets a project of its own"""
+        prj, cp = make(tag)
+        try:
+            if extra:
+                for cap, code in extra:
+                    try:
+                        prj.model3d.add_to_history(cap, code)
+                    except Exception as e:
+                        if not any(f["caption"] == cap for f in meta["blocks_failed"]):
+                            meta["blocks_failed"].append({"caption": cap, "error": str(e)})
+            return self.solve(prj, cp, os.path.dirname(cp), meta, sets, f_ghz, er_max, mesh)
+        finally:
+            try:
+                prj.close()
+            except Exception:
+                pass
+
+    def converge(self, make, meta, sets, f_ghz, er_max, start=0, fixed=None):
         a = self.a
         levels = []
         if fixed is not None:
-            lv = self.solve(prj, cp, wd, meta, sets, f_ghz, er_max, mesh_level(fixed))
+            lv = self.solve_fresh(make, f"L{fixed}", meta, sets, f_ghz, er_max, mesh_level(fixed))
             log(f"   level {fixed}: {fmt_values(lv['values'])} ({lv['cells']} cells, {lv['seconds']} s)")
             return {"levels": [lv], "converged": None, "level": fixed, "values": lv["values"]}
         for k in range(start, start + a.max_levels):
-            lv = self.solve(prj, cp, wd, meta, sets, f_ghz, er_max, mesh_level(k))
+            lv = self.solve_fresh(make, f"L{k}", meta, sets, f_ghz, er_max, mesh_level(k))
             levels.append(lv)
             ch = rel_change(lv["values"], levels[-2]["values"]) if len(levels) > 1 else None
             lv["change_pct"] = ch
@@ -659,33 +681,42 @@ class Runner:
             for wk in walls:
                 blocks, sets, info = build(case, wk, lossy=a.lossy, f_ghz=a.freq if not a.lossy else a.freqs[0], box=box)
                 meta["_sets"] = sets
-                prj = self.de.new_mws()
-                cp = os.path.join(wd, f"{cid}_{wk}.cst")
-                try:
-                    self.add_blocks(prj, blocks, meta)
-                    if a.port_adapt:
-                        self.add_blocks(prj, [{"caption": "adaptive port meshing", "code": port_adapt_block(a.port_passes), "kind": "setup", "optional": True}], meta)
+
+                def make(tag, wk=wk, blocks=blocks):
+                    prj = self.de.new_mws()
+                    cp = os.path.join(wd, f"{cid}_{wk}_{tag}.cst")
                     try:
-                        prj.save(cp, allow_overwrite=True)
-                    except TypeError:
-                        prj.save(cp)
+                        self.add_blocks(prj, blocks, meta)
+                        if a.port_adapt:
+                            self.add_blocks(prj, [{"caption": "adaptive port meshing", "code": port_adapt_block(a.port_passes), "kind": "setup", "optional": True}], meta)
+                        try:
+                            prj.save(cp, allow_overwrite=True)
+                        except TypeError:
+                            prj.save(cp)
+                    except Exception:
+                        try:
+                            prj.close()
+                        except Exception:
+                            pass
+                        raise
+                    return prj, cp
+
+                try:
                     if a.no_solve:
+                        make("built")[0].close()
                         meta["status"] = "built"
                         continue
                     if not a.lossy:
                         if wk == "electric" or "electric" not in meta["walls"]:
-                            res = self.converge(prj, cp, wd, meta, sets, a.freq, er_max)
+                            res = self.converge(make, meta, sets, a.freq, er_max)
                         else:  # magnetic: on the converged level of the electric solve
-                            res = self.converge(prj, cp, wd, meta, sets, a.freq, er_max, fixed=meta["walls"]["electric"]["level"])
+                            res = self.converge(make, meta, sets, a.freq, er_max, fixed=meta["walls"]["electric"]["level"])
                     else:
                         lvl = prev_level if prev_level is not None else 2
                         res = {"level": lvl, "freqs": []}
                         for fg in a.freqs:
-                            try:
-                                prj.model3d.add_to_history(f"frequency {fg}", f"Solver.FrequencyRange {q(fg * 0.98)}, {q(fg * 1.02)}")
-                            except Exception as e:
-                                meta["blocks_failed"].append({"caption": f"frequency {fg}", "error": str(e)})
-                            lv = self.solve(prj, cp, wd, meta, sets, fg, er_max, mesh_level(lvl))
+                            lv = self.solve_fresh(make, f"f{fg:g}", meta, sets, fg, er_max, mesh_level(lvl),
+                                                  extra=[(f"frequency {fg}", f"Solver.FrequencyRange {q(fg * 0.98)}, {q(fg * 1.02)}")])
                             lv["f_ghz"] = fg
                             res["freqs"].append(lv)
                             log(f"   {fg:g} GHz: {fmt_values(lv['values'])}")
@@ -696,10 +727,7 @@ class Runner:
                         for k, t in meta.get("_last_logs", {}).items():
                             fh.write(f"==== {k}\n{t}\n")
                 finally:
-                    try:
-                        prj.close()
-                    except Exception:
-                        pass
+                    pass
             if a.no_solve:
                 return meta
             meta["result"] = combine(meta["walls"]) if not a.lossy else None

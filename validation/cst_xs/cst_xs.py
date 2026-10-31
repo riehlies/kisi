@@ -647,13 +647,13 @@ class Runner:
                 break
             if ch is not None and ch < a.tol:
                 return {"levels": levels, "converged": True, "level": k, "change_pct": ch, "values": lv["values"],
-                        "values_extrap": extrapolate(levels)}
+                        "values_extrap": extrapolate(levels), "values_richardson": richardson(levels)}
             if lv["cells"] and lv["cells"] > a.max_cells:
                 log(f"   cell limit {a.max_cells} reached")
                 break
         last = levels[-1]
         return {"levels": levels, "converged": False, "level": last["mesh"]["level"], "change_pct": last.get("change_pct"),
-                "values": last["values"], "values_extrap": extrapolate(levels)}
+                "values": last["values"], "values_extrap": extrapolate(levels), "values_richardson": richardson(levels)}
 
     def run_case(self, case):
         a = self.a
@@ -777,6 +777,18 @@ def extrapolate(levels):
         if 0 < r < 0.9:
             out[k] = v3[k] + d2 * r / (1 - r)
     return out or None
+
+
+def richardson(levels, p=2):
+    """Richardson estimate from the last two levels: the lines per box double from level to level
+    (h ratio 2), so V∞ ≈ V2 + (V2 − V1) / (2^p − 1); p = 2 assumed (second-order FIT/PBA). Recorded with
+    the levels it uses; the anchors, solved up to level 3, measure how good it is."""
+    if len(levels) < 2:
+        return None
+    a, b = levels[-2], levels[-1]
+    va, vb = a["values"], b["values"]
+    vals = {k: vb[k] + (vb[k] - va[k]) / (2 ** p - 1) for k in vb if va.get(k) and vb.get(k)}
+    return {"p": p, "from_levels": [a["mesh"]["level"], b["mesh"]["level"]], "values": vals} if vals else None
 
 
 def combine(walls):

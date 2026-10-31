@@ -677,7 +677,7 @@ class Runner:
                 "tool": "CST Studio Suite", "solver": "time domain solver, port modes only (CalculateModesOnly), hexahedral PBA mesh",
                 "cst_version": None, "f_ghz": a.freq, "tol_pct": a.tol, "box": box, "margin_scale": a.margin_scale or case.get("margin_scale", 1.0),
                 "text_hash": text_hash(case.get("cst_text") or case["text"]), "potentials": True, "blocks_failed": [],
-                "port_adapt": a.port_adapt, "status": "started", "walls": {}, "lossy": a.lossy}
+                "port_adapt": a.port_adapt, "start_level": a.start_level, "status": "started", "walls": {}, "lossy": a.lossy}
         t_case = time.time()
         log(f"== {cid} ({case['group']}, tier {case['tier']}): {case['title']}")
         try:
@@ -714,7 +714,7 @@ class Runner:
                         continue
                     if not a.lossy:
                         if wk == "electric" or "electric" not in meta["walls"]:
-                            res = self.converge(make, meta, sets, a.freq, er_max)
+                            res = self.converge(make, meta, sets, a.freq, er_max, start=a.start_level)
                         else:  # magnetic: on the converged level of the electric solve
                             res = self.converge(make, meta, sets, a.freq, er_max, fixed=meta["walls"]["electric"]["level"])
                     else:
@@ -899,6 +899,7 @@ def main(argv=None):
     ap.add_argument("--freq", type=float, default=1.0, help="port-mode frequency of the lossless solve, GHz")
     ap.add_argument("--tol", type=float, default=0.1, help="mesh convergence: largest change of Z / εeff between levels, %%")
     ap.add_argument("--max-levels", type=int, default=5)
+    ap.add_argument("--start-level", type=int, default=0, help="first mesh level of the convergence study (the level before the one most cases converge on)")
     ap.add_argument("--max-cells", type=float, default=3e6)
     ap.add_argument("--no-port-adapt", dest="port_adapt", action="store_false")
     ap.add_argument("--port-passes", type=int, default=6)

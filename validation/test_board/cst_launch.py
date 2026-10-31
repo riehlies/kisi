@@ -555,6 +555,13 @@ def connector_vba(m, c):
     A("  nn = nn + 1")
     A(" End If")
     A("Next i")
+    sc = float(sm.get("step_scale", 1.0) or 1.0)
+    if sc != 1.0:
+        A(f"' the STEP file is in inches; scale the imported solids by {sc:g} about the origin (cst_launch.py --step-scale)")
+        A("For k = 0 To nn - 1")
+        A(f'With Transform\n .Reset\n .Name names(k)\n .Origin "Free"\n .Center "0", "0", "0"\n .ScaleFactor {q(sc)}, {q(sc)}, {q(sc)}\n'
+          f' .MultipleObjects "False"\n .GroupObjects "False"\n .Repetitions "1"\n .MultipleSelection "False"\n .Transform "Shape", "Scale"\nEnd With')
+        A("Next k")
     A('sBody = ""\nsCont = ""\nsPlate = ""\nsBead = ""\nothers = ""')
     A("For k = 0 To nn - 1")
     A(" nm = names(k)")
@@ -1364,6 +1371,7 @@ def main():
     ap.add_argument("--air", type=float, default=1.0, help="space above / below the connector (mm)")
     ap.add_argument("--clip-body", type=float, default=3.0, help="cut the connector body's outside more than this above / below the axis (mm; 0: the full body)")
     ap.add_argument("--no-orient-check", action="store_true")
+    ap.add_argument("--step-scale", type=float, default=None, help="scale the imported STEP solids (25.4 if CST imports the inch STEP without converting it to mm)")
     ap.add_argument("--keep-open", action="store_true", help="leave the project open in CST after a successful run (a failed run always stays open)")
     ap.add_argument("--plot", action="store_true", help="geometry plot also without --dry-run")
     a = ap.parse_args()
@@ -1371,6 +1379,8 @@ def main():
         m = json.load(open(a.from_json, encoding="utf-8"))
     else:
         m = build_model(a)
+    if a.step_scale:
+        m["step"]["step_scale"] = a.step_scale
     print_summary(m)
     blocks = vba_blocks(m)
     probs = [f"{b['caption']}: {p}" for b in blocks for p in lint_vba(b["code"])]

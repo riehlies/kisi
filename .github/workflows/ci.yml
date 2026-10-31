@@ -24,7 +24,8 @@
 #   viewer or cli       reproducible bundles · bundle sizes (tools/size_budget.json)
 #   full runs only      kisi.mjs on Windows
 #   weekly / manual     the viewer in Firefox and WebKit · dependency audit (cargo-audit) and licences (cargo-deny, deny.toml) · newer upstream
-#                       revision of js_2d_fields
+#                       revision of js_2d_fields · the corpus run: kisi on the open-source boards of data/corpus.json, fetched
+#                       at pinned commits (tools/corpus.py; weekly set, a manual run chooses weekly, robustness or none)
 name: ci
 on:
   push:
@@ -32,6 +33,12 @@ on:
     tags-ignore: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      corpus:
+        description: "Corpus run (tools/corpus.py): which set of data/corpus.json"
+        type: choice
+        options: [weekly, robustness, none]
+        default: weekly
   schedule:
     - cron: "17 3 * * 1"   # Mondays 03:17 UTC: everything on the latest stable Rust, plus the weekly checks
 permissions:
@@ -342,3 +349,52 @@ jobs:
         run: cargo deny check licenses sources
       - name: Newer upstream revision of js_2d_fields
         run: python3 tools/ci_checks.py upstream --latest
+
+  corpus:
+    # kisi on open-source KiCad boards fetched at pinned commits (data/corpus.json, tools/corpus.py): crashes, exit
+    # codes, run times and summary numbers against validation/corpus/<set>.json. Weekly and on a manual run (input
+    # "corpus": weekly, robustness or none), not on pushes. A repository that cannot be fetched (network, gone,
+    # private) is listed in the job summary and does not fail the job; a regression does.
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.corpus != 'none')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    env:
+      SET: ${{ github.event_name == 'workflow_dispatch' && inputs.corpus || 'weekly' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Rust toolchain
+        run: TC=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml) && rustup toolchain install "$TC" --profile minimal  # rust-toolchain.toml
+      - name: Cargo cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+          restore-keys: cargo-${{ runner.os }}-
+      - name: Build the native CLI
+        run: cargo build --release --bin kisi
+      - name: Board cache (the fetched boards, ~/.cache/kisi-corpus)
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/kisi-corpus
+          key: corpus-${{ env.SET }}-${{ hashFiles('data/corpus.json') }}
+          restore-keys: corpus-${{ env.SET }}-
+      - name: Fetch the boards (blobless, sparse, pinned commits)
+        timeout-minutes: 30
+        run: python3 tools/corpus.py fetch --set "$SET" --jobs 6
+      - name: Run kisi, compare with validation/corpus/${{ env.SET }}.json
+        timeout-minutes: 110
+        run: python3 tools/corpus.py compare target/release/kisi --set "$SET" --out corpus-results.json --summary "$GITHUB_STEP_SUMMARY"
+      - name: Results of the corpus run
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: corpus-${{ env.SET }}
+          retention-days: 14
+          path: corpus-results.json
+          if-no-files-found: ignore

@@ -1,0 +1,2349 @@
+{
+  "version": 1,
+  "about": "Open-source KiCad boards that tools/corpus.py fetches at a pinned commit (blobless, sparse: only the board and project file; never committed) and runs the native kisi on – crashes, documented stops, run times and a few summary numbers per board are compared with validation/corpus/<set>.json. 'weekly': 32 boards run by the weekly CI (tier A SI-rich: high-speed interfaces, diff pairs, impedance classes; B PI-rich: many rails, large loads; C parser cases: KiCad 5–10, unusual stackups, panels, variants). 'robustness': about 200 boards stratified by KiCad generation, run by hand (Actions → ci → Run workflow, corpus: robustness) or before a release. 'licence' is the licence file found at the commit (NONE: none found – usable for local tests, not for release artefacts or numbers quoted in the docs); 'kicad' the board file's KiCad generation, 'layers' its copper layers. An entry may name a 'kisi_json' (validation/corpus/<name>.kisi.json, our own data: net names and values with sources) and a 'variant'. The candidate list comes from the kicad-happy test harness (github.com/aklofas/kicad-happy-testharness, its repos.md: repository URLs with pinned commits); only repository names and commits are taken from it, the selection and the facts here come from kisi's own analysis of the boards.",
+  "sources": [
+    {
+      "kind": "measurement",
+      "text": "Copper layers and file versions read from the board files at the pinned commits; licences from the licence files at those commits (2026-10-30)."
+    },
+    {
+      "kind": "kisi",
+      "text": "Candidate repositories and pinned commits from repos.md of the kicad-happy test harness; selection by kisi's corpus analysis.",
+      "url": "https://github.com/aklofas/kicad-happy-testharness"
+    }
+  ],
+  "sets": {
+    "weekly": [
+      {
+        "name": "udimm-ddr5-tester",
+        "repo": "HimaSava/udimm_ddr5_tester",
+        "commit": "7fb42da53f9efe6a5311a4351931b52e4c3c4152",
+        "pcb": "udimm-ddr5-tester.kicad_pcb",
+        "tier": "A",
+        "licence": "Apache-2.0",
+        "kicad": "7",
+        "layers": 12,
+        "notes": "12L KiCad 7; DDR5 UDIMM; 172 lanes"
+      },
+      {
+        "name": "dc-scm-osm-l-carrier-card",
+        "repo": "antmicro/dc-scm-osm-l-carrier-card",
+        "commit": "9872a27b7ea95172647ad79ec810d0a938d1b94c",
+        "pcb": "bmc-reference-carrier-board.kicad_pcb",
+        "tier": "A",
+        "licence": "Apache-2.0",
+        "kicad": "9",
+        "layers": 10,
+        "notes": "10L DC-SCM carrier; PCIe/USB/ETH/MIPI; 112 lanes"
+      },
+      {
+        "name": "osm-l-bmc-som",
+        "repo": "antmicro/osm-l-bmc-som",
+        "commit": "241e7d299ee2facb4149a8df5f21f0102b09e6a9",
+        "pcb": "bmc-reference-osm.kicad_pcb",
+        "tier": "A",
+        "licence": "Apache-2.0",
+        "kicad": "9",
+        "layers": 10,
+        "notes": "10L, 723 microvias + 20 blind vias; 5 target classes; PCIe/USB/ETH/DDR/MIPI; 201 lanes"
+      },
+      {
+        "name": "hdmi-mipi-bridge",
+        "repo": "antmicro/hdmi-mipi-bridge",
+        "commit": "6c683289a3191ee6c92cf4f9065ca9b6cb2c0784",
+        "pcb": "antmicro-hdmi-mipi-bridge-hw.kicad_pcb",
+        "tier": "A",
+        "licence": "Apache-2.0",
+        "kicad": "7",
+        "layers": 4,
+        "notes": "HDMI in -> MIPI CSI; 18 lanes"
+      },
+      {
+        "name": "scalenode-cm4-baseboard",
+        "repo": "antmicro/scalenode-cm4-baseboard",
+        "commit": "77f5bf281d13e43154cac9645f7cc22a82e56971",
+        "pcb": "scalenode-cm4-baseboard.kicad_pcb",
+        "tier": "A",
+        "licence": "Apache-2.0",
+        "kicad": "7",
+        "layers": 4,
+        "notes": "class names Diff_100/Diff_90/SE_50 (class-name parser case; nets assigned only in the schematic)"
+      },
+      {
+        "name": "cm4-baseboard-lvds-adapter",
+        "repo": "antmicro/cm4-baseboard-lvds-adapter",
+        "commit": "4af945ed558e58e4b8aea6fe909fc33d78b63f6f",
+        "pcb": "cm4-lvds-adapter.kicad_pcb",
+        "tier": "A",
+        "licence": "Apache-2.0",
+        "kicad": "9",
+        "layers": 6,
+        "notes": "LVDS/DSI; impedance view ready without kisi.json"
+      },
+      {
+        "name": "cynthion-hardware",
+        "repo": "greatscottgadgets/cynthion-hardware",
+        "commit": "13aa71c2fb0be3837cd2ec580ee5d2c25fc1c678",
+        "pcb": "cynthion.kicad_pcb",
+        "tier": "A",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "7",
+        "layers": 6,
+        "notes": "6L; USB HS analyzer; needs kisi.json"
+      },
+      {
+        "name": "butterstick-hardware",
+        "repo": "butterstick-fpga/butterstick-hardware",
+        "commit": "0694ddfa9824a07f0c6c6981186e45f80187659c",
+        "pcb": "hardware/ButterStick_r1.0/ButterStick.kicad_pcb",
+        "tier": "A",
+        "licence": "CERN-OHL-1.2",
+        "kicad": "6",
+        "layers": 8,
+        "notes": "8L KiCad 6; DDR3L, GbE, USB; needs kisi.json (no target classes)"
+      },
+      {
+        "name": "latentred",
+        "repo": "azonenberg/latentred",
+        "commit": "5ab87327239be3a718867fe151943bf56baae131",
+        "pcb": "pcb/switch-engine/switch-engine.kicad_pcb",
+        "tier": "A",
+        "licence": "BSD-3-Clause",
+        "kicad": "8",
+        "layers": 10,
+        "notes": "10L Ethernet switch, SFP+/QSGMII/DDR; needs kisi.json"
+      },
+      {
+        "name": "halpi2-hardware",
+        "repo": "hatlabs/HALPI2-hardware",
+        "commit": "f112acff20b9a480865cf5e3be58f963adb312f2",
+        "pcb": "HALPI2.kicad_pcb",
+        "tier": "A",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6,
+        "notes": "CM5 carrier; per-layer fab-calculator widths in .kicad_dru -> reference for the formulas"
+      },
+      {
+        "name": "gamebub",
+        "repo": "elipsitz/gamebub",
+        "commit": "11150d41173aa2977d9eecb9a9b78d41bb3d7e1c",
+        "pcb": "pcb/handheld_rev1/handheld.kicad_pcb",
+        "tier": "B",
+        "licence": "GPL-3.0",
+        "kicad": "8",
+        "layers": 6,
+        "notes": "FPGA handheld, 33 regulators detected by kicad-happy"
+      },
+      {
+        "name": "ulx4m-ls",
+        "repo": "intergalaktik/ulx4m-ls",
+        "commit": "3b734c6ba88870864664e5483ba795fbca87c93f",
+        "pcb": "panel/ulx4m_panel.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "8",
+        "layers": 6,
+        "notes": "panel, 970 footprints, 200 pairs"
+      },
+      {
+        "name": "librevna",
+        "repo": "jankae/LibreVNA",
+        "commit": "5fee370d4e56c30efaa0c6040a504bd01a63cc90",
+        "pcb": "Hardware/Kicad/VNA.kicad_pcb",
+        "tier": "A",
+        "licence": "GPL-3.0+Apache-2.0+MIT",
+        "kicad": "9",
+        "layers": 6,
+        "notes": "anchor: already a kisi example (other commit); RF + USB"
+      },
+      {
+        "name": "marble",
+        "repo": "BerkeleyLab/Marble",
+        "commit": "a426777d92c0f22a546d4740b419a3937e0c1f90",
+        "pcb": "design/Marble.kicad_pcb",
+        "tier": "A",
+        "licence": "CERN-OHL-1.2 (README)",
+        "kicad": "6",
+        "layers": 12,
+        "notes": "12L KiCad 6 AMC FPGA board; DDR3, SFP/QSFP; classes SE50/SE55DE100 not recognised"
+      },
+      {
+        "name": "zynq-som",
+        "repo": "pinguz97/Zynq-SoM",
+        "commit": "ad96951a225fbf9f263b555ef070a536b09ff710",
+        "pcb": "Zynq_SoM.kicad_pcb",
+        "tier": "A",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 8,
+        "notes": "8L Zynq SoM, DDR3; 23 net classes (5 with targets); 30 lanes"
+      },
+      {
+        "name": "jabr-cm5-carrier",
+        "repo": "ben5049/jabr-cm5-carrier",
+        "commit": "509afeda887f6846c7f90ea85366e63210d5eabd",
+        "pcb": "pcbs/CM5IO/CM5IO.kicad_pcb",
+        "tier": "A",
+        "licence": "AGPL-3.0",
+        "kicad": "9",
+        "layers": 4,
+        "notes": "CM5 carrier; PCIe/USB3/HDMI/ETH; 32 lanes"
+      },
+      {
+        "name": "esp32-p4-pc",
+        "repo": "OLIMEX/ESP32-P4-PC",
+        "commit": "99a802ec029f531692102b2c754e20dae2226038",
+        "pcb": "HARDWARE/ESP32-P4-PC-Rev.B/ESP32-P4-PC_Rev_B.kicad_pcb",
+        "tier": "A",
+        "licence": "MIT+Apache-2.0",
+        "kicad": "7",
+        "layers": 4,
+        "notes": "MIPI DSI/CSI, USB, ETH, HDMI"
+      },
+      {
+        "name": "kimchi-micro",
+        "repo": "groupgets/kimchi-micro",
+        "commit": "1afeb30034cc824c47e1375efba6867965e94fe3",
+        "pcb": "hardware_sbc/kimchi_micro.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "8",
+        "layers": 8,
+        "notes": "8L without stackup section"
+      },
+      {
+        "name": "aper-oculus",
+        "repo": "ApotheoTech/Aper-Oculus",
+        "commit": "b15ab92e9ccb8c734347988b521827c56bceb0b9",
+        "pcb": "APT-KRIA-FMC.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "7",
+        "layers": 16,
+        "notes": "16L, 45 microvias"
+      },
+      {
+        "name": "bitaxe",
+        "repo": "skot/bitaxe",
+        "commit": "942bbd97aab09b12d826c6e82c64f3fb91246c4c",
+        "pcb": "bitaxeUltra.kicad_pcb",
+        "tier": "B",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "7",
+        "layers": 4,
+        "notes": "ASIC core buck, high current; needs PI tree"
+      },
+      {
+        "name": "moteus",
+        "repo": "mjbots/moteus",
+        "commit": "75b0b2f5b336ea129fe9d5a7717683df924ca452",
+        "pcb": "hw/x1/moteus_x1.kicad_pcb",
+        "tier": "B",
+        "licence": "Apache-2.0",
+        "kicad": "8",
+        "layers": 6,
+        "notes": "motor controller, high-current paths"
+      },
+      {
+        "name": "bms-c1",
+        "repo": "LibreSolar/bms-c1",
+        "commit": "0ca09706f49906bdc73f6ccf99635de349d47474",
+        "pcb": "kicad/bms-c1.kicad_pcb",
+        "tier": "B",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 4,
+        "notes": "BMS, high current"
+      },
+      {
+        "name": "emberone00-pcb",
+        "repo": "256foundation/emberone00-pcb",
+        "commit": "b21b32ca49710b99cb75f86406b0df5190c9beb4",
+        "pcb": "emberone.kicad_pcb",
+        "tier": "B",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6,
+        "notes": "ASIC miner, many rails"
+      },
+      {
+        "name": "hackrf-pro",
+        "repo": "greatscottgadgets/hackrf-pro",
+        "commit": "359b98f2451395408bc25dae64efa9fc518e93d0",
+        "pcb": "praline.kicad_pcb",
+        "tier": "B",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6,
+        "notes": "SDR, 6L, many rails; KiCad 9; fork stop"
+      },
+      {
+        "name": "ping-dev-kit",
+        "repo": "bluerobotics/ping-dev-kit",
+        "commit": "8c28ce47c50004ba08ae2bc5e3d2be0980296d77",
+        "pcb": "PingDevKit.kicad_pcb",
+        "tier": "B",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 8,
+        "notes": "8L, 68 regulators detected by kicad-happy; 2 target classes"
+      },
+      {
+        "name": "icepi-zero",
+        "repo": "cheyao/icepi-zero",
+        "commit": "8bd703776043eda27949ef2889ef7418b9ccfa69",
+        "pcb": "hardware/v1.3/icepi-zero.kicad_pcb",
+        "tier": "B",
+        "licence": "Apache-2.0",
+        "kicad": "9",
+        "layers": 4,
+        "notes": "ECP5 SBC, 24 regulators detected"
+      },
+      {
+        "name": "kthfs-dcdc",
+        "repo": "erikAWTO/KTHFS-DCDC",
+        "commit": "3303707252d342192412988e954d947efa002cf8",
+        "pcb": "kicad/KTHFS-DCDC.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "10",
+        "layers": 4,
+        "notes": "KiCad 10 assembly variants"
+      },
+      {
+        "name": "hackrf",
+        "repo": "greatscottgadgets/hackrf",
+        "commit": "8e9b06ba1b3ae2d4253bbb54d8ea4c4d9f4cb6bd",
+        "pcb": "hardware/hackrf-one/hackrf-one.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-2.0+CERN-OHL-S-2.0",
+        "kicad": "6",
+        "layers": 4,
+        "notes": "KiCad 6 file of a classic board"
+      },
+      {
+        "name": "diy-laptop",
+        "repo": "OLIMEX/DIY-LAPTOP",
+        "commit": "36193de48e5ff86c6fa309eb75bd450a9f88c4c7",
+        "pcb": "HARDWARE/A64-TERES/TERES-PCB1-A64-MAIN/Rev.C/TERES_PCB1-A64-MAIN_Rev.C.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0+GPL-2.0",
+        "kicad": "5",
+        "layers": 6,
+        "notes": "KiCad 5 (v20171114), 6L, no stackup, no .kicad_pro"
+      },
+      {
+        "name": "kicad-make",
+        "repo": "antmicro/kicad-make",
+        "commit": "b9186b73ab40b8d4d3f5220b8386657430644699",
+        "pcb": "tests/reference-outputs/loclib/test_project.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0",
+        "kicad": "9",
+        "layers": 8,
+        "notes": "partly routed test project, blind+micro vias"
+      },
+      {
+        "name": "usb-3-switcher",
+        "repo": "alexnaet/USB_3_SWITCHER",
+        "commit": "d1b9fbaa32bcdc1f4b74dd3401349fe601daadde",
+        "pcb": "USB_3_SWITCHER.kicad_pcb",
+        "tier": "A",
+        "licence": "NONE",
+        "kicad": "10",
+        "layers": 4,
+        "notes": "KiCad 10; USB3; 21 lanes"
+      },
+      {
+        "name": "openrx",
+        "repo": "Just4Stan/OpenRX",
+        "commit": "b3445c586de8d5e914690160f6ce715ac35edb3b",
+        "pcb": "OpenRX-Mono/OpenRX-Mono.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "10",
+        "layers": 6,
+        "notes": "KiCad 10; stackup listed twice in the file (kisi read 12 layers before the fix)"
+      }
+    ],
+    "robustness": [
+      {
+        "name": "rsc-lv3-dash",
+        "repo": "cyfinfaza/RSC-LV3-Dash",
+        "commit": "eb60e3491df62e335058e7a172ae543723845e15",
+        "pcb": "LV3-Dash.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "10",
+        "layers": 2
+      },
+      {
+        "name": "etherkraken",
+        "repo": "karmakrafts/EtherKraken",
+        "commit": "d9acdf77ddd5d5d99bf388b9b45e4246777ab304",
+        "pcb": "kicad/EtherKraken.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0",
+        "kicad": "10",
+        "layers": 2
+      },
+      {
+        "name": "rembrake",
+        "repo": "dodotronix/RemBrake",
+        "commit": "0473bd5c96a0632b315c1831ff7a123be2173e27",
+        "pcb": "hw/RemBrake/RemBrake.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 2
+      },
+      {
+        "name": "esp",
+        "repo": "jayadeep14/esp",
+        "commit": "02313894ef44501ffa987a934ad69b7a9ae61f3a",
+        "pcb": "cm4-hat.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 2
+      },
+      {
+        "name": "gnss-7-seg-clock",
+        "repo": "Tosainu/gnss-7-seg-clock",
+        "commit": "5a11deb1122da79eabbbfcc7c578f9d742163f7e",
+        "pcb": "hardware/gnss-7-seg-clock.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "10",
+        "layers": 2
+      },
+      {
+        "name": "stm32samples",
+        "repo": "eddyem/stm32samples",
+        "commit": "0e9c7361b9c29e8d9241e24258772c2da9fbc71e",
+        "pcb": "F3:F303/Multistepper/kicad_old/multistepper.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "robot-pcb",
+        "repo": "Wet-Lettuce-Robocup/robot_pcb",
+        "commit": "96bfc528703352a47d0e24d23e4a502c44d599c6",
+        "pcb": "robot_pcb.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "10",
+        "layers": 4
+      },
+      {
+        "name": "smarterwatch",
+        "repo": "JuliCai/SmarterWatch",
+        "commit": "8a71158706747e5720ee0379585775dfb9469f7b",
+        "pcb": "SmarterWatch_KiCad/Smarter Watch Stuff.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "10",
+        "layers": 4
+      },
+      {
+        "name": "esp32-reactjs-devkit",
+        "repo": "silvioviscuso/ESP32-REACTJS-DEVKIT",
+        "commit": "be1d0a55996b6978918dd5ceb39b6b3c622c3ce3",
+        "pcb": "Revisions/V8/V8/V1.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "kicad-dependencies",
+        "repo": "Erhannis/kicad_dependencies",
+        "commit": "aaa43c466449b97d66694ae2ee96eb6fd1d95d18",
+        "pcb": "kicad_deps.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "usb-c-pd-reflow-plate",
+        "repo": "incend1um3/USB-C-PD-Reflow-Plate",
+        "commit": "1583486b7aa63e582f41e402db53fa9dfa795a52",
+        "pcb": "hardware/Reflow Plate Controller/Reflow Plate Controller.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "10",
+        "layers": 4
+      },
+      {
+        "name": "cnhardware",
+        "repo": "cnlohr/cnhardware",
+        "commit": "127e4a25944ecdf9c5625e1f80e024fc26d4f2fd",
+        "pcb": "RBO128128G-610-LCD/RBO128128G-610-LCD.kicad_pcb",
+        "tier": "C",
+        "licence": "other",
+        "kicad": "6",
+        "layers": 2
+      },
+      {
+        "name": "esp-home-sensor",
+        "repo": "kamilix2003/esp-home-sensor",
+        "commit": "c2500092f58695e7ab242a3702e624af5dc5c40a",
+        "pcb": "hardware/esp_home_sensor/esp_home_sensor.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "10",
+        "layers": 4
+      },
+      {
+        "name": "hapticad",
+        "repo": "EmielV2002/HaptiCAD",
+        "commit": "fe45e624fef9bc45a4991733a82885fb12bafac2",
+        "pcb": "HaptiCAD_base/HaptiCAD_base.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0",
+        "kicad": "10",
+        "layers": 4
+      },
+      {
+        "name": "plantwateringdevice",
+        "repo": "RobertGawron/PlantWateringDevice",
+        "commit": "dc34da16a975bbab0ebc6ee5b9eb86a6d813f586",
+        "pcb": "Hardware/PlantWateringDevice/PlantWateringDevice.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "10",
+        "layers": 4
+      },
+      {
+        "name": "small-kicad-projects",
+        "repo": "jakeson21/Small-KiCAD-Projects",
+        "commit": "c2702e7b4b1bd072a795d595e51fe148b2e4d694",
+        "pcb": "MOSFET_Load_Switch/MOSFET_Load_Switch.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "10",
+        "layers": 4
+      },
+      {
+        "name": "7seg-panel",
+        "repo": "7m4gmh/7seg-panel",
+        "commit": "c3e3c889840f4f9d99f4c4da82725a0f8aeff2c0",
+        "pcb": "hardware/7seg-panel-display-040-dual-24x16/20260308-040-24x16.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 2
+      },
+      {
+        "name": "spark-ae",
+        "repo": "clectric-diy/Spark-AE",
+        "commit": "588f819e90abcb408bf65952fcdf578a7b775811",
+        "pcb": "KiCad/Spark-AE/Spark-AE-PCB/Spark-AE-PCB.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "10",
+        "layers": 2
+      },
+      {
+        "name": "arty-a7-fpga",
+        "repo": "FabienMeyer/arty-a7-fpga",
+        "commit": "acb15efbec75000bcb97f14c59ad2ab8d332ca27",
+        "pcb": "pcb/arty_a7_fpga.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "10",
+        "layers": 2
+      },
+      {
+        "name": "kiexport",
+        "repo": "vishnumaiea/KiExport",
+        "commit": "13c6ce989396f24ff21dcf5aa48a92c7564f7d01",
+        "pcb": "Mitayi-Pico-D1/Mitayi-Pico-RP2040.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 2
+      },
+      {
+        "name": "cp70-preamp",
+        "repo": "edwin-oetelaar/CP70_preamp",
+        "commit": "89d42c1395e1c27ff2d34ef354c6d66a9a87a781",
+        "pcb": "kicad_project/CP70_preamp/CP70_preamp.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 2
+      },
+      {
+        "name": "haptix",
+        "repo": "dodotronix/Haptix",
+        "commit": "9c390d789a778149e8f9854dc841681595a2bdd7",
+        "pcb": "hw/subtractMod/subtractMod.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 2
+      },
+      {
+        "name": "kicad-projects",
+        "repo": "jeff4444/kicad-projects",
+        "commit": "4809193f91034fcdc87545e81cfe5f6073869f9f",
+        "pcb": "proximity_sensor/recyclobot.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 2
+      },
+      {
+        "name": "bewaesserung-sensor",
+        "repo": "Jan2121/bewaesserung-Sensor",
+        "commit": "34294ef0d5ea146baefd7375690718ef0fd9fe7c",
+        "pcb": "Sensor.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "10",
+        "layers": 2
+      },
+      {
+        "name": "trs-io",
+        "repo": "apuder/TRS-IO",
+        "commit": "2d45ac938b3a113d3bfff19bdb09f52951744634",
+        "pcb": "kicad/pp/v1.1/TRS-IO++.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "9",
+        "layers": 2
+      },
+      {
+        "name": "modularpsu",
+        "repo": "dmanla/ModularPSU",
+        "commit": "6ae264ba98376e089b9f1aa86fc577aee1b38aae",
+        "pcb": "ModularPSU/ModularPSU.kicad_pcb",
+        "tier": "C",
+        "licence": "TAPR-OHL",
+        "kicad": "9",
+        "layers": 2,
+        "notes": "panel (thermal stopped with \"board outline has no area\" before the outline fix)"
+      },
+      {
+        "name": "sparkfun-bluesmirf-v2",
+        "repo": "sparkfun/SparkFun_BlueSMiRF-v2",
+        "commit": "f704cd2c76d2c826a874275dd9a1b141df8695f6",
+        "pcb": "Hardware/PTH/Production/SparkFun_BlueSMiRF-ESP32-PTH_panelized.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "notes": "board path resolved by hand (the harness flattens sub-folders)"
+      },
+      {
+        "name": "explorer",
+        "repo": "anyshake/explorer",
+        "commit": "44c75b0ec839713e1f9621e99cf5afb9c10755d9",
+        "pcb": "hardware/Explorer.kicad_pcb",
+        "tier": "C",
+        "licence": "AGPL-3.0",
+        "kicad": "9",
+        "layers": 2
+      },
+      {
+        "name": "bit-preserve",
+        "repo": "baldengineer/bit-preserve",
+        "commit": "118ee8a4b5925d1a1c55a975b90477f6f88061b3",
+        "pcb": "Tandy-RS/TRS-80 Color Computer/Color Computer 3/26-3334/coco3/coco3.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-4.0",
+        "kicad": "5",
+        "layers": 2
+      },
+      {
+        "name": "sparkfun-spectral-sensor-breakout-as7343-qwiic",
+        "repo": "sparkfun/SparkFun_Spectral_Sensor_Breakout_AS7343_Qwiic",
+        "commit": "ae284ab941bf8b27bc54a48c13193e75ff62deb4",
+        "pcb": "Hardware/Production/SparkFun_AS7343_Qwiic_panelized.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "9",
+        "layers": 2,
+        "notes": "panel (thermal stopped with \"board outline has no area\" before the outline fix)"
+      },
+      {
+        "name": "rtd2662board",
+        "repo": "KerJoe/RTD2662Board",
+        "commit": "86eb036918ab6660b888a73be67425734991e962",
+        "pcb": "RTD2662Board.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 2
+      },
+      {
+        "name": "onboard",
+        "repo": "hackclub/OnBoard",
+        "commit": "4d3caeeabe216cbb1b9f37267483476abf75c608",
+        "pcb": "projects/CACKLE - Card Adaptable Controller Kinetic Link Electronics/src/ESP32-S3 Hub/ESP32-S3 Hub.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 6
+      },
+      {
+        "name": "pocket-reform",
+        "repo": "elithper/pocket-reform",
+        "commit": "545780f1a12a9ce5162d86c973b20c849c932fc9",
+        "pcb": "pocket-reform-motherboard/pocket-reform-motherboard.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "7",
+        "layers": 6
+      },
+      {
+        "name": "mykicad",
+        "repo": "CRImier/MyKiCad",
+        "commit": "4f01eaa6b3b0a269570c711e58ba4bf0f8446d11",
+        "pcb": "Laptop mods/framework_mobo_lefthalf/framework_mobo_lefthalf.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "8",
+        "layers": 6
+      },
+      {
+        "name": "data-sampling",
+        "repo": "J1DDERY/data_sampling",
+        "commit": "aac64eda45f4e64d0332e81f5571988f75d2e4ed",
+        "pcb": "ScopeFun_PCB/Scopefun_v2.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "qsic",
+        "repo": "dabridgham/QSIC",
+        "commit": "836d0cc0263011ef53f9cf8b3711211934dd206e",
+        "pcb": "qsic.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "pcdock",
+        "repo": "jorisplusplus/pcdock",
+        "commit": "d93b268af116f11a6c14830a4edcd27838f7e263",
+        "pcb": "fpga_board/fpga_board.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 8
+      },
+      {
+        "name": "reflow",
+        "repo": "hackclub/reflow",
+        "commit": "6dadb13b52c54f0ebfe867b70f8c47976abda77b",
+        "pcb": "pcb/usb-charging-hub/cad/usb-charging-hub.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "wall-panel",
+        "repo": "dotstartech/wall-panel",
+        "commit": "5b869f7b7eb053a442760e9bce460375836a95ac",
+        "pcb": "pcb/wall-panel/wall_panel.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-W-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "uefi-v6-x",
+        "repo": "Churrosoft/uEFI-v6.x",
+        "commit": "b606b361eb8dcdd530da465ca962a3efff4d212f",
+        "pcb": "hw_v1/hw_v1.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 4,
+        "notes": "stackup listed seven times (kisi read 28 copper layers before the fix)"
+      },
+      {
+        "name": "vna-design",
+        "repo": "fdreshaj/VNA_Design",
+        "commit": "1888916aa253f550a05bed36f454fb1d62bc6dc8",
+        "pcb": "VNA_Project/VNA_Project.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "mokyalora",
+        "repo": "tengigabytes/MokyaLora",
+        "commit": "2b509bc9bf477f5cc55080aed79eafe6900365eb",
+        "pcb": "hardware/kicad/MokyaLora.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-SA-4.0+CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "uniqhw",
+        "repo": "JamesB-Wood/UniQHW",
+        "commit": "a471f13d3ff023b64daed61f837298b1daf2b388",
+        "pcb": "uq_phone_v0.2.0/uq_phone.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "ccsom",
+        "repo": "fsnitz/CcSoM",
+        "commit": "0c6ce2f40f5849f2fddad5b58cdb38dcef07e465",
+        "pcb": "SoM/SOM.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "zebra-x",
+        "repo": "Dylanfg123/Zebra-X",
+        "commit": "d976e1684fadd7f86bf8a617fcfb90d53da1be1f",
+        "pcb": "ZeBra-X.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 10
+      },
+      {
+        "name": "spinali-mcxn-t1-hub",
+        "repo": "CogniPilot/spinali_mcxn_t1_hub",
+        "commit": "80145ccaf26ebcc85694b392ed56202e6800e65c",
+        "pcb": "kicad/spinali_mcxn_t1_hub.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "maiana-blue",
+        "repo": "Haimana/MAIANA_BLUE",
+        "commit": "53f89f68268e15010ecb65beb5fdf2a2edc4ffb0",
+        "pcb": "Schematics/Maiana_Blue_11.9.2/Maiana_Blue_11.9.2.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "owr-502",
+        "repo": "bluesatunsw/owr-502",
+        "commit": "96241d99e5524492cbed7c715ab0737a4747a316",
+        "pcb": "src/usb_power_board_elec/usb_power_board.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "home-mini-v1-drop-in-pcb",
+        "repo": "iMike78/home-mini-v1-drop-in-pcb",
+        "commit": "3b473e09f915903a31f9d6299d7b6937a1d5b24d",
+        "pcb": "home-mini-v1-drop-in-pcb.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "bitaxegt",
+        "repo": "bitaxeorg/BitaxeGT",
+        "commit": "4202c2533f6036cfb19e4575d7afc07fbef58f54",
+        "pcb": "BitaxeGT.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "sbc-allwinner-a13",
+        "repo": "vd-rd/sbc_allwinner_a13",
+        "commit": "84930c9d7807dd43bdee999f3c364d1dc9ecbc4d",
+        "pcb": "hardware/module.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "lazersharkcm5carrier",
+        "repo": "CabrilloRoboticsClub/LazerSharkCM5Carrier",
+        "commit": "25d412bfd4ae5d4c05ac68fc90fc68b99a02351c",
+        "pcb": "CM5_MINIMA_2.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "iss-pcb",
+        "repo": "ISSUIUC/ISS-PCB",
+        "commit": "03d39c6107bbafe7bc389fa061beb7c9c3b309ac",
+        "pcb": "boards/TARS-MK2/TARS-MK2-FCB-v1.0/FCB.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "bitaxebonanza",
+        "repo": "bitaxeorg/bitaxeBonanza",
+        "commit": "51b31ad8e6962b76d652d8b956b0495d39725633",
+        "pcb": "BitaxeBonanza.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "panels-g4-single-pcb",
+        "repo": "iorodeo/panels_g4_single_pcb",
+        "commit": "3b8d9a65c75179537c4b55ba32ba202284ef6b6a",
+        "pcb": "panel_rp2350_20x20/manual_route/1st_layout/rev2/almost/panel_rp2350_20x20_rev2.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-4.0",
+        "notes": "board path resolved by hand (the harness flattens sub-folders)"
+      },
+      {
+        "name": "masters-thesis-lora-gateway-compute-module-cubesat-payload-pcb",
+        "repo": "dpmj/masters-thesis-lora-gateway-compute-module-cubesat-payload-pcb",
+        "commit": "3f171e970a57d829bf3ff4b5addacd8ae5bc0378",
+        "pcb": "lora-payload.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "endgame-trackball-hardware",
+        "repo": "efogtech/endgame-trackball-hardware",
+        "commit": "b3225547d2e64785f9309060400889bd94f897ac",
+        "pcb": "trackball.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-NC-4.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "helios",
+        "repo": "JoshCrouch/HELIOS",
+        "commit": "fa7a7dc2d0e64070a1a7ef6b86cfdc991564dcc2",
+        "pcb": "Reference/Board/Hauptplatine/Hauptplatine.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "cbm-ultipet",
+        "repo": "fachat/cbm_ultipet",
+        "commit": "215c853c21f749ff9fe1cfac7385c1361da609d9",
+        "pcb": "Board/cbm_ultipet_v1.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "fs-4-schematics",
+        "repo": "formulaslug/fs-4-schematics",
+        "commit": "98e6ba82ac9c97ed476e7996b43b49020f52ebc1",
+        "pcb": "VCU/VCU.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "nou3-hardware",
+        "repo": "AlfredoSystems/NoU3-Hardware",
+        "commit": "a2118c7cd93bb4ddaeb3c94d92c8a61c0b6a4010",
+        "pcb": "NoU3-Panelized/NoU3-Panelized.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "notes": "board path resolved by hand (the harness flattens sub-folders)"
+      },
+      {
+        "name": "nest-mini-drop-in-pcb",
+        "repo": "iMike78/nest-mini-drop-in-pcb",
+        "commit": "146f7b81e76e2a68134ebefc4cc23a4339e3b1f5",
+        "pcb": "nest-mini-v2-drop-in-pcb.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "power-hw",
+        "repo": "EPFLXplore/Power_HW",
+        "commit": "411389e8e753f8fcc0a1c9e3e2a02d494619bb21",
+        "pcb": "GEODE/rev2/SMPS_Motherboard/smps_legged_robot.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 6
+      },
+      {
+        "name": "eurorack",
+        "repo": "adeboni/eurorack",
+        "commit": "22bce2b4b55096834bf2a0f689ee1f9858de5689",
+        "pcb": "theremin/hardware/theremin/theremin.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "misc",
+        "repo": "greatscottgadgets/misc",
+        "commit": "55dd3a4416283164f21124e4637943f8e55f0185",
+        "pcb": "evaluation-boards/trace-width/sma-jlcpcb.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-2.0",
+        "kicad": "8",
+        "layers": 6
+      },
+      {
+        "name": "keyboards",
+        "repo": "tzarc/keyboards",
+        "commit": "21dd586153f70b0247c3c38f8a8070891e49041d",
+        "pcb": "Kobold/R1/Kobold.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "toolchangerdevelopment",
+        "repo": "FoCTow/ToolchangerDevelopment",
+        "commit": "a51cd196895807c8c1160d979408378b18388ca9",
+        "pcb": "PCB/PANEL_TEST/_autosave-PANEL_TEST.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "echoplayer",
+        "repo": "amachronic/echoplayer",
+        "commit": "9675f063204a8590f3937025ed80b102ebb41f86",
+        "pcb": "r1-rev1/echo-r1-rev1.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "9",
+        "layers": 6
+      },
+      {
+        "name": "foundscape",
+        "repo": "edwindertien/foundscape",
+        "commit": "f732016450deb418a20be879d5197d173152977a",
+        "pcb": "anarchitechno-box/kicad/anarchytechnobox.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "9",
+        "layers": 4
+      },
+      {
+        "name": "mchf-kicad",
+        "repo": "esden/mcHF-kicad",
+        "commit": "c768ec42c1fc54f8c7169f5af73d5c76e4b4836b",
+        "pcb": "v0.6.3/rf/rf_main.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 2
+      },
+      {
+        "name": "fs-2-schematics",
+        "repo": "formulaslug/fs-2-schematics",
+        "commit": "dcaf90b79e8f276ab9241279df63ebb700c3f27e",
+        "pcb": "BSPD/BSPD.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 2
+      },
+      {
+        "name": "uberamp1",
+        "repo": "DeepSOIC/uberamp1",
+        "commit": "fe1550c5a5fd7bf4081fdd16643ee59604f640d4",
+        "pcb": "uberamp1.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 2
+      },
+      {
+        "name": "elecdev",
+        "repo": "jay94ks/elecdev",
+        "commit": "3e1dfd0ce0de4224cbce26cc785b1398d97a6465",
+        "pcb": "stm32/f107rbt6/STM32F107RBT6.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "8",
+        "layers": 2
+      },
+      {
+        "name": "econopet",
+        "repo": "DLehenbauer/econopet",
+        "commit": "5a534bf5be68352fa74e54cc4bdf71415f8a3362",
+        "pcb": "hw/rev-a/mainboard/kicad/Mainboard.kicad_pcb",
+        "tier": "C",
+        "licence": "CC0-1.0",
+        "kicad": "8",
+        "layers": 2
+      },
+      {
+        "name": "kicad-designs",
+        "repo": "computergeek1507/KiCad_Designs",
+        "commit": "e8fc2483fd1265e6cc30fce99b2f53778b8ea5ab",
+        "pcb": "ESP32_Shift_Test/ESP32_Shift_Test.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-1.2",
+        "kicad": "6",
+        "layers": 2
+      },
+      {
+        "name": "fpga-board",
+        "repo": "AbdulAjadi1/FPGA-Board",
+        "commit": "8a968c9e82677a7a3c903851f07ebf0f8aea13bf",
+        "pcb": "FPGA-BOARD.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 8
+      },
+      {
+        "name": "starshipraider",
+        "repo": "azonenberg/starshipraider",
+        "commit": "93b2d0d19ce35fa745e3cf6889a3ea70b23e41a1",
+        "pcb": "boards/MAXWELL/maxwell-main/maxwell-main.kicad_pcb",
+        "tier": "C",
+        "licence": "BSD-3-Clause",
+        "kicad": "5",
+        "layers": 8
+      },
+      {
+        "name": "thermal-camera",
+        "repo": "drewsum/Thermal_Camera",
+        "commit": "5e95ce77d1e06cb7f1791e3106811c2f94978337",
+        "pcb": "rev_a/hdw/Thermal_Camera/Thermal_Camera.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 8
+      },
+      {
+        "name": "simplecarrier",
+        "repo": "alexian79/simpleCarrier",
+        "commit": "f5082aa0acfce8a5b17fba6a425715ce1350a23c",
+        "pcb": "simpleCarrier.kicad_pcb",
+        "tier": "C",
+        "licence": "BSD-2-Clause",
+        "kicad": "8",
+        "layers": 6
+      },
+      {
+        "name": "vna",
+        "repo": "loxodes/vna",
+        "commit": "35c49decfc713c3bc4ff1b8cac6d3eacd19f8c9c",
+        "pcb": "hardware/mm_reflectometer/evalboards/ecp5/ecp5.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "6",
+        "layers": 6
+      },
+      {
+        "name": "ricardo-picklerick",
+        "repo": "icl-rocketry/Ricardo-PickleRick",
+        "commit": "d11d9a147e634b9e03f3899c7ec0437d400d94bd",
+        "pcb": "Hardware/PickleRick.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 6
+      },
+      {
+        "name": "am64x",
+        "repo": "gingerologist/am64x",
+        "commit": "b452188ec66ecf84a806bc5eda215d6a39821b3c",
+        "pcb": "proc101d.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 10
+      },
+      {
+        "name": "rust-hardware",
+        "repo": "skysedge/RUST_Hardware",
+        "commit": "57d73789b9c8cd45c5a2ae282e9aa761d9d6bef7",
+        "pcb": "old/Nov10_2022/Mainboard/PanelDesign/RUSP_Mainboard_panelMockup.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "notes": "board path resolved by hand (the harness flattens sub-folders; several panel mock-ups, the latest taken)"
+      },
+      {
+        "name": "openefi-pcb",
+        "repo": "Churrosoft/OpenEFI-PCB",
+        "commit": "1e34a03d421b83a64b3ba627b4a280115f9ce83e",
+        "pcb": "OpenEFI_rev4/OpenEFI_rev4.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "cparti-fpga-development-board",
+        "repo": "AAWO/CPArti-FPGA-Development-Board",
+        "commit": "67110ed708920872165c690dfe4bbd9827f5bd88",
+        "pcb": "CPArti FPGA dev board.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "polykybd",
+        "repo": "thpoll83/PolyKybd",
+        "commit": "b626c0eaea6929dd625d37e952283324199cf288",
+        "pcb": "poly_kybd/poly_kybd_split72_right.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "acorn-robot-electronics",
+        "repo": "Twisted-Fields/acorn-robot-electronics",
+        "commit": "ff52cafe59ae0856a2f3dfb782a64a45a7852526",
+        "pcb": "cm4_robot_board/cm4-robot.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "rx671-mcr",
+        "repo": "Kageyana/RX671_MCR",
+        "commit": "06d2bc76395bd10ceb096e939f794f1f3f9519a4",
+        "pcb": "circuit/mcr_MotorDriver Ver.3.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 6
+      },
+      {
+        "name": "ricardo-kermit",
+        "repo": "icl-rocketry/Ricardo-Kermit",
+        "commit": "3d09abbeca70c2f81b912bbf0aba25b52888c3ae",
+        "pcb": "Hardware/Ricardo-Kermit-Mini.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "ecp5-bga381-ft2232hq-fifo",
+        "repo": "gildobjanschi/ECP5_BGA381_FT2232HQ_FIFO",
+        "commit": "b0c83ca28d882e49dbaa25e22ab68122957f7bf5",
+        "pcb": "kicad/ECP5.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "ovobot",
+        "repo": "hedong2023/ovobot",
+        "commit": "a7bc7c1bd8fa7687c18746ff316c8268b82763e0",
+        "pcb": "EHJS-01/cleanrobot-square-main/cleanrobot-square-main.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 2
+      },
+      {
+        "name": "polysynth",
+        "repo": "hsetlik/PolySynth",
+        "commit": "17c01eff00e4bb47166e0cc2f8fa416b1a4de79d",
+        "pcb": "SplitBoard8Voice/SplitBoard8Voice.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "kicad-arduino-boards",
+        "repo": "sabogalc/KiCad-Arduino-Boards",
+        "commit": "0a25ca25953efb3fb045616e7c676a554ceaabc1",
+        "pcb": "KiCad Projects/Uno/Arduino UNO R4 WiFi/Arduino UNO R4 WiFi.kicad_pcb",
+        "tier": "C",
+        "licence": "other",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "nvme-carrier-for-lattepanda-mu",
+        "repo": "El-Luhb/nvme-Carrier-for-LattePanda-Mu",
+        "commit": "4cf916842851732015b974459088f6a4689c3348",
+        "pcb": "PCB/4 Layer nvme Carrier all M2/nvme Carrier all M2.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "kasm-actuator-pcb-rev2",
+        "repo": "gabeak2/KASM_ACTUATOR_PCB_REV2",
+        "commit": "b03b0e29ae3efcff82980bdb72ea9a5e47d9bf00",
+        "pcb": "kasm_pcb_rev2.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "8",
+        "layers": 6
+      },
+      {
+        "name": "ichnaea",
+        "repo": "brandonbraun653/Ichnaea",
+        "commit": "48d02a4c0a25408ed8c4dbf560dd785d16059b0e",
+        "pcb": "hw/ver2/IchnaeaV2/IchnaeaV2.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "dts-board",
+        "repo": "EBOThor/DTS_Board",
+        "commit": "ebe4d4d09a5b41cb42d3f7775a70e076f9ba75e3",
+        "pcb": "HW/PIC18F_ETH/PIC18F_ETH/PIC18F_ETH.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "pcb-designs",
+        "repo": "Vaaarad07/PCB_Designs",
+        "commit": "34fd3602b26703bab6a83cee57d19a18b5c466e3",
+        "pcb": "STM32F407_MVCU/MVCU_F407.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "pico-ice",
+        "repo": "tinyvision-ai-inc/pico-ice",
+        "commit": "00e13360969d01fbb9663e4ea17f723c1a8e8400",
+        "pcb": "Board/Rev2/pico-ice.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "kxkm-esp32-audio-battery-hardware",
+        "repo": "KomplexKapharnaum/KXKM_ESP32_Audio_Battery_hardware",
+        "commit": "f5eb9cbb90f1b230bc082a714a5ca2e9d2c0ae59",
+        "pcb": "Base_board/v3-panel/panel.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "avionics-23-26",
+        "repo": "Queens-Rocket-Engineering-Team/Avionics-23-26",
+        "commit": "5f9855571e89194d3e6c60983f05520ced8faa41",
+        "pcb": "Schematics/Sensors_Module/Sensors_Module.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "open-source-plc",
+        "repo": "gasiepgodoy/Open-Source-PLC",
+        "commit": "fcb64d0e4583535ca136f2a6243b84d9ff3e5225",
+        "pcb": "Hardware/KiCad Files/Project/OpenPLC_Hardware.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "beehive-monitoring",
+        "repo": "GhanmiIyed/Beehive-Monitoring",
+        "commit": "74fb2bc03aa86c26bfae8d70d2603b95cb139ad3",
+        "pcb": "New folder/HIVES360.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "hardware",
+        "repo": "blus-audio/hardware",
+        "commit": "287098346c71228b00f94ffd97dbcb6c478eff99",
+        "pcb": "blus-mini/kicad/dsp-amplifier-x4.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "grippyboi",
+        "repo": "gabbla/grippyboi",
+        "commit": "156cb53bc17ba8beacb58f608726c3bddbcd88d3",
+        "pcb": "grippyboi.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "rock-controller",
+        "repo": "BaktiyarBr/Rock_Controller",
+        "commit": "549d58a5904960ea6b58b13b28832232a18d1494",
+        "pcb": "6_layer_MCU/6_layer_MCU.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 6
+      },
+      {
+        "name": "baredrones-fc-v1",
+        "repo": "jpwolfe9912/BareDrones-FC-V1",
+        "commit": "f5954240cda834b9300e24d4c57e5f3ee6e7ebdb",
+        "pcb": "BareDrones-FC-V1.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "8",
+        "layers": 6
+      },
+      {
+        "name": "kicadboards",
+        "repo": "dragonlock2/kicadboards",
+        "commit": "b5e0c47cbbded775139f8cae0b2cd23ed2e35467",
+        "pcb": "breakouts/lpc1768_poe/lpc1768_poe.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "lpm-production-tt",
+        "repo": "davidholmes1066/LPM_Production_TT",
+        "commit": "c75e7e16d6f47e8386e1e8593cfcf539a41ceac6",
+        "pcb": "Boards/TestBoardArduino/TestBoardArduino.kicad_pcb",
+        "tier": "C",
+        "licence": "other",
+        "kicad": "8",
+        "layers": 4
+      },
+      {
+        "name": "kbb-keyboard",
+        "repo": "Asapgiri/kbb-keyboard",
+        "commit": "40b9b866261581316f35197502b02f44ce097aad",
+        "pcb": "kicad/layout_96_wired/keyboard.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 2
+      },
+      {
+        "name": "mts-module-80mhz-200mhz",
+        "repo": "TU-Darmstadt-APQ/MTS-module_80MHz_200MHz",
+        "commit": "be0e22057a3a8c882cb52377df3f41206dd3a3c5",
+        "pcb": "KiCad/MTS_module.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-1.2",
+        "kicad": "7",
+        "layers": 2
+      },
+      {
+        "name": "mts-module",
+        "repo": "TU-Darmstadt-APQ/MTS_module",
+        "commit": "819bbece5d91d99714181dd08d3b4fe7cd089ac1",
+        "pcb": "KiCad/MTS_module.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-1.2",
+        "kicad": "7",
+        "layers": 2
+      },
+      {
+        "name": "cutiepie",
+        "repo": "flamwenco/cutiepie",
+        "commit": "31c126d419d20f68aeaf9256382b8fb758509181",
+        "pcb": "Baconspoon_Hotswap_and_BLE_PCBs/dual-stagger-hotswap-pcb/cutiepie2040-dual-stagger-hotswap-pcb.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "7",
+        "layers": 2
+      },
+      {
+        "name": "rp2040-mouse-kicad",
+        "repo": "Black-FX/RP2040_Mouse_KiCAD",
+        "commit": "b5854d9dd2e536fc8b4d499f6b661359f8ff76c0",
+        "pcb": "RP2040_Mouse_panel.kicad_pcb",
+        "tier": "C",
+        "licence": "BSD-3-Clause",
+        "kicad": "7",
+        "layers": 2
+      },
+      {
+        "name": "q2",
+        "repo": "joewing/q2",
+        "commit": "4c76fadb8ee79bc7a33137b168ef46327a3b8b1c",
+        "pcb": "hardware/q2/pcb/q2/q2.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 2
+      },
+      {
+        "name": "mainboard-hardware",
+        "repo": "Sierra-Lobo/mainboard-hardware",
+        "commit": "c808db8ca4124850e8759cec95640cfbb7bee68a",
+        "pcb": "revC-fm/mainboard.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-SA-4.0",
+        "kicad": "7",
+        "layers": 8
+      },
+      {
+        "name": "nanovoltmeter",
+        "repo": "curtisseizert/Nanovoltmeter",
+        "commit": "ec863a8b6fd47a9eb6b65a6be1ba0844e385b721",
+        "pcb": "nV-Meter_rev_b/nV-Meter_rev_b.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 6
+      },
+      {
+        "name": "urti-mainboard",
+        "repo": "greatscottgadgets/urti-mainboard",
+        "commit": "90590fe84f2c80de9a464121f6b798c259173bd2",
+        "pcb": "mainboard.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "7",
+        "layers": 6
+      },
+      {
+        "name": "sdr-dongle",
+        "repo": "john-luan/SDR-dongle",
+        "commit": "1861a1b339c4064f057cf5e1f721f089c28d0b08",
+        "pcb": "hardware/zynq_sdr_dongle.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "7",
+        "layers": 6
+      },
+      {
+        "name": "orbitesc",
+        "repo": "brandonbraun653/OrbitESC",
+        "commit": "97e78086f9ae999f61135e120cee45329e7a6fba",
+        "pcb": "hw/pcb/OrbitESC_V3/OrbitESC.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "notes": "board path resolved by hand (the harness flattens sub-folders)"
+      },
+      {
+        "name": "laser-projector",
+        "repo": "adeboni/laser-projector",
+        "commit": "6efd33d294dac98beb9f7a9d5c63659171aa7a6b",
+        "pcb": "2023/hardware/4x_laser_controller/4x_laser_controller.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "redip-64",
+        "repo": "daglem/reDIP-64",
+        "commit": "6afdc7eed2a88b087cadff5604f293a81a3b22b7",
+        "pcb": "hardware/reDIP-64.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 6
+      },
+      {
+        "name": "laemp-spoet",
+        "repo": "Jana-Marie/LAEMP-Spoet",
+        "commit": "af8c898c041957183e5fa3a8e6d2b044e8709db1",
+        "pcb": "led-driver/led-driver.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "gatematea1-evb",
+        "repo": "OLIMEX/GateMateA1-EVB",
+        "commit": "a2b3e4132a7db64adb5faff1b7263e4c48e14bc7",
+        "pcb": "HARDWARE/GateMateA1-EVB-Rev.C/GateMateA1-EVB_Rev_C.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "three-phase-80kwt",
+        "repo": "Alexandr-Filatov/Three-Phase-80kWt",
+        "commit": "6e70c299473024f94549ed0a05a1a0f882f9df66",
+        "pcb": "Adapter.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 6
+      },
+      {
+        "name": "core-v-mcu-devkit",
+        "repo": "openhwgroup/core-v-mcu-devkit",
+        "commit": "f038a032e83a53d123a6530e61eae081bd65d73d",
+        "pcb": "kicad/OpenHW DevKit.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "voron-hardware",
+        "repo": "VoronDesign/Voron-Hardware",
+        "commit": "5e5fca5761380576a8bb77f7301cdee90afa0e6e",
+        "pcb": "Taco_Raven/KiCad/Voron_Klipper_Board.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "chunky2040-rev2",
+        "repo": "freznel10/Chunky2040_rev2",
+        "commit": "654b3c2f488c4ccce104069dce1ef2f289ff79ff",
+        "pcb": "Chunky2040_2023.stretch_bkup.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "unifying-pcb",
+        "repo": "balthazar-space/Unifying-PCB",
+        "commit": "c5344fdb39664979a36273fda187564dc22f19cb",
+        "pcb": "kicad/Unifying.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "frontendmodule",
+        "repo": "GReX-Telescope/FrontendModule",
+        "commit": "70a9a20a2ee88be845e03635a4e51888d7bba065",
+        "pcb": "hardware/GreX Frontend.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "pcb-dataset-lite",
+        "repo": "EasyGerber/pcb-dataset-lite",
+        "commit": "dea8b66c8ff778055fc1446fb277ff136223887e",
+        "pcb": "boards/PCBench__Atreus_54percent_rev/raw.kicad_pcb",
+        "tier": "C",
+        "licence": "other",
+        "kicad": "5",
+        "layers": 2
+      },
+      {
+        "name": "final-eps-version2",
+        "repo": "Cubesat-EPS-Project/Final_EPS_Version2",
+        "commit": "916a5f2f3d6afb9a70f4f9bf0a6def35c2abf471",
+        "pcb": "FinalBoardCircuits/FinalBoardCircuits.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "neo6502pc",
+        "repo": "OLIMEX/Neo6502pc",
+        "commit": "dff6447ad9366c2dadde288a5e55fc80a9e74fc5",
+        "pcb": "HARDWARE/Neo6502pc-CPU-rev.B/Neo6502PC-CPU_Rev_B.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "growomatic",
+        "repo": "Bergi84/GrowOMatic",
+        "commit": "cf25bd2bb99c81850041e4f24e05fc9155ab92be",
+        "pcb": "Hardware/stencil/stencil.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "h-alo-kicad-libs",
+        "repo": "h-ALO/h-ALO-kicad-libs",
+        "commit": "b8231ef3fdc147a618f0d2808c375a3524ad71cc",
+        "pcb": "demo_LMP7721_v2/demo_LMP7721.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "notes": "board path resolved by hand (the harness flattens sub-folders)"
+      },
+      {
+        "name": "usic",
+        "repo": "dabridgham/USIC",
+        "commit": "510eed3b9a625a854f8a017c9d805e3397c12452",
+        "pcb": "usic.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 6
+      },
+      {
+        "name": "ethersweep",
+        "repo": "Neumi/ethersweep",
+        "commit": "67f2547e582de59cb77d4b3c2a25c8a6326ed864",
+        "pcb": "electronic_design/development/ethersweep402/ethersweep.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "7",
+        "layers": 2
+      },
+      {
+        "name": "versasens",
+        "repo": "esl-epfl/VersaSens",
+        "commit": "67f663b87198f33e4668c0c16295be1c12932969",
+        "pcb": "VersaSens_HW/VersaSens_HeEx.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 4,
+        "notes": "outline of several pieces or drawn twice (thermal stopped before the outline fix)"
+      },
+      {
+        "name": "neotron-pico",
+        "repo": "Neotron-Compute/Neotron-Pico",
+        "commit": "f078d9977104968c83bb603bdcde0fd8731324a7",
+        "pcb": "Kicad/neotron-pico.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "7",
+        "layers": 4
+      },
+      {
+        "name": "eurorack-modules",
+        "repo": "hallmar/Eurorack-Modules",
+        "commit": "c17b451c370d28c40dac4b33f9bb4365e3cb8a08",
+        "pcb": "Fjöl-v0.6/Hardware/fjol.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "notes": "board chosen by hand (the harness named a backup copy)"
+      },
+      {
+        "name": "coverui",
+        "repo": "ClemensElflein/CoverUI",
+        "commit": "4956a439eecea0ba2368a1fb397ee8476d62cb5f",
+        "pcb": "Hardware/CoverUI.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "6",
+        "layers": 2
+      },
+      {
+        "name": "luna65",
+        "repo": "NeilKhera/Luna65",
+        "commit": "2f09a5674410df28a35dca58101fb25856ede544",
+        "pcb": "kicad_files/Luna65.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-SA-3.0",
+        "kicad": "6",
+        "layers": 2
+      },
+      {
+        "name": "commodore-pet-clone",
+        "repo": "DLehenbauer/commodore-pet-clone",
+        "commit": "a5314ab317c25a5137c95e5b48713619afb8286d",
+        "pcb": "hw/Mainboard/Mainboard.kicad_pcb",
+        "tier": "C",
+        "licence": "CC0-1.0",
+        "kicad": "6",
+        "layers": 2
+      },
+      {
+        "name": "advent-calendar-of-circuits-2020",
+        "repo": "gregdavill/advent-calendar-of-circuits-2020",
+        "commit": "54ae5705047cf430759d3a86daa922c56943cdb9",
+        "pcb": "ecpbreaker/kicad-src/ecpbreaker.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "6",
+        "layers": 6
+      },
+      {
+        "name": "ottercam-s3",
+        "repo": "Jana-Marie/OtterCam-s3",
+        "commit": "3ccc4866f6e3495843fef766447c26d78b1586be",
+        "pcb": "OtterCam-s3.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "electrique",
+        "repo": "ExoFlex-Inc/Electrique",
+        "commit": "eb97cd06bba538268d265d6d42852600bb005550",
+        "pcb": "1-ExoFlexV2/ExoFlex_Kicad.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "nvm",
+        "repo": "jaromir-sukuba/nvm",
+        "commit": "7365e55a05b8c2c294afe2d194345400885a05b0",
+        "pcb": "hardware/PCB-design_files/BART/rnvm_bart.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "duet-2-hardware",
+        "repo": "Duet3D/Duet-2-Hardware",
+        "commit": "371c656c226417c3ee1e4c78887d536f61ac9edc",
+        "pcb": "Duet2/Duet2v1.06/Duet2.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-1.2",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "sdr-hackrf",
+        "repo": "arsscriptum/sdr.hackrf",
+        "commit": "c92579e20be96c95d398f593fa98789e5dc8219f",
+        "pcb": "hardware/hackrf-one/hackrf-one.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "deepin-community-hackrf",
+        "repo": "deepin-community/hackrf",
+        "commit": "74ed665bc540e25647cabad6011f6173d0f606f7",
+        "pcb": "hardware/hackrf-one/hackrf-one.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-2.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "hackrf-ct",
+        "repo": "greearb/hackrf-ct",
+        "commit": "c5c8f01952b9fe0c35440b9a84c3e15c9dbaee5d",
+        "pcb": "hardware/hackrf-one/hackrf-one.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-2.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "stmbl",
+        "repo": "emdotnet/stmbl",
+        "commit": "9590cb339bf352c0f32eb2a8534dfcc97fd79fc1",
+        "pcb": "hw/kicad/bob/ethernet_bob/ethernet_bob.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "archer",
+        "repo": "EI2030/Archer",
+        "commit": "b27a02682ccdd6d9f38ecceedff56ed014178d11",
+        "pcb": "pcb/mainboard/pcb.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "circuit-design",
+        "repo": "ConnectBox/Circuit-Design",
+        "commit": "79bd52b418efcaabdd52204b0d14e12cb81ae502",
+        "pcb": "Hat  2.0/HAT_CM4_183_041022-V2.1/HAT_CM4_183.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "6",
+        "layers": 6
+      },
+      {
+        "name": "jellyfish-and-starfish",
+        "repo": "wntrblm/jellyfish-and-starfish",
+        "commit": "46839b55be1320ffe0f1fca6487ef19cb718eb0f",
+        "pcb": "hardware/starfish/starfish.kicad_pcb",
+        "tier": "C",
+        "licence": "CERN-OHL-S-2.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "a13-test-project",
+        "repo": "servomouse/A13_test_project",
+        "commit": "6428543e5d0d06d5a1ec8dfd833c8926dc5b9cdd",
+        "pcb": "A13_test_project.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "kicad-rw",
+        "repo": "PySpice-org/kicad-rw",
+        "commit": "5b9327bda7c6566b16704ddafb7791a110e3a8a9",
+        "pcb": "kicad-examples/electrolab-cta-control-board/CTA_control_board.kicad_pcb",
+        "tier": "C",
+        "licence": "AGPL-3.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "klippertoolboard",
+        "repo": "bondus/KlipperToolboard",
+        "commit": "56c97f0f4dc59ec77bf3df63bd031cea49c12c7d",
+        "pcb": "PCB/HuvudTiny2/Huvud.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "e-tkt",
+        "repo": "hacklabkyiv/E-TKT",
+        "commit": "b5c303db238e2bc38a55f13b6fe435d94743a671",
+        "pcb": "_electronic/KiCad/e-tkt.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "6",
+        "layers": 6
+      },
+      {
+        "name": "prntrboardv2",
+        "repo": "ghent360/PrntrBoardV2",
+        "commit": "5a84842173783899fba29f403e5e32d1f8def978",
+        "pcb": "hardware/T12_Control.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-SA-3.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "dronetheory",
+        "repo": "GiovanniRaseraF/DroneTheory",
+        "commit": "68ca2cb54efc4d7167e9fd8d38221233b58587c2",
+        "pcb": "DronePCB/TestConNicola/DroneHardware.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "otto-hardware",
+        "repo": "bitfieldaudio/otto-hardware",
+        "commit": "94d71bbcb76d2b58857f3be73600248be4c0eb7f",
+        "pcb": "KiCad/MainBoard/OTTO-Beta-Main.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-NC-SA-4.0",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "camera-module",
+        "repo": "EPFLRocketTeam/Camera_module",
+        "commit": "7f2dbd7b42aa70478834e0839b29accb4f97444e",
+        "pcb": "CM4IO-KiCAD/CM4IOv5.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "notes": "board path resolved by hand (the harness flattens sub-folders)"
+      },
+      {
+        "name": "cubesat-boards",
+        "repo": "cansat-ptl/cubesat-boards",
+        "commit": "123b5d4a00131c551b56fab1fee1463b0648ab92",
+        "pcb": "ykts-payload/ykts-payload.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "6",
+        "layers": 4
+      },
+      {
+        "name": "stm32-sdr-pcb",
+        "repo": "arsenal007/STM32-SDR_PCB",
+        "commit": "9868d811170244a63f6078bb65b8d1f7f67c9464",
+        "pcb": "PowerSupplay/LCSDR.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "notes": "board path resolved by hand (the harness flattens sub-folders)"
+      },
+      {
+        "name": "pcb",
+        "repo": "datamaskinprosjekt/PCB",
+        "commit": "cd31cc691cb7407aa666d0b9d4b0df1f43e1a96b",
+        "pcb": "main_schematic/main_schematic.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "5",
+        "layers": 2
+      },
+      {
+        "name": "kicad-rata",
+        "repo": "brrastak/kicad_rata",
+        "commit": "c20747b9cbada7852de9dd2796dc2771b7c4e7ef",
+        "pcb": "rata.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 2
+      },
+      {
+        "name": "pcb-design",
+        "repo": "embeddedalpha/PCB-Design",
+        "commit": "a6170a87b2f39b09be0f116fe120563eab830cb1",
+        "pcb": "6_Axis_Robot_Controller/RoProp.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "5",
+        "layers": 2
+      },
+      {
+        "name": "sol",
+        "repo": "wntrblm/Sol",
+        "commit": "d5dfd102a5e049a6dd0838d4be10f58800c06854",
+        "pcb": "hardware/rev1/mainboard/mainboard.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 2
+      },
+      {
+        "name": "antikernel",
+        "repo": "azonenberg/antikernel",
+        "commit": "6c2915428b897b596694419b428202e9b5273b80",
+        "pcb": "legacy-trunk/boards/marblewalrus-switch/marblewalrus-switch.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "legacy",
+        "layers": 2
+      },
+      {
+        "name": "scopefun-hardware",
+        "repo": "OWON-LILLIPUT/scopefun-hardware",
+        "commit": "501547c3d1037412ad6dc66bb8fa0c98fcda3a68",
+        "pcb": "KiCadSource/Scopefun_v2.kicad_pcb",
+        "tier": "C",
+        "licence": "other",
+        "kicad": "legacy",
+        "layers": 6
+      },
+      {
+        "name": "openventilator",
+        "repo": "4ms/openventilator",
+        "commit": "94e22113ca5c811c9e5a9af8dd09124c3e5ad330",
+        "pcb": "10005011 Power Management/10005011 Power Management.kicad_pcb",
+        "tier": "C",
+        "licence": "other",
+        "kicad": "5",
+        "layers": 6,
+        "notes": "outline of several pieces or drawn twice (thermal stopped before the outline fix)"
+      },
+      {
+        "name": "orangepir1-schematics",
+        "repo": "t-cun/OrangePiR1-schematics",
+        "commit": "76890c9c9f7bdc3e6c543f4e58336681ccaee6cc",
+        "pcb": "KiCad/OrangePiR1.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 8
+      },
+      {
+        "name": "openhardware",
+        "repo": "wangyeee/OpenHardware",
+        "commit": "4e725d69d7705a40a0cc4b638c63e90efd8188ed",
+        "pcb": "SimpleFC_G/SimpleFC_G.kicad_pcb",
+        "tier": "C",
+        "licence": "BSD-3-Clause",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "pid-controller",
+        "repo": "bec5-group/pid-controller",
+        "commit": "168a7fdac5e72dbde8cbd81da760ef5d256947ed",
+        "pcb": "pid/pid.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "legacy",
+        "layers": 4
+      },
+      {
+        "name": "logic-analyzer-pcb",
+        "repo": "perehinik/Logic_Analyzer_PCB",
+        "commit": "cde7192ddbde771b7f8befc64025844eff8fb3ba",
+        "pcb": "Project/LogAn.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 6
+      },
+      {
+        "name": "hadesfcs",
+        "repo": "pms67/HadesFCS",
+        "commit": "ad6935db6ad8af8603cba0d84286dcc5568df3a6",
+        "pcb": "Hardware/Hades/Hades.kicad_pcb",
+        "tier": "C",
+        "licence": "BSD-3-Clause",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "stereopi-kicad-schematic",
+        "repo": "realizator/stereopi-kicad-schematic",
+        "commit": "99cee8b92d0fe4260e12d572b8f6b66c1b7fa079",
+        "pcb": "StereoPi.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0",
+        "kicad": "5",
+        "layers": 6
+      },
+      {
+        "name": "qmtech-minimig",
+        "repo": "ranzbak/qmtech_minimig",
+        "commit": "08df75a1c17bf41bfbb09e9b82b282fd568effc8",
+        "pcb": "qmtech-minimig.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "daveecu2",
+        "repo": "miata-bot/daveecu2",
+        "commit": "90ecc0b172f9cb1d8cd50dc0688b3a6db4fdf0e8",
+        "pcb": "daveecu2.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "icezum",
+        "repo": "FPGAwars/icezum",
+        "commit": "dbad423670419b82018bf6e33c418fc35558c1be",
+        "pcb": "src-kicad/icezum.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "spartanmini",
+        "repo": "jonthomasson/SpartanMini",
+        "commit": "cd50c07c48d352e2785a9da0a2eb6e59b66ffdc1",
+        "pcb": "rev1.d (with shield 3d)/Spartan6Dev.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "alexmfz-hackrf",
+        "repo": "alexmfz/hackrf",
+        "commit": "5e825ba645bdbb72af85c1e8a489914dc81760dd",
+        "pcb": "hardware/LNA915/LNA915.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-2.0",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "kicad-boards",
+        "repo": "megredondo/KICAD_Boards",
+        "commit": "104b7df760c7a0e60dcaba6ce0a36bb623b7ace4",
+        "pcb": "Boards/I2c_PnC/I2C_KICAD/power_control_ipe_v1.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "t2-hardware",
+        "repo": "tessel/t2-hardware",
+        "commit": "d420b7fc2bf6595660443548d37ea47467b2274b",
+        "pcb": "tessel-v2.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-SA-4.0",
+        "kicad": "legacy",
+        "layers": 4
+      },
+      {
+        "name": "nrf52-board",
+        "repo": "jpconstantineau/NRF52-Board",
+        "commit": "9920f663311e9f3d2c9d60dabb2dcbbb2d85e006",
+        "pcb": "BlueMacro840/BlueMacro.kicad_pcb",
+        "tier": "C",
+        "licence": "BSD-3-Clause",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "h730duino",
+        "repo": "martinribelotta/h730duino",
+        "commit": "db64fbcaf2b00c3a733be2ab44f3bebc70dc1322",
+        "pcb": "h730duino.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "icepool-board",
+        "repo": "jkiv/icepool-board",
+        "commit": "cfc4c9cd69b1499c7c0d04a6722fbbd73de310cd",
+        "pcb": "hardware/icepool-board.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-NC-SA-4.0",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "avb-ethernet-switch-with-can-bus",
+        "repo": "guyg3333/AVB_Ethernet_switch_with_CAN_bus",
+        "commit": "df42d977a13ae49c98aaedc92228aaacabedca32",
+        "pcb": "AVB switch with Can gateway.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "fusion-pack",
+        "repo": "Govish/FusIon-Pack",
+        "commit": "c05b10e268c9a0cb0d0d09b1ff32b0712af00dcb",
+        "pcb": "REV 0-1 PCB/Kicad Files/FusIon Pack.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "practise",
+        "repo": "bybzmt/practise",
+        "commit": "f7c637a050153852bc9a120ce31046497be4de82",
+        "pcb": "mcu/digital-amplifier2/circuit/main/digital-amplifier2.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "fhnw-pro4e-fs19t8-3dprinterboard-stm32",
+        "repo": "mnemocron/FHNW-Pro4E-FS19T8-3DPrinterBoard-STM32",
+        "commit": "995e9248bc3472b8ecd493180b5459bb2c630131",
+        "pcb": "FHNW-Pro4E-FS19T8-3DPrinterBoard-STM32.kicad_pcb",
+        "tier": "C",
+        "licence": "GPL-3.0",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "pypilot-schematics",
+        "repo": "pypilot/pypilot_schematics",
+        "commit": "8ddadc4db60d1db6ff8e9ab8c405986031ca61fb",
+        "pcb": "highpower_controller/highpower_controller.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "4ch-rf-fe",
+        "repo": "JohnnyGOX17/4ch-RF-FE",
+        "commit": "e69f06d569a078e92df3398e9315fc2b1c2cf1c1",
+        "pcb": "4ch_RF_FE_KiCad/4ch_RF_FE_KiCad.kicad_pcb",
+        "tier": "C",
+        "licence": "MIT",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "alturia-pcb",
+        "repo": "rckTom/alturia-pcb",
+        "commit": "d2c2e8c112845dc976d276c1a4dac0ed6e8d4b41",
+        "pcb": "altimeter.kicad_pcb",
+        "tier": "C",
+        "licence": "CC-BY-NC-SA-4.0",
+        "kicad": "5",
+        "layers": 4
+      },
+      {
+        "name": "board-rza1l",
+        "repo": "martinribelotta/Board-RZA1L",
+        "commit": "47312783816066e1e85ec89a6274e289fed2bec1",
+        "pcb": "BoardRZA1.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "legacy",
+        "layers": 4
+      },
+      {
+        "name": "tecsci-spincoater-hardware-kicad",
+        "repo": "martinch14/tecsci_spincoater_hardware_kicad",
+        "commit": "9aae53c15a36e67370ba73a660b0a5e10877a1b1",
+        "pcb": "spincoater.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 2
+      },
+      {
+        "name": "anotterwatchhw",
+        "repo": "badgeteam/anotterwatchHW",
+        "commit": "6091a6926d9bf533cc583f67a1853064c77e26b0",
+        "pcb": "anotterwatch.kicad_pcb",
+        "tier": "C",
+        "licence": "NONE",
+        "kicad": "5",
+        "layers": 4
+      }
+    ]
+  }
+}

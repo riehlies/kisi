@@ -817,7 +817,13 @@ def detach(argv, a):
     out = open(os.path.join(a.logs, "run.out"), "a", encoding="utf-8")
     kw = {}
     if os.name == "nt":
-        kw["creationflags"] = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        # a console of its own (minimised), not DETACHED_PROCESS: without a console, CST's version query
+        # (DesignEnvironment.version) starts the design environment in a new window that waits for a click
+        kw["creationflags"] = 0x00000010 | 0x00000200  # CREATE_NEW_CONSOLE | CREATE_NEW_PROCESS_GROUP
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = 7  # SW_SHOWMINNOACTIVE
+        kw["startupinfo"] = si
     else:
         kw["start_new_session"] = True
     p = subprocess.Popen(args, stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, cwd=os.getcwd(), **kw)

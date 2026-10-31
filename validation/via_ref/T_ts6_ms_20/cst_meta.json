@@ -1,0 +1,23 @@
+{
+ "case": "T_ts6_ms_20",
+ "tag": "",
+ "date": "2026-10-30",
+ "tool": "CST Studio Suite",
+ "solver": "time domain (FIT, hexahedral, PBA)",
+ "mesh_settings": {
+  "lpw": 20,
+  "lpb": 20,
+  "minstep": 0.0,
+  "ratio": 20
+ },
+ "port_request": "face",
+ "ports_used": [
+  "port 1 (face)",
+  "port 2 (face)"
+ ],
+ "blocks_failed": [],
+ "status": "ok",
+ "seconds": 33.6,
+ "cells": 157209,
+ "cst_version": "CST Studio Suite 2025.5 Release from 2025-05-30"
+}

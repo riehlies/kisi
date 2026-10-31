@@ -1,0 +1,25 @@
+{
+ "case": "E_s8_L1L3_p1000_oval_g2",
+ "tag": "fine",
+ "date": "2026-10-30",
+ "tool": "CST Studio Suite",
+ "solver": "time domain (FIT, hexahedral, PBA)",
+ "mesh_settings": {
+  "lpw": 30.0,
+  "lpb": 30.0,
+  "minstep": 0.0,
+  "ratio": 20
+ },
+ "port_request": "face",
+ "ports_used": [
+  "port 1 (face)",
+  "port 2 (face)",
+  "port 3 (face)",
+  "port 4 (face)"
+ ],
+ "blocks_failed": [],
+ "status": "ok",
+ "seconds": 94.2,
+ "cells": 404096,
+ "cst_version": "CST Studio Suite 2025.5 Release from 2025-05-30"
+}

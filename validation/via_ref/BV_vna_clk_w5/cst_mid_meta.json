@@ -1,0 +1,23 @@
+{
+ "case": "BV_vna_clk_w5",
+ "tag": "mid",
+ "date": "2026-10-31",
+ "tool": "CST Studio Suite",
+ "solver": "time domain (FIT, hexahedral, PBA)",
+ "mesh_settings": {
+  "lpw": 25.0,
+  "lpb": 25.0,
+  "minstep": 0.0,
+  "ratio": 20
+ },
+ "port_request": "face",
+ "ports_used": [
+  "port 1 (face)",
+  "port 2 (face)"
+ ],
+ "blocks_failed": [],
+ "status": "ok",
+ "seconds": 445.1,
+ "cells": 726310,
+ "cst_version": "CST Studio Suite 2025.5 Release from 2025-05-30"
+}

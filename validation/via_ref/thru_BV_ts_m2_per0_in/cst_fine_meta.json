@@ -1,0 +1,25 @@
+{
+ "case": "thru_BV_ts_m2_per0_in",
+ "tag": "fine",
+ "date": "2026-10-30",
+ "tool": "CST Studio Suite",
+ "solver": "time domain (FIT, hexahedral, PBA)",
+ "mesh_settings": {
+  "lpw": 30.0,
+  "lpb": 30.0,
+  "minstep": 0.0,
+  "ratio": 20
+ },
+ "port_request": "face",
+ "ports_used": [
+  "port 1 (face)",
+  "port 2 (face)",
+  "port 3 (face)",
+  "port 4 (face)"
+ ],
+ "blocks_failed": [],
+ "status": "ok",
+ "seconds": 51.9,
+ "cells": 227664,
+ "cst_version": "CST Studio Suite 2025.5 Release from 2025-05-30"
+}

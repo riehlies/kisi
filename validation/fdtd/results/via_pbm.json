@@ -192,12 +192,12 @@
   ]
  },
  "B_s8_L1L3_bd_d200": {
-  "dS21_max_db_20GHz": 0.19,
-  "dS11_max_20GHz": 0.212,
-  "z_min_3d": 47.0,
-  "z_min_pbm": 48.9,
-  "z_max_3d": 54.0,
-  "z_max_pbm": 57.4,
+  "dS21_max_db_20GHz": 0.23,
+  "dS11_max_20GHz": 0.137,
+  "z_min_3d": 45.2,
+  "z_min_pbm": 41.8,
+  "z_max_3d": 50.4,
+  "z_max_pbm": 49.0,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
   "nodes_z": [
@@ -214,12 +214,12 @@
   ]
  },
  "B_s8_L1L3_bd_d300": {
-  "dS21_max_db_20GHz": 0.38,
-  "dS11_max_20GHz": 0.226,
-  "z_min_3d": 47.2,
-  "z_min_pbm": 48.6,
-  "z_max_3d": 57.0,
-  "z_max_pbm": 61.6,
+  "dS21_max_db_20GHz": 0.44,
+  "dS11_max_20GHz": 0.166,
+  "z_min_3d": 42.5,
+  "z_min_pbm": 38.5,
+  "z_max_3d": 50.2,
+  "z_max_pbm": 48.8,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
   "nodes_z": [
@@ -236,13 +236,13 @@
   ]
  },
  "B_s8_L1L3_stub_d200": {
-  "dS21_max_db_20GHz": 0.94,
-  "dS11_max_20GHz": 0.862,
-  "z_min_3d": 35.7,
-  "z_min_pbm": 41.2,
-  "z_max_3d": 58.2,
-  "z_max_pbm": 69.8,
-  "notch_3d_ghz": 21.8,
+  "dS21_max_db_20GHz": 0.7,
+  "dS11_max_20GHz": 0.395,
+  "z_min_3d": 32.5,
+  "z_min_pbm": 31.4,
+  "z_max_3d": 54.5,
+  "z_max_pbm": 53.6,
+  "notch_3d_ghz": 21.9,
   "notch_pbm_ghz": 21.9,
   "nodes_z": [
    1.6,
@@ -270,13 +270,13 @@
   ]
  },
  "B_s8_L1L3_stub_d300": {
-  "dS21_max_db_20GHz": 0.81,
-  "dS11_max_20GHz": 0.646,
-  "z_min_3d": 35.7,
-  "z_min_pbm": 40.6,
-  "z_max_3d": 64.0,
-  "z_max_pbm": 74.5,
-  "notch_3d_ghz": 21.5,
+  "dS21_max_db_20GHz": 1.38,
+  "dS11_max_20GHz": 0.385,
+  "z_min_3d": 29.5,
+  "z_min_pbm": 28.4,
+  "z_max_3d": 53.5,
+  "z_max_pbm": 52.6,
+  "notch_3d_ghz": 21.7,
   "notch_pbm_ghz": 21.3,
   "nodes_z": [
    1.6,
@@ -376,13 +376,13 @@
   ]
  },
  "B_ts6_L1L3_stub": {
-  "dS21_max_db_20GHz": 1.82,
-  "dS11_max_20GHz": 0.2,
-  "z_min_3d": 41.2,
-  "z_min_pbm": 43.4,
-  "z_max_3d": 60.4,
-  "z_max_pbm": 70.7,
-  "notch_3d_ghz": 26.3,
+  "dS21_max_db_20GHz": 2.04,
+  "dS11_max_20GHz": 0.211,
+  "z_min_3d": 35.0,
+  "z_min_pbm": 31.4,
+  "z_max_3d": 51.2,
+  "z_max_pbm": 51.4,
+  "notch_3d_ghz": 26.6,
   "notch_pbm_ghz": 24.8,
   "nodes_z": [
    1.3486,
@@ -408,12 +408,12 @@
   ]
  },
  "B_ts6_L1L6": {
-  "dS21_max_db_20GHz": 0.03,
-  "dS11_max_20GHz": 0.081,
-  "z_min_3d": 50.1,
-  "z_min_pbm": 49.0,
-  "z_max_3d": 51.2,
-  "z_max_pbm": 50.5,
+  "dS21_max_db_20GHz": 0.05,
+  "dS11_max_20GHz": 0.041,
+  "z_min_3d": 48.6,
+  "z_min_pbm": 47.2,
+  "z_max_3d": 49.2,
+  "z_max_pbm": 48.6,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
   "nodes_z": [
@@ -909,23 +909,23 @@
  },
  "E_s8_L1L3_p1000_oval_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 1.26,
-  "dphase_max_deg_20GHz": 23.0
+  "dSdd21_max_db_20GHz": 1.15,
+  "dphase_max_deg_20GHz": 15.2
  },
  "E_s8_L1L3_p1000_round_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.9,
-  "dphase_max_deg_20GHz": 21.8
+  "dSdd21_max_db_20GHz": 0.72,
+  "dphase_max_deg_20GHz": 13.9
  },
  "E_s8_L1L3_p1200_round_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.93,
-  "dphase_max_deg_20GHz": 22.1
+  "dSdd21_max_db_20GHz": 0.75,
+  "dphase_max_deg_20GHz": 14.1
  },
  "E_s8_L1L3_p800_round_g2": {
   "mode": "odd",
-  "dSdd21_max_db_20GHz": 0.73,
-  "dphase_max_deg_20GHz": 21.5
+  "dSdd21_max_db_20GHz": 0.5,
+  "dphase_max_deg_20GHz": 13.6
  },
  "E_s8_L1L8_p1000_oval_g0": {
   "mode": "odd",
@@ -968,12 +968,12 @@
   "dphase_max_deg_20GHz": 5.9
  },
  "X_s8x2_L1L3_bd_d200": {
-  "dS21_max_db_20GHz": 0.22,
-  "dS11_max_20GHz": 0.184,
-  "z_min_3d": 47.5,
-  "z_min_pbm": 49.5,
-  "z_max_3d": 49.4,
-  "z_max_pbm": 56.1,
+  "dS21_max_db_20GHz": 0.21,
+  "dS11_max_20GHz": 0.194,
+  "z_min_3d": 43.4,
+  "z_min_pbm": 43.4,
+  "z_max_3d": 45.5,
+  "z_max_pbm": 49.2,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
   "nodes_z": [
@@ -989,11 +989,11 @@
  },
  "X_s8x4_L1L3_bd_d200": {
   "dS21_max_db_20GHz": 0.31,
-  "dS11_max_20GHz": 0.189,
-  "z_min_3d": 49.0,
-  "z_min_pbm": 48.8,
-  "z_max_3d": 52.0,
-  "z_max_pbm": 57.4,
+  "dS11_max_20GHz": 0.2,
+  "z_min_3d": 46.9,
+  "z_min_pbm": 41.8,
+  "z_max_3d": 48.8,
+  "z_max_pbm": 49.2,
   "notch_3d_ghz": null,
   "notch_pbm_ghz": null,
   "nodes_z": [

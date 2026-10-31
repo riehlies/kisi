@@ -33,8 +33,8 @@ R–L–C).
 
 ## 2. Reference cases (`via_cases.py`, `run_refs.py`)
 
-74 cases on a 0.035 mm mesh (G: 0.1 mm, H: 0.07 mm), λ/20 at 40 GHz elsewhere, CPML, planes into the PML,
-field monitors on port 1:
+74 cases on a 0.035 mm mesh (G: 0.1 mm, H: 0.07 mm; the transitions that end on an inner layer and B_ts6_L1L6
+0.0175 mm since section 17), λ/20 at 40 GHz elsewhere, CPML, planes into the PML, field monitors on port 1:
 
 | Group | Cases | What they check |
 |---|---|---|
@@ -305,6 +305,10 @@ and equivalent antipad radii); an earlier run on a busier machine gave about 1.5
 
 ## 7. Via ladder: junction, non-round antipads, conductor loss (Block 1)
 
+The numbers of this section are against the references of that time. The L1→L3 references were 1.1–2.3 ps slow
+(not converged at 0.035 mm); section 17 recomputes them and re-checks the junction fit: the junction inductance
+holds, the stripline handling (feed kept up to the via centre) leaves the ladder 1.3 ps slow on stripline exits.
+
 ### Diagnosis of the inner-layer exits
 - **Symptom:** the ladder was 2–3.5 ps too fast on L1→L3 (B s8, 20–27° at 20 GHz) and reflected 2–3× too
   much at 10–20 GHz.
@@ -486,12 +490,12 @@ plots `results/board_returns/`). The model is the option `--via-returns` (off by
 | GND vias not joined to the PWR plane (`RG_s4_pwr_n4`), 0.5–12 / 12–20 GHz | 8.45 / 1.97, 6.65 / 1.69 | 6.15 / 1.36, 4.44 / 1.11 | 2.48 / 0.68, 3.17 / 0.85 | 7/7 dips, 2.1 %, 0.44 dB |
 | the same with a capacitor 2 mm away (`RG_s4_pwr_n4_cap2`) | 9.02 / 2.10, 6.77 / 1.70 | 6.45 / 1.42, 4.33 / 1.12 | 2.94 / 0.77, 2.67 / 0.79 | 8/8 dips, 2.0 %, 0.44 dB |
 | GND/GND (`R_s4_rect_n4`) | 0.04 / 0.03, 0.11 / 0.04 | identical | identical | – |
-| ThunderScope stack, GND vias across a PWR In2 (`RG_ts6_sw_pwr`) | 0.10 / 0.04, 0.26 / 0.09 | 0.07 / 0.03, 0.19 / 0.07 | 0.11 / 0.03, 0.18 / 0.08 | – |
+| ThunderScope stack, GND vias across a PWR In2 (`RG_ts6_sw_pwr`; 3D on 0.035 mm since section 17) | 0.05 / 0.03, 0.20 / 0.08 | 0.06 / 0.03, 0.26 / 0.12 | 0.09 / 0.03, 0.25 / 0.13 | – |
 | ThunderScope REFINOUT2 (board via, 3D with In2 as it is) | 0.10 / 0.06, 0.38 / 0.23 | 0.16 / 0.08, 0.66 / 0.41 | – | – |
 | ThunderScope M.2 pair (Sdd, quick mesh) | 0.27 / 0.15, 0.30 / 0.27 | 0.28 / 0.15, 0.31 / 0.28 | – | – |
 
-- The floating supply plane (PWR − GND In2): 3D 0.06 / 0.14 dB at 16 / 20 GHz on the synthetic
-  ThunderScope stack, ladder 0.07 / 0.13 dB; on REFINOUT2 3D 0.05 / 0.10 / 0.19 dB at 12 / 16 / 20 GHz,
+- The floating supply plane (PWR − GND In2): 3D −0.01 / +0.05 dB at 16 / 20 GHz on the synthetic
+  ThunderScope stack (0.06 / 0.14 dB on the former 0.07 mm mesh, section 17), ladder 0.07 / 0.13 dB; on REFINOUT2 3D 0.05 / 0.10 / 0.19 dB at 12 / 16 / 20 GHz,
   ladder 0.07 / 0.15 / 0.28 dB. The M.2 pair: no effect in 3D (≤ 0.002 dB to 20 GHz) nor in the
   ladder (≤ 0.03 dB).
 - Default path unchanged: `compare_kisi.py` identical to `results/kisi_models.json` (56 rows), also
@@ -760,17 +764,17 @@ identical to the 10 MHz grid. The largest same-mesh differences:
 | group | cases | Δ\|S21\| kisi-fdtd vs openEMS fine: median of the case means / largest mean (dB) | largest max (dB) | Δτ median (ps) | same mesh, both staircase: median / largest mean (dB) | openEMS base → fine: median (dB) |
 |---|---|---|---|---|---|---|
 | A | 6 | 0.081 / 0.112 | 0.74 | -0.42 | 0.026 / 0.032 | 0.103 |
-| B | 8 | 0.088 / 0.703 | 6.58 | 0.81 | 0.019 / 0.034 | 0.079 |
+| B | 8 | 0.098 / 0.884 | 8.32 | -0.35 | 0.019 / 0.034 | 0.079 |
 | C | 8 | 0.086 / 0.105 | 0.69 | -0.57 | 0.017 / 0.031 | 0.072 |
-| D | 8 (2: base mesh only) | 0.053 / 0.090 | 0.25 | -0.46 | 0.023 / 0.028 | 0.025 |
-| E | 12 | 0.101 / 0.268 | 0.61 | -0.45 | 0.024 / 0.057 | 0.057 |
-| X | 2 | 0.059 / 0.107 | 0.33 | -0.38 | 0.046 / 0.085 | 0.019 |
+| D | 8 (2: base mesh only) | 0.046 / 0.090 | 0.32 | -0.47 | 0.023 / 0.028 | 0.025 |
+| E | 12 | 0.101 / 0.308 | 0.90 | -0.45 | 0.024 / 0.057 | 0.057 |
+| X | 2 | 0.060 / 0.101 | 0.31 | -0.46 | 0.046 / 0.085 | 0.019 |
 | T | 12 | 0.011 / 0.037 | 0.30 | -0.06 | 0.013 / 0.021 | 0.004 |
 | P | 5 | 0.060 / 0.062 | 0.47 | -0.03 | 0.016 / 0.024 | 0.043 |
 | thru | 24 | 0.013 / 0.126 | 0.35 | -0.07 | 0.007 / 0.100 | 0.007 |
 | board | 5 (2: base mesh only) | 0.406 / 1.675 | 17.32 | -1.02 | 0.022 / 0.054 | 0.349 |
 | R | 6 | 0.100 / 0.113 | 0.83 | -0.32 | 0.074 / 0.089 | 0.077 |
-| RG | 4 | 0.166 / 0.290 | 2.56 | 0.41 | 0.039 / 0.054 | 0.162 |
+| RG | 4 | 0.175 / 0.290 | 2.56 | -0.48 | 0.039 / 0.054 | 0.162 |
 | G | 2 | 0.032 / 0.061 | 2.14 | 0.00 | 0.023 / 0.042 | – |
 | H | 4 | loop inductance at 50 MHz, openEMS (base mesh) against kisi-fdtd: +6.2 / +4.8 / +4.3 / +8.2 % (2 / 5 / 10 / 20 mm) | – | – | openEMS against kisi-fdtd staircase: +3.5 … +7.6 % | – |
 
@@ -778,7 +782,7 @@ identical to the 10 MHz grid. The largest same-mesh differences:
   other and keep this offset on the refined mesh (kisi-fdtd staircase against its conformal result on the fine mesh:
   0.5–0.75 ps), while kisi-fdtd's conformal result moves by 0.07–0.20 ps. Staircase metal makes vias, pads and
   antipads slow, and halving the cell barely changes it; the conformal result is the converged one here.
-- **Inner-layer exits and the ThunderScope through via:** kisi-fdtd is 0.8–2.1 ps *slower* (B and E L1→L3,
+- **Inner-layer exits and the ThunderScope through via (before section 17):** kisi-fdtd was 0.8–2.1 ps *slower* (B and E L1→L3,
   B_ts6_L1L6). Here kisi-fdtd's own reference is not converged: on the fine mesh it moves by −1.13 ps
   (B_s8_L1L3_stub_d300), −1.12 ps (E_s8_L1L3_p1000_round_g2) and −1.81 ps (B_ts6_L1L6), and then agrees with
   openEMS fine within 0.2–0.5 ps; X_s8x2 (no L2 plane) and the L1→L8 cases move by 0.04–0.12 ps only. The CST
@@ -820,13 +824,160 @@ Scored against openEMS fine instead of kisi-fdtd (same metrics as `rust_models.p
 
 | | against kisi-fdtd | against openEMS |
 |---|---|---|
-| ladder, single vias (29): TDR error median / p90 | 1.07 / 4.265 % | 1.025 / 4.134 % |
+| ladder, single vias (29): TDR error median / p90 | 1.205 / 4.265 % | 1.025 / 4.134 % |
 | ladder, single vias: max Δ\|S21\| to 20 GHz, median | 0.093 dB | 0.071 dB |
 | ladder, pairs (12): max ΔSdd21 median / phase median | 0.111 dB / 1.92° | 0.105 dB / 3.405° |
-| kisi's channel (42 cases with the feeds): max Δ\|S21\| median / TDR error median, p90 (35 ps) | 0.581 dB / 8.98, 13.981 % | 0.573 dB / 7.345, 13.49 % |
+| kisi's channel (42 cases with the feeds): max Δ\|S21\| median / TDR error median, p90 (35 ps) | 0.575 dB / 8.565, 13.13 % | 0.573 dB / 7.345, 13.49 % |
 
 The scores barely move: the fast models' errors are larger than the difference between the two 3D results, except
 the pairs' phase (the through-via delay offset above). No change to kisi's models or to `data/accuracy.json` follows
-from openEMS. What may follow from the inner-exit finding: the junction model (section 7) was fitted partly to the
-L1→L3 references, which are ≈ 1.1 ps slow; recomputing those references on the refined mesh and re-checking the fit is
-a separate change.
+from openEMS. What followed from the inner-exit finding: the references of the inner-layer exits recomputed on the
+refined mesh and the junction fit re-checked (section 17). The tables of this section are as of that change (the B, D,
+E, X and RG rows and the scores against kisi-fdtd moved with the references; the first version of the section had
+B 0.088 / 0.703 dB with Δτ +0.81 ps, RG Δτ +0.41 ps, the ladder's single-via TDR error median 1.07 % and kisi's
+channel 8.98 / 13.981 % against kisi-fdtd).
+
+## 17. Inner-layer exits on a refined mesh
+
+Both cross-checks of section 16 (openEMS, and CST on branch `feat/cst-refs`, `CST.md`) found kisi-fdtd's references
+1.0–2.4 ps slow on the via transitions that end on an inner layer and on the ThunderScope through via, with |S21|
+barely affected, while the two other solvers agreed within 0.1–0.5 ps. kisi-fdtd's own fine-mesh runs of section 16
+showed that this is the mesh, not the solver: those references were not converged at dfine 0.035 mm.
+
+### Which cases
+- **Rule:** every transition that ends on an inner layer, and B_ts6_L1L6 (the one through via that moved): the
+  case's `meta.ref_refine: 2` (`via_cases.py`, `board_returns.py`) makes `run_refs.py` compute its reference with the
+  cell at metal halved – openems_refs.py's "fine" mesh: dfine, the GND vias' cell and the refinement boxes ÷ 2, the
+  largest cell (λ/20 at f max) kept.
+- **17 cases:** B_s8_L1L3_bd_d200 / _d300, B_s8_L1L3_stub_d200 / _d300, B_ts6_L1L3_stub, B_ts6_L1L6, D_s8_cap_none /
+  _2 / _10 (L1 → L3 with the L4 PWR plane), the four E L1→L3 pairs, X_s8x2 / X_s8x4 (dfine 0.035 → 0.0175 mm) and
+  RG_ts6_sw_gnd / _pwr (F → In3 on the finite ThunderScope board, 0.07 → 0.035 mm). 1.1–3.4 M cells, 4–29 min per case
+  on one core of the 2-vCPU machine (run time and cells in each `meta.json`).
+- **Checked and left on the base mesh:** the L1→L8 / L1→L4 through vias (section 16: kisi-fdtd moves by 0.07–0.20
+  ps on the fine mesh), the 2×thru of the exit layers (thru_s8_L3 0.05 ps / 0.005 dB mean, thru_ts6_L6 0.03 ps,
+  thru_RG_ts6p_L1 / _L4 0.08 ps / ≤ 0.003 dB), so the de-embedding keeps its fixtures.
+- **Not recomputed: the board vias with an inner exit** (BV_vna_rf_hblb1, BV_vna_clk_w5, BV_ts_m2_per0 and its
+  in2gnd copy). On the refined mesh they need 1.7–5.4 M cells and 30 000–43 000 steps per excited port at the halved
+  cell (two to four ports), several hours each on this machine: a job for 4-vCPU runners as in section 16. Their
+  offsets against openEMS have the other sign (kisi-fdtd 0.5–1.4 ps faster), which section 16 traces to openEMS'
+  staircase error on board copper; CST is on its base or intermediate mesh there.
+
+### Mesh convergence
+| case | dfine (mm) | cells | Δτ to the next finer mesh (ps) | Δ\|S21\| mean / max to the next finer mesh (dB) |
+|---|---|---|---|---|
+| B_s8_L1L3_bd_d200 | 0.035 → 0.0175 → 0.00875 | 0.60 → 1.25 → 2.78 M | +2.30, then +0.07 | 0.042 / 0.11, then 0.015 / 0.054 |
+| B_s8_L1L3_stub_d300 | 0.035 → 0.0175 → 0.00875 | 0.64 → 1.31 → 2.90 M | +1.13, then +0.03 | 0.281 / 2.28, then 0.126 / 0.89 (to 20 GHz 0.054 / 0.30, to 17 GHz 0.03 / 0.11) |
+| B_ts6_L1L6 | 0.035 → 0.0175 → 0.00875 | 0.55 → 1.11 → 2.25 M | +1.81, then +0.07 | 0.043 / 0.12, then 0.003 / 0.010 |
+| RG_ts6_sw_gnd | 0.07 → 0.035 → 0.0175 | 0.68 → 1.35 → 2.46 M | +1.83, then +0.11 | 0.072 / 0.40, then 0.034 / 0.18 (a board resonance at 19 GHz) |
+
+- Each row: base → fine, then fine → extra-fine (the cell at metal ÷ 4, not stored; `meta.json` →
+  `mesh_convergence`), to f max (RG: 25 GHz). **The delay is converged on the fine mesh:** the extra-fine mesh moves
+  it by 0.03–0.11 ps (target ≤ 0.2 ps), and |S21| by 0.003–0.034 dB mean, 0.01–0.05 dB max on the plain vias. What
+  is left above 0.05 dB sits on the steep flank of the stub notch (the notch itself stays at 21.7 GHz; CST 21.6 GHz)
+  and at a resonance of the finite board. The extra-fine B_s8_L1L3_bd_d200 is 0.05 ps from CST's extra-fine mesh,
+  B_ts6_L1L6 0.09 ps from CST fine.
+- base → fine moves the L1→L3 exits by 1.11–1.13 ps (drill 0.3: B d300, D, E) or 2.30–2.34 ps (drill 0.2: B d200),
+  B_ts6_L1L6 by 1.81 ps and RG_ts6 by 1.83–1.86 ps (0.07 → 0.035 mm); B_ts6_L1L3_stub (exit between L2 and the far
+  L5 plane), X_s8x2 (no L2 plane) and X_s8x4 (no L4 plane) by −0.05 / 0.04 / 0.13 ps. What converges slowly is
+  the exit pad between two close planes (s8: 0.2 mm above, 0.15 mm below), not the stripline or the junction alone.
+- |S21| changes little (mean 0.04–0.12 dB) except on the stub notches, which move up by 0.5–1.1 % (B_s8 21.5 →
+  21.7 / 21.8 → 21.9 GHz, B_ts6 26.3 → 26.6 GHz): 1.2–3.1 dB at the steep flanks, 0.06–0.14 dB mean below 20 GHz.
+
+### Before and after (Δτ: delay difference from the S21 phase, positive: the first result slower)
+| case | Δτ base − fine (ps) | Δ\|S21\| base vs fine, mean / max (dB) | \|S21\| 10 GHz before → after (dB) | \|S21\| 20 GHz | Δτ kisi-fdtd − openEMS fine, before → after (ps) | Δτ kisi-fdtd − CST to 20 GHz, before → after (ps) |
+|---|---|---|---|---|---|---|
+| B_s8_L1L3_bd_d200 | +2.30 | 0.042 / 0.11 | -0.73 → -0.70 | -1.00 → -0.94 | +1.97 → -0.33 | +2.29 → +0.02 |
+| B_s8_L1L3_bd_d300 | +1.13 | 0.057 / 0.21 | -0.74 → -0.75 | -1.19 → -1.14 | +0.76 → -0.37 | +1.02 → -0.07 |
+| B_s8_L1L3_stub_d200 | +2.34 | 0.204 / 1.23 | -1.12 → -1.26 | -11.45 → -11.26 | +2.08 → -0.26 | +2.11 → -0.03 |
+| B_s8_L1L3_stub_d300 | +1.13 | 0.281 / 2.28 | -1.48 → -1.62 | -14.17 → -13.44 | +0.86 → -0.27 | +1.02 → -0.01 |
+| B_ts6_L1L3_stub | -0.05 | 0.414 / 3.06 | -0.83 → -0.80 | -4.12 → -3.89 | -0.22 → -0.17 | +0.11 → +0.04 |
+| B_ts6_L1L6 | +1.81 | 0.043 / 0.12 | -0.57 → -0.54 | -0.63 → -0.61 | +1.34 → -0.47 | +1.76 → -0.03 |
+| D_s8_cap_10 | +1.11 | 0.054 / 0.15 | -0.88 → -0.89 | -1.69 → -1.65 | -0.34 → -1.45 (base mesh) | +1.00 → -0.07 |
+| D_s8_cap_2 | +1.11 | 0.053 / 0.16 | -0.89 → -0.89 | -1.70 → -1.65 | -0.34 → -1.45 (base mesh) | +1.02 → -0.05 |
+| D_s8_cap_none | +1.11 | 0.054 / 0.16 | -0.89 → -0.90 | -1.69 → -1.65 | +0.83 → -0.28 | +1.02 → -0.05 |
+| E_s8_L1L3_p1000_oval_g2 | +1.11 | 0.117 / 0.40 | -1.31 → -1.41 | -8.91 → -8.83 | +0.91 → -0.19 | +1.07 → +0.06 |
+| E_s8_L1L3_p1000_round_g2 | +1.12 | 0.111 / 0.44 | -1.65 → -1.78 | -9.01 → -8.96 | +0.91 → -0.21 | +1.00 → +0.00 |
+| E_s8_L1L3_p1200_round_g2 | +1.13 | 0.114 / 0.42 | -1.67 → -1.80 | -9.51 → -9.43 | +0.90 → -0.22 | +1.00 → -0.00 |
+| E_s8_L1L3_p800_round_g2 | +1.11 | 0.110 / 0.43 | -1.62 → -1.75 | -8.75 → -8.74 | +0.88 → -0.22 | +1.01 → +0.04 |
+| RG_ts6_sw_gnd | +1.83 | 0.072 / 0.40 | -0.60 → -0.51 | -0.53 → -0.63 | +1.22 → -0.62 | +1.82 → +0.00 |
+| RG_ts6_sw_pwr | +1.86 | 0.076 / 0.30 | -0.63 → -0.51 | -0.67 → -0.57 | +1.36 → -0.51 | +1.81 → -0.05 |
+| X_s8x2_L1L3_bd_d200 | +0.04 | 0.012 / 0.07 | -0.61 → -0.62 | -0.75 → -0.75 | -0.51 → -0.55 | +0.24 → +0.21 |
+| X_s8x4_L1L3_bd_d200 | +0.13 | 0.019 / 0.10 | -0.63 → -0.64 | -0.78 → -0.77 | -0.24 → -0.37 | +0.08 → -0.04 |
+
+S31 for the pairs. CST: its finest mesh on `feat/cst-refs` (extra-fine on B_s8_L1L3_bd_d200, base on D_s8_cap_10),
+delay from the raw S21 phase between 5 and 20 GHz (`CST.md` fits the de-embedded phase, Sdd for the pairs, so its
+numbers differ from these by up to 0.4 ps). D_s8_cap_2 / _10 are judged against openEMS on its base mesh (its refined runs are unstable, section 16),
+where staircase metal makes the via slow.
+- **Against CST 16 of the 17 cases now agree within ±0.07 ps** (before +1.0 … +2.3 ps on 14 of them), and |S21| to
+  20 GHz within the same 0.02–0.5 dB as before (stub flanks). X_s8x2 stays at +0.21 ps raw: its wide microstrip feed
+  (thru_s8x2_L1: CST 0.26 ps faster, `CST.md`), unchanged by the refinement; de-embedded `CST.md` has −0.07 ps.
+  CST is FIT with conformal (PBA) metal on its own mesher, so this is the closest independent check of the conformal
+  result.
+- **Against openEMS fine** the exits are now −0.19 … −0.62 ps (before +0.76 … +2.08 ps): the same sign and size as
+  the through vias (−0.4 … −0.6 ps), i.e. openEMS' remaining staircase error (section 16). Group medians of
+  `results/openems_refs.json`: B Δτ +0.81 → −0.35 ps, RG +0.41 → −0.48 ps, D and E unchanged (−0.47 / −0.45 ps).
+- The former references are kept as `kisi_base.sNp` next to the new ones (the reference page draws them dashed);
+  `meta.json` holds both runs and `mesh_convergence`. `openems_refs.py compare` uses them for the convergence rows
+  (`kisi_base_vs_kisi_fine`, `kisi_base_vs_openems`) and for the staircase-against-conformal row on the base mesh.
+
+### What moved with the references
+- `kisi_deembedded.s2p` of the single vias and `results/via_pbm.json` (`via_pbm.py`), `results/openems_refs.json`,
+  `results/board_returns.json` and its three RG_ts6 plots (`board_returns.py compare`), `results/kisi_models.json`
+  (`tools/golden.py vias --update`; kisi's model output `kisi_model.sNp` is unchanged).
+- **Return groups on the ThunderScope stack** (`BOARD_RETURNS.md` 5.2, section 11): the ladders against 3D improve
+  below 12 GHz (RG_ts6_sw_pwr default 0.10 → 0.05 dB max) and stay within 0.15–0.26 dB at 12–20 GHz; the 3D effect of
+  the floating supply plane (PWR − GND) shrinks from 0.06 / 0.14 dB to −0.01 / +0.05 dB at 16 / 20 GHz, so the
+  return-group ladder's −0.07 / −0.13 dB there is now an overestimate. It is the difference of two 3D runs and at the
+  level of their mesh error above 16 GHz.
+- **kisi's channel model, via alone** (`kisi_models.json`, 29 single vias / 12 pairs):
+
+| | before | after |
+|---|---|---|
+| single vias: TDR error median / p90 | 2.46 / 5.92 % | 2.46 / 5.64 % |
+| single vias: max / mean Δ\|S21\| median | 0.168 / 0.096 dB | 0.168 / 0.086 dB |
+| pairs: Zdiff error median / p90 | 12.57 / 14.43 % | 10.89 / 13.71 % |
+| pairs: max ΔSdd21 median / phase median | 0.161 dB / 1.8° | 0.161 dB / 1.8° |
+| stub notch B_s8_L1L3_stub_d200 / _d300 | +1.4 / −0.5 % | +0.9 / −1.4 % |
+
+  Per case the L1→L3 single vias swap their errors: the 3D via is less capacitive on the refined mesh (TDR minimum
+  B_s8_L1L3_bd_d200 41.5 → 44.0 Ω), so kisi's minimum error grows (0.7 → 4.9 %, d300 2.0 → 5.7 %) and its maximum
+  error shrinks (1.8 → 0.5 %); B_ts6_L1L6 improves (4.4 / 3.8 → 0.9 / 1.8 %), the L1→L3 pairs improve
+  (Zdiff 7–11 / 14–15 → 4–8 / 11 %).
+- `data/accuracy.json` quotes 2.45 / 5.92 % and 12.6 / 14.4 %; with the new references they would be 2.46 / 5.64 %
+  and 10.9 / 13.7 %. Not changed here (a separate decision, with the junction fit below).
+- **Not regenerated:** `results/rust_models.json` and `via_ref/<case>/ladder.s2p` are older than the current ladder
+  (last written with section 7; the return posts, the causal pair models and the coplanar pours changed it since,
+  up to 0.047 in |S| on A_s4_d200_ap1000); regenerating them would mix that into this change. The fit below uses the
+  ladder as the current code computes it. `results/kisi_models_field.json` and `kisi_models_coax.json` are records
+  of earlier model versions and stay as they are.
+
+### The junction fit (`junction_fit.py`, `results/junction_fit.json`)
+The junction model has two fitted choices: the series inductance k · μ0/(2π) · pad radius (k = 1) and the stripline
+feed kept up to the via centre (no feed removed). The script varies both on kisi's ladder (series ΔL and a matched
+line of −cut at each port, εeff of the layer) and scores against the de-embedded references (41 vias: 29 single,
+12 pairs; Δτ from the phase 5–20 GHz):
+
+| | former references | refined references |
+|---|---|---|
+| single vias: TDR error median / p90 (k = 1) | 1.09 / 4.28 % | 1.20 / 4.28 % |
+| \|Δτ\| median, single vias | 0.18 ps | 0.18 ps |
+| Δτ median, vias with a microstrip feed only | −0.05 ps | −0.05 ps |
+| Δτ median, stripline exits (10 single vias) / L1→L3 pairs | +0.25 / +0.30 ps | +1.26 / +1.30 ps |
+| best common k (\|Δτ\| of all single vias) | 1.0 | 1.0 |
+| stripline feed removed, with k = 1: best cut | 0 (+0.25 / +0.30 ps) | 0.2 mm (−0.07 / −0.03 ps) |
+
+- **The junction inductance stays as fitted:** k = 1 is still the best common coefficient (k 0.9 / 1.1: \|Δτ\| 0.23 /
+  0.24 ps against 0.18 ps); the microstrip-only vias did not move.
+- **The stripline handling no longer fits:** with the refined references the ladder is 1.26 ps slow (median) on the
+  stripline exits (B L1→L3 0.76–1.56 ps, pairs 0.90–1.35 ps; B_ts6_L1L3_stub 1.34 and X_s8x4 1.23 ps, which were
+  already 1.27 / 1.11 ps slow against the former references). Section 7 kept the
+  stripline feed up to the via centre because removing it "missed ~3 ps on L1→L3" – against references that were
+  1.1–2.3 ps slow. Removing about 0.2 mm of the stripline feed (0.65–0.8 × the pad radius; 0.75 × pad radius:
+  −0.10 / −0.20 ps) brings the stripline exits to −0.07 ps (pairs −0.03 ps) and leaves the other vias unchanged.
+- **Proposed model change (not made here):** in `via_pbm.rs`, for a stripline feed with the junction model, set
+  `feed_cut = (fd.zc, fd.eeff, (fd.dropped − 0.75 · pad_r) · 1e-3)` instead of `fd.dropped · 1e-3` (the feed removed
+  up to three quarters of the pad radius), keep the junction inductance. To be checked in the model itself (the
+  script treats the removed piece as a matched line, so it cannot show the TDR effect: the ladder's TDR minimum on
+  the L1→L3 exits is now 3.6–8.4 % too low, which a shorter stripline would also reduce), then `golden.py vias --update`
+  and `data/accuracy.json`.
+

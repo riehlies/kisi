@@ -141,7 +141,7 @@ const GROUPS = {
   X: ["Inner exit, one plane removed", "L1→L3 as in B, without the L2 or the L4 plane: separates the junction of trace and via from the shared-cavity effect (calibration of the junction model)."],
   thru: ["2×thru", "Feed lines alone (twice the feed length): the fixtures for de-embedding."],
 };
-const TOOLS = { kisi: ["kisi-fdtd", "var(--s1)", ""], kisi_fine: ["kisi-fdtd, finer mesh", "var(--s1)", "dash"], openems: ["openEMS (staircase, cell at metal halved)", "var(--s2)", ""], openems_base: ["openEMS (staircase, kisi-fdtd's mesh)", "var(--s2)", "dash"],
+const TOOLS = { kisi: ["kisi-fdtd", "var(--s1)", ""], kisi_fine: ["kisi-fdtd, finer mesh", "var(--s1)", "dash"], kisi_base: ["kisi-fdtd, base mesh (former reference)", "var(--s1)", "dash"], openems: ["openEMS (staircase, cell at metal halved)", "var(--s2)", ""], openems_base: ["openEMS (staircase, kisi-fdtd's mesh)", "var(--s2)", "dash"],
   openems_de: ["openEMS, de-embedded (its own 2×thru)", "var(--s2)", ""], cst: ["CST", "var(--s4)", ""], cst_de: ["CST, de-embedded (its own 2×thru)", "var(--s4)", "dash"],
   kisi_model: ["kisi channel model (fast)", "var(--s3)", "dash"], deembedded: ["kisi-fdtd, de-embedded", "var(--s4)", ""], pbm: ["via ladder, Python prototype", "var(--s2)", "dash"], ladder: ["via ladder in kisi (Rust)", "var(--s3)", ""],
   model: ["cavity model", "var(--s2)", "dash"] };
@@ -437,7 +437,7 @@ function chipList(c) {
   const out = [], m = c.meta, run = c.run;
   out.push(`<span class="chip">${esc(m.stackup_title)}</span>`);
   for (const [k, v] of Object.entries(m.params || {})) out.push(`<span class="chip">${esc(k.replace(/_mm$/, " (mm)").replace(/_/g, " "))} <b>${esc(v ?? "none")}</b></span>`);
-  if (run && run.runs && run.runs.kisi) { const k = run.runs.kisi; out.push(`<span class="chip">${Math.round(k.cells / 1000)} k cells · ${k.steps.join(" / ")} steps · ${k.seconds} s</span>`); }
+  if (run && run.runs && run.runs.kisi) { const k = run.runs.kisi; out.push(`<span class="chip">${Math.round(k.cells / 1000)} k cells · ${k.steps.join(" / ")} steps · ${k.seconds} s</span>`); if (k.refine) out.push(`<span class="chip">refined mesh: cell at metal ${k.dfine} mm (÷ ${k.refine}; former reference dashed, TESTS.md section 17)</span>`); }
   if (c.agree) out.push(`<span class="chip ${c.agree.ok ? "ok" : "warn"}" title="${esc(c.agree.title)}">${esc(c.agree.text)}</span>`);
   if (run && run.convergence) { const cv = run.convergence, ok = cv.max_dS_through_db < 0.1 && cv["max_dS_refl_db_above_-20"] < 2; out.push(`<span class="chip ${ok ? "ok" : "warn"}">finer mesh: ΔS through ${cv.max_dS_through_db} dB, ΔS refl. ${cv["max_dS_refl_db_above_-20"]} dB</span>`); }
   return out.join("");
@@ -465,7 +465,7 @@ function renderCase(c) {
   bar.querySelectorAll("button[data-m]").forEach((b) => b.onclick = () => { mode = b.dataset.m; renderCase(c); });
   box.appendChild(bar);
   const f = c.f, grid = document.createElement("div"); grid.className = "grid";
-  const tools = mode === "de" && hasDe ? ["deembedded", "openems_de", "cst_de", "ladder", "pbm"].filter((t) => c.res[t]) : ["kisi", "kisi_fine", "openems", "openems_base", "cst", "kisi_model", "model"].filter((t) => c.res[t]);
+  const tools = mode === "de" && hasDe ? ["deembedded", "openems_de", "cst_de", "ladder", "pbm"].filter((t) => c.res[t]) : ["kisi", "kisi_fine", "kisi_base", "openems", "openems_base", "cst", "kisi_model", "model"].filter((t) => c.res[t]);
   const ser = (key, extra = {}) => tools.filter((t) => c.res[t][key]).map((t) => ({ name: TOOLS[t][0], y: c.res[t][key], color: TOOLS[t][1], dash: TOOLS[t][2] === "dash", ...extra }));
   const legend = lg(tools.map((t) => TOOLS[t]));
   if (c.res.kisi.Z11) {

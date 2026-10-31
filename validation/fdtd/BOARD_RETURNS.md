@@ -45,8 +45,8 @@ case: `kisi-validate cavity-model <case.json> <out> --returns`.
   12 GHz within 2.1 % in frequency and 0.44 dB in depth, and the recovery above 15 GHz (the GND vias'
   capacitance to the PWR plane) – 3.17/0.85 dB at 12–20 GHz against 6.65/1.69. The capacitor case
   likewise (9.02/2.10 → 6.45/1.42 → 2.94/0.77 dB). Where the GND vias bridge the supply plane, the
-  floating plane costs 0.06/0.14 dB at 16/20 GHz in 3D (ThunderScope stack) and the ladder with
-  return groups gives 0.07/0.13 dB. On REFINOUT2 (board via) it gives 0.07/0.15/0.28 dB at
+  floating plane costs ≤ 0.09 dB up to 20 GHz in 3D (ThunderScope stack; 0.06/0.14 dB at 16/20 GHz on
+  the former 0.07 mm mesh) and the ladder with return groups gives 0.07/0.13 dB. On REFINOUT2 (board via) it gives 0.07/0.15/0.28 dB at
   12/16/20 GHz where 3D has 0.05/0.10/0.19 dB: right sign, 1.3–1.6× too large, and since the ladder
   is already too lossy there (Block 2), its absolute error grows (12–20 GHz max 0.38 → 0.66 dB). For
   the differential M.2 pair In2 makes no difference in 3D (≤ 0.002 dB to 20 GHz) nor in the ladder
@@ -188,8 +188,8 @@ vias on a 1 mm ring. De-embedded with the matched 2×thru (`sparam.deembed_match
 | `RG_s4_pwr_n4` | s4 stack (L1 / GND L2 / 1.2 mm core / PWR L3 / L4), via L1 → L4, the L4 trace on the PWR plane; GND vias joined to L2 only (Ø0.7 openings in L3) | 0.81 M | 348 s |
 | `RG_s4_pwr_n4_cap2` | the same with a capacitor (100 nF, 10 mΩ, 0.6 nH) between L2 and L3 2 mm away | 0.81 M | 411 s |
 | `R_s4_rect_n4` (Block 3) | the GND/GND reference: the same GND vias join L2 and L3 | 0.68 M | 77 s |
-| `RG_ts6_sw_pwr` | ThunderScope stack with planes In1 GND, In2 PWR, In4 GND; via F → In3 with the stub to B (drill Ø0.203); GND vias joined to In1 and In4, Ø0.6 openings in In2 | 0.78 M | 227 s |
-| `RG_ts6_sw_gnd` | the same with In2 GND, joined to the GND vias | 0.68 M | 201 s |
+| `RG_ts6_sw_pwr` | ThunderScope stack with planes In1 GND, In2 PWR, In4 GND; via F → In3 with the stub to B (drill Ø0.203); GND vias joined to In1 and In4, Ø0.6 openings in In2; cell at metal 0.035 mm (`TESTS.md` section 17; 0.07 mm before: 0.78 M, 227 s) | 1.65 M | 592 s |
+| `RG_ts6_sw_gnd` | the same with In2 GND, joined to the GND vias (0.035 mm; before 0.68 M, 201 s) | 1.35 M | 353 s |
 | `thru_RG_ts6p_L1/L4` | 2×thru of both ts6 feeds (the s4 cases use `thru_R_s4_L1/L4`) | 0.14 M | 3 s |
 | `BV_ts_refinout2`, `…_in2gnd` (Block 2) | ThunderScope through via F.Cu → B.Cu, In2 as it is (+VUSB) and as a solid GND plane | 1.19 M | 1125 s |
 | `BV_ts_m2_per0_q050f25s_e35` (Block 2, quick mesh) | ThunderScope M.2 pair via F.Cu → In3, In2 +VUSB / +1V2_MGT | 0.52 M | 213 s |
@@ -251,25 +251,27 @@ before and with return groups.
 
 | | 6 GHz | 12 GHz | 16 GHz | 20 GHz | max 12–20 GHz | max 20–25 GHz |
 |---|---|---|---|---|---|---|
-| 3D | +0.004 | −0.007 | −0.055 | −0.138 | 0.15 | 0.32 |
+| 3D | −0.003 | −0.003 | −0.007 | +0.046 | 0.09 | 0.35 |
 | return groups, infinite plates (minus the ladder before, = GND case) | −0.005 | −0.029 | −0.067 | −0.131 | 0.13 | 0.28 |
 | return groups, cavities | −0.006 | −0.013 | −0.147 | −0.144 | 0.17 | 0.62 |
 
 | case | model | 0.5–12 GHz | 12–20 GHz | 20–25 GHz |
 |---|---|---|---|---|
-| `RG_ts6_sw_pwr` | before return groups, infinite plates (default) | 0.10 / 0.04 | 0.26 / 0.09 | 0.20 / 0.10 |
-| | return groups, infinite plates | 0.07 / 0.03 | 0.19 / 0.07 | 0.39 / 0.25 |
-| | return groups, cavities | 0.11 / 0.03 | 0.18 / 0.08 | 0.54 / 0.28 |
-| `RG_ts6_sw_gnd` | before = with return groups, infinite plates | 0.09 / 0.03 | 0.20 / 0.08 | 0.29 / 0.15 |
+| `RG_ts6_sw_pwr` | before return groups, infinite plates (default) | 0.05 / 0.03 | 0.20 / 0.08 | 0.20 / 0.11 |
+| | return groups, infinite plates | 0.06 / 0.03 | 0.26 / 0.12 | 0.45 / 0.30 |
+| | return groups, cavities | 0.09 / 0.03 | 0.25 / 0.13 | 0.76 / 0.34 |
+| `RG_ts6_sw_gnd` | before = with return groups, infinite plates | 0.04 / 0.03 | 0.15 / 0.08 | 0.38 / 0.19 |
 
 ![ThunderScope stack, In2 PWR against GND](results/board_returns/RG_ts6_sw_pwr_vs_gnd.png)
 
 * A floating supply plane between two GND planes the return vias join costs little: in 3D
-  ≤ 0.05 dB below 12 GHz, 0.14 dB at 20 GHz. The return ladders give the same (infinite plates within
-  0.02 dB up to 20 GHz). The finite board's own resonances of the PWR plane (In2 against both GND
+  ≤ 0.02 dB below 12 GHz and ≤ 0.09 dB up to 20 GHz (references on the 0.035 mm mesh, `TESTS.md`
+  section 17; on the former 0.07 mm mesh 0.05 / 0.14 dB – the effect is at the level of the mesh
+  error above 16 GHz). The return ladders give −0.13 dB at 20 GHz where 3D has +0.05 dB: within
+  0.03 dB below 12 GHz, 0.18 dB at 12–20 GHz (against the former references: 0.02 dB up to 20 GHz). The finite board's own resonances of the PWR plane (In2 against both GND
   planes, no capacitors) hardly show in 3D: the via excites that field only through the difference of
   its current moments in the two pairs (here ~1 % of the common one).
-* The cavity form overshoots at 16 GHz (−0.15 against −0.06 dB) and above 20 GHz; on the board the
+* The cavity form overshoots at 16 GHz (−0.15 against −0.01 dB) and above 20 GHz; on the board the
   bridged pairs stay infinite plates (section 3.5).
 
 ### 5.3 ThunderScope board vias (In2 as it is and grounded in 3D)

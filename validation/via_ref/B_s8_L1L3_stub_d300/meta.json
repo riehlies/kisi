@@ -40,13 +40,26 @@
     "ref": "L4"
    }
   ],
-  "lumped": []
+  "lumped": [],
+  "ref_refine": 2
  },
- "date": "2026-10-21",
+ "date": "2026-10-31",
  "fmax": 40000000000.0,
  "tool": "kisi-fdtd (conformal metal, CPML)",
  "runs": {
   "kisi": {
+   "cells": 1314180,
+   "steps": [
+    9201,
+    9201
+   ],
+   "dt": 3.037024706517499e-14,
+   "seconds": 286.5,
+   "dfine": 0.0175,
+   "dmax": null,
+   "refine": 2.0
+  },
+  "kisi_base": {
    "cells": 637065,
    "steps": [
     5801,
@@ -55,7 +68,9 @@
    "dt": 5.2736761944384095e-14,
    "seconds": 237.1,
    "dfine": 0.035,
-   "dmax": null
+   "dmax": null,
+   "date": "2026-10-21",
+   "file": "kisi_base.s2p"
   },
   "openems_base": {
    "tool": "openEMS 0.37.0 (staircase, PML_8)",
@@ -104,6 +119,43 @@
     53.4
    ],
    "date": "2026-10-31"
+  }
+ },
+ "mesh_convergence": {
+  "note": "kisi-fdtd mesh convergence (TESTS.md section 17): the former reference on the base mesh against this one (cell at metal \u00f7 2), and this one against the cell at metal \u00f7 4 (extra-fine, not stored)",
+  "base_vs_fine": {
+   "dS_thru_mean_db": 0.281,
+   "dS_thru_max_db": 2.281,
+   "dS11_mean_db": 0.61,
+   "dS11_max_db": 1.84,
+   "dphase_fmax_deg": -17.87,
+   "dtau_ps": 1.13
+  },
+  "fine_vs_xfine": {
+   "dS_thru_mean_db": 0.126,
+   "dS_thru_max_db": 0.89,
+   "dS11_mean_db": 0.41,
+   "dS11_max_db": 2.72,
+   "dphase_fmax_deg": -1.25,
+   "dtau_ps": 0.03
+  },
+  "fine_vs_xfine_20GHz": {
+   "dS_thru_mean_db": 0.054,
+   "dS_thru_max_db": 0.295,
+   "dS11_mean_db": 0.12,
+   "dS11_max_db": 0.27,
+   "dphase_fmax_deg": 0.07,
+   "dtau_ps": 0.07
+  },
+  "xfine_run": {
+   "cells": 2900370,
+   "steps": [
+    18601,
+    17601
+   ],
+   "seconds": 1435.2,
+   "dfine": 0.00875,
+   "refine": 4.0
   }
  }
 }

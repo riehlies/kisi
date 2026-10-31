@@ -38,6 +38,14 @@ STACKUPS = {
             "planes": [1, 4]},
 }
 C0 = 299792458.0
+# References computed with the cell at metal halved (run_refs.py reads meta.ref_refine; TESTS.md section 17): every
+# transition that ends on an inner layer, and the ThunderScope through via. At dfine 0.035 mm kisi-fdtd's delay was
+# 1.1–2.3 ps slow on the L1→L3 exits between the L2 and L4 planes and on B_ts6_L1L6; halved, they agree with openEMS
+# and CST (the other inner exits moved by ≤ 0.13 ps and are refined for one rule).
+REF_REFINE = {"B_s8_L1L3_bd_d200", "B_s8_L1L3_bd_d300", "B_s8_L1L3_stub_d200", "B_s8_L1L3_stub_d300", "B_ts6_L1L3_stub",
+              "B_ts6_L1L6", "D_s8_cap_none", "D_s8_cap_2", "D_s8_cap_10", "E_s8_L1L3_p800_round_g2",
+              "E_s8_L1L3_p1000_round_g2", "E_s8_L1L3_p1200_round_g2", "E_s8_L1L3_p1000_oval_g2", "X_s8x2_L1L3_bd_d200",
+              "X_s8x4_L1L3_bd_d200"}
 AIR = 1.0      # air above and below the board (mm), PML outside
 FEED = 4.0     # trace length from the via to the port (mm)
 GND_VIA_CELL = 0.1  # local cell at GND stitching vias (mm)
@@ -535,6 +543,9 @@ def cases(groups, fmax, dfine):
         out.append(pad_section("P_ts6_finger_diff", "gold-finger pair 0.7 × 2.1 mm, pitch 1 mm, between GND fingers (gap 0.3 mm), every plane cut back",
                                {"finger_mm": "0.7 × 2.1", "pitch_mm": 1.0, "gnd_gap_mm": 0.3, "cut": "L2, L5"}, "ts6", 2.1, 0.7, fmax, dfine,
                                cut=(1, 4), gnd_fingers=0.3, diff=(0.81, 1.0), half_y=3.5))
+    for c in out:
+        if c["name"] in REF_REFINE:
+            c["meta"]["ref_refine"] = 2
     # 2×thru companions of every feed layer used
     feeds = {}
     for c in out:

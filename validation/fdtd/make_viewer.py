@@ -288,7 +288,7 @@ def main():
             grp = c["meta"]["group"]
             z0 = c["ports"][0].get("r", 50.0)
             res = {"kisi": curves(S, grp, f, z0)}
-            for tool in ("kisi_fine", "openems", "openems_base", "cst", "kisi_model", "pbm", "ladder", "model"):
+            for tool in ("kisi_fine", "kisi_base", "openems", "openems_base", "cst", "kisi_model", "pbm", "ladder", "model"):
                 f2, S2 = load(nm, tool)
                 if S2 is None or (S2.shape[1] != S.shape[1] and tool not in ("pbm", "ladder")):
                     continue

@@ -50,13 +50,26 @@
     "ref": "L4"
    }
   ],
-  "lumped": []
+  "lumped": [],
+  "ref_refine": 2
  },
- "date": "2026-10-21",
+ "date": "2026-10-31",
  "fmax": 40000000000.0,
  "tool": "kisi-fdtd (conformal metal, CPML)",
  "runs": {
   "kisi": {
+   "cells": 1729728,
+   "steps": [
+    9401,
+    9601
+   ],
+   "dt": 3.037024706517493e-14,
+   "seconds": 607.0,
+   "dfine": 0.0175,
+   "dmax": null,
+   "refine": 2.0
+  },
+  "kisi_base": {
    "cells": 768105,
    "steps": [
     5801,
@@ -65,7 +78,9 @@
    "dt": 5.273676194438407e-14,
    "seconds": 280.5,
    "dfine": 0.035,
-   "dmax": null
+   "dmax": null,
+   "date": "2026-10-21",
+   "file": "kisi_base.s4p"
   },
   "openems_base": {
    "tool": "openEMS 0.37.0 (staircase, PML_8)",
@@ -114,6 +129,19 @@
     97.0
    ],
    "date": "2026-10-31"
+  }
+ },
+ "mesh_convergence": {
+  "note": "kisi-fdtd mesh convergence (TESTS.md section 17): the former reference on the base mesh against this one (cell at metal \u00f7 2)",
+  "base_vs_fine": {
+   "dS_thru_mean_db": 0.111,
+   "dS_thru_max_db": 0.436,
+   "dS11_mean_db": 0.59,
+   "dS11_max_db": 6.83,
+   "dphase_fmax_deg": -16.29,
+   "dtau_ps": 1.12,
+   "dSdd21_mean_db": 0.254,
+   "dSdd21_max_db": 2.033
   }
  }
 }

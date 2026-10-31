@@ -44,6 +44,7 @@ The full test log, with the numbers, is in **`TESTS.md`**. In brief:
 | CPML on a matched microstrip | `check_pml.py` | converged at 8 cells; openEMS PML_8 reflects 8–14 dB more above 10 GHz |
 | kisi-fdtd (staircase) against openEMS on the same mesh, one case each of A, B, D, E | `openems_compare.py` | Δ\|S21\| mean 0.011–0.028 dB |
 | Every reference case (106) in openEMS: on kisi-fdtd's mesh (both staircase) and with the cell at metal halved | `openems_refs.py` | same mesh: Δ\|S21\| median 0.018 dB, \|Δτ\| 0.04 ps; references against openEMS refined: median 0.06 dB; outliers and their causes in `TESTS.md` section 16 |
+| Inner-layer exits on a finer mesh (17 references recomputed with the cell at metal halved) | `run_refs.py`, `openems_refs.py` | base → fine 1.1–2.3 ps faster on 14 of them; afterwards kisi-fdtd − CST within ±0.07 ps; `TESTS.md` section 17 |
 | Lumped R–L–C | unit test `lumped_rlc` | series resonance within 2 % of the circuit |
 | kisi's fast channel model on every case (mini KiCad boards) | `kisi_board.py`, `compare_kisi.py` | via ~15 % low, stub notch +17 %; a return-path bug found and fixed |
 | Reduced via model (prototype) | `via_pbm.py` | phase ±5°, \|S21\| ±0.15 dB, TDR ±2–5 %, stub notch ±1–6 % up to 20 GHz |
@@ -64,9 +65,12 @@ and the lumped R–L–C.
   - **H** PDN loop: BGA pin field to a 0402 capacitor at 2–20 mm.
   - Plus a 2×thru per feed layer.
 - `run_refs.py` runs them and writes `via_ref/<case>/`:
-  - `kisi.sNp`: conformal, base mesh.
+  - `kisi.sNp`: conformal, the case's mesh: dfine, or the cell at metal halved where the case's `meta.ref_refine` asks
+    for it (every transition that ends on an inner layer, the ThunderScope through via, the RG_ts6 cases:
+    `TESTS.md` section 17); `--refine F` overrides it for a convergence study.
+  - `kisi_base.sNp` (the cases of section 17): the former reference on the base mesh, kept for the comparison.
   - `kisi_fine.sNp` with `--fine`: refined mesh for the convergence check.
-  - `meta.json`: cells, steps, run time and convergence.
+  - `meta.json`: cells, steps, run time and convergence (`mesh_convergence`: base → fine, fine → extra-fine).
 - `openems_refs.py` computes every case in openEMS and compares (`TESTS.md` section 16):
   - `openems_base.sNp`: openEMS (staircase) on the mesh of the kisi-fdtd run, `openems.sNp`: with the cell at metal
     halved; their run info (cells, time per excited port, cell rate, runner) in `meta.json`.
@@ -86,6 +90,8 @@ and the lumped R–L–C.
   and the 3D results, with run times → `results/rust_models.json`; kisi's ladder per case → `via_ref/<case>/ladder.s2p`.
   `kisi-validate via-geom geom.json [--s2p f.s2p]` evaluates one via geometry (the JSON that `KISI_DEBUG_VIA=1`
   prints from `kisi` or `kisi-validate models`).
+- `junction_fit.py` re-checks the two fitted choices of the ladder's junction model (`TESTS.md` sections 7 and 17)
+  against the de-embedded references, on the ladder as `rust_models.py --out DIR` computes it.
 - `compare_kisi.py` runs kisi's channel model on every case (`KISI_VIA_MODEL=coax` for the former via model) and
   compares the via alone de-embedded → `results/kisi_models.json`.
 - `practice.py` measures run time, memory and bundle size on the example boards → `results/practice.json`.

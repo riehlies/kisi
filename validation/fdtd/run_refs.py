@@ -1,6 +1,7 @@
 """Run the via reference cases (via_cases.py) and store the results per case:
 
-  <out>/<case>/kisi.sNp        kisi-fdtd, conformal metal, base mesh
+  <out>/<case>/kisi.sNp        kisi-fdtd, conformal metal, the case's mesh (the cell at metal ÷ meta.ref_refine
+                               where the case asks for it: TESTS.md section 17)
   <out>/<case>/kisi_fine.sNp   kisi-fdtd on a mesh refined by --fine (convergence check)
   <out>/<case>/openems.sNp     openEMS (staircase), if --openems
   <out>/<case>/meta.json       case meta, cells, steps, run times, convergence, versions, date
@@ -8,8 +9,11 @@
 Symmetric structures are excited on half of their ports (2×thru: port 1; pairs: ports 1 and 3)
 and the other columns are mirrored.
 
-usage: python3 run_refs.py cases_dir out_dir [--only SUBSTR] [--fine 1.4] [--openems base|fine]
+usage: python3 run_refs.py cases_dir out_dir [--only SUBSTR] [--refine 2] [--fine 1.4] [--openems base|fine]
                            [--jobs 2] [--exe kisi-fdtd]
+
+--refine F computes kisi.sNp with the cell at metal ÷ F instead of the case's own choice (meta.ref_refine,
+default 1): the mesh-convergence study of section 17.
 """
 import argparse, concurrent.futures as cf, datetime, glob, json, os, subprocess, sys, tempfile, time
 import numpy as np
@@ -41,6 +45,24 @@ def refined(case, factor):
     dmax = c["mesh"].get("dmax") or C0 / c["fmax"] / er ** 0.5 / 20 * 1e3
     c["mesh"]["dfine"] = round(c["mesh"]["dfine"] / factor, 4)
     c["mesh"]["dmax"] = round(dmax / factor, 4)
+    return c
+
+
+def metal_refined(case, factor, digits=5):
+    """the case with the cells at metal ÷ factor: dfine, the GND vias' own cell (dmesh) and the refinement
+    boxes; the largest cell (λ/20 at fmax) is kept and max_steps grows with the shorter time step. With
+    factor 2 this is openems_refs.py's "fine" mesh."""
+    c = json.loads(json.dumps(case))
+    if factor == 1:
+        return c
+    m = c["mesh"]
+    m["dfine"] = round(m["dfine"] / factor, digits)
+    for v in c.get("vias", []):
+        if v.get("dmesh"):
+            v["dmesh"] = round(v["dmesh"] / factor, digits)
+    if m.get("refine"):
+        m["refine"] = [r[:4] + [round(r[4] / factor, digits)] for r in m["refine"]]
+    c["max_steps"] = int(c.get("max_steps", 400000) * factor)
     return c
 
 
@@ -100,6 +122,8 @@ def run_kisi(exe, case, tmp, tag):
     run_kisi.fields = field_raster(case, r) if tag == "base" else None
     info = {"cells": r["cells"], "steps": [x["steps"] for x in r["runs"]], "dt": r["runs"][0]["dt"], "seconds": round(time.time() - t0, 1),
             "dfine": case["mesh"]["dfine"], "dmax": case["mesh"].get("dmax")}
+    if case.get("_refine", 1) != 1:
+        info["refine"] = case["_refine"]
     return f, S, info
 
 
@@ -151,8 +175,11 @@ def one(path, out, a):
             "tool": "kisi-fdtd (conformal metal, CPML)", "runs": {}}
     hdr = [f"{name}: {case['meta']['title']}", f"stackup: {case['meta']['stackup_title']}", "ports: " + ", ".join(p["name"] for p in case["meta"]["ports"])]
     z0 = case["ports"][0].get("r", 50.0)
-    f, S, info = run_kisi(a.exe, case, tmp, "base")
-    sparam.write_touchstone(os.path.join(d, f"kisi.s{n}p"), f, S, hdr + [f"kisi-fdtd, conformal, dfine {info['dfine']} mm, {info['cells']} cells"], z0)
+    k = getattr(a, "refine", 0) or case["meta"].get("ref_refine", 1)
+    kc = dict(metal_refined(case, k), _refine=k)
+    f, S, info = run_kisi(a.exe, kc, tmp, "base")
+    mesh = f"dfine {info['dfine']} mm" + (f" (the cell at metal ÷ {k:g})" if k != 1 else "")
+    sparam.write_touchstone(os.path.join(d, f"kisi.s{n}p"), f, S, hdr + [f"kisi-fdtd, conformal, {mesh}, {info['cells']} cells"], z0)
     meta["runs"]["kisi"] = info
     if run_kisi.fields:
         json.dump(run_kisi.fields, open(os.path.join(d, "fields.json"), "w"), separators=(",", ":"))
@@ -176,6 +203,7 @@ def main():
     ap.add_argument("cases")
     ap.add_argument("out")
     ap.add_argument("--only", default="")
+    ap.add_argument("--refine", type=float, default=0.0, help="cell at metal ÷ this for kisi.sNp (default: the case's meta.ref_refine or 1)")
     ap.add_argument("--fine", type=float, default=0.0)
     ap.add_argument("--openems", choices=["base", "fine"], default=None)
     ap.add_argument("--jobs", type=int, default=2)

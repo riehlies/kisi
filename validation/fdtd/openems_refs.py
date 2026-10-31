@@ -37,7 +37,7 @@ TCAP = {"BV_ts_m2_per0": 1.2, "BV_vna_rf_hblb1": 1.2, "BV_ts_m2_per0_q050f25s_e3
 C0 = 299792458.0
 sys.path.insert(0, HERE)
 import sparam  # noqa: E402
-from run_refs import excitation  # noqa: E402
+from run_refs import excitation, metal_refined  # noqa: E402
 
 
 # --- cases and meshes ------------------------------------------------------------------------
@@ -54,17 +54,8 @@ def all_cases(only=()):
 
 def mesh_case(case, mesh):
     """the case for a mesh: "base" as stored, "fine" with the cells at metal halved"""
-    c = json.loads(json.dumps(case))
+    c = metal_refined(case, FINE if mesh == "fine" else 1)
     c.pop("monitors", None)
-    if mesh == "fine":
-        m = c["mesh"]
-        m["dfine"] = round(m["dfine"] / FINE, 5)
-        for v in c.get("vias", []):
-            if v.get("dmesh"):
-                v["dmesh"] = round(v["dmesh"] / FINE, 5)
-        if m.get("refine"):
-            m["refine"] = [r[:4] + [round(r[4] / FINE, 5)] for r in m["refine"]]
-        c["max_steps"] = int(c.get("max_steps", 400000) * FINE)
     return c
 
 
@@ -443,12 +434,20 @@ def compare(a):
             row["openems_base_vs_fine"] = stats(f, Ob, Of, fmax)
             X = 2 * Of - Ob  # first-order extrapolation of the staircase result to zero cell
             row["kisi_vs_openems_extrap"] = stats(f, K, X, fmax)
+        # references recomputed on the refined mesh (TESTS.md section 17): the former base-mesh result is kept as
+        # kisi_base.sNp – kisi-fdtd's own convergence, and the former reference against openEMS
+        _, Kb = load(REF, n, "kisi_base")
+        if Kb is not None:
+            row["kisi_base_vs_kisi_fine"] = stats(f, Kb, K, fmax)
+            row["kisi_base_vs_openems"] = stats(f, Kb, O, fmax)
+            if "openems" not in bad:
+                row["kisi_fine_vs_openems"] = row["kisi_vs_openems"]
         if a.stair:
             # kisi-fdtd itself on the fine mesh (subset): its own convergence, and like for like with openEMS fine
             _, Kf = load(a.stair, n, "kisi_fine_conformal")
             _, Sf = load(a.stair, n, "kisi_fine_stair")
             _, Of = load(REF, n, "openems")
-            if Kf is not None:
+            if Kf is not None and Kb is None:
                 row["kisi_base_vs_kisi_fine"] = stats(f, K, Kf, fmax)
                 if Of is not None and not invalid(Of):
                     row["kisi_fine_vs_openems"] = stats(f, Kf, Of, fmax)
@@ -459,7 +458,7 @@ def compare(a):
             _, St = load(a.stair, n, "kisi_stair")
             if St is not None and Ob is not None:
                 row["stair_vs_openems_base"] = stats(f, St, Ob, fmax)
-                row["stair_vs_kisi"] = stats(f, St, K, fmax)
+                row["stair_vs_kisi"] = stats(f, St, K if Kb is None else Kb, fmax)  # both on the base mesh
         if g in ("G", "H"):
             pk, pko = z_peaks(f, K, z0), z_peaks(f, O, z0)
             row["z_peaks_ghz"] = {"kisi": [round(x, 3) for x in pk[0][:6]], "openems": [round(x, 3) for x in pko[0][:6]]}

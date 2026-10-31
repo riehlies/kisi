@@ -439,6 +439,7 @@ function chipList(c) {
   for (const [k, v] of Object.entries(m.params || {})) out.push(`<span class="chip">${esc(k.replace(/_mm$/, " (mm)").replace(/_/g, " "))} <b>${esc(v ?? "none")}</b></span>`);
   if (run && run.runs && run.runs.kisi) { const k = run.runs.kisi; out.push(`<span class="chip">${Math.round(k.cells / 1000)} k cells · ${k.steps.join(" / ")} steps · ${k.seconds} s</span>`); if (k.refine) out.push(`<span class="chip">refined mesh: cell at metal ${k.dfine} mm (÷ ${k.refine}; former reference dashed, TESTS.md section 17)</span>`); }
   if (c.agree) out.push(`<span class="chip ${c.agree.ok ? "ok" : "warn"}" title="${esc(c.agree.title)}">${esc(c.agree.text)}</span>`);
+  if (c.agree_cst) out.push(`<span class="chip ${c.agree_cst.ok ? "ok" : "warn"}" title="${esc(c.agree_cst.title)}">${esc(c.agree_cst.text)}</span>`);
   if (run && run.convergence) { const cv = run.convergence, ok = cv.max_dS_through_db < 0.1 && cv["max_dS_refl_db_above_-20"] < 2; out.push(`<span class="chip ${ok ? "ok" : "warn"}">finer mesh: ΔS through ${cv.max_dS_through_db} dB, ΔS refl. ${cv["max_dS_refl_db_above_-20"]} dB</span>`); }
   return out.join("");
 }
@@ -561,7 +562,7 @@ function renderChecks() {
   const cw = Math.min(1100, box.clientWidth || 900) - 26;
   const ch = DATA.checks;
   let n = 0;
-  for (const key of ["cavity", "via_convergence", "pml_thru", "openems_compare", "openems_refs", "via_pbm", "rust_models", "cavity_model", "kisi_models", "kisi_models_field", "pdn_loop", "practice"]) {
+  for (const key of ["cavity", "via_convergence", "pml_thru", "openems_compare", "openems_refs", "cst_refs", "via_pbm", "rust_models", "cavity_model", "kisi_models", "kisi_models_field", "pdn_loop", "practice"]) {
     const c = ch[key]; if (!c) continue; n++;
     const p = document.createElement("div"); p.className = "panel";
     p.innerHTML = `<h2>${esc(c.title)}</h2>${(c.text || []).map((t) => `<p>${t}</p>`).join("")}` + (c.cols ? `<div class="wide"><table><thead><tr>${c.cols.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${c.rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : "");

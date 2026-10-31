@@ -34,6 +34,14 @@
     52.75
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.06,
+   "dS_thru_max_db": 0.361,
+   "dS11_mean_db": 0.42,
+   "dS11_max_db": 1.47,
+   "dphase_fmax_deg": -6.51,
+   "dtau_ps": 0.39
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.058,
    "dS21_mean_db": 0.022,
@@ -81,6 +89,14 @@
     52.44,
     53.76
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.128,
+   "dS_thru_max_db": 0.414,
+   "dS11_mean_db": 0.8,
+   "dS11_max_db": 2.03,
+   "dphase_fmax_deg": -9.9,
+   "dtau_ps": 0.63
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.064,
@@ -165,6 +181,14 @@
     48.99
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.012,
+   "dS_thru_max_db": 0.031,
+   "dS11_mean_db": 1.45,
+   "dS11_max_db": 7.54,
+   "dphase_fmax_deg": -3.22,
+   "dtau_ps": 0.18
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.005,
    "dS21_mean_db": 0.002,
@@ -196,6 +220,14 @@
     49.55,
     49.47
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.033,
+   "dS_thru_max_db": 0.085,
+   "dS11_mean_db": 1.97,
+   "dS11_max_db": 3.56,
+   "dphase_fmax_deg": -5.04,
+   "dtau_ps": 0.31
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.018,
@@ -248,6 +280,14 @@
     48.99
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.012,
+   "dS_thru_max_db": 0.031,
+   "dS11_mean_db": 1.45,
+   "dS11_max_db": 7.55,
+   "dphase_fmax_deg": -3.22,
+   "dtau_ps": 0.18
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.005,
    "dS21_mean_db": 0.002,
@@ -279,6 +319,14 @@
     49.55,
     49.47
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.033,
+   "dS_thru_max_db": 0.085,
+   "dS11_mean_db": 1.97,
+   "dS11_max_db": 3.56,
+   "dphase_fmax_deg": -5.05,
+   "dtau_ps": 0.31
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.018,
@@ -330,6 +378,14 @@
     49.88,
     49.6
    ]
+  },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.16,
+   "dS_thru_max_db": 1.086,
+   "dS11_mean_db": 0.81,
+   "dS11_max_db": 6.01,
+   "dphase_fmax_deg": -0.02,
+   "dtau_ps": 0.06
   },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.951,
@@ -410,6 +466,14 @@
     49.88,
     49.74
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.387,
+   "dS_thru_max_db": 4.329,
+   "dS11_mean_db": 0.59,
+   "dS11_max_db": 5.52,
+   "dphase_fmax_deg": -5.9,
+   "dtau_ps": 0.32
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 1.945,
@@ -510,6 +574,14 @@
     49.19
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.007,
+   "dS_thru_max_db": 0.014,
+   "dS11_mean_db": 9.04,
+   "dS11_max_db": 23.41,
+   "dphase_fmax_deg": -1.92,
+   "dtau_ps": 0.1
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.01,
    "dS21_mean_db": 0.006,
@@ -541,6 +613,14 @@
     51.18,
     49.34
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.008,
+   "dS_thru_max_db": 0.031,
+   "dS11_mean_db": 9.66,
+   "dS11_max_db": 18.24,
+   "dphase_fmax_deg": -3.87,
+   "dtau_ps": 0.23
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.009,
@@ -609,6 +689,14 @@
     50.94
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.016,
+   "dS_thru_max_db": 0.046,
+   "dS11_mean_db": 1.67,
+   "dS11_max_db": 5.95,
+   "dphase_fmax_deg": -2.02,
+   "dtau_ps": 0.08
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.041,
    "dS21_mean_db": 0.015,
@@ -640,6 +728,14 @@
     49.95,
     51.5
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.014,
+   "dS_thru_max_db": 0.049,
+   "dS11_mean_db": 2.35,
+   "dS11_max_db": 17.71,
+   "dphase_fmax_deg": -2.5,
+   "dtau_ps": 0.12
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.023,
@@ -692,6 +788,14 @@
     49.4
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.014,
+   "dS_thru_max_db": 0.064,
+   "dS11_mean_db": 2.22,
+   "dS11_max_db": 11.1,
+   "dphase_fmax_deg": -0.35,
+   "dtau_ps": 0.02
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.209,
    "dS21_mean_db": 0.073,
@@ -739,6 +843,14 @@
     49.75,
     49.67
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.095,
+   "dS_thru_max_db": 0.537,
+   "dS11_mean_db": 2.52,
+   "dS11_max_db": 13.28,
+   "dphase_fmax_deg": -11.67,
+   "dtau_ps": 0.59
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.049,
@@ -823,6 +935,14 @@
     52.84
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.033,
+   "dS_thru_max_db": 0.168,
+   "dS11_mean_db": 1.33,
+   "dS11_max_db": 20.14,
+   "dphase_fmax_deg": -0.62,
+   "dtau_ps": 0.06
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.101,
    "dS21_mean_db": 0.042,
@@ -870,6 +990,14 @@
     52.97,
     53.13
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.085,
+   "dS_thru_max_db": 0.273,
+   "dS11_mean_db": 1.38,
+   "dS11_max_db": 20.57,
+   "dphase_fmax_deg": -10.96,
+   "dtau_ps": 0.54
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.053,
@@ -954,6 +1082,14 @@
     49.31
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.043,
+   "dS_thru_max_db": 0.168,
+   "dS11_mean_db": 0.51,
+   "dS11_max_db": 1.53,
+   "dphase_fmax_deg": -2.02,
+   "dtau_ps": 0.03
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.568,
    "dS21_mean_db": 0.213,
@@ -1001,6 +1137,14 @@
     49.6,
     49.46
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.076,
+   "dS_thru_max_db": 0.239,
+   "dS11_mean_db": 1.03,
+   "dS11_max_db": 8.23,
+   "dphase_fmax_deg": -15.61,
+   "dtau_ps": 0.7
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.047,
@@ -1101,6 +1245,14 @@
     49.31
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.027,
+   "dS_thru_max_db": 0.133,
+   "dS11_mean_db": 1.19,
+   "dS11_max_db": 2.95,
+   "dphase_fmax_deg": -2.31,
+   "dtau_ps": 0.05
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.374,
    "dS21_mean_db": 0.137,
@@ -1148,6 +1300,14 @@
     49.59,
     49.45
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.095,
+   "dS_thru_max_db": 0.359,
+   "dS11_mean_db": 1.53,
+   "dS11_max_db": 3.98,
+   "dphase_fmax_deg": -12.5,
+   "dtau_ps": 0.68
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.037,
@@ -1232,6 +1392,14 @@
     51.27
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.023,
+   "dS_thru_max_db": 0.128,
+   "dS11_mean_db": 1.17,
+   "dS11_max_db": 10.4,
+   "dphase_fmax_deg": -1.06,
+   "dtau_ps": 0.04
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.314,
    "dS21_mean_db": 0.107,
@@ -1279,6 +1447,14 @@
     51.55,
     51.59
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.095,
+   "dS_thru_max_db": 0.565,
+   "dS11_mean_db": 1.32,
+   "dS11_max_db": 9.78,
+   "dphase_fmax_deg": -11.25,
+   "dtau_ps": 0.56
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.07,
@@ -1363,6 +1539,14 @@
     49.31
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.055,
+   "dS_thru_max_db": 0.252,
+   "dS11_mean_db": 0.83,
+   "dS11_max_db": 1.81,
+   "dphase_fmax_deg": -1.93,
+   "dtau_ps": -0.07
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.641,
    "dS21_mean_db": 0.246,
@@ -1410,6 +1594,14 @@
     49.61,
     49.45
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.089,
+   "dS_thru_max_db": 0.333,
+   "dS11_mean_db": 1.02,
+   "dS11_max_db": 3.56,
+   "dphase_fmax_deg": -10.64,
+   "dtau_ps": 0.5
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.032,
@@ -1494,6 +1686,14 @@
     49.3
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.017,
+   "dS_thru_max_db": 0.104,
+   "dS11_mean_db": 1.91,
+   "dS11_max_db": 9.31,
+   "dphase_fmax_deg": -1.48,
+   "dtau_ps": 0.03
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.278,
    "dS21_mean_db": 0.1,
@@ -1541,6 +1741,14 @@
     49.58,
     49.44
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.076,
+   "dS_thru_max_db": 0.379,
+   "dS11_mean_db": 2.24,
+   "dS11_max_db": 10.08,
+   "dphase_fmax_deg": -11.57,
+   "dtau_ps": 0.61
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.039,
@@ -1625,6 +1833,14 @@
     49.3
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.022,
+   "dS_thru_max_db": 0.125,
+   "dS11_mean_db": 0.99,
+   "dS11_max_db": 3.15,
+   "dphase_fmax_deg": -1.62,
+   "dtau_ps": 0.02
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.317,
    "dS21_mean_db": 0.114,
@@ -1672,6 +1888,14 @@
     49.59,
     49.45
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.076,
+   "dS_thru_max_db": 0.297,
+   "dS11_mean_db": 1.18,
+   "dS11_max_db": 2.95,
+   "dphase_fmax_deg": -9.76,
+   "dtau_ps": 0.55
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.031,
@@ -1756,6 +1980,14 @@
     49.19
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.007,
+   "dS_thru_max_db": 0.014,
+   "dS11_mean_db": 9.04,
+   "dS11_max_db": 23.41,
+   "dphase_fmax_deg": -1.92,
+   "dtau_ps": 0.1
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.01,
    "dS21_mean_db": 0.006,
@@ -1787,6 +2019,14 @@
     51.18,
     49.54
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.006,
+   "dS_thru_max_db": 0.019,
+   "dS11_mean_db": 8.43,
+   "dS11_max_db": 24.8,
+   "dphase_fmax_deg": -2.46,
+   "dtau_ps": 0.13
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.006,
@@ -1839,6 +2079,14 @@
     49.06
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.088,
+   "dS_thru_max_db": 0.374,
+   "dS11_mean_db": 2.61,
+   "dS11_max_db": 8.23,
+   "dphase_fmax_deg": -4.43,
+   "dtau_ps": 0.26
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.07,
    "dS21_mean_db": 0.027,
@@ -1870,6 +2118,14 @@
     49.66,
     49.1
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.21,
+   "dS_thru_max_db": 0.672,
+   "dS11_mean_db": 1.69,
+   "dS11_max_db": 7.09,
+   "dphase_fmax_deg": -12.89,
+   "dtau_ps": 0.88
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.098,
@@ -1922,6 +2178,14 @@
     45.49
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.013,
+   "dS_thru_max_db": 0.044,
+   "dS11_mean_db": 0.52,
+   "dS11_max_db": 2.32,
+   "dphase_fmax_deg": -2.59,
+   "dtau_ps": 0.1
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.061,
    "dS21_mean_db": 0.019,
@@ -1953,6 +2217,14 @@
     45.65,
     46.0
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.009,
+   "dS_thru_max_db": 0.036,
+   "dS11_mean_db": 1.88,
+   "dS11_max_db": 23.59,
+   "dphase_fmax_deg": -2.84,
+   "dtau_ps": 0.12
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.042,
@@ -2005,6 +2277,14 @@
     49.19
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.007,
+   "dS_thru_max_db": 0.014,
+   "dS11_mean_db": 9.04,
+   "dS11_max_db": 23.41,
+   "dphase_fmax_deg": -1.92,
+   "dtau_ps": 0.1
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.01,
    "dS21_mean_db": 0.006,
@@ -2036,6 +2316,14 @@
     51.18,
     49.34
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.008,
+   "dS_thru_max_db": 0.031,
+   "dS11_mean_db": 9.66,
+   "dS11_max_db": 18.24,
+   "dphase_fmax_deg": -3.87,
+   "dtau_ps": 0.23
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.009,
@@ -2088,6 +2376,14 @@
     48.17
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.02,
+   "dS_thru_max_db": 0.066,
+   "dS11_mean_db": 1.35,
+   "dS11_max_db": 2.58,
+   "dphase_fmax_deg": -3.38,
+   "dtau_ps": 0.16
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.053,
    "dS21_mean_db": 0.02,
@@ -2119,6 +2415,14 @@
     48.49,
     48.62
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.034,
+   "dS_thru_max_db": 0.138,
+   "dS11_mean_db": 2.14,
+   "dS11_max_db": 4.98,
+   "dphase_fmax_deg": -5.37,
+   "dtau_ps": 0.32
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.055,
@@ -2171,6 +2475,14 @@
     49.1
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.004,
+   "dS_thru_max_db": 0.013,
+   "dS11_mean_db": 2.07,
+   "dS11_max_db": 6.23,
+   "dphase_fmax_deg": -0.71,
+   "dtau_ps": 0.02
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.008,
    "dS21_mean_db": 0.004,
@@ -2202,6 +2514,14 @@
     48.63,
     49.47
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.006,
+   "dS_thru_max_db": 0.022,
+   "dS11_mean_db": 5.08,
+   "dS11_max_db": 9.75,
+   "dphase_fmax_deg": -1.37,
+   "dtau_ps": 0.07
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.006,
@@ -2254,6 +2574,14 @@
     47.53
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.02,
+   "dS_thru_max_db": 0.09,
+   "dS11_mean_db": 6.73,
+   "dS11_max_db": 35.16,
+   "dphase_fmax_deg": -0.34,
+   "dtau_ps": -0.07
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.125,
    "dS21_mean_db": 0.047,
@@ -2285,6 +2613,14 @@
     51.34,
     47.9
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.024,
+   "dS_thru_max_db": 0.066,
+   "dS11_mean_db": 6.21,
+   "dS11_max_db": 33.84,
+   "dphase_fmax_deg": -0.55,
+   "dtau_ps": -0.04
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.031,
@@ -2337,6 +2673,14 @@
     49.18
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.013,
+   "dS_thru_max_db": 0.031,
+   "dS11_mean_db": 11.21,
+   "dS11_max_db": 29.34,
+   "dphase_fmax_deg": -3.78,
+   "dtau_ps": 0.23
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.018,
    "dS21_mean_db": 0.012,
@@ -2368,6 +2712,14 @@
     52.92,
     49.54
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.013,
+   "dS_thru_max_db": 0.038,
+   "dS11_mean_db": 11.01,
+   "dS11_max_db": 21.66,
+   "dphase_fmax_deg": -4.23,
+   "dtau_ps": 0.27
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.007,
@@ -2420,6 +2772,14 @@
     55.13
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.032,
+   "dS_thru_max_db": 0.171,
+   "dS11_mean_db": 0.31,
+   "dS11_max_db": 1.33,
+   "dphase_fmax_deg": -7.17,
+   "dtau_ps": 0.38
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.043,
    "dS21_mean_db": 0.024,
@@ -2467,6 +2827,14 @@
     54.86,
     56.15
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.108,
+   "dS_thru_max_db": 0.54,
+   "dS11_mean_db": 0.99,
+   "dS11_max_db": 4.83,
+   "dphase_fmax_deg": -12.94,
+   "dtau_ps": 0.69
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.063,
@@ -2551,6 +2919,14 @@
     49.98
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.121,
+   "dS_thru_max_db": 0.549,
+   "dS11_mean_db": 0.4,
+   "dS11_max_db": 1.14,
+   "dphase_fmax_deg": -5.56,
+   "dtau_ps": 0.46
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.07,
    "dS21_mean_db": 0.025,
@@ -2598,6 +2974,14 @@
     49.79,
     51.04
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.135,
+   "dS_thru_max_db": 0.383,
+   "dS11_mean_db": 0.95,
+   "dS11_max_db": 3.66,
+   "dphase_fmax_deg": -7.95,
+   "dtau_ps": 0.58
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.054,
@@ -2682,6 +3066,14 @@
     49.11
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.038,
+   "dS_thru_max_db": 0.296,
+   "dS11_mean_db": 0.89,
+   "dS11_max_db": 2.62,
+   "dphase_fmax_deg": -5.48,
+   "dtau_ps": 0.27
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.014,
    "dS21_mean_db": 0.006,
@@ -2729,6 +3121,14 @@
     49.05,
     49.53
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.149,
+   "dS_thru_max_db": 1.033,
+   "dS11_mean_db": 2.06,
+   "dS11_max_db": 5.12,
+   "dphase_fmax_deg": -15.36,
+   "dtau_ps": 0.9
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.043,
@@ -2813,6 +3213,14 @@
     49.12
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.14,
+   "dS_thru_max_db": 0.646,
+   "dS11_mean_db": 0.49,
+   "dS11_max_db": 5.38,
+   "dphase_fmax_deg": -2.24,
+   "dtau_ps": 0.33
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.036,
    "dS21_mean_db": 0.013,
@@ -2860,6 +3268,14 @@
     49.08,
     49.55
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.209,
+   "dS_thru_max_db": 0.656,
+   "dS11_mean_db": 1.46,
+   "dS11_max_db": 20.0,
+   "dphase_fmax_deg": -9.68,
+   "dtau_ps": 0.86
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.044,
@@ -2944,6 +3360,14 @@
     49.13
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.079,
+   "dS_thru_max_db": 0.516,
+   "dS11_mean_db": 0.7,
+   "dS11_max_db": 4.52,
+   "dphase_fmax_deg": -4.27,
+   "dtau_ps": 0.31
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.025,
    "dS21_mean_db": 0.008,
@@ -2991,6 +3415,14 @@
     49.07,
     49.55
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.186,
+   "dS_thru_max_db": 0.737,
+   "dS11_mean_db": 2.02,
+   "dS11_max_db": 21.97,
+   "dphase_fmax_deg": -12.12,
+   "dtau_ps": 0.89
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.047,
@@ -3091,6 +3523,14 @@
     49.51
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.06,
+   "dS_thru_max_db": 0.255,
+   "dS11_mean_db": 1.44,
+   "dS11_max_db": 3.29,
+   "dphase_fmax_deg": -1.43,
+   "dtau_ps": -0.02
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.078,
    "dS21_mean_db": 0.023,
@@ -3170,6 +3610,14 @@
     49.92,
     49.61
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.033,
+   "dS_thru_max_db": 0.117,
+   "dS11_mean_db": 1.26,
+   "dS11_max_db": 3.47,
+   "dphase_fmax_deg": -5.88,
+   "dtau_ps": 0.3
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.014,
@@ -3254,6 +3702,14 @@
     49.56
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.088,
+   "dS_thru_max_db": 0.334,
+   "dS11_mean_db": 0.91,
+   "dS11_max_db": 1.81,
+   "dphase_fmax_deg": -2.28,
+   "dtau_ps": -0.01
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.341,
    "dS21_mean_db": 0.146,
@@ -3333,6 +3789,14 @@
     49.59,
     49.65
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.027,
+   "dS_thru_max_db": 0.109,
+   "dS11_mean_db": 0.61,
+   "dS11_max_db": 1.49,
+   "dphase_fmax_deg": -7.01,
+   "dtau_ps": 0.36
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.033,
@@ -3417,6 +3881,14 @@
     49.55
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.217,
+   "dS_thru_max_db": 1.49,
+   "dS11_mean_db": 0.8,
+   "dS11_max_db": 4.45,
+   "dphase_fmax_deg": -0.12,
+   "dtau_ps": 0.08
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 1.322,
    "dS21_mean_db": 0.496,
@@ -3496,6 +3968,14 @@
     49.57,
     49.65
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.689,
+   "dS_thru_max_db": 7.232,
+   "dS11_mean_db": 0.64,
+   "dS11_max_db": 2.25,
+   "dphase_fmax_deg": -8.35,
+   "dtau_ps": 0.35
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 4.192,
@@ -3580,6 +4060,14 @@
     50.68
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.03,
+   "dS_thru_max_db": 0.144,
+   "dS11_mean_db": 1.78,
+   "dS11_max_db": 6.04,
+   "dphase_fmax_deg": -0.81,
+   "dtau_ps": -0.04
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.03,
    "dS21_mean_db": 0.016,
@@ -3627,6 +4115,14 @@
     50.72,
     51.66
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.042,
+   "dS_thru_max_db": 0.092,
+   "dS11_mean_db": 2.4,
+   "dS11_max_db": 8.36,
+   "dphase_fmax_deg": -5.65,
+   "dtau_ps": 0.32
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.042,
@@ -3727,6 +4223,14 @@
     49.31
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.027,
+   "dS_thru_max_db": 0.133,
+   "dS11_mean_db": 1.19,
+   "dS11_max_db": 2.95,
+   "dphase_fmax_deg": -2.31,
+   "dtau_ps": 0.05
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.374,
    "dS21_mean_db": 0.137,
@@ -3774,6 +4278,14 @@
     49.59,
     49.45
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.095,
+   "dS_thru_max_db": 0.359,
+   "dS11_mean_db": 1.53,
+   "dS11_max_db": 3.98,
+   "dphase_fmax_deg": -12.5,
+   "dtau_ps": 0.68
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.037,
@@ -3858,6 +4370,14 @@
     49.31
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.328,
+   "dS_thru_max_db": 2.492,
+   "dS11_mean_db": 0.51,
+   "dS11_max_db": 2.22,
+   "dphase_fmax_deg": 0.66,
+   "dtau_ps": 0.08
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.349,
    "dS21_mean_db": 0.122,
@@ -3937,6 +4457,14 @@
     48.3,
     49.5
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.397,
+   "dS_thru_max_db": 3.74,
+   "dS11_mean_db": 0.53,
+   "dS11_max_db": 1.43,
+   "dphase_fmax_deg": -5.95,
+   "dtau_ps": 0.25
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.318,
@@ -4021,6 +4549,14 @@
     49.07
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.03,
+   "dS_thru_max_db": 0.277,
+   "dS11_mean_db": 6.22,
+   "dS11_max_db": 28.23,
+   "dphase_fmax_deg": 0.95,
+   "dtau_ps": -0.04
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.009,
    "dS21_mean_db": 0.004,
@@ -4101,6 +4637,14 @@
     49.29
    ]
   },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.065,
+   "dS_thru_max_db": 0.288,
+   "dS11_mean_db": 6.68,
+   "dS11_max_db": 27.67,
+   "dphase_fmax_deg": -7.07,
+   "dtau_ps": 0.43
+  },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.035,
    "dS21_mean_db": 0.014,
@@ -4167,6 +4711,14 @@
     53.9,
     49.57
    ]
+  },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.202,
+   "dS_thru_max_db": 0.642,
+   "dS11_mean_db": 2.06,
+   "dS11_max_db": 5.36,
+   "dphase_fmax_deg": -5.61,
+   "dtau_ps": 0.08
   },
   "deemb_vs_kisi": {
    "dS21_max_db": 0.218,
@@ -4251,6 +4803,14 @@
     49.59,
     49.57
    ]
+  },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.05,
+   "dS_thru_max_db": 0.195,
+   "dS11_mean_db": 0.63,
+   "dS11_max_db": 1.46,
+   "dphase_fmax_deg": -1.56,
+   "dtau_ps": -0.01
   },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.277,
@@ -4352,6 +4912,14 @@
     49.57
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.05,
+   "dS_thru_max_db": 0.189,
+   "dS11_mean_db": 0.63,
+   "dS11_max_db": 1.44,
+   "dphase_fmax_deg": -1.52,
+   "dtau_ps": -0.01
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.274,
    "dS21_mean_db": 0.122,
@@ -4431,6 +4999,14 @@
     49.59,
     49.66
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.035,
+   "dS_thru_max_db": 0.086,
+   "dS11_mean_db": 0.61,
+   "dS11_max_db": 1.56,
+   "dphase_fmax_deg": -5.45,
+   "dtau_ps": 0.28
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.036,
@@ -4515,6 +5091,14 @@
     49.3
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.044,
+   "dS_thru_max_db": 0.194,
+   "dS11_mean_db": 0.75,
+   "dS11_max_db": 1.79,
+   "dphase_fmax_deg": 0.58,
+   "dtau_ps": -0.07
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.463,
    "dS21_mean_db": 0.19,
@@ -4562,6 +5146,14 @@
     49.59,
     49.45
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.05,
+   "dS_thru_max_db": 0.116,
+   "dS11_mean_db": 0.82,
+   "dS11_max_db": 2.22,
+   "dphase_fmax_deg": -9.05,
+   "dtau_ps": 0.58
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.069,
@@ -4646,6 +5238,14 @@
     50.85
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.058,
+   "dS_thru_max_db": 0.179,
+   "dS11_mean_db": 0.5,
+   "dS11_max_db": 1.71,
+   "dphase_fmax_deg": 1.3,
+   "dtau_ps": -0.14
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.216,
    "dS21_mean_db": 0.102,
@@ -4693,6 +5293,14 @@
     50.59,
     50.97
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.03,
+   "dS_thru_max_db": 0.093,
+   "dS11_mean_db": 0.64,
+   "dS11_max_db": 1.6,
+   "dphase_fmax_deg": -6.03,
+   "dtau_ps": 0.34
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.052,
@@ -4777,6 +5385,14 @@
     55.73
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.088,
+   "dS_thru_max_db": 0.256,
+   "dS11_mean_db": 0.38,
+   "dS11_max_db": 0.8,
+   "dphase_fmax_deg": 1.44,
+   "dtau_ps": -0.14
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.333,
    "dS21_mean_db": 0.154,
@@ -4824,6 +5440,14 @@
     55.53,
     55.69
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.086,
+   "dS_thru_max_db": 0.247,
+   "dS11_mean_db": 0.5,
+   "dS11_max_db": 0.78,
+   "dphase_fmax_deg": -6.29,
+   "dtau_ps": 0.31
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.04,
@@ -4908,6 +5532,14 @@
     57.58
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.093,
+   "dS_thru_max_db": 0.234,
+   "dS11_mean_db": 0.41,
+   "dS11_max_db": 1.14,
+   "dphase_fmax_deg": 1.08,
+   "dtau_ps": -0.14
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.32,
    "dS21_mean_db": 0.184,
@@ -4955,6 +5587,14 @@
     57.43,
     57.49
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.071,
+   "dS_thru_max_db": 0.182,
+   "dS11_mean_db": 0.47,
+   "dS11_max_db": 0.93,
+   "dphase_fmax_deg": -6.01,
+   "dtau_ps": 0.33
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.066,
@@ -5039,6 +5679,14 @@
     57.59
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.1,
+   "dS_thru_max_db": 0.287,
+   "dS11_mean_db": 0.67,
+   "dS11_max_db": 4.88,
+   "dphase_fmax_deg": 1.3,
+   "dtau_ps": -0.14
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.346,
    "dS21_mean_db": 0.191,
@@ -5086,6 +5734,14 @@
     57.43,
     57.49
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.076,
+   "dS_thru_max_db": 0.226,
+   "dS11_mean_db": 0.53,
+   "dS11_max_db": 1.86,
+   "dphase_fmax_deg": -6.4,
+   "dtau_ps": 0.33
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.247,
@@ -5170,6 +5826,16 @@
     49.33
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.146,
+   "dS_thru_max_db": 0.331,
+   "dS11_mean_db": 0.42,
+   "dS11_max_db": 2.34,
+   "dphase_fmax_deg": -0.96,
+   "dtau_ps": 0.12,
+   "dSdd21_mean_db": 0.171,
+   "dSdd21_max_db": 1.027
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.775,
    "dS21_mean_db": 0.322,
@@ -5217,6 +5883,16 @@
     49.33,
     49.44
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.215,
+   "dS_thru_max_db": 0.643,
+   "dS11_mean_db": 0.2,
+   "dS11_max_db": 1.09,
+   "dphase_fmax_deg": -7.16,
+   "dtau_ps": 0.31,
+   "dSdd21_mean_db": 0.715,
+   "dSdd21_max_db": 6.046
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 1.11,
@@ -5269,6 +5945,16 @@
     49.34
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.118,
+   "dS_thru_max_db": 0.288,
+   "dS11_mean_db": 1.17,
+   "dS11_max_db": 14.56,
+   "dphase_fmax_deg": -0.26,
+   "dtau_ps": 0.06,
+   "dSdd21_mean_db": 0.29,
+   "dSdd21_max_db": 1.937
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.97,
    "dS21_mean_db": 0.426,
@@ -5316,6 +6002,16 @@
     49.35,
     49.45
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.183,
+   "dS_thru_max_db": 0.632,
+   "dS11_mean_db": 0.41,
+   "dS11_max_db": 7.78,
+   "dphase_fmax_deg": -6.45,
+   "dtau_ps": 0.27,
+   "dSdd21_mean_db": 0.662,
+   "dSdd21_max_db": 6.151
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 1.41,
@@ -5368,6 +6064,16 @@
     49.42
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.122,
+   "dS_thru_max_db": 0.288,
+   "dS11_mean_db": 1.45,
+   "dS11_max_db": 25.1,
+   "dphase_fmax_deg": -0.26,
+   "dtau_ps": 0.05,
+   "dSdd21_mean_db": 0.285,
+   "dSdd21_max_db": 1.797
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.972,
    "dS21_mean_db": 0.43,
@@ -5415,6 +6121,16 @@
     49.42,
     49.52
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.169,
+   "dS_thru_max_db": 0.595,
+   "dS11_mean_db": 0.45,
+   "dS11_max_db": 10.65,
+   "dphase_fmax_deg": -6.26,
+   "dtau_ps": 0.27,
+   "dSdd21_mean_db": 0.551,
+   "dSdd21_max_db": 5.03
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 1.902,
@@ -5467,6 +6183,16 @@
     49.21
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.144,
+   "dS_thru_max_db": 0.333,
+   "dS11_mean_db": 1.05,
+   "dS11_max_db": 10.15,
+   "dphase_fmax_deg": -0.07,
+   "dtau_ps": 0.08,
+   "dSdd21_mean_db": 0.272,
+   "dSdd21_max_db": 1.822
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.957,
    "dS21_mean_db": 0.421,
@@ -5514,6 +6240,16 @@
     49.2,
     49.32
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.191,
+   "dS_thru_max_db": 0.618,
+   "dS11_mean_db": 0.46,
+   "dS11_max_db": 4.51,
+   "dphase_fmax_deg": -7.09,
+   "dtau_ps": 0.31,
+   "dSdd21_mean_db": 0.83,
+   "dSdd21_max_db": 7.916
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 1.096,
@@ -5566,6 +6302,16 @@
     49.09
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.045,
+   "dS_thru_max_db": 0.403,
+   "dS11_mean_db": 0.49,
+   "dS11_max_db": 3.13,
+   "dphase_fmax_deg": -0.02,
+   "dtau_ps": -0.01,
+   "dSdd21_mean_db": 0.032,
+   "dSdd21_max_db": 0.13
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.295,
    "dS21_mean_db": 0.119,
@@ -5597,6 +6343,16 @@
     49.36,
     49.24
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.08,
+   "dS_thru_max_db": 0.753,
+   "dS11_mean_db": 0.43,
+   "dS11_max_db": 1.57,
+   "dphase_fmax_deg": -4.04,
+   "dtau_ps": 0.39,
+   "dSdd21_mean_db": 0.017,
+   "dSdd21_max_db": 0.068
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.014,
@@ -5649,6 +6405,16 @@
     49.09
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.034,
+   "dS_thru_max_db": 0.241,
+   "dS11_mean_db": 0.59,
+   "dS11_max_db": 2.01,
+   "dphase_fmax_deg": -0.31,
+   "dtau_ps": 0.01,
+   "dSdd21_mean_db": 0.017,
+   "dSdd21_max_db": 0.086
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.413,
    "dS21_mean_db": 0.163,
@@ -5680,6 +6446,16 @@
     49.36,
     49.24
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.105,
+   "dS_thru_max_db": 0.436,
+   "dS11_mean_db": 0.91,
+   "dS11_max_db": 2.8,
+   "dphase_fmax_deg": -4.15,
+   "dtau_ps": 0.44,
+   "dSdd21_mean_db": 0.029,
+   "dSdd21_max_db": 0.077
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.011,
@@ -5732,6 +6508,16 @@
     49.09
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.075,
+   "dS_thru_max_db": 0.297,
+   "dS11_mean_db": 0.79,
+   "dS11_max_db": 3.55,
+   "dphase_fmax_deg": -0.39,
+   "dtau_ps": 0.1,
+   "dSdd21_mean_db": 0.016,
+   "dSdd21_max_db": 0.046
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.442,
    "dS21_mean_db": 0.174,
@@ -5763,6 +6549,16 @@
     49.37,
     49.24
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.202,
+   "dS_thru_max_db": 0.617,
+   "dS11_mean_db": 1.18,
+   "dS11_max_db": 6.24,
+   "dphase_fmax_deg": -5.8,
+   "dtau_ps": 0.56,
+   "dSdd21_mean_db": 0.03,
+   "dSdd21_max_db": 0.148
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.007,
@@ -5815,6 +6611,16 @@
     49.1
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.072,
+   "dS_thru_max_db": 0.203,
+   "dS11_mean_db": 0.7,
+   "dS11_max_db": 4.39,
+   "dphase_fmax_deg": 0.41,
+   "dtau_ps": -0.06,
+   "dSdd21_mean_db": 0.038,
+   "dSdd21_max_db": 0.17
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.368,
    "dS21_mean_db": 0.151,
@@ -5846,6 +6652,16 @@
     49.37,
     49.25
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.038,
+   "dS_thru_max_db": 0.115,
+   "dS11_mean_db": 0.58,
+   "dS11_max_db": 2.08,
+   "dphase_fmax_deg": -7.37,
+   "dtau_ps": 0.43,
+   "dSdd21_mean_db": 0.021,
+   "dSdd21_max_db": 0.115
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.016,
@@ -5898,6 +6714,16 @@
     49.1
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.038,
+   "dS_thru_max_db": 0.174,
+   "dS11_mean_db": 0.69,
+   "dS11_max_db": 1.82,
+   "dphase_fmax_deg": 0.23,
+   "dtau_ps": -0.05,
+   "dSdd21_mean_db": 0.031,
+   "dSdd21_max_db": 0.219
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.496,
    "dS21_mean_db": 0.202,
@@ -5929,6 +6755,16 @@
     49.37,
     49.25
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.032,
+   "dS_thru_max_db": 0.077,
+   "dS11_mean_db": 0.64,
+   "dS11_max_db": 1.47,
+   "dphase_fmax_deg": -7.9,
+   "dtau_ps": 0.47,
+   "dSdd21_mean_db": 0.03,
+   "dSdd21_max_db": 0.06
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.015,
@@ -5981,6 +6817,16 @@
     49.1
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.025,
+   "dS_thru_max_db": 0.195,
+   "dS11_mean_db": 1.13,
+   "dS11_max_db": 3.51,
+   "dphase_fmax_deg": -0.39,
+   "dtau_ps": 0.01,
+   "dSdd21_mean_db": 0.026,
+   "dSdd21_max_db": 0.133
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.509,
    "dS21_mean_db": 0.205,
@@ -6012,6 +6858,16 @@
     49.38,
     49.25
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.102,
+   "dS_thru_max_db": 0.327,
+   "dS11_mean_db": 1.32,
+   "dS11_max_db": 4.08,
+   "dphase_fmax_deg": -8.75,
+   "dtau_ps": 0.56,
+   "dSdd21_mean_db": 0.036,
+   "dSdd21_max_db": 0.077
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.029,
@@ -6064,6 +6920,16 @@
     49.17
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.042,
+   "dS_thru_max_db": 0.161,
+   "dS11_mean_db": 0.6,
+   "dS11_max_db": 1.12,
+   "dphase_fmax_deg": 0.14,
+   "dtau_ps": -0.06,
+   "dSdd21_mean_db": 0.033,
+   "dSdd21_max_db": 0.231
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.437,
    "dS21_mean_db": 0.173,
@@ -6095,6 +6961,16 @@
     49.44,
     49.32
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.03,
+   "dS_thru_max_db": 0.067,
+   "dS11_mean_db": 0.56,
+   "dS11_max_db": 1.28,
+   "dphase_fmax_deg": -7.72,
+   "dtau_ps": 0.46,
+   "dSdd21_mean_db": 0.027,
+   "dSdd21_max_db": 0.065
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.017,
@@ -6147,6 +7023,16 @@
     48.96
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.051,
+   "dS_thru_max_db": 0.186,
+   "dS11_mean_db": 0.87,
+   "dS11_max_db": 2.17,
+   "dphase_fmax_deg": 0.66,
+   "dtau_ps": -0.07,
+   "dSdd21_mean_db": 0.033,
+   "dSdd21_max_db": 0.2
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.592,
    "dS21_mean_db": 0.248,
@@ -6178,6 +7064,16 @@
     49.22,
     49.12
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.035,
+   "dS_thru_max_db": 0.072,
+   "dS11_mean_db": 0.86,
+   "dS11_max_db": 2.67,
+   "dphase_fmax_deg": -8.02,
+   "dtau_ps": 0.48,
+   "dSdd21_mean_db": 0.034,
+   "dSdd21_max_db": 0.083
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.014,
@@ -6576,6 +7472,16 @@
     58.26
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.071,
+   "dS_thru_max_db": 0.281,
+   "dS11_mean_db": 0.57,
+   "dS11_max_db": 6.71,
+   "dphase_fmax_deg": -0.39,
+   "dtau_ps": 0.05,
+   "dSdd21_mean_db": 0.036,
+   "dSdd21_max_db": 0.254
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.257,
    "dS21_mean_db": 0.091,
@@ -6607,6 +7513,16 @@
     58.44,
     58.69
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.076,
+   "dS_thru_max_db": 0.53,
+   "dS11_mean_db": 0.56,
+   "dS11_max_db": 11.9,
+   "dphase_fmax_deg": 0.29,
+   "dtau_ps": 0.08,
+   "dSdd21_mean_db": 0.038,
+   "dSdd21_max_db": 0.416
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.021,
@@ -6659,6 +7575,14 @@
     65.39
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.083,
+   "dS_thru_max_db": 0.491,
+   "dS11_mean_db": 0.5,
+   "dS11_max_db": 1.36,
+   "dphase_fmax_deg": -1.59,
+   "dtau_ps": 0.14
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.627,
    "dS21_mean_db": 0.29,
@@ -6706,6 +7630,14 @@
     65.59,
     65.24
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.131,
+   "dS_thru_max_db": 0.54,
+   "dS11_mean_db": 1.01,
+   "dS11_max_db": 10.05,
+   "dphase_fmax_deg": -3.88,
+   "dtau_ps": 0.32
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.044,
@@ -6790,6 +7722,14 @@
     67.38
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.08,
+   "dS_thru_max_db": 0.431,
+   "dS11_mean_db": 0.49,
+   "dS11_max_db": 1.53,
+   "dphase_fmax_deg": -1.22,
+   "dtau_ps": 0.15
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.759,
    "dS21_mean_db": 0.342,
@@ -6837,6 +7777,14 @@
     67.6,
     67.23
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.125,
+   "dS_thru_max_db": 0.712,
+   "dS11_mean_db": 0.64,
+   "dS11_max_db": 2.59,
+   "dphase_fmax_deg": -4.35,
+   "dtau_ps": 0.33
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.05,
@@ -6921,6 +7869,14 @@
     49.17
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.136,
+   "dS_thru_max_db": 0.447,
+   "dS11_mean_db": 1.81,
+   "dS11_max_db": 3.47,
+   "dphase_fmax_deg": -4.32,
+   "dtau_ps": 0.32
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.165,
    "dS21_mean_db": 0.062,
@@ -6968,6 +7924,14 @@
     48.57,
     49.52
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.133,
+   "dS_thru_max_db": 0.401,
+   "dS11_mean_db": 1.76,
+   "dS11_max_db": 3.51,
+   "dphase_fmax_deg": -3.64,
+   "dtau_ps": 0.32
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.028,
@@ -7052,6 +8016,14 @@
     52.1
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.128,
+   "dS_thru_max_db": 0.361,
+   "dS11_mean_db": 2.85,
+   "dS11_max_db": 5.0,
+   "dphase_fmax_deg": -4.24,
+   "dtau_ps": 0.15
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.09,
    "dS21_mean_db": 0.049,
@@ -7099,6 +8071,14 @@
     52.78,
     52.4
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.083,
+   "dS_thru_max_db": 0.259,
+   "dS11_mean_db": 1.81,
+   "dS11_max_db": 3.2,
+   "dphase_fmax_deg": -4.37,
+   "dtau_ps": 0.17
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.047,
@@ -7183,6 +8163,16 @@
     47.12
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.033,
+   "dS_thru_max_db": 0.179,
+   "dS11_mean_db": 8.42,
+   "dS11_max_db": 56.6,
+   "dphase_fmax_deg": 0.28,
+   "dtau_ps": -0.17,
+   "dSdd21_mean_db": 0.031,
+   "dSdd21_max_db": 0.104
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.164,
    "dS21_mean_db": 0.024,
@@ -7214,6 +8204,16 @@
     48.48,
     46.93
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.031,
+   "dS_thru_max_db": 0.13,
+   "dS11_mean_db": 8.07,
+   "dS11_max_db": 55.57,
+   "dphase_fmax_deg": 0.2,
+   "dtau_ps": -0.16,
+   "dSdd21_mean_db": 1.242,
+   "dSdd21_max_db": 4.04
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.863,
@@ -7266,6 +8266,16 @@
     47.35
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.012,
+   "dS_thru_max_db": 0.037,
+   "dS11_mean_db": 4.35,
+   "dS11_max_db": 19.77,
+   "dphase_fmax_deg": -2.45,
+   "dtau_ps": 0.02,
+   "dSdd21_mean_db": 0.024,
+   "dSdd21_max_db": 0.054
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.058,
    "dS21_mean_db": 0.01,
@@ -7297,6 +8307,16 @@
     48.31,
     47.75
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.015,
+   "dS_thru_max_db": 0.054,
+   "dS11_mean_db": 5.41,
+   "dS11_max_db": 23.02,
+   "dphase_fmax_deg": -2.73,
+   "dtau_ps": 0.05,
+   "dSdd21_mean_db": 0.027,
+   "dSdd21_max_db": 0.103
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.033,
@@ -7349,6 +8369,16 @@
     63.06
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.092,
+   "dS_thru_max_db": 0.436,
+   "dS11_mean_db": 0.38,
+   "dS11_max_db": 1.15,
+   "dphase_fmax_deg": -2.29,
+   "dtau_ps": 0.05,
+   "dSdd21_mean_db": 0.036,
+   "dSdd21_max_db": 0.125
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.225,
    "dS21_mean_db": 0.125,
@@ -7380,6 +8410,16 @@
     61.7,
     63.57
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.095,
+   "dS_thru_max_db": 0.504,
+   "dS11_mean_db": 0.46,
+   "dS11_max_db": 1.46,
+   "dphase_fmax_deg": -3.52,
+   "dtau_ps": 0.12,
+   "dSdd21_mean_db": 0.052,
+   "dSdd21_max_db": 0.167
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.025,
@@ -7432,6 +8472,16 @@
     52.96
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.11,
+   "dS_thru_max_db": 0.237,
+   "dS11_mean_db": 3.44,
+   "dS11_max_db": 3.91,
+   "dphase_fmax_deg": -1.84,
+   "dtau_ps": -0.03,
+   "dSdd21_mean_db": 0.069,
+   "dSdd21_max_db": 0.133
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.061,
    "dS21_mean_db": 0.032,
@@ -7463,6 +8513,16 @@
     59.23,
     53.32
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.104,
+   "dS_thru_max_db": 0.232,
+   "dS11_mean_db": 3.25,
+   "dS11_max_db": 4.52,
+   "dphase_fmax_deg": -2.31,
+   "dtau_ps": 0.01,
+   "dSdd21_mean_db": 0.063,
+   "dSdd21_max_db": 0.129
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.011,
@@ -7515,6 +8575,14 @@
     49.1
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.004,
+   "dS_thru_max_db": 0.014,
+   "dS11_mean_db": 2.09,
+   "dS11_max_db": 6.87,
+   "dphase_fmax_deg": -0.88,
+   "dtau_ps": 0.02
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.01,
    "dS21_mean_db": 0.005,
@@ -7562,6 +8630,14 @@
     48.63,
     49.47
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.006,
+   "dS_thru_max_db": 0.017,
+   "dS11_mean_db": 5.3,
+   "dS11_max_db": 9.31,
+   "dphase_fmax_deg": -1.56,
+   "dtau_ps": 0.07
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.007,
@@ -7646,6 +8722,14 @@
     49.1
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.005,
+   "dS_thru_max_db": 0.016,
+   "dS11_mean_db": 1.99,
+   "dS11_max_db": 5.92,
+   "dphase_fmax_deg": -1.47,
+   "dtau_ps": 0.03
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.019,
    "dS21_mean_db": 0.014,
@@ -7693,6 +8777,14 @@
     48.63,
     49.47
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.006,
+   "dS_thru_max_db": 0.023,
+   "dS11_mean_db": 5.61,
+   "dS11_max_db": 10.15,
+   "dphase_fmax_deg": -2.31,
+   "dtau_ps": 0.08
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.008,
@@ -7777,6 +8869,14 @@
     47.53
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.015,
+   "dS_thru_max_db": 0.066,
+   "dS11_mean_db": 7.03,
+   "dS11_max_db": 46.44,
+   "dphase_fmax_deg": 0.13,
+   "dtau_ps": -0.08
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.119,
    "dS21_mean_db": 0.039,
@@ -7824,6 +8924,14 @@
     51.33,
     47.9
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.02,
+   "dS_thru_max_db": 0.074,
+   "dS11_mean_db": 6.59,
+   "dS11_max_db": 44.85,
+   "dphase_fmax_deg": -0.14,
+   "dtau_ps": -0.05
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.018,
@@ -7908,6 +9016,14 @@
     47.53
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.022,
+   "dS_thru_max_db": 0.101,
+   "dS11_mean_db": 7.57,
+   "dS11_max_db": 32.53,
+   "dphase_fmax_deg": -0.33,
+   "dtau_ps": -0.13
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.213,
    "dS21_mean_db": 0.039,
@@ -7955,6 +9071,14 @@
     51.3,
     47.9
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.024,
+   "dS_thru_max_db": 0.106,
+   "dS11_mean_db": 7.12,
+   "dS11_max_db": 32.18,
+   "dphase_fmax_deg": -0.57,
+   "dtau_ps": -0.11
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.015,
@@ -8039,6 +9163,16 @@
     47.82
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.079,
+   "dS_thru_max_db": 0.265,
+   "dS11_mean_db": 0.39,
+   "dS11_max_db": 1.09,
+   "dphase_fmax_deg": -2.13,
+   "dtau_ps": 0.06,
+   "dSdd21_mean_db": 0.004,
+   "dSdd21_max_db": 0.012
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.05,
    "dS21_mean_db": 0.022,
@@ -8070,6 +9204,16 @@
     48.42,
     48.21
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.079,
+   "dS_thru_max_db": 0.256,
+   "dS11_mean_db": 1.46,
+   "dS11_max_db": 4.76,
+   "dphase_fmax_deg": -2.93,
+   "dtau_ps": 0.12,
+   "dSdd21_mean_db": 0.009,
+   "dSdd21_max_db": 0.024
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.011,
@@ -8122,6 +9266,16 @@
     48.63
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.01,
+   "dS_thru_max_db": 0.024,
+   "dS11_mean_db": 3.24,
+   "dS11_max_db": 10.12,
+   "dphase_fmax_deg": -1.32,
+   "dtau_ps": 0.01,
+   "dSdd21_mean_db": 0.003,
+   "dSdd21_max_db": 0.019
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.039,
    "dS21_mean_db": 0.013,
@@ -8153,6 +9307,16 @@
     49.29,
     49.0
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.003,
+   "dS_thru_max_db": 0.021,
+   "dS11_mean_db": 8.08,
+   "dS11_max_db": 17.2,
+   "dphase_fmax_deg": -2.15,
+   "dtau_ps": 0.07,
+   "dSdd21_mean_db": 0.007,
+   "dSdd21_max_db": 0.022
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.008,
@@ -8205,6 +9369,14 @@
     50.54
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.018,
+   "dS_thru_max_db": 0.126,
+   "dS11_mean_db": 3.56,
+   "dS11_max_db": 16.52,
+   "dphase_fmax_deg": -0.99,
+   "dtau_ps": 0.05
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.031,
    "dS21_mean_db": 0.011,
@@ -8236,6 +9408,14 @@
     49.89,
     50.87
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.05,
+   "dS_thru_max_db": 0.362,
+   "dS11_mean_db": 3.08,
+   "dS11_max_db": 10.97,
+   "dphase_fmax_deg": -2.47,
+   "dtau_ps": 0.25
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.02,
@@ -8288,6 +9468,14 @@
     50.54
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.015,
+   "dS_thru_max_db": 0.149,
+   "dS11_mean_db": 3.51,
+   "dS11_max_db": 15.86,
+   "dphase_fmax_deg": 5.1,
+   "dtau_ps": -0.45
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.066,
    "dS21_mean_db": 0.01,
@@ -8319,6 +9507,14 @@
     50.0,
     50.87
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.045,
+   "dS_thru_max_db": 0.289,
+   "dS11_mean_db": 3.04,
+   "dS11_max_db": 9.8,
+   "dphase_fmax_deg": 3.05,
+   "dtau_ps": -0.24
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.02,
@@ -8370,6 +9566,14 @@
     49.98,
     49.1
    ]
+  },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.055,
+   "dS_thru_max_db": 0.168,
+   "dS11_mean_db": 1.83,
+   "dS11_max_db": 16.31,
+   "dphase_fmax_deg": -4.16,
+   "dtau_ps": 0.23
   },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.025,
@@ -8450,6 +9654,14 @@
     49.98,
     49.12
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.154,
+   "dS_thru_max_db": 0.398,
+   "dS11_mean_db": 2.68,
+   "dS11_max_db": 17.98,
+   "dphase_fmax_deg": -12.63,
+   "dtau_ps": 0.77
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.088,
@@ -8534,6 +9746,14 @@
     49.31
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.028,
+   "dS_thru_max_db": 0.135,
+   "dS11_mean_db": 2.06,
+   "dS11_max_db": 8.73,
+   "dphase_fmax_deg": -1.2,
+   "dtau_ps": -0.01
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.033,
    "dS21_mean_db": 0.007,
@@ -8613,6 +9833,14 @@
     49.9,
     49.42
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.019,
+   "dS_thru_max_db": 0.079,
+   "dS11_mean_db": 2.04,
+   "dS11_max_db": 9.43,
+   "dphase_fmax_deg": -6.45,
+   "dtau_ps": 0.36
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.01,
@@ -8697,6 +9925,16 @@
     55.99
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.033,
+   "dS_thru_max_db": 0.084,
+   "dS11_mean_db": 0.79,
+   "dS11_max_db": 4.07,
+   "dphase_fmax_deg": -3.24,
+   "dtau_ps": 0.2,
+   "dSdd21_mean_db": 0.009,
+   "dSdd21_max_db": 0.041
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.028,
    "dS21_mean_db": 0.012,
@@ -8728,6 +9966,16 @@
     56.11,
     56.84
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.022,
+   "dS_thru_max_db": 0.08,
+   "dS11_mean_db": 0.89,
+   "dS11_max_db": 4.76,
+   "dphase_fmax_deg": -4.02,
+   "dtau_ps": 0.26,
+   "dSdd21_mean_db": 0.024,
+   "dSdd21_max_db": 0.08
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.023,
@@ -8780,6 +10028,16 @@
     48.15
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.031,
+   "dS_thru_max_db": 0.066,
+   "dS11_mean_db": 2.51,
+   "dS11_max_db": 5.16,
+   "dphase_fmax_deg": 0.04,
+   "dtau_ps": -0.06,
+   "dSdd21_mean_db": 0.008,
+   "dSdd21_max_db": 0.022
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.068,
    "dS21_mean_db": 0.018,
@@ -8811,6 +10069,16 @@
     48.39,
     48.72
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.023,
+   "dS_thru_max_db": 0.062,
+   "dS11_mean_db": 2.97,
+   "dS11_max_db": 12.79,
+   "dphase_fmax_deg": -1.01,
+   "dtau_ps": 0.01,
+   "dSdd21_mean_db": 0.009,
+   "dSdd21_max_db": 0.034
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.005,
@@ -8863,6 +10131,14 @@
     62.58
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.049,
+   "dS_thru_max_db": 0.106,
+   "dS11_mean_db": 1.52,
+   "dS11_max_db": 5.36,
+   "dphase_fmax_deg": -2.21,
+   "dtau_ps": 0.17
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.112,
    "dS21_mean_db": 0.058,
@@ -8894,6 +10170,14 @@
     65.52,
     63.22
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.035,
+   "dS_thru_max_db": 0.085,
+   "dS11_mean_db": 1.41,
+   "dS11_max_db": 10.2,
+   "dphase_fmax_deg": -3.09,
+   "dtau_ps": 0.24
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.027,
@@ -8946,6 +10230,14 @@
     60.19
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.024,
+   "dS_thru_max_db": 0.053,
+   "dS11_mean_db": 1.44,
+   "dS11_max_db": 9.91,
+   "dphase_fmax_deg": -5.12,
+   "dtau_ps": 0.35
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.025,
    "dS21_mean_db": 0.008,
@@ -8977,6 +10269,14 @@
     61.93,
     60.58
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.024,
+   "dS_thru_max_db": 0.056,
+   "dS11_mean_db": 1.95,
+   "dS11_max_db": 15.63,
+   "dphase_fmax_deg": -5.87,
+   "dtau_ps": 0.4
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.019,
@@ -9029,6 +10329,14 @@
     52.12
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.023,
+   "dS_thru_max_db": 0.095,
+   "dS11_mean_db": 4.23,
+   "dS11_max_db": 6.74,
+   "dphase_fmax_deg": -3.88,
+   "dtau_ps": 0.19
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.057,
    "dS21_mean_db": 0.027,
@@ -9060,6 +10368,14 @@
     54.59,
     52.46
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.038,
+   "dS_thru_max_db": 0.164,
+   "dS11_mean_db": 3.81,
+   "dS11_max_db": 10.34,
+   "dphase_fmax_deg": -8.29,
+   "dtau_ps": 0.5
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.032,
@@ -9112,6 +10428,14 @@
     51.37
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.017,
+   "dS_thru_max_db": 0.059,
+   "dS11_mean_db": 1.67,
+   "dS11_max_db": 5.83,
+   "dphase_fmax_deg": -4.3,
+   "dtau_ps": 0.22
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.008,
    "dS21_mean_db": 0.004,
@@ -9143,6 +10467,14 @@
     51.56,
     51.86
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.048,
+   "dS_thru_max_db": 0.151,
+   "dS11_mean_db": 3.14,
+   "dS11_max_db": 9.5,
+   "dphase_fmax_deg": -7.6,
+   "dtau_ps": 0.42
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.021,
@@ -9195,6 +10527,14 @@
     59.08
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.296,
+   "dS_thru_max_db": 1.694,
+   "dS11_mean_db": 2.29,
+   "dS11_max_db": 11.5,
+   "dphase_fmax_deg": 5.98,
+   "dtau_ps": -0.11
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 1.514,
    "dS21_mean_db": 0.249,
@@ -9242,6 +10582,14 @@
     60.34,
     59.27
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.263,
+   "dS_thru_max_db": 1.37,
+   "dS11_mean_db": 2.18,
+   "dS11_max_db": 11.33,
+   "dphase_fmax_deg": -2.7,
+   "dtau_ps": 0.21
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.597,
@@ -9347,6 +10695,14 @@
     59.08
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.225,
+   "dS_thru_max_db": 0.997,
+   "dS11_mean_db": 2.27,
+   "dS11_max_db": 27.46,
+   "dphase_fmax_deg": -3.26,
+   "dtau_ps": -0.11
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.928,
    "dS21_mean_db": 0.198,
@@ -9394,6 +10750,14 @@
     60.35,
     59.27
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.251,
+   "dS_thru_max_db": 1.346,
+   "dS11_mean_db": 2.28,
+   "dS11_max_db": 24.3,
+   "dphase_fmax_deg": -7.5,
+   "dtau_ps": 0.21
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.611,
@@ -9478,6 +10842,14 @@
     59.07
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.233,
+   "dS_thru_max_db": 1.344,
+   "dS11_mean_db": 2.29,
+   "dS11_max_db": 25.31,
+   "dphase_fmax_deg": -3.14,
+   "dtau_ps": -0.11
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 1.043,
    "dS21_mean_db": 0.194,
@@ -9525,6 +10897,14 @@
     60.36,
     59.27
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.24,
+   "dS_thru_max_db": 1.228,
+   "dS11_mean_db": 2.24,
+   "dS11_max_db": 21.7,
+   "dphase_fmax_deg": -7.12,
+   "dtau_ps": 0.21
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.58,
@@ -9609,6 +10989,14 @@
     57.3
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.206,
+   "dS_thru_max_db": 1.262,
+   "dS11_mean_db": 2.36,
+   "dS11_max_db": 15.3,
+   "dphase_fmax_deg": -3.41,
+   "dtau_ps": -0.09
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.848,
    "dS21_mean_db": 0.173,
@@ -9656,6 +11044,14 @@
     58.46,
     57.62
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.232,
+   "dS_thru_max_db": 1.406,
+   "dS11_mean_db": 2.36,
+   "dS11_max_db": 11.13,
+   "dphase_fmax_deg": -7.12,
+   "dtau_ps": 0.22
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.458,
@@ -9740,6 +11136,14 @@
     49.15
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.024,
+   "dS_thru_max_db": 0.113,
+   "dS11_mean_db": 3.3,
+   "dS11_max_db": 9.26,
+   "dphase_fmax_deg": 0.32,
+   "dtau_ps": -0.06
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.271,
    "dS21_mean_db": 0.092,
@@ -9787,6 +11191,14 @@
     48.16,
     49.34
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.022,
+   "dS_thru_max_db": 0.096,
+   "dS11_mean_db": 3.35,
+   "dS11_max_db": 13.78,
+   "dphase_fmax_deg": -2.61,
+   "dtau_ps": 0.26
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.18,
@@ -9871,6 +11283,14 @@
     59.03
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.059,
+   "dS_thru_max_db": 0.114,
+   "dS11_mean_db": 2.44,
+   "dS11_max_db": 4.19,
+   "dphase_fmax_deg": -2.38,
+   "dtau_ps": 0.22
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.136,
    "dS21_mean_db": 0.062,
@@ -9902,6 +11322,14 @@
     62.92,
     59.73
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.043,
+   "dS_thru_max_db": 0.096,
+   "dS11_mean_db": 2.21,
+   "dS11_max_db": 10.02,
+   "dphase_fmax_deg": -3.65,
+   "dtau_ps": 0.37
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.041,
@@ -9954,6 +11382,14 @@
     59.0
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.115,
+   "dS_thru_max_db": 0.265,
+   "dS11_mean_db": 4.59,
+   "dS11_max_db": 11.54,
+   "dphase_fmax_deg": -0.74,
+   "dtau_ps": 0.17
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.037,
    "dS21_mean_db": 0.014,
@@ -9985,6 +11421,14 @@
     67.21,
     59.59
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.104,
+   "dS_thru_max_db": 0.251,
+   "dS11_mean_db": 4.43,
+   "dS11_max_db": 12.21,
+   "dphase_fmax_deg": -1.43,
+   "dtau_ps": 0.26
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.031,
@@ -10037,6 +11481,14 @@
     49.07
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.003,
+   "dS_thru_max_db": 0.01,
+   "dS11_mean_db": 1.05,
+   "dS11_max_db": 3.71,
+   "dphase_fmax_deg": -2.29,
+   "dtau_ps": 0.17
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.011,
    "dS21_mean_db": 0.004,
@@ -10068,6 +11520,14 @@
     49.67,
     49.25
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.016,
+   "dS_thru_max_db": 0.036,
+   "dS11_mean_db": 2.75,
+   "dS11_max_db": 8.05,
+   "dphase_fmax_deg": -3.6,
+   "dtau_ps": 0.32
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.021,
@@ -10120,6 +11580,14 @@
     49.07
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.003,
+   "dS_thru_max_db": 0.01,
+   "dS11_mean_db": 1.05,
+   "dS11_max_db": 3.71,
+   "dphase_fmax_deg": -2.29,
+   "dtau_ps": 0.17
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.011,
    "dS21_mean_db": 0.004,
@@ -10151,6 +11619,14 @@
     49.67,
     49.63
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.004,
+   "dS_thru_max_db": 0.007,
+   "dS11_mean_db": 4.56,
+   "dS11_max_db": 10.11,
+   "dphase_fmax_deg": -1.73,
+   "dtau_ps": 0.11
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.006,
@@ -10203,6 +11679,14 @@
     59.86
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.095,
+   "dS_thru_max_db": 0.543,
+   "dS11_mean_db": 1.33,
+   "dS11_max_db": 9.32,
+   "dphase_fmax_deg": -0.7,
+   "dtau_ps": 0.0
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 1.012,
    "dS21_mean_db": 0.258,
@@ -10250,6 +11734,14 @@
     58.43,
     59.65
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.266,
+   "dS_thru_max_db": 2.413,
+   "dS11_mean_db": 2.19,
+   "dS11_max_db": 12.82,
+   "dphase_fmax_deg": -6.16,
+   "dtau_ps": 0.42
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 2.469,
@@ -10334,6 +11826,14 @@
     59.34
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.119,
+   "dS_thru_max_db": 1.228,
+   "dS11_mean_db": 1.29,
+   "dS11_max_db": 7.68,
+   "dphase_fmax_deg": -0.23,
+   "dtau_ps": -0.01
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.999,
    "dS21_mean_db": 0.278,
@@ -10381,6 +11881,14 @@
     57.87,
     58.97
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.283,
+   "dS_thru_max_db": 2.536,
+   "dS11_mean_db": 2.41,
+   "dS11_max_db": 13.2,
+   "dphase_fmax_deg": -6.22,
+   "dtau_ps": 0.44
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 2.555,
@@ -10465,6 +11973,14 @@
     52.36
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.086,
+   "dS_thru_max_db": 0.22,
+   "dS11_mean_db": 4.55,
+   "dS11_max_db": 14.35,
+   "dphase_fmax_deg": 1.1,
+   "dtau_ps": -0.0
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.221,
    "dS21_mean_db": 0.087,
@@ -10544,6 +12060,14 @@
     53.34,
     53.3
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.112,
+   "dS_thru_max_db": 0.567,
+   "dS11_mean_db": 4.76,
+   "dS11_max_db": 14.99,
+   "dphase_fmax_deg": -6.36,
+   "dtau_ps": 0.61
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.604,
@@ -10628,6 +12152,14 @@
     52.35
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.083,
+   "dS_thru_max_db": 0.308,
+   "dS11_mean_db": 4.61,
+   "dS11_max_db": 10.6,
+   "dphase_fmax_deg": 1.85,
+   "dtau_ps": -0.06
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.226,
    "dS21_mean_db": 0.079,
@@ -10707,6 +12239,14 @@
     53.43,
     52.99
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.085,
+   "dS_thru_max_db": 0.194,
+   "dS11_mean_db": 4.75,
+   "dS11_max_db": 11.91,
+   "dphase_fmax_deg": -3.83,
+   "dtau_ps": 0.45
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.178,
@@ -10791,6 +12331,14 @@
     49.1
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.039,
+   "dS_thru_max_db": 0.088,
+   "dS11_mean_db": 14.29,
+   "dS11_max_db": 29.06,
+   "dphase_fmax_deg": -4.97,
+   "dtau_ps": 0.53
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.013,
    "dS21_mean_db": 0.009,
@@ -10822,6 +12370,14 @@
     56.18,
     49.41
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.037,
+   "dS_thru_max_db": 0.084,
+   "dS11_mean_db": 15.19,
+   "dS11_max_db": 24.7,
+   "dphase_fmax_deg": -4.09,
+   "dtau_ps": 0.42
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.006,
@@ -10874,6 +12430,14 @@
     47.91
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.006,
+   "dS_thru_max_db": 0.022,
+   "dS11_mean_db": 0.65,
+   "dS11_max_db": 2.66,
+   "dphase_fmax_deg": -1.82,
+   "dtau_ps": 0.1
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.022,
    "dS21_mean_db": 0.01,
@@ -10905,6 +12469,14 @@
     47.8,
     48.37
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.005,
+   "dS_thru_max_db": 0.012,
+   "dS11_mean_db": 2.25,
+   "dS11_max_db": 7.96,
+   "dphase_fmax_deg": -1.1,
+   "dtau_ps": 0.02
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.019,
@@ -10940,6 +12512,16 @@
     56.89,
     56.64
    ]
+  },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.236,
+   "dS_thru_max_db": 1.303,
+   "dS11_mean_db": 1.37,
+   "dS11_max_db": 10.09,
+   "dphase_fmax_deg": 10.91,
+   "dtau_ps": -0.67,
+   "dSdd21_mean_db": 0.211,
+   "dSdd21_max_db": 1.527
   },
   "deemb_vs_kisi": {
    "dS21_max_db": 0.139,
@@ -11009,6 +12591,14 @@
     62.46
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.234,
+   "dS_thru_max_db": 2.209,
+   "dS11_mean_db": 1.12,
+   "dS11_max_db": 6.22,
+   "dphase_fmax_deg": 4.87,
+   "dtau_ps": -0.59
+  },
   "deemb_vs_kisi": {
    "dS21_max_db": 0.036,
    "dS21_mean_db": 0.024,
@@ -11040,6 +12630,14 @@
     62.02,
     63.14
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.457,
+   "dS_thru_max_db": 4.981,
+   "dS11_mean_db": 1.41,
+   "dS11_max_db": 8.13,
+   "dphase_fmax_deg": -9.75,
+   "dtau_ps": -0.07
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.086,
@@ -11107,6 +12705,14 @@
     52.37,
     52.55
    ]
+  },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 1.539,
+   "dS_thru_max_db": 16.685,
+   "dS11_mean_db": 0.7,
+   "dS11_max_db": 1.74,
+   "dphase_fmax_deg": 10.34,
+   "dtau_ps": -0.04
   },
   "deemb_vs_kisi": {
    "dS21_max_db": 1.515,
@@ -11192,6 +12798,16 @@
     56.27
    ]
   },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.112,
+   "dS_thru_max_db": 0.348,
+   "dS11_mean_db": 1.55,
+   "dS11_max_db": 3.56,
+   "dphase_fmax_deg": -1.99,
+   "dtau_ps": 0.56,
+   "dSdd21_mean_db": 0.191,
+   "dSdd21_max_db": 0.498
+  },
   "base_raw_vs_kisi": {
    "dS21_max_db": 0.062,
    "dS21_mean_db": 0.026,
@@ -11239,6 +12855,16 @@
     52.53,
     56.35
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.161,
+   "dS_thru_max_db": 0.546,
+   "dS11_mean_db": 1.43,
+   "dS11_max_db": 3.71,
+   "dphase_fmax_deg": -11.1,
+   "dtau_ps": 1.37,
+   "dSdd21_mean_db": 0.184,
+   "dSdd21_max_db": 0.485
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 0.038,
@@ -11290,6 +12916,14 @@
     59.33,
     58.99
    ]
+  },
+  "chip_kisi_vs_cst": {
+   "dS_thru_mean_db": 0.872,
+   "dS_thru_max_db": 10.077,
+   "dS11_mean_db": 2.79,
+   "dS11_max_db": 20.59,
+   "dphase_fmax_deg": 7.52,
+   "dtau_ps": -0.61
   },
   "base_raw_vs_kisi": {
    "dS21_max_db": 8.329,
@@ -11370,6 +13004,14 @@
     59.33,
     59.28
    ]
+  },
+  "chip_openems_vs_cst": {
+   "dS_thru_mean_db": 0.908,
+   "dS_thru_max_db": 10.095,
+   "dS11_mean_db": 2.55,
+   "dS11_max_db": 15.33,
+   "dphase_fmax_deg": 16.09,
+   "dtau_ps": 0.53
   },
   "raw_openems_vs_kisi": {
    "dS21_max_db": 6.853,

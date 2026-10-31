@@ -277,6 +277,8 @@ computed, else base → fine or base → intermediate); CST – openEMS (de-embe
 * `run_cst.py`: runs cases in CST (`--tag`, `--lpw`, `--lpb`, `--port face|edge`, `--skip-done`), writes
   `via_ref/<case>/cst[_tag].sNp` (header: CST version, solver, mesh cells, run time, mesh and port settings) and
   `cst[_tag]_meta.json` (status `not run` where the mesh exceeds the available mesh size).
-* `cst_compare.py`: CST against kisi-fdtd and openEMS → `results/cst_compare.json`, `--md` for the table above.
+* `cst_compare.py`: CST against kisi-fdtd and openEMS → `results/cst_compare.json`, `--md` for the tables above; the
+  reference page (`make_viewer.py`) takes its per-case chip and its group table "Every reference case in CST" from it
+  (the metrics of the openEMS chip, to each case's f max).
 * `via_ref/<case>/cst.sNp` (base mesh), `cst_fine.sNp` (fine), `cst_xfine.sNp` (extra-fine, five cases),
   `cst_mid.sNp` (intermediate, BV_vna_clk_w5), with their `*_meta.json`.

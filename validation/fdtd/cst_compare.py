@@ -14,6 +14,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import sparam  # noqa: E402
+from openems_refs import stats as oe_stats  # noqa: E402
 
 REF = os.path.join(HERE, "..", "via_ref")
 OEMS = REF  # where openems.sNp is read from (--openems)
@@ -256,6 +257,9 @@ def main():
                 print(cid, tool, "frequency grids differ, skipped")
                 continue
             row[f"raw_vs_{tool}"] = metrics(f, Sc, St, fcmp)
+            # the reference page's chip, with the metrics of openems_refs.py (to the case's f max; Δτ = τ tool − τ CST)
+            if tool in ("kisi", "openems"):
+                row[f"chip_{tool}_vs_cst"] = oe_stats(f, St, Sc, c["fmax"])
             if tool == "openems" and k_ref is not None:
                 row["raw_openems_vs_kisi"] = metrics(f, St, k_ref, fcmp)
             if tool == "kisi" and base is not None and prim != "cst":

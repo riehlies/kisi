@@ -99,7 +99,8 @@ and the lumped R–L–C.
 - **CST** (`CST.md`): `cst_case.py` writes a case as CST VBA history blocks, `run_cst.py` runs cases in CST Studio
   Suite (with CST's Python libraries) → `via_ref/<case>/cst[_fine|_xfine|_mid].sNp` and `*_meta.json`,
   `cst_compare.py` compares with kisi-fdtd (also its former `kisi_base.sNp`) and openEMS → `results/cst_compare.json`
-  and the tables of `CST.md` (`--md`). The reference page draws CST's finest mesh.
+  and the tables of `CST.md` (`--md`). The reference page draws CST's finest mesh, with a per-case chip next to the
+  openEMS one and the group table under "Solver checks".
 - `junction_fit.py` re-checks the two fitted choices of the ladder's junction model (`TESTS.md` sections 7 and 17)
   against the de-embedded references, on the ladder as `rust_models.py --out DIR` computes it.
 - `compare_kisi.py` runs kisi's channel model on every case (`KISI_VIA_MODEL=coax` for the former via model) and

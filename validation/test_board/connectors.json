@@ -41,6 +41,43 @@
    "footprint_model": "SnapMagic KiCad footprint SAMTEC_292-J-P-EP-ST-EL-01 and CADENAS STEP 292-J-P-EP-ST-EL-01 (supplied by the maintainer 2026-10-30; their licences forbid redistributing the models, so they are not in the repository - make_coupons.py generates the footprint from the parameters below)"
   },
   "body_on_board": "Samtec's 3D model (CADENAS STEP, used locally, not redistributed): the top jaw covers the board 5.08 mm from the edge, 9.53 mm wide; a front lip 0.38 mm deep with the pin opening, then a slot over the trace 2.67 mm wide (0.38-0.64 mm) and 3.18 mm wide (0.64-5.08 mm, open to the top); the lower plate 8.89 × 5.33 mm clamps the bottom side; screws at 2.79 mm from the edge, ±2.92 mm",
+  "step_model": {
+   "_about": "Geometry of Samtec's 3D model (CADENAS STEP 292-J-P-EP-ST-EL-01, supplied by the maintainer 2026-10-30, NOT in the repository: its terms forbid redistributing it), measured with gmsh 4.15 / OpenCASCADE on 2026-10-31 for cst_launch.py (which imports the STEP itself and uses these values to split, cut and place it). mm, STEP coordinates: x along the connector axis from the front face of the thread (x = 0) towards the board, y up (the board normal; the jaw is on top), z across; the coax axis is y = z = 0. The STEP has 7 solids in 5 parts and no materials.",
+   "parts": [
+    {"name": "S-PRF92-J-P-EP-ST-EL-01", "role": "body", "what": "body, bushing and both jaws as ONE solid (stainless steel, drawing); it also contains the support bead and fills the space around the contact between the bead and the front lip (below)"},
+    {"name": "PRF92-J-P-2E-ST-EL-SK-01", "role": "contact", "what": "centre contact: slotted socket, stepped body and the launch pin as one solid (BeCu, gold, drawing)"},
+    {"name": "PRF18-P-P-ST-EL-BP-01", "role": "plate", "what": "lower clamping plate (stainless steel)"},
+    {"name": "SHCS-1-72-06-X", "role": "drop", "what": "2 socket-head screws #1-72"},
+    {"name": "WSHR-05-X", "role": "drop", "what": "2 split washers"}
+   ],
+   "mating_plane_x": 1.9304,
+   "mating_plane_note": "outer-conductor face (annulus Ø2.92-Ø4.61 mm); drawing: REF PLANE .075 in [1.91] behind the front, .380 in [9.66] to the board edge (model: 9.60); the socket starts 0.038 mm behind it (pin-depth recession)",
+   "oc_bore": {"x": [1.9304, 5.1054], "r": 1.4605, "note": "Ø2.92 mm air line in front of the bead (60 ln(2.921/1.270) = 50.0 Ω with the Ø1.27 contact)"},
+   "counterbore": {"x": [0.1524, 1.9304], "r": 2.3063},
+   "contact": [
+    [1.9685, 4.0005, 0.6566, "socket: 4 fingers (slots 0.127 mm), bore Ø0.95 mm to x = 4.76"],
+    [4.0005, 5.4864, 0.635, ""],
+    [5.4864, 7.0104, 0.4572, "groove in the bead's centre hole"],
+    [7.0104, 7.772, 0.635, ""],
+    [7.772, 10.6934, 0.508, ""],
+    [10.6934, 11.455, 0.127, ""],
+    [11.455, 12.2174, 0.0889, "launch pin Ø0.178, ends 0.686 mm beyond the board edge"]
+   ],
+   "bead": {"x": [5.1054, 6.3754], "r": 1.4605, "centre_hole_r": 0.4572, "holes": {"n": 6, "pitch_r": 1.0033, "r": 0.3493},
+    "note": "a disc Ø2.92 × 1.27 mm with six Ø0.70 mm holes on Ø2.01 mm and a Ø0.91 mm centre hole; part of the body solid (no solid or material of its own); the contact's Ø1.27 shoulder overlaps it by 0.38 mm (x 5.105-5.486)"},
+   "void_behind_bead": {"x": [6.3754, 6.8326], "r": 0.6604},
+   "filled": {"x": [6.8326, 10.8204], "note": "no bore in the model: the body solid overlaps the contact here (3.46 mm³), so the inside of the connector between the bead and the front lip is not modelled; cst_launch.py cuts a bore of assumed impedance (--cavity-z, --cavity-er)"},
+   "lip_opening": {"x": [10.8204, 11.9126], "r": 0.3505},
+   "board_edge_x": 11.5316,
+   "board_edge_note": "front of the lower plate; screw axes at x = 14.326 (2.794 from it, as the drawing), z = ±2.921",
+   "board_top_y": -0.127,
+   "board_top_note": "underside of the jaw: the pin axis is 0.127 mm above the board, the pin's underside 0.038 mm above it (the real pin is pressed onto the pad: drawing detail A, .0025 in)",
+   "board_bottom_y": -2.032,
+   "board_bottom_note": "top of the lower plate (the model shows a 1.905 mm board); the plate has a 0.51 × 0.08 mm groove under the trace",
+   "plate": {"x": [11.5316, 16.8656], "y": [-3.4036, -2.032], "z_half": 4.445},
+   "body_box": {"x": [0.0, 16.6116], "y": [-4.7625, 4.7625], "z_half": 4.7625},
+   "jaw": {"lip_x": 11.2776, "underside_inner_half": 0.3267, "slot_half": [1.3335, 1.5875], "slot_x": 11.9126, "top_y": [1.778, 3.9751]}
+  },
   "benchmark": {
    "fixture": "PCB-240MM-112613-SIG-0, 4 layers Isola I-Tera MT40 (εr 3.45, tan δ 0.0031 at 10 GHz for the 3.45 grade: https://www.isola-group.com/pcb-laminates-prepreg/i-tera-mt40-rf-mw/), 50 Ω grounded-coplanar trace, launch optimised with a full-wave solver; PNA N5227B 10 MHz-40 GHz, Maury 8770CK 2.92 mm mechanical cal at the cable ends",
    "one_connector_500mil": {
@@ -71,7 +108,25 @@
      -1.88
     ]
    },
-   "note": "target for our launch on FR-4 7628: |S11| below -20 dB to 40 GHz for one launch; expect more line loss than MT40 (tan δ 0.02 vs 0.003)"
+   "note": "target for our launch on FR-4 7628: |S11| below -20 dB to 40 GHz for one launch; expect more line loss than MT40 (tan δ 0.02 vs 0.003)",
+   "cst_model": {
+    "_about": "cst_launch.py --model samtec_bench: a plausibility check against the report, NOT Samtec's fixture (its stackup, trace and launch are not published). Assumed: 4 layers I-Tera MT40 (εr 3.45, tan δ 0.0031, Isola data sheet for the 3.45 grade at 10 GHz), 0.254 mm (10 mil) L1-L2 (Samtec's 0.52 mm footprint pad is about 50 Ω on 10 mil of εr 3.45), 1.0 mm core, 0.254 mm L3-L4, 1 oz outer / 0.5 oz inner copper, no solder mask; a 50 Ω grounded coplanar line from the edge to the edge (w 0.50 mm, gap 0.30 mm: 49.9 Ω with kisi's field solver, 2026-10-31), our launch shape (the line width to the edge, fence 0.55 mm), no row walls",
+    "stackup": {
+     "title": "Isola I-Tera MT40 4 layers 1.6 mm (ASSUMED for the Samtec benchmark, cst_launch.py)",
+     "copper": [0.035, 0.0175, 0.0175, 0.035],
+     "dielectrics": [
+      {"type": "prepreg", "material": "I-Tera MT40 (assumed 10 mil)", "thickness": 0.254, "er": 3.45, "tand": 0.0031},
+      {"type": "core", "material": "I-Tera MT40 (assumed)", "thickness": 1.0, "er": 3.45, "tand": 0.0031},
+      {"type": "prepreg", "material": "I-Tera MT40 (assumed 10 mil)", "thickness": 0.254, "er": 3.45, "tand": 0.0031}
+     ],
+     "mask": {"thickness": 0.0, "er": 3.8, "tand": 0.025},
+     "planes": [1, 2],
+     "signal": [0, 3]
+    },
+    "line": {"w": 0.5, "gap": 0.3, "z_kisi_field": 49.9},
+    "line_mm": 25.4,
+    "line_one_mm": 12.7
+   }
   },
   "drawing_footprint_sheet": {
    "_about": "Sheet 2 of the drawing, inches [mm]; what each value is (read from the drawing view and the SnapMagic footprint)",

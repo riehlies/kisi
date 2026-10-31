@@ -12,7 +12,8 @@ The scripts named here reproduce each result.
 | S1 | Metal model: TM010-type resonance of a cylindrical cavity, empty and with a centre post, analytic | `cavity.py` | staircase −1.75 / −0.91 / −0.47 / −0.27 % (empty, 0.2–0.025 mm), conformal −0.21 / −0.09 / −0.04 / −0.02 %; post: staircase −3.26 … −0.89 %, conformal −1.53 … −0.13 % | conformal 7–13× closer |
 | S2 | Mesh convergence of a via with antipads (A_s4_d300_ap800), staircase and conformal, 0.1–0.025 mm | `via_convergence.py` | conformal at h ≈ staircase at 0.7·h; at 0.035 mm \|S21\| within 0.07 dB of the finest run up to 30 GHz (run with the mesh rules before soft circle lines and coarse GND-via cells) | references use 0.035 mm |
 | S3 | CPML on a matched microstrip: 8 / 16 cells, larger box, openEMS PML_8 | `check_pml.py` | S11 identical for 8 and 16 cells (converged), openEMS 8–14 dB more reflection above 10 GHz, S21 within 0.01 dB | pass |
-| S4 | Implementation against openEMS on the same mesh (staircase, PML), one case each of A, B, D, E | `openems_compare.py` | Δ\|S21\| mean 0.02–0.22 dB; larger maxima (up to 2.5 dB) only in deep nulls (stub notch at −25 dB) | pass |
+| S4 | Implementation against openEMS on the same mesh (staircase, PML), one case each of A, B, D, E | `openems_compare.py` | on the mesh of the reference runs: Δ\|S21\| mean 0.011–0.028 dB, max 0.04–0.22 dB (before, on a staircase-mode mesh with lines on every circle extreme: 0.02–0.22 / up to 2.5 dB) | pass |
+| S15 | Every reference case (106) in openEMS, on kisi-fdtd's mesh and with the cell at metal halved | `openems_refs.py` | section 16 | pass, with the outliers explained there |
 | S5 | Lumped series R–L–C at the end of a 1 mm microstrip | unit test `lumped_rlc` | series resonance 4.35–4.40 GHz against 4.33 GHz from the circuit with the line's 0.35 nH, Re Z 9.6 Ω against 10 Ω | pass |
 | S6 | Stability: lone conformal pad in a PEC box, 12 000 steps | unit test `conformal_pad_stable` | energy decays (found and fixed: every face touching a partially free edge must use its free length, otherwise the operator is not symmetric and the energy grows) | pass |
 | S8 | Line impedance and the edge effect of zero-thickness strips: Zc and εeff of 20 mm microstrip / stripline (ThunderScope stack; γ from 10 / 20 mm) against kisi's 2D field solver (≤ 1.7 % from HFSS) | `compare_kisi.py … kisi.mjs` | mesh lines on the strip edges: Zc 6 % low (46.1 / 43.3 Ω against 49.1 / 46.1 Ω), εeff within 1 %; thirds rule (lines Δ/3 inside, 2Δ/3 outside the long edges): Zc 48.6 / 46.5 Ω (−1.0 / +0.8 %), εeff 2.580 / 3.920 (+0.5 / +0.4 %) | thirds rule on for all cases with traces; references recomputed |
@@ -300,7 +301,7 @@ and equivalent antipad radii); an earlier run on a busier machine gave about 1.5
 | 2D field solver (kisi.mjs, viewer) | about 1–2 s per new cross-section; cached on disk / in IndexedDB | Zc within 1.6 %, εeff within 1 % | sign-off of impedance-controlled nets, striplines, CPWG, coupled pairs |
 | Via ladder (`via_pbm`, default for every via that crosses a plane) | ≈ 12 ms per via type (Laplace and equivalent antipad radius, cached), µs per frequency | via alone in kisi's channel: TDR median 1.4 %, p90 7.4 %; pairs: phase 3.5°; stub notch within 3 % | every channel with vias: return vias, antipads (also offset and oval), stubs, back-drilling, pairs, inner-layer exits |
 | Cavity model (`cavity_modal`) | ms for a whole sweep | resonances within 0.8 %, transfer impedance within 0.7 % | rectangular plane pairs: resonances, spreading and loop inductance; kisi's PDN grid model stays the tool for real plane shapes |
-| 3D FDTD (`kisi-fdtd`) | minutes per via transition (0.3–0.9 M cells), half an hour for a plane cavity; a whole board is out of reach | reference (CPML, conformal metal, checked against analytic cavities and openEMS) | checking the reduced models, structures they do not cover (connector launches, non-round antipads, via fences, plane gaps, via-to-via coupling), frequencies above 25–40 GHz |
+| 3D FDTD (`kisi-fdtd`) | minutes per via transition (0.3–0.9 M cells), half an hour for a plane cavity; a whole board is out of reach | reference (CPML, conformal metal, checked against analytic cavities and, on every case, openEMS: section 16) | checking the reduced models, structures they do not cover (connector launches, non-round antipads, via fences, plane gaps, via-to-via coupling), frequencies above 25–40 GHz |
 
 ## 7. Via ladder: junction, non-round antipads, conductor loss (Block 1)
 
@@ -678,3 +679,154 @@ T1-OUT+, T3-OUT- yellow → green (60–62 → 51–55 Ω: traces over openings 
 traces), LO1_RFOUTB_N_RC, C121-Pad2, C160-Pad2, C165-Pad2 green → yellow (46–48 → 42–45 Ω). Values moved in
 overview (the classes' share within ±5 %, by up to 13 points), check, crosstalk (the coupling
 scan sees the pads' width).
+
+## 16. Every reference case in openEMS
+
+All 106 cases in `validation/via_ref` (groups A–X with their 2×thru, the board vias, the finite boards and the
+return-group cases) computed again with openEMS 0.37.0 (FDTD, staircase metal, UPML), the independent check that
+`validation/via_references.md` planned; before, S4 compared one case each of A, B, D and E. Script:
+`openems_refs.py` (`plan`, `run`, `merge`, `stair`, `compare`); results in `via_ref/<case>/openems.sNp` (refined
+mesh), `openems_base.sNp` (kisi-fdtd's mesh), `meta.json` (`runs.openems`, `runs.openems_base`: cells, run time per
+excited port, cell rate, runner) and `results/openems_refs.json`. The reference page shows the openEMS curves next to
+kisi-fdtd (also de-embedded with openEMS' own 2×thru) and a per-case agreement chip.
+
+### Method
+- **The same case files.** `openems_case.py` builds each case from its kisi-fdtd JSON as CSXCAD primitives, so
+  openEMS decides for itself which mesh edges are metal. Same dielectric loss (σ at `f_loss`), Gaussian pulse,
+  lumped ports (50 / 1 Ω), lumped series R–L–C, PML in the outer 8 cells, end criterion.
+- **Two meshes per case**, both from kisi-fdtd's mesher:
+  - *base*: the lines of the kisi-fdtd reference run. There kisi-fdtd with staircase metal (`stair`) and openEMS
+    must agree to the solver implementation – ports, PML, lumped elements, materials, geometry rules: the
+    like-for-like check.
+  - *fine*: the cell at metal edges, vias, ports, GND vias and refinement boxes halved (`dfine`, `dmesh`,
+    `mesh.refine` ÷ 2), the largest cell kept at λ/20. Staircase metal converges at first order (S1, S2: at 0.035 mm
+    0.18 dB off in \|S21\|, conformal 0.07 dB), so the halved cell halves openEMS' metal error and \|fine − base\|
+    estimates what remains; 2·fine − base is the first-order extrapolation. kisi-fdtd's conformal reference is
+    compared with *fine*. One very fine staircase mesh (a quarter of the cell, to fall below kisi-fdtd's own error)
+    would cost ≈ 30× the cells × steps; the two meshes give the result and its error bar for ≈ 5× the base cost.
+  - G and H have one-edge ports and an one-edge capacitor (`y0 = y1`): the refined mesh makes the port itself
+    thinner, so they are judged on the base mesh.
+- **kisi-fdtd on the fine mesh** for nine cases (conformal and staircase): its own mesh convergence, and the
+  like-for-like check on the second mesh.
+- **Metrics** up to each case's f max: the main through path (S21; S31 of a pair; S21 of two vias sharing a cavity)
+  mean and max difference in dB, \|S11\| where either result is above −30 dB, the delay difference
+  Δτ = τ_kisi-fdtd − τ_openEMS from the unwrapped phase (mean above f max / 4; positive: kisi-fdtd slower),
+  the TDR extremes (25 ps), transmission dips (resonances, stub notches) matched within 3 %, G: the \|Z11\| peaks,
+  H: the loop inductance at 50 MHz. A–E and X also de-embedded, each tool with its own 2×thru (NZC; pairs first
+  order), to 20 GHz.
+- **Where it ran:** GitHub Actions on the branch (`.github/workflows/openems-refs.yml`, `openems_plan.json`):
+  openEMS built from the v0.37.0 tag and cached; the tasks (case × mesh × excited port, 358) balanced over 15
+  shards of a 4-vCPU runner (one socket, two cores with two threads each, 15.6 GB; AMD EPYC 7763 / 9V45 / 9V74,
+  Intel Xeon Platinum 8370C / 8573C, Xeon 6973P-C – recorded per result since the second run), two tasks with two
+  threads each, or one large task with four. openEMS ran at 60–90 M cell updates/s per two-thread task; the full
+  run took 5 h 23 min on 15 runners (40.8 runner-hours), the two re-runs after the fixes 1.9 h (17.6) and 1.0 h (5.5). openEMS needs about the physical
+  time kisi-fdtd needs on ringing cases but at least ≈ 0.85 ns (its energy criterion weighs the cell volumes,
+  kisi-fdtd's does not), up to 3× kisi-fdtd's steps on short cases. kisi-fdtd staircase ran locally (2 vCPUs).
+
+### Fixes to the openEMS chain found on the way
+- **Polygon copper:** CSXCAD counts a point on a polygon edge as inside. The zero-width slits and window cuts of
+  KiCad's fractured fills therefore became metal lines wherever they fell on a mesh line – on the M.2 case a line
+  across both L3 traces to the pour, S11 → −1 at DC. Heights with polygon copper now go to openEMS as the exact
+  union of their sheets (shapely: rect ∩ even-odd rings − holes, with kisi-fdtd's choice on boundaries that fall on
+  mesh lines). Checked edge by edge against openEMS' own PEC dump (`debug_pec`): 0–18 differing edges per case
+  (single vertex ties), against up to 178 before.
+- **Holes of one sheet** cut the other sheets at the same height in openEMS (kisi-fdtd: the union of the sheets,
+  each minus its own holes) – two LibreVNA board cases.
+- **Ports off their line:** the mesher can move a port's line by a micrometre (merged lines); openEMS then dropped
+  the zero-width box (no excitation, NaN in the in2gnd case). Ports and lumped elements now sit on the nearest
+  lines, as in kisi-fdtd.
+- **Slot antipads:** the straight sides on mesh lines were hole in openEMS and metal in kisi-fdtd; the four oval
+  cases were re-run. Round antipads only touch a line at their four extremes (one edge each); re-running an
+  unchanged case with the final code reproduces it to \|ΔS\| ≤ 1·10⁻⁵.
+- `openems_compare.py` and `run_refs.py --openems` now use the reference mesh (S4): on a staircase-mode mesh with a
+  line on every circle extreme, tie decisions had put A_s4_d300_ap800 at 0.27 dB.
+
+### Implementation: the same mesh, both staircase
+102 cases (the four one-port H cases below): \|S21\| differs by 0.018 dB (median of the case means),
+90th percentile 0.052 dB, largest 0.100 dB; \|Δτ\| median 0.04 ps, 90th percentile 0.10 ps. On the fine mesh
+(seven cases with both): 0.007–0.031 dB and \|Δτ\| ≤ 0.07 ps, except X_s8x2 (0.10 dB, 0.27 ps). G resonances
+identical to the 10 MHz grid. The largest same-mesh differences:
+- **R (0.074 dB median):** the finite boards stop at −35 dB, and the two tools stop at different times (openEMS ≈ 1.4×
+  later); kisi-fdtd itself moves by 0.07 dB mean on RG_s4_pwr_n4 when run to −50 dB instead.
+- **thru_s8x2_L1 (0.10 dB, 0.48 ps):** the wide microstrip (0.93 mm) over a distant plane puts much field into the
+  air box, where openEMS' UPML reflects more (S3).
+- **H loop inductance (openEMS +3.5 … +7.6 %):** kisi-fdtd staircase 1.339 / 1.468 / 1.675 / 2.083 nH, openEMS 1.410 / 1.527 /
+  1.734 / 2.241 nH at 2 / 5 / 10 / 20 mm, kisi-fdtd conformal 1.328 / 1.456 / 1.663 / 2.071 nH. Not the PEC end caps
+  (openEMS without them: unchanged); the one-edge 1 Ω port is measured differently (openEMS: a probe line and an
+  H loop at mid-height, kisi-fdtd: the edge sums). The CST session (branch `feat/cst-refs`) finds CST between the two.
+  The loop inductance is therefore defined only to about ±4 % by the port model – well inside the ±15–25 % targets.
+
+### kisi-fdtd's references against openEMS (refined mesh)
+| group | cases | Δ\|S21\| kisi-fdtd vs openEMS fine: median of the case means / largest mean (dB) | largest max (dB) | Δτ median (ps) | same mesh, both staircase: median / largest mean (dB) | openEMS base → fine: median (dB) |
+|---|---|---|---|---|---|---|
+| A | 6 | 0.081 / 0.112 | 0.74 | -0.42 | 0.026 / 0.032 | 0.103 |
+| B | 8 | 0.088 / 0.703 | 6.58 | 0.81 | 0.019 / 0.034 | 0.079 |
+| C | 8 | 0.086 / 0.105 | 0.69 | -0.57 | 0.017 / 0.031 | 0.072 |
+| D | 8 (2: base mesh only) | 0.053 / 0.090 | 0.25 | -0.46 | 0.023 / 0.028 | 0.025 |
+| E | 12 | 0.101 / 0.268 | 0.61 | -0.45 | 0.024 / 0.057 | 0.057 |
+| X | 2 | 0.059 / 0.107 | 0.33 | -0.38 | 0.046 / 0.085 | 0.019 |
+| T | 12 | 0.011 / 0.037 | 0.30 | -0.06 | 0.013 / 0.021 | 0.004 |
+| P | 5 | 0.060 / 0.062 | 0.47 | -0.03 | 0.016 / 0.024 | 0.043 |
+| thru | 24 | 0.013 / 0.126 | 0.35 | -0.07 | 0.007 / 0.100 | 0.007 |
+| board | 5 (2: base mesh only) | 0.406 / 1.675 | 17.32 | -1.02 | 0.022 / 0.054 | 0.349 |
+| R | 6 | 0.100 / 0.113 | 0.83 | -0.32 | 0.074 / 0.089 | 0.077 |
+| RG | 4 | 0.166 / 0.290 | 2.56 | 0.41 | 0.039 / 0.054 | 0.162 |
+| G | 2 | 0.032 / 0.061 | 2.14 | 0.00 | 0.023 / 0.042 | – |
+| H | 4 | loop inductance at 50 MHz, openEMS (base mesh) against kisi-fdtd: +6.2 / +4.8 / +4.3 / +8.2 % (2 / 5 / 10 / 20 mm) | – | – | openEMS against kisi-fdtd staircase: +3.5 … +7.6 % | – |
+
+- **Through vias:** kisi-fdtd is 0.4–0.6 ps faster (A–E median −0.46 ps). Both staircase solvers agree with each
+  other and keep this offset on the refined mesh (kisi-fdtd staircase against its conformal result on the fine mesh:
+  0.5–0.75 ps), while kisi-fdtd's conformal result moves by 0.07–0.20 ps. Staircase metal makes vias, pads and
+  antipads slow, and halving the cell barely changes it; the conformal result is the converged one here.
+- **Inner-layer exits and the ThunderScope through via:** kisi-fdtd is 0.8–2.1 ps *slower* (B and E L1→L3,
+  B_ts6_L1L6). Here kisi-fdtd's own reference is not converged: on the fine mesh it moves by −1.13 ps
+  (B_s8_L1L3_stub_d300), −1.12 ps (E_s8_L1L3_p1000_round_g2) and −1.81 ps (B_ts6_L1L6), and then agrees with
+  openEMS fine within 0.2–0.5 ps; X_s8x2 (no L2 plane) and the L1→L8 cases move by 0.04–0.12 ps only. The CST
+  session finds kisi-fdtd 1.0–2.4 ps slow on L1→L3 / L1→L6 with openEMS within 0.1–0.5 ps of CST: the same finding
+  from a third solver.
+- **Stub notches:** the same mesh puts them at the same frequency in both tools (20.8 / 20.9, 21.0 / 21.0,
+  25.4 / 25.4 GHz). openEMS refined moves up towards kisi-fdtd (21.0 → 21.4 GHz, 25.4 → 26.0 GHz; extrapolated
+  21.8 against 21.5–21.8 GHz); kisi-fdtd refined moves up by 0.2 GHz. Matched dips 1.2–2.9 % apart, which is what
+  gives the 3–7 dB maxima on the notch flanks (the CST session: CST and kisi-fdtd within 0.3–0.45 dB there).
+- **Finite boards and return groups:** resonances matched within 0.0–0.4 % (R, 8/8 per case; R_s4_rect_2v 7/7) and
+  1.0–1.2 % (RG), depths within 0.1–0.5 dB; RG's base → fine change (0.16 dB) is the largest of the plain
+  cases – the floating GND vias across the PWR plane (narrow clearances) are where staircase metal matters most.
+- **G:** the first six resonances identical to the 10 MHz grid (11/11 and 10/10 peaks matched, at most 0.23 %).
+- **De-embedded via alone (A–E, X, each tool with its own 2×thru, to 20 GHz):** \|S21\| median difference
+  0.007–0.025 dB; the via's TDR extremes median 0.2–1.6 %, at most 6.8 % (the long B stubs).
+- **Board vias (BV):** the same mesh agrees within 0.010–0.054 dB, \|Δτ\| ≤ 0.11 ps, after the fixes below.
+  Against kisi-fdtd's conformal result the differences are larger – REFINOUT2 0.37 dB, FPGA_CLK_R (vna_clk_w5)
+  0.51 dB, the M.2 pair 0.41 dB, the LibreVNA RF via 1.68 dB with a 2.2 % notch shift at 24 GHz, kisi-fdtd 0.5–1.4 ps
+  faster – and so is the staircase sensitivity (openEMS base → fine 0.35 dB on REFINOUT2, 1.02 dB on FPGA_CLK_R at
+  0.07 → 0.035 mm): fill edges, clearances and pad rings of a real board are where conformal metal matters most.
+  The M.2 pair and the LibreVNA RF via are compared on the base mesh only (their refined openEMS runs are invalid,
+  below), which includes openEMS' staircase error there.
+
+### Invalid openEMS runs
+- **D_s8_cap_2 / D_s8_cap_10, refined mesh:** the run grows without bound (energy falls to −36 dB, then rises
+  exponentially). The capacitor's series inductance (0.6 nH) in openEMS' explicit lumped-RLC update loses stability
+  when it is split over the more and shorter edges of the 0.0175 mm mesh (without its C: the same; H's R-only shorts
+  and the R/RG capacitors on 0.035 mm cells: stable). These two are judged on the base mesh, where openEMS agrees with
+  kisi-fdtd staircase within 0.018 dB. kisi-fdtd's lumped elements are implicit and unconditionally stable.
+- **BV_ts_m2_per0, BV_vna_rf_hblb1, BV_ts_m2_per0_…_in2gnd:** openEMS' UPML keeps the energy of these board
+  cut-outs (copper into the PML on several layers) at −15 … −20 dB instead of letting it decay (with a Mur boundary
+  the same case decays to −37 dB), and the long runs grow. They now stop at 1.2 × the physical time kisi-fdtd needed
+  (`TCAP` in `openems_refs.py`), so both DFTs cover a comparable window: valid on the base mesh (M.2 against
+  kisi-fdtd staircase 0.014 dB) and for in2gnd on both meshes, but the refined runs of the M.2 pair and the LibreVNA
+  RF via (2–4 × the steps) still grow before that and are left out.
+
+### kisi's fast models judged against openEMS
+Scored against openEMS fine instead of kisi-fdtd (same metrics as `rust_models.py` and `compare_kisi.py`):
+
+| | against kisi-fdtd | against openEMS |
+|---|---|---|
+| ladder, single vias (29): TDR error median / p90 | 1.07 / 4.265 % | 1.025 / 4.134 % |
+| ladder, single vias: max Δ\|S21\| to 20 GHz, median | 0.093 dB | 0.071 dB |
+| ladder, pairs (12): max ΔSdd21 median / phase median | 0.111 dB / 1.92° | 0.105 dB / 3.405° |
+| kisi's channel (42 cases with the feeds): max Δ\|S21\| median / TDR error median, p90 (35 ps) | 0.581 dB / 8.98, 13.981 % | 0.573 dB / 7.345, 13.49 % |
+
+The scores barely move: the fast models' errors are larger than the difference between the two 3D results, except
+the pairs' phase (the through-via delay offset above). No change to kisi's models or to `data/accuracy.json` follows
+from openEMS. What may follow from the inner-exit finding: the junction model (section 7) was fitted partly to the
+L1→L3 references, which are ≈ 1.1 ps slow; recomputing those references on the refined mesh and re-checking the fit is
+a separate change.

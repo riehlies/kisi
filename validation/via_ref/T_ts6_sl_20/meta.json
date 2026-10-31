@@ -56,6 +56,46 @@
    "seconds": 136.2,
    "dfine": 0.035,
    "dmax": null
+  },
+  "openems_base": {
+   "tool": "openEMS 0.37.0 (staircase, PML_8)",
+   "mesh": "base",
+   "dfine": 0.035,
+   "cells": 615328,
+   "dt": 6.217925510995911e-14,
+   "seconds": [
+    161.2
+   ],
+   "threads": [
+    2
+   ],
+   "t_end_ns": [
+    1.17
+   ],
+   "rate_mcells_s": [
+    71.8
+   ],
+   "date": "2026-10-31"
+  },
+  "openems": {
+   "tool": "openEMS 0.37.0 (staircase, PML_8)",
+   "mesh": "fine",
+   "dfine": 0.0175,
+   "cells": 956725,
+   "dt": 3.1417326106097995e-14,
+   "seconds": [
+    572.2
+   ],
+   "threads": [
+    2
+   ],
+   "t_end_ns": [
+    1.216
+   ],
+   "rate_mcells_s": [
+    64.7
+   ],
+   "date": "2026-10-31"
   }
  }
 }

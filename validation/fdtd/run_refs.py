@@ -105,10 +105,11 @@ def run_kisi(exe, case, tmp, tag):
 
 def run_openems(exe, case, tmp, tag):
     ex, mirror = excitation(case)
-    c = dict(case, excite=ex, conformal=False)
+    c = dict(case, excite=ex)
     p = os.path.join(tmp, f"{case['name']}_{tag}_oe.json")
     json.dump(c, open(p, "w"))
     mp = p.replace(".json", ".mesh.json")
+    # kisi-fdtd's mesh of the case (conformal-mode lines, as for the reference); openEMS staircases on it
     open(mp, "w").write(subprocess.run([exe, p, "--mesh-only"], capture_output=True, text=True, check=True).stdout)
     out = p.replace(".json", ".out.json")
     subprocess.run([sys.executable, os.path.join(HERE, "openems_case.py"), p, mp, out], check=True, capture_output=True)
@@ -164,7 +165,7 @@ def one(path, out, a):
     if a.openems:
         oc = refined(case, a.fine) if a.openems == "fine" else case
         f3, S3, info3 = run_openems(a.exe, oc, tmp, a.openems)
-        sparam.write_touchstone(os.path.join(d, f"openems.s{n}p"), f3, S3, hdr + [f"openEMS 0.0.36, staircase, {info3['cells']} cells"], z0)
+        sparam.write_touchstone(os.path.join(d, f"openems.s{n}p"), f3, S3, hdr + [f"openEMS, staircase, {info3['cells']} cells"], z0)
         meta["runs"]["openems"] = info3
     json.dump(meta, open(os.path.join(d, "meta.json"), "w"), indent=1)
     return name, meta

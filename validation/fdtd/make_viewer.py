@@ -166,6 +166,66 @@ def model_check(nm, d):
             "cols": ["case", "metric", "value", "metric", "3D / kisi", "note"], "rows": rows}
 
 
+OK_THRU_DB, OK_DELAY_PS = 0.1, 1.0  # per-case agreement shown as "ok": mean through-path difference and delay difference
+
+
+def agreement(r):
+    """the chip of a case: kisi-fdtd against openEMS on the refined mesh (openems_refs.py)"""
+    if not r:
+        return None
+    s = r["kisi_vs_openems"]
+    conv = r.get("openems_base_vs_fine", {}).get("dS_thru_mean_db")
+    title = (f"kisi-fdtd (conformal) against openEMS (staircase, cell at metal halved) up to {r['fmax_ghz']:g} GHz: mean / max difference of the "
+             f"through path, delay difference; openEMS reference mesh → refined mesh: {conv} dB mean (its remaining staircase error, about as large)")
+    if r["group"] in ("G", "H"):
+        if r["group"] == "G":
+            pk, po = r["z_peaks_ghz"]["kisi"][:3], r["z_peaks_ghz"]["openems"][:3]
+            dev = max((abs(a / b - 1) * 100 for a, b in zip(pk, po)), default=0)
+            return {"ok": dev < 1.0, "title": title, "text": f"openEMS: first resonances {' / '.join(f'{x:g}' for x in po)} GHz (kisi-fdtd {' / '.join(f'{x:g}' for x in pk)}), max {dev:.1f} %"}
+        lk, lo = r["L50_nH"]["kisi"], r["L50_nH"]["openems"]
+        return {"ok": abs(lk / lo - 1) < 0.03, "title": title, "text": f"openEMS: loop L at 50 MHz {lo:.3f} nH (kisi-fdtd {lk:.3f}, {(lk / lo - 1) * 100:+.1f} %)"}
+    key = "Sdd21" if r.get("pair") and "dSdd21_mean_db" in s else "thru"
+    mean, mx = (s["dSdd21_mean_db"], s["dSdd21_max_db"]) if key == "Sdd21" else (s["dS_thru_mean_db"], s["dS_thru_max_db"])
+    nm = "Sdd21" if key == "Sdd21" else "S21" if r["ports"] == 2 else "through"
+    return {"ok": mean <= OK_THRU_DB and abs(s["dtau_ps"]) <= OK_DELAY_PS, "title": title,
+            "text": f"openEMS: Δ|{nm}| {mean:.2f} / {mx:.2f} dB, Δτ {s['dtau_ps']:+.1f} ps"}
+
+
+MESH_NAME = {"openems": "refined mesh", "openems_base": "base mesh"}
+
+
+def openems_check(d):
+    """the table of the solver checks: kisi-fdtd against openEMS per group"""
+    rows = []
+    for g, s in d["summary"].items():
+        a, b, c_, x = (s.get(k, {}) for k in ("kisi_vs_openems", "openems_base_vs_fine", "stair_vs_openems_base", "kisi_vs_openems_extrap"))
+        de = s.get("deembedded", {})
+        rows.append([g, s["cases"], f"{a.get('dS_thru_mean_db')} / {a.get('dS_thru_mean_db_max')} / {a.get('dS_thru_max_db')}" if a else "–",
+                     a.get("dtau_ps_median", "–"), f"{c_.get('dS_thru_mean_db')} / {c_.get('dS_thru_mean_db_max')}" if c_ else "–",
+                     b.get("dS_thru_mean_db", "–") if b else "–", x.get("dS_thru_mean_db", "–") if x else "–",
+                     f"{de.get('tdr_via_err_pct_median')} / {de.get('tdr_via_err_pct_max')} %" if de.get("tdr_via_err_pct_median") is not None else "–"])
+    lad = d.get("ladder", {})
+    text = ["Every reference case computed again with openEMS 0.37.0 (staircase metal, UPML) from the same case files: on the mesh of the "
+            "kisi-fdtd run (“base”, together with kisi-fdtd staircase on it: the like-for-like check of the implementation) and with the cell at "
+            "metal halved (“fine”: staircase converges at first order, so this halves openEMS' metal error and base → fine estimates what remains). "
+            "kisi-fdtd's conformal reference is compared with openEMS fine; G and H (one-edge ports) on the base mesh. Through path: S21, of a pair S31; "
+            "Δτ = τ kisi-fdtd − τ openEMS from the phase above f max / 4. Script: openems_refs.py; method, outliers and causes: TESTS.md section 16."]
+    if lad.get("kisi") and lad.get("openems"):
+        k, o = lad["kisi"], lad["openems"]
+        text.append(f"kisi's via ladder judged against either 3D result (single vias: TDR error median / p90, max Δ|S21| median; pairs: max ΔSdd21 median): "
+                    f"kisi-fdtd {k['single_tdr_err_pct_median']} / {k['single_tdr_err_pct_p90']} %, {k['single_dS21_max_db_median']} dB, {k['pairs_dS21_max_db_median']} dB; "
+                    f"openEMS {o['single_tdr_err_pct_median']} / {o['single_tdr_err_pct_p90']} %, {o['single_dS21_max_db_median']} dB, {o['pairs_dS21_max_db_median']} dB.")
+    inv = d.get("invalid") or {}
+    if inv:
+        text.append("Invalid openEMS runs (left out of the table, judged on the other mesh where it is valid): " +
+                    "; ".join(f"{n} ({', '.join(f'{MESH_NAME.get(t, t)}: {w}' for t, w in v.items())})" for n, v in sorted(inv.items())) + ".")
+    return {"title": "Every reference case in openEMS", "text": text,
+            "cols": ["group", "cases", "Δ|S21| kisi-fdtd vs openEMS fine: median of the case means / largest mean / largest max (dB)", "Δτ median (ps)",
+                     "same mesh, both staircase: median / largest mean (dB)", "openEMS base → fine: median (dB)", "against openEMS extrapolated (2·fine − base): median (dB)",
+                     "TDR of the via alone (de-embedded): median / max difference"],
+            "rows": rows}
+
+
 def cavity_check(cv):
     rows = cv["rows"]
     tab = []
@@ -200,12 +260,17 @@ def cavity_check(cv):
 
 
 def main():
-    thru = {}
+    # 2×thru fixtures per tool: each tool's result is de-embedded with its own fixtures
+    thrus = {"kisi": {}, "openems": {}, "cst": {}}
     for p in glob.glob(os.path.join(REF, "thru_*")):
         nm = os.path.basename(p)
-        f, T = load(nm, "kisi")
-        if T is not None:
-            thru[nm] = (f, T)
+        for tool, d in thrus.items():
+            f, T = load(nm, tool)
+            if T is not None:
+                d[nm] = (f, T)
+    thru = thrus["kisi"]
+    po = os.path.join(HERE, "results", "openems_refs.json")
+    oe_refs = json.load(open(po)) if os.path.exists(po) else {}
     cases = []
     for cp in sorted(glob.glob(os.path.join(CASES, "*.json"))):
         c = json.load(open(cp))
@@ -223,7 +288,7 @@ def main():
             grp = c["meta"]["group"]
             z0 = c["ports"][0].get("r", 50.0)
             res = {"kisi": curves(S, grp, f, z0)}
-            for tool in ("kisi_fine", "openems", "kisi_model", "pbm", "ladder", "model"):
+            for tool in ("kisi_fine", "openems", "openems_base", "cst", "kisi_model", "pbm", "ladder", "model"):
                 f2, S2 = load(nm, tool)
                 if S2 is None or (S2.shape[1] != S.shape[1] and tool not in ("pbm", "ladder")):
                     continue
@@ -237,21 +302,27 @@ def main():
                 for p in c["meta"]["ports"]:
                     key = f"thru_{c['meta']['stackup']}_{p['layer']}"
                     fx.append(thru.get(key))
-                if all(fx):
-                    if S.shape[1] == 2:
-                        FL, _ = sparam.fixture_2xthru(f, fx[0][1])
-                        FR, _ = sparam.fixture_2xthru(f, fx[1][1])
-                        D = sparam.deembed2(S, FL, FR)
-                        res["deembedded"] = curves(D)
+                other = []
+                for tool, tag in (("openems", "openems_de"), ("cst", "cst_de")):
+                    other.append((tag, load(nm, tool)[1], [thrus[tool].get(f"thru_{c['meta']['stackup']}_{p['layer']}") for p in c["meta"]["ports"]]))
+                for tag, SS, fxs in [("deembedded", S, fx)] + other:
+                    if SS is None or not all(fxs):
+                        continue
+                    if SS.shape[1] == 2:
+                        FL, _ = sparam.fixture_2xthru(f, fxs[0][1])
+                        FR, _ = sparam.fixture_2xthru(f, fxs[1][1])
+                        res[tag] = curves(sparam.deembed2(SS, FL, FR))
                         entry["deembed"] = "2×thru (IEEE P370-style, NZC)"
                     else:
-                        D = sparam.deembed_shift(S, [sparam.fixture_shift(f, x[1]) for x in fx])
-                        res["deembedded"] = curves(D)
+                        res[tag] = curves(sparam.deembed_shift(SS, [sparam.fixture_shift(f, x[1]) for x in fxs]))
                         entry["deembed"] = "2×thru, first order (feed delay and loss per port)"
             if grp == "T" and nm.endswith("_20") and S.shape[1] == 2:
                 f10, S10 = load(nm[:-3] + "_10", "kisi")
                 tl = sparam.line_params(f, S, S10 if S10 is not None and len(f10) == len(f) else None)
                 entry["tl"] = {"source": tl["source"], "zc": r2(tl["zc"][::STEP], 2), "eeff": r2(tl["eeff"][::STEP], 3), "loss_db_per_mm": r2(tl["loss_db_per_mm"][::STEP], 4)}
+            ag = agreement(oe_refs.get("cases", {}).get(nm))
+            if ag:
+                entry["agree"] = ag
             if grp in ("G", "H"):
                 entry["res"] = res
                 cases.append(entry)
@@ -264,6 +335,11 @@ def main():
                 mm = sparam.mixed_mode(S)
                 t, z = sparam.tdr(f, mm["dd"][:, 0, 0], rise=25e-12, tmax=180e-12, z0=100.0)
                 entry["tdr"]["zdd"] = r2(z[k], 2)
+            _, So = load(nm, "openems")
+            if So is not None and So.shape == S.shape:
+                entry["tdr"]["z_oe"] = r2(sparam.tdr(f, So[:, 0, 0], rise=25e-12, tmax=180e-12)[1][k], 2)
+                if S.shape[1] == 4:
+                    entry["tdr"]["zdd_oe"] = r2(sparam.tdr(f, sparam.mixed_mode(So)["dd"][:, 0, 0], rise=25e-12, tmax=180e-12, z0=100.0)[1][k], 2)
             entry["res"] = res
         cases.append(entry)
     checks = {}
@@ -279,6 +355,8 @@ def main():
             if nm == "kisi_models" and os.path.exists(pc):
                 d["_coax"] = json.load(open(pc)).get("summary") or {}
             checks[nm] = model_check(nm, d)
+    if oe_refs:
+        checks["openems_refs"] = openems_check(oe_refs)
     if "cavity" in checks and "rows" in checks["cavity"] and "cols" not in checks["cavity"]:
         checks["cavity"] = cavity_check(checks["cavity"])
     data = json.dumps({"cases": cases, "checks": checks}, separators=(",", ":"))

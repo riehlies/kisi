@@ -159,6 +159,86 @@
    "seconds": 1124.8,
    "dfine": 0.035,
    "dmax": null
+  },
+  "openems_base": {
+   "tool": "openEMS 0.37.0 (staircase, PML_8)",
+   "mesh": "base",
+   "dfine": 0.035,
+   "cells": 1189888,
+   "dt": 5.6507487328902455e-14,
+   "seconds": [
+    642.0,
+    691.4
+   ],
+   "threads": [
+    2,
+    2
+   ],
+   "t_end_ns": [
+    2.145,
+    2.315
+   ],
+   "rate_mcells_s": [
+    70.4,
+    70.5
+   ],
+   "date": "2026-10-31",
+   "hosts": [
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    }
+   ]
+  },
+  "openems": {
+   "tool": "openEMS 0.37.0 (staircase, PML_8)",
+   "mesh": "fine",
+   "dfine": 0.0175,
+   "cells": 4060260,
+   "dt": 2.706445809297482e-14,
+   "seconds": [
+    1715.9,
+    4549.9
+   ],
+   "threads": [
+    4,
+    2
+   ],
+   "t_end_ns": [
+    2.353,
+    2.197
+   ],
+   "rate_mcells_s": [
+    205.7,
+    72.4
+   ],
+   "date": "2026-10-31",
+   "hosts": [
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 9V74 80-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    },
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "260 MiB (1 instance)",
+     "max_mhz": "2300.0000",
+     "mem_gb": 15.6,
+     "model": "INTEL(R) XEON(R) PLATINUM 8573C",
+     "sockets": "1",
+     "threads_per_core": "2"
+    }
+   ]
   }
  }
 }

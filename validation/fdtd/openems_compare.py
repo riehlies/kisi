@@ -1,5 +1,6 @@
 """Code-to-code check with PML: kisi-fdtd with staircase metal ("conformal": false) and openEMS on
-the same mesh for a few reference cases (one per group). Writes results/openems_compare.json.
+the same mesh – the mesh of the reference run – for a few reference cases (one per group). Writes
+results/openems_compare.json. All cases on that mesh: openems_refs.py (base mesh, `stair`).
 
 usage: python3 openems_compare.py kisi-fdtd [case ids]
 """
@@ -17,11 +18,15 @@ rows, charts = [], []
 for cid in ids:
     case = json.load(open(os.path.join(HERE, "via_cases", cid + ".json")))
     ex, mirror = excitation(case)
-    case.update(conformal=False, excite=ex[:1])
+    case.update(excite=ex[:1])
+    case.pop("monitors", None)
     p = os.path.join(tmp, cid + ".json")
     json.dump(case, open(p, "w"))
     mp = p.replace(".json", ".mesh.json")
+    # the mesh of the reference (kisi-fdtd's conformal-mode lines), then staircase metal on it in both tools
     open(mp, "w").write(subprocess.run([exe, p, "--mesh-only"], capture_output=True, text=True, check=True).stdout)
+    case["conformal"] = False
+    json.dump(case, open(p, "w"))
     rk = json.loads(subprocess.run([exe, p, "--mesh", mp], capture_output=True, text=True, check=True).stdout)
     out = p.replace(".json", ".oe.json")
     subprocess.run([sys.executable, os.path.join(HERE, "openems_case.py"), p, mp, out], check=True, capture_output=True)
@@ -43,7 +48,7 @@ for cid in ids:
                               {"name": "openEMS S11", "y": [round(float(v), 2) for v in do[0][::st]], "color": "var(--s4)", "dash": True}]})
     print(rows[-1], flush=True)
 out = {"title": "Implementation: kisi-fdtd against openEMS on the same mesh",
-       "text": ["Both tools with staircase metal on the mesh kisi-fdtd generates, PML in the outer 8 cells, the same lumped ports, Gaussian pulse and "
+       "text": ["Both tools with staircase metal on the mesh of the kisi-fdtd reference run (its conformal-mode lines), PML in the outer 8 cells, the same lumped ports, Gaussian pulse and "
                 "dielectric loss; port 1 excited. This checks the field updates, ports, PML and the geometry rules, not the accuracy of the metal model "
                 "(the conformal model is checked against the analytic cavity and by mesh convergence)."],
        "cols": ["case", "cells", "kisi steps", "kisi time", "openEMS time", "Δ|S21| mean / max (dB)", "Δ|S11| mean / max where > −30 dB"],

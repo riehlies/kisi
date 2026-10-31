@@ -42,7 +42,8 @@ The full test log, with the numbers, is in **`TESTS.md`**. In brief:
 | Metal model against the analytic resonance of a cylindrical cavity (empty, with centre post) | `cavity.py` | conformal 7–13× closer than staircase (0.05 mm: −0.04 % vs −0.47 %) |
 | Mesh convergence of a via with antipads | `via_convergence.py` | conformal at h ≈ staircase at 0.7·h; 0.035 mm: \|S21\| within 0.07 dB to 30 GHz |
 | CPML on a matched microstrip | `check_pml.py` | converged at 8 cells; openEMS PML_8 reflects 8–14 dB more above 10 GHz |
-| kisi-fdtd (staircase) against openEMS on the same mesh | `openems_compare.py` | Δ\|S21\| mean 0.02–0.22 dB |
+| kisi-fdtd (staircase) against openEMS on the same mesh, one case each of A, B, D, E | `openems_compare.py` | Δ\|S21\| mean 0.011–0.028 dB |
+| Every reference case (106) in openEMS: on kisi-fdtd's mesh (both staircase) and with the cell at metal halved | `openems_refs.py` | same mesh: Δ\|S21\| median 0.018 dB, \|Δτ\| 0.04 ps; references against openEMS refined: median 0.06 dB; outliers and their causes in `TESTS.md` section 16 |
 | Lumped R–L–C | unit test `lumped_rlc` | series resonance within 2 % of the circuit |
 | kisi's fast channel model on every case (mini KiCad boards) | `kisi_board.py`, `compare_kisi.py` | via ~15 % low, stub notch +17 %; a return-path bug found and fixed |
 | Reduced via model (prototype) | `via_pbm.py` | phase ±5°, \|S21\| ±0.15 dB, TDR ±2–5 %, stub notch ±1–6 % up to 20 GHz |
@@ -53,7 +54,7 @@ and the lumped R–L–C.
 
 ## Reference cases
 - `via_cases.py` writes the cases to `via_cases/` (kisi-fdtd case JSON plus a `meta` block). openEMS reads the
-  same files.
+  same files (`openems_case.py`).
   - **A** coax section: L1→L4 through a plane pair, 4 GND vias.
   - **B** stubs: through via, no stub, back-drilled; generic 8-layer and the ThunderScope stack.
   - **C** antipads, non-functional pads, an offset antipad.
@@ -65,8 +66,14 @@ and the lumped R–L–C.
 - `run_refs.py` runs them and writes `via_ref/<case>/`:
   - `kisi.sNp`: conformal, base mesh.
   - `kisi_fine.sNp` with `--fine`: refined mesh for the convergence check.
-  - `openems.sNp` with `--openems`.
   - `meta.json`: cells, steps, run time and convergence.
+- `openems_refs.py` computes every case in openEMS and compares (`TESTS.md` section 16):
+  - `openems_base.sNp`: openEMS (staircase) on the mesh of the kisi-fdtd run, `openems.sNp`: with the cell at metal
+    halved; their run info (cells, time per excited port, cell rate, runner) in `meta.json`.
+  - `plan` balances the tasks (case × mesh × excited port) over shards (`openems_plan.json`), `run` runs one shard
+    (the workflow `openems-refs` on GitHub Actions commits the raw results to `openems_raw/` on its branch; they are
+    removed once merged), `merge` writes the Touchstone files and the run info, `stair` runs kisi-fdtd staircase (or `--mesh fine --metal conformal`) for the like-for-like
+    check, `compare` writes `results/openems_refs.json`.
 - Ports are 50 Ω lumped ports at the ends of 4 mm feed traces (G and H use 1 Ω). Pairs use kisi's port order:
   1 = P near, 2 = N near, 3 = P far, 4 = N far.
 - `sparam.py` provides Touchstone I/O, the full matrix from symmetric half-excitations, IEEE P370-style 2×thru
@@ -104,6 +111,12 @@ python3 validation/fdtd/run_refs.py validation/fdtd/via_cases validation/via_ref
 cargo build --release -p kisi-cli
 python3 validation/fdtd/rust_models.py --exe target/release/kisi-validate
 python3 validation/fdtd/compare_kisi.py target/release/kisi
+# openEMS (needs openEMS with its Python bindings, and shapely): on GitHub Actions, or locally per shard
+python3 validation/fdtd/openems_refs.py plan --exe target/release/kisi-fdtd
+python3 validation/fdtd/openems_refs.py run --shard 0 --exe target/release/kisi-fdtd
+python3 validation/fdtd/openems_refs.py merge validation/fdtd/openems_raw
+python3 validation/fdtd/openems_refs.py stair --exe target/release/kisi-fdtd --out /tmp/stair --jobs 2
+python3 validation/fdtd/openems_refs.py compare --stair /tmp/stair
 python3 validation/fdtd/make_viewer.py
 ```
 

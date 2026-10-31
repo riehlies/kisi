@@ -243,11 +243,12 @@ kisi marks these as estimates in the viewer and in the CLI output:
   asymmetric returns) and a test over every lane of the example boards (`crates/kisi-core/tests/causality.rs`,
   in CI): the board's S-parameters passive up to 25 GHz and their pulse responses causal (details and numbers:
   [TESTS.md](../validation/fdtd/TESTS.md) section 14).
-- **Vias and planes** against 3D results of kisi's own FDTD solver (`crates/kisi-fdtd`, checked against openEMS
-  and analytic cavities): 74 reference cases in `validation/via_ref`, the test log in
-  [validation/fdtd/TESTS.md](../validation/fdtd/TESTS.md), and the reference page `kisi-references.html`
-  (attached to the releases in which the cases changed) with every case and kisi's models against it. Useful for
-  teaching as well: it shows why vias and planes behave as they do.
+- **Vias and planes** against 3D results of kisi's own FDTD solver (`crates/kisi-fdtd`, checked against analytic
+  cavities, and every one of its 106 reference cases in `validation/via_ref` recomputed with openEMS: the two agree
+  in \|S21\| to a median of 0.06 dB, with known differences in via delay of up to about 2 ps – section 16 of the test
+  log [validation/fdtd/TESTS.md](../validation/fdtd/TESTS.md)), and the reference page `kisi-references.html`
+  (attached to the releases in which the cases changed) with every case, openEMS and kisi's models against it.
+  Useful for teaching as well: it shows why vias and planes behave as they do.
 - **Temperature solver** against analytic cases (1D slab exact, fin within 0.2 %, radial spreading in a plane
   with convection within 0.13 %, energy balance) and, with the datasheets' θJB/θJC on a model of the JEDEC
   JESD51-7 board, against their θJA (QFN-16 +4 %, SOIC-8 −15 %, SOT-23-5 −20 %).
@@ -257,7 +258,8 @@ kisi marks these as estimates in the viewer and in the CLI output:
   The compact model gives the ladder's S-parameters to 0.003 up to 1.5 × Nyquist and its PRBS levels to 0.3 % of the
   swing on eight lanes of both example boards; every exported circuit is passive from 1 kHz to 10 × f max
   ([research/channel-export.md](research/channel-export.md) section 7).
-- **Still open:** validation against other solvers and against measurements. A measured test board is planned
+- **Still open:** validation against a solver of another method (CST, branch `feat/cst-refs`) and against
+  measurements. A measured test board is planned
   (plan and coupon design in branch `feat/test-board`, `validation/test_board.md` there). Until then, treat the numbers as plausible estimates,
   not as verified results.
 

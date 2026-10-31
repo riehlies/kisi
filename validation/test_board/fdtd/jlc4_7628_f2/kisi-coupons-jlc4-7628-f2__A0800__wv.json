@@ -597,7 +597,7 @@
  "end_db": -50,
  "max_steps": 150000,
  "nf": 400,
- "name": "kisi-coupons-jlc4-7628-f1__A0800__wv",
+ "name": "kisi-coupons-jlc4-7628-f2__A0800__wv",
  "monitors": [
   {
    "axis": "z",
@@ -672,7 +672,7 @@
    1,
    0
   ],
-  "board": "kisi-coupons-jlc4-7628-f1",
+  "board": "kisi-coupons-jlc4-7628-f2",
   "coupon": "A0800",
   "window": "wv",
   "stackup_source": "JLCPCB JLC04161H-7628, 4 layers, 1.6 mm, outer 1 oz, inner 0.5 oz (JLC's default 4-layer impedance template)",

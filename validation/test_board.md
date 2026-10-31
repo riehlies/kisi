@@ -1,7 +1,7 @@
 # Measured test board – plan
 
-Status: **coupons prepared (design v3), not ordered** – first order (maintainer, 2026-10-30): three JLC 4-layer and
-three JLC 6-layer designs with 7628 prepreg (below); 23 more boards stay generated for later (JLC 4 / 6 / 8 layers
+Status: **coupons prepared (design v3), not ordered** – first order (maintainer, 2026-10-30 / 31): two JLC 4-layer
+boards and one JLC 6-layer board with 7628 prepreg (below); 23 more boards stay generated for later (JLC 4 / 6 / 8 layers
 with 7628 prepreg, one Aisler board, JLC 4 / 6 layers with 3313 prepreg), PDN and capacitor coupons with a
 component list, 3D cases (written, not run), kisi check, measurement plan and ordering checklist in
 [`test_board/README.md`](test_board/README.md). v3 (2026-10-30): 2.92 mm connector (Samtec 292-J-P-EP-ST-EL-01) and
@@ -88,21 +88,21 @@ All 2-port coupons use the same launch and feed length (12.5 mm per side, all co
 | mounted capacitor 0402 / 0603 / 0805 in shunt on a 50 Ω line (assembled) | – | yes | – |
 | via with a long stub (L1 → L3, 1.4 mm stub on a 2.0 mm board) | B | – | 8 layers |
 
-**First order (maintainer, 2026-10-30):** JLC 4 layers 7628 and JLC 6 layers 7628 only; everything else stays
-generated for later. The requested coupons need 36 connector positions on the 4-layer stack and 22 on the 6-layer
-stack (plus a 2×thru on every further board); a board within the cost limits has 8 rows of 12 mm (4 layers, 96 mm) or 4 rows (6 layers, 48 mm), i.e. 16
-or 8 positions on its two edges (edge launches: one connector per edge per row). So the first order is **three
-4-layer and three 6-layer designs**, not two boards (`make_coupons.py --first-order`; coupon list, reference cases
-and ordering checklist in `test_board/README.md` section 4):
+**First order (maintainer, 2026-10-30 / 31):** JLC 4 layers 7628 and JLC 6 layers 7628 only, three boards; everything
+else stays generated for later (`make_coupons.py --first-order`; coupon list, reference cases and ordering checklist
+in `test_board/README.md` section 4). An edge launch takes 12 mm of board edge per connector and side, so a 96 mm
+board holds 16 connector positions; the 4-layer coupons need 38 (with a 2×thru on each board) and cannot share one
+board within 100 × 100 mm. Sizes are the bounding boxes of the stepped outlines (what JLC's calculator asks for):
 
-| Board | Size (mm) | Coupons |
-|---|---|---|
-| jlc4-7628-f1 | 50 × 96 | THRU, CPWG_25 / CPWG_50 (L, 2L), A0800 / A1000 / A1200, D_S0p7, D_S2p0 |
-| jlc4-7628-f2 | 35 × 96 | THRU, D_NONE, PAIR, E_R_G2, E_R_G0 |
-| jlc4-7628-f3 | 100 × 72 | THRU, XT_MS, G_CAV |
-| jlc6-7628-f1 | 50 × 48 | THRU, SL_L3 (stripline 2×thru by line–line with VLV_L3), VLV_L3 (stub), B_L1L6 (no stub) |
-| jlc6-7628-f2 | 35 × 48 | PAIR, E_R_G2 (L1→L6) |
-| jlc6-7628-f3 | 35 × 48 | THRU, D_S0p7, D_S2p0, D_NONE (L1→L6) |
+| Board | Template | Size (mm) | Coupons |
+|---|---|---|---|
+| jlc4-7628-f1 | JLC04161H-7628 | **100 × 96** | THRU, CPWG_25 / CPWG_50 (L, 2L), XT_MS, G_CAV |
+| jlc4-7628-f2 | JLC04161H-7628 | **35 × 156** (above the 100 × 100 mm bracket) | THRU, A0800 / A1000 / A1200, D_S0p7, D_S2p0, D_NONE, PAIR, E_R_G2, E_R_G0 |
+| jlc6-7628-f1 | JLC06161H-7628 | **50 × 132** (above the 50 × 50 mm bracket, accepted) | THRU, SL_L3 / VLV_L3 (stripline 2×thru by line–line; VLV_L3 is the via with stub), B_L1L6 (no stub), PAIR, E_R_G2, D_S0p7, D_S2p0, D_NONE |
+
+The lines, the coupling coupon and the cavity share the 100 mm-wide board (the 100 mm cavity row sets its width
+anyway); the via groups stay together on one board each, so A, D and E are compared within one panel. One 2×thru per
+board (no duplicates); PAIR is the fixture of the E coupons.
 
 The return via "at 0.5 mm" is made at 0.7 mm: with the 0.3 / 0.6 mm vias the pads would overlap at 0.5 mm (the 3D
 reference D_s8_stitch_0p5 is idealised); 0.7 mm keeps JLC's 0.1 mm between the pads. The 6-layer stub notch (VLV_L3,

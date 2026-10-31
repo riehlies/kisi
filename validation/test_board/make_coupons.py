@@ -1432,17 +1432,20 @@ def board_specs(ctx):
                   [c_coupled(ctx, "XT_MS", "xt", "Microstrip aggressor and victim on L1, edge gap = w", ["T_ts6_xt_ms_s10"], "NEXT / FEXT (kisi's NEXT is 70–80 % high against 3D)")],
                   [c_coupled(ctx, "DIFF_MS", "diff", "Edge-coupled 100 Ω microstrip pair on L1", ["T_ts6_diff_ms"], "Zdiff (TDR plateau), odd-mode εeff, Sdd21 per mm")]],
         }
-        if stk.key == "jlc4_7628":  # first order (maintainer, 2026-10-30): three 4-layer boards ≤ 100 × 100 mm
+        if stk.key == "jlc4_7628":  # first order (maintainer, 2026-10-31): two 4-layer boards
             dnone = lambda: c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L4 (ref L3) → L1, no return via (the row walls at ±6 mm only)", ["D_s8_stitch_none"], bot,
                                   "return path without a nearby GND via: the plane-pair cavity between the row walls", Ls=LS_RET, gnd=None)
-            parts["f1"] = [T(), [c_cpwg(ctx, "CPWG_25", 25.0)], [c_cpwg(ctx, "CPWG_50", 50.0)], [a_(0.8)], [a_(1.0)], [a_(1.2)], [d_(D_CLOSE)], [d_(2.0)]]
-            parts["f2"] = [T(), [dnone()], [c_pair_thru(ctx, "PAIR")],
+            # f1 (100 × 96): the lines, the coupling coupon and the cavity (the 100 mm row sets the width anyway);
+            # f2 (35 × 156): the vias. Edge launches take 12 mm of edge per connector and side, so 16 positions per
+            # 96 mm board: the 36 positions of the first order cannot share one board within 100 × 100 mm.
+            parts["f1"] = [T(), [c_cpwg(ctx, "CPWG_25", 25.0)], [c_cpwg(ctx, "CPWG_50", 50.0)],
+                           [c_coupled(ctx, "XT_MS", "xt", "Microstrip aggressor and victim on L1, edge gap = w", ["T_ts6_xt_ms_s10"], "NEXT / FEXT (kisi's NEXT is 70–80 % high against 3D)")],
+                           [c_cavity(ctx, "G_CAV", 50.0, 30.0, 100.0, 3 * ROW, (-22.0, -12.0), (0.0, 0.0))]]
+            parts["f2"] = [T(), [a_(0.8)], [a_(1.0)], [a_(1.2)], [d_(D_CLOSE)], [d_(2.0)], [dnone()], [c_pair_thru(ctx, "PAIR")],
                            [c_pair_vlv(ctx, "E_R_G2", "pair via–line–via L1→L4→L1, pitch 1.0, round antipads Ø0.8, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, False, 2,
                                        "differential via ladder: Sdd21, Zdiff, Scd21")],
                            [c_pair_vlv(ctx, "E_R_G0", "pair via–line–via L1→L4→L1, pitch 1.0, round antipads, no GND vias", ["E_s8_L1L8_p1000_round_g0"], bot, False, 0,
                                        "pair via without return vias")]]
-            parts["f3"] = [T(), [c_coupled(ctx, "XT_MS", "xt", "Microstrip aggressor and victim on L1, edge gap = w", ["T_ts6_xt_ms_s10"], "NEXT / FEXT (kisi's NEXT is 70–80 % high against 3D)")],
-                           [c_cavity(ctx, "G_CAV", 50.0, 30.0, 100.0, 3 * ROW, (-22.0, -12.0), (0.0, 0.0))]]
         if stk.pwr is not None and stk.key == "jlc4_7628":
             parts["p"] = [T(), [c_cavity(ctx, "G_CAV", 50.0, 30.0, 100.0, 3 * ROW, (-22.0, -12.0), (0.0, 0.0))],
                           [c_hpdn(ctx, "H_D2", 2.0, -1, 50.0, 26.0), c_hpdn(ctx, "H_D5", 5.0, 1, 50.0, 26.0)],
@@ -1459,21 +1462,20 @@ def board_specs(ctx):
                               [f"D_s8_stitch_{str(st).replace('.', 'p')}"] if st in (1.0, 2.0) else (["D_s8_stitch_0p5"] if st < 1.0 else []), bot,
                               "return path L2 → L5", Ls=LS_RET, gnd="one", stitch=st, params={"stitch_mm": st})
         first = {}
-        if stk.key == "jlc6_7628":  # first order (maintainer, 2026-10-30): three 6-layer boards ≤ 50 × 50 mm
-            first = {
-                "f1": [T(), [c_vlv(ctx, "SL_L3", "T", f"via–line–via with 25 mm stripline on {sn[inner[0]]}", ["T_ts6_sl_10", "T_ts6_sl_20"], inner[0],
+        if stk.key == "jlc6_7628":  # first order (maintainer, 2026-10-31): one 6-layer board
+            first = {"f1": [T(),  # one board with everything (50 × 132 mm, above the 50 × 50 mm bracket: maintainer, 2026-10-31)
+                            [c_vlv(ctx, "SL_L3", "T", f"via–line–via with 25 mm stripline on {sn[inner[0]]}", ["T_ts6_sl_10", "T_ts6_sl_20"], inner[0],
                                    "stripline γ (line–line with VLV_L3: the vias cancel), Zc from the TDR plateau", Ls=25.0, lines=True)],
-                       [c_vlv(ctx, "VLV_L3", "B", f"via–line–via L1→{sn[inner[0]]}→L1 (through vias, stubs to L6), 5 mm stripline", ["B_ts6_L1L3_stub", "B_s8_L1L3_stub_d300"],
-                              inner[0], "inner-layer exit with an open stub (junction model); stub notch inside the 40 GHz band (kisi: 32 GHz)")],
-                       [c_vlv(ctx, "B_L1L6", "B", "via–line–via L1→L6→L1 (through vias, no stub), antipad Ø0.8 on L2/L5, 4 GND vias at 1 mm", ["B_ts6_L1L6", "B_s8_L1L8_d300"], bot,
-                              "through via without stub (via ladder)")]],
-                "f2": [[c_pair_thru(ctx, "PAIR")],
-                       [c_pair_vlv(ctx, "E_R_G2", "pair via–line–via L1→L6→L1, pitch 1.0, round antipads Ø0.8, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, False, 2,
-                                   "differential via ladder through two plane layers")]],
-                "f3": [T(), [d6(D_CLOSE)], [d6(2.0)],
-                       [c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L6 (ref L5) → L1, no return via (row walls only)", ["D_s8_stitch_none"], bot,
-                              "return path without a nearby GND via", Ls=LS_RET, gnd=None)]],
-            }
+                            [c_vlv(ctx, "VLV_L3", "B", f"via–line–via L1→{sn[inner[0]]}→L1 (through vias, stubs to L6), 5 mm stripline", ["B_ts6_L1L3_stub", "B_s8_L1L3_stub_d300"],
+                                   inner[0], "inner-layer exit with an open stub (junction model); stub notch inside the 40 GHz band (kisi: 32 GHz)")],
+                            [c_vlv(ctx, "B_L1L6", "B", "via–line–via L1→L6→L1 (through vias, no stub), antipad Ø0.8 on L2/L5, 4 GND vias at 1 mm", ["B_ts6_L1L6", "B_s8_L1L8_d300"], bot,
+                                   "through via without stub (via ladder)")],
+                            [c_pair_thru(ctx, "PAIR")],
+                            [c_pair_vlv(ctx, "E_R_G2", "pair via–line–via L1→L6→L1, pitch 1.0, round antipads Ø0.8, 2 GND vias", ["E_s8_L1L8_p1000_round_g2"], bot, False, 2,
+                                        "differential via ladder through two plane layers")],
+                            [d6(D_CLOSE)], [d6(2.0)],
+                            [c_vlv(ctx, "D_NONE", "D", "L1 (ref L2) → L6 (ref L5) → L1, no return via (row walls only)", ["D_s8_stitch_none"], bot,
+                                   "return path without a nearby GND via", Ls=LS_RET, gnd=None)]]}
         return dict(first, **{
             "a": [T(), [c_vlv(ctx, "B_L1L6", "B", "via–line–via L1→L6→L1 (through vias, no stub), antipad Ø0.8 on L2/L5, 4 GND vias at 1 mm", ["B_ts6_L1L6", "B_s8_L1L8_d300"], bot,
                                 "through via without stub (via ladder)")],
@@ -1522,7 +1524,9 @@ def board_specs(ctx):
 STACKS_GEN = ["jlc4_7628", "jlc6_7628", "jlc8_7628", "aisler4_assumed", "jlc4_3313", "jlc6_3313"]
 
 
-FIRST_ORDER = {"jlc4_7628": ("f1", "f2", "f3"), "jlc6_7628": ("f1", "f2", "f3")}
+FIRST_ORDER = {"jlc4_7628": ("f1", "f2"), "jlc6_7628": ("f1",)}
+# first-order boards above the price bracket, accepted by the maintainer (2026-10-31): their own limits (mm)
+OVERSIZE_OK = {"jlc4_7628_f2": (50.0, 160.0), "jlc6_7628_f1": (50.0, 140.0)}
 
 
 def all_boards():
@@ -1539,7 +1543,7 @@ def all_boards():
 
 BOARDS = all_boards()
 PART_TITLE = {"a": "lines / vias", "b": "vias / return path", "c": "pairs", "d": "coupling / capacitors", "p": "PDN",
-              "f1": "first order 1", "f2": "first order 2", "f3": "first order 3"}
+              "f1": "first order 1", "f2": "first order 2"}
 
 
 # --- kisi-fdtd cases ------------------------------------------------------------------------------
@@ -1843,7 +1847,7 @@ def build(board_key, ks, pair_pitch, outdir, design_cache, fdtd_exe=None):
     b.design = des
     b.place()
     Wd, Hd = b.width(), b.height()
-    lim = LAY["board_limits"][str(stk.n)]
+    lim = OVERSIZE_OK.get(board_key) or LAY["board_limits"][str(stk.n)]
     if stk.d["manufacturer"] == "JLCPCB" and (Wd > lim[0] + 1e-6 or Hd > lim[1] + 1e-6):
         raise ValueError(f"{name}: {Wd:g} × {Hd:g} mm exceeds the {lim[0]:g} × {lim[1]:g} mm limit for {stk.n} layers")
     # board name and order-number placeholder on the bottom silk, in the lower half of the bottom

@@ -52,6 +52,8 @@ LS_VIA, LS_RET = LAY["via_line"], LAY["return_line"]
 LAUNCH_LEN = max(LNC["launch_length"], LNC["pad_len"] or 0.0, LNC["taper_len"])  # edge to the coupon's own line
 X_CLEAR = max(LAUNCH_LEN + 0.3, max(h["x"] + h["d"] / 2 for h in FP["mount_holes"]) + 0.5)
 DESIGN_REV = "3"
+LIBNICK = "kisi_coupons"         # project-local footprint library: boards/kisi_coupons.pretty + boards/fp-lib-table
+LIBRARY = {}                     # footprint name -> .kicad_mod text, collected while the boards are written
 # the closest return via next to the 0.3 / 0.6 mm signal via with standard vias: 0.7 mm keeps 0.1 mm
 # between the 0.6 mm pads (hole-to-hole 0.4 mm); the 3D reference has 0.5 mm, which overlaps the pads
 D_CLOSE = 0.7
@@ -557,6 +559,7 @@ class Board:
         self.place()
         G = self.gather()
         W = KicadText(self.name)
+        W.collect = not self.probe
         outline = self.outline()
         hx = self.width() / 2
         W.ox, W.oy = 30.0 + hx, 30.0
@@ -634,10 +637,13 @@ class Board:
             nts = [nt for nt in G["notches"] if nt["layer"] == L]
             fill = notch_outline(inset, nts) if nts else inset
             W.zone("GND", stk.names[L], inset, [fractured(fill, holes)], name=f"GND plane {stk.names[L]}", clearance=0.2)
-        for isl in G["islands"] + G["zones"]:
+        # zone priorities: KiCad reports overlapping zones of equal priority on a layer, so every zone gets its
+        # own: planes 0, the coupons' GND pours 1, 2, … (in the order written), islands and patches above them
+        n_pour = len(G["pours"])
+        for k, isl in enumerate(G["islands"] + G["zones"]):
             r = isl["rect"]
             W.zone(isl["net"], stk.names[isl["layer"]], rect_pts(r), [fractured(rect_pts(r), isl["holes"], (r[0] + r[2]) / 2)],
-                   name=f"{isl['net']} {'island' if isl in G['islands'] else 'patch'}", clearance=0.1 if isl in G["zones"] else 0.2, priority=1)
+                   name=f"{isl['net']} {'island' if isl in G['islands'] else 'patch'}", clearance=0.1 if isl in G["zones"] else 0.2, priority=n_pour + 1 + k)
         # keepouts that reproduce the antipads and island clearances when KiCad refills the zones
         for h in G["holes"]:
             if h["shape"][0] != "rect":
@@ -651,8 +657,8 @@ class Board:
             W.keepout_frame(stk.names[isl["layer"]], (x0 - g, y0 - g, x1 + g, y1 + g), isl["rect"], f"{isl['net']} clearance")
             for s in isl["holes"]:
                 W.keepout([stk.names[isl["layer"]]], shape_ring(s, 24)[:-1], f"{isl['net']} via clearance")
-        for p in G["pours"]:
-            W.zone(p["net"], stk.names[p["layer"]], rect_pts(p["rect"]), [rect_pts(p["rect"])], name=f"GND {p['cid']}", clearance=0.1)
+        for k, p in enumerate(G["pours"]):
+            W.zone(p["net"], stk.names[p["layer"]], rect_pts(p["rect"]), [rect_pts(p["rect"])], name=f"GND {p['cid']}", clearance=0.1, priority=1 + k)
         W.notes(self, -hx, self.bottom - 5.0)
         W.close()
         open(path, "w").write(W.text_out())
@@ -720,6 +726,7 @@ class KicadText:
         self.lines = []
         self.k = 0
         self.ox = self.oy = 0.0
+        self.collect = True
 
     def uid(self):
         self.k += 1
@@ -769,78 +776,107 @@ class KicadText:
     def n(self, net):
         return f'(net {self.netid[net]} "{net}")'
 
+    def footprint(self, name, ref, at, rot, layer, body):
+        """one footprint on the board as `kisi_coupons:<name>`, and the same footprint (without
+        position, nets and uuids) for the project-local library kisi_coupons.pretty: body(rot, n, u)
+        returns its lines for a rotation `rot`, a net clause n(net) and a uuid clause u()"""
+        L = self.lines
+        L.append(f'  (footprint "{LIBNICK}:{name}" (layer "{layer}") (uuid "{self.uid()}") (at {self.X(at[0])} {self.Y(at[1])}{" " + str(rot) if rot else ""})')
+        L += body(rot, lambda net: " " + self.n(net), lambda: f' (uuid "{self.uid()}")', ref, None)
+        L.append("  )")
+        if not self.collect:  # probe boards (trace widths) do not go into the library
+            return
+        lib = [f'(footprint "{name}" (version 20240108) (generator "kisi_make_coupons") (generator_version "8.0") (layer "{layer}")']
+        lib += body(0, lambda net: "", lambda: "", "REF**", name)
+        lib.append(")")
+        text = "\n".join(lib) + "\n"
+        old = LIBRARY.get(name)
+        if old is not None and old != text:
+            raise ValueError(f"footprint {name}: two different definitions (give them different names)")
+        LIBRARY[name] = text
+
     def endlaunch(self, ref, p):
         """Samtec 292-J-P-EP-ST-EL-01 edge-launch footprint at the board edge, generated from
         connectors.json (footprint, launch). The geometry follows Samtec's drawing
         292-J-P-EP-ST-EL-01-X-MKT rev C, sheet 2 (recommended footprint): two plated screw holes
-        Ø2.06 mm 2.79 mm from the edge, ±2.92 mm, with the ground pads (6.48 mm deep, 10.52 mm
-        overall, 45° chamfers, fingers towards the signal at the edge) on every copper layer and
-        the mask open on both sides; the signal pad's tip (0.23 mm at the edge, tapering to the
-        launch width). Copper pulled back from the routed edge by edge_pullback (JLC rule)."""
+        Ø2.06 mm 2.79 mm from the edge, ±2.92 mm, with a round pad on every copper layer and the
+        ground pads (6.48 mm deep, 10.52 mm overall, 45° chamfers, fingers towards the signal at
+        the edge) on the top and bottom copper with the mask open; the signal pad's tip (tapering
+        to the launch width). Copper pulled back from the routed edge by edge_pullback (JLC rule).
+        One library footprint per launch geometry (name suffix _W<width>, _T<tip>_W…_L<taper>)."""
         top = p["layer"] == 0
-        cu, mk, fab, crt, silk = (("F.Cu", "F.Mask", "F.Fab", "F.CrtYd", "F.SilkS") if top else ("B.Cu", "B.Mask", "B.Fab", "B.CrtYd", "B.SilkS"))
-        rot = 0 if p["side"] < 0 else 180
-        L = self.lines
+        cu, mk, fab, crt = (("F.Cu", "F.Mask", "F.Fab", "F.CrtYd") if top else ("B.Cu", "B.Mask", "B.Fab", "B.CrtYd"))
+        rot0 = 0 if p["side"] < 0 else 180
         mir = "" if top else " (justify mirror)"
         pb = FP["edge_pullback"]
         lg = p.get("geom") or {"tip_w": min(LNC["tip_w"] or p["w"], p["w"]), "taper_len": LNC["taper_len"], "pad_w": p["w"]}
         f = lambda v: f"{v:.4f}".rstrip("0").rstrip(".")
-        # KiCad footprint frame: x into the board from the edge, y down (our y up: mirrored, the footprint is symmetric)
-        L.append(f'  (footprint "kisi_coupons:{FP["name"]}" (layer "{cu}") (uuid "{self.uid()}") (at {self.X(p["x"])} {self.Y(p["y"])} {rot})')
-        L.append(f'    (descr "Samtec {CONN["pn"]} 2.92 mm jack, edge launch, compression mount, to 40 GHz, PCB 1.02-2.54 mm. '
-                 f'Generated by validation/test_board/make_coupons.py; geometry follows Samtec drawing 292-J-P-EP-ST-EL-01-X-MKT rev C (sheet 2). '
-                 f'DRAFT: footprint to be checked; launch tip {f(lg["tip_w"])} to {f(lg["pad_w"])} mm over {f(lg["taper_len"])} mm, first kisi-fdtd optimisation step (board side)")')
-        L.append(f'    (property "Reference" "{ref}" (at 3.0 {-(FP["block_width"] / 2 - 0.6)} {rot}) (layer "{fab}") (uuid "{self.uid()}") (effects (font (size 0.8 0.8) (thickness 0.12)){mir}))')
-        L.append(f'    (property "Value" "{CONN["pn"]}" (at -5.0 0 {rot}) (layer "{fab}") (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1)){mir}))')
-        L.append(f'    (property "Port" "{p["cid"]} port {p["name"]}" (at 0 0 {rot}) (layer "{fab}") (hide yes) (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1))))')
-        L.append(f'    (property "Status" "DRAFT footprint (connectors.json footprint.status)" (at 0 0 {rot}) (layer "{fab}") (hide yes) (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1))))')
-        L.append("    (attr smd exclude_from_pos_files exclude_from_bom)")
-        cw, cd, co = FP["courtyard_half_width"], FP["courtyard_on_board"], FP["body_outside_board"] + 0.25
-        L.append(f'    (fp_rect (start {-co} {-cw}) (end {cd} {cw}) (stroke (width 0.05) (type default)) (fill none) (layer "{crt}") (uuid "{self.uid()}"))')
-        bw = FP["block_width"] / 2
-        L.append(f'    (fp_rect (start {-FP["body_outside_board"]} {-bw}) (end {FP["body_on_board"]} {bw}) (stroke (width 0.1) (type default)) (fill none) (layer "{fab}") (uuid "{self.uid()}"))')
-        L.append(f'    (fp_line (start 0 {-cw}) (end 0 {cw}) (stroke (width 0.1) (type dash)) (layer "{fab}") (uuid "{self.uid()}"))')
-        L.append(f'    (fp_text user "DRAFT" (at 3.0 0 {rot}) (layer "{fab}") (uuid "{self.uid()}") (effects (font (size 0.6 0.6) (thickness 0.1)){mir}))')
-        outline = gnd_pad_outline()
-        ring = FP["hole_ring"]
-        for k, h in enumerate(FP["mount_holes"]):
-            sg = 1 if h["y"] > 0 else -1
-            hx, hy = h["x"], -h["y"]            # KiCad local y is down
-            # plated hole with a round pad on every copper layer (inner layers: tied to the planes) ...
-            L.append(f'    (pad "{2 + k}" thru_hole circle (at {f(hx)} {f(hy)} {rot}) (size {f(ring)} {f(ring)}) (drill {f(h["d"])}) '
-                     f'(layers "*.Cu" "*.Mask") (solder_mask_margin {FP["mask_margin"]}) {self.n("GND")} (uuid "{self.uid()}"))')
-            # ... and the ground pad where the jaws clamp: top and bottom copper, mask open
-            pts = " ".join(f"(xy {f(u - hx)} {f(-sg * v - hy)})" for u, v in outline)
-            for lay, msk in (("F.Cu", "F.Mask"), ("B.Cu", "B.Mask")):
-                L.append(f'    (pad "{2 + k}" smd custom (at {f(hx)} {f(hy)} {rot}) (size 1 1) (layers "{lay}" "{msk}") (solder_mask_margin {FP["mask_margin"]}) '
-                         f'{self.n("GND")} (options (clearance outline) (anchor circle)) (primitives (gr_poly (pts {pts}) (width 0) (fill yes))) (uuid "{self.uid()}"))')
-        # signal pad: the tip the pin rests on, tapering to the launch width
         tw, tl, pw = lg["tip_w"], lg["taper_len"], lg["pad_w"]
-        hw = lambda u: tw / 2 + (pw / 2 - tw / 2) * u / tl
-        x0 = pb
-        poly = [(x0, -hw(x0)), (tl, -pw / 2), (tl, pw / 2), (x0, hw(x0))]
-        a0, xa = 0.1, (x0 + tl) / 2         # small anchor in the middle of the taper
-        pts = " ".join(f"(xy {f(u - xa)} {f(v)})" for u, v in poly)
-        L.append(f'    (pad "1" smd custom (at {f(xa)} 0 {rot}) (size {a0} {f(2 * hw(xa))}) (layers "{cu}" "{mk}") (solder_mask_margin {FP["mask_margin"]}) {self.n(p["net"])} '
-                 f'(options (clearance outline) (anchor rect)) (primitives (gr_poly (pts {pts}) (width 0) (fill yes))) (uuid "{self.uid()}"))')
-        L.append("  )")
+        name = FP["name"] + (f"_W{f(pw)}" if abs(tw - pw) < 1e-9 else f"_T{f(tw)}_W{f(pw)}_L{f(tl)}")
+
+        def body(rot, n, u, rf, _val):
+            L = []
+            # KiCad footprint frame: x into the board from the edge, y down (our y up: mirrored, the footprint is symmetric)
+            L.append(f'    (descr "Samtec {CONN["pn"]} 2.92 mm jack, edge launch, compression mount, to 40 GHz, PCB 1.02-2.54 mm. '
+                     f'Generated by validation/test_board/make_coupons.py; geometry follows Samtec drawing 292-J-P-EP-ST-EL-01-X-MKT rev C (sheet 2). '
+                     f'DRAFT: footprint to be checked; launch tip {f(tw)} to {f(pw)} mm over {f(tl)} mm, first kisi-fdtd optimisation step (board side)")')
+            L.append(f'    (property "Reference" "{rf}" (at 3.0 {-round(FP["block_width"] / 2 - 0.6, 4)} {rot}) (layer "{fab}"){u()} (effects (font (size 0.8 0.8) (thickness 0.12)){mir}))')
+            L.append(f'    (property "Value" "{CONN["pn"]}" (at -5.0 0 {rot}) (layer "{fab}"){u()} (effects (font (size 0.6 0.6) (thickness 0.1)){mir}))')
+            L.append("    (attr smd exclude_from_pos_files exclude_from_bom)")
+            cw, cd, co = FP["courtyard_half_width"], FP["courtyard_on_board"], FP["body_outside_board"] + 0.25
+            L.append(f'    (fp_rect (start {-co} {-cw}) (end {cd} {cw}) (stroke (width 0.05) (type default)) (fill none) (layer "{crt}"){u()})')
+            bw = FP["block_width"] / 2
+            L.append(f'    (fp_rect (start {-FP["body_outside_board"]} {-bw}) (end {FP["body_on_board"]} {bw}) (stroke (width 0.1) (type default)) (fill none) (layer "{fab}"){u()})')
+            L.append(f'    (fp_line (start 0 {-cw}) (end 0 {cw}) (stroke (width 0.1) (type dash)) (layer "{fab}"){u()})')
+            L.append(f'    (fp_text user "DRAFT" (at 3.0 0 {rot}) (layer "{fab}"){u()} (effects (font (size 0.6 0.6) (thickness 0.1)){mir}))')
+            outline = gnd_pad_outline()
+            ring = FP["hole_ring"]
+            for k, h in enumerate(FP["mount_holes"]):
+                sg = 1 if h["y"] > 0 else -1
+                hx, hy = h["x"], -h["y"]            # KiCad local y is down
+                # plated hole with a round pad on every copper layer (inner layers: tied to the planes) ...
+                L.append(f'    (pad "{2 + k}" thru_hole circle (at {f(hx)} {f(hy)} {rot}) (size {f(ring)} {f(ring)}) (drill {f(h["d"])}) '
+                         f'(layers "*.Cu" "*.Mask") (solder_mask_margin {FP["mask_margin"]}){n("GND")}{u()})')
+                # ... and the ground pad where the jaws clamp: top and bottom copper, mask open
+                pts = " ".join(f"(xy {f(uu - hx)} {f(-sg * v - hy)})" for uu, v in outline)
+                for lay, msk in (("F.Cu", "F.Mask"), ("B.Cu", "B.Mask")):
+                    L.append(f'    (pad "{2 + k}" smd custom (at {f(hx)} {f(hy)} {rot}) (size 1 1) (layers "{lay}" "{msk}") (solder_mask_margin {FP["mask_margin"]})'
+                             f'{n("GND")} (options (clearance outline) (anchor circle)) (primitives (gr_poly (pts {pts}) (width 0) (fill yes))){u()})')
+            # signal pad: the tip the pin rests on, tapering to the launch width
+            hw = lambda x: tw / 2 + (pw / 2 - tw / 2) * x / tl
+            x0 = pb
+            poly = [(x0, -hw(x0)), (tl, -pw / 2), (tl, pw / 2), (x0, hw(x0))]
+            a0, xa = 0.1, (x0 + tl) / 2         # small anchor in the middle of the taper
+            pts = " ".join(f"(xy {f(uu - xa)} {f(v)})" for uu, v in poly)
+            L.append(f'    (pad "1" smd custom (at {f(xa)} 0 {rot}) (size {a0} {f(2 * hw(xa))}) (layers "{cu}" "{mk}") (solder_mask_margin {FP["mask_margin"]}){n(p["net"])} '
+                     f'(options (clearance outline) (anchor rect)) (primitives (gr_poly (pts {pts}) (width 0) (fill yes))){u()})')
+            return L
+        self.footprint(name, ref, (p["x"], p["y"]), rot0, cu, body)
 
     def part(self, ref, p, stk):
-        """SMD part (capacitor, IC pin field, probe pad): pads in board orientation (no rotation)"""
-        L = self.lines
-        lib = p.get("lib", f"kisi_coupons:{p['prefix']}")
-        L.append(f'  (footprint "{lib}" (layer "F.Cu") (uuid "{self.uid()}") (at {self.X(p["x"])} {self.Y(p["y"])})')
-        L.append(f'    (property "Reference" "{ref}" (at 0 -1.2 0) (layer "F.Fab") (uuid "{self.uid()}") (effects (font (size 0.5 0.5) (thickness 0.08))))')
-        L.append(f'    (property "Value" "{p["value"]}" (at 0 1.2 0) (layer "F.Fab") (uuid "{self.uid()}") (effects (font (size 0.5 0.5) (thickness 0.08))))')
-        for k, v in p.get("props", {}).items():
-            L.append(f'    (property "{k}" "{v}" (at 0 0 0) (layer "F.Fab") (hide yes) (uuid "{self.uid()}") (effects (font (size 0.5 0.5) (thickness 0.08))))')
-        L.append("    (attr smd" + (" exclude_from_pos_files exclude_from_bom" if p.get("dnp_bom") else "") + ")")
-        for pd in p["pads"]:
-            lay = stk.names[pd.get("layer", 0)]
-            extra = ' "F.Paste" "F.Mask"' if (lay == "F.Cu" and p["prefix"] in ("C", "R")) else (' "F.Mask"' if lay == "F.Cu" else "")
-            L.append(f'    (pad "{pd["num"]}" smd {pd.get("shape", "rect")} (at {pd["x"]:.4f} {-pd["y"]:.4f}) (size {pd["sx"]:.4f} {pd["sy"]:.4f}) '
-                     f'(layers "{lay}"{extra}) {self.n(pd["net"])} (uuid "{self.uid()}"))')
-        L.append("  )")
+        """SMD part (capacitor, IC pin field, probe pad): pads in board orientation (no rotation);
+        library name from the KiCad name (capacitors) or the prefix, plus the rail of an IC pin field
+        (its PI_* fields belong to the footprint), plus _V for a capacitor placed along y"""
+        base = p.get("lib", f"x:{p['prefix']}").split(":")[-1]
+        if p["prefix"] == "C" and len(p["pads"]) == 2 and abs(p["pads"][0]["x"] - p["pads"][1]["x"]) < 1e-9:
+            base += "_V"
+        if p.get("props"):
+            base += "_" + "_".join(sorted({str(v).split("=")[0] for v in p["props"].values()}))
+
+        def body(rot, n, u, rf, val):
+            L = []
+            L.append(f'    (property "Reference" "{rf}" (at 0 -1.2 0) (layer "F.Fab"){u()} (effects (font (size 0.5 0.5) (thickness 0.08))))')
+            L.append(f'    (property "Value" "{val or p["value"]}" (at 0 1.2 0) (layer "F.Fab"){u()} (effects (font (size 0.5 0.5) (thickness 0.08))))')
+            for k, v in p.get("props", {}).items():
+                L.append(f'    (property "{k}" "{v}" (at 0 0 0) (layer "F.Fab") (hide yes){u()} (effects (font (size 0.5 0.5) (thickness 0.08))))')
+            L.append("    (attr smd" + (" exclude_from_pos_files exclude_from_bom" if p.get("dnp_bom") else "") + ")")
+            for pd in p["pads"]:
+                lay = stk.names[pd.get("layer", 0)]
+                extra = ' "F.Paste" "F.Mask"' if (lay == "F.Cu" and p["prefix"] in ("C", "R")) else (' "F.Mask"' if lay == "F.Cu" else "")
+                L.append(f'    (pad "{pd["num"]}" smd {pd.get("shape", "rect")} (at {pd["x"]:.4f} {-pd["y"]:.4f}) (size {pd["sx"]:.4f} {pd["sy"]:.4f}) '
+                         f'(layers "{lay}"{extra}){n(pd["net"])}{u()})')
+            return L
+        self.footprint(base, ref, (p["x"], p["y"]), 0, "F.Cu", body)
 
     def gr_poly(self, pts, layer, w):
         self.lines.append(f'  (gr_poly (pts {" ".join(self.xy(p) for p in pts)}) (stroke (width {w}) (type solid)) (fill none) (layer "{layer}") (uuid "{self.uid()}"))')
@@ -1922,7 +1958,26 @@ def main():
         print(f"trace widths for {', '.join(sorted(need))} from kisi ({ks.solver}: {a.kisi_mjs if ks.solver == 'field' else a.kisi})", flush=True)
     for k in keys:
         build(k, ks, a.pair_pitch, a.out, cache, a.fdtd_exe)
+    write_library(os.path.join(a.out, "boards"), prune=set(keys) == set(BOARDS))
     print(f"kisi probe runs: {ks.calls}")
+
+
+def write_library(bdir, prune=False):
+    """the project-local footprint library next to the boards: kisi_coupons.pretty/<name>.kicad_mod
+    (every footprint the boards use, generated here; the Samtec one from connectors.json) and the
+    fp-lib-table that points KiCad to it (${KIPRJMOD}); prune: remove footprints no board uses"""
+    lib = os.path.join(bdir, f"{LIBNICK}.pretty")
+    os.makedirs(lib, exist_ok=True)
+    for name, text in sorted(LIBRARY.items()):
+        open(os.path.join(lib, name + ".kicad_mod"), "w").write(text)
+    if prune:
+        for fn in os.listdir(lib):
+            if fn.endswith(".kicad_mod") and fn[:-len(".kicad_mod")] not in LIBRARY:
+                os.remove(os.path.join(lib, fn))
+    open(os.path.join(bdir, "fp-lib-table"), "w").write(
+        "(fp_lib_table\n  (version 7)\n"
+        f'  (lib (name "{LIBNICK}") (type "KiCad") (uri "${{KIPRJMOD}}/{LIBNICK}.pretty") (options "") '
+        '(descr "kisi measurement coupons: footprints generated by validation/test_board/make_coupons.py"))\n)\n')
 
 
 if __name__ == "__main__":

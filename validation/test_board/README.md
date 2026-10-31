@@ -37,6 +37,7 @@ with a component list; a pin-wide launch with a plane opening for the thin prepr
 | `stackups.json` | stackups with values and sources (JLC 4 / 6 / 8 layers, Aisler assumed, thin prepreg) |
 | `connectors.json` | Samtec 2.92 mm edge launch with sources and the drawing's dimensions, footprint parameters (**DRAFT**), launch parameters (to be optimised), layout pitches, via sizes, capacitor land patterns, size limits |
 | `boards/<board>.kicad_pcb`, `.kicad_pro` | KiCad 8 boards (KiCad 9 opens them); net classes `50Z`, `100Z_Diff` |
+| `boards/kisi_coupons.pretty/`, `boards/fp-lib-table` | the footprints the boards use (the Samtec launch per width, the capacitor land patterns, the IC pin fields), generated with the boards, as a project-local library (`${KIPRJMOD}`): KiCad finds them and DRC's library check matches |
 | `boards/<board>.kisi.json` | kisi configuration: dielectric values with sources, class targets and profiles |
 | `boards/<board>.manifest.json` | coupons, nets, connectors (J numbers, port order), parts (C/U refs), 3D cases and their cell counts |
 | `boards/<stackup>.design.json` | trace widths and the impedance table (kisi formula and field solver) |
@@ -70,8 +71,10 @@ with a component list; a pin-wide launch with a plane opening for the thin prepr
 
 ### Footprint (generated, DRAFT)
 
-`make_coupons.py` writes the footprint `kisi_coupons:Samtec_292-J-P-EP-ST-EL-01_EdgeLaunch` from the parameters in
-`connectors.json` (`footprint`); its geometry follows Samtec's drawing (sheet 2, "recommended footprint"):
+`make_coupons.py` writes the footprint `kisi_coupons:Samtec_292-J-P-EP-ST-EL-01_EdgeLaunch_W<launch width>` (one per
+launch geometry) from the parameters in `connectors.json` (`footprint`), on the boards and into the project-local
+library `boards/kisi_coupons.pretty` (with `boards/fp-lib-table`, `${KIPRJMOD}`); its geometry follows Samtec's
+drawing (sheet 2, "recommended footprint"):
 
 | Feature | Drawing | Footprint |
 |---|---|---|
@@ -565,11 +568,16 @@ section 6, with the measured connector repeatability as the floor.
    still rests 0.54 mm on the tip).
 3. **KiCad 8 or 9**: open each board, refill zones (B), run DRC, look at every layer (antipads, island clearances,
    launch openings, removed non-functional pads). Then rerun `check_coupons.py`: the numbers should not change.
-   Done in the workspace with KiCad 7 on converted copies (pcbnew's DRC after a zone refill): no errors and no
-   unconnected items on any of the 26 boards (the three first-order boards included); warnings only for the missing footprint library `kisi_coupons`, the open
-   ends of REFLECT and four isolated fill pieces of the G_SMALL island (Aisler). (v2 in the same check: 22 copper-to-edge
-   errors at the old launch, 46 isolated-fill warnings.) The script: `k8to7.py` + pcbnew's `WriteDRCReport`, not in the
-   repository (a workaround for the missing KiCad 8).
+   Done in the workspace with KiCad 7 on converted copies (pcbnew's DRC after a zone refill, with the project's
+   footprint library): no errors, no unconnected items and no library warnings on any of the 26 boards (the three
+   first-order boards: no warnings at all); remaining warnings only for the open ends of REFLECT and eight isolated
+   fill pieces of the G_SMALL island (Aisler). (v2 in the same check: 22 copper-to-edge errors at the old launch, 46
+   isolated-fill warnings.) KiCad 8 / 9 also reports overlapping zones of equal priority on a layer (the maintainer's
+   first DRC: the coupons' GND pour rectangles on L1 meet or overlap, e.g. at the centre line of a 4-port launch pair and
+   along the CPWG coupons); every zone now has its own
+   priority (planes 0, the GND pours 1, 2, …, islands and patches above them), and a check of the outlines finds no
+   equal-priority overlap left (78 pairs before, 0 after). The script: `k8to7.py` + pcbnew's `WriteDRCReport`, not in
+   the repository (a workaround for the missing KiCad 8).
 4. JLC: the five templates still exist in the order form; impedance-control option and line specs accepted; decline
    copper thieving near the coupons; the 0.105 mm launch gap of the 3313 boards is accepted.
 5. 4-port connector pitch 12.7 mm: torque-wrench access with the real cables (3.2 mm between the 9.53 mm bodies).

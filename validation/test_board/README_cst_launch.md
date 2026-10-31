@@ -1,8 +1,9 @@
 # CST model of the connector launch (Samtec 292-J-P-EP-ST-EL-01)
 
-Status: **first CST run 2026-10-31 with the STEP import failed (total reflection, see "History"); the
-connector is now built from CST primitives (`--connector parametric`, default), checked without CST, to be run
-again.** `cst_launch.py` builds the test-board connector launch in CST Studio Suite **2025.5**: Samtec's 2.92 mm
+Status: **parametric launch1 ran in CST (2026-10-31, base mesh, 638 k cells, 200 s): |S11| −15 dB at 10 GHz,
+−5 dB at 30 GHz, −1.4 dB at 40 GHz, a capacitive dip to 35 Ω at the board edge in the TDR – far from kisi-fdtd's
+board-side −21 dB. Being bisected (section "Bisecting"); the board side alone (`board_only`) checks CST against
+kisi-fdtd 1:1.** `cst_launch.py` builds the test-board connector launch in CST Studio Suite **2025.5**: Samtec's 2.92 mm
 edge-launch jack with its coax, support bead, pin and jaw on the board launch, so the whole transition is computed,
 not only the board side that kisi-fdtd covers (`README.md`, section 2). The model conventions are those of the CST
 cross-check of the 3D references (`validation/fdtd/CST.md` on branch `feat/cst-refs`: zero-thickness PEC copper
@@ -21,6 +22,7 @@ boundaries).
 |---|---|---|
 | `launch1` | one connector + 12.5 mm feed (`layout.feed`: half of the 25 mm 2×thru) on JLC04161H-7628 (`--stackup`), launch from `connectors.json` (`--variant`) | 1: coax, 2: line end |
 | `thru2` | the 2×thru as measured: two connectors, 25 mm board | 1, 2: coax |
+| `board_only` | the board side exactly as the kisi-fdtd launch case (`fdtd/launch_jlc4_7628/`): no connector, 50 Ω discrete face ports at the board edge (tip to In1) and at the line end, mask everywhere, planes to the edge – CST against `fdtd_ref/launch_jlc4_7628/…/kisi.s2p` 1:1 | face ports |
 | `samtec_bench` | two connectors + 25.4 mm (`--connectors 1`: one + 12.7 mm) 50 Ω grounded coplanar line on an **assumed** 4-layer I-Tera MT40 board: a plausibility check against Samtec's report, not their fixture | coax (and line end) |
 
 `--variant`: `default` (`connectors.json` launch: the line width to the edge, fence 0.55 mm), the kisi-fdtd variants
@@ -47,8 +49,9 @@ measured with OpenCASCADE; drawing values where they exist):
   6.83–10.82 mm: the body overlaps the contact by 3.46 mm³); Samtec does not model the inside there. The script puts
   a coaxial bore of **assumed** impedance around each contact section (`--cavity-z`, default 50 Ω, air;
   `--cavity-er` for a dielectric fill). Where the bore narrows at the contact's last shoulder (Ø1.016 → Ø0.254 at
-  STEP x 10.69) the wider bore runs on 0.06 mm past it – otherwise the shoulder face lies in the plane of the bore's
-  step and touches it (a short; the first STEP-based model had this). This is the largest assumption: compare
+  STEP x 10.69) the wider bore runs on to the lip opening, 0.127 mm (`--shoulder-gap`) – in the plane of the bore's
+  step the shoulder face touches it (a short; the first STEP-based model had this), and 0.064 mm off (the first
+  parametric run) it is a capacitor of about 75 fF. This is the largest assumption: compare
   `--cavity-z 45 / 55` or `--cavity-er 2.1`, and ask Samtec for the real section if it matters.
 * **Not modelled:** the thread, the hex flats, chamfers and roundings outside the coax, the screws (they press the
   jaw and the plate onto the ground pads; the plated holes are in the board model).
@@ -189,6 +192,67 @@ expect: kisi-fdtd's `default` case is −21.0 dB worst to 40 GHz on the board si
 the pin, the lip and the jaw, so CST's |S11| is the number for the target (−20 dB for one launch). Our line loses more
 than Samtec's (FR-4 tan δ 0.02 against MT40 0.003): compare |S21| with `samtec_bench`, not with the report directly.
 
+## Bisecting the launch
+
+The first parametric run (`launch1`, base mesh) reflects far more than kisi-fdtd's board side. Its TDR (10 ps edge,
+round trip from the mating plane): 50 Ω in the air line, 44 Ω at the bead (21–33 ps: the bead and the contact's
+Ø1.27 shoulder inside it), **35 Ω at 64 ps (the front lip / board edge: the capacitance of the lip resting on the
+pads 0.15 mm beside the trace, and in that run the contact's last shoulder 0.064 mm from the assumed bore's step:
+about 75 fF)**, 55 Ω at 82 ps (the pin over the board), then the line. The slow fall below 50 Ω along the line and
+the −20 dB |S11| / −1 dB |S21| at low frequency are the loss convention (constant conductivity: a shunt conductance
+at every frequency), not a discontinuity; `--loss tand` removes them.
+
+Since then the default bore runs on to the lip opening (`--shoulder-gap`, default the full 0.127 mm: about 30 fF);
+`--shoulder-gap 0.0635` rebuilds the first run's geometry. Switches for bisecting (also with `--from-json`; each adds
+a tag to the output name, e.g. `launch1_default_jlc4_7628_nojaw`):
+
+| Switch | What it removes or changes |
+|---|---|
+| `--no-jaw` | the jaw over the board: the body ends at the board edge (the lip ahead of it stays) |
+| `--no-plate`, `--no-tongue` | the lower plate; the tongue that meets the board edge |
+| `--pin-block-w W` | the width of the pin's contact block (default the pin's 0.178 mm; `--no-pin-contact`: none) |
+| `--shoulder-gap G` | the air gap between the contact's last shoulder and the narrow bore |
+| `--lip-er E` | what-if: a dielectric sleeve in the lip opening (82 / 61 Ω empty) |
+| `--cavity-z Z`, `--cavity-er E` | the assumed bore |
+| `--symmetry none` | without the symmetry plane (twice the cells) |
+| `--loss tand` | CST's constant-tan δ loss instead of the constant conductivity |
+| `--monitors 30,40` | E-field monitors at these frequencies |
+
+Runs, in this order (each about 3–4 min at the base mesh with edge refinement 2 and ratio limit 10; from the package
+folder; keep the first result by renaming its folder first):
+
+```powershell
+$env:PYTHONPATH = "C:\Program Files (x86)\CST Studio Suite 2025\AMD64\python_cst_libraries"
+Rename-Item C:\kisi\cst_launch\launch1_default_jlc4_7628 launch1_v1_gap0064
+python cst_launch.py --from-json board_only_default_jlc4_7628.model.json --mesh base --edge-ratio 2 --ratio-limit 10 --out C:\kisi\cst_launch
+python cst_launch.py --from-json launch1_default_jlc4_7628.model.json --mesh base --edge-ratio 2 --ratio-limit 10 --out C:\kisi\cst_launch
+python cst_launch.py --from-json launch1_default_jlc4_7628.model.json --no-jaw --mesh base --edge-ratio 2 --ratio-limit 10 --out C:\kisi\cst_launch
+python cst_launch.py --from-json launch1_tip023_jlc4_7628.model.json --mesh base --edge-ratio 2 --ratio-limit 10 --out C:\kisi\cst_launch
+python cst_launch.py --from-json launch1_default_jlc4_7628.model.json --lip-er 2.1 --mesh base --edge-ratio 2 --ratio-limit 10 --out C:\kisi\cst_launch
+python cst_launch.py --from-json launch1_default_jlc4_7628.model.json --no-plate --no-tongue --mesh base --edge-ratio 2 --ratio-limit 10 --out C:\kisi\cst_launch
+python cst_launch.py --from-json launch1_default_jlc4_7628.model.json --pin-block-w 0.315 --mesh base --edge-ratio 2 --ratio-limit 10 --out C:\kisi\cst_launch
+python cst_launch.py --from-json launch1_default_jlc4_7628.model.json --symmetry none --mesh coarse --edge-ratio 2 --ratio-limit 10 --out C:\kisi\cst_launch
+python cst_launch.py --from-json launch1_default_jlc4_7628.model.json --loss tand --monitors 30,40 --mesh base --edge-ratio 2 --ratio-limit 10 --out C:\kisi\cst_launch
+```
+
+1. `board_only`: CST and kisi-fdtd should agree to a few tenths of a dB (as on the 3D references); if not, the board
+   model or the face port differs, and the connector runs cannot be read against kisi-fdtd.
+2. `launch1` (new default) against `launch1_v1_gap0064`: what the shoulder capacitance did.
+3. `--no-jaw`: the lip and jaw over the trace. 4. `tip023` (Samtec's 0.23 mm tip under the lip): whether the narrow
+   tip compensates the lip, as Samtec's footprint intends. 5. `--lip-er 2.1`: the pin's high-impedance section.
+6. plate and tongue, 7. the pin block, 8. the symmetry plane: expected to matter little. 9. realistic loss and the
+   fields at 30 / 40 GHz (2D/3D Results > E-Field: plane y = 0 and z just above the copper) on the default.
+
+Compare (the kisi-fdtd file is in the package):
+
+```powershell
+python compare_launch.py --cst cst=C:\kisi\cst_launch\board_only_default_jlc4_7628\cst_base.s2p --kisi-file kisi=kisi_launch_jlc4_7628_default.s2p --out C:\kisi\cst_launch\cmp_board_only.png
+python compare_launch.py --cst v1=C:\kisi\cst_launch\launch1_v1_gap0064\cst_base.s2p --cst new=C:\kisi\cst_launch\launch1_default_jlc4_7628\cst_base.s2p --cst nojaw=C:\kisi\cst_launch\launch1_default_jlc4_7628_nojaw\cst_base.s2p --cst tip023=C:\kisi\cst_launch\launch1_tip023_jlc4_7628\cst_base.s2p --kisi-file kisi=kisi_launch_jlc4_7628_default.s2p --out C:\kisi\cst_launch\cmp_bisect.png
+```
+
+The plot has |S11| (and |S22| dotted) and |S21| against frequency and the TDR (10 and 25 ps edges; the board edge
+at about 64 ps for the connector models, at 0 ps for `board_only` and kisi-fdtd – `--shift cst=64` moves a curve).
+
 ## History
 
 * 2026-10-31, first CST runs (maintainer, CST 2025.5, `--connector step` as it was then): the STEP is in inches and
@@ -198,13 +262,19 @@ than Samtec's (FR-4 tan δ 0.02 against MT40 0.003): compare |S21| with `samtec_
   contact a tube there) and the bore's step touched the contact's last shoulder (both fixed); after a crash and a
   reload the connector sat on the other side of the board (import / rotation / orientation check not replay-safe).
   Hence the parametric connector, the conductor and port-mode checks and the strict result reading.
+* 2026-10-31, parametric launch1 (base mesh, edge refinement 2, ratio limit 10: 638 k cells, 200 s): ran, all four
+  S-parameters; |S11| −15.3 / −10.7 / −5.1 / −1.4 dB at 10 / 20 / 30 / 40 GHz, |S21| −0.97 dB to 15 GHz, −6.75 dB at
+  40 GHz; TDR dip to 35 Ω at the board edge (see "Bisecting"). The port-mode check recorded nothing (its results were
+  not found by name): it now writes the mode types and impedances from VBA (`Port.GetModeType`,
+  `GetLineImpedance`) to `port_check.txt` and keeps the result-tree names in `cst_meta.json`.
 
 ## Checked without CST
 
 * `--dry-run` for all three models, the variants and the options: the VBA blocks and the macro pass a structural
   check (With / If / For blocks, quotes, ASCII; the patterns of `cst_case.py`); the model JSON round-trips.
-* `--check-occ` for launch1, thru2 (both connectors), samtec_bench (1 and 2) and launch1 `samtec_pad` with a filled
-  bore: all checks above pass; compared with the STEP as listed under "The connector".
+* `--check-occ` for launch1, thru2 (both connectors), samtec_bench (1 and 2), launch1 `samtec_pad` with a filled
+  bore and every bisect switch: all checks above pass; compared with the STEP as listed under "The connector".
+* `compare_launch.py` with the first parametric result: the table and TDR above.
 * The S-parameter picking (`pick_sparam_items`) on the name forms `S2(1),1(1)` and `S2,1`, a missing entry and a
   second mode.
 

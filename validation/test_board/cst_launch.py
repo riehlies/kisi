@@ -9,6 +9,8 @@ Models (--model):
   thru2         the 2xthru as measured: two connectors, 25 mm board, both ports on the coax
   samtec_bench  two connectors (--connectors 1: one) + 25.4 mm (12.7 mm) 50 ohm grounded coplanar line on an
                 ASSUMED 4-layer I-Tera MT40 stackup: a plausibility check against Samtec's RF report
+  board_only    the board side exactly as the kisi-fdtd launch case (50 ohm face ports at the edge and the line end):
+                CST against fdtd_ref/launch_<stackup>/launch_<stackup>_<variant>/kisi.s2p 1:1
 
 The board side (Samtec ground pads, plated screw holes, launch, fence, planes) is the kisi-fdtd launch case of
 make_coupons.launch_case(), so it follows connectors.json. The connector (--connector parametric, default) is built
@@ -27,7 +29,9 @@ usage:
 Options: --variant (launch variants of make_coupons / connectors.json), --mesh fine|mid|base|coarse|auto
 (estimated cells against --max-cells), --monitors (E-field at 10/20/30/40 GHz), --bead-er/--bead-tand,
 --metal pec|lossy, --symmetry magnetic|none, --walls, --check-occ (OpenCASCADE check, pip gmsh),
---connector step [--step-scale, --part ROLE=PATTERN, --coax-port inner|ext].
+--connector step [--step-scale, --part ROLE=PATTERN, --coax-port inner|ext]. Bisect switches (also with
+--from-json, tagged in the output name): --no-jaw, --no-plate, --no-tongue, --pin-block-w, --shoulder-gap, --lip-er,
+--cavity-z/--cavity-er, --symmetry, --loss, --monitors 30,40.
 """
 import argparse, datetime, json, math, os, re, sys, time
 
@@ -239,10 +243,55 @@ def mirror_sheet(s, X):
     return t
 
 
+def build_board_only(a, mc):
+    """the board side exactly as the kisi-fdtd launch case (make_coupons.launch_case: board from its edge to the end of
+    the launch + 2.5 mm of line, the mask everywhere, planes to the edge), 50 ohm discrete face ports at the edge (tip
+    to In1) and at the line end as kisi-fdtd's lumped ports: CST against fdtd_ref/launch_<stackup>/..._<variant>/kisi.s2p"""
+    var_all = variants()
+    if a.variant not in var_all:
+        raise SystemExit(f"unknown variant {a.variant}: {', '.join(var_all)}")
+    stk_key = a.stackup
+    des = json.load(open(os.path.join(HERE, "boards", f"{stk_key}.design.json"), encoding="utf-8"))
+    case = mc.launch_case(stk_key, des, a.variant, var_all[a.variant], fmax=a.fmax)
+    stk = mc.Stack(stk_key)
+    sm = mc.CON["connector"]["step_model"]
+    b = case["board"]
+    bricks = [{"name": f"layer{k}", "x": [b[0], b[2]], "y": [b[1], b[3]], "z": [l["z0"], l["z1"]], "er": l["er"], "tand": l["tand"]}
+              for k, l in enumerate(case["layers"]) if l["z1"] - l["z0"] > 1e-6]
+    ports = [{"num": k + 1, "type": "face", "x": p["x"], "y": [p["y0"], p["y1"]], "z": [p["z0"], p["z1"]], "r": p.get("r", 50.0),
+              "what": ("50 ohm discrete face port at the board edge (tip to In1), as kisi-fdtd's lumped edge port" if k == 0
+                       else "50 ohm discrete face port at the line end (as kisi-fdtd)")} for k, p in enumerate(case["ports"])]
+    dom = case["domain"]
+    zlo, zhi = min(l["z0"] for l in case["layers"]), max(l["z1"] for l in case["layers"])
+    step = dict(sm, parts_map=part_map(sm, []), cavity={"sections": [], "z": 0, "er": 1.0}, cut_x=sm["oc_bore"]["x"][0], coax_port="inner",
+                connector="parametric", pin_contact=False, clip_body=0.0, **knob_defaults())
+    model = {"name": a.name or f"board_only_{a.variant}_{stk_key}", "title": f"board side only (kisi-fdtd launch case {case['name']}): {stk.d['title']}",
+             "date": datetime.date.today().isoformat(), "model": "board_only", "variant": a.variant, "variant_over": var_all[a.variant],
+             "stackup": stk_key, "stackup_title": stk.d["title"], "fmax": a.fmax, "f_loss": a.fmax / 2, "loss": a.loss, "feed": case["ports"][1]["x"],
+             "launch_length": case["meta"]["params"]["launch_length"], "board_x": [b[0], b[2]], "board_y": [b[1], b[3]], "z_top": stk.z[0],
+             "z_bot": stk.z[-1], "z_ref": stk.z[stk.planes[0]], "z_axis": stk.z[0], "z_span": [zlo, zhi], "connectors": [], "bricks": bricks,
+             "sheets": case["sheets"], "vias": case["vias"], "ports": ports, "step": step, "materials": {"bead": {"er": 2.1, "tand": 0.0003}, "metal": "pec"},
+             "symmetry": a.symmetry, "air": 1.0, "space": {"xmin": round(b[0] - dom[0], 6), "xmax": 0.0,
+             "zmin": round(zlo - dom[2], 6), "zmax": round(dom[5] - zhi, 6)}, "monitors": [], "orient_check": False, "end_db": a.end_db,
+             "edge_pullback": mc.FP["edge_pullback"], "walls": False, "launch_params": case["meta"]["params"],
+             "kisi_fdtd_case": case["name"],
+             "notes": ["board side exactly as the kisi-fdtd launch case: copper zero-thickness PEC widened by Wheeler's dw, mask everywhere, "
+                       "planes to the board edge, 0.6 mm of air ahead of the edge, the board into the PML at the far end and the sides",
+                       "ports: 50 ohm discrete face ports (as validation/fdtd/cst_case.py, which matched kisi-fdtd to 0.01-0.1 dB on the 3D references)"]}
+    return model
+
+
 def build_model(a):
     """the model as plain data (written as <name>.model.json; --from-json rebuilds the VBA from it)"""
     sys.path.insert(0, HERE)
     import make_coupons as mc
+    if a.model == "board_only":
+        m = build_board_only(a, mc)
+        est = {k: estimate_cells(m, v["lpw"]) for k, v in MESH_PRESETS.items()}
+        m["cells_estimate"], m["max_cells"] = est, a.max_cells
+        preset = a.mesh if a.mesh != "auto" else next((k for k in MESH_ORDER if est[k]["local"] <= a.max_cells * 0.85), "rough")
+        m["mesh"] = dict({"ratio": 20, "minstep": 0.0}, **MESH_PRESETS[preset], preset=preset)
+        return m
     con = mc.CON["connector"]
     sm = con["step_model"]
     fp = mc.FP
@@ -373,19 +422,7 @@ def build_model(a):
                           "what": f"waveguide port on the line cross-section (w {wl:g} mm on L1 over In1) at the end of the {feed:g} mm feed"})
     step = dict(sm)
     step["parts_map"] = part_map(sm, a.part)
-    cav = []
-    if a.cavity_z > 0:
-        x0, x1 = sm["void_behind_bead"]["x"][0], sm["lip_opening"]["x"][0]
-        for (u0, u1, r, _) in sm["contact"]:
-            lo, hi = max(u0, x0), min(u1, x1)
-            if hi - lo > 1e-6:
-                cav.append([round(lo, 4), round(hi, 4), round(r * math.exp(a.cavity_z * math.sqrt(a.cavity_er) / 60.0), 4), r])
-        # where the bore narrows at a contact shoulder (x 10.693: Ø1.016 -> Ø0.254, bore Ø2.34 -> Ø0.58) the shoulder face
-        # would lie in the plane of the bore's step and touch it (a short): the wider bore runs on 0.1 mm past the shoulder
-        for k in range(1, len(cav)):
-            if cav[k][2] < cav[k - 1][3] + 0.05:
-                u = round(min(cav[k][0] + 0.1, (cav[k][0] + cav[k][1]) / 2), 4)
-                cav[k - 1][1], cav[k][0] = u, u
+    cav = cavity_sections(sm, a.cavity_z, a.cavity_er, a.shoulder_gap)
     step["cavity"] = {"sections": cav, "z": a.cavity_z, "er": a.cavity_er,
                       "note": "ASSUMED: the STEP has no bore between the bead and the front lip; a coaxial bore of this impedance (fill εr) is cut around each contact section"}
     step["cut_x"] = x_cut
@@ -393,6 +430,9 @@ def build_model(a):
     step["connector"] = a.connector
     step["pin_contact"] = a.pin_contact
     step["clip_body"] = a.clip_body
+    step["shoulder_gap"] = a.shoulder_gap
+    for k_, v_ in knob_defaults().items():
+        step[k_] = v_ if getattr(a, k_, None) is None else getattr(a, k_)
     mats = {"bead": {"er": a.bead_er, "tand": a.bead_tand}, "metal": a.metal}
     name = a.name or (f"{a.model}_{a.variant}_{stk_key}" if not bench else f"samtec_bench_{nconn}c_{a.variant}")
     hb = a.clip_body if a.clip_body > 0 else sm["body_box"]["y"][1]
@@ -403,7 +443,7 @@ def build_model(a):
              "feed": feed, "launch_length": L, "board_x": [0.0, Lb], "board_y": [-hy, hy], "z_top": z_top, "z_bot": z_bot, "z_ref": z_ref,
              "z_axis": round(z_axis, 6), "z_span": [round(zlo, 6), round(zhi, 6)], "connectors": conns, "bricks": bricks, "sheets": sheets,
              "vias": vias, "ports": ports, "step": step, "materials": mats, "symmetry": a.symmetry, "air": a.air,
-             "monitors": MONITOR_GHZ if a.monitors else [], "orient_check": not a.no_orient_check, "end_db": a.end_db,
+             "monitors": parse_monitors(a.monitors), "orient_check": not a.no_orient_check, "end_db": a.end_db,
              "edge_pullback": fp["edge_pullback"], "walls": bool(wall_vias), "launch_params": case["meta"]["params"],
              "notes": model_notes(a, sm, bench)}
     est = {k: estimate_cells(model, v["lpw"]) for k, v in MESH_PRESETS.items()}
@@ -417,6 +457,87 @@ def build_model(a):
         model["mesh"].update(preset="custom", lpw=a.lpw or model["mesh"]["lpw"], lpb=a.lpb or model["mesh"]["lpb"])
         model["cells_estimate"]["custom"] = estimate_cells(model, model["mesh"]["lpw"])
     return model
+
+
+def knob_defaults():
+    """connector switches for bisecting (model["step"]; also applied to a --from-json model)"""
+    return {"has_jaw": True, "has_plate": True, "has_tongue": True, "pin_block_w": None, "lip_er": 1.0}
+
+
+def parse_monitors(v):
+    if not v:
+        return []
+    return [float(x) for x in str(v).split(",") if x.strip()]
+
+
+def apply_overrides(m, a):
+    """the bisect switches and solver options on a model (also one read with --from-json); returns name tags"""
+    tags = []
+    sm = m["step"]
+    if m["model"] != "board_only":
+        if a.no_jaw:
+            sm["has_jaw"] = False
+            tags.append("nojaw")
+        if a.no_plate:
+            sm["has_plate"] = False
+            tags.append("noplate")
+        if a.no_tongue:
+            sm["has_tongue"] = False
+            tags.append("notongue")
+        if a.pin_block_w is not None:
+            sm["pin_block_w"] = a.pin_block_w
+            sm["pin_contact"] = a.pin_block_w > 0
+            tags.append(f"pinblk{a.pin_block_w:g}")
+        if not a.pin_contact:
+            sm["pin_contact"] = False
+            tags.append("nopinblk")
+        if a.lip_er is not None:
+            sm["lip_er"] = a.lip_er
+            tags.append(f"liper{a.lip_er:g}")
+        if a.cavity_z is not None or a.cavity_er is not None or a.shoulder_gap is not None:
+            z = a.cavity_z if a.cavity_z is not None else sm["cavity"]["z"]
+            er = a.cavity_er if a.cavity_er is not None else sm["cavity"]["er"]
+            g = a.shoulder_gap if a.shoulder_gap is not None else sm.get("shoulder_gap")
+            sm["cavity"].update(sections=cavity_sections(sm, z, er, g), z=z, er=er)
+            sm["shoulder_gap"] = g
+            tags += ([f"cavz{z:g}"] if a.cavity_z is not None else []) + ([f"caver{er:g}"] if a.cavity_er is not None else []) \
+                + ([f"gap{g:g}"] if a.shoulder_gap is not None else [])
+    if a.symmetry is not None and a.symmetry != m["symmetry"]:
+        m["symmetry"] = a.symmetry
+        tags.append("sym" if a.symmetry != "none" else "nosym")
+    if a.loss is not None and a.loss != m["loss"]:
+        m["loss"] = a.loss
+        tags.append(a.loss)
+    if a.monitors:
+        m["monitors"] = parse_monitors(a.monitors)
+    return tags
+
+
+def cavity_sections(sm, z, er, shoulder_gap=None):
+    """the ASSUMED bore between the bead and the front lip: [x0, x1, r_bore, r_contact] per contact section (STEP x),
+    r_bore for impedance z with fill er. Where the bore narrows at a contact shoulder (x 10.693: contact Ø1.016 ->
+    Ø0.254, bore Ø2.34 -> Ø0.58) the shoulder face would lie in the plane of the bore's step (touching: a short) or,
+    a few µm off, form a large capacitor: the wider bore runs on by shoulder_gap (None: up to the lip opening, 0.127
+    mm, the most the STEP's contact and lip positions allow)"""
+    cav = []
+    if z <= 0:
+        return cav
+    x0, x1 = sm["void_behind_bead"]["x"][0], sm["lip_opening"]["x"][0]
+    for (u0, u1, r, _) in sm["contact"]:
+        lo, hi = max(u0, x0), min(u1, x1)
+        if hi - lo > 1e-6:
+            cav.append([round(lo, 4), round(hi, 4), round(r * math.exp(z * math.sqrt(er) / 60.0), 4), r])
+    k = 1
+    while k < len(cav):
+        if cav[k][2] < cav[k - 1][3] + 0.05:
+            u = cav[k][1] if shoulder_gap is None else round(min(cav[k][0] + shoulder_gap, cav[k][1]), 4)
+            cav[k - 1][1] = u
+            if u >= cav[k][1] - 1e-6:
+                cav.pop(k)
+                continue
+            cav[k][0] = u
+        k += 1
+    return cav
 
 
 def part_map(sm, overrides):
@@ -493,14 +614,17 @@ def estimate_cells(m, lpw):
                 | {sm["jaw"]["lip_x"], sm["jaw"]["slot_x"], sm["body_box"]["x"][1], sm["cut_x"]})
     for c in m["connectors"]:
         xs += [(c["dx"] - u) if c["mirror"] else (c["dx"] + u) for u in cx if u >= sm["cut_x"] - 1e-9]
-    ys += [s * r for r in radii + [sm["jaw"]["underside_inner_half"], sm["plate"]["z_half"], sm["body_box"]["z_half"]] + sm["jaw"]["slot_half"] for s in (1, -1)]
-    zs += [za + s * r for r in radii for s in (1, -1)] + [za + y for y in sm["jaw"]["top_y"]] + [m["z_bot"] - (sm["board_bottom_y"] - sm["plate"]["y"][0])] + m["z_span"]
-    xlo = min(p["x"] for p in m["ports"] if p["type"] == "waveguide" and p.get("orientation") == "xmin")
-    xhi = max([p["x"] for p in m["ports"] if p.get("orientation") == "xmax"] + [m["board_x"][1]])
+    zs += m["z_span"]
+    if m["connectors"]:
+        ys += [s * r for r in radii + [sm["jaw"]["underside_inner_half"], sm["plate"]["z_half"], sm["body_box"]["z_half"]] + sm["jaw"]["slot_half"] for s in (1, -1)]
+        zs += [za + s * r for r in radii for s in (1, -1)] + [za + y for y in sm["jaw"]["top_y"]] + [m["z_bot"] - (sm["board_bottom_y"] - sm["plate"]["y"][0])]
+    sp = m.get("space", {})
+    xlo = min([p["x"] for p in m["ports"] if p.get("orientation") == "xmin"] + [m["board_x"][0] - sp.get("xmin", 0.0)])
+    xhi = max([p["x"] for p in m["ports"] if p.get("orientation") == "xmax"] + [m["board_x"][1] + sp.get("xmax", 0.0)])
     ylo, yhi = m["board_y"]
     if m["symmetry"] != "none":
         ylo = 0.0
-    zlo, zhi = m["z_span"][0] - m["air"], m["z_span"][1] + m["air"]
+    zlo, zhi = m["z_span"][0] - sp.get("zmin", m["air"]), m["z_span"][1] + sp.get("zmax", m["air"])
     zb = (min(b["z"][0] for b in m["bricks"]), max(b["z"][1] for b in m["bricks"]))
     res = {}
     for key, (cc, kappa, glob) in {"local": (0.96, 3, False), "global": (0.57, 4, True)}.items():
@@ -780,9 +904,12 @@ def connector_ops(m, c, grow=0.0):
     hexu = sm.get("hex_x", 5.6301)
     round_part(body, up, hexu, sm.get("bushing_r", 3.175), -h, h)
     add(body, round_part(nm("hex"), hexu, lip0, jw, -h, h))
-    add(body, box(nm("tongue"), mat_body, lip0, e, -h, ty, -1.27, 1.27))
+    if sm.get("has_tongue", True):
+        add(body, box(nm("tongue"), mat_body, lip0, e, -h, ty, -1.27, 1.27))
     add(body, round_part(nm("front"), lip0, e, jw, ty, h))
-    add(body, round_part(nm("jaw"), e, sm["body_box"]["x"][1], jw, ty, jtop))
+    jaw_on = sm.get("has_jaw", True)
+    if jaw_on:
+        add(body, round_part(nm("jaw"), e, sm["body_box"]["x"][1], jw, ty, jtop))
     # inside: the air line, the bead seat, the (ASSUMED) bore, the lip opening for the pin
     cut(body, cylx(nm("bore"), "Vacuum", up - 0.1, bd["x"][0], ob["r"]))
     cut(body, cylx(nm("seat"), "Vacuum", bd["x"][0], bd["x"][1], bd["r"]))
@@ -796,22 +923,26 @@ def connector_ops(m, c, grow=0.0):
             cut(body, cylx(nm("cav"), "Vacuum", u0, u1, r))
     if not cav["sections"]:  # the STEP's void behind the bead only (the contact is then shorted to the body)
         cut(body, cylx(nm("void"), "Vacuum", *sm["void_behind_bead"]["x"], sm["void_behind_bead"]["r"]))
-    cut(body, cylx(nm("lip"), "Vacuum", lo["x"][0] - 0.01, lo["x"][1] + 0.05, lo["r"]))
-    # the slot over the trace (open to the top), the screw slots
-    sx = jaw["slot_x"]
-    s1 = 12.167  # STEP: the slot widens from 2.67 to 3.18 mm here
-    cut(body, box(nm("slot"), "Vacuum", sx, s1, ty - 0.01, jtop + 0.01, -jaw["slot_half"][0], jaw["slot_half"][0]))
-    cut(body, box(nm("slot"), "Vacuum", s1, sm["body_box"]["x"][1] + 0.1, ty - 0.01, jtop + 0.01, -jaw["slot_half"][1], jaw["slot_half"][1]))
-    for zs in (1, -1):
-        zc = zs * 2.921
-        cut(body, box(nm("screw"), "Vacuum", 13.208, 15.24, ty - 0.01, jtop + 0.01, zc - 1.016, zc + 1.016))
-        for u in (13.208, 15.24):
-            cut(body, cylv(nm("screw"), "Vacuum", u, zc, 1.016, ty - 0.01, jtop + 0.01))
+    lip_end = lo["x"][1] + 0.05 if jaw_on else e
+    lip_fill = sm.get("lip_er", 1.0) > 1.0
+    cut(body, cylx(nm("lip"), "Vacuum", lo["x"][0] - 0.01, lip_end, lo["r"]))
+    if jaw_on:
+        # the slot over the trace (open to the top), the screw slots
+        sx = jaw["slot_x"]
+        s1 = 12.167  # STEP: the slot widens from 2.67 to 3.18 mm here
+        cut(body, box(nm("slot"), "Vacuum", sx, s1, ty - 0.01, jtop + 0.01, -jaw["slot_half"][0], jaw["slot_half"][0]))
+        cut(body, box(nm("slot"), "Vacuum", s1, sm["body_box"]["x"][1] + 0.1, ty - 0.01, jtop + 0.01, -jaw["slot_half"][1], jaw["slot_half"][1]))
+        for zs in (1, -1):
+            zc = zs * 2.921
+            cut(body, box(nm("screw"), "Vacuum", 13.208, 15.24, ty - 0.01, jtop + 0.01, zc - 1.016, zc + 1.016))
+            for u in (13.208, 15.24):
+                cut(body, cylv(nm("screw"), "Vacuum", u, zc, 1.016, ty - 0.01, jtop + 0.01))
     # lower plate (with its groove under the trace)
     pl = sm["plate"]
     plate = f"{comp}:plate"
-    box(plate, mat_body, pl["x"][0], pl["x"][1], pl["y"][0], pl["y"][1], -pl["z_half"], pl["z_half"], plate=True)
-    cut(plate, box(nm("groove"), "Vacuum", pl["x"][0] - 0.1, pl["x"][1] + 0.1, pl["y"][1] - 0.0762, pl["y"][1] + 0.01, -0.254, 0.254, plate=True))
+    if sm.get("has_plate", True):
+        box(plate, mat_body, pl["x"][0], pl["x"][1], pl["y"][0], pl["y"][1], -pl["z_half"], pl["z_half"], plate=True)
+        cut(plate, box(nm("groove"), "Vacuum", pl["x"][0] - 0.1, pl["x"][1] + 0.1, pl["y"][1] - 0.0762, pl["y"][1] + 0.01, -0.254, 0.254, plate=True))
     # centre contact from the port plane to the pin end (the socket lies ahead of the port plane)
     cont = f"{comp}:contact"
     first = True
@@ -825,7 +956,8 @@ def connector_ops(m, c, grow=0.0):
             add(cont, cylx(nm("ct"), mat_cont, u0, u1 + grow, r + grow))
     if sm["pin_contact"]:
         pin = sm["contact"][-1]
-        add(cont, box(nm("pinblk"), mat_cont, e + m["edge_pullback"], pin[1] + grow, ty + grow, 0.0, -pin[2] - grow, pin[2] + grow))
+        hw = (sm.get("pin_block_w") or 2 * pin[2]) / 2
+        add(cont, box(nm("pinblk"), mat_cont, e + m["edge_pullback"], pin[1] + grow, ty + grow, 0.0, -hw - grow, hw + grow))
     # the support bead: disc with six holes and the centre hole, minus the contact's shoulder
     bead = f"{comp}:bead"
     cylx(bead, "bead", bd["x"][0], bd["x"][1], bd["r"])
@@ -835,6 +967,10 @@ def connector_ops(m, c, grow=0.0):
         cut(bead, cylx(nm("hole"), "Vacuum", bd["x"][0] - 0.01, bd["x"][1] + 0.01, hl["r"], hl["pitch_r"] * math.cos(t), hl["pitch_r"] * math.sin(t)))
     cut(bead, cylx(nm("hole"), "Vacuum", bd["x"][0] - 0.01, bd["x"][1] + 0.01, bd["centre_hole_r"]))
     ops.append(("insert", bead, cont))
+    if lip_fill:  # what-if: a dielectric sleeve in the lip opening (the STEP shows it empty)
+        lipf = f"{comp}:lipfill"
+        cylx(lipf, "lip_fill", lo["x"][0], lip_end, lo["r"])
+        ops.append(("insert", lipf, cont))
     if fill:
         for f_ in fills[1:]:
             add(fills[0], f_)
@@ -931,18 +1067,19 @@ def vba_blocks(m):
     mesh = m["mesh"]
     B.add("units", 'With Units\n .Geometry "mm"\n .Frequency "GHz"\n .Time "ns"\n .TemperatureUnit "Kelvin"\nEnd With', "setup")
     air = m["air"]
+    spc = m.get("space", {})
     B.add("background", f"""
 With Background
  .ResetBackground
  .Type "Normal"
  .Epsilon "1.0"
  .Mu "1.0"
- .XminSpace "0"
- .XmaxSpace "0"
+ .XminSpace {q(spc.get("xmin", 0.0))}
+ .XmaxSpace {q(spc.get("xmax", 0.0))}
  .YminSpace "0"
  .YmaxSpace "0"
- .ZminSpace {q(air)}
- .ZmaxSpace {q(air)}
+ .ZminSpace {q(spc.get("zmin", air))}
+ .ZmaxSpace {q(spc.get("zmax", air))}
  .ApplyInAllDirections "False"
 End With""", "setup")
     sym = {"none": "none", "magnetic": "magnetic"}[m["symmetry"]]
@@ -972,6 +1109,8 @@ End With""", "setup")
     cav = m["step"]["cavity"]
     if cav["sections"] and cav["er"] > 1.0:
         B.add("material cavity_fill", material_block("cavity_fill", cav["er"], bm["tand"], m, "0.9\", \"0.8\", \"0.6"))
+    if m["step"].get("lip_er", 1.0) > 1.0:
+        B.add("material lip_fill", material_block("lip_fill", m["step"]["lip_er"], bm["tand"], m, "0.8\", \"0.9\", \"0.9"))
     if m["materials"]["metal"] == "lossy":
         B.add("material stainless", lossy_metal("stainless", 1.4e6))
         B.add("material gold", lossy_metal("gold", 4.1e7))
@@ -982,10 +1121,17 @@ End With""", "setup")
     for p in m["ports"]:
         if p["type"] != "face":
             continue
+        ym = (p["y"][0] + p["y"][1]) / 2
+        tr = next((si for si, s in enumerate(m["sheets"]) if abs(s["z"] - p["z"][1]) < 1e-9
+                   and copper_at(s, p["x"] - 0.02, ym) != copper_at(s, p["x"] + 0.02, ym)), None)
+        if tr is None:
+            raise SystemExit(f"face port {p['num']}: no trace ends at x = {p['x']}")
+        side = 1.0 if copper_at(m["sheets"][tr], p["x"] + 0.02, ym) else -1.0  # the trace lies on this side
+        p["trace_sheet"] = tr
         for si, s in enumerate(m["sheets"]):
-            rr = [p["x"], p["y"][0], p["x"] + 0.05, p["y"][1]]
+            rr = [p["x"], p["y"][0], p["x"] + 0.05, p["y"][1]] if side < 0 else [p["x"] - 0.05, p["y"][0], p["x"], p["y"][1]]
             if abs(s["z"] - p["z"][0]) < 1e-9 and all(copper_at(s, x, y) for x, y in ((rr[0], rr[1]), (rr[2], rr[3]), (rr[0], rr[3]), (rr[2], rr[1]))):
-                patches[si] = (p["num"], rr)
+                patches.setdefault(si, []).append((p["num"], rr))
                 p["patch_sheet"] = si
                 break
         else:
@@ -1015,8 +1161,7 @@ End With""", "setup")
         for h in s.get("holes") or []:
             hn = B.name(f"{nm}_h")
             B.add(f"{nm} hole", B.circle_sheet("metal", hn, h[0], h[1], h[2], s["z"]) + f'Solid.Subtract "metal:{nm}", "metal:{hn}"\n')
-        if si in patches:
-            k, rr = patches[si]
+        for k, rr in patches.get(si, []):
             cut = B.name(f"{nm}_p")
             B.add(f"{nm} port patch {k}", B.rect_sheet("metal", cut, *rr, s["z"]) + f'Solid.Subtract "metal:{nm}", "metal:{cut}"\n'
                   + B.rect_sheet("metal", f"portref{k}", *rr, s["z"]))
@@ -1036,7 +1181,8 @@ End With""", "setup")
             B.add(f"connector {c['id']} (parametric)", ops_vba(connector_ops(m, c)), "connector")
         else:
             B.add(f"connector {c['id']} (Samtec STEP)", connector_vba(m, c), "connector")
-    B.add("check: conductors at the coax ports", port_conductor_check(m), "check")
+    if any(p["type"] == "waveguide" for p in m["ports"]):
+        B.add("check: conductors at the coax ports", port_conductor_check(m), "check")
     for p in m["ports"]:
         if p["type"] == "waveguide":
             B.add(f"port {p['num']} (waveguide)", f"""
@@ -1067,7 +1213,7 @@ With Port
 End With""", "port")
         else:
             xm, ym = p["x"], (p["y"][0] + p["y"][1]) / 2
-            tr = next(si for si, s in enumerate(m["sheets"]) if abs(s["z"] - p["z"][1]) < 1e-9 and copper_at(s, xm - 0.02, ym) and not copper_at(s, xm + 0.02, ym))
+            tr = p["trace_sheet"]
             B.add(f"port {p['num']} (face)", f"""
 Pick.PickEdgeFromPoint "metal:sheet{tr}", {q(xm)}, {q(ym)}, {q(p['z'][1])}
 Pick.PickEdgeFromPoint "metal:portref{p['num']}", {q(xm)}, {q(ym)}, {q(p['z'][0])}
@@ -1197,7 +1343,8 @@ def to_bas(blocks, m, step_path=""):
             lit = lit.replace(STEP_TOKEN, '" & stepFile & "')
             s.append(f" h = h & {lit} & vbLf")
         s.append(f' AddToHistory "{ascii_only(b["caption"])}", h')
-    s += [" If PORT_CHECK Then",
+    has_wg = any(p["type"] == "waveguide" for p in m["ports"])
+    s += [" If PORT_CHECK And " + ("True" if has_wg else "False") + " Then",
           '  Solver.CalculateModesOnly "True"',
           "  Solver.Start",
           '  msg = ""',
@@ -1711,18 +1858,35 @@ def run_in_cst(m, blocks, a, od):
         if a.no_solve:
             meta["status"] = "built"
             return meta
-        if not a.no_port_check:  # modes only: one TEM mode of about 50 ohm on every coax port
+        if not a.no_port_check and any(p_["type"] == "waveguide" for p_ in m["ports"]):  # modes only: one TEM mode of about 50 ohm on every coax port
             prj.model3d.add_to_history("port check: modes only", 'Solver.CalculateModesOnly "True"')
             prj.model3d.run_solver()
             prj.save()
-            rows = port_mode_report(cst, cp, m)
+            pc = os.path.join(od, "port_check.txt").replace("\\", "/")
+            wg = [p_["num"] for p_ in m["ports"] if p_["type"] == "waveguide"]
+            code = ("On Error Resume Next\nDim p As Long\nOpen \"" + pc + "\" For Output As #1\n"
+                    + "".join(f'Print #1, "{n_};" & Port.GetModeType({n_}, 1) & ";" & Str(Port.GetLineImpedance({n_}, 1))\n' for n_ in wg)
+                    + "Close #1\n")
+            prj.model3d.add_to_history("port check: write the port modes", code)
+            rows = []
+            try:
+                for ln in open(os.path.join(od, "port_check.txt"), encoding="latin-1"):
+                    f_ = ln.strip().split(";")
+                    if len(f_) == 3 and f_[2].strip():
+                        rows.append((int(f_[0]), 1, float(f_[2]), "Port.GetLineImpedance, mode type " + f_[1]))
+            except (OSError, ValueError) as e:
+                log("   port check file:", repr(e))
+            if not rows:
+                rows = port_mode_report(cst, cp, m)
+            meta["port_tree"] = [t for t in cst.results.ProjectFile(cp, allow_interactive=True).get_3d().get_tree_items() if "Port" in t][:80]
             meta["port_modes"] = [{"port": r[0], "mode": r[1], "z_ohm": round(r[2], 3), "item": r[3]} for r in rows]
             for r in rows:
                 log(f"   port {r[0]} mode {r[1]}: Z = {r[2]:.2f} ohm  ({r[3]})")
             if not rows:
                 log("   port check: no line impedance found in the results; look at 2D/3D Results > Port Modes")
             coax = [p["num"] for p in m["ports"] if p["type"] == "waveguide" and abs(p["ref_shift"]) > 0]
-            bad = [r for r in rows if r[1] > 1] + [r for r in rows if r[0] in coax and r[1] == 1 and not 47.0 < r[2] < 53.0]
+            bad = [r for r in rows if r[1] > 1] + [r for r in rows if r[0] in coax and r[1] == 1 and not 47.0 < r[2] < 53.0] \
+                + [r for r in rows if "mode type" in r[3] and r[3].split()[-1] not in ("TEM", "QTEM")]
             if bad:
                 raise RuntimeError(f"port check failed: {[(r[0], r[1], round(r[2], 2)) for r in bad]} (expected one mode per port, "
                                    "about 50 ohm on the coax); see 2D/3D Results > Port Modes")
@@ -1807,7 +1971,7 @@ def print_summary(m):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--model", choices=["launch1", "thru2", "samtec_bench"], default="launch1")
+    ap.add_argument("--model", choices=["launch1", "thru2", "samtec_bench", "board_only"], default="launch1")
     ap.add_argument("--variant", default="default", help="launch variant: make_coupons.LAUNCH_VARIANTS without pin/body, tip023, samtec_pad")
     ap.add_argument("--stackup", default="jlc4_7628", help="stackup key with boards/<key>.design.json (launch1, thru2)")
     ap.add_argument("--connectors", type=int, choices=[1, 2], default=None, help="samtec_bench: 1 (12.7 mm) or 2 (25.4 mm)")
@@ -1825,12 +1989,18 @@ def main():
     ap.add_argument("--lpb", type=float, default=None, help="own lines per model box (overrides the preset)")
     ap.add_argument("--fmax", type=float, default=40e9)
     ap.add_argument("--end-db", type=float, default=-50)
-    ap.add_argument("--loss", choices=["sigma", "tand"], default="sigma")
+    ap.add_argument("--loss", choices=["sigma", "tand"], default=None, help="sigma (default: kisi-fdtd's constant conductivity, exact at fmax/2) or tand (CST's constant tan(delta))")
     ap.add_argument("--metal", choices=["pec", "lossy"], default="pec")
     ap.add_argument("--bead-er", type=float, default=2.1, help="support bead εr (PTFE 2.1)")
     ap.add_argument("--bead-tand", type=float, default=0.0003)
-    ap.add_argument("--cavity-z", type=float, default=50.0, help="impedance of the ASSUMED bore between the bead and the lip; 0: none (shorts the contact)")
-    ap.add_argument("--cavity-er", type=float, default=1.0, help="its fill (1: air)")
+    ap.add_argument("--cavity-z", type=float, default=None, help="impedance of the ASSUMED bore between the bead and the lip (default 50; 0: none, shorts the contact)")
+    ap.add_argument("--cavity-er", type=float, default=None, help="its fill (default 1: air)")
+    ap.add_argument("--shoulder-gap", type=float, default=None, help="how far the wide bore runs past the contact's last shoulder (default: to the lip, 0.127 mm)")
+    ap.add_argument("--no-jaw", action="store_true", help="bisect: no jaw over the board (the body ends at the board edge)")
+    ap.add_argument("--no-plate", action="store_true", help="bisect: no lower plate")
+    ap.add_argument("--no-tongue", action="store_true", help="bisect: no tongue ahead of the board edge")
+    ap.add_argument("--pin-block-w", type=float, default=None, help="bisect: width of the pin's contact block (default the pin's 0.178 mm; 0: none)")
+    ap.add_argument("--lip-er", type=float, default=None, help="what-if: dielectric sleeve of this er in the lip opening (the STEP shows it empty)")
     ap.add_argument("--coax-port", choices=["inner", "ext"], default="inner")
     ap.add_argument("--coax-cut", type=float, default=4.4, help="inner: STEP x of the coax port (uniform air line 4.0-5.1 mm)")
     ap.add_argument("--ext-len", type=float, default=1.0, help="ext: plug extension ahead of the connector's front face (mm)")
@@ -1844,9 +2014,9 @@ def main():
     ap.add_argument("--line-port-height", type=float, default=1.2, help="waveguide port on the line: height above L1 (mm)")
     ap.add_argument("--no-pin-contact", dest="pin_contact", action="store_false")
     ap.add_argument("--part", action="append", default=[], help="ROLE=PATTERN: STEP solid names containing PATTERN get ROLE (body, contact, plate, drop, bead)")
-    ap.add_argument("--symmetry", choices=["magnetic", "none"], default="magnetic")
+    ap.add_argument("--symmetry", choices=["magnetic", "none"], default=None, help="magnetic (default; board_only: none)")
     ap.add_argument("--walls", action="store_true", help="add the GND via walls between the coupon rows (y = ±6 mm, 1.27 mm pitch; the kisi-fdtd launch cases have none)")
-    ap.add_argument("--monitors", action="store_true", help="E-field monitors at 10/20/30/40 GHz")
+    ap.add_argument("--monitors", nargs="?", const="10,20,30,40", default=None, help="E-field monitors (GHz, default 10,20,30,40; e.g. --monitors 30,40)")
     ap.add_argument("--air", type=float, default=1.0, help="space above / below the connector (mm)")
     ap.add_argument("--clip-body", type=float, default=3.0, help="cut the connector body's outside more than this above / below the axis (mm; 0: the full body)")
     ap.add_argument("--no-orient-check", action="store_true")
@@ -1861,7 +2031,17 @@ def main():
     if a.from_json:
         m = json.load(open(a.from_json, encoding="utf-8"))
     else:
-        m = build_model(a)
+        b = argparse.Namespace(**vars(a))  # build with the defaults; the switches below are applied as overrides
+        b.cavity_z, b.cavity_er, b.shoulder_gap, b.loss, b.monitors, b.pin_contact = 50.0, 1.0, None, "sigma", None, True
+        b.symmetry = "none" if a.model == "board_only" else "magnetic"
+        m = build_model(b)
+    tags = apply_overrides(m, a)
+    if a.name:
+        m["name"] = a.name
+    elif tags:
+        m["name"] += "_" + "_".join(tags)
+    if tags:
+        m["notes"].append("switches: " + ", ".join(tags))
     if a.step_scale:
         m["step"]["step_scale"] = a.step_scale
     if a.from_json:  # mesh choices also apply to a model rebuilt from its JSON
@@ -1899,7 +2079,8 @@ def main():
             if "vs_step_mm3" in r:
                 log(f"    parametric vs Samtec's STEP: {r['vs_step_mm3']}")
             ok = (all(v < 1e-6 for v in r["overlap_mm3"].values()) and all(v < 1e-6 for v in r["clearance_0p02mm"].values())
-                  and r["body_below_top_copper_mm3"] < 1e-6 and r["body_on_top_copper_mm3"] > 0 and r["body_on_trace_mm3"] < 1e-6
+                  and r["body_below_top_copper_mm3"] < 1e-6 and (r["body_on_top_copper_mm3"] > 0 or not m["step"].get("has_jaw", True))
+                  and r["body_on_trace_mm3"] < 1e-6
                   and (r["pin_on_trace_mm3"] > 0 or not m["step"]["pin_contact"]) and not r["inside_board_bricks"])
             if not ok:
                 raise SystemExit(f"OCC check of connector {r['id']} FAILED")

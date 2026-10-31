@@ -194,7 +194,8 @@ export shows it). Background: `docs/models.md` (scope, why kisi is fast); the ea
 - **Reference boards** with a prepared `kisi.json`: tutorial (block 1), regression test (all blocks) and
   validation (block 2). Today: ThunderScope, LibreVNA, XIAO nRF54LM20A (`docs/examples/`).
 - **Corpus run** (`data/corpus.json`, `tools/corpus.py`, `validation/corpus/`): 32 open-source boards weekly in CI
-  and about 200 more by hand, without a `kisi.json` – parser robustness, crashes, run times and drift of the summary
+  and about 200 more monthly and by hand (its KiCad 5 and older boards are refused, the expected outcome), without a
+  `kisi.json` – parser robustness, crashes, run times and drift of the summary
   numbers. Next: a `kisi.json` for the about 16 SI- and PI-rich weekly boards (net-class targets and profiles,
   laminate, power tree; kisi-prepare), so that the weekly run also guards impedance, channel and power results;
   re-select from the harness list now and then (repositories disappear: two of the 200 already).
@@ -211,8 +212,9 @@ export shows it). Background: `docs/models.md` (scope, why kisi is fast); the ea
   run in their groups (the KiCad project check `compare.py --kicad` locally only: the KiCad PPA download stalled
   too often in CI; package installs go through `tools/ci_install.sh` with retries, a mirror fallback and a cache); the Rust code is formatted (`cargo fmt --check`) and clippy-clean
   (`-D warnings`, native and wasm) on every push that touches it, with the Rust version pinned in
-  `rust-toolchain.toml` (raised on purpose, not by a new stable release); the corpus run weekly and on a manual run
-  (`tools/corpus.py`; a repository that cannot be fetched is reported, not failed). Next: parse a KiCad 10 test board.
+  `rust-toolchain.toml` (raised on purpose, not by a new stable release); the corpus run weekly (weekly set), monthly
+  (robustness set, the 1st) and on a manual run (`tools/corpus.py`; a repository that cannot be fetched is reported,
+  not failed). Next: parse a KiCad 10 test board.
 - Keep `data/interfaces.json` (standards) and `data/components.json` (package parasitics) current, with sources.
 
 ### Small fixes (independent, can be done in parallel)

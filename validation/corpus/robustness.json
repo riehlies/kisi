@@ -3,70 +3,45 @@
   "4ch-rf-fe": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.06
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 23664.0,
-      "nodes": 167832,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.22
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.4
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "7seg-panel": {
    "commands": {
@@ -283,213 +258,131 @@
   "advent-calendar-of-circuits-2020": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.29
+     "error": "This board file is from KiCad 5 or older (version 20210126). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "bead-ratings": 1,
-       "cap-ratings": 42,
-       "cap-values": 3,
-       "ic-loads": 13,
-       "nets-without-target": 8,
-       "power-tree": 0,
-       "rails-without-source": 7,
-       "rails-without-voltage": 2,
-       "stackup-defaults": 5
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "open"
-      }
-     },
-     "rc": 0,
-     "s": 0.32
+     "error": "This board file is from KiCad 5 or older (version 20210126). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.26
+     "error": "This board file is from KiCad 5 or older (version 20210126). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 6,
-      "stackup_from_file": true,
-      "targets": [],
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.25
+     "error": "This board file is from KiCad 5 or older (version 20210126). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.31
+     "error": "This board file is from KiCad 5 or older (version 20210126). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 1842.0,
-      "nodes": 176832,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 2.88
+     "error": "This board file is from KiCad 5 or older (version 20210126). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 4.3
+   "kicad": "5.99",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "alexmfz-hackrf": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
      "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
      "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
      "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
      "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
      "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 102.0,
-      "nodes": 6580,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
+   "kicad": "5",
+   "refused": "pre-kicad6",
    "total_s": 0.0
   },
   "alturia-pcb": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 1080.0,
-      "nodes": 69104,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.37
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 0.4
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "am64x": {
    "commands": {
@@ -569,213 +462,131 @@
   "anotterwatchhw": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 1,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 2036.0,
-      "nodes": 130336,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.9
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.0
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "antikernel": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.09
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 14,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.1
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.08
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 2,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.08
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.08
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 16568.0,
-      "nodes": 132432,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.62
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.1
+   "kicad": "legacy",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "archer": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.74
+     "error": "This board file is from KiCad 5 or older (version 20210424). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.02
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "cap-ratings": 160,
-       "ic-loads": 26,
-       "nets-without-target": 32,
-       "power-tree": 0,
-       "rails-without-source": 9,
-       "rails-without-voltage": 12,
-       "stackup-defaults": 3
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "open"
-      }
-     },
-     "rc": 0,
-     "s": 0.79
+     "error": "This board file is from KiCad 5 or older (version 20210424). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.67
+     "error": "This board file is from KiCad 5 or older (version 20210424). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.02
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": true,
-      "targets": [],
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.79
+     "error": "This board file is from KiCad 5 or older (version 20210424). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.03
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.68
+     "error": "This board file is from KiCad 5 or older (version 20210424). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 11062.0,
-      "nodes": 176816,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 2.5
+     "error": "This board file is from KiCad 5 or older (version 20210424). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 6.2
+   "kicad": "5.99",
+   "refused": "pre-kicad6",
+   "total_s": 0.1
   },
   "arty-a7-fpga": {
    "commands": {
@@ -849,71 +660,45 @@
   "avb-ethernet-switch-with-can-bus": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 8,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 7521.0,
-      "nodes": 187600,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.48
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 1.6
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "avionics-23-26": {
    "commands": {
@@ -1215,71 +1000,45 @@
   "bit-preserve": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 2,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.06
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 2,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 39055.0,
-      "nodes": 138752,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 1.4
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.1
   },
   "bitaxebonanza": {
    "commands": {
@@ -1430,70 +1189,45 @@
   "board-rza1l": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 6828.0,
-      "nodes": 171200,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.21
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.3
+   "kicad": "legacy",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "camera-module": {
    "commands": {
@@ -2528,71 +2262,45 @@
   "daveecu2": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 2,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 18697.0,
-      "nodes": 133016,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.95
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 1.1
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "deepin-community-hackrf": {
    "commands": {
@@ -2664,6 +2372,49 @@
     }
    },
    "total_s": 3.6
+  },
+  "diy-laptop": {
+   "commands": {
+    "check": {
+     "error": "This board file is from KiCad 5 or older (version 20171114). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
+    },
+    "gaps": {
+     "error": "This board file is from KiCad 5 or older (version 20171114). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
+    },
+    "interfaces": {
+     "error": "This board file is from KiCad 5 or older (version 20171114). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
+    },
+    "overview": {
+     "error": "This board file is from KiCad 5 or older (version 20171114). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
+    },
+    "power": {
+     "error": "This board file is from KiCad 5 or older (version 20171114). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
+    },
+    "thermal": {
+     "error": "This board file is from KiCad 5 or older (version 20171114). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
+    }
+   },
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "dronetheory": {
    "commands": {
@@ -3995,70 +3746,45 @@
   "fhnw-pro4e-fs19t8-3dprinterboard-stm32": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 15010.0,
-      "nodes": 166216,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.19
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.3
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "final-eps-version2": {
    "commands": {
@@ -4503,70 +4229,45 @@
   "fusion-pack": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 20334.0,
-      "nodes": 144660,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 1.2
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "gatematea1-evb": {
    "commands": {
@@ -4947,71 +4648,45 @@
   "h730duino": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 4,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 5148.0,
-      "nodes": 128312,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.79
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 0.9
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "hackrf-ct": {
    "commands": {
@@ -5087,70 +4762,45 @@
   "hadesfcs": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 6014.0,
-      "nodes": 149772,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.2
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "hapticad": {
    "commands": {
@@ -5374,70 +5024,45 @@
   "helios": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.08
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.08
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 35252.0,
-      "nodes": 140592,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.62
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 2.0
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "home-mini-v1-drop-in-pcb": {
    "commands": {
@@ -5521,138 +5146,88 @@
   "icepool-board": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 8777.0,
-      "nodes": 140464,
-      "t_board_max_c": 25.0,
-      "warnings": 2
-     },
-     "rc": 0,
-     "s": 0.86
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.0
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "icezum": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20170922). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20170922). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20170922). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20170922). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20170922). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 3607.0,
-      "nodes": 160656,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.18
+     "error": "This board file is from KiCad 5 or older (version 20170922). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 1.3
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "ichnaea": {
    "commands": {
@@ -5731,70 +5306,45 @@
   "iss-pcb": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.06
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 11313.0,
-      "nodes": 181508,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.86
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 2.1
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "jellyfish-and-starfish": {
    "commands": {
@@ -6169,70 +5719,45 @@
   "kicad-boards": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 5716.0,
-      "nodes": 142884,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.93
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.0
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "kicad-dependencies": {
    "commands": {
@@ -6452,70 +5977,45 @@
   "kicad-rata": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 2,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 16900.0,
-      "nodes": 135200,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.61
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 0.7
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "kicad-rw": {
    "commands": {
@@ -7107,71 +6607,45 @@
   "logic-analyzer-pcb": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 47,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 6,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 3896.0,
-      "nodes": 145860,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.31
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.5
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "lpm-production-tt": {
    "commands": {
@@ -8436,70 +7910,45 @@
   "nrf52-board": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 981.0,
-      "nodes": 62532,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.34
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 0.4
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "nvm": {
    "commands": {
@@ -8870,208 +8319,131 @@
   "openhardware": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
      "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 2,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
      "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
      "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 2092.0,
-      "nodes": 133888,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.84
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 0.9
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "openventilator": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 6,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 20986.0,
-      "nodes": 125040,
-      "t_board_max_c": 25.0,
-      "warnings": 2
-     },
-     "rc": 0,
-     "s": 1.15
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.3
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "orangepir1-schematics": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.12
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 30,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.15
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.12
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 8,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.18
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.12
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 2706.0,
-      "nodes": 135112,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.62
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 2.3
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "orbitesc": {
    "commands": {
@@ -9513,207 +8885,131 @@
   "pcb": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.1
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 26,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.1
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.1
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 2,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.15
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.09
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 37752.0,
-      "nodes": 134070,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.68
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 1.2
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.1
   },
   "pcb-dataset-lite": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.33
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.26
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.34
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 2,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.35
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.32
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 25533.0,
-      "nodes": 141948,
-      "t_board_max_c": 25.0,
-      "warnings": 2
-     },
-     "rc": 0,
-     "s": 1.2
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 2.8
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.1
   },
   "pcb-design": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 2,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 4929.0,
-      "nodes": 157644,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.72
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 0.8
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "pcb-designs": {
    "commands": {
@@ -9934,70 +9230,45 @@
   "pid-controller": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 3). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 3). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 3). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 3). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 3). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 11687.0,
-      "nodes": 186620,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.43
+     "error": "This board file is from KiCad 5 or older (version 3). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.5
+   "kicad": "legacy",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "plantwateringdevice": {
    "commands": {
@@ -10363,211 +9634,131 @@
   "practise": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 11020.0,
-      "nodes": 176320,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.28
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 1.4
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "prntrboardv2": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20210623). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "bead-ratings": 4,
-       "cap-ratings": 9,
-       "ic-loads": 3,
-       "power-tree": 0,
-       "rails-without-source": 2,
-       "rails-without-voltage": 1,
-       "stackup-defaults": 3
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "open"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20210623). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20210623). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": true,
-      "targets": [],
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20210623). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20210623). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 1892.0,
-      "nodes": 121092,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.8
+     "error": "This board file is from KiCad 5 or older (version 20210623). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 0.9
+   "kicad": "5.99",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "pypilot-schematics": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 10006.0,
-      "nodes": 160272,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.24
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.4
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "q2": {
    "commands": {
@@ -10643,71 +9834,45 @@
   "qmtech-minimig": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.06
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 20,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.06
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.07
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 14209.0,
-      "nodes": 159160,
-      "t_board_max_c": 25.0,
-      "warnings": 2
-     },
-     "rc": 0,
-     "s": 1.18
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.5
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "qsic": {
    "commands": {
@@ -11745,71 +10910,45 @@
   "scopefun-hardware": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.09
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 67,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.1
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.09
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 6,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.09
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.09
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 16000.0,
-      "nodes": 169974,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.74
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 2.2
+   "kicad": "legacy",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "sdr-dongle": {
    "commands": {
@@ -12176,70 +11315,45 @@
   "sol": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 2,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 4315.0,
-      "nodes": 138072,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.6
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 0.7
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "spark-ae": {
    "commands": {
@@ -12460,70 +11574,45 @@
   "spartanmini": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20160815). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20160815). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20160815). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20160815). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20160815). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 5429.0,
-      "nodes": 135584,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.98
+     "error": "This board file is from KiCad 5 or older (version 20160815). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.1
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "spinali-mcxn-t1-hub": {
    "commands": {
@@ -12612,208 +11701,131 @@
   "starshipraider": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.88
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.02
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 147,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.9
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.02
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.84
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.02
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 8,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.88
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.04
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.84
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.03
     },
     "thermal": {
-     "key": {
-      "area_mm2": 52919.0,
-      "nodes": 188208,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 4.47
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.02
     }
    },
-   "total_s": 8.8
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.1
   },
   "stereopi-kicad-schematic": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 14,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 6,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 3600.0,
-      "nodes": 135000,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.24
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 1.3
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "stm32-sdr-pcb": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 2,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 9590.0,
-      "nodes": 120000,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.56
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 0.7
+   "kicad": "legacy",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "stm32samples": {
    "commands": {
@@ -12891,208 +11903,131 @@
   "stmbl": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 2,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 3908.0,
-      "nodes": 173360,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.77
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.9
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "t2-hardware": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 16,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.06
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 4001.0,
-      "nodes": 178332,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.42
+     "error": "This board file is from KiCad 5 or older (version 4). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 1.7
+   "kicad": "legacy",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "tecsci-spincoater-hardware-kicad": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 2,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
      "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.01
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 5513.0,
-      "nodes": 176432,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.75
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 0.8
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "thermal-camera": {
    "commands": {
@@ -13251,70 +12186,45 @@
   "toolchangerdevelopment": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.02
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.03
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 11888.0,
-      "nodes": 190464,
-      "t_board_max_c": 25.0,
-      "warnings": 2
-     },
-     "rc": 0,
-     "s": 1.97
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 2.1
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "trs-io": {
    "commands": {
@@ -14006,77 +12916,45 @@
   "vna": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.19
+     "error": "This board file is from KiCad 5 or older (version 20201220). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "bead-ratings": 4,
-       "cap-ratings": 15,
-       "cap-values": 39,
-       "ic-loads": 16,
-       "nets-without-target": 8,
-       "power-tree": 0,
-       "rails-without-source": 10,
-       "rails-without-voltage": 3,
-       "stackup-defaults": 5
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "open"
-      }
-     },
-     "rc": 0,
-     "s": 0.23
+     "error": "This board file is from KiCad 5 or older (version 20201220). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.25
+     "error": "This board file is from KiCad 5 or older (version 20201220). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 6,
-      "stackup_from_file": true,
-      "targets": [],
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.2
+     "error": "This board file is from KiCad 5 or older (version 20201220). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.22
+     "error": "This board file is from KiCad 5 or older (version 20201220). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "thermal": {
-     "key": {
-      "area_mm2": 5097.0,
-      "nodes": 190872,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 3.42
+     "error": "This board file is from KiCad 5 or older (version 20201220). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     }
    },
-   "total_s": 4.5
+   "kicad": "5.99",
+   "refused": "pre-kicad6",
+   "total_s": 0.1
   },
   "vna-design": {
    "commands": {
@@ -14155,70 +13033,45 @@
   "voron-hardware": {
    "commands": {
     "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "gaps": {
-     "key": {
-      "gaps": {
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.06
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.04
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 4,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.01
     },
     "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.05
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     },
     "thermal": {
-     "key": {
-      "area_mm2": 13560.0,
-      "nodes": 150400,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 1.72
+     "error": "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer: open it in KiCad 6 or newer and save it.",
+     "rc": 1,
+     "refused": "pre-kicad6",
+     "s": 0.0
     }
    },
-   "total_s": 2.0
+   "kicad": "5",
+   "refused": "pre-kicad6",
+   "total_s": 0.0
   },
   "wall-panel": {
    "commands": {

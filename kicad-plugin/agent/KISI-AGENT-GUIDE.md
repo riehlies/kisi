@@ -175,5 +175,7 @@ In both modes `kisi …` below means: run it (mode A) or ask the user to run it 
   list to paste; kisi itself does not write into the schematic.
 - kisi does not use IBIS models (out of its scope); transmitters and receivers come from the interface
   profiles. For simulations with IBIS buffers, export the channel (`kisi export`) to a circuit simulator.
+- kisi reads KiCad 6 to 10; a board file from KiCad 5 or older is refused ("This board file is from KiCad 5 or
+  older …"): the user opens it in KiCad 6 or newer and saves it.
 - The worked example and the reference live in the kisi repository: https://github.com/riehlies/kisi
   (`docs/preparing-a-board.md`, `docs/reference.md`, `docs/examples/`).

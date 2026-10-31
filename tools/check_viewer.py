@@ -25,6 +25,8 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   also for the other example boards of the build
 * board text: every text on the board canvas (labels, A/B marks, PDN parts) is drawn on a screen-space
   transform (drawBoardLabels), none in board units
+* a KiCad 5 board file is refused with kisi's message: on the start screen of a build without example boards (the
+  given one, or kisi.html next to it) and, with a board loaded, in the warnings with the board kept (light run)
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
@@ -1174,9 +1176,64 @@ def prepare_all(pg, tag, step, errs):
         (notes if "Failed to load resource" in e else problems).append(f"{tag}: {e}")
 
 
+# a board file of KiCad 5 (version 20171130, footprints as `module`): refused with kisi_board::pre_kicad6_message
+K5_PCB = """(kicad_pcb (version 20171130) (host pcbnew 5.1.9)
+  (layers (0 F.Cu signal) (31 B.Cu signal))
+  (net 0 "") (net 1 GND)
+  (module R_0603 (layer F.Cu) (at 10 10) (pad 1 smd rect (at -0.8 0) (size 0.8 0.9) (layers F.Cu) (net 1 GND)))
+)
+"""
+K5_MSG = "This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6 and newer"
+
+
+def pre_kicad6(b, page_url, label):
+    """Drop a KiCad 5 board: the viewer shows kisi's refusal where it can be seen – on the start screen without a
+    board (the side panel with the warnings is hidden then), else in the warnings, the loaded board kept."""
+    errs = []
+    pg = b.new_page(viewport={"width": 1440, "height": 900})
+    pg.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
+    pg.on("console", lambda m: errs.append(f"console {m.type}: {m.text}") if m.type == "error" else None)
+    pg.goto(page_url)
+    pg.wait_for_function(f"{BUSY} || document.getElementById('drop').classList.contains('start')", timeout=90000)
+    if a.board and not pg.evaluate("!!S.scene"):
+        pg.set_input_files("#file", [os.path.abspath(f) for f in a.board])
+        pg.wait_for_function(f"S.scene && {BUSY}", timeout=90000)
+    board = pg.evaluate("S.scene ? S.name : null")
+    k5 = os.path.join(tempfile.mkdtemp(prefix="kisi-k5-"), "old.kicad_pcb")
+    with open(k5, "w") as f:
+        f.write(K5_PCB)
+    n0 = len(errs)
+    pg.set_input_files("#file", [k5])
+    sel = "#warnings" if board else "#drop-err"
+    try:
+        pg.wait_for_function(f"document.querySelector('{sel}').textContent.includes({json.dumps(K5_MSG)}) && {BUSY}", timeout=30000)
+    except Exception:
+        problems.append(f"{label}: KiCad 5 board: no refusal in {sel} ({pg.evaluate(f'document.querySelector({json.dumps(sel)}).textContent')!r})")
+    else:
+        if not pg.is_visible(sel):
+            problems.append(f"{label}: KiCad 5 board: the refusal in {sel} is not visible")
+        if board and pg.evaluate("S.scene ? S.name : null") != board:
+            problems.append(f"{label}: KiCad 5 board: the loaded board {board} was not kept")
+        pg.screenshot(path=f"{out}/{label.replace(' ', '_')}_kicad5_refused.png")
+    # the viewer logs the load error once (console.error of the Error; its text differs between browsers); every
+    # other page or console error counts
+    pg.wait_for_timeout(300)
+    logged = next((i for i in range(n0, len(errs)) if errs[i].startswith("console error")), None)
+    for i, e in enumerate(errs):
+        if i != logged:
+            (notes if "Failed to load resource" in e else problems).append(f"{label}: {e}")
+    pg.close()
+    print(f"{label}: KiCad 5 board refused ({'board kept' if board else 'start screen'})")
+
+
 with sync_playwright() as p:
     b = getattr(p, a.browser).launch()
     layouts = a.layouts.split(",")
+    if "light" in layouts:
+        pre_kicad6(b, url, "refusal")
+        plain = os.path.join(os.path.dirname(os.path.abspath(a.html)), "kisi.html")
+        if os.path.abspath(a.html) != plain and os.path.exists(plain):
+            pre_kicad6(b, "file://" + plain, "refusal (kisi.html)")
     for scheme, w, h, tag in [("light", 1440, 900, "light"), ("dark", 1440, 900, "dark"), ("light", 400, 860, "phone")]:
         if tag not in layouts:
             continue
@@ -1191,5 +1248,9 @@ for n in sorted(set(notes)):
         print(f"::notice title=viewer check timing::{n}")
 for pr in problems:
     print("PROBLEM:", pr)
+    if os.environ.get("GITHUB_ACTIONS"):
+        # also as an annotation: readable in the run's summary without the job log
+        msg = pr[:900].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title=viewer check ({a.browser})::{msg}")
 print(f"screenshots: {out}")
 sys.exit(1 if problems else 0)

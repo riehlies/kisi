@@ -26,6 +26,8 @@ Run it as `node ~/.kisi/kisi.mjs <command> <board.kicad_pcb> [options]` (below w
 the first run on a board can take minutes (it prints progress on stderr and stops new solves after
 `--field-time` seconds, default 120); results are cached, so later runs are fast. `field_solver`
 in the output shows the coverage; `--formula` skips the solver.
+kisi reads KiCad 6 to 10: a board file from KiCad 5 or older stops with an error ("This board file is from KiCad 5
+or older …") – ask the user to open it in KiCad 6 or newer and save it; there is no workaround.
 
 ## Order of work
 1. `kisi gaps <board>` – if it reports high-priority gaps (no stackup, interfaces without a target),

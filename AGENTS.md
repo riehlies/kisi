@@ -67,8 +67,8 @@ Locally, before pushing a branch, run the quick checks for what you changed:
   corpus run, `python3 tools/corpus.py fetch && python3 tools/corpus.py compare target/release/kisi` (32 open-source
   boards at pinned commits from `data/corpus.json`, about 10 min; `--set robustness` about 200 boards,
   `--only NAME,…` some): crashes, exit codes, run times and summary numbers against `validation/corpus/`;
-  an intended change stores them with `--update` (`validation/corpus/README.md`). CI runs it weekly and on a manual
-  run (`-f corpus=robustness|none` chooses the set).
+  an intended change stores them with `--update` (`validation/corpus/README.md`). CI runs it weekly, the robustness set
+  monthly, and on a manual run (`-f corpus=robustness|none` chooses the set).
 
 CI (`.github/workflows/ci.yml`) runs the checks that a branch's changes since main can affect
 (`tools/ci_checks.py changes`; a ROADMAP edit runs only the Markdown checks and the docs PDF); a push to main, a manual run and the

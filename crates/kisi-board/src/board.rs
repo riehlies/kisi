@@ -1,5 +1,5 @@
-//! Board model built from a `.kicad_pcb` file (KiCad 8/9/10 S-expression format)
-//! and, optionally, the matching `.kicad_pro` (net classes).
+//! Board model built from a `.kicad_pcb` file (KiCad 6 to 10 S-expression format; older files are
+//! refused, see [`KICAD6_FILE_VERSION`]) and, optionally, the matching `.kicad_pro` (net classes).
 
 use crate::geom::{self, BBox, P};
 use crate::sexpr::{Node, ParseError, Reader};
@@ -423,6 +423,23 @@ impl NetTable {
     }
 }
 
+/// The board file version written by KiCad 6.0, the oldest kisi reads: `SEXPR_BOARD_FILE_VERSION 20211014`
+/// ("Arc formatting"), the last entry before "Start of 7.0 development" in the version history of KiCad's
+/// board writer (`pcbnew/pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.h`). KiCad 5.1 writes 20171130, older
+/// releases smaller numbers (KiCad 4: `(version 4)`); the 5.99 pre-releases wrote the numbers in between
+/// and, before 20201115, footprints as `(module …)`, which kisi does not read.
+pub const KICAD6_FILE_VERSION: u64 = 20211014;
+
+/// The one message for a board file from before KiCad 6 (CLI, Node CLI, viewer and KiCad plugin show it as the
+/// load error). `version`: the file's `(version …)`, or None when it has none.
+pub fn pre_kicad6_message(version: Option<&str>) -> String {
+    format!(
+        "This board file is from KiCad 5 or older (version {}). kisi supports KiCad 6 and newer: open it in KiCad 6 \
+         or newer and save it.",
+        version.unwrap_or("unknown")
+    )
+}
+
 pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
     let mut r = Reader::new(text);
     r.expect(b'(')?;
@@ -434,13 +451,28 @@ pub fn load_pcb(text: &str) -> Result<Board, ParseError> {
     r.read_symbol();
 
     let mut items: Vec<Node> = Vec::new();
+    let mut version: Option<String> = None;
     loop {
         match r.peek() {
             Some(b'(') => {
                 r.i += 1;
                 let h = r.peek_head();
+                if h == "module" {
+                    // footprints of KiCad 5 and older (KiCad 6 writes `footprint`): refused, not skipped –
+                    // a board without its pads would give results that look valid
+                    return Err(ParseError(pre_kicad6_message(version.as_deref())));
+                }
                 if WANTED.contains(&h) {
-                    items.push(r.parse_rest()?);
+                    let n = r.parse_rest()?;
+                    if h == "version" {
+                        let v = n.atom(1).unwrap_or("").to_string();
+                        // the first item of every KiCad board file: stop before reading the rest
+                        if v.parse::<u64>().is_ok_and(|v| v < KICAD6_FILE_VERSION) {
+                            return Err(ParseError(pre_kicad6_message(Some(&v))));
+                        }
+                        version = Some(v);
+                    }
+                    items.push(n);
                 } else {
                     r.skip_rest()?;
                 }
@@ -1505,6 +1537,43 @@ mod tests {
     }
 
     use super::*;
+
+    /// Board files from before KiCad 6 are refused with the one message (not loaded without their
+    /// footprints); a KiCad 6.0 file loads.
+    #[test]
+    fn pre_kicad6_refused() {
+        let module = r#"(module Resistor_SMD:R_0603 (layer F.Cu) (at 10 10)
+            (pad 1 smd rect (at -0.8 0) (size 0.8 0.9) (layers F.Cu) (net 1 GND)))"#;
+        // KiCad 5.1: version 20171130, footprints as (module …)
+        let k5 = format!(
+            "(kicad_pcb (version 20171130) (host pcbnew 5.1.9)\n  (general (thickness 1.6))\n  \
+             (layers (0 F.Cu signal) (31 B.Cu signal))\n  (net 0 \"\") (net 1 GND)\n  {module}\n)"
+        );
+        let e = load_pcb(&k5).unwrap_err().to_string();
+        assert_eq!(e, pre_kicad6_message(Some("20171130")));
+        assert!(e.starts_with("This board file is from KiCad 5 or older (version 20171130). kisi supports KiCad 6"));
+        // KiCad 4: (version 4)
+        let k4 = "(kicad_pcb (version 4) (host pcbnew 4.0.7)\n  (layers (0 F.Cu signal) (31 B.Cu signal)))";
+        assert_eq!(load_pcb(k4).unwrap_err().to_string(), pre_kicad6_message(Some("4")));
+        // the second signal: a top-level (module …) without a version
+        let nov = format!("(kicad_pcb (layers (0 F.Cu signal) (31 B.Cu signal)) {module})");
+        assert_eq!(load_pcb(&nov).unwrap_err().to_string(), pre_kicad6_message(None));
+        // a KiCad 5.99 pre-release (footprint keyword, version before 20211014)
+        let pre6 =
+            "(kicad_pcb (version 20210623) (generator pcbnew)\n  (layers (0 \"F.Cu\" signal) (31 \"B.Cu\" signal)))";
+        assert_eq!(load_pcb(pre6).unwrap_err().to_string(), pre_kicad6_message(Some("20210623")));
+        // KiCad 6.0: 20211014 loads, with its footprint and pad
+        let k6 = r#"(kicad_pcb (version 20211014) (generator pcbnew)
+  (general (thickness 1.6))
+  (layers (0 "F.Cu" signal) (31 "B.Cu" signal))
+  (net 0 "") (net 1 "GND")
+  (footprint "Resistor_SMD:R_0603" (layer "F.Cu") (at 10 10)
+    (fp_text reference "R1" (at 0 -1) (layer "F.SilkS"))
+    (pad "1" smd rect (at -0.8 0) (size 0.8 0.9) (layers "F.Cu") (net 1 "GND")))
+)"#;
+        let b = load_pcb(k6).unwrap();
+        assert_eq!((b.version.as_str(), b.footprints.len(), b.pads.len()), ("20211014", 1, 1));
+    }
 
     /// Pin names and types of the pads; the MPN field under its usual names, shown where the
     /// value is not a part number.

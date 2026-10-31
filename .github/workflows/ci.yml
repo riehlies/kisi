@@ -26,6 +26,7 @@
 #   weekly / manual     the viewer in Firefox and WebKit · dependency audit (cargo-audit) and licences (cargo-deny, deny.toml) · newer upstream
 #                       revision of js_2d_fields · the corpus run: kisi on the open-source boards of data/corpus.json, fetched
 #                       at pinned commits (tools/corpus.py; weekly set, a manual run chooses weekly, robustness or none)
+#   monthly             only the corpus run of the robustness set (about 200 boards; the 1st of the month)
 name: ci
 on:
   push:
@@ -41,13 +42,19 @@ on:
         default: weekly
   schedule:
     - cron: "17 3 * * 1"   # Mondays 03:17 UTC: everything on the latest stable Rust, plus the weekly checks
+    # the 1st of the month, 04:43 UTC: only the corpus job, robustness set (the jobs compare github.event.schedule
+    # with this string)
+    - cron: "43 4 1 * *"
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.ref }}-${{ github.event_name }}
+  # per schedule: the monthly run must not cancel a weekly run still going on a Monday the 1st
+  group: ci-${{ github.ref }}-${{ github.event_name }}-${{ github.event.schedule }}
   cancel-in-progress: true
 jobs:
   changes:
+    # not on the monthly schedule (corpus only); checks, windows and the jobs after them are skipped with it
+    if: github.event.schedule != '43 4 1 * *'
     runs-on: ubuntu-24.04
     outputs:
       rust: ${{ steps.c.outputs.rust }}
@@ -268,7 +275,7 @@ jobs:
     # weekly and on a manual run (before a merge), not on every push to main: their system packages (WebKit's
     # gstreamer, fonts) come from apt mirrors that stalled for 20 minutes and more; also when a later check step
     # failed: the bundles are uploaded right after they are built
-    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && needs.checks.result != 'cancelled'
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.event.schedule != '43 4 1 * *' && needs.checks.result != 'cancelled'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -333,7 +340,7 @@ jobs:
             | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s);console.log(r.rows.length+' rows');if(!r.rows.length)process.exit(1)})"
 
   weekly:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.event.schedule != '43 4 1 * *'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -352,14 +359,15 @@ jobs:
 
   corpus:
     # kisi on open-source KiCad boards fetched at pinned commits (data/corpus.json, tools/corpus.py): crashes, exit
-    # codes, run times and summary numbers against validation/corpus/<set>.json. Weekly and on a manual run (input
-    # "corpus": weekly, robustness or none), not on pushes. A repository that cannot be fetched (network, gone,
-    # private) is listed in the job summary and does not fail the job; a regression does.
+    # codes, run times and summary numbers against validation/corpus/<set>.json. Weekly (weekly set), monthly
+    # (robustness set) and on a manual run (input "corpus": weekly, robustness or none), not on pushes. Boards from
+    # before KiCad 6 are refused by kisi – the expected outcome, counted apart. A repository that cannot be fetched
+    # (network, gone, private) is listed in the job summary and does not fail the job; a regression does.
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.corpus != 'none')
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     env:
-      SET: ${{ github.event_name == 'workflow_dispatch' && inputs.corpus || 'weekly' }}
+      SET: ${{ github.event_name == 'workflow_dispatch' && inputs.corpus || (github.event.schedule == '43 4 1 * *' && 'robustness' || 'weekly') }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

@@ -5,21 +5,24 @@ Everything kisi reads besides the copper: names and fields in the KiCad project,
 [Preparing a board](preparing-a-board.md); the commands are in the [CLI reference](cli.md).
 
 ## What kisi reads from the KiCad project
-- **Board file** `.kicad_pcb` (KiCad 8, 9 and 10): copper, zones, vias, footprints with their fields, the
+- **Board file** `.kicad_pcb` (KiCad 6 to 10): copper, zones, vias, footprints with their fields, the
   stackup, DNP and "exclude from BOM" attributes, the sheet of every part and – KiCad 10 – the assembly variants
   (variant list and per-part overrides: DNP, BOM, field values). kisi never writes into KiCad files.
+  - **KiCad 5 and older** are refused – a file version before 20211014 (the version KiCad 6.0 writes) or
+    footprints written as `(module …)` – with one message in the CLI, the Node CLI, the viewer and the KiCad
+    plugin: *This board file is from KiCad 5 or older (version N). kisi supports KiCad 6 and newer: open it in
+    KiCad 6 or newer and save it.* The pre-releases of KiCad 6 (5.99) count as KiCad 5 here.
   - **Copper layers** are those of the board's layer list (`(layers …)`), in the order of the stackup. A stackup
     that lists the layer stack more than once (seen in KiCad 8 and 10 files) is read up to the first repeated
     layer; a stackup copper layer the board does not have is left out (the dielectrics around it merged); when
     the stackup lacks one of the board's copper layers, kisi uses its default stackup. Each case is a warning in
     `kisi overview` (`warnings`) and in the viewer.
-  - **Board outline** (for `thermal`): the Edge.Cuts drawings on the board and in footprints – lines, arcs
-    (also KiCad 5 arcs), rectangles, circles, polygons, curves – joined where their ends meet (within
-    0.01 mm, then 0.1 mm with a warning); a drawing repeated exactly is ignored. Nested loops are cut-outs, and a
-    board inside a cut-out (a panel's frame) counts again. Several separate outlines – a panel, or boards drawn
-    side by side – are computed together as one board area (warning); heat crosses between them only where
-    they touch. Where the loops enclose no area or leave copper outside, the bounding box of the copper is the
-    board (warning).
+  - **Board outline** (for `thermal`): the Edge.Cuts drawings on the board and in footprints – lines, arcs,
+    rectangles, circles, polygons, curves – joined where their ends meet (within 0.01 mm, then 0.1 mm with a
+    warning); a drawing repeated exactly is ignored. Nested loops are cut-outs, and a board inside a cut-out (a
+    panel's frame) counts again. Several separate outlines – a panel, or boards drawn side by side – are computed
+    together as one board area (warning); heat crosses between them only where they touch. Where the loops enclose
+    no area or leave copper outside, the bounding box of the copper is the board (warning).
 - **Project file** `.kicad_pro` next to the board (same stem): the net classes and which nets belong to them.
   Without it, no net class has a target impedance unless `<board>.kisi.json` gives one.
 

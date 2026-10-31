@@ -602,83 +602,6 @@
    "total_s": 27.1,
    "variant_stop": true
   },
-  "diy-laptop": {
-   "commands": {
-    "check": {
-     "key": {
-      "rows": {
-       "green": 0,
-       "red": 0,
-       "yellow": 0
-      }
-     },
-     "rc": 0,
-     "s": 0.15
-    },
-    "crosstalk": {
-     "key": {
-      "critical": 0,
-      "victims": 0
-     },
-     "rc": 0,
-     "s": 0.16
-    },
-    "gaps": {
-     "key": {
-      "gaps": {
-       "nets-without-target": 47,
-       "power-tree": 0,
-       "stackup-missing": 0
-      },
-      "views": {
-       "channel": "nothing to check",
-       "impedance": "nothing to check",
-       "power": "nothing to check"
-      }
-     },
-     "rc": 0,
-     "s": 0.25
-    },
-    "interfaces": {
-     "key": {
-      "buses": 0,
-      "lanes": 0
-     },
-     "rc": 0,
-     "s": 0.25
-    },
-    "overview": {
-     "key": {
-      "classes_with_target": 0,
-      "layers": 6,
-      "stackup_from_file": false,
-      "targets": [],
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 0.29
-    },
-    "power": {
-     "key": {
-      "rails": 0,
-      "warnings": 0
-     },
-     "rc": 0,
-     "s": 0.23
-    },
-    "thermal": {
-     "key": {
-      "area_mm2": 8899.0,
-      "nodes": 147744,
-      "t_board_max_c": 25.0,
-      "warnings": 1
-     },
-     "rc": 0,
-     "s": 2.32
-    }
-   },
-   "total_s": 3.6
-  },
   "emberone00-pcb": {
    "commands": {
     "check": {
@@ -2241,6 +2164,88 @@
    },
    "total_s": 32.1,
    "variant_stop": true
+  },
+  "ottercast-audio-v2": {
+   "commands": {
+    "check": {
+     "key": {
+      "rows": {
+       "green": 0,
+       "red": 0,
+       "yellow": 0
+      }
+     },
+     "rc": 0,
+     "s": 0.1
+    },
+    "crosstalk": {
+     "key": {
+      "critical": 0,
+      "victims": 0
+     },
+     "rc": 0,
+     "s": 0.1
+    },
+    "gaps": {
+     "key": {
+      "gaps": {
+       "bead-ratings": 3,
+       "cap-ratings": 40,
+       "ic-loads": 6,
+       "power-tree": 0,
+       "rails-without-source": 9,
+       "rails-without-voltage": 3,
+       "stackup-missing": 0
+      },
+      "views": {
+       "channel": "nothing to check",
+       "impedance": "nothing to check",
+       "power": "open"
+      }
+     },
+     "rc": 0,
+     "s": 0.11
+    },
+    "interfaces": {
+     "key": {
+      "buses": 0,
+      "lanes": 0
+     },
+     "rc": 0,
+     "s": 0.1
+    },
+    "overview": {
+     "key": {
+      "classes_with_target": 0,
+      "layers": 4,
+      "stackup_from_file": false,
+      "targets": [],
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 0.11
+    },
+    "power": {
+     "key": {
+      "rails": 0,
+      "warnings": 0
+     },
+     "rc": 0,
+     "s": 0.1
+    },
+    "thermal": {
+     "key": {
+      "area_mm2": 1930.0,
+      "nodes": 123592,
+      "t_board_max_c": 25.0,
+      "warnings": 1
+     },
+     "rc": 0,
+     "s": 1.0
+    }
+   },
+   "kicad": "7",
+   "total_s": 1.6
   },
   "ping-dev-kit": {
    "commands": {

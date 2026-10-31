@@ -386,6 +386,8 @@ ul.src li { margin: 2px 0; }
 
 /* start screen without example boards: the drop hint stays until a board is loaded */
 .drop.start { pointer-events: none; }
+/* a board that could not be read while none is loaded (the side panel with #warnings is hidden then) */
+.drop-err { color: var(--z-high2); font-family: var(--font-body); font-weight: 400; font-size: 14px; max-width: 60ch; margin: 0 auto 12px; }
 
 /* version next to the name */
 .brand > b { position: relative; }

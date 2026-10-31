@@ -169,4 +169,6 @@ Every `kisi <command>` prints JSON. Preparing needs no field solver: `gaps`, `co
   list to paste; kisi itself does not write into the schematic.
 - kisi does not use IBIS models (out of its scope); transmitters and receivers come from the interface
   profiles. For simulations with IBIS buffers, export the channel (`kisi export`) to a circuit simulator.
+- kisi reads KiCad 6 to 10; a board file from KiCad 5 or older is refused ("This board file is from KiCad 5 or
+  older …"): the user opens it in KiCad 6 or newer and saves it.
 <!-- agent-guide:notes end -->

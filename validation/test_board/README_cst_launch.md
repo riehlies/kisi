@@ -102,13 +102,20 @@ fits → `samtec_bench --connectors 1` and cascade.
 
 ## Running it
 
-**Inside / next to CST 2025.5 with Python** (CST's Python 3.11 with `cst.interface`, as `run_cst.py` on
-`feat/cst-refs`; numpy is not needed):
+**With Python and CST's library.** CST 2025.5 brings no Python of its own for the API: use your own Python
+(3.9–3.12; 3.12.1 works with CST 2025.5, tested 2026-10-31) and put CST's `python_cst_libraries` on its path.
+Outside the repository the model comes from the package's `.model.json` (`--from-json`). In PowerShell, one line
+per command:
 
+```powershell
+$env:PYTHONPATH = "C:\Program Files (x86)\CST Studio Suite 2025\AMD64\python_cst_libraries"
+python cst_launch.py --from-json launch1_default_jlc4_7628.model.json --step "D:\path\to\292-J-P-EP-ST-EL-01.stp" --out "C:\kisi\cst_launch" --mesh fine --fallback
 ```
-"C:\Program Files\CST Studio Suite 2025\AMD64\python\python.exe" cst_launch.py --model launch1 ^
-    --step C:\samtec\292-J-P-EP-ST-EL-01.stp --out C:\kisi\cst_launch --mesh fine --fallback [--monitors]
-```
+
+(cmd: `set PYTHONPATH=…` and the same `python …` line; `--monitors` at the end for field plots.) From the
+repository, `--model launch1` instead of `--from-json …` builds the model from `make_coupons.py`.
+Find the library with `Get-ChildItem "C:\Program Files*\CST Studio Suite 2025" -Directory -Recurse -Filter
+python_cst_libraries`.
 
 It builds the project from the history blocks (a failing block is reported with its caption), saves
 `OUT/<name>/<name>.cst`, solves (`--no-solve`: build only) and writes `OUT/<name>/cst_<mesh>.s2p` (CST's 1001

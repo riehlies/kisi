@@ -1279,13 +1279,24 @@ def run_in_cst(m, blocks, a, od):
     except Exception as e:
         meta.update(status="failed", error=str(e))
         log("FAILED:", repr(e))
+        # keep the project open in CST (message window, 3D view, history list) and save it for later
+        fp = os.path.join(od, m["name"] + "_failed.cst")
+        try:
+            try:
+                prj.save(fp, allow_overwrite=True)
+            except TypeError:
+                prj.save(fp)
+            log("project left open in CST and saved as", fp, "- see the message window (e.g. 'body box') and the history list")
+        except Exception as e2:
+            log("could not save the failed project:", repr(e2))
         return meta
     finally:
         json.dump(meta, open(os.path.join(od, "cst_meta.json"), "w", encoding="utf-8"), indent=1, ensure_ascii=False)
-        try:
-            prj.close()
-        except Exception:
-            pass
+        if meta["status"] != "failed" and not a.keep_open:
+            try:
+                prj.close()
+            except Exception:
+                pass
 
 
 # --- main -----------------------------------------------------------------------------------------------------------
@@ -1353,6 +1364,7 @@ def main():
     ap.add_argument("--air", type=float, default=1.0, help="space above / below the connector (mm)")
     ap.add_argument("--clip-body", type=float, default=3.0, help="cut the connector body's outside more than this above / below the axis (mm; 0: the full body)")
     ap.add_argument("--no-orient-check", action="store_true")
+    ap.add_argument("--keep-open", action="store_true", help="leave the project open in CST after a successful run (a failed run always stays open)")
     ap.add_argument("--plot", action="store_true", help="geometry plot also without --dry-run")
     a = ap.parse_args()
     if a.from_json:

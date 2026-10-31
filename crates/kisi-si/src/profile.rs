@@ -69,6 +69,10 @@ pub struct Profile {
     pub limits: Limits,
     #[serde(rename = "match")]
     pub match_: Vec<String>,
+    /// the `match` rules apply only when one of these also matches the full net name (with its
+    /// sheet path) or the class name, e.g. "DDR3" for the DDR3 profiles; empty: always
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub context: Vec<String>,
     pub sources: Vec<Source>,
     pub il_total: Option<serde_json::Value>,
 }
@@ -92,9 +96,10 @@ pub struct Profiles {
     pub version: u32,
     pub defaults: Defaults,
     pub profiles: Vec<Profile>,
-    /// the profiles' name rules compiled once (index of the profile, rule), in their order
+    /// the profiles' name rules compiled once (index of the profile, rule), in their order, and
+    /// their context rules per profile
     #[serde(skip)]
-    rules: std::sync::OnceLock<Vec<(usize, regex_lite::Regex)>>,
+    rules: std::sync::OnceLock<(Vec<(usize, regex_lite::Regex)>, Vec<Vec<regex_lite::Regex>>)>,
 }
 
 impl Profiles {
@@ -109,23 +114,28 @@ impl Profiles {
         p.limits.or(&self.defaults.limits)
     }
     /// Automatic assignment: first profile whose rule matches the net name
-    /// (without sheet path), then the class name; else generic by target.
+    /// (without sheet path), then the class name; else generic by target. A profile with
+    /// `context` rules takes part only when one of them matches the full net name or the class name.
     pub fn auto(&self, net_name: &str, class_name: &str, diff: bool) -> &str {
         let short = net_name.rsplit('/').next().unwrap_or(net_name);
         // rules that do not compile match nothing
-        let rules = self.rules.get_or_init(|| {
-            self.profiles
-                .iter()
-                .enumerate()
-                .flat_map(|(i, p)| {
-                    p.match_.iter().filter_map(move |m| {
-                        Some((i, regex_lite::RegexBuilder::new(m).case_insensitive(true).build().ok()?))
-                    })
-                })
-                .collect()
+        let re = |m: &String| regex_lite::RegexBuilder::new(m).case_insensitive(true).build().ok();
+        let (rules, context) = self.rules.get_or_init(|| {
+            (
+                self.profiles
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(i, p)| p.match_.iter().filter_map(move |m| Some((i, re(m)?))))
+                    .collect(),
+                self.profiles.iter().map(|p| p.context.iter().filter_map(re).collect()).collect(),
+            )
         });
+        let in_context = |i: usize| {
+            self.profiles[i].context.is_empty()
+                || context[i].iter().any(|c| c.is_match(net_name) || c.is_match(class_name))
+        };
         for s in [short, class_name] {
-            if let Some((i, _)) = rules.iter().find(|(_, re)| re.is_match(s)) {
+            if let Some((i, _)) = rules.iter().find(|(i, re)| re.is_match(s) && in_context(*i)) {
                 return &self.profiles[*i].id;
             }
         }
@@ -264,6 +274,26 @@ mod tests {
         assert_eq!(ps.auto("PCIe_REFCLK_P", "PCIe", true), "pcie_refclk");
         assert_eq!(ps.auto("/FPGA/USRIO_3_P", "LVDS_USRIO", true), "lvds");
         assert_eq!(ps.auto("FOO", "Default", false), "se50");
+        // the viewer's profile selection shows the names: longer ones scroll a phone screen sideways
+        for p in &ps.profiles {
+            assert!(p.name.chars().count() <= 36, "profile name too long for the viewer on a phone: {}", p.name);
+        }
+        // DDR (butterstick in the kicad-happy corpus: DDR3L address nets were "ddr4_dq"): the
+        // generation from the sheet path or class name, address/command apart from data
+        assert_eq!(ps.auto("/FPGA-DDR3L/A0", "", false), "ddr3_ca");
+        assert_eq!(ps.auto("/FPGA-DDR3L/BA2", "", false), "ddr3_ca");
+        assert_eq!(ps.auto("/FPGA-DDR3L/DQ7", "", false), "ddr3_dq");
+        assert_eq!(ps.auto("/FPGA-DDR3L/LDQS_P", "", true), "ddr3_clk");
+        assert_eq!(ps.auto("/FPGA-DDR3L/CK_P", "", true), "ddr3_clk");
+        assert_eq!(ps.auto("A3", "DDR3", false), "ddr3_ca");
+        assert_eq!(ps.auto("/DDR4/A3", "", false), "ddr4_ca");
+        assert_eq!(ps.auto("/Memory/BG1", "", false), "ddr4_ca");
+        assert_eq!(ps.auto("/DDR4/DQ12", "", false), "ddr4_dq");
+        assert_eq!(ps.auto("DDR4_DQS0_P", "", true), "ddr4_clk");
+        assert_eq!(ps.auto("DDR4_A5", "", false), "ddr4_ca");
+        // an address bus without a memory context, a PDM microphone line: no DDR profile
+        assert_eq!(ps.auto("/CPU/A12", "", false), "se50");
+        assert_eq!(ps.auto("/PDM0", "", false), "se50");
         let p = ps.get("pcie4").unwrap();
         let l = ps.limits(p);
         assert_eq!(l.skew_ps, Some(5.0));

@@ -452,65 +452,7 @@ pub fn diff_partners(nets: &[String]) -> Vec<Option<u32>> {
     out
 }
 
-/// Derive a target impedance from a net class name, e.g. `50Z`, `FE_100Z_Diff`,
-/// `USB_90R`, `Z85_PCIe`. Falls back to interface keywords.
-pub fn target_from_class_name(name: &str) -> Option<(Target, &'static str)> {
-    let up = name.to_uppercase();
-    let is_diff_kw = up.contains("DIFF") || up.contains("_DP") || up.starts_with("DP_") || up.ends_with("DP");
-    // number followed by Z / R / OHM / Ω, or Z followed by number
-    let chars: Vec<char> = up.chars().collect();
-    let mut num: Option<f64> = None;
-    let mut i = 0;
-    while i < chars.len() {
-        if chars[i].is_ascii_digit() {
-            let st = i;
-            while i < chars.len() && (chars[i].is_ascii_digit() || chars[i] == '.') {
-                i += 1;
-            }
-            let v: f64 = chars[st..i].iter().collect::<String>().parse().unwrap_or(0.0);
-            let mut j = i;
-            while j < chars.len() && (chars[j] == '_' || chars[j] == ' ') {
-                j += 1;
-            }
-            let rest: String = chars[j..].iter().collect();
-            let before_z = st > 0 && chars[st - 1] == 'Z';
-            if (rest.starts_with('Z')
-                || rest.starts_with('R')
-                || rest.starts_with("OHM")
-                || rest.starts_with('Ω')
-                || before_z)
-                && (20.0..=200.0).contains(&v)
-            {
-                num = Some(v);
-                break;
-            }
-        } else {
-            i += 1;
-        }
-    }
-    if let Some(z) = num {
-        let diff = is_diff_kw || z >= 80.0 && (up.contains("USB") || up.contains("LVDS") || up.contains("PCI"));
-        return Some((Target { z, diff }, "class name"));
-    }
-    let kw: &[(&str, f64, bool)] = &[
-        ("USB", 90.0, true),
-        ("PCIE", 85.0, true),
-        ("PCI_E", 85.0, true),
-        ("LVDS", 100.0, true),
-        ("HDMI", 100.0, true),
-        ("TMDS", 100.0, true),
-        ("SATA", 100.0, true),
-        ("MDI", 100.0, true),
-        ("ETH", 100.0, true),
-        ("RF", 50.0, false),
-    ];
-    for &(k, z, diff) in kw {
-        if up.split(|c: char| !c.is_ascii_alphanumeric() && c != '_').any(|tok| tok.contains(k)) {
-            return Some((Target { z, diff }, "interface assumption"));
-        }
-    }
-    None
-}
+pub use crate::classname::target_from_class_name;
 
 // --- the extraction ----------------------------------------------------------------
 
@@ -876,7 +818,7 @@ fn class_targets(board: &Board, params: &Params) -> Vec<(Option<Target>, String)
             if let Some(t) = params.targets.get(&c.name) {
                 (Some(*t), "user".to_string())
             } else if let Some((t, src)) = target_from_class_name(&c.name) {
-                (Some(t), src.to_string())
+                (Some(t), src)
             } else {
                 (None, String::new())
             }
@@ -1298,19 +1240,6 @@ fn evaluate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn targets() {
-        let t = |s| target_from_class_name(s).map(|x| x.0);
-        assert_eq!(t("50Z"), Some(Target { z: 50.0, diff: false }));
-        assert_eq!(t("FE_100Z_Diff"), Some(Target { z: 100.0, diff: true }));
-        assert_eq!(t("FE_50Z_INPUT"), Some(Target { z: 50.0, diff: false }));
-        assert_eq!(t("LVDS_ADC"), Some(Target { z: 100.0, diff: true }));
-        assert_eq!(t("PCIe"), Some(Target { z: 85.0, diff: true }));
-        assert_eq!(t("USB_90R"), Some(Target { z: 90.0, diff: true }));
-        assert_eq!(t("PWR"), None);
-        assert_eq!(t("Default"), None);
-        assert_eq!(t("3V3"), None);
-    }
     /// A 2.75 mm launch on F.Cu over a cut-out in In1 (0.465 mm wide) that ends exactly where the
     /// launch track ends (the 3313 coupons): the reference is In2 along the whole track – the last
     /// sample, within 0.3 mm of the cut-out's end, was taken as a small antipad (reference In1).

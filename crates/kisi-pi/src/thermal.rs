@@ -421,32 +421,159 @@ impl ThermalResult {
 
 // --- board outline -----------------------------------------------------------------------------
 
-/// Closed loops of the board outline: Edge.Cuts pieces (lines, arcs, polygons) chained at
-/// matching ends (0.01 mm). Open chains are dropped.
+/// The board outline assembled from the Edge.Cuts drawings.
+#[derive(Debug, Clone, Default)]
+pub struct Outline {
+    /// closed loops (without the repeated first point)
+    pub loops: Vec<Vec<P>>,
+    /// nesting depth per loop: 0 an outer outline, 1 a cut-out in it, 2 a board inside a cut-out
+    /// (a panel frame) …
+    pub depth: Vec<usize>,
+    /// drawings dropped because another one has the same points (drawn twice)
+    pub duplicates: usize,
+    /// joints closed with the coarse tolerance (ends up to `JOIN_COARSE_MM` apart)
+    pub gaps_closed: usize,
+    /// open chains left over (dropped)
+    pub open: usize,
+}
+
+impl Outline {
+    /// Board area (mm²): outer loops count, cut-outs in them subtract (by nesting depth).
+    pub fn area_mm2(&self) -> f64 {
+        self.loops
+            .iter()
+            .zip(&self.depth)
+            .map(|(l, &d)| if d % 2 == 0 { polygon_area(l) } else { -polygon_area(l) })
+            .sum()
+    }
+    /// Length of the outer edges (mm), cut-outs not counted.
+    pub fn perimeter_mm(&self) -> f64 {
+        self.loops.iter().zip(&self.depth).filter(|(_, &d)| d % 2 == 0).map(|(l, _)| perimeter(l)).sum()
+    }
+    /// Separate pieces of board (outer loops: several in a panel).
+    pub fn islands(&self) -> usize {
+        self.depth.iter().filter(|&&d| d % 2 == 0).count()
+    }
+}
+
+/// Ends of two drawings closer than this join (mm).
+const JOIN_MM: f64 = 0.01;
+/// Second pass for drawings whose ends miss each other slightly (mm).
+const JOIN_COARSE_MM: f64 = 0.1;
+
+/// Closed loops of the board outline: Edge.Cuts pieces (lines, arcs, polygons, also those drawn in
+/// footprints) chained at matching ends (0.01 mm; what is left open then at 0.1 mm). Drawings that
+/// repeat another one are dropped, open chains too.
+pub fn outline(board: &Board) -> Outline {
+    let same = |a: &Vec<P>, b: &Vec<P>| {
+        let near = |p: &P, q: &P| (p[0] - q[0]).abs() <= JOIN_MM && (p[1] - q[1]).abs() <= JOIN_MM;
+        a.len() == b.len()
+            && (a.iter().zip(b).all(|(p, q)| near(p, q)) || a.iter().zip(b.iter().rev()).all(|(p, q)| near(p, q)))
+    };
+    let mut out = Outline::default();
+    let mut pieces: Vec<Vec<P>> = Vec::new();
+    for p in board.outline.iter().filter(|p| p.len() >= 2) {
+        if pieces.iter().any(|q| same(p, q)) {
+            out.duplicates += 1;
+        } else {
+            pieces.push(p.clone());
+        }
+    }
+    let mut open = Vec::new();
+    chain(&mut pieces, JOIN_MM, &mut out.loops, &mut open);
+    if !open.is_empty() {
+        // every joint of this pass joins two open chains or closes one
+        let mut rest = Vec::new();
+        let n_open = open.len();
+        chain(&mut open, JOIN_COARSE_MM, &mut out.loops, &mut rest);
+        out.gaps_closed = n_open - rest.len();
+        out.open = rest.len();
+    }
+    // nesting: a loop lies in another if a point just inside one of its edges does
+    let inner_point = |l: &[P]| -> P {
+        let (a, b) = (l[0], l[1 % l.len()]);
+        let m = [(a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0];
+        let (dx, dy) = (b[0] - a[0], b[1] - a[1]);
+        let n = (dx * dx + dy * dy).sqrt().max(1e-12);
+        // left normal points inside for a counter-clockwise loop (signed area > 0)
+        let sgn = if signed_area(l) > 0.0 { 1.0 } else { -1.0 };
+        let e = 1e-4;
+        [m[0] - sgn * dy / n * e, m[1] + sgn * dx / n * e]
+    };
+    let pts: Vec<P> = out.loops.iter().map(|l| inner_point(l)).collect();
+    let areas: Vec<f64> = out.loops.iter().map(|l| polygon_area(l)).collect();
+    out.depth = (0..out.loops.len())
+        .map(|i| {
+            (0..out.loops.len())
+                .filter(|&j| j != i && areas[j] > areas[i] && point_in_polygon(pts[i], &out.loops[j]))
+                .count()
+        })
+        .collect();
+    out
+}
+
+/// Closed loops of the board outline (see [`outline`]).
 pub fn outline_loops(board: &Board) -> Vec<Vec<P>> {
-    let tol = 0.01;
-    let close = |a: P, b: P| (a[0] - b[0]).abs() <= tol && (a[1] - b[1]).abs() <= tol;
-    let mut pieces: Vec<Vec<P>> = board.outline.iter().filter(|p| p.len() >= 2).cloned().collect();
-    let mut loops = Vec::new();
+    outline(board).loops
+}
+
+/// Chain the pieces at ends within `tol` (nearest end first); closed chains go to `loops`, open
+/// ones to `open`.
+fn chain(pieces: &mut Vec<Vec<P>>, tol: f64, loops: &mut Vec<Vec<P>>, open: &mut Vec<Vec<P>>) {
+    let d = |a: P, b: P| (a[0] - b[0]).hypot(a[1] - b[1]);
     while let Some(mut cur) = pieces.pop() {
+        // extend at the end; when that stops, at the start (reversed) – an open chain is complete
+        let mut flipped = false;
         loop {
             let (s, e) = (cur[0], *cur.last().unwrap());
-            if cur.len() > 2 && close(s, e) {
+            if cur.len() > 2 && d(s, e) <= tol * std::f64::consts::SQRT_2 {
                 cur.pop();
                 if cur.len() >= 3 {
                     loops.push(cur);
                 }
                 break;
             }
-            let Some(k) = pieces.iter().position(|q| close(q[0], e) || close(*q.last().unwrap(), e)) else { break };
+            let best = pieces
+                .iter()
+                .enumerate()
+                .map(|(k, q)| (k, d(q[0], e).min(d(*q.last().unwrap(), e))))
+                .filter(|x| x.1 <= tol * std::f64::consts::SQRT_2)
+                .min_by(|x, y| x.1.total_cmp(&y.1));
+            let Some((k, _)) = best else {
+                if !flipped {
+                    cur.reverse();
+                    flipped = true;
+                    continue;
+                }
+                open.push(cur);
+                break;
+            };
             let mut q = pieces.swap_remove(k);
-            if !close(q[0], e) {
+            if d(q[0], e) > d(*q.last().unwrap(), e) {
                 q.reverse();
             }
             cur.extend_from_slice(&q[1..]);
         }
     }
-    loops
+}
+
+fn signed_area(p: &[P]) -> f64 {
+    let n = p.len();
+    (0..n).map(|i| p[i][0] * p[(i + 1) % n][1] - p[(i + 1) % n][0] * p[i][1]).sum::<f64>() / 2.0
+}
+
+fn point_in_polygon(q: P, poly: &[P]) -> bool {
+    let n = poly.len();
+    let mut inside = false;
+    let mut j = n - 1;
+    for i in 0..n {
+        let (a, b) = (poly[i], poly[j]);
+        if (a[1] > q[1]) != (b[1] > q[1]) && q[0] < (b[0] - a[0]) * (q[1] - a[1]) / (b[1] - a[1]) + a[0] {
+            inside = !inside;
+        }
+        j = i;
+    }
+    inside
 }
 
 fn polygon_area(p: &[P]) -> f64 {
@@ -595,7 +722,18 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
     let d = data();
     let su = board.stackup();
     let nl = su.n().max(1);
-    let mut loops = outline_loops(board);
+    let ol = outline(board);
+    let mut loops = ol.loops.clone();
+    if ol.duplicates > 0 {
+        warnings
+            .push(format!("{} Edge.Cuts drawing(s) repeat another one exactly (drawn twice): ignored", ol.duplicates));
+    }
+    if ol.gaps_closed > 0 {
+        warnings.push(format!(
+            "{} gap(s) of up to {JOIN_COARSE_MM} mm between Edge.Cuts drawings closed to complete the board outline",
+            ol.gaps_closed
+        ));
+    }
     let mut bb = BBox::empty();
     for l in &loops {
         for &p in l {
@@ -616,6 +754,16 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
         cu.add(t.a);
         cu.add(t.b);
     }
+    // without copper: the footprints' positions
+    let mut cu_fp = cu;
+    for f in &board.footprints {
+        cu_fp.add(f.at);
+    }
+    if !loops.is_empty() && ol.area_mm2() <= 0.0 {
+        warnings.push("the closed Edge.Cuts loops enclose no area (crossing or overlapping drawings?): the bounding box of the copper (pads, tracks, zones) is taken as the board".into());
+        loops.clear();
+        bb = BBox::empty();
+    }
     if !loops.is_empty()
         && cu.is_valid()
         && (cu.min[0] < bb.min[0] - 1.0
@@ -623,26 +771,37 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
             || cu.max[0] > bb.max[0] + 1.0
             || cu.max[1] > bb.max[1] + 1.0)
     {
-        warnings.push("the closed board outline (Edge.Cuts) does not contain all copper – parts of it may be drawn in footprints: the bounding box of the copper is taken as the board".into());
+        warnings.push("the closed board outline (Edge.Cuts) does not contain all copper – parts of it may be open or drawn on another layer: the bounding box of the copper (pads, tracks, zones) is taken as the board".into());
         loops.clear();
         bb = BBox::empty();
     }
     let (area_mm2, perim_mm) = if loops.is_empty() {
         if !bb.is_valid() {
-            bb = if cu.is_valid() { cu } else { board.bbox.ok_or("board without outline or copper")? };
+            bb = if cu.is_valid() {
+                cu
+            } else if cu_fp.is_valid() {
+                cu_fp
+            } else {
+                board.bbox.ok_or("board without outline or copper")?
+            };
             if warnings.is_empty() {
                 warnings.push(
-                    "no closed board outline (Edge.Cuts): the bounding box of the copper is taken as the board".into(),
+                    "no closed board outline (Edge.Cuts): the bounding box of the copper (pads, tracks, zones) is taken as the board"
+                        .into(),
                 );
             }
         }
         let (w, h) = (bb.max[0] - bb.min[0], bb.max[1] - bb.min[1]);
         (w * h, 2.0 * (w + h))
     } else {
-        // the largest loop is the outline, the others cut-outs
-        let mut a: Vec<(f64, f64)> = loops.iter().map(|l| (polygon_area(l), perimeter(l))).collect();
-        a.sort_by(|x, y| y.0.total_cmp(&x.0));
-        (a[0].0 - a[1..].iter().map(|x| x.0).sum::<f64>(), a[0].1)
+        // outer loops add, cut-outs subtract (by nesting): one board, or the boards of a panel
+        if ol.islands() > 1 {
+            warnings.push(format!(
+                "the board outline has {} separate pieces (a panel, or boards drawn side by side): they are computed together as one board area – heat crosses between them only where they touch",
+                ol.islands()
+            ));
+        }
+        (ol.area_mm2(), ol.perimeter_mm())
     };
     if !bb.is_valid() || area_mm2 <= 0.0 {
         return Err("board outline has no area".into());

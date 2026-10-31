@@ -506,6 +506,78 @@ fn outline_chaining() {
     assert!(t2.warnings.iter().any(|w| w.starts_with("no heat")));
 }
 
+/// Outlines from the kicad-happy corpus that stopped `thermal` with "board outline has no area":
+/// a panel of separate boards (ModularPSU, VersaSens), a frame with boards in its window (SparkFun
+/// panel), an outline drawn twice (openventilator, KiCad 5); also a joint that misses by 0.05 mm, a
+/// KiCad 5 arc (centre, first point, angle) and a cut-out drawn in a footprint.
+#[test]
+fn outline_panels_and_repeats() {
+    let base = |extra: &str| {
+        board_text(1.0, 1.0, &[35.0, 35.0], &[1.5], &[], extra)
+            .replace("(gr_rect (start 0 0) (end 1 1) (stroke (width 0.05)) (layer \"Edge.Cuts\"))", "")
+    };
+    let rect = |x0: f64, y0: f64, x1: f64, y1: f64| {
+        format!("(gr_rect (start {x0} {y0}) (end {x1} {y1}) (layer \"Edge.Cuts\"))")
+    };
+    let solve1 = |txt: &str| {
+        let b = crate::load_pcb(txt).unwrap();
+        let ol = outline(&b);
+        let t = solve(&b, &[], &[], &ThermalParams { cell: Some(1.0), ..Default::default() }).unwrap();
+        (ol, t)
+    };
+    // two boards side by side, 0.1 mm apart
+    let (ol, t) = solve1(&base(&format!("{} {}", rect(0.0, 0.0, 20.0, 10.0), rect(20.1, 0.0, 40.1, 10.0))));
+    assert_eq!((ol.islands(), ol.depth.clone()), (2, vec![0, 0]));
+    assert!((ol.area_mm2() - 400.0).abs() < 1e-6 && (ol.perimeter_mm() - 120.0).abs() < 1e-6);
+    assert!(t.warnings.iter().any(|w| w.contains("2 separate pieces")), "{:?}", t.warnings);
+    // a frame (outer and inner edge) with two boards in its window
+    let frame = format!(
+        "{} {} {} {}",
+        rect(0.0, 0.0, 50.0, 30.0),
+        rect(5.0, 5.0, 45.0, 25.0),
+        rect(10.0, 10.0, 20.0, 20.0),
+        rect(30.0, 10.0, 40.0, 20.0)
+    );
+    let (ol, t) = solve1(&base(&frame));
+    let mut depth = ol.depth.clone();
+    depth.sort();
+    assert_eq!(depth, vec![0, 1, 2, 2]);
+    assert!((ol.area_mm2() - (1500.0 - 800.0 + 200.0)).abs() < 1e-6, "{}", ol.area_mm2());
+    assert!(t.temp_at(0, [15.0, 15.0]).is_finite() && t.warnings.iter().any(|w| w.contains("3 separate pieces")));
+    // an outline of lines drawn twice, one joint 0.05 mm open
+    let lines = "(gr_line (start 0 0) (end 30 0) (layer \"Edge.Cuts\")) (gr_line (start 30 0) (end 30 20) (layer \"Edge.Cuts\"))
+      (gr_line (start 30 20) (end 0 20) (layer \"Edge.Cuts\")) (gr_line (start 0 20.05) (end 0 0) (layer \"Edge.Cuts\"))";
+    let (ol, t) = solve1(&base(&format!("{lines} {lines}")));
+    assert_eq!((ol.loops.len(), ol.duplicates, ol.gaps_closed, ol.open), (1, 4, 1, 0));
+    assert!((ol.area_mm2() - 600.0).abs() < 0.1, "{}", ol.area_mm2());
+    assert!(t.warnings.iter().any(|w| w.contains("4 Edge.Cuts drawing(s) repeat")), "{:?}", t.warnings);
+    assert!(t.warnings.iter().any(|w| w.contains("1 gap(s) of up to 0.1 mm")), "{:?}", t.warnings);
+    // KiCad 5: a half circle as (gr_arc (start centre) (end first point) (angle 180)) closing two
+    // lines; a footprint at (20, 10) rotated by 90° with a 4 × 2 mm cut-out of fp_lines
+    let k5 = "(gr_line (start 0 0) (end 40 0) (layer \"Edge.Cuts\")) (gr_line (start 0 0) (end 0 20) (layer \"Edge.Cuts\"))
+      (gr_line (start 0 20) (end 40 20) (layer \"Edge.Cuts\")) (gr_arc (start 40 10) (end 40 0) (angle 180) (layer \"Edge.Cuts\"))
+      (footprint \"slot\" (layer \"F.Cu\") (at 20 10 90)
+        (fp_line (start -2 -1) (end 2 -1) (layer \"Edge.Cuts\")) (fp_line (start 2 -1) (end 2 1) (layer \"Edge.Cuts\"))
+        (fp_line (start 2 1) (end -2 1) (layer \"Edge.Cuts\")) (fp_line (start -2 1) (end -2 -1) (layer \"Edge.Cuts\")))";
+    let (ol, _) = solve1(&base(k5));
+    assert_eq!((ol.loops.len(), ol.open), (2, 0), "{ol:?}");
+    let half_disc = std::f64::consts::PI * 100.0 / 2.0;
+    assert!((ol.area_mm2() - (800.0 + half_disc - 8.0)).abs() < 2.0, "{}", ol.area_mm2());
+    let slot = &ol.loops[ol.depth.iter().position(|&d| d == 1).unwrap()];
+    let bb = BBox::of(slot);
+    assert!((bb.max[0] - bb.min[0] - 2.0).abs() < 1e-9 && (bb.max[1] - bb.min[1] - 4.0).abs() < 1e-9, "{bb:?}");
+    // the arc bulges to the right (x up to 50)
+    assert!(ol.loops.iter().flatten().any(|p| p[0] > 49.9));
+    // crossing drawings without area: the copper's box instead of an error
+    let bow = "(gr_poly (pts (xy 0 0) (xy 10 10) (xy 10 0) (xy 0 10)) (layer \"Edge.Cuts\"))";
+    let b =
+        crate::load_pcb(&base(&format!("{bow} (segment (start 1 1) (end 9 9) (width 0.2) (layer \"F.Cu\") (net 2))")))
+            .unwrap();
+    let t = solve(&b, &[], &[], &ThermalParams { cell: Some(1.0), ..Default::default() }).unwrap();
+    assert!(t.warnings.iter().any(|w| w.contains("enclose no area")), "{:?}", t.warnings);
+    assert!((t.area_mm2 - 64.0).abs() < 1e-6, "{}", t.area_mm2);
+}
+
 /// Heat through the vias under an exposed pad, the case top, and the hint for a thermal pad
 /// without vias.
 #[test]

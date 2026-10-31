@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Interface profiles for the channel check. Values per line (differential channels are computed in the odd mode: r = half the differential resistance). Source 'kind': spec = from the standard or a source close to it, guideline = vendor layout guideline, kisi = kisi's own guide value without a standard behind it. Traffic-light limits: eye_h_* as a fraction of the transmit swing, eye_w_min_ui in UI, skew_ps intra-pair skew (null = 5 % UI), rl_min_db up to 1.5 × Nyquist, stub_factor = via stub resonance must lie above stub_factor × Nyquist, il_board_db = loss of the board section at Nyquist (null = no limit). This file can be extended without code changes. Order = priority of the automatic assignment (net name before class name, first matching profile). Pin capacitances and driver resistances are typical estimates; replace them with the part's IBIS data.",
+  "about": "Interface profiles for the channel check. Values per line (differential channels are computed in the odd mode: r = half the differential resistance). Source 'kind': spec = from the standard or a source close to it, guideline = vendor layout guideline, kisi = kisi's own guide value without a standard behind it. Traffic-light limits: eye_h_* as a fraction of the transmit swing, eye_w_min_ui in UI, skew_ps intra-pair skew (null = 5 % UI), rl_min_db up to 1.5 × Nyquist, stub_factor = via stub resonance must lie above stub_factor × Nyquist, il_board_db = loss of the board section at Nyquist (null = no limit). This file can be extended without code changes. Order = priority of the automatic assignment (net name before class name, first matching profile); a profile with 'context' rules takes part only when one of them also matches the full net name (with its sheet path) or the class name, e.g. 'DDR3'. Pin capacitances and driver resistances are typical estimates; replace them with the part's IBIS data.",
   "defaults": {
     "limits": {
       "eye_h_red": 0.4,
@@ -327,40 +327,139 @@
       ]
     },
     {
-      "id": "ddr4_dq",
-      "name": "DDR4 data/address (3200 MT/s)",
+      "id": "ddr3_clk",
+      "name": "DDR3/3L DQS/CK (1600 MT/s)",
       "family": "DDR",
-      "rate_gbps": 3.2,
-      "signal": "se",
-      "z": 40,
+      "rate_gbps": 1.6,
+      "signal": "diff",
+      "z": 100,
       "z_tol_pct": 10,
       "tx": {
-        "swing_mv": 600,
-        "r": 34,
-        "c_pf": 1.2,
+        "swing_mv": 750,
+        "r": 40,
+        "c_pf": 2.0,
         "l_nh": 0,
-        "rise_ps": 80
+        "rise_ps": 150
       },
       "rx": {
-        "r": 48,
-        "c_pf": 1.2,
+        "r": 60,
+        "c_pf": 2.0,
         "l_nh": 0
       },
       "match": [
-        "DDR4",
-        "^DQ[0-9]",
-        "_DQ[0-9]",
-        "DQ[0-9]+$",
-        "DM[0-9]",
-        "^A[0-9]+$",
-        "_A[0-9]+$",
-        "BA[0-9]",
-        "BG[0-9]"
+        "DQS",
+        "DDR3L?_CK",
+        "_CK_?[TCPN#]$",
+        "^CK_?[TCPN#]$"
+      ],
+      "context": [
+        "DDR3"
       ],
       "sources": [
         {
           "kind": "guideline",
-          "text": "JEDEC does not specify a PCB impedance; vendor guidelines give 40–50 Ω single-ended. Driver RON 34 Ω, ODT RTT 48 Ω (POD to VDDQ, modelled here as an AC equivalent)."
+          "text": "TI SPRABI1D (DDR3 Design Requirements for KeyStone Devices) §6.3.1.4 and §6.3.1.6: 50 Ω ±5 % single-ended on data and address/command routes, 100 Ω ±5 % differential on the DQS pairs; other vendor guidelines allow 40–50 Ω. kisi's tolerance band is ±10 %.",
+          "url": "https://www.ti.com/document-viewer/lit/html/SPRABI1"
+        },
+        {
+          "kind": "guideline",
+          "text": "Intel External Memory Interface Handbook (single-rank DDR3): DQ/DQS/DM 40 Ω driver, 60 Ω ODT; address/command 39 Ω on-board termination; CK 36 Ω per arm (72 Ω differential). Pin capacitances and edge rates here are typical estimates (DDR3 parts: CIO about 1.4–2.3 pF).",
+          "url": "https://www.intel.com/content/www/us/en/docs/programmable/683385/17-0/terminations-for-single-rank-ddr3-sdram.html"
+        }
+      ]
+    },
+    {
+      "id": "ddr3_ca",
+      "name": "DDR3/3L address/cmd (800 Mbit/s)",
+      "family": "DDR",
+      "rate_gbps": 0.8,
+      "signal": "se",
+      "z": 50,
+      "z_tol_pct": 10,
+      "tx": {
+        "swing_mv": 750,
+        "r": 34,
+        "c_pf": 2.0,
+        "l_nh": 0,
+        "rise_ps": 300
+      },
+      "rx": {
+        "r": 39,
+        "c_pf": 2.0,
+        "l_nh": 0
+      },
+      "match": [
+        "^A[0-9]+$",
+        "_A[0-9]+$",
+        "(^|_)BA[0-9]$",
+        "RAS",
+        "CAS",
+        "(^|_)WE",
+        "CKE",
+        "ODT",
+        "(^|_)CS[0-9]?(_?N|#)?$",
+        "RESET"
+      ],
+      "context": [
+        "DDR3"
+      ],
+      "sources": [
+        {
+          "kind": "guideline",
+          "text": "TI SPRABI1D (DDR3 Design Requirements for KeyStone Devices) §6.3.1.4 and §6.3.1.6: 50 Ω ±5 % single-ended on data and address/command routes, 100 Ω ±5 % differential on the DQS pairs; other vendor guidelines allow 40–50 Ω. kisi's tolerance band is ±10 %.",
+          "url": "https://www.ti.com/document-viewer/lit/html/SPRABI1"
+        },
+        {
+          "kind": "guideline",
+          "text": "Intel External Memory Interface Handbook (single-rank DDR3): DQ/DQS/DM 40 Ω driver, 60 Ω ODT; address/command 39 Ω on-board termination; CK 36 Ω per arm (72 Ω differential). Pin capacitances and edge rates here are typical estimates (DDR3 parts: CIO about 1.4–2.3 pF).",
+          "url": "https://www.intel.com/content/www/us/en/docs/programmable/683385/17-0/terminations-for-single-rank-ddr3-sdram.html"
+        },
+        {
+          "kind": "guideline",
+          "text": "Address/command run at the clock rate (half the data rate) through all devices in a fly-by chain to a termination at the far end; kisi checks one device-to-device section at a time, the chain's loads are not modelled."
+        }
+      ]
+    },
+    {
+      "id": "ddr3_dq",
+      "name": "DDR3/3L data (1600 MT/s)",
+      "family": "DDR",
+      "rate_gbps": 1.6,
+      "signal": "se",
+      "z": 50,
+      "z_tol_pct": 10,
+      "tx": {
+        "swing_mv": 750,
+        "r": 40,
+        "c_pf": 2.0,
+        "l_nh": 0,
+        "rise_ps": 150
+      },
+      "rx": {
+        "r": 60,
+        "c_pf": 2.0,
+        "l_nh": 0
+      },
+      "match": [
+        "^DQ[0-9]",
+        "_DQ[0-9]",
+        "DQ[0-9]+$",
+        "(^|_)DM[0-9]",
+        "DDR3"
+      ],
+      "context": [
+        "DDR3"
+      ],
+      "sources": [
+        {
+          "kind": "guideline",
+          "text": "TI SPRABI1D (DDR3 Design Requirements for KeyStone Devices) §6.3.1.4 and §6.3.1.6: 50 Ω ±5 % single-ended on data and address/command routes, 100 Ω ±5 % differential on the DQS pairs; other vendor guidelines allow 40–50 Ω. kisi's tolerance band is ±10 %.",
+          "url": "https://www.ti.com/document-viewer/lit/html/SPRABI1"
+        },
+        {
+          "kind": "guideline",
+          "text": "Intel External Memory Interface Handbook (single-rank DDR3): DQ/DQS/DM 40 Ω driver, 60 Ω ODT; address/command 39 Ω on-board termination; CK 36 Ω per arm (72 Ω differential). Pin capacitances and edge rates here are typical estimates (DDR3 parts: CIO about 1.4–2.3 pF).",
+          "url": "https://www.intel.com/content/www/us/en/docs/programmable/683385/17-0/terminations-for-single-rank-ddr3-sdram.html"
         }
       ]
     },
@@ -387,12 +486,99 @@
       "match": [
         "DQS",
         "DDR4_CK",
-        "_CK_?[TCPN]$"
+        "_CK_?[TCPN]$",
+        "^CK_?[TCPN]$"
       ],
       "sources": [
         {
           "kind": "guideline",
           "text": "Vendor guidelines: 80–100 Ω differential for DQS and CK."
+        }
+      ]
+    },
+    {
+      "id": "ddr4_ca",
+      "name": "DDR4 address/cmd (1600 Mbit/s)",
+      "family": "DDR",
+      "rate_gbps": 1.6,
+      "signal": "se",
+      "z": 40,
+      "z_tol_pct": 10,
+      "tx": {
+        "swing_mv": 600,
+        "r": 34,
+        "c_pf": 1.2,
+        "l_nh": 0,
+        "rise_ps": 150
+      },
+      "rx": {
+        "r": 39,
+        "c_pf": 1.2,
+        "l_nh": 0
+      },
+      "match": [
+        "^A[0-9]+$",
+        "_A[0-9]+$",
+        "(^|_)BA[0-9]$",
+        "(^|_)BG[0-9]$",
+        "ACT_?N",
+        "RAS",
+        "CAS",
+        "(^|_)WE",
+        "CKE",
+        "ODT",
+        "(^|_)CS[0-9]?(_?N|#)?$",
+        "(^|_)PAR$"
+      ],
+      "context": [
+        "DDR",
+        "DRAM",
+        "MEM"
+      ],
+      "sources": [
+        {
+          "kind": "guideline",
+          "text": "JEDEC does not specify a PCB impedance; vendor guidelines give 40–50 Ω single-ended. Address/command run at the clock rate (half the data rate) through all devices to the far-end termination; kisi checks one device-to-device section at a time."
+        },
+        {
+          "kind": "guideline",
+          "text": "AMD UG863 (Versal), DDR4 signals: address/command/control (A, RAS_N/A16, CAS_N/A15, WE_N/A14, BA, BG, ACT_N, CKE, CS_N, ODT, PAR) fly-by with 39 Ω to VTT at the far end.",
+          "url": "https://docs.amd.com/r/en-US/ug863-versal-pcb-design/Signals-and-Connections-for-DDR4-Interfaces"
+        }
+      ]
+    },
+    {
+      "id": "ddr4_dq",
+      "name": "DDR4 data (3200 MT/s)",
+      "family": "DDR",
+      "rate_gbps": 3.2,
+      "signal": "se",
+      "z": 40,
+      "z_tol_pct": 10,
+      "tx": {
+        "swing_mv": 600,
+        "r": 34,
+        "c_pf": 1.2,
+        "l_nh": 0,
+        "rise_ps": 80
+      },
+      "rx": {
+        "r": 48,
+        "c_pf": 1.2,
+        "l_nh": 0
+      },
+      "match": [
+        "DDR4",
+        "^DQ[0-9]",
+        "_DQ[0-9]",
+        "DQ[0-9]+$",
+        "(^|_)DM[0-9]",
+        "DBI"
+      ],
+      "sources": [
+        {
+          "kind": "guideline",
+          "text": "JEDEC does not specify a PCB impedance; vendor guidelines give 40–50 Ω single-ended. Driver RON 34 Ω, ODT RTT 48 Ω (POD to VDDQ, modelled here as an AC equivalent)."
         }
       ]
     },

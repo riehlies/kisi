@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "about": "How kisi reads a target impedance from a KiCad net class name when <board>.kisi.json gives none (docs/reference.md, 'Target impedance from net class names'). The upper-cased name is split into runs of letters and numbers; a number within range_ohm counts when a unit follows it (50Z, USB_90R, 100Ohm), a prefix stands right before it (Z85, SE50, S50, Diff_100, diff90, ZDIFF=100, SE55DE100: one separator of '_', '-', '=' or a space allowed), or – with neither – a kind word follows it (100_DIFF, 50_SE). Prefixes and kind words of 'single' and 'diff' fix the kind; 'plain' prefixes and units leave it to the name: differential when a diff_keywords entry occurs in it, or at diff_hint.min_ohm and more with a diff_hint keyword. Short prefixes (up to two letters) must be the whole letter run (S50, not BUS50); longer ones may end it (USBDIFF90). Two different values of one kind (SE50_SE60) give no target; one single-ended and one differential value (SE55DE100) give the differential target, with the single-ended value named in the source. The source of such a target is 'class name': what the designer wrote, shown with the class, not an estimate of kisi's. Without a number, an interface keyword (interfaces) gives the usual impedance of that interface, marked 'interface assumption'. These lists are naming conventions seen on real boards (the kicad-happy corpus, data/corpus.json); extend them when boards use other names – a test in crates/kisi-si/src/classname.rs keeps the examples.",
+  "range_ohm": {
+    "min": 20,
+    "max": 200,
+    "sources": [
+      {
+        "kind": "kisi",
+        "text": "Range of PCB trace impedances (single-ended and differential); numbers outside it in a class name are widths, data rates or voltages, not impedances."
+      }
+    ]
+  },
+  "units": ["Z", "R", "OHM", "OHMS", "Ω"],
+  "prefixes": {
+    "single": ["ZSINGLE", "SINGLE", "ZSE", "SE", "ZS", "S"],
+    "diff": ["ZDIFF", "DIFF", "DIF", "ZD", "DE"],
+    "plain": ["Z"]
+  },
+  "kind_words": {
+    "single": ["SE", "SINGLE"],
+    "diff": ["DIFF", "DIF", "DE"]
+  },
+  "diff_keywords": ["DIFF", "_DP", "DP_", "^DP", "DP$"],
+  "diff_hint": {
+    "min_ohm": 80,
+    "keywords": ["USB", "LVDS", "PCI"],
+    "sources": [
+      {
+        "kind": "kisi",
+        "text": "USB, LVDS and PCIe signals are differential pairs; a value of 80 Ω or more in such a class name is their differential impedance."
+      }
+    ]
+  },
+  "interfaces": [
+    {
+      "keyword": "USB",
+      "z": 90,
+      "diff": true,
+      "sources": [{ "kind": "spec", "text": "USB 2.0 HS: 90 Ω ±15 % differential (profile usb2 in data/interfaces.json)." }]
+    },
+    {
+      "keyword": "PCIE",
+      "z": 85,
+      "diff": true,
+      "sources": [
+        {
+          "kind": "guideline",
+          "text": "TI SNLA426: PCIe allows 70–100 Ω, add-in cards require 85 Ω (profiles pcie3–pcie5 in data/interfaces.json).",
+          "url": "https://www.ti.com/lit/pdf/snla426"
+        }
+      ]
+    },
+    {
+      "keyword": "PCI_E",
+      "z": 85,
+      "diff": true,
+      "sources": [
+        {
+          "kind": "guideline",
+          "text": "TI SNLA426: PCIe allows 70–100 Ω, add-in cards require 85 Ω (profiles pcie3–pcie5 in data/interfaces.json).",
+          "url": "https://www.ti.com/lit/pdf/snla426"
+        }
+      ]
+    },
+    {
+      "keyword": "LVDS",
+      "z": 100,
+      "diff": true,
+      "sources": [{ "kind": "spec", "text": "TIA/EIA-644: 100 Ω differential (profile lvds in data/interfaces.json)." }]
+    },
+    {
+      "keyword": "HDMI",
+      "z": 100,
+      "diff": true,
+      "sources": [{ "kind": "spec", "text": "HDMI TMDS: 100 Ω ±10 % differential (profile hdmi20 in data/interfaces.json)." }]
+    },
+    {
+      "keyword": "TMDS",
+      "z": 100,
+      "diff": true,
+      "sources": [{ "kind": "spec", "text": "HDMI TMDS: 100 Ω ±10 % differential (profile hdmi20 in data/interfaces.json)." }]
+    },
+    {
+      "keyword": "SATA",
+      "z": 100,
+      "diff": true,
+      "sources": [{ "kind": "spec", "text": "Serial ATA: 100 Ω nominal differential impedance of the board traces." }]
+    },
+    {
+      "keyword": "MDI",
+      "z": 100,
+      "diff": true,
+      "sources": [{ "kind": "spec", "text": "IEEE 802.3 MDI: 100 Ω differential (profile eth_mdi in data/interfaces.json)." }]
+    },
+    {
+      "keyword": "ETH",
+      "z": 100,
+      "diff": true,
+      "sources": [{ "kind": "spec", "text": "IEEE 802.3 MDI: 100 Ω differential (profile eth_mdi in data/interfaces.json)." }]
+    },
+    {
+      "keyword": "RF",
+      "z": 50,
+      "diff": false,
+      "sources": [{ "kind": "guideline", "text": "50 Ω is the usual system impedance of RF circuits (connectors, filters, amplifiers)." }]
+    }
+  ]
+}

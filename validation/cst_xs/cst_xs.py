@@ -587,7 +587,7 @@ class Runner:
         if cells is None:
             cells = find_int(texts, [r"Number of mesh cells(?! without)[^\d]*([\d,\. ]+\d)",
                                      r"Total number of mesh cells[^\d]*([\d,\. ]+\d)"])
-        port_nodes = find_int(texts, [r"[Pp]ort[^\n]{0,80}?(?:mesh|nodes|cells)[^\d\n]{0,20}([\d,]+)"])
+        port_nodes = find_int(texts, [r"\b[Pp]ort\b(?![^\n]*without MPI)[^\n]{0,80}?(?:mesh|nodes|cells)[^\d\n]{0,20}([\d,]+)"])
         if not meta.get("cst_version"):
             for t in texts:
                 mm = re.search(r"Version:\s*(20\d\d\.\d+[^\n\r(]*)", t)

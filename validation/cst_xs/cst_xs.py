@@ -410,6 +410,18 @@ def find_int(texts, patterns):
     return None
 
 
+def find_last_int(texts, pattern):
+    """the last match of pattern in the first log that has one"""
+    for t in texts:
+        mm = re.findall(pattern, t)
+        if mm:
+            try:
+                return int(re.sub(r"[,\. ]", "", mm[-1]))
+            except ValueError:
+                pass
+    return None
+
+
 def mode_of(path):
     for p in (r"[Mm]ode\s*(\d+)", r"\[(\d+)\]", r"\((\d+)\)\s*$", r"Port\s*\d+\D+(\d+)\s*$"):
         mm = re.search(p, path.split("\\")[-1])
@@ -569,8 +581,12 @@ class Runner:
         prj.save()
         logs = solver_logs(os.path.splitext(cp)[0])
         texts = list(logs.values())
-        cells = find_int(texts, [r"Number of mesh cells[^\d]*([\d,\. ]+\d)", r"mesh cells[^\d]*:\s*([\d,\. ]+\d)",
-                                 r"Total number of mesh cells[^\d]*([\d,\. ]+\d)"])
+        # the hex mesh of the port-mode calculation (MCalc.log: one line per adaptive port pass, the last one
+        # is the final mesh); not "The maximum supported number of mesh cells ... is: 2,147,483,647"
+        cells = find_last_int(texts, r"Hex mesh: global:[^\n]*?np \(no TSTs\):\s*([\d,]+)")
+        if cells is None:
+            cells = find_int(texts, [r"Number of mesh cells(?! without)[^\d]*([\d,\. ]+\d)",
+                                     r"Total number of mesh cells[^\d]*([\d,\. ]+\d)"])
         port_nodes = find_int(texts, [r"[Pp]ort[^\n]{0,80}?(?:mesh|nodes|cells)[^\d\n]{0,20}([\d,]+)"])
         if not meta.get("cst_version"):
             for t in texts:

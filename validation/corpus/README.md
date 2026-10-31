@@ -4,16 +4,22 @@
 sparse: only the board and its project file, into `~/.cache/kisi-corpus` or `$KISI_CORPUS_CACHE` – never into the
 repository) and runs the native `kisi` on each: `overview`, `interfaces`, `check --all`, `gaps`, `power`,
 `thermal` and, for the weekly set, `crosstalk`, all without a `kisi.json` (`--no-config`) unless the entry names
-one. A board that stops for an assembly variant (a documented stop) runs again with `--variant default`.
+one. A board that stops for an assembly variant (a documented stop) runs again with `--variant default`. kisi reads
+KiCad 6 and newer: a board file from KiCad 5 or older (`kicad` in `data/corpus.json`: `5`, `5.99` – a KiCad 6
+pre-release – or `legacy`) is refused with one message, and that refusal is the expected outcome of its run,
+counted apart in the summary ("refused: KiCad 5 or older"); a refused board listed as KiCad 6 or newer, or a listed
+pre-6 board that loads, is a regression.
 
 The files here are kisi's own numbers per board and command – exit status, crash or panic, the error message, the
 run time, and summary numbers (layers, stackup from the file, classes with a target and their source, buses,
 lanes, check rows by colour, crosstalk victims, gap ids with item counts, the three views, rails, the thermal
 grid) – no board content:
 
-* `weekly.json` – 32 boards (16 SI-rich, 8 PI-rich, 8 parser cases), run by the weekly CI and on a manual run;
-* `robustness.json` – about 200 boards across KiCad 5 to 10, run by hand (Actions → ci → Run workflow, corpus:
-  robustness, or `gh workflow run ci --ref <branch> -f corpus=robustness`) and before a release.
+* `weekly.json` – 32 boards (16 SI-rich, 8 PI-rich, 8 parser cases, KiCad 6 to 10), run by the weekly CI and on a
+  manual run;
+* `robustness.json` – about 200 boards across KiCad 4 to 10 (47 of them from before KiCad 6, refused), run by the
+  monthly CI (the 1st of the month), by hand (Actions → ci → Run workflow, corpus: robustness, or
+  `gh workflow run ci --ref <branch> -f corpus=robustness`) and before a release.
 
 ```
 python3 tools/corpus.py fetch --set weekly                         # once; later runs reuse the cache

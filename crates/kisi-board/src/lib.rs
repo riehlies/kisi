@@ -1,6 +1,6 @@
 //! kisi-board: the board model every analysis builds on.
 //!
-//! * `board` – parser for `.kicad_pcb` / `.kicad_pro` (KiCad 8/9/10), stackup, tracks, vias, pads, zones
+//! * `board` – parser for `.kicad_pcb` / `.kicad_pro` (KiCad 6 to 10; older files refused), stackup, tracks, vias, pads, zones
 //! * `sexpr` – S-expression reader
 //! * `geom`  – 2D geometry helpers
 //! * `package` – case size of two-terminal chip parts (footprint name, pad geometry)
@@ -14,4 +14,4 @@ pub mod package;
 pub mod sexpr;
 pub mod view;
 
-pub use board::{apply_project, load_pcb, Board};
+pub use board::{apply_project, load_pcb, pre_kicad6_message, Board, KICAD6_FILE_VERSION};

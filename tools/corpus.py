@@ -19,6 +19,10 @@
       4 × the stored time + 10 s); boards that could not be fetched are listed, not failed. --update stores the
       results instead. --summary writes a Markdown table (the CI job summary).
 
+A board file from before KiCad 6 (corpus.json 'kicad': 5, 5.99 or legacy) is refused by kisi with one message; that
+refusal is the expected outcome of its run, counted apart in the summary ("refused: KiCad 5 or older"). A refusal of
+a board listed as KiCad 6 or newer, or a listed pre-6 board that is not refused, is a regression.
+
 What is stored per board and command: exit status, crash/panic, the error message, the run time, and summary numbers
 (layers, stackup from the file, classes with a target, buses, lanes, check rows by colour, gap ids with item
 counts, views, rails, crosstalk rows, thermal warnings) – kisi's own numbers, no board content (no net or part
@@ -33,6 +37,10 @@ COMMANDS = ["overview", "interfaces", "check", "crosstalk", "gaps", "power", "th
 SET_COMMANDS = {"weekly": COMMANDS, "robustness": [c for c in COMMANDS if c != "crosstalk"]}
 # a run time counts as a regression only above this (seconds): runners differ a lot
 TIME_FACTOR, TIME_SLACK = 4.0, 10.0
+# kisi's refusal of a board file from before KiCad 6 (kisi_board::pre_kicad6_message) and the corpus.json
+# generations it is expected for
+REFUSED_PRE6 = "kisi supports KiCad 6 and newer"
+PRE6_KICAD = {"legacy", "4", "5", "5.99"}
 
 
 def load_list():
@@ -188,6 +196,9 @@ def run_cmd(argv, timeout):
         out["error"] = str(out["json"]["error"])[:300]
     # kisi's documented stop for assembly variants or forks (the message names --variant)
     out["variant_stop"] = r.returncode == 1 and "--variant" in r.stderr
+    # a board file from before KiCad 6: refused with one message
+    if r.returncode == 1 and REFUSED_PRE6 in (out.get("error") or ""):
+        out["refused"] = "pre-kicad6"
     return out
 
 
@@ -213,12 +224,14 @@ def run_board(b, cache, kisi, mjs, cmds, timeout):
                 r2 = run_cmd(base + [c, pcb] + cfg + variant + extra.get(c, []) + flags, timeout)
                 r2["s"] = round(r2["s"] + r["s"], 2)
                 r = r2
-            rec = {k: r[k] for k in ("rc", "s", "panic", "timeout", "json_error", "error") if k in r}
+            rec = {k: r[k] for k in ("rc", "s", "panic", "timeout", "json_error", "error", "refused") if k in r}
             if isinstance(r.get("json"), dict) and r.get("rc") == 0:
                 rec["key"] = summarize(c, r["json"])
             key = c if tool == "kisi" else f"mjs.{c}"
             out["commands"][key] = rec
     out["total_s"] = round(sum(x["s"] for x in out["commands"].values()), 1)
+    if out["commands"] and all(x.get("refused") == "pre-kicad6" for x in out["commands"].values()):
+        out["refused"] = "pre-kicad6"
     return out
 
 
@@ -254,10 +267,16 @@ def do_run(args):
             print(f"[{i}/{len(sel)}] {b['name']}: not available ({res['unavailable'][b['name']]})", flush=True)
             continue
         r = run_board(b, cache, kisi, args.mjs and os.path.abspath(args.mjs), cmds, args.timeout)
+        if b.get("kicad"):
+            r["kicad"] = b["kicad"]
         res["boards"][b["name"]] = r
         bad = [c for c, x in r["commands"].items() if x.get("rc") != 0]
-        print(f"[{i}/{len(sel)}] {b['name']}: {r['total_s']} s" + (f"; exit ≠ 0: {', '.join(bad)}" if bad else "")
-              + (" (variant default)" if r.get("variant_stop") else ""), flush=True)
+        if r.get("refused"):
+            state = "; refused: KiCad 5 or older"
+        else:
+            state = f"; exit ≠ 0: {', '.join(bad)}" if bad else ""
+        print(f"[{i}/{len(sel)}] {b['name']}: {r['total_s']} s{state}" + (" (variant default)" if r.get("variant_stop") else ""),
+              flush=True)
     res["total_s"] = round(time.time() - t0, 1)
     out = args.out or os.path.join(cache, f"results-{args.set}.json")
     with open(out, "w") as f:
@@ -329,6 +348,15 @@ def compare(stored, new):
                 d = []
                 diff_key(nat.get("key"), rec.get("key"), c, d)
                 f += [f"{x} (native -> kisi.mjs)" for x in d]
+        # the refusal of a board file from before KiCad 6 is expected exactly for the boards listed as such
+        if "kicad" in nb and nb["kicad"] is not None:
+            pre6 = nb["kicad"] in PRE6_KICAD
+            if pre6 and not nb.get("refused"):
+                f.append(f"listed as KiCad {nb['kicad']} but not refused")
+            elif not pre6 and nb.get("refused"):
+                f.append(f"listed as KiCad {nb['kicad']} but refused as a file from KiCad 5 or older")
+        elif any(x.get("refused") for x in nb["commands"].values()) and not nb.get("refused"):
+            f.append("refused by some commands only")
         if sb is None:
             n.append("new board (no stored result)")
         elif bool(sb.get("variant_stop")) != bool(nb.get("variant_stop")):
@@ -344,7 +372,9 @@ def summary_md(new, fails, notes, stored):
     cmds = SET_COMMANDS[new["set"]]
     L = [f"### kisi corpus run: {new['set']} (kisi {new['kisi']}, {new.get('commit', '?')})", ""]
     nb = len(new["boards"])
-    L.append(f"{nb} boards run in {new['total_s']} s; {len(fails)} with regressions; {len(new['unavailable'])} not available.")
+    refused = sum(1 for b in new["boards"].values() if b.get("refused"))
+    L.append(f"{nb} boards run in {new['total_s']} s; {len(fails)} with regressions; refused: KiCad 5 or older {refused} "
+             f"(expected); {len(new['unavailable'])} not available.")
     L.append("")
     L.append("| Board | " + " | ".join(cmds) + " | total s | result |")
     L.append("|---|" + "---|" * (len(cmds) + 2))
@@ -352,9 +382,10 @@ def summary_md(new, fails, notes, stored):
         cells = []
         for c in cmds:
             r = b["commands"].get(c, {})
-            mark = "" if r.get("rc") == 0 else ("PANIC" if r.get("panic") else f"exit {r.get('rc')}")
+            mark = "" if r.get("rc") == 0 else ("PANIC" if r.get("panic") else ("refused" if r.get("refused") else f"exit {r.get('rc')}"))
             cells.append(f"{r.get('s', '–')}{(' ' + mark) if mark else ''}")
-        res = "**regression**" if name in fails else ("variant default" if b.get("variant_stop") else "ok")
+        res = "**regression**" if name in fails else ("variant default" if b.get("variant_stop") else
+                                                      ("refused: KiCad 5 or older" if b.get("refused") else "ok"))
         L.append(f"| {name} | " + " | ".join(cells) + f" | {b['total_s']} | {res} |")
     if fails:
         L += ["", "#### Regressions", ""]
@@ -416,7 +447,9 @@ def cmd_compare(args):
         print(f"note {n}: " + "; ".join(f))
     for n, e in sorted(new["unavailable"].items()):
         print(f"not available {n}: {e}")
-    print(f"{len(new['boards'])} boards, {len(fails)} with regressions, {len(new['unavailable'])} not available")
+    refused = sum(1 for b in new["boards"].values() if b.get("refused"))
+    print(f"{len(new['boards'])} boards, {len(fails)} with regressions, refused: KiCad 5 or older {refused} (expected), "
+          f"{len(new['unavailable'])} not available")
     return 1 if fails else 0
 
 

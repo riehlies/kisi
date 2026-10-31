@@ -4,7 +4,8 @@ kisi reads a KiCad layout and checks trace impedance, high-speed channels and po
 browser (the viewer) or on the command line; both use the same engine and give the same results.
 
 ## What you need
-- The board file `.kicad_pcb` (KiCad 8, 9 or 10), saved.
+- The board file `.kicad_pcb` (KiCad 6 to 10), saved. A file from KiCad 5 or older is refused: open it in KiCad 6
+  or newer and save it ([details](reference.md#what-kisi-reads-from-the-kicad-project)).
 - The project file `.kicad_pro` next to it, for the net classes (target impedances and interface profiles come
   from them).
 - Optionally `<board>.kisi.json`: the values the board file lacks (laminate data, load currents, …) with their

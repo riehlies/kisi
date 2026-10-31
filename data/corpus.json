@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Open-source KiCad boards that tools/corpus.py fetches at a pinned commit (blobless, sparse: only the board and project file; never committed) and runs the native kisi on – crashes, documented stops, run times and a few summary numbers per board are compared with validation/corpus/<set>.json. 'weekly': 32 boards run by the weekly CI (tier A SI-rich: high-speed interfaces, diff pairs, impedance classes; B PI-rich: many rails, large loads; C parser cases: KiCad 5–10, unusual stackups, panels, variants). 'robustness': about 200 boards stratified by KiCad generation, run by hand (Actions → ci → Run workflow, corpus: robustness) or before a release. 'licence' is the licence file found at the commit (NONE: none found – usable for local tests, not for release artefacts or numbers quoted in the docs); 'kicad' the board file's KiCad generation, 'layers' its copper layers. An entry may name a 'kisi_json' (validation/corpus/<name>.kisi.json, our own data: net names and values with sources) and a 'variant'. The candidate list comes from the kicad-happy test harness (github.com/aklofas/kicad-happy-testharness, its repos.md: repository URLs with pinned commits); only repository names and commits are taken from it, the selection and the facts here come from kisi's own analysis of the boards.",
+  "about": "Open-source KiCad boards that tools/corpus.py fetches at a pinned commit (blobless, sparse: only the board and project file; never committed) and runs the native kisi on – crashes, documented stops, run times and a few summary numbers per board are compared with validation/corpus/<set>.json. 'weekly': 32 boards run by the weekly CI (tier A SI-rich: high-speed interfaces, diff pairs, impedance classes; B PI-rich: many rails, large loads; C parser cases: KiCad 6–10, unusual stackups, panels, variants). 'robustness': about 200 boards stratified by KiCad generation, run by hand (Actions → ci → Run workflow, corpus: robustness) or before a release. 'licence' is the licence file found at the commit (NONE: none found – usable for local tests, not for release artefacts or numbers quoted in the docs); 'kicad' the board file's KiCad generation ('legacy': KiCad 4, '5.99': a KiCad 6 pre-release; these and '5' are boards kisi refuses – it reads KiCad 6 and newer – and the expected outcome of their run), 'layers' its copper layers. An entry may name a 'kisi_json' (validation/corpus/<name>.kisi.json, our own data: net names and values with sources) and a 'variant'. The candidate list comes from the kicad-happy test harness (github.com/aklofas/kicad-happy-testharness, its repos.md: repository URLs with pinned commits); only repository names and commits are taken from it, the selection and the facts here come from kisi's own analysis of the boards.",
   "sources": [
     {
       "kind": "measurement",
@@ -323,15 +323,15 @@
         "notes": "KiCad 6 file of a classic board"
       },
       {
-        "name": "diy-laptop",
-        "repo": "OLIMEX/DIY-LAPTOP",
-        "commit": "36193de48e5ff86c6fa309eb75bd450a9f88c4c7",
-        "pcb": "HARDWARE/A64-TERES/TERES-PCB1-A64-MAIN/Rev.C/TERES_PCB1-A64-MAIN_Rev.C.kicad_pcb",
+        "name": "ottercast-audio-v2",
+        "repo": "Ottercast/OtterCastAudioV2",
+        "commit": "199395d7249aaf12432e42bff828dd665546d6a4",
+        "pcb": "OtterCastAudioV2.kicad_pcb",
         "tier": "C",
-        "licence": "Apache-2.0+GPL-2.0",
-        "kicad": "5",
-        "layers": 6,
-        "notes": "KiCad 5 (v20171114), 6L, no stackup, no .kicad_pro"
+        "licence": "MIT",
+        "kicad": "7",
+        "layers": 4,
+        "notes": "KiCad 7 (v20221018) SBC, no stackup; replaces diy-laptop (KiCad 5, refused since kisi reads KiCad 6 and newer)"
       },
       {
         "name": "kicad-make",
@@ -1165,7 +1165,7 @@
         "pcb": "hardware/mm_reflectometer/evalboards/ecp5/ecp5.kicad_pcb",
         "tier": "C",
         "licence": "NONE",
-        "kicad": "6",
+        "kicad": "5.99",
         "layers": 6
       },
       {
@@ -1802,7 +1802,7 @@
         "pcb": "ecpbreaker/kicad-src/ecpbreaker.kicad_pcb",
         "tier": "C",
         "licence": "CERN-OHL-S-2.0",
-        "kicad": "6",
+        "kicad": "5.99",
         "layers": 6
       },
       {
@@ -1892,7 +1892,7 @@
         "pcb": "pcb/mainboard/pcb.kicad_pcb",
         "tier": "C",
         "licence": "CERN-OHL-S-2.0",
-        "kicad": "6",
+        "kicad": "5.99",
         "layers": 4
       },
       {
@@ -1962,7 +1962,7 @@
         "pcb": "hardware/T12_Control.kicad_pcb",
         "tier": "C",
         "licence": "CC-BY-SA-3.0",
-        "kicad": "6",
+        "kicad": "5.99",
         "layers": 4
       },
       {
@@ -2011,7 +2011,8 @@
         "pcb": "PowerSupplay/LCSDR.kicad_pcb",
         "tier": "C",
         "licence": "NONE",
-        "notes": "board path resolved by hand (the harness flattens sub-folders)"
+        "notes": "board path resolved by hand (the harness flattens sub-folders)",
+        "kicad": "legacy"
       },
       {
         "name": "pcb",
@@ -2343,6 +2344,17 @@
         "licence": "NONE",
         "kicad": "5",
         "layers": 4
+      },
+      {
+        "name": "diy-laptop",
+        "repo": "OLIMEX/DIY-LAPTOP",
+        "commit": "36193de48e5ff86c6fa309eb75bd450a9f88c4c7",
+        "pcb": "HARDWARE/A64-TERES/TERES-PCB1-A64-MAIN/Rev.C/TERES_PCB1-A64-MAIN_Rev.C.kicad_pcb",
+        "tier": "C",
+        "licence": "Apache-2.0+GPL-2.0",
+        "kicad": "5",
+        "layers": 6,
+        "notes": "KiCad 5 (v20171114), 6L, no stackup, no .kicad_pro; refused (KiCad 5 or older); was a weekly parser case"
       }
     ]
   }

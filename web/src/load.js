@@ -28,7 +28,7 @@ function textHash(t) { let h = 2166136261; for (let i = 0; i < t.length; i++) { 
 
 // cfg: {name, text} of a <board>.kisi.json (values with sources), applied over the board
 async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) {
-  $("drop").hidden = true; $("drop").classList.remove("start");
+  $("drop").hidden = true; $("drop").classList.remove("start"); $("drop-err").hidden = true;
   showBusy("Reading board and computing cross-sections…");
   await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
   try {
@@ -95,6 +95,11 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
   } catch (e) {
     hideBusy();
     $("warnings").innerHTML = `<span class="err">Could not read file: ${esc(e.message)}</span>`;
+    if ($("app").classList.contains("no-board")) {
+      // no board on screen: the side panel is hidden, so the message goes onto the start screen
+      $("drop-err").textContent = "Could not read file: " + e.message;
+      $("drop-err").hidden = false; $("drop").hidden = false; $("drop").classList.add("start");
+    }
     console.error(e);
   }
 }

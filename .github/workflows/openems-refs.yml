@@ -1,0 +1,127 @@
+# openEMS for every 3D reference case (validation/fdtd/openems_refs.py, TESTS.md section 16): the shards of
+# validation/fdtd/openems_plan.json in parallel (at most 15 at a time), each on a 4-vCPU runner. The raw results
+# (one JSON per case, mesh and excited port, with the runner's CPU) are committed to the branch the workflow runs on,
+# under validation/fdtd/openems_raw/; tasks whose result is already there are skipped, so a second run completes
+# what a first one left. `openems_refs.py merge` turns them into validation/via_ref/<case>/openems*.sNp locally;
+# the raw folder is then removed again.
+#
+# Long (hours on 15 runners) and it commits: manual only (Actions → openems-refs → Run workflow, or
+# `gh workflow run openems-refs --ref <branch>`), never on main. Make the plan first (`openems_refs.py plan`).
+name: openems-refs
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: openems-refs-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  OPENEMS_TAG: v0.37.0
+  OEMS: /home/runner/openEMS
+jobs:
+  prepare:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    outputs:
+      shards: ${{ steps.p.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: p
+        name: Shards of the plan
+        run: echo "shards=$(python3 -c 'import json; print(json.dumps(list(range(len(json.load(open("validation/fdtd/openems_plan.json"))["shards"])))))')" >> "$GITHUB_OUTPUT"
+      - name: Build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends build-essential cmake libhdf5-dev libvtk9-dev libboost-all-dev \
+            libcgal-dev libtinyxml-dev python3-dev python3-venv
+      - id: cache
+        uses: actions/cache@v5
+        with:
+          path: /home/runner/openEMS
+          key: openems-${{ env.OPENEMS_TAG }}-ubuntu-24.04-v1
+      - name: Build openEMS and its Python bindings
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          git clone -q --recursive --branch "$OPENEMS_TAG" https://github.com/thliebig/openEMS-Project.git /tmp/oe
+          mkdir /tmp/oe/build && cd /tmp/oe/build
+          cmake .. -DCMAKE_INSTALL_PREFIX="$OEMS" -DBUILD_APPCSXCAD=NO -DCMAKE_BUILD_TYPE=Release > /dev/null
+          make -j4 > /dev/null
+          python3 -m venv "$OEMS/venv"
+          "$OEMS/venv/bin/pip" install -q --upgrade pip setuptools cython numpy shapely==2.2.0
+          export CSXCAD_INSTALL_PATH="$OEMS" OPENEMS_INSTALL_PATH="$OEMS" CSXCAD_NOSCM=1 OPENEMS_NOSCM=1
+          "$OEMS/venv/bin/pip" install -q --no-build-isolation /tmp/oe/CSXCAD/python
+          "$OEMS/venv/bin/pip" install -q --no-build-isolation /tmp/oe/openEMS/python
+      - name: Check openEMS
+        run: cd /tmp && "$OEMS/venv/bin/python" -c "import CSXCAD, openEMS; print(openEMS.__version__)"
+      - name: Rust toolchain
+        run: TC=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml) && rustup toolchain install "$TC" --profile minimal  # rust-toolchain.toml
+      - name: kisi-fdtd (its mesher makes the meshes)
+        run: cargo build --release -p kisi-fdtd
+      - uses: actions/upload-artifact@v6
+        with:
+          name: kisi-fdtd
+          path: target/release/kisi-fdtd
+          retention-days: 3
+
+  shard:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    strategy:
+      fail-fast: false
+      max-parallel: 15  # leaves runners for the CI of other branches
+      matrix:
+        shard: ${{ fromJSON(needs.prepare.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Runtime libraries
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends libhdf5-dev libvtk9-dev libboost-all-dev libcgal-dev libtinyxml-dev python3-venv
+      - uses: actions/cache/restore@v5
+        with:
+          path: /home/runner/openEMS
+          key: openems-${{ env.OPENEMS_TAG }}-ubuntu-24.04-v1
+          fail-on-cache-miss: true
+      - name: shapely (polygon copper in openems_case.py)
+        run: $OEMS/venv/bin/pip install -q shapely==2.2.0
+      - uses: actions/download-artifact@v7
+        with:
+          name: kisi-fdtd
+          path: bin
+      - name: Run the shard (stops starting new work after 5 h 30 min)
+        run: |
+          chmod +x bin/kisi-fdtd
+          lscpu; free -g  # the runner (also stored with the results: openems_raw/_logs/shard<K>_host.json, "host" per result)
+          timeout 330m "$OEMS/venv/bin/python" validation/fdtd/openems_refs.py run --shard ${{ matrix.shard }} \
+            --exe bin/kisi-fdtd --out validation/fdtd/openems_raw || echo "shard ended with status $?"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: openems-raw-${{ matrix.shard }}
+          path: validation/fdtd/openems_raw
+          if-no-files-found: ignore
+          retention-days: 3
+
+  collect:
+    needs: [prepare, shard]
+    if: always() && needs.prepare.result == 'success' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: openems-raw-*
+          path: validation/fdtd/openems_raw
+          merge-multiple: true
+      - name: Commit the raw results to the branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add validation/fdtd/openems_raw
+          git diff --cached --quiet && exit 0
+          git commit -q -m "openEMS raw results (run ${{ github.run_id }})"
+          for i in 1 2 3 4 5; do git pull -q --rebase origin "$GITHUB_REF_NAME" && git push -q origin "HEAD:$GITHUB_REF_NAME" && break; sleep 10; done

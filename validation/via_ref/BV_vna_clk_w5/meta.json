@@ -165,6 +165,94 @@
    "seconds": 454.7,
    "dfine": 0.07,
    "dmax": null
+  },
+  "openems_base": {
+   "tool": "openEMS 0.37.0 (staircase, PML_8)",
+   "mesh": "base",
+   "dfine": 0.07,
+   "cells": 724992,
+   "dt": 1.0433042616785667e-13,
+   "seconds": [
+    335.5,
+    262.9
+   ],
+   "threads": [
+    2,
+    2
+   ],
+   "t_end_ns": [
+    3.108,
+    3.617
+   ],
+   "rate_mcells_s": [
+    64.4,
+    95.6
+   ],
+   "date": "2026-10-31",
+   "hosts": [
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 9V45 96-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    },
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    }
+   ]
+  },
+  "openems": {
+   "tool": "openEMS 0.37.0 (staircase, PML_8)",
+   "mesh": "fine",
+   "dfine": 0.035,
+   "cells": 2553966,
+   "dt": 5.5631436840135576e-14,
+   "seconds": [
+    1922.3,
+    1599.3
+   ],
+   "threads": [
+    2,
+    2
+   ],
+   "t_end_ns": [
+    2.826,
+    2.956
+   ],
+   "rate_mcells_s": [
+    67.5,
+    84.8
+   ],
+   "date": "2026-10-31",
+   "hosts": [
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 9V45 96-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    },
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 9V74 80-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    }
+   ]
   }
  }
 }

@@ -189,6 +189,125 @@
    "seconds": 322.6,
    "dfine": 0.05,
    "dmax": null
+  },
+  "openems_base": {
+   "tool": "openEMS 0.37.0 (staircase, PML_8)",
+   "mesh": "base",
+   "dfine": 0.05,
+   "cells": 520478,
+   "dt": 7.403716259882502e-14,
+   "seconds": [
+    151.2,
+    160.6,
+    117.7,
+    96.7
+   ],
+   "threads": [
+    2,
+    2,
+    2,
+    2
+   ],
+   "t_end_ns": [
+    1.339,
+    1.314,
+    1.275,
+    1.624
+   ],
+   "rate_mcells_s": [
+    62.3,
+    57.5,
+    76.2,
+    118.0
+   ],
+   "date": "2026-10-31",
+   "hosts": [
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 9V45 96-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    },
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 9V74 80-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    },
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    }
+   ]
+  },
+  "openems": {
+   "tool": "openEMS 0.37.0 (staircase, PML_8)",
+   "mesh": "fine",
+   "dfine": 0.025,
+   "cells": 1699792,
+   "dt": 3.677065156533025e-14,
+   "seconds": [
+    259.7,
+    302.2,
+    283.2,
+    430.6
+   ],
+   "threads": [
+    4,
+    4,
+    4,
+    4
+   ],
+   "t_end_ns": [
+    0.707,
+    0.722,
+    0.741,
+    1.214
+   ],
+   "rate_mcells_s": [
+    125.8,
+    110.4,
+    121.0,
+    130.3
+   ],
+   "date": "2026-10-31",
+   "t_cap_ns": [
+    0.658,
+    0.675,
+    0.692,
+    1.131
+   ],
+   "hosts": [
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 9V74 80-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    },
+    {
+     "cores_per_socket": "2",
+     "cpus": 4,
+     "l3": "32 MiB (1 instance)",
+     "mem_gb": 15.6,
+     "model": "AMD EPYC 7763 64-Core Processor",
+     "sockets": "1",
+     "threads_per_core": "2"
+    }
+   ]
   }
  }
 }

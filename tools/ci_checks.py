@@ -44,8 +44,9 @@ GROUPS = {
                                "validation/fdtd/results/kisi_models.json", "tools/golden.py", "docs/examples/*"],
     # the channel export run in ngspice against kisi's S-parameters
     "export": CODE + BOARDS + ["validation/channel_export/*"],
-    # the 3D reference page
-    "refpage": ["validation/via_ref/*", "validation/fdtd/make_viewer.py", "validation/fdtd/viewer_template.html"],
+    # the reference pages: 3D via cases, 2D cross-sections
+    "refpage": ["validation/via_ref/*", "validation/fdtd/make_viewer.py", "validation/fdtd/viewer_template.html",
+                "validation/cst_xs/*"],
     # Forstén's solver unchanged against upstream
     "upstream": ["third_party/*"],
     # the KiCad plugin: its unit tests, the package against KiCad's schemas (cheap, no bundles needed)

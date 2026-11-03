@@ -1,4 +1,4 @@
-<title>kisi 3D References</title>
+<title>kisi 3D references</title>
 <style>
 /*FONTS*/
 /* Layout: kisi viewer look (sage neutrals, copper accent); header with two views, case list beside the case sheet */
@@ -118,7 +118,10 @@ footer.about a { color: var(--accent) }
   <section id="view-checks" class="checks" hidden></section>
 </main>
 <footer class="about">The references are computed with kisi's own 3D solver (kisi-fdtd), checked against openEMS and analytic
-  cases only; validation against other solvers and against measurements is still open. ·
+  cases only; validation against other solvers and against measurements is still open. The 2D cross-section cases
+  (CST, full-wave, kisi's field solver and formulas) are on the page <a href="kisi-references-2d.html">kisi 2D references</a>
+  (a release file next to this one; each is attached to the releases in which its cases changed:
+  <a href="https://github.com/riehlies/kisi/releases" target="_blank" rel="noopener">releases</a>). ·
   kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design at
   TU Darmstadt; meant to help, without any warranty of correctness. GPL-3.0 ·
   <a href="https://github.com/riehlies/kisi" target="_blank" rel="noopener">source</a></footer>
@@ -576,7 +579,7 @@ function renderChecks() {
 }
 
 const done = cases.filter((c) => c.res).length;
-$("summary").textContent = `${cases.length} cases, ${done} computed with kisi-fdtd (3D FDTD, conformal metal, CPML). Zero-thickness copper, planes continue into the PML.`;
+$("summary").innerHTML = `${cases.length} cases, ${done} computed with kisi-fdtd (3D FDTD, conformal metal, CPML). Zero-thickness copper, planes continue into the PML. · <a href="kisi-references-2d.html">2D references</a>`;
 buildList();
 go((location.hash || "").slice(1));
 window.addEventListener("hashchange", () => { const h = (location.hash || "").slice(1); if (h !== (cur && cur.id) && !(h === "checks" && !$("view-checks").hidden)) go(h); });

@@ -1,0 +1,184 @@
+{
+ "id": "board_tb_jlc4_7628_f3_7e689f5994",
+ "group": "test_board",
+ "tier": 3,
+ "tag": "",
+ "date": "2026-11-02",
+ "tool": "CST Studio Suite",
+ "solver": "time domain solver, port modes only (CalculateModesOnly), hexahedral PBA mesh",
+ "cst_version": "CST Studio Suite 2025.5 Release from 2025-05-30",
+ "f_ghz": 1.0,
+ "tol_pct": 0.3,
+ "box": [
+  -15.80505,
+  15.80505,
+  0.2454,
+  17.1039
+ ],
+ "margin_scale": 1.0,
+ "text_hash": "7e689f59947b29f7",
+ "potentials": true,
+ "blocks_failed": [],
+ "port_adapt": true,
+ "start_level": 1,
+ "status": "ok",
+ "walls": {
+  "electric": {
+   "levels": [
+    {
+     "mesh": {
+      "level": 1,
+      "lpb": 40,
+      "edge_ratio": 6,
+      "ratio": 40,
+      "lpw": 20
+     },
+     "cells": 31395,
+     "port_mesh": null,
+     "seconds": 29.9,
+     "modes": [
+      {
+       "mode": 1,
+       "meaning": "line",
+       "z": 65.6029360135282,
+       "z_im": 0.0,
+       "beta": 37.69129531359092,
+       "eeff": 3.234177078424764,
+       "beta_unit": "1/m"
+      }
+     ],
+     "values": {
+      "z0": 65.6029360135282,
+      "eeff": 3.234177078424764
+     },
+     "change_pct": null
+    },
+    {
+     "mesh": {
+      "level": 2,
+      "lpb": 80,
+      "edge_ratio": 8,
+      "ratio": 80,
+      "lpw": 20
+     },
+     "cells": 88788,
+     "port_mesh": null,
+     "seconds": 74.3,
+     "modes": [
+      {
+       "mode": 1,
+       "meaning": "line",
+       "z": 65.80104057611723,
+       "z_im": 0.0,
+       "beta": 37.68476746838778,
+       "eeff": 3.233056905774017,
+       "beta_unit": "1/m"
+      }
+     ],
+     "values": {
+      "z0": 65.80104057611723,
+      "eeff": 3.233056905774017
+     },
+     "change_pct": 0.3019751471918575
+    },
+    {
+     "mesh": {
+      "level": 3,
+      "lpb": 160,
+      "edge_ratio": 10,
+      "ratio": 160,
+      "lpw": 20
+     },
+     "cells": 289821,
+     "port_mesh": null,
+     "seconds": 246.0,
+     "modes": [
+      {
+       "mode": 1,
+       "meaning": "line",
+       "z": 65.86659087461534,
+       "z_im": 0.0,
+       "beta": 37.67903193737305,
+       "eeff": 3.2320728536872774,
+       "beta_unit": "1/m"
+      }
+     ],
+     "values": {
+      "z0": 65.86659087461534,
+      "eeff": 3.2320728536872774
+     },
+     "change_pct": 0.0996189390383373
+    }
+   ],
+   "converged": true,
+   "level": 3,
+   "change_pct": 0.0996189390383373,
+   "values": {
+    "z0": 65.86659087461534,
+    "eeff": 3.2320728536872774
+   },
+   "values_extrap": {
+    "z0": 65.89900659253026,
+    "eeff": 3.2249588770704456
+   },
+   "values_richardson": {
+    "p": 2,
+    "from_levels": [
+     2,
+     3
+    ],
+    "values": {
+     "z0": 65.88844097411472,
+     "eeff": 3.231744836325031
+    }
+   },
+   "build": {
+    "tiles": 15,
+    "extrusion_mm": 0.7902525,
+    "walls": "electric",
+    "extras": [],
+    "potential_sets": [
+     {
+      "set": 1,
+      "meaning": "line",
+      "pins": [
+       [
+        "Positive",
+        0.0,
+        1.5686999999999998
+       ],
+       [
+        "Negative",
+        0.0,
+        0.253
+       ]
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "lossy": false,
+ "cst_raw_last": {
+  "tree_size": 11,
+  "items": [
+   "1D Results\\Port Information\\Distance (-40 dB)\\1(1)",
+   "1D Results\\Port Information\\Effective Dielectric Constant\\1(1)",
+   "1D Results\\Port Information\\Gamma\\1(1)",
+   "1D Results\\Port Information\\Line Impedance\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Distance (-40 dB)\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Effective Dielectric Constant\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Gamma\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Line Impedance\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Wave Impedance\\1(1)",
+   "1D Results\\Port Information\\Wave Impedance\\1(1)"
+  ]
+ },
+ "result": {
+  "electric": {
+   "z0": 65.86659087461534,
+   "eeff": 3.2320728536872774
+  }
+ },
+ "seconds_total": 367.9
+}

@@ -1,7 +1,7 @@
 # kisi-fdtd and reduced models: test log
 
 What was tested, how, and the result. Numbers come from the JSON files in `results/` and from
-`validation/via_ref/*/meta.json`. The reference page (`python3 make_viewer.py` → `dist/kisi-references.html`,
+`validation/via_ref/*/meta.json`. The reference page (`python3 make_viewer.py` → `dist/kisi-references-3d.html`,
 attached to the releases in which the reference cases changed) shows the same tables (tab "Solver checks") and every case with its curves.
 The scripts named here reproduce each result.
 

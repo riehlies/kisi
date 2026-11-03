@@ -15,7 +15,7 @@
 #   export              the channel export (kisi export) in ngspice against kisi's S-parameters, scikit-rf reads
 #                       the Touchstone files (validation/channel_export/compare.py; the KiCad project check with
 #                       --kicad runs locally only)
-#   refpage             the 3D reference page builds
+#   refpage             the reference pages build (3D via cases, 2D cross-sections)
 #   docs                the documentation PDF builds (tools/docs_pdf.py; also the link and heading check of docs/)
 #   upstream            Forstén's solver in third_party/ is upstream's tree, unchanged
 #   kicad               the KiCad plugin's unit tests (also with kicad-python), its package against KiCad's schemas
@@ -257,11 +257,12 @@ jobs:
       - name: Documentation PDF (and the link and heading check of docs/)
         if: needs.changes.outputs.docs == 'true'
         run: python3 tools/docs_pdf.py dist/kisi-docs.pdf
-      - name: Reference cases page
+      - name: Reference pages
         if: needs.changes.outputs.refpage == 'true'
         run: |
           python3 -c "import numpy" 2>/dev/null || python3 -m pip install --quiet numpy
-          python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
+          python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references-3d.html
+          python3 validation/cst_xs/make_viewer.py validation/cst_xs dist/kisi-references-2d.html
       - name: Screenshots of the viewer check
         if: failure()
         uses: actions/upload-artifact@v6

@@ -1,0 +1,255 @@
+{
+ "id": "msm_u0.5_m35_er3.3",
+ "group": "microstrip_mask",
+ "tier": 2,
+ "tag": "fd",
+ "date": "2026-11-02",
+ "tool": "CST Studio Suite",
+ "solver": "frequency domain solver, tetrahedral mesh, port modes only (FDSolver.ModesOnly) with lossy port modes (ConsiderPortLossesTet)",
+ "cst_version": "CST Studio Suite 2025.5 Release from 2025-05-30",
+ "f_ghz": 1.0,
+ "tol_pct": 0.1,
+ "box": [
+  -2.485,
+  2.485,
+  0.0,
+  2.705
+ ],
+ "margin_scale": 1.0,
+ "text_hash": "033720bb3224db0a",
+ "potentials": true,
+ "blocks_failed": [],
+ "port_adapt": true,
+ "start_level": 0,
+ "status": "ok",
+ "walls": {
+  "electric": {
+   "level": 2,
+   "freqs": [
+    {
+     "mesh": {
+      "level": 2,
+      "lpb": 80,
+      "edge_ratio": 8,
+      "ratio": 80,
+      "lpw": 20
+     },
+     "cells": null,
+     "port_mesh": null,
+     "seconds": 7.7,
+     "modes": [
+      {
+       "mode": 1,
+       "meaning": "line",
+       "z": 80.23593842801014,
+       "z_im": -0.84558189313784,
+       "beta": 3.9398017064853557,
+       "eeff": 3.533705863107245,
+       "beta_unit": "1/m",
+       "alpha": 0.11267559135423288,
+       "alpha_db_m": 0.9786877514065817
+      }
+     ],
+     "values": {
+      "z0": 80.23593842801014,
+      "eeff": 3.533705863107245
+     },
+     "f_ghz": 0.1
+    },
+    {
+     "mesh": {
+      "level": 2,
+      "lpb": 80,
+      "edge_ratio": 8,
+      "ratio": 80,
+      "lpw": 20
+     },
+     "cells": null,
+     "port_mesh": null,
+     "seconds": 5.5,
+     "modes": [
+      {
+       "mode": 1,
+       "meaning": "line",
+       "z": 80.29929067840395,
+       "z_im": 0.22107130993515386,
+       "beta": 38.262561673669246,
+       "eeff": 3.332957335563878,
+       "beta_unit": "1/m",
+       "alpha": 0.6075996736335136,
+       "alpha_db_m": 5.277543709305033
+      }
+     ],
+     "values": {
+      "z0": 80.29929067840395,
+      "eeff": 3.332957335563878
+     },
+     "f_ghz": 1.0
+    },
+    {
+     "mesh": {
+      "level": 2,
+      "lpb": 80,
+      "edge_ratio": 8,
+      "ratio": 80,
+      "lpw": 20
+     },
+     "cells": null,
+     "port_mesh": null,
+     "seconds": 4.8,
+     "modes": [
+      {
+       "mode": 1,
+       "meaning": "line",
+       "z": 80.64156485954386,
+       "z_im": 0.5027347467778739,
+       "beta": 189.01830491540215,
+       "eeff": 3.253489345149415,
+       "beta_unit": "1/m",
+       "alpha": 2.310499360568042,
+       "alpha_db_m": 20.068742454713846
+      }
+     ],
+     "values": {
+      "z0": 80.64156485954386,
+      "eeff": 3.253489345149415
+     },
+     "f_ghz": 5.0
+    },
+    {
+     "mesh": {
+      "level": 2,
+      "lpb": 80,
+      "edge_ratio": 8,
+      "ratio": 80,
+      "lpw": 20
+     },
+     "cells": null,
+     "port_mesh": null,
+     "seconds": 4.5,
+     "modes": [
+      {
+       "mode": 1,
+       "meaning": "line",
+       "z": 80.81542203284761,
+       "z_im": 0.6101539412565992,
+       "beta": 376.53523124023144,
+       "eeff": 3.2276980897555037,
+       "beta_unit": "1/m",
+       "alpha": 4.432341048036967,
+       "alpha_db_m": 38.49882518151461
+      }
+     ],
+     "values": {
+      "z0": 80.81542203284761,
+      "eeff": 3.2276980897555037
+     },
+     "f_ghz": 10.0
+    },
+    {
+     "mesh": {
+      "level": 2,
+      "lpb": 80,
+      "edge_ratio": 8,
+      "ratio": 80,
+      "lpw": 20
+     },
+     "cells": null,
+     "port_mesh": null,
+     "seconds": 4.1,
+     "modes": [
+      {
+       "mode": 1,
+       "meaning": "line",
+       "z": 80.5882038987575,
+       "z_im": 0.6291078468713377,
+       "beta": 753.323980547609,
+       "eeff": 3.229871638067592,
+       "beta_unit": "1/m",
+       "alpha": 8.144556912111254,
+       "alpha_db_m": 70.7427224895381
+      }
+     ],
+     "values": {
+      "z0": 80.5882038987575,
+      "eeff": 3.229871638067592
+     },
+     "f_ghz": 20.0
+    },
+    {
+     "mesh": {
+      "level": 2,
+      "lpb": 80,
+      "edge_ratio": 8,
+      "ratio": 80,
+      "lpw": 20
+     },
+     "cells": null,
+     "port_mesh": null,
+     "seconds": 4.3,
+     "modes": [
+      {
+       "mode": 1,
+       "meaning": "line",
+       "z": 79.54795967271338,
+       "z_im": 0.6729905744349548,
+       "beta": 1514.9428285584052,
+       "eeff": 3.2655337275737946,
+       "beta_unit": "1/m",
+       "alpha": 16.050518937376797,
+       "alpha_db_m": 139.41303612372775
+      }
+     ],
+     "values": {
+      "z0": 79.54795967271338,
+      "eeff": 3.2655337275737946
+     },
+     "f_ghz": 40.0
+    }
+   ],
+   "build": {
+    "tiles": 9,
+    "extrusion_mm": 0.12425,
+    "walls": "electric",
+    "extras": [],
+    "potential_sets": [
+     {
+      "set": 1,
+      "meaning": "line",
+      "pins": [
+       [
+        "Positive",
+        0.0,
+        0.2525
+       ],
+       [
+        "Negative",
+        0.0,
+        0.0175
+       ]
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "lossy": true,
+ "tand_freq_ghz": 1.0,
+ "cst_raw_last": {
+  "tree_size": 28,
+  "items": [
+   "1D Results\\Port Information\\Distance (-40 dB)\\1(1)",
+   "1D Results\\Port Information\\Effective Dielectric Constant\\1(1)",
+   "1D Results\\Port Information\\Gamma\\1(1)",
+   "1D Results\\Port Information\\Line Impedance\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Distance (-40 dB)\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Effective Dielectric Constant\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Gamma\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Line Impedance\\1(1)",
+   "1D Results\\Port Information\\Port Modes Base\\Wave Impedance\\1(1)",
+   "1D Results\\Port Information\\Wave Impedance\\1(1)"
+  ]
+ },
+ "result": null,
+ "seconds_total": 73.0
+}

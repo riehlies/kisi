@@ -1,4 +1,4 @@
-"""Build dist/kisi-references.html (not in the repository; built locally and by the release workflow):
+"""Build dist/kisi-references-3d.html (not in the repository; built locally and by the release workflow):
 a self-contained page with the geometry and the results
 of every via reference case (validation/via_ref) and the solver checks (results/*.json).
 
@@ -14,7 +14,7 @@ import sparam  # noqa: E402
 
 ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 REF = ARGS[0] if len(ARGS) > 0 else os.path.join(ROOT, "validation", "via_ref")
-OUT = ARGS[1] if len(ARGS) > 1 else os.path.join(ROOT, "dist", "kisi-references.html")
+OUT = ARGS[1] if len(ARGS) > 1 else os.path.join(ROOT, "dist", "kisi-references-3d.html")
 CASES = os.path.join(HERE, "via_cases")
 STEP = 2  # every 2nd frequency point
 

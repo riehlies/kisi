@@ -17,15 +17,17 @@ python3 tools/bundle.py web/index.html ... dist/kisi-examples.html \
   vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
 python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
   target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs   # Node CLI with field solver
-python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html  # 3D reference cases page
+python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references-3d.html  # 3D reference cases page
+python3 validation/cst_xs/make_viewer.py validation/cst_xs dist/kisi-references-2d.html  # 2D cross-section cases page
 python3 tools/docs_pdf.py dist/kisi-docs.pdf             # docs/ as one PDF (pip: markdown playwright pypdf)
 python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs  # KiCad plugin → dist/kisi-kicad-<version>.zip + PCM entry (pip: jsonschema)
 ```
 Releases: a tag `v*` runs `.github/workflows/release.yml`; it attaches `kisi.html`, `kisi-examples.html`,
 `kisi.mjs`, `kisi-docs.pdf`, the KiCad plugin `kisi-kicad-<version>.zip` with its PCM repository entry
 `kisi-kicad-<version>.metadata.json` (the merge request to gitlab.com/kicad/addons/metadata is made by hand) and –
-when the reference cases changed since the previous release – `kisi-references.html` (built, not kept in the
-repository) and publishes the live demo on GitHub Pages. The example
+each when its cases changed since the previous release – the reference pages `kisi-references-3d.html` (3D via
+cases; up to v0.3.1 `kisi-references.html`) and `kisi-references-2d.html` (cross-sections; built from the committed
+results, no full-wave build), both built, not kept in the repository, and publishes the live demo on GitHub Pages. The example
 boards (ThunderScope CERN-OHL-P-2.0, LibreVNA GPL-3.0) are not in the repository; `tools/fetch_examples.sh` fetches
 them at fixed commits and shrinks them; their power trees are `web/samples/{ts,vna}.kisi.json`.
 

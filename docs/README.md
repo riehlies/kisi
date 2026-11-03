@@ -36,6 +36,9 @@ Validation (`../validation/`):
   them; [fdtd/BOARD_VIAS.md](../validation/fdtd/BOARD_VIAS.md), [BOARD_RESONANCES.md](../validation/fdtd/BOARD_RESONANCES.md),
   [BOARD_RETURNS.md](../validation/fdtd/BOARD_RETURNS.md) – vias, plane cavities and return paths of the example
   boards in 3D; [fdtd/README.md](../validation/fdtd/README.md) – the scripts.
+- [cst_xs/README.md](../validation/cst_xs/README.md) – kisi's 2D impedance chain (geometry text, field solver,
+  formulas) against CST Studio Suite's 2D port-mode solver on 620 cross-sections: case matrix, CST runner,
+  comparison.
 - `channel_export/` – `compare.py` (the export in ngspice against kisi, also in CI), `kicad_sheet.py`,
   `ltspice.py`, and the studies behind the research notes (`compact_study.py`, `ltspice_microtests.py`).
 - `golden/` – stored results of the example boards (`tools/golden.py`); the field-solver baselines

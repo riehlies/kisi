@@ -1,0 +1,158 @@
+# The full-wave (triangular FEM) backend of js_2d_fields on the CST cross-section cases (validation/cst_xs/,
+# run_fullwave.py, README "Full-wave backend"). Job `build` builds its WASM modules from upstream's sources at
+# third_party/UPSTREAM_REV (tools/build_forsten_fullwave.sh: emsdk, OCCT, gmsh, Eigen/Spectra; cached on the pinned
+# versions, about 40 min without the cache); the shards then run the cases of validation/cst_xs/fullwave_plan.json in
+# parallel (at most 15 at a time, 4-vCPU runners, one node process per vCPU). Results come back as workflow
+# artifacts only (`gh run download <run> -p 'fullwave-*'`), nothing is committed by the workflow; cases whose result
+# is already in validation/cst_xs/fullwave/ are skipped.
+#
+# Long: manual only (Actions → fullwave-xs → Run workflow, or `gh workflow run fullwave-xs --ref <branch>` once the
+# workflow is on the default branch), never on main.
+name: fullwave-xs
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fullwave-xs-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  EMSDK_VERSION: "6.0.5"  # the last emsdk whose emcc links C++ by default (upstream's Makefile links with emcc)
+  OCCT_TAG: V7_5_1
+  FW: /home/runner/forsten-fw
+jobs:
+  build:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    outputs:
+      shards: ${{ steps.p.outputs.shards }}
+      results_run: ${{ steps.p.outputs.results_run }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: p
+        name: "Shards of the plan (summary_of_run in the plan: no shards, only the summary of that run's results)"
+        run: |
+          echo "shards=$(python3 -c 'import json; p=json.load(open("validation/cst_xs/fullwave_plan.json")); print(json.dumps([] if p.get("summary_of_run") else list(range(p["shards"]))))')" >> "$GITHUB_OUTPUT"
+          echo "results_run=$(python3 -c 'import json; print(json.load(open("validation/cst_xs/fullwave_plan.json")).get("summary_of_run") or "")')" >> "$GITHUB_OUTPUT"
+      - id: k
+        name: Cache keys (pinned versions)
+        run: |
+          echo "dist=forsten-fw-$(cat third_party/UPSTREAM_REV)-emsdk$EMSDK_VERSION-$OCCT_TAG-${{ hashFiles('tools/build_forsten_fullwave.sh') }}" >> "$GITHUB_OUTPUT"
+          echo "occt=occt-wasm-$OCCT_TAG-emsdk$EMSDK_VERSION-v1" >> "$GITHUB_OUTPUT"
+      - id: dist
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.FW }}/dist
+          key: ${{ steps.k.outputs.dist }}
+      - name: Build tools
+        if: steps.dist.outputs.cache-hit != 'true'
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ninja-build cmake
+      - id: occt
+        if: steps.dist.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ${{ env.FW }}/occt-install
+            ${{ env.FW }}/emsdk
+          key: ${{ steps.k.outputs.occt }}
+      - name: Build the WASM modules
+        if: steps.dist.outputs.cache-hit != 'true'
+        run: |
+          lscpu | grep -E "Model name|^CPU\(s\)"; free -g | head -2; df -h / | tail -1
+          bash tools/build_forsten_fullwave.sh "$FW"
+      - name: Build logs
+        if: failure()
+        run: tail -n 80 "$FW"/logs/*.log || true
+      - id: occt_done
+        if: always() && steps.dist.outputs.cache-hit != 'true' && steps.occt.outputs.cache-hit != 'true'
+        name: OCCT built?
+        run: if ls "$FW"/occt-install/.kisi-* > /dev/null 2>&1; then echo "ok=1" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/cache/save@v5
+        if: always() && steps.occt_done.outputs.ok == '1'
+        with:
+          path: |
+            ${{ env.FW }}/occt-install
+            ${{ env.FW }}/emsdk
+          key: ${{ steps.k.outputs.occt }}
+      - uses: actions/cache/save@v5
+        if: steps.dist.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.FW }}/dist
+          key: ${{ steps.k.outputs.dist }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Smoke test (one microstrip, static and full-wave)
+        run: |
+          cat "$FW/dist/BUILD_INFO.json"
+          if [ -f tools/fullwave_smoke.mjs ]; then KISI_FW_WASM_DIR="$FW/dist" node tools/fullwave_smoke.mjs; fi
+      - uses: actions/upload-artifact@v6
+        with:
+          name: forsten-fw-wasm
+          path: ${{ env.FW }}/dist
+          retention-days: 14
+
+  shard:
+    needs: build
+    if: needs.build.outputs.shards != '[]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    strategy:
+      fail-fast: false
+      max-parallel: 15  # leaves runners for the CI of other branches
+      matrix:
+        shard: ${{ fromJSON(needs.build.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v7
+        with:
+          name: forsten-fw-wasm
+          path: ${{ env.FW }}/dist
+      - name: Run the shard (no new task after 4 h 40 min, a task at most 60 min)
+        run: |
+          lscpu; free -g  # the runner (also stored with every result: "host")
+          timeout 345m python3 validation/cst_xs/run_fullwave.py --plan validation/cst_xs/fullwave_plan.json \
+            --shard ${{ matrix.shard }} --wasm-dir "$FW/dist" --out fullwave_out --deadline-min 280 --timeout-min 60 \
+            || echo "shard ended with status $?"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: fullwave-${{ matrix.shard }}
+          path: fullwave_out
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # all shards' results in one artifact (fullwave-results: validation/cst_xs/fullwave/<id>.json) and the summary of
+  # fullwave_compare.py (compare.py with FW's diagnostics) in the run's summary page and log
+  collect:
+    needs: [build, shard]
+    if: always() && needs.build.result == 'success' && (needs.build.outputs.shards != '[]' || needs.build.outputs.results_run != '')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read  # the artifacts of an earlier run (summary_of_run)
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: fullwave-[0-9]*
+          path: validation/cst_xs/fullwave
+          merge-multiple: true
+          run-id: ${{ needs.build.outputs.results_run || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Summary against CST and the FDM backend
+        run: |
+          ls validation/cst_xs/fullwave | wc -l
+          N=$(ls validation/cst_xs/fullwave/*.json | wc -l); X=""; [ "$N" -le 30 ] && X="--per-case --sweep-table"; X="$X --lossy-table"  # pilot: every value
+          python3 validation/cst_xs/fullwave_compare.py $X --md summary.md --json summary.json
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+          cp summary.md summary.json validation/cst_xs/fullwave/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v6
+        with:
+          name: fullwave-results
+          path: validation/cst_xs/fullwave
+          retention-days: 30

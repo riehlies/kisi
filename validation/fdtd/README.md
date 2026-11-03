@@ -4,7 +4,7 @@
 This folder holds its validation and the generator of the reference cases from `validation/via_references.md`.
 The results are in `validation/via_ref/`. The reference page shows every case (geometry, S-parameters, TDR,
 mixed mode, Z, field) and the solver checks. It is built, not kept in the repository:
-`python3 validation/fdtd/make_viewer.py` → `dist/kisi-references.html` (self-contained; a release attaches it when the reference cases changed).
+`python3 validation/fdtd/make_viewer.py` → `dist/kisi-references-3d.html` (self-contained; a release attaches it when the reference cases changed; the 2D cross-section cases: `validation/cst_xs`, `kisi-references-2d.html`).
 
 ## Solver
 - **Mesh:** rectilinear, non-uniform. Fixed lines at layer boundaries, sheet edges, vias, holes and ports, with
@@ -84,7 +84,7 @@ and the lumped R–L–C.
 - `sparam.py` provides Touchstone I/O, the full matrix from symmetric half-excitations, IEEE P370-style 2×thru
   de-embedding (NZC: fixture S11 from the gated 2×thru reflection, then S22 and S21 from the cascade), a
   first-order plane shift, mixed mode and TDR.
-- `make_viewer.py` builds `dist/kisi-references.html`: geometry, S-parameters (at the ports and de-embedded, with
+- `make_viewer.py` builds `dist/kisi-references-3d.html`: geometry, S-parameters (at the ports and de-embedded, with
   kisi's fast model and the reduced via model), TDR, mixed mode, line parameters (T), Z (G, H), and the electric
   field of port 1 (top view in the thickest dielectric, animated; section through the via; collapsed by default).
 - `rust_models.py` runs the Rust port of the reduced models (`kisi-validate models`) against the Python prototypes

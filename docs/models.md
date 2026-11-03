@@ -238,6 +238,12 @@ kisi marks these as estimates in the viewer and in the CLI output:
   `tools/forsten_sparse_shim.js`); `kisi-validate <cases.json> [<refs.json>]` compares the formulas, and the
   field-solver chain (`kisi-validate --geoms` → `tools/solve_xs.mjs` → `kisi-validate --field`) is what
   `validate_field.sh` runs.
+- **Cross-sections, impedance and loss** on 620 cases (every line type, the example boards, the test-board coupons)
+  against CST Studio Suite's 2D port modes and the full-wave FEM backend of js_2d_fields: the field solver in the
+  same solver box within 0.04 % (single lines) and 0.4 % (pairs) of CST, as kisi runs it within 1 % (p99 0.8 %);
+  the formulas per line type from 0.2 % (microstrip, stripline) to 18 % (plane cut-outs); the conductor loss of the
+  line model 2 % below an MQS solution. Method, tables, the limits (trapezoidal etch not modelled) and the
+  page `kisi-references-2d.html`: [validation/cst_xs/README.md](../validation/cst_xs/README.md).
 - **Passivity and causality:** unit tests (series impedance and shunt admittance positive-real in the whole
   right half-plane; the pulse response of a 200 mm lossy line before its front; the plane-pair reductions with
   asymmetric returns) and a test over every lane of the example boards (`crates/kisi-core/tests/causality.rs`,
@@ -252,8 +258,8 @@ kisi marks these as estimates in the viewer and in the CLI output:
   a refined mesh. Board vias cut out of the example boards keep a mesh uncertainty of a few tenths of a picosecond
   (up to about 0.7 ps per halving of the cell on one pair) and 0.1–0.2 GHz at their notches. Sections 16 and 17 of
   the test log [validation/fdtd/TESTS.md](../validation/fdtd/TESTS.md) and
-  [validation/fdtd/CST.md](../validation/fdtd/CST.md); the reference page `kisi-references.html` (attached to the
-  releases in which the cases changed) shows every case with kisi-fdtd, openEMS, CST and kisi's models.
+  [validation/fdtd/CST.md](../validation/fdtd/CST.md); the reference page `kisi-references-3d.html` (attached to the
+  releases in which the cases changed; up to v0.3.1 `kisi-references.html`) shows every case with kisi-fdtd, openEMS, CST and kisi's models.
   Useful for teaching as well: it shows why vias and planes behave as they do.
 - **Temperature solver** against analytic cases (1D slab exact, fin within 0.2 %, radial spreading in a plane
   with convection within 0.13 %, energy balance) and, with the datasheets' θJB/θJC on a model of the JEDEC

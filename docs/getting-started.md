@@ -22,7 +22,8 @@ Every [release](https://github.com/riehlies/kisi/releases/latest) carries:
 | `kisi.mjs` | the command line for scripts, CI and agents (Node.js ≥ 18), with the 2D field solver |
 | `kisi-docs.pdf` | this documentation as one PDF |
 | `kisi-kicad-<version>.zip` | the KiCad plugin: a button in KiCad's PCB editor that opens the board in the viewer ([below](#from-kicad-the-plugin)) |
-| `kisi-references.html` | 3D reference cases for vias, stubs, pairs, lines and plane cavities with field plots, and kisi's fast models against them (attached to the releases in which the cases changed, currently [v0.3.0](https://github.com/riehlies/kisi/releases/tag/v0.3.0)) |
+| `kisi-references-3d.html` | 3D reference cases for vias, stubs, pairs, lines and plane cavities with field plots, and kisi's fast models against them (attached to the releases in which the cases changed; up to v0.3.1 named `kisi-references.html`, currently [v0.3.0](https://github.com/riehlies/kisi/releases/tag/v0.3.0)) |
+| `kisi-references-2d.html` | 620 cross-sections solved by CST, a full-wave FEM solver, kisi's field solver and kisi's formulas: impedance, εeff and loss per case and per line type (attached to the releases in which the cases changed) |
 
 The [live version](https://riehlies.github.io/kisi/) serves the viewer and the example viewer from GitHub Pages.
 

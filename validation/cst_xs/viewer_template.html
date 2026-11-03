@@ -1,0 +1,470 @@
+<title>kisi 2D references</title>
+<style>
+/*FONTS*/
+/* Layout and colours as the 3D reference page (validation/fdtd/viewer_template.html) */
+:root {
+  --bg: #e9ede9; --panel: #f7f9f7; --panel-2: #eef2ef; --fg: #17201b; --muted: #59665f; --line: #d2d9d4;
+  --accent: #a9561f; --accent-soft: #f1e2d6; --diel: #c9d6c2; --cu: #b0672b; --gnd: #6d7a72;
+  --s1: #a9561f; --s2: #2f6fb0; --s3: #7a52c4; --s4: #23905a; --ok: #23a05a; --warn: #c98612; --bad: #d63c3c;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1412; --panel: #151b18; --panel-2: #1b2320; --fg: #e2e9e4; --muted: #8e9b94; --line: #27312c;
+  --accent: #e08f52; --accent-soft: #3a2a1e; --diel: #2c3a30; --cu: #d98a4a; --gnd: #8fa097;
+  --s1: #e08f52; --s2: #5fa6e8; --s3: #a682ef; --s4: #3cc477; --ok: #3cc477; --warn: #f0ae35; --bad: #f25d5d; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1412; --panel: #151b18; --panel-2: #1b2320; --fg: #e2e9e4; --muted: #8e9b94; --line: #27312c;
+  --accent: #e08f52; --accent-soft: #3a2a1e; --diel: #2c3a30; --cu: #d98a4a; --gnd: #8fa097;
+  --s1: #e08f52; --s2: #5fa6e8; --s3: #a682ef; --s4: #3cc477; --ok: #3cc477; --warn: #f0ae35; --bad: #f25d5d; color-scheme: dark }
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.45; margin: 0 }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel) }
+.brand { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap }
+.brand b { font-family: var(--font-display); font-weight: 700; font-size: 22px; color: var(--accent); letter-spacing: .02em }
+.brand span { font-family: var(--font-display); font-weight: 600; font-size: 18px }
+.brand small { color: var(--muted); font-size: 13px }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden }
+.seg button { border: 0; background: none; padding: 6px 12px; cursor: pointer; font: 600 14px var(--font-display); color: var(--muted) }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg) }
+.seg button:focus-visible, .case-list button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px }
+.sub { color: var(--muted); font-size: 13px; flex: 1 1 260px; min-width: 0 }
+.sub a, .note a, footer a, td a { color: var(--accent) }
+main { padding-block: 16px 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+.cases { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; align-items: start }
+.side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 64px); display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 90px) }
+.side input, #case-select, .side select { width: 100%; padding: 7px 9px; font: 14px var(--font-body); background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: var(--radius) }
+nav.case-list { overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 0; min-height: 0 }
+.case-list h3 { font: 700 13px var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 10px 12px 4px }
+.case-list button { display: flex; width: 100%; gap: 8px; align-items: baseline; text-align: left; border: 0; background: none; padding: 3px 12px; cursor: pointer; color: var(--fg); font: 13px var(--font-body) }
+.case-list button:hover { background: var(--panel-2) }
+.case-list button[aria-current="true"] { background: var(--accent-soft) }
+.case-list button .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--ok); transform: translateY(-1px) }
+.case-list button .dot.warn { background: var(--warn) }
+.case-list button .lab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
+#case-select { display: none }
+h1 { font: 700 24px/1.15 var(--font-display); margin: 0 0 6px; text-wrap: balance }
+h2 { font: 600 17px var(--font-display); margin: 0 0 8px; letter-spacing: .01em }
+.id { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px }
+.chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; font-variant-numeric: tabular-nums }
+.chip b { font-weight: 600 }
+.chip.ok { border-color: var(--ok) } .chip.warn { border-color: var(--warn) } .chip.info { border-style: dashed }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)) }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; min-width: 0 }
+.panel + .panel, .grid + .panel, .panel + .grid, .callout + .grid, .callout + .panel { margin-top: 14px }
+.readout { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.4em; overflow-wrap: anywhere }
+svg { display: block; width: 100%; height: auto; max-width: 100% }
+svg text { fill: var(--muted); font: 11px var(--font-body) }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); margin-top: 6px }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 5px }
+.legend i.dash { border-top-style: dashed }
+.legend i.dot { width: 8px; height: 8px; border: 0; border-radius: 50% }
+.legend i.box { width: 12px; height: 10px; border: 1px solid var(--line) }
+.legend i.hollow { width: 8px; height: 8px; border: 1.5px solid; border-radius: 50% }
+.side label { display: flex; gap: 6px; align-items: center; margin: 0 }
+.side input[type="checkbox"] { width: auto; margin: 0 }
+.note { color: var(--muted); font-size: 12.5px; max-width: 80ch }
+.callout { border-left: 3px solid var(--warn); background: var(--panel); padding: 8px 12px; border-radius: 0 var(--radius) var(--radius) 0; margin: 0 0 12px; max-width: 90ch }
+.callout p { margin: 0 0 4px } .callout p:last-child { margin: 0 }
+.wide { overflow-x: auto }
+table { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; width: 100% }
+th, td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap }
+th:first-child, td:first-child { text-align: left }
+th { font: 600 12px var(--font-display); letter-spacing: .04em; text-transform: uppercase; color: var(--muted) }
+td.w { color: var(--warn); font-weight: 600 }
+td small { color: var(--muted) }
+.overview { display: grid; gap: 16px; max-width: 1200px }
+.overview p { max-width: 85ch; margin: 0 0 8px }
+.gcards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)) }
+.gcard { text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: var(--radius); padding: 8px 10px; cursor: pointer; color: var(--fg); font: 13px var(--font-body) }
+.gcard:hover { background: var(--panel-2) } .gcard b { font: 600 15px var(--font-display); display: block } .gcard span { color: var(--muted); font-size: 12px }
+.gcard:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px }
+.btn { border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: var(--radius); padding: 5px 12px; cursor: pointer; font: 600 13px var(--font-display) }
+@media (max-width: 760px) {
+  .cases { grid-template-columns: minmax(0, 1fr) }
+  .side { position: static; max-height: none }
+  nav.case-list { display: none }
+  #case-select { display: block }
+  .grid { grid-template-columns: minmax(0, 1fr) }
+}
+footer.about { border-top: 1px solid var(--line); padding: 12px max(16px, env(safe-area-inset-right, 0px)) 20px max(16px, env(safe-area-inset-left, 0px)); font-size: 12px; color: var(--muted); line-height: 1.5 }
+</style>
+
+<header>
+  <div class="brand"><b>kisi</b><span>2D references</span><small>cross-sections</small></div>
+  <div class="seg" role="group" aria-label="View">
+    <button id="tab-overview" aria-pressed="true">Overview</button>
+    <button id="tab-cases" aria-pressed="false">Cases</button>
+  </div>
+  <div class="sub" id="summary"></div>
+</header>
+<main>
+  <section id="view-overview" class="overview"></section>
+  <section id="view-cases" class="cases" hidden>
+    <div class="side">
+      <input id="search" type="search" placeholder="Search id or title" aria-label="Search cases">
+      <select id="group-filter" aria-label="Group"><option value="">All groups</option></select>
+      <label class="note"><input type="checkbox" id="only-notes"> only cases with a note</label>
+      <select id="case-select" aria-label="Case"></select>
+      <nav class="case-list" id="case-list" aria-label="Cases"></nav>
+    </div>
+    <div style="min-width:0"><div id="case"></div></div>
+  </section>
+</main>
+<footer class="about">Cross-sections solved by CST Studio Suite's 2D port-mode solver, by the full-wave (triangular FEM)
+  backend of H. Forstén's js_2d_fields, by kisi's field solver (js_2d_fields' FDM backend, as kisi runs it) and by kisi's
+  closed-form formulas; method and results in validation/cst_xs/README.md. The 3D reference cases (vias, stubs, pairs,
+  plane cavities) are on the page <a href="kisi-references-3d.html">kisi 3D references</a> (a release file next to this one;
+  each is attached to the releases in which its cases changed:
+  <a href="https://github.com/riehlies/kisi/releases" target="_blank" rel="noopener">releases</a>). ·
+  kisi – a side project by David Riehl, started as a visualisation tool for the course Advanced PCB Design at
+  TU Darmstadt; meant to help, without any warranty of correctness. GPL-3.0 ·
+  <a href="https://github.com/riehlies/kisi" target="_blank" rel="noopener">source</a></footer>
+
+<script>
+"use strict";
+const DATA = __DATA__;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const cases = DATA.cases;
+const byId = new Map(cases.map((c) => [c.id, c]));
+const LIM = DATA.limits;
+const QL = { z0: "Z0", zdiff: "Zdiff", zeven: "Zeven", eeff: "εeff", eeff_odd: "εeff,odd", eeff_even: "εeff,even" };
+const SRC = {
+  cst: ["CST", "var(--s4)"], fw: ["full-wave (FW)", "var(--s2)"], fdm: ["kisi field solver (FDM)", "var(--s1)"],
+  kisi: ["kisi line model", "var(--s1)"], formula: ["kisi formula", "var(--s3)"],
+};
+const DEF = {
+  z: "Lossless line impedance. CST: port mode with PEC and tanδ 0; FW: full-wave eigenmode with ideal conductors; FDM: 1/(c·√(C·C0)), static, without conductor loss; formula: kisi's closed form. Pairs: Zdiff = 2·Zodd, Zeven = 2·Zcomm; for an asymmetric pair CST's value is transferred to kisi's modal definition.",
+  epec: "εeff with ideal conductors: CST lossless (1 GHz), FW eigenmode (1 GHz); FW and FDM static (C/C0) differ from these by the dispersion at 1 GHz.",
+  ephase: "Phase εeff = (β/k0)² with copper and tanδ at 1 GHz (internal inductance included): CST lossy, FW sweep, FDM as kisi reports it.",
+};
+let cur = null;
+const pc = (x, ref) => (x == null || !ref) ? null : (x / ref - 1) * 100;
+const fp = (v, d = 2) => v == null || !isFinite(v) ? "–" : (v >= 0 ? "+" : "") + v.toFixed(d);
+const fv = (v, d = 3) => v == null || !isFinite(v) ? "–" : (Math.abs(v) >= 100 ? v.toFixed(2) : v.toPrecision(Math.max(d + 1, 4)));
+const pairQ = (c) => c.pair ? ["zdiff", "zeven"] : ["z0"];
+const pairE = (c) => c.pair ? ["eeff_odd", "eeff_even"] : ["eeff"];
+
+// ------------------------------------------------------------------ chart (as the 3D page; per-series x, markers)
+function chart({ series, xlabel, ylabel, logx, w = 560, h, ymin, ymax }) {
+  const W = w, H = h || Math.round(Math.min(280, Math.max(200, w * 0.55))), L = 50, R = 10, T = 10, B = 34;
+  const tx = (v) => logx ? Math.log10(v) : v;
+  const allx = series.flatMap((s) => s.x.filter((v, i) => s.y[i] != null).map(tx));
+  const ally = series.flatMap((s) => s.y.filter((v, i) => v != null && isFinite(v) && !(s.excl && s.excl[i])));  // points left out do not set the scale
+  if (!allx.length) return { svg: `<p class="note">no data</p>`, hook: () => {} };
+  let y0 = ymin ?? Math.min(...ally), y1 = ymax ?? Math.max(...ally);
+  if (y1 - y0 < 1e-9 * Math.max(1, Math.abs(y1))) { const m = Math.max(Math.abs(y1) * 0.01, 1e-6); y1 += m; y0 -= m; }
+  const pad = (y1 - y0) * 0.06; if (ymin == null) y0 -= pad; if (ymax == null) y1 += pad;
+  const x0 = Math.min(...allx), x1 = Math.max(...allx);
+  const nice = (lo, hi, n) => { const st = Math.pow(10, Math.floor(Math.log10((hi - lo) / n))); const m = [1, 2, 2.5, 5, 10].find((k) => (hi - lo) / (k * st) <= n) * st; const out = []; for (let v = Math.ceil(lo / m - 1e-9) * m; v <= hi + 1e-9; v += m) out.push(+v.toFixed(10)); return out; };
+  const logt = (lo, hi) => { const out = []; for (let d = Math.floor(lo); d <= Math.ceil(hi); d++) for (const m of [1, 2, 5]) { const v = d + Math.log10(m); if (v >= lo - 1e-9 && v <= hi + 1e-9) out.push(v); } return out.length > 8 ? out.filter((v) => Math.abs(v - Math.round(v)) < 1e-9) : out; };
+  const fmtl = (v) => +Math.pow(10, v).toPrecision(2);
+  const yt = nice(y0, y1, 5);
+  const px = (v) => L + (v - x0) / (x1 - x0 || 1) * (W - L - R);
+  const py = (v) => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  const xt = logx ? logt(x0, x1) : nice(x0, x1, 6);
+  let g = "";
+  for (const v of yt) { if (v < y0 || v > y1) continue; const yy = py(v); g += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end">${+v.toPrecision(4)}</text>`; }
+  for (const v of xt) { const xx = px(v); g += `<line x1="${xx}" x2="${xx}" y1="${T}" y2="${H - B}" stroke="var(--line)" opacity=".6"/><text x="${xx}" y="${H - B + 15}" text-anchor="middle">${logx ? fmtl(v) : v}</text>`; }
+  g += `<text x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">${esc(xlabel)}</text><text transform="translate(11 ${(T + H - B) / 2}) rotate(-90)" text-anchor="middle">${esc(ylabel)}</text>`;
+  let p = "";
+  const clampY = (v) => Math.max(T - 2, Math.min(H - B + 2, py(v)));
+  for (const s of series) {
+    if (s.line !== false) {
+      let d = "", pen = false;
+      s.y.forEach((v, i) => { if (v == null || !isFinite(v)) { pen = false; return; } d += `${pen ? "L" : "M"}${px(tx(s.x[i])).toFixed(1)} ${clampY(v).toFixed(1)}`; pen = true; });
+      p += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w || 1.6}" ${s.dash ? 'stroke-dasharray="5 4"' : ""} stroke-linejoin="round"/>`;
+    }
+    if (s.marks) s.y.forEach((v, i) => { if (v == null || !isFinite(v)) return; const ex = s.excl && s.excl[i]; p += `<circle cx="${px(tx(s.x[i])).toFixed(1)}" cy="${clampY(v).toFixed(1)}" r="3.6" fill="${ex ? "var(--panel)" : s.color}" stroke="${ex ? "var(--muted)" : s.color}" stroke-width="1.4"><title>${ex ? "left out: " + esc(ex) : ""}</title></circle>`; });
+  }
+  const id = "c" + Math.random().toString(36).slice(2, 8);
+  const xsAll = [...new Set(series.flatMap((s) => s.x))].sort((a, b) => a - b);
+  const svg = `<svg viewBox="0 0 ${W} ${H}" id="${id}" role="img" aria-label="${esc(ylabel)} over ${esc(xlabel)}">${g}<g>${p}</g><line class="cross" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--muted)" visibility="hidden"/></svg>`;
+  const hook = (box, out) => {
+    const el = box.querySelector("#" + id); if (!el) return;
+    el.addEventListener("pointermove", (ev) => {
+      const r = el.getBoundingClientRect(); const vx = (ev.clientX - r.left) / r.width * W;
+      if (vx < L || vx > W - R) return;
+      const xv = x0 + (vx - L) / (W - L - R) * (x1 - x0);
+      let k = 0; for (let i = 1; i < xsAll.length; i++) if (Math.abs(tx(xsAll[i]) - xv) < Math.abs(tx(xsAll[k]) - xv)) k = i;
+      const xx = xsAll[k], ln = el.querySelector(".cross"); ln.setAttribute("x1", px(tx(xx))); ln.setAttribute("x2", px(tx(xx))); ln.setAttribute("visibility", "visible");
+      out.textContent = `${xx} ${xlabel.split(" ").pop()}: ` + series.map((s) => { const i = s.x.indexOf(xx); return i < 0 || s.y[i] == null ? null : `${s.name} ${+s.y[i].toPrecision(5)}`; }).filter(Boolean).join(" · ");
+    });
+    el.addEventListener("pointerleave", () => { el.querySelector(".cross").setAttribute("visibility", "hidden"); out.textContent = ""; });
+  };
+  return { svg, hook };
+}
+function panel(title, ch, legend, note) {
+  const box = document.createElement("div");
+  box.className = "panel";
+  box.innerHTML = `<h2>${esc(title)}</h2><div class="readout"></div>${ch.svg}` + (legend ? `<div class="legend">${legend}</div>` : "") + (note ? `<p class="note">${note}</p>` : "");
+  ch.hook(box, box.querySelector(".readout"));
+  return box;
+}
+const lg = (items) => items.map(([n, c, d]) => `<span><i class="${d === "fill" ? "box" : d || ""}" style="border-color:${d === "fill" ? "var(--line)" : c};${d === "dot" || d === "fill" ? "background:" + c : ""}"></i>${esc(n)}</span>`).join("");
+
+// ------------------------------------------------------------------ cross-section drawing (to scale)
+function drawing(c, W, mode) {
+  const g = c.geo, [X0, X1, Y0, Y1] = g.box;
+  const sigs = g.rects.filter((r) => r.k === "sig+" || r.k === "sig-");
+  let x0 = X0, x1 = X1, y0 = Y0, y1 = Y1;
+  if (mode === "detail") {
+    const sx0 = Math.min(...sigs.map((r) => r.x[0])), sx1 = Math.max(...sigs.map((r) => r.x[1]));
+    const fin = g.rects.flatMap((r) => r.y).filter((v) => isFinite(v));
+    const ylo = Math.max(Y0, Math.min(...fin)), yhi = Math.min(Y1, Math.max(...fin));
+    const span = Math.max(sx1 - sx0, (yhi - ylo) * 1.6, (g.H || 0.1) * 3);
+    const cx = (sx0 + sx1) / 2;
+    x0 = Math.max(X0, cx - span * 1.25); x1 = Math.min(X1, cx + span * 1.25);
+    const m = (yhi - ylo) * 0.12;
+    y0 = Math.max(Y0, ylo - m); y1 = Math.min(Y1, yhi + m);
+  }
+  W = Math.round(W);
+  const maxH = mode === "detail" ? 260 : 120, minH = 28;
+  let kx = W / (x1 - x0), ky = kx, note = "to scale";
+  if ((y1 - y0) * ky > maxH) { kx = ky = maxH / (y1 - y0); }
+  else if ((y1 - y0) * ky < minH) { ky = minH / (y1 - y0); note = `height ×${(ky / kx).toFixed(1)}`; }
+  const Wd = Math.max(40, Math.round((x1 - x0) * kx)), Hd = Math.round((y1 - y0) * ky);
+  const X = (x) => ((Math.max(x0, Math.min(x1, x)) - x0) * kx).toFixed(2), Y = (y) => ((y1 - Math.max(y0, Math.min(y1, y))) * ky).toFixed(2);
+  let out = `<rect x="0" y="0" width="${Wd}" height="${Hd}" fill="var(--panel-2)"/>`;
+  const ers = g.rects.filter((r) => r.k === "diel").map((r) => r.er);
+  const emin = Math.min(...ers, 1), emax = Math.max(...ers, 1.0001);
+  for (const r of g.rects) {
+    if (r.k !== "diel") continue;
+    const op = 0.3 + 0.6 * (r.er - emin) / (emax - emin || 1);
+    out += `<rect x="${X(r.x[0])}" y="${Y(r.y[1])}" width="${(+X(r.x[1]) - +X(r.x[0])).toFixed(2)}" height="${(+Y(r.y[0]) - +Y(r.y[1])).toFixed(2)}" fill="var(--diel)" opacity="${op.toFixed(2)}"><title>εr ${r.er}, tanδ ${r.tand}, ${((r.y[1] - r.y[0]) * 1000).toFixed(1)} µm</title></rect>`;
+  }
+  for (const r of g.rects) {
+    if (r.k === "diel") continue;
+    const col = r.k === "gnd" ? "var(--gnd)" : "var(--cu)";
+    if (r.poly) out += `<polygon points="${r.poly.map((p) => X(p[0]) + "," + Y(p[1])).join(" ")}" fill="${col}"><title>${r.k} (trapezoid)</title></polygon>`;
+    else out += `<rect x="${X(r.x[0])}" y="${Y(r.y[1])}" width="${Math.max(0.6, +X(r.x[1]) - +X(r.x[0])).toFixed(2)}" height="${Math.max(0.6, +Y(r.y[0]) - +Y(r.y[1])).toFixed(2)}" fill="${col}"><title>${r.k} ${((r.x[1] - r.x[0]) * 1000).toFixed(0)} × ${((r.y[1] - r.y[0]) * 1000).toFixed(1)} µm</title></rect>`;
+  }
+  for (const r of g.kisi_rect || []) out += `<rect x="${X(r.x[0])}" y="${Y(r.y[1])}" width="${(+X(r.x[1]) - +X(r.x[0])).toFixed(2)}" height="${(+Y(r.y[0]) - +Y(r.y[1])).toFixed(2)}" fill="none" stroke="var(--fg)" stroke-dasharray="3 2" stroke-width="1"><title>kisi's rectangle</title></rect>`;
+  for (const r of g.extras || []) out += `<rect x="${X(r.x[0])}" y="${Y(r.y[1])}" width="${Math.max(1, +X(r.x[1]) - +X(r.x[0])).toFixed(2)}" height="${Math.max(1, +Y(r.y[0]) - +Y(r.y[1])).toFixed(2)}" fill="var(--gnd)" opacity=".6"><title>ground tie to the wall (solver box)</title></rect>`;
+  // labels of the dielectric layers (full-width ones) in the detail view
+  if (mode === "detail") {
+    const seen = new Set();
+    for (const r of g.rects) {
+      if (r.k !== "diel" || r.x[0] > x0 + 1e-9 || r.x[1] < x1 - 1e-9) continue;
+      const hpx = +Y(r.y[0]) - +Y(r.y[1]); if (hpx < 12) continue;
+      const key = r.y.join(","); if (seen.has(key)) continue; seen.add(key);
+      out += `<text x="${Wd - 4}" y="${((+Y(r.y[0]) + +Y(r.y[1])) / 2 + 4).toFixed(1)}" text-anchor="end">εr ${r.er} · ${((r.y[1] - r.y[0]) * 1000).toFixed(0)} µm</text>`;
+    }
+  }
+  // the box and its walls
+  const wall = (cl) => cl ? "var(--gnd)" : "var(--muted)";
+  if (mode !== "detail" || (x0 <= X0 + 1e-9)) out += `<line x1="0.5" x2="0.5" y1="0" y2="${Hd}" stroke="var(--fg)" stroke-width="1"/>`;
+  if (mode !== "detail" || (x1 >= X1 - 1e-9)) out += `<line x1="${Wd - 0.5}" x2="${Wd - 0.5}" y1="0" y2="${Hd}" stroke="var(--fg)" stroke-width="1"/>`;
+  if (mode !== "detail" || y1 >= Y1 - 1e-9) out += `<line x1="0" x2="${Wd}" y1="0.5" y2="0.5" stroke="${wall(g.closed[1])}" stroke-width="1"/>`;
+  if (mode !== "detail" || y0 <= Y0 + 1e-9) out += `<line x1="0" x2="${Wd}" y1="${Hd - 0.5}" y2="${Hd - 0.5}" stroke="${wall(g.closed[0])}" stroke-width="1"/>`;
+  // scale bar
+  const sb = Math.pow(10, Math.floor(Math.log10((x1 - x0) / 4)));
+  const sbl = sb * kx;
+  out += `<line x1="6" x2="${6 + sbl}" y1="${Hd - 6}" y2="${Hd - 6}" stroke="var(--fg)" stroke-width="2"/><text x="${10 + sbl}" y="${Hd - 3}" style="fill:var(--fg)">${sb >= 1 ? sb + " mm" : sb * 1000 + " µm"}</text>`;
+  const title = mode === "detail" ? "Cross-section (detail)" : `Solver box ${(X1 - X0).toFixed(2)} × ${(Y1 - Y0).toFixed(2)} mm`;
+  return `<div class="panel"><h2>${title}</h2><svg viewBox="0 0 ${Wd} ${Hd}" style="max-width:${Wd}px" role="img" aria-label="${title}">${out}</svg><p class="note">${note}${mode === "detail" ? "" : " · walls: electric (and magnetic where CST ran them) at the sides; a full plane closes the box" + (g.closed[0] || g.closed[1] ? " (here " + [g.closed[0] ? "bottom" : "", g.closed[1] ? "top" : ""].filter(Boolean).join(", ") + ")" : "")}</p></div>`;
+}
+
+// ------------------------------------------------------------------ case sheet
+function verdict(e, lim) { return e == null ? "" : Math.abs(e) <= lim ? "ok" : "warn"; }
+function chipsOf(c) {
+  const v = c.v, out = [];
+  const qs = pairQ(c);
+  const one = (label, src, ref, lim, tip, cls) => {
+    const parts = qs.map((q) => [q, pc((v[src] || {})[q], (v[ref] || {})[q])]).filter((x) => x[1] != null);
+    if (!parts.length) return;
+    const worst = Math.max(...parts.map((x) => Math.abs(x[1])));
+    out.push(`<span class="chip ${cls || verdict(worst, lim)}" title="${esc(tip)} Limit ${lim} %.">${esc(label)} ${parts.map(([q, e]) => `${QL[q]} <b>${fp(e)} %</b>`).join(" ")}</span>`);
+  };
+  one("FW vs CST", "fw_E_cstdef", "cst_E", LIM.solver, "Full-wave backend against CST in the same box with electric walls; " + DEF.z);
+  if (c.g !== "etch") one("FDM vs CST", "fdm_E", "cst_E_k", LIM.solver, "kisi's field solver (FDM) in CST's box with electric walls; " + DEF.z);
+  else one("FDM (rectangle) vs CST", "fdm_E", "cst_E_k", LIM.solver, "kisi's field solver on kisi's rectangle against CST's trapezoid.");
+  one("field vs CST open", "field", "cst_open_k", LIM.solver, "kisi's field result as kisi reports it (its own open domain) against CST's open-boundary estimate (mean of electric and magnetic walls).");
+  one("formula vs CST open", "formula", "cst_open_k", LIM.formula, "kisi's closed-form result against CST's open-boundary estimate.");
+  const es = pairE(c).map((q) => [q, pc((v.fw_E || {})[q], (v.cst_E || {})[q])]).filter((x) => x[1] != null);
+  if (es.length) out.push(`<span class="chip ${verdict(Math.max(...es.map((x) => Math.abs(x[1]))), LIM.solver)}" title="${esc(DEF.epec)}">εeff (PEC) FW vs CST ${es.map(([q, e]) => `${QL[q]} <b>${fp(e, 3)} %</b>`).join(" ")}</span>`);
+  const l1 = Object.entries(c.loss || {}).map(([m, pts]) => [m, pts.find((p) => p.f === 1)]).filter((x) => x[1] && x[1].fw);
+  if (l1.length) out.push(`<span class="chip info" title="Conductor resistance per metre at 1 GHz, R = Re(γ·Zc). CST's lossy port modes give 4–23 % less than two independent MQS solutions (FW and a finite-difference check); see the note on the loss plots.">R at 1 GHz FW vs CST ${l1.map(([m, p]) => `${m} <b>${fp(pc(p.fw.r, p.cst.r), 1)} %</b>`).join(" ")}</span>`);
+  if (c.asym) out.push(`<span class="chip warn" title="CST's pair impedances belong to the eigenmodes with the power-current definition; kisi's to the modal decomposition with |v|² = 2. Compared after transferring CST through FW's L and C.">asymmetric pair</span>`);
+  return out.join("");
+}
+function valueTable(c) {
+  const v = c.v;
+  const cols = [["cst_E", "CST (E walls)"], ["fw_E_cstdef", c.asym ? "FW (CST's def.)" : "FW"], ["fw_static_E", "FW static"], ["fdm_E", "FDM"], ["cst_M", "CST (M walls)"], ["fw_M", "FW (M)"], ["fdm_M", "FDM (M)"], ["cst_open", "CST open"], ["field", "kisi field"], ["formula", "kisi formula"]].filter(([k]) => v[k]);
+  const rows = [...pairQ(c), ...pairE(c)];
+  const refOf = (k, q) => {
+    if (k === "cst_E" || k === "cst_M" || k === "cst_open") return null;
+    if (k === "fw_E_cstdef" || k === "fw_static_E" && q.startsWith("eeff")) return v.cst_E;
+    if (k.endsWith("_M")) return k === "fw_M" ? v.cst_M : (v.cst_M || null);
+    if (k === "field" || k === "formula") return v.cst_open_k || v.cst_open;
+    return v.cst_E_k || v.cst_E;
+  };
+  let h = `<div class="panel"><h2>Results at 1 GHz, lossless</h2><div class="wide"><table><thead><tr><th>quantity</th>${cols.map(([, n]) => `<th>${esc(n)}</th>`).join("")}</tr></thead><tbody>`;
+  for (const q of rows) {
+    h += `<tr><td title="${esc(q.startsWith("eeff") ? DEF.epec + " FDM and formula εeff: FDM static (C/C0), the formula's quasi-static value." : DEF.z)}">${QL[q]}</td>`;
+    for (const [k] of cols) {
+      let x = (v[k] || {})[q];
+      if (k === "fdm_E" && q.startsWith("eeff")) x = (v.fdm_static_E || {})[q];
+      if (k === "fdm_M" && q.startsWith("eeff")) x = null;
+      const phase = k === "field" && q.startsWith("eeff");  // kisi's field result reports the phase εeff (copper)
+      const ref = phase ? null : refOf(k, q), e = ref ? pc(x, ref[q]) : null;
+      if (phase) { h += `<td title="${esc(DEF.ephase)}">${fv(x)} <small>phase</small></td>`; continue; }
+      const lim = k === "formula" ? LIM.formula : LIM.solver;
+      h += `<td${e != null && Math.abs(e) > lim ? ' class="w"' : ""}>${fv(x)}${e != null ? ` <small>${fp(e)} %</small>` : ""}</td>`;
+    }
+    h += "</tr>";
+  }
+  h += `</tbody></table></div><p class="note">Deviation against CST: FW, FW static and FDM against CST in the same box (electric or magnetic walls), kisi field and formula against CST's open-boundary estimate (mean of both walls${c.M ? "" : "; this case has only the electric solve, the estimate scales CST-E by the FDM's open/electric ratio"}). εeff here: CST and FW with ideal conductors, FDM and FW static the static value C/C0; kisi field: the phase εeff with copper as kisi reports it (internal inductance included), not compared with these.${c.asym ? " Asymmetric pair: the impedances of kisi's sources are compared with CST transferred to kisi's definition (CST's own values in the CST columns)." : ""}${c.g === "etch" ? " FDM and formula solve kisi's rectangle (dashed in the drawing), CST and FW the trapezoid." : ""}</p></div>`;
+  return h;
+}
+function lossPanels(c, pw) {
+  const out = [];
+  const modes = Object.keys(c.loss || {});
+  if (!modes.length) return out;
+  const nm = { single: "", odd: "odd mode (per line)", even: "even mode (per line)" };
+  const Q = [["alpha_db", "Attenuation α", "dB/m"], ["r", "Conductor resistance R = Re(γ·Zc)", "Ω/m"], ["zc_re", "Re Zc", "Ω"], ["eeff", "εeff (phase, copper + tanδ)", "εeff"]];
+  for (const m of modes) {
+    const pts = c.loss[m], sw = c.sweep && c.sweep.modes[m];
+    for (const [q, title, unit] of Q) {
+      const series = [];
+      if (sw && sw.fw && sw.fw[q]) series.push({ name: "FW", x: c.sweep.f, y: sw.fw[q], color: SRC.fw[1] });
+      if (sw && sw.kisi && sw.kisi[q]) series.push({ name: "kisi line model", x: c.sweep.f, y: sw.kisi[q], color: SRC.kisi[1], dash: true });
+      series.push({ name: "CST", x: pts.map((p) => p.f), y: pts.map((p) => p.cst[q]), color: SRC.cst[1], marks: true, line: false, excl: pts.map((p) => p.x ? p.x.join("; ") : null) });
+      out.push(panel(`${title}${nm[m] ? " · " + nm[m] : ""}`, chart({ series, xlabel: "frequency GHz", ylabel: unit, logx: true, w: pw, ymin: q === "alpha_db" || q === "r" ? 0 : undefined }),
+        lg([["CST lossy port modes", SRC.cst[1], "dot"], ["CST, left out (box mode)", "var(--muted)", "hollow"], ["full-wave sweep", SRC.fw[1], ""], ["kisi line model (from the FDM at 1 GHz)", SRC.kisi[1], "dash"]])));
+    }
+  }
+  return out;
+}
+function renderCase(c) {
+  cur = c;
+  const box = $("case");
+  const ps = Object.entries(c.params || {}).map(([k, v]) => `<span class="chip">${esc(k)} <b>${esc(v)}</b></span>`).join("");
+  const grp = DATA.groups[c.g] || [c.g, ""];
+  box.innerHTML = `<h1>${esc(c.t || c.id)}</h1><div class="id">${esc(c.id)} · ${esc(grp[0])} · tier ${c.tier}${c.formula && c.formula.kind ? " · formula " + esc(c.formula.kind) : ""}${c.cst_version ? " · " + esc(c.cst_version) : ""}</div>` +
+    (ps ? `<div class="chips">${ps}</div>` : "") + `<div class="chips">${chipsOf(c)}</div>` +
+    (c.notes.length ? `<div class="callout">${c.notes.map((n) => `<p>${esc(n)}</p>`).join("")}</div>` : "");
+  const bw = box.clientWidth || 900;
+  const cols = Math.max(1, Math.min(2, Math.floor((bw + 14) / (360 + 14))));
+  const pw = Math.floor((bw - 14 * (cols - 1)) / cols) - 26;
+  const geo = document.createElement("div"); geo.className = "grid";
+  geo.innerHTML = drawing(c, pw, "detail") + drawing(c, pw, "box");
+  box.appendChild(geo);
+  const lgd = document.createElement("div"); lgd.className = "legend";
+  lgd.innerHTML = lg([["signal conductor", "var(--cu)", "fill"], ["ground", "var(--gnd)", "fill"], ["dielectric (darker: higher εr)", "var(--diel)", "fill"]]) + (c.geo.kisi_rect ? lg([["kisi's rectangle", "var(--fg)", "dash"]]) : "");
+  box.appendChild(lgd);
+  const t = document.createElement("div"); t.innerHTML = valueTable(c); box.appendChild(t.firstChild);
+  if (c.ref) { const p = document.createElement("p"); p.className = "note"; p.textContent = `Reference stored with the case: ${Object.entries(c.ref).map(([k, x]) => `${k} ${x}`).join(", ")}.`; box.appendChild(p); }
+  const lp = lossPanels(c, pw);
+  if (lp.length) {
+    const h = document.createElement("div"); h.className = "panel";
+    const ex = Object.values(c.loss).flat().filter((p) => p.x).length;
+    h.innerHTML = `<h2>Loss sweep (electric walls)</h2><p class="note">CST's lossy port modes (frequency domain, copper 5.8e7 S/m, tanδ of the geometry) at six frequencies, the full-wave sweep (MQS conductor loss, Djordjevic-Sarkar dielectric) and kisi's line model built from its field solve at 1 GHz (smooth copper, as kisi's channel models without roughness). CST's conductor loss is 4–23 % below two independent MQS solutions (FW and a finite-difference check), most for narrow conductors and at low frequency; the dielectric part (G) agrees within 0.5 % at 1 GHz (README, Results). kisi's line model is shown without its microstrip dispersion term (it depends on the channel's fmax): its εeff and Re Zc above about 5 GHz are not comparable.` +
+      (ex ? ` ${ex} CST point(s) of this case lie above the box's first waveguide cutoff (${c.box_cutoff} GHz) and are left out of the statistics (hollow).` : c.box_cutoff ? ` First waveguide cutoff of the box ≈ ${c.box_cutoff} GHz.` : "") + (c.asym ? " Asymmetric pair: modes defined differently, left out of the loss statistics." : "") + `</p>`;
+    box.appendChild(h);
+    const g2 = document.createElement("div"); g2.className = "grid";
+    lp.forEach((p) => g2.appendChild(p));
+    box.appendChild(g2);
+  }
+}
+
+// ------------------------------------------------------------------ overview
+function sumCell(s, d = 2) { return s ? `${fp(s.bias, d)} / ${s.med.toFixed(d)} / ${s.p90.toFixed(d)}` : "–"; }
+function renderOverview() {
+  const box = $("view-overview");
+  const S = DATA.summary, all = S.ALL || {};
+  const n = cases.length, nl = cases.filter((c) => Object.keys(c.loss || {}).length).length;
+  let h = `<div class="panel"><h2>What this page shows</h2>
+    <p>${n} cross-sections – sweeps of every line type kisi models, its anchors, the real cross-sections of the example boards and of the test-board coupons – each solved four ways at 1 GHz: <b>CST</b> (2D port modes, ${esc(DATA.cst_version || "CST Studio Suite")}), the <b>full-wave</b> triangular FEM backend of js_2d_fields (FW), <b>kisi's field solver</b> (js_2d_fields' FDM backend, as kisi runs it) and <b>kisi's formulas</b>. ${nl} cases also have a loss sweep (CST's lossy port modes against FW and kisi's line model).</p>
+    <p>Cells: bias (median signed error) / median |error| / 90th percentile of |error|, in % against CST. FW and FDM are solved in CST's box with the same walls (the same problem); kisi's formula against CST's open-boundary estimate. Each column states its definition in the table head's tooltip.</p></div>`;
+  const qs = ["z0", "zdiff", "zeven"];
+  h += `<div class="panel"><h2>Impedance per group</h2><div class="wide"><table><thead><tr><th>group</th><th>qty</th><th>n</th><th title="${esc(DEF.z)}">FW vs CST</th><th title="${esc(DEF.z)}">FDM vs CST</th><th title="kisi's field result as reported (its own open domain) against CST's open-boundary estimate">kisi field vs CST open</th><th title="kisi's closed form against CST's open-boundary estimate">formula vs CST open</th></tr></thead><tbody>`;
+  for (const g of [...DATA.order, "ALL"]) {
+    const r = S[g] || {};
+    for (const q of qs) {
+      const a = (r["FW vs CST, E walls"] || {})[q], b = (r["FDM vs CST, E walls"] || {})[q], f = (r["field vs CST open"] || {})[q], c = (r["formula vs CST open"] || {})[q];
+      if (!a && !b && !c) continue;
+      const nn = Math.max(...[a, b, c].filter(Boolean).map((x) => x.n));
+      h += `<tr><td>${g === "ALL" ? "<b>all</b>" : `<a href="#g:${g}">${esc((DATA.groups[g] || [g])[0])}</a>`}</td><td>${QL[q]}</td><td>${nn}</td><td>${sumCell(a, 3)}</td><td${b && b.p90 > LIM.solver ? ' class="w"' : ""}>${sumCell(b)}</td><td${f && f.p90 > LIM.solver ? ' class="w"' : ""}>${sumCell(f)}</td><td${c && c.p90 > LIM.formula ? ' class="w"' : ""}>${sumCell(c)}</td></tr>`;
+    }
+  }
+  h += `</tbody></table></div><p class="note">FDM in the etch group solves kisi's rectangle (left out of FDM vs CST). Pairs: kisi's impedance definition, CST transferred for asymmetric pairs; FW in CST's definition.</p></div>`;
+  const es = ["eeff", "eeff_odd", "eeff_even"];
+  h += `<div class="panel"><h2>εeff per definition (all groups)</h2><div class="wide"><table><thead><tr><th>qty</th><th title="${esc(DEF.epec)}">FW eigenmode (PEC)</th><th title="${esc(DEF.epec)}">FW static</th><th title="${esc(DEF.epec)}">FDM static</th><th>formula</th><th title="${esc(DEF.ephase)}">FW phase vs CST lossy</th><th title="${esc(DEF.ephase)}">FDM phase vs CST lossy</th></tr></thead><tbody>`;
+  for (const q of es) {
+    const g = (k) => (all[k] || {})[q];
+    h += `<tr><td>${QL[q]}</td><td>${sumCell(g("FW vs CST, E walls"), 3)}</td><td>${sumCell(g("FW static vs CST, E walls"), 3)}</td><td>${sumCell(g("FDM static vs CST, E walls"), 3)}</td><td>${sumCell(g("formula vs CST open"))}</td><td>${sumCell(g("FW phase vs CST lossy"))}</td><td>${sumCell(g("FDM phase vs CST lossy"))}</td></tr>`;
+  }
+  h += `</tbody></table></div><p class="note">The phase εeff includes the conductors' internal inductance (+1…+4 % at 1 GHz over the PEC value); it is compared only with CST's lossy result. Both kisi sources are about 0.5 % below CST there: CST's dielectric model (the time-domain-compatible fit of constant tanδ) gives ε′ 0.2–0.5 % above the nominal εr (homogeneous striplines, README).</p></div>`;
+  const bm = DATA.box_modes;
+  h += `<div class="panel"><h2>Loss per group (against CST's lossy port modes)</h2><div class="wide"><table><thead><tr><th>group</th><th>n</th><th>FW R 1 GHz</th><th>FW R 10 GHz</th><th>kisi R 1 GHz</th><th>kisi R 10 GHz</th><th>FW G 1 GHz</th><th>FW α 1 GHz</th><th>kisi α 1 GHz</th></tr></thead><tbody>`;
+  for (const g of [...DATA.order, "ALL"]) {
+    const fw = (S[g] || {})["loss fw"] || {}, ki = (S[g] || {})["loss kisi"] || {};
+    if (!fw["r@1"]) continue;
+    h += `<tr><td>${g === "ALL" ? "<b>all</b>" : `<a href="#g:${g}">${esc((DATA.groups[g] || [g])[0])}</a>`}</td><td>${fw["r@1"].n}</td><td>${sumCell(fw["r@1"], 1)}</td><td>${sumCell(fw["r@10"], 1)}</td><td>${sumCell(ki["r@1"], 1)}</td><td>${sumCell(ki["r@10"], 1)}</td><td>${sumCell(fw["g@1"], 1)}</td><td>${sumCell(fw["alpha_db@1"], 1)}</td><td>${sumCell(ki["alpha_db@1"], 1)}</td></tr>`;
+  }
+  h += `</tbody></table></div><p class="note">R = Re(γ·Zc), G = Re(γ/Zc) per metre separate the conductor and the dielectric loss. CST's R is below FW's in every group (median 14 % at 1 GHz, 12 % at 10 GHz; least for wide strips); FW's MQS conductor loss agrees with an independent finite-difference eddy-current solution within 1 % (median 0.2 %), so the difference is on CST's side (README, Results). Points of ${bm.points}: ${bm.excluded} left out as box modes (above the box's first waveguide cutoff where CST and FW disagree by more than 3 % or either lost the quasi-TEM mode: ${Object.entries(bm.by_f).map(([f, k]) => `${f} GHz ${k}`).join(", ")}), ${bm.asym_left_out} of asymmetric pairs.</p></div>`;
+  h += `<div class="panel"><h2>Groups</h2><div class="gcards">${DATA.order.map((g) => { const cs = cases.filter((c) => c.g === g); const nn = cs.filter((c) => c.notes.length).length; return `<button class="gcard" data-g="${g}"><b>${esc((DATA.groups[g] || [g])[0])}</b><span>${cs.length} cases${nn ? ` · ${nn} with a note` : ""} · ${esc((DATA.groups[g] || ["", ""])[1])}</span></button>`; }).join("")}</div></div>`;
+  const noted = cases.filter((c) => c.notes.length);
+  h += `<div class="panel"><h2>Cases with a note (${noted.length})</h2><div class="wide"><table><thead><tr><th>case</th><th style="text-align:left">note</th></tr></thead><tbody>${noted.map((c) => `<tr><td><a href="#${esc(c.id)}">${esc(c.id)}</a></td><td style="text-align:left;white-space:normal">${esc(c.notes[0])}</td></tr>`).join("")}</tbody></table></div></div>`;
+  box.innerHTML = h;
+  box.querySelectorAll(".gcard").forEach((b) => b.onclick = () => { $("group-filter").value = b.dataset.g; buildList(); go(cases.find((c) => c.g === b.dataset.g).id); });
+}
+
+// ------------------------------------------------------------------ list, routing
+function buildList() {
+  const nav = $("case-list"), sel = $("case-select");
+  const qq = $("search").value.trim().toLowerCase(), gf = $("group-filter").value, only = $("only-notes").checked;
+  let html = "", opts = "";
+  for (const g of DATA.order) {
+    if (gf && g !== gf) continue;
+    const cs = cases.filter((c) => c.g === g && (!only || c.notes.length) && (!qq || c.id.toLowerCase().includes(qq) || (c.t || "").toLowerCase().includes(qq)));
+    if (!cs.length) continue;
+    const name = (DATA.groups[g] || [g])[0];
+    html += `<h3>${esc(name)}</h3>`; opts += `<optgroup label="${esc(name)}">`;
+    for (const c of cs) {
+      html += `<button data-id="${esc(c.id)}" title="${esc(c.t || "")}"><span class="dot ${c.notes.length ? "warn" : ""}"></span><span class="lab">${esc(c.id)}</span></button>`;
+      opts += `<option value="${esc(c.id)}">${esc(c.id)}</option>`;
+    }
+    opts += "</optgroup>";
+  }
+  nav.innerHTML = html || `<p class="note" style="margin:8px 12px">no case matches</p>`; sel.innerHTML = opts;
+  nav.querySelectorAll("button[data-id]").forEach((b) => b.onclick = () => go(b.dataset.id));
+  if (cur) { sel.value = cur.id; nav.querySelectorAll("button").forEach((b) => b.setAttribute("aria-current", b.dataset.id === cur.id)); }
+}
+function show(v) {
+  $("view-cases").hidden = v !== "cases"; $("view-overview").hidden = v !== "overview";
+  $("tab-cases").setAttribute("aria-pressed", v === "cases"); $("tab-overview").setAttribute("aria-pressed", v === "overview");
+}
+let overviewDone = false;
+function go(id) {
+  if (!id || id === "overview") { show("overview"); if (!overviewDone) { overviewDone = true; renderOverview(); } try { history.replaceState(null, "", "#overview"); } catch (e) {} return; }
+  if (id.startsWith("g:")) { $("group-filter").value = id.slice(2); buildList(); id = (cases.find((c) => c.g === id.slice(2)) || cases[0]).id; }
+  const c = byId.get(id) || cases[0];
+  show("cases");
+  renderCase(c);
+  $("case-list").querySelectorAll("button").forEach((b) => b.setAttribute("aria-current", b.dataset.id === c.id));
+  $("case-select").value = c.id;
+  try { history.replaceState(null, "", "#" + c.id); } catch (e) {}
+}
+$("tab-overview").onclick = () => go("overview");
+$("tab-cases").onclick = () => go(cur ? cur.id : cases[0].id);
+$("case-select").onchange = () => go($("case-select").value);
+$("search").oninput = buildList;
+$("only-notes").onchange = buildList;
+$("group-filter").innerHTML += DATA.order.map((g) => `<option value="${g}">${esc((DATA.groups[g] || [g])[0])}</option>`).join("");
+$("group-filter").onchange = buildList;
+$("summary").innerHTML = `${cases.length} cross-sections · CST, full-wave, kisi field solver, kisi formula · <a href="kisi-references-3d.html">3D references</a>`;
+let rz = null;
+window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (cur && !$("view-cases").hidden) renderCase(cur); }, 200); });
+buildList();
+go((location.hash || "").slice(1));
+window.addEventListener("hashchange", () => { const h = decodeURIComponent((location.hash || "").slice(1)); if (h !== (cur && cur.id)) go(h); });
+</script>

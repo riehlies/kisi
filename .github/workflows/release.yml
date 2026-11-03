@@ -9,10 +9,13 @@
 #                        download of the entry in KiCad's PCM repository; kisi-kicad-<version>.metadata.json is that
 #                        entry (download URL = this release's zip, its SHA-256 and sizes) for the merge request to
 #                        gitlab.com/kicad/addons/metadata (packages/com.github.riehlies.kisi/, done by hand)
-#   kisi-references.html – the 3D reference cases (kisi-fdtd) with kisi's models against them
-#                        (validation/fdtd/make_viewer.py; built here, not kept in the repository) – attached
-#                        only when the reference cases or the page builder changed since the previous release
-# and publish the viewers and the documentation PDF (not the reference page) with the landing page
+#   kisi-references-3d.html – the 3D reference cases (kisi-fdtd) with kisi's models against them
+#                        (validation/fdtd/make_viewer.py; up to v0.3.1 named kisi-references.html)
+#   kisi-references-2d.html – the 2D cross-section cases (CST, full-wave, kisi's field solver and formulas;
+#                        validation/cst_xs/make_viewer.py, from the committed results only)
+#                        – each reference page built here, not kept in the repository, and attached only when its
+#                        cases or its page builder changed since the previous release
+# and publish the viewers and the documentation PDF (not the reference pages) with the landing page
 # (web/pages/index.html) on GitHub Pages
 # (repository settings: Pages → Source "GitHub Actions"; needs a public repository on the free plan).
 # Run it by hand (workflow_dispatch) to get the files as a build artifact without a release.
@@ -48,10 +51,11 @@ jobs:
             ts "ThunderScope Rev5.3" examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro \
             vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
           python3 tools/bundle_cli.py $W/kisi_wasm.wasm $W/kisi_sparse.wasm dist/kisi.mjs
-      - name: Reference cases page
+      - name: Reference pages (3D via cases, 2D cross-sections)
         run: |
           python3 -c "import numpy" 2>/dev/null || sudo apt-get install -y python3-numpy
-          python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references.html
+          python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references-3d.html
+          python3 validation/cst_xs/make_viewer.py validation/cst_xs dist/kisi-references-2d.html
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -104,7 +108,8 @@ jobs:
             dist/kisi-examples.html
             dist/kisi.mjs
             dist/kisi-docs.pdf
-            dist/kisi-references.html
+            dist/kisi-references-3d.html
+            dist/kisi-references-2d.html
             dist/kisi-kicad-*.zip
             dist/kisi-kicad-*.metadata.json
       - name: Attach to the release
@@ -114,12 +119,20 @@ jobs:
         run: |
           gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes
           files="dist/kisi.html dist/kisi-examples.html dist/kisi.mjs dist/kisi-docs.pdf $(ls dist/kisi-kicad-*.zip dist/kisi-kicad-*.metadata.json)"
-          # the reference page only when its cases or builder changed since the previous release tag
+          # each reference page only when its cases or builder changed since the previous release tag
           prev=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
-          if [ -z "$prev" ] || ! git diff --quiet "$prev" "$GITHUB_REF_NAME" -- validation/via_ref validation/fdtd/make_viewer.py validation/fdtd/viewer_template.html; then
-            files="$files dist/kisi-references.html"
+          changed() { [ -z "$prev" ] || ! git diff --quiet "$prev" "$GITHUB_REF_NAME" -- "$@"; }
+          if changed validation/via_ref validation/fdtd/make_viewer.py validation/fdtd/viewer_template.html; then
+            files="$files dist/kisi-references-3d.html"
           else
-            echo "::notice::reference cases unchanged since $prev: kisi-references.html not attached (it stays on $prev's release)"
+            echo "::notice::3D reference cases unchanged since $prev: kisi-references-3d.html not attached (it stays on an earlier release)"
+          fi
+          if changed validation/cst_xs/results validation/cst_xs/fullwave validation/cst_xs/cases.json validation/cst_xs/kisi.json \
+              validation/cst_xs/kisi_loss.json validation/cst_xs/compare.py validation/cst_xs/xsgeo.py \
+              validation/cst_xs/make_viewer.py validation/cst_xs/viewer_template.html; then
+            files="$files dist/kisi-references-2d.html"
+          else
+            echo "::notice::2D reference cases unchanged since $prev: kisi-references-2d.html not attached (it stays on an earlier release)"
           fi
           gh release upload "$GITHUB_REF_NAME" $files --clobber
 
@@ -142,7 +155,7 @@ jobs:
       - name: Site
         run: |
           cp web/pages/index.html site/
-          rm -f site/kisi-references.html site/kisi-kicad-*   # the reference page and the KiCad plugin stay release files
+          rm -f site/kisi-references-*.html site/kisi-kicad-*   # the reference pages and the KiCad plugin stay release files
           mkdir -p site/fonts site/img
           cp web/fonts/fonts.css web/fonts/*.woff2 web/fonts/OFL-*.txt site/fonts/
           cp docs/img/*.png site/img/

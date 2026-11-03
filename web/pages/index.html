@@ -144,7 +144,7 @@ node kisi.mjs check board.kicad_pcb</pre>
         <div class="card"><h3>Reference</h3>
           <ul><li><a href="https://github.com/riehlies/kisi/blob/main/docs/reference.md">Fields and kisi.json</a></li><li><a href="https://github.com/riehlies/kisi/blob/main/docs/cli.md">Command line</a></li><li><a href="https://github.com/riehlies/kisi/blob/main/docs/agents.md">Using kisi with agents</a></li></ul></div>
         <div class="card"><h3>Background</h3>
-          <ul><li><a href="https://github.com/riehlies/kisi/blob/main/docs/models.md">Models and limits</a> – accuracy, validation, estimates</li><li><a href="kisi-docs.pdf">All of it as one PDF</a></li></ul></div>
+          <ul><li><a href="https://github.com/riehlies/kisi/blob/main/docs/models.md">Models and limits</a> – accuracy, validation, estimates</li><li><a href="https://github.com/riehlies/kisi/blob/main/docs/models.md#validation">Reference cases</a> – the 3D via and plane cases and the 2D cross-sections, as pages on the releases (<code>kisi-references-3d.html</code>, <code>kisi-references-2d.html</code>)</li><li><a href="kisi-docs.pdf">All of it as one PDF</a></li></ul></div>
       </div>
     </div>
   </section>
@@ -156,8 +156,9 @@ node kisi.mjs check board.kicad_pcb</pre>
         <p><b>A quick project, meant to be helpful.</b> kisi is a fast check of a board without long setup times.
           Its results are estimates for design checks, without any warranty of correctness – not a replacement for
           sign-off simulation or measurement.</p>
-        <p>The field solver was compared with HFSS cases and the via and plane models with 3D FDTD results;
-          validation against other solvers and against measurements is still open. kisi stays a fast linear checker:
+        <p>The field solver and the formulas were compared with CST on 620 cross-sections and with HFSS cases, the
+          via and plane models with 3D FDTD references that openEMS and CST cross-check; validation against
+          measurements is still open. kisi stays a fast linear checker:
           for a sign-off with IBIS buffers and equalisers, export the channel to PyBERT or a circuit simulator. The
           single tools are useful on their own already.</p>
       </div>

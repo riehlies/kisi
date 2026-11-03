@@ -1,6 +1,6 @@
 # kisi – roadmap
 
-Planned and possible work after 0.3.1, in three development blocks plus work across them. Within a block the items
+Planned and possible work after 0.3.2, in three development blocks plus work across them. Within a block the items
 are roughly in order of priority; each says why it matters, "Decide first" marks items that need a decision before
 work starts. One rule holds for all of them: `main` always has a clean, mostly self-explanatory build – new features
 come with a small, clear UI and without option combinatorics.
@@ -53,7 +53,8 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   example boards, the XIAO and the JLC/LCSC library, in `data/components.json`), then the Value text, then the
   description; the PDN names the source of each value, `kisi gaps` lists only capacitors still without a rating,
   and the viewer's capacitor form suggests what the fields give in part. The XIAO and ThunderScope need no
-  `PI_CAP` for it any more (ThunderScope's 256 entries removed from its kisi.json, results unchanged).
+  `PI_CAP` for it any more (ThunderScope's 256 entries removed from its kisi.json, results unchanged). Released in
+  0.3.2.
 - **Power tree per supply case.** Boards that run from USB or a battery (a PMIC power path) have one tree per case:
   on the XIAO, VSYS is VBUS on USB and VBAT on battery, and the debugger is supplied only on USB; while charging, the
   battery charge current is a load on VSYS. Today one tree has to stand for all cases.
@@ -70,7 +71,9 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   in KiCad 10's PCB editor opens the saved board with its `<board>.kisi.json` in a copy of the viewer
   (`analysis/<board>.kisi.html`), the package carries the CLI and the agent guide (`docs/getting-started.md`,
   design note `docs/research/kicad-plugin.md`). Tested in KiCad 10 on Windows; the entry for KiCad's Plugin and
-  Content Manager (status `testing`, KiCad 10.0) is under review. Open: a test in KiCad 10 on Linux and macOS
+  Content Manager (status `testing`, KiCad 10.0) is under review. In 0.3.2: the Linux and macOS paths reviewed
+  (the plugin's folder, browser start, Node.js locations, Downloads folder) and the package's `install_size` as
+  KiCad's repository validator counts it. Open: a test in KiCad 10 on Linux and macOS
   (checklist in the design note; their code paths are reviewed and unit-tested), then status `stable`; KiCad 9
   (untested); the "unsaved changes" notice once KiCad's API reports them (`GetDocumentModifiedState`, KiCad's
   development branch – the plugin uses it when kicad-python has it).
@@ -109,6 +112,14 @@ validation, and every result says which level it used and how uncertain it is.
   - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
     ladder at the via centre; about 8 days, a minimal version 4; design note `BOARD_VIAS.md` section 5.6);
   - the ladder in WebAssembly is about 2 × slower than native.
+- **3D references cross-checked** (done, released in 0.3.2): every one of the 106 reference cases also in openEMS
+  and in CST Studio Suite (TESTS.md sections 16 and 17, `validation/fdtd/CST.md`); the cross-check found the
+  inner-layer exits and the board vias with an inner exit not mesh-converged, and they were recomputed on a refined
+  mesh (kisi-fdtd − CST within ±0.07 ps on 16 of 17 cases, before +1.0 … +2.3 ps). Next, one model change together:
+  the junction fit's proposal (the ladder is now 1.26 ps slow on stripline exits; remove about 0.2 mm of the
+  stripline feed, TESTS.md section 17), then the stored via results – `data/accuracy.json`'s via numbers (2.45 /
+  5.92 % and 12.6 / 14.4 %; 2.46 / 5.64 % and 10.9 / 13.7 % against the refined references), and
+  `results/rust_models.json` and `via_ref/<case>/ladder.s2p`, which are older than the current ladder.
 - **Causal and passive models** (`feat/accuracy`, done): the via pairs' modes and the plane-pair matrix passive by
   construction, Djordjevic-Sarkar everywhere, the causal Huray roughness with its inductance, microstrip
   dispersion below a resonance; every example lane passive and causal in a test (`validation/fdtd/TESTS.md`
@@ -123,10 +134,11 @@ validation, and every result says which level it used and how uncertain it is.
   (`data/accuracy.json`, design note `docs/research/accuracy-levels.md`). Next: loss (± dB at Nyquist from
   lines and vias) and return loss (a range from the impedance uncertainty), then the eye; the 3D level per
   selected structure with the viewer's 3D check.
-- **Cross-section formulas and etch** (`feat/xs-accuracy`): the 2D validation (`validation/cst_xs`, 620 cases
-  against CST) set the field solver's uncertainty to 1 % and brought formulas for coplanar lines (grounded CPW,
-  stripline with coplanar ground, the coupled grounded CPW; single lines with coplanar copper 4.9 → 1.1 % median).
-  Next:
+- **Cross-section formulas and etch** (done, released in 0.3.2): the 2D validation (`validation/cst_xs`, 620 cases
+  against CST, the full-wave backend of js_2d_fields, kisi's field solver and formulas; page
+  `kisi-references-2d.html`) set the field solver's uncertainty to 1 % and brought formulas for coplanar lines
+  (grounded CPW, stripline with coplanar ground, the coupled grounded CPW; single lines with coplanar copper
+  4.9 → 1.1 % median). Next:
   - **etch factor** per stackup or layer in `kisi.json`, applied as an effective width w − t/(2·ef) (the FDM
     backend takes no trapezoids; CST: within ±2.2 % for microstrips and pairs, −2 … −4 % for striplines, against
     −2 … −11 % today), with values from the test board's measured cross-sections (JLC) once they exist;
@@ -218,9 +230,10 @@ export shows it). Background: `docs/models.md` (scope, why kisi is fast); the ea
   validation (block 2). Today: ThunderScope, LibreVNA, XIAO nRF54LM20A (`docs/examples/`).
 - **Corpus run** (`data/corpus.json`, `tools/corpus.py`, `validation/corpus/`): 32 open-source boards weekly in CI
   and about 200 more monthly and by hand (its KiCad 5 and older boards are refused, the expected outcome), without a
-  `kisi.json` – parser robustness, crashes, run times and drift of the summary
-  numbers. Next: a `kisi.json` for the about 16 SI- and PI-rich weekly boards (net-class targets and profiles,
-  laminate, power tree; kisi-prepare), so that the weekly run also guards impedance, channel and power results;
+  `kisi.json` – parser robustness, crashes, run times and drift of the summary numbers (in 0.3.2, with the parser
+  fixes it found: repeated stackups, panel and repeated outlines, net class names such as `SE50`/`Diff_100`, DDR3
+  profiles, KiCad 6 as the minimum). Next: a `kisi.json` for the about 16 SI- and PI-rich weekly boards (net-class
+  targets and profiles, laminate, power tree; kisi-prepare), so that the weekly run also guards impedance, channel and power results;
   re-select from the harness list now and then (repositories disappear: two of the 200 already).
 
 ## Maintenance

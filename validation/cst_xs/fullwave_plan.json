@@ -1,5 +1,5 @@
 {
- "about": "cases for the fullwave-xs workflow (run_fullwave.py --plan): ids, groups or all, number of shards, kinds; summary_of_run: no computation, only fullwave_compare.py on that run's results; editing this file on feat/fullwave-xs starts the workflow",
+ "about": "cases for the fullwave-xs workflow (run_fullwave.py --plan): ids, groups or all, number of shards, kinds; summary_of_run: no computation, only fullwave_compare.py on that run's results; the workflow runs only by hand (never on main)",
  "shards": 8,
  "ids": [],
  "kinds": [

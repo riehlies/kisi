@@ -124,9 +124,9 @@ pours on the via's signal layers as coplanar returns, stubs and back-drill, the 
 with their partner. Passive by construction: the plane-pair matrices treat every barrel as a cylinder of
 uniform current, and a pair's modes are taken as (Z_PP + Z_NN)/2 ∓ Z_PN (the earlier Z_PP ∓ Z_PN gave via pairs
 with returns on one side a negative resistance from a few GHz). Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own
-FDTD solver: via impedance in the TDR median 2.3 %, 90th percentile 5.5 % (single vias); pairs within 3.5°
-phase; stub notch within 3 %; the four board vias with a 3D reference within 0.03–0.44 dB up to 12 GHz. An
-estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
+FDTD solver ([Validation](#validation)): via impedance in the TDR median 2.5 %, 90th percentile 5.6 % (single
+vias); pairs within 1.8° phase (median); stub notch within 1.5 % (`validation/fdtd/results/kisi_models.json`); the
+four board vias with a 3D reference within 0.03–0.44 dB up to 12 GHz. An estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
 the via's cage. A via whose path crosses a ground/supply plane pair that no return via bridges gets a warning.
 `--via-cavity` (finite plane pairs) and `--via-returns` (return groups per plane pair) are experimental options.
 

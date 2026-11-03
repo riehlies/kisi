@@ -127,9 +127,9 @@
             <tr><td>Microstrip over 3 mm cut-out (HFSS)</td><td class="num">+17 %</td><td class="num">−0.5 %</td></tr>
           </tbody>
         </table>
-        <p class="note"><b>Lines and vias.</b> RLGC within 2 % of HFSS; copper roughness presets are estimates. Vias as a physics-based ladder (return vias, antipads, stubs, back-drilling, pairs), compared with 3D results of kisi's FDTD solver: via impedance in the TDR median 1.4 %, 90th percentile 7.4 %; pairs within 3.5° phase; stub notch within 3 %.</p>
+        <p class="note"><b>Lines and vias.</b> RLGC within 2 % of HFSS; copper roughness presets are estimates. Vias as a physics-based ladder (return vias, antipads, stubs, back-drilling, pairs), compared with the 3D references of kisi's FDTD solver, which openEMS and CST cross-check: via impedance in the TDR median 2.5 %, 90th percentile 5.6 %; pairs within 1.8° phase (median); stub notch within 1.5 %.</p>
         <p class="note"><b>Channel.</b> Parasitics of series parts and packages are estimates (data/components.json). The eye uses the profile's linear transmitter and receiver: no IBIS models, equalisation, jitter or noise. The channel behind a connector is what you give in the interface's card: a lossy line or a Touchstone file.</p>
-        <p class="note"><b>Still open:</b> validation against other solvers and against measurements (a test board is planned). Treat the numbers as plausible estimates, not as verified results.</p>
+        <p class="note"><b>Still open:</b> validation against measurements (a test board is planned). Treat the numbers as plausible estimates, not as verified results.</p>
       </details>
     </section>
 

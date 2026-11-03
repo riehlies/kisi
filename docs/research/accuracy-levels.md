@@ -24,9 +24,10 @@ Every number is a *typical* deviation from kisi's own validation, kept with its 
 
 | Quantity | Level | Uncertainty | Source |
 |---|---|---|---|
-| impedance of a cross-section | field solver | 2 % | Forstén's suite vs HFSS/Ansys 1.7 % (`validate_field.sh`); ThunderScope cross-sections ≤ 0.5 % |
+| impedance of a cross-section | field solver | 1 % (2 % until the 2D validation) | 620 cross-sections against CST (`validation/cst_xs`): median 0.18 %, p90 0.47 %, max 1.03 %; Forstén's suite vs HFSS/Ansys 1.7 % (`validate_field.sh`) |
 | | formula, single microstrip | 2 % | docs/models.md table (+1.4 %), HFSS microstrip −0.6 % |
-| | formula, coupled or coplanar | 8 % | diff microstrip +5.6 / +7.8 % |
+| | formula, microstrip with coplanar copper | 2 % | `validation/cst_xs`, 104 cases: median 0.9 %, p90 1.7 % |
+| | formula, coupled pair (also with coplanar ground) | 8 % | diff microstrip +5.6 / +7.8 % |
 | | formula, stripline | 11 % | asymmetric stripline +10.3 %, 3D stripline +11 % (`T_ts6_sl`) |
 | | formula over a cut-out (flag “rough”) | 25 % | the 3313 launch over a 0.465 mm opening |
 | | no plane (coplanar estimate) | 15 % | gold-finger cases, TESTS.md section 15 |
@@ -39,7 +40,7 @@ Every number is a *typical* deviation from kisi's own validation, kept with its 
 | eye | from the channel | not quantified; the loss and RL ranges propagated through the eye | later |
 
 The uncertainty of a net is the length-weighted mean of its cross-sections' (a net that is 90 % field-solved
-microstrip and 10 % formula stripline: 0.9·2 + 0.1·11 = 2.9 %). The level is “field solver”, “formula” or
+microstrip and 10 % formula stripline: 0.9·1 + 0.1·11 = 2.0 %). The level is “field solver”, “formula” or
 “mixed” by the share of the length the field solver covers.
 
 ## Output, without clutter

@@ -67,7 +67,8 @@ All of it as one PDF: `kisi-docs.pdf` on every [release](https://github.com/rieh
 - The channel check is a first look: linear transmitter and receiver from the interface profile, no IBIS models,
   equalisation, jitter or noise.
 - 2D cross-sections and reduced via and plane models instead of a full-board 3D solution.
-- Validated against HFSS cases and kisi's own 3D FDTD references; validation against other solvers and
+- Validated against 620 cross-sections in CST and HFSS cases (field solver and formulas) and against 3D FDTD
+  references of vias, pairs and plane cavities, each cross-checked with openEMS and CST; validation against
   measurements is still open. Data the board file lacks defaults to estimates until `<board>.kisi.json` fills
   it in. Details: [Models and limits](docs/models.md).
 

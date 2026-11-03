@@ -224,8 +224,8 @@ function renderSteps() {
   $("st2").classList.toggle("done", !!S.full);
   $("an-start").hidden = !!S.full;
   $("st2-text").textContent = S.full
-    ? `Done in ${S.anMs} ms: ${an.unique_cross_sections} distinct cross-sections. Formula values are typically within 5 % for single lines, 5–15 % off for coupled and coplanar lines.`
-    : "Closed-form formulas (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for every track, about a second. Typically within 5 % for single lines, 5–15 % off for coupled and coplanar lines.";
+    ? `Done in ${S.anMs} ms: ${an.unique_cross_sections} distinct cross-sections. Formula values are typically within 2 % for single and coplanar lines, 5–15 % off for pairs and offset striplines.`
+    : "Closed-form formulas (Hammerstad-Jensen, Wheeler, conformal mapping for coplanar lines, IPC-2141) for every track, about a second. Typically within 2 % for single and coplanar lines, 5–15 % off for pairs and offset striplines.";
   $("st3").classList.toggle("locked", !S.full);
   renderXtCard();
 }
@@ -236,7 +236,7 @@ function renderFieldStatus() {
   renderSteps();
   if (!S.full) {
     $("fs-start").textContent = "Start"; $("fs-start").disabled = true;
-    $("si-source").textContent = "Available after step 2. 2D field solver (js_2d_fields) for each distinct cross-section: within 2 % of HFSS, seconds to minutes. Results are kept in this browser.";
+    $("si-source").textContent = "Available after step 2. 2D field solver (js_2d_fields) for each distinct cross-section: within 1 % of CST's 2D solver, seconds to minutes. Results are kept in this browser.";
     $("fs-cache").textContent = `${S.field.size} cross-sections cached in this browser`;
     $("fs-text").textContent = ""; $("fs-note").textContent = ""; $("fs-toggle").hidden = true; $("fs-bar").style.width = "0%";
     return;
@@ -266,7 +266,7 @@ function renderFieldStatus() {
   $("st3").classList.toggle("done", totalT > 0 && share > 0.999);
   $("si-source").textContent = doneAll
     ? `Field solver for ${Math.round(share * 100)} % of the length with target, formulas elsewhere. `
-    : "2D field solver (js_2d_fields) for each distinct cross-section: within 2 % of HFSS, seconds to minutes. Results are kept in this browser.";
+    : "2D field solver (js_2d_fields) for each distinct cross-section: within 1 % of CST's 2D solver, seconds to minutes. Results are kept in this browser.";
   $("fs-cache").textContent = `${S.field.size} cross-sections cached in this browser`;
   if (pool && pool.failed) {
     $("fs-text").textContent = "Field solver unavailable";

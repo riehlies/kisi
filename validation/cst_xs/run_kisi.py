@@ -2,7 +2,7 @@
 """kisi's results on the cases of cases.json → validation/cst_xs/kisi.json.
 
     python3 validation/cst_xs/run_kisi.py [--kisi-validate target/release/kisi-validate]
-        [--ids a,b | --tier 1] [--jobs 4] [--out validation/cst_xs/kisi.json]
+        [--ids a,b | --tier 1] [--jobs 4] [--out validation/cst_xs/kisi.json] [--formula-only]
 
 Per case:
   formula      the extraction's closed-form values (kisi-validate xs-cases: extract::formula_xs) –
@@ -15,6 +15,9 @@ Per case:
 field_E / field_M solve exactly the problem CST solves with electric / magnetic walls: CST against
 them is the solver comparison without any boundary difference; their mean estimates the open
 boundary (README.md). Cases with a hand-written text (no kisi model) get the field values only.
+--formula-only recomputes the formula values and keeps the stored field results (a change of the
+formulas alone; the geometry texts must be unchanged – the run stops if kisi's text differs from
+cases.json).
 The node solver runs need the release builds (target/release/kisi-validate,
 target/wasm32-unknown-unknown/release/kisi_sparse.wasm).
 """
@@ -57,6 +60,7 @@ def main():
     ap.add_argument("--tier", default="")
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--chunk", type=int, default=20)
+    ap.add_argument("--formula-only", action="store_true", help="recompute the formula values only, keep the field results")
     a = ap.parse_args()
     cases = json.load(open(a.cases, encoding="utf-8"))["cases"]
     if a.ids:
@@ -77,6 +81,22 @@ def main():
     if stale:
         print(f"warning: kisi's geometry text differs from cases.json for {len(stale)} cases (cases.json stale? "
               f"run make_cases.py): {', '.join(stale[:5])}", file=sys.stderr)
+    if a.formula_only:
+        if stale:
+            raise SystemExit("--formula-only needs unchanged geometry texts")
+        doc = json.load(open(a.out, encoding="utf-8"))
+        for c in cases:
+            f = fx.get(c["id"])
+            if f and (c.get("text_source") == "kisi" or c["group"] == "cpw_noplane"):
+                doc["results"].setdefault(c["id"], {})["formula"] = {k: v for k, v in f["formula"].items() if v is not None}
+        # the formulas' revision (with "-dirty": the working tree's code on top of it)
+        doc["formula_rev"] = subprocess.run(["git", "describe", "--always", "--dirty", "--abbrev=7"], capture_output=True,
+                                            text=True, cwd=ROOT).stdout.strip() or None
+        with open(a.out, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh, indent=1, ensure_ascii=False)
+            fh.write("\n")
+        print(f"{len(cases)} cases: formula values → {os.path.relpath(a.out, ROOT)} (field results kept)")
+        return
     jobs = {"field": [], "field_fine": [], "field_E": [], "field_M": []}
     for c in cases:
         text = c["text"]

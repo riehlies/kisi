@@ -276,7 +276,7 @@ pub fn build(su: &Stackup, d: &XsDesc) -> Option<String> {
 
 /// Permittivity of the resin around copper on layer k: an adjacent prepreg if
 /// there is one (it flows around the copper), else the dielectric above.
-fn fill_er(su: &Stackup, k: usize) -> (f64, f64) {
+pub(crate) fn fill_er(su: &Stackup, k: usize) -> (f64, f64) {
     let above = if k > 0 { su.dielectrics.get(k - 1) } else { None };
     let below = su.dielectrics.get(k);
     let is_pp =

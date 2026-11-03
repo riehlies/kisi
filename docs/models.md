@@ -38,13 +38,43 @@ with IBIS models, KiCad's simulator.
   `kisi.mjs`.
 
 ## Impedance
-- **Formulas:** Hammerstad-Jensen, Wheeler, Wadell (CPWG), IPC-2141 – in a second for every track. Microstrip
-  within 1–2 %; coupled and coplanar lines 5–15 % off (asymmetric stripline +11 %). A formula value over a cut-out
-  in a layer between trace and reference is flagged "rough" and can be 25 % off.
+- **Formulas:** Hammerstad-Jensen (microstrip), Wheeler (stripline), IPC-2141 (pairs) and conformal mapping
+  for coplanar lines – in a second for every track. Against CST on the 620 cross-sections of
+  [validation/cst_xs](../validation/cst_xs/README.md) (median / 90th percentile): microstrip and symmetric
+  stripline 0.2 / 0.4 %, solder mask 1.2 / 1.8 %, offset striplines 2 / 9 %, edge-coupled pairs' Zdiff 2.7 / 12 %
+  (microstrip) and 4.3 / 33 % (stripline). A formula value over a cut-out in a layer between trace
+  and reference is flagged "rough" and can be 25 % off and more.
+- **Coplanar lines** – copper of any net on the trace's layer within 3 h (at most 2 mm) beside it, h the height to
+  the nearest plane – have formulas of their own (`kisi_si::analytic`): the grounded coplanar waveguide, a
+  stripline with coplanar ground, a pair with coplanar ground (coupled grounded CPW). Each region – air or
+  solder mask above, the dielectric to each plane, the slots between the copper side walls – is a partial
+  capacitance from conformal mapping (Ghione & Naldi 1987; Simons, *Coplanar Waveguide Circuits, Components,
+  and Systems*, 2001); the copper thickness enters as the slots' capacitance t/s plus a corner term, and for
+  wide gaps the capacitances go over smoothly into the line without coplanar copper. The corner term and the
+  smoothing are fitted to kisi's field solver on 1 100 synthetic cross-sections
+  ([the fit](../validation/cst_xs/README.md#the-fit-of-the-coplanar-formulas)). Against CST: grounded
+  CPW 0.5 / 1.3 % (all single lines with coplanar copper 0.9 / 1.7 %, before 4.9 / 8.8 %), stripline with
+  coplanar ground 0.6 / 1.6 %, pairs with coplanar ground Zdiff 2.2 / 3.6 % and Zeven 2.5 / 3.9 % (before
+  Zeven 8.5 / 18 %). A pair with coplanar ground on one side only is approximated as the mean of two symmetric
+  pairs (ground on both sides, none): against kisi's field solver Zdiff typically 3 % off (p90 7 %), Zeven 10 %
+  (p90 16 %), up to −47 / +70 % for very narrow gaps under solder mask; the field solver is not affected. The
+  partner is taken as wide as the trace; a stripline pair and a covered trace with one plane ignore their
+  coplanar copper. At the
+  end of the search (3 h) coplanar copper lowers Z by about 1 %; beyond it, it is left out (the field solver's
+  geometry has the same reach).
+- **Trace shape:** every trace is a rectangle of the drawn width and the full copper thickness, in the formulas
+  and in the field solver's geometry; KiCad's stackup has no etch factor. Real traces are etched to a trapezoid
+  and are narrower at the top, so kisi's Z0 comes out low: by about 2–4 % at typical etch factors for 35 µm
+  copper, less for thin inner layers (validation/cst_xs, group `etch`: −1.0 … −5.4 % for microstrips,
+  −2.6 … −5.1 % for a pair, −4.6 … −10.8 % for a stripline at etch factors 3 … 1; the uncorrected stripline with
+  etch factor 1, `etch_sl_ef1`, −11 %). A rectangle of the effective width w − t/(2·ef) would come within
+  ±2.2 % for microstrips and pairs and −2 … −4 % for striplines; kisi does not apply it (no etch factor in the
+  stackup).
 - **2D field solver:** js_2d_fields by Henrik Forstén (GPL-3.0), quasi-static, included unmodified (see
   [UPSTREAM.md](../UPSTREAM.md)); its linear solver runs in Rust (`crates/kisi-sparse`). Cross-sections are taken
   along every line with its reference planes (also across gaps), coplanar ground and the differential partner.
-  Within 1.7 % of the HFSS/Ansys references in Forstén's test suite, εeff within 1 %.
+  Within 1 % of CST Studio Suite on the 620 cross-sections ([Validation](#validation)) and 1.7 % of the HFSS/Ansys
+  references in Forstén's test suite, εeff within 1 %.
 
 - **Pads and gold fingers:** a track inside an SMD pad of its own net (a track runs to the pad's centre; a
   card-edge finger) has the pad's cross-section – its width and what lies below it, a cut-out in the plane
@@ -204,8 +234,8 @@ Every impedance and via result says which level it used and how far it typically
 
 | Level | Typical deviation |
 |---|---|
-| 2D field solver | impedance 2 % |
-| formula: single microstrip / coupled or coplanar / stripline / over a cut-out | 2 / 8 / 11 / 25 % |
+| 2D field solver | impedance 1 % |
+| formula: single microstrip / with coplanar copper / pair / stripline / over a cut-out | 2 / 2 / 8 / 11 / 25 % |
 | no plane (coplanar estimate) | 15 % |
 | via ladder: single vias / pairs (TDR, median and 90th percentile) | 2.5 and 5.9 % / 12.6 and 14.4 % |
 | coaxial via fallback | 8.0 and 25.5 % |
@@ -240,8 +270,10 @@ kisi marks these as estimates in the viewer and in the CLI output:
   `validate_field.sh` runs.
 - **Cross-sections, impedance and loss** on 620 cases (every line type, the example boards, the test-board coupons)
   against CST Studio Suite's 2D port modes and the full-wave FEM backend of js_2d_fields: the field solver in the
-  same solver box within 0.04 % (single lines) and 0.4 % (pairs) of CST, as kisi runs it within 1 % (p99 0.8 %);
-  the formulas per line type from 0.2 % (microstrip, stripline) to 18 % (plane cut-outs); the conductor loss of the
+  same solver box within 0.04 % (single lines) and 0.4 % (pairs) of CST, as kisi runs it within 1 % (median
+  0.18 %, p90 0.47 %, p99 0.78 %, max 1.03 % without the etch group and the asymmetric pairs – the 1 % of the field
+  solver's accuracy level); the formulas per line type from 0.2 % (microstrip, stripline) to 18 % (plane
+  cut-outs); the conductor loss of the
   line model 2 % below an MQS solution. Method, tables, the limits (trapezoidal etch not modelled) and the
   page `kisi-references-2d.html`: [validation/cst_xs/README.md](../validation/cst_xs/README.md).
 - **Passivity and causality:** unit tests (series impedance and shunt admittance positive-real in the whole

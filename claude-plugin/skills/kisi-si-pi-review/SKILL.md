@@ -79,7 +79,8 @@ or older …") – ask the user to open it in KiCad 6 or newer and save it; ther
 
 ## Reporting
 - Impedances come from the 2D field solver where `field_solver.target_length_coverage_pct` says so,
-  formulas elsewhere (differential pairs and coplanar lines can be off by 5–15 % there). If the
+  formulas elsewhere (single and coplanar lines within about 2 %, differential pairs and offset
+  striplines can be off by 5–15 % there; each row's `accuracy` gives the level and its uncertainty). If the
   coverage is low, say so and run the command again (cached results accumulate) or raise `--field-time`.
 - Eyes are linear PRBS7 estimates with the profile's transmitter/receiver and no equalisation, jitter
   or noise. Limits marked "kisi" in the profile sources are guide values, not standards.

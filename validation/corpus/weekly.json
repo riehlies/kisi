@@ -502,9 +502,9 @@
     "check": {
      "key": {
       "rows": {
-       "green": 51,
+       "green": 50,
        "red": 9,
-       "yellow": 40
+       "yellow": 41
       }
      },
      "rc": 0,
@@ -688,9 +688,9 @@
     "check": {
      "key": {
       "rows": {
-       "green": 6,
+       "green": 12,
        "red": 0,
-       "yellow": 14
+       "yellow": 8
       }
      },
      "rc": 0,
@@ -1035,9 +1035,9 @@
     "check": {
      "key": {
       "rows": {
-       "green": 19,
+       "green": 32,
        "red": 0,
-       "yellow": 28
+       "yellow": 15
       }
      },
      "rc": 0,
@@ -1729,9 +1729,9 @@
     "check": {
      "key": {
       "rows": {
-       "green": 31,
+       "green": 29,
        "red": 1,
-       "yellow": 12
+       "yellow": 14
       }
      },
      "rc": 0,
@@ -2061,9 +2061,9 @@
     "check": {
      "key": {
       "rows": {
-       "green": 96,
+       "green": 97,
        "red": 1,
-       "yellow": 101
+       "yellow": 100
       }
      },
      "rc": 0,
@@ -2618,9 +2618,9 @@
     "check": {
      "key": {
       "rows": {
-       "green": 7,
+       "green": 6,
        "red": 0,
-       "yellow": 14
+       "yellow": 15
       }
      },
      "rc": 0,

@@ -13,6 +13,7 @@ pub const ACCURACY_JSON: &str = include_str!("../../../data/accuracy.json");
 pub struct Impedance {
     pub field_pct: f64,
     pub formula_microstrip_pct: f64,
+    pub formula_coplanar_pct: f64,
     pub formula_coupled_pct: f64,
     pub formula_stripline_pct: f64,
     pub formula_rough_pct: f64,
@@ -54,8 +55,15 @@ pub fn impedance_of(xs: &CrossSection) -> Option<(&'static str, f64)> {
         ("formula", t.formula_rough_pct)
     } else if xs.kind == Kind::Stripline {
         ("formula", t.formula_stripline_pct)
-    } else if xs.diff_gap.is_some() || xs.s_left.is_some() || xs.s_right.is_some() {
+    } else if xs.diff_gap.is_some() {
         ("formula", t.formula_coupled_pct)
+    } else if xs.s_left.is_some() || xs.s_right.is_some() {
+        // grounded CPW (analytic::microstrip_cpwg); a covered trace's formula ignores the copper
+        if xs.kind == Kind::Microstrip {
+            ("formula", t.formula_coplanar_pct)
+        } else {
+            ("formula", t.formula_coupled_pct)
+        }
     } else {
         ("formula", t.formula_microstrip_pct)
     })

@@ -107,7 +107,7 @@ End With"""
 
 
 # options of the conductor-loss check (README, "CST re-run for the conductor loss"); the defaults are the runs so far
-OPT = {"metal": "surface", "tet_scale": 1.0, "td_compat": True}
+OPT = {"metal": "surface", "tet_scale": 1.0, "td_compat": True, "port_mesh_match": False, "cond_step_um": 0.0}
 
 
 def copper_block():
@@ -231,6 +231,7 @@ With FDSolver
  .ModesOnly "True"
  .ConsiderPortLossesTet "True"
  .TDCompatibleMaterials "{'True' if OPT['td_compat'] else 'False'}"
+ .SetPortMeshMatches3DMeshTet "{'True' if OPT['port_mesh_match'] else 'False'}"
  .AutoNormImpedance "False"
  .NormingImpedance "50"
  .Stimulation "All", "All"
@@ -417,6 +418,16 @@ End With
             if comp == "diel" and t["x0"] < xb and t["x1"] > xa and t["y0"] < yb and t["y1"] > ya:
                 code += f'Solid.Insert "diel:{bn}", "cond:{nm}"\n'
         m.add(f"trapezoid {nm}", code)
+    if fd and OPT["cond_step_um"] > 0:
+        # local tetrahedron size in the conductors (Solid.SetMeshStepwidthTet, maximum edge length): reaches the
+        # port mesh only with SetPortMeshMatches3DMeshTet (the port mode solver otherwise meshes the port apart)
+        dmax = OPT["cond_step_um"] * 1e-3
+        # signal conductors only: a ground plane across the box meshed at µm would take millions of tetrahedra
+        conds = [nm for comp, nm, _ in names if comp == "cond" and nm.startswith("sig")]
+        conds += [f"{'sigp' if r['kind'] == 'sig+' else 'sign'}{k}_trap"
+                  for k, r in enumerate(g["rects"]) if r["shape"] == "trap" and r["kind"] in ("sig+", "sig-")]
+        m.add("conductor mesh", "".join(f'Solid.SetMeshStepwidthTet "cond:{nm}", {q(dmax)}\n' for nm in conds),
+              optional=True)
     sets = potential_sets(g, box, extras)
     m.add("port", port_block(sets), "port")
     m.add("solver", fd_solver_block(f_ghz) if fd else solver_block(f_ghz), "setup")
@@ -810,7 +821,8 @@ class Runner:
 
                 def make(tag, wk=wk, blocks=blocks):
                     prj = self.de.new_mws()
-                    cp = os.path.join(wd, f"{cid}_{wk}_{tag}.cst")
+                    run = f".{a.tag}" if a.tag else ""  # runs with different --tag can share one work folder (and one CST)
+                    cp = os.path.join(wd, f"{cid}{run}_{wk}_{tag}.cst")
                     try:
                         self.add_blocks(prj, blocks, meta)
                         self.add_blocks(prj, [{"caption": "adaptive port meshing", "code": port_adapt_block(a.port_passes, a.port_adapt), "kind": "setup", "optional": True}], meta)
@@ -1055,6 +1067,11 @@ def main(argv=None):
     ap.add_argument("--metal", choices=["surface", "volume"], default="surface",
                     help="--lossy: copper as CST's lossy metal (surface impedance) or as a normal material with σ (interior meshed)")
     ap.add_argument("--tet-scale", type=float, default=1.0, help="--lossy --fd: tetrahedral mesh density ×this (StepsPerBox/WaveNear)")
+    ap.add_argument("--port-mesh-match", action="store_true",
+                    help="--lossy --fd: SetPortMeshMatches3DMeshTet (the port mode solver refines the volume mesh's surface "
+                         "instead of a port mesh of its own, so --tet-scale and --cond-step reach the port)")
+    ap.add_argument("--cond-step", type=float, default=0.0,
+                    help="--lossy --fd: maximum tetrahedron edge in the signal conductors, µm (Solid.SetMeshStepwidthTet; 0: off)")
     ap.add_argument("--no-td-compat", dest="td_compat", action="store_false",
                     help="--lossy --fd: TDCompatibleMaterials off (the frequency domain material models, no Debye fit)")
     ap.add_argument("--margin-scale", type=float, default=0.0, help="recompute the box with this margin scale")
@@ -1067,7 +1084,8 @@ def main(argv=None):
     ap.add_argument("--no-solve", action="store_true", help="build and save the CST projects only")
     ap.add_argument("--probe", action="store_true", help="import CST, print its version and the result-tree API, nothing else")
     a = ap.parse_args(argv)
-    OPT.update(metal=a.metal, tet_scale=a.tet_scale, td_compat=a.td_compat)
+    OPT.update(metal=a.metal, tet_scale=a.tet_scale, td_compat=a.td_compat, port_mesh_match=a.port_mesh_match,
+               cond_step_um=a.cond_step)
     a.freqs = [float(x) for x in a.freqs.split(",")]
     if a.sweep:
         a.freqs = sweep_freqs(a.sweep, a.sweep_min, a.sweep_max)

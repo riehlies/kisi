@@ -252,9 +252,9 @@ impl Project {
     pub fn models(&self) -> String {
         let n = self.params.field.len();
         let imp = if n == 0 {
-            "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5–15 %.".to_string()
+            "Impedance by formula (Hammerstad-Jensen, Wheeler, conformal mapping for coplanar lines, IPC-2141); single and coplanar lines within about 2 %, offset striplines and differential pairs can be off by 5–15 %.".to_string()
         } else {
-            format!("Impedance from Forstén's 2D field solver for {n} cross-sections (see field_solver: coverage), formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for the rest.")
+            format!("Impedance from Forstén's 2D field solver for {n} cross-sections (see field_solver: coverage), formula (Hammerstad-Jensen, Wheeler, conformal mapping for coplanar lines, IPC-2141) for the rest.")
         };
         format!("{imp} Losses: Wheeler/Huray/Djordjevic-Sarkar.")
     }

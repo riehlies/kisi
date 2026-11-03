@@ -4,12 +4,14 @@
   "impedance": {
     "about": "Impedance of a cross-section (single-ended, or the pair's differential impedance) by how it was computed.",
     "sources": [
-      {"kind": "kisi", "text": "Field solver: Forstén's test suite against HFSS/Ansys within 1.7 % (tools/validate_field.sh, docs/models.md table); ThunderScope cross-sections within 0.5 % of Forstén's microstrip/stripline solver."},
+      {"kind": "kisi", "text": "Field solver (field_pct): validation/cst_xs (620 cross-sections against CST Studio Suite's 2D port modes, README.md there) – kisi's field result as kisi reports it against CST's open-boundary estimate, without the etch group (trapezoids kisi does not model) and the 16 asymmetric pairs: Z0, Zdiff, Zeven median 0.18 %, p90 0.47 %, p99 0.78 %, max 1.03 %; pairs' Zdiff median 0.48 %, p90 0.80 %. Earlier: Forstén's test suite against HFSS/Ansys within 1.7 % (tools/validate_field.sh)."},
       {"kind": "kisi", "text": "Formulas (docs/models.md table, validation/thunderscope_xs.json): single microstrip +1.4 %, HFSS microstrip −0.6 %; diff microstrip +5.6 / +7.8 %; asymmetric stripline +10.3 %, 3D stripline T_ts6_sl +11 % (validation/fdtd/results/kisi_models.json); over a cut-out up to 25 % (flag F_FORMULA_ROUGH, extract.rs)."},
+      {"kind": "kisi", "text": "Coplanar formula (formula_coplanar_pct; surface microstrip with coplanar copper, analytic::microstrip_cpwg): validation/cst_xs, the 104 single-ended cases with coplanar copper and no plane opening (groups cpwg, anchor, size_study, board_target, board_other, test_board) against CST's open-boundary estimate – median 0.9 %, p90 1.7 %, max 2.7 % (before the coplanar formula: median 4.9 %, p90 8.8 %, max 28 %). Pairs with coplanar ground keep formula_coupled_pct (Zdiff median 2.2 %, p90 3.6 %, 13 cases), striplines with coplanar ground formula_stripline_pct (median 0.6 %, p90 1.6 %, 22 cases; offset striplines carry the plain stripline's error)."},
       {"kind": "kisi", "text": "No plane (coplanar return, analytic::no_plane): gold-finger cases of validation/fdtd/TESTS.md section 15 – single fingers within about 8 %, the pair without any plane about 15 % low."}
     ],
-    "field_pct": 2.0,
+    "field_pct": 1.0,
     "formula_microstrip_pct": 2.0,
+    "formula_coplanar_pct": 2.0,
     "formula_coupled_pct": 8.0,
     "formula_stripline_pct": 11.0,
     "formula_rough_pct": 25.0,

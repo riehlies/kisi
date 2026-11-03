@@ -1,0 +1,37 @@
+{
+ "id": "sl_h0.1_u1_er4.2",
+ "group": "stripline",
+ "tier": 1,
+ "tag": "fdvolm",
+ "date": "2026-11-03",
+ "tool": "CST Studio Suite",
+ "solver": "frequency domain solver, tetrahedral mesh, port modes only (FDSolver.ModesOnly) with lossy port modes (ConsiderPortLossesTet)",
+ "cst_version": null,
+ "f_ghz": 1.0,
+ "tol_pct": 0.1,
+ "box": [
+  -1.25,
+  1.25,
+  0.0,
+  0.27
+ ],
+ "margin_scale": 1.0,
+ "text_hash": "fd75db854a6c615a",
+ "potentials": true,
+ "blocks_failed": [],
+ "port_adapt": true,
+ "start_level": 0,
+ "status": "failed",
+ "walls": {},
+ "lossy": true,
+ "tand_freq_ghz": 1.0,
+ "loss_options": {
+  "metal": "volume",
+  "tet_scale": 1.0,
+  "td_compat": true,
+  "port_mesh_match": true,
+  "cond_step_um": 2.0
+ },
+ "error": "An error occurred while trying to execute run_solver:\nTerminated on unknown error\n\nReported error messages:\nERROR: This software is licensed for up to 80000 mesh cells only for the selected solver order.\nThe current mesh size exceeds this limit. Please reduce the mesh size accordingly.\nERROR: 1 error and 1 warning occurred.",
+ "seconds_total": 8.5
+}

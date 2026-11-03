@@ -326,7 +326,7 @@ def coplanar(cs):
         for gh in (0.5, 1.0, 2.0):
             cs.add(f"dcpwg_s{g(sh)}_g{g(gh)}", "diff_cpwg", 2 if gh == 1.0 else 3, f"coupled pair with coplanar ground w/h 1, s/h {g(sh)}, gap/h {g(gh)}",
                    {"w": 0.2, "s": sh * h, "gap": gh * h, "h": h, "t": t, "er": er}, spec=spec_ms(0.2, h, t, er, s=sh * h, gap=gh * h))
-    # stripline with coplanar ground on the trace layer (the formula ignores it: F_COPLANAR_IGNORED)
+    # stripline with coplanar ground on the trace layer (kisi's formula: analytic::stripline_cpw)
     for gh in (0.5, 1.0, 2.0):
         cs.add(f"slcpw_g{g(gh)}", "stripline_cpw", 2, f"stripline with coplanar ground, gap/h {g(gh)} (w 0.1, h 0.1 mm each side, εr 4.2)",
                {"w": 0.1, "gap": gh * 0.1, "h1": 0.1, "h2": 0.1, "t": 0.0175, "er": 4.2}, spec=spec_sl(0.1, 0.1, 0.1 - 0.0175, 0.0175, 4.2, gap=gh * 0.1))

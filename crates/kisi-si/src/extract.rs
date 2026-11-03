@@ -18,7 +18,7 @@ pub const F_NO_REF: u32 = 1; // no reference plane found at all
 pub const F_PARTIAL_REF: u32 = 2; // reference plane ends close to the trace
 pub const F_REF_SKIPS_LAYER: u32 = 4; // nearest plane is not on the adjacent layer
 pub const F_ONE_SIDED: u32 = 8; // inner layer with only one reference plane
-pub const F_COPLANAR_IGNORED: u32 = 16; // coplanar ground near a stripline (not modelled in M1)
+pub const F_COPLANAR_IGNORED: u32 = 16; // coplanar ground near a stripline pair (its formula ignores it)
 pub const F_DIFF_UNCOUPLED: u32 = 32; // diff-pair net but partner not adjacent here
 pub const F_REF_PERFORATED: u32 = 64; // sample lies in a small plane opening (e.g. via antipad)
 pub const F_PLANE_OPENING: u32 = 128; // opening in a layer between trace and reference (e.g. antipad under a pad)
@@ -1173,23 +1173,35 @@ pub fn formula_xs(su: &crate::board::Stackup, d: &XsDesc) -> FormulaXs {
     let mut eeff = None;
     let mut zdiff = None;
 
-    let ms = |h: f64, er: f64| -> (f64, f64) {
-        let e = match mask_p {
-            Some((mt, me)) => analytic::microstrip_masked(w, h, t, er, mt, me).1,
-            None => analytic::microstrip(w, h, t, er).1,
-        };
-        (analytic::microstrip_coplanar(w, h, t, er, mask_p, s_left, s_right), e)
-    };
+    // a pair with coplanar copper: modal values of the coupled grounded CPW (not the
+    // Kirschning-Jansen ratios below)
+    let mut modes: Option<((f64, f64), (f64, f64))> = None;
+    let coplanar = s_left.is_some() || s_right.is_some();
     if outer_top || outer_bot {
         let r = if outer_top { dn } else { up };
         let er = if outer_top { er_dn } else { er_up };
         if let (Some((_, h)), Some(er)) = (r, er) {
             kind = Kind::Microstrip;
-            let (z, e) = ms(h, er);
-            z0 = Some(z);
-            eeff = Some(e);
-            if let Some(g) = diff_gap {
-                zdiff = Some(analytic::diff_microstrip_coplanar(w, g, h, t, er, mask_p, s_left, s_right));
+            match d.partner {
+                Some((g, pw, _)) if coplanar => {
+                    // canonical orientation: the partner on the left, s_left measured past it
+                    let s_partner = s_left.map(|s| (s - g - pw).max(0.005));
+                    let ((zo, eo), (ze, ee)) =
+                        analytic::diff_microstrip_cpwg(w, g, h, t, er, mask_p, s_right, s_partner);
+                    z0 = Some((zo * ze).sqrt());
+                    eeff = Some(0.5 * (eo + ee));
+                    zdiff = Some(2.0 * zo);
+                    modes = Some(((zo, eo), (ze, ee)));
+                }
+                _ => {
+                    // grounded CPW where coplanar copper is within reach, else the plain microstrip
+                    let (z, e) = analytic::microstrip_cpwg(w, h, t, er, mask_p, s_left, s_right);
+                    z0 = Some(z);
+                    eeff = Some(e);
+                    if let Some(g) = diff_gap {
+                        zdiff = Some(analytic::diff_microstrip(z, g, h));
+                    }
+                }
             }
         }
     } else {
@@ -1197,16 +1209,24 @@ pub fn formula_xs(su: &crate::board::Stackup, d: &XsDesc) -> FormulaXs {
             (Some((_, h1)), Some((_, h2))) => {
                 kind = Kind::Stripline;
                 let (e1, e2) = (er_up.unwrap(), er_dn.unwrap());
-                let z = analytic::stripline_asym(w, h1, h2, t, e1, e2);
-                z0 = Some(z);
-                // effective permittivity: capacitance weighted
-                eeff = Some((e1 / h1 + e2 / h2) / (1.0 / h1 + 1.0 / h2));
                 if let Some(g) = diff_gap {
+                    // pairs: the coplanar copper is not modelled (no validated closed form)
+                    let z = analytic::stripline_asym(w, h1, h2, t, e1, e2);
+                    z0 = Some(z);
+                    // effective permittivity: capacitance weighted
+                    eeff = Some((e1 / h1 + e2 / h2) / (1.0 / h1 + 1.0 / h2));
                     zdiff = Some(analytic::diff_stripline(z, g, h1 + h2 + t));
-                }
-                let smin = [s_left, s_right].into_iter().flatten().fold(f64::INFINITY, f64::min);
-                if smin < h1.min(h2) {
-                    flags |= F_COPLANAR_IGNORED;
+                    let smin = [s_left, s_right].into_iter().flatten().fold(f64::INFINITY, f64::min);
+                    if smin < h1.min(h2) {
+                        flags |= F_COPLANAR_IGNORED;
+                    }
+                } else {
+                    // stripline with coplanar copper where it is within reach (the plain stripline
+                    // otherwise); εeff capacitance weighted
+                    let e_fill = crate::xsgeom::fill_er(su, li).0;
+                    let (z, e) = analytic::stripline_cpw(w, h1, h2, t, e1, e2, e_fill, s_left, s_right);
+                    z0 = Some(z);
+                    eeff = Some(e);
                 }
             }
             (Some((j, h)), None) | (None, Some((j, h))) => {
@@ -1243,7 +1263,7 @@ pub fn formula_xs(su: &crate::board::Stackup, d: &XsDesc) -> FormulaXs {
         // fingers); a conductor further away – a trace crossing a via's antipads on every layer –
         // leaves the return to plane edges the cross-section does not see: no impedance
         let near = |s: Option<f64>| s.filter(|&x| x <= (3.0 * w).max(0.5));
-        if let Some((z, e, zd, ze)) = analytic::no_plane(w, h, er, near(s_left), near(s_right), near(diff_gap)) {
+        if let Some((z, e, zd, ze)) = analytic::no_plane(w, h, t, er, near(s_left), near(s_right), near(diff_gap)) {
             z0 = Some(z);
             eeff = Some(e);
             zdiff = zd;
@@ -1259,7 +1279,9 @@ pub fn formula_xs(su: &crate::board::Stackup, d: &XsDesc) -> FormulaXs {
         _ => None,
     };
     let (mut eeff_odd, mut eeff_even) = (eeff, eeff);
-    if let (Some(g), Some(e)) = (diff_gap, eeff) {
+    if let Some(((_, eo), (_, ee))) = modes {
+        (eeff_odd, eeff_even) = (Some(eo), Some(ee));
+    } else if let (Some(g), Some(e)) = (diff_gap, eeff) {
         if matches!(kind, Kind::Microstrip | Kind::EmbeddedMicrostrip) {
             if let Some((h, er)) = (if outer_top { dn } else { up }).or(up).or(dn).map(|r| r.1).zip(er_dn.or(er_up)) {
                 let (_, _, ee, eo) = analytic::kirschning_jansen(w, g, h, er);

@@ -6,7 +6,7 @@ of compare.py. Reads the committed JSON only (cases.json, results/, fullwave/, k
 
 usage: python3 validation/cst_xs/make_viewer.py [cst_xs_dir] [out.html] [--fragment]
 """
-import base64, json, math, os, sys
+import base64, json, math, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -33,7 +33,7 @@ GROUPS = {
     "broadside": ("Broadside-coupled stripline", "No kisi model: solver check only."),
     "cpwg": ("Grounded coplanar", "gap/h 0.25…4 × w/h, mask."),
     "diff_cpwg": ("Coplanar pairs", "Pair with coplanar ground."),
-    "stripline_cpw": ("Stripline with coplanar ground", "The formula ignores the coplanar ground."),
+    "stripline_cpw": ("Stripline with coplanar ground", "kisi's coplanar formula (stripline with coplanar ground)."),
     "cpw_noplane": ("Coplanar without plane", "kisi's no-plane formula (an estimate) against the solvers."),
     "plane_cut": ("Plane cut-outs", "Trace over an opening in the next layer (1…8 × w), reference the layer below."),
     "plane_edge": ("Plane edge", "Reference plane ending 0.5…8 h beside the trace."),
@@ -107,6 +107,33 @@ def fw_curves(a, rec, models, text):
     return out
 
 
+def lossy_tags(results_dir):
+    """{case id: [tags of its CST lossy runs]}: <id>.lossy.json = time domain (""), <id>.<tag>.lossy.json"""
+    out = {}
+    for name in os.listdir(results_dir):
+        if name.endswith(".lossy.json"):
+            out.setdefault(name[: -len(".lossy.json")], None)
+    return out
+
+
+def simulated(rec, kisi_rec, fw, stems, results_dir):
+    """what exists for a case: CST lossless (E/M walls), CST lossy runs, FW E/M/sweep, kisi FDM E/M/open, formula"""
+    cid = rec["id"]
+    tags = []
+    for stem in stems:
+        if stem == cid:
+            tags.append("TD")
+        elif stem.startswith(cid + ".") and re.fullmatch(r"[a-z0-9]+", stem[len(cid) + 1:]):
+            tags.append(stem[len(cid) + 1:])
+    R = (fw or {}).get("results") or {}
+    v = rec["values"]
+    return {"cst_E": bool(v.get("cst_E")), "cst_M": bool(v.get("cst_M")), "cst_open_scaled": bool(rec.get("cst_open_approx")),
+            "cst_lossy": sorted(tags, key=lambda t: (t != "fd", t)),
+            "fw": [k for k in ("E", "M", "sweep") if (R.get(k) or {}).get("ok")],
+            "fdm": [n for k, n in (("field_E", "E"), ("field_M", "M"), ("field", "open")) if (kisi_rec.get(k) or {}).get("ok")],
+            "formula": (kisi_rec.get("formula") or {}).get("kind")}
+
+
 def explain(rec, c):
     """known causes of a case's outliers (README, Results)"""
     v = rec["values"]
@@ -128,10 +155,10 @@ def explain(rec, c):
     big = {q: x for q, x in e.items() if abs(x) > 5} if rec["group"] != "etch" else {}
     if big:
         why = {"plane_cut": "the formula takes the plane below the cut-out, the field sees the opening's edges",
-               "cpwg": "coplanar formula outside its range (wide gap or narrow trace)",
+               "cpwg": "the coplanar formula's partial-capacitance approximation",
                "cpw_noplane": "kisi's no-plane formula is an estimate",
-               "diff_cpwg": "the pair formula ignores the coplanar ground",
-               "stripline_cpw": "the stripline formula ignores the coplanar ground"}.get(rec["group"], "outside the formula's range of validity or a structure it does not model")
+               "diff_cpwg": "the coupled coplanar formula's approximations (smooth transition to the pair formula)",
+               "stripline_cpw": "the coplanar stripline formula's approximations"}.get(rec["group"], "outside the formula's range of validity or a structure it does not model")
         notes.append(f"Formula ({f.get('kind') or '–'}) off by " + ", ".join(f"{q} {x:+.1f} %" for q, x in big.items()) + f": {why}.")
     return notes
 
@@ -169,6 +196,7 @@ def main():
                         row.setdefault(f"loss {sv}", {})[f"{q}@{fg:g}"] = rnd({k: s[k] for k in ("n", "bias", "med", "p90")}, 3)
         summ[g] = row
     out_cases = []
+    stems = list(lossy_tags(a.results))
     for r in recs:
         c = byid[r["id"]]
         r["formula_meta"] = {k: (kisi.get(r["id"], {}).get("formula") or {}).get(k) for k in ("kind", "flags")}
@@ -182,7 +210,8 @@ def main():
              "params": rnd(c.get("params"), 6), "ref": c.get("ref"), "geo": geometry(c), "v": keep, "loss": loss,
              "fw_geometry": r.get("fw_geometry"), "box_cutoff": sig(r.get("box_cutoff_ghz"), 3),
              "formula": r["formula_meta"], "cst_version": r.get("cst_version"), "notes": explain(r, c),
-             "M": bool(v.get("cst_M"))}
+             "M": bool(v.get("cst_M")),
+             "sim": simulated(r, kisi.get(r["id"], {}), compare.load(os.path.join(a.fullwave, r["id"] + ".json")), stems, a.results)}
         cur = fw_curves(a, r, compare.kisi_models(kloss.get(r["id"]), c["text"]), c["text"])
         if cur:
             e["sweep"] = cur

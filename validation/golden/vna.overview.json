@@ -9,41 +9,41 @@
    "rough_formula_mm": 105.469,
    "target_ohm": 50.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.443406,
+   "within_5pct": 0.206512,
    "worst": [
     {
      "net": "/2.LO + Ref Clock/CLKIN",
-     "within_5pct": 0.0,
-     "z_max": 55.4254,
-     "z_mean": 29.434,
-     "z_min": 25.4242
+     "within_5pct": 0.0518639,
+     "z_max": 54.4287,
+     "z_mean": 28.4165,
+     "z_min": 24.5224
     },
     {
      "net": "/2.LO + Ref Clock/CLKOUT",
-     "within_5pct": 0.0,
-     "z_max": 55.4254,
-     "z_mean": 29.434,
-     "z_min": 25.4242
+     "within_5pct": 0.0518639,
+     "z_max": 54.4287,
+     "z_mean": 28.4165,
+     "z_min": 24.5224
     },
     {
      "net": "Net-(T2-IN+)",
      "within_5pct": 0.0,
-     "z_max": 88.6295,
-     "z_mean": 62.2313,
+     "z_max": 87.4647,
+     "z_mean": 61.6319,
      "z_min": 55.4254
     },
     {
      "net": "Net-(T3-IN-)",
      "within_5pct": 0.0,
-     "z_max": 90.2949,
-     "z_mean": 61.7497,
+     "z_max": 89.1482,
+     "z_mean": 61.3277,
      "z_min": 55.4254
     },
     {
      "net": "Net-(T3-IN+)",
      "within_5pct": 0.0,
-     "z_max": 90.2949,
-     "z_mean": 61.6413,
+     "z_max": 89.1482,
+     "z_mean": 61.0468,
      "z_min": 55.4254
     }
    ]
@@ -62,8 +62,8 @@
      "net": "USB_DP",
      "within_5pct": 0.154443,
      "z_max": 133.327,
-     "z_mean": 116.725,
-     "z_min": 67.8208
+     "z_mean": 117.155,
+     "z_min": 67.1094
     },
     {
      "net": "USB_DN",
@@ -82,9 +82,9 @@
     {
      "net": "/Microcontroller/MCU_USB_DP",
      "within_5pct": 0.0,
-     "z_max": 127.368,
-     "z_mean": 107.775,
-     "z_min": 69.462
+     "z_max": 122.938,
+     "z_mean": 106.66,
+     "z_min": 67.6193
     }
    ]
   }
@@ -96,7 +96,7 @@
   "warnings": []
  },
  "layers": 6,
- "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5–15 %. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
+ "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, conformal mapping for coplanar lines, IPC-2141); single and coplanar lines within about 2 %, offset striplines and differential pairs can be off by 5–15 %. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
  "stackup": [
   {
    "cu_um": 35.0,

@@ -88,11 +88,12 @@ The via findings below describe kisi's former coax-section via model; kisi now u
   |---|---|---|---|
   | microstrip L1 (ThunderScope) | 48.6 Ω, εeff 2.580 | 49.1 Ω, 2.568 | 49.2 Ω, 2.554 |
   | stripline In2 (ThunderScope) | 46.5 Ω, 3.920 | 46.1 Ω, 3.904 | 51.6 Ω (+11 %), 3.725 (−5 %) |
-  | CPWG (LibreVNA RF class) | 51.1 Ω, 3.116 | 50.3 Ω, 3.084 | 51.1 Ω, 3.264 (+5 %) |
+  | CPWG (LibreVNA RF class) | 51.1 Ω, 3.116 | 50.3 Ω, 3.084 | 49.9 Ω (−2 %), 3.099 |
 
   - The field solver is within 1.6 % in Zc and 1 % in εeff.
-  - The formulas miss the asymmetric stripline by 11 % and the CPWG εeff by 5 %. The formula fallback is marked
-    as an estimate in kisi.
+  - The formulas miss the asymmetric stripline by 11 %. The CPWG formula read 51.1 Ω, εeff 3.264 (+5 %) before the
+    coplanar formulas (`feat/xs-accuracy`, docs/models.md); its TDR plateau is now 50.7 Ω (3D 50.3, before 52.0).
+    The formula fallback is marked as an estimate in kisi.
 - **Coupling (T, microstrip aggressor/victim, 20 mm, 35 ps):**
   - FEXT: 3D 6.64 / 3.26 %, kisi formula 7.01 / 3.48 % (+6 %), field solver 7.28 / 3.61 % (+10 %).
   - NEXT: 3D 1.41 / 0.58 %, kisi 2.36–2.59 / 0.86–1.06 %, i.e. 70–80 % high.
@@ -668,7 +669,10 @@ solver (formula 56.9, flagged rough; before 68.2), finger with a far plane 61.5 
 without a plane 62.9 / 62.7, finger pair 115.3 / 114.7 Ω Zdiff (before 136.7). The TDR deltas of the single
 cases are within about 4 Ω (8 %), the pair without any plane reads about 7 Ω low in its section (its feed of
 two 0.19 mm traces at 1 mm pitch reads 107 against 117 Ω in 3D, the formula's diff microstrip): the no-plane
-pair is an estimate to about 15 %.
+pair is an estimate to about 15 %. With the copper thickness in the coplanar formulas (`feat/xs-accuracy`; the
+no-plane CPW against CST 2D from +10 % to −0.3 %) the formula peaks read 58.9 (far plane), 61.6 (no plane) and
+114.4 Ω (pair), about 1 Ω lower, and the largest |ΔS21| 0.51, 0.48 and 1.20 dB (before 0.45, 0.42, 1.1): the
+fingers' finite width and the plane edges, which the 2D cross-section leaves out, now show slightly more.
 
 **ThunderScope PCIe lanes** (check, formula impedances; RL limit 10 dB): the trace through each 4.2 mm
 gold finger was a 0.19 mm microstrip over B.Cu 1.42 mm away (161 Ω diff, field solver 172 Ω); with the

@@ -243,10 +243,10 @@ fn main() {
             "microstrip" => (a::microstrip_model(w, h, t, er, mask), "z0"),
             // formula path of the extraction: reference on the deeper plane
             "microstrip_cut" => (a::microstrip_model(w, h + 0.035 + f("cut_sub_h").unwrap(), t, er, mask), "z0"),
-            "gcpw" => (a::microstrip_coplanar(w, h, t, er, mask, gap, gap), "z0"),
+            "gcpw" => (a::microstrip_cpwg(w, h, t, er, mask, gap, gap).0, "z0"),
             "embedded_microstrip" => (a::embedded_microstrip(w, h, t, f("cover").unwrap(), er).0, "z0"),
             "diff_microstrip" => (a::diff_microstrip_model(w, f("s").unwrap(), h, t, er, mask), "zdiff"),
-            "diff_gcpw" => (a::diff_microstrip_coplanar(w, f("s").unwrap(), h, t, er, mask, gap, gap), "zdiff"),
+            "diff_gcpw" => (2.0 * a::diff_microstrip_cpwg(w, f("s").unwrap(), h, t, er, mask, gap, gap).0 .0, "zdiff"),
             "stripline" | "diff_stripline" => {
                 let h2 = f("top_h").unwrap() - t;
                 let e2 = f("er_top").unwrap_or(er);

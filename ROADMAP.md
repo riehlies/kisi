@@ -123,6 +123,29 @@ validation, and every result says which level it used and how uncertain it is.
   (`data/accuracy.json`, design note `docs/research/accuracy-levels.md`). Next: loss (± dB at Nyquist from
   lines and vias) and return loss (a range from the impedance uncertainty), then the eye; the 3D level per
   selected structure with the viewer's 3D check.
+- **Cross-section formulas and etch** (`feat/xs-accuracy`): the 2D validation (`validation/cst_xs`, 620 cases
+  against CST) set the field solver's uncertainty to 1 % and brought formulas for coplanar lines (grounded CPW,
+  stripline with coplanar ground, the coupled grounded CPW; single lines with coplanar copper 4.9 → 1.1 % median).
+  Next:
+  - **etch factor** per stackup or layer in `kisi.json`, applied as an effective width w − t/(2·ef) (the FDM
+    backend takes no trapezoids; CST: within ±2.2 % for microstrips and pairs, −2 … −4 % for striplines, against
+    −2 … −11 % today), with values from the test board's measured cross-sections (JLC) once they exist;
+  - a closed form for pairs with coplanar ground on one side only (today the mean of two symmetric pairs: Zeven
+    about 10 % off, up to +70 % for very narrow gaps under mask; `validation/cst_xs/fit_coplanar.py`);
+  - proposals from the same comparison, not yet decided: the accuracy entries for striplines split into
+    symmetric (0.2 %, p90 0.4 %) and offset (2 %, p90 9 %), the cut-out entry (`formula_rough_pct` 25 % against a
+    measured median 18 %, p90 60 %), the pair formulas (IPC-2141 Zdiff p90 12 % for microstrip, 33 % for tight
+    stripline pairs); the microstrip solder-mask formula reads 1.2 % high.
+- **Advanced: 3D check with kisi-fdtd.** On demand, a 3D FDTD run of a selected via or transition with the
+  user's geometry and stackup – the case cut out of the board as for the board-via references – compared with
+  kisi's fast model (S-parameters, TDR). First in the native CLI (all cores), then in the viewer as an optional
+  Web Worker per port (`kisi_fdtd.wasm` ≈ 370 KB, 130 KB gzipped, already has `fd_run`); a cell limit with a
+  run-time estimate up front and progress; small via cut-outs (< ~1 M cells) in the browser, board-sized ones in
+  the CLI (the viewer's 3D check under "Vias and planes in 3D" above is its first step). js_2d_fields' full-wave
+  backend stays a validation tool (gmsh + OCCT in WebAssembly ≈ 12.5 MB, little gain for users over the FDM path).
+- **Own 2D FEM + MQS solver in Rust** (an alternative to the full-wave backend): static P2 FEM for C and L plus an
+  MQS solution for the conductor loss; from validation/cst_xs: pairs 0.4 → 0.04 % (the FDM's bias at narrow gaps),
+  and a loss reference of its own (full-wave and the MQS check agree within 1 %, CST's lossy metal 4–23 % low).
 - **Crosstalk:** broadside coupling between layers (detected and listed so far), crossings of plane splits and
   edges (return path), via-to-via coupling through the cavity.
 - **PDN:** per-IC grid for all rails at once, regulator models beyond R + L (control-loop output impedance), the

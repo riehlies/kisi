@@ -139,38 +139,322 @@ pub fn cpwg(w: f64, s: f64, h: f64, er: f64) -> (f64, f64) {
     (z, eeff)
 }
 
-/// Coplanar waveguide without a ground plane (conformal mapping, zero thickness; Simons, Coplanar
-/// Waveguide Circuits, 2001, ch. 2): strip `w`, gaps `s` to coplanar grounds, on a dielectric slab of
-/// thickness `h` (εr) with air on both sides – `h` = ∞ (`f64::INFINITY`): fully embedded.
-/// Returns (Z0, εeff).
-pub fn cpw(w: f64, s: f64, h: f64, er: f64) -> (f64, f64) {
+/// Coplanar waveguide without a ground plane (conformal mapping; Simons, Coplanar Waveguide Circuits,
+/// Components, and Systems, 2001, ch. 2): strip `w`, gaps `s` to coplanar grounds, copper thickness `t`,
+/// on a dielectric slab of thickness `h` (εr) with air on both sides – `h` = ∞ (`f64::INFINITY`): fully
+/// embedded. The thickness adds the two slots' capacitance ([`slot_cap`]; in air on a slab, in εr when
+/// embedded). Returns (Z0, εeff).
+pub fn cpw(w: f64, s: f64, h: f64, t: f64, er: f64) -> (f64, f64) {
     let k0 = w / (w + 2.0 * s);
-    let eeff = if h.is_finite() {
+    // C/ε0 of the zero-thickness line in air (both half-spaces) and with the slab
+    let ca0 = 4.0 * k_ratio(k0);
+    let (c0, e_slot) = if h.is_finite() {
         let k1 = (PI * w / (4.0 * h)).sinh() / (PI * (w + 2.0 * s) / (4.0 * h)).sinh();
-        1.0 + 0.5 * (er - 1.0) * k_ratio(k1) / k_ratio(k0)
+        (ca0 + 2.0 * (er - 1.0) * k_ratio(k1), 1.0)
     } else {
-        er
+        (er * ca0, er)
     };
-    (30.0 * PI / eeff.sqrt() / k_ratio(k0), eeff)
+    let cs = 2.0 * slot_cap(t, s);
+    z_of_caps(c0 + e_slot * cs, ca0 + cs)
 }
 
-/// Coplanar strips (two strips of width `w`, gap `s`, no ground; Simons ch. 7) on a slab `h` (εr) as
-/// in [`cpw`]. Returns (Zdiff, εeff).
-pub fn cps(w: f64, s: f64, h: f64, er: f64) -> (f64, f64) {
+/// Coplanar strips (two strips of width `w`, gap `s`, thickness `t`, no ground; Simons ch. 7) on a slab
+/// `h` (εr) as in [`cpw`]. Returns (Zdiff, εeff).
+pub fn cps(w: f64, s: f64, h: f64, t: f64, er: f64) -> (f64, f64) {
     let k = s / (s + 2.0 * w);
-    let eeff = if h.is_finite() {
+    // C/ε0 between the strips: K(k')/K(k) in air (both half-spaces)
+    let ca0 = 1.0 / k_ratio(k);
+    let (c0, e_slot) = if h.is_finite() {
         let k1 = (PI * s / (4.0 * h)).sinh() / (PI * (s + 2.0 * w) / (4.0 * h)).sinh();
-        1.0 + 0.5 * (er - 1.0) * k_ratio(k1) / k_ratio(k)
+        (ca0 * (1.0 + 0.5 * (er - 1.0) * k_ratio(k1) / k_ratio(k)), 1.0)
     } else {
-        er
+        (er * ca0, er)
     };
-    (120.0 * PI / eeff.sqrt() * k_ratio(k), eeff)
+    let cs = slot_cap(t, s);
+    z_of_caps(c0 + e_slot * cs, ca0 + cs)
+}
+
+// ---------------------------------------------------------------------------
+// Coplanar lines with a ground plane: partial capacitances
+// ---------------------------------------------------------------------------
+//
+// A line with coplanar ground (grounded CPW, its coupled pair, a stripline with coplanar ground) as
+// partial capacitances per unit length, normalised by ε0 (C/ε0; Z = η0/√(C·C_air), εeff = C/C_air):
+// * each region above and below the conductor plane from the conformal mapping of the zero-thickness
+//   line (Ghione & Naldi, "Coplanar waveguides for MMIC applications: effect of upper shielding,
+//   conductor backing, finite-extent ground planes, and line-to-line coupling", IEEE Trans. MTT 35,
+//   1987; Simons, Coplanar Waveguide Circuits, Components, and Systems, 2001, ch. 2, 3 and 7): open air
+//   K(k)/K(k′) with k = w/(w + 2s), a dielectric of height h on a plane with
+//   k = tanh(πw/4h)/tanh(π(w + 2s)/4h), a solder-mask cover layer with the sinh modulus (Simons ch. 2);
+// * the copper thickness as the slots between the conductors' side walls ([`slot_cap`]);
+// * solder mask (kisi's geometry: a layer of thickness tm on the substrate, the trace coated by tm,
+//   the coplanar copper bare) in the slots as a series/parallel mix and above the copper as half a
+//   cover layer of thickness tm (the trace's coating) plus a full one where tm exceeds t;
+// * for wide gaps the partial-capacitance split fails (the field reaches the plane around the slot):
+//   each capacitance is the smooth maximum ([`smooth_max`]) of the coplanar value and the value
+//   without coplanar copper (kisi's microstrip / stripline formulas), so the formula joins the plain
+//   line smoothly. The extraction looks for coplanar copper up to 3 h (at most 2 mm) beside the trace,
+//   as for the field solver's geometry; there the formula is 0.4–1.7 % below the plain line (CST: about
+//   0.5 % at 4 h, 1 % at 2 h), so leaving copper beyond that out changes Z by about 1 % at most.
+// The slot corner term and the smoothing width are fitted to kisi's field solver on 1 100 synthetic
+// cross-sections (grounded CPW with and without mask, stripline with coplanar ground, coupled grounded
+// CPW, CPW without a plane; h 0.1–1.6 mm, εr 3–10, t 17.5–70 µm, w/h 0.5–4, gap/h 0.1–4):
+// validation/cst_xs/fit_coplanar.py, the sweep stored in validation/cst_xs/coplanar_fit.json (the fit
+// re-runs from it with --from-json); checked on the CST cases of validation/cst_xs (README.md there).
+
+/// Corner term of a slot between two copper side walls (C/ε0 = t/s + SLOT_CORNER·(t/s)^SLOT_CORNER_EXP):
+/// fitted to kisi's field solver (validation/cst_xs/fit_coplanar.py on coplanar_fit.json, the sweep of
+/// 2026-11-03; `--from-json` reproduces these values; the same term brings the no-plane CPW of
+/// validation/cst_xs from +6…+16 % to within 0.5 % of CST).
+const SLOT_CORNER: f64 = 0.067;
+const SLOT_CORNER_EXP: f64 = 0.090;
+/// Width of the smooth maximum between the coplanar and the plain-line capacitance (relative; the same
+/// for C and C_air, so a homogeneous dielectric keeps εeff = εr): fitted to the same field solves
+/// (fit_coplanar.py, sweep of 2026-11-03).
+const TAU: f64 = 0.045;
+
+/// Capacitance (C/ε0, per unit length, without the dielectric) of one slot of width `s` between copper
+/// side walls of height `t`: the parallel-plate part t/s and the corners.
+pub fn slot_cap(t: f64, s: f64) -> f64 {
+    if t <= 0.0 || s <= 0.0 {
+        return 0.0;
+    }
+    let r = t / s;
+    r + SLOT_CORNER * r.powf(SLOT_CORNER_EXP)
+}
+
+/// (Z, εeff) from the capacitances C/ε0 and C_air/ε0.
+pub fn z_of_caps(c: f64, ca: f64) -> (f64, f64) {
+    (ETA0 / (c * ca).sqrt(), c / ca)
+}
+
+/// (C/ε0, C_air/ε0) of a line with impedance `z` and effective permittivity `eeff`.
+pub fn caps_of_z(z: f64, eeff: f64) -> (f64, f64) {
+    let ca = ETA0 / (z * eeff.sqrt());
+    (eeff * ca, ca)
+}
+
+/// Smooth maximum of `a` and `b` (> 0) with relative width `tau`: b·(1 + τ·ln(1 + e^((a/b − 1)/τ))) –
+/// a where a ≫ b, b where a ≪ b, slightly above both where they are equal.
+pub fn smooth_max(a: f64, b: f64, tau: f64) -> f64 {
+    let x = (a / b - 1.0) / tau;
+    let sp = if x > 30.0 { x + (-x).exp().ln_1p() } else { x.exp().ln_1p() };
+    b * (1.0 + tau * sp)
+}
+
+/// One open half-space above a symmetric coplanar line (strip `w`, both gaps `s`): C/ε0 of the strip.
+fn open_cap(w: f64, s: f64) -> f64 {
+    2.0 * k_ratio(w / (w + 2.0 * s))
+}
+
+/// A dielectric of height `h` between the coplanar plane and a ground plane (εr = 1): C/ε0 of the strip.
+fn slab_cap(w: f64, s: f64, h: f64) -> f64 {
+    2.0 * k_ratio((PI * w / (4.0 * h)).tanh() / (PI * (w + 2.0 * s) / (4.0 * h)).tanh())
+}
+
+/// A cover layer of thickness `d` over the coplanar plane (partial capacitance per unit εr − 1).
+fn cover_cap(w: f64, s: f64, d: f64) -> f64 {
+    if d <= 0.0 {
+        return 0.0;
+    }
+    let (a, b) = (PI * w / (4.0 * d), PI * (w + 2.0 * s) / (4.0 * d));
+    // sinh(a)/sinh(b) without overflow for thin layers
+    let k = if b > 300.0 { (a - b).exp() } else { a.sinh() / b.sinh() };
+    2.0 * k_ratio(k)
+}
+
+/// Solder mask (`tm`, `em`) on a slot of width `s` next to a strip `w` of thickness `t`: (factor on the
+/// open half-space's capacitance, permittivity of the slot).
+fn mask_on_slot(w: f64, s: f64, t: f64, mask: Option<(f64, f64)>) -> (f64, f64) {
+    let Some((tm, em)) = mask.filter(|m| m.0 > 0.0 && m.1 > 1.0) else {
+        return (1.0, 1.0);
+    };
+    // slot: the bottom tm filled (in parallel with the air above it), in series with the trace's
+    // coating of width tm along its side wall
+    let e_slot = if tm >= s || t <= 0.0 {
+        em
+    } else {
+        let e_mix = 1.0 + (em - 1.0) * (tm / t).min(1.0);
+        1.0 / (tm / s / em + (1.0 - tm / s) / e_mix)
+    };
+    // above the copper: the trace's coating covers half of the slots' mouths; a mask thicker than the
+    // copper covers them fully by tm − t
+    let cu = open_cap(w, s);
+    let cu_m = (cu + (em - 1.0) * (0.5 * cover_cap(w, s, tm) + 0.5 * cover_cap(w, s, tm - t))).min(em * cu);
+    (cu_m / cu, e_slot)
+}
+
+/// Symmetric grounded CPW (strip `w`, both gaps `s`, substrate `h`/`er`, thickness `t`, optional mask):
+/// (C/ε0, C_air/ε0).
+fn cpwg_caps(w: f64, s: f64, h: f64, t: f64, er: f64, mask: Option<(f64, f64)>) -> (f64, f64) {
+    let cl = slab_cap(w, s, h);
+    let cu = open_cap(w, s);
+    let cs = 2.0 * slot_cap(t, s);
+    let (f_up, e_slot) = mask_on_slot(w, s, t, mask);
+    (er * cl + f_up * cu + e_slot * cs, cl + cu + cs)
+}
+
+/// Combines the two sides of a line (each the symmetric structure with that side's gap, None = no
+/// coplanar copper: the plain line `plain`) as the mean of their capacitances, each the smooth
+/// maximum of the coplanar and the plain value.
+fn combine_sides(plain: (f64, f64), sides: [Option<(f64, f64)>; 2]) -> (f64, f64) {
+    let mut c = 0.0;
+    let mut ca = 0.0;
+    for s in sides {
+        let (sc, sca) = s.map_or(plain, |(sc, sca)| (smooth_max(sc, plain.0, TAU), smooth_max(sca, plain.1, TAU)));
+        c += 0.5 * sc;
+        ca += 0.5 * sca;
+    }
+    z_of_caps(c, ca)
+}
+
+/// Surface microstrip with coplanar copper (grounded CPW; gaps `s_left`/`s_right`, None = none within
+/// reach), thickness and optional solder mask (`mask` = (thickness, εr)). Returns (Z0, εeff); without
+/// coplanar copper the plain microstrip ([`microstrip_model`]).
+pub fn microstrip_cpwg(
+    w: f64,
+    h: f64,
+    t: f64,
+    er: f64,
+    mask: Option<(f64, f64)>,
+    s_left: Option<f64>,
+    s_right: Option<f64>,
+) -> (f64, f64) {
+    let (z, e) = microstrip_eeff(w, h, t, er, mask);
+    if s_left.is_none() && s_right.is_none() {
+        return (z, e);
+    }
+    let side = |s: Option<f64>| s.map(|s| cpwg_caps(w, s, h, t, er, mask));
+    combine_sides(caps_of_z(z, e), [side(s_left), side(s_right)])
+}
+
+/// Stripline with coplanar copper: strip `w`, thickness `t`, dielectric `h1`/`e1` to one plane and
+/// `h2`/`e2` to the other, the copper layer filled with `e_fill`; gaps `s_left`/`s_right` (None = none
+/// within reach). Returns (Z0, εeff); without coplanar copper kisi's stripline ([`stripline_asym`]).
+#[allow(clippy::too_many_arguments)] // the cross-section's dimensions
+pub fn stripline_cpw(
+    w: f64,
+    h1: f64,
+    h2: f64,
+    t: f64,
+    e1: f64,
+    e2: f64,
+    e_fill: f64,
+    s_left: Option<f64>,
+    s_right: Option<f64>,
+) -> (f64, f64) {
+    let z = stripline_asym(w, h1, h2, t, e1, e2);
+    let e = (e1 / h1 + e2 / h2) / (1.0 / h1 + 1.0 / h2);
+    if s_left.is_none() && s_right.is_none() {
+        return (z, e);
+    }
+    let side = |s: Option<f64>| {
+        s.map(|s| {
+            let (a, b, cs) = (slab_cap(w, s, h1), slab_cap(w, s, h2), 2.0 * slot_cap(t, s));
+            (e1 * a + e2 * b + e_fill * cs, a + b + cs)
+        })
+    };
+    combine_sides(caps_of_z(z, e), [side(s_left), side(s_right)])
+}
+
+/// Modes of an edge-coupled surface microstrip pair from kisi's pair formulas: Zodd from the IPC
+/// differential impedance ([`diff_microstrip`]), Zeven = Z0²/Zodd, the modal εeff from the
+/// Kirschning-Jansen ratios around the single line's εeff. Returns ((Zodd, εodd), (Zeven, εeven)).
+pub fn diff_microstrip_modes(
+    w: f64,
+    g: f64,
+    h: f64,
+    t: f64,
+    er: f64,
+    mask: Option<(f64, f64)>,
+) -> ((f64, f64), (f64, f64)) {
+    let (zp, ep) = microstrip_eeff(w, h, t, er, mask);
+    let zo = diff_microstrip(zp, g, h) / 2.0;
+    let (_, _, ee, eo) = kirschning_jansen(w, g, h, er);
+    let em = 0.5 * (ee + eo);
+    let (eo, ee) = if em > 0.0 { (ep * eo / em, ep * ee / em) } else { (ep, ep) };
+    ((zo, eo), (zp * zp / zo, ee))
+}
+
+/// Per-line capacitances (C/ε0, C_air/ε0) of the even and the odd mode of a symmetric coupled grounded
+/// CPW: strips `w`, centre gap `g`, outer gaps `gout` (None = no coplanar ground), substrate `h`/`er`,
+/// thickness `t`, optional mask. Conformal mapping of each half-space with the symmetry plane as a
+/// magnetic (even) or electric (odd) wall: with x1 = g/2, x2 = x1 + w, x3 = x2 + gout (in the substrate
+/// tanh(πx/2h) in place of x), the per-line capacitance of a half-space is K(k)/K(k′) with
+/// k_e² = (x2² − x1²)/(x3² − x1²) and k_o² = (x2² − x1²)·x3²/((x3² − x1²)·x2²) (Ghione & Naldi 1987;
+/// Simons ch. 7); for x1 → 0 the even mode is the single CPW of width 2w, for x3 → ∞ the odd mode the
+/// coplanar strips. Returns ((C_e, C_air,e), (C_o, C_air,o)).
+fn coupled_cpwg_caps(
+    w: f64,
+    g: f64,
+    gout: Option<f64>,
+    h: f64,
+    t: f64,
+    er: f64,
+    mask: Option<(f64, f64)>,
+) -> ((f64, f64), (f64, f64)) {
+    let ke = |a: f64, b: f64, c: f64| if c.is_finite() { ((b * b - a * a) / (c * c - a * a)).sqrt() } else { 0.0 };
+    let ko = |a: f64, b: f64, c: f64| {
+        let r = if c.is_finite() { c * c / (c * c - a * a) } else { 1.0 };
+        ((b * b - a * a) / (b * b) * r).sqrt()
+    };
+    let (x1, x2) = (g / 2.0, g / 2.0 + w);
+    let x3 = gout.map_or(f64::INFINITY, |s| x2 + s);
+    let m = |x: f64| if x.is_finite() { (PI * x / (2.0 * h)).tanh() } else { 1.0 };
+    let (m1, m2, m3) = (m(x1), m(x2), m(x3));
+    let (ue, de) = (k_ratio(ke(x1, x2, x3)), k_ratio(ke(m1, m2, m3)));
+    let (uo, d_o) = (k_ratio(ko(x1, x2, x3)), k_ratio(ko(m1, m2, m3)));
+    // slots: the outer one in both modes, the centre one (to the electric wall at g/2) in the odd mode
+    let (f_out, e_out, s_out) = match gout {
+        Some(s) => {
+            let (f, e) = mask_on_slot(w, s, t, mask);
+            (f, e, slot_cap(t, s))
+        }
+        None => (1.0, 1.0, 0.0),
+    };
+    let (f_in, e_in) = mask_on_slot(w, g, t, mask);
+    let s_in = 2.0 * slot_cap(t, g);
+    let even = (f_out * ue + er * de + e_out * s_out, ue + de + s_out);
+    let odd = (f_in * uo + er * d_o + e_out * s_out + e_in * s_in, uo + d_o + s_out + s_in);
+    (even, odd)
+}
+
+/// Edge-coupled surface microstrip pair with coplanar ground (coupled grounded CPW): strip `w`, partner
+/// width `pw`, gap `g`, the coplanar gap beside this strip `s_out` and beside the partner `s_out_partner`
+/// (None = no coplanar copper on that side), substrate `h`/`er`, thickness `t`, optional mask. The
+/// per-line capacitances are the mean of the symmetric pairs with either outer gap (an approximation
+/// for unequal gaps), each mode joined to kisi's pair formulas ([`diff_microstrip_modes`]) by the smooth
+/// maximum. The partner's width enters only through the gaps (the formula takes equal strips).
+/// Returns ((Zodd, εodd), (Zeven, εeven)).
+#[allow(clippy::too_many_arguments)] // the cross-section's dimensions
+pub fn diff_microstrip_cpwg(
+    w: f64,
+    g: f64,
+    h: f64,
+    t: f64,
+    er: f64,
+    mask: Option<(f64, f64)>,
+    s_out: Option<f64>,
+    s_out_partner: Option<f64>,
+) -> ((f64, f64), (f64, f64)) {
+    let (lo, le) = diff_microstrip_modes(w, g, h, t, er, mask);
+    if s_out.is_none() && s_out_partner.is_none() {
+        return (lo, le);
+    }
+    let (e1, o1) = coupled_cpwg_caps(w, g, s_out, h, t, er, mask);
+    let (e2, o2) = coupled_cpwg_caps(w, g, s_out_partner, h, t, er, mask);
+    let join = |a: (f64, f64), b: (f64, f64), lim: (f64, f64)| {
+        let l = caps_of_z(lim.0, lim.1);
+        z_of_caps(smooth_max(0.5 * (a.0 + b.0), l.0, TAU), smooth_max(0.5 * (a.1 + b.1), l.1, TAU))
+    };
+    (join(o1, o2, lo), join(e1, e2, le))
 }
 
 /// A trace without a reference plane (no plane copper above or below it on any layer – a card-edge
 /// finger, a pad over a cut-out through the whole stack): the return runs in the coplanar copper
 /// beside it (gaps `s_left`, `s_right`, None = none within reach) and, for a pair, in the partner
-/// (gap `gap`). Each side with a coplanar conductor is half a [`cpw`] (2·Z_cpw of that gap); the
+/// (gap `gap`); copper thickness `t`. Each side with a coplanar conductor is half a [`cpw`] (2·Z_cpw of
+/// that gap); the
 /// pair's odd mode adds the partner as coplanar strips ([`cps`]), the even mode only the coplanar
 /// copper. Returns (Z0, εeff, Zdiff, Zeven) – None where no return is within reach (a single trace
 /// without coplanar copper: no Z0; a pair without it: no even mode, Z0 = Zodd). An estimate: the
@@ -178,13 +462,14 @@ pub fn cps(w: f64, s: f64, h: f64, er: f64) -> (f64, f64) {
 pub fn no_plane(
     w: f64,
     h: f64,
+    t: f64,
     er: f64,
     s_left: Option<f64>,
     s_right: Option<f64>,
     gap: Option<f64>,
 ) -> Option<(f64, f64, Option<f64>, Option<f64>)> {
     let side = |s: f64| {
-        let (z, e) = cpw(w, s, h, er);
+        let (z, e) = cpw(w, s, h, t, er);
         (2.0 * z, e)
     };
     let mut y = 0.0;
@@ -202,7 +487,7 @@ pub fn no_plane(
             // is not on) counts for this trace; with the canonical orientation the partner is on
             // the left
             let outer = s_right.map(side);
-            let (zd, ed) = cps(w, g, h, er);
+            let (zd, ed) = cps(w, g, h, t, er);
             let (yo, yeo) = outer.map_or((0.0, 0.0), |(z, e)| (1.0 / z, e / z));
             let y_odd = 2.0 / zd + yo;
             let z_odd = 1.0 / y_odd;
@@ -262,54 +547,17 @@ pub fn microstrip_model(w: f64, h: f64, t: f64, er: f64, mask: Option<(f64, f64)
     }
 }
 
-/// Surface microstrip with optional coplanar ground on either side
-/// (gaps `s_left`/`s_right`, None = no conductor nearby).
-/// Each side is a grounded CPW (Wadell) corrected for thickness and mask by
-/// the ratio to the zero-thickness microstrip; the two sides are combined as
-/// an admittance average. A side can only lower the impedance.
-pub fn microstrip_coplanar(
-    w: f64,
-    h: f64,
-    t: f64,
-    er: f64,
-    mask: Option<(f64, f64)>,
-    s_left: Option<f64>,
-    s_right: Option<f64>,
-) -> f64 {
-    let zt = microstrip_model(w, h, t, er, mask);
-    let (z_ms0, _) = microstrip(w, h, 0.0, er);
-    let corr = zt / z_ms0;
-    let side = |s: Option<f64>| -> f64 {
-        match s {
-            Some(s) => (cpwg(w, s, h, er).0 * corr).min(zt),
-            None => zt,
-        }
-    };
-    let zl = side(s_left);
-    let zr = side(s_right);
-    2.0 / (1.0 / zl + 1.0 / zr)
+/// Single surface microstrip incl. thickness and optional solder mask: (Z0, εeff).
+pub fn microstrip_eeff(w: f64, h: f64, t: f64, er: f64, mask: Option<(f64, f64)>) -> (f64, f64) {
+    match mask {
+        Some((tm, em)) => microstrip_masked(w, h, t, er, tm, em),
+        None => microstrip(w, h, t, er),
+    }
 }
 
 /// Edge-coupled surface microstrip pair: differential impedance.
 pub fn diff_microstrip_model(w: f64, s: f64, h: f64, t: f64, er: f64, mask: Option<(f64, f64)>) -> f64 {
     diff_microstrip(microstrip_model(w, h, t, er, mask), s, h)
-}
-
-/// Diff microstrip pair with optional coplanar ground: the IPC coupling
-/// factor applied to the plain microstrip, scaled by the coplanar effect.
-pub fn diff_microstrip_coplanar(
-    w: f64,
-    s: f64,
-    h: f64,
-    t: f64,
-    er: f64,
-    mask: Option<(f64, f64)>,
-    s_left: Option<f64>,
-    s_right: Option<f64>,
-) -> f64 {
-    let zp = microstrip_model(w, h, t, er, mask);
-    let z = microstrip_coplanar(w, h, t, er, mask, s_left, s_right);
-    diff_microstrip(zp, s, h) * (z / zp)
 }
 
 /// Edge-coupled (possibly asymmetric) stripline pair: differential impedance.
@@ -424,22 +672,52 @@ mod tests {
         assert!(z1 < z2);
     }
 
+    /// Coplanar lines with a ground plane against CST's 2D port modes (validation/cst_xs, open-boundary
+    /// estimate): grounded CPW with and without mask, a stripline with coplanar ground (homogeneous:
+    /// εeff = εr), a coupled grounded CPW; far coplanar copper leaves the plain line.
+    #[test]
+    fn coplanar_with_plane() {
+        // cpwg_u1_g0.5, cpwg_u0.5_g0.25, cpwg_u0.5_g0.25_mask
+        assert!(close(microstrip_cpwg(0.2, 0.2, 0.035, 4.4, None, Some(0.1), Some(0.1)).0, 53.38, 0.02));
+        assert!(close(microstrip_cpwg(0.1, 0.2, 0.035, 4.4, None, Some(0.05), Some(0.05)).0, 53.02, 0.02));
+        let m = Some((0.02, 3.3));
+        assert!(close(microstrip_cpwg(0.1, 0.2, 0.035, 4.4, m, Some(0.05), Some(0.05)).0, 46.99, 0.03));
+        // one side only lies between both sides and none
+        let one = microstrip_cpwg(0.2, 0.2, 0.035, 4.4, None, Some(0.1), None).0;
+        assert!(one > 53.0 && one < microstrip(0.2, 0.2, 0.035, 4.4).0);
+        // copper at the end of the extraction's search (3 h): within 2 % of the plain microstrip, below it
+        let zm = microstrip(0.2, 0.2, 0.035, 4.4).0;
+        let zf = microstrip_cpwg(0.2, 0.2, 0.035, 4.4, None, Some(0.6), Some(0.6)).0;
+        assert!(zf <= zm && zf > 0.98 * zm, "{zf} {zm}");
+        assert_eq!(
+            microstrip_cpwg(0.2, 0.2, 0.035, 4.4, m, None, None),
+            microstrip_masked(0.2, 0.2, 0.035, 4.4, 0.02, 3.3)
+        );
+        // slcpw_g0.5
+        let (z, e) = stripline_cpw(0.1, 0.0825, 0.1, 0.0175, 4.2, 4.2, 4.2, Some(0.05), Some(0.05));
+        assert!(close(z, 36.35, 0.02) && (e - 4.2).abs() < 1e-9, "{z} {e}");
+        // dcpwg_s0.5_g0.5: Zdiff 85.8, Zeven 70.6
+        let ((zo, _), (ze, _)) = diff_microstrip_cpwg(0.2, 0.1, 0.2, 0.035, 4.4, None, Some(0.1), Some(0.1));
+        assert!(close(2.0 * zo, 85.8, 0.03) && close(ze, 70.6, 0.04), "{zo} {ze}");
+        assert_eq!(slot_cap(0.0, 0.1), 0.0);
+    }
+
     /// Coplanar lines without a ground plane: on a thick substrate εeff → (εr + 1)/2; CPW and CPS are
-    /// duals (Z_cpw·Z_cps = (60π)²/εeff for the same k); a 0.7 mm finger between ground fingers at
+    /// duals (Z_cpw·Z_cps = (η0/2)²/εeff for the same k); a 0.7 mm finger between ground fingers at
     /// 0.3 mm on a 1.35 mm board is about 75 Ω; a pair adds the partner.
     #[test]
     fn coplanar_without_plane() {
-        let (z, e) = cpw(0.3, 0.15, 1e3, 4.4);
+        let (z, e) = cpw(0.3, 0.15, 1e3, 0.0, 4.4);
         assert!((e - 2.7).abs() < 1e-3, "{e}");
         // CPS with the CPW's k (s/(s + 2w) = w/(w + 2s) for w = 0.15, s = 0.3 against w = 0.3, s = 0.15)
-        let (zs, _) = cps(0.15, 0.3, 1e3, 4.4);
-        assert!(((z * zs) - (60.0 * PI).powi(2) / e).abs() < 1e-6 * z * zs, "{z} {zs}");
-        let (zf, _) = cpw(0.7, 0.3, 1.35, 3.5);
+        let (zs, _) = cps(0.15, 0.3, 1e3, 0.0, 4.4);
+        assert!(((z * zs) - (ETA0 / 2.0).powi(2) / e).abs() < 1e-6 * z * zs, "{z} {zs}");
+        let (zf, _) = cpw(0.7, 0.3, 1.35, 0.035, 3.5);
         assert!((65.0..85.0).contains(&zf), "{zf}");
-        let (z0, _, zd, ze) = no_plane(0.7, 1.35, 3.5, Some(0.3), Some(0.3), None).unwrap();
+        let (z0, _, zd, ze) = no_plane(0.7, 1.35, 0.035, 3.5, Some(0.3), Some(0.3), None).unwrap();
         assert!((z0 - zf).abs() < 1e-9 && zd.is_none() && ze.is_none());
-        let (_, _, zd, ze) = no_plane(0.7, 1.35, 3.5, None, Some(0.3), Some(0.3)).unwrap();
+        let (_, _, zd, ze) = no_plane(0.7, 1.35, 0.035, 3.5, None, Some(0.3), Some(0.3)).unwrap();
         assert!(zd.unwrap() < 2.0 * ze.unwrap(), "{zd:?} {ze:?}");
-        assert!(no_plane(0.2, 1.35, 3.5, None, None, None).is_none());
+        assert!(no_plane(0.2, 1.35, 0.035, 3.5, None, None, None).is_none());
     }
 }

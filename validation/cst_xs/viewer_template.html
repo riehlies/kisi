@@ -93,6 +93,14 @@ td small { color: var(--muted) }
   #case-select { display: block }
   .grid { grid-template-columns: minmax(0, 1fr) }
 }
+.overview > * { min-width: 0 }
+details.legend-block { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; margin: 0 0 14px }
+details.legend-block summary { cursor: pointer; font: 600 15px var(--font-display) }
+details.legend-block td, details.legend-block th { white-space: normal; text-align: left; vertical-align: top; min-width: 7em }
+th.col { white-space: normal; min-width: 6.5em; line-height: 1.2 }
+.sim { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; overflow-wrap: anywhere }
+.sim b { color: var(--fg); font-weight: 600 } .sim .no { text-decoration: line-through; opacity: .7 }
+.roles { margin: 0; padding-left: 1.2em } .roles li { margin: 0 0 6px; max-width: 85ch }
 footer.about { border-top: 1px solid var(--line); padding: 12px max(16px, env(safe-area-inset-right, 0px)) 20px max(16px, env(safe-area-inset-left, 0px)); font-size: 12px; color: var(--muted); line-height: 1.5 }
 </style>
 
@@ -145,6 +153,39 @@ const DEF = {
   epec: "εeff with ideal conductors: CST lossless (1 GHz), FW eigenmode (1 GHz); FW and FDM static (C/C0) differ from these by the dispersion at 1 GHz.",
   ephase: "Phase εeff = (β/k0)² with copper and tanδ at 1 GHz (internal inductance included): CST lossy, FW sweep, FDM as kisi reports it.",
 };
+// result columns: short label (two lines), what it is (tooltip and legend)
+const COLS = {
+  cst_E: ["CST · closed box", "PEC walls", "CST Studio Suite", "2D port modes (time-domain solver, modes only)", "closed solver box, electric (PEC) side walls; a full plane closes top or bottom", "lossless (PEC, tanδ 0)", "1 GHz", "eigenmode (β), ideal conductors", "– (reference of the solver check)"],
+  cst_M: ["CST · closed box", "PMC side walls", "CST Studio Suite", "as CST · PEC walls (only where run)", "the same box with magnetic (PMC) side walls", "lossless", "1 GHz", "eigenmode, ideal conductors", "– (reference of the PMC columns)"],
+  cst_open: ["CST · open", "(estimate)", "CST Studio Suite", "from the two CST runs", "open boundary estimated: mean of the PEC and PMC runs; where only PEC ran, CST-PEC × the kisi FDM's open/PEC ratio (README, uncertainty: the PEC/PMC spread)", "lossless", "1 GHz", "eigenmode, ideal conductors", "– (reference of kisi's accuracy)"],
+  fw_E_cstdef: ["Full-wave FEM", "same box", "js_2d_fields full-wave backend (validation only)", "triangular FEM, eigenmode", "CST's box, PEC side walls", "lossless (ideal conductors, tanδ 0)", "1 GHz", "eigenmode, ideal conductors", "CST · closed box, PEC walls (asymmetric pairs in CST's definition)"],
+  fw_static_E: ["Full-wave FEM static", "same box", "js_2d_fields full-wave backend", "static P2 FEM on the same mesh", "CST's box, PEC side walls", "lossless", "static", "C/C0 (static)", "CST · closed box, PEC walls (εeff differs by the dispersion at 1 GHz, ≤ 0.3 %)"],
+  fw_M: ["Full-wave FEM", "PMC side walls", "js_2d_fields full-wave backend", "triangular FEM, eigenmode", "CST's box, natural (PMC) side walls", "lossless", "1 GHz", "eigenmode", "CST · closed box, PMC side walls"],
+  fdm_E: ["kisi field solver (FDM)", "same box", "kisi's field solver: js_2d_fields FDM (tol 0.002)", "quasi-static finite differences", "CST's box, PEC side walls", "Z lossless: 1/(c·√(C·C0))", "static", "C/C0 (static)", "CST · closed box, PEC walls (in kisi's impedance definition)"],
+  fdm_M: ["kisi FDM", "PMC side walls", "kisi's field solver (tol 0.002)", "quasi-static finite differences", "CST's box, natural (PMC) side walls", "Z lossless", "static", "–", "CST · closed box, PMC side walls"],
+  field: ["kisi field solver", "as reported (open)", "kisi's field solver as kisi runs it (tol 0.01)", "quasi-static finite differences", "its own open domain – what kisi reports", "Z lossless; εeff with copper and tanδ", "1 GHz", "phase εeff (β/k0)² with copper (not compared)", "CST · open (estimate)"],
+  formula: ["kisi formula", "", "kisi's closed forms (kisi_si::analytic)", "formula chosen per cross-section", "open (no box)", "lossless", "quasi-static", "quasi-static", "CST · open (estimate)"],
+};
+const colHead = (k, c) => { const d = COLS[k]; const two = k === "fw_E_cstdef" && c && c.asym ? "same box, CST's def." : d[1]; return `<th class="col" title="${esc(colTip(k))}">${esc(d[0])}${two ? "<br>" + esc(two) : ""}</th>`; };
+const colTip = (k) => { const d = COLS[k]; return `${d[0]}${d[1] ? " · " + d[1] : ""}: ${d[2]} – ${d[3]}; boundary: ${d[4]}; ${d[5]}; ${d[6]}; εeff: ${d[7]}; deviation against: ${d[8]}.`; };
+const ROLES = {
+  solver: "Solver check: CST and the full-wave FEM (and kisi's FDM) solve the identical closed box; their differences are numerical only.",
+  accuracy: "kisi's real accuracy: kisi as it reports (field solver on its open domain, formula) against CST's open-boundary estimate, whose uncertainty is the PEC/PMC spread (README, uncertainty table).",
+  loss: "Loss: The full-wave FEM's MQS conductor loss is the reference (an independent finite-difference MQS check agrees within 1 %); CST's lossy-metal loss is a surface-impedance approximation, 4–23 % low.",
+};
+function legendBlock(open) {
+  const rows = Object.keys(COLS).map((k) => { const d = COLS[k]; return `<tr><td><b>${esc(d[0])}</b>${d[1] ? "<br>" + esc(d[1]) : ""}</td><td>${esc(d[2])}; ${esc(d[3])}</td><td>${esc(d[4])}</td><td>${esc(d[5])}</td><td>${esc(d[6])}</td><td>${esc(d[7])}</td><td>${esc(d[8])}</td></tr>`; }).join("");
+  const loss = [["CST lossy port modes", "CST frequency-domain solver, modes only; lossy metal as surface impedance (copper 5.8e7 S/m), tanδ of the geometry", "PEC side walls", "lossy", "0.1–40 GHz", "phase εeff", "– (shown, not the loss reference)"],
+    ["Full-wave FEM sweep", "js_2d_fields full-wave backend: MQS conductor loss, Djordjevic-Sarkar dielectric", "PEC side walls", "lossy", "0.01–40 GHz", "phase εeff", "– (the loss reference)"],
+    ["kisi line model", "kisi's channel line model from its FDM solve at 1 GHz (smooth copper)", "CST's box", "lossy", "0.01–40 GHz", "phase εeff", "Full-wave FEM sweep"]].map((d) => `<tr>${d.map((x, i) => `<td>${i ? esc(x) : "<b>" + esc(x) + "</b>"}</td>`).join("")}</tr>`).join("");
+  return `<details class="legend-block"${open ? " open" : ""}><summary>Legend: what each result column is</summary><div class="wide"><table><thead><tr><th>column</th><th>program / solver</th><th>boundary</th><th>loss</th><th>frequency</th><th>εeff</th><th>deviation % against</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="note">Loss plots:</p><table><tbody>${loss}</tbody></table></div></details>`;
+}
+function simLine(c) {
+  const s = c.sim || {}, y = (ok, t) => ok ? `<b>${t}</b>` : `<span class="no">${t}</span>`;
+  const lossy = (s.cst_lossy || []).map((t) => t === "fd" ? "frequency domain (tag fd)" : t === "TD" ? "time domain (no α)" : `re-run ${t}`);
+  return `<p class="sim">Simulated with: CST lossless ${y(s.cst_E, "PEC walls")}, ${y(s.cst_M, "PMC walls")}${s.cst_E && !s.cst_M ? " (open estimate scaled by the FDM)" : ""} · CST lossy sweep ${lossy.length ? "<b>" + esc(lossy.join(", ")) + "</b>" : y(false, "none")} · full-wave FEM ${["E", "M", "sweep"].map((k) => y((s.fw || []).includes(k), { E: "PEC box", M: "PMC box", sweep: "loss sweep" }[k])).join(", ")} · kisi FDM ${["E", "M", "open"].map((k) => y((s.fdm || []).includes(k), { E: "PEC box", M: "PMC box", open: "as reported" }[k])).join(", ")} · kisi formula ${s.formula ? "<b>" + esc(s.formula) + "</b>" : y(false, "none")}</p>`;
+}
 let cur = null;
 const pc = (x, ref) => (x == null || !ref) ? null : (x / ref - 1) * 100;
 const fp = (v, d = 2) => v == null || !isFinite(v) ? "–" : (v >= 0 ? "+" : "") + v.toFixed(d);
@@ -283,21 +324,21 @@ function chipsOf(c) {
     const worst = Math.max(...parts.map((x) => Math.abs(x[1])));
     out.push(`<span class="chip ${cls || verdict(worst, lim)}" title="${esc(tip)} Limit ${lim} %.">${esc(label)} ${parts.map(([q, e]) => `${QL[q]} <b>${fp(e)} %</b>`).join(" ")}</span>`);
   };
-  one("FW vs CST", "fw_E_cstdef", "cst_E", LIM.solver, "Full-wave backend against CST in the same box with electric walls; " + DEF.z);
-  if (c.g !== "etch") one("FDM vs CST", "fdm_E", "cst_E_k", LIM.solver, "kisi's field solver (FDM) in CST's box with electric walls; " + DEF.z);
-  else one("FDM (rectangle) vs CST", "fdm_E", "cst_E_k", LIM.solver, "kisi's field solver on kisi's rectangle against CST's trapezoid.");
-  one("field vs CST open", "field", "cst_open_k", LIM.solver, "kisi's field result as kisi reports it (its own open domain) against CST's open-boundary estimate (mean of electric and magnetic walls).");
-  one("formula vs CST open", "formula", "cst_open_k", LIM.formula, "kisi's closed-form result against CST's open-boundary estimate.");
+  one("Full-wave vs CST · same box", "fw_E_cstdef", "cst_E", LIM.solver, ROLES.solver + " Full-wave FEM against CST, both in the closed box with PEC walls; " + DEF.z);
+  if (c.g !== "etch") one("kisi FDM vs CST · same box", "fdm_E", "cst_E_k", LIM.solver, ROLES.solver + " kisi's field solver (FDM) in CST's closed box with PEC walls; " + DEF.z);
+  else one("kisi FDM (rectangle) vs CST · same box", "fdm_E", "cst_E_k", LIM.solver, "kisi's field solver on kisi's rectangle against CST's trapezoid, same closed box.");
+  one("kisi field as reported vs CST open", "field", "cst_open_k", LIM.solver, ROLES.accuracy + " kisi's field result on its own open domain.");
+  one("kisi formula vs CST open", "formula", "cst_open_k", LIM.formula, ROLES.accuracy + " kisi's closed-form result.");
   const es = pairE(c).map((q) => [q, pc((v.fw_E || {})[q], (v.cst_E || {})[q])]).filter((x) => x[1] != null);
-  if (es.length) out.push(`<span class="chip ${verdict(Math.max(...es.map((x) => Math.abs(x[1]))), LIM.solver)}" title="${esc(DEF.epec)}">εeff (PEC) FW vs CST ${es.map(([q, e]) => `${QL[q]} <b>${fp(e, 3)} %</b>`).join(" ")}</span>`);
+  if (es.length) out.push(`<span class="chip ${verdict(Math.max(...es.map((x) => Math.abs(x[1]))), LIM.solver)}" title="${esc(ROLES.solver + " " + DEF.epec)}">εeff (PEC) full-wave vs CST · same box ${es.map(([q, e]) => `${QL[q]} <b>${fp(e, 3)} %</b>`).join(" ")}</span>`);
   const l1 = Object.entries(c.loss || {}).map(([m, pts]) => [m, pts.find((p) => p.f === 1)]).filter((x) => x[1] && x[1].fw);
-  if (l1.length) out.push(`<span class="chip info" title="Conductor resistance per metre at 1 GHz, R = Re(γ·Zc). CST's lossy port modes give 4–23 % less than two independent MQS solutions (FW and a finite-difference check); see the note on the loss plots.">R at 1 GHz FW vs CST ${l1.map(([m, p]) => `${m} <b>${fp(pc(p.fw.r, p.cst.r), 1)} %</b>`).join(" ")}</span>`);
+  if (l1.length) out.push(`<span class="chip info" title="${esc(ROLES.loss)} Conductor resistance per metre at 1 GHz, R = Re(γ·Zc).">R at 1 GHz full-wave (MQS) vs CST lossy ${l1.map(([m, p]) => `${m} <b>${fp(pc(p.fw.r, p.cst.r), 1)} %</b>`).join(" ")}</span>`);
   if (c.asym) out.push(`<span class="chip warn" title="CST's pair impedances belong to the eigenmodes with the power-current definition; kisi's to the modal decomposition with |v|² = 2. Compared after transferring CST through FW's L and C.">asymmetric pair</span>`);
   return out.join("");
 }
 function valueTable(c) {
   const v = c.v;
-  const cols = [["cst_E", "CST (E walls)"], ["fw_E_cstdef", c.asym ? "FW (CST's def.)" : "FW"], ["fw_static_E", "FW static"], ["fdm_E", "FDM"], ["cst_M", "CST (M walls)"], ["fw_M", "FW (M)"], ["fdm_M", "FDM (M)"], ["cst_open", "CST open"], ["field", "kisi field"], ["formula", "kisi formula"]].filter(([k]) => v[k]);
+  const cols = ["cst_E", "fw_E_cstdef", "fw_static_E", "fdm_E", "cst_M", "fw_M", "fdm_M", "cst_open", "field", "formula"].filter((k) => v[k]).map((k) => [k]);
   const rows = [...pairQ(c), ...pairE(c)];
   const refOf = (k, q) => {
     if (k === "cst_E" || k === "cst_M" || k === "cst_open") return null;
@@ -306,7 +347,7 @@ function valueTable(c) {
     if (k === "field" || k === "formula") return v.cst_open_k || v.cst_open;
     return v.cst_E_k || v.cst_E;
   };
-  let h = `<div class="panel"><h2>Results at 1 GHz, lossless</h2><div class="wide"><table><thead><tr><th>quantity</th>${cols.map(([, n]) => `<th>${esc(n)}</th>`).join("")}</tr></thead><tbody>`;
+  let h = `<div class="panel"><h2>Results at 1 GHz, lossless</h2><div class="wide"><table><thead><tr><th>quantity</th>${cols.map(([k]) => colHead(k, c)).join("")}</tr></thead><tbody>`;
   for (const q of rows) {
     h += `<tr><td title="${esc(q.startsWith("eeff") ? DEF.epec + " FDM and formula εeff: FDM static (C/C0), the formula's quasi-static value." : DEF.z)}">${QL[q]}</td>`;
     for (const [k] of cols) {
@@ -321,7 +362,7 @@ function valueTable(c) {
     }
     h += "</tr>";
   }
-  h += `</tbody></table></div><p class="note">Deviation against CST: FW, FW static and FDM against CST in the same box (electric or magnetic walls), kisi field and formula against CST's open-boundary estimate (mean of both walls${c.M ? "" : "; this case has only the electric solve, the estimate scales CST-E by the FDM's open/electric ratio"}). εeff here: CST and FW with ideal conductors, FDM and FW static the static value C/C0; kisi field: the phase εeff with copper as kisi reports it (internal inductance included), not compared with these.${c.asym ? " Asymmetric pair: the impedances of kisi's sources are compared with CST transferred to kisi's definition (CST's own values in the CST columns)." : ""}${c.g === "etch" ? " FDM and formula solve kisi's rectangle (dashed in the drawing), CST and FW the trapezoid." : ""}</p></div>`;
+  h += `</tbody></table></div><p class="note">Deviation %: the solver check (full-wave FEM, its static solution and kisi's FDM against CST in the identical closed box, PEC or PMC side walls) and kisi's accuracy (kisi's field result as reported and its formula against CST's open-boundary estimate, the mean of both walls${c.M ? "" : "; this case has only the PEC solve, the estimate scales CST-PEC by the FDM's open/PEC ratio"}); each column's tooltip and the legend say which. εeff here: CST and FW with ideal conductors, FDM and FW static the static value C/C0; kisi field: the phase εeff with copper as kisi reports it (internal inductance included), not compared with these.${c.asym ? " Asymmetric pair: the impedances of kisi's sources are compared with CST transferred to kisi's definition (CST's own values in the CST columns)." : ""}${c.g === "etch" ? " FDM and formula solve kisi's rectangle (dashed in the drawing), CST and FW the trapezoid." : ""}</p></div>`;
   return h;
 }
 function lossPanels(c, pw) {
@@ -334,11 +375,11 @@ function lossPanels(c, pw) {
     const pts = c.loss[m], sw = c.sweep && c.sweep.modes[m];
     for (const [q, title, unit] of Q) {
       const series = [];
-      if (sw && sw.fw && sw.fw[q]) series.push({ name: "FW", x: c.sweep.f, y: sw.fw[q], color: SRC.fw[1] });
+      if (sw && sw.fw && sw.fw[q]) series.push({ name: "full-wave", x: c.sweep.f, y: sw.fw[q], color: SRC.fw[1] });
       if (sw && sw.kisi && sw.kisi[q]) series.push({ name: "kisi line model", x: c.sweep.f, y: sw.kisi[q], color: SRC.kisi[1], dash: true });
       series.push({ name: "CST", x: pts.map((p) => p.f), y: pts.map((p) => p.cst[q]), color: SRC.cst[1], marks: true, line: false, excl: pts.map((p) => p.x ? p.x.join("; ") : null) });
       out.push(panel(`${title}${nm[m] ? " · " + nm[m] : ""}`, chart({ series, xlabel: "frequency GHz", ylabel: unit, logx: true, w: pw, ymin: q === "alpha_db" || q === "r" ? 0 : undefined }),
-        lg([["CST lossy port modes", SRC.cst[1], "dot"], ["CST, left out (box mode)", "var(--muted)", "hollow"], ["full-wave sweep", SRC.fw[1], ""], ["kisi line model (from the FDM at 1 GHz)", SRC.kisi[1], "dash"]])));
+        lg([["CST lossy port modes (surface impedance)", SRC.cst[1], "dot"], ["CST, left out (box mode)", "var(--muted)", "hollow"], ["full-wave FEM sweep (MQS, loss reference)", SRC.fw[1], ""], ["kisi line model (from the FDM at 1 GHz)", SRC.kisi[1], "dash"]])));
     }
   }
   return out;
@@ -349,7 +390,7 @@ function renderCase(c) {
   const ps = Object.entries(c.params || {}).map(([k, v]) => `<span class="chip">${esc(k)} <b>${esc(v)}</b></span>`).join("");
   const grp = DATA.groups[c.g] || [c.g, ""];
   box.innerHTML = `<h1>${esc(c.t || c.id)}</h1><div class="id">${esc(c.id)} · ${esc(grp[0])} · tier ${c.tier}${c.formula && c.formula.kind ? " · formula " + esc(c.formula.kind) : ""}${c.cst_version ? " · " + esc(c.cst_version) : ""}</div>` +
-    (ps ? `<div class="chips">${ps}</div>` : "") + `<div class="chips">${chipsOf(c)}</div>` +
+    (ps ? `<div class="chips">${ps}</div>` : "") + simLine(c) + `<div class="chips">${chipsOf(c)}</div>` + legendBlock(false) +
     (c.notes.length ? `<div class="callout">${c.notes.map((n) => `<p>${esc(n)}</p>`).join("")}</div>` : "");
   const bw = box.clientWidth || 900;
   const cols = Math.max(1, Math.min(2, Math.floor((bw + 14) / (360 + 14))));
@@ -366,7 +407,7 @@ function renderCase(c) {
   if (lp.length) {
     const h = document.createElement("div"); h.className = "panel";
     const ex = Object.values(c.loss).flat().filter((p) => p.x).length;
-    h.innerHTML = `<h2>Loss sweep (electric walls)</h2><p class="note">CST's lossy port modes (frequency domain, copper 5.8e7 S/m, tanδ of the geometry) at six frequencies, the full-wave sweep (MQS conductor loss, Djordjevic-Sarkar dielectric) and kisi's line model built from its field solve at 1 GHz (smooth copper, as kisi's channel models without roughness). CST's conductor loss is 4–23 % below two independent MQS solutions (FW and a finite-difference check), most for narrow conductors and at low frequency; the dielectric part (G) agrees within 0.5 % at 1 GHz (README, Results). kisi's line model is shown without its microstrip dispersion term (it depends on the channel's fmax): its εeff and Re Zc above about 5 GHz are not comparable.` +
+    h.innerHTML = `<h2>Loss sweep (electric walls)</h2><p class="note">CST's lossy port modes (frequency domain, copper 5.8e7 S/m, tanδ of the geometry) at six frequencies, the full-wave sweep (MQS conductor loss, Djordjevic-Sarkar dielectric) and kisi's line model built from its field solve at 1 GHz (smooth copper, as kisi's channel models without roughness). CST's conductor loss is 4–23 % below two independent MQS solutions (FW and a finite-difference check), most for narrow conductors and at low frequency – a limitation of CST's surface-impedance loss in its 2D port-mode solver (README, CST re-run), so FW is the loss reference; the dielectric part (G) agrees within 0.5 % at 1 GHz (README, Results). kisi's line model is shown without its microstrip dispersion term (it depends on the channel's fmax): its εeff and Re Zc above about 5 GHz are not comparable.` +
       (ex ? ` ${ex} CST point(s) of this case lie above the box's first waveguide cutoff (${c.box_cutoff} GHz) and are left out of the statistics (hollow).` : c.box_cutoff ? ` First waveguide cutoff of the box ≈ ${c.box_cutoff} GHz.` : "") + (c.asym ? " Asymmetric pair: modes defined differently, left out of the loss statistics." : "") + `</p>`;
     box.appendChild(h);
     const g2 = document.createElement("div"); g2.className = "grid";
@@ -381,11 +422,11 @@ function renderOverview() {
   const box = $("view-overview");
   const S = DATA.summary, all = S.ALL || {};
   const n = cases.length, nl = cases.filter((c) => Object.keys(c.loss || {}).length).length;
-  let h = `<div class="panel"><h2>What this page shows</h2>
+  let h = `<div class="panel"><h2>What is compared with what</h2><ol class="roles"><li><b>Solver check.</b> ${esc(ROLES.solver.replace(/^Solver check: /, ""))}</li><li><b>kisi's real accuracy.</b> ${esc(ROLES.accuracy.replace(/^kisi's real accuracy: /, ""))}</li><li><b>Loss.</b> ${esc(ROLES.loss.replace(/^Loss: /, ""))}</li></ol></div>` + legendBlock(false) + `<div class="panel"><h2>What this page shows</h2>
     <p>${n} cross-sections – sweeps of every line type kisi models, its anchors, the real cross-sections of the example boards and of the test-board coupons – each solved four ways at 1 GHz: <b>CST</b> (2D port modes, ${esc(DATA.cst_version || "CST Studio Suite")}), the <b>full-wave</b> triangular FEM backend of js_2d_fields (FW), <b>kisi's field solver</b> (js_2d_fields' FDM backend, as kisi runs it) and <b>kisi's formulas</b>. ${nl} cases also have a loss sweep (CST's lossy port modes against FW and kisi's line model).</p>
     <p>Cells: bias (median signed error) / median |error| / 90th percentile of |error|, in % against CST. FW and FDM are solved in CST's box with the same walls (the same problem); kisi's formula against CST's open-boundary estimate. Each column states its definition in the table head's tooltip.</p></div>`;
   const qs = ["z0", "zdiff", "zeven"];
-  h += `<div class="panel"><h2>Impedance per group</h2><div class="wide"><table><thead><tr><th>group</th><th>qty</th><th>n</th><th title="${esc(DEF.z)}">FW vs CST</th><th title="${esc(DEF.z)}">FDM vs CST</th><th title="kisi's field result as reported (its own open domain) against CST's open-boundary estimate">kisi field vs CST open</th><th title="kisi's closed form against CST's open-boundary estimate">formula vs CST open</th></tr></thead><tbody>`;
+  h += `<div class="panel"><h2>Impedance per group</h2><div class="wide"><table><thead><tr><th>group</th><th>qty</th><th>n</th><th class="col" title="${esc(ROLES.solver + " " + DEF.z)}">Full-wave FEM vs CST<br>same closed box</th><th class="col" title="${esc(ROLES.solver + " " + DEF.z)}">kisi FDM vs CST<br>same closed box</th><th class="col" title="${esc(ROLES.accuracy)}">kisi field as reported<br>vs CST open</th><th class="col" title="${esc(ROLES.accuracy)}">kisi formula<br>vs CST open</th></tr></thead><tbody>`;
   for (const g of [...DATA.order, "ALL"]) {
     const r = S[g] || {};
     for (const q of qs) {
@@ -397,14 +438,14 @@ function renderOverview() {
   }
   h += `</tbody></table></div><p class="note">FDM in the etch group solves kisi's rectangle (left out of FDM vs CST). Pairs: kisi's impedance definition, CST transferred for asymmetric pairs; FW in CST's definition.</p></div>`;
   const es = ["eeff", "eeff_odd", "eeff_even"];
-  h += `<div class="panel"><h2>εeff per definition (all groups)</h2><div class="wide"><table><thead><tr><th>qty</th><th title="${esc(DEF.epec)}">FW eigenmode (PEC)</th><th title="${esc(DEF.epec)}">FW static</th><th title="${esc(DEF.epec)}">FDM static</th><th>formula</th><th title="${esc(DEF.ephase)}">FW phase vs CST lossy</th><th title="${esc(DEF.ephase)}">FDM phase vs CST lossy</th></tr></thead><tbody>`;
+  h += `<div class="panel"><h2>εeff per definition (all groups)</h2><div class="wide"><table><thead><tr><th>qty</th><th class="col" title="${esc(DEF.epec)}">full-wave eigenmode<br>vs CST, same box</th><th class="col" title="${esc(DEF.epec)}">full-wave static<br>vs CST, same box</th><th class="col" title="${esc(DEF.epec)}">kisi FDM static<br>vs CST, same box</th><th class="col">kisi formula<br>vs CST open</th><th class="col" title="${esc(DEF.ephase)}">full-wave phase<br>vs CST lossy</th><th class="col" title="${esc(DEF.ephase)}">kisi FDM phase<br>vs CST lossy</th></tr></thead><tbody>`;
   for (const q of es) {
     const g = (k) => (all[k] || {})[q];
     h += `<tr><td>${QL[q]}</td><td>${sumCell(g("FW vs CST, E walls"), 3)}</td><td>${sumCell(g("FW static vs CST, E walls"), 3)}</td><td>${sumCell(g("FDM static vs CST, E walls"), 3)}</td><td>${sumCell(g("formula vs CST open"))}</td><td>${sumCell(g("FW phase vs CST lossy"))}</td><td>${sumCell(g("FDM phase vs CST lossy"))}</td></tr>`;
   }
   h += `</tbody></table></div><p class="note">The phase εeff includes the conductors' internal inductance (+1…+4 % at 1 GHz over the PEC value); it is compared only with CST's lossy result. Both kisi sources are about 0.5 % below CST there: CST's dielectric model (the time-domain-compatible fit of constant tanδ) gives ε′ 0.2–0.5 % above the nominal εr (homogeneous striplines, README).</p></div>`;
   const bm = DATA.box_modes;
-  h += `<div class="panel"><h2>Loss per group (against CST's lossy port modes)</h2><div class="wide"><table><thead><tr><th>group</th><th>n</th><th>FW R 1 GHz</th><th>FW R 10 GHz</th><th>kisi R 1 GHz</th><th>kisi R 10 GHz</th><th>FW G 1 GHz</th><th>FW α 1 GHz</th><th>kisi α 1 GHz</th></tr></thead><tbody>`;
+  h += `<div class="panel"><h2>Loss per group (against CST's lossy port modes – see "Loss" above: CST is not the loss reference)</h2><div class="wide"><table><thead><tr><th>group</th><th>n</th><th class="col">full-wave R<br>1 GHz</th><th class="col">full-wave R<br>10 GHz</th><th class="col">kisi R<br>1 GHz</th><th class="col">kisi R<br>10 GHz</th><th class="col">full-wave G<br>1 GHz</th><th class="col">full-wave α<br>1 GHz</th><th class="col">kisi α<br>1 GHz</th></tr></thead><tbody>`;
   for (const g of [...DATA.order, "ALL"]) {
     const fw = (S[g] || {})["loss fw"] || {}, ki = (S[g] || {})["loss kisi"] || {};
     if (!fw["r@1"]) continue;

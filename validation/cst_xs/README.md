@@ -25,6 +25,7 @@ of js_2d_fields (UPSTREAM.md, "Full-wave backend"; validation only, not in kisi'
 | `fullwave_compare.py`, `compare_loss.py` | thin wrappers of `compare.py` (the workflow's summary; the loss section) |
 | `mqs_check.py`, `mqs_check.json` | an independent finite-difference eddy-current (MQS) solution of the conductor loss on 9 cases |
 | `uncertainty.py` | the accuracy of the CST results by source |
+| `fit_coplanar.py`, `coplanar_fit.json` | the fit of the coplanar formulas' two constants to kisi's field solver on 1 100 synthetic cross-sections (section [The fit of the coplanar formulas](#the-fit-of-the-coplanar-formulas)) |
 | `make_viewer.py`, `viewer_template.html` | the page `dist/kisi-references-2d.html` |
 | `probes/` | small CST probes (frequency-domain pilot, the PCIe edge fingers) |
 
@@ -52,7 +53,7 @@ reproduced from it before a case is kept). Units mm; `w/h` = width over the heig
 | `broadside` | 8 | 0 / 4 / 4 | broadside-coupled stripline (no kisi model: solver check only, hand-written text) |
 | `cpwg` | 30 | 1 / 23 / 6 | grounded coplanar gap/h 0.25…4 × w/h × mask |
 | `diff_cpwg` | 6 | 0 / 2 / 4 | pair with coplanar ground |
-| `stripline_cpw` | 3 | 0 / 3 / 0 | stripline with coplanar ground (the formula ignores it) |
+| `stripline_cpw` | 3 | 0 / 3 / 0 | stripline with coplanar ground |
 | `cpw_noplane` | 8 | 0 / 4 / 4 | coplanar without plane: kisi's no-plane formula (an estimate) against the solvers; hand-written text (kisi has no field geometry for it) |
 | `plane_cut` | 16 | 1 / 8 / 7 | trace over an opening in the next layer (1…8 × w), reference the layer below |
 | `plane_edge` | 12 | 1 / 9 / 2 | reference plane ending 0.5…8 h beside the trace (single, pair) |
@@ -193,6 +194,7 @@ every result.
 ```sh
 cargo build --release && cargo build --release -p kisi-sparse --target wasm32-unknown-unknown
 python3 validation/cst_xs/run_kisi.py              # → kisi.json (≈ 25 min on 2 cores; --ids / --tier for a subset)
+python3 validation/cst_xs/run_kisi.py --formula-only   # a change of the formulas alone: their values, the field results kept
 python3 validation/cst_xs/compare.py --solve-loss  # → kisi_loss.json (kisi's line-model solves, ≈ 2 h on one core)
 python3 validation/cst_xs/compare.py               # every comparison, all groups (--md / --json to save it)
 python3 validation/cst_xs/compare.py --groups diff_stripline --groups-full --loss-table --show-text
@@ -267,9 +269,9 @@ of "FDM vs CST", see Outliers).
 
 | group | qty | n | FW vs CST | FDM vs CST | kisi field vs CST open | formula vs CST open |
 |---|---|---:|---:|---:|---:|---:|
-| `anchor` | z0 | 16 | 0.074 / 0.134 | 0.04 / 0.12 | 0.16 / 0.28 | 1.5 / 10.2 |
+| `anchor` | z0 | 16 | 0.074 / 0.134 | 0.04 / 0.12 | 0.16 / 0.28 | 1.2 / 10.2 |
 | `anchor` | zdiff | 7 | 0.051 / 0.097 | 0.34 / 0.74 | 0.50 / 0.74 | 5.6 / 9.7 |
-| `anchor` | zeven | 7 | 0.051 / 0.081 | 0.20 / 0.37 | 0.21 / 0.34 | 4.7 / 19.8 |
+| `anchor` | zeven | 7 | 0.051 / 0.081 | 0.20 / 0.37 | 0.21 / 0.34 | 2.4 / 19.8 |
 | `microstrip` | z0 | 66 | 0.038 / 0.136 | 0.10 / 0.16 | 0.14 / 0.25 | 0.2 / 0.3 |
 | `microstrip_h` | z0 | 15 | 0.053 / 0.116 | 0.05 / 0.10 | 0.11 / 0.16 | 0.2 / 0.4 |
 | `microstrip_mask` | z0 | 26 | 0.025 / 0.035 | 0.02 / 0.04 | 0.07 / 0.20 | 1.2 / 1.8 |
@@ -280,35 +282,35 @@ of "FDM vs CST", see Outliers).
 | `diff_microstrip` | zeven | 34 | 0.043 / 0.080 | 0.25 / 0.38 | 0.09 / 0.27 | 6.0 / 21.7 |
 | `diff_stripline` | zdiff | 20 | 0.039 / 0.065 | 0.42 / 0.68 | 0.47 / 0.57 | 4.3 / 32.7 |
 | `diff_stripline` | zeven | 20 | 0.037 / 0.055 | 0.27 / 0.38 | 0.29 / 0.44 | 3.3 / 7.1 |
-| `cpwg` | z0 | 30 | 0.044 / 0.113 | 0.03 / 0.09 | 0.23 / 0.35 | 4.7 / 18.7 |
+| `cpwg` | z0 | 30 | 0.044 / 0.113 | 0.03 / 0.09 | 0.23 / 0.35 | 0.5 / 1.3 |
 | `plane_cut` | z0 | 16 | 0.113 / 0.195 | 0.03 / 0.06 | 0.08 / 0.18 | 17.6 / 60.0 |
 | `plane_edge` | z0 | 10 | 0.024 / 0.035 | 0.05 / 0.07 | 0.30 / 0.63 | 0.4 / 3.1 |
 | `plane_edge` | zdiff | 2 | 0.070 / 0.070 | 0.40 / 0.41 | 0.74 / 0.83 | 0.9 / 1.3 |
 | `plane_edge` | zeven | 2 | 0.033 / 0.043 | 0.26 / 0.28 | 0.18 / 0.29 | 4.1 / 5.0 |
-| `size_study` | z0 | 14 | 0.103 / 0.195 | 0.08 / 0.28 | 0.13 / 0.35 | 0.4 / 7.5 |
+| `size_study` | z0 | 14 | 0.103 / 0.195 | 0.08 / 0.28 | 0.13 / 0.35 | 0.3 / 7.5 |
 | `size_study` | zdiff | 2 | 0.125 / 0.164 | 0.53 / 0.60 | 0.52 / 0.56 | 2.1 / 2.2 |
 | `size_study` | zeven | 2 | 0.128 / 0.164 | 0.48 / 0.55 | 0.39 / 0.43 | 1.4 / 1.4 |
 | `microstrip_t` | z0 | 20 | 0.033 / 0.104 | 0.05 / 0.11 | 0.11 / 0.19 | 0.1 / 0.3 |
 | `stripline_dual` | z0 | 6 | 0.053 / 0.103 | 0.02 / 0.02 | 0.30 / 0.45 | 3.5 / 6.6 |
 | `broadside` | zdiff | 8 | 0.009 / 0.025 | 0.35 / 0.47 | 0.43 / 0.57 | – |
 | `broadside` | zeven | 8 | 0.038 / 0.050 | 0.24 / 0.33 | 0.29 / 0.41 | – |
-| `diff_cpwg` | zdiff | 6 | 0.062 / 0.101 | 0.28 / 0.34 | 0.46 / 0.56 | 0.7 / 1.6 |
-| `diff_cpwg` | zeven | 6 | 0.045 / 0.077 | 0.17 / 0.26 | 0.14 / 0.28 | 14.9 / 21.3 |
-| `stripline_cpw` | z0 | 3 | 0.019 / 0.020 | 0.02 / 0.05 | 0.35 / 0.39 | 2.4 / 10.9 |
-| `cpw_noplane` | z0 | 8 | 0.077 / 0.094 | 0.19 / 0.26 | 0.44 / 0.59 | 10.0 / 14.0 |
+| `diff_cpwg` | zdiff | 6 | 0.062 / 0.101 | 0.28 / 0.34 | 0.46 / 0.56 | 2.2 / 2.5 |
+| `diff_cpwg` | zeven | 6 | 0.045 / 0.077 | 0.17 / 0.26 | 0.14 / 0.28 | 2.3 / 3.5 |
+| `stripline_cpw` | z0 | 3 | 0.019 / 0.020 | 0.02 / 0.05 | 0.35 / 0.39 | 0.7 / 1.1 |
+| `cpw_noplane` | z0 | 8 | 0.077 / 0.094 | 0.19 / 0.26 | 0.44 / 0.59 | 0.3 / 0.5 |
 | `etch` | z0 | 18 | 0.045 / 0.082 | – | 2.66 / 5.85 | 2.5 / 5.6 |
 | `etch` | zdiff | 3 | 0.014 / 0.024 | – | 3.42 / 4.79 | 3.3 / 4.7 |
 | `etch` | zeven | 3 | 0.007 / 0.008 | – | 1.48 / 2.12 | 4.3 / 4.6 |
-| `board_target` | z0 | 88 | 0.021 / 0.073 | 0.01 / 0.11 | 0.14 / 0.31 | 3.8 / 37.2 |
-| `board_target` | zdiff | 32 | 0.025 / 0.451 | 0.20 / 0.84 | 0.48 / 0.89 | 4.7 / 8.4 |
-| `board_target` | zeven | 32 | 0.019 / 0.280 | 0.12 / 0.36 | 0.21 / 0.37 | 4.7 / 34.4 |
-| `test_board` | z0 | 70 | 0.034 / 0.131 | 0.02 / 0.10 | 0.22 / 0.39 | 3.0 / 27.0 |
+| `board_target` | z0 | 88 | 0.021 / 0.073 | 0.01 / 0.11 | 0.14 / 0.31 | 1.3 / 30.8 |
+| `board_target` | zdiff | 32 | 0.025 / 0.451 | 0.20 / 0.84 | 0.48 / 0.89 | 3.3 / 9.4 |
+| `board_target` | zeven | 32 | 0.019 / 0.280 | 0.12 / 0.36 | 0.21 / 0.37 | 3.3 / 24.0 |
+| `test_board` | z0 | 70 | 0.034 / 0.131 | 0.02 / 0.10 | 0.22 / 0.39 | 1.0 / 8.0 |
 | `test_board` | zdiff | 11 | 0.054 / 0.077 | 0.29 / 0.67 | 0.40 / 0.51 | 4.1 / 10.0 |
 | `test_board` | zeven | 11 | 0.048 / 0.072 | 0.25 / 0.45 | 0.27 / 0.41 | 0.3 / 1.4 |
-| `board_other` | z0 | 16 | 0.046 / 0.075 | 0.04 / 0.07 | 0.26 / 0.43 | 7.4 / 16.8 |
-| **all** | z0 | 495 | 0.031 / 0.112 | 0.04 / 0.13 | 0.18 / 0.41 | 1.6 / 12.2 |
-| **all** | zdiff | 125 | 0.043 / 0.097 | 0.40 / 0.67 | 0.48 / 0.80 | 3.3 / 12.6 |
-| **all** | zeven | 125 | 0.037 / 0.079 | 0.25 / 0.39 | 0.23 / 0.41 | 4.1 / 23.6 |
+| `board_other` | z0 | 16 | 0.046 / 0.075 | 0.04 / 0.07 | 0.26 / 0.43 | 1.2 / 2.1 |
+| **all** | z0 | 495 | 0.031 / 0.112 | 0.04 / 0.13 | 0.18 / 0.41 | 0.7 / 4.6 |
+| **all** | zdiff | 125 | 0.043 / 0.097 | 0.40 / 0.67 | 0.48 / 0.80 | 2.9 / 12.7 |
+| **all** | zeven | 125 | 0.037 / 0.079 | 0.25 / 0.39 | 0.23 / 0.41 | 2.9 / 21.8 |
 
 * **FW and CST agree to 0.03–0.04 %** (median; p90 ≤ 0.11 %, max 0.3 % for single lines and 1.1 % for the two PCIe
   finger pairs) with electric walls, the same with magnetic walls (26 cases), and 0.05–0.08 % on the open-boundary
@@ -319,9 +321,14 @@ of "FDM vs CST", see Outliers).
   without the etch group and the asymmetric pairs p90 0.47 %, p99 0.78 %, max 1.03 % (`anchor_forsten_suite_6`).
 * **Formulas**: plain microstrip, its thickness, height and solder-mask sweeps, covered traces and symmetric
   striplines within 0.2–1.2 % (median, p90 ≤ 2.3 %); offset and dual striplines 2–3.5 % (p90 6.6–8.7 %); edge-coupled
-  pairs 3–6 % (p90 7–33 %); CPWG 4.7 % (p90 19 %) and coplanar pairs' Zeven 15 % (the formulas ignore or simplify
-  the coplanar ground); plane cut-outs 18 % (p90 60 %; the formula takes the plane below the opening); no plane
-  10 % (an estimate, as kisi marks it).
+  pairs 3–6 % (p90 7–33 %); plane cut-outs 18 % (p90 60 %; the formula takes the plane below the opening).
+  Coplanar lines (the partial-capacitance formulas of `kisi_si::analytic`, docs/models.md section Impedance):
+  CPWG 0.5 % (p90 1.3 %), stripline with coplanar ground 0.7 %, coplanar pairs Zdiff 2.2 % and Zeven 2.3 %
+  (p90 3.5 %), coplanar without a plane 0.3 % (the infinite coplanar grounds of these cases; on a board an estimate,
+  as kisi marks it). Before them (the CPWG formula of zero thickness combined with the microstrip, the copper
+  thickness left out): CPWG 4.7 % (p90 19 %), coplanar pairs' Zeven 15 %, stripline with coplanar ground 2.4 %
+  (p90 11 %), no plane 10 %. The coplanar pairs' Zdiff was 0.7 % then – errors that cancelled (the single line's
+  coplanar factor applied to the pair).
 * **Anchors** (HFSS / Ansys / Forstén's MS/SL solver): CST −0.15 % (median signed), FW −0.10 %, kisi's field
   −0.37 %, all within 1.2 %.
 
@@ -440,8 +447,10 @@ solver: a surface impedance on a tetrahedral port mesh refined for β and Z, whi
 currents nor the finite thickness. The CST model itself is not the cause: every ground (planes, coplanar grounds)
 is copper of its real thickness inside the box (`xsgeo.domain` closes the box on a plane's outer face), only the
 box walls are PEC, and they carry no return current of a quasi-TEM line at 12 H; σ, thickness and smoothness are the
-same in all three solvers, and the frequency grid is CST's. A CST re-run can confirm it (next section); until then
-the loss comparison uses FW, checked against the independent solution, as the reference.
+same in all three solvers, and the frequency grid is CST's. The CST re-run (next section) confirms it: neither a
+finer mesh nor the material fit moves R, and volume conductors cannot be solved by CST's 2D port-mode solver. CST's
+conductor loss is therefore taken as a limitation of that solver (surface-impedance approximation), and the loss
+comparison uses FW, checked against the independent solution, as the reference.
 
 **kisi's line model against FW** (bias / p90 per group; the R of kisi's FDM solve at 1 GHz extended by
 R_dc·√(1 + jω/ω_c)):
@@ -501,8 +510,9 @@ doubled margin). The lossy port modes' conductor loss is not covered by these nu
 
 ## CST re-run for the conductor loss
 
-A frequency-domain re-run of a few cases tells where CST's low conductor loss comes from (options of `cst_xs.py`,
-section "The CST model"; results go to `results/<id>.<tag>.lossy.json`, next to the stored ones):
+A frequency-domain re-run of six cases at 0.1, 1 and 10 GHz tested where CST's low conductor loss comes from
+(options of `cst_xs.py`, section "The CST model"; results in `results/<id>.<tag>.lossy.json`, next to the stored
+ones):
 
 ```sh
 cd validation/cst_xs
@@ -517,9 +527,89 @@ Read R = Re(γ·Zc) from each result (`compare.cst_lossy`) and compare with `mqs
 cases): if R rises towards the MQS value with the mesh density, it is CST's port mesh at the edges (a finer port
 mesh, or CST's local mesh refinement at the conductor edges, is then needed for loss); if only `--metal volume` gets
 there, it is the surface impedance; `--no-td-compat` separates the material fit (it should also remove the
-0.2–0.5 % ε′ offset and the tanδ ripple). The options are not tested in CST yet: run `--dry-run` first and check the
-`.bas` (material type, mesh settings, `TDCompatibleMaterials`); with `--metal volume` the interior of the copper must
-be meshed to the skin depth (0.66 µm at 10 GHz), which may need CST's own mesh refinement for lossy metal.
+0.2–0.5 % ε′ offset and the tanδ ripple). With `--metal volume` the interior of the copper must be meshed to the
+skin depth (0.66 µm at 10 GHz).
+
+`--port-mesh-match` (`FDSolver.SetPortMeshMatches3DMeshTet`: the port mode solver refines the volume mesh's surface
+instead of a port mesh of its own, so that `--tet-scale` reaches the port) and `--cond-step µm` (maximum tetrahedron
+edge in the signal conductors, `Solid.SetMeshStepwidthTet`) were added for this check; all options are recorded per
+run in `loss_options`.
+
+**Result (2026-11-03, CST Studio Suite 2025.5).** R = Re(γ·Zc) against the FD-MQS value of `mqs_check.json` (`fd`:
+the stored run; `fdmesh2`/`fdmesh4`: tetrahedral mesh ×2/×4; `fdmatch4`: ×4 with `--port-mesh-match`; `fdnotd`:
+`TDCompatibleMaterials` off):
+
+| case | mode | f GHz | R FD-MQS Ω/m | `fd` | `fdmesh2` | `fdmesh4` | `fdmatch4` | `fdnotd` |
+|---|---|---|---|---|---|---|---|---|
+| sl_h0.1_u1_er4.2 | single | 0.1 | 20.05 | 16.02 (-20.1 %) | 15.96 (-20.4 %) | 16.02 (-20.1 %) | 16.01 (-20.1 %) | 16.02 (-20.1 %) |
+| sl_h0.1_u1_er4.2 | single | 1 | 60.37 | 52.31 (-13.4 %) | 51.91 (-14.0 %) | 52.37 (-13.2 %) | 52.28 (-13.4 %) | 52.31 (-13.4 %) |
+| sl_h0.1_u1_er4.2 | single | 10 | 188.65 | 168.39 (-10.7 %) | 166.07 (-12.0 %) | 168.35 (-10.8 %) | 167.82 (-11.0 %) | 168.39 (-10.7 %) |
+| ms_u0.2_er4.4 | single | 0.1 | 20.14 | 15.60 (-22.5 %) | 15.60 (-22.6 %) | 15.58 (-22.7 %) | 15.53 (-22.9 %) | 15.60 (-22.5 %) |
+| ms_u0.2_er4.4 | single | 1 | 59.95 | 50.36 (-16.0 %) | 50.61 (-15.6 %) | 50.45 (-15.9 %) | 50.28 (-16.1 %) | 50.36 (-16.0 %) |
+| ms_u0.2_er4.4 | single | 10 | 187.38 | 162.78 (-13.1 %) | 163.43 (-12.8 %) | 161.07 (-14.0 %) | 159.57 (-14.8 %) | 163.14 (-12.9 %) |
+| ms_u1_er4.4 | single | 0.1 | 7.11 | 6.05 (-14.9 %) | 6.00 (-15.5 %) | 6.03 (-15.1 %) | 6.02 (-15.4 %) | 6.05 (-14.9 %) |
+| ms_u1_er4.4 | single | 1 | 22.18 | 19.65 (-11.4 %) | 19.42 (-12.4 %) | 19.57 (-11.8 %) | 19.46 (-12.3 %) | 19.65 (-11.4 %) |
+| ms_u1_er4.4 | single | 10 | 70.18 | 63.26 (-9.9 %) | 62.24 (-11.3 %) | 62.88 (-10.4 %) | 62.46 (-11.0 %) | 63.28 (-9.8 %) |
+| ms_u10_er4.4 | single | 0.1 | 1.27 | 1.21 (-4.6 %) | 1.21 (-5.1 %) | 1.21 (-4.7 %) | 1.21 (-4.6 %) | 1.21 (-4.6 %) |
+| ms_u10_er4.4 | single | 1 | 4.03 | 3.87 (-3.8 %) | 3.85 (-4.5 %) | 3.87 (-4.1 %) | 3.87 (-4.0 %) | 3.87 (-3.8 %) |
+| ms_u10_er4.4 | single | 10 | 12.76 | 12.83 (+0.5 %) | 12.71 (-0.4 %) | 12.78 (+0.2 %) | 12.78 (+0.1 %) | 12.84 (+0.6 %) |
+| cpwg_u1_g0.5 | single | 0.1 | 12.02 | 9.66 (-19.6 %) | 9.61 (-20.0 %) | 9.61 (-20.1 %) | 9.59 (-20.2 %) | 9.66 (-19.6 %) |
+| cpwg_u1_g0.5 | single | 1 | 37.87 | 32.32 (-14.6 %) | 32.34 (-14.6 %) | 32.07 (-15.3 %) | 31.94 (-15.7 %) | 32.32 (-14.6 %) |
+| cpwg_u1_g0.5 | single | 10 | 120.47 | 105.02 (-12.8 %) | 104.38 (-13.4 %) | 103.10 (-14.4 %) | 102.90 (-14.6 %) | 105.12 (-12.7 %) |
+| dms_u1_s1 | odd | 0.1 | 9.24 | 7.50 (-18.8 %) | 7.49 (-18.9 %) | 7.49 (-19.0 %) | 7.46 (-19.3 %) | 7.50 (-18.8 %) |
+| dms_u1_s1 | odd | 1 | 28.66 | 24.62 (-14.1 %) | 24.57 (-14.3 %) | 24.51 (-14.5 %) | 24.32 (-15.1 %) | 24.62 (-14.1 %) |
+| dms_u1_s1 | odd | 10 | 90.63 | 79.05 (-12.8 %) | 78.84 (-13.0 %) | 78.61 (-13.3 %) | 77.88 (-14.1 %) | 79.05 (-12.8 %) |
+| dms_u1_s1 | even | 0.1 | 11.02 | 9.52 (-13.7 %) | 9.50 (-13.9 %) | 9.50 (-13.8 %) | 9.49 (-14.0 %) | 9.51 (-13.7 %) |
+| dms_u1_s1 | even | 1 | 34.36 | 30.84 (-10.3 %) | 30.71 (-10.6 %) | 30.78 (-10.4 %) | 30.66 (-10.8 %) | 30.84 (-10.3 %) |
+| dms_u1_s1 | even | 10 | 108.66 | 99.40 (-8.5 %) | 99.06 (-8.8 %) | 99.26 (-8.7 %) | 98.80 (-9.1 %) | 99.44 (-8.5 %) |
+
+- Neither a denser tetrahedral mesh nor the port mesh following it moves R by more than 1.5 points; the deficit stays
+  at 4–23 % (none at 10 GHz for the 3 mm wide `ms_u10_er4.4`, largest for narrow conductors and at 0.1 GHz). The port
+  mesh is not the cause within what the licence allows (see below).
+- `--no-td-compat` leaves R and G unchanged (≤ 0.1 %) and only removes ε′'s dispersion (εeff −3 % at 0.1 GHz,
+  +3 % at 10 GHz, equal at 1 GHz where εr is given): the dielectric fit explains neither the loss deficit nor an ε′
+  offset at 1 GHz.
+- `--metal volume` cannot be run with this port: the potential pins must lie on PEC or lossy-metal solids ("Multipin
+  port 1 contains less than 2 conductors", `fdvol`, all 6 cases). With `--port-mesh-match --cond-step 2` (`fdvolm`)
+  the licence stops it first: "licensed for up to 80000 mesh cells only for the selected solver order" (all 6). The
+  80 000-cell limit of the frequency domain solver also bounds the mesh studies above.
+- Conclusion: the deficit lies in CST's surface-impedance ("Lossy metal") loss of the port mode solver, not in the
+  mesh or the material fit. With this licence it cannot be checked with volume conductors; CST's low-frequency
+  (MQS) solver with skin-depth meshing in the copper would be the direct check where licensed. Re-running the 620
+  lossy sweeps with any of the tested settings would not change R. Run times: 27–45 s per case (3 frequencies).
+
+## The fit of the coplanar formulas
+
+kisi's formulas for lines with coplanar copper (`kisi_si::analytic`, docs/models.md section Impedance) have two
+fitted constants: the corner term of a slot between copper side walls, C/ε0 = t/s + a·(t/s)^b per slot (code:
+a = 0.075, b = 0.15), and the width τ of the smooth maximum that joins the coplanar capacitances to the plain line's
+(code: 0.04). `fit_coplanar.py` fits them to kisi's field solver on 1 100 synthetic cross-sections – 250 grounded CPW
+without and 430 with solder mask, 300 striplines with coplanar ground, 80 coupled grounded CPW, 40 CPW without a
+plane (fixed grids with seeded subsets: h 0.1–1.6 mm, εr 3–10, t 17.5–70 µm, w/h 0.5–4, gap/h 0.1–4, gaps ≥ 25 µm,
+coplanar copper on one or both sides) – built from stackups and descriptions as `make_cases.py` builds them; kisi's
+geometry text and formula values come from `kisi-validate xs-cases`, the field solution from `tools/solve_xs.mjs`
+(tol 0.005) as in `run_kisi.py`. `coplanar_fit.json` keeps per case the parameters, the field solution, kisi's
+formula value and the plain line's formula, so the fit repeats without solving. The script evaluates the formulas in
+Python (checked against kisi's own values: within 1·10⁻⁵, the stored digits) with free constants: (1) the corner
+term from the slot capacitance that matches the field solution on the 142 single lines with coplanar copper on both
+sides, no mask and a gap of at most half the height (least squares, b on a 0.005 grid); (2) τ by the smallest mean
+|error| of Z0 over all single lines with coplanar copper.
+
+```sh
+python3 validation/cst_xs/fit_coplanar.py --from-json    # the fit from the stored sweep (about a second)
+python3 validation/cst_xs/fit_coplanar.py --formula-only   # kisi's formula values again after a formula change, then the fit
+python3 validation/cst_xs/fit_coplanar.py                # sweep, solve and fit (about 20 min on 2 cores)
+```
+
+Result (sweep of 2026-11-03): the corner term fits a = 0.0673, b = 0.090 (rms 0.0087 of the slot capacitance), τ has
+a flat optimum at 0.045 (mean |error| of Z0 0.845 %; 0.04: 0.851 %, 0.05: 0.856 %). The code uses these values,
+rounded (a = 0.067, b = 0.090, τ = 0.045): `--from-json` reproduces them and says so. (A first, similar sweep had given
+a = 0.075, b = 0.15, τ = 0.04 – the same mean error, 0.842 %, on this sweep.) Errors against the field solver
+(median / p90 / max, %): grounded CPW 0.28 / 1.01 / 2.1, with mask 0.65 / 1.61 / 5.3, stripline with coplanar ground
+0.61 / 3.5 / 6.7 (the offset striplines carry the plain stripline formula's error at wide gaps), CPW without a plane
+0.31 / 0.63 / 1.1; coupled grounded CPW with ground on both sides Zdiff 1.0 / 3.7 and Zeven 1.8 / 4.3, with ground on
+one side only (the mean of two symmetric pairs, an approximation) 2.8 / 6.8 and 9.8 / 16.0, up to −47 / +71 % for a
+25 µm gap under mask (the formula before: 7.4 / 23 and 15 / 33 % one-sided, 7.7 / 31 and 24 / 45 % both sides).
 
 ## The page
 
@@ -528,10 +618,35 @@ python3 validation/cst_xs/make_viewer.py validation/cst_xs dist/kisi-references-
 ```
 
 `kisi-references-2d.html` (self-contained, about 3 MB; built, not kept in the repository; a release attaches it when
-the cases, the results or the page builder changed): an overview with the per-group tables of `compare.py` and the
-cases with a note, and per case the cross-section to scale (dielectrics with εr and thickness, conductors, etch
-trapezoids with kisi's rectangle, the solver box), the parameters, the four solvers' values at 1 GHz with their
-deviation from CST, agreement chips (the limits of `compare.py`: 2 % for the solvers and kisi's field result, 5 % for
-the formula; the definitions in the tooltips), the explanation of known outliers, and the loss sweep (α, R, Re Zc,
-phase εeff over frequency: CST, FW, kisi's line model; points left out as box modes hollow). The 3D reference
+the cases, the results or the page builder changed): an overview with "What is compared with what", the legend of the
+result columns, the per-group tables of `compare.py` and the cases with a note, and per case a line "Simulated with"
+(which runs exist: CST lossless with PEC / PMC side walls, CST's lossy sweeps and their tags, full-wave PEC / PMC /
+sweep, kisi's FDM PEC box / PMC box / as reported, the formula's kind), the cross-section to scale (dielectrics with
+εr and thickness, conductors, etch trapezoids with kisi's rectangle, the solver box), the parameters, the values at
+1 GHz with their deviation, agreement chips (the limits of `compare.py`: 2 % for the solvers and kisi's field result,
+5 % for the formula; the role and definition in the tooltips), the explanation of known outliers, and the loss sweep
+(α, R, Re Zc, phase εeff over frequency: CST, full-wave, kisi's line model; points left out as box modes hollow).
+
+What is compared with what (the page repeats this):
+1. **Solver check** – CST and the full-wave FEM (and kisi's FDM) solve the identical closed box; their differences
+   are numerical only.
+2. **kisi's real accuracy** – kisi as it reports (its field solver on its own open domain, its formula) against
+   CST's open-boundary estimate, whose uncertainty is the PEC/PMC spread (section Uncertainty of the CST results).
+3. **Loss** – the full-wave FEM's MQS conductor loss is the reference (the independent finite-difference MQS check
+   agrees within 1 %); CST's lossy-metal loss is a surface-impedance approximation, 4–23 % low.
+
+The result columns (each value's deviation in % is against the column named last):
+
+| column | program / solver | boundary | loss, frequency, εeff | deviation against |
+|---|---|---|---|---|
+| CST · closed box, PEC walls | CST 2D port modes (time-domain solver, modes only) | closed box, PEC side walls (a full plane closes top or bottom) | lossless, 1 GHz, eigenmode | – (reference of the solver check) |
+| CST · closed box, PMC side walls | the same, only where run | PMC side walls | lossless, 1 GHz, eigenmode | – |
+| CST · open (estimate) | from the two CST runs | mean of PEC and PMC; with PEC only, CST-PEC × the FDM's open/PEC ratio | lossless, 1 GHz, eigenmode | – (reference of kisi's accuracy) |
+| Full-wave FEM · same box | js_2d_fields full-wave backend, eigenmode | CST's box, PEC walls | lossless, 1 GHz, eigenmode | CST · PEC walls (asymmetric pairs: CST's definition) |
+| Full-wave FEM static · same box | the same mesh, static P2 FEM | CST's box, PEC walls | lossless, static, C/C0 | CST · PEC walls |
+| Full-wave FEM · PMC side walls | full-wave backend | natural (PMC) side walls | lossless, 1 GHz, eigenmode | CST · PMC side walls |
+| kisi field solver (FDM) · same box | js_2d_fields FDM, tol 0.002 | CST's box, PEC walls | Z lossless 1/(c·√(C·C0)), static C/C0 | CST · PEC walls (kisi's definition) |
+| kisi FDM · PMC side walls | FDM, tol 0.002 | natural (PMC) side walls | Z lossless | CST · PMC side walls |
+| kisi field solver · as reported (open) | FDM as kisi runs it, tol 0.01 | its own open domain | Z lossless; εeff the phase value with copper (not compared) | CST · open (estimate) |
+| kisi formula | `kisi_si::analytic` | – | lossless, quasi-static | CST · open (estimate) | The 3D reference
 cases are on `kisi-references-3d.html` (`validation/fdtd/make_viewer.py`); the two pages link to each other.

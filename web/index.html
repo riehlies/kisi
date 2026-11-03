@@ -90,11 +90,11 @@
         </li>
         <li id="st2">
           <div class="step-h"><b>Impedance estimate</b><button class="btn small primary" id="an-start">Estimate</button></div>
-          <span class="note" id="st2-text">Closed-form formulas (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141) for every track, about a second. Typically within 5 % for single lines, 5–15 % off for coupled and coplanar lines.</span>
+          <span class="note" id="st2-text">Closed-form formulas (Hammerstad-Jensen, Wheeler, conformal mapping for coplanar lines, IPC-2141) for every track, about a second. Typically within 2 % for single and coplanar lines, 5–15 % off for pairs and offset striplines.</span>
         </li>
         <li id="st3">
           <div class="step-h"><b>Field solver</b><button class="btn small primary" id="fs-start">Start</button></div>
-          <span class="note" id="si-source">2D field solver (js_2d_fields) for each distinct cross-section: within 2 % of HFSS, seconds to minutes. Results are kept in this browser.</span>
+          <span class="note" id="si-source">2D field solver (js_2d_fields) for each distinct cross-section: within 1 % of CST's 2D solver, seconds to minutes. Results are kept in this browser.</span>
           <div class="fs" id="fs">
             <div class="fs-bar" aria-hidden="true"><i id="fs-bar"></i></div>
             <div class="fs-row"><span id="fs-text"></span><button class="btn small" id="fs-toggle" hidden>Pause</button></div>
@@ -115,7 +115,7 @@
       <div class="note cfg-status" id="cfg-status" hidden></div>
       <details class="acc" id="acc">
         <summary>Accuracy</summary>
-        <p class="note"><b>Impedance.</b> Formulas (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141): microstrip within 1–2 %, coupled and coplanar lines 5–15 % off (asymmetric stripline +11 %). Field solver: <a href="https://github.com/Ttl/js_2d_fields" target="_blank" rel="noopener">js_2d_fields</a> by Henrik Forstén (GPL-3.0), quasi-static, included unmodified (revision <span class="mono" id="up-rev"></span>): within 1.7 % of the HFSS/Ansys references in his test suite, εeff within 1 %.</p>
+        <p class="note"><b>Impedance.</b> Formulas (Hammerstad-Jensen, Wheeler, conformal mapping for coplanar lines, IPC-2141): microstrip and coplanar lines within 1–2 %, pairs 3–8 % off, offset striplines up to +11 %. Field solver: <a href="https://github.com/Ttl/js_2d_fields" target="_blank" rel="noopener">js_2d_fields</a> by Henrik Forstén (GPL-3.0), quasi-static, included unmodified (revision <span class="mono" id="up-rev"></span>): within 1 % of CST Studio Suite on 620 cross-sections and 1.7 % of the HFSS/Ansys references in his test suite.</p>
         <p class="note">Deviation on ThunderScope cross-sections; reference is Forstén's own microstrip/stripline solver:</p>
         <table class="acc-t">
           <thead><tr><td></td><td class="num">Formula</td><td class="num">Field solver</td></tr></thead>

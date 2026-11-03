@@ -15,15 +15,15 @@
      "net": "/SYNC",
      "within_5pct": 0.271243,
      "z_max": 48.304,
-     "z_mean": 33.9289,
-     "z_min": 24.7849
+     "z_mean": 33.8784,
+     "z_min": 24.3994
     },
     {
      "net": "Net-(U10-RO)",
      "within_5pct": 0.203494,
      "z_max": 48.304,
-     "z_mean": 34.2902,
-     "z_min": 24.7849
+     "z_mean": 34.2622,
+     "z_min": 24.5355
     },
     {
      "net": "/REFINOUT",
@@ -35,8 +35,8 @@
     {
      "net": "Net-(U7-OC1P)",
      "within_5pct": 0.421072,
-     "z_max": 53.0238,
-     "z_mean": 46.05,
+     "z_max": 52.6851,
+     "z_mean": 45.8737,
      "z_min": 26.8037
     },
     {
@@ -56,42 +56,42 @@
    "rough_formula_mm": 20.1213,
    "target_ohm": 100.0,
    "target_source": "class name",
-   "within_5pct": 0.00371826,
+   "within_5pct": 0.014873,
    "worst": [
     {
      "net": "/CH3_P",
-     "within_5pct": 0.0041249,
-     "z_max": 266.779,
-     "z_mean": 110.864,
-     "z_min": 53.6074
+     "within_5pct": 0.0164996,
+     "z_max": 264.467,
+     "z_mean": 110.956,
+     "z_min": 52.8729
     },
     {
      "net": "/CH4_N",
-     "within_5pct": 0.00441176,
-     "z_max": 288.405,
-     "z_mean": 110.162,
-     "z_min": 53.6074
+     "within_5pct": 0.017647,
+     "z_max": 287.083,
+     "z_mean": 110.295,
+     "z_min": 52.8729
     },
     {
      "net": "/CH2_N",
-     "within_5pct": 0.00415047,
-     "z_max": 280.812,
-     "z_mean": 110.052,
-     "z_min": 53.6074
+     "within_5pct": 0.0166019,
+     "z_max": 279.382,
+     "z_mean": 110.178,
+     "z_min": 52.8729
     },
     {
      "net": "/CH3_N",
-     "within_5pct": 0.0041505,
-     "z_max": 266.779,
-     "z_mean": 110.048,
-     "z_min": 53.6074
+     "within_5pct": 0.016602,
+     "z_max": 264.467,
+     "z_mean": 110.173,
+     "z_min": 52.8729
     },
     {
      "net": "/CH2_P",
-     "within_5pct": 0.00415046,
-     "z_max": 266.779,
-     "z_mean": 109.948,
-     "z_min": 53.6074
+     "within_5pct": 0.0166018,
+     "z_max": 264.467,
+     "z_mean": 110.074,
+     "z_min": 52.8729
     }
    ]
   },
@@ -108,29 +108,29 @@
     {
      "net": "/CH4/ATTEN_OUT_R",
      "within_5pct": 0.244606,
-     "z_max": 130.769,
-     "z_mean": 79.4275,
+     "z_max": 129.435,
+     "z_mean": 79.0889,
      "z_min": 51.3498
     },
     {
      "net": "/CH1/ATTEN_OUT_R",
      "within_5pct": 0.244606,
-     "z_max": 130.769,
-     "z_mean": 79.4275,
+     "z_max": 129.435,
+     "z_mean": 79.0889,
      "z_min": 51.3498
     },
     {
      "net": "/CH2/ATTEN_OUT_R",
      "within_5pct": 0.244606,
-     "z_max": 130.769,
-     "z_mean": 79.4275,
+     "z_max": 129.435,
+     "z_mean": 79.0889,
      "z_min": 51.3498
     },
     {
      "net": "/CH3/ATTEN_OUT_R",
      "within_5pct": 0.244606,
-     "z_max": 130.769,
-     "z_mean": 79.4275,
+     "z_max": 129.435,
+     "z_mean": 79.0889,
      "z_min": 51.3498
     },
     {
@@ -155,29 +155,29 @@
     {
      "net": "/CH1/BNC_IN",
      "within_5pct": 0.652583,
-     "z_max": 248.845,
-     "z_mean": 68.4318,
+     "z_max": 226.211,
+     "z_mean": 67.3592,
      "z_min": 51.3498
     },
     {
      "net": "/CH3/BNC_IN",
      "within_5pct": 0.652853,
-     "z_max": 248.845,
-     "z_mean": 68.4125,
+     "z_max": 226.211,
+     "z_mean": 67.3419,
      "z_min": 51.3498
     },
     {
      "net": "/CH4/BNC_IN",
      "within_5pct": 0.660207,
-     "z_max": 129.262,
-     "z_mean": 61.4243,
+     "z_max": 128.252,
+     "z_mean": 61.3924,
      "z_min": 51.3498
     },
     {
      "net": "/CH2/BNC_IN",
      "within_5pct": 0.661385,
-     "z_max": 129.262,
-     "z_mean": 61.4114,
+     "z_max": 128.252,
+     "z_mean": 61.3796,
      "z_min": 51.3498
     }
    ]
@@ -190,7 +190,7 @@
    "rough_formula_mm": 1.31405,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.32194,
+   "within_5pct": 0.330081,
    "worst": [
     {
      "net": "/ADC/D1A_N",
@@ -214,17 +214,17 @@
      "z_min": 65.0803
     },
     {
-     "net": "/ADC/D1A_P",
-     "within_5pct": 0.0,
-     "z_max": 130.145,
-     "z_mean": 110.342,
-     "z_min": 77.3094
-    },
-    {
      "net": "/ADC/D1B_P",
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 110.1,
+     "z_min": 77.3094
+    },
+    {
+     "net": "/ADC/D3A_P",
+     "within_5pct": 0.0,
+     "z_max": 130.145,
+     "z_mean": 109.824,
      "z_min": 77.3094
     }
    ]
@@ -237,21 +237,21 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.123708,
+   "within_5pct": 0.160661,
    "worst": [
-    {
-     "net": "/ADC/ADC_CLK_N",
-     "within_5pct": 0.12356,
-     "z_max": 130.145,
-     "z_mean": 102.457,
-     "z_min": 51.6994
-    },
     {
      "net": "/ADC/ADC_CLK_P",
      "within_5pct": 0.123856,
      "z_max": 130.145,
-     "z_mean": 102.36,
-     "z_min": 51.4884
+     "z_mean": 101.769,
+     "z_min": 50.1817
+    },
+    {
+     "net": "/ADC/ADC_CLK_N",
+     "within_5pct": 0.197374,
+     "z_max": 130.145,
+     "z_mean": 101.508,
+     "z_min": 51.6994
     }
    ]
   },
@@ -263,35 +263,35 @@
    "rough_formula_mm": 0.451117,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.924679,
+   "within_5pct": 0.926407,
    "worst": [
     {
      "net": "/FPGA/SYNC_IN_P",
      "within_5pct": 0.956691,
-     "z_max": 559.685,
-     "z_mean": 103.085,
+     "z_max": 501.146,
+     "z_mean": 102.796,
      "z_min": 63.1726
     },
     {
      "net": "/FPGA/SYNC_IN_N",
-     "within_5pct": 0.89337,
-     "z_max": 432.157,
-     "z_mean": 102.567,
+     "within_5pct": 0.897239,
+     "z_max": 392.654,
+     "z_mean": 102.479,
      "z_min": 63.1726
     },
     {
      "net": "/FPGA/SYNC_OUT_P",
      "within_5pct": 0.906827,
-     "z_max": 160.345,
-     "z_mean": 101.72,
-     "z_min": 48.1579
+     "z_max": 137.498,
+     "z_mean": 101.588,
+     "z_min": 46.8242
     },
     {
      "net": "/FPGA/SYNC_OUT_N",
-     "within_5pct": 0.942422,
-     "z_max": 172.423,
-     "z_mean": 100.724,
-     "z_min": 48.1579
+     "within_5pct": 0.945428,
+     "z_max": 158.7,
+     "z_mean": 100.616,
+     "z_min": 46.8242
     }
    ]
   },
@@ -303,42 +303,42 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.220301,
+   "within_5pct": 0.220492,
    "worst": [
     {
      "net": "/FPGA/USRIO_11_N",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 111.005,
+     "z_mean": 110.981,
      "z_min": 65.0803
     },
     {
      "net": "/FPGA/USRIO_2_P",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 110.226,
+     "z_mean": 110.203,
      "z_min": 66.6369
     },
     {
      "net": "/FPGA/USRIO_3_P",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 110.165,
-     "z_min": 77.3094
+     "z_mean": 110.118,
+     "z_min": 75.7733
     },
     {
      "net": "/FPGA/USRIO_12_P",
      "within_5pct": 0.0,
      "z_max": 130.145,
-     "z_mean": 110.102,
+     "z_mean": 110.079,
      "z_min": 70.4694
     },
     {
      "net": "/FPGA/USRIO_11_P",
-     "within_5pct": 0.0,
+     "within_5pct": 0.00439063,
      "z_max": 130.145,
-     "z_mean": 110.097,
-     "z_min": 77.3094
+     "z_mean": 110.052,
+     "z_min": 75.7733
     }
    ]
   },
@@ -350,41 +350,41 @@
    "rough_formula_mm": 0.715356,
    "target_ohm": 85.0,
    "target_source": "interface assumption",
-   "within_5pct": 0.561757,
+   "within_5pct": 0.580264,
    "worst": [
     {
      "net": "/TS-USB4 Components/M2_PER3_P",
      "within_5pct": 0.598909,
-     "z_max": 520.644,
-     "z_mean": 96.4775,
+     "z_max": 472.99,
+     "z_mean": 94.9043,
      "z_min": 51.1232
-    },
-    {
-     "net": "/FPGA/MGT_TX3_P",
-     "within_5pct": 0.0,
-     "z_max": 516.468,
-     "z_mean": 94.4335,
-     "z_min": 47.2292
     },
     {
      "net": "/FPGA/MGT_TX0_N",
      "within_5pct": 0.0,
-     "z_max": 173.837,
-     "z_mean": 94.1721,
+     "z_max": 156.236,
+     "z_mean": 92.5844,
      "z_min": 47.2292
     },
     {
      "net": "/FPGA/MGT_TX1_N",
      "within_5pct": 0.0,
-     "z_max": 189.047,
-     "z_mean": 94.0341,
+     "z_max": 172.006,
+     "z_mean": 92.4905,
+     "z_min": 47.2292
+    },
+    {
+     "net": "/FPGA/MGT_TX3_P",
+     "within_5pct": 0.121213,
+     "z_max": 468.729,
+     "z_mean": 92.4137,
      "z_min": 47.2292
     },
     {
      "net": "/TS-USB4 Components/M2_PER3_N",
      "within_5pct": 0.567256,
-     "z_max": 504.087,
-     "z_mean": 93.4441,
+     "z_max": 456.059,
+     "z_mean": 92.3437,
      "z_min": 51.1232
     }
    ]
@@ -402,37 +402,37 @@
     {
      "net": "/FPGA/FPGA IO Banks/QSPI_DQ1",
      "within_5pct": 0.0,
-     "z_max": 233.164,
-     "z_mean": 63.3303,
-     "z_min": 16.3606
-    },
-    {
-     "net": "/FPGA/FPGA Config and Transceivers/QSPI_CLK",
-     "within_5pct": 0.0,
-     "z_max": 190.638,
-     "z_mean": 60.8236,
-     "z_min": 16.4839
+     "z_max": 201.245,
+     "z_mean": 61.1066,
+     "z_min": 15.5967
     },
     {
      "net": "/FPGA/FPGA IO Banks/QSPI_DQ0",
      "within_5pct": 0.0,
-     "z_max": 231.257,
-     "z_mean": 60.8185,
-     "z_min": 16.4052
+     "z_max": 199.194,
+     "z_mean": 59.7011,
+     "z_min": 15.672
     },
     {
      "net": "/FPGA/FPGA Config and Transceivers/QSPI_CS",
      "within_5pct": 0.0,
-     "z_max": 267.209,
-     "z_mean": 60.148,
-     "z_min": 16.4839
+     "z_max": 240.385,
+     "z_mean": 58.4363,
+     "z_min": 16.0869
+    },
+    {
+     "net": "/FPGA/FPGA Config and Transceivers/QSPI_CLK",
+     "within_5pct": 0.0,
+     "z_max": 170.969,
+     "z_mean": 57.2208,
+     "z_min": 16.0869
     },
     {
      "net": "/FPGA/FPGA IO Banks/QSPI_DQ3",
      "within_5pct": 0.0,
      "z_max": 61.7596,
-     "z_mean": 57.9656,
-     "z_min": 16.4052
+     "z_mean": 56.9436,
+     "z_min": 15.672
     }
    ]
   }
@@ -444,7 +444,7 @@
   "warnings": []
  },
  "layers": 6,
- "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, Wadell, IPC-2141); differential and coplanar lines can be off by 5–15 %. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
+ "models": "Impedance by formula (Hammerstad-Jensen, Wheeler, conformal mapping for coplanar lines, IPC-2141); single and coplanar lines within about 2 %, offset striplines and differential pairs can be off by 5–15 %. Losses: Wheeler/Huray/Djordjevic-Sarkar.",
  "stackup": [
   {
    "cu_um": 43.2,

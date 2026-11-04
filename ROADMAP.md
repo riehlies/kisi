@@ -139,6 +139,12 @@ validation, and every result says which level it used and how uncertain it is.
   `kisi-references-2d.html`) set the field solver's uncertainty to 1 % and brought formulas for coplanar lines
   (grounded CPW, stripline with coplanar ground, the coupled grounded CPW; single lines with coplanar copper
   4.9 → 1.1 % median). Next:
+  - **the fab's stackup** (user feedback: the biggest impedance error in production is usually the fab's prepreg
+    choice, not the formula): import of fab stackups into `kisi.json` (thickness, εr, tanδ per dielectric, with
+    the source), first JLC's impedance templates (data already in `validation/test_board/stackups.json`), then
+    IPC-2581 if asked for; today they are entered by hand (Prepare PCB, `stackup` in kisi.json);
+  - **sensitivity of the impedance** per net class: how far Z moves for ±10 % dielectric thickness and εr (and the
+    etch factor below), recomputed with the field solver, shown next to the value and the target window;
   - **etch factor** per stackup or layer in `kisi.json`, applied as an effective width w − t/(2·ef) (the FDM
     backend takes no trapezoids; CST: within ±2.2 % for microstrips and pairs, −2 … −4 % for striplines, against
     −2 … −11 % today), with values from the test board's measured cross-sections (JLC) once they exist;

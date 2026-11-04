@@ -38,62 +38,39 @@ with IBIS models, KiCad's simulator.
   `kisi.mjs`.
 
 ## Impedance
-- **Formulas:** Hammerstad-Jensen (microstrip), Wheeler (stripline), IPC-2141 (pairs) and conformal mapping
-  for coplanar lines – in a second for every track. Against CST on the 620 cross-sections of
-  [validation/cst_xs](../validation/cst_xs/README.md) (median / 90th percentile): microstrip and symmetric
-  stripline 0.2 / 0.4 %, solder mask 1.2 / 1.8 %, offset striplines 2 / 9 %, edge-coupled pairs' Zdiff 2.7 / 12 %
-  (microstrip) and 4.3 / 33 % (stripline). A formula value over a cut-out in a layer between trace
-  and reference is flagged "rough" and can be 25 % off and more.
-- **Coplanar lines** – copper of any net on the trace's layer within 3 h (at most 2 mm) beside it, h the height to
-  the nearest plane – have formulas of their own (`kisi_si::analytic`): the grounded coplanar waveguide, a
-  stripline with coplanar ground, a pair with coplanar ground (coupled grounded CPW). Each region – air or
-  solder mask above, the dielectric to each plane, the slots between the copper side walls – is a partial
-  capacitance from conformal mapping (Ghione & Naldi 1987; Simons, *Coplanar Waveguide Circuits, Components,
-  and Systems*, 2001); the copper thickness enters as the slots' capacitance t/s plus a corner term, and for
-  wide gaps the capacitances go over smoothly into the line without coplanar copper. The corner term and the
-  smoothing are fitted to kisi's field solver on 1 100 synthetic cross-sections
-  ([the fit](../validation/cst_xs/README.md#the-fit-of-the-coplanar-formulas)). Against CST: grounded
-  CPW 0.5 / 1.3 % (all single lines with coplanar copper 0.9 / 1.7 %, before 4.9 / 8.8 %), stripline with
-  coplanar ground 0.6 / 1.6 %, pairs with coplanar ground Zdiff 2.2 / 3.6 % and Zeven 2.5 / 3.9 % (before
-  Zeven 8.5 / 18 %). A pair with coplanar ground on one side only is approximated as the mean of two symmetric
-  pairs (ground on both sides, none): against kisi's field solver Zdiff typically 3 % off (p90 7 %), Zeven 10 %
-  (p90 16 %), up to −47 / +70 % for very narrow gaps under solder mask; the field solver is not affected. The
-  partner is taken as wide as the trace; a stripline pair and a covered trace with one plane ignore their
-  coplanar copper. At the
-  end of the search (3 h) coplanar copper lowers Z by about 1 %; beyond it, it is left out (the field solver's
-  geometry has the same reach).
-- **Trace shape:** every trace is a rectangle of the drawn width and the full copper thickness, in the formulas
-  and in the field solver's geometry; KiCad's stackup has no etch factor. Real traces are etched to a trapezoid
-  and are narrower at the top, so kisi's Z0 comes out low: by about 2–4 % at typical etch factors for 35 µm
-  copper, less for thin inner layers (validation/cst_xs, group `etch`: −1.0 … −5.4 % for microstrips,
-  −2.6 … −5.1 % for a pair, −4.6 … −10.8 % for a stripline at etch factors 3 … 1; the uncorrected stripline with
-  etch factor 1, `etch_sl_ef1`, −11 %). A rectangle of the effective width w − t/(2·ef) would come within
-  ±2.2 % for microstrips and pairs and −2 … −4 % for striplines; kisi does not apply it (no etch factor in the
-  stackup).
-- **2D field solver:** js_2d_fields by Henrik Forstén (GPL-3.0), quasi-static, included unmodified (see
-  [UPSTREAM.md](../UPSTREAM.md)); its linear solver runs in Rust (`crates/kisi-sparse`). Cross-sections are taken
-  along every line with its reference planes (also across gaps), coplanar ground and the differential partner.
-  Within 1 % of CST Studio Suite on the 620 cross-sections ([Validation](#validation)) and 1.7 % of the HFSS/Ansys
-  references in Forstén's test suite, εeff within 1 %.
+kisi computes every track's impedance in two ways:
+- **Formulas** – in a second for every track: Hammerstad-Jensen (microstrip), Wheeler (stripline), IPC-2141
+  (pairs), and conformal mapping (Ghione & Naldi; Simons) for coplanar lines, i.e. copper of any net on the
+  trace's layer within 3 h (at most 2 mm) beside it.
+- **2D field solver** – js_2d_fields by Henrik Forstén (GPL-3.0), quasi-static, included unmodified (see
+  [UPSTREAM.md](../UPSTREAM.md)), its linear solver in Rust (`crates/kisi-sparse`). Cross-sections are taken
+  along every line with its reference planes (also across gaps), coplanar copper and the differential partner.
 
-- **Pads and gold fingers:** a track inside an SMD pad of its own net (a track runs to the pad's centre; a
-  card-edge finger) has the pad's cross-section – its width and what lies below it, a cut-out in the plane
-  included –, exactly from the pad's edge; the rest of a part's pad is a shunt capacitance from that
-  cross-section (without one, an estimate per package from `data/components.json`). Copper with no plane
-  above or below it on any layer – a finger with the planes cut back – takes its return in the coplanar
-  copper beside it and a pair's partner (coplanar waveguide and coplanar strips without a ground plane, an
-  estimate); with nothing within 0.5 mm (or 3 widths) beside it the channel uses 1.5 × the target impedance.
-  Against 3D: [TESTS.md](../validation/fdtd/TESTS.md) section 15.
+How close they are, against CST Studio Suite on 620 cross-sections ([Validation](#validation); median / 90th
+percentile):
 
-Deviation on ThunderScope cross-sections (reference: Forstén's microstrip/stripline solver; the last row HFSS):
-
-| Cross-section | Formula | Field solver |
+| Line type | Formula | Field solver |
 |---|---|---|
-| Microstrip 213 µm, with solder mask | +1.4 % | 0.0 % |
-| Diff-microstrip LVDS (127/130 µm) | +7.8 % | −0.3 % |
-| Diff-microstrip PCIe (191/127 µm) | +5.6 % | −0.3 % |
-| Stripline In3, spacings 1:8 | +10.3 % | 0.0 % |
-| Microstrip over a 3 mm cut-out (HFSS) | +17 % | −0.5 % |
+| microstrip, symmetric stripline | 0.2 / 0.4 % | within 1 % |
+| microstrip with solder mask | 1.2 / 1.8 % | within 1 % |
+| with coplanar copper (CPWG, stripline with coplanar ground) | 0.5–0.9 / 1.3–1.7 % | within 1 % |
+| offset stripline | 2 / 9 % | within 1 % |
+| edge-coupled pair, Zdiff (microstrip / stripline) | 2.7 / 12 % · 4.3 / 33 % | within 1 % |
+| over a cut-out in a layer between trace and plane | flagged "rough", 25 % and more | within 1 % |
+
+**Known limits** (details and numbers in [validation/cst_xs](../validation/cst_xs/README.md)):
+- **Trace shape:** every trace is a rectangle of the drawn width and full copper thickness; KiCad's stackup has no
+  etch factor. Real traces are etched to a trapezoid, so kisi's Z0 comes out about 2–4 % low for 35 µm copper,
+  less for thin inner layers.
+- **Coplanar formulas:** a pair with coplanar ground on one side only is approximated as the mean of two symmetric
+  pairs (Zeven typically 10 % off, up to −47 / +70 % for very narrow gaps under solder mask); the partner is taken
+  as wide as the trace; stripline pairs and covered traces with one plane ignore their coplanar copper. The field
+  solver is not affected.
+- **Pads and gold fingers:** a track inside an SMD pad of its own net has the pad's cross-section, a cut-out in the
+  plane included; the rest of a part's pad is a shunt capacitance (without a cross-section, an estimate per
+  package from `data/components.json`). Copper with no plane above or below takes its return in the coplanar
+  copper and a pair's partner (an estimate); with nothing within 0.5 mm beside it the channel uses 1.5 × the
+  target impedance. Against 3D: [TESTS.md](../validation/fdtd/TESTS.md) section 15.
 
 ## Lines
 RLGC per cross-section, passive and causal by construction (the series impedance and the shunt admittance per
@@ -261,50 +238,27 @@ kisi marks these as estimates in the viewer and in the CLI output:
 - values in `<board>.kisi.json` whose source kind is `estimate` or `assumption`.
 
 ## Validation
-- **2D field solver and line models** against the HFSS/Ansys cases of Forstén's test suite: impedance within
-  1.7 %, RLGC within 2 % (`tools/validate_field.sh`, which also compares against the stored baseline
-  `validation/field_baseline.json`). Validation data: `validation/*.json` (cross-sections), `*.ref.json`
-  (references from Forstén's solver, computed in Node with `tools/ref_forsten.mjs` and the solver shim
-  `tools/forsten_sparse_shim.js`); `kisi-validate <cases.json> [<refs.json>]` compares the formulas, and the
-  field-solver chain (`kisi-validate --geoms` → `tools/solve_xs.mjs` → `kisi-validate --field`) is what
-  `validate_field.sh` runs.
-- **Cross-sections, impedance and loss** on 620 cases (every line type, the example boards, the test-board coupons)
-  against CST Studio Suite's 2D port modes and the full-wave FEM backend of js_2d_fields: the field solver in the
-  same solver box within 0.04 % (single lines) and 0.4 % (pairs) of CST, as kisi runs it within 1 % (median
-  0.18 %, p90 0.47 %, p99 0.78 %, max 1.03 % without the etch group and the asymmetric pairs – the 1 % of the field
-  solver's accuracy level); the formulas per line type from 0.2 % (microstrip, stripline) to 18 % (plane
-  cut-outs); the conductor loss of the
-  line model 2 % below an MQS solution. Method, tables, the limits (trapezoidal etch not modelled) and the
-  page `kisi-references-2d.html`: [validation/cst_xs/README.md](../validation/cst_xs/README.md).
-- **Passivity and causality:** unit tests (series impedance and shunt admittance positive-real in the whole
-  right half-plane; the pulse response of a 200 mm lossy line before its front; the plane-pair reductions with
-  asymmetric returns) and a test over every lane of the example boards (`crates/kisi-core/tests/causality.rs`,
-  in CI): the board's S-parameters passive up to 25 GHz and their pulse responses causal (details and numbers:
-  [TESTS.md](../validation/fdtd/TESTS.md) section 14).
-- **Vias and planes** against 3D results of kisi's own FDTD solver (`crates/kisi-fdtd`, conformal metal, checked
-  against analytic cavities), whose 106 reference cases in `validation/via_ref` were each computed again with two
-  independent solvers: openEMS (FDTD, staircase metal) and CST Studio Suite (FIT, conformal metal). For lines, 2×thru
-  fixtures, vias and pairs kisi-fdtd and CST agree in \|S21\| to a median of 0.03–0.09 dB per group up to 20 GHz and
-  in delay within −0.42 … +0.26 ps; openEMS adds a staircase offset of 0.2–0.7 ps on vias. The cross-check found the
-  references of via transitions that end on an inner layer not converged (1.0–2.4 ps slow); they were recomputed on
-  a refined mesh. Board vias cut out of the example boards keep a mesh uncertainty of a few tenths of a picosecond
-  (up to about 0.7 ps per halving of the cell on one pair) and 0.1–0.2 GHz at their notches. Sections 16 and 17 of
-  the test log [validation/fdtd/TESTS.md](../validation/fdtd/TESTS.md) and
-  [validation/fdtd/CST.md](../validation/fdtd/CST.md); the reference page `kisi-references-3d.html` (attached to the
-  releases in which the cases changed; up to v0.3.1 `kisi-references.html`) shows every case with kisi-fdtd, openEMS, CST and kisi's models.
-  Useful for teaching as well: it shows why vias and planes behave as they do.
-- **Temperature solver** against analytic cases (1D slab exact, fin within 0.2 %, radial spreading in a plane
-  with convection within 0.13 %, energy balance) and, with the datasheets' θJB/θJC on a model of the JEDEC
-  JESD51-7 board, against their θJA (QFN-16 +4 %, SOIC-8 −15 %, SOT-23-5 −20 %).
-- **Channel export:** ngspice reproduces kisi's own evaluation of the exported circuit (ThunderScope's LVDS lanes and
-  nine PCIe lanes, to 0.001) and kisi's S-parameters within 0.03 dB (LVDS) and 0.10–0.34 dB (PCIe, strongly
-  reflecting) up to 1.5 × Nyquist; step responses within 2 % (`validation/channel_export/compare.py`, also in CI).
-  The compact model gives the ladder's S-parameters to 0.003 up to 1.5 × Nyquist and its PRBS levels to 0.3 % of the
-  swing on eight lanes of both example boards; every exported circuit is passive from 1 kHz to 10 × f max
-  ([research/channel-export.md](research/channel-export.md) section 7).
-- **Still open:** validation against measurements. A measured test board is planned
-  (plan and coupon design in branch `feat/test-board`, `validation/test_board.md` there). Until then, treat the numbers as plausible estimates,
-  not as verified results.
+Each model is checked against an independent reference; the details, tables and every case are in the linked
+documents and on the two reference pages attached to the releases (`kisi-references-2d.html`,
+`kisi-references-3d.html`).
+
+| What | Reference | Result | Details |
+|---|---|---|---|
+| Impedance (formulas, field solver) | CST Studio Suite, 2D port modes, open boundary; 620 cross-sections of every line type, the example boards and the test-board coupons | field solver within 1 % (median 0.2 %); formulas see [Impedance](#impedance) | [validation/cst_xs](../validation/cst_xs/README.md) |
+| Line loss | full-wave FEM with eddy-current conductor loss (js_2d_fields), checked by an independent finite-difference solution | kisi's line model R about 2 % low | [validation/cst_xs](../validation/cst_xs/README.md) |
+| Vias and planes (fast models) | 3D FDTD (`crates/kisi-fdtd`) on 106 cases, itself checked against openEMS and CST | single vias TDR 2.5 / 5.6 %, pairs Zdiff 11 / 14 % (median / p90) | [TESTS.md](../validation/fdtd/TESTS.md), [CST.md](../validation/fdtd/CST.md) |
+| Field solver chain | HFSS/Ansys cases of Forstén's test suite | impedance within 1.7 %, RLGC within 2 % | `tools/validate_field.sh` |
+| Passivity and causality | unit tests and every lane of the example boards | passive to 25 GHz, causal | [TESTS.md](../validation/fdtd/TESTS.md) section 14 |
+| Temperature | analytic cases; JEDEC JESD51-7 θJA | analytic within 0.2 %; θJA +4 … −20 % | – |
+| Channel export | ngspice on the exported circuits | S-parameters within 0.03–0.34 dB up to 1.5 × Nyquist | [research/channel-export.md](research/channel-export.md) |
+
+Two things the cross-checks taught: the result of a reference solver depends a lot on its setup (mesh at the metal
+edges, boundaries, loss model), and a reference can be wrong too – kisi-fdtd's inner-layer via exits needed a finer
+mesh, and CST's 2D lossy-metal loss is a surface-impedance approximation (4–23 % low), so the line loss is judged
+against the full-wave result.
+
+**Still open:** measurements. A test board with 2.92 mm connectors is planned (branch `feat/test-board`); until
+then, treat the numbers as validated against solvers, not against hardware.
 
 ## Limits
 - The channel check is a first look: linear transmitter and receiver from the interface profile, no jitter or

@@ -3,7 +3,24 @@
 Design note for `kicad-plugin/` (2026-10-26). The user-facing description is in
 [Getting started](../getting-started.md#from-kicad-the-plugin); the structure in `ARCHITECTURE.md`.
 
-## Status (2026-10-30)
+## Local saving (2026-11-05, supersedes the file-only transport below)
+The plugin now opens the existing viewer through `kisi_server.py`, a Python-standard-library loopback host.
+This replaces the folder-picker/download step with a direct Save action in every supported browser. The offline
+HTML copy is retained. See `ARCHITECTURE.md` for the protocol and the user-facing
+[saving instructions](../getting-started.md#from-kicad-the-plugin).
+
+The server binds only to `127.0.0.1` on a random port, uses a secret entry URL and an independent API token check,
+checks Host/Origin, never serves a directory and exposes no arbitrary file or command endpoint. A board-scoped
+cross-process lock, config revision and backup guard the atomic write. The viewer validates with the existing
+Rust engine; the host checks JSON, format and board identity independently. Sessions expire after 30 minutes
+without authenticated activity. The secret is kept out of the generated HTML file and access logs.
+
+`.github/workflows/local-config.yml` builds the actual package and exercises its entrypoint with a real browser
+save to disk on Windows, macOS and Linux. It covers reload, external-edit conflicts, rejected authentication,
+connection loss and no-download behavior. `kicad-plugin/tests/test_server.py` covers the HTTP boundary and idle
+shutdown. A real KiCad toolbar launch and security-software behavior still need installation tests.
+
+## Earlier status (2026-10-30)
 - Released in 0.3.1 (`kisi-kicad-0.3.1.zip`, release asset). The entry for KiCad's PCM repository (package
   `com.github.riehlies.kisi`, status `testing`, `kicad_version` 10.0) is a merge request to
   gitlab.com/kicad/addons/metadata, under review.
@@ -13,7 +30,7 @@ Design note for `kicad-plugin/` (2026-10-26). The user-facing description is in
   KiCad 9 (same code paths [S3–S5], untested); the unsaved-changes notice once KiCad's API reports it (step 3
   below).
 
-## Decisions (maintainer, 2026-10-26)
+## Earlier decisions (maintainer, 2026-10-26)
 - One click in KiCad's PCB editor opens kisi's viewer in the browser with the open board and its
   `<board>.kisi.json`; the plugin creates that file (a minimal skeleton) when it does not exist.
 - An IPC API plugin (KiCad 9/10, PCB editor only), not a SWIG action plugin (SWIG is removed in KiCad 11).

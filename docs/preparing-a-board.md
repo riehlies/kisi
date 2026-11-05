@@ -144,8 +144,9 @@ dropped when the example's kisi.json changed. The check (the same as `kisi confi
 gap list follows a moment later, and the right column shows the resulting file. "Save kisi.json" writes the
 draft, or the loaded file with only the current category's changes (the rest stays in the draft); keys the page
 has no form for are kept, and a file loaded and saved unchanged stays the same. Errors in what is saved block it,
-warnings do not. In Chromium a save dialog opens next to the board (and "Reload" reads the file from then on);
-other browsers download it. The saved file is loaded at once. Research-heavy gaps go to the agent path: what is
+warnings do not. When opened from the KiCad plugin, saving writes directly next to the board
+([plugin saving and conflicts](getting-started.md#from-kicad-the-plugin)). In the standalone browser version,
+Chromium offers a save dialog; other browsers download it. The saved file is loaded at once. Research-heavy gaps go to the agent path: what is
 handed over – whole steps or single items – is listed in the agent card, and its prompt for the kisi-prepare skill
 names each gap with what is needed, where it goes in kisi.json and its items (refdes with part number and rails,
 nets, rails, classes, layers), limited to that category (`kisi gaps --for …`) or for all categories. With nothing

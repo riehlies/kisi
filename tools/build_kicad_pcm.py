@@ -17,6 +17,7 @@ KiCad's plugin manager finds plugin.json; docs/research/kicad-plugin.md):
   plugins/plugin.json          the IPC plugin and its toolbar action
   plugins/requirements.txt     kicad-python, installed by KiCad into the plugin's Python environment
   plugins/kisi_action.py       entry point (KiCad API) · plugins/kisi_kicad.py (the page, standard library only)
+  plugins/kisi_server.py       temporary loopback host and board-scoped config saving (standard library only)
   plugins/kisi_build.json      version and the viewer's SHA-256
   plugins/icons/*.png          toolbar icons (24 px, 48 px; light and dark)
   plugins/viewer/kisi.html     the viewer of this version (the hand-over marker of web/index.html inside)
@@ -44,7 +45,7 @@ MARKER = "null; /*@kicad-board*/"
 # KiCad's API_PLUGIN::IsValidIdentifier (common/api/api_plugin.cpp): reverse DNS, at least three parts
 KICAD_ID = re.compile(r"^[a-zA-Z]{2,}(\.([a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]|[a-zA-Z0-9])){2,}$")
 DATE = (1980, 1, 1, 0, 0, 0)  # zip timestamps: fixed, so the package is reproducible
-PLUGIN_FILES = ["plugin.json", "requirements.txt", "kisi_action.py", "kisi_kicad.py", "agent/KISI-AGENT-GUIDE.md",
+PLUGIN_FILES = ["plugin.json", "requirements.txt", "kisi_action.py", "kisi_kicad.py", "kisi_server.py", "agent/KISI-AGENT-GUIDE.md",
                 "icons/kisi-24.png", "icons/kisi-48.png", "icons/kisi-24-dark.png", "icons/kisi-48-dark.png"]
 
 

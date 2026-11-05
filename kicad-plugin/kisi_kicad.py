@@ -243,13 +243,16 @@ class Guard:
             with open(path, "xb") as f:  # never replaces an existing file
                 f.write(data)
             return
-        tmp = path + ".kisi-tmp"
+        tmp = None
         try:
-            with open(tmp, "wb") as f:
+            with tempfile.NamedTemporaryFile(mode="wb", dir=os.path.dirname(path), prefix=".kisi-", delete=False) as f:
+                tmp = f.name
                 f.write(data)
+                f.flush()
+                os.fsync(f.fileno())
             os.replace(tmp, path)
         finally:
-            if os.path.exists(tmp):
+            if tmp and os.path.exists(tmp):
                 os.remove(tmp)
 
     def backup_path(self, now=None):

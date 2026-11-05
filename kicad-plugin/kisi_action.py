@@ -5,9 +5,11 @@
 KiCad 9/10 start this file with the plugin's own Python environment (requirements.txt: kicad-python) and pass
 KICAD_API_SOCKET and KICAD_API_TOKEN. It asks KiCad which board is open (file name, project folder, version and –
 where KiCad can tell – unsaved changes) and hands that to kisi_kicad.py, which builds the viewer page; the page is
-opened in the default browser. Nothing is saved in KiCad and no KiCad file is written.
+opened in the default browser through a temporary loopback host (kisi_server.py) that saves the board's
+configuration directly. Nothing is saved in KiCad and no KiCad file is written.
 
-Without KiCad (to test the rest): python kisi_action.py --pcb path/to/board.kicad_pcb [--no-browser]
+Without KiCad: python kisi_action.py --pcb path/to/board.kicad_pcb
+Offline generation only: add --no-browser. Test the real host without opening a browser: --no-browser --serve.
 
 The page goes to analysis/<board>.kisi.html next to the board (or the temporary folder when that cannot be written);
 a kisi.json the viewer downloaded is taken over from the Downloads folder first (kisi_kicad.import_download).
@@ -152,6 +154,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Open the board in kisi's viewer.")
     ap.add_argument("--pcb", help="without KiCad: this board file")
     ap.add_argument("--no-browser", action="store_true", help="only write the page and print its path")
+    ap.add_argument("--serve", action="store_true", help="also run the local viewer with --no-browser (prints its session URL)")
+    ap.add_argument("--idle-timeout", type=float, default=1800, help="stop the local viewer after this many seconds without a heartbeat")
     a, _ = ap.parse_known_args(argv)
     if a.no_browser:
         os.environ["KISI_NO_BROWSER"] = "1"
@@ -169,6 +173,25 @@ def main(argv=None):
             f"kisi.json {payload['config']}: {payload['config_path']}; files {[f['name'] for f in payload['files']]}; notes {payload['notes']}")
         log(f"downloads {imp['folder'] or '-'}: {imp['state']} {imp['from']} {imp['backup']} {imp['checked']} {imp['reasons']}; "
             f"cli {cli['path'] or '-'}; node {cli['node']}")
+        # An ordinary plugin start stays alive as a board-scoped loopback host. The offline
+        # --no-browser path remains available to tooling; --serve tests the real live transport.
+        if a.serve or not (a.no_browser or os.environ.get("KISI_NO_BROWSER")):
+            from kisi_server import Session
+            with_session = Session(payload, idle_timeout=a.idle_timeout, log=log)
+            try:
+                if not a.no_browser and not os.environ.get("KISI_NO_BROWSER"):
+                    if platform.system() == "Windows":
+                        allow_foreground(log)
+                    if not webbrowser.open(with_session.url):
+                        raise core.PluginError("could not open the local viewer in the default browser")
+                log("local viewer started on loopback")
+                if a.no_browser:
+                    print(with_session.url, flush=True)
+                with_session.run()
+                log("local viewer stopped")
+            finally:
+                with_session.close()
+            return 0
         log(f"browser: {open_page(page, log)}")
         try:  # for KiCad's messages and tests; the page is open already, so a console that cannot print it is no error
             print(page)

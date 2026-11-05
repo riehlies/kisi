@@ -1,0 +1,94 @@
+name: Local config save
+on:
+  pull_request:
+    paths: ['kicad-plugin/**', 'web/**', 'crates/**', 'tools/bundle*', 'tools/build_kicad_pcm.py', 'tools/agent_guide.py', 'tools/solver_bundle.py', 'tools/esm_classic.py', 'third_party/**', 'data/**', 'tools/check_kicad_local.py', 'tools/test_local_save.mjs', '.github/workflows/local-config.yml', 'Cargo.*', 'rust-toolchain.toml']
+  push:
+    branches: ['**']
+    paths: ['kicad-plugin/**', 'web/**', 'crates/**', 'tools/bundle*', 'tools/build_kicad_pcm.py', 'tools/agent_guide.py', 'tools/solver_bundle.py', 'tools/esm_classic.py', 'third_party/**', 'data/**', 'tools/check_kicad_local.py', 'tools/test_local_save.mjs', '.github/workflows/local-config.yml', 'Cargo.*', 'rust-toolchain.toml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: local-config-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Rust toolchain
+        run: |
+          TC=$(sed -n 's/^channel = "\([^"]*\)"/\1/p' rust-toolchain.toml)
+          rustup toolchain install "$TC" --profile minimal --target wasm32-unknown-unknown
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: local-config-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}
+      - name: Build the actual viewer, CLI and PCM package
+        run: |
+          python -m pip install jsonschema==4.26.0
+          cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
+          W=target/wasm32-unknown-unknown/release
+          python tools/bundle.py web/index.html "$W/kisi_wasm.wasm" "$W/kisi_sparse.wasm" dist/kisi.html
+          python tools/bundle_cli.py "$W/kisi_wasm.wasm" "$W/kisi_sparse.wasm" dist/kisi.mjs
+          python tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs
+          sh tools/fetch_examples.sh examples
+      - uses: actions/upload-artifact@v6
+        with:
+          name: local-config-package
+          retention-days: 7
+          path: |
+            dist/kisi-kicad-*.zip
+            examples/Thunderscope_Rev5.3.kicad_pcb
+            examples/Thunderscope_Rev5.3.kicad_pro
+
+  integration:
+    needs: package
+    name: ${{ matrix.os }} / ${{ matrix.browser }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: ubuntu-24.04, browser: chromium, python: '3.12'}
+          - {os: ubuntu-24.04, browser: firefox, python: '3.12'}
+          - {os: windows-latest, browser: chromium, python: '3.11'}
+          - {os: macos-latest, browser: webkit, python: '3.12'}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v7
+        with:
+          name: local-config-package
+      - name: Install test dependencies
+        run: |
+          python -m pip install jsonschema==4.26.0 playwright==1.64.1
+          python -m playwright install --with-deps ${{ matrix.browser }}
+      - name: Python transport, security, conflict and package tests
+        run: python -m unittest discover -s kicad-plugin/tests -v
+      - name: Save-handler errors and concurrent edits
+        run: node tools/test_local_save.mjs
+      - name: Browser save to the real board folder
+        shell: bash
+        run: |
+          python tools/check_kicad_local.py dist/kisi-kicad-*.zip examples/Thunderscope_Rev5.3.kicad_pcb --browser ${{ matrix.browser }} --out local-viewer-results
+      - name: Screenshots and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: local-config-${{ matrix.os }}-${{ matrix.browser }}
+          path: local-viewer-results
+          if-no-files-found: ignore

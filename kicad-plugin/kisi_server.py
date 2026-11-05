@@ -10,6 +10,7 @@ import json
 import math
 import os
 import secrets
+from socketserver import TCPServer
 import threading
 import time
 from contextlib import contextmanager
@@ -20,6 +21,15 @@ import kisi_kicad as core
 MAX_CONFIG = 2 * 1024 * 1024
 MAX_REQUEST = MAX_CONFIG * 6 + 4096  # JSON string escaping can expand UTF-8 text
 IDLE_TIMEOUT = 30 * 60  # suspended/closed tabs eventually release the process
+
+
+class LoopbackServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # HTTPServer normally reverse-resolves its address. macOS can block that lookup
+        # for tens of seconds even for 127.0.0.1. This server never needs DNS.
+        TCPServer.server_bind(self)
+        self.server_name = "127.0.0.1"
+        self.server_port = self.server_address[1]
 
 
 def revision(data):
@@ -62,11 +72,10 @@ class Session:
         self.token = secrets.token_urlsafe(32)
         self.entry = "/open/" + self.token
         self.idle_timeout = idle_timeout
-        self.last_seen = time.monotonic()
         self.lock = threading.Lock()
         self.log = log or (lambda message: None)
         self.closed = threading.Event()
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server = LoopbackServer(("127.0.0.1", 0), Handler)
         self.server.daemon_threads = True
         self.server.session = self
         self.server.timeout = 0.25
@@ -76,6 +85,7 @@ class Session:
             with open(template or core.find_viewer(), encoding="utf-8") as f:
                 self.template = f.read()
             self.payload = payload
+            self.last_seen = time.monotonic()
         except BaseException:
             self.server.server_close()
             raise

@@ -137,6 +137,11 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.save(session=other, headers={"Authorization": "Bearer " + self.s.token})[0], 403)
         self.assertEqual(self.request("GET", self.s.entry, session=other)[0], 404)
 
+    def test_startup_does_not_need_dns(self):
+        with patch("socket.getfqdn", side_effect=AssertionError("local startup must not resolve hostnames")):
+            s = self.start()
+            self.assertEqual(self.request("GET", s.entry, session=s)[0], 200)
+
     def test_idle_shutdown_and_heartbeat(self):
         s = self.start(idle_timeout=0.8)
         time.sleep(0.5)

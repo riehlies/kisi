@@ -41,14 +41,14 @@ class Board:
         os.makedirs(self.dir)
         self.stem = stem
         self.pcb = os.path.join(self.dir, stem + ".kicad_pcb")
-        pathlib.Path(self.pcb).write_text(encoding="utf-8", data=PCB)
+        pathlib.Path(self.pcb).write_text(encoding="utf-8", newline="\n", data=PCB)
         if pro:
-            pathlib.Path(os.path.join(self.dir, stem + ".kicad_pro")).write_text(encoding="utf-8", data=PRO)
+            pathlib.Path(os.path.join(self.dir, stem + ".kicad_pro")).write_text(encoding="utf-8", newline="\n", data=PRO)
         self.cfg = os.path.join(self.dir, stem + ".kisi.json")
         if cfg is not None:
-            pathlib.Path(self.cfg).write_text(encoding="utf-8", data=cfg)
+            pathlib.Path(self.cfg).write_text(encoding="utf-8", newline="\n", data=cfg)
         self.viewer = os.path.join(self.root, "kisi.html")
-        pathlib.Path(self.viewer).write_text(encoding="utf-8", data=TEMPLATE)
+        pathlib.Path(self.viewer).write_text(encoding="utf-8", newline="\n", data=TEMPLATE)
         self.out = os.path.join(self.root, "out")
 
     def close(self):
@@ -116,10 +116,10 @@ class PageTests(unittest.TestCase):
         cfg = json.dumps({"kisi_config": 1, "board": self.b.stem + ".kicad_pcb",
                           "variants": {"A": {"bom": "bom A.csv"}, "B": {"bom": "missing.csv"}},
                           "connector_ends": {"J1": {"touchstone": {"file": "sub/cable.s4p"}}}}, indent=1)
-        pathlib.Path(self.b.cfg).write_text(encoding="utf-8", data=cfg)
-        pathlib.Path(os.path.join(self.b.dir, "bom A.csv")).write_text(encoding="utf-8", data="Reference\nR1\n")
+        pathlib.Path(self.b.cfg).write_text(encoding="utf-8", newline="\n", data=cfg)
+        pathlib.Path(os.path.join(self.b.dir, "bom A.csv")).write_text(encoding="utf-8", newline="\n", data="Reference\nR1\n")
         os.makedirs(os.path.join(self.b.dir, "sub"))
-        pathlib.Path(os.path.join(self.b.dir, "sub", "cable.s4p")).write_text(encoding="utf-8", data="# GHz S MA R 50\n")
+        pathlib.Path(os.path.join(self.b.dir, "sub", "cable.s4p")).write_text(encoding="utf-8", newline="\n", data="# GHz S MA R 50\n")
         t0 = os.path.getmtime(self.b.cfg)
         time.sleep(0.01)
         _, p = self.make()
@@ -132,7 +132,7 @@ class PageTests(unittest.TestCase):
         self.assertTrue(any("missing.csv" in n for n in p["notes"]), p["notes"])
 
     def test_invalid_config_is_passed_on(self):
-        pathlib.Path(self.b.cfg).write_text(encoding="utf-8", data="{ not json")
+        pathlib.Path(self.b.cfg).write_text(encoding="utf-8", newline="\n", data="{ not json")
         _, p = self.make()
         self.assertEqual((p["config"], unpack(p)[self.b.stem + ".kisi.json"]), ("loaded", "{ not json"))
 
@@ -196,7 +196,7 @@ class PageTests(unittest.TestCase):
         os.makedirs(self.b.out)
         old, new, other = (os.path.join(self.b.out, n) for n in ("old.html", "new.html", "kisi-kicad.log"))
         for p in (old, new, other):
-            pathlib.Path(p).write_text(encoding="utf-8", data="x")
+            pathlib.Path(p).write_text(encoding="utf-8", newline="\n", data="x")
         t = time.time() - 30 * 86400
         os.utime(old, (t, t))
         os.utime(other, (t, t))
@@ -371,10 +371,10 @@ class OwnFolderTests(unittest.TestCase):
         self.assertEqual(core.temp_dir("Windows"), os.path.join(tempfile.gettempdir(), "kisi-kicad"))
         self.assertEqual(core.temp_dir("Darwin"), os.path.join(tempfile.gettempdir(), "kisi-kicad"))
         # Linux: not the shared /tmp – the user's cache folder (a Flatpak KiCad's points into ~/.var/app/…)
-        self.assertEqual(core.temp_dir("Linux", {}, "/home/jürgen"), "/home/jürgen/.cache/kisi-kicad")
+        self.assertEqual(core.temp_dir("Linux", {}, "/home/jürgen"), os.path.join("/home/jürgen", ".cache", "kisi-kicad"))
         self.assertEqual(core.temp_dir("Linux", {"XDG_CACHE_HOME": "/home/j/.var/app/org.kicad.KiCad/cache"}, "/home/j"),
-                         "/home/j/.var/app/org.kicad.KiCad/cache/kisi-kicad")
-        self.assertEqual(core.temp_dir("FreeBSD", {}, "/home/j"), "/home/j/.cache/kisi-kicad")
+                         os.path.join("/home/j/.var/app/org.kicad.KiCad/cache", "kisi-kicad"))
+        self.assertEqual(core.temp_dir("FreeBSD", {}, "/home/j"), os.path.join("/home/j", ".cache", "kisi-kicad"))
 
     @unittest.skipIf(os.name == "nt", "POSIX permissions")
     def test_only_the_user_can_read_it(self):
@@ -401,13 +401,15 @@ class DownloadsDirTests(unittest.TestCase):
 
     def test_linux_and_macos(self):
         home = "/home/jürgen"
-        isdir = lambda p: p in {"/home/jürgen/Downloads", "/home/jürgen/Herunterladen"}
-        xdg = lambda cmd, **kw: types.SimpleNamespace(stdout="/home/jürgen/Herunterladen\n")
-        self.assertEqual(core.downloads_dir("Linux", {}, home, run=xdg, isdir=isdir), "/home/jürgen/Herunterladen")
+        downloads, localized = os.path.join(home, "Downloads"), os.path.join(home, "Herunterladen")
+        isdir = lambda p: p in {downloads, localized}
+        xdg = lambda cmd, **kw: types.SimpleNamespace(stdout=localized + "\n")
+        self.assertEqual(core.downloads_dir("Linux", {}, home, run=xdg, isdir=isdir), localized)
         nox = lambda cmd, **kw: (_ for _ in ()).throw(FileNotFoundError("xdg-user-dir"))
-        self.assertEqual(core.downloads_dir("Linux", {"XDG_CONFIG_HOME": "/nonexistent"}, home, run=nox, isdir=isdir), "/home/jürgen/Downloads")
-        self.assertEqual(core.downloads_dir("Darwin", {}, home, isdir=isdir), "/home/jürgen/Downloads")
+        self.assertEqual(core.downloads_dir("Linux", {"XDG_CONFIG_HOME": "/nonexistent"}, home, run=nox, isdir=isdir), downloads)
+        self.assertEqual(core.downloads_dir("Darwin", {}, home, isdir=isdir), downloads)
 
+    @unittest.skipIf(os.name == "nt", "XDG configuration files contain POSIX filesystem paths")
     def test_linux_user_dirs(self):
         home = tempfile.mkdtemp()
         try:
@@ -450,7 +452,7 @@ class ImportTests(unittest.TestCase):
 
     def put(self, name, text, age=0):
         p = os.path.join(self.dl, name)
-        pathlib.Path(p).write_text(encoding="utf-8", data=text)
+        pathlib.Path(p).write_text(encoding="utf-8", newline="\n", data=text)
         t = time.time() - age
         os.utime(p, (t, t))
         return p
@@ -461,7 +463,7 @@ class ImportTests(unittest.TestCase):
         return core.make_page("Mein Board.kicad_pcb", self.b.dir, "Mein Board", viewer=self.b.viewer, temp=self.b.out, downloads=self.dl, **kw)
 
     def old_cfg(self, text='{"kisi_config": 1, "board": "Mein Board.kicad_pcb"}\n', age=3600):
-        pathlib.Path(self.b.cfg).write_text(encoding="utf-8", data=text)
+        pathlib.Path(self.b.cfg).write_text(encoding="utf-8", newline="\n", data=text)
         t = time.time() - age
         os.utime(self.b.cfg, (t, t))
         return text

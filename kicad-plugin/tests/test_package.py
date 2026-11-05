@@ -109,7 +109,7 @@ class PackageTests(unittest.TestCase):
     def test_agent_guide(self):
         """The guide is the generated one (one source with the kisi-prepare skill) and names no assistant's tools."""
         import agent_guide
-        text = zipfile.ZipFile(self.r["zip"]).read("plugins/agent/KISI-AGENT-GUIDE.md").decode("utf-8")
+        text = zipfile.ZipFile(self.r["zip"]).read("plugins/agent/KISI-AGENT-GUIDE.md").decode("utf-8").replace("\r\n", "\n")
         self.assertEqual(text, agent_guide.HEAD + agent_guide.body())
         self.assertEqual(agent_guide.problems(agent_guide.body()), [])
         for want in ("Mode A", "Mode B", "complete new `<board>.kisi.json`", "kisi config-check", "kind", "estimate"):

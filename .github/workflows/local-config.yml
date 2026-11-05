@@ -23,7 +23,7 @@ jobs:
       - name: Rust toolchain
         run: |
           TC=$(sed -n 's/^channel = "\([^"]*\)"/\1/p' rust-toolchain.toml)
-          rustup toolchain install "$TC" --profile minimal --target wasm32-unknown-unknown
+          rustup toolchain install "$TC" --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
       - uses: actions/cache@v5
         with:
           path: |

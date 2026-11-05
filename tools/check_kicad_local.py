@@ -80,6 +80,8 @@ def main():
                 assert not pg.is_visible("#prep-kicad-copy"), "save-dialog path helper shown in the plugin"
 
                 def edit(note):
+                    if pg.locator("details.prep-notes").get_attribute("open") is None:
+                        pg.click("details.prep-notes > summary")
                     pg.fill("#prep-notes", note)
                     pg.locator("#prep-notes").dispatch_event("change")
                     pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)

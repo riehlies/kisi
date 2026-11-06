@@ -8,7 +8,7 @@ function setTab(t) {
   placeSharedSteps(t);
   $("detail").hidden = true; $("ch-detail").hidden = true;
   $("pi-detail").hidden = true;
-  $("pi-balance").hidden = true; $("ch-overview").hidden = true; $("legend").hidden = false; $("layers").hidden = false;
+  $("pi-balance").hidden = true; $("ch-overview").hidden = true; $("stk-panel").hidden = true; $("legend").hidden = false; $("layers").hidden = false;
   $("tip").hidden = true;
   if (t === "pi") { fitRail(); renderPi(); return; }
   if (t === "ch") { renderIfcCard(); renderProfCard(); renderCheck(); setChMode(S.chMode || "o"); if (S.chMode === "o") return; }

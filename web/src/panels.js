@@ -46,9 +46,11 @@ function renderSide() {
   if (!su.from_file) rows.unshift(`<p class="err">No stackup in the file – assumed values</p>`);
   const nEd = Object.keys(stackOv().dielectrics || {}).length;
   rows.push(`<div class="fs-row"><span class="note">${S.stackEdit ? "Columns: εr · tanδ · thickness µm. Affects impedance, loss, field solver and PDN." : nEd ? `${nEd} layer(s) changed (*), stored in this browser.` : (S.config && S.config.dielectrics ? `Values from the file and ${esc(S.config.name)}.` : "Values from the file.")}</span><span>${nEd && !S.stackEdit ? `<button class="btn small" id="st-reset">File values</button> ` : ""}<button class="btn small" id="st-edit">${S.stackEdit ? "Done" : "Edit"}</button></span></div>`);
+  rows.push(`<div class="fs-row"><span class="note">Other stackups (fab templates, edited copies) and the band for manufacturing tolerances, per net class.</span><button class="btn small" id="stk-open">Compare &amp; tolerances</button></div>`);
   $("stack").innerHTML = rows.join("");
   $("stack").querySelectorAll("input[data-l]").forEach((el) => el.onchange = () => { S.layerOn[+el.dataset.l] = el.checked; renderLayerChips(); renderSide(); draw(); });
   $("st-edit").onclick = () => { S.stackEdit = !S.stackEdit; renderSide(); };
+  $("stk-open").onclick = () => stkOpen($("stk-panel").hidden);
   if ($("st-reset")) $("st-reset").onclick = () => { lsSet(stackKey(), null); S.stackOv = null; runAnalysis(); };
   $("stack").querySelectorAll("input[data-di]").forEach((el) => el.onchange = () => {
     const i = +el.dataset.di, k = el.dataset.k, f = S.scene.stackup.dielectrics[i];

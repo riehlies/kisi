@@ -1171,6 +1171,78 @@ pub extern "C" fn kisi_stackup_presets() -> i32 {
     }))
 }
 
+/// Stackup comparison and tolerance band on the last analysis (`kisi stackups`, `overview
+/// --tolerance`). Input: {"columns": [{"id", "label", "preset": id | null, "edits": StackupOverride |
+/// null}] – the board's stackup as analysed is column 0 and not listed; a preset is laid over it, then
+/// the edits –, "tolerance": Tolerances | null, "tol_column": index, "assign": {class: profile id}}.
+/// Output: the study (columns, rows with cells and the band) and "field_needed": [[id, text, weight]],
+/// the cross-sections the field solver would add.
+#[no_mangle]
+pub extern "C" fn kisi_stackup_study(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply(ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let an = st.an.as_ref().ok_or("the impedance estimate first (step 2)")?;
+        let params = st.params.as_ref().ok_or("the impedance estimate first (step 2)")?;
+        let su = b.stackup();
+        let lib = kisi_core::stackups::library();
+        let mut cols = vec![kisi_core::stackups::Column {
+            id: "board".into(),
+            label: "board".into(),
+            source: v["board_source"].as_str().unwrap_or("board").to_string(),
+            stackup: su.clone(),
+        }];
+        for c in v["columns"].as_array().map(|a| a.as_slice()).unwrap_or(&[]) {
+            let mut s = su.clone();
+            let mut source = Vec::new();
+            if let Some(id) = c["preset"].as_str() {
+                let pr = lib.find(id)?;
+                if let Some(why) = pr.fit(su).problem {
+                    return Err(why);
+                }
+                s = pr.apply(&s);
+                source.push(pr.document());
+            }
+            if !c["edits"].is_null() {
+                let ov: kisi_core::board::StackupOverride =
+                    serde_json::from_value(c["edits"].clone()).map_err(|e| format!("edits: {e}"))?;
+                if !ov.is_empty() {
+                    s = s.with_overrides(&ov);
+                    source.push("edited in the viewer".into());
+                }
+            }
+            cols.push(kisi_core::stackups::Column {
+                id: c["id"].as_str().unwrap_or("").to_string(),
+                label: c["label"].as_str().unwrap_or("").to_string(),
+                source: if source.is_empty() { "copy of the board's stackup".into() } else { source.join(", ") },
+                stackup: s,
+            });
+        }
+        let tol: Option<kisi_core::stackups::Tolerances> = if v["tolerance"].is_null() {
+            None
+        } else {
+            Some(serde_json::from_value(v["tolerance"].clone()).map_err(|e| format!("tolerance: {e}"))?)
+        };
+        let k = v["tol_column"].as_u64().unwrap_or(0) as usize;
+        let assign: std::collections::HashMap<String, String> =
+            serde_json::from_value(v["assign"].clone()).unwrap_or_default();
+        let classes: Vec<String> = an.classes.iter().map(|c| c.name.clone()).collect();
+        let w = kisi_core::stackups::windows(&classes, &assign, &kisi_core::profile::Profiles::builtin());
+        let (mut out, need) = kisi_core::stackups::study_json(
+            b,
+            an,
+            &params.field,
+            &cols,
+            tol.as_ref().map(|t| (t, k.min(cols.len() - 1))),
+            &w,
+        );
+        out["field_needed"] = serde_json::json!(need);
+        Ok(out.to_string())
+    }))
+}
+
 /// The gap list (`kisi gaps`) of the board as the viewer read it, with a configuration: the loaded
 /// kisi.json or a draft of the Prepare page. Input: {"board": file name, "config": text | null,
 /// "for": category | null}. Uses the viewer's choice of assembly variant and the files dropped with

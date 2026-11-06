@@ -167,6 +167,24 @@ the `stackup` entry to paste into the kisi.json, and `--stackup-preset ID` tries
 writing anything. Make sure the fab still offers the template, and keep KiCad's own stackup in step with it for the
 fab's drawings.
 
+**Comparing stackups.** In the Impedance view, the Stackup card's **Compare & tolerances** opens a panel over the
+board (after step 2, the impedance estimate): one row per net class and layer – the class's most used cross-section
+there – and a column per stackup: the board's (as the Stackup card shows it, with kisi.json and your edits), and up
+to three more – fab templates that fit the board, or copies of the board's stackup whose thicknesses, εr and copper
+you edit ("edit" on a column; a template can be edited too). Each cell shows the impedance, its deviation from the
+target and its level (formula or field solver); its colour says whether it is inside the class's window (the
+interface profile's tolerance, else ±10 %). "Field solver for N cross-sections" solves what the panel needs. So you
+see what a different prepreg does before the fab does it. `kisi stackups <board>` gives the same table for the
+fitting templates.
+
+**Tolerances.** "show the band" adds, for one of the columns, the band for manufacturing tolerances – dielectric
+thickness, εr, copper thickness and trace width, ± around the nominal values (defaults: ±10 %, ±5 %, ±10 %,
+±0.02 mm, marked as estimates; change them in the panel or with `--tol`) – per row: what each tolerance moves, the
+worst-case and the RSS band, a bar against the window, and a hint such as "nominal in the window, but the tolerance
+band leaves it". The hint is information; the channel check's verdict is unchanged. Wider traces (with the gap
+adjusted) or an impedance-controlled order, where the fab tunes the widths to its measured stackup, are the usual
+answers when the band leaves the window. CLI: `kisi overview <board> --tolerance`.
+
 ## Worked example: Seeed Studio XIAO nRF54LM20A
 [`docs/examples/xiao-nrf54lm20a/XIAO nRF54LM20A.kisi.json`](examples/xiao-nrf54lm20a/XIAO%20nRF54LM20A.kisi.json)
 is a board configuration that describes the board's **power tree for the USB supply case**, every value with its

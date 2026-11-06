@@ -150,6 +150,7 @@ function runAnalysis(tParse) {
   if (S.selNet >= 0) selectNet(S.selNet, false); else $("detail").hidden = true;
   draw();
   renderFieldStatus();
+  stkRefresh();
 }
 
 function estimateImpedances() {

@@ -86,6 +86,10 @@ pub struct GeomEntry {
     pub length: f64,
     /// routed length of nets with a target impedance
     pub target_length: f64,
+    /// the description the text was built from (`xsgeom::build` with the board's stackup): the
+    /// same cross-section under another stackup (`study`)
+    #[serde(skip)]
+    pub desc: XsDesc,
 }
 
 impl Default for Params {
@@ -1005,12 +1009,18 @@ struct GeomReg {
 }
 
 impl GeomReg {
-    fn add(&mut self, text: String) -> u32 {
+    fn add(&mut self, text: String, desc: &XsDesc) -> u32 {
         if let Some(&i) = self.by_text.get(&text) {
             return i;
         }
         let i = self.list.len() as u32;
-        self.list.push(GeomEntry { id: xsgeom::geom_id(&text), text: text.clone(), length: 0.0, target_length: 0.0 });
+        self.list.push(GeomEntry {
+            id: xsgeom::geom_id(&text),
+            text: text.clone(),
+            length: 0.0,
+            target_length: 0.0,
+            desc: desc.clone(),
+        });
         self.by_text.insert(text, i);
         i
     }
@@ -1073,7 +1083,7 @@ fn evaluate(
     let (mut eeff_odd, mut eeff_even) = (fx.eeff_odd, fx.eeff_even);
     let (z0_formula, zdiff_formula) = (z0, zdiff);
     let mut solver = "formula";
-    let geom_idx = xsgeom::build(su, &desc).map(|text| geoms.add(text));
+    let geom_idx = xsgeom::build(su, &desc).map(|text| geoms.add(text, &desc));
     if let Some(gi) = geom_idx {
         let id = &geoms.list[gi as usize].id;
         if let Some(fr) = params.field.get(id) {

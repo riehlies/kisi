@@ -32,6 +32,8 @@ pub const COMMANDS: &[&str] = &[
 pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on stdout
 
   overview         stackup, impedance per net class (share within ±5 %, worst nets)
+                   [--tolerance | --tol thickness=10,er=5,copper=10,width=0.02mm (impedance band per
+                   class and layer for manufacturing tolerances; width also in %)]
   interfaces       buses and device-to-device lanes with profiles   [--class CLASS=PROFILE]…
   net <NET>        one net: impedance along the path, loss, TDR, vias, crosstalk;
                    differential pairs also as 4-port (mixed mode, skew)
@@ -72,7 +74,9 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
   config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
                    assembly variants
   stackups [BOARD] fab stackup templates (data/stackups.json); with a board: which fit it (copper
-                   layers, thickness)   [--preset ID,… (these only, with their kisi.json stackup entry)]
+                   layers, thickness) and the impedance per net class and layer under the board's
+                   stackup and each fitting template, side by side
+                   [--preset ID,… (these only, with their kisi.json stackup entry)] [--tolerance | --tol …]
 
 common options: --pro FILE (default: board.kicad_pro), --config FILE (default: board.kisi.json
 next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer),
@@ -88,7 +92,7 @@ instead of infinite plates (validation/fdtd/BOARD_RESONANCES.md); slower.
 the via models – a return via shorts only the pairs whose two planes it joins, crosses supply
 planes as a floating return, capacitors between supply and ground planes nearby close a pair
 (validation/fdtd/BOARD_RETURNS.md).
-field solver (kisi.mjs only; overview, net, check, crosstalk, report): used by default for the
+field solver (kisi.mjs only; overview, net, check, crosstalk, report, stackups): used by default for the
 cross-sections of nets with a target, results cached on disk; --formula (no field solver),
 --field-time S (time budget for new solves, default 120), --field-all (all cross-sections, not
 only targets), --field-xt (also the coupling cross-sections of critical crosstalk victims, NEXT or FEXT from 1 %;
@@ -124,6 +128,9 @@ pub struct Opts {
     pub stackup_preset: Option<String>,
     /// `stackups`: only these presets
     pub presets: Option<Vec<String>>,
+    /// `overview`, `stackups`: the impedance band for manufacturing tolerances (defaults, or `tol`)
+    pub tolerance: bool,
+    pub tol: Option<String>,
     pub classes: HashMap<String, String>,
     pub nets: Option<Vec<String>>,
     pub all: bool,
@@ -191,6 +198,11 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--no-config" => o.no_config = true,
             "--stackup" => o.stackup = Some(val(&mut i, a)?),
             "--stackup-preset" => o.stackup_preset = Some(val(&mut i, a)?),
+            "--tolerance" => o.tolerance = true,
+            "--tol" => {
+                o.tol = Some(val(&mut i, a)?);
+                o.tolerance = true;
+            }
             "--preset" => {
                 o.presets =
                     Some(val(&mut i, a)?.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
@@ -261,6 +273,9 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
     for id in o.stackup_preset.iter().chain(o.presets.iter().flatten()) {
         lib.find(id)?;
     }
+    if let Some(t) = &o.tol {
+        crate::stackups::parse_tol(t)?;
+    }
     if needs_board(&o.cmd) && o.pos.is_empty() {
         return Err(format!("board file missing (kisi {} <board.kicad_pcb>)", o.cmd));
     }
@@ -288,7 +303,71 @@ pub fn wants_board(o: &Opts) -> bool {
 
 /// Whether the command benefits from field-solver impedances.
 pub fn uses_field(cmd: &str) -> bool {
-    matches!(cmd, "overview" | "net" | "check" | "crosstalk" | "report" | "export")
+    matches!(cmd, "overview" | "net" | "check" | "crosstalk" | "report" | "export" | "stackups")
+}
+
+/// The tolerances of `--tolerance` / `--tol`, None without either.
+fn tolerances(o: &Opts) -> Option<crate::stackups::Tolerances> {
+    match &o.tol {
+        Some(t) => crate::stackups::parse_tol(t).ok(),
+        None => o.tolerance.then(crate::stackups::default_tolerances),
+    }
+}
+
+/// Where the analysed board's stackup values come from.
+fn stackup_source(p: &Project, o: &Opts) -> String {
+    let su = p.board.stackup();
+    let mut v =
+        vec![if su.from_file { "board file" } else { "kisi's default stackup (none in the board file)" }.to_string()];
+    if p.config.as_ref().is_some_and(|c| !c.stackup.is_empty()) {
+        v.push("kisi.json".into());
+    }
+    if let Some(id) = &o.stackup_preset {
+        v.push(format!("--stackup-preset {id}"));
+    }
+    if let Some(f) = &o.stackup {
+        v.push(format!("--stackup {f}"));
+    }
+    v.join(" < ")
+}
+
+/// The stackups a study compares: the board's, and for `stackups` each fitting template (`--preset`).
+fn study_columns(p: &Project, o: &Opts) -> Vec<crate::stackups::Column> {
+    let su = p.board.stackup();
+    let mut cols = vec![crate::stackups::Column {
+        id: "board".into(),
+        label: "board".into(),
+        source: stackup_source(p, o),
+        stackup: su.clone(),
+    }];
+    if o.cmd == "stackups" {
+        for pr in &crate::stackups::library().presets {
+            if o.presets
+                .as_ref()
+                .is_some_and(|w| !w.iter().any(|x| crate::stackups::library().get(x).is_some_and(|q| q.id == pr.id)))
+            {
+                continue;
+            }
+            if pr.fit(su).ok {
+                cols.push(crate::stackups::Column {
+                    id: pr.id.clone(),
+                    label: pr.template.clone(),
+                    source: pr.document(),
+                    stackup: pr.apply(su),
+                });
+            }
+        }
+    }
+    cols
+}
+
+/// The stackup study of `overview --tolerance` and `stackups <board>`: (JSON, geometries for the field solver).
+fn study(p: &Project, o: &Opts) -> (Value, Vec<(String, String, f64)>) {
+    let tol = tolerances(o);
+    let cols = study_columns(p, o);
+    let classes: Vec<String> = p.an.classes.iter().map(|c| c.name.clone()).collect();
+    let w = crate::stackups::windows(&classes, &p.assign(&o.classes), &Profiles::builtin());
+    crate::stackups::study_json(&p.board, &p.an, &p.params.field, &cols, tol.as_ref().map(|t| (t, 0)), &w)
 }
 
 /// Cross-sections the field solver should solve for this command, most important first:
@@ -298,6 +377,9 @@ pub fn field_plan(p: &Project, o: &Opts) -> Vec<(String, String, f64)> {
         return vec![];
     }
     let g = &p.an.geometries;
+    if o.cmd == "stackups" {
+        return study(p, o).1;
+    }
     let mut plan: Vec<(String, String, f64)> = if o.cmd == "crosstalk" {
         // stage 2: only the coupling cross-sections of the critical victims
         let Ok(nets) = service::xt_nets(p, o.nets.as_deref()) else { return vec![] };
@@ -332,6 +414,11 @@ pub fn field_plan(p: &Project, o: &Opts) -> Vec<(String, String, f64)> {
             let nets: Vec<u32> =
                 p.an.nets.iter().filter(|s| o.field_all || s.target.is_some()).map(|s| s.net).collect();
             v.extend(xt_plan(p, &nets, false));
+        }
+        // the tolerance band's perturbed cross-sections, after the board's own
+        if o.cmd == "overview" && o.tolerance {
+            let have: HashSet<String> = v.iter().map(|x| x.0.clone()).collect();
+            v.extend(study(p, o).1.into_iter().filter(|x| !have.contains(&x.0)));
         }
         v
     };
@@ -419,7 +506,14 @@ pub fn run_with(
                 "default_limits": profiles.defaults.limits, "note": "z_ohm per line (differential: half the differential impedance). Limits marked 'kisi' are kisi guide values, not values from a standard."}),
             )
         }
-        "overview" => Ok(service::overview(proj()?)),
+        "overview" => {
+            let pr = proj()?;
+            let mut v = service::overview(pr);
+            if o.tolerance {
+                v["tolerance"] = study(pr, o).0;
+            }
+            Ok(v)
+        }
         "interfaces" => Ok(service::interfaces(proj()?, &profiles, &o.classes)),
         "net" => {
             let (pr, rp) = (proj()?, rf_params(o)?);
@@ -598,6 +692,10 @@ fn stackups(o: &Opts, p: Option<&Project>) -> Value {
     if let Some(p) = p {
         v["board_name"] = json!(p.name);
         v["config"] = p.config_summary();
+        let (cmp, _) = study(p, o);
+        v["comparison"] = cmp;
+        v["field_solver"] = p.field_summary();
+        v["models"] = json!(p.models());
     }
     v["note"] = json!("Apply a template with --stackup-preset ID (any command) or write its kisi_json entry (--preset ID) into <board>.kisi.json. Thicknesses and εr are the fab's published values; tanδ is assumed where the fab publishes none (see each dielectric's note). A template fits a board with the same copper layer count and a board thickness within the fab's tolerance.");
     v

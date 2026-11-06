@@ -5,6 +5,7 @@
 
 use crate::board::{CopperOverride, DielectricOverride, Stackup, StackupOverride};
 use crate::config::{CopperEntry, DielectricEntry, MaskEntry, Source, StackupEntry};
+pub use crate::study::Tolerances;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 
@@ -65,10 +66,25 @@ pub struct BoardThickness {
     pub sources: Vec<DataSource>,
 }
 
+/// Default tolerances of the impedance band and the default target window (`data/stackups.json`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ToleranceDefaults {
+    pub about: String,
+    pub dielectric_thickness_pct: f64,
+    pub er_pct: f64,
+    pub copper_pct: f64,
+    pub width_mm: f64,
+    pub window_pct: f64,
+    /// the values that are kisi estimates
+    pub estimates: Vec<String>,
+    pub sources: Vec<DataSource>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Library {
     pub about: String,
     pub board_thickness: BoardThickness,
+    pub tolerances: ToleranceDefaults,
     pub presets: Vec<Preset>,
 }
 
@@ -251,6 +267,229 @@ impl Preset {
     }
 }
 
+/// The default tolerances (`data/stackups.json`).
+pub fn default_tolerances() -> Tolerances {
+    let t = &library().tolerances;
+    Tolerances {
+        dielectric_thickness_pct: t.dielectric_thickness_pct,
+        er_pct: t.er_pct,
+        copper_pct: t.copper_pct,
+        width_mm: t.width_mm,
+        width_pct: None,
+    }
+}
+
+/// `--tol thickness=10,er=5,copper=10,width=0.02mm` (or `width=20%`): tolerances in %, the width
+/// in mm or %; keys not given keep their defaults.
+pub fn parse_tol(spec: &str) -> Result<Tolerances, String> {
+    let mut t = default_tolerances();
+    for part in spec.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        let (k, v) = part.split_once('=').ok_or_else(|| format!("--tol: '{part}' is not KEY=VALUE"))?;
+        let v = v.trim();
+        let (num_txt, unit) = if let Some(x) = v.strip_suffix('%') {
+            (x, "%")
+        } else if let Some(x) = v.strip_suffix("mm") {
+            (x, "mm")
+        } else {
+            (v, "")
+        };
+        let x: f64 = num_txt.trim().parse().map_err(|_| format!("--tol {k}: '{v}' is not a number"))?;
+        if !(0.0..=50.0).contains(&x) {
+            return Err(format!("--tol {k}: {v} outside 0 … 50"));
+        }
+        match (k.trim(), unit) {
+            ("thickness" | "dielectric", "" | "%") => t.dielectric_thickness_pct = x,
+            ("er" | "epsilon_r", "" | "%") => t.er_pct = x,
+            ("copper", "" | "%") => t.copper_pct = x,
+            ("width", "%") => t.width_pct = Some(x),
+            ("width", "" | "mm") if x <= 0.5 => {
+                t.width_mm = x;
+                t.width_pct = None;
+            }
+            (k, u) => {
+                return Err(format!(
+                    "--tol: unknown key or unit '{k}' ({u}) – thickness, er, copper in %, width in mm or %"
+                ))
+            }
+        }
+    }
+    Ok(t)
+}
+
+/// The tolerances as used, with which are kisi's estimates (defaults) and the sources.
+pub fn tolerances_json(t: &Tolerances) -> serde_json::Value {
+    let d = &library().tolerances;
+    let est = |k: &str, given: bool| !given && d.estimates.iter().any(|e| e == k);
+    let width_given = t.width_pct.is_some() || t.width_mm != d.width_mm;
+    let estimates: Vec<&str> = [
+        ("dielectric_thickness_pct", t.dielectric_thickness_pct != d.dielectric_thickness_pct),
+        ("er_pct", t.er_pct != d.er_pct),
+        ("copper_pct", t.copper_pct != d.copper_pct),
+        ("width_mm", width_given),
+    ]
+    .iter()
+    .filter(|(k, g)| est(k, *g))
+    .map(|(k, _)| *k)
+    .collect();
+    serde_json::json!({
+        "dielectric_thickness_pct": t.dielectric_thickness_pct, "er_pct": t.er_pct, "copper_pct": t.copper_pct,
+        "width_mm": if t.width_pct.is_some() { serde_json::Value::Null } else { serde_json::json!(t.width_mm) },
+        "width_pct": t.width_pct,
+        "estimates": estimates,
+        "about": d.about, "sources": d.sources,
+    })
+}
+
+/// One stackup of a study: the board's (as analysed) or another one.
+#[derive(Debug, Clone)]
+pub struct Column {
+    pub id: String,
+    pub label: String,
+    /// where its values come from ("board file", "kisi.json", "preset jlc6_3313", "viewer edits")
+    pub source: String,
+    pub stackup: Stackup,
+}
+
+/// The target window of each class (± %, and where it comes from): the class's interface profile's
+/// `z_tol_pct`, else the default window (`data/stackups.json`).
+pub fn windows(
+    classes: &[String],
+    assign: &std::collections::HashMap<String, String>,
+    profiles: &crate::profile::Profiles,
+) -> std::collections::HashMap<String, (f64, String)> {
+    let d = library().tolerances.window_pct;
+    classes
+        .iter()
+        .map(|c| {
+            let w = assign
+                .get(c)
+                .and_then(|id| profiles.get(id))
+                .filter(|p| p.z_tol_pct > 0.0)
+                .map(|p| (p.z_tol_pct, format!("profile {}", p.id)))
+                .unwrap_or((d, "default: the fab's standard impedance tolerance (JLCPCB ±10 %)".into()));
+            (c.clone(), w)
+        })
+        .collect()
+}
+
+fn r3(v: f64) -> f64 {
+    (v * 1000.0).round() / 1000.0 + 0.0
+}
+
+/// The study: per row (a class's main cross-section on a layer) its impedance under every column's
+/// stackup, and with `tol` the tolerance band under column `tol_col`. Returns the JSON and the
+/// geometries the field solver would need (id, text, weight: the row's length, less for other
+/// columns and tolerances).
+pub fn study_json(
+    board: &crate::Board,
+    an: &crate::Analysis,
+    field: &std::collections::HashMap<String, crate::extract::FieldResult>,
+    cols: &[Column],
+    tol: Option<(&Tolerances, usize)>,
+    windows: &std::collections::HashMap<String, (f64, String)>,
+) -> (serde_json::Value, Vec<(String, String, f64)>) {
+    use crate::study;
+    use serde_json::json;
+    let rows = study::rows(board, an);
+    let acc = crate::accuracy::table();
+    let mut need: Vec<(String, String, f64)> = Vec::new();
+    let mut add = |id: &str, text: &str, w: f64| {
+        if !field.contains_key(id) && !need.iter().any(|x| x.0 == id) {
+            need.push((id.to_string(), text.to_string(), w));
+        }
+    };
+    let default_w = (library().tolerances.window_pct, "default".to_string());
+    let mut out = Vec::new();
+    for r in &rows {
+        let (win, win_src) = windows.get(&r.class).cloned().unwrap_or_else(|| default_w.clone());
+        let t = r.target;
+        let (lo, hi) = (t.z * (1.0 - win / 100.0), t.z * (1.0 + win / 100.0));
+        let formula_unc =
+            r.xs.as_ref()
+                .and_then(|x| {
+                    let mut x = x.clone();
+                    x.solver = "formula";
+                    crate::accuracy::impedance_of(&x)
+                })
+                .map(|a| a.1)
+                .unwrap_or(acc.impedance.formula_coupled_pct);
+        let mut cells = Vec::new();
+        let mut nominal = None;
+        for (ci, c) in cols.iter().enumerate() {
+            let e = study::eval(&c.stackup, &r.desc, t, field);
+            if let Some(g) = e.as_ref().and_then(|e| e.geom.as_ref()) {
+                add(&g.0, &g.1, if ci == 0 { r.length_mm } else { 0.5 * r.length_mm });
+            }
+            cells.push(match &e {
+                Some(e) => json!({"z_ohm": r3(e.z), "dev_pct": r3(100.0 * (e.z - t.z) / t.z), "in_window": e.z >= lo && e.z <= hi,
+                    "level": if e.field { "field solver" } else { "formula" },
+                    "uncertainty_pct": if e.field { acc.impedance.field_pct } else { formula_unc }}),
+                None => json!({"z_ohm": null}),
+            });
+            if tol.is_some_and(|(_, k)| k == ci) {
+                nominal = e;
+            }
+        }
+        let mut row = json!({
+            "class": r.class, "target_ohm": t.z, "diff": t.diff, "layer": r.layer, "layer_name": r.layer_name,
+            "kind": r.kind, "w_mm": r3(r.w_mm * 1000.0) / 1000.0, "gap_mm": r.gap_mm.map(|g| r3(g * 1000.0) / 1000.0), "coplanar": r.coplanar,
+            "length_mm": r3(r.length_mm), "share_of_layer": r3(r.share_of_layer), "share_of_class": r3(r.share_of_class),
+            "window_pct": win, "window_source": win_src, "window_ohm": [r3(lo), r3(hi)], "cells": cells,
+        });
+        if let (Some((tl, k)), Some(n)) = (tol, nominal.as_ref()) {
+            let (b, need_b) = study::band(&cols[k].stackup, &r.desc, t, tl, field, n);
+            for (id, text) in need_b {
+                add(&id, &text, 1e-3 * r.length_mm);
+            }
+            if let Some(b) = b {
+                let span = |pm: f64| {
+                    let (a, z) = (n.z - pm, n.z + pm);
+                    json!({"plus_minus_ohm": r3(pm), "min_ohm": r3(a), "max_ohm": r3(z),
+                        "min_dev_pct": r3(100.0 * (a - t.z) / t.z), "max_dev_pct": r3(100.0 * (z - t.z) / t.z), "in_window": a >= lo && z <= hi})
+                };
+                let nin = n.z >= lo && n.z <= hi;
+                let (win_w, win_r) = (
+                    n.z - b.worst_ohm >= lo && n.z + b.worst_ohm <= hi,
+                    n.z - b.rss_ohm >= lo && n.z + b.rss_ohm <= hi,
+                );
+                let (status, hint) = match (nin, win_r, win_w) {
+                    (false, _, _) => ("nominal_outside", "the nominal value is outside the window"),
+                    (true, true, true) => ("inside", "the tolerance band stays in the window"),
+                    (true, true, false) => (
+                        "worst_case_leaves",
+                        "nominal in the window; the worst-case band leaves it, the RSS band stays in",
+                    ),
+                    (true, false, _) => {
+                        ("leaves", "nominal in the window, but the tolerance band leaves it (RSS and worst case)")
+                    }
+                };
+                row["tolerance"] = json!({
+                    "column": cols[k].id, "nominal_ohm": r3(n.z), "level": b.level,
+                    "sensitivities": b.sens.iter().map(|s| json!({"kind": s.kind, "what": s.what, "nominal": s.nominal, "delta": r3(s.delta * 1e6) / 1e6, "dz_ohm": r3(s.dz)})).collect::<Vec<_>>(),
+                    "by_kind_ohm": b.by_kind.iter().map(|(k, v)| (k.to_string(), json!(r3(*v)))).collect::<serde_json::Map<_, _>>(),
+                    "worst_case": span(b.worst_ohm), "rss": span(b.rss_ohm), "band_status": status, "hint": hint,
+                });
+            }
+        }
+        out.push(row);
+    }
+    let mut v = json!({
+        "columns": cols.iter().map(|c| json!({"id": c.id, "label": c.label, "source": c.source, "layers": c.stackup.n(),
+            "thickness_mm": (c.stackup.total_thickness() * 1e4).round() / 1e4,
+            "dielectrics": c.stackup.dielectrics.iter().map(|d| json!({"kind": d.kind, "material": d.material, "thickness_mm": d.thickness, "er": d.epsilon_r, "tand": d.loss_tangent})).collect::<Vec<_>>(),
+            "copper_um": c.stackup.copper.iter().map(|x| (x.thickness * 1e4).round() / 10.0).collect::<Vec<_>>()})).collect::<Vec<_>>(),
+        "rows": out,
+        "rows_note": format!("one row per net class and layer with at least {} % of the class's length: the cross-section with the most length there (pads left out; for a differential target a coupled one), evaluated under each stackup with the same references, coplanar copper and partner", (study::MIN_LAYER_SHARE * 100.0).round()),
+    });
+    if let Some((t, k)) = tol {
+        v["tolerances"] = tolerances_json(t);
+        v["tolerance_column"] = json!(cols.get(k).map(|c| c.id.clone()));
+        v["method"] = json!("one-at-a-time sensitivities: central differences dZ = (Z(x+d) - Z(x-d))/2 per dielectric thickness, dielectric er, the trace layer's copper thickness and the trace width (symmetric: gaps shrink as widths grow; no etch factor), with the solver of the nominal value where the field solver has every perturbed geometry, else the formulas scaled to the nominal value; worst case = sum |dZ|, RSS = sqrt(sum dZ^2). A linear estimate; information only – the channel verdict is unchanged.");
+    }
+    need.sort_by(|a, b| b.2.total_cmp(&a.2));
+    (v, need)
+}
+
 fn num(v: f64) -> String {
     let s = format!("{:.3}", v);
     s.trim_end_matches('0').trim_end_matches('.').to_string()
@@ -277,6 +516,7 @@ pub fn list_json(su: Option<&Stackup>) -> serde_json::Value {
         "presets": lib.presets.iter().map(|p| preset_json(p, su)).collect::<Vec<_>>(),
         "about": lib.about,
         "board_thickness_tolerance": {"pct": lib.board_thickness.tolerance_pct, "below_1mm_mm": lib.board_thickness.tolerance_below_1mm_mm, "sources": lib.board_thickness.sources},
+        "tolerance_defaults": tolerances_json(&default_tolerances()),
     });
     if let Some(su) = su {
         v["board"] = serde_json::json!({"layers": su.n(), "thickness_mm": su.from_file.then(|| (su.total_thickness() * 1e4).round() / 1e4), "stackup_from_file": su.from_file});
@@ -390,5 +630,98 @@ mod tests {
         let s = back.stackup.dielectrics[0].source.as_ref().unwrap();
         assert!(s.document.as_deref().unwrap().contains("JLC04161H-3313"));
         assert!(s.note.as_deref().unwrap().contains("assumption"));
+    }
+
+    #[test]
+    fn tolerance_spec() {
+        let d = default_tolerances();
+        assert_eq!((d.dielectric_thickness_pct, d.er_pct, d.copper_pct, d.width_mm), (10.0, 5.0, 10.0, 0.02));
+        let t = parse_tol("thickness=8, er=3,width=15%").unwrap();
+        assert_eq!((t.dielectric_thickness_pct, t.er_pct, t.copper_pct, t.width_pct), (8.0, 3.0, 10.0, Some(15.0)));
+        let t = parse_tol("width=0.03mm,copper=0").unwrap();
+        assert_eq!((t.width_mm, t.width_pct, t.copper_pct), (0.03, None, 0.0));
+        assert!(parse_tol("width=2").is_err());
+        assert!(parse_tol("er=60").is_err());
+        assert!(parse_tol("foo=1").is_err());
+        assert!(parse_tol("er").is_err());
+        // defaults are reported as estimates, given values are not
+        let j = tolerances_json(&parse_tol("er=4").unwrap());
+        let est: Vec<&str> = j["estimates"].as_array().unwrap().iter().filter_map(|x| x.as_str()).collect();
+        assert_eq!(est, ["dielectric_thickness_pct", "copper_pct", "width_mm"]);
+    }
+
+    /// A microstrip pair and a single line with targets: the study's rows, a template column and
+    /// the band; a thinner prepreg lowers the impedance.
+    #[test]
+    fn study_on_a_board() {
+        let pcb = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (4 "In1.Cu" signal) (6 "In2.Cu" signal) (2 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Mask" (type "Top Solder Mask") (thickness 0.01))
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.2) (material "7628") (epsilon_r 4.4) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.0175))
+    (layer "dielectric 2" (type "core") (thickness 1.1) (material "FR4") (epsilon_r 4.6) (loss_tangent 0.02))
+    (layer "In2.Cu" (type "copper") (thickness 0.0175))
+    (layer "dielectric 3" (type "prepreg") (thickness 0.2) (material "7628") (epsilon_r 4.4) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))
+    (layer "B.Mask" (type "Bottom Solder Mask") (thickness 0.01))))
+  (net 0 "") (net 1 "SIG") (net 2 "GND") (net 3 "D_P") (net 4 "D_N")
+  (segment (start 0 0) (end 30 0) (width 0.35) (layer "F.Cu") (net 1))
+  (segment (start 0 5) (end 30 5) (width 0.2) (layer "F.Cu") (net 3))
+  (segment (start 0 5.35) (end 30 5.35) (width 0.2) (layer "F.Cu") (net 4))
+  (zone (net 2) (net_name "GND") (layer "In1.Cu") (filled_polygon (layer "In1.Cu") (pts (xy -5 -5) (xy 35 -5) (xy 35 10) (xy -5 10)))))
+"#;
+        let cfg = r#"{"kisi_config": 1, "net_classes": {
+            "SE50": {"target_ohm": 50, "diff": false, "nets": ["SIG"], "source": {"kind": "design", "note": "t"}},
+            "D100": {"target_ohm": 100, "diff": true, "nets": ["D_*"], "source": {"kind": "design", "note": "t"}}}}"#;
+        let p = crate::service::Project::from_texts(crate::service::Inputs {
+            pcb_path: "t.kicad_pcb".into(),
+            pcb: pcb.into(),
+            pro: None,
+            config: Some(("t.kisi.json".into(), Ok(cfg.into()))),
+            stackup: None,
+            stackup_preset: None,
+            field: Default::default(),
+            variant: None,
+            files: Default::default(),
+        })
+        .unwrap();
+        let su = p.board.stackup().clone();
+        let pr = library().find("jlc4_3313").unwrap();
+        let cols = vec![
+            Column { id: "board".into(), label: "board".into(), source: "board file".into(), stackup: su.clone() },
+            Column { id: pr.id.clone(), label: pr.template.clone(), source: pr.document(), stackup: pr.apply(&su) },
+        ];
+        let w = windows(&["SE50".into(), "D100".into()], &Default::default(), &crate::profile::Profiles::builtin());
+        let tol = default_tolerances();
+        let (v, need) = study_json(&p.board, &p.an, &p.params.field, &cols, Some((&tol, 0)), &w);
+        let rows = v["rows"].as_array().unwrap();
+        assert_eq!(rows.len(), 2, "{v}");
+        let d = rows.iter().find(|r| r["class"] == "D100").unwrap();
+        assert!(d["gap_mm"].as_f64().is_some() && d["diff"] == true);
+        for r in rows {
+            let (a, b) = (r["cells"][0]["z_ohm"].as_f64().unwrap(), r["cells"][1]["z_ohm"].as_f64().unwrap());
+            // the 3313 template's prepreg is half as thick: lower impedance
+            assert!(b < a - 3.0, "{r}");
+            let t = &r["tolerance"];
+            let (wc, rss) =
+                (t["worst_case"]["plus_minus_ohm"].as_f64().unwrap(), t["rss"]["plus_minus_ohm"].as_f64().unwrap());
+            assert!(rss > 0.5 && rss < wc, "{t}");
+            // the core and the bottom prepreg are outside the microstrip: not varied
+            assert!(
+                t["sensitivities"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .all(|s| s["what"].as_str().unwrap().contains("F.Cu") || s["kind"] == "width"),
+                "{t}"
+            );
+            assert_eq!(r["window_pct"], 10.0);
+        }
+        // the field solver would need the nominal geometries of both columns and the perturbed ones
+        assert!(need.len() > 4);
+        assert!(need[0].2 >= need.last().unwrap().2);
+        assert_eq!(v["tolerances"]["estimates"].as_array().unwrap().len(), 4);
     }
 }

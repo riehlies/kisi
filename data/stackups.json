@@ -9,6 +9,22 @@
     "tolerance_pct": 10,
     "tolerance_below_1mm_mm": 0.1
   },
+  "tolerances": {
+    "about": "Default manufacturing tolerances for the impedance band (`kisi overview --tolerance`, `kisi stackups --tolerance`, the viewer's stackup panel), each ± around the nominal value, and the default target window where a net class has no interface profile. Values named in `estimates` are kisi estimates from the sources, not a fab's guarantee; change them with --tol or in the viewer.",
+    "sources": [
+      {"kind": "kisi", "text": "dielectric_thickness_pct 10 (estimate): JLCPCB's board thickness tolerance (±10 % for 1.0 mm and thicker, PCB capabilities page) applied to every dielectric; a fab's pressed prepreg thickness depends on the copper it fills and the resin flow.", "url": "https://jlcpcb.com/capabilities/pcb-capabilities"},
+      {"kind": "kisi", "text": "er_pct 5 (estimate): the spread of published εr for the same JLC core – 4.6 (JITX, 'from Impedance Control Specifications from JLC-PCB') against 4.36 … 4.43 from the NP-155F datasheet by core thickness – is 4 … 5 %; fabs publish no εr tolerance.", "url": "https://docs.jitx.com/en/latest/_modules/jitxlib/jlcpcb/materials.html"},
+      {"kind": "kisi", "text": "copper_pct 10 (estimate): IPC-4562 allows the base foil up to 10 % below its nominal weight (Eurocircuits, Tolerances on copper thickness); inner layers lose more to cleaning and micro-etching (18 µm foil: at least 11.4 µm after processing, IPC-A-600J class 2) and plated outer copper varies more – the trace layer's thickness, symmetric.", "url": "https://www.eurocircuits.com/tolerances-on-copper-thickness/"},
+      {"kind": "kisi", "text": "width_mm 0.02 (estimate): JLCPCB's track width tolerance is ±20 % with the example 0.08 … 0.12 mm for a 0.1 mm track; kisi takes the example's ±0.02 mm as an absolute etch tolerance for every width (etching removes about the same copper from every edge, so the absolute tolerance hardly grows with the width). Symmetric: each copper edge moves by half of it, gaps shrink as widths grow; no etch factor (trapezoid).", "url": "https://jlcpcb.com/capabilities/pcb-capabilities"},
+      {"kind": "datasheet", "text": "window_pct 10: JLCPCB's standard impedance tolerance ±10 % (±5 % on special request), PCB capabilities page (fetched 2026-11-06). A net class's interface profile, where it has one, gives its own window (z_tol_pct).", "url": "https://jlcpcb.com/capabilities/pcb-capabilities"}
+    ],
+    "dielectric_thickness_pct": 10,
+    "er_pct": 5,
+    "copper_pct": 10,
+    "width_mm": 0.02,
+    "window_pct": 10,
+    "estimates": ["dielectric_thickness_pct", "er_pct", "copper_pct", "width_mm"]
+  },
   "presets": [
     {
       "id": "jlc4_7628",

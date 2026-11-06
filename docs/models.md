@@ -72,6 +72,18 @@ percentile):
   copper and a pair's partner (an estimate); with nothing within 0.5 mm beside it the channel uses 1.5 × the
   target impedance. Against 3D: [TESTS.md](../validation/fdtd/TESTS.md) section 15.
 
+**Stackups and tolerances** (`kisi stackups`, `kisi overview --tolerance`, the viewer's “Compare & tolerances”):
+per net class and layer kisi takes the cross-section with the most length (pads left out; a coupled one for a
+differential target) and evaluates the same geometry – references, coplanar copper, partner – under other stackups
+with the formulas or, where it has the result, the field solver. The tolerance band comes from one-at-a-time
+sensitivities: central differences ΔZ = (Z(x + δ) − Z(x − δ)) / 2 for each dielectric's thickness and εr inside the
+cross-section, the trace layer's copper thickness and the trace width, at the level of the nominal value (field
+differences where the field solver has every perturbed geometry, else formula differences scaled to the nominal
+value), combined as worst case Σ|ΔZ| and as root sum of squares √ΣΔZ². The width tolerance is symmetric – every
+copper edge moves by half of it, so gaps shrink as widths grow – with no etch factor (trapezoid). It is a linear
+estimate around the nominal value, and information only: the channel check's verdict does not use it. Default
+tolerances and their sources: `data/stackups.json` (most are estimates; [reference](reference.md#fab-stackup-templates)).
+
 ## Lines
 RLGC per cross-section, passive and causal by construction (the series impedance and the shunt admittance per
 metre are positive-real functions of frequency):

@@ -161,7 +161,7 @@ function stkRender() {
         <td class="band">${stkBandSvg(r, b)}<span class="hint ${cls}">${esc(b.hint)}</span></td></tr>`;
     }).join("");
     tolHtml = `<div class="stk-scroll"><table class="stk-tol"><thead><tr><th>Class · layer</th><th class="num">Window</th><th class="num">Nominal</th>${kinds.map((k) => `<th class="num" title="ΔZ for the ${kname[k]} tolerance, Ω (each layer's share summed)">Δ ${kname[k]}</th>`).join("")}<th class="num">RSS Ω</th><th class="num">Worst case Ω</th><th>Band <span class="sub">window · RSS bar · worst case line · nominal dot</span></th></tr></thead><tbody>${body}</tbody></table></div>
-      <p class="note">${esc(res.method || "")} The hint is information: the channel check's verdict does not use the band.</p>`;
+      <p class="note">${esc(res.method || "")}</p>`;
   }
   box.innerHTML = `<div class="stk-head"><h2>Stackups and tolerances</h2><span class="note">What a different prepreg or core does to each net class, and how far manufacturing tolerances move it.</span><button class="btn" id="stk-close">Close</button></div>
     <section class="card stk-card" aria-labelledby="stk-h1"><h3 id="stk-h1">Impedance per stackup</h3>

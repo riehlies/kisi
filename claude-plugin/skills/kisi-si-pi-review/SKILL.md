@@ -35,6 +35,10 @@ or older …") – ask the user to open it in KiCad 6 or newer and save it; ther
 2. `kisi overview <board>` – stackup and, per net class with a target impedance, the share of routed
    length within ±5 % and the worst nets. Check that the stackup looks plausible (εr, tanδ;
    `assumed` lists values that are KiCad defaults). `config` says which kisi.json was used.
+   `--tolerance` adds per class and layer the impedance band for manufacturing tolerances (dielectric
+   thickness, εr, copper, width; worst case and RSS against the window, information only – the defaults
+   are estimates). `kisi stackups <board>` shows what the fab's templates (a different prepreg) do to
+   each class; report a class whose band leaves the window or that depends strongly on the template.
 3. For classes or nets that look wrong: `kisi net <board> <NET>` – impedance segments along the path
    (layer, length, Z), losses, TDR extremes, vias (antipad, stub resonance, return path), crosstalk.
    Options `--rise-ps`, `--roughness smooth|hvlp|standard`.

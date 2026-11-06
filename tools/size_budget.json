@@ -1,8 +1,8 @@
 {
-  "about": "Upper limits of the bundles' sizes (tools/ci_checks.py sizes, CI). Set about 10 % above the sizes after the vias-in-3D merge and the channel export with its LTspice bench and export settings (2026-10-25: kisi.html 3.20 MB, kisi-examples.html 6.83 MB, kisi.mjs 2.54 MB; before them 2.87 / 6.50 / 2.22 MB); with accuracy and the Prepare PCB page 3.43 / 7.20 / 2.64 MB, still within. A change that makes a bundle larger on purpose raises the limit in the same commit.",
+  "about": "Upper limits of the bundles' sizes (tools/ci_checks.py sizes, CI). Set about 10 % above the sizes after the vias-in-3D merge and the channel export with its LTspice bench and export settings (2026-10-25: kisi.html 3.20 MB, kisi-examples.html 6.83 MB, kisi.mjs 2.54 MB; before them 2.87 / 6.50 / 2.22 MB); with accuracy and the Prepare PCB page 3.43 / 7.20 / 2.64 MB, still within. With the fab stackups, the stackup comparison and the tolerance band (feat/stackup-variants: the engine 5.62 → 5.91 MB raw) kisi.html 3.52 → 3.65 MB (it was at its limit), kisi-examples.html 7.33 MB, kisi.mjs 2.79 MB; the limits raised to about 4 … 8 % above. A change that makes a bundle larger on purpose raises the limit in the same commit.",
   "max_bytes": {
-    "kisi.html": 3520000,
-    "kisi-examples.html": 7520000,
-    "kisi.mjs": 2800000
+    "kisi.html": 3800000,
+    "kisi-examples.html": 7700000,
+    "kisi.mjs": 3000000
   }
 }

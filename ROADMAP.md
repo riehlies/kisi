@@ -139,13 +139,21 @@ validation, and every result says which level it used and how uncertain it is.
   `kisi-references-2d.html`) set the field solver's uncertainty to 1 % and brought formulas for coplanar lines
   (grounded CPW, stripline with coplanar ground, the coupled grounded CPW; single lines with coplanar copper
   4.9 → 1.1 % median). Next:
-  - **the fab's stackup** (user feedback: the biggest impedance error in production is usually the fab's prepreg
-    choice, not the formula): import of fab stackups into `kisi.json` (thickness, εr, tanδ per dielectric, with
-    the source), first JLC's impedance templates (data already in `validation/test_board/stackups.json`), then
-    IPC-2581 if asked for; today they are entered by hand (Prepare PCB, `stackup` in kisi.json);
-  - **sensitivity of the impedance** per net class: how far Z moves for ±10 % dielectric thickness and εr (and the
-    etch factor below), recomputed with the field solver, shown next to the value and the target window;
-  - **etch factor** per stackup or layer in `kisi.json`, applied as an effective width w − t/(2·ef) (the FDM
+  - **the fab's stackup** (`feat/stackup-variants`, first version; user feedback: the biggest impedance error in
+    production is usually the fab's prepreg choice, not the formula): `data/stackups.json` with JLCPCB's impedance
+    templates (4, 6, 8 layers) and their sources, `kisi stackups`, `--stackup-preset`, "Use a fab stackup" in
+    Prepare PCB (copper and mask thickness in kisi.json too), the viewer's “Compare & tolerances” panel (the board's
+    stackup next to templates or edited copies), the stackup in every export's header. Next: more fabs (Aisler,
+    PCBWay, Eurocircuits – each with published values only), IPC-2581 import if asked for, the measured
+    cross-sections of the test board (JLC) against the templates;
+  - **sensitivity of the impedance** (`feat/stackup-variants`, done): per net class and layer the band for
+    dielectric thickness, εr, copper and a symmetric width tolerance (one-at-a-time central differences at the
+    nominal value's solver level, worst case and RSS) against the window, `overview --tolerance`, the viewer
+    panel; information only. Open for the maintainer: whether the band should enter a verdict (e.g. yellow when
+    the RSS band leaves the window), and the default width tolerance (±0.02 mm from JLC's example; JLC states
+    ±20 %);
+  - **etch factor** (still open; the tolerance band uses a symmetric width tolerance) per stackup or layer in
+    `kisi.json`, applied as an effective width w − t/(2·ef) (the FDM
     backend takes no trapezoids; CST: within ±2.2 % for microstrips and pairs, −2 … −4 % for striplines, against
     −2 … −11 % today), with values from the test board's measured cross-sections (JLC) once they exist;
   - a closed form for pairs with coplanar ground on one side only (today the mean of two symmetric pairs: Zeven

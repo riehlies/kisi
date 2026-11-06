@@ -78,8 +78,9 @@ def inline_scripts(m):
 html = re.sub(r"<!-- @scripts (\S+) -->.*?<!-- @end-scripts -->", inline_scripts, html, flags=re.S)
 
 # --- data files (data/*.json): presets that can be updated without touching code
-# (corpus.json is the board list of tools/corpus.py, not used by the viewer)
-NOT_BUNDLED = {"corpus.json"}
+# (corpus.json is the board list of tools/corpus.py, not used by the viewer; stackups.json reaches the viewer
+# through the engine, which has it built in)
+NOT_BUNDLED = {"corpus.json", "stackups.json"}
 data = {}
 ddir = os.path.join(root, "data")
 if os.path.isdir(ddir):

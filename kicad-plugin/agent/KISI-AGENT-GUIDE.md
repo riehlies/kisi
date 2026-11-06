@@ -63,7 +63,10 @@ In both modes `kisi …` below means: run it (mode A) or ask the user to run it 
 3. **Research**, per gap:
    - Laminate (εr, tanδ): the material name in the stackup → manufacturer datasheet. Take the values at
      a frequency near the signals (1–10 GHz), for the resin content / glass style of the layer if the
-     datasheet lists them. Prefer the fabricator's stackup report when the user has one.
+     datasheet lists them. Prefer the fabricator's stackup report when the user has one. When the user
+     orders from a fab in kisi's library, `kisi stackups <board>` lists the fab templates that fit the
+     board (layer count, thickness); with the user's choice, `kisi stackups <board> --preset ID` prints
+     the whole `stackup` entry with sources (tanδ marked as assumed) to put into the kisi.json.
    - Interface standard / profile: device datasheets of the parts at the bus ends (interface type,
      data rate). Choose the matching profile id; if none fits, say so instead of forcing one.
    - Target impedance: the interface standard or the device datasheet / layout guide.

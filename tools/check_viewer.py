@@ -5,6 +5,8 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
                        [--out DIR] [--quick] [--browser chromium|firefox|webkit] [--layouts light,dark,phone]
 
 * light, dark and phone layout; all three views (impedance, channel, power)
+* the stackup panel (“Compare & tolerances”: a fab template and an edited copy, the tolerance band, the stackup
+  block of a net's Touchstone file), also with --quick
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
   lane eye, voltage drop with ground return, impedance seen from the ICs, losses map, temperature and power flow
@@ -875,6 +877,39 @@ def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
     pg.evaluate("() => { lsSet(PREP_KEY(), null); S.prep.mem = {}; }")
 
 
+def stackup_panel(pg, tag, step):
+    """The Stackup card's “Compare & tolerances” panel: a fitting fab template and an edited copy next to the
+    board's stackup, the tolerance band, the stackup block in a net's Touchstone file; closed again."""
+    pg.click("#stk-open"); pg.wait_for_timeout(300)
+    if pg.evaluate("document.getElementById('stk-panel').hidden"):
+        problems.append(f"{tag}: stackup panel did not open")
+        return
+    fit = pg.evaluate("(stkPresets().fitting || [])[0] || null")
+    if fit:
+        pg.select_option("#stk-add", f"preset:{fit}"); pg.wait_for_timeout(300)
+    pg.select_option("#stk-add", "copy"); pg.wait_for_timeout(300)
+    pg.evaluate("() => { const el = document.querySelector('#stk-panel [data-stk-edit=\"0\"][data-k=\"thickness\"]'); el.value = String(Math.max(20, +el.value / 2)); el.dispatchEvent(new Event('change', { bubbles: true })); }")
+    pg.wait_for_timeout(300)
+    cols = pg.evaluate("document.querySelectorAll('#stk-panel table.stk-cmp thead th.stk-col').length")
+    if cols != (3 if fit else 2):
+        problems.append(f"{tag}: stackup panel: {cols} columns")
+    differ = pg.evaluate("[...document.querySelectorAll('#stk-panel table.stk-cmp tbody tr')].some((r) => { const z = [...r.querySelectorAll('td.z')].map((t) => t.textContent); return new Set(z).size > 1; })")
+    if not differ:
+        problems.append(f"{tag}: stackup panel: the stackups give the same impedances")
+    pg.check("#stk-tol-on"); pg.wait_for_timeout(400)
+    if not pg.evaluate("document.querySelectorAll('#stk-panel table.stk-tol tbody tr').length"):
+        problems.append(f"{tag}: stackup panel: no tolerance band")
+    step("stackups")
+    ts = pg.evaluate("(() => { const n = S.an.nets.find((x) => x.target && x.length > 1); return n ? rfFor(n.net).touchstone : ''; })()")
+    if ts and ("! stackup used" not in ts or "manufacturing tolerances" not in ts):
+        problems.append(f"{tag}: a net's Touchstone without the stackup block or the band")
+    pg.uncheck("#stk-tol-on"); pg.wait_for_timeout(200)
+    pg.evaluate("() => { lsSet(stkKey(), null); S.stk = null; }")
+    pg.click("#stk-close"); pg.wait_for_timeout(200)
+    if not pg.evaluate("document.getElementById('stk-panel').hidden"):
+        problems.append(f"{tag}: stackup panel did not close")
+
+
 def run(pg, tag, desktop):
     errs = []
     pg.add_init_script(TEXT_SPY)
@@ -903,6 +938,8 @@ def run(pg, tag, desktop):
     targets = pg.evaluate("S.an.nets.filter((n) => n.target).length")
     if not targets:
         notes.append(f"{tag}: no nets with a target impedance – net detail, couplings and field solver steps skipped")
+    else:
+        stackup_panel(pg, tag, step)
     if desktop and not a.quick and targets:
         pg.click(".net >> nth=0"); pg.wait_for_timeout(400)
         for t in ["loss", "tdr", "via", "xt"]:

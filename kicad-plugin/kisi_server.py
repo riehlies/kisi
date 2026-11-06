@@ -21,6 +21,13 @@ import kisi_kicad as core
 MAX_CONFIG = 2 * 1024 * 1024
 MAX_REQUEST = MAX_CONFIG * 6 + 4096  # JSON string escaping can expand UTF-8 text
 IDLE_TIMEOUT = 30 * 60  # suspended/closed tabs eventually release the process
+KEEP_BACKUPS = 5  # newest backups of <board>.kisi.json kept in analysis/; older ones are removed
+# The viewer is one self-contained page: inline scripts and styles, WebAssembly, blob/data URLs for workers,
+# images and downloads; its only requests go back to this host. Nothing may be loaded from or sent elsewhere.
+CSP = ("default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; worker-src 'self' blob:; "
+       "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; "
+       "connect-src 'self' data: blob:; media-src 'self' data: blob:; base-uri 'none'; form-action 'none'; "
+       "frame-ancestors 'none'")
 
 
 class LoopbackServer(ThreadingHTTPServer):
@@ -30,6 +37,21 @@ class LoopbackServer(ThreadingHTTPServer):
         TCPServer.server_bind(self)
         self.server_name = "127.0.0.1"
         self.server_port = self.server_address[1]
+
+
+def prune_backups(folder, stem, keep=KEEP_BACKUPS):
+    """Remove all but the newest `keep` backups `<stem>.kisi.json.<YYYYmmdd-HHMMSS>[-n].bak` in `folder`."""
+    prefix = stem + ".kisi.json."
+    try:
+        names = [n for n in os.listdir(folder) if n.startswith(prefix) and n.endswith(".bak")]
+    except OSError:
+        return
+    names.sort(key=lambda n: (os.path.getmtime(os.path.join(folder, n)), n))
+    for n in names[:-keep] if keep > 0 else names:
+        try:
+            os.remove(os.path.join(folder, n))
+        except OSError:
+            pass
 
 
 def revision(data):
@@ -139,7 +161,9 @@ class Session:
                 return 409, {"error": "The configuration was changed outside this window. Reload this page to load it; your draft is kept."}
             if current != data:
                 if current:
-                    self.guard.write(self.guard.backup_path(), current, exclusive=True)
+                    backup = self.guard.backup_path()
+                    self.guard.write(backup, current, exclusive=True)
+                    prune_backups(os.path.dirname(backup), self.paths["stem"])
                 self.guard.write(self.paths["cfg"], data)
             self.log("local viewer: board configuration saved")
             return 200, {"revision": revision(data)}
@@ -176,6 +200,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Frame-Options", "DENY")
+        if content_type.startswith("text/html"):
+            self.send_header("Content-Security-Policy", CSP)
         self.send_header("Connection", "close")
         self.end_headers()
         self.close_connection = True

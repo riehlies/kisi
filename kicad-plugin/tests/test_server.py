@@ -78,7 +78,27 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(unpack(live)[self.b.stem + ".kisi.json"], saved.decode())
         self.assertEqual(headers["Cache-Control"], "no-store")
         self.assertEqual(headers["Referrer-Policy"], "no-referrer")
+        csp = headers["Content-Security-Policy"]
+        self.assertIn("default-src 'none'", csp)
+        self.assertIn("connect-src 'self'", csp)
+        self.assertNotIn("http", csp)  # no other host is allowed
         self.assertNotIn(self.s.token, pathlib.Path(self.page).read_text(encoding="utf-8"))
+
+    def test_backups_are_limited(self):
+        analysis = pathlib.Path(self.b.dir, "analysis")
+        expected = server.revision(self.initial)
+        for i in range(server.KEEP_BACKUPS + 3):
+            status, data, _ = self.save(text=self.config(notes=[f"save {i}"]), expected=expected)
+            self.assertEqual(status, 200, data)
+            expected = json.loads(data)["revision"]
+        backups = sorted(analysis.glob(self.b.stem + ".kisi.json.*.bak"))
+        self.assertEqual(len(backups), server.KEEP_BACKUPS)
+        newest = max(backups, key=lambda p: (p.stat().st_mtime, p.name))
+        self.assertIn("save " + str(server.KEEP_BACKUPS + 1), newest.read_text(encoding="utf-8"))
+        other = analysis / "other.kisi.json.20260101-000000.bak"
+        other.write_text("{}", encoding="utf-8")
+        server.prune_backups(str(analysis), self.b.stem, keep=1)
+        self.assertTrue(other.exists(), "backups of other boards are not touched")
 
     def test_authentication_origin_and_host(self):
         for kwargs in [dict(auth=False), dict(headers={"Authorization": "Bearer wrong"}),

@@ -158,7 +158,7 @@ KiCad's files are never written or saved.
 
 **Saving kisi.json** – on the viewer's *Prepare PCB* page, "Save kisi.json" writes the file directly next to the
 board and loads it into the analyses. There is no download or folder dialog. The previous file is kept as a
-backup in `analysis/`. If another window or an agent changed the file meanwhile, saving stops with a conflict
+backup in `analysis/` (the newest five). If another window or an agent changed the file meanwhile, saving stops with a conflict
 message; your draft stays in the form. Reload the page to load the external change, then use the existing
 Restore/Discard draft controls to decide what to keep. A failed connection
 or write also keeps the draft and reports an error; it never silently downloads instead.
@@ -167,6 +167,11 @@ The service exits after 30 minutes without a heartbeat from its page. Closed tab
 suspended tabs or a sleeping computer can also let the session expire. To reconnect, click kisi in KiCad again.
 Unsaved browser drafts belong to the local browser session; keep a window with an unsaved draft open while
 reconnecting. Opening the offline HTML copy directly still uses the browser's save dialog or download.
+
+For saving, the plugin runs a small web host on your own computer only (`127.0.0.1`, a random port), for this
+board and only while the page is open. Its address contains a one-time secret; other web pages cannot use it, but
+programs running under your own user account could read that address from the browser history while the session
+lives.
 
 **With an agent** – the plugin carries kisi's command line (`cli/kisi.mjs` in its folder) and the
 [agent guide](agents.md#any-assistant-the-agent-guide) for any assistant (`agent/KISI-AGENT-GUIDE.md`). On *Prepare

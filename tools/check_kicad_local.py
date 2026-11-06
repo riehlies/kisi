@@ -21,6 +21,19 @@ import zipfile
 from playwright.sync_api import sync_playwright
 
 
+def wait_for(pg, expr, timeout=30000):
+    """Poll `expr` in the page. The served page has a Content-Security-Policy without 'unsafe-eval', which blocks
+    Playwright's in-page predicate of wait_for_function; evaluate() runs through the debugger protocol instead."""
+    import time
+    end = time.monotonic() + timeout / 1000
+    while True:
+        if pg.evaluate(f"!!({expr})"):
+            return
+        if time.monotonic() > end:
+            raise TimeoutError(f"timed out after {timeout} ms waiting for: {expr}")
+        pg.wait_for_timeout(100)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("package")
@@ -67,15 +80,18 @@ def main():
                 pg = context.new_page()
                 errors, downloads = [], []
                 pg.on("pageerror", lambda e: errors.append(str(e)))
+                # the served page's Content-Security-Policy must not block any part of the viewer
+                pg.on("console", lambda m: errors.append("CSP: " + m.text)
+                      if m.type == "error" and "Content Security Policy" in m.text else None)
                 pg.on("download", lambda d: downloads.append(d.suggested_filename))
                 # A save must not silently fall back to a browser file picker, either.
                 pg.add_init_script("window.showSaveFilePicker = async () => { throw new Error('unexpected save picker'); };"
                                    "window.showDirectoryPicker = async () => { throw new Error('unexpected directory picker'); };")
                 pg.goto(url)
-                pg.wait_for_function("typeof S !== 'undefined' && S.scene && document.getElementById('busy').hidden && S.prep.base !== undefined", timeout=180000)
-                pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)
+                wait_for(pg, "typeof S !== 'undefined' && S.scene && document.getElementById('busy').hidden && S.prep.base !== undefined", timeout=180000)
+                wait_for(pg, "!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)
                 pg.click("#prep-btn")
-                pg.wait_for_function("S.prep.open && !S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)
+                wait_for(pg, "S.prep.open && !S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)
                 assert not pg.is_visible("#prep-kicad-dir"), "folder chooser shown in the plugin"
                 assert not pg.is_visible("#prep-kicad-copy"), "save-dialog path helper shown in the plugin"
 
@@ -84,14 +100,14 @@ def main():
                         pg.click("details.prep-notes > summary")
                     pg.fill("#prep-notes", note)
                     pg.locator("#prep-notes").dispatch_event("change")
-                    pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)
+                    wait_for(pg, "!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)
 
                 edit("Local save äöü")
                 pg.screenshot(path=str(out / "before-save.png"), full_page=True)
                 with pg.expect_response(lambda r: r.url.endswith("/api/config") and r.request.method == "POST") as reply:
                     pg.click("#prep-save")
                 assert reply.value.status == 200, "configuration POST failed"
-                pg.wait_for_function("!S.prep.saving && S.prep.saved.includes('saved into the board')", timeout=120000)
+                wait_for(pg, "!S.prep.saving && S.prep.saved.includes('saved into the board')", timeout=120000)
                 saved = cfg.read_bytes()
                 assert json.loads(saved)["notes"] == ["Local save äöü"]
                 assert not downloads, "save produced a download"
@@ -101,9 +117,9 @@ def main():
 
                 # A page reload reads the new file and revision from this same session.
                 pg.reload()
-                pg.wait_for_function("typeof S !== 'undefined' && S.scene && document.getElementById('busy').hidden && S.prep.base !== undefined", timeout=180000)
+                wait_for(pg, "typeof S !== 'undefined' && S.scene && document.getElementById('busy').hidden && S.prep.base !== undefined", timeout=180000)
                 pg.click("#prep-btn")
-                pg.wait_for_function("!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)
+                wait_for(pg, "!S.prep.busy && !S.prep.inflight && !S.prep.queued", timeout=120000)
                 assert pg.input_value("#prep-notes") == "Local save äöü"
 
                 external = json.loads(cfg.read_text(encoding="utf-8"))
@@ -111,14 +127,14 @@ def main():
                 cfg.write_text(json.dumps(external), encoding="utf-8")
                 edit("keep this unsaved draft")
                 pg.click("#prep-save")
-                pg.wait_for_function("!S.prep.saving && S.prep.saved.includes('changed outside')")
+                wait_for(pg, "!S.prep.saving && S.prep.saved.includes('changed outside')")
                 assert json.loads(cfg.read_bytes())["notes"] == ["external edit"], "external change overwritten"
                 assert pg.input_value("#prep-notes") == "keep this unsaved draft", "draft lost after a conflict"
 
                 # Invalid credentials are rejected without a download or a filesystem change.
                 pg.evaluate("S.kicad.bridge.token = 'wrong'")
                 pg.click("#prep-save")
-                pg.wait_for_function("!S.prep.saving && S.prep.saved.includes('forbidden')")
+                wait_for(pg, "!S.prep.saving && S.prep.saved.includes('forbidden')")
                 assert not downloads
                 assert json.loads(cfg.read_bytes())["notes"] == ["external edit"]
                 pg.screenshot(path=str(out / "save-error.png"), full_page=True)
@@ -127,7 +143,7 @@ def main():
                 proc.terminate()
                 proc.wait(timeout=10)
                 pg.click("#prep-save")
-                pg.wait_for_function("!S.prep.saving && S.prep.saved.includes('connection')", timeout=20000)
+                wait_for(pg, "!S.prep.saving && S.prep.saved.includes('connection')", timeout=20000)
                 assert pg.input_value("#prep-notes") == "keep this unsaved draft"
                 assert not downloads
                 assert not errors, "JavaScript errors: " + "; ".join(errors)

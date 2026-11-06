@@ -8,6 +8,8 @@
 //!        (a via cut out of the board as a kisi-fdtd case with its 2×thru fixtures, viacase.rs)
 //!        kisi-validate xs-cases <cases.json> --out F | xs-board <board.kicad_pcb> --out F
 //!        (cross-sections for the external 2D-solver comparison validation/cst_xs, xscases.rs)
+//!        kisi-validate pi-dc <board.kicad_pcb> [options]
+//!        (DC IR drop of a board's rails against stored references, docs/research/pi-quadtree.md, pidc.rs)
 //! ```
 //!
 //! Case format (lengths in mm):
@@ -34,6 +36,7 @@ use serde_json::Value;
 mod cavities;
 mod cavmodel;
 mod models;
+mod pidc;
 mod viacase;
 mod xscases;
 
@@ -202,6 +205,10 @@ fn main() {
     if args.len() > 3 && args[1] == "cavity-model" {
         // the ladder with a finite plane cavity on a resonance case (BOARD_RESONANCES.md)
         cavmodel::run(&args[2..]);
+        return;
+    }
+    if args.len() > 2 && args[1] == "pi-dc" {
+        pidc::run(&args[2..]);
         return;
     }
     if args.len() > 3 && args[1] == "models" {

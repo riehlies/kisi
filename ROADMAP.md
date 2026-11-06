@@ -168,6 +168,10 @@ validation, and every result says which level it used and how uncertain it is.
   edges (return path), via-to-via coupling through the cavity.
 - **PDN:** per-IC grid for all rails at once, regulator models beyond R + L (control-loop output impedance), the
   cavity model in the PDN, comparison with a measurement or a reference tool.
+  Next for its AC grid (`pdn_ic`; via contacts and the 45° track fix are in since branch `feat/pi-dc-accuracy`): the
+  DC drop's line tracks (a track narrower than the cell as a line conductor; needs the track's copper area per cell
+  for the plane capacitance and joins at the ends as shorts) and cut-cell weights, then a check of a track-fed rail
+  against a refined grid as in `docs/research/pi-quadtree.md`.
 - **Power:** via current capacity; split of regulator losses between IC and inductor (also a second heat source
   in the temperature estimate).
 - **Temperature, follow-ups** (the steady state is in `kisi thermal` and the viewer, `docs/research/thermal.md`):

@@ -10,36 +10,36 @@
   "per_layer": [
    {
     "layer": "F.Cu",
-    "t_max_c": 87.83,
+    "t_max_c": 87.78,
     "t_mean_c": 63.61
    },
    {
     "layer": "In1.Cu",
-    "t_max_c": 85.19,
-    "t_mean_c": 63.62
+    "t_max_c": 85.15,
+    "t_mean_c": 63.61
    },
    {
     "layer": "In2.Cu",
-    "t_max_c": 84.36,
+    "t_max_c": 84.32,
     "t_mean_c": 63.61
    },
    {
     "layer": "In3.Cu",
-    "t_max_c": 81.01,
-    "t_mean_c": 63.5
+    "t_max_c": 80.98,
+    "t_mean_c": 63.49
    },
    {
     "layer": "In4.Cu",
-    "t_max_c": 81.5,
-    "t_mean_c": 63.48
+    "t_max_c": 81.48,
+    "t_mean_c": 63.47
    },
    {
     "layer": "B.Cu",
-    "t_max_c": 83.76,
-    "t_mean_c": 63.45
+    "t_max_c": 83.74,
+    "t_mean_c": 63.44
    }
   ],
-  "t_max_c": 87.83
+  "t_max_c": 87.78
  },
  "config": {
   "entries": 88,
@@ -59,10 +59,10 @@
   "source": "estimate: natural (or forced) convection from flat-plate correlations and linearised radiation (emissivity 0.9) at the board's mean temperature rise, data/thermal.json"
  },
  "energy_balance": {
-  "convection_w": 6.4721,
+  "convection_w": 6.4707,
   "error_rel": 0.0,
-  "in_w": 12.8315,
-  "radiation_w": 6.3594
+  "in_w": 12.8289,
+  "radiation_w": 6.3582
  },
  "estimate": "Temperatures are estimates: steady state, board in air at the ambient temperature, heat only through convection and radiation; package data from PI_THERMAL or estimated package defaults (see parts[].data_source).",
  "grid": {
@@ -72,9 +72,9 @@
   "nodes": 198435
  },
  "heat_w": {
-  "copper": 0.056,
+  "copper": 0.0534,
   "parts": 12.7755,
-  "total": 12.8315
+  "total": 12.8289
  },
  "hot_spots": [
   {
@@ -84,7 +84,7 @@
    ],
    "layer": "F.Cu",
    "near": "U1008_4",
-   "t_c": 87.83
+   "t_c": 87.78
   },
   {
    "at": [
@@ -93,7 +93,7 @@
    ],
    "layer": "F.Cu",
    "near": "U1008_3",
-   "t_c": 87.43
+   "t_c": 87.38
   },
   {
    "at": [
@@ -102,7 +102,7 @@
    ],
    "layer": "F.Cu",
    "near": "U1008_2",
-   "t_c": 87.25
+   "t_c": 87.21
   },
   {
    "at": [
@@ -111,7 +111,7 @@
    ],
    "layer": "F.Cu",
    "near": "U1008_1",
-   "t_c": 86.51
+   "t_c": 86.48
   },
   {
    "at": [
@@ -120,7 +120,7 @@
    ],
    "layer": "B.Cu",
    "near": "U11",
-   "t_c": 83.76
+   "t_c": 83.74
   },
   {
    "at": [
@@ -129,7 +129,7 @@
    ],
    "layer": "F.Cu",
    "near": "U14",
-   "t_c": 81.59
+   "t_c": 81.55
   },
   {
    "at": [
@@ -138,7 +138,7 @@
    ],
    "layer": "F.Cu",
    "near": "R15",
-   "t_c": 80.9
+   "t_c": 80.87
   },
   {
    "at": [
@@ -147,7 +147,7 @@
    ],
    "layer": "F.Cu",
    "near": "U17",
-   "t_c": 80.56
+   "t_c": 80.55
   }
  ],
  "models": "Board: one sheet per copper layer on a uniform grid over the outline (copper fill of every net, laminate in plane and through the thickness, open via barrels), convection and radiation from both sides. Heat: copper loss of every rail and the ground return (DC solution at 20 °C), part heat from the power tree (load power V·I, regulator and pass losses) or PI_THERMAL p. Parts: JEDEC two-resistor model (θJB, θJC) or ψJB / θJA. Rails: copper temperature from the map; IR drop again with ρ(T) = ρ₂₀(1 + 0.00393/K·(T − 20 °C)) (one electro-thermal step). Case top: Tj − ψJT·P with ψJT from PI_THERMAL, else the case node of the two-resistor model (Tj − θJC·heat through the top). Vias: heat through each barrel from the temperatures of the layers it joins; under_part splits a part's heat into vias, laminate and sideways in the pad layer; hints (no via under a thermal pad, 5 K or more to the next layer, under 25 % through vias with over 50 % sideways) are kisi guide values, estimates.",
@@ -164,7 +164,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 1.413,
-   "margin_k": 4.88,
+   "margin_k": 4.92,
    "model": "theta_jb",
    "package_family": "bga",
    "part": "IC FPGA XC7A50T-2CSG325C",
@@ -174,12 +174,12 @@
    "side": "top",
    "source_document": "AMD/Xilinx DS181 v1.27, Artix-7 DC and AC Switching Characteristics, Table 2",
    "status": "near",
-   "t_board_c": 72.73,
-   "t_case_top_c": 79.24,
+   "t_board_c": 72.69,
+   "t_case_top_c": 79.2,
    "theta_ja": null,
    "theta_jb": 5.91,
    "theta_jc": 5.38,
-   "tj_c": 80.12,
+   "tj_c": 80.08,
    "tj_max_c": 85.0,
    "tj_max_source": "PI_THERMAL (datasheet: XC7A50T-2CSG325C, commercial grade: junction temperature 0–85 °C; θ values not taken (package default))",
    "to_board_share": 0.884,
@@ -187,11 +187,11 @@
     "dt_pad_layer_to_next_k": 0.52,
     "dt_pad_layer_to_other_side_k": 1.21,
     "hint": null,
-    "into_board_w": 1.2497,
-    "sideways_in_pad_layer_w": 0.4569,
+    "into_board_w": 1.2498,
+    "sideways_in_pad_layer_w": 0.4575,
     "thermal_pad": false,
-    "through_laminate_w": 0.1659,
-    "through_vias_w": 0.6269,
+    "through_laminate_w": 0.1646,
+    "through_vias_w": 0.6278,
     "vias": 184
    }
   },
@@ -201,7 +201,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.3775,
-   "margin_k": 15.12,
+   "margin_k": 15.16,
    "model": "theta_jb",
    "package_family": "sot",
    "part": "NCP161ASN330T1G",
@@ -211,24 +211,24 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 80.64,
-   "t_case_top_c": 108.8,
+   "t_board_c": 80.6,
+   "t_case_top_c": 108.76,
    "theta_ja": null,
    "theta_jb": 80.0,
    "theta_jc": 90.0,
-   "tj_c": 109.88,
+   "tj_c": 109.84,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.968,
    "under_part": {
-    "dt_pad_layer_to_next_k": 1.88,
-    "dt_pad_layer_to_other_side_k": 3.58,
+    "dt_pad_layer_to_next_k": 1.87,
+    "dt_pad_layer_to_other_side_k": 3.57,
     "hint": null,
     "into_board_w": 0.3655,
     "sideways_in_pad_layer_w": 0.2952,
     "thermal_pad": false,
-    "through_laminate_w": 0.0183,
-    "through_vias_w": 0.0519,
+    "through_laminate_w": 0.0182,
+    "through_vias_w": 0.0521,
     "vias": 5
    }
   },
@@ -238,7 +238,7 @@
    "estimate": false,
    "heat_source": "power tree",
    "heat_w": 1.1513,
-   "margin_k": 26.32,
+   "margin_k": 26.37,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "LMH6518",
@@ -248,24 +248,24 @@
    "side": "top",
    "source_document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information",
    "status": "ok",
-   "t_board_c": 85.72,
-   "t_case_top_c": 97.89,
+   "t_board_c": 85.68,
+   "t_case_top_c": 97.84,
    "theta_ja": null,
    "theta_jb": 11.5,
    "theta_jc": 31.7,
-   "tj_c": 98.68,
+   "tj_c": 98.63,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.978,
    "under_part": {
-    "dt_pad_layer_to_next_k": 2.16,
-    "dt_pad_layer_to_other_side_k": 7.34,
+    "dt_pad_layer_to_next_k": 2.15,
+    "dt_pad_layer_to_other_side_k": 7.32,
     "hint": null,
     "into_board_w": 1.1264,
-    "sideways_in_pad_layer_w": 0.5508,
+    "sideways_in_pad_layer_w": 0.5519,
     "thermal_pad": true,
-    "through_laminate_w": 0.0745,
-    "through_vias_w": 0.5011,
+    "through_laminate_w": 0.0741,
+    "through_vias_w": 0.5004,
     "vias": 9
    }
   },
@@ -275,7 +275,7 @@
    "estimate": false,
    "heat_source": "power tree",
    "heat_w": 1.1513,
-   "margin_k": 26.82,
+   "margin_k": 26.87,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "LMH6518",
@@ -285,24 +285,24 @@
    "side": "top",
    "source_document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information",
    "status": "ok",
-   "t_board_c": 85.22,
-   "t_case_top_c": 97.39,
+   "t_board_c": 85.18,
+   "t_case_top_c": 97.35,
    "theta_ja": null,
    "theta_jb": 11.5,
    "theta_jc": 31.7,
-   "tj_c": 98.18,
+   "tj_c": 98.13,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.979,
    "under_part": {
     "dt_pad_layer_to_next_k": 1.99,
-    "dt_pad_layer_to_other_side_k": 7.02,
+    "dt_pad_layer_to_other_side_k": 7.01,
     "hint": null,
     "into_board_w": 1.1266,
-    "sideways_in_pad_layer_w": 0.5808,
+    "sideways_in_pad_layer_w": 0.5819,
     "thermal_pad": true,
-    "through_laminate_w": 0.0664,
-    "through_vias_w": 0.4793,
+    "through_laminate_w": 0.066,
+    "through_vias_w": 0.4787,
     "vias": 9
    }
   },
@@ -312,7 +312,7 @@
    "estimate": false,
    "heat_source": "power tree",
    "heat_w": 1.1513,
-   "margin_k": 27.04,
+   "margin_k": 27.08,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "LMH6518",
@@ -322,24 +322,24 @@
    "side": "top",
    "source_document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information",
    "status": "ok",
-   "t_board_c": 85.0,
-   "t_case_top_c": 97.17,
+   "t_board_c": 84.96,
+   "t_case_top_c": 97.14,
    "theta_ja": null,
    "theta_jb": 11.5,
    "theta_jc": 31.7,
-   "tj_c": 97.96,
+   "tj_c": 97.92,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.979,
    "under_part": {
-    "dt_pad_layer_to_next_k": 2.03,
-    "dt_pad_layer_to_other_side_k": 7.1,
+    "dt_pad_layer_to_next_k": 2.02,
+    "dt_pad_layer_to_other_side_k": 7.09,
     "hint": null,
-    "into_board_w": 1.1266,
-    "sideways_in_pad_layer_w": 0.5718,
+    "into_board_w": 1.1267,
+    "sideways_in_pad_layer_w": 0.5726,
     "thermal_pad": true,
-    "through_laminate_w": 0.0698,
-    "through_vias_w": 0.485,
+    "through_laminate_w": 0.0695,
+    "through_vias_w": 0.4845,
     "vias": 9
    }
   },
@@ -349,7 +349,7 @@
    "estimate": false,
    "heat_source": "power tree",
    "heat_w": 1.1513,
-   "margin_k": 27.61,
+   "margin_k": 27.64,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "LMH6518",
@@ -359,24 +359,24 @@
    "side": "top",
    "source_document": "TI LMH6518 datasheet (ZHCSPP6E), Thermal Information",
    "status": "ok",
-   "t_board_c": 84.43,
-   "t_case_top_c": 96.61,
+   "t_board_c": 84.4,
+   "t_case_top_c": 96.58,
    "theta_ja": null,
    "theta_jb": 11.5,
    "theta_jc": 31.7,
-   "tj_c": 97.39,
+   "tj_c": 97.36,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.979,
    "under_part": {
-    "dt_pad_layer_to_next_k": 2.25,
-    "dt_pad_layer_to_other_side_k": 7.48,
+    "dt_pad_layer_to_next_k": 2.24,
+    "dt_pad_layer_to_other_side_k": 7.47,
     "hint": null,
-    "into_board_w": 1.1268,
-    "sideways_in_pad_layer_w": 0.5513,
+    "into_board_w": 1.1269,
+    "sideways_in_pad_layer_w": 0.5521,
     "thermal_pad": true,
-    "through_laminate_w": 0.0731,
-    "through_vias_w": 0.5024,
+    "through_laminate_w": 0.0729,
+    "through_vias_w": 0.5018,
     "vias": 9
    }
   },
@@ -397,7 +397,7 @@
    "source_document": "TI TPS61023 datasheet (ZHCSK97B), Thermal Information",
    "status": "ok",
    "t_board_c": 79.99,
-   "t_case_top_c": 95.03,
+   "t_case_top_c": 95.02,
    "theta_ja": null,
    "theta_jb": 31.0,
    "theta_jc": 55.7,
@@ -423,7 +423,7 @@
    "estimate": false,
    "heat_source": "power tree",
    "heat_w": 1.1488,
-   "margin_k": 34.9,
+   "margin_k": 34.92,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "TPSM82913",
@@ -433,12 +433,12 @@
    "side": "bottom",
    "source_document": "TI TPSM82913 datasheet (ZHCSOW9C), Thermal Information",
    "status": "ok",
-   "t_board_c": 81.98,
-   "t_case_top_c": 89.64,
+   "t_board_c": 81.95,
+   "t_case_top_c": 89.61,
    "theta_ja": null,
    "theta_jb": 7.2,
    "theta_jc": 22.4,
-   "tj_c": 90.1,
+   "tj_c": 90.08,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.982,
@@ -447,7 +447,7 @@
     "dt_pad_layer_to_other_side_k": 5.08,
     "hint": null,
     "into_board_w": 1.1281,
-    "sideways_in_pad_layer_w": 0.6659,
+    "sideways_in_pad_layer_w": 0.6658,
     "thermal_pad": false,
     "through_laminate_w": 0.0758,
     "through_vias_w": 0.3865,
@@ -460,7 +460,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.3912,
-   "margin_k": 36.53,
+   "margin_k": 36.58,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "TPS7A9101",
@@ -470,12 +470,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 80.73,
-   "t_case_top_c": 88.02,
+   "t_board_c": 80.68,
+   "t_case_top_c": 87.98,
    "theta_ja": null,
    "theta_jb": 20.11,
    "theta_jc": 69.33,
-   "tj_c": 88.47,
+   "tj_c": 88.42,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.984,
@@ -484,7 +484,7 @@
     "dt_pad_layer_to_other_side_k": 3.2,
     "hint": null,
     "into_board_w": 0.3848,
-    "sideways_in_pad_layer_w": 0.2424,
+    "sideways_in_pad_layer_w": 0.2423,
     "thermal_pad": true,
     "through_laminate_w": 0.0144,
     "through_vias_w": 0.128,
@@ -497,7 +497,7 @@
    "estimate": false,
    "heat_source": "power tree",
    "heat_w": 0.1897,
-   "margin_k": 37.99,
+   "margin_k": 38.04,
    "model": "theta_jb",
    "package_family": "sot",
    "part": "TPS62A02",
@@ -507,24 +507,24 @@
    "side": "top",
    "source_document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information",
    "status": "ok",
-   "t_board_c": 78.48,
-   "t_case_top_c": 86.76,
+   "t_board_c": 78.43,
+   "t_case_top_c": 86.71,
    "theta_ja": null,
    "theta_jb": 45.6,
    "theta_jc": 92.2,
-   "tj_c": 87.01,
+   "tj_c": 86.96,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.986,
    "under_part": {
     "dt_pad_layer_to_next_k": 1.76,
-    "dt_pad_layer_to_other_side_k": 3.2,
+    "dt_pad_layer_to_other_side_k": 3.18,
     "hint": null,
     "into_board_w": 0.187,
-    "sideways_in_pad_layer_w": 0.1375,
+    "sideways_in_pad_layer_w": 0.1377,
     "thermal_pad": false,
     "through_laminate_w": 0.0076,
-    "through_vias_w": 0.0419,
+    "through_vias_w": 0.0416,
     "vias": 3
    }
   },
@@ -534,7 +534,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.7176,
-   "margin_k": 40.92,
+   "margin_k": 40.97,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "HMCAD1520",
@@ -544,12 +544,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 79.1,
-   "t_case_top_c": 83.44,
+   "t_board_c": 79.05,
+   "t_case_top_c": 83.4,
    "theta_ja": null,
    "theta_jb": 7.49,
    "theta_jc": 11.99,
-   "tj_c": 84.08,
+   "tj_c": 84.03,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.926,
@@ -558,10 +558,10 @@
     "dt_pad_layer_to_other_side_k": 3.1,
     "hint": null,
     "into_board_w": 0.6647,
-    "sideways_in_pad_layer_w": 0.3201,
+    "sideways_in_pad_layer_w": 0.3216,
     "thermal_pad": true,
-    "through_laminate_w": 0.0969,
-    "through_vias_w": 0.2477,
+    "through_laminate_w": 0.0962,
+    "through_vias_w": 0.2469,
     "vias": 13
    }
   },
@@ -571,7 +571,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.3369,
-   "margin_k": 43.9,
+   "margin_k": 43.91,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "TPS7A9101",
@@ -582,11 +582,11 @@
    "source_document": null,
    "status": "ok",
    "t_board_c": 74.43,
-   "t_case_top_c": 80.71,
+   "t_case_top_c": 80.7,
    "theta_ja": null,
    "theta_jb": 20.11,
    "theta_jc": 69.33,
-   "tj_c": 81.1,
+   "tj_c": 81.09,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.983,
@@ -608,7 +608,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.34,
-   "margin_k": 44.11,
+   "margin_k": 44.14,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "BUF802",
@@ -618,12 +618,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 76.16,
-   "t_case_top_c": 80.44,
+   "t_board_c": 76.13,
+   "t_case_top_c": 80.41,
    "theta_ja": null,
    "theta_jb": 14.41,
    "theta_jc": 38.32,
-   "tj_c": 80.89,
+   "tj_c": 80.86,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.965,
@@ -645,7 +645,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.34,
-   "margin_k": 44.27,
+   "margin_k": 44.29,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "BUF802",
@@ -655,12 +655,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 76.0,
-   "t_case_top_c": 80.28,
+   "t_board_c": 75.98,
+   "t_case_top_c": 80.26,
    "theta_ja": null,
    "theta_jb": 14.41,
    "theta_jc": 38.32,
-   "tj_c": 80.73,
+   "tj_c": 80.71,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.966,
@@ -682,7 +682,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.34,
-   "margin_k": 44.44,
+   "margin_k": 44.46,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "BUF802",
@@ -692,12 +692,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 75.83,
-   "t_case_top_c": 80.11,
+   "t_board_c": 75.81,
+   "t_case_top_c": 80.09,
    "theta_ja": null,
    "theta_jb": 14.41,
    "theta_jc": 38.32,
-   "tj_c": 80.56,
+   "tj_c": 80.54,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.966,
@@ -719,7 +719,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.34,
-   "margin_k": 44.48,
+   "margin_k": 44.5,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "BUF802",
@@ -729,18 +729,18 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 75.79,
-   "t_case_top_c": 80.07,
+   "t_board_c": 75.77,
+   "t_case_top_c": 80.05,
    "theta_ja": null,
    "theta_jb": 14.41,
    "theta_jc": 38.32,
-   "tj_c": 80.52,
+   "tj_c": 80.5,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.966,
    "under_part": {
     "dt_pad_layer_to_next_k": 1.31,
-    "dt_pad_layer_to_other_side_k": 3.75,
+    "dt_pad_layer_to_other_side_k": 3.74,
     "hint": null,
     "into_board_w": 0.3283,
     "sideways_in_pad_layer_w": 0.1588,
@@ -756,7 +756,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0026,
-   "margin_k": 45.06,
+   "margin_k": 45.09,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "120@100MHZ",
@@ -766,12 +766,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 78.97,
+   "t_board_c": 78.94,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 366.67,
    "theta_jc": null,
-   "tj_c": 79.94,
+   "tj_c": 79.91,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -783,7 +783,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0026,
-   "margin_k": 45.64,
+   "margin_k": 45.67,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "120@100MHZ",
@@ -793,12 +793,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 78.39,
+   "t_board_c": 78.36,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 366.67,
    "theta_jc": null,
-   "tj_c": 79.36,
+   "tj_c": 79.33,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -810,7 +810,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0026,
-   "margin_k": 45.72,
+   "margin_k": 45.75,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "120@100MHZ",
@@ -820,12 +820,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 78.31,
+   "t_board_c": 78.28,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 366.67,
    "theta_jc": null,
-   "tj_c": 79.28,
+   "tj_c": 79.25,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -837,7 +837,7 @@
    "estimate": false,
    "heat_source": "power tree",
    "heat_w": 0.0772,
-   "margin_k": 45.94,
+   "margin_k": 45.97,
    "model": "theta_jb",
    "package_family": "sot",
    "part": "TPS62A02",
@@ -847,12 +847,12 @@
    "side": "top",
    "source_document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information",
    "status": "ok",
-   "t_board_c": 75.65,
-   "t_case_top_c": 78.85,
+   "t_board_c": 75.62,
+   "t_case_top_c": 78.82,
    "theta_ja": null,
    "theta_jb": 45.6,
    "theta_jc": 92.2,
-   "tj_c": 79.06,
+   "tj_c": 79.03,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.97,
@@ -864,7 +864,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0036,
-   "margin_k": 46.66,
+   "margin_k": 46.7,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "120@100MHZ",
@@ -874,12 +874,12 @@
    "side": "bottom",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 77.0,
+   "t_board_c": 76.97,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 366.67,
    "theta_jc": null,
-   "tj_c": 78.34,
+   "tj_c": 78.3,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -891,7 +891,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0026,
-   "margin_k": 47.19,
+   "margin_k": 47.2,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "120@100MHZ",
@@ -901,12 +901,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 76.84,
+   "t_board_c": 76.83,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 366.67,
    "theta_jc": null,
-   "tj_c": 77.81,
+   "tj_c": 77.8,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -918,7 +918,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.003,
-   "margin_k": 47.39,
+   "margin_k": 47.44,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "0.01",
@@ -928,12 +928,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 77.2,
+   "t_board_c": 77.16,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 132.0,
    "theta_jc": null,
-   "tj_c": 77.61,
+   "tj_c": 77.56,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -945,7 +945,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0037,
-   "margin_k": 47.51,
+   "margin_k": 47.55,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "0.01",
@@ -955,12 +955,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 77.0,
+   "t_board_c": 76.95,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 132.0,
    "theta_jc": null,
-   "tj_c": 77.49,
+   "tj_c": 77.45,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -972,7 +972,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0008,
-   "margin_k": 47.56,
+   "margin_k": 47.61,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "120@100MHZ",
@@ -982,12 +982,12 @@
    "side": "bottom",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 77.15,
+   "t_board_c": 77.11,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 366.67,
    "theta_jc": null,
-   "tj_c": 77.44,
+   "tj_c": 77.39,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -999,7 +999,7 @@
    "estimate": false,
    "heat_source": "power tree",
    "heat_w": 0.1969,
-   "margin_k": 48.16,
+   "margin_k": 48.13,
    "model": "theta_jb",
    "package_family": "sot",
    "part": "TPS62A02",
@@ -1009,24 +1009,24 @@
    "side": "top",
    "source_document": "TI TPS62A0x datasheet (SLUSEG9E), Thermal Information",
    "status": "ok",
-   "t_board_c": 67.97,
-   "t_case_top_c": 76.64,
+   "t_board_c": 67.99,
+   "t_case_top_c": 76.66,
    "theta_ja": null,
    "theta_jb": 45.6,
    "theta_jc": 92.2,
-   "tj_c": 76.84,
+   "tj_c": 76.87,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.989,
    "under_part": {
     "dt_pad_layer_to_next_k": 1.3,
-    "dt_pad_layer_to_other_side_k": 2.56,
+    "dt_pad_layer_to_other_side_k": 2.55,
     "hint": null,
     "into_board_w": 0.1947,
     "sideways_in_pad_layer_w": 0.1461,
     "thermal_pad": false,
     "through_laminate_w": 0.0076,
-    "through_vias_w": 0.0411,
+    "through_vias_w": 0.041,
     "vias": 3
    }
   },
@@ -1036,7 +1036,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0005,
-   "margin_k": 48.22,
+   "margin_k": 48.25,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "0.01",
@@ -1046,12 +1046,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 76.71,
+   "t_board_c": 76.68,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 132.0,
    "theta_jc": null,
-   "tj_c": 76.78,
+   "tj_c": 76.75,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -1063,7 +1063,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.1155,
-   "margin_k": 48.32,
+   "margin_k": 48.34,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "ADA4930-1YCPZ",
@@ -1073,12 +1073,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 75.17,
-   "t_case_top_c": 76.26,
+   "t_board_c": 75.15,
+   "t_case_top_c": 76.25,
    "theta_ja": null,
    "theta_jb": 14.41,
    "theta_jc": 38.32,
-   "tj_c": 76.68,
+   "tj_c": 76.66,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.906,
@@ -1100,7 +1100,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.1155,
-   "margin_k": 48.76,
+   "margin_k": 48.78,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "ADA4930-1YCPZ",
@@ -1110,12 +1110,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 74.73,
-   "t_case_top_c": 75.83,
+   "t_board_c": 74.71,
+   "t_case_top_c": 75.81,
    "theta_ja": null,
    "theta_jb": 14.41,
    "theta_jc": 38.32,
-   "tj_c": 76.24,
+   "tj_c": 76.22,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.907,
@@ -1124,7 +1124,7 @@
     "dt_pad_layer_to_other_side_k": 1.16,
     "hint": null,
     "into_board_w": 0.1047,
-    "sideways_in_pad_layer_w": 0.0736,
+    "sideways_in_pad_layer_w": 0.0737,
     "thermal_pad": false,
     "through_laminate_w": 0.005,
     "through_vias_w": 0.026,
@@ -1137,7 +1137,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.534,
-   "margin_k": 48.96,
+   "margin_k": 48.97,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "ZL30260LDG1",
@@ -1147,12 +1147,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 72.85,
-   "t_case_top_c": 75.46,
+   "t_board_c": 72.84,
+   "t_case_top_c": 75.45,
    "theta_ja": null,
    "theta_jb": 6.71,
    "theta_jc": 9.85,
-   "tj_c": 76.04,
+   "tj_c": 76.03,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.891,
@@ -1179,8 +1179,8 @@
  "parts_omitted": 33,
  "rails": [
   {
-   "copper_loss_mw_20c": 9.4,
-   "copper_loss_mw_at_temperature": 11.4,
+   "copper_loss_mw_20c": 9.1,
+   "copper_loss_mw_at_temperature": 10.9,
    "copper_max_at": [
     133.83,
     127.75
@@ -1188,11 +1188,11 @@
    "copper_max_layer": "In2.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 10.363,
-   "max_drop_mv_at_temperature": 12.523,
+   "max_drop_mv_20c": 9.983,
+   "max_drop_mv_at_temperature": 12.063,
    "rail": "+5V",
-   "t_copper_max_c": 84.36,
-   "t_copper_mean_c": 72.4
+   "t_copper_max_c": 84.32,
+   "t_copper_mean_c": 72.38
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1204,15 +1204,15 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.189,
-   "max_drop_mv_at_temperature": 0.234,
+   "max_drop_mv_20c": 0.184,
+   "max_drop_mv_at_temperature": 0.228,
    "rail": "/CH4/+VPGA",
-   "t_copper_max_c": 85.06,
-   "t_copper_mean_c": 80.63
+   "t_copper_max_c": 85.02,
+   "t_copper_mean_c": 80.58
   },
   {
-   "copper_loss_mw_20c": 1.6,
-   "copper_loss_mw_at_temperature": 1.9,
+   "copper_loss_mw_20c": 1.5,
+   "copper_loss_mw_at_temperature": 1.8,
    "copper_max_at": [
     183.63,
     67.15
@@ -1220,11 +1220,11 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.595,
-   "max_drop_mv_at_temperature": 1.924,
+   "max_drop_mv_20c": 1.543,
+   "max_drop_mv_at_temperature": 1.86,
    "rail": "/ACQ and FE Voltage Regs/+5V3_R_LDO",
    "t_copper_max_c": 74.13,
-   "t_copper_mean_c": 72.25
+   "t_copper_mean_c": 72.24
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1236,27 +1236,27 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.672,
-   "max_drop_mv_at_temperature": 0.81,
+   "max_drop_mv_20c": 0.691,
+   "max_drop_mv_at_temperature": 0.833,
    "rail": "/FPGA/FPGA Voltage Regs/+1V8_R_LDO",
-   "t_copper_max_c": 73.53,
-   "t_copper_mean_c": 72.33
+   "t_copper_max_c": 73.51,
+   "t_copper_mean_c": 72.32
   },
   {
    "copper_loss_mw_20c": 0.1,
    "copper_loss_mw_at_temperature": 0.1,
    "copper_max_at": [
     154.78,
-    117.41
+    117.36
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.903,
-   "max_drop_mv_at_temperature": 1.087,
+   "max_drop_mv_20c": 0.845,
+   "max_drop_mv_at_temperature": 1.018,
    "rail": "+1V2_MGT",
-   "t_copper_max_c": 73.83,
-   "t_copper_mean_c": 72.05
+   "t_copper_max_c": 73.81,
+   "t_copper_mean_c": 72.03
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1268,11 +1268,11 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.189,
-   "max_drop_mv_at_temperature": 0.235,
+   "max_drop_mv_20c": 0.184,
+   "max_drop_mv_at_temperature": 0.229,
    "rail": "/CH3/+VPGA",
-   "t_copper_max_c": 84.92,
-   "t_copper_mean_c": 81.18
+   "t_copper_max_c": 84.89,
+   "t_copper_mean_c": 81.12
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1285,26 +1285,26 @@
    "error": null,
    "ground_return": false,
    "max_drop_mv_20c": 0.191,
-   "max_drop_mv_at_temperature": 0.231,
+   "max_drop_mv_at_temperature": 0.232,
    "rail": "/FPGA/FPGA Voltage Regs/+1V8_R",
-   "t_copper_max_c": 74.68,
-   "t_copper_mean_c": 74.06
+   "t_copper_max_c": 74.65,
+   "t_copper_mean_c": 74.03
   },
   {
    "copper_loss_mw_20c": 0.3,
    "copper_loss_mw_at_temperature": 0.3,
    "copper_max_at": [
-    149.55,
+    149.5,
     116.01
    ],
    "copper_max_layer": "In2.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.901,
-   "max_drop_mv_at_temperature": 2.298,
+   "max_drop_mv_20c": 1.82,
+   "max_drop_mv_at_temperature": 2.2,
    "rail": "+1V8",
-   "t_copper_max_c": 74.53,
-   "t_copper_mean_c": 73.15
+   "t_copper_max_c": 74.5,
+   "t_copper_mean_c": 73.12
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1319,28 +1319,28 @@
    "max_drop_mv_20c": 0.163,
    "max_drop_mv_at_temperature": 0.195,
    "rail": "/ACQ and FE Voltage Regs/+5V3_R_CP",
-   "t_copper_max_c": 71.27,
-   "t_copper_mean_c": 70.61
+   "t_copper_max_c": 71.26,
+   "t_copper_mean_c": 70.6
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    174.01,
-    65.09
+    174.61,
+    65.29
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.149,
-   "max_drop_mv_at_temperature": 0.179,
+   "max_drop_mv_20c": 0.152,
+   "max_drop_mv_at_temperature": 0.182,
    "rail": "/ACQ and FE Voltage Regs/-5V_R",
-   "t_copper_max_c": 71.36,
-   "t_copper_mean_c": 70.74
+   "t_copper_max_c": 71.61,
+   "t_copper_mean_c": 70.73
   },
   {
    "copper_loss_mw_20c": 0.6,
-   "copper_loss_mw_at_temperature": 0.8,
+   "copper_loss_mw_at_temperature": 0.7,
    "copper_max_at": [
     151.85,
     99.88
@@ -1348,26 +1348,26 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 2.157,
-   "max_drop_mv_at_temperature": 2.646,
+   "max_drop_mv_20c": 2.096,
+   "max_drop_mv_at_temperature": 2.571,
    "rail": "/ACQ and FE Voltage Regs/+2V5_R_ACQ",
-   "t_copper_max_c": 80.24,
-   "t_copper_mean_c": 77.92
+   "t_copper_max_c": 80.19,
+   "t_copper_mean_c": 77.87
   },
   {
-   "copper_loss_mw_20c": 0.7,
+   "copper_loss_mw_20c": 0.6,
    "copper_loss_mw_at_temperature": 0.8,
    "copper_max_at": [
-    152.33,
+    151.83,
     97.73
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.702,
-   "max_drop_mv_at_temperature": 2.084,
+   "max_drop_mv_20c": 1.615,
+   "max_drop_mv_at_temperature": 1.978,
    "rail": "+1V8_ACQ",
-   "t_copper_max_c": 80.95,
+   "t_copper_max_c": 80.9,
    "t_copper_mean_c": 78.13
   },
   {
@@ -1375,32 +1375,32 @@
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
     134.43,
-    72.4
+    72.35
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.005,
+   "max_drop_mv_20c": 0.006,
    "max_drop_mv_at_temperature": 0.007,
    "rail": "/ACQ and FE Voltage Regs/+5V_R_PGA",
-   "t_copper_max_c": 75.36,
-   "t_copper_mean_c": 74.55
+   "t_copper_max_c": 75.34,
+   "t_copper_mean_c": 74.53
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    135.1,
+    135.0,
     129.38
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.039,
-   "max_drop_mv_at_temperature": 0.048,
+   "max_drop_mv_20c": 0.038,
+   "max_drop_mv_at_temperature": 0.046,
    "rail": "+3V3_PGA",
-   "t_copper_max_c": 85.2,
-   "t_copper_mean_c": 76.57
+   "t_copper_max_c": 85.16,
+   "t_copper_mean_c": 76.49
   },
   {
    "copper_loss_mw_20c": 1.2,
@@ -1412,34 +1412,34 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.978,
-   "max_drop_mv_at_temperature": 1.174,
+   "max_drop_mv_20c": 0.982,
+   "max_drop_mv_at_temperature": 1.178,
    "rail": "/TS-USB4 Components/+VUSB_R",
-   "t_copper_max_c": 80.56,
+   "t_copper_max_c": 80.55,
    "t_copper_mean_c": 70.74
   },
   {
    "copper_loss_mw_20c": 5.1,
-   "copper_loss_mw_at_temperature": 6.2,
+   "copper_loss_mw_at_temperature": 6.1,
    "copper_max_at": [
-    191.61,
+    191.56,
     68.92
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 4.345,
-   "max_drop_mv_at_temperature": 5.235,
+   "max_drop_mv_20c": 4.32,
+   "max_drop_mv_at_temperature": 5.206,
    "rail": "+5V3",
-   "t_copper_max_c": 79.4,
-   "t_copper_mean_c": 72.26
+   "t_copper_max_c": 79.39,
+   "t_copper_mean_c": 72.25
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    179.78,
-    111.28
+    179.83,
+    111.23
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
@@ -1447,8 +1447,8 @@
    "max_drop_mv_20c": 0.01,
    "max_drop_mv_at_temperature": 0.012,
    "rail": "/FPGA/FPGA Voltage Regs/+3V3_R",
-   "t_copper_max_c": 67.21,
-   "t_copper_mean_c": 66.04
+   "t_copper_max_c": 67.23,
+   "t_copper_mean_c": 66.07
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1460,15 +1460,15 @@
    "copper_max_layer": "In2.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.129,
-   "max_drop_mv_at_temperature": 0.155,
+   "max_drop_mv_20c": 0.118,
+   "max_drop_mv_at_temperature": 0.142,
    "rail": "+3V3",
-   "t_copper_max_c": 78.33,
-   "t_copper_mean_c": 67.98
+   "t_copper_max_c": 78.28,
+   "t_copper_mean_c": 67.95
   },
   {
-   "copper_loss_mw_20c": 27.2,
-   "copper_loss_mw_at_temperature": 32.7,
+   "copper_loss_mw_20c": 25.6,
+   "copper_loss_mw_at_temperature": 30.7,
    "copper_max_at": [
     139.31,
     137.62
@@ -1476,11 +1476,11 @@
    "copper_max_layer": "B.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 14.143,
-   "max_drop_mv_at_temperature": 16.934,
+   "max_drop_mv_20c": 13.343,
+   "max_drop_mv_at_temperature": 15.979,
    "rail": "+VUSB",
-   "t_copper_max_c": 83.37,
-   "t_copper_mean_c": 70.91
+   "t_copper_max_c": 83.35,
+   "t_copper_mean_c": 70.97
   },
   {
    "copper_loss_mw_20c": 0.1,
@@ -1492,27 +1492,27 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.251,
-   "max_drop_mv_at_temperature": 0.308,
+   "max_drop_mv_20c": 0.247,
+   "max_drop_mv_at_temperature": 0.303,
    "rail": "/ACQ and FE Voltage Regs/+VUSB_R_ACQ",
-   "t_copper_max_c": 80.6,
-   "t_copper_mean_c": 77.92
+   "t_copper_max_c": 80.56,
+   "t_copper_mean_c": 77.9
   },
   {
    "copper_loss_mw_20c": 0.3,
-   "copper_loss_mw_at_temperature": 0.4,
+   "copper_loss_mw_at_temperature": 0.3,
    "copper_max_at": [
-    156.27,
-    92.33
+    155.42,
+    92.73
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.62,
-   "max_drop_mv_at_temperature": 1.968,
+   "max_drop_mv_20c": 1.561,
+   "max_drop_mv_at_temperature": 1.896,
    "rail": "+3V3_ACQ",
-   "t_copper_max_c": 79.94,
-   "t_copper_mean_c": 74.96
+   "t_copper_max_c": 79.99,
+   "t_copper_mean_c": 74.9
   },
   {
    "copper_loss_mw_20c": 0.1,
@@ -1524,11 +1524,11 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.171,
-   "max_drop_mv_at_temperature": 0.21,
+   "max_drop_mv_20c": 0.168,
+   "max_drop_mv_at_temperature": 0.206,
    "rail": "/FPGA/FPGA Voltage Regs/+2V5_R",
-   "t_copper_max_c": 77.15,
-   "t_copper_mean_c": 76.86
+   "t_copper_max_c": 77.1,
+   "t_copper_mean_c": 76.82
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1540,31 +1540,31 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.189,
-   "max_drop_mv_at_temperature": 0.234,
+   "max_drop_mv_20c": 0.184,
+   "max_drop_mv_at_temperature": 0.228,
    "rail": "/CH1/+VPGA",
-   "t_copper_max_c": 83.61,
-   "t_copper_mean_c": 79.67
+   "t_copper_max_c": 83.58,
+   "t_copper_mean_c": 79.66
   },
   {
    "copper_loss_mw_20c": 0.1,
    "copper_loss_mw_at_temperature": 0.1,
    "copper_max_at": [
-    179.85,
+    179.8,
     121.07
    ],
    "copper_max_layer": "B.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.19,
-   "max_drop_mv_at_temperature": 0.223,
+   "max_drop_mv_20c": 0.188,
+   "max_drop_mv_at_temperature": 0.22,
    "rail": "/FPGA/FPGA Voltage Regs/+1V0_R",
-   "t_copper_max_c": 66.54,
-   "t_copper_mean_c": 63.75
+   "t_copper_max_c": 66.6,
+   "t_copper_mean_c": 63.78
   },
   {
-   "copper_loss_mw_20c": 2.6,
-   "copper_loss_mw_at_temperature": 3.1,
+   "copper_loss_mw_20c": 2.5,
+   "copper_loss_mw_at_temperature": 2.9,
    "copper_max_at": [
     169.6,
     115.71
@@ -1572,15 +1572,15 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 3.514,
-   "max_drop_mv_at_temperature": 4.162,
+   "max_drop_mv_20c": 3.317,
+   "max_drop_mv_at_temperature": 3.928,
    "rail": "+1V0",
-   "t_copper_max_c": 74.28,
-   "t_copper_mean_c": 66.61
+   "t_copper_max_c": 74.24,
+   "t_copper_mean_c": 66.63
   },
   {
    "copper_loss_mw_20c": 1.9,
-   "copper_loss_mw_at_temperature": 2.3,
+   "copper_loss_mw_at_temperature": 2.2,
    "copper_max_at": [
     141.63,
     141.73
@@ -1588,11 +1588,11 @@
    "copper_max_layer": "B.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.813,
-   "max_drop_mv_at_temperature": 2.193,
+   "max_drop_mv_20c": 1.781,
+   "max_drop_mv_at_temperature": 2.154,
    "rail": "/TS-PCIe Components/+12V_PCIe",
-   "t_copper_max_c": 74.54,
-   "t_copper_mean_c": 73.29
+   "t_copper_max_c": 74.51,
+   "t_copper_mean_c": 73.27
   },
   {
    "copper_loss_mw_20c": 0.3,
@@ -1604,11 +1604,11 @@
    "copper_max_layer": "In2.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.557,
-   "max_drop_mv_at_temperature": 0.682,
+   "max_drop_mv_20c": 0.507,
+   "max_drop_mv_at_temperature": 0.621,
    "rail": "+2V5",
-   "t_copper_max_c": 79.12,
-   "t_copper_mean_c": 77.24
+   "t_copper_max_c": 79.07,
+   "t_copper_mean_c": 77.19
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1620,27 +1620,27 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.189,
-   "max_drop_mv_at_temperature": 0.234,
+   "max_drop_mv_20c": 0.184,
+   "max_drop_mv_at_temperature": 0.228,
    "rail": "/CH2/+VPGA",
-   "t_copper_max_c": 84.2,
-   "t_copper_mean_c": 80.59
+   "t_copper_max_c": 84.17,
+   "t_copper_mean_c": 80.54
   },
   {
    "copper_loss_mw_20c": 0.7,
-   "copper_loss_mw_at_temperature": 0.9,
+   "copper_loss_mw_at_temperature": 0.8,
    "copper_max_at": [
-    126.8,
+    126.7,
     105.55
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 5.299,
-   "max_drop_mv_at_temperature": 6.376,
+   "max_drop_mv_20c": 4.977,
+   "max_drop_mv_at_temperature": 5.989,
    "rail": "-5V",
-   "t_copper_max_c": 76.75,
-   "t_copper_mean_c": 71.71
+   "t_copper_max_c": 76.73,
+   "t_copper_mean_c": 71.7
   },
   {
    "copper_loss_mw_20c": 1.8,
@@ -1652,26 +1652,26 @@
    "copper_max_layer": "B.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.747,
-   "max_drop_mv_at_temperature": 2.136,
+   "max_drop_mv_20c": 1.753,
+   "max_drop_mv_at_temperature": 2.144,
    "rail": "/TS-PCIe Components/+12V_PCIe_R",
-   "t_copper_max_c": 80.43,
-   "t_copper_mean_c": 76.66
+   "t_copper_max_c": 80.4,
+   "t_copper_mean_c": 76.63
   },
   {
    "copper_loss_mw_20c": 0.2,
-   "copper_loss_mw_at_temperature": 0.3,
+   "copper_loss_mw_at_temperature": 0.2,
    "copper_max_at": [
     160.2,
-    92.43
+    92.38
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.071,
-   "max_drop_mv_at_temperature": 1.309,
+   "max_drop_mv_20c": 0.977,
+   "max_drop_mv_at_temperature": 1.194,
    "rail": "/ADC/+1V8A",
-   "t_copper_max_c": 78.98,
+   "t_copper_max_c": 78.93,
    "t_copper_mean_c": 76.89
   },
   {
@@ -1684,47 +1684,47 @@
    "copper_max_layer": "In2.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.315,
-   "max_drop_mv_at_temperature": 0.38,
+   "max_drop_mv_20c": 0.278,
+   "max_drop_mv_at_temperature": 0.336,
    "rail": "+1V8APLL",
-   "t_copper_max_c": 74.69,
-   "t_copper_mean_c": 72.82
+   "t_copper_max_c": 74.67,
+   "t_copper_mean_c": 72.83
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
     160.2,
-    95.43
+    95.38
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.452,
-   "max_drop_mv_at_temperature": 0.552,
+   "max_drop_mv_20c": 0.394,
+   "max_drop_mv_at_temperature": 0.481,
    "rail": "/ADC/+1V8D",
-   "t_copper_max_c": 79.47,
-   "t_copper_mean_c": 76.89
+   "t_copper_max_c": 79.42,
+   "t_copper_mean_c": 76.91
   },
   {
    "copper_loss_mw_20c": 0.0,
-   "copper_loss_mw_at_temperature": 0.1,
+   "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    166.25,
-    120.91
+    165.65,
+    120.41
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.273,
-   "max_drop_mv_at_temperature": 0.33,
+   "max_drop_mv_20c": 0.241,
+   "max_drop_mv_at_temperature": 0.291,
    "rail": "+1V0_MGT",
-   "t_copper_max_c": 73.19,
-   "t_copper_mean_c": 72.42
+   "t_copper_max_c": 73.0,
+   "t_copper_mean_c": 72.37
   },
   {
-   "copper_loss_mw_20c": 1.3,
-   "copper_loss_mw_at_temperature": 1.6,
+   "copper_loss_mw_20c": 1.2,
+   "copper_loss_mw_at_temperature": 1.4,
    "copper_max_at": [
     134.55,
     127.37
@@ -1732,11 +1732,11 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": true,
-   "max_drop_mv_20c": 0.583,
-   "max_drop_mv_at_temperature": 0.698,
+   "max_drop_mv_20c": 0.529,
+   "max_drop_mv_at_temperature": 0.635,
    "rail": "GND",
-   "t_copper_max_c": 87.83,
-   "t_copper_mean_c": 71.69
+   "t_copper_max_c": 87.78,
+   "t_copper_mean_c": 71.81
   }
  ],
  "summary": {
@@ -1748,16 +1748,16 @@
    "estimate": true,
    "part": "NCP161ASN330T1G",
    "ref": "U9",
-   "tj_c": 109.88,
+   "tj_c": 109.84,
    "tj_max_c": 125.0
   },
-  "ir_drop_increase_max_mv": 2.79,
+  "ir_drop_increase_max_mv": 2.635,
   "layer": "F.Cu",
   "parts_over_tj_max": [],
   "parts_within_10k_of_tj_max": [
    "U18"
   ],
-  "t_board_max_c": 87.83
+  "t_board_max_c": 87.78
  },
  "tree_source": "PI_REG fields",
  "variant": {
@@ -1828,12 +1828,12 @@
      67.33
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.59,
+    "dt_k": 7.58,
     "from": "F.Cu",
-    "heat_w": 0.066814,
+    "heat_w": 0.066698,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 84.63,
+    "t_c": 84.6,
     "to": "B.Cu"
    },
    {
@@ -1842,12 +1842,12 @@
      126.83
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.65,
+    "dt_k": 7.64,
     "from": "F.Cu",
-    "heat_w": 0.066296,
+    "heat_w": 0.066169,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 86.07,
+    "t_c": 86.03,
     "to": "B.Cu"
    },
    {
@@ -1856,12 +1856,12 @@
      87.83
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.38,
+    "dt_k": 7.37,
     "from": "F.Cu",
-    "heat_w": 0.062413,
+    "heat_w": 0.062303,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.54,
+    "t_c": 85.5,
     "to": "B.Cu"
    },
    {
@@ -1870,12 +1870,12 @@
      126.83
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.73,
+    "dt_k": 7.72,
     "from": "F.Cu",
-    "heat_w": 0.061145,
+    "heat_w": 0.061088,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 86.17,
+    "t_c": 86.14,
     "to": "B.Cu"
    },
    {
@@ -1884,12 +1884,12 @@
      106.33
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.26,
+    "dt_k": 7.24,
     "from": "F.Cu",
-    "heat_w": 0.06104,
+    "heat_w": 0.06092,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.61,
+    "t_c": 85.57,
     "to": "B.Cu"
    },
    {
@@ -1898,12 +1898,12 @@
      67.33
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.62,
+    "dt_k": 7.61,
     "from": "F.Cu",
-    "heat_w": 0.06055,
+    "heat_w": 0.060504,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 84.91,
+    "t_c": 84.88,
     "to": "B.Cu"
    },
    {
@@ -1914,10 +1914,10 @@
     "drill_mm": 0.2032,
     "dt_k": 7.34,
     "from": "F.Cu",
-    "heat_w": 0.058833,
+    "heat_w": 0.058783,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.56,
+    "t_c": 85.52,
     "to": "B.Cu"
    },
    {
@@ -1926,12 +1926,12 @@
      87.83
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.48,
+    "dt_k": 7.47,
     "from": "F.Cu",
-    "heat_w": 0.058704,
+    "heat_w": 0.058662,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.76,
+    "t_c": 85.72,
     "to": "B.Cu"
    },
    {
@@ -1940,12 +1940,12 @@
      66.33
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.64,
+    "dt_k": 7.63,
     "from": "F.Cu",
-    "heat_w": 0.058225,
+    "heat_w": 0.058077,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 84.89,
+    "t_c": 84.85,
     "to": "B.Cu"
    },
    {
@@ -1956,10 +1956,10 @@
     "drill_mm": 0.2032,
     "dt_k": 7.19,
     "from": "F.Cu",
-    "heat_w": 0.058112,
+    "heat_w": 0.058074,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 84.33,
+    "t_c": 84.31,
     "to": "B.Cu"
    },
    {
@@ -1968,12 +1968,12 @@
      65.33
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.21,
+    "dt_k": 7.2,
     "from": "F.Cu",
-    "heat_w": 0.057905,
+    "heat_w": 0.057804,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 84.29,
+    "t_c": 84.26,
     "to": "B.Cu"
    },
    {
@@ -1982,12 +1982,12 @@
      106.33
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.43,
+    "dt_k": 7.42,
     "from": "F.Cu",
-    "heat_w": 0.057671,
+    "heat_w": 0.057622,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.84,
+    "t_c": 85.8,
     "to": "B.Cu"
    },
    {
@@ -1996,12 +1996,12 @@
      127.83
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.49,
+    "dt_k": 7.48,
     "from": "F.Cu",
-    "heat_w": 0.057416,
+    "heat_w": 0.057229,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 86.39,
+    "t_c": 86.34,
     "to": "B.Cu"
    },
    {
@@ -2010,12 +2010,12 @@
      86.83
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.45,
+    "dt_k": 7.44,
     "from": "F.Cu",
-    "heat_w": 0.057191,
+    "heat_w": 0.05707,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.72,
+    "t_c": 85.68,
     "to": "B.Cu"
    },
    {
@@ -2024,12 +2024,12 @@
      107.33
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.38,
+    "dt_k": 7.36,
     "from": "F.Cu",
-    "heat_w": 0.056928,
+    "heat_w": 0.05675,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 86.01,
+    "t_c": 85.96,
     "to": "B.Cu"
    },
    {
@@ -2038,12 +2038,12 @@
      128.83
     ],
     "drill_mm": 0.2032,
-    "dt_k": 7.03,
+    "dt_k": 7.01,
     "from": "F.Cu",
-    "heat_w": 0.05677,
+    "heat_w": 0.056637,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.92,
+    "t_c": 85.87,
     "to": "B.Cu"
    },
    {
@@ -2054,10 +2054,10 @@
     "drill_mm": 0.2032,
     "dt_k": 6.99,
     "from": "F.Cu",
-    "heat_w": 0.054888,
+    "heat_w": 0.054852,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.09,
+    "t_c": 85.06,
     "to": "B.Cu"
    },
    {
@@ -2066,12 +2066,12 @@
      85.83
     ],
     "drill_mm": 0.2032,
-    "dt_k": 6.97,
+    "dt_k": 6.96,
     "from": "F.Cu",
-    "heat_w": 0.054656,
+    "heat_w": 0.054576,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.03,
+    "t_c": 84.99,
     "to": "B.Cu"
    },
    {
@@ -2090,16 +2090,16 @@
    },
    {
     "at": [
-     135.38,
-     108.33
+     133.38,
+     106.33
     ],
     "drill_mm": 0.2032,
-    "dt_k": 6.9,
+    "dt_k": 6.97,
     "from": "F.Cu",
-    "heat_w": 0.054177,
+    "heat_w": 0.054073,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 85.4,
+    "t_c": 85.14,
     "to": "B.Cu"
    }
   ],

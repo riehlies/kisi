@@ -1176,6 +1176,53 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
             no_ref * 100 / ncell
         ));
     }
+    // vias and plated holes of the domain nets, their contact node on a layer: the cell at the hole, else a
+    // neighbour (a pour around a via with thermal relief can leave the centre cell empty)
+    let mut holes: Vec<(usize, P, f64, u16, u16)> =
+        board.vias.iter().filter_map(|v| dom_idx.get(&v.net).map(|&ni| (ni, v.at, v.drill, v.from, v.to))).collect();
+    for q in board.pads.iter().filter(|q| q.drill > 0.0 && q.layers.len() > 1) {
+        if let Some(&ni) = dom_idx.get(&q.net) {
+            holes.push((ni, q.at, q.drill, *q.layers.iter().min().unwrap(), *q.layers.iter().max().unwrap()));
+        }
+    }
+    let node_at = |ni: usize, l: usize, at: P| -> Option<u32> {
+        let (ci, cj) = g.cell_of(at)?;
+        let m = &node_of[ni][l];
+        let mut best: Option<(i64, u32)> = None;
+        for dj in -1i64..=1 {
+            for di in -1i64..=1 {
+                let (x, y) = (ci as i64 + di, cj as i64 + dj);
+                if x < 0 || y < 0 || x >= g.nx as i64 || y >= g.ny as i64 {
+                    continue;
+                }
+                let n = m[y as usize * g.nx + x as usize];
+                let d = di * di + dj * dj;
+                if n != u32::MAX && best.is_none_or(|b| d < b.0) {
+                    best = Some((d, n));
+                }
+            }
+        }
+        best.map(|b| b.1)
+    };
+    // the barrel's contact as in the DC solver (`pi`): Peaceman's factor on the contact cell's sheet links
+    // (R and L spread from the barrel alike), a barrel larger than 0.7 cell as a disc of shorted cells
+    let mut pfac = vec![1f32; ncell];
+    for &(ni, at, drill, from, to) in &holes {
+        let r = drill / 2.0;
+        for l in (from as usize..=(to as usize).min(ncu - 1)).filter(|&l| used_n[ni][l]) {
+            let Some(n) = node_at(ni, l, at) else { continue };
+            if r < 0.7 * cell {
+                pfac[n as usize] = crate::pi::combine(pfac[n as usize], crate::pi::peaceman_factor(r, cell));
+            } else {
+                for k in g.near(at, r + 0.35 * cell) {
+                    let m = node_of[ni][l][k];
+                    if m != u32::MAX && m != n {
+                        model.links.push((n as usize, m as usize, Link::Short));
+                    }
+                }
+            }
+        }
+    }
     // in-layer links
     for ni in 0..nd {
         for l in (0..ncu).filter(|&l| used_n[ni][l]) {
@@ -1196,8 +1243,9 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
                             continue;
                         }
                         let (a, b) = (wl[k] as f64, wl[k2] as f64);
-                        let wf = 2.0 * a * b / (a + b);
                         let (na, nb) = (m[k] as usize, m[k2] as usize);
+                        let f = crate::pi::combine(pfac[na], pfac[nb]);
+                        let wf = 2.0 * a * b / (a + b) * if f != 1.0 && a >= 1.0 && b >= 1.0 { f as f64 } else { 1.0 };
                         let d_m = 0.5 * (d_eff[na] + d_eff[nb]) * 1e-3;
                         model.links.push((na, nb, Link::Sheet { t_m, d_m, wf }));
                     }
@@ -1216,38 +1264,10 @@ pub fn pdn_ic(board: &Board, setup: &RailSetup, others: &[RailSetup], p: &PdnPar
     let near_gnd_via = |at: P| -> Option<f64> {
         gnd_vias.iter().map(|q| geom::len(geom::sub(*q, at))).filter(|&d| d < 3.0).min_by(|a, b| a.total_cmp(b))
     };
-    let mut holes: Vec<(usize, P, f64, u16, u16)> =
-        board.vias.iter().filter_map(|v| dom_idx.get(&v.net).map(|&ni| (ni, v.at, v.drill, v.from, v.to))).collect();
-    for q in board.pads.iter().filter(|q| q.drill > 0.0 && q.layers.len() > 1) {
-        if let Some(&ni) = dom_idx.get(&q.net) {
-            holes.push((ni, q.at, q.drill, *q.layers.iter().min().unwrap(), *q.layers.iter().max().unwrap()));
-        }
-    }
     for &(ni, at, drill, from, to) in &holes {
-        let Some((ci, cj)) = g.cell_of(at) else { continue };
-        // the node of the net on a layer at the hole: its cell, else a neighbour (a pour around
-        // a via with thermal relief can leave the centre cell empty)
-        let node_at = |l: usize| -> Option<u32> {
-            let m = &node_of[ni][l];
-            let mut best: Option<(i64, u32)> = None;
-            for dj in -1i64..=1 {
-                for di in -1i64..=1 {
-                    let (x, y) = (ci as i64 + di, cj as i64 + dj);
-                    if x < 0 || y < 0 || x >= g.nx as i64 || y >= g.ny as i64 {
-                        continue;
-                    }
-                    let n = m[y as usize * g.nx + x as usize];
-                    let d = di * di + dj * dj;
-                    if n != u32::MAX && best.is_none_or(|b| d < b.0) {
-                        best = Some((d, n));
-                    }
-                }
-            }
-            best.map(|b| b.1)
-        };
         let on: Vec<(usize, u32)> = (0..ncu)
             .filter(|&l| used_n[ni][l] && l as u16 >= from && l as u16 <= to)
-            .filter_map(|l| node_at(l).map(|n| (l, n)))
+            .filter_map(|l| node_at(ni, l, at).map(|n| (l, n)))
             .collect();
         let r = (drill / 2.0).max(0.05);
         let s = near_gnd_via(at).unwrap_or(1.5).clamp(2.0 * r + 0.1, 3.0);
@@ -2357,6 +2377,52 @@ mod grid_tests {
         }
         for pk in &p2.peaks {
             eprintln!("peak {:.2} MHz {:.1} mΩ: {}", pk.f / 1e6, pk.z * 1e3, pk.note);
+        }
+    }
+
+    /// Two vias (0.3 mm drill) 19.5 mm apart in a +3V3 pour over a GND plane (0.2 mm), the IC's and the
+    /// capacitor's pads on B.Cu: the path inductance is the two barrels' links plus the pour's spreading
+    /// inductance between two discs of the barrel radius, μ0·d per square × the sheet's resistance per Ω/□
+    /// (images for the edges). The contact correction keeps it at any cell (without it the barrels are 0.198 cell
+    /// discs: −2 % at 1.25 mm, +4 % at 0.3 mm).
+    #[test]
+    fn via_contacts_in_a_plane() {
+        let pcb = r#"(kicad_pcb (version 20240108) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (1 "In1.Cu" signal) (31 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "prepreg") (thickness 0.2) (material "FR4") (epsilon_r 4.3) (loss_tangent 0.02))
+    (layer "In1.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 2" (type "core") (thickness 1.2) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "+3V3") (net 2 "GND")
+  (footprint "U" (layer "B.Cu") (at 10 15) (property "Reference" "U1") (property "Value" "FPGA") (property "PI_LOAD" "+3V3=1A")
+    (pad "1" smd rect (at 0 0) (size 0.4 0.4) (layers "B.Cu") (net 1 "+3V3")))
+  (footprint "U" (layer "F.Cu") (at 2 3) (property "Reference" "U2") (property "Value" "REG") (property "PI_SOURCE" "+3V3=3.3V")
+    (pad "1" smd rect (at 0 0) (size 1 1) (layers "F.Cu") (net 1 "+3V3")))
+  (footprint "C" (layer "B.Cu") (at 30 15) (property "Reference" "C1") (property "Value" "10uF 6.3V X5R")
+    (pad "1" smd rect (at -0.5 0) (size 0.4 0.4) (layers "B.Cu") (net 1 "+3V3"))
+    (pad "2" smd rect (at 0.5 0) (size 0.4 0.4) (layers "B.Cu") (net 2 "GND")))
+  (via (at 10 15) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))
+  (via (at 29.5 15) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))
+  (zone (net 1) (net_name "+3V3") (layer "F.Cu") (filled_polygon (layer "F.Cu") (pts (xy 0 0) (xy 40 0) (xy 40 30) (xy 0 30))))
+  (zone (net 2) (net_name "GND") (layer "In1.Cu") (filled_polygon (layer "In1.Cu") (pts (xy 0 0) (xy 40 0) (xy 40 30) (xy 0 30)))))"#;
+        let b = crate::load_pcb(pcb).unwrap();
+        let s = RailSetup {
+            net: "+3V3".into(),
+            voltage: 3.3,
+            sources: vec![SourceSpec { refdes: "U2".into(), pads: vec![] }],
+            loads: vec![LoadSpec { refdes: "U1".into(), current: 1.0, pads: vec![], origin: "field".into() }],
+            ground: false,
+        };
+        let l_via = MU0 * 1.435e-3 / (2.0 * PI) * (1.5f64 / 0.15).ln();
+        let expect = 2.0 * l_via + MU0 * 0.2e-3 * crate::pi::sheet_pair(40.0, 30.0, 10.0, 29.5, 15.0, 0.15);
+        for cells in [1200, 4800, 19200] {
+            let r = pdn_ic(&b, &s, &[], &PdnParams { ic_cells: cells, ..Default::default() }).unwrap();
+            let l = r.ports[0].caps.iter().find(|l| l.refdes == "C1").unwrap().l_path;
+            let e = l / expect - 1.0;
+            eprintln!("cell {} mm: {:.1} pH vs {:.1} pH ({:+.2} %)", r.cell_mm, l * 1e12, expect * 1e12, e * 100.0);
+            assert!(e.abs() < 0.015, "cell {} mm: {:+.2} %", r.cell_mm, e * 100.0);
         }
     }
 

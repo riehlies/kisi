@@ -10,36 +10,36 @@
   "per_layer": [
    {
     "layer": "F.Cu",
-    "t_max_c": 56.03,
-    "t_mean_c": 44.74
+    "t_max_c": 56.02,
+    "t_mean_c": 44.73
    },
    {
     "layer": "In1.Cu",
     "t_max_c": 54.15,
-    "t_mean_c": 44.73
+    "t_mean_c": 44.72
    },
    {
     "layer": "In2.Cu",
     "t_max_c": 52.77,
-    "t_mean_c": 44.69
+    "t_mean_c": 44.68
    },
    {
     "layer": "In3.Cu",
     "t_max_c": 52.22,
-    "t_mean_c": 44.67
+    "t_mean_c": 44.66
    },
    {
     "layer": "In4.Cu",
     "t_max_c": 51.46,
-    "t_mean_c": 44.62
+    "t_mean_c": 44.61
    },
    {
     "layer": "B.Cu",
     "t_max_c": 51.17,
-    "t_mean_c": 44.58
+    "t_mean_c": 44.57
    }
   ],
-  "t_max_c": 56.03
+  "t_max_c": 56.02
  },
  "config": {
   "entries": 120,
@@ -59,10 +59,10 @@
   "source": "estimate: natural (or forced) convection from flat-plate correlations and linearised radiation (emissivity 0.9) at the board's mean temperature rise, data/thermal.json"
  },
  "energy_balance": {
-  "convection_w": 2.733,
+  "convection_w": 2.732,
   "error_rel": 0.0,
-  "in_w": 5.6936,
-  "radiation_w": 2.9606
+  "in_w": 5.6916,
+  "radiation_w": 2.9596
  },
  "estimate": "Temperatures are estimates: steady state, board in air at the ambient temperature, heat only through convection and radiation; package data from PI_THERMAL or estimated package defaults (see parts[].data_source).",
  "grid": {
@@ -72,9 +72,9 @@
   "nodes": 198606
  },
  "heat_w": {
-  "copper": 0.0315,
+  "copper": 0.0295,
   "parts": 5.6621,
-  "total": 5.6936
+  "total": 5.6916
  },
  "hot_spots": [
   {
@@ -84,7 +84,7 @@
    ],
    "layer": "F.Cu",
    "near": "IC29",
-   "t_c": 56.03
+   "t_c": 56.02
   },
   {
    "at": [
@@ -111,7 +111,7 @@
    ],
    "layer": "F.Cu",
    "near": "IC1",
-   "t_c": 54.02
+   "t_c": 54.01
   },
   {
    "at": [
@@ -129,7 +129,7 @@
    ],
    "layer": "F.Cu",
    "near": "IC6",
-   "t_c": 51.89
+   "t_c": 51.88
   },
   {
    "at": [
@@ -164,7 +164,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.5658,
-   "margin_k": 62.76,
+   "margin_k": 62.77,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "MIC2253",
@@ -174,12 +174,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 53.01,
-   "t_case_top_c": 62.0,
+   "t_board_c": 53.0,
+   "t_case_top_c": 61.99,
    "theta_ja": null,
    "theta_jb": 16.47,
    "theta_jc": 48.59,
-   "tj_c": 62.24,
+   "tj_c": 62.23,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.991,
@@ -211,8 +211,8 @@
    "side": "top",
    "source_document": "ADL5801 datasheet, Absolute Maximum Ratings",
    "status": "ok",
-   "t_board_c": 54.81,
-   "t_case_top_c": 61.95,
+   "t_board_c": 54.8,
+   "t_case_top_c": 61.94,
    "theta_ja": null,
    "theta_jb": 11.62,
    "theta_jc": 26.13,
@@ -238,7 +238,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.65,
-   "margin_k": 88.81,
+   "margin_k": 88.82,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "ADL5801",
@@ -253,7 +253,7 @@
    "theta_ja": null,
    "theta_jb": 11.62,
    "theta_jc": 26.13,
-   "tj_c": 61.19,
+   "tj_c": 61.18,
    "tj_max_c": 150.0,
    "tj_max_source": "PI_THERMAL (datasheet: maximum junction temperature 150 °C; the datasheet gives θJA 26.5 °C/W (evaluation board, paddle soldered) and θJC 8.7 °C/W at the exposed paddle but no θJB, so θ stays the QFN package default)",
    "to_board_share": 0.984,
@@ -323,7 +323,7 @@
    "source_document": "MAX2871 datasheet, Absolute Maximum Ratings and package thermal characteristics",
    "status": "ok",
    "t_board_c": 51.74,
-   "t_case_top_c": 55.83,
+   "t_case_top_c": 55.82,
    "theta_ja": null,
    "theta_jb": 9.69,
    "theta_jc": 18.93,
@@ -386,7 +386,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0199,
-   "margin_k": 69.31,
+   "margin_k": 69.32,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "FERRITE",
@@ -396,12 +396,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 49.12,
+   "t_board_c": 49.11,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 330.53,
    "theta_jc": null,
-   "tj_c": 55.69,
+   "tj_c": 55.68,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -413,7 +413,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0855,
-   "margin_k": 69.91,
+   "margin_k": 69.92,
    "model": "theta_jb",
    "package_family": "sot",
    "part": "NCP702-3.3",
@@ -424,11 +424,11 @@
    "source_document": null,
    "status": "ok",
    "t_board_c": 48.53,
-   "t_case_top_c": 54.77,
+   "t_case_top_c": 54.76,
    "theta_ja": null,
    "theta_jb": 80.0,
    "theta_jc": 90.0,
-   "tj_c": 55.09,
+   "tj_c": 55.08,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.958,
@@ -440,7 +440,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0857,
-   "margin_k": 71.08,
+   "margin_k": 71.09,
    "model": "theta_jb",
    "package_family": "sot",
    "part": "NCP702-3.3",
@@ -451,11 +451,11 @@
    "source_document": null,
    "status": "ok",
    "t_board_c": 47.33,
-   "t_case_top_c": 53.61,
+   "t_case_top_c": 53.6,
    "theta_ja": null,
    "theta_jb": 80.0,
    "theta_jc": 90.0,
-   "tj_c": 53.92,
+   "tj_c": 53.91,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.96,
@@ -467,7 +467,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.462,
-   "margin_k": 96.49,
+   "margin_k": 96.5,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "MAX2871",
@@ -482,7 +482,7 @@
    "theta_ja": null,
    "theta_jb": 9.69,
    "theta_jc": 18.93,
-   "tj_c": 53.51,
+   "tj_c": 53.5,
    "tj_max_c": 150.0,
    "tj_max_source": "PI_THERMAL (datasheet: maximum junction temperature 150 °C; θJA 29 °C/W (JESD51-7) and θJC 1.7 °C/W (exposed pad) but no θJB, so θ stays the QFN package default)",
    "to_board_share": 0.973,
@@ -514,7 +514,7 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 48.76,
+   "t_board_c": 48.75,
    "t_case_top_c": 52.74,
    "theta_ja": null,
    "theta_jb": 23.06,
@@ -541,7 +541,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.15,
-   "margin_k": 72.68,
+   "margin_k": 72.69,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "LDL212PU50R",
@@ -551,12 +551,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 49.59,
+   "t_board_c": 49.58,
    "t_case_top_c": 52.15,
    "theta_ja": null,
    "theta_jb": 18.58,
    "theta_jc": 60.23,
-   "tj_c": 52.32,
+   "tj_c": 52.31,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.981,
@@ -589,7 +589,7 @@
    "source_document": null,
    "status": "ok",
    "t_board_c": 48.75,
-   "t_case_top_c": 51.33,
+   "t_case_top_c": 51.32,
    "theta_ja": null,
    "theta_jb": 18.58,
    "theta_jc": 60.23,
@@ -615,7 +615,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.1472,
-   "margin_k": 73.85,
+   "margin_k": 73.86,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "SI5351C",
@@ -625,12 +625,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 49.53,
-   "t_case_top_c": 50.95,
+   "t_board_c": 49.52,
+   "t_case_top_c": 50.94,
    "theta_ja": null,
    "theta_jb": 11.62,
    "theta_jc": 26.13,
-   "tj_c": 51.15,
+   "tj_c": 51.14,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.948,
@@ -642,7 +642,7 @@
     "sideways_in_pad_layer_w": 0.0737,
     "thermal_pad": true,
     "through_laminate_w": 0.0059,
-    "through_vias_w": 0.06,
+    "through_vias_w": 0.0601,
     "vias": 9
    }
   },
@@ -652,7 +652,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0073,
-   "margin_k": 74.58,
+   "margin_k": 74.59,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "FERRITE",
@@ -662,12 +662,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 48.0,
+   "t_board_c": 47.99,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 330.53,
    "theta_jc": null,
-   "tj_c": 50.42,
+   "tj_c": 50.41,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -733,7 +733,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.067,
-   "margin_k": 75.52,
+   "margin_k": 75.53,
    "model": "theta_jb",
    "package_family": "qfn",
    "part": "LT5560",
@@ -748,7 +748,7 @@
    "theta_ja": null,
    "theta_jb": 17.4,
    "theta_jc": 53.6,
-   "tj_c": 49.48,
+   "tj_c": 49.47,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 0.957,
@@ -770,7 +770,7 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 48.3,
+   "t_board_c": 48.29,
    "t_case_top_c": 48.76,
    "theta_ja": null,
    "theta_jb": 11.31,
@@ -808,7 +808,7 @@
    "source_document": null,
    "status": "ok",
    "t_board_c": 48.1,
-   "t_case_top_c": 48.58,
+   "t_case_top_c": 48.57,
    "theta_ja": null,
    "theta_jb": 11.31,
    "theta_jc": 44.5,
@@ -834,7 +834,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0017,
-   "margin_k": 75.74,
+   "margin_k": 75.75,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "FERRITE",
@@ -844,12 +844,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 48.71,
+   "t_board_c": 48.7,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 330.53,
    "theta_jc": null,
-   "tj_c": 49.26,
+   "tj_c": 49.25,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -861,7 +861,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0012,
-   "margin_k": 76.0,
+   "margin_k": 76.01,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "FERRITE",
@@ -876,7 +876,7 @@
    "theta_ja": null,
    "theta_jb": 330.53,
    "theta_jc": null,
-   "tj_c": 49.0,
+   "tj_c": 48.99,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -888,7 +888,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0001,
-   "margin_k": 76.05,
+   "margin_k": 76.06,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "FERRITE",
@@ -903,7 +903,7 @@
    "theta_ja": null,
    "theta_jb": 330.53,
    "theta_jc": null,
-   "tj_c": 48.95,
+   "tj_c": 48.94,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -926,7 +926,7 @@
    "source_document": null,
    "status": "ok",
    "t_board_c": 47.79,
-   "t_case_top_c": 48.76,
+   "t_case_top_c": 48.75,
    "theta_ja": null,
    "theta_jb": 17.4,
    "theta_jc": 53.6,
@@ -942,7 +942,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0017,
-   "margin_k": 76.31,
+   "margin_k": 76.32,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "FERRITE",
@@ -952,12 +952,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 48.14,
+   "t_board_c": 48.13,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 330.53,
    "theta_jc": null,
-   "tj_c": 48.69,
+   "tj_c": 48.68,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -1023,7 +1023,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0001,
-   "margin_k": 76.86,
+   "margin_k": 76.87,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "FERRITE",
@@ -1038,7 +1038,7 @@
    "theta_ja": null,
    "theta_jb": 330.53,
    "theta_jc": null,
-   "tj_c": 48.14,
+   "tj_c": 48.13,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -1050,7 +1050,7 @@
    "estimate": true,
    "heat_source": "power tree",
    "heat_w": 0.0017,
-   "margin_k": 77.22,
+   "margin_k": 77.23,
    "model": "theta_jb",
    "package_family": "chip",
    "part": "FERRITE",
@@ -1060,12 +1060,12 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 47.23,
+   "t_board_c": 47.22,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 330.53,
    "theta_jc": null,
-   "tj_c": 47.78,
+   "tj_c": 47.77,
    "tj_max_c": 125.0,
    "tj_max_source": "default (assumption)",
    "to_board_share": 1.0,
@@ -1087,7 +1087,7 @@
    "side": "top",
    "source_document": null,
    "status": "ok",
-   "t_board_c": 47.35,
+   "t_board_c": 47.34,
    "t_case_top_c": null,
    "theta_ja": null,
    "theta_jb": 330.53,
@@ -1103,8 +1103,8 @@
  "parts_omitted": 42,
  "rails": [
   {
-   "copper_loss_mw_20c": 7.3,
-   "copper_loss_mw_at_temperature": 8.0,
+   "copper_loss_mw_20c": 7.1,
+   "copper_loss_mw_at_temperature": 7.7,
    "copper_max_at": [
     183.21,
     84.61
@@ -1112,33 +1112,33 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 14.678,
-   "max_drop_mv_at_temperature": 15.886,
+   "max_drop_mv_20c": 14.18,
+   "max_drop_mv_at_temperature": 15.343,
    "rail": "+6V",
-   "t_copper_max_c": 50.88,
-   "t_copper_mean_c": 43.25
+   "t_copper_max_c": 50.87,
+   "t_copper_mean_c": 43.22
   },
   {
    "copper_loss_mw_20c": 0.1,
    "copper_loss_mw_at_temperature": 0.1,
    "copper_max_at": [
-    182.25,
-    81.58
+    182.6,
+    82.18
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.532,
-   "max_drop_mv_at_temperature": 0.593,
+   "max_drop_mv_20c": 0.523,
+   "max_drop_mv_at_temperature": 0.583,
    "rail": "/Power Supply/VREG5V{slash}4",
-   "t_copper_max_c": 50.15,
+   "t_copper_max_c": 51.22,
    "t_copper_mean_c": 49.2
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    192.16,
+    192.11,
     79.19
    ],
    "copper_max_layer": "F.Cu",
@@ -1148,27 +1148,27 @@
    "max_drop_mv_at_temperature": 0.005,
    "rail": "Net-(IC30-EN)",
    "t_copper_max_c": 47.35,
-   "t_copper_mean_c": 46.97
+   "t_copper_mean_c": 46.96
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    197.14,
-    79.2
+    195.49,
+    78.75
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
    "max_drop_mv_20c": 0.013,
-   "max_drop_mv_at_temperature": 0.015,
+   "max_drop_mv_at_temperature": 0.014,
    "rail": "Net-(IC30-OUT)",
-   "t_copper_max_c": 46.68,
+   "t_copper_max_c": 46.75,
    "t_copper_mean_c": 46.47
   },
   {
-   "copper_loss_mw_20c": 1.7,
-   "copper_loss_mw_at_temperature": 1.8,
+   "copper_loss_mw_20c": 1.4,
+   "copper_loss_mw_at_temperature": 1.6,
    "copper_max_at": [
     184.38,
     98.15
@@ -1176,18 +1176,18 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 11.201,
-   "max_drop_mv_at_temperature": 12.324,
+   "max_drop_mv_20c": 9.55,
+   "max_drop_mv_at_temperature": 10.511,
    "rail": "+3V3",
-   "t_copper_max_c": 49.39,
-   "t_copper_mean_c": 44.84
+   "t_copper_max_c": 49.38,
+   "t_copper_mean_c": 44.91
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
     173.84,
-    129.5
+    129.45
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
@@ -1203,13 +1203,13 @@
    "copper_loss_mw_at_temperature": 0.1,
    "copper_max_at": [
     108.6,
-    96.04
+    95.99
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.381,
-   "max_drop_mv_at_temperature": 0.418,
+   "max_drop_mv_20c": 0.378,
+   "max_drop_mv_at_temperature": 0.414,
    "rail": "/Power Supply/VREG5V{slash}1",
    "t_copper_max_c": 45.17,
    "t_copper_mean_c": 44.59
@@ -1219,48 +1219,48 @@
    "copper_loss_mw_at_temperature": 0.5,
    "copper_max_at": [
     97.04,
-    120.95
+    120.9
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 4.213,
-   "max_drop_mv_at_temperature": 4.626,
+   "max_drop_mv_20c": 4.059,
+   "max_drop_mv_at_temperature": 4.457,
    "rail": "+5V{slash}1",
    "t_copper_max_c": 49.28,
-   "t_copper_mean_c": 45.02
+   "t_copper_mean_c": 45.0
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    148.7,
+    148.65,
     116.96
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.363,
-   "max_drop_mv_at_temperature": 0.402,
+   "max_drop_mv_20c": 0.361,
+   "max_drop_mv_at_temperature": 0.4,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_AMP",
    "t_copper_max_c": 48.34,
-   "t_copper_mean_c": 47.32
+   "t_copper_mean_c": 47.31
   },
   {
-   "copper_loss_mw_20c": 0.4,
+   "copper_loss_mw_20c": 0.3,
    "copper_loss_mw_at_temperature": 0.4,
    "copper_max_at": [
     126.43,
-    125.51
+    125.46
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 2.947,
-   "max_drop_mv_at_temperature": 3.277,
+   "max_drop_mv_20c": 2.759,
+   "max_drop_mv_at_temperature": 3.069,
    "rail": "+5V{slash}3",
    "t_copper_max_c": 50.09,
-   "t_copper_mean_c": 48.3
+   "t_copper_mean_c": 48.32
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1272,31 +1272,31 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.773,
-   "max_drop_mv_at_temperature": 0.864,
+   "max_drop_mv_20c": 0.707,
+   "max_drop_mv_at_temperature": 0.79,
    "rail": "Net-(IC33-VPDT)",
-   "t_copper_max_c": 53.47,
-   "t_copper_mean_c": 49.81
+   "t_copper_max_c": 53.46,
+   "t_copper_mean_c": 49.79
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
     157.02,
-    52.3
+    52.8
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
    "max_drop_mv_20c": 0.0,
-   "max_drop_mv_at_temperature": 0.0,
+   "max_drop_mv_at_temperature": -0.0,
    "rail": "USB_POWER",
-   "t_copper_max_c": 42.19,
-   "t_copper_mean_c": 41.61
+   "t_copper_max_c": 42.23,
+   "t_copper_mean_c": 41.48
   },
   {
-   "copper_loss_mw_20c": 2.4,
-   "copper_loss_mw_at_temperature": 2.6,
+   "copper_loss_mw_20c": 2.3,
+   "copper_loss_mw_at_temperature": 2.5,
    "copper_max_at": [
     189.44,
     110.98
@@ -1304,8 +1304,8 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 17.984,
-   "max_drop_mv_at_temperature": 19.922,
+   "max_drop_mv_20c": 17.415,
+   "max_drop_mv_at_temperature": 19.293,
    "rail": "+5V{slash}2",
    "t_copper_max_c": 52.15,
    "t_copper_mean_c": 47.31
@@ -1314,17 +1314,17 @@
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    201.26,
+    201.21,
     89.99
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.026,
-   "max_drop_mv_at_temperature": 0.029,
+   "max_drop_mv_20c": 0.024,
+   "max_drop_mv_at_temperature": 0.026,
    "rail": "Net-(IC28-V_{S+})",
    "t_copper_max_c": 47.12,
-   "t_copper_mean_c": 46.92
+   "t_copper_mean_c": 46.91
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1336,11 +1336,11 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.482,
-   "max_drop_mv_at_temperature": 0.536,
+   "max_drop_mv_20c": 0.442,
+   "max_drop_mv_at_temperature": 0.491,
    "rail": "/2.LO + Ref Clock/3V3_CLKGEN",
-   "t_copper_max_c": 49.49,
-   "t_copper_mean_c": 48.18
+   "t_copper_max_c": 49.48,
+   "t_copper_mean_c": 48.16
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1352,8 +1352,8 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.279,
-   "max_drop_mv_at_temperature": 0.311,
+   "max_drop_mv_20c": 0.254,
+   "max_drop_mv_at_temperature": 0.283,
    "rail": "/1.LO/3V3_LO1_3",
    "t_copper_max_c": 51.68,
    "t_copper_mean_c": 49.44
@@ -1362,88 +1362,88 @@
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    195.34,
+    195.29,
     111.59
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.561,
-   "max_drop_mv_at_temperature": 0.627,
+   "max_drop_mv_20c": 0.516,
+   "max_drop_mv_at_temperature": 0.577,
    "rail": "Net-(C156-Pad1)",
    "t_copper_max_c": 52.94,
-   "t_copper_mean_c": 50.18
+   "t_copper_mean_c": 50.19
   },
   {
-   "copper_loss_mw_20c": 16.8,
-   "copper_loss_mw_at_temperature": 18.3,
+   "copper_loss_mw_20c": 15.9,
+   "copper_loss_mw_at_temperature": 17.3,
    "copper_max_at": [
-    185.6,
+    185.52,
     60.02
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 15.477,
-   "max_drop_mv_at_temperature": 16.838,
+   "max_drop_mv_20c": 14.638,
+   "max_drop_mv_at_temperature": 15.927,
    "rail": "+5V",
    "t_copper_max_c": 53.39,
-   "t_copper_mean_c": 42.19
+   "t_copper_mean_c": 42.22
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    200.64,
+    200.59,
     95.39
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.54,
-   "max_drop_mv_at_temperature": 0.599,
+   "max_drop_mv_20c": 0.514,
+   "max_drop_mv_at_temperature": 0.57,
    "rail": "Net-(IC27-VCC)",
-   "t_copper_max_c": 48.35,
+   "t_copper_max_c": 48.34,
    "t_copper_mean_c": 47.63
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    157.64,
-    88.44
+    157.94,
+    88.39
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.277,
-   "max_drop_mv_at_temperature": 0.307,
+   "max_drop_mv_20c": 0.257,
+   "max_drop_mv_at_temperature": 0.284,
    "rail": "/HF Source/3V3_SRC_3",
-   "t_copper_max_c": 49.37,
-   "t_copper_mean_c": 47.1
+   "t_copper_max_c": 49.36,
+   "t_copper_mean_c": 47.11
   },
   {
    "copper_loss_mw_20c": 0.1,
    "copper_loss_mw_at_temperature": 0.1,
    "copper_max_at": [
-    188.2,
-    82.8
+    189.6,
+    83.4
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.372,
-   "max_drop_mv_at_temperature": 0.413,
+   "max_drop_mv_20c": 0.376,
+   "max_drop_mv_at_temperature": 0.417,
    "rail": "/Power Supply/VREG5V{slash}2",
-   "t_copper_max_c": 49.03,
+   "t_copper_max_c": 49.6,
    "t_copper_mean_c": 48.35
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    149.2,
-    99.44
+    150.0,
+    99.24
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
@@ -1451,7 +1451,7 @@
    "max_drop_mv_20c": 0.001,
    "max_drop_mv_at_temperature": 0.001,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
-   "t_copper_max_c": 45.26,
+   "t_copper_max_c": 45.34,
    "t_copper_mean_c": 45.1
   },
   {
@@ -1464,18 +1464,18 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.456,
-   "max_drop_mv_at_temperature": 1.626,
+   "max_drop_mv_20c": 1.385,
+   "max_drop_mv_at_temperature": 1.547,
    "rail": "Net-(IC29-VPDT)",
    "t_copper_max_c": 54.63,
-   "t_copper_mean_c": 49.57
+   "t_copper_mean_c": 49.59
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
     113.24,
-    128.29
+    128.24
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
@@ -1483,14 +1483,14 @@
    "max_drop_mv_20c": 0.002,
    "max_drop_mv_at_temperature": 0.002,
    "rail": "/Attenuator Amp Switches/3V3_P1_SWITCH",
-   "t_copper_max_c": 46.83,
+   "t_copper_max_c": 46.82,
    "t_copper_mean_c": 46.77
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    123.58,
+    124.18,
     100.18
    ],
    "copper_max_layer": "F.Cu",
@@ -1499,8 +1499,8 @@
    "max_drop_mv_20c": 0.006,
    "max_drop_mv_at_temperature": 0.006,
    "rail": "Net-(IC34-EN)",
-   "t_copper_max_c": 43.89,
-   "t_copper_mean_c": 43.54
+   "t_copper_max_c": 43.92,
+   "t_copper_mean_c": 43.53
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1512,8 +1512,8 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.014,
-   "max_drop_mv_at_temperature": 0.016,
+   "max_drop_mv_20c": 0.013,
+   "max_drop_mv_at_temperature": 0.015,
    "rail": "Net-(IC34-OUT)",
    "t_copper_max_c": 43.65,
    "t_copper_mean_c": 43.26
@@ -1522,39 +1522,39 @@
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    168.24,
-    119.55
+    167.24,
+    119.5
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.086,
-   "max_drop_mv_at_temperature": 0.096,
+   "max_drop_mv_20c": 0.091,
+   "max_drop_mv_at_temperature": 0.101,
    "rail": "/1.LO/3V3_LDO2_LO1",
-   "t_copper_max_c": 48.68,
-   "t_copper_mean_c": 48.22
+   "t_copper_max_c": 48.72,
+   "t_copper_mean_c": 48.21
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    176.13,
+    176.08,
     116.15
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.893,
-   "max_drop_mv_at_temperature": 0.995,
+   "max_drop_mv_20c": 0.842,
+   "max_drop_mv_at_temperature": 0.938,
    "rail": "/1.LO/3V3_LO1_2",
    "t_copper_max_c": 51.71,
-   "t_copper_mean_c": 48.92
+   "t_copper_mean_c": 48.9
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    149.35,
+    149.3,
     133.09
    ],
    "copper_max_layer": "F.Cu",
@@ -1563,7 +1563,7 @@
    "max_drop_mv_20c": 0.001,
    "max_drop_mv_at_temperature": 0.001,
    "rail": "/Attenuator Amp Switches/3V3_P12_SWITCH",
-   "t_copper_max_c": 45.77,
+   "t_copper_max_c": 45.76,
    "t_copper_mean_c": 45.7
   },
   {
@@ -1576,11 +1576,11 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.964,
-   "max_drop_mv_at_temperature": 1.061,
+   "max_drop_mv_20c": 0.961,
+   "max_drop_mv_at_temperature": 1.057,
    "rail": "/Power Supply/VREG3V3_SWL",
-   "t_copper_max_c": 46.62,
-   "t_copper_mean_c": 45.59
+   "t_copper_max_c": 46.61,
+   "t_copper_mean_c": 45.58
   },
   {
    "copper_loss_mw_20c": 0.5,
@@ -1592,43 +1592,43 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 3.891,
-   "max_drop_mv_at_temperature": 4.314,
+   "max_drop_mv_20c": 3.788,
+   "max_drop_mv_at_temperature": 4.199,
    "rail": "+5V{slash}4",
-   "t_copper_max_c": 49.64,
+   "t_copper_max_c": 49.63,
    "t_copper_mean_c": 47.64
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    165.43,
-    114.58
+    167.53,
+    116.08
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.163,
-   "max_drop_mv_at_temperature": 0.181,
+   "max_drop_mv_20c": 0.16,
+   "max_drop_mv_at_temperature": 0.177,
    "rail": "/1.LO/3V3_LDO1_LO1",
-   "t_copper_max_c": 48.39,
+   "t_copper_max_c": 48.55,
    "t_copper_mean_c": 47.76
   },
   {
    "copper_loss_mw_20c": 0.1,
    "copper_loss_mw_at_temperature": 0.1,
    "copper_max_at": [
-    177.76,
+    177.06,
     112.16
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.726,
-   "max_drop_mv_at_temperature": 1.922,
+   "max_drop_mv_20c": 1.627,
+   "max_drop_mv_at_temperature": 1.811,
    "rail": "/1.LO/3V3_LO1_1",
-   "t_copper_max_c": 51.25,
-   "t_copper_mean_c": 48.81
+   "t_copper_max_c": 51.4,
+   "t_copper_mean_c": 48.8
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1640,11 +1640,11 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.595,
-   "max_drop_mv_at_temperature": 0.661,
+   "max_drop_mv_20c": 0.542,
+   "max_drop_mv_at_temperature": 0.602,
    "rail": "Net-(C119-Pad1)",
-   "t_copper_max_c": 50.1,
-   "t_copper_mean_c": 48.3
+   "t_copper_max_c": 50.09,
+   "t_copper_mean_c": 48.31
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1656,18 +1656,18 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.298,
-   "max_drop_mv_at_temperature": 0.326,
+   "max_drop_mv_20c": 0.268,
+   "max_drop_mv_at_temperature": 0.293,
    "rail": "Net-(IC22-VCC)",
    "t_copper_max_c": 44.91,
-   "t_copper_mean_c": 44.09
+   "t_copper_mean_c": 44.07
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    92.85,
-    91.18
+    93.1,
+    92.03
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
@@ -1675,8 +1675,8 @@
    "max_drop_mv_20c": 0.006,
    "max_drop_mv_at_temperature": 0.007,
    "rail": "Net-(IC25-EN)",
-   "t_copper_max_c": 42.01,
-   "t_copper_mean_c": 41.71
+   "t_copper_max_c": 42.12,
+   "t_copper_mean_c": 41.7
   },
   {
    "copper_loss_mw_20c": 0.1,
@@ -1688,46 +1688,46 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.593,
-   "max_drop_mv_at_temperature": 1.772,
+   "max_drop_mv_20c": 1.492,
+   "max_drop_mv_at_temperature": 1.66,
    "rail": "Net-(IC24-VPDT)",
    "t_copper_max_c": 52.92,
-   "t_copper_mean_c": 48.46
+   "t_copper_mean_c": 48.47
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    163.65,
-    81.55
+    164.25,
+    81.85
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.104,
-   "max_drop_mv_at_temperature": 0.115,
+   "max_drop_mv_20c": 0.111,
+   "max_drop_mv_at_temperature": 0.122,
    "rail": "/HF Source/3V3_LDO2_SRC",
-   "t_copper_max_c": 47.23,
-   "t_copper_mean_c": 46.5
+   "t_copper_max_c": 47.35,
+   "t_copper_mean_c": 46.49
   },
   {
    "copper_loss_mw_20c": 0.1,
    "copper_loss_mw_at_temperature": 0.1,
    "copper_max_at": [
-    117.1,
-    116.84
+    117.15,
+    116.29
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.382,
-   "max_drop_mv_at_temperature": 0.424,
+   "max_drop_mv_20c": 0.377,
+   "max_drop_mv_at_temperature": 0.419,
    "rail": "/Power Supply/VREG5V{slash}3",
-   "t_copper_max_c": 48.87,
+   "t_copper_max_c": 48.96,
    "t_copper_mean_c": 48.07
   },
   {
-   "copper_loss_mw_20c": 0.1,
+   "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.1,
    "copper_max_at": [
     154.62,
@@ -1736,43 +1736,43 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.141,
-   "max_drop_mv_at_temperature": 1.257,
+   "max_drop_mv_20c": 1.061,
+   "max_drop_mv_at_temperature": 1.169,
    "rail": "/HF Source/3V3_SRC_2",
-   "t_copper_max_c": 48.95,
-   "t_copper_mean_c": 46.0
+   "t_copper_max_c": 48.94,
+   "t_copper_mean_c": 45.99
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    121.46,
+    121.41,
     106.79
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.02,
-   "max_drop_mv_at_temperature": 0.022,
+   "max_drop_mv_20c": 0.017,
+   "max_drop_mv_at_temperature": 0.019,
    "rail": "Net-(IC32-V_{S+})",
-   "t_copper_max_c": 45.43,
+   "t_copper_max_c": 45.42,
    "t_copper_mean_c": 45.17
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    175.65,
-    82.78
+    177.8,
+    83.48
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.144,
+   "max_drop_mv_20c": 0.143,
    "max_drop_mv_at_temperature": 0.159,
    "rail": "/HF Source/3v3_LDO1_SRC",
-   "t_copper_max_c": 48.44,
-   "t_copper_mean_c": 47.43
+   "t_copper_max_c": 48.81,
+   "t_copper_mean_c": 47.42
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1784,17 +1784,17 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.026,
-   "max_drop_mv_at_temperature": 0.028,
+   "max_drop_mv_20c": 0.025,
+   "max_drop_mv_at_temperature": 0.027,
    "rail": "Net-(IC25-OUT)",
    "t_copper_max_c": 41.44,
-   "t_copper_mean_c": 40.91
+   "t_copper_mean_c": 40.9
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    149.35,
+    149.3,
     113.99
    ],
    "copper_max_layer": "F.Cu",
@@ -1803,23 +1803,23 @@
    "max_drop_mv_20c": 0.002,
    "max_drop_mv_at_temperature": 0.003,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT",
-   "t_copper_max_c": 46.62,
-   "t_copper_mean_c": 45.92
+   "t_copper_max_c": 46.61,
+   "t_copper_mean_c": 45.91
   },
   {
    "copper_loss_mw_20c": 0.2,
    "copper_loss_mw_at_temperature": 0.2,
    "copper_max_at": [
-    152.84,
+    153.44,
     89.94
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 3.078,
-   "max_drop_mv_at_temperature": 3.403,
+   "max_drop_mv_20c": 2.928,
+   "max_drop_mv_at_temperature": 3.236,
    "rail": "/HF Source/3V3_SRC_1",
-   "t_copper_max_c": 48.81,
+   "t_copper_max_c": 48.87,
    "t_copper_mean_c": 46.81
   },
   {
@@ -1832,26 +1832,26 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 1.346,
-   "max_drop_mv_at_temperature": 1.46,
+   "max_drop_mv_20c": 1.308,
+   "max_drop_mv_at_temperature": 1.419,
    "rail": "VCCINT",
-   "t_copper_max_c": 45.17,
-   "t_copper_mean_c": 41.59
+   "t_copper_max_c": 45.16,
+   "t_copper_mean_c": 41.56
   },
   {
    "copper_loss_mw_20c": 0.0,
    "copper_loss_mw_at_temperature": 0.0,
    "copper_max_at": [
-    119.74,
+    119.69,
     115.79
    ],
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.452,
-   "max_drop_mv_at_temperature": 0.499,
+   "max_drop_mv_20c": 0.397,
+   "max_drop_mv_at_temperature": 0.439,
    "rail": "Net-(IC36-VCC)",
-   "t_copper_max_c": 48.27,
+   "t_copper_max_c": 48.26,
    "t_copper_mean_c": 46.83
   },
   {
@@ -1864,11 +1864,11 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.024,
-   "max_drop_mv_at_temperature": 0.027,
+   "max_drop_mv_20c": 0.02,
+   "max_drop_mv_at_temperature": 0.022,
    "rail": "Net-(IC23-V_{S+})",
    "t_copper_max_c": 43.94,
-   "t_copper_mean_c": 43.29
+   "t_copper_mean_c": 43.3
   },
   {
    "copper_loss_mw_20c": 0.0,
@@ -1880,15 +1880,15 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": false,
-   "max_drop_mv_20c": 0.519,
-   "max_drop_mv_at_temperature": 0.579,
+   "max_drop_mv_20c": 0.463,
+   "max_drop_mv_at_temperature": 0.516,
    "rail": "Net-(C190-Pad1)",
    "t_copper_max_c": 51.78,
-   "t_copper_mean_c": 49.4
+   "t_copper_mean_c": 49.38
   },
   {
-   "copper_loss_mw_20c": 0.7,
-   "copper_loss_mw_at_temperature": 0.7,
+   "copper_loss_mw_20c": 0.3,
+   "copper_loss_mw_at_temperature": 0.3,
    "copper_max_at": [
     191.85,
     112.83
@@ -1896,11 +1896,11 @@
    "copper_max_layer": "F.Cu",
    "error": null,
    "ground_return": true,
-   "max_drop_mv_20c": 0.535,
-   "max_drop_mv_at_temperature": 0.577,
+   "max_drop_mv_20c": 0.191,
+   "max_drop_mv_at_temperature": 0.21,
    "rail": "GND",
-   "t_copper_max_c": 56.03,
-   "t_copper_mean_c": 41.41
+   "t_copper_max_c": 56.02,
+   "t_copper_mean_c": 42.65
   }
  ],
  "summary": {
@@ -1912,14 +1912,14 @@
    "estimate": true,
    "part": "MIC2253",
    "ref": "IC1",
-   "tj_c": 62.24,
+   "tj_c": 62.23,
    "tj_max_c": 125.0
   },
-  "ir_drop_increase_max_mv": 1.939,
+  "ir_drop_increase_max_mv": 1.877,
   "layer": "F.Cu",
   "parts_over_tj_max": [],
   "parts_within_10k_of_tj_max": [],
-  "t_board_max_c": 56.03
+  "t_board_max_c": 56.02
  },
  "tree_source": "PI_REG fields",
  "variant": {
@@ -1950,7 +1950,7 @@
     "heat_w": 0.045645,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 53.26,
+    "t_c": 53.25,
     "to": "B.Cu"
    },
    {
@@ -1964,7 +1964,7 @@
     "heat_w": 0.042704,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 52.59,
+    "t_c": 52.58,
     "to": "B.Cu"
    },
    {
@@ -1978,7 +1978,7 @@
     "heat_w": 0.040453,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 52.52,
+    "t_c": 52.51,
     "to": "B.Cu"
    },
    {
@@ -1992,7 +1992,7 @@
     "heat_w": 0.039419,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 52.46,
+    "t_c": 52.45,
     "to": "B.Cu"
    },
    {
@@ -2006,7 +2006,7 @@
     "heat_w": 0.038424,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 52.49,
+    "t_c": 52.48,
     "to": "B.Cu"
    },
    {
@@ -2020,7 +2020,7 @@
     "heat_w": 0.034118,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 54.89,
+    "t_c": 54.88,
     "to": "B.Cu"
    },
    {
@@ -2031,7 +2031,7 @@
     "drill_mm": 0.25,
     "dt_k": 4.2,
     "from": "F.Cu",
-    "heat_w": 0.033944,
+    "heat_w": 0.033945,
     "net": "GND",
     "plated_hole": false,
     "t_c": 53.67,
@@ -2048,7 +2048,7 @@
     "heat_w": 0.032738,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 53.76,
+    "t_c": 53.75,
     "to": "B.Cu"
    },
    {
@@ -2059,10 +2059,10 @@
     "drill_mm": 0.25,
     "dt_k": 4.18,
     "from": "F.Cu",
-    "heat_w": 0.032686,
+    "heat_w": 0.032685,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 55.03,
+    "t_c": 55.02,
     "to": "B.Cu"
    },
    {
@@ -2073,7 +2073,7 @@
     "drill_mm": 0.25,
     "dt_k": 4.14,
     "from": "F.Cu",
-    "heat_w": 0.032673,
+    "heat_w": 0.032674,
     "net": "GND",
     "plated_hole": false,
     "t_c": 53.24,
@@ -2104,7 +2104,7 @@
     "heat_w": 0.030997,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 55.06,
+    "t_c": 55.05,
     "to": "B.Cu"
    },
    {
@@ -2118,7 +2118,7 @@
     "heat_w": 0.030787,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 54.69,
+    "t_c": 54.68,
     "to": "B.Cu"
    },
    {
@@ -2160,7 +2160,7 @@
     "heat_w": 0.030157,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 53.25,
+    "t_c": 53.24,
     "to": "B.Cu"
    },
    {
@@ -2199,7 +2199,7 @@
     "drill_mm": 0.25,
     "dt_k": 3.97,
     "from": "F.Cu",
-    "heat_w": 0.028997,
+    "heat_w": 0.028998,
     "net": "GND",
     "plated_hole": false,
     "t_c": 55.14,
@@ -2216,7 +2216,7 @@
     "heat_w": 0.0287,
     "net": "GND",
     "plated_hole": false,
-    "t_c": 53.06,
+    "t_c": 53.05,
     "to": "B.Cu"
    }
   ],

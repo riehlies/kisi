@@ -723,7 +723,7 @@
    {
     "from": "in:J4",
     "to": "loss:ground",
-    "w": 0.000690957
+    "w": 0.000278902
    },
    {
     "from": "rail:+5V",
@@ -743,7 +743,7 @@
    {
     "from": "rail:+5V",
     "to": "loss:copper",
-    "w": 0.0167947
+    "w": 0.0158842
    },
    {
     "from": "rail:+6V",
@@ -768,7 +768,7 @@
    {
     "from": "rail:+6V",
     "to": "loss:copper",
-    "w": 0.00729815
+    "w": 0.00707115
    },
    {
     "from": "rail:/1.LO/3V3_LDO1_LO1",
@@ -778,7 +778,7 @@
    {
     "from": "rail:/1.LO/3V3_LDO1_LO1",
     "to": "loss:copper",
-    "w": 0.000131477
+    "w": 0.000124319
    },
    {
     "from": "rail:/1.LO/3V3_LDO1_LO1",
@@ -793,7 +793,7 @@
    {
     "from": "rail:/1.LO/3V3_LDO2_LO1",
     "to": "loss:copper",
-    "w": 4.40384e-05
+    "w": 4.20347e-05
    },
    {
     "from": "rail:/1.LO/3V3_LDO2_LO1",
@@ -818,7 +818,7 @@
    {
     "from": "rail:/HF Source/3V3_LDO2_SRC",
     "to": "loss:copper",
-    "w": 5.69259e-05
+    "w": 5.35133e-05
    },
    {
     "from": "rail:/HF Source/3V3_LDO2_SRC",
@@ -833,7 +833,7 @@
    {
     "from": "rail:/HF Source/3v3_LDO1_SRC",
     "to": "loss:copper",
-    "w": 0.000224657
+    "w": 0.000214182
    },
    {
     "from": "rail:/HF Source/3v3_LDO1_SRC",
@@ -918,7 +918,7 @@
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
     "to": "loss:copper",
-    "w": 0.00192547
+    "w": 0.00165565
    },
    {
     "from": "rail:/Power Supply/VREG3V3_SWL",
@@ -948,7 +948,7 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
     "to": "loss:copper",
-    "w": 0.000601132
+    "w": 0.000573285
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}1",
@@ -978,7 +978,7 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
     "to": "loss:copper",
-    "w": 0.00252037
+    "w": 0.00243776
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}2",
@@ -1008,7 +1008,7 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
     "to": "loss:copper",
-    "w": 0.000481335
+    "w": 0.000449234
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}3",
@@ -1038,7 +1038,7 @@
    {
     "from": "rail:/Power Supply/VREG5V{slash}4",
     "to": "loss:copper",
-    "w": 0.000641963
+    "w": 0.000625694
    },
    {
     "from": "rail:/Power Supply/VREG5V{slash}4",
@@ -1053,7 +1053,7 @@
    {
     "from": "rail:Net-(IC25-OUT)",
     "to": "loss:copper",
-    "w": 4.0324e-08
+    "w": 3.88778e-08
    },
    {
     "from": "rail:Net-(IC30-OUT)",
@@ -1063,7 +1063,7 @@
    {
     "from": "rail:Net-(IC30-OUT)",
     "to": "loss:copper",
-    "w": 2.01147e-08
+    "w": 1.91916e-08
    },
    {
     "from": "rail:Net-(IC34-OUT)",
@@ -1073,12 +1073,12 @@
    {
     "from": "rail:Net-(IC34-OUT)",
     "to": "loss:copper",
-    "w": 2.20386e-08
+    "w": 2.05125e-08
    },
    {
     "from": "rail:USB_POWER",
     "to": "loss:copper",
-    "w": 8.14846e-22
+    "w": 8.57673e-22
    },
    {
     "from": "rail:VCCINT",
@@ -1088,7 +1088,7 @@
    {
     "from": "rail:VCCINT",
     "to": "loss:copper",
-    "w": 0.00010055
+    "w": 9.82841e-05
    }
   ],
   "nodes": [
@@ -1749,290 +1749,290 @@
    }
   ],
   "components_w": 5.6621,
-  "copper_ground_w": 0.000690957,
-  "copper_rails_w": 0.0308208,
+  "copper_ground_w": 0.000278902,
+  "copper_rails_w": 0.0292294,
   "notes": [
    "Component heat: the power a load draws is taken as heat in the part (estimate: power leaving the board, e.g. through connectors or LEDs, is included); regulator losses are put on the regulator."
   ],
   "per_layer": [
    {
-    "copper_w": 0.00310746,
+    "copper_w": 0.00284004,
     "layer": "F.Cu"
    },
    {
-    "copper_w": 0.000115872,
+    "copper_w": 4.85561e-05,
     "layer": "In1.Cu"
    },
    {
-    "copper_w": 0.000112075,
+    "copper_w": 4.65766e-05,
     "layer": "In2.Cu"
    },
    {
-    "copper_w": 0.0193273,
+    "copper_w": 0.0183169,
     "layer": "In3.Cu"
    },
    {
-    "copper_w": 0.00862512,
+    "copper_w": 0.00816244,
     "layer": "In4.Cu"
    },
    {
-    "copper_w": 0.000223942,
+    "copper_w": 9.38404e-05,
     "layer": "B.Cu"
    }
   ],
   "per_rail": [
    {
-    "copper_w": 0.0167947,
+    "copper_w": 0.0158842,
     "ground_return": false,
     "rail": "+5V"
    },
    {
-    "copper_w": 0.00729815,
+    "copper_w": 0.00707115,
     "ground_return": false,
     "rail": "+6V"
    },
    {
-    "copper_w": 0.00235119,
+    "copper_w": 0.00227487,
     "ground_return": false,
     "rail": "+5V{slash}2"
    },
    {
-    "copper_w": 0.00168435,
+    "copper_w": 0.00141648,
     "ground_return": false,
     "rail": "+3V3"
    },
    {
-    "copper_w": 0.000690957,
-    "ground_return": true,
-    "rail": "GND"
-   },
-   {
-    "copper_w": 0.000515761,
+    "copper_w": 0.000501582,
     "ground_return": false,
     "rail": "+5V{slash}4"
    },
    {
-    "copper_w": 0.000431476,
+    "copper_w": 0.000412619,
     "ground_return": false,
     "rail": "+5V{slash}1"
    },
    {
-    "copper_w": 0.000363732,
+    "copper_w": 0.000338971,
     "ground_return": false,
     "rail": "+5V{slash}3"
    },
    {
-    "copper_w": 0.000214986,
-    "ground_return": false,
-    "rail": "/HF Source/3V3_SRC_1"
+    "copper_w": 0.000278902,
+    "ground_return": true,
+    "rail": "GND"
    },
    {
-    "copper_w": 0.000206758,
+    "copper_w": 0.000206109,
     "ground_return": false,
     "rail": "/Power Supply/VREG3V3_SWL"
    },
    {
-    "copper_w": 0.000126202,
+    "copper_w": 0.000204531,
+    "ground_return": false,
+    "rail": "/HF Source/3V3_SRC_1"
+   },
+   {
+    "copper_w": 0.000124112,
     "ground_return": false,
     "rail": "/Power Supply/VREG5V{slash}4"
    },
    {
-    "copper_w": 0.000120436,
+    "copper_w": 0.000113476,
     "ground_return": false,
     "rail": "/1.LO/3V3_LO1_1"
    },
    {
-    "copper_w": 0.00010055,
+    "copper_w": 9.82841e-05,
     "ground_return": false,
     "rail": "VCCINT"
    },
    {
-    "copper_w": 8.85491e-05,
-    "ground_return": false,
-    "rail": "Net-(IC24-VPDT)"
-   },
-   {
-    "copper_w": 8.79473e-05,
+    "copper_w": 8.30506e-05,
     "ground_return": false,
     "rail": "Net-(IC29-VPDT)"
    },
    {
-    "copper_w": 5.50142e-05,
+    "copper_w": 8.21883e-05,
     "ground_return": false,
-    "rail": "/Power Supply/VREG5V{slash}3"
+    "rail": "Net-(IC24-VPDT)"
    },
    {
-    "copper_w": 5.49067e-05,
+    "copper_w": 5.44642e-05,
     "ground_return": false,
     "rail": "/Power Supply/VREG5V{slash}1"
    },
    {
-    "copper_w": 5.33946e-05,
+    "copper_w": 5.43361e-05,
+    "ground_return": false,
+    "rail": "/Power Supply/VREG5V{slash}3"
+   },
+   {
+    "copper_w": 5.38847e-05,
     "ground_return": false,
     "rail": "/Power Supply/VREG5V{slash}2"
    },
    {
-    "copper_w": 5.18581e-05,
+    "copper_w": 4.8107e-05,
     "ground_return": false,
     "rail": "/HF Source/3V3_SRC_2"
    },
    {
-    "copper_w": 3.99257e-05,
+    "copper_w": 3.76833e-05,
     "ground_return": false,
     "rail": "/1.LO/3V3_LO1_2"
    },
    {
-    "copper_w": 3.66074e-05,
+    "copper_w": 3.27675e-05,
     "ground_return": false,
     "rail": "Net-(IC33-VPDT)"
    },
    {
-    "copper_w": 2.22328e-05,
+    "copper_w": 2.04525e-05,
     "ground_return": false,
     "rail": "Net-(C119-Pad1)"
    },
    {
-    "copper_w": 2.06131e-05,
-    "ground_return": false,
-    "rail": "Net-(C156-Pad1)"
-   },
-   {
-    "copper_w": 1.99498e-05,
-    "ground_return": false,
-    "rail": "Net-(C190-Pad1)"
-   },
-   {
-    "copper_w": 1.96924e-05,
+    "copper_w": 1.96009e-05,
     "ground_return": false,
     "rail": "/Attenuator Amp Switches/3V3_HBLB_AMP"
    },
    {
-    "copper_w": 1.10404e-05,
+    "copper_w": 1.9085e-05,
+    "ground_return": false,
+    "rail": "Net-(C156-Pad1)"
+   },
+   {
+    "copper_w": 1.78641e-05,
+    "ground_return": false,
+    "rail": "Net-(C190-Pad1)"
+   },
+   {
+    "copper_w": 1.08427e-05,
     "ground_return": false,
     "rail": "/1.LO/3V3_LDO1_LO1"
    },
    {
-    "copper_w": 9.67091e-06,
+    "copper_w": 9.65126e-06,
     "ground_return": false,
     "rail": "/HF Source/3v3_LDO1_SRC"
    },
    {
-    "copper_w": 7.19e-06,
+    "copper_w": 6.83658e-06,
     "ground_return": false,
     "rail": "Net-(IC27-VCC)"
    },
    {
-    "copper_w": 6.98228e-06,
+    "copper_w": 6.41408e-06,
     "ground_return": false,
     "rail": "/2.LO + Ref Clock/3V3_CLKGEN"
    },
    {
-    "copper_w": 6.00231e-06,
-    "ground_return": false,
-    "rail": "Net-(IC36-VCC)"
-   },
-   {
-    "copper_w": 5.06777e-06,
+    "copper_w": 5.4063e-06,
     "ground_return": false,
     "rail": "/HF Source/3V3_LDO2_SRC"
    },
    {
-    "copper_w": 4.21602e-06,
+    "copper_w": 5.26848e-06,
     "ground_return": false,
-    "rail": "/1.LO/3V3_LO1_3"
+    "rail": "Net-(IC36-VCC)"
    },
    {
-    "copper_w": 4.11273e-06,
+    "copper_w": 4.35149e-06,
     "ground_return": false,
     "rail": "/1.LO/3V3_LDO2_LO1"
    },
    {
-    "copper_w": 3.93245e-06,
+    "copper_w": 3.83747e-06,
+    "ground_return": false,
+    "rail": "/1.LO/3V3_LO1_3"
+   },
+   {
+    "copper_w": 3.53063e-06,
     "ground_return": false,
     "rail": "Net-(IC22-VCC)"
    },
    {
-    "copper_w": 3.47412e-06,
+    "copper_w": 3.20018e-06,
     "ground_return": false,
     "rail": "/HF Source/3V3_SRC_3"
    },
    {
-    "copper_w": 4.0324e-08,
+    "copper_w": 3.88778e-08,
     "ground_return": false,
     "rail": "Net-(IC25-OUT)"
    },
    {
-    "copper_w": 2.93389e-08,
+    "copper_w": 2.68862e-08,
     "ground_return": false,
     "rail": "Net-(IC28-V_{S+})"
    },
    {
-    "copper_w": 2.75661e-08,
+    "copper_w": 2.27445e-08,
     "ground_return": false,
     "rail": "Net-(IC23-V_{S+})"
    },
    {
-    "copper_w": 2.21713e-08,
-    "ground_return": false,
-    "rail": "Net-(IC32-V_{S+})"
-   },
-   {
-    "copper_w": 2.20386e-08,
+    "copper_w": 2.05125e-08,
     "ground_return": false,
     "rail": "Net-(IC34-OUT)"
    },
    {
-    "copper_w": 2.01147e-08,
+    "copper_w": 1.949e-08,
+    "ground_return": false,
+    "rail": "Net-(IC32-V_{S+})"
+   },
+   {
+    "copper_w": 1.91916e-08,
     "ground_return": false,
     "rail": "Net-(IC30-OUT)"
    },
    {
-    "copper_w": 7.4741e-09,
+    "copper_w": 7.40078e-09,
     "ground_return": false,
     "rail": "Net-(IC25-EN)"
    },
    {
-    "copper_w": 6.85158e-09,
+    "copper_w": 6.84965e-09,
     "ground_return": false,
     "rail": "Net-(IC34-EN)"
    },
    {
-    "copper_w": 4.67166e-09,
+    "copper_w": 4.61555e-09,
     "ground_return": false,
     "rail": "Net-(IC30-EN)"
    },
    {
-    "copper_w": 3.08434e-10,
+    "copper_w": 3.06272e-10,
     "ground_return": false,
     "rail": "/Attenuator Amp Switches/3V3_P1_SWITCH"
    },
    {
-    "copper_w": 2.96582e-10,
+    "copper_w": 2.72898e-10,
     "ground_return": false,
     "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT"
    },
    {
-    "copper_w": 2.47479e-10,
+    "copper_w": 2.27701e-10,
     "ground_return": false,
     "rail": "/Attenuator Amp Switches/3V3_HBLB_SWITCH"
    },
    {
-    "copper_w": 1.87395e-10,
+    "copper_w": 1.73645e-10,
     "ground_return": false,
     "rail": "/Attenuator Amp Switches/3V3_P12_SWITCH"
    },
    {
-    "copper_w": 1.6871e-10,
+    "copper_w": 1.68414e-10,
     "ground_return": false,
     "rail": "/Attenuator Amp Switches/3V3_P2_SWITCH"
    },
    {
-    "copper_w": 8.14846e-22,
+    "copper_w": 8.57673e-22,
     "ground_return": false,
     "rail": "USB_POWER"
    }
   ],
-  "total_w": 5.69361
+  "total_w": 5.69161
  },
  "pdn": {
   "above_target_hz": [
@@ -2056,7 +2056,7 @@
     },
     {
      "flags": [
-      "far from every IC: path inductance 2.19 nH to IC37 (best capacitor at that IC 0.41 nH, own ESL + mounting 0.35 nH); its series resonance drops to 10.6 MHz"
+      "far from every IC: path inductance 2.17 nH to IC37 (best capacitor at that IC 0.41 nH, own ESL + mounting 0.35 nH); its series resonance drops to 10.6 MHz"
      ],
      "ref": "C208",
      "value": "100nF"
@@ -2070,28 +2070,28 @@
     },
     {
      "flags": [
-      "far from every IC: path inductance 2.01 nH to U2 (best capacitor at that IC 0.38 nH, own ESL + mounting 0.35 nH); its series resonance drops to 11.0 MHz"
+      "far from every IC: path inductance 2.00 nH to U2 (best capacitor at that IC 0.38 nH, own ESL + mounting 0.35 nH); its series resonance drops to 11.0 MHz"
      ],
      "ref": "C221",
      "value": "100nF"
     },
     {
      "flags": [
-      "far from every IC: path inductance 8.42 nH to IC7 (+3V3) (best capacitor at that IC 2.03 nH, own ESL + mounting 0.35 nH); its series resonance drops to 5.7 MHz"
+      "far from every IC: path inductance 8.10 nH to IC7 (+3V3) (best capacitor at that IC 1.99 nH, own ESL + mounting 0.35 nH); its series resonance drops to 5.8 MHz"
      ],
      "ref": "C29",
      "value": "100nF"
     },
     {
      "flags": [
-      "far from every IC: path inductance 1.93 nH to IC37 (best capacitor at that IC 0.41 nH, own ESL + mounting 0.35 nH); its series resonance drops to 11.2 MHz"
+      "far from every IC: path inductance 1.91 nH to IC37 (best capacitor at that IC 0.41 nH, own ESL + mounting 0.35 nH); its series resonance drops to 11.2 MHz"
      ],
      "ref": "C206",
      "value": "100nF"
     },
     {
      "flags": [
-      "far from every IC: path inductance 1.98 nH to U2 (best capacitor at that IC 0.38 nH, own ESL + mounting 0.35 nH); its series resonance drops to 11.0 MHz"
+      "far from every IC: path inductance 1.94 nH to U2 (best capacitor at that IC 0.38 nH, own ESL + mounting 0.35 nH); its series resonance drops to 11.1 MHz"
      ],
      "ref": "C211",
      "value": "100nF"
@@ -2268,32 +2268,32 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.4 MHz)",
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.5 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.03341
+       "z_ohm": 2.03385
       }
      ],
      "capacitors_most_effective": [
       {
        "dist_mm": 14.8,
-       "l_path_nh": 0.384,
-       "l_total_nh": 0.734,
+       "l_path_nh": 0.382,
+       "l_total_nh": 0.732,
        "ref": "C217",
-       "srf_mhz": 19.65
+       "srf_mhz": 19.68
       },
       {
        "dist_mm": 14.4,
-       "l_path_nh": 0.571,
-       "l_total_nh": 0.921,
+       "l_path_nh": 0.501,
+       "l_total_nh": 0.851,
        "ref": "C219",
-       "srf_mhz": 17.55
+       "srf_mhz": 18.26
       },
       {
        "dist_mm": 15.2,
-       "l_path_nh": 0.649,
-       "l_total_nh": 0.999,
+       "l_path_nh": 0.643,
+       "l_total_nh": 0.993,
        "ref": "C215",
-       "srf_mhz": 16.85
+       "srf_mhz": 16.9
       },
       {
        "dist_mm": 14.9,
@@ -2311,17 +2311,17 @@
       },
       {
        "dist_mm": 17.8,
-       "l_path_nh": 1.976,
-       "l_total_nh": 2.326,
+       "l_path_nh": 1.942,
+       "l_total_nh": 2.292,
        "ref": "C211",
-       "srf_mhz": 11.04
+       "srf_mhz": 11.12
       },
       {
        "dist_mm": 15.1,
-       "l_path_nh": 2.007,
-       "l_total_nh": 2.357,
+       "l_path_nh": 2.0,
+       "l_total_nh": 2.35,
        "ref": "C221",
-       "srf_mhz": 10.97
+       "srf_mhz": 10.99
       },
       {
        "dist_mm": 14.7,
@@ -2340,12 +2340,12 @@
      "target_ohm": 3.96,
      "target_source": "3 % ripple at a 50 % step of 50 mA (estimate)",
      "z_ohm": {
-      "100M": 0.104705,
-      "100k": 0.168193,
-      "10M": 0.0143597,
-      "10k": 0.288684,
-      "1G": 1.13975,
-      "1M": 0.175701
+      "100M": 0.10271,
+      "100k": 0.16676,
+      "10M": 0.0145912,
+      "10k": 0.287077,
+      "1G": 1.10621,
+      "1M": 0.174163
      }
     },
     {
@@ -2355,19 +2355,19 @@
        "above_target": false,
        "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.8 MHz)",
        "hz": 25118.9,
-       "z_ohm": 1.9079
+       "z_ohm": 1.90982
       },
       {
        "above_target": false,
        "between": "between C169 89nF (series resonance 3.7 MHz) and C210 89nF (series resonance 4.1 MHz)",
        "hz": 3981070.0,
-       "z_ohm": 0.169035
+       "z_ohm": 0.165165
       },
       {
        "above_target": false,
-       "between": "between C209 89nF (series resonance 6.2 MHz) and C208 89nF (series resonance 10.6 MHz)",
+       "between": "between C209 89nF (series resonance 6.3 MHz) and C208 89nF (series resonance 10.6 MHz)",
        "hz": 7943280.0,
-       "z_ohm": 0.130532
+       "z_ohm": 0.127728
       }
      ],
      "capacitors_most_effective": [
@@ -2380,52 +2380,52 @@
       },
       {
        "dist_mm": 7.0,
-       "l_path_nh": 1.93,
-       "l_total_nh": 2.28,
+       "l_path_nh": 1.912,
+       "l_total_nh": 2.262,
        "ref": "C206",
-       "srf_mhz": 11.15
+       "srf_mhz": 11.2
       },
       {
        "dist_mm": 7.5,
-       "l_path_nh": 2.186,
-       "l_total_nh": 2.536,
+       "l_path_nh": 2.167,
+       "l_total_nh": 2.517,
        "ref": "C208",
-       "srf_mhz": 10.57
+       "srf_mhz": 10.61
       },
       {
        "dist_mm": 9.7,
-       "l_path_nh": 3.856,
-       "l_total_nh": 4.656,
+       "l_path_nh": 3.8,
+       "l_total_nh": 4.6,
        "ref": "C15",
-       "srf_mhz": 0.82
+       "srf_mhz": 0.83
       },
       {
        "dist_mm": 11.6,
-       "l_path_nh": 3.872,
-       "l_total_nh": 4.672,
+       "l_path_nh": 3.814,
+       "l_total_nh": 4.614,
        "ref": "C14",
-       "srf_mhz": 0.82
+       "srf_mhz": 0.83
       },
       {
        "dist_mm": 20.6,
-       "l_path_nh": 7.066,
-       "l_total_nh": 7.416,
+       "l_path_nh": 6.767,
+       "l_total_nh": 7.117,
        "ref": "C209",
-       "srf_mhz": 6.18
+       "srf_mhz": 6.31
       },
       {
        "dist_mm": 37.2,
-       "l_path_nh": 13.444,
-       "l_total_nh": 13.794,
+       "l_path_nh": 13.197,
+       "l_total_nh": 13.547,
        "ref": "C217",
-       "srf_mhz": 4.53
+       "srf_mhz": 4.58
       },
       {
        "dist_mm": 45.0,
-       "l_path_nh": 13.63,
-       "l_total_nh": 13.98,
+       "l_path_nh": 13.315,
+       "l_total_nh": 13.665,
        "ref": "C219",
-       "srf_mhz": 4.5
+       "srf_mhz": 4.56
       }
      ],
      "current_a": 0.03,
@@ -2437,12 +2437,12 @@
      "target_ohm": 6.6,
      "target_source": "3 % ripple at a 50 % step of 30 mA (estimate)",
      "z_ohm": {
-      "100M": 0.310178,
-      "100k": 0.0897981,
-      "10M": 0.0497528,
-      "10k": 0.190716,
-      "1G": 3.22284,
-      "1M": 0.0282675
+      "100M": 0.310109,
+      "100k": 0.0897813,
+      "10M": 0.0526172,
+      "10k": 0.190555,
+      "1G": 3.2218,
+      "1M": 0.027902
      }
     },
     {
@@ -2452,13 +2452,13 @@
        "above_target": false,
        "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.12191
+       "z_ohm": 2.12034
       },
       {
        "above_target": false,
-       "between": "between C214 89nF (series resonance 5.0 MHz) and C215 89nF (series resonance 5.1 MHz)",
-       "hz": 5011870.0,
-       "z_ohm": 0.648478
+       "between": "between C217 89nF (series resonance 5.2 MHz) and C201 89nF (series resonance 17.6 MHz)",
+       "hz": 6309570.0,
+       "z_ohm": 0.637864
       }
      ],
      "capacitors_most_effective": [
@@ -2471,52 +2471,52 @@
       },
       {
        "dist_mm": 35.0,
-       "l_path_nh": 10.413,
-       "l_total_nh": 10.763,
+       "l_path_nh": 10.108,
+       "l_total_nh": 10.458,
        "ref": "C217",
-       "srf_mhz": 5.13
+       "srf_mhz": 5.21
       },
       {
        "dist_mm": 26.4,
-       "l_path_nh": 10.588,
-       "l_total_nh": 10.938,
+       "l_path_nh": 10.217,
+       "l_total_nh": 10.567,
        "ref": "C219",
-       "srf_mhz": 5.09
+       "srf_mhz": 5.18
       },
       {
        "dist_mm": 36.9,
-       "l_path_nh": 10.678,
-       "l_total_nh": 11.028,
+       "l_path_nh": 10.37,
+       "l_total_nh": 10.72,
        "ref": "C215",
-       "srf_mhz": 5.07
+       "srf_mhz": 5.14
       },
       {
        "dist_mm": 12.4,
-       "l_path_nh": 11.083,
-       "l_total_nh": 11.433,
+       "l_path_nh": 10.78,
+       "l_total_nh": 11.13,
        "ref": "C214",
-       "srf_mhz": 4.98
+       "srf_mhz": 5.05
       },
       {
        "dist_mm": 28.0,
-       "l_path_nh": 11.566,
-       "l_total_nh": 11.916,
+       "l_path_nh": 11.263,
+       "l_total_nh": 11.613,
        "ref": "C218",
-       "srf_mhz": 4.88
-      },
-      {
-       "dist_mm": 9.4,
-       "l_path_nh": 11.928,
-       "l_total_nh": 12.278,
-       "ref": "C221",
-       "srf_mhz": 4.81
+       "srf_mhz": 4.94
       },
       {
        "dist_mm": 21.6,
-       "l_path_nh": 11.932,
-       "l_total_nh": 12.282,
+       "l_path_nh": 11.601,
+       "l_total_nh": 11.951,
        "ref": "C211",
-       "srf_mhz": 4.8
+       "srf_mhz": 4.87
+      },
+      {
+       "dist_mm": 9.4,
+       "l_path_nh": 11.624,
+       "l_total_nh": 11.974,
+       "ref": "C221",
+       "srf_mhz": 4.87
       }
      ],
      "current_a": 0.00029,
@@ -2528,12 +2528,12 @@
      "target_ohm": 682.759,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
-      "100M": 0.549828,
-      "100k": 0.250492,
-      "10M": 0.177282,
-      "10k": 0.372629,
-      "1G": 5.70087,
-      "1M": 0.254203
+      "100M": 0.549606,
+      "100k": 0.246959,
+      "10M": 0.179555,
+      "10k": 0.368913,
+      "1G": 5.69798,
+      "1M": 0.251289
      }
     },
     {
@@ -2543,13 +2543,13 @@
        "above_target": false,
        "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C15 8.02µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.07528
+       "z_ohm": 2.07596
       },
       {
        "above_target": false,
        "between": "between C207 89nF (series resonance 3.6 MHz) and C169 89nF (series resonance 14.7 MHz)",
        "hz": 3981070.0,
-       "z_ohm": 0.92328
+       "z_ohm": 0.916298
       }
      ],
      "capacitors_most_effective": [
@@ -2562,52 +2562,52 @@
       },
       {
        "dist_mm": 38.2,
-       "l_path_nh": 17.757,
-       "l_total_nh": 18.557,
+       "l_path_nh": 17.5,
+       "l_total_nh": 18.3,
        "ref": "C14",
-       "srf_mhz": 0.41
+       "srf_mhz": 0.42
       },
       {
        "dist_mm": 40.4,
-       "l_path_nh": 17.783,
-       "l_total_nh": 18.583,
+       "l_path_nh": 17.523,
+       "l_total_nh": 18.323,
        "ref": "C15",
-       "srf_mhz": 0.41
+       "srf_mhz": 0.42
       },
       {
        "dist_mm": 45.8,
-       "l_path_nh": 21.266,
-       "l_total_nh": 21.616,
+       "l_path_nh": 20.965,
+       "l_total_nh": 21.315,
        "ref": "C207",
-       "srf_mhz": 3.62
+       "srf_mhz": 3.65
       },
       {
        "dist_mm": 52.8,
-       "l_path_nh": 22.11,
-       "l_total_nh": 22.46,
+       "l_path_nh": 21.784,
+       "l_total_nh": 22.134,
        "ref": "C206",
-       "srf_mhz": 3.55
+       "srf_mhz": 3.58
       },
       {
        "dist_mm": 55.6,
-       "l_path_nh": 22.723,
-       "l_total_nh": 23.073,
+       "l_path_nh": 22.397,
+       "l_total_nh": 22.747,
        "ref": "C208",
-       "srf_mhz": 3.51
+       "srf_mhz": 3.53
       },
       {
        "dist_mm": 61.8,
-       "l_path_nh": 26.634,
-       "l_total_nh": 26.984,
+       "l_path_nh": 26.062,
+       "l_total_nh": 26.412,
        "ref": "C209",
-       "srf_mhz": 3.24
+       "srf_mhz": 3.28
       },
       {
        "dist_mm": 85.7,
-       "l_path_nh": 32.68,
-       "l_total_nh": 33.03,
+       "l_path_nh": 32.176,
+       "l_total_nh": 32.526,
        "ref": "C217",
-       "srf_mhz": 2.93
+       "srf_mhz": 2.95
       }
      ],
      "current_a": 0.00029,
@@ -2619,12 +2619,12 @@
      "target_ohm": 682.759,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
-      "100M": 0.802634,
-      "100k": 0.214545,
-      "10M": 0.125435,
-      "10k": 0.324732,
-      "1G": 8.44334,
-      "1M": 0.235644
+      "100M": 0.802562,
+      "100k": 0.213178,
+      "10M": 0.125852,
+      "10k": 0.323328,
+      "1G": 8.43888,
+      "1M": 0.233262
      }
     },
     {
@@ -2634,77 +2634,77 @@
        "above_target": false,
        "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.6 MHz)",
        "hz": 25118.9,
-       "z_ohm": 1.95426
+       "z_ohm": 1.95429
       },
       {
        "above_target": false,
-       "between": "between C211 89nF (series resonance 4.0 MHz) and C218 89nF (series resonance 4.0 MHz)",
+       "between": "between C210 89nF (series resonance 3.8 MHz) and C221 89nF (series resonance 4.0 MHz)",
        "hz": 3981070.0,
-       "z_ohm": 0.422795
+       "z_ohm": 0.400698
       },
       {
        "above_target": false,
-       "between": "between C206 89nF (series resonance 6.9 MHz) and C209 89nF (series resonance 18.7 MHz)",
+       "between": "between C206 89nF (series resonance 7.1 MHz) and C209 89nF (series resonance 18.7 MHz)",
        "hz": 7943280.0,
-       "z_ohm": 0.373853
+       "z_ohm": 0.357739
       }
      ],
      "capacitors_most_effective": [
       {
        "dist_mm": 4.3,
-       "l_path_nh": 0.458,
-       "l_total_nh": 0.808,
+       "l_path_nh": 0.457,
+       "l_total_nh": 0.807,
        "ref": "C209",
        "srf_mhz": 18.74
       },
       {
        "dist_mm": 10.3,
-       "l_path_nh": 5.546,
-       "l_total_nh": 5.896,
+       "l_path_nh": 5.232,
+       "l_total_nh": 5.582,
        "ref": "C206",
-       "srf_mhz": 6.93
+       "srf_mhz": 7.13
       },
       {
        "dist_mm": 21.6,
-       "l_path_nh": 6.97,
-       "l_total_nh": 7.32,
+       "l_path_nh": 6.669,
+       "l_total_nh": 7.019,
        "ref": "C207",
-       "srf_mhz": 6.22
+       "srf_mhz": 6.36
       },
       {
        "dist_mm": 20.8,
-       "l_path_nh": 7.334,
-       "l_total_nh": 7.684,
+       "l_path_nh": 7.0,
+       "l_total_nh": 7.35,
        "ref": "C208",
-       "srf_mhz": 6.07
+       "srf_mhz": 6.21
       },
       {
        "dist_mm": 19.9,
-       "l_path_nh": 8.749,
-       "l_total_nh": 9.549,
+       "l_path_nh": 8.421,
+       "l_total_nh": 9.221,
        "ref": "C15",
-       "srf_mhz": 0.58
+       "srf_mhz": 0.59
       },
       {
        "dist_mm": 22.1,
-       "l_path_nh": 8.762,
-       "l_total_nh": 9.562,
+       "l_path_nh": 8.433,
+       "l_total_nh": 9.233,
        "ref": "C14",
-       "srf_mhz": 0.57
+       "srf_mhz": 0.58
       },
       {
        "dist_mm": 30.1,
-       "l_path_nh": 16.166,
-       "l_total_nh": 16.516,
+       "l_path_nh": 15.691,
+       "l_total_nh": 16.041,
        "ref": "C217",
-       "srf_mhz": 4.14
+       "srf_mhz": 4.2
       },
       {
        "dist_mm": 33.3,
-       "l_path_nh": 16.352,
-       "l_total_nh": 16.702,
+       "l_path_nh": 15.809,
+       "l_total_nh": 16.159,
        "ref": "C219",
-       "srf_mhz": 4.12
+       "srf_mhz": 4.19
       }
      ],
      "current_a": 0.002,
@@ -2716,12 +2716,12 @@
      "target_ohm": 99.0,
      "target_source": "3 % ripple at a 50 % step of 2 mA (estimate)",
      "z_ohm": {
-      "100M": 0.43527,
-      "100k": 0.108521,
-      "10M": 0.19767,
-      "10k": 0.222095,
-      "1G": 4.79421,
-      "1M": 0.0918235
+      "100M": 0.432092,
+      "100k": 0.1073,
+      "10M": 0.202778,
+      "10k": 0.220471,
+      "1G": 4.75758,
+      "1M": 0.0886863
      }
     },
     {
@@ -2729,79 +2729,79 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C15 8.02µF (series resonance 0.3 MHz)",
+       "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C15 8.02µF (series resonance 0.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.15458
+       "z_ohm": 2.15475
       },
       {
        "above_target": false,
-       "between": "between C201 89nF (series resonance 2.4 MHz) and C210 89nF (series resonance 2.5 MHz)",
+       "between": "between C201 89nF (series resonance 2.4 MHz) and C210 89nF (series resonance 2.6 MHz)",
        "hz": 2511890.0,
-       "z_ohm": 0.626345
+       "z_ohm": 0.623455
       },
       {
        "above_target": false,
-       "between": "between C29 89nF (series resonance 5.7 MHz) and C31 89nF (series resonance 10.9 MHz)",
+       "between": "between C29 89nF (series resonance 5.8 MHz) and C31 89nF (series resonance 11.0 MHz)",
        "hz": 7943280.0,
-       "z_ohm": 0.209363
+       "z_ohm": 0.187956
       }
      ],
      "capacitors_most_effective": [
       {
        "dist_mm": 3.0,
-       "l_path_nh": 2.031,
-       "l_total_nh": 2.381,
+       "l_path_nh": 1.986,
+       "l_total_nh": 2.336,
        "ref": "C31",
-       "srf_mhz": 10.91
+       "srf_mhz": 11.02
       },
       {
        "dist_mm": 7.9,
-       "l_path_nh": 8.42,
-       "l_total_nh": 8.77,
+       "l_path_nh": 8.103,
+       "l_total_nh": 8.453,
        "ref": "C29",
-       "srf_mhz": 5.69
+       "srf_mhz": 5.79
       },
       {
        "dist_mm": 38.6,
-       "l_path_nh": 25.168,
-       "l_total_nh": 25.968,
+       "l_path_nh": 24.873,
+       "l_total_nh": 25.673,
        "ref": "C14",
        "srf_mhz": 0.35
       },
       {
        "dist_mm": 40.0,
-       "l_path_nh": 25.182,
-       "l_total_nh": 25.982,
+       "l_path_nh": 24.885,
+       "l_total_nh": 25.685,
        "ref": "C15",
        "srf_mhz": 0.35
       },
       {
        "dist_mm": 48.0,
-       "l_path_nh": 28.641,
-       "l_total_nh": 28.991,
+       "l_path_nh": 28.307,
+       "l_total_nh": 28.657,
        "ref": "C207",
-       "srf_mhz": 3.13
+       "srf_mhz": 3.15
       },
       {
        "dist_mm": 49.2,
-       "l_path_nh": 29.482,
-       "l_total_nh": 29.832,
+       "l_path_nh": 29.123,
+       "l_total_nh": 29.473,
        "ref": "C206",
-       "srf_mhz": 3.08
+       "srf_mhz": 3.1
       },
       {
        "dist_mm": 56.9,
-       "l_path_nh": 30.096,
-       "l_total_nh": 30.446,
+       "l_path_nh": 29.736,
+       "l_total_nh": 30.086,
        "ref": "C208",
-       "srf_mhz": 3.05
+       "srf_mhz": 3.07
       },
       {
        "dist_mm": 52.7,
-       "l_path_nh": 34.005,
-       "l_total_nh": 34.355,
+       "l_path_nh": 33.4,
+       "l_total_nh": 33.75,
        "ref": "C209",
-       "srf_mhz": 2.87
+       "srf_mhz": 2.9
       }
      ],
      "current_a": 0.027,
@@ -2813,12 +2813,12 @@
      "target_ohm": 7.33333,
      "target_source": "3 % ripple at a 50 % step of 27 mA (estimate)",
      "z_ohm": {
-      "100M": 1.44282,
-      "100k": 0.286929,
-      "10M": 0.153323,
-      "10k": 0.403291,
-      "1G": 15.4843,
-      "1M": 0.339604
+      "100M": 1.41497,
+      "100k": 0.285017,
+      "10M": 0.165452,
+      "10k": 0.401279,
+      "1G": 15.1653,
+      "1M": 0.336576
      }
     },
     {
@@ -2828,13 +2828,13 @@
        "above_target": false,
        "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 18µF on this net; regulator inductance against the capacitors; lowest series resonance: C14 8.02µF (series resonance 0.3 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.12421
+       "z_ohm": 2.12317
       },
       {
        "above_target": false,
        "between": "between C217 89nF (series resonance 4.9 MHz) and C211 89nF (series resonance 5.2 MHz)",
        "hz": 5011870.0,
-       "z_ohm": 0.667006
+       "z_ohm": 0.644272
       }
      ],
      "capacitors_most_effective": [
@@ -2847,52 +2847,52 @@
       },
       {
        "dist_mm": 9.0,
-       "l_path_nh": 10.299,
-       "l_total_nh": 10.649,
+       "l_path_nh": 9.981,
+       "l_total_nh": 10.331,
        "ref": "C211",
-       "srf_mhz": 5.16
+       "srf_mhz": 5.24
       },
       {
        "dist_mm": 28.8,
-       "l_path_nh": 11.576,
-       "l_total_nh": 11.926,
+       "l_path_nh": 11.314,
+       "l_total_nh": 11.664,
        "ref": "C217",
-       "srf_mhz": 4.88
+       "srf_mhz": 4.93
       },
       {
        "dist_mm": 16.2,
-       "l_path_nh": 11.644,
-       "l_total_nh": 11.994,
+       "l_path_nh": 11.325,
+       "l_total_nh": 11.675,
        "ref": "C219",
-       "srf_mhz": 4.86
+       "srf_mhz": 4.93
       },
       {
        "dist_mm": 39.5,
-       "l_path_nh": 11.85,
-       "l_total_nh": 12.2,
+       "l_path_nh": 11.583,
+       "l_total_nh": 11.933,
        "ref": "C215",
-       "srf_mhz": 4.82
+       "srf_mhz": 4.87
       },
       {
        "dist_mm": 30.0,
-       "l_path_nh": 12.256,
-       "l_total_nh": 12.606,
+       "l_path_nh": 11.995,
+       "l_total_nh": 12.345,
        "ref": "C214",
-       "srf_mhz": 4.74
+       "srf_mhz": 4.79
       },
       {
        "dist_mm": 39.1,
-       "l_path_nh": 12.739,
-       "l_total_nh": 13.089,
+       "l_path_nh": 12.478,
+       "l_total_nh": 12.828,
        "ref": "C218",
-       "srf_mhz": 4.65
+       "srf_mhz": 4.7
       },
       {
        "dist_mm": 17.1,
-       "l_path_nh": 13.069,
-       "l_total_nh": 13.419,
+       "l_path_nh": 12.805,
+       "l_total_nh": 13.155,
        "ref": "C221",
-       "srf_mhz": 4.6
+       "srf_mhz": 4.64
       }
      ],
      "current_a": 0.00029,
@@ -2904,12 +2904,12 @@
      "target_ohm": 682.759,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
-      "100M": 1.02715,
-      "100k": 0.252693,
-      "10M": 0.127425,
-      "10k": 0.374934,
-      "1G": 10.4404,
-      "1M": 0.263074
+      "100M": 1.02692,
+      "100k": 0.249666,
+      "10M": 0.128661,
+      "10k": 0.371727,
+      "1G": 10.4102,
+      "1M": 0.260647
      }
     },
     {
@@ -2919,13 +2919,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C77 89nF (series resonance 14.7 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.85909
+       "z_ohm": 2.85447
       },
       {
        "above_target": false,
        "between": "filter resonance of L26 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C77 89nF (series resonance 14.7 MHz)",
        "hz": 501187.0,
-       "z_ohm": 10.9638
+       "z_ohm": 10.9836
       }
      ],
      "capacitors_most_effective": [
@@ -2947,11 +2947,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 0.806013,
-      "100k": 1.19024,
+      "100k": 1.18433,
       "10M": 0.101169,
-      "10k": 1.16874,
-      "1G": 8.30255,
-      "1M": 2.42984
+      "10k": 1.16148,
+      "1G": 8.29979,
+      "1M": 2.43077
      }
     },
     {
@@ -2959,31 +2959,31 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "regulator inductance against the capacitors; lowest series resonance: C32 89nF (series resonance 12.9 MHz)",
+       "between": "regulator inductance against the capacitors; lowest series resonance: C32 89nF (series resonance 13.8 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.43958
+       "z_ohm": 2.43758
       },
       {
        "above_target": false,
-       "between": "filter resonance of L10 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C32 89nF (series resonance 12.9 MHz)",
+       "between": "filter resonance of L10 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C32 89nF (series resonance 13.8 MHz)",
        "hz": 398107.0,
-       "z_ohm": 9.19629
+       "z_ohm": 9.25742
       }
      ],
      "capacitors_most_effective": [
       {
        "dist_mm": 5.0,
-       "l_path_nh": 1.336,
-       "l_total_nh": 1.686,
+       "l_path_nh": 1.106,
+       "l_total_nh": 1.456,
        "ref": "C33",
-       "srf_mhz": 12.97
+       "srf_mhz": 13.96
       },
       {
        "dist_mm": 3.5,
-       "l_path_nh": 1.358,
-       "l_total_nh": 1.708,
+       "l_path_nh": 1.136,
+       "l_total_nh": 1.486,
        "ref": "C32",
-       "srf_mhz": 12.89
+       "srf_mhz": 13.81
       }
      ],
      "current_a": 0.0176,
@@ -2995,12 +2995,12 @@
      "target_ohm": 11.25,
      "target_source": "3 % ripple at a 50 % step of 18 mA (estimate)",
      "z_ohm": {
-      "100M": 0.533996,
-      "100k": 0.838515,
-      "10M": 0.0387658,
-      "10k": 0.730361,
-      "1G": 5.67358,
-      "1M": 1.03379
+      "100M": 0.460678,
+      "100k": 0.834855,
+      "10M": 0.0452121,
+      "10k": 0.726158,
+      "1G": 4.88018,
+      "1M": 1.0348
      }
     },
     {
@@ -3008,31 +3008,31 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "regulator inductance against the capacitors; lowest series resonance: C84 89nF (series resonance 12.6 MHz)",
+       "between": "regulator inductance against the capacitors; lowest series resonance: C84 89nF (series resonance 13.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.62705
+       "z_ohm": 2.62509
       },
       {
        "above_target": false,
-       "between": "filter resonance of L65 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C84 89nF (series resonance 12.6 MHz)",
+       "between": "filter resonance of L65 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C84 89nF (series resonance 13.4 MHz)",
        "hz": 398107.0,
-       "z_ohm": 7.33353
+       "z_ohm": 7.36427
       }
      ],
      "capacitors_most_effective": [
       {
        "dist_mm": 2.6,
-       "l_path_nh": 1.324,
-       "l_total_nh": 1.674,
+       "l_path_nh": 1.098,
+       "l_total_nh": 1.448,
        "ref": "C83",
-       "srf_mhz": 13.02
+       "srf_mhz": 13.99
       },
       {
        "dist_mm": 2.8,
-       "l_path_nh": 1.444,
-       "l_total_nh": 1.794,
+       "l_path_nh": 1.222,
+       "l_total_nh": 1.572,
        "ref": "C84",
-       "srf_mhz": 12.57
+       "srf_mhz": 13.43
       }
      ],
      "current_a": 0.02,
@@ -3044,12 +3044,12 @@
      "target_ohm": 9.9,
      "target_source": "3 % ripple at a 50 % step of 20 mA (estimate)",
      "z_ohm": {
-      "100M": 0.570635,
-      "100k": 1.00855,
-      "10M": 0.0356476,
-      "10k": 0.918782,
-      "1G": 5.87324,
-      "1M": 1.03025
+      "100M": 0.491609,
+      "100k": 1.00466,
+      "10M": 0.0423927,
+      "10k": 0.914554,
+      "1G": 5.06556,
+      "1M": 1.03113
      }
     },
     {
@@ -3064,29 +3064,29 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C54 89nF (series resonance 12.5 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.30103
+       "z_ohm": 2.30067
       },
       {
        "above_target": true,
        "between": "filter resonance of L64 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C54 89nF (series resonance 12.5 MHz)",
        "hz": 398107.0,
-       "z_ohm": 11.078
+       "z_ohm": 11.1306
       }
      ],
      "capacitors_most_effective": [
       {
        "dist_mm": 2.5,
-       "l_path_nh": 1.168,
-       "l_total_nh": 1.518,
+       "l_path_nh": 1.159,
+       "l_total_nh": 1.509,
        "ref": "C55",
-       "srf_mhz": 13.67
+       "srf_mhz": 13.71
       },
       {
        "dist_mm": 3.0,
-       "l_path_nh": 1.478,
-       "l_total_nh": 1.828,
+       "l_path_nh": 1.457,
+       "l_total_nh": 1.807,
        "ref": "C54",
-       "srf_mhz": 12.45
+       "srf_mhz": 12.53
       }
      ],
      "current_a": 0.02,
@@ -3110,12 +3110,12 @@
      "target_ohm": 9.9,
      "target_source": "3 % ripple at a 50 % step of 20 mA (estimate)",
      "z_ohm": {
-      "100M": 0.587259,
-      "100k": 0.730795,
-      "10M": 0.0337112,
-      "10k": 0.593019,
-      "1G": 6.0073,
-      "1M": 1.03575
+      "100M": 0.587152,
+      "100k": 0.728794,
+      "10M": 0.0337645,
+      "10k": 0.590456,
+      "1G": 6.00611,
+      "1M": 1.03586
      }
     },
     {
@@ -3125,13 +3125,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C69 89nF (series resonance 11.4 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.43448
+       "z_ohm": 2.43317
       },
       {
        "above_target": false,
        "between": "filter resonance of L21 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C69 89nF (series resonance 11.4 MHz)",
        "hz": 501187.0,
-       "z_ohm": 14.1166
+       "z_ohm": 14.1295
       }
      ],
      "capacitors_most_effective": [
@@ -3153,11 +3153,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 1.36639,
-      "100k": 0.808863,
-      "10M": 0.0546029,
-      "10k": 0.737164,
-      "1G": 13.9339,
-      "1M": 2.47781
+      "100k": 0.80629,
+      "10M": 0.0546031,
+      "10k": 0.733503,
+      "1G": 13.9338,
+      "1M": 2.47835
      }
     },
     {
@@ -3167,13 +3167,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C76 89nF (series resonance 9.5 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.65025
+       "z_ohm": 2.64845
       },
       {
        "above_target": false,
        "between": "filter resonance of L27 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C76 89nF (series resonance 9.5 MHz)",
        "hz": 501187.0,
-       "z_ohm": 11.9682
+       "z_ohm": 12.0116
       }
      ],
      "capacitors_most_effective": [
@@ -3195,11 +3195,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 1.96663,
-      "100k": 1.01798,
+      "100k": 1.01451,
       "10M": 0.0471393,
-      "10k": 0.955315,
-      "1G": 20.0201,
-      "1M": 2.44945
+      "10k": 0.951103,
+      "1G": 20.02,
+      "1M": 2.44949
      }
     },
     {
@@ -3209,13 +3209,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C75 89nF (series resonance 14.2 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.77398
+       "z_ohm": 2.76916
       },
       {
        "above_target": false,
        "between": "filter resonance of L25 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C75 89nF (series resonance 14.2 MHz)",
        "hz": 501187.0,
-       "z_ohm": 11.6386
+       "z_ohm": 11.6605
       }
      ],
      "capacitors_most_effective": [
@@ -3237,11 +3237,11 @@
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
       "100M": 0.867787,
-      "100k": 1.10832,
-      "10M": 0.095578,
-      "10k": 1.08238,
-      "1G": 8.89012,
-      "1M": 2.43985
+      "100k": 1.10232,
+      "10M": 0.0955783,
+      "10k": 1.07495,
+      "1G": 8.88995,
+      "1M": 2.44085
      }
     },
     {
@@ -3249,24 +3249,24 @@
      "anti_resonances": [
       {
        "above_target": false,
-       "between": "regulator inductance against the capacitors; lowest series resonance: C70 89nF (series resonance 10.3 MHz)",
+       "between": "regulator inductance against the capacitors; lowest series resonance: C70 89nF (series resonance 10.8 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.48249
+       "z_ohm": 2.47815
       },
       {
        "above_target": false,
-       "between": "filter resonance of L22 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C70 89nF (series resonance 10.3 MHz)",
+       "between": "filter resonance of L22 (bead, 0.96 µH below its peak) with the 89nF on this net; regulator inductance against the capacitors; lowest series resonance: C70 89nF (series resonance 10.8 MHz)",
        "hz": 501187.0,
-       "z_ohm": 13.8205
+       "z_ohm": 13.8424
       }
      ],
      "capacitors_most_effective": [
       {
        "dist_mm": 4.9,
-       "l_path_nh": 2.314,
-       "l_total_nh": 2.664,
+       "l_path_nh": 2.094,
+       "l_total_nh": 2.444,
        "ref": "C70",
-       "srf_mhz": 10.32
+       "srf_mhz": 10.77
       }
      ],
      "current_a": 0.00018,
@@ -3278,12 +3278,12 @@
      "target_ohm": 1100.0,
      "target_source": "3 % ripple at a 50 % step of 0 mA (estimate)",
      "z_ohm": {
-      "100M": 1.65864,
-      "100k": 0.845706,
-      "10M": 0.041758,
-      "10k": 0.786451,
-      "1G": 18.0934,
-      "1M": 2.46873
+      "100M": 1.5201,
+      "100k": 0.840561,
+      "10M": 0.0461685,
+      "10k": 0.779661,
+      "1G": 16.4833,
+      "1M": 2.47096
      }
     },
     {
@@ -3298,13 +3298,13 @@
        "above_target": false,
        "between": "regulator inductance against the capacitors; lowest series resonance: C73 89nF (series resonance 9.7 MHz)",
        "hz": 25118.9,
-       "z_ohm": 2.55337
+       "z_ohm": 2.54851
       },
       {
        "above_target": true,
        "between": "filter resonance of L23 (bead, 0.96 µH below its peak) with the 179nF on this net; regulator inductance against the capacitors; lowest series resonance: C73 89nF (series resonance 9.7 MHz)",
        "hz": 398107.0,
-       "z_ohm": 8.11635
+       "z_ohm": 8.17238
       }
      ],
      "capacitors_most_effective": [
@@ -3345,11 +3345,11 @@
      "target_source": "3 % ripple at a 50 % step of 55 mA (estimate)",
      "z_ohm": {
       "100M": 0.895511,
-      "100k": 0.928315,
+      "100k": 0.922432,
       "10M": 0.0374125,
-      "10k": 0.850587,
+      "10k": 0.843232,
       "1G": 9.14245,
-      "1M": 1.02698
+      "1M": 1.02716
      }
     }
    ],
@@ -3548,460 +3548,454 @@
  },
  "rails": [
   {
-   "copper_loss_mw": 7.29815,
+   "copper_loss_mw": 7.07115,
    "load_a": 0.691586,
-   "max_drop_mv": 14.6781,
-   "max_j_a_mm2": 35.3867,
+   "max_drop_mv": 14.1804,
+   "max_j_a_mm2": 34.6167,
    "rail": "+6V",
    "voltage": 6.0,
-   "warnings": [
-    "1 cells without connection to a source (copper islands) ignored"
-   ]
+   "warnings": []
   },
   {
-   "copper_loss_mw": 0.126202,
+   "copper_loss_mw": 0.124112,
    "load_a": 0.245772,
-   "max_drop_mv": 0.532076,
-   "max_j_a_mm2": 21.3415,
+   "max_drop_mv": 0.523184,
+   "max_j_a_mm2": 23.1778,
    "rail": "/Power Supply/VREG5V{slash}4",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 4.67166e-06,
+   "copper_loss_mw": 4.61555e-06,
    "load_a": 0.00161,
-   "max_drop_mv": 0.00442593,
-   "max_j_a_mm2": 0.167226,
+   "max_drop_mv": 0.00437732,
+   "max_j_a_mm2": 0.183768,
    "rail": "Net-(IC30-EN)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.01147e-05,
+   "copper_loss_mw": 1.91916e-05,
    "load_a": 0.0016,
-   "max_drop_mv": 0.0131996,
-   "max_j_a_mm2": 0.237521,
+   "max_drop_mv": 0.0126218,
+   "max_j_a_mm2": 0.225969,
    "rail": "Net-(IC30-OUT)",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.68435,
+   "copper_loss_mw": 1.41648,
    "load_a": 0.223876,
-   "max_drop_mv": 11.2006,
-   "max_j_a_mm2": 17.8668,
+   "max_drop_mv": 9.54995,
+   "max_j_a_mm2": 10.0175,
    "rail": "+3V3",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.6871e-07,
+   "copper_loss_mw": 1.68414e-07,
    "load_a": 0.0002,
-   "max_drop_mv": 0.000895497,
-   "max_j_a_mm2": 0.0249037,
+   "max_drop_mv": 0.00089475,
+   "max_j_a_mm2": 0.0253838,
    "rail": "/Attenuator Amp Switches/3V3_P2_SWITCH",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0549067,
+   "copper_loss_mw": 0.0544642,
    "load_a": 0.148205,
-   "max_drop_mv": 0.381182,
-   "max_j_a_mm2": 12.7974,
+   "max_drop_mv": 0.377851,
+   "max_j_a_mm2": 14.2983,
    "rail": "/Power Supply/VREG5V{slash}1",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.431476,
+   "copper_loss_mw": 0.412619,
    "load_a": 0.14674,
-   "max_drop_mv": 4.213,
-   "max_j_a_mm2": 28.9498,
+   "max_drop_mv": 4.0594,
+   "max_j_a_mm2": 25.2566,
    "rail": "+5V{slash}1",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0196924,
+   "copper_loss_mw": 0.0196009,
    "load_a": 0.055,
-   "max_drop_mv": 0.363125,
-   "max_j_a_mm2": 7.89266,
+   "max_drop_mv": 0.36082,
+   "max_j_a_mm2": 8.49365,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_AMP",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.363732,
+   "copper_loss_mw": 0.338971,
    "load_a": 0.14674,
-   "max_drop_mv": 2.94689,
-   "max_j_a_mm2": 31.7968,
+   "max_drop_mv": 2.7592,
+   "max_j_a_mm2": 22.4313,
    "rail": "+5V{slash}3",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0366074,
+   "copper_loss_mw": 0.0327675,
    "load_a": 0.07,
-   "max_drop_mv": 0.773306,
-   "max_j_a_mm2": 15.0191,
+   "max_drop_mv": 0.707346,
+   "max_j_a_mm2": 10.2343,
    "rail": "Net-(IC33-VPDT)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 8.14846e-19,
+   "copper_loss_mw": 8.57673e-19,
    "load_a": 0.0,
-   "max_drop_mv": 1.35447e-09,
-   "max_j_a_mm2": 6.19423e-08,
+   "max_drop_mv": 1.18483e-09,
+   "max_j_a_mm2": 5.84403e-08,
    "rail": "USB_POWER",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.35119,
+   "copper_loss_mw": 2.27487,
    "load_a": 0.14674,
-   "max_drop_mv": 17.9837,
-   "max_j_a_mm2": 36.8255,
+   "max_drop_mv": 17.4154,
+   "max_j_a_mm2": 31.7022,
    "rail": "+5V{slash}2",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.93389e-05,
+   "copper_loss_mw": 2.68862e-05,
    "load_a": 0.00114,
-   "max_drop_mv": 0.0260364,
-   "max_j_a_mm2": 0.423712,
+   "max_drop_mv": 0.0238873,
+   "max_j_a_mm2": 0.388031,
    "rail": "Net-(IC28-V_{S+})",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00698228,
+   "copper_loss_mw": 0.00641408,
    "load_a": 0.0176,
-   "max_drop_mv": 0.482363,
-   "max_j_a_mm2": 6.53064,
+   "max_drop_mv": 0.442314,
+   "max_j_a_mm2": 5.57207,
    "rail": "/2.LO + Ref Clock/3V3_CLKGEN",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00421602,
+   "copper_loss_mw": 0.00383747,
    "load_a": 0.02,
-   "max_drop_mv": 0.279111,
-   "max_j_a_mm2": 3.40002,
+   "max_drop_mv": 0.253895,
+   "max_j_a_mm2": 3.33018,
    "rail": "/1.LO/3V3_LO1_3",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0206131,
+   "copper_loss_mw": 0.019085,
    "load_a": 0.06,
-   "max_drop_mv": 0.560647,
-   "max_j_a_mm2": 9.41302,
+   "max_drop_mv": 0.51626,
+   "max_j_a_mm2": 6.83504,
    "rail": "Net-(C156-Pad1)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 16.7947,
+   "copper_loss_mw": 15.8842,
    "load_a": 1.13242,
-   "max_drop_mv": 15.4766,
-   "max_j_a_mm2": 123.447,
+   "max_drop_mv": 14.6381,
+   "max_j_a_mm2": 132.86,
    "rail": "+5V",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00719,
+   "copper_loss_mw": 0.00683658,
    "load_a": 0.0134,
-   "max_drop_mv": 0.540437,
-   "max_j_a_mm2": 4.97219,
+   "max_drop_mv": 0.514073,
+   "max_j_a_mm2": 4.37308,
    "rail": "Net-(IC27-VCC)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00347412,
+   "copper_loss_mw": 0.00320018,
    "load_a": 0.02,
-   "max_drop_mv": 0.277275,
-   "max_j_a_mm2": 3.75539,
+   "max_drop_mv": 0.256729,
+   "max_j_a_mm2": 2.61282,
    "rail": "/HF Source/3V3_SRC_3",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0533946,
+   "copper_loss_mw": 0.0538847,
    "load_a": 0.148205,
-   "max_drop_mv": 0.371792,
-   "max_j_a_mm2": 11.3579,
+   "max_drop_mv": 0.375658,
+   "max_j_a_mm2": 11.7017,
    "rail": "/Power Supply/VREG5V{slash}2",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.47479e-07,
+   "copper_loss_mw": 2.27701e-07,
    "load_a": 0.0002,
-   "max_drop_mv": 0.00128961,
-   "max_j_a_mm2": 0.0311758,
+   "max_drop_mv": 0.00118507,
+   "max_j_a_mm2": 0.0279942,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0879473,
+   "copper_loss_mw": 0.0830506,
    "load_a": 0.07,
-   "max_drop_mv": 1.45564,
-   "max_j_a_mm2": 21.9063,
+   "max_drop_mv": 1.38465,
+   "max_j_a_mm2": 14.7443,
    "rail": "Net-(IC29-VPDT)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 3.08434e-07,
+   "copper_loss_mw": 3.06272e-07,
    "load_a": 0.0002,
-   "max_drop_mv": 0.00160504,
-   "max_j_a_mm2": 0.0393971,
+   "max_drop_mv": 0.00159026,
+   "max_j_a_mm2": 0.0396694,
    "rail": "/Attenuator Amp Switches/3V3_P1_SWITCH",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 6.85158e-06,
+   "copper_loss_mw": 6.84965e-06,
    "load_a": 0.00161,
-   "max_drop_mv": 0.00572992,
-   "max_j_a_mm2": 0.137603,
+   "max_drop_mv": 0.00574487,
+   "max_j_a_mm2": 0.156953,
    "rail": "Net-(IC34-EN)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.20386e-05,
+   "copper_loss_mw": 2.05125e-05,
    "load_a": 0.0016,
-   "max_drop_mv": 0.0144024,
-   "max_j_a_mm2": 0.23752,
+   "max_drop_mv": 0.0134478,
+   "max_j_a_mm2": 0.232051,
    "rail": "Net-(IC34-OUT)",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00411273,
+   "copper_loss_mw": 0.00435149,
    "load_a": 0.0502576,
-   "max_drop_mv": 0.0860058,
-   "max_j_a_mm2": 3.79372,
+   "max_drop_mv": 0.0908948,
+   "max_j_a_mm2": 4.23411,
    "rail": "/1.LO/3V3_LDO2_LO1",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0399257,
+   "copper_loss_mw": 0.0376833,
    "load_a": 0.05,
-   "max_drop_mv": 0.892786,
-   "max_j_a_mm2": 11.9733,
+   "max_drop_mv": 0.842068,
+   "max_j_a_mm2": 10.7114,
    "rail": "/1.LO/3V3_LO1_2",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.87395e-07,
+   "copper_loss_mw": 1.73645e-07,
    "load_a": 0.0002,
-   "max_drop_mv": 0.000990826,
-   "max_j_a_mm2": 0.0310859,
+   "max_drop_mv": 0.000916362,
+   "max_j_a_mm2": 0.0271415,
    "rail": "/Attenuator Amp Switches/3V3_P12_SWITCH",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.206758,
+   "copper_loss_mw": 0.206109,
    "load_a": 0.224635,
-   "max_drop_mv": 0.963772,
-   "max_j_a_mm2": 12.572,
+   "max_drop_mv": 0.961,
+   "max_j_a_mm2": 12.535,
    "rail": "/Power Supply/VREG3V3_SWL",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.515761,
+   "copper_loss_mw": 0.501582,
    "load_a": 0.241796,
-   "max_drop_mv": 3.89147,
-   "max_j_a_mm2": 17.3829,
+   "max_drop_mv": 3.78801,
+   "max_j_a_mm2": 13.3457,
    "rail": "+5V{slash}4",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0110404,
+   "copper_loss_mw": 0.0108427,
    "load_a": 0.0705048,
-   "max_drop_mv": 0.163031,
-   "max_j_a_mm2": 6.22295,
+   "max_drop_mv": 0.160007,
+   "max_j_a_mm2": 6.82167,
    "rail": "/1.LO/3V3_LDO1_LO1",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.120436,
+   "copper_loss_mw": 0.113476,
    "load_a": 0.07,
-   "max_drop_mv": 1.72615,
-   "max_j_a_mm2": 16.4882,
+   "max_drop_mv": 1.62665,
+   "max_j_a_mm2": 14.0905,
    "rail": "/1.LO/3V3_LO1_1",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0222328,
+   "copper_loss_mw": 0.0204525,
    "load_a": 0.06,
-   "max_drop_mv": 0.594675,
-   "max_j_a_mm2": 9.03052,
+   "max_drop_mv": 0.542007,
+   "max_j_a_mm2": 5.26526,
    "rail": "Net-(C119-Pad1)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00393245,
+   "copper_loss_mw": 0.00353063,
    "load_a": 0.0134,
-   "max_drop_mv": 0.29761,
-   "max_j_a_mm2": 4.02552,
+   "max_drop_mv": 0.267668,
+   "max_j_a_mm2": 2.7762,
    "rail": "Net-(IC22-VCC)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 7.4741e-06,
+   "copper_loss_mw": 7.40078e-06,
    "load_a": 0.00161,
-   "max_drop_mv": 0.00612381,
-   "max_j_a_mm2": 0.143337,
+   "max_drop_mv": 0.00605192,
+   "max_j_a_mm2": 0.138105,
    "rail": "Net-(IC25-EN)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0885491,
+   "copper_loss_mw": 0.0821883,
    "load_a": 0.07,
-   "max_drop_mv": 1.59275,
-   "max_j_a_mm2": 19.9597,
+   "max_drop_mv": 1.49249,
+   "max_j_a_mm2": 13.8138,
    "rail": "Net-(IC24-VPDT)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00506777,
+   "copper_loss_mw": 0.0054063,
    "load_a": 0.0503889,
-   "max_drop_mv": 0.104138,
-   "max_j_a_mm2": 3.9036,
+   "max_drop_mv": 0.110911,
+   "max_j_a_mm2": 4.87541,
    "rail": "/HF Source/3V3_LDO2_SRC",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0550142,
+   "copper_loss_mw": 0.0543361,
    "load_a": 0.148205,
-   "max_drop_mv": 0.381907,
-   "max_j_a_mm2": 13.0465,
+   "max_drop_mv": 0.376987,
+   "max_j_a_mm2": 14.4567,
    "rail": "/Power Supply/VREG5V{slash}3",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0518581,
+   "copper_loss_mw": 0.048107,
    "load_a": 0.05013,
-   "max_drop_mv": 1.14072,
-   "max_j_a_mm2": 12.4033,
+   "max_drop_mv": 1.06094,
+   "max_j_a_mm2": 11.22,
    "rail": "/HF Source/3V3_SRC_2",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.21713e-05,
+   "copper_loss_mw": 1.949e-05,
    "load_a": 0.00114,
-   "max_drop_mv": 0.0197491,
-   "max_j_a_mm2": 0.423008,
+   "max_drop_mv": 0.0173993,
+   "max_j_a_mm2": 0.368735,
    "rail": "Net-(IC32-V_{S+})",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00967091,
+   "copper_loss_mw": 0.00965126,
    "load_a": 0.0705048,
-   "max_drop_mv": 0.143536,
-   "max_j_a_mm2": 6.25073,
+   "max_drop_mv": 0.143248,
+   "max_j_a_mm2": 6.14083,
    "rail": "/HF Source/3v3_LDO1_SRC",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 4.0324e-05,
+   "copper_loss_mw": 3.88778e-05,
    "load_a": 0.0016,
-   "max_drop_mv": 0.0258086,
-   "max_j_a_mm2": 0.240409,
+   "max_drop_mv": 0.0249043,
+   "max_j_a_mm2": 0.226015,
    "rail": "Net-(IC25-OUT)",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.96582e-07,
+   "copper_loss_mw": 2.72898e-07,
    "load_a": 0.00018,
-   "max_drop_mv": 0.00244134,
-   "max_j_a_mm2": 0.0280957,
+   "max_drop_mv": 0.0022895,
+   "max_j_a_mm2": 0.0239942,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.214986,
+   "copper_loss_mw": 0.204531,
    "load_a": 0.07,
-   "max_drop_mv": 3.07842,
-   "max_j_a_mm2": 15.1686,
+   "max_drop_mv": 2.92778,
+   "max_j_a_mm2": 15.7,
    "rail": "/HF Source/3V3_SRC_1",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.10055,
+   "copper_loss_mw": 0.0982841,
    "load_a": 0.08,
-   "max_drop_mv": 1.34553,
-   "max_j_a_mm2": 4.94274,
+   "max_drop_mv": 1.30795,
+   "max_j_a_mm2": 4.11202,
    "rail": "VCCINT",
    "voltage": 1.2,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.00600231,
+   "copper_loss_mw": 0.00526848,
    "load_a": 0.0134,
-   "max_drop_mv": 0.451802,
-   "max_j_a_mm2": 4.97219,
+   "max_drop_mv": 0.39705,
+   "max_j_a_mm2": 4.332,
    "rail": "Net-(IC36-VCC)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.75661e-05,
+   "copper_loss_mw": 2.27445e-05,
    "load_a": 0.00114,
-   "max_drop_mv": 0.0244813,
-   "max_j_a_mm2": 0.431673,
+   "max_drop_mv": 0.0202542,
+   "max_j_a_mm2": 0.346821,
    "rail": "Net-(IC23-V_{S+})",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0199498,
+   "copper_loss_mw": 0.0178641,
    "load_a": 0.06,
-   "max_drop_mv": 0.518965,
-   "max_j_a_mm2": 9.03052,
+   "max_drop_mv": 0.462743,
+   "max_j_a_mm2": 6.62975,
    "rail": "Net-(C190-Pad1)",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.690957,
+   "copper_loss_mw": 0.278902,
    "ground_return": true,
-   "max_j_a_mm2": 11.1782,
-   "max_offset_mv": 0.53491,
+   "max_j_a_mm2": 4.06186,
+   "max_offset_mv": 0.191056,
    "rail": "GND",
    "return_a": -0.0128514,
-   "warnings": [
-    "486 cells without connection to a source (copper islands) ignored",
-    "load IC10: 1 of 8 pads not connected, their current is missing from the result",
-    "load U2: 6 of 14 pads not connected, their current is missing from the result"
-   ]
+   "warnings": []
   }
  ],
  "tree_source": "PI_REG fields",

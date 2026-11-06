@@ -522,7 +522,7 @@
    {
     "from": "in:P1",
     "to": "loss:ground",
-    "w": 0.00134169
+    "w": 0.00115643
    },
    {
     "from": "in:P1",
@@ -537,7 +537,7 @@
    {
     "from": "rail:+1V2_MGT",
     "to": "loss:copper",
-    "w": 0.000113714
+    "w": 0.000106733
    },
    {
     "from": "rail:+1V8_ACQ",
@@ -552,7 +552,7 @@
    {
     "from": "rail:+1V8_ACQ",
     "to": "loss:copper",
-    "w": 0.00095798
+    "w": 0.000894234
    },
    {
     "from": "rail:+1V8_ACQ",
@@ -592,7 +592,7 @@
    {
     "from": "rail:+3V3_ACQ",
     "to": "loss:copper",
-    "w": 0.000293295
+    "w": 0.000281359
    },
    {
     "from": "rail:+3V3_PGA",
@@ -622,7 +622,7 @@
    {
     "from": "rail:+3V3_PGA",
     "to": "loss:copper",
-    "w": 4.00708e-08
+    "w": 3.83027e-08
    },
    {
     "from": "rail:+5V",
@@ -732,7 +732,7 @@
    {
     "from": "rail:+5V",
     "to": "loss:copper",
-    "w": 0.0095704
+    "w": 0.00919775
    },
    {
     "from": "rail:+5V",
@@ -752,7 +752,7 @@
    {
     "from": "rail:+5V3",
     "to": "loss:copper",
-    "w": 0.00670598
+    "w": 0.00662853
    },
    {
     "from": "rail:+5V3",
@@ -792,7 +792,7 @@
    {
     "from": "rail:+VUSB",
     "to": "loss:copper",
-    "w": 0.0284279
+    "w": 0.0268359
    },
    {
     "from": "rail:+VUSB",
@@ -867,7 +867,7 @@
    {
     "from": "rail:/ACQ and FE Voltage Regs/-5V_R",
     "to": "loss:copper",
-    "w": 0.000728822
+    "w": 0.000684962
    },
    {
     "from": "rail:/ACQ and FE Voltage Regs/-5V_R",
@@ -882,7 +882,7 @@
    {
     "from": "rail:/FPGA/FPGA Voltage Regs/+1V0_R",
     "to": "loss:copper",
-    "w": 0.00279504
+    "w": 0.00264763
    },
    {
     "from": "rail:/FPGA/FPGA Voltage Regs/+1V0_R",
@@ -902,7 +902,7 @@
    {
     "from": "rail:/FPGA/FPGA Voltage Regs/+1V8_R",
     "to": "loss:copper",
-    "w": 0.000382451
+    "w": 0.000364364
    },
    {
     "from": "rail:/FPGA/FPGA Voltage Regs/+1V8_R",
@@ -922,7 +922,7 @@
    {
     "from": "rail:/FPGA/FPGA Voltage Regs/+2V5_R",
     "to": "loss:copper",
-    "w": 0.00102272
+    "w": 0.00097523
    },
    {
     "from": "rail:/FPGA/FPGA Voltage Regs/+2V5_R",
@@ -947,7 +947,7 @@
    {
     "from": "rail:/FPGA/FPGA Voltage Regs/+3V3_R",
     "to": "loss:copper",
-    "w": 3.42524e-06
+    "w": 3.07799e-06
    },
    {
     "from": "rail:/FPGA/FPGA Voltage Regs/+3V3_R",
@@ -962,7 +962,7 @@
    {
     "from": "rail:/TS-PCIe Components/+12V_PCIe",
     "to": "loss:copper",
-    "w": 0.00368683
+    "w": 0.00365959
    },
    {
     "from": "rail:/TS-PCIe Components/+12V_PCIe",
@@ -1595,215 +1595,215 @@
    }
   ],
   "components_w": 12.7755,
-  "copper_ground_w": 0.00134169,
-  "copper_rails_w": 0.0546886,
+  "copper_ground_w": 0.00115643,
+  "copper_rails_w": 0.0522794,
   "notes": [
    "Component heat: the power a load draws is taken as heat in the part (estimate: power leaving the board, e.g. through connectors or LEDs, is included); regulator losses are put on the regulator."
   ],
   "per_layer": [
    {
-    "copper_w": 0.0121975,
+    "copper_w": 0.0118525,
     "layer": "F.Cu"
    },
    {
-    "copper_w": 0.000357006,
+    "copper_w": 0.000283356,
     "layer": "In1.Cu"
    },
    {
-    "copper_w": 0.032732,
+    "copper_w": 0.0309136,
     "layer": "In2.Cu"
    },
    {
-    "copper_w": 0.00312618,
+    "copper_w": 0.00294294,
     "layer": "In3.Cu"
    },
    {
-    "copper_w": 0.000288208,
+    "copper_w": 0.000216837,
     "layer": "In4.Cu"
    },
    {
-    "copper_w": 0.00732936,
+    "copper_w": 0.00722652,
     "layer": "B.Cu"
    }
   ],
   "per_rail": [
    {
-    "copper_w": 0.0272135,
+    "copper_w": 0.0256191,
     "ground_return": false,
     "rail": "+VUSB"
    },
    {
-    "copper_w": 0.0094198,
+    "copper_w": 0.00905172,
     "ground_return": false,
     "rail": "+5V"
    },
    {
-    "copper_w": 0.00511562,
+    "copper_w": 0.00508859,
     "ground_return": false,
     "rail": "+5V3"
    },
    {
-    "copper_w": 0.00262773,
+    "copper_w": 0.00248639,
     "ground_return": false,
     "rail": "+1V0"
    },
    {
-    "copper_w": 0.00189082,
+    "copper_w": 0.00185688,
     "ground_return": false,
     "rail": "/TS-PCIe Components/+12V_PCIe"
    },
    {
-    "copper_w": 0.00179601,
+    "copper_w": 0.00180272,
     "ground_return": false,
     "rail": "/TS-PCIe Components/+12V_PCIe_R"
    },
    {
-    "copper_w": 0.00156517,
+    "copper_w": 0.00151471,
     "ground_return": false,
     "rail": "/ACQ and FE Voltage Regs/+5V3_R_LDO"
    },
    {
-    "copper_w": 0.00134169,
-    "ground_return": true,
-    "rail": "GND"
-   },
-   {
-    "copper_w": 0.00116249,
+    "copper_w": 0.00116563,
     "ground_return": false,
     "rail": "/TS-USB4 Components/+VUSB_R"
    },
    {
-    "copper_w": 0.000708247,
+    "copper_w": 0.00115643,
+    "ground_return": true,
+    "rail": "GND"
+   },
+   {
+    "copper_w": 0.000664112,
     "ground_return": false,
     "rail": "-5V"
    },
    {
-    "copper_w": 0.000664538,
+    "copper_w": 0.000630622,
     "ground_return": false,
     "rail": "+1V8_ACQ"
    },
    {
-    "copper_w": 0.000621765,
+    "copper_w": 0.000605196,
     "ground_return": false,
     "rail": "/ACQ and FE Voltage Regs/+2V5_R_ACQ"
    },
    {
-    "copper_w": 0.000317786,
+    "copper_w": 0.00028836,
     "ground_return": false,
     "rail": "+2V5"
    },
    {
-    "copper_w": 0.000293295,
+    "copper_w": 0.000281359,
     "ground_return": false,
     "rail": "+3V3_ACQ"
    },
    {
-    "copper_w": 0.000289503,
+    "copper_w": 0.000270539,
     "ground_return": false,
     "rail": "+1V8"
    },
    {
-    "copper_w": 0.000215343,
+    "copper_w": 0.000194284,
     "ground_return": false,
     "rail": "/ADC/+1V8A"
    },
    {
-    "copper_w": 0.000125484,
+    "copper_w": 0.000123954,
     "ground_return": false,
     "rail": "/FPGA/FPGA Voltage Regs/+1V0_R"
    },
    {
-    "copper_w": 0.000113714,
+    "copper_w": 0.000106733,
     "ground_return": false,
     "rail": "+1V2_MGT"
    },
    {
-    "copper_w": 8.31638e-05,
+    "copper_w": 8.16743e-05,
     "ground_return": false,
     "rail": "/FPGA/FPGA Voltage Regs/+2V5_R"
    },
    {
-    "copper_w": 5.19557e-05,
+    "copper_w": 5.11082e-05,
     "ground_return": false,
     "rail": "/ACQ and FE Voltage Regs/+VUSB_R_ACQ"
    },
    {
-    "copper_w": 4.7934e-05,
+    "copper_w": 4.80544e-05,
     "ground_return": false,
     "rail": "/FPGA/FPGA Voltage Regs/+1V8_R"
    },
    {
-    "copper_w": 4.50139e-05,
+    "copper_w": 4.5771e-05,
     "ground_return": false,
     "rail": "/FPGA/FPGA Voltage Regs/+1V8_R_LDO"
    },
    {
-    "copper_w": 4.18274e-05,
+    "copper_w": 3.72891e-05,
     "ground_return": false,
     "rail": "+1V0_MGT"
    },
    {
-    "copper_w": 4.08317e-05,
-    "ground_return": false,
-    "rail": "/ADC/+1V8D"
-   },
-   {
-    "copper_w": 3.76497e-05,
+    "copper_w": 3.65083e-05,
     "ground_return": false,
     "rail": "/CH4/+VPGA"
    },
    {
-    "copper_w": 3.76497e-05,
+    "copper_w": 3.65083e-05,
     "ground_return": false,
     "rail": "/CH3/+VPGA"
    },
    {
-    "copper_w": 3.76497e-05,
+    "copper_w": 3.65083e-05,
     "ground_return": false,
     "rail": "/CH1/+VPGA"
    },
    {
-    "copper_w": 3.76497e-05,
+    "copper_w": 3.65083e-05,
     "ground_return": false,
     "rail": "/CH2/+VPGA"
    },
    {
-    "copper_w": 3.72671e-05,
+    "copper_w": 3.61891e-05,
+    "ground_return": false,
+    "rail": "/ADC/+1V8D"
+   },
+   {
+    "copper_w": 3.31391e-05,
     "ground_return": false,
     "rail": "+1V8APLL"
    },
    {
-    "copper_w": 2.51878e-05,
+    "copper_w": 2.52285e-05,
     "ground_return": false,
     "rail": "/ACQ and FE Voltage Regs/+5V3_R_CP"
    },
    {
-    "copper_w": 2.05747e-05,
+    "copper_w": 2.085e-05,
     "ground_return": false,
     "rail": "/ACQ and FE Voltage Regs/-5V_R"
    },
    {
-    "copper_w": 3.0317e-06,
+    "copper_w": 2.6882e-06,
     "ground_return": false,
     "rail": "+3V3"
    },
    {
-    "copper_w": 3.93543e-07,
+    "copper_w": 3.89793e-07,
     "ground_return": false,
     "rail": "/FPGA/FPGA Voltage Regs/+3V3_R"
    },
    {
-    "copper_w": 4.00708e-08,
+    "copper_w": 3.83027e-08,
     "ground_return": false,
     "rail": "+3V3_PGA"
    },
    {
-    "copper_w": 5.47512e-09,
+    "copper_w": 5.92965e-09,
     "ground_return": false,
     "rail": "/ACQ and FE Voltage Regs/+5V_R_PGA"
    }
   ],
-  "total_w": 12.8315
+  "total_w": 12.8289
  },
  "pdn": {
   "above_target_hz": [
@@ -1865,7 +1865,7 @@
    "grid": {
     "cell_mm": 0.2,
     "layers": 3,
-    "nodes": 4628
+    "nodes": 4636
    },
    "ics": [
     {
@@ -1874,59 +1874,59 @@
      "capacitors_most_effective": [
       {
        "dist_mm": 3.2,
-       "l_path_nh": 0.151,
-       "l_total_nh": 0.501,
+       "l_path_nh": 0.131,
+       "l_total_nh": 0.481,
        "ref": "C154",
-       "srf_mhz": 7.2
+       "srf_mhz": 7.34
       },
       {
        "dist_mm": 2.7,
-       "l_path_nh": 0.153,
-       "l_total_nh": 0.503,
+       "l_path_nh": 0.132,
+       "l_total_nh": 0.482,
        "ref": "C155",
-       "srf_mhz": 7.18
+       "srf_mhz": 7.34
       },
       {
        "dist_mm": 3.4,
-       "l_path_nh": 0.167,
-       "l_total_nh": 0.517,
+       "l_path_nh": 0.147,
+       "l_total_nh": 0.497,
        "ref": "C157",
-       "srf_mhz": 7.09
+       "srf_mhz": 7.23
       },
       {
        "dist_mm": 3.2,
-       "l_path_nh": 0.142,
-       "l_total_nh": 0.642,
+       "l_path_nh": 0.123,
+       "l_total_nh": 0.623,
        "ref": "C159",
-       "srf_mhz": 2.01
+       "srf_mhz": 2.04
       },
       {
        "dist_mm": 2.1,
-       "l_path_nh": 0.213,
-       "l_total_nh": 0.713,
+       "l_path_nh": 0.175,
+       "l_total_nh": 0.675,
        "ref": "C158",
-       "srf_mhz": 1.91
+       "srf_mhz": 1.96
       },
       {
        "dist_mm": 2.4,
-       "l_path_nh": 0.441,
-       "l_total_nh": 0.791,
+       "l_path_nh": 0.39,
+       "l_total_nh": 0.74,
        "ref": "C156",
-       "srf_mhz": 5.73
+       "srf_mhz": 5.92
       },
       {
        "dist_mm": 5.7,
-       "l_path_nh": 0.206,
-       "l_total_nh": 0.806,
+       "l_path_nh": 0.182,
+       "l_total_nh": 0.782,
        "ref": "C153",
-       "srf_mhz": 0.86
+       "srf_mhz": 0.87
       },
       {
        "dist_mm": 7.1,
-       "l_path_nh": 0.247,
-       "l_total_nh": 0.847,
+       "l_path_nh": 0.22,
+       "l_total_nh": 0.82,
        "ref": "C87",
-       "srf_mhz": 0.84
+       "srf_mhz": 0.85
       }
      ],
      "current_a": 0.6,
@@ -1938,12 +1938,12 @@
      "target_ohm": 0.1,
      "target_source": "3 % ripple at a 50 % step of 600 mA (estimate)",
      "z_ohm": {
-      "100M": 0.0844012,
-      "100k": 0.0113908,
-      "10M": 0.0071029,
-      "10k": 0.0209583,
-      "1G": 0.875546,
-      "1M": 0.0025898
+      "100M": 0.0752269,
+      "100k": 0.0113502,
+      "10M": 0.00621487,
+      "10k": 0.0206267,
+      "1G": 0.782022,
+      "1M": 0.00244747
      }
     },
     {
@@ -1956,25 +1956,25 @@
      "anti_resonances": [
       {
        "above_target": true,
-       "between": "regulator inductance against the capacitors; lowest series resonance: C172 99nF (series resonance 18.3 MHz)",
+       "between": "regulator inductance against the capacitors; lowest series resonance: C172 99nF (series resonance 19.5 MHz)",
        "hz": 794328.0,
-       "z_ohm": 10.7212
+       "z_ohm": 10.7279
       }
      ],
      "capacitors_most_effective": [
       {
        "dist_mm": 1.5,
-       "l_path_nh": 0.391,
-       "l_total_nh": 0.741,
+       "l_path_nh": 0.31,
+       "l_total_nh": 0.66,
        "ref": "C171",
-       "srf_mhz": 18.59
+       "srf_mhz": 19.69
       },
       {
        "dist_mm": 1.6,
-       "l_path_nh": 0.415,
-       "l_total_nh": 0.765,
+       "l_path_nh": 0.325,
+       "l_total_nh": 0.675,
        "ref": "C172",
-       "srf_mhz": 18.29
+       "srf_mhz": 19.47
       }
      ],
      "current_a": 0.18,
@@ -1998,12 +1998,12 @@
      "target_ohm": 0.333333,
      "target_source": "3 % ripple at a 50 % step of 180 mA (estimate)",
      "z_ohm": {
-      "100M": 0.311103,
-      "100k": 0.126538,
-      "10M": 0.0511069,
-      "10k": 0.0749426,
-      "1G": 3.22988,
-      "1M": 2.36527
+      "100M": 0.261158,
+      "100k": 0.126287,
+      "10M": 0.0557587,
+      "10k": 0.0743014,
+      "1G": 2.72687,
+      "1M": 2.36629
      }
     }
    ],
@@ -2056,321 +2056,320 @@
  },
  "rails": [
   {
-   "copper_loss_mw": 9.4198,
+   "copper_loss_mw": 9.05172,
    "load_a": 1.07013,
-   "max_drop_mv": 10.363,
-   "max_j_a_mm2": 57.6859,
+   "max_drop_mv": 9.9831,
+   "max_j_a_mm2": 64.4399,
    "rail": "+5V",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0376497,
+   "copper_loss_mw": 0.0365083,
    "load_a": 0.23,
-   "max_drop_mv": 0.189039,
-   "max_j_a_mm2": 11.7454,
+   "max_drop_mv": 0.184153,
+   "max_j_a_mm2": 14.1352,
    "rail": "/CH4/+VPGA",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.56517,
+   "copper_loss_mw": 1.51471,
    "load_a": 1.07313,
-   "max_drop_mv": 1.59517,
-   "max_j_a_mm2": 61.9456,
+   "max_drop_mv": 1.54271,
+   "max_j_a_mm2": 66.9772,
    "rail": "/ACQ and FE Voltage Regs/+5V3_R_LDO",
    "voltage": 5.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0450139,
+   "copper_loss_mw": 0.045771,
    "load_a": 0.143,
-   "max_drop_mv": 0.671751,
-   "max_j_a_mm2": 6.42135,
+   "max_drop_mv": 0.690678,
+   "max_j_a_mm2": 6.24539,
    "rail": "/FPGA/FPGA Voltage Regs/+1V8_R_LDO",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.113714,
+   "copper_loss_mw": 0.106733,
    "load_a": 0.14,
-   "max_drop_mv": 0.902674,
-   "max_j_a_mm2": 11.639,
+   "max_drop_mv": 0.845345,
+   "max_j_a_mm2": 11.2809,
    "rail": "+1V2_MGT",
    "voltage": 1.2,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0376497,
+   "copper_loss_mw": 0.0365083,
    "load_a": 0.23,
-   "max_drop_mv": 0.189039,
-   "max_j_a_mm2": 11.7454,
+   "max_drop_mv": 0.184153,
+   "max_j_a_mm2": 14.1352,
    "rail": "/CH3/+VPGA",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.047934,
+   "copper_loss_mw": 0.0480544,
    "load_a": 0.263498,
-   "max_drop_mv": 0.190914,
-   "max_j_a_mm2": 6.8068,
+   "max_drop_mv": 0.191364,
+   "max_j_a_mm2": 6.89755,
    "rail": "/FPGA/FPGA Voltage Regs/+1V8_R",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.289503,
+   "copper_loss_mw": 0.270539,
    "load_a": 0.263114,
-   "max_drop_mv": 1.9009,
-   "max_j_a_mm2": 19.0978,
+   "max_drop_mv": 1.8199,
+   "max_j_a_mm2": 17.282,
    "rail": "+1V8",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0251878,
+   "copper_loss_mw": 0.0252285,
    "load_a": 0.161255,
-   "max_drop_mv": 0.162503,
-   "max_j_a_mm2": 8.62081,
+   "max_drop_mv": 0.162727,
+   "max_j_a_mm2": 8.63725,
    "rail": "/ACQ and FE Voltage Regs/+5V3_R_CP",
    "voltage": 5.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0205747,
+   "copper_loss_mw": 0.02085,
    "load_a": 0.14529,
-   "max_drop_mv": 0.14923,
-   "max_j_a_mm2": 9.45273,
+   "max_drop_mv": 0.151758,
+   "max_j_a_mm2": 8.58485,
    "rail": "/ACQ and FE Voltage Regs/-5V_R",
    "voltage": -5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.621765,
+   "copper_loss_mw": 0.605196,
    "load_a": 0.551084,
-   "max_drop_mv": 2.15742,
-   "max_j_a_mm2": 25.7424,
+   "max_drop_mv": 2.09606,
+   "max_j_a_mm2": 27.4946,
    "rail": "/ACQ and FE Voltage Regs/+2V5_R_ACQ",
    "voltage": 2.5,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.664538,
+   "copper_loss_mw": 0.630622,
    "load_a": 0.548084,
-   "max_drop_mv": 1.70188,
-   "max_j_a_mm2": 31.7578,
+   "max_drop_mv": 1.61494,
+   "max_j_a_mm2": 33.9259,
    "rail": "+1V8_ACQ",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 5.47512e-06,
+   "copper_loss_mw": 5.92965e-06,
    "load_a": 0.00163,
-   "max_drop_mv": 0.00545091,
-   "max_j_a_mm2": 0.154138,
+   "max_drop_mv": 0.00600759,
+   "max_j_a_mm2": 0.16784,
    "rail": "/ACQ and FE Voltage Regs/+5V_R_PGA",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 4.00708e-05,
+   "copper_loss_mw": 3.83027e-05,
    "load_a": 0.00161,
-   "max_drop_mv": 0.039071,
-   "max_j_a_mm2": 0.163277,
+   "max_drop_mv": 0.0378406,
+   "max_j_a_mm2": 0.171998,
    "rail": "+3V3_PGA",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.16249,
+   "copper_loss_mw": 1.16563,
    "load_a": 1.40997,
-   "max_drop_mv": 0.978035,
-   "max_j_a_mm2": 54.6008,
+   "max_drop_mv": 0.981615,
+   "max_j_a_mm2": 59.008,
    "rail": "/TS-USB4 Components/+VUSB_R",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 5.11562,
+   "copper_loss_mw": 5.08859,
    "load_a": 1.23705,
-   "max_drop_mv": 4.34473,
-   "max_j_a_mm2": 59.4119,
+   "max_drop_mv": 4.3204,
+   "max_j_a_mm2": 60.6083,
    "rail": "+5V3",
    "voltage": 5.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.000393543,
+   "copper_loss_mw": 0.000389793,
    "load_a": 0.0450061,
-   "max_drop_mv": 0.0103828,
-   "max_j_a_mm2": 0.799396,
+   "max_drop_mv": 0.0102864,
+   "max_j_a_mm2": 0.813047,
    "rail": "/FPGA/FPGA Voltage Regs/+3V3_R",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0030317,
+   "copper_loss_mw": 0.0026882,
    "load_a": 0.045,
-   "max_drop_mv": 0.129101,
-   "max_j_a_mm2": 1.94294,
+   "max_drop_mv": 0.117847,
+   "max_j_a_mm2": 1.8746,
    "rail": "+3V3",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 27.2135,
+   "copper_loss_mw": 25.6191,
    "load_a": 2.32308,
-   "max_drop_mv": 14.1435,
-   "max_j_a_mm2": 111.317,
+   "max_drop_mv": 13.3432,
+   "max_j_a_mm2": 89.6964,
    "rail": "+VUSB",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0519557,
+   "copper_loss_mw": 0.0511082,
    "load_a": 0.22202,
-   "max_drop_mv": 0.25101,
-   "max_j_a_mm2": 7.4768,
+   "max_drop_mv": 0.247108,
+   "max_j_a_mm2": 7.91831,
    "rail": "/ACQ and FE Voltage Regs/+VUSB_R_ACQ",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.293295,
+   "copper_loss_mw": 0.281359,
    "load_a": 0.222,
-   "max_drop_mv": 1.62031,
-   "max_j_a_mm2": 16.7304,
+   "max_drop_mv": 1.56111,
+   "max_j_a_mm2": 12.466,
    "rail": "+3V3_ACQ",
    "voltage": 3.3,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0831638,
+   "copper_loss_mw": 0.0816743,
    "load_a": 0.613798,
-   "max_drop_mv": 0.171216,
-   "max_j_a_mm2": 14.2103,
+   "max_drop_mv": 0.168234,
+   "max_j_a_mm2": 15.7357,
    "rail": "/FPGA/FPGA Voltage Regs/+2V5_R",
    "voltage": 2.5,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0376497,
+   "copper_loss_mw": 0.0365083,
    "load_a": 0.23,
-   "max_drop_mv": 0.189039,
-   "max_j_a_mm2": 11.7454,
+   "max_drop_mv": 0.184153,
+   "max_j_a_mm2": 14.1352,
    "rail": "/CH1/+VPGA",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.125484,
+   "copper_loss_mw": 0.123954,
    "load_a": 0.787729,
-   "max_drop_mv": 0.190387,
-   "max_j_a_mm2": 14.298,
+   "max_drop_mv": 0.188019,
+   "max_j_a_mm2": 13.9971,
    "rail": "/FPGA/FPGA Voltage Regs/+1V0_R",
    "voltage": 1.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 2.62773,
+   "copper_loss_mw": 2.48639,
    "load_a": 0.78162,
-   "max_drop_mv": 3.51447,
-   "max_j_a_mm2": 50.5723,
+   "max_drop_mv": 3.31656,
+   "max_j_a_mm2": 42.1379,
    "rail": "+1V0",
    "voltage": 1.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.89082,
+   "copper_loss_mw": 1.85688,
    "load_a": 1.06462,
-   "max_drop_mv": 1.81313,
-   "max_j_a_mm2": 40.9581,
+   "max_drop_mv": 1.78125,
+   "max_j_a_mm2": 40.9573,
    "rail": "/TS-PCIe Components/+12V_PCIe",
    "voltage": 12.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.317786,
+   "copper_loss_mw": 0.28836,
    "load_a": 0.612299,
-   "max_drop_mv": 0.556829,
-   "max_j_a_mm2": 21.2452,
+   "max_drop_mv": 0.507118,
+   "max_j_a_mm2": 19.1719,
    "rail": "+2V5",
    "voltage": 2.5,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0376497,
+   "copper_loss_mw": 0.0365083,
    "load_a": 0.23,
-   "max_drop_mv": 0.189039,
-   "max_j_a_mm2": 11.7454,
+   "max_drop_mv": 0.184153,
+   "max_j_a_mm2": 14.1352,
    "rail": "/CH2/+VPGA",
    "voltage": 5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.708247,
+   "copper_loss_mw": 0.664112,
    "load_a": 0.14508,
-   "max_drop_mv": 5.29881,
-   "max_j_a_mm2": 19.7125,
+   "max_drop_mv": 4.97748,
+   "max_j_a_mm2": 15.2302,
    "rail": "-5V",
    "voltage": -5.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.79601,
+   "copper_loss_mw": 1.80272,
    "load_a": 1.06368,
-   "max_drop_mv": 1.74673,
-   "max_j_a_mm2": 48.3066,
+   "max_drop_mv": 1.75325,
+   "max_j_a_mm2": 49.3877,
    "rail": "/TS-PCIe Components/+12V_PCIe_R",
    "voltage": 12.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.215343,
+   "copper_loss_mw": 0.194284,
    "load_a": 0.27,
-   "max_drop_mv": 1.07094,
-   "max_j_a_mm2": 22.2014,
+   "max_drop_mv": 0.976831,
+   "max_j_a_mm2": 11.8625,
    "rail": "/ADC/+1V8A",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0372671,
+   "copper_loss_mw": 0.0331391,
    "load_a": 0.15,
-   "max_drop_mv": 0.314816,
-   "max_j_a_mm2": 8.42815,
+   "max_drop_mv": 0.278488,
+   "max_j_a_mm2": 5.05514,
    "rail": "+1V8APLL",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0408317,
+   "copper_loss_mw": 0.0361891,
    "load_a": 0.125,
-   "max_drop_mv": 0.451732,
-   "max_j_a_mm2": 14.0061,
+   "max_drop_mv": 0.393767,
+   "max_j_a_mm2": 6.93198,
    "rail": "/ADC/+1V8D",
    "voltage": 1.8,
    "warnings": []
   },
   {
-   "copper_loss_mw": 0.0418274,
+   "copper_loss_mw": 0.0372891,
    "load_a": 0.18,
-   "max_drop_mv": 0.273393,
-   "max_j_a_mm2": 7.53619,
+   "max_drop_mv": 0.241404,
+   "max_j_a_mm2": 7.5254,
    "rail": "+1V0_MGT",
    "voltage": 1.0,
    "warnings": []
   },
   {
-   "copper_loss_mw": 1.34169,
+   "copper_loss_mw": 1.15643,
    "ground_return": true,
-   "max_j_a_mm2": 11.3156,
-   "max_offset_mv": 0.582903,
+   "max_j_a_mm2": 9.22621,
+   "max_offset_mv": 0.52906,
    "rail": "GND",
    "return_a": 1.041,
    "warnings": [
-    "780 cells without connection to a source (copper islands) ignored",
-    "load U18: 1 of 85 pads not connected, their current is missing from the result"
+    "169 cells without connection to a source (copper islands) ignored"
    ]
   }
  ],

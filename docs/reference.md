@@ -287,11 +287,13 @@ dismissed.
 
 ## Output files
 - `kisi report` writes everything into `analysis/kisi.json` next to the board (`--out` elsewhere), for
-  file-based review tools and later sessions.
+  file-based review tools and later sessions; `stackup_used` holds the stackup the analyses used with the source of
+  every value.
 - `kisi net … --s2p FILE` / `--s4p FILE` write the channel's S-parameters as Touchstone.
 - `kisi export` writes a lane or a bus into `analysis/export/<name>` next to the board (`--out` elsewhere): the
   subcircuit library, test benches and S-parameter decks for ngspice, Xyce and LTspice, Touchstone files, a KiCad
   project and a README; the viewer's "Export…" gives the same files as a zip, as its export settings choose
-  ([CLI reference](cli.md#export)).
+  ([CLI reference](cli.md#export)). Every exported file – and every Touchstone file of `kisi net` and the viewer –
+  names the stackup it was computed with, layer by layer with the source of each value, in a comment block.
 - The viewer exports Touchstone files per net and writes `<board>.kisi.json` from its Prepare PCB page
   ([Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb)); its other edits stay in the browser.

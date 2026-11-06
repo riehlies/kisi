@@ -303,6 +303,64 @@ pub fn export(
     }
 }
 
+/// Put a comment block (the stackup used, the tolerances; ASCII lines) at the head of every file of
+/// an export, in each format's comment syntax: SPICE files (`.lib`, `.cir`) and Touchstone files after
+/// their leading comment lines (`*`, `!` – the title line of a deck stays first), the README as a
+/// section at its end, the KiCad sheet as a comment of its title block. Other files stay as they are.
+pub fn stamp(files: &mut [ExportFile], lines: &[String]) {
+    if lines.is_empty() {
+        return;
+    }
+    let after_comments = |text: &str, mark: char, prefix: &str| -> String {
+        let mut out = String::with_capacity(text.len() + 80 * lines.len());
+        let mut done = false;
+        for l in text.split_inclusive('\n') {
+            if !done && !l.starts_with(mark) {
+                for x in lines {
+                    out.push_str(prefix);
+                    out.push_str(x);
+                    out.push('\n');
+                }
+                done = true;
+            }
+            out.push_str(l);
+        }
+        if !done {
+            for x in lines {
+                out.push_str(prefix);
+                out.push_str(x);
+                out.push('\n');
+            }
+        }
+        out
+    };
+    for f in files.iter_mut() {
+        let ext = f.path.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+        if ext == "lib" || ext == "cir" {
+            f.content = after_comments(&f.content, '*', "* ");
+        } else if ext.starts_with('s')
+            && ext.ends_with('p')
+            && ext[1..ext.len() - 1].chars().all(|c| c.is_ascii_digit())
+            && ext.len() > 2
+        {
+            f.content = after_comments(&f.content, '!', "! ");
+        } else if f.path.ends_with("README.md") {
+            f.content.push_str(&format!("\n## Stackup\n\n```text\n{}\n```\n", lines.join("\n")));
+        } else if ext == "kicad_sch" {
+            if let Some(i) = f.content.find("    (comment 1 ") {
+                if let Some(j) = f.content[i..].find('\n') {
+                    let q = |t: &str| format!("\"{}\"", t.replace('\\', "\\\\").replace('"', "\\\""));
+                    let first = lines.first().map(|l| l.trim_end_matches(':').to_string()).unwrap_or_default();
+                    f.content.insert_str(
+                        i + j + 1,
+                        &format!("    (comment 2 {})\n", q(&format!("{first} - layers in the README"))),
+                    );
+                }
+            }
+        }
+    }
+}
+
 /// Summary and files of one lane's export (and the folder's name).
 pub fn lane_result(d: Done, bus: &str) -> (Value, Vec<ExportFile>, String) {
     let name = stem(&d.lc.lane);

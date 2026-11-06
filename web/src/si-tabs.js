@@ -9,11 +9,11 @@ function rfParams() {
   };
 }
 function rfFor(net) {
-  const t = classTarget(net), p = rfParams(), q = pathReq(net);
-  const key = `${net}|${S.anGen}|${JSON.stringify(p)}|${JSON.stringify(q)}`;
+  const t = classTarget(net), p = rfParams(), q = pathReq(net), tol = stkExportTol();
+  const key = `${net}|${S.anGen}|${JSON.stringify(p)}|${JSON.stringify(q)}|${JSON.stringify(tol)}`;
   if (S.rfCache && S.rfCache.key === key) return S.rfCache.res;
   let res;
-  try { res = S.engine.rf({ net, rf: p, target: t ? [t.z, t.diff] : null, flip: q.flip, hint: q.hint, mixed: true }); }
+  try { res = S.engine.rf({ net, rf: p, target: t ? [t.z, t.diff] : null, flip: q.flip, hint: q.hint, mixed: true, tolerance: tol }); }
   catch (e) { res = { channel: null, error: e.message, crosstalk: { aggressors: [], geoms: [] }, touchstone: "" }; }
   S.rfCache = { key, res, net };
   return res;

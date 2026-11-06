@@ -66,7 +66,8 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    Nyquist or 0.5/t_r of the profile's edge, the higher)]
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
-                   [--class CLASS=PROFILE]
+                   [--class CLASS=PROFILE] [--tolerance | --tol … (the lanes' impedance band in
+                   the files' stackup header)]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
                    per category (impedance, channel, power) whether there is anything to check and
                    whether it is ready                           [--for impedance|channel|power]
@@ -522,10 +523,14 @@ pub fn run_with(
             match (&o.s2p, &o.s4p) {
                 (Some(_), Some(_)) => return Err("--s2p and --s4p: give one of them".into()),
                 (Some(path), None) => {
-                    v["_write"] = json!({"path": path, "content": service::net_touchstone(pr, &o.pos[1], &rp)?})
+                    let cls: Vec<String> = pr.net_id(&o.pos[1]).map(|n| pr.class_name(n)).into_iter().collect();
+                    let t = stamped(pr, o, path, service::net_touchstone(pr, &o.pos[1], &rp)?, Some(&cls));
+                    v["_write"] = json!({"path": path, "content": t})
                 }
                 (None, Some(path)) => {
-                    v["_write"] = json!({"path": path, "content": service::net_touchstone4(pr, &o.pos[1], &rp)?})
+                    let cls: Vec<String> = pr.net_id(&o.pos[1]).map(|n| pr.class_name(n)).into_iter().collect();
+                    let t = stamped(pr, o, path, service::net_touchstone4(pr, &o.pos[1], &rp)?, Some(&cls));
+                    v["_write"] = json!({"path": path, "content": t})
                 }
                 _ => {}
             }
@@ -642,7 +647,7 @@ pub fn run_with(
                 (None, Some(b)) => crate::channel_export::Pick::Bus(b),
                 _ => return Err("export needs --lane NAME or --bus NAME".into()),
             };
-            let (mut v, files, name) = crate::channel_export::export(
+            let (mut v, mut files, name) = crate::channel_export::export(
                 pr,
                 &profiles,
                 &o.classes,
@@ -651,6 +656,13 @@ pub fn run_with(
                 &rp,
                 crate::channel_export::FreqRange::parse(o.fmin.as_deref(), o.fmax.as_deref())?,
             )?;
+            // the stackup used (and the band of the lanes' classes with --tolerance) at the head of every file
+            let classes: Vec<String> = v["lanes"]
+                .as_array()
+                .map(|a| a.iter().filter_map(|l| pr.net_id(l["lane"].as_str()?)).map(|n| pr.class_name(n)).collect())
+                .unwrap_or_default();
+            crate::channel_export::stamp(&mut files, &header(pr, o, Some(&classes)));
+            v["stackup_used"] = service::stackup_used(pr);
             // the front end writes the files into this folder and replaces "_files" by "written"
             let dir = o.out.clone().unwrap_or_else(|| {
                 let b = std::path::Path::new(&o.pos[0]);
@@ -669,6 +681,24 @@ pub fn run_with(
         }
         c => Err(format!("unknown command {c}")),
     }
+}
+
+/// The comment block of a file kisi writes: the stackup used and, with `--tolerance`, the band of
+/// the given classes (all when None).
+fn header(p: &Project, o: &Opts, classes: Option<&[String]>) -> Vec<String> {
+    let mut v = crate::stackups::header_lines(p.board.stackup(), &p.stackup_provenance);
+    if o.tolerance {
+        v.extend(crate::stackups::tolerance_lines(&study(p, o).0, classes));
+    }
+    v
+}
+
+/// A Touchstone text with the stackup block.
+fn stamped(p: &Project, o: &Opts, path: &str, text: String, classes: Option<&[String]>) -> String {
+    let mut f = [crate::export::files::ExportFile { path: path.to_string(), content: text }];
+    crate::channel_export::stamp(&mut f, &header(p, o, classes));
+    let [f] = f;
+    f.content
 }
 
 /// `kisi stackups [BOARD]`: the fab stackup templates; with a board, which fit it; `--preset`

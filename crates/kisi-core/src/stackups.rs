@@ -316,6 +316,202 @@ pub fn parse_tol(spec: &str) -> Result<Tolerances, String> {
     Ok(t)
 }
 
+/// Where each stackup value comes from: per dielectric, per copper layer and for the solder mask
+/// ("board file", "kisi.json (…)", "preset jlc6_3313", "--stackup FILE", "viewer edit").
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Provenance {
+    pub dielectrics: Vec<String>,
+    pub copper: Vec<String>,
+    pub mask: String,
+}
+
+/// The provenance of a stackup built in kisi's order: the board file (or kisi's default), the
+/// configuration's entries, a template, then stackup changes (`ov` with its label).
+pub fn provenance(
+    su: &Stackup,
+    cfg: Option<&crate::config::BoardConfig>,
+    preset: Option<&str>,
+    ov: Option<(&StackupOverride, &str)>,
+) -> Provenance {
+    let base = if su.from_file { "board file" } else { "kisi's default (no stackup in the board file)" };
+    let mut p = Provenance {
+        dielectrics: vec![base.to_string(); su.dielectrics.len()],
+        copper: vec![base.to_string(); su.copper.len()],
+        mask: base.to_string(),
+    };
+    let cite = |s: &Option<Source>| match s {
+        Some(s) => format!("kisi.json ({}{})", s.kind, s.citation().map(|c| format!(": {c}")).unwrap_or_default()),
+        None => "kisi.json".to_string(),
+    };
+    if let Some(c) = cfg {
+        for d in &c.stackup.dielectrics {
+            if let Some(x) = p.dielectrics.get_mut(d.index) {
+                *x = cite(&d.source);
+            }
+        }
+        for d in &c.stackup.copper {
+            if let Some(x) = p.copper.get_mut(d.index) {
+                *x = cite(&d.source);
+            }
+        }
+        if let Some(m) = &c.stackup.solder_mask {
+            p.mask = cite(&m.source);
+        }
+    }
+    if let Some(id) = preset.and_then(|id| library().get(id)) {
+        let t = format!("preset {} ({} {})", id.id, id.fab, id.template);
+        p.dielectrics.iter_mut().chain(p.copper.iter_mut()).for_each(|x| *x = t.clone());
+        p.mask = t;
+    }
+    if let Some((o, label)) = ov {
+        for d in &o.dielectrics {
+            if let Some(x) = p.dielectrics.get_mut(d.index) {
+                *x = label.to_string();
+            }
+        }
+        for d in &o.copper {
+            if let Some(x) = p.copper.get_mut(d.index) {
+                *x = label.to_string();
+            }
+        }
+        if o.mask_epsilon_r.is_some() || o.mask_thickness.is_some() {
+            p.mask = label.to_string();
+        }
+    }
+    p
+}
+
+/// Text in ASCII (SPICE and Touchstone comments): µ → u, ε → e, δ → d, other non-ASCII → ?.
+pub fn ascii(t: &str) -> String {
+    t.chars()
+        .map(|c| match c {
+            'µ' | 'μ' => "u".to_string(),
+            'ε' => "e".to_string(),
+            'δ' => "d".to_string(),
+            '–' | '—' | '−' => "-".to_string(),
+            '±' => "+-".to_string(),
+            '↔' => "<->".to_string(),
+            '…' => "...".to_string(),
+            '’' | '‘' => "'".to_string(),
+            '“' | '”' => "\"".to_string(),
+            c if c.is_ascii() => c.to_string(),
+            _ => "?".to_string(),
+        })
+        .collect()
+}
+
+fn g4(v: f64) -> String {
+    let s = format!("{:.4}", v);
+    let s = s.trim_end_matches('0').trim_end_matches('.');
+    if s == "-0" {
+        "0".into()
+    } else {
+        s.to_string()
+    }
+}
+
+/// The comment block of an export: the stackup the export used, layer by layer with its source
+/// (ASCII; the caller adds the comment character).
+pub fn header_lines(su: &Stackup, prov: &Provenance) -> Vec<String> {
+    let mut v = vec![format!(
+        "stackup used ({} copper layers, {} mm; er and tand at 1 GHz, the line models follow Djordjevic-Sarkar from there):",
+        su.n(),
+        g4(su.total_thickness())
+    )];
+    let src = |s: Option<&String>| s.map(|s| format!(" [{s}]")).unwrap_or_default();
+    if let Some(m) = su.mask_top.as_ref() {
+        v.push(format!(
+            "  solder mask (top): {} um, er {}{}",
+            g4(m.thickness * 1e3),
+            g4(m.epsilon_r),
+            src(Some(&prov.mask))
+        ));
+    }
+    for (i, c) in su.copper.iter().enumerate() {
+        v.push(format!("  {}: copper {} um{}", c.name, g4(c.thickness * 1e3), src(prov.copper.get(i))));
+        if let Some(d) = su.dielectrics.get(i) {
+            let kind = if d.kind.trim().is_empty() { "dielectric" } else { d.kind.trim() };
+            v.push(format!(
+                "    {} {}: {} um, er {}, tand {}{}{}",
+                kind,
+                d.material,
+                g4(d.thickness * 1e3),
+                g4(d.epsilon_r),
+                g4(d.loss_tangent),
+                if d.assumed.is_empty() {
+                    String::new()
+                } else {
+                    format!(" (KiCad default: {})", d.assumed.join(", "))
+                },
+                src(prov.dielectrics.get(i))
+            ));
+        }
+    }
+    if let Some(m) = su.mask_bottom.as_ref() {
+        v.push(format!(
+            "  solder mask (bottom): {} um, er {}{}",
+            g4(m.thickness * 1e3),
+            g4(m.epsilon_r),
+            src(Some(&prov.mask))
+        ));
+    }
+    v.into_iter().map(|l| ascii(&l)).collect()
+}
+
+/// The tolerance part of an export's comment block, from a study with a band (`study_json`): the
+/// tolerances and, per row of the given classes (all when None), the band against the window.
+pub fn tolerance_lines(study: &serde_json::Value, classes: Option<&[String]>) -> Vec<String> {
+    let t = &study["tolerances"];
+    if t.is_null() {
+        return vec![];
+    }
+    let est: Vec<&str> =
+        t["estimates"].as_array().map(|a| a.iter().filter_map(|x| x.as_str()).collect()).unwrap_or_default();
+    let mark = |k: &str| if est.contains(&k) { " (estimate)" } else { "" };
+    let f = |v: &serde_json::Value| v.as_f64().map(g4).unwrap_or_else(|| "-".into());
+    let width = if t["width_pct"].is_null() {
+        format!("+-{} mm", f(&t["width_mm"]))
+    } else {
+        format!("+-{} %", f(&t["width_pct"]))
+    };
+    let mut v = vec![format!(
+        "manufacturing tolerances (kisi overview --tolerance): dielectric thickness +-{} %{}, er +-{} %{}, copper +-{} %{}, trace width {}{}; one-at-a-time sensitivities, worst case and RSS (information, not a verdict):",
+        f(&t["dielectric_thickness_pct"]),
+        mark("dielectric_thickness_pct"),
+        f(&t["er_pct"]),
+        mark("er_pct"),
+        f(&t["copper_pct"]),
+        mark("copper_pct"),
+        width,
+        mark("width_mm")
+    )];
+    for r in study["rows"].as_array().map(|a| a.as_slice()).unwrap_or(&[]) {
+        let class = r["class"].as_str().unwrap_or("");
+        if classes.is_some_and(|c| !c.iter().any(|x| x == class)) {
+            continue;
+        }
+        let b = &r["tolerance"];
+        if b.is_null() {
+            continue;
+        }
+        v.push(format!(
+            "  {} {}: nominal {} ohm ({}), RSS {} - {} ohm, worst case {} - {} ohm, window {} - {} ohm: {}",
+            class,
+            r["layer_name"].as_str().unwrap_or(""),
+            f(&b["nominal_ohm"]),
+            b["level"].as_str().unwrap_or(""),
+            f(&b["rss"]["min_ohm"]),
+            f(&b["rss"]["max_ohm"]),
+            f(&b["worst_case"]["min_ohm"]),
+            f(&b["worst_case"]["max_ohm"]),
+            f(&r["window_ohm"][0]),
+            f(&r["window_ohm"][1]),
+            b["hint"].as_str().unwrap_or("")
+        ));
+    }
+    v.into_iter().map(|l| ascii(&l)).collect()
+}
+
 /// The tolerances as used, with which are kisi's estimates (defaults) and the sources.
 pub fn tolerances_json(t: &Tolerances) -> serde_json::Value {
     let d = &library().tolerances;
@@ -723,5 +919,58 @@ mod tests {
         assert!(need.len() > 4);
         assert!(need[0].2 >= need.last().unwrap().2);
         assert_eq!(v["tolerances"]["estimates"].as_array().unwrap().len(), 4);
+    }
+
+    /// Where each value comes from, the header lines (ASCII) and how each export format carries them.
+    #[test]
+    fn provenance_and_stamp() {
+        let su = stack(4, 0.5);
+        let cfg = crate::config::parse(
+            r#"{"kisi_config": 1, "stackup": {"dielectrics": [{"index": 1, "epsilon_r": 4.2,
+            "source": {"kind": "datasheet", "document": "laminate X"}}]}}"#,
+        )
+        .unwrap();
+        let ov =
+            StackupOverride { copper: vec![CopperOverride { index: 3, thickness: Some(0.02) }], ..Default::default() };
+        let p = provenance(&su, Some(&cfg), None, Some((&ov, "viewer edit")));
+        assert_eq!(p.dielectrics, ["board file", "kisi.json (datasheet: laminate X)", "board file"]);
+        assert_eq!((p.copper[3].as_str(), p.copper[0].as_str()), ("viewer edit", "board file"));
+        let pp = provenance(&su, Some(&cfg), Some("jlc4_7628"), None);
+        assert!(pp.dielectrics.iter().all(|x| x.starts_with("preset jlc4_7628")));
+        let mut su2 = su.clone();
+        su2.dielectrics[0].material = "Fancy µ-laminate".into();
+        let lines = header_lines(&su2, &p);
+        assert!(lines.iter().all(|l| l.is_ascii()), "{lines:?}");
+        assert!(lines[0].contains("4 copper layers") && lines.iter().any(|l| l.contains("Fancy u-laminate")));
+        assert!(
+            lines
+                .iter()
+                .any(|l| l.contains("tand 0.02 (KiCad default: epsilon_r) [kisi.json (datasheet: laminate X)]")),
+            "{lines:?}"
+        );
+        use crate::export::files::ExportFile;
+        let f = |p: &str, c: &str| ExportFile { path: p.into(), content: c.into() };
+        let mut files = vec![
+            f("x.lib", "* kisi: lane\n* board b\n.subckt a 1 2\n.ends\n"),
+            f("bench_ngspice.cir", "* title\nR1 1 0 50\n.end\n"),
+            f("x.s2p", "! kisi\n# HZ S RI R 50\n1e9 0 0 1 0 1 0 0 0\n"),
+            f("README.md", "# x\n"),
+            f("x.kicad_sch", "(kicad_sch\n  (title_block\n    (title \"t\")\n    (comment 1 \"c\")\n  )\n)\n"),
+            f("x.kicad_pro", "{}"),
+        ];
+        let head = vec!["stackup used (2 copper layers):".to_string(), "  F.Cu: copper 35 um".to_string()];
+        crate::channel_export::stamp(&mut files, &head);
+        assert_eq!(files[0].content, "* kisi: lane\n* board b\n* stackup used (2 copper layers):\n*   F.Cu: copper 35 um\n.subckt a 1 2\n.ends\n");
+        assert!(files[1].content.starts_with("* title\n* stackup used"));
+        assert!(files[2]
+            .content
+            .starts_with("! kisi\n! stackup used (2 copper layers):\n!   F.Cu: copper 35 um\n# HZ"));
+        assert!(files[3]
+            .content
+            .ends_with("## Stackup\n\n```text\nstackup used (2 copper layers):\n  F.Cu: copper 35 um\n```\n"));
+        assert!(files[4].content.contains(
+            "    (comment 1 \"c\")\n    (comment 2 \"stackup used (2 copper layers) - layers in the README\")\n"
+        ));
+        assert_eq!(files[5].content, "{}");
     }
 }

@@ -146,7 +146,7 @@ function exportLanes(lanes, bus, btn) {
       if (!formats) throw new Error("nothing selected in the export settings");
       const res = S.engine.exportCircuit({ board: S.name + ".kicad_pcb", formats, kicad_style: o.ks, model: o.model,
         fmax: o.fmax === "rf" ? null : o.fmax === "profile" ? "profile" : parseFloat(o.fmax), fmin_ghz: o.fmin ? parseFloat(o.fmin) : null,
-        bus: bus ? bus.name : null, devices: bus ? bus.devices : [], lanes: lanes.filter((l) => l.ends.length >= 2).map(laneExportReq) });
+        bus: bus ? bus.name : null, devices: bus ? bus.devices : [], lanes: lanes.filter((l) => l.ends.length >= 2).map(laneExportReq), tolerance: stkExportTol() });
       const els = (res.summary.lanes || []).reduce((a, x) => a + (x.elements.total ?? x.elements.r + x.elements.l + x.elements.c + x.elements.sources), 0);
       const fr = res.summary.lanes && res.summary.lanes[0] ? res.summary.lanes[0].frequency : null;
       S.exportLast = `${res.name}, ${res.files.length} files, ${fmt(els / 1000, 1)} k elements${fr ? `, ${fmt(fr.fmax_hz / 1e9, 1)} GHz, ${fr.points} points` : ""}`;

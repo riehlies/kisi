@@ -21,6 +21,8 @@ struct State {
     variant: Option<kisi_core::variant::VariantState>,
     /// stackup as read from the file (overrides are applied to a copy)
     stackup_file: Option<kisi_core::board::Stackup>,
+    /// the viewer's stackup changes of the last analysis
+    stack_ov: kisi_core::board::StackupOverride,
     pro: Option<String>,
     out: Vec<u8>,
     zone_pts: Vec<f32>,
@@ -314,6 +316,7 @@ pub extern "C" fn kisi_analyze(p: *const u8, n: usize) -> i32 {
         if let (Some(b), Some(f)) = (st.board.as_mut(), file) {
             b.stackup = Some(f.with_overrides(&ov));
         }
+        st.stack_ov = ov;
         let an = st.board.as_ref().map(|b| analyze(b, &params))?;
         let js = serde_json::to_string(&an).unwrap();
         st.an = Some(an);
@@ -972,6 +975,12 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
             }
             None => lane_result(done.pop().ok_or("no lane")?, ""),
         };
+        let mut files = files;
+        let classes: Vec<String> = summary["lanes"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|l| class_of(&st, l["lane"].as_str()?)).collect())
+            .unwrap_or_default();
+        kisi_core::channel_export::stamp(&mut files, &export_header(&st, &v["tolerance"], &classes));
         Ok(serde_json::json!({"summary": summary, "files": files, "name": name}).to_string())
     });
     match r {
@@ -1115,6 +1124,19 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
             }
             Err(e) => (serde_json::Value::Null, serde_json::Value::String(e), String::new()),
         };
+        // the stackup used at the head of the Touchstone files the viewer saves
+        let cls: Vec<String> = b.nets.get(net as usize).and_then(|n| class_of(&st, n)).into_iter().collect();
+        let head = export_header(&st, &v["tolerance"], &cls);
+        let stamp = |name: &str, t: String| {
+            if t.is_empty() {
+                return t;
+            }
+            let mut f = [kisi_core::export::files::ExportFile { path: name.into(), content: t }];
+            kisi_core::channel_export::stamp(&mut f, &head);
+            let [f] = f;
+            f.content
+        };
+        let (ts, ts4) = (stamp("net.s2p", ts), stamp("net.s4p", ts4));
         Ok(serde_json::json!({"channel": chv, "error": err, "crosstalk": xt, "touchstone": ts, "eye": eye, "skew": skew, "mixed": mixed, "touchstone4": ts4}).to_string())
     });
     match r {
@@ -1148,6 +1170,42 @@ fn reply(r: Result<String, String>) -> i32 {
             1
         }
     }
+}
+
+/// The comment block of the viewer's exports: the stackup as analysed with the source of every value
+/// (board file, kisi.json, the viewer's edits) and, with `tolerance`, the band of `classes`.
+fn export_header(st: &State, tolerance: &serde_json::Value, classes: &[String]) -> Vec<String> {
+    let Some(b) = st.board.as_ref() else { return vec![] };
+    let ov = Some((&st.stack_ov, "viewer edit")).filter(|o| !o.0.is_empty());
+    let prov = kisi_core::stackups::provenance(b.stackup(), st.cfg.as_ref(), None, ov);
+    let mut v = kisi_core::stackups::header_lines(b.stackup(), &prov);
+    let tol: Option<kisi_core::stackups::Tolerances> = serde_json::from_value(tolerance.clone()).ok();
+    if let (Some(t), Some(an), Some(params)) = (tol, st.an.as_ref(), st.params.as_ref()) {
+        let names: Vec<String> = an.classes.iter().map(|c| c.name.clone()).collect();
+        let assign = st
+            .cfg
+            .as_ref()
+            .map(|c| c.net_classes.iter().filter_map(|(k, e)| Some((k.clone(), e.profile.clone()?))).collect())
+            .unwrap_or_default();
+        let w = kisi_core::stackups::windows(&names, &assign, &kisi_core::profile::Profiles::builtin());
+        let col = kisi_core::stackups::Column {
+            id: "board".into(),
+            label: "board".into(),
+            source: String::new(),
+            stackup: b.stackup().clone(),
+        };
+        let (study, _) = kisi_core::stackups::study_json(b, an, &params.field, &[col], Some((&t, 0)), &w);
+        v.extend(kisi_core::stackups::tolerance_lines(&study, Some(classes)));
+    }
+    v
+}
+
+/// The net class of a net (by name).
+fn class_of(st: &State, net: &str) -> Option<String> {
+    let b = st.board.as_ref()?;
+    let id = b.nets.iter().position(|n| n == net)?;
+    let ci = b.net_class.get(id).copied().unwrap_or(0) as usize;
+    st.an.as_ref()?.classes.get(ci).map(|c| c.name.clone())
 }
 
 /// Fab stackup templates (`kisi stackups`) with their fit to the loaded board (its stackup with the

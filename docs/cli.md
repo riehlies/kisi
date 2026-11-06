@@ -61,7 +61,8 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
                    Nyquist or 0.5/t_r of the profile's edge, the higher)]
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
-                   [--class CLASS=PROFILE]
+                   [--class CLASS=PROFILE] [--tolerance | --tol … (the lanes' impedance band in
+                   the files' stackup header)]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
                    per category (impedance, channel, power) whether there is anything to check and
                    whether it is ready                           [--for impedance|channel|power]
@@ -184,6 +185,16 @@ profile's 10–90 % edge where that is higher (a 100 MHz reference clock with 30
 closely the circuit follows kisi's own S-parameters, the element counts and notes. Needs an assembly variant on
 boards that have them. See [Models and limits](models.md#channel-export).
 
+Every file starts with kisi's comment block – kisi's version, the board, the lane – and the **stackup used**: per
+copper layer its thickness, per dielectric kind, material, thickness, εr and tanδ (at 1 GHz, where kisi's
+Djordjevic-Sarkar models start), the solder mask, each with its source in brackets (`board file`, `kisi.json (kind:
+document)`, `preset <id> (…)`, `--stackup file`, in the viewer `viewer edit`); with `--tolerance` / `--tol` also the
+tolerances (estimates marked) and the band of the lanes' net classes. The syntax per file: `*` lines in the SPICE
+libraries and decks (after their title line), `!` lines in Touchstone files, a "Stackup" section at the end of the
+README, a title-block comment on the KiCad sheet (the layers are in the README). The same block heads the Touchstone
+files of `net --s2p` / `--s4p` and the viewer's; `stackup_used` in the result (and in `report`) holds it with the
+source of each value.
+
 ### `gaps`
 Missing or default data: each gap has `id`, `priority` (high, medium, low), `area`, `issue`, `affects`, `views`
 (the analysis categories it matters for: impedance, channel, power – the temperature estimate is part of power),
@@ -241,8 +252,8 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--stackup FILE` | all with a board | stackup changes as the viewer stores them ([format](reference.md#other-input-files)) |
 | `--stackup-preset ID` | all with a board | a fab stackup template (`kisi stackups`) instead of the board's stackup values: thickness, εr and tanδ per dielectric, copper and solder mask; an error when it does not fit the board (layer count, thickness) |
 | `--preset ID,…` | `stackups` | only these templates, each with its `stackup` entry for kisi.json |
-| `--tolerance` | `overview`, `stackups` | the impedance band per net class and layer for manufacturing tolerances (default tolerances) |
-| `--tol SPEC` | `overview`, `stackups` | the band with these tolerances: `thickness=10,er=5,copper=10,width=0.02mm` (%, width in mm or `width=20%`); keys left out keep their defaults |
+| `--tolerance` | `overview`, `stackups`, `export`, `net` | the impedance band per net class and layer for manufacturing tolerances (default tolerances); `export` and `net --s2p/--s4p` write the band of the exported classes into the files' stackup header |
+| `--tol SPEC` | `overview`, `stackups`, `export`, `net` | the band with these tolerances: `thickness=10,er=5,copper=10,width=0.02mm` (%, width in mm or `width=20%`); keys left out keep their defaults |
 | `--variant NAME` | all with a board | assembly variant: a KiCad 10 variant, one of the kisi.json `variants`, or `default` |
 | `--class CLASS=PROFILE` | `interfaces`, `check` | interface profile of a net class (repeatable) |
 | `--nets A,B` | `check`, `crosstalk` | only these nets |

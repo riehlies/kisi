@@ -242,3 +242,8 @@ function stkWire() {
   };
   $("stk-tol-reset").onclick = () => { s.tol = stkDefaults(); stkSave(); stkRender(); };
 }
+// the tolerances for an export's comment block: those of the panel when its band is shown
+function stkExportTol() {
+  const s = S.stk;
+  return s && s.board === S.name && s.tolOn ? (s.tol || stkDefaults()) : null;
+}

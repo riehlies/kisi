@@ -33,6 +33,8 @@ pub struct Project {
     pub variant: crate::variant::VariantState,
     /// Touchstone files of the configuration's connector ends, by the path written in it
     pub touchstones: HashMap<String, Result<crate::rf::Touchstone, String>>,
+    /// where each stackup value comes from (board file, kisi.json, a template, `--stackup`)
+    pub stackup_provenance: crate::stackups::Provenance,
     /// lanes grouped into buses, found once (`buses`)
     buses: std::sync::OnceLock<Vec<topology::Bus>>,
 }
@@ -220,6 +222,12 @@ impl Project {
             let su = board.stackup().with_overrides(ov);
             board.stackup = Some(su);
         }
+        let stackup_provenance = crate::stackups::provenance(
+            board.stackup(),
+            cfg.as_ref(),
+            inp.stackup_preset.as_deref(),
+            inp.stackup.as_ref().map(|o| (o, "--stackup file")),
+        );
         let params = Params {
             step: 0.5,
             coplanar_factor: 3.0,
@@ -242,6 +250,7 @@ impl Project {
             config_profiles: applied.profiles,
             variant,
             touchstones,
+            stackup_provenance,
             buses: Default::default(),
         };
         // dismissals that cannot apply on this board (needs the analysed project)
@@ -1315,7 +1324,13 @@ pub fn report(p: &Project, profiles: &Profiles) -> Value {
         "channels": channel_check(p, profiles, &HashMap::new(), None, &rp),
         "power": run.as_ref().map_err(|e| e.clone()).and_then(|r| power_from(p, r, None)).unwrap_or_else(|e| json!({"error": e})),
         "thermal": run.as_ref().map_err(|e| e.clone()).and_then(|r| thermal_from(p, r, &crate::thermal::ThermalParams::default())).unwrap_or_else(|e| json!({"error": e})),
+        "stackup_used": stackup_used(p),
     })
+}
+
+/// The stackup the analyses used, with the source of every value (report, exports).
+pub fn stackup_used(p: &Project) -> Value {
+    json!({"lines": crate::stackups::header_lines(p.board.stackup(), &p.stackup_provenance), "provenance": p.stackup_provenance})
 }
 
 #[cfg(test)]

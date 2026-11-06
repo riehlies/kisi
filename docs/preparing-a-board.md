@@ -70,7 +70,8 @@ found only by name in `rails-without-voltage` can be dismissed.
 
 Where to look, per kind of value:
 - **Laminate:** the material name in the stackup → the manufacturer's datasheet, at a frequency near the signals
-  (1–10 GHz) and for the resin content / glass style of the layer; better the fabricator's stackup report.
+  (1–10 GHz) and for the resin content / glass style of the layer; better the fabricator's stackup report – or a
+  [fab stackup template](#choosing-a-fab-stackup).
 - **Interface profile and target:** the datasheets of the devices at the bus ends (interface type, data rate), the
   interface standard or the device's layout guide.
 - **Loads (`PI_LOAD`):** device datasheets, supply current per rail in the expected operating mode; FPGAs and
@@ -152,6 +153,19 @@ names each gap with what is needed, where it goes in kisi.json and its items (re
 nets, rails, classes, layers), limited to that category (`kisi gaps --for …`) or for all categories. With nothing
 handed over the prompt asks for the category's open gaps. The marks are kept with the draft in this browser, not
 in kisi.json; a category whose open gaps are all handed over says so.
+
+### Choosing a fab stackup
+In production the largest impedance error is usually the stackup the fab builds – a different prepreg, a thinner
+core – not the formula. When you order from a fab with published impedance templates, take its stackup instead of
+KiCad's defaults: in Prepare PCB, the laminate table starts with **Use a fab stackup** – the templates of kisi's
+library (`data/stackups.json`, first JLCPCB's) with the board's copper layer count and thickness; the others are
+listed but cannot be chosen, with the reason. **Use** writes the template's thickness, εr and tanδ per dielectric,
+the copper thicknesses and the solder mask into the draft, each with the template as its source (tanδ is marked as
+an assumption where the fab publishes none); the line under the table shows the copper and mask thicknesses with
+"remove". On the command line: `kisi stackups <board>` lists what fits, `kisi stackups <board> --preset ID` prints
+the `stackup` entry to paste into the kisi.json, and `--stackup-preset ID` tries a template for one run without
+writing anything. Make sure the fab still offers the template, and keep KiCad's own stackup in step with it for the
+fab's drawings.
 
 ## Worked example: Seeed Studio XIAO nRF54LM20A
 [`docs/examples/xiao-nrf54lm20a/XIAO nRF54LM20A.kisi.json`](examples/xiao-nrf54lm20a/XIAO%20nRF54LM20A.kisi.json)

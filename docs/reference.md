@@ -166,6 +166,7 @@ variants; `kisi config-check <board>` checks it (the viewer runs the same check 
   "stackup": {
     "dielectrics": [{"index": 0, "epsilon_r": 3.65, "loss_tangent": 0.0095,
                      "source": {"kind": "datasheet", "document": "Isola FR408HR", "page": "2", "note": "10 GHz, typical"}}],
+    "copper": [{"index": 1, "thickness": 0.0152, "source": {"kind": "datasheet", "document": "fab stackup report"}}],
     "solder_mask": {"epsilon_r": 3.8, "source": {"kind": "assumption", "note": "typical LPI mask"}}
   },
   "net_classes": {"PCIe": {"target_ohm": 85, "diff": true, "profile": "pcie3", "source": {"kind": "standard", "document": "PCIe CEM 3.0"}}},
@@ -185,7 +186,7 @@ variants; `kisi config-check <board>` checks it (the viewer runs the same check 
 |---|---|
 | `kisi_config` | format version, must be `1` |
 | `board` | the board file it was written for; a different board is an error in `config-check` |
-| `stackup` | per dielectric (`index` 0 = the layer below F.Cu): `material`, `epsilon_r` (1 … 20), `loss_tangent` (0 … 0.2), `thickness` (mm); `solder_mask.epsilon_r` |
+| `stackup` | `dielectrics`: per dielectric (`index` 0 = the layer below F.Cu) `material`, `epsilon_r` (1 … 20), `loss_tangent` (0 … 0.2), `thickness` (mm); `copper`: per copper layer (`index` 0 = F.Cu) the finished `thickness` (mm, 0.002 … 0.5); `solder_mask`: `epsilon_r`, `thickness` (mm, both sides). A [fab stackup template](#fab-stackup-templates) writes all of them |
 | `net_classes` | per net class: `target_ohm` (10 … 200; differential when `diff` is true), `diff`, `profile` (an id from `kisi profiles`), `nets` (names or patterns given to this class; defines a class the project does not have) |
 | `connector_ends` | per connector where lanes leave the board: what sits there and the channel behind it (below) |
 | `fields` | footprint fields laid over the board: `ref`, `name` (`PI_*`, or a [capacitor rating field](#capacitor-ratings-from-the-parts-fields)), `value` |
@@ -199,8 +200,22 @@ Every value needs a `source`: `kind` plus at least one of `document`, `url`, `no
 position or schematic files), `estimate`, `assumption`. Values of kind `estimate` or `assumption` are reported as
 such. Say in the `note` whether a value is typical or maximum and at which condition.
 
-**Precedence:** board file < `<board>.kisi.json` < edits in the viewer / `--class`, `--variant` and `--stackup`
-on the command line.
+**Precedence:** board file < `<board>.kisi.json` < edits in the viewer / `--class`, `--variant`,
+`--stackup-preset` and `--stackup` (in this order) on the command line.
+
+### Fab stackup templates
+`data/stackups.json` holds fab stackups with their sources – first JLCPCB's impedance templates (JLC04161H-7628,
+JLC04161H-3313, JLC06161H-7628, JLC06161H-3313, JLC08161H-2116, JLC08201H-7628): per copper layer the finished
+copper thickness, per dielectric kind, material, pressed thickness, εr and tanδ, and the solder mask (thickness and
+εr as the fab's impedance calculator takes them). The thicknesses come from the fab's template data, the prepreg εr
+from its capabilities page; the core εr is a secondary source with a second published value (`epsilon_r_alt`), and
+tanδ is an assumption (JLCPCB publishes none) – each dielectric's `note` says which. A template fits a board with
+the same number of copper layers whose stackup (when it is in the board file) is within the fab's board thickness
+tolerance of the template's nominal thickness (±10 % at JLCPCB); applied, it replaces every dielectric, copper and
+mask value. `kisi stackups` lists them, `--stackup-preset ID` applies one for a run, `kisi stackups <board> --preset
+ID` prints its `stackup` entry for kisi.json, and the viewer's Prepare PCB writes it into the draft
+([Preparing a board](preparing-a-board.md#choosing-a-fab-stackup)). Check that the template still exists in the
+fab's order form before ordering. More fabs: a template with its own sources in `data/stackups.json`.
 
 ### `connector_ends`
 A lane from a device to a connector is judged on the board share – loss, return loss, skew (a lane from connector
@@ -265,7 +280,7 @@ dismissed.
 ## Other input files
 | File | Used by | Format |
 |---|---|---|
-| `--stackup FILE` | all commands | stackup changes as the viewer stores them: `{"dielectrics": [{"index", "epsilon_r", "loss_tangent", "thickness"}], "mask_epsilon_r"}` – the same as `stackup` in kisi.json, without sources |
+| `--stackup FILE` | all commands | stackup changes as the viewer stores them: `{"dielectrics": [{"index", "epsilon_r", "loss_tangent", "thickness", "material"}], "mask_epsilon_r", "copper": [{"index", "thickness"}], "mask_thickness"}` – the same as `stackup` in kisi.json, without sources |
 | `--tree FILE` | `power`, `thermal` | a power tree as JSON instead of the `PI_REG`/`PI_LOAD` fields: `{"rails": [{"net", "voltage"}], "elements": [{"refdes", "id", "kind", "from", "to", "eff", "iq", "r", "imax", "in_ref", "out_ref"}], "loads": [{"refdes", "net", "current", "basis", "note", "at"}]}`; `tools/tree_to_fields.py` turns it into kisi.json fields |
 | BOM (CSV) | `variants.*.bom` | a "Reference", "Designator" or "Ref" column (references separated by commas or spaces) |
 | Touchstone (`.s2p`, `.s4p`, `.sNp`) | `connector_ends.*.touchstone` | Touchstone 1.x and 2.x |

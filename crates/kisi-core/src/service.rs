@@ -68,6 +68,9 @@ pub struct Inputs {
     /// (path, contents or read error) of `<board>.kisi.json`
     pub config: Option<(PathBuf, Result<String, String>)>,
     pub stackup: Option<StackupOverride>,
+    /// a fab stackup template (`data/stackups.json`) laid over the board's stackup
+    /// (`--stackup-preset`; before `stackup`)
+    pub stackup_preset: Option<String>,
     /// field-solver results by geometry id (`Analysis::geometries`)
     pub field: HashMap<String, crate::extract::FieldResult>,
     /// assembly variant chosen on the command line (wins over the configuration's)
@@ -121,6 +124,18 @@ impl Project {
         config: Option<&Path>,
         variant: Option<&str>,
     ) -> Result<Project, String> {
+        Self::load_preset(pcb, pro, stackup, config, variant, None)
+    }
+
+    /// Like `load_with`, with a fab stackup template laid over the stackup (`--stackup-preset`).
+    pub fn load_preset(
+        pcb: &Path,
+        pro: Option<&Path>,
+        stackup: Option<&StackupOverride>,
+        config: Option<&Path>,
+        variant: Option<&str>,
+        preset: Option<&str>,
+    ) -> Result<Project, String> {
         let text = std::fs::read_to_string(pcb).map_err(|e| format!("{}: {e}", pcb.display()))?;
         let pro_path = pro.map(Path::to_path_buf).unwrap_or_else(|| pcb.with_extension("kicad_pro"));
         let pro_text = std::fs::read_to_string(&pro_path).ok();
@@ -136,6 +151,7 @@ impl Project {
             pro: pro_text,
             config,
             stackup: stackup.cloned(),
+            stackup_preset: preset.map(str::to_string),
             field: HashMap::new(),
             variant: variant.map(str::to_string),
             files,
@@ -190,6 +206,16 @@ impl Project {
             &inp.files,
         );
         let applied = cfg.as_ref().map(|c| c.apply(&mut board)).unwrap_or_default();
+        // command line: a fab template, then the stackup changes on top
+        if let Some(id) = &inp.stackup_preset {
+            let pr = crate::stackups::library().find(id)?;
+            let fit = pr.fit(board.stackup());
+            if let Some(why) = fit.problem {
+                return Err(format!("--stackup-preset {id}: {why}"));
+            }
+            let su = pr.apply(board.stackup());
+            board.stackup = Some(su);
+        }
         if let Some(ov) = &inp.stackup {
             let su = board.stackup().with_overrides(ov);
             board.stackup = Some(su);
@@ -1326,6 +1352,7 @@ mod tests {
             pro: Some(PRO.into()),
             config: None,
             stackup: None,
+            stackup_preset: None,
             field: HashMap::new(),
             variant: None,
             files: Default::default(),

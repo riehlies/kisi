@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Compare the Node CLI (dist/kisi.mjs, formula mode) with the native kisi on the example boards.
 
-Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir> [--commands check,gaps,thermal,check-cavity,export]
+Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir>
+                      [--commands check,gaps,thermal,check-cavity,export,stackups,overview-preset]
 
 Runs every command on ThunderScope and LibreVNA with their configs (web/samples/{ts,vna}.kisi.json) and compares
 the JSON outputs. Numbers are compared after rounding to 6 significant digits; keys that differ by design
@@ -9,16 +10,18 @@ the JSON outputs. Numbers are compared after rounding to 6 significant digits; k
 Node: worker threads); each CLI's output must be byte-identical to a run on one thread (KISI_THREADS=1). The
 timings of both runs are printed (in GitHub Actions also as a notice in the run's summary).
 `check-cavity` is `check --all --via-cavity` on LibreVNA only (the cavity grids in WebAssembly; a clock call there
-once trapped). Exit code 1 on any difference.
+once trapped). `stackups` lists the fab stackup templates with their fit and kisi.json entries; `overview-preset` is
+`overview --stackup-preset` (a JLCPCB template laid over the board). Exit code 1 on any difference.
 """
 import json, os, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOARDS = [("ts", "Thunderscope_Rev5.3"), ("vna", "VNA")]
-IGNORE = {"field_solver", "field_solver_note", "config", "timing_ms"}
-ARGS = {"check": ["--all"], "gaps": [], "check-cavity": ["--all", "--via-cavity"]}
+IGNORE = {"field_solver", "field_solver_note", "config", "timing_ms", "file"}
+ARGS = {"check": ["--all"], "gaps": [], "check-cavity": ["--all", "--via-cavity"],
+        "stackups": ["--preset", "jlc6_3313,jlc6_7628,jlc4_7628"], "overview-preset": ["--stackup-preset", "jlc6_3313"]}
 # pseudo commands: (command, boards)
-ALIAS = {"check-cavity": ("check", {"vna"})}
+ALIAS = {"check-cavity": ("check", {"vna"}), "overview-preset": ("overview", None)}
 # `export`: one lane per board (the ladder on ThunderScope, the compact model on LibreVNA), the written files must be
 # identical too
 EXPORT = {"ts": ["--lane", "SYNC_OUT_P"], "vna": ["--lane", "SRC_REF_IN", "--format", "spice,touchstone", "--model", "compact"]}
@@ -70,7 +73,7 @@ def main():
     if len(sys.argv) < 4:
         raise SystemExit(__doc__)
     native, mjs, ex = sys.argv[1:4]
-    cmds = ["check", "gaps", "thermal", "check-cavity", "export"]
+    cmds = ["check", "gaps", "thermal", "check-cavity", "export", "stackups", "overview-preset"]
     if "--commands" in sys.argv:
         cmds = sys.argv[sys.argv.index("--commands") + 1].split(",")
     bad = 0

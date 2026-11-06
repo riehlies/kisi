@@ -90,13 +90,19 @@ impl Stackup {
     }
 }
 
-/// User changes to the stackup read from the file (viewer: "Lagenaufbau
-/// bearbeiten"). Values that are `None` keep the file value.
+/// User changes to the stackup read from the file (viewer: the stackup editor, kisi.json,
+/// `--stackup`, a fab stackup preset). Values that are `None` keep the file value.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct StackupOverride {
     pub dielectrics: Vec<DielectricOverride>,
     pub mask_epsilon_r: Option<f64>,
+    /// copper thickness per copper layer (`index` 0 = F.Cu)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub copper: Vec<CopperOverride>,
+    /// solder mask thickness (mm), both sides
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mask_thickness: Option<f64>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -108,6 +114,26 @@ pub struct DielectricOverride {
     pub loss_tangent: Option<f64>,
     /// mm
     pub thickness: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub material: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CopperOverride {
+    /// index into `Stackup::copper` (0 = F.Cu)
+    pub index: usize,
+    /// mm
+    pub thickness: Option<f64>,
+}
+
+impl StackupOverride {
+    pub fn is_empty(&self) -> bool {
+        self.dielectrics.is_empty()
+            && self.copper.is_empty()
+            && self.mask_epsilon_r.is_none()
+            && self.mask_thickness.is_none()
+    }
 }
 
 impl Stackup {
@@ -125,13 +151,32 @@ impl Stackup {
             if let Some(v) = o.thickness.filter(|v| *v > 0.0 && *v < 10.0) {
                 d.thickness = v;
             }
+            if let Some(m) = o.material.as_ref().filter(|m| !m.trim().is_empty()) {
+                d.material = m.clone();
+            }
+        }
+        for o in &ov.copper {
+            let Some(c) = s.copper.get_mut(o.index) else { continue };
+            if let Some(v) = o.thickness.filter(|v| *v > 0.0 && *v < 1.0) {
+                c.thickness = v;
+            }
         }
         if let Some(v) = ov.mask_epsilon_r.filter(|v| *v >= 1.0 && *v < 20.0) {
             for m in [&mut s.mask_top, &mut s.mask_bottom].into_iter().flatten() {
                 m.epsilon_r = v;
             }
         }
+        if let Some(v) = ov.mask_thickness.filter(|v| *v > 0.0 && *v < 0.5) {
+            for m in [&mut s.mask_top, &mut s.mask_bottom].into_iter().flatten() {
+                m.thickness = v;
+            }
+        }
         s
+    }
+
+    /// Board thickness of the stackup: copper and dielectrics (without solder mask), mm.
+    pub fn total_thickness(&self) -> f64 {
+        self.copper.iter().map(|c| c.thickness).sum::<f64>() + self.dielectrics.iter().map(|d| d.thickness).sum::<f64>()
     }
 }
 

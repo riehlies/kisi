@@ -23,7 +23,7 @@
 //! }
 //! ```
 
-use crate::board::{Board, DielectricOverride, StackupOverride};
+use crate::board::{Board, CopperOverride, DielectricOverride, StackupOverride};
 use crate::extract::Target;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
@@ -76,6 +76,18 @@ pub struct DielectricEntry {
 #[serde(default)]
 pub struct MaskEntry {
     pub epsilon_r: Option<f64>,
+    /// mm, both sides
+    pub thickness: Option<f64>,
+    pub source: Option<Source>,
+}
+
+/// `stackup.copper[]`: the finished copper thickness of one copper layer (`index` 0 = F.Cu).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CopperEntry {
+    pub index: usize,
+    /// mm
+    pub thickness: Option<f64>,
     pub source: Option<Source>,
 }
 
@@ -83,7 +95,15 @@ pub struct MaskEntry {
 #[serde(default)]
 pub struct StackupEntry {
     pub dielectrics: Vec<DielectricEntry>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub copper: Vec<CopperEntry>,
     pub solder_mask: Option<MaskEntry>,
+}
+
+impl StackupEntry {
+    pub fn is_empty(&self) -> bool {
+        self.dielectrics.is_empty() && self.copper.is_empty() && self.solder_mask.is_none()
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -239,9 +259,17 @@ impl BoardConfig {
                     epsilon_r: d.epsilon_r,
                     loss_tangent: d.loss_tangent,
                     thickness: d.thickness,
+                    material: d.material.clone(),
                 })
                 .collect(),
             mask_epsilon_r: self.stackup.solder_mask.as_ref().and_then(|m| m.epsilon_r),
+            copper: self
+                .stackup
+                .copper
+                .iter()
+                .map(|c| CopperOverride { index: c.index, thickness: c.thickness })
+                .collect(),
+            mask_thickness: self.stackup.solder_mask.as_ref().and_then(|m| m.thickness),
         }
     }
 
@@ -249,13 +277,10 @@ impl BoardConfig {
     /// Returns the class targets and profile assignments for the analyses.
     pub fn apply(&self, board: &mut Board) -> Applied {
         let mut a = Applied::default();
-        if !self.stackup.dielectrics.is_empty() || self.stackup.solder_mask.is_some() {
+        if !self.stackup.is_empty() {
             let mut su = board.stackup().with_overrides(&self.stackup_override());
             for d in &self.stackup.dielectrics {
                 if let Some(x) = su.dielectrics.get_mut(d.index) {
-                    if let Some(m) = &d.material {
-                        x.material = m.clone();
-                    }
                     let given: Vec<&str> = [
                         ("material", d.material.is_some()),
                         ("epsilon_r", d.epsilon_r.is_some()),
@@ -513,10 +538,28 @@ pub fn check(
         }
         src(what, &d.source, &mut r);
     }
+    for c in &cfg.stackup.copper {
+        r.entries += 1;
+        let what = format!("stackup.copper[index {}]", c.index);
+        if c.index >= su.copper.len() {
+            r.errors.push(format!("{what}: the board has {} copper layers (index 0 = F.Cu)", su.copper.len()));
+        }
+        match c.thickness {
+            Some(v) if !(0.002..0.5).contains(&v) => {
+                r.errors.push(format!("{what}: thickness in mm outside 0.002 … 0.5"))
+            }
+            None => r.warnings.push(format!("{what}: no value given")),
+            _ => {}
+        }
+        src(what, &c.source, &mut r);
+    }
     if let Some(m) = &cfg.stackup.solder_mask {
         r.entries += 1;
         if m.epsilon_r.is_some_and(|v| !(1.0..20.0).contains(&v)) {
             r.errors.push("stackup.solder_mask: epsilon_r outside 1 … 20".into());
+        }
+        if m.thickness.is_some_and(|v| !(0.001..0.2).contains(&v)) {
+            r.errors.push("stackup.solder_mask: thickness in mm outside 0.001 … 0.2".into());
         }
         src("stackup.solder_mask".into(), &m.source, &mut r);
     }

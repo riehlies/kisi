@@ -1150,6 +1150,27 @@ fn reply(r: Result<String, String>) -> i32 {
     }
 }
 
+/// Fab stackup templates (`kisi stackups`) with their fit to the loaded board (its stackup with the
+/// configuration, before the viewer's edits) and each one's `stackup` entry for kisi.json:
+/// {"presets": [{id, fab, template, title, layers, nominal_mm, …, fit, kisi_json}], "board", "fitting"}.
+#[no_mangle]
+pub extern "C" fn kisi_stackup_presets() -> i32 {
+    reply(ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let su = st.stackup_file.as_ref();
+        let mut v = kisi_core::stackups::list_json(su);
+        if let Some(list) = v["presets"].as_array_mut() {
+            for x in list.iter_mut() {
+                if let Some(p) = kisi_core::stackups::library().get(x["id"].as_str().unwrap_or("")) {
+                    let cfg = kisi_core::config::BoardConfig { stackup: p.to_entry(), ..Default::default() };
+                    x["kisi_json"] = kisi_core::config::to_json(&cfg)["stackup"].clone();
+                }
+            }
+        }
+        Ok(v.to_string())
+    }))
+}
+
 /// The gap list (`kisi gaps`) of the board as the viewer read it, with a configuration: the loaded
 /// kisi.json or a draft of the Prepare page. Input: {"board": file name, "config": text | null,
 /// "for": category | null}. Uses the viewer's choice of assembly variant and the files dropped with
@@ -1171,6 +1192,7 @@ pub extern "C" fn kisi_gaps(p: *const u8, n: usize) -> i32 {
             pro: None,
             config,
             stackup: None,
+            stackup_preset: None,
             field: Default::default(),
             variant: st.variant_choice.clone(),
             files: st.files.clone(),
@@ -1279,7 +1301,7 @@ pub extern "C" fn kisi_cli_parse(p: *const u8, n: usize) -> i32 {
     reply((|| {
         let args: Vec<String> = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
         let o = kisi_core::commands::parse_args(&args)?;
-        Ok(serde_json::json!({"opts": o, "needs_board": kisi_core::commands::needs_board(&o.cmd), "uses_field": kisi_core::commands::uses_field(&o.cmd), "help": kisi_core::commands::HELP}).to_string())
+        Ok(serde_json::json!({"opts": o, "needs_board": kisi_core::commands::wants_board(&o), "uses_field": kisi_core::commands::uses_field(&o.cmd), "help": kisi_core::commands::HELP}).to_string())
     })())
 }
 
@@ -1325,6 +1347,7 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
             pro: s("pro"),
             config,
             stackup: serde_json::from_value(v["stackup"].clone()).ok(),
+            stackup_preset: o.stackup_preset.clone(),
             field: serde_json::from_value(v["field"].clone()).unwrap_or_default(),
             variant: o.variant.clone(),
             files,

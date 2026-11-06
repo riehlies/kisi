@@ -22,4 +22,5 @@ pub mod config;
 pub mod gaps;
 pub mod par;
 pub mod service;
+pub mod stackups;
 pub mod variant;

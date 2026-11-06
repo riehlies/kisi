@@ -495,6 +495,10 @@ table.prep-ed input.wide { font-family: var(--font-mono); font-size: 12px; }
 table.prep-ed input.ref { max-width: 90px; }
 .prep-rail { display: flex; gap: 4px; align-items: center; }
 .prep-rail .m { min-width: 86px; }
+.prep-fab { display: grid; gap: 4px; background: var(--panel-2); border-radius: 4px; padding: 6px 8px; margin-bottom: 8px; font-size: 12px; }
+.prep-fab select { max-width: 100%; }
+.prep-fab .sub { color: var(--muted); font-size: 11.5px; }
+.prep-cu { margin: 4px 0 8px; }
 .prep-src { display: grid; grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr); gap: 6px; align-items: center; background: var(--panel-2); border-radius: 4px; padding: 6px 8px; font-size: 12px; }
 .prep-src b { grid-column: 1 / -1; font-weight: 600; font-size: 11.5px; color: var(--muted); }
 .prep-src input, .prep-src select { background: var(--panel) !important; }

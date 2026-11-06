@@ -31,11 +31,18 @@ fn load(o: &Opts, with_config: bool) -> Result<Project, String> {
             None => Some(service::config_path_for(&pcb)).filter(|c| c.is_file()),
         }
     };
-    Project::load_with(&pcb, o.pro.as_deref().map(Path::new), ov.as_ref(), cfg.as_deref(), o.variant.as_deref())
+    Project::load_preset(
+        &pcb,
+        o.pro.as_deref().map(Path::new),
+        ov.as_ref(),
+        cfg.as_deref(),
+        o.variant.as_deref(),
+        o.stackup_preset.as_deref(),
+    )
 }
 
 fn run(o: &Opts) -> Result<Value, String> {
-    let p = if commands::needs_board(&o.cmd) { Some(load(o, o.cmd != "config-template")?) } else { None };
+    let p = if commands::wants_board(o) { Some(load(o, o.cmd != "config-template")?) } else { None };
     let tree = match &o.tree {
         Some(t) => Some(serde_json::from_str::<Value>(&read(t)?).map_err(|e| format!("{t}: {e}"))?),
         None => None,

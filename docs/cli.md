@@ -66,9 +66,12 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
   config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
                    assembly variants
+  stackups [BOARD] fab stackup templates (data/stackups.json); with a board: which fit it (copper
+                   layers, thickness)   [--preset ID,… (these only, with their kisi.json stackup entry)]
 
 common options: --pro FILE (default: board.kicad_pro), --config FILE (default: board.kisi.json
 next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer),
+--stackup-preset ID (a fab stackup template from `kisi stackups` instead of the board's values),
 --variant NAME (assembly variant: a KiCad 10 variant of the board or one of the kisi.json
 "variants"; "default" = the board file as it is). Boards with variants – or with forks where
 all alternative parts are fitted – need one for interfaces, check and report (else they stop and
@@ -188,6 +191,18 @@ variants and the files they name, dismissed gaps. Prints `ok`, `errors`, `warnin
 A `<board>.kisi.json` skeleton with this board's dielectric indices, net classes and suggested assembly variants
 (from forks where all alternative parts are fitted). Keep only the entries you fill in.
 
+### `stackups`
+The fab stackup templates of kisi's library (`data/stackups.json`, first JLCPCB's impedance templates): per template
+the fab, the template's name in the fab's order form, layers, nominal and pressed thickness, copper per layer
+(`copper_um`), per dielectric kind, material, thickness (mm), εr, tanδ and a `note` on where εr and tanδ come from
+(tanδ is an assumption where the fab publishes none), the solder mask and the `sources`. With a board
+(`kisi stackups <board>`): `board` (copper layers, thickness from its stackup) and per template `fit` – `ok`, or the
+`problem`: a different copper layer count, or a board thickness outside the fab's tolerance of the template's
+nominal thickness (JLCPCB: ±10 %); `fitting` lists the ids that fit. `--preset ID,…` keeps those templates and adds
+each one's `kisi_json`: the `stackup` entry for `<board>.kisi.json` with its sources
+([reference](reference.md#board-configuration-boardkisijson)). `--stackup-preset ID` applies a template for one run
+(any command). No field solver.
+
 ### `profiles`
 The interface profiles (`kisi profiles`), or one in full (`kisi profiles pcie3`). No board needed.
 
@@ -201,6 +216,8 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--config FILE` | all with a board | the board configuration (default: `<board>.kisi.json` next to the board) |
 | `--no-config` | all with a board | ignore `<board>.kisi.json` |
 | `--stackup FILE` | all with a board | stackup changes as the viewer stores them ([format](reference.md#other-input-files)) |
+| `--stackup-preset ID` | all with a board | a fab stackup template (`kisi stackups`) instead of the board's stackup values: thickness, εr and tanδ per dielectric, copper and solder mask; an error when it does not fit the board (layer count, thickness) |
+| `--preset ID,…` | `stackups` | only these templates, each with its `stackup` entry for kisi.json |
 | `--variant NAME` | all with a board | assembly variant: a KiCad 10 variant, one of the kisi.json `variants`, or `default` |
 | `--class CLASS=PROFILE` | `interfaces`, `check` | interface profile of a net class (repeatable) |
 | `--nets A,B` | `check`, `crosstalk` | only these nets |

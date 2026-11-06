@@ -50,6 +50,8 @@ class Engine {
   configSubset(config, view) { this.call(this.k.kisi_config_subset, JSON.stringify({ config, view })); return this.out(); }
   // the viewer's power tree / rail setups as kisi.json fields: {fields: [{ref, name, value}], lost}
   editsToFields(tree, setups) { this.call(this.k.kisi_edits_to_fields, JSON.stringify({ tree: tree || null, setups: setups || null })); return JSON.parse(this.out()); }
+  // fab stackup templates (data/stackups.json) with their fit to the board and their kisi.json stackup entry
+  stackupPresets() { if (this.k.kisi_stackup_presets() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   boardSheets() { if (this.k.kisi_board_sheets() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   // assembly variant: the state, or choose one (null: the configuration's) – the board is rebuilt
   variants() { if (this.k.kisi_variants() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }

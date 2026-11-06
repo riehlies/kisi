@@ -25,6 +25,7 @@ pub const COMMANDS: &[&str] = &[
     "config-check",
     "config-template",
     "export",
+    "stackups",
     "help",
 ];
 
@@ -70,9 +71,12 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
   config-check     check <board>.kisi.json (format, ranges, references, sources, variants)
   config-template  a <board>.kisi.json skeleton with this board's dielectrics, net classes and
                    assembly variants
+  stackups [BOARD] fab stackup templates (data/stackups.json); with a board: which fit it (copper
+                   layers, thickness)   [--preset ID,… (these only, with their kisi.json stackup entry)]
 
 common options: --pro FILE (default: board.kicad_pro), --config FILE (default: board.kisi.json
 next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer),
+--stackup-preset ID (a fab stackup template from `kisi stackups` instead of the board's values),
 --variant NAME (assembly variant: a KiCad 10 variant of the board or one of the kisi.json
 \"variants\"; \"default\" = the board file as it is). Boards with variants – or with forks where
 all alternative parts are fitted – need one for interfaces, check and report (else they stop and
@@ -116,6 +120,10 @@ pub struct Opts {
     pub config: Option<String>,
     pub no_config: bool,
     pub stackup: Option<String>,
+    /// a fab stackup template laid over the board's stackup (`data/stackups.json`)
+    pub stackup_preset: Option<String>,
+    /// `stackups`: only these presets
+    pub presets: Option<Vec<String>>,
     pub classes: HashMap<String, String>,
     pub nets: Option<Vec<String>>,
     pub all: bool,
@@ -182,6 +190,11 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--config" => o.config = Some(val(&mut i, a)?),
             "--no-config" => o.no_config = true,
             "--stackup" => o.stackup = Some(val(&mut i, a)?),
+            "--stackup-preset" => o.stackup_preset = Some(val(&mut i, a)?),
+            "--preset" => {
+                o.presets =
+                    Some(val(&mut i, a)?.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
+            }
             "--class" => {
                 let v = val(&mut i, a)?;
                 let (c, p) = v.split_once('=').ok_or("--class needs CLASS=PROFILE")?;
@@ -244,6 +257,10 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
     if o.airflow.is_some_and(|v| !(0.0..100.0).contains(&v)) {
         return Err("--airflow: an air speed in m/s (0 … 100)".into());
     }
+    let lib = crate::stackups::library();
+    for id in o.stackup_preset.iter().chain(o.presets.iter().flatten()) {
+        lib.find(id)?;
+    }
     if needs_board(&o.cmd) && o.pos.is_empty() {
         return Err(format!("board file missing (kisi {} <board.kicad_pcb>)", o.cmd));
     }
@@ -261,7 +278,12 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
 }
 
 pub fn needs_board(cmd: &str) -> bool {
-    !matches!(cmd, "help" | "profiles")
+    !matches!(cmd, "help" | "profiles" | "stackups")
+}
+
+/// Whether the command line loads a board: commands that need one, and `stackups` with one.
+pub fn wants_board(o: &Opts) -> bool {
+    needs_board(&o.cmd) || (o.cmd == "stackups" && !o.pos.is_empty())
 }
 
 /// Whether the command benefits from field-solver impedances.
@@ -517,6 +539,7 @@ pub fn run_with(
             }
         }
         "config-template" => Ok(config_template(proj()?)),
+        "stackups" => Ok(stackups(o, p)),
         "export" => {
             let (pr, rp) = (proj()?, rf_params(o)?);
             let f = formats(o)?;
@@ -552,6 +575,32 @@ pub fn run_with(
         }
         c => Err(format!("unknown command {c}")),
     }
+}
+
+/// `kisi stackups [BOARD]`: the fab stackup templates; with a board, which fit it; `--preset`
+/// keeps those and adds each one's `stackup` entry for `<board>.kisi.json`.
+fn stackups(o: &Opts, p: Option<&Project>) -> Value {
+    let lib = crate::stackups::library();
+    let su = p.map(|p| p.board.stackup());
+    let mut v = crate::stackups::list_json(su);
+    if let Some(want) = &o.presets {
+        let ids: Vec<String> = want.iter().filter_map(|id| lib.get(id).map(|p| p.id.clone())).collect();
+        if let Some(list) = v["presets"].as_array_mut() {
+            list.retain(|x| x["id"].as_str().is_some_and(|id| ids.iter().any(|w| w == id)));
+            for x in list.iter_mut() {
+                let pr = lib.get(x["id"].as_str().unwrap_or("")).expect("listed");
+                if su.is_none() || x["fit"]["ok"] == true {
+                    x["kisi_json"] = json!({"stackup": crate::config::to_json(&crate::config::BoardConfig { stackup: pr.to_entry(), ..Default::default() })["stackup"]});
+                }
+            }
+        }
+    }
+    if let Some(p) = p {
+        v["board_name"] = json!(p.name);
+        v["config"] = p.config_summary();
+    }
+    v["note"] = json!("Apply a template with --stackup-preset ID (any command) or write its kisi_json entry (--preset ID) into <board>.kisi.json. Thicknesses and εr are the fab's published values; tanδ is assumed where the fab publishes none (see each dielectric's note). A template fits a board with the same copper layer count and a board thickness within the fab's tolerance.");
+    v
 }
 
 /// The number of rows of `check` and the rows with the indices `idx` in the check's order (index,
@@ -754,6 +803,7 @@ mod tests {
                 pro: None,
                 config: None,
                 stackup: None,
+                stackup_preset: None,
                 field: HashMap::new(),
                 variant: None,
                 files: Default::default(),

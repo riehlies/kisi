@@ -1,7 +1,7 @@
 # DC IR drop: does a quadtree raster pay? – experiment
 
 Status: experiment (November 2026, branch `exp/pi-quadtree`). The default solver is unchanged (golden results
-identical); the refined solver is reachable only through `PiParams::refine` (JSON, no CLI or viewer control) and
+identical); the refined solver is reachable only through `PiParams::refine` (JSON, native builds; no CLI or viewer control) and
 the development harness `kisi-validate pi-refine`. Question: does quadtree refinement of the DC IR-drop raster
 (`kisi_pi::pi`) improve accuracy per unknown and per second against today's uniform square raster, and how does it
 compare with cheaper fixes?
@@ -235,7 +235,9 @@ quadtree multiplies that by its unknowns (3× median, 12× on the ThunderScope's
 
 **WASM** (`kisi_pi_solve` with `params.refine` in Node 22, ThunderScope, best of 3): +1V0 111 ms today, 117 ms
 Peaceman, 120 ms lines + Peaceman, 1.09 s quadtree (6.9× unknowns); +VUSB 430 / 489 / 496 / 664 ms (1.4×). The
-ratios are the native ones; WASM is about as fast as the native single-thread solve here.
+ratios are the native ones; WASM is about as fast as the native single-thread solve here. (The branch leaves the experiment out
+of the WASM build – `solve_rail` refuses `refine` there – to keep the viewer bundle within its size budget; the
+timing was taken with a build that had it, +54 kB in `kisi.html`.)
 
 ## 5 Findings
 

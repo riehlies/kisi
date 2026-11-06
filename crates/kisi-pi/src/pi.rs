@@ -721,9 +721,15 @@ pub fn solve_rail_scaled(
     params: &PiParams,
     scale: Option<&dyn Fn(usize, P) -> f64>,
 ) -> Result<PiResult, String> {
+    // the experiment is left out of the WASM build (bundle size); its WASM timing in the write-up was taken with it
+    #[cfg(not(target_arch = "wasm32"))]
     if params.refine != crate::pi_refine::Refine::None {
         return crate::pi_refine::solve(board, setup, params, &crate::pi_refine::Mesh::from(params.refine), scale)
             .map(|d| d.result);
+    }
+    #[cfg(target_arch = "wasm32")]
+    if params.refine != crate::pi_refine::Refine::None {
+        return Err("the refined raster (experimental PiParams::refine) is not in the WASM build".into());
     }
     let Frame { net, sign, used, layers, cell, g } = rail_frame(board, setup, params)?;
     let su = board.stackup();

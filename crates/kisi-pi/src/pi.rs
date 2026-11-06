@@ -58,11 +58,14 @@ pub struct PiParams {
     pub rho: f64,
     /// upper bound for the number of cells (all layers)
     pub max_cells: usize,
+    /// experimental refinement of the raster (`pi_refine`, docs/research/pi-quadtree.md); default: none,
+    /// the uniform raster
+    pub refine: crate::pi_refine::Refine,
 }
 
 impl Default for PiParams {
     fn default() -> Self {
-        PiParams { cell: None, plating_um: 25.0, rho: 1.72e-8, max_cells: 250_000 }
+        PiParams { cell: None, plating_um: 25.0, rho: 1.72e-8, max_cells: 250_000, refine: Default::default() }
     }
 }
 
@@ -620,19 +623,18 @@ pub(crate) fn pad_cells(g: &Grid, pad: &Pad) -> Vec<usize> {
 
 // --- the solver -------------------------------------------------------------------------
 
-pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result<PiResult, String> {
-    solve_rail_scaled(board, setup, params, None)
+/// What `solve_rail` and the experimental refined solver (`pi_refine`) share: the net, the sign of
+/// the rail, the copper layers, the cell size (automatic unless `params.cell`) and the base grid.
+pub(crate) struct Frame {
+    pub(crate) net: u32,
+    pub(crate) sign: f64,
+    pub(crate) used: Vec<bool>,
+    pub(crate) layers: Vec<usize>,
+    pub(crate) cell: f64,
+    pub(crate) g: Grid,
 }
 
-/// `solve_rail` with the resistivity scaled per place: `scale(layer, point)` = ρ/ρ₂₀ there (e.g.
-/// 1 + α(T − 20 °C) from a temperature map, `thermal::rail_at_temperature`). Each conductance uses
-/// the mean factor of its two cells.
-pub fn solve_rail_scaled(
-    board: &Board,
-    setup: &RailSetup,
-    params: &PiParams,
-    scale: Option<&dyn Fn(usize, P) -> f64>,
-) -> Result<PiResult, String> {
+pub(crate) fn rail_frame(board: &Board, setup: &RailSetup, params: &PiParams) -> Result<Frame, String> {
     let su = board.stackup();
     let ncu = su.n();
     let net = find_net(board, &setup.net).ok_or_else(|| format!("net '{}' not found", setup.net))?;
@@ -642,7 +644,6 @@ pub fn solve_rail_scaled(
     // negative rails are solved with the magnitude; the load current then
     // flows the same way relative to |V| and the result is mirrored back
     let sign = if setup.ground { 1.0 } else { setup.voltage.signum() };
-    let mut warnings = Vec::new();
 
     // copper of the net per layer and its bounding box
     let mut bb = BBox::empty();
@@ -703,6 +704,32 @@ pub fn solve_rail_scaled(
     if per * layers.len() > params.max_cells * 16 {
         return Err(format!("{}: grid too large ({} cells)", setup.net, per * layers.len()));
     }
+
+    Ok(Frame { net, sign, used, layers, cell, g })
+}
+
+pub fn solve_rail(board: &Board, setup: &RailSetup, params: &PiParams) -> Result<PiResult, String> {
+    solve_rail_scaled(board, setup, params, None)
+}
+
+/// `solve_rail` with the resistivity scaled per place: `scale(layer, point)` = ρ/ρ₂₀ there (e.g.
+/// 1 + α(T − 20 °C) from a temperature map, `thermal::rail_at_temperature`). Each conductance uses
+/// the mean factor of its two cells.
+pub fn solve_rail_scaled(
+    board: &Board,
+    setup: &RailSetup,
+    params: &PiParams,
+    scale: Option<&dyn Fn(usize, P) -> f64>,
+) -> Result<PiResult, String> {
+    if params.refine != crate::pi_refine::Refine::None {
+        return crate::pi_refine::solve(board, setup, params, &crate::pi_refine::Mesh::from(params.refine), scale)
+            .map(|d| d.result);
+    }
+    let Frame { net, sign, used, layers, cell, g } = rail_frame(board, setup, params)?;
+    let su = board.stackup();
+    let ncu = su.n();
+    let mut warnings = Vec::new();
+    let per = g.nx * g.ny;
 
     // weights per layer
     let mut w: Vec<Vec<f32>> = vec![Vec::new(); ncu];

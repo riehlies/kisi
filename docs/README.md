@@ -20,6 +20,8 @@ Research and concepts (`research/`):
 - [accuracy-levels.md](research/accuracy-levels.md) – accuracy levels: which result gets a level and an
   uncertainty, where the numbers come from, how CLI and viewer show them.
 - [thermal.md](research/thermal.md) – the temperature estimate: concept, physics and validation.
+- [pi-quadtree.md](research/pi-quadtree.md) – experiment: quadtree refinement of the DC IR-drop raster against
+  corrected via contacts (Peaceman) and line tracks, on analytic cases and 7 boards.
 - [channel-export.md](research/channel-export.md) – the channel export to circuit and RF simulators: files, model,
   verification in ngspice, LTspice and KiCad.
 - [vector-fitting.md](research/vector-fitting.md) – compact, causal, delay-preserving models for the SPICE export:

@@ -2,7 +2,7 @@
 //!
 //! * `pi`   – DC IR drop on a rasterised multi-layer copper network, rails from fields
 //! * `pi_refine` – experimental: the IR-drop raster refined around vias and pads (quadtree), via contacts
-//!   with a Peaceman-type correction (docs/research/pi-quadtree.md)
+//!   with a Peaceman-type correction (docs/research/pi-quadtree.md); native builds only
 //! * `tree` – regulator chains and power balance
 //! * `pdn`  – AC impedance of a rail (lumped model and plane grid model)
 //! * `pdn_ic` – PDN seen from every IC: AC grid over all layers, capacitor loop inductances, targets, recommendations
@@ -18,6 +18,7 @@ pub mod losses;
 pub mod pdn;
 pub mod pdn_ic;
 pub mod pi;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod pi_refine;
 pub mod thermal;
 pub mod tree;

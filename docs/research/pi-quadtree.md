@@ -236,8 +236,8 @@ quadtree multiplies that by its unknowns (3× median, 12× on the ThunderScope's
 **WASM** (`kisi_pi_solve` with `params.refine` in Node 22, ThunderScope, best of 3): +1V0 111 ms today, 117 ms
 Peaceman, 120 ms lines + Peaceman, 1.09 s quadtree (6.9× unknowns); +VUSB 430 / 489 / 496 / 664 ms (1.4×). The
 ratios are the native ones; WASM is about as fast as the native single-thread solve here. (The branch leaves the experiment out
-of the WASM build – `solve_rail` refuses `refine` there – to keep the viewer bundle within its size budget; the
-timing was taken with a build that had it, +54 kB in `kisi.html`.)
+of the WASM build – `pi_refine` and the `refine` field are native-only – to keep the viewer bundle within its size
+budget; the timing was taken with a build that had it, +54 kB in `kisi.html`.)
 
 ## 5 Findings
 

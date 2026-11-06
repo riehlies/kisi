@@ -59,13 +59,21 @@ pub struct PiParams {
     /// upper bound for the number of cells (all layers)
     pub max_cells: usize,
     /// experimental refinement of the raster (`pi_refine`, docs/research/pi-quadtree.md); default: none,
-    /// the uniform raster
+    /// the uniform raster. Native builds only (left out of the WASM build for the bundle size).
+    #[cfg(not(target_arch = "wasm32"))]
     pub refine: crate::pi_refine::Refine,
 }
 
 impl Default for PiParams {
     fn default() -> Self {
-        PiParams { cell: None, plating_um: 25.0, rho: 1.72e-8, max_cells: 250_000, refine: Default::default() }
+        PiParams {
+            cell: None,
+            plating_um: 25.0,
+            rho: 1.72e-8,
+            max_cells: 250_000,
+            #[cfg(not(target_arch = "wasm32"))]
+            refine: Default::default(),
+        }
     }
 }
 
@@ -721,15 +729,10 @@ pub fn solve_rail_scaled(
     params: &PiParams,
     scale: Option<&dyn Fn(usize, P) -> f64>,
 ) -> Result<PiResult, String> {
-    // the experiment is left out of the WASM build (bundle size); its WASM timing in the write-up was taken with it
     #[cfg(not(target_arch = "wasm32"))]
     if params.refine != crate::pi_refine::Refine::None {
         return crate::pi_refine::solve(board, setup, params, &crate::pi_refine::Mesh::from(params.refine), scale)
             .map(|d| d.result);
-    }
-    #[cfg(target_arch = "wasm32")]
-    if params.refine != crate::pi_refine::Refine::None {
-        return Err("the refined raster (experimental PiParams::refine) is not in the WASM build".into());
     }
     let Frame { net, sign, used, layers, cell, g } = rail_frame(board, setup, params)?;
     let su = board.stackup();

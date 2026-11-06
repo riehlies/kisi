@@ -190,8 +190,9 @@ impl Preset {
     /// count as given (no longer KiCad defaults).
     pub fn apply(&self, su: &Stackup) -> Stackup {
         let mut s = su.with_overrides(&self.to_override());
-        for d in s.dielectrics.iter_mut() {
+        for (d, p) in s.dielectrics.iter_mut().zip(&self.dielectrics) {
             d.assumed.clear();
+            d.kind = p.kind.clone();
         }
         s
     }
@@ -228,7 +229,7 @@ impl Preset {
                         document: Some(doc.clone()),
                         url: data_url.clone(),
                         page: None,
-                        note: Some(format!("{} {}: thickness from the template; {}", d.kind, d.material, d.note)),
+                        note: Some(format!("{}: thickness from the template; {}", d.material, d.note)),
                     }),
                 })
                 .collect(),
@@ -430,11 +431,17 @@ pub fn header_lines(su: &Stackup, prov: &Provenance) -> Vec<String> {
     for (i, c) in su.copper.iter().enumerate() {
         v.push(format!("  {}: copper {} um{}", c.name, g4(c.thickness * 1e3), src(prov.copper.get(i))));
         if let Some(d) = su.dielectrics.get(i) {
+            // the kind before the material, unless the material names it ("prepreg 7628x1", "core 0.4 mm")
             let kind = if d.kind.trim().is_empty() { "dielectric" } else { d.kind.trim() };
+            let m = d.material.to_ascii_lowercase();
+            let what = if m.contains("prepreg") || m.contains("core") || m.contains(&kind.to_ascii_lowercase()) {
+                d.material.clone()
+            } else {
+                format!("{kind} {}", d.material)
+            };
             v.push(format!(
-                "    {} {}: {} um, er {}, tand {}{}{}",
-                kind,
-                d.material,
+                "    {}: {} um, er {}, tand {}{}{}",
+                what,
                 g4(d.thickness * 1e3),
                 g4(d.epsilon_r),
                 g4(d.loss_tangent),
@@ -784,6 +791,7 @@ mod tests {
         assert_eq!(a.dielectrics[0].thickness, 0.2104);
         assert_eq!(a.dielectrics[1].epsilon_r, 4.6);
         assert_eq!(a.dielectrics[1].material, "core 1.1 mm H/HOZ (NP-155F)");
+        assert_eq!((a.dielectrics[0].kind.as_str(), a.dielectrics[1].kind.as_str()), ("prepreg", "core"));
         assert!(a.dielectrics.iter().all(|d| d.assumed.is_empty()));
         assert_eq!(a.copper[1].thickness, 0.0152);
         assert_eq!(a.mask_top.as_ref().unwrap().thickness, 0.0305);

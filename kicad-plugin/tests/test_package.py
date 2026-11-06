@@ -6,7 +6,8 @@ the schemas, reproducibility, and the extracted plugin making a page.
 
 Needs jsonschema (pip install jsonschema). Run: python3 -m unittest discover -s kicad-plugin/tests -v
 """
-import hashlib, json, os, pathlib, re, shutil, subprocess, sys, tempfile, unittest, zipfile
+import hashlib, http.client, json, os, pathlib, queue, re, shutil, subprocess, sys, tempfile, threading, unittest, zipfile
+from urllib.parse import urlsplit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -54,7 +55,7 @@ class PackageTests(unittest.TestCase):
     def test_layout(self):
         names = zipfile.ZipFile(self.r["zip"]).namelist()
         self.assertEqual(names[0], "metadata.json")
-        for n in ["plugins/plugin.json", "plugins/requirements.txt", "plugins/kisi_action.py", "plugins/kisi_kicad.py",
+        for n in ["plugins/plugin.json", "plugins/requirements.txt", "plugins/kisi_action.py", "plugins/kisi_kicad.py", "plugins/kisi_server.py",
                   "plugins/kisi_build.json", "plugins/viewer/kisi.html", "plugins/cli/kisi.mjs", "plugins/agent/KISI-AGENT-GUIDE.md",
                   "plugins/LICENSE", "resources/icon.png"]:
             self.assertIn(n, names)
@@ -62,10 +63,53 @@ class PackageTests(unittest.TestCase):
         self.assertEqual({n.split("/")[0] for n in names}, {"metadata.json", "plugins", "resources"})
         self.assertFalse([n for n in names if "tests/" in n or n.endswith(("make_icons.py", ".pyc", ".in.md"))])
 
+    def test_local_host_as_installed(self):
+        third = os.path.join(self.tmp, "local-host")
+        pcm_extract(self.r["zip"], "com.github.riehlies.kisi", third)
+        plugin = os.path.join(third, "plugins", "com_github_riehlies_kisi")
+        board = pathlib.Path(third, "Board ä", "Live.kicad_pcb")
+        board.parent.mkdir()
+        board.write_text('(kicad_pcb (version 20241229))\n', encoding="utf-8")
+        cache = pathlib.Path(third, "cache")
+        cache.mkdir()
+        env = dict(os.environ, TMPDIR=str(cache), TEMP=str(cache), TMP=str(cache), XDG_CACHE_HOME=str(cache), KISI_NO_BROWSER="1")
+        proc = subprocess.Popen([sys.executable, "-I", os.path.join(plugin, "kisi_action.py"), "--pcb", str(board),
+                                 "--no-browser", "--serve", "--idle-timeout", "1"],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", env=env)
+        try:
+            lines = queue.Queue()
+            threading.Thread(target=lambda: lines.put(proc.stdout.readline()), daemon=True).start()
+            url = urlsplit(lines.get(timeout=15).strip())
+            self.assertEqual(url.hostname, "127.0.0.1")
+            conn = http.client.HTTPConnection(url.hostname, url.port, timeout=5)
+            conn.request("GET", url.path)
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200)
+            html = response.read().decode()
+            conn.close()
+            bridge = json.loads(re.search(r"const KICAD_BOARD = (\{.*?\}); /\*@kicad-board\*/", html).group(1))["bridge"]
+            text = json.dumps({"kisi_config": 1, "board": board.name, "notes": ["from the installed host"]})
+            conn = http.client.HTTPConnection(url.hostname, url.port, timeout=5)
+            conn.request("POST", "/api/config", json.dumps({"text": text, "revision": bridge["revision"]}),
+                         {"Content-Type": "application/json", "Authorization": "Bearer " + bridge["token"],
+                          "Origin": f"http://127.0.0.1:{url.port}"})
+            response = conn.getresponse()
+            self.assertEqual(response.status, 200, response.read())
+            conn.close()
+            self.assertEqual(json.loads(board.with_suffix(".kisi.json").read_bytes())["notes"], ["from the installed host"])
+            self.assertNotIn(bridge["token"], pathlib.Path(board.parent, "analysis", "Live.kisi.html").read_text(encoding="utf-8"))
+            self.assertEqual(proc.wait(timeout=10), 0, proc.stderr.read())
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+                proc.wait(timeout=5)
+            proc.stdout.close()
+            proc.stderr.close()
+
     def test_agent_guide(self):
         """The guide is the generated one (one source with the kisi-prepare skill) and names no assistant's tools."""
         import agent_guide
-        text = zipfile.ZipFile(self.r["zip"]).read("plugins/agent/KISI-AGENT-GUIDE.md").decode("utf-8")
+        text = zipfile.ZipFile(self.r["zip"]).read("plugins/agent/KISI-AGENT-GUIDE.md").decode("utf-8").replace("\r\n", "\n")
         self.assertEqual(text, agent_guide.HEAD + agent_guide.body())
         self.assertEqual(agent_guide.problems(agent_guide.body()), [])
         for want in ("Mode A", "Mode B", "complete new `<board>.kisi.json`", "kisi config-check", "kind", "estimate"):

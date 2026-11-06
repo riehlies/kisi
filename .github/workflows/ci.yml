@@ -249,6 +249,7 @@ jobs:
         timeout-minutes: 20
         run: |
           node tools/test_units.mjs
+          node tools/test_local_save.mjs
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
           # the KiCad plugin package with this viewer: installed as KiCad's PCM does, its page from disk
           python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --out dist

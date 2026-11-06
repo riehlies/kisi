@@ -911,7 +911,7 @@ function prepSaveStep(n, tab) {
     <header data-toggle="save:${tab}">${done ? `<span class="mk done">✓</span>` : `<span class="mk open s" title="the last step">⤓</span>`}<h3>Save ${esc(S.name)}.kisi.json</h3>
       <span class="state ${k}">${done ? "saved" : diff.n ? `${diff.n} change${diff.n === 1 ? "" : "s"}` : "nothing entered"}</span>
       <p>${done ? "The file holds everything entered; the analyses use it." : "Write the draft next to the board – everything, or only this category's changes (choice on the left) – and load it."}</p></header>
-    <div class="body"><div class="prep-foot"><button class="btn small primary" data-b="save" ${!diff.n && !lc || blocked.length ? "disabled" : ""}>Save kisi.json</button>
+    <div class="body"><div class="prep-foot"><button class="btn small primary" data-b="save" ${S.prep.saving || !diff.n && !lc || blocked.length ? "disabled" : ""}>Save kisi.json</button>
       <span class="prep-res">${blocked.length ? `${blocked.length} error${blocked.length > 1 ? "s" : ""} first (see Check on the left).` : esc(S.prep.saved || "")}</span></div></div></article>`;
 }
 // the end of a tab: ready for its analysis (or only the agent's items left)
@@ -1199,12 +1199,13 @@ function prepRenderSide() {
   if (!scopes.some((s) => s[0] === S.prep.scope)) S.prep.scope = "all";
   $("prep-scope").innerHTML = scopes.map(([k, t]) => `<option value="${k}" ${S.prep.scope === k ? "selected" : ""}>${t}</option>`).join("");
   const blocked = prepBlocked(S.prep.scope), can = dirty || !!lc;
-  $("prep-save").disabled = !can || blocked.length > 0;
-  $("prep-save").title = !can ? "nothing entered" : blocked.length ? "fix the errors first (warnings are fine)" : "";
-  const fsa = typeof window.showSaveFilePicker === "function", kc = kicadActive();
+  $("prep-save").disabled = S.prep.saving || !can || blocked.length > 0;
+  $("prep-save").title = S.prep.saving ? "saving" : !can ? "nothing entered" : blocked.length ? "fix the errors first (warnings are fine)" : "";
+  const fsa = typeof window.showSaveFilePicker === "function", kc = kicadActive(), bridge = kicadBridgeActive();
   // a board from the KiCad plugin: the file belongs into the board's folder, which the page knows but cannot open
-  const dirApi = kc && typeof window.showDirectoryPicker === "function";
-  const where = !kc ? (fsa ? "Saves next to the board (you choose the place)" : "Downloads")
+  const dirApi = kc && !bridge && typeof window.showDirectoryPicker === "function";
+  const where = bridge ? "Saves directly next to the board:"
+    : !kc ? (fsa ? "Saves next to the board (you choose the place)" : "Downloads")
     : dirApi && S.kicad.dirHandle ? `Writes straight into the board's folder (the browser asks once per session for permission). Saves`
     : fsa ? `Saves next to the board: choose the board's folder once (below), or in the save dialog (or paste the path below as the file name). Saves`
       : `Downloads – with the browser set to ask where to save (Firefox: Settings → General → Downloads → “Always ask you where to save files”; Safari: Settings → General → File download location → “Ask for each download”) choose the board's folder (path below); otherwise click kisi in KiCad again and the plugin takes the file over from the downloads folder. Downloads`;
@@ -1212,6 +1213,7 @@ function prepRenderSide() {
     ? `${blocked.length} error${blocked.length > 1 ? "s" : ""} in ${S.prep.scope === "all" ? "the draft" : `the ${PREP_VIEWS[S.prep.scope]} entries`}${S.prep.scope === "all" && !prepBlocked(tab).length ? ` – “save only ${PREP_VIEWS[tab]}” works` : ""}.`
     : `${where} ${S.name}.kisi.json${dirty ? "" : " as loaded"}, then loads it.`;
   $("prep-kicad").hidden = !kc;
+  $("prep-kicad-copy").hidden = bridge;
   if (kc) $("prep-kicad-path").textContent = kicadCfgPath();
   $("prep-save-note").classList.toggle("prep-dl", !!(kc && S.prep.savedDownload && S.prep.saved));
   // Chromium: the board's folder chosen once, then saving needs no dialog
@@ -1308,38 +1310,60 @@ async function prepSave() {
   try { ck = S.engine.configCheck(prepBoardFile(), text); } catch (e) { ck = { ok: false, errors: [e.message] }; }
   if (!ck.ok) { S.prep.saved = "Not saved: " + ck.errors.slice(0, 2).join("; "); prepRender(); return; }
   let how = "downloaded";
-  // a board from KiCad with its folder chosen in this browser (Chromium): straight into it, no dialog
-  const direct = kicadActive() && S.kicad.dirHandle ? await kdirWrite(name, text) : false;
-  if (direct) how = "saved";
-  else if (typeof window.showSaveFilePicker === "function") {
-    try {
-      const start = (S.fileHandles || []).find((h) => /\.kicad_pcb$/i.test(h.name));
-      // id: the browser remembers the folder chosen for this board; a handle of the board file, where there is one,
-      // starts the dialog next to it. A board from KiCad has no handle: no startIn, so nothing competes with the id
-      const kc = kicadActive(), id = "kisi-" + textHash(kc ? S.kicad.dir : S.name);
-      const opts = { id, suggestedName: name, types: [{ description: "kisi board configuration", accept: { "application/json": [".json"] } }] };
-      if (start || !kc) opts.startIn = start || "documents";
-      else if (S.kicad.dirHandle) opts.startIn = S.kicad.dirHandle; // the chosen folder, where writing straight failed
-      const h = await window.showSaveFilePicker(opts);
-      const wr = await h.createWritable(); await wr.write(text); await wr.close();
-      if (S.fileHandles) S.fileHandles = S.fileHandles.filter((x) => !/\.kisi\.json$/i.test(x.name)).concat([h]);
-      how = "saved";
-    } catch (e) { if (e && e.name === "AbortError") return; console.warn(e); prepDownload(name, text); }
-  } else prepDownload(name, text);
-  S.prep.lastSaved = text;
-  if (kicadActive()) S.kicad.config = how;
-  // the saved file is the new base; what was not saved (other categories) stays in the draft
-  const d = prepD();
-  const rest = scope === "all" ? JSON.parse(text) : d.work;
-  const rec = prepRec(d, text, rest);
-  S.prep.mem[S.name] = rec; lsSet(PREP_KEY(), rec);
-  S.prep.savedDownload = kicadActive() && how === "downloaded";
-  S.prep.savedNext = S.prep.savedDownload
-    // Firefox, Safari: the intended way – the next click in KiCad moves the file next to the board
-    ? `Saved to the downloads folder – click kisi in KiCad again to move it next to the board${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}. (To save into the board's folder directly, let the browser ask where to save: Firefox → Settings → General → Downloads → “Always ask you where to save files”.)`
-    : `${name} ${how}${direct ? " into the board's folder" : ""} and loaded${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}.`;
-  const l = S.lastFiles;
-  await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, { name, text, csv: (l.cfg && l.cfg.csv) || {} });
+  if (S.prep.saving) return;
+  const workAtSave = prepClone(prepW());
+  const bridgeAtSave = S.kicad && S.kicad.bridge;
+  S.prep.saving = true;
+  S.prep.saved = "Saving…";
+  prepRender(false);
+  try {
+    if (kicadBridgeActive()) {
+      try {
+        const result = await kicadRequest("/api/config", { text, revision: S.kicad.bridge.revision });
+        bridgeAtSave.revision = result.revision;
+        if (S.name + ".kisi.json" !== name || (S.kicad && S.kicad.bridge) !== bridgeAtSave) return;
+        how = "saved";
+      } catch (e) {
+        if (S.name + ".kisi.json" !== name || (S.kicad && S.kicad.bridge) !== bridgeAtSave) return;
+        S.prep.saved = "Not saved: " + e.message;
+        S.prep.savedDownload = false;
+        prepRender(false);
+        return;
+      }
+    }
+    // a board from KiCad with its folder chosen in this browser (Chromium): straight into it, no dialog
+    const direct = how === "saved" || (kicadActive() && S.kicad.dirHandle ? await kdirWrite(name, text) : false);
+    if (direct) how = "saved";
+    else if (typeof window.showSaveFilePicker === "function") {
+      try {
+        const start = (S.fileHandles || []).find((h) => /\.kicad_pcb$/i.test(h.name));
+        // id: the browser remembers the folder chosen for this board; a handle of the board file, where there is one,
+        // starts the dialog next to it. A board from KiCad has no handle: no startIn, so nothing competes with the id
+        const kc = kicadActive(), id = "kisi-" + textHash(kc ? S.kicad.dir : S.name);
+        const opts = { id, suggestedName: name, types: [{ description: "kisi board configuration", accept: { "application/json": [".json"] } }] };
+        if (start || !kc) opts.startIn = start || "documents";
+        else if (S.kicad.dirHandle) opts.startIn = S.kicad.dirHandle; // the chosen folder, where writing straight failed
+        const h = await window.showSaveFilePicker(opts);
+        const wr = await h.createWritable(); await wr.write(text); await wr.close();
+        if (S.fileHandles) S.fileHandles = S.fileHandles.filter((x) => !/\.kisi\.json$/i.test(x.name)).concat([h]);
+        how = "saved";
+      } catch (e) { if (e && e.name === "AbortError") { S.prep.saved = "Save cancelled."; return; } console.warn(e); prepDownload(name, text); }
+    } else prepDownload(name, text);
+    S.prep.lastSaved = text;
+    if (kicadActive()) S.kicad.config = how;
+    // the saved file is the new base; what was not saved (other categories) stays in the draft
+    const d = prepD();
+    const rest = scope === "all" && prepSame(d.work, workAtSave) ? JSON.parse(text) : d.work;
+    const rec = prepRec(d, text, rest);
+    S.prep.mem[S.name] = rec; lsSet(PREP_KEY(), rec);
+    S.prep.savedDownload = kicadActive() && how === "downloaded";
+    S.prep.savedNext = S.prep.savedDownload
+      // Firefox, Safari: the intended way – the next click in KiCad moves the file next to the board
+      ? `Saved to the downloads folder – click kisi in KiCad again to move it next to the board${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}. (To save into the board's folder directly, let the browser ask where to save: Firefox → Settings → General → Downloads → “Always ask you where to save files”.)`
+      : `${name} ${how}${direct ? " into the board's folder" : ""} and loaded${scope === "all" ? "" : ` (${PREP_VIEWS[scope]} changes; the rest stays in the draft)`}.`;
+    const l = S.lastFiles;
+    await loadFiles(l.pcbText, l.proText, l.name, l.piDefaults, { name, text, csv: (l.cfg && l.cfg.csv) || {} });
+  } finally { S.prep.saving = false; prepRender(false); }
 }
 function prepDownload(name, text) {
   const a = document.createElement("a");

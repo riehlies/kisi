@@ -136,34 +136,42 @@ in *Preferences → PCB Editor → Plugins* (KiCad 10), where its environment ca
 **What the button does**
 1. It asks KiCad which board is open and reads the saved `.kicad_pcb`, the `.kicad_pro` and the
    `<board>.kisi.json` next to the board. Changes not yet saved in KiCad are not included: save first.
-2. If the viewer downloaded a `<board>.kisi.json` since the last click (browsers without a folder dialog, see
-   below), it takes that file over from your downloads folder first – only when exactly one such file
+2. If an earlier offline viewer downloaded a `<board>.kisi.json` since the last click, it takes that file over
+   from your downloads folder first – only when exactly one such file
    (`<board>.kisi.json`, also `<board>.kisi(1).json`, `<board>.kisi (1).json`) is newer than the one next to the
    board, is a kisi.json for this board and passes `kisi config-check` (when Node.js is installed). The previous
    file is kept as `analysis/<board>.kisi.json.<date-time>.bak`; anything doubtful (several files, another board,
    an error) leaves everything as it is, and the viewer says why.
 3. If there is no `<board>.kisi.json`, it creates an empty one next to the board.
-4. It writes a copy of the viewer with these files built in to `analysis/<board>.kisi.html` next to the board – the
-   folder `kisi report` and `kisi export` use – and opens it; each click writes it anew. If `analysis/` cannot be
+4. It writes an offline copy of the viewer with these files built in to `analysis/<board>.kisi.html` next to the board – the
+   folder `kisi report` and `kisi export` use. Each click writes it anew. If `analysis/` cannot be
    written (a read-only folder), the page goes to the plugin's own folder instead (the one with the log, see
-   below), and the viewer says so. The page works offline, like `kisi.html`; the card "From KiCad" names the board, its
+   below). The copy works offline, like `kisi.html`; the card "From KiCad" names the board, its
    folder, the page and what happened to the kisi.json. In a project under version control, add `analysis/` to
    `.gitignore`.
+5. It opens the viewer through a temporary local Python service in your default browser. The page and all
+   calculations stay on your computer. The service is accessible only on `127.0.0.1`, has a new secret per
+   session and exposes only this viewer and this board's configuration. It needs no additional Python packages.
 
 Next to the board the plugin writes nothing but `<board>.kisi.json` and, in `analysis/`, the page and the backups;
 KiCad's files are never written or saved.
 
-**Saving kisi.json** – on the viewer's *Prepare PCB* page, "Save kisi.json" writes the file next to the board,
-where the next click reads it:
-- in Chrome and Edge: **Choose the board folder…** once per board (the page shows the folder's path; kisi checks
-  that the chosen folder holds the board). From then on "Save kisi.json" writes the file straight into that folder,
-  without a dialog; the browser asks once per session for permission to edit files there. Without a chosen folder
-  a save dialog opens instead ("Copy path" copies the full file name, which can be pasted into the dialog's file
-  name field).
-- in Firefox and Safari the file goes to the downloads folder: then **click kisi in KiCad again** – the plugin moves
-  it next to the board (step 2 above); the page says so after saving. To choose the folder yourself instead, let the
-  browser ask where to save: Firefox: *Settings → General → Downloads → Always ask you where to save files* (Firefox
-  then remembers the last folder); Safari: *Settings → General → File download location → Ask for each download*.
+**Saving kisi.json** – on the viewer's *Prepare PCB* page, "Save kisi.json" writes the file directly next to the
+board and loads it into the analyses. There is no download or folder dialog. The previous file is kept as a
+backup in `analysis/` (the newest five). If another window or an agent changed the file meanwhile, saving stops with a conflict
+message; your draft stays in the form. Reload the page to load the external change, then use the existing
+Restore/Discard draft controls to decide what to keep. A failed connection
+or write also keeps the draft and reports an error; it never silently downloads instead.
+
+The service exits after 30 minutes without a heartbeat from its page. Closed tabs stop sending heartbeats;
+suspended tabs or a sleeping computer can also let the session expire. To reconnect, click kisi in KiCad again.
+Unsaved browser drafts belong to the local browser session; keep a window with an unsaved draft open while
+reconnecting. Opening the offline HTML copy directly still uses the browser's save dialog or download.
+
+For saving, the plugin runs a small web host on your own computer only (`127.0.0.1`, a random port), for this
+board and only while the page is open. Its address contains a one-time secret; other web pages cannot use it, but
+programs running under your own user account could read that address from the browser history while the session
+lives.
 
 **With an agent** – the plugin carries kisi's command line (`cli/kisi.mjs` in its folder) and the
 [agent guide](agents.md#any-assistant-the-agent-guide) for any assistant (`agent/KISI-AGENT-GUIDE.md`). On *Prepare

@@ -122,8 +122,26 @@ async function loadKicadBoard(k) {
   S.kicad.dirStored = !!S.kicad.dirHandle;
   await handleFiles(files);
   kicadCard();
+  if (kicadBridgeActive()) {
+    if (S.kicadHeartbeat) clearInterval(S.kicadHeartbeat);
+    S.kicadHeartbeat = setInterval(() => { kicadRequest("/api/ping", {}).catch(() => {}); }, 30000);
+  }
 }
 const kicadActive = () => !!(S.kicad && S.kicad.on && S.scene && S.name === S.kicad.board);
+const kicadBridgeActive = () => !!(kicadActive() && S.kicad.bridge && location.protocol === "http:" && location.hostname === "127.0.0.1");
+async function kicadRequest(path, body) {
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(path, { method: "POST", cache: "no-store", signal: controller.signal,
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + S.kicad.bridge.token }, body: JSON.stringify(body) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "The configuration could not be saved.");
+    return result;
+  } catch (e) {
+    if (e instanceof TypeError || e.name === "AbortError") throw new Error("The connection to kisi was lost. Reopen kisi from KiCad; your draft is kept in this window.");
+    throw e;
+  } finally { clearTimeout(timer); }
+}
 // where the board's kisi.json belongs (the plugin's path, with the platform's separators)
 // the plugin's kisi.mjs and Node.js (kisi_kicad.find_cli, find_node): the agent card's command
 const kicadCli = () => (kicadActive() && S.kicad.cli && S.kicad.cli.path ? S.kicad.cli : null);
@@ -148,7 +166,7 @@ function kicadCard() {
       ? `<p class="warn">Not taken over from the downloads folder${imp.from ? ` (<code class="kicad-dir">${esc(imp.from)}</code>)` : ""}: ${esc((imp.reasons || []).join("; "))}. The kisi.json next to the board is unchanged.</p>` : "";
   // where this page lies: analysis/<board>.kisi.html next to the board, or the temporary folder
   const pg = k.page || {};
-  const pageHtml = pg.where === "temp"
+  const pageHtml = kicadBridgeActive() ? `<p class="note">Save on the Prepare PCB page writes the configuration next to this board.</p>` : pg.where === "temp"
     ? `<p class="warn">This page is in the temporary folder (<code class="kicad-dir">${esc(pg.path)}</code>): ${esc(pg.reason || "analysis/ next to the board could not be written")}.</p>`
     : pg.path ? `<p class="note">This page: <code class="kicad-dir">${esc(pg.path)}</code> – each click writes it anew.</p>` : "";
   const unsaved = k.modified === "modified"

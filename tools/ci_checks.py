@@ -32,7 +32,8 @@ GROUPS = {
     "viewer": CODE + BOARDS + ["web/*", "tools/bundle.py", "tools/solver_bundle.py", "tools/esm_classic.py",
                                "tools/check_viewer.py", "tools/test_units.mjs", "third_party/*",
                                # the plugin's page in the browser (tools/check_kicad_plugin.py)
-                               "kicad-plugin/kisi_kicad.py", "kicad-plugin/kisi_action.py", "tools/check_kicad_plugin.py"],
+                               "kicad-plugin/kisi_kicad.py", "kicad-plugin/kisi_action.py", "kicad-plugin/kisi_server.py",
+                               "tools/check_kicad_plugin.py", "tools/check_kicad_local.py", "tools/test_local_save.mjs"],
     # Node CLI against the native CLI
     "cli": CODE + BOARDS + ["web/cli/*", "web/solver/*", "third_party/*", "tools/bundle_cli.py",
                             "tools/solver_bundle.py", "tools/compare_cli.py"],

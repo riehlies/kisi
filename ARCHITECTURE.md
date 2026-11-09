@@ -69,7 +69,8 @@ to one thread.
 * `index.html` – markup only; `css/kisi.css`; scripts in `src/` in the order of
   `src/manifest.json` (shared scope):
   `engine` (WASM) · `units` (values with SI prefixes for every view: `fmtSI`, `parseSI`, `fieldSI`; tests
-  `tools/test_units.mjs`) · `state` · `load` · `geometry` · `draw` (also `drawBoardLabels`: every text on the board – part
+  `tools/test_units.mjs`) · `state` · `tolerance` (the manufacturing tolerances in use – defaults < kisi.json < the
+  panel's edits – and the fab band's one display form for every view, `zSpread`) · `load` · `geometry` · `draw` (also `drawBoardLabels`: every text on the board – part
   labels of all maps, A/B marks – at a constant screen size, with the overlap rule; checked by `check_viewer.py`) · `charts` · `net-detail` · `si-tabs`
   (impedance view) · `channel` + `lanes` (channel view, interfaces overview) · `variants` (assembly variant card and
   prompt) · `panels` · `interaction` · `field-pool` ·

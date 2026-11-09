@@ -149,7 +149,8 @@ validation, and every result says which level it used and how uncertain it is.
   - **sensitivity of the impedance** (`feat/stackup-variants`, done): per net class and layer the band for
     dielectric thickness, εr, copper and a symmetric width tolerance (one-at-a-time central differences at the
     nominal value's solver level, worst case and RSS) against the window, `overview --tolerance`, the viewer
-    panel; information only. Open for the maintainer: whether the band should enter a verdict (e.g. yellow when
+    panel; the band in every view and output by default (net, lane, tooltip, the map's Tolerance mode, `net`,
+    `check`, `overview`, exports), kisi.json `tolerances`; information only. Open for the maintainer: whether the band should enter a verdict (e.g. yellow when
     the RSS band leaves the window), and the default width tolerance (±0.02 mm from JLC's example; JLC states
     ±20 %);
   - **etch factor** (still open; the tolerance band uses a symmetric width tolerance) per stackup or layer in

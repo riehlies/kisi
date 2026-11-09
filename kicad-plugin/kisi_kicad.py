@@ -103,6 +103,25 @@ def make_own_dir(folder):
     os.makedirs(folder, mode=0o700, exist_ok=True)
 
 
+def _sharing_violation(e):
+    """Windows: another program (virus scanner, search indexer, OneDrive/Dropbox) has the file open for a moment –
+    access denied (5), sharing violation (32) or lock violation (33). Worth a short retry; elsewhere never."""
+    return os.name == "nt" and isinstance(e, PermissionError) and getattr(e, "winerror", None) in (5, 32, 33)
+
+
+def retry_shared(fn, delays=(0.02, 0.05, 0.1, 0.2, 0.3, 0.4), transient=None):
+    """Call `fn`; on a passing Windows sharing violation try again after the given delays (about 1 s in all)."""
+    transient = transient or _sharing_violation
+    for delay in delays:
+        try:
+            return fn()
+        except OSError as e:
+            if not transient(e):
+                raise
+        time.sleep(delay)
+    return fn()
+
+
 def _quiet():
     """subprocess options: no console window on Windows."""
     return {"creationflags": CREATE_NO_WINDOW} if os.name == "nt" else {}
@@ -250,7 +269,7 @@ class Guard:
                 f.write(data)
                 f.flush()
                 os.fsync(f.fileno())
-            os.replace(tmp, path)
+            retry_shared(lambda: os.replace(tmp, path))
         finally:
             if tmp and os.path.exists(tmp):
                 os.remove(tmp)

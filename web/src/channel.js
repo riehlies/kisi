@@ -78,7 +78,7 @@ function judge(m, p) {
     const st = ST_MAP[c.status];
     switch (c.key) {
       case "error": return { key: c.key, name: "Computation", value: m.error || "error", limit: "", st };
-      case "z": return { key: c.key, name: "Impedance mean (min … max)", value: `${f1(c.value)} Ω${zSpread(m.z_band, m.z_unc_pct, m.field_share)} (${fmt(m.z_min, 0)} … ${fmt(m.z_max, 0)})`, limit: `${f1(c.lo)} … ${f1(c.hi)} Ω`, st, note: c.note };
+      case "z": return { key: c.key, name: "Impedance mean (min … max)", value: `${f1(c.value)} Ω${zSpread(m.z_band, m.z_unc_pct, m.field_share)} (${fmt(m.z_min, 0)} … ${fmt(m.z_max, 0)})`, html: true, limit: `${f1(c.lo)} … ${f1(c.hi)} Ω`, st, note: c.note };
       case "eye_h": return { key: c.key, name: "Eye height", value: `${fmt(c.value * 100, 0)} % (${fmt(c.value * p.tx.swing_mv, 0)} mV)`, limit: `red < ${fmt(c.red_below * 100, 0)} %, yellow < ${fmt(c.lo * 100, 0)} %`, st };
       case "eye_w": return { key: c.key, name: "Eye width", value: `${fmt(c.value * 100, 0)} % UI`, limit: `≥ ${fmt(c.lo * 100, 0)} % UI`, st };
       case "il": return { key: c.key, name: `Insertion loss at ${fmt(nyq, nyq < 1 ? 2 : 1)} GHz`, value: `${fmt(c.value, 2)} dB`, limit: c.lo != null ? `≥ ${f1(c.lo)} dB` : "no limit", st };
@@ -306,7 +306,7 @@ function renderChDetail(net) {
   const xt = r.crosstalk && r.crosstalk.aggressors ? `<tr><td></td><td>Crosstalk (total)</td><td>NEXT ${fmt(r.crosstalk.next_total * 100, 2)} %, FEXT ${fmt(r.crosstalk.fext_total * 100, 2)} %</td><td>information only</td></tr>` : "";
   body.innerHTML = `<div class="dstats"><span>Result <b style="color:${S.colors[j.status]}">${ST_NAME[j.status]}</b></span><span>${fmt(p.rate_gbps, p.rate_gbps < 1 ? 2 : p.rate_gbps % 1 ? 2 : 0)} Gbit/s</span>${r.channel ? `<span>Path ${fmt(r.channel.length_mm, 1)} mm, ${r.channel.vias} vias</span>` : ""}</div>
     <div class="tablewrap"><table class="xs-table"><thead><tr><th></th><th>Criterion</th><th>Value</th><th>Limit</th></tr></thead><tbody>
-    ${j.rows.map((x) => `<tr title="${esc(x.note || "")}"><td><span class="dot" style="background:${S.colors[x.st]}" aria-label="${ST_NAME[x.st]}"></span></td><td>${x.name}</td><td>${esc(String(x.value))}</td><td>${x.limit}</td></tr>`).join("")}${xt}
+    ${j.rows.map((x) => `<tr title="${esc(x.note || "")}"><td><span class="dot" style="background:${S.colors[x.st]}" aria-label="${ST_NAME[x.st]}"></span></td><td>${x.name}</td><td>${x.html ? x.value : esc(String(x.value))}</td><td>${x.limit}</td></tr>`).join("")}${xt}
     </tbody></table></div>
     <p class="note">Impedance from the impedance analysis (formula or field solver) against the profile. Insertion loss, return loss and TDR use the reference resistance; the eye uses the profile's transmitter and receiver. No equalisation, jitter or noise.</p>
     ${(r.channel?.warnings || []).map((w) => `<div class="warn">${esc(w)}</div>`).join("")}`;

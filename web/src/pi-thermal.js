@@ -89,8 +89,7 @@ function thermImage() {
   // within the outline: values extended, the outline cuts them; without a closed outline the cells' own edge
   const ol = mapOutline();
   const map = mapImage(val, t.nx, t.ny, ol ? { x0: t.x0, y0: t.y0, cell: t.cell, lo, hi } : { x0: t.x0, y0: t.y0, cell: t.cell, lo, hi, dilate: 0, cover: 0.5 });
-  const mask = map ? mapMaskImage(map.bbox, t.cell, (c) => { c.fillStyle = "#000"; if (ol) c.fill(ol, "evenodd"); else c.fillRect(map.bbox[0], map.bbox[1], map.bbox[2] - map.bbox[0], map.bbox[3] - map.bbox[1]); }) : null;
-  S.thermImg = { layer: l, map, lo, hi, mask };
+  S.thermImg = { layer: l, map, lo, hi, clip: ol };
   return S.thermImg;
 }
 // parts shown on a layer: the top side on the top layer, the bottom side on the bottom layer
@@ -114,7 +113,7 @@ function viaStyle(q, qmax) {
 function drawThermal(px) {
   if (!thermOk()) return;
   const im = thermImage();
-  if (im.map) mapDraw({ bbox: im.map.bbox, mask: (c) => mapMaskImageDraw(c, im.mask), image: (c) => mapPaint(c, im.map) });
+  if (im.map) mapDraw({ clip: im.clip, rule: "evenodd", image: (c) => mapPaint(c, im.map) });
   // vias with the most heat flow (screen-size markers, the largest on top)
   const { list, qmax } = thermVias();
   ctx.lineWidth = 1 * px; ctx.strokeStyle = S.colors.halo;

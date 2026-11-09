@@ -5,11 +5,11 @@
 //   interpolation and smoothing do not fade at the copper's edge,
 // * interpolated bilinearly ×f (f by the cell count, MAP_PX) and then colour-mapped – the colour of
 //   the interpolated value, not a blend of two colours –, the canvas smooths further when zoomed in,
-// * drawn through a mask: the real copper of the net on the layer (zones, pads, vias, tracks) or the
-//   board outline, at screen resolution, so the edges follow the copper and not the cells,
+// * clipped to the real copper of the net on the layer (zones, pads, vias, tracks as one path) or to the
+//   board outline, so the edges follow the copper and not the cells,
 // * tracks narrower than MAP_LINE_CELLS cells (the solver's line conductors) as strokes of their own
 //   width, coloured along their length from the cells under their centre line,
-// * optional isolines (marching squares on the extended values), clipped to the same mask.
+// * optional isolines (marching squares on the extended values), clipped the same way.
 
 const MAP_DILATE = 2;       // cells the values are extended beyond the copper
 const MAP_PX = 3e6;         // pixel budget of one map image (4 bytes each): chooses the factor f
@@ -116,40 +116,59 @@ function mapPaint(c, m) {
   c.imageSmoothingEnabled = true;
 }
 
-// the copper of the nets `nets` (indices) on copper layer `l` as paths in board coordinates: zones
-// (even-odd), pads, vias, tracks by width (synthetic pad tracks left out: the pad itself is there);
-// kept per board with the other static paths
+// A closed ring of points (flat x, y list) added to `p` turning the same way as the canvas's own rect,
+// arc and roundRect (positive shoelace sum in board coordinates, y down): copper drawn that way joins
+// under the non-zero rule, so one path of all copper is the union of its parts (a clip or a mask in one
+// fill). KiCad saves zone fills fractured – the holes joined to the outline –, a fill is one ring.
+function mapRing(p, xy) {
+  const n = xy.length / 2;
+  if (n < 3) return;
+  let a = 0;
+  for (let k = 0; k < n; k++) { const j = (k + 1) % n; a += xy[2 * k] * xy[2 * j + 1] - xy[2 * j] * xy[2 * k + 1]; }
+  const at = (k) => (a >= 0 ? k : n - 1 - k);
+  p.moveTo(xy[2 * at(0)], xy[2 * at(0) + 1]);
+  for (let k = 1; k < n; k++) p.lineTo(xy[2 * at(k)], xy[2 * at(k) + 1]);
+  p.closePath();
+}
+// a track as a ring: the capsule of width w around a–b (8 segments per round end)
+function mapCapsule(p, ax, ay, bx, by, w) {
+  const r = w / 2, L = Math.hypot(bx - ax, by - ay), ux = L > 1e-9 ? (bx - ax) / L : 1, uy = L > 1e-9 ? (by - ay) / L : 0, xy = [];
+  const t0 = Math.atan2(uy, ux);
+  for (let k = 0; k <= 8; k++) { const t = t0 - Math.PI / 2 + Math.PI * k / 8; xy.push(bx + r * Math.cos(t), by + r * Math.sin(t)); }
+  for (let k = 0; k <= 8; k++) { const t = t0 + Math.PI / 2 + Math.PI * k / 8; xy.push(ax + r * Math.cos(t), ay + r * Math.sin(t)); }
+  mapRing(p, xy);
+}
+// The copper of the nets `nets` (indices) on copper layer `l` as one path in board coordinates (`clip`,
+// non-zero: zones, pads, vias, tracks; the synthetic pad tracks left out, the pad itself is there) and
+// the layer's tracks (`list`, indices into scene.tracks); kept per board with the other static paths
 function mapCopper(nets, l) {
   const st = S.static, key = nets.join(",") + "|" + l;
   st.cu = st.cu || new Map();
   if (st.cu.has(key)) return st.cu.get(key);
-  const set = new Set(nets), sc = S.scene, bit = 1 << l;
-  const zones = new Path2D(), pads = new Path2D(), vias = new Path2D(), tracks = new Map();
+  const set = new Set(nets), sc = S.scene, bit = 1 << l, clip = new Path2D();
   const { idx, pts } = S.zones;
-  for (let i = 0; i < idx.length; i += 4) {
-    if (idx[i] !== l || !set.has(idx[i + 1])) continue;
-    const s0 = idx[i + 2], n = idx[i + 3];
-    zones.moveTo(pts[s0 * 2], pts[s0 * 2 + 1]);
-    for (let k = 1; k < n; k++) zones.lineTo(pts[(s0 + k) * 2], pts[(s0 + k) * 2 + 1]);
-    zones.closePath();
-  }
+  for (let i = 0; i < idx.length; i += 4) if (idx[i] === l && set.has(idx[i + 1])) mapRing(clip, pts.subarray(idx[i + 2] * 2, (idx[i + 2] + idx[i + 3]) * 2));
   const P = sc.pads;
-  for (let i = 0; i < P.length / 8; i++) if (set.has(P[i * 8 + 7]) && (P[i * 8 + 6] & bit)) pads.addPath(padShape(i));
+  for (let i = 0; i < P.length / 8; i++) {
+    if (!set.has(P[i * 8 + 7]) || !(P[i * 8 + 6] & bit)) continue;
+    const custom = P[i * 8 + 5] === 4 && S.padCustom ? S.padCustom.get(i) : null;
+    if (!custom) { clip.addPath(padShape(i)); continue; } // rect, roundRect, arc: the canvas's own turn
+    const m = new DOMMatrix().translate(P[i * 8], P[i * 8 + 1]).rotate(-P[i * 8 + 4]);
+    for (const poly of custom) mapRing(clip, poly.flatMap((q) => { const t = m.transformPoint({ x: q[0], y: q[1] }); return [t.x, t.y]; }));
+  }
   const V = sc.vias;
   for (let i = 0; i < V.length; i += 7) {
     if (!set.has(V[i + 6]) || l < Math.min(V[i + 4], V[i + 5]) || l > Math.max(V[i + 4], V[i + 5])) continue;
-    vias.moveTo(V[i] + V[i + 2] / 2, V[i + 1]); vias.arc(V[i], V[i + 1], V[i + 2] / 2, 0, Math.PI * 2);
+    clip.moveTo(V[i] + V[i + 2] / 2, V[i + 1]); clip.arc(V[i], V[i + 1], V[i + 2] / 2, 0, Math.PI * 2); clip.closePath();
   }
   const T = sc.tracks, list = [];
   for (let i = 0; i < T.length / 7; i++) {
     const o = i * 7;
     if (T[o + 5] !== l || !set.has(T[o + 6]) || (S.padOfTrack && S.padOfTrack.has(i))) continue;
-    const w = T[o + 4], k = w.toFixed(4);
-    let p = tracks.get(k); if (!p) tracks.set(k, p = { w, path: new Path2D() });
-    p.path.moveTo(T[o], T[o + 1]); p.path.lineTo(T[o + 2], T[o + 3]);
+    mapCapsule(clip, T[o], T[o + 1], T[o + 2], T[o + 3], T[o + 4]);
     list.push(i);
   }
-  const r = { zones, pads, vias, tracks: [...tracks.values()], list };
+  const r = { clip, list };
   st.cu.set(key, r);
   return r;
 }
@@ -183,56 +202,28 @@ function mapOutline() {
   st.outlineFill = ok ? fill : null;
   return st.outlineFill;
 }
-// fill a list of copper sets (mapCopper) as the mask; `px`: one CSS pixel in mm (thin tracks stay visible)
-function mapMaskCopper(c, cus, px) {
-  c.fillStyle = "#000"; c.strokeStyle = "#000"; c.lineCap = "round"; c.lineJoin = "round";
-  for (const cu of cus) {
-    c.fill(cu.zones, "evenodd"); c.fill(cu.pads); c.fill(cu.vias);
-    for (const t of cu.tracks) { c.lineWidth = Math.max(t.w, 1.2 * px); c.stroke(t.path); }
-  }
+// Cut the map image to a path once, at the image's resolution (`destination-in`): for maps without an
+// extension beyond their cells (losses) the cut costs nothing per frame and loses nothing
+function mapBake(m, path, rule = "nonzero") {
+  if (!m) return;
+  const x = m.canvas.getContext("2d"), k = m.f / m.cell;
+  x.setTransform(k, 0, 0, k, -m.x0 * k, -m.y0 * k);
+  x.globalCompositeOperation = "destination-in"; x.fillStyle = "#000"; x.fill(path, rule);
+  x.globalCompositeOperation = "source-over"; x.setTransform(1, 0, 0, 1, 0, 0);
 }
 
-// A mask drawn once as an image over bbox (for maps whose mask is many layers' copper, or the outline),
-// a quarter cell per pixel within the pixel budget; drawn smoothed at every zoom (mapMaskImageDraw)
-function mapMaskImage(bbox, cell, draw) {
-  const w = bbox[2] - bbox[0], h = bbox[3] - bbox[1], p = Math.max(cell / 4, Math.sqrt(w * h / MAP_PX));
-  const c = document.createElement("canvas"); c.width = Math.max(1, Math.ceil(w / p)); c.height = Math.max(1, Math.ceil(h / p));
-  const x = c.getContext("2d");
-  x.setTransform(1 / p, 0, 0, 1 / p, -bbox[0] / p, -bbox[1] / p);
-  draw(x, p);
-  return { canvas: c, bbox: [bbox[0], bbox[1], bbox[0] + c.width * p, bbox[1] + c.height * p], bytes: c.width * c.height * 4 };
-}
-function mapMaskImageDraw(c, mi) {
-  c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "low";
-  c.drawImage(mi.canvas, mi.bbox[0], mi.bbox[1], mi.bbox[2] - mi.bbox[0], mi.bbox[3] - mi.bbox[1]);
-}
-
-// Draw a map through a mask at screen resolution: an offscreen canvas of the view's size gets the mask,
-// then the image only where the mask is (`source-in`), the track strokes over it, the isolines only on
-// it (`source-atop`), and the result goes onto the board with the maps' transparency.
-// layers: { mask(c), image(c), over?(c), atop?(c) } in board coordinates, bbox: [x0, y0, x1, y1] of the map
+// Draw a map onto the board (ctx in board coordinates) with the maps' transparency: the image and the
+// isolines or arrows (`atop`) within the clip path – the real copper, or the board outline –, the track
+// strokes (`over`) after it, not clipped: thin tracks keep a visible width when zoomed out.
+// layers: { clip?: Path2D, rule?, image(c), atop?(c), over?(c) }
 function mapDraw(layers) {
-  let o = S.mapCv;
-  if (!o) o = S.mapCv = document.createElement("canvas");
-  if (o.width !== cv.width || o.height !== cv.height) { o.width = cv.width; o.height = cv.height; }
-  const c = o.getContext("2d"), d = window.devicePixelRatio || 1, v = S.view;
-  // only the part of the view the map covers (device pixels)
-  const bb = layers.bbox, k = v.s * d;
-  const rx = Math.max(0, Math.floor(bb ? bb[0] * k + v.x * d : 0) - 2), ry = Math.max(0, Math.floor(bb ? bb[1] * k + v.y * d : 0) - 2);
-  const rw = Math.min(o.width, Math.ceil(bb ? bb[2] * k + v.x * d : o.width) + 2) - rx, rh = Math.min(o.height, Math.ceil(bb ? bb[3] * k + v.y * d : o.height) + 2) - ry;
-  if (rw <= 0 || rh <= 0) return;
-  c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = "source-over"; c.globalAlpha = 1;
-  c.clearRect(0, 0, o.width, o.height);
-  c.setTransform(k, 0, 0, k, v.x * d, v.y * d);
-  layers.mask(c);
-  c.globalCompositeOperation = "source-in";
-  layers.image(c);
-  c.globalCompositeOperation = "source-over";
-  if (layers.over) layers.over(c);
-  c.globalCompositeOperation = "source-atop";
-  if (layers.atop) layers.atop(c);
-  c.globalCompositeOperation = "source-over";
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = MAP_ALPHA; ctx.drawImage(o, rx, ry, rw, rh, rx, ry, rw, rh); ctx.restore();
+  ctx.save();
+  if (layers.clip) ctx.clip(layers.clip, layers.rule || "nonzero");
+  ctx.globalAlpha = MAP_ALPHA;
+  layers.image(ctx);
+  if (layers.atop) layers.atop(ctx);
+  ctx.restore();
+  if (layers.over) { ctx.save(); ctx.globalAlpha = MAP_ALPHA; layers.over(ctx); ctx.restore(); }
 }
 
 // The tracks narrower than MAP_LINE_CELLS cells as strokes coloured along their length: samples every

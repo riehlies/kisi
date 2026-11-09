@@ -35,7 +35,6 @@ function lossImage() {
   const map = max > 0 ? mapImage(lg, m.nx, m.ny, { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(max), dilate: 0, cover: 0.5 }) : null;
   const pl = S.lossPlane, nets = [...S.piRes.entries()].filter(([, r]) => r.res).map(([n]) => S.scene.nets.indexOf(n)).filter((n) => n >= 0);
   const layers = pl === "comp" ? [] : pl[0] === "L" ? [m.layers[+pl.slice(1)]] : m.layers;
-  const cus = layers.map((l) => mapCopper(nets, l));
   // parts: their heat is spread over the box of their pads (kisi_pi::losses), the box is the mask
   let parts = null;
   if (pl === "comp" || pl === "total") {
@@ -47,19 +46,24 @@ function lossImage() {
       b[0] = Math.min(b[0], P[o] - r); b[1] = Math.min(b[1], P[o + 1] - r); b[2] = Math.max(b[2], P[o] + r); b[3] = Math.max(b[3], P[o + 1] + r);
       box.set(ref, b);
     }
-    parts = new Path2D();
-    for (const b of box.values()) parts.rect(b[0], b[1], b[2] - b[0], b[3] - b[1]);
+    parts = [...box.values()];
   }
-  // the mask as an image: filling the copper of every rail on every layer each frame is too slow
-  const mask = map ? mapMaskImage(map.bbox, m.cell, (c, p) => { mapMaskCopper(c, cus, p); if (parts) c.fill(parts); }) : null;
-  S.lossImg = { plane: S.lossPlane, map, max, lo, vals, mask };
+  // cut once into the image (no extension here, so nothing is lost): the copper of every rail on
+  // every layer each frame would be slow; one path, non-zero, is the union of all of it
+  if (map) {
+    const cut = new Path2D();
+    for (const l of layers) cut.addPath(mapCopper(nets, l).clip);
+    for (const b of parts || []) cut.rect(b[0], b[1], b[2] - b[0], b[3] - b[1]);
+    mapBake(map, cut);
+  }
+  S.lossImg = { plane: S.lossPlane, map, max, lo, vals };
   return S.lossImg;
 }
 
 function drawLoss(px) {
   if (!S.loss || !S.loss.map) return;
   const im = lossImage();
-  if (im.map) mapDraw({ bbox: im.map.bbox, mask: (c) => mapMaskImageDraw(c, im.mask), image: (c) => mapPaint(c, im.map) });
+  if (im.map) mapDraw({ image: (c) => mapPaint(c, im.map) });
   // the largest heat sources: labels at a constant screen size, the hottest first; a label that
   // would overlap a hotter one is left out (more appear when zoomed in)
   S.lossLabels = [];

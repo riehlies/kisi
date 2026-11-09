@@ -472,8 +472,7 @@ function drawPi() {
   if (r) {
     const li = piLayerIdx(r), im = piImage(r, li);
     const cu = mapCopper([S.scene.nets.indexOf(S.piRail)], im.g.layer), iso = piIsoOn() ? piIso(im) : null;
-    mapDraw({ bbox: im.map && im.map.bbox, mask: (c) => mapMaskCopper(c, [cu], px), image: (c) => mapPaint(c, im.map),
-      over: (c) => mapDrawStrokes(c, piStrokes(im), px),
+    mapDraw({ clip: cu.clip, image: (c) => mapPaint(c, im.map), over: (c) => mapDrawStrokes(c, piStrokes(im), px),
       atop: iso ? (c) => mapDrawIso(c, iso, px) : piArrowsOn() ? (c) => { c.strokeStyle = "rgba(0,0,0,0.65)"; c.lineWidth = 1.2 * px; c.stroke(piArrows(r, im.g, px)); } : null });
     S.piIsoLabels = iso ? iso.labels : null;
     // sources and loads
@@ -514,10 +513,12 @@ function drawPi() {
   // sources and loads, except in the PDN view (its own parts) and for a part already outlined
   if (!pdn) { const own = new Set(labels.map((l) => l.text)); labels.push(...loadLabels.filter((l) => !own.has(l.ref))); }
   S.piLabels = drawPartLabels(labels);
-  // isoline values: smaller, after the part labels and never over them, a few per screen (by its area)
+  // isoline values: smaller, after the part labels and never over them, a few per screen (by its area,
+  // at most as many as there are levels)
   if (r && S.piIsoLabels) {
     const st = piImage(r, piLayerIdx(r)).iso.step;
-    const d = window.devicePixelRatio || 1, max = Math.round(Math.min(16, Math.max(3, cv.width * cv.height / (d * d) / 60000)));
+    const d = window.devicePixelRatio || 1, levels = new Set(S.piIsoLabels.map((c) => c.n)).size;
+    const max = Math.min(levels, Math.round(Math.min(16, Math.max(3, cv.width * cv.height / (d * d) / 60000))));
     drawBoardLabels(S.piIsoLabels.map((c) => ({ x: c.x, y: c.y, text: fmtSI(c.n * st * 1e-3, "V", 3) })), { center: true, size: 9.5, max, avoid: S.piLabels });
   }
 }

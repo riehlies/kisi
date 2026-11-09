@@ -26,9 +26,9 @@ program; `KISI_BLESS_DOCS=1 cargo test -p kisi-core docs_cli` writes the current
 ```text
 kisi <command> <board.kicad_pcb> [options] – JSON on stdout
 
-  overview         stackup, impedance per net class (share within ±5 %, worst nets)
-                   [--tolerance | --tol thickness=10,er=5,copper=10,width=0.02mm (impedance band per
-                   class and layer for manufacturing tolerances; width also in %)]
+  overview         stackup, impedance per net class (share within ±5 %, worst nets, the fab
+                   tolerance band) [--tolerance (also per class and layer: the band per tolerance,
+                   with the field solver's sensitivities where it has them)]
   interfaces       buses and device-to-device lanes with profiles   [--class CLASS=PROFILE]…
   net <NET>        one net: impedance along the path, loss, TDR, vias, crosstalk;
                    differential pairs also as 4-port (mixed mode, skew)
@@ -61,8 +61,7 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
                    Nyquist or 0.5/t_r of the profile's edge, the higher)]
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
-                   [--class CLASS=PROFILE] [--tolerance | --tol … (the lanes' impedance band in
-                   the files' stackup header)]
+                   [--class CLASS=PROFILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
                    per category (impedance, channel, power) whether there is anything to check and
                    whether it is ready                           [--for impedance|channel|power]
@@ -72,11 +71,13 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
   stackups [BOARD] fab stackup templates (data/stackups.json); with a board: which fit it (copper
                    layers, thickness) and the impedance per net class and layer under the board's
                    stackup and each fitting template, side by side
-                   [--preset ID,… (these only, with their kisi.json stackup entry)] [--tolerance | --tol …]
+                   [--preset ID,… (these only, with their kisi.json stackup entry)] [--tolerance]
 
 common options: --pro FILE (default: board.kicad_pro), --config FILE (default: board.kisi.json
 next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer),
 --stackup-preset ID (a fab stackup template from `kisi stackups` instead of the board's values),
+--tol thickness=10,er=5,copper=10,width=0.02mm (manufacturing tolerances of every impedance band,
+in %, width in mm or %; keys left out: kisi.json "tolerances", else kisi's defaults),
 --variant NAME (assembly variant: a KiCad 10 variant of the board or one of the kisi.json
 "variants"; "default" = the board file as it is). Boards with variants – or with forks where
 all alternative parts are fitted – need one for interfaces, check and report (else they stop and
@@ -104,19 +105,20 @@ A quick design check: results are estimates, without any warranty of correctness
 
 ### `overview`
 Stackup (with `assumed` for values that are KiCad defaults) and, per net class with a target impedance, the share
-of routed length within ±5 % and the worst nets. `config` says which kisi.json was used. Runs the field solver.
+of routed length within ±5 %, the worst nets and the **fab tolerance band**: `tolerance_band` (the share of the
+class's length per band status) and for each worst net `z_tol_rss_ohm`, `z_tol_wc_ohm` (RSS and worst case of the
+band), `window_pct` and `z_tol_status` (`inside`, `band_leaves` – nominal inside, the RSS band not –,
+`nominal_outside`); `tolerances` lists the tolerances used, where each comes from (`from`: default, kisi.json,
+`--tol`), which are kisi's `estimates`, and their sources ([models](models.md#impedance)). `config` says which
+kisi.json was used. Runs the field solver.
 
 `--tolerance` adds `tolerance`: per net class and layer (`rows`, the class's most used cross-section there) the
-nominal impedance and its band for manufacturing tolerances – `sensitivities` (per varied quantity: `kind`
-thickness, er, copper or width, `what`, `nominal`, `delta`, `dz_ohm` = ΔZ at +tolerance), `by_kind_ohm`,
-`worst_case` and `rss` (`plus_minus_ohm`, `min_ohm`, `max_ohm`, deviations in %, `in_window`), the target window
-(`window_pct`, `window_source`: the class's interface profile or the default ±10 %), `band_status` (`inside`,
-`worst_case_leaves`, `leaves`, `nominal_outside`) with a `hint`, and `level` (field solver or formula); `tolerances`
-lists the values used, which of them are kisi's `estimates`, and their sources; `method` says how it is computed
-([models](models.md#impedance)). The band is information; no verdict changes. `--tol
-thickness=10,er=5,copper=10,width=0.02mm` sets the tolerances in % (width in mm or `%`); keys not given keep their
-defaults (`data/stackups.json`). `kisi.mjs` also solves the perturbed cross-sections (cached); the native `kisi`
-uses formula differences.
+band per tolerance – `sensitivities` (per varied quantity: `kind` thickness, er, copper or width, `what`,
+`nominal`, `delta`, `dz_ohm` = ΔZ at +tolerance), `by_kind_ohm`, `worst_case` and `rss` (`plus_minus_ohm`,
+`min_ohm`, `max_ohm`, deviations in %, `in_window`), `worst_case_in_window`, the target window (`window_pct`,
+`window_source`), `band_status` with a `hint`, and `level`: `kisi.mjs` also solves the perturbed cross-sections
+(cached) and then uses the field solver's differences; `method` says how. The band is information; no verdict
+changes.
 
 ### `interfaces`
 Buses and device-to-device lanes: pins, series parts, terminations, branches, side stubs (`stubs`: unused pads),
@@ -129,14 +131,17 @@ Z), loss, TDR extremes, vias (antipad, stub resonance, return path) and crosstal
 differential pairs also as a 4-port (mixed mode, skew). `--rise-ps` sets the edge (default 35 ps),
 `--roughness smooth|hvlp|standard` the copper roughness preset; `--s2p FILE` writes the channel's S-parameters,
 `--s4p FILE` the pair's single-ended 4-port as Touchstone. Runs the field solver for the net's cross-sections.
-`accuracy`: the level and typical uncertainty of the impedance and the via models (as in `check`).
+`accuracy`: the level and typical uncertainty of the impedance and the via models (as in `check`);
+`impedance_band`: the fab tolerance band of the mean impedance (`z_ohm`, `z_tol_rss_ohm`, `z_tol_wc_ohm`,
+`window_pct`, `z_tol_status`, as in `overview`).
 
 ### `check`
 Channel check of all lanes against their interface profiles: loss, return loss, skew, via stubs and the eye;
 nets with a target but no devices on their own. Only yellow and red rows are printed (`--all` for green too,
 `--nets A,B` to restrict, `--max N` rows, default 30). `--class CLASS=PROFILE` overrides a profile (better: put it
 into kisi.json). Rows are computed on several threads (below); the result is the same as on one thread. Needs an
-assembly variant on boards that have them. Runs the field solver. Every row has `accuracy`:
+assembly variant on boards that have them. Runs the field solver. Every row has `impedance_band` (the fab tolerance
+band of the lane's mean impedance, as in `net`) and `accuracy`:
 `impedance` (`level` formula / field solver / mixed, `uncertainty_pct` – the typical deviation from kisi's
 validation, length-weighted over the lane's nets –, `field_share`) and `vias` (`model` ladder / ladder (pair) /
 coax / mixed, `tdr_error_pct` median and p90), from `data/accuracy.json` ([models](models.md#accuracy-levels)).
@@ -188,8 +193,8 @@ boards that have them. See [Models and limits](models.md#channel-export).
 Every file starts with kisi's comment block – kisi's version, the board, the lane – and the **stackup used**: per
 copper layer its thickness, per dielectric kind, material, thickness, εr and tanδ (at 1 GHz, where kisi's
 Djordjevic-Sarkar models start), the solder mask, each with its source in brackets (`board file`, `kisi.json (kind:
-document)`, `preset <id> (…)`, `--stackup file`, in the viewer `viewer edit`); with `--tolerance` / `--tol` also the
-tolerances (estimates marked) and the band of the lanes' net classes. The syntax per file: `*` lines in the SPICE
+document)`, `preset <id> (…)`, `--stackup file`, in the viewer `viewer edit`), then the tolerances (estimates
+marked) and the band of the lanes' net classes. The syntax per file: `*` lines in the SPICE
 libraries and decks (after their title line), `!` lines in Touchstone files, a "Stackup" section at the end of the
 README, a title-block comment on the KiCad sheet (the layers are in the README). The same block heads the Touchstone
 files of `net --s2p` / `--s4p` and the viewer's; `stackup_used` in the result (and in `report`) holds it with the
@@ -229,8 +234,8 @@ nominal thickness (JLCPCB: ±10 %); `fitting` lists the ids that fit; and `compa
 and layer under the board's stackup (column `board`, with its `source`) and under each fitting template side by
 side – `columns` (id, label, source, thickness, dielectrics, copper), `rows` with per column a `cell` (`z_ohm`,
 `dev_pct` from the target, `in_window`, `level` and `uncertainty_pct` as in [accuracy levels](models.md#accuracy-levels)).
-`--tolerance` / `--tol` add the band of the board's stackup to each row (as in `overview`); for a template's band,
-lay it over the board with `--stackup-preset ID`. `tolerance_defaults` are the default tolerances with their
+`--tolerance` adds the band of the board's stackup to each row (as in `overview --tolerance`); for a template's
+band, lay it over the board with `--stackup-preset ID`. `tolerance_defaults` are the default tolerances with their
 sources. `kisi.mjs` runs the field solver for the rows' cross-sections under every stackup (on ThunderScope 120
 cross-sections with the band, about 75 s on two cores the first time, then from the cache). `--preset ID,…` keeps those templates and adds
 each one's `kisi_json`: the `stackup` entry for `<board>.kisi.json` with its sources
@@ -252,8 +257,8 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--stackup FILE` | all with a board | stackup changes as the viewer stores them ([format](reference.md#other-input-files)) |
 | `--stackup-preset ID` | all with a board | a fab stackup template (`kisi stackups`) instead of the board's stackup values: thickness, εr and tanδ per dielectric, copper and solder mask; an error when it does not fit the board (layer count, thickness) |
 | `--preset ID,…` | `stackups` | only these templates, each with its `stackup` entry for kisi.json |
-| `--tolerance` | `overview`, `stackups`, `export`, `net` | the impedance band per net class and layer for manufacturing tolerances (default tolerances); `export` and `net --s2p/--s4p` write the band of the exported classes into the files' stackup header |
-| `--tol SPEC` | `overview`, `stackups`, `export`, `net` | the band with these tolerances: `thickness=10,er=5,copper=10,width=0.02mm` (%, width in mm or `width=20%`); keys left out keep their defaults |
+| `--tol SPEC` | all with a board | the manufacturing tolerances of every band: `thickness=10,er=5,copper=10,width=0.02mm` (%, width in mm or `width=20%`); keys left out: kisi.json `tolerances`, else kisi's defaults |
+| `--tolerance` | `overview`, `stackups` | also the band per net class, layer and tolerance (`tolerance`, `comparison` rows) |
 | `--variant NAME` | all with a board | assembly variant: a KiCad 10 variant, one of the kisi.json `variants`, or `default` |
 | `--class CLASS=PROFILE` | `interfaces`, `check` | interface profile of a net class (repeatable) |
 | `--nets A,B` | `check`, `crosstalk` | only these nets |

@@ -169,6 +169,7 @@ variants; `kisi config-check <board>` checks it (the viewer runs the same check 
     "copper": [{"index": 1, "thickness": 0.0152, "source": {"kind": "datasheet", "document": "fab stackup report"}}],
     "solder_mask": {"epsilon_r": 3.8, "source": {"kind": "assumption", "note": "typical LPI mask"}}
   },
+  "tolerances": {"dielectric_thickness_pct": 8, "width_mm": 0.015, "source": {"kind": "datasheet", "document": "fab's impedance control spec"}},
   "net_classes": {"PCIe": {"target_ohm": 85, "diff": true, "profile": "pcie3", "source": {"kind": "standard", "document": "PCIe CEM 3.0"}}},
   "connector_ends": {"P1": {"model": "profile", "rest_loss_db": 6, "source": {"kind": "estimate", "note": "1 m cable"}}},
   "fields": [{"ref": "U5", "name": "PI_LOAD", "value": "+1V0=2.5A", "source": {"kind": "datasheet", "url": "…", "note": "maximum"}}],
@@ -187,6 +188,7 @@ variants; `kisi config-check <board>` checks it (the viewer runs the same check 
 | `kisi_config` | format version, must be `1` |
 | `board` | the board file it was written for; a different board is an error in `config-check` |
 | `stackup` | `dielectrics`: per dielectric (`index` 0 = the layer below F.Cu) `material`, `epsilon_r` (1 … 20), `loss_tangent` (0 … 0.2), `thickness` (mm); `copper`: per copper layer (`index` 0 = F.Cu) the finished `thickness` (mm, 0.002 … 0.5); `solder_mask`: `epsilon_r`, `thickness` (mm, both sides). A [fab stackup template](#fab-stackup-templates) writes all of them |
+| `tolerances` | the board's manufacturing tolerances for the impedance band (± around the nominal values): `dielectric_thickness_pct`, `er_pct`, `copper_pct` (0 … 50), the trace width as `width_mm` (0 … 0.5) or `width_pct` (wins when both are given); keys left out keep kisi's defaults (`data/stackups.json`); one `source` for the entry. `--tol` and the viewer's edits go on top ([models](models.md#impedance)) |
 | `net_classes` | per net class: `target_ohm` (10 … 200; differential when `diff` is true), `diff`, `profile` (an id from `kisi profiles`), `nets` (names or patterns given to this class; defines a class the project does not have) |
 | `connector_ends` | per connector where lanes leave the board: what sits there and the channel behind it (below) |
 | `fields` | footprint fields laid over the board: `ref`, `name` (`PI_*`, or a [capacitor rating field](#capacitor-ratings-from-the-parts-fields)), `value` |

@@ -10,11 +10,11 @@ const stkKey = () => "kisi.stk.v1." + S.name;
 function stkState() {
   if (!S.stk || S.stk.board !== S.name) {
     const d = lsGet(stkKey()) || {};
-    S.stk = { board: S.name, open: false, cols: d.cols || [], tolOn: !!d.tolOn, tol: d.tol || null, tolCol: d.tolCol || 0, edit: null, res: null, err: "", n: d.n || 0 };
+    S.stk = { board: S.name, open: false, cols: d.cols || [], tolOn: d.tolOn ?? true, tolCol: d.tolCol || 0, edit: null, res: null, err: "", n: d.n || 0 };
   }
   return S.stk;
 }
-function stkSave() { const s = stkState(); lsSet(stkKey(), { cols: s.cols, tolOn: s.tolOn, tol: s.tol, tolCol: s.tolCol, n: s.n }); }
+function stkSave() { const s = stkState(); lsSet(stkKey(), { cols: s.cols, tolOn: s.tolOn, tolCol: s.tolCol, n: s.n }); }
 function stkBoardSource() {
   const parts = [S.scene.stackup.from_file ? "board file" : "kisi's default stackup"];
   if (S.config && S.config.dielectrics) parts.push("kisi.json");
@@ -31,18 +31,11 @@ function stkCompute() {
   const s = stkState();
   s.err = ""; s.res = null;
   if (!S.full) return;
-  const tol = s.tolOn ? (s.tol || null) : null;
   try {
     const req = { columns: s.cols.map((c) => ({ id: c.id, label: c.label, preset: c.preset || null, edits: c.edits || null })), tol_column: Math.min(s.tolCol, s.cols.length), assign: stkAssign(), board_source: stkBoardSource() };
-    if (s.tolOn) req.tolerance = tol || stkDefaults();
+    if (s.tolOn) req.tolerance = tolSet();
     s.res = S.engine.stackupStudy(req);
-    if (!s.tol) s.tol = stkDefaults();
   } catch (e) { s.err = e.message; }
-}
-// the default tolerances (data/stackups.json, through the presets call)
-function stkDefaults() {
-  const d = stkPresets().tolerance_defaults;
-  return { dielectric_thickness_pct: d.dielectric_thickness_pct, er_pct: d.er_pct, copper_pct: d.copper_pct, width_mm: d.width_mm, width_pct: d.width_pct ?? null };
 }
 function stkPresets() {
   if (!S.stkPresets || S.stkPresets.k !== S.name + "|" + S.gen) {
@@ -137,30 +130,33 @@ function stkRender() {
     if (s.editing != null && s.cols[s.editing]) table += stkColumnEditor(s.editing);
   }
   // tolerance band
-  const t = s.tol || stkDefaults(), est = (res && res.tolerances && res.tolerances.estimates) || [];
-  const estMark = (k) => est.includes(k) ? `<em class="est" title="kisi estimate (data/stackups.json)">estimate</em>` : "";
+  const t = tolEff();
+  const estMark = (k) => { const f = t.from[k]; return `<em class="est" title="${esc(tolFromText(k))}">${f === "kisi.json" ? "kisi.json" : f === "viewer" ? "edited" : "default, estimate"}</em>`; };
   const colOpts = [`<option value="0">the board</option>`].concat(s.cols.map((c, i) => `<option value="${i + 1}" ${s.tolCol === i + 1 ? "selected" : ""}>${esc(c.label)}</option>`)).join("");
   const wPct = t.width_pct != null;
   const inputs = `<div class="stk-tol-in">
     <label>Dielectric thickness ± <input id="stk-tol-thk" type="number" step="1" min="0" max="50" value="${t.dielectric_thickness_pct}"> % ${estMark("dielectric_thickness_pct")}</label>
     <label>εr ± <input id="stk-tol-er" type="number" step="0.5" min="0" max="50" value="${t.er_pct}"> % ${estMark("er_pct")}</label>
     <label>Copper ± <input id="stk-tol-cu" type="number" step="1" min="0" max="50" value="${t.copper_pct}"> % ${estMark("copper_pct")}</label>
-    <label>Trace width ± <input id="stk-tol-width" type="number" step="${wPct ? 1 : 0.005}" min="0" value="${wPct ? t.width_pct : t.width_mm}"> <select id="stk-tol-wu" aria-label="width tolerance unit"><option value="mm" ${wPct ? "" : "selected"}>mm</option><option value="pct" ${wPct ? "selected" : ""}>%</option></select> ${estMark("width_mm")}</label>
-    <button class="btn small" id="stk-tol-reset">Defaults</button></div>`;
+    <label>Trace width ± <input id="stk-tol-width" type="number" step="${wPct ? 1 : 0.005}" min="0" value="${wPct ? t.width_pct : t.width_mm}"> <select id="stk-tol-wu" aria-label="width tolerance unit"><option value="mm" ${wPct ? "" : "selected"}>mm</option><option value="pct" ${wPct ? "selected" : ""}>%</option></select> ${estMark("width")}</label>
+    <button class="btn small" id="stk-tol-reset" ${Object.keys(tolEdits()).length ? "" : "disabled"} title="drop the edits made here: the kisi.json values or kisi's defaults">Undo edits</button></div>
+    <p class="note">These tolerances apply everywhere – the net detail, the channel view, the board map's “Tolerance” mode, the exports. Edits here stay in this browser; Prepare PCB moves them into the board's kisi.json (<code>tolerances</code>).</p>`;
   if (s.tolOn && res && res.rows.length) {
     const kinds = ["thickness", "er", "copper", "width"], kname = { thickness: "thickness", er: "εr", copper: "copper", width: "width" };
     const body = res.rows.filter((r) => r.tolerance).map((r) => {
       const b = r.tolerance, st = b.band_status;
-      const cls = st === "inside" ? "in" : st === "worst_case_leaves" ? "near" : "out";
+      const cls = st === "inside" ? "in" : st === "band_leaves" ? "near" : "out", mark = st === "inside" ? "✓" : st === "band_leaves" ? "!" : "✕";
       return `<tr><td>${esc(r.class)}<span class="sub">${esc(r.layer_name)} · ${esc(stkLine(r))}</span></td>
         <td class="num">${fmt(r.window_ohm[0], 1)}–${fmt(r.window_ohm[1], 1)} Ω<span class="sub">±${fmt(r.window_pct, 0)} % · ${esc(r.window_source.startsWith("profile") ? r.window_source : "default")}</span></td>
         <td class="num">${fmt(b.nominal_ohm, 1)} Ω<span class="sub">${esc(b.level)}</span></td>
         ${kinds.map((k) => `<td class="num" title="${esc(b.sensitivities.filter((x) => x.kind === k).map((x) => `${x.what}: ${stkSign(x.dz_ohm, 2)} Ω`).join("\n"))}">${b.by_kind_ohm[k] != null ? "±" + fmt(b.by_kind_ohm[k], 2) : "–"}</td>`).join("")}
         <td class="num">${fmt(b.rss.min_ohm, 1)}–${fmt(b.rss.max_ohm, 1)}<span class="sub">±${fmt(b.rss.plus_minus_ohm, 1)} Ω</span></td>
         <td class="num">${fmt(b.worst_case.min_ohm, 1)}–${fmt(b.worst_case.max_ohm, 1)}<span class="sub">±${fmt(b.worst_case.plus_minus_ohm, 1)} Ω</span></td>
-        <td class="band">${stkBandSvg(r, b)}<span class="hint ${cls}">${esc(b.hint)}</span></td></tr>`;
+        <td class="band"><span class="stk-mark ${cls}" title="${esc(b.hint)}">${mark}</span>${stkBandSvg(r, b)}</td></tr>`;
     }).join("");
-    tolHtml = `<div class="stk-scroll"><table class="stk-tol"><thead><tr><th>Class · layer</th><th class="num">Window</th><th class="num">Nominal</th>${kinds.map((k) => `<th class="num" title="ΔZ for the ${kname[k]} tolerance, Ω (each layer's share summed)">Δ ${kname[k]}</th>`).join("")}<th class="num">RSS Ω</th><th class="num">Worst case Ω</th><th>Band <span class="sub">window · RSS bar · worst case line · nominal dot</span></th></tr></thead><tbody>${body}</tbody></table></div>
+    const rows = res.rows.filter((r) => r.tolerance), cnt = (k) => rows.filter((r) => r.tolerance.band_status === k).length;
+    const sum = `<p class="stk-sum"><b>${rows.length} rows:</b> <span class="zb inside">${cnt("inside")} band inside the window</span> <span class="zb band_leaves">${cnt("band_leaves")} nominal inside, band leaves</span> <span class="zb nominal_outside">${cnt("nominal_outside")} nominal outside</span> <span class="note">(RSS band; marks per row: ✓ ! ✕, the bar shows window, RSS and worst case)</span></p>`;
+    tolHtml = sum + `<div class="stk-scroll"><table class="stk-tol"><thead><tr><th>Class · layer</th><th class="num">Window</th><th class="num">Nominal</th>${kinds.map((k) => `<th class="num" title="ΔZ for the ${kname[k]} tolerance, Ω (each layer's share summed)">Δ ${kname[k]}</th>`).join("")}<th class="num">RSS Ω</th><th class="num">Worst case Ω</th><th>Band <span class="sub">window · RSS bar · worst case line · nominal dot</span></th></tr></thead><tbody>${body}</tbody></table></div>
       <p class="note">${esc(res.method || "")}</p>`;
   }
   box.innerHTML = `<div class="stk-head"><h2>Stackups and tolerances</h2><span class="note">What a different prepreg or core does to each net class, and how far manufacturing tolerances move it.</span><button class="btn" id="stk-close">Close</button></div>
@@ -228,22 +224,25 @@ function stkWire() {
   };
   $("stk-tol-on").onchange = () => { s.tolOn = $("stk-tol-on").checked; stkSave(); stkRender(); };
   $("stk-tol-col").onchange = () => { s.tolCol = +$("stk-tol-col").value; stkSave(); stkRender(); };
+  // an edit keeps only the values that differ from kisi.json / the defaults (their origin stays visible)
   const tolIn = () => {
     const n = (id) => Math.max(0, parseFloat($(id).value) || 0), pct = $("stk-tol-wu").value === "pct";
-    const cap = (v, hi) => Math.min(v, hi);
-    s.tol = { dielectric_thickness_pct: cap(n("stk-tol-thk"), 50), er_pct: cap(n("stk-tol-er"), 50), copper_pct: cap(n("stk-tol-cu"), 50), width_mm: pct ? stkDefaults().width_mm : cap(n("stk-tol-width"), 0.5), width_pct: pct ? cap(n("stk-tol-width"), 50) : null };
-    stkSave(); stkRender();
+    const cap = (v, hi) => Math.min(v, hi), base = tolEffBase(), e = {};
+    const v = { dielectric_thickness_pct: cap(n("stk-tol-thk"), 50), er_pct: cap(n("stk-tol-er"), 50), copper_pct: cap(n("stk-tol-cu"), 50) };
+    for (const k of Object.keys(v)) if (Math.abs(v[k] - base[k]) > 1e-9) e[k] = v[k];
+    if (pct) { const w = cap(n("stk-tol-width"), 50); if (base.width_pct == null || Math.abs(w - base.width_pct) > 1e-9) e.width_pct = w; }
+    else { const w = cap(n("stk-tol-width"), 0.5); if (base.width_pct != null || Math.abs(w - base.width_mm) > 1e-9) e.width_mm = w; }
+    setTolEdits(e); runAnalysis();
   };
   for (const id of ["stk-tol-thk", "stk-tol-er", "stk-tol-cu", "stk-tol-width"]) $(id).onchange = tolIn;
   $("stk-tol-wu").onchange = () => {
-    const pct = $("stk-tol-wu").value === "pct";
-    $("stk-tol-width").value = pct ? 20 : stkDefaults().width_mm;
+    const pct = $("stk-tol-wu").value === "pct", base = tolEffBase();
+    $("stk-tol-width").value = pct ? (base.width_pct ?? 20) : base.width_mm;
     tolIn();
   };
-  $("stk-tol-reset").onclick = () => { s.tol = stkDefaults(); stkSave(); stkRender(); };
+  $("stk-tol-reset").onclick = () => { setTolEdits({}); runAnalysis(); };
 }
-// the tolerances for an export's comment block: those of the panel when its band is shown
-function stkExportTol() {
-  const s = S.stk;
-  return s && s.board === S.name && s.tolOn ? (s.tol || stkDefaults()) : null;
-}
+// the tolerances for an export's comment block and the viewer's Touchstone files: always the ones in use
+function stkExportTol() { return tolSet(); }
+// the tolerances without the edits made here (kisi.json over the defaults)
+function tolEffBase() { const e = S.tolEd; S.tolEd = { board: S.name, v: {} }; const t = tolEff(); S.tolEd = e; return t; }

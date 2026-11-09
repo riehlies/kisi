@@ -196,6 +196,61 @@ pub struct Band {
     pub level: &'static str,
 }
 
+/// The tolerances and target windows the analysis gives every cross-section and net a band with
+/// (`Params::tolerance`): the window of a class (± % of its target) from its interface profile, else
+/// `default_window_pct`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TolSpec {
+    pub tol: Tolerances,
+    #[serde(default)]
+    pub windows: HashMap<String, f64>,
+    pub default_window_pct: f64,
+}
+
+impl TolSpec {
+    pub fn window(&self, class: &str) -> f64 {
+        self.windows.get(class).copied().unwrap_or(self.default_window_pct)
+    }
+}
+
+/// Where a value and its band stand against the target window: "inside" (the RSS band in the
+/// window), "band_leaves" (the nominal value inside, the RSS band not), "nominal_outside".
+pub fn band_status(z: f64, target: f64, window_pct: f64, rss: f64) -> &'static str {
+    let (lo, hi) = (target * (1.0 - window_pct / 100.0), target * (1.0 + window_pct / 100.0));
+    if z < lo || z > hi {
+        "nominal_outside"
+    } else if z - rss < lo || z + rss > hi {
+        "band_leaves"
+    } else {
+        "inside"
+    }
+}
+
+/// The relative band of a cross-section from the formulas (fast, for every cross-section of the
+/// analysis): (RSS, worst case) as fractions of the formula value, for Z0 or (`diff`) Zdiff – 2·Z0
+/// where the cross-section has no partner. The analysis scales it to the cross-section's impedance
+/// (field solver or formula).
+pub fn rel_band(su: &Stackup, desc: &XsDesc, diff: bool, tol: &Tolerances) -> Option<[f64; 2]> {
+    let z = |s: &Stackup, d: &XsDesc| {
+        let fx = formula_xs(s, &with_mask(s, d));
+        if diff {
+            fx.zdiff.or(fx.z0.map(|z| 2.0 * z))
+        } else {
+            fx.z0
+        }
+    };
+    let z0 = z(su, desc).filter(|v| *v > 0.0)?;
+    let (mut ss, mut wc) = (0.0, 0.0);
+    for (_, _, _, _, [(sp, dp), (sm, dm)]) in perturbations(su, desc, tol) {
+        if let (Some(a), Some(b)) = (z(&sp, &dp), z(&sm, &dm)) {
+            let d = (a - b) / 2.0 / z0;
+            ss += d * d;
+            wc += d.abs();
+        }
+    }
+    Some([ss.sqrt(), wc])
+}
+
 /// A perturbed copy of stackup and description.
 fn perturbations(
     su: &Stackup,

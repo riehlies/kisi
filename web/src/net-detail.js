@@ -34,6 +34,14 @@ function xsRows(xs) {
   }
   return rows;
 }
+// the piece's fab band in the tooltip; the calculation accuracy (of its net) beside it
+function tipBand(i, xs) {
+  const b = pieceBand(i);
+  if (!b) return "";
+  const st = S.an.nets.find((x) => x.net === S.pieces.net[i]);
+  const a = st ? st.z_unc_pct : null;
+  return `<div class="tipband">${fmt(b.z, 1)} Ω${zSpread(b, a, xs.solver === "field" ? 1 : 0)}<div class="muted">${esc(TOL_STATUS[b.status])} (±${fmt(b.win, 0)} %)${a != null ? ` · calculation ±${fmt(a, 1)} % (${xs.solver === "field" ? "field solver" : "formula"})` : ""}</div></div>`;
+}
 function showTip(i, mx, my) {
   const tip = $("tip");
   if (i < 0) { tip.hidden = true; return; }
@@ -43,7 +51,7 @@ function showTip(i, mx, my) {
   const isPad = S.padSet && S.padSet.has(pc.track[i]);
   tip.innerHTML = `<div class="t1">${esc(S.scene.nets[net] || "(no net)")}${isPad ? " · Pad" : ""}</div><div class="muted">${esc(cls)}${netUnused(net) ? " · not used in this assembly variant (only parts not fitted)" : ""}</div>
     ${S.an.skeleton ? `<div class="kv"><span>Layer</span><span>${esc(S.scene.stackup.copper[pc.layer[i]].name)}</span><span>Width</span><span>${fmt(pc.w[i] * 1000, 0)} µm</span><span>Type</span><span>${xs.kind === "Stripline" ? "stripline" : "microstrip"} (by layer)</span></div><div class="muted">impedance not estimated yet (step 2)</div>`
-      : `<div class="kv">${xsRows(xs).map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>${devChip(xs, net)}${flags}`}`;
+      : `<div class="kv">${xsRows(xs).map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>${devChip(xs, net)}${tipBand(i, xs)}${flags}`}`;
   tip.hidden = false;
   const r = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
   let x = mx + 16, y = my + 16;
@@ -162,7 +170,7 @@ function selectNet(net, zoom = true) {
   const modeSw = pair ? `<div class="seg pmode" role="group" aria-label="Mode of the pair"><button data-pm="d" aria-pressed="${!comm}">Differential</button><button data-pm="c" aria-pressed="${comm}">Common mode</button></div>` : "";
   d.innerHTML = `<header><div><h3>${esc(S.scene.nets[net])}</h3><div class="muted">${esc(st?.class ?? "")}${partner ? " · pair with " + esc(partner) : ""}</div></div>${modeSw}<button class="x" id="closeDetail" aria-label="Clear selection">×</button></header>
     <div class="dstats"><span>Length <b>${fmt(st?.length, 1)} mm</b></span><span>Target <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
-    <span>min/mean/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b>${zAcc(st?.z_unc_pct, st?.field_share)}</span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
+    <span>min/mean/max <b>${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b>${zSpread(netBand(st), st?.z_unc_pct, st?.field_share)}</span><span>±5 % <b>${pct(st?.within5)}</b></span></div>
     ${pathLine(net)}
     <div class="tabs" role="tablist" aria-label="Net view">
       ${tabs.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}

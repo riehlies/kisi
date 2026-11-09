@@ -280,41 +280,115 @@ pub fn default_tolerances() -> Tolerances {
     }
 }
 
-/// `--tol thickness=10,er=5,copper=10,width=0.02mm` (or `width=20%`): tolerances in %, the width
-/// in mm or %; keys not given keep their defaults.
-pub fn parse_tol(spec: &str) -> Result<Tolerances, String> {
-    let mut t = default_tolerances();
-    for part in spec.split(',').map(str::trim).filter(|s| !s.is_empty()) {
-        let (k, v) = part.split_once('=').ok_or_else(|| format!("--tol: '{part}' is not KEY=VALUE"))?;
-        let v = v.trim();
-        let (num_txt, unit) = if let Some(x) = v.strip_suffix('%') {
-            (x, "%")
-        } else if let Some(x) = v.strip_suffix("mm") {
-            (x, "mm")
-        } else {
-            (v, "")
-        };
-        let x: f64 = num_txt.trim().parse().map_err(|_| format!("--tol {k}: '{v}' is not a number"))?;
-        if !(0.0..=50.0).contains(&x) {
-            return Err(format!("--tol {k}: {v} outside 0 … 50"));
+/// Tolerances with the origin of each value (`from`: "default", "kisi.json", "--tol", "viewer").
+#[derive(Debug, Clone)]
+pub struct TolSet {
+    pub tol: Tolerances,
+    pub from: std::collections::BTreeMap<&'static str, String>,
+}
+
+/// The keys of `TolSet::from`.
+pub const TOL_KEYS: [&str; 4] = ["dielectric_thickness_pct", "er_pct", "copper_pct", "width"];
+
+impl TolSet {
+    pub fn defaults() -> TolSet {
+        TolSet { tol: default_tolerances(), from: TOL_KEYS.iter().map(|k| (*k, "default".to_string())).collect() }
+    }
+
+    /// A kisi.json `tolerances` entry (or the viewer's) over these values.
+    pub fn with_entry(mut self, e: &crate::config::ToleranceEntry, label: &str) -> TolSet {
+        for (k, v) in [
+            ("dielectric_thickness_pct", e.dielectric_thickness_pct),
+            ("er_pct", e.er_pct),
+            ("copper_pct", e.copper_pct),
+        ] {
+            if let Some(v) = v {
+                match k {
+                    "dielectric_thickness_pct" => self.tol.dielectric_thickness_pct = v,
+                    "er_pct" => self.tol.er_pct = v,
+                    _ => self.tol.copper_pct = v,
+                }
+                self.from.insert(k, label.to_string());
+            }
         }
-        match (k.trim(), unit) {
-            ("thickness" | "dielectric", "" | "%") => t.dielectric_thickness_pct = x,
-            ("er" | "epsilon_r", "" | "%") => t.er_pct = x,
-            ("copper", "" | "%") => t.copper_pct = x,
-            ("width", "%") => t.width_pct = Some(x),
-            ("width", "" | "mm") if x <= 0.5 => {
-                t.width_mm = x;
-                t.width_pct = None;
+        if let Some(p) = e.width_pct {
+            self.tol.width_pct = Some(p);
+            self.from.insert("width", label.to_string());
+        } else if let Some(w) = e.width_mm {
+            self.tol.width_mm = w;
+            self.tol.width_pct = None;
+            self.from.insert("width", label.to_string());
+        }
+        self
+    }
+
+    /// `--tol thickness=10,er=5,copper=10,width=0.02mm` (or `width=20%`) over these values: in %,
+    /// the width in mm or %; keys not given keep their values.
+    pub fn with_spec(mut self, spec: &str, label: &str) -> Result<TolSet, String> {
+        for part in spec.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+            let (k, v) = part.split_once('=').ok_or_else(|| format!("--tol: '{part}' is not KEY=VALUE"))?;
+            let v = v.trim();
+            let (num_txt, unit) = if let Some(x) = v.strip_suffix('%') {
+                (x, "%")
+            } else if let Some(x) = v.strip_suffix("mm") {
+                (x, "mm")
+            } else {
+                (v, "")
+            };
+            let x: f64 = num_txt.trim().parse().map_err(|_| format!("--tol {k}: '{v}' is not a number"))?;
+            if !(0.0..=50.0).contains(&x) {
+                return Err(format!("--tol {k}: {v} outside 0 … 50"));
             }
-            (k, u) => {
-                return Err(format!(
-                    "--tol: unknown key or unit '{k}' ({u}) – thickness, er, copper in %, width in mm or %"
-                ))
-            }
+            let t = &mut self.tol;
+            let key = match (k.trim(), unit) {
+                ("thickness" | "dielectric", "" | "%") => {
+                    t.dielectric_thickness_pct = x;
+                    "dielectric_thickness_pct"
+                }
+                ("er" | "epsilon_r", "" | "%") => {
+                    t.er_pct = x;
+                    "er_pct"
+                }
+                ("copper", "" | "%") => {
+                    t.copper_pct = x;
+                    "copper_pct"
+                }
+                ("width", "%") => {
+                    t.width_pct = Some(x);
+                    "width"
+                }
+                ("width", "" | "mm") if x <= 0.5 => {
+                    t.width_mm = x;
+                    t.width_pct = None;
+                    "width"
+                }
+                (k, u) => {
+                    return Err(format!(
+                        "--tol: unknown key or unit '{k}' ({u}) – thickness, er, copper in %, width in mm or %"
+                    ))
+                }
+            };
+            self.from.insert(key, label.to_string());
+        }
+        Ok(self)
+    }
+
+    /// Defaults < kisi.json `tolerances` < `--tol`.
+    pub fn resolve(cfg: Option<&crate::config::BoardConfig>, spec: Option<&str>) -> Result<TolSet, String> {
+        let mut t = TolSet::defaults();
+        if let Some(e) = cfg.and_then(|c| c.tolerances.as_ref()) {
+            t = t.with_entry(e, "kisi.json");
+        }
+        match spec {
+            Some(s) => t.with_spec(s, "--tol"),
+            None => Ok(t),
         }
     }
-    Ok(t)
+}
+
+/// `--tol SPEC` over the defaults.
+pub fn parse_tol(spec: &str) -> Result<Tolerances, String> {
+    TolSet::defaults().with_spec(spec, "--tol").map(|t| t.tol)
 }
 
 /// Where each stackup value comes from: per dielectric, per copper layer and for the solder mask
@@ -519,28 +593,49 @@ pub fn tolerance_lines(study: &serde_json::Value, classes: Option<&[String]>) ->
     v.into_iter().map(|l| ascii(&l)).collect()
 }
 
-/// The tolerances as used, with which are kisi's estimates (defaults) and the sources.
-pub fn tolerances_json(t: &Tolerances) -> serde_json::Value {
+/// The tolerances as used: the values, where each comes from (`from`), which are kisi's estimates
+/// (the defaults), the default window and the sources of the defaults.
+pub fn tolerances_json(t: &TolSet) -> serde_json::Value {
     let d = &library().tolerances;
-    let est = |k: &str, given: bool| !given && d.estimates.iter().any(|e| e == k);
-    let width_given = t.width_pct.is_some() || t.width_mm != d.width_mm;
+    let from = |k: &str| t.from.get(k).cloned().unwrap_or_else(|| "default".into());
     let estimates: Vec<&str> = [
-        ("dielectric_thickness_pct", t.dielectric_thickness_pct != d.dielectric_thickness_pct),
-        ("er_pct", t.er_pct != d.er_pct),
-        ("copper_pct", t.copper_pct != d.copper_pct),
-        ("width_mm", width_given),
+        ("dielectric_thickness_pct", "dielectric_thickness_pct"),
+        ("er_pct", "er_pct"),
+        ("copper_pct", "copper_pct"),
+        ("width_mm", "width"),
     ]
     .iter()
-    .filter(|(k, g)| est(k, *g))
+    .filter(|(k, f)| from(f) == "default" && d.estimates.iter().any(|e| e == k))
     .map(|(k, _)| *k)
     .collect();
+    let tl = &t.tol;
     serde_json::json!({
-        "dielectric_thickness_pct": t.dielectric_thickness_pct, "er_pct": t.er_pct, "copper_pct": t.copper_pct,
-        "width_mm": if t.width_pct.is_some() { serde_json::Value::Null } else { serde_json::json!(t.width_mm) },
-        "width_pct": t.width_pct,
-        "estimates": estimates,
+        "dielectric_thickness_pct": tl.dielectric_thickness_pct, "er_pct": tl.er_pct, "copper_pct": tl.copper_pct,
+        "width_mm": if tl.width_pct.is_some() { serde_json::Value::Null } else { serde_json::json!(tl.width_mm) },
+        "width_pct": tl.width_pct,
+        "from": TOL_KEYS.iter().map(|k| (k.to_string(), serde_json::json!(from(k)))).collect::<serde_json::Map<_, _>>(),
+        "estimates": estimates, "default_window_pct": d.window_pct,
         "about": d.about, "sources": d.sources,
     })
+}
+
+/// The tolerance spec of an analysis: the tolerances and the class windows.
+pub fn tol_spec(t: &TolSet, windows: &std::collections::HashMap<String, (f64, String)>) -> crate::study::TolSpec {
+    crate::study::TolSpec {
+        tol: t.tol.clone(),
+        windows: windows.iter().map(|(k, v)| (k.clone(), v.0)).collect(),
+        default_window_pct: library().tolerances.window_pct,
+    }
+}
+
+/// The status of a band in words (`study::band_status`).
+pub fn status_text(s: &str) -> &'static str {
+    match s {
+        "inside" => "the tolerance band (RSS) stays in the window",
+        "band_leaves" => "nominal in the window, but the tolerance band (RSS) leaves it",
+        "nominal_outside" => "the nominal value is outside the window",
+        _ => "",
+    }
 }
 
 /// One stackup of a study: the board's (as analysed) or another one.
@@ -588,7 +683,7 @@ pub fn study_json(
     an: &crate::Analysis,
     field: &std::collections::HashMap<String, crate::extract::FieldResult>,
     cols: &[Column],
-    tol: Option<(&Tolerances, usize)>,
+    tol: Option<(&TolSet, usize)>,
     windows: &std::collections::HashMap<String, (f64, String)>,
 ) -> (serde_json::Value, Vec<(String, String, f64)>) {
     use crate::study;
@@ -640,7 +735,7 @@ pub fn study_json(
             "window_pct": win, "window_source": win_src, "window_ohm": [r3(lo), r3(hi)], "cells": cells,
         });
         if let (Some((tl, k)), Some(n)) = (tol, nominal.as_ref()) {
-            let (b, need_b) = study::band(&cols[k].stackup, &r.desc, t, tl, field, n);
+            let (b, need_b) = study::band(&cols[k].stackup, &r.desc, t, &tl.tol, field, n);
             for (id, text) in need_b {
                 add(&id, &text, 1e-3 * r.length_mm);
             }
@@ -650,27 +745,14 @@ pub fn study_json(
                     json!({"plus_minus_ohm": r3(pm), "min_ohm": r3(a), "max_ohm": r3(z),
                         "min_dev_pct": r3(100.0 * (a - t.z) / t.z), "max_dev_pct": r3(100.0 * (z - t.z) / t.z), "in_window": a >= lo && z <= hi})
                 };
-                let nin = n.z >= lo && n.z <= hi;
-                let (win_w, win_r) = (
-                    n.z - b.worst_ohm >= lo && n.z + b.worst_ohm <= hi,
-                    n.z - b.rss_ohm >= lo && n.z + b.rss_ohm <= hi,
-                );
-                let (status, hint) = match (nin, win_r, win_w) {
-                    (false, _, _) => ("nominal_outside", "the nominal value is outside the window"),
-                    (true, true, true) => ("inside", "the tolerance band stays in the window"),
-                    (true, true, false) => (
-                        "worst_case_leaves",
-                        "nominal in the window; the worst-case band leaves it, the RSS band stays in",
-                    ),
-                    (true, false, _) => {
-                        ("leaves", "nominal in the window, but the tolerance band leaves it (RSS and worst case)")
-                    }
-                };
+                let status = study::band_status(n.z, t.z, win, b.rss_ohm);
+                let hint = status_text(status);
                 row["tolerance"] = json!({
                     "column": cols[k].id, "nominal_ohm": r3(n.z), "level": b.level,
                     "sensitivities": b.sens.iter().map(|s| json!({"kind": s.kind, "what": s.what, "nominal": s.nominal, "delta": r3(s.delta * 1e6) / 1e6, "dz_ohm": r3(s.dz)})).collect::<Vec<_>>(),
                     "by_kind_ohm": b.by_kind.iter().map(|(k, v)| (k.to_string(), json!(r3(*v)))).collect::<serde_json::Map<_, _>>(),
                     "worst_case": span(b.worst_ohm), "rss": span(b.rss_ohm), "band_status": status, "hint": hint,
+                    "worst_case_in_window": n.z - b.worst_ohm >= lo && n.z + b.worst_ohm <= hi,
                 });
             }
         }
@@ -719,7 +801,7 @@ pub fn list_json(su: Option<&Stackup>) -> serde_json::Value {
         "presets": lib.presets.iter().map(|p| preset_json(p, su)).collect::<Vec<_>>(),
         "about": lib.about,
         "board_thickness_tolerance": {"pct": lib.board_thickness.tolerance_pct, "below_1mm_mm": lib.board_thickness.tolerance_below_1mm_mm, "sources": lib.board_thickness.sources},
-        "tolerance_defaults": tolerances_json(&default_tolerances()),
+        "tolerance_defaults": tolerances_json(&TolSet::defaults()),
     });
     if let Some(su) = su {
         v["board"] = serde_json::json!({"layers": su.n(), "thickness_mm": su.from_file.then(|| (su.total_thickness() * 1e4).round() / 1e4), "stackup_from_file": su.from_file});
@@ -848,10 +930,42 @@ mod tests {
         assert!(parse_tol("er=60").is_err());
         assert!(parse_tol("foo=1").is_err());
         assert!(parse_tol("er").is_err());
-        // defaults are reported as estimates, given values are not
-        let j = tolerances_json(&parse_tol("er=4").unwrap());
+        // defaults are reported as estimates, given values are not; each value names its origin
+        let cfg = crate::config::parse(
+            r#"{"kisi_config": 1, "tolerances": {"copper_pct": 15, "width_pct": 12,
+            "source": {"kind": "datasheet", "document": "fab"}}}"#,
+        )
+        .unwrap();
+        let set = TolSet::resolve(Some(&cfg), Some("er=4")).unwrap();
+        assert_eq!(
+            (set.tol.copper_pct, set.tol.width_pct, set.tol.er_pct, set.tol.dielectric_thickness_pct),
+            (15.0, Some(12.0), 4.0, 10.0)
+        );
+        let j = tolerances_json(&set);
         let est: Vec<&str> = j["estimates"].as_array().unwrap().iter().filter_map(|x| x.as_str()).collect();
-        assert_eq!(est, ["dielectric_thickness_pct", "copper_pct", "width_mm"]);
+        assert_eq!(est, ["dielectric_thickness_pct"]);
+        assert_eq!(
+            (j["from"]["er_pct"].as_str(), j["from"]["width"].as_str(), j["from"]["copper_pct"].as_str()),
+            (Some("--tol"), Some("kisi.json"), Some("kisi.json"))
+        );
+        // the configuration check of the entry
+        let mut bad = cfg.clone();
+        bad.tolerances.as_mut().unwrap().er_pct = Some(80.0);
+        bad.tolerances.as_mut().unwrap().source = None;
+        let r = crate::config::check(
+            &bad,
+            &crate::Board { stackup: Some(stack(4, 0.5)), ..Default::default() },
+            &[],
+            &crate::profile::Profiles::builtin(),
+            None,
+            &Default::default(),
+        );
+        assert!(
+            r.errors.iter().any(|e| e.contains("tolerances.er_pct"))
+                && r.errors.iter().any(|e| e.contains("tolerances: source")),
+            "{:?}",
+            r.errors
+        );
     }
 
     /// A microstrip pair and a single line with targets: the study's rows, a template column and
@@ -886,6 +1000,7 @@ mod tests {
             config: Some(("t.kisi.json".into(), Ok(cfg.into()))),
             stackup: None,
             stackup_preset: None,
+            tol: None,
             field: Default::default(),
             variant: None,
             files: Default::default(),
@@ -898,8 +1013,13 @@ mod tests {
             Column { id: pr.id.clone(), label: pr.template.clone(), source: pr.document(), stackup: pr.apply(&su) },
         ];
         let w = windows(&["SE50".into(), "D100".into()], &Default::default(), &crate::profile::Profiles::builtin());
-        let tol = default_tolerances();
+        let tol = TolSet::defaults();
         let (v, need) = study_json(&p.board, &p.an, &p.params.field, &cols, Some((&tol, 0)), &w);
+        // the analysis' own band of the nets (formula sensitivities, the same tolerances)
+        for n in p.an.nets.iter().filter(|n| n.target.is_some()) {
+            assert!(n.z_tol_rss_pct.unwrap() > 0.5 && n.z_tol_wc_pct.unwrap() > n.z_tol_rss_pct.unwrap(), "{}", n.name);
+            assert!(n.z_tol_status.is_some() && n.z_window_pct == Some(10.0));
+        }
         let rows = v["rows"].as_array().unwrap();
         assert_eq!(rows.len(), 2, "{v}");
         let d = rows.iter().find(|r| r["class"] == "D100").unwrap();

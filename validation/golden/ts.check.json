@@ -85,6 +85,13 @@
    ],
    "eye_computed": true,
    "from": "U12_2.10",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 86.67,
+    "z_tol_rss_ohm": 8.14,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 12.44
+   },
    "kind": "ic-ic",
    "lane": "/ADC Driver 2/OUT_P",
    "length_mm": 6.96539,
@@ -197,6 +204,13 @@
    ],
    "eye_computed": true,
    "from": "U12_3.10",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 85.23,
+    "z_tol_rss_ohm": 8.06,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 12.26
+   },
    "kind": "ic-ic",
    "lane": "/ADC Driver 3/OUT_P",
    "length_mm": 6.95422,
@@ -315,6 +329,13 @@
    ],
    "eye_computed": true,
    "from": "U18.E8",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 57.22,
+    "z_tol_rss_ohm": 5.13,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 8.71
+   },
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA Config and Transceivers/QSPI_CLK",
    "length_mm": 21.4402,
@@ -424,6 +445,13 @@
    ],
    "eye_computed": true,
    "from": "U18.L15",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 58.44,
+    "z_tol_rss_ohm": 5.26,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 8.56
+   },
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA Config and Transceivers/QSPI_CS",
    "length_mm": 15.5496,
@@ -533,6 +561,13 @@
    ],
    "eye_computed": true,
    "from": "U18.K16",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 59.7,
+    "z_tol_rss_ohm": 5.4,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 8.84
+   },
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA IO Banks/QSPI_DQ0",
    "length_mm": 33.8716,
@@ -640,6 +675,13 @@
    ],
    "eye_computed": true,
    "from": "U18.L17",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 61.11,
+    "z_tol_rss_ohm": 5.47,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 8.96
+   },
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA IO Banks/QSPI_DQ1",
    "length_mm": 21.2332,
@@ -749,6 +791,13 @@
    ],
    "eye_computed": true,
    "from": "U18.J16",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 56.94,
+    "z_tol_rss_ohm": 5.19,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 8.46
+   },
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA IO Banks/QSPI_DQ3",
    "length_mm": 28.565,
@@ -861,6 +910,13 @@
    ],
    "eye_computed": true,
    "from": "U18.B10",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 110.1,
+    "z_tol_rss_ohm": 11.05,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 16.56
+   },
    "kind": "ic-ic",
    "lane": "/ADC/D1B_P",
    "length_mm": 33.8734,
@@ -970,6 +1026,13 @@
    ],
    "eye_computed": true,
    "from": "U18.B14",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 111.04,
+    "z_tol_rss_ohm": 11.06,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 16.66
+   },
    "kind": "ic-ic",
    "lane": "/ADC/D3B_P",
    "length_mm": 32.8425,
@@ -1064,6 +1127,13 @@
    },
    "eye_computed": true,
    "from": "J3.3",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 49.74,
+    "z_tol_rss_ohm": 4.03,
+    "z_tol_status": "inside",
+    "z_tol_wc_ohm": 6.72
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/REFINOUT2",
    "length_mm": 70.2396,
@@ -1170,6 +1240,13 @@
    },
    "eye_computed": true,
    "from": "J9.5",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 110.2,
+    "z_tol_rss_ohm": 11.11,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 16.62
+   },
    "kind": "ic-connector",
    "lane": "/FPGA/USRIO_2_P",
    "length_mm": 67.2751,
@@ -1267,6 +1344,13 @@
    },
    "eye_computed": true,
    "from": "J9.8",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 110.12,
+    "z_tol_rss_ohm": 11.11,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 16.61
+   },
    "kind": "ic-connector",
    "lane": "/FPGA/USRIO_3_P",
    "length_mm": 71.0502,
@@ -1364,6 +1448,13 @@
    },
    "eye_computed": true,
    "from": "J9.32",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 110.05,
+    "z_tol_rss_ohm": 11.11,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 16.61
+   },
    "kind": "ic-connector",
    "lane": "/FPGA/USRIO_11_P",
    "length_mm": 64.0716,
@@ -1461,6 +1552,13 @@
    },
    "eye_computed": true,
    "from": "J9.35",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 110.08,
+    "z_tol_rss_ohm": 11.12,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 16.62
+   },
    "kind": "ic-connector",
    "lane": "/FPGA/USRIO_12_P",
    "length_mm": 67.1925,
@@ -1564,6 +1662,13 @@
    },
    "eye_computed": true,
    "from": "P1.A16",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 89.73,
+    "z_tol_rss_ohm": 7.88,
+    "z_tol_status": "band_leaves",
+    "z_tol_wc_ohm": 12.37
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PER0_P",
    "length_mm": 36.426,
@@ -1672,6 +1777,13 @@
    },
    "eye_computed": true,
    "from": "P1.A21",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 88.87,
+    "z_tol_rss_ohm": 7.76,
+    "z_tol_status": "band_leaves",
+    "z_tol_wc_ohm": 12.2
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PER1_P",
    "length_mm": 34.6229,
@@ -1780,6 +1892,13 @@
    },
    "eye_computed": true,
    "from": "P1.A25",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 89.4,
+    "z_tol_rss_ohm": 7.73,
+    "z_tol_status": "band_leaves",
+    "z_tol_wc_ohm": 12.18
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PER2_P",
    "length_mm": 33.3212,
@@ -1888,6 +2007,13 @@
    },
    "eye_computed": true,
    "from": "P1.A29",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 89.44,
+    "z_tol_rss_ohm": 7.7,
+    "z_tol_status": "band_leaves",
+    "z_tol_wc_ohm": 12.14
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PER3_P",
    "length_mm": 32.2063,
@@ -2005,6 +2131,13 @@
    },
    "eye_computed": true,
    "from": "P1.B14",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 89.73,
+    "z_tol_rss_ohm": 8.41,
+    "z_tol_status": "band_leaves",
+    "z_tol_wc_ohm": 13.48
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PET0_P",
    "length_mm": 62.6895,
@@ -2122,6 +2255,13 @@
    },
    "eye_computed": true,
    "from": "P1.B19",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 89.39,
+    "z_tol_rss_ohm": 8.35,
+    "z_tol_status": "band_leaves",
+    "z_tol_wc_ohm": 13.24
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PET1_P",
    "length_mm": 45.0994,
@@ -2239,6 +2379,13 @@
    },
    "eye_computed": true,
    "from": "P1.B23",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 90.59,
+    "z_tol_rss_ohm": 8.01,
+    "z_tol_status": "band_leaves",
+    "z_tol_wc_ohm": 12.83
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PET2_P",
    "length_mm": 48.3349,
@@ -2356,6 +2503,13 @@
    },
    "eye_computed": true,
    "from": "P1.B27",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 90.77,
+    "z_tol_rss_ohm": 7.96,
+    "z_tol_status": "band_leaves",
+    "z_tol_wc_ohm": 12.71
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PET3_P",
    "length_mm": 42.2891,
@@ -2473,6 +2627,13 @@
    },
    "eye_computed": true,
    "from": "P1.A13",
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 88.33,
+    "z_tol_rss_ohm": 7.8,
+    "z_tol_status": "band_leaves",
+    "z_tol_wc_ohm": 12.47
+   },
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_REFCLK_P",
    "length_mm": 39.5771,
@@ -2568,6 +2729,13 @@
      "value": 29.1743
     }
    ],
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 68.01,
+    "z_tol_rss_ohm": 4.02,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 7.07
+   },
    "kind": "net (no devices found)",
    "length_mm": 6.14,
    "metrics": {
@@ -2648,6 +2816,13 @@
      "value": 29.2065
     }
    ],
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 67.06,
+    "z_tol_rss_ohm": 4.29,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 7.45
+   },
    "kind": "net (no devices found)",
    "length_mm": 8.52176,
    "metrics": {
@@ -2728,6 +2903,13 @@
      "value": 10.9296
     }
    ],
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 67.07,
+    "z_tol_rss_ohm": 4.11,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 7.22
+   },
    "kind": "net (no devices found)",
    "length_mm": 12.0949,
    "metrics": {
@@ -2808,6 +2990,13 @@
      "value": 31.9542
     }
    ],
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 74.9,
+    "z_tol_rss_ohm": 4.02,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 7.18
+   },
    "kind": "net (no devices found)",
    "length_mm": 3.24891,
    "metrics": {
@@ -2888,6 +3077,13 @@
      "value": 32.0632
     }
    ],
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 66.37,
+    "z_tol_rss_ohm": 4.26,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 7.39
+   },
    "kind": "net (no devices found)",
    "length_mm": 6.13744,
    "metrics": {
@@ -2968,6 +3164,13 @@
      "value": 27.3781
     }
    ],
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 69.24,
+    "z_tol_rss_ohm": 4.27,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 7.44
+   },
    "kind": "net (no devices found)",
    "length_mm": 7.65193,
    "metrics": {
@@ -3048,6 +3251,13 @@
      "value": 27.4758
     }
    ],
+   "impedance_band": {
+    "window_pct": 10.0,
+    "z_ohm": 67.18,
+    "z_tol_rss_ohm": 3.44,
+    "z_tol_status": "nominal_outside",
+    "z_tol_wc_ohm": 6.24
+   },
    "kind": "net (no devices found)",
    "length_mm": 5.94117,
    "metrics": {

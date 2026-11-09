@@ -516,6 +516,7 @@ mod tests {
             config: cfg.map(|c| ("b.kisi.json".into(), Ok(c.to_string()))),
             stackup: None,
             stackup_preset: None,
+            tol: None,
             field: HashMap::new(),
             variant: variant.map(str::to_string),
             files,

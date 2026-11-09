@@ -208,7 +208,8 @@ pub extern "C" fn kisi_config(p: *const u8, n: usize) -> i32 {
         st.variant_choice = v["variant"].as_str().map(str::to_string);
         let a = rebuild(&mut st)?.unwrap_or_default();
         let targets: serde_json::Map<String, serde_json::Value> = a.targets.iter().map(|(k, t)| (k.clone(), serde_json::json!({"z": t.z, "diff": t.diff}))).collect();
-        Ok(serde_json::json!({"check": check, "targets": targets, "profiles": a.profiles, "connector_ends": conn_ends, "fields": a.fields, "dielectrics": a.dielectrics, "notes": notes, "variant": variant_json(&st)}).to_string())
+        let tolerances = st.cfg.as_ref().and_then(|c| c.tolerances.clone());
+        Ok(serde_json::json!({"check": check, "targets": targets, "profiles": a.profiles, "connector_ends": conn_ends, "fields": a.fields, "dielectrics": a.dielectrics, "notes": notes, "variant": variant_json(&st), "tolerances": tolerances}).to_string())
     });
     match r {
         Ok(s) => {
@@ -1179,7 +1180,7 @@ fn export_header(st: &State, tolerance: &serde_json::Value, classes: &[String]) 
     let ov = Some((&st.stack_ov, "viewer edit")).filter(|o| !o.0.is_empty());
     let prov = kisi_core::stackups::provenance(b.stackup(), st.cfg.as_ref(), None, ov);
     let mut v = kisi_core::stackups::header_lines(b.stackup(), &prov);
-    let tol: Option<kisi_core::stackups::Tolerances> = serde_json::from_value(tolerance.clone()).ok();
+    let tol = tolset_of(tolerance).ok();
     if let (Some(t), Some(an), Some(params)) = (tol, st.an.as_ref(), st.params.as_ref()) {
         let names: Vec<String> = an.classes.iter().map(|c| c.name.clone()).collect();
         let assign = st
@@ -1198,6 +1199,21 @@ fn export_header(st: &State, tolerance: &serde_json::Value, classes: &[String]) 
         v.extend(kisi_core::stackups::tolerance_lines(&study, Some(classes)));
     }
     v
+}
+
+/// The viewer's tolerances: the values (`Tolerances`) and where each comes from (`from`:
+/// {key: "default" | "kisi.json" | "viewer"}).
+fn tolset_of(v: &serde_json::Value) -> Result<kisi_core::stackups::TolSet, String> {
+    let tol: kisi_core::stackups::Tolerances =
+        serde_json::from_value(v.clone()).map_err(|e| format!("tolerance: {e}"))?;
+    let mut t = kisi_core::stackups::TolSet::defaults();
+    t.tol = tol;
+    for k in kisi_core::stackups::TOL_KEYS {
+        if let Some(f) = v["from"][k].as_str() {
+            t.from.insert(k, f.to_string());
+        }
+    }
+    Ok(t)
 }
 
 /// The net class of a net (by name).
@@ -1278,11 +1294,7 @@ pub extern "C" fn kisi_stackup_study(p: *const u8, n: usize) -> i32 {
                 stackup: s,
             });
         }
-        let tol: Option<kisi_core::stackups::Tolerances> = if v["tolerance"].is_null() {
-            None
-        } else {
-            Some(serde_json::from_value(v["tolerance"].clone()).map_err(|e| format!("tolerance: {e}"))?)
-        };
+        let tol = if v["tolerance"].is_null() { None } else { Some(tolset_of(&v["tolerance"])?) };
         let k = v["tol_column"].as_u64().unwrap_or(0) as usize;
         let assign: std::collections::HashMap<String, String> =
             serde_json::from_value(v["assign"].clone()).unwrap_or_default();
@@ -1323,6 +1335,7 @@ pub extern "C" fn kisi_gaps(p: *const u8, n: usize) -> i32 {
             config,
             stackup: None,
             stackup_preset: None,
+            tol: None,
             field: Default::default(),
             variant: st.variant_choice.clone(),
             files: st.files.clone(),
@@ -1478,6 +1491,7 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
             config,
             stackup: serde_json::from_value(v["stackup"].clone()).ok(),
             stackup_preset: o.stackup_preset.clone(),
+            tol: o.tol.clone(),
             field: serde_json::from_value(v["field"].clone()).unwrap_or_default(),
             variant: o.variant.clone(),
             files,

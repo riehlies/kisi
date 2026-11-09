@@ -72,17 +72,27 @@ percentile):
   copper and a pair's partner (an estimate); with nothing within 0.5 mm beside it the channel uses 1.5 × the
   target impedance. Against 3D: [TESTS.md](../validation/fdtd/TESTS.md) section 15.
 
-**Stackups and tolerances** (`kisi stackups`, `kisi overview --tolerance`, the viewer's “Compare & tolerances”):
-per net class and layer kisi takes the cross-section with the most length (pads left out; a coupled one for a
-differential target) and evaluates the same geometry – references, coplanar copper, partner – under other stackups
-with the formulas or, where it has the result, the field solver. The tolerance band comes from one-at-a-time
-sensitivities: central differences ΔZ = (Z(x + δ) − Z(x − δ)) / 2 for each dielectric's thickness and εr inside the
-cross-section, the trace layer's copper thickness and the trace width, at the level of the nominal value (field
-differences where the field solver has every perturbed geometry, else formula differences scaled to the nominal
-value), combined as worst case Σ|ΔZ| and as root sum of squares √ΣΔZ². The width tolerance is symmetric – every
-copper edge moves by half of it, so gaps shrink as widths grow – with no etch factor (trapezoid). It is a linear
-estimate around the nominal value, and information only: the channel check's verdict does not use it. Default
-tolerances and their sources: `data/stackups.json` (most are estimates; [reference](reference.md#fab-stackup-templates)).
+**Fab tolerance band.** The fab builds every board with some spread – dielectric thickness, εr, copper thickness,
+trace width –, and that usually moves the impedance more than kisi's calculation is off (the [accuracy
+levels](#accuracy-levels): about 1 % with the field solver, 2–11 % with formulas). So kisi shows the band first,
+wherever it shows an impedance (net, lane, tooltip, the board map's Tolerance mode, `net`/`check`/`overview`), and
+the calculation accuracy beside it; the two are not added. The band comes from one-at-a-time sensitivities: central
+differences ΔZ = (Z(x + δ) − Z(x − δ)) / 2 for each dielectric's thickness and εr inside the cross-section, the trace
+layer's copper thickness and the trace width, combined as worst case Σ|ΔZ| and as root sum of squares √ΣΔZ². The
+width tolerance is symmetric – every copper edge moves by half of it, so gaps shrink as widths grow – with no etch
+factor (trapezoid). Per cross-section kisi takes the formulas' relative differences and scales them to the
+cross-section's impedance (field solver or formula), a net's band is the length-weighted mean (the tolerances move
+all of its pieces the same way); the per-class table of `--tolerance`, `kisi stackups` and the viewer's “Compare &
+tolerances” uses the field solver's differences where it has the perturbed cross-sections. The status compares the
+nominal value and the RSS band with the class's window (its interface profile's tolerance, else the fab's ±10 %):
+inside, nominal inside but the band leaves, nominal outside. It is a linear estimate around the nominal value, and
+information only: no verdict uses it. The tolerances: kisi's defaults (`data/stackups.json`, mostly estimates) <
+kisi.json `tolerances` < `--tol` or the viewer's edits ([reference](reference.md#board-configuration-boardkisijson)).
+
+**Other stackups** (`kisi stackups`, the viewer's “Compare & tolerances”): per net class and layer kisi takes the
+cross-section with the most length (pads left out; a coupled one for a differential target) and evaluates the same
+geometry – references, coplanar copper, partner – under other stackups with the formulas or, where it has the
+result, the field solver.
 
 ## Lines
 RLGC per cross-section, passive and causal by construction (the series impedance and the shunt admittance per

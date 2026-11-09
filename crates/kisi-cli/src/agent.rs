@@ -38,6 +38,7 @@ fn load(o: &Opts, with_config: bool) -> Result<Project, String> {
         cfg.as_deref(),
         o.variant.as_deref(),
         o.stackup_preset.as_deref(),
+        o.tol.as_deref(),
     )
 }
 

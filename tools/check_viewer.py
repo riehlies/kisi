@@ -5,8 +5,9 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
                        [--out DIR] [--quick] [--browser chromium|firefox|webkit] [--layouts light,dark,phone]
 
 * light, dark and phone layout; all three views (impedance, channel, power)
-* the stackup panel (“Compare & tolerances”: a fab template and an edited copy, the tolerance band, the stackup
-  block of a net's Touchstone file), also with --quick
+* the fab tolerance band (Signals card, the map's Tolerance mode, a net's detail) and the stackup panel (“Compare &
+  tolerances”: a fab template and an edited copy, the tolerance band, the stackup block of a net's Touchstone
+  file), also with --quick
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
   lane eye, voltage drop with ground return, impedance seen from the ICs, losses map, temperature and power flow
@@ -878,8 +879,24 @@ def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
 
 
 def stackup_panel(pg, tag, step):
-    """The Stackup card's “Compare & tolerances” panel: a fitting fab template and an edited copy next to the
-    board's stackup, the tolerance band, the stackup block in a net's Touchstone file; closed again."""
+    """The fab tolerance band in the views (the Signals card's summary, the board map's Tolerance mode, a net's
+    detail) and the Stackup card's “Compare & tolerances” panel: a fitting fab template and an edited copy next to
+    the board's stackup, the tolerance band, the stackup block in a net's Touchstone file; closed again."""
+    if "Fab tolerances" not in pg.inner_text("#k-tol"):
+        problems.append(f"{tag}: Signals card without the fab tolerance summary")
+    pg.click("#mode-tol"); pg.wait_for_timeout(300)
+    if "Fab tolerance band" not in pg.inner_text("#legend"):
+        problems.append(f"{tag}: Tolerance mode without its legend")
+    step("map_tolerance")
+    net = pg.evaluate("(() => { const n = S.an.nets.find((x) => x.target && x.z_tol_rss_pct != null); return n ? n.net : -1; })()")
+    if net < 0:
+        problems.append(f"{tag}: no net with a fab band")
+    else:
+        pg.evaluate(f"selectNet({net})"); pg.wait_for_timeout(300)
+        if "fab ±" not in pg.inner_text("#detail .dstats"):
+            problems.append(f"{tag}: net detail without the fab band")
+        pg.evaluate("selectNet(-1)")
+    pg.click("#mode-dev"); pg.wait_for_timeout(200)
     pg.click("#stk-open"); pg.wait_for_timeout(300)
     if pg.evaluate("document.getElementById('stk-panel').hidden"):
         problems.append(f"{tag}: stackup panel did not open")

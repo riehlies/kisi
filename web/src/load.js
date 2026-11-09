@@ -125,7 +125,7 @@ function anParams() {
   for (const [k, v] of Object.entries(S.overrides)) targets[k] = v;
   const field = {};
   for (const [id, r] of S.field) if (r.ok) field[id] = r;
-  return { step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field, stackup: stackParam() };
+  return { step: S.step, coplanar_factor: 3.0, solder_mask: S.mask, targets, field, stackup: stackParam(), tolerance: tolSpec() };
 }
 function runAnalysis(tParse) {
   const params = anParams(), targets = params.targets;

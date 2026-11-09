@@ -56,14 +56,20 @@ function highlightLane(l) {
 }
 function laneProfile(l) { return profileOf(laneNet(l)); }
 function laneZStats(l) {
-  let len = 0, zs = 0, lo = Infinity, hi = -Infinity, us = 0, fs = 0;
+  let len = 0, zs = 0, lo = Infinity, hi = -Infinity, us = 0, fs = 0, lb = 0, rb = 0, wb = 0, win = null, tgt = null;
   for (const n of l.nets) {
     const st = S.an.nets.find((x) => x.net === n);
     if (!st || st.z_mean == null) continue;
     len += st.length; zs += st.z_mean * st.length; lo = Math.min(lo, st.z_min); hi = Math.max(hi, st.z_max);
     us += (st.z_unc_pct ?? 0) * st.length; fs += (st.field_share ?? 0) * st.length;
+    // the fab band, length-weighted as kisi_core::service::band_json
+    if (st.z_tol_rss_pct != null) { lb += st.length; rb += st.z_tol_rss_pct * st.length; wb += st.z_tol_wc_pct * st.length; win ??= st.z_window_pct; tgt ??= st.target && st.target.z; }
   }
-  return len ? { z_mean: zs / len, z_min: lo, z_max: hi, z_unc_pct: us / len, field_share: fs / len } : {};
+  if (!len) return {};
+  const z = zs / len;
+  const band = lb && tgt ? { rss: z * rb / lb / 100, wc: z * wb / lb / 100, win } : null;
+  if (band) band.status = tolStatus(z, tgt, win, band.rss);
+  return { z_mean: z, z_min: lo, z_max: hi, z_unc_pct: us / len, field_share: fs / len, z_band: band };
 }
 const shortNet = (n) => netShort(S.scene.nets[n] || "");
 const pinLabel = (e) => e ? `${e.refdes}.${e.pin}` : "–";

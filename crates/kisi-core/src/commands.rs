@@ -31,9 +31,9 @@ pub const COMMANDS: &[&str] = &[
 
 pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on stdout
 
-  overview         stackup, impedance per net class (share within ±5 %, worst nets)
-                   [--tolerance | --tol thickness=10,er=5,copper=10,width=0.02mm (impedance band per
-                   class and layer for manufacturing tolerances; width also in %)]
+  overview         stackup, impedance per net class (share within ±5 %, worst nets, the fab
+                   tolerance band) [--tolerance (also per class and layer: the band per tolerance,
+                   with the field solver's sensitivities where it has them)]
   interfaces       buses and device-to-device lanes with profiles   [--class CLASS=PROFILE]…
   net <NET>        one net: impedance along the path, loss, TDR, vias, crosstalk;
                    differential pairs also as 4-port (mixed mode, skew)
@@ -66,8 +66,7 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    Nyquist or 0.5/t_r of the profile's edge, the higher)]
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
-                   [--class CLASS=PROFILE] [--tolerance | --tol … (the lanes' impedance band in
-                   the files' stackup header)]
+                   [--class CLASS=PROFILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
                    per category (impedance, channel, power) whether there is anything to check and
                    whether it is ready                           [--for impedance|channel|power]
@@ -77,11 +76,13 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
   stackups [BOARD] fab stackup templates (data/stackups.json); with a board: which fit it (copper
                    layers, thickness) and the impedance per net class and layer under the board's
                    stackup and each fitting template, side by side
-                   [--preset ID,… (these only, with their kisi.json stackup entry)] [--tolerance | --tol …]
+                   [--preset ID,… (these only, with their kisi.json stackup entry)] [--tolerance]
 
 common options: --pro FILE (default: board.kicad_pro), --config FILE (default: board.kisi.json
 next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer),
 --stackup-preset ID (a fab stackup template from `kisi stackups` instead of the board's values),
+--tol thickness=10,er=5,copper=10,width=0.02mm (manufacturing tolerances of every impedance band,
+in %, width in mm or %; keys left out: kisi.json \"tolerances\", else kisi's defaults),
 --variant NAME (assembly variant: a KiCad 10 variant of the board or one of the kisi.json
 \"variants\"; \"default\" = the board file as it is). Boards with variants – or with forks where
 all alternative parts are fitted – need one for interfaces, check and report (else they stop and
@@ -129,8 +130,9 @@ pub struct Opts {
     pub stackup_preset: Option<String>,
     /// `stackups`: only these presets
     pub presets: Option<Vec<String>>,
-    /// `overview`, `stackups`: the impedance band for manufacturing tolerances (defaults, or `tol`)
+    /// `overview`, `stackups`: the band per class and layer and per tolerance (`study_json`)
     pub tolerance: bool,
+    /// manufacturing tolerances of every band (`--tol`, over kisi.json `tolerances`)
     pub tol: Option<String>,
     pub classes: HashMap<String, String>,
     pub nets: Option<Vec<String>>,
@@ -200,10 +202,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--stackup" => o.stackup = Some(val(&mut i, a)?),
             "--stackup-preset" => o.stackup_preset = Some(val(&mut i, a)?),
             "--tolerance" => o.tolerance = true,
-            "--tol" => {
-                o.tol = Some(val(&mut i, a)?);
-                o.tolerance = true;
-            }
+            "--tol" => o.tol = Some(val(&mut i, a)?),
             "--preset" => {
                 o.presets =
                     Some(val(&mut i, a)?.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
@@ -307,14 +306,6 @@ pub fn uses_field(cmd: &str) -> bool {
     matches!(cmd, "overview" | "net" | "check" | "crosstalk" | "report" | "export" | "stackups")
 }
 
-/// The tolerances of `--tolerance` / `--tol`, None without either.
-fn tolerances(o: &Opts) -> Option<crate::stackups::Tolerances> {
-    match &o.tol {
-        Some(t) => crate::stackups::parse_tol(t).ok(),
-        None => o.tolerance.then(crate::stackups::default_tolerances),
-    }
-}
-
 /// Where the analysed board's stackup values come from.
 fn stackup_source(p: &Project, o: &Opts) -> String {
     let su = p.board.stackup();
@@ -364,11 +355,15 @@ fn study_columns(p: &Project, o: &Opts) -> Vec<crate::stackups::Column> {
 
 /// The stackup study of `overview --tolerance` and `stackups <board>`: (JSON, geometries for the field solver).
 fn study(p: &Project, o: &Opts) -> (Value, Vec<(String, String, f64)>) {
-    let tol = tolerances(o);
     let cols = study_columns(p, o);
-    let classes: Vec<String> = p.an.classes.iter().map(|c| c.name.clone()).collect();
-    let w = crate::stackups::windows(&classes, &p.assign(&o.classes), &Profiles::builtin());
-    crate::stackups::study_json(&p.board, &p.an, &p.params.field, &cols, tol.as_ref().map(|t| (t, 0)), &w)
+    crate::stackups::study_json(
+        &p.board,
+        &p.an,
+        &p.params.field,
+        &cols,
+        o.tolerance.then_some((&p.tolerances, 0)),
+        &p.windows,
+    )
 }
 
 /// Cross-sections the field solver should solve for this command, most important first:
@@ -656,7 +651,7 @@ pub fn run_with(
                 &rp,
                 crate::channel_export::FreqRange::parse(o.fmin.as_deref(), o.fmax.as_deref())?,
             )?;
-            // the stackup used (and the band of the lanes' classes with --tolerance) at the head of every file
+            // the stackup used and the band of the lanes' classes at the head of every file
             let classes: Vec<String> = v["lanes"]
                 .as_array()
                 .map(|a| a.iter().filter_map(|l| pr.net_id(l["lane"].as_str()?)).map(|n| pr.class_name(n)).collect())
@@ -683,13 +678,12 @@ pub fn run_with(
     }
 }
 
-/// The comment block of a file kisi writes: the stackup used and, with `--tolerance`, the band of
-/// the given classes (all when None).
+/// The comment block of a file kisi writes: the stackup used, the tolerances and the band of the
+/// given classes (all when None).
 fn header(p: &Project, o: &Opts, classes: Option<&[String]>) -> Vec<String> {
     let mut v = crate::stackups::header_lines(p.board.stackup(), &p.stackup_provenance);
-    if o.tolerance {
-        v.extend(crate::stackups::tolerance_lines(&study(p, o).0, classes));
-    }
+    let o = Opts { tolerance: true, ..o.clone() };
+    v.extend(crate::stackups::tolerance_lines(&study(p, &o).0, classes));
     v
 }
 
@@ -932,6 +926,7 @@ mod tests {
                 config: None,
                 stackup: None,
                 stackup_preset: None,
+                tol: None,
                 field: HashMap::new(),
                 variant: None,
                 files: Default::default(),

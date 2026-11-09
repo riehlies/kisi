@@ -35,6 +35,10 @@ pub struct Project {
     pub touchstones: HashMap<String, Result<crate::rf::Touchstone, String>>,
     /// where each stackup value comes from (board file, kisi.json, a template, `--stackup`)
     pub stackup_provenance: crate::stackups::Provenance,
+    /// the manufacturing tolerances of the impedance band (defaults < kisi.json < `--tol`) and the
+    /// target window per class (± %, source)
+    pub tolerances: crate::stackups::TolSet,
+    pub windows: HashMap<String, (f64, String)>,
     /// lanes grouped into buses, found once (`buses`)
     buses: std::sync::OnceLock<Vec<topology::Bus>>,
 }
@@ -73,6 +77,8 @@ pub struct Inputs {
     /// a fab stackup template (`data/stackups.json`) laid over the board's stackup
     /// (`--stackup-preset`; before `stackup`)
     pub stackup_preset: Option<String>,
+    /// manufacturing tolerances over the kisi.json `tolerances` (`--tol` spec)
+    pub tol: Option<String>,
     /// field-solver results by geometry id (`Analysis::geometries`)
     pub field: HashMap<String, crate::extract::FieldResult>,
     /// assembly variant chosen on the command line (wins over the configuration's)
@@ -126,10 +132,11 @@ impl Project {
         config: Option<&Path>,
         variant: Option<&str>,
     ) -> Result<Project, String> {
-        Self::load_preset(pcb, pro, stackup, config, variant, None)
+        Self::load_preset(pcb, pro, stackup, config, variant, None, None)
     }
 
-    /// Like `load_with`, with a fab stackup template laid over the stackup (`--stackup-preset`).
+    /// Like `load_with`, with a fab stackup template laid over the stackup (`--stackup-preset`) and the
+    /// manufacturing tolerances of `--tol`.
     pub fn load_preset(
         pcb: &Path,
         pro: Option<&Path>,
@@ -137,6 +144,7 @@ impl Project {
         config: Option<&Path>,
         variant: Option<&str>,
         preset: Option<&str>,
+        tol: Option<&str>,
     ) -> Result<Project, String> {
         let text = std::fs::read_to_string(pcb).map_err(|e| format!("{}: {e}", pcb.display()))?;
         let pro_path = pro.map(Path::to_path_buf).unwrap_or_else(|| pcb.with_extension("kicad_pro"));
@@ -154,6 +162,7 @@ impl Project {
             config,
             stackup: stackup.cloned(),
             stackup_preset: preset.map(str::to_string),
+            tol: tol.map(str::to_string),
             field: HashMap::new(),
             variant: variant.map(str::to_string),
             files,
@@ -228,7 +237,11 @@ impl Project {
             inp.stackup_preset.as_deref(),
             inp.stackup.as_ref().map(|o| (o, "--stackup file")),
         );
+        let tolerances = crate::stackups::TolSet::resolve(cfg.as_ref(), inp.tol.as_deref())?;
+        let class_names: Vec<String> = board.netclasses.iter().map(|c| c.name.clone()).collect();
+        let windows = crate::stackups::windows(&class_names, &applied.profiles, &Profiles::builtin());
         let params = Params {
+            tolerance: Some(crate::stackups::tol_spec(&tolerances, &windows)),
             step: 0.5,
             coplanar_factor: 3.0,
             solder_mask: true,
@@ -251,6 +264,8 @@ impl Project {
             variant,
             touchstones,
             stackup_provenance,
+            tolerances,
+            windows,
             buses: Default::default(),
         };
         // dismissals that cannot apply on this board (needs the analysed project)
@@ -378,13 +393,43 @@ pub fn overview(p: &Project) -> Value {
             "class": c.name, "target_ohm": t.z, "diff": t.diff, "target_source": c.target_source, "nets": nets.len(),
             "length_mm": len, "within_5pct": if len > 0.0 { ok / len } else { 0.0 },
             "rough_formula_mm": rough,
-            "worst": worst.iter().take(5).map(|n| json!({"net": n.name, "z_mean": n.z_mean, "z_min": n.z_min, "z_max": n.z_max, "within_5pct": n.within5})).collect::<Vec<_>>()
+            "tolerance_band": tol_shares(&nets),
+            "worst": worst.iter().take(5).map(|n| {
+                let mut v = json!({"net": n.name, "z_mean": n.z_mean, "z_min": n.z_min, "z_max": n.z_max, "within_5pct": n.within5});
+                if let Value::Object(b) = band_json(&[n], n.z_mean, Some(t.z)) {
+                    for k in ["z_tol_rss_ohm", "z_tol_wc_ohm", "window_pct", "z_tol_status"] {
+                        v[k] = b[k].clone();
+                    }
+                }
+                v
+            }).collect::<Vec<_>>()
         }));
     }
     json!({
         "board": p.name, "file": p.pcb_path.display().to_string(), "layers": su.n(), "stackup_from_file": su.from_file,
-        "stackup": stack, "classes": classes, "warnings": p.board.warnings, "config": p.config_summary(), "field_solver": p.field_summary(), "models": p.models()
+        "stackup": stack, "classes": classes, "warnings": p.board.warnings, "config": p.config_summary(), "field_solver": p.field_summary(), "models": p.models(),
+        "tolerances": crate::stackups::tolerances_json(&p.tolerances), "tolerance_note": TOL_NOTE
     })
+}
+
+/// How the band of the summaries is computed (one place for the JSON outputs).
+pub const TOL_NOTE: &str = "z_tol_rss_ohm / z_tol_wc_ohm: the band of the mean impedance for the fab's manufacturing tolerances (tolerances: defaults from data/stackups.json, mostly estimates, < kisi.json \"tolerances\" < --tol), RSS and worst case of one-at-a-time formula sensitivities scaled to the impedance; z_tol_status against the class's window: inside, band_leaves (nominal inside, RSS band not), nominal_outside. Usually larger than the calculation uncertainty (accuracy). Information: no verdict uses it.";
+
+/// The share of a class's length (nets with a band) per band status.
+fn tol_shares(nets: &[&crate::extract::NetStat]) -> Value {
+    let mut m: std::collections::BTreeMap<&str, f64> = std::collections::BTreeMap::new();
+    let mut l = 0.0;
+    for n in nets {
+        if let Some(s) = n.z_tol_status {
+            *m.entry(s).or_default() += n.length;
+            l += n.length;
+        }
+    }
+    if l <= 0.0 {
+        return Value::Null;
+    }
+    let share = |k: &str| (m.get(k).copied().unwrap_or(0.0) / l * 1000.0).round() / 1000.0 + 0.0;
+    json!({"inside": share("inside"), "band_leaves": share("band_leaves"), "nominal_outside": share("nominal_outside")})
 }
 
 /// S-parameters of one net's channel as Touchstone (.s2p) text.
@@ -505,6 +550,7 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
         "differential": ch.diff, "length_mm": ch.length_mm, "delay_ps": ch.delay_ps, "vias": ch.vias, "path": path_json(&ch),
         "impedance": st.map(|s| json!({"mean": s.z_mean, "min": s.z_min, "max": s.z_max, "within_5pct": s.within5})),
         "accuracy": accuracy_json(&st.into_iter().collect::<Vec<_>>(), (ch.via_info.iter().filter(|v| v.model == "ladder").count(), ch.via_info.iter().filter(|v| v.model != "ladder").count()), ch.diff),
+        "impedance_band": band_json(&st.into_iter().collect::<Vec<_>>(), st.and_then(|s| s.z_mean), st.and_then(|s| s.target).map(|t| t.z)),
         "segments": ch.segments.iter().filter(|s| s.kind == "line").map(|s| {
             let mut v = json!({"layer": su.copper[s.layer as usize].name, "len_mm": s.len_mm, "z_ohm_per_line": s.z});
             if rough(s.xs) {
@@ -739,6 +785,24 @@ pub fn accuracy_json(nets: &[&crate::extract::NetStat], vias: (usize, usize), pa
     json!({"impedance": imp, "vias": v, "note": "typical deviations from kisi's validation (data/accuracy.json, docs/models.md section Accuracy levels), not bounds"})
 }
 
+/// The band for manufacturing tolerances of an impedance `z` over nets (length-weighted, `NetStat`):
+/// {z_ohm, z_tol_rss_ohm, z_tol_wc_ohm, window_pct, z_tol_status}; null without a band.
+pub fn band_json(nets: &[&crate::extract::NetStat], z: Option<f64>, target: Option<f64>) -> Value {
+    let w: Vec<(f64, f64, f64, f64)> = nets
+        .iter()
+        .filter_map(|s| Some((s.length, s.z_tol_rss_pct?, s.z_tol_wc_pct?, s.z_window_pct?)))
+        .filter(|x| x.0 > 0.0)
+        .collect();
+    let l: f64 = w.iter().map(|x| x.0).sum();
+    let (Some(z), Some(t), true) = (z, target, l > 0.0) else { return Value::Null };
+    let rss = z * w.iter().map(|x| x.0 * x.1).sum::<f64>() / l / 100.0;
+    let wc = z * w.iter().map(|x| x.0 * x.2).sum::<f64>() / l / 100.0;
+    let win = w[0].3;
+    let r = |v: f64| (v * 100.0).round() / 100.0 + 0.0;
+    json!({"z_ohm": r(z), "z_tol_rss_ohm": r(rss), "z_tol_wc_ohm": r(wc), "window_pct": win,
+        "z_tol_status": crate::study::band_status(z, t, win, rss)})
+}
+
 fn check_row(
     p: &Project,
     plan: &CheckPlan,
@@ -841,6 +905,7 @@ fn check_row(
             let lane_nets: Vec<&crate::extract::NetStat> =
                 p.an.nets.iter().filter(|s| l.nets.contains(&s.net)).collect();
             j["accuracy"] = accuracy_json(&lane_nets, row.via_models, row.diff);
+            j["impedance_band"] = band_json(&lane_nets, m.z_mean, p.target(*tnet).map(|t| t.0));
             (v.status, j)
         }
         CheckItem::Net { st, prof, class } => {
@@ -872,7 +937,8 @@ fn check_row(
             };
             let v = judge(&m, prof, &lim);
             let mut j = json!({"net": st.name, "kind": "net (no devices found)", "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
-                "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m, "accuracy": accuracy_json(&[st], row.via_models, row.diff)});
+                "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m, "accuracy": accuracy_json(&[st], row.via_models, row.diff),
+                "impedance_band": band_json(&[st], st.z_mean, Some(t.z))});
             if let Some(mc) = row.mode_conversion_db {
                 j["mode_conversion_db"] = json!(mc);
             }
@@ -1368,6 +1434,7 @@ mod tests {
             config: None,
             stackup: None,
             stackup_preset: None,
+            tol: None,
             field: HashMap::new(),
             variant: None,
             files: Default::default(),

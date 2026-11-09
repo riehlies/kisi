@@ -27,6 +27,7 @@ function renderSide() {
   $("warnings").innerHTML = (sc.warnings || []).map((w) => `<span class="err">${esc(w)}</span>`).join("<br>");
   renderCfgStatus();
   renderVariantCard();
+  renderTolSummary();
   // stackup
   let total = 0; su.copper.forEach((c) => total += c.thickness); su.dielectrics.forEach((d, i) => total += stackEff(i).thickness);
   $("stackTotal").textContent = fmt(total, 2) + " mm";
@@ -138,6 +139,10 @@ function renderLegend() {
   } else if (S.mode === "dev") {
     const it = [[C.low2, "< −10 %"], [C.low1, "−10 … −5 %"], [C.ok, "±5 % (on target)"], [C.high1, "+5 … +10 %"], [C.high2, "> +10 %"], [C.none, "no target"], [C.noref, "no reference"]];
     L.innerHTML = `<strong>Deviation from target</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("");
+  } else if (S.mode === "tol") {
+    const it = [[C.ok, "band inside the window"], [C.high1, "nominal inside, the band leaves"], [C.high2, "nominal outside the window"], [C.none, "no target"], [C.noref, "no reference"]];
+    L.innerHTML = `<strong>Fab tolerance band (RSS)</strong>` + it.map(([c, t]) => `<div class="row"><span class="sw" style="background:${c}"></span>${t}</div>`).join("") +
+      `<div class="row muted" title="${esc(tolText())}">window: the class's profile tolerance, else ±${fmt((tolEff() || {}).default_window_pct, 0)} % · tolerances in the Stackup card</div>`;
   } else if (S.mode === "abs") {
     const stops = Array.from({ length: 11 }, (_, k) => turbo(k / 10 * 0.9 + 0.05)).join(",");
     L.innerHTML = `<strong>Z₀ (single-ended)</strong><div class="grad" style="background:linear-gradient(90deg,${stops})"></div><div class="ticks"><span>${ABS_MIN}</span><span>50</span><span>75</span><span>100</span><span>${ABS_MAX} Ω</span></div>`;

@@ -43,6 +43,9 @@ pub struct Params {
     pub targets: HashMap<String, Target>,
     /// field-solver results by geometry id (see `Analysis::geometries`)
     pub field: HashMap<String, FieldResult>,
+    /// manufacturing tolerances: every cross-section of a net with a target and every such net get
+    /// a band (`GeomEntry::tol`, `NetStat::z_tol_*`); None: no band
+    pub tolerance: Option<crate::study::TolSpec>,
 }
 
 /// Result of a field-solver backend for one cross-section geometry.
@@ -90,11 +93,22 @@ pub struct GeomEntry {
     /// same cross-section under another stackup (`study`)
     #[serde(skip)]
     pub desc: XsDesc,
+    /// the band for manufacturing tolerances (`Params::tolerance`) relative to the impedance: RSS
+    /// and worst case of Z0, then of Zdiff (2·Z0 without a partner); geometries of nets with a target
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tol: Option<[f64; 4]>,
 }
 
 impl Default for Params {
     fn default() -> Self {
-        Params { step: 0.5, coplanar_factor: 3.0, solder_mask: true, targets: HashMap::new(), field: HashMap::new() }
+        Params {
+            step: 0.5,
+            coplanar_factor: 3.0,
+            solder_mask: true,
+            targets: HashMap::new(),
+            field: HashMap::new(),
+            tolerance: None,
+        }
     }
 }
 
@@ -172,6 +186,12 @@ pub struct NetStat {
     /// of the length from the field solver
     pub z_unc_pct: Option<f64>,
     pub field_share: Option<f64>,
+    /// the band for manufacturing tolerances of the mean impedance (`Params::tolerance`), % of it:
+    /// RSS and worst case; its status against the class's window (`study::band_status`) and the window
+    pub z_tol_rss_pct: Option<f64>,
+    pub z_tol_wc_pct: Option<f64>,
+    pub z_tol_status: Option<&'static str>,
+    pub z_window_pct: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -785,8 +805,6 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
         }
     }
 
-    let (nets, classes) = net_stats(board, &class_targets, &partners, &xss, &pieces);
-
     // routed length per geometry
     let mut geometries = geoms.list;
     for pc in pieces.as_chunks::<4>().0 {
@@ -801,6 +819,20 @@ pub fn analyze(board: &Board, params: &Params) -> Analysis {
             }
         }
     }
+    // the band for manufacturing tolerances of every cross-section with a target
+    if let Some(spec) = &params.tolerance {
+        let su = board.stackup();
+        for g in geometries.iter_mut().filter(|g| g.target_length > 0.0) {
+            let a = crate::study::rel_band(su, &g.desc, false, &spec.tol);
+            let b = crate::study::rel_band(su, &g.desc, true, &spec.tol);
+            if let (Some(a), Some(b)) = (a, b) {
+                g.tol = Some([a[0], a[1], b[0], b[1]]);
+            }
+        }
+    }
+
+    let (nets, classes) =
+        net_stats(board, &class_targets, &partners, &xss, &pieces, &geometries, params.tolerance.as_ref());
 
     Analysis {
         unique_cross_sections: xss.len(),
@@ -837,9 +869,13 @@ fn net_stats(
     partners: &[Option<u32>],
     xss: &[CrossSection],
     pieces: &[f64],
+    geoms: &[GeomEntry],
+    tol: Option<&crate::study::TolSpec>,
 ) -> (Vec<NetStat>, Vec<ClassInfo>) {
     // (length, impedance, flags, counted in the impedance statistics, uncertainty %, field solver)
     let mut acc: HashMap<u32, Vec<(f64, Option<f64>, u32, bool, f64, bool)>> = HashMap::new();
+    // the relative band of the pieces with an impedance: (length, RSS, worst case)
+    let mut band: HashMap<u32, Vec<(f64, f64, f64)>> = HashMap::new();
     for pc in pieces.as_chunks::<4>().0 {
         let tr = &board.tracks[pc[0] as usize];
         let l = geom::len(geom::sub(tr.b, tr.a)) * (pc[2] - pc[1]);
@@ -850,6 +886,12 @@ fn net_stats(
         let cls = board.net_class.get(tr.net as usize).copied().unwrap_or(0) as usize;
         let target = class_targets.get(cls).and_then(|t| t.0);
         let z = compared_z(xs, target);
+        if let (Some(_), Some(t), Some(b)) = (z, target, xs.geom.and_then(|g| geoms.get(g as usize)?.tol)) {
+            if counted {
+                let k = if t.diff { 2 } else { 0 };
+                band.entry(tr.net).or_default().push((l, b[k], b[k + 1]));
+            }
+        }
         let unc = crate::accuracy::impedance_of(xs).map(|u| u.1).unwrap_or(0.0);
         acc.entry(tr.net).or_default().push((
             l,
@@ -897,10 +939,26 @@ fn net_stats(
                 );
             }
         }
+        let class = board.netclasses.get(cls).map(|c| c.name.clone()).unwrap_or_default();
+        // the band: length-weighted over the pieces (the tolerances move every piece of a net the
+        // same way), scaled to the mean impedance
+        let (mut z_tol_rss_pct, mut z_tol_wc_pct, mut z_tol_status, mut z_window_pct) = (None, None, None, None);
+        if let (Some(spec), Some(t), Some(zm), Some(b)) = (tol, target, z_mean, band.get(&net)) {
+            let lb: f64 = b.iter().map(|x| x.0).sum();
+            if lb > 0.0 {
+                let r = b.iter().map(|x| x.0 * x.1).sum::<f64>() / lb;
+                let w = b.iter().map(|x| x.0 * x.2).sum::<f64>() / lb;
+                let win = spec.window(&class);
+                z_tol_rss_pct = Some(100.0 * r);
+                z_tol_wc_pct = Some(100.0 * w);
+                z_tol_status = Some(crate::study::band_status(zm, t.z, win, r * zm));
+                z_window_pct = Some(win);
+            }
+        }
         nets.push(NetStat {
             net,
             name: board.net_name(net).to_string(),
-            class: board.netclasses.get(cls).map(|c| c.name.clone()).unwrap_or_default(),
+            class,
             length,
             target,
             partner: partners.get(net as usize).copied().flatten(),
@@ -912,6 +970,10 @@ fn net_stats(
             flags: v.iter().fold(0, |a, x| a | x.2),
             z_unc_pct,
             field_share,
+            z_tol_rss_pct,
+            z_tol_wc_pct,
+            z_tol_status,
+            z_window_pct,
         });
     }
     nets.sort_by(|a, b| a.name.cmp(&b.name));
@@ -974,7 +1036,7 @@ pub fn skeleton(board: &Board, params: &Params) -> Analysis {
     for (i, tr) in board.tracks.iter().enumerate() {
         pieces.extend_from_slice(&[i as f64, 0.0, 1.0, tr.layer.min(ncu.saturating_sub(1) as u16) as f64]);
     }
-    let (nets, classes) = net_stats(board, &class_targets, &partners, &xss, &pieces);
+    let (nets, classes) = net_stats(board, &class_targets, &partners, &xss, &pieces, &[], None);
     Analysis {
         unique_cross_sections: 0,
         cross_sections: xss,
@@ -1020,6 +1082,7 @@ impl GeomReg {
             length: 0.0,
             target_length: 0.0,
             desc: desc.clone(),
+            tol: None,
         });
         self.by_text.insert(text, i);
         i

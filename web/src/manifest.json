@@ -3,6 +3,7 @@
   "engine.js",
   "units.js",
   "state.js",
+  "tolerance.js",
   "load.js",
   "geometry.js",
   "draw.js",

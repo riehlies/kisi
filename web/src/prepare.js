@@ -31,7 +31,7 @@ const PREP_MODE = {
 };
 const SRC_KINDS = ["datasheet", "standard", "application_note", "measurement", "simulation", "design", "estimate", "assumption"];
 const PRIO_RANK = { high: 0, medium: 1, low: 2 };
-const PREP_TOP = ["kisi_config", "board", "stackup", "net_classes", "connector_ends", "fields", "variant", "variants", "gaps", "notes"];
+const PREP_TOP = ["kisi_config", "board", "stackup", "tolerances", "net_classes", "connector_ends", "fields", "variant", "variants", "gaps", "notes"];
 // the field tables of the Power tab (entries of kisi.json "fields", by name)
 const PREP_FIELDS = [
   ["PI_REG", "Regulator chain", "+12V > +3V3 buck 90% 3A"], ["PI_LOAD", "Load currents", "+3V3=120mA, +1V8=20mA"],
@@ -1023,6 +1023,16 @@ function prepViewerEdits(tab) {
         for (const k of ["epsilon_r", "loss_tangent", "thickness"]) if (o[k] != null) e[k] = Math.round(o[k] * 1e6) / 1e6;
         e.source = prepClone(src);
       }
+    } });
+  }
+  if (tab !== "power" && typeof tolEdits === "function") {
+    const te = tolEdits(), n = Object.keys(te).length;
+    if (n) out.push({ label: `Tolerances: ${n} value${n > 1 ? "s" : ""} edited in the Stackup panel (“Compare & tolerances”)`, apply: (src) => {
+      const w = prepW(), t = { ...(w.tolerances || {}) };
+      for (const [k, v] of Object.entries(te)) t[k] = v;
+      if ("width_pct" in te) delete t.width_mm; else if ("width_mm" in te) delete t.width_pct;
+      t.source = prepClone(src);
+      w.tolerances = t;
     } });
   }
   if (tab === "impedance") {

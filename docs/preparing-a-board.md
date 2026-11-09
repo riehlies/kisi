@@ -177,13 +177,19 @@ interface profile's tolerance, else ±10 %). "Field solver for N cross-sections"
 see what a different prepreg does before the fab does it. `kisi stackups <board>` gives the same table for the
 fitting templates.
 
-**Tolerances.** "show the band" adds, for one of the columns, the band for manufacturing tolerances – dielectric
-thickness, εr, copper thickness and trace width, ± around the nominal values (defaults: ±10 %, ±5 %, ±10 %,
-±0.02 mm, marked as estimates; change them in the panel or with `--tol`) – per row: what each tolerance moves, the
-worst-case and the RSS band, a bar against the window, and a hint such as "nominal in the window, but the tolerance
-band leaves it". The hint is information; the channel check's verdict is unchanged. Wider traces (with the gap
-adjusted) or an impedance-controlled order, where the fab tunes the widths to its measured stackup, are the usual
-answers when the band leaves the window. CLI: `kisi overview <board> --tolerance`.
+**Tolerances.** Every impedance kisi shows carries the fab's band – the net detail, the lane's impedance row in the
+Channel view, the board tooltip, the Signals card ("Fab tolerances": the share of the length whose band stays in
+the window) and the board map's **Tolerance** mode (green: the band inside the window, amber: the nominal value
+inside but the band leaves it, red: the nominal value outside); the calculation accuracy is in the tooltip. The
+tolerances – dielectric thickness, εr, copper thickness and trace width (defaults ±10 %, ±5 %, ±10 %, ±0.02 mm,
+estimates) – are edited in one place, the panel's "Manufacturing tolerances", which says where each value comes
+from (default, kisi.json, edited) and shows, for one column, the band per tolerance with a bar against the window
+and one summary line. Edits stay in this browser until Prepare PCB takes them into the kisi.json (`tolerances`,
+"Edits made in the views", with a source – the fab's impedance-control spec, say). The band is information; the
+channel check's verdict is unchanged. Wider traces (with the gap adjusted) or an impedance-controlled order, where
+the fab tunes the widths to its measured stackup, are the usual answers when the band leaves the window. CLI:
+`kisi overview <board>` (band per class and worst net), `--tolerance` for the per-tolerance table, `--tol` for other
+values.
 
 ## Worked example: Seeed Studio XIAO nRF54LM20A
 [`docs/examples/xiao-nrf54lm20a/XIAO nRF54LM20A.kisi.json`](examples/xiao-nrf54lm20a/XIAO%20nRF54LM20A.kisi.json)

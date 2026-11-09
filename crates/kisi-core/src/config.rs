@@ -106,6 +106,20 @@ impl StackupEntry {
     }
 }
 
+/// `tolerances`: the board's manufacturing tolerances for the impedance band (± around the nominal
+/// values; keys left out keep kisi's defaults, `data/stackups.json`).
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ToleranceEntry {
+    pub dielectric_thickness_pct: Option<f64>,
+    pub er_pct: Option<f64>,
+    pub copper_pct: Option<f64>,
+    /// trace width, mm (symmetric); `width_pct` wins when both are given
+    pub width_mm: Option<f64>,
+    pub width_pct: Option<f64>,
+    pub source: Option<Source>,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ClassEntry {
@@ -215,6 +229,9 @@ pub struct BoardConfig {
     pub kisi_config: u32,
     pub board: Option<String>,
     pub stackup: StackupEntry,
+    /// manufacturing tolerances of the impedance band
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tolerances: Option<ToleranceEntry>,
     pub net_classes: BTreeMap<String, ClassEntry>,
     /// lanes ending at a connector: the end model there and the channel behind it, per
     /// connector reference ("P1", "J8")
@@ -395,6 +412,7 @@ pub fn subset(cfg: &BoardConfig, view: &str) -> BoardConfig {
     };
     if has(&["impedance", "channel"]) {
         out.stackup = cfg.stackup.clone();
+        out.tolerances = cfg.tolerances.clone();
         out.net_classes = cfg
             .net_classes
             .iter()
@@ -450,7 +468,7 @@ pub fn to_json(cfg: &BoardConfig) -> serde_json::Value {
 /// The categories a check message is about, from the entry it names (its path at the start).
 pub fn message_views(cfg: &BoardConfig, text: &str) -> Vec<&'static str> {
     let all = crate::gaps::VIEWS.to_vec();
-    if text.starts_with("stackup.") {
+    if text.starts_with("stackup.") || text.starts_with("tolerances") {
         return vec!["impedance", "channel"];
     }
     if let Some(rest) = text.strip_prefix("net_classes.") {
@@ -562,6 +580,24 @@ pub fn check(
             r.errors.push("stackup.solder_mask: thickness in mm outside 0.001 … 0.2".into());
         }
         src("stackup.solder_mask".into(), &m.source, &mut r);
+    }
+    if let Some(t) = &cfg.tolerances {
+        r.entries += 1;
+        for (k, v, hi) in [
+            ("dielectric_thickness_pct", t.dielectric_thickness_pct, 50.0),
+            ("er_pct", t.er_pct, 50.0),
+            ("copper_pct", t.copper_pct, 50.0),
+            ("width_pct", t.width_pct, 50.0),
+            ("width_mm", t.width_mm, 0.5),
+        ] {
+            if v.is_some_and(|v| !(0.0..=hi).contains(&v)) {
+                r.errors.push(format!("tolerances.{k}: outside 0 … {hi}"));
+            }
+        }
+        if t.width_mm.is_some() && t.width_pct.is_some() {
+            r.warnings.push("tolerances: width_mm and width_pct given – width_pct is used".into());
+        }
+        src("tolerances".into(), &t.source, &mut r);
     }
     for (cls, c) in &cfg.net_classes {
         r.entries += 1;

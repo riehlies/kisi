@@ -64,6 +64,11 @@ function pieceColor(i) {
   }
   const t = classTarget(S.pieces.net[i]);
   if (!t) return C.none;
+  if (S.mode === "tol") {
+    // the fab band against the class's window: inside / nominal inside, band leaves / nominal outside
+    const b = pieceBand(i);
+    return !b ? (comparedZ(xs, t) ? C.none : C.noref) : b.status === "inside" ? C.ok : b.status === "band_leaves" ? C.high1 : C.high2;
+  }
   const z = comparedZ(xs, t);
   if (!z) return C.noref;
   const d = (z.v - t.z) / t.z;

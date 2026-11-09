@@ -151,14 +151,19 @@ counted, not computed. Several aggressors at once are only combined for the lane
 connector.
 
 ## Power
-- **DC IR drop:** copper rasterised per layer, vias as barrels (25 µm plating); per rail and for the ground
-  return, which is solved like a rail with the supply input as 0 V. Every part returns what it draws from the
-  supply rails minus what it feeds into them (a buck converter takes current from ground).
+- **DC IR drop:** copper rasterised per layer into square cells (0.05 … 1 mm, automatic) with the copper
+  fraction of every cell, tracks narrower than three cells as line conductors along their centre line (their
+  resistance at any angle), vias as barrels (25 µm plating) whose contact with a pour is corrected for the cell
+  size (Peaceman: a barrel smaller than the cell acts as its true radius, a larger one as an equipotential disc);
+  per rail and for the ground return, which is solved like a rail with the supply input as 0 V. Every part
+  returns what it draws from the supply rails minus what it feeds into them (a buck converter takes current from
+  ground). Largest drop within 1 % of a converged reference (median of 21 rails on 7 boards, at most 10 % on a
+  motor supply of overlapping wide tracks); see [Validation](#validation).
 - **Power tree and losses:** from `PI_REG`/`PI_LOAD`. The power a load draws counts as heat in the part (an
   estimate), regulator losses on the regulator, copper loss is I²R from the DC solutions. A switching regulator
   without an efficiency gets 85 % (an estimate, marked).
 - **PDN:** a lumped model of regulator, plane and capacitors with a plane model above 1 MHz; per IC the rail's
-  copper on all layers as an AC grid with plane capacitance, capacitors with ESR/ESL and DC-bias derating
+  copper on all layers as an AC grid with plane capacitance (via contacts corrected as in the DC drop), capacitors with ESR/ESL and DC-bias derating
   (estimated per package unless `PI_CAP` gives the data), ferrites and series parts up to the regulators
   (typical values unless `PI_SERIES` gives them), the loop inductance of each capacitor to the IC,
   anti-resonances, and a target from the IC's current step (or `PI_TARGET`).
@@ -261,6 +266,7 @@ documents and on the two reference pages attached to the releases (`kisi-referen
 | Vias and planes (fast models) | 3D FDTD (`crates/kisi-fdtd`) on 106 cases, itself checked against openEMS and CST | single vias TDR 2.5 / 5.6 %, pairs Zdiff 11 / 14 % (median / p90) | [TESTS.md](../validation/fdtd/TESTS.md), [CST.md](../validation/fdtd/CST.md) |
 | Field solver chain | HFSS/Ansys cases of Forstén's test suite | impedance within 1.7 %, RLGC within 2 % | `tools/validate_field.sh` |
 | Passivity and causality | unit tests and every lane of the example boards | passive to 25 GHz, causal | [TESTS.md](../validation/fdtd/TESTS.md) section 14 |
+| DC IR drop | analytic cases (vias in a plane, tracks at any angle, necks, cut cells); kisi's own raster refined uniformly (cell/4 … cell/8, barrels as discs, line tracks) on 21 rails of 7 boards | analytic within 1.5 %; largest drop median 1.0 %, max 10 % (before the corrections 6.9 / 28 %) | [research/pi-quadtree.md](research/pi-quadtree.md) |
 | Temperature | analytic cases; JEDEC JESD51-7 θJA | analytic within 0.2 %; θJA +4 … −20 % | – |
 | Channel export | ngspice on the exported circuits | S-parameters within 0.03–0.34 dB up to 1.5 × Nyquist | [research/channel-export.md](research/channel-export.md) |
 

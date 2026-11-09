@@ -1,0 +1,277 @@
+[
+ {
+  "board": "Thunderscope_Rev5.3.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.1,
+    "drop_err_pct": 4.881096078642784,
+    "max_drop_mv": 10.363007989614204,
+    "nodes": 167849,
+    "rail": "+5V",
+    "ref_drop_mv": 9.880720527409181,
+    "time_s": 0.321662807,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 5.668455291419067,
+    "max_drop_mv": 1.9008967805298482,
+    "nodes": 58154,
+    "rail": "+1V8",
+    "ref_drop_mv": 1.7989254932206933,
+    "time_s": 0.082588568,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 1.4826445496799603,
+    "max_drop_mv": 4.34472665498653,
+    "nodes": 22508,
+    "rail": "+5V3",
+    "ref_drop_mv": 4.281250921540192,
+    "time_s": 0.026569027,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.125,
+    "drop_err_pct": 5.973936227730707,
+    "max_drop_mv": 14.14345086668245,
+    "nodes": 209876,
+    "rail": "+VUSB",
+    "ref_drop_mv": 13.346159791865375,
+    "time_s": 0.43957208,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 6.627175535601286,
+    "max_drop_mv": 3.51447200251942,
+    "nodes": 60069,
+    "rail": "+1V0",
+    "ref_drop_mv": 3.2960377923036965,
+    "time_s": 0.084650193,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 11.26982471984881,
+    "max_drop_mv": 0.5568290608843895,
+    "nodes": 67556,
+    "rail": "+2V5",
+    "ref_drop_mv": 0.5004313274388217,
+    "time_s": 0.125013745,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.5,
+    "drop_err_pct": 9.062449175994626,
+    "max_drop_mv": 0.5829032782995647,
+    "nodes": 165779,
+    "rail": "GND",
+    "ref_drop_mv": 0.5344674383379477,
+    "time_s": 0.582812093,
+    "unconnected_loads": 0,
+    "warnings": [
+     "780 cells without connection to a source (copper islands) ignored",
+     "load U18: 1 of 85 pads not connected, their current is missing from the result"
+    ]
+   }
+  ]
+ },
+ {
+  "board": "VNA.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.125,
+    "drop_err_pct": 3.4981764713151295,
+    "max_drop_mv": 14.678056351232982,
+    "nodes": 81754,
+    "rail": "+6V",
+    "ref_drop_mv": 14.181946824252556,
+    "time_s": 0.126075462,
+    "unconnected_loads": 0,
+    "warnings": [
+     "1 cells without connection to a source (copper islands) ignored"
+    ]
+   },
+   {
+    "cell_mm": 0.2,
+    "drop_err_pct": 18.604335636493214,
+    "max_drop_mv": 11.200558992644716,
+    "nodes": 9020,
+    "rail": "+3V3",
+    "ref_drop_mv": 9.443633685511266,
+    "time_s": 0.012592296,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 5.125634007560453,
+    "max_drop_mv": 17.983707909722924,
+    "nodes": 17245,
+    "rail": "+5V{slash}2",
+    "ref_drop_mv": 17.106872248142224,
+    "time_s": 0.018035216,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.075,
+    "drop_err_pct": 5.976250610525673,
+    "max_drop_mv": 15.476578747151137,
+    "nodes": 84465,
+    "rail": "+5V",
+    "ref_drop_mv": 14.603817985625156,
+    "time_s": 0.154779171,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "bitaxeUltra.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.125,
+    "drop_err_pct": 16.860554396880705,
+    "max_drop_mv": 28.176228873285858,
+    "nodes": 215681,
+    "rail": "/3V3",
+    "ref_drop_mv": 24.1109834012887,
+    "time_s": 0.566653921,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 4.820732963875061,
+    "max_drop_mv": 58.683018191987955,
+    "nodes": 127236,
+    "rail": "/VDD",
+    "ref_drop_mv": 55.9841708149591,
+    "time_s": 0.286927483,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "moteus_x1.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.125,
+    "drop_err_pct": 16.69842974578714,
+    "max_drop_mv": 2.6712634949177527,
+    "nodes": 207201,
+    "rail": "V+",
+    "ref_drop_mv": 2.289031224101956,
+    "time_s": 0.521268042,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.1,
+    "drop_err_pct": 6.974363103994197,
+    "max_drop_mv": 1.50827408948917,
+    "nodes": 112332,
+    "rail": "+3V",
+    "ref_drop_mv": 1.4099397703568606,
+    "time_s": 0.213773134,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "Zynq_SoM.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.075,
+    "drop_err_pct": 7.854697281459138,
+    "max_drop_mv": 3.502727494545166,
+    "nodes": 134471,
+    "rail": "VIN",
+    "ref_drop_mv": 3.2476355530481893,
+    "time_s": 0.281303119,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.075,
+    "drop_err_pct": 7.395240067138382,
+    "max_drop_mv": 23.67026322108945,
+    "nodes": 80821,
+    "rail": "+1V8",
+    "ref_drop_mv": 22.040328050192848,
+    "time_s": 0.129979161,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "hackrf-one.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.15,
+    "drop_err_pct": 6.875722091913859,
+    "max_drop_mv": 11.474722113010039,
+    "nodes": 209809,
+    "rail": "VCC",
+    "ref_drop_mv": 10.736509553724183,
+    "time_s": 0.503970275,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.1,
+    "drop_err_pct": 28.273649795139438,
+    "max_drop_mv": 4.314375683699634,
+    "nodes": 248510,
+    "rail": "VAA",
+    "ref_drop_mv": 3.363415394034508,
+    "time_s": 0.574600714,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "Marble.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.5,
+    "drop_err_pct": 5.09549372897263,
+    "max_drop_mv": 3.9292806065160946,
+    "nodes": 63644,
+    "rail": "+3V3",
+    "ref_drop_mv": 3.7387717275958465,
+    "time_s": 0.125265972,
+    "unconnected_loads": 0,
+    "warnings": [
+     "63 cells without connection to a source (copper islands) ignored"
+    ]
+   },
+   {
+    "cell_mm": 0.4,
+    "drop_err_pct": -18.925312786059518,
+    "max_drop_mv": 26.629213409016582,
+    "nodes": 46047,
+    "rail": "+3.3P",
+    "ref_drop_mv": 32.845286641374535,
+    "time_s": 0.095234638,
+    "unconnected_loads": 0,
+    "warnings": [
+     "25 cells without connection to a source (copper islands) ignored"
+    ]
+   }
+  ]
+ }
+]

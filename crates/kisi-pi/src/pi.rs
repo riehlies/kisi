@@ -6,10 +6,23 @@
 //! voltage, load pads draw their current. The resulting SPD system is solved
 //! with a sparse Cholesky factorisation (kisi-sparse / faer).
 //!
+//! Three corrections keep the raster's answer close to the converged one at any cell size
+//! (docs/research/pi-quadtree.md):
+//! * A cell's weight is its copper fraction (cut cells, `fill_fraction`), not copper at its centre.
+//! * Tracks narrower than `LINE_CELLS` cells are line conductors (`line_tracks`): the cells along the centre
+//!   line in order, joined by the track's conductance between the mean positions of the line in consecutive
+//!   cells – exact for a straight track at any angle, where a staircase of cells is up to √2 longer and
+//!   rounds the width to whole cells.
+//! * Via contacts (Peaceman 1983): a barrel joined to the one cell around its centre acts like a disc of
+//!   0.198 cell, so the spreading resistance into a pour would grow with ln(1/cell). A barrel smaller than
+//!   0.7 cell scales its contact cell's links to full-copper neighbours by `peaceman_factor`, so that the
+//!   cell holds the potential of the barrel's rim; a larger one joins every cell within r_w + 0.35 cell into
+//!   one node (an equipotential disc).
+//!
 //! Configuration comes from footprint fields in the board (PI_SOURCE,
 //! PI_LOAD), the board configuration, or the viewer.
 
-use crate::board::{pad_polygon, Board, Pad};
+use crate::board::{pad_polygon, pad_polygons, Board, Pad, Track};
 use crate::geom::{self, BBox, P};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -58,11 +71,13 @@ pub struct PiParams {
     pub rho: f64,
     /// upper bound for the number of cells (all layers)
     pub max_cells: usize,
+    /// tracks narrower than this (mm) are line conductors; None: `LINE_CELLS` cells
+    pub line_width: Option<f64>,
 }
 
 impl Default for PiParams {
     fn default() -> Self {
-        PiParams { cell: None, plating_um: 25.0, rho: 1.72e-8, max_cells: 250_000 }
+        PiParams { cell: None, plating_um: 25.0, rho: 1.72e-8, max_cells: 250_000, line_width: None }
     }
 }
 
@@ -491,6 +506,27 @@ impl Grid {
     pub(crate) fn center(&self, i: usize, j: usize) -> P {
         [self.x0 + (i as f64 + 0.5) * self.cell, self.y0 + (j as f64 + 0.5) * self.cell]
     }
+    /// Cells (indices) whose centres lie within `r` of `p`.
+    pub(crate) fn near(&self, p: P, r: f64) -> Vec<usize> {
+        let rc = (r / self.cell).ceil() as isize + 1;
+        let Some((ci, cj)) = self.cell_of(p) else { return vec![] };
+        let mut out = vec![];
+        for j in (cj as isize - rc).max(0)..=(cj as isize + rc).min(self.ny as isize - 1) {
+            for i in (ci as isize - rc).max(0)..=(ci as isize + rc).min(self.nx as isize - 1) {
+                if geom::len(geom::sub(self.center(i as usize, j as usize), p)) <= r {
+                    out.push(j as usize * self.nx + i as usize);
+                }
+            }
+        }
+        out
+    }
+}
+
+/// Distance of `p` from the segment a–b and the nearest point on it.
+fn seg_dist(p: P, a: P, b: P) -> (f64, P) {
+    let d = geom::sub(b, a);
+    let q = geom::add(a, geom::scale(d, (geom::dot(geom::sub(p, a), d) / geom::dot(d, d).max(1e-18)).clamp(0.0, 1.0)));
+    (geom::len(geom::sub(p, q)), q)
 }
 
 /// Fill a polygon (even-odd) into `w` with weight 1 at cell centres.
@@ -529,7 +565,7 @@ pub(crate) fn fill_polygon(g: &Grid, pts: &[P], w: &mut [f32]) -> usize {
     }
     let mut count = 0;
     for (r, xs) in rows.iter_mut().enumerate() {
-        xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        xs.sort_by(f64::total_cmp);
         let j = j0 + r;
         for pair in xs.as_chunks::<2>().0 {
             let i0 = (((pair[0] - g.x0) / g.cell - 0.5).ceil().max(0.0)) as usize;
@@ -551,11 +587,11 @@ pub(crate) fn fill_polygon(g: &Grid, pts: &[P], w: &mut [f32]) -> usize {
 /// conductance through a fractional weight width/cell on the centre-line cells.
 pub(crate) fn fill_track(g: &Grid, a: P, b: P, width: f64, w: &mut [f32]) {
     let r = width / 2.0;
-    // thin tracks (up to about one cell wide: a track as wide as the cell along a cell boundary
-    // would otherwise lose cells to rounding): half the cell diagonal keeps the chain of cells
-    // 4-connected for any direction
-    let thin = width < g.cell * 1.05;
-    let reach = if thin { g.cell * std::f64::consts::FRAC_1_SQRT_2 } else { r };
+    // thin tracks: half the cell diagonal (with a margin: a 45° centre line through cell centres puts the
+    // side cells exactly there) keeps the chain of cells 4-connected for any direction; a band narrower
+    // than √2 cells can hold a single diagonal row of cells, which is not, so up to 1.5 cells
+    let thin = width < g.cell * 1.5;
+    let reach = if thin { g.cell * (std::f64::consts::FRAC_1_SQRT_2 + 1e-6) } else { r };
     let frac = if thin { (width / g.cell).min(1.0) as f32 } else { 1.0 };
     let bb_min = [a[0].min(b[0]) - reach, a[1].min(b[1]) - reach];
     let bb_max = [a[0].max(b[0]) + reach, a[1].max(b[1]) + reach];
@@ -568,14 +604,9 @@ pub(crate) fn fill_track(g: &Grid, a: P, b: P, width: f64, w: &mut [f32]) {
     ) else {
         return;
     };
-    let d = geom::sub(b, a);
-    let l2 = geom::dot(d, d).max(1e-18);
     for j in j0..=j1 {
         for i in i0..=i1 {
-            let c = g.center(i, j);
-            let t = (geom::dot(geom::sub(c, a), d) / l2).clamp(0.0, 1.0);
-            let q = geom::add(a, geom::scale(d, t));
-            if geom::len(geom::sub(c, q)) <= reach {
+            if seg_dist(g.center(i, j), a, b).0 <= reach {
                 let k = j * g.nx + i;
                 if w[k] < frac {
                     w[k] = frac;
@@ -583,6 +614,99 @@ pub(crate) fn fill_track(g: &Grid, a: P, b: P, width: f64, w: &mut [f32]) {
             }
         }
     }
+}
+
+/// Copper fractions of the cells from the union of `polys` (each even-odd): `ss` sample lines per row of
+/// cells, the copper along each exactly (spans); fractions below 1/16 are no copper. Raised into `w`.
+pub(crate) fn fill_fraction(g: &Grid, polys: &[&[P]], ss: usize, w: &mut [f32]) {
+    let h = g.cell / ss as f64;
+    // per sample line: crossings of the current polygon, starts and ends of the spans of all
+    let mut xs: Vec<Vec<f64>> = vec![Vec::new(); g.ny * ss];
+    let (mut st, mut en): (Vec<Vec<f64>>, Vec<Vec<f64>>) = (vec![Vec::new(); g.ny * ss], vec![Vec::new(); g.ny * ss]);
+    for pts in polys {
+        let mut rows = Vec::new();
+        for k in 0..pts.len() {
+            let (a, b) = (pts[k], pts[(k + 1) % pts.len()]);
+            let (lo, hi) = if a[1] < b[1] { (a, b) } else { (b, a) };
+            // sample lines with y in [lo.y, hi.y)
+            let r0 = ((lo[1] - g.y0) / h - 0.5).ceil().max(0.0) as usize;
+            let r1 = (((hi[1] - g.y0) / h - 0.5).ceil().max(0.0) as usize).min(g.ny * ss);
+            for r in r0..r1 {
+                let y = g.y0 + (r as f64 + 0.5) * h;
+                xs[r].push(lo[0] + (y - lo[1]) * (hi[0] - lo[0]) / (hi[1] - lo[1]));
+                rows.push(r);
+            }
+        }
+        for r in rows {
+            let x = &mut xs[r];
+            x.sort_by(f64::total_cmp);
+            for p in x.as_chunks::<2>().0 {
+                st[r].push(p[0]);
+                en[r].push(p[1]);
+            }
+            x.clear();
+        }
+    }
+    let (mut part, mut diff) = (vec![0f64; g.nx], vec![0i32; g.nx + 1]);
+    for j in 0..g.ny {
+        part.fill(0.0);
+        diff.fill(0);
+        for r in j * ss..(j + 1) * ss {
+            let (s, e) = (&mut st[r], &mut en[r]);
+            s.sort_by(f64::total_cmp);
+            e.sort_by(f64::total_cmp);
+            // the union of the spans (a sweep over starts and ends; touching spans merge), in cell units:
+            // partial end cells, full cells between
+            let (mut i, mut k, mut depth, mut a) = (0, 0, 0, 0.0);
+            while k < e.len() {
+                if i < s.len() && s[i] <= e[k] {
+                    if depth == 0 {
+                        a = s[i];
+                    }
+                    (depth, i) = (depth + 1, i + 1);
+                    continue;
+                }
+                (depth, k) = (depth - 1, k + 1);
+                if depth > 0 {
+                    continue;
+                }
+                let (u, v) = (((a - g.x0) / g.cell).max(0.0), ((e[k - 1] - g.x0) / g.cell).min(g.nx as f64));
+                if u >= v {
+                    continue;
+                }
+                let (iu, iv) = (u as usize, (v as usize).min(g.nx - 1));
+                if iu == iv {
+                    part[iu] += v - u;
+                } else {
+                    part[iu] += (iu + 1) as f64 - u;
+                    part[iv] += v - iv as f64;
+                    diff[iu + 1] += 1;
+                    diff[iv] -= 1;
+                }
+            }
+        }
+        let mut run = 0;
+        for i in 0..g.nx {
+            run += diff[i];
+            let f = (run as f64 + part[i]) / ss as f64;
+            let k = j * g.nx + i;
+            if f >= 1.0 / 16.0 {
+                w[k] = w[k].max(if f > 0.999 { 1.0 } else { f as f32 });
+            }
+        }
+    }
+}
+
+/// A track's outline (capsule; caps as half 8-gons).
+fn capsule(t: &Track) -> Vec<P> {
+    let d = geom::sub(t.b, t.a);
+    let th = d[1].atan2(d[0]);
+    let r = t.width / 2.0;
+    (0..=8)
+        .map(|k| (t.b, th - std::f64::consts::FRAC_PI_2 + k as f64 * std::f64::consts::PI / 8.0))
+        .chain((0..=8).map(|k| (t.a, th + std::f64::consts::FRAC_PI_2 + k as f64 * std::f64::consts::PI / 8.0)))
+        .map(|(c, a)| [c[0] + r * a.cos(), c[1] + r * a.sin()])
+        .collect()
 }
 
 /// Cells (layer-local indices) covered by a pad; at least the cell at its centre.
@@ -616,6 +740,149 @@ pub(crate) fn pad_cells(g: &Grid, pad: &Pad) -> Vec<usize> {
         }
     }
     out
+}
+
+/// Tracks narrower than this many cells are line conductors (`line_tracks`).
+pub(crate) const LINE_CELLS: f64 = 3.0;
+
+/// A track as a line conductor: the cells along its centre line in order with the mean position of the
+/// line in each, its width and its ends.
+pub(crate) struct Line {
+    pub(crate) cells: Vec<(usize, P)>,
+    pub(crate) width: f64,
+    pub(crate) ends: [P; 2],
+}
+
+/// The tracks of one layer of a net as line conductors (None: rasterised): narrower than `max_w` and not
+/// overlapping another track of the net along their length – parallel or stacked tracks are copper that the
+/// raster joins; as lines their conductances would add up. Overlap near the ends (junctions) does not count.
+pub(crate) fn line_tracks(g: &Grid, ts: &[&Track], max_w: f64) -> Vec<Option<Line>> {
+    // 1 mm buckets (a collision only adds candidates)
+    let key = |x: i64, y: i64| (x as usize).wrapping_mul(73_856_093) ^ y as usize;
+    let at_key = |p: P| key(p[0].floor() as i64, p[1].floor() as i64);
+    let mut hash: HashMap<usize, Vec<usize>> = HashMap::new();
+    for (i, t) in ts.iter().enumerate() {
+        let r = t.width / 2.0;
+        let (x0, x1) = ((t.a[0].min(t.b[0]) - r).floor() as i64, (t.a[0].max(t.b[0]) + r).floor() as i64);
+        let (y0, y1) = ((t.a[1].min(t.b[1]) - r).floor() as i64, (t.a[1].max(t.b[1]) + r).floor() as i64);
+        for x in x0..=x1 {
+            for y in y0..=y1 {
+                hash.entry(key(x, y)).or_default().push(i);
+            }
+        }
+    }
+    let line = |i: usize, t: &Track| -> Option<Line> {
+        if t.width >= max_w {
+            return None;
+        }
+        let len = geom::len(geom::sub(t.b, t.a));
+        let at = |u: f64| geom::lerp(t.a, t.b, u);
+        let n = (len / (t.width / 2.0).clamp(0.01, 0.1)).ceil().max(1.0) as usize;
+        let mut cand: Vec<usize> =
+            (0..=n).filter_map(|k| hash.get(&at_key(at(k as f64 / n as f64)))).flatten().copied().collect();
+        cand.sort_unstable();
+        cand.dedup();
+        for j in cand.into_iter().filter(|&j| j != i) {
+            let end = t.width + ts[j].width;
+            let over = (0..=n)
+                .filter(|&k| {
+                    let u = k as f64 / n as f64;
+                    (end..=len - end).contains(&(u * len)) && seg_dist(at(u), ts[j].a, ts[j].b).0 < 0.375 * end
+                })
+                .count();
+            if over as f64 * len / n as f64 > end {
+                return None;
+            }
+        }
+        // the cells along the centre line, sampled every quarter cell
+        let m = ((len / (g.cell / 4.0)).ceil() as usize).max(1);
+        let mut cells: Vec<(usize, P, f64)> = Vec::new();
+        for k in 0..=m {
+            let p = at(k as f64 / m as f64);
+            let Some((ci, cj)) = g.cell_of(p) else { continue };
+            match cells.last_mut() {
+                Some(l) if l.0 == cj * g.nx + ci => (l.1, l.2) = (geom::add(l.1, p), l.2 + 1.0),
+                _ => cells.push((cj * g.nx + ci, p, 1.0)),
+            }
+        }
+        (!cells.is_empty()).then(|| Line {
+            cells: cells.into_iter().map(|(c, s, k)| (c, geom::scale(s, 1.0 / k))).collect(),
+            width: t.width,
+            ends: [t.a, t.b],
+        })
+    };
+    ts.iter().enumerate().map(|(i, t)| line(i, t)).collect()
+}
+
+/// Cells to join at the ends of line tracks: an end lying on another line track (within half its width)
+/// with that track's nearest cell; an end off the raster's copper with the nearest copper cell within half
+/// the track's width plus half a cell.
+pub(crate) fn line_joins(g: &Grid, lines: &[Line], w: &[f32]) -> Vec<(usize, usize)> {
+    let mut by_cell: HashMap<usize, Vec<usize>> = HashMap::new();
+    for (i, l) in lines.iter().enumerate() {
+        for &(c, _) in &l.cells {
+            by_cell.entry(c).or_default().push(i);
+        }
+    }
+    let mut out = vec![];
+    for (i, l) in lines.iter().enumerate() {
+        for (e, end) in l.ends.into_iter().enumerate() {
+            let ce = if e == 0 { l.cells[0].0 } else { l.cells[l.cells.len() - 1].0 };
+            let mut others: Vec<usize> =
+                g.near(end, 2.5 * g.cell).iter().filter_map(|c| by_cell.get(c)).flatten().copied().collect();
+            others.sort_unstable();
+            others.dedup();
+            for o in others.into_iter().filter(|&o| o != i) {
+                let (d, q) = seg_dist(end, lines[o].ends[0], lines[o].ends[1]);
+                let nearest = lines[o]
+                    .cells
+                    .iter()
+                    .min_by(|a, b| geom::len(geom::sub(a.1, q)).total_cmp(&geom::len(geom::sub(b.1, q))));
+                if let Some(&(c, _)) = nearest.filter(|_| d <= lines[o].width / 2.0 + 1e-6) {
+                    out.push((ce, c));
+                }
+            }
+            if w[ce] <= 0.0 {
+                let best =
+                    g.near(end, l.width / 2.0 + 0.5 * g.cell).into_iter().filter(|&c| w[c] > 0.0).min_by(|&a, &b| {
+                        let d = |c: usize| geom::len(geom::sub(g.center(c % g.nx, c / g.nx), end));
+                        d(a).total_cmp(&d(b))
+                    });
+                out.extend(best.map(|c| (ce, c)));
+            }
+        }
+    }
+    out
+}
+
+/// Link factor of a barrel's contact cell (Peaceman 1983): a cell node of the 5-point stencil fed by a point
+/// source holds the potential at 0.198 cell from it; with each of its four links to full-copper neighbours
+/// scaled by f = 1 / (1 − (2/π)·ln(r_w / 0.198 h)) it holds the potential of the barrel's rim (radius r_w).
+/// Used for r_w < 0.7 h (f ≤ 5); larger barrels are discs. The textbook correction, a resistance
+/// Rs/2π · ln(0.198 h / r_w) in series, is negative for every barrel larger than 0.198 h.
+pub(crate) fn peaceman_factor(rw: f64, h: f64) -> f32 {
+    (1.0 / (1.0 - std::f64::consts::FRAC_2_PI * (rw / (0.198 * h)).ln()).max(0.05)).min(20.0) as f32
+}
+
+/// Two link factors (1: none): the larger.
+pub(crate) fn combine(a: f32, b: f32) -> f32 {
+    if a == 1.0 {
+        b
+    } else if b == 1.0 {
+        a
+    } else {
+        a.max(b)
+    }
+}
+
+/// Representative of `x` in a union-find forest (smallest index of its set).
+fn root(uf: &mut [u32], mut x: u32) -> u32 {
+    while uf[x as usize] != x {
+        let p = uf[x as usize];
+        uf[x as usize] = uf[p as usize];
+        x = p;
+    }
+    x
 }
 
 // --- the solver -------------------------------------------------------------------------
@@ -704,37 +971,121 @@ pub fn solve_rail_scaled(
         return Err(format!("{}: grid too large ({} cells)", setup.net, per * layers.len()));
     }
 
-    // weights per layer
+    // weights per layer: the copper fraction of every cell (cut cells); tracks narrower than `LINE_CELLS`
+    // cells are line conductors, rasterised ones narrower than 1.5 cells chains of cells (`fill_track`)
+    let max_w = params.line_width.unwrap_or(LINE_CELLS * cell);
     let mut w: Vec<Vec<f32>> = vec![Vec::new(); ncu];
+    let mut lines: Vec<Vec<Line>> = (0..ncu).map(|_| Vec::new()).collect();
     for &l in &layers {
         let mut wl = vec![0f32; per];
-        for z in board.zones.iter().filter(|z| z.net == net && z.layer as usize == l) {
-            fill_polygon(&g, &z.pts, &mut wl);
+        let mut polys: Vec<Vec<P>> = Vec::new();
+        let ts: Vec<&Track> = board.tracks.iter().filter(|t| t.net == net && !t.pad && t.layer as usize == l).collect();
+        for (t, line) in ts.iter().zip(line_tracks(&g, &ts, max_w)) {
+            match line {
+                Some(x) => lines[l].push(x),
+                None if t.width < 1.5 * cell => fill_track(&g, t.a, t.b, t.width, &mut wl),
+                None => polys.push(capsule(t)),
+            }
         }
-        for t in board.tracks.iter().filter(|t| t.net == net && !t.pad && t.layer as usize == l) {
-            fill_track(&g, t.a, t.b, t.width, &mut wl);
-        }
-        for p in board.pads.iter().filter(|p| p.net == net && p.layers.contains(&(l as u16))) {
-            for k in pad_cells(&g, p) {
+        let pads: Vec<&Pad> = board.pads.iter().filter(|p| p.net == net && p.layers.contains(&(l as u16))).collect();
+        polys.extend(pads.iter().flat_map(|p| pad_polygons(p)));
+        let zs = board.zones.iter().filter(|z| z.net == net && z.layer as usize == l).map(|z| z.pts.as_slice());
+        fill_fraction(&g, &zs.chain(polys.iter().map(|p| p.as_slice())).collect::<Vec<_>>(), 4, &mut wl);
+        // a pad smaller than a cell: its cell
+        for k in pads.iter().flat_map(|p| pad_cells(&g, p)) {
+            if wl[k] <= 0.0 {
                 wl[k] = 1.0;
             }
         }
         w[l] = wl;
     }
 
-    // node numbering
+    // node numbering: copper cells and the cells of line tracks
     let mut node_of: Vec<Vec<u32>> = vec![Vec::new(); ncu];
     let mut node_pos: Vec<(usize, usize)> = Vec::new(); // (layer, cell)
     for &l in &layers {
         let mut m = vec![u32::MAX; per];
+        for &(k, _) in lines[l].iter().flat_map(|x| &x.cells) {
+            m[k] = 0;
+        }
         for k in 0..per {
-            if w[l][k] > 0.0 {
+            if w[l][k] > 0.0 || m[k] == 0 {
                 m[k] = node_pos.len() as u32;
                 node_pos.push((l, k));
             }
         }
         node_of[l] = m;
     }
+
+    // vias and through-hole pads of the net: the contact cell on every layer of the barrel
+    let mut verticals: Vec<(P, f64, Vec<usize>)> = Vec::new();
+    for v in board.vias.iter().filter(|v| v.net == net) {
+        verticals.push((v.at, v.drill, (v.from as usize..=v.to as usize).collect()));
+    }
+    for p in board.pads.iter().filter(|p| p.net == net && p.drill > 0.0) {
+        verticals.push((p.at, p.drill, p.layers.iter().map(|&l| l as usize).collect()));
+    }
+    // the cell at a point, else the nearest copper cell within r
+    let find_cell = |l: usize, at: P, r: f64| -> Option<usize> {
+        let m = &node_of[l];
+        let (ci, cj) = g.cell_of(at)?;
+        if m.is_empty() || m[cj * g.nx + ci] != u32::MAX {
+            return (!m.is_empty()).then_some(cj * g.nx + ci);
+        }
+        let d = |k: usize| geom::len(geom::sub(g.center(k % g.nx, k / g.nx), at));
+        g.near(at, r).into_iter().filter(|&k| m[k] != u32::MAX).min_by(|&a, &b| d(a).total_cmp(&d(b)))
+    };
+    let mut uf: Vec<u32> = (0..node_pos.len() as u32).collect();
+    let join = |uf: &mut [u32], a: u32, b: u32| {
+        let (ra, rb) = (root(uf, a), root(uf, b));
+        uf[ra.max(rb) as usize] = ra.min(rb);
+    };
+    let mut pfac = vec![1f32; node_pos.len()];
+    let mut contacts: Vec<Vec<(usize, usize)>> = Vec::new(); // per vertical: (layer, cell)
+    for (at, drill, ls) in &verticals {
+        let rw = drill / 2.0;
+        let mut cl = Vec::new();
+        for &l in ls.iter().filter(|&&l| l < ncu && used[l]) {
+            let Some(k) = find_cell(l, *at, rw + g.cell) else { continue };
+            let n = node_of[l][k];
+            if rw < 0.7 * g.cell {
+                pfac[n as usize] = combine(pfac[n as usize], peaceman_factor(rw, g.cell));
+            } else {
+                // an equipotential disc: the cells within r_w + 0.35 cell (cells tied at their centres
+                // short about a third of a cell beyond them)
+                for k2 in g.near(*at, rw + 0.35 * g.cell) {
+                    if node_of[l][k2] != u32::MAX {
+                        join(&mut uf, n, node_of[l][k2]);
+                    }
+                }
+            }
+            cl.push((l, k));
+        }
+        contacts.push(cl);
+    }
+    for &l in &layers {
+        for (a, b) in line_joins(&g, &lines[l], &w[l]) {
+            join(&mut uf, node_of[l][a], node_of[l][b]);
+        }
+    }
+    // merged nodes: renumbered (their position is the first cell, their link factor the larger)
+    let mut newid = vec![u32::MAX; node_pos.len()];
+    let mut pos = Vec::new();
+    let mut pf = Vec::new();
+    for i in 0..node_pos.len() {
+        let r = root(&mut uf, i as u32) as usize;
+        if newid[r] == u32::MAX {
+            newid[r] = pos.len() as u32;
+            pos.push(node_pos[i]);
+            pf.push(1.0);
+        }
+        newid[i] = newid[r];
+        pf[newid[i] as usize] = combine(pf[newid[i] as usize], pfac[i]);
+    }
+    for x in node_of.iter_mut().flatten().filter(|x| **x != u32::MAX) {
+        *x = newid[*x as usize];
+    }
+    let (node_pos, pfac) = (pos, pf);
     let nn = node_pos.len();
     // resistivity factor per node (empty: 1 everywhere) and the mean of an edge's two nodes
     let div: Vec<f64> = match scale {
@@ -751,31 +1102,42 @@ pub fn solve_rail_scaled(
 
     // edges: (a, b, conductance S)
     let mut edges: Vec<(u32, u32, f64)> = Vec::with_capacity(nn * 2);
+    let mut line_edges: Vec<(usize, f64)> = Vec::new(); // (edge, cross-section mm²)
     for &l in &layers {
         let gs = su.copper[l].thickness * 1e-3 / params.rho; // sheet conductance (S per square)
         let (wl, m) = (&w[l], &node_of[l]);
         for j in 0..g.ny {
             for i in 0..g.nx {
                 let k = j * g.nx + i;
-                if m[k] == u32::MAX {
-                    continue;
-                }
                 for (ni, nj) in [(i + 1, j), (i, j + 1)] {
-                    if ni >= g.nx || nj >= g.ny {
-                        continue;
-                    }
                     let k2 = nj * g.nx + ni;
-                    if m[k2] == u32::MAX {
+                    if ni >= g.nx || nj >= g.ny || wl[k] <= 0.0 || wl[k2] <= 0.0 || m[k] == m[k2] {
                         continue;
                     }
                     let (a, b) = (wl[k] as f64, wl[k2] as f64);
-                    let wf = 2.0 * a * b / (a + b);
+                    let mut wf = 2.0 * a * b / (a + b);
+                    let f = combine(pfac[m[k] as usize], pfac[m[k2] as usize]);
+                    if f != 1.0 && a >= 1.0 && b >= 1.0 {
+                        wf *= f as f64; // a barrel's contact cell
+                    }
                     edges.push((m[k], m[k2], gs * wf / dv(m[k], m[k2])));
                 }
             }
         }
+        // line tracks: between consecutive cells, not where both are full copper (that carries it)
+        for x in &lines[l] {
+            for c in x.cells.windows(2) {
+                let ((ka, pa), (kb, pb)) = (c[0], c[1]);
+                let (na, nb) = (m[ka], m[kb]);
+                if na != nb && (wl[ka] < 1.0 || wl[kb] < 1.0) {
+                    line_edges.push((edges.len(), x.width * su.copper[l].thickness));
+                    let len = geom::len(geom::sub(pb, pa)).max(1e-6);
+                    edges.push((na, nb, gs * x.width / len / dv(na, nb)));
+                }
+            }
+        }
     }
-    // vertical: vias and through-hole pads of the net
+    // vertical: the barrels between their contact cells
     let mut via_edges: Vec<(usize, P, f64)> = Vec::new(); // (edge index, position, drill)
     let layer_z: Vec<f64> = {
         // centre height of each copper layer (mm from top)
@@ -792,57 +1154,16 @@ pub fn solve_rail_scaled(
         let tp = (params.plating_um * 1e-6).min(r);
         std::f64::consts::PI * (r * r - (r - tp) * (r - tp))
     };
-    let mut verticals: Vec<(P, f64, Vec<usize>)> = Vec::new();
-    for v in board.vias.iter().filter(|v| v.net == net) {
-        verticals.push((v.at, v.drill, (v.from as usize..=v.to as usize).collect()));
-    }
-    for p in board.pads.iter().filter(|p| p.net == net && p.drill > 0.0) {
-        verticals.push((p.at, p.drill, p.layers.iter().map(|&l| l as usize).collect()));
-    }
-    let find_node = |l: usize, at: P, r: f64| -> Option<u32> {
-        let m = &node_of[l];
-        if m.is_empty() {
-            return None;
-        }
-        let (ci, cj) = g.cell_of(at)?;
-        if m[cj * g.nx + ci] != u32::MAX {
-            return Some(m[cj * g.nx + ci]);
-        }
-        let rc = (r / g.cell).ceil() as isize;
-        let mut best: Option<(f64, u32)> = None;
-        for dj in -rc..=rc {
-            for di in -rc..=rc {
-                let (ii, jj) = (ci as isize + di, cj as isize + dj);
-                if ii < 0 || jj < 0 || ii as usize >= g.nx || jj as usize >= g.ny {
-                    continue;
-                }
-                let k = jj as usize * g.nx + ii as usize;
-                if m[k] != u32::MAX {
-                    let d = geom::len(geom::sub(g.center(ii as usize, jj as usize), at));
-                    if d <= r && best.is_none_or(|b| d < b.0) {
-                        best = Some((d, m[k]));
-                    }
-                }
+    for ((at, drill, _), cl) in verticals.iter().zip(&contacts) {
+        for pair in cl.windows(2) {
+            let ((pl, pk), (l, k)) = (pair[0], pair[1]);
+            let (pn, nid) = (node_of[pl][pk], node_of[l][k]);
+            if pn != nid {
+                let len = (layer_z[l] - layer_z[pl]).abs() * 1e-3;
+                let gv = barrel(*drill) / (params.rho * len.max(1e-6)) / dv(pn, nid);
+                via_edges.push((edges.len(), *at, *drill));
+                edges.push((pn, nid, gv));
             }
-        }
-        best.map(|b| b.1)
-    };
-    for (at, drill, ls) in &verticals {
-        let mut prev: Option<(usize, u32)> = None;
-        for &l in ls {
-            if l >= ncu || !used[l] {
-                continue;
-            }
-            let Some(nid) = find_node(l, *at, drill / 2.0 + g.cell) else { continue };
-            if let Some((pl, pn)) = prev {
-                if pn != nid {
-                    let len = (layer_z[l] - layer_z[pl]).abs() * 1e-3;
-                    let gv = barrel(*drill) / (params.rho * len.max(1e-6)) / dv(pn, nid);
-                    via_edges.push((edges.len(), *at, *drill));
-                    edges.push((pn, nid, gv));
-                }
-            }
-            prev = Some((l, nid));
         }
     }
 
@@ -1020,7 +1341,16 @@ pub fn solve_rail_scaled(
         }
     }
 
-    // per-layer buffers, current density
+    // per-layer buffers, current density (in a cell of a line track: the track's, I / (w·t))
+    let mut jline = vec![0f64; nn];
+    for &(e, area) in &line_edges {
+        let (a, b, gv) = edges[e];
+        let j = (gv * (v[a as usize] - v[b as usize])).abs() / area;
+        if j.is_finite() {
+            jline[a as usize] = jline[a as usize].max(j);
+            jline[b as usize] = jline[b as usize].max(j);
+        }
+    }
     let mut grids = Vec::new();
     let mut vb: Vec<f32> = Vec::with_capacity(per * layers.len());
     let mut jb: Vec<f32> = Vec::with_capacity(per * layers.len());
@@ -1029,21 +1359,20 @@ pub fn solve_rail_scaled(
     let cm = g.cell * 1e-3;
     for &l in &layers {
         let off = vb.len();
-        let m = &node_of[l];
+        let (m, wl) = (&node_of[l], &w[l]);
+        // the voltage of a raster cell (not of a cell on a line track only)
         let val = |i: isize, j: isize| -> Option<f64> {
-            if i < 0 || j < 0 || i as usize >= g.nx || j as usize >= g.ny {
+            if i < 0 || j < 0 || i as usize >= g.nx || j as usize >= g.ny || wl[j as usize * g.nx + i as usize] <= 0.0 {
                 return None;
             }
             let n = m[j as usize * g.nx + i as usize];
-            if n == u32::MAX {
-                return None;
-            }
             let x = v[n as usize];
             x.is_finite().then_some(x)
         };
         for j in 0..g.ny as isize {
             for i in 0..g.nx as isize {
-                match val(i, j) {
+                let n = m[j as usize * g.nx + i as usize];
+                match (n != u32::MAX).then(|| v[n as usize]).filter(|x| x.is_finite()) {
                     None => {
                         vb.push(f32::NAN);
                         jb.push(f32::NAN);
@@ -1058,10 +1387,13 @@ pub fn solve_rail_scaled(
                                 _ => 0.0,
                             }
                         };
-                        let gx = d(val(i - 1, j), val(i + 1, j));
-                        let gy = d(val(i, j - 1), val(i, j + 1));
-                        let dn = if div.is_empty() { 1.0 } else { div[m[j as usize * g.nx + i as usize] as usize] };
-                        let jm = (gx * gx + gy * gy).sqrt() / (params.rho * dn) * 1e-6; // A/mm²
+                        let (gx, gy) = if wl[j as usize * g.nx + i as usize] > 0.0 {
+                            (d(val(i - 1, j), val(i + 1, j)), d(val(i, j - 1), val(i, j + 1)))
+                        } else {
+                            (0.0, 0.0)
+                        };
+                        let dn = if div.is_empty() { 1.0 } else { div[n as usize] };
+                        let jm = ((gx * gx + gy * gy).sqrt() / (params.rho * dn) * 1e-6).max(jline[n as usize]); // A/mm²
                         if jm > max_j {
                             max_j = jm;
                             max_j_at = Some(g.center(i as usize, j as usize));
@@ -1193,6 +1525,32 @@ pub fn solve_rail_scaled(
         j: jb,
         loss: lb,
     })
+}
+
+/// Potential difference between the rims (radius a) of a source at (x1, y) and a sink at (x2, y) in a
+/// w × h sheet with insulating edges (method of images), per ampere and Ω per square.
+#[cfg(test)]
+pub(crate) fn sheet_pair(w: f64, h: f64, x1: f64, x2: f64, y: f64, a: f64) -> f64 {
+    use std::f64::consts::PI;
+    let pot = |px: f64, py: f64| {
+        let mut v = 0.0;
+        for i in -30i32..=30 {
+            for j in -30i32..=30 {
+                for (sx, sign) in [(x1, -1.0), (x2, 1.0)] {
+                    for (mx, my) in [(1.0, 1.0), (-1.0, 1.0), (1.0, -1.0), (-1.0, -1.0)] {
+                        let (ix, iy) = (2.0 * w * i as f64 + mx * sx, 2.0 * h * j as f64 + my * y);
+                        v += sign / (4.0 * PI) * ((px - ix).powi(2) + (py - iy).powi(2)).ln();
+                    }
+                }
+            }
+        }
+        v
+    };
+    let rim = |cx: f64| {
+        (0..16).map(|k| pot(cx + a * (k as f64 * PI / 8.0).cos(), y + a * (k as f64 * PI / 8.0).sin())).sum::<f64>()
+            / 16.0
+    };
+    rim(x1) - rim(x2)
 }
 
 #[cfg(test)]
@@ -1383,6 +1741,231 @@ mod tests {
         );
         assert!(err.abs() < 0.05, "plane spreading: {drop} V vs {expect} V ({:+.1} %)", err * 100.0);
     }
+    // --- analytic cases of the raster corrections (docs/research/pi-quadtree.md) ---
+
+    const RS: f64 = 1.72e-8 / 35e-6; // Ω per square, 35 µm copper
+
+    /// A two-layer board (35 µm copper, 1.5 mm core) with net 1 "+3V3" and the given items.
+    fn board(items: &str) -> Board {
+        load_pcb(&format!(
+            r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "core") (thickness 1.5) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "+3V3")
+{items}
+)"#
+        ))
+        .unwrap()
+    }
+    fn part(r: &str, field: &str, pads: &str) -> String {
+        format!(r#"  (footprint "X" (layer "F.Cu") (at 0 0) (property "Reference" "{r}") {field} {pads})"#)
+    }
+    fn circle_pad(n: usize, x: f64, y: f64, d: f64, layer: &str) -> String {
+        format!(r#"(pad "{n}" smd circle (at {x} {y}) (size {d} {d}) (layers "{layer}") (net 1 "+3V3"))"#)
+    }
+    fn zone(pts: &[(f64, f64)]) -> String {
+        let p: String = pts.iter().map(|(x, y)| format!("(xy {x} {y}) ")).collect();
+        format!(r#"  (zone (net 1) (net_name "+3V3") (layer "F.Cu") (filled_polygon (layer "F.Cu") (pts {p})))"#)
+    }
+    fn via(x: f64, y: f64, drill: f64) -> String {
+        format!(r#"  (via (at {x} {y}) (size {}) (drill {drill}) (layers "F.Cu" "B.Cu") (net 1))"#, 2.0 * drill)
+    }
+    fn segment(a: (f64, f64), b: (f64, f64), w: f64) -> String {
+        format!(r#"  (segment (start {} {}) (end {} {}) (width {w}) (layer "F.Cu") (net 1))"#, a.0, a.1, b.0, b.1)
+    }
+    /// Source J1 and a 1 A load U1, each with one pad.
+    fn ends(src: &str, load: &str) -> String {
+        part("J1", r#"(property "PI_SOURCE" "+3V3")"#, src)
+            + "\n"
+            + &part("U1", r#"(property "PI_LOAD" "+3V3=1A")"#, load)
+    }
+    fn solve_at(b: &Board, cell: f64, line_width: Option<f64>) -> PiResult {
+        let (rails, warn) = rails_from_fields(b);
+        assert!(warn.is_empty(), "{warn:?}");
+        solve_rail(b, &rails[0], &PiParams { cell: Some(cell), line_width, ..Default::default() }).unwrap()
+    }
+    /// The voltage of the cell at `p` on copper layer `l`.
+    fn v_at(r: &PiResult, l: u16, p: P) -> f64 {
+        let lg = r.layers.iter().find(|x| x.layer == l).unwrap();
+        let (i, j) = (((p[0] - lg.x0) / r.cell) as usize, ((p[1] - lg.y0) / r.cell) as usize);
+        r.v[lg.offset + j * lg.nx + i] as f64
+    }
+    /// Two vias (0.3 mm drill) 6 mm apart in a 20 mm × 20 mm plane: the plane's resistance between the two
+    /// barrels is the one between two discs of the barrel radius (images for the edges). Without the contact
+    /// correction a cell contact is a disc of 0.198 cell: +29 % at 0.25 mm cells, +53 % at 0.1 mm. Peaceman's
+    /// link factor (0.25, 0.5 mm: r_w < 0.7 cell) and the disc contact (0.1 mm) get it at any cell.
+    #[test]
+    fn two_vias_in_a_sheet() {
+        let items = [
+            zone(&[(0.0, 0.0), (20.0, 0.0), (20.0, 20.0), (0.0, 20.0)]),
+            via(7.0, 10.0, 0.3),
+            via(13.0, 10.0, 0.3),
+            ends(&circle_pad(1, 7.0, 10.0, 0.6, "B.Cu"), &circle_pad(1, 13.0, 10.0, 0.6, "B.Cu")),
+        ]
+        .join("\n");
+        let b = board(&items);
+        let expect = RS * sheet_pair(20.0, 20.0, 7.0, 13.0, 10.0, 0.15);
+        for cell in [0.1, 0.15, 0.25, 0.5] {
+            let r = solve_at(&b, cell, None);
+            let d = v_at(&r, 0, [7.0, 10.0]) - v_at(&r, 0, [13.0, 10.0]);
+            let e = d / expect - 1.0;
+            eprintln!("two vias cell {cell}: {:.4} mΩ vs {:.4} mΩ {:+.2} %", d * 1e3, expect * 1e3, e * 100.0);
+            assert!(e.abs() < 0.03, "cell {cell}: {:+.2} %", e * 100.0);
+        }
+    }
+
+    /// A via in the middle of a round plane fed from a ring of pads: Rs/2π · ln(R/r_w) between the ring's
+    /// inner edge and the barrel (+33 % without the contact correction at 0.25 mm cells).
+    #[test]
+    fn radial_via() {
+        use std::f64::consts::PI;
+        let (ro, d, n) = (5.0, 0.8, 64);
+        let ring: String = (0..n)
+            .map(|k| {
+                let t = 2.0 * PI * k as f64 / n as f64;
+                circle_pad(k + 1, 10.0 + ro * t.cos(), 10.0 + ro * t.sin(), d, "F.Cu")
+            })
+            .collect();
+        let disc: Vec<(f64, f64)> = (0..96)
+            .map(|k| {
+                let t = 2.0 * PI * k as f64 / 96.0;
+                (10.0 + (ro + 0.6) * t.cos(), 10.0 + (ro + 0.6) * t.sin())
+            })
+            .collect();
+        let items =
+            [zone(&disc), via(10.0, 10.0, 0.3), ends(&ring, &circle_pad(1, 10.0, 10.0, 0.6, "B.Cu"))].join("\n");
+        let b = board(&items);
+        // the ring's inner edge: pads of diameter d every 2πR/64 ≈ 0.49 mm, scalloped; its mean radius
+        let gap = PI * ro / n as f64;
+        let r_in = ro - ((d / 2.0).powi(2) - gap * gap / 3.0).sqrt();
+        let expect = RS / (2.0 * PI) * (r_in / 0.15).ln();
+        for cell in [0.1, 0.25] {
+            let r = solve_at(&b, cell, None);
+            let e = (3.3 - v_at(&r, 0, [10.0, 10.0])) / expect - 1.0;
+            eprintln!("radial via cell {cell}: {:+.2} %", e * 100.0);
+            assert!(e.abs() < 0.03, "cell {cell}: {:+.2} %", e * 100.0);
+        }
+    }
+
+    /// A 4 mm strip, 20 mm long, with a 1 mm × 2 mm neck in the middle: the strip's squares plus the
+    /// constriction resistance of the two steps (conformal mapping, ratio α = w/W):
+    /// ΔR = Rs/π · [(1+α²)/(2α) · ln((1+α)/(1−α)) − ln(4α/(1−α²))].
+    #[test]
+    fn strip_with_neck() {
+        use std::f64::consts::PI;
+        let pts = [
+            (0.0, 0.0),
+            (9.0, 0.0),
+            (9.0, 1.5),
+            (11.0, 1.5),
+            (11.0, 0.0),
+            (20.0, 0.0),
+            (20.0, 4.0),
+            (11.0, 4.0),
+            (11.0, 2.5),
+            (9.0, 2.5),
+            (9.0, 4.0),
+            (0.0, 4.0),
+        ];
+        let rect = |x: f64| format!(r#"(pad "1" smd rect (at {x} 2) (size 1 4) (layers "F.Cu") (net 1 "+3V3"))"#);
+        let b = board(&[zone(&pts), ends(&rect(0.5), &rect(19.5))].join("\n"));
+        let a: f64 = 0.25;
+        let step =
+            1.0 / PI * ((1.0 + a * a) / (2.0 * a) * ((1.0 + a) / (1.0 - a)).ln() - (4.0 * a / (1.0 - a * a)).ln());
+        // 16 mm of the wide strip (between the pads), the neck, half of the load pad (current drawn evenly)
+        let expect = RS * (16.0 / 4.0 + 2.0 / 1.0 + 0.5 / 4.0 + 2.0 * step);
+        let e = solve_at(&b, 0.25, None).max_drop_mv.unwrap() * 1e-3 / expect - 1.0;
+        assert!(e.abs() < 0.03, "{:+.2} %", e * 100.0);
+    }
+
+    /// A pour 1.13 mm wide (4.5 cells) off the grid: with copper at the cells' centres its width rounds to 4
+    /// or 5 rows of cells (−11 … +11 %), with the copper fraction of the edge cells (cut cells) it is kept.
+    #[test]
+    fn cut_cells() {
+        let (y0, wd) = (0.07, 1.13);
+        let pts = [(0.0, y0), (20.0, y0), (20.0, y0 + wd), (0.0, y0 + wd)];
+        let rect = |x: f64| {
+            format!(r#"(pad "1" smd rect (at {x} {}) (size 1 {wd}) (layers "F.Cu") (net 1 "+3V3"))"#, y0 + wd / 2.0)
+        };
+        let b = board(&[zone(&pts), ends(&rect(0.5), &rect(19.5))].join("\n"));
+        // 18 mm between the pads, half of the load pad (current drawn evenly)
+        let expect = RS * 18.5 / wd;
+        for cell in [0.2, 0.25] {
+            let e = solve_at(&b, cell, None).max_drop_mv.unwrap() * 1e-3 / expect - 1.0;
+            eprintln!("pour {wd} mm on {cell} mm cells: {:+.2} %", e * 100.0);
+            assert!(e.abs() < 0.02, "cell {cell}: {:+.2} %", e * 100.0);
+        }
+    }
+
+    /// Tracks at 0°, 30° and 45°, 0.15 … 0.5 mm wide, 10 mm long, on a 0.2 mm raster: as line conductors
+    /// R = Rs · L / w at any angle (as a staircase of cells up to +110 %), the current density of the track
+    /// I / (w·t) in its cells.
+    #[test]
+    fn track_direction() {
+        let len = 10.0;
+        for w in [0.15, 0.3, 0.5] {
+            for deg in [0.0f64, 30.0, 45.0] {
+                let (a, b) = ((1.0, 1.0), (1.0 + len * deg.to_radians().cos(), 1.0 + len * deg.to_radians().sin()));
+                let items = [
+                    segment(a, b, w),
+                    ends(&circle_pad(1, a.0, a.1, 0.05, "F.Cu"), &circle_pad(1, b.0, b.1, 0.05, "F.Cu")),
+                    // fixes the grid origin off the track's diagonal
+                    part("TP1", "", &circle_pad(1, -1.013, -1.029, 0.05, "F.Cu")),
+                ]
+                .join("\n");
+                let r = solve_at(&board(&items), 0.2, None);
+                let e = r.max_drop_mv.unwrap() * 1e-3 / (RS * len / w) - 1.0;
+                let ej = r.max_j / (1.0 / (w * 0.035)) - 1.0;
+                eprintln!("track {w} mm {deg}°: {:+.2} %, current density {:+.2} %", e * 100.0, ej * 100.0);
+                // the line starts at the centre of the end cells, not at the track's ends: up to −1.5 %
+                assert!(
+                    e.abs() < 0.03 && ej.abs() < 0.03,
+                    "{w} mm {deg}°: {:+.2} %, j {:+.2} %",
+                    e * 100.0,
+                    ej * 100.0
+                );
+            }
+        }
+    }
+
+    /// 45° tracks that the raster used to break apart: a thin track whose centre line runs through cell
+    /// centres (its side cells exactly at half the cell diagonal, dropped by rounding) and a track 1.05 … 1.41
+    /// cells wide (filled by its width alone: one diagonal row of cells, not 4-connected). Rasterised
+    /// (`line_width` 0) they stay connected; as line conductors they have the track's resistance.
+    #[test]
+    fn diagonal_breaks() {
+        for (w, x0) in [(0.15, 1.0), (0.25, 1.0), (0.25, 1.05), (0.27, 1.1)] {
+            let (a, b) = ((x0, 1.0), (x0 + 7.071, 8.071));
+            let items =
+                [segment(a, b, w), ends(&circle_pad(1, a.0, a.1, 0.1, "F.Cu"), &circle_pad(1, b.0, b.1, 0.1, "F.Cu"))];
+            let bd = board(&items.join("\n"));
+            let raster = solve_at(&bd, 0.2, Some(0.0));
+            assert!(raster.loads[0].connected && raster.warnings.is_empty(), "{w} mm from {x0}: {:?}", raster.warnings);
+            let e = solve_at(&bd, 0.2, None).max_drop_mv.unwrap() / (RS * 10.0 / w * 1e3) - 1.0;
+            assert!(e.abs() < 0.03, "{w} mm from {x0}: {:+.2} %", e * 100.0);
+        }
+    }
+
+    /// Line tracks joined at their ends: a T (the stem's end on the bar's centre line, off the bar's cells'
+    /// centres) and an L whose corner lies on a cell boundary; R = Rs · Σ L / w along the current's path.
+    #[test]
+    fn line_junctions() {
+        let (wa, wb) = (0.2, 0.12);
+        let items = [
+            segment((1.0, 3.03), (9.0, 3.03), wa),
+            segment((5.1, 3.03), (5.1, 8.0), wb),
+            segment((5.1, 8.0), (8.0, 8.0), wb),
+            ends(&circle_pad(1, 1.0, 3.03, 0.05, "F.Cu"), &circle_pad(1, 8.0, 8.0, 0.05, "F.Cu")),
+        ];
+        let r = solve_at(&board(&items.join("\n")), 0.2, None);
+        let expect = RS * (4.1 / wa + (4.97 + 2.9) / wb);
+        let e = r.max_drop_mv.unwrap() * 1e-3 / expect - 1.0;
+        assert!(e.abs() < 0.03, "{:+.2} % {:?}", e * 100.0, r.warnings);
+    }
+
     /// Rail setups written as fields read back as the same rails (the pads chosen on a part are
     /// reported as lost).
     #[test]

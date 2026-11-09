@@ -1,0 +1,270 @@
+[
+ {
+  "board": "Thunderscope_Rev5.3.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.1,
+    "drop_err_pct": 1.036143966016996,
+    "max_drop_mv": 9.983099016952934,
+    "nodes": 175340,
+    "rail": "+5V",
+    "ref_drop_mv": 9.880720527409181,
+    "time_s": 0.355340761,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 1.1661428641858655,
+    "max_drop_mv": 1.8199035344919068,
+    "nodes": 60474,
+    "rail": "+1V8",
+    "ref_drop_mv": 1.7989254932206933,
+    "time_s": 0.0888381,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 0.9144754393004575,
+    "max_drop_mv": 4.320401909712501,
+    "nodes": 23054,
+    "rail": "+5V3",
+    "ref_drop_mv": 4.281250921540192,
+    "time_s": 0.027893846,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.125,
+    "drop_err_pct": -0.022363956360638242,
+    "max_drop_mv": 13.343175062513701,
+    "nodes": 218966,
+    "rail": "+VUSB",
+    "ref_drop_mv": 13.346159791865375,
+    "time_s": 0.486200754,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 0.6226902391164522,
+    "max_drop_mv": 3.316561897913961,
+    "nodes": 60928,
+    "rail": "+1V0",
+    "ref_drop_mv": 3.2960377923036965,
+    "time_s": 0.097696486,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 1.3362277509045877,
+    "max_drop_mv": 0.5071182297102794,
+    "nodes": 68805,
+    "rail": "+2V5",
+    "ref_drop_mv": 0.5004313274388217,
+    "time_s": 0.13516784,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.5,
+    "drop_err_pct": -1.0117461255324036,
+    "max_drop_mv": 0.5290599847383313,
+    "nodes": 181773,
+    "rail": "GND",
+    "ref_drop_mv": 0.5344674383379477,
+    "time_s": 0.888754261,
+    "unconnected_loads": 0,
+    "warnings": [
+     "169 cells without connection to a source (copper islands) ignored"
+    ]
+   }
+  ]
+ },
+ {
+  "board": "VNA.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.125,
+    "drop_err_pct": -0.010835062545315558,
+    "max_drop_mv": 14.180410201444005,
+    "nodes": 83833,
+    "rail": "+6V",
+    "ref_drop_mv": 14.181946824252556,
+    "time_s": 0.141744297,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.2,
+    "drop_err_pct": 1.1258214783068576,
+    "max_drop_mv": 9.549952141875373,
+    "nodes": 5950,
+    "rail": "+3V3",
+    "ref_drop_mv": 9.443633685511266,
+    "time_s": 0.015869035,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 1.8036117418132689,
+    "max_drop_mv": 17.415413804666713,
+    "nodes": 18027,
+    "rail": "+5V{slash}2",
+    "ref_drop_mv": 17.106872248142224,
+    "time_s": 0.022655064,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.075,
+    "drop_err_pct": 0.23484903056643391,
+    "max_drop_mv": 14.638114910590083,
+    "nodes": 82993,
+    "rail": "+5V",
+    "ref_drop_mv": 14.603817985625156,
+    "time_s": 0.163586353,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "bitaxeUltra.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.125,
+    "drop_err_pct": 0.22147213162355867,
+    "max_drop_mv": 24.164382510182936,
+    "nodes": 219435,
+    "rail": "/3V3",
+    "ref_drop_mv": 24.1109834012887,
+    "time_s": 0.530980856,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.05,
+    "drop_err_pct": 2.4563836621082458,
+    "max_drop_mv": 57.35935684022453,
+    "nodes": 125739,
+    "rail": "/VDD",
+    "ref_drop_mv": 55.9841708149591,
+    "time_s": 0.268236461,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "moteus_x1.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.125,
+    "drop_err_pct": -10.115192326194371,
+    "max_drop_mv": 2.057491313377402,
+    "nodes": 202006,
+    "rail": "V+",
+    "ref_drop_mv": 2.289031224101956,
+    "time_s": 0.555799584,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.1,
+    "drop_err_pct": -1.8828604484008347,
+    "max_drop_mv": 1.3833925720745377,
+    "nodes": 114521,
+    "rail": "+3V",
+    "ref_drop_mv": 1.4099397703568606,
+    "time_s": 0.217944187,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "Zynq_SoM.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.075,
+    "drop_err_pct": 0.5598339626474801,
+    "max_drop_mv": 3.2658169198571674,
+    "nodes": 136888,
+    "rail": "VIN",
+    "ref_drop_mv": 3.2476355530481893,
+    "time_s": 0.259478131,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.075,
+    "drop_err_pct": 0.7966994808984952,
+    "max_drop_mv": 22.21592322935706,
+    "nodes": 83890,
+    "rail": "+1V8",
+    "ref_drop_mv": 22.040328050192848,
+    "time_s": 0.188193218,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "hackrf-one.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.15,
+    "drop_err_pct": 0.3228272780572474,
+    "max_drop_mv": 10.771169935274827,
+    "nodes": 214522,
+    "rail": "VCC",
+    "ref_drop_mv": 10.736509553724183,
+    "time_s": 0.679745326,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.1,
+    "drop_err_pct": -1.7831205520010538,
+    "max_drop_mv": 3.3034416428943114,
+    "nodes": 251942,
+    "rail": "VAA",
+    "ref_drop_mv": 3.363415394034508,
+    "time_s": 0.675770234,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ },
+ {
+  "board": "Marble.kicad_pcb",
+  "rails": [
+   {
+    "cell_mm": 0.5,
+    "drop_err_pct": -3.3415451408165793,
+    "max_drop_mv": 3.6138389826061434,
+    "nodes": 67891,
+    "rail": "+3V3",
+    "ref_drop_mv": 3.7387717275958465,
+    "time_s": 0.142019611,
+    "unconnected_loads": 0,
+    "warnings": []
+   },
+   {
+    "cell_mm": 0.4,
+    "drop_err_pct": -0.6649939641085058,
+    "max_drop_mv": 32.62686746771526,
+    "nodes": 47655,
+    "rail": "+3.3P",
+    "ref_drop_mv": 32.845286641374535,
+    "time_s": 0.107340283,
+    "unconnected_loads": 0,
+    "warnings": []
+   }
+  ]
+ }
+]

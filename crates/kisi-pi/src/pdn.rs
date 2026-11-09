@@ -684,7 +684,7 @@ pub fn cavity(
                     xs.push(a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0]));
                 }
             }
-            xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            xs.sort_by(f64::total_cmp);
             for pair in xs.as_chunks::<2>().0 {
                 let i0 = ((pair[0] - lo[0]) / h - 0.5).ceil().max(0.0) as usize;
                 let i1 = ((pair[1] - lo[0]) / h - 0.5).floor();

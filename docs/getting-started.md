@@ -84,7 +84,8 @@ Nets that only connect parts not fitted are drawn faint and not checked. A click
 Power tree, budget and power flow (Sankey) first, from `PI_REG`/`PI_LOAD` fields or the board's kisi.json; part
 references jump to the board. Then, in steps:
 1. per rail and for the ground return, voltage drop and current density on every layer, the drop at each load
-   and the vias with the highest currents;
+   and the vias with the highest currents; switches in the legend add isolines to the voltage drop and arrows
+   for the current direction to the current density;
 2. a losses map: heat per part and copper loss per layer (mW/mm²);
 3. the temperature (an estimate for an ambient temperature and still air or an air flow): a map per layer, the
    hottest parts with their junction temperature, the rails' IR drop at temperature;
@@ -92,6 +93,10 @@ references jump to the board. Then, in steps:
    from each IC – the rail domain with ferrites and series parts up to the regulator, the capacitors ranked by
    their loop inductance to the IC (outlined on the board), anti-resonances, a target from the IC's current step
    and recommendations (value, package, count, distance).
+
+The maps of steps 1–3 are drawn from the solvers' grid cells: interpolated between the cells and cut at the
+copper's real edges (temperature: at the board outline), narrow tracks as lines of their own width coloured along
+their length. Hovering shows the value of the cell under the pointer.
 
 ### Assembly variants
 Boards with assembly variants (KiCad 10 variants or `variants` in kisi.json) – or with forks where all alternative

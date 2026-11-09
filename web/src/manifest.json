@@ -18,6 +18,7 @@
   "field-cache.js",
   "check-pool.js",
   "crosstalk.js",
+  "pi-map.js",
   "pi-dc.js",
   "pi-pdn.js",
   "pi-balance.js",

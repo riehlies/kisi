@@ -22,31 +22,44 @@ function lossValues(plane) {
   else add(+plane.slice(1));
   return out;
 }
+// the map of the shown plane (pi-map.js) on a log scale, with the mask: the copper of the solved rails
+// and the ground return on the plane's layers, for the parts the box of their pads
 function lossImage() {
   if (S.lossImg && S.lossImg.plane === S.lossPlane) return S.lossImg;
   const m = S.loss.map, vals = lossValues(S.lossPlane);
   let max = 0;
   for (let i = 0; i < vals.length; i++) if (vals[i] > max) max = vals[i];
-  const lo = max / 10 ** LOSS_DECADES;
-  const c = document.createElement("canvas"); c.width = m.nx; c.height = m.ny;
-  const cx = c.getContext("2d"), img = cx.createImageData(m.nx, m.ny);
-  for (let k = 0; k < vals.length; k++) {
-    const v = vals[k], o = k * 4;
-    if (!(v > lo) || max <= 0) { img.data[o + 3] = 0; continue; }
-    const col = turboRGB(0.05 + 0.9 * Math.min(1, Math.log10(v / lo) / LOSS_DECADES));
-    img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 235;
+  const lo = max / 10 ** LOSS_DECADES, lg = new Float32Array(vals.length);
+  for (let k = 0; k < vals.length; k++) lg[k] = vals[k] > lo && max > 0 ? Math.log10(vals[k]) : NaN;
+  // no extension: copper below the scale's bottom stays empty (as the cells), its edge smooth half way
+  const map = max > 0 ? mapImage(lg, m.nx, m.ny, { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(max), dilate: 0, cover: 0.5 }) : null;
+  const pl = S.lossPlane, nets = [...S.piRes.entries()].filter(([, r]) => r.res).map(([n]) => S.scene.nets.indexOf(n)).filter((n) => n >= 0);
+  const layers = pl === "comp" ? [] : pl[0] === "L" ? [m.layers[+pl.slice(1)]] : m.layers;
+  const cus = layers.map((l) => mapCopper(nets, l));
+  // parts: their heat is spread over the box of their pads (kisi_pi::losses), the box is the mask
+  let parts = null;
+  if (pl === "comp" || pl === "total") {
+    const hot = new Set(S.loss.summary.components.filter((c) => c.w > 0).map((c) => c.refdes)), P = S.scene.pads, box = new Map();
+    for (let i = 0; i < P.length / 8; i++) {
+      const ref = S.scene.fp_refs[S.scene.pad_fp[i]];
+      if (!hot.has(ref)) continue;
+      const o = i * 8, r = Math.max(P[o + 2], P[o + 3]) / 2, b = box.get(ref) || [Infinity, Infinity, -Infinity, -Infinity];
+      b[0] = Math.min(b[0], P[o] - r); b[1] = Math.min(b[1], P[o + 1] - r); b[2] = Math.max(b[2], P[o] + r); b[3] = Math.max(b[3], P[o + 1] + r);
+      box.set(ref, b);
+    }
+    parts = new Path2D();
+    for (const b of box.values()) parts.rect(b[0], b[1], b[2] - b[0], b[3] - b[1]);
   }
-  cx.putImageData(img, 0, 0);
-  S.lossImg = { plane: S.lossPlane, canvas: c, max, lo, vals };
+  // the mask as an image: filling the copper of every rail on every layer each frame is too slow
+  const mask = map ? mapMaskImage(map.bbox, m.cell, (c, p) => { mapMaskCopper(c, cus, p); if (parts) c.fill(parts); }) : null;
+  S.lossImg = { plane: S.lossPlane, map, max, lo, vals, mask };
   return S.lossImg;
 }
 
 function drawLoss(px) {
   if (!S.loss || !S.loss.map) return;
-  const m = S.loss.map, im = lossImage();
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(im.canvas, m.x0, m.y0, m.nx * m.cell, m.ny * m.cell);
-  ctx.imageSmoothingEnabled = true;
+  const im = lossImage();
+  if (im.map) mapDraw({ bbox: im.map.bbox, mask: (c) => mapMaskImageDraw(c, im.mask), image: (c) => mapPaint(c, im.map) });
   // the largest heat sources: labels at a constant screen size, the hottest first; a label that
   // would overlap a hotter one is left out (more appear when zoomed in)
   S.lossLabels = [];

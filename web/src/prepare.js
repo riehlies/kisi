@@ -526,31 +526,6 @@ function prepSharedBlock(key, label) {
 const prepTd = (label, html, cls) => `<td data-l="${esc(label)}"${cls ? ` class="${cls}"` : ""}>${html}</td>`;
 const prepIn = (attrs, v, ph, cls) => `<input ${attrs} value="${esc(v ?? "")}" placeholder="${esc(ph ?? "")}"${cls ? ` class="${cls}"` : ""}>`;
 
-// fab stackup templates (data/stackups.json): those with the board's copper layer count and thickness
-// can be written into the draft as its whole stackup entry (dielectrics, copper, solder mask, with sources)
-function prepFabList() {
-  const k = S.name + "|" + S.gen;
-  if (!S.prep.fab || S.prep.fab.k !== k) {
-    let r = null;
-    try { r = S.engine.stackupPresets(); } catch (e) { console.warn(e); }
-    S.prep.fab = { k, r, pick: S.prep.fab && S.prep.fab.k === k ? S.prep.fab.pick : "" };
-  }
-  return S.prep.fab;
-}
-function prepFabBlock() {
-  const f = prepFabList(), r = f.r;
-  if (!r) return "";
-  const fit = r.presets.filter((p) => p.fit && p.fit.ok), other = r.presets.filter((p) => !(p.fit && p.fit.ok));
-  const pick = fit.some((p) => p.id === f.pick) ? f.pick : (fit[0] || {}).id || "";
-  const b = r.board || {}, bt = b.thickness_mm != null ? `${fmtSig(b.thickness_mm, 3)} mm` : "thickness not in the file";
-  const opt = (p, ok) => `<option value="${esc(p.id)}" ${ok ? "" : "disabled"} ${p.id === pick ? "selected" : ""} title="${esc(ok ? p.title : p.fit.problem)}">${esc(p.template)} · ${p.layers} layers · ${fmtSig(p.nominal_mm, 2)} mm${ok ? "" : " – does not fit"}</option>`;
-  const cur = r.presets.find((p) => p.id === pick);
-  const desc = cur ? `<span class="sub">${esc(cur.title)}. ${cur.dielectrics.map((d) => `${esc(d.kind)} ${fmtSig(d.thickness * 1000, 3)} µm εr ${fmtSig(d.epsilon_r, 3)}`).join(" · ")}; copper ${cur.copper_um.map((c) => fmtSig(c, 3)).join(" / ")} µm. tanδ ${fmtSig(cur.dielectrics[0].loss_tangent, 2)} is assumed (the fab publishes none).</span>` : "";
-  return `<div class="prep-fab"><div class="prep-row"><b>Use a fab stackup</b>
-    <select data-fab="pick" aria-label="fab stackup template">${fit.map((p) => opt(p, true)).join("")}${other.length ? `<optgroup label="other layer count or thickness">${other.map((p) => opt(p, false)).join("")}</optgroup>` : ""}</select>
-    <button class="btn small" data-b="fab-use" ${pick ? "" : "disabled"}>Use</button></div>
-    <span class="note">${fit.length ? `Writes the template's thicknesses, εr and tanδ per dielectric, the copper thicknesses and the solder mask into the draft, with the template as their source – it replaces the draft's stackup entries. Board: ${b.layers} copper layers, ${bt}.` : `No template in kisi's library for ${b.layers} copper layers and ${bt} (data/stackups.json).`}</span>${desc}</div>`;
-}
 // the copper and solder mask thicknesses of the draft (from a fab stackup)
 function prepCopperLine() {
   const w = prepW(), cu = (w.stackup && w.stackup.copper) || [], m = (w.stackup && w.stackup.solder_mask) || {};
@@ -577,7 +552,7 @@ function prepStackTable(idx, flagged, key) {
     const m = (w.stackup && w.stackup.solder_mask) || {};
     rows.push(`<tr><td class="m" data-l="index">mask</td>${prepTd("between", `solder mask<span class="sub">both sides</span>`)}<td class="opt"></td>${prepTd("εr", prepIn(`data-a="mask" data-k="epsilon_r"`, m.epsilon_r, "3.8", "num"))}<td></td><td class="opt"></td>${prepTd("source", prepSrcCell("mask", w.stackup && w.stackup.solder_mask))}</tr>`);
   }
-  return `${prepFabBlock()}<table class="prep-ed"><thead><tr><th>#</th><th>Between</th><th class="opt">Material</th><th>εr</th><th>tanδ</th><th class="opt">Thickness mm</th><th>Source</th></tr></thead><tbody>${rows.join("")}</tbody></table>${prepCopperLine()}${prepSharedBlock(key || "stackup", "Source for the laminate values you enter (datasheet, fabricator's stackup)")}`;
+  return `<table class="prep-ed"><thead><tr><th>#</th><th>Between</th><th class="opt">Material</th><th>εr</th><th>tanδ</th><th class="opt">Thickness mm</th><th>Source</th></tr></thead><tbody>${rows.join("")}</tbody></table>${prepCopperLine()}${prepSharedBlock(key || "stackup", "Source for the laminate values you enter (datasheet, fabricator's stackup)")}`;
 }
 // net classes: targets (impedance) or profiles (channel)
 function prepClassTable(names, tab, hint) {
@@ -1025,10 +1000,14 @@ function prepViewerEdits(tab) {
       }
     } });
   }
-  if (tab !== "power" && typeof tolEdits === "function") {
-    const te = tolEdits(), n = Object.keys(te).length;
-    if (n) out.push({ label: `Tolerances: ${n} value${n > 1 ? "s" : ""} edited in the Stackup panel (“Compare & tolerances”)`, apply: (src) => {
-      const w = prepW(), t = { ...(w.tolerances || {}) };
+  if (tab !== "power" && typeof fabOn === "function") {
+    // the option "Fab stackups & tolerances": on in kisi.json means a "tolerances" entry (with the values
+    // edited in the view; keys left out keep kisi's defaults), off means none
+    const on = fabOn(), inCfg = !!(S.config && S.config.tolerances), te = on ? tolEdits() : {}, n = Object.keys(te).length;
+    if (on !== inCfg || n) out.push({ label: on ? `Fab stackups & tolerances: on${n ? `, ${n} tolerance${n > 1 ? "s" : ""} edited` : ""} (written as "tolerances")` : "Fab stackups & tolerances: off (removes \"tolerances\")", apply: (src) => {
+      const w = prepW();
+      if (!on) { delete w.tolerances; return; }
+      const t = { ...(w.tolerances || {}) };
       for (const [k, v] of Object.entries(te)) t[k] = v;
       if ("width_pct" in te) delete t.width_mm; else if ("width_mm" in te) delete t.width_pct;
       t.source = prepClone(src);
@@ -1433,7 +1412,6 @@ function prepOnInput(t, full) {
   if (t.type === "radio") { const ng = t.closest(".prep-need"); if (ng) ng.classList.remove("prep-need"); }
   if (t.id === "prep-scope") { S.prep.scope = t.value; prepRender(false); return; }
   if (t.id === "prep-agent-scope") { S.prep.agentScope = t.value; prepRender(false); return; }
-  if (t.dataset.fab === "pick") { prepFabList().pick = t.value; if (full) prepRender(false); return; }
   if (t.id === "prep-notes") { const w = prepW(), ls = String(t.value).split("\n").map((x) => x.trim()).filter(Boolean); if (ls.length) w.notes = ls; else { delete w.notes; if ("notes" in prepBaseObj()) w.notes = []; } prepEdited(false); return; }
   if (!a) return;
   if (a === "take") { S.prep.takeSrc = { ...(S.prep.takeSrc || {}), [k]: val }; if (!String(val).trim()) delete S.prep.takeSrc[k]; const b = document.querySelector('#prep [data-b="take"]'); if (b) b.disabled = !prepSrcOk(S.prep.takeSrc); return; }
@@ -1589,16 +1567,7 @@ $("prep").addEventListener("click", async (ev) => {
     for (const ref of (S.prep.capGroups || {})[g] || []) { const f = prepFld(ref, "PI_CAP"); let v = f ? f.value : ""; const m = prepKV(t.dataset.val); for (const tok of m.toks) v = PREP_DIEL.test(tok) ? prepCapDielSet(v, tok) : prepKVSet(v, tok.split("=")[0], tok.split("=")[1]); const nf = prepSetFld(ref, "PI_CAP", v); if (nf && !prepSrcOk(nf.source)) nf.source = prepClone(src); }
   } else if (b === "no-variant") delete prepW().variant;
   else if (b === "add-var") { const n = String($("prep-newvar").value || "").trim(); if (!n || n.toLowerCase() === "default") return; prepVar(n, true); }
-  else if (b === "fab-use") {
-    const f = prepFabList(), sel = t.closest(".prep-fab").querySelector("[data-fab]"), p = f.r && f.r.presets.find((x) => x.id === sel.value);
-    if (!p || !(p.fit && p.fit.ok)) return;
-    f.pick = p.id;
-    const w = prepW(), n = ((w.stackup && w.stackup.dielectrics) || []).length;
-    w.stackup = prepClone(p.kisi_json);
-    S.prep.takeNote = `Stackup: ${p.template} (${p.fab}) written into the draft – ${p.dielectrics.length} dielectrics, ${p.copper_um.length} copper layers and the solder mask${n ? `, replacing ${n} dielectric entr${n === 1 ? "y" : "ies"}` : ""}. tanδ is an assumption (see the sources). Apply the step or save the file.`;
-    const card = t.closest(".prep-gap");
-    if (card && card.dataset.gap) S.prep.pending[S.name + card.dataset.gap] = true;
-  } else if (b === "fab-cu-drop") { const w = prepW(); if (w.stackup) { delete w.stackup.copper; if (w.stackup.solder_mask) { delete w.stackup.solder_mask.thickness; prepPrune("mask", ""); } } prepTidy(); }
+  else if (b === "fab-cu-drop") { const w = prepW(); if (w.stackup) { delete w.stackup.copper; if (w.stackup.solder_mask) { delete w.stackup.solder_mask.thickness; prepPrune("mask", ""); } } prepTidy(); }
   else if (b === "del-var") { const w = prepW(); delete w.variants[t.dataset.v]; if (w.variant === t.dataset.v) delete w.variant; prepTidy(); }
   else if (b === "take") {
     const src = prepClone(S.prep.takeSrc || {});

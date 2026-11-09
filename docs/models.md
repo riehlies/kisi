@@ -72,11 +72,12 @@ percentile):
   copper and a pair's partner (an estimate); with nothing within 0.5 mm beside it the channel uses 1.5 × the
   target impedance. Against 3D: [TESTS.md](../validation/fdtd/TESTS.md) section 15.
 
-**Fab tolerance band.** The fab builds every board with some spread – dielectric thickness, εr, copper thickness,
-trace width –, and that usually moves the impedance more than kisi's calculation is off (the [accuracy
-levels](#accuracy-levels): about 1 % with the field solver, 2–11 % with formulas). So kisi shows the band first,
-wherever it shows an impedance (net, lane, tooltip, the board map's Tolerance mode, `net`/`check`/`overview`), and
-the calculation accuracy beside it; the two are not added. The band comes from one-at-a-time sensitivities: central
+**Fab tolerance band** (the option "Fab stackups & tolerances", off by default). The fab builds every board with
+some spread – dielectric thickness, εr, copper thickness, trace width –, and that usually moves the impedance more
+than kisi's calculation is off (the [accuracy levels](#accuracy-levels): about 1 % with the field solver, 2–11 %
+with formulas; the viewer gives a value's accuracy in its tooltip). With the option on kisi shows the band wherever
+it shows an impedance (net, lane, tooltip, the board map's Tolerance mode, `net`/`check`/`overview`); the band and
+the accuracy are not added. The band comes from one-at-a-time sensitivities: central
 differences ΔZ = (Z(x + δ) − Z(x − δ)) / 2 for each dielectric's thickness and εr inside the cross-section, the trace
 layer's copper thickness and the trace width, combined as worst case Σ|ΔZ| and as root sum of squares √ΣΔZ². The
 width tolerance is symmetric – every copper edge moves by half of it, so gaps shrink as widths grow – with no etch
@@ -87,7 +88,8 @@ tolerances” uses the field solver's differences where it has the perturbed cro
 nominal value and the RSS band with the class's window (its interface profile's tolerance, else the fab's ±10 %):
 inside, nominal inside but the band leaves, nominal outside. It is a linear estimate around the nominal value, and
 information only: no verdict uses it. The tolerances: kisi's defaults (`data/stackups.json`, mostly estimates) <
-kisi.json `tolerances` < `--tol` or the viewer's edits ([reference](reference.md#board-configuration-boardkisijson)).
+kisi.json `tolerances` < `--tol` or the viewer's edits ([reference](reference.md#board-configuration-boardkisijson));
+the option is on with a kisi.json `tolerances` entry, `--tolerance` or `--tol`, or the viewer's switch.
 
 **Other stackups** (`kisi stackups`, the viewer's “Compare & tolerances”): per net class and layer kisi takes the
 cross-section with the most length (pads left out; a coupled one for a differential target) and evaluates the same

@@ -3,6 +3,9 @@
 // colour modes: line type from the start, deviation / Z0 / crosstalk after step 2
 function syncModeButtons() {
   if (S.mode === "xt" && !S.full) S.mode = "type";
+  // the Tolerance mode belongs to the option "Fab stackups & tolerances"
+  $("mode-tol").hidden = !fabOn();
+  if (S.mode === "tol" && !fabOn()) S.mode = "dev";
   for (const k of ["dev", "tol", "abs", "type", "xt"]) $("mode-" + k).setAttribute("aria-pressed", String(k === S.mode));
   for (const k of ["dev", "tol", "abs"]) { $("mode-" + k).disabled = !S.full; $("mode-" + k).title = S.full ? "" : "after step 2 “Impedance estimate”"; }
   $("mode-xt").disabled = !S.full; $("mode-xt").title = S.full ? "" : "after step 2 “Impedance estimate”";

@@ -71,7 +71,7 @@ found only by name in `rails-without-voltage` can be dismissed.
 Where to look, per kind of value:
 - **Laminate:** the material name in the stackup → the manufacturer's datasheet, at a frequency near the signals
   (1–10 GHz) and for the resin content / glass style of the layer; better the fabricator's stackup report – or a
-  [fab stackup template](#choosing-a-fab-stackup).
+  [fab stackup template](#fab-stackups-and-tolerances-option).
 - **Interface profile and target:** the datasheets of the devices at the bus ends (interface type, data rate), the
   interface standard or the device's layout guide.
 - **Loads (`PI_LOAD`):** device datasheets, supply current per rail in the expected operating mode; FPGAs and
@@ -154,42 +154,36 @@ nets, rails, classes, layers), limited to that category (`kisi gaps --for …`) 
 handed over the prompt asks for the category's open gaps. The marks are kept with the draft in this browser, not
 in kisi.json; a category whose open gaps are all handed over says so.
 
-### Choosing a fab stackup
+### Fab stackups and tolerances (option)
 In production the largest impedance error is usually the stackup the fab builds – a different prepreg, a thinner
-core – not the formula. When you order from a fab with published impedance templates, take its stackup instead of
-KiCad's defaults: in Prepare PCB, the laminate table starts with **Use a fab stackup** – the templates of kisi's
-library (`data/stackups.json`, first JLCPCB's) with the board's copper layer count and thickness; the others are
-listed but cannot be chosen, with the reason. **Use** writes the template's thickness, εr and tanδ per dielectric,
-the copper thicknesses and the solder mask into the draft, each with the template as its source (tanδ is marked as
-an assumption where the fab publishes none); the line under the table shows the copper and mask thicknesses with
-"remove". On the command line: `kisi stackups <board>` lists what fits, `kisi stackups <board> --preset ID` prints
-the `stackup` entry to paste into the kisi.json, and `--stackup-preset ID` tries a template for one run without
-writing anything. Make sure the fab still offers the template, and keep KiCad's own stackup in step with it for the
-fab's drawings.
+core – not the formula, and the fab's tolerances move every impedance more than kisi's calculation is off. One
+option covers both: **Fab stackups & tolerances** in the Stackup card of the Impedance view, off by default. Off,
+nothing of it is shown and the analyses and exports are as without it. On (per board in this browser; a kisi.json
+with a `tolerances` entry turns it on – Prepare PCB writes or removes that entry from "Edits made in the views"):
 
-**Comparing stackups.** In the Impedance view, the Stackup card's **Compare & tolerances** opens a panel over the
-board (after step 2, the impedance estimate): one row per net class and layer – the class's most used cross-section
-there – and a column per stackup: the board's (as the Stackup card shows it, with kisi.json and your edits), and up
-to three more – fab templates that fit the board, or copies of the board's stackup whose thicknesses, εr and copper
-you edit ("edit" on a column; a template can be edited too). Each cell shows the impedance, its deviation from the
-target and its level (formula or field solver); its colour says whether it is inside the class's window (the
-interface profile's tolerance, else ±10 %). "Field solver for N cross-sections" solves what the panel needs. So you
-see what a different prepreg does before the fab does it. `kisi stackups <board>` gives the same table for the
-fitting templates.
+- **Compare & tolerances** – the one place for the option, a view over the board ("← Back to the board" or Esc
+  closes it). One row per net class and layer – the class's most used cross-section there – and a column per
+  stackup: the board's (as the Stackup card shows it), and up to three more – fab templates from kisi's library
+  (`data/stackups.json`, first JLCPCB's) with the board's copper layer count and thickness, or copies whose
+  thicknesses, εr and copper you edit ("edit" on a column). Each cell shows the impedance, its deviation from the
+  target and its level; its colour says whether it is inside the class's window (the interface profile's tolerance,
+  else ±10 %). "use for the board" on a template writes it into the Prepare PCB draft as the board's stackup – every
+  dielectric, copper layer and the solder mask, with the template as the source (tanδ marked as assumed); save it
+  there. Make sure the fab still offers the template, and keep KiCad's own stackup in step with it.
+- **Manufacturing tolerances** in the same view: dielectric thickness, εr, copper thickness and trace width
+  (defaults ±10 %, ±5 %, ±10 %, ±0.02 mm – estimates; each input says where its value comes from: default,
+  kisi.json, edited here) and, for one column, the band per tolerance with a bar against the window and one summary
+  line. The tolerances apply everywhere: the net detail, the lane's impedance row in the Channel view and the board
+  tooltip show "fab ±x Ω RSS / ±y Ω worst", the Signals card the share of the length whose band stays in the window,
+  and the board map gets a **Tolerance** mode (green: the band inside the window, amber: nominal inside but the band
+  leaves it, red: nominal outside). The band is information; the channel check's verdict is unchanged. Wider traces
+  (with the gap adjusted) or an impedance-controlled order, where the fab tunes the widths to its measured stackup,
+  are the usual answers when the band leaves the window.
 
-**Tolerances.** Every impedance kisi shows carries the fab's band – the net detail, the lane's impedance row in the
-Channel view, the board tooltip, the Signals card ("Fab tolerances": the share of the length whose band stays in
-the window) and the board map's **Tolerance** mode (green: the band inside the window, amber: the nominal value
-inside but the band leaves it, red: the nominal value outside); the calculation accuracy is in the tooltip. The
-tolerances – dielectric thickness, εr, copper thickness and trace width (defaults ±10 %, ±5 %, ±10 %, ±0.02 mm,
-estimates) – are edited in one place, the panel's "Manufacturing tolerances", which says where each value comes
-from (default, kisi.json, edited) and shows, for one column, the band per tolerance with a bar against the window
-and one summary line. Edits stay in this browser until Prepare PCB takes them into the kisi.json (`tolerances`,
-"Edits made in the views", with a source – the fab's impedance-control spec, say). The band is information; the
-channel check's verdict is unchanged. Wider traces (with the gap adjusted) or an impedance-controlled order, where
-the fab tunes the widths to its measured stackup, are the usual answers when the band leaves the window. CLI:
-`kisi overview <board>` (band per class and worst net), `--tolerance` for the per-tolerance table, `--tol` for other
-values.
+On the command line the option is on with `--tolerance` or `--tol` (or a kisi.json `tolerances` entry):
+`kisi overview <board> --tolerance` gives the band per class and worst net and the per-tolerance table.
+`kisi stackups <board>` lists the templates that fit and compares them, `kisi stackups <board> --preset ID` prints a
+template's `stackup` entry for the kisi.json, and `--stackup-preset ID` tries a template for one run.
 
 ## Worked example: Seeed Studio XIAO nRF54LM20A
 [`docs/examples/xiao-nrf54lm20a/XIAO nRF54LM20A.kisi.json`](examples/xiao-nrf54lm20a/XIAO%20nRF54LM20A.kisi.json)

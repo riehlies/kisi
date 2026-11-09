@@ -188,9 +188,13 @@ pub struct NetStat {
     pub field_share: Option<f64>,
     /// the band for manufacturing tolerances of the mean impedance (`Params::tolerance`), % of it:
     /// RSS and worst case; its status against the class's window (`study::band_status`) and the window
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub z_tol_rss_pct: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub z_tol_wc_pct: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub z_tol_status: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub z_window_pct: Option<f64>,
 }
 

@@ -1,11 +1,21 @@
 "use strict";
 // ============================================================== manufacturing tolerances
 // One set of tolerances for every view: kisi's defaults (data/stackups.json, mostly estimates) <
-// the board's kisi.json ("tolerances") < the edits in the Stackup panel (per board in this browser,
-// moved into kisi.json through Prepare PCB). The analysis gives every cross-section and net with a
-// target a band (kisi_si::study::rel_band, NetStat.z_tol_*); this file shows it the same way
-// everywhere: the fab band first, the calculation accuracy second (in the tooltip).
+// the board's kisi.json ("tolerances") < the edits in the Compare & tolerances view (per board in this
+// browser, moved into kisi.json through Prepare PCB). With the option on, the analysis gives every
+// cross-section and net with a target a band (kisi_si::study::rel_band, NetStat.z_tol_*); this file shows
+// it the same way everywhere (zSpread); the calculation accuracy is only in the value's tooltip.
 const TOL_KEYS = ["dielectric_thickness_pct", "er_pct", "copper_pct", "width"];
+// the option "Fab stackups & tolerances" (off by default): the viewer's choice per board, else on when the
+// board's kisi.json has a "tolerances" entry. Off, nothing of it shows but the switch in the Stackup card.
+const fabKey = () => "kisi.fab.v1." + S.name;
+function fabOn() { const v = lsGet(fabKey()); return v == null ? !!(S.config && S.config.tolerances) : !!v; }
+function setFabOn(on) {
+  lsSet(fabKey(), on === !!(S.config && S.config.tolerances) ? null : on);
+  if (!on && S.mode === "tol") S.mode = "dev";
+  if (!on && typeof stkOpen === "function" && !$("stk-panel").hidden) stkOpen(false);
+  runAnalysis();
+}
 const tolEditKey = () => "kisi.tol.v1." + S.name;
 function tolEdits() {
   if (!S.tolEd || S.tolEd.board !== S.name) S.tolEd = { board: S.name, v: lsGet(tolEditKey()) || {} };
@@ -48,7 +58,7 @@ function tolWindow(cls) {
 }
 // the analysis parameter (kisi_si::study::TolSpec)
 function tolSpec() {
-  const t = tolEff(), windows = {};
+  const t = fabOn() ? tolEff() : null, windows = {};
   if (!t) return null;
   for (const c of (S.scene && S.scene.netclasses) || []) windows[c.name] = tolWindow(c.name);
   return { tol: { dielectric_thickness_pct: t.dielectric_thickness_pct, er_pct: t.er_pct, copper_pct: t.copper_pct, width_mm: t.width_mm, width_pct: t.width_pct }, windows, default_window_pct: t.default_window_pct };
@@ -70,12 +80,16 @@ function pieceBand(i) {
   const rss = g.tol[k] * z.v, wc = g.tol[k + 1] * z.v;
   return { z: z.v, rss, wc, win, status: tolStatus(z.v, t.z, win, rss) };
 }
-// the spread of an impedance: the fab band first ("fab ±4.1 Ω RSS / ±6.9 Ω worst"), coloured by its
-// status, with the calculation accuracy and the tolerances' origin in the tooltip
-function zSpread(b, unc, fs) {
-  const acc = unc == null ? "" : ` Calculation: ${fs >= 0.999 ? "2D field solver" : fs <= 0.001 ? "formula" : `${fmt(fs * 100, 0)} % field solver, the rest formula`}, typically ±${fmt(unc, unc < 10 ? 1 : 0)} % (kisi's validation, data/accuracy.json) – included in neither number.`;
-  if (!b || b.rss == null) return unc == null ? "" : ` <span class="muted" title="${esc(acc.trim())}">calc. ±${fmt(unc, unc < 10 ? 1 : 0)} %</span>`;
-  const title = `Fab tolerances (${tolText()}): RSS and worst case of the band; ${TOL_STATUS[b.status] || ""} (±${fmt(b.win, 0)} %).${acc}`;
+// the model's accuracy of an impedance, for the title of the value (not shown as text)
+function zAccTitle(unc, fs) {
+  if (unc == null) return "";
+  const lv = fs >= 0.999 ? "the 2D field solver" : fs <= 0.001 ? "the formulas" : `the field solver for ${fmt(fs * 100, 0)} % of the length, formulas for the rest`;
+  return `Model accuracy of this impedance: computed with ${lv}, typically within ±${fmt(unc, unc < 10 ? 1 : 0)} % of kisi's validation references (data/accuracy.json; docs/models.md, Accuracy levels) – not a bound.`;
+}
+// the fab band of an impedance (option on): "fab ±4.1 Ω RSS / ±6.9 Ω worst", coloured by its status
+function zSpread(b) {
+  if (!b || b.rss == null || !fabOn()) return "";
+  const title = `Fab tolerances (${tolText()}): RSS and worst case of the band; ${TOL_STATUS[b.status] || ""} (±${fmt(b.win, 0)} %).`;
   return ` <span class="zb ${b.status}" title="${esc(title)}">fab ±${fmt(b.rss, 1)} Ω RSS / ±${fmt(b.wc, 1)} Ω worst</span>`;
 }
 // a net's band (NetStat) as zSpread wants it
@@ -93,7 +107,7 @@ function tolShares() {
 function renderTolSummary() {
   const el = $("k-tol");
   if (!el) return;
-  const sh = S.an && !S.an.skeleton ? tolShares() : null;
+  const sh = S.an && !S.an.skeleton && fabOn() ? tolShares() : null;
   el.hidden = !sh;
   if (!sh) return;
   const p = (v) => Math.round(v * 100) + " %";

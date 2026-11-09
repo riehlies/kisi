@@ -76,13 +76,6 @@
    ],
    "eye_computed": true,
    "from": "IC33.20",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 48.95,
-    "z_tol_rss_ohm": 3.36,
-    "z_tol_status": "inside",
-    "z_tol_wc_ohm": 5.63
-   },
    "kind": "ic-ic",
    "lane": "Net-(IC33-OUT+)",
    "length_mm": 12.6688,
@@ -215,13 +208,6 @@
    ],
    "eye_computed": true,
    "from": "IC7.15",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 59.62,
-    "z_tol_rss_ohm": 4.11,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 6.94
-   },
    "kind": "ic-ic",
    "lane": "FPGA_CLK",
    "length_mm": 84.0927,
@@ -314,13 +300,6 @@
      "value": 39.8041
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 55.47,
-    "z_tol_rss_ohm": 3.82,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 6.45
-   },
    "kind": "net (no devices found)",
    "length_mm": 3.8681,
    "metrics": {
@@ -401,13 +380,6 @@
      "value": 48.4013
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 41.1,
-    "z_tol_rss_ohm": 2.83,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 4.72
-   },
    "kind": "net (no devices found)",
    "length_mm": 1.09755,
    "metrics": {
@@ -488,13 +460,6 @@
      "value": 43.7465
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 44.1,
-    "z_tol_rss_ohm": 3.04,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 5.08
-   },
    "kind": "net (no devices found)",
    "length_mm": 2.80279,
    "metrics": {
@@ -575,13 +540,6 @@
      "value": 43.0098
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 43.5,
-    "z_tol_rss_ohm": 3.02,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 5.04
-   },
    "kind": "net (no devices found)",
    "length_mm": 2.85137,
    "metrics": {
@@ -662,13 +620,6 @@
      "value": 45.3566
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 44.01,
-    "z_tol_rss_ohm": 3.07,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 5.09
-   },
    "kind": "net (no devices found)",
    "length_mm": 2.58,
    "metrics": {
@@ -749,13 +700,6 @@
      "value": 52.643
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 45.0,
-    "z_tol_rss_ohm": 3.13,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 5.19
-   },
    "kind": "net (no devices found)",
    "length_mm": 2.58,
    "metrics": {
@@ -836,13 +780,6 @@
      "value": 45.53
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 43.44,
-    "z_tol_rss_ohm": 3.06,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 4.97
-   },
    "kind": "net (no devices found)",
    "length_mm": 2.09,
    "metrics": {
@@ -923,13 +860,6 @@
      "value": 40.2939
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 43.29,
-    "z_tol_rss_ohm": 3.01,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 4.98
-   },
    "kind": "net (no devices found)",
    "length_mm": 2.5032,
    "metrics": {
@@ -1010,13 +940,6 @@
      "value": 50.3634
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 44.83,
-    "z_tol_rss_ohm": 3.13,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 5.14
-   },
    "kind": "net (no devices found)",
    "length_mm": 2.53,
    "metrics": {
@@ -1097,13 +1020,6 @@
      "value": 48.7259
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 44.38,
-    "z_tol_rss_ohm": 3.07,
-    "z_tol_status": "nominal_outside",
-    "z_tol_wc_ohm": 5.12
-   },
    "kind": "net (no devices found)",
    "length_mm": 2.57,
    "metrics": {
@@ -1209,13 +1125,6 @@
    ],
    "eye_computed": true,
    "from": "IC10.29",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 49.42,
-    "z_tol_rss_ohm": 3.32,
-    "z_tol_status": "inside",
-    "z_tol_wc_ohm": 5.79
-   },
    "kind": "ic-ic",
    "lane": "/HF Source/SRC_REF_IN",
    "length_mm": 31.2285,
@@ -1318,13 +1227,6 @@
    ],
    "eye_computed": true,
    "from": "IC11.9",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 46.88,
-    "z_tol_rss_ohm": 3.19,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 5.48
-   },
    "kind": "ic-ic",
    "lane": "/HF Source/SRC_FILT_THRU",
    "length_mm": 17.1758,
@@ -1424,13 +1326,6 @@
    ],
    "eye_computed": true,
    "from": "IC12.7",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 47.9,
-    "z_tol_rss_ohm": 3.14,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 5.43
-   },
    "kind": "ic-ic",
    "lane": "/HF Source/SRC_FILT_OUT_ANT",
    "length_mm": 7.0801,
@@ -1533,13 +1428,6 @@
    ],
    "eye_computed": true,
    "from": "IC13.8",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 51.8,
-    "z_tol_rss_ohm": 3.58,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 6.12
-   },
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_SWITCH",
    "length_mm": 3.96111,
@@ -1639,13 +1527,6 @@
    ],
    "eye_computed": true,
    "from": "IC14.14",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 51.6,
-    "z_tol_rss_ohm": 3.48,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 5.86
-   },
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_ATT",
    "length_mm": 2.4808,
@@ -1748,13 +1629,6 @@
    ],
    "eye_computed": true,
    "from": "IC15.7",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 52.28,
-    "z_tol_rss_ohm": 3.12,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 5.49
-   },
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_AMP",
    "length_mm": 7.2788,
@@ -1879,13 +1753,6 @@
    ],
    "eye_computed": true,
    "from": "IC16.3",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 48.17,
-    "z_tol_rss_ohm": 3.16,
-    "z_tol_status": "inside",
-    "z_tol_wc_ohm": 5.84
-   },
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_PORT2",
    "length_mm": 26.3386,
@@ -2000,13 +1867,6 @@
    ],
    "eye_computed": true,
    "from": "IC16.13",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 47.76,
-    "z_tol_rss_ohm": 3.11,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 5.83
-   },
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_PORT1",
    "length_mm": 29.5516,
@@ -2121,13 +1981,6 @@
    ],
    "eye_computed": true,
    "from": "IC21.29",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 49.37,
-    "z_tol_rss_ohm": 3.33,
-    "z_tol_status": "inside",
-    "z_tol_wc_ohm": 5.74
-   },
    "kind": "ic-ic",
    "lane": "/1.LO/LO1_REFC",
    "length_mm": 30.5894,
@@ -2230,13 +2083,6 @@
    ],
    "eye_computed": true,
    "from": "IC22.6",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 47.69,
-    "z_tol_rss_ohm": 3.28,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 5.46
-   },
    "kind": "ic-ic",
    "lane": "Net-(IC22-OUT+)",
    "length_mm": 4.07761,
@@ -2359,13 +2205,6 @@
    ],
    "eye_computed": true,
    "from": "IC22.8",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 47.54,
-    "z_tol_rss_ohm": 3.04,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 5.74
-   },
    "kind": "ic-ic",
    "lane": "PORT1LO2",
    "length_mm": 119.919,
@@ -2472,13 +2311,6 @@
    ],
    "eye_computed": true,
    "from": "IC27.6",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 47.83,
-    "z_tol_rss_ohm": 3.29,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 5.48
-   },
    "kind": "ic-ic",
    "lane": "Net-(IC27-OUT+)",
    "length_mm": 5.2616,
@@ -2601,13 +2433,6 @@
    ],
    "eye_computed": true,
    "from": "IC27.8",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 47.28,
-    "z_tol_rss_ohm": 3.16,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 5.58
-   },
    "kind": "ic-ic",
    "lane": "PORT2LO2",
    "length_mm": 21.2362,
@@ -2714,13 +2539,6 @@
    ],
    "eye_computed": true,
    "from": "IC32.8",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 48.37,
-    "z_tol_rss_ohm": 3.32,
-    "z_tol_status": "inside",
-    "z_tol_wc_ohm": 5.54
-   },
    "kind": "ic-ic",
    "lane": "Net-(IC32-+)",
    "length_mm": 6.23766,
@@ -2843,13 +2661,6 @@
    ],
    "eye_computed": true,
    "from": "IC36.8",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 48.22,
-    "z_tol_rss_ohm": 3.07,
-    "z_tol_status": "inside",
-    "z_tol_wc_ohm": 5.83
-   },
    "kind": "ic-ic",
    "lane": "REFLO2",
    "length_mm": 76.7593,
@@ -2959,13 +2770,6 @@
    },
    "eye_computed": true,
    "from": "IC7.6",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 54.45,
-    "z_tol_rss_ohm": 3.94,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 6.93
-   },
    "kind": "ic-connector",
    "lane": "/2.LO + Ref Clock/CLKIN",
    "length_mm": 63.4896,
@@ -3071,13 +2875,6 @@
    },
    "eye_computed": true,
    "from": "IC7.16",
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 53.49,
-    "z_tol_rss_ohm": 3.85,
-    "z_tol_status": "band_leaves",
-    "z_tol_wc_ohm": 6.8
-   },
    "kind": "ic-connector",
    "lane": "/2.LO + Ref Clock/CLKOUT",
    "length_mm": 69.3597,
@@ -3170,13 +2967,6 @@
      "value": 55.9184
     }
    ],
-   "impedance_band": {
-    "window_pct": 10.0,
-    "z_ohm": 50.01,
-    "z_tol_rss_ohm": 3.2,
-    "z_tol_status": "inside",
-    "z_tol_wc_ohm": 5.54
-   },
    "kind": "net (no devices found)",
    "length_mm": 7.04,
    "metrics": {

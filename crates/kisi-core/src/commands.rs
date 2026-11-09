@@ -31,9 +31,9 @@ pub const COMMANDS: &[&str] = &[
 
 pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on stdout
 
-  overview         stackup, impedance per net class (share within ±5 %, worst nets, the fab
-                   tolerance band) [--tolerance (also per class and layer: the band per tolerance,
-                   with the field solver's sensitivities where it has them)]
+  overview         stackup, impedance per net class (share within ±5 %, worst nets)
+                   [--tolerance (the option fab stackups & tolerances: the band per class and worst
+                   net, and per class, layer and tolerance)]
   interfaces       buses and device-to-device lanes with profiles   [--class CLASS=PROFILE]…
   net <NET>        one net: impedance along the path, loss, TDR, vias, crosstalk;
                    differential pairs also as 4-port (mixed mode, skew)
@@ -81,8 +81,9 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
 common options: --pro FILE (default: board.kicad_pro), --config FILE (default: board.kisi.json
 next to the board), --no-config, --stackup FILE (stackup changes, as in the viewer),
 --stackup-preset ID (a fab stackup template from `kisi stackups` instead of the board's values),
---tol thickness=10,er=5,copper=10,width=0.02mm (manufacturing tolerances of every impedance band,
-in %, width in mm or %; keys left out: kisi.json \"tolerances\", else kisi's defaults),
+--tolerance / --tol thickness=10,er=5,copper=10,width=0.02mm (the option fab stackups & tolerances,
+off by default, also on with a kisi.json \"tolerances\" entry: the fab tolerance band of the
+impedances in net, check, overview and the exports; --tol: tolerances in %, width in mm or %),
 --variant NAME (assembly variant: a KiCad 10 variant of the board or one of the kisi.json
 \"variants\"; \"default\" = the board file as it is). Boards with variants – or with forks where
 all alternative parts are fitted – need one for interfaces, check and report (else they stop and
@@ -297,6 +298,12 @@ pub fn needs_board(cmd: &str) -> bool {
 }
 
 /// Whether the command line loads a board: commands that need one, and `stackups` with one.
+/// The option "fab stackups & tolerances" from the command line: `--tol SPEC`, or `--tolerance` (an
+/// empty spec: kisi.json's or kisi's default tolerances).
+pub fn tol_arg(o: &Opts) -> Option<String> {
+    o.tol.clone().or_else(|| o.tolerance.then(String::new))
+}
+
 pub fn wants_board(o: &Opts) -> bool {
     needs_board(&o.cmd) || (o.cmd == "stackups" && !o.pos.is_empty())
 }
@@ -656,7 +663,8 @@ pub fn run_with(
                 .as_array()
                 .map(|a| a.iter().filter_map(|l| pr.net_id(l["lane"].as_str()?)).map(|n| pr.class_name(n)).collect())
                 .unwrap_or_default();
-            crate::channel_export::stamp(&mut files, &header(pr, o, Some(&classes)));
+            let (short, full) = header(pr, o, Some(&classes));
+            crate::channel_export::stamp(&mut files, &short, &full);
             v["stackup_used"] = service::stackup_used(pr);
             // the front end writes the files into this folder and replaces "_files" by "written"
             let dir = o.out.clone().unwrap_or_else(|| {
@@ -678,19 +686,29 @@ pub fn run_with(
     }
 }
 
-/// The comment block of a file kisi writes: the stackup used, the tolerances and the band of the
-/// given classes (all when None).
-fn header(p: &Project, o: &Opts, classes: Option<&[String]>) -> Vec<String> {
-    let mut v = crate::stackups::header_lines(p.board.stackup(), &p.stackup_provenance);
-    let o = Opts { tolerance: true, ..o.clone() };
-    v.extend(crate::stackups::tolerance_lines(&study(p, &o).0, classes));
-    v
+/// The comment block of a file kisi writes – short (SPICE, Touchstone) and full (README): the stackup
+/// used and, with the option "fab stackups & tolerances" on, the tolerances and the band of the given
+/// classes (all when None).
+fn header(p: &Project, o: &Opts, classes: Option<&[String]>) -> (Vec<String>, Vec<String>) {
+    let su = p.board.stackup();
+    let (mut short, mut full) = (
+        crate::stackups::header_short(su, &p.stackup_provenance),
+        crate::stackups::header_lines(su, &p.stackup_provenance),
+    );
+    if p.tol_on {
+        let o = Opts { tolerance: true, ..o.clone() };
+        let t = crate::stackups::tolerance_lines(&study(p, &o).0, classes);
+        short.extend(t.iter().cloned());
+        full.extend(t);
+    }
+    (short, full)
 }
 
 /// A Touchstone text with the stackup block.
 fn stamped(p: &Project, o: &Opts, path: &str, text: String, classes: Option<&[String]>) -> String {
     let mut f = [crate::export::files::ExportFile { path: path.to_string(), content: text }];
-    crate::channel_export::stamp(&mut f, &header(p, o, classes));
+    let (short, full) = header(p, o, classes);
+    crate::channel_export::stamp(&mut f, &short, &full);
     let [f] = f;
     f.content
 }

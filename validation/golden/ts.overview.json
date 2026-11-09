@@ -9,67 +9,42 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 50.0,
    "target_source": "class name",
-   "tolerance_band": {
-    "band_leaves": 0.465,
-    "inside": 0.444,
-    "nominal_outside": 0.091
-   },
    "within_5pct": 0.851509,
    "worst": [
     {
      "net": "/SYNC",
-     "window_pct": 10.0,
      "within_5pct": 0.271243,
      "z_max": 48.304,
      "z_mean": 33.8784,
-     "z_min": 24.3994,
-     "z_tol_rss_ohm": 2.81,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 4.45
+     "z_min": 24.3994
     },
     {
      "net": "Net-(U10-RO)",
-     "window_pct": 10.0,
      "within_5pct": 0.203494,
      "z_max": 48.304,
      "z_mean": 34.2622,
-     "z_min": 24.5355,
-     "z_tol_rss_ohm": 2.83,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 4.5
+     "z_min": 24.5355
     },
     {
      "net": "/REFINOUT",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 52.6012,
      "z_mean": 43.3006,
-     "z_min": 26.8037,
-     "z_tol_rss_ohm": 3.51,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 5.69
+     "z_min": 26.8037
     },
     {
      "net": "Net-(U7-OC1P)",
-     "window_pct": 10.0,
      "within_5pct": 0.421072,
      "z_max": 52.6851,
      "z_mean": 45.8737,
-     "z_min": 26.8037,
-     "z_tol_rss_ohm": 3.7,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 6.07
+     "z_min": 26.8037
     },
     {
      "net": "Net-(U7-IC1P)",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 53.0238,
      "z_mean": 46.9524,
-     "z_min": 26.8037,
-     "z_tol_rss_ohm": 3.78,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 6.22
+     "z_min": 26.8037
     }
    ]
   },
@@ -81,67 +56,42 @@
    "rough_formula_mm": 20.1213,
    "target_ohm": 100.0,
    "target_source": "class name",
-   "tolerance_band": {
-    "band_leaves": 0.328,
-    "inside": 0.013,
-    "nominal_outside": 0.659
-   },
    "within_5pct": 0.014873,
    "worst": [
     {
      "net": "/CH3_P",
-     "window_pct": 10.0,
      "within_5pct": 0.0164996,
      "z_max": 264.467,
      "z_mean": 110.956,
-     "z_min": 52.8729,
-     "z_tol_rss_ohm": 11.09,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.53
+     "z_min": 52.8729
     },
     {
      "net": "/CH4_N",
-     "window_pct": 10.0,
      "within_5pct": 0.017647,
      "z_max": 287.083,
      "z_mean": 110.295,
-     "z_min": 52.8729,
-     "z_tol_rss_ohm": 11.03,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.45
+     "z_min": 52.8729
     },
     {
      "net": "/CH2_N",
-     "window_pct": 10.0,
      "within_5pct": 0.0166019,
      "z_max": 279.382,
      "z_mean": 110.178,
-     "z_min": 52.8729,
-     "z_tol_rss_ohm": 11.04,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.46
+     "z_min": 52.8729
     },
     {
      "net": "/CH3_N",
-     "window_pct": 10.0,
      "within_5pct": 0.016602,
      "z_max": 264.467,
      "z_mean": 110.173,
-     "z_min": 52.8729,
-     "z_tol_rss_ohm": 11.04,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.46
+     "z_min": 52.8729
     },
     {
      "net": "/CH2_P",
-     "window_pct": 10.0,
      "within_5pct": 0.0166018,
      "z_max": 264.467,
      "z_mean": 110.074,
-     "z_min": 52.8729,
-     "z_tol_rss_ohm": 11.04,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.45
+     "z_min": 52.8729
     }
    ]
   },
@@ -153,67 +103,42 @@
    "rough_formula_mm": 248.618,
    "target_ohm": 50.0,
    "target_source": "class name",
-   "tolerance_band": {
-    "band_leaves": 0.0,
-    "inside": 0.0,
-    "nominal_outside": 1.0
-   },
    "within_5pct": 0.512506,
    "worst": [
     {
      "net": "/CH4/ATTEN_OUT_R",
-     "window_pct": 10.0,
      "within_5pct": 0.244606,
      "z_max": 129.435,
      "z_mean": 79.0889,
-     "z_min": 51.3498,
-     "z_tol_rss_ohm": 3.83,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 6.95
+     "z_min": 51.3498
     },
     {
      "net": "/CH1/ATTEN_OUT_R",
-     "window_pct": 10.0,
      "within_5pct": 0.244606,
      "z_max": 129.435,
      "z_mean": 79.0889,
-     "z_min": 51.3498,
-     "z_tol_rss_ohm": 3.83,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 6.95
+     "z_min": 51.3498
     },
     {
      "net": "/CH2/ATTEN_OUT_R",
-     "window_pct": 10.0,
      "within_5pct": 0.244606,
      "z_max": 129.435,
      "z_mean": 79.0889,
-     "z_min": 51.3498,
-     "z_tol_rss_ohm": 3.83,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 6.95
+     "z_min": 51.3498
     },
     {
      "net": "/CH3/ATTEN_OUT_R",
-     "window_pct": 10.0,
      "within_5pct": 0.244606,
      "z_max": 129.435,
      "z_mean": 79.0889,
-     "z_min": 51.3498,
-     "z_tol_rss_ohm": 3.83,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 6.95
+     "z_min": 51.3498
     },
     {
      "net": "/CH4/ATTEN_IN",
-     "window_pct": 10.0,
      "within_5pct": 0.350903,
      "z_max": 131.785,
      "z_mean": 77.5616,
-     "z_min": 51.3498,
-     "z_tol_rss_ohm": 4.1,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 7.35
+     "z_min": 51.3498
     }
    ]
   },
@@ -225,56 +150,35 @@
    "rough_formula_mm": 11.2469,
    "target_ohm": 50.0,
    "target_source": "class name",
-   "tolerance_band": {
-    "band_leaves": 0.0,
-    "inside": 0.0,
-    "nominal_outside": 1.0
-   },
    "within_5pct": 0.656757,
    "worst": [
     {
      "net": "/CH1/BNC_IN",
-     "window_pct": 10.0,
      "within_5pct": 0.652583,
      "z_max": 226.211,
      "z_mean": 67.3592,
-     "z_min": 51.3498,
-     "z_tol_rss_ohm": 4.76,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 8.14
+     "z_min": 51.3498
     },
     {
      "net": "/CH3/BNC_IN",
-     "window_pct": 10.0,
      "within_5pct": 0.652853,
      "z_max": 226.211,
      "z_mean": 67.3419,
-     "z_min": 51.3498,
-     "z_tol_rss_ohm": 4.76,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 8.13
+     "z_min": 51.3498
     },
     {
      "net": "/CH4/BNC_IN",
-     "window_pct": 10.0,
      "within_5pct": 0.660207,
      "z_max": 128.252,
      "z_mean": 61.3924,
-     "z_min": 51.3498,
-     "z_tol_rss_ohm": 4.28,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 7.34
+     "z_min": 51.3498
     },
     {
      "net": "/CH2/BNC_IN",
-     "window_pct": 10.0,
      "within_5pct": 0.661385,
      "z_max": 128.252,
      "z_mean": 61.3796,
-     "z_min": 51.3498,
-     "z_tol_rss_ohm": 4.28,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 7.34
+     "z_min": 51.3498
     }
    ]
   },
@@ -286,67 +190,42 @@
    "rough_formula_mm": 1.31405,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "tolerance_band": {
-    "band_leaves": 0.752,
-    "inside": 0.0,
-    "nominal_outside": 0.248
-   },
    "within_5pct": 0.330081,
    "worst": [
     {
      "net": "/ADC/D1A_N",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 111.602,
-     "z_min": 65.0803,
-     "z_tol_rss_ohm": 11.05,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.7
+     "z_min": 65.0803
     },
     {
      "net": "/ADC/D3B_P",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 111.039,
-     "z_min": 77.3094,
-     "z_tol_rss_ohm": 11.06,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.66
+     "z_min": 77.3094
     },
     {
      "net": "/ADC/D1B_N",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 110.382,
-     "z_min": 65.0803,
-     "z_tol_rss_ohm": 11.04,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.59
+     "z_min": 65.0803
     },
     {
      "net": "/ADC/D1B_P",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 110.1,
-     "z_min": 77.3094,
-     "z_tol_rss_ohm": 11.05,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.56
+     "z_min": 77.3094
     },
     {
      "net": "/ADC/D3A_P",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 109.824,
-     "z_min": 77.3094,
-     "z_tol_rss_ohm": 11.03,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 16.53
+     "z_min": 77.3094
     }
    ]
   },
@@ -358,34 +237,21 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "tolerance_band": {
-    "band_leaves": 1.0,
-    "inside": 0.0,
-    "nominal_outside": 0.0
-   },
    "within_5pct": 0.160661,
    "worst": [
     {
      "net": "/ADC/ADC_CLK_P",
-     "window_pct": 10.0,
      "within_5pct": 0.123856,
      "z_max": 130.145,
      "z_mean": 101.769,
-     "z_min": 50.1817,
-     "z_tol_rss_ohm": 9.42,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 14.58
+     "z_min": 50.1817
     },
     {
      "net": "/ADC/ADC_CLK_N",
-     "window_pct": 10.0,
      "within_5pct": 0.197374,
      "z_max": 130.145,
      "z_mean": 101.508,
-     "z_min": 51.6994,
-     "z_tol_rss_ohm": 9.45,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 14.6
+     "z_min": 51.6994
     }
    ]
   },
@@ -397,56 +263,35 @@
    "rough_formula_mm": 0.451117,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "tolerance_band": {
-    "band_leaves": 1.0,
-    "inside": 0.0,
-    "nominal_outside": 0.0
-   },
    "within_5pct": 0.926407,
    "worst": [
     {
      "net": "/FPGA/SYNC_IN_P",
-     "window_pct": 10.0,
      "within_5pct": 0.956691,
      "z_max": 501.146,
      "z_mean": 102.796,
-     "z_min": 63.1726,
-     "z_tol_rss_ohm": 9.62,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 16.24
+     "z_min": 63.1726
     },
     {
      "net": "/FPGA/SYNC_IN_N",
-     "window_pct": 10.0,
      "within_5pct": 0.897239,
      "z_max": 392.654,
      "z_mean": 102.479,
-     "z_min": 63.1726,
-     "z_tol_rss_ohm": 9.52,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 16.14
+     "z_min": 63.1726
     },
     {
      "net": "/FPGA/SYNC_OUT_P",
-     "window_pct": 10.0,
      "within_5pct": 0.906827,
      "z_max": 137.498,
      "z_mean": 101.588,
-     "z_min": 46.8242,
-     "z_tol_rss_ohm": 9.46,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 16.0
+     "z_min": 46.8242
     },
     {
      "net": "/FPGA/SYNC_OUT_N",
-     "window_pct": 10.0,
      "within_5pct": 0.945428,
      "z_max": 158.7,
      "z_mean": 100.616,
-     "z_min": 46.8242,
-     "z_tol_rss_ohm": 9.4,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 15.87
+     "z_min": 46.8242
     }
    ]
   },
@@ -458,67 +303,42 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 100.0,
    "target_source": "interface assumption",
-   "tolerance_band": {
-    "band_leaves": 0.727,
-    "inside": 0.0,
-    "nominal_outside": 0.273
-   },
    "within_5pct": 0.220492,
    "worst": [
     {
      "net": "/FPGA/USRIO_11_N",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 110.981,
-     "z_min": 65.0803,
-     "z_tol_rss_ohm": 11.11,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.7
+     "z_min": 65.0803
     },
     {
      "net": "/FPGA/USRIO_2_P",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 110.203,
-     "z_min": 66.6369,
-     "z_tol_rss_ohm": 11.11,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.62
+     "z_min": 66.6369
     },
     {
      "net": "/FPGA/USRIO_3_P",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 110.118,
-     "z_min": 75.7733,
-     "z_tol_rss_ohm": 11.11,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.61
+     "z_min": 75.7733
     },
     {
      "net": "/FPGA/USRIO_12_P",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 130.145,
      "z_mean": 110.079,
-     "z_min": 70.4694,
-     "z_tol_rss_ohm": 11.12,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.62
+     "z_min": 70.4694
     },
     {
      "net": "/FPGA/USRIO_11_P",
-     "window_pct": 10.0,
      "within_5pct": 0.00439063,
      "z_max": 130.145,
      "z_mean": 110.052,
-     "z_min": 75.7733,
-     "z_tol_rss_ohm": 11.11,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 16.61
+     "z_min": 75.7733
     }
    ]
   },
@@ -530,67 +350,42 @@
    "rough_formula_mm": 0.715356,
    "target_ohm": 85.0,
    "target_source": "interface assumption",
-   "tolerance_band": {
-    "band_leaves": 0.987,
-    "inside": 0.0,
-    "nominal_outside": 0.013
-   },
    "within_5pct": 0.580264,
    "worst": [
     {
      "net": "/TS-USB4 Components/M2_PER3_P",
-     "window_pct": 10.0,
      "within_5pct": 0.598909,
      "z_max": 472.99,
      "z_mean": 94.9043,
-     "z_min": 51.1232,
-     "z_tol_rss_ohm": 8.73,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 14.46
+     "z_min": 51.1232
     },
     {
      "net": "/FPGA/MGT_TX0_N",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 156.236,
      "z_mean": 92.5844,
-     "z_min": 47.2292,
-     "z_tol_rss_ohm": 8.0,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 12.8
+     "z_min": 47.2292
     },
     {
      "net": "/FPGA/MGT_TX1_N",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 172.006,
      "z_mean": 92.4905,
-     "z_min": 47.2292,
-     "z_tol_rss_ohm": 8.07,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 12.86
+     "z_min": 47.2292
     },
     {
      "net": "/FPGA/MGT_TX3_P",
-     "window_pct": 10.0,
      "within_5pct": 0.121213,
      "z_max": 468.729,
      "z_mean": 92.4137,
-     "z_min": 47.2292,
-     "z_tol_rss_ohm": 8.38,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 13.13
+     "z_min": 47.2292
     },
     {
      "net": "/TS-USB4 Components/M2_PER3_N",
-     "window_pct": 10.0,
      "within_5pct": 0.567256,
      "z_max": 456.059,
      "z_mean": 92.3437,
-     "z_min": 51.1232,
-     "z_tol_rss_ohm": 8.43,
-     "z_tol_status": "band_leaves",
-     "z_tol_wc_ohm": 14.04
+     "z_min": 51.1232
     }
    ]
   },
@@ -602,67 +397,42 @@
    "rough_formula_mm": 0.0,
    "target_ohm": 50.0,
    "target_source": "user",
-   "tolerance_band": {
-    "band_leaves": 0.095,
-    "inside": 0.0,
-    "nominal_outside": 0.905
-   },
    "within_5pct": 0.0,
    "worst": [
     {
      "net": "/FPGA/FPGA IO Banks/QSPI_DQ1",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 201.245,
      "z_mean": 61.1066,
-     "z_min": 15.5967,
-     "z_tol_rss_ohm": 5.47,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 8.96
+     "z_min": 15.5967
     },
     {
      "net": "/FPGA/FPGA IO Banks/QSPI_DQ0",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 199.194,
      "z_mean": 59.7011,
-     "z_min": 15.672,
-     "z_tol_rss_ohm": 5.4,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 8.84
+     "z_min": 15.672
     },
     {
      "net": "/FPGA/FPGA Config and Transceivers/QSPI_CS",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 240.385,
      "z_mean": 58.4363,
-     "z_min": 16.0869,
-     "z_tol_rss_ohm": 5.26,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 8.56
+     "z_min": 16.0869
     },
     {
      "net": "/FPGA/FPGA Config and Transceivers/QSPI_CLK",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 170.969,
      "z_mean": 57.2208,
-     "z_min": 16.0869,
-     "z_tol_rss_ohm": 5.13,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 8.71
+     "z_min": 16.0869
     },
     {
      "net": "/FPGA/FPGA IO Banks/QSPI_DQ3",
-     "window_pct": 10.0,
      "within_5pct": 0.0,
      "z_max": 61.7596,
      "z_mean": 56.9436,
-     "z_min": 15.672,
-     "z_tol_rss_ohm": 5.19,
-     "z_tol_status": "nominal_outside",
-     "z_tol_wc_ohm": 8.46
+     "z_min": 15.672
     }
    ]
   }
@@ -738,54 +508,5 @@
   }
  ],
  "stackup_from_file": true,
- "tolerance_note": "z_tol_rss_ohm / z_tol_wc_ohm: the band of the mean impedance for the fab's manufacturing tolerances (tolerances: defaults from data/stackups.json, mostly estimates, < kisi.json \"tolerances\" < --tol), RSS and worst case of one-at-a-time formula sensitivities scaled to the impedance; z_tol_status against the class's window: inside, band_leaves (nominal inside, RSS band not), nominal_outside. Usually larger than the calculation uncertainty (accuracy). Information: no verdict uses it.",
- "tolerances": {
-  "about": "Default manufacturing tolerances for the impedance band (`kisi overview --tolerance`, `kisi stackups --tolerance`, the viewer's stackup panel), each ± around the nominal value, and the default target window where a net class has no interface profile. Values named in `estimates` are kisi estimates from the sources, not a fab's guarantee; change them with --tol or in the viewer.",
-  "copper_pct": 10.0,
-  "default_window_pct": 10.0,
-  "dielectric_thickness_pct": 10.0,
-  "er_pct": 5.0,
-  "estimates": [
-   "dielectric_thickness_pct",
-   "er_pct",
-   "copper_pct",
-   "width_mm"
-  ],
-  "from": {
-   "copper_pct": "default",
-   "dielectric_thickness_pct": "default",
-   "er_pct": "default",
-   "width": "default"
-  },
-  "sources": [
-   {
-    "kind": "kisi",
-    "text": "dielectric_thickness_pct 10 (estimate): JLCPCB's board thickness tolerance (±10 % for 1.0 mm and thicker, PCB capabilities page) applied to every dielectric; a fab's pressed prepreg thickness depends on the copper it fills and the resin flow.",
-    "url": "https://jlcpcb.com/capabilities/pcb-capabilities"
-   },
-   {
-    "kind": "kisi",
-    "text": "er_pct 5 (estimate): the spread of published εr for the same JLC core – 4.6 (JITX, 'from Impedance Control Specifications from JLC-PCB') against 4.36 … 4.43 from the NP-155F datasheet by core thickness – is 4 … 5 %; fabs publish no εr tolerance.",
-    "url": "https://docs.jitx.com/en/latest/_modules/jitxlib/jlcpcb/materials.html"
-   },
-   {
-    "kind": "kisi",
-    "text": "copper_pct 10 (estimate): IPC-4562 allows the base foil up to 10 % below its nominal weight (Eurocircuits, Tolerances on copper thickness); inner layers lose more to cleaning and micro-etching (18 µm foil: at least 11.4 µm after processing, IPC-A-600J class 2) and plated outer copper varies more – the trace layer's thickness, symmetric.",
-    "url": "https://www.eurocircuits.com/tolerances-on-copper-thickness/"
-   },
-   {
-    "kind": "kisi",
-    "text": "width_mm 0.02 (estimate): JLCPCB's track width tolerance is ±20 % with the example 0.08 … 0.12 mm for a 0.1 mm track; kisi takes the example's ±0.02 mm as an absolute etch tolerance for every width (etching removes about the same copper from every edge, so the absolute tolerance hardly grows with the width). Symmetric: each copper edge moves by half of it, gaps shrink as widths grow; no etch factor (trapezoid).",
-    "url": "https://jlcpcb.com/capabilities/pcb-capabilities"
-   },
-   {
-    "kind": "datasheet",
-    "text": "window_pct 10: JLCPCB's standard impedance tolerance ±10 % (±5 % on special request), PCB capabilities page (fetched 2026-11-06). A net class's interface profile, where it has one, gives its own window (z_tol_pct).",
-    "url": "https://jlcpcb.com/capabilities/pcb-capabilities"
-   }
-  ],
-  "width_mm": 0.02,
-  "width_pct": null
- },
  "warnings": []
 }

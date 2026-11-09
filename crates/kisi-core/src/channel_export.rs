@@ -304,19 +304,20 @@ pub fn export(
 }
 
 /// Put a comment block (the stackup used, the tolerances; ASCII lines) at the head of every file of
-/// an export, in each format's comment syntax: SPICE files (`.lib`, `.cir`) and Touchstone files after
-/// their leading comment lines (`*`, `!` – the title line of a deck stays first), the README as a
-/// section at its end, the KiCad sheet as a comment of its title block. Other files stay as they are.
-pub fn stamp(files: &mut [ExportFile], lines: &[String]) {
+/// an export, in each format's comment syntax: SPICE files (`.lib`, `.cir`) and Touchstone files the
+/// short form after their leading comment lines (`*`, `!` – the title line of a deck stays first), the
+/// README the full one as a section at its end, the KiCad sheet the first line as a comment of its
+/// title block. Other files stay as they are.
+pub fn stamp(files: &mut [ExportFile], short: &[String], lines: &[String]) {
     if lines.is_empty() {
         return;
     }
     let after_comments = |text: &str, mark: char, prefix: &str| -> String {
-        let mut out = String::with_capacity(text.len() + 80 * lines.len());
+        let mut out = String::with_capacity(text.len() + 80 * short.len());
         let mut done = false;
         for l in text.split_inclusive('\n') {
             if !done && !l.starts_with(mark) {
-                for x in lines {
+                for x in short {
                     out.push_str(prefix);
                     out.push_str(x);
                     out.push('\n');
@@ -326,7 +327,7 @@ pub fn stamp(files: &mut [ExportFile], lines: &[String]) {
             out.push_str(l);
         }
         if !done {
-            for x in lines {
+            for x in short {
                 out.push_str(prefix);
                 out.push_str(x);
                 out.push('\n');

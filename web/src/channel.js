@@ -78,7 +78,7 @@ function judge(m, p) {
     const st = ST_MAP[c.status];
     switch (c.key) {
       case "error": return { key: c.key, name: "Computation", value: m.error || "error", limit: "", st };
-      case "z": return { key: c.key, name: "Impedance mean (min … max)", value: `${f1(c.value)} Ω${zSpread(m.z_band, m.z_unc_pct, m.field_share)} (${fmt(m.z_min, 0)} … ${fmt(m.z_max, 0)})`, html: true, limit: `${f1(c.lo)} … ${f1(c.hi)} Ω`, st, note: c.note };
+      case "z": return { key: c.key, name: "Impedance mean (min … max)", value: `<span title="${esc(zAccTitle(m.z_unc_pct, m.field_share))}">${f1(c.value)} Ω</span>${zSpread(m.z_band)} (${fmt(m.z_min, 0)} … ${fmt(m.z_max, 0)})`, html: true, limit: `${f1(c.lo)} … ${f1(c.hi)} Ω`, st, note: c.note };
       case "eye_h": return { key: c.key, name: "Eye height", value: `${fmt(c.value * 100, 0)} % (${fmt(c.value * p.tx.swing_mv, 0)} mV)`, limit: `red < ${fmt(c.red_below * 100, 0)} %, yellow < ${fmt(c.lo * 100, 0)} %`, st };
       case "eye_w": return { key: c.key, name: "Eye width", value: `${fmt(c.value * 100, 0)} % UI`, limit: `≥ ${fmt(c.lo * 100, 0)} % UI`, st };
       case "il": return { key: c.key, name: `Insertion loss at ${fmt(nyq, nyq < 1 ? 2 : 1)} GHz`, value: `${fmt(c.value, 2)} dB`, limit: c.lo != null ? `≥ ${f1(c.lo)} dB` : "no limit", st };

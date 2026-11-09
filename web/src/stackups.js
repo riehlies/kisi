@@ -49,8 +49,12 @@ function stkOpen(on) {
   const s = stkState();
   s.open = on;
   $("stk-panel").hidden = !on;
-  if (on) { $("detail").hidden = true; stkRender(); }
+  // the button that opened the view shows that it is open (and closes it)
+  const b = $("stk-open");
+  if (b) { b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "Close" : "Compare & tolerances"; }
+  if (on) { $("detail").hidden = true; stkRender(); $("stk-close").focus(); }
 }
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("stk-panel").hidden) stkOpen(false); });
 // called after every analysis (runAnalysis): new field results, edits of the board's stackup
 function stkRefresh() {
   if ($("stk-panel").hidden) return;
@@ -94,7 +98,7 @@ function stkColumnEditor(ci) {
 function stkRender() {
   const s = stkState(), box = $("stk-panel");
   if (!S.full) {
-    box.innerHTML = `<div class="stk-head"><h2>Stackups and tolerances</h2><button class="btn" id="stk-close">Close</button></div>
+    box.innerHTML = `<div class="stk-head"><button class="btn stk-back" id="stk-close" title="back to the board (Esc)">← Back to the board</button><h2>Stackups and tolerances</h2></div>
       <section class="card"><p class="note">This needs the impedance estimate (step 2 in the “Signals” card).</p><button class="btn small primary" id="stk-est">Estimate impedances</button></section>`;
     $("stk-est").onclick = () => estimateImpedances();
     $("stk-close").onclick = () => stkOpen(false);
@@ -111,7 +115,7 @@ function stkRender() {
     <option value="copy">a copy of the board's stackup, to edit</option>
     ${other.length ? `<optgroup label="do not fit this board">${other.map((p) => `<option disabled title="${esc(p.fit.problem)}">${esc(p.template)} – ${p.layers} layers, ${fmtSig(p.nominal_mm, 2)} mm</option>`).join("")}</optgroup>` : ""}</select>`;
   const chips = [`<span class="stk-chip board" title="${esc(res ? res.columns[0].source : stkBoardSource())}"><b>Board</b> ${esc(stkBoardSource())}</span>`]
-    .concat(s.cols.map((c, i) => `<span class="stk-chip"><b>${esc(c.label)}</b>${c.edits ? " (edited)" : ""} <button class="linklike" data-stk="edit" data-i="${i}">edit</button> <button class="linklike" data-stk="del" data-i="${i}" aria-label="remove ${esc(c.label)}">×</button></span>`)).join("");
+    .concat(s.cols.map((c, i) => `<span class="stk-chip"><b>${esc(c.label)}</b>${c.edits ? " (edited)" : ""} ${c.preset ? `<button class="linklike" data-stk="use" data-i="${i}" title="write this template into the board's kisi.json draft (Prepare PCB), with its sources">use for the board</button> ` : ""}<button class="linklike" data-stk="edit" data-i="${i}">edit</button> <button class="linklike" data-stk="del" data-i="${i}" aria-label="remove ${esc(c.label)}">×</button></span>`)).join("");
   let table = "", tolHtml = "";
   if (s.err) table = `<p class="err">${esc(s.err)}</p>`;
   else if (res && !res.rows.length) table = `<p class="note">No net class with a target impedance has routed length here: give the classes a target (the “Target impedance per net class” card or kisi.json).</p>`;
@@ -159,9 +163,9 @@ function stkRender() {
     tolHtml = sum + `<div class="stk-scroll"><table class="stk-tol"><thead><tr><th>Class · layer</th><th class="num">Window</th><th class="num">Nominal</th>${kinds.map((k) => `<th class="num" title="ΔZ for the ${kname[k]} tolerance, Ω (each layer's share summed)">Δ ${kname[k]}</th>`).join("")}<th class="num">RSS Ω</th><th class="num">Worst case Ω</th><th>Band <span class="sub">window · RSS bar · worst case line · nominal dot</span></th></tr></thead><tbody>${body}</tbody></table></div>
       <p class="note">${esc(res.method || "")}</p>`;
   }
-  box.innerHTML = `<div class="stk-head"><h2>Stackups and tolerances</h2><span class="note">What a different prepreg or core does to each net class, and how far manufacturing tolerances move it.</span><button class="btn" id="stk-close">Close</button></div>
+  box.innerHTML = `<div class="stk-head"><button class="btn stk-back" id="stk-close" title="back to the board (Esc)">← Back to the board</button><h2>Stackups and tolerances</h2><span class="note">What a different prepreg or core does to each net class, and how far manufacturing tolerances move it. Esc closes it.</span></div>
     <section class="card stk-card" aria-labelledby="stk-h1"><h3 id="stk-h1">Impedance per stackup</h3>
-      <div class="stk-chips">${chips}${add}</div>${table}
+      <div class="stk-chips">${chips}${add}</div>${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}${table}
       <p class="note">One row per net class and layer with at least 5 % of the class's length: its most used cross-section (pads left out; a coupled one for a differential target), the same references and neighbours under every stackup. Fab templates: kisi's library (data/stackups.json) – thicknesses and εr as the fab publishes them, tanδ assumed. The board column follows the Stackup card's values; “Prepare PCB → Use a fab stackup” makes a template the board's.</p></section>
     <section class="card stk-card" aria-labelledby="stk-h2"><h3 id="stk-h2">Manufacturing tolerances <label class="stk-on"><input type="checkbox" id="stk-tol-on" ${s.tolOn ? "checked" : ""}> show the band</label> <label class="stk-on">for <select id="stk-tol-col">${colOpts}</select></label></h3>
       ${inputs}${tolHtml || (s.tolOn ? "" : `<p class="note">The band for dielectric thickness, εr, copper thickness and trace width, one at a time (central differences), combined as worst case and as root sum of squares.</p>`)}</section>`;
@@ -192,6 +196,14 @@ function stkWire() {
     else if (a === "edit") s.editing = s.editing === i ? null : i;
     else if (a === "edit-done") s.editing = null;
     else if (a === "edit-reset") s.cols[i].edits = null;
+    else if (a === "use") {
+      // the template becomes the board's stackup in the Prepare PCB draft (saved there)
+      const p = (stkPresets().presets || []).find((x) => x.id === s.cols[i].preset);
+      if (!p || !p.kisi_json) return;
+      prepW().stackup = prepClone(p.kisi_json);
+      s.note = `${p.template} written into the Prepare PCB draft as the board's stackup (dielectrics, copper, solder mask, with sources; tanδ assumed) – save it there to use it.`;
+      prepEdited(true);
+    }
     stkSave(); stkRender();
   });
   const edit = (i, fn) => {
@@ -242,7 +254,7 @@ function stkWire() {
   };
   $("stk-tol-reset").onclick = () => { setTolEdits({}); runAnalysis(); };
 }
-// the tolerances for an export's comment block and the viewer's Touchstone files: always the ones in use
-function stkExportTol() { return tolSet(); }
+// the tolerances for an export's comment block and the viewer's Touchstone files: with the option on
+function stkExportTol() { return fabOn() ? tolSet() : null; }
 // the tolerances without the edits made here (kisi.json over the defaults)
 function tolEffBase() { const e = S.tolEd; S.tolEd = { board: S.name, v: {} }; const t = tolEff(); S.tolEd = e; return t; }

@@ -141,16 +141,17 @@ validation, and every result says which level it used and how uncertain it is.
   4.9 → 1.1 % median). Next:
   - **the fab's stackup** (`feat/stackup-variants`, first version; user feedback: the biggest impedance error in
     production is usually the fab's prepreg choice, not the formula): `data/stackups.json` with JLCPCB's impedance
-    templates (4, 6, 8 layers) and their sources, `kisi stackups`, `--stackup-preset`, "Use a fab stackup" in
-    Prepare PCB (copper and mask thickness in kisi.json too), the viewer's “Compare & tolerances” panel (the board's
-    stackup next to templates or edited copies), the stackup in every export's header. Next: more fabs (Aisler,
+    templates (4, 6, 8 layers) and their sources, `kisi stackups`, `--stackup-preset`, the viewer's “Compare & tolerances” view (the board's
+    stackup next to templates or edited copies; "use for the board" writes a template into the Prepare PCB draft,
+    copper and mask thickness in kisi.json too), the stackup in every export's header. Next: more fabs (Aisler,
     PCBWay, Eurocircuits – each with published values only), IPC-2581 import if asked for, the measured
     cross-sections of the test board (JLC) against the templates;
   - **sensitivity of the impedance** (`feat/stackup-variants`, done): per net class and layer the band for
     dielectric thickness, εr, copper and a symmetric width tolerance (one-at-a-time central differences at the
     nominal value's solver level, worst case and RSS) against the window, `overview --tolerance`, the viewer
-    panel; the band in every view and output by default (net, lane, tooltip, the map's Tolerance mode, `net`,
-    `check`, `overview`, exports), kisi.json `tolerances`; information only. Open for the maintainer: whether the band should enter a verdict (e.g. yellow when
+    panel; one option "Fab stackups & tolerances", off by default (viewer switch, kisi.json `tolerances`,
+    `--tolerance`/`--tol`): on, the band in every view and output (net, lane, tooltip, the map's Tolerance mode,
+    `net`, `check`, `overview`, exports); information only. Open for the maintainer: whether the band should enter a verdict (e.g. yellow when
     the RSS band leaves the window), and the default width tolerance (±0.02 mm from JLC's example; JLC states
     ±20 %);
   - **etch factor** (still open; the tolerance band uses a symmetric width tolerance) per stackup or layer in

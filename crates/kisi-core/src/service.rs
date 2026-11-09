@@ -38,6 +38,9 @@ pub struct Project {
     /// the manufacturing tolerances of the impedance band (defaults < kisi.json < `--tol`) and the
     /// target window per class (± %, source)
     pub tolerances: crate::stackups::TolSet,
+    /// the option "fab stackups & tolerances": on with `--tolerance` / `--tol` (`Inputs::tol`) or a
+    /// kisi.json `tolerances` entry; off, no band is computed or reported
+    pub tol_on: bool,
     pub windows: HashMap<String, (f64, String)>,
     /// lanes grouped into buses, found once (`buses`)
     buses: std::sync::OnceLock<Vec<topology::Bus>>,
@@ -77,7 +80,8 @@ pub struct Inputs {
     /// a fab stackup template (`data/stackups.json`) laid over the board's stackup
     /// (`--stackup-preset`; before `stackup`)
     pub stackup_preset: Option<String>,
-    /// manufacturing tolerances over the kisi.json `tolerances` (`--tol` spec)
+    /// the option "fab stackups & tolerances" from the command line (`--tolerance`: an empty spec) with
+    /// the tolerances over the kisi.json `tolerances` (`--tol` spec)
     pub tol: Option<String>,
     /// field-solver results by geometry id (`Analysis::geometries`)
     pub field: HashMap<String, crate::extract::FieldResult>,
@@ -238,10 +242,11 @@ impl Project {
             inp.stackup.as_ref().map(|o| (o, "--stackup file")),
         );
         let tolerances = crate::stackups::TolSet::resolve(cfg.as_ref(), inp.tol.as_deref())?;
+        let tol_on = inp.tol.is_some() || cfg.as_ref().is_some_and(|c| c.tolerances.is_some());
         let class_names: Vec<String> = board.netclasses.iter().map(|c| c.name.clone()).collect();
         let windows = crate::stackups::windows(&class_names, &applied.profiles, &Profiles::builtin());
         let params = Params {
-            tolerance: Some(crate::stackups::tol_spec(&tolerances, &windows)),
+            tolerance: tol_on.then(|| crate::stackups::tol_spec(&tolerances, &windows)),
             step: 0.5,
             coplanar_factor: 3.0,
             solder_mask: true,
@@ -265,6 +270,7 @@ impl Project {
             touchstones,
             stackup_provenance,
             tolerances,
+            tol_on,
             windows,
             buses: Default::default(),
         };
@@ -389,11 +395,10 @@ pub fn overview(p: &Project) -> Value {
             let db = (b.z_mean.unwrap() - t.z).abs();
             db.partial_cmp(&da).unwrap()
         });
-        classes.push(json!({
+        let mut cj = json!({
             "class": c.name, "target_ohm": t.z, "diff": t.diff, "target_source": c.target_source, "nets": nets.len(),
             "length_mm": len, "within_5pct": if len > 0.0 { ok / len } else { 0.0 },
             "rough_formula_mm": rough,
-            "tolerance_band": tol_shares(&nets),
             "worst": worst.iter().take(5).map(|n| {
                 let mut v = json!({"net": n.name, "z_mean": n.z_mean, "z_min": n.z_min, "z_max": n.z_max, "within_5pct": n.within5});
                 if let Value::Object(b) = band_json(&[n], n.z_mean, Some(t.z)) {
@@ -403,13 +408,21 @@ pub fn overview(p: &Project) -> Value {
                 }
                 v
             }).collect::<Vec<_>>()
-        }));
+        });
+        if p.tol_on {
+            cj["tolerance_band"] = tol_shares(&nets);
+        }
+        classes.push(cj);
     }
-    json!({
+    let mut v = json!({
         "board": p.name, "file": p.pcb_path.display().to_string(), "layers": su.n(), "stackup_from_file": su.from_file,
-        "stackup": stack, "classes": classes, "warnings": p.board.warnings, "config": p.config_summary(), "field_solver": p.field_summary(), "models": p.models(),
-        "tolerances": crate::stackups::tolerances_json(&p.tolerances), "tolerance_note": TOL_NOTE
-    })
+        "stackup": stack, "classes": classes, "warnings": p.board.warnings, "config": p.config_summary(), "field_solver": p.field_summary(), "models": p.models()
+    });
+    if p.tol_on {
+        v["tolerances"] = crate::stackups::tolerances_json(&p.tolerances);
+        v["tolerance_note"] = json!(TOL_NOTE);
+    }
+    v
 }
 
 /// How the band of the summaries is computed (one place for the JSON outputs).
@@ -545,12 +558,11 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
     } else {
         Value::Null
     };
-    Ok(json!({
+    let mut v = json!({
         "net": ch.name, "class": st.map(|s| s.class.clone()), "target": st.and_then(|s| s.target).map(|t| json!({"ohm": t.z, "diff": t.diff})),
         "differential": ch.diff, "length_mm": ch.length_mm, "delay_ps": ch.delay_ps, "vias": ch.vias, "path": path_json(&ch),
         "impedance": st.map(|s| json!({"mean": s.z_mean, "min": s.z_min, "max": s.z_max, "within_5pct": s.within5})),
         "accuracy": accuracy_json(&st.into_iter().collect::<Vec<_>>(), (ch.via_info.iter().filter(|v| v.model == "ladder").count(), ch.via_info.iter().filter(|v| v.model != "ladder").count()), ch.diff),
-        "impedance_band": band_json(&st.into_iter().collect::<Vec<_>>(), st.and_then(|s| s.z_mean), st.and_then(|s| s.target).map(|t| t.z)),
         "segments": ch.segments.iter().filter(|s| s.kind == "line").map(|s| {
             let mut v = json!({"layer": su.copper[s.layer as usize].name, "len_mm": s.len_mm, "z_ohm_per_line": s.z});
             if rough(s.xs) {
@@ -580,7 +592,15 @@ pub fn net_detail(p: &Project, net_name: &str, rp: &RfParams) -> Result<Value, S
             "note": "fractions of the aggressor swing; source 'formula' is an estimate. Differential victims: differential noise, common-mode noise in *_common. Broadside overlaps (tracks on the adjacent layer) are listed but not computed yet."},
         "mixed_mode": mixed,
         "warnings": warnings, "field_solver": p.field_summary(), "models": p.models()
-    }))
+    });
+    if p.tol_on {
+        v["impedance_band"] = band_json(
+            &st.into_iter().collect::<Vec<_>>(),
+            st.and_then(|s| s.z_mean),
+            st.and_then(|s| s.target).map(|t| t.z),
+        );
+    }
+    Ok(v)
 }
 
 /// Victims of the coupling scan: the named nets, else all nets with a target.
@@ -905,7 +925,9 @@ fn check_row(
             let lane_nets: Vec<&crate::extract::NetStat> =
                 p.an.nets.iter().filter(|s| l.nets.contains(&s.net)).collect();
             j["accuracy"] = accuracy_json(&lane_nets, row.via_models, row.diff);
-            j["impedance_band"] = band_json(&lane_nets, m.z_mean, p.target(*tnet).map(|t| t.0));
+            if p.tol_on {
+                j["impedance_band"] = band_json(&lane_nets, m.z_mean, p.target(*tnet).map(|t| t.0));
+            }
             (v.status, j)
         }
         CheckItem::Net { st, prof, class } => {
@@ -937,8 +959,10 @@ fn check_row(
             };
             let v = judge(&m, prof, &lim);
             let mut j = json!({"net": st.name, "kind": "net (no devices found)", "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
-                "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m, "accuracy": accuracy_json(&[st], row.via_models, row.diff),
-                "impedance_band": band_json(&[st], st.z_mean, Some(t.z))});
+                "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m, "accuracy": accuracy_json(&[st], row.via_models, row.diff)});
+            if p.tol_on {
+                j["impedance_band"] = band_json(&[st], st.z_mean, Some(t.z));
+            }
             if let Some(mc) = row.mode_conversion_db {
                 j["mode_conversion_db"] = json!(mc);
             }

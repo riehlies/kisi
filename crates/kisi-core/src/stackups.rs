@@ -485,6 +485,37 @@ fn g4(v: f64) -> String {
     }
 }
 
+/// The short form of `header_lines` for SPICE and Touchstone files: one summary line with the sources
+/// and one line with the layers (thickness in um, er, tand).
+pub fn header_short(su: &Stackup, prov: &Provenance) -> Vec<String> {
+    let mut src: Vec<&str> = Vec::new();
+    for x in prov.copper.iter().chain(&prov.dielectrics).chain(std::iter::once(&prov.mask)) {
+        let x = x.split(" (").next().unwrap_or(x);
+        if !src.contains(&x) {
+            src.push(x);
+        }
+    }
+    let mut layers = Vec::new();
+    for (i, c) in su.copper.iter().enumerate() {
+        layers.push(format!("{} {}", c.name, g4(c.thickness * 1e3)));
+        if let Some(d) = su.dielectrics.get(i) {
+            layers.push(format!("{} er {} tand {}", g4(d.thickness * 1e3), g4(d.epsilon_r), g4(d.loss_tangent)));
+        }
+    }
+    [
+        format!(
+            "stackup: {} copper layers, {} mm, er and tand at 1 GHz; from {} (layer by layer in the README)",
+            su.n(),
+            g4(su.total_thickness()),
+            src.join(", ")
+        ),
+        format!("  layers (um): {}", layers.join(" / ")),
+    ]
+    .into_iter()
+    .map(|l| ascii(&l))
+    .collect()
+}
+
 /// The comment block of an export: the stackup the export used, layer by layer with its source
 /// (ASCII; the caller adds the comment character).
 pub fn header_lines(su: &Stackup, prov: &Provenance) -> Vec<String> {
@@ -1000,7 +1031,7 @@ mod tests {
             config: Some(("t.kisi.json".into(), Ok(cfg.into()))),
             stackup: None,
             stackup_preset: None,
-            tol: None,
+            tol: Some(String::new()),
             field: Default::default(),
             variant: None,
             files: Default::default(),
@@ -1087,7 +1118,7 @@ mod tests {
             f("x.kicad_pro", "{}"),
         ];
         let head = vec!["stackup used (2 copper layers):".to_string(), "  F.Cu: copper 35 um".to_string()];
-        crate::channel_export::stamp(&mut files, &head);
+        crate::channel_export::stamp(&mut files, &head, &head);
         assert_eq!(files[0].content, "* kisi: lane\n* board b\n* stackup used (2 copper layers):\n*   F.Cu: copper 35 um\n.subckt a 1 2\n.ends\n");
         assert!(files[1].content.starts_with("* title\n* stackup used"));
         assert!(files[2]

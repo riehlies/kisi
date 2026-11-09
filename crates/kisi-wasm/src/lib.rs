@@ -981,7 +981,8 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
             .as_array()
             .map(|a| a.iter().filter_map(|l| class_of(&st, l["lane"].as_str()?)).collect())
             .unwrap_or_default();
-        kisi_core::channel_export::stamp(&mut files, &export_header(&st, &v["tolerance"], &classes));
+        let (short, full) = export_header(&st, &v["tolerance"], &classes);
+        kisi_core::channel_export::stamp(&mut files, &short, &full);
         Ok(serde_json::json!({"summary": summary, "files": files, "name": name}).to_string())
     });
     match r {
@@ -1133,7 +1134,7 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
                 return t;
             }
             let mut f = [kisi_core::export::files::ExportFile { path: name.into(), content: t }];
-            kisi_core::channel_export::stamp(&mut f, &head);
+            kisi_core::channel_export::stamp(&mut f, &head.0, &head.1);
             let [f] = f;
             f.content
         };
@@ -1175,12 +1176,14 @@ fn reply(r: Result<String, String>) -> i32 {
 
 /// The comment block of the viewer's exports: the stackup as analysed with the source of every value
 /// (board file, kisi.json, the viewer's edits) and, with `tolerance`, the band of `classes`.
-fn export_header(st: &State, tolerance: &serde_json::Value, classes: &[String]) -> Vec<String> {
-    let Some(b) = st.board.as_ref() else { return vec![] };
+fn export_header(st: &State, tolerance: &serde_json::Value, classes: &[String]) -> (Vec<String>, Vec<String>) {
+    let Some(b) = st.board.as_ref() else { return (vec![], vec![]) };
     let ov = Some((&st.stack_ov, "viewer edit")).filter(|o| !o.0.is_empty());
     let prov = kisi_core::stackups::provenance(b.stackup(), st.cfg.as_ref(), None, ov);
-    let mut v = kisi_core::stackups::header_lines(b.stackup(), &prov);
-    let tol = tolset_of(tolerance).ok();
+    let (mut short, mut full) =
+        (kisi_core::stackups::header_short(b.stackup(), &prov), kisi_core::stackups::header_lines(b.stackup(), &prov));
+    // the option "fab stackups & tolerances" on: the viewer sends its tolerances
+    let tol = if tolerance.is_null() { None } else { tolset_of(tolerance).ok() };
     if let (Some(t), Some(an), Some(params)) = (tol, st.an.as_ref(), st.params.as_ref()) {
         let names: Vec<String> = an.classes.iter().map(|c| c.name.clone()).collect();
         let assign = st
@@ -1196,9 +1199,11 @@ fn export_header(st: &State, tolerance: &serde_json::Value, classes: &[String]) 
             stackup: b.stackup().clone(),
         };
         let (study, _) = kisi_core::stackups::study_json(b, an, &params.field, &[col], Some((&t, 0)), &w);
-        v.extend(kisi_core::stackups::tolerance_lines(&study, Some(classes)));
+        let tl = kisi_core::stackups::tolerance_lines(&study, Some(classes));
+        short.extend(tl.iter().cloned());
+        full.extend(tl);
     }
-    v
+    (short, full)
 }
 
 /// The viewer's tolerances: the values (`Tolerances`) and where each comes from (`from`:
@@ -1491,7 +1496,7 @@ pub extern "C" fn kisi_cli_project(p: *const u8, n: usize) -> i32 {
             config,
             stackup: serde_json::from_value(v["stackup"].clone()).ok(),
             stackup_preset: o.stackup_preset.clone(),
-            tol: o.tol.clone(),
+            tol: kisi_core::commands::tol_arg(&o),
             field: serde_json::from_value(v["field"].clone()).unwrap_or_default(),
             variant: o.variant.clone(),
             files,

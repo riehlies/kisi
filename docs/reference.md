@@ -188,7 +188,7 @@ variants; `kisi config-check <board>` checks it (the viewer runs the same check 
 | `kisi_config` | format version, must be `1` |
 | `board` | the board file it was written for; a different board is an error in `config-check` |
 | `stackup` | `dielectrics`: per dielectric (`index` 0 = the layer below F.Cu) `material`, `epsilon_r` (1 … 20), `loss_tangent` (0 … 0.2), `thickness` (mm); `copper`: per copper layer (`index` 0 = F.Cu) the finished `thickness` (mm, 0.002 … 0.5); `solder_mask`: `epsilon_r`, `thickness` (mm, both sides). A [fab stackup template](#fab-stackup-templates) writes all of them |
-| `tolerances` | the board's manufacturing tolerances for the impedance band (± around the nominal values): `dielectric_thickness_pct`, `er_pct`, `copper_pct` (0 … 50), the trace width as `width_mm` (0 … 0.5) or `width_pct` (wins when both are given); keys left out keep kisi's defaults (`data/stackups.json`); one `source` for the entry. `--tol` and the viewer's edits go on top ([models](models.md#impedance)) |
+| `tolerances` | turns the option "Fab stackups & tolerances" on (off without it) and holds the board's manufacturing tolerances for the impedance band (± around the nominal values): `dielectric_thickness_pct`, `er_pct`, `copper_pct` (0 … 50), the trace width as `width_mm` (0 … 0.5) or `width_pct` (wins when both are given); keys left out keep kisi's defaults (`data/stackups.json`), so `{"source": …}` alone turns it on with them; one `source` for the entry. `--tol` and the viewer's edits go on top ([models](models.md#impedance)) |
 | `net_classes` | per net class: `target_ohm` (10 … 200; differential when `diff` is true), `diff`, `profile` (an id from `kisi profiles`), `nets` (names or patterns given to this class; defines a class the project does not have) |
 | `connector_ends` | per connector where lanes leave the board: what sits there and the channel behind it (below) |
 | `fields` | footprint fields laid over the board: `ref`, `name` (`PI_*`, or a [capacitor rating field](#capacitor-ratings-from-the-parts-fields)), `value` |
@@ -215,8 +215,8 @@ tanδ is an assumption (JLCPCB publishes none) – each dielectric's `note` says
 the same number of copper layers whose stackup (when it is in the board file) is within the fab's board thickness
 tolerance of the template's nominal thickness (±10 % at JLCPCB); applied, it replaces every dielectric, copper and
 mask value. `kisi stackups` lists them, `--stackup-preset ID` applies one for a run, `kisi stackups <board> --preset
-ID` prints its `stackup` entry for kisi.json, and the viewer's Prepare PCB writes it into the draft
-([Preparing a board](preparing-a-board.md#choosing-a-fab-stackup)). Check that the template still exists in the
+ID` prints its `stackup` entry for kisi.json, and the viewer's Compare & tolerances view writes it into the draft
+([Preparing a board](preparing-a-board.md#fab-stackups-and-tolerances-option)). Check that the template still exists in the
 fab's order form before ordering. More fabs: a template with its own sources in `data/stackups.json`.
 
 ### `connector_ends`
@@ -296,6 +296,7 @@ dismissed.
   subcircuit library, test benches and S-parameter decks for ngspice, Xyce and LTspice, Touchstone files, a KiCad
   project and a README; the viewer's "Export…" gives the same files as a zip, as its export settings choose
   ([CLI reference](cli.md#export)). Every exported file – and every Touchstone file of `kisi net` and the viewer –
-  names the stackup it was computed with, layer by layer with the source of each value, in a comment block.
+  names the stackup it was computed with in a short comment (the README layer by layer, with the source of each
+  value).
 - The viewer exports Touchstone files per net and writes `<board>.kisi.json` from its Prepare PCB page
   ([Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb)); its other edits stay in the browser.

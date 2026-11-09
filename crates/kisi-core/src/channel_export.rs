@@ -6,7 +6,7 @@
 use crate::board::Board;
 use crate::export::files::{lane_files, stem, touchstone, BenchEnds, ExportFile, Formats};
 use crate::export::{lane_circuit, renormalize, sig4, ExportOpts, LaneCircuit};
-use crate::extract::{Analysis, FieldResult};
+use crate::extract::{Analysis, FieldResult, Params};
 use crate::eye::{ConnEnd, EndModel};
 use crate::num::Cx;
 use crate::profile::Profiles;
@@ -27,7 +27,7 @@ fn short(s: &str) -> &str {
 }
 
 /// The lanes `pick` names, with their bus.
-fn find<'p>(p: &'p Project, pick: &Pick) -> Result<(&'p Bus, Vec<&'p Lane>), String> {
+pub fn find<'p>(p: &'p Project, pick: &Pick) -> Result<(&'p Bus, Vec<&'p Lane>), String> {
     let buses = p.buses();
     match pick {
         Pick::Bus(name) => {
@@ -54,11 +54,96 @@ fn find<'p>(p: &'p Project, pick: &Pick) -> Result<(&'p Bus, Vec<&'p Lane>), Str
     }
 }
 
-/// One lane exported: its circuit, the bench ends and its files.
+/// One lane exported: its circuit, the bench ends, its files (with its corners' files) and its
+/// tolerance corners (tag, circuit, mean impedance of the lane's nets).
 pub struct Done {
     lc: LaneCircuit,
     ends: BenchEnds,
     files: Vec<ExportFile>,
+    z_mean: Option<f64>,
+    corners: Vec<(&'static str, String, LaneCircuit, Option<f64>)>,
+}
+
+/// A tolerance corner of an export (`--corners`, the viewer's choice with the option "fab stackups &
+/// tolerances" on): the board with every tolerance at its limit toward a lower ("zlo") or a higher
+/// ("zhi") impedance (`stackups::corner_board`), analysed again with the same parameters and field
+/// results (cross-sections without one at the formula level).
+pub struct Corner {
+    pub tag: &'static str,
+    /// what it changes ("dielectric thickness -10 %, er +5 %, …")
+    pub what: String,
+    pub board: Board,
+    pub an: Analysis,
+}
+
+/// The two corners of `board` under the tolerances `t`.
+pub fn corners(board: &Board, params: &Params, t: &crate::study::Tolerances) -> Vec<Corner> {
+    let pr = Params { tolerance: None, ..params.clone() };
+    [("zlo", true), ("zhi", false)]
+        .into_iter()
+        .map(|(tag, low)| {
+            let b = crate::stackups::corner_board(board, t, low);
+            let an = crate::extract::analyze(&b, &pr);
+            Corner { tag, what: crate::stackups::corner_text(t, low), board: b, an }
+        })
+        .collect()
+}
+
+/// The cross-sections along the lanes' nets on a board (id → text, routed length).
+pub fn lane_geoms(board: &Board, an: &Analysis, lanes: &[&Lane]) -> HashMap<String, (String, f64)> {
+    let nets: std::collections::HashSet<u32> =
+        lanes.iter().flat_map(|l| l.nets.iter().chain(&l.partner_nets).copied()).collect();
+    let mut w: HashMap<String, (String, f64)> = HashMap::new();
+    for ch in an.pieces.chunks(4) {
+        let (ti, t0, t1, xi) = (ch[0] as usize, ch[1], ch[2], ch[3] as usize);
+        let Some(tr) = board.tracks.get(ti).filter(|t| nets.contains(&t.net)) else { continue };
+        let Some(g) = an.cross_sections.get(xi).and_then(|x| x.geom).and_then(|g| an.geometries.get(g as usize)) else {
+            continue;
+        };
+        let e = w.entry(g.id.clone()).or_insert_with(|| (g.text.clone(), 0.0));
+        e.1 += crate::geom::len(crate::geom::sub(tr.b, tr.a)) * (t1 - t0).abs();
+    }
+    w
+}
+
+/// The cross-sections of the lanes' nets at the corners that have no field result yet (id, text,
+/// routed length): the field solver's work before a corner export at the nominal value's level.
+pub fn corner_geoms(
+    cs: &[Corner],
+    lanes: &[&Lane],
+    field: &HashMap<String, FieldResult>,
+) -> Vec<(String, String, f64)> {
+    let mut w: HashMap<String, (String, f64)> = HashMap::new();
+    for c in cs {
+        for (id, (text, l)) in lane_geoms(&c.board, &c.an, lanes) {
+            if !field.contains_key(&id) {
+                w.entry(id).or_insert((text, 0.0)).1 += l;
+            }
+        }
+    }
+    w.into_iter().map(|(id, (text, l))| (id, text, l)).collect()
+}
+
+/// Length-weighted mean impedance of a lane's nets.
+fn lane_z(an: &Analysis, l: &Lane) -> Option<f64> {
+    let (mut len, mut zs) = (0.0, 0.0);
+    for st in an.nets.iter().filter(|s| l.nets.contains(&s.net)) {
+        if let Some(z) = st.z_mean {
+            len += st.length;
+            zs += z * st.length;
+        }
+    }
+    (len > 0.0).then(|| zs / len)
+}
+
+/// Insertion loss at `f` (dB, positive): |S21|, a pair's |Sdd21|, from kisi's S-parameters.
+fn il_at(lc: &LaneCircuit, f: f64) -> Option<f64> {
+    let k = lc.freq.iter().enumerate().min_by(|a, b| (a.1 - f).abs().total_cmp(&(b.1 - f).abs()))?.0;
+    let s = lc.s_kisi.get(k)?;
+    let n = lc.ports.len();
+    let at = |i: usize, j: usize| s[i * n + j];
+    let t = if n == 4 { (at(2, 0) - at(3, 0) - at(2, 1) + at(3, 1)).scale(0.5) } else { at(1, 0) };
+    Some(-20.0 * t.abs().max(1e-30).log10())
 }
 
 /// One lane to export, with its profile and ends as the channel check (CLI) or the viewer (with
@@ -156,6 +241,7 @@ pub fn export_req(
     f: Formats,
     dir: &str,
     board_name: &str,
+    corners: &[Corner],
 ) -> Result<Done, String> {
     let rp_range = req.freq.apply(&req.rp, req.gbps, req.rise);
     let (l, rp, cd, opts) = (
@@ -201,8 +287,63 @@ pub fn export_req(
         notes,
     };
     let lc = lane_circuit(board, an, field, l, req.target, rp, req.reversed, &cd, req.gbps * 0.5e9, &opts)?;
-    let files = lane_files(&lc, &ends, f, board_name, rp.fmax, opts.per_lambda, dir);
-    Ok(Done { lc, ends, files })
+    let mut files = lane_files(&lc, &ends, f, board_name, rp.fmax, opts.per_lambda, dir);
+    // the tolerance corners: the same lane on the corner boards, named <lane>_zlo / _zhi (files,
+    // subcircuits) in folders of their own, SPICE and Touchstone only
+    let mut cs = Vec::new();
+    for c in corners {
+        let mut lane = l.clone();
+        lane.name = format!("{}_{}", l.name, c.tag);
+        let clc =
+            lane_circuit(&c.board, &c.an, field, &lane, req.target, rp, req.reversed, &cd, req.gbps * 0.5e9, &opts)?;
+        let mut cf = lane_files(
+            &clc,
+            &ends,
+            Formats { kicad: false, ..f },
+            board_name,
+            rp.fmax,
+            opts.per_lambda,
+            &format!("{dir}{}/", c.tag),
+        );
+        cf.retain(|x| !x.path.ends_with("README.md"));
+        let line = vec![format!("tolerance corner {}: {} (kisi's fab tolerances)", c.tag, c.what)];
+        stamp(&mut cf, &line, &line);
+        files.extend(cf);
+        cs.push((c.tag, c.what.clone(), clc, lane_z(&c.an, l)));
+    }
+    let mut d = Done { lc, ends, files, z_mean: lane_z(an, l), corners: cs };
+    if !d.corners.is_empty() {
+        corner_readme(&mut d, req.gbps * 0.5e9, dir);
+    }
+    Ok(d)
+}
+
+/// The README's section on the tolerance corners: the three variants, their files, what each
+/// changes, the mean impedance and the insertion loss at Nyquist.
+fn corner_readme(d: &mut Done, f_nyq: f64, dir: &str) {
+    let st = stem(&d.lc.lane);
+    let ext = format!("s{}p", d.lc.ports.len());
+    let num = |v: Option<f64>, u: &str, d: usize| v.map(|x| format!("{x:.d$} {u}")).unwrap_or_else(|| "–".into());
+    let mut t = format!(
+        "\n## Tolerance corners\n\nThe lane in three variants – each tolerance of kisi's set (the stackup and tolerances above; kisi's defaults are estimates) at its limit at once, toward a lower or a higher impedance: a worst case, wider than the RSS band. Every dielectric, copper layer and track of the board alike (pads and vias as they are; no etch factor). Each corner folder holds the same SPICE decks and Touchstone file for its subcircuit; load the three side by side to see the spread.\n\n| variant | subcircuit, files | what changes | mean Z of the lane's nets | IL at Nyquist ({:.3} GHz) |\n|---|---|---|---|---|\n| nominal | `{}`: `{st}.lib`, `{st}.{ext}` | the stackup above | {} | {} |\n",
+        f_nyq / 1e9,
+        d.lc.subckt,
+        num(d.z_mean, "Ω", 1),
+        num(il_at(&d.lc, f_nyq), "dB", 2),
+    );
+    for (tag, what, lc, z) in &d.corners {
+        let cs = stem(&lc.lane);
+        t.push_str(&format!(
+            "| {} (`{tag}/`) | `{}`: `{tag}/{cs}.lib`, `{tag}/{cs}.{ext}` | {what} | {} | {} |\n",
+            if *tag == "zlo" { "low Z" } else { "high Z" },
+            lc.subckt,
+            num(*z, "Ω", 1),
+            num(il_at(lc, f_nyq), "dB", 2),
+        ));
+    }
+    if let Some(r) = d.files.iter_mut().find(|x| x.path == format!("{dir}README.md")) {
+        r.content.push_str(&t);
+    }
 }
 
 /// The channel check's request for a lane of the project (profile from the net class).
@@ -246,13 +387,35 @@ fn req_of<'a>(
 }
 
 fn lane_json(d: &Done) -> Value {
-    let lc = &d.lc;
+    let mut v = lane_meta(&d.lc, &d.ends);
+    if !d.corners.is_empty() {
+        let f_nyq = d.ends.bitrate * 0.5;
+        v["z_mean_ohm"] = json!(d.z_mean);
+        v["il_nyq_db"] = json!(il_at(&d.lc, f_nyq));
+        v["corners"] = d
+            .corners
+            .iter()
+            .map(|(tag, what, lc, z)| {
+                let mut c = lane_meta(lc, &d.ends);
+                c["corner"] = json!(tag);
+                c["changes"] = json!(what);
+                c["folder"] = json!(tag);
+                c["z_mean_ohm"] = json!(z);
+                c["il_nyq_db"] = json!(il_at(lc, f_nyq));
+                c
+            })
+            .collect();
+    }
+    v
+}
+
+fn lane_meta(lc: &LaneCircuit, ends: &BenchEnds) -> Value {
     json!({
         "lane": lc.lane, "subckt": lc.subckt, "model": if lc.pair { "4-port (pair)" } else if lc.odd_mode { "2-port (pair in the odd mode)" } else { "2-port" },
         "ports": lc.ports.iter().zip(&lc.port_info).enumerate().map(|(i, (n, info))| json!({"port": i + 1, "node": n, "at": info})).collect::<Vec<_>>(),
         "z_ref_ohm": lc.z_ref, "length_mm": lc.length_mm, "delay_ps": lc.delay_ps,
-        "profile": d.ends.profile, "rate_gbps": d.ends.bitrate / 1e9,
-        "bench_ends": {"tx": d.ends.tx, "rx": d.ends.rx, "rise_ps": d.ends.rise * 1e12, "swing_v": d.ends.swing, "notes": d.ends.notes},
+        "profile": ends.profile, "rate_gbps": ends.bitrate / 1e9,
+        "bench_ends": {"tx": ends.tx, "rx": ends.rx, "rise_ps": ends.rise * 1e12, "swing_v": ends.swing, "notes": ends.notes},
         "frequency": {"fmin_hz": lc.freq.first(), "fmax_hz": lc.freq.last(), "points": lc.freq.len()},
         "line_model": lc.model, "merged_sections": lc.merged,
         "elements": {"r": lc.counts.r, "l": lc.counts.l, "c": lc.counts.c, "sources": lc.counts.sources, "rlgc_sections": lc.counts.sections, "cells": lc.counts.cells, "total": lc.counts.elements()},
@@ -271,14 +434,24 @@ pub fn export(
     f: Formats,
     rp: &RfParams,
     freq: FreqRange,
+    corners: Option<&crate::study::Tolerances>,
 ) -> Result<(Value, Vec<ExportFile>, String), String> {
     let (bus, lanes) = find(p, &pick)?;
     let board = p.pcb_path.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
     let field = &p.params.field;
+    let cs = corners.map(|t| self::corners(&p.board, &p.params, t)).unwrap_or_default();
     match pick {
         Pick::Lane(_) => {
-            let d =
-                export_req(&p.board, &p.an, field, &req_of(p, profiles, assign, lanes[0], rp, freq)?, f, "", &board)?;
+            let d = export_req(
+                &p.board,
+                &p.an,
+                field,
+                &req_of(p, profiles, assign, lanes[0], rp, freq)?,
+                f,
+                "",
+                &board,
+                &cs,
+            )?;
             Ok(lane_result(d, &bus.name))
         }
         Pick::Bus(_) => {
@@ -292,7 +465,7 @@ pub fn export(
             for l in &lanes {
                 let dir = format!("{}/", stem(&l.name));
                 match req_of(p, profiles, assign, l, rp, freq)
-                    .and_then(|r| export_req(&p.board, &p.an, field, &r, f, &dir, &board))
+                    .and_then(|r| export_req(&p.board, &p.an, field, &r, f, &dir, &board, &cs))
                 {
                     Ok(d) => done.push(d),
                     Err(e) => skipped.push(format!("{}: {e}", l.name)),

@@ -179,6 +179,12 @@ with a `tolerances` entry turns it on – Prepare PCB writes or removes that ent
   leaves it, red: nominal outside). The band is information; the channel check's verdict is unchanged. Wider traces
   (with the gap adjusted) or an impedance-controlled order, where the fab tunes the widths to its measured stackup,
   are the usual answers when the band leaves the window.
+- **Exports** (Channel view): with the option on, a lane's or bus's export uses the stackup chosen for the
+  tolerances in this view ("stackup": the board's, a template or an edited copy) and names it with the tolerances
+  in its header. The export settings then offer **tolerance corners** (unticked by default): the lane also at its
+  low- and high-impedance corner, in folders `zlo/` and `zhi/` ([CLI reference](cli.md#export), `--corners`).
+  Where the board's lanes have field results, the field solver first solves the cross-sections the chosen stackup
+  or the corners need, so that all variants stand at the same level.
 
 On the command line the option is on with `--tolerance` or `--tol` (or a kisi.json `tolerances` entry):
 `kisi overview <board> --tolerance` gives the band per class and worst net and the per-tolerance table.

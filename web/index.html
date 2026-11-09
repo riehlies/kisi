@@ -250,6 +250,7 @@
           <label class="opt" for="ex-model"><span>Lines in the SPICE netlist</span><select id="ex-model"><option value="compact" selected>compact (cells)</option><option value="ladder">RLGC ladders</option></select></label>
           <label class="opt" for="ex-fmax"><span>Frequency up to (lines and Touchstone)</span><select id="ex-fmax"><option value="rf">as the RF settings</option><option value="profile">from the profile (5 × Nyquist or its edge)</option><option value="10">10 GHz</option><option value="20">20 GHz</option><option value="25">25 GHz</option><option value="40">40 GHz</option></select></label>
           <label class="opt" for="ex-fmin"><span>Frequency grid from (and step)</span><select id="ex-fmin"><option value="">f max / 500</option><option value="0.001">1 MHz</option><option value="0.01">10 MHz</option><option value="0.05">50 MHz</option><option value="0.1">100 MHz</option></select></label>
+          <label class="opt" for="ex-corners" id="ex-corners-row" hidden><span>Tolerance corners: also the low-Z and high-Z variants (folders zlo/, zhi/; SPICE and Touchstone)</span><input type="checkbox" id="ex-corners"></label>
           <p class="note" id="ex-hint"></p>
         </div>
       </details>

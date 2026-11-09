@@ -61,7 +61,9 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
                    Nyquist or 0.5/t_r of the profile's edge, the higher)]
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
-                   [--class CLASS=PROFILE]
+                   [--corners (also the tolerance corners: the lane at low and high impedance,
+                   every fab tolerance at its limit, in folders zlo/ and zhi/; turns the option
+                   fab stackups & tolerances on)] [--class CLASS=PROFILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
                    per category (impedance, channel, power) whether there is anything to check and
                    whether it is ready                           [--for impedance|channel|power]
@@ -203,6 +205,20 @@ layer with the source of each value, and the KiCad sheet has its first line as a
 lines head the Touchstone files of `net --s2p` / `--s4p` and the viewer's; `stackup_used` in the result (and in
 `report`) holds it with the source of each value.
 
+**Tolerance corners** (`--corners`; turns the option "fab stackups & tolerances" on, as `--tolerance`): besides the
+nominal files, the lane at a **low-impedance** and a **high-impedance corner** – every tolerance of the set
+(`--tol`, kisi.json `tolerances`, else kisi's defaults, estimates) at its limit at once: thinner dielectrics, higher
+εr, thicker copper and wider tracks (gaps narrower by as much) for `zlo`, the opposite for `zhi`, on every layer and
+track (pads and vias as they are; no etch factor). A worst case, wider than the RSS band. Each corner is in a folder
+of its own, `zlo/` and `zhi/`, with the SPICE library, decks and Touchstone file of the formats chosen (no KiCad
+project), the lane named `<lane>_zlo` / `<lane>_zhi` – files `SYNC_OUT_P_zlo.s4p`, `SYNC_OUT_P_zlo.lib` with the
+subcircuit `SYNC_OUT_P_zlo_lane` –, so that the three variants load side by side. A comment line in each corner file
+says what it changes; the README lists the three variants with the mean impedance of the lane's nets and the
+insertion loss at Nyquist, and the JSON has them per lane under `corners` (with `z_mean_ohm`, `il_nyq_db`). The
+corners are analysed with the same field results as the board; with the Node CLI the field solver also solves
+the corners' cross-sections along the exported lanes (`--formula` leaves both at the formula level). Without
+`--corners` an export writes the nominal files only.
+
 ### `gaps`
 Missing or default data: each gap has `id`, `priority` (high, medium, low), `area`, `issue`, `affects`, `views`
 (the analysis categories it matters for: impedance, channel, power – the temperature estimate is part of power),
@@ -287,6 +303,7 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--fmin GHZ` | `export` | start and step of the frequency grid (default f max / 500) |
 | `--kicad-style STYLE` | `export` | `detailed` (one symbol per element, default) or `compact` (the lane as one symbol) |
 | `--model MODEL` | `export` | line sections as `compact` (lossless-line cells: LC lines with the fitted losses lumped once per cell, default) or `ladder` (RLGC ladders) |
+| `--corners` | `export` | also the low- and high-impedance tolerance corners (folders `zlo/`, `zhi/`); turns the option "fab stackups & tolerances" on ([export](#export)) |
 | `--for VIEW` | `gaps` | only the gaps of one category: `impedance`, `channel` or `power` |
 | `--formula` | field-solver commands | no field solver (formula impedances) |
 | `--field-time S` | field-solver commands | time budget for new solves, default 120 s |

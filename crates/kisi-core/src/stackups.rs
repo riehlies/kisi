@@ -669,6 +669,51 @@ pub fn status_text(s: &str) -> &'static str {
     }
 }
 
+/// The board at a tolerance corner (`kisi export --corners`): every dielectric's thickness and εr,
+/// every copper layer's thickness and every track's width (pads as they are) at the limit of its
+/// tolerance toward a lower (`low`) or a higher impedance – thinner dielectrics, a higher εr, thicker
+/// copper and wider tracks lower it. The tracks keep their centre lines, so the gaps between them
+/// shrink as they widen. All at once: a worst case, wider than the RSS band.
+pub fn corner_board(board: &crate::Board, t: &Tolerances, low: bool) -> crate::Board {
+    let s = if low { 1.0 } else { -1.0 };
+    let mut b = board.clone();
+    let mut su = b.stackup().clone();
+    for d in su.dielectrics.iter_mut() {
+        d.thickness *= 1.0 - s * t.dielectric_thickness_pct / 100.0;
+        d.epsilon_r *= 1.0 + s * t.er_pct / 100.0;
+    }
+    for c in su.copper.iter_mut() {
+        c.thickness *= 1.0 + s * t.copper_pct / 100.0;
+    }
+    b.stackup = Some(su);
+    for tr in b.tracks.iter_mut().filter(|x| !x.pad) {
+        let dw = t.width_pct.map(|p| tr.width * p / 100.0).unwrap_or(t.width_mm);
+        tr.width = (tr.width + s * dw).max(0.01);
+    }
+    b
+}
+
+/// What a corner changes, as text: "dielectric thickness -10 %, er +5 %, copper +10 %, track width +0.02 mm".
+pub fn corner_text(t: &Tolerances, low: bool) -> String {
+    let s = if low { 1.0 } else { -1.0 };
+    let p = |v: f64| format!("{}{} %", if v < 0.0 { "-" } else { "+" }, fmt_num(v.abs()));
+    let w = match t.width_pct {
+        Some(x) => p(s * x),
+        None => format!("{}{} mm", if s < 0.0 { "-" } else { "+" }, fmt_num(t.width_mm)),
+    };
+    format!(
+        "dielectric thickness {}, er {}, copper {}, track width {w}",
+        p(-s * t.dielectric_thickness_pct),
+        p(s * t.er_pct),
+        p(s * t.copper_pct)
+    )
+}
+
+fn fmt_num(v: f64) -> String {
+    let s = format!("{v:.3}");
+    s.trim_end_matches('0').trim_end_matches('.').to_string()
+}
+
 /// One stackup of a study: the board's (as analysed) or another one.
 #[derive(Debug, Clone)]
 pub struct Column {
@@ -1078,6 +1123,26 @@ mod tests {
         assert!(need.len() > 4);
         assert!(need[0].2 >= need.last().unwrap().2);
         assert_eq!(v["tolerances"]["estimates"].as_array().unwrap().len(), 4);
+        // the tolerance corners: every net's impedance below the nominal at zlo, above at zhi, by about
+        // the worst case of its band (the corner moves all tolerances at once)
+        let cs = crate::channel_export::corners(&p.board, &p.params, &tol.tol);
+        assert_eq!(cs.iter().map(|c| c.tag).collect::<Vec<_>>(), ["zlo", "zhi"]);
+        assert_eq!(cs[0].what, "dielectric thickness -10 %, er +5 %, copper +10 %, track width +0.02 mm");
+        for n in p.an.nets.iter().filter(|n| n.target.is_some()) {
+            let z =
+                |c: &crate::channel_export::Corner| c.an.nets.iter().find(|x| x.net == n.net).unwrap().z_mean.unwrap();
+            let (lo, nom, hi) = (z(&cs[0]), n.z_mean.unwrap(), z(&cs[1]));
+            let wc = n.z_tol_wc_pct.unwrap() / 100.0 * nom;
+            assert!(lo < nom && nom < hi, "{}: {lo} {nom} {hi}", n.name);
+            assert!(
+                (nom - lo) > 0.6 * wc && (nom - lo) < 1.6 * wc && (hi - nom) > 0.6 * wc && (hi - nom) < 1.6 * wc,
+                "{}: {lo} {nom} {hi}, worst case ±{wc}",
+                n.name
+            );
+        }
+        // pads stay as they are, tracks widen by the width tolerance
+        let w0 = p.board.tracks.iter().find(|t| !t.pad).unwrap().width;
+        assert!((cs[0].board.tracks.iter().find(|t| !t.pad).unwrap().width - w0 - 0.02).abs() < 1e-12);
     }
 
     /// Where each value comes from, the header lines (ASCII) and how each export format carries them.

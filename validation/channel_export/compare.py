@@ -4,7 +4,7 @@
 Usage:
   compare.py <kisi binary> <board.kicad_pcb> --out DIR [--config FILE] [--lane NAME]... [--bus NAME]...
              [--model ladder|compact | --models ladder,compact] [--fmax GHZ|profile] [--passivity] [--timeout S]
-             [--report FILE.md] [--plots] [--transient] [--kicad] [--svg DIR] [--strict]
+             [--report FILE.md] [--plots] [--transient] [--kicad] [--svg DIR] [--corners] [--strict]
 
 For every lane (a bus: every lane of it) the script runs `kisi export` and then, in the lane's folder:
 * reads kisi's Touchstone file (with scikit-rf when installed: that it reads, passivity, reciprocity);
@@ -19,6 +19,11 @@ For every lane (a bus: every lane of it) the script runs `kisi export` and then,
   kicad-cli's ERC where it has one; --svg DIR plots the sheets).
 For a bus also: the N-port Touchstone file against the lanes' files, and the bus subcircuit in ngspice
 with one lane's ports driven (the wiring of the bus subcircuit).
+
+--corners exports with `--corners` (the tolerance corners, folders zlo/ and zhi/ of each lane) and checks each
+corner as a lane (its decks in ngspice against its Touchstone file, the step response, LTspice; no KiCad project),
+then the corners against each other: the mean impedance of the lane's nets in the order zlo < nominal < zhi, and
+the insertion loss at Nyquist finite, positive and within 0.5 x … 2 x the nominal's (+0.1 dB).
 
 --model ladder|compact chooses the line model of the export (default compact, as `kisi export`); --models
 ladder,compact exports every lane with both (folders <lane>_ladder and <lane>_compact) and compares them: element
@@ -492,6 +497,27 @@ def bus_check(bus_dir, meta, opts):
     return out
 
 
+def corner_sanity(lm):
+    """The tolerance corners of a lane against its nominal export: Z(zlo) < Z(nominal) < Z(zhi) (mean impedance of
+    the lane's nets) and plausible insertion losses at Nyquist."""
+    by = {c["corner"]: c for c in lm["corners"]}
+    rows = [(n, m.get("z_mean_ohm"), m.get("il_nyq_db")) for n, m in [("zlo", by.get("zlo", {})), ("nominal", lm), ("zhi", by.get("zhi", {}))]]
+    fails = []
+    z = [r[1] for r in rows]
+    if any(v is None for v in z):
+        fails.append("a mean impedance missing")
+    elif not z[0] < z[1] < z[2]:
+        fails.append(f"impedance order not zlo < nominal < zhi ({z[0]:.1f}, {z[1]:.1f}, {z[2]:.1f} ohm)")
+    il = [r[2] for r in rows]
+    if any(v is None or not math.isfinite(v) or v <= 0 for v in il):
+        fails.append("an insertion loss missing, not finite or not positive")
+    else:
+        for n, v in [("zlo", il[0]), ("zhi", il[2])]:
+            if not 0.5 * il[1] - 0.1 <= v <= 2 * il[1] + 0.1:
+                fails.append(f"{n}: insertion loss {v:.3f} dB not within 0.5 x … 2 x the nominal's {il[1]:.3f} dB")
+    return {"lane": lm["lane"], "rows": [(n, v or float("nan"), w or float("nan")) for n, v, w in rows], "fails": fails}
+
+
 def kicad_fail(k):
     if not k:
         return ""
@@ -520,10 +546,10 @@ def main():
         TIMEOUT[0] = float(take("--timeout")[0])
     opts = {"transient": "--transient" in a, "kicad": "--kicad" in a, "svg": (take("--svg") or [None])[0], "passivity": "--passivity" in a}
     os.makedirs(out, exist_ok=True)
-    cmd0 = [kisi if not kisi.endswith(".mjs") else "node", *([kisi] if kisi.endswith(".mjs") else []), "export", board] + (["--config", cfg[0]] if cfg else []) + (["--fmax", take("--fmax")[0]] if take("--fmax") else [])
+    cmd0 = [kisi if not kisi.endswith(".mjs") else "node", *([kisi] if kisi.endswith(".mjs") else []), "export", board] + (["--config", cfg[0]] if cfg else []) + (["--fmax", take("--fmax")[0]] if take("--fmax") else []) + (["--corners"] if "--corners" in a else [])
     models = (take("--models") or [None])[0]
     models = models.split(",") if models else [(take("--model") or ["compact"])[0]]
-    results, bus_results, model_cmp, bad = [], [], [], 0
+    results, bus_results, model_cmp, corner_results, bad = [], [], [], [], 0
     jobs = [("lane", x, m) for x in take("--lane") for m in models] + [("bus", x, m) for x in take("--bus") for m in models]
     by_lane = {}
     for kind, name, model in jobs:
@@ -537,9 +563,20 @@ def main():
         meta = json.loads(r.stdout)
         json.dump(meta, open(os.path.join(d, "export.json"), "w"), indent=1)
         lanes = meta["lanes"]
+        items = []
         for lm in lanes:
             ld = d if kind == "lane" else os.path.join(d, file_stem(lm["lane"]))
-            res, data = lane_check(ld, lm, opts, None)
+            items.append((lm, ld, opts))
+            # the tolerance corners: each a lane of its own in its folder (no KiCad project)
+            items += [(c, os.path.join(ld, c["folder"]), {**opts, "kicad": False}) for c in lm.get("corners", [])]
+            if lm.get("corners"):
+                cz = corner_sanity(lm)
+                print(f"{lm['lane']}: corners " + "; ".join(f"{n} Z {z:.1f} ohm, IL {il:.3f} dB at Nyquist" for n, z, il in cz["rows"]) + (f" – FAIL: {'; '.join(cz['fails'])}" if cz["fails"] else " – order and losses plausible"))
+                corner_results.append(cz)
+                if cz["fails"]:
+                    bad += 1
+        for lm, ld, opts_l in items:
+            res, data = lane_check(ld, lm, opts_l, None)
             res["export_s"] = round(secs, 1)
             results.append(res)
             if data:
@@ -620,7 +657,7 @@ def main():
                 png = os.path.join(out, re.sub(r"[^A-Za-z0-9_-]+", "_", lane).strip("_") + ".png")
                 plot_models(lane, [x[:3] for x in runs], png)
                 cmpd["plot"] = os.path.basename(png)
-    json.dump({"lanes": results, "buses": bus_results, "compact_vs_ladder": model_cmp}, open(os.path.join(out, "results.json"), "w"), indent=1, default=float)
+    json.dump({"lanes": results, "buses": bus_results, "compact_vs_ladder": model_cmp, "corners": corner_results}, open(os.path.join(out, "results.json"), "w"), indent=1, default=float)
     rp = take("--report")
     if rp:
         write_report(rp[0], results, bus_results, board, model_cmp)

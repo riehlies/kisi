@@ -11,7 +11,8 @@ Node: worker threads); each CLI's output must be byte-identical to a run on one 
 timings of both runs are printed (in GitHub Actions also as a notice in the run's summary).
 `check-cavity` is `check --all --via-cavity` on LibreVNA only (the cavity grids in WebAssembly; a clock call there
 once trapped). `stackups` lists the fab stackup templates with their fit and kisi.json entries; `overview-preset` is
-`overview --stackup-preset … --tol …` (a JLCPCB template laid over the board, with its tolerance band). Exit code 1 on any difference.
+`overview --stackup-preset … --tol …` (a JLCPCB template laid over the board, with its tolerance band); the LibreVNA
+export writes the tolerance corners too (`--corners`). Exit code 1 on any difference.
 """
 import json, os, subprocess, sys, time
 
@@ -23,9 +24,9 @@ ARGS = {"check": ["--all"], "gaps": [], "check-cavity": ["--all", "--via-cavity"
         "overview-preset": ["--stackup-preset", "jlc6_3313", "--tol", "thickness=8,width=15%"]}
 # pseudo commands: (command, boards)
 ALIAS = {"check-cavity": ("check", {"vna"}), "overview-preset": ("overview", None)}
-# `export`: one lane per board (the ladder on ThunderScope, the compact model on LibreVNA), the written files must be
-# identical too
-EXPORT = {"ts": ["--lane", "SYNC_OUT_P"], "vna": ["--lane", "SRC_REF_IN", "--format", "spice,touchstone", "--model", "compact"]}
+# `export`: one lane per board (the ladder on ThunderScope, the compact model with the tolerance corners on
+# LibreVNA), the written files must be identical too
+EXPORT = {"ts": ["--lane", "SYNC_OUT_P"], "vna": ["--lane", "SRC_REF_IN", "--format", "spice,touchstone", "--model", "compact", "--corners"]}
 
 
 def norm(x):

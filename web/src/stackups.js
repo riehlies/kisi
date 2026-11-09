@@ -144,7 +144,7 @@ function stkRender() {
     <label>Copper ± <input id="stk-tol-cu" type="number" step="1" min="0" max="50" value="${t.copper_pct}"> % ${estMark("copper_pct")}</label>
     <label>Trace width ± <input id="stk-tol-width" type="number" step="${wPct ? 1 : 0.005}" min="0" value="${wPct ? t.width_pct : t.width_mm}"> <select id="stk-tol-wu" aria-label="width tolerance unit"><option value="mm" ${wPct ? "" : "selected"}>mm</option><option value="pct" ${wPct ? "selected" : ""}>%</option></select> ${estMark("width")}</label>
     <button class="btn small" id="stk-tol-reset" ${Object.keys(tolEdits()).length ? "" : "disabled"} title="drop the edits made here: the kisi.json values or kisi's defaults">Undo edits</button></div>
-    <p class="note">These tolerances apply everywhere – the net detail, the channel view, the board map's “Tolerance” mode, the exports. Edits here stay in this browser; Prepare PCB moves them into the board's kisi.json (<code>tolerances</code>).</p>`;
+    <p class="note">These tolerances apply everywhere – the net detail, the channel view, the board map's “Tolerance” mode, the exports. Edits here stay in this browser; Prepare PCB moves them into the board's kisi.json (<code>tolerances</code>). Channel exports use the stackup chosen here and name it with these tolerances in their header; the tolerance corners are a choice in the export settings.</p>`;
   if (s.tolOn && res && res.rows.length) {
     const kinds = ["thickness", "er", "copper", "width"], kname = { thickness: "thickness", er: "εr", copper: "copper", width: "width" };
     const body = res.rows.filter((r) => r.tolerance).map((r) => {
@@ -166,8 +166,8 @@ function stkRender() {
   box.innerHTML = `<div class="stk-head"><button class="btn stk-back" id="stk-close" title="back to the board (Esc)">← Back to the board</button><h2>Stackups and tolerances</h2><span class="note">What a different prepreg or core does to each net class, and how far manufacturing tolerances move it. Esc closes it.</span></div>
     <section class="card stk-card" aria-labelledby="stk-h1"><h3 id="stk-h1">Impedance per stackup</h3>
       <div class="stk-chips">${chips}${add}</div>${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}${table}
-      <p class="note">One row per net class and layer with at least 5 % of the class's length: its most used cross-section (pads left out; a coupled one for a differential target), the same references and neighbours under every stackup. Fab templates: kisi's library (data/stackups.json) – thicknesses and εr as the fab publishes them, tanδ assumed. The board column follows the Stackup card's values; “Prepare PCB → Use a fab stackup” makes a template the board's.</p></section>
-    <section class="card stk-card" aria-labelledby="stk-h2"><h3 id="stk-h2">Manufacturing tolerances <label class="stk-on"><input type="checkbox" id="stk-tol-on" ${s.tolOn ? "checked" : ""}> show the band</label> <label class="stk-on">for <select id="stk-tol-col">${colOpts}</select></label></h3>
+      <p class="note">One row per net class and layer with at least 5 % of the class's length: its most used cross-section (pads left out; a coupled one for a differential target), the same references and neighbours under every stackup. Fab templates: kisi's library (data/stackups.json) – thicknesses and εr as the fab publishes them, tanδ assumed. The board column follows the Stackup card's values; “use for the board” on a template writes it into the Prepare PCB draft.</p></section>
+    <section class="card stk-card" aria-labelledby="stk-h2"><h3 id="stk-h2">Manufacturing tolerances <label class="stk-on"><input type="checkbox" id="stk-tol-on" ${s.tolOn ? "checked" : ""}> show the band</label> <label class="stk-on">stackup <select id="stk-tol-col" title="the stackup of the band – and of the channel exports">${colOpts}</select></label></h3>
       ${inputs}${tolHtml || (s.tolOn ? "" : `<p class="note">The band for dielectric thickness, εr, copper thickness and trace width, one at a time (central differences), combined as worst case and as root sum of squares.</p>`)}</section>`;
   stkWire();
 }
@@ -256,5 +256,13 @@ function stkWire() {
 }
 // the tolerances for an export's comment block and the viewer's Touchstone files: with the option on
 function stkExportTol() { return fabOn() ? tolSet() : null; }
+// the stackup the exports use with the option on: the one chosen for the tolerances in the Compare &
+// tolerances view (null: the board's own); its label for the export settings' hint
+function stkExportCol() {
+  if (!fabOn() || !S.stk || S.stk.board !== S.name) return null;
+  const c = S.stk.cols[Math.min(S.stk.tolCol, S.stk.cols.length) - 1];
+  return c || null;
+}
+function stkExportStackup() { const c = stkExportCol(); return c ? { preset: c.preset || null, edits: c.edits || null } : null; }
 // the tolerances without the edits made here (kisi.json over the defaults)
 function tolEffBase() { const e = S.tolEd; S.tolEd = { board: S.name, v: {} }; const t = tolEff(); S.tolEd = e; return t; }

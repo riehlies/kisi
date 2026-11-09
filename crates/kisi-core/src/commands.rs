@@ -66,7 +66,9 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    Nyquist or 0.5/t_r of the profile's edge, the higher)]
                    [--fmin GHZ (grid start and step; default fmax/500)]
                    [--out DIR (default analysis/export/<name> next to the board)]
-                   [--class CLASS=PROFILE]
+                   [--corners (also the tolerance corners: the lane at low and high impedance,
+                   every fab tolerance at its limit, in folders zlo/ and zhi/; turns the option
+                   fab stackups & tolerances on)] [--class CLASS=PROFILE]
   gaps             what the analyses miss, where to find it, how to write it into <board>.kisi.json;
                    per category (impedance, channel, power) whether there is anything to check and
                    whether it is ready                           [--for impedance|channel|power]
@@ -135,6 +137,8 @@ pub struct Opts {
     pub tolerance: bool,
     /// manufacturing tolerances of every band (`--tol`, over kisi.json `tolerances`)
     pub tol: Option<String>,
+    /// `export`: also the tolerance corners (low-Z, high-Z variants); turns the option on
+    pub corners: bool,
     pub classes: HashMap<String, String>,
     pub nets: Option<Vec<String>>,
     pub all: bool,
@@ -203,6 +207,7 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--stackup" => o.stackup = Some(val(&mut i, a)?),
             "--stackup-preset" => o.stackup_preset = Some(val(&mut i, a)?),
             "--tolerance" => o.tolerance = true,
+            "--corners" => o.corners = true,
             "--tol" => o.tol = Some(val(&mut i, a)?),
             "--preset" => {
                 o.presets =
@@ -301,7 +306,7 @@ pub fn needs_board(cmd: &str) -> bool {
 /// The option "fab stackups & tolerances" from the command line: `--tol SPEC`, or `--tolerance` (an
 /// empty spec: kisi.json's or kisi's default tolerances).
 pub fn tol_arg(o: &Opts) -> Option<String> {
-    o.tol.clone().or_else(|| o.tolerance.then(String::new))
+    o.tol.clone().or_else(|| (o.tolerance || o.corners).then(String::new))
 }
 
 pub fn wants_board(o: &Opts) -> bool {
@@ -417,6 +422,18 @@ pub fn field_plan(p: &Project, o: &Opts) -> Vec<(String, String, f64)> {
             let nets: Vec<u32> =
                 p.an.nets.iter().filter(|s| o.field_all || s.target.is_some()).map(|s| s.net).collect();
             v.extend(xt_plan(p, &nets, false));
+        }
+        // the corners' cross-sections along the exported lanes, after the board's own
+        if o.cmd == "export" && o.corners {
+            let pick = match (&o.lane, &o.bus) {
+                (Some(l), _) => Some(crate::channel_export::Pick::Lane(l)),
+                (None, Some(b)) => Some(crate::channel_export::Pick::Bus(b)),
+                _ => None,
+            };
+            if let Some(Ok((_, lanes))) = pick.map(|k| crate::channel_export::find(p, &k)) {
+                let cs = crate::channel_export::corners(&p.board, &p.params, &p.tolerances.tol);
+                v.extend(crate::channel_export::corner_geoms(&cs, &lanes, &p.params.field));
+            }
         }
         // the tolerance band's perturbed cross-sections, after the board's own
         if o.cmd == "overview" && o.tolerance {
@@ -657,6 +674,7 @@ pub fn run_with(
                 f,
                 &rp,
                 crate::channel_export::FreqRange::parse(o.fmin.as_deref(), o.fmax.as_deref())?,
+                o.corners.then_some(&pr.tolerances.tol),
             )?;
             // the stackup used and the band of the lanes' classes at the head of every file
             let classes: Vec<String> = v["lanes"]

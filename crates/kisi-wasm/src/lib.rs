@@ -929,10 +929,9 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
         }
         let mut done = Vec::new();
         let mut skipped = Vec::new();
-        for item in reqs {
+        let find_lane = |item: &serde_json::Value| -> Result<&kisi_core::topology::Lane, String> {
             let start = item["lane"].as_u64().ok_or("lane missing")?;
-            let lane = st
-                .buses
+            st.buses
                 .as_ref()
                 .and_then(|bs| {
                     bs.iter().flat_map(|b| &b.lanes).find(|l| {
@@ -940,7 +939,46 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
                             && item["to"].as_str().is_none_or(|t| l.ends.last().is_some_and(|e| e.refdes == t))
                     })
                 })
-                .ok_or("lane not found")?;
+                .ok_or_else(|| "lane not found".to_string())
+        };
+        let lanes: Vec<&kisi_core::topology::Lane> = reqs.iter().map(&find_lane).collect::<Result<_, _>>()?;
+        // the option "fab stackups & tolerances" on: the stackup chosen in the Compare & tolerances view
+        // (a fab template or an edited copy over the board's) and, on request, the tolerance corners
+        let tol = if v["tolerance"].is_null() { None } else { Some(tolset_of(&v["tolerance"])?) };
+        let chosen = export_stackup(b, st.cfg.as_ref(), &v["stackup"])?;
+        let pr = kisi_core::extract::Params { tolerance: None, ..params.clone() };
+        let alt = chosen.as_ref().map(|(su, _)| {
+            let mut b2 = b.clone();
+            b2.stackup = Some(su.clone());
+            let an2 = kisi_core::extract::analyze(&b2, &pr);
+            (b2, an2)
+        });
+        let (eb, ea) = alt.as_ref().map(|(b2, a2)| (b2, a2)).unwrap_or((b, an));
+        let cs = match (&tol, v["corners"].as_bool() == Some(true)) {
+            (Some(t), true) => kisi_core::channel_export::corners(eb, params, &t.tol),
+            _ => Vec::new(),
+        };
+        // cross-sections of the exported lanes that the field solver should add first, so that every
+        // variant stands at the level of the board's own (only where the board's lanes have field results)
+        if v["no_field"].as_bool() != Some(true) && (alt.is_some() || !cs.is_empty()) {
+            let own = kisi_core::channel_export::lane_geoms(b, an, &lanes);
+            if own.keys().any(|id| params.field.contains_key(id)) {
+                let mut need = kisi_core::channel_export::corner_geoms(&cs, &lanes, &params.field);
+                if alt.is_some() {
+                    let have: std::collections::HashSet<String> = need.iter().map(|x| x.0.clone()).collect();
+                    need.extend(
+                        kisi_core::channel_export::lane_geoms(eb, ea, &lanes)
+                            .into_iter()
+                            .filter(|(id, _)| !params.field.contains_key(id) && !have.contains(id))
+                            .map(|(id, (t, l))| (id, t, l)),
+                    );
+                }
+                if !need.is_empty() {
+                    return Ok(serde_json::json!({ "field_needed": need }).to_string());
+                }
+            }
+        }
+        for (item, lane) in reqs.iter().zip(lanes.iter().copied()) {
             let end = |k: &str| serde_json::from_value::<kisi_core::eye::EndModel>(item[k].clone()).unwrap_or_default();
             let cend: Option<kisi_core::eye::ConnEnd> =
                 item["conn_end"].as_object().and_then(|_| serde_json::from_value(item["conn_end"].clone()).ok());
@@ -960,7 +998,7 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
             };
             let dir =
                 if bus.is_some() { format!("{}/", kisi_core::export::files::stem(&lane.name)) } else { String::new() };
-            match export_req(b, an, &params.field, &req, f, &dir, &board) {
+            match export_req(eb, ea, &params.field, &req, f, &dir, &board, &cs) {
                 Ok(d) => done.push(d),
                 Err(e) if bus.is_some() => skipped.push(format!("{}: {e}", lane.name)),
                 Err(e) => return Err(e),
@@ -981,7 +1019,7 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
             .as_array()
             .map(|a| a.iter().filter_map(|l| class_of(&st, l["lane"].as_str()?)).collect())
             .unwrap_or_default();
-        let (short, full) = export_header(&st, &v["tolerance"], &classes);
+        let (short, full) = export_header(&st, eb, ea, chosen.as_ref().map(|c| &c.1), tol.as_ref(), &classes);
         kisi_core::channel_export::stamp(&mut files, &short, &full);
         Ok(serde_json::json!({"summary": summary, "files": files, "name": name}).to_string())
     });
@@ -1128,7 +1166,8 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
         };
         // the stackup used at the head of the Touchstone files the viewer saves
         let cls: Vec<String> = b.nets.get(net as usize).and_then(|n| class_of(&st, n)).into_iter().collect();
-        let head = export_header(&st, &v["tolerance"], &cls);
+        let tol = if v["tolerance"].is_null() { None } else { tolset_of(&v["tolerance"]).ok() };
+        let head = export_header(&st, b, an, None, tol.as_ref(), &cls);
         let stamp = |name: &str, t: String| {
             if t.is_empty() {
                 return t;
@@ -1174,17 +1213,23 @@ fn reply(r: Result<String, String>) -> i32 {
     }
 }
 
-/// The comment block of the viewer's exports: the stackup as analysed with the source of every value
-/// (board file, kisi.json, the viewer's edits) and, with `tolerance`, the band of `classes`.
-fn export_header(st: &State, tolerance: &serde_json::Value, classes: &[String]) -> (Vec<String>, Vec<String>) {
-    let Some(b) = st.board.as_ref() else { return (vec![], vec![]) };
+/// The comment block of the viewer's exports: the stackup used with the source of every value (board
+/// file, kisi.json, the viewer's edits, or – `chosen` – the Compare & tolerances view's template or
+/// copy) and, with the option "fab stackups & tolerances" on (`tol`), the band of `classes`.
+fn export_header(
+    st: &State,
+    b: &Board,
+    an: &kisi_core::extract::Analysis,
+    chosen: Option<&kisi_core::stackups::Provenance>,
+    tol: Option<&kisi_core::stackups::TolSet>,
+    classes: &[String],
+) -> (Vec<String>, Vec<String>) {
     let ov = Some((&st.stack_ov, "viewer edit")).filter(|o| !o.0.is_empty());
-    let prov = kisi_core::stackups::provenance(b.stackup(), st.cfg.as_ref(), None, ov);
+    let prov =
+        chosen.cloned().unwrap_or_else(|| kisi_core::stackups::provenance(b.stackup(), st.cfg.as_ref(), None, ov));
     let (mut short, mut full) =
         (kisi_core::stackups::header_short(b.stackup(), &prov), kisi_core::stackups::header_lines(b.stackup(), &prov));
-    // the option "fab stackups & tolerances" on: the viewer sends its tolerances
-    let tol = if tolerance.is_null() { None } else { tolset_of(tolerance).ok() };
-    if let (Some(t), Some(an), Some(params)) = (tol, st.an.as_ref(), st.params.as_ref()) {
+    if let (Some(t), Some(params)) = (tol, st.params.as_ref()) {
         let names: Vec<String> = an.classes.iter().map(|c| c.name.clone()).collect();
         let assign = st
             .cfg
@@ -1198,12 +1243,49 @@ fn export_header(st: &State, tolerance: &serde_json::Value, classes: &[String]) 
             source: String::new(),
             stackup: b.stackup().clone(),
         };
-        let (study, _) = kisi_core::stackups::study_json(b, an, &params.field, &[col], Some((&t, 0)), &w);
+        let (study, _) = kisi_core::stackups::study_json(b, an, &params.field, &[col], Some((t, 0)), &w);
         let tl = kisi_core::stackups::tolerance_lines(&study, Some(classes));
         short.extend(tl.iter().cloned());
         full.extend(tl);
     }
     (short, full)
+}
+
+/// The stackup the Compare & tolerances view chose for the export: {"preset": id | null, "edits":
+/// StackupOverride | null} over the board's stackup as analysed, with where its values come from;
+/// None for the board's own (null).
+fn export_stackup(
+    b: &Board,
+    cfg: Option<&kisi_core::config::BoardConfig>,
+    v: &serde_json::Value,
+) -> Result<Option<(kisi_core::board::Stackup, kisi_core::stackups::Provenance)>, String> {
+    if v.is_null() {
+        return Ok(None);
+    }
+    let mut su = b.stackup().clone();
+    let preset = v["preset"].as_str();
+    if let Some(id) = preset {
+        let pr = kisi_core::stackups::library().find(id)?;
+        if let Some(why) = pr.fit(&su).problem {
+            return Err(why);
+        }
+        su = pr.apply(&su);
+    }
+    let ov: Option<kisi_core::board::StackupOverride> = if v["edits"].is_null() {
+        None
+    } else {
+        Some(serde_json::from_value(v["edits"].clone()).map_err(|e| format!("edits: {e}"))?)
+    };
+    if let Some(o) = ov.as_ref().filter(|o| !o.is_empty()) {
+        su = su.with_overrides(o);
+    }
+    let prov = kisi_core::stackups::provenance(
+        &su,
+        cfg,
+        preset,
+        ov.as_ref().filter(|o| !o.is_empty()).map(|o| (o, "viewer edit")),
+    );
+    Ok(Some((su, prov)))
 }
 
 /// The viewer's tolerances: the values (`Tolerances`) and where each comes from (`from`:

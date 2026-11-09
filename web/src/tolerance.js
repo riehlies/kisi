@@ -14,6 +14,7 @@ function setFabOn(on) {
   lsSet(fabKey(), on === !!(S.config && S.config.tolerances) ? null : on);
   if (!on && S.mode === "tol") S.mode = "dev";
   if (!on && typeof stkOpen === "function" && !$("stk-panel").hidden) stkOpen(false);
+  if (typeof exportHint === "function") exportHint();
   runAnalysis();
 }
 const tolEditKey = () => "kisi.tol.v1." + S.name;

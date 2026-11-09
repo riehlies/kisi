@@ -151,7 +151,8 @@ validation, and every result says which level it used and how uncertain it is.
     nominal value's solver level, worst case and RSS) against the window, `overview --tolerance`, the viewer
     panel; one option "Fab stackups & tolerances", off by default (viewer switch, kisi.json `tolerances`,
     `--tolerance`/`--tol`): on, the band in every view and output (net, lane, tooltip, the map's Tolerance mode,
-    `net`, `check`, `overview`, exports); information only. Open for the maintainer: whether the band should enter a verdict (e.g. yellow when
+    `net`, `check`, `overview`, exports), the export with the stackup chosen in the Compare view and, on request
+    (`--corners`, the viewer's export settings), the low- and high-impedance tolerance corners; information only. Open for the maintainer: whether the band should enter a verdict (e.g. yellow when
     the RSS band leaves the window), and the default width tolerance (±0.02 mm from JLC's example; JLC states
     ±20 %);
   - **etch factor** (still open; the tolerance band uses a symmetric width tolerance) per stackup or layer in

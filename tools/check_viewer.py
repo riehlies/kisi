@@ -880,7 +880,7 @@ def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
 
 def stackup_panel(pg, tag, step):
     """The fab tolerance band in the views (the Signals card's summary, the board map's Tolerance mode, a net's
-    detail) and the Stackup card's “Compare & tolerances” panel: a fitting fab template and an edited copy next to
+    detail, the export settings' tolerance corners: offered only with the option on, unticked) and the Stackup card's “Compare & tolerances” panel: a fitting fab template and an edited copy next to
     the board's stackup, the tolerance band, the stackup block in a net's Touchstone file; closed again."""
     # the option is off by default: nothing of it but its switch
     pg.evaluate("() => { lsSet(fabKey(), null); runAnalysis(); }"); pg.wait_for_timeout(300)
@@ -888,7 +888,11 @@ def stackup_panel(pg, tag, step):
         problems.append(f"{tag}: Fab stackups & tolerances visible while off")
     if pg.evaluate("S.an.nets.some((n) => n.z_tol_rss_pct != null)"):
         problems.append(f"{tag}: a fab band computed while the option is off")
+    if not pg.evaluate("document.getElementById('ex-corners-row').hidden"):
+        problems.append(f"{tag}: export settings offer tolerance corners while the option is off")
     pg.check("#fab-on"); pg.wait_for_timeout(500)
+    if pg.evaluate("document.getElementById('ex-corners-row').hidden || document.getElementById('ex-corners').checked"):
+        problems.append(f"{tag}: option on: the tolerance corners not offered, or ticked by default")
     if "Fab tolerances" not in pg.inner_text("#k-tol"):
         problems.append(f"{tag}: Signals card without the fab tolerance summary")
     pg.click("#mode-tol"); pg.wait_for_timeout(300)

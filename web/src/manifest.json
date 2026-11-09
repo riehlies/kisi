@@ -20,6 +20,7 @@
   "check-pool.js",
   "crosstalk.js",
   "stackups.js",
+  "pi-map.js",
   "pi-dc.js",
   "pi-pdn.js",
   "pi-balance.js",

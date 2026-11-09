@@ -52,6 +52,8 @@ function initPi(defaults) {
   S.therm = null; S.thermImg = null; S.thermLayer = 0;
   try { S.engine.piClear(); } catch (e) { /* nothing stored */ }
   S.piTree = null; S.treeRes = null; $("pi-balance").scrollTop = 0;
+  if (S.piIso == null) S.piIso = !!lsGet("kisi.pi.iso"); // isolines of the voltage drop (legend switch)
+  if (S.piArrows == null) S.piArrows = !!lsGet("kisi.pi.arrows"); // current direction (legend switch)
   S.piSolved = false; // IR drop runs on request (button), it is the slowest part of loading
   S.piMode = "b"; // the power tree is the first view; drop / density after step 2
   S.pdnRes = new Map(); S.pdnSolved = false; // Z(f) per rail, on request
@@ -388,28 +390,68 @@ function piScale(r) {
     for (let k = 0; k < r.v.length; k++) { const a = Math.abs(r.v[k]); if (a < mn) mn = a; }
     return { max: Math.max((v0 - mn) * 1e3, 0.01), unit: "mV", val: (k) => (v0 - Math.abs(r.v[k])) * 1e3 };
   }
-  const js = [];
-  for (let k = 0; k < r.j.length; k++) if (!isNaN(r.j[k])) js.push(r.j[k]);
-  js.sort((a, b) => a - b);
+  let n = 0;
+  for (let k = 0; k < r.j.length; k++) if (r.j[k] === r.j[k]) n++;
+  const js = new Float32Array(n); // a typed array sorts numerically and fast
+  n = 0;
+  for (let k = 0; k < r.j.length; k++) if (r.j[k] === r.j[k]) js[n++] = r.j[k];
+  js.sort();
   const p99 = js.length ? js[Math.floor(js.length * 0.99)] : 1;
   return { max: Math.max(p99, 1e-3), unit: "A/mm²", val: (k) => r.j[k] };
 }
+// the map of the shown layer (pi-map.js: values extended beyond the copper, interpolated, then coloured)
 function piImage(r, li) {
   const key = `${S.piRail}|${li}|${S.piMode}`;
   if (S.piImg && S.piImg.key === key) return S.piImg;
-  const g = r.res.layers[li], sc = piScale(r);
-  const c = document.createElement("canvas"); c.width = g.nx; c.height = g.ny;
-  const cx = c.getContext("2d"), img = cx.createImageData(g.nx, g.ny);
-  for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) {
-    const k = g.offset + j * g.nx + i, o = (j * g.nx + i) * 4;
-    if (isNaN(r.v[k])) { img.data[o + 3] = 0; continue; }
-    const col = turboRGB(0.05 + 0.9 * Math.min(1, sc.val(k) / sc.max));
-    img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 235;
-  }
-  cx.putImageData(img, 0, 0);
-  S.piImg = { key, canvas: c, g, scale: sc };
+  const g = r.res.layers[li], sc = piScale(r), per = g.nx * g.ny, val = new Float32Array(per);
+  for (let k = 0; k < per; k++) val[k] = r.v[g.offset + k] === r.v[g.offset + k] ? sc.val(g.offset + k) : NaN;
+  const map = mapImage(val, g.nx, g.ny, { x0: g.x0, y0: g.y0, cell: r.res.cell, lo: 0, hi: sc.max });
+  S.piImg = { key, g, scale: sc, map, strokes: null, iso: null };
   return S.piImg;
 }
+// the rail's narrow tracks on the layer as coloured strokes, kept with the image
+function piStrokes(im) {
+  if (!im.strokes && im.map) im.strokes = mapStrokes(mapCopper([S.scene.nets.indexOf(S.piRail)], im.g.layer), im.map);
+  return im.strokes;
+}
+// isolines of the voltage drop (or ground offset): on with the legend's switch, about 12 levels
+function piIso(im) {
+  if (!im.iso && im.map) im.iso = mapIso(im.map, mapIsoStep(im.scale.max));
+  return im.iso;
+}
+const piIsoOn = () => S.piMode === "v" && !!S.piIso;
+// current direction (current density, legend switch): small arrows on a grid of the screen along −∇V of
+// the cell under each (fitted over the copper's own cells around it), where the density is at least
+// 2 % of the scale; drawn only on the copper
+const PI_ARROW_GAP = 28; // CSS px between arrows
+function piArrows(r, g, px) {
+  const v = S.view, d = window.devicePixelRatio || 1, cell = r.res.cell, V = r.v, J = r.j, sc = piImage(r, piLayerIdx(r)).scale;
+  const W = cv.width / d, H = cv.height / d, p = new Path2D(), L = 5 * px, hd = 2.5 * px;
+  const at = (i, j) => (i < 0 || j < 0 || i >= g.nx || j >= g.ny ? NaN : V[g.offset + j * g.nx + i]);
+  for (let sy = PI_ARROW_GAP / 2; sy < H; sy += PI_ARROW_GAP) for (let sx = PI_ARROW_GAP / 2; sx < W; sx += PI_ARROW_GAP) {
+    const x = (sx - v.x) / v.s, y = (sy - v.y) / v.s, i = Math.floor((x - g.x0) / cell), j = Math.floor((y - g.y0) / cell);
+    const c0 = at(i, j);
+    if (c0 !== c0 || !(J[g.offset + j * g.nx + i] >= 0.02 * sc.max)) continue;
+    // least-squares gradient over the 5 × 5 cells around (the voltages are f32: neighbouring cells of a
+    // plane differ by a few of its steps, two cells alone would give only a few directions)
+    let sxx = 0, syy = 0, sxy = 0, sxv = 0, syv = 0;
+    for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
+      const q = at(i + di, j + dj); if (q !== q) continue;
+      sxx += di * di; syy += dj * dj; sxy += di * dj; sxv += di * (q - c0); syv += dj * (q - c0);
+    }
+    const det = sxx * syy - sxy * sxy;
+    let gx, gy; // a straight chain of cells (a line conductor along x or y): the gradient along it
+    if (det > 1e-9) { gx = (syy * sxv - sxy * syv) / det; gy = (sxx * syv - sxy * sxv) / det; }
+    else if (sxx > 0 && sxx >= syy) { gx = sxv / sxx; gy = 0; } else if (syy > 0) { gx = 0; gy = syv / syy; } else continue;
+    const m = Math.hypot(gx, gy);
+    if (!(m > 0)) continue;
+    const ux = -gx / m, uy = -gy / m, tx = x + ux * L, ty = y + uy * L;
+    p.moveTo(x - ux * L, y - uy * L); p.lineTo(tx, ty);
+    p.moveTo(tx - ux * hd - uy * hd, ty - uy * hd + ux * hd); p.lineTo(tx, ty); p.lineTo(tx - ux * hd + uy * hd, ty - uy * hd - ux * hd);
+  }
+  return p;
+}
+const piArrowsOn = () => S.piMode === "j" && !!S.piArrows;
 
 function drawPi() {
   const d = window.devicePixelRatio || 1, C = S.colors;
@@ -428,9 +470,11 @@ function drawPi() {
   const r = piCurrent(), labels = [];  // part labels, drawn last at a constant screen size
   let loadLabels = [];
   if (r) {
-    const li = piLayerIdx(r), im = piImage(r, li), g = im.g, cell = r.res.cell;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(im.canvas, g.x0, g.y0, g.nx * cell, g.ny * cell);
+    const li = piLayerIdx(r), im = piImage(r, li);
+    const cu = mapCopper([S.scene.nets.indexOf(S.piRail)], im.g.layer), iso = piIsoOn() ? piIso(im) : null;
+    mapDraw({ clip: cu.clip, image: (c) => mapPaint(c, im.map), over: (c) => mapDrawStrokes(c, piStrokes(im), px),
+      atop: iso ? (c) => mapDrawIso(c, iso, px) : piArrowsOn() ? (c) => { c.strokeStyle = "rgba(0,0,0,0.65)"; c.lineWidth = 1.2 * px; c.stroke(piArrows(r, im.g, px)); } : null });
+    S.piIsoLabels = iso ? iso.labels : null;
     // sources and loads
     const net = S.scene.nets.indexOf(S.piRail), pads = S.scene.pads, setup = piSetupOf(S.piRail);
     const srcs = new Set(setup.sources.map((x) => x.refdes)), lds = new Set(setup.loads.map((x) => x.refdes));
@@ -469,6 +513,14 @@ function drawPi() {
   // sources and loads, except in the PDN view (its own parts) and for a part already outlined
   if (!pdn) { const own = new Set(labels.map((l) => l.text)); labels.push(...loadLabels.filter((l) => !own.has(l.ref))); }
   S.piLabels = drawPartLabels(labels);
+  // isoline values: smaller, after the part labels and never over them, a few per screen (by its area,
+  // at most as many as there are levels)
+  if (r && S.piIsoLabels) {
+    const st = piImage(r, piLayerIdx(r)).iso.step;
+    const d = window.devicePixelRatio || 1, levels = new Set(S.piIsoLabels.map((c) => c.n)).size;
+    const max = Math.min(levels, Math.round(Math.min(16, Math.max(3, cv.width * cv.height / (d * d) / 60000))));
+    drawBoardLabels(S.piIsoLabels.map((c) => ({ x: c.x, y: c.y, text: fmtSI(c.n * st * 1e-3, "V", 3) })), { center: true, size: 9.5, max, avoid: S.piLabels });
+  }
 }
 // labels of the rail's sources and loads: the sources, then the loads with the largest drop
 // (voltage drop), ground offset (ground return) or current (current density); at most 12, the

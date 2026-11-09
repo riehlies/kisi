@@ -80,20 +80,16 @@ const thermFrac = (v) => { const s = thermScale(); return 0.05 + 0.9 * Math.min(
 // a temperature with a chip in the map's colour (also above the board's maximum: junctions)
 const tCell = (v, extra = "") => (v == null || !isFinite(v) ? "–" : `<span class="tchip" style="background:${turbo(thermFrac(v))}"></span>${fmtTn(v)}${extra}`);
 
+// the map of the shown layer (pi-map.js), drawn within the board outline
 function thermImage() {
   const t = S.therm, l = S.thermLayer;
   if (S.thermImg && S.thermImg.layer === l) return S.thermImg;
-  const per = t.nx * t.ny, { lo, hi } = thermScale();
-  const c = document.createElement("canvas"); c.width = t.nx; c.height = t.ny;
-  const cx = c.getContext("2d"), img = cx.createImageData(t.nx, t.ny);
-  for (let k = 0; k < per; k++) {
-    const v = t.t[l * per + k], o = k * 4;
-    if (!isFinite(v)) { img.data[o + 3] = 0; continue; }
-    const col = turboRGB(0.05 + 0.9 * Math.min(1, Math.max(0, (v - lo) / (hi - lo))));
-    img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 235;
-  }
-  cx.putImageData(img, 0, 0);
-  S.thermImg = { layer: l, canvas: c, lo, hi };
+  const per = t.nx * t.ny, { lo, hi } = thermScale(), val = new Float32Array(per);
+  for (let k = 0; k < per; k++) { const v = t.t[l * per + k]; val[k] = isFinite(v) ? v : NaN; }
+  // within the outline: values extended, the outline cuts them; without a closed outline the cells' own edge
+  const ol = mapOutline();
+  const map = mapImage(val, t.nx, t.ny, ol ? { x0: t.x0, y0: t.y0, cell: t.cell, lo, hi } : { x0: t.x0, y0: t.y0, cell: t.cell, lo, hi, dilate: 0, cover: 0.5 });
+  S.thermImg = { layer: l, map, lo, hi, clip: ol };
   return S.thermImg;
 }
 // parts shown on a layer: the top side on the top layer, the bottom side on the bottom layer
@@ -116,10 +112,8 @@ function viaStyle(q, qmax) {
 
 function drawThermal(px) {
   if (!thermOk()) return;
-  const t = S.therm, im = thermImage();
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(im.canvas, t.x0, t.y0, t.nx * t.cell, t.ny * t.cell);
-  ctx.imageSmoothingEnabled = true;
+  const im = thermImage();
+  if (im.map) mapDraw({ clip: im.clip, rule: "evenodd", image: (c) => mapPaint(c, im.map) });
   // vias with the most heat flow (screen-size markers, the largest on top)
   const { list, qmax } = thermVias();
   ctx.lineWidth = 1 * px; ctx.strokeStyle = S.colors.halo;

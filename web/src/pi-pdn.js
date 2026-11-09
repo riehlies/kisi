@@ -215,5 +215,9 @@ function renderPiLegend() {
     <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
     <div class="ticks units"><span>0</span><span>${tick(sc.max / 2)}</span><span>${tick(sc.max)}${S.piMode === "j" ? " (99th percentile)" : ""}</span></div>
     <div class="row"><span class="sw" style="background:${S.colors.ok}"></span>source ▲ · load ○ · circles: vias with the highest currents</div>
-    <div class="row">Labels: ${pdnOverlayOn() ? "the IC, its capacitors and the series parts (impedance tab)" : S.piMode === "j" ? "sources and loads with their current (the largest first)" : r.res.ground ? "sources, offset at the parts (the largest first)" : "sources, drop at the loads (the largest first)"}</div>`;
+    <div class="row">Labels: ${pdnOverlayOn() ? "the IC, its capacitors and the series parts (impedance tab)" : S.piMode === "j" ? "sources and loads with their current (the largest first)" : r.res.ground ? "sources, offset at the parts (the largest first)" : "sources, drop at the loads (the largest first)"}</div>
+    ${S.piMode === "v" ? `<label class="row"><input type="checkbox" id="pi-iso"${S.piIso ? " checked" : ""}> Isolines every ${tick(mapIsoStep(sc.max))}</label>` : ""}
+    ${S.piMode === "j" ? `<label class="row"><input type="checkbox" id="pi-arrows"${S.piArrows ? " checked" : ""}> Current direction (arrows)</label>` : ""}`;
+  const sw = (id, key, store) => { const b = $(id); if (b) b.onchange = () => { S[key] = b.checked; lsSet(store, S[key] || null); draw(); }; };
+  sw("pi-iso", "piIso", "kisi.pi.iso"); sw("pi-arrows", "piArrows", "kisi.pi.arrows");
 }

@@ -70,47 +70,127 @@ function activeStackup() { const c = stkActiveCol(); return c ? { preset: c.pres
 function stkActiveLabel() { const c = stkActiveCol(); return c ? c.label + (c.edits ? " (edited)" : "") : null; }
 function setActiveStackup(id) {
   if (id === stkActiveId()) return;
+  vcSave();
   lsSet(stkActKey(), id === "board" ? null : id);
   stackupSwitched();
 }
+// ---- the other views' results per stackup: kept when the views leave a stackup, put back when they
+// return to it and nothing else changed (the keys hold what each result depends on besides the
+// board; a new board, kisi.json or variant starts afresh). The engine keeps its DC results alongside
+// (put_stackup); a DC result is put back only when the engine holds the same rails.
+// stackups besides the current one: the channel check and the PDN impedance are small, the DC maps and
+// temperature planes about 100 MB per stackup on ThunderScope (and as much again in the engine,
+// PI_STASH_MAX there)
+const VIEW_CACHE_MAX = { check: 3, pdn: 3, dc: 2, therm: 2 };
+function vcache() {
+  const g = `${S.gen}|${S.engine.cacheGen || 0}`;
+  if (!S.viewCache || S.viewCache.g !== g) S.viewCache = { g, check: new Map(), dc: new Map(), pdn: new Map(), therm: new Map() };
+  return S.viewCache;
+}
+function vcPut(kind, k, v) { const m = vcache()[kind]; m.delete(k); m.set(k, v); while (m.size > VIEW_CACHE_MAX[kind]) m.delete(m.keys().next().value); }
+const vcStk = () => JSON.stringify({ a: activeStackup(), s: stackParam() });
+const vcDcKey = () => vcStk() + JSON.stringify({ t: S.piTree || null, s: S.piTree ? null : [...S.piSetups.values()], p: PI_PARAMS });
+const vcThermKey = () => vcDcKey() + JSON.stringify(thermParams());
+// the check does not use the tolerance band: its key leaves it out
+const vcCheckKey = () => { const p = anParams(); return JSON.stringify({ g: S.gen, e: S.engine.cacheGen || 0, a: p.active_stackup, s: p.stackup, t: p.targets, st: p.step, m: p.solder_mask, f: Object.keys(p.field).length, i: checkItems(), rf: rfParams() }); };
+// before the stackup changes: keep what is computed for the one the views leave
+function vcSave() {
+  if (!S.scene || !S.full) return;
+  try {
+    if (S.check && !S.check.stale && S.check.gen === S.anGen && S.laneRes) vcPut("check", vcCheckKey(), { check: S.check, laneRes: S.laneRes, chStatus: S.chStatus });
+    if (S.piSolved) vcPut("dc", vcDcKey(), { piRes: new Map(S.piRes), piGround: new Map(S.piGround || []), groundWarn: S.groundWarn, loss: S.loss, piMs: S.piMs });
+    if (S.pdnSolved) vcPut("pdn", vcDcKey(), { pdnRes: new Map(S.pdnRes), pdnMs: S.pdnMs });
+    if (S.therm && !S.therm.error) vcPut("therm", vcThermKey(), { therm: S.therm, thermLayer: S.thermLayer });
+  } catch (e) { console.warn(e); }
+}
+// the bytes the kept results hold (typed arrays of the DC maps, losses and temperature planes)
+function vcBytes() {
+  const c = S.viewCache; let n = 0;
+  if (!c) return 0;
+  for (const e of c.dc.values()) { for (const r of e.piRes.values()) n += (r.v ? r.v.byteLength : 0) + (r.j ? r.j.byteLength : 0); if (e.loss && e.loss.buf) n += e.loss.buf.byteLength; }
+  for (const e of c.therm.values()) if (e.therm.t) n += e.therm.t.byteLength;
+  return n;
+}
 // the stackup of all views changed: the impedance at once (cached per stackup), then what the other
-// views had computed – the channel check, the IR drop, the PDN impedance, the temperature – again
+// views had computed – the channel check, the IR drop, the PDN impedance, the temperature – from the
+// cache where it still applies, else again
 async function stackupSwitched() {
   if (S.switching) { S.switchAgain = true; return; }
   S.switching = true;
-  const t0 = performance.now(), ms = {};
+  const t0 = performance.now(), ms = {}, from = {};
   try {
     do {
       S.switchAgain = false;
       stkIndicator("impedance"); await frame();
       let t = performance.now(); runAnalysis(); ms.impedance = Math.round(performance.now() - t);
-      const therm = !!S.therm;
-      if (S.laneRes && !variantNeeded()) { stkIndicator("channel check"); t = performance.now(); await runCheck(); ms.check = Math.round(performance.now() - t); }
-      if (S.piSolved) { stkIndicator("IR drop"); t = performance.now(); await solveAllRails(); ms.dc = Math.round(performance.now() - t); }
-      if (S.pdnSolved) { stkIndicator("PDN impedance"); t = performance.now(); await solveAllPdn(); ms.pdn = Math.round(performance.now() - t); }
-      if (therm && S.piSolved) { stkIndicator("temperature"); t = performance.now(); await solveThermal(); ms.thermal = Math.round(performance.now() - t); }
+      const c = vcache(), therm = !!S.therm;
+      if (S.laneRes && !variantNeeded()) {
+        t = performance.now();
+        const hit = c.check.get(vcCheckKey());
+        if (hit) {
+          S.check = { ...hit.check, gen: S.anGen, stale: false }; S.laneRes = hit.laneRes; S.chStatus = hit.chStatus; from.check = "cache";
+          if (S.tab === "ch") { if (S.chMode === "o") renderChOverview(); else { buildPaths(); if (S.selNet >= 0) selectNet(S.selNet, false); renderLegend(); draw(); } }
+          renderCheck();
+        } else { stkIndicator("channel check"); await runCheck(); from.check = "computed"; }
+        ms.check = Math.round(performance.now() - t);
+      }
+      let dcHit = null;
+      if (S.piSolved) {
+        t = performance.now();
+        const hit = c.dc.get(vcDcKey());
+        let held = null;
+        try { held = S.engine.piStored(); } catch (e) { held = null; }
+        const rails = hit ? [...hit.piRes].filter(([, r]) => r.res).map(([n]) => n).sort() : [];
+        if (hit && held && JSON.stringify(rails) === JSON.stringify([...held.rails].sort())) {
+          S.piRes = new Map(hit.piRes); S.piGround = new Map(hit.piGround); S.groundWarn = hit.groundWarn; S.loss = hit.loss; S.piMs = hit.piMs;
+          S.piImg = null; S.lossImg = null; dcHit = held; from.dc = "cache";
+          thermReset();
+        } else { stkIndicator("IR drop"); await solveAllRails(); from.dc = "computed"; }
+        ms.dc = Math.round(performance.now() - t);
+      }
+      if (S.pdnSolved) {
+        t = performance.now();
+        const hit = c.pdn.get(vcDcKey());
+        if (hit) { S.pdnRes = new Map(hit.pdnRes); S.pdnMs = hit.pdnMs; from.pdn = "cache"; }
+        else { stkIndicator("PDN impedance"); await solveAllPdn(); from.pdn = "computed"; }
+        ms.pdn = Math.round(performance.now() - t);
+      }
+      if (therm && S.piSolved) {
+        t = performance.now();
+        const hit = c.therm.get(vcThermKey());
+        if (hit && dcHit && dcHit.thermal) { S.therm = hit.therm; S.thermLayer = hit.thermLayer; S.thermImg = null; S.thermMark = null; from.thermal = "cache"; }
+        else { stkIndicator("temperature"); await solveThermal(); from.thermal = "computed"; }
+        ms.thermal = Math.round(performance.now() - t);
+      }
+      if (from.dc === "cache" || from.pdn === "cache" || from.thermal === "cache") renderPi();
     } while (S.switchAgain);
   } finally {
     S.switching = false;
     ms.total = Math.round(performance.now() - t0);
-    S.switchMs = ms;
+    S.switchMs = ms; S.switchFrom = from;
+    const vals = Object.values(from);
+    S.switchNote = vals.length ? { text: vals.every((v) => v === "cache") ? "results from cache" : vals.some((v) => v === "cache") ? "partly from cache" : "recomputed", title: Object.entries(from).map(([k, v]) => `${k}: ${v === "cache" ? "from cache" : "recomputed"}`).join(", "), until: performance.now() + 6000 } : null;
+    if (S.switchNote) setTimeout(() => stkIndicator(), 6100);
     stkIndicator(null);
     renderSide();
     if (S.tab === "stk") stkRender();
     if (typeof exportHint === "function") exportHint();
   }
 }
-// the header indicator: a what-if stackup in every view (a click opens the Stackup view), and the
-// progress while the views follow a switch
+// the header indicator: a what-if stackup in every view (its name opens the Stackup view, × goes back
+// to the board's), the progress while the views follow a switch and, for a moment after it, whether
+// the results came from the cache. Short, so the header stays on one row on a desktop.
 function stkIndicator(step) {
   const el = $("stk-act");
   if (step !== undefined) S.switchStep = step;
   const lab = S.scene ? stkActiveLabel() : null, busy = S.switchStep;
-  el.hidden = !lab && !busy;
+  const note = S.switchNote && performance.now() < S.switchNote.until ? S.switchNote : null;
+  el.hidden = !lab && !busy && !note;
   el.classList.toggle("busy", !!busy);
   if (el.hidden) { el.innerHTML = ""; return; }
-  el.innerHTML = (lab ? `<button class="linklike" id="stk-act-open" title="open the Stackup view">Stackup: <b>${esc(lab)}</b> (what-if)</button><span aria-hidden="true">·</span><button class="linklike" id="stk-act-back">Back to board stackup</button>` : "<span>Stackup: the board's</span>")
-    + (busy ? ` <span class="stk-act-prog">· updating ${esc(busy)}…</span>` : "");
+  el.title = lab ? `Stackup of all views: ${lab} (what-if) – the board file and kisi.json stay as they are` : "";
+  el.innerHTML = (lab ? `<button class="linklike" id="stk-act-open" title="Stackup: ${esc(lab)} (what-if) – open the Stackup view"><b>${esc(lab)}</b></button><span>· what-if</span><button class="linklike stk-act-x" id="stk-act-back" title="Back to board stackup" aria-label="Back to board stackup">×</button>` : "<span>Stackup: the board's</span>")
+    + (busy ? `<span class="stk-act-prog">· updating ${esc(busy)}…</span>` : note ? `<span class="stk-act-prog" title="${esc(note.title)}">· ${esc(note.text)}</span>` : "");
   if ($("stk-act-open")) $("stk-act-open").onclick = () => setTab("stk");
   if ($("stk-act-back")) $("stk-act-back").onclick = () => setActiveStackup("board");
 }
@@ -253,12 +333,13 @@ function stkWire() {
     const i = +b.dataset.i, a = b.dataset.stk;
     if (a === "del") {
       const wasActive = stkActiveId() === s.cols[i].id;
+      if (wasActive) vcSave();
       s.cols.splice(i, 1); if (s.tolCol > s.cols.length) s.tolCol = 0; if (s.editing != null && s.editing >= s.cols.length) s.editing = null;
       if (wasActive) { lsSet(stkActKey(), null); stkSave(); stackupSwitched(); return; }
     }
     else if (a === "edit") s.editing = s.editing === i ? null : i;
     else if (a === "edit-done") s.editing = null;
-    else if (a === "edit-reset") { s.cols[i].edits = null; if (stkActiveId() === s.cols[i].id) { stkSave(); stackupSwitched(); return; } }
+    else if (a === "edit-reset") { if (stkActiveId() === s.cols[i].id) vcSave(); s.cols[i].edits = null; if (stkActiveId() === s.cols[i].id) { stkSave(); stackupSwitched(); return; } }
     else if (a === "use") {
       // the template becomes the board's stackup in the Prepare PCB draft (saved there)
       const p = (stkPresets().presets || []).find((x) => x.id === s.cols[i].preset);
@@ -272,6 +353,7 @@ function stkWire() {
   const edit = (i, fn) => {
     const c = s.cols[s.editing];
     if (!c) return;
+    if (stkActiveId() === c.id) vcSave(); // before the active copy changes: its results stay with its old values
     c.edits = c.edits || { dielectrics: [], copper: [] };
     fn(c.edits);
     stkSave(); stkRender();

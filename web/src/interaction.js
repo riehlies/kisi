@@ -5,7 +5,7 @@ function syncModeButtons() {
   if (S.mode === "xt" && !S.full) S.mode = "type";
   // the Tolerance mode belongs to the option "Fab stackups & tolerances"
   $("mode-tol").hidden = !fabOn();
-  $("view-stk").hidden = !fabOn();
+  $("seg-stk").hidden = !fabOn();
   stkIndicator();
   if (S.mode === "tol" && !fabOn()) S.mode = "dev";
   for (const k of ["dev", "tol", "abs", "type", "xt"]) $("mode-" + k).setAttribute("aria-pressed", String(k === S.mode));

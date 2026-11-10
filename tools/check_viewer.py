@@ -886,7 +886,7 @@ def stackup_panel(pg, tag, step):
     the board's stackup, the tolerance band, the stackup block in a net's Touchstone file; closed again."""
     # the option is off by default: nothing of it but its switch
     pg.evaluate("() => { lsSet(fabKey(), null); runAnalysis(); }"); pg.wait_for_timeout(300)
-    if pg.evaluate("fabOn() || !document.getElementById('k-tol').hidden || !document.getElementById('mode-tol').hidden || !document.getElementById('view-stk').hidden || !document.getElementById('stk-act').hidden"):
+    if pg.evaluate("fabOn() || !document.getElementById('k-tol').hidden || !document.getElementById('mode-tol').hidden || !document.getElementById('seg-stk').hidden || !document.getElementById('stk-act').hidden"):
         problems.append(f"{tag}: Fab stackups & tolerances visible while off")
     if pg.evaluate("S.an.nets.some((n) => n.z_tol_rss_pct != null)"):
         problems.append(f"{tag}: a fab band computed while the option is off")
@@ -910,11 +910,11 @@ def stackup_panel(pg, tag, step):
             problems.append(f"{tag}: net detail without the fab band")
         pg.evaluate("selectNet(-1)")
     pg.click("#mode-dev"); pg.wait_for_timeout(200)
-    if pg.evaluate("document.getElementById('view-stk').hidden"):
+    if pg.evaluate("document.getElementById('seg-stk').hidden"):
         problems.append(f"{tag}: option on: no Stackup view button")
         return
     # the view switch with four buttons stays on one row (also on a phone)
-    if pg.evaluate("(() => { const b = [...document.querySelectorAll('.bar .seg[aria-label=Analysis] button')].filter((x) => !x.hidden); return new Set(b.map((x) => Math.round(x.getBoundingClientRect().top))).size; })()") != 1:
+    if pg.evaluate("(() => { const b = [...document.querySelectorAll('.bar .views button')].filter((x) => x.offsetParent); return new Set(b.map((x) => Math.round(x.getBoundingClientRect().top))).size; })()") != 1:
         problems.append(f"{tag}: the view switch wraps")
     pg.click("#view-stk"); pg.wait_for_timeout(300)
     if pg.evaluate("document.getElementById('stk-panel').hidden || S.tab !== 'stk' || document.getElementById('view-stk').getAttribute('aria-pressed') !== 'true'"):
@@ -953,6 +953,9 @@ def stackup_panel(pg, tag, step):
             pg.click(f"#view-{v}"); pg.wait_for_timeout(250)
             if not pg.is_visible("#stk-act") or "what-if" not in pg.inner_text("#stk-act"):
                 problems.append(f"{tag}: view {v}: no indicator of the what-if stackup")
+            # a desktop header stays on one row with the indicator
+            if pg.evaluate("window.innerWidth") >= 1280 and pg.evaluate("new Set([...document.querySelector('.bar').children].filter((x) => x.offsetParent).map((x) => Math.round(x.getBoundingClientRect().top + x.getBoundingClientRect().height / 2))).size") != 1:
+                problems.append(f"{tag}: view {v}: the header wraps with the what-if indicator")
         step("what_if")
         pg.click("#stk-act-back"); pg.wait_for_timeout(200)
         pg.wait_for_function("!S.switching", timeout=300000)
@@ -966,7 +969,7 @@ def stackup_panel(pg, tag, step):
         problems.append(f"{tag}: Esc in the Stackup view did not go back to the view before")
     pg.click("#view-si"); pg.wait_for_timeout(200)
     pg.evaluate("() => { lsSet(fabKey(), null); runAnalysis(); syncModeButtons(); }"); pg.wait_for_timeout(200)
-    if not pg.evaluate("document.getElementById('view-stk').hidden"):
+    if not pg.evaluate("document.getElementById('seg-stk').hidden"):
         problems.append(f"{tag}: option off: the Stackup view button stays")
 
 

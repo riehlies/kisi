@@ -395,6 +395,32 @@ ul.src li { margin: 2px 0; }
 
 /* the board name/meta shrinks (ellipsis) before the toolbar wraps */
 @media (min-width: 861px) { .bar > .brand { flex: 1 1 280px; min-width: 0; } .brand small { overflow: hidden; text-overflow: ellipsis; min-width: 0; } }
+.seg button .sh { display: none; }
+/* desktop: one row – the board title gives way first, then shorter labels and tighter buttons */
+@media (min-width: 1200px) {
+  .bar { flex-wrap: nowrap; gap: 10px 12px; }
+  .bar > * { flex-shrink: 0; }
+  .bar > .brand { flex: 0 1 auto; min-width: 96px; overflow: hidden; }
+  .bar > .grow { flex: 1 1 0; min-width: 0; }
+  .brand span { min-width: 0; }
+}
+@media (min-width: 1200px) and (max-width: 1799px) {
+  .bar .seg button, .bar > .btn { padding: 6px 9px; }
+  .bar .stk-act b { max-width: 9em; }
+}
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .seg button .lw { display: none; }
+  .seg button .sh { display: inline; }
+  .bar .seg button, .bar > .btn { padding: 5px 8px; font-size: 13.5px; }
+  .brand small { display: none; }
+}
+@media (min-width: 1200px) and (max-width: 1399px) {
+  .bar { gap: 8px; }
+  .bar > .brand { min-width: 80px; }
+  .bar .seg button, .bar > .btn { padding: 5px 7px; }
+  .bar .stk-act { padding: 3px 7px; }
+  .bar .stk-act b { max-width: 6.5em; }
+}
 
 /* start screen (no board loaded yet): only loading files and the examples */
 #app.no-board .side, #app.no-board .bar > .seg:not(.samples), #app.no-board .overlay-tr, #app.no-board #boardName,
@@ -509,6 +535,10 @@ table.prep-ed input.ref { max-width: 90px; }
 .stk-in-use { color: var(--accent); font-weight: 600; white-space: nowrap; }
 .stk-act { font-size: 12.5px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--z-high1); background: var(--panel-2); display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; max-width: 100%; min-width: 0; }
 .stk-act > * { white-space: nowrap; }
+.stk-act b { display: inline-block; max-width: 16em; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+.stk-act .stk-act-x { font-size: 15px; line-height: 1; text-decoration: none; padding: 0 3px; }
+.stk-act-prog { color: var(--muted); }
+.bar .views { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
 .stk-act.busy { border-color: var(--accent); }
 .stk-act .linklike { font-size: inherit; }
 .what-if { margin: 4px 0 0; }

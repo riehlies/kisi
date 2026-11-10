@@ -13,12 +13,19 @@ function fabOn() { const v = lsGet(fabKey()); return v == null ? !!(S.config && 
 const FAB_TITLE = "Off by default. On: the Stackup view – a fab template or an edited copy of the board's stackup for all views (what-if), the impedance per net class under each, the manufacturing tolerances –, the fab tolerance band of the impedances (net detail, channel, the map's Tolerance mode, exports) and tolerance corners as a choice in the export settings";
 function setFabOn(on) {
   const before = JSON.stringify(activeStackup());
+  vcSave(); // the results of the stackup the views may leave
   lsSet(fabKey(), on === !!(S.config && S.config.tolerances) ? null : on);
   if (!on && S.mode === "tol") S.mode = "dev";
   if (!on && S.tab === "stk") setTab(S.prevTab && S.prevTab !== "stk" ? S.prevTab : "si");
   if (typeof exportHint === "function") exportHint();
   // a what-if stackup ends with the option: back to the board's in every view
-  if (JSON.stringify(activeStackup()) !== before) stackupSwitched(); else runAnalysis();
+  if (JSON.stringify(activeStackup()) !== before) stackupSwitched();
+  else {
+    // the same stackup: only the tolerance band changes, which the channel check does not use
+    const fresh = S.check && !S.check.stale && S.check.gen === S.anGen;
+    runAnalysis();
+    if (fresh) { S.check.gen = S.anGen; renderCheck(); }
+  }
   if (S.tab === "stk") stkRender();
 }
 const tolEditKey = () => "kisi.tol.v1." + S.name;

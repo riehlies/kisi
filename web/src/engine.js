@@ -101,6 +101,7 @@ class Engine {
   piTreeFields() { this.k.kisi_pi_tree_fields(); return JSON.parse(this.out()); }
   piTree(spec) { this.call(this.k.kisi_pi_tree, JSON.stringify(spec)); return JSON.parse(this.out()); }
   piClear() { this.k.kisi_pi_clear(); }
+  piStored() { this.k.kisi_pi_stored(); return JSON.parse(this.out()); }
   piGround() { if (this.k.kisi_pi_ground() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   // losses of the stored DC results: {summary, flow, map, buf} (buf: copper planes, then components; W/mm²)
   piLosses(cell) {

@@ -30,6 +30,9 @@ struct State {
     active: Option<(Option<String>, Option<kisi_core::board::StackupOverride>)>,
     /// the last analyses by the viewer's key (switching stackups back and forth)
     an_cache: Vec<AnCache>,
+    /// the power results of the last stackups left (DC per rail, losses map, temperature), put back when
+    /// the board gets that stackup again (`put_stackup`); the viewer decides whether they still apply
+    pi_stash: Vec<PiStash>,
     pro: Option<String>,
     out: Vec<u8>,
     zone_pts: Vec<f32>,
@@ -108,18 +111,74 @@ struct AnCache {
     params: Params,
 }
 
-/// Put a stackup on the analysed board. A different one drops the power results that depend on it
-/// (the viewer solves them again).
+/// The power results of one stackup (by its JSON) while another one is on the board.
+struct PiStash {
+    key: String,
+    store: std::collections::BTreeMap<String, kisi_core::pi::PiResult>,
+    loss_map: Vec<f32>,
+    thermal: Option<kisi_core::thermal::ThermalResult>,
+}
+
+/// Stackups whose power results are kept besides the current one (on ThunderScope about 100 MB each).
+const PI_STASH_MAX: usize = 2;
+
+/// Put a stackup on the analysed board. A different one moves the power results that depend on it
+/// aside (the last `PI_STASH_MAX` stackups) and puts back those of the new one, if any.
 fn put_stackup(st: &mut State, su: kisi_core::board::Stackup) {
-    if let Some(b) = st.board.as_mut() {
-        let same = b.stackup.as_ref().map(|x| serde_json::to_string(x).ok()) == Some(serde_json::to_string(&su).ok());
-        b.stackup = Some(su);
-        if !same {
+    let Some(b) = st.board.as_mut() else { return };
+    let old = b.stackup.as_ref().and_then(|x| serde_json::to_string(x).ok());
+    let new = serde_json::to_string(&su).ok();
+    b.stackup = Some(su);
+    if old == new {
+        return;
+    }
+    if let Some(key) = old.filter(|_| !st.pi_store.is_empty() || st.thermal.is_some()) {
+        st.pi_stash.retain(|x| x.key != key);
+        st.pi_stash.push(PiStash {
+            key,
+            store: std::mem::take(&mut st.pi_store),
+            loss_map: std::mem::take(&mut st.loss_map),
+            thermal: st.thermal.take(),
+        });
+        while st.pi_stash.len() > PI_STASH_MAX {
+            st.pi_stash.remove(0);
+        }
+    }
+    match st.pi_stash.iter().position(|x| Some(&x.key) == new.as_ref()) {
+        Some(i) => {
+            let x = st.pi_stash.remove(i);
+            st.pi_store = x.store;
+            st.loss_map = x.loss_map;
+            st.thermal = x.thermal;
+        }
+        None => {
             st.pi_store.clear();
             st.loss_map.clear();
             st.thermal = None;
         }
     }
+}
+
+/// The power results the engine holds for the board's stackup: {"rails": [net…], "thermal": bool,
+/// "stash": stackups kept aside, "stash_bytes": their value buffers} (the viewer puts its own back only
+/// when they match).
+#[no_mangle]
+pub extern "C" fn kisi_pi_stored() -> i32 {
+    ST.with(|st| {
+        let st = st.borrow();
+        let bytes: usize = st
+            .pi_stash
+            .iter()
+            .map(|x| {
+                4 * (x.loss_map.len() + x.store.values().map(|r| r.v.len() + r.j.len() + r.loss.len()).sum::<usize>())
+            })
+            .sum();
+        let v = serde_json::json!({"rails": st.pi_store.keys().collect::<Vec<_>>(), "thermal": st.thermal.is_some(),
+            "stash": st.pi_stash.len(), "stash_bytes": bytes});
+        drop(st);
+        set_out(v.to_string());
+    });
+    0
 }
 
 /// The stackup of an analysis request: the board's (file and configuration, then the Stackup card's
@@ -167,6 +226,7 @@ fn rebuild(st: &mut State) -> Result<Option<kisi_core::config::Applied>, String>
     st.stackup_file = b.stackup.clone();
     st.stack_base = b.stackup.clone();
     st.an_cache.clear();
+    st.pi_stash.clear();
     st.board = Some(b);
     st.variant = Some(vs);
     st.buses = None;

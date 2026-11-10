@@ -175,10 +175,13 @@ goes back to the view before).
   solver on demand as always – its results are kept per cross-section, so switching back is instant), the channel
   check, eyes, crosstalk and vias, the DC voltage drop and current density (copper thickness), the temperature
   (layer thicknesses) and the PDN impedance (plane capacitance from dielectric thickness and εr), and the exports.
-  What the views had computed is computed again, with the progress in the header. Copper layers map by their order.
+  What the views had computed is computed again, with the progress in the header – or, for a stackup the views
+  had a moment ago (the last three besides the current one, while nothing else changed: loads, rail setups,
+  temperature settings, profiles, field results, kisi.json, variant), put back from the cache at once; the header
+  says "results from cache" or "recomputed" for a few seconds. Copper layers map by their order.
   It is the same path as the command line's `--stackup-preset ID` (and `--stackup FILE` for an edited copy): the
   template's values replace the board's after its kisi.json. While a what-if is active, the header of every view
-  shows "Stackup: JLC06161H-7628 (what-if) · Back to board stackup" (a click on the name opens the Stackup view).
+  shows "JLC06161H-7628 · what-if · ×" (the name opens the Stackup view, × goes back to the board's stackup).
   The choice is kept per board in this browser; turning the option off returns to the board's stackup. It does
   not change the board's files: "use for the board" on a template writes it into the Prepare PCB draft as the
   board's stackup – every dielectric, copper layer and the solder mask, with the template as the source (tanδ

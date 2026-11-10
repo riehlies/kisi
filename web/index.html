@@ -12,17 +12,21 @@
     <div class="brand"><b title="kisi __VERSION__">kisi<span class="ver">v__VERSION__</span></b><span id="boardName">–</span><small id="boardMeta"></small></div>
     <div class="grow"></div>
     <div class="stk-act" id="stk-act" hidden role="status" aria-live="polite"></div>
+    <div class="views">
+    <div class="seg" role="group" aria-label="Stackup view" id="seg-stk" hidden>
+      <button id="view-stk" aria-pressed="false" title="Stackups and tolerances: the stackup all views use, fab templates and edited copies per net class, the manufacturing tolerances">Stackup</button>
+    </div>
     <div class="seg" role="group" aria-label="Analysis">
-      <button id="view-stk" aria-pressed="false" hidden title="Stackups and tolerances: the stackup all views use, fab templates and edited copies per net class, the manufacturing tolerances">Stackup</button>
       <button id="view-si" aria-pressed="true">Impedance</button>
       <button id="view-ch" aria-pressed="false">Channel</button>
       <button id="view-pi" aria-pressed="false">Power</button>
     </div>
+    </div>
     <div class="seg" role="group" aria-label="Colour mode" data-view="si">
       <button id="mode-type" aria-pressed="true">Line type</button>
-      <button id="mode-dev" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Deviation from target</button>
+      <button id="mode-dev" aria-pressed="false" disabled title="after step 2 “Impedance estimate”"><span class="lw">Deviation from target</span><span class="sh" aria-hidden="true">Deviation</span></button>
       <button id="mode-tol" aria-pressed="false" disabled hidden title="after step 2 “Impedance estimate”">Tolerance</button>
-      <button id="mode-abs" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Z₀ absolute</button>
+      <button id="mode-abs" aria-pressed="false" disabled title="after step 2 “Impedance estimate”"><span class="lw">Z₀ absolute</span><span class="sh" aria-hidden="true">Z₀</span></button>
       <button id="mode-xt" aria-pressed="false" disabled title="after step 2 “Impedance estimate”">Crosstalk</button>
     </div>
     <div class="seg" role="group" aria-label="Channel view" data-view="ch" hidden>
@@ -31,8 +35,8 @@
     </div>
     <div class="seg" role="group" aria-label="Power view" data-view="pi" hidden>
       <button id="pim-b" aria-pressed="true">Power tree</button>
-      <button id="pim-v" aria-pressed="false" disabled title="after “Compute” in step 2">Voltage drop</button>
-      <button id="pim-j" aria-pressed="false" disabled title="after “Compute” in step 2">Current density</button>
+      <button id="pim-v" aria-pressed="false" disabled title="after “Compute” in step 2"><span class="lw">Voltage drop</span><span class="sh" aria-hidden="true">Drop</span></button>
+      <button id="pim-j" aria-pressed="false" disabled title="after “Compute” in step 2"><span class="lw">Current density</span><span class="sh" aria-hidden="true">Density</span></button>
       <button id="pim-l" aria-pressed="false" disabled title="after “Compute” in step 2">Losses</button>
       <button id="pim-t" aria-pressed="false" disabled title="after “Compute” in step 3">Temperature</button>
     </div>

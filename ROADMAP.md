@@ -141,9 +141,12 @@ validation, and every result says which level it used and how uncertain it is.
   4.9 → 1.1 % median). Next:
   - **the fab's stackup** (`feat/stackup-variants`, first version; user feedback: the biggest impedance error in
     production is usually the fab's prepreg choice, not the formula): `data/stackups.json` with JLCPCB's impedance
-    templates (4, 6, 8 layers) and their sources, `kisi stackups`, `--stackup-preset`, the viewer's “Compare & tolerances” view (the board's
-    stackup next to templates or edited copies; "use for the board" writes a template into the Prepare PCB draft,
-    copper and mask thickness in kisi.json too), the stackup in every export's header. Next: more fabs (Aisler,
+    templates (4, 6, 8 layers) and their sources, `kisi stackups`, `--stackup-preset`, the viewer's Stackup view (a view button of its own with the
+    option on: the board's stackup next to templates or edited copies; "Use in all views" makes one the stackup of
+    every view – impedance, channel, power, exports – as `--stackup-preset` does on the command line, checked by
+    `tools/compare_viewer_cli.py`; "use for the board" writes a template into the Prepare PCB draft, copper and mask
+    thickness in kisi.json too), the stackup in every export's header. Settled: JLC's core εr 4.6 stays, with
+    `epsilon_r_alt` from the NP-155F datasheet kept beside it. Next: more fabs (Aisler,
     PCBWay, Eurocircuits – each with published values only), IPC-2581 import if asked for, the measured
     cross-sections of the test board (JLC) against the templates;
   - **sensitivity of the impedance** (`feat/stackup-variants`, done): per net class and layer the band for
@@ -152,9 +155,8 @@ validation, and every result says which level it used and how uncertain it is.
     panel; one option "Fab stackups & tolerances", off by default (viewer switch, kisi.json `tolerances`,
     `--tolerance`/`--tol`): on, the band in every view and output (net, lane, tooltip, the map's Tolerance mode,
     `net`, `check`, `overview`, exports), the export with the stackup chosen in the Compare view and, on request
-    (`--corners`, the viewer's export settings), the low- and high-impedance tolerance corners; information only. Open for the maintainer: whether the band should enter a verdict (e.g. yellow when
-    the RSS band leaves the window), and the default width tolerance (±0.02 mm from JLC's example; JLC states
-    ±20 %);
+    (`--corners`, the viewer's export settings), the low- and high-impedance tolerance corners. Settled: the band
+    is information only (no verdict uses it), and the default width tolerance is ±0.02 mm (JLC's example);
   - **etch factor** (still open; the tolerance band uses a symmetric width tolerance) per stackup or layer in
     `kisi.json`, applied as an effective width w − t/(2·ef) (the FDM
     backend takes no trapezoids; CST: within ±2.2 % for microstrips and pairs, −2 … −4 % for striplines, against

@@ -23,6 +23,13 @@ struct State {
     stackup_file: Option<kisi_core::board::Stackup>,
     /// the viewer's stackup changes of the last analysis
     stack_ov: kisi_core::board::StackupOverride,
+    /// the board's own stackup of the last analysis (file, configuration, the Stackup card's changes)
+    stack_base: Option<kisi_core::board::Stackup>,
+    /// the active stackup of the option "fab stackups & tolerances" (a template and/or changes over
+    /// `stack_base`, as `--stackup-preset` / `--stackup`); None: the board's
+    active: Option<(Option<String>, Option<kisi_core::board::StackupOverride>)>,
+    /// the last analyses by the viewer's key (switching stackups back and forth)
+    an_cache: Vec<AnCache>,
     pro: Option<String>,
     out: Vec<u8>,
     zone_pts: Vec<f32>,
@@ -90,6 +97,57 @@ thread_local! {
     static ST: RefCell<State> = RefCell::new(State::default());
 }
 
+/// One cached analysis: its key, the stackup state it was made with, the analysis and its parameters.
+struct AnCache {
+    key: String,
+    su: kisi_core::board::Stackup,
+    base: Option<kisi_core::board::Stackup>,
+    ov: kisi_core::board::StackupOverride,
+    active: Option<(Option<String>, Option<kisi_core::board::StackupOverride>)>,
+    an: kisi_core::Analysis,
+    params: Params,
+}
+
+/// Put a stackup on the analysed board. A different one drops the power results that depend on it
+/// (the viewer solves them again).
+fn put_stackup(st: &mut State, su: kisi_core::board::Stackup) {
+    if let Some(b) = st.board.as_mut() {
+        let same = b.stackup.as_ref().map(|x| serde_json::to_string(x).ok()) == Some(serde_json::to_string(&su).ok());
+        b.stackup = Some(su);
+        if !same {
+            st.pi_store.clear();
+            st.loss_map.clear();
+            st.thermal = None;
+        }
+    }
+}
+
+/// The stackup of an analysis request: the board's (file and configuration, then the Stackup card's
+/// changes, "stackup") and, with the option "fab stackups & tolerances" on, the active stackup over it
+/// ("active_stackup": {"preset": id | null, "edits": StackupOverride | null}) – the core's
+/// `stackups::active_stackup`, as the CLI's `--stackup-preset` / `--stackup`.
+fn set_stackup(st: &mut State, v: &serde_json::Value) -> Result<(), String> {
+    let ov: kisi_core::board::StackupOverride = serde_json::from_value(v["stackup"].clone()).unwrap_or_default();
+    let a = &v["active_stackup"];
+    let act = a.is_object().then(|| {
+        (
+            a["preset"].as_str().map(str::to_string),
+            serde_json::from_value::<kisi_core::board::StackupOverride>(a["edits"].clone()).ok(),
+        )
+    });
+    let Some(file) = st.stackup_file.clone() else { return Ok(()) };
+    let base = file.with_overrides(&ov);
+    let su = match &act {
+        Some((p, e)) => kisi_core::stackups::active_stackup(&base, p.as_deref(), e.as_ref())?,
+        None => base.clone(),
+    };
+    put_stackup(st, su);
+    st.stack_ov = ov;
+    st.stack_base = Some(base);
+    st.active = act;
+    Ok(())
+}
+
 fn input(p: *const u8, n: usize) -> String {
     let bytes = unsafe { std::slice::from_raw_parts(p, n) };
     String::from_utf8_lossy(bytes).into_owned()
@@ -107,6 +165,8 @@ fn rebuild(st: &mut State) -> Result<Option<kisi_core::config::Applied>, String>
     let vs = kisi_core::variant::apply(&mut b, st.cfg.as_ref(), choice, &st.files);
     let applied = st.cfg.as_ref().map(|c| c.apply(&mut b));
     st.stackup_file = b.stackup.clone();
+    st.stack_base = b.stackup.clone();
+    st.an_cache.clear();
     st.board = Some(b);
     st.variant = Some(vs);
     st.buses = None;
@@ -306,31 +366,60 @@ pub extern "C" fn kisi_analyze(p: *const u8, n: usize) -> i32 {
             }
         }
     };
-    // optional stackup overrides: {"stackup": {"dielectrics": [{index, epsilon_r, loss_tangent, thickness}], "mask_epsilon_r"}}
-    let ov: kisi_core::board::StackupOverride = serde_json::from_str::<serde_json::Value>(&txt)
-        .ok()
-        .and_then(|v| serde_json::from_value(v["stackup"].clone()).ok())
-        .unwrap_or_default();
-    let s = ST.with(|st| {
-        let mut st = st.borrow_mut();
-        let file = st.stackup_file.clone();
-        if let (Some(b), Some(f)) = (st.board.as_mut(), file) {
-            b.stackup = Some(f.with_overrides(&ov));
-        }
-        st.stack_ov = ov;
-        let an = st.board.as_ref().map(|b| analyze(b, &params))?;
+    // optional stackup overrides: {"stackup": {"dielectrics": [{index, epsilon_r, loss_tangent, thickness}],
+    // "mask_epsilon_r"}}, the active stackup ("active_stackup"), the viewer's cache key ("cache_key";
+    // with "restore_only" only a cached analysis is put back: exit code 2 when there is none)
+    let v: serde_json::Value = serde_json::from_str(&txt).unwrap_or_default();
+    let key = v["cache_key"].as_str().map(str::to_string);
+    if v["restore_only"].as_bool() == Some(true) {
+        return ST.with(|st| {
+            let mut g = st.borrow_mut();
+            let st: &mut State = &mut g;
+            let Some(i) = key.as_ref().and_then(|k| st.an_cache.iter().position(|c| &c.key == k)) else { return 2 };
+            let c = st.an_cache.remove(i);
+            put_stackup(st, c.su.clone());
+            st.stack_base = c.base.clone();
+            st.stack_ov = c.ov.clone();
+            st.active = c.active.clone();
+            st.an = Some(c.an.clone());
+            st.params = Some(c.params.clone());
+            st.an_cache.push(c);
+            st.out = b"{}".to_vec();
+            0
+        });
+    }
+    let s = ST.with(|st| -> Result<String, String> {
+        let mut g = st.borrow_mut();
+        let st: &mut State = &mut g;
+        set_stackup(st, &v)?;
+        let an = st.board.as_ref().map(|b| analyze(b, &params)).ok_or("no board loaded")?;
         let js = serde_json::to_string(&an).unwrap();
+        if let (Some(k), Some(su)) = (key, st.board.as_ref().and_then(|b| b.stackup.clone())) {
+            st.an_cache.retain(|c| c.key != k);
+            if st.an_cache.len() >= 4 {
+                st.an_cache.remove(0);
+            }
+            st.an_cache.push(AnCache {
+                key: k,
+                su,
+                base: st.stack_base.clone(),
+                ov: st.stack_ov.clone(),
+                active: st.active.clone(),
+                an: an.clone(),
+                params: params.clone(),
+            });
+        }
         st.an = Some(an);
         st.params = Some(params);
-        Some(js)
+        Ok(js)
     });
     match s {
-        Some(s) => {
+        Ok(s) => {
             set_out(s);
             0
         }
-        None => {
-            set_out("no board loaded".into());
+        Err(e) => {
+            set_out(e);
             1
         }
     }
@@ -342,8 +431,14 @@ pub extern "C" fn kisi_analyze(p: *const u8, n: usize) -> i32 {
 pub extern "C" fn kisi_skeleton(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
     let params: Params = serde_json::from_str(&txt).unwrap_or_default();
+    let v: serde_json::Value = serde_json::from_str(&txt).unwrap_or_default();
     let s = ST.with(|st| {
-        let mut st = st.borrow_mut();
+        let mut g = st.borrow_mut();
+        let st: &mut State = &mut g;
+        // the stackup as for the analysis (the power views use it before the impedance estimate)
+        if set_stackup(st, &v).is_err() {
+            let _ = set_stackup(st, &serde_json::json!({"stackup": v["stackup"]}));
+        }
         st.an = None; // channel / RF need the full analysis
         st.board.as_ref().map(|b| serde_json::to_string(&kisi_core::extract::skeleton(b, &params)).unwrap())
     });
@@ -945,34 +1040,18 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
         // the option "fab stackups & tolerances" on: the stackup chosen in the Compare & tolerances view
         // (a fab template or an edited copy over the board's) and, on request, the tolerance corners
         let tol = if v["tolerance"].is_null() { None } else { Some(tolset_of(&v["tolerance"])?) };
-        let chosen = export_stackup(b, st.cfg.as_ref(), &v["stackup"])?;
-        let pr = kisi_core::extract::Params { tolerance: None, ..params.clone() };
-        let alt = chosen.as_ref().map(|(su, _)| {
-            let mut b2 = b.clone();
-            b2.stackup = Some(su.clone());
-            let an2 = kisi_core::extract::analyze(&b2, &pr);
-            (b2, an2)
-        });
-        let (eb, ea) = alt.as_ref().map(|(b2, a2)| (b2, a2)).unwrap_or((b, an));
+        // the board as analysed: with the option on, the active stackup (the Stackup view's choice)
+        let (eb, ea) = (b, an);
         let cs = match (&tol, v["corners"].as_bool() == Some(true)) {
             (Some(t), true) => kisi_core::channel_export::corners(eb, params, &t.tol),
             _ => Vec::new(),
         };
-        // cross-sections of the exported lanes that the field solver should add first, so that every
-        // variant stands at the level of the board's own (only where the board's lanes have field results)
-        if v["no_field"].as_bool() != Some(true) && (alt.is_some() || !cs.is_empty()) {
+        // the corners' cross-sections of the exported lanes that the field solver should add first, so
+        // that every variant stands at the level of the board's own (only where its lanes have field results)
+        if v["no_field"].as_bool() != Some(true) && !cs.is_empty() {
             let own = kisi_core::channel_export::lane_geoms(b, an, &lanes);
             if own.keys().any(|id| params.field.contains_key(id)) {
-                let mut need = kisi_core::channel_export::corner_geoms(&cs, &lanes, &params.field);
-                if alt.is_some() {
-                    let have: std::collections::HashSet<String> = need.iter().map(|x| x.0.clone()).collect();
-                    need.extend(
-                        kisi_core::channel_export::lane_geoms(eb, ea, &lanes)
-                            .into_iter()
-                            .filter(|(id, _)| !params.field.contains_key(id) && !have.contains(id))
-                            .map(|(id, (t, l))| (id, t, l)),
-                    );
-                }
+                let need = kisi_core::channel_export::corner_geoms(&cs, &lanes, &params.field);
                 if !need.is_empty() {
                     return Ok(serde_json::json!({ "field_needed": need }).to_string());
                 }
@@ -1019,7 +1098,7 @@ pub extern "C" fn kisi_export(p: *const u8, n: usize) -> i32 {
             .as_array()
             .map(|a| a.iter().filter_map(|l| class_of(&st, l["lane"].as_str()?)).collect())
             .unwrap_or_default();
-        let (short, full) = export_header(&st, eb, ea, chosen.as_ref().map(|c| &c.1), tol.as_ref(), &classes);
+        let (short, full) = export_header(&st, eb, ea, tol.as_ref(), &classes);
         kisi_core::channel_export::stamp(&mut files, &short, &full);
         Ok(serde_json::json!({"summary": summary, "files": files, "name": name}).to_string())
     });
@@ -1167,7 +1246,7 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
         // the stackup used at the head of the Touchstone files the viewer saves
         let cls: Vec<String> = b.nets.get(net as usize).and_then(|n| class_of(&st, n)).into_iter().collect();
         let tol = if v["tolerance"].is_null() { None } else { tolset_of(&v["tolerance"]).ok() };
-        let head = export_header(&st, b, an, None, tol.as_ref(), &cls);
+        let head = export_header(&st, b, an, tol.as_ref(), &cls);
         let stamp = |name: &str, t: String| {
             if t.is_empty() {
                 return t;
@@ -1214,19 +1293,23 @@ fn reply(r: Result<String, String>) -> i32 {
 }
 
 /// The comment block of the viewer's exports: the stackup used with the source of every value (board
-/// file, kisi.json, the viewer's edits, or – `chosen` – the Compare & tolerances view's template or
-/// copy) and, with the option "fab stackups & tolerances" on (`tol`), the band of `classes`.
+/// file, kisi.json, the viewer's edits, the active stackup's template) and, with the option "fab stackups & tolerances" on (`tol`), the band of `classes`.
 fn export_header(
     st: &State,
     b: &Board,
     an: &kisi_core::extract::Analysis,
-    chosen: Option<&kisi_core::stackups::Provenance>,
     tol: Option<&kisi_core::stackups::TolSet>,
     classes: &[String],
 ) -> (Vec<String>, Vec<String>) {
-    let ov = Some((&st.stack_ov, "viewer edit")).filter(|o| !o.0.is_empty());
-    let prov =
-        chosen.cloned().unwrap_or_else(|| kisi_core::stackups::provenance(b.stackup(), st.cfg.as_ref(), None, ov));
+    // the active stackup's template and changes, else the Stackup card's changes
+    let (preset, edits) = st.active.clone().unwrap_or_default();
+    let ov = edits
+        .as_ref()
+        .filter(|o| !o.is_empty())
+        .or(Some(&st.stack_ov))
+        .filter(|o| !o.is_empty())
+        .map(|o| (o, "viewer edit"));
+    let prov = kisi_core::stackups::provenance(b.stackup(), st.cfg.as_ref(), preset.as_deref(), ov);
     let (mut short, mut full) =
         (kisi_core::stackups::header_short(b.stackup(), &prov), kisi_core::stackups::header_lines(b.stackup(), &prov));
     if let (Some(t), Some(params)) = (tol, st.params.as_ref()) {
@@ -1249,43 +1332,6 @@ fn export_header(
         full.extend(tl);
     }
     (short, full)
-}
-
-/// The stackup the Compare & tolerances view chose for the export: {"preset": id | null, "edits":
-/// StackupOverride | null} over the board's stackup as analysed, with where its values come from;
-/// None for the board's own (null).
-fn export_stackup(
-    b: &Board,
-    cfg: Option<&kisi_core::config::BoardConfig>,
-    v: &serde_json::Value,
-) -> Result<Option<(kisi_core::board::Stackup, kisi_core::stackups::Provenance)>, String> {
-    if v.is_null() {
-        return Ok(None);
-    }
-    let mut su = b.stackup().clone();
-    let preset = v["preset"].as_str();
-    if let Some(id) = preset {
-        let pr = kisi_core::stackups::library().find(id)?;
-        if let Some(why) = pr.fit(&su).problem {
-            return Err(why);
-        }
-        su = pr.apply(&su);
-    }
-    let ov: Option<kisi_core::board::StackupOverride> = if v["edits"].is_null() {
-        None
-    } else {
-        Some(serde_json::from_value(v["edits"].clone()).map_err(|e| format!("edits: {e}"))?)
-    };
-    if let Some(o) = ov.as_ref().filter(|o| !o.is_empty()) {
-        su = su.with_overrides(o);
-    }
-    let prov = kisi_core::stackups::provenance(
-        &su,
-        cfg,
-        preset,
-        ov.as_ref().filter(|o| !o.is_empty()).map(|o| (o, "viewer edit")),
-    );
-    Ok(Some((su, prov)))
 }
 
 /// The viewer's tolerances: the values (`Tolerances`) and where each comes from (`from`:
@@ -1347,7 +1393,8 @@ pub extern "C" fn kisi_stackup_study(p: *const u8, n: usize) -> i32 {
         let b = st.board.as_ref().ok_or("no board loaded")?;
         let an = st.an.as_ref().ok_or("the impedance estimate first (step 2)")?;
         let params = st.params.as_ref().ok_or("the impedance estimate first (step 2)")?;
-        let su = b.stackup();
+        // the board's own stackup, also while another one is active in all views
+        let su = st.stack_base.as_ref().unwrap_or(b.stackup());
         let lib = kisi_core::stackups::library();
         let mut cols = vec![kisi_core::stackups::Column {
             id: "board".into(),

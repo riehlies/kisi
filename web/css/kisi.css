@@ -503,7 +503,14 @@ table.prep-ed input.ref { max-width: 90px; }
 .tol-sum { margin: 6px 0 0; }
 .stk-panel .card { padding: 12px 14px; }
 .stk-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.stk-back { order: -1; }
+.stk-head .prep-chk { font-weight: 600; font-size: 13px; }
+.stk-chip.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.stk-chip.board:not(.active) { border-color: var(--line); }
+.stk-in-use { color: var(--accent); font-weight: 600; white-space: nowrap; }
+.stk-act { font-size: 12.5px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--z-high1); background: var(--panel-2); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.stk-act.busy { border-color: var(--accent); }
+.stk-act .linklike { font-size: inherit; }
+.what-if { margin: 4px 0 0; }
 .fab-row .prep-chk { font-weight: 600; }
 .stk-head h2 { margin: 0; font-family: var(--font-display); font-size: 20px; }
 .stk-head .note { flex: 1 1 240px; }

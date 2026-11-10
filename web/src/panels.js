@@ -48,13 +48,14 @@ function renderSide() {
   const nEd = Object.keys(stackOv().dielectrics || {}).length;
   rows.push(`<div class="fs-row"><span class="note">${S.stackEdit ? "Columns: εr · tanδ · thickness µm. Affects impedance, loss, field solver and PDN." : nEd ? `${nEd} layer(s) changed (*), stored in this browser.` : (S.config && S.config.dielectrics ? `Values from the file and ${esc(S.config.name)}.` : "Values from the file.")}</span><span>${nEd && !S.stackEdit ? `<button class="btn small" id="st-reset">File values</button> ` : ""}<button class="btn small" id="st-edit">${S.stackEdit ? "Done" : "Edit"}</button></span></div>`);
   // the option "Fab stackups & tolerances": the switch, and while it is on the one entry point
-  const fab = fabOn(), open = !$("stk-panel").hidden;
-  rows.push(`<div class="fs-row fab-row"><label class="prep-chk" for="fab-on" title="Off by default. On: fab stackup templates and edited copies next to the board's stackup, the fab tolerance band of the impedances (net detail, channel, the map's Tolerance mode, exports), tolerance corners as a choice in the export settings"><input type="checkbox" id="fab-on" ${fab ? "checked" : ""}> Fab stackups &amp; tolerances</label>${fab ? `<button class="btn small" id="stk-open" aria-pressed="${open}">${open ? "Close" : "Compare &amp; tolerances"}</button>` : ""}</div>`);
+  const fab = fabOn(), act = fab ? stkActiveLabel() : null;
+  rows.push(`<div class="fs-row fab-row"><label class="prep-chk" for="fab-on" title="${esc(FAB_TITLE)}"><input type="checkbox" id="fab-on" ${fab ? "checked" : ""}> Fab stackups &amp; tolerances</label>${fab ? `<button class="linklike" id="stk-go">Stackup view</button>` : ""}</div>`);
+  if (act) rows.push(`<p class="note what-if">All views use <b>${esc(act)}</b> (what-if); the layers above are the board's.</p>`);
   $("stack").innerHTML = rows.join("");
   $("stack").querySelectorAll("input[data-l]").forEach((el) => el.onchange = () => { S.layerOn[+el.dataset.l] = el.checked; renderLayerChips(); renderSide(); draw(); });
   $("st-edit").onclick = () => { S.stackEdit = !S.stackEdit; renderSide(); };
   $("fab-on").onchange = () => setFabOn($("fab-on").checked);
-  if ($("stk-open")) $("stk-open").onclick = () => stkOpen($("stk-panel").hidden);
+  if ($("stk-go")) $("stk-go").onclick = () => setTab("stk");
   if ($("st-reset")) $("st-reset").onclick = () => { lsSet(stackKey(), null); S.stackOv = null; runAnalysis(); };
   $("stack").querySelectorAll("input[data-di]").forEach((el) => el.onchange = () => {
     const i = +el.dataset.di, k = el.dataset.k, f = S.scene.stackup.dielectrics[i];

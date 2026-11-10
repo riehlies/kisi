@@ -157,39 +157,54 @@ in kisi.json; a category whose open gaps are all handed over says so.
 ### Fab stackups and tolerances (option)
 In production the largest impedance error is usually the stackup the fab builds – a different prepreg, a thinner
 core – not the formula, and the fab's tolerances move every impedance more than kisi's calculation is off. One
-option covers both: **Fab stackups & tolerances** in the Stackup card of the Impedance view, off by default. Off,
-nothing of it is shown and the analyses and exports are as without it. On (per board in this browser; a kisi.json
-with a `tolerances` entry turns it on – Prepare PCB writes or removes that entry from "Edits made in the views"):
+option covers both: **Fab stackups & tolerances** in the Stackup card (every view), off by default. Off, nothing of
+it is shown and the analyses and exports are as without it. On (per board in this browser; a kisi.json with a
+`tolerances` entry turns it on – Prepare PCB writes or removes that entry from "Edits made in the views"), the view
+switch gets a fourth button, **Stackup** (Stackup · Impedance · Channel · Power), and the Stackup view holds
+everything of the option; its top has the same switch to turn the option off. Another view button leaves it (Esc
+goes back to the view before).
 
-- **Compare & tolerances** – the one place for the option, a view over the board ("← Back to the board" or Esc
-  closes it). One row per net class and layer – the class's most used cross-section there – and a column per
-  stackup: the board's (as the Stackup card shows it), and up to three more – fab templates from kisi's library
-  (`data/stackups.json`, first JLCPCB's) with the board's copper layer count and thickness, or copies whose
-  thicknesses, εr and copper you edit ("edit" on a column). Each cell shows the impedance, its deviation from the
-  target and its level; its colour says whether it is inside the class's window (the interface profile's tolerance,
-  else ±10 %). "use for the board" on a template writes it into the Prepare PCB draft as the board's stackup – every
-  dielectric, copper layer and the solder mask, with the template as the source (tanδ marked as assumed); save it
-  there. Make sure the fab still offers the template, and keep KiCad's own stackup in step with it.
+- **Impedance per stackup.** One row per net class and layer – the class's most used cross-section there – and a
+  column per stackup: the board's (file + kisi.json, as the Stackup card shows it), and up to three more – fab
+  templates from kisi's library (`data/stackups.json`, first JLCPCB's) with the board's copper layer count and
+  thickness (the others are listed, not selectable, with the reason), or copies whose thicknesses, εr and copper
+  you edit ("edit" on a column). Each cell shows the impedance, its deviation from the target and its level; its
+  colour says whether it is inside the class's window (the interface profile's tolerance, else ±10 %).
+- **Use in all views.** One column is the stackup every view uses – the board's by default. "Use in all views" on
+  a template or a copy makes it a what-if: the impedance estimate, the map modes, net detail and tooltip (the field
+  solver on demand as always – its results are kept per cross-section, so switching back is instant), the channel
+  check, eyes, crosstalk and vias, the DC voltage drop and current density (copper thickness), the temperature
+  (layer thicknesses) and the PDN impedance (plane capacitance from dielectric thickness and εr), and the exports.
+  What the views had computed is computed again, with the progress in the header. Copper layers map by their order.
+  It is the same path as the command line's `--stackup-preset ID` (and `--stackup FILE` for an edited copy): the
+  template's values replace the board's after its kisi.json. While a what-if is active, the header of every view
+  shows "Stackup: JLC06161H-7628 (what-if) · Back to board stackup" (a click on the name opens the Stackup view).
+  The choice is kept per board in this browser; turning the option off returns to the board's stackup. It does
+  not change the board's files: "use for the board" on a template writes it into the Prepare PCB draft as the
+  board's stackup – every dielectric, copper layer and the solder mask, with the template as the source (tanδ
+  marked as assumed; the kisi.json `stackup` entry that `kisi stackups <board> --preset ID` prints,
+  [reference](reference.md#fab-stackup-templates)); save it there. Make sure the fab still offers the template, and
+  keep KiCad's own stackup in step with it.
 - **Manufacturing tolerances** in the same view: dielectric thickness, εr, copper thickness and trace width
   (defaults ±10 %, ±5 %, ±10 %, ±0.02 mm – estimates; each input says where its value comes from: default,
-  kisi.json, edited here) and, for one column, the band per tolerance with a bar against the window and one summary
-  line. The tolerances apply everywhere: the net detail, the lane's impedance row in the Channel view and the board
-  tooltip show "fab ±x Ω RSS / ±y Ω worst", the Signals card the share of the length whose band stays in the window,
-  and the board map gets a **Tolerance** mode (green: the band inside the window, amber: nominal inside but the band
-  leaves it, red: nominal outside). The band is information; the channel check's verdict is unchanged. Wider traces
-  (with the gap adjusted) or an impedance-controlled order, where the fab tunes the widths to its measured stackup,
-  are the usual answers when the band leaves the window.
-- **Exports** (Channel view): with the option on, a lane's or bus's export uses the stackup chosen for the
-  tolerances in this view ("stackup": the board's, a template or an edited copy) and names it with the tolerances
-  in its header. The export settings then offer **tolerance corners** (unticked by default): the lane also at its
-  low- and high-impedance corner, in folders `zlo/` and `zhi/` ([CLI reference](cli.md#export), `--corners`).
-  Where the board's lanes have field results, the field solver first solves the cross-sections the chosen stackup
-  or the corners need, so that all variants stand at the same level.
+  kisi.json, edited here) and, for one column ("stackup"), the band per tolerance with a bar against the window and
+  one summary line. The tolerances apply everywhere: the net detail, the lane's impedance row in the Channel view
+  and the board tooltip show "fab ±x Ω RSS / ±y Ω worst", the Signals card the share of the length whose band stays
+  in the window, and the board map gets a **Tolerance** mode (green: the band inside the window, amber: nominal
+  inside but the band leaves it, red: nominal outside). The band is information only; the channel check's verdict
+  does not use it. Wider traces (with the gap adjusted) or an impedance-controlled order, where the fab tunes the
+  widths to its measured stackup, are the usual answers when the band leaves the window.
+- **Exports** (Channel view): with the option on, a lane's or bus's export uses the stackup active in all views
+  and names it with the tolerances in its header. The export settings then offer **tolerance corners** (unticked
+  by default): the lane also at its low- and high-impedance corner, in folders `zlo/` and `zhi/` ([CLI
+  reference](cli.md#export), `--corners`). Where the board's lanes have field results, the field solver first
+  solves the cross-sections the corners need, so that all variants stand at the same level.
 
 On the command line the option is on with `--tolerance` or `--tol` (or a kisi.json `tolerances` entry):
 `kisi overview <board> --tolerance` gives the band per class and worst net and the per-tolerance table.
 `kisi stackups <board>` lists the templates that fit and compares them, `kisi stackups <board> --preset ID` prints a
-template's `stackup` entry for the kisi.json, and `--stackup-preset ID` tries a template for one run.
+template's `stackup` entry for the kisi.json, and `--stackup-preset ID` tries a template for one run – in every
+command, as the viewer's "Use in all views" (`tools/compare_viewer_cli.py` checks that both give the same numbers).
 
 ## Worked example: Seeed Studio XIAO nRF54LM20A
 [`docs/examples/xiao-nrf54lm20a/XIAO nRF54LM20A.kisi.json`](examples/xiao-nrf54lm20a/XIAO%20nRF54LM20A.kisi.json)

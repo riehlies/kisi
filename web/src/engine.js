@@ -40,9 +40,9 @@ class Engine {
     if (rc !== 0) throw new Error(this.out());
   }
   loadPro(text) { this.callRec("pro", "kisi_load_pro", text); }
-  loadPcb(text) { this.callRec("pcb", "kisi_load_pcb", text); }
+  loadPcb(text) { this.anCache = null; this.callRec("pcb", "kisi_load_pcb", text); }
   // board configuration; files: BOMs its variants name ({path: text}); variant: the viewer's choice or null
-  config(text, board, files, variant) { this.callRec("config", "kisi_config", JSON.stringify({ config: text, board, files: files || {}, variant: variant || null })); return JSON.parse(this.out()); }
+  config(text, board, files, variant) { this.anCache = null; this.callRec("config", "kisi_config", JSON.stringify({ config: text, board, files: files || {}, variant: variant || null })); return JSON.parse(this.out()); }
   // board preparation (kisi_core::gaps / config): the gap list with a configuration text (the loaded
   // kisi.json or a draft; null: none), a check of a text without applying it, one category's entries
   gaps(board, config, view) { this.call(this.k.kisi_gaps, JSON.stringify({ board, config: config ?? null, for: view || null })); return JSON.parse(this.out()); }
@@ -57,9 +57,30 @@ class Engine {
   boardSheets() { if (this.k.kisi_board_sheets() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   // assembly variant: the state, or choose one (null: the configuration's) – the board is rebuilt
   variants() { if (this.k.kisi_variants() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
-  variant(name) { this.callRec("variant", "kisi_variant", JSON.stringify({ variant: name || null })); return JSON.parse(this.out()); }
+  variant(name) { this.anCache = null; this.callRec("variant", "kisi_variant", JSON.stringify({ variant: name || null })); return JSON.parse(this.out()); }
   scene() { if (this.k.kisi_scene() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   analyze(params) { this.callRec("analyze", "kisi_analyze", JSON.stringify(params)); return JSON.parse(this.out()); }
+  // an analysis by key (runAnalysis: the stackup, targets, options and field results): the last four are
+  // kept here and in the engine, so that switching stackups back is instant; the replay log keeps the
+  // full request, so the check workers compute the same state
+  analyzeKeyed(params, key) {
+    if (!this.anCache) this.anCache = new Map();
+    const hit = this.anCache.get(key);
+    if (hit) {
+      try {
+        this.call(this.k.kisi_analyze, JSON.stringify({ cache_key: key, restore_only: true }));
+        this.rec("analyze", "kisi_analyze", hit.text);
+        this.anCache.delete(key); this.anCache.set(key, hit);
+        return hit.an;
+      } catch (e) { this.anCache.delete(key); }
+    }
+    const text = JSON.stringify({ ...params, cache_key: key });
+    this.callRec("analyze", "kisi_analyze", text);
+    const an = JSON.parse(this.out());
+    this.anCache.set(key, { text, an });
+    while (this.anCache.size > 4) this.anCache.delete(this.anCache.keys().next().value);
+    return an;
+  }
   buses(params) { this.callRec("buses", "kisi_buses", JSON.stringify(params)); return JSON.parse(this.out()); }
   laneRf(req) { this.call(this.k.kisi_lane_rf, JSON.stringify(req)); return JSON.parse(this.out()); }
   // a lane or a bus for circuit and RF simulators (kisi export): {summary, files: [{path, content}], name}

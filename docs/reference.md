@@ -215,9 +215,20 @@ tanδ is an assumption (JLCPCB publishes none) – each dielectric's `note` says
 the same number of copper layers whose stackup (when it is in the board file) is within the fab's board thickness
 tolerance of the template's nominal thickness (±10 % at JLCPCB); applied, it replaces every dielectric, copper and
 mask value. `kisi stackups` lists them, `--stackup-preset ID` applies one for a run, `kisi stackups <board> --preset
-ID` prints its `stackup` entry for kisi.json, and the viewer's Compare & tolerances view writes it into the draft
-([Preparing a board](preparing-a-board.md#fab-stackups-and-tolerances-option)). Check that the template still exists in the
-fab's order form before ordering. More fabs: a template with its own sources in `data/stackups.json`.
+ID` prints its `stackup` entry for kisi.json (the form the viewer's "use for the board" writes too), and the viewer's Stackup view makes one the stackup of all views ("Use in all views", a what-if kept in the browser) and writes it into the draft
+([Preparing a board](preparing-a-board.md#fab-stackups-and-tolerances-option)). The entry, shortened:
+
+```json
+"stackup": {
+  "copper": [{"index": 0, "thickness": 0.035, "source": {"kind": "datasheet", "document": "JLCPCB impedance template JLC06161H-7628 (kisi stackup preset jlc6_7628)", "url": "https://jlcpcb.com/capabilities/pcb-capabilities"}}, …],
+  "dielectrics": [{"index": 0, "material": "…", "thickness": …, "epsilon_r": …, "loss_tangent": 0.02, "source": {…}}, …],
+  "solder_mask": {"epsilon_r": …, "thickness": …, "source": {…}}
+}
+```
+
+With it in the kisi.json the board's own stackup is the template's – the same numbers as `--stackup-preset ID`
+without it, and as the viewer's what-if. Check that the template still exists in the fab's order form before
+ordering. More fabs: a template with its own sources in `data/stackups.json`.
 
 ### `connector_ends`
 A lane from a device to a connector is judged on the board share – loss, return loss, skew (a lane from connector

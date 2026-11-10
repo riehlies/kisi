@@ -121,9 +121,9 @@ function exportHint() {
   $("ex-corners-row").hidden = !fab;
   if (!fab) $("ex-corners").checked = false;
   const last = S.exportLast ? ` Last export: ${S.exportLast}.` : "";
-  const col = fab ? stkExportCol() : null;
+  const col = fab ? stkActiveLabel() : null;
   $("ex-hint").textContent = (none ? "Nothing selected: “Export…” writes nothing. " : "")
-    + (fab ? `Stackup: ${col ? col.label + " (Compare & tolerances)" : "the board's"}, with the fab tolerances in the header${$("ex-corners").checked ? " and the low-Z / high-Z corners" : ""}. ` : "")
+    + (fab ? `Stackup: ${col ? col + " (what-if, all views)" : "the board's"}, with the fab tolerances in the header${$("ex-corners").checked ? " and the low-Z / high-Z corners" : ""}. ` : "")
     + (o.model === "compact"
       ? "Compact: lines as lossless-line cells (lossless LC lines carry the delay, the same fitted losses lumped once per cell) – passive, 2–5 × fewer elements than the ladder, PRBS benches 7–17 × faster in ngspice and LTspice; an 85 mm LVDS pair is 8 k elements at 25 GHz and 4 k at 5 × Nyquist. “From the profile”: 5 × Nyquist, or 0.5 / t_r of the profile's edge where that is higher."
       : "The ladder grows with the top frequency: an 85 mm LVDS pair has about 38 k elements at 25 GHz and 23 k at 5 × Nyquist; the compact model has 2–5 × fewer.") + last;
@@ -159,7 +159,7 @@ function exportLanes(lanes, bus, btn, noField = false) {
       const res = S.engine.exportCircuit({ board: S.name + ".kicad_pcb", formats, kicad_style: o.ks, model: o.model,
         fmax: o.fmax === "rf" ? null : o.fmax === "profile" ? "profile" : parseFloat(o.fmax), fmin_ghz: o.fmin ? parseFloat(o.fmin) : null,
         bus: bus ? bus.name : null, devices: bus ? bus.devices : [], lanes: lanes.filter((l) => l.ends.length >= 2).map(laneExportReq),
-        tolerance: stkExportTol(), stackup: stkExportStackup(), corners: fabOn() && $("ex-corners").checked, no_field: noField });
+        tolerance: stkExportTol(), corners: fabOn() && $("ex-corners").checked, no_field: noField });
       if (res.field_needed) { exportAfterField(res.field_needed, lanes, bus, btn); return; }
       const els = (res.summary.lanes || []).reduce((a, x) => a + (x.elements.total ?? x.elements.r + x.elements.l + x.elements.c + x.elements.sources), 0);
       const fr = res.summary.lanes && res.summary.lanes[0] ? res.summary.lanes[0].frequency : null;

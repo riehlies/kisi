@@ -221,18 +221,12 @@ impl Project {
             &inp.files,
         );
         let applied = cfg.as_ref().map(|c| c.apply(&mut board)).unwrap_or_default();
-        // command line: a fab template, then the stackup changes on top
-        if let Some(id) = &inp.stackup_preset {
-            let pr = crate::stackups::library().find(id)?;
-            let fit = pr.fit(board.stackup());
-            if let Some(why) = fit.problem {
-                return Err(format!("--stackup-preset {id}: {why}"));
-            }
-            let su = pr.apply(board.stackup());
-            board.stackup = Some(su);
-        }
-        if let Some(ov) = &inp.stackup {
-            let su = board.stackup().with_overrides(ov);
+        // command line: a fab template, then the stackup changes on top (the viewer's active stackup
+        // takes the same path, `stackups::active_stackup`)
+        if inp.stackup_preset.is_some() || inp.stackup.is_some() {
+            let su =
+                crate::stackups::active_stackup(board.stackup(), inp.stackup_preset.as_deref(), inp.stackup.as_ref())
+                    .map_err(|e| format!("--stackup-preset {}: {e}", inp.stackup_preset.as_deref().unwrap_or("")))?;
             board.stackup = Some(su);
         }
         let stackup_provenance = crate::stackups::provenance(

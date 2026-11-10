@@ -10,12 +10,16 @@ const TOL_KEYS = ["dielectric_thickness_pct", "er_pct", "copper_pct", "width"];
 // board's kisi.json has a "tolerances" entry. Off, nothing of it shows but the switch in the Stackup card.
 const fabKey = () => "kisi.fab.v1." + S.name;
 function fabOn() { const v = lsGet(fabKey()); return v == null ? !!(S.config && S.config.tolerances) : !!v; }
+const FAB_TITLE = "Off by default. On: the Stackup view – a fab template or an edited copy of the board's stackup for all views (what-if), the impedance per net class under each, the manufacturing tolerances –, the fab tolerance band of the impedances (net detail, channel, the map's Tolerance mode, exports) and tolerance corners as a choice in the export settings";
 function setFabOn(on) {
+  const before = JSON.stringify(activeStackup());
   lsSet(fabKey(), on === !!(S.config && S.config.tolerances) ? null : on);
   if (!on && S.mode === "tol") S.mode = "dev";
-  if (!on && typeof stkOpen === "function" && !$("stk-panel").hidden) stkOpen(false);
+  if (!on && S.tab === "stk") setTab(S.prevTab && S.prevTab !== "stk" ? S.prevTab : "si");
   if (typeof exportHint === "function") exportHint();
-  runAnalysis();
+  // a what-if stackup ends with the option: back to the board's in every view
+  if (JSON.stringify(activeStackup()) !== before) stackupSwitched(); else runAnalysis();
+  if (S.tab === "stk") stkRender();
 }
 const tolEditKey = () => "kisi.tol.v1." + S.name;
 function tolEdits() {
@@ -114,5 +118,5 @@ function renderTolSummary() {
   const p = (v) => Math.round(v * 100) + " %";
   const allDef = Object.values(tolEff().from).every((f) => f === "default");
   el.innerHTML = `<b>Fab tolerances</b> (RSS band, <span title="${esc(tolText())}">${allDef ? "kisi's defaults, estimates" : "this board's values"}</span>): <span class="zb inside">${p(sh.inside)}</span> of the length with a target stays in its window, <span class="zb band_leaves">${p(sh.band_leaves)}</span> nominal inside but the band leaves, <span class="zb nominal_outside">${p(sh.nominal_outside)}</span> nominal outside. <button class="linklike" id="k-tol-edit">tolerances</button>`;
-  $("k-tol-edit").onclick = () => { stkOpen(true); const el2 = $("stk-tol-thk"); if (el2) el2.scrollIntoView({ block: "center" }); };
+  $("k-tol-edit").onclick = () => { setTab("stk"); const el2 = $("stk-tol-thk"); if (el2) el2.scrollIntoView({ block: "center" }); };
 }

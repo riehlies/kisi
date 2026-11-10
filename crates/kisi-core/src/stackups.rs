@@ -669,6 +669,28 @@ pub fn status_text(s: &str) -> &'static str {
     }
 }
 
+/// The stackup a run uses: `base` (the board's, with its kisi.json), a fab template laid over it
+/// (`--stackup-preset`, the viewer's active template; it must fit, `Preset::fit`), then stackup changes
+/// on top (`--stackup FILE`, the viewer's edited copy). Copper layers map by their order.
+pub fn active_stackup(
+    base: &Stackup,
+    preset: Option<&str>,
+    edits: Option<&StackupOverride>,
+) -> Result<Stackup, String> {
+    let mut su = base.clone();
+    if let Some(id) = preset {
+        let pr = library().find(id)?;
+        if let Some(why) = pr.fit(&su).problem {
+            return Err(why);
+        }
+        su = pr.apply(&su);
+    }
+    if let Some(ov) = edits.filter(|o| !o.is_empty()) {
+        su = su.with_overrides(ov);
+    }
+    Ok(su)
+}
+
 /// The board at a tolerance corner (`kisi export --corners`): every dielectric's thickness and εr,
 /// every copper layer's thickness and every track's width (pads as they are) at the limit of its
 /// tolerance toward a lower (`low`) or a higher impedance – thinner dielectrics, a higher εr, thicker

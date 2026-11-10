@@ -4,10 +4,12 @@
 Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [--config board.kisi.json]
                        [--out DIR] [--quick] [--browser chromium|firefox|webkit] [--layouts light,dark,phone]
 
-* light, dark and phone layout; all three views (impedance, channel, power)
+* light, dark and phone layout; all views (impedance, channel, power; with the option on also the Stackup view)
 * the option "Fab stackups & tolerances": nothing of it while off (the default); on, the fab band (Signals card, the
-  map's Tolerance mode, a net's detail) and the stackup panel (“Compare & tolerances”: a fab template and an edited
-  copy, the tolerance band, the stackup block of a net's Touchstone file, Esc closes it), also with --quick
+  map's Tolerance mode, a net's detail), the Stackup view as the fourth view button (a fab template and an edited
+  copy, the tolerance band, the stackup block of a net's Touchstone file, Esc back to the view before) and the
+  active stackup ("Use in all views": the template in every view, the header indicator, back to the board's
+  stackup; the view switch on one row at 400 px), also with --quick
 * impedance estimate, net detail tabs (a differential pair: 4-port loss, skew, common mode), interfaces overview,
   assembly variant (the prompt when the board needs one, switching to another variant and back), channel check,
   lane eye, voltage drop with ground return, impedance seen from the ICs, losses map, temperature and power flow
@@ -880,11 +882,11 @@ def prepare_acceptance(pg, tag, step, board_js, ref_text, dismiss, label):
 
 def stackup_panel(pg, tag, step):
     """The fab tolerance band in the views (the Signals card's summary, the board map's Tolerance mode, a net's
-    detail, the export settings' tolerance corners: offered only with the option on, unticked) and the Stackup card's “Compare & tolerances” panel: a fitting fab template and an edited copy next to
+    detail, the export settings' tolerance corners: offered only with the option on, unticked) and the Stackup view: a fitting fab template and an edited copy next to
     the board's stackup, the tolerance band, the stackup block in a net's Touchstone file; closed again."""
     # the option is off by default: nothing of it but its switch
     pg.evaluate("() => { lsSet(fabKey(), null); runAnalysis(); }"); pg.wait_for_timeout(300)
-    if pg.evaluate("fabOn() || !document.getElementById('k-tol').hidden || !document.getElementById('mode-tol').hidden || !!document.getElementById('stk-open')"):
+    if pg.evaluate("fabOn() || !document.getElementById('k-tol').hidden || !document.getElementById('mode-tol').hidden || !document.getElementById('view-stk').hidden || !document.getElementById('stk-act').hidden"):
         problems.append(f"{tag}: Fab stackups & tolerances visible while off")
     if pg.evaluate("S.an.nets.some((n) => n.z_tol_rss_pct != null)"):
         problems.append(f"{tag}: a fab band computed while the option is off")
@@ -908,9 +910,15 @@ def stackup_panel(pg, tag, step):
             problems.append(f"{tag}: net detail without the fab band")
         pg.evaluate("selectNet(-1)")
     pg.click("#mode-dev"); pg.wait_for_timeout(200)
-    pg.click("#stk-open"); pg.wait_for_timeout(300)
-    if pg.evaluate("document.getElementById('stk-panel').hidden || document.getElementById('stk-open').getAttribute('aria-pressed') !== 'true'"):
-        problems.append(f"{tag}: stackup panel did not open")
+    if pg.evaluate("document.getElementById('view-stk').hidden"):
+        problems.append(f"{tag}: option on: no Stackup view button")
+        return
+    # the view switch with four buttons stays on one row (also on a phone)
+    if pg.evaluate("(() => { const b = [...document.querySelectorAll('.bar .seg[aria-label=Analysis] button')].filter((x) => !x.hidden); return new Set(b.map((x) => Math.round(x.getBoundingClientRect().top))).size; })()") != 1:
+        problems.append(f"{tag}: the view switch wraps")
+    pg.click("#view-stk"); pg.wait_for_timeout(300)
+    if pg.evaluate("document.getElementById('stk-panel').hidden || S.tab !== 'stk' || document.getElementById('view-stk').getAttribute('aria-pressed') !== 'true'"):
+        problems.append(f"{tag}: Stackup view did not open")
         return
     fit = pg.evaluate("(stkPresets().fitting || [])[0] || null")
     if fit:
@@ -920,23 +928,46 @@ def stackup_panel(pg, tag, step):
     pg.wait_for_timeout(300)
     cols = pg.evaluate("document.querySelectorAll('#stk-panel table.stk-cmp thead th.stk-col').length")
     if cols != (3 if fit else 2):
-        problems.append(f"{tag}: stackup panel: {cols} columns")
+        problems.append(f"{tag}: Stackup view: {cols} columns")
     differ = pg.evaluate("[...document.querySelectorAll('#stk-panel table.stk-cmp tbody tr')].some((r) => { const z = [...r.querySelectorAll('td.z')].map((t) => t.textContent); return new Set(z).size > 1; })")
     if not differ:
-        problems.append(f"{tag}: stackup panel: the stackups give the same impedances")
+        problems.append(f"{tag}: Stackup view: the stackups give the same impedances")
     pg.check("#stk-tol-on"); pg.wait_for_timeout(400)
     if not pg.evaluate("document.querySelectorAll('#stk-panel table.stk-tol tbody tr').length"):
-        problems.append(f"{tag}: stackup panel: no tolerance band")
+        problems.append(f"{tag}: Stackup view: no tolerance band")
     step("stackups")
     ts = pg.evaluate("(() => { const n = S.an.nets.find((x) => x.target && x.length > 1); return n ? rfFor(n.net).touchstone : ''; })()")
     if ts and ("! stackup:" not in ts or "manufacturing tolerances" not in ts):
         problems.append(f"{tag}: a net's Touchstone without the stackup block or the band")
     pg.uncheck("#stk-tol-on"); pg.wait_for_timeout(200)
-    pg.evaluate("() => { lsSet(stkKey(), null); S.stk = null; }")
+    # the template in all views: the impedances change, the indicator shows it in every view, back again
+    if fit:
+        z0 = pg.evaluate("S.an.nets.filter((n) => n.target).map((n) => n.z_mean)")
+        col = pg.evaluate(f"stkState().cols.find((c) => c.preset === '{fit}').id")
+        pg.click(f"#stk-panel [data-stk-act='{col}']"); pg.wait_for_timeout(200)
+        pg.wait_for_function("!S.switching", timeout=300000)
+        z1 = pg.evaluate("S.an.nets.filter((n) => n.target).map((n) => n.z_mean)")
+        if z0 == z1:
+            problems.append(f"{tag}: a template in all views does not change the impedances")
+        for v in ["si", "ch", "pi"]:
+            pg.click(f"#view-{v}"); pg.wait_for_timeout(250)
+            if not pg.is_visible("#stk-act") or "what-if" not in pg.inner_text("#stk-act"):
+                problems.append(f"{tag}: view {v}: no indicator of the what-if stackup")
+        step("what_if")
+        pg.click("#stk-act-back"); pg.wait_for_timeout(200)
+        pg.wait_for_function("!S.switching", timeout=300000)
+        if pg.evaluate("S.an.nets.filter((n) => n.target).map((n) => n.z_mean)") != z0 or pg.is_visible("#stk-act"):
+            problems.append(f"{tag}: back to the board's stackup: not the board's impedances, or the indicator stays")
+        pg.click("#view-stk"); pg.wait_for_timeout(300)
+    pg.evaluate("() => { lsSet(stkKey(), null); lsSet(stkActKey(), null); S.stk = null; }")
+    pg.click("#view-ch"); pg.wait_for_timeout(200); pg.click("#view-stk"); pg.wait_for_timeout(200)
     pg.keyboard.press("Escape"); pg.wait_for_timeout(200)
-    if not pg.evaluate("document.getElementById('stk-panel').hidden"):
-        problems.append(f"{tag}: stackup panel did not close with Esc")
-    pg.evaluate("() => { lsSet(fabKey(), null); runAnalysis(); }"); pg.wait_for_timeout(200)
+    if not pg.evaluate("document.getElementById('stk-panel').hidden && S.tab === 'ch'"):
+        problems.append(f"{tag}: Esc in the Stackup view did not go back to the view before")
+    pg.click("#view-si"); pg.wait_for_timeout(200)
+    pg.evaluate("() => { lsSet(fabKey(), null); runAnalysis(); syncModeButtons(); }"); pg.wait_for_timeout(200)
+    if not pg.evaluate("document.getElementById('view-stk').hidden"):
+        problems.append(f"{tag}: option off: the Stackup view button stays")
 
 
 def run(pg, tag, desktop):

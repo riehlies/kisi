@@ -11,7 +11,9 @@
   <div class="bar">
     <div class="brand"><b title="kisi __VERSION__">kisi<span class="ver">v__VERSION__</span></b><span id="boardName">–</span><small id="boardMeta"></small></div>
     <div class="grow"></div>
+    <div class="stk-act" id="stk-act" hidden role="status" aria-live="polite"></div>
     <div class="seg" role="group" aria-label="Analysis">
+      <button id="view-stk" aria-pressed="false" hidden title="Stackups and tolerances: the stackup all views use, fab templates and edited copies per net class, the manufacturing tolerances">Stackup</button>
       <button id="view-si" aria-pressed="true">Impedance</button>
       <button id="view-ch" aria-pressed="false">Channel</button>
       <button id="view-pi" aria-pressed="false">Power</button>
@@ -45,11 +47,11 @@
   </div>
 
   <aside class="side">
-    <section class="card off" id="variant-card" aria-labelledby="h-variant" data-view="si ch pi">
+    <section class="card off" id="variant-card" aria-labelledby="h-variant" data-view="stk si ch pi">
       <h2 id="h-variant">Assembly variant <em id="variant-name"></em></h2>
       <div id="variant-body"></div>
     </section>
-    <section class="card kicad-card off" id="kicad-card" aria-labelledby="h-kicad" data-view="si ch pi">
+    <section class="card kicad-card off" id="kicad-card" aria-labelledby="h-kicad" data-view="stk si ch pi">
       <h2 id="h-kicad">From KiCad <em id="kicad-saved"></em></h2>
       <div id="kicad-body"></div>
     </section>

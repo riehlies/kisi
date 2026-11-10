@@ -91,7 +91,7 @@ information only: no verdict uses it. The tolerances: kisi's defaults (`data/sta
 kisi.json `tolerances` < `--tol` or the viewer's edits ([reference](reference.md#board-configuration-boardkisijson));
 the option is on with a kisi.json `tolerances` entry, `--tolerance` or `--tol`, or the viewer's switch.
 
-**Other stackups** (`kisi stackups`, the viewer's “Compare & tolerances”): per net class and layer kisi takes the
+**Other stackups** (`kisi stackups`, the viewer's Stackup view): per net class and layer kisi takes the
 cross-section with the most length (pads left out; a coupled one for a differential target) and evaluates the same
 geometry – references, coplanar copper, partner – under other stackups with the formulas or, where it has the
 result, the field solver.

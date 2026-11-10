@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| [Getting started](getting-started.md) | the release files, the viewer's three views, the first commands |
+| [Getting started](getting-started.md) | the release files, the viewer's views, the first commands |
 | [Preparing a board](preparing-a-board.md) | the gap list, filling `<board>.kisi.json`, the XIAO nRF54LM20A as a worked example |
 | [Field and kisi.json reference](reference.md) | net class names, `PI_*` fields, every kisi.json key, other input files |
 | [Models and limits](models.md) | how kisi computes, accuracy, validation, what is an estimate |

@@ -34,7 +34,9 @@ Nothing is installed, the page loads nothing from the web, and the board never l
 Chromium-based browsers "Reload" reads the same files again after saving in KiCad.
 
 The header switches between three views. Each starts with what the board file gives and computes more on demand,
-in numbered steps.
+in numbered steps. With the option "Fab stackups & tolerances" on (Stackup card) a fourth view, **Stackup**, comes
+first: fab stackup templates and edited copies next to the board's stackup, one of them as a what-if for all views,
+and the manufacturing tolerances ([Preparing a board](preparing-a-board.md#fab-stackups-and-tolerances-option)).
 
 ### 1. Impedance
 ![The impedance view on the ThunderScope board: every track coloured by its deviation from the target](img/impedance.png)

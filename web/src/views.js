@@ -1,8 +1,11 @@
 "use strict";
-// ---- top-level views: impedance / channel / power, power display modes
+// ---- top-level views: stackup (with the option "fab stackups & tolerances" on) / impedance / channel /
+// power, power display modes
 function setTab(t) {
+  if (t === "stk" && !fabOn()) t = "si";
+  if (t !== S.tab) S.prevTab = S.tab;
   S.tab = t;
-  for (const k of ["si", "ch", "pi"]) $("view-" + k).setAttribute("aria-pressed", String(k === t));
+  for (const k of ["stk", "si", "ch", "pi"]) $("view-" + k).setAttribute("aria-pressed", String(k === t));
   if (!S.scene) return; // no board yet: the chosen view opens when one is loaded (load.js)
   document.querySelectorAll("[data-view]").forEach((el) => { el.hidden = !el.dataset.view.split(" ").includes(t); });
   placeSharedSteps(t);
@@ -10,6 +13,7 @@ function setTab(t) {
   $("pi-detail").hidden = true;
   $("pi-balance").hidden = true; $("ch-overview").hidden = true; $("stk-panel").hidden = true; $("legend").hidden = false; $("layers").hidden = false;
   $("tip").hidden = true;
+  if (t === "stk") { $("legend").hidden = true; $("layers").hidden = true; $("stk-panel").hidden = false; stkRender(); return; }
   if (t === "pi") { fitRail(); renderPi(); return; }
   if (t === "ch") { renderIfcCard(); renderProfCard(); renderCheck(); setChMode(S.chMode || "o"); if (S.chMode === "o") return; }
   buildPaths(); renderLayerChips(); renderLegend();
@@ -23,6 +27,7 @@ function placeSharedSteps(t) {
   if (t === "ch") { $("cs3").before(st3); $("ck-out").after(acc); }
   else { $("st2").after(st3); $("cfg-status").after(acc); }
 }
+$("view-stk").onclick = () => setTab("stk");
 $("view-si").onclick = () => setTab("si");
 $("view-ch").onclick = () => setTab("ch");
 $("view-pi").onclick = () => setTab("pi");

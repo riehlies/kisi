@@ -151,6 +151,43 @@ class ServerTests(unittest.TestCase):
             jobs = [pool.submit(self.save, text=self.config(notes=[str(i)]), session=s) for i, s in enumerate([self.s, other])]
             self.assertEqual(sorted(job.result()[0] for job in jobs), [200, 409])
 
+    def test_early_errors_read_the_body_first(self):
+        # The browser must get the error reply, not a reset from closing a socket with an unread body.
+        big = self.config(notes=["x" * 1_500_000])
+        cases = [({"Authorization": "Bearer wrong"}, "/api/config", 403),
+                 ({}, "/api/nothing", 404),
+                 ({"Content-Type": "text/plain"}, "/api/config", 415)]
+        for headers, path, want in cases:
+            with self.subTest(status=want):
+                status, data, _ = self.request("POST", path, {"text": big, "revision": "x"}, headers=headers)
+                self.assertEqual(status, want, data)
+        self.assertEqual(pathlib.Path(self.b.cfg).read_bytes(), self.initial)
+
+    def test_a_briefly_locked_file_is_retried(self):
+        # Windows: a virus scanner or indexer can hold the file for a moment (sharing violation).
+        real, calls = os.replace, []
+        def flaky(src, dst):
+            calls.append(dst)
+            if len(calls) < 3:
+                raise PermissionError(13, "in use by another process")
+            return real(src, dst)
+        with patch.object(core, "_sharing_violation", lambda e: isinstance(e, PermissionError)), \
+             patch.object(core.os, "replace", flaky):
+            status, data, _ = self.save()
+        self.assertEqual(status, 200, data)
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(json.loads(pathlib.Path(self.b.cfg).read_bytes())["notes"], ["saved äöü"])
+
+    def test_a_lasting_lock_is_a_500_and_logged(self):
+        logged = []
+        self.s.log = logged.append
+        with patch.object(core, "_sharing_violation", lambda e: isinstance(e, PermissionError)), \
+             patch.object(core.os, "replace", side_effect=PermissionError(13, "in use by another process")), \
+             patch.object(core.time, "sleep"):
+            self.assertEqual(self.save()[0], 500)
+        self.assertEqual(pathlib.Path(self.b.cfg).read_bytes(), self.initial)
+        self.assertTrue(any("PermissionError" in m for m in logged), logged)
+
     def test_sessions_are_isolated(self):
         other = self.start()
         self.assertNotEqual(self.s.token, other.token)

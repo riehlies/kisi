@@ -126,9 +126,11 @@ class Session:
         return core.embed(self.template, live).encode("utf-8")
 
     def read_config(self):
-        try:
+        def read():
             with open(self.paths["cfg"], "rb") as f:
-                data = f.read(MAX_CONFIG + 1)
+                return f.read(MAX_CONFIG + 1)
+        try:
+            data = core.retry_shared(read)
             if len(data) > MAX_CONFIG:
                 raise ValueError("the board configuration exceeds 2 MB")
             return data
@@ -242,13 +244,36 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.reply(404, {"error": "not found"})
 
+    def discard_body(self):
+        """Read and drop a request body before an early error reply. Closing the socket with unread data makes
+        the system send a reset (macOS at once) that can reach the browser before the reply: it would then report a
+        lost connection instead of the error. Bodies over the request limit are not read."""
+        lengths = self.headers.get_all("Content-Length", [])
+        if self.headers.get("Transfer-Encoding") or len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit():
+            return
+        left = int(lengths[0]) if len(lengths[0]) <= 10 else MAX_REQUEST + 1
+        if left > MAX_REQUEST:
+            return
+        try:
+            while left > 0:
+                chunk = self.rfile.read(min(left, 65536))
+                if not chunk:
+                    return
+                left -= len(chunk)
+        except OSError:
+            pass
+
+    def fail(self, status, data):
+        self.discard_body()
+        self.reply(status, data)
+
     def do_POST(self):
         s = self.server.session
         if not self.authorized(api=True):
-            self.reply(403, {"error": "forbidden"})
+            self.fail(403, {"error": "forbidden"})
             return
         if self.path not in ("/api/config", "/api/ping"):
-            self.reply(404, {"error": "not found"})
+            self.fail(404, {"error": "not found"})
             return
         lengths = self.headers.get_all("Content-Length", [])
         if self.headers.get("Transfer-Encoding") or len(lengths) != 1 or not lengths[0].isascii() or not lengths[0].isdigit():
@@ -262,7 +287,7 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(413, {"error": "request too large"})
             return
         if self.headers.get("Content-Type", "").split(";")[0].strip().lower() != "application/json":
-            self.reply(415, {"error": "JSON is required"})
+            self.fail(415, {"error": "JSON is required"})
             return
         try:
             raw = self.rfile.read(length)
@@ -275,5 +300,6 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(status, result)
         except (ValueError, RecursionError):
             self.reply(400, {"error": "invalid JSON"})
-        except OSError:
+        except OSError as e:
+            s.log(f"local viewer: saving the board configuration failed ({type(e).__name__}: {e})")
             self.reply(500, {"error": "The configuration could not be saved. Check folder permissions and try again."})

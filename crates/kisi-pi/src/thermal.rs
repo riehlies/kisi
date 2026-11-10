@@ -325,6 +325,8 @@ pub struct PartVias {
 pub struct ViaTemp {
     pub at: P,
     pub drill: f64,
+    /// diameter of its copper (via pad; a plated hole's pad: its smaller side), mm
+    pub size: f64,
     /// copper layers it connects (index), top and bottom
     pub from: u16,
     pub to: u16,
@@ -391,8 +393,7 @@ pub struct ThermalResult {
     pub parts: Vec<PartTemp>,
     /// copper temperature and IR drop at temperature per rail (`rail_at_temperature`)
     pub rails: Vec<RailThermal>,
-    /// vias and plated holes with the most heat flow (up to 400, the largest first), and how many
-    /// there are in all
+    /// every via and plated hole on the thermal mesh, the most heat flow first, and how many there are
     pub vias: Vec<ViaTemp>,
     pub vias_total: usize,
     pub warnings: Vec<String>,
@@ -664,6 +665,7 @@ struct Mesh {
 struct Barrel {
     at: P,
     drill: f64,
+    size: f64,
     lo: usize,
     hi: usize,
     c: usize,
@@ -911,16 +913,19 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
         let t = tp.min(r);
         std::f64::consts::PI * (r * r - (r - t) * (r - t))
     };
-    // (position, drill, layer span, net, plated pad hole)
-    let mut spans: Vec<(P, f64, usize, usize, u32, bool)> = board
+    // (position, drill, copper diameter, layer span, net, plated pad hole)
+    let mut spans: Vec<(P, f64, f64, usize, usize, u32, bool)> = board
         .vias
         .iter()
-        .map(|v| (v.at, v.drill, v.from.min(v.to) as usize, v.from.max(v.to) as usize, v.net, false))
+        .map(|v| {
+            (v.at, v.drill, v.size.max(v.drill), v.from.min(v.to) as usize, v.from.max(v.to) as usize, v.net, false)
+        })
         .collect();
     for p in board.pads.iter().filter(|p| plated(p)) {
         spans.push((
             p.at,
             p.drill,
+            p.size[0].min(p.size[1]).max(p.drill),
             p.layers.iter().min().copied().unwrap_or(0) as usize,
             p.layers.iter().max().copied().unwrap_or(0) as usize,
             p.net,
@@ -928,7 +933,7 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
         ));
     }
     let mut barrels = Vec::new();
-    for (at, drill, lo, hi, net, hole) in spans {
+    for (at, drill, size, lo, hi, net, hole) in spans {
         let hi = hi.min(nl - 1);
         let Some((i, j)) = g.cell_of(at) else { continue };
         let c = idx[j * g.nx + i];
@@ -940,7 +945,7 @@ fn build_mesh(board: &Board, prm: &ThermalParams, warnings: &mut Vec<String>) ->
         for (k, l) in (lo..hi).enumerate() {
             gz[l][c as usize] += gs[k];
         }
-        barrels.push(Barrel { at, drill, lo, hi, c: c as usize, g: gs, net, hole });
+        barrels.push(Barrel { at, drill, size, lo, hi, c: c as usize, g: gs, net, hole });
     }
     let mask_r = |m: &Option<crate::board::SolderMask>| {
         m.as_ref().map(|m| m.thickness).unwrap_or(d.solder_mask.thickness_mm) * 1e-3 / d.solder_mask.k_w_mk
@@ -1492,6 +1497,7 @@ pub fn solve(
             ViaTemp {
                 at: b.at,
                 drill: b.drill,
+                size: b.size,
                 from: b.lo as u16,
                 to: b.hi as u16,
                 net: board.net_name(b.net).to_string(),
@@ -1504,7 +1510,6 @@ pub fn solve(
         .collect();
     let vias_total = vias.len();
     vias.sort_by(|a, b| b.q_w.abs().total_cmp(&a.q_w.abs()));
-    vias.truncate(400);
     let out = out_top + out_bot + out_parts[0] + out_parts[1];
     let rad = (out_top + out_parts[0]) * h_rad / h_top + (out_bot + out_parts[1]) * h_rad / h_bot;
     let balance = Balance {

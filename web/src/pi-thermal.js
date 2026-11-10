@@ -97,30 +97,54 @@ function thermPartsOn(l) {
   const n = S.scene.stackup.copper.length;
   return S.therm.parts.filter((p) => p.at && (l === 0 ? p.side === "top" : l === n - 1 ? p.side === "bottom" : true));
 }
-// vias drawn: the ones with at least 2 % of the largest heat flow (the list holds the 400 largest)
+// vias drawn: every via and plated hole with at least 1 % of the largest heat flow (the bottom of the grey
+// scale; below it they would all look the same), the most heat first
+const THERM_VIA_MIN = 0.01;
 function thermVias() {
+  if (S.thermVias && S.thermVias.src === S.therm) return S.thermVias;
   const v = S.therm.vias || [], qmax = v.length ? Math.abs(v[0].q_w) : 0;
-  return { list: qmax > 0 ? v.filter((x) => Math.abs(x.q_w) >= 0.02 * qmax) : [], qmax };
+  S.thermVias = { src: S.therm, list: qmax > 0 ? v.filter((x) => Math.abs(x.q_w) >= THERM_VIA_MIN * qmax) : [], qmax };
+  return S.thermVias;
 }
-// via marker: size and grey level by the heat through it (log scale over two decades); grey reads on
+// grey level of a via by the heat through it (log scale over two decades, darker = more): grey reads on
 // every colour of the temperature map, and heat flow (not ΔT) is what a via array is for
-function viaStyle(q, qmax) {
+const THERM_VIA_GREYS = 24;
+function viaGrey(q, qmax) {
   const f = Math.min(1, Math.max(0, 1 + Math.log10(Math.max(Math.abs(q), 1e-12) / qmax) / 2));
-  const g = Math.round(235 - 215 * f);
-  return { r: 2 + 4 * f, fill: `rgb(${g},${g},${g})` };
+  return Math.round(f * (THERM_VIA_GREYS - 1));
+}
+const viaFill = (k) => { const g = Math.round(235 - 215 * k / (THERM_VIA_GREYS - 1)); return `rgb(${g},${g},${g})`; };
+// a via's radius on the board: its copper at true size, at least THERM_VIA_MIN_PX on the screen
+const THERM_VIA_MIN_PX = 1.5;
+const viaRadius = (v, px) => Math.max((v.size || v.drill) / 2, THERM_VIA_MIN_PX * px);
+// the vias in view as one fill per grey level (the least heat first, so the most is on top) over their
+// halo, one fill 0.6 px wider (a stroke of thousands of small circles costs several times their fills);
+// dots near the minimum size go without one (in an array it would join them, and it doubles the cost)
+function drawThermVias(px) {
+  const { list, qmax } = thermVias();
+  if (!list.length) return;
+  const d = window.devicePixelRatio || 1, x0 = -S.view.x / S.view.s, y0 = -S.view.y / S.view.s;
+  const x1 = x0 + cv.width / d / S.view.s, y1 = y0 + cv.height / d / S.view.s;
+  const fills = Array.from({ length: THERM_VIA_GREYS }, () => new Path2D()), halo = new Path2D();
+  for (let i = list.length - 1; i >= 0; i--) {
+    const v = list[i], r = viaRadius(v, px), x = v.at[0], y = v.at[1];
+    if (x + r < x0 || x - r > x1 || y + r < y0 || y - r > y1) continue;
+    const p = fills[viaGrey(v.q_w, qmax)];
+    p.moveTo(x + r, y); p.arc(x, y, r, 0, Math.PI * 2);
+    if (r < 2.5 * px) continue;
+    const rh = r + 0.6 * px;
+    halo.moveTo(x + rh, y); halo.arc(x, y, rh, 0, Math.PI * 2);
+  }
+  ctx.fillStyle = S.colors.halo; ctx.fill(halo);
+  fills.forEach((p, k) => { ctx.fillStyle = viaFill(k); ctx.fill(p); });
 }
 
 function drawThermal(px) {
   if (!thermOk()) return;
   const im = thermImage();
   if (im.map) mapDraw({ clip: im.clip, rule: "evenodd", image: (c) => mapPaint(c, im.map) });
-  // vias with the most heat flow (screen-size markers, the largest on top)
-  const { list, qmax } = thermVias();
-  ctx.lineWidth = 1 * px; ctx.strokeStyle = S.colors.halo;
-  for (let i = list.length - 1; i >= 0; i--) {
-    const v = list[i], st = viaStyle(v.q_w, qmax);
-    ctx.beginPath(); ctx.arc(v.at[0], v.at[1], st.r * px, 0, Math.PI * 2); ctx.fillStyle = st.fill; ctx.fill(); ctx.stroke();
-  }
+  // vias with heat flow: true size, grey by the heat (the most on top)
+  drawThermVias(px);
   // a rail or part picked in the panel
   const m = S.thermMark;
   if (m) {
@@ -153,16 +177,16 @@ function renderThermLegend() {
     <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
     <div class="ticks"><span>${fmtT(im.lo)}</span><span>${fmtT((im.lo + im.hi) / 2)}</span><span>${fmtT(im.hi)}</span></div>
     <div class="row">This layer: up to ${fmtT(lay.t_max_c)}, mean ${fmtT(lay.t_mean_c)}. Labels: junction temperature of the hottest parts on this side.</div>
-    ${list.length ? `<div class="row"><span class="viadot" style="background:${viaStyle(qmax, qmax).fill}"></span>vias with the most heat flow, up to ${fmtSI(qmax, "W")} (larger and darker = more); hover for the values</div>` : ""}`;
+    ${list.length ? `<div class="row"><span class="viadot" style="background:${viaFill(THERM_VIA_GREYS - 1)}"></span>${list.length} vias with heat flow, up to ${fmtSI(qmax, "W")}: darker = more heat (log, ${fmtSI(THERM_VIA_MIN * qmax, "W")} … ${fmtSI(qmax, "W")}); drawn at true size; hover for the values</div>` : ""}`;
 }
 
 // a via under the mouse (screen distance), else null
 function thermViaAt(mx, my) {
-  const { list, qmax } = thermVias();
+  const { list } = thermVias(), px = 1 / S.view.s;
   let best = null, bd = 1e9;
   for (const v of list) {
     const sx = S.view.x + v.at[0] * S.view.s, sy = S.view.y + v.at[1] * S.view.s, d = Math.hypot(sx - mx, sy - my);
-    if (d < Math.max(5, viaStyle(v.q_w, qmax).r + 2) && d < bd) { bd = d; best = v; }
+    if (d < Math.max(4, viaRadius(v, px) * S.view.s + 2) && d < bd) { bd = d; best = v; }
   }
   return best;
 }
@@ -176,7 +200,7 @@ function showThermTip(mx, my) {
       <span>Heat through it</span><span>${fmtSI(via.q_w, "W")}${via.q_w < 0 ? " (upwards)" : ""}</span>
       <span>ΔT ${esc(layerName(via.from))} → ${esc(layerName(via.to))}</span><span>${fmtK(via.dt_k)}</span>
       <span>Temperature</span><span>${fmtT(via.t_c)}</span>
-      <span>Drill</span><span>${fmtSI(via.drill * 1e-3, "m")}</span></div>`;
+      <span>Drill · pad</span><span>${fmtSI(via.drill * 1e-3, "m")} · ${fmtSI((via.size || via.drill) * 1e-3, "m")}</span></div>`;
   } else {
     const x = (mx - S.view.x) / S.view.s, y = (my - S.view.y) / S.view.s;
     const i = Math.floor((x - t.x0) / t.cell), j = Math.floor((y - t.y0) / t.cell);

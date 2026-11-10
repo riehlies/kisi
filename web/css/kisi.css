@@ -507,7 +507,8 @@ table.prep-ed input.ref { max-width: 90px; }
 .stk-chip.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .stk-chip.board:not(.active) { border-color: var(--line); }
 .stk-in-use { color: var(--accent); font-weight: 600; white-space: nowrap; }
-.stk-act { font-size: 12.5px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--z-high1); background: var(--panel-2); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.stk-act { font-size: 12.5px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--z-high1); background: var(--panel-2); display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; max-width: 100%; min-width: 0; }
+.stk-act > * { white-space: nowrap; }
 .stk-act.busy { border-color: var(--accent); }
 .stk-act .linklike { font-size: inherit; }
 .what-if { margin: 4px 0 0; }

@@ -109,7 +109,7 @@ function stkIndicator(step) {
   el.hidden = !lab && !busy;
   el.classList.toggle("busy", !!busy);
   if (el.hidden) { el.innerHTML = ""; return; }
-  el.innerHTML = (lab ? `<button class="linklike" id="stk-act-open" title="open the Stackup view">Stackup: <b>${esc(lab)}</b> (what-if)</button> · <button class="linklike" id="stk-act-back">Back to board stackup</button>` : "<span>Stackup: the board's</span>")
+  el.innerHTML = (lab ? `<button class="linklike" id="stk-act-open" title="open the Stackup view">Stackup: <b>${esc(lab)}</b> (what-if)</button><span aria-hidden="true">·</span><button class="linklike" id="stk-act-back">Back to board stackup</button>` : "<span>Stackup: the board's</span>")
     + (busy ? ` <span class="stk-act-prog">· updating ${esc(busy)}…</span>` : "");
   if ($("stk-act-open")) $("stk-act-open").onclick = () => setTab("stk");
   if ($("stk-act-back")) $("stk-act-back").onclick = () => setActiveStackup("board");

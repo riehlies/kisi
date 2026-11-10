@@ -1,9 +1,11 @@
 "use strict";
 // ---- losses: power density map ("Losses" view) and power flow (Sankey in the power tree)
 // The numbers come from kisi_core::losses (S.loss = engine.piLosses): heat per part, copper
-// loss per rail (incl. ground return) and layer, a raster in W/mm² and the flow links.
+// loss per rail (incl. ground return) and layer, a raster in W/mm² (copper per mm² of copper), every
+// copper layer on the rails' own DC grids, and the flow links.
 
 const LOSS_DECADES = 3; // colour scale: max … max/1000 (log)
+const LOSS_PX = 3e6;    // pixel budget of one layer's images together (one per rail, on its own DC grid)
 
 function lossPlanes() {
   const m = S.loss && S.loss.map;
@@ -12,31 +14,78 @@ function lossPlanes() {
   return [{ id: "total", name: "Total" }, { id: "comp", name: "Parts" }, { id: "cu", name: "Copper, all layers" }]
     .concat(m.layers.map((l, i) => ({ id: "L" + i, name: su[l] ? su[l].name : "layer " + l })));
 }
-// W/mm² of the selected plane, nx*ny cells
+// W/mm² of the selected plane of the common raster, nx*ny cells (NaN: neither solved copper nor a part):
+// copper per mm² of copper, the layers summed; parts over the box of their pads
 function lossValues(plane) {
-  const m = S.loss.map, per = m.nx * m.ny, nl = m.layers.length, b = S.loss.buf, out = new Float32Array(per);
-  const add = (k) => { for (let i = 0; i < per; i++) out[i] += b[k * per + i]; };
-  if (plane === "comp") add(nl);
-  else if (plane === "cu") for (let k = 0; k < nl; k++) add(k);
-  else if (plane === "total") for (let k = 0; k <= nl; k++) add(k);
-  else add(+plane.slice(1));
+  const m = S.loss.map, per = m.nx * m.ny, b = S.loss.buf, out = new Float32Array(per);
+  for (let k = 0; k < per; k++) {
+    const cu = b[k], cp = b[per + k];
+    out[k] = plane === "comp" ? (cp > 0 ? cp : NaN) : plane === "cu" ? cu : cu === cu ? cu + cp : cp > 0 ? cp : NaN;
+  }
   return out;
 }
-// the map of the shown plane (pi-map.js) on a log scale, with the mask: the copper of the solved rails
-// and the ground return on the plane's layers, for the parts the box of their pads
+// log10 of the values for the picture: zero and below the scale's floor at a decade under it, so that
+// the interpolation passes the bottom of the scale (`cut`) smoothly – the edge there is the isoline
+function lossLog(vals, lo) {
+  const lg = new Float32Array(vals.length), floor = Math.log10(lo) - 1;
+  for (let k = 0; k < vals.length; k++) { const v = vals[k]; lg[k] = v === v ? (v > lo / 10 ? Math.log10(v) : floor) : NaN; }
+  return lg;
+}
+// a copper layer of the plane L<i>: its rails on their own DC grids (kisi_pi::losses::loss_layer)
+const lossLayerOf = (pl) => pl[0] === "L" ? S.loss.layers[+pl.slice(1)] : null;
+// a rail plane of a layer as a grid (NaN: no copper) from its copper cells
+function lossDense(p) {
+  const out = new Float32Array(p.nx * p.ny).fill(NaN), I = S.loss.layerIdx, V = S.loss.layerBuf;
+  for (let q = p.offset; q < p.offset + p.n; q++) out[I[q]] = V[q];
+  return out;
+}
+// the density of a rail plane at cell k of its grid (its copper cells are in order), NaN: no copper
+function lossCell(p, k) {
+  const I = S.loss.layerIdx;
+  let a = p.offset, b = p.offset + p.n;
+  while (a < b) { const c = (a + b) >> 1; if (I[c] < k) a = c + 1; else b = c; }
+  return a < p.offset + p.n && I[a] === k ? S.loss.layerBuf[a] : NaN;
+}
+// The picture of the shown plane (pi-map.js) on a log scale. Total, parts and all copper: the common
+// raster, cut once to the copper of the solved rails on the plane's layers and the parts' pad boxes. A
+// layer: one image per rail on its own DC cells, each cut once to its rail's copper (so that its
+// extension does not cover a neighbour), the rails' narrow tracks as strokes. `clip`: that copper as
+// one path, for the exact edge when zoomed in (lossDrawClip).
 function lossImage() {
   if (S.lossImg && S.lossImg.plane === S.lossPlane) return S.lossImg;
-  const m = S.loss.map, vals = lossValues(S.lossPlane);
+  const m = S.loss.map, pl = S.lossPlane, ll = lossLayerOf(pl);
+  const nets = [...S.piRes.entries()].filter(([, r]) => r.res).map(([n]) => S.scene.nets.indexOf(n)).filter((n) => n >= 0);
+  const layers = pl === "comp" ? [] : ll ? [ll.layer] : m.layers, clip = new Path2D();
+  for (const l of layers) clip.addPath(mapCopper(nets, l).clip);
+  if (ll) {
+    const max = ll.max, lo = max / 10 ** LOSS_DECADES, sc = { lo: Math.log10(lo), hi: Math.log10(max), cut: Math.log10(lo) };
+    // factors 4, lowered for the finest images first until all of them fit the budget
+    const ps = ll.planes.filter((p) => p.max > 0).sort((a, b) => b.nx * b.ny - a.nx * a.ny), f = ps.map(() => S.mapUp || 4);
+    for (;;) {
+      if (ps.reduce((a, p, i) => a + p.nx * p.ny * f[i] * f[i], 0) <= LOSS_PX) break;
+      let k = -1;
+      ps.forEach((p, i) => { if (f[i] > 1 && (k < 0 || p.cell / f[i] < ps[k].cell / f[k])) k = i; });
+      if (k < 0) break;
+      f[k] /= 2;
+    }
+    const rails = [];
+    ps.forEach((p, i) => {
+      const map = max > 0 ? mapImage(lossLog(lossDense(p), lo), p.nx, p.ny, { x0: p.x0, y0: p.y0, cell: p.cell, ...sc, f: f[i] }) : null;
+      const net = S.scene.nets.indexOf(p.net);
+      if (!map || net < 0) return;
+      const cu = mapCopper([net], ll.layer);
+      mapBake(map, cu.clip);
+      rails.push({ p, map, strokes: mapStrokes(cu, map) });
+    });
+    S.lossImg = { plane: pl, ll, rails, clip, max, lo, px: Math.max(0, ...rails.map((r) => r.map.cell / r.map.f)), bytes: rails.reduce((a, r) => a + r.map.bytes, 0) };
+    return S.lossImg;
+  }
+  const vals = lossValues(pl);
   let max = 0;
   for (let i = 0; i < vals.length; i++) if (vals[i] > max) max = vals[i];
-  const lo = max / 10 ** LOSS_DECADES, lg = new Float32Array(vals.length);
-  for (let k = 0; k < vals.length; k++) lg[k] = vals[k] > lo && max > 0 ? Math.log10(vals[k]) : NaN;
-  // no extension: copper below the scale's bottom stays empty (as the cells), its edge smooth half way
-  const map = max > 0 ? mapImage(lg, m.nx, m.ny, { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(max), dilate: 0, cover: 0.5 }) : null;
-  const pl = S.lossPlane, nets = [...S.piRes.entries()].filter(([, r]) => r.res).map(([n]) => S.scene.nets.indexOf(n)).filter((n) => n >= 0);
-  const layers = pl === "comp" ? [] : pl[0] === "L" ? [m.layers[+pl.slice(1)]] : m.layers;
-  // parts: their heat is spread over the box of their pads (kisi_pi::losses), the box is the mask
-  let parts = null;
+  const lo = max / 10 ** LOSS_DECADES;
+  const map = max > 0 ? mapImage(lossLog(vals, lo), m.nx, m.ny, { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(max), cut: Math.log10(lo) }) : null;
+  // parts: their heat is spread over the box of their pads (kisi_pi::losses), the box is part of the clip
   if (pl === "comp" || pl === "total") {
     const hot = new Set(S.loss.summary.components.filter((c) => c.w > 0).map((c) => c.refdes)), P = S.scene.pads, box = new Map();
     for (let i = 0; i < P.length / 8; i++) {
@@ -46,24 +95,36 @@ function lossImage() {
       b[0] = Math.min(b[0], P[o] - r); b[1] = Math.min(b[1], P[o + 1] - r); b[2] = Math.max(b[2], P[o] + r); b[3] = Math.max(b[3], P[o + 1] + r);
       box.set(ref, b);
     }
-    parts = [...box.values()];
+    for (const b of box.values()) clip.rect(b[0], b[1], b[2] - b[0], b[3] - b[1]);
   }
-  // cut once into the image (no extension here, so nothing is lost): the copper of every rail on
-  // every layer each frame would be slow; one path, non-zero, is the union of all of it
-  if (map) {
-    const cut = new Path2D();
-    for (const l of layers) cut.addPath(mapCopper(nets, l).clip);
-    for (const b of parts || []) cut.rect(b[0], b[1], b[2] - b[0], b[3] - b[1]);
-    mapBake(map, cut);
-  }
-  S.lossImg = { plane: S.lossPlane, map, max, lo, vals };
+  if (map) mapBake(map, clip);
+  S.lossImg = { plane: pl, map, clip, max, lo, vals, px: map ? map.cell / map.f : 0, bytes: map ? map.bytes : 0 };
   return S.lossImg;
 }
+// the value of the shown plane at a board point: {v, net} (a layer: the rail whose copper is there)
+function lossAt(im, x, y) {
+  if (im.ll) {
+    for (const { p } of im.rails) {
+      const i = Math.floor((x - p.x0) / p.cell), j = Math.floor((y - p.y0) / p.cell);
+      if (i < 0 || j < 0 || i >= p.nx || j >= p.ny) continue;
+      const v = lossCell(p, j * p.nx + i);
+      if (v === v) return { v, net: p.net };
+    }
+    return { v: NaN, net: null };
+  }
+  const m = S.loss.map, i = Math.floor((x - m.x0) / m.cell), j = Math.floor((y - m.y0) / m.cell);
+  return { v: i < 0 || j < 0 || i >= m.nx || j >= m.ny ? NaN : im.vals[j * m.nx + i], net: null };
+}
 
+// the copper as a clip each frame only when an image pixel covers more than 1.5 device pixels: then the
+// edge cut into the images would show; otherwise the cut images alone (one clip of all the copper of a
+// board costs several times the rest of the frame)
+const lossDrawClip = (im) => S.view.s * (window.devicePixelRatio || 1) * im.px > 1.5 ? im.clip : null;
 function drawLoss(px) {
   if (!S.loss || !S.loss.map) return;
-  const im = lossImage();
-  if (im.map) mapDraw({ image: (c) => mapPaint(c, im.map) });
+  const im = lossImage(), clip = lossDrawClip(im);
+  if (im.rails) mapDraw({ clip, image: (c) => { for (const r of im.rails) mapPaint(c, r.map); }, over: (c) => { for (const r of im.rails) mapDrawStrokes(c, r.strokes, px); } });
+  else if (im.map) mapDraw({ clip, image: (c) => mapPaint(c, im.map) });
   // the largest heat sources: labels at a constant screen size, the hottest first; a label that
   // would overlap a hotter one is left out (more appear when zoomed in)
   S.lossLabels = [];
@@ -89,7 +150,7 @@ function renderLossLegend() {
   L.innerHTML = `<strong>Power density · ${esc(plane ? plane.name : "")} · log scale</strong>
     <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
     <div class="ticks units"><span>${v(im.lo)}</span><span>${v(im.lo * 10 ** (LOSS_DECADES / 2))}</span><span>${v(im.max)}</span></div>
-    <div class="row">${S.lossPlane === "comp" || S.lossPlane === "total" ? "Parts: heat over the area of their pads (estimate). " : ""}Copper: I²R of every rail and the ground return.</div>`;
+    <div class="row">${S.lossPlane === "comp" || S.lossPlane === "total" ? "Parts: heat over the area of their pads (estimate). " : ""}${S.lossPlane === "comp" ? "" : `Copper: I²R of every rail and the ground return per mm² of copper${S.lossPlane[0] === "L" ? ", on each rail's own cells" : ", the layers summed"}.`}</div>`;
 }
 
 function showLossTip(mx, my) {
@@ -99,17 +160,16 @@ function showLossTip(mx, my) {
   const x = (mx - S.view.x) / S.view.s, y = (my - S.view.y) / S.view.s;
   const i = Math.floor((x - m.x0) / m.cell), j = Math.floor((y - m.y0) / m.cell);
   if (i < 0 || j < 0 || i >= m.nx || j >= m.ny) { tip.hidden = true; return; }
-  const k = j * m.nx + i, per = m.nx * m.ny, nl = m.layers.length, b = S.loss.buf;
-  let cu = 0;
-  for (let l = 0; l < nl; l++) cu += b[l * per + k];
-  const comp = b[nl * per + k];
-  if (!(im.vals[k] > 0) && !(cu > 0) && !(comp > 0)) { tip.hidden = true; return; }
+  const k = j * m.nx + i, per = m.nx * m.ny, b = S.loss.buf;
+  const cu = b[k] === b[k] ? b[k] : 0, comp = b[per + k], at = lossAt(im, x, y);
+  if (!(at.v > 0) && !(cu > 0) && !(comp > 0)) { tip.hidden = true; return; }
   const near = S.loss.summary.components.filter((c) => c.at).map((c) => ({ c, d: Math.hypot(c.at[0] - x, c.at[1] - y) })).sort((a, b2) => a.d - b2.d)[0];
-  const d = (w) => fmtSI(w, "W/mm²");
+  const d = (w) => w === w ? fmtSI(w, "W/mm²") : "–";
   tip.innerHTML = `<div class="t1">Power density</div><div class="kv">
-    <span>Shown</span><span>${d(im.vals[k])}</span>
+    <span>Shown</span><span>${d(at.v)}</span>
+    ${at.net ? `<span>Rail</span><span>${esc(netLabel(at.net))}</span>` : ""}
     <span>Parts</span><span>${d(comp)}</span>
-    <span>Copper</span><span>${d(cu)}</span>
+    <span>Copper</span><span>${d(cu)} <span class="muted">all layers</span></span>
     ${near && near.d < 3 ? `<span>Part</span><span>${esc(near.c.refdes)} ${esc(near.c.part)} · ${fmtSI(near.c.w, "W")}</span>` : ""}</div>`;
   tip.hidden = false;
   const rs = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;

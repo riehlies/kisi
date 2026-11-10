@@ -150,6 +150,10 @@ pub struct PiResult {
     /// copper loss per cell (W): half of every conductance's I²R to each of its two cells
     #[serde(skip)]
     pub loss: Vec<f32>,
+    /// copper fraction per cell in 255ths (0: no copper or not connected; a line conductor's cell: its
+    /// width / cell) – the copper area the loss of a cell is spread over in the loss maps
+    #[serde(skip)]
+    pub cu: Vec<u8>,
 }
 
 // --- fields & helpers -------------------------------------------------------------
@@ -1354,12 +1358,21 @@ pub fn solve_rail_scaled(
     let mut grids = Vec::new();
     let mut vb: Vec<f32> = Vec::with_capacity(per * layers.len());
     let mut jb: Vec<f32> = Vec::with_capacity(per * layers.len());
+    let mut cb: Vec<u8> = Vec::with_capacity(per * layers.len());
     let mut max_j = 0.0f64;
     let mut max_j_at = None;
     let cm = g.cell * 1e-3;
     for &l in &layers {
         let off = vb.len();
         let (m, wl) = (&node_of[l], &w[l]);
+        // copper fraction: the cell's own, a line conductor's width / cell where that is more
+        let mut fr: Vec<f32> = wl.clone();
+        for x in &lines[l] {
+            let f = (x.width / g.cell).min(1.0) as f32;
+            for &(k, _) in &x.cells {
+                fr[k] = fr[k].max(f);
+            }
+        }
         // the voltage of a raster cell (not of a cell on a line track only)
         let val = |i: isize, j: isize| -> Option<f64> {
             if i < 0 || j < 0 || i as usize >= g.nx || j as usize >= g.ny || wl[j as usize * g.nx + i as usize] <= 0.0 {
@@ -1376,9 +1389,12 @@ pub fn solve_rail_scaled(
                     None => {
                         vb.push(f32::NAN);
                         jb.push(f32::NAN);
+                        cb.push(0);
                     }
                     Some(c) => {
                         vb.push(c as f32);
+                        let f = fr[j as usize * g.nx + i as usize].clamp(0.0, 1.0);
+                        cb.push(if f > 0.0 { ((f * 255.0).ceil() as u8).max(1) } else { 0 });
                         let d = |a: Option<f64>, b: Option<f64>| -> f64 {
                             match (a, b) {
                                 (Some(a), Some(b)) => (b - a) / (2.0 * cm),
@@ -1524,6 +1540,7 @@ pub fn solve_rail_scaled(
         v: vb,
         j: jb,
         loss: lb,
+        cu: cb,
     })
 }
 

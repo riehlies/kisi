@@ -107,7 +107,7 @@ function vcSave() {
 function vcBytes() {
   const c = S.viewCache; let n = 0;
   if (!c) return 0;
-  for (const e of c.dc.values()) { for (const r of e.piRes.values()) n += (r.v ? r.v.byteLength : 0) + (r.j ? r.j.byteLength : 0); if (e.loss && e.loss.buf) n += e.loss.buf.byteLength; }
+  for (const e of c.dc.values()) { for (const r of e.piRes.values()) n += (r.v ? r.v.byteLength : 0) + (r.j ? r.j.byteLength : 0); if (e.loss && e.loss.buf) n += e.loss.buf.byteLength + (e.loss.layerBuf ? e.loss.layerBuf.byteLength + e.loss.layerIdx.byteLength : 0); }
   for (const e of c.therm.values()) if (e.therm.t) n += e.therm.t.byteLength;
   return n;
 }

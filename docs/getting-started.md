@@ -88,7 +88,8 @@ references jump to the board. Then, in steps:
 1. per rail and for the ground return, voltage drop and current density on every layer, the drop at each load
    and the vias with the highest currents; switches in the legend add isolines to the voltage drop and arrows
    for the current direction to the current density;
-2. a losses map: heat per part and copper loss per layer (mW/mm²);
+2. a losses map: heat per part over its pads and copper loss per mm² of copper (mW/mm²), per layer on each
+   rail's own cells or all layers summed;
 3. the temperature (an estimate for an ambient temperature and still air or an air flow): a map per layer, the
    hottest parts with their junction temperature, the rails' IR drop at temperature;
 4. Z(f): a lumped model of regulator, plane and capacitors with a plane model above 1 MHz, and the impedance seen

@@ -42,8 +42,12 @@ struct State {
     /// last solved power tree, and the DC results per rail (loss buffers only) for the losses
     tree: Option<kisi_core::tree::TreeResult>,
     pi_store: std::collections::BTreeMap<String, kisi_core::pi::PiResult>,
-    /// loss map: copper planes, then the components plane (W/mm²)
+    /// loss map: the copper plane (all layers), then the components plane (W/mm²)
     loss_map: Vec<f32>,
+    /// the layer planes of the last `kisi_pi_losses`: their copper cells and densities on the rails' DC
+    /// grids (W/mm²), handed over to the caller, not kept with the stackup's results
+    loss_cells: Vec<u32>,
+    loss_layer: Vec<f32>,
     /// last temperature estimate (from `pi_store` and `tree`), with its temperature planes
     thermal: Option<kisi_core::thermal::ThermalResult>,
     /// last analysis and its parameters (for the RF functions)
@@ -171,6 +175,7 @@ pub extern "C" fn kisi_pi_stored() -> i32 {
             .iter()
             .map(|x| {
                 4 * (x.loss_map.len() + x.store.values().map(|r| r.v.len() + r.j.len() + r.loss.len()).sum::<usize>())
+                    + x.store.values().map(|r| r.cu.len()).sum::<usize>()
             })
             .sum();
         let v = serde_json::json!({"rails": st.pi_store.keys().collect::<Vec<_>>(), "thermal": st.thermal.is_some(),
@@ -646,6 +651,8 @@ pub extern "C" fn kisi_pi_clear() {
         let mut st = st.borrow_mut();
         st.pi_store.clear();
         st.loss_map.clear();
+        st.loss_layer = Vec::new();
+        st.loss_cells = Vec::new();
         st.thermal = None;
     });
 }
@@ -676,8 +683,11 @@ pub extern "C" fn kisi_pi_ground() -> i32 {
 }
 
 /// Losses of the stored DC results and the last power tree. Input {"cell": mm|null}.
-/// Out: {summary, flow, map}; the map planes (W/mm²) via kisi_pi_map_ptr/len:
-/// `map.layers.len()` copper planes, then the components plane, nx*ny cells each.
+/// Out: {summary, flow, map, layers}; the map planes (W/mm²) via kisi_pi_map_ptr/len: the copper plane
+/// (W per mm² of copper, all layers, NaN: no copper), then the components plane, nx*ny cells each;
+/// `layers`: per copper layer of the map its rails on their own DC grids (LayerLoss: planes with
+/// offsets into two buffers of their copper cells – the index in the plane's grid, via
+/// kisi_pi_loss_cells_ptr/len – and the W per mm² of copper there, via kisi_pi_loss_layer_ptr/len).
 #[no_mangle]
 pub extern "C" fn kisi_pi_losses(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -693,14 +703,30 @@ pub extern "C" fn kisi_pi_losses(p: *const u8, n: usize) -> i32 {
             kisi_core::losses::power_flow(t, &copper, s.ground_w)
         });
         let m = kisi_core::losses::loss_map(b, &rails, &s.components, cell)?;
-        let out = serde_json::json!({"summary": s, "flow": flow, "map": m}).to_string();
+        let (mut lbuf, mut cbuf): (Vec<f32>, Vec<u32>) = (Vec::new(), Vec::new());
+        let mut layers = Vec::new();
+        for &l in &m.layers {
+            let mut ll = kisi_core::losses::loss_layer(b, &rails, l);
+            for p in ll.planes.iter_mut() {
+                p.offset += lbuf.len();
+            }
+            lbuf.append(&mut ll.density);
+            cbuf.append(&mut ll.cells);
+            layers.push(ll);
+        }
+        let out = serde_json::json!({"summary": s, "flow": flow, "map": m, "layers": layers}).to_string();
         let mut buf = m.copper;
         buf.extend_from_slice(&m.components);
-        Ok::<_, String>((out, buf))
+        Ok::<_, String>((out, buf, lbuf, cbuf))
     });
     match r {
-        Ok((out, buf)) => {
-            ST.with(|st| st.borrow_mut().loss_map = buf);
+        Ok((out, buf, lbuf, cbuf)) => {
+            ST.with(|st| {
+                let mut st = st.borrow_mut();
+                st.loss_map = buf;
+                st.loss_layer = lbuf;
+                st.loss_cells = cbuf;
+            });
             set_out(out);
             0
         }
@@ -709,6 +735,22 @@ pub extern "C" fn kisi_pi_losses(p: *const u8, n: usize) -> i32 {
             1
         }
     }
+}
+#[no_mangle]
+pub extern "C" fn kisi_pi_loss_cells_ptr() -> *const u32 {
+    ST.with(|st| st.borrow().loss_cells.as_ptr())
+}
+#[no_mangle]
+pub extern "C" fn kisi_pi_loss_cells_len() -> usize {
+    ST.with(|st| st.borrow().loss_cells.len())
+}
+#[no_mangle]
+pub extern "C" fn kisi_pi_loss_layer_ptr() -> *const f32 {
+    ST.with(|st| st.borrow().loss_layer.as_ptr())
+}
+#[no_mangle]
+pub extern "C" fn kisi_pi_loss_layer_len() -> usize {
+    ST.with(|st| st.borrow().loss_layer.len())
 }
 #[no_mangle]
 pub extern "C" fn kisi_pi_map_ptr() -> *const f32 {

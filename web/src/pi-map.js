@@ -29,9 +29,11 @@ const mapUpFactor = (cells) => S.mapUp || [4, 2, 1].find((f) => cells * f * f <=
 // A colour map from the values `val` (nx × ny, NaN: no copper) of a raster at x0, y0 with square cells:
 // colour position (v - lo) / (hi - lo). o.dilate: cells of extension (default MAP_DILATE); o.cover: a
 // pixel is drawn where the bilinear weight of the corners with values reaches it (default: any; 0.5
-// without extension gives a smooth edge half way between a cell with and one without a value). Returns
-// the image (cropped to the cells with values), the extended values of the crop (for isolines) and
-// which of them were cells of their own (`own`).
+// without extension gives a smooth edge half way between a cell with and one without a value); o.cut: a
+// pixel whose interpolated value is below it stays transparent (the bottom of a log scale: the edge is
+// the isoline, not the cells); o.f: the factor instead of the budget's. Returns the image (cropped to the
+// cells with values), the extended values of the crop (for isolines) and which of them were cells of
+// their own (`own`).
 function mapImage(val, nx, ny, o) {
   const t0 = performance.now();
   // crop: the cells with values plus the extension
@@ -41,7 +43,7 @@ function mapImage(val, nx, ny, o) {
     for (let i = 0; i < nx; i++) if (val[row + i] === val[row + i]) { if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; j1 = j; }
   }
   if (i1 < 0) return null;
-  const dil = o.dilate ?? MAP_DILATE, cover = o.cover ?? 1e-6, e = dil + 1;
+  const dil = o.dilate ?? MAP_DILATE, cover = o.cover ?? 1e-6, cut = o.cut ?? -Infinity, e = dil + 1;
   i0 = Math.max(0, i0 - e); j0 = Math.max(0, j0 - e); i1 = Math.min(nx - 1, i1 + e); j1 = Math.min(ny - 1, j1 + e);
   const w = i1 - i0 + 1, h = j1 - j0 + 1;
   let a = new Float32Array(w * h);
@@ -67,7 +69,7 @@ function mapImage(val, nx, ny, o) {
   }
   const t1 = performance.now();
   // bilinear ×f on the values, then the colour; corners without a value drop out of the weights
-  const f = mapUpFactor(w * h), W = w * f, H = h * f, lut = mapLutGet();
+  const f = o.f || mapUpFactor(w * h), W = w * f, H = h * f, lut = mapLutGet();
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const cx = c.getContext("2d"), img = cx.createImageData(W, H), d = img.data;
   const lo = o.lo, sc = 1023 / ((o.hi - lo) || 1);
@@ -91,6 +93,7 @@ function mapImage(val, nx, ny, o) {
         if (n < cover) continue; // transparent
         v = s / n;
       }
+      if (v < cut) continue; // transparent
       let li = Math.round((v - lo) * sc); li = li < 0 ? 0 : li > 1023 ? 1023 : li;
       const po = (q * W + p) * 4, lo3 = li * 3;
       d[po] = lut[lo3]; d[po + 1] = lut[lo3 + 1]; d[po + 2] = lut[lo3 + 2]; d[po + 3] = 255;
@@ -99,7 +102,7 @@ function mapImage(val, nx, ny, o) {
   cx.putImageData(img, 0, 0);
   const cell = o.cell;
   return {
-    canvas: c, f, x0: o.x0 + i0 * cell, y0: o.y0 + j0 * cell, cell, w, h, vals: a, own, lo: o.lo, hi: o.hi,
+    canvas: c, f, x0: o.x0 + i0 * cell, y0: o.y0 + j0 * cell, cell, w, h, vals: a, own, lo: o.lo, hi: o.hi, cut,
     bbox: [o.x0 + i0 * cell, o.y0 + j0 * cell, o.x0 + (i1 + 1) * cell, o.y0 + (j1 + 1) * cell],
     bytes: W * H * 4 + a.byteLength + own.byteLength, ms: { extend: t1 - t0, image: performance.now() - t1 },
   };
@@ -202,8 +205,8 @@ function mapOutline() {
   st.outlineFill = ok ? fill : null;
   return st.outlineFill;
 }
-// Cut the map image to a path once, at the image's resolution (`destination-in`): for maps without an
-// extension beyond their cells (losses) the cut costs nothing per frame and loses nothing
+// Cut the map image to a path once, at the image's resolution (`destination-in`): the losses of one
+// layer cut each rail's image to its own copper, so that its extension does not cover a neighbour's
 function mapBake(m, path, rule = "nonzero") {
   if (!m) return;
   const x = m.canvas.getContext("2d"), k = m.f / m.cell;
@@ -229,10 +232,11 @@ function mapDraw(layers) {
 // The tracks narrower than MAP_LINE_CELLS cells as strokes coloured along their length: samples every
 // half cell, bilinear on the map's extended values (the same values as the picture around them; along a
 // line conductor's chain of cells they are the chain's own), runs of one colour step as one butt-ended
-// stroke, a round dot of the end's colour at both ends (joints). Returns paths by colour step.
+// stroke, a round dot of the end's colour at both ends (joints); below the map's `cut` no stroke, as in
+// the picture. Returns paths by colour step.
 function mapStrokes(cu, m) {
   const T = S.scene.tracks, runs = new Map(), dots = new Map(), cell = m.cell, maxW = MAP_LINE_CELLS * cell, { w, h, vals: a } = m;
-  const lo = m.lo, hi = m.hi;
+  const lo = m.lo, hi = m.hi, cut = m.cut ?? -Infinity;
   const step = (v) => Math.max(0, Math.min(MAP_BUCKETS - 1, Math.round((v - lo) / ((hi - lo) || 1) * (MAP_BUCKETS - 1))));
   const at = (x, y) => {
     const u = (x - m.x0) / cell - 0.5, v = (y - m.y0) / cell - 0.5, i = Math.floor(u), j = Math.floor(v), fx = u - i, fy = v - j;
@@ -251,7 +255,7 @@ function mapStrokes(cu, m) {
     if (tw >= maxW) continue;
     const ax = T[o], ay = T[o + 1], bx = T[o + 2], by = T[o + 3], L = Math.hypot(bx - ax, by - ay);
     const ns = Math.max(1, Math.ceil(L / (cell / 2)));
-    let last = NaN, prev = -1, from = 0, first = -1;
+    let last = NaN, prev = -1, from = 0, first = -1, cutFirst = false;
     const flush = (to) => { if (prev < 0) return; const p = add(runs, prev, tw); p.moveTo(ax + (bx - ax) * from, ay + (by - ay) * from); p.lineTo(ax + (bx - ax) * to, ay + (by - ay) * to); };
     for (let k = 0; k < ns; k++) {
       const u = (k + 0.5) / ns;
@@ -259,6 +263,7 @@ function mapStrokes(cu, m) {
       if (v !== v) v = last; // no cell next to the line here: keep the colour before
       if (v !== v) continue;
       last = v;
+      if (v < cut) { flush(k / ns); prev = -1; if (first < 0) cutFirst = true; continue; }
       const b = step(v);
       if (first < 0) first = b;
       if (b !== prev) { flush(k / ns); prev = b; from = k / ns; }
@@ -266,8 +271,8 @@ function mapStrokes(cu, m) {
     flush(1);
     if (first < 0) continue;
     n++;
-    add(dots, first, tw).moveTo(ax + tw / 2, ay); add(dots, first, tw).arc(ax, ay, tw / 2, 0, Math.PI * 2);
-    add(dots, prev, tw).moveTo(bx + tw / 2, by); add(dots, prev, tw).arc(bx, by, tw / 2, 0, Math.PI * 2);
+    if (!cutFirst) { add(dots, first, tw).moveTo(ax + tw / 2, ay); add(dots, first, tw).arc(ax, ay, tw / 2, 0, Math.PI * 2); }
+    if (prev >= 0) { add(dots, prev, tw).moveTo(bx + tw / 2, by); add(dots, prev, tw).arc(bx, by, tw / 2, 0, Math.PI * 2); }
   }
   const col = Array.from({ length: MAP_BUCKETS }, (_, b) => turbo(0.05 + 0.9 * b / (MAP_BUCKETS - 1)));
   return { runs: [...runs.values()], dots: [...dots.values()], col, n };

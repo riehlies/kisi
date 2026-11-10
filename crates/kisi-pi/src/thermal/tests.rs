@@ -68,6 +68,7 @@ fn heat(layer: u16, x0: f64, y0: f64, cell: f64, nx: usize, ny: usize, loss: Vec
         warnings: vec![],
         v: vec![],
         j: vec![],
+        cu: vec![],
         loss,
     }
 }

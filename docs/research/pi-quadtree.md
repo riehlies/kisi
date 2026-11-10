@@ -1,6 +1,6 @@
 # DC IR drop: does a quadtree raster pay? – experiment
 
-> **Productised (branch `feat/pi-dc-accuracy`):** recommendations 1–4 of section 7 are now kisi's default DC solver
+> **Productised (released in 0.3.3):** recommendations 1–4 of section 7 are now kisi's default DC solver
 > (`kisi_pi::pi::solve_rail`): the `fill_track` connectivity fix, the Peaceman link correction with disc contacts
 > for large barrels, line tracks and cut-cell weights (exact along x on four sample lines per cell, only the
 > rasterisation changed); the quadtree is not. Result on the 21 rails below: largest-drop error median 6.9 → 1.0 %,
@@ -345,7 +345,8 @@ The variants of the tables are the harness's default set. The result files of th
 
 ## 9 Productised
 
-Branch `feat/pi-dc-accuracy` makes the cheap fixes kisi's default (`crates/kisi-pi/src/pi.rs`; module notes there):
+Since 0.3.3 (branch `feat/pi-dc-accuracy`) the cheap fixes are kisi's default (`crates/kisi-pi/src/pi.rs`; module
+notes there):
 
 1. **`fill_track`:** the thin-track reach is half the cell diagonal plus a margin, and the thin-track rule holds up to
    1.5 cells (a band narrower than √2 cells can hold a single, not 4-connected diagonal row). Shared with the PDN

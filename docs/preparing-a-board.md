@@ -164,6 +164,8 @@ switch gets a fourth button, **Stackup** (Stackup · Impedance · Channel · Pow
 everything of the option; its top has the same switch to turn the option off. Another view button leaves it (Esc
 goes back to the view before).
 
+![The Stackup view on the ThunderScope: the impedance per net class and layer with the board's stackup and with a JLCPCB 6-layer template, against each class's window](img/stackup.png)
+
 - **Impedance per stackup.** One row per net class and layer – the class's most used cross-section there – and a
   column per stackup: the board's (file + kisi.json, as the Stackup card shows it), and up to three more – fab
   templates from kisi's library (`data/stackups.json`, first JLCPCB's) with the board's copper layer count and

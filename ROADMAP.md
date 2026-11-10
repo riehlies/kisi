@@ -1,6 +1,6 @@
 # kisi – roadmap
 
-Planned and possible work after 0.3.2, in three development blocks plus work across them. Within a block the items
+Planned and possible work after 0.3.3, in three development blocks plus work across them. Within a block the items
 are roughly in order of priority; each says why it matters, "Decide first" marks items that need a decision before
 work starts. One rule holds for all of them: `main` always has a clean, mostly self-explanatory build – new features
 come with a small, clear UI and without option combinatorics.
@@ -67,13 +67,18 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
 - **Report export** from the viewer (HTML/PDF summary of checks and power results).
 - **Smaller downloads:** separate WASM builds for viewer and CLI (the viewer does not need the CLI commands).
 - **Faster field solver in the CLI:** better scheduling across threads, optional larger time budget presets.
-- **KiCad plugin** (decided 2026-10-26: IPC API plugin, no local server) – **released in 0.3.1:** a toolbar button
+- **KiCad plugin** (decided 2026-10-26: IPC API plugin, no local server; revised 2026-11-05 for saving) –
+  **released in 0.3.1:** a toolbar button
   in KiCad 10's PCB editor opens the saved board with its `<board>.kisi.json` in a copy of the viewer
   (`analysis/<board>.kisi.html`), the package carries the CLI and the agent guide (`docs/getting-started.md`,
   design note `docs/research/kicad-plugin.md`). Tested in KiCad 10 on Windows; the entry for KiCad's Plugin and
   Content Manager (status `testing`, KiCad 10.0) is under review. In 0.3.2: the Linux and macOS paths reviewed
   (the plugin's folder, browser start, Node.js locations, Downloads folder) and the package's `install_size` as
-  KiCad's repository validator counts it. Open: a test in KiCad 10 on Linux and macOS
+  KiCad's repository validator counts it. In 0.3.3: "Save kisi.json" on the Prepare PCB page writes
+  `<board>.kisi.json` directly next to the board through a temporary loopback host of the plugin (per board,
+  token-protected, revision check, backups in `analysis/`; `kisi_server.py`, workflow `local-config.yml` saves from
+  Chromium, Firefox and WebKit on Linux, Windows and macOS), the early error replies read the request body first
+  and a briefly locked file (Windows) is retried. Open: a test in KiCad 10 on Linux and macOS
   (checklist in the design note; their code paths are reviewed and unit-tested), then status `stable`; KiCad 9
   (untested); the "unsaved changes" notice once KiCad's API reports them (`GetDocumentModifiedState`, KiCad's
   development branch – the plugin uses it when kicad-python has it).
@@ -139,17 +144,18 @@ validation, and every result says which level it used and how uncertain it is.
   `kisi-references-2d.html`) set the field solver's uncertainty to 1 % and brought formulas for coplanar lines
   (grounded CPW, stripline with coplanar ground, the coupled grounded CPW; single lines with coplanar copper
   4.9 → 1.1 % median). Next:
-  - **the fab's stackup** (`feat/stackup-variants`, first version; user feedback: the biggest impedance error in
+  - **the fab's stackup** (done, released in 0.3.3, first version; user feedback: the biggest impedance error in
     production is usually the fab's prepreg choice, not the formula): `data/stackups.json` with JLCPCB's impedance
     templates (4, 6, 8 layers) and their sources, `kisi stackups`, `--stackup-preset`, the viewer's Stackup view (a view button of its own with the
     option on: the board's stackup next to templates or edited copies; "Use in all views" makes one the stackup of
     every view – impedance, channel, power, exports – as `--stackup-preset` does on the command line, checked by
-    `tools/compare_viewer_cli.py`; "use for the board" writes a template into the Prepare PCB draft, copper and mask
+    `tools/compare_viewer_cli.py`, the views' results kept per stackup so that switching back is instant; "use for
+    the board" writes a template into the Prepare PCB draft, copper and mask
     thickness in kisi.json too), the stackup in every export's header. Settled: JLC's core εr 4.6 stays, with
     `epsilon_r_alt` from the NP-155F datasheet kept beside it. Next: more fabs (Aisler,
     PCBWay, Eurocircuits – each with published values only), IPC-2581 import if asked for, the measured
     cross-sections of the test board (JLC) against the templates;
-  - **sensitivity of the impedance** (`feat/stackup-variants`, done): per net class and layer the band for
+  - **sensitivity of the impedance** (done, released in 0.3.3): per net class and layer the band for
     dielectric thickness, εr, copper and a symmetric width tolerance (one-at-a-time central differences at the
     nominal value's solver level, worst case and RSS) against the window, `overview --tolerance`, the viewer
     panel; one option "Fab stackups & tolerances", off by default (viewer switch, kisi.json `tolerances`,
@@ -181,10 +187,16 @@ validation, and every result says which level it used and how uncertain it is.
   edges (return path), via-to-via coupling through the cavity.
 - **PDN:** per-IC grid for all rails at once, regulator models beyond R + L (control-loop output impedance), the
   cavity model in the PDN, comparison with a measurement or a reference tool.
-  Next for its AC grid (`pdn_ic`; via contacts and the 45° track fix are in since branch `feat/pi-dc-accuracy`): the
+  Next for its AC grid (`pdn_ic`; via contacts and the 45° track fix are in since 0.3.3): the
   DC drop's line tracks (a track narrower than the cell as a line conductor; needs the track's copper area per cell
   for the plane capacitance and joins at the ends as shorts) and cut-cell weights, then a check of a track-fed rail
   against a refined grid as in `docs/research/pi-quadtree.md`.
+- **DC voltage drop** (done, released in 0.3.3): the fixes `docs/research/pi-quadtree.md` recommended, in the
+  default solver – cut cells weighted by their copper fraction, tracks narrower than three cells as line
+  conductors, via contacts with the Peaceman correction, the 45° track fix (against the experiment's references,
+  21 rails on 7 boards: error of the largest drop median 6.9 → 1.0 %, max 28 → 10 %; `kisi-validate pi-dc`); the
+  power maps (voltage drop, current density, losses, temperature) interpolated and clipped to the copper, narrow
+  tracks as strokes, isolines for the voltage drop and arrows for the current direction (display only).
 - **Power:** via current capacity; split of regulator losses between IC and inductor (also a second heat source
   in the temperature estimate).
 - **Temperature, follow-ups** (the steady state is in `kisi thermal` and the viewer, `docs/research/thermal.md`):

@@ -7,8 +7,10 @@ Opens the viewer with the built-in ThunderScope board (Playwright + Chromium, 14
 impedance.png (whole board coloured by deviation from the target), net.png (TDR of a net with vias),
 channel.png (interfaces after the check), flow.png (power flow), power.png (voltage drop of the FPGA core rail,
 its impedance seen from the ICs), temperature.png (temperature estimate, step 3), parts.png (the power tree's
-components with their thermal columns) and prepare.png (the Prepare PCB checklist of the bare board, Impedance
-tab: a class for the QSPI nets applied, the laminate step open). --only prepare,… makes only these.
+components with their thermal columns), prepare.png (the Prepare PCB checklist of the bare board, Impedance
+tab: a class for the QSPI nets applied, the laminate step open) and stackup.png (the Stackup view with the option
+"Fab stackups & tolerances" on: the board's stackup next to a fab template). --only prepare,…
+makes only these.
 """
 import argparse, os
 from playwright.sync_api import sync_playwright
@@ -122,5 +124,18 @@ with sync_playwright() as p:
             pg.wait_for_timeout(400)
             shot("parts")
     prepare()
+    # the Stackup view (option "Fab stackups & tolerances" on): the board's stackup next to the first fitting fab
+    # template, the impedance per net class and layer
+    if not only or "stackup" in only:
+        if pg.is_visible("#an-start"):
+            pg.click("#an-start")
+        pg.wait_for_function(f"S.full && {BUSY}", timeout=90000)
+        pg.check("#fab-on"); pg.wait_for_timeout(500)
+        pg.click("#view-stk"); pg.wait_for_timeout(300)
+        fit = pg.evaluate("(stkPresets().fitting || [])[0] || null")
+        if fit:
+            pg.select_option("#stk-add", f"preset:{fit}"); pg.wait_for_timeout(400)
+        pg.evaluate("document.getElementById('stk-panel').scrollTop = 0")
+        shot("stackup")
     b.close()
 print("screenshots in", a.out)

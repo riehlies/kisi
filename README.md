@@ -19,7 +19,9 @@ PDN impedance, temperature estimate) – in the browser, with no installation an
 ## What you get
 - **Impedance:** every track against its target (from net class names such as `50Z`, `90Z_Diff`), with formulas
   in a second and the 2D field solver on demand; impedance along the path, loss, TDR, vias and crosstalk per net;
-  every impedance and via result with its accuracy level (field solver, formula, estimate) and typical deviation.
+  every impedance and via result with its accuracy level (field solver, formula, estimate) and typical deviation;
+  optionally fab stackup templates as a what-if for all views and the impedance band for manufacturing tolerances
+  ([Fab stackups and tolerances](docs/preparing-a-board.md#fab-stackups-and-tolerances-option)).
 - **Channel:** buses and device-to-device lanes through series resistors and AC-coupling capacitors, checked
   against interface profiles (PCIe, USB, DDR, LVDS, Ethernet, …) on loss, return loss, skew and a linear eye;
   differential pairs as 4-ports, multi-drop lines at every receiver, connectors with the channel behind them; a
@@ -42,8 +44,8 @@ PDN impedance, temperature estimate) – in the browser, with no installation an
   [latest release](https://github.com/riehlies/kisi/releases/latest), offline. Drop the `.kicad_pcb` with the
   `.kicad_pro` (and `<board>.kisi.json` if there is one). KiCad 6 to 10.
 - **KiCad:** the plugin `kisi-kicad-<version>.zip` from the release (KiCad's Plugin and Content Manager → *Install
-  from File…*) adds a button to the PCB editor that opens the board in the viewer, with its `<board>.kisi.json` –
-  see [Getting started](docs/getting-started.md#from-kicad-the-plugin).
+  from File…*) adds a button to the PCB editor that opens the board in the viewer, with its `<board>.kisi.json`,
+  and saves that file from the viewer directly next to the board – see [Getting started](docs/getting-started.md#from-kicad-the-plugin).
 - **Command line** for scripts, CI and agents (Node.js ≥ 18; every command prints JSON):
   ```sh
   curl -fsSLO https://github.com/riehlies/kisi/releases/latest/download/kisi.mjs

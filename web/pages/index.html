@@ -101,7 +101,7 @@ footer p { margin: 0; max-width: 90ch }
       <h2>What it checks</h2>
       <div class="cols">
         <div class="card"><h3>Impedance</h3>
-          <ul><li>Targets from net class names (<code>50Z</code>, <code>90Z_Diff</code>)</li><li>Formulas in a second, the 2D field solver on demand</li><li>Impedance along the path, loss, TDR, vias, crosstalk</li><li>Each result with its accuracy level and typical deviation (± %)</li></ul></div>
+          <ul><li>Targets from net class names (<code>50Z</code>, <code>90Z_Diff</code>)</li><li>Formulas in a second, the 2D field solver on demand</li><li>Impedance along the path, loss, TDR, vias, crosstalk</li><li>Each result with its accuracy level and typical deviation (± %)</li><li>Optional: fab stackup templates as a what-if for all views, the impedance band for manufacturing tolerances</li></ul></div>
         <div class="card"><h3>Channel</h3>
           <ul><li>Buses and lanes through series parts and AC caps, per assembly variant</li><li>Profiles: PCIe, USB, DDR, LVDS, Ethernet, HDMI, MIPI …</li><li>Loss, return loss, skew and a linear eye, also at connectors with the channel behind them</li><li>Differential pairs as 4-ports, multi-drop lines at every receiver</li><li>Export of a lane or a whole bus: SPICE subcircuits with test benches, Touchstone, a KiCad project</li></ul></div>
         <div class="card"><h3>Power</h3>
@@ -115,6 +115,7 @@ footer p { margin: 0; max-width: 90ch }
         <figure><img src="img/temperature.png" width="1600" height="1000" alt="Temperature estimate of the board with the hottest parts"><figcaption><b>Temperature (estimate):</b> the board's temperature per layer from the losses, the hottest parts with their junction temperature and the heat through the vias</figcaption></figure>
         <figure><img src="img/prepare.png" width="1600" height="1000" alt="Prepare PCB page: a checklist of what the board lacks per category, with forms for the values"><figcaption><b>Prepare PCB:</b> a checklist of what the board file lacks per category – fill in a step, Apply, check mark – with a live check and the board's kisi.json</figcaption></figure>
         <figure><img src="img/parts.png" width="1600" height="1000" alt="Components with junction and case temperature and the source of their thermal data"><figcaption><b>Parts at temperature:</b> junction and case temperature against Tj max, with the thermal resistances used and where they come from</figcaption></figure>
+        <figure><img src="img/stackup.png" width="1600" height="1000" alt="Stackup view: the impedance per net class and layer with the board's stackup and with a fab template"><figcaption><b>Fab stackups (option):</b> the impedance per net class and layer with the board's stackup next to fab templates or edited copies, one of them as a what-if for all views, and the band for manufacturing tolerances</figcaption></figure>
       </div>
     </div>
   </section>
@@ -122,7 +123,7 @@ footer p { margin: 0; max-width: 90ch }
   <section>
     <div class="wrap">
       <h2>In KiCad</h2>
-      <p style="margin:8px 0 0;color:var(--muted);max-width:68ch">The KiCad plugin (KiCad 10) opens the board of the PCB editor in kisi's viewer with one click, together with its kisi.json. Install <code>kisi-kicad-&lt;version&gt;.zip</code> from the <a href="https://github.com/riehlies/kisi/releases/latest">latest release</a> with KiCad's Plugin and Content Manager → <i>Install from File…</i> (<a href="https://github.com/riehlies/kisi/blob/main/docs/getting-started.md#from-kicad-the-plugin">how it works</a>).</p>
+      <p style="margin:8px 0 0;color:var(--muted);max-width:68ch">The KiCad plugin (KiCad 10) opens the board of the PCB editor in kisi's viewer with one click, together with its kisi.json, and saves the kisi.json from the viewer directly next to the board. Install <code>kisi-kicad-&lt;version&gt;.zip</code> from the <a href="https://github.com/riehlies/kisi/releases/latest">latest release</a> with KiCad's Plugin and Content Manager → <i>Install from File…</i> (<a href="https://github.com/riehlies/kisi/blob/main/docs/getting-started.md#from-kicad-the-plugin">how it works</a>).</p>
     </div>
   </section>
 

@@ -40,9 +40,9 @@ class Engine {
     if (rc !== 0) throw new Error(this.out());
   }
   loadPro(text) { this.callRec("pro", "kisi_load_pro", text); }
-  loadPcb(text) { this.anCache = null; this.callRec("pcb", "kisi_load_pcb", text); }
+  loadPcb(text) { this.anCache = null; this.cacheGen = (this.cacheGen || 0) + 1; this.callRec("pcb", "kisi_load_pcb", text); }
   // board configuration; files: BOMs its variants name ({path: text}); variant: the viewer's choice or null
-  config(text, board, files, variant) { this.anCache = null; this.callRec("config", "kisi_config", JSON.stringify({ config: text, board, files: files || {}, variant: variant || null })); return JSON.parse(this.out()); }
+  config(text, board, files, variant) { this.anCache = null; this.cacheGen = (this.cacheGen || 0) + 1; this.callRec("config", "kisi_config", JSON.stringify({ config: text, board, files: files || {}, variant: variant || null })); return JSON.parse(this.out()); }
   // board preparation (kisi_core::gaps / config): the gap list with a configuration text (the loaded
   // kisi.json or a draft; null: none), a check of a text without applying it, one category's entries
   gaps(board, config, view) { this.call(this.k.kisi_gaps, JSON.stringify({ board, config: config ?? null, for: view || null })); return JSON.parse(this.out()); }
@@ -57,7 +57,7 @@ class Engine {
   boardSheets() { if (this.k.kisi_board_sheets() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   // assembly variant: the state, or choose one (null: the configuration's) – the board is rebuilt
   variants() { if (this.k.kisi_variants() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
-  variant(name) { this.anCache = null; this.callRec("variant", "kisi_variant", JSON.stringify({ variant: name || null })); return JSON.parse(this.out()); }
+  variant(name) { this.anCache = null; this.cacheGen = (this.cacheGen || 0) + 1; this.callRec("variant", "kisi_variant", JSON.stringify({ variant: name || null })); return JSON.parse(this.out()); }
   scene() { if (this.k.kisi_scene() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
   analyze(params) { this.callRec("analyze", "kisi_analyze", JSON.stringify(params)); return JSON.parse(this.out()); }
   // an analysis by key (runAnalysis: the stackup, targets, options and field results): the last four are

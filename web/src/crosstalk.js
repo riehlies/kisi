@@ -6,12 +6,15 @@
 // cross-sections of the critical nets only.
 const XT_CRIT = 0.01, XT_HIGH = 0.03;
 
-function xtKey() { return `${S.anGen}|${JSON.stringify(rfParams())}`; }
+// by the analysis' key (load.js anKey) where it has one: a stackup switched back finds its scan again
+function xtKey() { return `${S.full && S.anKeyCur ? S.anKeyCur : S.anGen}|${JSON.stringify(rfParams())}`; }
 // (re)compute the scan with every analysis after step 2; while the field solver runs at most every 8 s
 function xtUpdate(force) {
   if (!S.full || !S.an || S.an.skeleton) { S.xtScan = null; return; }
   const key = xtKey();
   if (!force && S.xtScan && S.xtScan.key === key) return;
+  if (!S.xtCache) S.xtCache = new Map();
+  if (!force && S.xtCache.has(key)) { S.xtScan = S.xtCache.get(key); return; }
   const busy = S.pool && S.pool.running;
   if (!force && busy && S.xtScan && performance.now() - S.xtScan.t < 8000) { S.xtScan.stale = true; return; }
   const nets = S.an.nets.filter((n) => n.target).map((n) => n.net);
@@ -22,6 +25,7 @@ function xtUpdate(force) {
   for (const row of r.rows) { byNet.set(row.net, row); if (row.partner != null) byNet.set(row.partner, row); }
   S.xtMs = Math.round(performance.now() - t0);
   S.xtScan = { ...r, key, t: performance.now(), byNet, stale: false, paths: null };
+  if (!busy) { S.xtCache.set(key, S.xtScan); while (S.xtCache.size > 4) S.xtCache.delete(S.xtCache.keys().next().value); }
 }
 const xtWorst = (row) => Math.max(row.next, row.fext);
 // both nets of a pair in one short name: "USRIO_4_N" + "USRIO_4_P" → "USRIO_4_P/N"

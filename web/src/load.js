@@ -129,12 +129,13 @@ function anParams() {
 }
 // what an analysis depends on besides the board: its cache key (switching stackups back is instant)
 function anKey(p) {
-  return JSON.stringify({ g: S.gen, a: p.active_stackup, s: p.stackup, t: p.targets, st: p.step, m: p.solder_mask, tol: p.tolerance, f: Object.keys(p.field).length });
+  return JSON.stringify({ g: S.gen, e: S.engine.cacheGen || 0, a: p.active_stackup, s: p.stackup, t: p.targets, st: p.step, m: p.solder_mask, tol: p.tolerance, f: Object.keys(p.field).length });
 }
 function runAnalysis(tParse) {
   const params = anParams(), targets = params.targets;
   const t0 = performance.now();
-  S.an = S.full ? S.engine.analyzeKeyed(params, anKey(params)) : S.engine.skeleton(params);
+  S.anKeyCur = S.full ? anKey(params) : null;
+  S.an = S.full ? S.engine.analyzeKeyed(params, S.anKeyCur) : S.engine.skeleton(params);
   S.anMsLast = Math.round(performance.now() - t0);
   // device-to-device lanes (topology): board and targets only, cheap
   const bkey = JSON.stringify(targets);

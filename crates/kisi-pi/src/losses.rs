@@ -268,8 +268,9 @@ pub fn loss_summary(board: &Board, tree: Option<&TreeResult>, rails: &[&PiResult
 // --- loss map ----------------------------------------------------------------------
 //
 // Display data (the viewer's Losses view); the sums above and the temperature (`thermal`, from
-// `PiResult::loss` per cell) do not use it. A cell's loss is shown as W per mm² of its copper
-// (`PiResult::cu`): a cell half covered by copper is not half as dark.
+// `PiResult::loss` per cell) do not use it. One layer on the rails' own DC cells as W per mm² of the
+// cell's copper (`PiResult::cu`: a cell half covered by copper is not half as dark), all layers and the
+// parts on one raster as a heat source per mm² of board.
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LossMap {
@@ -280,10 +281,10 @@ pub struct LossMap {
     pub ny: usize,
     /// copper layer indices with solved copper
     pub layers: Vec<u16>,
-    /// highest copper density (all layers) and of the components plane (W/mm²)
+    /// highest density of the copper (all layers) and of the components plane (W per mm² of board)
     pub max_copper: f64,
     pub max_components: f64,
-    /// W per mm² of copper, the layers' densities summed; NaN: no solved copper in the cell
+    /// W per mm² of board, `layers.len()` planes of nx*ny cells (copper loss of every rail on the layer)
     #[serde(skip)]
     pub copper: Vec<f32>,
     /// W/mm² of the components (heat over the area of their pads)
@@ -383,10 +384,9 @@ fn display_loss<'a>(board: &Board, r: &'a PiResult, g: &crate::pi::LayerGrid) ->
     Cow::Owned(out)
 }
 
-/// Power density on one raster over the board. `cell` in mm (None: about 600 cells across). Every DC
-/// cell's loss and copper area go to the map cells its square overlaps, by the overlapping area (no
-/// beat between the two rasters); per layer the density is the loss over the copper area of the map
-/// cell, the layers' densities are summed.
+/// Heat source per mm² of board on one raster over the board, per copper layer and of the parts. `cell` in
+/// mm (None: about 600 cells across). Every DC cell's loss goes to the map cells its square overlaps, by
+/// the overlapping area (no beat between the two rasters).
 pub fn loss_map(board: &Board, rails: &[&PiResult], comps: &[CompLoss], cell: Option<f64>) -> Result<LossMap, String> {
     let bb = board.bbox.ok_or("board without outline or copper")?;
     let (w, h) = (bb.max[0] - bb.min[0], bb.max[1] - bb.min[1]);
@@ -397,16 +397,17 @@ pub fn loss_map(board: &Board, rails: &[&PiResult], comps: &[CompLoss], cell: Op
     let mut layers: Vec<u16> = rails.iter().flat_map(|r| r.layers.iter().map(|g| g.layer)).collect();
     layers.sort();
     layers.dedup();
-    let mut cu = vec![f32::NAN; per];
-    let (mut wl, mut al) = (vec![0f64; per], vec![0f64; per]);
+    let area = cell * cell;
+    let mut cu = vec![0f32; per * layers.len()];
+    let mut wl = vec![0f64; per];
     let (mut ox, mut oy) = (Vec::new(), Vec::new());
-    for &l in &layers {
-        layer_raster(board, rails, l, (bb.min[0], bb.min[1], cell, nx, ny), &mut wl, &mut al, &mut ox, &mut oy);
+    let mut sum = vec![0f32; per];
+    for (s, &l) in layers.iter().enumerate() {
+        layer_raster(board, rails, l, (bb.min[0], bb.min[1], cell, nx, ny), &mut wl, &mut ox, &mut oy);
         for k in 0..per {
-            if al[k] > 0.0 {
-                let d = (wl[k] / al[k]) as f32;
-                cu[k] = if cu[k].is_nan() { d } else { cu[k] + d };
-            }
+            let d = (wl[k] / area) as f32;
+            cu[s * per + k] = d;
+            sum[k] += d;
         }
     }
     // spread W over the map cells a source rectangle covers
@@ -438,11 +439,10 @@ pub fn loss_map(board: &Board, rails: &[&PiResult], comps: &[CompLoss], cell: Op
         }
         spread(&mut cp, pb.min[0], pb.min[1], pb.max[0], pb.max[1], c.w);
     }
-    let area = (cell * cell) as f32;
     for x in cp.iter_mut() {
-        *x /= area;
+        *x /= area as f32;
     }
-    let max_copper = cu.iter().filter(|x| !x.is_nan()).fold(0f32, |a, &b| a.max(b)) as f64;
+    let max_copper = sum.iter().fold(0f32, |a, &b| a.max(b)) as f64;
     let max_components = cp.iter().fold(0f32, |a, &b| a.max(b)) as f64;
     Ok(LossMap {
         x0: bb.min[0],
@@ -458,22 +458,19 @@ pub fn loss_map(board: &Board, rails: &[&PiResult], comps: &[CompLoss], cell: Op
     })
 }
 
-/// One layer of all rails on a raster (x0, y0, cell, nx, ny): loss (W) and copper area (mm²) per map
-/// cell into `wl`, `al` (overwritten), by area overlap with the DC cells. Returns their sums.
-#[allow(clippy::too_many_arguments)] // the raster and the reused buffers, one call site and a test
+/// One layer of all rails on a raster (x0, y0, cell, nx, ny): loss (W) per map cell into `wl`
+/// (overwritten), by area overlap with the DC cells. Returns its sum.
 fn layer_raster(
     board: &Board,
     rails: &[&PiResult],
     l: u16,
     (x0, y0, cell, nx, ny): (f64, f64, f64, usize, usize),
     wl: &mut [f64],
-    al: &mut [f64],
     ox: &mut Vec<(usize, f64)>,
     oy: &mut Vec<(usize, f64)>,
-) -> (f64, f64) {
+) -> f64 {
     wl.fill(0.0);
-    al.fill(0.0);
-    let (mut ws, mut asum) = (0.0, 0.0);
+    let mut ws = 0.0;
     for r in rails {
         let a = r.cell * r.cell;
         for g in r.layers.iter().filter(|g| g.layer == l) {
@@ -486,27 +483,23 @@ fn layer_raster(
                 overlaps(gy, gy + r.cell, y0, cell, ny, oy);
                 for i in 0..g.nx {
                     let k = j * g.nx + i;
-                    let f = r.cu[g.offset + k] as f64 / 255.0;
-                    if f <= 0.0 {
+                    let wv = loss[k] as f64;
+                    if r.cu[g.offset + k] == 0 || wv == 0.0 {
                         continue;
                     }
                     let gx = g.x0 + i as f64 * r.cell;
                     overlaps(gx, gx + r.cell, x0, cell, nx, ox);
-                    let wv = loss[k] as f64;
                     ws += wv;
-                    asum += f * a;
                     for &(jj, ly) in oy.iter() {
                         for &(ii, lx) in ox.iter() {
-                            let o = lx * ly;
-                            wl[jj * nx + ii] += wv * o / a;
-                            al[jj * nx + ii] += f * o;
+                            wl[jj * nx + ii] += wv * lx * ly / a;
                         }
                     }
                 }
             }
         }
     }
-    (ws, asum)
+    ws
 }
 
 /// The rails' copper on one layer on their own DC grids (the Losses view of a layer).
@@ -581,7 +574,7 @@ pub fn loss_layer(board: &Board, rails: &[&PiResult], layer: u16) -> LayerLoss {
                     if cu[k] == 0 {
                         continue;
                     }
-                    let d = loss[k] as f64 / (cu[k] as f64 / 255.0 * a);
+                    let d = loss[k] as f64 / (cu[k] as f64 / crate::pi::CU_STEPS as f64 * a);
                     max = max.max(d);
                     sum += loss[k] as f64;
                     out.cells.push(((j - j0) * w + (i - i0)) as u32);
@@ -823,28 +816,16 @@ mod tests {
         let m = loss_map(&board, &all, &s.components, Some(0.5)).unwrap();
         let comp: f64 = m.components.iter().map(|&x| x as f64 * 0.25).sum();
         assert!((comp - s.components_w).abs() < 1e-6 * s.components_w, "{comp} vs {}", s.components_w);
-        // the map raster keeps every layer's loss and copper area (area overlap), and the layer planes
-        // on the DC grids carry the same loss
-        let bb = board.bbox.unwrap();
-        let ras = (bb.min[0], bb.min[1], m.cell, m.nx, m.ny);
-        let (mut wl, mut al) = (vec![0f64; m.nx * m.ny], vec![0f64; m.nx * m.ny]);
+        // the map raster keeps every layer's loss (area overlap; W per mm² of board), and the layer planes on
+        // the DC grids carry the same loss
+        let per = m.nx * m.ny;
         for &(l, _, w) in &s.layers {
-            let (ws, asum) = layer_raster(&board, &all, l, ras, &mut wl, &mut al, &mut vec![], &mut vec![]);
-            assert!(
-                (ws - w).abs() < 1e-6 * w && (wl.iter().sum::<f64>() - w).abs() < 1e-6 * w,
-                "layer {l}: {ws} {} vs {w}",
-                wl.iter().sum::<f64>()
-            );
-            assert!((al.iter().sum::<f64>() - asum).abs() < 1e-6 * asum);
+            let slot = m.layers.iter().position(|&x| x == l).unwrap();
+            let mw: f64 = m.copper[slot * per..(slot + 1) * per].iter().map(|&x| x as f64 * 0.25).sum();
+            assert!((mw - w).abs() < 1e-5 * w, "layer {l}: {mw} vs {w}");
             let ll = loss_layer(&board, &all, l);
             let lw: f64 = ll.planes.iter().map(|p| p.w).sum();
             assert!((lw - w).abs() < 1e-5 * w, "layer {l}: {lw} vs {w}");
-            assert!(
-                m.max_copper > 0.25 * ll.max && m.max_copper <= ll.max * (1.0 + 1e-5),
-                "{} vs {}",
-                m.max_copper,
-                ll.max
-            );
         }
         let f = power_flow(&t, &[("+3V3".into(), 0.01)], s.ground_w);
         assert!(f.nodes.iter().any(|n| n.id == "loss:ground") && f.links.iter().any(|l| l.to == "loss:reg"));
@@ -852,7 +833,8 @@ mod tests {
 
     /// A strip 20 × 6 mm carrying 1 A from end to end: uniform density I²·Rs / W² in its middle, on the
     /// DC grid and on a map raster whose cell (0.2042 mm) is not a multiple of the DC cell (0.125 mm) –
-    /// binning the DC cells by their centres gave map cells with one or two of them (a beat of ×2).
+    /// binning the DC cells by their centres gave map cells with one or two of them (a beat of ×2). The
+    /// strip covers the map cells of its middle, so there the density per board area is the same.
     #[test]
     fn loss_map_without_beat() {
         let board = crate::load_pcb(

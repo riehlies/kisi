@@ -42,7 +42,7 @@ struct State {
     /// last solved power tree, and the DC results per rail (loss buffers only) for the losses
     tree: Option<kisi_core::tree::TreeResult>,
     pi_store: std::collections::BTreeMap<String, kisi_core::pi::PiResult>,
-    /// loss map: the copper plane (all layers), then the components plane (W/mm²)
+    /// loss map: a plane per copper layer, then the components plane (W per mm² of board)
     loss_map: Vec<f32>,
     /// the layer planes of the last `kisi_pi_losses`: their copper cells and densities on the rails' DC
     /// grids (W/mm²), handed over to the caller, not kept with the stackup's results
@@ -683,8 +683,8 @@ pub extern "C" fn kisi_pi_ground() -> i32 {
 }
 
 /// Losses of the stored DC results and the last power tree. Input {"cell": mm|null}.
-/// Out: {summary, flow, map, layers}; the map planes (W/mm²) via kisi_pi_map_ptr/len: the copper plane
-/// (W per mm² of copper, all layers, NaN: no copper), then the components plane, nx*ny cells each;
+/// Out: {summary, flow, map, layers}; the map planes via kisi_pi_map_ptr/len (W per mm² of board): one per
+/// copper layer of `map.layers`, then the components plane, nx*ny cells each;
 /// `layers`: per copper layer of the map its rails on their own DC grids (LayerLoss: planes with
 /// offsets into two buffers of their copper cells – the index in the plane's grid, via
 /// kisi_pi_loss_cells_ptr/len – and the W per mm² of copper there, via kisi_pi_loss_layer_ptr/len).

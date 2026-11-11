@@ -150,8 +150,9 @@ pub struct PiResult {
     /// copper loss per cell (W): half of every conductance's I²R to each of its two cells
     #[serde(skip)]
     pub loss: Vec<f32>,
-    /// copper fraction per cell in 255ths (0: no copper or not connected; a line conductor's cell: its
-    /// width / cell) – the copper area the loss of a cell is spread over in the loss maps
+    /// copper area per cell in cell areas, in steps of 1/`CU_STEPS` (0: no copper or not connected; a line
+    /// conductor's cell: its width / cell, up to `LINE_CELLS`) – the copper area the loss of a cell is spread
+    /// over in the loss maps
     #[serde(skip)]
     pub cu: Vec<u8>,
 }
@@ -748,6 +749,8 @@ pub(crate) fn pad_cells(g: &Grid, pad: &Pad) -> Vec<usize> {
 
 /// Tracks narrower than this many cells are line conductors (`line_tracks`).
 pub(crate) const LINE_CELLS: f64 = 3.0;
+/// steps per cell area of `PiResult::cu` (u8: up to 255 / 80 = 3.19 cell areas, a line conductor's width)
+pub const CU_STEPS: f32 = 80.0;
 
 /// A track as a line conductor: the cells along its centre line in order with the mean position of the
 /// line in each, its width and its ends.
@@ -1365,12 +1368,16 @@ pub fn solve_rail_scaled(
     for &l in &layers {
         let off = vb.len();
         let (m, wl) = (&node_of[l], &w[l]);
-        // copper fraction: the cell's own, a line conductor's width / cell where that is more
+        // copper area in cell areas: the cell's own fraction; a line conductor's cell its width / cell (the
+        // track's copper along its step, which can exceed the cell) – not in full raster copper, where the
+        // raster carries the current and the line has no conductance (see the line edges)
         let mut fr: Vec<f32> = wl.clone();
         for x in &lines[l] {
-            let f = (x.width / g.cell).min(1.0) as f32;
+            let f = (x.width / g.cell) as f32;
             for &(k, _) in &x.cells {
-                fr[k] = fr[k].max(f);
+                if wl[k] < 1.0 {
+                    fr[k] = fr[k].max(f);
+                }
             }
         }
         // the voltage of a raster cell (not of a cell on a line track only)
@@ -1393,8 +1400,8 @@ pub fn solve_rail_scaled(
                     }
                     Some(c) => {
                         vb.push(c as f32);
-                        let f = fr[j as usize * g.nx + i as usize].clamp(0.0, 1.0);
-                        cb.push(if f > 0.0 { ((f * 255.0).ceil() as u8).max(1) } else { 0 });
+                        let f = fr[j as usize * g.nx + i as usize].clamp(0.0, LINE_CELLS as f32);
+                        cb.push(if f > 0.0 { ((f * CU_STEPS).round() as u8).max(1) } else { 0 });
                         let d = |a: Option<f64>, b: Option<f64>| -> f64 {
                             match (a, b) {
                                 (Some(a), Some(b)) => (b - a) / (2.0 * cm),

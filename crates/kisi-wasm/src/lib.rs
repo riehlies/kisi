@@ -778,7 +778,12 @@ pub extern "C" fn kisi_pi_thermal(p: *const u8, n: usize) -> i32 {
                 return Err("no power results: compute the voltage drop first".into());
             }
             let ls = kisi_core::losses::loss_summary(b, st.tree.as_ref(), &rails);
-            kisi_core::thermal::solve(b, &rails, &ls.components, &prm)?
+            let mut th = kisi_core::thermal::solve(b, &rails, &ls.components, &prm)?;
+            if rails.is_empty() {
+                // the viewer puts the DC results back first; never a temperature without copper loss unsaid
+                th.warnings.push("no DC results in the engine: the copper losses are not included".into());
+            }
+            th
         };
         let out = serde_json::to_string(&th).unwrap();
         st.borrow_mut().thermal = Some(th);

@@ -26,6 +26,15 @@ async function solveThermal() {
   const solved = (r) => { const x = S.piRes.get(r.net); return x && x.res; };
   const rails = [...S.piSetups.values()].filter(solved).concat([...(S.piGround || new Map()).values()].filter(solved));
   const n = rails.length + 1;
+  // the engine's DC results first (gone after a switch to another board and back): never a temperature
+  // without the copper losses
+  const missing = piEngineMissing();
+  for (let i = 0; i < missing.length; i++) {
+    stepProgress("therm", 0, n);
+    $("therm-prog").textContent = `DC results again: ${i} of ${missing.length} rails`;
+    await frame();
+    piEnginePut(missing[i]);
+  }
   stepProgress("therm", 0, n);
   await frame();
   let th;

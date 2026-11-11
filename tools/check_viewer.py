@@ -973,8 +973,13 @@ def stackup_panel(pg, tag, step):
         problems.append(f"{tag}: option off: the Stackup view button stays")
 
 
+THERM_KEY = """(() => ({ t_max: S.therm.t_max_c, parts: S.therm.parts.map((p) => [p.refdes, p.tj_c]), vias: S.therm.vias.length,
+  rails_ok: S.therm.rails.filter((r) => !r.error).length, rails: S.therm.rails.length, warnings: S.therm.warnings }))()"""
+
+
 def run(pg, tag, desktop):
     errs = []
+    therm_first = None  # the first temperature of the first board: computed again after switching boards and back
     pg.add_init_script(TEXT_SPY)
     pg.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     pg.on("console", lambda m: errs.append(f"console {m.type}: {m.text}") if m.type == "error" else None)
@@ -1190,6 +1195,8 @@ def run(pg, tag, desktop):
             elif not pg.evaluate("S.piMode === 't' && S.therm.parts.length > 0 && S.therm.balance.error_rel < 1e-6 && S.therm.rails.length > 0 && !S.therm.rails.some((r) => r.error)"):
                 problems.append(f"{tag}: temperature view not shown, without parts or with failed rails")
             step("temperature")
+            if pg.evaluate("thermOk()"):
+                therm_first = pg.evaluate(THERM_KEY)
             # units in the panel, the legend and the tooltips (a via and the board); a rail and a part in the
             # tables jump to the map; the vias and the parts' heat paths are there
             t = pg.evaluate("""async () => {
@@ -1251,6 +1258,21 @@ def run(pg, tag, desktop):
                 pg.click("#pi-run"); pg.wait_for_function(f"S.piSolved && !S.piRunning && {BUSY}", timeout=300000); pg.wait_for_timeout(300)
             step(f"power_{key}")
             power_units(pg, f"{tag} ({key})", lambda n, k=key: step(f"{n}_{k}"))
+        # back to the first board (its results from the session's board cache, the engine loaded anew): the
+        # temperature computed again must be the first one – with the copper losses, every rail at temperature
+        if therm_first:
+            pg.evaluate("loadSample('ts')"); pg.wait_for_function(f"S.scene && {BUSY}", timeout=90000)
+            pg.click("#view-pi"); pg.wait_for_timeout(400)
+            pg.click("#therm-run"); pg.wait_for_function(f"(thermOk() || (S.therm && S.therm.error)) && !S.thermRunning && {BUSY}", timeout=300000)
+            again = pg.evaluate(THERM_KEY)
+            close = lambda x, y: abs(x - y) <= 1e-9 * max(1.0, abs(x))  # the same solve, up to rounding
+            same = (again["vias"], again["rails_ok"], again["rails"], again["warnings"], [p[0] for p in again["parts"]]) == \
+                (therm_first["vias"], therm_first["rails_ok"], therm_first["rails"], therm_first["warnings"], [p[0] for p in therm_first["parts"]]) \
+                and close(again["t_max"], therm_first["t_max"]) and all(close(p[1], q[1]) for p, q in zip(again["parts"], therm_first["parts"]))
+            if not same:
+                problems.append(f"{tag}: temperature after switching boards and back differs: {therm_first['t_max']} → {again['t_max']} °C, rails at temperature {therm_first['rails_ok']} → {again['rails_ok']}, warnings {again['warnings'][:2]}")
+            else:
+                notes.append(f"{tag}: temperature after switching boards and back: identical ({again['t_max']:.2f} °C, {again['rails_ok']} rails at temperature)")
     if pg.evaluate("document.documentElement.scrollWidth > window.innerWidth + 1"):
         problems.append(f"{tag}: horizontal scroll")
     prepare_all(pg, tag, step, errs)

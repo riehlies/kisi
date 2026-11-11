@@ -39,7 +39,20 @@ function solveGround() {
     }
   } catch (e) { S.groundWarn = ["Ground return: " + e.message]; }
 }
+// The engine keeps the rails' DC results for the losses and the temperature (kisi_pi_losses,
+// kisi_pi_thermal, kisi_pi_thermal_rail); the viewer keeps its own copy per board. Loading a board clears the
+// engine's, so after a switch to another board and back they are missing there: the solved rails the engine
+// does not hold (all of them if it holds others), to be solved into it again – the same inputs, the same result.
+function piEngineMissing() {
+  const want = [...S.piRes].filter(([, r]) => r.res).map(([n]) => n);
+  let held;
+  try { held = new Set(S.engine.piStored().rails); } catch (e) { held = new Set(); }
+  if ([...held].some((n) => !want.includes(n))) { try { S.engine.piClear(); } catch (e) { /* nothing stored */ } held = new Set(); }
+  return want.filter((n) => !held.has(n)).map(piSetupOf).filter(Boolean);
+}
+const piEnginePut = (setup) => { try { S.engine.piSolve(setup, PI_PARAMS); } catch (e) { /* its error is in S.piRes already */ } };
 function computeLosses() {
+  if (S.piSolved) for (const s of piEngineMissing()) piEnginePut(s);
   try { S.loss = S.engine.piLosses(null); } catch (e) { S.loss = { error: e.message }; }
   S.lossImg = null;
   thermReset(); // the temperature follows from the losses

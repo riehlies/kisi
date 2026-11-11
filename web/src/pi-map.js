@@ -30,7 +30,8 @@ const mapUpFactor = (cells) => S.mapUp || [4, 2, 1].find((f) => cells * f * f <=
 // colour position (v - lo) / (hi - lo). o.dilate: cells of extension (default MAP_DILATE); o.cover: a
 // pixel is drawn where the bilinear weight of the corners with values reaches it (default: any; 0.5
 // without extension gives a smooth edge half way between a cell with and one without a value); o.lut: a
-// colour table of 1024 RGB steps instead of turbo (mapLutGet); o.f: the factor instead of the budget's.
+// colour table of 1024 RGB steps instead of turbo (mapLutGet), o.alpha: their opacity (1024 steps, 0 … 255;
+// default opaque); o.f: the factor instead of the budget's.
 // Returns the image (cropped to the cells with values), the extended values of the crop (for isolines)
 // and which of them were cells of their own (`own`).
 function mapImage(val, nx, ny, o) {
@@ -68,7 +69,7 @@ function mapImage(val, nx, ny, o) {
   }
   const t1 = performance.now();
   // bilinear ×f on the values, then the colour; corners without a value drop out of the weights
-  const f = o.f || mapUpFactor(w * h), W = w * f, H = h * f, lut = o.lut || mapLutGet();
+  const f = o.f || mapUpFactor(w * h), W = w * f, H = h * f, lut = o.lut || mapLutGet(), alpha = o.alpha || null;
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const cx = c.getContext("2d"), img = cx.createImageData(W, H), d = img.data;
   const lo = o.lo, sc = 1023 / ((o.hi - lo) || 1);
@@ -94,13 +95,13 @@ function mapImage(val, nx, ny, o) {
       }
       let li = Math.round((v - lo) * sc); li = li < 0 ? 0 : li > 1023 ? 1023 : li;
       const po = (q * W + p) * 4, lo3 = li * 3;
-      d[po] = lut[lo3]; d[po + 1] = lut[lo3 + 1]; d[po + 2] = lut[lo3 + 2]; d[po + 3] = 255;
+      d[po] = lut[lo3]; d[po + 1] = lut[lo3 + 1]; d[po + 2] = lut[lo3 + 2]; d[po + 3] = alpha ? alpha[li] : 255;
     }
   }
   cx.putImageData(img, 0, 0);
   const cell = o.cell;
   return {
-    canvas: c, f, x0: o.x0 + i0 * cell, y0: o.y0 + j0 * cell, cell, w, h, vals: a, own, lo: o.lo, hi: o.hi, lut: o.lut || null,
+    canvas: c, f, x0: o.x0 + i0 * cell, y0: o.y0 + j0 * cell, cell, w, h, vals: a, own, lo: o.lo, hi: o.hi, lut: o.lut || null, alpha,
     bbox: [o.x0 + i0 * cell, o.y0 + j0 * cell, o.x0 + (i1 + 1) * cell, o.y0 + (j1 + 1) * cell],
     bytes: W * H * 4 + a.byteLength + own.byteLength, ms: { extend: t1 - t0, image: performance.now() - t1 },
   };
@@ -273,8 +274,8 @@ function mapStrokes(cu, m) {
   }
   const lut = m.lut, col = Array.from({ length: MAP_BUCKETS }, (_, b) => {
     if (!lut) return turbo(0.05 + 0.9 * b / (MAP_BUCKETS - 1));
-    const i = Math.round(1023 * b / (MAP_BUCKETS - 1)) * 3;
-    return `rgb(${lut[i]},${lut[i + 1]},${lut[i + 2]})`;
+    const k = Math.round(1023 * b / (MAP_BUCKETS - 1)), i = k * 3;
+    return `rgba(${lut[i]},${lut[i + 1]},${lut[i + 2]},${m.alpha ? (m.alpha[k] / 255).toFixed(3) : 1})`;
   });
   return { runs: [...runs.values()], dots: [...dots.values()], col, n };
 }

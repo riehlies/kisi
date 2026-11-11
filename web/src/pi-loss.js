@@ -12,35 +12,24 @@ function lossDecades() {
   return S.lossDecades;
 }
 // The colours of the scale (0 … 1 = the bottom … the largest value): turbo from light blue up, so that the
-// low end does not sink into the dark background (turbo's indigo start); below it the lowest decade fades
-// to a neutral copper tint (--map-low: light grey on the light theme, mid grey on the dark one) – little
-// reads as little. Values at or below the bottom, copper without current too, take the tint; only where
-// there is no solved copper the map is transparent.
+// low end does not sink into the dark background (turbo's indigo start); over the lowest decade the colour
+// fades out (opacity eased from 1 to 0 at the bottom) onto the board's own drawing of the copper underneath
+// (lossUnder: the zone colour) – little reads as little, copper without current as plain board copper.
+// Only where there is no solved copper there is no copper drawing either.
 const LOSS_TURBO0 = 0.2;
-function lossColor(t, low, decades) {
+function lossColor(t, decades) {
   const t0 = 1 / decades;
-  if (t >= t0) return turboRGB(LOSS_TURBO0 + (0.95 - LOSS_TURBO0) * (t - t0) / (1 - t0));
-  const a = turboRGB(LOSS_TURBO0), u = Math.max(0, t) / t0;
-  return low.map((c, i) => Math.round(c + (a[i] - c) * u));
+  if (t >= t0) return [...turboRGB(LOSS_TURBO0 + (0.95 - LOSS_TURBO0) * (t - t0) / (1 - t0)), 1];
+  const u = Math.max(0, t) / t0;
+  return [...turboRGB(LOSS_TURBO0), u * u * (3 - 2 * u)];
 }
 function lossLut() {
-  const low = cssRGB(S.colors.mapLow), d = lossDecades(), key = low.join(",") + "|" + d;
-  if (S.lossLut && S.lossLut.key === key) return S.lossLut.lut;
-  const lut = new Uint8Array(1024 * 3);
-  for (let i = 0; i < 1024; i++) lut.set(lossColor(i / 1023, low, d), i * 3);
-  S.lossLut = { key, lut };
-  return lut;
-}
-// a CSS colour as [r, g, b] (kept by its text: the theme's tokens change only with the theme)
-const cssRGBs = new Map();
-function cssRGB(c) {
-  c = c || "#888";
-  if (!cssRGBs.has(c)) {
-    const x = document.createElement("canvas").getContext("2d");
-    x.fillStyle = c; x.fillRect(0, 0, 1, 1);
-    cssRGBs.set(c, [...x.getImageData(0, 0, 1, 1).data.slice(0, 3)]);
-  }
-  return cssRGBs.get(c);
+  const d = lossDecades(), key = String(d);
+  if (S.lossLut && S.lossLut.key === key) return S.lossLut;
+  const lut = new Uint8Array(1024 * 3), alpha = new Uint8Array(1024);
+  for (let i = 0; i < 1024; i++) { const c = lossColor(i / 1023, d); lut.set(c.slice(0, 3), i * 3); alpha[i] = Math.round(255 * c[3]); }
+  S.lossLut = { key, lut, alpha };
+  return S.lossLut;
 }
 
 function lossPlanes() {
@@ -87,14 +76,14 @@ function lossCell(p, k) {
 // extension does not cover a neighbour), the rails' narrow tracks as strokes. `clip`: that copper as
 // one path, for the exact edge when zoomed in (lossDrawClip).
 function lossImage() {
-  const lut = lossLut(), key = S.lossPlane + "|" + S.lossLut.key;
+  const { lut, alpha } = lossLut(), key = S.lossPlane + "|" + S.lossLut.key + "|" + S.colors.zone;
   if (S.lossImg && S.lossImg.key === key) return S.lossImg;
   const m = S.loss.map, pl = S.lossPlane, ll = lossLayerOf(pl), decades = lossDecades();
   const nets = [...S.piRes.entries()].filter(([, r]) => r.res).map(([n]) => S.scene.nets.indexOf(n)).filter((n) => n >= 0);
   const layers = pl === "comp" ? [] : ll ? [ll.layer] : m.layers, clip = new Path2D();
   for (const l of layers) clip.addPath(mapCopper(nets, l).clip);
   if (ll) {
-    const max = ll.max, lo = max / 10 ** decades, sc = { lo: Math.log10(lo), hi: Math.log10(max), lut };
+    const max = ll.max, lo = max / 10 ** decades, sc = { lo: Math.log10(lo), hi: Math.log10(max), lut, alpha };
     // factors 4, lowered for the finest images first until all of them fit the budget
     const ps = ll.planes.filter((p) => p.n > 0).sort((a, b) => b.nx * b.ny - a.nx * a.ny), f = ps.map(() => S.mapUp || 4);
     for (;;) {
@@ -110,6 +99,7 @@ function lossImage() {
       const net = S.scene.nets.indexOf(p.net);
       if (!map || net < 0) return;
       const cu = mapCopper([net], ll.layer);
+      lossUnder(map, cu.clip);
       mapBake(map, cu.clip);
       rails.push({ p, map, strokes: mapStrokes(cu, map) });
     });
@@ -120,7 +110,7 @@ function lossImage() {
   let max = 0;
   for (let i = 0; i < vals.length; i++) if (vals[i] > max) max = vals[i];
   const lo = max / 10 ** decades;
-  const map = max > 0 ? mapImage(lossLog(vals, lo), m.nx, m.ny, { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(max), lut }) : null;
+  const map = max > 0 ? mapImage(lossLog(vals, lo), m.nx, m.ny, { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(max), lut, alpha }) : null;
   // parts: their heat is spread over the box of their pads (kisi_pi::losses), the box is part of the clip
   if (pl === "comp" || pl === "total") {
     const hot = new Set(S.loss.summary.components.filter((c) => c.w > 0).map((c) => c.refdes)), P = S.scene.pads, box = new Map();
@@ -133,9 +123,17 @@ function lossImage() {
     }
     for (const b of box.values()) clip.rect(b[0], b[1], b[2] - b[0], b[3] - b[1]);
   }
-  if (map) mapBake(map, clip);
+  if (map) { lossUnder(map, clip); mapBake(map, clip); }
   S.lossImg = { key, plane: pl, map, clip, max, lo, vals, px: map ? map.cell / map.f : 0, bytes: map ? map.bytes : 0 };
   return S.lossImg;
+}
+// the board's drawing of the copper (the zone colour, as the board view draws zones) under the image's
+// pixels, once at the image's resolution (a fill of all the copper each frame costs several frames)
+function lossUnder(m, path) {
+  const x = m.canvas.getContext("2d"), k = m.f / m.cell;
+  x.setTransform(k, 0, 0, k, -m.x0 * k, -m.y0 * k);
+  x.globalCompositeOperation = "destination-over"; x.fillStyle = S.colors.zone; x.fill(path);
+  x.globalCompositeOperation = "source-over"; x.setTransform(1, 0, 0, 1, 0, 0);
 }
 // the value of the shown plane at a board point: {v, net} (a layer: the rail whose copper is there)
 function lossAt(im, x, y) {
@@ -180,14 +178,15 @@ function renderLossChips() {
 function renderLossLegend() {
   const L = $("legend");
   if (!S.loss || !S.loss.map) { L.innerHTML = `<strong>Losses</strong><div class="row">${S.loss && S.loss.error ? esc(S.loss.error) : "after “Compute” in step 2"}</div>`; return; }
-  const im = lossImage(), plane = lossPlanes().find((p) => p.id === S.lossPlane), d = lossDecades(), low = cssRGB(S.colors.mapLow);
-  const stops = Array.from({ length: 13 }, (_, k) => `rgb(${lossColor(k / 12, low, d).join(",")})`).join(",");
+  const im = lossImage(), plane = lossPlanes().find((p) => p.id === S.lossPlane), d = lossDecades(), C = S.colors;
+  // the scale over the board's copper drawing, as on the map
+  const stops = Array.from({ length: 25 }, (_, k) => { const c = lossColor(k / 24, d); return `rgba(${c[0]},${c[1]},${c[2]},${(c[3] * MAP_ALPHA).toFixed(3)})`; }).join(",");
   const v = (x) => fmtSI(x, "W/mm²", 2);
   L.innerHTML = `<strong>Power density · ${esc(plane ? plane.name : "")} · log scale</strong>
-    <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
+    <div class="grad" style="background:linear-gradient(90deg,${stops}),linear-gradient(${C.zone},${C.zone}),${C.canvas}"></div>
     <div class="ticks units"><span>≤ ${v(im.lo)}</span><span>${v(im.lo * 10 ** (d / 2))}</span><span>${v(im.max)}</span></div>
     <div class="row"><span>Scale <select id="loss-dec" aria-label="decades of the log scale">${LOSS_DECADE_STEPS.map((n) => `<option value="${n}"${n === d ? " selected" : ""}>${n} decades</option>`).join("")}</select>
-      below the largest value; copper at or below the bottom, or without current, in the bottom colour</span></div>
+      below the largest value; over the lowest decade the colour fades into the board's copper (without current: plain copper)</span></div>
     <div class="row">${S.lossPlane === "comp" || S.lossPlane === "total" ? "Parts: heat over the area of their pads (estimate). " : ""}${S.lossPlane === "comp" ? "" : `Copper: I²R of every rail and the ground return per mm² of copper${S.lossPlane[0] === "L" ? ", on each rail's own cells" : ", the layers summed"}.`}</div>`;
   const sel = $("loss-dec");
   if (sel) sel.onchange = () => { S.lossDecades = +sel.value; lsSet("kisi.loss.decades", S.lossDecades); renderLossLegend(); draw(); };

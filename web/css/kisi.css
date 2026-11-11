@@ -29,7 +29,6 @@
   --k-sl: #2f86c8;
   --k-emb: #8a5bd6;
   --halo: rgba(23, 32, 27, 0.85);
-  --map-low: #c3c9c2; /* the losses map's bottom: little, a neutral copper tint */
   --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
@@ -44,7 +43,6 @@
     --z-low2: #4b84f0; --z-low1: #5fb6f0; --z-ok: #3cc477; --z-high1: #f0ae35; --z-high2: #f25d5d;
     --z-none: #59625d; --z-noref: #cc66ea; --z-lane: #6cb2bb; --z-unused: rgba(120, 132, 125, 0.28); --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef;
     --halo: rgba(255, 255, 255, 0.9);
-    --map-low: #59615c;
     color-scheme: dark;
   }
 }
@@ -56,7 +54,6 @@
   --z-low2: #4b84f0; --z-low1: #5fb6f0; --z-ok: #3cc477; --z-high1: #f0ae35; --z-high2: #f25d5d;
   --z-none: #59625d; --z-noref: #cc66ea; --z-lane: #6cb2bb; --z-unused: rgba(120, 132, 125, 0.28); --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef;
   --halo: rgba(255, 255, 255, 0.9);
-  --map-low: #59615c;
   color-scheme: dark;
 }
 

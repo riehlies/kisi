@@ -29,6 +29,7 @@
   --k-sl: #2f86c8;
   --k-emb: #8a5bd6;
   --halo: rgba(23, 32, 27, 0.85);
+  --map-low: #c3c9c2; /* the losses map's bottom: little, a neutral copper tint */
   --font-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   --font-body: "Barlow", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
@@ -43,6 +44,7 @@
     --z-low2: #4b84f0; --z-low1: #5fb6f0; --z-ok: #3cc477; --z-high1: #f0ae35; --z-high2: #f25d5d;
     --z-none: #59625d; --z-noref: #cc66ea; --z-lane: #6cb2bb; --z-unused: rgba(120, 132, 125, 0.28); --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef;
     --halo: rgba(255, 255, 255, 0.9);
+    --map-low: #59615c;
     color-scheme: dark;
   }
 }
@@ -54,6 +56,7 @@
   --z-low2: #4b84f0; --z-low1: #5fb6f0; --z-ok: #3cc477; --z-high1: #f0ae35; --z-high2: #f25d5d;
   --z-none: #59625d; --z-noref: #cc66ea; --z-lane: #6cb2bb; --z-unused: rgba(120, 132, 125, 0.28); --k-ms: #ec9a4f; --k-sl: #52a6e6; --k-emb: #a682ef;
   --halo: rgba(255, 255, 255, 0.9);
+  --map-low: #59615c;
   color-scheme: dark;
 }
 
@@ -283,6 +286,7 @@ pre.fields { margin: 0; padding: 6px 8px; background: var(--panel-2); border: 1p
 .legend { position: absolute; left: 10px; bottom: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; font-size: 11.5px; display: flex; flex-direction: column; gap: 4px; max-width: calc(100% - 20px); }
 .legend .row { display: flex; align-items: center; gap: 8px; }
 .legend .sw { width: 18px; height: 4px; border-radius: 2px; flex: none; }
+.legend select { font: inherit; font-size: 11px; padding: 0 2px; margin: 0 2px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
 .legend .grad { height: 8px; width: 220px; max-width: 60vw; border-radius: 2px; }
 .legend .ticks { display: flex; justify-content: space-between; gap: 6px; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); width: 220px; max-width: 60vw; white-space: nowrap; }
 .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.18); min-width: 220px; max-width: 320px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }

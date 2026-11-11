@@ -89,8 +89,10 @@ references jump to the board. Then, in steps:
    and the vias with the highest currents; switches in the legend add isolines to the voltage drop and arrows
    for the current direction to the current density;
 2. a losses map: heat per part over its pads and copper loss per mm² of copper (mW/mm²), per layer on each
-   rail's own cells or all layers summed;
-3. the temperature (an estimate for an ambient temperature and still air or an air flow): a map per layer, the
+   rail's own cells or all layers summed, on a log scale of 2, 3 or 4 decades (legend) – copper at or below its
+   bottom in a neutral tint;
+3. the temperature (an estimate for an ambient temperature and still air or an air flow): a map per layer with
+   the vias at their true size, darker for more heat flow (from 1, 2, 5 or 10 % of the largest, legend), the
    hottest parts with their junction temperature, the rails' IR drop at temperature;
 4. Z(f): a lumped model of regulator, plane and capacitors with a plane model above 1 MHz, and the impedance seen
    from each IC – the rail domain with ferrites and series parts up to the regulator, the capacitors ranked by

@@ -106,13 +106,18 @@ function thermPartsOn(l) {
   const n = S.scene.stackup.copper.length;
   return S.therm.parts.filter((p) => p.at && (l === 0 ? p.side === "top" : l === n - 1 ? p.side === "bottom" : true));
 }
-// vias drawn: every via and plated hole with at least 1 % of the largest heat flow (the bottom of the grey
-// scale; below it they would all look the same), the most heat first
-const THERM_VIA_MIN = 0.01;
+// vias drawn: every via and plated hole with at least a share of the largest heat flow (the legend's
+// choice, remembered per viewer; 1 % is the bottom of the grey scale), the most heat first
+const THERM_VIA_STEPS = [0.01, 0.02, 0.05, 0.1], THERM_VIA_DEFAULT = 0.05;
+function thermViaMin() {
+  if (S.thermViaMin == null) { const v = lsGet("kisi.therm.viamin"); S.thermViaMin = THERM_VIA_STEPS.includes(v) ? v : THERM_VIA_DEFAULT; }
+  return S.thermViaMin;
+}
 function thermVias() {
-  if (S.thermVias && S.thermVias.src === S.therm) return S.thermVias;
+  const min = thermViaMin();
+  if (S.thermVias && S.thermVias.src === S.therm && S.thermVias.min === min) return S.thermVias;
   const v = S.therm.vias || [], qmax = v.length ? Math.abs(v[0].q_w) : 0;
-  S.thermVias = { src: S.therm, list: qmax > 0 ? v.filter((x) => Math.abs(x.q_w) >= THERM_VIA_MIN * qmax) : [], qmax };
+  S.thermVias = { src: S.therm, min, list: qmax > 0 ? v.filter((x) => Math.abs(x.q_w) >= min * qmax) : [], qmax };
   return S.thermVias;
 }
 // grey level of a via by the heat through it (log scale over two decades, darker = more): grey reads on
@@ -186,7 +191,11 @@ function renderThermLegend() {
     <div class="grad" style="background:linear-gradient(90deg,${stops})"></div>
     <div class="ticks"><span>${fmtT(im.lo)}</span><span>${fmtT((im.lo + im.hi) / 2)}</span><span>${fmtT(im.hi)}</span></div>
     <div class="row">This layer: up to ${fmtT(lay.t_max_c)}, mean ${fmtT(lay.t_mean_c)}. Labels: junction temperature of the hottest parts on this side.</div>
-    ${list.length ? `<div class="row"><span class="viadot" style="background:${viaFill(THERM_VIA_GREYS - 1)}"></span>${list.length} vias with heat flow, up to ${fmtSI(qmax, "W")}: darker = more heat (log, ${fmtSI(THERM_VIA_MIN * qmax, "W")} … ${fmtSI(qmax, "W")}); drawn at true size; hover for the values</div>` : ""}`;
+    ${qmax > 0 ? `<div class="row"><span class="viadot" style="background:${viaFill(THERM_VIA_GREYS - 1)}"></span><span>${list.length} vias with at least
+      <select id="therm-vmin" aria-label="vias shown: share of the largest heat flow">${THERM_VIA_STEPS.map((f) => `<option value="${f}"${f === thermViaMin() ? " selected" : ""}>${Math.round(f * 100)} %</option>`).join("")}</select>
+      of the largest heat flow (${fmtSI(thermViaMin() * qmax, "W")} … ${fmtSI(qmax, "W")}): darker = more heat (log from 1&nbsp;%); drawn at true size; hover for the values</span></div>` : ""}`;
+  const sel = $("therm-vmin");
+  if (sel) sel.onchange = () => { S.thermViaMin = +sel.value; lsSet("kisi.therm.viamin", S.thermViaMin); renderThermLegend(); draw(); };
 }
 
 // a via under the mouse (screen distance), else null

@@ -23,15 +23,17 @@ function mapLutGet() {
   for (let i = 0; i < n; i++) mapLut.set(turboRGB(0.05 + 0.9 * i / (n - 1)), i * 3);
   return mapLut;
 }
-// upsampling factor for a map of `cells` cells: 4, 2 or 1 within the pixel budget (S.mapUp: forced, for tests)
-const mapUpFactor = (cells) => S.mapUp || [4, 2, 1].find((f) => cells * f * f <= MAP_PX) || 1;
+// upsampling factor for a map of `cells` cells: 4, 2 or 1 within the pixel budget `px` (default MAP_PX; S.mapUp:
+// forced, for tests)
+const mapUpFactor = (cells, px = MAP_PX) => S.mapUp || [4, 2, 1].find((f) => cells * f * f <= px) || 1;
 
 // A colour map from the values `val` (nx × ny, NaN: no copper) of a raster at x0, y0 with square cells:
 // colour position (v - lo) / (hi - lo). o.dilate: cells of extension (default MAP_DILATE); o.cover: a
 // pixel is drawn where the bilinear weight of the corners with values reaches it (default: any; 0.5
 // without extension gives a smooth edge half way between a cell with and one without a value); o.lut: a
 // colour table of 1024 RGB steps instead of turbo (mapLutGet), o.alpha: their opacity (1024 steps, 0 … 255;
-// default opaque).
+// default opaque), o.px: the pixel budget (default MAP_PX), o.half: a copy at half the resolution as well, drawn
+// when the image is shown smaller than half its size (a whole-board image ×4 costs a frame of its own to shrink).
 // Returns the image (cropped to the cells with values), the extended values of the crop (for isolines)
 // and which of them were cells of their own (`own`).
 function mapImage(val, nx, ny, o) {
@@ -69,7 +71,7 @@ function mapImage(val, nx, ny, o) {
   }
   const t1 = performance.now();
   // bilinear ×f on the values, then the colour; corners without a value drop out of the weights
-  const f = mapUpFactor(w * h), W = w * f, H = h * f, lut = o.lut || mapLutGet(), alpha = o.alpha || null;
+  const f = mapUpFactor(w * h, o.px), W = w * f, H = h * f, lut = o.lut || mapLutGet(), alpha = o.alpha || null;
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const cx = c.getContext("2d"), img = cx.createImageData(W, H), d = img.data;
   const lo = o.lo, sc = 1023 / ((o.hi - lo) || 1);
@@ -99,11 +101,16 @@ function mapImage(val, nx, ny, o) {
     }
   }
   cx.putImageData(img, 0, 0);
+  let half = null;
+  if (o.half && f > 1) {
+    half = document.createElement("canvas"); half.width = Math.ceil(W / 2); half.height = Math.ceil(H / 2);
+    const hx = half.getContext("2d"); hx.imageSmoothingQuality = "medium"; hx.drawImage(c, 0, 0, half.width, half.height);
+  }
   const cell = o.cell;
   return {
-    canvas: c, f, x0: o.x0 + i0 * cell, y0: o.y0 + j0 * cell, cell, w, h, vals: a, own, lo: o.lo, hi: o.hi, lut: o.lut || null, alpha,
+    canvas: c, half, f, x0: o.x0 + i0 * cell, y0: o.y0 + j0 * cell, cell, w, h, vals: a, own, lo: o.lo, hi: o.hi, lut: o.lut || null, alpha,
     bbox: [o.x0 + i0 * cell, o.y0 + j0 * cell, o.x0 + (i1 + 1) * cell, o.y0 + (j1 + 1) * cell],
-    bytes: W * H * 4 + a.byteLength + own.byteLength, ms: { extend: t1 - t0, image: performance.now() - t1 },
+    bytes: W * H * 4 + (half ? half.width * half.height * 4 : 0) + a.byteLength + own.byteLength, ms: { extend: t1 - t0, image: performance.now() - t1 },
   };
 }
 // the image in board coordinates: near 1:1 without smoothing (the values are interpolated already, and
@@ -111,10 +118,11 @@ function mapImage(val, nx, ny, o) {
 // browser's minification filter when much smaller
 function mapPaint(c, m) {
   if (!m) return;
-  const s = c.getTransform().a * m.cell / m.f; // device pixels per image pixel
+  let s = c.getTransform().a * m.cell / m.f, img = m.canvas; // device pixels per image pixel
+  if (m.half && s < 0.5) { img = m.half; s *= 2; }
   c.imageSmoothingEnabled = s > 1.5 || s < 0.5;
   c.imageSmoothingQuality = s < 0.5 ? "medium" : "low";
-  c.drawImage(m.canvas, m.x0, m.y0, m.w * m.cell, m.h * m.cell);
+  c.drawImage(img, m.x0, m.y0, m.w * m.cell, m.h * m.cell);
   c.imageSmoothingEnabled = true;
 }
 

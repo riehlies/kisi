@@ -89,9 +89,10 @@ references jump to the board. Then, in steps:
    and the vias with the highest currents; switches in the legend add isolines to the voltage drop and arrows
    for the current direction to the current density;
 2. a losses map: per layer the copper loss per mm² of copper on each rail's own cells (drawn as the current
-   density); the parts, all layers or both summed as a heat source per mm² of board (drawn as the temperature);
-   a log scale of 2, 3 or 4 decades (legend) below the 99th percentile that fades over its lowest decade into
-   the board's copper drawing or the board;
+   density); the parts, all layers or both summed as a heat source per mm² of board (drawn as the temperature,
+   smoothed over about 0.2 mm; the tooltip shows the unsmoothed cell); a log scale of 2, 3 or 4 decades
+   (legend) below the 99th percentile that fades over its lowest decade into the board's copper drawing or the
+   board;
 3. the temperature (an estimate for an ambient temperature and still air or an air flow): a map per layer with
    the vias at their true size, darker for more heat flow (from 1, 2, 5 or 10 % of the largest, legend), the
    hottest parts with their junction temperature, the rails' IR drop at temperature;

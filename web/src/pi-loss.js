@@ -64,6 +64,34 @@ function lossLog(vals, lo) {
   for (let k = 0; k < vals.length; k++) { const v = vals[k]; lg[k] = v === v ? (v > lo ? Math.log10(v) : floor) : NaN; }
   return lg;
 }
+// The sums are drawn smoothed: the common raster's cells (about 0.2 mm) step at every copper and hole edge, the
+// heat spreads anyway. A Gaussian of LOSS_SIGMA cells on the linear values (normalised weights, renormalised
+// at the raster's edge) – a narrow track keeps its heat as a softer, wider line, whereas smoothing the log
+// values would sink it towards the bottom of the scale; one cell leaves holes and gaps of half a millimetre
+// as dips, 1.5 fills them. Then interpolated ×4 (LOSS_PX: a larger pixel budget than the other maps, some
+// 25 MB on a large board with the half-resolution copy for the whole-board view). The picture only: the scale (top, bottom) and the tooltip read the unsmoothed
+// values (S.lossSigma: forced, for tests; 0: off).
+const LOSS_SIGMA = 1, LOSS_PX = 5e6;
+function lossSmooth(vals, nx, ny, sigma) {
+  if (!(sigma > 0)) return vals;
+  const r = Math.ceil(3 * sigma), g = new Float32Array(2 * r + 1);
+  for (let k = -r; k <= r; k++) g[k + r] = Math.exp(-(k * k) / (2 * sigma * sigma));
+  const pass = (src, dst, n, len, step, stride) => { // along lines of `len` cells (`step` apart), `n` lines `stride` apart
+    for (let l = 0; l < n; l++) {
+      const b = l * stride;
+      for (let i = 0; i < len; i++) {
+        const a0 = Math.max(0, i - r), a1 = Math.min(len - 1, i + r);
+        let s = 0, w = 0;
+        for (let a = a0; a <= a1; a++) { const v = src[b + a * step]; if (v === v) { const gw = g[a - i + r]; s += v * gw; w += gw; } }
+        dst[b + i * step] = w > 0 ? s / w : NaN;
+      }
+    }
+  };
+  const t = new Float32Array(vals.length), out = new Float32Array(vals.length);
+  pass(vals, t, ny, nx, 1, nx);
+  pass(t, out, nx, ny, nx, 1);
+  return out;
+}
 // a copper layer of the plane L<i>: its rails on their own DC grids (kisi_pi::losses::loss_layer)
 const lossLayerOf = (pl) => pl[0] === "L" ? S.loss.layers[+pl.slice(1)] : null;
 // a rail plane of a layer as a grid (NaN: no copper) from its copper cells
@@ -82,8 +110,8 @@ function lossCell(p, k) {
 // The picture of the shown plane (pi-map.js) on a log scale. A layer: drawn as the current density – one
 // image per rail on its own DC cells (factor by its own cell count), each clipped every frame to its rail's
 // exact copper, the narrow tracks as strokes; the board's copper underneath. The sums (total, parts, all
-// copper): a heat source per mm² of board on the common raster, drawn as the temperature – values
-// interpolated over the board, clipped to the board outline.
+// copper): a heat source per mm² of board on the common raster, drawn as the temperature – values smoothed
+// (lossSmooth) and interpolated over the board, clipped to the board outline.
 function lossImage() {
   const { lut, alpha } = lossLut(), key = S.lossPlane + "|" + S.lossLut.key;
   if (S.lossImg && S.lossImg.key === key) return S.lossImg;
@@ -106,8 +134,9 @@ function lossImage() {
     return S.lossImg;
   }
   const vals = lossValues(pl), top = lossTop(vals), lo = top / 10 ** decades, ol = mapOutline();
-  const o = { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(top), lut, alpha };
-  const map = top > 0 ? mapImage(lossLog(vals, lo), m.nx, m.ny, ol ? o : { ...o, dilate: 0, cover: 0.5 }) : null;
+  const o = { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(top), lut, alpha, px: LOSS_PX, half: true };
+  const sm = top > 0 ? lossSmooth(vals, m.nx, m.ny, S.lossSigma ?? LOSS_SIGMA) : null;
+  const map = sm ? mapImage(lossLog(sm, lo), m.nx, m.ny, ol ? o : { ...o, dilate: 0, cover: 0.5 }) : null;
   S.lossImg = { key, plane: pl, map, clip: ol, max: top, lo, vals, bytes: map ? map.bytes : 0 };
   return S.lossImg;
 }

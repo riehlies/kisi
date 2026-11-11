@@ -103,10 +103,10 @@ class Engine {
   piClear() { this.k.kisi_pi_clear(); }
   piStored() { this.k.kisi_pi_stored(); return JSON.parse(this.out()); }
   piGround() { if (this.k.kisi_pi_ground() !== 0) throw new Error(this.out()); return JSON.parse(this.out()); }
-  // losses of the stored DC results: {summary, flow, map, buf, layers, layerIdx, layerBuf} (buf: the copper
-  // plane – W per mm² of copper, all layers, NaN without copper –, then the components plane, W/mm²; layers:
-  // per copper layer the rails on their own DC grids, their copper cells from `offset`: the index in the
-  // rail's grid in layerIdx, W per mm² of copper in layerBuf)
+  // losses of the stored DC results: {summary, flow, map, buf, layers, layerIdx, layerBuf} (buf: one plane
+  // per copper layer of map.layers, then the components plane, W per mm² of board; layers: per copper layer
+  // the rails on their own DC grids, their copper cells from `offset`: the index in the rail's grid in
+  // layerIdx, W per mm² of copper in layerBuf)
   piLosses(cell) {
     this.call(this.k.kisi_pi_losses, JSON.stringify({ cell: cell || null }));
     const r = JSON.parse(this.out()), m = this.k.memory.buffer;

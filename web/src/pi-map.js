@@ -31,7 +31,7 @@ const mapUpFactor = (cells) => S.mapUp || [4, 2, 1].find((f) => cells * f * f <=
 // pixel is drawn where the bilinear weight of the corners with values reaches it (default: any; 0.5
 // without extension gives a smooth edge half way between a cell with and one without a value); o.lut: a
 // colour table of 1024 RGB steps instead of turbo (mapLutGet), o.alpha: their opacity (1024 steps, 0 … 255;
-// default opaque); o.f: the factor instead of the budget's.
+// default opaque).
 // Returns the image (cropped to the cells with values), the extended values of the crop (for isolines)
 // and which of them were cells of their own (`own`).
 function mapImage(val, nx, ny, o) {
@@ -69,7 +69,7 @@ function mapImage(val, nx, ny, o) {
   }
   const t1 = performance.now();
   // bilinear ×f on the values, then the colour; corners without a value drop out of the weights
-  const f = o.f || mapUpFactor(w * h), W = w * f, H = h * f, lut = o.lut || mapLutGet(), alpha = o.alpha || null;
+  const f = mapUpFactor(w * h), W = w * f, H = h * f, lut = o.lut || mapLutGet(), alpha = o.alpha || null;
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const cx = c.getContext("2d"), img = cx.createImageData(W, H), d = img.data;
   const lo = o.lo, sc = 1023 / ((o.hi - lo) || 1);
@@ -204,16 +204,6 @@ function mapOutline() {
   st.outlineFill = ok ? fill : null;
   return st.outlineFill;
 }
-// Cut the map image to a path once, at the image's resolution (`destination-in`): the losses of one
-// layer cut each rail's image to its own copper, so that its extension does not cover a neighbour's
-function mapBake(m, path, rule = "nonzero") {
-  if (!m) return;
-  const x = m.canvas.getContext("2d"), k = m.f / m.cell;
-  x.setTransform(k, 0, 0, k, -m.x0 * k, -m.y0 * k);
-  x.globalCompositeOperation = "destination-in"; x.fillStyle = "#000"; x.fill(path, rule);
-  x.globalCompositeOperation = "source-over"; x.setTransform(1, 0, 0, 1, 0, 0);
-}
-
 // Draw a map onto the board (ctx in board coordinates) with the maps' transparency: the image and the
 // isolines or arrows (`atop`) within the clip path – the real copper, or the board outline –, the track
 // strokes (`over`) after it, not clipped: thin tracks keep a visible width when zoomed out.

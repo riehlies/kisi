@@ -1,21 +1,31 @@
 "use strict";
 // ---- losses: power density map ("Losses" view) and power flow (Sankey in the power tree)
-// The numbers come from kisi_core::losses (S.loss = engine.piLosses): heat per part, copper
-// loss per rail (incl. ground return) and layer, a raster in W/mm² (copper per mm² of copper), every
-// copper layer on the rails' own DC grids, and the flow links.
+// The numbers come from kisi_core::losses (S.loss = engine.piLosses): heat per part, copper loss per rail
+// (incl. ground return) and layer, every copper layer on the rails' own DC grids (W per mm² of copper), one
+// raster per layer and of the parts (W per mm² of board), and the flow links.
 
-const LOSS_PX = 3e6;    // pixel budget of one layer's images together (one per rail, on its own DC grid)
-// colour scale: log over 2, 3 or 4 decades below the largest value (legend; remembered per viewer)
+// colour scale: log over 2, 3 or 4 decades below its top, the 99th percentile of the shown values (as the
+// current density: a few cells at via contacts would push everything else down); legend, remembered
 const LOSS_DECADE_STEPS = [2, 3, 4];
 function lossDecades() {
   if (S.lossDecades == null) { const v = lsGet("kisi.loss.decades"); S.lossDecades = LOSS_DECADE_STEPS.includes(v) ? v : 3; }
   return S.lossDecades;
 }
-// The colours of the scale (0 … 1 = the bottom … the largest value): turbo from light blue up, so that the
-// low end does not sink into the dark background (turbo's indigo start); over the lowest decade the colour
-// fades out (opacity eased from 1 to 0 at the bottom) onto the board's own drawing of the copper underneath
-// (lossUnder: the zone colour) – little reads as little, copper without current as plain board copper.
-// Only where there is no solved copper there is no copper drawing either.
+// the 99th percentile of the positive values
+function lossTop(vals) {
+  let n = 0;
+  for (let k = 0; k < vals.length; k++) if (vals[k] > 0) n++;
+  const a = new Float32Array(n);
+  n = 0;
+  for (let k = 0; k < vals.length; k++) if (vals[k] > 0) a[n++] = vals[k];
+  a.sort();
+  return a.length ? a[Math.min(a.length - 1, Math.floor(a.length * 0.99))] : 0;
+}
+// The colours of the scale (0 … 1 = the bottom … the top): turbo from light blue up, so that the low end does
+// not sink into the dark background (turbo's indigo start); over the lowest decade the colour fades out
+// (opacity eased from 1 to 0 at the bottom) onto what is drawn underneath – on a layer the board's drawing of
+// the copper (lossLayerCompose), for the sums the board – little reads as little, copper without current as plain
+// board copper. Above the top: the top colour.
 const LOSS_TURBO0 = 0.2;
 function lossColor(t, decades) {
   const t0 = 1 / decades;
@@ -39,14 +49,13 @@ function lossPlanes() {
   return [{ id: "total", name: "Total" }, { id: "comp", name: "Parts" }, { id: "cu", name: "Copper, all layers" }]
     .concat(m.layers.map((l, i) => ({ id: "L" + i, name: su[l] ? su[l].name : "layer " + l })));
 }
-// W/mm² of the selected plane of the common raster, nx*ny cells (NaN: neither solved copper nor a part):
-// copper per mm² of copper, the layers summed; parts over the box of their pads
+// heat source per mm² of board of the selected sum on the common raster, nx*ny cells: the copper layers
+// (S.loss.buf: one plane per layer, then the parts) and the parts summed
 function lossValues(plane) {
-  const m = S.loss.map, per = m.nx * m.ny, b = S.loss.buf, out = new Float32Array(per);
-  for (let k = 0; k < per; k++) {
-    const cu = b[k], cp = b[per + k];
-    out[k] = plane === "comp" ? (cp > 0 ? cp : NaN) : plane === "cu" ? cu : cu === cu ? cu + cp : cp > 0 ? cp : NaN;
-  }
+  const m = S.loss.map, per = m.nx * m.ny, nl = m.layers.length, b = S.loss.buf, out = new Float32Array(per);
+  const add = (s) => { for (let k = 0; k < per; k++) out[k] += b[s * per + k]; };
+  if (plane !== "comp") for (let l = 0; l < nl; l++) add(l);
+  if (plane !== "cu") add(nl);
   return out;
 }
 // log10 of the values for the picture, at least the scale's bottom (zero included); NaN: no copper
@@ -70,70 +79,76 @@ function lossCell(p, k) {
   while (a < b) { const c = (a + b) >> 1; if (I[c] < k) a = c + 1; else b = c; }
   return a < p.offset + p.n && I[a] === k ? S.loss.layerBuf[a] : NaN;
 }
-// The picture of the shown plane (pi-map.js) on a log scale. Total, parts and all copper: the common
-// raster, cut once to the copper of the solved rails on the plane's layers and the parts' pad boxes. A
-// layer: one image per rail on its own DC cells, each cut once to its rail's copper (so that its
-// extension does not cover a neighbour), the rails' narrow tracks as strokes. `clip`: that copper as
-// one path, for the exact edge when zoomed in (lossDrawClip).
+// The picture of the shown plane (pi-map.js) on a log scale. A layer: drawn as the current density – one
+// image per rail on its own DC cells (factor by its own cell count), each clipped every frame to its rail's
+// exact copper, the narrow tracks as strokes; the board's copper underneath. The sums (total, parts, all
+// copper): a heat source per mm² of board on the common raster, drawn as the temperature – values
+// interpolated over the board, clipped to the board outline.
 function lossImage() {
-  const { lut, alpha } = lossLut(), key = S.lossPlane + "|" + S.lossLut.key + "|" + S.colors.zone;
+  const { lut, alpha } = lossLut(), key = S.lossPlane + "|" + S.lossLut.key;
   if (S.lossImg && S.lossImg.key === key) return S.lossImg;
   const m = S.loss.map, pl = S.lossPlane, ll = lossLayerOf(pl), decades = lossDecades();
-  const nets = [...S.piRes.entries()].filter(([, r]) => r.res).map(([n]) => S.scene.nets.indexOf(n)).filter((n) => n >= 0);
-  const layers = pl === "comp" ? [] : ll ? [ll.layer] : m.layers, clip = new Path2D();
-  for (const l of layers) clip.addPath(mapCopper(nets, l).clip);
   if (ll) {
-    const max = ll.max, lo = max / 10 ** decades, sc = { lo: Math.log10(lo), hi: Math.log10(max), lut, alpha };
-    // factors 4, lowered for the finest images first until all of them fit the budget
-    const ps = ll.planes.filter((p) => p.n > 0).sort((a, b) => b.nx * b.ny - a.nx * a.ny), f = ps.map(() => S.mapUp || 4);
-    for (;;) {
-      if (ps.reduce((a, p, i) => a + p.nx * p.ny * f[i] * f[i], 0) <= LOSS_PX) break;
-      let k = -1;
-      ps.forEach((p, i) => { if (f[i] > 1 && (k < 0 || p.cell / f[i] < ps[k].cell / f[k])) k = i; });
-      if (k < 0) break;
-      f[k] /= 2;
-    }
-    const rails = [];
-    ps.forEach((p, i) => {
-      const map = max > 0 ? mapImage(lossLog(lossDense(p), lo), p.nx, p.ny, { x0: p.x0, y0: p.y0, cell: p.cell, ...sc, f: f[i] }) : null;
+    const nets = [...S.piRes.entries()].filter(([, r]) => r.res).map(([n]) => S.scene.nets.indexOf(n)).filter((n) => n >= 0);
+    const clip = mapCopper(nets, ll.layer).clip;
+    const top = lossTop(S.loss.layerBuf.subarray(ll.planes.length ? ll.planes[0].offset : 0, ll.planes.length ? ll.planes[ll.planes.length - 1].offset + ll.planes[ll.planes.length - 1].n : 0));
+    const lo = top / 10 ** decades, sc = { lo: Math.log10(lo), hi: Math.log10(top), lut, alpha }, rails = [];
+    for (const p of ll.planes) {
       const net = S.scene.nets.indexOf(p.net);
-      if (!map || net < 0) return;
+      if (!(p.n > 0) || net < 0 || !(top > 0)) continue;
+      const map = mapImage(lossLog(lossDense(p), lo), p.nx, p.ny, { x0: p.x0, y0: p.y0, cell: p.cell, ...sc });
+      if (!map) continue;
       const cu = mapCopper([net], ll.layer);
-      lossUnder(map, cu.clip);
-      mapBake(map, cu.clip);
-      rails.push({ p, map, strokes: mapStrokes(cu, map) });
-    });
-    S.lossImg = { key, plane: pl, ll, rails, clip, max, lo, px: Math.max(0, ...rails.map((r) => r.map.cell / r.map.f)), bytes: rails.reduce((a, r) => a + r.map.bytes, 0) };
+      rails.push({ p, map, cu, strokes: mapStrokes(cu, map) });
+    }
+    S.lossImgN = (S.lossImgN || 0) + 1; // the composed layer (lossLayerDraw) belongs to this image set
+    S.lossImg = { key, id: S.lossImgN, plane: pl, ll, rails, clip, max: top, lo, bytes: rails.reduce((a, r) => a + r.map.bytes, 0) };
     return S.lossImg;
   }
-  const vals = lossValues(pl);
-  let max = 0;
-  for (let i = 0; i < vals.length; i++) if (vals[i] > max) max = vals[i];
-  const lo = max / 10 ** decades;
-  const map = max > 0 ? mapImage(lossLog(vals, lo), m.nx, m.ny, { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(max), lut, alpha }) : null;
-  // parts: their heat is spread over the box of their pads (kisi_pi::losses), the box is part of the clip
-  if (pl === "comp" || pl === "total") {
-    const hot = new Set(S.loss.summary.components.filter((c) => c.w > 0).map((c) => c.refdes)), P = S.scene.pads, box = new Map();
-    for (let i = 0; i < P.length / 8; i++) {
-      const ref = S.scene.fp_refs[S.scene.pad_fp[i]];
-      if (!hot.has(ref)) continue;
-      const o = i * 8, r = Math.max(P[o + 2], P[o + 3]) / 2, b = box.get(ref) || [Infinity, Infinity, -Infinity, -Infinity];
-      b[0] = Math.min(b[0], P[o] - r); b[1] = Math.min(b[1], P[o + 1] - r); b[2] = Math.max(b[2], P[o] + r); b[3] = Math.max(b[3], P[o + 1] + r);
-      box.set(ref, b);
-    }
-    for (const b of box.values()) clip.rect(b[0], b[1], b[2] - b[0], b[3] - b[1]);
-  }
-  if (map) { lossUnder(map, clip); mapBake(map, clip); }
-  S.lossImg = { key, plane: pl, map, clip, max, lo, vals, px: map ? map.cell / map.f : 0, bytes: map ? map.bytes : 0 };
+  const vals = lossValues(pl), top = lossTop(vals), lo = top / 10 ** decades, ol = mapOutline();
+  const o = { x0: m.x0, y0: m.y0, cell: m.cell, lo: Math.log10(lo), hi: Math.log10(top), lut, alpha };
+  const map = top > 0 ? mapImage(lossLog(vals, lo), m.nx, m.ny, ol ? o : { ...o, dilate: 0, cover: 0.5 }) : null;
+  S.lossImg = { key, plane: pl, map, clip: ol, max: top, lo, vals, bytes: map ? map.bytes : 0 };
   return S.lossImg;
 }
-// the board's drawing of the copper (the zone colour, as the board view draws zones) under the image's
-// pixels, once at the image's resolution (a fill of all the copper each frame costs several frames)
-function lossUnder(m, path) {
-  const x = m.canvas.getContext("2d"), k = m.f / m.cell;
-  x.setTransform(k, 0, 0, k, -m.x0 * k, -m.y0 * k);
-  x.globalCompositeOperation = "destination-over"; x.fillStyle = S.colors.zone; x.fill(path);
-  x.globalCompositeOperation = "source-over"; x.setTransform(1, 0, 0, 1, 0, 0);
+// A layer as drawn: the board's drawing of its copper (the zone colour, as the board view draws zones) where
+// the scale fades out, then every rail in view as the current density draws one – its image within its exact
+// copper, its narrow tracks as strokes. Composed at screen resolution into an offscreen canvas (the view and a
+// margin) once per zoom level and copied while panning – the clips of some thirty rails cost a few frames;
+// after a zoom the old one is scaled until the view rests for LOSS_LAYER_MS, then composed anew.
+const LOSS_LAYER_MARGIN = 0.15, LOSS_LAYER_MS = 150;
+function lossLayerCompose(x, im, px, bx0, by0, bx1, by1) {
+  x.fillStyle = S.colors.zone; x.fill(im.clip);
+  for (const r of im.rails) {
+    const b = r.map.bbox;
+    if (b[2] < bx0 || b[0] > bx1 || b[3] < by0 || b[1] > by1) continue;
+    x.save(); x.clip(r.cu.clip); x.globalAlpha = MAP_ALPHA; mapPaint(x, r.map); x.restore();
+    x.save(); x.globalAlpha = MAP_ALPHA; mapDrawStrokes(x, r.strokes, px); x.restore();
+  }
+}
+function lossLayerDraw(im, px) {
+  const d = window.devicePixelRatio || 1, v = S.view, k = v.s * d, key = im.id + "|" + S.colors.zone;
+  const bx0 = -v.x / v.s, by0 = -v.y / v.s, bw = cv.width / k, bh = cv.height / k;
+  let u = S.lossCache;
+  const same = u && u.key === key, fits = same && u.k === k && u.bx0 <= bx0 && u.by0 <= by0 && u.bx0 + u.bw >= bx0 + bw && u.by0 + u.bh >= by0 + bh;
+  if (!fits) {
+    if (same && u.k !== k && !S.lossCacheDue) {
+      clearTimeout(S.lossCacheT);
+      S.lossCacheT = setTimeout(() => { S.lossCacheDue = true; draw(); }, LOSS_LAYER_MS);
+    } else {
+      S.lossCacheDue = false;
+      const mx = bw * LOSS_LAYER_MARGIN, my = bh * LOSS_LAYER_MARGIN, c = (u && u.canvas) || document.createElement("canvas");
+      c.width = Math.ceil(cv.width * (1 + 2 * LOSS_LAYER_MARGIN)); c.height = Math.ceil(cv.height * (1 + 2 * LOSS_LAYER_MARGIN));
+      const x = c.getContext("2d");
+      x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, c.width, c.height);
+      x.setTransform(k, 0, 0, k, -(bx0 - mx) * k, -(by0 - my) * k);
+      lossLayerCompose(x, im, px, bx0 - mx, by0 - my, bx0 + bw + mx, by0 + bh + my);
+      u = S.lossCache = { key, k, bx0: bx0 - mx, by0: by0 - my, bw: c.width / k, bh: c.height / k, canvas: c };
+    }
+  }
+  ctx.imageSmoothingEnabled = u.k !== k; // 1:1 while panning
+  ctx.drawImage(u.canvas, u.bx0, u.by0, u.bw, u.bh);
+  ctx.imageSmoothingEnabled = true;
 }
 // the value of the shown plane at a board point: {v, net} (a layer: the rail whose copper is there)
 function lossAt(im, x, y) {
@@ -150,15 +165,11 @@ function lossAt(im, x, y) {
   return { v: i < 0 || j < 0 || i >= m.nx || j >= m.ny ? NaN : im.vals[j * m.nx + i], net: null };
 }
 
-// the copper as a clip each frame only when an image pixel covers more than 1.5 device pixels: then the
-// edge cut into the images would show; otherwise the cut images alone (one clip of all the copper of a
-// board costs several times the rest of the frame)
-const lossDrawClip = (im) => S.view.s * (window.devicePixelRatio || 1) * im.px > 1.5 ? im.clip : null;
 function drawLoss(px) {
   if (!S.loss || !S.loss.map) return;
-  const im = lossImage(), clip = lossDrawClip(im);
-  if (im.rails) mapDraw({ clip, image: (c) => { for (const r of im.rails) mapPaint(c, r.map); }, over: (c) => { for (const r of im.rails) mapDrawStrokes(c, r.strokes, px); } });
-  else if (im.map) mapDraw({ clip, image: (c) => mapPaint(c, im.map) });
+  const im = lossImage();
+  if (im.rails) lossLayerDraw(im, px);
+  else if (im.map) mapDraw({ clip: im.clip, rule: "evenodd", image: (c) => mapPaint(c, im.map) });
   // the largest heat sources: labels at a constant screen size, the hottest first; a label that
   // would overlap a hotter one is left out (more appear when zoomed in)
   S.lossLabels = [];
@@ -178,16 +189,18 @@ function renderLossChips() {
 function renderLossLegend() {
   const L = $("legend");
   if (!S.loss || !S.loss.map) { L.innerHTML = `<strong>Losses</strong><div class="row">${S.loss && S.loss.error ? esc(S.loss.error) : "after “Compute” in step 2"}</div>`; return; }
-  const im = lossImage(), plane = lossPlanes().find((p) => p.id === S.lossPlane), d = lossDecades(), C = S.colors;
-  // the scale over the board's copper drawing, as on the map
+  const im = lossImage(), plane = lossPlanes().find((p) => p.id === S.lossPlane), d = lossDecades(), C = S.colors, layer = !!im.ll;
+  // the scale over what lies underneath, as on the map: the board's copper on a layer, the board for the sums
   const stops = Array.from({ length: 25 }, (_, k) => { const c = lossColor(k / 24, d); return `rgba(${c[0]},${c[1]},${c[2]},${(c[3] * MAP_ALPHA).toFixed(3)})`; }).join(",");
   const v = (x) => fmtSI(x, "W/mm²", 2);
   L.innerHTML = `<strong>Power density · ${esc(plane ? plane.name : "")} · log scale</strong>
-    <div class="grad" style="background:linear-gradient(90deg,${stops}),linear-gradient(${C.zone},${C.zone}),${C.canvas}"></div>
-    <div class="ticks units"><span>≤ ${v(im.lo)}</span><span>${v(im.lo * 10 ** (d / 2))}</span><span>${v(im.max)}</span></div>
+    <div class="grad" style="background:linear-gradient(90deg,${stops}),${layer ? `linear-gradient(${C.zone},${C.zone}),` : ""}${C.canvas}"></div>
+    <div class="ticks units"><span>≤ ${v(im.lo)}</span><span>${v(im.lo * 10 ** (d / 2))}</span><span>≥ ${v(im.max)}</span></div>
     <div class="row"><span>Scale <select id="loss-dec" aria-label="decades of the log scale">${LOSS_DECADE_STEPS.map((n) => `<option value="${n}"${n === d ? " selected" : ""}>${n} decades</option>`).join("")}</select>
-      below the largest value; over the lowest decade the colour fades into the board's copper (without current: plain copper)</span></div>
-    <div class="row">${S.lossPlane === "comp" || S.lossPlane === "total" ? "Parts: heat over the area of their pads (estimate). " : ""}${S.lossPlane === "comp" ? "" : `Copper: I²R of every rail and the ground return per mm² of copper${S.lossPlane[0] === "L" ? ", on each rail's own cells" : ", the layers summed"}.`}</div>`;
+      below the 99th percentile; over the lowest decade the colour fades into the ${layer ? "board's copper (without current: plain copper)" : "board"}</span></div>
+    <div class="row">${layer ? "Copper: I²R of every rail and the ground return per mm² of copper, on each rail's own cells."
+      : S.lossPlane === "comp" ? "Heat source per mm² of board: the parts' heat over the area of their pads (estimate)."
+      : `Heat source per mm² of board: the copper loss of the layers${S.lossPlane === "total" ? " and the parts' heat (over the area of their pads, estimate)" : ""} summed, as the temperature takes it.`}</div>`;
   const sel = $("loss-dec");
   if (sel) sel.onchange = () => { S.lossDecades = +sel.value; lsSet("kisi.loss.decades", S.lossDecades); renderLossLegend(); draw(); };
 }
@@ -196,19 +209,26 @@ function showLossTip(mx, my) {
   const tip = $("tip");
   if (!S.loss || !S.loss.map) { tip.hidden = true; return; }
   const m = S.loss.map, im = lossImage();
-  const x = (mx - S.view.x) / S.view.s, y = (my - S.view.y) / S.view.s;
+  const x = (mx - S.view.x) / S.view.s, y = (my - S.view.y) / S.view.s, at = lossAt(im, x, y);
   const i = Math.floor((x - m.x0) / m.cell), j = Math.floor((y - m.y0) / m.cell);
   if (i < 0 || j < 0 || i >= m.nx || j >= m.ny) { tip.hidden = true; return; }
-  const k = j * m.nx + i, per = m.nx * m.ny, b = S.loss.buf;
-  const cu = b[k] === b[k] ? b[k] : 0, comp = b[per + k], at = lossAt(im, x, y);
-  if (!(at.v > 0) && !(cu > 0) && !(comp > 0)) { tip.hidden = true; return; }
+  const k = j * m.nx + i, per = m.nx * m.ny, nl = m.layers.length, b = S.loss.buf, su = S.scene.stackup.copper;
   const near = S.loss.summary.components.filter((c) => c.at).map((c) => ({ c, d: Math.hypot(c.at[0] - x, c.at[1] - y) })).sort((a, b2) => a.d - b2.d)[0];
   const d = (w) => w === w ? fmtSI(w, "W/mm²") : "–";
-  tip.innerHTML = `<div class="t1">Power density</div><div class="kv">
-    <span>Shown</span><span>${d(at.v)}</span>
-    ${at.net ? `<span>Rail</span><span>${esc(netLabel(at.net))}</span>` : ""}
-    <span>Parts</span><span>${d(comp)}</span>
-    <span>Copper</span><span>${d(cu)} <span class="muted">all layers</span></span>
+  let rows;
+  if (im.ll) {
+    if (!(at.v === at.v)) { tip.hidden = true; return; }
+    rows = `<span>Shown</span><span>${d(at.v)} <span class="muted">per mm² of copper</span></span>
+      <span>Rail</span><span>${esc(netLabel(at.net))}</span>`;
+  } else {
+    if (!(at.v > 0)) { tip.hidden = true; return; }
+    // the sum and what it is made of: the parts and every layer's copper loss at this cell
+    const per_l = m.layers.map((l, s2) => [su[l] ? su[l].name : l, b[s2 * per + k]]).filter((e) => e[1] > 0).sort((a2, b2) => b2[1] - a2[1]);
+    rows = `<span>Shown</span><span>${d(at.v)} <span class="muted">per mm² of board</span></span>
+      ${S.lossPlane !== "cu" ? `<span>Parts</span><span>${d(b[nl * per + k])}</span>` : ""}
+      ${S.lossPlane !== "comp" ? per_l.slice(0, 6).map(([n, w]) => `<span>${esc(n)}</span><span>${d(w)}</span>`).join("") : ""}`;
+  }
+  tip.innerHTML = `<div class="t1">Power density</div><div class="kv">${rows}
     ${near && near.d < 3 ? `<span>Part</span><span>${esc(near.c.refdes)} ${esc(near.c.part)} · ${fmtSI(near.c.w, "W")}</span>` : ""}</div>`;
   tip.hidden = false;
   const rs = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;

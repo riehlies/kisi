@@ -120,6 +120,27 @@ pub struct ViaResult {
     pub drill: f64,
 }
 
+/// One barrel step of a via or plated hole between two consecutive layers where it contacts the rail's
+/// copper (`PiResult::barrels`): the conductance π·(r² − (r − t)²)/(ρ·Δz), plating t inside the drilled hole.
+#[derive(Debug, Clone, Serialize)]
+pub struct Barrel {
+    pub at: P,
+    pub drill: f64,
+    /// a pad's plated hole (else a via)
+    pub hole: bool,
+    /// the two contact layers (copper layer indices, upper first)
+    pub from: u16,
+    pub to: u16,
+    /// plating cross-section (mm²)
+    pub area_mm2: f64,
+    pub current: f64,
+    /// I²R of the step (W), booked half on each end's cell in `PiResult::loss`
+    pub loss_w: f64,
+    /// the cells the two halves are booked on: (layer, cell index in that layer's grid)
+    #[serde(skip)]
+    pub ends: [(u16, u32); 2],
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct PiResult {
     pub net: String,
@@ -132,6 +153,9 @@ pub struct PiResult {
     pub sources: Vec<SourceResult>,
     /// vias with the highest currents (top 30)
     pub vias: Vec<ViaResult>,
+    /// every barrel step that carries current (vias and plated holes)
+    #[serde(skip)]
+    pub barrels: Vec<Barrel>,
     pub nodes: usize,
     pub v_min: Option<f64>,
     pub max_drop_mv: Option<f64>,
@@ -1029,6 +1053,7 @@ pub fn solve_rail_scaled(
     for v in board.vias.iter().filter(|v| v.net == net) {
         verticals.push((v.at, v.drill, (v.from as usize..=v.to as usize).collect()));
     }
+    let n_vias = verticals.len();
     for p in board.pads.iter().filter(|p| p.net == net && p.drill > 0.0) {
         verticals.push((p.at, p.drill, p.layers.iter().map(|&l| l as usize).collect()));
     }
@@ -1146,6 +1171,7 @@ pub fn solve_rail_scaled(
     }
     // vertical: the barrels between their contact cells
     let mut via_edges: Vec<(usize, P, f64)> = Vec::new(); // (edge index, position, drill)
+    let mut via_steps: Vec<(bool, u16, u16, f64)> = Vec::new(); // (plated hole, from, to, area mm²)
     let layer_z: Vec<f64> = {
         // centre height of each copper layer (mm from top)
         let mut z = vec![0.0; ncu];
@@ -1161,7 +1187,7 @@ pub fn solve_rail_scaled(
         let tp = (params.plating_um * 1e-6).min(r);
         std::f64::consts::PI * (r * r - (r - tp) * (r - tp))
     };
-    for ((at, drill, _), cl) in verticals.iter().zip(&contacts) {
+    for (vi, ((at, drill, _), cl)) in verticals.iter().zip(&contacts).enumerate() {
         for pair in cl.windows(2) {
             let ((pl, pk), (l, k)) = (pair[0], pair[1]);
             let (pn, nid) = (node_of[pl][pk], node_of[l][k]);
@@ -1169,6 +1195,7 @@ pub fn solve_rail_scaled(
                 let len = (layer_z[l] - layer_z[pl]).abs() * 1e-3;
                 let gv = barrel(*drill) / (params.rho * len.max(1e-6)) / dv(pn, nid);
                 via_edges.push((edges.len(), *at, *drill));
+                via_steps.push((vi >= n_vias, pl.min(l) as u16, pl.max(l) as u16, barrel(*drill) * 1e6));
                 edges.push((pn, nid, gv));
             }
         }
@@ -1506,6 +1533,30 @@ pub fn solve_rail_scaled(
         .collect();
     vias.sort_by(|a, b| b.current.partial_cmp(&a.current).unwrap());
     vias.truncate(30);
+    let barrels: Vec<Barrel> = via_edges
+        .iter()
+        .zip(&via_steps)
+        .filter_map(|(&(ei, at, drill), &(hole, from, to, area_mm2))| {
+            let (a, b, gv) = edges[ei];
+            let d = v[a as usize] - v[b as usize];
+            let loss_w = gv * d * d;
+            let end = |n: u32| {
+                let (l, k) = node_pos[n as usize];
+                (l as u16, k as u32)
+            };
+            (d.is_finite() && loss_w > 0.0).then(|| Barrel {
+                at,
+                drill,
+                hole,
+                from,
+                to,
+                area_mm2,
+                current: (gv * d).abs(),
+                loss_w,
+                ends: [end(a), end(b)],
+            })
+        })
+        .collect();
     let v_min = loads.iter().filter_map(|l| l.v_min).reduce(f64::min);
     let max_drop_mv = if setup.ground {
         // largest ground offset (either sign) at a component
@@ -1536,6 +1587,7 @@ pub fn solve_rail_scaled(
             .map(|((r, _, np), c)| SourceResult { refdes: r.clone(), current: c, pads: *np })
             .collect(),
         vias,
+        barrels,
         nodes: nn,
         v_min,
         max_drop_mv,

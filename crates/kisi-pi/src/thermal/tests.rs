@@ -58,6 +58,7 @@ fn heat(layer: u16, x0: f64, y0: f64, cell: f64, nx: usize, ny: usize, loss: Vec
         loads: vec![],
         sources: vec![],
         vias: vec![],
+        barrels: vec![],
         nodes: 0,
         v_min: None,
         max_drop_mv: None,

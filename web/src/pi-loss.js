@@ -2,7 +2,8 @@
 // ---- losses: power density map ("Losses" view) and power flow (Sankey in the power tree)
 // The numbers come from kisi_core::losses (S.loss = engine.piLosses): heat per part, copper loss per rail
 // (incl. ground return) and layer, every copper layer on the rails' own DC grids (W per mm² of copper), one
-// raster per layer and of the parts (W per mm² of board), and the flow links.
+// raster per layer and of the parts (W per mm² of board), and the flow links. The via barrels' loss is not in
+// the map planes: the vias are markers of their own (S.loss.vias, kisi_core::losses::loss_vias).
 
 // colour scale: log over 2, 3 or 4 decades below its top, the 99th percentile of the shown values (as the
 // current density: a few cells at via contacts would push everything else down); legend, remembered
@@ -194,11 +195,72 @@ function lossAt(im, x, y) {
   return { v: i < 0 || j < 0 || i >= m.nx || j >= m.ny ? NaN : im.vals[j * m.nx + i], net: null };
 }
 
+// ---- vias: their barrels' loss as markers (not in the map's colours: half a barrel's I²R on its contact cell
+// is a point loss whose W/mm² grows with 1/cell²). Shown: the vias with at least a share of the largest via loss
+// (the legend's choice, remembered per viewer), on a layer those whose current flows through it, on the sums all;
+// a disc at constant screen size, radius and colour by the loss (log over two decades, magenta – outside the
+// map's turbo), a halo ring around it, the ring in the warning colour above the capacity estimate.
+const LOSS_VIA_STEPS = [0.01, 0.02, 0.05, 0.1], LOSS_VIA_DEFAULT = 0.02, LOSS_VIA_LEVELS = 12;
+function lossViaMin() {
+  if (S.lossViaMin == null) { const v = lsGet("kisi.loss.viamin"); S.lossViaMin = LOSS_VIA_STEPS.includes(v) ? v : LOSS_VIA_DEFAULT; }
+  return S.lossViaMin;
+}
+function lossVias() {
+  const min = lossViaMin(), pl = S.lossPlane, src = S.loss;
+  if (S.lossViaSel && S.lossViaSel.src === src && S.lossViaSel.min === min && S.lossViaSel.pl === pl) return S.lossViaSel;
+  const all = (src.vias && src.vias.list) || [], wmax = all.length ? all[0].loss_w : 0, ll = lossLayerOf(pl);
+  const list = pl === "comp" || !(wmax > 0) ? [] : all.filter((v) => v.loss_w >= min * wmax && (!ll || (v.from <= ll.layer && ll.layer <= v.to)));
+  S.lossViaSel = { src, min, pl, list, wmax };
+  return S.lossViaSel;
+}
+const lossViaLevel = (w, wmax) => Math.round(Math.min(1, Math.max(0, 1 + Math.log10(Math.max(w, 1e-30) / wmax) / 2)) * (LOSS_VIA_LEVELS - 1));
+// light lilac to deep magenta
+const lossViaFill = (k) => { const t = k / (LOSS_VIA_LEVELS - 1); return `rgb(${Math.round(246 - 96 * t)},${Math.round(196 - 196 * t)},${Math.round(240 - 100 * t)})`; };
+const lossViaRadius = (k) => 3 + 5 * k / (LOSS_VIA_LEVELS - 1); // screen px
+function drawLossVias(px) {
+  const { list, wmax } = lossVias();
+  if (!list.length) return;
+  const d = window.devicePixelRatio || 1, x0 = -S.view.x / S.view.s, y0 = -S.view.y / S.view.s;
+  const x1 = x0 + cv.width / d / S.view.s, y1 = y0 + cv.height / d / S.view.s;
+  const fills = Array.from({ length: LOSS_VIA_LEVELS }, () => new Path2D()), halo = new Path2D(), over = new Path2D();
+  for (let i = list.length - 1; i >= 0; i--) {
+    const v = list[i], k = lossViaLevel(v.loss_w, wmax), r = lossViaRadius(k) * px, x = v.at[0], y = v.at[1];
+    if (x + r < x0 || x - r > x1 || y + r < y0 || y - r > y1) continue;
+    fills[k].moveTo(x + r, y); fills[k].arc(x, y, r, 0, Math.PI * 2);
+    const rh = r + 1.5 * px;
+    (v.load > 1 ? over : halo).moveTo(x + rh, y); (v.load > 1 ? over : halo).arc(x, y, rh, 0, Math.PI * 2);
+  }
+  ctx.fillStyle = S.colors.halo; ctx.fill(halo);
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--z-high2").trim(); ctx.fill(over);
+  fills.forEach((p, k) => { ctx.fillStyle = lossViaFill(k); ctx.fill(p); });
+}
+// a via marker under the mouse (screen distance), else null
+function lossViaAt(mx, my) {
+  const { list, wmax } = lossVias();
+  let best = null, bd = 1e9;
+  for (const v of list) {
+    const d = Math.hypot(S.view.x + v.at[0] * S.view.s - mx, S.view.y + v.at[1] * S.view.s - my);
+    if (d < lossViaRadius(lossViaLevel(v.loss_w, wmax)) + 3 && d < bd) { bd = d; best = v; }
+  }
+  return best;
+}
+function lossViaTip(v) {
+  const vs = S.loss.vias;
+  return `<div class="t1">${v.hole ? "Plated hole" : "Via"} · ${esc(netLabel(v.net))}</div><div class="kv">
+    <span>Current</span><span>${fmtSI(v.current, "A")} <span class="muted">${esc(layerName(v.from))} → ${esc(layerName(v.to))}</span></span>
+    <span>Barrel loss</span><span>${fmtSI(v.loss_w, "W")}</span>
+    <span>Current density</span><span>${fmt(v.j_a_mm2, 1)} A/mm² <span class="muted">in ${fmt(v.area_mm2, 4)} mm² of plating</span></span>
+    <span>Capacity</span><span>${fmtSI(v.capacity_a, "A")} at ΔT ${fmt(vs.delta_t_k, 0)} K, IPC-2152 · estimate</span>
+    <span>Current / capacity</span><span${v.load > 1 ? ' class="warn"' : ""}>${fmt(100 * v.load, 0)} %</span>
+    <span>Drill</span><span>${fmtSI(v.drill * 1e-3, "m")}</span></div>`;
+}
+
 function drawLoss(px) {
   if (!S.loss || !S.loss.map) return;
   const im = lossImage();
   if (im.rails) lossLayerDraw(im, px);
   else if (im.map) mapDraw({ clip: im.clip, rule: "evenodd", image: (c) => mapPaint(c, im.map) });
+  drawLossVias(px);
   // the largest heat sources: labels at a constant screen size, the hottest first; a label that
   // would overlap a hotter one is left out (more appear when zoomed in)
   S.lossLabels = [];
@@ -227,16 +289,31 @@ function renderLossLegend() {
     <div class="ticks units"><span>≤ ${v(im.lo)}</span><span>${v(im.lo * 10 ** (d / 2))}</span><span>≥ ${v(im.max)}</span></div>
     <div class="row"><span>Scale <select id="loss-dec" aria-label="decades of the log scale">${LOSS_DECADE_STEPS.map((n) => `<option value="${n}"${n === d ? " selected" : ""}>${n} decades</option>`).join("")}</select>
       below the 99th percentile; over the lowest decade the colour fades into the ${layer ? "board's copper (without current: plain copper)" : "board"}</span></div>
-    <div class="row">${layer ? "Copper: I²R of every rail and the ground return per mm² of copper, on each rail's own cells."
+    <div class="row">${layer ? "Copper: I²R of every rail and the ground return per mm² of copper, on each rail's own cells; the via barrels' loss as markers, not in the colours."
       : S.lossPlane === "comp" ? "Heat source per mm² of board: the parts' heat over the area of their pads (estimate)."
-      : `Heat source per mm² of board: the copper loss of the layers${S.lossPlane === "total" ? " and the parts' heat (over the area of their pads, estimate)" : ""} summed, as the temperature takes it.`}</div>`;
+      : `Heat source per mm² of board: the copper loss of the layers${S.lossPlane === "total" ? " and the parts' heat (over the area of their pads, estimate)" : ""} summed, as the temperature takes it; the via barrels' loss (heat for the temperature too) as markers.`}</div>
+    ${lossViaLegend()}`;
   const sel = $("loss-dec");
   if (sel) sel.onchange = () => { S.lossDecades = +sel.value; lsSet("kisi.loss.decades", S.lossDecades); renderLossLegend(); draw(); };
+  const vsel = $("loss-vmin");
+  if (vsel) vsel.onchange = () => { S.lossViaMin = +vsel.value; lsSet("kisi.loss.viamin", S.lossViaMin); renderLossLegend(); draw(); };
+}
+
+function lossViaLegend() {
+  const vs = S.loss.vias;
+  if (!vs || !vs.list.length || S.lossPlane === "comp") return "";
+  const { list, wmax } = lossVias(), n = list.filter((v) => v.load > 1).length;
+  return `<div class="row" id="loss-vias"><span class="viadot" style="background:${lossViaFill(LOSS_VIA_LEVELS - 1)}"></span><span>${list.length} vias${lossLayerOf(S.lossPlane) ? " through this layer" : ""} with at least
+      <select id="loss-vmin" aria-label="vias shown: share of the largest via loss">${LOSS_VIA_STEPS.map((f) => `<option value="${f}"${f === lossViaMin() ? " selected" : ""}>${Math.round(f * 100)} %</option>`).join("")}</select>
+      of the largest barrel loss (${fmtSI(lossViaMin() * wmax, "W")} … ${fmtSI(wmax, "W")}): larger and darker = more (log from 1&nbsp;%); all vias ${fmtSI(vs.total_w, "W")}.
+      ${n ? `<span class="warn">${n} above the capacity estimate (red ring)</span>` : ""} Hover for current and capacity (estimate).</span></div>`;
 }
 
 function showLossTip(mx, my) {
   const tip = $("tip");
   if (!S.loss || !S.loss.map) { tip.hidden = true; return; }
+  const via = lossViaAt(mx, my);
+  if (via) { tip.innerHTML = lossViaTip(via); tip.hidden = false; lossTipPlace(tip, mx, my); return; }
   const m = S.loss.map, im = lossImage();
   const x = (mx - S.view.x) / S.view.s, y = (my - S.view.y) / S.view.s, at = lossAt(im, x, y);
   const i = Math.floor((x - m.x0) / m.cell), j = Math.floor((y - m.y0) / m.cell);
@@ -260,6 +337,9 @@ function showLossTip(mx, my) {
   tip.innerHTML = `<div class="t1">Power density</div><div class="kv">${rows}
     ${near && near.d < 3 ? `<span>Part</span><span>${esc(near.c.refdes)} ${esc(near.c.part)} · ${fmtSI(near.c.w, "W")}</span>` : ""}</div>`;
   tip.hidden = false;
+  lossTipPlace(tip, mx, my);
+}
+function lossTipPlace(tip, mx, my) {
   const rs = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
   let tx = mx + 16, ty = my + 16;
   if (tx + tw > rs.width - 8) tx = mx - tw - 16;
@@ -284,6 +364,7 @@ function renderLossDetail() {
     <div class="dstats"><span>Parts <b>${fmtSI(s.components_w, "W")}</b></span><span>Copper, rails <b>${fmtSI(s.copper_w, "W")}</b></span><span>Copper, ground return <b>${fmtSI(s.ground_w, "W")}</b></span></div>
     <h4 class="sub">Copper per layer</h4>
     <div class="tablewrap"><table class="xs-table ctab"><tbody>${layers || `<tr><td>no copper losses yet</td></tr>`}</tbody></table></div>
+    ${S.loss.vias && S.loss.vias.count ? `<p class="note">Of which via barrels ${fmtSI(S.loss.vias.total_w, "W")} in ${S.loss.vias.count} vias and plated holes: markers on the map, not in its colours.</p>` : ""}
     <h4 class="sub">Copper per rail</h4>
     <div class="tablewrap"><table class="xs-table ctab"><tbody>${railRows || `<tr><td>–</td></tr>`}</tbody></table></div>
     <h4 class="sub">Hottest parts</h4>

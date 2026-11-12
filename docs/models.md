@@ -174,6 +174,13 @@ connector.
 - **Power tree and losses:** from `PI_REG`/`PI_LOAD`. The power a load draws counts as heat in the part (an
   estimate), regulator losses on the regulator, copper loss is I²R from the DC solutions. A switching regulator
   without an efficiency gets 85 % (an estimate, marked).
+- **Via barrels:** a barrel's loss is the I²R of its plating, cross-section π·(d − t)·t (plating t inside the
+  drilled hole d). The temperature takes it as heat on its two contact cells, half each; the losses map leaves it
+  out of the layers and the sums (half of it on one cell would read as a power density that grows with 1/cell²)
+  and shows the via as a marker with its loss, current and current density in the plating. The current capacity
+  beside it is an estimate: the IPC-2152 conductor chart (a curve fit, `data/thermal.json` `via_current`) for the
+  plating cross-section at a 10 K rise – conservative, as a via runs cooler than a trace of the same cross-section.
+  On ThunderScope and LibreVNA the barrels carry 5 % and 2 % of the copper loss.
 - **PDN:** a lumped model of regulator, plane and capacitors with a plane model above 1 MHz; per IC the rail's
   copper on all layers as an AC grid with plane capacitance (via contacts corrected as in the DC drop), capacitors with ESR/ESL and DC-bias derating
   (estimated per package unless `PI_CAP` gives the data), ferrites and series parts up to the regulators

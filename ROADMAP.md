@@ -197,8 +197,10 @@ validation, and every result says which level it used and how uncertain it is.
   21 rails on 7 boards: error of the largest drop median 6.9 → 1.0 %, max 28 → 10 %; `kisi-validate pi-dc`); the
   power maps (voltage drop, current density, losses, temperature) interpolated and clipped to the copper, narrow
   tracks as strokes, isolines for the voltage drop and arrows for the current direction (display only).
-- **Power:** via current capacity; split of regulator losses between IC and inductor (also a second heat source
-  in the temperature estimate).
+- **Power:** via current capacity – in the viewer since the Losses view's via markers (current, density, an
+  IPC-2152 estimate); next: the vias with the most current against it in `kisi power` (and the golden files), a
+  warning above it; split of regulator losses between IC and inductor (also a second heat source in the
+  temperature estimate).
 - **Temperature, follow-ups** (the steady state is in `kisi thermal` and the viewer, `docs/research/thermal.md`):
   - **Heat sinks**: a heat sink on a part (`theta_sa`, area, or a sink touching several parts), thermal pads to a
     chassis, conduction into mounting holes, card guides and connectors (often a large share on PCIe/M.2 cards).

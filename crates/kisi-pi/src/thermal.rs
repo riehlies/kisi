@@ -41,6 +41,7 @@ pub struct Data {
     pub solder_mask: Mask,
     pub air: Air,
     pub convection: Convection,
+    pub via_current: ViaCurrent,
     pub defaults: Defaults,
 }
 #[derive(Debug, Clone, Deserialize)]
@@ -84,6 +85,13 @@ pub struct Convection {
     pub horizontal_up: Coef,
     pub horizontal_down: Coef,
     pub forced_laminar: Coef,
+}
+/// IPC-2152 chart fit for a via barrel's current capacity (`losses::via_capacity`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ViaCurrent {
+    pub delta_t_k: f64,
+    pub a: [f64; 3],
+    pub b: [f64; 3],
 }
 #[derive(Debug, Clone, Deserialize)]
 pub struct Defaults {

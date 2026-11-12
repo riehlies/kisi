@@ -683,11 +683,12 @@ pub extern "C" fn kisi_pi_ground() -> i32 {
 }
 
 /// Losses of the stored DC results and the last power tree. Input {"cell": mm|null}.
-/// Out: {summary, flow, map, layers}; the map planes via kisi_pi_map_ptr/len (W per mm² of board): one per
+/// Out: {summary, flow, map, layers, vias}; the map planes via kisi_pi_map_ptr/len (W per mm² of board): one per
 /// copper layer of `map.layers`, then the components plane, nx*ny cells each;
 /// `layers`: per copper layer of the map its rails on their own DC grids (LayerLoss: planes with
 /// offsets into two buffers of their copper cells – the index in the plane's grid, via
-/// kisi_pi_loss_cells_ptr/len – and the W per mm² of copper there, via kisi_pi_loss_layer_ptr/len).
+/// kisi_pi_loss_cells_ptr/len – and the W per mm² of copper there, via kisi_pi_loss_layer_ptr/len); map and
+/// layers without the via barrels' loss, which is in `vias` (losses::ViaLosses, per via, for the markers).
 #[no_mangle]
 pub extern "C" fn kisi_pi_losses(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -714,7 +715,8 @@ pub extern "C" fn kisi_pi_losses(p: *const u8, n: usize) -> i32 {
             cbuf.append(&mut ll.cells);
             layers.push(ll);
         }
-        let out = serde_json::json!({"summary": s, "flow": flow, "map": m, "layers": layers}).to_string();
+        let vias = kisi_core::losses::loss_vias(&rails);
+        let out = serde_json::json!({"summary": s, "flow": flow, "map": m, "layers": layers, "vias": vias}).to_string();
         let mut buf = m.copper;
         buf.extend_from_slice(&m.components);
         Ok::<_, String>((out, buf, lbuf, cbuf))

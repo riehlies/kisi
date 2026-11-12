@@ -1,6 +1,6 @@
 {
  "summary": {
-  "rust_total_s": 5.84,
+  "rust_total_s": 5.27,
   "cases": 47,
   "python": {
    "single_tdr_err_pct_median": 2.115,
@@ -47,7 +47,7 @@
   "parity_rust_graded": {
    "dS21_max_db_max": 9.1685,
    "dS21_max_db_median": 0.454,
-   "dS21_lin_max_max": 0.5794,
+   "dS21_lin_max_max": 0.2918,
    "dS21_lin_max_median": 0.133,
    "dS11_max_max": 0.3212,
    "notch_shift_pct": [
@@ -63,24 +63,24 @@
     0.44,
     0.4
    ],
-   "dphase21_max_deg_max": 120.543
+   "dphase21_max_deg_max": 108.925
   },
   "via_time_ms_median": {
-   "python": 1184.5,
-   "rust_build": 111.91,
-   "rust_graded_build": 10.53,
-   "rust_eval": 0.77
+   "python": 1174.5,
+   "rust_build": 106.03,
+   "rust_graded_build": 10.13,
+   "rust_eval": 0.67
   },
-  "via_eval_us_per_freq_median": 1.925,
+  "via_eval_us_per_freq_median": 1.675,
   "cavity": {
    "dZ_rel_max": 2.141113888581247e-06,
    "rust_eval_ms": [
-    23.98,
-    22.97
+    21.43,
+    21.0
    ],
    "python_ms": [
-    113.2,
-    111.0
+    115.3,
+    112.3
    ],
    "nf": 600,
    "modes": 9600
@@ -135,15 +135,15 @@
     "dphase21_max_deg": 7.915
    },
    "time_ms": {
-    "rust_build": 147.72,
-    "rust_graded_build": 7.22,
-    "rust_eval": 0.3,
+    "rust_build": 170.68,
+    "rust_graded_build": 8.28,
+    "rust_eval": 0.35,
     "nf": 400,
     "laplace_unknowns": [
      76258,
      8408
     ],
-    "python": 1358.7
+    "python": 1241.1
    }
   },
   "A_s4_d200_ap600": {
@@ -194,15 +194,15 @@
     "dphase21_max_deg": 10.127
    },
    "time_ms": {
-    "rust_build": 262.72,
-    "rust_graded_build": 7.61,
-    "rust_eval": 0.38,
+    "rust_build": 154.41,
+    "rust_graded_build": 7.03,
+    "rust_eval": 0.33,
     "nf": 400,
     "laplace_unknowns": [
      76218,
      7516
     ],
-    "python": 1334.1
+    "python": 1270.1
    }
   },
   "A_s4_d200_ap800": {
@@ -253,15 +253,15 @@
     "dphase21_max_deg": 1.396
    },
    "time_ms": {
-    "rust_build": 160.61,
-    "rust_graded_build": 8.38,
-    "rust_eval": 0.35,
+    "rust_build": 124.87,
+    "rust_graded_build": 8.23,
+    "rust_eval": 0.31,
     "nf": 400,
     "laplace_unknowns": [
      76238,
      8073
     ],
-    "python": 1296.1
+    "python": 1211.1
    }
   },
   "A_s4_d300_ap1000": {
@@ -312,15 +312,15 @@
     "dphase21_max_deg": 4.825
    },
    "time_ms": {
-    "rust_build": 146.7,
-    "rust_graded_build": 8.21,
-    "rust_eval": 0.34,
+    "rust_build": 129.44,
+    "rust_graded_build": 7.9,
+    "rust_eval": 0.32,
     "nf": 400,
     "laplace_unknowns": [
      75453,
      8274
     ],
-    "python": 1167.5
+    "python": 1268.0
    }
   },
   "A_s4_d300_ap600": {
@@ -371,15 +371,15 @@
     "dphase21_max_deg": 22.449
    },
    "time_ms": {
-    "rust_build": 151.41,
-    "rust_graded_build": 6.67,
-    "rust_eval": 0.32,
+    "rust_build": 169.67,
+    "rust_graded_build": 7.17,
+    "rust_eval": 0.3,
     "nf": 400,
     "laplace_unknowns": [
      75413,
      6827
     ],
-    "python": 1242.0
+    "python": 1224.4
    }
   },
   "A_s4_d300_ap800": {
@@ -430,15 +430,15 @@
     "dphase21_max_deg": 6.555
    },
    "time_ms": {
-    "rust_build": 142.56,
-    "rust_graded_build": 11.38,
-    "rust_eval": 0.4,
+    "rust_build": 136.46,
+    "rust_graded_build": 8.05,
+    "rust_eval": 0.37,
     "nf": 400,
     "laplace_unknowns": [
      75433,
      7939
     ],
-    "python": 1339.7
+    "python": 1195.0
    }
   },
   "B_s8_L1L3_bd_d200": {
@@ -466,7 +466,7 @@
    "rust_graded": {
     "dS21_max_db": 0.243,
     "dS21_mean_db": 0.118,
-    "dphase_max_deg": 9.76,
+    "dphase_max_deg": 1.73,
     "notch_ghz": null,
     "tdr_err_pct": [
      7.76,
@@ -483,21 +483,21 @@
    },
    "parity_rust_graded": {
     "dS21_max_db": 0.2187,
-    "dS21_lin_max": 0.4273,
+    "dS21_lin_max": 0.1932,
     "dS11_max": 0.1442,
     "notch_shift_pct": null,
-    "dphase21_max_deg": 28.939
+    "dphase21_max_deg": 12.871
    },
    "time_ms": {
-    "rust_build": 127.2,
-    "rust_graded_build": 13.48,
-    "rust_eval": 0.54,
+    "rust_build": 111.41,
+    "rust_graded_build": 11.33,
+    "rust_eval": 0.5,
     "nf": 400,
     "laplace_unknowns": [
      76906,
      11630
     ],
-    "python": 1247.6
+    "python": 1046.8
    }
   },
   "B_s8_L1L3_bd_d300": {
@@ -525,7 +525,7 @@
    "rust_graded": {
     "dS21_max_db": 0.396,
     "dS21_mean_db": 0.18,
-    "dphase_max_deg": 11.55,
+    "dphase_max_deg": 1.91,
     "notch_ghz": null,
     "tdr_err_pct": [
      8.38,
@@ -542,21 +542,21 @@
    },
    "parity_rust_graded": {
     "dS21_max_db": 0.263,
-    "dS21_lin_max": 0.4962,
+    "dS21_lin_max": 0.2458,
     "dS11_max": 0.1893,
     "notch_shift_pct": null,
-    "dphase21_max_deg": 37.318
+    "dphase21_max_deg": 18.039
    },
    "time_ms": {
-    "rust_build": 136.36,
-    "rust_graded_build": 11.92,
-    "rust_eval": 0.49,
+    "rust_build": 116.0,
+    "rust_graded_build": 10.64,
+    "rust_eval": 0.44,
     "nf": 400,
     "laplace_unknowns": [
      76671,
      11695
     ],
-    "python": 1069.0
+    "python": 1014.2
    }
   },
   "B_s8_L1L3_stub_d200": {
@@ -584,7 +584,7 @@
    "rust_graded": {
     "dS21_max_db": 0.698,
     "dS21_mean_db": 0.201,
-    "dphase_max_deg": 4.28,
+    "dphase_max_deg": 5.62,
     "notch_ghz": 21.9,
     "tdr_err_pct": [
      3.84,
@@ -601,21 +601,21 @@
    },
    "parity_rust_graded": {
     "dS21_max_db": 0.7417,
-    "dS21_lin_max": 0.4275,
+    "dS21_lin_max": 0.1946,
     "dS11_max": 0.1293,
     "notch_shift_pct": 0.0,
-    "dphase21_max_deg": 28.261
+    "dphase21_max_deg": 12.443
    },
    "time_ms": {
-    "rust_build": 128.17,
-    "rust_graded_build": 10.76,
-    "rust_eval": 5.16,
+    "rust_build": 102.26,
+    "rust_graded_build": 8.82,
+    "rust_eval": 0.9,
     "nf": 400,
     "laplace_unknowns": [
      75696,
      10454
     ],
-    "python": 1279.2
+    "python": 1168.0
    }
   },
   "B_s8_L1L3_stub_d300": {
@@ -643,7 +643,7 @@
    "rust_graded": {
     "dS21_max_db": 1.254,
     "dS21_mean_db": 0.347,
-    "dphase_max_deg": 5.64,
+    "dphase_max_deg": 4.46,
     "notch_ghz": 21.3,
     "tdr_err_pct": [
      3.58,
@@ -660,21 +660,21 @@
    },
    "parity_rust_graded": {
     "dS21_max_db": 1.3174,
-    "dS21_lin_max": 0.5047,
+    "dS21_lin_max": 0.2465,
     "dS11_max": 0.1655,
     "notch_shift_pct": 0.0,
-    "dphase21_max_deg": 35.568
+    "dphase21_max_deg": 21.139
    },
    "time_ms": {
-    "rust_build": 117.46,
-    "rust_graded_build": 10.01,
-    "rust_eval": 1.16,
+    "rust_build": 95.99,
+    "rust_graded_build": 8.58,
+    "rust_eval": 0.94,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1313.1
+    "python": 1280.3
    }
   },
   "B_s8_L1L8_d200": {
@@ -725,15 +725,15 @@
     "dphase21_max_deg": 7.917
    },
    "time_ms": {
-    "rust_build": 105.35,
-    "rust_graded_build": 10.2,
-    "rust_eval": 1.15,
+    "rust_build": 87.52,
+    "rust_graded_build": 8.51,
+    "rust_eval": 0.95,
     "nf": 400,
     "laplace_unknowns": [
      75696,
      10454
     ],
-    "python": 1066.7
+    "python": 1042.1
    }
   },
   "B_s8_L1L8_d300": {
@@ -784,15 +784,15 @@
     "dphase21_max_deg": 10.559
    },
    "time_ms": {
-    "rust_build": 115.81,
-    "rust_graded_build": 9.98,
-    "rust_eval": 1.1,
+    "rust_build": 108.62,
+    "rust_graded_build": 10.56,
+    "rust_eval": 1.17,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1247.6
+    "python": 1231.7
    }
   },
   "B_ts6_L1L3_stub": {
@@ -820,7 +820,7 @@
    "rust_graded": {
     "dS21_max_db": 1.959,
     "dS21_mean_db": 0.559,
-    "dphase_max_deg": 7.3,
+    "dphase_max_deg": 2.94,
     "notch_ghz": 24.9,
     "tdr_err_pct": [
      9.13,
@@ -836,22 +836,22 @@
     "dphase21_max_deg": 13.275
    },
    "parity_rust_graded": {
-    "dS21_max_db": 1.7086,
-    "dS21_lin_max": 0.5794,
+    "dS21_max_db": 1.7087,
+    "dS21_lin_max": 0.2918,
     "dS11_max": 0.0669,
     "notch_shift_pct": 0.4,
-    "dphase21_max_deg": 39.851
+    "dphase21_max_deg": 25.847
    },
    "time_ms": {
-    "rust_build": 117.7,
-    "rust_graded_build": 9.07,
-    "rust_eval": 0.72,
+    "rust_build": 112.81,
+    "rust_graded_build": 9.73,
+    "rust_eval": 0.77,
     "nf": 400,
     "laplace_unknowns": [
      69163,
      8676
     ],
-    "python": 1150.0
+    "python": 1080.0
    }
   },
   "B_ts6_L1L6": {
@@ -902,15 +902,15 @@
     "dphase21_max_deg": 4.263
    },
    "time_ms": {
-    "rust_build": 109.16,
-    "rust_graded_build": 9.7,
-    "rust_eval": 0.74,
+    "rust_build": 109.6,
+    "rust_graded_build": 9.36,
+    "rust_eval": 0.79,
     "nf": 400,
     "laplace_unknowns": [
      69163,
      8676
     ],
-    "python": 1085.2
+    "python": 1148.0
    }
   },
   "C_s8_ap1000": {
@@ -961,15 +961,15 @@
     "dphase21_max_deg": 7.483
    },
    "time_ms": {
-    "rust_build": 139.49,
-    "rust_graded_build": 20.47,
-    "rust_eval": 1.86,
+    "rust_build": 101.22,
+    "rust_graded_build": 10.54,
+    "rust_eval": 1.11,
     "nf": 400,
     "laplace_unknowns": [
      74951,
      10848
     ],
-    "python": 1210.3
+    "python": 1157.2
    }
   },
   "C_s8_ap1200": {
@@ -1020,15 +1020,15 @@
     "dphase21_max_deg": 7.066
    },
    "time_ms": {
-    "rust_build": 120.43,
-    "rust_graded_build": 11.82,
+    "rust_build": 103.51,
+    "rust_graded_build": 11.32,
     "rust_eval": 1.15,
     "nf": 400,
     "laplace_unknowns": [
      74991,
      11150
     ],
-    "python": 1159.8
+    "python": 1236.6
    }
   },
   "C_s8_ap600": {
@@ -1079,15 +1079,15 @@
     "dphase21_max_deg": 19.496
    },
    "time_ms": {
-    "rust_build": 109.03,
-    "rust_graded_build": 9.2,
-    "rust_eval": 1.2,
+    "rust_build": 139.08,
+    "rust_graded_build": 10.38,
+    "rust_eval": 1.21,
     "nf": 400,
     "laplace_unknowns": [
      74871,
      8903
     ],
-    "python": 1301.4
+    "python": 1243.3
    }
   },
   "C_s8_ap800": {
@@ -1138,15 +1138,15 @@
     "dphase21_max_deg": 10.559
    },
    "time_ms": {
-    "rust_build": 104.29,
-    "rust_graded_build": 11.03,
-    "rust_eval": 1.24,
+    "rust_build": 103.67,
+    "rust_graded_build": 10.46,
+    "rust_eval": 1.14,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1296.8
+    "python": 1189.6
    }
   },
   "C_s8_mixed": {
@@ -1197,15 +1197,15 @@
     "dphase21_max_deg": 7.293
    },
    "time_ms": {
-    "rust_build": 104.26,
-    "rust_graded_build": 14.14,
-    "rust_eval": 1.44,
+    "rust_build": 100.13,
+    "rust_graded_build": 15.36,
+    "rust_eval": 1.56,
     "nf": 400,
     "laplace_unknowns": [
      74951,
      12312
     ],
-    "python": 1184.5
+    "python": 1129.2
    }
   },
   "C_s8_nfp": {
@@ -1256,15 +1256,15 @@
     "dphase21_max_deg": 9.563
    },
    "time_ms": {
-    "rust_build": 105.28,
-    "rust_graded_build": 10.47,
-    "rust_eval": 1.16,
+    "rust_build": 137.92,
+    "rust_graded_build": 13.67,
+    "rust_eval": 1.49,
     "nf": 400,
     "laplace_unknowns": [
      74871,
      10643
     ],
-    "python": 1128.4
+    "python": 1260.4
    }
   },
   "C_s8_nonfp": {
@@ -1315,15 +1315,15 @@
     "dphase21_max_deg": 8.584
    },
    "time_ms": {
-    "rust_build": 106.97,
-    "rust_graded_build": 10.29,
-    "rust_eval": 1.13,
+    "rust_build": 112.57,
+    "rust_graded_build": 11.34,
+    "rust_eval": 1.2,
     "nf": 400,
     "laplace_unknowns": [
      74931,
      10695
     ],
-    "python": 1101.0
+    "python": 1159.1
    }
   },
   "C_s8_offset": {
@@ -1374,15 +1374,15 @@
     "dphase21_max_deg": 15.608
    },
    "time_ms": {
-    "rust_build": 104.28,
-    "rust_graded_build": 11.28,
-    "rust_eval": 1.08,
+    "rust_build": 120.72,
+    "rust_graded_build": 11.5,
+    "rust_eval": 1.27,
     "nf": 400,
     "laplace_unknowns": [
      74891,
      10546
     ],
-    "python": 1163.5
+    "python": 1193.6
    }
   },
   "D_s8_stitch_0p5": {
@@ -1433,15 +1433,15 @@
     "dphase21_max_deg": 12.366
    },
    "time_ms": {
-    "rust_build": 104.34,
-    "rust_graded_build": 10.02,
-    "rust_eval": 0.43,
+    "rust_build": 106.32,
+    "rust_graded_build": 11.61,
+    "rust_eval": 0.39,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1133.7
+    "python": 1067.3
    }
   },
   "D_s8_stitch_1p0": {
@@ -1492,15 +1492,15 @@
     "dphase21_max_deg": 12.847
    },
    "time_ms": {
-    "rust_build": 105.7,
-    "rust_graded_build": 10.78,
-    "rust_eval": 0.43,
+    "rust_build": 103.94,
+    "rust_graded_build": 10.4,
+    "rust_eval": 0.44,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1168.3
+    "python": 1045.5
    }
   },
   "D_s8_stitch_2p0": {
@@ -1551,15 +1551,15 @@
     "dphase21_max_deg": 13.802
    },
    "time_ms": {
-    "rust_build": 107.61,
-    "rust_graded_build": 10.77,
+    "rust_build": 104.22,
+    "rust_graded_build": 10.91,
     "rust_eval": 0.44,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1121.6
+    "python": 1179.4
    }
   },
   "D_s8_stitch_5p0": {
@@ -1610,15 +1610,15 @@
     "dphase21_max_deg": 13.618
    },
    "time_ms": {
-    "rust_build": 106.61,
-    "rust_graded_build": 10.08,
+    "rust_build": 106.03,
+    "rust_graded_build": 10.57,
     "rust_eval": 0.45,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1198.3
+    "python": 1174.5
    }
   },
   "D_s8_stitch_none": {
@@ -1669,15 +1669,15 @@
     "dphase21_max_deg": 13.562
    },
    "time_ms": {
-    "rust_build": 134.33,
-    "rust_graded_build": 10.36,
-    "rust_eval": 0.25,
+    "rust_build": 109.57,
+    "rust_graded_build": 10.51,
+    "rust_eval": 0.29,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1066.5
+    "python": 1060.8
    }
   },
   "E_s8_L1L3_p1000_oval_g2": {
@@ -1697,7 +1697,7 @@
    "rust_graded": {
     "dS21_max_db": 0.54,
     "dS21_mean_db": 0.294,
-    "dphase_max_deg": 4.51,
+    "dphase_max_deg": 7.3,
     "notch_ghz": 24.5
    },
    "notch_3d_ghz": 24.3,
@@ -1710,21 +1710,21 @@
    },
    "parity_rust_graded": {
     "dS21_max_db": 9.1685,
-    "dS21_lin_max": 0.4633,
+    "dS21_lin_max": 0.1843,
     "dS11_max": 0.2413,
     "notch_shift_pct": 3.38,
-    "dphase21_max_deg": 120.543
+    "dphase21_max_deg": 108.925
    },
    "time_ms": {
-    "rust_build": 105.74,
-    "rust_graded_build": 11.16,
-    "rust_eval": 0.77,
+    "rust_build": 109.53,
+    "rust_graded_build": 11.22,
+    "rust_eval": 1.17,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10695
     ],
-    "python": 1242.2
+    "python": 1169.0
    }
   },
   "E_s8_L1L3_p1000_round_g2": {
@@ -1744,7 +1744,7 @@
    "rust_graded": {
     "dS21_max_db": 0.679,
     "dS21_mean_db": 0.381,
-    "dphase_max_deg": 6.58,
+    "dphase_max_deg": 4.1,
     "notch_ghz": 23.8
    },
    "notch_3d_ghz": 23.8,
@@ -1757,21 +1757,21 @@
    },
    "parity_rust_graded": {
     "dS21_max_db": 1.6574,
-    "dS21_lin_max": 0.5318,
+    "dS21_lin_max": 0.2589,
     "dS11_max": 0.1787,
     "notch_shift_pct": 0.42,
-    "dphase21_max_deg": 37.099
+    "dphase21_max_deg": 24.87
    },
    "time_ms": {
-    "rust_build": 100.39,
-    "rust_graded_build": 10.53,
-    "rust_eval": 0.84,
+    "rust_build": 129.01,
+    "rust_graded_build": 12.49,
+    "rust_eval": 1.02,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1191.8
+    "python": 1351.9
    }
   },
   "E_s8_L1L3_p1200_round_g2": {
@@ -1791,7 +1791,7 @@
    "rust_graded": {
     "dS21_max_db": 0.72,
     "dS21_mean_db": 0.4,
-    "dphase_max_deg": 6.34,
+    "dphase_max_deg": 4.6,
     "notch_ghz": 22.8
    },
    "notch_3d_ghz": 22.9,
@@ -1803,22 +1803,22 @@
     "dphase21_max_deg": 8.963
    },
    "parity_rust_graded": {
-    "dS21_max_db": 1.2182,
-    "dS21_lin_max": 0.504,
+    "dS21_max_db": 1.2183,
+    "dS21_lin_max": 0.245,
     "dS11_max": 0.1743,
     "notch_shift_pct": 0.44,
-    "dphase21_max_deg": 37.086
+    "dphase21_max_deg": 21.655
    },
    "time_ms": {
-    "rust_build": 108.62,
-    "rust_graded_build": 11.7,
-    "rust_eval": 0.9,
+    "rust_build": 90.05,
+    "rust_graded_build": 8.53,
+    "rust_eval": 0.67,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1175.3
+    "python": 1203.9
    }
   },
   "E_s8_L1L3_p800_round_g2": {
@@ -1838,7 +1838,7 @@
    "rust_graded": {
     "dS21_max_db": 0.455,
     "dS21_mean_db": 0.262,
-    "dphase_max_deg": 6.3,
+    "dphase_max_deg": 3.71,
     "notch_ghz": 25.2
    },
    "notch_3d_ghz": 24.8,
@@ -1851,21 +1851,21 @@
    },
    "parity_rust_graded": {
     "dS21_max_db": 2.4155,
-    "dS21_lin_max": 0.5586,
+    "dS21_lin_max": 0.2689,
     "dS11_max": 0.1789,
     "notch_shift_pct": 0.4,
-    "dphase21_max_deg": 42.312
+    "dphase21_max_deg": 30.116
    },
    "time_ms": {
-    "rust_build": 137.88,
-    "rust_graded_build": 9.86,
-    "rust_eval": 0.77,
+    "rust_build": 87.09,
+    "rust_graded_build": 8.67,
+    "rust_eval": 0.66,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1186.2
+    "python": 1122.3
    }
   },
   "E_s8_L1L8_p1000_oval_g0": {
@@ -1904,15 +1904,15 @@
     "dphase21_max_deg": 5.218
    },
    "time_ms": {
-    "rust_build": 135.17,
-    "rust_graded_build": 13.38,
-    "rust_eval": 0.41,
+    "rust_build": 90.96,
+    "rust_graded_build": 10.13,
+    "rust_eval": 0.31,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10695
     ],
-    "python": 1132.2
+    "python": 1129.4
    }
   },
   "E_s8_L1L8_p1000_oval_g2": {
@@ -1951,15 +1951,15 @@
     "dphase21_max_deg": 5.16
    },
    "time_ms": {
-    "rust_build": 104.14,
-    "rust_graded_build": 11.81,
-    "rust_eval": 1.06,
+    "rust_build": 90.35,
+    "rust_graded_build": 9.09,
+    "rust_eval": 0.67,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10695
     ],
-    "python": 1216.1
+    "python": 1206.2
    }
   },
   "E_s8_L1L8_p1000_oval_g4": {
@@ -1998,15 +1998,15 @@
     "dphase21_max_deg": 6.386
    },
    "time_ms": {
-    "rust_build": 115.46,
-    "rust_graded_build": 11.27,
-    "rust_eval": 1.47,
+    "rust_build": 89.84,
+    "rust_graded_build": 9.14,
+    "rust_eval": 1.26,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10695
     ],
-    "python": 1265.5
+    "python": 1270.0
    }
   },
   "E_s8_L1L8_p1000_round_g0": {
@@ -2045,15 +2045,15 @@
     "dphase21_max_deg": 12.295
    },
    "time_ms": {
-    "rust_build": 111.91,
-    "rust_graded_build": 11.19,
-    "rust_eval": 0.4,
+    "rust_build": 89.83,
+    "rust_graded_build": 8.98,
+    "rust_eval": 0.29,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1161.0
+    "python": 1067.4
    }
   },
   "E_s8_L1L8_p1000_round_g2": {
@@ -2092,15 +2092,15 @@
     "dphase21_max_deg": 12.287
    },
    "time_ms": {
-    "rust_build": 108.09,
-    "rust_graded_build": 10.88,
-    "rust_eval": 0.83,
+    "rust_build": 90.17,
+    "rust_graded_build": 8.98,
+    "rust_eval": 0.63,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1199.9
+    "python": 1163.1
    }
   },
   "E_s8_L1L8_p1000_round_g4": {
@@ -2139,15 +2139,15 @@
     "dphase21_max_deg": 13.163
    },
    "time_ms": {
-    "rust_build": 104.48,
-    "rust_graded_build": 10.26,
-    "rust_eval": 1.49,
+    "rust_build": 88.53,
+    "rust_graded_build": 8.92,
+    "rust_eval": 1.23,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1317.7
+    "python": 1359.1
    }
   },
   "E_s8_L1L8_p1200_round_g2": {
@@ -2186,15 +2186,15 @@
     "dphase21_max_deg": 11.307
    },
    "time_ms": {
-    "rust_build": 103.86,
-    "rust_graded_build": 10.34,
-    "rust_eval": 0.86,
+    "rust_build": 91.35,
+    "rust_graded_build": 8.82,
+    "rust_eval": 0.68,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1164.1
+    "python": 1051.7
    }
   },
   "E_s8_L1L8_p800_round_g2": {
@@ -2233,15 +2233,15 @@
     "dphase21_max_deg": 12.384
    },
    "time_ms": {
-    "rust_build": 103.02,
-    "rust_graded_build": 9.16,
-    "rust_eval": 0.74,
+    "rust_build": 88.82,
+    "rust_graded_build": 8.94,
+    "rust_eval": 0.66,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1149.3
+    "python": 1181.6
    }
   },
   "G_pp100": {
@@ -2250,10 +2250,10 @@
     "dZ_rel_max": 1.7486885309924969e-06
    },
    "time_ms": {
-    "rust_eval": 23.98,
+    "rust_eval": 21.43,
     "nf": 600,
     "modes": 9600,
-    "python": 113.2
+    "python": 115.3
    }
   },
   "G_pp200": {
@@ -2262,10 +2262,10 @@
     "dZ_rel_max": 2.141113888581247e-06
    },
    "time_ms": {
-    "rust_eval": 22.97,
+    "rust_eval": 21.0,
     "nf": 600,
     "modes": 9600,
-    "python": 111.0
+    "python": 112.3
    }
   },
   "H_s8_cap_10": {
@@ -2273,7 +2273,7 @@
    "L_rust_nH": 0.6255,
    "L_python_nH": 0.626,
    "time_ms": {
-    "rust": 0.503
+    "rust": 0.417
    }
   },
   "H_s8_cap_2": {
@@ -2281,7 +2281,7 @@
    "L_rust_nH": 0.2871,
    "L_python_nH": 0.287,
    "time_ms": {
-    "rust": 0.432
+    "rust": 0.409
    }
   },
   "H_s8_cap_20": {
@@ -2289,7 +2289,7 @@
    "L_rust_nH": 1.0455,
    "L_python_nH": 1.045,
    "time_ms": {
-    "rust": 0.404
+    "rust": 0.401
    }
   },
   "H_s8_cap_5": {
@@ -2297,7 +2297,7 @@
    "L_rust_nH": 0.4154,
    "L_python_nH": 0.415,
    "time_ms": {
-    "rust": 0.415
+    "rust": 0.382
    }
   },
   "X_s8x2_L1L3_bd_d200": {
@@ -2348,15 +2348,15 @@
     "dphase21_max_deg": 10.722
    },
    "time_ms": {
-    "rust_build": 120.64,
-    "rust_graded_build": 14.72,
-    "rust_eval": 0.08,
+    "rust_build": 104.61,
+    "rust_graded_build": 16.02,
+    "rust_eval": 0.1,
     "nf": 400,
     "laplace_unknowns": [
      77172,
      11675
     ],
-    "python": 1114.2
+    "python": 978.8
    }
   },
   "X_s8x4_L1L3_bd_d200": {
@@ -2384,7 +2384,7 @@
    "rust_graded": {
     "dS21_max_db": 0.304,
     "dS21_mean_db": 0.127,
-    "dphase_max_deg": 9.06,
+    "dphase_max_deg": 0.91,
     "notch_ghz": null,
     "tdr_err_pct": [
      10.69,
@@ -2400,22 +2400,22 @@
     "dphase21_max_deg": 0.023
    },
    "parity_rust_graded": {
-    "dS21_max_db": 0.0929,
-    "dS21_lin_max": 0.4405,
+    "dS21_max_db": 0.0927,
+    "dS21_lin_max": 0.2028,
     "dS11_max": 0.0228,
     "notch_shift_pct": null,
-    "dphase21_max_deg": 29.951
+    "dphase21_max_deg": 13.655
    },
    "time_ms": {
-    "rust_build": 124.09,
-    "rust_graded_build": 15.39,
-    "rust_eval": 0.29,
+    "rust_build": 147.68,
+    "rust_graded_build": 12.8,
+    "rust_eval": 0.35,
     "nf": 400,
     "laplace_unknowns": [
      77172,
      11675
     ],
-    "python": 1178.2
+    "python": 1059.2
    }
   }
  }

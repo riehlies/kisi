@@ -268,7 +268,7 @@
      "note": null,
      "red_below": 0.4,
      "status": "green",
-     "value": 0.994689
+     "value": 0.995847
     },
     {
      "hi": null,
@@ -286,7 +286,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.106755
+     "value": -0.106487
     },
     {
      "hi": null,
@@ -295,7 +295,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 24.9535
+     "value": 25.1681
     },
     {
      "hi": null,
@@ -304,7 +304,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 19.2409
+     "value": 19.2283
     }
    ],
    "diff": false,
@@ -320,13 +320,13 @@
    "length_mm": 21.4402,
    "metrics": {
     "error": null,
-    "eye_h": 0.994689,
+    "eye_h": 0.995847,
     "eye_w_ui": 0.75,
-    "il_nyq_db": -0.106755,
-    "rl_db": 24.9535,
+    "il_nyq_db": -0.106487,
+    "rl_db": 25.1681,
     "skew_ps": null,
     "skew_uncertain": false,
-    "stub_ghz": 19.2409,
+    "stub_ghz": 19.2283,
     "z_max": 170.969,
     "z_mean": 57.2208,
     "z_min": 16.0869
@@ -1961,7 +1961,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -3.48908
+     "value": -3.5322
     },
     {
      "hi": null,
@@ -1970,7 +1970,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 3.98754
+     "value": 3.91841
     },
     {
      "hi": 5.0,
@@ -1979,7 +1979,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 11.791
+     "value": 11.7898
     },
     {
      "hi": null,
@@ -1988,7 +1988,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 61.6596
+     "value": 61.6469
     }
    ],
    "diff": true,
@@ -1999,7 +1999,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.454412,
+    "height": 0.443077,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.78125
    },
@@ -2012,16 +2012,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -3.48908,
-    "rl_db": 3.98754,
-    "skew_ps": 11.791,
+    "il_nyq_db": -3.5322,
+    "rl_db": 3.91841,
+    "skew_ps": 11.7898,
     "skew_uncertain": true,
-    "stub_ghz": 61.6596,
+    "stub_ghz": 61.6469,
     "z_max": 372.455,
     "z_mean": 89.7316,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -11.0299,
+   "mode_conversion_db": -11.1828,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET0_P",
@@ -2078,7 +2078,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.17986
+     "value": -2.28173
     },
     {
      "hi": null,
@@ -2087,7 +2087,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 5.946
+     "value": 5.8482
     },
     {
      "hi": 5.0,
@@ -2096,7 +2096,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 7.79311
+     "value": 7.79049
     },
     {
      "hi": null,
@@ -2116,7 +2116,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.47135,
+    "height": 0.468305,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.78125
    },
@@ -2129,16 +2129,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.17986,
-    "rl_db": 5.946,
-    "skew_ps": 7.79311,
+    "il_nyq_db": -2.28173,
+    "rl_db": 5.8482,
+    "skew_ps": 7.79049,
     "skew_uncertain": true,
     "stub_ghz": 48.25,
     "z_max": 120.144,
     "z_mean": 89.3894,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -11.9076,
+   "mode_conversion_db": -12.0321,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET1_P",
@@ -2195,7 +2195,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.66641
+     "value": -2.67821
     },
     {
      "hi": null,
@@ -2204,7 +2204,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 6.37158
+     "value": 6.42927
     },
     {
      "hi": 5.0,
@@ -2213,7 +2213,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 2.63936
+     "value": 2.63389
     },
     {
      "hi": null,
@@ -2222,7 +2222,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 48.3893
+     "value": 48.25
     }
    ],
    "diff": true,
@@ -2233,7 +2233,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.538475,
+    "height": 0.556616,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.8125
    },
@@ -2246,16 +2246,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.66641,
-    "rl_db": 6.37158,
-    "skew_ps": 2.63936,
+    "il_nyq_db": -2.67821,
+    "rl_db": 6.42927,
+    "skew_ps": 2.63389,
     "skew_uncertain": true,
-    "stub_ghz": 48.3893,
+    "stub_ghz": 48.25,
     "z_max": 136.364,
     "z_mean": 90.5867,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -21.4663,
+   "mode_conversion_db": -21.4759,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET2_P",
@@ -2312,7 +2312,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -2.24465
+     "value": -2.32004
     },
     {
      "hi": null,
@@ -2321,7 +2321,7 @@
      "note": null,
      "red_below": null,
      "status": "yellow",
-     "value": 4.16593
+     "value": 4.04254
     },
     {
      "hi": 5.0,
@@ -2330,7 +2330,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 7.82433
+     "value": 7.82243
     },
     {
      "hi": null,
@@ -2350,7 +2350,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.551312,
+    "height": 0.55996,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 0.75
    },
@@ -2363,16 +2363,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -2.24465,
-    "rl_db": 4.16593,
-    "skew_ps": 7.82433,
+    "il_nyq_db": -2.32004,
+    "rl_db": 4.04254,
+    "skew_ps": 7.82243,
     "skew_uncertain": true,
     "stub_ghz": 53.75,
     "z_max": 366.169,
     "z_mean": 90.7679,
     "z_min": 49.5698
    },
-   "mode_conversion_db": -16.3493,
+   "mode_conversion_db": -16.3938,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_PET3_P",
@@ -2429,7 +2429,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": -0.0488938
+     "value": -0.0488841
     },
     {
      "hi": null,
@@ -2438,7 +2438,7 @@
      "note": null,
      "red_below": null,
      "status": "green",
-     "value": 44.0199
+     "value": 44.7404
     },
     {
      "hi": 250.0,
@@ -2447,7 +2447,7 @@
      "note": "path branches or is split by components",
      "red_below": null,
      "status": "green",
-     "value": 5.51686
+     "value": 5.55624
     },
     {
      "hi": null,
@@ -2467,7 +2467,7 @@
    ],
    "eye_board_share": {
     "connector_end": "profile",
-    "height": 0.999516,
+    "height": 0.999532,
     "note": "eye of the board share with the connector end model (termination or driver at the connector); information, not judged",
     "width_ui": 1.0
    },
@@ -2480,16 +2480,16 @@
     "error": null,
     "eye_h": null,
     "eye_w_ui": null,
-    "il_nyq_db": -0.0488938,
-    "rl_db": 44.0199,
-    "skew_ps": 5.51686,
+    "il_nyq_db": -0.0488841,
+    "rl_db": 44.7404,
+    "skew_ps": 5.55624,
     "skew_uncertain": true,
     "stub_ghz": 20.439,
     "z_max": 115.903,
     "z_mean": 88.3306,
     "z_min": 47.2292
    },
-   "mode_conversion_db": -52.3225,
+   "mode_conversion_db": -52.2001,
    "model": "4-port",
    "nets": [
     "/TS-PCIe Components/PCIe_REFCLK_P",

@@ -18,7 +18,8 @@
 //! * stubs: the ladder beyond the entry and exit nodes ends open;
 //! * the trace over the antipad opening as a short microstrip over the next plane, and the
 //!   feed trace removed over max(pad radius, antipad radius) (the traces run to the via
-//!   centre in the layout and in the 2×thru fixtures).
+//!   centre in the layout and in the 2×thru fixtures); with the junction model (`ViaGeom::junction`)
+//!   a stripline feed is removed over `STRIP_TRIM` pad radii only.
 //!
 //! Pairs: the partner via is a third port of the plane-pair matrix; the odd mode uses
 //! (Z_PP + Z_NN)/2 − Z_PN (the even mode + Z_PN) and scales the barrel capacitance inside the
@@ -48,6 +49,11 @@ thread_local! {
 
 /// largest span between ladder nodes inside a plane pair (mm)
 const SUB: f64 = 0.2;
+
+/// junction model: a stripline feed (planes above and below) is kept up to this many pad radii from
+/// the via centre, the rest of the line removed for the ladder (fitted on the delay of the 10 stripline
+/// exits against the refined 3D references, the optimum per case 0.45–0.78; TESTS.md section 18)
+const STRIP_TRIM: f64 = 2.0 / 3.0;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Slab {
@@ -195,7 +201,8 @@ pub struct ViaGeom {
     pub f_loss: Option<f64>,
     /// junction model fitted to the 3D references (default): series inductance μ0/(2π)·pad
     /// radius where each trace enters the via, the trace over the antipad scaled from its own
-    /// line, striplines kept up to the via centre. false: the Python prototype (via_pbm.py).
+    /// line, striplines kept up to `STRIP_TRIM` pad radii from the via centre. false: the Python
+    /// prototype (via_pbm.py).
     #[serde(default = "yes")]
     pub junction: bool,
     /// conductivity of barrel and planes (S/m) for their skin-effect loss; None: lossless metal
@@ -1592,9 +1599,10 @@ impl PbmVia {
                 l_port[side] = MU0 / (2.0 * PI) * g.pad_r * 1e-3;
             }
             if g.junction && strip {
-                // a stripline keeps its line up to the via centre: between two planes the
-                // openings change it little (3D: removing it misses ~3 ps on L1→L3)
-                feed_cut[side] = (fd.zc, fd.eeff, fd.dropped * 1e-3);
+                // a stripline keeps its line up to STRIP_TRIM pad radii from the via centre: between
+                // two planes the openings change it little (fitted to the refined 3D references,
+                // TESTS.md section 18)
+                feed_cut[side] = (fd.zc, fd.eeff, (fd.dropped - STRIP_TRIM * g.pad_r) * 1e-3);
                 continue;
             }
             if fd.antipad_line && hb > g.pad_r {
@@ -2577,6 +2585,21 @@ mod tests {
         // quarter wave of ≈ 1.0 mm at εr 4.2 → ≈ 37 GHz; the plate capacitances lower it
         assert!(f > 15e9 && f < 30e9, "{f}");
         assert!(m.abcd(f).s_params(50.0).1.abs() < 0.5);
+    }
+
+    #[test]
+    fn stripline_feed_trimmed() {
+        // exit on an inner layer between the planes at 1.4 and 1.0: the stripline is kept up to
+        // STRIP_TRIM pad radii from the via centre (less what the caller already left out), the
+        // microstrip entry removed up to the antipad edge
+        let mut g = sample();
+        g.planes.push(Plane { z: 1.0, antipad: Some(0.4) });
+        g.feeds[1] = Feed { z: 1.2, z_ref: 1.0, w: 0.15, zc: 50.0, eeff: 4.2, dropped: 0.05, antipad_line: true };
+        let m = PbmVia::build(&g, Mode::Single, Grid::default());
+        let (_, ap, cut) = m.junctions();
+        assert!(ap[1].is_none());
+        assert!((cut[1].2 - (0.05 - STRIP_TRIM * 0.25) * 1e-3).abs() < 1e-12, "{:?}", cut[1]);
+        assert!((cut[0].2 + 0.4e-3).abs() < 1e-12, "{:?}", cut[0]);
     }
 
     #[test]

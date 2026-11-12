@@ -1057,3 +1057,101 @@ code of main at 6f2578e (before the trim below), so the reference page and `junc
 the ladder as kisi computes it. Against the refined references: kisi's ladder (graded grid) TDR error median / p90
 1.07 / 4.27 → 1.20 / 4.28 %, max Δ|S21| median single / pairs 0.093 / 0.111 → 0.091 / 0.107 dB; for the parity row of
 section 5 see there.
+The board vias (`board_vias.py ladder --stored-geom`, below), the plane-cavity cases and the return-group cases
+(`board_resonances.py model`, `board_returns.py model`) were regenerated the same way first: their tables move by at
+most 0.02 dB and 0.2 points of TDR.
+
+### The trim
+Section 17 left the ladder 1.26 ps slow (median) on the stripline exits against the refined references and proposed
+to remove part of the stripline feed. The model change (`via_pbm::STRIP_TRIM`): with the junction model a stripline feed
+(planes above and below) is kept up to 2/3 of the pad radius from the via centre instead of up to the centre, i.e.
+`feed_cut = (fd.zc, fd.eeff, (fd.dropped − 2/3 · pad_r) · 1e-3)`; the junction inductance stays (k = 1). Microstrip
+feeds, through vias with microstrip on both sides and the coaxial fallback do not change.
+
+**The fit.** The delay that removes the stripline exits' error, per case (`junction_fit.py`'s matched-line removal
+on the ladder before the change, 5–20 GHz): 0.45–0.78 pad radii, median 0.67 (B L1→L3 bd 0.78 / 0.78, stub 0.45 /
+0.53, B_ts6_L1L3_stub 0.66, X_s8x4 0.74, E L1→L3 0.45 / 0.64–0.67). A fixed length fits as well (0.19 mm, the B and E
+cases have pad radii 0.25 / 0.30 mm); the pad radius was kept because the junction inductance scales with it too.
+The trim in the model itself (`KISI_STRIP_TRIM` during the scan, not kept), Δτ median ladder − 3D on the 6 single
+stripline exits / the 4 L1→L3 pairs (ps; the microstrip-only vias show each solver's own offset):
+
+| trim (pad radii) | 0 (main) | 0.5 | 0.6 | **2/3** | 0.75 | 1.0 | microstrip-only vias |
+|---|---|---|---|---|---|---|---|
+| kisi-fdtd (refined) | +1.26 / +1.30 | +0.34 / +0.30 | +0.15 / +0.10 | **+0.02 / −0.05** | −0.14 / −0.21 | −0.61 / −0.71 | −0.05 |
+| CST (finest mesh) | +1.15 / +1.11 | +0.30 / +0.11 | +0.12 / −0.09 | **−0.02 / −0.23** | −0.17 / −0.39 | −0.66 / −0.89 | −0.14 |
+| openEMS (fine) | +1.03 / +0.81 | +0.08 / −0.19 | −0.11 / −0.39 | **−0.24 / −0.54** | −0.39 / −0.70 | −0.88 / −1.20 | −0.44 |
+| kisi's channel, \|Δτ\| median single / pairs (`kisi_models.json`) | 0.28 / 0.29 | 0.23 / 0.20 | 0.22 / 0.14 | **0.22 / 0.20** | 0.22 / 0.23 | – | – |
+
+Against kisi-fdtd and CST 2/3 is the zero crossing; openEMS, slow by its staircase offset (−0.44 ps on the
+microstrip-only vias), would take 0.5. 0.75 (section 17's proposal) overshoots by 0.14–0.21 ps.
+
+### Before and after
+The ladder alone (`kisi-validate models`, graded grid, junction model) against the de-embedded 3D result of each
+solver (each with its own 2×thru; pairs Sdd), median / p90 / max of the case values; TDR: minimum and maximum error
+pooled (25 ps, 80 ps window), Δ\|S21\| and Δ\|S11\| (linear) to 20 GHz, \|Δτ\| from the phase 5–20 GHz:
+
+| set (cases) | reference | TDR error % | max Δ\|S21\| dB | max Δ\|S11\| | \|Δτ\| ps, before → after |
+|---|---|---|---|---|---|
+| single vias (29) | kisi-fdtd | 1.20 / 4.28 / 10.7 | 0.091 / 0.85 / 1.96 | 0.050 / 0.128 / 0.174 | 0.17 / 1.24 / 1.56 → 0.12 / 0.39 / 0.52 |
+| | CST | 3.03 / 6.12 / 10.2 | 0.126 / 0.79 / 1.50 | 0.092 / 0.150 / 0.185 | 0.31 / 1.12 / 1.40 → 0.23 / 0.48 / 0.72 |
+| | openEMS | 1.02 / 4.14 / 10.2 | 0.068 / 1.10 / 2.94 | 0.039 / 0.112 / 0.167 | 0.45 / 1.05 / 1.29 → 0.41 / 0.64 / 1.09 |
+| pairs (12) | kisi-fdtd | 7.83 / 9.55 / 9.79 | 0.107 / 0.67 / 0.72 | 0.053 / 0.059 / 0.060 | 0.34 / 1.31 / 1.35 → 0.04 / 0.38 / 0.44 |
+| | CST | 7.55 / 9.31 / 10.8 | 0.102 / 0.46 / 0.52 | 0.058 / 0.068 / 0.073 | 0.42 / 1.12 / 1.17 → 0.22 / 0.51 / 0.58 |
+| | openEMS | 7.43 / 8.93 / 9.71 | 0.099 / 1.33 / 1.66 | 0.052 / 0.054 / 0.057 | 0.60 / 0.83 / 0.85 → 0.50 / 0.72 / 0.87 |
+| stripline exits, single (6) | kisi-fdtd | 3.15 / 9.06 / 10.7 | 0.55 / 1.61 / 1.96 | 0.124 / 0.156 / 0.174 | 1.26 / 1.45 / 1.56 → 0.20 / 0.32 / 0.36 |
+| stripline exits, pairs (4) | kisi-fdtd | 5.83 / 6.96 / 7.08 | 0.61 / 0.71 / 0.72 | 0.053 / 0.054 / 0.054 | 1.30 / 1.34 / 1.35 → 0.04 / 0.33 / 0.44 |
+
+- The TDR, \|S21\| and \|S11\| columns do not move: the feeds of the via cases are 50 Ω lines and the ports sit in 50 Ω,
+  so the trim only moves the phase. The L1→L3 exits' TDR minimum stays 7–11 % low against kisi-fdtd (−8.1 % median;
+  CST −1.6 %: CST's de-embedded TDR reads about 3 % higher on every group, single vias +2.2 % median against −1.4 % for
+  kisi-fdtd) – the exit pad between two close planes, which
+  converged slowly in 3D (section 17), is too capacitive in the ladder; a feed length cannot fix that.
+- The pairs' TDR error (7–10 %, all L1→L8 pairs too, in all three solvers) is the pair model's, not the junction's.
+
+**kisi's channel, via alone** (`compare_kisi.py`, `results/kisi_models.json`; `via_dtau_ps` is new in its rows):
+
+| | before | after |
+|---|---|---|
+| single vias (29): TDR error median / p90 / max | 2.46 / 5.64 / 20.7 % | 2.46 / 5.53 / 20.7 % |
+| single vias: max Δ\|S21\| median / p90 | 0.168 / 0.818 dB | 0.168 / 0.818 dB |
+| single vias: \|Δτ\| median / p90 | 0.28 / 1.14 ps | 0.22 / 0.50 ps |
+| stripline exits (single, L1→L3/L6 without X_s8x2): TDR median / p90, \|Δτ\| median | 3.50 / 8.11 %, 1.08 ps | 3.38 / 7.99 %, 0.08 ps |
+| pairs (12): Zdiff error median / p90 | 10.89 / 13.71 % | 10.95 / 13.71 % |
+| pairs: max ΔSdd21 median / phase median | 0.161 dB / 1.8° | 0.161 dB / 1.8° |
+| pairs: \|Δτ\| median / p90 | 0.29 / 1.22 ps | 0.19 / 0.33 ps |
+| stub notch B_s8_L1L3_stub_d200 / _d300 | +0.9 / −1.4 % | +0.9 / −1.4 % |
+
+**Board vias** (`board_vias.py ladder --stored-geom`, `results/board_vias.json`; the ladder with the 3D loss model
+against kisi-fdtd de-embedded):
+
+| case | group delay 5–15 GHz ladder (3D) ps, before → after | Δτ from the phase 5–20 GHz (as above) ps | max Δ\|S21\| to 20 GHz dB | TDR min / max error % | max phase to 20 GHz |
+|---|---|---|---|---|---|
+| BV_ts_m2_per0 (pair F → In3) | 10.58 → 9.73 (9.81) | +0.44 → −0.43 | 0.173 → 0.192 | +5.3 / +0.2 → +6.2 / +0.4 | 4.4° → 2.0° |
+| BV_vna_rf_hblb1 (F → In2, stub) | 12.65 → 11.48 (11.80) | +0.71 → −0.47 | 2.197 → 2.197 | +1.7 / +3.3 → +1.7 / +3.3 | 4.6° → 5.9° |
+| BV_ts_refinout2 (F → B, microstrip) | 14.38 (14.10), unchanged | +0.12 | 0.044 | −0.4 / +1.4 | 3.6° |
+
+- The board vias were not used for the fit. Their group delay error drops from +0.77 / +0.85 ps to −0.08 / −0.32 ps;
+  the phase delay (the measure of the fit) overshoots: +0.44 / +0.71 → −0.43 / −0.47 ps, no gain on the M.2 pair. Both
+  references are not fully converged (section 17: on the two board vias checked, BV_vna_clk_w5 and the M.2 in2gnd pair,
+  the refined result is still 0.23 / 0.92 ps slower than the next finer mesh), which would move the 3D result faster, towards the trimmed ladder. The
+  M.2 pair's feeds are not 100 Ω lines (3D 114 / 94 Ω, kisi 91 / 88 Ω), so there the shorter feed also shows in the
+  TDR minimum (+0.9 points) and in \|S21\| (+0.02 dB).
+- `--stored-geom` (new): the ladder geometry stored with each case, evaluated by the current code. `ladder` without it
+  reads the via from the example board with today's `web/samples/*.kisi.json`, whose ThunderScope stackup (core εr
+  3.68, tanδ 0.0092, since the kisi.json was completed) is not the one the 3D cases were exported with (4.5 / 0.02):
+  that would compare different boards (M.2 TDR minimum error 5.3 → 9.9 %, ladder C −10 … −30 fF).
+
+**Plane cavities and return groups** (`board_resonances.py`, `board_returns.py`: the R and RG cases, BV_vna_clk_w5):
+the R cases (L1 → L4, microstrip on both sides) do not change; RG_ts6_sw_gnd / _pwr (F → In3) move by ≤ 0.01 dB
+in every band; BV_vna_clk_w5 (F → In3) max / rms Δ\|S21\| 0.41 / 0.12 → 0.44 / 0.13 dB below 12 GHz, 8.89 / 2.77 →
+8.85 / 2.77 dB at 12–20 GHz. These scripts compare magnitudes only.
+
+**The junction fit after the change** (`results/junction_fit.json`, `--ladders` of the new ladder, cut now beyond the
+trim): stripline exits Δτ +0.02 ps, pairs −0.04 ps, single vias \|Δτ\| median 0.12 ps (before 0.18); k = 1 stays the
+best common coefficient (k 0.9 / 1.1: \|Δτ\| 0.19 / 0.17 ps).
+
+**The example boards** (`validation/golden`): no verdict changes. The numbers of the channels with a stripline via move:
+ThunderScope's PCIe TX lanes PET0–PET3 loss at Nyquist −0.01 … −0.10 dB (PET1 −2.18 → −2.28 dB), return loss
+−0.07 … +0.06 dB, eye share of the board −2.5 … +3.4 %, mode conversion −0.15 dB; QSPI_CLK return loss +0.2 dB;
+ThunderScope's PCIe_REFCLK return loss +0.7 dB (at 44 dB); LibreVNA's single-ended RF and clock lanes by ≤ 0.08 dB and
+one eye-width step (LO1_REFC 0.781 → 0.75 UI).

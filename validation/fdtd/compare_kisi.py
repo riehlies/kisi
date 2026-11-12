@@ -60,6 +60,15 @@ def kisi_thru(key):
     return _thru[key]
 
 
+def dtau_ps(f, sk, s3):
+    """delay difference kisi − 3D from the S21 phase between 5 and 20 GHz (ps; positive: kisi slower), as
+    junction_fit.py"""
+    m = f <= 20e9
+    ph = np.unwrap(np.angle(sk[m])) - np.unwrap(np.angle(s3[m]))
+    sel = f[m] >= 5e9
+    return round(float(-np.mean(ph[sel] / (2 * np.pi * f[m][sel])) * 1e12), 3)
+
+
 def tdr_errs(f, s3, sk):
     """relative errors of the TDR minimum and maximum (25 ps, 80 ps window), % – as the reduced
     via model in via_pbm / rust_models"""
@@ -173,6 +182,7 @@ for name in cases:
             m2 = f <= 20e9
             v["via_dS21_max_db"] = round(float(np.max(np.abs(sparam.db(D3[m2, 1, 0]) - sparam.db(Dk[m2, 1, 0])))), 3)
             v["via_dS21_mean_db"] = round(float(np.mean(np.abs(sparam.db(D3[m2, 1, 0]) - sparam.db(Dk[m2, 1, 0])))), 3)
+            v["via_dtau_ps"] = dtau_ps(f, Dk[:, 1, 0], D3[:, 1, 0])
     else:
         mm3, mmk = sparam.mixed_mode(S3), sparam.mixed_mode(Sk)
         m = f <= 20e9
@@ -202,6 +212,7 @@ for name in cases:
             m2 = f <= 20e9
             v["via_dSdd21_max_db"] = round(float(np.max(np.abs(sparam.db(dd3[m2, 1, 0]) - sparam.db(ddk[m2, 1, 0])))), 3)
             v["via_dphase_max_deg"] = round(float(np.max(np.abs(np.degrees(np.angle(dd3[m2, 1, 0] * np.conj(ddk[m2, 1, 0])))))), 1)
+            v["via_dtau_ps"] = dtau_ps(f, ddk[:, 1, 0], dd3[:, 1, 0])
     summary[cid] = v
     rows.append(v)
     print(cid, v, flush=True)
@@ -211,13 +222,15 @@ if vias:
     e = [x for r in vias for x in r["via_tdr_err_pct"]]
     summ = {"via_cases": len(vias), "via_tdr_err_pct_median": round(float(np.median(e)), 2), "via_tdr_err_pct_p90": round(float(np.percentile(e, 90)), 2),
             "via_dS21_mean_db_median": round(float(np.median([r["via_dS21_mean_db"] for r in vias])), 3),
-            "via_dS21_max_db_median": round(float(np.median([r["via_dS21_max_db"] for r in vias])), 3)}
+            "via_dS21_max_db_median": round(float(np.median([r["via_dS21_max_db"] for r in vias])), 3),
+            "via_abs_dtau_ps_median": round(float(np.median([abs(r["via_dtau_ps"]) for r in vias])), 3)}
     pv = [r for r in rows if r.get("via_zdiff_err_pct")]
     if pv:
         e = [x for r in pv for x in r["via_zdiff_err_pct"]]
         summ.update({"pair_cases": len(pv), "pair_zdiff_err_pct_median": round(float(np.median(e)), 2), "pair_zdiff_err_pct_p90": round(float(np.percentile(e, 90)), 2),
                      "pair_dSdd21_max_db_median": round(float(np.median([r["via_dSdd21_max_db"] for r in pv])), 3),
-                     "pair_dphase_max_deg_median": round(float(np.median([r["via_dphase_max_deg"] for r in pv])), 1)})
+                     "pair_dphase_max_deg_median": round(float(np.median([r["via_dphase_max_deg"] for r in pv])), 1),
+                     "pair_abs_dtau_ps_median": round(float(np.median([abs(r["via_dtau_ps"]) for r in pv])), 3)})
     stubs = [r for r in rows if r.get("stub_3d_ghz") and r.get("stub_kisi_ghz")]
     summ["stub_err_pct"] = {r["case"]: round((r["stub_kisi_ghz"] / r["stub_3d_ghz"] - 1) * 100, 1) for r in stubs}
     print(json.dumps(summ, indent=1))

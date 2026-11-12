@@ -2,12 +2,14 @@
 
 The junction model has two fitted choices (kisi_si::via_pbm, `ViaGeom::junction`):
 * a series inductance k · μ0/(2π) · pad radius where a trace enters the via (k = 1);
-* a stripline feed (planes above and below) is kept up to the via centre (cut = 0 mm), where a
-  microstrip feed is removed up to the antipad edge.
+* a stripline feed (planes above and below) is kept up to 2/3 of the pad radius from the via centre
+  (`via_pbm::STRIP_TRIM`, TESTS.md section 18; before: up to the centre), where a microstrip feed is
+  removed up to the antipad edge.
 The fit was made with experimental fields of `kisi-validate via-geom` that were removed afterwards.
 This script needs no model change: it varies the two choices on kisi's ladder as stored
-(rust_models.py's output or via_ref/<case>/ladder.s2p, k = 1, cut = 0) by cascading at each port a series inductance
-(k − 1) · μ0/(2π) · pad radius and, on stripline sides, a line of −cut (matched, εeff of the layer)
+(rust_models.py's output or via_ref/<case>/ladder.s2p, k = 1, cut = 0: the trim as kisi has it) by cascading at each
+port a series inductance (k − 1) · μ0/(2π) · pad radius and, on stripline sides, a line of −cut (matched, εeff of the
+layer; negative: line put back)
 – the junction sits next to the port plane, and the feeds are within a few ohms of 50 Ω, so the
 cascade order does not matter at the scale looked at here – and scores every variant against the
 de-embedded 3D result (kisi_deembedded.s2p; pairs: Sdd, first-order de-embedding as rust_models.py):
@@ -31,7 +33,9 @@ MU0 = 4e-7 * math.pi
 C0 = 299792458.0
 Z0 = 50.0
 K_GRID = [round(0.4 + 0.1 * i, 1) for i in range(13)]          # 0.4 … 1.6
-CUT_GRID = [0.0, 0.1, 0.2, 0.3, "0.5 pad", "0.75 pad", "pad"]     # stripline feed removed: mm, or × pad radius
+# stripline feed removed beyond the trim kisi has: mm, or × pad radius (−2/3 pad: back to the via centre, the model
+# before TESTS.md section 18)
+CUT_GRID = [-0.1, -0.05, 0.0, 0.05, 0.1, "-0.6667 pad", "-0.25 pad", "-0.1667 pad", "0.0833 pad", "0.3333 pad"]
 
 
 def s2abcd(S):
@@ -183,7 +187,7 @@ def main():
     cases = load_cases(a.ladders)
     strip_ids = [c["id"] for c in cases if any(s[0] for s in c["sides"])]
     now = score(cases, 1.0, 1.0, 0.0)
-    out = {"note": "kisi's ladder (k = 1, stripline cut 0) and variants against the de-embedded 3D references; see the docstring",
+    out = {"note": "kisi's ladder (k = 1, stripline cut 0 beyond the trim of 2/3 pad radius) and variants against the de-embedded 3D references; see the docstring",
            "ladders": "kisi-validate models (rust_models.py --out), the current code" if a.ladders else "via_ref/<case>/ladder.s2p as stored",
            "cases": len(cases), "stripline_exits": strip_ids, "current": {"summary": summary(cases, now), "cases": now}}
     # 1) one k for every junction (the fitted coefficient), stripline handling unchanged

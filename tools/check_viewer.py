@@ -28,6 +28,9 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 * power views: no "0.000"-style values (texts, load fields, tooltips); the board labels of the voltage drop,
   current density, losses and temperature maps at a constant screen size without overlaps; in the light run
   also for the other example boards of the build
+* losses map's via markers: layer planes plus via barrels give the copper loss, markers on the sums and on the
+  layers a via's current passes, none on the parts, the share filter (kept), the via tooltip with the capacity
+  estimate
 * board text: every text on the board canvas (labels, A/B marks, PDN parts) is drawn on a screen-space
   transform (drawBoardLabels), none in board units
 * a KiCad 5 board file is refused with kisi's message: on the start screen of a build without example boards (the
@@ -99,6 +102,65 @@ def start_screen(pg):
 
 # a value with fixed decimals instead of an SI prefix: "0.000 A", "0.0012 W", "0.001 mW/mm²", "0.000"
 FIXED_ZERO = re.compile(r"(?<![\d.])0\.0\d*\s?[pnuµmkMG]?(?:A|W|V|Ω|F|H|Hz)(?![a-zA-Z])|(?<![\d.])0\.000\d*|(?<![A-Za-z\d.])\d+(?:\.\d+)?[eE][+-]?\d+(?![A-Za-z\d])")
+
+
+def loss_vias(pg, tag, step):
+    """Losses view: the via barrels' loss as markers – layer planes plus vias give the copper loss, markers on the
+    sums and on the layers a via's current passes (none on the parts), the share filter in the legend (kept in
+    localStorage), the tooltip at the largest via with current, density and the capacity marked as an estimate."""
+    r = pg.evaluate("""async () => {
+      const wait = () => new Promise((r) => setTimeout(r, 150));
+      setPiMode("l"); await wait();
+      if (!S.loss || !S.loss.map || !S.loss.vias) return { missing: true };
+      const vs = S.loss.vias, s = S.loss.summary, out = { count: vs.count, n: vs.list.length };
+      const layers = S.loss.layers.reduce((a, l) => a + l.planes.reduce((b, p) => b + p.w, 0), 0);
+      out.balance = (layers + vs.total_w) / (s.copper_w + s.ground_w);
+      const keepPlane = S.lossPlane, keepMin = lossViaMin(), keepView = { ...S.view };
+      out.planes = {};
+      for (const p of lossPlanes()) {
+        S.lossPlane = p.id; renderLossChips(); renderLossLegend(); draw(); await wait();
+        const ll = lossLayerOf(p.id), list = lossVias().list;
+        out.planes[p.id] = { n: list.length, legend: !!$("loss-vmin"), off: ll ? list.filter((v) => v.from > ll.layer || v.to < ll.layer).length : 0 };
+      }
+      S.lossPlane = "cu"; renderLossChips(); renderLossLegend(); draw(); await wait();
+      const sel = $("loss-vmin"), n0 = lossVias().list.length;
+      sel.value = "0.1"; sel.dispatchEvent(new Event("change")); await wait();
+      out.filter = { n0, n10: lossVias().list.length, stored: lsGet("kisi.loss.viamin") };
+      S.lossViaMin = keepMin; lsSet("kisi.loss.viamin", keepMin); renderLossLegend();
+      const v = vs.list[0];
+      zoomTo(v.at[0], v.at[1], 3); S.mark = null; drawNow(); await wait();
+      showLossTip(S.view.x + v.at[0] * S.view.s, S.view.y + v.at[1] * S.view.s);
+      out.tip = $("tip").hidden ? "" : $("tip").innerText;
+      out.top = v;
+      S.lossPlane = keepPlane; Object.assign(S.view, keepView); renderLossChips(); renderLossLegend(); draw();
+      return out;
+    }""")
+    if r.get("missing"):
+        problems.append(f"{tag}: losses without the via list")
+        return
+    if not (r["count"] > 0 and r["n"] > 0):
+        problems.append(f"{tag}: no via barrel losses ({r['count']} vias, {r['n']} listed)")
+    if abs(r["balance"] - 1) > 1e-4:
+        problems.append(f"{tag}: layer planes + via barrels = {r['balance']:.6f} of the copper loss")
+    for pid, x in r["planes"].items():
+        if pid == "comp" and (x["n"] or x["legend"]):
+            problems.append(f"{tag}: via markers on the parts plane")
+        if pid in ("total", "cu") and not (x["n"] > 0 and x["legend"]):
+            problems.append(f"{tag}: no via markers or filter on the {pid} plane")
+        if x["off"]:
+            problems.append(f"{tag}: {x['off']} via markers on {pid} whose current does not pass that layer")
+    f = r["filter"]
+    if not (f["n10"] <= f["n0"] and f["stored"] == 0.1):
+        problems.append(f"{tag}: via filter: {f}")
+    t = r["tip"]
+    if not all(w in t for w in ("Via", "Current", "Barrel loss", "A/mm²", "Capacity", "estimate", "IPC-2152")):
+        problems.append(f"{tag}: via tooltip incomplete: {t[:160]!r}")
+    bad = sorted(set(m.group(0) for m in FIXED_ZERO.finditer(t)))
+    if bad:
+        problems.append(f"{tag}: fixed-decimal values in the via tooltip: {bad[:6]}")
+    notes.append(f"{tag}: via markers: {r['count']} vias with barrel loss, {r['n']} listed, the largest {r['top']['loss_w'] * 1e3:.3f} mW at "
+                 f"{r['top']['current']:.3f} A ({100 * r['top']['load']:.0f} % of the capacity estimate)")
+    step("loss_vias")
 
 
 def power_units(pg, tag, step):
@@ -1242,6 +1304,7 @@ def run(pg, tag, desktop):
             pg.mouse.move(bx["x"] + 0.25 * bx["width"], bx["y"] + 0.5 * bx["height"]); pg.wait_for_timeout(200); step("temperature_bottom")
             pg.click("#pim-b"); pg.wait_for_timeout(300)
         power_units(pg, tag, step)
+        loss_vias(pg, tag, step)
         if a.config and not a.board:
             pg.click("#view-si")
             pg.set_input_files("#file", [os.path.abspath(a.config)]); pg.wait_for_function(f"S.config && {BUSY}", timeout=90000)
@@ -1258,6 +1321,7 @@ def run(pg, tag, desktop):
                 pg.click("#pi-run"); pg.wait_for_function(f"S.piSolved && !S.piRunning && {BUSY}", timeout=300000); pg.wait_for_timeout(300)
             step(f"power_{key}")
             power_units(pg, f"{tag} ({key})", lambda n, k=key: step(f"{n}_{k}"))
+            loss_vias(pg, f"{tag} ({key})", lambda n, k=key: step(f"{n}_{k}"))
         # back to the first board (its results from the session's board cache, the engine loaded anew): the
         # temperature computed again must be the first one – with the copper losses, every rail at temperature
         if therm_first:

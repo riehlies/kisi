@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "about": "Material constants, surface heat transfer and defaults of the temperature estimate (kisi_pi::thermal, docs/research/thermal.md). Typical values with sources; every result that uses them is an estimate. Package thermal resistances are in components.json (thermal).",
+  "about": "Material constants, surface heat transfer and defaults of the temperature estimate (kisi_pi::thermal, docs/research/thermal.md), and the via barrels' current capacity of the Losses view (kisi_pi::losses::via_capacity). Typical values with sources; every result that uses them is an estimate. Package thermal resistances are in components.json (thermal).",
   "copper": {
     "k_w_mk": 390,
     "alpha_per_k": 0.00393,
@@ -42,6 +42,16 @@
     "sources": [
       {"kind": "kisi", "text": "Natural convection: horizontal plate, hot side up Nu = 0.54 Ra^1/4 (10^4–10^7) and 0.15 Ra^1/3 above, hot side down Nu = 0.27 Ra^1/4, characteristic length area/perimeter; vertical plate: Churchill–Chu over the whole range, length the longer board side. Forced convection: laminar flat plate Nu = 0.664 Re^1/2 Pr^1/3 over the longer board side (the larger of forced and natural). Incropera, Fundamentals of Heat and Mass Transfer, 6th ed., eq. 9.30–9.32, 9.26, 7.30. One mean coefficient per side from the board's mean temperature rise (an estimate)."},
       {"kind": "kisi", "text": "Radiation to surroundings at ambient temperature, linearised: h_rad = εσ(Ts² + Ta²)(Ts + Ta)."}
+    ]
+  },
+  "via_current": {
+    "about": "Current capacity of a via barrel for the Losses view's via markers (estimate): the IPC-2152 conductor chart applied to the barrel's plating cross-section π·(d − t)·t (plating t inside the drilled hole d, as kisi's DC solver), at the temperature rise delta_t_k. A(mil²) = (a1·ΔT^a2 + a3) · I^(b1·ΔT^b2 + b3), solved for I.",
+    "delta_t_k": 10,
+    "a": [117.555, -0.913, 1.15],
+    "b": [0.84, -0.108, 1.159],
+    "sources": [
+      {"kind": "guideline", "text": "IPC-2152 (2009) Fig. 5-2, current against conductor cross-section per temperature rise; curve fit of the chart by smps.us with J. Olson's coefficients, interpolated for ΔT 2–100 °C (within about 3 % of the chart in the page's example). IPC-2152 recommends a via of at least the conductor's cross-section.", "url": "https://smps.us/pcb-calculator.html"},
+      {"kind": "measurement", "text": "D. Brooks, J. Adam: a via runs cooler than a trace of the same cross-section (the connected copper and the board carry its heat away), measured and simulated; the trace chart is a conservative bound for a via.", "url": "https://signalintegrityjournal.com/articles/1459-vias-are-cooler-than-we-think"}
     ]
   },
   "defaults": {

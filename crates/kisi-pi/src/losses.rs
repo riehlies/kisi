@@ -9,7 +9,8 @@
 //!   elements) and copper loss per rail and layer (from the DC solutions incl. ground).
 //! * `loss_map` – the same as power density (W per mm² of copper) on one raster over the board, all
 //!   layers summed, and a components plane; `loss_layer` – one copper layer on the rails' own DC grids
-//!   (display only: the viewer's Losses view).
+//!   (display only: the viewer's Losses view), both without the via barrels' loss; `loss_vias` – that
+//!   loss per via and plated hole, with its current and an IPC-2152 capacity estimate (the view's markers).
 //! * `power_flow` – nodes and links (W) from the input through regulators and rails to the
 //!   loads, with the losses as their own sinks (for a Sankey diagram).
 use crate::board::Board;
@@ -315,14 +316,23 @@ fn overlaps(a0: f64, a1: f64, origin: f64, cell: f64, n: usize, out: &mut Vec<(u
     }
 }
 
-/// A layer grid's loss per cell (W) for the display: `PiResult::loss`, except that the cells
-/// `pi::solve_rail` joins into one node around a via or plated hole wider than 1.4 cells (an
-/// equipotential disc, its loss booked on one of them) share that loss evenly. Cells without copper
-/// (`cu` 0) carry none.
+/// A layer grid's loss per cell (W) for the display: `PiResult::loss` without the via barrels' halves
+/// (`PiResult::barrels`: shown as vias of their own, `loss_vias` – half a barrel's I²R on one cell is a
+/// point loss whose density grows with 1/cell²), and the cells `pi::solve_rail` joins into one node
+/// around a via or plated hole wider than 1.4 cells (an equipotential disc, its loss booked on one of
+/// them) share the rest evenly. Cells without copper (`cu` 0) carry none.
 fn display_loss<'a>(board: &Board, r: &'a PiResult, g: &crate::pi::LayerGrid) -> Cow<'a, [f32]> {
     let per = g.nx * g.ny;
-    let own = &r.loss[g.offset..g.offset + per];
-    let Some(net) = crate::pi::find_net(board, &r.net) else { return Cow::Borrowed(own) };
+    let mut own = Cow::Borrowed(&r.loss[g.offset..g.offset + per]);
+    for b in &r.barrels {
+        for &(l, k) in &b.ends {
+            if l == g.layer && (k as usize) < per {
+                let o = own.to_mut();
+                o[k as usize] = (o[k as usize] - (b.loss_w / 2.0) as f32).max(0.0);
+            }
+        }
+    }
+    let Some(net) = crate::pi::find_net(board, &r.net) else { return own };
     let grid = crate::pi::Grid { x0: g.x0, y0: g.y0, cell: r.cell, nx: g.nx, ny: g.ny };
     let l = g.layer;
     let discs: Vec<(P, f64)> = board
@@ -340,9 +350,9 @@ fn display_loss<'a>(board: &Board, r: &'a PiResult, g: &crate::pi::LayerGrid) ->
         .filter(|&(_, rw)| rw >= 0.7 * r.cell)
         .collect();
     if discs.is_empty() {
-        return Cow::Borrowed(own);
+        return own;
     }
-    let mut out = own.to_vec();
+    let mut out = own.into_owned();
     // discs that share a cell are one node (union of their cells)
     let mut up: Vec<usize> = (0..discs.len()).collect();
     fn root(up: &mut [usize], mut x: usize) -> usize {
@@ -500,6 +510,100 @@ fn layer_raster(
         }
     }
     ws
+}
+
+/// Current capacity (A) of a barrel with plating cross-section `area_mm2` at the temperature rise of
+/// `data/thermal.json` (`via_current`): the IPC-2152 conductor chart fit solved for I. An estimate.
+pub fn via_capacity(area_mm2: f64) -> f64 {
+    let c = &crate::thermal::data().via_current;
+    let dt = c.delta_t_k;
+    let a_mil2 = area_mm2 / (0.0254 * 0.0254);
+    let k = c.a[0] * dt.powf(c.a[1]) + c.a[2];
+    let e = c.b[0] * dt.powf(c.b[1]) + c.b[2];
+    (a_mil2 / k).powf(1.0 / e)
+}
+
+/// The barrel loss of one via or plated hole (all its steps of one rail).
+#[derive(Debug, Clone, Serialize)]
+pub struct ViaLoss {
+    pub net: String,
+    pub at: P,
+    pub drill: f64,
+    pub hole: bool,
+    /// the contact layers its current flows between (outermost)
+    pub from: u16,
+    pub to: u16,
+    /// plating cross-section π·(d − t)·t (mm²)
+    pub area_mm2: f64,
+    /// the largest current of its steps (A), its density in the plating (A/mm²)
+    pub current: f64,
+    pub j_a_mm2: f64,
+    /// I²R of its steps (W)
+    pub loss_w: f64,
+    /// capacity estimate (`via_capacity`) and the current against it
+    pub capacity_a: f64,
+    pub load: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ViaLosses {
+    /// barrel loss of every via and plated hole (W) and how many carry current
+    pub total_w: f64,
+    pub count: usize,
+    /// the temperature rise of the capacity estimate (K)
+    pub delta_t_k: f64,
+    /// the vias with at least `VIA_LIST_MIN` of the largest loss, the most first
+    pub list: Vec<ViaLoss>,
+}
+
+/// Share of the largest via loss down to which `loss_vias` lists vias (the viewer's lowest filter).
+pub const VIA_LIST_MIN: f64 = 0.01;
+
+/// The via barrels' loss of the rails, one entry per via or plated hole and rail: the loss the layer
+/// maps (`loss_layer`, `loss_map`) leave out. Layer display loss + `total_w` = the rails' copper loss.
+pub fn loss_vias(rails: &[&PiResult]) -> ViaLosses {
+    let mut all: Vec<ViaLoss> = Vec::new();
+    let mut total_w = 0.0;
+    for r in rails {
+        let mut by: HashMap<(i64, i64), usize> = HashMap::new();
+        let first = all.len();
+        for b in &r.barrels {
+            total_w += b.loss_w;
+            let key = ((b.at[0] * 1e4).round() as i64, (b.at[1] * 1e4).round() as i64);
+            let i = *by.entry(key).or_insert_with(|| {
+                all.push(ViaLoss {
+                    net: r.net.clone(),
+                    at: b.at,
+                    drill: b.drill,
+                    hole: b.hole,
+                    from: b.from,
+                    to: b.to,
+                    area_mm2: b.area_mm2,
+                    current: 0.0,
+                    j_a_mm2: 0.0,
+                    loss_w: 0.0,
+                    capacity_a: 0.0,
+                    load: 0.0,
+                });
+                all.len() - 1
+            });
+            let v = &mut all[i];
+            v.from = v.from.min(b.from);
+            v.to = v.to.max(b.to);
+            v.current = v.current.max(b.current);
+            v.loss_w += b.loss_w;
+        }
+        for v in &mut all[first..] {
+            v.j_a_mm2 = v.current / v.area_mm2.max(1e-12);
+            v.capacity_a = via_capacity(v.area_mm2);
+            v.load = v.current / v.capacity_a.max(1e-12);
+        }
+    }
+    let count = all.len();
+    all.sort_by(|a, b| b.loss_w.total_cmp(&a.loss_w));
+    let max = all.first().map_or(0.0, |v| v.loss_w);
+    all.retain(|v| v.loss_w >= VIA_LIST_MIN * max);
+    ViaLosses { total_w, count, delta_t_k: crate::thermal::data().via_current.delta_t_k, list: all }
 }
 
 /// The rails' copper on one layer on their own DC grids (the Losses view of a layer).
@@ -880,5 +984,78 @@ mod tests {
             .collect();
         let (mean, cv) = spread(&map);
         assert!((mean / expect - 1.0).abs() < 0.02 && cv < 0.01, "map: {mean} vs {expect}, spread {cv}");
+    }
+
+    /// 1 A from a pour on F.Cu through one via (0.3 mm drill) into a pour on B.Cu: the barrel's I²R
+    /// (ρ·Δz/A, A = π·(d − t)·t) is the via's loss, the layer maps leave it out, and layers + vias give the
+    /// rail's copper loss; `PiResult::loss` (the temperature's heat) keeps it on the contact cells.
+    #[test]
+    fn via_barrels_out_of_the_layer_maps() {
+        let board = crate::load_pcb(
+            r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "core") (thickness 1.5) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "+3V3")
+  (footprint "R" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "PI_SOURCE" "+3V3")
+    (pad "1" smd rect (at 0.5 2) (size 1 4) (layers "F.Cu") (net 1 "+3V3")))
+  (footprint "R" (layer "B.Cu") (at 0 0) (property "Reference" "U1") (property "PI_LOAD" "+3V3=1A")
+    (pad "1" smd rect (at 17.5 2) (size 1 4) (layers "B.Cu") (net 1 "+3V3")))
+  (via (at 9 2) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))
+  (zone (net 1) (net_name "+3V3") (layer "F.Cu") (filled_polygon (layer "F.Cu") (pts (xy 0 0) (xy 10 0) (xy 10 4) (xy 0 4))))
+  (zone (net 1) (net_name "+3V3") (layer "B.Cu") (filled_polygon (layer "B.Cu") (pts (xy 8 0) (xy 18 0) (xy 18 4) (xy 8 4)))))"#,
+        )
+        .unwrap();
+        let (setups, _) = crate::pi::rails_from_fields(&board);
+        for cell in [0.1, 0.25] {
+            let p = crate::pi::PiParams { cell: Some(cell), ..Default::default() };
+            let r = crate::pi::solve_rail(&board, &setups[0], &p).unwrap();
+            assert_eq!(r.barrels.len(), 1);
+            let b = &r.barrels[0];
+            let (d, t) = (0.3, 0.025);
+            let area = std::f64::consts::PI * (d - t) * t;
+            let r_barrel = 1.72e-8 * 1.535e-3 / (area * 1e-6);
+            assert!((b.area_mm2 / area - 1.0).abs() < 1e-9 && (b.current - 1.0).abs() < 1e-6, "{b:?}");
+            assert!((b.loss_w / r_barrel - 1.0).abs() < 1e-6, "{} vs {r_barrel}", b.loss_w);
+            assert!(b.from == 0 && b.to == 1 && !b.hole);
+            // the temperature's heat per cell still holds the barrel
+            let cells: f64 = r.loss.iter().map(|&x| x as f64).sum();
+            assert!((cells / r.power_loss_w - 1.0).abs() < 1e-6);
+            // the layer planes and the map without it, the vias with it
+            let vl = loss_vias(&[&r]);
+            assert_eq!((vl.count, vl.list.len()), (1, 1));
+            let v = &vl.list[0];
+            assert!((vl.total_w - b.loss_w).abs() < 1e-12 && (v.j_a_mm2 - 1.0 / area).abs() < 1e-6);
+            assert!(v.capacity_a > 0.5 && v.capacity_a < 3.0 && (v.load - 1.0 / v.capacity_a).abs() < 1e-6, "{v:?}");
+            let layers: f64 =
+                (0..2).map(|l| loss_layer(&board, &[&r], l).planes.iter().map(|p| p.w).sum::<f64>()).sum();
+            assert!(
+                ((layers + vl.total_w) / r.power_loss_w - 1.0).abs() < 1e-5,
+                "{layers} + {} vs {}",
+                vl.total_w,
+                r.power_loss_w
+            );
+            assert!(vl.total_w > 0.05 * r.power_loss_w, "the barrel is a visible part of this rail");
+            let m = loss_map(&board, &[&r], &[], Some(0.2)).unwrap();
+            let mw: f64 = m.copper.iter().map(|&x| x as f64 * 0.04).sum();
+            assert!(
+                ((mw + vl.total_w) / r.power_loss_w - 1.0).abs() < 1e-5,
+                "{mw} + {} vs {}",
+                vl.total_w,
+                r.power_loss_w
+            );
+            // the contact cells keep only the plane's spreading loss (about 10× the strip's density next to a
+            // 0.15 mm barrel); with the barrel's half on them they would show 330× (0.25 mm cells) to 2000×
+            // (0.1 mm), growing with 1/cell²
+            let ll = loss_layer(&board, &[&r], 0);
+            let far = 1.72e-8 / 35e-6 / 16.0; // W/mm² of 1 A in the 4 mm strip
+            let raw = r.loss.iter().fold(0f32, |a, &x| a.max(x)) as f64 / (cell * cell);
+            assert!(ll.max < 20.0 * far && raw > 200.0 * far, "cell {cell}: {} / {raw} vs {far}", ll.max);
+        }
+        // IPC-2152 fit at 10 K: about 1.5 A for 0.3 mm / 25 µm (0.0216 mm²), within the chart's 3 %
+        let c = via_capacity(std::f64::consts::PI * 0.275 * 0.025);
+        assert!((c - 1.55).abs() < 0.05, "{c}");
     }
 }

@@ -120,11 +120,11 @@ validation, and every result says which level it used and how uncertain it is.
 - **3D references cross-checked** (done, released in 0.3.2): every one of the 106 reference cases also in openEMS
   and in CST Studio Suite (TESTS.md sections 16 and 17, `validation/fdtd/CST.md`); the cross-check found the
   inner-layer exits and the board vias with an inner exit not mesh-converged, and they were recomputed on a refined
-  mesh (kisi-fdtd − CST within ±0.07 ps on 16 of 17 cases, before +1.0 … +2.3 ps). Next, one model change together:
-  the junction fit's proposal (the ladder is now 1.26 ps slow on stripline exits; remove about 0.2 mm of the
-  stripline feed, TESTS.md section 17), then the stored via results – `data/accuracy.json`'s via numbers (2.45 /
-  5.92 % and 12.6 / 14.4 %; 2.46 / 5.64 % and 10.9 / 13.7 % against the refined references), and
-  `results/rust_models.json` and `via_ref/<case>/ladder.s2p`, which are older than the current ladder.
+  mesh (kisi-fdtd − CST within ±0.07 ps on 16 of 17 cases, before +1.0 … +2.3 ps). The stripline feed trim followed
+  (`feat/via-model-b`, TESTS.md section 18): the stripline feed is kept up to 2/3 of the pad radius from the via
+  centre, the stripline exits' delay error +1.26 → +0.02 ps, `data/accuracy.json` at the refined references (2.46 /
+  5.53 %, pairs 10.95 / 13.71 %), the stored ladders regenerated. Open: the L1→L3 exits' TDR minimum (7–11 % low, the
+  exit pad between close planes too capacitive in the ladder) and the pairs' TDR (7–10 % high in all three solvers).
 - **Causal and passive models** (`feat/accuracy`, done): the via pairs' modes and the plane-pair matrix passive by
   construction, Djordjevic-Sarkar everywhere, the causal Huray roughness with its inductance, microstrip
   dispersion below a resonance; every example lane passive and causal in a test (`validation/fdtd/TESTS.md`

@@ -243,8 +243,8 @@
     "vias": {
      "model": "ladder",
      "tdr_error_pct": {
-      "median": 2.45,
-      "p90": 5.92
+      "median": 2.46,
+      "p90": 5.53
      }
     }
    },
@@ -361,8 +361,8 @@
     "vias": {
      "model": "ladder",
      "tdr_error_pct": {
-      "median": 2.45,
-      "p90": 5.92
+      "median": 2.46,
+      "p90": 5.53
      }
     }
    },
@@ -470,8 +470,8 @@
     "vias": {
      "model": "ladder",
      "tdr_error_pct": {
-      "median": 2.45,
-      "p90": 5.92
+      "median": 2.46,
+      "p90": 5.53
      }
     }
    },
@@ -577,8 +577,8 @@
     "vias": {
      "model": "ladder",
      "tdr_error_pct": {
-      "median": 2.45,
-      "p90": 5.92
+      "median": 2.46,
+      "p90": 5.53
      }
     }
    },
@@ -686,8 +686,8 @@
     "vias": {
      "model": "ladder",
      "tdr_error_pct": {
-      "median": 2.45,
-      "p90": 5.92
+      "median": 2.46,
+      "p90": 5.53
      }
     }
    },
@@ -1013,8 +1013,8 @@
     "vias": {
      "model": "ladder",
      "tdr_error_pct": {
-      "median": 2.45,
-      "p90": 5.92
+      "median": 2.46,
+      "p90": 5.53
      }
     }
    },
@@ -1504,8 +1504,8 @@
     "vias": {
      "model": "ladder (pair)",
      "tdr_error_pct": {
-      "median": 12.6,
-      "p90": 14.4
+      "median": 10.95,
+      "p90": 13.71
      }
     }
    },
@@ -1612,8 +1612,8 @@
     "vias": {
      "model": "ladder (pair)",
      "tdr_error_pct": {
-      "median": 12.6,
-      "p90": 14.4
+      "median": 10.95,
+      "p90": 13.71
      }
     }
    },
@@ -1720,8 +1720,8 @@
     "vias": {
      "model": "ladder (pair)",
      "tdr_error_pct": {
-      "median": 12.6,
-      "p90": 14.4
+      "median": 10.95,
+      "p90": 13.71
      }
     }
    },
@@ -1828,8 +1828,8 @@
     "vias": {
      "model": "ladder (pair)",
      "tdr_error_pct": {
-      "median": 12.6,
-      "p90": 14.4
+      "median": 10.95,
+      "p90": 13.71
      }
     }
    },
@@ -1936,8 +1936,8 @@
     "vias": {
      "model": "ladder (pair)",
      "tdr_error_pct": {
-      "median": 12.6,
-      "p90": 14.4
+      "median": 10.95,
+      "p90": 13.71
      }
     }
    },
@@ -2053,8 +2053,8 @@
     "vias": {
      "model": "ladder (pair)",
      "tdr_error_pct": {
-      "median": 12.6,
-      "p90": 14.4
+      "median": 10.95,
+      "p90": 13.71
      }
     }
    },
@@ -2170,8 +2170,8 @@
     "vias": {
      "model": "ladder (pair)",
      "tdr_error_pct": {
-      "median": 12.6,
-      "p90": 14.4
+      "median": 10.95,
+      "p90": 13.71
      }
     }
    },
@@ -2287,8 +2287,8 @@
     "vias": {
      "model": "ladder (pair)",
      "tdr_error_pct": {
-      "median": 12.6,
-      "p90": 14.4
+      "median": 10.95,
+      "p90": 13.71
      }
     }
    },
@@ -2404,8 +2404,8 @@
     "vias": {
      "model": "ladder (pair)",
      "tdr_error_pct": {
-      "median": 12.6,
-      "p90": 14.4
+      "median": 10.95,
+      "p90": 13.71
      }
     }
    },

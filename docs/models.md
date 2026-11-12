@@ -125,8 +125,8 @@ pours on the via's signal layers as coplanar returns, stubs and back-drill, the 
 with their partner. Passive by construction: the plane-pair matrices treat every barrel as a cylinder of
 uniform current, and a pair's modes are taken as (Z_PP + Z_NN)/2 ∓ Z_PN (the earlier Z_PP ∓ Z_PN gave via pairs
 with returns on one side a negative resistance from a few GHz). Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own
-FDTD solver ([Validation](#validation)): via impedance in the TDR median 2.5 %, 90th percentile 5.6 % (single
-vias); pairs within 1.8° phase (median); stub notch within 1.5 % (`validation/fdtd/results/kisi_models.json`); the
+FDTD solver ([Validation](#validation)): via impedance in the TDR median 2.5 %, 90th percentile 5.5 % (single
+vias); delay within 0.22 ps (single vias) and 0.19 ps (pairs, median); pairs within 1.8° phase (median); stub notch within 1.5 % (`validation/fdtd/results/kisi_models.json`); the
 four board vias with a 3D reference within 0.03–0.44 dB up to 12 GHz. An estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
 the via's cage. A via whose path crosses a ground/supply plane pair that no return via bridges gets a warning.
 `--via-cavity` (finite plane pairs) and `--via-returns` (return groups per plane pair) are experimental options.
@@ -176,15 +176,18 @@ connector.
   without an efficiency gets 85 % (an estimate, marked).
 - **PDN:** a lumped model of regulator, plane and capacitors with a plane model above 1 MHz; per IC the rail's
   copper on all layers as an AC grid with plane capacitance (via contacts corrected as in the DC drop), capacitors with ESR/ESL and DC-bias derating
-  (estimated per package unless `PI_CAP` gives the data), ferrites and series parts up to the regulators
+  (estimated per package unless `PI_CAP` gives the data; the rated voltage and the dielectric also from the parts'
+  own fields, the Value or the Description – [Capacitor ratings](reference.md#capacitor-ratings-from-the-parts-fields)), ferrites and series parts up to the regulators
   (typical values unless `PI_SERIES` gives them), the loop inductance of each capacitor to the IC,
   anti-resonances, and a target from the IC's current step (or `PI_TARGET`).
 
 ## Temperature (estimate)
 Steady state of the board in air. One sheet per copper layer on a grid over the board outline (copper fill of
 every net, laminate in plane 0.8 and through the thickness 0.3 W/m·K, open via barrels), natural or forced
-convection (flat-plate correlations) and radiation from both sides; heat from the copper loss of every cell and
-the parts. A part is a junction node with θJB to the board under its pads and θJC to its top (JEDEC two-resistor
+convection (flat-plate correlations) and radiation from both sides. The outline comes from the Edge.Cuts drawings;
+a panel or several boards drawn side by side are computed as one board area, with a warning
+([What kisi reads](reference.md#what-kisi-reads-from-the-kicad-project)). The heat comes from the copper loss of every cell
+and the parts. A part is a junction node with θJB to the board under its pads and θJC to its top (JEDEC two-resistor
 model), with values from `PI_THERMAL` or package defaults by family and size (`data/components.json`,
 estimates); the case top from ψJT or that model. Per via the heat through its barrel; per hot part the split of
 its heat into vias, laminate and the pad layer. The IR drop at temperature solves the rails again with
@@ -243,7 +246,7 @@ Every impedance and via result says which level it used and how far it typically
 | 2D field solver | impedance 1 % |
 | formula: single microstrip / with coplanar copper / pair / stripline / over a cut-out | 2 / 2 / 8 / 11 / 25 % |
 | no plane (coplanar estimate) | 15 % |
-| via ladder: single vias / pairs (TDR, median and 90th percentile) | 2.5 and 5.9 % / 12.6 and 14.4 % |
+| via ladder: single vias / pairs (TDR, median and 90th percentile) | 2.5 and 5.5 % / 11.0 and 13.7 % |
 | coaxial via fallback | 8.0 and 25.5 % |
 
 A net or lane takes the length-weighted mean of its cross-sections; the level is “field solver”, “formula” or
@@ -261,8 +264,8 @@ kisi marks these as estimates in the viewer and in the CLI output:
   plane;
 - the transmit direction of a lane;
 - regulator efficiency 85 % where none is given; the heat of a load (all drawn power stays in the part);
-- capacitor ESR/ESL and DC-bias derating by package, with an assumed rated voltage where neither the Value text
-  nor `PI_CAP` gives one; ferrite and inductor values without `PI_SERIES`;
+- capacitor ESR/ESL and DC-bias derating by package, with an assumed rated voltage where neither `PI_CAP`, a
+  rating field of the part, the Value text nor the Description gives one; ferrite and inductor values without `PI_SERIES`;
 - thermal resistances by package family and size, Tj max 125 °C, where `PI_THERMAL` gives none;
 - values in `<board>.kisi.json` whose source kind is `estimate` or `assumption`.
 
@@ -275,7 +278,7 @@ documents and on the two reference pages attached to the releases (`kisi-referen
 |---|---|---|---|
 | Impedance (formulas, field solver) | CST Studio Suite, 2D port modes, open boundary; 620 cross-sections of every line type, the example boards and the test-board coupons | field solver within 1 % (median 0.2 %); formulas see [Impedance](#impedance) | [validation/cst_xs](../validation/cst_xs/README.md) |
 | Line loss | full-wave FEM with eddy-current conductor loss (js_2d_fields), checked by an independent finite-difference solution | kisi's line model R about 2 % low | [validation/cst_xs](../validation/cst_xs/README.md) |
-| Vias and planes (fast models) | 3D FDTD (`crates/kisi-fdtd`) on 106 cases, itself checked against openEMS and CST | single vias TDR 2.5 / 5.6 %, pairs Zdiff 11 / 14 % (median / p90) | [TESTS.md](../validation/fdtd/TESTS.md), [CST.md](../validation/fdtd/CST.md) |
+| Vias and planes (fast models) | 3D FDTD (`crates/kisi-fdtd`) on 106 cases, itself checked against openEMS and CST | single vias TDR 2.5 / 5.5 %, pairs Zdiff 11 / 14 % (median / p90), delay 0.2 ps (median) | [TESTS.md](../validation/fdtd/TESTS.md), [CST.md](../validation/fdtd/CST.md) |
 | Field solver chain | HFSS/Ansys cases of Forstén's test suite | impedance within 1.7 %, RLGC within 2 % | `tools/validate_field.sh` |
 | Passivity and causality | unit tests and every lane of the example boards | passive to 25 GHz, causal | [TESTS.md](../validation/fdtd/TESTS.md) section 14 |
 | DC IR drop | analytic cases (vias in a plane, tracks at any angle, necks, cut cells); kisi's own raster refined uniformly (cell/4 … cell/8, barrels as discs, line tracks) on 21 rails of 7 boards | analytic within 1.5 %; largest drop median 1.0 %, max 10 % (before the corrections 6.9 / 28 %) | [research/pi-quadtree.md](research/pi-quadtree.md) |

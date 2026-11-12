@@ -119,11 +119,11 @@ def model_check(nm, d):
                 "Same metrics as the prototype: TDR minimum and maximum (25 ps, 80 ps window) against the de-embedded 3D result, both values "
                 "of every single-via case pooled; |S21| up to 20 GHz. Parity: largest |ΔS21| (linear) against the Python result over all via cases. "
                 "kisi's ladder adds to the prototype the junction model fitted to the 3D references (series inductance μ0/(2π)·pad radius where a trace "
-                "enters the via, the trace over the antipad scaled from its own line, striplines kept up to the via centre) and the equivalent radius of "
-                "non-round antipads. Time per via for 400 frequencies: build (r–z Laplace solve) + evaluation; the Laplace result is cached per via "
+                "enters the via, the trace over the antipad scaled from its own line, striplines kept up to 2/3 of the pad radius from the via centre) and "
+                "the equivalent radius of non-round antipads. Time per via for 400 frequencies: build (r–z Laplace solve) + evaluation; the Laplace result is cached per via "
                 "geometry, so a board solves it once per via type. Script: rust_models.py.",
-                "This table and the curves “via ladder in kisi (Rust, earlier run)” are a stored run (TESTS.md section 7), older than kisi's "
-                "current ladder (TESTS.md section 17); kisi's current model is in “kisi's fast channel model against the 3D result”."]
+                "This table and the curves “via ladder in kisi (Rust)” are regenerated with every model change (TESTS.md section 18). "
+                "The parity with Python no longer holds since section 14 changed the Rust model under the prototype switch (TESTS.md section 5)."]
         if cv:
             text.append(f"Cavity model: Rust within {cv['dZ_rel_max']:.1e} of Python; {cv['nf']} frequencies × {cv['modes']} modes in "
                         f"{' / '.join(str(x) for x in cv['rust_eval_ms'])} ms (Python {' / '.join(str(x) for x in cv['python_ms'])} ms). "

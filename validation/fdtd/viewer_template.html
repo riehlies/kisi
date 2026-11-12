@@ -146,7 +146,7 @@ const GROUPS = {
 };
 const TOOLS = { kisi: ["kisi-fdtd", "var(--s1)", ""], kisi_fine: ["kisi-fdtd, finer mesh", "var(--s1)", "dash"], kisi_base: ["kisi-fdtd, base mesh (former reference)", "var(--s1)", "dash"], openems: ["openEMS (staircase, cell at metal halved)", "var(--s2)", ""], openems_base: ["openEMS (staircase, kisi-fdtd's mesh)", "var(--s2)", "dash"],
   openems_de: ["openEMS, de-embedded (its own 2×thru)", "var(--s2)", ""], cst: ["CST", "var(--s4)", ""], cst_de: ["CST, de-embedded (its own 2×thru)", "var(--s4)", "dash"],
-  kisi_model: ["kisi channel model (fast)", "var(--s3)", "dash"], deembedded: ["kisi-fdtd, de-embedded", "var(--s4)", ""], pbm: ["via ladder, Python prototype", "var(--s2)", "dash"], ladder: ["via ladder in kisi (Rust, earlier run)", "var(--s3)", ""],
+  kisi_model: ["kisi channel model (fast)", "var(--s3)", "dash"], deembedded: ["kisi-fdtd, de-embedded", "var(--s4)", ""], pbm: ["via ladder, Python prototype", "var(--s2)", "dash"], ladder: ["via ladder in kisi (Rust)", "var(--s3)", ""],
   model: ["cavity model", "var(--s2)", "dash"] };
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v.replace(/^var\((.*)\)$/, "$1")).trim();
 const cases = DATA.cases;

@@ -89,9 +89,10 @@ and the lumped R–L–C.
   field of port 1 (top view in the thickest dielectric, animated; section through the via; collapsed by default).
 - `rust_models.py` runs the Rust port of the reduced models (`kisi-validate models`) against the Python prototypes
   and the 3D results, with run times → `results/rust_models.json`; kisi's ladder per case → `via_ref/<case>/ladder.s2p`.
-  Both stored files are historical: last written with TESTS.md section 7, older than the current ladder (section 17,
-  "Not regenerated"); the reference page's “via ladder in kisi (Rust, earlier run)” curves and its “Rust port” table
-  show that run. `results/kisi_models.json` (`compare_kisi.py`, `tools/golden.py vias`) is kisi's current model.
+  Both are regenerated with a change of the ladder (last: TESTS.md section 18), together with
+  `results/kisi_models.json` (`compare_kisi.py`, `tools/golden.py vias`, kisi's channel) and, where they move, the board
+  via, cavity and return-group ladders (`board_vias.py ladder --stored-geom`, `board_resonances.py model`,
+  `board_returns.py model`).
   `kisi-validate via-geom geom.json [--s2p f.s2p]` evaluates one via geometry (the JSON that `KISI_DEBUG_VIA=1`
   prints from `kisi` or `kisi-validate models`).
 - `fdtd_refs.py` runs kisi-fdtd references too large for one machine on GitHub Actions runners (workflow

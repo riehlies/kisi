@@ -2,7 +2,8 @@
 
   python3 board_vias.py export   [--only KEY]   board → kisi-fdtd cases (kisi-validate via-case)
   python3 board_vias.py run      [--only KEY]   kisi-fdtd on the cases and their 2×thru fixtures
-  python3 board_vias.py ladder   [--only KEY]   kisi's ladder for the same via (KISI_DEBUG_VIA)
+  python3 board_vias.py ladder   [--only KEY]   kisi's ladder for the same via (KISI_DEBUG_VIA); --stored-geom: the
+                                                stored ladder_geom.json evaluated by the current code
   python3 board_vias.py compare  [--only KEY]   de-embed, compare with the ladder, plots, results
   python3 board_vias.py deembed-check            the de-embedding on a known network (lines of Zc ≠ z0)
   python3 board_vias.py block1                   Block 1 references de-embedded both ways
@@ -107,6 +108,18 @@ def ladder(a):
     for k in selected(a):
         v = VIAS[k]
         c = json.load(open(os.path.join(CASES, k + ".json")))
+        d = os.path.join(REF, k)
+        if a.stored_geom:
+            # the geometry as stored with the case, evaluated by the current ladder code: the example boards'
+            # kisi.json may give other dielectrics than the ones the 3D case was exported with (ThunderScope's
+            # core 4.5 → 3.68 since its kisi.json was completed), which would compare different boards
+            g = json.load(open(os.path.join(d, "ladder_geom.json")))
+            out = subprocess.run([tool(a, "validate"), "via-geom", os.path.join(d, "ladder_geom.json"), "--s2p", os.path.join(d, "ladder.s2p")], capture_output=True, text=True, check=True).stdout
+            g3 = dict(g, f_loss=c["fmax"] / 2, sigma=None)
+            json.dump(g3, open(os.path.join(d, "ladder3d_geom.json"), "w"))
+            subprocess.run([tool(a, "validate"), "via-geom", os.path.join(d, "ladder3d_geom.json"), "--s2p", os.path.join(d, "ladder_3dloss.s2p")], capture_output=True, text=True, check=True)
+            print(f"{k}: stored geometry; feeds Zc {[round(f['zc'], 1) for f in g['feeds']]}\n{out}", flush=True)
+            continue
         pcb, cfg = board_files(a, v)
         env = dict(os.environ, KISI_DEBUG_VIA="1")
         r = subprocess.run([tool(a, "kisi"), "net", pcb, v["net"], "--config", cfg], capture_output=True, text=True, env=env)
@@ -128,7 +141,6 @@ def ladder(a):
         # Block 2 compared with it in: LibreVNA 0.15 / 0.34 mm, M.2 0.03 mm of extra line)
         for fd in g["feeds"]:
             fd["dropped"] = 0.0
-        d = os.path.join(REF, k)
         os.makedirs(d, exist_ok=True)
         json.dump(g, open(os.path.join(d, "ladder_geom.json"), "w"))
         out = subprocess.run([tool(a, "validate"), "via-geom", os.path.join(d, "ladder_geom.json"), "--s2p", os.path.join(d, "ladder.s2p")], capture_output=True, text=True, check=True).stdout
@@ -763,6 +775,7 @@ def main():
     ap.add_argument("--fdtd")
     ap.add_argument("--boards", default=os.path.join(ROOT, "examples"))
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--stored-geom", action="store_true", help="ladder: evaluate the stored ladder_geom.json of each case (the dielectrics of the 3D case)")
     ap.add_argument("--variants", default="")
     ap.add_argument("--wasm", default="")
     ap.add_argument("--steps", type=int, default=2001)

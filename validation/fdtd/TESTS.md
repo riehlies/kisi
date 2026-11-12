@@ -206,6 +206,13 @@ so the Rust graded-grid model no longer equals the prototype; parity is checked 
 | Rust, uniform grid (as the prototype) | 1.46 / 7.6 % | 0.144 / 0.157 | 0.005 (linear), 0.005 dB | 240 ms + 1 ms |
 | Rust, graded grid (kisi) | 1.47 / 7.4 % | 0.142 / 0.154 | 0.018 (linear), 0.2 dB | 17 ms + 1 ms |
 
+- **Parity since section 14:** the table is the state of that time. Regenerated with the code of 2026-11 (section
+  18), the Rust model on the uniform grid is 0.034 linear (median) / 0.080 (max) in |S21| from Python, 0.47 dB
+  median: section 14 changed the Rust ladder under the prototype switch (the radial-line matrix of barrels with
+  uniform current, the causal dielectric `rf::eps_c`) and the Python prototype was not changed with it. The
+  largest differences sit on the cases with a close cage of return vias (A: 0.045–0.074) and on the stub notch
+  flanks (E L1→L3, B stub: 0.7–2.5 dB); X_s8x2 without a plane pair is identical. The parity check now only
+  shows the prototype's place, not an identity.
 - **Evaluation:** about 2.4 µs per frequency after the build.
 - **Stub notch:** identical to Python in all 11 cases with a notch.
 - **Uniform-grid residual:** it comes from the Z/f interpolation.
@@ -1005,7 +1012,7 @@ the former result as `kisi_base.sNp`. Runner, CPU model, threads and wall time p
   (Zdiff 7–11 / 14–15 → 4–8 / 11 %).
 - `data/accuracy.json` quotes 2.45 / 5.92 % and 12.6 / 14.4 %; with the new references they would be 2.46 / 5.64 %
   and 10.9 / 13.7 %. Not changed here (a separate decision, with the junction fit below).
-- **Not regenerated:** `results/rust_models.json` and `via_ref/<case>/ladder.s2p` are older than the current ladder
+- **Not regenerated here** (since done, section 18): `results/rust_models.json` and `via_ref/<case>/ladder.s2p` were older than the current ladder
   (last written with section 7; the return posts, the causal pair models and the coplanar pours changed it since,
   up to 0.047 in |S| on A_s4_d200_ap1000); regenerating them would mix that into this change. The fit below uses the
   ladder as the current code computes it. `results/kisi_models_field.json` and `kisi_models_coax.json` are records
@@ -1041,3 +1048,12 @@ line of −cut at each port, εeff of the layer) and scores against the de-embed
   the L1→L3 exits is now 3.6–8.4 % too low, which a shorter stripline would also reduce), then `golden.py vias --update`
   and `data/accuracy.json`.
 
+
+## 18. Step B: the stripline feed trim (`via_pbm.rs`)
+
+### The stored ladders regenerated (no model change)
+`results/rust_models.json` and the 41 `via_ref/<case>/ladder.s2p` of the via cases come from `rust_models.py` with the
+code of main at 6f2578e (before the trim below), so the reference page and `junction_fit.py` without `--ladders` show
+the ladder as kisi computes it. Against the refined references: kisi's ladder (graded grid) TDR error median / p90
+1.07 / 4.27 → 1.20 / 4.28 %, max Δ|S21| median single / pairs 0.093 / 0.111 → 0.091 / 0.107 dB; for the parity row of
+section 5 see there.

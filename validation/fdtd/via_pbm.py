@@ -21,7 +21,7 @@ import json, math, os, sys
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
-from scipy.special import hankel2
+from scipy.special import hankel2, jv
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REF = os.path.join(os.path.dirname(HERE), "via_ref")
@@ -293,18 +293,23 @@ def ladder(case, f, via_index=0, loss_as_3d=True, mode=None):
         pts = [sig] + ([(0.0, partner["r"] * 1e-3, (partner["x"] - via["x"]) * 1e-3, (partner["y"] - via["y"]) * 1e-3)] if partner else []) + rets
         n = len(pts)
         Z = np.empty((n, n), complex)
+        # every barrel a cylinder of uniform surface current (TESTS.md section 14, as the Rust ladder):
+        # Z_ii = pre·J0(ka_i)·H0(ka_i), Z_ij = pre·J0(ka_i)·J0(ka_j)·H0(kd_ij), a passive matrix
+        j0 = [jv(0, k * p[1]) for p in pts]
         for i in range(n):
             for j in range(n):
                 rr = pts[i][1] if i == j else math.hypot(pts[i][2] - pts[j][2], pts[i][3] - pts[j][3])
-                Z[i, j] = pre * hankel2(0, k * rr)
+                Z[i, j] = pre * hankel2(0, k * rr) * (j0[i] if i == j else j0[i] * j0[j])
         if partner:
-            # reduce the shorted returns, then the odd / even mode of the pair
+            # reduce the shorted returns, then the odd / even mode of the pair: currents ±I, the mode
+            # voltage (V_P ∓ V_N)/2, i.e. (Z_PP + Z_NN)/2 ∓ (Z_PN + Z_NP)/2 (section 14)
             k2 = 2
             if n > k2:
                 Zr = Z[:k2, :k2] - Z[:k2, k2:] @ np.linalg.solve(Z[k2:, k2:], Z[k2:, :k2])
             else:
                 Zr = Z[:k2, :k2]
-            zs = Zr[0, 0] - Zr[0, 1] if mode == "odd" else Zr[0, 0] + Zr[0, 1]
+            zself, zmut = 0.5 * (Zr[0, 0] + Zr[1, 1]), 0.5 * (Zr[0, 1] + Zr[1, 0])
+            zs = zself - zmut if mode == "odd" else zself + zmut
         else:
             zs = Z[0, 0] if n == 1 else Z[0, 0] - Z[0, 1:] @ np.linalg.solve(Z[1:, 1:], Z[1:, 0])
         if SHARED:

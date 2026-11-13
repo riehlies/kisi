@@ -110,10 +110,12 @@ validation, and every result says which level it used and how uncertain it is.
   (ThunderScope 105 → 57 s on one thread, results reproducible; `BOARD_RESONANCES.md` section 9). Next:
   - the return groups' floating-plane loss is 1.6× the 3D on REFINOUT2 (0.29 dB off at 12–20 GHz) – what keeps
     them from the default; the cavity option is still 8× the default (per-via fill masks);
-  - the X exits without a plane on one side and B_ts6_L1L3_stub (TDR minimum 7.5–11 % low in kisi-fdtd and
-    openEMS with the matched de-embedding; the ladder 9–37 fF too capacitive and 50–88 pH short on every L1→L3
-    via, TESTS.md section 19, where four model variants were tried and not kept); the thick-core through via
-    B_ts6_L1L6 (−50 fF); the s8 stripline fixture leaves ±4 % in the inner exits' TDR (|S11| ≠ |S22| by 0.045);
+  - deferred, documented as a known limit (`docs/models.md`, Vias): the X exits without a plane on one side and
+    B_ts6_L1L3_stub (TDR minimum 7.5–11 % low in kisi-fdtd and openEMS with the matched de-embedding; the ladder
+    9–37 fF too capacitive and 50–88 pH short on every L1→L3 via, TESTS.md section 19, where four model variants
+    were tried and not kept; what it needs first is a 3D study of the field inside the antipad opening);
+  - the thick-core through via B_ts6_L1L6 (−50 fF); the s8 stripline fixture leaves ±4 % in the inner exits' TDR
+    (|S11| ≠ |S22| by 0.045);
   - above 12 GHz neither ladder follows the 3D results, and the first board mode comes out 1.6–2.5 % low;
   - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
     ladder at the via centre; about 8 days, a minimal version 4; design note `BOARD_VIAS.md` section 5.6);

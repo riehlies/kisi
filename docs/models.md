@@ -128,7 +128,7 @@ with returns on one side a negative resistance from a few GHz). Vias that do not
 FDTD solver ([Validation](#validation)): via impedance in the TDR median 2.4 %, 90th percentile 5.1 % (single
 vias), pairs 4.0 / 5.7 % in Zdiff; delay within 0.21 ps (single vias) and 0.18 ps (pairs, median); pairs within 1.8° phase (median); stub notch within 1.5 % (`validation/fdtd/results/kisi_models.json`; the 3D result and kisi's channel each de-embedded with their 2×thru, every fixture referred to its own line impedance first); the
 four board vias with a 3D reference within 0.03–0.44 dB up to 12 GHz. An estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
-the via's cage. A via whose path crosses a ground/supply plane pair that no return via bridges gets a warning.
+the via's cage. Known limit: a via whose inner-layer exit has one plane close and the other far or missing comes out too capacitive – on the three such references (X_s8x4, B_ts6_L1L3_stub, X_s8x2) the TDR minimum is 7.5–11 % low and the via's loss can be overestimated (X_s8x4 −0.4 against −0.1 dB at 20 GHz); no model change tried so far fixed them without moving the other vias ([TESTS.md](../validation/fdtd/TESTS.md) section 19). A via whose path crosses a ground/supply plane pair that no return via bridges gets a warning.
 `--via-cavity` (finite plane pairs) and `--via-returns` (return groups per plane pair) are experimental options.
 
 ## Lanes and the channel check

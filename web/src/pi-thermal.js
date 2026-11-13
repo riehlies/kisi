@@ -271,13 +271,13 @@ function renderThermDetail() {
     <div class="dstats"><span>Board max <b>${fmtT(t.t_max_c)}</b> (${esc(layerName(t.t_max_layer))})</span><span>Hottest junction <b>${hot ? fmtT(hot.tj_c) : "–"}</b>${hot ? ` ${esc(hot.refdes)}` : ""}</span><span title="surface heat transfer coefficient per side: convection and radiation">Air: h <b>${fmt(c.h_top, 1)} / ${fmt(c.h_bottom, 1)}</b> W/(m²·K) top / bottom${c.estimated ? " (estimate)" : ""}</span></div>
     <h4 class="sub">Parts: over or near Tj max first, then the hottest</h4>
     <div class="tablewrap"><table class="xs-table ctab"><thead><tr>
-      <th>Part</th><th></th>
+      <th>Part</th><th data-csv="Value"></th>
       <th class="n" title="heat dissipated in the part">heat</th>
       <th class="n" title="board temperature under the part's pads (°C)">board °C</th>
       <th class="n" title="junction temperature (°C); * = estimated package data or θJA only">Tj °C</th>
       <th class="n" title="top of the package (°C): Tj − ψJT·P (PI_THERMAL psi_jt) or the case node of the two-resistor model (Tj − θJC·heat through the top)">case top °C</th>
       <th class="n" title="maximum junction temperature (°C; PI_THERMAL tj_max, else 125 °C assumed)">Tj max °C</th>
-      <th class="n" title="vias under the part's pads · share of the part's heat into the board that goes down through them (⚠: looks short of thermal vias; hover for the split)">vias · down</th><th></th></tr></thead>
+      <th class="n" title="vias under the part's pads · share of the part's heat into the board that goes down through them (⚠: looks short of thermal vias; hover for the split)">vias · down</th><th data-csv="Status"></th></tr></thead>
       <tbody>${parts || `<tr><td>no part with heat (power tree in step 1)</td></tr>`}</tbody></table></div>
     ${hints}
     <h4 class="sub">Rails at temperature</h4>

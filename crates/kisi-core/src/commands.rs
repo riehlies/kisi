@@ -624,7 +624,7 @@ pub fn run_with(
             }
             Ok(v)
         }
-        "report" => Ok(service::report(proj()?, &profiles)),
+        "report" => service::report(proj()?, &profiles, &rf_params(o)?, check_rows),
         "gaps" => {
             let mut v = crate::gaps::gaps(proj()?, &profiles);
             if let Some(view) = &o.for_view {
@@ -769,11 +769,14 @@ pub fn check_rows(o: &Opts, p: &Project, idx: &[usize]) -> Result<(usize, Vec<(u
         return Ok((0, vec![]));
     }
     let profiles = Profiles::builtin();
-    let n = service::channel_check_count(p, &profiles, &o.classes, o.nets.as_deref());
+    // `report` checks every lane with the profiles of the board and its kisi.json
+    let none = HashMap::new();
+    let (classes, nets) = if o.cmd == "report" { (&none, None) } else { (&o.classes, o.nets.as_deref()) };
+    let n = service::channel_check_count(p, &profiles, classes, nets);
     if idx.is_empty() {
         return Ok((n, vec![]));
     }
-    Ok((n, service::channel_check_rows(p, &profiles, &o.classes, o.nets.as_deref(), &rf_params(o)?, idx)))
+    Ok((n, service::channel_check_rows(p, &profiles, classes, nets, &rf_params(o)?, idx)))
 }
 
 /// What `report` prints after writing the file.

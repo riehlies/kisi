@@ -59,8 +59,8 @@ Parallel check: `service::check_plan` lists the rows (lanes, nets without device
 pure function of the project, computed on several engines and put back in that order – native: threads
 (`kisi_core::par`, 4 by default, at most the cores, `KISI_THREADS`); Node CLI: worker threads, each with its own WASM
 instance and project (`kisi_cli_check_part` → rows by index → `kisi_cli_run` with `check_rows`, the main thread
-computes rows too); viewer: Web Workers that replay the engine's state calls (`Engine.replay`, `check-pool.js`) and
-run `kisi_check`. Rule for model code: nothing a row computes may depend on what was computed before – caches are
+computes rows too; the check of `report` the same way, also in the viewer's Export); viewer: Web Workers that
+replay the engine's state calls (`Engine.replay`, `check-pool.js`) and run `kisi_check`. Rule for model code: nothing a row computes may depend on what was computed before – caches are
 memos of a function of their key (the via model computes from the key-quantised geometry; its caches are shared by
 the native threads). `compare_cli.py` (both CLIs) and `check_viewer.py` require the parallel output to be identical
 to one thread.
@@ -77,7 +77,10 @@ to one thread.
   `field-cache` · `check-pool` (the channel check's rows in Web Workers with engines of their own) · `crosstalk` (coupling scan with step 2, Couplings card, critical stretches on the map) · `stackups` (the Stackup view, a view button of its own with the option on: other stackups side by side and the tolerance band, `kisi_stackup_study`; the active stackup of all views – `active_stackup` in the analysis request, the engine applies it with `kisi_core::stackups::active_stackup` and keeps the last four analyses by key, `Engine.analyzeKeyed` – and the header indicator; after a switch the computed channel check, IR drop, PDN impedance and temperature are put back from a cache keyed by what each depends on – the last three stackups left, the engine keeping its DC results alongside (`put_stackup`, `kisi_pi_stored`) – or computed again) · `pi-map` (how the power maps are drawn from the solvers' cells: values extended beyond the copper and interpolated, cut at the real copper or the outline, narrow tracks as coloured strokes, isolines – display only) · `pi-dc` · `pi-pdn` · `pi-balance` · `pi-loss` (losses map with the via markers, power flow) · `pi-thermal` (temperature step and map) · `views` · `prepare` (the Prepare PCB page: gaps per category from
   `kisi_gaps` in a worker, the draft = the board's kisi.json, kept per board in the browser, forms by entry key,
   `kisi_config_check`, `kisi_config_subset` for saving one category, `kisi_edits_to_fields` for the views' power
-  edits, the checklist with Apply per step and markers that count a step's open items) · `main`
+  edits, the checklist with Apply per step and markers that count a step's open items) · `export` (the Export menu
+  in the top bar: the tables of the view shown as CSV – one reader of the page's tables, units into the headers –,
+  and `kisi report` in Web Workers through the CLI's calls `kisi_cli_project`, `kisi_cli_check_part`, `kisi_cli_run`
+  with the browser's field results, so the result is the CLI's) · `main`
   (start-up, files, hand-over).
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html`: WASM modules and the field solver
   script (gzip + base64, unpacked at start), fonts (`web/fonts`, OFL), `data/*.json` and, optionally, example

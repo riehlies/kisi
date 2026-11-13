@@ -1395,21 +1395,32 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
 }
 
 /// Everything in one document, written as `analysis/kisi.json` next to the board
-/// (layout of kicad-happy's analysis folder).
-pub fn report(p: &Project, profiles: &Profiles) -> Value {
-    let rp = RfParams::default();
+/// (layout of kicad-happy's analysis folder). `rp`: the channel options (`--via-cavity`,
+/// `--via-returns`); `check_rows`: the channel check's rows computed in parts elsewhere (worker
+/// engines of the Node CLI and the viewer, `channel_check_rows`) – the result is the same.
+pub fn report(
+    p: &Project,
+    profiles: &Profiles,
+    rp: &RfParams,
+    check_rows: Option<Vec<(usize, Value)>>,
+) -> Result<Value, String> {
+    let none = HashMap::new();
+    let channels = match check_rows {
+        Some(rows) => channel_check_merge(p, profiles, &none, None, rp, rows)?,
+        None => channel_check(p, profiles, &none, None, rp),
+    };
     let run = power_run(p, None);
-    json!({
+    Ok(json!({
         "tool": "kisi", "version": env!("CARGO_PKG_VERSION"),
         "variant": p.variant.summary(),
         "config": p.config_summary(),
         "overview": overview(p),
-        "interfaces": interfaces(p, profiles, &HashMap::new()),
-        "channels": channel_check(p, profiles, &HashMap::new(), None, &rp),
+        "interfaces": interfaces(p, profiles, &none),
+        "channels": channels,
         "power": run.as_ref().map_err(|e| e.clone()).and_then(|r| power_from(p, r, None)).unwrap_or_else(|e| json!({"error": e})),
         "thermal": run.as_ref().map_err(|e| e.clone()).and_then(|r| thermal_from(p, r, &crate::thermal::ThermalParams::default())).unwrap_or_else(|e| json!({"error": e})),
         "stackup_used": stackup_used(p),
-    })
+    }))
 }
 
 /// The stackup the analyses used, with the source of every value (report, exports).

@@ -242,8 +242,8 @@ async function main(argv) {
         }
       }
       const inputs = { opts: o, pcb_path: pcbPath, pcb, pro, config, stackup, field: {}, files };
-      // check workers set the project up while the main thread does
-      if (o.cmd === "check") var checkWorkers = startCheckWorkers(eng, inputs);
+      // check workers set the project up while the main thread does (the check of `report` too)
+      if (o.cmd === "check" || o.cmd === "report") var checkWorkers = startCheckWorkers(eng, inputs);
       const { plan } = eng.json("kisi_cli_project", inputs);
       var fieldInfo = null;
       if (plan.length) {

@@ -46,6 +46,14 @@
     </div>
     <button class="btn prep-btn" id="prep-btn" aria-pressed="false" title="What the board file lacks, per category – enter the values and save the board's kisi.json">Prepare PCB <span class="count" id="prep-count" hidden></span></button>
     <button class="btn" id="reload" hidden title="Read the same files again (after saving in KiCad)">Reload</button>
+    <div class="xp-wrap" id="xp-wrap">
+      <button class="btn" id="xp-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="xp-menu" disabled>Export</button>
+      <div class="xp-menu" id="xp-menu" role="menu" hidden>
+        <button role="menuitem" id="xp-csv">Table (CSV)</button>
+        <button role="menuitem" id="xp-json">Data (kisi.json)</button>
+      </div>
+    </div>
+    <div class="stk-act xp-status" id="xp-status" hidden role="status" aria-live="polite"></div>
     <label class="btn primary" for="file" id="load-files">Load files</label>
     <input type="file" id="file" accept=".kicad_pcb,.kicad_pro,.json,.csv,.s2p,.s4p" multiple hidden>
   </div>
@@ -371,5 +379,6 @@ const DATA = __DATA__;
 <script src="src/pi-loss.js"></script>
 <script src="src/views.js"></script>
 <script src="src/prepare.js"></script>
+<script src="src/export.js"></script>
 <script src="src/main.js"></script>
 <!-- @end-scripts -->

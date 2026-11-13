@@ -191,10 +191,10 @@ function segmentAt(ch, x, end) {
   return out.length ? `<br><span class="muted">${out.join("<br>")}</span>` : "";
 }
 
-// a text file for the user to save (Touchstone, …)
-function saveText(name, text) {
+// a text file for the user to save (Touchstone, CSV, …)
+function saveText(name, text, type = "text/plain") {
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+  a.href = URL.createObjectURL(new Blob([text], { type }));
   a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);

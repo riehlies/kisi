@@ -103,12 +103,23 @@ function renderLayerChips() {
   });
 }
 
-function renderNets() {
+// the Nets card's list: the search, else the nets with a target; worst first; the first 300 are shown
+function netList() {
   const q = $("search").value.trim().toLowerCase();
-  let list = S.an.nets.filter((n) => q ? (n.name.toLowerCase().includes(q) || n.class.toLowerCase().includes(q)) : n.target);
+  const list = S.an.nets.filter((n) => q ? (n.name.toLowerCase().includes(q) || n.class.toLowerCase().includes(q)) : n.target);
   list.sort((a, b) => (a.within5 ?? 2) - (b.within5 ?? 2) || b.length - a.length);
-  $("netCount").textContent = q ? `${list.length} matches` : `${list.length} with target${S.an.skeleton ? "" : " · worst first"}`;
-  list = list.slice(0, 300);
+  return { q, n: list.length, list: list.slice(0, 300) };
+}
+// the same list as a table (Export → Table): the values as the card shows them
+function netsTable() {
+  const { q, list } = netList(), f = (v, d) => v == null || !isFinite(v) ? "" : v.toFixed(d);
+  return { title: `Impedance per net · ${q ? `nets matching “${q}”` : "nets with a target impedance, worst first"}${S.an.skeleton ? " · before the impedance estimate" : ""}`,
+    head: ["Net", "Class", "Z mean (Ω)", "Target (Ω)", "Target type", "Length (mm)", "Within ±5 % (% of length)"],
+    rows: list.map((n) => [n.name, n.class, f(n.z_mean, 1), n.target ? f(n.target.z, 0) : "", n.target ? (n.target.diff ? "differential" : "single-ended") : "", f(n.length, 1), n.within5 == null ? "" : f(n.within5 * 100, 0)]) };
+}
+function renderNets() {
+  const { q, n: total, list } = netList();
+  $("netCount").textContent = q ? `${total} matches` : `${total} with target${S.an.skeleton ? "" : " · worst first"}`;
   $("nets").innerHTML = list.map((n) => {
     const w5 = n.within5;
     const col = w5 == null ? S.colors.none : w5 >= 0.9 ? S.colors.ok : w5 >= 0.6 ? S.colors.high1 : S.colors.high2;

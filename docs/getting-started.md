@@ -132,6 +132,24 @@ KiCad files are never changed. Field-solver results are cached in the browser (I
 last three boards stay in memory while switching. The "Accuracy" section of the impedance view summarises the
 model accuracy ([Models and limits](models.md)).
 
+### Export
+"Export" in the top bar, next to "Load files", works once a board is loaded:
+- **Table (CSV)** – the table of the view shown, filtered and sorted as there: the Nets card (impedance view), the
+  interfaces (a row per lane, with its bus) or the channel check (board map), the power tree's components, the
+  selected rail's loads (voltage drop, current density), the losses, the temperature tables, the stackup
+  comparison. Each table starts with its title line; units are in the column headers, numbers are plain (dot
+  decimal, no thousands separator, one prefix per column); a mark of the view after a value (`*` estimate, `?`
+  uncertain skew, `⚠`) gets a column of its own, e.g. "Tj °C estimate". UTF-8 with BOM, so that Excel reads it; a
+  text that starts with `+`, `-`, `=` or `@` (a rail such as +5V) gets a leading apostrophe, so that Excel does not
+  take it for a formula. The file is `<board>_<view>_<date>.csv`; in a view without a table the entry is greyed
+  out and says why.
+- **Data (kisi.json)** – the content of [`kisi report`](cli.md#report) for the loaded files (board, project,
+  kisi.json with its BOMs and Touchstone files), the assembly variant and the stackup the views use (Stackup card
+  changes, the active fab template, the tolerances), with the field-solver results this browser has for the board
+  (formula values elsewhere). It runs in the background, with its progress and "Cancel" in the top bar (ThunderScope
+  about half a minute). Edits kept only in this browser – targets, profiles, power settings, lane directions – are
+  not in it; Prepare PCB moves them into the kisi.json. The file is `<board>_report_<date>.json`.
+
 ## From KiCad: the plugin
 A button in KiCad's PCB editor (KiCad 10) opens the open board in the viewer, in
 your default browser, with its `<board>.kisi.json`. It has been tested in KiCad 10 on Windows; Linux and macOS

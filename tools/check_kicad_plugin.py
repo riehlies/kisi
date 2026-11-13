@@ -19,7 +19,7 @@ path from the API), with a HOME of its own whose Downloads folder the plugin wat
 4. the next click takes the download over: moved next to the board (checked with the CLI's config-check where Node.js
    is there), the previous kisi.json kept in analysis/, the card says so; two candidates: nothing is taken over
 5. --config: a full kisi.json next to the board, checked without errors; KiCad's "unsaved changes" notice; the agent
-   card without Node.js (the nodejs.org note)
+   card without Node.js (the nodejs.org note); the Export menu's table and report as downloads from this page
 Screenshots (kicad-start.png, kicad-prepare.png, kicad-saved.png, kicad-download.png, kicad-import.png, …) and a
 generated page go to --out. Exit code 1 on problems.
 """
@@ -307,6 +307,21 @@ with sync_playwright() as p:
         r = pg.evaluate("({ ok: S.config.check.ok, entries: S.config.check.entries, errors: S.config.check.errors })")
         check(r["ok"] and r["entries"] > 0, f"--config: {r}")
     pg.screenshot(path=f"{out}/kicad-modified.png")
+    # the Export menu on the page from KiCad: the impedance table and the report as downloads
+    pg.click("#xp-btn")
+    with pg.expect_download(timeout=30000) as dl:
+        pg.click("#xp-csv")
+    check(dl.value.suggested_filename.startswith(stem + "_impedance_") and open(dl.value.path(), "rb").read(3) == b"\xef\xbb\xbf",
+          f"export: table {dl.value.suggested_filename!r}")
+    pg.click("#xp-btn")
+    with pg.expect_download(timeout=900000) as dl:
+        pg.click("#xp-json")
+    try:
+        rep = json.loads(pathlib.Path(dl.value.path()).read_text(encoding="utf-8"))
+    except Exception as e:
+        rep = {"error": str(e)}
+    check(rep.get("tool") == "kisi" and "channels" in rep and dl.value.suggested_filename.startswith(stem + "_report_"),
+          f"export: report {dl.value.suggested_filename!r}: {sorted(rep)[:12]}")
     open_prepare(pg)
     pg.evaluate("S.prep.agentScope = 'all'; prepRender(true)")
     ag = agent(pg)

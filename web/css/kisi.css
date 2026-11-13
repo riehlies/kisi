@@ -406,19 +406,19 @@ ul.src li { margin: 2px 0; }
   .brand span { min-width: 0; }
 }
 @media (min-width: 1200px) and (max-width: 1799px) {
-  .bar .seg button, .bar > .btn { padding: 6px 9px; }
+  .bar .seg button, .bar > .btn, .bar .xp-wrap > .btn { padding: 6px 9px; }
   .bar .stk-act b { max-width: 9em; }
 }
 @media (min-width: 1200px) and (max-width: 1599px) {
   .seg button .lw { display: none; }
   .seg button .sh { display: inline; }
-  .bar .seg button, .bar > .btn { padding: 5px 8px; font-size: 13.5px; }
+  .bar .seg button, .bar > .btn, .bar .xp-wrap > .btn { padding: 5px 8px; font-size: 13.5px; }
   .brand small { display: none; }
 }
 @media (min-width: 1200px) and (max-width: 1399px) {
   .bar { gap: 8px; }
   .bar > .brand { min-width: 80px; }
-  .bar .seg button, .bar > .btn { padding: 5px 7px; }
+  .bar .seg button, .bar > .btn, .bar .xp-wrap > .btn { padding: 5px 7px; }
   .bar .stk-act { padding: 3px 7px; }
   .bar .stk-act b { max-width: 6.5em; }
 }
@@ -542,6 +542,14 @@ table.prep-ed input.ref { max-width: 90px; }
 .bar .views { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
 .stk-act.busy { border-color: var(--accent); }
 .stk-act .linklike { font-size: inherit; }
+/* Export menu (export.js) */
+.xp-wrap { position: relative; }
+.xp-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; display: flex; flex-direction: column; min-width: 190px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 8px 30px rgba(0,0,0,0.18); }
+.xp-menu button { border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: 4px; cursor: pointer; font: 600 14px var(--font-display); color: var(--fg); }
+.xp-menu button:hover:not(:disabled), .xp-menu button:focus-visible { background: var(--accent-soft); }
+.xp-menu button:disabled { color: var(--muted); opacity: 0.6; cursor: default; }
+.stk-act.xp-status { border-color: var(--accent); }
+@media (max-width: 860px) { .xp-menu { left: 0; right: auto; } }
 .what-if { margin: 4px 0 0; }
 .fab-row .prep-chk { font-weight: 600; }
 .stk-head h2 { margin: 0; font-family: var(--font-display); font-size: 20px; }

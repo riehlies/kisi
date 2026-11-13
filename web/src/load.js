@@ -53,6 +53,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     } catch (e) { S.variant = null; console.warn(e); }
     S.scene = S.engine.scene();
     $("app").classList.remove("no-board");
+    $("xp-btn").disabled = false;
     S.padSet = new Set(S.scene.pad_tracks || []);
     // synthetic pad track → its pad (drawn as the pad's outline, not as a stroke)
     S.padOfTrack = new Map((S.scene.pad_tracks || []).map((t, i) => [t, (S.scene.pad_track_pad || [])[i]]));

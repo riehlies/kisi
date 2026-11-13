@@ -363,12 +363,12 @@ function renderLossDetail() {
   box.innerHTML = `<header><div><h3>Losses · ${fmtSI(s.total_w, "W")}</h3><div class="muted">where power turns into heat: parts and copper (rails and ground return)</div></div><button class="x" id="closePi" aria-label="Close">×</button></header>
     <div class="dstats"><span>Parts <b>${fmtSI(s.components_w, "W")}</b></span><span>Copper, rails <b>${fmtSI(s.copper_w, "W")}</b></span><span>Copper, ground return <b>${fmtSI(s.ground_w, "W")}</b></span></div>
     <h4 class="sub">Copper per layer</h4>
-    <div class="tablewrap"><table class="xs-table ctab"><tbody>${layers || `<tr><td>no copper losses yet</td></tr>`}</tbody></table></div>
+    <div class="tablewrap"><table class="xs-table ctab" data-head="Layer|Copper loss"><tbody>${layers || `<tr><td>no copper losses yet</td></tr>`}</tbody></table></div>
     ${S.loss.vias && S.loss.vias.count ? `<p class="note">Of which via barrels ${fmtSI(S.loss.vias.total_w, "W")} in ${S.loss.vias.count} vias and plated holes: markers on the map, not in its colours.</p>` : ""}
     <h4 class="sub">Copper per rail</h4>
-    <div class="tablewrap"><table class="xs-table ctab"><tbody>${railRows || `<tr><td>–</td></tr>`}</tbody></table></div>
+    <div class="tablewrap"><table class="xs-table ctab" data-head="Rail|Copper loss"><tbody>${railRows || `<tr><td>–</td></tr>`}</tbody></table></div>
     <h4 class="sub">Hottest parts</h4>
-    <div class="tablewrap"><table class="xs-table ctab"><tbody>${compRows || `<tr><td>no power tree</td></tr>`}</tbody></table></div>
+    <div class="tablewrap"><table class="xs-table ctab" data-head="Part|Value|Heat"><tbody>${compRows || `<tr><td>no power tree</td></tr>`}</tbody></table></div>
     <p class="note">${esc((s.notes || []).join(" "))} Shown is power (W, W/mm²), not temperature.</p>`;
   box.hidden = false;
   $("closePi").onclick = () => { box.hidden = true; };

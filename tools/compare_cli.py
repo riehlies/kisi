@@ -2,7 +2,7 @@
 """Compare the Node CLI (dist/kisi.mjs, formula mode) with the native kisi on the example boards.
 
 Usage: compare_cli.py <kisi native binary> <kisi.mjs> <examples dir>
-                      [--commands check,gaps,thermal,check-cavity,export,stackups,overview-preset]
+                      [--commands check,gaps,thermal,check-cavity,export,stackups,overview-preset,report]
 
 Runs every command on ThunderScope and LibreVNA with their configs (web/samples/{ts,vna}.kisi.json) and compares
 the JSON outputs. Numbers are compared after rounding to 6 significant digits; keys that differ by design
@@ -12,7 +12,8 @@ timings of both runs are printed (in GitHub Actions also as a notice in the run'
 `check-cavity` is `check --all --via-cavity` on LibreVNA only (the cavity grids in WebAssembly; a clock call there
 once trapped). `stackups` lists the fab stackup templates with their fit and kisi.json entries; `overview-preset` is
 `overview --stackup-preset … --tol …` (a JLCPCB template laid over the board, with its tolerance band); the LibreVNA
-export writes the tolerance corners too (`--corners`). Exit code 1 on any difference.
+export writes the tolerance corners too (`--corners`). `report` compares the written analysis/kisi.json as well (its
+check computed in worker threads by the Node CLI). Exit code 1 on any difference.
 """
 import json, os, subprocess, sys, time
 
@@ -75,7 +76,7 @@ def main():
     if len(sys.argv) < 4:
         raise SystemExit(__doc__)
     native, mjs, ex = sys.argv[1:4]
-    cmds = ["check", "gaps", "thermal", "check-cavity", "export", "stackups", "overview-preset"]
+    cmds = ["check", "gaps", "thermal", "check-cavity", "export", "stackups", "overview-preset", "report"]
     if "--commands" in sys.argv:
         cmds = sys.argv[sys.argv.index("--commands") + 1].split(",")
     bad = 0
@@ -87,10 +88,10 @@ def main():
             if only and key not in only:
                 continue
             extra = ARGS.get(c, [])
-            if c == "export":
+            if c in ("export", "report"):
                 import tempfile
-                tmp = tempfile.mkdtemp(prefix="kisi-export-")
-                extra = EXPORT[key] + ["--out", os.path.join(tmp, "x")]
+                tmp = tempfile.mkdtemp(prefix="kisi-" + c + "-")
+                extra = (EXPORT[key] if c == "export" else []) + ["--out", os.path.join(tmp, "x" if c == "export" else "kisi.json")]
             na = [native, cmd, pcb, "--config", cfg] + extra
             nb = ["node", mjs, cmd, pcb, "--config", cfg, "--formula"] + extra
             t0 = time.time(); ta = run(na, raw=True); t1 = time.time(); tb = run(nb, raw=True); t2 = time.time()
@@ -105,6 +106,13 @@ def main():
                     if open(os.path.join(out, f), "rb").read() != data:
                         d = f"written file {f} differs"
                         break
+            if c == "report" and d is None:
+                # the file each wrote (the same path): the native one, then the Node CLI's again
+                rep = os.path.join(tmp, "kisi.json")
+                native_rep = json.load(open(rep, encoding="utf-8"))
+                run(nb, raw=True)
+                d = first_diff(norm(native_rep), norm(json.load(open(rep, encoding="utf-8"))))
+                d = d and "analysis/kisi.json " + d
             print(f"{stem} {c}: {'identical' if d is None else 'DIFFERENT – ' + d}")
             bad += d is not None
             if c == "check":

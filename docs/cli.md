@@ -173,7 +173,8 @@ correlations, e.g. for the inside of a closed case). See [Models and limits](mod
 
 ### `report`
 Everything into `analysis/kisi.json` next to the board (`--out FILE` elsewhere); prints a summary. For file-based
-review tools and later sessions. Needs an assembly variant on boards that have them. Runs the field solver.
+review tools and later sessions. Needs an assembly variant on boards that have them. Runs the field solver. The
+viewer's Export → Data (kisi.json) gives the same document ([getting started](getting-started.md#export)).
 
 ### `export`
 A lane (`--lane NAME`, a net of the lane) or a whole bus (`--bus NAME`, as `kisi interfaces` names it, e.g.
@@ -327,7 +328,7 @@ later runs are fast and the coverage grows. `field_solver` in the output shows t
 always uses formulas and says so in `field_solver_note`.
 
 ## Threads
-`check` (and the check in `report` of the native build) computes its rows on up to 4 threads, fewer on machines
+`check` (and the check in `report`) computes its rows on up to 4 threads, fewer on machines
 with fewer cores; `KISI_THREADS=n` sets the number (1: no extra threads). The viewer's check uses Web Workers the
 same way. The result is identical to one thread.
 

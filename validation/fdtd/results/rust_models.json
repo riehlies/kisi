@@ -1,27 +1,33 @@
 {
  "summary": {
-  "rust_total_s": 5.41,
+  "rust_total_s": 5.33,
   "cases": 47,
   "python": {
-   "single_tdr_err_pct_median": 2.09,
-   "single_tdr_err_pct_p90": 5.459,
-   "single_dS21_mean_db_median": 0.065,
-   "single_dS21_max_db_median": 0.168,
-   "pairs_dS21_max_db_median": 0.161
+   "single_tdr_err_pct_median": 2.33,
+   "single_tdr_err_pct_p90": 4.695,
+   "single_dS21_mean_db_median": 0.067,
+   "single_dS21_max_db_median": 0.172,
+   "pairs_tdr_err_pct_median": 0.955,
+   "pairs_tdr_err_pct_p90": 3.114,
+   "pairs_dS21_max_db_median": 0.146
   },
   "rust": {
-   "single_tdr_err_pct_median": 2.09,
-   "single_tdr_err_pct_p90": 5.459,
-   "single_dS21_mean_db_median": 0.065,
-   "single_dS21_max_db_median": 0.168,
-   "pairs_dS21_max_db_median": 0.161
+   "single_tdr_err_pct_median": 2.33,
+   "single_tdr_err_pct_p90": 4.695,
+   "single_dS21_mean_db_median": 0.067,
+   "single_dS21_max_db_median": 0.172,
+   "pairs_tdr_err_pct_median": 0.955,
+   "pairs_tdr_err_pct_p90": 3.114,
+   "pairs_dS21_max_db_median": 0.148
   },
   "rust_graded": {
-   "single_tdr_err_pct_median": 1.2,
-   "single_tdr_err_pct_p90": 4.275,
-   "single_dS21_mean_db_median": 0.054,
-   "single_dS21_max_db_median": 0.091,
-   "pairs_dS21_max_db_median": 0.107
+   "single_tdr_err_pct_median": 1.19,
+   "single_tdr_err_pct_p90": 3.453,
+   "single_dS21_mean_db_median": 0.055,
+   "single_dS21_max_db_median": 0.093,
+   "pairs_tdr_err_pct_median": 1.48,
+   "pairs_tdr_err_pct_p90": 3.302,
+   "pairs_dS21_max_db_median": 0.08
   },
   "parity_rust": {
    "dS21_max_db_max": 0.0047,
@@ -66,21 +72,21 @@
    "dphase21_max_deg_max": 99.418
   },
   "via_time_ms_median": {
-   "python": 1299.9,
-   "rust_build": 108.15,
-   "rust_graded_build": 10.64,
-   "rust_eval": 0.89
+   "python": 1279.0,
+   "rust_build": 103.11,
+   "rust_graded_build": 10.58,
+   "rust_eval": 0.88
   },
-  "via_eval_us_per_freq_median": 2.225,
+  "via_eval_us_per_freq_median": 2.2,
   "cavity": {
    "dZ_rel_max": 2.141113888581247e-06,
    "rust_eval_ms": [
-    27.09,
-    27.33
+    27.68,
+    27.99
    ],
    "python_ms": [
-    113.1,
-    110.9
+    109.1,
+    109.3
    ],
    "nf": 600,
    "modes": 9600
@@ -90,33 +96,33 @@
   "A_s4_d200_ap1000": {
    "group": "A",
    "python": {
-    "dS21_max_db": 0.108,
-    "dS21_mean_db": 0.069,
-    "dphase_max_deg": 7.04,
+    "dS21_max_db": 0.121,
+    "dS21_mean_db": 0.076,
+    "dphase_max_deg": 6.92,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.32,
-     2.93
+     1.37,
+     2.33
     ]
    },
    "rust": {
-    "dS21_max_db": 0.108,
-    "dS21_mean_db": 0.069,
-    "dphase_max_deg": 7.04,
+    "dS21_max_db": 0.121,
+    "dS21_mean_db": 0.076,
+    "dphase_max_deg": 6.92,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.32,
-     2.93
+     1.37,
+     2.33
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.076,
-    "dS21_mean_db": 0.056,
-    "dphase_max_deg": 5.84,
+    "dS21_max_db": 0.093,
+    "dS21_mean_db": 0.066,
+    "dphase_max_deg": 5.71,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.36,
-     1.23
+     1.4,
+     0.63
     ]
    },
    "notch_3d_ghz": null,
@@ -135,47 +141,47 @@
     "dphase21_max_deg": 6.054
    },
    "time_ms": {
-    "rust_build": 177.57,
-    "rust_graded_build": 8.45,
-    "rust_eval": 0.41,
+    "rust_build": 169.7,
+    "rust_graded_build": 9.02,
+    "rust_eval": 0.42,
     "nf": 400,
     "laplace_unknowns": [
      76258,
      8408
     ],
-    "python": 1326.5
+    "python": 1311.3
    }
   },
   "A_s4_d200_ap600": {
    "group": "A",
    "python": {
-    "dS21_max_db": 0.109,
-    "dS21_mean_db": 0.038,
-    "dphase_max_deg": 3.24,
+    "dS21_max_db": 0.115,
+    "dS21_mean_db": 0.041,
+    "dphase_max_deg": 3.31,
     "notch_ghz": null,
     "tdr_err_pct": [
-     3.85,
-     2.17
+     3.88,
+     2.75
     ]
    },
    "rust": {
-    "dS21_max_db": 0.109,
-    "dS21_mean_db": 0.038,
-    "dphase_max_deg": 3.24,
+    "dS21_max_db": 0.115,
+    "dS21_mean_db": 0.041,
+    "dphase_max_deg": 3.31,
     "notch_ghz": null,
     "tdr_err_pct": [
-     3.85,
-     2.17
+     3.88,
+     2.75
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.063,
-    "dS21_mean_db": 0.036,
-    "dphase_max_deg": 2.45,
+    "dS21_max_db": 0.066,
+    "dS21_mean_db": 0.04,
+    "dphase_max_deg": 2.29,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.62,
-     1.0
+     2.64,
+     1.59
     ]
    },
    "notch_3d_ghz": null,
@@ -194,47 +200,47 @@
     "dphase21_max_deg": 10.708
    },
    "time_ms": {
-    "rust_build": 165.75,
-    "rust_graded_build": 7.83,
-    "rust_eval": 0.4,
+    "rust_build": 169.85,
+    "rust_graded_build": 7.62,
+    "rust_eval": 0.42,
     "nf": 400,
     "laplace_unknowns": [
      76218,
      7516
     ],
-    "python": 1315.6
+    "python": 1303.5
    }
   },
   "A_s4_d200_ap800": {
    "group": "A",
    "python": {
-    "dS21_max_db": 0.062,
-    "dS21_mean_db": 0.047,
-    "dphase_max_deg": 3.03,
+    "dS21_max_db": 0.073,
+    "dS21_mean_db": 0.053,
+    "dphase_max_deg": 2.89,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.51,
-     0.76
+     1.56,
+     0.1
     ]
    },
    "rust": {
-    "dS21_max_db": 0.062,
-    "dS21_mean_db": 0.047,
-    "dphase_max_deg": 3.03,
+    "dS21_max_db": 0.073,
+    "dS21_mean_db": 0.053,
+    "dphase_max_deg": 2.89,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.51,
-     0.76
+     1.56,
+     0.1
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.072,
-    "dS21_mean_db": 0.046,
-    "dphase_max_deg": 4.39,
+    "dS21_max_db": 0.082,
+    "dS21_mean_db": 0.052,
+    "dphase_max_deg": 4.25,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.52,
-     0.01
+     1.58,
+     0.67
     ]
    },
    "notch_3d_ghz": null,
@@ -253,47 +259,47 @@
     "dphase21_max_deg": 1.429
    },
    "time_ms": {
-    "rust_build": 137.1,
-    "rust_graded_build": 8.51,
-    "rust_eval": 0.41,
+    "rust_build": 145.94,
+    "rust_graded_build": 8.42,
+    "rust_eval": 0.38,
     "nf": 400,
     "laplace_unknowns": [
      76238,
      8073
     ],
-    "python": 1260.5
+    "python": 1277.3
    }
   },
   "A_s4_d300_ap1000": {
    "group": "A",
    "python": {
-    "dS21_max_db": 0.068,
+    "dS21_max_db": 0.07,
     "dS21_mean_db": 0.056,
-    "dphase_max_deg": 4.26,
+    "dphase_max_deg": 4.27,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.68,
-     2.01
+     1.74,
+     1.03
     ]
    },
    "rust": {
-    "dS21_max_db": 0.068,
+    "dS21_max_db": 0.07,
     "dS21_mean_db": 0.056,
-    "dphase_max_deg": 4.26,
+    "dphase_max_deg": 4.27,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.68,
-     2.01
+     1.74,
+     1.03
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.066,
-    "dS21_mean_db": 0.052,
-    "dphase_max_deg": 4.96,
+    "dS21_max_db": 0.068,
+    "dS21_mean_db": 0.053,
+    "dphase_max_deg": 4.97,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.6,
-     1.22
+     1.65,
+     0.25
     ]
    },
    "notch_3d_ghz": null,
@@ -312,47 +318,47 @@
     "dphase21_max_deg": 1.01
    },
    "time_ms": {
-    "rust_build": 141.54,
-    "rust_graded_build": 8.64,
-    "rust_eval": 0.39,
+    "rust_build": 150.03,
+    "rust_graded_build": 8.71,
+    "rust_eval": 0.38,
     "nf": 400,
     "laplace_unknowns": [
      75453,
      8274
     ],
-    "python": 1280.2
+    "python": 1252.3
    }
   },
   "A_s4_d300_ap600": {
    "group": "A",
    "python": {
-    "dS21_max_db": 0.145,
-    "dS21_mean_db": 0.069,
-    "dphase_max_deg": 7.35,
+    "dS21_max_db": 0.143,
+    "dS21_mean_db": 0.067,
+    "dphase_max_deg": 7.24,
     "notch_ghz": null,
     "tdr_err_pct": [
-     4.27,
-     0.48
+     5.42,
+     0.6
     ]
    },
    "rust": {
-    "dS21_max_db": 0.145,
-    "dS21_mean_db": 0.069,
-    "dphase_max_deg": 7.35,
+    "dS21_max_db": 0.143,
+    "dS21_mean_db": 0.067,
+    "dphase_max_deg": 7.24,
     "notch_ghz": null,
     "tdr_err_pct": [
-     4.27,
-     0.48
+     5.42,
+     0.6
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.091,
-    "dS21_mean_db": 0.043,
-    "dphase_max_deg": 2.06,
+    "dS21_max_db": 0.089,
+    "dS21_mean_db": 0.041,
+    "dphase_max_deg": 2.04,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.24,
-     0.47
+     1.44,
+     0.59
     ]
    },
    "notch_3d_ghz": null,
@@ -371,47 +377,47 @@
     "dphase21_max_deg": 23.738
    },
    "time_ms": {
-    "rust_build": 155.62,
-    "rust_graded_build": 7.21,
-    "rust_eval": 0.37,
+    "rust_build": 152.53,
+    "rust_graded_build": 6.96,
+    "rust_eval": 0.4,
     "nf": 400,
     "laplace_unknowns": [
      75413,
      6827
     ],
-    "python": 1274.0
+    "python": 1235.6
    }
   },
   "A_s4_d300_ap800": {
    "group": "A",
    "python": {
-    "dS21_max_db": 0.076,
-    "dS21_mean_db": 0.048,
-    "dphase_max_deg": 2.28,
+    "dS21_max_db": 0.075,
+    "dS21_mean_db": 0.046,
+    "dphase_max_deg": 2.21,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.22,
-     1.0
+     2.73,
+     1.08
     ]
    },
    "rust": {
-    "dS21_max_db": 0.076,
-    "dS21_mean_db": 0.048,
-    "dphase_max_deg": 2.28,
+    "dS21_max_db": 0.075,
+    "dS21_mean_db": 0.046,
+    "dphase_max_deg": 2.21,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.22,
-     1.0
+     2.72,
+     1.08
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.073,
-    "dS21_mean_db": 0.046,
+    "dS21_max_db": 0.072,
+    "dS21_mean_db": 0.044,
     "dphase_max_deg": 3.71,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.52,
-     0.99
+     2.03,
+     1.07
     ]
    },
    "notch_3d_ghz": null,
@@ -430,47 +436,47 @@
     "dphase21_max_deg": 8.453
    },
    "time_ms": {
-    "rust_build": 138.23,
-    "rust_graded_build": 8.24,
-    "rust_eval": 0.42,
+    "rust_build": 141.3,
+    "rust_graded_build": 8.38,
+    "rust_eval": 0.43,
     "nf": 400,
     "laplace_unknowns": [
      75433,
      7939
     ],
-    "python": 1294.2
+    "python": 1312.6
    }
   },
   "B_s8_L1L3_bd_d200": {
    "group": "B",
    "python": {
-    "dS21_max_db": 0.234,
-    "dS21_mean_db": 0.116,
-    "dphase_max_deg": 5.21,
+    "dS21_max_db": 0.209,
+    "dS21_mean_db": 0.1,
+    "dphase_max_deg": 5.26,
     "notch_ghz": null,
     "tdr_err_pct": [
-     7.51,
-     2.63
+     2.99,
+     2.33
     ]
    },
    "rust": {
-    "dS21_max_db": 0.234,
-    "dS21_mean_db": 0.116,
-    "dphase_max_deg": 5.21,
+    "dS21_max_db": 0.209,
+    "dS21_mean_db": 0.1,
+    "dphase_max_deg": 5.26,
     "notch_ghz": null,
     "tdr_err_pct": [
-     7.51,
-     2.63
+     2.98,
+     2.33
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.243,
-    "dS21_mean_db": 0.118,
-    "dphase_max_deg": 1.73,
+    "dS21_max_db": 0.218,
+    "dS21_mean_db": 0.102,
+    "dphase_max_deg": 1.69,
     "notch_ghz": null,
     "tdr_err_pct": [
-     7.76,
-     2.6
+     3.24,
+     2.36
     ]
    },
    "notch_3d_ghz": null,
@@ -489,47 +495,47 @@
     "dphase21_max_deg": 13.089
    },
    "time_ms": {
-    "rust_build": 117.02,
-    "rust_graded_build": 12.31,
-    "rust_eval": 0.6,
+    "rust_build": 118.86,
+    "rust_graded_build": 12.26,
+    "rust_eval": 0.53,
     "nf": 400,
     "laplace_unknowns": [
      76906,
      11630
     ],
-    "python": 1167.5
+    "python": 1119.2
    }
   },
   "B_s8_L1L3_bd_d300": {
    "group": "B",
    "python": {
-    "dS21_max_db": 0.439,
-    "dS21_mean_db": 0.2,
-    "dphase_max_deg": 7.61,
+    "dS21_max_db": 0.395,
+    "dS21_mean_db": 0.172,
+    "dphase_max_deg": 7.65,
     "notch_ghz": null,
     "tdr_err_pct": [
-     9.28,
-     2.75
+     4.94,
+     2.2
     ]
    },
    "rust": {
-    "dS21_max_db": 0.439,
-    "dS21_mean_db": 0.2,
-    "dphase_max_deg": 7.61,
+    "dS21_max_db": 0.395,
+    "dS21_mean_db": 0.172,
+    "dphase_max_deg": 7.65,
     "notch_ghz": null,
     "tdr_err_pct": [
-     9.28,
-     2.75
+     4.94,
+     2.2
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.396,
-    "dS21_mean_db": 0.18,
-    "dphase_max_deg": 1.91,
+    "dS21_max_db": 0.352,
+    "dS21_mean_db": 0.153,
+    "dphase_max_deg": 1.88,
     "notch_ghz": null,
     "tdr_err_pct": [
-     8.38,
-     2.71
+     4.0,
+     2.24
     ]
    },
    "notch_3d_ghz": null,
@@ -548,47 +554,47 @@
     "dphase21_max_deg": 18.611
    },
    "time_ms": {
-    "rust_build": 116.5,
-    "rust_graded_build": 12.16,
-    "rust_eval": 0.56,
+    "rust_build": 120.36,
+    "rust_graded_build": 12.03,
+    "rust_eval": 0.59,
     "nf": 400,
     "laplace_unknowns": [
      76671,
      11695
     ],
-    "python": 1190.2
+    "python": 1261.1
    }
   },
   "B_s8_L1L3_stub_d200": {
    "group": "B",
    "python": {
-    "dS21_max_db": 0.711,
-    "dS21_mean_db": 0.197,
-    "dphase_max_deg": 12.17,
+    "dS21_max_db": 0.809,
+    "dS21_mean_db": 0.16,
+    "dphase_max_deg": 11.34,
     "notch_ghz": 21.9,
     "tdr_err_pct": [
-     3.33,
-     1.88
+     1.01,
+     3.4
     ]
    },
    "rust": {
-    "dS21_max_db": 0.711,
-    "dS21_mean_db": 0.197,
-    "dphase_max_deg": 12.17,
+    "dS21_max_db": 0.809,
+    "dS21_mean_db": 0.16,
+    "dphase_max_deg": 11.34,
     "notch_ghz": 21.9,
     "tdr_err_pct": [
-     3.33,
-     1.88
+     1.01,
+     3.4
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.698,
-    "dS21_mean_db": 0.201,
-    "dphase_max_deg": 5.62,
+    "dS21_max_db": 0.795,
+    "dS21_mean_db": 0.163,
+    "dphase_max_deg": 4.79,
     "notch_ghz": 21.9,
     "tdr_err_pct": [
-     3.84,
-     2.45
+     0.48,
+     2.8
     ]
    },
    "notch_3d_ghz": 21.9,
@@ -607,47 +613,47 @@
     "dphase21_max_deg": 13.088
    },
    "time_ms": {
-    "rust_build": 113.88,
-    "rust_graded_build": 10.74,
-    "rust_eval": 1.28,
+    "rust_build": 116.03,
+    "rust_graded_build": 10.87,
+    "rust_eval": 1.31,
     "nf": 400,
     "laplace_unknowns": [
      75696,
      10454
     ],
-    "python": 1352.1
+    "python": 1302.0
    }
   },
   "B_s8_L1L3_stub_d300": {
    "group": "B",
    "python": {
-    "dS21_max_db": 1.227,
-    "dS21_mean_db": 0.363,
-    "dphase_max_deg": 14.64,
+    "dS21_max_db": 1.132,
+    "dS21_mean_db": 0.297,
+    "dphase_max_deg": 13.73,
     "notch_ghz": 21.3,
     "tdr_err_pct": [
-     4.01,
-     2.0
+     0.03,
+     3.24
     ]
    },
    "rust": {
-    "dS21_max_db": 1.227,
-    "dS21_mean_db": 0.363,
-    "dphase_max_deg": 14.64,
+    "dS21_max_db": 1.132,
+    "dS21_mean_db": 0.297,
+    "dphase_max_deg": 13.73,
     "notch_ghz": 21.3,
     "tdr_err_pct": [
-     4.01,
-     2.0
+     0.03,
+     3.24
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 1.254,
-    "dS21_mean_db": 0.347,
-    "dphase_max_deg": 4.46,
+    "dS21_max_db": 1.159,
+    "dS21_mean_db": 0.28,
+    "dphase_max_deg": 3.55,
     "notch_ghz": 21.3,
     "tdr_err_pct": [
-     3.58,
-     2.3
+     0.42,
+     2.93
     ]
    },
    "notch_3d_ghz": 21.7,
@@ -666,47 +672,47 @@
     "dphase21_max_deg": 18.346
    },
    "time_ms": {
-    "rust_build": 111.48,
-    "rust_graded_build": 10.52,
-    "rust_eval": 1.26,
+    "rust_build": 108.74,
+    "rust_graded_build": 10.17,
+    "rust_eval": 1.18,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1317.3
+    "python": 1316.2
    }
   },
   "B_s8_L1L8_d200": {
    "group": "B",
    "python": {
-    "dS21_max_db": 0.173,
-    "dS21_mean_db": 0.057,
-    "dphase_max_deg": 2.37,
+    "dS21_max_db": 0.178,
+    "dS21_mean_db": 0.06,
+    "dphase_max_deg": 2.43,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.93,
-     0.01
+     2.98,
+     0.29
     ]
    },
    "rust": {
-    "dS21_max_db": 0.173,
-    "dS21_mean_db": 0.057,
-    "dphase_max_deg": 2.37,
+    "dS21_max_db": 0.178,
+    "dS21_mean_db": 0.06,
+    "dphase_max_deg": 2.43,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.93,
-     0.01
+     2.98,
+     0.29
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.126,
-    "dS21_mean_db": 0.058,
-    "dphase_max_deg": 2.31,
+    "dS21_max_db": 0.131,
+    "dS21_mean_db": 0.061,
+    "dphase_max_deg": 2.23,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.63,
-     1.18
+     1.69,
+     0.89
     ]
    },
    "notch_3d_ghz": null,
@@ -725,47 +731,47 @@
     "dphase21_max_deg": 8.47
    },
    "time_ms": {
-    "rust_build": 106.94,
-    "rust_graded_build": 10.54,
-    "rust_eval": 1.28,
+    "rust_build": 104.42,
+    "rust_graded_build": 10.56,
+    "rust_eval": 1.31,
     "nf": 400,
     "laplace_unknowns": [
      75696,
      10454
     ],
-    "python": 1322.1
+    "python": 1328.7
    }
   },
   "B_s8_L1L8_d300": {
    "group": "B",
    "python": {
     "dS21_max_db": 0.074,
-    "dS21_mean_db": 0.039,
-    "dphase_max_deg": 4.55,
+    "dS21_mean_db": 0.037,
+    "dphase_max_deg": 4.48,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.08,
-     1.09
+     2.46,
+     1.15
     ]
    },
    "rust": {
     "dS21_max_db": 0.074,
-    "dS21_mean_db": 0.039,
-    "dphase_max_deg": 4.55,
+    "dS21_mean_db": 0.037,
+    "dphase_max_deg": 4.48,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.08,
-     1.09
+     2.46,
+     1.15
     ]
    },
    "rust_graded": {
     "dS21_max_db": 0.064,
-    "dS21_mean_db": 0.035,
-    "dphase_max_deg": 1.89,
+    "dS21_mean_db": 0.033,
+    "dphase_max_deg": 1.94,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.43,
-     1.13
+     0.03,
+     1.19
     ]
    },
    "notch_3d_ghz": null,
@@ -784,47 +790,47 @@
     "dphase21_max_deg": 12.146
    },
    "time_ms": {
-    "rust_build": 111.34,
-    "rust_graded_build": 10.59,
+    "rust_build": 110.93,
+    "rust_graded_build": 10.8,
     "rust_eval": 1.25,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1329.9
+    "python": 1340.8
    }
   },
   "B_ts6_L1L3_stub": {
    "group": "B",
    "python": {
-    "dS21_max_db": 2.029,
-    "dS21_mean_db": 0.6,
-    "dphase_max_deg": 14.13,
+    "dS21_max_db": 1.799,
+    "dS21_mean_db": 0.528,
+    "dphase_max_deg": 14.71,
     "notch_ghz": 24.9,
     "tdr_err_pct": [
-     10.3,
-     0.25
+     10.93,
+     3.14
     ]
    },
    "rust": {
-    "dS21_max_db": 2.029,
-    "dS21_mean_db": 0.6,
-    "dphase_max_deg": 14.13,
+    "dS21_max_db": 1.799,
+    "dS21_mean_db": 0.528,
+    "dphase_max_deg": 14.71,
     "notch_ghz": 24.9,
     "tdr_err_pct": [
-     10.3,
-     0.25
+     10.93,
+     3.14
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 1.959,
-    "dS21_mean_db": 0.559,
-    "dphase_max_deg": 2.94,
+    "dS21_max_db": 1.729,
+    "dS21_mean_db": 0.488,
+    "dphase_max_deg": 3.51,
     "notch_ghz": 24.9,
     "tdr_err_pct": [
-     9.13,
-     0.54
+     9.76,
+     2.87
     ]
    },
    "notch_3d_ghz": 26.6,
@@ -843,47 +849,47 @@
     "dphase21_max_deg": 20.776
    },
    "time_ms": {
-    "rust_build": 107.72,
-    "rust_graded_build": 9.25,
-    "rust_eval": 0.76,
+    "rust_build": 110.04,
+    "rust_graded_build": 9.09,
+    "rust_eval": 0.86,
     "nf": 400,
     "laplace_unknowns": [
      69163,
      8676
     ],
-    "python": 1223.4
+    "python": 1162.3
    }
   },
   "B_ts6_L1L6": {
    "group": "B",
    "python": {
-    "dS21_max_db": 0.06,
+    "dS21_max_db": 0.057,
     "dS21_mean_db": 0.047,
-    "dphase_max_deg": 1.82,
+    "dphase_max_deg": 1.81,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.93,
-     1.14
+     2.95,
+     1.03
     ]
    },
    "rust": {
-    "dS21_max_db": 0.06,
+    "dS21_max_db": 0.057,
     "dS21_mean_db": 0.047,
-    "dphase_max_deg": 1.82,
+    "dphase_max_deg": 1.81,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.93,
-     1.14
+     2.95,
+     1.03
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.059,
-    "dS21_mean_db": 0.047,
-    "dphase_max_deg": 2.66,
+    "dS21_max_db": 0.057,
+    "dS21_mean_db": 0.046,
+    "dphase_max_deg": 2.67,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.41,
-     0.67
+     2.43,
+     0.56
     ]
    },
    "notch_3d_ghz": null,
@@ -902,47 +908,47 @@
     "dphase21_max_deg": 6.496
    },
    "time_ms": {
-    "rust_build": 102.03,
-    "rust_graded_build": 9.31,
-    "rust_eval": 0.84,
+    "rust_build": 105.89,
+    "rust_graded_build": 8.93,
+    "rust_eval": 0.75,
     "nf": 400,
     "laplace_unknowns": [
      69163,
      8676
     ],
-    "python": 1263.8
+    "python": 1184.5
    }
   },
   "C_s8_ap1000": {
    "group": "C",
    "python": {
-    "dS21_max_db": 0.06,
+    "dS21_max_db": 0.062,
     "dS21_mean_db": 0.045,
-    "dphase_max_deg": 2.87,
+    "dphase_max_deg": 2.84,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.53,
-     2.3
+     1.58,
+     2.51
     ]
    },
    "rust": {
-    "dS21_max_db": 0.06,
+    "dS21_max_db": 0.062,
     "dS21_mean_db": 0.045,
-    "dphase_max_deg": 2.87,
+    "dphase_max_deg": 2.84,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.53,
-     2.3
+     1.58,
+     2.51
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.067,
-    "dS21_mean_db": 0.05,
-    "dphase_max_deg": 2.46,
+    "dS21_max_db": 0.068,
+    "dS21_mean_db": 0.049,
+    "dphase_max_deg": 2.52,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.56,
-     0.25
+     1.6,
+     0.46
     ]
    },
    "notch_3d_ghz": null,
@@ -961,47 +967,47 @@
     "dphase21_max_deg": 9.575
    },
    "time_ms": {
-    "rust_build": 97.25,
-    "rust_graded_build": 10.62,
-    "rust_eval": 1.19,
+    "rust_build": 96.15,
+    "rust_graded_build": 11.07,
+    "rust_eval": 1.24,
     "nf": 400,
     "laplace_unknowns": [
      74951,
      10848
     ],
-    "python": 1343.5
+    "python": 1300.1
    }
   },
   "C_s8_ap1200": {
    "group": "C",
    "python": {
-    "dS21_max_db": 0.108,
-    "dS21_mean_db": 0.047,
-    "dphase_max_deg": 1.83,
+    "dS21_max_db": 0.109,
+    "dS21_mean_db": 0.049,
+    "dphase_max_deg": 1.86,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.62,
-     1.98
+     1.66,
+     2.66
     ]
    },
    "rust": {
-    "dS21_max_db": 0.108,
-    "dS21_mean_db": 0.047,
-    "dphase_max_deg": 1.83,
+    "dS21_max_db": 0.109,
+    "dS21_mean_db": 0.049,
+    "dphase_max_deg": 1.86,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.62,
-     1.98
+     1.66,
+     2.66
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.107,
-    "dS21_mean_db": 0.063,
-    "dphase_max_deg": 3.73,
+    "dS21_max_db": 0.109,
+    "dS21_mean_db": 0.065,
+    "dphase_max_deg": 3.79,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.74,
-     0.54
+     1.78,
+     0.16
     ]
    },
    "notch_3d_ghz": null,
@@ -1020,47 +1026,47 @@
     "dphase21_max_deg": 9.7
    },
    "time_ms": {
-    "rust_build": 100.24,
-    "rust_graded_build": 10.91,
-    "rust_eval": 1.38,
+    "rust_build": 98.13,
+    "rust_graded_build": 11.31,
+    "rust_eval": 1.24,
     "nf": 400,
     "laplace_unknowns": [
      74991,
      11150
     ],
-    "python": 1364.8
+    "python": 1304.9
    }
   },
   "C_s8_ap600": {
    "group": "C",
    "python": {
-    "dS21_max_db": 0.175,
-    "dS21_mean_db": 0.06,
-    "dphase_max_deg": 6.82,
+    "dS21_max_db": 0.173,
+    "dS21_mean_db": 0.061,
+    "dphase_max_deg": 6.69,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.19,
-     0.16
+     2.91,
+     0.26
     ]
    },
    "rust": {
-    "dS21_max_db": 0.175,
-    "dS21_mean_db": 0.06,
-    "dphase_max_deg": 6.82,
+    "dS21_max_db": 0.173,
+    "dS21_mean_db": 0.061,
+    "dphase_max_deg": 6.69,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.19,
-     0.16
+     2.91,
+     0.26
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.064,
-    "dS21_mean_db": 0.027,
-    "dphase_max_deg": 2.2,
+    "dS21_max_db": 0.068,
+    "dS21_mean_db": 0.028,
+    "dphase_max_deg": 2.19,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.7,
-     0.27
+     0.95,
+     0.38
     ]
    },
    "notch_3d_ghz": null,
@@ -1079,47 +1085,47 @@
     "dphase21_max_deg": 20.601
    },
    "time_ms": {
-    "rust_build": 99.3,
-    "rust_graded_build": 8.65,
-    "rust_eval": 1.17,
+    "rust_build": 115.19,
+    "rust_graded_build": 9.92,
+    "rust_eval": 1.27,
     "nf": 400,
     "laplace_unknowns": [
      74871,
      8903
     ],
-    "python": 1358.5
+    "python": 1277.2
    }
   },
   "C_s8_ap800": {
    "group": "C",
    "python": {
     "dS21_max_db": 0.074,
-    "dS21_mean_db": 0.039,
-    "dphase_max_deg": 4.55,
+    "dS21_mean_db": 0.037,
+    "dphase_max_deg": 4.48,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.08,
-     1.09
+     2.46,
+     1.15
     ]
    },
    "rust": {
     "dS21_max_db": 0.074,
-    "dS21_mean_db": 0.039,
-    "dphase_max_deg": 4.55,
+    "dS21_mean_db": 0.037,
+    "dphase_max_deg": 4.48,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.08,
-     1.09
+     2.46,
+     1.15
     ]
    },
    "rust_graded": {
     "dS21_max_db": 0.064,
-    "dS21_mean_db": 0.035,
-    "dphase_max_deg": 1.89,
+    "dS21_mean_db": 0.033,
+    "dphase_max_deg": 1.94,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.43,
-     1.13
+     0.03,
+     1.19
     ]
    },
    "notch_3d_ghz": null,
@@ -1138,47 +1144,47 @@
     "dphase21_max_deg": 12.146
    },
    "time_ms": {
-    "rust_build": 115.31,
-    "rust_graded_build": 12.62,
-    "rust_eval": 1.3,
+    "rust_build": 102.02,
+    "rust_graded_build": 10.16,
+    "rust_eval": 1.18,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1344.0
+    "python": 1313.0
    }
   },
   "C_s8_mixed": {
    "group": "C",
    "python": {
-    "dS21_max_db": 0.168,
-    "dS21_mean_db": 0.056,
-    "dphase_max_deg": 2.13,
+    "dS21_max_db": 0.181,
+    "dS21_mean_db": 0.058,
+    "dphase_max_deg": 2.02,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.81,
-     3.23
+     1.06,
+     3.18
     ]
    },
    "rust": {
-    "dS21_max_db": 0.168,
-    "dS21_mean_db": 0.056,
-    "dphase_max_deg": 2.13,
+    "dS21_max_db": 0.181,
+    "dS21_mean_db": 0.058,
+    "dphase_max_deg": 2.02,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.81,
-     3.23
+     1.06,
+     3.18
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.074,
-    "dS21_mean_db": 0.054,
-    "dphase_max_deg": 3.83,
+    "dS21_max_db": 0.081,
+    "dS21_mean_db": 0.055,
+    "dphase_max_deg": 3.99,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.94,
-     0.62
+     1.19,
+     0.57
     ]
    },
    "notch_3d_ghz": null,
@@ -1197,47 +1203,47 @@
     "dphase21_max_deg": 9.686
    },
    "time_ms": {
-    "rust_build": 113.47,
-    "rust_graded_build": 13.79,
+    "rust_build": 101.52,
+    "rust_graded_build": 13.17,
     "rust_eval": 1.27,
     "nf": 400,
     "laplace_unknowns": [
      74951,
      12312
     ],
-    "python": 1367.0
+    "python": 1297.7
    }
   },
   "C_s8_nfp": {
    "group": "C",
    "python": {
-    "dS21_max_db": 0.159,
-    "dS21_mean_db": 0.065,
-    "dphase_max_deg": 4.24,
+    "dS21_max_db": 0.166,
+    "dS21_mean_db": 0.068,
+    "dphase_max_deg": 4.07,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.99,
-     1.06
+     1.52,
+     1.14
     ]
    },
    "rust": {
-    "dS21_max_db": 0.159,
-    "dS21_mean_db": 0.065,
-    "dphase_max_deg": 4.24,
+    "dS21_max_db": 0.166,
+    "dS21_mean_db": 0.068,
+    "dphase_max_deg": 4.07,
     "notch_ghz": null,
     "tdr_err_pct": [
-     1.99,
-     1.06
+     1.52,
+     1.14
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.121,
-    "dS21_mean_db": 0.049,
-    "dphase_max_deg": 2.41,
+    "dS21_max_db": 0.128,
+    "dS21_mean_db": 0.052,
+    "dphase_max_deg": 2.56,
     "notch_ghz": null,
     "tdr_err_pct": [
-     3.32,
-     0.74
+     2.85,
+     0.81
     ]
    },
    "notch_3d_ghz": null,
@@ -1256,47 +1262,47 @@
     "dphase21_max_deg": 11.153
    },
    "time_ms": {
-    "rust_build": 97.06,
-    "rust_graded_build": 10.65,
-    "rust_eval": 1.18,
+    "rust_build": 95.22,
+    "rust_graded_build": 10.13,
+    "rust_eval": 1.17,
     "nf": 400,
     "laplace_unknowns": [
      74871,
      10643
     ],
-    "python": 1382.3
+    "python": 1332.7
    }
   },
   "C_s8_nonfp": {
    "group": "C",
    "python": {
     "dS21_max_db": 0.063,
-    "dS21_mean_db": 0.042,
-    "dphase_max_deg": 3.63,
+    "dS21_mean_db": 0.041,
+    "dphase_max_deg": 3.58,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.01,
-     2.18
+     2.25,
+     2.19
     ]
    },
    "rust": {
     "dS21_max_db": 0.063,
-    "dS21_mean_db": 0.042,
-    "dphase_max_deg": 3.63,
+    "dS21_mean_db": 0.041,
+    "dphase_max_deg": 3.58,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.01,
-     2.18
+     2.25,
+     2.19
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.06,
-    "dS21_mean_db": 0.042,
-    "dphase_max_deg": 2.09,
+    "dS21_max_db": 0.061,
+    "dS21_mean_db": 0.041,
+    "dphase_max_deg": 2.15,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.46,
-     1.71
+     0.21,
+     1.72
     ]
    },
    "notch_3d_ghz": null,
@@ -1315,47 +1321,47 @@
     "dphase21_max_deg": 10.364
    },
    "time_ms": {
-    "rust_build": 96.65,
-    "rust_graded_build": 10.56,
-    "rust_eval": 1.26,
+    "rust_build": 96.04,
+    "rust_graded_build": 10.71,
+    "rust_eval": 1.46,
     "nf": 400,
     "laplace_unknowns": [
      74931,
      10695
     ],
-    "python": 1322.0
+    "python": 1291.3
    }
   },
   "C_s8_offset": {
    "group": "C",
    "python": {
-    "dS21_max_db": 0.173,
-    "dS21_mean_db": 0.101,
-    "dphase_max_deg": 4.54,
+    "dS21_max_db": 0.172,
+    "dS21_mean_db": 0.1,
+    "dphase_max_deg": 4.61,
     "notch_ghz": null,
     "tdr_err_pct": [
-     10.5,
-     4.58
+     10.96,
+     4.59
     ]
    },
    "rust": {
-    "dS21_max_db": 0.173,
-    "dS21_mean_db": 0.101,
-    "dphase_max_deg": 4.54,
+    "dS21_max_db": 0.172,
+    "dS21_mean_db": 0.1,
+    "dphase_max_deg": 4.61,
     "notch_ghz": null,
     "tdr_err_pct": [
-     10.5,
-     4.58
+     10.96,
+     4.59
     ]
    },
    "rust_graded": {
     "dS21_max_db": 0.062,
     "dS21_mean_db": 0.036,
-    "dphase_max_deg": 1.62,
+    "dphase_max_deg": 1.69,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.15,
-     4.14
+     0.37,
+     4.15
     ]
    },
    "notch_3d_ghz": null,
@@ -1374,47 +1380,47 @@
     "dphase21_max_deg": 10.82
    },
    "time_ms": {
-    "rust_build": 96.12,
-    "rust_graded_build": 10.63,
-    "rust_eval": 1.25,
+    "rust_build": 109.8,
+    "rust_graded_build": 11.27,
+    "rust_eval": 1.36,
     "nf": 400,
     "laplace_unknowns": [
      74891,
      10546
     ],
-    "python": 1445.4
+    "python": 1279.0
    }
   },
   "D_s8_stitch_0p5": {
    "group": "D",
    "python": {
-    "dS21_max_db": 0.106,
-    "dS21_mean_db": 0.04,
-    "dphase_max_deg": 8.33,
+    "dS21_max_db": 0.088,
+    "dS21_mean_db": 0.033,
+    "dphase_max_deg": 8.26,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.3,
-     1.58
+     1.68,
+     1.64
     ]
    },
    "rust": {
-    "dS21_max_db": 0.106,
-    "dS21_mean_db": 0.04,
-    "dphase_max_deg": 8.33,
+    "dS21_max_db": 0.088,
+    "dS21_mean_db": 0.033,
+    "dphase_max_deg": 8.26,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.3,
-     1.58
+     1.68,
+     1.64
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.047,
-    "dS21_mean_db": 0.022,
-    "dphase_max_deg": 2.43,
+    "dS21_max_db": 0.044,
+    "dS21_mean_db": 0.024,
+    "dphase_max_deg": 2.34,
     "notch_ghz": null,
     "tdr_err_pct": [
-     4.59,
-     1.22
+     3.95,
+     1.28
     ]
    },
    "notch_3d_ghz": null,
@@ -1433,46 +1439,46 @@
     "dphase21_max_deg": 14.29
    },
    "time_ms": {
-    "rust_build": 109.0,
-    "rust_graded_build": 14.78,
-    "rust_eval": 0.71,
+    "rust_build": 99.78,
+    "rust_graded_build": 10.58,
+    "rust_eval": 0.46,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1220.7
+    "python": 1167.7
    }
   },
   "D_s8_stitch_1p0": {
    "group": "D",
    "python": {
-    "dS21_max_db": 0.832,
-    "dS21_mean_db": 0.243,
-    "dphase_max_deg": 4.73,
+    "dS21_max_db": 0.814,
+    "dS21_mean_db": 0.236,
+    "dphase_max_deg": 4.79,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     2.19,
-     1.35
+     3.04,
+     1.54
     ]
    },
    "rust": {
-    "dS21_max_db": 0.832,
-    "dS21_mean_db": 0.243,
-    "dphase_max_deg": 4.73,
+    "dS21_max_db": 0.814,
+    "dS21_mean_db": 0.236,
+    "dphase_max_deg": 4.79,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     2.19,
-     1.35
+     3.04,
+     1.54
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.67,
-    "dS21_mean_db": 0.197,
-    "dphase_max_deg": 1.24,
+    "dS21_max_db": 0.652,
+    "dS21_mean_db": 0.19,
+    "dphase_max_deg": 1.19,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     0.14,
+     1.01,
      0.09
     ]
    },
@@ -1492,47 +1498,47 @@
     "dphase21_max_deg": 14.733
    },
    "time_ms": {
-    "rust_build": 102.86,
-    "rust_graded_build": 10.67,
-    "rust_eval": 0.42,
+    "rust_build": 99.41,
+    "rust_graded_build": 10.51,
+    "rust_eval": 0.44,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1300.4
+    "python": 1149.4
    }
   },
   "D_s8_stitch_2p0": {
    "group": "D",
    "python": {
-    "dS21_max_db": 1.192,
-    "dS21_mean_db": 0.381,
-    "dphase_max_deg": 7.29,
+    "dS21_max_db": 1.168,
+    "dS21_mean_db": 0.368,
+    "dphase_max_deg": 7.37,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     2.14,
-     1.46
+     3.0,
+     1.68
     ]
    },
    "rust": {
-    "dS21_max_db": 1.192,
-    "dS21_mean_db": 0.38,
-    "dphase_max_deg": 7.29,
+    "dS21_max_db": 1.168,
+    "dS21_mean_db": 0.368,
+    "dphase_max_deg": 7.37,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     2.14,
-     1.46
+     3.0,
+     1.68
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.984,
-    "dS21_mean_db": 0.313,
-    "dphase_max_deg": 1.1,
+    "dS21_max_db": 0.959,
+    "dS21_mean_db": 0.301,
+    "dphase_max_deg": 1.19,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     0.29,
-     0.03
+     1.17,
+     0.2
     ]
    },
    "notch_3d_ghz": null,
@@ -1551,47 +1557,47 @@
     "dphase21_max_deg": 14.872
    },
    "time_ms": {
-    "rust_build": 100.65,
-    "rust_graded_build": 10.55,
-    "rust_eval": 0.48,
+    "rust_build": 96.54,
+    "rust_graded_build": 10.6,
+    "rust_eval": 0.45,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1203.2
+    "python": 1185.7
    }
   },
   "D_s8_stitch_5p0": {
    "group": "D",
    "python": {
-    "dS21_max_db": 0.999,
-    "dS21_mean_db": 0.339,
-    "dphase_max_deg": 6.9,
+    "dS21_max_db": 0.975,
+    "dS21_mean_db": 0.324,
+    "dphase_max_deg": 6.96,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     2.1,
-     2.14
+     2.96,
+     2.36
     ]
    },
    "rust": {
-    "dS21_max_db": 0.999,
-    "dS21_mean_db": 0.339,
-    "dphase_max_deg": 6.9,
+    "dS21_max_db": 0.975,
+    "dS21_mean_db": 0.324,
+    "dphase_max_deg": 6.96,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     2.1,
-     2.15
+     2.96,
+     2.36
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.811,
-    "dS21_mean_db": 0.269,
-    "dphase_max_deg": 1.03,
+    "dS21_max_db": 0.787,
+    "dS21_mean_db": 0.255,
+    "dphase_max_deg": 1.07,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     0.26,
-     0.54
+     1.13,
+     0.76
     ]
    },
    "notch_3d_ghz": null,
@@ -1610,47 +1616,47 @@
     "dphase21_max_deg": 14.918
    },
    "time_ms": {
-    "rust_build": 98.42,
-    "rust_graded_build": 10.53,
+    "rust_build": 102.39,
+    "rust_graded_build": 12.56,
     "rust_eval": 0.51,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1233.4
+    "python": 1192.6
    }
   },
   "D_s8_stitch_none": {
    "group": "D",
    "python": {
-    "dS21_max_db": 0.967,
-    "dS21_mean_db": 0.361,
-    "dphase_max_deg": 7.5,
+    "dS21_max_db": 0.942,
+    "dS21_mean_db": 0.346,
+    "dphase_max_deg": 7.56,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     2.1,
-     2.16
+     2.96,
+     2.37
     ]
    },
    "rust": {
-    "dS21_max_db": 0.967,
-    "dS21_mean_db": 0.361,
-    "dphase_max_deg": 7.5,
+    "dS21_max_db": 0.942,
+    "dS21_mean_db": 0.346,
+    "dphase_max_deg": 7.56,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     2.1,
-     2.16
+     2.96,
+     2.37
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.779,
-    "dS21_mean_db": 0.29,
-    "dphase_max_deg": 1.24,
+    "dS21_max_db": 0.754,
+    "dS21_mean_db": 0.276,
+    "dphase_max_deg": 1.3,
     "notch_ghz": 40.0,
     "tdr_err_pct": [
-     0.26,
-     0.55
+     1.14,
+     0.77
     ]
    },
    "notch_3d_ghz": null,
@@ -1669,36 +1675,48 @@
     "dphase21_max_deg": 14.874
    },
    "time_ms": {
-    "rust_build": 101.6,
-    "rust_graded_build": 10.71,
-    "rust_eval": 0.4,
+    "rust_build": 96.19,
+    "rust_graded_build": 10.44,
+    "rust_eval": 0.31,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1166.5
+    "python": 1136.2
    }
   },
   "E_s8_L1L3_p1000_oval_g2": {
    "group": "E",
    "python": {
-    "dS21_max_db": 1.158,
-    "dS21_mean_db": 0.649,
-    "dphase_max_deg": 15.61,
-    "notch_ghz": 23.8
+    "dS21_max_db": 1.26,
+    "dS21_mean_db": 0.581,
+    "dphase_max_deg": 15.3,
+    "notch_ghz": 23.8,
+    "tdr_err_pct": [
+     3.18,
+     2.4
+    ]
    },
    "rust": {
-    "dS21_max_db": 1.158,
-    "dS21_mean_db": 0.649,
-    "dphase_max_deg": 15.61,
-    "notch_ghz": 23.8
+    "dS21_max_db": 1.26,
+    "dS21_mean_db": 0.581,
+    "dphase_max_deg": 15.3,
+    "notch_ghz": 23.8,
+    "tdr_err_pct": [
+     3.18,
+     2.4
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.54,
-    "dS21_mean_db": 0.294,
-    "dphase_max_deg": 7.3,
-    "notch_ghz": 24.5
+    "dS21_max_db": 0.436,
+    "dS21_mean_db": 0.221,
+    "dphase_max_deg": 6.99,
+    "notch_ghz": 24.5,
+    "tdr_err_pct": [
+     1.79,
+     2.56
+    ]
    },
    "notch_3d_ghz": 24.3,
    "parity_rust": {
@@ -1716,36 +1734,48 @@
     "dphase21_max_deg": 99.418
    },
    "time_ms": {
-    "rust_build": 103.07,
-    "rust_graded_build": 10.64,
-    "rust_eval": 0.88,
+    "rust_build": 116.84,
+    "rust_graded_build": 13.58,
+    "rust_eval": 0.98,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10695
     ],
-    "python": 1280.9
+    "python": 1264.3
    }
   },
   "E_s8_L1L3_p1000_round_g2": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.718,
-    "dS21_mean_db": 0.404,
-    "dphase_max_deg": 14.29,
-    "notch_ghz": 23.8
+    "dS21_max_db": 0.626,
+    "dS21_mean_db": 0.329,
+    "dphase_max_deg": 13.96,
+    "notch_ghz": 23.8,
+    "tdr_err_pct": [
+     0.48,
+     2.76
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.718,
-    "dS21_mean_db": 0.404,
-    "dphase_max_deg": 14.29,
-    "notch_ghz": 23.8
+    "dS21_max_db": 0.626,
+    "dS21_mean_db": 0.329,
+    "dphase_max_deg": 13.96,
+    "notch_ghz": 23.8,
+    "tdr_err_pct": [
+     0.48,
+     2.76
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.679,
-    "dS21_mean_db": 0.381,
-    "dphase_max_deg": 4.1,
-    "notch_ghz": 23.8
+    "dS21_max_db": 0.593,
+    "dS21_mean_db": 0.306,
+    "dphase_max_deg": 3.77,
+    "notch_ghz": 23.8,
+    "tdr_err_pct": [
+     0.88,
+     2.5
+    ]
    },
    "notch_3d_ghz": 23.8,
    "parity_rust": {
@@ -1763,36 +1793,48 @@
     "dphase21_max_deg": 18.876
    },
    "time_ms": {
-    "rust_build": 97.71,
+    "rust_build": 103.18,
     "rust_graded_build": 10.67,
-    "rust_eval": 1.04,
+    "rust_eval": 0.88,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1299.7
+    "python": 1304.4
    }
   },
   "E_s8_L1L3_p1200_round_g2": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.756,
-    "dS21_mean_db": 0.421,
-    "dphase_max_deg": 14.72,
-    "notch_ghz": 22.8
+    "dS21_max_db": 0.665,
+    "dS21_mean_db": 0.349,
+    "dphase_max_deg": 14.45,
+    "notch_ghz": 22.8,
+    "tdr_err_pct": [
+     0.1,
+     2.85
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.756,
-    "dS21_mean_db": 0.421,
-    "dphase_max_deg": 14.72,
-    "notch_ghz": 22.8
+    "dS21_max_db": 0.665,
+    "dS21_mean_db": 0.349,
+    "dphase_max_deg": 14.45,
+    "notch_ghz": 22.8,
+    "tdr_err_pct": [
+     0.1,
+     2.85
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.72,
-    "dS21_mean_db": 0.4,
-    "dphase_max_deg": 4.6,
-    "notch_ghz": 22.8
+    "dS21_max_db": 0.637,
+    "dS21_mean_db": 0.328,
+    "dphase_max_deg": 4.26,
+    "notch_ghz": 22.8,
+    "tdr_err_pct": [
+     0.64,
+     2.68
+    ]
    },
    "notch_3d_ghz": 22.9,
    "parity_rust": {
@@ -1810,36 +1852,48 @@
     "dphase21_max_deg": 18.866
    },
    "time_ms": {
-    "rust_build": 108.22,
-    "rust_graded_build": 11.12,
-    "rust_eval": 0.91,
+    "rust_build": 97.96,
+    "rust_graded_build": 10.55,
+    "rust_eval": 0.9,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1299.9
+    "python": 1243.1
    }
   },
   "E_s8_L1L3_p800_round_g2": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.5,
-    "dS21_mean_db": 0.286,
-    "dphase_max_deg": 13.89,
-    "notch_ghz": 25.2
+    "dS21_max_db": 0.356,
+    "dS21_mean_db": 0.194,
+    "dphase_max_deg": 13.5,
+    "notch_ghz": 25.2,
+    "tdr_err_pct": [
+     2.64,
+     3.18
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.5,
-    "dS21_mean_db": 0.286,
-    "dphase_max_deg": 13.89,
-    "notch_ghz": 25.2
+    "dS21_max_db": 0.356,
+    "dS21_mean_db": 0.194,
+    "dphase_max_deg": 13.5,
+    "notch_ghz": 25.2,
+    "tdr_err_pct": [
+     2.64,
+     3.18
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.455,
-    "dS21_mean_db": 0.262,
-    "dphase_max_deg": 3.71,
-    "notch_ghz": 25.2
+    "dS21_max_db": 0.314,
+    "dS21_mean_db": 0.17,
+    "dphase_max_deg": 3.31,
+    "notch_ghz": 25.2,
+    "tdr_err_pct": [
+     2.82,
+     2.91
+    ]
    },
    "notch_3d_ghz": 24.8,
    "parity_rust": {
@@ -1857,36 +1911,48 @@
     "dphase21_max_deg": 18.643
    },
    "time_ms": {
-    "rust_build": 112.49,
-    "rust_graded_build": 12.69,
-    "rust_eval": 1.05,
+    "rust_build": 96.76,
+    "rust_graded_build": 10.57,
+    "rust_eval": 0.87,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1315.3
+    "python": 1230.1
    }
   },
   "E_s8_L1L8_p1000_oval_g0": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.157,
-    "dS21_mean_db": 0.109,
-    "dphase_max_deg": 3.97,
-    "notch_ghz": null
+    "dS21_max_db": 0.16,
+    "dS21_mean_db": 0.099,
+    "dphase_max_deg": 3.95,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     4.14,
+     0.96
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.157,
-    "dS21_mean_db": 0.109,
-    "dphase_max_deg": 3.97,
-    "notch_ghz": null
+    "dS21_max_db": 0.16,
+    "dS21_mean_db": 0.099,
+    "dphase_max_deg": 3.95,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     4.14,
+     0.96
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.06,
-    "dS21_mean_db": 0.051,
-    "dphase_max_deg": 1.98,
-    "notch_ghz": null
+    "dS21_max_db": 0.051,
+    "dS21_mean_db": 0.041,
+    "dphase_max_deg": 1.87,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     2.67,
+     0.62
+    ]
    },
    "notch_3d_ghz": null,
    "parity_rust": {
@@ -1904,36 +1970,48 @@
     "dphase21_max_deg": 7.128
    },
    "time_ms": {
-    "rust_build": 112.39,
-    "rust_graded_build": 11.74,
-    "rust_eval": 0.44,
+    "rust_build": 98.62,
+    "rust_graded_build": 10.68,
+    "rust_eval": 0.4,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10695
     ],
-    "python": 1175.1
+    "python": 1166.6
    }
   },
   "E_s8_L1L8_p1000_oval_g2": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.158,
-    "dS21_mean_db": 0.097,
-    "dphase_max_deg": 4.81,
-    "notch_ghz": null
+    "dS21_max_db": 0.123,
+    "dS21_mean_db": 0.081,
+    "dphase_max_deg": 4.85,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     2.96,
+     0.85
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.158,
-    "dS21_mean_db": 0.097,
-    "dphase_max_deg": 4.81,
-    "notch_ghz": null
+    "dS21_max_db": 0.123,
+    "dS21_mean_db": 0.081,
+    "dphase_max_deg": 4.85,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     2.96,
+     0.85
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.071,
-    "dS21_mean_db": 0.048,
-    "dphase_max_deg": 1.93,
-    "notch_ghz": null
+    "dS21_max_db": 0.048,
+    "dS21_mean_db": 0.033,
+    "dphase_max_deg": 1.74,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     3.47,
+     0.07
+    ]
    },
    "notch_3d_ghz": null,
    "parity_rust": {
@@ -1951,36 +2029,48 @@
     "dphase21_max_deg": 7.332
    },
    "time_ms": {
-    "rust_build": 108.15,
-    "rust_graded_build": 10.84,
-    "rust_eval": 0.94,
+    "rust_build": 98.4,
+    "rust_graded_build": 10.8,
+    "rust_eval": 0.89,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10695
     ],
-    "python": 1282.7
+    "python": 1339.5
    }
   },
   "E_s8_L1L8_p1000_oval_g4": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.163,
-    "dS21_mean_db": 0.1,
-    "dphase_max_deg": 4.72,
-    "notch_ghz": null
+    "dS21_max_db": 0.126,
+    "dS21_mean_db": 0.084,
+    "dphase_max_deg": 4.77,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     2.95,
+     0.9
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.163,
-    "dS21_mean_db": 0.1,
-    "dphase_max_deg": 4.72,
-    "notch_ghz": null
+    "dS21_max_db": 0.126,
+    "dS21_mean_db": 0.084,
+    "dphase_max_deg": 4.77,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     2.95,
+     0.9
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.072,
-    "dS21_mean_db": 0.048,
-    "dphase_max_deg": 1.76,
-    "notch_ghz": null
+    "dS21_max_db": 0.049,
+    "dS21_mean_db": 0.032,
+    "dphase_max_deg": 1.55,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     3.51,
+     0.07
+    ]
    },
    "notch_3d_ghz": null,
    "parity_rust": {
@@ -1998,36 +2088,48 @@
     "dphase21_max_deg": 8.102
    },
    "time_ms": {
-    "rust_build": 103.62,
-    "rust_graded_build": 10.45,
-    "rust_eval": 1.68,
+    "rust_build": 99.22,
+    "rust_graded_build": 10.66,
+    "rust_eval": 1.64,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10695
     ],
-    "python": 1449.6
+    "python": 1426.2
    }
   },
   "E_s8_L1L8_p1000_round_g0": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.165,
-    "dS21_mean_db": 0.098,
-    "dphase_max_deg": 4.53,
-    "notch_ghz": null
+    "dS21_max_db": 0.169,
+    "dS21_mean_db": 0.083,
+    "dphase_max_deg": 4.52,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     0.96,
+     0.75
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.165,
-    "dS21_mean_db": 0.098,
-    "dphase_max_deg": 4.53,
-    "notch_ghz": null
+    "dS21_max_db": 0.169,
+    "dS21_mean_db": 0.083,
+    "dphase_max_deg": 4.52,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     0.96,
+     0.75
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.131,
-    "dS21_mean_db": 0.083,
-    "dphase_max_deg": 1.79,
-    "notch_ghz": null
+    "dS21_max_db": 0.135,
+    "dS21_mean_db": 0.069,
+    "dphase_max_deg": 1.64,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     1.16,
+     0.74
+    ]
    },
    "notch_3d_ghz": null,
    "parity_rust": {
@@ -2045,36 +2147,48 @@
     "dphase21_max_deg": 14.205
    },
    "time_ms": {
-    "rust_build": 103.66,
-    "rust_graded_build": 11.04,
-    "rust_eval": 0.43,
+    "rust_build": 103.11,
+    "rust_graded_build": 10.98,
+    "rust_eval": 0.4,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1285.6
+    "python": 1245.3
    }
   },
   "E_s8_L1L8_p1000_round_g2": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.131,
-    "dS21_mean_db": 0.077,
-    "dphase_max_deg": 5.31,
-    "notch_ghz": null
+    "dS21_max_db": 0.087,
+    "dS21_mean_db": 0.057,
+    "dphase_max_deg": 5.37,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     0.02,
+     0.95
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.131,
-    "dS21_mean_db": 0.077,
-    "dphase_max_deg": 5.31,
-    "notch_ghz": null
+    "dS21_max_db": 0.087,
+    "dS21_mean_db": 0.057,
+    "dphase_max_deg": 5.37,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     0.02,
+     0.95
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.104,
-    "dS21_mean_db": 0.061,
-    "dphase_max_deg": 1.32,
-    "notch_ghz": null
+    "dS21_max_db": 0.065,
+    "dS21_mean_db": 0.041,
+    "dphase_max_deg": 1.07,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     1.71,
+     0.82
+    ]
    },
    "notch_3d_ghz": null,
    "parity_rust": {
@@ -2092,36 +2206,48 @@
     "dphase21_max_deg": 14.461
    },
    "time_ms": {
-    "rust_build": 102.78,
-    "rust_graded_build": 11.15,
-    "rust_eval": 0.91,
+    "rust_build": 99.38,
+    "rust_graded_build": 10.68,
+    "rust_eval": 0.9,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1336.5
+    "python": 1413.9
    }
   },
   "E_s8_L1L8_p1000_round_g4": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.14,
-    "dS21_mean_db": 0.081,
-    "dphase_max_deg": 5.26,
-    "notch_ghz": null
+    "dS21_max_db": 0.089,
+    "dS21_mean_db": 0.06,
+    "dphase_max_deg": 5.31,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     0.03,
+     0.73
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.14,
-    "dS21_mean_db": 0.081,
-    "dphase_max_deg": 5.26,
-    "notch_ghz": null
+    "dS21_max_db": 0.089,
+    "dS21_mean_db": 0.06,
+    "dphase_max_deg": 5.31,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     0.03,
+     0.73
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.111,
-    "dS21_mean_db": 0.064,
-    "dphase_max_deg": 1.45,
-    "notch_ghz": null
+    "dS21_max_db": 0.067,
+    "dS21_mean_db": 0.043,
+    "dphase_max_deg": 1.19,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     1.74,
+     0.55
+    ]
    },
    "notch_3d_ghz": null,
    "parity_rust": {
@@ -2139,36 +2265,48 @@
     "dphase21_max_deg": 14.878
    },
    "time_ms": {
-    "rust_build": 102.85,
-    "rust_graded_build": 10.31,
-    "rust_eval": 1.7,
+    "rust_build": 98.29,
+    "rust_graded_build": 10.54,
+    "rust_eval": 1.65,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1467.1
+    "python": 1498.0
    }
   },
   "E_s8_L1L8_p1200_round_g2": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.118,
-    "dS21_mean_db": 0.068,
-    "dphase_max_deg": 5.02,
-    "notch_ghz": null
+    "dS21_max_db": 0.086,
+    "dS21_mean_db": 0.052,
+    "dphase_max_deg": 4.99,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     0.44,
+     0.94
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.118,
-    "dS21_mean_db": 0.068,
-    "dphase_max_deg": 5.02,
-    "notch_ghz": null
+    "dS21_max_db": 0.086,
+    "dS21_mean_db": 0.052,
+    "dphase_max_deg": 4.99,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     0.44,
+     0.94
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.097,
-    "dS21_mean_db": 0.056,
-    "dphase_max_deg": 1.51,
-    "notch_ghz": null
+    "dS21_max_db": 0.069,
+    "dS21_mean_db": 0.041,
+    "dphase_max_deg": 1.32,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     1.25,
+     0.85
+    ]
    },
    "notch_3d_ghz": null,
    "parity_rust": {
@@ -2186,36 +2324,48 @@
     "dphase21_max_deg": 13.843
    },
    "time_ms": {
-    "rust_build": 101.46,
-    "rust_graded_build": 10.74,
-    "rust_eval": 0.91,
+    "rust_build": 98.3,
+    "rust_graded_build": 10.58,
+    "rust_eval": 0.94,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1334.7
+    "python": 1291.0
    }
   },
   "E_s8_L1L8_p800_round_g2": {
    "group": "E",
    "python": {
-    "dS21_max_db": 0.14,
-    "dS21_mean_db": 0.084,
-    "dphase_max_deg": 5.99,
-    "notch_ghz": null
+    "dS21_max_db": 0.132,
+    "dS21_mean_db": 0.058,
+    "dphase_max_deg": 6.2,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     1.67,
+     0.84
+    ]
    },
    "rust": {
-    "dS21_max_db": 0.137,
-    "dS21_mean_db": 0.083,
-    "dphase_max_deg": 6.11,
-    "notch_ghz": null
+    "dS21_max_db": 0.135,
+    "dS21_mean_db": 0.057,
+    "dphase_max_deg": 6.34,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     1.83,
+     0.83
+    ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.102,
-    "dS21_mean_db": 0.063,
-    "dphase_max_deg": 0.72,
-    "notch_ghz": null
+    "dS21_max_db": 0.09,
+    "dS21_mean_db": 0.038,
+    "dphase_max_deg": 0.38,
+    "notch_ghz": null,
+    "tdr_err_pct": [
+     3.76,
+     0.72
+    ]
    },
    "notch_3d_ghz": null,
    "parity_rust": {
@@ -2233,15 +2383,15 @@
     "dphase21_max_deg": 14.115
    },
    "time_ms": {
-    "rust_build": 123.51,
-    "rust_graded_build": 10.54,
-    "rust_eval": 0.89,
+    "rust_build": 98.58,
+    "rust_graded_build": 10.55,
+    "rust_eval": 0.9,
     "nf": 400,
     "laplace_unknowns": [
      74911,
      10397
     ],
-    "python": 1291.1
+    "python": 1289.5
    }
   },
   "G_pp100": {
@@ -2250,10 +2400,10 @@
     "dZ_rel_max": 1.7486885309924969e-06
    },
    "time_ms": {
-    "rust_eval": 27.09,
+    "rust_eval": 27.68,
     "nf": 600,
     "modes": 9600,
-    "python": 113.1
+    "python": 109.1
    }
   },
   "G_pp200": {
@@ -2262,10 +2412,10 @@
     "dZ_rel_max": 2.141113888581247e-06
    },
    "time_ms": {
-    "rust_eval": 27.33,
+    "rust_eval": 27.99,
     "nf": 600,
     "modes": 9600,
-    "python": 110.9
+    "python": 109.3
    }
   },
   "H_s8_cap_10": {
@@ -2273,7 +2423,7 @@
    "L_rust_nH": 0.6255,
    "L_python_nH": 0.626,
    "time_ms": {
-    "rust": 0.49
+    "rust": 0.554
    }
   },
   "H_s8_cap_2": {
@@ -2281,7 +2431,7 @@
    "L_rust_nH": 0.2871,
    "L_python_nH": 0.287,
    "time_ms": {
-    "rust": 0.464
+    "rust": 0.51
    }
   },
   "H_s8_cap_20": {
@@ -2289,7 +2439,7 @@
    "L_rust_nH": 1.0455,
    "L_python_nH": 1.045,
    "time_ms": {
-    "rust": 0.495
+    "rust": 0.492
    }
   },
   "H_s8_cap_5": {
@@ -2297,39 +2447,39 @@
    "L_rust_nH": 0.4154,
    "L_python_nH": 0.415,
    "time_ms": {
-    "rust": 0.463
+    "rust": 0.504
    }
   },
   "X_s8x2_L1L3_bd_d200": {
    "group": "X",
    "python": {
-    "dS21_max_db": 0.211,
+    "dS21_max_db": 0.203,
     "dS21_mean_db": 0.089,
-    "dphase_max_deg": 7.74,
+    "dphase_max_deg": 7.79,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.02,
-     8.33
+     9.67,
+     2.22
     ]
    },
    "rust": {
-    "dS21_max_db": 0.211,
+    "dS21_max_db": 0.203,
     "dS21_mean_db": 0.089,
-    "dphase_max_deg": 7.74,
+    "dphase_max_deg": 7.79,
     "notch_ghz": null,
     "tdr_err_pct": [
-     0.02,
-     8.33
+     9.67,
+     2.22
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.154,
+    "dS21_max_db": 0.146,
     "dS21_mean_db": 0.068,
-    "dphase_max_deg": 2.97,
+    "dphase_max_deg": 3.02,
     "notch_ghz": null,
     "tdr_err_pct": [
-     2.36,
-     8.35
+     7.55,
+     2.21
     ]
    },
    "notch_3d_ghz": null,
@@ -2348,47 +2498,47 @@
     "dphase21_max_deg": 10.722
    },
    "time_ms": {
-    "rust_build": 111.85,
-    "rust_graded_build": 11.86,
-    "rust_eval": 0.08,
+    "rust_build": 110.55,
+    "rust_graded_build": 12.34,
+    "rust_eval": 0.09,
     "nf": 400,
     "laplace_unknowns": [
      77172,
      11675
     ],
-    "python": 1083.4
+    "python": 1070.8
    }
   },
   "X_s8x4_L1L3_bd_d200": {
    "group": "X",
    "python": {
     "dS21_max_db": 0.313,
-    "dS21_mean_db": 0.129,
-    "dphase_max_deg": 6.02,
+    "dS21_mean_db": 0.126,
+    "dphase_max_deg": 6.18,
     "notch_ghz": null,
     "tdr_err_pct": [
-     10.8,
-     0.63
+     11.36,
+     1.79
     ]
    },
    "rust": {
     "dS21_max_db": 0.313,
-    "dS21_mean_db": 0.129,
-    "dphase_max_deg": 6.02,
+    "dS21_mean_db": 0.126,
+    "dphase_max_deg": 6.18,
     "notch_ghz": null,
     "tdr_err_pct": [
-     10.8,
-     0.63
+     11.36,
+     1.79
     ]
    },
    "rust_graded": {
-    "dS21_max_db": 0.304,
-    "dS21_mean_db": 0.127,
-    "dphase_max_deg": 0.91,
+    "dS21_max_db": 0.303,
+    "dS21_mean_db": 0.123,
+    "dphase_max_deg": 0.75,
     "notch_ghz": null,
     "tdr_err_pct": [
-     10.69,
-     0.63
+     11.25,
+     1.79
     ]
    },
    "notch_3d_ghz": null,
@@ -2407,15 +2557,15 @@
     "dphase21_max_deg": 13.678
    },
    "time_ms": {
-    "rust_build": 122.53,
-    "rust_graded_build": 12.63,
-    "rust_eval": 0.37,
+    "rust_build": 120.47,
+    "rust_graded_build": 12.58,
+    "rust_eval": 0.36,
     "nf": 400,
     "laplace_unknowns": [
      77172,
      11675
     ],
-    "python": 1111.8
+    "python": 1222.0
    }
   }
  }

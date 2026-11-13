@@ -20,12 +20,12 @@
   "vias": {
     "about": "Via models against the 3D references: error of the impedance in the 25 ps TDR (minimum and maximum), median and 90th percentile.",
     "sources": [
-      {"kind": "kisi", "text": "validation/fdtd/results/kisi_models.json (compare_kisi.py, tools/golden.py vias; kisi's channel, the via de-embedded with kisi's own 2×thru against the 3D references of kisi-fdtd, refined mesh on the inner-layer exits, validation/fdtd/TESTS.md sections 17 and 18): ladder 2.46 / 5.53 % (29 single vias), pairs Zdiff 10.95 / 13.71 % (12 pairs); delay |Δτ| median 0.22 ps (single vias) / 0.19 ps (pairs). results/kisi_models_coax.json: coaxial fallback 8.0 / 25.5 % (a record of the former model against the former references)."}
+      {"kind": "kisi", "text": "validation/fdtd/results/kisi_models.json (compare_kisi.py, tools/golden.py vias; kisi's channel, the via de-embedded with kisi's own 2×thru against the 3D references of kisi-fdtd, refined mesh on the inner-layer exits, both with the matched de-embedding of every port, validation/fdtd/TESTS.md sections 17–19): ladder 2.43 / 5.13 % (29 single vias), pairs Zdiff 4.02 / 5.65 % (12 pairs); delay |Δτ| median 0.21 ps (single vias) / 0.18 ps (pairs). results/kisi_models_coax.json: coaxial fallback 8.0 / 25.5 % (a record of the former model against the former references)."}
     ],
-    "ladder_median_pct": 2.46,
-    "ladder_p90_pct": 5.53,
-    "pair_median_pct": 10.95,
-    "pair_p90_pct": 13.71,
+    "ladder_median_pct": 2.43,
+    "ladder_p90_pct": 5.13,
+    "pair_median_pct": 4.02,
+    "pair_p90_pct": 5.65,
     "coax_median_pct": 8.0,
     "coax_p90_pct": 25.5
   }

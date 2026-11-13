@@ -32,8 +32,8 @@ Every number is a *typical* deviation from kisi's own validation, kept with its 
 | | formula over a cut-out (flag “rough”) | 25 % | the 3313 launch over a 0.465 mm opening |
 | | no plane (coplanar estimate) | 15 % | gold-finger cases, TESTS.md section 15 |
 | impedance of a net / lane | the cross-sections' values, weighted by length | | |
-| via | ladder, single | TDR error median 2.5 %, p90 5.5 % (5.9 % until the refined inner-exit references and the stripline feed trim, TESTS.md sections 17–18) | `compare_kisi.py` (`results/kisi_models.json`) |
-| | ladder, pair | Zdiff median 11.0 %, p90 13.7 % (12.6 / 14.4 % before) | same |
+| via | ladder, single | TDR error median 2.4 %, p90 5.1 % (5.9 % until the refined inner-exit references and the stripline feed trim, 5.5 % until the matched de-embedding, TESTS.md sections 17–19) | `compare_kisi.py` (`results/kisi_models.json`) |
+| | ladder, pair | Zdiff median 4.0 %, p90 5.7 % (11.0 / 13.7 % with the first-order de-embedding of the pairs, TESTS.md section 19) | same |
 | | coaxial fallback | 8.0 / 25.5 % | `results/kisi_models_coax.json` |
 | loss (IL) | from lines and vias | lines: RLGC within 2 % (HFSS); per via \|ΔS21\| median 0.10 dB up to 20 GHz | planned |
 | return loss | from the impedance uncertainty | Δ\|Γ\| ≈ ε/2 per discontinuity → an RL range | planned |

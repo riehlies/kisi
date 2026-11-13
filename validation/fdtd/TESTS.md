@@ -1272,7 +1272,7 @@ With the matched de-embedding the s8 L1→L3 exits are within −4.0 … +0.5 % 
 CST +2.2 … +5.7 %), i.e. within the fixture error above. Three cases stay low in kisi-fdtd and openEMS: X_s8x4
 (−11 %), B_ts6_L1L3_stub (−10 %) and the microstrip exit X_s8x2 (−7.5 %) – the exits with one plane close and the
 other far or missing. Their net capacitive reflection is 2–3 × the 3D one (X_s8x4 Im S11 at 5 GHz −0.064 against
-−0.022); the lumped π values (3–8 GHz, matched) put the ladder 9–37 fF too capacitive and 46–88 pH short on every
+−0.022); the lumped π values (3–8 GHz, matched) put the ladder 9–37 fF too capacitive and 50–88 pH short on every
 L1→L3 single via, while the microstrip-only through vias agree within ±10 fF / ±20 pH. The pairs' remaining +1.2 …
 +3.8 % (L1→L8) grows as the pitch shrinks and with the oval antipads.
 

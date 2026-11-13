@@ -206,13 +206,10 @@ so the Rust graded-grid model no longer equals the prototype; parity is checked 
 | Rust, uniform grid (as the prototype) | 1.46 / 7.6 % | 0.144 / 0.157 | 0.005 (linear), 0.005 dB | 240 ms + 1 ms |
 | Rust, graded grid (kisi) | 1.47 / 7.4 % | 0.142 / 0.154 | 0.018 (linear), 0.2 dB | 17 ms + 1 ms |
 
-- **Parity since section 14:** the table is the state of that time. Regenerated with the code of 2026-11 (section
-  18), the Rust model on the uniform grid is 0.034 linear (median) / 0.080 (max) in |S21| from Python, 0.47 dB
-  median: section 14 changed the Rust ladder under the prototype switch (the radial-line matrix of barrels with
-  uniform current, the causal dielectric `rf::eps_c`) and the Python prototype was not changed with it. The
-  largest differences sit on the cases with a close cage of return vias (A: 0.045–0.074) and on the stub notch
-  flanks (E L1→L3, B stub: 0.7–2.5 dB); X_s8x2 without a plane pair is identical. The parity check now only
-  shows the prototype's place, not an identity.
+- **Parity since section 14:** the table is the state of that time. Section 14 changed the Rust ladder under the
+  prototype switch (the radial-line matrix of barrels with uniform current, the pairs' mode average) without the
+  Python prototype, and the parity fell to 0.034 linear (median) / 0.080 (max) in |S21|; section 19 brought
+  `via_pbm.py` up to it: 0.0047 linear / 0.005 dB at most again (the Z/f interpolation residual).
 - **Evaluation:** about 2.4 µs per frequency after the build.
 - **Stub notch:** identical to Python in all 11 cases with a notch.
 - **Uniform-grid residual:** it comes from the Z/f interpolation.
@@ -1155,3 +1152,30 @@ ThunderScope's PCIe TX lanes PET0–PET3 loss at Nyquist −0.01 … −0.10 dB 
 −0.07 … +0.06 dB, eye share of the board −2.5 … +3.4 %, mode conversion −0.15 dB; QSPI_CLK return loss +0.2 dB;
 ThunderScope's PCIe_REFCLK return loss +0.7 dB (at 44 dB); LibreVNA's single-ended RF and clock lanes by ≤ 0.08 dB and
 one eye-width step (LO1_REFC 0.781 → 0.75 UI).
+
+
+## 19. The three open points of the via ladder (TDR of the inner exits and of the pairs, prototype parity)
+
+Section 18 left three points: the TDR minimum of the L1→L3 (inner-exit) vias 7–11 % too low against kisi-fdtd and
+CST, the pairs' TDR 7–10 % too high in all three solvers, and the Rust–Python parity of the prototype broken since
+section 14.
+
+### Parity of the prototype (`via_pbm.py`)
+The Rust ladder with `junction: false` on the uniform grid (`kisi-validate models`, the prototype switch) had
+two changes of section 14 that the Python prototype lacked: the radial-line matrix of barrels of uniform current
+(Z_ii = ωμ/4·J0(ka_i)·H0⁽²⁾(ka_i), Z_ij = ωμ/4·J0(ka_i)·J0(ka_j)·H0⁽²⁾(kd_ij); before Z_ii = ωμ/4·H0⁽²⁾(ka_i),
+Z_ij without the J0 factors) and the pairs' modes (Z_PP + Z_NN)/2 ∓ (Z_PN + Z_NP)/2 (before Z_PP ∓ Z_PN). The
+dielectric is the same in both (the validation runs use the 3D references' loss model, `f_loss`; `rf::eps_c` is
+not used there). `via_pbm.py` has both now (`pbm.s2p` and `results/via_pbm.json` regenerated):
+
+| Rust (uniform grid) against Python, 41 vias | before | after |
+|---|---|---|
+| max \|ΔS21\| linear, median / max | 0.034 / 0.080 | 0.00004 / 0.0047 |
+| max \|ΔS21\| dB, median / max | 0.47 / 2.46 | 0.001 / 0.005 |
+| max \|ΔS11\| linear | 0.054 | 0.0075 |
+| max phase difference of S21 | 15.5° | 0.34° |
+| prototype against kisi-fdtd: single-via TDR error median / p90, max Δ\|S21\| median single / pairs | 2.12 / 5.41 %, 0.159 / 0.156 dB | 2.09 / 5.46 %, 0.168 / 0.161 dB (Rust uniform grid: the same to the last digit) |
+
+What remains is the interpolation of Z/f on the 0.25 GHz grid (section 5). `results/rust_models.json` regenerated;
+kisi's ladder (`ladder.s2p`, graded grid) does not change.
+

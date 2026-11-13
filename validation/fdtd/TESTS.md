@@ -852,6 +852,16 @@ E, X and RG rows and the scores against kisi-fdtd moved with the references; the
 B 0.088 / 0.703 dB with Δτ +0.81 ps, RG Δτ +0.41 ps, the ladder's single-via TDR error median 1.07 % and kisi's
 channel 8.98 / 13.981 % against kisi-fdtd).
 
+### CST on its extra-fine mesh (reference page)
+Five cases have a CST run on the extra-fine mesh (40 lines per wavelength / per model box; thru_s8_L1, thru_s8_L3,
+B_s8_L1L3_bd_d200, B_s8_L1L8_d300, C_s8_ap800). Being CST's finest, it replaces the fine mesh as the result shown and
+compared for these (`CST.md`, `cst_compare.CST_MESHES`, shared by `make_viewer.py`); each case is de-embedded with the
+2×thru on its own mesh (the L8 thru, without an extra-fine run, on the fine mesh). The page's CST chips (kisi-fdtd
+against CST to 40 GHz) stay within 0.004–0.04 dB mean, 0.01–0.15 dB max, and Δτ moves by +0.06 … +0.24 ps to
++0.05 … +0.29 ps; the group medians of the CST table (B, C, thru) move by ≤ 0.012 dB and ≤ 0.035 ps for kisi-fdtd,
+≤ 0.021 dB and ≤ 0.02 ps for openEMS. The fine mesh was converged
+for these (`CST.md`), so no finding of this section or of section 17 changes.
+
 ## 17. Inner-layer exits on a refined mesh
 
 Both cross-checks of section 16 (openEMS, and CST: `CST.md`) found kisi-fdtd's references

@@ -11,6 +11,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 import sparam  # noqa: E402
+from cst_compare import CST_MESHES, CST_MESH_NAME, cst_fixture, cst_tools, result_file  # noqa: E402  (one mesh rule for page and comparison)
 
 ARGS = [a for a in sys.argv[1:] if not a.startswith("--")]
 REF = ARGS[0] if len(ARGS) > 0 else os.path.join(ROOT, "validation", "via_ref")
@@ -23,22 +24,25 @@ def r2(a, d=2):
     return [None if not np.isfinite(x) else round(float(x), d) for x in a]
 
 
-CST_MESHES = (("cst_fine", "fine"), ("cst_mid", "intermediate"), ("cst", "base"))  # CST's finest mesh first (CST.md)
+def cst_mesh(name):
+    """the CST result shown for a case: its finest mesh (CST_MESHES, CST.md) → (file prefix, mesh key) or (None, None)"""
+    t = cst_tools(REF, name)
+    return (t[0], dict(CST_MESHES)[t[0]]) if t else (None, None)
 
 
-def cst_mesh(name, thru=False):
-    """the CST result shown for a case: its finest mesh (the intermediate mesh has no 2×thru of its own)"""
-    for tool, label in CST_MESHES:
-        if thru and tool == "cst_mid":
-            continue
-        if any(os.path.exists(os.path.join(REF, name, f"{tool}.s{n}p")) for n in (1, 2, 4)):
-            return tool, label
-    return None, None
+def mesh_label(mesh):
+    """'extra-fine mesh' for the key 'xfine' of results/cst_compare.json"""
+    return CST_MESH_NAME.get(mesh, f"{mesh} mesh")
+
+
+def lines_text(lines):
+    """CST's mesh settings from the result's *_meta.json"""
+    return f"{lines[0]:g} lines per wavelength at f max, {lines[1]:g} per model box"
 
 
 def load(name, tool):
     if tool == "cst":
-        tool = cst_mesh(name, name.startswith("thru_"))[0] or "cst"
+        tool = cst_mesh(name)[0] or "cst"
     for n in (1, 2, 4):
         p = os.path.join(REF, name, f"{tool}.s{n}p")
         if os.path.exists(p):
@@ -208,18 +212,16 @@ def agreement(r):
             "text": f"openEMS: Δ|{nm}| {mean:.2f} / {mx:.2f} dB, Δτ {s['dtau_ps']:+.1f} ps"}
 
 
-CST_MESH_NAME = {"fine": "fine mesh", "mid": "intermediate mesh", "base": "base mesh"}
-
-
 def agreement_cst(r, oe):
     """the chip of a case: kisi-fdtd against CST on CST's finest mesh (results/cst_compare.json), with the metrics and
     thresholds of the openEMS chip"""
     if not r:
         return None
-    mesh = CST_MESH_NAME.get(r.get("mesh"), r.get("mesh", ""))
+    mesh = mesh_label(r.get("mesh"))
+    lines = f" ({lines_text(r['mesh_lines'])})" if r.get("mesh_lines") else ""
     if "pdn_vs_kisi" in r:
         p = r["pdn_vs_kisi"]  # [CST, kisi-fdtd]
-        title = f"kisi-fdtd against CST Studio Suite (FIT, conformal metal) on its {mesh}; method and results: CST.md"
+        title = f"kisi-fdtd against CST Studio Suite (FIT, conformal metal) on its {mesh}{lines}; method and results: CST.md"
         if "Z11_peaks_GHz" in p:
             pc, pk = p["Z11_peaks_GHz"][0][:3], p["Z11_peaks_GHz"][1][:3]
             dev = max((abs(a / b - 1) * 100 for a, b in zip(pk, pc)), default=0)
@@ -229,7 +231,7 @@ def agreement_cst(r, oe):
     s = r.get("chip_kisi_vs_cst")
     if not s:
         return None
-    title = (f"kisi-fdtd (conformal) against CST Studio Suite (FIT, conformal metal) on its {mesh}, up to the case's f max: mean / max difference "
+    title = (f"kisi-fdtd (conformal) against CST Studio Suite (FIT, conformal metal) on its {mesh}{lines}, up to the case's f max: mean / max difference "
              f"of the through path, delay difference τ kisi-fdtd − τ CST; method and per-case results: CST.md")
     pair = (oe or {}).get("pair", False)
     key = "Sdd21" if pair and "dSdd21_mean_db" in s else "thru"
@@ -257,7 +259,7 @@ def cst_check(d, oe):
         rr = groups.get(g)
         if not rr:
             continue
-        meshes = ", ".join(f"{sum(1 for _, r in rr if r.get('mesh') == m)} {CST_MESH_NAME[m].replace(' mesh', '')}" for m in ("fine", "mid", "base")
+        meshes = ", ".join(f"{sum(1 for _, r in rr if r.get('mesh') == m)} {CST_MESH_NAME[m].replace(' mesh', '')}" for _, m in CST_MESHES
                            if any(r.get("mesh") == m for _, r in rr))
         if g in ("G", "H"):
             if g == "G":
@@ -278,11 +280,20 @@ def cst_check(d, oe):
                      med([x["dtau_ps"] for x in k]) if k else "–",
                      f"{med([x['dS_thru_mean_db'] for x in o])} / {max(x['dS_thru_mean_db'] for x in o):.3f}" if o else "–",
                      med([x["dtau_ps"] for x in o]) if o else "–"])
+    # the meshes shown, finest first, with their settings from the *_meta.json files (cst_compare.py: "mesh_lines")
+    used = [(m, sorted({tuple(r["mesh_lines"]) for r in d.values() if isinstance(r, dict) and r.get("mesh") == m and r.get("mesh_lines")}),
+             sum(1 for r in d.values() if isinstance(r, dict) and r.get("mesh") == m)) for _, m in CST_MESHES]
+    used = [(m, ls, n) for m, ls, n in used if n]
+    role = {"xfine": "where computed (CST's mesh check)", "fine": "where it stays within the 1 M cell limit",
+            "mid": "where the fine mesh does not fit", "base": "where neither does"}
+    meshes = "; ".join(f"{CST_MESH_NAME[m].replace(' mesh', '')} ({' or '.join(f'{a:g} / {b:g}' for a, b in ls) or 'settings not recorded'}) "
+                       f"{role.get(m, '')}: {n} case{'s' if n != 1 else ''}" for m, ls, n in used)
     text = ["Every reference case computed a third time with CST Studio Suite 2025.5 (time domain, FIT with PBA conformal metal, discrete face "
-            "ports, open boundaries) from the same case files, on CST's own mesh: fine (30 lines per wavelength and per model box) where it stays "
-            "within the 1 M cell limit, else the intermediate (25 / 25) or base mesh (20 / 20). Compared with kisi-fdtd's references as they are since "
+            "ports, open boundaries) from the same case files, on CST's own mesh, the finest computed for each case (lines per wavelength at f max / "
+            f"per model box): {meshes}. A case is de-embedded with the 2×thru on its own mesh, or on the thru's finest where the thru "
+            "lacks that mesh. Compared with kisi-fdtd's references as they are since "
             "the refined inner-layer exits, with the metrics of the openEMS table (through path S21, of a pair S31; Δτ = τ kisi-fdtd (or openEMS) − τ CST "
-            "from the phase above f max / 4; G: |Z11| resonances, H: loop inductance at 50 MHz). Method, mesh checks and per-case results: CST.md; summary: TESTS.md S16, "
+            "from the phase above f max / 4; G: |Z11| resonances, H: loop inductance at 50 MHz). Method, mesh checks and per-case results: CST.md; summary: TESTS.md "
             "sections 16 and 17."]
     return {"title": "Every reference case in CST", "text": text,
             "cols": ["group", "cases", "CST mesh (cases)", "Δ|S21| kisi-fdtd vs CST: median of the case means / largest mean / largest max (dB); G, H: as noted",
@@ -360,7 +371,7 @@ def cavity_check(cv):
 
 def main():
     # 2×thru fixtures per tool: each tool's result is de-embedded with its own fixtures
-    thrus = {"kisi": {}, "openems": {}, "cst": {}}
+    thrus = {"kisi": {}, "openems": {}}  # CST: the fixture on the case's own mesh, below
     for p in glob.glob(os.path.join(REF, "thru_*")):
         nm = os.path.basename(p)
         for tool, d in thrus.items():
@@ -378,8 +389,9 @@ def main():
         nm = c["name"]
         f, S = load(nm, "kisi")
         entry = {"id": nm, "case": {k: c[k] for k in ("domain", "board", "layers", "sheets", "vias", "ports", "fmax")}, "meta": c["meta"]}
-        if cst_mesh(nm)[1]:
-            entry["cst_mesh"] = cst_mesh(nm)[1]
+        ctool, cmesh = cst_mesh(nm)
+        if cmesh:
+            entry["cst_mesh"] = mesh_label(cmesh)
         fp = os.path.join(REF, nm, "fields.json")
         if os.path.exists(fp):
             entry["fields"] = json.load(open(fp))["planes"]
@@ -405,9 +417,15 @@ def main():
                 for p in c["meta"]["ports"]:
                     key = f"thru_{c['meta']['stackup']}_{p['layer']}"
                     fx.append(thru.get(key))
-                other = []
-                for tool, tag in (("openems", "openems_de"), ("cst", "cst_de")):
-                    other.append((tag, load(nm, tool)[1], [thrus[tool].get(f"thru_{c['meta']['stackup']}_{p['layer']}") for p in c["meta"]["ports"]]))
+                other = [("openems_de", load(nm, "openems")[1], [thrus["openems"].get(f"thru_{c['meta']['stackup']}_{p['layer']}") for p in c["meta"]["ports"]])]
+                if ctool:  # CST: each 2×thru on the case's mesh where it has it (cst_compare.cst_fixture), as in results/cst_compare.json
+                    names = [f"thru_{c['meta']['stackup']}_{p['layer']}" for p in c["meta"]["ports"]]
+                    fmesh = [cst_fixture(REF, t, ctool) for t in names]
+                    fxc = [sparam.read_touchstone(result_file(REF, t, m)) if m else None for t, m in zip(names, fmesh)]
+                    other.append(("cst_de", sparam.read_touchstone(result_file(REF, nm, ctool))[1], fxc))
+                    off = sorted({f"{t.split('_')[-1]} on the {CST_MESH_NAME[dict(CST_MESHES)[m]]}" for t, m in zip(names, fmesh) if m and m != ctool})
+                    if off:
+                        entry["cst_de_note"] = f"2×thru {', '.join(off)}"
                 for tag, SS, fxs in [("deembedded", S, fx)] + other:
                     if SS is None or not all(fxs):
                         continue

@@ -261,10 +261,14 @@ async function main(argv) {
       }
       var reportPath = o.cmd === "report" ? (o.out ? path.resolve(o.out) : path.join(dir, "analysis", "kisi.json")) : null;
     }
-    let res = eng.json("kisi_cli_run", { opts: o, tree, report_path: reportPath || null, check_rows: checkRowsDone || null });
-    if (o.cmd === "report") {
-      fs.mkdirSync(path.dirname(res.write.path), { recursive: true });
-      fs.writeFileSync(res.write.path, res.write.content);
+    // the report's date: SOURCE_DATE_EPOCH (reproducible files), else today (UTC), as the native CLI
+    const sde = Number(process.env.SOURCE_DATE_EPOCH), date = new Date(Number.isFinite(sde) && process.env.SOURCE_DATE_EPOCH ? sde * 1000 : Date.now()).toISOString().slice(0, 10);
+    let res = eng.json("kisi_cli_run", { opts: o, tree, report_path: reportPath || null, date, check_rows: checkRowsDone || null });
+    if (o.cmd === "report") { // analysis/kisi.json, with --html and --csv the printable report and its tables
+      for (const f of res.files) {
+        fs.mkdirSync(path.dirname(path.resolve(f.path)), { recursive: true });
+        fs.writeFileSync(path.resolve(f.path), f.content);
+      }
       res = res.result;
     }
     if (res && res._write) { fs.writeFileSync(path.resolve(res._write.path), res._write.content); res.written = res._write.path; delete res._write; }

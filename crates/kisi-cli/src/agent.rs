@@ -56,12 +56,22 @@ fn run(o: &Opts) -> Result<Value, String> {
             .clone()
             .map(PathBuf::from)
             .unwrap_or_else(|| p.pcb_path.parent().unwrap_or(Path::new(".")).join("analysis").join("kisi.json"));
-        if let Some(d) = path.parent() {
-            std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+        // the report's date: SOURCE_DATE_EPOCH (reproducible files), else today (UTC)
+        let secs =
+            std::env::var("SOURCE_DATE_EPOCH").ok().and_then(|s| s.trim().parse::<i64>().ok()).unwrap_or_else(|| {
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_secs() as i64)
+                    .unwrap_or(0)
+            });
+        let files = commands::report_files(o, &path.display().to_string(), &v, &commands::utc_date(secs));
+        for (f, text) in &files {
+            if let Some(d) = Path::new(f).parent().filter(|d| !d.as_os_str().is_empty()) {
+                std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
+            }
+            std::fs::write(f, text).map_err(|e| format!("{f}: {e}"))?;
         }
-        std::fs::write(&path, serde_json::to_string_pretty(&v).unwrap())
-            .map_err(|e| format!("{}: {e}", path.display()))?;
-        v = commands::report_summary(&path.display().to_string(), &v);
+        v = commands::report_summary(&files, o, &v);
     }
     // files a command asks to write (e.g. `net --s2p`)
     if let Some(w) = v.as_object_mut().and_then(|m| m.remove("_write")) {

@@ -3,7 +3,8 @@
 
   golden.py boards <kisi> <examples dir> [--update] [--only ts.check,vna.power]
       runs the native CLI on ThunderScope and LibreVNA (web/samples/{ts,vna}.kisi.json) and compares every
-      command's JSON with validation/golden/<board>.<command>.json
+      command's JSON with validation/golden/<board>.<command>.json, and the printable report (`report --html`,
+      SOURCE_DATE_EPOCH=0, the version left out) with validation/golden/<board>.report.html
   golden.py vias <kisi> [--update]
       runs validation/fdtd/compare_kisi.py (kisi's channel models on the 3D via reference cases) and compares
       its table with validation/fdtd/results/kisi_models.json
@@ -12,13 +13,14 @@
 
 Rules: strings, booleans and the structure (keys, list lengths) must be identical – verdicts, warnings and names;
 numbers are rounded to 6 significant digits when stored and may differ by 1e-4 relative (other CPUs and maths
-libraries). Keys that are not results (config echo, field solver status, timings) are left out.
+libraries). Keys that are not results (config echo, field solver status, timings) are left out. The report's HTML: the
+text between its numbers identical, each number within 1e-4 relative or one unit of its last decimal.
 
 A change in a model changes the stored files: run the same command with --update and commit validation/golden
 (or results/kisi_models.json) together with the change – the review then shows which values moved and by how
 much (model changes need a comparison against the references, AGENTS.md). Exit code 1 on any difference.
 """
-import json, os, subprocess, sys, tempfile, time
+import json, os, re, subprocess, sys, tempfile, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "validation", "golden")
@@ -27,7 +29,7 @@ VIAS = os.path.join(ROOT, "validation", "fdtd", "results", "kisi_models.json")
 BOARDS = [("ts", "Thunderscope_Rev5.3", "+1V0"), ("vna", "VNA", "+3V3")]
 COMMANDS = {
     "overview": [], "interfaces": [], "check": ["--all"], "crosstalk": [], "gaps": [],
-    "power": ["--pdn", "{rail}"], "thermal": [],
+    "power": ["--pdn", "{rail}"], "thermal": [], "report": [],
 }
 IGNORE = {"field_solver", "field_solver_note", "timing_ms", "file"}
 REL, ABS = 1e-4, 1e-12
@@ -107,6 +109,44 @@ def report(name, stored, new, update, path):
     return len(d)
 
 
+NUM = re.compile(r"(-?\d+(?:\.\d+)?)")
+
+
+def html_diffs(a, b):
+    """Differences of two report pages: the text between the numbers, the numbers with the tolerance above."""
+    ta, tb = NUM.split(a), NUM.split(b)
+    if len(ta) != len(tb):
+        return [f"{len(ta) // 2} -> {len(tb) // 2} numbers"]
+    out = []
+    for i, (x, y) in enumerate(zip(ta, tb)):
+        if x == y:
+            continue
+        if i % 2 == 1:
+            unit = 10.0 ** -max(len(x.partition(".")[2]), len(y.partition(".")[2]))
+            if abs(float(x) - float(y)) <= max(1.0001 * unit, REL * max(abs(float(x)), abs(float(y)))):
+                continue
+        out.append(f"…{''.join(ta[max(0, i - 3):i])[-60:]}: {x[:60]!r} -> {y[:60]!r}")
+    return out
+
+
+def page(name, path, html, update):
+    """Compare (or store) the report page; the number of differences."""
+    html = re.sub(r"(<b>kisi</b><span>)[^ <]+", r"\1VERSION", html)
+    if update:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html)
+        print(f"{name}: stored")
+        return 0
+    if not os.path.exists(path):
+        print(f"{name}: no stored result ({os.path.relpath(path, ROOT)}) – run with --update")
+        return 1
+    d = html_diffs(open(path, encoding="utf-8").read(), html)
+    print(f"{name}: {'unchanged' if not d else f'{len(d)} difference(s)'}")
+    for line in d[:MAX_LINES]:
+        print("   ", line)
+    return len(d)
+
+
 def load(path):
     if not os.path.exists(path):
         return None
@@ -125,8 +165,11 @@ def boards(kisi, ex, update, only):
             if only and name not in only:
                 continue
             argv = [kisi, cmd, pcb, "--config", cfg] + [a.format(rail=rail) for a in args]
+            if cmd == "report":
+                tmp = tempfile.mkdtemp(prefix="kisi-golden-")
+                argv += ["--out", os.path.join(tmp, "kisi.json"), "--html", os.path.join(tmp, "report.html")]
             t0 = time.time()
-            r = subprocess.run(argv, capture_output=True, text=True, cwd=ROOT)
+            r = subprocess.run(argv, capture_output=True, text=True, cwd=ROOT, env=dict(os.environ, SOURCE_DATE_EPOCH="0"))
             secs = time.time() - t0
             if r.returncode != 0:
                 print(f"{name}: failed ({r.returncode})\n{r.stderr[-1500:]}")
@@ -135,8 +178,11 @@ def boards(kisi, ex, update, only):
                 bad += 1
                 rows.append(f"| {name} | failed | {secs:.1f} s |")
                 continue
-            path = os.path.join(GOLDEN, name + ".json")
-            n = report(name, load(path), norm(json.loads(r.stdout)), update, path)
+            if cmd == "report":
+                n = page(name, os.path.join(GOLDEN, name + ".html"), open(os.path.join(tmp, "report.html"), encoding="utf-8").read(), update)
+            else:
+                path = os.path.join(GOLDEN, name + ".json")
+                n = report(name, load(path), norm(json.loads(r.stdout)), update, path)
             bad += n
             rows.append(f"| {name} | {'unchanged' if not n else f'{n} differences'} | {secs:.1f} s |")
     summary(["### Stored results of the example boards", "", "| result | state | time |", "|---|---|---|"] + rows)

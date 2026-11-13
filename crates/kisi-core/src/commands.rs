@@ -51,6 +51,8 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    temperature and IR drop at temperature per rail
                    [--tree tree.json] [--ambient °C (25)] [--h W/m²K per side] [--airflow m/s] [--vertical]
   report           write analysis/kisi.json next to the board   [--out FILE]
+                   [--html FILE (the printable report: one to two pages of results, light, for
+                   A4 and Letter)] [--csv DIR (the printable report's tables as CSV files)]
   export           a lane or a whole bus for circuit and RF simulators: SPICE subcircuits (RLGC
                    ladders, kisi's via model, parts, stubs; pairs coupled) with test benches for
                    ngspice, Xyce and LTspice, Touchstone (.s2p/.s4p, a bus as one N-port with port
@@ -148,6 +150,9 @@ pub struct Opts {
     pub tree: Option<String>,
     pub pdn: Option<String>,
     pub out: Option<String>,
+    /// `report`: also the printable report (HTML) and its tables (CSV files in this folder)
+    pub html: Option<String>,
+    pub csv: Option<String>,
     /// `net`: write the channel's S-parameters as Touchstone .s2p
     pub s2p: Option<String>,
     /// `net`: write the pair's single-ended 4-port as Touchstone .s4p
@@ -229,6 +234,8 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--tree" => o.tree = Some(val(&mut i, a)?),
             "--pdn" => o.pdn = Some(val(&mut i, a)?),
             "--out" => o.out = Some(val(&mut i, a)?),
+            "--html" => o.html = Some(val(&mut i, a)?),
+            "--csv" => o.csv = Some(val(&mut i, a)?),
             "--s2p" => o.s2p = Some(val(&mut i, a)?),
             "--s4p" => o.s4p = Some(val(&mut i, a)?),
             "--formula" => o.formula = true,
@@ -779,10 +786,47 @@ pub fn check_rows(o: &Opts, p: &Project, idx: &[usize]) -> Result<(usize, Vec<(u
     Ok((n, service::channel_check_rows(p, &profiles, classes, nets, &rf_params(o)?, idx)))
 }
 
-/// What `report` prints after writing the file.
-pub fn report_summary(path: &str, rep: &Value) -> Value {
-    json!({"written": path, "channels": rep["channels"]["summary"], "classes": rep["overview"]["classes"].as_array().map(|a| a.len()),
-        "config": rep["config"], "field_solver": rep["overview"]["field_solver"]})
+/// The files `report` writes: `analysis/kisi.json` (`path`), with `--html` the printable report
+/// (`date`: YYYY-MM-DD, from the front end – WebAssembly has no clock) and with `--csv` its tables.
+pub fn report_files(o: &Opts, path: &str, rep: &Value, date: &str) -> Vec<(String, String)> {
+    let mut f = vec![(path.to_string(), serde_json::to_string_pretty(rep).unwrap())];
+    if let Some(h) = &o.html {
+        f.push((h.clone(), crate::report_html::html(rep, date)));
+    }
+    if let Some(d) = &o.csv {
+        let dir = std::path::Path::new(d);
+        f.extend(
+            crate::report_html::csv_files(rep).into_iter().map(|(n, t)| (dir.join(n).to_string_lossy().to_string(), t)),
+        );
+    }
+    f
+}
+
+/// The date of a time in seconds since 1970 (UTC), YYYY-MM-DD (the report's header).
+pub fn utc_date(secs: i64) -> String {
+    // days to the civil date (H. Hinnant's algorithm)
+    let z = secs.div_euclid(86400) + 719468;
+    let era = z.div_euclid(146097);
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    format!("{:04}-{m:02}-{d:02}", yoe + era * 400 + i64::from(m <= 2))
+}
+
+/// What `report` prints after writing its files (`files` from `report_files`).
+pub fn report_summary(files: &[(String, String)], o: &Opts, rep: &Value) -> Value {
+    let mut v = json!({"written": files[0].0, "channels": rep["channels"]["summary"], "classes": rep["overview"]["classes"].as_array().map(|a| a.len()),
+        "config": rep["config"], "field_solver": rep["overview"]["field_solver"]});
+    if o.html.is_some() {
+        v["html"] = json!(files[1].0);
+    }
+    if o.csv.is_some() {
+        v["csv"] = json!(files[1 + usize::from(o.html.is_some())..].iter().map(|f| &f.0).collect::<Vec<_>>());
+    }
+    v
 }
 
 /// The PI_LOAD example of the template: a load, not a regulator – among the ICs without a PI_REG
@@ -937,6 +981,12 @@ mod tests {
             crate::export::Model::Compact
         );
         assert!(parse_args(&a("export b.kicad_pcb --lane X --model bogus")).is_err());
+        let r = parse_args(&a("report b.kicad_pcb --html r.html --csv tables")).unwrap();
+        assert_eq!((r.html.as_deref(), r.csv.as_deref()), (Some("r.html"), Some("tables")));
+        assert_eq!(
+            (utc_date(0), utc_date(951782400), utc_date(1794528000)),
+            ("1970-01-01".into(), "2000-02-29".into(), "2026-11-13".into())
+        );
     }
 
     /// The template's PI_LOAD example is a load: not the regulator (with or without PI_REG), even

@@ -13,7 +13,8 @@ timings of both runs are printed (in GitHub Actions also as a notice in the run'
 once trapped). `stackups` lists the fab stackup templates with their fit and kisi.json entries; `overview-preset` is
 `overview --stackup-preset … --tol …` (a JLCPCB template laid over the board, with its tolerance band); the LibreVNA
 export writes the tolerance corners too (`--corners`). `report` compares the written analysis/kisi.json as well (its
-check computed in worker threads by the Node CLI). Exit code 1 on any difference.
+check computed in worker threads by the Node CLI), and the printable report (`--html`) and its tables (`--csv`)
+byte by byte (SOURCE_DATE_EPOCH set). Exit code 1 on any difference.
 """
 import json, os, subprocess, sys, time
 
@@ -65,7 +66,7 @@ def first_diff(a, b, path="$"):
 
 
 def run(cmd, threads=None, raw=False):
-    env = dict(os.environ, KISI_THREADS=str(threads)) if threads else None
+    env = dict(os.environ, SOURCE_DATE_EPOCH="1794528000", **({"KISI_THREADS": str(threads)} if threads else {}))
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, env=env)
     if r.returncode != 0:
         raise SystemExit(f"failed ({r.returncode}): {' '.join(cmd)}\n{r.stderr[-2000:]}")
@@ -91,7 +92,8 @@ def main():
             if c in ("export", "report"):
                 import tempfile
                 tmp = tempfile.mkdtemp(prefix="kisi-" + c + "-")
-                extra = (EXPORT[key] if c == "export" else []) + ["--out", os.path.join(tmp, "x" if c == "export" else "kisi.json")]
+                extra = (EXPORT[key] if c == "export" else ["--html", os.path.join(tmp, "report.html"), "--csv", os.path.join(tmp, "csv")]) \
+                    + ["--out", os.path.join(tmp, "x" if c == "export" else "kisi.json")]
             na = [native, cmd, pcb, "--config", cfg] + extra
             nb = ["node", mjs, cmd, pcb, "--config", cfg, "--formula"] + extra
             t0 = time.time(); ta = run(na, raw=True); t1 = time.time(); tb = run(nb, raw=True); t2 = time.time()
@@ -110,9 +112,13 @@ def main():
                 # the file each wrote (the same path): the native one, then the Node CLI's again
                 rep = os.path.join(tmp, "kisi.json")
                 native_rep = json.load(open(rep, encoding="utf-8"))
+                pages = [os.path.join(tmp, "report.html")] + [os.path.join(tmp, "csv", f) for f in sorted(os.listdir(os.path.join(tmp, "csv")))]
+                native_pages = {f: open(f, "rb").read() for f in pages}
                 run(nb, raw=True)
                 d = first_diff(norm(native_rep), norm(json.load(open(rep, encoding="utf-8"))))
                 d = d and "analysis/kisi.json " + d
+                # the page names the configuration's file as given: the same path for both
+                d = d or next((f"{os.path.basename(f)} differs" for f, data in native_pages.items() if open(f, "rb").read() != data), None)
             print(f"{stem} {c}: {'identical' if d is None else 'DIFFERENT – ' + d}")
             bad += d is not None
             if c == "check":

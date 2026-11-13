@@ -100,10 +100,8 @@ function xpCsv(tables) {
   }
   return "﻿" + out.join("\r\n") + "\r\n";
 }
-function xpFile(view, ext) {
-  const d = new Date(), z = (n) => String(n).padStart(2, "0");
-  return `${String(S.name || "board").replace(/[^\w.-]+/g, "_")}_${view}_${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}.${ext}`;
-}
+const xpDate = () => { const d = new Date(), z = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
+const xpFile = (view, ext) => `${String(S.name || "board").replace(/[^\w.-]+/g, "_")}_${view}_${xpDate()}.${ext}`;
 
 // ---- kisi report in workers
 const XP_WORKER_SRC = `
@@ -181,8 +179,9 @@ async function xpReport(progress) {
     stop();
     progress("power: DC drop of every rail, losses, temperature", count, count);
     const res = JSON.parse(await call(ws[0], "kisi_cli_run", { opts: inputs.opts, tree: null, report_path: "analysis/kisi.json", check_rows: count >= 1 ? rows : null }));
-    XP.done = { key, text: res.write.content, fieldN: Object.keys(inputs.field).length, plan: plan.length };
-    return res.write.content;
+    const text = res.files[0].content;
+    XP.done = { key, text, fieldN: Object.keys(inputs.field).length, plan: plan.length };
+    return text;
   })();
   XP.run = { p, cancel };
   try { return await p; } finally { ws.forEach((w) => w.terminate()); XP.run = null; }
@@ -194,7 +193,8 @@ function xpSync() {
   $("xp-btn").disabled = !on;
   $("xp-csv").disabled = !t.tables;
   $("xp-csv").title = t.tables ? `the table${t.tables.length > 1 ? "s" : ""} of this view as shown (filter and sort), as ${xpFile(t.key, "csv")}` : `no table to export: ${t.why}`;
-  $("xp-json").disabled = !on || !!XP.run;
+  $("xp-json").disabled = $("xp-html").disabled = !on || !!XP.run;
+  $("xp-html").title = "one to two pages of results from the same report (impedance per class, the worst lane per interface, the drop per rail, temperatures, gaps) in a new window – print it there or save it as PDF";
   $("xp-json").title = "the same content as `kisi report` (analysis/kisi.json) for the loaded files – board, project, kisi.json, the assembly variant and stackup shown – with the field-solver results of this browser; edits kept only in this browser (targets, profiles, power settings) are not in it";
 }
 function xpMenu(open) {
@@ -212,7 +212,7 @@ $("xp-csv").onclick = () => {
   if (t.tables) saveText(xpFile(t.key, "csv"), xpCsv(t.tables), "text/csv;charset=utf-8");
 };
 // run the report with its progress in the bar; then hand the text on
-async function xpRun(then) {
+async function xpRun(then, failed) {
   xpMenu(false);
   const t0 = performance.now();
   const show = (what, d, n) => xpStatus(`<span>kisi report: ${esc(what)}${n ? ` · ${Math.round(100 * d / n)} %` : ""} · ${Math.round((performance.now() - t0) / 1000)} s</span> <button class="linklike" id="xp-cancel">Cancel</button>`);
@@ -221,8 +221,23 @@ async function xpRun(then) {
     xpStatus("");
     then(text);
   } catch (e) {
+    if (failed) failed();
     xpStatus(e.message === "cancelled" ? "" : `<span class="err">kisi report: ${esc(e.message)}</span> <button class="linklike" id="xp-cancel">×</button>`);
     if ($("xp-cancel")) $("xp-cancel").onclick = () => xpStatus("");
   }
 }
 $("xp-json").onclick = () => xpRun((text) => saveText(xpFile("report", "json"), text, "application/json"));
+// the window opens with the click (popup blockers allow that) and gets the page when the report is there;
+// a blocked window: the page as a download
+$("xp-html").onclick = () => {
+  let w = null;
+  try { w = window.open("", "_blank"); } catch (e) { w = null; }
+  if (w) w.document.write(`<title>kisi report</title><p style="font:15px system-ui,sans-serif;margin:2em">kisi report: running – see the progress in the viewer's top bar.</p>`);
+  xpRun((text) => {
+    const html = S.engine.reportHtml(text, xpDate());
+    if (w && !w.closed) { w.document.open(); w.document.write(html); w.document.close(); w.focus(); return; }
+    saveText(xpFile("report", "html"), html, "text/html");
+    xpStatus(`<span>The browser blocked the new window: the report was downloaded as ${esc(xpFile("report", "html"))} – open it and print.</span> <button class="linklike" id="xp-cancel">×</button>`);
+    $("xp-cancel").onclick = () => xpStatus("");
+  }, () => { if (w && !w.closed) w.close(); });
+};

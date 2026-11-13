@@ -64,7 +64,14 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   the via they leave through yet; the transmit direction of lanes from an IC to a connector is a guess.
 - **Skills on real boards.** Run kisi-prepare and kisi-si-pi-review on a few more real projects and sharpen the
   research guidance (datasheet sections, typical vs. maximum, efficiency read from curves).
-- **Report export** from the viewer (HTML/PDF summary of checks and power results).
+- **Report export** – **done** (2026-11-13): the viewer's Export menu in the top bar – the table of the view shown as
+  CSV, the content of `kisi report` as JSON (in Web Workers, with the browser's field results), the printable report
+  (one to two pages, print to PDF) –, `kisi report --html FILE --csv DIR` in both CLIs, one renderer for both
+  (`kisi_core::report_html`, stored as `validation/golden/<board>.report.html`). Possible next steps: a DC drop
+  limit per rail (a kisi guide value in `data/`, shown in the Power view too, then highlighted in the report); the
+  viewer's own results in the report (edits kept in the browser, the check already computed) instead of running
+  `kisi report` again; the PDN impedance (`--pdn`) and the crosstalk scan as report sections; a CSV of the net
+  detail tabs.
 - **Smaller downloads:** separate WASM builds for viewer and CLI (the viewer does not need the CLI commands).
 - **Faster field solver in the CLI:** better scheduling across threads, optional larger time budget presets.
 - **KiCad plugin** (decided 2026-10-26: IPC API plugin, no local server; revised 2026-11-05 for saving) –

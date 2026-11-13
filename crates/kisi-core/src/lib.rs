@@ -21,6 +21,7 @@ pub mod commands;
 pub mod config;
 pub mod gaps;
 pub mod par;
+pub mod report_html;
 pub mod service;
 pub mod stackups;
 pub mod variant;

@@ -38,8 +38,9 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
 * the Export menu (light, dark, phone; on every example board): enabled with a board, the table entry disabled with
   its reason in a view without a table; the CSV (BOM, file name) of the impedance view – the Nets card's rows – and
   of the power tree's components table – the values shown, one unit per column – against the page; Data (kisi.json)
-  with progress, parsed, the top-level keys of `kisi report` (light: every board; dark: the first; --quick: the
-  last board in the light run)
+  with progress, parsed, the top-level keys of `kisi report`; Report (print / PDF): the page in a new window with its
+  sections and no script, and as a download when the window is blocked (light: every board; dark: the first;
+  --quick: the last board in the light run)
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
@@ -1044,7 +1045,10 @@ THERM_KEY = """(() => ({ t_max: S.therm.t_max_c, parts: S.therm.parts.map((p) =>
   rails_ok: S.therm.rails.filter((r) => !r.error).length, rails: S.therm.rails.length, warnings: S.therm.warnings }))()"""
 
 
-REPORT_KEYS = {"tool", "version", "variant", "config", "overview", "interfaces", "channels", "power", "thermal", "stackup_used"}
+REPORT_KEYS = {"tool", "version", "board_file", "options", "variant", "config", "impedance", "overview", "interfaces", "channels",
+               "power", "thermal", "stackup_used", "gaps"}
+REPORT_SECTIONS = ["At a glance", "The five worst items", "Impedance per net class", "Channel: worst lane per interface",
+                   "Failing lanes", "Power: largest DC drop per rail", "Assumptions and gaps", "Left out on purpose"]
 
 
 def export_csv(pg):
@@ -1134,6 +1138,30 @@ def export_menu(pg, tag, step, json_boards):
         if not REPORT_KEYS <= set(rep):
             problems.append(f"{tag}: Data (kisi.json) of {board}: keys {sorted(rep)}")
         notes.append(f"{tag}: Data (kisi.json) of {board}: {time.time() - t0:.0f} s, {len(rep['channels'].get('rows', []))} channel rows")
+        # Report (print / PDF): the same report (kept) as a page in a new window; with the window blocked, a download
+        pg.click("#xp-btn")
+        with pg.context.expect_page(timeout=120000) as pi:
+            pg.click("#xp-html")
+        win = pi.value
+        try:
+            win.wait_for_function("document.querySelector('h1') && document.querySelector('h1').textContent.startsWith('kisi report')", timeout=120000)
+            html = win.content()
+            miss = [x for x in REPORT_SECTIONS if x not in html]
+            if miss or "<script" in html or rep["overview"]["board"] not in html:
+                problems.append(f"{tag}: Report of {board}: sections missing {miss} or a script in it")
+            win.screenshot(path=f"{out}/{tag}_report_{board}.png", full_page=True)
+        except Exception as e:
+            problems.append(f"{tag}: Report of {board} not shown in the new window: {e}")
+        win.close()
+        pg.evaluate("window.__open = window.open; window.open = () => null")
+        pg.click("#xp-btn")
+        with pg.expect_download(timeout=120000) as dl:
+            pg.click("#xp-html")
+        pg.evaluate("window.open = window.__open")
+        if not (dl.value.suggested_filename.endswith(".html") and "Left out on purpose" in open(dl.value.path(), encoding="utf-8").read()
+                and "downloaded" in pg.inner_text("#xp-status")):
+            problems.append(f"{tag}: Report with the window blocked: {dl.value.suggested_filename}, status {pg.inner_text('#xp-status')!r}")
+        pg.evaluate("xpStatus('')")
 
 
 def run(pg, tag, desktop):

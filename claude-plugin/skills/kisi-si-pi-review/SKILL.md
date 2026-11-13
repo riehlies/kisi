@@ -73,7 +73,8 @@ or older …") – ask the user to open it in KiCad 6 or newer and save it; ther
    temperature as `--ambient` and `--h` for the coupling inside), and Tj with package defaults can be off by tens of
    percent of the rise.
 6. Optionally `kisi report <board>` writes `analysis/kisi.json` next to the board, so file-based review
-   tools (e.g. kicad-happy) and later sessions can reuse the results.
+   tools (e.g. kicad-happy) and later sessions can reuse the results; `--html FILE` adds a one-to-two-page
+   printable report of the results (the user prints it to PDF), `--csv DIR` its tables.
 7. When the user wants to simulate a lane elsewhere (ngspice, Xyce, KiCad's simulator, IBIS buffers, RF tools):
    `kisi export <board> --lane NAME` (or `--bus NAME`) writes SPICE subcircuits with test benches, Touchstone
    files (a bus as one N-port with its port map) and a KiCad project (the lane's elements as symbols;

@@ -149,6 +149,10 @@ model accuracy ([Models and limits](models.md)).
   (formula values elsewhere). It runs in the background, with its progress and "Cancel" in the top bar (ThunderScope
   about half a minute). Edits kept only in this browser – targets, profiles, power settings, lane directions – are
   not in it; Prepare PCB moves them into the kisi.json. The file is `<board>_report_<date>.json`.
+- **Report (print / PDF)** – one to two pages of results from the same report (what it holds:
+  [`kisi report --html`](cli.md#report)) in a new window: print it there, or choose "Save as PDF" in the print
+  dialog. A report computed for the Data entry is used again while nothing changed. When the browser blocks the
+  new window, the page is downloaded as `<board>_report_<date>.html` instead.
 
 ## From KiCad: the plugin
 A button in KiCad's PCB editor (KiCad 10) opens the open board in the viewer, in

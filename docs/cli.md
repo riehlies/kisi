@@ -46,6 +46,8 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
                    temperature and IR drop at temperature per rail
                    [--tree tree.json] [--ambient °C (25)] [--h W/m²K per side] [--airflow m/s] [--vertical]
   report           write analysis/kisi.json next to the board   [--out FILE]
+                   [--html FILE (the printable report: one to two pages of results, light, for
+                   A4 and Letter)] [--csv DIR (the printable report's tables as CSV files)]
   export           a lane or a whole bus for circuit and RF simulators: SPICE subcircuits (RLGC
                    ladders, kisi's via model, parts, stubs; pairs coupled) with test benches for
                    ngspice, Xyce and LTspice, Touchstone (.s2p/.s4p, a bus as one N-port with port
@@ -175,6 +177,20 @@ correlations, e.g. for the inside of a closed case). See [Models and limits](mod
 Everything into `analysis/kisi.json` next to the board (`--out FILE` elsewhere); prints a summary. For file-based
 review tools and later sessions. Needs an assembly variant on boards that have them. Runs the field solver. The
 viewer's Export → Data (kisi.json) gives the same document ([getting started](getting-started.md#export)).
+Besides the results of `overview`, `interfaces`, `check --all`, `power` and `thermal` it holds `board_file` (name
+and SHA-256 of the board file), `options` (tolerances, `via_cavity`, `via_returns`), `impedance` (per net class the
+worst net's mean impedance against the class window – the profile's tolerance, else the default – with `status`
+as the check's impedance criterion), `gaps` (as `kisi gaps`) and `stackup_used`.
+
+`--html FILE` also writes the **printable report**: one to two pages of results, light, for A4 and Letter, no
+external resources – the header (board, file and hash, assembly variant, configuration, stackup sources, options,
+kisi version and date), counts of ok / warning / fail per area with the five worst items, the impedance per net
+class, per bus its worst lane and margin with the failing lanes, the largest DC drop per rail, the temperature's
+hot spots and the junctions over or near Tj max, the estimates and the open gaps. Maps, curves, per-net details
+and via lists are left out (they are in the viewer and the JSON). `--csv DIR` writes the report's tables as CSV
+files in the format of the viewer's table export. The date is today's (UTC), or that of `SOURCE_DATE_EPOCH` for
+reproducible files; the summary lists the files under `html` and `csv`. The viewer's Export → Report gives the
+same page.
 
 ### `export`
 A lane (`--lane NAME`, a net of the lane) or a whole bus (`--bus NAME`, as `kisi interfaces` names it, e.g.
@@ -297,6 +313,8 @@ The text above. `kisi.mjs` also accepts `--version`.
 | `--via-cavity` | `net`, `check`, `report` | experimental: the via models' plane pairs as finite cavities (board edges, stitching vias, decoupling capacitors – estimated parasitics); slower |
 | `--via-returns` | `net`, `check`, `report` | experimental: return groups per plane pair in the via models (a return via shorts only the pairs it joins; capacitors close supply/ground pairs) |
 | `--out FILE` | `report`, `export` | where to write the report (default `analysis/kisi.json` next to the board) or the export's folder (default `analysis/export/<name>`) |
+| `--html FILE` | `report` | also the printable report as an HTML page ([report](#report)) |
+| `--csv DIR` | `report` | also the printable report's tables as CSV files in this folder |
 | `--lane NAME` | `export` | the lane to export (a net of it) |
 | `--bus NAME` | `export` | the bus to export, all its lanes (as `kisi interfaces` names it) |
 | `--format LIST` | `export` | `lib`, `spice`, `xyce`, `ltspice`, `touchstone`, `kicad` (comma-separated; default all) |

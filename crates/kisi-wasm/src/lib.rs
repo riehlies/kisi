@@ -1768,8 +1768,9 @@ pub extern "C" fn kisi_cli_check_part(p: *const u8, n: usize) -> i32 {
 }
 
 /// Run the command on the project. Input: {"opts", "tree": json|null, "report_path": str|null,
-/// "check_rows": [[index, row], …] | null (check: the rows from the parts)}.
-/// Output: the result; for `report` {"result": summary, "write": {"path", "content"}}.
+/// "date": "YYYY-MM-DD" (report), "check_rows": [[index, row], …] | null (check, report: the rows
+/// from the parts)}. Output: the result; for `report` {"result": summary, "files": [{"path",
+/// "content"}]} (analysis/kisi.json first, then `--html` and `--csv`).
 #[no_mangle]
 pub extern "C" fn kisi_cli_run(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -1788,9 +1789,25 @@ pub extern "C" fn kisi_cli_run(p: *const u8, n: usize) -> i32 {
             let r = kisi_core::commands::run_with(&o, c.as_ref(), tree, rows)?;
             if o.cmd == "report" {
                 let path = v["report_path"].as_str().unwrap_or("analysis/kisi.json");
-                return Ok(serde_json::json!({"result": kisi_core::commands::report_summary(path, &r), "write": {"path": path, "content": serde_json::to_string_pretty(&r).unwrap()}}).to_string());
+                let files = kisi_core::commands::report_files(&o, path, &r, v["date"].as_str().unwrap_or(""));
+                let list: Vec<_> = files.iter().map(|(p, c)| serde_json::json!({"path": p, "content": c})).collect();
+                return Ok(
+                    serde_json::json!({"result": kisi_core::commands::report_summary(&files, &o, &r), "files": list})
+                        .to_string(),
+                );
             }
             Ok(r.to_string())
         })
+    })())
+}
+
+/// The printable report of a report JSON (Export → Report): {"report": the JSON of `kisi report`,
+/// "date": "YYYY-MM-DD"} → the HTML page (`kisi_core::report_html`).
+#[no_mangle]
+pub extern "C" fn kisi_report_html(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    reply((|| {
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        Ok(kisi_core::report_html::html(&v["report"], v["date"].as_str().unwrap_or("")))
     })())
 }

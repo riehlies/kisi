@@ -42,6 +42,8 @@ pub struct Project {
     /// kisi.json `tolerances` entry; off, no band is computed or reported
     pub tol_on: bool,
     pub windows: HashMap<String, (f64, String)>,
+    /// SHA-256 of the board file's text (hex; empty for a board built from one already read)
+    pub pcb_sha256: String,
     /// lanes grouped into buses, found once (`buses`)
     buses: std::sync::OnceLock<Vec<topology::Bus>>,
 }
@@ -181,7 +183,8 @@ impl Project {
                 board.warnings.push(format!("project file: {e}"));
             }
         }
-        Self::from_board(board, inp)
+        let sha = crate::report_html::sha256_hex(inp.pcb.as_bytes());
+        Self::from_board(board, inp).map(|p| Project { pcb_sha256: sha, ..p })
     }
 
     /// Build a project from a board already read (with its project file applied); `inp.pcb` and
@@ -266,6 +269,7 @@ impl Project {
             tolerances,
             tol_on,
             windows,
+            pcb_sha256: String::new(),
             buses: Default::default(),
         };
         // dismissals that cannot apply on this board (needs the analysed project)
@@ -1410,17 +1414,42 @@ pub fn report(
         None => channel_check(p, profiles, &none, None, rp),
     };
     let run = power_run(p, None);
+    let ov = overview(p);
     Ok(json!({
         "tool": "kisi", "version": env!("CARGO_PKG_VERSION"),
+        "board_file": {"name": p.pcb_path.file_name().map(|f| f.to_string_lossy().to_string()), "sha256": p.pcb_sha256},
+        "options": {"tolerances": p.tol_on, "via_cavity": rp.via_cavity, "via_returns": rp.via_returns},
         "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "overview": overview(p),
+        "impedance": class_verdicts(p, &ov),
+        "overview": ov,
         "interfaces": interfaces(p, profiles, &none),
         "channels": channels,
         "power": run.as_ref().map_err(|e| e.clone()).and_then(|r| power_from(p, r, None)).unwrap_or_else(|e| json!({"error": e})),
         "thermal": run.as_ref().map_err(|e| e.clone()).and_then(|r| thermal_from(p, r, &crate::thermal::ThermalParams::default())).unwrap_or_else(|e| json!({"error": e})),
         "stackup_used": stackup_used(p),
+        "gaps": crate::gaps::gaps(p, profiles),
     }))
+}
+
+/// Per net class with a target: the worst net's mean impedance against the class's target window
+/// (the interface profile's tolerance, else the default window, `Project::windows`), judged as the
+/// channel check's impedance criterion (`profile::judge`).
+fn class_verdicts(p: &Project, ov: &Value) -> Value {
+    let mut out = Vec::new();
+    for c in ov["classes"].as_array().into_iter().flatten() {
+        let (Some(name), Some(t)) = (c["class"].as_str(), c["target_ohm"].as_f64()) else { continue };
+        let w = &c["worst"][0];
+        let (win, src) = p.windows.get(name).cloned().unwrap_or((10.0, "default".into()));
+        let pr = crate::profile::Profile { z: t, z_tol_pct: win, rate_gbps: 1.0, ..Default::default() };
+        let m = crate::profile::Metrics { z_mean: w["z_mean"].as_f64(), ..Default::default() };
+        let v = crate::profile::judge(&m, &pr, &Default::default());
+        let z = v.criteria.iter().find(|x| x.key == "z");
+        out.push(json!({"class": name, "target_ohm": t, "diff": c["diff"], "worst_net": w["net"], "z_ohm": w["z_mean"],
+            "window_pct": win, "window_source": src, "lo_ohm": z.and_then(|z| z.lo), "hi_ohm": z.and_then(|z| z.hi),
+            "status": z.map(|z| z.status), "within_5pct": c["within_5pct"], "z_tol_rss_ohm": w["z_tol_rss_ohm"], "z_tol_status": w["z_tol_status"]}));
+    }
+    json!(out)
 }
 
 /// The stackup the analyses used, with the source of every value (report, exports).

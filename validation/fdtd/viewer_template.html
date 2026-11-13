@@ -117,8 +117,8 @@ footer.about a { color: var(--accent) }
   </section>
   <section id="view-checks" class="checks" hidden></section>
 </main>
-<footer class="about">The references are computed with kisi's own 3D solver (kisi-fdtd), checked against openEMS and analytic
-  cases only; validation against other solvers and against measurements is still open. The 2D cross-section cases
+<footer class="about">The references are computed with kisi's own 3D solver (kisi-fdtd), checked against openEMS, CST Studio Suite
+  and analytic cases; validation against measurements is still open. The 2D cross-section cases
   (CST, full-wave, kisi's field solver and formulas) are on the page <a href="kisi-references-2d.html">kisi 2D references</a>
   (a release file next to this one; each is attached to the releases in which its cases changed:
   <a href="https://github.com/riehlies/kisi/releases" target="_blank" rel="noopener">releases</a>). ·
@@ -449,8 +449,8 @@ function chipList(c) {
 function renderCase(c) {
   cur = c;
   // CST: its finest mesh for this case (CST.md)
-  TOOLS.cst[0] = "CST" + (c.cst_mesh ? ` (${c.cst_mesh} mesh)` : "");
-  TOOLS.cst_de[0] = "CST" + (c.cst_mesh ? ` (${c.cst_mesh} mesh)` : "") + ", de-embedded (its own 2×thru)";
+  TOOLS.cst[0] = "CST" + (c.cst_mesh ? ` (${c.cst_mesh})` : "");
+  TOOLS.cst_de[0] = "CST" + (c.cst_mesh ? ` (${c.cst_mesh}${c.cst_de_note ? "; " + c.cst_de_note : ""})` : "") + ", de-embedded (its own 2×thru)";
   const box = $("case");
   const m = c.meta;
   const ports = m.ports.map((p, i) => `${i + 1}: ${p.name.replace(/^\d+ ?/, "") || "port"} ${p.layer} (ref ${p.ref})`).join(" · ");

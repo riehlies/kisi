@@ -1,8 +1,8 @@
-"""Compare CST results (via_ref/<case>/cst.sNp) with kisi-fdtd (kisi.sNp) and, where present,
-openEMS (openems.sNp), and the former kisi-fdtd reference (kisi_base.sNp) where the reference was recomputed on a
-refined mesh (TESTS.md section 17): raw S-parameters at the ports, the via de-embedded with the 2×thru of each
-feed layer (same NZC method as via_pbm.py / kisi_deembedded.s2p, the thru taken from the same
-solver), mixed mode for pairs, TDR. Prints a table and writes results/cst_compare.json.
+"""Compare CST results (via_ref/<case>/cst[_xfine|_fine|_mid].sNp, each case on its finest mesh: CST_MESHES) with
+kisi-fdtd (kisi.sNp) and, where present, openEMS (openems.sNp), and the former kisi-fdtd reference (kisi_base.sNp)
+where the reference was recomputed on a refined mesh (TESTS.md section 17): raw S-parameters at the ports, the via
+de-embedded with the 2×thru of each feed layer (same NZC method as via_pbm.py / kisi_deembedded.s2p, the thru taken
+from the same solver and, for CST, on the case's mesh: cst_fixture), mixed mode for pairs, TDR. Prints a table and writes results/cst_compare.json.
 
 usage: python3 cst_compare.py [case-id substrings ...] [--fmax-cmp 20e9] [--md FILE] [--openems DIR]
 
@@ -21,12 +21,47 @@ OEMS = REF  # where openems.sNp is read from (--openems)
 CASE_DIRS = ("via_cases", "board_cases", "resonance_cases", "return_cases")
 
 
-def load(cid, tool):
+# CST's meshes, finest first: result file prefix, mesh key in results/cst_compare.json (run_cst.py --tag; settings in
+# each *_meta.json, CST.md). A case is reported on its finest mesh; each mesh against the next coarser is the mesh check.
+CST_MESHES = (("cst_xfine", "xfine"), ("cst_fine", "fine"), ("cst_mid", "mid"), ("cst", "base"))
+CST_MESH_NAME = {"xfine": "extra-fine mesh", "fine": "fine mesh", "mid": "intermediate mesh", "base": "base mesh"}
+CST_TOOL = {m: t for t, m in CST_MESHES}
+
+
+def result_file(ref, cid, tool):
+    """the Touchstone file of a result (tool: the file prefix, e.g. kisi, openems, a CST mesh of CST_MESHES), or None"""
     for n in (1, 2, 4):
-        p = os.path.join(OEMS if tool.startswith("openems") else REF, cid, f"{tool}.s{n}p")
+        p = os.path.join(ref, cid, f"{tool}.s{n}p")
         if os.path.exists(p):
-            return sparam.read_touchstone(p)
+            return p
     return None
+
+
+def cst_tools(ref, cid):
+    """the CST meshes a case was computed on, finest first (prefixes of CST_MESHES)"""
+    return [t for t, _ in CST_MESHES if result_file(ref, cid, t)]
+
+
+def cst_fixture(ref, thru, tool):
+    """the mesh of a 2×thru for de-embedding a CST result on mesh `tool`: the same mesh where the thru has it (the
+    feed's mesh error then cancels), else the thru's finest (the intermediate mesh has no thrus; the extra-fine one
+    only some)"""
+    have = cst_tools(ref, thru)
+    return tool if tool in have else (have[0] if have else None)
+
+
+def cst_lines(ref, cid, tool):
+    """CST's mesh settings of a result: [lines per wavelength, lines per model box] from its *_meta.json, or None"""
+    p = os.path.join(ref, cid, f"{tool}_meta.json")
+    if not os.path.exists(p):
+        return None
+    ms = json.load(open(p, encoding="utf-8")).get("mesh_settings") or {}
+    return [ms["lpw"], ms["lpb"]] if "lpw" in ms and "lpb" in ms else None
+
+
+def load(cid, tool):
+    p = result_file(OEMS if tool.startswith("openems") else REF, cid, tool)
+    return sparam.read_touchstone(p) if p else None
 
 
 def thru_names(c):
@@ -49,14 +84,13 @@ def deembed(c, tool, f, S):
     """2-port vias: NZC 2×thru; pairs: first-order shift per line; None if the thrus are missing"""
     th = []
     for t in thru_names(c):
-        r = load(t, "kisi" if tool == "kisi_base" else tool)  # the fixtures stayed on the base mesh (TESTS.md section 17)
-        if r is None and tool == "cst_mid":  # no thrus on the intermediate mesh: the finest there is
-            r = load(t, "cst_fine") or load(t, "cst")
+        if tool.startswith("cst"):
+            r = load(t, cst_fixture(REF, t, tool) or tool)
+        else:
+            r = load(t, "kisi" if tool == "kisi_base" else tool)  # the fixtures stayed on the base mesh (TESTS.md section 17)
         if r is None:
             return None
         th.append(r[1])
-    if any(t.shape[1] != S.shape[1] for t in th):
-        return None
     if any(t.shape[1] != S.shape[1] for t in th):
         return None
     if c["meta"].get("thru"):  # board vias: lines not 50 ohm, matched de-embedding (board_vias.py)
@@ -127,7 +161,7 @@ def write_md(path, out, fcmp):
     for cid in sorted(out):
         row = out[cid]
         m = {}
-        mp = os.path.join(REF, cid, {"fine": "cst_fine_meta.json", "mid": "cst_mid_meta.json"}.get(row.get("mesh"), "cst_meta.json"))
+        mp = os.path.join(REF, cid, f"{CST_TOOL.get(row.get('mesh'), 'cst')}_meta.json")
         if os.path.exists(mp):
             m = json.load(open(mp, encoding="utf-8"))
         cells = f"{m['cells'] // 1000} k" if m.get("cells") else "–"
@@ -142,7 +176,7 @@ def write_md(path, out, fcmp):
             lines.append(f"| {cid} | {row['mesh']} | {cells} | {secs} | {pdn(row['pdn_vs_kisi'])} (CST / kisi) | | | | | | {o} |")
             continue
         r, d = row.get("raw_vs_kisi"), row.get("deemb_vs_kisi")
-        fn = row.get("cst_xfine_vs_cst_fine") or row.get("cst_fine_vs_cst") or row.get("cst_mid_vs_cst")
+        fn = row.get(row.get("mesh_check", ""))
         tdr = f"{r['tdr_zmin'][0]} / {r['tdr_zmin'][1]}" if r and r["tdr_zmin"][1] == r["tdr_zmin"][1] else "–"
         o = row.get("deemb_vs_openems") or row.get("raw_vs_openems")
         oe = f"{g(o, 'dS21_max_db', '{:.3f}')}, {g(o, 'ddelay_ps', '{:+.2f}')}" if o else row.get("openems_note", "–").replace("|", "\\|")
@@ -206,17 +240,20 @@ def main():
     for cid, cpath in case_files().items():
         if keys and not any(k in cid for k in keys):
             continue
-        base = load(cid, "cst")
-        fine = load(cid, "cst_fine")
-        mid = load(cid, "cst_mid")
-        if base is None and fine is None:
+        tools = cst_tools(REF, cid)
+        if not tools:
             continue
         c = json.load(open(cpath))
-        # results are reported on the fine mesh where it exists, else on the intermediate mesh
-        # (25 / 25, where the fine mesh exceeds the available mesh size), else on the base mesh;
-        # base -> fine (or -> intermediate) and fine -> extra-fine are the mesh checks
-        prim, (f, Sc) = next((t, r) for t, r in (("cst_fine", fine), ("cst_mid", mid), ("cst", base)) if r is not None)
-        row = {"mesh": {"cst_fine": "fine", "cst_mid": "mid", "cst": "base"}[prim]}
+        # results are reported on the finest mesh the case was computed on (CST_MESHES: extra-fine on a few cases,
+        # fine where it fits, else intermediate, else base); each mesh against the next coarser is a mesh check
+        # ("<finer>_vs_<coarser>"), the one that ends on the reported mesh is "mesh_check"
+        res = {t: load(cid, t) for t in tools}
+        prim = tools[0]
+        f, Sc = res[prim]
+        base = res.get("cst")
+        row = {"mesh": dict(CST_MESHES)[prim]}
+        if cst_lines(REF, cid, prim):
+            row["mesh_lines"] = cst_lines(REF, cid, prim)
         if c["meta"]["group"] in ("G", "H"):
             r = load(cid, "kisi")
             if r is not None and len(r[0]) == len(f):
@@ -225,18 +262,18 @@ def main():
                 if o is not None and len(o[0]) == len(f):
                     row["pdn_vs_openems"] = pdn_metrics(c, f, Sc, o[1])
                     row["pdn_openems_vs_kisi"] = pdn_metrics(c, f, o[1], r[1])
-                if base is not None and fine is not None:
+                if base is not None and prim != "cst":
                     row["pdn_base_vs_kisi"] = pdn_metrics(c, f, base[1], r[1])
                 out[cid] = row
                 print(f"{cid:28s} pdn_vs_kisi        {row['pdn_vs_kisi']}")
             continue
-        if base is not None and fine is not None:
-            row["cst_fine_vs_cst"] = metrics(f, fine[1], base[1], fcmp)
-        if base is not None and prim == "cst_mid":
-            row["cst_mid_vs_cst"] = metrics(f, mid[1], base[1], fcmp)
-        xf = load(cid, "cst_xfine")
-        if xf is not None and fine is not None:
-            row["cst_xfine_vs_cst_fine"] = metrics(f, xf[1], fine[1], fcmp)
+        for finer, coarser in zip(tools, tools[1:]):
+            row[f"{finer}_vs_{coarser}"] = metrics(f, res[finer][1], res[coarser][1], fcmp)
+        if len(tools) > 1:
+            row["mesh_check"] = f"{tools[0]}_vs_{tools[1]}"
+        fx = {t: dict(CST_MESHES)[cst_fixture(REF, t, prim)] for t in thru_names(c) if cst_fixture(REF, t, prim)} if c["meta"]["group"] != "thru" else {}
+        if any(m != row["mesh"] for m in fx.values()):  # a 2×thru not on the case's mesh (CST_MESHES, cst_fixture)
+            row["deemb_fixture_mesh"] = fx
         k_ref = None  # kisi-fdtd's reference, for openEMS against kisi-fdtd
         rk = load(cid, "kisi")
         if rk is not None and not np.isnan(rk[1]).any() and len(rk[0]) == len(f):

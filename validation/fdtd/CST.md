@@ -8,8 +8,8 @@ since `TESTS.md` section 17 (the inner-layer exits on a refined mesh); the forme
 compared too, for the before/after.
 
 All 106 cases computed; 101 on the fine mesh, 5 only on coarser meshes because the fine mesh exceeds the available
-mesh size (> 1 M cells): BV_vna_clk_w5 on an intermediate mesh, four on the base mesh. Extra-fine mesh check on five
-cases.
+mesh size (> 1 M cells): BV_vna_clk_w5 on an intermediate mesh, four on the base mesh. Five of the fine-mesh cases
+also on an extra-fine mesh (the mesh check below); they are reported on it.
 
 ## Setup
 
@@ -22,7 +22,7 @@ cases.
 | Mesh | CST's automatic mesh, ratio limit 20, edge refinement 4. **base**: 20 lines per wavelength at fmax, 20 lines per model box; **fine** (`--tag fine`): 30 / 30; **extra-fine** (`--tag xfine`): 40 / 40; **intermediate** (`--tag mid`, only where the fine mesh does not fit): 25 / 25 |
 | Mesh size | at most 1 M cells; a case that exceeds it is reported as not run, never coarsened |
 | Frequency | 0 … fmax (40 GHz for via cases, 6 GHz G, 2 GHz H); CST's 1001 samples interpolated (linear, complex) to the case grid f = fmax (i+1)/nf |
-| Run time | fine mesh: 74 k … 988 k cells (median 386 k), 15 … 490 s per case, 2.5 h for all |
+| Run time | fine mesh: 74 k … 988 k cells (median 386 k), 15 … 490 s per case, 2.5 h for all; extra-fine: 467 k … 792 k cells, 74 … 99 s |
 
 ## Model (same as kisi-fdtd and openEMS)
 
@@ -54,7 +54,13 @@ With discrete *edge* ports (one wire across the middle of the trace) |S11| of th
 `python3 cst_compare.py --fmax-cmp 20e9 --md table.md` → `results/cst_compare.json` and the tables below. Up to
 20 GHz: raw S-parameters at the ports and, for vias, de-embedded with the 2×thru of the same solver (NZC as
 `kisi_deembedded.s2p`; board vias: matched de-embedding as `board_vias.py`); pairs as Sdd. Δdelay from a linear fit
-of the unwrapped S21 phase. CST is taken on the fine mesh where it fits, else on the base mesh. kisi-fdtd:
+of the unwrapped S21 phase. CST is taken on its finest mesh (`cst_compare.CST_MESHES`, shared with the reference page):
+extra-fine on the five cases computed on it, else fine where it fits, else intermediate or base. A case is de-embedded
+with the 2×thru on its own mesh; where a thru lacks that mesh, with the thru's finest (`cst_fixture`): the intermediate
+mesh has no thrus, and of the extra-fine ones only thru_s8_L1 and thru_s8_L3 exist, so B_s8_L1L8_d300 and C_s8_ap800
+use thru_s8_L8 on the fine mesh (`deemb_fixture_mesh` in `results/cst_compare.json`, noted in the page's legend). That
+costs 0.04 ps and ≤ 0.002 dB: thru_s8_L8 is thru_s8_L1 mirrored (identical on the fine mesh), and with the extra-fine
+L1 thru for both sides the de-embedded Δdelay is −0.07 ps instead of −0.11 ps. kisi-fdtd:
 `kisi.sNp` (conformal; on the refined mesh for the inner-layer exits, `TESTS.md` section 17) and, where that changed
 it, the former `kisi_base.sNp`. openEMS: `openems.sNp` on its refined mesh (staircase, `TESTS.md` section 16).
 
@@ -62,10 +68,10 @@ it, the former `kisi_base.sNp`. openEMS: `openems.sNp` on its refined mesh (stai
 
 | Group | n | CST – kisi-fdtd | CST – openEMS | openEMS – kisi-fdtd |
 |---|---|---|---|---|
-| thru | 24 | 0.026 dB (0.007…0.265), -0.56…+0.09 ps | 0.028 dB (0.006…0.251), -0.88…+0.03 ps | 0.020 dB (0.005…0.098), -0.11…+0.61 ps |
+| thru | 24 | 0.026 dB (0.007…0.265), -0.56…+0.09 ps | 0.029 dB (0.006…0.251), -0.88…+0.03 ps | 0.020 dB (0.005…0.098), -0.11…+0.61 ps |
 | A (4-layer via, drill/antipad) | 6 | 0.034 dB (0.014…0.060), -0.32…-0.07 ps | 0.085 dB (0.055…0.109), -0.60…-0.30 ps | 0.051 dB (0.043…0.064), -0.02…+0.47 ps |
-| B (8- / 6-layer transitions, stubs) | 8 | 0.088 dB (0.021…0.517), -0.01…+0.20 ps | 0.072 dB (0.019…3.7), -0.49…-0.11 ps | 0.040 dB (0.014…4.2), +0.23…+0.50 ps |
-| C (antipad variants) | 8 | 0.036 dB (0.022…0.095), +0.06…+0.18 ps | 0.037 dB (0.026…0.094), -0.53…-0.27 ps | 0.043 dB (0.031…0.070), +0.40…+0.60 ps |
+| B (8- / 6-layer transitions, stubs) | 8 | 0.069 dB (0.015…0.517), -0.11…+0.20 ps | 0.072 dB (0.014…3.7), -0.61…-0.08 ps | 0.040 dB (0.014…4.2), +0.23…+0.50 ps |
+| C (antipad variants) | 8 | 0.033 dB (0.015…0.095), -0.11…+0.18 ps | 0.041 dB (0.026…0.094), -0.61…-0.27 ps | 0.043 dB (0.031…0.070), +0.40…+0.60 ps |
 | D (return vias, caps) | 8 | 0.086 dB (0.050…0.275), -0.42…+0.26 ps | 0.083 dB (0.033…0.116), -0.36…-0.06 ps | 0.059 dB (0.036…0.247), +0.18…+0.55 ps |
 | E (pairs, Sdd) | 12 | 0.060 dB (0.038…0.428), -0.12…+0.03 ps | 0.061 dB (0.029…1.5), -0.78…-0.42 ps | 0.017 dB (0.007…1.9), +0.41…+0.67 ps |
 | P (pads, fingers) | 5 | 0.143 dB (0.033…0.152), -0.32…-0.02 ps | 0.116 dB (0.046…0.201), -0.32…-0.05 ps | 0.044 dB (0.021…0.050), -0.06…+0.13 ps |
@@ -99,9 +105,14 @@ H: CST −0.1 … +1.2 % against kisi-fdtd (+5.4 % at 2 mm cap spacing), openEMS
 * base → fine: thrus Δ|S21| ≤ 0.07 dB (output thru of BV_vna_clk_w5 0.27 dB); vias mostly ≤ 0.5 dB; up to
   0.6 … 0.9 dB on the stub notches (B stub, E L1→L3) and P fingers, 1.5 … 2.1 dB on RG_s4 (resonances).
   On the base mesh the 50 Ω feeds of the drill-0.3 / 8-layer cases came out at 53.9 Ω (kisi-fdtd 49.3 Ω); on
-  the fine mesh 49.6 Ω. All results below are on the fine mesh where it fits.
+  the fine mesh 49.6 Ω. All results below are on the finest mesh computed.
 * fine → extra-fine (40 / 40) on thru_s8_L1, thru_s8_L3, C_s8_ap800, B_s8_L1L8_d300, B_s8_L1L3_bd_d200:
-  Δ|S21| ≤ 0.06 dB, Δdelay ≤ 0.2 ps, |ΔS11| ≤ 0.04 (thru_s8_L3 0.10). The fine mesh is converged for these.
+  Δ|S21| ≤ 0.06 dB, Δdelay ≤ 0.2 ps, |ΔS11| ≤ 0.04 (thru_s8_L3 0.10). The fine mesh is converged for these. Being
+  CST's finest, the extra-fine result is the one reported for these five (tables below, reference page; until
+  13.11.2026 the fine one). Against kisi-fdtd (the page's chip: raw, to 40 GHz, Δτ = τ kisi-fdtd − τ CST) the
+  through-path difference stays within 0.004 … 0.04 dB mean, 0.01 … 0.15 dB max; Δτ moves by +0.06 … +0.24 ps
+  (CST's extra-fine mesh is faster: to 20 GHz 0.08 ps on the 8 mm thrus, 0.07 / 0.19 ps on the L1→L3 / L1→L8 via), to
+  +0.05 … +0.29 ps, within the chip's 1 ps.
 * Where the fine mesh exceeds the available mesh size: `BV_vna_clk_w5` on the intermediate mesh (25 / 25,
   726 k cells; base → intermediate 0.69 dB up to 15 GHz); `D_s8_cap_10`, `BV_ts_m2_per0`, `BV_ts_refinout2`,
   `BV_vna_rf_hblb1` on the base mesh (the intermediate mesh takes about 2.5 times the base cells, more than
@@ -116,7 +127,7 @@ H: CST −0.1 … +1.2 % against kisi-fdtd (+5.4 % at 2 mm cap spacing), openEMS
    striplines, where the TDR start differs by the port model).
 2. **Transitions that end on an inner layer, and the ThunderScope through via: resolved by the refined
    references.** Against kisi-fdtd's former references (dfine 0.035 mm; RG_ts6 0.07 mm) CST was 1.0 … 2.4 ps
-   faster (B_s8_L1L3_bd_d200 −2.20 ps de-embedded, unchanged on CST's extra-fine mesh; B_ts6_L1L6 −1.64 ps;
+   faster (B_s8_L1L3_bd_d200 −2.20 ps de-embedded, −2.17 ps on CST's extra-fine mesh; B_ts6_L1L6 −1.64 ps;
    E_s8_L1L3 −1.4 ps; D_s8_cap −1.05 ps; RG_ts6_sw −1.4 ps), with openEMS within 0.1 … 0.5 ps of CST on the B
    cases: kisi-fdtd's reference was not converged there. With the cell at metal halved (`TESTS.md` section 17)
    CST − kisi-fdtd is −0.12 … +0.20 ps on these cases (de-embedded; D_s8_cap_10 −0.42 ps against CST's base mesh,
@@ -124,7 +135,7 @@ H: CST −0.1 … +1.2 % against kisi-fdtd (+5.4 % at 2 mm cap spacing), openEMS
 
    | case | CST − kisi-fdtd Δdelay (ps), former → refined reference |
    |---|---|
-   | B_s8_L1L3_bd_d200 / _d300 | −2.20 → +0.12 / −1.04 → +0.12 |
+   | B_s8_L1L3_bd_d200 (extra-fine) / _d300 | −2.17 → +0.15 (fine mesh −2.20 → +0.12) / −1.04 → +0.12 |
    | B_s8_L1L3_stub_d200 / _d300 | −2.43 → −0.01 / −1.34 → −0.01 |
    | B_ts6_L1L6 | −1.64 → +0.15 |
    | D_s8_cap_none / _2 / _10 | −1.05 → +0.10 / −1.05 → +0.10 / −1.57 → −0.42 |
@@ -155,7 +166,7 @@ H: CST −0.1 … +1.2 % against kisi-fdtd (+5.4 % at 2 mm cap spacing), openEMS
 6. **H loop inductance:** CST within 1.2 % of kisi-fdtd, 5.4 % at 2 mm cap spacing (H_s8_cap_2); openEMS
    7 … 10 % higher. G resonances: all three within 1 %.
 
-## Per case (CST on the finest mesh that fits)
+## Per case (CST on the finest mesh computed)
 
 Columns: CST mesh cells and run time; CST – kisi-fdtd raw Δ|S21| max / mean, de-embedded Δ|S21| max, raw |ΔS11|
 max (linear), Δdelay (de-embedded where available, negative: CST faster; "a → b": against the former and the
@@ -175,18 +186,18 @@ computed, else base → fine or base → intermediate); CST – openEMS (de-embe
 | BV_ts_refinout2 | base | 519 k | 220 s | 0.146 / 0.062 | 0.036 | 0.039 | +0.84 | 44.9 / 45.09 | – | 0.080, +0.31 |
 | BV_vna_clk_w5 | mid | 726 k | 445 s | 7.042 / 0.532 | 6.715 | 0.595 | +0.98 → +1.26 | 35.32 / 38.16 | 3.054 | 4.233, +0.49 |
 | BV_vna_rf_hblb1 | base | 805 k | 331 s | 1.454 / 0.427 | 1.515 | 0.103 | -0.54 → +0.87 | 27.78 / 29.67 | – | not passive (\|S\| > 1) |
-| B_s8_L1L3_bd_d200 | fine | 386 k | 72 s | 0.067 / 0.019 | 0.060 | 0.043 | -2.20 → +0.12 | 42.29 / 42.86 | 0.041 | 0.045, -0.11 |
+| B_s8_L1L3_bd_d200 | xfine | 791 k | 99 s | 0.028 / 0.007 | 0.065 | 0.022 | -2.17 → +0.15 | 42.25 / 42.86 | 0.041 | 0.047, -0.08 |
 | B_s8_L1L3_bd_d300 | fine | 386 k | 72 s | 0.109 / 0.032 | 0.088 | 0.042 | -1.04 → +0.12 | 39.67 / 40.44 | 0.267 | 0.044, -0.15 |
 | B_s8_L1L3_stub_d200 | fine | 386 k | 76 s | 0.307 / 0.103 | 0.389 | 0.026 | -2.43 → -0.01 | 31.01 / 31.3 | 0.643 | 1.559, -0.49 |
 | B_s8_L1L3_stub_d300 | fine | 386 k | 74 s | 0.517 / 0.125 | 0.601 | 0.021 | -1.34 → -0.01 | 28.26 / 28.63 | 0.817 | 3.594, -0.44 |
 | B_s8_L1L8_d200 | fine | 386 k | 72 s | 0.025 / 0.014 | 0.044 | 0.046 | +0.11 | 44.11 / 44.08 | 0.050 | 0.077, -0.15 |
-| B_s8_L1L8_d300 | fine | 386 k | 72 s | 0.038 / 0.017 | 0.054 | 0.034 | +0.06 | 42.89 / 43.12 | 0.046 | 0.034, -0.44 |
+| B_s8_L1L8_d300 | xfine | 762 k | 99 s | 0.015 / 0.006 | 0.050 | 0.010 | -0.11 | 42.96 / 43.12 | 0.046 | 0.053, -0.61 |
 | B_ts6_L1L3_stub | fine | 312 k | 50 s | 0.203 / 0.043 | 0.462 | 0.027 | +0.16 → +0.20 | 31.79 / 32.83 | 0.301 | 0.210, -0.15 |
 | B_ts6_L1L6 | fine | 303 k | 48 s | 0.021 / 0.011 | 0.025 | 0.061 | -1.64 → +0.15 | 44.57 / 44.56 | 0.023 | 0.029, -0.24 |
 | C_s8_ap1000 | fine | 386 k | 71 s | 0.022 / 0.007 | 0.063 | 0.033 | +0.09 | 44.1 / 44.18 | 0.202 | 0.025, -0.34 |
 | C_s8_ap1200 | fine | 386 k | 72 s | 0.048 / 0.015 | 0.067 | 0.033 | +0.09 | 44.42 / 44.36 | 0.114 | 0.029, -0.31 |
 | C_s8_ap600 | fine | 386 k | 73 s | 0.063 / 0.033 | 0.068 | 0.034 | +0.08 | 37.89 / 37.98 | 0.506 | 0.066, -0.53 |
-| C_s8_ap800 | fine | 386 k | 72 s | 0.038 / 0.017 | 0.054 | 0.034 | +0.06 | 42.89 / 43.12 | 0.046 | 0.034, -0.44 |
+| C_s8_ap800 | xfine | 762 k | 99 s | 0.015 / 0.006 | 0.050 | 0.010 | -0.11 | 42.96 / 43.12 | 0.046 | 0.053, -0.61 |
 | C_s8_mixed | fine | 386 k | 72 s | 0.032 / 0.014 | 0.121 | 0.033 | +0.09 | 44.11 / 44.05 | 0.283 | 0.070, -0.33 |
 | C_s8_nfp | fine | 386 k | 72 s | 0.095 / 0.044 | 0.126 | 0.040 | +0.18 | 38.69 / 39.24 | 0.554 | 0.117, -0.27 |
 | C_s8_nonfp | fine | 386 k | 72 s | 0.028 / 0.011 | 0.056 | 0.034 | +0.08 | 43.94 / 44.02 | 0.259 | 0.029, -0.38 |
@@ -260,8 +271,8 @@ computed, else base → fine or base → intermediate); CST – openEMS (de-embe
 | thru_R_s4_L4 | fine | 76 k | 16 s | 0.010 / 0.002 | – | 0.017 | -0.20 | 46.49 / 46.2 | 0.013 | 0.006, -0.13 |
 | thru_s4_L1 | fine | 212 k | 37 s | 0.009 / 0.004 | – | 0.017 | -0.16 | 44.84 / 44.49 | 0.006 | 0.027, -0.30 |
 | thru_s4_L4 | fine | 212 k | 37 s | 0.009 / 0.004 | – | 0.017 | -0.16 | 44.84 / 44.49 | 0.006 | 0.027, -0.30 |
-| thru_s8_L1 | fine | 236 k | 41 s | 0.013 / 0.007 | – | 0.056 | -0.09 | 45.5 / 45.11 | 0.006 | 0.021, -0.22 |
-| thru_s8_L3 | fine | 231 k | 42 s | 0.044 / 0.013 | – | 0.032 | -0.06 | 42.81 / 44.02 | 0.058 | 0.026, -0.10 |
+| thru_s8_L1 | xfine | 473 k | 74 s | 0.013 / 0.004 | – | 0.048 | -0.17 | 45.49 / 45.11 | 0.006 | 0.021, -0.31 |
+| thru_s8_L3 | xfine | 467 k | 74 s | 0.068 / 0.015 | – | 0.067 | -0.14 | 44.41 / 44.02 | 0.058 | 0.044, -0.18 |
 | thru_s8_L8 | fine | 236 k | 42 s | 0.013 / 0.007 | – | 0.056 | -0.09 | 45.5 / 45.11 | 0.010 | 0.019, -0.13 |
 | thru_s8x2_L1 | fine | 239 k | 40 s | 0.071 / 0.027 | – | 0.028 | -0.26 | 44.66 / 44.21 | 0.008 | 0.169, -0.88 |
 | thru_s8x2_L3 | fine | 224 k | 41 s | 0.044 / 0.014 | – | 0.009 | -0.06 | 39.96 / 39.66 | 0.018 | 0.012, -0.10 |
@@ -277,8 +288,11 @@ computed, else base → fine or base → intermediate); CST – openEMS (de-embe
 * `run_cst.py`: runs cases in CST (`--tag`, `--lpw`, `--lpb`, `--port face|edge`, `--skip-done`), writes
   `via_ref/<case>/cst[_tag].sNp` (header: CST version, solver, mesh cells, run time, mesh and port settings) and
   `cst[_tag]_meta.json` (status `not run` where the mesh exceeds the available mesh size).
-* `cst_compare.py`: CST against kisi-fdtd and openEMS → `results/cst_compare.json`, `--md` for the tables above; the
-  reference page (`make_viewer.py`) takes its per-case chip and its group table "Every reference case in CST" from it
-  (the metrics of the openEMS chip, to each case's f max).
+* `cst_compare.py`: CST against kisi-fdtd and openEMS → `results/cst_compare.json` (per case: `mesh` and its
+  `mesh_lines` from the meta file, the mesh checks `<finer>_vs_<coarser>`, `mesh_check` for the one that ends on the
+  reported mesh, `deemb_fixture_mesh` where a 2×thru is on another mesh), `--md` for the tables above; the reference
+  page (`make_viewer.py`) takes its per-case chip and its group table "Every reference case in CST" from it (the metrics
+  of the openEMS chip, to each case's f max) and draws the same mesh, de-embedded with the same fixtures
+  (`CST_MESHES`, `cst_fixture`). A new mesh is one entry in `CST_MESHES`.
 * `via_ref/<case>/cst.sNp` (base mesh), `cst_fine.sNp` (fine), `cst_xfine.sNp` (extra-fine, five cases),
   `cst_mid.sNp` (intermediate, BV_vna_clk_w5), with their `*_meta.json`.

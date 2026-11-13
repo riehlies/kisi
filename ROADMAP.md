@@ -110,9 +110,10 @@ validation, and every result says which level it used and how uncertain it is.
   (ThunderScope 105 → 57 s on one thread, results reproducible; `BOARD_RESONANCES.md` section 9). Next:
   - the return groups' floating-plane loss is 1.6× the 3D on REFINOUT2 (0.29 dB off at 12–20 GHz) – what keeps
     them from the default; the cavity option is still 8× the default (per-via fill masks);
-  - pair vias read 8–11 % high in Zdiff minimum with the corrected TDR (L1→L8 references); the X exits without
-    a plane on one side (+56 fF on X_s8x4); the thick-core through via B_ts6_L1L6 (−50 fF); re-score the
-    Block 1 references with the matched de-embedding;
+  - the X exits without a plane on one side and B_ts6_L1L3_stub (TDR minimum 7.5–11 % low in kisi-fdtd and
+    openEMS with the matched de-embedding; the ladder 9–37 fF too capacitive and 46–88 pH short on every L1→L3
+    via, TESTS.md section 19, where four model variants were tried and not kept); the thick-core through via
+    B_ts6_L1L6 (−50 fF); the s8 stripline fixture leaves ±4 % in the inner exits' TDR (|S11| ≠ |S22| by 0.045);
   - above 12 GHz neither ladder follows the 3D results, and the first board mode comes out 1.6–2.5 % low;
   - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
     ladder at the via centre; about 8 days, a minimal version 4; design note `BOARD_VIAS.md` section 5.6);
@@ -123,8 +124,10 @@ validation, and every result says which level it used and how uncertain it is.
   mesh (kisi-fdtd − CST within ±0.07 ps on 16 of 17 cases, before +1.0 … +2.3 ps). The stripline feed trim followed
   (`feat/via-model-b`, TESTS.md section 18): the stripline feed is kept up to 2/3 of the pad radius from the via
   centre, the stripline exits' delay error +1.26 → +0.02 ps, `data/accuracy.json` at the refined references (2.46 /
-  5.53 %, pairs 10.95 / 13.71 %), the stored ladders regenerated. Open: the L1→L3 exits' TDR minimum (7–11 % low, the
-  exit pad between close planes too capacitive in the ladder) and the pairs' TDR (7–10 % high in all three solvers).
+  5.53 %, pairs 10.95 / 13.71 %), the stored ladders regenerated. Then (`feat/via-model-c`, TESTS.md section 19) the
+  via references scored with the matched de-embedding: the pairs' "7–10 % high" was their first-order de-embedding
+  (now 1.5 / 3.3 % median / p90 against kisi-fdtd, `data/accuracy.json` pairs 4.0 / 5.7 %), the s8 L1→L3 exits are
+  within −4 … +0.5 %; the Python prototype at the Rust ladder of section 14 again (parity 0.005).
 - **Causal and passive models** (`feat/accuracy`, done): the via pairs' modes and the plane-pair matrix passive by
   construction, Djordjevic-Sarkar everywhere, the causal Huray roughness with its inductance, microstrip
   dispersion below a resonance; every example lane passive and causal in a test (`validation/fdtd/TESTS.md`

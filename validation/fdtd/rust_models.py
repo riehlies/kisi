@@ -6,7 +6,8 @@ cases, then compares
   (via_pbm.py, cavity_model.py, pdn_loop.py);
 * kisi's ladder (graded grid, equivalent antipad radius, junction model) against Python and 3D,
   written to validation/via_ref/<case>/ladder.s2p for the reference page;
-* accuracy against the de-embedded 3D result with the same metrics for Python and Rust;
+* accuracy against the de-embedded 3D result (matched 2×thru de-embedding of every port, pairs in the
+  differential mode) with the same metrics for Python and Rust;
 * run time: Python prototype (in-process, without start-up) against Rust.
 
 usage: python3 rust_models.py [--exe kisi-validate] [--out DIR] [--no-python-timing]
@@ -64,14 +65,14 @@ def main():
             # kisi's ladder (graded grid, junction model) next to the case, for the reference page
             sparam.write_touchstone(os.path.join(REF, cid, "ladder.s2p"), f, Sg, [f"{cid}: via ladder as kisi uses it (kisi_si::via_pbm, graded grid, junction model)" +
                                                                                   (", differential mode (per line 50 ohm)" if g == "E" else ", ports at the via")])
-            # 3D, de-embedded as in via_pbm.py
+            # 3D, de-embedded with each feed's 2×thru, the fixtures referred to their own line impedance
+            # first (sparam.deembed_matched; TESTS.md section 19: the z0-referred NZC of via_pbm.py and,
+            # for the pairs, the first-order shift left the 3D lines' low-frequency impedance in the TDR)
+            th = [sparam.read_touchstone(os.path.join(REF, f"thru_{c['meta']['stackup']}_{q['layer']}", "kisi.s2p"))[1] for q in c["meta"]["ports"]]
+            f3, S3 = sparam.read_touchstone(os.path.join(REF, cid, "kisi.s4p" if g == "E" else "kisi.s2p"))
+            D = sparam.deembed_matched_nport(f3, S3, [t[: len(f3)] for t in th])[0]
             if g == "E":
-                f3, S3 = sparam.read_touchstone(os.path.join(REF, cid, "kisi.s4p"))
-                th = [os.path.join(REF, f"thru_{c['meta']['stackup']}_{q['layer']}", "kisi.s2p") for q in c["meta"]["ports"]]
-                D = sparam.deembed_shift(S3, [sparam.fixture_shift(f3, sparam.read_touchstone(t)[1]) for t in th])
                 D = sparam.mixed_mode(D)["dd"]
-            else:
-                _, D = sparam.read_touchstone(os.path.join(REF, cid, "kisi_deembedded.s2p"))
             m = f <= 20e9
             row = {"group": g}
             for tag, S in (("python", Sp), ("rust", Su), ("rust_graded", Sg)):
@@ -79,8 +80,8 @@ def main():
                 ph = np.abs(np.degrees(np.angle(D[m, 1, 0] * np.conj(S[m, 1, 0]))))
                 row[tag] = {"dS21_max_db": round(float(d21.max()), 3), "dS21_mean_db": round(float(d21.mean()), 3),
                             "dphase_max_deg": round(float(ph.max()), 2), "notch_ghz": notch(f, S[:, 1, 0])}
-                if g != "E":
-                    row[tag]["tdr_err_pct"] = tdr_err(f, D[:, 0, 0], S[:, 0, 0])
+                # pairs: Sdd per line (50 Ω), as the ladder's odd mode
+                row[tag]["tdr_err_pct"] = tdr_err(f, D[:, 0, 0], S[:, 0, 0])
             row["notch_3d_ghz"] = notch(f, D[:, 1, 0])
             for tag, S in (("rust", Su), ("rust_graded", Sg)):
                 row[f"parity_{tag}"] = {"dS21_max_db": round(float(np.max(np.abs(sparam.db(S[:, 1, 0]) - sparam.db(Sp[:, 1, 0])))), 4),
@@ -126,6 +127,8 @@ def main():
             "single_tdr_err_pct_p90": pct([e for v in single for e in v[tag]["tdr_err_pct"]], 90),
             "single_dS21_mean_db_median": pct([v[tag]["dS21_mean_db"] for v in single], 50),
             "single_dS21_max_db_median": pct([v[tag]["dS21_max_db"] for v in single], 50),
+            "pairs_tdr_err_pct_median": pct([e for v in pairs for e in v[tag]["tdr_err_pct"]], 50),
+            "pairs_tdr_err_pct_p90": pct([e for v in pairs for e in v[tag]["tdr_err_pct"]], 90),
             "pairs_dS21_max_db_median": pct([v[tag]["dS21_max_db"] for v in pairs], 50),
         }
     for tag in ("rust", "rust_graded"):

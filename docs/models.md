@@ -125,8 +125,8 @@ pours on the via's signal layers as coplanar returns, stubs and back-drill, the 
 with their partner. Passive by construction: the plane-pair matrices treat every barrel as a cylinder of
 uniform current, and a pair's modes are taken as (Z_PP + Z_NN)/2 ∓ Z_PN (the earlier Z_PP ∓ Z_PN gave via pairs
 with returns on one side a negative resistance from a few GHz). Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own
-FDTD solver ([Validation](#validation)): via impedance in the TDR median 2.5 %, 90th percentile 5.5 % (single
-vias); delay within 0.22 ps (single vias) and 0.19 ps (pairs, median); pairs within 1.8° phase (median); stub notch within 1.5 % (`validation/fdtd/results/kisi_models.json`); the
+FDTD solver ([Validation](#validation)): via impedance in the TDR median 2.4 %, 90th percentile 5.1 % (single
+vias), pairs 4.0 / 5.7 % in Zdiff; delay within 0.21 ps (single vias) and 0.18 ps (pairs, median); pairs within 1.8° phase (median); stub notch within 1.5 % (`validation/fdtd/results/kisi_models.json`; the 3D result and kisi's channel each de-embedded with their 2×thru, every fixture referred to its own line impedance first); the
 four board vias with a 3D reference within 0.03–0.44 dB up to 12 GHz. An estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
 the via's cage. A via whose path crosses a ground/supply plane pair that no return via bridges gets a warning.
 `--via-cavity` (finite plane pairs) and `--via-returns` (return groups per plane pair) are experimental options.
@@ -253,7 +253,7 @@ Every impedance and via result says which level it used and how far it typically
 | 2D field solver | impedance 1 % |
 | formula: single microstrip / with coplanar copper / pair / stripline / over a cut-out | 2 / 2 / 8 / 11 / 25 % |
 | no plane (coplanar estimate) | 15 % |
-| via ladder: single vias / pairs (TDR, median and 90th percentile) | 2.5 and 5.5 % / 11.0 and 13.7 % |
+| via ladder: single vias / pairs (TDR, median and 90th percentile) | 2.4 and 5.1 % / 4.0 and 5.7 % |
 | coaxial via fallback | 8.0 and 25.5 % |
 
 A net or lane takes the length-weighted mean of its cross-sections; the level is “field solver”, “formula” or
@@ -285,7 +285,7 @@ documents and on the two reference pages attached to the releases (`kisi-referen
 |---|---|---|---|
 | Impedance (formulas, field solver) | CST Studio Suite, 2D port modes, open boundary; 620 cross-sections of every line type, the example boards and the test-board coupons | field solver within 1 % (median 0.2 %); formulas see [Impedance](#impedance) | [validation/cst_xs](../validation/cst_xs/README.md) |
 | Line loss | full-wave FEM with eddy-current conductor loss (js_2d_fields), checked by an independent finite-difference solution | kisi's line model R about 2 % low | [validation/cst_xs](../validation/cst_xs/README.md) |
-| Vias and planes (fast models) | 3D FDTD (`crates/kisi-fdtd`) on 106 cases, itself checked against openEMS and CST | single vias TDR 2.5 / 5.5 %, pairs Zdiff 11 / 14 % (median / p90), delay 0.2 ps (median) | [TESTS.md](../validation/fdtd/TESTS.md), [CST.md](../validation/fdtd/CST.md) |
+| Vias and planes (fast models) | 3D FDTD (`crates/kisi-fdtd`) on 106 cases, itself checked against openEMS and CST | single vias TDR 2.4 / 5.1 %, pairs Zdiff 4.0 / 5.7 % (median / p90), delay 0.2 ps (median) | [TESTS.md](../validation/fdtd/TESTS.md), [CST.md](../validation/fdtd/CST.md) |
 | Field solver chain | HFSS/Ansys cases of Forstén's test suite | impedance within 1.7 %, RLGC within 2 % | `tools/validate_field.sh` |
 | Passivity and causality | unit tests and every lane of the example boards | passive to 25 GHz, causal | [TESTS.md](../validation/fdtd/TESTS.md) section 14 |
 | DC IR drop | analytic cases (vias in a plane, tracks at any angle, necks, cut cells); kisi's own raster refined uniformly (cell/4 … cell/8, barrels as discs, line tracks) on 21 rails of 7 boards | analytic within 1.5 %; largest drop median 1.0 %, max 10 % (before the corrections 6.9 / 28 %) | [research/pi-quadtree.md](research/pi-quadtree.md) |

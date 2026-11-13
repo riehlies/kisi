@@ -1179,3 +1179,121 @@ not used there). `via_pbm.py` has both now (`pbm.s2p` and `results/via_pbm.json`
 What remains is the interpolation of Z/f on the 0.25 GHz grid (section 5). `results/rust_models.json` regenerated;
 kisi's ladder (`ladder.s2p`, graded grid) does not change.
 
+
+### Diagnosis of the TDR points: the de-embedding
+The TDR minimum of a via this short (L1→L3: 0.3 mm of barrel, a few ps) sits at t ≈ 0–10 ps of the 25 ps TDR; it is
+the via's net excess capacitance (C − L/Z0²) seen through the low-frequency content of the de-embedded result, so it
+depends on what the de-embedding leaves at low frequency.
+- **The 3D lines are not 50 Ω at low frequency.** The references model the dielectric loss as a conductivity
+  fixed at `f_loss`: the lines' Zc² = Z∞²·jω/(jω + g) (`sparam.line_impedance`), g = 1.6–4.7·10⁹ s⁻¹ (s8 L1 and L3),
+  i.e. |Zc| 10 % low at 1 GHz on the s8 L3 stripline, more below. Their step response droops.
+- **The pairs** were de-embedded with a first-order shift (feed delay and loss per port, no reflection): the whole
+  port and the drooping line stay in the TDR, and the per-line TDR of every pair read 2–3 Ω low. That was the
+  "pairs 7–10 % too high in all three solvers": with each of the four ports de-embedded by the NZC of its own
+  2×thru (the feeds are uncoupled single-ended lines 0.6–1.0 mm apart), referred to its line impedance first
+  (`sparam.deembed_matched_nport`, new; for two ports identical to `deembed_matched` to 1e-14) the pairs' TDR
+  maximum agrees within 0.1–1 % and the minimum within +0.6 … +3.8 % (kisi-fdtd).
+- **The single vias** used the z0-referred NZC (`kisi_deembedded.s2p`): with a line of Zc ≠ 50 Ω that leaves an
+  impedance step at each plane in the de-embedded via (`BOARD_VIAS.md`, check S13: known network, z0-referred NZC
+  C +82 fF / L −200 pH, matched within 5 fF / 4 pH). `BOARD_VIAS.md` 5.4 already proposed re-scoring the via
+  references with the matched de-embedding; it is done here. The stripline fixtures of the X and ts6 cases are
+  44–47 Ω in 3D, which the z0-referred NZC had partly hidden (X_s8x2 +2.4 → −7.5 %).
+- **CST's line impedances** scatter with its mesh (thru_s8_L1 51.3 / 52.4 / 51.9 Ω, thru_s8_L3 48.7 / 48.2 /
+  53.5 Ω on its base / fine / extra-fine mesh; kisi-fdtd 49.6 / 49.9 Ω, openEMS 49.5 / 50.3 Ω): CST's de-embedded
+  TDR levels carry that, which was the "+3 % on every group" of section 18. Matched, CST's single vias move from
+  +2.2 to +1.1 % (signed median); its stripline exits stay the least certain (the L3 fixture changes by 10 % with
+  the mesh).
+- **What the de-embedding cannot settle:** a nearly lossless reciprocal 2-port has |S11| = |S22| (the ladder: within
+  0.004 with its 2–4.5 % loss at 10 GHz). The de-embedded s8 L1→L3 vias have ||S11| − |S22|| up to 0.045 (single)
+  and 0.07 (pairs) at 2–20 GHz with either method, about the via's own reflection (0.05–0.07 at 5 GHz); the
+  microstrip-only vias have 0.000. The s8 stripline fixture (a lumped port between the L3 trace and L4, L2 above)
+  leaves an error of that size, so the TDR minimum of the s8 inner exits is known to about ±4 % only.
+
+TDR minimum error of the ladder per case (signed, %), z0-referred NZC (pairs: first-order shift) → matched:
+
+| case | kisi-fdtd | CST | openEMS |
+|---|---|---|---|
+| B_s8_L1L3_bd_d200 | −7.8 → −3.2 | −1.5 → +2.8 | −7.1 → −1.5 |
+| B_s8_L1L3_bd_d300 | −8.4 → −4.0 | −1.6 → +2.2 | −7.3 → −1.8 |
+| B_s8_L1L3_stub_d200 | −3.8 → +0.5 | +2.3 → +5.7 | −2.9 → +2.9 |
+| B_s8_L1L3_stub_d300 | −3.6 → +0.4 | +3.0 → +5.3 | −2.3 → +3.0 |
+| B_ts6_L1L3_stub | −9.1 → −9.8 | −7.4 → −1.7 | −8.5 → −9.6 |
+| X_s8x4_L1L3_bd_d200 | −10.7 → −11.2 | −5.0 → −8.7 | −10.2 → −10.5 |
+| X_s8x2_L1L3_bd_d200 (microstrip exit) | +2.4 → −7.5 | +1.6 → −8.2 | +2.5 → −6.0 |
+| E_s8_L1L3_p1000_round_g2 | +3.0 → +0.9 | +4.8 → +6.5 | +4.5 → +3.8 |
+| E_s8_L1L8_p1000_round_g2 | +7.7 → +1.7 | +8.5 → +3.2 | +7.2 → +2.0 |
+| E_s8_L1L8_p800_round_g2 | +9.8 → +3.8 | +10.8 → +5.5 | +9.4 → +4.0 |
+| E_s8_L1L8_p1000_oval_g2 | +9.5 → +3.5 | +9.9 → +4.6 | +8.9 → +3.6 |
+
+The ladder alone (`kisi-validate models`, graded grid, junction model, unchanged) against each solver's de-embedded
+result, median / p90 / max as in section 18, z0-referred NZC (pairs: first-order shift) → matched:
+
+| set | reference | TDR error % | TDR min, signed median % | max Δ\|S21\| dB | max Δ\|S11\| | \|Δτ\| ps |
+|---|---|---|---|---|---|---|
+| single vias (29) | kisi-fdtd | 1.20/4.28/10.69 → 1.19/3.45/11.25 | −1.4 | 0.091/0.846/1.959 → 0.093/0.828/1.729 | 0.050/0.128/0.174 → 0.052/0.117/0.176 | 0.12/0.39/0.52 → 0.12/0.39/0.51 |
+|  | CST | 3.03/6.12/10.24 → 1.31/5.57/9.79 | +2.2 → +1.1 | 0.126/0.788/1.497 → 0.108/0.783/1.492 | 0.092/0.150/0.185 → 0.067/0.134/0.181 | 0.23/0.48/0.72 → 0.18/0.41/0.63 |
+|  | openEMS | 1.02/4.14/10.23 → 1.31/3.97/10.46 | −1.1 → −1.3 | 0.068/1.104/2.942 → 0.075/1.025/3.001 | 0.039/0.112/0.167 → 0.044/0.108/0.166 | 0.41/0.64/1.09 → 0.41/0.56/1.06 |
+| pairs (12) | kisi-fdtd | 7.83/9.55/9.79 → 1.48/3.30/3.76 | +7.4 → +1.8 | 0.107/0.665/0.720 → 0.080/0.577/0.637 | 0.053/0.059/0.060 → 0.051/0.064/0.065 | 0.04/0.38/0.44 → 0.07/0.35/0.38 |
+|  | CST | 7.55/9.31/10.75 → 3.46/9.19/9.51 | +8.1 → +4.5 | 0.102/0.463/0.515 → 0.116/0.724/0.767 | 0.058/0.068/0.073 → 0.062/0.074/0.076 | 0.22/0.51/0.58 → 0.18/0.40/0.48 |
+|  | openEMS | 7.43/8.93/9.71 → 2.38/4.28/6.02 | +6.9 → +3.4 | 0.099/1.332/1.659 → 0.068/1.199/1.500 | 0.052/0.054/0.057 → 0.042/0.056/0.059 | 0.50/0.72/0.87 → 0.41/0.70/0.71 |
+| stripline exits, single (6) | kisi-fdtd | 3.15/9.06/10.69 → 2.83/9.18/11.25 | −8.1 → −3.6 | 0.547/1.607/1.959 → 0.574/1.444/1.729 | 0.124/0.156/0.174 → 0.111/0.149/0.176 | 0.20/0.32/0.36 → 0.16/0.23/0.25 |
+|  | CST | 3.00/5.45/7.44 → 4.34/9.29/9.79 | −1.6 → +2.5 | 0.452/1.462/1.497 → 0.498/1.297/1.492 | 0.137/0.169/0.185 → 0.136/0.171/0.181 | 0.06/0.46/0.52 → 0.14/0.17/0.19 |
+|  | openEMS | 2.40/8.36/10.23 → 3.42/9.12/10.46 | −7.2 → −1.6 | 0.984/2.794/2.942 → 0.841/2.859/3.001 | 0.109/0.146/0.167 → 0.094/0.140/0.166 | 0.23/0.77/0.79 → 0.26/0.53/0.54 |
+| stripline exits, pairs (4) | kisi-fdtd | 5.83/6.96/7.08 → 2.53/2.85/2.91 | +3.4 → +1.3 | 0.610/0.708/0.720 → 0.514/0.624/0.637 | 0.053/0.054/0.054 → 0.024/0.031/0.032 | 0.04/0.33/0.44 → 0.09/0.28/0.35 |
+|  | CST | 7.13/7.75/7.97 → 8.84/9.43/9.51 | +4.9 → +6.6 | 0.453/0.500/0.515 → 0.693/0.757/0.767 | 0.053/0.053/0.053 → 0.074/0.076/0.076 | 0.22/0.48/0.58 → 0.21/0.22/0.23 |
+|  | openEMS | 6.25/6.74/6.80 → 4.17/4.93/6.02 | +4.8 → +4.1 | 1.294/1.564/1.659 → 1.156/1.413/1.500 | 0.053/0.053/0.053 → 0.026/0.028/0.029 | 0.53/0.78/0.87 → 0.34/0.60/0.70 |
+
+The delay does not depend on the de-embedding (section 18's gain stays: stripline exits |Δτ| 0.16 / 0.09 ps median
+single / pairs against kisi-fdtd). `rust_models.py` and `compare_kisi.py` score with the matched de-embedding now
+(the pairs' TDR also in `rust_models.json`); `kisi_deembedded.s2p` (z0-referred NZC, written by `via_pbm.py`) and
+the reference page's de-embedded curves are unchanged.
+
+**kisi's channel, via alone** (`compare_kisi.py`, `results/kisi_models.json`, both sides matched):
+
+| | before | after |
+|---|---|---|
+| single vias (29): TDR error median / p90 / max | 2.46 / 5.53 / 20.7 % | 2.43 / 5.13 / 20.9 % |
+| single vias: max Δ\|S21\| median / p90 | 0.168 / 0.818 dB | 0.166 / 0.800 dB |
+| single vias: \|Δτ\| median / p90 | 0.22 / 0.50 ps | 0.21 / 0.50 ps |
+| stripline exits (7: B L1→L3, B_ts6 L1→L3 / L1→L6, X_s8x4; minimum and maximum pooled): TDR median / p90 | 2.67 / 7.86 % | 1.60 / 7.64 % |
+| pairs (12): Zdiff error median / p90 / max | 10.95 / 13.71 / 14.3 % | 4.02 / 5.65 / 6.3 % |
+| pairs L1→L3 (4): Zdiff error median | 9.25 % | 5.31 % |
+| pairs: max ΔSdd21 median / p90 | 0.161 / 0.536 dB | 0.167 / 0.394 dB |
+| pairs: \|Δτ\| median | 0.19 ps | 0.18 ps |
+| stub notch B_s8_L1L3_stub_d200 / _d300 | +0.9 / −1.4 % | unchanged |
+
+On the L1→L3 single vias the minimum error shrinks (B_s8_L1L3_bd_d200 4.7 → 0.1 %) and the maximum grows (0.6 →
+4.4 %): the matched result of the s8 L3 fixture settles about 2 Ω below 50 Ω after 50 ps (the reflection error
+above). `data/accuracy.json` takes the new numbers (single 2.43 / 5.13 %, pairs 4.02 / 5.65 %); in
+`validation/golden` only those numbers change (`accuracy.vias` of the check rows), no verdict and no other value.
+
+### What remains, and the model changes tried
+With the matched de-embedding the s8 L1→L3 exits are within −4.0 … +0.5 % (kisi-fdtd; openEMS −1.8 … +3.0 %,
+CST +2.2 … +5.7 %), i.e. within the fixture error above. Three cases stay low in kisi-fdtd and openEMS: X_s8x4
+(−11 %), B_ts6_L1L3_stub (−10 %) and the microstrip exit X_s8x2 (−7.5 %) – the exits with one plane close and the
+other far or missing. Their net capacitive reflection is 2–3 × the 3D one (X_s8x4 Im S11 at 5 GHz −0.064 against
+−0.022); the lumped π values (3–8 GHz, matched) put the ladder 9–37 fF too capacitive and 46–88 pH short on every
+L1→L3 single via, while the microstrip-only through vias agree within ±10 fF / ±20 pH. The pairs' remaining +1.2 …
++3.8 % (L1→L8) grows as the pitch shrinks and with the oval antipads.
+
+Tried in the model (scanned with switches, not kept), against kisi-fdtd matched unless stated:
+
+| change | stripline exits single (6): TDR min signed median [range], max Δ\|S21\| median, Δτ median | L1→L3 pairs (4) | verdict |
+|---|---|---|---|
+| none (main) | −3.6 % [−11.2, +0.5], 0.574 dB, −0.01 ps | +1.3 %, 0.514 dB, +0.06 ps | – |
+| the higher-order (evanescent) modes of the partial-height barrel current where a trace joins inside a plane pair, μ0·d/(2π)·Σ 2·(sin(nπx)/(nπ))²·K0(nπa/d) (6.7 pH on B s8, 28.5 pH on X_s8x4; section 7's ~6 pH holds for thin pairs only), with the trim refitted to 3/4 (the new zero crossing) | −3.2 % [−9.4, +0.6], 0.315 dB (p90 1.44 → 1.79), −0.03 ps; CST 0.39 dB, openEMS 0.88 dB | +1.5 %, 0.561 dB, −0.02 ps | mixed: \|S21\| median better on the singles, the stub notch flanks and the pairs worse; board vias (hold-out): M.2 pair ΔS21 0.192 → 0.224 dB, TDR min 6.2 → 7.7 %, LibreVNA RF 2.20 → 2.11 dB, phase 5.9° → 4.6° |
+| the stripline feed as the microstrip one (removed over the larger of pad and antipad radius, the trace over the openings with both planes' heights increased by the lateral way to the edge) | −2.6 % [−10.5, +1.2], 0.551 dB, −0.57 ps | +2.4 %, 0.464 dB, −0.51 ps | loses the delay of section 18 |
+| the stripline's inductance kept to the via centre, its capacitance removed within the antipad radius (C′ · max(pad, antipad), the pad's own charge being in the Laplace solve) | +6.3 % [−2.6, +6.6], 0.477 dB, +0.18 ps | +8.6 %, 0.448 dB, +0.56 ps | fixes X_s8x4 / B_ts6 (−2.3 / −2.6 %) but puts the s8 exits and the pairs 6–10 % high |
+| odd mode: the pair's plane of symmetry as the edge of the antipad profile (rays clipped at half the pitch before the equivalent radius; changes only the oval antipads) | – | pairs (12) +1.8 → +1.5 %, \|Δτ\| p90 0.35 → 0.22 ps; oval pairs ΔS21 +0.01 … +0.18 dB | TDR and delay better in all three solvers, \|S21\| worse; not checked on a board pair (the stored board geometries keep the equivalent radius, not the profile) |
+
+None improves the set as a whole, so the ladder is unchanged. What the remaining exits need – less capacitance at
+the exit without losing the delay – points at the trace inside the antipad between one near plane and a far one,
+which the ladder has only as a fitted feed length; a 3D field check of that region (the trace's capacitance over the
+opening, the pad's charge with the trace attached) would decide it.
+
+**Hold-outs** (the board vias BV_\*, the plane-cavity cases R and the return groups RG): not used above; with the
+ladder unchanged their stored results do not move (`board_vias.py ladder --stored-geom`, `board_resonances.py
+model`, `board_returns.py model` reproduce them bit for bit). The board vias were already scored with the matched
+de-embedding (section 9).
+
+**The example boards** (`validation/golden`): no change but the via accuracy numbers above.

@@ -82,13 +82,16 @@ and the lumped R–L–C.
 - Ports are 50 Ω lumped ports at the ends of 4 mm feed traces (G and H use 1 Ω). Pairs use kisi's port order:
   1 = P near, 2 = N near, 3 = P far, 4 = N far.
 - `sparam.py` provides Touchstone I/O, the full matrix from symmetric half-excitations, IEEE P370-style 2×thru
-  de-embedding (NZC: fixture S11 from the gated 2×thru reflection, then S22 and S21 from the cascade), a
-  first-order plane shift, mixed mode and TDR.
+  de-embedding (NZC: fixture S11 from the gated 2×thru reflection, then S22 and S21 from the cascade), the matched
+  form of it for 2- and N-ports (`deembed_matched`, `deembed_matched_nport`: every fixture referred to its own line
+  impedance first), a first-order plane shift, mixed mode and TDR.
 - `make_viewer.py` builds `dist/kisi-references-3d.html`: geometry, S-parameters (at the ports and de-embedded, with
   kisi's fast model and the reduced via model), TDR, mixed mode, line parameters (T), Z (G, H), and the electric
   field of port 1 (top view in the thickest dielectric, animated; section through the via; collapsed by default).
 - `rust_models.py` runs the Rust port of the reduced models (`kisi-validate models`) against the Python prototypes
-  and the 3D results, with run times → `results/rust_models.json`; kisi's ladder per case → `via_ref/<case>/ladder.s2p`.
+  and the 3D results (each port de-embedded with its 2×thru, the fixtures referred to their own line impedance first,
+  pairs in the differential mode: TESTS.md section 19), with run times → `results/rust_models.json`; kisi's ladder per
+  case → `via_ref/<case>/ladder.s2p`.
   Both are regenerated with a change of the ladder (last: TESTS.md section 18), together with
   `results/kisi_models.json` (`compare_kisi.py`, `tools/golden.py vias`, kisi's channel) and, where they move, the board
   via, cavity and return-group ladders (`board_vias.py ladder --stored-geom`, `board_resonances.py model`,
@@ -108,7 +111,7 @@ and the lumped R–L–C.
 - `junction_fit.py` re-checks the two fitted choices of the ladder's junction model (`TESTS.md` sections 7 and 17)
   against the de-embedded references, on the ladder as `rust_models.py --out DIR` computes it.
 - `compare_kisi.py` runs kisi's channel model on every case (`KISI_VIA_MODEL=coax` for the former via model) and
-  compares the via alone de-embedded → `results/kisi_models.json`.
+  compares the via alone, both sides de-embedded with their own 2×thru in the same matched way → `results/kisi_models.json`.
 - `practice.py` measures run time, memory and bundle size on the example boards → `results/practice.json`.
 - `wasm_speed.mjs` runs one case in the WebAssembly build of kisi-fdtd (`fd_run`, the engine a browser would use)
   and prints its run time and cell rate, for the comparison with the native solver.

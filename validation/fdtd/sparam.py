@@ -225,6 +225,42 @@ def deembed_matched(f, S, T_in, T_out, z0=50.0):
     return renorm(Dc, np.stack([zi, zo], 1), z0), (zinf_i, zinf_o)
 
 
+def renorm_n(S, z_old, z_new):
+    """N-port S from per-port references z_old to z_new ((nf, n) arrays or scalars, complex allowed),
+    the voltage-wave definition of `renorm`: S = (Z − R)(Z + R)⁻¹."""
+    nf, n, _ = S.shape
+    zo = np.broadcast_to(np.asarray(z_old, complex), (nf, n)) if np.ndim(z_old) < 2 else np.asarray(z_old, complex)
+    zn = np.broadcast_to(np.asarray(z_new, complex), (nf, n)) if np.ndim(z_new) < 2 else np.asarray(z_new, complex)
+    I = np.eye(n)
+    Z = np.linalg.inv(I - S) @ (I + S) @ (zo[:, :, None] * I)
+    Rn = zn[:, :, None] * I
+    return (Z - Rn) @ np.linalg.inv(Z + Rn)
+
+
+def deembed_nport(S, F_per_port):
+    """N-port DUT from S = F11 + F12 D (I − F22 D)⁻¹ F21, one 2-port fixture per port (port 1
+    outside), the fixtures uncoupled: D = (I + X F22)⁻¹ X with X = F12⁻¹ (S − F11) F21⁻¹."""
+    n = S.shape[1]
+    f11, f12, f21, f22 = (np.stack([F[:, a, b] for F in F_per_port], 1) for a, b in ((0, 0), (0, 1), (1, 0), (1, 1)))
+    X = (S - f11[:, :, None] * np.eye(n)) / f12[:, :, None] / f21[:, None, :]
+    return np.linalg.inv(np.eye(n) + X * f22[:, None, :]) @ X
+
+
+def deembed_matched_nport(f, S, thrus, z0=50.0):
+    """`deembed_matched` for an N-port whose ports have uncoupled feed lines (the pairs of the via
+    cases: four single-ended feeds 0.6–1.0 mm apart): each port referred to the line impedance
+    Zc(f) of its own 2×thru, the NZC fixture of that thru removed, the DUT converted back to z0.
+    Returns D, [Z∞ per port]."""
+    zs, zinf, F = [], [], []
+    for T in thrus:
+        z, zi, _ = line_impedance(f, T, z0)
+        zs.append(z)
+        zinf.append(zi)
+        F.append(fixture_2xthru(f, renorm(T, z0, np.stack([z, z], 1)))[0])
+    Z = np.stack(zs, 1)
+    return renorm_n(deembed_nport(renorm_n(S, z0, Z), F), Z, z0), zinf
+
+
 def deembed_shift(S, F_per_port):
     """N-port plane shift: S'_ij = S_ij / (h_i h_j) with h the fixture transmission per port."""
     out = S.copy()

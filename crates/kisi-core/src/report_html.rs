@@ -57,9 +57,10 @@ fn fx(x: f64, d: usize) -> String {
 }
 
 #[inline(never)]
+/// A value as text; KiCad's escaped slash in net names (`{slash}`) as `/`, as the viewer shows it.
 fn s(v: &Value) -> String {
     match v {
-        Value::String(t) => t.clone(),
+        Value::String(t) => t.replace("{slash}", "/"),
         Value::Null => String::new(),
         x => x.to_string(),
     }
@@ -898,7 +899,7 @@ mod tests {
             "options": {"tolerances": false, "via_cavity": true, "via_returns": false},
             "variant": {"name": null}, "config": {"file": null},
             "overview": {"board": "b", "layers": 4, "field_solver": {"cross_sections_field": 0, "target_length_coverage_pct": 0.0}},
-            "impedance": [{"class": "50Z", "target_ohm": 50.0, "diff": false, "worst_net": "/A", "z_ohm": 56.0, "window_pct": 10.0, "status": "yellow", "within_5pct": 0.25},
+            "impedance": [{"class": "50Z", "target_ohm": 50.0, "diff": false, "worst_net": "/A{slash}B", "z_ohm": 56.0, "window_pct": 10.0, "status": "yellow", "within_5pct": 0.25},
                           {"class": "D100", "target_ohm": 100.0, "diff": true, "worst_net": "/B_P", "z_ohm": 101.0, "window_pct": 10.0, "status": "green", "within_5pct": 1.0}],
             "channels": {"rows": [
                 {"lane": "/A", "bus": "U1 ↔ U2", "profile": "se50", "status": "red", "criteria": [crit("z", "yellow", 56.0, Some(45.0), Some(55.0)), crit("eye_h", "red", 0.3, Some(0.65), None)]},
@@ -935,6 +936,6 @@ mod tests {
         let csv = csv_files(&rep);
         let imp = &csv.iter().find(|f| f.0 == "impedance.csv").unwrap().1;
         assert!(imp.starts_with("\u{feff}Impedance per net class\r\nClass,Target (Ω)"));
-        assert!(imp.contains("\r\n50Z,50,SE,/A,56.0,12.0,10,25,warning\r\n"), "{imp}");
+        assert!(imp.contains("\r\n50Z,50,SE,/A/B,56.0,12.0,10,25,warning\r\n"), "{imp}");
     }
 }

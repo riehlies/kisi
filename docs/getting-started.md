@@ -132,44 +132,69 @@ KiCad files are never changed. Field-solver results are cached in the browser (I
 last three boards stay in memory while switching. The "Accuracy" section of the impedance view summarises the
 model accuracy ([Models and limits](models.md)).
 
-### Export
-"Export" in the top bar, next to "Load files", works once a board is loaded. Each entry says in a line below its
-name what it writes, in which format and how much, counted from what is shown (the findings once the report has
-run for this state):
+### Findings and export
+"Findings & Export" in the top bar (on a phone "Export"), next to "Load files", opens a page of its own once a board
+is loaded: every export, and the board's findings. The button's badge counts the findings once they are computed for
+what is shown.
+
+**Findings.** "Find the problems" runs [`kisi report`](cli.md#report) in the background – the channel check, the
+DC drop, the temperature; ThunderScope about half a minute, with its progress and "Cancel" in the top bar – and
+lists every result over or near a limit and every open gap, one group per net (a channel's nets with both lines of
+a pair, a net class's worst net), rail, part or gap, worst first, each with where it is (layer, coordinates in mm as
+KiCad shows them, parts and pads). The Report and Results entries fill the list as well. After a change (other
+settings, a field-solver result, another variant) the list stays, greyed, until "Find again". A click on a finding
+shows its place:
+- a channel (eye, loss, return loss, skew, impedance, via stub of a lane or of a net without devices): the
+  channel view's board map with the **whole channel** selected – every net of the lane from transmitter to
+  receiver, both lines of a pair –, every layer on, the view on the channel and a marker at the worst spot: the
+  impedance at the track that pulls the mean furthest from the target, the return loss at the largest deviation,
+  the skew where the pair's lines differ most in length, a via stub at its via, the eye and the loss at the
+  receiver (where they are measured);
+- a net class's impedance: the impedance view with the net selected and the marker at its track, on that layer;
+- a rail's vias over their current capacity estimate or a rail warning: the Power view's voltage drop map of the
+  rail on the place's layer; a part's temperature: the temperature map at the part – the DC solution and the
+  temperature are computed first where they are missing (their progress in the Power view's steps);
+- a gap's parts: the board view at the first one.
+
+The top bar names the place; × there removes the marker. A click on a yellow or red row of the channel check
+(board map) does the same for that channel.
+
+**Export** – each entry says in a line below its name what it writes, in which format and how much, counted from
+what is shown:
 - **Report** (HTML, print / PDF) – the printable report of [`kisi report --html`](cli.md#report) in a new window:
-  a summary (what was checked, the findings by severity), the index of findings, the tables per area, then every
-  finding with where it is on the board – layer, coordinates in mm as KiCad shows them, net, part, pad, via or track –
-  and a board sketch (the whole board with the net and a marker, next to the copper around the place). Print it
-  there, or choose "Save as PDF" in the print dialog. **Show in the viewer** at a finding jumps to its place here
-  (see below). A report computed for the Results entry is used again while nothing changed. When the browser
-  blocks the new window, the page is downloaded as `<board>_report_<date>.html` instead.
+  a summary (what was checked, the findings by severity), the index of findings per net, the tables per area, then
+  per net its findings with where each is on the board – layer, coordinates in mm, net, part, pad, via or track –
+  and one board sketch (the whole board with the channel or net and markers, next to the copper around the first
+  place). Print it there, or choose "Save as PDF" in the print dialog. **Show in the viewer** at a finding jumps to
+  its place here, as in the list. A report computed for the list or the Results entry is used again while nothing
+  changed. When the browser blocks the new window, the page is downloaded as `<board>_report_<date>.html` instead.
 - **Table** (CSV) – the table of the view shown, filtered and sorted as there: the Nets card (impedance view), the
   interfaces (a row per lane, with its bus) or the channel check (board map), the power tree's components, the
   selected rail's loads (voltage drop, current density), the losses, the temperature tables, the stackup
-  comparison. Each table starts with its title line; units are in the column headers, numbers are plain (dot
-  decimal, no thousands separator, one prefix per column); a mark of the view after a value (`*` estimate, `?`
-  uncertain skew, `⚠`) gets a column of its own, e.g. "Tj °C estimate". UTF-8 with BOM, so that Excel reads it; a
-  text that starts with `+`, `-`, `=` or `@` (a rail such as +5V) gets a leading apostrophe, so that Excel does not
-  take it for a formula. The file is `<board>_<view>_<date>.csv`; in a view without a table the entry is greyed
-  out and says why.
+  comparison. Where the view has not computed its table yet – the channel check in the board map, the DC drop, the
+  losses, the temperature – the entry says so and computes it first (progress in the top bar). Each table starts
+  with its title line; units are in the column headers, numbers are plain (dot decimal, no thousands separator, one
+  prefix per column); a mark of the view after a value (`*` estimate, `?` uncertain skew, `⚠`) gets a column of its
+  own, e.g. "Tj °C estimate". UTF-8 with BOM, so that Excel reads it; a text that starts with `+`, `-`, `=` or `@` (a
+  rail such as +5V) gets a leading apostrophe, so that Excel does not take it for a formula. The file is
+  `<board>_<view>_<date>.csv`; in a view without a table the entry is greyed out and says why.
 - **Results** (JSON) – the content of [`kisi report`](cli.md#report) (`analysis/kisi.json`, with every finding and
   its location) for the loaded files (board, project, kisi.json with its BOMs and Touchstone files), the assembly
   variant and the stackup the views use (Stackup card changes, the active fab template, the tolerances), with the
-  field-solver results this browser has for the board (formula values elsewhere). It runs in the background, with
-  its progress and "Cancel" in the top bar (ThunderScope about half a minute). Edits kept only in this browser –
+  field-solver results this browser has for the board (formula values elsewhere). Edits kept only in this browser –
   targets, profiles, power settings, lane directions – are not in it; Prepare PCB moves them into the kisi.json.
-  This is not the board's settings file: `<board>.kisi.json` is saved on the Prepare PCB page. The file is
-  `<board>_report_<date>.json`.
+  The file is `<board>_report_<date>.json`.
+- **Settings** (`<board>.kisi.json`) – the board's settings with their sources (stackup, net classes, power tree
+  fields, variants, dismissed gaps): the loaded kisi.json with what was entered on the Prepare PCB page, saved the
+  same way as there ([Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb)) and loaded again. Greyed
+  out with the reason when there is nothing to save or the draft has errors.
 
-**Jump to a place.** A click on a yellow or red row of the channel check (board map) selects the channel and zooms
-to where its worst criterion applies – the impedance at the track that pulls the mean furthest from the target, the return loss at the
-largest deviation, a via stub at its via, the eye, loss and skew at the receiver's pad (the report's rule) – with a
-marker, the item's layers switched on and the others off (the layer chips switch them back); the top bar names the
-place. "Show in the viewer" in a report opened from the viewer does the same for its findings. A report saved as a
-file carries each finding's link: open `kisi.html` with that link's part from `#finding=` on appended, e.g.
-`kisi.html#finding=channel%3A%2FSYNC_OUT_P&at=164.12,98.30&layer=F.Cu&net=%2FSYNC_OUT_P&item=track&board=…`, and
-load the board – the viewer opens the board view there once it is loaded (`id` as in the report's JSON, `at` in mm,
-`layer`/`layers`, `net`, `item` and `board` percent-encoded; the parts without a value left out).
+**Links to a finding.** A report saved as a file carries each finding's link: open `kisi.html` with that link's
+part from `#finding=` on appended, e.g.
+`kisi.html#finding=channel%3A%2FSYNC_OUT_P&at=164.12,98.30&layer=F.Cu&net=%2FSYNC_OUT_P&item=track&box=150.1,90.2,170.4,100.8&board=…`,
+and load the board – the viewer shows the finding once the board is loaded, as a click in the list does (`id` as
+in the report's JSON, `at` in mm, `layer`/`layers`, `net`, `item`, `box` – a channel's whole extent, in mm – and
+`board` percent-encoded; the parts without a value left out).
 
 ## From KiCad: the plugin
 A button in KiCad's PCB editor (KiCad 10) opens the open board in the viewer, in

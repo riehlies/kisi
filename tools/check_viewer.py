@@ -41,8 +41,10 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   with progress, parsed, the top-level keys of `kisi report`; Report (print / PDF): the page in a new window with its
   sections and no script, a viewer link per finding with a place, "show in the viewer" of the first one gives the
   board view's marker at its place, and as a download when the window is blocked (light: every board; dark: the
-  first; --quick: the last board in the light run); each entry's description (the table's rows and columns; after
-  the report its findings)
+  first; --quick: the last board in the light run); each entry's description (the table's rows and columns, the
+  channel map's table computing the check first, the settings file; after the report its findings); the findings
+  list per net after the report and its jump to the last finding with a place (the DC solution computed first for a
+  power finding)
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
@@ -1048,7 +1050,7 @@ THERM_KEY = """(() => ({ t_max: S.therm.t_max_c, parts: S.therm.parts.map((p) =>
 
 
 REPORT_KEYS = {"tool", "version", "board_file", "options", "variant", "config", "impedance", "overview", "interfaces", "channels",
-               "power", "thermal", "stackup_used", "gaps", "findings", "sketch_board"}
+               "power", "thermal", "stackup_used", "gaps", "findings", "finding_groups", "sketch_board"}
 REPORT_SECTIONS = ["Summary", "At a glance", "Findings", "Impedance per net class", "Channel: worst lane per interface",
                    "Failing lanes", "Power: largest DC drop per rail", "Assumptions and gaps", "Left out on purpose"]
 
@@ -1085,9 +1087,12 @@ def export_menu(pg, tag, step, json_boards):
         problems.append(f"{tag}: the Export menu does not open")
     step(f"export_menu_{board}")
     # every entry says what it exports, with counts from the state shown
-    desc = pg.evaluate("['xp-html-d', 'xp-csv-d', 'xp-json-d'].map((i) => document.getElementById(i).textContent)")
-    if not all(desc) or not re.search(r"\d+ rows?, \d+ columns?", desc[1]) or "print" not in desc[0] or "kisi report" not in desc[2]:
+    desc = pg.evaluate("['xp-html-d', 'xp-csv-d', 'xp-json-d', 'xp-cfg-d'].map((i) => document.getElementById(i).textContent)")
+    if not all(desc) or not re.search(r"\d+ rows?, \d+ columns?", desc[1]) or "print" not in desc[0] or "kisi report" not in desc[2] \
+            or ".kisi.json" not in desc[3] and "nothing to save" not in desc[3]:
         problems.append(f"{tag}: Export menu descriptions {desc}")
+    if "Find the problems" not in pg.inner_text("#xp-find") and "Find again" not in pg.inner_text("#xp-find"):
+        problems.append(f"{tag}: the findings list offers no run: {pg.inner_text('#xp-find')[:120]!r}")
     pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
     if not pg.is_hidden("#xp-menu"):
         problems.append(f"{tag}: Escape does not close the Export menu")
@@ -1122,8 +1127,8 @@ def export_menu(pg, tag, step, json_boards):
     pg.click("#view-ch"); pg.wait_for_timeout(300)
     pg.click("#chm-m"); pg.wait_for_timeout(300)
     pg.click("#xp-btn"); pg.wait_for_timeout(100)
-    if not pg.evaluate("!!S.check") and not (pg.is_disabled("#xp-csv") and "channel check" in (pg.get_attribute("#xp-csv", "title") or "")):
-        problems.append(f"{tag}: Table (CSV) not disabled with its reason in the channel map before the check")
+    if not pg.evaluate("!!S.check") and (pg.is_disabled("#xp-csv") or "computes the channel check first" not in pg.inner_text("#xp-csv-d")):
+        problems.append(f"{tag}: Table (CSV) in the channel map before the check does not offer to compute it: {pg.inner_text('#xp-csv-d')!r}")
     pg.keyboard.press("Escape")
     pg.click("#chm-o"); pg.wait_for_timeout(200)
     pg.click("#view-si"); pg.wait_for_timeout(200)
@@ -1168,11 +1173,27 @@ def export_menu(pg, tag, step, json_boards):
                 if not mark or abs(mark[0] - f0["location"]["at"][0]) > 0.01 or abs(mark[1] - f0["location"]["at"][1]) > 0.01 or "mm" not in pg.inner_text("#xp-status"):
                     problems.append(f"{tag}: Report of {board}: the jump to finding {f0['id']} gave the mark {mark}")
                 step(f"export_jump_{board}")
-            # the menu now counts the report's findings
+            # the page now counts the report's findings and lists them per net; a click jumps
             pg.click("#xp-btn"); pg.wait_for_timeout(100)
             if n and f"{n} finding" not in pg.inner_text("#xp-html-d"):
                 problems.append(f"{tag}: Export menu after the report: {pg.inner_text('#xp-html-d')!r}")
+            items = pg.locator("#xp-find .xp-fd")
+            groups = pg.locator("#xp-find .xp-grp")
+            if items.count() != n or groups.count() != len(rep.get("finding_groups") or []):
+                problems.append(f"{tag}: findings list: {items.count()} findings in {groups.count()} groups for {n} in {len(rep.get('finding_groups') or [])}")
+            step(f"export_findings_{board}")
+            loc = [f for f in rep["findings"] if f.get("location")]
+            if loc and items.count():
+                pg.locator("#xp-find .xp-fd").filter(has_text=loc[-1]["what"][:40]).first.click()
+                pg.wait_for_function("!!S.mark", timeout=300000)
+                pg.wait_for_timeout(500)
+                mark = pg.evaluate("[S.mark.x, S.mark.y, S.tab]")
+                at = loc[-1]["location"]["at"]
+                if abs(mark[0] - at[0]) > 0.01 or abs(mark[1] - at[1]) > 0.01:
+                    problems.append(f"{tag}: findings list: the jump to {loc[-1]['id']} gave {mark}")
+                step(f"export_findings_jump_{board}")
             pg.keyboard.press("Escape")
+            pg.evaluate("xpStatus(''); S.mark = null")
         except Exception as e:
             problems.append(f"{tag}: Report of {board} not shown in the new window: {e}")
         win.close()

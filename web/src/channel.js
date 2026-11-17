@@ -92,7 +92,7 @@ function judge(m, p) {
 }
 const ST_NAME = { ok: "green", high1: "yellow", high2: "red" };
 // a criterion's name in the status bar after a jump to its place
-const CRIT_NAME = { z: "impedance", eye_h: "eye height (at the receiver)", eye_w: "eye width (at the receiver)", il: "insertion loss (at the receiver)", rl: "return loss (largest deviation from the target)", skew: "skew (at the receiver)", stub: "via stub", error: "not computed" };
+const CRIT_NAME = { z: "impedance", eye_h: "eye height (at the receiver)", eye_w: "eye width (at the receiver)", il: "insertion loss (at the receiver)", rl: "return loss (largest deviation from the target)", skew: "skew (where the lines differ most)", stub: "via stub", error: "not computed" };
 
 // ---- side cards
 function renderIfcCard() {

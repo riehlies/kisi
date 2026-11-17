@@ -91,7 +91,8 @@ from one solver revision. What the 39 commits between them changed, and what tha
   620 cross-sections of `validation/cst_xs` at all four tolerances/boxes, the example boards).
 * **Full-wave backend** (`tri_solver/mqs_loss.js`, `tri_backend.js`): the roughness of meshed plating is weighted with
   the perfect-conductor surface current (causal R/L pair) and a plating core's bare faces get their own roughness term;
-  conductors without plating, which is all kisi generates, are not affected. `interpolating_sweep.js`: a sweep that
+  conductors without plating, which is all kisi generates, are not affected (the 620 cases of `validation/cst_xs` at
+  b5ea9eb, workflow `fullwave-xs`: no impedance or εeff moved by more than 0.001 %). `interpolating_sweep.js`: a sweep that
   extends an earlier one keeps its skin mesh (the page's sweeps).
 * Unchanged: the geometry text syntax (`custom_geometry_text.js`), `CustomGeometrySolver`, the `solve_adaptive`
   options and result fields, `solve_sparse_multi`, the submodules (Eigen, Spectra, gmsh).

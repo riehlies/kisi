@@ -52,6 +52,12 @@ height to the reference.
 * **kisi's line model** (`compare.py --solve-loss` → `kisi_loss.json`): the FDM solve in CST's box at 1 GHz,
   extended over frequency as kisi does (R_dc·√(1 + jω/ω_c), smooth copper).
 
+`kisi.json`, `kisi_loss.json` and `fullwave/` were computed at upstream 3d5009c; at b5ea9eb (vendored since
+2026-11-17, UPSTREAM.md) `run_kisi.py` and `compare.py --solve-loss` reproduce every value of all 620 cases bit for bit
+(timings aside), and the full-wave run 44193231531 at b5ea9eb moved no impedance or εeff by more than 0.001 %
+(`fullwave_diff.py` against the committed results; its table in the run's summary and in the artifact
+`fullwave-results`, `committed_diff.md`), so the committed results are kept.
+
 One quantity, one definition in a comparison:
 
 * **Z0, Zdiff, Zeven:** lossless line impedances – CST with PEC and tanδ 0, FW's eigenmode with ideal conductors,

@@ -15,7 +15,7 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import kisi_kicad as core
 import kisi_server as server
-from test_kisi_kicad import Board, NO_NODE, digest, payload_of, unpack
+from test_kisi_kicad import ADVANCED, Board, NO_NODE, digest, payload_of, unpack
 
 
 class ServerTests(unittest.TestCase):
@@ -28,8 +28,8 @@ class ServerTests(unittest.TestCase):
         self.initial = pathlib.Path(self.b.cfg).read_bytes()
         self.pcb_hash = digest(self.b.pcb)
 
-    def start(self, payload=None, idle_timeout=30):
-        s = server.Session(payload or self.payload, template=self.b.viewer, temp=self.b.out, idle_timeout=idle_timeout)
+    def start(self, payload=None, idle_timeout=30, advanced=None):
+        s = server.Session(payload or self.payload, template=self.b.viewer, temp=self.b.out, idle_timeout=idle_timeout, advanced=advanced)
         thread = threading.Thread(target=s.run, daemon=True)
         thread.start()
         def stop():
@@ -83,6 +83,29 @@ class ServerTests(unittest.TestCase):
         self.assertIn("connect-src 'self'", csp)
         self.assertNotIn("http", csp)  # no other host is allowed
         self.assertNotIn(self.s.token, pathlib.Path(self.page).read_text(encoding="utf-8"))
+
+    def test_field_page_at_its_fixed_path(self):
+        adv = pathlib.Path(self.b.root, "kisi-advanced.html")
+        adv.write_text(ADVANCED, encoding="utf-8")
+        s = self.start(advanced=str(adv))
+        # next to the viewer's /open/<token>: no token needed (the same file for every board, no board data)
+        for path in ("/open/kisi-advanced.html", "/open/kisi-advanced.html?kisi=1"):
+            status, data, headers = self.request("GET", path, auth=False, session=s)
+            self.assertEqual((status, data.decode()), (200, ADVANCED), path)
+            self.assertTrue(headers["Content-Type"].startswith("text/html"))
+            self.assertIn("default-src 'none'", headers["Content-Security-Policy"])
+            self.assertNotIn("'unsafe-eval'", headers["Content-Security-Policy"])
+        status, data, headers = self.request("HEAD", "/open/kisi-advanced.html", auth=False, session=s)
+        self.assertEqual((status, data, headers["Content-Length"]), (200, b"", str(len(ADVANCED.encode()))))
+        for kwargs in [dict(headers={"Sec-Fetch-Site": "cross-site"}), dict(headers={"Host": "attacker.invalid"}),
+                       dict(headers={"Origin": "https://attacker.invalid"})]:
+            self.assertEqual(self.request("GET", "/open/kisi-advanced.html", auth=False, session=s, **kwargs)[0], 403, kwargs)
+            self.assertEqual(self.request("HEAD", "/open/kisi-advanced.html", auth=False, session=s, **kwargs)[0], 404, kwargs)
+        # nothing else of the folder; a session without a field page answers 404
+        for path in ("/open/kisi-advanced-lite.html", "/kisi-advanced.html", "/open/../kisi-advanced.html"):
+            self.assertEqual(self.request("GET", path, auth=False, session=s)[0], 404, path)
+        self.assertEqual(self.request("GET", "/open/kisi-advanced.html", auth=False)[0], 404)
+        self.assertEqual(self.request("HEAD", "/open/kisi-advanced.html", auth=False)[0], 404)
 
     def test_backups_are_limited(self):
         analysis = pathlib.Path(self.b.dir, "analysis")

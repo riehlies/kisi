@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Board-scoped, temporary loopback transport for the existing viewer (standard library only).
 
-Only the generated viewer and this board's configuration are exposed. The HTML entry URL is a secret;
-API requests additionally require the session token. No directory is served and no client-supplied path
+Only the generated viewer, this board's configuration and the plugin's field page (kisi-advanced.html, the same file
+for every board and session, no board data) are exposed. The HTML entry URL is a secret; API requests additionally
+require the session token. No directory is served and no client-supplied path
 is opened. This is not a general-purpose web server or a sandbox against other code running as this user.
 """
 import hashlib
@@ -28,6 +29,11 @@ CSP = ("default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'
        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; "
        "connect-src 'self' data: blob:; media-src 'self' data: blob:; base-uri 'none'; form-action 'none'; "
        "frame-ancestors 'none'")
+
+
+# The field page (the viewer's "Fields…"): the viewer at /open/<token> finds it next to itself, at one fixed path – a page
+# on http://127.0.0.1 may not open a file:// URL. It runs its modules and Plotly from blob: URLs, like the viewer.
+ADVANCED_PATH = "/open/" + core.ADVANCED
 
 
 class LoopbackServer(ThreadingHTTPServer):
@@ -86,7 +92,7 @@ def config_lock(folder, path):
 
 
 class Session:
-    def __init__(self, payload, template=None, idle_timeout=IDLE_TIMEOUT, log=None, temp=None):
+    def __init__(self, payload, template=None, idle_timeout=IDLE_TIMEOUT, log=None, temp=None, advanced="auto"):
         if not math.isfinite(idle_timeout) or idle_timeout <= 0:
             raise ValueError("idle timeout must be positive")
         self.paths = core.board_paths(os.path.basename(payload["pcb_path"]), payload["dir"], "")
@@ -103,6 +109,8 @@ class Session:
         self.server.timeout = 0.25
         self.origin = f"http://127.0.0.1:{self.server.server_port}"
         self.url = self.origin + self.entry
+        self.advanced = core.find_advanced() if advanced == "auto" else advanced
+        self._advanced = None
         try:
             with open(template or core.find_viewer(), encoding="utf-8") as f:
                 self.template = f.read()
@@ -124,6 +132,13 @@ class Session:
         if data and (not previous or previous["gz"] != core._gz(data)):
             live["config"] = "loaded"
         return core.embed(self.template, live).encode("utf-8")
+
+    def advanced_page(self):
+        """the field page's bytes (read once), or None when the plugin has none"""
+        if self._advanced is None and self.advanced:
+            with open(self.advanced, "rb") as f:
+                self._advanced = f.read()
+        return self._advanced
 
     def read_config(self):
         def read():
@@ -223,10 +238,31 @@ class Handler(BaseHTTPRequestHandler):
             return len(auth) == 1 and secrets.compare_digest(auth[0].encode("utf-8"), ("Bearer " + s.token).encode())
         return True
 
+    def do_HEAD(self):
+        """only the field page: the viewer asks whether it is there"""
+        s = self.server.session
+        page = s.advanced_page() if self.authorized() and self.path.split("?")[0] == ADVANCED_PATH else None
+        self.send_response(200 if page else 404)
+        self.send_header("Content-Length", str(len(page)) if page else "0")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.close_connection = True
+
     def do_GET(self):
         s = self.server.session
         if not self.authorized():
             self.reply(403, {"error": "forbidden"})
+        elif self.path.split("?")[0] == ADVANCED_PATH:
+            try:
+                page = s.advanced_page()
+            except OSError:
+                page = None
+            if page:
+                s.last_seen = time.monotonic()
+                self.reply(200, page, "text/html; charset=utf-8")
+            else:
+                self.reply(404, {"error": "the plugin has no field page (kisi-advanced.html)"})
         elif secrets.compare_digest(self.path.encode("utf-8"), s.entry.encode()):
             try:
                 html = s.html()

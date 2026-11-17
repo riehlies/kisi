@@ -169,7 +169,9 @@ def main(argv=None):
             name, folder, project, state, kv = board_from_kicad(log)
         page, payload = core.make_page(name, folder, project, modified=state, kicad_version=kv)
         imp, cli = payload["import"], payload["cli"]
-        log(f"page {page} ({os.path.getsize(page)} bytes, {payload['page']['where']}{': ' + payload['page']['reason'] if payload['page']['reason'] else ''}); "
+        adv = os.path.join(os.path.dirname(page), core.ADVANCED)
+        log(f"page {page} ({os.path.getsize(page)} bytes, {payload['page']['where']}{': ' + payload['page']['reason'] if payload['page']['reason'] else ''}; "
+            f"field page next to it: {'yes' if os.path.isfile(adv) else 'no'}); "
             f"kisi.json {payload['config']}: {payload['config_path']}; files {[f['name'] for f in payload['files']]}; notes {payload['notes']}")
         log(f"downloads {imp['folder'] or '-'}: {imp['state']} {imp['from']} {imp['backup']} {imp['checked']} {imp['reasons']}; "
             f"cli {cli['path'] or '-'}; node {cli['node']}")

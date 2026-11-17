@@ -1180,10 +1180,13 @@ pub fn power_run(p: &Project, tree: Option<crate::tree::TreeSpec>) -> Result<Pow
     let mut rails = Vec::new();
     let mut solved = Vec::new();
     let rail_json = |r: &crate::pi::PiResult| {
+        let (vias, vw) = rail_vias_json(&p.board, r);
+        let mut warnings = r.warnings.clone();
+        warnings.extend(vw);
         if r.ground {
-            json!({"rail": r.net, "ground_return": true, "return_a": -r.total_load, "max_offset_mv": r.max_drop_mv, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "warnings": r.warnings})
+            json!({"rail": r.net, "ground_return": true, "return_a": -r.total_load, "max_offset_mv": r.max_drop_mv, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "vias": vias, "warnings": warnings})
         } else {
-            json!({"rail": r.net, "voltage": r.voltage, "load_a": r.total_load, "max_drop_mv": r.max_drop_mv, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "warnings": r.warnings})
+            json!({"rail": r.net, "voltage": r.voltage, "load_a": r.total_load, "max_drop_mv": r.max_drop_mv, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "vias": vias, "warnings": warnings})
         }
     };
     for s in &setups {
@@ -1210,6 +1213,85 @@ pub fn power_run(p: &Project, tree: Option<crate::tree::TreeSpec>) -> Result<Pow
         }
     }
     Ok(PowerRun { source, tree: tree_res, balance, setups, solved, rails, warnings, params })
+}
+
+/// How many vias per rail `kisi power` lists (`rails[].vias.highest_current`).
+pub const RAIL_VIAS_SHOWN: usize = 10;
+/// The smallest via current `kisi power` counts and lists (A): below it a barrel carries only the DC solver's
+/// residue (rails without a load).
+pub const RAIL_VIAS_MIN_A: f64 = 1e-6;
+
+/// What `vias` in the rail rows of `kisi power` is: the current capacity is an estimate.
+pub fn via_capacity_note(plating_um: f64) -> Value {
+    let c = &crate::thermal::data().via_current;
+    json!({
+        "delta_t_k": c.delta_t_k, "plating_um": plating_um, "estimate": true, "shown_per_rail": RAIL_VIAS_SHOWN, "min_current_a": RAIL_VIAS_MIN_A,
+        "note": format!("counts and lists: the vias and plated holes that carry at least min_current_a; current_a: the largest current of a via's barrel steps (DC solution); capacity_a: estimate – the IPC-2152 conductor chart (fit in data/thermal.json, via_current) for the plating cross-section π·(d − t)·t at a temperature rise of {} K, plating t = {} µm (assumption, as the DC solver); a via runs cooler than a track of the same cross-section, so the chart is conservative for a via. A plated hole with a soldered lead carries most of its current in the lead: holes over the estimate are counted (plated_holes_over_capacity) but not warned.", c.delta_t_k, plating_um),
+    })
+}
+
+/// A rail's vias for `kisi power`: counts, the barrel loss and the `RAIL_VIAS_SHOWN` vias and plated holes with
+/// the highest current (`losses::rail_vias`), with the warning for vias over their capacity estimate.
+pub fn rail_vias_json(b: &Board, r: &crate::pi::PiResult) -> (Value, Vec<String>) {
+    let su = b.stackup();
+    let lname = |l: u16| su.copper.get(l as usize).map(|c| c.name.clone()).unwrap_or_default();
+    let mut vs = crate::losses::rail_vias(r);
+    vs.retain(|v| v.current >= RAIL_VIAS_MIN_A);
+    let loss_w = vs.iter().fold(0.0, |a, v| a + v.loss_w);
+    // the RAIL_VIAS_SHOWN with the highest current, in that order; equal currents (to 1 µA, symmetric arrays) by
+    // position, so the order does not hang on the last bits (a selection: no sort instantiated for the WASM)
+    let q = |x: f64| (x * 1e6).round() as i64;
+    let before = |a: &crate::losses::ViaLoss, b: &crate::losses::ViaLoss| {
+        q(a.current).cmp(&q(b.current)).reverse().then(a.at[0].total_cmp(&b.at[0])).then(a.at[1].total_cmp(&b.at[1]))
+            == std::cmp::Ordering::Less
+    };
+    let mut top: Vec<usize> = Vec::new();
+    while top.len() < RAIL_VIAS_SHOWN.min(vs.len()) {
+        let mut best: Option<usize> = None;
+        for i in (0..vs.len()).filter(|i| !top.contains(i)) {
+            if best.is_none_or(|b| before(&vs[i], &vs[b])) {
+                best = Some(i);
+            }
+        }
+        top.extend(best);
+    }
+    let over: Vec<&crate::losses::ViaLoss> = vs.iter().filter(|v| !v.hole && v.load > 1.0).collect();
+    let holes_over = vs.iter().filter(|v| v.hole && v.load > 1.0).count();
+    let c3 = |x: f64| (x * 1000.0).round() / 1000.0 + 0.0;
+    let entry = |v: &crate::losses::ViaLoss| {
+        json!({"at": [c3(v.at[0]), c3(v.at[1])], "from": lname(v.from), "to": lname(v.to), "drill_mm": v.drill, "plated_hole": v.hole,
+            "plating_area_mm2": v.area_mm2, "current_a": v.current, "loss_mw": v.loss_w * 1e3, "j_a_mm2": v.j_a_mm2,
+            "capacity_a": v.capacity_a, "current_per_capacity": v.load, "over_capacity": v.load > 1.0})
+    };
+    // the via (not plated hole) with the highest current against its capacity estimate, the first of equals
+    let most = vs.iter().filter(|v| !v.hole).fold(None, |m: Option<&crate::losses::ViaLoss>, v| match m {
+        Some(m) if m.load >= v.load => Some(m),
+        _ => Some(v),
+    });
+    let mut warnings = Vec::new();
+    if let (Some(w), false) = (most, over.is_empty()) {
+        let dt = crate::thermal::data().via_current.delta_t_k;
+        warnings.push(format!(
+            "{} via{} over {} current capacity estimate (IPC-2152 at ΔT {dt:.0} K): the most loaded {:.2} A in {:.2} mm drill at ({:.2}, {:.2}) mm, {:.0} % of {:.2} A",
+            over.len(),
+            if over.len() == 1 { "" } else { "s" },
+            if over.len() == 1 { "its" } else { "their" },
+            w.current,
+            w.drill,
+            w.at[0],
+            w.at[1],
+            100.0 * w.load,
+            w.capacity_a
+        ));
+    }
+    let v = json!({
+        "count": vs.iter().filter(|v| !v.hole).count(), "plated_holes": vs.iter().filter(|v| v.hole).count(),
+        "over_capacity": over.len(), "plated_holes_over_capacity": holes_over,
+        "barrel_loss_mw": loss_w * 1e3,
+        "most_loaded": most.map(entry),
+        "highest_current": top.iter().map(|&i| entry(&vs[i])).collect::<Vec<_>>(), "omitted": vs.len() - top.len(),
+    });
+    (v, warnings)
 }
 
 /// Power: tree balance (PI_REG fields or a JSON tree), DC drop of every rail,
@@ -1259,7 +1341,7 @@ pub fn power_from(p: &Project, run: &PowerRun, pdn_rail: Option<&str>) -> Result
         None => None,
     };
     Ok(
-        json!({"tree_source": run.source, "balance": run.balance, "rails": run.rails, "losses": losses, "flow": flow, "pdn": pdn, "warnings": run.warnings}),
+        json!({"tree_source": run.source, "balance": run.balance, "rails": run.rails, "via_capacity": via_capacity_note(run.params.plating_um), "losses": losses, "flow": flow, "pdn": pdn, "warnings": run.warnings}),
     )
 }
 
@@ -1555,5 +1637,78 @@ mod tests {
             .unwrap()
             .iter()
             .any(|w| w.as_str().unwrap().contains("C3 100nF 16V X7R (0805)")));
+    }
+
+    /// `kisi power` lists a rail's vias: 3 A from a pour on F.Cu through one via (0.3 mm drill, capacity
+    /// estimate about 1.5 A) and 0.1 A through a second one into pours on B.Cu – the loaded via first, over
+    /// its estimate, as the rail's warning and in the printable report's power line.
+    #[test]
+    fn power_lists_the_vias_over_their_capacity() {
+        let pcb = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
+  (layers (0 "F.Cu" signal) (2 "B.Cu" signal))
+  (setup (stackup
+    (layer "F.Cu" (type "copper") (thickness 0.035))
+    (layer "dielectric 1" (type "core") (thickness 1.5) (material "FR4") (epsilon_r 4.5) (loss_tangent 0.02))
+    (layer "B.Cu" (type "copper") (thickness 0.035))))
+  (net 0 "") (net 1 "+3V3")
+  (footprint "R" (layer "F.Cu") (at 0 0) (property "Reference" "J1") (property "PI_SOURCE" "+3V3")
+    (pad "1" smd rect (at 0.5 2) (size 1 4) (layers "F.Cu") (net 1 "+3V3")))
+  (footprint "R" (layer "B.Cu") (at 0 0) (property "Reference" "U1") (property "PI_LOAD" "+3V3=3A")
+    (pad "1" smd rect (at 17.5 2) (size 1 4) (layers "B.Cu") (net 1 "+3V3")))
+  (footprint "R" (layer "B.Cu") (at 0 0) (property "Reference" "U2") (property "PI_LOAD" "+3V3=0.1A")
+    (pad "1" smd rect (at 9 -8) (size 1 1) (layers "B.Cu") (net 1 "+3V3")))
+  (via (at 9 2) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))
+  (via (at 3 -8) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1))
+  (segment (start 3 0) (end 3 -8) (width 1) (layer "F.Cu") (net 1))
+  (segment (start 3 -8) (end 9 -8) (width 1) (layer "B.Cu") (net 1))
+  (zone (net 1) (net_name "+3V3") (layer "F.Cu") (filled_polygon (layer "F.Cu") (pts (xy 0 0) (xy 10 0) (xy 10 4) (xy 0 4))))
+  (zone (net 1) (net_name "+3V3") (layer "B.Cu") (filled_polygon (layer "B.Cu") (pts (xy 8 0) (xy 18 0) (xy 18 4) (xy 8 4)))))"#;
+        let p = Project::from_texts(Inputs {
+            pcb_path: "vias.kicad_pcb".into(),
+            pcb: pcb.into(),
+            pro: None,
+            config: None,
+            stackup: None,
+            stackup_preset: None,
+            tol: None,
+            field: HashMap::new(),
+            variant: None,
+            files: Default::default(),
+        })
+        .unwrap();
+        let v = power(&p, None, None).unwrap();
+        let r = &v["rails"][0];
+        let vs = &r["vias"];
+        assert_eq!(
+            (vs["count"].as_u64(), vs["over_capacity"].as_u64(), vs["omitted"].as_u64()),
+            (Some(2), Some(1), Some(0)),
+            "{vs:#}"
+        );
+        let top = &vs["highest_current"][0];
+        let (i, c) = (top["current_a"].as_f64().unwrap(), top["capacity_a"].as_f64().unwrap());
+        assert!((i - 3.0).abs() < 1e-3 && (c - 1.55).abs() < 0.05, "{top:#}");
+        assert_eq!(
+            (top["at"].clone(), top["from"].as_str(), top["to"].as_str()),
+            (json!([9.0, 2.0]), Some("F.Cu"), Some("B.Cu"))
+        );
+        assert!(top["over_capacity"] == true && (top["current_per_capacity"].as_f64().unwrap() - i / c).abs() < 1e-9);
+        let j = top["j_a_mm2"].as_f64().unwrap() * top["plating_area_mm2"].as_f64().unwrap();
+        assert!((j - i).abs() < 1e-9);
+        assert!((vs["highest_current"][1]["current_a"].as_f64().unwrap() - 0.1).abs() < 1e-3);
+        assert_eq!(vs["most_loaded"], *top);
+        let w: Vec<&str> = r["warnings"].as_array().unwrap().iter().filter_map(|w| w.as_str()).collect();
+        assert!(
+            w.iter().any(|w| w.starts_with("1 via over its current capacity estimate") && w.contains("3.00 A")),
+            "{w:?}"
+        );
+        assert_eq!(v["via_capacity"]["estimate"], true);
+        let rep = json!({"power": v});
+        let ts = crate::report_html::tables(&rep);
+        let t = ts.iter().find(|t| t.id == "power").unwrap();
+        assert!(
+            t.note.contains("Vias over their current capacity estimate (IPC-2152 at ΔT 10 K): 1 on +3V3"),
+            "{}",
+            t.note
+        );
     }
 }

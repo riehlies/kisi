@@ -559,46 +559,54 @@ pub struct ViaLosses {
 /// Share of the largest via loss down to which `loss_vias` lists vias (the viewer's lowest filter).
 pub const VIA_LIST_MIN: f64 = 0.01;
 
+/// The vias and plated holes of one rail that carry current, in the order of their first barrel step:
+/// its steps grouped per position (the largest current, the summed loss, the outermost contact layers) with
+/// the current density in the plating and the capacity estimate (`via_capacity`). The one per-via model of
+/// the viewer's via markers (`loss_vias`) and of `kisi power` (the vias with the highest current per rail).
+pub fn rail_vias(r: &PiResult) -> Vec<ViaLoss> {
+    let mut all: Vec<ViaLoss> = Vec::new();
+    let mut by: HashMap<(i64, i64), usize> = HashMap::new();
+    for b in &r.barrels {
+        let key = ((b.at[0] * 1e4).round() as i64, (b.at[1] * 1e4).round() as i64);
+        let i = *by.entry(key).or_insert_with(|| {
+            all.push(ViaLoss {
+                net: r.net.clone(),
+                at: b.at,
+                drill: b.drill,
+                hole: b.hole,
+                from: b.from,
+                to: b.to,
+                area_mm2: b.area_mm2,
+                current: 0.0,
+                j_a_mm2: 0.0,
+                loss_w: 0.0,
+                capacity_a: 0.0,
+                load: 0.0,
+            });
+            all.len() - 1
+        });
+        let v = &mut all[i];
+        v.from = v.from.min(b.from);
+        v.to = v.to.max(b.to);
+        v.current = v.current.max(b.current);
+        v.loss_w += b.loss_w;
+    }
+    for v in &mut all {
+        v.j_a_mm2 = v.current / v.area_mm2.max(1e-12);
+        v.capacity_a = via_capacity(v.area_mm2);
+        v.load = v.current / v.capacity_a.max(1e-12);
+    }
+    all
+}
+
 /// The via barrels' loss of the rails, one entry per via or plated hole and rail: the loss the layer
 /// maps (`loss_layer`, `loss_map`) leave out. Layer display loss + `total_w` = the rails' copper loss.
 pub fn loss_vias(rails: &[&PiResult]) -> ViaLosses {
     let mut all: Vec<ViaLoss> = Vec::new();
-    let mut total_w = 0.0;
     for r in rails {
-        let mut by: HashMap<(i64, i64), usize> = HashMap::new();
-        let first = all.len();
-        for b in &r.barrels {
-            total_w += b.loss_w;
-            let key = ((b.at[0] * 1e4).round() as i64, (b.at[1] * 1e4).round() as i64);
-            let i = *by.entry(key).or_insert_with(|| {
-                all.push(ViaLoss {
-                    net: r.net.clone(),
-                    at: b.at,
-                    drill: b.drill,
-                    hole: b.hole,
-                    from: b.from,
-                    to: b.to,
-                    area_mm2: b.area_mm2,
-                    current: 0.0,
-                    j_a_mm2: 0.0,
-                    loss_w: 0.0,
-                    capacity_a: 0.0,
-                    load: 0.0,
-                });
-                all.len() - 1
-            });
-            let v = &mut all[i];
-            v.from = v.from.min(b.from);
-            v.to = v.to.max(b.to);
-            v.current = v.current.max(b.current);
-            v.loss_w += b.loss_w;
-        }
-        for v in &mut all[first..] {
-            v.j_a_mm2 = v.current / v.area_mm2.max(1e-12);
-            v.capacity_a = via_capacity(v.area_mm2);
-            v.load = v.current / v.capacity_a.max(1e-12);
-        }
+        all.extend(rail_vias(r));
     }
+    let total_w = rails.iter().flat_map(|r| &r.barrels).fold(0.0, |a, b| a + b.loss_w);
     let count = all.len();
     all.sort_by(|a, b| b.loss_w.total_cmp(&a.loss_w));
     let max = all.first().map_or(0.0, |v| v.loss_w);

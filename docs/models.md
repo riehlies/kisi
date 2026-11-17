@@ -178,9 +178,11 @@ connector.
   drilled hole d). The temperature takes it as heat on its two contact cells, half each; the losses map leaves it
   out of the layers and the sums (half of it on one cell would read as a power density that grows with 1/cell²)
   and shows the via as a marker with its loss, current and current density in the plating. The current capacity
-  beside it is an estimate: the IPC-2152 conductor chart (a curve fit, `data/thermal.json` `via_current`) for the
-  plating cross-section at a 10 K rise – conservative, as a via runs cooler than a trace of the same cross-section.
-  On ThunderScope and LibreVNA the barrels carry 5 % and 2 % of the copper loss.
+  beside it (and in `kisi power`, [CLI](cli.md#power)) is an estimate: the IPC-2152 conductor chart (a curve fit,
+  `data/thermal.json` `via_current`) for the plating cross-section at a 10 K rise – conservative, as a via runs
+  cooler than a trace of the same cross-section. A via's current is the largest of its barrel steps. On
+  ThunderScope and LibreVNA the barrels carry 5 % and 2 % of the copper loss; the most loaded vias carry 52 %
+  (0.62 A, +VUSB) and 26 % (0.35 A, +5V) of their estimate.
 - **PDN:** a lumped model of regulator, plane and capacitors with a plane model above 1 MHz; per IC the rail's
   copper on all layers as an AC grid with plane capacitance (via contacts corrected as in the DC drop), capacitors with ESR/ESL and DC-bias derating
   (estimated per package unless `PI_CAP` gives the data; the rated voltage and the dielectric also from the parts'
@@ -274,6 +276,8 @@ kisi marks these as estimates in the viewer and in the CLI output:
 - capacitor ESR/ESL and DC-bias derating by package, with an assumed rated voltage where neither `PI_CAP`, a
   rating field of the part, the Value text nor the Description gives one; ferrite and inductor values without `PI_SERIES`;
 - thermal resistances by package family and size, Tj max 125 °C, where `PI_THERMAL` gives none;
+- the current capacity of a via (IPC-2152 chart at a 10 K rise, 25 µm plating): the Losses view's via markers,
+  `kisi power`;
 - values in `<board>.kisi.json` whose source kind is `estimate` or `assumption`.
 
 ## Validation

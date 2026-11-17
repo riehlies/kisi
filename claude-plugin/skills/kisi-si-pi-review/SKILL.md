@@ -62,6 +62,8 @@ or older …") – ask the user to open it in KiCad 6 or newer and save it; ther
    adds to the drop of the parts' rails), `losses` (heat per part, copper loss per rail and layer) and
    `flow` (power from the input through the regulators to the loads); `--pdn RAIL` adds the impedance of one
    rail against its target. Losses are power; part heat assumes all drawn power stays in the part.
+   Per rail `vias`: the vias with the most current against their current capacity – an IPC-2152 estimate at
+   ΔT 10 K, `via_capacity` – and a rail warning for vias over it.
    Temperature: `kisi thermal <board>` – steady-state estimate in still air at 25 °C (`--ambient`,
    `--airflow m/s`, `--vertical`, `--h`): board temperature per layer and hot spots, per part the junction
    temperature against Tj max and the case top (`parts[]`, `data_source` says whether the θ values come from

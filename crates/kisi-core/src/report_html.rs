@@ -66,6 +66,51 @@ fn s(v: &Value) -> String {
     }
 }
 
+/// The power table's line on the vias (`rails[].vias` of `kisi power`): how many are over their current
+/// capacity estimate, on which rails, and the most loaded via against its estimate. None without vias.
+#[inline(never)]
+fn via_line(pw: &Value) -> Option<String> {
+    let rails = arr(g(pw, "rails"));
+    let dt = num(g(g(pw, "via_capacity"), "delta_t_k"), 0);
+    let name = |r: &Value| {
+        let n = s(g(r, "rail"));
+        if g(r, "ground_return") == true {
+            format!("{n} (ground return)")
+        } else {
+            n
+        }
+    };
+    // the most loaded via of all rails (each rail's `most_loaded`, the first of equals)
+    let mut top: Option<(f64, String, &Value)> = None;
+    for r in rails {
+        let v = g(g(r, "vias"), "most_loaded");
+        if let Some(l) = g(v, "current_per_capacity").as_f64() {
+            if top.as_ref().is_none_or(|t| l > t.0) {
+                top = Some((l, name(r), v));
+            }
+        }
+    }
+    let (l, rail, v) = top?;
+    let most = format!(
+        "the most loaded: {} A on {rail}, {} % of {} A",
+        num(g(v, "current_a"), 2),
+        fx(100.0 * l, 0),
+        num(g(v, "capacity_a"), 2)
+    );
+    let over: Vec<String> = rails
+        .iter()
+        .filter_map(|r| {
+            let n = g(g(r, "vias"), "over_capacity").as_u64().filter(|&n| n > 0)?;
+            Some(format!("{n} on {}", name(r)))
+        })
+        .collect();
+    Some(if over.is_empty() {
+        format!("No via over its current capacity estimate (IPC-2152 at ΔT {dt} K); {most}.")
+    } else {
+        format!("Vias over their current capacity estimate (IPC-2152 at ΔT {dt} K): {}; {most}.", over.join(", "))
+    })
+}
+
 /// A channel criterion: label (with its unit), the factor to that unit, decimals.
 #[inline(never)]
 fn crit(key: &str) -> (&'static str, f64, usize) {
@@ -347,6 +392,10 @@ pub fn tables(rep: &Value) -> Vec<Table> {
         note.push_str(
             " kisi has no limit for the DC drop: compare it with the supply tolerance of the parts on each rail.",
         );
+        if let Some(l) = via_line(pw) {
+            note.push(' ');
+            note.push_str(&l);
+        }
         if !w.is_empty() {
             note = format!("Warnings: {}. {}", w.join("; "), note.trim_start());
         }

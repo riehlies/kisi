@@ -45,7 +45,7 @@
     ]
   },
   "via_current": {
-    "about": "Current capacity of a via barrel for the Losses view's via markers (estimate): the IPC-2152 conductor chart applied to the barrel's plating cross-section π·(d − t)·t (plating t inside the drilled hole d, as kisi's DC solver), at the temperature rise delta_t_k. A(mil²) = (a1·ΔT^a2 + a3) · I^(b1·ΔT^b2 + b3), solved for I.",
+    "about": "Current capacity of a via barrel for the Losses view's via markers and kisi power (estimate): the IPC-2152 conductor chart applied to the barrel's plating cross-section π·(d − t)·t (plating t inside the drilled hole d, as kisi's DC solver), at the temperature rise delta_t_k. A(mil²) = (a1·ΔT^a2 + a3) · I^(b1·ΔT^b2 + b3), solved for I.",
     "delta_t_k": 10,
     "a": [117.555, -0.913, 1.15],
     "b": [0.84, -0.108, 1.159],

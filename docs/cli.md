@@ -165,6 +165,17 @@ part, copper loss per rail and layer) and `flow` (power from the inputs through 
 `--pdn RAIL` adds the impedance Z(f) of one rail against its target. Regulators flagged `efficiency_estimate` use
 kisi's default of 85 %.
 
+Every rail (and the ground return) has `vias`: the vias and plated holes that carry at least 1 µA – `count` (vias),
+`plated_holes`, `over_capacity` and `plated_holes_over_capacity` (current above the capacity estimate),
+`barrel_loss_mw` (their barrels' I²R, part of the rail's copper loss), `most_loaded` (the via with the highest
+current against its estimate) and `highest_current`: the 10 with the most current (`omitted`: the rest), each with
+`at` (mm), `from`/`to` (the outermost layers its current flows between), `drill_mm`, `plated_hole`,
+`plating_area_mm2` (π·(d − t)·t), `current_a` (the largest of its barrel steps), `loss_mw`, `j_a_mm2` (current
+density in the plating), `capacity_a`, `current_per_capacity` and `over_capacity`. `capacity_a` is an **estimate**
+(the IPC-2152 chart at ΔT 10 K for the plating, [models](models.md#power)); `via_capacity` in the result
+says so, with the temperature rise and the plating thickness assumed. A via over its estimate is a warning of its
+rail; a plated hole over it is only counted (a soldered lead carries most of its current).
+
 ### `thermal`
 Steady-state temperature estimate from the losses of `power`: board temperature per layer and hot spots; per part
 (`parts[]`) the junction temperature against Tj max and the case top, with `data_source` (PI_THERMAL or package

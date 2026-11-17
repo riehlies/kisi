@@ -3553,6 +3553,203 @@
    "max_drop_mv": 14.1804,
    "max_j_a_mm2": 34.6167,
    "rail": "+6V",
+   "vias": {
+    "barrel_loss_mw": 0.161088,
+    "count": 18,
+    "highest_current": [
+     {
+      "at": [
+       200.901,
+       59.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.154083,
+      "current_per_capacity": 0.112628,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 8.71934,
+      "loss_mw": 0.0296687,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       199.901,
+       59.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.118732,
+      "current_per_capacity": 0.0867878,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 6.71888,
+      "loss_mw": 0.0176168,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       198.801,
+       57.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.115341,
+      "current_per_capacity": 0.0843085,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 6.52694,
+      "loss_mw": 0.0166246,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       198.801,
+       59.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.10941,
+      "current_per_capacity": 0.0799734,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 6.19133,
+      "loss_mw": 0.0149589,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       182.201,
+       87.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.109103,
+      "current_per_capacity": 0.0797492,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 6.17397,
+      "loss_mw": 0.0148752,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       199.901,
+       58.454
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0996102,
+      "current_per_capacity": 0.0728103,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 5.63679,
+      "loss_mw": 0.0123992,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       198.801,
+       58.454
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0944095,
+      "current_per_capacity": 0.0690089,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 5.34249,
+      "loss_mw": 0.0111383,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       181.401,
+       87.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0858441,
+      "current_per_capacity": 0.062748,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 4.85778,
+      "loss_mw": 0.00920891,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       189.801,
+       88.854
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.081708,
+      "current_per_capacity": 0.0597246,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 4.62373,
+      "loss_mw": 0.00834288,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       109.201,
+       90.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0721414,
+      "current_per_capacity": 0.0527319,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 4.08237,
+      "loss_mw": 0.00650364,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      200.901,
+      59.554
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.154083,
+     "current_per_capacity": 0.112628,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 8.71934,
+     "loss_mw": 0.0296687,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In4.Cu"
+    },
+    "omitted": 8,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 6.0,
    "warnings": []
   },
@@ -3562,6 +3759,16 @@
    "max_drop_mv": 0.523184,
    "max_j_a_mm2": 23.1778,
    "rail": "/Power Supply/VREG5V{slash}4",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3571,6 +3778,16 @@
    "max_drop_mv": 0.00437732,
    "max_j_a_mm2": 0.183768,
    "rail": "Net-(IC30-EN)",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3580,6 +3797,16 @@
    "max_drop_mv": 0.0126218,
    "max_j_a_mm2": 0.225969,
    "rail": "Net-(IC30-OUT)",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 1.8,
    "warnings": []
   },
@@ -3589,6 +3816,203 @@
    "max_drop_mv": 9.54995,
    "max_j_a_mm2": 10.0175,
    "rail": "+3V3",
+   "vias": {
+    "barrel_loss_mw": 0.0162477,
+    "count": 40,
+    "highest_current": [
+     {
+      "at": [
+       152.601,
+       104.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0558917,
+      "current_per_capacity": 0.0408542,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.16282,
+      "loss_mw": 0.00126246,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       154.001,
+       119.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0553117,
+      "current_per_capacity": 0.0404302,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.13,
+      "loss_mw": 0.00258678,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       161.201,
+       63.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0499381,
+      "current_per_capacity": 0.0365024,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.82592,
+      "loss_mw": 0.00311638,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       162.001,
+       63.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0486167,
+      "current_per_capacity": 0.0355365,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.75114,
+      "loss_mw": 0.00295365,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       160.401,
+       62.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0314272,
+      "current_per_capacity": 0.0229718,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.77841,
+      "loss_mw": 0.00123424,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       162.701,
+       63.454
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0310924,
+      "current_per_capacity": 0.0227271,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.75947,
+      "loss_mw": 0.00120808,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       186.101,
+       98.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.027,
+      "current_per_capacity": 0.0197357,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.52789,
+      "loss_mw": 0.000910992,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       160.401,
+       63.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.024854,
+      "current_per_capacity": 0.0181671,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.40645,
+      "loss_mw": 0.000771934,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       162.401,
+       84.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0200412,
+      "current_per_capacity": 0.0146492,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.1341,
+      "loss_mw": 0.000501921,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       171.201,
+       108.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0200412,
+      "current_per_capacity": 0.0146492,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.1341,
+      "loss_mw": 0.000501921,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      152.601,
+      104.954
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0558917,
+     "current_per_capacity": 0.0408542,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 3.16282,
+     "loss_mw": 0.00126246,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In4.Cu"
+    },
+    "omitted": 30,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3598,6 +4022,16 @@
    "max_drop_mv": 0.00089475,
    "max_j_a_mm2": 0.0253838,
    "rail": "/Attenuator Amp Switches/3V3_P2_SWITCH",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3607,6 +4041,16 @@
    "max_drop_mv": 0.377851,
    "max_j_a_mm2": 14.2983,
    "rail": "/Power Supply/VREG5V{slash}1",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3616,6 +4060,118 @@
    "max_drop_mv": 4.0594,
    "max_j_a_mm2": 25.2566,
    "rail": "+5V{slash}1",
+   "vias": {
+    "barrel_loss_mw": 0.0156621,
+    "count": 5,
+    "highest_current": [
+     {
+      "at": [
+       106.401,
+       101.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0906694,
+      "current_per_capacity": 0.066275,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 5.13084,
+      "loss_mw": 0.00695101,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       95.101,
+       110.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0703332,
+      "current_per_capacity": 0.0514102,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.98004,
+      "loss_mw": 0.0041826,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       104.901,
+       111.454
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0602448,
+      "current_per_capacity": 0.0440361,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.40916,
+      "loss_mw": 0.00306877,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       106.401,
+       100.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0415188,
+      "current_per_capacity": 0.0303482,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.34948,
+      "loss_mw": 0.00145752,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       92.801,
+       93.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.00161018,
+      "current_per_capacity": 0.00117696,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.0911174,
+      "loss_mw": 2.19216e-06,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      106.401,
+      101.554
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0906694,
+     "current_per_capacity": 0.066275,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 5.13084,
+     "loss_mw": 0.00695101,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "B.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3625,6 +4181,16 @@
    "max_drop_mv": 0.36082,
    "max_j_a_mm2": 8.49365,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_AMP",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3634,6 +4200,118 @@
    "max_drop_mv": 2.7592,
    "max_j_a_mm2": 22.4313,
    "rail": "+5V{slash}3",
+   "vias": {
+    "barrel_loss_mw": 0.0167981,
+    "count": 5,
+    "highest_current": [
+     {
+      "at": [
+       120.101,
+       121.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0848441,
+      "current_per_capacity": 0.062017,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 4.80119,
+      "loss_mw": 0.00608651,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       134.401,
+       126.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0703332,
+      "current_per_capacity": 0.0514102,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.98004,
+      "loss_mw": 0.0041826,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       119.401,
+       121.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0618964,
+      "current_per_capacity": 0.0452433,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.50262,
+      "loss_mw": 0.00323934,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       126.201,
+       115.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0602448,
+      "current_per_capacity": 0.0440361,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.40916,
+      "loss_mw": 0.00306877,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       127.001,
+       109.454
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0161625,
+      "current_per_capacity": 0.011814,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.914609,
+      "loss_mw": 0.000220873,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      120.101,
+      121.354
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0848441,
+     "current_per_capacity": 0.062017,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 4.80119,
+     "loss_mw": 0.00608651,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3643,6 +4321,101 @@
    "max_drop_mv": 0.707346,
    "max_j_a_mm2": 10.2343,
    "rail": "Net-(IC33-VPDT)",
+   "vias": {
+    "barrel_loss_mw": 0.0031073,
+    "count": 4,
+    "highest_current": [
+     {
+      "at": [
+       131.101,
+       125.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0525,
+      "current_per_capacity": 0.038375,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.97089,
+      "loss_mw": 0.00233048,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       126.412,
+       120.565
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       126.701,
+       124.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       131.601,
+       120.854
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      131.101,
+      125.154
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0525,
+     "current_per_capacity": 0.038375,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 2.97089,
+     "loss_mw": 0.00233048,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3652,6 +4425,16 @@
    "max_drop_mv": 1.18483e-09,
    "max_j_a_mm2": 5.84403e-08,
    "rail": "USB_POWER",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3661,6 +4444,135 @@
    "max_drop_mv": 17.4154,
    "max_j_a_mm2": 31.7022,
    "rail": "+5V{slash}2",
+   "vias": {
+    "barrel_loss_mw": 0.0177115,
+    "count": 6,
+    "highest_current": [
+     {
+      "at": [
+       191.001,
+       77.254
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.101362,
+      "current_per_capacity": 0.0740911,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 5.73594,
+      "loss_mw": 0.0086872,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       202.301,
+       116.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0703332,
+      "current_per_capacity": 0.0514102,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.98004,
+      "loss_mw": 0.0041826,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       197.901,
+       108.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0602448,
+      "current_per_capacity": 0.0440361,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.40916,
+      "loss_mw": 0.00306877,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       190.101,
+       77.254
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0437679,
+      "current_per_capacity": 0.0319922,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.47675,
+      "loss_mw": 0.00161971,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       205.501,
+       92.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0134122,
+      "current_per_capacity": 0.00980369,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.758976,
+      "loss_mw": 0.000152099,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       203.701,
+       85.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.00114009,
+      "current_per_capacity": 0.000833351,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.0645158,
+      "loss_mw": 1.09901e-06,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      191.001,
+      77.254
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.101362,
+     "current_per_capacity": 0.0740911,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 5.73594,
+     "loss_mw": 0.0086872,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3670,6 +4582,67 @@
    "max_drop_mv": 0.0238873,
    "max_j_a_mm2": 0.388031,
    "rail": "Net-(IC28-V_{S+})",
+   "vias": {
+    "barrel_loss_mw": 2.19769e-06,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       201.001,
+       89.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.00114,
+      "current_per_capacity": 0.000833286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.0645108,
+      "loss_mw": 1.09884e-06,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       204.701,
+       88.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.00114,
+      "current_per_capacity": 0.000833287,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.0645109,
+      "loss_mw": 1.09884e-06,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      204.701,
+      88.154
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.00114,
+     "current_per_capacity": 0.000833287,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.0645109,
+     "loss_mw": 1.09884e-06,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3679,6 +4652,101 @@
    "max_drop_mv": 0.442314,
    "max_j_a_mm2": 5.57207,
    "rail": "/2.LO + Ref Clock/3V3_CLKGEN",
+   "vias": {
+    "barrel_loss_mw": 0.00053225,
+    "count": 4,
+    "highest_current": [
+     {
+      "at": [
+       177.42,
+       93.73
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0176,
+      "current_per_capacity": 0.0128648,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.995956,
+      "loss_mw": 0.000387091,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       180.501,
+       95.254
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0088,
+      "current_per_capacity": 0.00643238,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.497978,
+      "loss_mw": 9.67726e-05,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       180.401,
+       97.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0044,
+      "current_per_capacity": 0.00321619,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.248989,
+      "loss_mw": 2.41932e-05,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       183.601,
+       99.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0044,
+      "current_per_capacity": 0.00321619,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.248989,
+      "loss_mw": 2.41932e-05,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      177.42,
+      93.73
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0176,
+     "current_per_capacity": 0.0128648,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.995956,
+     "loss_mw": 0.000387091,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In4.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3688,6 +4756,67 @@
    "max_drop_mv": 0.253895,
    "max_j_a_mm2": 3.33018,
    "rail": "/1.LO/3V3_LO1_3",
+   "vias": {
+    "barrel_loss_mw": 0.000169105,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       171.901,
+       113.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.01,
+      "current_per_capacity": 0.00730952,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.565884,
+      "loss_mw": 8.45524e-05,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       171.901,
+       115.904
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.01,
+      "current_per_capacity": 0.00730952,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.565884,
+      "loss_mw": 8.45524e-05,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      171.901,
+      113.654
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.01,
+     "current_per_capacity": 0.00730952,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.565884,
+     "loss_mw": 8.45524e-05,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3697,6 +4826,67 @@
    "max_drop_mv": 0.51626,
    "max_j_a_mm2": 6.83504,
    "rail": "Net-(C156-Pad1)",
+   "vias": {
+    "barrel_loss_mw": 0.00152194,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       195.601,
+       110.254
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.03,
+      "current_per_capacity": 0.0219286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.69765,
+      "loss_mw": 0.000760972,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       196.801,
+       114.854
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.03,
+      "current_per_capacity": 0.0219286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.69765,
+      "loss_mw": 0.000760972,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      195.601,
+      110.254
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.03,
+     "current_per_capacity": 0.0219286,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 1.69765,
+     "loss_mw": 0.000760972,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3706,6 +4896,203 @@
    "max_drop_mv": 14.6381,
    "max_j_a_mm2": 132.86,
    "rail": "+5V",
+   "vias": {
+    "barrel_loss_mw": 0.27849,
+    "count": 18,
+    "highest_current": [
+     {
+      "at": [
+       183.501,
+       57.254
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.352234,
+      "current_per_capacity": 0.257466,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 19.9324,
+      "loss_mw": 0.104903,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       183.501,
+       58.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.311442,
+      "current_per_capacity": 0.227649,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 17.624,
+      "loss_mw": 0.0820123,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       183.501,
+       58.854
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.279396,
+      "current_per_capacity": 0.204225,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 15.8106,
+      "loss_mw": 0.0660035,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       161.801,
+       49.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.097551,
+      "current_per_capacity": 0.0713051,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 5.52026,
+      "loss_mw": 0.00804617,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       169.301,
+       60.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0757392,
+      "current_per_capacity": 0.0553618,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 4.28596,
+      "loss_mw": 0.00485029,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       173.101,
+       56.904
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0675028,
+      "current_per_capacity": 0.0493414,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.81988,
+      "loss_mw": 0.00385274,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       163.101,
+       51.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0561646,
+      "current_per_capacity": 0.0410537,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.17827,
+      "loss_mw": 0.00266717,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       162.601,
+       51.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0463965,
+      "current_per_capacity": 0.0339137,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.62551,
+      "loss_mw": 0.00182011,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       173.001,
+       62.204
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0397001,
+      "current_per_capacity": 0.0290189,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.24656,
+      "loss_mw": 0.00133263,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       163.101,
+       50.254
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0302944,
+      "current_per_capacity": 0.0221438,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.71431,
+      "loss_mw": 0.000775981,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      183.501,
+      57.254
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.352234,
+     "current_per_capacity": 0.257466,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 19.9324,
+     "loss_mw": 0.104903,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 8,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3715,6 +5102,67 @@
    "max_drop_mv": 0.514073,
    "max_j_a_mm2": 4.37308,
    "rail": "Net-(IC27-VCC)",
+   "vias": {
+    "barrel_loss_mw": 0.000303645,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       198.001,
+       94.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0134,
+      "current_per_capacity": 0.00979476,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.758285,
+      "loss_mw": 0.000151822,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       204.401,
+       95.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0134,
+      "current_per_capacity": 0.00979476,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.758285,
+      "loss_mw": 0.000151822,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      204.401,
+      95.154
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0134,
+     "current_per_capacity": 0.00979476,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.758285,
+     "loss_mw": 0.000151822,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3724,6 +5172,67 @@
    "max_drop_mv": 0.256729,
    "max_j_a_mm2": 2.61282,
    "rail": "/HF Source/3V3_SRC_3",
+   "vias": {
+    "barrel_loss_mw": 0.000249929,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       160.201,
+       85.854
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.01,
+      "current_per_capacity": 0.00730952,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.565884,
+      "loss_mw": 0.000124965,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       160.201,
+       90.254
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.01,
+      "current_per_capacity": 0.00730952,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.565884,
+      "loss_mw": 0.000124965,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      160.201,
+      85.854
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.01,
+     "current_per_capacity": 0.00730952,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.565884,
+     "loss_mw": 0.000124965,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In4.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3733,6 +5242,16 @@
    "max_drop_mv": 0.375658,
    "max_j_a_mm2": 11.7017,
    "rail": "/Power Supply/VREG5V{slash}2",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3742,6 +5261,16 @@
    "max_drop_mv": 0.00118507,
    "max_j_a_mm2": 0.0279942,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3751,6 +5280,118 @@
    "max_drop_mv": 1.38465,
    "max_j_a_mm2": 14.7443,
    "rail": "Net-(IC29-VPDT)",
+   "vias": {
+    "barrel_loss_mw": 0.00517883,
+    "count": 5,
+    "highest_current": [
+     {
+      "at": [
+       199.001,
+       116.254
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.07,
+      "current_per_capacity": 0.0511667,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.96119,
+      "loss_mw": 0.00414307,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       190.176,
+       114.629
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       190.467,
+       110.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       194.376,
+       114.729
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       194.401,
+       110.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      199.001,
+      116.254
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.07,
+     "current_per_capacity": 0.0511667,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 3.96119,
+     "loss_mw": 0.00414307,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3760,6 +5401,16 @@
    "max_drop_mv": 0.00159026,
    "max_j_a_mm2": 0.0396694,
    "rail": "/Attenuator Amp Switches/3V3_P1_SWITCH",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3769,6 +5420,16 @@
    "max_drop_mv": 0.00574487,
    "max_j_a_mm2": 0.156953,
    "rail": "Net-(IC34-EN)",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3778,6 +5439,16 @@
    "max_drop_mv": 0.0134478,
    "max_j_a_mm2": 0.232051,
    "rail": "Net-(IC34-OUT)",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 1.8,
    "warnings": []
   },
@@ -3787,6 +5458,16 @@
    "max_drop_mv": 0.0908948,
    "max_j_a_mm2": 4.23411,
    "rail": "/1.LO/3V3_LDO2_LO1",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3796,6 +5477,101 @@
    "max_drop_mv": 0.842068,
    "max_j_a_mm2": 10.7114,
    "rail": "/1.LO/3V3_LO1_2",
+   "vias": {
+    "barrel_loss_mw": 0.00225724,
+    "count": 4,
+    "highest_current": [
+     {
+      "at": [
+       171.801,
+       119.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0342095,
+      "current_per_capacity": 0.0250055,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.93586,
+      "loss_mw": 0.00098951,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       176.151,
+       117.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.025,
+      "current_per_capacity": 0.0182738,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.41471,
+      "loss_mw": 0.000528452,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       177.901,
+       117.254
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.025,
+      "current_per_capacity": 0.0182738,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.41471,
+      "loss_mw": 0.000528452,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       171.001,
+       119.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0157905,
+      "current_per_capacity": 0.0115421,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.893558,
+      "loss_mw": 0.000210822,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      171.801,
+      119.154
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0342095,
+     "current_per_capacity": 0.0250055,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 1.93586,
+     "loss_mw": 0.00098951,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "B.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3805,6 +5581,16 @@
    "max_drop_mv": 0.000916362,
    "max_j_a_mm2": 0.0271415,
    "rail": "/Attenuator Amp Switches/3V3_P12_SWITCH",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3814,6 +5600,16 @@
    "max_drop_mv": 0.961,
    "max_j_a_mm2": 12.535,
    "rail": "/Power Supply/VREG3V3_SWL",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3823,6 +5619,135 @@
    "max_drop_mv": 3.78801,
    "max_j_a_mm2": 13.3457,
    "rail": "+5V{slash}4",
+   "vias": {
+    "barrel_loss_mw": 0.0085614,
+    "count": 6,
+    "highest_current": [
+     {
+      "at": [
+       170.763,
+       80.48
+      ],
+      "capacity_a": 1.5281,
+      "current_a": 0.070827,
+      "current_per_capacity": 0.0463496,
+      "drill_mm": 0.3,
+      "from": "F.Cu",
+      "j_a_mm2": 3.27926,
+      "loss_mw": 0.00347035,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0215984,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       167.601,
+       110.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0425154,
+      "current_per_capacity": 0.0310767,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.40588,
+      "loss_mw": 0.00152833,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       168.201,
+       110.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0403264,
+      "current_per_capacity": 0.0294767,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.28201,
+      "loss_mw": 0.00137501,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       168.801,
+       110.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0379906,
+      "current_per_capacity": 0.0277693,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.14983,
+      "loss_mw": 0.00122033,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       169.948,
+       80.48
+      ],
+      "capacity_a": 1.5281,
+      "current_a": 0.0336076,
+      "current_per_capacity": 0.021993,
+      "drill_mm": 0.3,
+      "from": "F.Cu",
+      "j_a_mm2": 1.55602,
+      "loss_mw": 0.00078136,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0215984,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       169.133,
+       80.48
+      ],
+      "capacity_a": 1.5281,
+      "current_a": 0.0163979,
+      "current_per_capacity": 0.0107309,
+      "drill_mm": 0.3,
+      "from": "F.Cu",
+      "j_a_mm2": 0.759215,
+      "loss_mw": 0.000186016,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0215984,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      170.763,
+      80.48
+     ],
+     "capacity_a": 1.5281,
+     "current_a": 0.070827,
+     "current_per_capacity": 0.0463496,
+     "drill_mm": 0.3,
+     "from": "F.Cu",
+     "j_a_mm2": 3.27926,
+     "loss_mw": 0.00347035,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0215984,
+     "to": "B.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3832,6 +5757,16 @@
    "max_drop_mv": 0.160007,
    "max_j_a_mm2": 6.82167,
    "rail": "/1.LO/3V3_LDO1_LO1",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3841,6 +5776,101 @@
    "max_drop_mv": 1.62665,
    "max_j_a_mm2": 14.0905,
    "rail": "/1.LO/3V3_LO1_1",
+   "vias": {
+    "barrel_loss_mw": 0.00623931,
+    "count": 4,
+    "highest_current": [
+     {
+      "at": [
+       169.601,
+       109.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0407222,
+      "current_per_capacity": 0.029766,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.30441,
+      "loss_mw": 0.00207229,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       177.888,
+       110.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0386993,
+      "current_per_capacity": 0.0282874,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.18993,
+      "loss_mw": 0.00187152,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       177.888,
+       111.654
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0313007,
+      "current_per_capacity": 0.0228793,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.77125,
+      "loss_mw": 0.00122432,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       168.901,
+       109.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0292778,
+      "current_per_capacity": 0.0214007,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.65678,
+      "loss_mw": 0.00107118,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      169.601,
+      109.554
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0407222,
+     "current_per_capacity": 0.029766,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 2.30441,
+     "loss_mw": 0.00207229,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In4.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3850,6 +5880,67 @@
    "max_drop_mv": 0.542007,
    "max_j_a_mm2": 5.26526,
    "rail": "Net-(C119-Pad1)",
+   "vias": {
+    "barrel_loss_mw": 0.00152194,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       97.101,
+       114.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.03,
+      "current_per_capacity": 0.0219286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.69765,
+      "loss_mw": 0.000760971,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       103.701,
+       113.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.03,
+      "current_per_capacity": 0.0219286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.69765,
+      "loss_mw": 0.000760972,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      103.701,
+      113.754
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.03,
+     "current_per_capacity": 0.0219286,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 1.69765,
+     "loss_mw": 0.000760972,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3859,6 +5950,67 @@
    "max_drop_mv": 0.267668,
    "max_j_a_mm2": 2.7762,
    "rail": "Net-(IC22-VCC)",
+   "vias": {
+    "barrel_loss_mw": 0.000303645,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       97.401,
+       98.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0134,
+      "current_per_capacity": 0.00979476,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.758285,
+      "loss_mw": 0.000151822,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       103.101,
+       99.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0134,
+      "current_per_capacity": 0.00979476,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.758285,
+      "loss_mw": 0.000151822,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      103.101,
+      99.154
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0134,
+     "current_per_capacity": 0.00979476,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.758285,
+     "loss_mw": 0.000151822,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3868,6 +6020,16 @@
    "max_drop_mv": 0.00605192,
    "max_j_a_mm2": 0.138105,
    "rail": "Net-(IC25-EN)",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3877,6 +6039,118 @@
    "max_drop_mv": 1.49249,
    "max_j_a_mm2": 13.8138,
    "rail": "Net-(IC24-VPDT)",
+   "vias": {
+    "barrel_loss_mw": 0.00517883,
+    "count": 5,
+    "highest_current": [
+     {
+      "at": [
+       97.101,
+       113.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.07,
+      "current_per_capacity": 0.0511667,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.96119,
+      "loss_mw": 0.00414307,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       97.201,
+       116.019
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       98.101,
+       119.888
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       102.293,
+       119.661
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       102.451,
+       115.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0175,
+      "current_per_capacity": 0.0127917,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.990297,
+      "loss_mw": 0.000258942,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      97.101,
+      113.554
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.07,
+     "current_per_capacity": 0.0511667,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 3.96119,
+     "loss_mw": 0.00414307,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3886,6 +6160,16 @@
    "max_drop_mv": 0.110911,
    "max_j_a_mm2": 4.87541,
    "rail": "/HF Source/3V3_LDO2_SRC",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3895,6 +6179,16 @@
    "max_drop_mv": 0.376987,
    "max_j_a_mm2": 14.4567,
    "rail": "/Power Supply/VREG5V{slash}3",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3904,6 +6198,135 @@
    "max_drop_mv": 1.06094,
    "max_j_a_mm2": 11.22,
    "rail": "/HF Source/3V3_SRC_2",
+   "vias": {
+    "barrel_loss_mw": 0.0032657,
+    "count": 6,
+    "highest_current": [
+     {
+      "at": [
+       159.601,
+       82.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.032372,
+      "current_per_capacity": 0.0236624,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.83188,
+      "loss_mw": 0.00130956,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       152.001,
+       87.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.025,
+      "current_per_capacity": 0.0182738,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.41471,
+      "loss_mw": 0.000781029,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       154.701,
+       84.854
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.025,
+      "current_per_capacity": 0.0182738,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.41471,
+      "loss_mw": 0.000781029,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       160.401,
+       82.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.017758,
+      "current_per_capacity": 0.0129802,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.0049,
+      "loss_mw": 0.000394072,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       137.701,
+       100.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 6.5e-05,
+      "current_per_capacity": 4.75119e-05,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.00367825,
+      "loss_mw": 5.27975e-09,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       139.501,
+       92.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 6.5e-05,
+      "current_per_capacity": 4.75119e-05,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.00367825,
+      "loss_mw": 5.27976e-09,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      159.601,
+      82.354
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.032372,
+     "current_per_capacity": 0.0236624,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 1.83188,
+     "loss_mw": 0.00130956,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In4.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3913,6 +6336,67 @@
    "max_drop_mv": 0.0173993,
    "max_j_a_mm2": 0.368735,
    "rail": "Net-(IC32-V_{S+})",
+   "vias": {
+    "barrel_loss_mw": 2.19769e-06,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       121.401,
+       106.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.00114,
+      "current_per_capacity": 0.000833286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.0645108,
+      "loss_mw": 1.09884e-06,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       123.801,
+       105.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.00114,
+      "current_per_capacity": 0.000833286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.0645108,
+      "loss_mw": 1.09884e-06,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      123.801,
+      105.354
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.00114,
+     "current_per_capacity": 0.000833286,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.0645108,
+     "loss_mw": 1.09884e-06,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3922,6 +6406,16 @@
    "max_drop_mv": 0.143248,
    "max_j_a_mm2": 6.14083,
    "rail": "/HF Source/3v3_LDO1_SRC",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3931,6 +6425,16 @@
    "max_drop_mv": 0.0249043,
    "max_j_a_mm2": 0.226015,
    "rail": "Net-(IC25-OUT)",
+   "vias": {
+    "barrel_loss_mw": 0.0,
+    "count": 0,
+    "highest_current": [],
+    "most_loaded": null,
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 1.8,
    "warnings": []
   },
@@ -3940,6 +6444,67 @@
    "max_drop_mv": 0.0022895,
    "max_j_a_mm2": 0.0239942,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT",
+   "vias": {
+    "barrel_loss_mw": 2.02444e-08,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       149.601,
+       114.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 9e-05,
+      "current_per_capacity": 6.57857e-05,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.00509296,
+      "loss_mw": 1.01221e-08,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       150.501,
+       107.854
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 9.00004e-05,
+      "current_per_capacity": 6.5786e-05,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.00509298,
+      "loss_mw": 1.01222e-08,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      150.501,
+      107.854
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 9.00004e-05,
+     "current_per_capacity": 6.5786e-05,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.00509298,
+     "loss_mw": 1.01222e-08,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In4.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3949,6 +6514,101 @@
    "max_drop_mv": 2.92778,
    "max_j_a_mm2": 15.7,
    "rail": "/HF Source/3V3_SRC_1",
+   "vias": {
+    "barrel_loss_mw": 0.00421884,
+    "count": 4,
+    "highest_current": [
+     {
+      "at": [
+       165.001,
+       85.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0405385,
+      "current_per_capacity": 0.0296317,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.29401,
+      "loss_mw": 0.00138951,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       152.964,
+       91.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0387593,
+      "current_per_capacity": 0.0283312,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 2.19333,
+      "loss_mw": 0.00127021,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       152.964,
+       90.854
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0312407,
+      "current_per_capacity": 0.0228355,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.76786,
+      "loss_mw": 0.000825218,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       165.801,
+       85.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0294616,
+      "current_per_capacity": 0.021535,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.66718,
+      "loss_mw": 0.0007339,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      165.001,
+      85.554
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0405385,
+     "current_per_capacity": 0.0296317,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 2.29401,
+     "loss_mw": 0.00138951,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "B.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 3.3,
    "warnings": []
   },
@@ -3958,6 +6618,203 @@
    "max_drop_mv": 1.30795,
    "max_j_a_mm2": 4.11202,
    "rail": "VCCINT",
+   "vias": {
+    "barrel_loss_mw": 0.00339098,
+    "count": 10,
+    "highest_current": [
+     {
+      "at": [
+       174.901,
+       53.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0252122,
+      "current_per_capacity": 0.0184289,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.42672,
+      "loss_mw": 0.000794343,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       174.901,
+       52.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0191598,
+      "current_per_capacity": 0.0140049,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.08422,
+      "loss_mw": 0.000458743,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       116.501,
+       72.454
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.016,
+      "current_per_capacity": 0.0116952,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.905415,
+      "loss_mw": 0.00031991,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       122.601,
+       77.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.016,
+      "current_per_capacity": 0.0116952,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.905415,
+      "loss_mw": 0.00031991,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       123.101,
+       64.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.016,
+      "current_per_capacity": 0.0116952,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.905415,
+      "loss_mw": 0.00031991,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       126.101,
+       75.454
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.016,
+      "current_per_capacity": 0.0116952,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.905415,
+      "loss_mw": 0.00031991,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       128.401,
+       72.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.016,
+      "current_per_capacity": 0.0116952,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.905415,
+      "loss_mw": 0.00031991,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       175.801,
+       52.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0139738,
+      "current_per_capacity": 0.0102142,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.790756,
+      "loss_mw": 0.000244015,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       176.701,
+       52.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0115614,
+      "current_per_capacity": 0.00845085,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.654243,
+      "loss_mw": 0.000167036,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     },
+     {
+      "at": [
+       177.601,
+       52.154
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0100928,
+      "current_per_capacity": 0.00737736,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.571136,
+      "loss_mw": 0.000127295,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In4.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      174.901,
+      53.054
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0252122,
+     "current_per_capacity": 0.0184289,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 1.42672,
+     "loss_mw": 0.000794343,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In4.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 1.2,
    "warnings": []
   },
@@ -3967,6 +6824,67 @@
    "max_drop_mv": 0.39705,
    "max_j_a_mm2": 4.332,
    "rail": "Net-(IC36-VCC)",
+   "vias": {
+    "barrel_loss_mw": 0.000303645,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       121.001,
+       114.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0134,
+      "current_per_capacity": 0.00979476,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.758285,
+      "loss_mw": 0.000151822,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       123.801,
+       109.854
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0134,
+      "current_per_capacity": 0.00979476,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.758285,
+      "loss_mw": 0.000151822,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      123.801,
+      109.854
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0134,
+     "current_per_capacity": 0.00979476,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.758285,
+     "loss_mw": 0.000151822,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3976,6 +6894,67 @@
    "max_drop_mv": 0.0202542,
    "max_j_a_mm2": 0.346821,
    "rail": "Net-(IC23-V_{S+})",
+   "vias": {
+    "barrel_loss_mw": 2.19769e-06,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       100.901,
+       94.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.00114,
+      "current_per_capacity": 0.000833286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.0645108,
+      "loss_mw": 1.09884e-06,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       103.201,
+       96.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.00114,
+      "current_per_capacity": 0.000833287,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.0645109,
+      "loss_mw": 1.09884e-06,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      103.201,
+      96.554
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.00114,
+     "current_per_capacity": 0.000833287,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 0.0645109,
+     "loss_mw": 1.09884e-06,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3985,6 +6964,67 @@
    "max_drop_mv": 0.462743,
    "max_j_a_mm2": 6.62975,
    "rail": "Net-(C190-Pad1)",
+   "vias": {
+    "barrel_loss_mw": 0.00152194,
+    "count": 2,
+    "highest_current": [
+     {
+      "at": [
+       126.301,
+       119.354
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.03,
+      "current_per_capacity": 0.0219286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.69765,
+      "loss_mw": 0.000760972,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     },
+     {
+      "at": [
+       130.801,
+       120.404
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.03,
+      "current_per_capacity": 0.0219286,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.69765,
+      "loss_mw": 0.000760971,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "In3.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      126.301,
+      119.354
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.03,
+     "current_per_capacity": 0.0219286,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 1.69765,
+     "loss_mw": 0.000760972,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "In3.Cu"
+    },
+    "omitted": 0,
+    "over_capacity": 0,
+    "plated_holes": 0,
+    "plated_holes_over_capacity": 0
+   },
    "voltage": 5.0,
    "warnings": []
   },
@@ -3995,6 +7035,203 @@
    "max_offset_mv": 0.191056,
    "rail": "GND",
    "return_a": -0.0128514,
+   "vias": {
+    "barrel_loss_mw": 0.0105208,
+    "count": 2461,
+    "highest_current": [
+     {
+      "at": [
+       142.651,
+       50.554
+      ],
+      "capacity_a": 4.53056,
+      "current_a": 0.235743,
+      "current_per_capacity": 0.0520339,
+      "drill_mm": 2.0,
+      "from": "F.Cu",
+      "j_a_mm2": 1.51978,
+      "loss_mw": 0.00253149,
+      "over_capacity": false,
+      "plated_hole": true,
+      "plating_area_mm2": 0.155116,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       186.801,
+       62.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0570755,
+      "current_per_capacity": 0.0417195,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 3.22981,
+      "loss_mw": 0.00133093,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       186.801,
+       61.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0335372,
+      "current_per_capacity": 0.0245141,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.89782,
+      "loss_mw": 0.000591779,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       185.901,
+       61.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0330333,
+      "current_per_capacity": 0.0241457,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.8693,
+      "loss_mw": 0.000580348,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       147.901,
+       53.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0309392,
+      "current_per_capacity": 0.0226151,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.7508,
+      "loss_mw": 0.000330576,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       185.001,
+       62.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0232491,
+      "current_per_capacity": 0.016994,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.31563,
+      "loss_mw": 0.000313481,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       131.001,
+       57.754
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0188651,
+      "current_per_capacity": 0.0137895,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.06755,
+      "loss_mw": 0.000135789,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       185.001,
+       61.054
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0177748,
+      "current_per_capacity": 0.0129925,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 1.00585,
+      "loss_mw": 0.000223148,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       173.101,
+       59.554
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.015221,
+      "current_per_capacity": 0.0111258,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.86133,
+      "loss_mw": 0.000104141,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     },
+     {
+      "at": [
+       129.101,
+       61.954
+      ],
+      "capacity_a": 1.36808,
+      "current_a": 0.0148137,
+      "current_per_capacity": 0.0108281,
+      "drill_mm": 0.25,
+      "from": "F.Cu",
+      "j_a_mm2": 0.838284,
+      "loss_mw": 9.69142e-05,
+      "over_capacity": false,
+      "plated_hole": false,
+      "plating_area_mm2": 0.0176715,
+      "to": "B.Cu"
+     }
+    ],
+    "most_loaded": {
+     "at": [
+      186.801,
+      62.054
+     ],
+     "capacity_a": 1.36808,
+     "current_a": 0.0570755,
+     "current_per_capacity": 0.0417195,
+     "drill_mm": 0.25,
+     "from": "F.Cu",
+     "j_a_mm2": 3.22981,
+     "loss_mw": 0.00133093,
+     "over_capacity": false,
+     "plated_hole": false,
+     "plating_area_mm2": 0.0176715,
+     "to": "B.Cu"
+    },
+    "omitted": 2454,
+    "over_capacity": 0,
+    "plated_holes": 3,
+    "plated_holes_over_capacity": 0
+   },
    "warnings": []
   }
  ],
@@ -4013,6 +7250,14 @@
   "not_fitted_total": 30,
   "unused_nets": 0,
   "warnings": []
+ },
+ "via_capacity": {
+  "delta_t_k": 10.0,
+  "estimate": true,
+  "min_current_a": 1e-06,
+  "note": "counts and lists: the vias and plated holes that carry at least min_current_a; current_a: the largest current of a via's barrel steps (DC solution); capacity_a: estimate – the IPC-2152 conductor chart (fit in data/thermal.json, via_current) for the plating cross-section π·(d − t)·t at a temperature rise of 10 K, plating t = 25 µm (assumption, as the DC solver); a via runs cooler than a track of the same cross-section, so the chart is conservative for a via. A plated hole with a soldered lead carries most of its current in the lead: holes over the estimate are counted (plated_holes_over_capacity) but not warned.",
+  "plating_um": 25.0,
+  "shown_per_rail": 10
  },
  "warnings": []
 }

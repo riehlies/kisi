@@ -10,7 +10,7 @@
 //   * new Worker(<URL below FAKE>) starts the bundled worker from a blob as a classic script; the worker asks the
 //     page for embedded files by message (lazy: the 12 MB mesher is decoded only when the full-wave backend runs);
 //   * a DOMContentLoaded listener added after the event (the modules run after decoding) is called at once.
-// Nothing of the fork's or the original's code is changed by this; see docs/research/advanced-solvers.md.
+// Nothing of the fork's or the original's code is changed by this (docs/reference.md, "Field views").
 "use strict";
 (() => {
   const FAKE = "https://kisi-advanced.invalid/src/";
@@ -95,13 +95,6 @@ globalThis.__KISI_SPARSE_WASM__ = () => getFile("kisi_sparse.wasm");
     };
   }
 
-  // opened from a blob: URL (the page built into kisi.html): the original drops the applied link from the address
-  // with replaceState(pathname + search), which a blob: URL cannot resolve; the same without the fragment instead
-  const replaceState = history.replaceState.bind(history);
-  history.replaceState = (st, title, url) => {
-    try { return replaceState(st, title, url); } catch (e) { return replaceState(st, title, location.href.split("#")[0]); }
-  };
-
   // decode the module bundle and Plotly, then start: Plotly by the page's own loader (its source replaced by the
   // blob URL at bundle time), the modules here
   window.__kisiReady = (async () => {
@@ -111,9 +104,14 @@ globalThis.__KISI_SPARSE_WASM__ = () => getFile("kisi_sparse.wasm");
     window.__kisiAdvBundle = { src, entries: meta.entries };
     window.__kisiAdv.tDecoded = performance.now();
   })();
-  window.__kisiStartPage = () => {
-    const run = (0, eval)("(" + window.__kisiAdvBundle.src + ")");
-    run(window.__kisiAdvBundle.entries["#page"]);
-    window.__kisiAdv.tStarted = performance.now();
-  };
+  // the page's modules as one classic script from a blob: URL (no eval, so a page served with a strict
+  // Content-Security-Policy – the KiCad plugin's loopback host – runs it as well)
+  window.__kisiStartPage = () => new Promise((resolve, reject) => {
+    const b = window.__kisiAdvBundle;
+    const url = URL.createObjectURL(new Blob(["(", b.src, ")(", JSON.stringify(b.entries["#page"]), ");\nwindow.__kisiAdv.tStarted = performance.now();\n"], { type: "text/javascript" }));
+    const s = Object.assign(document.createElement("script"), { src: url });
+    s.onload = () => { URL.revokeObjectURL(url); resolve(); };
+    s.onerror = () => reject(new Error("the page's modules did not start"));
+    document.head.append(s);
+  });
 })();

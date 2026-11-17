@@ -1,9 +1,8 @@
 {
- "about": "The field views of the fork riehlies/js_2d_fields (FORK.md there: src/fork/ is a separate layer on the original by Henrik Forstén, GPL-3.0). Not vendored: tools/fetch_fork.sh fetches this commit at build time for the optional bundle kisi-advanced.html (tools/advanced_bundle.py, docs/research/advanced-solvers.md). third_party/js_2d_fields (the original, unmodified) is independent of it.",
+ "about": "The field views of the fork riehlies/js_2d_fields (FORK.md there: src/fork/ is a separate layer on the original by Henrik Forstén, GPL-3.0). Not vendored: tools/fetch_fork.sh fetches this commit at build time and applies kisi's patches web/advanced/fork-patches/*.patch (README.md there: proposed for the fork; a pin that has taken one over drops it) for the field pages kisi-advanced.html and kisi-advanced-lite.html (tools/advanced_bundle.py, docs/reference.md \"Field views\"). third_party/js_2d_fields (the original, unmodified) is independent of it.",
  "repo": "https://github.com/riehlies/js_2d_fields",
  "commit": "07fbd3494492375c1c9364395e128a8e24a8d091",
  "date": "2026-11-03",
  "upstream_base": "b5ea9eba00cfbb5435ff26242f271300f8f39601",
- "hosted": "https://advpcb.davidriehl.de/tl/field_solver.html",
  "license": "GPL-3.0 (LICENSE, THIRD_PARTY_NOTICES.txt of the fork: Plotly MIT, gmsh GPL-2.0-or-later, OCCT LGPL-2.1 with exception, Eigen and Spectra MPL-2.0, Emscripten MIT/UIUC)"
 }

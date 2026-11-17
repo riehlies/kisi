@@ -1,9 +1,10 @@
 // kisi-advanced.html: what the single-file build changes on the fork's page, at run time (no file of the fork or the
 // original is changed):
-//   * a line on top: where this page comes from, its licence and sources (the files the About tab links to are
-//     embedded and opened from here);
-//   * without the full-wave modules in the build: the Full-wave choice disabled, Quasi-static chosen;
-//   * the Time domain tab hidden (its FFT module, fft.wasm, is not in this build).
+//   * a line in the tab bar: where this page comes from, its licence and sources (the files the About tab links to are
+//     embedded and opened from here) and, in the lite build, what it lacks;
+//   * lite build (no full-wave modules, tools/advanced_bundle.py without --fw): the Full-wave choice disabled,
+//     Quasi-static chosen;
+//   * the Time domain tab hidden (its FFT module, fft.wasm, is not in kisi's builds).
 const adv = window.__kisiAdv;
 const FORK = window.__kisiAdvInfo || {};
 const hasFW = adv && adv.has('wasm_solver/gmsh.wasm') && adv.has('wasm_solver/eigen_solver.wasm');
@@ -20,20 +21,21 @@ async function linkNotices() {
 function banner() {
     const el = document.createElement('div');
     el.id = 'kisi-adv-banner';
-    el.style.cssText = 'font:11px/1.4 system-ui,sans-serif;padding:2px 10px;opacity:.8;align-self:center;margin-left:auto;' +
-        'max-width:46%;text-align:right';
+    el.style.cssText = 'font:11px/1.4 system-ui,sans-serif;padding:2px 10px;opacity:.85;align-self:center;margin-left:auto;' +
+        'max-width:52%;text-align:right';
     const rev = (FORK.commit || '').slice(0, 7);
-    el.innerHTML = `kisi · Advanced solvers: field views of <a href="${FORK.repo}" target="_blank" rel="noopener">` +
-        `js_2d_fields (fork, ${rev})</a> by Henrik Forstén and David Riehl, GPL-3.0 – ` +
+    el.innerHTML = `kisi field views${hasFW ? '' : ' (lite)'}: <a href="${FORK.repo}" target="_blank" rel="noopener">` +
+        `js_2d_fields (fork ${rev}, ${(FORK.patches || []).length} patches of kisi)</a> by Henrik Forstén and David Riehl, GPL-3.0 – ` +
         `<a href="LICENSE.txt" target="_blank">licence</a>, <a href="THIRD_PARTY_NOTICES.txt" target="_blank">third-party notices</a>` +
-        (hasFW ? '' : ' · <b>quasi-static only in this build</b> (potential, |E|)');
+        (hasFW ? '' : '<br><b>Lite build: quasi-static solver only – potential and |E|.</b> ' +
+            'The full build kisi-advanced.html adds |H|, current density, power flow and losses (full-wave).');
     (document.querySelector('.tab-bar') || document.body).append(el);
 }
 function restrictBackends() {
     if (hasFW) return;
     const sel = document.getElementById('mesh_backend');
     if (!sel) return;
-    for (const o of sel.options) if (o.value !== 'rectilinear' && !o.disabled) { o.disabled = true; o.textContent += ' (not in this build)'; }
+    for (const o of sel.options) if (o.value !== 'rectilinear' && !o.disabled) { o.disabled = true; o.textContent += ' (not in the lite build)'; }
     if (sel.value !== 'rectilinear') { sel.value = 'rectilinear'; sel.dispatchEvent(new Event('change', { bubbles: true })); }
 }
 function hideTimeDomain() {

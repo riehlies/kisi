@@ -1,0 +1,237 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: riehlies <118917105+riehlies@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 22:06:17 +0000
+Subject: [PATCH] Link hand-over: solve and show a handed-over geometry
+ (src/fork/handover.js)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Proposed by kisi (riehlies/kisi, web/advanced/fork-patches/, its "Fields…"): the
+original's #params= link plus solve=1, view=, mode=, exc=, title=, editor=hide; each step
+reported to the opening page by postMessage. Uses the page's DOM and window.forkPlot only;
+one hook (the module's script tag).
+---
+ FORK.md                    |  15 ++++-
+ deploy/make_site.mjs       |   1 +
+ src/field_solver.html      |   1 +
+ src/fork/handover.js       | 118 +++++++++++++++++++++++++++++++++++++
+ tests/fork/check_hooks.mjs |   3 +-
+ 5 files changed, 134 insertions(+), 4 deletions(-)
+ create mode 100644 src/fork/handover.js
+
+diff --git a/FORK.md b/FORK.md
+index 585a863..e617fc6 100644
+--- a/FORK.md
++++ b/FORK.md
+@@ -31,6 +31,12 @@ Losses**, drawn at the original's *Plot Frequency*:
+ - an API for a script that drives the plot (`window.forkPlot`: `view()`, `views()`,
+   `setView(view, { fit })`, `fit()`), so that it needs neither the Plotly menu's
+   events nor the plot's layout
++- link hand-over (`src/fork/handover.js`): a link in the original's fragment form
++  (`#params=…`, *Copy link* of a custom geometry) with `&solve=1&view=sfield`
++  (`mode=odd|even`, `exc=Vd:1:peak`, `title=…`, `editor=hide`) is solved and shown in
++  that view without further clicks; a page that opened this one hands over the next
++  cross-section by changing the fragment (no reload) and hears each step by
++  `postMessage`. Used by kisi's “Fields…”
+ - the page opens with the Full-wave solver
+ - broadside coupled stripline: separate width of the upper trace (*Trace Width
+   (top)*, empty = same as the bottom trace)
+@@ -46,7 +52,9 @@ custom-geometry highlights); only its menu row is replaced by the fork's.
+ ```
+ src/fork/                 the fork, nothing of the original inside
+   plot_fields.js          plot: draw of the field views, menus, legend, arrows,
+-                          scale dialog, Plot Options controls, help wrapper
++                          scale dialog, Plot Options controls, help wrapper,
++                          the forkPlot API
++  handover.js             link hand-over (#params=… plus solve, view, mode, …)
+   field_views.js          traces and colour scales of every view (pure functions)
+   field_excitation.js     V / I / P conversion over Zc
+   field_lines.js          E field lines by equal flux
+@@ -71,8 +79,8 @@ fields it grafts onto the main-thread solver (`x, y, V, Ex, Ey`, `fieldFreq`).
+ ## Hooks in the original's files
+ 
+ Every fork line in the original's files is marked `FORK`;
+-`tests/fork/check_hooks.mjs` checks them and their number per file. The six
+-hooks of the field views:
++`tests/fork/check_hooks.mjs` checks them and their number per file. The seven
++hooks of the field views and the link hand-over:
+ 
+ | File | Line |
+ |---|---|
+@@ -81,6 +89,7 @@ hooks of the field views:
+ | `src/solve_worker.js` | `import { forkJobs } from './fork/worker_jobs.js';` |
+ | `src/solve_worker.js` | `...forkJobs(() => simSolver),` in `JOBS` |
+ | `src/field_solver.html` | `<script type="module" src="fork/plot_fields.js">` |
++| `src/field_solver.html` | `<script type="module" src="fork/handover.js">` |
+ | `src/field_solver.html` | `selected` on the Full-wave option |
+ 
+ Further changes of the original's files, also marked `FORK`:
+diff --git a/deploy/make_site.mjs b/deploy/make_site.mjs
+index fd1874e..e892082 100644
+--- a/deploy/make_site.mjs
++++ b/deploy/make_site.mjs
+@@ -57,6 +57,7 @@ walk('solve_worker.js');
+ walk('tri_solver/tri_backend.js');   // lazily imported through a computed path
+ walk('wasm_solver/gmsh.js');          // loaded via new URL(...) inside gmsh_mesh.js
+ walk('fork/plot_fields.js');          // loaded by a <script> tag of field_solver.html
++walk('fork/handover.js');             // loaded by a <script> tag of field_solver.html
+ 
+ // Each Emscripten loader fetches the .wasm with the same name next to it.
+ for (const f of [...files]) {
+diff --git a/src/field_solver.html b/src/field_solver.html
+index 249636b..1f1968e 100644
+--- a/src/field_solver.html
++++ b/src/field_solver.html
+@@ -2255,5 +2255,6 @@
+ </script>
+ <script type="module" src="app_solver.js"></script>
+ <script type="module" src="fork/plot_fields.js"></script><!-- FORK: field views (src/fork) -->
++<script type="module" src="fork/handover.js"></script><!-- FORK: link hand-over (src/fork/handover.js) -->
+ </body>
+ </html>
+diff --git a/src/fork/handover.js b/src/fork/handover.js
+new file mode 100644
+index 0000000..db7a877
+--- /dev/null
++++ b/src/fork/handover.js
+@@ -0,0 +1,118 @@
++// Copyright (C) 2026 David Riehl
++// Part of a modified version (fork) of js_2d_fields by Henrik Forstén,
++// https://github.com/Ttl/js_2d_fields. This file is new in the fork and is licensed
++// under the GNU General Public License v3, like the rest of the project (see
++// LICENSE). See FORK.md for the list of changes.
++//
++// Link hand-over: a cross-section handed over in the URL fragment is solved and shown in
++// a chosen view without further clicks.
++//
++//   field_solver.html#params=<the original's link form>&solve=1&view=sfield&mode=odd&exc=Vd:1:peak&title=<text>
++//
++// `params=` is the original's own link format (app_solver.js: settings as deflate-raw +
++// base64url, "z." prefix; the original reads only that key and applies it on load and on
++// every hashchange). The other keys are read here:
++//   solve=1       start the solve once the link's settings are in place
++//   view=         geometry | potential | efield | hfield | jfield | sfield | lossfield, after the solve
++//   mode=         odd | even (pairs)
++//   exc=          kind:value[:peak|rms], kind V | Vd | I | P (the fork's excitation)
++//   title=        a line shown above the plot (where the cross-section comes from)
++//   editor=hide   collapse the geometry editor under the plot (more room for the field view)
++// Any other key (a counter that makes a repeated link a new fragment) is ignored.
++// The fragment never reaches a server; a page that opened this one changes the fragment to
++// hand over the next cross-section without a reload (a location change of a window it
++// opened is allowed across origins and from file://). Each step is reported to that page
++// by postMessage ({ type: 'field-handover', phase, seq, solveMs, shownMs, error }).
++//
++// Only the page's DOM (the original's inputs and Solve button) and window.forkPlot
++// (plot_fields.js: view, views, setView, fit) are used, no internals of the original.
++const state = { seq: 0, phase: 'idle', solveMs: null, request: null, error: null };
++window.__fieldHandover = state;
++
++function readRequest(hash) {
++    if (!/[#&]params=/.test(hash || '')) return null;
++    const q = new URLSearchParams(hash.replace(/^#/, ''));
++    return { solve: q.get('solve') === '1', view: q.get('view'), mode: q.get('mode'), exc: q.get('exc'),
++             title: q.get('title'), editor: q.get('editor') };
++}
++const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
++async function until(test, ms, seq) {
++    const end = performance.now() + ms;
++    while (!test()) {
++        if (seq !== state.seq) throw new Error('superseded');
++        if (performance.now() > end) throw new Error('timeout');
++        await sleep(50);
++    }
++}
++function report(extra) {
++    Object.assign(state, extra);
++    try {
++        if (window.opener) window.opener.postMessage({ type: 'field-handover', ...state, request: undefined }, '*');
++    } catch { /* opener gone */ }
++}
++function setValue(id, value) {
++    const el = document.getElementById(id);
++    if (!el || value == null) return;
++    el.value = value;
++    el.dispatchEvent(new Event('change', { bubbles: true }));
++    el.dispatchEvent(new Event('input', { bubbles: true }));
++}
++function showTitle(text) {
++    let el = document.getElementById('handover-title');
++    if (!el) {
++        const host = document.getElementById('tab-geometry');
++        if (!host) return;
++        el = document.createElement('div');
++        el.id = 'handover-title';
++        el.style.cssText = 'padding:4px 10px;font-size:0.9em;border-bottom:1px solid rgba(128,128,128,.35)';
++        host.prepend(el);
++    }
++    el.textContent = text;
++    window.dispatchEvent(new Event('resize'));   // the plot takes the room left
++}
++const plot = () => window.forkPlot || null;
++
++async function apply(req) {
++    const seq = ++state.seq;
++    report({ phase: 'loading', request: req, solveMs: null, shownMs: null, error: null });
++    try {
++        // the original applies the link asynchronously and then removes it from the address bar
++        await until(() => !/[#&]params=/.test(location.hash), 20000, seq);
++        await sleep(0);
++        if (req.title) showTitle(req.title);
++        if (req.editor === 'hide') {
++            const b = document.getElementById('btn-custom-collapse');
++            if (b && /hide/i.test(b.textContent)) b.click();
++        }
++        if (req.mode === 'odd' || req.mode === 'even') setValue('plot-mode', req.mode);
++        if (req.exc) {
++            const [kind, value, form] = req.exc.split(':');
++            setValue('fork-exc-kind', kind);
++            if (value) setValue('fork-exc-value', value);
++            if (form) setValue('fork-exc-rms', form);
++        }
++        if (!req.solve) { report({ phase: 'ready' }); return; }
++        const btn = document.getElementById('btn_solve');
++        await until(() => btn && !btn.classList.contains('stop-mode'), 600000, seq);
++        const t = performance.now();
++        report({ phase: 'solving' });
++        btn.click();
++        await until(() => btn.classList.contains('stop-mode') || performance.now() - t > 1000, 5000, seq);
++        await until(() => !btn.classList.contains('stop-mode'), 3600000, seq);
++        report({ phase: 'solved', solveMs: Math.round(performance.now() - t) });
++        // the view once the solve offers it, the axes fitted to the new cross-section
++        const want = req.view || 'geometry';
++        await until(() => plot() && plot().views().includes(want), 20000, seq);
++        plot().setView(want, { fit: true });
++        report({ phase: 'shown', shownMs: Math.round(performance.now() - t), view: plot().view() });
++    } catch (e) {
++        if (String(e && e.message) !== 'superseded') report({ phase: 'error', error: String((e && e.message) || e) });
++    }
++}
++
++const first = readRequest(location.hash);   // read before the original consumes the fragment
++if (first) apply(first);
++window.addEventListener('hashchange', () => {
++    const req = readRequest(location.hash);
++    if (req) apply(req);
++});
+diff --git a/tests/fork/check_hooks.mjs b/tests/fork/check_hooks.mjs
+index bf19fb9..0a98571 100644
+--- a/tests/fork/check_hooks.mjs
++++ b/tests/fork/check_hooks.mjs
+@@ -21,6 +21,7 @@ const HOOKS = [
+     ['src/solve_worker.js', "import { forkJobs } from './fork/worker_jobs.js'", 'worker job import'],
+     ['src/solve_worker.js', '...forkJobs(() => simSolver)', 'worker job registration'],
+     ['src/field_solver.html', 'src="fork/plot_fields.js"', 'fork module loaded by the page'],
++    ['src/field_solver.html', 'src="fork/handover.js"', 'link hand-over loaded by the page'],
+     ['src/field_solver.html', '<option value="fullwave_mqs" selected>', 'Full-wave solver as the default'],
+     // Separate upper trace width of the broadside coupled stripline (a change of the
+     // original's solver, not a hook: candidate for a pull request upstream).
+@@ -34,7 +35,7 @@ for (const [file, needle, what] of HOOKS) check(read(file).includes(needle), `${
+ // Number of FORK-marked lines per file: a different count after a merge means a fork
+ // line was lost or doubled.
+ const MARKED = {
+-    'src/plot.js': 1, 'src/app_solver.js': 3, 'src/solve_worker.js': 2, 'src/field_solver.html': 8,
++    'src/plot.js': 1, 'src/app_solver.js': 3, 'src/solve_worker.js': 2, 'src/field_solver.html': 9,
+     'src/broadside_stripline.js': 6, 'src/solver_factory.js': 1, 'src/tri_solver/tri_backend.js': 1,
+ };
+ for (const [file, n] of Object.entries(MARKED)) {

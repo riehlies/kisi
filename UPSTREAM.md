@@ -75,17 +75,20 @@ The geometry text and the result contract need no change; sweeps (RLGC(f), α) w
 frequency models of the line where the backend is chosen, which is a model change with its own validation
 (`validation/cst_xs/compare.py`, loss sweep, with the independent MQS check `mqs_check.py`, is the start of it).
 
-## The fork's field views (prototype, optional bundle)
+## The fork's field views (kisi-advanced.html)
 
-`kisi-advanced.html` (`tools/advanced_bundle.py`, `docs/research/advanced-solvers.md`) is the page of the fork
-[riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) – the original plus its field views in `src/fork/`
-– as one file, opened by a viewer built with `tools/bundle.py --advanced` for a clicked segment. The fork is not
-vendored: `tools/fetch_fork.sh` fetches the commit pinned in `third_party/js_2d_fields_fork.json` (its own upstream
-base, b5ea9eb, is newer than `third_party/UPSTREAM_REV`). The adapters are `web/advanced/` (hand-over in the
-original's `#params=` link form, the single-file runtime, kisi-sparse stand-ins for the original's `solver.wasm` and
-the two linear solves of `eigen_solver.wasm`); with `--fw` the full-wave modules of
-`tools/build_forsten_fullwave.sh` go in. A fork update: change the pin, rebuild; `advanced_bundle.py` stops on any
-change of the page it cannot place.
+The field pages `kisi-advanced.html` (full-wave, every view) and `kisi-advanced-lite.html` (quasi-static) are the page
+of the fork [riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) – the original plus its field views in
+`src/fork/` – as one file each (`tools/advanced_bundle.py`; what the viewer hands over: `docs/reference.md`, "Field
+views"). The fork is not vendored: `tools/fetch_fork.sh` fetches the commit pinned in
+`third_party/js_2d_fields_fork.json` (its own upstream base, b5ea9eb, is newer than `third_party/UPSTREAM_REV`) and
+applies kisi's patches `web/advanced/fork-patches/*.patch` – changes proposed for the fork (plot API, link hand-over,
+light theme), kept in kisi until the fork takes them over by hand; a patch that does not apply fails the build
+(`README.md` there says which pin drops which patch). The adapters are `web/advanced/` (the single-file runtime, the
+page's licence line, kisi-sparse stand-ins for the original's `solver.wasm` and the two linear solves of
+`eigen_solver.wasm`); with `--fw` the full-wave modules of `tools/build_forsten_fullwave.sh` go in – built from
+`third_party/UPSTREAM_REV`, not from the fork's base. A fork update: change the pin, drop or refresh the patches,
+rebuild; `advanced_bundle.py` stops on any change of the page it cannot place.
 
 ## Updating to a new upstream version
 

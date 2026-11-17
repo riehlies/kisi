@@ -116,6 +116,10 @@ and the lumped R–L–C.
 - `practice.py` measures run time, memory and bundle size on the example boards → `results/practice.json`.
 - `wasm_speed.mjs` runs one case in the WebAssembly build of kisi-fdtd (`fd_run`, the engine a browser would use)
   and prints its run time and cell rate, for the comparison with the native solver.
+- `volume_fields.py` and `volume_wasm.mjs` (research prototype, `docs/research/fdtd-field-view.md`): the volume field
+  output of `kisi-fdtd case.json --volume out.bin` (case key `volume`: DFT of E and H on the domain nodes at chosen
+  frequencies, 1 W incident; `fd_run_volume` in WebAssembly) – power balance against S, cut-plane pictures, a VTK
+  file for ParaView.
 - The planned measured test board is in branch `feat/test-board` (`validation/test_board.md` there).
 - **Board vias** (`BOARD_VIAS.md`): `kisi-validate via-case` cuts a via (or the via pair of a differential pair)
   out of a KiCad board as a case with its 2×thru fixtures; `board_vias.py` exports, runs and compares three

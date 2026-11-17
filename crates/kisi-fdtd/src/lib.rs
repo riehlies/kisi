@@ -152,6 +152,100 @@ pub struct FieldPlane {
     pub im: Vec<f32>,
 }
 
+/// Volume field output (research prototype for a 3D field view, `docs/research/fdtd-field-view.md`;
+/// not used by the product): a running DFT of all six field components at `freqs` on every
+/// `stride`-th mesh line of the domain (the PML left out), sampled every `every` time steps.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct VolumeSpec {
+    pub freqs: Vec<f64>,
+    #[serde(default = "one")]
+    pub stride: usize,
+    /// sampling interval in time steps; 0: automatic, six samples per period of `fmax` (the
+    /// excitation has no content above about 1.5·fmax, so the sampled DFT does not alias)
+    #[serde(default)]
+    pub every: usize,
+}
+
+/// Result of `simulate_volume`: phasors (peak values) for 1 W incident at the excited port, on the
+/// sampled mesh nodes (i, j, k; k fastest) with the Yee offsets of each component: Ex at
+/// (x_i+½, y_j, z_k), Ey (x_i, y_j+½, z_k), Ez (x_i, y_j, z_k+½), Hx (x_i, y_j+½, z_k+½),
+/// Hy (x_i+½, y_j, z_k+½), Hz (x_i+½, y_j+½, z_k), "+½" meaning the next line of the full mesh.
+/// E and H refer to the same instant (H's half step is in its DFT kernel).
+#[derive(Debug, Clone)]
+pub struct VolumeField {
+    pub freqs: Vec<f64>,
+    pub every: usize,
+    pub stride: usize,
+    pub dt: f64,
+    /// mesh lines of the sampled nodes and the following line of the full mesh (mm)
+    pub x: Vec<f64>,
+    pub y: Vec<f64>,
+    pub z: Vec<f64>,
+    pub x1: Vec<f64>,
+    pub y1: Vec<f64>,
+    pub z1: Vec<f64>,
+    /// [freq · 6 + comp] (Ex, Ey, Ez, Hx, Hy, Hz), V/m and A/m
+    pub re: Vec<Vec<f32>>,
+    pub im: Vec<Vec<f32>>,
+    /// per E edge: free fraction (0 metal … 255 free), relative permittivity, conductivity (S/m)
+    pub free: [Vec<u8>; 3],
+    pub epsr: [Vec<f32>; 3],
+    pub sigma: [Vec<f32>; 3],
+}
+
+impl VolumeField {
+    /// One binary blob: a JSON header (u32 length first) and the arrays it lists, each at an
+    /// offset that is a multiple of 4 (little endian).
+    pub fn to_bytes(&self, extra: serde_json::Value) -> Vec<u8> {
+        let n = self.x.len() * self.y.len() * self.z.len();
+        let mut arrays = Vec::new();
+        let mut off = 0usize;
+        let mut add = |name: String, dtype: &str, bytes: usize| {
+            arrays.push(serde_json::json!({ "name": name, "dtype": dtype, "offset": off, "len": n }));
+            off += bytes.div_ceil(4) * 4;
+        };
+        let comps = ["Ex", "Ey", "Ez", "Hx", "Hy", "Hz"];
+        for q in 0..self.re.len() {
+            add(format!("{}_{}_re", comps[q % 6], q / 6), "f32", 4 * n);
+            add(format!("{}_{}_im", comps[q % 6], q / 6), "f32", 4 * n);
+        }
+        for a in 0..3 {
+            add(format!("free{a}"), "u8", n);
+        }
+        for a in 0..3 {
+            add(format!("epsr{a}"), "f32", 4 * n);
+        }
+        for a in 0..3 {
+            add(format!("sigma{a}"), "f32", 4 * n);
+        }
+        let head = serde_json::json!({
+            "freqs": self.freqs, "every": self.every, "stride": self.stride, "dt": self.dt,
+            "x": self.x, "y": self.y, "z": self.z, "x1": self.x1, "y1": self.y1, "z1": self.z1,
+            "arrays": arrays, "extra": extra,
+        })
+        .to_string();
+        let hl = head.len().div_ceil(4) * 4;
+        let mut out = Vec::with_capacity(4 + hl + off);
+        out.extend_from_slice(&(hl as u32).to_le_bytes());
+        out.extend_from_slice(head.as_bytes());
+        out.resize(4 + hl, b' ');
+        let pad = |o: &mut Vec<u8>| o.resize(o.len().div_ceil(4) * 4, 0);
+        for q in 0..self.re.len() {
+            for v in [&self.re[q], &self.im[q]] {
+                v.iter().for_each(|x| out.extend_from_slice(&x.to_le_bytes()));
+            }
+        }
+        for a in 0..3 {
+            out.extend_from_slice(&self.free[a]);
+            pad(&mut out);
+        }
+        for v in self.epsr.iter().chain(self.sigma.iter()) {
+            v.iter().for_each(|x| out.extend_from_slice(&x.to_le_bytes()));
+        }
+        out
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MeshSpec {
     /// largest cell (mm); default λ/20 in the densest dielectric at fmax
@@ -1015,8 +1109,9 @@ fn run(
     m: &Mesh,
     ex: usize,
     record: bool,
+    vol: Option<&VolumeSpec>,
     on_progress: &mut dyn FnMut(usize, f64),
-) -> (f64, usize, Vec<Vec<f64>>, Vec<Vec<f64>>, Vec<f64>, Vec<FieldPlane>) {
+) -> (f64, usize, Vec<Vec<f64>>, Vec<Vec<f64>>, Vec<f64>, Vec<FieldPlane>, Option<VolumeField>) {
     let g = Grid::new(m);
     let (nx, ny, nz) = (g.nx, g.ny, g.nz);
     let n = nx * ny * nz;
@@ -1359,6 +1454,44 @@ fn run(
             dt0
         }
     };
+    // volume output: the sampled nodes (domain only), the material there, empty accumulators
+    let mut volume = vol.map(|v| {
+        let p = if c.boundary == "pml" { c.pml_cells } else { 0 };
+        let st = v.stride.max(1);
+        let pick = |n: usize| (p..n - p).step_by(st).collect::<Vec<usize>>();
+        let (ix, jy, kz) = (pick(nx), pick(ny), pick(nz));
+        let at = |l: &[f64], i: &[usize]| i.iter().map(|&q| l[q]).collect::<Vec<f64>>();
+        let next = |l: &[f64], i: &[usize]| i.iter().map(|&q| l[(q + 1).min(l.len() - 1)]).collect::<Vec<f64>>();
+        let mut ids = Vec::with_capacity(ix.len() * jy.len() * kz.len());
+        for &i in &ix {
+            for &j in &jy {
+                for &k in &kz {
+                    ids.push(g.id(i, j, k));
+                }
+            }
+        }
+        let every = if v.every > 0 { v.every } else { ((1.0 / (6.0 * c.fmax * dt)).floor() as usize).max(1) };
+        let ns = ids.len();
+        let nq = 6 * v.freqs.len();
+        let vf = VolumeField {
+            freqs: v.freqs.clone(),
+            every,
+            stride: st,
+            dt,
+            x: at(&m.x, &ix),
+            y: at(&m.y, &jy),
+            z: at(&m.z, &kz),
+            x1: next(&m.x, &ix),
+            y1: next(&m.y, &jy),
+            z1: next(&m.z, &kz),
+            re: vec![vec![0f32; ns]; nq],
+            im: vec![vec![0f32; ns]; nq],
+            free: std::array::from_fn(|a| ids.iter().map(|&q| (free[a][q] * 255.0).round() as u8).collect()),
+            epsr: std::array::from_fn(|a| ids.iter().map(|&q| epsr[a][q]).collect()),
+            sigma: std::array::from_fn(|a| ids.iter().map(|&q| sig[a][q]).collect()),
+        };
+        (ids, vf)
+    });
     drop(free);
     drop(sig);
     // ports: Ez edges, lumped resistor (and source) per edge
@@ -1631,6 +1764,25 @@ fn run(
                 }
             }
         }
+        // --- volume DFT: E at (step + 1)·Δt, H at (step + ½)·Δt
+        if let Some((ids, vf)) = volume.as_mut() {
+            if (step + 1) % vf.every == 0 {
+                for (fi, &f) in vf.freqs.iter().enumerate() {
+                    for comp in 0..6 {
+                        let tt = (step as f64 + if comp < 3 { 1.0 } else { 0.5 }) * dt;
+                        let w = 2.0 * std::f64::consts::PI * f * tt;
+                        let (cr, ci) = (w.cos() as f32, -w.sin() as f32);
+                        let src = if comp < 3 { &e[comp] } else { &h[comp - 3] };
+                        let (re, im) = (&mut vf.re[fi * 6 + comp], &mut vf.im[fi * 6 + comp]);
+                        for (q, &id) in ids.iter().enumerate() {
+                            let x = src[id];
+                            re[q] += x * cr;
+                            im[q] += x * ci;
+                        }
+                    }
+                }
+            }
+        }
         // --- energy check
         if step % 200 == 0 {
             // field energy ~ Σ ε E² + μ0 H² (without the cell volumes; only the decay matters)
@@ -1650,7 +1802,7 @@ fn run(
         }
     }
     let fields: Vec<FieldPlane> = mons.into_iter().flat_map(|m| m.2).collect();
-    (dt, steps, vs, is, exc, fields)
+    (dt, steps, vs, is, exc, fields, volume.map(|v| v.1))
 }
 
 /// Split the three field arrays into slabs of whole i-planes and update them on `threads`
@@ -1923,46 +2075,97 @@ pub fn simulate(c: &Case, mesh: Option<Mesh>, on_progress: &mut dyn FnMut(usize,
     let exc_list = c.excite.clone().unwrap_or_else(|| (0..c.ports.len()).collect());
     let mut runs = Vec::new();
     for &ex in &exc_list {
-        let t0 = now();
         let record = !c.monitors.is_empty() && ex == exc_list[0];
-        let (dt, steps, vs, is, _, mut fields) = run(c, &m, ex, record, &mut |s, db| on_progress(ex, s, db));
-        let secs = now() - t0;
-        let mut s = Vec::new();
-        let z = c.ports[ex].r;
-        let wave = |pi: usize, f: f64| -> ((f64, f64), (f64, f64)) {
-            let (v, i) = (dft(&vs[pi], dt, f, 0.0), dft(&is[pi], dt, f, -0.5 * dt));
-            let zr = c.ports[pi].r;
-            let k = 1.0 / (2.0 * zr.sqrt());
-            (((v.0 + zr * i.0) * k, (v.1 + zr * i.1) * k), ((v.0 - zr * i.0) * k, (v.1 - zr * i.1) * k))
-        };
-        let _ = z;
-        for pi in 0..c.ports.len() {
-            let row: Vec<(f64, f64)> = freq
-                .iter()
-                .map(|&f| {
-                    let (a, _) = wave(ex, f);
-                    let (_, b) = wave(pi, f);
-                    let den = a.0 * a.0 + a.1 * a.1;
-                    ((b.0 * a.0 + b.1 * a.1) / den, (b.1 * a.0 - b.0 * a.1) / den)
-                })
-                .collect();
-            s.push(row);
-        }
-        // fields per volt of the incident wave: DFT·Δt / (a·√Z)
-        for fp in fields.iter_mut() {
-            let (a, _) = wave(ex, fp.freq);
-            let zr = c.ports[ex].r.sqrt();
-            let (ar, ai) = (a.0 * zr, a.1 * zr);
-            let den = ar * ar + ai * ai;
-            for q in 0..fp.re.len() {
-                let (xr, xi) = (fp.re[q] as f64 * dt, fp.im[q] as f64 * dt);
-                fp.re[q] = ((xr * ar + xi * ai) / den) as f32;
-                fp.im[q] = ((xi * ar - xr * ai) / den) as f32;
-            }
-        }
-        runs.push(RunResult { excited: ex, steps, dt, seconds: secs, s, fields });
+        runs.push(excite(c, &m, &freq, ex, record, None, on_progress).0);
     }
     Result { name: c.name.clone(), cells: m.x.len() * m.y.len() * m.z.len(), mesh: m, freq, runs }
+}
+
+/// One excitation: S column, monitor planes and (with `vol`) the volume fields, all per incident wave.
+fn excite(
+    c: &Case,
+    m: &Mesh,
+    freq: &[f64],
+    ex: usize,
+    record: bool,
+    vol: Option<&VolumeSpec>,
+    on_progress: &mut dyn FnMut(usize, usize, f64),
+) -> (RunResult, Option<VolumeField>) {
+    let t0 = now();
+    let (dt, steps, vs, is, _, mut fields, mut volume) =
+        run(c, m, ex, record, vol, &mut |s, db| on_progress(ex, s, db));
+    let secs = now() - t0;
+    let mut s = Vec::new();
+    let wave = |pi: usize, f: f64| -> ((f64, f64), (f64, f64)) {
+        let (v, i) = (dft(&vs[pi], dt, f, 0.0), dft(&is[pi], dt, f, -0.5 * dt));
+        let zr = c.ports[pi].r;
+        let k = 1.0 / (2.0 * zr.sqrt());
+        (((v.0 + zr * i.0) * k, (v.1 + zr * i.1) * k), ((v.0 - zr * i.0) * k, (v.1 - zr * i.1) * k))
+    };
+    for pi in 0..c.ports.len() {
+        let row: Vec<(f64, f64)> = freq
+            .iter()
+            .map(|&f| {
+                let (a, _) = wave(ex, f);
+                let (_, b) = wave(pi, f);
+                let den = a.0 * a.0 + a.1 * a.1;
+                ((b.0 * a.0 + b.1 * a.1) / den, (b.1 * a.0 - b.0 * a.1) / den)
+            })
+            .collect();
+        s.push(row);
+    }
+    // fields per volt of the incident wave: DFT·Δt / (a·√Z)
+    for fp in fields.iter_mut() {
+        let (a, _) = wave(ex, fp.freq);
+        let zr = c.ports[ex].r.sqrt();
+        let (ar, ai) = (a.0 * zr, a.1 * zr);
+        let den = ar * ar + ai * ai;
+        for q in 0..fp.re.len() {
+            let (xr, xi) = (fp.re[q] as f64 * dt, fp.im[q] as f64 * dt);
+            fp.re[q] = ((xr * ar + xi * ai) / den) as f32;
+            fp.im[q] = ((xi * ar - xr * ai) / den) as f32;
+        }
+    }
+    // volume: peak phasors for 1 W incident (½|a|² = 1 W): DFT·Δt·every·√2 / a
+    if let Some(vf) = volume.as_mut() {
+        let w = dt * vf.every as f64 * std::f64::consts::SQRT_2;
+        for (fi, &f) in vf.freqs.clone().iter().enumerate() {
+            let (a, _) = wave(ex, f);
+            let den = a.0 * a.0 + a.1 * a.1;
+            for comp in 0..6 {
+                let q = fi * 6 + comp;
+                for (xr, xi) in vf.re[q].iter_mut().zip(vf.im[q].iter_mut()) {
+                    let (r, i) = (*xr as f64 * w, *xi as f64 * w);
+                    *xr = ((r * a.0 + i * a.1) / den) as f32;
+                    *xi = ((i * a.0 - r * a.1) / den) as f32;
+                }
+            }
+        }
+    }
+    (RunResult { excited: ex, steps, dt, seconds: secs, s, fields }, volume)
+}
+
+/// Research prototype (not used by the product): one excitation of port `ex` with the volume
+/// field output of `vol`; the S column of that excitation on the case's `nf` points.
+pub fn simulate_volume(
+    c: &Case,
+    mesh: Option<Mesh>,
+    ex: usize,
+    vol: &VolumeSpec,
+    on_progress: &mut dyn FnMut(usize, usize, f64),
+) -> (Result, VolumeField) {
+    let m = mesh.unwrap_or_else(|| make_mesh(c));
+    let freq: Vec<f64> = (0..c.nf).map(|i| c.fmax * (i as f64 + 1.0) / c.nf as f64).collect();
+    let (run, v) = excite(c, &m, &freq, ex, false, Some(vol), on_progress);
+    let r = Result { name: c.name.clone(), cells: m.x.len() * m.y.len() * m.z.len(), mesh: m, freq, runs: vec![run] };
+    (r, v.expect("volume requested"))
+}
+
+/// Header fields of a volume blob: the run's S column (on the case's frequency points) and size.
+pub fn volume_header(r: &Result) -> serde_json::Value {
+    let run = &r.runs[0];
+    serde_json::json!({ "name": r.name, "cells": r.cells, "freq": r.freq, "s": run.s, "excited": run.excited,
+        "steps": run.steps, "dt": run.dt, "seconds": run.seconds })
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -2016,6 +2219,28 @@ mod wasm {
             Err(e) => (1, serde_json::json!({ "error": e }).to_string()),
         };
         OUT.with(|o| *o.borrow_mut() = s.into_bytes());
+        code
+    }
+    /// Research prototype: input {"case", "mesh" | null, "volume": VolumeSpec, "port"}; output the
+    /// binary blob of `VolumeField::to_bytes` (the S column in its header) or {"error"} (JSON).
+    #[no_mangle]
+    pub extern "C" fn fd_run_volume(p: *const u8, n: usize) -> i32 {
+        let txt = String::from_utf8_lossy(unsafe { std::slice::from_raw_parts(p, n) }).into_owned();
+        let res = (|| -> std::result::Result<Vec<u8>, String> {
+            let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+            let case: super::Case = serde_json::from_value(v["case"].clone()).map_err(|e| e.to_string())?;
+            let mesh: Option<super::Mesh> = serde_json::from_value(v["mesh"].clone()).ok();
+            let spec: super::VolumeSpec = serde_json::from_value(v["volume"].clone()).map_err(|e| e.to_string())?;
+            let port = v["port"].as_u64().unwrap_or(0) as usize;
+            drop(txt);
+            let (r, vf) = super::simulate_volume(&case, mesh, port, &spec, &mut |_, _, _| {});
+            Ok(vf.to_bytes(super::volume_header(&r)))
+        })();
+        let (code, s) = match res {
+            Ok(b) => (0, b),
+            Err(e) => (1, serde_json::json!({ "error": e }).to_string().into_bytes()),
+        };
+        OUT.with(|o| *o.borrow_mut() = s);
         code
     }
 }
@@ -2221,5 +2446,59 @@ mod tests {
         let k = (1..z.len()).find(|&k| z[k - 1].1 < 0.0 && z[k].1 >= 0.0).unwrap();
         eprintln!("series resonance {:.3} GHz, Re {:.2} Ω", r.freq[k] / 1e9, z[k].0);
         assert!((r.freq[k] / 4.33e9 - 1.0).abs() < 0.03 && (z[k].0 - 10.0).abs() < 1.5);
+    }
+
+    /// Volume output (research prototype): on the lossless microstrip of `short_microstrip`, the
+    /// Poynting flux through the plane x = 0 equals the power the port delivers, 1 − |S11|², and the
+    /// sampled DFT (automatic interval) equals the one of every step.
+    #[test]
+    fn volume_power_flux() {
+        let w = 0.35;
+        let c: Case = serde_json::from_value(serde_json::json!({
+            "name": "t", "domain": [-4.0, -2.5, -1.0, 4.0, 2.5, 2.2], "board": [-3.5, -2.0, 3.5, 2.0],
+            "layers": [{"z0": 0.0, "z1": 0.2, "er": 4.3, "tand": 0.0}],
+            "sheets": [{"z": 0.0, "rect": [-3.5, -2.0, 3.5, 2.0]}, {"z": 0.2, "rect": [-3.0, -w / 2.0, 3.0, w / 2.0]}],
+            "ports": [{"x": -3.0, "y0": -w / 2.0, "y1": w / 2.0, "z0": 0.0, "z1": 0.2}, {"x": 3.0, "y0": -w / 2.0, "y1": w / 2.0, "z0": 0.0, "z1": 0.2}],
+            "fmax": 10e9, "mesh": {"dfine": 0.05}, "end_db": -35, "max_steps": 20000, "nf": 20
+        }))
+        .unwrap();
+        let spec = |every: usize| VolumeSpec { freqs: vec![5e9], stride: 1, every };
+        let (r, v) = simulate_volume(&c, None, 0, &spec(0), &mut |_, _, _| {});
+        let (_, v1) = simulate_volume(&c, None, 0, &spec(1), &mut |_, _, _| {});
+        assert!(v.every > 10 && v1.every == 1);
+        let (ny, nz) = (v.y.len(), v.z.len());
+        let id = |i: usize, j: usize, k: usize| (i * ny + j) * nz + k;
+        let i = v.x.iter().enumerate().min_by(|a, b| a.1.abs().total_cmp(&b.1.abs())).unwrap().0;
+        let cx = |q: usize, n: usize| (v.re[q][n] as f64, v.im[q][n] as f64);
+        // H at x_i: mean of the two half cells; ½ Re(a · conj(b))
+        let hm = |q: usize, j: usize, k: usize| {
+            let (a, b) = (cx(q, id(i - 1, j, k)), cx(q, id(i, j, k)));
+            (0.5 * (a.0 + b.0), 0.5 * (a.1 + b.1))
+        };
+        let re = |a: (f64, f64), b: (f64, f64)| 0.5 * (a.0 * b.0 + a.1 * b.1);
+        let dual = |l: &[f64], l1: &[f64], k: usize| 0.5 * ((l1[k] - l[k]) + if k > 0 { l[k] - l[k - 1] } else { 0.0 });
+        let mut p = 0.0;
+        for j in 1..ny - 1 {
+            for k in 1..nz - 1 {
+                let (dy, dz) = ((v.y1[j] - v.y[j]) * 1e-3, (v.z1[k] - v.z[k]) * 1e-3);
+                let (dyd, dzd) = (dual(&v.y, &v.y1, j) * 1e-3, dual(&v.z, &v.z1, k) * 1e-3);
+                p += re(cx(1, id(i, j, k)), hm(5, j, k)) * dy * dzd; // Ey Hz*
+                p -= re(cx(2, id(i, j, k)), hm(4, j, k)) * dyd * dz; // Ez Hy*
+            }
+        }
+        let k5 = r.freq.iter().position(|&f| (f - 5e9).abs() < 1.0).unwrap();
+        let s11 = r.runs[0].s[0][k5];
+        let pin = 1.0 - (s11.0 * s11.0 + s11.1 * s11.1);
+        eprintln!("flux at x = 0: {p:.4} W, 1 - |S11|² = {pin:.4} W");
+        assert!((p / pin - 1.0).abs() < 0.02, "{p} {pin}");
+        let (mut num, mut den) = (0.0f64, 0.0f64);
+        for q in 0..6 {
+            for n in 0..v.re[q].len() {
+                let (a, b) = (cx(q, n), (v1.re[q][n] as f64, v1.im[q][n] as f64));
+                num += (a.0 - b.0).powi(2) + (a.1 - b.1).powi(2);
+                den += b.0 * b.0 + b.1 * b.1;
+            }
+        }
+        assert!((num / den).sqrt() < 1e-3, "sampled DFT off by {}", (num / den).sqrt());
     }
 }

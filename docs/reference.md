@@ -301,7 +301,8 @@ dismissed.
 ## Output files
 - `kisi report` writes everything into `analysis/kisi.json` next to the board (`--out` elsewhere), for
   file-based review tools and later sessions; `stackup_used` holds the stackup the analyses used with the source of
-  every value.
+  every value, `findings` every finding with its place on the board ([CLI reference](cli.md#report)); `--html`
+  and `--csv` add the printable report and its tables.
 - `kisi net … --s2p FILE` / `--s4p FILE` write the channel's S-parameters as Touchstone.
 - `kisi export` writes a lane or a bus into `analysis/export/<name>` next to the board (`--out` elsewhere): the
   subcircuit library, test benches and S-parameter decks for ngspice, Xyce and LTspice, Touchstone files, a KiCad

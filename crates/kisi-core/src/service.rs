@@ -892,6 +892,17 @@ fn check_row(
             };
             let v = judge(&m, prof, &lim);
             let mut j = lane_json(p, l);
+            // where the worst criterion applies (receiver: the lane's receiving end)
+            let rx = (l.ends.len() >= 2).then(|| &l.ends[if l.rx_end == 0 { 0 } else { 1 }]);
+            let nets: Vec<u32> = l.nets.iter().chain(&l.partner_nets).copied().collect();
+            j["location"] = row_location(
+                p,
+                &v,
+                &nets,
+                p.target(*tnet),
+                rx.map(|e| (e.refdes.as_str(), e.pin.as_str())),
+                row.stub_at,
+            );
             j["bus"] = json!(b.name);
             j["class"] = json!(class);
             j["profile"] = json!(prof.id);
@@ -956,8 +967,10 @@ fn check_row(
                 error: row.error.clone(),
             };
             let v = judge(&m, prof, &lim);
+            let nets: Vec<u32> = std::iter::once(st.net).chain(st.partner).collect();
+            let loc = row_location(p, &v, &nets, Some((t.z, t.diff)), None, row.stub_at);
             let mut j = json!({"net": st.name, "kind": "net (no devices found)", "class": class, "profile": prof.id, "rate_gbps": prof.rate_gbps, "status": v.status, "criteria": v.criteria,
-                "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m, "accuracy": accuracy_json(&[st], row.via_models, row.diff)});
+                "length_mm": row.length_mm, "vias": row.vias, "model": row.model, "metrics": m, "accuracy": accuracy_json(&[st], row.via_models, row.diff), "location": loc});
             if p.tol_on {
                 j["impedance_band"] = band_json(&[st], st.z_mean, Some(t.z));
             }
@@ -969,6 +982,31 @@ fn check_row(
             }
             (v.status, j)
         }
+    }
+}
+
+/// Where a channel row's worst criterion applies (`locate::channel_spot`) with that criterion's key,
+/// for rows that are not green; null otherwise.
+fn row_location(
+    p: &Project,
+    v: &crate::profile::Verdict,
+    nets: &[u32],
+    target: Option<(f64, bool)>,
+    rx: Option<(&str, &str)>,
+    stub_at: Option<crate::geom::P>,
+) -> Value {
+    if v.status == Status::Green {
+        return Value::Null;
+    }
+    let Some(c) = crate::locate::worst_criterion(&v.criteria) else { return Value::Null };
+    let t = target.map(|t| crate::extract::Target { z: t.0, diff: t.1 });
+    match crate::locate::channel_spot(&p.board, &p.an, nets, t, c.key, rx, stub_at) {
+        Some(s) => {
+            let mut j = json!(s);
+            j["criterion"] = json!(c.key);
+            j
+        }
+        None => Value::Null,
     }
 }
 
@@ -1183,10 +1221,27 @@ pub fn power_run(p: &Project, tree: Option<crate::tree::TreeSpec>) -> Result<Pow
         let (vias, vw) = rail_vias_json(&p.board, r);
         let mut warnings = r.warnings.clone();
         warnings.extend(vw);
+        // where the largest drop (ground: offset) is: the load with the lowest voltage (largest offset)
+        let worst = |l: &crate::pi::LoadResult| {
+            if r.ground {
+                [l.v_min, l.v_max].into_iter().flatten().map(f64::abs).reduce(f64::max)
+            } else {
+                l.v_min.map(|v| -v)
+            }
+        };
+        let at = r
+            .loads
+            .iter()
+            .filter_map(|l| Some((worst(l)?, l)))
+            .fold(None, |a: Option<(f64, &crate::pi::LoadResult)>, b| match a {
+                Some(a) if a.0 >= b.0 => Some(a),
+                _ => Some(b),
+            })
+            .and_then(|(_, l)| crate::locate::part_spot(&p.board, &l.refdes, Some(&r.net)));
         if r.ground {
-            json!({"rail": r.net, "ground_return": true, "return_a": -r.total_load, "max_offset_mv": r.max_drop_mv, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "vias": vias, "warnings": warnings})
+            json!({"rail": r.net, "ground_return": true, "return_a": -r.total_load, "max_offset_mv": r.max_drop_mv, "max_at": at, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "vias": vias, "warnings": warnings})
         } else {
-            json!({"rail": r.net, "voltage": r.voltage, "load_a": r.total_load, "max_drop_mv": r.max_drop_mv, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "vias": vias, "warnings": warnings})
+            json!({"rail": r.net, "voltage": r.voltage, "load_a": r.total_load, "max_drop_mv": r.max_drop_mv, "max_at": at, "copper_loss_mw": r.power_loss_w * 1e3, "max_j_a_mm2": r.max_j, "vias": vias, "warnings": warnings})
         }
     };
     for s in &setups {
@@ -1497,7 +1552,7 @@ pub fn report(
     };
     let run = power_run(p, None);
     let ov = overview(p);
-    Ok(json!({
+    let mut rep = json!({
         "tool": "kisi", "version": env!("CARGO_PKG_VERSION"),
         "board_file": {"name": p.pcb_path.file_name().map(|f| f.to_string_lossy().to_string()), "sha256": p.pcb_sha256},
         "options": {"tolerances": p.tol_on, "via_cavity": rp.via_cavity, "via_returns": rp.via_returns},
@@ -1511,7 +1566,11 @@ pub fn report(
         "thermal": run.as_ref().map_err(|e| e.clone()).and_then(|r| thermal_from(p, r, &crate::thermal::ThermalParams::default())).unwrap_or_else(|e| json!({"error": e})),
         "stackup_used": stackup_used(p),
         "gaps": crate::gaps::gaps(p, profiles),
-    }))
+    });
+    let (f, b) = crate::findings::findings(p, &rep);
+    rep["findings"] = f;
+    rep["sketch_board"] = b;
+    Ok(rep)
 }
 
 /// Per net class with a target: the worst net's mean impedance against the class's target window
@@ -1527,7 +1586,23 @@ fn class_verdicts(p: &Project, ov: &Value) -> Value {
         let m = crate::profile::Metrics { z_mean: w["z_mean"].as_f64(), ..Default::default() };
         let v = crate::profile::judge(&m, &pr, &Default::default());
         let z = v.criteria.iter().find(|x| x.key == "z");
-        out.push(json!({"class": name, "target_ohm": t, "diff": c["diff"], "worst_net": w["net"], "z_ohm": w["z_mean"],
+        // where: the worst net's track that moves its mean most (not for a green class)
+        let loc = match (z.map(|z| z.status), w["net"].as_str().and_then(|n| p.net_id(n))) {
+            (Some(st), Some(id)) if st != Status::Green => {
+                let partner = p.an.nets.iter().find(|s| s.net == id).and_then(|s| s.partner);
+                let nets: Vec<u32> = std::iter::once(id).chain(partner).collect();
+                let diff = c["diff"].as_bool().unwrap_or(false);
+                json!(crate::locate::worst_track(
+                    &p.board,
+                    &p.an,
+                    &nets,
+                    Some(crate::extract::Target { z: t, diff }),
+                    true
+                ))
+            }
+            _ => Value::Null,
+        };
+        out.push(json!({"location": loc, "class": name, "target_ohm": t, "diff": c["diff"], "worst_net": w["net"], "z_ohm": w["z_mean"],
             "window_pct": win, "window_source": src, "lo_ohm": z.and_then(|z| z.lo), "hi_ohm": z.and_then(|z| z.hi),
             "status": z.map(|z| z.status), "within_5pct": c["within_5pct"], "z_tol_rss_ohm": w["z_tol_rss_ohm"], "z_tol_status": w["z_tol_status"]}));
     }
@@ -1621,8 +1696,17 @@ mod tests {
             "{keys:?}"
         );
         assert_eq!(r["terminations"][0].as_str(), Some("C3 100nF 16V X7R to GND"));
-        // the capacitor costs return loss: the row is not green
+        // the capacitor costs return loss: the row is not green, and names where its worst criterion is
         assert_ne!(r["status"].as_str(), Some("green"), "{r:#}");
+        let l = &r["location"];
+        let at = l["at"].as_array().unwrap();
+        assert!(
+            l["net"] == "SE_CAPZ_0805"
+                && l["layer"] == "F.Cu"
+                && at[1].as_f64() == Some(0.0)
+                && l["criterion"].is_string(),
+            "{l:#}"
+        );
         // net: the capacitor at 20 mm, named in the warnings
         let n = net_detail(&p, "SE_CAPZ_0805", &RfParams::default()).unwrap();
         let parts = n["parts"].as_array().unwrap();
@@ -1710,5 +1794,24 @@ mod tests {
             "{}",
             t.note
         );
+        // the report's finding: the rail's via at (9, 2), joining F.Cu and B.Cu, with a sketch of the place
+        let rep = report(&p, &Profiles::builtin(), &RfParams::default(), None).unwrap();
+        let f = rep["findings"].as_array().unwrap().iter().find(|f| f["id"] == "vias:+3V3").expect("the via finding");
+        let l = &f["location"];
+        assert_eq!(
+            (f["severity"].as_str(), l["item"].as_str(), l["at"].clone()),
+            (Some("warn"), Some("via"), json!([9.0, 2.0]))
+        );
+        assert_eq!(l["layers"], json!(["F.Cu", "B.Cu"]));
+        assert!(l["what"].as_str().unwrap().starts_with("via 0.30/0.60 mm (drill/pad) at (9.00, 2.00) mm"), "{l:#}");
+        assert!(f["sketch"]["detail"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| i.as_str().unwrap().starts_with("v 9 2 0.6 0.3 1")));
+        let h = crate::report_html::html(&rep, "2026-01-02");
+        assert!(h.contains(
+            "#finding=vias%3A%2B3V3&amp;at=9.00,2.00&amp;layer=F.Cu&amp;layers=F.Cu,B.Cu&amp;net=%2B3V3&amp;item=via"
+        ));
     }
 }

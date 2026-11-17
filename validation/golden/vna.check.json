@@ -79,6 +79,29 @@
    "kind": "ic-ic",
    "lane": "Net-(IC33-OUT+)",
    "length_mm": 12.6688,
+   "location": {
+    "at": [
+     124.5,
+     112.4
+    ],
+    "bbox": [
+     121.5,
+     109.4,
+     127.5,
+     115.4
+    ],
+    "criterion": "eye_h",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC36-IN-)",
+    "refs": [
+     "IC36.4"
+    ],
+    "what": "pad IC36.4 (SMD) at (124.50, 112.40) mm on F.Cu"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.398386,
@@ -211,6 +234,27 @@
    "kind": "ic-ic",
    "lane": "FPGA_CLK",
    "length_mm": 84.0927,
+   "location": {
+    "at": [
+     171.16,
+     72.15
+    ],
+    "bbox": [
+     149.3,
+     70.65,
+     172.9,
+     73.65
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/FPGA_CLK_R",
+    "refs": [],
+    "what": "track 0.150 mm wide on F.Cu from (150.80, 72.15) to (171.40, 72.15) mm, Z 64.1 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.822531,
@@ -302,6 +346,27 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.8681,
+   "location": {
+    "at": [
+     178.41,
+     112.72
+    ],
+    "bbox": [
+     176.73,
+     109.78,
+     181.35,
+     114.4
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/1.LO/LO1_RFOUTB_N",
+    "refs": [],
+    "what": "track 0.200 mm wide on F.Cu from (178.23, 112.90) to (179.85, 111.28) mm, Z 64.1 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.99943,
@@ -382,6 +447,29 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 1.09755,
+   "location": {
+    "at": [
+     181.09,
+     108.55
+    ],
+    "bbox": [
+     179.59,
+     106.9,
+     182.59,
+     110.2
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/1.LO/LO1_RFOUTB_N_RC",
+    "refs": [
+     "R38.2"
+    ],
+    "what": "pad R38.2 0.540 mm wide on F.Cu from (181.09, 108.70) to (181.09, 108.40) mm, Z 36.9 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.99978,
@@ -462,6 +550,29 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.80279,
+   "location": {
+    "at": [
+     98.45,
+     89.96
+    ],
+    "bbox": [
+     96.8,
+     88.46,
+     100.11,
+     91.46
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C121-Pad1)",
+    "refs": [
+     "R61.2"
+    ],
+    "what": "pad R61.2 0.540 mm wide on F.Cu from (98.30, 89.96) to (98.61, 89.96) mm, Z 38.2 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999506,
@@ -542,6 +653,27 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.85137,
+   "location": {
+    "at": [
+     102.6,
+     90.89
+    ],
+    "bbox": [
+     101.1,
+     89.21,
+     104.1,
+     92.79
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C121-Pad2)",
+    "refs": [],
+    "what": "track 0.300 mm wide on F.Cu from (102.60, 91.29) to (102.60, 90.71) mm, Z 50.7 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.99948,
@@ -622,6 +754,27 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.58,
+   "location": {
+    "at": [
+     198.4,
+     85.35
+    ],
+    "bbox": [
+     196.9,
+     83.21,
+     199.9,
+     87.49
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C158-Pad1)",
+    "refs": [],
+    "what": "track 0.300 mm wide on F.Cu from (198.40, 85.99) to (198.40, 84.71) mm, Z 50.4 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999477,
@@ -702,6 +855,27 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.58,
+   "location": {
+    "at": [
+     202.4,
+     85.35
+    ],
+    "bbox": [
+     200.9,
+     83.21,
+     203.9,
+     87.49
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C158-Pad2)",
+    "refs": [],
+    "what": "track 0.300 mm wide on F.Cu from (202.40, 85.99) to (202.40, 84.71) mm, Z 50.4 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999465,
@@ -782,6 +956,27 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.09,
+   "location": {
+    "at": [
+     199.03,
+     112.45
+    ],
+    "bbox": [
+     196.96,
+     110.95,
+     200.9,
+     113.95
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C160-Pad2)",
+    "refs": [],
+    "what": "track 0.300 mm wide on F.Cu from (198.46, 112.45) to (199.40, 112.45) mm, Z 52.8 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999574,
@@ -862,6 +1057,27 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.5032,
+   "location": {
+    "at": [
+     200.9,
+     109.29
+    ],
+    "bbox": [
+     199.4,
+     107.2,
+     202.4,
+     111.55
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C165-Pad2)",
+    "refs": [],
+    "what": "track 0.300 mm wide on F.Cu from (200.90, 110.05) to (200.90, 108.70) mm, Z 52.8 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999485,
@@ -942,6 +1158,27 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.53,
+   "location": {
+    "at": [
+     119.43,
+     101.85
+    ],
+    "bbox": [
+     117.25,
+     100.35,
+     121.54,
+     103.35
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C184-Pad1)",
+    "refs": [],
+    "what": "track 0.300 mm wide on F.Cu from (118.75, 101.85) to (120.04, 101.85) mm, Z 52.8 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999485,
@@ -1022,6 +1259,27 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 2.57,
+   "location": {
+    "at": [
+     122.5,
+     102.14
+    ],
+    "bbox": [
+     121.0,
+     100.21,
+     124.0,
+     104.49
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C184-Pad2)",
+    "refs": [],
+    "what": "track 0.300 mm wide on F.Cu from (122.50, 102.99) to (122.50, 101.71) mm, Z 51.6 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999472,
@@ -1128,6 +1386,7 @@
    "kind": "ic-ic",
    "lane": "/HF Source/SRC_REF_IN",
    "length_mm": 31.2285,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.99585,
@@ -1230,6 +1489,7 @@
    "kind": "ic-ic",
    "lane": "/HF Source/SRC_FILT_THRU",
    "length_mm": 17.1758,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.99751,
@@ -1329,6 +1589,7 @@
    "kind": "ic-ic",
    "lane": "/HF Source/SRC_FILT_OUT_ANT",
    "length_mm": 7.0801,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.998864,
@@ -1431,6 +1692,7 @@
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_SWITCH",
    "length_mm": 3.96111,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.999446,
@@ -1530,6 +1792,7 @@
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_ATT",
    "length_mm": 2.4808,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.999325,
@@ -1632,6 +1895,7 @@
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_AMP",
    "length_mm": 7.2788,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.947755,
@@ -1756,6 +2020,7 @@
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_PORT2",
    "length_mm": 26.3386,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.996593,
@@ -1870,6 +2135,7 @@
    "kind": "ic-ic",
    "lane": "/Attenuator Amp Switches/RF_HBLB_PORT1",
    "length_mm": 29.5516,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.995899,
@@ -1984,6 +2250,7 @@
    "kind": "ic-ic",
    "lane": "/1.LO/LO1_REFC",
    "length_mm": 30.5894,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.994472,
@@ -2086,6 +2353,7 @@
    "kind": "ic-ic",
    "lane": "Net-(IC22-OUT+)",
    "length_mm": 4.07761,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.999066,
@@ -2208,6 +2476,7 @@
    "kind": "ic-ic",
    "lane": "PORT1LO2",
    "length_mm": 119.919,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.960182,
@@ -2314,6 +2583,7 @@
    "kind": "ic-ic",
    "lane": "Net-(IC27-OUT+)",
    "length_mm": 5.2616,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.998859,
@@ -2436,6 +2706,7 @@
    "kind": "ic-ic",
    "lane": "PORT2LO2",
    "length_mm": 21.2362,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.99664,
@@ -2542,6 +2813,7 @@
    "kind": "ic-ic",
    "lane": "Net-(IC32-+)",
    "length_mm": 6.23766,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.998758,
@@ -2664,6 +2936,7 @@
    "kind": "ic-ic",
    "lane": "REFLO2",
    "length_mm": 76.7593,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.983991,
@@ -2773,6 +3046,7 @@
    "kind": "ic-connector",
    "lane": "/2.LO + Ref Clock/CLKIN",
    "length_mm": 63.4896,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -2878,6 +3152,7 @@
    "kind": "ic-connector",
    "lane": "/2.LO + Ref Clock/CLKOUT",
    "length_mm": 69.3597,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -2969,6 +3244,7 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 7.04,
+   "location": null,
    "metrics": {
     "error": null,
     "eye_h": 0.999092,

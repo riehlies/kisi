@@ -2058,6 +2058,28 @@
   {
    "copper_loss_mw": 9.05172,
    "load_a": 1.07013,
+   "max_at": {
+    "at": [
+     135.3,
+     123.71
+    ],
+    "bbox": [
+     131.4,
+     120.71,
+     138.3,
+     126.71
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+5V",
+    "refs": [
+     "FB1000_4.2"
+    ],
+    "what": "part FB1000_4 120@100MHZ (BLM15PX121SN1D) at (135.30, 123.71) mm on F.Cu, its 1 pad on +5V"
+   },
    "max_drop_mv": 9.9831,
    "max_j_a_mm2": 64.4399,
    "rail": "+5V",
@@ -2264,6 +2286,28 @@
   {
    "copper_loss_mw": 0.0365083,
    "load_a": 0.23,
+   "max_at": {
+    "at": [
+     133.88,
+     125.9
+    ],
+    "bbox": [
+     129.45,
+     122.9,
+     139.3,
+     132.75
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH4/+VPGA",
+    "refs": [
+     "U1008_4"
+    ],
+    "what": "part U1008_4 LMH6518 at (133.88, 125.90) mm on F.Cu, its 2 pads on /CH4/+VPGA"
+   },
    "max_drop_mv": 0.184153,
    "max_j_a_mm2": 14.1352,
    "rail": "/CH4/+VPGA",
@@ -2283,6 +2327,28 @@
   {
    "copper_loss_mw": 1.51471,
    "load_a": 1.07313,
+   "max_at": {
+    "at": [
+     183.46,
+     66.88
+    ],
+    "bbox": [
+     180.21,
+     63.88,
+     188.21,
+     72.18
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ACQ and FE Voltage Regs/+5V3_R_LDO",
+    "refs": [
+     "U15"
+    ],
+    "what": "part U15 TPS7A9101 at (183.46, 66.88) mm on F.Cu, its 2 pads on /ACQ and FE Voltage Regs/+5V3_R_LDO"
+   },
    "max_drop_mv": 1.54271,
    "max_j_a_mm2": 66.9772,
    "rail": "/ACQ and FE Voltage Regs/+5V3_R_LDO",
@@ -2302,6 +2368,28 @@
   {
    "copper_loss_mw": 0.045771,
    "load_a": 0.143,
+   "max_at": {
+    "at": [
+     154.27,
+     122.1
+    ],
+    "bbox": [
+     150.1,
+     116.8,
+     158.1,
+     125.1
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/FPGA Voltage Regs/+1V8_R_LDO",
+    "refs": [
+     "U22"
+    ],
+    "what": "part U22 TPS7A9101 at (154.27, 122.10) mm on F.Cu, its 3 pads on /FPGA/FPGA Voltage Regs/+1V8_R_LDO"
+   },
    "max_drop_mv": 0.690678,
    "max_j_a_mm2": 6.24539,
    "rail": "/FPGA/FPGA Voltage Regs/+1V8_R_LDO",
@@ -2372,6 +2460,28 @@
   {
    "copper_loss_mw": 0.106733,
    "load_a": 0.14,
+   "max_at": {
+    "at": [
+     166.87,
+     123.13
+    ],
+    "bbox": [
+     161.15,
+     107.17,
+     180.75,
+     126.77
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+1V2_MGT",
+    "refs": [
+     "U18"
+    ],
+    "what": "part U18 IC FPGA XC7A50T-2CSG325C at (166.87, 123.13) mm on F.Cu, its 5 pads on +1V2_MGT"
+   },
    "max_drop_mv": 0.845345,
    "max_j_a_mm2": 11.2809,
    "rail": "+1V2_MGT",
@@ -2578,6 +2688,28 @@
   {
    "copper_loss_mw": 0.0365083,
    "load_a": 0.23,
+   "max_at": {
+    "at": [
+     133.88,
+     105.4
+    ],
+    "bbox": [
+     129.45,
+     102.4,
+     139.3,
+     112.25
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH3/+VPGA",
+    "refs": [
+     "U1008_3"
+    ],
+    "what": "part U1008_3 LMH6518 at (133.88, 105.40) mm on F.Cu, its 2 pads on /CH3/+VPGA"
+   },
    "max_drop_mv": 0.184153,
    "max_j_a_mm2": 14.1352,
    "rail": "/CH3/+VPGA",
@@ -2597,6 +2729,28 @@
   {
    "copper_loss_mw": 0.0480544,
    "load_a": 0.263498,
+   "max_at": {
+    "at": [
+     151.0,
+     118.05
+    ],
+    "bbox": [
+     148.0,
+     115.05,
+     154.0,
+     122.65
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/FPGA Voltage Regs/+1V8_R",
+    "refs": [
+     "R120.1"
+    ],
+    "what": "part R120 0.01 (RL0816T-R010-F) at (151.00, 118.05) mm on F.Cu, its 1 pad on /FPGA/FPGA Voltage Regs/+1V8_R"
+   },
    "max_drop_mv": 0.191364,
    "max_j_a_mm2": 6.89755,
    "rail": "/FPGA/FPGA Voltage Regs/+1V8_R",
@@ -2616,6 +2770,28 @@
   {
    "copper_loss_mw": 0.270539,
    "load_a": 0.263114,
+   "max_at": {
+    "at": [
+     170.82,
+     114.57
+    ],
+    "bbox": [
+     161.15,
+     107.17,
+     180.75,
+     126.77
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+1V8",
+    "refs": [
+     "U18"
+    ],
+    "what": "part U18 IC FPGA XC7A50T-2CSG325C at (170.82, 114.57) mm on F.Cu, its 6 pads on +1V8"
+   },
    "max_drop_mv": 1.8199,
    "max_j_a_mm2": 17.282,
    "rail": "+1V8",
@@ -2822,6 +2998,28 @@
   {
    "copper_loss_mw": 0.0252285,
    "load_a": 0.161255,
+   "max_at": {
+    "at": [
+     174.28,
+     63.67
+    ],
+    "bbox": [
+     171.28,
+     60.67,
+     179.18,
+     68.17
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ACQ and FE Voltage Regs/+5V3_R_CP",
+    "refs": [
+     "U13.1"
+    ],
+    "what": "part U13 LM27761 at (174.28, 63.67) mm on F.Cu, its 1 pad on /ACQ and FE Voltage Regs/+5V3_R_CP"
+   },
    "max_drop_mv": 0.162727,
    "max_j_a_mm2": 8.63725,
    "rail": "/ACQ and FE Voltage Regs/+5V3_R_CP",
@@ -2841,6 +3039,28 @@
   {
    "copper_loss_mw": 0.02085,
    "load_a": 0.14529,
+   "max_at": {
+    "at": [
+     174.3,
+     67.64
+    ],
+    "bbox": [
+     171.3,
+     64.64,
+     177.3,
+     71.54
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ACQ and FE Voltage Regs/-5V_R",
+    "refs": [
+     "R91.1"
+    ],
+    "what": "part R91 120@100MHZ (BLM15PX121SN1D) at (174.30, 67.64) mm on F.Cu, its 1 pad on /ACQ and FE Voltage Regs/-5V_R"
+   },
    "max_drop_mv": 0.151758,
    "max_j_a_mm2": 8.58485,
    "rail": "/ACQ and FE Voltage Regs/-5V_R",
@@ -2860,6 +3080,28 @@
   {
    "copper_loss_mw": 0.605196,
    "load_a": 0.551084,
+   "max_at": {
+    "at": [
+     151.62,
+     100.15
+    ],
+    "bbox": [
+     147.45,
+     94.85,
+     155.45,
+     103.15
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ACQ and FE Voltage Regs/+2V5_R_ACQ",
+    "refs": [
+     "U14"
+    ],
+    "what": "part U14 TPS7A9101 at (151.62, 100.15) mm on F.Cu, its 3 pads on /ACQ and FE Voltage Regs/+2V5_R_ACQ"
+   },
    "max_drop_mv": 2.09606,
    "max_j_a_mm2": 27.4946,
    "rail": "/ACQ and FE Voltage Regs/+2V5_R_ACQ",
@@ -2930,6 +3172,28 @@
   {
    "copper_loss_mw": 0.630622,
    "load_a": 0.548084,
+   "max_at": {
+    "at": [
+     172.15,
+     96.73
+    ],
+    "bbox": [
+     169.15,
+     92.83,
+     175.15,
+     99.73
+    ],
+    "item": "part",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "+1V8_ACQ",
+    "refs": [
+     "FB3.2"
+    ],
+    "what": "part FB3 120@100MHZ (BLM15PX121SN1D) at (172.15, 96.73) mm on B.Cu, its 1 pad on +1V8_ACQ"
+   },
    "max_drop_mv": 1.61494,
    "max_j_a_mm2": 33.9259,
    "rail": "+1V8_ACQ",
@@ -3085,6 +3349,28 @@
   {
    "copper_loss_mw": 5.92965e-06,
    "load_a": 0.00163,
+   "max_at": {
+    "at": [
+     134.2,
+     76.68
+    ],
+    "bbox": [
+     131.2,
+     72.73,
+     139.9,
+     80.63
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ACQ and FE Voltage Regs/+5V_R_PGA",
+    "refs": [
+     "U16"
+    ],
+    "what": "part U16 NCP161ASN330T1G at (134.20, 76.68) mm on F.Cu, its 2 pads on /ACQ and FE Voltage Regs/+5V_R_PGA"
+   },
    "max_drop_mv": 0.00600759,
    "max_j_a_mm2": 0.16784,
    "rail": "/ACQ and FE Voltage Regs/+5V_R_PGA",
@@ -3104,6 +3390,28 @@
   {
    "copper_loss_mw": 3.83027e-05,
    "load_a": 0.00161,
+   "max_at": {
+    "at": [
+     135.13,
+     129.75
+    ],
+    "bbox": [
+     129.45,
+     122.9,
+     139.3,
+     132.75
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+3V3_PGA",
+    "refs": [
+     "U1008_4.12"
+    ],
+    "what": "part U1008_4 LMH6518 at (135.13, 129.75) mm on F.Cu, its 1 pad on +3V3_PGA"
+   },
    "max_drop_mv": 0.0378406,
    "max_j_a_mm2": 0.171998,
    "rail": "+3V3_PGA",
@@ -3259,6 +3567,28 @@
   {
    "copper_loss_mw": 1.16563,
    "load_a": 1.40997,
+   "max_at": {
+    "at": [
+     190.5,
+     73.19
+    ],
+    "bbox": [
+     187.5,
+     70.19,
+     196.37,
+     76.19
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/TS-USB4 Components/+VUSB_R",
+    "refs": [
+     "L1.1"
+    ],
+    "what": "part L1 1uH (SRP3212-1R0M) at (190.50, 73.19) mm on F.Cu, its 1 pad on /TS-USB4 Components/+VUSB_R"
+   },
    "max_drop_mv": 0.981615,
    "max_j_a_mm2": 59.008,
    "rail": "/TS-USB4 Components/+VUSB_R",
@@ -3278,6 +3608,28 @@
   {
    "copper_loss_mw": 5.08859,
    "load_a": 1.23705,
+   "max_at": {
+    "at": [
+     175.15,
+     61.19
+    ],
+    "bbox": [
+     171.25,
+     58.19,
+     178.15,
+     64.19
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+5V3",
+    "refs": [
+     "R90.1"
+    ],
+    "what": "part R90 0.1 (ERJ-2BSFR10X) at (175.15, 61.19) mm on F.Cu, its 1 pad on +5V3"
+   },
    "max_drop_mv": 4.3204,
    "max_j_a_mm2": 60.6083,
    "rail": "+5V3",
@@ -3297,6 +3649,28 @@
   {
    "copper_loss_mw": 0.000389793,
    "load_a": 0.0450061,
+   "max_at": {
+    "at": [
+     182.43,
+     110.59
+    ],
+    "bbox": [
+     177.83,
+     107.59,
+     185.43,
+     113.59
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/FPGA Voltage Regs/+3V3_R",
+    "refs": [
+     "R57.1"
+    ],
+    "what": "part R57 0.01 (RL0816T-R010-F) at (182.43, 110.59) mm on F.Cu, its 1 pad on /FPGA/FPGA Voltage Regs/+3V3_R"
+   },
    "max_drop_mv": 0.0102864,
    "max_j_a_mm2": 0.813047,
    "rail": "/FPGA/FPGA Voltage Regs/+3V3_R",
@@ -3316,6 +3690,28 @@
   {
    "copper_loss_mw": 0.0026882,
    "load_a": 0.045,
+   "max_at": {
+    "at": [
+     174.11,
+     114.17
+    ],
+    "bbox": [
+     161.15,
+     107.17,
+     180.75,
+     126.77
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+3V3",
+    "refs": [
+     "U18"
+    ],
+    "what": "part U18 IC FPGA XC7A50T-2CSG325C at (174.11, 114.17) mm on F.Cu, its 11 pads on +3V3"
+   },
    "max_drop_mv": 0.117847,
    "max_j_a_mm2": 1.8746,
    "rail": "+3V3",
@@ -3522,6 +3918,28 @@
   {
    "copper_loss_mw": 25.6191,
    "load_a": 2.32308,
+   "max_at": {
+    "at": [
+     188.89,
+     74.19
+    ],
+    "bbox": [
+     185.89,
+     71.19,
+     191.89,
+     78.79
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+VUSB",
+    "refs": [
+     "R14.1"
+    ],
+    "what": "part R14 0.01 (RL0816T-R010-F) at (188.89, 74.19) mm on F.Cu, its 1 pad on +VUSB"
+   },
    "max_drop_mv": 13.3432,
    "max_j_a_mm2": 89.6964,
    "rail": "+VUSB",
@@ -3728,6 +4146,28 @@
   {
    "copper_loss_mw": 0.0511082,
    "load_a": 0.22202,
+   "max_at": {
+    "at": [
+     153.1,
+     92.48
+    ],
+    "bbox": [
+     150.1,
+     89.48,
+     158.8,
+     97.38
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ACQ and FE Voltage Regs/+VUSB_R_ACQ",
+    "refs": [
+     "U9.1"
+    ],
+    "what": "part U9 NCP161ASN330T1G at (153.10, 92.48) mm on F.Cu, its 1 pad on /ACQ and FE Voltage Regs/+VUSB_R_ACQ"
+   },
    "max_drop_mv": 0.247108,
    "max_j_a_mm2": 7.91831,
    "rail": "/ACQ and FE Voltage Regs/+VUSB_R_ACQ",
@@ -3747,6 +4187,28 @@
   {
    "copper_loss_mw": 0.281359,
    "load_a": 0.222,
+   "max_at": {
+    "at": [
+     154.09,
+     83.57
+    ],
+    "bbox": [
+     150.65,
+     78.83,
+     159.55,
+     87.73
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+3V3_ACQ",
+    "refs": [
+     "U12_4"
+    ],
+    "what": "part U12_4 ADA4930-1YCPZ at (154.09, 83.57) mm on F.Cu, its 5 pads on +3V3_ACQ"
+   },
    "max_drop_mv": 1.56111,
    "max_j_a_mm2": 12.466,
    "rail": "+3V3_ACQ",
@@ -3953,6 +4415,28 @@
   {
    "copper_loss_mw": 0.0816743,
    "load_a": 0.613798,
+   "max_at": {
+    "at": [
+     152.3,
+     103.9
+    ],
+    "bbox": [
+     147.7,
+     100.9,
+     155.3,
+     106.9
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/FPGA Voltage Regs/+2V5_R",
+    "refs": [
+     "R126.1"
+    ],
+    "what": "part R126 0.01 (RL0816T-R010-F) at (152.30, 103.90) mm on F.Cu, its 1 pad on /FPGA/FPGA Voltage Regs/+2V5_R"
+   },
    "max_drop_mv": 0.168234,
    "max_j_a_mm2": 15.7357,
    "rail": "/FPGA/FPGA Voltage Regs/+2V5_R",
@@ -3972,6 +4456,28 @@
   {
    "copper_loss_mw": 0.0365083,
    "load_a": 0.23,
+   "max_at": {
+    "at": [
+     133.88,
+     64.4
+    ],
+    "bbox": [
+     129.45,
+     61.4,
+     139.3,
+     71.25
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH1/+VPGA",
+    "refs": [
+     "U1008_1"
+    ],
+    "what": "part U1008_1 LMH6518 at (133.88, 64.40) mm on F.Cu, its 2 pads on /CH1/+VPGA"
+   },
    "max_drop_mv": 0.184153,
    "max_j_a_mm2": 14.1352,
    "rail": "/CH1/+VPGA",
@@ -3991,6 +4497,28 @@
   {
    "copper_loss_mw": 0.123954,
    "load_a": 0.787729,
+   "max_at": {
+    "at": [
+     184.48,
+     124.68
+    ],
+    "bbox": [
+     181.48,
+     121.68,
+     189.08,
+     127.68
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/FPGA Voltage Regs/+1V0_R",
+    "refs": [
+     "R116.1"
+    ],
+    "what": "part R116 0.01 (RL0816T-R010-F) at (184.48, 124.68) mm on F.Cu, its 1 pad on /FPGA/FPGA Voltage Regs/+1V0_R"
+   },
    "max_drop_mv": 0.188019,
    "max_j_a_mm2": 13.9971,
    "rail": "/FPGA/FPGA Voltage Regs/+1V0_R",
@@ -4010,6 +4538,28 @@
   {
    "copper_loss_mw": 2.48639,
    "load_a": 0.78162,
+   "max_at": {
+    "at": [
+     171.24,
+     117.02
+    ],
+    "bbox": [
+     161.15,
+     107.17,
+     180.75,
+     126.77
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+1V0",
+    "refs": [
+     "U18"
+    ],
+    "what": "part U18 IC FPGA XC7A50T-2CSG325C at (171.24, 117.02) mm on F.Cu, its 21 pads on +1V0"
+   },
    "max_drop_mv": 3.31656,
    "max_j_a_mm2": 42.1379,
    "rail": "+1V0",
@@ -4216,6 +4766,28 @@
   {
    "copper_loss_mw": 1.85688,
    "load_a": 1.06462,
+   "max_at": {
+    "at": [
+     139.65,
+     144.63
+    ],
+    "bbox": [
+     135.05,
+     141.63,
+     142.65,
+     147.63
+    ],
+    "item": "part",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/TS-PCIe Components/+12V_PCIe",
+    "refs": [
+     "R42.1"
+    ],
+    "what": "part R42 0.01 (RL0816T-R010-F) at (139.65, 144.63) mm on B.Cu, its 1 pad on /TS-PCIe Components/+12V_PCIe"
+   },
    "max_drop_mv": 1.78125,
    "max_j_a_mm2": 40.9573,
    "rail": "/TS-PCIe Components/+12V_PCIe",
@@ -4320,6 +4892,28 @@
   {
    "copper_loss_mw": 0.28836,
    "load_a": 0.612299,
+   "max_at": {
+    "at": [
+     153.7,
+     102.75
+    ],
+    "bbox": [
+     150.7,
+     99.75,
+     158.3,
+     105.75
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+2V5",
+    "refs": [
+     "R97.1"
+    ],
+    "what": "part R97 0.01 (RL0816T-R010-F) at (153.70, 102.75) mm on F.Cu, its 1 pad on +2V5"
+   },
    "max_drop_mv": 0.507118,
    "max_j_a_mm2": 19.1719,
    "rail": "+2V5",
@@ -4526,6 +5120,28 @@
   {
    "copper_loss_mw": 0.0365083,
    "load_a": 0.23,
+   "max_at": {
+    "at": [
+     133.88,
+     84.9
+    ],
+    "bbox": [
+     129.45,
+     81.9,
+     139.3,
+     91.75
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH2/+VPGA",
+    "refs": [
+     "U1008_2"
+    ],
+    "what": "part U1008_2 LMH6518 at (133.88, 84.90) mm on F.Cu, its 2 pads on /CH2/+VPGA"
+   },
    "max_drop_mv": 0.184153,
    "max_j_a_mm2": 14.1352,
    "rail": "/CH2/+VPGA",
@@ -4545,6 +5161,28 @@
   {
    "copper_loss_mw": 0.664112,
    "load_a": 0.14508,
+   "max_at": {
+    "at": [
+     167.88,
+     63.76
+    ],
+    "bbox": [
+     163.93,
+     60.76,
+     171.83,
+     69.46
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "-5V",
+    "refs": [
+     "U5.2"
+    ],
+    "what": "part U5 OPA140AIDBVR at (167.88, 63.76) mm on F.Cu, its 1 pad on -5V"
+   },
    "max_drop_mv": 4.97748,
    "max_j_a_mm2": 15.2302,
    "rail": "-5V",
@@ -4751,6 +5389,28 @@
   {
    "copper_loss_mw": 1.80272,
    "load_a": 1.06368,
+   "max_at": {
+    "at": [
+     137.5,
+     138.28
+    ],
+    "bbox": [
+     133.15,
+     131.28,
+     144.35,
+     141.48
+    ],
+    "item": "part",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/TS-PCIe Components/+12V_PCIe_R",
+    "refs": [
+     "U11.18"
+    ],
+    "what": "part U11 TPSM82913 at (137.50, 138.28) mm on B.Cu, its 1 pad on /TS-PCIe Components/+12V_PCIe_R"
+   },
    "max_drop_mv": 1.75325,
    "max_j_a_mm2": 49.3877,
    "rail": "/TS-PCIe Components/+12V_PCIe_R",
@@ -4770,6 +5430,28 @@
   {
    "copper_loss_mw": 0.194284,
    "load_a": 0.27,
+   "max_at": {
+    "at": [
+     164.29,
+     93.15
+    ],
+    "bbox": [
+     156.79,
+     88.85,
+     169.54,
+     101.6
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ADC/+1V8A",
+    "refs": [
+     "U6"
+    ],
+    "what": "part U6 HMCAD1520 at (164.29, 93.15) mm on F.Cu, its 3 pads on /ADC/+1V8A"
+   },
    "max_drop_mv": 0.976831,
    "max_j_a_mm2": 11.8625,
    "rail": "/ADC/+1V8A",
@@ -4891,6 +5573,28 @@
   {
    "copper_loss_mw": 0.0331391,
    "load_a": 0.15,
+   "max_at": {
+    "at": [
+     175.3,
+     94.29
+    ],
+    "bbox": [
+     169.2,
+     87.3,
+     183.0,
+     101.1
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+1V8APLL",
+    "refs": [
+     "U7"
+    ],
+    "what": "part U7 ZL30260LDG1 at (175.30, 94.29) mm on F.Cu, its 9 pads on +1V8APLL"
+   },
    "max_drop_mv": 0.278488,
    "max_j_a_mm2": 5.05514,
    "rail": "+1V8APLL",
@@ -5080,6 +5784,28 @@
   {
    "copper_loss_mw": 0.0361891,
    "load_a": 0.125,
+   "max_at": {
+    "at": [
+     163.17,
+     95.48
+    ],
+    "bbox": [
+     156.79,
+     88.85,
+     169.54,
+     101.6
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ADC/+1V8D",
+    "refs": [
+     "U6"
+    ],
+    "what": "part U6 HMCAD1520 at (163.17, 95.48) mm on F.Cu, its 2 pads on /ADC/+1V8D"
+   },
    "max_drop_mv": 0.393767,
    "max_j_a_mm2": 6.93198,
    "rail": "/ADC/+1V8D",
@@ -5167,6 +5893,28 @@
   {
    "copper_loss_mw": 0.0372891,
    "load_a": 0.18,
+   "max_at": {
+    "at": [
+     166.55,
+     120.77
+    ],
+    "bbox": [
+     161.15,
+     107.17,
+     180.75,
+     126.77
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+1V0_MGT",
+    "refs": [
+     "U18"
+    ],
+    "what": "part U18 IC FPGA XC7A50T-2CSG325C at (166.55, 120.77) mm on F.Cu, its 4 pads on +1V0_MGT"
+   },
    "max_drop_mv": 0.241404,
    "max_j_a_mm2": 7.5254,
    "rail": "+1V0_MGT",
@@ -5271,6 +6019,28 @@
   {
    "copper_loss_mw": 1.15643,
    "ground_return": true,
+   "max_at": {
+    "at": [
+     191.93,
+     70.04
+    ],
+    "bbox": [
+     187.45,
+     66.04,
+     194.93,
+     73.04
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "GND",
+    "refs": [
+     "U17.4"
+    ],
+    "what": "part U17 TPS61023 at (191.93, 70.04) mm on F.Cu, its 1 pad on GND"
+   },
    "max_j_a_mm2": 9.22621,
    "max_offset_mv": 0.52906,
    "rail": "GND",

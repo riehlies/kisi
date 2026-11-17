@@ -14,7 +14,9 @@
 Rules: strings, booleans and the structure (keys, list lengths) must be identical – verdicts, warnings and names;
 numbers are rounded to 6 significant digits when stored and may differ by 1e-4 relative (other CPUs and maths
 libraries). Keys that are not results (config echo, field solver status, timings) are left out. The report's HTML: the
-text between its numbers identical, each number within 1e-4 relative or one unit of its last decimal.
+text between its numbers identical, each number within 1e-4 relative or one unit of its last decimal; its board sketches
+(SVG) are stored as the count of their elements and numbers only (their places are in the JSON's `location`s), which
+keeps the stored page small.
 
 A change in a model changes the stored files: run the same command with --update and commit validation/golden
 (or results/kisi_models.json) together with the change – the review then shows which values moved and by how
@@ -129,9 +131,19 @@ def html_diffs(a, b):
     return out
 
 
+def sketches(html):
+    """The report's SVG sketches and the shared outline reduced to their size: elements and numbers."""
+    def one(m):
+        body = m.group(2)
+        return f"{m.group(1)}<!-- sketch: {body.count('<')} elements, {len(NUM.findall(body))} numbers --></svg>"
+    html = re.sub(r'(<svg class="(?:ov|dt)"[^>]*>)(.*?)</svg>', one, html, flags=re.S)
+    return re.sub(r'(<path id="ko"[^>]*? d=")([^"]*)"', lambda m: f'{m.group(1)}[{len(NUM.findall(m.group(2)))} numbers]"', html)
+
+
 def page(name, path, html, update):
     """Compare (or store) the report page; the number of differences."""
     html = re.sub(r"(<b>kisi</b><span>)[^ <]+", r"\1VERSION", html)
+    html = sketches(html)
     if update:
         with open(path, "w", encoding="utf-8") as f:
             f.write(html)

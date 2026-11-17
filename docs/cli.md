@@ -46,8 +46,9 @@ kisi <command> <board.kicad_pcb> [options] – JSON on stdout
                    temperature and IR drop at temperature per rail
                    [--tree tree.json] [--ambient °C (25)] [--h W/m²K per side] [--airflow m/s] [--vertical]
   report           write analysis/kisi.json next to the board   [--out FILE]
-                   [--html FILE (the printable report: one to two pages of results, light, for
-                   A4 and Letter)] [--csv DIR (the printable report's tables as CSV files)]
+                   [--html FILE (the printable report: a summary, every finding with where it is
+                   on the board and a sketch, the tables per area; light, for A4 and Letter)]
+                   [--csv DIR (the printable report's tables and findings as CSV files)]
   export           a lane or a whole bus for circuit and RF simulators: SPICE subcircuits (RLGC
                    ladders, kisi's via model, parts, stubs; pairs coupled) with test benches for
                    ngspice, Xyce and LTspice, Touchstone (.s2p/.s4p, a bus as one N-port with port
@@ -187,21 +188,43 @@ correlations, e.g. for the inside of a closed case). See [Models and limits](mod
 ### `report`
 Everything into `analysis/kisi.json` next to the board (`--out FILE` elsewhere); prints a summary. For file-based
 review tools and later sessions. Needs an assembly variant on boards that have them. Runs the field solver. The
-viewer's Export → Data (kisi.json) gives the same document ([getting started](getting-started.md#export)).
+viewer's Export → Results (JSON) gives the same document ([getting started](getting-started.md#export)).
 Besides the results of `overview`, `interfaces`, `check --all`, `power` and `thermal` it holds `board_file` (name
 and SHA-256 of the board file), `options` (tolerances, `via_cavity`, `via_returns`), `impedance` (per net class the
 worst net's mean impedance against the class window – the profile's tolerance, else the default – with `status`
-as the check's impedance criterion), `gaps` (as `kisi gaps`) and `stackup_used`.
+as the check's impedance criterion), `gaps` (as `kisi gaps`), `stackup_used`, `findings` and `sketch_board`.
 
-`--html FILE` also writes the **printable report**: one to two pages of results, light, for A4 and Letter, no
-external resources – the header (board, file and hash, assembly variant, configuration, stackup sources, options,
-kisi version and date), counts of ok / warning / fail per area with the five worst items, the impedance per net
-class, per bus its worst lane and margin with the failing lanes, the largest DC drop per rail, the temperature's
-hot spots and the junctions over or near Tj max, the estimates and the open gaps. Maps, curves, per-net details
-and via lists are left out (they are in the viewer and the JSON). `--csv DIR` writes the report's tables as CSV
-files in the format of the viewer's table export. The date is today's (UTC), or that of `SOURCE_DATE_EPOCH` for
-reproducible files; the summary lists the files under `html` and `csv`. The viewer's Export → Report gives the
-same page.
+**Findings** (`findings`, worst first: fail, warning, gap) are what the report's verdicts flag: channel rows that
+are not green (with their worst criterion), net classes whose worst net's mean impedance is outside or near the
+window, rails with vias over their current capacity estimate (`vias:`), rails with other warnings (`power:`), parts
+over or within 10 K of Tj max (estimate) and the open gaps. Each has a stable `id` – `<area>:<item>`: `channel:<lane
+or net>`, `impedance:<net class>`, `vias:<rail>`, `power:<rail>`, `temperature:<part>`, `gap:<gap id>` (a second one
+with the same id gets `#2`) –, `severity` (`fail`, `warn`, `gap`), `what`, `detail`, `estimate`, and `location`:
+where it applies on the board – `at` (mm, KiCad board coordinates as KiCad shows them: x to the right, y down),
+`layer`, `layers`, `net`, `item` (`track`, `pad`, `via`, `part` or `net`), `refs` (parts and pads, `U3.12`), `what`
+(the object in one line) and `bbox`; `markers` are further places (other vias over their estimate, the parts a gap
+names). Which place: the impedance at the track that pulls the net's mean furthest to the side it is on (a track
+through an SMD pad stands for the pad), the return loss at the track with the largest deviation from the target, a
+via stub at the via with the lowest stub resonance, the eye, the loss and the skew at the receiver's pad, a rail's
+drop at the load with the largest drop, a via at the via, a part at its pads. The channel rows of `check` and
+`report` carry the same `location` (yellow and red rows), the rails of `power` their `max_at`. `sketch` holds the
+geometry of the finding's board sketch: the highlighted nets over the board (`overview`, simplified), the copper
+around the location (`detail`, at most 50 items of other nets) and the markers; `sketch_board` the outline.
+
+`--html FILE` also writes the **printable report**, light, for A4 and Letter, no external resources: the header
+(board, file and hash, assembly variant, configuration, stackup sources, options, kisi version and date); a summary
+– what was checked, the findings by severity, counts of ok / warning / fail per area – and the index of findings,
+each linking to its section; the impedance per net class, per bus its worst lane and margin with the failing lanes,
+the largest DC drop per rail, the temperature's hot spots and the junctions over or near Tj max, the estimates and
+the open gaps; then every finding with where it is (layer, coordinates, net, part, pad, via or track), a link for
+the viewer (`#finding=…`, [getting started](getting-started.md#export)) and a **board sketch**: the whole board with
+the net (its layer strong, other layers light) and the marker, next to the copper around the place (that layer grey,
+other layers light, the net red), top view as KiCad shows it, with scale bars. Maps, curves and per-net details are
+left out (they are in the viewer and the JSON). Size: about 340 KB for ThunderScope (66 findings), 90 KB for
+LibreVNA (17 findings). `--csv DIR` writes the report's tables as CSV files in the format of the viewer's table
+export, `findings.csv` with the location's columns (layer, layers, x, y, net, parts and pads, object). The date is
+today's (UTC), or that of `SOURCE_DATE_EPOCH` for reproducible files; the summary lists the files under `html` and
+`csv`. The viewer's Export → Report gives the same page.
 
 ### `export`
 A lane (`--lane NAME`, a net of the lane) or a whole bus (`--bus NAME`, as `kisi interfaces` names it, e.g.

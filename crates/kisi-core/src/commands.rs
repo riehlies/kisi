@@ -51,8 +51,9 @@ pub const HELP: &str = "kisi <command> <board.kicad_pcb> [options] – JSON on s
                    temperature and IR drop at temperature per rail
                    [--tree tree.json] [--ambient °C (25)] [--h W/m²K per side] [--airflow m/s] [--vertical]
   report           write analysis/kisi.json next to the board   [--out FILE]
-                   [--html FILE (the printable report: one to two pages of results, light, for
-                   A4 and Letter)] [--csv DIR (the printable report's tables as CSV files)]
+                   [--html FILE (the printable report: a summary, every finding with where it is
+                   on the board and a sketch, the tables per area; light, for A4 and Letter)]
+                   [--csv DIR (the printable report's tables and findings as CSV files)]
   export           a lane or a whole bus for circuit and RF simulators: SPICE subcircuits (RLGC
                    ladders, kisi's via model, parts, stubs; pairs coupled) with test benches for
                    ngspice, Xyce and LTspice, Touchstone (.s2p/.s4p, a bus as one N-port with port

@@ -3550,6 +3550,28 @@
   {
    "copper_loss_mw": 7.07115,
    "load_a": 0.691586,
+   "max_at": {
+    "at": [
+     117.3,
+     113.91
+    ],
+    "bbox": [
+     113.35,
+     110.91,
+     121.25,
+     119.59
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+6V",
+    "refs": [
+     "IC5"
+    ],
+    "what": "part IC5 LDL212PU50R at (117.30, 113.91) mm on F.Cu, its 2 pads on +6V"
+   },
    "max_drop_mv": 14.1804,
    "max_j_a_mm2": 34.6167,
    "rail": "+6V",
@@ -3756,6 +3778,28 @@
   {
    "copper_loss_mw": 0.124112,
    "load_a": 0.245772,
+   "max_at": {
+    "at": [
+     179.91,
+     80.55
+    ],
+    "bbox": [
+     175.89,
+     77.55,
+     182.91,
+     83.55
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Power Supply/VREG5V{slash}4",
+    "refs": [
+     "L9.1"
+    ],
+    "what": "part L9 FERRITE (BLM15AX601SN1) at (179.91, 80.55) mm on F.Cu, its 1 pad on /Power Supply/VREG5V{slash}4"
+   },
    "max_drop_mv": 0.523184,
    "max_j_a_mm2": 23.1778,
    "rail": "/Power Supply/VREG5V{slash}4",
@@ -3775,6 +3819,28 @@
   {
    "copper_loss_mw": 4.61555e-06,
    "load_a": 0.00161,
+   "max_at": {
+    "at": [
+     193.76,
+     79.45
+    ],
+    "bbox": [
+     190.76,
+     75.5,
+     199.04,
+     83.4
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC30-EN)",
+    "refs": [
+     "IC30"
+    ],
+    "what": "part IC30 NCP702-1.8 (NCP702SN18T1G) at (193.76, 79.45) mm on F.Cu, its 2 pads on Net-(IC30-EN)"
+   },
    "max_drop_mv": 0.00437732,
    "max_j_a_mm2": 0.183768,
    "rail": "Net-(IC30-EN)",
@@ -3794,6 +3860,28 @@
   {
    "copper_loss_mw": 1.91916e-05,
    "load_a": 0.0016,
+   "max_at": {
+    "at": [
+     199.6,
+     81.65
+    ],
+    "bbox": [
+     196.1,
+     74.25,
+     204.1,
+     84.65
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC30-OUT)",
+    "refs": [
+     "IC31.2"
+    ],
+    "what": "part IC31 MCP33131D-10-E/MS at (199.60, 81.65) mm on F.Cu, its 1 pad on Net-(IC30-OUT)"
+   },
    "max_drop_mv": 0.0126218,
    "max_j_a_mm2": 0.225969,
    "rail": "Net-(IC30-OUT)",
@@ -3813,6 +3901,28 @@
   {
    "copper_loss_mw": 1.41648,
    "load_a": 0.223876,
+   "max_at": {
+    "at": [
+     154.01,
+     118.15
+    ],
+    "bbox": [
+     149.99,
+     115.15,
+     157.01,
+     121.15
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+3V3",
+    "refs": [
+     "L23.1"
+    ],
+    "what": "part L23 FERRITE (BLM15AX601SN1) at (154.01, 118.15) mm on F.Cu, its 1 pad on +3V3"
+   },
    "max_drop_mv": 9.54995,
    "max_j_a_mm2": 10.0175,
    "rail": "+3V3",
@@ -4019,6 +4129,28 @@
   {
    "copper_loss_mw": 1.68414e-07,
    "load_a": 0.0002,
+   "max_at": {
+    "at": [
+     174.32,
+     129.89
+    ],
+    "bbox": [
+     171.32,
+     125.48,
+     181.48,
+     135.63
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Attenuator Amp Switches/3V3_P2_SWITCH",
+    "refs": [
+     "IC17.20"
+    ],
+    "what": "part IC17 QPC6324 at (174.32, 129.89) mm on F.Cu, its 1 pad on /Attenuator Amp Switches/3V3_P2_SWITCH"
+   },
    "max_drop_mv": 0.00089475,
    "max_j_a_mm2": 0.0253838,
    "rail": "/Attenuator Amp Switches/3V3_P2_SWITCH",
@@ -4038,6 +4170,28 @@
   {
    "copper_loss_mw": 0.0544642,
    "load_a": 0.148205,
+   "max_at": {
+    "at": [
+     109.4,
+     99.64
+    ],
+    "bbox": [
+     106.4,
+     96.64,
+     112.4,
+     103.66
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Power Supply/VREG5V{slash}1",
+    "refs": [
+     "L6.1"
+    ],
+    "what": "part L6 FERRITE (BLM15AX601SN1) at (109.40, 99.64) mm on F.Cu, its 1 pad on /Power Supply/VREG5V{slash}1"
+   },
    "max_drop_mv": 0.377851,
    "max_j_a_mm2": 14.2983,
    "rail": "/Power Supply/VREG5V{slash}1",
@@ -4057,6 +4211,28 @@
   {
    "copper_loss_mw": 0.412619,
    "load_a": 0.14674,
+   "max_at": {
+    "at": [
+     95.1,
+     111.24
+    ],
+    "bbox": [
+     92.1,
+     108.24,
+     98.1,
+     115.26
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+5V{slash}1",
+    "refs": [
+     "L17.2"
+    ],
+    "what": "part L17 FERRITE (BLM15AX601SN1) at (95.10, 111.24) mm on F.Cu, its 1 pad on +5V{slash}1"
+   },
    "max_drop_mv": 4.0594,
    "max_j_a_mm2": 25.2566,
    "rail": "+5V{slash}1",
@@ -4178,6 +4354,28 @@
   {
    "copper_loss_mw": 0.0196009,
    "load_a": 0.055,
+   "max_at": {
+    "at": [
+     148.8,
+     116.94
+    ],
+    "bbox": [
+     144.3,
+     113.94,
+     151.8,
+     121.97
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Attenuator Amp Switches/3V3_HBLB_AMP",
+    "refs": [
+     "IC15.1"
+    ],
+    "what": "part IC15 TRF37A73 at (148.80, 116.94) mm on F.Cu, its 1 pad on /Attenuator Amp Switches/3V3_HBLB_AMP"
+   },
    "max_drop_mv": 0.36082,
    "max_j_a_mm2": 8.49365,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_AMP",
@@ -4197,6 +4395,28 @@
   {
    "copper_loss_mw": 0.338971,
    "load_a": 0.14674,
+   "max_at": {
+    "at": [
+     133.31,
+     126.35
+    ],
+    "bbox": [
+     129.29,
+     123.35,
+     136.31,
+     129.35
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+5V{slash}3",
+    "refs": [
+     "L59.2"
+    ],
+    "what": "part L59 FERRITE (BLM15AX601SN1) at (133.31, 126.35) mm on F.Cu, its 1 pad on +5V{slash}3"
+   },
    "max_drop_mv": 2.7592,
    "max_j_a_mm2": 22.4313,
    "rail": "+5V{slash}3",
@@ -4318,6 +4538,28 @@
   {
    "copper_loss_mw": 0.0327675,
    "load_a": 0.07,
+   "max_at": {
+    "at": [
+     129.04,
+     122.55
+    ],
+    "bbox": [
+     123.76,
+     117.62,
+     133.64,
+     127.49
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC33-VPDT)",
+    "refs": [
+     "IC33"
+    ],
+    "what": "part IC33 ADL5801 at (129.04, 122.55) mm on F.Cu, its 4 pads on Net-(IC33-VPDT)"
+   },
    "max_drop_mv": 0.707346,
    "max_j_a_mm2": 10.2343,
    "rail": "Net-(IC33-VPDT)",
@@ -4422,6 +4664,28 @@
   {
    "copper_loss_mw": 8.57673e-19,
    "load_a": 0.0,
+   "max_at": {
+    "at": [
+     156.34,
+     52.54
+    ],
+    "bbox": [
+     153.34,
+     48.59,
+     161.22,
+     56.49
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "USB_POWER",
+    "refs": [
+     "Q1.3"
+    ],
+    "what": "part Q1 SSM3J338R at (156.34, 52.54) mm on F.Cu, its 1 pad on USB_POWER"
+   },
    "max_drop_mv": 1.18483e-09,
    "max_j_a_mm2": 5.84403e-08,
    "rail": "USB_POWER",
@@ -4441,6 +4705,28 @@
   {
    "copper_loss_mw": 2.27487,
    "load_a": 0.14674,
+   "max_at": {
+    "at": [
+     196.8,
+     108.14
+    ],
+    "bbox": [
+     193.8,
+     105.14,
+     199.8,
+     112.16
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+5V{slash}2",
+    "refs": [
+     "L55.2"
+    ],
+    "what": "part L55 FERRITE (BLM15AX601SN1) at (196.80, 108.14) mm on F.Cu, its 1 pad on +5V{slash}2"
+   },
    "max_drop_mv": 17.4154,
    "max_j_a_mm2": 31.7022,
    "rail": "+5V{slash}2",
@@ -4579,6 +4865,28 @@
   {
    "copper_loss_mw": 2.68862e-05,
    "load_a": 0.00114,
+   "max_at": {
+    "at": [
+     202.6,
+     90.03
+    ],
+    "bbox": [
+     195.2,
+     86.38,
+     205.6,
+     94.33
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC28-V_{S+})",
+    "refs": [
+     "IC28.3"
+    ],
+    "what": "part IC28 THS4521IDGKR at (202.60, 90.03) mm on F.Cu, its 1 pad on Net-(IC28-V_{S+})"
+   },
    "max_drop_mv": 0.0238873,
    "max_j_a_mm2": 0.388031,
    "rail": "Net-(IC28-V_{S+})",
@@ -4649,6 +4957,28 @@
   {
    "copper_loss_mw": 0.00641408,
    "load_a": 0.0176,
+   "max_at": {
+    "at": [
+     182.18,
+     96.43
+    ],
+    "bbox": [
+     178.45,
+     91.6,
+     188.35,
+     101.5
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/2.LO + Ref Clock/3V3_CLKGEN",
+    "refs": [
+     "IC7"
+    ],
+    "what": "part IC7 SI5351C at (182.18, 96.43) mm on F.Cu, its 4 pads on /2.LO + Ref Clock/3V3_CLKGEN"
+   },
    "max_drop_mv": 0.442314,
    "max_j_a_mm2": 5.57207,
    "rail": "/2.LO + Ref Clock/3V3_CLKGEN",
@@ -4753,6 +5083,28 @@
   {
    "copper_loss_mw": 0.00383747,
    "load_a": 0.02,
+   "max_at": {
+    "at": [
+     172.96,
+     114.9
+    ],
+    "bbox": [
+     169.96,
+     108.72,
+     180.84,
+     119.59
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/1.LO/3V3_LO1_3",
+    "refs": [
+     "IC21"
+    ],
+    "what": "part IC21 MAX2871 at (172.96, 114.90) mm on F.Cu, its 2 pads on /1.LO/3V3_LO1_3"
+   },
    "max_drop_mv": 0.253895,
    "max_j_a_mm2": 3.33018,
    "rail": "/1.LO/3V3_LO1_3",
@@ -4823,6 +5175,28 @@
   {
    "copper_loss_mw": 0.019085,
    "load_a": 0.06,
+   "max_at": {
+    "at": [
+     195.6,
+     114.79
+    ],
+    "bbox": [
+     192.6,
+     110.82,
+     198.6,
+     117.79
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C156-Pad1)",
+    "refs": [
+     "L40.1"
+    ],
+    "what": "part L40 330nH (LQW15CNR33J10D) at (195.60, 114.79) mm on F.Cu, its 1 pad on Net-(C156-Pad1)"
+   },
    "max_drop_mv": 0.51626,
    "max_j_a_mm2": 6.83504,
    "rail": "Net-(C156-Pad1)",
@@ -4893,6 +5267,28 @@
   {
    "copper_loss_mw": 15.8842,
    "load_a": 1.13242,
+   "max_at": {
+    "at": [
+     187.05,
+     56.65
+    ],
+    "bbox": [
+     184.05,
+     53.65,
+     193.75,
+     59.65
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+5V",
+    "refs": [
+     "L1.1"
+    ],
+    "what": "part L1 2.2uH (SRN5040-2R2Y) at (187.05, 56.65) mm on F.Cu, its 1 pad on +5V"
+   },
    "max_drop_mv": 14.6381,
    "max_j_a_mm2": 132.86,
    "rail": "+5V",
@@ -5099,6 +5495,28 @@
   {
    "copper_loss_mw": 0.00683658,
    "load_a": 0.0134,
+   "max_at": {
+    "at": [
+     200.75,
+     95.65
+    ],
+    "bbox": [
+     197.25,
+     92.65,
+     204.75,
+     101.45
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC27-VCC)",
+    "refs": [
+     "IC27.7"
+    ],
+    "what": "part IC27 LT5560 at (200.75, 95.65) mm on F.Cu, its 1 pad on Net-(IC27-VCC)"
+   },
    "max_drop_mv": 0.514073,
    "max_j_a_mm2": 4.37308,
    "rail": "Net-(IC27-VCC)",
@@ -5169,6 +5587,28 @@
   {
    "copper_loss_mw": 0.00320018,
    "load_a": 0.02,
+   "max_at": {
+    "at": [
+     157.89,
+     87.55
+    ],
+    "bbox": [
+     150.01,
+     82.87,
+     160.89,
+     93.74
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/HF Source/3V3_SRC_3",
+    "refs": [
+     "IC10"
+    ],
+    "what": "part IC10 MAX2871 at (157.89, 87.55) mm on F.Cu, its 2 pads on /HF Source/3V3_SRC_3"
+   },
    "max_drop_mv": 0.256729,
    "max_j_a_mm2": 2.61282,
    "rail": "/HF Source/3V3_SRC_3",
@@ -5239,6 +5679,28 @@
   {
    "copper_loss_mw": 0.0538847,
    "load_a": 0.148205,
+   "max_at": {
+    "at": [
+     188.4,
+     79.76
+    ],
+    "bbox": [
+     185.4,
+     75.74,
+     191.4,
+     82.76
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Power Supply/VREG5V{slash}2",
+    "refs": [
+     "L7.1"
+    ],
+    "what": "part L7 FERRITE (BLM15AX601SN1) at (188.40, 79.76) mm on F.Cu, its 1 pad on /Power Supply/VREG5V{slash}2"
+   },
    "max_drop_mv": 0.375658,
    "max_j_a_mm2": 11.7017,
    "rail": "/Power Supply/VREG5V{slash}2",
@@ -5258,6 +5720,28 @@
   {
    "copper_loss_mw": 2.27701e-07,
    "load_a": 0.0002,
+   "max_at": {
+    "at": [
+     147.2,
+     101.32
+    ],
+    "bbox": [
+     143.26,
+     98.32,
+     153.14,
+     108.19
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
+    "refs": [
+     "IC13.20"
+    ],
+    "what": "part IC13 QPC6324 at (147.20, 101.32) mm on F.Cu, its 1 pad on /Attenuator Amp Switches/3V3_HBLB_SWITCH"
+   },
    "max_drop_mv": 0.00118507,
    "max_j_a_mm2": 0.0279942,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_SWITCH",
@@ -5277,6 +5761,28 @@
   {
    "copper_loss_mw": 0.0830506,
    "load_a": 0.07,
+   "max_at": {
+    "at": [
+     192.4,
+     112.9
+    ],
+    "bbox": [
+     187.46,
+     107.62,
+     197.34,
+     117.49
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC29-VPDT)",
+    "refs": [
+     "IC29"
+    ],
+    "what": "part IC29 ADL5801 at (192.40, 112.90) mm on F.Cu, its 4 pads on Net-(IC29-VPDT)"
+   },
    "max_drop_mv": 1.38465,
    "max_j_a_mm2": 14.7443,
    "rail": "Net-(IC29-VPDT)",
@@ -5398,6 +5904,28 @@
   {
    "copper_loss_mw": 3.06272e-07,
    "load_a": 0.0002,
+   "max_at": {
+    "at": [
+     115.32,
+     129.89
+    ],
+    "bbox": [
+     112.32,
+     125.48,
+     122.48,
+     135.63
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Attenuator Amp Switches/3V3_P1_SWITCH",
+    "refs": [
+     "IC18.20"
+    ],
+    "what": "part IC18 QPC6324 at (115.32, 129.89) mm on F.Cu, its 1 pad on /Attenuator Amp Switches/3V3_P1_SWITCH"
+   },
    "max_drop_mv": 0.00159026,
    "max_j_a_mm2": 0.0396694,
    "rail": "/Attenuator Amp Switches/3V3_P1_SWITCH",
@@ -5417,6 +5945,28 @@
   {
    "copper_loss_mw": 6.84965e-06,
    "load_a": 0.00161,
+   "max_at": {
+    "at": [
+     124.4,
+     97.69
+    ],
+    "bbox": [
+     120.45,
+     92.42,
+     128.35,
+     100.69
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC34-EN)",
+    "refs": [
+     "IC34"
+    ],
+    "what": "part IC34 NCP702-1.8 (NCP702SN18T1G) at (124.40, 97.69) mm on F.Cu, its 2 pads on Net-(IC34-EN)"
+   },
    "max_drop_mv": 0.00574487,
    "max_j_a_mm2": 0.156953,
    "rail": "Net-(IC34-EN)",
@@ -5436,6 +5986,28 @@
   {
    "copper_loss_mw": 2.05125e-05,
    "load_a": 0.0016,
+   "max_at": {
+    "at": [
+     119.9,
+     98.45
+    ],
+    "bbox": [
+     116.4,
+     91.05,
+     124.4,
+     101.45
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC34-OUT)",
+    "refs": [
+     "IC35.2"
+    ],
+    "what": "part IC35 MCP33131D-10-E/MS at (119.90, 98.45) mm on F.Cu, its 1 pad on Net-(IC34-OUT)"
+   },
    "max_drop_mv": 0.0134478,
    "max_j_a_mm2": 0.232051,
    "rail": "Net-(IC34-OUT)",
@@ -5455,6 +6027,28 @@
   {
    "copper_loss_mw": 0.00435149,
    "load_a": 0.0502576,
+   "max_at": {
+    "at": [
+     170.39,
+     120.05
+    ],
+    "bbox": [
+     167.39,
+     117.05,
+     174.41,
+     123.05
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/1.LO/3V3_LDO2_LO1",
+    "refs": [
+     "L29.1"
+    ],
+    "what": "part L29 FERRITE (BLM15AX601SN1) at (170.39, 120.05) mm on F.Cu, its 1 pad on /1.LO/3V3_LDO2_LO1"
+   },
    "max_drop_mv": 0.0908948,
    "max_j_a_mm2": 4.23411,
    "rail": "/1.LO/3V3_LDO2_LO1",
@@ -5474,6 +6068,28 @@
   {
    "copper_loss_mw": 0.0376833,
    "load_a": 0.05,
+   "max_at": {
+    "at": [
+     176.99,
+     116.0
+    ],
+    "bbox": [
+     169.96,
+     108.72,
+     180.84,
+     119.59
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/1.LO/3V3_LO1_2",
+    "refs": [
+     "IC21"
+    ],
+    "what": "part IC21 MAX2871 at (176.99, 116.00) mm on F.Cu, its 2 pads on /1.LO/3V3_LO1_2"
+   },
    "max_drop_mv": 0.842068,
    "max_j_a_mm2": 10.7114,
    "rail": "/1.LO/3V3_LO1_2",
@@ -5578,6 +6194,28 @@
   {
    "copper_loss_mw": 1.73645e-07,
    "load_a": 0.0002,
+   "max_at": {
+    "at": [
+     149.4,
+     133.49
+    ],
+    "bbox": [
+     143.46,
+     126.62,
+     153.34,
+     136.49
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Attenuator Amp Switches/3V3_P12_SWITCH",
+    "refs": [
+     "IC16.20"
+    ],
+    "what": "part IC16 QPC6324 at (149.40, 133.49) mm on F.Cu, its 1 pad on /Attenuator Amp Switches/3V3_P12_SWITCH"
+   },
    "max_drop_mv": 0.000916362,
    "max_j_a_mm2": 0.0271415,
    "rail": "/Attenuator Amp Switches/3V3_P12_SWITCH",
@@ -5597,6 +6235,28 @@
   {
    "copper_loss_mw": 0.206109,
    "load_a": 0.224635,
+   "max_at": {
+    "at": [
+     166.7,
+     68.4
+    ],
+    "bbox": [
+     163.7,
+     61.7,
+     169.7,
+     71.4
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Power Supply/VREG3V3_SWL",
+    "refs": [
+     "L4.1"
+    ],
+    "what": "part L4 2.2uH (SRN5040-2R2Y) at (166.70, 68.40) mm on F.Cu, its 1 pad on /Power Supply/VREG3V3_SWL"
+   },
    "max_drop_mv": 0.961,
    "max_j_a_mm2": 12.535,
    "rail": "/Power Supply/VREG3V3_SWL",
@@ -5616,6 +6276,28 @@
   {
    "copper_loss_mw": 0.501582,
    "load_a": 0.241796,
+   "max_at": {
+    "at": [
+     165.36,
+     120.75
+    ],
+    "bbox": [
+     162.36,
+     116.8,
+     170.64,
+     124.7
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "+5V{slash}4",
+    "refs": [
+     "IC20"
+    ],
+    "what": "part IC20 NCP702-3.3 (NCP702SN33T1G) at (165.36, 120.75) mm on F.Cu, its 2 pads on +5V{slash}4"
+   },
    "max_drop_mv": 3.78801,
    "max_j_a_mm2": 13.3457,
    "rail": "+5V{slash}4",
@@ -5754,6 +6436,28 @@
   {
    "copper_loss_mw": 0.0108427,
    "load_a": 0.0705048,
+   "max_at": {
+    "at": [
+     166.89,
+     109.55
+    ],
+    "bbox": [
+     163.89,
+     106.55,
+     170.91,
+     112.55
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/1.LO/3V3_LDO1_LO1",
+    "refs": [
+     "L28.1"
+    ],
+    "what": "part L28 FERRITE (BLM15AX601SN1) at (166.89, 109.55) mm on F.Cu, its 1 pad on /1.LO/3V3_LDO1_LO1"
+   },
    "max_drop_mv": 0.160007,
    "max_j_a_mm2": 6.82167,
    "rail": "/1.LO/3V3_LDO1_LO1",
@@ -5773,6 +6477,28 @@
   {
    "copper_loss_mw": 0.113476,
    "load_a": 0.07,
+   "max_at": {
+    "at": [
+     177.49,
+     112.06
+    ],
+    "bbox": [
+     169.96,
+     108.72,
+     180.84,
+     119.59
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/1.LO/3V3_LO1_1",
+    "refs": [
+     "IC21"
+    ],
+    "what": "part IC21 MAX2871 at (177.49, 112.06) mm on F.Cu, its 2 pads on /1.LO/3V3_LO1_1"
+   },
    "max_drop_mv": 1.62665,
    "max_j_a_mm2": 14.0905,
    "rail": "/1.LO/3V3_LO1_1",
@@ -5877,6 +6603,28 @@
   {
    "copper_loss_mw": 0.0204525,
    "load_a": 0.06,
+   "max_at": {
+    "at": [
+     98.52,
+     114.75
+    ],
+    "bbox": [
+     95.52,
+     111.75,
+     102.49,
+     117.75
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C119-Pad1)",
+    "refs": [
+     "L33.1"
+    ],
+    "what": "part L33 330nH (LQW15CNR33J10D) at (98.52, 114.75) mm on F.Cu, its 1 pad on Net-(C119-Pad1)"
+   },
    "max_drop_mv": 0.542007,
    "max_j_a_mm2": 5.26526,
    "rail": "Net-(C119-Pad1)",
@@ -5947,6 +6695,28 @@
   {
    "copper_loss_mw": 0.00353063,
    "load_a": 0.0134,
+   "max_at": {
+    "at": [
+     99.65,
+     99.65
+    ],
+    "bbox": [
+     96.15,
+     96.65,
+     103.65,
+     105.45
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC22-VCC)",
+    "refs": [
+     "IC22.7"
+    ],
+    "what": "part IC22 LT5560 at (99.65, 99.65) mm on F.Cu, its 1 pad on Net-(IC22-VCC)"
+   },
    "max_drop_mv": 0.267668,
    "max_j_a_mm2": 2.7762,
    "rail": "Net-(IC22-VCC)",
@@ -6017,6 +6787,28 @@
   {
    "copper_loss_mw": 7.40078e-06,
    "load_a": 0.00161,
+   "max_at": {
+    "at": [
+     93.4,
+     89.19
+    ],
+    "bbox": [
+     89.45,
+     83.92,
+     97.35,
+     92.19
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC25-EN)",
+    "refs": [
+     "IC25"
+    ],
+    "what": "part IC25 NCP702-1.8 (NCP702SN18T1G) at (93.40, 89.19) mm on F.Cu, its 2 pads on Net-(IC25-EN)"
+   },
    "max_drop_mv": 0.00605192,
    "max_j_a_mm2": 0.138105,
    "rail": "Net-(IC25-EN)",
@@ -6036,6 +6828,28 @@
   {
    "copper_loss_mw": 0.0821883,
    "load_a": 0.07,
+   "max_at": {
+    "at": [
+     100.24,
+     117.95
+    ],
+    "bbox": [
+     94.96,
+     113.02,
+     104.84,
+     122.89
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC24-VPDT)",
+    "refs": [
+     "IC24"
+    ],
+    "what": "part IC24 ADL5801 at (100.24, 117.95) mm on F.Cu, its 4 pads on Net-(IC24-VPDT)"
+   },
    "max_drop_mv": 1.49249,
    "max_j_a_mm2": 13.8138,
    "rail": "Net-(IC24-VPDT)",
@@ -6157,6 +6971,28 @@
   {
    "copper_loss_mw": 0.0054063,
    "load_a": 0.0503889,
+   "max_at": {
+    "at": [
+     161.21,
+     81.35
+    ],
+    "bbox": [
+     157.19,
+     78.35,
+     164.21,
+     84.35
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/HF Source/3V3_LDO2_SRC",
+    "refs": [
+     "L20.1"
+    ],
+    "what": "part L20 FERRITE (BLM15AX601SN1) at (161.21, 81.35) mm on F.Cu, its 1 pad on /HF Source/3V3_LDO2_SRC"
+   },
    "max_drop_mv": 0.110911,
    "max_j_a_mm2": 4.87541,
    "rail": "/HF Source/3V3_LDO2_SRC",
@@ -6176,6 +7012,28 @@
   {
    "copper_loss_mw": 0.0543361,
    "load_a": 0.148205,
+   "max_at": {
+    "at": [
+     118.3,
+     120.24
+    ],
+    "bbox": [
+     115.3,
+     117.24,
+     121.3,
+     124.26
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Power Supply/VREG5V{slash}3",
+    "refs": [
+     "L8.1"
+    ],
+    "what": "part L8 FERRITE (BLM15AX601SN1) at (118.30, 120.24) mm on F.Cu, its 1 pad on /Power Supply/VREG5V{slash}3"
+   },
    "max_drop_mv": 0.376987,
    "max_j_a_mm2": 14.4567,
    "rail": "/Power Supply/VREG5V{slash}3",
@@ -6195,6 +7053,28 @@
   {
    "copper_loss_mw": 0.048107,
    "load_a": 0.05013,
+   "max_at": {
+    "at": [
+     153.86,
+     86.46
+    ],
+    "bbox": [
+     150.01,
+     82.87,
+     160.89,
+     93.74
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/HF Source/3V3_SRC_2",
+    "refs": [
+     "IC10"
+    ],
+    "what": "part IC10 MAX2871 at (153.86, 86.46) mm on F.Cu, its 2 pads on /HF Source/3V3_SRC_2"
+   },
    "max_drop_mv": 1.06094,
    "max_j_a_mm2": 11.22,
    "rail": "/HF Source/3V3_SRC_2",
@@ -6333,6 +7213,28 @@
   {
    "copper_loss_mw": 1.949e-05,
    "load_a": 0.00114,
+   "max_at": {
+    "at": [
+     122.8,
+     107.13
+    ],
+    "bbox": [
+     115.4,
+     103.48,
+     125.8,
+     111.43
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC32-V_{S+})",
+    "refs": [
+     "IC32.3"
+    ],
+    "what": "part IC32 THS4521IDGKR at (122.80, 107.13) mm on F.Cu, its 1 pad on Net-(IC32-V_{S+})"
+   },
    "max_drop_mv": 0.0173993,
    "max_j_a_mm2": 0.368735,
    "rail": "Net-(IC32-V_{S+})",
@@ -6403,6 +7305,28 @@
   {
    "copper_loss_mw": 0.00965126,
    "load_a": 0.0705048,
+   "max_at": {
+    "at": [
+     167.81,
+     85.55
+    ],
+    "bbox": [
+     163.79,
+     82.55,
+     170.81,
+     88.55
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/HF Source/3v3_LDO1_SRC",
+    "refs": [
+     "L19.1"
+    ],
+    "what": "part L19 FERRITE (BLM15AX601SN1) at (167.81, 85.55) mm on F.Cu, its 1 pad on /HF Source/3v3_LDO1_SRC"
+   },
    "max_drop_mv": 0.143248,
    "max_j_a_mm2": 6.14083,
    "rail": "/HF Source/3v3_LDO1_SRC",
@@ -6422,6 +7346,28 @@
   {
    "copper_loss_mw": 3.88778e-05,
    "load_a": 0.0016,
+   "max_at": {
+    "at": [
+     99.3,
+     87.25
+    ],
+    "bbox": [
+     95.8,
+     79.85,
+     103.8,
+     90.25
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC25-OUT)",
+    "refs": [
+     "IC26.2"
+    ],
+    "what": "part IC26 MCP33131D-10-E/MS at (99.30, 87.25) mm on F.Cu, its 1 pad on Net-(IC25-OUT)"
+   },
    "max_drop_mv": 0.0249043,
    "max_j_a_mm2": 0.226015,
    "rail": "Net-(IC25-OUT)",
@@ -6441,6 +7387,28 @@
   {
    "copper_loss_mw": 2.72898e-07,
    "load_a": 0.00018,
+   "max_at": {
+    "at": [
+     149.5,
+     111.05
+    ],
+    "bbox": [
+     144.06,
+     106.12,
+     153.94,
+     115.99
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/Attenuator Amp Switches/3V3_HBLB_ATT",
+    "refs": [
+     "IC14"
+    ],
+    "what": "part IC14 RFSA3714 at (149.50, 111.05) mm on F.Cu, its 2 pads on /Attenuator Amp Switches/3V3_HBLB_ATT"
+   },
    "max_drop_mv": 0.0022895,
    "max_j_a_mm2": 0.0239942,
    "rail": "/Attenuator Amp Switches/3V3_HBLB_ATT",
@@ -6511,6 +7479,28 @@
   {
    "copper_loss_mw": 0.204531,
    "load_a": 0.07,
+   "max_at": {
+    "at": [
+     153.36,
+     90.4
+    ],
+    "bbox": [
+     150.01,
+     82.87,
+     160.89,
+     93.74
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/HF Source/3V3_SRC_1",
+    "refs": [
+     "IC10"
+    ],
+    "what": "part IC10 MAX2871 at (153.36, 90.40) mm on F.Cu, its 2 pads on /HF Source/3V3_SRC_1"
+   },
    "max_drop_mv": 2.92778,
    "max_j_a_mm2": 15.7,
    "rail": "/HF Source/3V3_SRC_1",
@@ -6615,6 +7605,28 @@
   {
    "copper_loss_mw": 0.0982841,
    "load_a": 0.08,
+   "max_at": {
+    "at": [
+     123.55,
+     74.09
+    ],
+    "bbox": [
+     108.74,
+     57.89,
+     136.06,
+     85.22
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "VCCINT",
+    "refs": [
+     "U2"
+    ],
+    "what": "part U2 XC6SLX9-TQG144 (XC6SLX9-2TQG144) at (123.55, 74.09) mm on F.Cu, its 5 pads on VCCINT"
+   },
    "max_drop_mv": 1.30795,
    "max_j_a_mm2": 4.11202,
    "rail": "VCCINT",
@@ -6821,6 +7833,28 @@
   {
    "copper_loss_mw": 0.00526848,
    "load_a": 0.0134,
+   "max_at": {
+    "at": [
+     121.7,
+     113.4
+    ],
+    "bbox": [
+     118.7,
+     109.4,
+     127.5,
+     116.9
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC36-VCC)",
+    "refs": [
+     "IC36.7"
+    ],
+    "what": "part IC36 LT5560 at (121.70, 113.40) mm on F.Cu, its 1 pad on Net-(IC36-VCC)"
+   },
    "max_drop_mv": 0.39705,
    "max_j_a_mm2": 4.332,
    "rail": "Net-(IC36-VCC)",
@@ -6891,6 +7925,28 @@
   {
    "copper_loss_mw": 2.27445e-05,
    "load_a": 0.00114,
+   "max_at": {
+    "at": [
+     102.3,
+     94.33
+    ],
+    "bbox": [
+     94.9,
+     90.68,
+     105.3,
+     98.63
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(IC23-V_{S+})",
+    "refs": [
+     "IC23.3"
+    ],
+    "what": "part IC23 THS4521IDGKR at (102.30, 94.33) mm on F.Cu, its 1 pad on Net-(IC23-V_{S+})"
+   },
    "max_drop_mv": 0.0202542,
    "max_j_a_mm2": 0.346821,
    "rail": "Net-(IC23-V_{S+})",
@@ -6961,6 +8017,28 @@
   {
    "copper_loss_mw": 0.0178641,
    "load_a": 0.06,
+   "max_at": {
+    "at": [
+     131.09,
+     119.35
+    ],
+    "bbox": [
+     127.12,
+     116.35,
+     134.09,
+     122.35
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "Net-(C190-Pad1)",
+    "refs": [
+     "L46.1"
+    ],
+    "what": "part L46 330nH (LQW15CNR33J10D) at (131.09, 119.35) mm on F.Cu, its 1 pad on Net-(C190-Pad1)"
+   },
    "max_drop_mv": 0.462743,
    "max_j_a_mm2": 6.62975,
    "rail": "Net-(C190-Pad1)",
@@ -7031,6 +8109,28 @@
   {
    "copper_loss_mw": 0.278902,
    "ground_return": true,
+   "max_at": {
+    "at": [
+     186.46,
+     62.62
+    ],
+    "bbox": [
+     181.65,
+     57.13,
+     190.15,
+     65.98
+    ],
+    "item": "part",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "GND",
+    "refs": [
+     "IC1"
+    ],
+    "what": "part IC1 MIC2253 at (186.46, 62.62) mm on F.Cu, its 4 pads on GND"
+   },
    "max_j_a_mm2": 4.06186,
    "max_offset_mv": 0.191056,
    "rail": "GND",

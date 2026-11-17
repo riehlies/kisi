@@ -615,6 +615,9 @@ pub struct CheckRow {
     pub skew_uncertain: bool,
     /// lowest via-stub resonance (GHz)
     pub stub_ghz: Option<f64>,
+    /// where that via is (mm): the via stub's location (`locate::channel_spot`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stub_at: Option<crate::geom::P>,
     pub warnings: usize,
     pub error: Option<String>,
     /// false when no eye was computed
@@ -679,6 +682,7 @@ pub(crate) fn empty_row(net: u32, name: String, gbps: f64) -> CheckRow {
         skew_ps: None,
         skew_uncertain: false,
         stub_ghz: None,
+        stub_at: None,
         warnings: 0,
         error: None,
         eye: true,
@@ -720,12 +724,16 @@ pub(crate) fn fill_row(
     row.il_nyq_db = ch.s21_db[k];
     let k2 = ((1.5 * fn_ / df).round() as usize).clamp(1, ch.freq.len());
     row.rl_db = -ch.s11_db[..k2].iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-    row.stub_ghz = ch
-        .via_info
-        .iter()
-        .filter(|v| v.stub_mm > 0.01)
-        .filter_map(|v| v.stub_f_ghz)
-        .fold(None, |a: Option<f64>, b| Some(a.map_or(b, |x| x.min(b))));
+    // the lowest stub resonance and its via (the first of equals)
+    let stub = ch.via_info.iter().filter(|v| v.stub_mm > 0.01).filter_map(|v| Some((v.stub_f_ghz?, v.at))).fold(
+        None,
+        |a: Option<(f64, crate::geom::P)>, b| match a {
+            Some(a) if a.0 <= b.0 => Some(a),
+            _ => Some(b),
+        },
+    );
+    row.stub_ghz = stub.map(|s| s.0);
+    row.stub_at = stub.map(|s| s.1);
     row.eye = with_eye;
     if !with_eye {
         return;

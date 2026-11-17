@@ -73,6 +73,13 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   `kisi report` again; the PDN impedance (`--pdn`) and the crosstalk scan as report sections; a CSV of the net
   detail tabs; the report as Markdown as well (`--md FILE`, from the same renderer) for automation pipelines that
   store it with their outputs (KiCad forum request, 2026-11-12).
+- **Findings with their place** – **done** (2026-11-17, user feedback "I can't see where the problem is"): the
+  Export menu's entries say what they write and how much; the report's findings (`kisi_core::findings`) carry their
+  place on the board (`kisi_si::locate`: layer, coordinates, part, pad, via or track) and a board sketch each (SVG
+  from Rust), the summary and an index on top, `findings.csv`; the viewer jumps to a place from a channel check
+  row, from a report opened from the viewer and from a link `#finding=…`. Next: the skew's place (the pair's
+  largest length difference instead of the receiver), the viewer's own findings list without running the report,
+  the power findings in the Power view (voltage drop, losses map) instead of the board view.
 - **Smaller downloads:** separate WASM builds for viewer and CLI (the viewer does not need the CLI commands).
 - **Faster field solver in the CLI:** better scheduling across threads, optional larger time budget presets.
 - **KiCad plugin** (decided 2026-10-26: IPC API plugin, no local server; revised 2026-11-05 for saving) –

@@ -7,6 +7,7 @@
 //! * `rf`       – RLGC line models, channel S-parameters/TDR, Touchstone, crosstalk
 //! * `via`      – via model (antipads, stubs, back-drill, return path)
 //! * `eye`      – eye diagram and board-level channel check
+//! * `locate`   – where a result applies on the board (layer, coordinates, part, pad, via, track)
 //! * `accuracy` – accuracy levels and their validated uncertainty (`data/accuracy.json`)
 //! * `study`    – a class's main cross-section per layer under other stackups, tolerance bands
 
@@ -20,6 +21,7 @@ pub mod export;
 pub mod extract;
 pub mod eye;
 pub mod lanenet;
+pub mod locate;
 pub mod profile;
 pub mod rf;
 pub mod study;

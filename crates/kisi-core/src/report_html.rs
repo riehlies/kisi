@@ -1,11 +1,16 @@
-//! The printable report: one to two pages of results from the report JSON (`service::report`) –
+//! The printable report: results and findings from the report JSON (`service::report`) –
 //! `kisi report --html FILE` / `--csv DIR` and the viewer's Export → Report (WASM `kisi_report_html`).
 //!
 //! Rendered from that JSON alone, so the CLIs and the viewer print the same page. Verdicts are the
 //! report's own (`status` of the channel rows and the impedance classes from `profile::judge`, the
-//! temperature's `status`); this module only counts, sorts and formats them. Maps, curves, per-net
-//! details and via lists stay in the viewer and the JSON. The page is self-contained (no scripts, fonts
-//! or images), light, for A4 and Letter; tables break across pages with their header repeated.
+//! temperature's `status`); the findings with their locations and sketch geometry are the report's
+//! `findings` (`crate::findings`); this module only counts, sorts and formats them. The page starts with
+//! a summary and the index of findings, then the tables per area, then every finding with where it is
+//! (layer, coordinates, part, pad, via or track) and a small board sketch (SVG, `sketch_svg`). Maps,
+//! curves and per-net details stay in the viewer and the JSON. The page is self-contained (no scripts,
+//! fonts or images), light, for A4 and Letter; tables break across pages with their header repeated.
+//! The parts – `tables`, `finding_rows`, `sketch_svg` – are kept apart from the page so that other
+//! formats (Markdown) can reuse them.
 
 use serde_json::Value;
 
@@ -42,12 +47,12 @@ fn word(c: &str) -> &'static str {
 
 /// A number with `d` decimals (dot, no grouping); empty for no value.
 #[inline(never)]
-fn num(v: &Value, d: usize) -> String {
+pub(crate) fn num(v: &Value, d: usize) -> String {
     v.as_f64().map(|x| fx(x, d)).unwrap_or_default()
 }
 
 #[inline(never)]
-fn fx(x: f64, d: usize) -> String {
+pub(crate) fn fx(x: f64, d: usize) -> String {
     let s = format!("{x:.d$}");
     if s.starts_with('-') && s[1..].chars().all(|c| c == '0' || c == '.') {
         s[1..].to_string()
@@ -58,7 +63,7 @@ fn fx(x: f64, d: usize) -> String {
 
 #[inline(never)]
 /// A value as text; KiCad's escaped slash in net names (`{slash}`) as `/`, as the viewer shows it.
-fn s(v: &Value) -> String {
+pub(crate) fn s(v: &Value) -> String {
     match v {
         Value::String(t) => t.replace("{slash}", "/"),
         Value::Null => String::new(),
@@ -129,7 +134,7 @@ fn crit(key: &str) -> (&'static str, f64, usize) {
 /// A row's worst criterion – the worst status, then the least margin relative to its limit –
 /// with that margin: (criterion, relative margin).
 #[inline(never)]
-fn worst_criterion(row: &Value) -> Option<(&Value, f64)> {
+pub(crate) fn worst_criterion(row: &Value) -> Option<(&Value, f64)> {
     let rel = |c: &Value| {
         let v = g(c, "value").as_f64()?;
         let lo = g(c, "lo").as_f64().map(|l| (v - l) / l.abs().max(1e-9));
@@ -151,7 +156,7 @@ fn worst_criterion(row: &Value) -> Option<(&Value, f64)> {
 
 /// Criterion cells: label, value, limit, margin (in the criterion's unit).
 #[inline(never)]
-fn crit_cells(c: &Value) -> [String; 4] {
+pub(crate) fn crit_cells(c: &Value) -> [String; 4] {
     let (label, f, d) = crit(g(c, "key").as_str().unwrap_or(""));
     if g(c, "key") == "error" {
         return [label.into(), String::new(), String::new(), String::new()];
@@ -217,12 +222,12 @@ fn heads(h: &[&str]) -> Vec<String> {
 
 /// `v[k]`, as one function (indexing inlined at every place makes the WebAssembly much larger).
 #[inline(never)]
-fn g<'a>(v: &'a Value, k: &str) -> &'a Value {
+pub(crate) fn g<'a>(v: &'a Value, k: &str) -> &'a Value {
     v.get(k).unwrap_or(&Value::Null)
 }
 
 #[inline(never)]
-fn arr(v: &Value) -> &[Value] {
+pub(crate) fn arr(v: &Value) -> &[Value] {
     v.as_array().map(|a| a.as_slice()).unwrap_or(&[])
 }
 
@@ -523,9 +528,9 @@ fn cooling(c: &Value) -> String {
     }
 }
 
-/// Counts of ok / warning / fail per area, and the five worst items: (counts, worst).
+/// Counts of ok / warning / fail per area.
 #[inline(never)]
-fn glance(rep: &Value, ts: &[Table]) -> (Table, Table) {
+fn glance(rep: &Value, ts: &[Table]) -> Table {
     let count = |t: &Table| ["ok", "warn", "fail"].map(|c| t.rows.iter().filter(|r| r.1 == c).count());
     let mut rows = Vec::new();
     // per area: the counts, or None (not computed)
@@ -570,67 +575,13 @@ fn glance(rep: &Value, ts: &[Table]) -> (Table, Table) {
         done.then_some([all.saturating_sub(f + w), w, f]),
         "estimate; warning: within 10 K of Tj max",
     );
-    let counts = Table {
+    Table {
         id: "at_a_glance",
         title: "At a glance".into(),
         head: heads(&["Area", "ok", "warning", "fail", "Note"]),
         rows,
         note: String::new(),
-    };
-    // the five worst: fail before warning, then the least relative margin
-    let mut w: Vec<Line> = Vec::new();
-    for r in arr(g(g(rep, "channels"), "rows")) {
-        let cl = class(g(r, "status").as_str().unwrap_or(""));
-        if let (Some((c, m)), "fail" | "warn") = (worst_criterion(r), cl) {
-            let [l, v, lim, _] = crit_cells(c);
-            w.push((
-                (u8::from(cl == "warn"), m),
-                vec!["Channel".into(), lane(r), format!("{l}: {v} ({lim})"), word(cl).into()],
-                cl,
-            ));
-        }
     }
-    for c in arr(g(rep, "impedance")) {
-        let cl = class(g(c, "status").as_str().unwrap_or(""));
-        if let (Some(z), Some(t), Some(win), "fail" | "warn") =
-            (g(c, "z_ohm").as_f64(), g(c, "target_ohm").as_f64(), g(c, "window_pct").as_f64(), cl)
-        {
-            let dev = 100.0 * (z / t - 1.0);
-            let what = format!(
-                "{}: mean {} Ω, {} % from {} Ω (± {} %)",
-                s(g(c, "worst_net")),
-                fx(z, 1),
-                fx(dev, 1),
-                fx(t, 0),
-                fx(win, 0)
-            );
-            w.push((
-                (u8::from(cl == "warn"), (win - dev.abs()) / win),
-                vec!["Impedance".into(), s(g(c, "class")), what, word(cl).into()],
-                cl,
-            ));
-        }
-    }
-    for p in arr(g(g(rep, "thermal"), "parts")) {
-        let cl = class(g(p, "status").as_str().unwrap_or(""));
-        if let (Some(m), Some(mx), "fail" | "warn") = (g(p, "margin_k").as_f64(), g(p, "tj_max_c").as_f64(), cl) {
-            let what = format!("Tj {} °C, max {} °C (estimate)", num(g(p, "tj_c"), 1), fx(mx, 0));
-            w.push((
-                (u8::from(cl == "warn"), m / mx),
-                vec!["Temperature".into(), format!("{} {}", s(g(p, "ref")), s(g(p, "part"))), what, word(cl).into()],
-                cl,
-            ));
-        }
-    }
-    sort_lines(&mut w);
-    let worst = Table {
-        id: "worst",
-        title: "The five worst items".into(),
-        head: heads(&["Area", "Item", "Value (limit)", "Verdict"]),
-        note: if w.is_empty() { "Nothing over a limit.".into() } else { String::new() },
-        rows: w.into_iter().take(5).map(|(_, r, c)| (r, c)).collect(),
-    };
-    (counts, worst)
 }
 
 /// The report's tables for `--csv`: (file name, CSV text), in the format of the viewer's Export →
@@ -638,8 +589,8 @@ fn glance(rep: &Value, ts: &[Table]) -> (Table, Table) {
 /// starts with an apostrophe).
 pub fn csv_files(rep: &Value) -> Vec<(String, String)> {
     let ts = tables(rep);
-    let (a, b) = glance(rep, &ts);
-    [a, b].into_iter().chain(ts).map(|t| (format!("{}.csv", t.id), csv(&t))).collect()
+    let a = glance(rep, &ts);
+    [a, finding_table(rep)].into_iter().chain(ts).map(|t| (format!("{}.csv", t.id), csv(&t))).collect()
 }
 
 #[inline(never)]
@@ -716,7 +667,14 @@ thead{display:table-header-group}tr{break-inside:avoid}th,td{text-align:left;ver
 th{background:#eee;font-weight:600}td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}td.nw{white-space:nowrap}\
 tr.warn td{background:#fff3d6}tr.fail td{background:#fde0e0}.v.ok{color:#126b35}.v.warn{color:#7a5200}.v.fail{color:#a4001d}\
 .meta{display:grid;grid-template-columns:max-content 1fr;gap:1pt 10pt;margin:5pt 0}.meta b{font-weight:600}\
-.note{margin:2pt 0 4pt;color:#444}ul{margin:2pt 0;padding-left:14pt}footer{margin-top:10pt;padding-top:3pt;border-top:.5pt solid #999;color:#555;font-size:7.5pt}\
+.note{margin:2pt 0 4pt;color:#444}.v.gap{color:#35506b}tr.gap td{background:#eef3f8}.sum{font-size:9pt}\
+table.ix td a{color:inherit}table.ix td:nth-child(5){width:30%}a{color:#0b4f8a}.fd{break-inside:avoid;margin:6pt 0 8pt;padding-top:2pt;border-top:.5pt solid #bbb}.fd h3{margin:2pt 0}\
+.sk{display:flex;gap:4mm;align-items:flex-start;margin:3pt 0}.sk svg{height:58mm;max-width:100%;border:.5pt solid #ccc;background:#fff}.sk svg.dt{width:58mm}\
+.sk path,.sk circle,.sk rect,.sk use{vector-effect:non-scaling-stroke}.ol{fill:none;stroke:#222;stroke-width:1px}.t{fill:none;stroke-linecap:round;stroke-linejoin:round}\
+.ov .t{stroke-width:1.2px}.ov .t.hf{stroke-width:2.2px}.hf{stroke:#d1242f;fill:#d1242f}.ho{stroke:#f0a0a6;fill:#f0a0a6}.cf{stroke:#9aa3ad;fill:#9aa3ad}.co{stroke:#dde1e6;fill:#dde1e6}\
+.p{stroke-linejoin:round;stroke-linecap:round}.sk .p{vector-effect:none}.sk .dt .t{vector-effect:none}.dr{stroke:#fff;stroke-width:2px;stroke-linecap:round}.hv{stroke:#d1242f;stroke-width:3px;stroke-linecap:round}.dw{fill:none;stroke:#555;stroke-width:.8px;stroke-dasharray:3 2}\
+.mk *{fill:none;stroke:#111;stroke-width:1.6px}.mk .h{stroke:#fff;stroke-width:4.5px}.m2 *{stroke:#1f4e8c}\
+.sb{stroke:#222;stroke-width:1.5px}.sk text{fill:#222;font-family:system-ui,sans-serif;paint-order:stroke;stroke:#fff}.cap{color:#555;font-size:7.5pt;margin:1pt 0}ul{margin:2pt 0;padding-left:14pt}footer{margin-top:10pt;padding-top:3pt;border-top:.5pt solid #999;color:#555;font-size:7.5pt}\
 @media screen{body{padding:16px}}@media print{.hint{display:none}}.hint{background:#eef3f8;padding:4pt 6pt;border-radius:3pt}";
 
 /// The stackup's sources in one line: board file, kisi.json, a fab template, edited.
@@ -757,7 +715,7 @@ fn stackup_source(p: &Value) -> String {
 /// no clock).
 pub fn html(rep: &Value, date: &str) -> String {
     let ts = tables(rep);
-    let (counts, worst) = glance(rep, &ts);
+    let counts = glance(rep, &ts);
     let ov = g(rep, "overview");
     let var = g(rep, "variant");
     let o = g(rep, "options");
@@ -832,8 +790,61 @@ pub fn html(rep: &Value, date: &str) -> String {
         b.push_str(&format!("<b>{k}</b><span>{}</span>", esc(&v)));
     }
     b.push_str("</div>");
-    b.push_str(&table_html(&counts, "h2"));
-    b.push_str(&table_html(&worst, "h3"));
+    // summary: what was checked, the findings by severity, the counts per area; the index of findings
+    let fs = arr(g(rep, "findings"));
+    let nsev = |k: &str| fs.iter().filter(|f| g(f, "severity") == k).count();
+    let ch = arr(g(g(rep, "channels"), "rows"));
+    let lanes = ch.iter().filter(|r| !g(r, "lane").is_null()).count();
+    let rails = arr(g(g(rep, "power"), "rails")).len();
+    let parts =
+        arr(g(g(rep, "thermal"), "parts")).len() + g(g(rep, "thermal"), "parts_omitted").as_u64().unwrap_or(0) as usize;
+    let mut checked = vec![
+        format!("the impedance of {} net class(es) with a target", arr(g(rep, "impedance")).len()),
+        format!(
+            "the channel check of {lanes} lane(s){}",
+            if ch.len() > lanes { format!(" and {} net(s) without devices", ch.len() - lanes) } else { String::new() }
+        ),
+    ];
+    if g(g(rep, "power"), "error").is_null() {
+        checked.push(format!("the DC drop and the vias' current of {rails} rail(s)"));
+    }
+    if g(g(rep, "thermal"), "error").is_null() && g(rep, "thermal").get("board").is_some() {
+        checked.push(format!("the temperature of {parts} part(s) with heat (estimate)"));
+    }
+    checked.push("the open gaps of the board's data".into());
+    b.push_str("<h2>Summary</h2>");
+    b.push_str(&format!("<p>Checked: {}.</p>", esc(&checked.join("; "))));
+    b.push_str(&format!(
+        "<p class=\"sum\"><b class=\"v fail\">{} fail</b> · <b class=\"v warn\">{} warning{}</b> · <b class=\"v gap\">{} open gap{}</b> – each finding below with where it is on the board (layer, coordinates in mm, part, pad, via or track) and a board sketch.</p>",
+        nsev("fail"),
+        nsev("warn"),
+        if nsev("warn") == 1 { "" } else { "s" },
+        nsev("gap"),
+        if nsev("gap") == 1 { "" } else { "s" }
+    ));
+    b.push_str(&table_html(&counts, "h3"));
+    // the index: links to each finding
+    let an = anchors(fs);
+    b.push_str("<h2>Findings</h2>");
+    if fs.is_empty() {
+        b.push_str("<p class=\"note\">No finding: nothing over or near a limit, no open gap.</p>");
+    } else {
+        b.push_str("<table class=\"ix\"><thead><tr><th>#</th><th>Verdict</th><th>Area</th><th>Finding</th><th>Where</th></tr></thead><tbody>");
+        for (i, f) in fs.iter().enumerate() {
+            let c = sev_class(f);
+            b.push_str(&format!(
+                "<tr class=\"{c}\"><td class=\"n\"><a href=\"#{}\">{}</a></td><td class=\"nw\"><b class=\"v {c}\">{}</b></td><td class=\"nw\">{}</td><td><a href=\"#{}\">{}</a></td><td>{}</td></tr>",
+                an[i],
+                i + 1,
+                sev_word(f),
+                esc(&s(g(f, "area"))),
+                an[i],
+                esc(&s(g(f, "what"))),
+                esc(&where_line(g(f, "location")))
+            ));
+        }
+        b.push_str("</tbody></table><p class=\"note\">Coordinates: KiCad board coordinates in mm as KiCad shows them (x to the right, y down). Sorted: fail, warning, gap; then by area and margin.</p>");
+    }
     b.push_str("<h2>Impedance</h2>");
     b.push_str(&table_html(&ts[0], "h3"));
     b.push_str("<h2>Channel</h2>");
@@ -875,7 +886,528 @@ pub fn html(rep: &Value, date: &str) -> String {
     }
     b.push_str("</ul>");
     b.push_str(&table_html(&ts[6], "h3"));
-    b.push_str("<footer>Left out on purpose: maps, curves, per-net details and via lists – they are in the viewer and in the report's JSON (kisi report, Export → Data). A quick design check: results are estimates, without any warranty of correctness. kisi, GPL-3.0, https://github.com/riehlies/kisi</footer></body></html>");
+    if !fs.is_empty() {
+        b.push_str("<h2>Findings in detail</h2>");
+        // the board's outline once, used by every sketch
+        b.push_str(&format!(
+            "<svg width=\"0\" height=\"0\" style=\"position:absolute\" aria-hidden=\"true\"><defs><path id=\"ko\" vector-effect=\"non-scaling-stroke\" d=\"{}\"/></defs></svg>",
+            outline_d(g(rep, "sketch_board"))
+        ));
+        b.push_str(&findings_html(rep));
+    }
+    b.push_str("<footer>Left out on purpose: maps, curves and per-net details – they are in the viewer and in the report's JSON (kisi report, Export → Results). A quick design check: results are estimates, without any warranty of correctness. kisi, GPL-3.0, https://github.com/riehlies/kisi</footer></body></html>");
+    b
+}
+
+// ---- findings: the index, the CSV, each finding with its location and sketch
+
+/// A severity's word: fail, warning, gap.
+#[inline(never)]
+fn sev_word(f: &Value) -> &'static str {
+    match g(f, "severity").as_str() {
+        Some("fail") => "fail",
+        Some("warn") => "warning",
+        _ => "gap",
+    }
+}
+
+/// The CSS class of a severity (the gaps as notes).
+#[inline(never)]
+fn sev_class(f: &Value) -> &'static str {
+    match g(f, "severity").as_str() {
+        Some("fail") => "fail",
+        Some("warn") => "warn",
+        _ => "gap",
+    }
+}
+
+/// A location in one line: layer(s) · (x, y) mm · parts and pads.
+#[inline(never)]
+pub(crate) fn where_line(l: &Value) -> String {
+    if l.is_null() {
+        return "board-wide".into();
+    }
+    let layer = match g(l, "layer").as_str().filter(|x| !x.is_empty()) {
+        Some(x) => x.to_string(),
+        None => arr(g(l, "layers")).iter().map(s).collect::<Vec<_>>().join("/"),
+    };
+    let at = arr(g(l, "at"));
+    let mut v = vec![];
+    if !layer.is_empty() {
+        v.push(layer);
+    }
+    if at.len() == 2 {
+        v.push(format!("({}, {}) mm", num(&at[0], 2), num(&at[1], 2)));
+    }
+    let refs: Vec<String> = arr(g(l, "refs")).iter().map(s).collect();
+    if !refs.is_empty() {
+        v.push(refs.join(", "));
+    }
+    v.join(" · ")
+}
+
+/// Percent-encoding for a URL's fragment (everything but letters, digits and `-_.~`).
+#[inline(never)]
+fn pct(x: &str) -> String {
+    let mut o = String::new();
+    for b in x.bytes() {
+        if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) {
+            o.push(b as char);
+        } else {
+            o.push_str(&format!("%{b:02X}"));
+        }
+    }
+    o
+}
+
+/// The viewer's link fragment for a finding: `#finding=<id>&at=<x>,<y>&layer=<layer>&layers=<a>,<b>&net=<net>
+/// &item=<item>&board=<board>` (each value percent-encoded, the parts without a value left out; the viewer
+/// opens the board view there, docs/getting-started.md#export).
+#[inline(never)]
+pub fn finding_hash(f: &Value, board: &str) -> String {
+    let l = g(f, "location");
+    let mut h = format!("#finding={}", pct(&s(g(f, "id"))));
+    let at = arr(g(l, "at"));
+    if at.len() == 2 {
+        h.push_str(&format!("&at={},{}", num(&at[0], 2), num(&at[1], 2)));
+    }
+    let layer = s(g(l, "layer"));
+    let layer = if layer.is_empty() { arr(g(l, "layers")).first().map(s).unwrap_or_default() } else { layer };
+    if !layer.is_empty() {
+        h.push_str(&format!("&layer={}", pct(&layer)));
+    }
+    let layers: Vec<String> = arr(g(l, "layers")).iter().map(|x| pct(&s(x))).collect();
+    if layers.len() > 1 {
+        h.push_str(&format!("&layers={}", layers.join(",")));
+    }
+    if !s(g(l, "net")).is_empty() {
+        h.push_str(&format!("&net={}", pct(&s(g(l, "net")))));
+    }
+    if !s(g(l, "item")).is_empty() {
+        h.push_str(&format!("&item={}", pct(&s(g(l, "item")))));
+    }
+    if !board.is_empty() {
+        h.push_str(&format!("&board={}", pct(board)));
+    }
+    h
+}
+
+/// The page anchor of each finding (`f-` and its id with other characters as `_`, numbered when two
+/// ids map to the same anchor), in the findings' order.
+#[inline(never)]
+fn anchors(fs: &[Value]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for f in fs {
+        let base: String = format!(
+            "f-{}",
+            s(g(f, "id"))
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+                .collect::<String>()
+        );
+        let mut a = base.clone();
+        let mut k = 2;
+        while out.contains(&a) {
+            a = format!("{base}-{k}");
+            k += 1;
+        }
+        out.push(a);
+    }
+    out
+}
+
+/// The findings as a table (index, `findings.csv`): one row each with its location's columns.
+#[inline(never)]
+pub fn finding_table(rep: &Value) -> Table {
+    let fs = arr(g(rep, "findings"));
+    let rows = fs
+        .iter()
+        .enumerate()
+        .map(|(i, f)| {
+            let l = g(f, "location");
+            let at = arr(g(l, "at"));
+            let c = |k: usize| at.get(k).map(|x| num(x, 2)).unwrap_or_default();
+            (
+                vec![
+                    (i + 1).to_string(),
+                    s(g(f, "id")),
+                    sev_word(f).into(),
+                    s(g(f, "area")),
+                    s(g(f, "what")),
+                    s(g(f, "detail")),
+                    if g(f, "estimate") == true { "estimate".into() } else { String::new() },
+                    s(g(l, "layer")),
+                    arr(g(l, "layers")).iter().map(s).collect::<Vec<_>>().join(" "),
+                    c(0),
+                    c(1),
+                    s(g(l, "net")),
+                    arr(g(l, "refs")).iter().map(s).collect::<Vec<_>>().join(" "),
+                    s(g(l, "what")),
+                    arr(g(f, "markers")).len().to_string(),
+                ],
+                sev_class(f),
+            )
+        })
+        .collect();
+    Table {
+        id: "findings",
+        title: "Findings with their location".into(),
+        head: heads(&[
+            "#",
+            "Id",
+            "Severity",
+            "Area",
+            "Finding",
+            "Detail",
+            "Estimate",
+            "Layer",
+            "Layers",
+            "X (mm)",
+            "Y (mm)",
+            "Net",
+            "Parts and pads",
+            "Object",
+            "More markers",
+        ]),
+        rows,
+        note: "Coordinates: KiCad board coordinates in mm as KiCad shows them (x to the right, y down).".into(),
+    }
+}
+
+/// A number for SVG: up to two decimals, no trailing zeros.
+#[inline(never)]
+pub(crate) fn n2(x: f64) -> String {
+    let t = fx(x, 2);
+    let t = if t.contains('.') { t.trim_end_matches('0').trim_end_matches('.').to_string() } else { t };
+    if t == "-0" {
+        "0".into()
+    } else {
+        t
+    }
+}
+
+#[inline(never)]
+fn f64s(v: &Value) -> Vec<f64> {
+    arr(v).iter().filter_map(|x| x.as_f64()).collect()
+}
+
+/// A scale bar for a view `w` wide at (x, y) (its left end, the baseline); the length 1, 2 or 5 × 10ⁿ mm
+/// closest below a quarter of the view.
+#[inline(never)]
+fn scale_bar(x: f64, y: f64, w: f64, h: f64) -> String {
+    let mut l = 100.0;
+    for c in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1] {
+        l = c;
+        if c <= w / 4.0 {
+            break;
+        }
+    }
+    let fs = h * 0.05;
+    format!(
+        "<path class=\"sb\" d=\"M{} {}h{}\"/><text x=\"{}\" y=\"{}\" font-size=\"{}\" stroke-width=\"{}\">{} mm</text>",
+        n2(x),
+        n2(y),
+        n2(l),
+        n2(x + l + 0.8 * fs),
+        n2(y + 0.35 * fs),
+        n2(fs),
+        n2(0.2 * fs),
+        if l < 1.0 { fx(l, 1) } else { fx(l, 0) }
+    )
+}
+
+/// A marker at (x, y): a ring with a cross (`main`, the finding's place), else a smaller ring; dark on
+/// a white halo.
+#[inline(never)]
+fn marker(x: f64, y: f64, r: f64, main: bool) -> String {
+    let c = format!("<circle cx=\"{}\" cy=\"{}\" r=\"{}\"", n2(x), n2(y), n2(if main { r } else { 0.7 * r }));
+    let x_ = if main {
+        format!(
+            "<path d=\"M{} {}h{}M{} {}v{}\"",
+            n2(x - 1.8 * r),
+            n2(y),
+            n2(3.6 * r),
+            n2(x),
+            n2(y - 1.8 * r),
+            n2(3.6 * r)
+        )
+    } else {
+        String::new()
+    };
+    let h = |t: &str| if t.is_empty() { String::new() } else { format!("{t} class=\"h\"/>") };
+    let d = |t: &str| if t.is_empty() { String::new() } else { format!("{t}/>") };
+    format!("<g class=\"mk{}\">{}{}{}{}</g>", if main { "" } else { " m2" }, h(&c), h(&x_), d(&c), d(&x_))
+}
+
+/// The outline as path data.
+#[inline(never)]
+fn outline_d(board: &Value) -> String {
+    let mut d = String::new();
+    for l in arr(g(board, "outline")) {
+        let q = f64s(l);
+        for (i, c) in q.chunks(2).enumerate() {
+            if c.len() == 2 {
+                d.push_str(&format!("{}{} {}", if i == 0 { "M" } else { "L" }, n2(c[0]), n2(c[1])));
+            }
+        }
+    }
+    d
+}
+
+/// The numbers of a sketch text (`findings`: items and lines as space-separated numbers after a kind).
+#[inline(never)]
+fn nums(t: &str) -> Vec<f64> {
+    t.split_whitespace().filter_map(|x| x.parse().ok()).collect()
+}
+
+/// Path data of a polygon (closed), points relative to `o`.
+#[inline(never)]
+fn poly_d(pts: &[[f64; 2]], o: [f64; 2]) -> String {
+    let mut d = String::new();
+    for (i, q) in pts.iter().enumerate() {
+        d.push_str(&format!("{}{} {}", if i == 0 { "M" } else { "L" }, n2(q[0] - o[0]), n2(q[1] - o[1])));
+    }
+    d.push('Z');
+    d
+}
+
+/// A finding's sketch as SVG (`sketch` of a finding, `board` the report's `sketch_board`): the whole
+/// board with the highlighted nets – their focus layer strong, the other layers light – and the
+/// markers, next to the copper around the location (the focus layer's copper grey, other layers light,
+/// the highlighted nets red). Board coordinates in mm, top view as KiCad shows it; the detail in
+/// coordinates relative to its window's corner. `shared`: the outline is the page's `#ko` (one copy per
+/// page), else drawn in each view.
+#[inline(never)]
+pub fn sketch_svg(board: &Value, f: &Value, shared: bool) -> String {
+    let sk = g(f, "sketch");
+    if sk.is_null() {
+        return String::new();
+    }
+    let focus = g(sk, "focus").as_i64().unwrap_or(-1);
+    let nl = arr(g(board, "layers")).len() as i64;
+    let ol = |o: [f64; 2]| {
+        let tr = if o == [0.0, 0.0] {
+            String::new()
+        } else {
+            format!(" transform=\"translate({} {})\"", n2(-o[0]), n2(-o[1]))
+        };
+        if shared {
+            format!("<use href=\"#ko\" class=\"ol\"{tr}/>")
+        } else {
+            format!("<path class=\"ol\"{tr} d=\"{}\"/>", outline_d(board))
+        }
+    };
+    let marks: Vec<Vec<f64>> = arr(g(sk, "markers")).iter().map(f64s).filter(|m| m.len() == 2).collect();
+    // overview
+    let bb = f64s(g(board, "bbox"));
+    let mut o = String::new();
+    if bb.len() == 4 {
+        let m = 0.03 * (bb[2] - bb[0]).max(bb[3] - bb[1]);
+        let (x0, y0, w, h) = (bb[0] - m, bb[1] - m, bb[2] - bb[0] + 2.0 * m, bb[3] - bb[1] + 2.0 * m);
+        // the scale bar below the board
+        let hb = h + 0.07 * w.max(h);
+        o.push_str(&format!(
+            "<svg class=\"ov\" viewBox=\"{} {} {} {}\" role=\"img\" aria-label=\"the board with the finding\">{}",
+            n2(x0),
+            n2(y0),
+            n2(w),
+            n2(hb),
+            ol([0.0, 0.0])
+        ));
+        let (mut df, mut dother) = (String::new(), String::new());
+        for line in arr(g(g(sk, "overview"), "lines")) {
+            let q = nums(line.as_str().unwrap_or(""));
+            if q.len() < 5 {
+                continue;
+            }
+            let d = if q[0] as i64 == focus || focus < 0 { &mut df } else { &mut dother };
+            for (i, c) in q[1..].chunks(2).enumerate() {
+                if c.len() == 2 {
+                    d.push_str(&format!("{}{} {}", if i == 0 { "M" } else { "L" }, n2(c[0]), n2(c[1])));
+                }
+            }
+        }
+        if !dother.is_empty() {
+            o.push_str(&format!("<path class=\"t ho\" d=\"{dother}\"/>"));
+        }
+        if !df.is_empty() {
+            o.push_str(&format!("<path class=\"t hf\" d=\"{df}\"/>"));
+        }
+        // vias: dots (zero-length strokes with round caps)
+        let mut dv = String::new();
+        for v in arr(g(g(sk, "overview"), "vias")) {
+            let q = nums(v.as_str().unwrap_or(""));
+            if q.len() == 2 {
+                dv.push_str(&format!("M{} {}h0", n2(q[0]), n2(q[1])));
+            }
+        }
+        if !dv.is_empty() {
+            o.push_str(&format!("<path class=\"hv\" d=\"{dv}\"/>"));
+        }
+        let win = f64s(g(g(sk, "detail"), "window"));
+        if win.len() == 4 {
+            o.push_str(&format!(
+                "<rect class=\"dw\" x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"/>",
+                n2(win[0]),
+                n2(win[1]),
+                n2(win[2] - win[0]),
+                n2(win[3] - win[1])
+            ));
+        }
+        for (i, m) in marks.iter().enumerate().rev() {
+            o.push_str(&marker(m[0], m[1], 0.022 * w.max(h), i == 0));
+        }
+        o.push_str(&scale_bar(x0 + 0.04 * w, y0 + h + 0.035 * w.max(h), w, 0.8 * w.max(h)));
+        o.push_str("</svg>");
+    }
+    // detail, relative to the window's corner
+    let win = f64s(g(g(sk, "detail"), "window"));
+    let mut dt = String::new();
+    if win.len() == 4 {
+        let org = [win[0], win[1]];
+        let (w, h) = (win[2] - win[0], win[3] - win[1]);
+        dt.push_str(&format!(
+            "<svg class=\"dt\" viewBox=\"0 0 {} {}\" role=\"img\" aria-label=\"the copper around the finding\">",
+            n2(w),
+            n2(h)
+        ));
+        // classes: 0 other nets on other layers, 1 other nets on the focus layer, 2 highlighted on other
+        // layers, 3 highlighted on the focus layer. Tracks and vias (dots) by class and width, pads as
+        // polygons inset by their corner radius and stroked with twice it (round joins), by class and radius
+        let mut strokes: Vec<(usize, String, String)> = Vec::new();
+        let mut add = |k: usize, wd: f64, d: String| {
+            let wd = n2(wd);
+            match strokes.iter_mut().find(|t| t.0 == k && t.1 == wd) {
+                Some(t) => t.2.push_str(&d),
+                None => strokes.push((k, wd, d)),
+            }
+        };
+        let mut drills = String::new();
+        let rel = |x: f64, y: f64| format!("{} {}", n2(x - org[0]), n2(y - org[1]));
+        for it in arr(g(g(sk, "detail"), "items")) {
+            let t = it.as_str().unwrap_or("");
+            let q = nums(t);
+            match (t.chars().next(), q.len()) {
+                (Some('t'), 7) => {
+                    let on = q[0] as i64 == focus || focus < 0;
+                    let k = 2 * usize::from(q[6] > 0.5) + usize::from(on);
+                    add(k, q[1], format!("M{}L{}", rel(q[2], q[3]), rel(q[4], q[5])));
+                }
+                (Some('v'), 5) => {
+                    let k = if q[4] > 0.5 { 3 } else { 1 };
+                    add(k, q[2], format!("M{}h0", rel(q[0], q[1])));
+                    drills.push_str(&format!("M{}h0", rel(q[0], q[1])));
+                    let _ = q[3];
+                }
+                (Some('p'), 9) => {
+                    let side = q[0] as i64;
+                    let on = focus < 0 || side == 2 || (side == 0 && focus == 0) || (side == 1 && focus == nl - 1);
+                    let k = 2 * usize::from(q[1] > 0.5) + usize::from(on);
+                    let (cx, cy, pw, ph, ang, r) = (q[2], q[3], q[4], q[5], q[6], q[7]);
+                    let r = r.min(pw / 2.0).min(ph / 2.0);
+                    let (hx, hy) = (pw / 2.0 - r, ph / 2.0 - r);
+                    // KiCad's turn (y down): by −angle
+                    let (sn, cs) = (-ang.to_radians()).sin_cos();
+                    let pts: Vec<[f64; 2]> = [[-hx, -hy], [hx, -hy], [hx, hy], [-hx, hy]]
+                        .iter()
+                        .map(|p| [cx + p[0] * cs - p[1] * sn, cy + p[0] * sn + p[1] * cs])
+                        .collect();
+                    // the stroke width 2r carries the corners; a square pad needs none
+                    add(k + 4, 2.0 * r, poly_d(&pts, org));
+                    if q[8] > 0.0 {
+                        drills.push_str(&format!("M{}h0", rel(cx, cy)));
+                    }
+                }
+                _ => {}
+            }
+        }
+        let cls = ["co", "cf", "ho", "hf"];
+        for k in 0..4 {
+            for t in strokes.iter().filter(|t| t.0 == k + 4) {
+                dt.push_str(&format!("<path class=\"p {}\" stroke-width=\"{}\" d=\"{}\"/>", cls[k], t.1, t.2));
+            }
+            for t in strokes.iter().filter(|t| t.0 == k) {
+                dt.push_str(&format!("<path class=\"t {}\" stroke-width=\"{}\" d=\"{}\"/>", cls[k], t.1, t.2));
+            }
+        }
+        if !drills.is_empty() {
+            dt.push_str(&format!("<path class=\"dr\" d=\"{drills}\"/>"));
+        }
+        dt.push_str(&ol(org));
+        for (i, m) in marks.iter().enumerate().rev() {
+            dt.push_str(&marker(m[0] - org[0], m[1] - org[1], 0.05 * w, i == 0));
+        }
+        dt.push_str(&scale_bar(0.05 * w, 0.94 * h, w, h));
+        dt.push_str("</svg>");
+    }
+    format!("<div class=\"sk\">{o}{dt}</div>")
+}
+
+/// Each finding in detail: what, where, the viewer link, the sketch.
+#[inline(never)]
+fn findings_html(rep: &Value) -> String {
+    let fs = arr(g(rep, "findings"));
+    let an = anchors(fs);
+    let board = s(g(g(rep, "overview"), "board"));
+    let sb = g(rep, "sketch_board");
+    let mut b = String::new();
+    for (i, f) in fs.iter().enumerate() {
+        let l = g(f, "location");
+        let c = sev_class(f);
+        b.push_str(&format!(
+            "<section class=\"fd {c}\" id=\"{}\"><h3><b class=\"v {c}\">{}</b> {}. {}</h3>",
+            an[i],
+            sev_word(f),
+            i + 1,
+            esc(&s(g(f, "what")))
+        ));
+        b.push_str(&format!("<p class=\"note\">{}</p>", esc(&s(g(f, "detail")))));
+        if l.is_null() {
+            b.push_str("<p>Where: board-wide (no single place on the board).</p>");
+        } else {
+            let mut rows = vec![("Where", where_line(l)), ("Object", s(g(l, "what")))];
+            if !s(g(l, "net")).is_empty() {
+                rows.push(("Net", s(g(l, "net"))));
+            }
+            let layers: Vec<String> = arr(g(l, "layers")).iter().map(s).collect();
+            if layers.len() > 1 {
+                rows.push(("Layers", layers.join(", ")));
+            }
+            let more = arr(g(f, "markers"));
+            if !more.is_empty() {
+                rows.push((
+                    "Also",
+                    more.iter().map(where_line).take(8).collect::<Vec<_>>().join("; ")
+                        + if more.len() > 8 { "; …" } else { "" },
+                ));
+            }
+            b.push_str("<div class=\"meta\">");
+            for (k, v) in rows {
+                b.push_str(&format!("<b>{k}</b><span>{}</span>", esc(&v)));
+            }
+            let h = finding_hash(f, &board);
+            let at = arr(g(l, "at"));
+            b.push_str(&format!(
+                "<b>Viewer</b><span><a class=\"jump\" href=\"{}\" data-finding=\"{}\">{}</a></span></div>",
+                esc(&h),
+                esc(&s(g(f, "id"))),
+                if at.len() == 2 { "show in the viewer (kisi.html with this link's #finding=…)" } else { "" }
+            ));
+            b.push_str(&sketch_svg(sb, f, true));
+            if !g(f, "sketch").is_null() {
+                let focus = g(g(f, "sketch"), "focus").as_i64().unwrap_or(-1);
+                let ln = arr(g(sb, "layers")).get(focus.max(0) as usize).map(s).unwrap_or_default();
+                b.push_str(&format!(
+                    "<p class=\"cap\">Top view as KiCad shows it (x →, y ↓, mm). Left: the board, {}the finding ⊕{}. Right: the copper around it – {} grey, other layers light{}.</p>",
+                    if s(g(l, "net")).is_empty() { String::new() } else { format!("the net{} in red ({} strong), ", if arr(g(g(g(f, "sketch"), "overview"), "lines")).is_empty() { " (not drawn here)" } else { "" }, esc(&ln)) },
+                    if arr(g(f, "markers")).is_empty() { String::new() } else { ", ○ the further places".into() },
+                    esc(&ln),
+                    if s(g(l, "net")).is_empty() { String::new() } else { ", the highlighted nets red".into() }
+                ));
+            }
+        }
+        b.push_str("</section>");
+    }
     b
 }
 
@@ -970,10 +1502,9 @@ mod tests {
         assert_eq!((b[8].as_str(), b[9].as_str(), b[10].as_str(), b[11].as_str()), ("30", "≥ 65", "-35", "fail"));
         assert_eq!(ts[2].rows.len(), 1); // the failing lane
         assert!(ts[3].note.starts_with("not computed: no loads") && ts[3].rows.is_empty());
-        let (counts, worst) = glance(&rep, &ts);
+        let counts = glance(&rep, &ts);
         assert_eq!(counts.rows[0].0[1..4], ["1", "1", "0"]);
         assert_eq!(counts.rows[1].0[1..4], ["1", "0", "1"]);
-        assert_eq!(worst.rows[0].0[1], "/A");
         let h = html(&rep, "2026-01-02");
         assert!(h.starts_with("<!doctype html>") && h.contains("sha256 0123456789ab") && h.contains("2026-01-02"));
         assert!(
@@ -982,9 +1513,47 @@ mod tests {
         );
         assert!(h.contains("εr &amp; tanδ &lt;default&gt;") && !h.contains("<script") && !h.contains("http://"));
         assert!(h.contains("<thead><tr><th>Class</th>") && h.contains("Left out on purpose"));
+        assert!(h.contains("No finding") && !h.contains("Findings in detail"));
         let csv = csv_files(&rep);
         let imp = &csv.iter().find(|f| f.0 == "impedance.csv").unwrap().1;
         assert!(imp.starts_with("\u{feff}Impedance per net class\r\nClass,Target (Ω)"));
         assert!(imp.contains("\r\n50Z,50,SE,/A/B,56.0,12.0,10,25,warning\r\n"), "{imp}");
+    }
+
+    /// A finding with its location and sketch: the index links to its section, the section names the
+    /// place and carries the viewer link and the sketch (overview and detail), the CSV its columns.
+    #[test]
+    fn renders_a_finding() {
+        let loc = json!({"at": [12.5, 30.25], "layer": "In1.Cu", "layers": ["In1.Cu"], "net": "/A{slash}B", "item": "track",
+            "refs": [], "what": "track 0.127 mm wide on In1.Cu", "bbox": [10.0, 28.0, 15.0, 32.0]});
+        let f = json!({"id": "channel:/A/B", "severity": "fail", "area": "channel", "item": "/A/B", "what": "/A/B: eye height (%) 30 (limit ≥ 65)",
+            "detail": "bus U1 ↔ U2", "estimate": false, "location": loc, "markers": [],
+            "sketch": {"focus": 1, "overview": {"lines": ["1 10 30 15 30", "0 15 30 15 35"], "vias": ["15 30"]},
+                "detail": {"window": [10.0, 27.75, 15.0, 32.75], "items": ["t 1 0.13 10 30.25 15 30.25 1", "v 15 30 0.6 0.3 0", "p 0 0 11 29 1 0.5 90 0.1 0"]},
+                "markers": [[12.5, 30.25]]}});
+        let rep = json!({"overview": {"board": "b"}, "findings": [f],
+            "sketch_board": {"outline": [[0.0, 0.0, 40.0, 0.0, 40.0, 50.0, 0.0, 50.0, 0.0, 0.0]], "bbox": [0.0, 0.0, 40.0, 50.0], "layers": ["F.Cu", "In1.Cu", "B.Cu"]}});
+        let h = html(&rep, "2026-01-02");
+        assert!(
+            h.contains("<a href=\"#f-channel__A_B\">1</a>")
+                && h.contains("<section class=\"fd fail\" id=\"f-channel__A_B\">")
+        );
+        assert!(h.contains("In1.Cu · (12.50, 30.25) mm"), "{h}");
+        assert!(h.contains("#finding=channel%3A%2FA%2FB&amp;at=12.50,30.25&amp;layer=In1.Cu&amp;net=%2FA%2FB&amp;item=track&amp;board=b"));
+        assert!(
+            h.contains("<path id=\"ko\"")
+                && h.contains("<svg class=\"ov\"")
+                && h.contains("<svg class=\"dt\" viewBox=\"0 0 5 5\"")
+        );
+        // the highlighted track on the focus layer, relative to the window; the pad turned by −90°
+        assert!(h.contains("<path class=\"t hf\" stroke-width=\"0.13\" d=\"M0 2.5L5 2.5\"/>"), "{h}");
+        // a pad on F.Cu (not the focus layer) light; the via a dot as wide as its pad
+        assert!(
+            h.contains("class=\"p co\"") && h.contains("<path class=\"t cf\" stroke-width=\"0.6\" d=\"M5 2.25h0\"/>")
+        );
+        assert!(!h.contains("<script"));
+        let csv = csv_files(&rep);
+        let fc = &csv.iter().find(|f| f.0 == "findings.csv").unwrap().1;
+        assert!(fc.contains("\r\n1,channel:/A/B,fail,channel,/A/B: eye height (%) 30 (limit ≥ 65),bus U1 ↔ U2,,In1.Cu,In1.Cu,12.50,30.25,/A/B,"), "{fc}");
     }
 }

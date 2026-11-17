@@ -88,6 +88,29 @@
    "kind": "ic-ic",
    "lane": "/ADC Driver 2/OUT_P",
    "length_mm": 6.96539,
+   "location": {
+    "at": [
+     164.42,
+     91.64
+    ],
+    "bbox": [
+     162.92,
+     89.93,
+     165.92,
+     93.35
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ADC Driver 2/OUT_N",
+    "refs": [
+     "U6.40"
+    ],
+    "what": "pad U6.40 0.250 mm wide on F.Cu from (164.42, 91.85) to (164.42, 91.43) mm, Z 86.9 Ω (formula, estimate) against 100 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.95139,
@@ -200,6 +223,29 @@
    "kind": "ic-ic",
    "lane": "/ADC Driver 3/OUT_P",
    "length_mm": 6.95422,
+   "location": {
+    "at": [
+     162.92,
+     91.64
+    ],
+    "bbox": [
+     161.42,
+     89.93,
+     164.42,
+     93.35
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ADC Driver 3/OUT_N",
+    "refs": [
+     "U6.43"
+    ],
+    "what": "pad U6.43 0.250 mm wide on F.Cu from (162.92, 91.85) to (162.92, 91.43) mm, Z 86.9 Ω (formula, estimate) against 100 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.95142,
@@ -318,6 +364,27 @@
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA Config and Transceivers/QSPI_CLK",
    "length_mm": 21.4402,
+   "location": {
+    "at": [
+     166.13,
+     116.59
+    ],
+    "bbox": [
+     159.71,
+     115.09,
+     167.86,
+     118.09
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "In3.Cu",
+    "layers": [
+     "In3.Cu"
+    ],
+    "net": "/FPGA/FPGA Config and Transceivers/QSPI_CLK",
+    "refs": [],
+    "what": "track 0.127 mm wide on In3.Cu from (166.36, 116.59) to (161.21, 116.59) mm, Z 61.2 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.995847,
@@ -427,6 +494,27 @@
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA Config and Transceivers/QSPI_CS",
    "length_mm": 15.5496,
+   "location": {
+    "at": [
+     169.75,
+     109.69
+    ],
+    "bbox": [
+     168.25,
+     106.18,
+     171.25,
+     112.3
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/FPGA/FPGA Config and Transceivers/QSPI_CS",
+    "refs": [],
+    "what": "track 0.127 mm wide on B.Cu from (169.75, 110.80) to (169.75, 107.68) mm, Z 61.1 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.995123,
@@ -536,6 +624,27 @@
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA IO Banks/QSPI_DQ0",
    "length_mm": 33.8716,
+   "location": {
+    "at": [
+     160.77,
+     102.2
+    ],
+    "bbox": [
+     155.33,
+     100.7,
+     168.18,
+     103.7
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/FPGA/FPGA IO Banks/QSPI_DQ0",
+    "refs": [],
+    "what": "track 0.127 mm wide on B.Cu from (156.83, 102.20) to (166.68, 102.20) mm, Z 61.8 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.993495,
@@ -643,6 +752,27 @@
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA IO Banks/QSPI_DQ1",
    "length_mm": 21.2332,
+   "location": {
+    "at": [
+     172.93,
+     109.45
+    ],
+    "bbox": [
+     170.98,
+     107.8,
+     174.58,
+     111.4
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/FPGA/FPGA IO Banks/QSPI_DQ1",
+    "refs": [],
+    "what": "track 0.127 mm wide on B.Cu from (173.08, 109.30) to (172.48, 109.90) mm, Z 122.2 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.997475,
@@ -752,6 +882,27 @@
    "kind": "ic-ic",
    "lane": "/FPGA/FPGA IO Banks/QSPI_DQ3",
    "length_mm": 28.565,
+   "location": {
+    "at": [
+     164.66,
+     102.6
+    ],
+    "bbox": [
+     155.43,
+     101.1,
+     167.9,
+     104.1
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/FPGA/FPGA IO Banks/QSPI_DQ3",
+    "refs": [],
+    "what": "track 0.127 mm wide on B.Cu from (156.93, 102.60) to (166.40, 102.60) mm, Z 59.9 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.993502,
@@ -864,6 +1015,27 @@
    "kind": "ic-ic",
    "lane": "/ADC/D1B_P",
    "length_mm": 33.8734,
+   "location": {
+    "at": [
+     158.63,
+     110.79
+    ],
+    "bbox": [
+     157.13,
+     105.69,
+     160.13,
+     115.89
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ADC/D1B_P",
+    "refs": [],
+    "what": "track 0.127 mm wide on F.Cu from (158.63, 114.39) to (158.63, 107.19) mm, Z 110.0 Ω (formula, estimate) against 100 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.930142,
@@ -973,6 +1145,27 @@
    "kind": "ic-ic",
    "lane": "/ADC/D3B_P",
    "length_mm": 32.8425,
+   "location": {
+    "at": [
+     167.02,
+     101.35
+    ],
+    "bbox": [
+     164.37,
+     99.85,
+     169.67,
+     102.85
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/ADC/D3B_P",
+    "refs": [],
+    "what": "track 0.127 mm wide on F.Cu from (165.87, 101.35) to (168.17, 101.35) mm, Z 110.0 Ω (formula, estimate) against 100 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.923366,
@@ -1067,6 +1260,27 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/REFINOUT2",
    "length_mm": 70.2396,
+   "location": {
+    "at": [
+     188.83,
+     61.33
+    ],
+    "bbox": [
+     187.33,
+     59.59,
+     190.33,
+     64.28
+    ],
+    "criterion": "rl",
+    "item": "track",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/TS-PCIe Components/REFINOUT2",
+    "refs": [],
+    "what": "track 0.213 mm wide on B.Cu from (188.83, 62.78) to (188.83, 61.09) mm, Z 144.7 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -1173,6 +1387,27 @@
    "kind": "ic-connector",
    "lane": "/FPGA/USRIO_2_P",
    "length_mm": 67.2751,
+   "location": {
+    "at": [
+     191.68,
+     117.87
+    ],
+    "bbox": [
+     187.54,
+     113.74,
+     195.81,
+     122.0
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/USRIO_2_N",
+    "refs": [],
+    "what": "track 0.127 mm wide on F.Cu from (189.04, 115.24) to (194.31, 120.50) mm, Z 110.0 Ω (formula, estimate) against 100 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -1270,6 +1505,27 @@
    "kind": "ic-connector",
    "lane": "/FPGA/USRIO_3_P",
    "length_mm": 71.0502,
+   "location": {
+    "at": [
+     172.32,
+     106.1
+    ],
+    "bbox": [
+     169.1,
+     104.6,
+     185.86,
+     107.6
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/USRIO_3_P",
+    "refs": [],
+    "what": "track 0.127 mm wide on F.Cu from (170.60, 106.10) to (184.36, 106.10) mm, Z 109.9 Ω (formula, estimate) against 100 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -1367,6 +1623,27 @@
    "kind": "ic-connector",
    "lane": "/FPGA/USRIO_11_P",
    "length_mm": 64.0716,
+   "location": {
+    "at": [
+     168.17,
+     103.97
+    ],
+    "bbox": [
+     163.99,
+     99.8,
+     172.34,
+     108.15
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/USRIO_11_P",
+    "refs": [],
+    "what": "track 0.127 mm wide on F.Cu from (165.49, 106.65) to (170.84, 101.30) mm, Z 110.0 Ω (formula, estimate) against 100 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -1464,6 +1741,27 @@
    "kind": "ic-connector",
    "lane": "/FPGA/USRIO_12_P",
    "length_mm": 67.1925,
+   "location": {
+    "at": [
+     168.79,
+     104.55
+    ],
+    "bbox": [
+     165.23,
+     101.0,
+     172.34,
+     108.11
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/USRIO_12_P",
+    "refs": [],
+    "what": "track 0.127 mm wide on F.Cu from (166.73, 106.61) to (170.84, 102.50) mm, Z 110.0 Ω (formula, estimate) against 100 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -1567,6 +1865,29 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PER0_P",
    "length_mm": 36.426,
+   "location": {
+    "at": [
+     159.82,
+     128.74
+    ],
+    "bbox": [
+     158.17,
+     127.24,
+     161.48,
+     130.24
+    ],
+    "criterion": "rl",
+    "item": "pad",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/TS-PCIe Components/PCIe_PER0_P",
+    "refs": [
+     "C41.1"
+    ],
+    "what": "pad C41.1 0.640 mm wide on B.Cu from (159.98, 128.74) to (159.67, 128.74) mm, Z 47.2 Ω (formula, estimate) against 85 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -1675,6 +1996,29 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PER1_P",
    "length_mm": 34.6229,
+   "location": {
+    "at": [
+     162.82,
+     128.74
+    ],
+    "bbox": [
+     161.17,
+     127.24,
+     164.48,
+     130.24
+    ],
+    "criterion": "rl",
+    "item": "pad",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/TS-PCIe Components/PCIe_PER1_N",
+    "refs": [
+     "C36.1"
+    ],
+    "what": "pad C36.1 0.640 mm wide on B.Cu from (162.98, 128.74) to (162.67, 128.74) mm, Z 47.2 Ω (formula, estimate) against 85 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -1783,6 +2127,29 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PER2_P",
    "length_mm": 33.3212,
+   "location": {
+    "at": [
+     164.82,
+     128.74
+    ],
+    "bbox": [
+     163.17,
+     127.24,
+     166.48,
+     130.24
+    ],
+    "criterion": "rl",
+    "item": "pad",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/TS-PCIe Components/PCIe_PER2_N",
+    "refs": [
+     "C32.1"
+    ],
+    "what": "pad C32.1 0.640 mm wide on B.Cu from (164.98, 128.74) to (164.67, 128.74) mm, Z 47.2 Ω (formula, estimate) against 85 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -1891,6 +2258,29 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PER3_P",
    "length_mm": 32.2063,
+   "location": {
+    "at": [
+     166.82,
+     128.74
+    ],
+    "bbox": [
+     165.17,
+     127.24,
+     168.48,
+     130.24
+    ],
+    "criterion": "rl",
+    "item": "pad",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/TS-PCIe Components/PCIe_PER3_N",
+    "refs": [
+     "C28.1"
+    ],
+    "what": "pad C28.1 0.640 mm wide on B.Cu from (166.98, 128.74) to (166.67, 128.74) mm, Z 47.2 Ω (formula, estimate) against 85 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -2008,6 +2398,27 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PET0_P",
    "length_mm": 62.6895,
+   "location": {
+    "at": [
+     169.48,
+     121.88
+    ],
+    "bbox": [
+     167.85,
+     120.24,
+     171.11,
+     123.51
+    ],
+    "criterion": "rl",
+    "item": "track",
+    "layer": "In3.Cu",
+    "layers": [
+     "In3.Cu"
+    ],
+    "net": "/FPGA/MGT_RX3_P",
+    "refs": [],
+    "what": "track 0.148 mm wide on In3.Cu from (169.35, 121.74) to (169.61, 122.01) mm, Z 117.1 Ω (formula, estimate) against 85 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -2125,6 +2536,27 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PET1_P",
    "length_mm": 45.0994,
+   "location": {
+    "at": [
+     165.99,
+     121.88
+    ],
+    "bbox": [
+     164.35,
+     120.25,
+     167.63,
+     123.52
+    ],
+    "criterion": "rl",
+    "item": "track",
+    "layer": "In3.Cu",
+    "layers": [
+     "In3.Cu"
+    ],
+    "net": "/FPGA/MGT_RX2_P",
+    "refs": [],
+    "what": "track 0.148 mm wide on In3.Cu from (166.13, 121.75) to (165.85, 122.02) mm, Z 115.9 Ω (formula, estimate) against 85 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -2242,6 +2674,27 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PET2_P",
    "length_mm": 48.3349,
+   "location": {
+    "at": [
+     172.27,
+     127.34
+    ],
+    "bbox": [
+     170.63,
+     125.7,
+     174.18,
+     129.24
+    ],
+    "criterion": "rl",
+    "item": "track",
+    "layer": "In3.Cu",
+    "layers": [
+     "In3.Cu"
+    ],
+    "net": "/FPGA/MGT_RX1_P",
+    "refs": [],
+    "what": "track 0.148 mm wide on In3.Cu from (172.13, 127.20) to (172.68, 127.74) mm, Z 101.8 Ω (formula, estimate) against 85 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -2359,6 +2812,27 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_PET3_P",
    "length_mm": 42.2891,
+   "location": {
+    "at": [
+     167.63,
+     122.43
+    ],
+    "bbox": [
+     165.87,
+     120.67,
+     169.24,
+     124.04
+    ],
+    "criterion": "rl",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/FPGA/MGT_RX0_N",
+    "refs": [],
+    "what": "track 0.191 mm wide on F.Cu from (167.74, 122.54) to (167.37, 122.17) mm, Z 154.3 Ω (formula, estimate) against 85 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -2476,6 +2950,27 @@
    "kind": "ic-connector",
    "lane": "/TS-PCIe Components/PCIe_REFCLK_P",
    "length_mm": 39.5771,
+   "location": {
+    "at": [
+     152.97,
+     135.78
+    ],
+    "bbox": [
+     145.81,
+     128.62,
+     160.14,
+     142.94
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "B.Cu",
+    "layers": [
+     "B.Cu"
+    ],
+    "net": "/TS-PCIe Components/PCIe_REFCLK_N",
+    "refs": [],
+    "what": "track 0.191 mm wide on B.Cu from (147.31, 141.44) to (158.63, 130.12) mm, Z 87.8 Ω (formula, estimate) against 85 Ω (differential)"
+   },
    "metrics": {
     "error": null,
     "eye_h": null,
@@ -2570,6 +3065,29 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 6.14,
+   "location": {
+    "at": [
+     112.81,
+     76.35
+    ],
+    "bbox": [
+     110.86,
+     74.85,
+     114.76,
+     77.85
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH1/ATTEN_1X",
+    "refs": [
+     "K1001_1.4"
+    ],
+    "what": "pad K1001_1.4 0.800 mm wide on F.Cu from (112.36, 76.35) to (113.26, 76.35) mm, Z 86.7 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999271,
@@ -2650,6 +3168,29 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 8.52176,
+   "location": {
+    "at": [
+     112.81,
+     71.95
+    ],
+    "bbox": [
+     110.86,
+     70.45,
+     114.76,
+     73.45
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH1/ATTEN_50X_IN",
+    "refs": [
+     "K1001_1.2"
+    ],
+    "what": "pad K1001_1.2 0.800 mm wide on F.Cu from (112.36, 71.95) to (113.26, 71.95) mm, Z 88.6 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.998867,
@@ -2730,6 +3271,27 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 12.0949,
+   "location": {
+    "at": [
+     118.11,
+     62.69
+    ],
+    "bbox": [
+     116.27,
+     60.7,
+     120.1,
+     64.54
+    ],
+    "criterion": "z",
+    "item": "track",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH1/ATTEN_50X_OUT",
+    "refs": [],
+    "what": "track 0.213 mm wide on F.Cu from (117.77, 63.04) to (118.60, 62.20) mm, Z 113.1 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.994844,
@@ -2810,6 +3372,29 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 3.24891,
+   "location": {
+    "at": [
+     110.05,
+     71.62
+    ],
+    "bbox": [
+     108.09,
+     70.12,
+     112.0,
+     73.12
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH1/ATTEN_IN",
+    "refs": [
+     "K1000_1.6"
+    ],
+    "what": "pad K1000_1.6 0.800 mm wide on F.Cu from (109.59, 71.62) to (110.50, 71.62) mm, Z 88.6 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.9996,
@@ -2890,6 +3475,29 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 6.13744,
+   "location": {
+    "at": [
+     104.11,
+     69.42
+    ],
+    "bbox": [
+     102.15,
+     67.92,
+     106.06,
+     70.92
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH1/TERM_1M",
+    "refs": [
+     "K1000_1.2"
+    ],
+    "what": "pad K1000_1.2 0.800 mm wide on F.Cu from (103.65, 69.42) to (104.56, 69.42) mm, Z 88.6 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999154,
@@ -2970,6 +3578,29 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 7.65193,
+   "location": {
+    "at": [
+     110.05,
+     69.42
+    ],
+    "bbox": [
+     108.09,
+     67.92,
+     112.0,
+     70.92
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH1/TERM_1M_R",
+    "refs": [
+     "K1000_1.7"
+    ],
+    "what": "pad K1000_1.7 0.800 mm wide on F.Cu from (109.59, 69.42) to (110.50, 69.42) mm, Z 88.6 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999036,
@@ -3050,6 +3681,29 @@
    ],
    "kind": "net (no devices found)",
    "length_mm": 5.94117,
+   "location": {
+    "at": [
+     105.65,
+     76.22
+    ],
+    "bbox": [
+     103.6,
+     74.72,
+     107.71,
+     77.72
+    ],
+    "criterion": "z",
+    "item": "pad",
+    "layer": "F.Cu",
+    "layers": [
+     "F.Cu"
+    ],
+    "net": "/CH1/TERM_50Z",
+    "refs": [
+     "R1025_1.2"
+    ],
+    "what": "pad R1025_1.2 0.762 mm wide on F.Cu from (105.10, 76.22) to (106.21, 76.22) mm, Z 76.9 Ω (formula, estimate) against 50 Ω"
+   },
    "metrics": {
     "error": null,
     "eye_h": 0.999403,
